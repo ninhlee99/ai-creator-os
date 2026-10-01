@@ -22,6 +22,12 @@
 
 *Video dọc 1080x1920 mẫu: kịch bản AI viết, lồng tiếng AI, phụ đề tự động — đúng chuẩn pipeline Content của hệ thống.*
 
+### Video concept 1 phút — do Milo (AI assistant) dựng
+
+<video src="docs/assets/demo-1min.mp4" controls width="100%"></video>
+
+*6 clip AI (mỗi clip 10s, phong cách điện ảnh navy/cyan nhất quán) ghép bằng FFmpeg: mạng lưới creator → dashboard → 6 persona → studio livestream → TikTok Shop → emblem. Clip minh họa khả năng B-roll miễn phí của Milo cho video ngắn.*
+
 ### Dashboard điều khiển (giao diện thật)
 
 ![Dashboard](docs/assets/dashboard-mockup.webp)
