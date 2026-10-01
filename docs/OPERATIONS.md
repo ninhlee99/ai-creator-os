@@ -51,13 +51,13 @@ Notes:
 - Without #5's audit, the Posting API only publishes `SELF_ONLY` (private) to ≤5 test users.
 - Token files and `.env` are gitignored; keys never enter the ledger or logs.
 
-## Chạy app trên Mac (mở tay, không Docker, không tự chạy khi mở máy)
+## Chạy app trên Mac (mở tay bằng CLI, không Docker)
 
-1. Tải `AI-Creator-OS-mac-arm64.zip` từ mục Releases trên GitHub, giải nén.
-2. Kéo `AI Creator OS.app` vào Applications (hoặc để ở Desktop).
-3. Lần đầu mở: **chuột phải vào app → Open** (app chưa ký Apple nên Gatekeeper chặn double-click lần đầu).
-4. Dashboard tự mở ở http://127.0.0.1:8080 — anh bật/tắt và theo dõi mọi thứ tại đây.
-5. Muốn tắt: đóng app (hoặc nút dừng trong dashboard). Dữ liệu nằm trong thư mục `data/` cạnh app.
+1. Tải file `aicos-darwin-arm64` từ mục Releases trên GitHub về máy Mac.
+2. Mở Terminal, cấp quyền chạy: `chmod +x aicos-darwin-arm64`
+3. Chạy: `./aicos-darwin-arm64`
+4. Mở trình duyệt: http://127.0.0.1:8080 — mọi quản lý/giám sát đều ở dashboard UI.
+5. Muốn tắt: `Ctrl+C`. Dữ liệu nằm trong thư mục `data/` cạnh binary.
 
 ## Daily operation (hands-off)
 
