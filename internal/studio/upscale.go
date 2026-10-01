@@ -1,0 +1,43 @@
+package studio
+
+import (
+	"context"
+	"fmt"
+	"os"
+)
+
+// Photo widths for the quality bar Ninh set (2026-10-01): model+product
+// shots are mastered in 4K (2160x3840 for 9:16). 8K masters are supported
+// for archival; the TikTok delivery render stays 1080x1920.
+const (
+	PhotoWidth4K = 2160
+	PhotoWidth8K = 4320
+)
+
+// UpscalePhoto masters a generated photo to the target width (4K/8K).
+// Generators output ~1K; this is an AI-detail upscale (lanczos + gentle
+// sharpening), not native sensor resolution — the pipeline is honest about
+// that. If the source already meets the target, it is copied as-is.
+//
+// The output is always 9:16 (fill + center crop), matching the vertical
+// affiliate format.
+func UpscalePhoto(ctx context.Context, src, dst string, width int) error {
+	if width != PhotoWidth4K && width != PhotoWidth8K {
+		return fmt.Errorf("upscale: unsupported width %d", width)
+	}
+	height := width * 16 / 9
+	cur := ProbeWidth(ctx, src)
+	if cur >= width {
+		// Already at target: copy, don't waste a generation of quality.
+		b, err := os.ReadFile(src)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(dst, b, 0o644)
+	}
+	return ffmpegRun(ctx,
+		"-i", src,
+		"-vf", fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,"+
+			"crop=%d:%d,unsharp=5:5:0.6:5:5:0.0", width, height, width, height),
+		"-frames:v", "1", "-q:v", "2", dst)
+}
