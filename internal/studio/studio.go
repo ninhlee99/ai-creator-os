@@ -120,9 +120,15 @@ func New(dbPath string, llm LLM, mg MediaGen, narrator Narrator, outDir string) 
 	if err != nil {
 		return nil, fmt.Errorf("studio db: %w", err)
 	}
-	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
-		db.Close()
-		return nil, err
+	// One connection, like the ledger/products stores: busy_timeout is a
+	// per-connection pragma, so a pooled second connection would hit
+	// SQLITE_BUSY while a render goroutine is writing its log.
+	db.SetMaxOpenConns(1)
+	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000"} {
+		if _, err := db.Exec(p); err != nil {
+			db.Close()
+			return nil, err
+		}
 	}
 	s := &Studio{
 		db:       db,

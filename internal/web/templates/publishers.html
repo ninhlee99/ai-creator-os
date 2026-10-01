@@ -2,6 +2,8 @@
 {{define "content"}}
 <h1>Đa nền tảng</h1>
 <p class="subtitle">Trạng thái kết nối TikTok, Facebook, YouTube và RTMP của từng tài khoản.</p>
+{{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
+{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
 {{if .Rows}}
 <table>
@@ -13,7 +15,9 @@
   <tr>
     <td><strong>{{.Username}}</strong></td>
     <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
-    <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
+      {{if .TiktokClient}}<a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}">{{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}</a>
+      {{else}}<span class="hint">thiếu client key</span>{{end}}</td>
     <td>{{if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .Rtmp}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
@@ -21,6 +25,32 @@
   </tr>
   {{end}}
 </table>
+
+<h2>Kết nối TikTok (OAuth, làm một lần mỗi tài khoản)</h2>
+<p>Redirect URI phải khai báo y hệt trên developers.tiktok.com: <code>{{.RedirectURI}}</code></p>
+{{if .RedirectLocal}}
+<ol>
+  <li>Bấm <strong>Kết nối TikTok</strong> ở dòng tài khoản → trang TikTok mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng tài khoản creator → <strong>Allow</strong>.</li>
+  <li>TikTok tự chuyển về app này và lưu token — không cần copy gì. Mở app tại đúng địa chỉ trong Redirect URI (cùng cổng).</li>
+</ol>
+{{else}}
+<ol>
+  <li>Bấm <strong>Kết nối TikTok</strong> ở dòng tài khoản → trang TikTok mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng tài khoản creator → <strong>Allow</strong>.</li>
+  <li>TikTok chuyển về <code>{{.RedirectURI}}</code> kèm <code>?code=…</code>. Copy <strong>nguyên URL</strong> trên thanh địa chỉ, dán vào ô dưới (trong 15 phút).</li>
+</ol>
+{{if .AnyTiktokClient}}
+<form method="post" action="/publishers/tiktok/connect">
+  <label>Tài khoản
+    <select name="username">{{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}</select>
+  </label>
+  <label>URL sau khi Allow
+    <input type="text" name="redirect" placeholder="{{.RedirectURI}}?code=...&amp;state=..." required style="width:100%">
+  </label>
+  <button type="submit" class="btn">Lưu token</button>
+</form>
+{{end}}
+{{end}}
+<p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key → set <code>TIKTOK_CLIENT_KEY</code>/<code>TIKTOK_CLIENT_SECRET</code> (xem <code>docs/POSTPROD_RUNBOOK.md</code>) rồi khởi động lại app.</p>
 {{else}}
 <p class="empty">Chưa có tài khoản nào để hiển thị.</p>
 {{end}}

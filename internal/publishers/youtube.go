@@ -98,11 +98,15 @@ type YouTubePublisher struct {
 	HTTP YouTubeHTTPFunc
 }
 
+// YouTubeTokenPath is the refresh-token file for username.
+func YouTubeTokenPath(username string) string {
+	return "youtube_token_" + sanitizeUsername(username) + ".json"
+}
+
 // NewYouTubePublisher wires credentials from the environment:
 // YOUTUBE_CLIENT_ID[_<USERNAME>], YOUTUBE_CLIENT_SECRET[_<USERNAME>],
 // YOUTUBE_DEFAULT_PRIVACY (default "private").
 func NewYouTubePublisher(username string, allowedKinds []string, channel string) *YouTubePublisher {
-	safe := sanitizeUsername(username)
 	privacy := os.Getenv("YOUTUBE_DEFAULT_PRIVACY")
 	if privacy == "" {
 		privacy = "private"
@@ -111,7 +115,7 @@ func NewYouTubePublisher(username string, allowedKinds []string, channel string)
 		Username:     username,
 		allowedKinds: append([]string(nil), allowedKinds...),
 		channel:      channel,
-		tokenPath:    "youtube_token_" + safe + ".json",
+		tokenPath:    YouTubeTokenPath(username),
 		clientID:     envFor(username, "YOUTUBE_CLIENT_ID"),
 		clientSecret: envFor(username, "YOUTUBE_CLIENT_SECRET"),
 		privacy:      privacy,

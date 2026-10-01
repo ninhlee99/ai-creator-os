@@ -1,7 +1,10 @@
 package tiktok
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,11 +104,38 @@ func TestAccessTokenRefreshesAndPersistsRotation(t *testing.T) {
 
 func TestAuthorizeURL(t *testing.T) {
 	c := &PostingClient{ClientKey: "KEY123", Store: &TokenStore{}}
-	u := c.AuthorizeURL("https://app.example/cb", ScopeDirectPost, "st8")
+	u := c.AuthorizeURL("https://app.example/cb", ScopeDirectPost, "st8", "")
 	for _, want := range []string{"client_key=KEY123", "redirect_uri=", "response_type=code", "scope=video.publish", "state=st8"} {
 		if !strings.Contains(u, want) {
 			t.Fatalf("AuthorizeURL missing %q: %s", want, u)
 		}
+	}
+}
+
+func TestPKCEDesktopFlow(t *testing.T) {
+	v, ch := NewPKCE()
+	if len(v) != 64 || strings.Trim(v, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~") != "" {
+		t.Fatalf("bad verifier %q", v)
+	}
+	sum := sha256.Sum256([]byte(v))
+	if ch != hex.EncodeToString(sum[:]) {
+		t.Fatal("challenge must be hex sha256(verifier)")
+	}
+	c := &PostingClient{ClientKey: "K", ClientSecret: "S", Store: &TokenStore{Path: filepath.Join(t.TempDir(), "t.json")}}
+	u := c.AuthorizeURL("http://127.0.0.1:8080/cb", ScopeUploadDraft, "st", ch)
+	if !strings.Contains(u, "code_challenge="+ch) || !strings.Contains(u, "code_challenge_method=S256") {
+		t.Fatalf("missing PKCE params: %s", u)
+	}
+	var form string
+	c.HTTP = func(method, url string, headers map[string]string, body []byte) (int, []byte, error) {
+		form = string(body)
+		return 200, []byte(`{"access_token":"a","refresh_token":"r","expires_in":86400,"scope":"video.upload"}`), nil
+	}
+	if _, err := c.ExchangeCode("code1", "http://127.0.0.1:8080/cb", v); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(form, "code_verifier="+v) {
+		t.Fatalf("verifier not sent: %s", form)
 	}
 }
 
@@ -197,7 +227,10 @@ func TestPublishFileMultiChunk(t *testing.T) {
 	c := &PostingClient{ClientKey: "k", ClientSecret: "s", Store: store,
 		HTTP: fakeUploadServer(t, "pid-2", &puts)}
 
-	const size = 12 * 1024 * 1024 // -> ceil(12/10) = 2 chunks
+	// > 64 MB -> 10 MB chunks, count = floor(size/10MB), last chunk takes
+	// the remainder (TikTok rejects a ceil() count).
+	const mb = 1024 * 1024
+	const size = 75*mb + 123
 	path := writeSizedFile(t, size)
 	id, err := c.PublishFile(path, "title", "SELF_ONLY", false)
 	if err != nil {
@@ -206,20 +239,71 @@ func TestPublishFileMultiChunk(t *testing.T) {
 	if id != "pid-2" {
 		t.Fatalf("publish_id = %q", id)
 	}
-	if len(puts) != 2 {
-		t.Fatalf("expected 2 PUTs, got %d", len(puts))
+	if len(puts) != 7 {
+		t.Fatalf("expected 7 PUTs, got %d", len(puts))
 	}
-	want := []string{
-		"bytes 0-10485759/12582912",
-		"bytes 10485760-12582911/12582912",
+	if got, w := puts[0].headers["Content-Range"], fmt.Sprintf("bytes 0-%d/%d", 10*mb-1, size); got != w {
+		t.Fatalf("first Content-Range = %q, want %q", got, w)
 	}
-	for i, w := range want {
-		if got := puts[i].headers["Content-Range"]; got != w {
-			t.Fatalf("chunk %d Content-Range = %q, want %q", i, got, w)
-		}
+	if got, w := puts[6].headers["Content-Range"], fmt.Sprintf("bytes %d-%d/%d", 60*mb, size-1, size); got != w {
+		t.Fatalf("last Content-Range = %q, want %q", got, w)
 	}
-	if puts[0].n != 10*1024*1024 || puts[1].n != 2*1024*1024 {
-		t.Fatalf("chunk sizes = %d, %d", puts[0].n, puts[1].n)
+	if puts[6].n != 15*mb+123 {
+		t.Fatalf("last chunk size = %d", puts[6].n)
+	}
+}
+
+func TestPublishFileMidSizeIsSingleChunk(t *testing.T) {
+	dir := t.TempDir()
+	store := &TokenStore{Path: filepath.Join(dir, "tok.json")}
+	_ = store.Save(Tokens{AccessToken: "tok", RefreshToken: "r", ExpiresIn: 86400})
+	var puts []putCall
+	c := &PostingClient{ClientKey: "k", ClientSecret: "s", Store: store,
+		HTTP: fakeUploadServer(t, "pid-3", &puts)}
+	// A typical 30s 1080x1920 render (~45 MB) must go up whole.
+	const size = 45*1024*1024 + 7
+	if _, err := c.PublishFile(writeSizedFile(t, size), "t", "", true); err != nil {
+		t.Fatalf("PublishFile: %v", err)
+	}
+	if len(puts) != 1 || puts[0].n != size {
+		t.Fatalf("want 1 PUT of %d bytes, got %d PUTs", size, len(puts))
+	}
+}
+
+func TestExchangeCodeErrorKeepsTokenFile(t *testing.T) {
+	dir := t.TempDir()
+	store := &TokenStore{Path: filepath.Join(dir, "tok.json")}
+	_ = store.Save(Tokens{AccessToken: "good", RefreshToken: "r-good", ExpiresIn: 86400})
+	c := &PostingClient{ClientKey: "k", ClientSecret: "s", Store: store,
+		HTTP: func(method, url string, headers map[string]string, body []byte) (int, []byte, error) {
+			return 200, []byte(`{"error":"invalid_grant","error_description":"code expired"}`), nil
+		}}
+	if _, err := c.ExchangeCode("bad", "https://x/", ""); err == nil {
+		t.Fatal("expected exchange error")
+	}
+	if _, err := c.AccessToken(); err != nil {
+		t.Fatalf("token file should be untouched: %v", err)
+	}
+	got, _ := store.Load()
+	if got.RefreshToken != "r-good" {
+		t.Fatalf("refresh token clobbered: %+v", got)
+	}
+}
+
+func TestRefreshErrorKeepsRefreshToken(t *testing.T) {
+	dir := t.TempDir()
+	store := &TokenStore{Path: filepath.Join(dir, "tok.json")}
+	_ = store.Save(Tokens{AccessToken: "old", RefreshToken: "r-keep", ExpiresIn: 1})
+	c := &PostingClient{ClientKey: "k", ClientSecret: "s", Store: store,
+		HTTP: func(method, url string, headers map[string]string, body []byte) (int, []byte, error) {
+			return 200, []byte(`{"error":"temporarily_unavailable"}`), nil
+		}}
+	if _, err := c.AccessToken(); err == nil {
+		t.Fatal("expected refresh error")
+	}
+	got, _ := store.Load()
+	if got.RefreshToken != "r-keep" {
+		t.Fatalf("refresh token wiped: %+v", got)
 	}
 }
 
