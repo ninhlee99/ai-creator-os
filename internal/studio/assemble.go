@@ -51,7 +51,7 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 
 	if musicPath != "" {
 		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
-		filter += fmt.Sprintf("[%d:a]atrim=0:%.2f,afade=t=in:st=0:d=1,"+
+		filter += ";" + fmt.Sprintf("[%d:a]atrim=0:%.2f,afade=t=in:st=0:d=1,"+
 			"afade=t=out:st=%.1f:d=1,loudnorm=I=-14:TP=-1.5:LRA=11[aout]",
 			len(photos), total, total-1)
 	}
@@ -106,6 +106,83 @@ func photoListFilter(n int, secsPer float64) (string, float64) {
 		sb.WriteString("[v0]null[vout];")
 	}
 	total := float64(n)*secsPer - float64(n-1)*fade
+	return strings.TrimSuffix(sb.String(), ";"), total
+}
+
+// AssembleBeatBounce builds the CapCut-style "giật giật" affiliate spot
+// Ninh asked for (2026-10-01): a handful of photos of the model using the
+// product, each photo bouncing (zoom pulse) on every beat with a slight
+// positional shake, hard cuts between photos — no crossfades. Music is
+// loudness-matched to -14 LUFS with fades. No text, no voiceover.
+//
+// When musicPath == "" the output is a silent video.
+func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, bpm int, musicPath string, musicStart float64, outPath string) error {
+	if len(photos) == 0 {
+		return fmt.Errorf("no photos")
+	}
+	if secsPer < 1 {
+		secsPer = 3
+	}
+	if bpm < 60 || bpm > 200 {
+		bpm = 120 // default: the common TikTok trending tempo
+	}
+	var args []string
+	for _, p := range photos {
+		args = append(args, "-i", p)
+	}
+	filter, total := beatBounceFilter(len(photos), secsPer, bpm)
+
+	if musicPath != "" {
+		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
+		filter += ";" + fmt.Sprintf("[%d:a]atrim=0:%.2f,afade=t=in:st=0:d=1,"+
+			"afade=t=out:st=%.1f:d=1,loudnorm=I=-14:TP=-1.5:LRA=11[aout]",
+			len(photos), total, total-1)
+	}
+	args = append(args,
+		"-filter_complex", filter,
+		"-map", "[vout]",
+		"-t", fmt.Sprintf("%.2f", total),
+		"-r", fmt.Sprint(outFPS),
+		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+	)
+	if musicPath != "" {
+		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
+	}
+	args = append(args, outPath)
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	return ffmpegRun(ctx, args...)
+}
+
+// beatBounceFilter builds the per-photo beat-bounce graph and hard-cut
+// concat. Each photo: supersampled fill, zoompan with a zoom pulse peaking
+// on every beat (sharpened with pow 2 so the "giật" feels snappy), then a
+// crop with an oscillating offset for the handheld shake. Base zoom 1.06
+// keeps the shake inside the frame (no black corners).
+func beatBounceFilter(n int, secsPer float64, bpm int) (string, float64) {
+	frames := int(secsPer*outFPS + 0.5)
+	beat := float64(outFPS) * 60 / float64(bpm) // frames per beat
+	// Overscan headroom: zoompan renders slightly larger than the output
+	// so the shake crop never reveals edges.
+	const overW, overH = 1200, 2133
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		zoom := fmt.Sprintf("1.06+0.14*pow(max(0,sin(2*PI*on/%.4f)),2)", beat)
+		fmt.Fprintf(&sb,
+			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,"+
+				"crop=%d:%d,setsar=1,"+
+				"zoompan=z='%s':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d,"+
+				"crop=%d:%d:x='(in_w-%d)/2+30*sin(2*PI*n/%.4f)':y='(in_h-%d)/2+24*cos(2*PI*2*n/%.4f)'[v%d];",
+			i, outW*2, outH*2, outW*2, outH*2,
+			zoom, frames, overW, overH, outFPS,
+			outW, outH, outW, beat, outH, beat, i)
+	}
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&sb, "[v%d]", i)
+	}
+	fmt.Fprintf(&sb, "concat=n=%d:v=1:a=0[vout];", n)
+	total := float64(n) * secsPer
 	return strings.TrimSuffix(sb.String(), ";"), total
 }
 

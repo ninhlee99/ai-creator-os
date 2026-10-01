@@ -165,6 +165,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
+	bpm, _ := strconv.Atoi(r.FormValue("bpm"))
 	musicStart, _ := strconv.ParseFloat(r.FormValue("music_start"), 64)
 	p := studio.AffiliateParams{
 		Mode:         r.FormValue("mode"),
@@ -173,6 +174,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		ModelPhoto:   modelPhoto,
 		ProductPhoto: productPhoto,
 		Seconds:      seconds,
+		BPM:          bpm,
 		MusicPath:    musicPath,
 		MusicStart:   musicStart,
 		MusicTitle:   strings.TrimSpace(r.FormValue("music_title")),

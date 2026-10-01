@@ -58,6 +58,7 @@ type AffiliateParams struct {
 	ModelPhoto   string  `json:"model_photo"`   // local path (identity lock)
 	ProductPhoto string  `json:"product_photo"` // local path (product lock)
 	Seconds      int     `json:"seconds"`
+	BPM          int     `json:"bpm"`         // beat tempo for the giật-giật cut; 0 = 120
 	MusicPath    string  `json:"music_path"`  // local audio file, "" = silent
 	MusicStart   float64 `json:"music_start"` // seconds into the track
 	MusicTitle   string  `json:"music_title"`
@@ -284,6 +285,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.Mode == "" {
 		p.Mode = AffiliateModePhoto
 	}
+	if p.BPM < 60 || p.BPM > 200 {
+		p.BPM = 120
+	}
 	title := p.ProductName
 	if title == "" {
 		title = "Video affiliate"
@@ -297,17 +301,19 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 }
 
 // directorPhotoPlan asks the LLM for the photo list (the storyboard).
-// Quy tắc Ninh chốt: video 30s = 5–10 ảnh mẫu chụp với sản phẩm.
+// Style Ninh chốt 2026-10-01: CapCut "giật giật" — chỉ 3–5 ảnh mẫu dùng
+// sản phẩm thật, dựng beat-bounce cắt cứng theo nhịp; 30s ≈ 5 ảnh × 6s.
 func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) ([]string, error) {
-	n := p.Seconds / 4
-	if n < 5 {
-		n = 5
+	n := p.Seconds / 6
+	if n < 3 {
+		n = 3
 	}
-	if n > 10 {
-		n = 10
+	if n > 5 {
+		n = 5
 	}
 	sys := "Bạn là đạo diễn ảnh thời trang TikTok Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
 	prompt := fmt.Sprintf(`Sản phẩm: %s. Niche: %s. Viết %d prompt chụp ảnh mẫu nữ Việt Nam với sản phẩm (KHÔNG chữ, KHÔNG watermark).
+Video dựng kiểu CapCut "giật giật": cắt cứng theo nhịp, mỗi ảnh chỉ hiện vài giây nên MỖI ẢNH phải là một khoảnh khắc đắt giá, góc máy đa dạng (cận cảnh, toàn cảnh, macro, low-angle, qua vai…).
 Yêu cầu: ảnh 1 là hook (mẫu giơ/cầm sản phẩm cười với camera), các ảnh giữa là lifestyle (phố, café) + macro chất liệu + khoảnh khắc dùng sản phẩm thật, ảnh cuối ấm áp ôm sản phẩm.
 Mỗi prompt bằng tiếng Anh, photorealistic, vertical 9:16, mô tả chi tiết người mẫu + sản phẩm + ánh sáng.
 Chỉ trả JSON: {"photos": ["prompt1", "prompt2", ...]}`, p.ProductName, p.Niche, n)
@@ -470,15 +476,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			return
 		}
 	} else {
-		s.appendLog(id, "Dựng list ảnh + nhạc…")
+		s.appendLog(id, "Dựng giật-giật theo nhịp nhạc…")
 		if p.MusicPath != "" {
-			if err := AssemblePhotoList(ctx, photos, secsPer, p.MusicPath, p.MusicStart, final); err != nil {
+			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, p.MusicPath, p.MusicStart, final); err != nil {
 				fail(err)
 				return
 			}
 		} else {
 			s.appendLog(id, "Chưa có file nhạc — xuất bản không nhạc (tải sound trending ở tab Trending rồi tạo lại).")
-			if err := AssemblePhotoList(ctx, photos, secsPer, "", 0, filepath.Join(work, "silent.mp4")); err != nil {
+			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, "", 0, filepath.Join(work, "silent.mp4")); err != nil {
 				fail(err)
 				return
 			}

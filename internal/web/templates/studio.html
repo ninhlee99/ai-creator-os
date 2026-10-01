@@ -48,14 +48,19 @@
   <div class="field">
     <label>Định dạng</label>
     <select name="mode">
-      <option value="photo">List ảnh mẫu + nhạc trending (khuyên dùng)</option>
+      <option value="photo">Giật giật theo nhịp — 3–5 ảnh + nhạc (khuyên dùng)</option>
       <option value="shots">Nhiều cảnh video nối nhau (cần Veo)</option>
     </select>
-    <div class="hint">List ảnh: chụp 4–8 ảnh mẫu với sản phẩm, dựng 30s + nhạc. Không chữ, không voiceover.</div>
+    <div class="hint">Giật giật kiểu CapCut: 3–5 ảnh mẫu dùng sản phẩm thật, zoom nảy + rung theo từng nhịp nhạc, cắt cứng. Không chữ, không voiceover.</div>
   </div>
   <div class="field">
     <label>Thời lượng (giây)</label>
     <input type="number" name="seconds" value="30" min="10" max="120">
+  </div>
+  <div class="field">
+    <label>Nhịp nhạc (BPM)</label>
+    <input type="number" name="bpm" value="120" min="60" max="200">
+    <div class="hint">Nhạc trending TikTok thường 100–130 BPM. Để 120 nếu không chắc.</div>
   </div>
   <div class="field">
     <label>Ảnh nhân vật (giữ khuôn mặt)</label>

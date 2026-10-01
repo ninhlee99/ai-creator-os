@@ -14,8 +14,8 @@ var THEMES = map[string]Theme{
 	"thoi-trang-nu": {
 		Slug:  "thoi-trang-nu",
 		Label: "👗 Thời trang nữ",
-		Keywords: []string{"váy", "đầm", "túi xách", "quần áo nữ",
-			"giày nữ", "phụ kiện thời trang"},
+		Keywords: []string{"váy", "đầm", "quần áo nữ", "túi xách",
+			"balo nữ", "giày cao gót", "giày nữ", "phụ kiện thời trang"},
 		DefaultMinCommission: 0.12,
 	},
 	"my-pham": {
@@ -43,7 +43,7 @@ var THEMES = map[string]Theme{
 		Slug:  "cong-nghe",
 		Label: "🎧 Công nghệ",
 		Keywords: []string{"tai nghe", "loa bluetooth", "phụ kiện điện thoại",
-			"đồ công nghệ"},
+			"đồ công nghệ dễ thương", "đồ công nghệ xinh"},
 		DefaultMinCommission: 0.08,
 	},
 	"the-thao": {
