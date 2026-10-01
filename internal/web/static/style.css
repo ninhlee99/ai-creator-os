@@ -236,3 +236,18 @@ ul.clean li:last-child { border-bottom: none; }
   .key-actions { margin-left: 0; width: 100%; }
   .key-add { flex-direction: column; }
 }
+
+/* avatar characters */
+.char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin-top: 10px; }
+.char-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg3); }
+.char-preview { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: var(--bg); }
+.char-info { padding: 10px 12px 0; }
+.char-test { padding: 0 12px 12px; }
+.char-text { width: 100%; margin-top: 8px; }
+.char-msg { margin-top: 8px; }
+.char-msg[hidden] { display: none; }
+
+/* download progress bar */
+.progress { height: 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); margin-top: 10px; overflow: hidden; }
+.progress[hidden] { display: none; }
+.progress-bar { height: 100%; background: var(--accent); transition: width .3s; }

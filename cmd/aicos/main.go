@@ -28,12 +28,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
+	"github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -193,6 +195,73 @@ func (a vieNeuAdapter) Voices() []string {
 	return names
 }
 
+// avatarChainAdapter adapts *avatar.AvatarChain to web.AvatarChainAPI.
+// RenderTestClip loads the character from the ledger (identity lock
+// enforced by the chain), synthesizes speech through the TTS chain and
+// renders the clip. The returned path is the /media/ URL for preview.
+type avatarChainAdapter struct {
+	c      *avatar.AvatarChain
+	tts    *engines.TTSChain
+	l      *ledger.Ledger
+	outDir string
+}
+
+func (a avatarChainAdapter) RenderTestClip(ctx context.Context, characterID int64, text string) (string, error) {
+	ch, err := a.l.GetCharacter(characterID)
+	if err != nil {
+		return "", fmt.Errorf("character %d: %w", characterID, err)
+	}
+	wav, err := a.tts.Synthesize(ctx, text, ch.VoicePreset)
+	if err != nil {
+		return "", fmt.Errorf("tts: %w", err)
+	}
+	path, err := a.c.RenderClip(ctx, avatar.Character{
+		ID:             ch.ID,
+		Name:           ch.Name,
+		ReferenceImage: ch.ReferenceImage,
+		Seed:           ch.Seed,
+		IdentityLock:   ch.IdentityLock,
+	}, wav, avatar.RenderOpts{OutDir: a.outDir})
+	if err != nil {
+		return "", err
+	}
+	return "/media/" + filepath.Base(path), nil
+}
+
+func (a avatarChainAdapter) SetConfig(raw json.RawMessage) {
+	cfg, err := avatar.ParseAvatarChainJSON(raw)
+	if err != nil {
+		log.Printf("avatar: SetConfig: invalid JSON, keeping current config: %v", err)
+		return
+	}
+	a.c.SetConfig(cfg)
+	log.Printf("avatar: config updated via dashboard: providers=%v", a.c.ActiveProviders())
+}
+
+func (a avatarChainAdapter) ProviderNames() []string { return a.c.ActiveProviders() }
+
+func (a avatarChainAdapter) SupportsRealtime() bool { return a.c.SupportsRealtime() }
+
+// avatarSidecarAdapter adapts the local avatar provider's sidecar
+// passthrough methods to web.AvatarSidecarCtl.
+type avatarSidecarAdapter struct{ p *avatar.LocalAvatarProvider }
+
+func (a avatarSidecarAdapter) Status() (string, string) { return a.p.SidecarStatus() }
+
+func (a avatarSidecarAdapter) Start(ctx context.Context) error { return a.p.Start(ctx) }
+
+func (a avatarSidecarAdapter) Stop() error { return a.p.Stop() }
+
+func (a avatarSidecarAdapter) Restart(ctx context.Context) error { return a.p.Restart(ctx) }
+
+func (a avatarSidecarAdapter) EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error {
+	return a.p.EnsureModel(ctx, onProgress)
+}
+
+func (a avatarSidecarAdapter) ModelConfigured() bool { return a.p.ModelConfigured() }
+
+func (a avatarSidecarAdapter) ModelPresent() bool { return a.p.ModelPresent() }
+
 func getenvBool(name string, def bool) bool {
 	v := os.Getenv(name)
 	if v == "" {
@@ -286,6 +355,33 @@ func main() {
 		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
 	}
 
+	// -- 4b. avatar chain ----------------------------------------------------
+	// local (free sidecar, default) -> heygen -> did (paid, disabled).
+	// The sidecar is started on demand (before render), never at boot: the
+	// model is heavy and the user asked for manual control of the app.
+	avatarCfgSrc := func() avatar.ChainConfig {
+		raw, ok, err := l.GetSetting(ledger.SettingAvatarChain)
+		if err != nil || !ok || raw == "" {
+			return avatar.ChainConfig{}
+		}
+		cfg, perr := avatar.ParseAvatarChainJSON(json.RawMessage(raw))
+		if perr != nil || len(cfg.Order) == 0 {
+			log.Printf("avatar: saved chain config invalid, using default: %v", perr)
+			return avatar.ChainConfig{}
+		}
+		log.Printf("avatar: using saved chain config (avatar.chain)")
+		return cfg
+	}
+	avatarChain := avatar.DefaultAvatarChain(*dataDir, decider,
+		getenvList("HEYGEN_API_KEYS"), getenvList("DID_API_KEYS"), avatarCfgSrc)
+	log.Printf("avatar: active providers: %v", avatarChain.ActiveProviders())
+	var avatarLocal *avatar.LocalAvatarProvider
+	if p, ok := avatarChain.Provider("local"); ok {
+		if lp, ok := p.(*avatar.LocalAvatarProvider); ok {
+			avatarLocal = lp
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -334,14 +430,21 @@ func main() {
 	for _, name := range llmChain.ActiveProviders() {
 		if p, ok := llmChain.Provider(name); ok {
 			if h, ok := any(p).(web.HealthChecker); ok {
-				health["llm/"+name] = h
+				health["llm:"+name] = h
 			}
 		}
 	}
 	for _, name := range ttsChain.ActiveProviders() {
 		if p, ok := ttsChain.Provider(name); ok {
 			if h, ok := any(p).(web.HealthChecker); ok {
-				health["tts/"+name] = h
+				health["tts:"+name] = h
+			}
+		}
+	}
+	for _, name := range avatarChain.ActiveProviders() {
+		if p, ok := avatarChain.Provider(name); ok {
+			if h, ok := any(p).(web.HealthChecker); ok {
+				health["avatar:"+name] = h
 			}
 		}
 	}
@@ -371,6 +474,22 @@ func main() {
 	}()
 	srv.LLM = llmChainAdapter{c: llmChain} // satisfies web.LLMClient + chain-config interfaces
 	srv.TTS = ttsChainAdapter{c: ttsChain}
+	// OutDir/AvatarDir follow the -data flag (NewServer defaults to
+	// ./data/* relative to the working directory).
+	outDir := filepath.Join(*dataDir, "output")
+	avatarDir := filepath.Join(*dataDir, "avatars")
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		log.Fatalf("web: out dir: %v", err)
+	}
+	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
+		log.Fatalf("web: avatar dir: %v", err)
+	}
+	srv.OutDir = outDir
+	srv.AvatarDir = avatarDir
+	srv.Avatar = avatarChainAdapter{c: avatarChain, tts: ttsChain, l: l, outDir: outDir}
+	if avatarLocal != nil {
+		srv.AvatarSidecar = avatarSidecarAdapter{p: avatarLocal}
+	}
 	srv.Health = health
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
@@ -410,6 +529,11 @@ func main() {
 	if vieNeu != nil {
 		if err := vieNeu.Stop(); err != nil {
 			log.Printf("sidecar: vieneu stop: %v", err)
+		}
+	}
+	if avatarLocal != nil {
+		if err := avatarLocal.Stop(); err != nil {
+			log.Printf("sidecar: avatar stop: %v", err)
 		}
 	}
 	if err := llamaProc.Stop(); err != nil {

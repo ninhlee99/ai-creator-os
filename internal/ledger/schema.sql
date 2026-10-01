@@ -151,3 +151,17 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- avatar characters: one visual identity per AI persona. identity_lock =
+-- sha256(reference image bytes + seed); a render is refused when the lock
+-- does not match the image on disk (prevents silent face drift).
+CREATE TABLE IF NOT EXISTS characters (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL,
+    reference_image TEXT NOT NULL,   -- path under <data>/avatars/, PNG/JPG
+    seed            INTEGER NOT NULL DEFAULT 0,
+    identity_lock   TEXT NOT NULL DEFAULT '',
+    voice_preset    TEXT NOT NULL DEFAULT '',
+    notes           TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);

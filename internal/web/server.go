@@ -30,20 +30,23 @@ var staticCSS []byte
 // the parent worker injects the ledger, account manager, config, engines
 // and sidecar controls here.
 type Server struct {
-	Ledger *ledger.Ledger
-	Mgr    *network.AccountManager
-	Cfg    *Config
-	LLM    LLMClient
-	TTS    TTSChainAPI
-	VieNeu VieNeuCtl
-	Health map[string]HealthChecker
-	Jobs   *JobStore
+	Ledger        *ledger.Ledger
+	Mgr           *network.AccountManager
+	Cfg           *Config
+	LLM           LLMClient
+	TTS           TTSChainAPI
+	Avatar        AvatarChainAPI
+	VieNeu        VieNeuCtl
+	AvatarSidecar AvatarSidecarCtl
+	Health        map[string]HealthChecker
+	Jobs          *JobStore
 
-	// OutDir holds rendered videos (served at /media/); JobsPath is the
-	// JobStore file. Defaults mirror the Python layout (data/output,
-	// data/content_jobs.json); tests point them at t.TempDir().
-	OutDir   string
-	JobsPath string
+	// OutDir holds rendered videos (served at /media/); AvatarDir holds
+	// character reference images (served at /avatars/). JobsPath is the
+	// JobStore file.
+	OutDir    string
+	AvatarDir string
+	JobsPath  string
 
 	db        *sql.DB // read handle for decision/analytics queries
 	templates map[string]*template.Template
@@ -55,6 +58,13 @@ type Server struct {
 	vieneuTotal      int64
 	vieneuDone       bool
 	vieneuErr        string
+
+	// Avatar model-download progress (polled by the settings page).
+	avatarDlMu         sync.Mutex
+	avatarDlDownloaded int64
+	avatarDlTotal      int64
+	avatarDlDone       bool
+	avatarDlErr        string
 }
 
 // NewServer wires a dashboard against an existing ledger + account manager.
@@ -73,16 +83,21 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		return nil, err
 	}
 	s := &Server{
-		Ledger:   l,
-		Mgr:      mgr,
-		Cfg:      cfg,
-		Health:   map[string]HealthChecker{},
-		OutDir:   "data/output",
-		JobsPath: "data/content_jobs.json",
-		db:       db,
+		Ledger:    l,
+		Mgr:       mgr,
+		Cfg:       cfg,
+		Health:    map[string]HealthChecker{},
+		OutDir:    "data/output",
+		AvatarDir: "data/avatars",
+		JobsPath:  "data/content_jobs.json",
+		db:        db,
 	}
 	s.renderer = ffmpegRenderer{s: s}
 	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if err := os.MkdirAll(s.AvatarDir, 0o755); err != nil {
 		db.Close()
 		return nil, err
 	}

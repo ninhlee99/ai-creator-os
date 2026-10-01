@@ -77,6 +77,16 @@ func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	}}
 }
 
+// DefaultAvatarConfig mirrors the avatar engine default:
+// local (free sidecar) -> heygen (paid, disabled) -> did (paid, disabled).
+func DefaultAvatarConfig() ChainConfig {
+	return ChainConfig{Order: []ProviderEntry{
+		{Name: "local", Enabled: true, TimeoutSec: 1800, Retries: 0},
+		{Name: "heygen", Enabled: false, TimeoutSec: 600, Retries: 1},
+		{Name: "did", Enabled: false, TimeoutSec: 600, Retries: 1},
+	}}
+}
+
 // MarshalChain serializes a chain config for the settings table.
 func MarshalChain(c ChainConfig) (string, error) {
 	b, err := json.Marshal(c)
@@ -116,6 +126,30 @@ type TTSChainAPI interface {
 	ProviderNames() []string
 }
 
+// AvatarChainAPI is the avatar provider chain behind clip rendering and
+// the settings "render thử" button.
+type AvatarChainAPI interface {
+	// RenderTestClip renders a test clip: the adapter synthesizes text via
+	// the TTS chain, parses emotion cues and renders the avatar clip.
+	// It returns the mp4 path relative to the media dir ("/media/x.mp4").
+	RenderTestClip(ctx context.Context, characterID int64, text string) (relPath string, err error)
+	SetConfig(cfg ChainConfigJSON) // raw JSON, applied immediately
+	ProviderNames() []string
+	SupportsRealtime() bool
+}
+
+// AvatarSidecarCtl controls the avatar sidecar from the settings page
+// (same shape as VieNeuCtl).
+type AvatarSidecarCtl interface {
+	Status() (state, detail string)
+	Start(ctx context.Context) error
+	Stop() error
+	Restart(ctx context.Context) error
+	EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error
+	ModelConfigured() bool
+	ModelPresent() bool
+}
+
 // HealthChecker is one provider's cheap "can it serve right now?" probe,
 // used by the settings page "Kiểm tra kết nối" button.
 type HealthChecker interface {
@@ -136,11 +170,11 @@ type KeyStatus struct {
 	State  string `json:"state"` // "ok" | "cooldown" | "invalid"
 	// BadgeClass / StateLabel are precomputed for the template and the
 	// keyring JS so both render identically.
-	BadgeClass string `json:"badge_class"`
-	StateLabel string `json:"state_label"`
-	CooldownRemainingSec int64 `json:"cooldown_remaining_sec"`
-	RateLimitHits        int   `json:"rate_limit_hits"`
-	Requests             int   `json:"requests"`
+	BadgeClass           string `json:"badge_class"`
+	StateLabel           string `json:"state_label"`
+	CooldownRemainingSec int64  `json:"cooldown_remaining_sec"`
+	RateLimitHits        int    `json:"rate_limit_hits"`
+	Requests             int    `json:"requests"`
 	// LastRateLimitUnix is the Unix time of the most recent rate-limit
 	// hit (0 = never).
 	LastRateLimitUnix int64 `json:"last_rate_limit_unix"`

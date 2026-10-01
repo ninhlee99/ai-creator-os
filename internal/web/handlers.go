@@ -78,6 +78,17 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/vieneu/restart", s.handleVieneuRestart)
 	mux.HandleFunc("POST /settings/vieneu/voice", s.handleVieneuVoice)
 
+	// Avatar: characters, render test, sidecar
+	mux.HandleFunc("GET /avatars/{file}", s.handleAvatarImage)
+	mux.HandleFunc("GET /settings/avatar/characters", s.handleAvatarCharacters)
+	mux.HandleFunc("POST /settings/avatar/characters", s.handleAvatarCharacterCreate)
+	mux.HandleFunc("POST /settings/avatar/characters/{id}/delete", s.handleAvatarCharacterDelete)
+	mux.HandleFunc("POST /settings/avatar/render-test", s.handleAvatarRenderTest)
+	mux.HandleFunc("GET /settings/avatar-sidecar/status", s.handleAvatarSidecarStatus)
+	mux.HandleFunc("POST /settings/avatar-sidecar/ensure", s.handleAvatarSidecarEnsure)
+	mux.HandleFunc("GET /settings/avatar-sidecar/progress", s.handleAvatarSidecarProgress)
+	mux.HandleFunc("POST /settings/avatar-sidecar/restart", s.handleAvatarSidecarRestart)
+
 	// legacy JSON API
 	mux.HandleFunc("GET /api/stats", s.handleAPIStats)
 	mux.HandleFunc("GET /api/products", s.handleAPIProducts)
@@ -726,6 +737,8 @@ func (s *Server) chainKey(name string) (string, bool) {
 		return ledger.SettingTTSChain, true
 	case "llm":
 		return ledger.SettingLLMChain, true
+	case "avatar":
+		return ledger.SettingAvatarChain, true
 	}
 	return "", false
 }
@@ -745,6 +758,9 @@ func (s *Server) loadChain(name string) ChainConfig {
 	}
 	if name == "tts" {
 		return DefaultTTSConfig(s.Cfg.GeminiAPIKeys)
+	}
+	if name == "avatar" {
+		return DefaultAvatarConfig()
 	}
 	return DefaultLLMConfig(s.Cfg.GeminiAPIKeys)
 }
@@ -778,6 +794,10 @@ func (s *Server) applyChain(name string, raw ChainConfigJSON) {
 		// by the wiring worker) also implements SetConfig.
 		if sc, ok := s.LLM.(interface{ SetConfig(ChainConfigJSON) }); ok && s.LLM != nil {
 			sc.SetConfig(raw)
+		}
+	case "avatar":
+		if s.Avatar != nil {
+			s.Avatar.SetConfig(raw)
 		}
 	}
 }
@@ -829,7 +849,19 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		"TTSKeys", s.keyRingStatuses("tts", "gemini"),
 		"LLMKeys", s.keyRingStatuses("llm", "gemini"),
 		"VieNeu", s.vieneuView(),
+		"AvatarChain", s.loadChain("avatar"),
+		"AvatarRealtime", s.avatarRealtime(),
+		"Characters", s.characterViews(),
+		"AvatarSidecar", s.avatarSidecarView(),
 	))
+}
+
+// avatarRealtime reports whether any avatar tier can stream frames.
+func (s *Server) avatarRealtime() bool {
+	if s.Avatar == nil {
+		return false
+	}
+	return s.Avatar.SupportsRealtime()
 }
 
 func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {
@@ -870,7 +902,7 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleChainGet(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if _, ok := s.chainKey(name); !ok {
-		http.Error(w, "unknown chain (name=tts|llm)", http.StatusBadRequest)
+		http.Error(w, "unknown chain (name=tts|llm|avatar)", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -902,7 +934,7 @@ func maskChainKeys(cfg ChainConfig) ChainConfig {
 func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if _, ok := s.chainKey(name); !ok {
-		http.Error(w, "unknown chain (name=tts|llm)", http.StatusBadRequest)
+		http.Error(w, "unknown chain (name=tts|llm|avatar)", http.StatusBadRequest)
 		return
 	}
 	if err := r.ParseForm(); err != nil {

@@ -46,6 +46,60 @@
 <p class="empty">Chưa có tài khoản nào.</p>
 {{end}}
 
+<h2>Nhân vật AI</h2>
+<p class="subtitle">Mỗi nhân vật là một khuôn mặt khóa identity (ảnh + seed): mọi khung hình của mọi clip đều phải là đúng khuôn mặt này. Upload ảnh chân dung rõ mặt, chính diện.</p>
+<div class="form-card" style="max-width:none">
+  <div class="char-grid" id="char-grid">
+    {{range .Characters}}
+    <div class="char-card" data-id="{{.ID}}">
+      <img src="{{.ImgURL}}" alt="{{.Name}}" class="char-preview" loading="lazy">
+      <div class="char-info">
+        <strong>{{.Name}}</strong>
+        <div class="hint">seed <code>{{.Seed}}</code> · lock <code>{{.ShortLock}}</code>{{if .VoicePreset}} · voice <code>{{.VoicePreset}}</code>{{end}}</div>
+      </div>
+      <div class="char-test">
+        <input type="text" class="char-text" placeholder="Nhập câu nói để render thử… [cười]" maxlength="300">
+        <div class="toolbar" style="margin:8px 0 0">
+          <button type="button" class="btn btn-sm char-render-btn">🎬 Render thử</button>
+          <button type="button" class="btn btn-secondary btn-sm char-del-btn" title="Xóa nhân vật">🗑</button>
+        </div>
+        <div class="char-msg hint" aria-live="polite" hidden></div>
+        <video class="char-video" controls hidden style="width:100%;margin-top:8px"></video>
+      </div>
+    </div>
+    {{else}}
+    <p class="empty" id="char-empty">Chưa có nhân vật nào. Upload ảnh chân dung bên dưới để tạo nhân vật đầu tiên.</p>
+    {{end}}
+  </div>
+  <h3 style="margin-top:16px">Thêm nhân vật</h3>
+  <form id="char-add-form" class="grid2">
+    <div class="field">
+      <label>Tên nhân vật</label>
+      <input type="text" name="name" placeholder="VD: MC Linh" required maxlength="80">
+    </div>
+    <div class="field">
+      <label>Ảnh chân dung (PNG/JPG, rõ mặt)</label>
+      <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+    </div>
+    <div class="field">
+      <label>Seed <span class="label-hint">— để trống = ngẫu nhiên</span></label>
+      <input type="number" name="seed" placeholder="tùy chọn">
+    </div>
+    <div class="field">
+      <label>Voice preset <span class="label-hint">— liên kết giọng TTS</span></label>
+      <input type="text" name="voice" placeholder="VD: bac-nu-1" maxlength="60">
+    </div>
+    <div class="field field-span">
+      <label>Ghi chú</label>
+      <input type="text" name="notes" maxlength="200" placeholder="tùy chọn">
+    </div>
+    <div class="field-span">
+      <button type="submit" class="btn">+ Thêm nhân vật</button>
+      <span class="hint" id="char-add-msg" aria-live="polite"></span>
+    </div>
+  </form>
+</div>
+
 <h2>Chuỗi provider TTS</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình được lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 <div class="form-card" style="max-width:none">
@@ -196,6 +250,53 @@
 </form>
 </div>
 
+<h2>Chuỗi provider Avatar</h2>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. {{if .AvatarRealtime}}<span class="badge badge-ok">Realtime: có tier hỗ trợ stream</span>{{else}}<span class="badge badge-no">Realtime: chưa có tier nào</span>{{end}}</p>
+<div class="form-card" style="max-width:none">
+<form method="post" action="/settings/chain?name=avatar">
+  {{range $i, $p := .AvatarChain.Order}}
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>{{$p.Name}}</strong>
+      <span class="provider-order">#{{$i}}</span>
+      {{if eq $p.Name "local"}}<span class="badge badge-ok">miễn phí</span>{{else}}<span class="badge badge-no">trả phí · tắt mặc định</span>{{end}}
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="{{$i}}" {{if $p.Enabled}}checked{{end}}> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="{{$p.Name}}">
+    <div class="provider-grid">
+      {{if eq $p.Name "local"}}
+      <div class="field field-span">
+        <label>Sidecar</label>
+        <input type="hidden" name="apikey" value="">
+        <div class="hint">Chạy model local (mặc định: MuseTalk v1.5 bản Apple Silicon) dưới dạng sidecar do aicos quản lý — xem mục “Avatar sidecar” bên dưới.</div>
+      </div>
+      {{else}}
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="nếu cần" autocomplete="off">
+      </div>
+      {{end}}
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="{{$p.Retries}}" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="{{$p.TimeoutSec}}" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=up&i={{$i}}">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=down&i={{$i}}">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="{{$p.Name}}">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  {{end}}
+  <button type="submit" class="btn">Lưu cấu hình Avatar</button>
+</form>
+</div>
+
 <h2>VieNeu sidecar</h2>
 <div class="form-card" style="max-width:none">
 {{if .VieNeu.Connected}}
@@ -227,6 +328,24 @@
 {{else}}
   <p class="empty">Sidecar VieNeu chưa được kết nối (wiring worker sẽ nối sau). Các nút điều khiển sẽ khả dụng khi sidecar được inject.</p>
 {{end}}
+</div>
+
+<h2>Avatar sidecar</h2>
+<p class="subtitle">Quản lý model avatar local (mặc định: MuseTalk v1.5 bản Apple Silicon). aicos khởi động/stop sidecar theo nhu cầu và không cho render khi model chưa sẵn sàng — không cần can thiệp thủ công.</p>
+<div class="form-card" style="max-width:none">
+  <div class="toolbar">
+    <span class="badge" id="avatar-sidecar-badge">đang tải…</span>
+    <span id="avatar-sidecar-detail" class="hint"></span>
+  </div>
+  <div class="hint" id="avatar-model-hint" style="margin-top:8px"></div>
+  <div class="toolbar" style="margin-top:12px">
+    <button type="button" class="btn btn-secondary" id="avatar-download-btn" hidden>⬇ Tải model</button>
+    <button type="button" class="btn btn-secondary" id="avatar-restart-btn">⟳ Khởi động lại sidecar</button>
+    <span class="hint" id="avatar-msg" aria-live="polite"></span>
+  </div>
+  <div class="progress" id="avatar-progress" hidden>
+    <div class="progress-bar" id="avatar-progress-bar" style="width:0%"></div>
+  </div>
 </div>
 
 <h2>Chế độ dry-run</h2>
@@ -443,5 +562,153 @@ if (dlBtn) {
     }
   });
 }
+// Avatar sidecar: trạng thái, tải model, restart.
+async function refreshAvatarSidecar() {
+  var badge = document.getElementById('avatar-sidecar-badge');
+  var detail = document.getElementById('avatar-sidecar-detail');
+  var hint = document.getElementById('avatar-model-hint');
+  var dlBtn = document.getElementById('avatar-download-btn');
+  if (!badge) return;
+  try {
+    var r = await fetch('/settings/avatar-sidecar/status');
+    var j = await r.json();
+    if (!j.connected) {
+      badge.textContent = 'chưa kết nối';
+      badge.className = 'badge badge-no';
+      detail.textContent = 'wiring worker sẽ nối sau';
+      hint.textContent = '';
+      dlBtn.hidden = true;
+      return;
+    }
+    badge.textContent = j.state;
+    badge.className = 'badge badge-' + (j.state === 'running' ? 'ok' : 'draft');
+    detail.textContent = j.detail || '';
+    if (!j.model_configured) {
+      hint.textContent = 'Chưa cấu hình model: đặt biến môi trường AVATAR_MODEL_URL (zip model) rồi tải.';
+    } else if (!j.model_present) {
+      hint.textContent = 'Model chưa có trên máy. Nhấn “Tải model” để tải về (dung lượng lớn, chỉ tải 1 lần).';
+    } else {
+      hint.textContent = 'Model đã sẵn sàng trên máy.';
+    }
+    dlBtn.hidden = !(j.model_configured && !j.model_present);
+  } catch (e) {
+    badge.textContent = 'lỗi';
+    badge.className = 'badge badge-no';
+  }
+}
+refreshAvatarSidecar();
+var avatarDlBtn = document.getElementById('avatar-download-btn');
+if (avatarDlBtn) {
+  avatarDlBtn.addEventListener('click', async function () {
+    var box = document.getElementById('avatar-progress');
+    var bar = document.getElementById('avatar-progress-bar');
+    var msg = document.getElementById('avatar-msg');
+    box.hidden = false; bar.style.width = '0%';
+    msg.textContent = 'Bắt đầu tải…';
+    try {
+      var r0 = await fetch('/settings/avatar-sidecar/ensure', {method: 'POST'});
+      var j0 = await r0.json();
+      if (!j0.ok) { msg.textContent = 'Lỗi: ' + (j0.error || 'không rõ'); box.hidden = true; return; }
+      var timer = setInterval(async function () {
+        var r = await fetch('/settings/avatar-sidecar/progress');
+        var j = await r.json();
+        if (j.error) { msg.textContent = 'Lỗi: ' + j.error; box.hidden = true; clearInterval(timer); return; }
+        if (j.done) { msg.textContent = 'Đã tải xong model.'; box.hidden = true; clearInterval(timer); refreshAvatarSidecar(); return; }
+        if (j.total > 0) {
+          var pct = Math.round(j.downloaded / j.total * 100);
+          bar.style.width = pct + '%';
+          msg.textContent = 'Đang tải: ' + pct + '%';
+        } else {
+          msg.textContent = 'Đang tải…';
+        }
+      }, 2000);
+    } catch (e) {
+      msg.textContent = 'Không khởi động được quá trình tải.';
+      box.hidden = true;
+    }
+  });
+}
+var avatarRestartBtn = document.getElementById('avatar-restart-btn');
+if (avatarRestartBtn) {
+  avatarRestartBtn.addEventListener('click', async function () {
+    var msg = document.getElementById('avatar-msg');
+    msg.textContent = 'Đang khởi động lại…';
+    try {
+      var r = await fetch('/settings/avatar-sidecar/restart', {method: 'POST'});
+      var j = await r.json();
+      msg.textContent = j.ok ? 'Sidecar đã khởi động lại ✓' : 'Lỗi: ' + (j.error || 'không rõ');
+      refreshAvatarSidecar();
+    } catch (e) {
+      msg.textContent = 'Không khởi động lại được.';
+    }
+  });
+}
+// Nhân vật AI: thêm / xóa / render thử.
+var charAddForm = document.getElementById('char-add-form');
+if (charAddForm) {
+  charAddForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById('char-add-msg');
+    msg.textContent = 'Đang upload…';
+    try {
+      var r = await fetch('/settings/avatar/characters', {method: 'POST', body: new FormData(charAddForm)});
+      var j = await r.json();
+      if (j.ok) {
+        msg.textContent = 'Đã thêm nhân vật ✓ — tải lại trang để xem.';
+        charAddForm.reset();
+        setTimeout(function () { location.reload(); }, 800);
+      } else {
+        msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+      }
+    } catch (e) {
+      msg.textContent = 'Upload thất bại.';
+    }
+  });
+}
+document.querySelectorAll('.char-card').forEach(function (card) {
+  var id = card.dataset.id;
+  var msg = card.querySelector('.char-msg');
+  var video = card.querySelector('.char-video');
+  var delBtn = card.querySelector('.char-del-btn');
+  var renderBtn = card.querySelector('.char-render-btn');
+  if (delBtn) {
+    delBtn.addEventListener('click', async function () {
+      if (!confirm('Xóa nhân vật này? File ảnh được giữ lại trên máy.')) return;
+      try {
+        var r = await fetch('/settings/avatar/characters/' + id + '/delete', {method: 'POST'});
+        var j = await r.json();
+        if (j.ok) { card.remove(); showToast('Đã xóa nhân vật', true); }
+        else showToast(j.error || 'Xóa thất bại', false);
+      } catch (e) { showToast('Xóa thất bại', false); }
+    });
+  }
+  if (renderBtn) {
+    renderBtn.addEventListener('click', async function () {
+      var text = card.querySelector('.char-text').value.trim();
+      if (!text) { msg.hidden = false; msg.textContent = 'Nhập câu nói trước đã.'; return; }
+      renderBtn.disabled = true;
+      msg.hidden = false; msg.textContent = 'Đang render (có thể mất vài phút cho clip dài)…';
+      video.hidden = true; video.removeAttribute('src');
+      try {
+        var r = await fetch('/settings/avatar/render-test', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({character_id: parseInt(id, 10), text: text})
+        });
+        var j = await r.json();
+        if (j.ok) {
+          msg.textContent = 'Render xong ✓';
+          video.src = j.video;
+          video.hidden = false;
+        } else {
+          msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+        }
+      } catch (e) {
+        msg.textContent = 'Render thất bại.';
+      }
+      renderBtn.disabled = false;
+    });
+  }
+});
 </script>
 {{end}}

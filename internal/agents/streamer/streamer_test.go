@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
-	avatarpkg "github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 
 	_ "modernc.org/sqlite"
@@ -52,9 +51,9 @@ func (fakeTTS) Healthy(_ context.Context) bool { return true }
 
 type fakeAvatar struct{ speaks int }
 
-func (f *fakeAvatar) Speak(_ context.Context, _ []byte, _ []avatarpkg.VisemeFrame) error {
+func (f *fakeAvatar) RenderSegment(_ context.Context, _ []byte) ([]byte, error) {
 	f.speaks++
-	return nil
+	return []byte("fake-mp4"), nil
 }
 
 type fakeEngine struct{ started, stopped, pushed int }
