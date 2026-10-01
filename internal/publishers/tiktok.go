@@ -91,7 +91,7 @@ func (p *TikTokPublisher) Scope() string {
 }
 
 // AuthorizeURL is the Login Kit URL the creator opens to grant access.
-// codeChallenge is "" for the Web flow (see tiktok.NewPKCE).
+// codeChallenge comes from tiktok.NewPKCE ("" disables PKCE).
 func (p *TikTokPublisher) AuthorizeURL(state, codeChallenge string) string {
 	return p.client().AuthorizeURL(TikTokRedirectURI(), p.Scope(), state, codeChallenge)
 }

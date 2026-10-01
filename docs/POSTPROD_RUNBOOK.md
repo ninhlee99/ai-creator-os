@@ -34,8 +34,8 @@ Việc của người vận hành (app **không** làm được):
 
 ### 1.1 Tạo app trên TikTok Developers (Ninh làm, cần trình duyệt)
 
-App chỉ chạy local nên dùng platform **Desktop**: TikTok cho redirect về `http://127.0.0.1`
-của chính máy này (bắt buộc PKCE, app đã làm sẵn). Không cần website hay trang callback công khai.
+App chỉ chạy local. TikTok bắt redirect https, nên redirect về trang trung chuyển trên GitHub Pages
+và trang đó tự chuyển về app ở `127.0.0.1:8080`. App luôn dùng PKCE (bắt buộc với Desktop).
 
 0. Terms/Privacy URL thì TikTok vẫn bắt buộc phải là link công khai (link trong repo private sẽ 404). Không cần website, chọn 1 trong 2:
    - **GitHub Gist:** gist.github.com → tên file `terms.md` → dán `docs/tiktok-app-site/terms.md` (thay `CONTACT_EMAIL`)
@@ -47,14 +47,14 @@ của chính máy này (bắt buộc PKCE, app đã làm sẵn). Không cần we
    - Terms of Service URL / Privacy Policy URL: 2 link Google Docs ở bước 0.
    - Platforms: chỉ tick **Desktop** (bỏ Web, bỏ Android/iOS).
 2. Add products: **Login Kit** + **Content Posting API** (Direct Post để TẮT). Ghi lại **Client Key** + **Client Secret**.
-3. Login Kit → Desktop → **Redirect URI**: `http://127.0.0.1:8080/publishers/tiktok/callback`
-   (mặc định của app). Chạy app ở cổng khác thì đổi cổng ở cả hai nơi và set `TIKTOK_REDIRECT_URI` y hệt.
+3. Login Kit → **Redirect URI**: `https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html`
+   (TikTok bắt buộc https). Trang này là trang trung chuyển tĩnh (`docs/tiktok-app-site/callback.html`):
+   nhận `code` rồi tự chuyển tiếp về app local `http://127.0.0.1:8080/publishers/tiktok/callback`.
+   Nhớ thêm vào `.env`: `TIKTOK_REDIRECT_URI=https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html`.
+   Web/Desktop URL: `https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/`.
 4. Scopes: `user.info.basic`, `video.upload`. Chỉ thêm `video.publish` khi muốn Direct Post (`TIKTOK_DRAFT_ONLY=0`).
 5. Bật **Sandbox** → thêm tài khoản creator làm **Target user**. Dùng được ngay, không chờ audit.
    Muốn ra production: app audit mất ~1–2 tuần, Direct Post audit ~5–10 ngày làm việc. Đây là giới hạn của TikTok.
-
-> Nếu sau này có website: đổi sang platform Web, set `TIKTOK_REDIRECT_URI=https://…`. Trang
-> Đa nền tảng sẽ tự hiện ô dán URL thay cho callback local.
 
 ### 1.2 Khai báo key cho app
 
@@ -66,6 +66,7 @@ cd ~/ninhlee/apps/ai-creator-os
 cat >> .env <<'EOF'
 TIKTOK_CLIENT_KEY=...
 TIKTOK_CLIENT_SECRET=...
+TIKTOK_REDIRECT_URI=https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html
 TIKTOK_DRAFT_ONLY=1
 EOF
 chmod 600 .env
@@ -87,10 +88,11 @@ set -a; source .env; set +a; ./aicos-darwin-arm64
 1. Mở app đúng địa chỉ trong Redirect URI: `http://127.0.0.1:8080/publishers`.
    Dòng tài khoản có nút **Kết nối TikTok** (thấy chữ "thiếu client key" là bước 1.2 chưa đúng).
 2. Bấm nút, trang TikTok mở bằng phiên **đã đăng nhập sẵn** trên trình duyệt → kiểm tra đúng tài khoản creator → **Allow**.
-3. TikTok tự chuyển về app → dòng xanh "Đã kết nối TikTok…" và cột TikTok token chuyển **Có**. Không phải copy gì.
+3. TikTok → trang trung chuyển → tự về app → dòng xanh "Đã kết nối TikTok…" và cột TikTok token chuyển **Có**. Không phải copy gì.
    App ghi `tiktok_token_<username>.json` (quyền 600). Tên file giữ nguyên hoa/thường, ký tự đặc biệt
    đổi thành `_`, ví dụ `shop.vn` → `tiktok_token_shop_vn.json`. Token không bao giờ hiện lên trang hay log.
-4. Lỗi `redirect_uri` mismatch → Redirect URI trên portal và trong app khác nhau (kể cả `localhost` ≠ `127.0.0.1`, khác cổng).
+4. Lỗi `redirect_uri` mismatch → `TIKTOK_REDIRECT_URI` trong `.env` khác Redirect URI trên portal.
+   Trang trung chuyển không tự về app (app chạy cổng khác 8080) → copy URL, dán vào ô "Lưu token" trên trang Đa nền tảng.
 
 ### 1.4 Bật tự đăng + test
 
