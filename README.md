@@ -26,7 +26,7 @@
 
 ![Dashboard](docs/assets/dashboard-mockup.webp)
 
-*Mọi quản trị qua UI web — không dùng CLI: tài khoản, onboarding, topic, lịch live, sản xuất video, đa nền tảng, shop, analytics, cài đặt, kill switch. Chạy: `uvicorn apps.api.main:app --port 8080` rồi mở `http://localhost:8080`.*
+*Mọi quản trị qua UI web — không dùng CLI: tài khoản, onboarding, topic, lịch live, sản xuất video, đa nền tảng, shop, analytics, cài đặt, kill switch. Chạy `./aicos` rồi mở `http://localhost:8080`.*
 
 ---
 
@@ -63,7 +63,7 @@ Mọi agent chỉ phục vụ một mục tiêu: **đồng hoa hồng quay vòng
 **Bạn làm 3 việc trên dashboard web:** bật/tắt master switch · thêm account (username + gợi ý niche, AI tự research) · theo dõi.
 **Hệ thống tự làm phần còn lại:** research niche → gán persona → đăng video cày đủ 1.000 follow → xếp lịch live giờ vàng (tối đa 2 live cùng lúc trên M1 32GB) → live → đối soát → tối ưu.
 
-**Ngôn ngữ chốt:** **Go** cho orchestrator/scheduler/stream/API (1 binary ~10MB, RAM 5–20MB/service — nhẹ hơn Python hàng chục lần); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái.
+**Ngôn ngữ chốt:** **100% Go** — orchestrator, scheduler, stream, API/dashboard, provider chains, governance gói trong **1 binary `aicos`** (~15MB, không cần cài Python/venv/pip, RAM chỉ vài chục MB khi chạy). **SQLite WAL** cho sổ cái. Model local (VieNeu-TTS v3, llama-server) chạy như tiến trình phụ độc lập do binary quản lý — giống FFmpeg, không phải code của dự án.
 
 ```mermaid
 flowchart TB
@@ -97,15 +97,15 @@ flowchart TB
         A[📊 Analyst<br/>gift/ROI, tối ưu lịch]
     end
     subgraph Core["Core"]
-        O[Orchestrator<br/>Go — target]
+        O[Orchestrator<br/>Go — single binary]
         G[Governance<br/>luật cứng, không LLM]
         L[(Ledger<br/>SQLite WAL, per-account)]
     end
     subgraph Engines["Engines — chuỗi provider"]
-        LLM[LLM<br/>Gemini free → Ollama local]
-        TTS[TTS<br/>free API → local]
+        LLM[LLM<br/>Gemini → llama-server local]
+        TTS[TTS<br/>Gemini → VieNeu v3 local → Edge]
         AV[Avatar<br/>stylized realtime]
-        MU[Music · Game<br/>Python worker]
+        MU[Music · Game<br/>phase 2–3]
     end
     subgraph Platform["TikTok — API chính thức"]
         SHOP[Shop Open API<br/>săn + đối soát]
@@ -124,7 +124,7 @@ flowchart TB
     H & C & S --> LLM & TTS & AV & MU
 ```
 
-**Nguyên tắc chọn công nghệ:** nhẹ, ít RAM/CPU/SSD → **Go** cho orchestrator/scheduler/stream/API (binary ~10MB, RAM 5–20MB/service); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái. API miễn phí trước, local fallback sau, trả phí chỉ khi tùy chọn.
+**Nguyên tắc chọn công nghệ:** nhẹ, ít RAM/CPU/SSD → **100% Go** trong 1 binary duy nhất (không Python runtime, không venv/pip); **SQLite WAL** cho sổ cái. API miễn phí trước, local fallback sau (tự động chuyển khi hết quota), trả phí chỉ khi tùy chọn — tất cả chỉnh được trong trang Settings.
 
 ![Đội persona AI creator](docs/assets/personas-team.webp)
 
@@ -132,7 +132,7 @@ flowchart TB
 
 ## 🤖 Từng agent làm gì
 
-### 🎯 Hunter — thợ săn sản phẩm (`agents/hunter/agent.py`)
+### 🎯 Hunter — thợ săn sản phẩm (`internal/agents/hunter`)
 
 ```mermaid
 flowchart TB
@@ -147,12 +147,12 @@ flowchart TB
 - Điểm khắt khe: sản phẩm 15% hoa hồng × bán chạy **thắng** sản phẩm 40% hoa hồng × ế.
 - Dùng endpoint chính thức `Creator Search Open Collaboration Product` (sort theo commission, units_sold).
 
-### 🎬 Content — xưởng video (`agents/content/agent.py`)
+### 🎬 Content — xưởng video (`internal/agents/content`)
 
 ```mermaid
 flowchart TB
     C1[Nhận sản phẩm từ Hunter] --> C2[LLM viết kịch bản<br/>hook + demo + CTA]
-    C2 --> C3[TTS đọc giọng<br/>VieNeu local → Gemini → Azure]
+    C2 --> C3[TTS đọc giọng<br/>Gemini → VieNeu v3 local → Edge]
     C3 --> C4[FFmpeg dựng video<br/>caption + overlay giá]
     C4 --> C5{Kiểm duyệt<br/>policy + chất lượng}
     C5 -->|đạt| C6[Đăng qua Content Posting API<br/>Direct Post]
@@ -161,7 +161,7 @@ flowchart TB
 
 - Đăng hands-free sau khi app qua audit TikTok (~1 tháng). Giới hạn ~15 video/ngày.
 
-### 📡 Streamer — đạo diễn live (`agents/streamer/agent.py`)
+### 📡 Streamer — đạo diễn live (`internal/agents/streamer`)
 
 ```mermaid
 flowchart TB
@@ -179,7 +179,7 @@ flowchart TB
 
 > ⚠️ **Phát hiện policy quan trọng (10/2026):** TikTok Shop cấm giọng AI, audio thu sẵn và avatar hoạt hình >50% màn hình trong **livestream bán hàng**. Live game/giải trí không dùng tính năng Shop nằm ngoài phạm vi cấm này. Chi tiết: `docs/RESEARCH/tiktok_live_policy.md`.
 
-### 📊 Analyst — kế toán lạnh lùng (`agents/analyst/agent.py`)
+### 📊 Analyst — kế toán lạnh lùng (`internal/agents/analyst`)
 
 ```mermaid
 flowchart TB
@@ -218,9 +218,11 @@ flowchart TB
 ## 🖥️ Chạy trên Mac của bạn
 
 ```bash
-pip install -r requirements.txt
-uvicorn apps.api.main:app --port 8080   # mở http://localhost:8080
+./aicos   # mở http://localhost:8080
 ```
+
+Không cài đặt gì thêm (ngoài FFmpeg cho dựng video/live). Model local
+(VieNeu-TTS v3 ~334MB, LLM GGUF ~5GB) tải bằng một nút trong trang Settings.
 
 Toàn bộ quản trị qua **dashboard web** — không cần chạm CLI:
 **Trang chủ** (tổng quan, kill switch) · **Tài khoản** (thêm account, onboarding tự động, topic plan) · **Lịch live** (xếp giờ vàng) · **Sản xuất video** (tạo video từ kịch bản + lồng tiếng AI) · **Đa nền tảng** (TikTok/Facebook/YouTube) · **Shop Affiliate** (kệ sản phẩm) · **Phân tích** (doanh thu, gift, chi phí API) · **Cài đặt** (API key, dry-run).
@@ -249,26 +251,28 @@ flowchart TB
 ## 🧪 Demo thử (rehearsal offline)
 
 ```bash
-make rehearse   # chạy toàn bộ vòng tiền với dữ liệu giả, không chạm TikTok thật
+go test ./...   # chạy toàn bộ vòng tiền với dữ liệu giả, không chạm TikTok thật
 ```
 
 Video demo thật sẽ được quay lại sau khi chạy rehearsal trên máy bạn.
 
 ---
 
-## 📌 Trạng thái thật của dự án (v0.3 — AI Creator OS)
+## 📌 Trạng thái thật của dự án (v0.5-go — AI Creator OS)
 
 | Phần | Trạng thái |
 |---|---|
 | Rebrand: AI Creator OS (không còn chỉ là affiliate) | ✅ Tên, hình concept, video demo mới |
-| Web dashboard UI/UX full (thay CLI) | ✅ `apps/api/` — 8 trang quản trị |
+| Web dashboard UI/UX full (thay CLI) | ✅ 9 trang quản trị, 1 binary Go |
 | Video demo quy trình + video affiliate demo | ✅ Dựng thật bằng FFmpeg + TTS |
 | Mô hình chốt (multi-account, persona, scheduler) | ✅ `docs/MODEL.md` |
-| Kiến trúc + chốt ngôn ngữ (Go-first, Python phụ trợ) | ✅ `docs/ARCHITECTURE.md` §2, §10 |
-| AccountManager, PersonaEngine, Scheduler, Onboarding, daemon | ✅ Code xong, **16/16 test pass** |
+| Kiến trúc + chốt ngôn ngữ (Go-only) | ✅ `docs/ARCHITECTURE.md` §2, §10 |
+| AccountManager, PersonaEngine, Scheduler, Onboarding, daemon | ✅ Port Go xong, **176/176 test pass** |
+| Chuỗi provider: TTS (Gemini → VieNeu v3 → Edge), LLM (Gemini → llama-server) | ✅ Code xong, chỉnh được trong Settings |
 | Research Shop API / LIVE policy / TTS+avatar / vertical AI / monetization | ✅ Xong, trong `docs/RESEARCH/` |
 | Wire provider thật (TTS, Shop API, Posting API, RTMP) | ⏳ Bước tiếp theo |
 | Streamer live theo persona | ⏳ Sau khi wire provider |
-| Game agent (Python), music pipeline | ⏳ Phase 2–3 |
+| Game agent, music pipeline | ⏳ Phase 2–3 |
+| Xóa code Python cũ (giữ làm tham chiếu) | ⏳ Sau khi test parity trên Mac |
 
 📄 Tài liệu chi tiết: `docs/MODEL.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/POLICY_AND_SAFETY.md`
