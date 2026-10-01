@@ -109,15 +109,15 @@ func (s *Server) handleTikTokAuthorize(w http.ResponseWriter, r *http.Request) {
 		publishersMsg(w, r, "err", "Chưa set TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET cho "+username+" — xem docs/POSTPROD_RUNBOOK.md Phần 1.")
 		return
 	}
-	verifier, challenge := "", ""
-	if publishers.TikTokRedirectIsLocal() {
-		verifier, challenge = tiktok.NewPKCE()
-	}
+	// PKCE always: required by TikTok's Desktop platform, harmless on Web
+	// (the verifier always matches the challenge we sent).
+	verifier, challenge := tiktok.NewPKCE()
 	http.Redirect(w, r, p.AuthorizeURL(s.oauth.issue(username, verifier), challenge), http.StatusFound)
 }
 
-// handleTikTokCallback is the Desktop-flow redirect target: TikTok sends
-// the browser straight back here after Allow, no copy-paste needed.
+// handleTikTokCallback receives code/state after Allow: directly (local
+// redirect URI) or forwarded by the https relay page
+// docs/tiktok-app-site/callback.html, since TikTok rejects http redirects.
 func (s *Server) handleTikTokCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if e := q.Get("error"); e != "" {

@@ -36,7 +36,7 @@
 {{else}}
 <ol>
   <li>Bấm <strong>Kết nối TikTok</strong> ở dòng tài khoản → trang TikTok mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng tài khoản creator → <strong>Allow</strong>.</li>
-  <li>TikTok chuyển về <code>{{.RedirectURI}}</code> kèm <code>?code=…</code>. Copy <strong>nguyên URL</strong> trên thanh địa chỉ, dán vào ô dưới (trong 15 phút).</li>
+  <li>TikTok chuyển về <code>{{.RedirectURI}}</code>; trang đó tự chuyển tiếp về app này và lưu token. Nếu không tự chuyển (app chạy cổng khác 8080), copy <strong>nguyên URL</strong> trên thanh địa chỉ, dán vào ô dưới (trong 15 phút).</li>
 </ol>
 {{if .AnyTiktokClient}}
 <form method="post" action="/publishers/tiktok/connect">

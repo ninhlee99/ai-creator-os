@@ -65,7 +65,7 @@ func TestTikTokConnectFlow(t *testing.T) {
 		t.Fatalf("callback error not surfaced: %s", l)
 	}
 
-	// Web flow (public redirect): no PKCE, paste form shown.
+	// https relay redirect: still PKCE, paste form shown as fallback.
 	t.Setenv("TIKTOK_REDIRECT_URI", "https://example.github.io/cb.html")
 	if body := get(t, s, "/publishers").Body.String(); !strings.Contains(body, "Lưu token") {
 		t.Fatal("paste form missing in web flow")
@@ -73,8 +73,8 @@ func TestTikTokConnectFlow(t *testing.T) {
 	rec = get(t, s, "/publishers/tiktok/authorize?username=shop.vn")
 	loc, _ = url.Parse(rec.Header().Get("Location"))
 	q = loc.Query()
-	if q.Get("code_challenge") != "" || q.Get("redirect_uri") != "https://example.github.io/cb.html" {
-		t.Fatalf("web flow should not use PKCE: %s", loc)
+	if len(q.Get("code_challenge")) != 64 || q.Get("redirect_uri") != "https://example.github.io/cb.html" {
+		t.Fatalf("https relay flow: %s", loc)
 	}
 
 	// Wrong account / wrong state never reach TikTok.
