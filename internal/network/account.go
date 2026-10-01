@@ -47,6 +47,10 @@ type Account struct {
 	Topics              []string // episode topics from the topic engine
 	YoutubeChannel      string
 	YoutubeContentTypes []string
+	// Affiliate autopilot (Ninh's 2026-10-01 requirements).
+	Theme         string  // chủ đề: theme slug from products.THEMES, "" = chưa chọn
+	Autopilot     bool    // hệ thống tự tìm sản phẩm + làm video
+	MinCommission float64 // ngưỡng hoa hồng tối thiểu, 0..1
 }
 
 // LiveEligible reports whether the account may go live right now.
@@ -125,6 +129,18 @@ func NewAccountManager(l *ledger.Ledger, dbPath string) (*AccountManager, error)
 		!strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 		db.Close()
 		return nil, fmt.Errorf("network: migrate violation_count: %w", err)
+	}
+	// Additive-only migration: affiliate autopilot per account (2026-10-01).
+	for _, stmt := range []string{
+		"ALTER TABLE accounts ADD COLUMN theme TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE accounts ADD COLUMN autopilot INTEGER NOT NULL DEFAULT 0",
+		"ALTER TABLE accounts ADD COLUMN min_commission REAL NOT NULL DEFAULT 0.10",
+	} {
+		if _, err := db.Exec(stmt); err != nil &&
+			!strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+			db.Close()
+			return nil, fmt.Errorf("network: migrate autopilot: %w", err)
+		}
 	}
 	return &AccountManager{ledger: l, db: db}, nil
 }

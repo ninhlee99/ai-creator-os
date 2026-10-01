@@ -121,7 +121,7 @@ func LoadConfig() *Config {
 		Timezone:     getenv("TIMEZONE", "Asia/Ho_Chi_Minh"),
 
 		GeminiAPIKey:  getenv("GEMINI_API_KEY", ""),
-		GeminiAPIKeys:  getenvList("GEMINI_API_KEYS", "GEMINI_API_KEY"),
+		GeminiAPIKeys: getenvList("GEMINI_API_KEYS", "GEMINI_API_KEY"),
 		OllamaBaseURL: getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
 		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
 

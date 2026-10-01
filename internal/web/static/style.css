@@ -251,3 +251,17 @@ ul.clean li:last-child { border-bottom: none; }
 .progress { height: 10px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); margin-top: 10px; overflow: hidden; }
 .progress[hidden] { display: none; }
 .progress-bar { height: 100%; background: var(--accent); transition: width .3s; }
+
+/* banners + model photo library (autopilot) */
+.err { color: var(--red); background: rgba(248,81,73,.10);
+  border: 1px solid rgba(248,81,73,.45); border-radius: 8px;
+  padding: 10px 14px; margin: 12px 0; }
+.notice { color: var(--green); background: rgba(63,185,80,.10);
+  border: 1px solid rgba(63,185,80,.45); border-radius: 8px;
+  padding: 10px 14px; margin: 12px 0; }
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px; margin: 12px 0; }
+.model-card { border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; background: var(--bg2); }
+.model-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+.model-card form { padding: 8px; text-align: center; }

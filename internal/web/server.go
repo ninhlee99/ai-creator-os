@@ -16,6 +16,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
@@ -31,17 +32,24 @@ var staticCSS []byte
 // the parent worker injects the ledger, account manager, config, engines
 // and sidecar controls here.
 type Server struct {
-	Ledger        *ledger.Ledger
-	Mgr           *network.AccountManager
-	Cfg           *Config
-	LLM           LLMClient
-	TTS           TTSChainAPI
-	Avatar        AvatarChainAPI
-	Studio        *studio.Studio
-	VieNeu        VieNeuCtl
-	AvatarSidecar AvatarSidecarCtl
-	Health        map[string]HealthChecker
-	Jobs          *JobStore
+	Ledger *ledger.Ledger
+	Mgr    *network.AccountManager
+	Cfg    *Config
+	LLM    LLMClient
+	TTS    TTSChainAPI
+	Avatar AvatarChainAPI
+	Studio *studio.Studio
+	// Autopilot runs hands-off affiliate cycles (products -> video).
+	// Products is the affiliate product store. ProductProviders are the
+	// configured product search providers. All three are injected by the
+	// cmd wiring; handlers degrade gracefully when they are nil.
+	Autopilot        *studio.Autopilot
+	Products         *products.Store
+	ProductProviders []products.Provider
+	VieNeu           VieNeuCtl
+	AvatarSidecar    AvatarSidecarCtl
+	Health           map[string]HealthChecker
+	Jobs             *JobStore
 
 	// OutDir holds rendered videos (served at /media/); AvatarDir holds
 	// character reference images (served at /avatars/). JobsPath is the
@@ -149,6 +157,16 @@ var templateFuncs = template.FuncMap{
 	"join": func(sep string, xs []string) string {
 		return strings.Join(xs, sep)
 	},
+	// themeLabel renders a theme slug as its catalog label.
+	"themeLabel": func(slug string) string {
+		if t, ok := products.DescribeTheme(slug); ok {
+			return t.Label
+		}
+		if slug == "" {
+			return "—"
+		}
+		return slug
+	},
 }
 
 // pageFiles maps a page key to the template file rendered inside base.
@@ -162,6 +180,7 @@ var pageFiles = map[string]string{
 	"studio":         "studio.html",
 	"publishers":     "publishers.html",
 	"shop":           "shop.html",
+	"products":       "products.html",
 	"analytics":      "analytics.html",
 	"settings":       "settings.html",
 }

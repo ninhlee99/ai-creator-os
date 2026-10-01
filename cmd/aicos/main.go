@@ -39,7 +39,9 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
@@ -286,6 +288,23 @@ func getenvBool(name string, def bool) bool {
 	return b
 }
 
+func getenvInt(name string, def int) int {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
+}
+
 func main() {
 	addr := flag.String("addr", ":8080", "listen address for the web dashboard")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
@@ -524,6 +543,101 @@ func main() {
 			}
 		}()
 		log.Printf("studio: ready (mediagen=%s keys=%d)", studioMG.Name(), studioMG.KeyCount())
+	}
+
+	// -- 6c. affiliate autopilot: theme -> high-commission product -> video --
+	// Ninh uploads model photos per account (Studio UI) and picks a theme;
+	// the system hunts products and builds the videos hands-off.
+	if srv.Studio != nil {
+		pstore, err := products.NewStore(filepath.Join(*dataDir, "products.db"))
+		if err != nil {
+			log.Printf("products: init failed: %v (product discovery disabled)", err)
+		} else {
+			defer func() {
+				if err := pstore.Close(); err != nil {
+					log.Printf("products close: %v", err)
+				}
+			}()
+			srv.Products = pstore
+			shopClient := &tiktok.ShopClient{
+				AppKey:      os.Getenv("TIKTOK_SHOP_APP_KEY"),
+				AppSecret:   os.Getenv("TIKTOK_SHOP_APP_SECRET"),
+				AccessToken: os.Getenv("TIKTOK_SHOP_ACCESS_TOKEN"),
+			}
+			shopProvider := &products.TikTokShopProvider{Client: shopClient}
+			srv.ProductProviders = []products.Provider{shopProvider}
+			models, err := srv.Studio.ModelLibrary()
+			if err != nil {
+				log.Printf("autopilot: model library failed: %v", err)
+			} else {
+				ap := studio.NewAutopilot(srv.Studio, mgr, pstore,
+					[]products.Provider{shopProvider}, models)
+				// Music bed: the UI upload (data/autopilot-music.m4a); the legacy
+				// data/trending-audio.m4a file is still honored as a fallback.
+				if mp := filepath.Join(*dataDir, "autopilot-music.m4a"); fileExists(mp) {
+					ap.MusicPath = mp
+				} else if mp := filepath.Join(*dataDir, "trending-audio.m4a"); fileExists(mp) {
+					ap.MusicPath = mp
+				}
+				srv.Autopilot = ap
+				log.Printf("autopilot: ready (tiktok_shop configured=%v)",
+					shopProvider.Configured())
+				// One-time seed from env so existing deployments keep working;
+				// after that the web UI (/products) is the only control plane.
+				// Default off — a fresh install never spends quota by surprise.
+				if _, ok := pstore.GetSetting(web.SettingAutopilotEnabled); !ok {
+					if getenvBool("AUTOPILOT_SCHEDULE", false) {
+						_ = pstore.SetSetting(web.SettingAutopilotEnabled, "1")
+						_ = pstore.SetSetting(web.SettingAutopilotInterval,
+							strconv.Itoa(getenvInt("AUTOPILOT_INTERVAL_HOURS", 6)))
+					} else {
+						_ = pstore.SetSetting(web.SettingAutopilotEnabled, "0")
+					}
+				}
+				// Background scheduler, driven by UI-managed settings.
+				// Checks every minute; runs when enabled and the interval elapsed.
+				go func() {
+					tick := time.NewTicker(time.Minute)
+					defer tick.Stop()
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-tick.C:
+							en, _ := pstore.GetSetting(web.SettingAutopilotEnabled)
+							if en != "1" {
+								continue
+							}
+							iv, _ := pstore.GetSetting(web.SettingAutopilotInterval)
+							hours, err := strconv.Atoi(iv)
+							if err != nil || hours < 1 {
+								hours = 6
+							}
+							due := true
+							if last, ok := pstore.GetSetting(web.SettingAutopilotLastRun); ok && last != "" {
+								if t, err := time.Parse(time.RFC3339, last); err == nil {
+									due = time.Since(t) >= time.Duration(hours)*time.Hour
+								}
+							}
+							if !due {
+								continue
+							}
+							results := ap.RunAll(ctx)
+							done := 0
+							for _, r := range results {
+								if r.JobID != "" {
+									done++
+								}
+							}
+							_ = pstore.SetSetting(web.SettingAutopilotLastRun,
+								time.Now().Format(time.RFC3339))
+							log.Printf("autopilot: scheduled cycle finished (%d videos queued)", done)
+						}
+					}
+				}()
+				log.Printf("autopilot: scheduler armed (managed in web UI /products)")
+			}
+		}
 	}
 
 	// -- 7. network daemon ---------------------------------------------------
