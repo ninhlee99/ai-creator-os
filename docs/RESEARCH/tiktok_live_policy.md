@@ -46,3 +46,9 @@ Research complete. Here is the structured brief for the parent agent.
 ## 7. Architecture implication (for parent)
 
 The user's core requirement — *"fully automated, TTS-voiced AI avatar livestream selling affiliate products 24/7"* — **directly collides with TikTok Shop's current live-commerce policy** (AI voices banned, non-human animated figures >50% screen banned, looping content banned). Building the TTS-avatar livestreamer as specced risks progressive AHR/CHR penalties → reduced livestream traffic → commission freeze → account deactivation, i.e., losing the valuable fully-permissioned VN account. Compliant alternatives to present to the user: (a) AI for everything *except* the live voice — human host on mic with AI driving overlays, chat triage, product moments, and scheduling; (b) full-AI pipeline for short-form shoppable videos (where generic TTS + disclosure label is the workable path); (c) use the official Affiliate Creator Open API for product hunting and commission reconciliation. No code was written per instructions.
+## Bổ sung (2026-10-01, kiểm chứng thêm qua web search)
+
+- Phạm vi lệnh cấm được mọi nguồn mô tả nhất quán là **promotional livestreams / live commerce** (TikTok Shop). Không tìm thấy nguồn nào ghi TikTok cấm giọng AI trong live giải trí thuần túy (vd. live game không bán hàng). Nguồn: metricool.com/tiktok-news, techtimes.com, ppc.land, pymnts.com.
+- Digital avatar **không bị cấm hoàn toàn** — chỉ bị giới hạn không chiếm quá 50% màn hình (TechTimes FAQ).
+- AI dùng trong **pre-production** (viết kịch bản, edit, dịch, tạo background) vẫn được phép; công cụ Symphony của TikTok cho advertiser vẫn được dùng.
+- Hệ quả kiến trúc: live game/giải trí **không dùng tính năng Shop** nằm ngoài phạm vi điều khoản này — nhưng ranh giới bị vượt ngay khi ghim giỏ hàng / bật tính năng bán hàng trong live.
