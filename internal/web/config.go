@@ -1,0 +1,162 @@
+package web
+
+import (
+	"os"
+	"strconv"
+	"strings"
+	"sync/atomic"
+)
+
+// Config is the Go port of apps/orchestrator/config.py: env vars only,
+// typed, validated once. dryRun/killSwitch are runtime-mutable (the
+// dashboard toggles them) so they are atomic; everything else is
+// read-once at startup.
+type Config struct {
+	AppEnv       string
+	DatabasePath string
+	Timezone     string
+
+	// LLM chain
+	GeminiAPIKey  string
+	OllamaBaseURL string
+	OllamaModel   string
+
+	// TTS / avatar
+	TTSAPIKey      string
+	AvatarProvider string
+	AvatarAPIKey   string
+
+	// TikTok
+	TiktokShopAppKey      string
+	TiktokShopAppSecret   string
+	TiktokShopAccessToken string
+	TiktokShopCipher      string
+	TiktokRTMPURL         string
+	TiktokRTMPKey         string
+	AIDisclosureText      string
+
+	// governance
+	DailyAPIBudgetUSD        float64
+	MaxLiveMinutesPerSession int
+
+	// hunter / analyst tuning
+	MinSellerRating     float64
+	MaxPrice            float64
+	KillViewsNoOrder    int
+	KillSessionsNoOrder int
+
+	// alerting
+	TelegramBotToken string
+	TelegramChatID   string
+
+	dryRun     atomic.Bool
+	killSwitch atomic.Bool
+}
+
+func getenv(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
+func getenvFloat(name string, def float64) float64 {
+	if v := os.Getenv(name); v != "" {
+		if f, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+			return f
+		}
+	}
+	return def
+}
+
+func getenvInt(name string, def int) int {
+	if v := os.Getenv(name); v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			return n
+		}
+	}
+	return def
+}
+
+func getenvBool(name string, def bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(name)))
+	if v == "" {
+		return def
+	}
+	return v == "1" || v == "true" || v == "yes"
+}
+
+// LoadConfig reads the configuration from the environment, mirroring
+// config.py defaults.
+func LoadConfig() *Config {
+	c := &Config{
+		AppEnv:       getenv("APP_ENV", "development"),
+		DatabasePath: getenv("DATABASE_PATH", "./data/ledger.db"),
+		Timezone:     getenv("TIMEZONE", "Asia/Ho_Chi_Minh"),
+
+		GeminiAPIKey:  getenv("GEMINI_API_KEY", ""),
+		OllamaBaseURL: getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
+
+		TTSAPIKey:      getenv("TTS_API_KEY", ""),
+		AvatarProvider: getenv("AVATAR_PROVIDER", "local-stylized"),
+		AvatarAPIKey:   getenv("AVATAR_API_KEY", ""),
+
+		TiktokShopAppKey:      getenv("TIKTOK_SHOP_APP_KEY", ""),
+		TiktokShopAppSecret:   getenv("TIKTOK_SHOP_APP_SECRET", ""),
+		TiktokShopAccessToken: getenv("TIKTOK_SHOP_ACCESS_TOKEN", ""),
+		TiktokShopCipher:      getenv("TIKTOK_SHOP_CIPHER", ""),
+		TiktokRTMPURL:         getenv("TIKTOK_RTMP_URL", ""),
+		TiktokRTMPKey:         getenv("TIKTOK_RTMP_KEY", ""),
+		AIDisclosureText:      getenv("AI_DISCLOSURE_TEXT", "AI-generated stream"),
+
+		DailyAPIBudgetUSD:        getenvFloat("DAILY_API_BUDGET_USD", 5.0),
+		MaxLiveMinutesPerSession: getenvInt("MAX_LIVE_MINUTES_PER_SESSION", 120),
+
+		MinSellerRating:     getenvFloat("MIN_SELLER_RATING", 4.0),
+		MaxPrice:            getenvFloat("MAX_PRICE", 1_000_000),
+		KillViewsNoOrder:    getenvInt("KILL_VIEWS_NO_ORDER", 10_000),
+		KillSessionsNoOrder: getenvInt("KILL_SESSIONS_NO_ORDER", 3),
+
+		TelegramBotToken: getenv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramChatID:   getenv("TELEGRAM_CHAT_ID", ""),
+	}
+	c.dryRun.Store(getenvBool("DRY_RUN", true))
+	c.killSwitch.Store(getenvBool("KILL_SWITCH", false))
+	return c
+}
+
+// DryRun reports whether the system is in dry-run (safe) mode.
+func (c *Config) DryRun() bool { return c.dryRun.Load() }
+
+// SetDryRun toggles dry-run mode at runtime (dashboard control).
+func (c *Config) SetDryRun(v bool) { c.dryRun.Store(v) }
+
+// KillSwitch reports whether the kill switch is engaged.
+func (c *Config) KillSwitch() bool { return c.killSwitch.Load() }
+
+// SetKillSwitch engages/releases the kill switch at runtime.
+func (c *Config) SetKillSwitch(v bool) { c.killSwitch.Store(v) }
+
+// LiveEnabled mirrors config.py's live_enabled: nothing automated runs
+// while dry-run is on or the kill switch is engaged.
+func (c *Config) LiveEnabled() bool { return !c.DryRun() && !c.KillSwitch() }
+
+// ValidateForLive returns the list of blockers for going live; empty
+// means clear to go live. Mirrors config.py validate_for_live.
+func (c *Config) ValidateForLive() []string {
+	var blockers []string
+	if c.KillSwitch() {
+		blockers = append(blockers, "KILL_SWITCH is on")
+	}
+	if c.TiktokShopAccessToken == "" {
+		blockers = append(blockers, "missing TIKTOK_SHOP_ACCESS_TOKEN")
+	}
+	if c.TiktokRTMPURL == "" || c.TiktokRTMPKey == "" {
+		blockers = append(blockers, "missing TIKTOK_RTMP_URL/KEY")
+	}
+	if c.TTSAPIKey == "" {
+		blockers = append(blockers, "missing TTS_API_KEY (Gemini; Edge fallback needs no key)")
+	}
+	return blockers
+}

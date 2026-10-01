@@ -1,0 +1,55 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "title" .}}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{{if .Kill}}
+<div class="kill-banner">
+  <strong>KILL SWITCH ĐANG BẬT</strong>
+  <span>Mọi hoạt động tự động đã dừng. Chỉ xem, không thao tác.</span>
+</div>
+{{end}}
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <a href="/">Trang chủ</a>
+      <a href="/accounts">Tài khoản</a>
+      <a href="/schedule">Lịch live</a>
+      <a href="/content">Sản xuất video</a>
+      <a href="/publishers">Đa nền tảng</a>
+      <a href="/shop">Shop Affiliate</a>
+      <a href="/analytics">Phân tích</a>
+      <a href="/settings">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        {{if .DryRun}}<span class="chip chip-dry">DRY-RUN</span>{{end}}
+        {{if .Kill}}<span class="chip chip-kill">KILL SWITCH</span>{{end}}
+      </div>
+      <div class="topbar-actions">
+        {{if .Kill}}
+        <form method="post" action="/unkill" style="display:inline">
+          <button type="submit" class="btn btn-secondary">Gỡ kill switch</button>
+        </form>
+        {{else}}
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        {{end}}
+      </div>
+    </header>
+    <main class="content">
+      {{template "content" .}}
+    </main>
+  </div>
+</div>
+</body>
+</html>{{end}}

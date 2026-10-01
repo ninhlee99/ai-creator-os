@@ -1,0 +1,110 @@
+{{define "title"}}{{.Acct.Username}} — AI Creator OS{{end}}
+{{define "content"}}
+<h1>{{.Acct.Username}}</h1>
+<p class="subtitle"><span class="badge badge-{{.Acct.Status}}">{{.Acct.Status}}</span>
+{{if .Acct.LiveEligible}} <span class="badge badge-ok">đủ điều kiện live</span>{{end}}</p>
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Thông tin</h2>
+  <dl class="kv">
+    <dt>Persona</dt><dd>{{.Acct.PersonaLabel}}</dd>
+    <dt>Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
+    <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
+    <dt>Followers</dt><dd>{{.Acct.Followers}}</dd>
+    <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
+    <dt>Loại nội dung YT</dt><dd>{{if .Acct.YoutubeContentTypes}}{{join ", " .Acct.YoutubeContentTypes}}{{else}}—{{end}}</dd>
+    <dt>Quà tặng nhận</dt><dd>${{printf "%.2f" .Gifts}}</dd>
+    <dt>Nền tảng đã nối</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
+  </dl>
+</div>
+
+{{if .Persona}}
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Persona: {{.Persona.Label}}</h2>
+  <p><strong>Phong cách live:</strong> {{.Persona.LiveStyle}}</p>
+  {{if .Persona.AffiliateNiches}}
+  <p><strong>Niche affiliate phù hợp:</strong></p>
+  <ul class="clean">{{range .Persona.AffiliateNiches}}<li>{{.}}</li>{{end}}</ul>
+  {{end}}
+  {{if .Persona.RedLines}}
+  <p><strong>Giới hạn:</strong></p>
+  <ul class="clean">{{range .Persona.RedLines}}<li>{{.}}</li>{{end}}</ul>
+  {{end}}
+</div>
+{{end}}
+</div>
+
+{{if .LastTopic}}
+<h2>Topic phiên live tiếp theo</h2>
+<p class="form-card"><strong>{{.LastTopic.Topic}}</strong><br>
+<small class="muted">{{.LastTopic.Reason}} · {{.LastTopic.CreatedAt}}</small></p>
+{{end}}
+
+{{if .Acct.Topics}}
+<h2>Topic plan</h2>
+<ul class="clean">
+  {{range .Acct.Topics}}<li>{{.}}</li>{{end}}
+</ul>
+{{end}}
+
+<h2>Điều khiển</h2>
+<div class="toolbar">
+  {{range .Allowed}}
+  <form class="inline-form" method="post" action="/accounts/{{$.Acct.ID}}/transition">
+    <input type="hidden" name="to" value="{{.}}">
+    <button type="submit" class="btn btn-secondary btn-sm">→ {{.}}</button>
+  </form>
+  {{end}}
+  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/onboard">
+    <button type="submit" class="btn btn-secondary btn-sm">Chạy bước onboarding tiếp</button>
+  </form>
+  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/replan"
+        onsubmit="return confirm('Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.')">
+    <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
+  </form>
+  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/live-topic">
+    <button type="submit" class="btn btn-secondary btn-sm">Lên topic cho phiên live tiếp theo</button>
+  </form>
+</div>
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Cập nhật followers</h2>
+  <form method="post" action="/accounts/{{.Acct.ID}}/followers">
+    <div class="field">
+      <label>Số followers hiện tại</label>
+      <input type="number" name="n" min="0" value="{{.Acct.Followers}}">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
+  <form method="post" action="/accounts/{{.Acct.ID}}/youtube">
+    <div class="field">
+      <label>Channel ID</label>
+      <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}">
+    </div>
+    <div class="field">
+      <label>Loại nội dung (phân tách bằng dấu phẩy)</label>
+      <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
+             placeholder="vd: short_video, ai_music">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+</div>
+</div>
+
+<h2>Lịch sử quyết định</h2>
+{{if .Decisions}}
+<ul class="clean">
+  {{range .Decisions}}
+  <li><span class="badge badge-draft">{{.Action}}</span> {{.Reason}}</li>
+  {{end}}
+</ul>
+{{else}}
+<p class="empty">Chưa có quyết định nào cho tài khoản này.</p>
+{{end}}
+{{end}}

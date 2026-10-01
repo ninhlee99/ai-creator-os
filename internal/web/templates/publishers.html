@@ -1,0 +1,27 @@
+{{define "title"}}Đa nền tảng — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Đa nền tảng</h1>
+<p class="subtitle">Trạng thái kết nối TikTok, Facebook, YouTube và RTMP của từng tài khoản.</p>
+
+{{if .Rows}}
+<table>
+  <tr>
+    <th>Tài khoản</th><th>Trạng thái</th><th>TikTok token</th>
+    <th>YouTube token</th><th>FB Page</th><th>RTMP key</th><th>Nền tảng</th>
+  </tr>
+  {{range .Rows}}
+  <tr>
+    <td><strong>{{.Username}}</strong></td>
+    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .Rtmp}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa có tài khoản nào để hiển thị.</p>
+{{end}}
+{{end}}
