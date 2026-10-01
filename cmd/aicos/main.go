@@ -39,6 +39,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
@@ -97,6 +98,17 @@ func (a llmChainAdapter) Complete(ctx context.Context, system, prompt string) (s
 }
 
 func (a llmChainAdapter) Name() string { return a.c.Name() }
+
+// studioLLMAdapter adapts *engines.LLMChain to studio.LLM (the director).
+type studioLLMAdapter struct{ c *engines.LLMChain }
+
+func (a studioLLMAdapter) Complete(ctx context.Context, system, prompt string) (string, error) {
+	return a.c.Complete(ctx, system, prompt)
+}
+
+func (a studioLLMAdapter) Name() string { return a.c.Name() }
+
+func (a studioLLMAdapter) Healthy(context.Context) bool { return len(a.c.ActiveProviders()) > 0 }
 
 func (a llmChainAdapter) SetConfig(raw json.RawMessage) {
 	cfg, err := tts.ParseChainJSON(raw)
@@ -493,6 +505,25 @@ func main() {
 	srv.Health = health
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
+	}
+
+	// -- 6b. studio: AI video creation (affiliate / short film) ---------------
+	// The studio reuses the LLM chain (director), the TTS chain (film
+	// narration) and the Gemini keys (image + Veo generation).
+	studioMG := studio.NewGeminiMediaGen(geminiKeys)
+	studioNarrator := studio.Narrator(func(ctx context.Context, text string) ([]byte, error) {
+		return ttsChain.Synthesize(ctx, text, "default")
+	})
+	if st, err := studio.New(filepath.Join(*dataDir, "studio.db"), studioLLMAdapter{c: llmChain}, studioMG, studioNarrator, outDir); err != nil {
+		log.Printf("studio: init failed: %v (studio page disabled)", err)
+	} else {
+		srv.Studio = st
+		defer func() {
+			if err := st.Close(); err != nil {
+				log.Printf("studio close: %v", err)
+			}
+		}()
+		log.Printf("studio: ready (mediagen=%s keys=%d)", studioMG.Name(), studioMG.KeyCount())
 	}
 
 	// -- 7. network daemon ---------------------------------------------------

@@ -16,6 +16,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 )
@@ -36,6 +37,7 @@ type Server struct {
 	LLM           LLMClient
 	TTS           TTSChainAPI
 	Avatar        AvatarChainAPI
+	Studio        *studio.Studio
 	VieNeu        VieNeuCtl
 	AvatarSidecar AvatarSidecarCtl
 	Health        map[string]HealthChecker
@@ -157,6 +159,7 @@ var pageFiles = map[string]string{
 	"account_detail": "account_detail.html",
 	"schedule":       "schedule.html",
 	"content":        "content.html",
+	"studio":         "studio.html",
 	"publishers":     "publishers.html",
 	"shop":           "shop.html",
 	"analytics":      "analytics.html",

@@ -1,0 +1,182 @@
+{{define "title"}}Studio AI — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Studio AI 🎬</h1>
+<p class="subtitle">Tạo video affiliate, phim ngắn như Milo làm: đạo diễn AI viết shot list → chụp/quay từng shot → dựng → ghép nhạc trending. Bạn chỉ bật app và theo dõi.</p>
+
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+
+<div class="cards">
+  <div class="card">
+    <h3>Media-gen</h3>
+    {{if .MediaGenOK}}
+      <span class="badge badge-ok">Sẵn sàng</span>
+      <div class="hint">{{.MediaGenKeys}} Gemini key · ảnh + Veo video</div>
+    {{else}}
+      <span class="badge badge-err">Chưa sẵn sàng</span>
+      <div class="hint">Cần GEMINI_API_KEYS. Veo cần key có bật billing (Google Cloud) — nếu không, Studio tự dùng chế độ list ảnh.</div>
+    {{end}}
+  </div>
+  <div class="card">
+    <h3>Nhạc trending VN</h3>
+    {{if .TrendsErr}}
+      <span class="badge badge-warn">Không tải được chart</span>
+      <div class="hint">{{.TrendsErr}}</div>
+    {{else}}
+      <span class="badge badge-ok">{{len .Sounds}} sound</span>
+      <div class="hint">Top 1 hiện tại: {{if .Sounds}}{{(index .Sounds 0).Artist}} – {{(index .Sounds 0).Title}}{{end}}</div>
+    {{end}}
+  </div>
+</div>
+
+<h2>1 · Video Affiliate</h2>
+<div class="form-card">
+<form method="post" action="/studio/affiliate" enctype="multipart/form-data">
+  <div class="field">
+    <label>Tên sản phẩm <span class="req">*</span></label>
+    <input type="text" name="product_name" required placeholder="vd: Túi kem quilted">
+  </div>
+  <div class="field">
+    <label>Niche</label>
+    <select name="niche">
+      <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
+      <option value="mỹ phẩm">Mỹ phẩm</option>
+      <option value="gia dụng">Gia dụng</option>
+      <option value="công nghệ">Công nghệ</option>
+      <option value="khác">Khác</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Định dạng</label>
+    <select name="mode">
+      <option value="photo">List ảnh mẫu + nhạc trending (khuyên dùng)</option>
+      <option value="shots">Nhiều cảnh video nối nhau (cần Veo)</option>
+    </select>
+    <div class="hint">List ảnh: chụp 4–8 ảnh mẫu với sản phẩm, dựng 30s + nhạc. Không chữ, không voiceover.</div>
+  </div>
+  <div class="field">
+    <label>Thời lượng (giây)</label>
+    <input type="number" name="seconds" value="30" min="10" max="120">
+  </div>
+  <div class="field">
+    <label>Ảnh nhân vật (giữ khuôn mặt)</label>
+    <input type="file" name="model_photo" accept="image/*">
+  </div>
+  <div class="field">
+    <label>Ảnh sản phẩm (giữ đúng sản phẩm)</label>
+    <input type="file" name="product_photo" accept="image/*">
+  </div>
+  <div class="field">
+    <label>Nhạc trending — chọn sound (để ghi chú)</label>
+    <select id="trend-pick" onchange="pickTrend(this)">
+      <option value="">— Không chọn —</option>
+      {{range .Sounds}}
+      <option value="{{.Title}}|{{.Artist}}">#{{.Rank}} {{.Artist}} – {{.Title}}</option>
+      {{end}}
+    </select>
+    <input type="hidden" name="music_title" id="music_title">
+    <input type="hidden" name="music_artist" id="music_artist">
+    <div class="hint">TikTok không cho tải trực tiếp sound. Sau khi chọn, bạn tải file nhạc (từ app TikTok hoặc link trực tiếp) rồi upload ở dưới, hoặc dán link audio trực tiếp.</div>
+  </div>
+  <div class="field">
+    <label>File nhạc (mp3/m4a)</label>
+    <input type="file" name="music_file" accept="audio/*">
+  </div>
+  <div class="field">
+    <label>hoặc link audio trực tiếp</label>
+    <input type="text" name="music_url" placeholder="https://…/audio.m4a">
+  </div>
+  <div class="field">
+    <label>Bắt đầu nhạc từ giây thứ</label>
+    <input type="number" name="music_start" value="0" min="0" step="1">
+  </div>
+  <button type="submit" class="btn">🎬 Tạo video affiliate</button>
+</form>
+</div>
+
+<h2>2 · Phim ngắn</h2>
+<div class="form-card">
+<form method="post" action="/studio/film">
+  <div class="field">
+    <label>Chủ đề phim <span class="req">*</span></label>
+    <input type="text" name="topic" required placeholder="vd: Cô gái và chiếc túi bí ẩn">
+    <div class="hint">AI viết kịch bản → quay từng cảnh bằng Veo (nếu có) → dựng phim dọc. Không có Veo sẽ dùng ảnh + voiceover.</div>
+  </div>
+  <div class="field">
+    <label>Thời lượng (giây)</label>
+    <input type="number" name="seconds" value="90" min="30" max="180">
+  </div>
+  <button type="submit" class="btn">🎞️ Tạo phim ngắn</button>
+</form>
+</div>
+
+<h2>3 · Nhạc trending TikTok Việt Nam</h2>
+<p class="hint">Nguồn: {{.TrendsSource}}. Đây là chart bên thứ ba, không phải số liệu chính thức từ TikTok Creative Center.</p>
+<form method="post" action="/studio/trends/refresh" class="inline-form">
+  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới chart</button>
+</form>
+{{if .Sounds}}
+<table class="clean">
+  <tr><th>#</th><th>Biến động</th><th>Sound</th></tr>
+  {{range .Sounds}}
+  <tr><td>{{.Rank}}</td><td>{{.Movement}}</td><td><strong>{{.Artist}}</strong> – {{.Title}}</td></tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa tải được chart. {{.TrendsErr}}</p>
+{{end}}
+
+<h2>Job đã tạo</h2>
+<div id="jobs">
+{{if .Jobs}}
+  {{range .Jobs}}
+  <div class="job" data-job="{{.ID}}">
+    <h3>{{.Title}} <span class="badge">{{.KindLabel}}</span></h3>
+    <div class="meta">
+      <span class="badge badge-{{.Status}}">{{.Status}}</span>
+      <span class="prog">{{.Progress}}%</span>
+      · tạo lúc {{.CreatedAt}}{{if .FinishedAt}} · xong lúc {{.FinishedAt}}{{end}}
+    </div>
+    <div class="board"></div>
+    {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
+    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem storyboard</button>
+    <pre class="log" id="log-{{.ID}}"></pre>
+  </div>
+  {{end}}
+{{else}}
+<p class="empty">Chưa có job nào. Tạo video đầu tiên ở form phía trên.</p>
+{{end}}
+</div>
+
+<script>
+function pickTrend(sel){
+  var v = sel.value.split("|");
+  document.getElementById("music_title").value = v[0] || "";
+  document.getElementById("music_artist").value = v[1] || "";
+}
+var boards = {};
+function toggleBoard(id){
+  var box = document.querySelector('[data-job="'+id+'"] .board');
+  if(boards[id]){ box.innerHTML=""; boards[id]=false; return; }
+  boards[id]=true;
+  fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
+    var h = "";
+    if(d.job && d.job.log){ document.getElementById("log-"+id).textContent = d.job.log; }
+    (d.assets||[]).forEach(function(a){
+      h += '<div class="shot"><div class="shot-head">#'+(a.idx+1)+' <span class="badge badge-'+a.status+'">'+a.status+'</span> <em>'+a.kind+'</em></div>';
+      if(a.preview){
+        if(a.kind==="clip"){ h += '<video controls src="'+a.preview+'" style="max-width:220px"></video>'; }
+        else { h += '<img src="'+a.preview+'" style="max-width:220px">'; }
+      }
+      h += '<div class="hint">'+a.prompt+'</div></div>';
+    });
+    box.innerHTML = h || '<p class="empty">Chưa có shot nào.</p>';
+  });
+}
+// auto-refresh job list every 10s while any job is running
+setInterval(function(){
+  var running = false;
+  document.querySelectorAll(".badge-running,.badge-queued").forEach(function(){running=true;});
+  if(running){ location.reload(); }
+}, 15000);
+</script>
+{{end}}
