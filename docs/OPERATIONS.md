@@ -29,6 +29,26 @@ python3 -m apps.orchestrator.main --rehearse
 - [ ] AI disclosure text reviewed (`AI_DISCLOSURE_TEXT`)
 - [ ] First live session supervised via dashboard at :8080
 
+## Credential setup (human steps — code is ready, keys are not)
+
+Code status: TTS chain wired (Gemini→VieNeu→Edge), Posting API client
+complete, Shop API signing complete. These need your accounts/keys:
+
+| # | What | Where to get it | Env vars | Lead time |
+|---|---|---|---|---|
+| 1 | **Gemini API key** (AI Studio) — expressive Vietnamese TTS | aistudio.google.com | `TTS_API_KEY` | minutes |
+| 2 | **TikTok Shop Partner Center app** (Affiliate type) | partner.tiktokshop.com | `TIKTOK_SHOP_APP_KEY`, `TIKTOK_SHOP_APP_SECRET` | app review: days–weeks |
+| 3 | Creator OAuth → access token + shop cipher | Seller Center / TikTok app authorization | `TIKTOK_SHOP_ACCESS_TOKEN`, `TIKTOK_SHOP_CIPHER` | with #2 |
+| 4 | Verify affiliate endpoint paths in sandbox | `python3 scripts/probe_shop_api.py` with #2+#3 | fill `ENDPOINTS` in `tiktok/shop/client.py` | 1 session |
+| 5 | **TikTok Developers app** (Login Kit + Content Posting API) | developers.tiktok.com | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` | audit ~3–4 weeks for public Direct Post |
+| 6 | OAuth per creator account → refresh token | one-time browser flow per account | `tiktok_token_<account>.json` (gitignored) | minutes/account |
+| 7 | **RTMP server + stream key per account** | TikTok LIVE Center → Go LIVE | `RTMP_KEY_<USERNAME>` (env only, never in code) | minutes/account |
+
+Notes:
+- Without #1, TTS falls back to Edge (no key, unofficial endpoint — last resort).
+- Without #5's audit, the Posting API only publishes `SELF_ONLY` (private) to ≤5 test users.
+- Token files and `.env` are gitignored; keys never enter the ledger or logs.
+
 ## Daily operation (hands-off)
 
 1. Orchestrator runs agents on schedule (launchd keeps it alive).

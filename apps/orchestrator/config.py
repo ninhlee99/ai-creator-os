@@ -40,7 +40,6 @@ class Config:
     ollama_model: str = _get("OLLAMA_MODEL", "qwen3:4b")
 
     # TTS / avatar
-    tts_provider: str = _get("TTS_PROVIDER")
     tts_api_key: str = _get("TTS_API_KEY")
     avatar_provider: str = _get("AVATAR_PROVIDER", "local-stylized")
     avatar_api_key: str = _get("AVATAR_API_KEY")
@@ -49,6 +48,7 @@ class Config:
     tiktok_shop_app_key: str = _get("TIKTOK_SHOP_APP_KEY")
     tiktok_shop_app_secret: str = _get("TIKTOK_SHOP_APP_SECRET")
     tiktok_shop_access_token: str = _get("TIKTOK_SHOP_ACCESS_TOKEN")
+    tiktok_shop_cipher: str = _get("TIKTOK_SHOP_CIPHER")
     tiktok_rtmp_url: str = _get("TIKTOK_RTMP_URL")
     tiktok_rtmp_key: str = _get("TIKTOK_RTMP_KEY")
     ai_disclosure_text: str = _get("AI_DISCLOSURE_TEXT", "AI-generated stream")
@@ -81,8 +81,8 @@ class Config:
             blockers.append("missing TIKTOK_SHOP_ACCESS_TOKEN")
         if not self.tiktok_rtmp_url or not self.tiktok_rtmp_key:
             blockers.append("missing TIKTOK_RTMP_URL/KEY")
-        if not self.tts_provider:
-            blockers.append("missing TTS_PROVIDER")
+        if not self.tts_api_key:
+            blockers.append("missing TTS_API_KEY (Gemini; Edge fallback needs no key)")
         return blockers
 
 
