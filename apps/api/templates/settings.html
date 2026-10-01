@@ -53,8 +53,8 @@
   <div class="field">
     <label>Chế độ chạy</label>
     <select name="value">
-      <option value="off" {% if dry_run %}selected{% endif %}>Bật dry-run (chế độ an toàn, không thao tác thật)</option>
-      <option value="on" {% if not dry_run %}selected{% endif %}>Tắt dry-run (chạy thật)</option>
+      <option value="on" {% if dry_run %}selected{% endif %}>Bật dry-run (chế độ an toàn, không thao tác thật)</option>
+      <option value="off" {% if not dry_run %}selected{% endif %}>Tắt dry-run (chạy thật)</option>
     </select>
   </div>
   <button type="submit" class="btn btn-secondary">Lưu</button>
