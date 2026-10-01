@@ -46,6 +46,17 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /content", s.handleContentCreate)
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
 
+	// Studio: AI video creation (affiliate / short film) + VN trends.
+	mux.HandleFunc("GET /studio", s.handleStudio)
+	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
+	mux.HandleFunc("POST /studio/film", s.handleStudioFilmCreate)
+	mux.HandleFunc("GET /studio/jobs", s.handleStudioJobs)
+	mux.HandleFunc("GET /studio/jobs/{id}", s.handleStudioJobDetail)
+	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
+	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
+	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
+	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
+
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 
 	mux.HandleFunc("GET /shop", s.handleShop)
