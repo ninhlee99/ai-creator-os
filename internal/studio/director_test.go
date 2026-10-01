@@ -116,3 +116,43 @@ func TestWriteFilmScriptEmpty(t *testing.T) {
 		t.Fatal("want error for empty script")
 	}
 }
+
+func TestDirectorPhotoPlanSceneLock(t *testing.T) {
+	reply := `{"location": "a cozy minimalist café in Saigon with rattan chairs, warm window light and monstera plants",
+"photos": ["close-up of model holding the handbag, sitting by the window",
+"full-body shot, model walking past the counter carrying the bag",
+"macro of the bag clasp on the marble table"]}`
+	s := &Studio{llm: &stubLLM{reply: reply}}
+	plan, err := s.directorPhotoPlan(context.Background(),
+		AffiliateParams{Seconds: 30, ProductName: "túi xách", Niche: "thời trang"})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	if !strings.Contains(plan.Location, "café") {
+		t.Fatalf("location not parsed: %q", plan.Location)
+	}
+	if len(plan.Prompts) != 3 {
+		t.Fatalf("want 3 prompts, got %d", len(plan.Prompts))
+	}
+	for i, pr := range plan.Prompts {
+		// Every prompt must embed the locked location verbatim so all
+		// photos share one consistent place.
+		if !strings.Contains(pr, plan.Location) {
+			t.Errorf("prompt %d missing location lock", i)
+		}
+		if !strings.Contains(pr, "4K") {
+			t.Errorf("prompt %d missing 4K quality bar", i)
+		}
+		if !strings.Contains(strings.ToLower(pr), "no text") {
+			t.Errorf("prompt %d missing no-text rule", i)
+		}
+	}
+}
+
+func TestDirectorPhotoPlanMissingLocation(t *testing.T) {
+	s := &Studio{llm: &stubLLM{reply: `{"photos": ["a photo"]}`}}
+	if _, err := s.directorPhotoPlan(context.Background(),
+		AffiliateParams{Seconds: 30}); err == nil {
+		t.Fatal("want error when the LLM skips the location lock")
+	}
+}

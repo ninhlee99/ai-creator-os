@@ -300,10 +300,33 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	return id, nil
 }
 
+// photoPlan is the director's locked shoot plan: ONE location shared by
+// every photo (Ninh's rule 2026-10-01 — e.g. all 3-5 shots inside the same
+// café, just different angles/setups), plus the per-photo prompts that
+// already embed that location verbatim.
+type photoPlan struct {
+	Location string
+	Prompts  []string
+}
+
+// composePhotoPrompt fuses the quality bar, the locked location and the
+// photo-specific angle/setup into the final generation prompt. The
+// location lock is embedded in every prompt so the model keeps one
+// consistent place across all photos of the video.
+func composePhotoPrompt(location, photoPart string) string {
+	return "Ultra-detailed professional photograph, 4K quality, tack-sharp focus, " +
+		"photorealistic, vertical 9:16. " +
+		"LOCATION (identical in every photo of this video): " + location + " " +
+		photoPart +
+		" No text, no watermark, no logo."
+}
+
 // directorPhotoPlan asks the LLM for the photo list (the storyboard).
 // Style Ninh chốt 2026-10-01: CapCut "giật giật" — chỉ 3–5 ảnh mẫu dùng
 // sản phẩm thật, dựng beat-bounce cắt cứng theo nhịp; 30s ≈ 5 ảnh × 6s.
-func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) ([]string, error) {
+// Địa điểm KHÓA NHẤT QUÁN cho cả video: mọi ảnh cùng một nơi, chỉ khác
+// góc máy / vị trí / setup bên trong nơi đó.
+func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) (*photoPlan, error) {
 	n := p.Seconds / 6
 	if n < 3 {
 		n = 3
@@ -312,31 +335,45 @@ func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) ([]st
 		n = 5
 	}
 	sys := "Bạn là đạo diễn ảnh thời trang TikTok Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Sản phẩm: %s. Niche: %s. Viết %d prompt chụp ảnh mẫu nữ Việt Nam với sản phẩm (KHÔNG chữ, KHÔNG watermark).
-Video dựng kiểu CapCut "giật giật": cắt cứng theo nhịp, mỗi ảnh chỉ hiện vài giây nên MỖI ẢNH phải là một khoảnh khắc đắt giá, góc máy đa dạng (cận cảnh, toàn cảnh, macro, low-angle, qua vai…).
-Yêu cầu: ảnh 1 là hook (mẫu giơ/cầm sản phẩm cười với camera), các ảnh giữa là lifestyle (phố, café) + macro chất liệu + khoảnh khắc dùng sản phẩm thật, ảnh cuối ấm áp ôm sản phẩm.
-Mỗi prompt bằng tiếng Anh, photorealistic, vertical 9:16, mô tả chi tiết người mẫu + sản phẩm + ánh sáng.
-Chỉ trả JSON: {"photos": ["prompt1", "prompt2", ...]}`, p.ProductName, p.Niche, n)
+	prompt := fmt.Sprintf(`Sản phẩm: %s. Niche: %s.
+
+Nhiệm vụ 2 bước:
+1. Chọn MỘT địa điểm duy nhất cho cả video (ví dụ: một quán café cụ thể — mô tả chi tiết bằng tiếng Anh: phong cách nội thất, màu sắc, ánh sáng, chi tiết nhận diện; đủ cụ thể để 5 ảnh khác nhau vẫn nhận ra là CÙNG MỘT NƠI).
+2. Viết %d prompt ảnh (tiếng Anh), MỖI prompt mô tả: góc máy + vị trí của mẫu TRONG địa điểm đó + setup khác nhau + hành động dùng sản phẩm thật. Các ảnh phải đa dạng góc (cận cảnh, toàn cảnh, macro, low-angle, qua vai…) nhưng TUYỆT ĐỐI cùng một địa điểm.
+
+Video dựng kiểu CapCut "giật giật": cắt cứng theo nhịp, mỗi ảnh chỉ hiện vài giây nên MỖI ẢNH phải là một khoảnh khắc đắt giá.
+Ảnh 1 là hook (mẫu giơ/cầm sản phẩm cười với camera), các ảnh giữa là lifestyle trong địa điểm + macro chất liệu + khoảnh khắc dùng sản phẩm thật, ảnh cuối ấm áp ôm sản phẩm.
+KHÔNG chữ, KHÔNG watermark trong ảnh.
+
+Chỉ trả JSON: {"location": "<mô tả địa điểm chi tiết bằng tiếng Anh>",
+"photos": ["<góc máy + vị trí + setup + hành động, tiếng Anh>", ...]}`, p.ProductName, p.Niche, n)
 	text, err := s.llm.Complete(ctx, sys, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("director: %w", err)
 	}
-	var plan struct {
-		Photos []string `json:"photos"`
+	var raw struct {
+		Location string   `json:"location"`
+		Photos   []string `json:"photos"`
 	}
-	if err := parseDirectorJSON(text, &plan); err != nil {
+	if err := parseDirectorJSON(text, &raw); err != nil {
 		return nil, err
 	}
-	var out []string
-	for _, ph := range plan.Photos {
-		if strings.TrimSpace(ph) != "" {
-			out = append(out, ph)
-		}
+	location := strings.TrimSpace(raw.Location)
+	if location == "" {
+		return nil, fmt.Errorf("director: missing location lock")
 	}
-	if len(out) == 0 {
+	plan := &photoPlan{Location: location}
+	for _, ph := range raw.Photos {
+		ph = strings.TrimSpace(ph)
+		if ph == "" {
+			continue
+		}
+		plan.Prompts = append(plan.Prompts, composePhotoPrompt(location, ph))
+	}
+	if len(plan.Prompts) == 0 {
 		return nil, fmt.Errorf("director: no photos planned")
 	}
-	return out, nil
+	return plan, nil
 }
 
 func (s *Studio) runAffiliate(id string, p AffiliateParams) {
@@ -375,36 +412,45 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		refs = append(refs, ImageRef{Path: p.ProductPhoto})
 	}
 
-	// Photo mode: shoot the 5–10 photo list. Shots mode has its own
-	// cinematic shot list below (no photo shoot here — saves quota).
+	// Photo mode: shoot the 3–5 photo list (scene-locked, 4K masters).
+	// Shots mode has its own cinematic shot list below (no photo shoot
+	// here — saves quota).
 	var photos []string
 	var secsPer float64
 	if p.Mode != AffiliateModeShots {
-		s.appendLog(id, "Director đang viết shot list…")
-		prompts, err := s.directorPhotoPlan(ctx, p)
+		s.appendLog(id, "Director đang khóa địa điểm + viết shot list…")
+		plan, err := s.directorPhotoPlan(ctx, p)
 		if err != nil {
 			fail(err)
 			return
 		}
-		s.appendLog(id, fmt.Sprintf("Shot list: %d ảnh", len(prompts)))
+		s.appendLog(id, fmt.Sprintf("Địa điểm: %s", plan.Location))
+		s.appendLog(id, fmt.Sprintf("Shot list: %d ảnh", len(plan.Prompts)))
 
-		// Shoot each photo (identity/product lock via reference images).
-		for i, pr := range prompts {
+		// Shoot each photo (identity/product lock via reference images),
+		// then master to 4K.
+		for i, pr := range plan.Prompts {
 			aid := s.addAsset(id, i, "photo", pr)
 			out := filepath.Join(work, fmt.Sprintf("photo-%02d.png", i))
-			s.appendLog(id, fmt.Sprintf("Chụp ảnh %d/%d…", i+1, len(prompts)))
+			s.appendLog(id, fmt.Sprintf("Chụp ảnh %d/%d…", i+1, len(plan.Prompts)))
 			s.setAsset(aid, StatusRunning, "")
 			if err := s.mg.GenerateImage(ctx, pr, refs, out); err != nil {
 				s.appendLog(id, fmt.Sprintf("Ảnh %d lỗi: %v", i+1, err))
 				s.setAsset(aid, StatusFailed, "")
 				continue
 			}
-			s.setAsset(aid, StatusDone, out)
-			photos = append(photos, out)
-			s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(prompts))))
+			master := filepath.Join(work, fmt.Sprintf("photo-%02d-4k.png", i))
+			s.appendLog(id, fmt.Sprintf("Nâng ảnh %d lên 4K…", i+1))
+			if err := UpscalePhoto(ctx, out, master, PhotoWidth4K); err != nil {
+				s.appendLog(id, fmt.Sprintf("Upscale ảnh %d lỗi: %v (dùng bản gốc)", i+1, err))
+				master = out
+			}
+			s.setAsset(aid, StatusDone, master)
+			photos = append(photos, master)
+			s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(plan.Prompts))))
 		}
 		if len(photos) < 3 {
-			fail(fmt.Errorf("chỉ chụp được %d/%d ảnh — kiểm tra API key", len(photos), len(prompts)))
+			fail(fmt.Errorf("chỉ chụp được %d/%d ảnh — kiểm tra API key", len(photos), len(plan.Prompts)))
 			return
 		}
 		secsPer = float64(p.Seconds) / float64(len(photos))

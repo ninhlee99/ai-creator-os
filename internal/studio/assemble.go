@@ -233,6 +233,21 @@ func ExtractFrame(ctx context.Context, videoPath string, at float64, outPath str
 		"-frames:v", "1", "-q:v", "3", outPath)
 }
 
+// ProbeWidth returns the video/image width in pixels (0 on failure).
+func ProbeWidth(ctx context.Context, path string) int {
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "error", "-select_streams", "v:0",
+		"-show_entries", "stream=width", "-of", "csv=p=0", path)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0
+	}
+	var w int
+	fmt.Sscanf(strings.TrimSpace(out.String()), "%d", &w)
+	return w
+}
+
 // ProbeDuration returns media duration in seconds (0 on failure).
 func ProbeDuration(ctx context.Context, path string) float64 {
 	cmd := exec.CommandContext(ctx, "ffprobe",
