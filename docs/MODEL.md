@@ -68,8 +68,14 @@ Mỗi video render xong đi qua `publishers/`:
 ## 3d. Phim AI ngắn
 
 Storyteller sản xuất phim ngắn dọc 60–180s: LLM viết kịch bản → chia cảnh →
-ảnh minh hoạ AI → Ken Burns → TTS dẫn truyện → phụ đề → 1080x1920.
-Pipeline đã test end-to-end bằng FFmpeg thật (`agents/content/film.py`).
+nhân vật avatar render theo audio từng frame (môi, mắt, đầu, biểu cảm theo
+lời thoại; identity lock giữ đúng khuôn mặt xuyên suốt) → TTS dẫn truyện →
+phụ đề → 1080x1920.
+
+**Cấm** kiểu "ảnh tĩnh + Ken Burns + hiệu ứng chuyển cảnh" — mọi khung hình
+phải là nhân vật cử động như người thật quay. Pipeline avatar:
+`internal/engines/avatar` (local MuseTalk v1.5 sidecar → HeyGen → D-ID),
+chi tiết ở `docs/RESEARCH/avatar_pipeline.md`.
 
 ## 4. Trụ cột doanh thu (theo thứ tự ưu tiên)
 
@@ -142,6 +148,7 @@ Nguyên tắc: **nhẹ + nhanh + dễ** — RAM/CPU là tài nguyên khan nhất
 | Game-playing agent (phase 2) | **Go** | Chỉ chơi game có bot/API chính thức hoặc offline (xem §8b) — Go gọi API/input automation, không cần Python. |
 | Local TTS (VieNeu-TTS v3) | Sidecar độc lập | Server tương thích OpenAI do binary Go quản lý (start/stop/health check) — như FFmpeg, không phải code dự án. |
 | Local LLM (llama-server) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình. |
+| Local avatar (MuseTalk v1.5) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình; render offline, không realtime trên M1 Pro. Chi tiết: `docs/RESEARCH/avatar_pipeline.md`. |
 | Music pipeline (phase 3) | **Go + API** | Ưu tiên API; local chỉ khi có model đủ tốt. |
 | Ledger | **SQLite WAL** | 0 ops, nhẹ SSD, đủ cho quy mô này. |
 | Media | **FFmpeg** (binary ngoài) | Chuẩn ngành, không thay thế. |

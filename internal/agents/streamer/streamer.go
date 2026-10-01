@@ -7,8 +7,9 @@
 // the show; photorealism is explicitly NOT required.
 //
 // Loop per segment:
-//   director (LLM) -> script -> TTS -> avatar visemes -> stream-engine
-//   overlay -> published via RTMP. Chat/votes feed back where authorized.
+//
+//	director (LLM) -> script -> TTS -> avatar visemes -> stream-engine
+//	overlay -> published via RTMP. Chat/votes feed back where authorized.
 //
 // Anti-ban pacing and session limits are enforced by governance, not by
 // prompt. SegmentPlan is a package variable so tests can run a shortened
@@ -23,7 +24,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
-	avatarpkg "github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
@@ -53,10 +53,12 @@ const DirectorSystem = "Bạn là đạo diễn kiêm MC livestream bán hàng T
 	"giọng vui vẻ tự nhiên như người thật. Luân phiên giải trí và giới thiệu " +
 	"sản phẩm một cách mềm mại, không gượng ép. Mỗi segment chỉ vài câu thoại."
 
-// AvatarAPI is the avatar engine surface the streamer needs. The real
-// *avatar.LocalStylizedAvatar / *avatar.StreamingAPIAvatar satisfy it.
+// AvatarAPI is the avatar engine surface the streamer needs: render one
+// spoken segment (per-frame motion driven by the TTS audio) and return
+// the mp4 bytes to push to the stream. The concrete adapter wraps
+// *avatar.AvatarChain with the session's character.
 type AvatarAPI interface {
-	Speak(ctx context.Context, audio []byte, visemes []avatarpkg.VisemeFrame) error
+	RenderSegment(ctx context.Context, audio []byte) ([]byte, error)
 }
 
 // StreamEngineAPI is the RTMP stream engine surface.
@@ -151,8 +153,8 @@ func RunLive(ctx context.Context, cfg config.Config, l *ledger.Ledger,
 				map[string]any{"msg": fmt.Sprintf("TTS failed: %v", err)})
 			continue
 		}
-		// Viseme timeline is derived from TTS; not extracted in v1 (nil).
-		if err := avatar.Speak(ctx, audio, nil); err != nil {
+		// Every frame is rendered from the TTS audio (no static slides).
+		if _, err := avatar.RenderSegment(ctx, audio); err != nil {
 			_ = l.LogEvent(sid, "error",
 				map[string]any{"msg": fmt.Sprintf("avatar failed: %v", err)})
 		}

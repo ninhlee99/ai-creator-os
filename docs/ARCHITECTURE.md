@@ -127,21 +127,34 @@ caps are never silently exceeded.
 |---|---|---|
 | LLM | Gemini → llama-server local (GGUF 8B) → paid (opt-in, off) | Director/reasoning. Free API first for speed; local GGUF for offline/privacy. Chain order, keys and retry policy editable in dashboard Settings; failover is logged to decisions. |
 | TTS | Gemini → VieNeu-TTS v3 local → Edge TTS | Must support natural Vietnamese prosody: rhythm, pitch, stress. VieNeu runs as a managed sidecar (OpenAI-compatible `POST /v1/audio/speech`); emotion cues (`[cười]`, `[thở dài]`) pass through untouched. |
-| Avatar | Local stylized realtime → paid streaming API | See §5 — honest limitation documented. |
+| Avatar | Local sidecar (MuseTalk v1.5) → HeyGen → D-ID (paid, off by default) | Every frame is rendered per audio frame — static image + Ken Burns transitions are banned by design. See §5 — honest limitations documented. |
 
 ## 5. Avatar: the hard truth
 
 Photorealistic + realtime + frame-coherent lip-sync + free does not exist as
 a production-ready option today. Anyone promising all four is selling
-something. Therefore:
+something. Therefore (research: `docs/RESEARCH/avatar_pipeline.md`):
 
-- **v1 ships a high-quality stylized realtime avatar** (2D/3D, coherent
-  visemes, consistent identity). Entertainment value comes from persona,
-  voice and show format — not photorealism.
-- The `engines/avatar` interface is swappable: when a paid streaming-avatar
-  API (or a future open model) meets the bar, it plugs in with zero changes
-  to show logic.
-- Lip-sync is driven by TTS phoneme/viseme timing, never by guessing.
+- **Default local = MuseTalk v1.5** (`dunso/musetalk-mac` port, MPS) run
+  as a Go-managed sidecar. It lip-syncs from audio but does NOT generate
+  head motion from audio, and it is NOT realtime on M1 Pro (~2.5–4 fps
+  estimated → offline render ~6–10 min for a 60s clip). These numbers are
+  extrapolated estimates — a real benchmark on the owner's Mac is required
+  before the sidecar contract is final.
+- **Quality bar (owner's requirement, enforced in code):** every frame must
+  look like a real person filmed — lips, eyes, head, expression and gesture
+  driven by the audio in every frame, consistent identity throughout.
+  Static-image slideshows with transitions are banned: the pipeline refuses
+  to render when the sidecar is down instead of returning a half-baked clip.
+- **Identity lock:** `sha256(reference image + seed)`; a render is refused
+  when the lock doesn't match the image on disk (no silent face drift).
+- **Emotion cues:** 17 Vietnamese tags (`[cười]`, `[thở dài]`, `[hắng giọng]`,
+  …) parsed from the TTS script and mapped to expressions per segment.
+- The chain is `local → heygen → did` (paid tiers off by default, need API
+  keys). Failover is logged to decisions, like every other engine.
+- The `engines/avatar` interface stays swappable: when a future open model
+  (or cloud GPU tier) meets the bar, it plugs in with zero changes to show
+  logic.
 
 ## 6. Governance (deterministic, Go)
 
