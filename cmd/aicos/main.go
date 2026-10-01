@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -52,7 +53,8 @@ func (d decideAdapter) Decide(agent, action string, target *string, reason strin
 }
 
 // ttsChainAdapter adapts *engines.TTSChain to web.TTSChainAPI. The engines
-// chain takes a typed ChainConfig; the web layer passes raw JSON.
+// chain takes a typed ChainConfig; the web layer passes raw JSON in the
+// dashboard contract (timeouts in seconds) — decoded by tts.ParseChainJSON.
 type ttsChainAdapter struct{ c *engines.TTSChain }
 
 func (a ttsChainAdapter) Synthesize(ctx context.Context, text, voice string) ([]byte, error) {
@@ -62,13 +64,71 @@ func (a ttsChainAdapter) Synthesize(ctx context.Context, text, voice string) ([]
 func (a ttsChainAdapter) ProviderNames() []string { return a.c.ActiveProviders() }
 
 func (a ttsChainAdapter) SetConfig(raw json.RawMessage) {
-	var cfg engines.ChainConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	cfg, err := tts.ParseChainJSON(raw)
+	if err != nil {
 		log.Printf("tts: SetConfig: invalid JSON, keeping current config: %v", err)
 		return
 	}
 	a.c.SetConfig(cfg)
 	log.Printf("tts: config updated via dashboard: active=%v", a.c.ActiveProviders())
+}
+
+// KeyStatus exposes per-key rotation state for the settings page.
+func (a ttsChainAdapter) KeyStatus(provider string) []tts.KeyStatus {
+	return a.c.KeyStatus(provider)
+}
+
+// ValidateKey tests one API key of a provider (settings "test" button).
+func (a ttsChainAdapter) ValidateKey(ctx context.Context, provider string, idx int) error {
+	return a.c.ValidateKey(ctx, provider, idx)
+}
+
+// llmChainAdapter adapts *engines.LLMChain to the web layer: it satisfies
+// web.LLMClient (Complete + Name) and additionally offers raw-JSON
+// SetConfig plus key-status / key-test for the settings page. (The typed
+// SetConfig(ChainConfig) cannot satisfy the web's SetConfig(json.RawMessage)
+// interface, hence this adapter.)
+type llmChainAdapter struct{ c *engines.LLMChain }
+
+func (a llmChainAdapter) Complete(ctx context.Context, system, prompt string) (string, error) {
+	return a.c.Complete(ctx, system, prompt)
+}
+
+func (a llmChainAdapter) Name() string { return a.c.Name() }
+
+func (a llmChainAdapter) SetConfig(raw json.RawMessage) {
+	cfg, err := tts.ParseChainJSON(raw)
+	if err != nil {
+		log.Printf("llm: SetConfig: invalid JSON, keeping current config: %v", err)
+		return
+	}
+	a.c.SetConfig(cfg)
+	log.Printf("llm: config updated via dashboard: active=%v", a.c.ActiveProviders())
+}
+
+// KeyStatus exposes per-key rotation state for the settings page.
+func (a llmChainAdapter) KeyStatus(provider string) []tts.KeyStatus {
+	return a.c.KeyStatus(provider)
+}
+
+// ValidateKey tests one API key of a provider (settings "test" button).
+func (a llmChainAdapter) ValidateKey(ctx context.Context, provider string, idx int) error {
+	return a.c.ValidateKey(ctx, provider, idx)
+}
+
+// getenvList reads a comma-separated env var into trimmed non-empty items.
+func getenvList(name string) []string {
+	v := os.Getenv(name)
+	if v == "" {
+		return nil
+	}
+	var out []string
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // vieNeuAdapter adapts *tts.VieNeuProvider to web.VieNeuCtl so the settings
@@ -156,7 +216,12 @@ func main() {
 	decider := decideAdapter{l: l}
 
 	// -- 3. chain configs from the settings table --------------------------
-	geminiKey := os.Getenv("GEMINI_API_KEY")
+	// GEMINI_API_KEYS (comma-separated) wins; legacy GEMINI_API_KEY is the
+	// single-key fallback.
+	geminiKeys := getenvList("GEMINI_API_KEYS")
+	if len(geminiKeys) == 0 {
+		geminiKeys = getenvList("GEMINI_API_KEY")
+	}
 	loadChain := func(key string, def engines.ChainConfig) (engines.ChainConfig, bool) {
 		raw, ok, err := l.GetSetting(key)
 		if err != nil {
@@ -166,16 +231,16 @@ func main() {
 		if !ok || raw == "" {
 			return def, false
 		}
-		var cfg engines.ChainConfig
-		if err := json.Unmarshal([]byte(raw), &cfg); err != nil || len(cfg.Order) == 0 {
+		cfg, err := tts.ParseChainJSON(json.RawMessage(raw))
+		if err != nil || len(cfg.Order) == 0 {
 			log.Printf("settings %s: invalid JSON, using default", key)
 			return def, false
 		}
 		return cfg, true
 	}
 	cfgSrc := func() (engines.ChainConfig, engines.ChainConfig) {
-		llmCfg, llmSaved := loadChain(ledger.SettingLLMChain, engines.DefaultLLMConfig(geminiKey))
-		ttsCfg, ttsSaved := loadChain(ledger.SettingTTSChain, engines.DefaultTTSConfig(geminiKey))
+		llmCfg, llmSaved := loadChain(ledger.SettingLLMChain, engines.DefaultLLMConfig(geminiKeys))
+		ttsCfg, ttsSaved := loadChain(ledger.SettingTTSChain, engines.DefaultTTSConfig(geminiKeys))
 		if llmSaved {
 			log.Printf("llm: using saved chain config (llm.chain)")
 		} else {
@@ -190,11 +255,13 @@ func main() {
 	}
 
 	// -- 4. provider chains -------------------------------------------------
-	llmChain, ttsChain := engines.DefaultChains(*dataDir, geminiKey, decider, cfgSrc)
+	llmChain, ttsChain := engines.DefaultChains(*dataDir, geminiKeys, decider, cfgSrc)
 	log.Printf("llm: active providers: %v", llmChain.ActiveProviders())
 	log.Printf("tts: active providers: %v", ttsChain.ActiveProviders())
-	if geminiKey == "" {
-		log.Printf("note: GEMINI_API_KEY not set — gemini tiers will fail over to local/edge tiers")
+	if len(geminiKeys) == 0 {
+		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — gemini tiers will fail over to local/edge tiers")
+	} else {
+		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -280,7 +347,7 @@ func main() {
 			log.Printf("web close: %v", err)
 		}
 	}()
-	srv.LLM = llmChain // *engines.LLMChain satisfies web.LLMClient
+	srv.LLM = llmChainAdapter{c: llmChain} // satisfies web.LLMClient + chain-config interfaces
 	srv.TTS = ttsChainAdapter{c: ttsChain}
 	srv.Health = health
 	if vieNeu != nil {

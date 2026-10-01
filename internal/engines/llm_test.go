@@ -269,7 +269,7 @@ func TestPaidProvider(t *testing.T) {
 }
 
 func TestDefaultLLMConfig(t *testing.T) {
-	cfg := DefaultLLMConfig("key")
+	cfg := DefaultLLMConfig([]string{"key"})
 	if len(cfg.Order) != 3 {
 		t.Fatalf("order len = %d", len(cfg.Order))
 	}

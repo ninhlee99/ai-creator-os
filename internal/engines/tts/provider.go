@@ -13,14 +13,19 @@ import (
 )
 
 // ProviderEntry is one row of a chain configuration: which provider, whether
-// it is enabled, its API key (empty = not entered), its per-attempt timeout
-// and how many times to retry it before failing over to the next provider.
+// it is enabled, its API keys, its per-attempt timeout and how many times to
+// retry it before failing over to the next provider.
+//
+// JSON tags match the dashboard's contract (web.ProviderEntry): timeouts
+// are SECONDS in JSON — decode with ParseChainJSON, not json.Unmarshal,
+// so the seconds->time.Duration conversion happens in one place.
 type ProviderEntry struct {
-	Name    string        // "gemini", "vieneu", "edge", "llama-server", "paid"
-	Enabled bool          // false = skipped entirely
-	APIKey  string        // key for providers that need one; "" = not entered
-	Timeout time.Duration // per-attempt timeout; <=0 = provider default
-	Retries int           // retries before failover (attempts = Retries+1)
+	Name    string        `json:"name"`              // "gemini", "vieneu", "edge", "llama-server", "paid"
+	Enabled bool          `json:"enabled"`           // false = skipped entirely
+	APIKey  string        `json:"api_key,omitempty"` // legacy single key; used only when APIKeys is empty
+	APIKeys []string      `json:"api_keys,omitempty"` // multi-key rotation (round-robin + per-key cooldown)
+	Timeout time.Duration `json:"timeout"`           // per-attempt timeout; <=0 = provider default
+	Retries int           `json:"retries"`           // retries before failover (attempts = Retries+1)
 }
 
 // ChainConfig is the user-editable chain order. The web settings page loads
@@ -90,13 +95,100 @@ func (c *TTSChain) SetConfig(cfg ChainConfig) {
 		if !ok {
 			continue
 		}
-		if s, ok := p.(interface{ SetAPIKey(string) }); ok {
-			s.SetAPIKey(e.APIKey)
+		if s, ok := p.(apiKeySetter); ok {
+			if len(e.APIKeys) > 0 {
+				s.SetAPIKeys(e.APIKeys)
+			} else {
+				s.SetAPIKey(e.APIKey)
+			}
 		}
 		if s, ok := p.(interface{ SetEnabled(bool) }); ok {
 			s.SetEnabled(e.Enabled)
 		}
 	}
+}
+
+// apiKeySetter is implemented by providers whose API keys come from the
+// chain config. SetAPIKeys is preferred when the entry carries several
+// keys; SetAPIKey is the legacy single-key path (kept as a wrapper).
+type apiKeySetter interface {
+	SetAPIKey(string)
+	SetAPIKeys([]string)
+}
+
+// chainConfigJSON is the dashboard's JSON contract for a chain config:
+// timeouts are SECONDS (matching the settings UI), keys may be single
+// (api_key) or multi (api_keys).
+type chainConfigJSON struct {
+	Order []struct {
+		Name    string   `json:"name"`
+		Enabled bool     `json:"enabled"`
+		APIKey  string   `json:"api_key"`
+		APIKeys []string `json:"api_keys"`
+		Timeout int      `json:"timeout"` // seconds
+		Retries int      `json:"retries"`
+	} `json:"order"`
+}
+
+// ParseChainJSON decodes a dashboard chain config as stored in the settings
+// table. This is the single place where the dashboard JSON contract is
+// interpreted. It fixes two silent bugs the naive json.Unmarshal had:
+//   - "api_key" was dropped (the underscore never matched field APIKey),
+//   - "timeout" seconds were read as nanoseconds.
+//
+// Unknown fields are ignored; a nil/empty raw yields an empty config.
+func ParseChainJSON(raw json.RawMessage) (ChainConfig, error) {
+	var cj chainConfigJSON
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return ChainConfig{}, nil
+	}
+	if err := json.Unmarshal(raw, &cj); err != nil {
+		return ChainConfig{}, err
+	}
+	cfg := ChainConfig{}
+	for _, e := range cj.Order {
+		cfg.Order = append(cfg.Order, ProviderEntry{
+			Name:    e.Name,
+			Enabled: e.Enabled,
+			APIKey:  e.APIKey,
+			APIKeys: e.APIKeys,
+			Timeout: time.Duration(e.Timeout) * time.Second,
+			Retries: e.Retries,
+		})
+	}
+	return cfg, nil
+}
+
+// KeyStatus returns the per-key rotation state for a provider (e.g.
+// "gemini"). Providers without key rotation report nil. Never exposes full
+// keys — see KeyStatus.
+func (c *TTSChain) KeyStatus(provider string) []KeyStatus {
+	c.mu.RLock()
+	p, ok := c.providers[provider]
+	c.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	if ks, ok := p.(interface{ KeyStatus() []KeyStatus }); ok {
+		return ks.KeyStatus()
+	}
+	return nil
+}
+
+// ValidateKey runs one minimal request with the provider's key at idx to
+// check whether it is valid. Providers without key rotation return an error.
+func (c *TTSChain) ValidateKey(ctx context.Context, provider string, idx int) error {
+	c.mu.RLock()
+	p, ok := c.providers[provider]
+	c.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("unknown provider %q", provider)
+	}
+	v, ok := p.(interface{ ValidateKey(context.Context, int) error })
+	if !ok {
+		return fmt.Errorf("provider %q does not support key testing", provider)
+	}
+	return v.ValidateKey(ctx, idx)
 }
 
 // Config returns a snapshot of the current configuration (for the dashboard).

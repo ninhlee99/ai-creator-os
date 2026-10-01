@@ -1,27 +1,11 @@
-# Mac M1 Pro: native services via launchd (primary target).
-# Linux/VPS alternative: docker compose up
+# Linux/VPS alternative. Mac M1 Pro (primary target) uses launchd:
+# see infra/mac/launchd/ai.creator-os.aicos.plist
 services:
-  orchestrator:
+  aicos:
     build: .
-    environment:
-      - DATABASE_PATH=/data/ledger.db
-    volumes:
-      - ./data:/data
-      - ./.env:/app/.env:ro
-    restart: unless-stopped
-
-  api:
-    build: .
-    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8080
+    command: ["/app/aicos", "-addr", ":8080", "-data", "/data"]
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
       - ./data:/data
-      - ./.env:/app/.env:ro
-    restart: unless-stopped
-
-  stream-engine:
-    build:
-      context: ./apps/stream-engine
-    network_mode: host
     restart: unless-stopped

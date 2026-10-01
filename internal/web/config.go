@@ -17,7 +17,9 @@ type Config struct {
 	Timezone     string
 
 	// LLM chain
-	GeminiAPIKey  string
+	GeminiAPIKey  string   // legacy single key / first key (backward compat)
+	GeminiAPIKeys []string // key rotation: GEMINI_API_KEYS (comma-separated) wins,
+	// legacy GEMINI_API_KEY is the single-key fallback
 	OllamaBaseURL string
 	OllamaModel   string
 
@@ -86,6 +88,30 @@ func getenvBool(name string, def bool) bool {
 	return v == "1" || v == "true" || v == "yes"
 }
 
+// getenvList reads a comma-separated env var into trimmed non-empty items.
+// When the primary var is empty, each fallback var is tried in order (also
+// parsed as a list, so a single-key fallback just yields one item).
+func getenvList(name string, fallbacks ...string) []string {
+	parse := func(v string) []string {
+		var out []string
+		for _, p := range strings.Split(v, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	if out := parse(os.Getenv(name)); len(out) > 0 {
+		return out
+	}
+	for _, fb := range fallbacks {
+		if out := parse(os.Getenv(fb)); len(out) > 0 {
+			return out
+		}
+	}
+	return nil
+}
+
 // LoadConfig reads the configuration from the environment, mirroring
 // config.py defaults.
 func LoadConfig() *Config {
@@ -95,6 +121,7 @@ func LoadConfig() *Config {
 		Timezone:     getenv("TIMEZONE", "Asia/Ho_Chi_Minh"),
 
 		GeminiAPIKey:  getenv("GEMINI_API_KEY", ""),
+		GeminiAPIKeys:  getenvList("GEMINI_API_KEYS", "GEMINI_API_KEY"),
 		OllamaBaseURL: getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
 		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
 
