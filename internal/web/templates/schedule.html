@@ -1,0 +1,30 @@
+{{define "title"}}Lịch live — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Lịch live — {{.DayName}}, {{.Today}}</h1>
+<p class="subtitle">Hệ thống tự xếp slot cho các tài khoản đủ điều kiện, tránh trùng persona/niche cùng giờ.</p>
+
+<div class="toolbar">
+  <form method="post" action="/schedule/build"
+        onsubmit="return confirm('Tạo lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.')">
+    <button type="submit" class="btn">Tạo lịch hôm nay</button>
+  </form>
+</div>
+
+<p><strong>{{.EligibleCount}}</strong> tài khoản đủ điều kiện live.</p>
+
+{{if .Slots}}
+<table>
+  <tr><th>Giờ bắt đầu</th><th>Thời lượng</th><th>Account ID</th><th>Trạng thái</th></tr>
+  {{range .Slots}}
+  <tr>
+    <td>{{fmtTime .StartMin}}</td>
+    <td>{{.DurationMin}} phút</td>
+    <td>{{.AccountID}}</td>
+    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa có slot nào hôm nay. Nhấn "Tạo lịch hôm nay" để hệ thống tự xếp.</p>
+{{end}}
+{{end}}

@@ -1,0 +1,30 @@
+{{define "title"}}Thêm tài khoản — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Thêm tài khoản mới</h1>
+<p class="subtitle">Tạo tài khoản và chạy onboarding tự động: gán persona, nghiên cứu niche, lên topic plan.</p>
+
+<div class="form-card">
+<form method="post" action="/accounts">
+  <div class="field">
+    <label>Username <span class="req">*</span></label>
+    <input type="text" name="username" required placeholder="vd: kechuyen_ai">
+  </div>
+  <div class="field">
+    <label>Gợi ý niche (không bắt buộc)</label>
+    <input type="text" name="niche_hint" placeholder="vd: review đồ gia dụng">
+    <div class="hint">Đây chỉ là gợi ý — AI tự nghiên cứu và quyết định niche cuối cùng.</div>
+  </div>
+  <div class="field">
+    <label>RTMP key ref</label>
+    <input type="text" name="rtmp_key_ref" placeholder="vd: RTMP_KEY_kechuyen_ai">
+    <div class="hint">Tên biến môi trường chứa RTMP key của tài khoản này.</div>
+  </div>
+  <div class="field">
+    <label>Kênh YouTube (không bắt buộc)</label>
+    <input type="text" name="youtube_channel" placeholder="vd: UCxxxxxxxx">
+  </div>
+  <button type="submit" class="btn">Tạo &amp; chạy onboarding</button>
+  <a class="btn btn-secondary" href="/accounts">Hủy</a>
+</form>
+</div>
+{{end}}
