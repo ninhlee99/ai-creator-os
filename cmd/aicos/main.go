@@ -40,6 +40,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
@@ -303,6 +304,59 @@ func getenvInt(name string, def int) int {
 func fileExists(path string) bool {
 	fi, err := os.Stat(path)
 	return err == nil && !fi.IsDir()
+}
+
+// autoPublishAffiliate posts a finished autopilot affiliate video to TikTok
+// when the UI toggle is on. Fail-closed at every step: non-affiliate jobs,
+// manual jobs (no AccountID), disabled toggle, and missing TikTok OAuth all
+// skip quietly with a job-log line. TikTok posts as draft by default
+// (TIKTOK_DRAFT_ONLY), so Ninh/Claude attaches the product link in the
+// TikTok app before going public.
+func autoPublishAffiliate(ctx context.Context, st *studio.Studio, mgr *network.AccountManager, pstore *products.Store, jobID string) {
+	j, ok := st.GetJob(jobID)
+	if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
+		return
+	}
+	var p studio.AffiliateParams
+	if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
+		return // manual studio job — never auto-publish
+	}
+	if v, _ := pstore.GetSetting(web.SettingAutopilotAutoPublish); v != "1" {
+		return
+	}
+	acct, err := mgr.Get(p.AccountID)
+	if err != nil {
+		st.AppendLog(jobID, "Tự đăng: không tìm thấy account — bỏ qua.")
+		return
+	}
+	var pub publishers.Publisher
+	for _, c := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes) {
+		if c.Name() == "tiktok" && c.IsConfigured() && c.Handles("short_video") {
+			pub = c
+			break
+		}
+	}
+	if pub == nil {
+		st.AppendLog(jobID, "Tự đăng: TikTok chưa cấu hình OAuth — video nằm ở output, đăng tay hoặc bật sau khi OAuth xong.")
+		return
+	}
+	title := j.Title
+	if p.ProductName != "" {
+		title = p.ProductName
+	}
+	st.AppendLog(jobID, "Tự đăng TikTok…")
+	res := pub.Publish(ctx, j.Output, title, j.Caption, "short_video")
+	if !res.Ok {
+		st.AppendLog(jobID, "Tự đăng thất bại: "+res.Error)
+		log.Printf("autopublish job %s: %s", jobID, res.Error)
+		return
+	}
+	if res.Draft {
+		st.AppendLog(jobID, "Đã đăng lên TikTok dưới dạng NHÁP (draft id "+res.RemoteID+") — gắn giỏ hàng + sound trong app TikTok rồi hãy public.")
+	} else {
+		st.AppendLog(jobID, "Đã đăng TikTok (id "+res.RemoteID+").")
+	}
+	log.Printf("autopublish job %s -> tiktok draft=%v id=%s", jobID, res.Draft, res.RemoteID)
 }
 
 func main() {
@@ -582,6 +636,12 @@ func main() {
 				srv.Autopilot = ap
 				log.Printf("autopilot: ready (tiktok_shop configured=%v)",
 					shopProvider.Configured())
+				// After every finished studio job: auto-publish affiliate
+				// videos to TikTok when the UI toggle is on. Fail-closed:
+				// without a configured TikTok publisher nothing is posted.
+				srv.Studio.SetOnDone(func(id string) {
+					go autoPublishAffiliate(ctx, srv.Studio, mgr, pstore, id)
+				})
 				// One-time seed from env so existing deployments keep working;
 				// after that the web UI (/products) is the only control plane.
 				// Default off — a fresh install never spends quota by surprise.
@@ -593,6 +653,11 @@ func main() {
 					} else {
 						_ = pstore.SetSetting(web.SettingAutopilotEnabled, "0")
 					}
+				}
+				// Auto-publish defaults OFF: posting is public and hard to
+				// undo — Ninh enables it explicitly in the /products UI.
+				if _, ok := pstore.GetSetting(web.SettingAutopilotAutoPublish); !ok {
+					_ = pstore.SetSetting(web.SettingAutopilotAutoPublish, "0")
 				}
 				// Background scheduler, driven by UI-managed settings.
 				// Checks every minute; runs when enabled and the interval elapsed.

@@ -53,6 +53,7 @@ const (
 // AffiliateParams describes one affiliate-video job.
 type AffiliateParams struct {
 	Mode         string  `json:"mode"` // photo | shots
+	AccountID    int64   `json:"account_id,omitempty"` // set by autopilot
 	Niche        string  `json:"niche"`
 	ProductName  string  `json:"product_name"`
 	ModelPhoto   string  `json:"model_photo"`   // local path (identity lock)
@@ -80,6 +81,7 @@ type Job struct {
 	Progress   int    `json:"progress"` // 0-100
 	Log        string `json:"log"`
 	Output     string `json:"output"` // final file, "" until done
+	Caption    string `json:"caption"`
 	Params     string `json:"params"`
 	CreatedAt  string `json:"created_at"`
 	FinishedAt string `json:"finished_at"`
@@ -108,6 +110,7 @@ type Studio struct {
 	outDir   string
 	workRoot string
 	running  map[string]context.CancelFunc
+	onDone   OnDoneFunc
 }
 
 // New opens (or creates) the studio database and returns the orchestrator.
@@ -157,7 +160,19 @@ func (s *Studio) migrate() error {
 		path TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '',
 		status TEXT NOT NULL DEFAULT 'queued');
 	CREATE INDEX IF NOT EXISTS idx_studio_assets_job ON studio_assets(job_id);`)
-	return err
+	if err != nil {
+		return err
+	}
+	// Additive migrations: tolerate "duplicate column" on re-run.
+	for _, q := range []string{
+		`ALTER TABLE studio_jobs ADD COLUMN caption TEXT NOT NULL DEFAULT ''`,
+	} {
+		if _, err := s.db.Exec(q); err != nil &&
+			!strings.Contains(err.Error(), "duplicate column") {
+			return err
+		}
+	}
+	return nil
 }
 
 // Close releases the database handle.
@@ -208,6 +223,34 @@ func (s *Studio) setOutput(id, output string) {
 	s.db.Exec(`UPDATE studio_jobs SET output=? WHERE id=?`, output, id)
 }
 
+func (s *Studio) setCaption(id, caption string) {
+	s.db.Exec(`UPDATE studio_jobs SET caption=? WHERE id=?`, caption, id)
+}
+
+// AppendLog adds a line to a job's log from outside the studio package
+// (e.g. the auto-publish hook in cmd/aicos).
+func (s *Studio) AppendLog(id, line string) { s.appendLog(id, line) }
+
+// OnDoneFunc runs after a studio job finishes successfully. It is called
+// from the job's goroutine; keep it quick or spawn its own goroutine.
+type OnDoneFunc func(jobID string)
+
+// SetOnDone registers the completion hook (nil clears it).
+func (s *Studio) SetOnDone(fn OnDoneFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onDone = fn
+}
+
+func (s *Studio) fireOnDone(id string) {
+	s.mu.Lock()
+	fn := s.onDone
+	s.mu.Unlock()
+	if fn != nil {
+		fn(id)
+	}
+}
+
 func (s *Studio) appendLog(id, line string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -234,8 +277,8 @@ func (s *Studio) setAsset(id int64, status, path string) {
 // GetJob returns one job.
 func (s *Studio) GetJob(id string) (Job, bool) {
 	var j Job
-	err := s.db.QueryRow(`SELECT id,kind,title,status,progress,log,output,params,created_at,finished_at FROM studio_jobs WHERE id=?`, id).
-		Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Log, &j.Output, &j.Params, &j.CreatedAt, &j.FinishedAt)
+	err := s.db.QueryRow(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at FROM studio_jobs WHERE id=?`, id).
+		Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Log, &j.Output, &j.Caption, &j.Params, &j.CreatedAt, &j.FinishedAt)
 	return j, err == nil
 }
 
@@ -542,8 +585,19 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	}
 
 	s.setOutput(id, final)
+	// Caption + hashtag for the post (used by auto-publish, and shown in
+	// the UI for manual posting).
+	if s.llm != nil {
+		s.appendLog(id, "Viết caption + hashtag…")
+		if cap, cerr := WriteCaption(ctx, s.llm, p.ProductName, p.Niche); cerr == nil {
+			s.setCaption(id, cap)
+		} else {
+			s.appendLog(id, "Caption lỗi: "+cerr.Error())
+		}
+	}
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Xong: "+filepath.Base(final))
+	s.fireOnDone(id)
 }
 
 // ---------------------------------------------------------------------------
@@ -703,6 +757,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	s.setOutput(id, final)
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Xong: "+filepath.Base(final))
+	s.fireOnDone(id)
 }
 
 // ---------------------------------------------------------------------------

@@ -166,6 +166,9 @@ function toggleBoard(id){
   fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
     var h = "";
     if(d.job && d.job.log){ document.getElementById("log-"+id).textContent = d.job.log; }
+    if(d.job && d.job.caption){
+      h += '<div class="shot"><div class="shot-head">📝 Caption + hashtag <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById(\'cap-'+id+'\').textContent)">Copy</button></div><div class="hint" id="cap-'+id+'">'+d.job.caption.replace(/\n/g,"<br>")+'</div></div>';
+    }
     (d.assets||[]).forEach(function(a){
       h += '<div class="shot"><div class="shot-head">#'+(a.idx+1)+' <span class="badge badge-'+a.status+'">'+a.status+'</span> <em>'+a.kind+'</em></div>';
       if(a.preview){

@@ -137,6 +137,7 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 	}
 	jobID, err := a.studio.CreateAffiliateJob(AffiliateParams{
 		Mode:         AffiliateModePhoto,
+		AccountID:    accountID,
 		Niche:        themeLabel,
 		ProductName:  prod.Title,
 		ModelPhoto:   mps[0].Path,
