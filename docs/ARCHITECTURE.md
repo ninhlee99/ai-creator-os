@@ -14,12 +14,16 @@ flipping the master switch and watching the dashboard.
 1. **One money loop, per account.** Everything serves: discover → attract →
    convert → reconcile → reinvest. Tracked separately for each account so
    winners get prime slots and losers get cut.
-2. **Lightweight stack — Go first.** Go for orchestration, scheduling,
-   account management, streaming and API (one ~10MB binary, 5–20MB RAM per
-   service, instant start). Python only where the ecosystem forces it
-   (game-playing agent, local TTS/music glue) as isolated workers.
-   SQLite for state. No Kubernetes, no Java, no Node, no heavy frontend
-   build. Must run comfortably on a Mac M1 Pro 32GB.
+2. **Lightweight stack — Go only.** The entire codebase is Go: orchestration,
+   scheduling, account management, streaming, API/dashboard, provider chains
+   and governance — one static binary (`aicos`), ~15MB, tens of MB RAM,
+   instant start, goroutines multiplex N accounts on one machine.
+   No Python runtime, no venv, no pip. SQLite for state. No Kubernetes,
+   no Java, no Node, no heavy frontend build. Runs comfortably on a
+   Mac M1 Pro 32GB.
+   Third-party model servers (VieNeu-TTS v3, llama-server) run as isolated
+   sidecar subprocesses managed by the Go binary — they are external tools
+   like FFmpeg, not our code.
 3. **Free API first, local second, paid optional.** Every external capability
    (LLM, TTS, avatar) is a provider interface with a priority chain. Free
    realtime APIs are tried first; local models are the fallback; paid APIs are
@@ -42,7 +46,7 @@ flipping the master switch and watching the dashboard.
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌───────────────────────▼─────────────────────────────────────┐
-│ ORCHESTRATOR (Go - target; Python scaffold is reference)    │
+│ ORCHESTRATOR (Go — done since v0.5)                           │
 │  AccountManager: registry, onboarding pipeline, RTMP keys  │
 │  PersonaEngine:  persona per account (voice, avatar, niche) │
 │  Scheduler:      golden-hour slots, max 2 concurrent lives  │
@@ -58,12 +62,12 @@ flipping the master switch and watching the dashboard.
 └──────┬───┘ └────┬─────┘ └──────┬──────┘ └─────┬──────┘
        │          │              │              │
 ┌──────▼───────────▼──────────────▼──────────────▼──────────────┐
-│ ENGINES (free API -> local -> paid)                         │
-│  llm/    gemini-free -> ollama                              │
-│  tts/    free-vi-tts -> local                               │
+│ ENGINES (user-configurable provider chains)                   │
+│  llm/    gemini -> llama-server local (GGUF) -> paid (off)    │
+│  tts/    gemini -> vieneu-v3 local -> edge (all swappable)    │
 │  avatar/ local-stylized -> streaming-api (paid, optional)    │
-│  music/  licensed-ai-model -> human-edit -> similarity-check │
-│  game/   python worker: vision + controller (per game)       │
+│  music/  phase 3: licensed-ai-model -> human-edit            │
+│  game/   phase 2: Go-native where allowed by game ToS        │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
 │ STREAM-ENGINE (Go) x N - one supervisor per live account    │
@@ -119,10 +123,10 @@ Each engine is an interface. The orchestrator asks for a capability; the
 engine walks its chain until one succeeds. Usage is metered so free-tier
 caps are never silently exceeded.
 
-| Engine | Chain (in order) | Notes |
+| Engine | Default chain (user-reorderable in Settings) | Notes |
 |---|---|---|
-| LLM | Gemini free tier → Ollama local | Director/reasoning. Free API first for speed; local for privacy/offline. |
-| TTS | Free Vietnamese TTS API → local model | Must support natural Vietnamese prosody: rhythm, pitch, stress. Chain order confirmed by research. |
+| LLM | Gemini → llama-server local (GGUF 8B) → paid (opt-in, off) | Director/reasoning. Free API first for speed; local GGUF for offline/privacy. Chain order, keys and retry policy editable in dashboard Settings; failover is logged to decisions. |
+| TTS | Gemini → VieNeu-TTS v3 local → Edge TTS | Must support natural Vietnamese prosody: rhythm, pitch, stress. VieNeu runs as a managed sidecar (OpenAI-compatible `POST /v1/audio/speech`); emotion cues (`[cười]`, `[thở dài]`) pass through untouched. |
 | Avatar | Local stylized realtime → paid streaming API | See §5 — honest limitation documented. |
 
 ## 5. Avatar: the hard truth
@@ -139,9 +143,9 @@ something. Therefore:
   to show logic.
 - Lip-sync is driven by TTS phoneme/viseme timing, never by guessing.
 
-## 6. Governance (deterministic, Python)
+## 6. Governance (deterministic, Go)
 
-`apps/orchestrator/governance.py` — pure functions, no LLM inside:
+`internal/agents/governance` — pure functions, no LLM inside:
 
 - Budget caps: per-day API spend, per-session stream cost.
 - Kill thresholds: products and content formats die by rule, not by debate.
@@ -182,31 +186,33 @@ A tiny supervisor, not a media framework:
    governance kill, any error in money path. The human is hands-off but
    never blind.
 6. **Rehearsal.** Full pipeline runs end-to-end against mocks before any
-   real session. `make rehearse` must pass.
+   real session. `go test ./...` must pass.
 7. **Backups.** Nightly SQLite snapshot + config backup, 30-day retention.
 8. **Cost meters.** Every engine call logs usage; free-tier caps are hard
    stops, not warnings.
 
-## 10. Language decision record (2026-10-01)
+## 10. Language decision record (2026-10-01, executed as v0.5-go)
 
-**Go is the primary language** for everything hot: orchestrator, scheduler,
-account manager, stream supervisor, control-plane API. One static binary
-(~10MB), 5–20MB RAM per service, millisecond startup, goroutines multiplex
-N accounts on one machine. It is the lightest choice that stays easy to
-write and debug for a one-person team.
+**Go was chosen over Rust and Python** (owner delegated the choice):
+- vs Python — one static binary, no interpreter/venv/pip; no GIL so N live
+  accounts truly run concurrently; far lower RAM for 24/7 processes;
+  compile-time type safety catches bugs (missing helpers, wrong signatures)
+  that Python only reveals at runtime. Nothing in the design needs
+  numpy/torch — AI goes through HTTP APIs, video through FFmpeg.
+- vs Rust — this workload is I/O-bound (web server, API calls, scheduling,
+  DB), not CPU-bound, so Rust's zero-cost abstractions buy little; Go ships
+  features far faster for a one-person team (no borrow checker fights);
+  builds take seconds not minutes; `net/http` + `html/template` are in the
+  standard library.
 
-**Python stays only where the ecosystem forces it**, as isolated workers
-invoked by the Go orchestrator:
-- game-playing agent (mss / pyautogui / OpenCV have no Go equivalent worth
-  using),
-- local Vietnamese TTS glue and music-pipeline glue.
+**The codebase is now 100% Go** (v0.5-go: 75 files, 16 packages,
+176 tests green). The old Python sources are kept untouched as reference
+until feature parity is signed off on the owner's Mac, then removed.
 
-The current Python scaffold remains the executable reference for business
-logic (persona rules, schedule policy, governance); hot paths migrate to Go
-during production wiring. No logic changes in migration — only the runtime.
-
-**Not used:** Node.js (RAM-hungry), Rust (slow iteration for solo dev),
-Kubernetes/Java/heavy frontend builds (ops cost with zero revenue link).
+**Not used:** Node.js (RAM-hungry), Kubernetes/Java/heavy frontend builds
+(ops cost with zero revenue link). Local model sidecars (VieNeu-TTS,
+llama-server) are third-party tools managed as subprocesses — like FFmpeg —
+not our code.
 
 ## 11. What this v1 does NOT do
 

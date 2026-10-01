@@ -137,20 +137,22 @@ Nguyên tắc: **nhẹ + nhanh + dễ** — RAM/CPU là tài nguyên khan nhất
 
 | Thành phần | Ngôn ngữ | Vì sao |
 |---|---|---|
-| Orchestrator, scheduler, account manager, control-plane API | **Go** | 1 binary ~10MB, RAM 5–20MB/service, khởi động tức thì, goroutine chạy N account song song, build 1 lệnh. Nhẹ hơn Python hàng chục lần ở cùng tải. |
-| Stream supervisor | **Go** (đã có) | Đang chạy tốt, giữ nguyên. |
-| Game-playing agent | **Python** | Bắt buộc vì hệ sinh thái: mss, pyautogui, OpenCV. Chạy như worker riêng, Go gọi qua subprocess. |
-| Local TTS glue, music pipeline glue | **Python** | Bắt buộc vì lib TTS/music. Worker riêng, có fallback API. |
+| Orchestrator, scheduler, account manager, control-plane API, dashboard | **Go** | 1 binary `aicos` ~15MB, RAM vài chục MB, khởi động tức thì, goroutine chạy N account song song, build 1 lệnh. |
+| Stream supervisor | **Go** | Cùng binary, watchdog + auto-reconnect. |
+| Game-playing agent (phase 2) | **Go** | Chỉ chơi game có bot/API chính thức hoặc offline (xem §8b) — Go gọi API/input automation, không cần Python. |
+| Local TTS (VieNeu-TTS v3) | Sidecar độc lập | Server tương thích OpenAI do binary Go quản lý (start/stop/health check) — như FFmpeg, không phải code dự án. |
+| Local LLM (llama-server) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình. |
+| Music pipeline (phase 3) | **Go + API** | Ưu tiên API; local chỉ khi có model đủ tốt. |
 | Ledger | **SQLite WAL** | 0 ops, nhẹ SSD, đủ cho quy mô này. |
 | Media | **FFmpeg** (binary ngoài) | Chuẩn ngành, không thay thế. |
 
-**Không dùng:** Node.js (ngốn RAM), Rust (tốc độ dev chậm cho team 1 người),
-stack nặng (K8s, Java, frontend build phức tạp).
+**Không dùng:** Node.js (ngốn RAM), Rust (tốc độ dev chậm cho team 1 người —
+so sánh chi tiết ở `docs/ARCHITECTURE.md` §10), stack nặng (K8s, Java,
+frontend build phức tạp). Không còn Python runtime trong dự án.
 
-Lộ trình: scaffold hiện tại bằng Python (đã test được) giữ nguyên làm
-tham chiếu; các hot path (scheduler, account manager, API) migrate sang Go
-khi wire production. Logic nghiệp vụ (persona, luật schedule, governance)
-giữ nguyên — chỉ đổi ngôn ngữ thực thi.
+Lộ trình: v0.5-go đã port toàn bộ sang Go (176/176 test pass). Code Python cũ
+giữ nguyên làm tham chiếu cho tới khi test parity xong trên Mac của chủ sở
+hữu, sau đó xóa.
 
 ## 8b. Game shortlist cho Game Master (Phase 2) — verify 2026-10-01
 
