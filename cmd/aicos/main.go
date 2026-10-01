@@ -74,8 +74,8 @@ func (a ttsChainAdapter) SetConfig(raw json.RawMessage) {
 }
 
 // KeyStatus exposes per-key rotation state for the settings page.
-func (a ttsChainAdapter) KeyStatus(provider string) []tts.KeyStatus {
-	return a.c.KeyStatus(provider)
+func (a ttsChainAdapter) KeyStatus(provider string) []web.KeyStatus {
+	return toWebKeyStatus(a.c.KeyStatus(provider))
 }
 
 // ValidateKey tests one API key of a provider (settings "test" button).
@@ -107,13 +107,35 @@ func (a llmChainAdapter) SetConfig(raw json.RawMessage) {
 }
 
 // KeyStatus exposes per-key rotation state for the settings page.
-func (a llmChainAdapter) KeyStatus(provider string) []tts.KeyStatus {
-	return a.c.KeyStatus(provider)
+func (a llmChainAdapter) KeyStatus(provider string) []web.KeyStatus {
+	return toWebKeyStatus(a.c.KeyStatus(provider))
 }
 
 // ValidateKey tests one API key of a provider (settings "test" button).
 func (a llmChainAdapter) ValidateKey(ctx context.Context, provider string, idx int) error {
 	return a.c.ValidateKey(ctx, provider, idx)
+}
+
+// toWebKeyStatus converts the engines keyring statuses to the web
+// package's render-ready type (masked, with badge/label fields). The web
+// package never imports internal/engines, so the conversion lives here.
+func toWebKeyStatus(in []tts.KeyStatus) []web.KeyStatus {
+	out := make([]web.KeyStatus, 0, len(in))
+	for _, ks := range in {
+		w := web.KeyStatus{
+			Index:                ks.Index,
+			Last4:                ks.Last4,
+			State:                ks.State,
+			CooldownRemainingSec: ks.CooldownRemainingSec,
+			RateLimitHits:        ks.RateLimitHits,
+			Requests:             ks.Requests,
+			LastRateLimitUnix:    ks.LastRateLimitUnix,
+			Total:                len(in),
+		}
+		w.FillDerived()
+		out = append(out, w)
+	}
+	return out
 }
 
 // getenvList reads a comma-separated env var into trimmed non-empty items.

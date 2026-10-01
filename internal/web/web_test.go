@@ -118,7 +118,8 @@ func TestDryRunToggle(t *testing.T) {
 	}
 }
 
-// (4) POST /settings/chain saves JSON; GET /settings/chain reads it back.
+// (4) POST /settings/chain saves JSON; GET /settings/chain reads it back
+// with API keys MASKED (never raw).
 func TestChainSaveAndGet(t *testing.T) {
 	s := newTestServer(t)
 	form := url.Values{
@@ -141,17 +142,32 @@ func TestChainSaveAndGet(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode chain json: %v", err)
 	}
+	// "k1" is a short test key -> fully masked as "••••"; the raw key must
+	// never appear in the JSON API.
 	want := ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKey: "k1", TimeoutSec: 60, Retries: 1},
+		{Name: "gemini", Enabled: true, APIKeys: []string{"••••"}, TimeoutSec: 60, Retries: 1},
 		{Name: "edge", Enabled: false, TimeoutSec: 30, Retries: 0},
 	}}
 	if len(got.Order) != len(want.Order) {
 		t.Fatalf("order = %+v, want %+v", got.Order, want.Order)
 	}
 	for i := range want.Order {
-		if got.Order[i] != want.Order[i] {
+		if got.Order[i].Name != want.Order[i].Name ||
+			got.Order[i].Enabled != want.Order[i].Enabled ||
+			got.Order[i].TimeoutSec != want.Order[i].TimeoutSec ||
+			got.Order[i].Retries != want.Order[i].Retries ||
+			got.Order[i].APIKey != "" ||
+			len(got.Order[i].APIKeys) != len(want.Order[i].APIKeys) {
 			t.Fatalf("order[%d] = %+v, want %+v", i, got.Order[i], want.Order[i])
 		}
+		for j := range want.Order[i].APIKeys {
+			if got.Order[i].APIKeys[j] != want.Order[i].APIKeys[j] {
+				t.Fatalf("order[%d].APIKeys[%d] = %q, want %q", i, j, got.Order[i].APIKeys[j], want.Order[i].APIKeys[j])
+			}
+		}
+	}
+	if strings.Contains(rec.Body.String(), "k1") {
+		t.Fatalf("GET /settings/chain leaked the raw key: %s", rec.Body.String())
 	}
 
 	// move gemini down: order becomes edge, gemini
@@ -300,5 +316,194 @@ func TestScheduleBuild(t *testing.T) {
 		if sl.SlotDate != s.today() {
 			t.Fatalf("slot date = %q, want today", sl.SlotDate)
 		}
+	}
+}
+
+// (8) Keyring endpoints: add / duplicate / status / delete, all masked.
+func TestKeyAddDeleteStatus(t *testing.T) {
+	s := newTestServer(t)
+	const key1 = "test-key-ABCDEF1234"
+	const key2 = "test-key-ZZZZZZ5678"
+
+	add := func(key string) map[string]any {
+		t.Helper()
+		rec := postForm(t, s, "/settings/keys/add?chain=llm&provider=gemini",
+			url.Values{"key": {key}})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("POST /settings/keys/add = %d, want 200 (%s)", rec.Code, rec.Body.String())
+		}
+		var j map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &j); err != nil {
+			t.Fatal(err)
+		}
+		return j
+	}
+
+	j := add(key1)
+	if j["ok"] != true || j["duplicate"] != false {
+		t.Fatalf("add key1 = %v, want ok+not duplicate", j)
+	}
+	if j["masked"] != "••••••••1234" {
+		t.Fatalf("add key1 masked = %v, want ••••••••1234", j["masked"])
+	}
+	if j["total"] != float64(1) {
+		t.Fatalf("add key1 total = %v, want 1", j["total"])
+	}
+
+	// duplicate add: no second copy
+	j = add(key1)
+	if j["duplicate"] != true || j["total"] != float64(1) {
+		t.Fatalf("duplicate add = %v, want duplicate+total 1", j)
+	}
+
+	j = add(key2)
+	if j["total"] != float64(2) {
+		t.Fatalf("add key2 total = %v, want 2", j["total"])
+	}
+
+	// status: masked, render-ready, no raw keys anywhere
+	rec := get(t, s, "/settings/keys/status?chain=llm&provider=gemini")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /settings/keys/status = %d, want 200", rec.Code)
+	}
+	var st struct {
+		Ok   bool        `json:"ok"`
+		Keys []KeyStatus `json:"keys"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &st); err != nil {
+		t.Fatal(err)
+	}
+	if !st.Ok || len(st.Keys) != 2 {
+		t.Fatalf("status = %+v, want 2 keys", st)
+	}
+	if st.Keys[0].Masked != "••••••••1234" || st.Keys[1].Masked != "••••••••5678" {
+		t.Fatalf("status masked = %q %q", st.Keys[0].Masked, st.Keys[1].Masked)
+	}
+	if st.Keys[0].BadgeClass != "badge-ok" || st.Keys[0].StateLabel != "Hoạt động" {
+		t.Fatalf("status[0] badge = %q label = %q", st.Keys[0].BadgeClass, st.Keys[0].StateLabel)
+	}
+	if body := rec.Body.String(); strings.Contains(body, key1) || strings.Contains(body, key2) {
+		t.Fatalf("status JSON leaked a raw key: %s", body)
+	}
+
+	// delete first key
+	rec = postForm(t, s, "/settings/keys/delete?chain=llm&provider=gemini",
+		url.Values{"idx": {"0"}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /settings/keys/delete = %d, want 200", rec.Code)
+	}
+	var del map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &del); err != nil {
+		t.Fatal(err)
+	}
+	if del["ok"] != true || del["total"] != float64(1) || del["masked"] != "••••••••1234" {
+		t.Fatalf("delete = %v, want ok+total 1+masked", del)
+	}
+	if body := rec.Body.String(); strings.Contains(body, key1) {
+		t.Fatalf("delete response leaked a raw key: %s", body)
+	}
+
+	// delete out of range -> 400
+	if rec := postForm(t, s, "/settings/keys/delete?chain=llm&provider=gemini",
+		url.Values{"idx": {"7"}}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("delete idx=7 = %d, want 400", rec.Code)
+	}
+
+	// empty key -> 400
+	if rec := postForm(t, s, "/settings/keys/add?chain=llm&provider=gemini",
+		url.Values{"key": {"  "}}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("add empty key = %d, want 400", rec.Code)
+	}
+
+	// unknown chain -> 400
+	if rec := postForm(t, s, "/settings/keys/add?chain=nope&provider=gemini",
+		url.Values{"key": {"x"}}); rec.Code != http.StatusBadRequest {
+		t.Fatalf("add unknown chain = %d, want 400", rec.Code)
+	}
+
+	// test endpoint without a wired adapter -> 501, never leaks the key
+	rec = postForm(t, s, "/settings/keys/test?chain=llm&provider=gemini",
+		url.Values{"idx": {"0"}})
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("POST /settings/keys/test = %d, want 501", rec.Code)
+	}
+}
+
+// (9) The main chain form preserves keyring-managed keys: the new template
+// posts an empty apikey placeholder for gemini rows, which must not wipe
+// the stored keys.
+func TestChainSavePreservesGeminiKeys(t *testing.T) {
+	s := newTestServer(t)
+	const key = "preserve-me-KEY9999"
+	if rec := postForm(t, s, "/settings/keys/add?chain=tts&provider=gemini",
+		url.Values{"key": {key}}); rec.Code != http.StatusOK {
+		t.Fatalf("add = %d, want 200", rec.Code)
+	}
+	// what the new settings form posts for a gemini row: empty apikey
+	form := url.Values{
+		"pname":   {"gemini", "edge"},
+		"enabled": {"0", "1"},
+		"apikey":  {"", ""},
+		"timeout": {"60", "30"},
+		"retries": {"1", "0"},
+	}
+	if rec := postForm(t, s, "/settings/chain?name=tts", form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("POST /settings/chain = %d, want 303", rec.Code)
+	}
+	rec := get(t, s, "/settings/keys/status?chain=tts&provider=gemini")
+	var st struct {
+		Keys []KeyStatus `json:"keys"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &st); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Keys) != 1 || st.Keys[0].Masked != "••••••••9999" {
+		t.Fatalf("keys after chain save = %+v, want the preserved key", st.Keys)
+	}
+}
+
+// (10) The settings page renders the keyring UI with masked keys only.
+func TestSettingsPageMasksKeys(t *testing.T) {
+	s := newTestServer(t)
+	const key = "page-render-SECRET4321"
+	if rec := postForm(t, s, "/settings/keys/add?chain=llm&provider=gemini",
+		url.Values{"key": {key}}); rec.Code != http.StatusOK {
+		t.Fatalf("add = %d, want 200", rec.Code)
+	}
+	rec := get(t, s, "/settings")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /settings = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, key) {
+		t.Fatalf("settings page leaked the raw key")
+	}
+	for _, want := range []string{`class="keyring"`, "••••••••4321", "Hoạt động", "+ Thêm key", "aistudio.google.com", `id="toast"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("settings page missing %q", want)
+		}
+	}
+}
+
+// (11) MaskKey / FillDerived unit checks.
+func TestMaskKey(t *testing.T) {
+	if got := MaskKey("abcdef1234"); got != "••••••••1234" {
+		t.Fatalf("MaskKey = %q", got)
+	}
+	if got := MaskKey("k1"); got != "••••" {
+		t.Fatalf("MaskKey(short) = %q, want fully hidden", got)
+	}
+	ks := KeyStatus{Index: 0, Last4: "1234", State: "cooldown", CooldownRemainingSec: 42}
+	ks.FillDerived()
+	if ks.BadgeClass != "badge-warn" || ks.StateLabel != "Nghỉ cooldown" {
+		t.Fatalf("FillDerived cooldown = %+v", ks)
+	}
+	if ks.CooldownLabel() != "Nghỉ cooldown còn 42s" {
+		t.Fatalf("CooldownLabel = %q", ks.CooldownLabel())
+	}
+	ks = KeyStatus{Index: 0, Last4: "ab", State: "ok"}
+	ks.FillDerived()
+	if ks.Masked != "••••" || ks.Last4 != "••••" {
+		t.Fatalf("FillDerived short key leaked: %+v", ks)
 	}
 }

@@ -282,8 +282,8 @@ func TestDefaultLLMConfig(t *testing.T) {
 	if cfg.Order[2].Enabled {
 		t.Fatal("paid should be disabled")
 	}
-	if cfg.Order[0].APIKey != "key" {
-		t.Fatalf("gemini key = %q", cfg.Order[0].APIKey)
+	if len(cfg.Order[0].APIKeys) != 1 || cfg.Order[0].APIKeys[0] != "key" {
+		t.Fatalf("gemini keys = %q", cfg.Order[0].APIKeys)
 	}
 }
 
