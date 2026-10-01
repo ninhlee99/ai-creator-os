@@ -89,7 +89,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	enabled, hours, lastRun, music := s.scheduleView()
+	enabled, hours, lastRun, music, autoPub := s.scheduleView()
 	s.render(w, "products", s.ctx(
 		"Themes", themeOptions(),
 		"Theme", theme,
@@ -100,7 +100,59 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"SchedHours", hours,
 		"SchedLastRun", lastRun,
 		"MusicName", music,
+		"AutoPublish", autoPub,
 	))
+}
+
+// handleProductsAdd saves a manually-entered product into the store. This is
+// the practical path while the TikTok Shop provider is fail-closed: Ninh
+// (or Claude on the Mac) pastes a high-commission product's details, and
+// autopilot can then pick it up like any discovered product.
+func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
+	if s.Products == nil {
+		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "add product")
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse product form")
+		return
+	}
+	title := strings.TrimSpace(r.PostFormValue("title"))
+	theme := strings.TrimSpace(r.PostFormValue("theme"))
+	if title == "" || theme == "" {
+		s.fail(w, fmt.Errorf("thiếu tên sản phẩm hoặc theme"), "add product")
+		return
+	}
+	price, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("price")), 64)
+	commPct, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("commission_pct")), 64)
+	rating, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("rating")), 64)
+	var sold int64
+	fmt.Sscanf(strings.TrimSpace(r.PostFormValue("sold")), "%d", &sold)
+	var imgs []string
+	for _, u := range strings.Split(r.PostFormValue("image_url"), "\n") {
+		if u = strings.TrimSpace(u); u != "" {
+			imgs = append(imgs, u)
+		}
+	}
+	p := products.Product{
+		Source:         "manual",
+		SourceID:       fmt.Sprintf("manual-%d", time.Now().UnixNano()),
+		Title:          title,
+		Theme:          theme,
+		ShopName:       strings.TrimSpace(r.PostFormValue("shop")),
+		Price:          price,
+		Currency:       "VND",
+		CommissionRate: commPct / 100,
+		Rating:         rating,
+		SoldCount:      sold,
+		ImageURLs:      imgs,
+		ProductURL:     strings.TrimSpace(r.PostFormValue("product_url")),
+	}
+	if _, err := s.Products.Save(p); err != nil {
+		s.fail(w, err, "save product")
+		return
+	}
+	seeOther(w, r, "/products?theme="+url.QueryEscape(theme)+"&ok="+url.QueryEscape("Đã lưu sản phẩm \""+title+"\" — autopilot có thể dùng ngay."))
 }
 
 // handleProductsSearch runs the configured providers for a theme, saves
@@ -428,10 +480,11 @@ func (s *Server) handleModelPhoto(w http.ResponseWriter, r *http.Request) {
 // or CLI): these settings live in the products store. Exported so cmd/aicos
 // (the scheduler loop) reads the same keys the UI writes.
 const (
-	SettingAutopilotEnabled  = "autopilot_enabled"
-	SettingAutopilotInterval = "autopilot_interval_hours"
-	SettingAutopilotLastRun  = "autopilot_last_run"
-	SettingAutopilotMusic    = "autopilot_music_name"
+	SettingAutopilotEnabled     = "autopilot_enabled"
+	SettingAutopilotInterval    = "autopilot_interval_hours"
+	SettingAutopilotLastRun     = "autopilot_last_run"
+	SettingAutopilotMusic       = "autopilot_music_name"
+	SettingAutopilotAutoPublish = "autopilot_auto_publish"
 )
 
 const (
@@ -451,7 +504,7 @@ func autopilotMusicPath(databasePath string) string {
 }
 
 // scheduleView reads the current schedule state for the products page.
-func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string) {
+func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string, autoPublish bool) {
 	hours = 6
 	if s.Products == nil {
 		return
@@ -470,11 +523,14 @@ func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string)
 	if v, ok := s.Products.GetSetting(setMusicName); ok {
 		music = v
 	}
+	if v, ok := s.Products.GetSetting(SettingAutopilotAutoPublish); ok && v == "1" {
+		autoPublish = true
+	}
 	return
 }
 
 // handleProductsSchedule saves the autopilot background schedule from the
-// web UI: enable toggle + interval in hours.
+// web UI: enable toggle + interval in hours + auto-publish toggle.
 func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {
 		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "save schedule")
@@ -488,6 +544,10 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 	if r.PostFormValue("enabled") == "on" {
 		enabled = "1"
 	}
+	autoPub := "0"
+	if r.PostFormValue("auto_publish") == "on" {
+		autoPub = "1"
+	}
 	hours := 6
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
@@ -500,9 +560,16 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 		s.fail(w, err, "save schedule")
 		return
 	}
+	if err := s.Products.SetSetting(SettingAutopilotAutoPublish, autoPub); err != nil {
+		s.fail(w, err, "save schedule")
+		return
+	}
 	msg := "Đã tắt lịch autopilot."
 	if enabled == "1" {
 		msg = fmt.Sprintf("Đã bật lịch autopilot — chạy mỗi %d giờ cho các account đã sẵn sàng.", hours)
+	}
+	if autoPub == "1" {
+		msg += " Video xong sẽ tự đăng TikTok (dạng nháp)."
 	}
 	seeOther(w, r, "/products?ok="+url.QueryEscape(msg))
 }

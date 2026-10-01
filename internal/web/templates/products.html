@@ -29,6 +29,56 @@
   </form>
 </div>
 
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">➕ Thêm sản phẩm thủ công</h2>
+  <p class="subtitle">Khi TikTok Shop API chưa kết nối, dán thông tin sản phẩm hoa hồng cao vào đây — autopilot sẽ dùng như sản phẩm tìm được.</p>
+  <form method="post" action="/products/add">
+    <div class="grid2">
+      <div class="field">
+        <label>Tên sản phẩm *</label>
+        <input type="text" name="title" required placeholder="Váy maxi hoa nhí vintage">
+      </div>
+      <div class="field">
+        <label>Chủ đề *</label>
+        <select name="theme">
+          {{range .Themes}}
+          <option value="{{.Slug}}"{{if eq $.Theme .Slug}} selected{{end}}>{{.Label}}</option>
+          {{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label>Shop</label>
+        <input type="text" name="shop" placeholder="Tên shop">
+      </div>
+      <div class="field">
+        <label>Hoa hồng (%) *</label>
+        <input type="number" name="commission_pct" min="0" max="100" step="0.5" placeholder="15">
+      </div>
+      <div class="field">
+        <label>Giá (VND)</label>
+        <input type="number" name="price" min="0" step="1000" placeholder="299000">
+      </div>
+      <div class="field">
+        <label>Rating (0–5)</label>
+        <input type="number" name="rating" min="0" max="5" step="0.1" placeholder="4.8">
+      </div>
+      <div class="field">
+        <label>Đã bán</label>
+        <input type="number" name="sold" min="0" step="1" placeholder="1200">
+      </div>
+      <div class="field">
+        <label>Link sản phẩm</label>
+        <input type="url" name="product_url" placeholder="https://shop.tiktok.com/...">
+      </div>
+    </div>
+    <div class="field">
+      <label>Link ảnh sản phẩm (mỗi dòng 1 link — ảnh thật của listing)</label>
+      <textarea name="image_url" rows="3" placeholder="https://.../anh1.jpg"></textarea>
+    </div>
+    <button type="submit" class="btn">💾 Lưu sản phẩm</button>
+  </form>
+</div>
+
 {{if .Searched}}
 <p><span class="badge badge-ok">Đã tìm kiếm</span> Tìm thấy {{.Found}} sản phẩm, đã lưu {{.Saved}} vào kho.</p>
 {{end}}
@@ -54,6 +104,10 @@
         <label>Chạy mỗi (giờ)</label>
         <input type="number" name="interval_hours" min="1" max="168" value="{{.SchedHours}}">
       </div>
+    </div>
+    <div class="field" style="margin-top:8px">
+      <label><input type="checkbox" name="auto_publish"{{if .AutoPublish}} checked{{end}}> Tự đăng TikTok khi video xong</label>
+      <p class="hint">Đăng dưới dạng <strong>nháp</strong> qua TikTok API (cần OAuth TikTok đã cấu hình). Gắn giỏ hàng + sound trending làm trong app TikTok trước khi public. Mặc định tắt để an toàn.</p>
     </div>
     <button type="submit" class="btn">💾 Lưu lịch</button>
     {{if .SchedLastRun}}<span class="badge badge-ok" style="margin-left:8px">Lần chạy gần nhất: {{.SchedLastRun}}</span>{{end}}

@@ -73,6 +73,7 @@ func (s *Server) Routes() http.Handler {
 	// Affiliate product discovery (theme search -> save into product store).
 	mux.HandleFunc("GET /products", s.handleProducts)
 	mux.HandleFunc("POST /products/search", s.handleProductsSearch)
+	mux.HandleFunc("POST /products/add", s.handleProductsAdd)
 	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
 	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
 
