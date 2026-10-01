@@ -70,6 +70,25 @@ PERSONAS: dict[str, dict] = {
             "không cheat game online competitive",
         ],
     },
+    "coder": {
+        "phase": 2,
+        "label": "💻 AI Coder",
+        "live_style": "LIVE CODE game/mini-app theo yêu cầu khán giả "
+                      "(viết → chạy → chiếu → debug live)",
+        "revenue": ["live_gift", "affiliate_khoahoc", "affiliate_laptop"],
+        "affiliate_niches": ["khóa học lập trình", "laptop", "bàn phím cơ",
+                             "sách code"],
+        "content_pillars": ["code game theo yêu cầu", "debug live",
+                            "thử thách 30 phút 1 game"],
+        "voice_style": "clear-teacher",
+        "avatar_style": "pngtuber-coder",
+        "keywords": ["code", "lập trình", "coding", "python", "game dev",
+                     "dev"],
+        "red_lines": [
+            "chỉ chạy code trong sandbox, không chạy lệnh hệ thống nguy hiểm",
+            "không nhận code từ chat rồi chạy mù — kiểm duyệt trước",
+        ],
+    },
     "dancer": {
         "phase": 4,
         "label": "💃 Dancer",

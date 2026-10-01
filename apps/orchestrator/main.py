@@ -126,12 +126,68 @@ def main():
     ap.add_argument("--rehearse", action="store_true")
     ap.add_argument("--network", action="store_true",
                     help="multi-account network daemon (docs/MODEL.md)")
+    ap.add_argument("--account-add", metavar="USERNAME",
+                    help="register a new TikTok account")
+    ap.add_argument("--rtmp-env", default="",
+                    help="env var name holding the RTMP key")
+    ap.add_argument("--topic", default="",
+                    help="affiliate/topic hint for --account-add "
+                         "(optional; model auto-researches when empty)")
+    ap.add_argument("--account-topic", nargs=2, metavar=("USERNAME", "TOPIC"),
+                    help="set/override the affiliate topic hint")
+    ap.add_argument("--account-youtube", nargs="+",
+                    metavar="USERNAME CHANNEL KIND...",
+                    help="set YouTube channel + accepted content kinds, e.g. "
+                         "--account-youtube myuser MyChannel short_film ai_music")
+    ap.add_argument("--account-list", action="store_true",
+                    help="list accounts with persona/niche/topics/youtube")
     args = ap.parse_args()
 
     if args.dry_run:
         object.__setattr__(config, "dry_run", True)
 
     ledger = Ledger(config.database_path)
+
+    if args.account_add or args.account_topic or args.account_youtube \
+            or args.account_list:
+        from apps.orchestrator.network.account import AccountManager
+        mgr = AccountManager(ledger)
+        if args.account_add:
+            acct = mgr.add(args.account_add, niche_hint=args.topic,
+                           rtmp_key_ref=args.rtmp_env)
+            print(f"added @{acct.username} id={acct.id} "
+                  f"hint={args.topic or '(auto)'}")
+        if args.account_topic:
+            username, topic = args.account_topic
+            row = ledger.db.execute(
+                "SELECT id FROM accounts WHERE username = ?",
+                (username,)).fetchone()
+            if not row:
+                raise SystemExit(f"unknown account {username}")
+            ledger.db.execute(
+                "UPDATE accounts SET niche_hint = ? WHERE id = ?",
+                (topic, row["id"]))
+            ledger.db.commit()
+            print(f"@{username} topic hint set: {topic}")
+        if args.account_youtube:
+            username, channel, *kinds = args.account_youtube
+            row = ledger.db.execute(
+                "SELECT id FROM accounts WHERE username = ?",
+                (username,)).fetchone()
+            if not row:
+                raise SystemExit(f"unknown account {username}")
+            acct = mgr.set_youtube(row["id"], channel, kinds)
+            print(f"@{username} youtube={acct.youtube_channel} "
+                  f"kinds={acct.youtube_content_types}")
+        if args.account_list:
+            for a in mgr.list():
+                print(f"@{a.username} [{a.status}] persona={a.persona} "
+                      f"niche={a.niche} hint={a.niche_hint or '-'} "
+                      f"topics={len(a.topics or [])} "
+                      f"yt={a.youtube_channel or '-'}"
+                      f"{a.youtube_content_types or ''}")
+        return
+
     if args.network:
         network_daemon(ledger)
         return

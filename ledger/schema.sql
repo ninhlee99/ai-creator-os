@@ -107,6 +107,12 @@ CREATE TABLE IF NOT EXISTS accounts (
     persona       TEXT,               -- storyteller | teacher | musician | gamer | dancer
     niche         TEXT,               -- free-text niche from research/hint
     niche_hint    TEXT,               -- what the human suggested at add time
+    topics_json   TEXT NOT NULL DEFAULT '[]',  -- episode topics from topic engine
+    youtube_channel TEXT,             -- YouTube channel handle/id for this account
+    youtube_content_types TEXT NOT NULL DEFAULT '[]',
+    -- JSON list of content kinds this account's YouTube channel accepts:
+    -- subset of ["short_video","short_film","ai_music","ai_remix"].
+    -- Empty = YouTube disabled for this account.
     followers     INTEGER NOT NULL DEFAULT 0,
     rtmp_key_ref  TEXT,               -- env var NAME holding the RTMP key, never the key itself
     rest_weekday  INTEGER NOT NULL DEFAULT 0,  -- 0=Mon .. 6=Sun
