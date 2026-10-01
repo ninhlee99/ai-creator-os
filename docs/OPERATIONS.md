@@ -51,10 +51,18 @@ Notes:
 - Without #5's audit, the Posting API only publishes `SELF_ONLY` (private) to ≤5 test users.
 - Token files and `.env` are gitignored; keys never enter the ledger or logs.
 
+## Chạy app trên Mac (mở tay, không Docker, không tự chạy khi mở máy)
+
+1. Tải `AI-Creator-OS-mac-arm64.zip` từ mục Releases trên GitHub, giải nén.
+2. Kéo `AI Creator OS.app` vào Applications (hoặc để ở Desktop).
+3. Lần đầu mở: **chuột phải vào app → Open** (app chưa ký Apple nên Gatekeeper chặn double-click lần đầu).
+4. Dashboard tự mở ở http://127.0.0.1:8080 — anh bật/tắt và theo dõi mọi thứ tại đây.
+5. Muốn tắt: đóng app (hoặc nút dừng trong dashboard). Dữ liệu nằm trong thư mục `data/` cạnh app.
+
 ## Daily operation (hands-off)
 
-1. Orchestrator runs agents on schedule (launchd keeps it alive).
-2. Dashboard `:8080/stats` shows commission, spend, decisions.
+1. Mở app khi muốn hệ thống ON; orchestrator chạy agents theo lịch, stream theo lịch LIVE.
+2. Dashboard `:8080` shows commission, spend, decisions.
 3. Telegram alerts on: stream death, quota near-limit, kill events, money-path errors.
 4. Human reviews `/decisions` weekly; tunes thresholds in dashboard Settings.
 

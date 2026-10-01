@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>AI Creator OS</string>
+  <key>CFBundleDisplayName</key><string>AI Creator OS</string>
+  <key>CFBundleIdentifier</key><string>com.ninhlee.aicos</string>
+  <key>CFBundleVersion</key><string>0.6.0</string>
+  <key>CFBundleShortVersionString</key><string>0.6.0</string>
+  <key>CFBundleExecutable</key><string>launcher</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleSignature</key><string>????</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSUIElement</key><false/>
+  <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>

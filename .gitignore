@@ -11,3 +11,8 @@ dist/
 .DS_Store
 tiktok_token_*.json
 youtube_token_*.json
+
+# macOS app release artifacts (published via GitHub Releases)
+*.app/Contents/Resources/aicos
+*.app/Contents/MacOS/aicos
+AI-Creator-OS-mac-arm64.zip
