@@ -64,6 +64,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/chain/move", s.handleChainMove)
 	mux.HandleFunc("POST /settings/chain/health", s.handleChainHealth)
 
+	// per-key keyring management (add / delete / status / test), all JSON
+	// except the redirect-free form posts; keys are never rendered raw.
+	mux.HandleFunc("POST /settings/keys/add", s.handleKeyAdd)
+	mux.HandleFunc("POST /settings/keys/delete", s.handleKeyDelete)
+	mux.HandleFunc("GET /settings/keys/status", s.handleKeyStatus)
+	mux.HandleFunc("POST /settings/keys/test", s.handleKeyTest)
+
 	// VieNeu sidecar panel
 	mux.HandleFunc("GET /settings/vieneu/status", s.handleVieneuStatus)
 	mux.HandleFunc("POST /settings/vieneu/ensure", s.handleVieneuEnsure)
@@ -737,9 +744,9 @@ func (s *Server) loadChain(name string) ChainConfig {
 		}
 	}
 	if name == "tts" {
-		return DefaultTTSConfig(s.Cfg.GeminiAPIKey)
+		return DefaultTTSConfig(s.Cfg.GeminiAPIKeys)
 	}
-	return DefaultLLMConfig(s.Cfg.GeminiAPIKey)
+	return DefaultLLMConfig(s.Cfg.GeminiAPIKeys)
 }
 
 // saveChain persists the config and applies it to the live chain
@@ -819,6 +826,8 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		"DbPath", s.Cfg.DatabasePath,
 		"TTSChain", s.loadChain("tts"),
 		"LLMChain", s.loadChain("llm"),
+		"TTSKeys", s.keyRingStatuses("tts", "gemini"),
+		"LLMKeys", s.keyRingStatuses("llm", "gemini"),
 		"VieNeu", s.vieneuView(),
 	))
 }
@@ -856,7 +865,8 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 // ------------------------------------------------------- chain settings API
 
 // handleChainGet returns the current chain config as JSON (stored config,
-// or defaults when nothing was saved yet).
+// or defaults when nothing was saved yet). API keys are masked — the raw
+// values never leave the server.
 func (s *Server) handleChainGet(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if _, ok := s.chainKey(name); !ok {
@@ -864,8 +874,26 @@ func (s *Server) handleChainGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	raw, _ := MarshalChain(s.loadChain(name))
+	raw, _ := MarshalChain(maskChainKeys(s.loadChain(name)))
 	_, _ = w.Write([]byte(raw))
+}
+
+// maskChainKeys returns a copy of cfg with raw API keys replaced by masked
+// display values. The settings JSON API never leaks secrets.
+func maskChainKeys(cfg ChainConfig) ChainConfig {
+	out := ChainConfig{Order: make([]ProviderEntry, len(cfg.Order))}
+	for i, e := range cfg.Order {
+		e.APIKey = ""
+		if len(e.APIKeys) > 0 {
+			masked := make([]string, len(e.APIKeys))
+			for j, k := range e.APIKeys {
+				masked[j] = MaskKey(k)
+			}
+			e.APIKeys = masked
+		}
+		out.Order[i] = e
+	}
+	return out
 }
 
 // handleChainSave stores the whole chain form: repeated pname / enabled
@@ -892,12 +920,25 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cfg := ChainConfig{}
+	stored := s.loadChain(name) // key preservation for keyring-managed rows
 	for i, pname := range names {
 		e := ProviderEntry{Name: strings.TrimSpace(pname), Enabled: enabled[i]}
 		if e.Name == "" {
 			continue
 		}
-		if i < len(apikeys) {
+		if e.Name == "gemini" {
+			// Keys of gemini rows are managed by the keyring UI through
+			// the /settings/keys/* endpoints. The row posts an empty
+			// apikey placeholder to keep the repeated-field alignment;
+			// an empty value preserves the stored keys instead of
+			// wiping them. A non-empty apikey is still honored as the
+			// legacy single-key path.
+			if i < len(apikeys) && strings.TrimSpace(apikeys[i]) != "" {
+				e.SetAPIKeysText(apikeys[i])
+			} else if se := findChainEntry(stored, e.Name); se != nil {
+				e.APIKeys, e.APIKey = se.APIKeys, se.APIKey
+			}
+		} else if i < len(apikeys) {
 			e.APIKey = strings.TrimSpace(apikeys[i])
 		}
 		if i < len(timeouts) {
@@ -971,6 +1012,262 @@ func (s *Server) handleChainHealth(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": ok, "provider": provider})
+}
+
+// ------------------------------------------------------- keyring (API keys)
+
+// keyChainParams resolves ?chain=tts|llm + ?provider= for the key endpoints.
+func (s *Server) keyChainParams(r *http.Request) (chainName, provider string, ok bool) {
+	chainName = r.URL.Query().Get("chain")
+	provider = strings.TrimSpace(r.URL.Query().Get("provider"))
+	if _, ok = s.chainKey(chainName); !ok {
+		return "", "", false
+	}
+	if provider == "" {
+		return "", "", false
+	}
+	return chainName, provider, true
+}
+
+func writeJSONErr(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": msg})
+}
+
+// keyRingStatuses returns the render-ready per-key state for a provider.
+// It prefers the live keyring (real cooldown/invalid state); when the
+// chain adapter is not wired (or doesn't rotate keys) it falls back to
+// the stored config's keys, all reported "ok". Raw keys never leave the
+// server — every entry is masked.
+func (s *Server) keyRingStatuses(chainName, provider string) []KeyStatus {
+	var src any
+	switch chainName {
+	case "tts":
+		src = s.TTS
+	case "llm":
+		src = s.LLM
+	}
+	if src != nil {
+		if kp, ok := src.(KeyStatusProvider); ok {
+			if live := kp.KeyStatus(provider); len(live) > 0 {
+				for i := range live {
+					live[i].Total = len(live)
+					live[i].FillDerived()
+				}
+				return live
+			}
+		}
+	}
+	// Fallback: stored config keys, reported healthy.
+	cfg := s.loadChain(chainName)
+	for _, e := range cfg.Order {
+		if e.Name != provider {
+			continue
+		}
+		keys := e.APIKeys
+		if len(keys) == 0 && e.APIKey != "" {
+			keys = []string{e.APIKey}
+		}
+		out := make([]KeyStatus, 0, len(keys))
+		for i, k := range keys {
+			st := KeyStatus{Index: i, Last4: last4(k), State: "ok", Total: len(keys)}
+			st.FillDerived()
+			out = append(out, st)
+		}
+		return out
+	}
+	return []KeyStatus{}
+}
+
+// storedKeys returns the provider row's keys from the stored chain config.
+func (s *Server) storedKeys(chainName, provider string) []string {
+	cfg := s.loadChain(chainName)
+	for _, e := range cfg.Order {
+		if e.Name != provider {
+			continue
+		}
+		if len(e.APIKeys) > 0 {
+			return append([]string(nil), e.APIKeys...)
+		}
+		if e.APIKey != "" {
+			return []string{e.APIKey}
+		}
+		return nil
+	}
+	return nil
+}
+
+// mutateKeys loads the stored chain, applies fn to the provider row's key
+// list, then saves — persisting to the DB and applying to the live chain
+// immediately (no restart). Returns the updated key list.
+func (s *Server) mutateKeys(chainName, provider string, fn func(keys []string) []string) ([]string, error) {
+	cfg := s.loadChain(chainName)
+	idx := -1
+	for i, e := range cfg.Order {
+		if e.Name == provider {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return nil, fmt.Errorf("unknown provider %q in chain %q", provider, chainName)
+	}
+	keys := s.storedKeys(chainName, provider)
+	keys = fn(keys)
+	cfg.Order[idx].SetAPIKeysText(strings.Join(keys, "\n"))
+	if err := s.saveChain(chainName, cfg); err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
+// handleKeyAdd appends one API key to the provider's keyring (deduplicated)
+// and applies it to the live chain immediately. JSON, no page reload.
+func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
+	chainName, provider, ok := s.keyChainParams(r)
+	if !ok {
+		writeJSONErr(w, "unknown chain (chain=tts|llm) hoặc thiếu provider", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		writeJSONErr(w, "không đọc được form", http.StatusBadRequest)
+		return
+	}
+	key := strings.TrimSpace(r.PostFormValue("key"))
+	if key == "" {
+		writeJSONErr(w, "key trống — hãy dán API key vào ô nhập", http.StatusBadRequest)
+		return
+	}
+	duplicate := false
+	keys, err := s.mutateKeys(chainName, provider, func(keys []string) []string {
+		for _, k := range keys {
+			if k == key {
+				duplicate = true
+				return keys
+			}
+		}
+		return append(keys, key)
+	})
+	if err != nil {
+		writeJSONErr(w, "không lưu được key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	masked := MaskKey(key)
+	if err := s.Ledger.Decide("human", "api_key_add", nil,
+		fmt.Sprintf("thêm API key %s vào %s/%s%s", masked, chainName, provider,
+			map[bool]string{true: " (đã có)", false: ""}[duplicate]),
+		map[string]any{"chain": chainName, "provider": provider, "masked": masked}); err != nil {
+		log.Printf("web: decide api_key_add: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok": true, "duplicate": duplicate, "masked": masked, "total": len(keys),
+	})
+}
+
+// handleKeyDelete removes one API key by index and applies immediately.
+func (s *Server) handleKeyDelete(w http.ResponseWriter, r *http.Request) {
+	chainName, provider, ok := s.keyChainParams(r)
+	if !ok {
+		writeJSONErr(w, "unknown chain (chain=tts|llm) hoặc thiếu provider", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		writeJSONErr(w, "không đọc được form", http.StatusBadRequest)
+		return
+	}
+	idx, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("idx")))
+	if err != nil {
+		writeJSONErr(w, "thiếu idx", http.StatusBadRequest)
+		return
+	}
+	before := s.storedKeys(chainName, provider)
+	if idx < 0 || idx >= len(before) {
+		writeJSONErr(w, "key không tồn tại", http.StatusBadRequest)
+		return
+	}
+	masked := MaskKey(before[idx])
+	keys, err := s.mutateKeys(chainName, provider, func(keys []string) []string {
+		return append(keys[:idx], keys[idx+1:]...)
+	})
+	if err != nil {
+		writeJSONErr(w, "không xóa được key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := s.Ledger.Decide("human", "api_key_delete", nil,
+		fmt.Sprintf("xóa API key %s khỏi %s/%s", masked, chainName, provider),
+		map[string]any{"chain": chainName, "provider": provider, "masked": masked}); err != nil {
+		log.Printf("web: decide api_key_delete: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok": true, "masked": masked, "total": len(keys),
+	})
+}
+
+// handleKeyStatus returns the masked per-key state as JSON for the keyring
+// UI (initial page render uses the same data server-side).
+func (s *Server) handleKeyStatus(w http.ResponseWriter, r *http.Request) {
+	chainName, provider, ok := s.keyChainParams(r)
+	if !ok {
+		writeJSONErr(w, "unknown chain (chain=tts|llm) hoặc thiếu provider", http.StatusBadRequest)
+		return
+	}
+	keys := s.keyRingStatuses(chainName, provider)
+	if keys == nil {
+		keys = []KeyStatus{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "keys": keys})
+}
+
+// handleKeyTest probes one key (ValidateKey) and returns the result as
+// JSON. The key stays masked in the response; error text comes from the
+// provider and contains only the masked form.
+func (s *Server) handleKeyTest(w http.ResponseWriter, r *http.Request) {
+	chainName, provider, ok := s.keyChainParams(r)
+	if !ok {
+		writeJSONErr(w, "unknown chain (chain=tts|llm) hoặc thiếu provider", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		writeJSONErr(w, "không đọc được form", http.StatusBadRequest)
+		return
+	}
+	idx, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("idx")))
+	if err != nil {
+		writeJSONErr(w, "thiếu idx", http.StatusBadRequest)
+		return
+	}
+	if keys := s.storedKeys(chainName, provider); idx < 0 || idx >= len(keys) {
+		writeJSONErr(w, "key không tồn tại", http.StatusBadRequest)
+		return
+	}
+	var tester KeyTester
+	switch chainName {
+	case "tts":
+		tester, _ = s.TTS.(KeyTester)
+	case "llm":
+		tester, _ = s.LLM.(KeyTester)
+	}
+	if tester == nil {
+		writeJSONErr(w, "provider chưa hỗ trợ kiểm tra key", http.StatusNotImplemented)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	var testErr error
+	func() {
+		defer func() { _ = recover() }()
+		testErr = tester.ValidateKey(ctx, provider, idx)
+	}()
+	w.Header().Set("Content-Type", "application/json")
+	if testErr != nil {
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": testErr.Error()})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 
 // ------------------------------------------------------------- VieNeu panel

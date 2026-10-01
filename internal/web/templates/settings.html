@@ -59,10 +59,47 @@
     </div>
     <input type="hidden" name="pname" value="{{$p.Name}}">
     <div class="provider-grid">
+      {{if eq $p.Name "gemini"}}
+      <div class="field field-span">
+        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <input type="hidden" name="apikey" value="">
+        <div class="keyring" data-chain="tts" data-provider="gemini">
+          <div class="key-list">
+            {{range $.TTSKeys}}
+            <div class="key-card" data-idx="{{.Index}}">
+              <code class="key-masked">{{.Masked}}</code>
+              {{if eq .State "cooldown"}}
+              <span class="badge {{.BadgeClass}}" data-cool="{{.CooldownRemainingSec}}">{{.CooldownLabel}}</span>
+              {{else}}
+              <span class="badge {{.BadgeClass}}">{{.StateLabel}}</span>
+              {{end}}
+              <span class="key-meta">{{.Requests}} lượt dùng{{if gt .RateLimitHits 0}} · rate-limit {{.RateLimitHits}} lần{{if .LastRateLimitLabel}} (gần nhất {{.LastRateLimitLabel}}){{end}}{{end}}</span>
+              <span class="key-actions">
+                <button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>
+                <button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>
+              </span>
+              <span class="key-msg" aria-live="polite" hidden></span>
+            </div>
+            {{end}}
+          </div>
+          <div class="key-empty" data-empty {{if $.TTSKeys}}hidden{{end}}>
+            <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+            <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+          </div>
+          <div class="key-add" hidden>
+            <input type="text" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
+            <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm key-add-btn">+ Thêm key</button>
+        </div>
+      </div>
+      {{else}}
       <div class="field">
         <label>API key</label>
         <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="nếu cần" autocomplete="off">
       </div>
+      {{end}}
       <div class="field">
         <label>Số lần thử lại</label>
         <input type="number" name="retries" value="{{$p.Retries}}" min="0">
@@ -97,10 +134,47 @@
     </div>
     <input type="hidden" name="pname" value="{{$p.Name}}">
     <div class="provider-grid">
+      {{if eq $p.Name "gemini"}}
+      <div class="field field-span">
+        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <input type="hidden" name="apikey" value="">
+        <div class="keyring" data-chain="llm" data-provider="gemini">
+          <div class="key-list">
+            {{range $.LLMKeys}}
+            <div class="key-card" data-idx="{{.Index}}">
+              <code class="key-masked">{{.Masked}}</code>
+              {{if eq .State "cooldown"}}
+              <span class="badge {{.BadgeClass}}" data-cool="{{.CooldownRemainingSec}}">{{.CooldownLabel}}</span>
+              {{else}}
+              <span class="badge {{.BadgeClass}}">{{.StateLabel}}</span>
+              {{end}}
+              <span class="key-meta">{{.Requests}} lượt dùng{{if gt .RateLimitHits 0}} · rate-limit {{.RateLimitHits}} lần{{if .LastRateLimitLabel}} (gần nhất {{.LastRateLimitLabel}}){{end}}{{end}}</span>
+              <span class="key-actions">
+                <button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>
+                <button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>
+              </span>
+              <span class="key-msg" aria-live="polite" hidden></span>
+            </div>
+            {{end}}
+          </div>
+          <div class="key-empty" data-empty {{if $.LLMKeys}}hidden{{end}}>
+            <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+            <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+          </div>
+          <div class="key-add" hidden>
+            <input type="text" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+            <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
+            <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm key-add-btn">+ Thêm key</button>
+        </div>
+      </div>
+      {{else}}
       <div class="field">
         <label>API key</label>
         <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="nếu cần" autocomplete="off">
       </div>
+      {{end}}
       <div class="field">
         <label>Số lần thử lại</label>
         <input type="number" name="retries" value="{{$p.Retries}}" min="0">
@@ -184,8 +258,149 @@
   {{end}}
 </div>
 
+<div id="toast" class="toast" hidden></div>
+
 <script>
-// "Kiểm tra kết nối" cho từng provider: gọi API health, hiện OK/Fail ngay tại card.
+// Toast notification (dùng cho keyring: thêm/xóa key...).
+var toastTimer = null;
+function showToast(msg, ok) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  t.className = 'toast ' + (ok === false ? 'err' : 'ok');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.hidden = true; }, 3500);
+}
+// Keyring: quản lý API key theo từng key (thêm/xóa/kiểm tra) không reload trang.
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+  });
+}
+function keyCardHTML(k) {
+  var badge = k.state === 'cooldown'
+    ? '<span class="badge ' + escHtml(k.badge_class) + '" data-cool="' + k.cooldown_remaining_sec + '">Nghỉ cooldown còn ' + k.cooldown_remaining_sec + 's</span>'
+    : '<span class="badge ' + escHtml(k.badge_class) + '">' + escHtml(k.state_label) + '</span>';
+  var meta = k.requests + ' lượt dùng';
+  if (k.rate_limit_hits > 0) {
+    meta += ' · rate-limit ' + k.rate_limit_hits + ' lần';
+    if (k.last_rate_limit_label) meta += ' (gần nhất ' + k.last_rate_limit_label + ')';
+  }
+  return '<div class="key-card" data-idx="' + k.index + '">' +
+    '<code class="key-masked">' + escHtml(k.masked) + '</code>' + badge +
+    '<span class="key-meta">' + escHtml(meta) + '</span>' +
+    '<span class="key-actions">' +
+      '<button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>' +
+      '<button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>' +
+    '</span>' +
+    '<span class="key-msg" aria-live="polite" hidden></span>' +
+  '</div>';
+}
+document.querySelectorAll('.keyring').forEach(function (root) {
+  var chain = root.dataset.chain, provider = root.dataset.provider;
+  var list = root.querySelector('.key-list');
+  var emptyBox = root.querySelector('[data-empty]');
+  var addBox = root.querySelector('.key-add');
+  var addBtn = root.querySelector('.key-add-btn');
+  var keyInput = root.querySelector('.key-input');
+  var saveBtn = root.querySelector('.key-save-btn');
+  root._refresh = refresh;
+
+  function qs(p) {
+    return '/settings/keys/' + p + '?chain=' + encodeURIComponent(chain) +
+      '&provider=' + encodeURIComponent(provider);
+  }
+  function postQS(p, body) {
+    return fetch(qs(p), {method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body});
+  }
+  async function refresh() {
+    try {
+      var r = await fetch(qs('status'));
+      var j = await r.json();
+      var keys = j.keys || [];
+      list.innerHTML = keys.map(keyCardHTML).join('');
+      if (emptyBox) emptyBox.hidden = keys.length > 0;
+    } catch (e) { /* giữ danh sách cũ khi mất mạng */ }
+  }
+  // Ủy quyền sự kiện cho nút Kiểm tra / Xóa trong từng key-card.
+  list.addEventListener('click', async function (ev) {
+    var card = ev.target.closest('.key-card');
+    if (!card) return;
+    var idx = card.dataset.idx;
+    var msg = card.querySelector('.key-msg');
+    if (ev.target.closest('.key-del-btn')) {
+      var masked = card.querySelector('.key-masked').textContent;
+      if (!confirm('Xóa key ' + masked + ' khỏi ' + provider + '?')) return;
+      msg.hidden = true;
+      try {
+        var r = await postQS('delete', 'idx=' + encodeURIComponent(idx));
+        var j = await r.json();
+        if (j.ok) { showToast('Đã xóa key ' + j.masked, true); refresh(); }
+        else showToast(j.error || 'Xóa key thất bại', false);
+      } catch (e) { showToast('Xóa key thất bại', false); }
+      return;
+    }
+    if (ev.target.closest('.key-test-btn')) {
+      var btn = ev.target.closest('.key-test-btn');
+      btn.disabled = true;
+      msg.hidden = false; msg.textContent = 'Đang kiểm tra…'; msg.className = 'key-msg';
+      try {
+        var r2 = await postQS('test', 'idx=' + encodeURIComponent(idx));
+        var j2 = await r2.json();
+        if (j2.ok) { msg.textContent = 'Key hoạt động tốt ✓'; msg.className = 'key-msg ok'; }
+        else { msg.textContent = 'Lỗi: ' + (j2.error || 'không rõ'); msg.className = 'key-msg fail'; }
+      } catch (e) {
+        msg.textContent = 'Không kiểm tra được'; msg.className = 'key-msg fail';
+      }
+      btn.disabled = false;
+      refresh(); // trạng thái key có thể đã đổi (cooldown/invalid)
+    }
+  });
+  // Inline form thêm key.
+  addBtn.addEventListener('click', function () {
+    addBox.hidden = false; addBtn.hidden = true; keyInput.value = ''; keyInput.focus();
+  });
+  root.querySelector('.key-cancel-btn').addEventListener('click', function () {
+    addBox.hidden = true; addBtn.hidden = false; keyInput.value = '';
+  });
+  async function saveKey() {
+    var key = keyInput.value.trim();
+    if (!key) { keyInput.focus(); return; }
+    saveBtn.disabled = true;
+    try {
+      var r = await postQS('add', 'key=' + encodeURIComponent(key));
+      var j = await r.json();
+      if (j.ok) {
+        showToast(j.duplicate ? 'Key ' + j.masked + ' đã có rồi' : 'Đã thêm key ' + j.masked, true);
+        addBox.hidden = true; addBtn.hidden = false; keyInput.value = '';
+        refresh();
+      } else showToast(j.error || 'Thêm key thất bại', false);
+    } catch (e) { showToast('Thêm key thất bại', false); }
+    saveBtn.disabled = false;
+  }
+  saveBtn.addEventListener('click', saveKey);
+  keyInput.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); saveKey(); }
+  });
+});
+// Đếm ngược badge cooldown mỗi giây; hết giờ thì refresh keyring đó.
+setInterval(function () {
+  document.querySelectorAll('.key-card .badge[data-cool]').forEach(function (b) {
+    var s = parseInt(b.dataset.cool, 10);
+    if (isNaN(s)) return;
+    s -= 1;
+    var root = b.closest('.keyring');
+    if (s <= 0) {
+      b.removeAttribute('data-cool');
+      if (root && root._refresh) root._refresh();
+    } else {
+      b.dataset.cool = s;
+      b.textContent = 'Nghỉ cooldown còn ' + s + 's';
+    }
+  });
+}, 1000);
 document.querySelectorAll('.health-btn').forEach(function (btn) {
   btn.addEventListener('click', async function () {
     var res = btn.parentElement.querySelector('.health-result');

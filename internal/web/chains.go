@@ -3,7 +3,9 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 )
 
 // ChainConfigJSON is the raw JSON form of a provider chain config. The web
@@ -142,7 +144,10 @@ type KeyStatus struct {
 	// LastRateLimitUnix is the Unix time of the most recent rate-limit
 	// hit (0 = never).
 	LastRateLimitUnix int64 `json:"last_rate_limit_unix"`
-	Total             int   `json:"total"`
+	// LastRateLimitLabel is the Vietnamese relative time ("5 phút trước"),
+	// computed by FillDerived; empty when never rate-limited.
+	LastRateLimitLabel string `json:"last_rate_limit_label"`
+	Total              int    `json:"total"`
 }
 
 // MaskKey renders a key for display: bullets + last 4 characters. The raw
@@ -159,9 +164,12 @@ func MaskKey(k string) string {
 // from Index/Last4/State/CooldownRemainingSec. Call before rendering or
 // encoding to JSON.
 func (k *KeyStatus) FillDerived() {
-	k.Masked = "••••••••" + k.Last4
-	if len(k.Last4) <= 4 && k.Last4 == "••••" {
-		k.Masked = "••••"
+	// Real API keys are always longer than 4 chars, so Last4 is exactly
+	// 4 chars. Anything shorter could be a full short key — hide it.
+	if len(k.Last4) == 4 {
+		k.Masked = "••••••••" + k.Last4
+	} else {
+		k.Masked, k.Last4 = "••••", "••••"
 	}
 	switch k.State {
 	case "ok":
@@ -173,6 +181,24 @@ func (k *KeyStatus) FillDerived() {
 	default:
 		k.BadgeClass, k.StateLabel = "badge-no", k.State
 	}
+	if k.LastRateLimitUnix > 0 {
+		k.LastRateLimitLabel = relTime(time.Unix(k.LastRateLimitUnix, 0))
+	}
+}
+
+// relTime renders a Vietnamese relative time ("vừa xong", "5 phút trước").
+func relTime(t time.Time) string {
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "vừa xong"
+	case d < time.Hour:
+		return fmt.Sprintf("%d phút trước", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%d giờ trước", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%d ngày trước", int(d.Hours()/24))
+	}
 }
 
 // CooldownLabel renders the cooldown badge text, e.g. "Nghỉ cooldown còn 42s".
@@ -181,6 +207,25 @@ func (k KeyStatus) CooldownLabel() string {
 		return k.StateLabel
 	}
 	return fmt.Sprintf("Nghỉ cooldown còn %ds", k.CooldownRemainingSec)
+}
+
+// findChainEntry returns a pointer to the named provider row, or nil.
+func findChainEntry(cfg ChainConfig, name string) *ProviderEntry {
+	for i := range cfg.Order {
+		if cfg.Order[i].Name == name {
+			return &cfg.Order[i]
+		}
+	}
+	return nil
+}
+
+// last4 returns the last 4 characters of a key for safe display/logging.
+// Short values are returned as-is; callers must mask them (see FillDerived).
+func last4(key string) string {
+	if len(key) <= 4 {
+		return key
+	}
+	return key[len(key)-4:]
 }
 
 // KeyStatusProvider is implemented by chain adapters that rotate several
