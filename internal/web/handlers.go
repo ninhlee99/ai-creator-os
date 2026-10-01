@@ -39,6 +39,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/replan", s.handleAccountReplan)
 	mux.HandleFunc("POST /accounts/{id}/live-topic", s.handleAccountLiveTopic)
 
+	// Affiliate autopilot: theme policy, hands-off toggle, model library.
+	mux.HandleFunc("POST /accounts/{id}/theme", s.handleAccountTheme)
+	mux.HandleFunc("POST /accounts/{id}/autopilot", s.handleAccountAutopilot)
+	mux.HandleFunc("POST /accounts/{id}/autopilot/run", s.handleAccountAutopilotRun)
+	mux.HandleFunc("POST /accounts/{id}/models/upload", s.handleAccountModelUpload)
+	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
+	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
+
 	mux.HandleFunc("GET /schedule", s.handleSchedule)
 	mux.HandleFunc("POST /schedule/build", s.handleScheduleBuild)
 
@@ -61,6 +69,12 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /shop", s.handleShop)
 	mux.HandleFunc("POST /shop/add", s.handleShopAdd)
+
+	// Affiliate product discovery (theme search -> save into product store).
+	mux.HandleFunc("GET /products", s.handleProducts)
+	mux.HandleFunc("POST /products/search", s.handleProductsSearch)
+	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
+	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
 
 	mux.HandleFunc("GET /analytics", s.handleAnalytics)
 
@@ -184,7 +198,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 // ---------------------------------------------------------------- accounts
 
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
-	accounts, err := s.Mgr.List()
+	accounts, err := s.Mgr.ListWithAutopilot()
 	if err != nil {
 		s.fail(w, err, "list accounts")
 		return
@@ -268,7 +282,7 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	acct, err := s.Mgr.Get(id)
+	acct, err := s.Mgr.GetWithAutopilot(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.NotFound(w, r)
@@ -328,6 +342,12 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"Publishers", pubNames,
 		"Gifts", gifts,
 		"LastTopic", lastTopic,
+		"Themes", themeOptions(),
+		"AutopilotReady", network.AutopilotReady(acct),
+		"ModelPhotos", s.modelPhotoViews(id),
+		"StudioOK", s.Studio != nil,
+		"Error", r.URL.Query().Get("err"),
+		"Notice", r.URL.Query().Get("ok"),
 	))
 }
 

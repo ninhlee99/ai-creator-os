@@ -30,10 +30,12 @@ func ffmpegRun(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// AssemblePhotoList builds the photo-list spot: each photo held still for
-// secsPer seconds (TikTok photo-mode style: no motion, simple cuts), with
-// the trending track mixed underneath from musicStart. No text, no
-// voiceover — the format Ninh chose for fashion affiliate.
+// AssemblePhotoList builds the photo-list spot with the quality bar Ninh
+// demands: each photo gets a slow Ken Burns drift (no dead-static holds),
+// 0.6s crossfades between photos, and the trending track loudness-matched
+// to -14 LUFS with fades. No text, no voiceover — Ninh's fashion format.
+//
+// When musicPath == "" the output is a silent video (no bogus audio input).
 func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath string) error {
 	if len(photos) == 0 {
 		return fmt.Errorf("no photos")
@@ -42,36 +44,69 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 		secsPer = 4
 	}
 	var args []string
-	var filter strings.Builder
-	for i, p := range photos {
-		args = append(args, "-loop", "1", "-t", fmt.Sprintf("%.2f", secsPer), "-i", p)
-		fmt.Fprintf(&filter, "[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1[v%d];",
-			i, outW, outH, outW, outH, i)
+	for _, p := range photos {
+		args = append(args, "-i", p) // single image each; zoompan multiplies frames
 	}
-	var concat strings.Builder
-	for i := range photos {
-		fmt.Fprintf(&concat, "[v%d]", i)
-	}
-	fmt.Fprintf(&filter, "%sconcat=n=%d:v=1:a=0[v]", concat.String(), len(photos))
+	filter, total := photoListFilter(len(photos), secsPer)
 
-	total := secsPer * float64(len(photos))
+	if musicPath != "" {
+		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
+		filter += fmt.Sprintf("[%d:a]atrim=0:%.2f,afade=t=in:st=0:d=1,"+
+			"afade=t=out:st=%.1f:d=1,loudnorm=I=-14:TP=-1.5:LRA=11[aout]",
+			len(photos), total, total-1)
+	}
 	args = append(args,
-		"-i", musicPath,
-		"-filter_complex", filter.String(),
-		"-map", "[v]",
-		"-map", fmt.Sprintf("%d:a", len(photos)),
-		"-ss", fmt.Sprintf("%.1f", musicStart),
+		"-filter_complex", filter,
+		"-map", "[vout]",
 		"-t", fmt.Sprintf("%.2f", total),
 		"-r", fmt.Sprint(outFPS),
 		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
-		"-c:a", "aac", "-b:a", "160k",
-		"-af", "afade=t=in:st=0:d=1,afade=t=out:st="+fmt.Sprintf("%.1f", total-1)+":d=1",
-		"-shortest", outPath,
 	)
+	if musicPath != "" {
+		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
+	}
+	args = append(args, outPath)
 	if dir := filepath.Dir(outPath); dir != "" {
 		_ = os.MkdirAll(dir, 0o755)
 	}
 	return ffmpegRun(ctx, args...)
+}
+
+// photoListFilter builds the Ken Burns + xfade graph for n photos.
+// Returns the filter string and the total output duration.
+func photoListFilter(n int, secsPer float64) (string, float64) {
+	const fade = 0.6
+	frames := int(secsPer*outFPS + 0.5)
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		// Alternate drift direction so the piece breathes instead of
+		// pushing in forever: even = slow push-in, odd = slow pull-out.
+		zoom := fmt.Sprintf("min(1+%.6f*on,1.16)", 0.16/float64(frames))
+		if i%2 == 1 {
+			zoom = fmt.Sprintf("max(1.16-%.6f*on,1.0)", 0.16/float64(frames))
+		}
+		fmt.Fprintf(&sb,
+			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,"+
+				"crop=%d:%d,setsar=1,"+
+				"zoompan=z='%s':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d[v%d];",
+			i, outW*2, outH*2, outW*2, outH*2, zoom, frames, outW, outH, outFPS, i)
+	}
+	cur := "[v0]"
+	for i := 1; i < n; i++ {
+		offset := float64(i)*secsPer - float64(i)*fade
+		out := fmt.Sprintf("[x%d]", i)
+		if i == n-1 {
+			out = "[vout]"
+		}
+		fmt.Fprintf(&sb, "%s[v%d]xfade=transition=fade:duration=%.1f:offset=%.2f%s;",
+			cur, i, fade, offset, out)
+		cur = out
+	}
+	if n == 1 {
+		sb.WriteString("[v0]null[vout];")
+	}
+	total := float64(n)*secsPer - float64(n-1)*fade
+	return strings.TrimSuffix(sb.String(), ";"), total
 }
 
 // ConcatClips joins per-shot clips end to end (multi-shot mode).

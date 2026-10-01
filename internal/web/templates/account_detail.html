@@ -2,7 +2,12 @@
 {{define "content"}}
 <h1>{{.Acct.Username}}</h1>
 <p class="subtitle"><span class="badge badge-{{.Acct.Status}}">{{.Acct.Status}}</span>
-{{if .Acct.LiveEligible}} <span class="badge badge-ok">đủ điều kiện live</span>{{end}}</p>
+{{if .Acct.LiveEligible}} <span class="badge badge-ok">đủ điều kiện live</span>{{end}}
+{{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
+{{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
+
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 
 <div class="grid2">
 <div class="form-card">
@@ -96,6 +101,84 @@
   </form>
 </div>
 </div>
+
+<h2>Autopilot Affiliate 🤖</h2>
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chủ đề sản phẩm</h2>
+  <form method="post" action="/accounts/{{.Acct.ID}}/theme">
+    <div class="field">
+      <label>Chủ đề affiliate của tài khoản này</label>
+      <select name="theme">
+        <option value=""{{if eq .Acct.Theme ""}} selected{{end}}>— Chưa chọn —</option>
+        {{range .Themes}}
+        <option value="{{.Slug}}"{{if eq $.Acct.Theme .Slug}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+      <div class="hint">Hệ thống sẽ tự tìm sản phẩm hoa hồng cao đúng chủ đề này.</div>
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu chủ đề</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chế độ tự động</h2>
+  <form method="post" action="/accounts/{{.Acct.ID}}/autopilot">
+    <div class="field">
+      <label><input type="checkbox" name="enabled" value="on"{{if .Acct.Autopilot}} checked{{end}}> Bật autopilot</label>
+      <div class="hint">Khi bật: hệ thống tự tìm sản phẩm → làm video → xếp lịch. Bạn chỉ theo dõi.</div>
+    </div>
+    <div class="field">
+      <label>Hoa hồng tối thiểu (%)</label>
+      <input type="number" name="min_commission" min="0" max="100" step="0.5"
+             value="{{printf "%.1f" (pct .Acct.MinCommission)}}">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+  <div style="margin-top:12px">
+  {{if .AutopilotReady}}
+    <p><span class="badge badge-ok">Sẵn sàng chạy tự động</span></p>
+    <form method="post" action="/accounts/{{.Acct.ID}}/autopilot/run"
+          onsubmit="return confirm('Chạy autopilot ngay? Hệ thống sẽ tìm sản phẩm và làm video — có thể mất vài phút.')">
+      <button type="submit" class="btn btn-sm">▶ Chạy autopilot ngay</button>
+    </form>
+  {{else}}
+    <p class="hint">Cần bật autopilot, chọn chủ đề và upload ít nhất 1 ảnh mẫu để chạy tự động.</p>
+  {{end}}
+  </div>
+</div>
+</div>
+
+<h2>Thư viện ảnh mẫu</h2>
+{{if .StudioOK}}
+  {{if .ModelPhotos}}
+  <div class="model-grid">
+    {{range .ModelPhotos}}
+    <div class="model-card">
+      <img src="{{.URL}}" alt="ảnh mẫu" loading="lazy">
+      <form method="post" action="/accounts/{{$.Acct.ID}}/models/{{.ID}}/delete"
+            onsubmit="return confirm('Xóa ảnh mẫu này?')">
+        <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
+      </form>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="empty">Chưa có ảnh mẫu nào. Hãy upload ảnh của mẫu — hệ thống dùng để giữ đúng khuôn mặt khi làm video.</p>
+  {{end}}
+  <div class="form-card">
+    <h2 style="margin-top:0;border:none;padding:0">Upload ảnh mẫu</h2>
+    <form method="post" action="/accounts/{{.Acct.ID}}/models/upload" enctype="multipart/form-data">
+      <div class="field">
+        <label>Chọn ảnh (jpg/png/webp, tối đa 10MB)</label>
+        <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" required>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Upload</button>
+    </form>
+  </div>
+{{else}}
+<p class="empty">Studio chưa được khởi tạo nên chưa dùng được thư viện ảnh mẫu.</p>
+{{end}}
 
 <h2>Lịch sử quyết định</h2>
 {{if .Decisions}}

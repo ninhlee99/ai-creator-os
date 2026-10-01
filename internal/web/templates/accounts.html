@@ -12,7 +12,10 @@
   <tr><th>Tài khoản</th><th>Trạng thái</th><th>Persona</th><th>Niche</th><th>Followers</th><th></th></tr>
   {{range .Accounts}}
   <tr>
-    <td><strong>{{.Username}}</strong></td>
+    <td><strong>{{.Username}}</strong>
+      {{if .Theme}} <span class="badge badge-draft">{{themeLabel .Theme}}</span>{{end}}
+      {{if .Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}
+    </td>
     <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
     <td>{{.PersonaLabel}}</td>
     <td>{{if .Niche}}{{.Niche}}{{else}}—{{end}}</td>

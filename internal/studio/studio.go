@@ -52,16 +52,16 @@ const (
 
 // AffiliateParams describes one affiliate-video job.
 type AffiliateParams struct {
-	Mode         string `json:"mode"` // photo | shots
-	Niche        string `json:"niche"`
-	ProductName  string `json:"product_name"`
-	ModelPhoto   string `json:"model_photo"`   // local path (identity lock)
-	ProductPhoto string `json:"product_photo"` // local path (product lock)
-	Seconds      int    `json:"seconds"`
-	MusicPath    string `json:"music_path"`  // local audio file, "" = silent
+	Mode         string  `json:"mode"` // photo | shots
+	Niche        string  `json:"niche"`
+	ProductName  string  `json:"product_name"`
+	ModelPhoto   string  `json:"model_photo"`   // local path (identity lock)
+	ProductPhoto string  `json:"product_photo"` // local path (product lock)
+	Seconds      int     `json:"seconds"`
+	MusicPath    string  `json:"music_path"`  // local audio file, "" = silent
 	MusicStart   float64 `json:"music_start"` // seconds into the track
-	MusicTitle   string `json:"music_title"`
-	MusicArtist  string `json:"music_artist"`
+	MusicTitle   string  `json:"music_title"`
+	MusicArtist  string  `json:"music_artist"`
 }
 
 // FilmParams describes one short-film job.
@@ -165,6 +165,11 @@ func (s *Studio) Close() error { return s.db.Close() }
 // UploadDir is where the web layer saves uploaded model/product photos and
 // music files.
 func (s *Studio) UploadDir() string { return filepath.Join(s.workRoot, "uploads") }
+
+// ModelLibrary returns the per-account model photo library (Ninh's uploads).
+func (s *Studio) ModelLibrary() (*ModelStore, error) {
+	return NewModelStore(s.db, s.workRoot)
+}
 
 // WorkDir is the per-job work root (storyboard assets live under it).
 func (s *Studio) WorkDir() string { return s.workRoot }
@@ -292,13 +297,14 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 }
 
 // directorPhotoPlan asks the LLM for the photo list (the storyboard).
+// Quy tắc Ninh chốt: video 30s = 5–10 ảnh mẫu chụp với sản phẩm.
 func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) ([]string, error) {
-	n := p.Seconds / 5
-	if n < 4 {
-		n = 4
+	n := p.Seconds / 4
+	if n < 5 {
+		n = 5
 	}
-	if n > 8 {
-		n = 8
+	if n > 10 {
+		n = 10
 	}
 	sys := "Bạn là đạo diễn ảnh thời trang TikTok Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
 	prompt := fmt.Sprintf(`Sản phẩm: %s. Niche: %s. Viết %d prompt chụp ảnh mẫu nữ Việt Nam với sản phẩm (KHÔNG chữ, KHÔNG watermark).
@@ -309,17 +315,11 @@ Chỉ trả JSON: {"photos": ["prompt1", "prompt2", ...]}`, p.ProductName, p.Nic
 	if err != nil {
 		return nil, fmt.Errorf("director: %w", err)
 	}
-	raw := strings.TrimSpace(text)
-	if strings.HasPrefix(raw, "```") {
-		raw = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), "```"))
-		raw = strings.TrimSpace(strings.TrimPrefix(raw, "json"))
-		raw = strings.TrimSuffix(strings.TrimSpace(raw), "```")
-	}
 	var plan struct {
 		Photos []string `json:"photos"`
 	}
-	if err := json.Unmarshal([]byte(raw), &plan); err != nil {
-		return nil, fmt.Errorf("director JSON: %w", err)
+	if err := parseDirectorJSON(text, &plan); err != nil {
+		return nil, err
 	}
 	var out []string
 	for _, ph := range plan.Photos {
@@ -361,14 +361,6 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		return
 	}
 
-	s.appendLog(id, "Director đang viết shot list…")
-	prompts, err := s.directorPhotoPlan(ctx, p)
-	if err != nil {
-		fail(err)
-		return
-	}
-	s.appendLog(id, fmt.Sprintf("Shot list: %d ảnh", len(prompts)))
-
 	refs := []ImageRef{}
 	if p.ModelPhoto != "" {
 		refs = append(refs, ImageRef{Path: p.ModelPhoto})
@@ -377,44 +369,81 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		refs = append(refs, ImageRef{Path: p.ProductPhoto})
 	}
 
-	// Shoot each photo (identity/product lock via reference images).
+	// Photo mode: shoot the 5–10 photo list. Shots mode has its own
+	// cinematic shot list below (no photo shoot here — saves quota).
 	var photos []string
-	for i, pr := range prompts {
-		aid := s.addAsset(id, i, "photo", pr)
-		out := filepath.Join(work, fmt.Sprintf("photo-%02d.png", i))
-		s.appendLog(id, fmt.Sprintf("Chụp ảnh %d/%d…", i+1, len(prompts)))
-		s.setAsset(aid, StatusRunning, "")
-		if err := s.mg.GenerateImage(ctx, pr, refs, out); err != nil {
-			s.appendLog(id, fmt.Sprintf("Ảnh %d lỗi: %v", i+1, err))
-			s.setAsset(aid, StatusFailed, "")
-			continue
+	var secsPer float64
+	if p.Mode != AffiliateModeShots {
+		s.appendLog(id, "Director đang viết shot list…")
+		prompts, err := s.directorPhotoPlan(ctx, p)
+		if err != nil {
+			fail(err)
+			return
 		}
-		s.setAsset(aid, StatusDone, out)
-		photos = append(photos, out)
-		s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(prompts))))
-	}
-	if len(photos) < 3 {
-		fail(fmt.Errorf("chỉ chụp được %d/%d ảnh — kiểm tra API key", len(photos), len(prompts)))
-		return
-	}
+		s.appendLog(id, fmt.Sprintf("Shot list: %d ảnh", len(prompts)))
 
-	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
-	secsPer := float64(p.Seconds) / float64(len(photos))
-	if p.Mode == AffiliateModeShots {
-		s.appendLog(id, "Chế độ nhiều cảnh: đang dựng clip từng shot (Veo)…")
-		var clips []string
+		// Shoot each photo (identity/product lock via reference images).
 		for i, pr := range prompts {
-			aid := s.addAsset(id, 100+i, "clip", pr)
-			out := filepath.Join(work, fmt.Sprintf("shot-%02d.mp4", i))
+			aid := s.addAsset(id, i, "photo", pr)
+			out := filepath.Join(work, fmt.Sprintf("photo-%02d.png", i))
+			s.appendLog(id, fmt.Sprintf("Chụp ảnh %d/%d…", i+1, len(prompts)))
 			s.setAsset(aid, StatusRunning, "")
-			// Image-to-video from the photo keeps identity locked.
-			if err := s.mg.GenerateVideo(ctx, pr, photos[i], 6, out); err != nil {
-				s.appendLog(id, fmt.Sprintf("Shot %d lỗi: %v (giữ ảnh tĩnh)", i+1, err))
+			if err := s.mg.GenerateImage(ctx, pr, refs, out); err != nil {
+				s.appendLog(id, fmt.Sprintf("Ảnh %d lỗi: %v", i+1, err))
 				s.setAsset(aid, StatusFailed, "")
 				continue
 			}
 			s.setAsset(aid, StatusDone, out)
+			photos = append(photos, out)
+			s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(prompts))))
+		}
+		if len(photos) < 3 {
+			fail(fmt.Errorf("chỉ chụp được %d/%d ảnh — kiểm tra API key", len(photos), len(prompts)))
+			return
+		}
+		secsPer = float64(p.Seconds) / float64(len(photos))
+	}
+
+	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
+	if p.Mode == AffiliateModeShots {
+		s.appendLog(id, "Director điện ảnh đang viết shot list…")
+		shots, err := WriteProShotList(ctx, s.llm, p.ProductName, p.Niche, p.Seconds)
+		if err != nil {
+			fail(fmt.Errorf("shot list: %w", err))
+			return
+		}
+		s.appendLog(id, fmt.Sprintf("Shot list điện ảnh: %d shot", len(shots)))
+		var clips []string
+		for i, sh := range shots {
+			aid := s.addAsset(id, 100+i, "clip",
+				fmt.Sprintf("[%s/%s] %s", sh.ShotSize, sh.CameraMove, sh.Action))
+			// Keyframe: khóa identity (ảnh mẫu) + sản phẩm.
+			key := filepath.Join(work, fmt.Sprintf("key-%02d.png", i))
+			kprompt := sh.ImagePrompt + ". Photorealistic, vertical 9:16, no text, no watermark."
+			s.setAsset(aid, StatusRunning, "")
+			if err := s.mg.GenerateImage(ctx, kprompt, refs, key); err != nil {
+				s.appendLog(id, fmt.Sprintf("Shot %d lỗi keyframe: %v", i+1, err))
+				s.setAsset(aid, StatusFailed, "")
+				continue
+			}
+			out := filepath.Join(work, fmt.Sprintf("shot-%02d.mp4", i))
+			vprompt := fmt.Sprintf("%s. Camera: %s. Lens/lighting: %s. "+
+				"Vertical 9:16 cinematic product video, smooth professional motion, no text, no watermark.",
+				sh.VideoPrompt, sh.CameraMove, sh.LensLight)
+			if err := s.mg.GenerateVideo(ctx, vprompt, key, sh.Seconds, out); err != nil {
+				s.appendLog(id, fmt.Sprintf("Shot %d lỗi video: %v (giữ keyframe Ken Burns)", i+1, err))
+				still := filepath.Join(work, fmt.Sprintf("shot-%02d-still.mp4", i))
+				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still); kerr == nil {
+					s.setAsset(aid, StatusDone, still)
+					clips = append(clips, still)
+				} else {
+					s.setAsset(aid, StatusFailed, "")
+				}
+				continue
+			}
+			s.setAsset(aid, StatusDone, out)
 			clips = append(clips, out)
+			s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(shots))))
 		}
 		silent := filepath.Join(work, "silent.mp4")
 		if len(clips) > 0 {
@@ -508,47 +537,81 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		return
 	}
 
-	s.appendLog(id, "Director đang viết kịch bản…")
-	plan, err := engines.PlanFilm(ctx, s.llm, p.Topic, p.Seconds, 6)
+	s.appendLog(id, "Biên kịch đang viết kịch bản phim…")
+	script, err := WriteFilmScript(ctx, s.llm, p.Topic, p.Seconds)
 	if err != nil {
 		fail(err)
 		return
 	}
-	s.appendLog(id, fmt.Sprintf("Kịch bản: %q — %d cảnh", plan.Title, len(plan.Scenes)))
+	s.appendLog(id, fmt.Sprintf("Kịch bản: %q — %d nhân vật, %d cảnh",
+		script.Title, len(script.Characters), len(script.Scenes)))
+
+	if s.mg == nil || !s.mg.Healthy(ctx) {
+		fail(fmt.Errorf("media-gen chưa sẵn sàng (thiếu GEMINI_API_KEYS hoặc key lỗi)"))
+		return
+	}
+
+	// Character portraits: khóa identity — mọi cảnh sau dùng làm reference.
+	for i := range script.Characters {
+		c := &script.Characters[i]
+		pp := fmt.Sprintf("Cinematic character portrait, %s. Wardrobe: %s. "+
+			"Photorealistic, vertical 9:16, neutral expression, plain background, no text, no watermark.",
+			c.Appearance, c.Wardrobe)
+		out := filepath.Join(work, fmt.Sprintf("char-%02d.png", i))
+		s.appendLog(id, fmt.Sprintf("Vẽ chân dung nhân vật %q (khóa identity)…", c.Name))
+		if err := s.mg.GenerateImage(ctx, pp, nil, out); err != nil {
+			s.appendLog(id, fmt.Sprintf("Chân dung %q lỗi: %v", c.Name, err))
+			continue
+		}
+		c.Portrait = out
+	}
+	charRefs := script.CharacterRefs()
+	charLocks := ""
+	for _, c := range script.Characters {
+		charLocks += "\n" + c.LockBlock()
+	}
 
 	var scenes []string
-	for i, sc := range plan.Scenes {
+	for i, sc := range script.Scenes {
 		aid := s.addAsset(id, i, "clip", sc.ImagePrompt)
 		mp4 := filepath.Join(work, fmt.Sprintf("scene%02d.mp4", i))
 		s.setAsset(aid, StatusRunning, "")
 		made := false
-		// Try real video generation first (Veo).
-		if s.mg != nil && s.mg.Healthy(ctx) {
-			s.appendLog(id, fmt.Sprintf("Quay cảnh %d/%d (Veo)…", i+1, len(plan.Scenes)))
-			vprompt := sc.ImagePrompt + ". Vertical 9:16 cinematic video, subtle natural motion."
-			if err := s.mg.GenerateVideo(ctx, vprompt, "", 8, mp4); err == nil {
-				made = true
-			} else {
-				s.appendLog(id, fmt.Sprintf("Veo lỗi (%v) — dùng ảnh + voiceover", err))
-			}
+		// Keyframe: khóa nhân vật + khóa bối cảnh (địa điểm/thời gian/ánh sáng).
+		keyPrompt := sc.ImagePrompt + charLocks + "\n" + sc.SceneLockBlock() +
+			" Cinematic photorealistic, vertical 9:16, no text, no watermark."
+		img := filepath.Join(work, fmt.Sprintf("scene%02d.png", i))
+		if kerr := s.mg.GenerateImage(ctx, keyPrompt, charRefs, img); kerr != nil {
+			s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi keyframe: %v", i+1, kerr))
+			s.setAsset(aid, StatusFailed, "")
+			continue
+		}
+		// Quay: gắn camera language của từng shot + khóa bối cảnh.
+		var camBits []string
+		for _, sh := range sc.Shots {
+			camBits = append(camBits, fmt.Sprintf("%s %s", sh.ShotSize, sh.CameraMove))
+		}
+		vprompt := fmt.Sprintf("%s. Shots: %s. Vertical 9:16 cinematic film, natural motion, no text.",
+			sc.ImagePrompt, strings.Join(camBits, "; ")) + charLocks + "\n" + sc.SceneLockBlock()
+		s.appendLog(id, fmt.Sprintf("Quay cảnh %d/%d…", i+1, len(script.Scenes)))
+		if err := s.mg.GenerateVideo(ctx, vprompt, img, sc.Seconds, mp4); err == nil {
+			made = true
+		} else {
+			s.appendLog(id, fmt.Sprintf("Veo lỗi (%v) — dùng keyframe + thoại", err))
 		}
 		if !made {
-			// Honest fallback: still image + Ken Burns + narration.
-			img := filepath.Join(work, fmt.Sprintf("scene%02d.png", i))
-			if s.mg != nil {
-				if err := s.mg.GenerateImage(ctx, sc.ImagePrompt, nil, img); err != nil {
-					s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi ảnh: %v", i+1, err))
-					s.setAsset(aid, StatusFailed, "")
-					continue
-				}
-			} else {
-				fail(fmt.Errorf("media-gen chưa sẵn sàng"))
-				return
+			// Thoại: nối các câu thoại (kèm lời dẫn nếu có), TTS một lần.
+			var lines []string
+			for _, d := range sc.Dialogue {
+				lines = append(lines, d.Text)
+			}
+			speech := strings.Join(lines, " … ")
+			if strings.TrimSpace(sc.Narration) != "" {
+				speech = sc.Narration + " … " + speech
 			}
 			wavPath := ""
-			if s.narrator != nil && strings.TrimSpace(sc.Narration) != "" {
-				wav, err := s.narrator(ctx, sc.Narration)
-				if err == nil && len(wav) > 0 {
+			if s.narrator != nil && strings.TrimSpace(speech) != "" {
+				if wav, err := s.narrator(ctx, speech); err == nil && len(wav) > 0 {
 					wavPath = filepath.Join(work, fmt.Sprintf("scene%02d.wav", i))
 					_ = os.WriteFile(wavPath, wav, 0o644)
 				}
@@ -559,22 +622,21 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 					dur = ws
 				}
 			}
+			var rerr error
 			if wavPath == "" {
-				// Silent still: hold the image.
-				if err := AssemblePhotoList(ctx, []string{img}, dur, "", 0, mp4); err != nil {
-					s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi dựng: %v", i+1, err))
-					s.setAsset(aid, StatusFailed, "")
-					continue
-				}
-			} else if err := engines.RenderScene(ctx, img, wavPath, dur, mp4); err != nil {
-				s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi dựng: %v", i+1, err))
+				rerr = AssemblePhotoList(ctx, []string{img}, dur, "", 0, mp4)
+			} else {
+				rerr = engines.RenderScene(ctx, img, wavPath, dur, mp4)
+			}
+			if rerr != nil {
+				s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi dựng: %v", i+1, rerr))
 				s.setAsset(aid, StatusFailed, "")
 				continue
 			}
 		}
 		s.setAsset(aid, StatusDone, mp4)
 		scenes = append(scenes, mp4)
-		s.setStatus(id, StatusRunning, 10+int(80*float64(i+1)/float64(len(plan.Scenes))))
+		s.setStatus(id, StatusRunning, 10+int(80*float64(i+1)/float64(len(script.Scenes))))
 	}
 	if len(scenes) == 0 {
 		fail(fmt.Errorf("không dựng được cảnh nào"))

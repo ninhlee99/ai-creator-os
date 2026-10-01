@@ -1,0 +1,96 @@
+{{define "title"}}Sản phẩm Affiliate — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Sản phẩm Affiliate</h1>
+<p class="subtitle">Tìm sản phẩm hoa hồng cao theo chủ đề. Kết quả tìm được sẽ lưu vào kho để autopilot dùng dần.</p>
+
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Tìm sản phẩm</h2>
+  <form method="post" action="/products/search">
+    <div class="grid2">
+      <div class="field">
+        <label>Chủ đề</label>
+        <select name="theme">
+          {{range .Themes}}
+          <option value="{{.Slug}}"{{if eq $.Theme .Slug}} selected{{end}}>{{.Label}}</option>
+          {{end}}
+        </select>
+      </div>
+      <div class="field">
+        <label>Hoa hồng tối thiểu (%)</label>
+        <input type="number" name="min_commission" min="0" max="100" step="0.5"
+               value="{{if .Theme}}{{printf "%.1f" .MinPct}}{{end}}"
+               placeholder="để trống = ngưỡng gợi ý của chủ đề">
+      </div>
+    </div>
+    <button type="submit" class="btn">🔍 Tìm sản phẩm</button>
+  </form>
+</div>
+
+{{if .Searched}}
+<p><span class="badge badge-ok">Đã tìm kiếm</span> Tìm thấy {{.Found}} sản phẩm, đã lưu {{.Saved}} vào kho.</p>
+{{end}}
+
+{{if .Warnings}}
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Lưu ý từ nguồn sản phẩm</h2>
+  <ul class="clean">
+    {{range .Warnings}}<li><span class="badge badge-warn">!</span> {{.}}</li>{{end}}
+  </ul>
+</div>
+{{end}}
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">⏰ Lịch autopilot tự động</h2>
+  <p class="subtitle">Bật để hệ thống tự chạy video cho mọi account đã sẵn sàng (đã bật autopilot + có theme + đã upload ảnh mẫu) — không cần chạm vào máy.</p>
+  <form method="post" action="/products/schedule">
+    <div class="grid2">
+      <div class="field">
+        <label><input type="checkbox" name="enabled"{{if .SchedEnabled}} checked{{end}}> Bật chạy tự động</label>
+      </div>
+      <div class="field">
+        <label>Chạy mỗi (giờ)</label>
+        <input type="number" name="interval_hours" min="1" max="168" value="{{.SchedHours}}">
+      </div>
+    </div>
+    <button type="submit" class="btn">💾 Lưu lịch</button>
+    {{if .SchedLastRun}}<span class="badge badge-ok" style="margin-left:8px">Lần chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
+    {{if .SchedEnabled}}<span class="badge badge-ok" style="margin-left:8px">ĐANG BẬT</span>{{else}}<span class="badge badge-draft" style="margin-left:8px">ĐANG TẮT</span>{{end}}
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">🎵 Nhạc nền autopilot</h2>
+  <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot.{{if .MusicName}} Đang dùng: <strong>{{.MusicName}}</strong>{{else}} Chưa có nhạc — video sẽ không tiếng.{{end}}</p>
+  <form method="post" action="/products/music" enctype="multipart/form-data">
+    <div class="field">
+      <label>Upload file nhạc (mp3/m4a/wav/ogg/aac, tối đa 25MB)</label>
+      <input type="file" name="music" accept="audio/*">
+    </div>
+    <button type="submit" class="btn">⬆️ Cập nhật nhạc nền</button>
+  </form>
+</div>
+
+{{if .Results}}
+<h2>Sản phẩm tốt nhất trong kho</h2>
+<table>
+  <tr><th>Sản phẩm</th><th>Shop</th><th>Giá</th><th>Hoa hồng</th><th>Đã bán</th><th>Đánh giá</th><th>Nguồn</th><th>Ảnh</th></tr>
+  {{range .Results}}
+  <tr>
+    <td><strong>{{.Title}}</strong>{{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener">xem sản phẩm ↗</a>{{end}}</td>
+    <td>{{if .ShopName}}{{.ShopName}}{{else}}—{{end}}</td>
+    <td>{{printf "%.0f" .Price}}</td>
+    <td><strong>{{printf "%.1f" (pct .CommissionRate)}}%</strong></td>
+    <td>{{.SoldCount}}</td>
+    <td>{{if .Rating}}{{printf "%.1f" .Rating}}★{{else}}—{{end}}</td>
+    <td><span class="badge badge-draft">{{.Source}}</span></td>
+    <td>{{len .ImageURLs}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else if .Theme}}
+<p class="empty">Chưa có sản phẩm nào cho chủ đề này trong kho. Hãy bấm "Tìm sản phẩm" để quét các nguồn.</p>
+{{end}}
+{{end}}
