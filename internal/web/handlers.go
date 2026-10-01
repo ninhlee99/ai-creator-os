@@ -66,6 +66,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
+	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
+	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
+	mux.HandleFunc("GET /publishers/tiktok/callback", s.handleTikTokCallback)
 
 	mux.HandleFunc("GET /shop", s.handleShop)
 	mux.HandleFunc("POST /shop/add", s.handleShopAdd)
@@ -607,14 +610,21 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, publisherRow{
 			Username:     a.Username,
 			Status:       a.Status,
-			TiktokToken:  fileExists("tiktok_token_" + a.Username + ".json"),
-			YoutubeToken: fileExists("youtube_token_" + a.Username + ".json"),
+			TiktokToken:  fileExists(publishers.TikTokTokenPath(a.Username)),
+			TiktokClient: publishers.NewTikTokPublisher(a.Username).HasClient(),
+			YoutubeToken: fileExists(publishers.YouTubeTokenPath(a.Username)),
 			FbPage:       strings.TrimSpace(getenv("FB_PAGE_ID_"+strings.ToUpper(a.Username), "")) != "",
 			Rtmp:         a.RtmpKey() != "",
 			Platforms:    plats,
 		})
 	}
-	s.render(w, "publishers", s.ctx("Rows", rows))
+	anyClient := false
+	for _, row := range rows {
+		anyClient = anyClient || row.TiktokClient
+	}
+	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTiktokClient", anyClient,
+		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
+		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal()))
 }
 
 // --------------------------------------------------------------------- shop

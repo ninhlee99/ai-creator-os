@@ -4,10 +4,12 @@ package tiktok
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -176,9 +178,9 @@ const (
 // chunkSize is 10 MB, inside TikTok's 5-64 MB chunk window.
 const chunkSize = 10 * 1024 * 1024
 
-// minChunkedSize mirrors the Python threshold: files below 5 MB upload as a
-// single chunk.
-const minChunkedSize = 5 * 1024 * 1024
+// maxSingleChunk: files up to 64 MB upload whole, as one chunk (TikTok
+// requires this below 5 MB and allows it up to 64 MB).
+const maxSingleChunk = 64 * 1024 * 1024
 
 // PostingClient is a TikTok Content Posting API client.
 type PostingClient struct {
@@ -206,8 +208,24 @@ func (c *PostingClient) pollInterval() time.Duration {
 	return 15 * time.Second
 }
 
-// AuthorizeURL builds the Login Kit authorization URL.
-func (c *PostingClient) AuthorizeURL(redirectURI, scope, state string) string {
+// NewPKCE returns a code_verifier and its TikTok code_challenge. TikTok's
+// Desktop Login Kit (the localhost-redirect flow) requires PKCE and, unlike
+// RFC 7636, expects the challenge as HEX-encoded SHA-256 of the verifier.
+func NewPKCE() (verifier, challenge string) {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	b := make([]byte, 64)
+	_, _ = rand.Read(b)
+	for i := range b {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	verifier = string(b)
+	sum := sha256.Sum256(b)
+	return verifier, hex.EncodeToString(sum[:])
+}
+
+// AuthorizeURL builds the Login Kit authorization URL. codeChallenge is
+// optional ("" = no PKCE, the Web flow).
+func (c *PostingClient) AuthorizeURL(redirectURI, scope, state, codeChallenge string) string {
 	q := url.Values{}
 	q.Set("client_key", c.ClientKey)
 	q.Set("redirect_uri", redirectURI)
@@ -216,17 +234,25 @@ func (c *PostingClient) AuthorizeURL(redirectURI, scope, state string) string {
 	if state != "" {
 		q.Set("state", state)
 	}
+	if codeChallenge != "" {
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+	}
 	return AuthURL + "?" + q.Encode()
 }
 
 // ExchangeCode trades an authorization code for tokens and persists them.
-func (c *PostingClient) ExchangeCode(code, redirectURI string) (map[string]any, error) {
+// codeVerifier is required when the authorize URL carried a challenge.
+func (c *PostingClient) ExchangeCode(code, redirectURI, codeVerifier string) (map[string]any, error) {
 	form := url.Values{}
 	form.Set("client_key", c.ClientKey)
 	form.Set("client_secret", c.ClientSecret)
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
 	form.Set("redirect_uri", redirectURI)
+	if codeVerifier != "" {
+		form.Set("code_verifier", codeVerifier)
+	}
 	_, raw, err := c.http()("POST", Base+"/v2/oauth/token/",
 		map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
 		[]byte(form.Encode()))
@@ -243,6 +269,11 @@ func (c *PostingClient) ExchangeCode(code, redirectURI string) (map[string]any, 
 	}
 	if v, ok := data["expires_in"].(float64); ok {
 		t.ExpiresIn = int64(v)
+	}
+	// TikTok answers OAuth errors with HTTP 200 + {"error":...}; never
+	// overwrite a working token file with an empty one.
+	if t.AccessToken == "" || t.RefreshToken == "" {
+		return nil, fmt.Errorf("oauth exchange failed: %v %v", data["error"], data["error_description"])
 	}
 	if err := c.Store.Save(t); err != nil {
 		return nil, err
@@ -285,12 +316,17 @@ func (c *PostingClient) AccessToken() (string, error) {
 	if v, ok := data["expires_in"].(float64); ok {
 		nt.ExpiresIn = int64(v)
 	}
+	if nt.AccessToken == "" {
+		// Keep the old file: a failed refresh must not wipe the
+		// refresh_token (that would force a full re-OAuth).
+		return "", fmt.Errorf("oauth refresh returned no access_token: %v %v", data["error"], data["error_description"])
+	}
+	if nt.RefreshToken == "" {
+		nt.RefreshToken = t.RefreshToken
+	}
 	// Persist the ROTATED refresh_token.
 	if err := c.Store.Save(nt); err != nil {
 		return "", err
-	}
-	if nt.AccessToken == "" {
-		return "", fmt.Errorf("oauth refresh returned no access_token: %.200v", data)
 	}
 	return nt.AccessToken, nil
 }
@@ -338,13 +374,16 @@ func (c *PostingClient) PublishFile(path, title, privacyLevel string, draft bool
 	}
 	size := fi.Size()
 
+	// TikTok: total_chunk_count = floor(video_size / chunk_size); the
+	// remainder rides on the LAST chunk (which may exceed chunk_size, up
+	// to 128 MB). A ceil() count is rejected for any non-multiple size.
 	cs := int64(chunkSize)
-	if size < minChunkedSize {
+	if size <= maxSingleChunk {
 		cs = size
 	}
 	chunks := 1
-	if size >= minChunkedSize {
-		chunks = int(math.Ceil(float64(size) / float64(chunkSize)))
+	if cs > 0 && size > cs {
+		chunks = int(size / cs)
 	}
 
 	endpoint := "/v2/post/publish/video/init/"
@@ -392,15 +431,17 @@ func (c *PostingClient) PublishFile(path, title, privacyLevel string, draft bool
 		return "", err
 	}
 	defer f.Close()
-	buf := make([]byte, chunkSize)
 	for i := 0; i < chunks; i++ {
-		n, rerr := io.ReadFull(f, buf)
-		if rerr != nil && rerr != io.ErrUnexpectedEOF && rerr != io.EOF {
-			return "", rerr
+		first := int64(i) * cs
+		n := cs
+		if i == chunks-1 {
+			n = size - first
 		}
-		blob := buf[:n]
-		first := int64(i) * chunkSize
-		last := first + int64(len(blob)) - 1
+		blob := make([]byte, n)
+		if _, rerr := io.ReadFull(f, blob); rerr != nil {
+			return "", fmt.Errorf("chunk %d read: %w", i, rerr)
+		}
+		last := first + n - 1
 		status, _, perr := c.http()("PUT", uploadURL,
 			map[string]string{
 				"Content-Type":  "video/mp4",
@@ -411,9 +452,6 @@ func (c *PostingClient) PublishFile(path, title, privacyLevel string, draft bool
 		}
 		if status != 200 && status != 201 && status != 206 {
 			return "", fmt.Errorf("chunk %d upload failed: HTTP %d", i, status)
-		}
-		if n == 0 {
-			break
 		}
 	}
 	return publishID, nil

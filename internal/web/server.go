@@ -59,6 +59,7 @@ type Server struct {
 	JobsPath  string
 
 	db        *sql.DB // read handle for decision/analytics queries
+	oauth     oauthStates
 	templates map[string]*template.Template
 	renderer  Renderer
 
@@ -351,6 +352,7 @@ type publisherRow struct {
 	Username     string
 	Status       string
 	TiktokToken  bool
+	TiktokClient bool // client key + secret present in env
 	YoutubeToken bool
 	FbPage       bool
 	Rtmp         bool

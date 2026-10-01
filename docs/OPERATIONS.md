@@ -43,7 +43,7 @@ These need your accounts/keys:
 | 3 | Creator OAuth → access token + shop cipher | Seller Center / TikTok app authorization | `TIKTOK_SHOP_ACCESS_TOKEN`, `TIKTOK_SHOP_CIPHER` | with #2 |
 | 4 | Verify affiliate endpoint paths in sandbox | TikTok Shop Partner Center sandbox | fill `ENDPOINTS` in `internal/tiktok` shop client | 1 session |
 | 5 | **TikTok Developers app** (Login Kit + Content Posting API) | developers.tiktok.com | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` | audit ~3–4 weeks for public Direct Post |
-| 6 | OAuth per creator account → refresh token | one-time browser flow per account | `tiktok_token_<account>.json` (gitignored) | minutes/account |
+| 6 | OAuth per creator account → refresh token | dashboard **Đa nền tảng → Kết nối TikTok** (xem `docs/POSTPROD_RUNBOOK.md`) | `tiktok_token_<account>.json` (gitignored) | minutes/account |
 | 7 | **RTMP server + stream key per account** | TikTok LIVE Center → Go LIVE | `RTMP_KEY_<USERNAME>` (env only, never in code) | minutes/account |
 
 Notes:
@@ -58,6 +58,8 @@ Notes:
 3. Chạy: `./aicos-darwin-arm64`
 4. Mở trình duyệt: http://127.0.0.1:8080 — mọi quản lý/giám sát đều ở dashboard UI.
 5. Muốn tắt: `Ctrl+C`. Dữ liệu nằm trong thư mục `data/` cạnh binary.
+
+Hậu kỳ thủ công mỗi video (gắn giỏ hàng, CapCut, QC, upload Drive): `docs/POSTPROD_RUNBOOK.md` + `scripts/postprod.sh`.
 
 ## Daily operation (hands-off)
 
