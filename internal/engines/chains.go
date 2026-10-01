@@ -22,9 +22,9 @@ type DecisionLogger interface {
 
 // DefaultLLMConfig returns the default LLM chain order:
 // gemini (free API) -> llama-server (local) -> paid (disabled placeholder).
-func DefaultLLMConfig(geminiKey string) ChainConfig {
+func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKey: geminiKey, Timeout: 30 * time.Second, Retries: 1},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 30 * time.Second, Retries: 1},
 		{Name: "llama-server", Enabled: true, Timeout: 120 * time.Second, Retries: 0},
 		{Name: "paid", Enabled: false},
 	}}
@@ -32,9 +32,9 @@ func DefaultLLMConfig(geminiKey string) ChainConfig {
 
 // DefaultTTSConfig returns the default TTS chain order:
 // gemini (free API, default) -> vieneu (local fallback) -> edge (last resort).
-func DefaultTTSConfig(geminiKey string) ChainConfig {
+func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKey: geminiKey, Timeout: 60 * time.Second, Retries: 1},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 60 * time.Second, Retries: 1},
 		{Name: "vieneu", Enabled: true, Timeout: 180 * time.Second, Retries: 0},
 		{Name: "edge", Enabled: true, Timeout: 60 * time.Second, Retries: 1},
 	}}
@@ -61,7 +61,7 @@ type ConfigSource func() (llmCfg ChainConfig, ttsCfg ChainConfig)
 // Note: sidecars are NOT started here. The caller starts what it needs:
 // vieNeu.Start(ctx) for the TTS sidecar, and the *local.Process returned by
 // NewLlamaServerProcess for the LLM tier-2.
-func DefaultChains(dataDir string, geminiKey string, decide DecisionLogger, cfgSrc ConfigSource) (*LLMChain, *TTSChain) {
+func DefaultChains(dataDir string, geminiKeys []string, decide DecisionLogger, cfgSrc ConfigSource) (*LLMChain, *TTSChain) {
 	reg := local.NewRegistry(dataDir)
 
 	onSwitch := func(from, to, reason string) {
@@ -74,17 +74,17 @@ func DefaultChains(dataDir string, geminiKey string, decide DecisionLogger, cfgS
 	}
 
 	llmChain := NewLLMChain([]LLMProvider{
-		NewGeminiProvider(geminiKey),
+		NewGeminiProviderKeys(geminiKeys),
 		NewLlamaServerProvider("http://127.0.0.1:8081", "qwen2.5-7b-instruct-q4_k_m"),
 		NewPaidLLMProvider(),
 	}, onSwitch)
 	ttsChain := tts.NewTTSChain([]tts.TTSProvider{
-		tts.NewGeminiTTSProvider(geminiKey),
+		tts.NewGeminiTTSProviderKeys(geminiKeys),
 		tts.NewVieNeuProvider(dataDir, reg),
 		tts.NewEdgeTTSProvider(),
 	}, onSwitch)
 
-	llmCfg, ttsCfg := DefaultLLMConfig(geminiKey), DefaultTTSConfig(geminiKey)
+	llmCfg, ttsCfg := DefaultLLMConfig(geminiKeys), DefaultTTSConfig(geminiKeys)
 	if cfgSrc != nil {
 		if savedLLM, savedTTS := cfgSrc(); len(savedLLM.Order) > 0 || len(savedTTS.Order) > 0 {
 			if len(savedLLM.Order) > 0 {

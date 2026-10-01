@@ -34,56 +34,168 @@ var geminiStylePrefix = map[string]string{
 // GeminiTTSProvider is the tier-1 TTS provider: Gemini TTS via AI Studio
 // generateContent with responseModalities AUDIO. The most expressive option —
 // the user chose it as the default, with VieNeu as the offline fallback.
+//
+// It holds a KeyRing of API keys and rotates round-robin: every request uses
+// the next usable key, so N keys multiply the free-tier quota. A key that
+// hits 429/quota cools down (60s -> 5m -> 15m); a rejected key is marked
+// invalid until the config changes; other errors just try the next key.
+// When every key is cooling down the provider fails over to the next chain
+// tier immediately instead of spamming retries.
 type GeminiTTSProvider struct {
-	mu     sync.RWMutex
-	apiKey string
-	model  string
+	mu      sync.RWMutex
+	ring    *KeyRing
+	model   string
+	baseURL string // test hook; default is the public Gemini endpoint
 	// Style is an optional style keyword (see geminiStylePrefix).
 	Style string
 	http  *http.Client
 }
 
-// NewGeminiTTSProvider builds the tier-1 TTS provider.
+// NewGeminiTTSProvider builds the tier-1 TTS provider (single key).
 func NewGeminiTTSProvider(apiKey string) *GeminiTTSProvider {
+	return NewGeminiTTSProviderKeys([]string{apiKey})
+}
+
+// NewGeminiTTSProviderKeys builds the tier-1 TTS provider with key rotation.
+func NewGeminiTTSProviderKeys(keys []string) *GeminiTTSProvider {
 	return &GeminiTTSProvider{
-		apiKey: apiKey,
-		model:  "gemini-2.5-flash-preview-tts",
-		http:   &http.Client{Timeout: 60 * time.Second},
+		ring:    NewKeyRing(keys),
+		model:   "gemini-2.5-flash-preview-tts",
+		baseURL: "https://generativelanguage.googleapis.com",
+		http:    &http.Client{Timeout: 60 * time.Second},
 	}
+}
+
+// SetBaseURL overrides the API endpoint (tests only).
+func (g *GeminiTTSProvider) SetBaseURL(u string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.baseURL = strings.TrimSuffix(u, "/")
 }
 
 func (g *GeminiTTSProvider) Name() string { return "gemini" }
 
-// SetAPIKey updates the key at runtime (called by TTSChain.SetConfig).
-func (g *GeminiTTSProvider) SetAPIKey(key string) {
+// SetAPIKey updates the key at runtime (legacy single-key wrapper, kept for
+// backward compatibility; called by TTSChain.SetConfig when the entry has no
+// api_keys).
+func (g *GeminiTTSProvider) SetAPIKey(key string) { g.SetAPIKeys([]string{key}) }
+
+// SetAPIKeys replaces the key set at runtime (called by TTSChain.SetConfig).
+// Applies immediately — in-flight requests finish with their own key.
+func (g *GeminiTTSProvider) SetAPIKeys(keys []string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.apiKey = key
+	g.ring.SetKeys(keys)
+}
+
+// KeyStatus returns the per-key rotation state for the dashboard.
+// Full keys are never exposed — only the last 4 characters.
+func (g *GeminiTTSProvider) KeyStatus() []KeyStatus {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ring.Status()
 }
 
 func (g *GeminiTTSProvider) Healthy(ctx context.Context) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	return g.apiKey != ""
+	return g.ring.HasUsable()
+}
+
+// ValidateKey performs one minimal request with the key at idx to check
+// whether it is valid (dashboard "test" button). An invalid key is marked
+// invalid in the ring; a healthy key resets its backoff. This burns a tiny
+// amount of that key's quota — it is only called on explicit user action.
+func (g *GeminiTTSProvider) ValidateKey(ctx context.Context, idx int) error {
+	g.mu.RLock()
+	key, ok := g.ring.Key(idx)
+	g.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("gemini: no key at index %d", idx)
+	}
+	_, err := g.synthesizeWithKey(ctx, key, "Xin chào", "default")
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if err == nil {
+		g.ring.ReportSuccess(idx)
+		return nil
+	}
+	switch ClassifyKeyError(err) {
+	case KeyErrInvalidKey:
+		g.ring.ReportInvalid(idx)
+		return fmt.Errorf("gemini: key ****%s is invalid: %w", last4(key), err)
+	case KeyErrQuota:
+		g.ring.ReportRateLimit(idx)
+		return fmt.Errorf("gemini: key ****%s hit quota/rate-limit: %w", last4(key), err)
+	default:
+		return fmt.Errorf("gemini: key ****%s test failed: %w", last4(key), err)
+	}
 }
 
 func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) ([]byte, error) {
-	g.mu.RLock()
-	key := g.apiKey
-	g.mu.RUnlock()
-	if key == "" {
-		return nil, fmt.Errorf("gemini: missing API key")
-	}
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("gemini: empty text")
 	}
+	tried := map[int]bool{}
+	var lastErr error
+	for {
+		g.mu.RLock()
+		key, idx, ok := g.ring.Next(tried)
+		allCooling := !ok && g.ring.Len() > 0 && g.ring.AllCoolingDown()
+		g.mu.RUnlock()
+		if !ok {
+			switch {
+			case g.keyCount() == 0:
+				return nil, fmt.Errorf("gemini: missing API key")
+			case allCooling:
+				// Every key is cooling down: fail over to the next tier
+				// NOW (VieNeu/edge) instead of spamming retries.
+				// "quota" in the message lets the chain log the reason.
+				return nil, fmt.Errorf("gemini: all API keys cooling down (quota/rate-limit), failing over")
+			case lastErr != nil:
+				return nil, lastErr
+			default:
+				return nil, fmt.Errorf("gemini: all API keys marked invalid")
+			}
+		}
+		tried[idx] = true
+		wav, err := g.synthesizeWithKey(ctx, key, text, voice)
+		if err == nil {
+			g.mu.Lock()
+			g.ring.ReportSuccess(idx)
+			g.mu.Unlock()
+			return wav, nil
+		}
+		lastErr = err
+		g.mu.Lock()
+		switch ClassifyKeyError(err) {
+		case KeyErrQuota:
+			g.ring.ReportRateLimit(idx)
+		case KeyErrInvalidKey:
+			g.ring.ReportInvalid(idx)
+		default:
+			// network / 5xx / parse: try the next key, no penalty.
+		}
+		g.mu.Unlock()
+	}
+}
+
+func (g *GeminiTTSProvider) keyCount() int {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ring.Len()
+}
+
+func (g *GeminiTTSProvider) synthesizeWithKey(ctx context.Context, key, text, voice string) ([]byte, error) {
+	g.mu.RLock()
+	baseURL, model, style, httpc := g.baseURL, g.model, g.Style, g.http
+	g.mu.RUnlock()
 	voiceName := geminiTTSVoices[voice]
 	if voiceName == "" {
 		voiceName = geminiTTSVoices["default"]
 	}
-	prompt := geminiStylePrefix[g.Style] + strings.TrimSpace(text)
-	url := "https://generativelanguage.googleapis.com/v1beta/models/" +
-		g.model + ":generateContent?key=" + key
+	prompt := geminiStylePrefix[style] + strings.TrimSpace(text)
+	url := baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	body := map[string]any{
 		"contents": []any{map[string]any{"parts": []any{map[string]any{"text": prompt}}}},
 		"generationConfig": map[string]any{
@@ -95,7 +207,7 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 			},
 		},
 	}
-	data, err := postJSON(ctx, g.http, url, body)
+	data, err := postJSON(ctx, httpc, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("gemini: %w", err)
 	}

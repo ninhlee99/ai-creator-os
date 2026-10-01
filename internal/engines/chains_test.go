@@ -27,7 +27,7 @@ func TestDefaultChainsLLMFailoverLogged(t *testing.T) {
 	// No key, nothing on :8080: gemini fails fast (missing key), llama-server
 	// fails fast (connection refused). No real network beyond localhost.
 	fake := &fakeDecider{}
-	llm, _ := DefaultChains(t.TempDir(), "", fake, nil)
+	llm, _ := DefaultChains(t.TempDir(), nil, fake, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_, err := llm.Complete(ctx, "sys", "hi")
@@ -51,7 +51,7 @@ func TestDefaultChainsLLMFailoverLogged(t *testing.T) {
 
 func TestDefaultChainsTTSWiring(t *testing.T) {
 	fake := &fakeDecider{}
-	_, ttsChain := DefaultChains(t.TempDir(), "", fake, nil)
+	_, ttsChain := DefaultChains(t.TempDir(), nil, fake, nil)
 
 	// Default TTS order must be gemini -> vieneu -> edge.
 	var names []string
@@ -98,7 +98,7 @@ func TestDefaultChainsConfigSource(t *testing.T) {
 			{Name: "paid", Enabled: false},
 		}}, ChainConfig{}
 	}
-	llm, ttsChain := DefaultChains(t.TempDir(), "k", nil, src)
+	llm, ttsChain := DefaultChains(t.TempDir(), []string{"k"}, nil, src)
 	if got := llm.ActiveProviders(); len(got) != 1 || got[0] != "llama-server" {
 		t.Fatalf("llm active = %v", got)
 	}
@@ -108,14 +108,14 @@ func TestDefaultChainsConfigSource(t *testing.T) {
 	}
 
 	// nil source -> defaults.
-	llm2, _ := DefaultChains(t.TempDir(), "k", nil, nil)
+	llm2, _ := DefaultChains(t.TempDir(), []string{"k"}, nil, nil)
 	if got := llm2.ActiveProviders(); len(got) != 2 || got[0] != "gemini" || got[1] != "llama-server" {
 		t.Fatalf("llm default active = %v", got)
 	}
 }
 
 func TestDefaultTTSConfig(t *testing.T) {
-	cfg := DefaultTTSConfig("key")
+	cfg := DefaultTTSConfig([]string{"key"})
 	if len(cfg.Order) != 3 {
 		t.Fatalf("order len = %d", len(cfg.Order))
 	}

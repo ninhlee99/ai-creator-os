@@ -23,8 +23,13 @@ type ChainConfig = tts.ChainConfig
 // TTSChain is the speech-synthesis chain (defined in the tts subpackage).
 type TTSChain = tts.TTSChain
 
-// apiKeySetter is implemented by providers whose API key comes from config.
-type apiKeySetter interface{ SetAPIKey(key string) }
+// apiKeySetter is implemented by providers whose API keys come from config.
+// SetAPIKeys is preferred when the entry carries several keys; SetAPIKey is
+// the legacy single-key path (kept as a wrapper).
+type apiKeySetter interface {
+	SetAPIKey(key string)
+	SetAPIKeys(keys []string)
+}
 
 // enabledSetter is implemented by providers that mirror the config flag.
 type enabledSetter interface{ SetEnabled(bool) }
@@ -92,7 +97,11 @@ func (c *LLMChain) SetConfig(cfg ChainConfig) {
 			continue
 		}
 		if s, ok := p.(apiKeySetter); ok {
-			s.SetAPIKey(e.APIKey)
+			if len(e.APIKeys) > 0 {
+				s.SetAPIKeys(e.APIKeys)
+			} else {
+				s.SetAPIKey(e.APIKey)
+			}
 		}
 		if s, ok := p.(enabledSetter); ok {
 			s.SetEnabled(e.Enabled)
@@ -120,6 +129,38 @@ func (c *LLMChain) ActiveProviders() []string {
 		}
 	}
 	return out
+}
+
+// KeyStatus returns the per-key rotation state for a provider (e.g.
+// "gemini"). Providers without key rotation report nil. Never exposes full
+// keys — see tts.KeyStatus.
+func (c *LLMChain) KeyStatus(provider string) []tts.KeyStatus {
+	c.mu.RLock()
+	p, ok := c.providers[provider]
+	c.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	if ks, ok := p.(interface{ KeyStatus() []tts.KeyStatus }); ok {
+		return ks.KeyStatus()
+	}
+	return nil
+}
+
+// ValidateKey runs one minimal request with the provider's key at idx to
+// check whether it is valid. Providers without key rotation return an error.
+func (c *LLMChain) ValidateKey(ctx context.Context, provider string, idx int) error {
+	c.mu.RLock()
+	p, ok := c.providers[provider]
+	c.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("unknown provider %q", provider)
+	}
+	v, ok := p.(interface{ ValidateKey(context.Context, int) error })
+	if !ok {
+		return fmt.Errorf("provider %q does not support key testing", provider)
+	}
+	return v.ValidateKey(ctx, idx)
 }
 
 // Complete walks the configured order: disabled providers are skipped, each
@@ -257,55 +298,174 @@ func truncate(s string, n int) string {
 
 const defaultGeminiLLMModel = "gemini-2.0-flash"
 
-// GeminiProvider calls the Gemini free tier (AI Studio key).
+// GeminiProvider calls the Gemini free tier (AI Studio keys).
+//
+// It holds a KeyRing of API keys and rotates round-robin: every request uses
+// the next usable key, so N keys multiply the free-tier quota. A key that
+// hits 429/quota cools down (60s -> 5m -> 15m); a rejected key is marked
+// invalid until the config changes; other errors just try the next key.
+// When every key is cooling down the provider fails over to the next chain
+// tier immediately instead of spamming retries.
 type GeminiProvider struct {
-	mu     sync.RWMutex
-	apiKey string
-	model  string
-	http   *http.Client
+	mu      sync.RWMutex
+	ring    *tts.KeyRing
+	model   string
+	baseURL string // test hook; default is the public Gemini endpoint
+	http    *http.Client
 }
 
 // NewGeminiProvider builds the tier-1 LLM provider. Empty key => Healthy()
 // is false and Complete fails fast without touching the network.
 func NewGeminiProvider(apiKey string) *GeminiProvider {
+	return NewGeminiProviderKeys([]string{apiKey})
+}
+
+// NewGeminiProviderKeys builds the tier-1 LLM provider with key rotation.
+func NewGeminiProviderKeys(keys []string) *GeminiProvider {
 	return &GeminiProvider{
-		apiKey: apiKey,
-		model:  defaultGeminiLLMModel,
-		http:   &http.Client{Timeout: 30 * time.Second},
+		ring:    tts.NewKeyRing(keys),
+		model:   defaultGeminiLLMModel,
+		baseURL: "https://generativelanguage.googleapis.com",
+		http:    &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+// SetBaseURL overrides the API endpoint (tests only).
+func (g *GeminiProvider) SetBaseURL(u string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.baseURL = strings.TrimSuffix(u, "/")
 }
 
 func (g *GeminiProvider) Name() string { return "gemini" }
 
-// SetAPIKey updates the key at runtime (called by LLMChain.SetConfig).
-func (g *GeminiProvider) SetAPIKey(key string) {
+// SetAPIKey updates the key at runtime (legacy single-key wrapper, kept for
+// backward compatibility; called by LLMChain.SetConfig when the entry has no
+// api_keys).
+func (g *GeminiProvider) SetAPIKey(key string) { g.SetAPIKeys([]string{key}) }
+
+// SetAPIKeys replaces the key set at runtime (called by LLMChain.SetConfig).
+// Applies immediately — in-flight requests finish with their own key.
+func (g *GeminiProvider) SetAPIKeys(keys []string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.apiKey = key
+	g.ring.SetKeys(keys)
+}
+
+// KeyStatus returns the per-key rotation state for the dashboard.
+// Full keys are never exposed — only the last 4 characters.
+func (g *GeminiProvider) KeyStatus() []tts.KeyStatus {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ring.Status()
 }
 
 func (g *GeminiProvider) Healthy(ctx context.Context) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	return g.apiKey != ""
+	return g.ring.HasUsable()
+}
+
+// ValidateKey performs one minimal request with the key at idx to check
+// whether it is valid (dashboard "test" button). An invalid key is marked
+// invalid in the ring; a healthy key resets its backoff. This burns a tiny
+// amount of that key's quota — it is only called on explicit user action.
+func (g *GeminiProvider) ValidateKey(ctx context.Context, idx int) error {
+	g.mu.RLock()
+	key, ok := g.ring.Key(idx)
+	g.mu.RUnlock()
+	if !ok {
+		return fmt.Errorf("gemini: no key at index %d", idx)
+	}
+	_, err := g.completeWithKey(ctx, key, "", "ping", true)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if err == nil {
+		g.ring.ReportSuccess(idx)
+		return nil
+	}
+	switch tts.ClassifyKeyError(err) {
+	case tts.KeyErrInvalidKey:
+		g.ring.ReportInvalid(idx)
+		return fmt.Errorf("gemini: key ****%s is invalid: %w", last4(key), err)
+	case tts.KeyErrQuota:
+		g.ring.ReportRateLimit(idx)
+		return fmt.Errorf("gemini: key ****%s hit quota/rate-limit: %w", last4(key), err)
+	default:
+		return fmt.Errorf("gemini: key ****%s test failed: %w", last4(key), err)
+	}
+}
+
+// last4 is a local alias so the engines package does not reach into the
+// tts keyring internals beyond its public API.
+func last4(key string) string {
+	if len(key) <= 4 {
+		return key
+	}
+	return key[len(key)-4:]
 }
 
 func (g *GeminiProvider) Complete(ctx context.Context, system, prompt string) (string, error) {
-	g.mu.RLock()
-	key := g.apiKey
-	g.mu.RUnlock()
-	if key == "" {
-		return "", fmt.Errorf("gemini: missing API key")
+	tried := map[int]bool{}
+	var lastErr error
+	for {
+		g.mu.RLock()
+		key, idx, ok := g.ring.Next(tried)
+		allCooling := !ok && g.ring.Len() > 0 && g.ring.AllCoolingDown()
+		keyCount := g.ring.Len()
+		g.mu.RUnlock()
+		if !ok {
+			switch {
+			case keyCount == 0:
+				return "", fmt.Errorf("gemini: missing API key")
+			case allCooling:
+				// Every key is cooling down: fail over to the next tier
+				// NOW (llama-server) instead of spamming retries.
+				// "quota" in the message lets the chain log the reason.
+				return "", fmt.Errorf("gemini: all API keys cooling down (quota/rate-limit), failing over")
+			case lastErr != nil:
+				return "", lastErr
+			default:
+				return "", fmt.Errorf("gemini: all API keys marked invalid")
+			}
+		}
+		tried[idx] = true
+		text, err := g.completeWithKey(ctx, key, system, prompt, false)
+		if err == nil {
+			g.mu.Lock()
+			g.ring.ReportSuccess(idx)
+			g.mu.Unlock()
+			return text, nil
+		}
+		lastErr = err
+		g.mu.Lock()
+		switch tts.ClassifyKeyError(err) {
+		case tts.KeyErrQuota:
+			g.ring.ReportRateLimit(idx)
+		case tts.KeyErrInvalidKey:
+			g.ring.ReportInvalid(idx)
+		default:
+			// network / 5xx / parse: try the next key, no penalty.
+		}
+		g.mu.Unlock()
 	}
-	url := "https://generativelanguage.googleapis.com/v1beta/models/" +
-		g.model + ":generateContent?key=" + key
+}
+
+func (g *GeminiProvider) completeWithKey(ctx context.Context, key, system, prompt string, minimal bool) (string, error) {
+	g.mu.RLock()
+	baseURL, model, httpc := g.baseURL, g.model, g.http
+	g.mu.RUnlock()
+	url := baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	body := map[string]any{
 		"contents": []any{map[string]any{"parts": []any{map[string]any{"text": prompt}}}},
 	}
 	if system != "" {
 		body["system_instruction"] = map[string]any{"parts": []any{map[string]any{"text": system}}}
 	}
-	data, err := postJSON(ctx, g.http, url, body)
+	if minimal {
+		body["generationConfig"] = map[string]any{"maxOutputTokens": 1}
+	}
+	data, err := postJSON(ctx, httpc, url, body)
 	if err != nil {
 		return "", fmt.Errorf("gemini: %w", err)
 	}
