@@ -171,6 +171,26 @@ def test_onboarding_pipeline():
     assert onboard_step(mgr, acct.id) == "live_ready"
 
 
+def test_onboarding_keeps_researched_niche():
+    """researching -> persona_assigned must NOT overwrite the researched
+    niche with the persona label (regression test)."""
+    ledger = make_ledger()
+    mgr = AccountManager(ledger)
+    acct = mgr.add("ma_chan", niche_hint="truyện ma Việt Nam")
+
+    def fake_research(hint):
+        mgr.set_topic_plan(acct.id, "truyện ma học đường",
+                           ["tập 1: ma nữ ký túc xá", "tập 2: thang máy"])
+        return {"niche": "truyện ma học đường", "source": "hint"}
+
+    assert onboard_step(mgr, acct.id, research_fn=fake_research) == "researching"
+    assert onboard_step(mgr, acct.id) == "persona_assigned"
+    acct = mgr.get(acct.id)
+    assert acct.niche == "truyện ma học đường"  # NOT the persona label
+    assert acct.persona == "storyteller"  # keyword match on researched niche
+    assert acct.topics == ["tập 1: ma nữ ký túc xá", "tập 2: thang máy"]
+
+
 # ---------- daemon ----------
 
 def _ict(year, month, day, hour, minute=0):

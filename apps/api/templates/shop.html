@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Shop Affiliate — AI Creator OS{% endblock %}
+{% block content %}
+<h1>Shop Affiliate</h1>
+<p class="subtitle">Kệ hàng sản phẩm affiliate — AI tự tìm, chấm điểm và gắn vào video/live.</p>
+
+<div class="form-card">
+<h2 style="margin-top:0;border:none;padding:0">Thêm sản phẩm vào kệ</h2>
+<form method="post" action="/shop/add">
+  <div class="field">
+    <label>Mã sản phẩm (platform_pid) <span class="req">*</span></label>
+    <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
+  </div>
+  <div class="field">
+    <label>Tên sản phẩm <span class="req">*</span></label>
+    <input type="text" name="title" required placeholder="vd: Tai nghe bluetooth X10">
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Giá (USD) <span class="req">*</span></label>
+      <input type="number" name="price" step="0.01" min="0" required>
+    </div>
+    <div class="field">
+      <label>Tỷ lệ hoa hồng (0–1) <span class="req">*</span></label>
+      <input type="number" name="commission_rate" step="0.01" min="0" max="1" required
+             placeholder="vd: 0.12">
+    </div>
+  </div>
+  <div class="field">
+    <label>Danh mục</label>
+    <input type="text" name="category" placeholder="vd: điện tử">
+  </div>
+  <button type="submit" class="btn">Thêm vào kệ</button>
+</form>
+</div>
+
+<h2>Kệ hàng</h2>
+{% if products %}
+<table>
+  <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
+      <th>Điểm AI</th><th>Trạng thái</th></tr>
+  {% for p in products %}
+  <tr>
+    <td><strong>{{ p.title }}</strong><br><span style="color:var(--muted);font-size:12px">{{ p.platform_pid }}</span></td>
+    <td>{{ p.category or '—' }}</td>
+    <td>${{ "%.2f"|format(p.price or 0) }}</td>
+    <td>${{ "%.2f"|format(p.commission_value or 0) }}
+      <span style="color:var(--muted)">({{ "%.0f"|format((p.commission_rate or 0) * 100) }}%)</span></td>
+    <td>{{ "%.2f"|format(p.score or 0) }}</td>
+    <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Kệ hàng trống. Thêm sản phẩm đầu tiên ở form phía trên.</p>
+{% endif %}
+{% endblock %}

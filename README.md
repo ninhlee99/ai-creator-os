@@ -1,24 +1,32 @@
-# TikTok Affiliate OS
+# AI Creator OS
 
-**Hệ điều hành "công ty một người": đội AI tự vận hành vòng kinh doanh affiliate TikTok — săn sản phẩm → làm nội dung → livestream → đối soát hoa hồng → tái đầu tư.**
+**Hệ điều hành "công ty một người": mạng lưới AI creator tự vận hành — mỗi tài khoản là một creator AI với persona riêng, tự tìm niche, tự sản xuất video, tự livestream, tự đăng đa nền tảng. Bạn chỉ bật ON và theo dõi.**
 
-![Tổng quan hệ thống](docs/assets/hero-overview.webp)
+![Tổng quan mạng lưới AI creator](docs/assets/hero-network.webp)
 
-> 🖼️ **Ghi chú trung thực:** các ảnh và video trong README này là **concept minh họa do AI tạo**, giúp hình dung ý tưởng — không phải ảnh chụp sản phẩm thật. Sơ đồ kiến trúc (mermaid) mô tả đúng code hiện tại.
+> 🖼️ **Ghi chú trung thực:** các ảnh concept trong README này do AI tạo để minh họa ý tưởng — không phải ảnh chụp sản phẩm thật. Hai video demo bên dưới được **dựng thật bằng pipeline FFmpeg + lồng tiếng AI** của dự án.
 
 ---
 
 ## 🎬 Xem nhanh
 
-<video src="docs/assets/concept-teaser.mp4" controls width="100%"></video>
+### Quy trình tự động — từ săn sản phẩm đến đăng video
 
-*Video concept: đội agent vận hành trung tâm điều khiển affiliate.*
+<video src="docs/assets/demo-pipeline.mp4" controls width="100%"></video>
 
-### Dashboard điều khiển (mockup giao diện dự kiến)
+*Video dựng thật bằng pipeline của dự án (FFmpeg + lồng tiếng AI): AI Hunter tìm sản phẩm → AI viết kịch bản → lồng tiếng → dựng video → đăng TikTok/Facebook/YouTube.*
 
-![Dashboard mockup](docs/assets/dashboard-mockup.webp)
+### Video affiliate demo — sản phẩm do AI làm từ A–Z
 
-*Mockup: GMV, đơn hàng, hoa hồng, phiên live đang chạy, trạng thái 4 agent và nút kill switch.*
+<video src="docs/assets/demo-affiliate-video.mp4" controls width="360"></video>
+
+*Video dọc 1080x1920 mẫu: kịch bản AI viết, lồng tiếng AI, phụ đề tự động — đúng chuẩn pipeline Content của hệ thống.*
+
+### Dashboard điều khiển (giao diện thật)
+
+![Dashboard](docs/assets/dashboard-mockup.webp)
+
+*Mọi quản trị qua UI web — không dùng CLI: tài khoản, onboarding, topic, lịch live, sản xuất video, đa nền tảng, shop, analytics, cài đặt, kill switch. Chạy: `uvicorn apps.api.main:app --port 8080` rồi mở `http://localhost:8080`.*
 
 ---
 
@@ -45,12 +53,14 @@ Mọi agent chỉ phục vụ một mục tiêu: **đồng hoa hồng quay vòng
 
 | Persona (mỗi account 1 cái) | Live làm gì | Nguồn thu |
 |---|---|---|
-| 📖 Storyteller | Kể chuyện đêm khuya | Gift + affiliate sách |
+| 📖 Storyteller | Kể chuyện, phim ngắn AI | Gift + affiliate sách |
 | 🎓 AI Teacher | Dạy tiếng Anh qua truyện | Gift + affiliate sách/khóa học |
+| 🎮 Game Master *(phase 2)* | AI tự chơi game được phép | Gift + affiliate gear |
+| 💻 AI Coder *(phase 2)* | Live code game/mini-app theo yêu cầu viewer | Gift (đề xuất tính năng) |
 | 🎤 AI Musician *(phase 3)* | Hát nhạc AI tự sáng tác | Gift + SoundOn royalty |
-| 🎮 Game Master *(phase 2)* | AI tự chơi game | Gift + affiliate gear |
+| 💃 Dancer *(phase 4)* | Nhảy theo trend | Gift |
 
-**Bạn làm 3 việc:** bật/tắt master switch · thêm account (username + RTMP key + gợi ý niche) · xem dashboard.
+**Bạn làm 3 việc trên dashboard web:** bật/tắt master switch · thêm account (username + gợi ý niche, AI tự research) · theo dõi.
 **Hệ thống tự làm phần còn lại:** research niche → gán persona → đăng video cày đủ 1.000 follow → xếp lịch live giờ vàng (tối đa 2 live cùng lúc trên M1 32GB) → live → đối soát → tối ưu.
 
 **Ngôn ngữ chốt:** **Go** cho orchestrator/scheduler/stream/API (1 binary ~10MB, RAM 5–20MB/service — nhẹ hơn Python hàng chục lần); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái.
@@ -116,7 +126,7 @@ flowchart TB
 
 **Nguyên tắc chọn công nghệ:** nhẹ, ít RAM/CPU/SSD → **Go** cho orchestrator/scheduler/stream/API (binary ~10MB, RAM 5–20MB/service); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái. API miễn phí trước, local fallback sau, trả phí chỉ khi tùy chọn.
 
-![Đội agent](docs/assets/agents-team.webp)
+![Đội persona AI creator](docs/assets/personas-team.webp)
 
 ---
 
@@ -207,6 +217,14 @@ flowchart TB
 
 ## 🖥️ Chạy trên Mac của bạn
 
+```bash
+pip install -r requirements.txt
+uvicorn apps.api.main:app --port 8080   # mở http://localhost:8080
+```
+
+Toàn bộ quản trị qua **dashboard web** — không cần chạm CLI:
+**Trang chủ** (tổng quan, kill switch) · **Tài khoản** (thêm account, onboarding tự động, topic plan) · **Lịch live** (xếp giờ vàng) · **Sản xuất video** (tạo video từ kịch bản + lồng tiếng AI) · **Đa nền tảng** (TikTok/Facebook/YouTube) · **Shop Affiliate** (kệ sản phẩm) · **Phân tích** (doanh thu, gift, chi phí API) · **Cài đặt** (API key, dry-run).
+
 ```mermaid
 flowchart TB
     subgraph Mac["Mac M1 Pro 32GB"]
@@ -238,10 +256,13 @@ Video demo thật sẽ được quay lại sau khi chạy rehearsal trên máy b
 
 ---
 
-## 📌 Trạng thái thật của dự án (v0.2 — AI Creator Network)
+## 📌 Trạng thái thật của dự án (v0.3 — AI Creator OS)
 
 | Phần | Trạng thái |
 |---|---|
+| Rebrand: AI Creator OS (không còn chỉ là affiliate) | ✅ Tên, hình concept, video demo mới |
+| Web dashboard UI/UX full (thay CLI) | ✅ `apps/api/` — 8 trang quản trị |
+| Video demo quy trình + video affiliate demo | ✅ Dựng thật bằng FFmpeg + TTS |
 | Mô hình chốt (multi-account, persona, scheduler) | ✅ `docs/MODEL.md` |
 | Kiến trúc + chốt ngôn ngữ (Go-first, Python phụ trợ) | ✅ `docs/ARCHITECTURE.md` §2, §10 |
 | AccountManager, PersonaEngine, Scheduler, Onboarding, daemon | ✅ Code xong, **16/16 test pass** |

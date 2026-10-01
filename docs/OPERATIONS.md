@@ -8,8 +8,8 @@ brew install ffmpeg go python@3.11 ollama
 ollama pull qwen3:4b
 
 # 2. repo
-git clone <this-repo> /opt/tiktok-affiliate-os
-cd /opt/tiktok-affiliate-os
+git clone <this-repo> /opt/ai-creator-os
+cd /opt/ai-creator-os
 cp .env.example .env   # fill keys
 
 # 3. stream engine

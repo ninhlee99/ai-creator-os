@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Phân tích — AI Creator OS{% endblock %}
+{% block content %}
+<h1>Phân tích</h1>
+<p class="subtitle">Doanh thu, quà tặng, phiên live và chi phí API của toàn mạng lưới.</p>
+
+<div class="cards">
+  <div class="card accent">
+    <div class="num">${{ "%.2f"|format(revenue or 0) }}</div>
+    <div class="label">Doanh thu affiliate (đơn hàng)</div>
+  </div>
+  <div class="card">
+    <div class="num">${{ "%.2f"|format(commissions or 0) }}</div>
+    <div class="label">Hoa hồng đã ghi nhận</div>
+  </div>
+  <div class="card green">
+    <div class="num">{{ sessions }}</div>
+    <div class="label">Phiên live đã chạy</div>
+  </div>
+  <div class="card">
+    <div class="num">${{ "%.2f"|format(spend or 0) }}</div>
+    <div class="label">Chi phí API hôm nay</div>
+  </div>
+</div>
+
+<h2>Quà tặng theo tài khoản</h2>
+{% if gift_rows %}
+<table>
+  <tr><th>Tài khoản</th><th>Quà tặng (USD)</th></tr>
+  {% for g in gift_rows %}
+  <tr><td><strong>{{ g.username }}</strong></td><td>${{ "%.2f"|format(g.usd or 0) }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Chưa có quà tặng nào được ghi nhận.</p>
+{% endif %}
+
+<h2>Chi phí API theo engine/provider</h2>
+{% if usage %}
+<table>
+  <tr><th>Engine</th><th>Provider</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
+  {% for u in usage %}
+  <tr>
+    <td>{{ u.engine }}</td>
+    <td>{{ u.provider }}</td>
+    <td>{{ u.n }}</td>
+    <td>${{ "%.4f"|format(u.cost or 0) }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
+{% endif %}
+{% endblock %}
