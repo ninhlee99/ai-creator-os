@@ -1,0 +1,4 @@
+file 'media-generation-affiliate-handbag-0-6e32278c-7ade-451a-87d5-bf8611d18cd8.mp4'
+file 'media-generation-affiliate-dress-0-5449819e-8f46-4c60-a57c-61753c37057a.mp4'
+file 'media-generation-affiliate-clothing-0-717823e5-2858-4aef-bc81-9c007d7ce9ce.mp4'
+file 'media-generation-affiliate-details-0-feaaf41e-0c4c-4c31-9bba-ad9837ad4ca3.mp4'
