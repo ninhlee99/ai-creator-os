@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .account import AccountManager
 from .persona import assign_persona, describe
+from .topics import TopicPlan, resolve_topic
 
 FOLLOWERS_TO_LIVE = 1000
 
@@ -26,17 +27,50 @@ def default_research(niche_hint: str) -> dict:
     }
 
 
+def make_topic_research(manager: AccountManager, account_id: int,
+                        llm=None):
+    """Build a research_fn backed by the topic engine.
+
+    Honors the account's niche_hint when the user set one; otherwise the
+    model auto-researches a niche via the free LLM chain, avoiding niches
+    already taken by other accounts.
+    """
+    def _research(niche_hint: str) -> dict:
+        acct = manager.get(account_id)
+        taken = [a.niche for a in manager.list()
+                 if a.niche and a.id != account_id]
+        plan: TopicPlan = resolve_topic(acct, llm=llm,
+                                        network_niches=taken)
+        manager.set_topic_plan(account_id, plan.niche, plan.topics)
+        return {
+            "niche": plan.niche,
+            "topics": plan.topics,
+            "source": plan.source,   # user | auto | fallback
+            "hint": acct.niche_hint,
+            "trending_hashtags": [],
+            "competitor_notes": "",
+            "affiliate_categories": [],
+        }
+    return _research
+
+
 def onboard_step(manager: AccountManager, account_id: int,
-                 research_fn=default_research) -> str:
+                 research_fn=None, llm=None) -> str:
     """Advance one account by exactly one pipeline stage.
-    Returns the new status. Idempotent per stage."""
+    Returns the new status. Idempotent per stage.
+
+    research_fn: injected for tests/rehearsal. When None, the real topic
+    engine is used (user hint honored, else auto-research via llm).
+    """
     acct = manager.get(account_id)
 
     if acct.status == "onboarding":
+        if research_fn is None:
+            research_fn = make_topic_research(manager, account_id, llm)
         brief = research_fn(acct.niche_hint or "")
         manager.ledger.decide(
             "onboarding", "niche_research", acct.username,
-            "auto niche research complete",
+            f"topic resolved (source={brief.get('source')})",
             {"brief": brief, "hint": acct.niche_hint})
         return manager.transition(account_id, "researching").status
 

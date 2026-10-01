@@ -10,3 +10,4 @@ dist/
 *.log
 .DS_Store
 tiktok_token_*.json
+youtube_token_*.json

@@ -14,6 +14,21 @@ class Ledger:
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self):
+        """Lightweight additive migrations for DBs created before a column
+        existed. Additive-only; never drops or renames."""
+        for ddl in (
+            "ALTER TABLE accounts ADD COLUMN topics_json TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE accounts ADD COLUMN youtube_channel TEXT",
+            "ALTER TABLE accounts ADD COLUMN youtube_content_types TEXT NOT NULL DEFAULT '[]'",
+        ):
+            try:
+                self.db.execute(ddl)
+            except sqlite3.OperationalError:
+                pass  # column already exists
+        self.db.commit()
 
     # ---- generic ----
     def _insert(self, table: str, data: dict) -> int:

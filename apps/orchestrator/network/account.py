@@ -5,6 +5,7 @@ The RTMP key itself is NEVER stored — only the env var name that holds it
 """
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 
@@ -36,6 +37,9 @@ class Account:
     followers: int
     rtmp_key_ref: str | None
     rest_weekday: int = 0
+    topics: list | None = None            # episode topics from topic engine
+    youtube_channel: str | None = None    # YT channel handle/id for this account
+    youtube_content_types: list | None = None  # kinds this YT channel accepts
 
     @property
     def live_eligible(self) -> bool:
@@ -73,12 +77,49 @@ class AccountManager:
 
     @staticmethod
     def _wrap(row) -> Account:
+        def _json_list(raw) -> list:
+            try:
+                v = json.loads(raw or "[]")
+                return v if isinstance(v, list) else []
+            except Exception:
+                return []
+
         return Account(
             id=row["id"], username=row["username"], status=row["status"],
             persona=row["persona"], niche=row["niche"],
             niche_hint=row["niche_hint"] or "",
             followers=row["followers"], rtmp_key_ref=row["rtmp_key_ref"],
-            rest_weekday=row["rest_weekday"] or 0)
+            rest_weekday=row["rest_weekday"] or 0,
+            topics=_json_list(row["topics_json"]) or None,
+            youtube_channel=row["youtube_channel"],
+            youtube_content_types=_json_list(
+                row["youtube_content_types"]) or None)
+
+    def set_topic_plan(self, account_id: int, niche: str,
+                       topics: list) -> Account:
+        """Persist the topic engine's output for an account."""
+        self.ledger.db.execute(
+            "UPDATE accounts SET niche = ?, topics_json = ?, "
+            "updated_at = datetime('now') WHERE id = ?",
+            (niche, json.dumps(topics, ensure_ascii=False), account_id))
+        self.ledger.db.commit()
+        return self.get(account_id)
+
+    def set_youtube(self, account_id: int, channel: str | None = None,
+                    content_types: list | None = None) -> Account:
+        """Configure this account's YouTube channel and which content kinds
+        it accepts. content_types is a subset of
+        ["short_video","short_film","ai_music","ai_remix"]; empty/None
+        disables YouTube for the account."""
+        valid = {"short_video", "short_film", "ai_music", "ai_remix"}
+        cleaned = [c for c in (content_types or []) if c in valid]
+        self.ledger.db.execute(
+            "UPDATE accounts SET youtube_channel = ?, "
+            "youtube_content_types = ?, updated_at = datetime('now') "
+            "WHERE id = ?",
+            (channel, json.dumps(cleaned), account_id))
+        self.ledger.db.commit()
+        return self.get(account_id)
 
     # ---- lifecycle ----
     def transition(self, account_id: int, to: str, **fields) -> Account:
