@@ -33,17 +33,37 @@ class Candidate:
 class TikTokShopAffiliateClient:
     """Thin wrapper over TikTok Shop Open Platform affiliate endpoints.
 
-    TODO: wire endpoints after research (auth, product search, commission).
+    Backed by tiktok/shop/client.py (HMAC-signed). Endpoint paths must be
+    verified in the Partner Center sandbox first — see ENDPOINTS there and
+    scripts/probe_shop_api.py. Until then this raises a clear error.
     """
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
+        self._client = None
+
+    def _get(self):
+        if self._client is None:
+            from tiktok.shop.client import ShopClient
+            if not (self.cfg.tiktok_shop_app_key
+                    and self.cfg.tiktok_shop_access_token):
+                raise RuntimeError(
+                    "missing TIKTOK_SHOP_APP_KEY / TIKTOK_SHOP_ACCESS_TOKEN "
+                    "(see docs/OPERATIONS.md for the setup checklist)")
+            self._client = ShopClient(
+                self.cfg.tiktok_shop_app_key,
+                self.cfg.tiktok_shop_app_secret,
+                self.cfg.tiktok_shop_access_token,
+                getattr(self.cfg, "tiktok_shop_cipher", ""))
+        return self._client
 
     def search_products(self, keyword: str, page: int = 1) -> list[dict]:
-        raise NotImplementedError("wire after docs/RESEARCH/tiktok_shop_api.md")
+        data = self._get().search_open_collab_products(
+            keyword=keyword, page=page)
+        return data.get("products", data) if isinstance(data, dict) else data
 
     def commission_report(self) -> list[dict]:
-        raise NotImplementedError("wire after docs/RESEARCH/tiktok_shop_api.md")
+        return []  # via affiliate_orders() once the path is verified
 
 
 BLOCKED_CATEGORIES = ("thuốc", "thực phẩm chức năng không rõ nguồn gốc")
@@ -61,7 +81,7 @@ def run(cfg: Config, ledger: Ledger,
     for keyword in ["gia dụng", "làm đẹp", "thời trang"]:
         try:
             raw = client.search_products(keyword)
-        except NotImplementedError as e:
+        except (NotImplementedError, RuntimeError) as e:
             return {"ok": False, "reason": str(e)}
         for r in raw:
             cand = Candidate(

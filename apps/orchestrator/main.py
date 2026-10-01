@@ -37,7 +37,7 @@ def run_agent(name: str, ledger: Ledger) -> dict:
         from engines.tts.provider import build_tts
         llm = build_llm(config.gemini_api_key, config.ollama_base_url,
                          config.ollama_model)
-        tts = build_tts(config.tts_provider, config.tts_api_key)
+        tts = build_tts(config.tts_api_key)
         return run(config, ledger, llm, tts, tiktok=None)
     if name == "streamer":
         from agents.streamer.agent import run_live
@@ -46,7 +46,7 @@ def run_agent(name: str, ledger: Ledger) -> dict:
         from engines.avatar.provider import build_avatar
         llm = build_llm(config.gemini_api_key, config.ollama_base_url,
                          config.ollama_model)
-        tts = build_tts(config.tts_provider, config.tts_api_key)
+        tts = build_tts(config.tts_api_key)
         avatar = build_avatar(config.avatar_provider, config.avatar_api_key)
         from apps.stream_engine_client import StreamEngine
         return run_live(config, ledger, llm, tts, avatar, StreamEngine())

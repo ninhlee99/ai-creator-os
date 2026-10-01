@@ -9,3 +9,4 @@ __pycache__/
 dist/
 *.log
 .DS_Store
+tiktok_token_*.json
