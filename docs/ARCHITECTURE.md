@@ -1,4 +1,4 @@
-# tiktok-affiliate-os — Architecture
+# ai-creator-os — Architecture
 
 > Mô hình kinh doanh đã chốt tại `docs/MODEL.md` (AI Creator Network:
 > multi-account, mỗi account một persona). File này mô tả kỹ thuật thực thi.

@@ -3,17 +3,60 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
 
 SCHEMA = Path(__file__).with_name("schema.sql").read_text()
 
 
+class _LockedConnection:
+    """Thread-safe wrapper around a sqlite3 connection.
+
+    The dashboard serves requests from worker threads while the connection
+    is created once at import time. All statements are serialized through
+    one re-entrant lock; each caller gets its own cursor, so result
+    iteration stays safe.
+    """
+
+    def __init__(self, conn: sqlite3.Connection):
+        self._conn = conn
+        self._lock = threading.RLock()
+
+    def execute(self, *args, **kwargs):
+        with self._lock:
+            return self._conn.execute(*args, **kwargs)
+
+    def executemany(self, *args, **kwargs):
+        with self._lock:
+            return self._conn.executemany(*args, **kwargs)
+
+    def executescript(self, *args, **kwargs):
+        with self._lock:
+            return self._conn.executescript(*args, **kwargs)
+
+    def commit(self):
+        with self._lock:
+            return self._conn.commit()
+
+    def rollback(self):
+        with self._lock:
+            return self._conn.rollback()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 class Ledger:
     def __init__(self, path: str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path)
-        self.db.row_factory = sqlite3.Row
+        # check_same_thread=False: the dashboard serves requests from worker
+        # threads while the connection is created at import time. Access is
+        # serialized via _LockedConnection.
+        conn = sqlite3.connect(path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        self.db = _LockedConnection(conn)
         self.db.executescript(SCHEMA)
+        self.db.execute("PRAGMA journal_mode=WAL")
         self._migrate()
 
     def _migrate(self):
@@ -215,6 +258,45 @@ class Ledger:
         return row["s"]
 
     # ---- live slots ----
+    # ---- dashboard read helpers ----
+    def total_revenue(self) -> float:
+        row = self.db.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM commissions").fetchone()
+        return float(row[0] or 0)
+
+    def get_slots(self, slot_date: str) -> list:
+        return self.db.execute(
+            "SELECT * FROM live_slots WHERE slot_date = ? ORDER BY start_min",
+            (slot_date,)).fetchall()
+
+    def get_products(self) -> list:
+        return self.db.execute(
+            "SELECT * FROM products ORDER BY score DESC, id").fetchall()
+
+    def add_product(self, platform_pid: str, title: str, price: float,
+                    commission_rate: float, category: str = "") -> int:
+        return self._insert("products", {
+            "platform_pid": platform_pid,
+            "title": title,
+            "category": category,
+            "price": price,
+            "commission_rate": commission_rate,
+            "commission_value": round(price * commission_rate, 2),
+            "status": "shelf",
+        })
+
+    def get_gift_summary(self) -> list:
+        return self.db.execute(
+            "SELECT a.username AS username, COALESCE(SUM(g.usd), 0) AS usd "
+            "FROM accounts a LEFT JOIN gifts g ON g.account_id = a.id "
+            "GROUP BY a.id ORDER BY usd DESC").fetchall()
+
+    def get_usage(self, day: str, limit: int = 20) -> list:
+        return self.db.execute(
+            "SELECT engine, provider, units, cost_usd "
+            "FROM api_usage WHERE date(created_at) = ? "
+            "ORDER BY id DESC LIMIT ?", (day, limit)).fetchall()
+
     def save_slots(self, slots: list[dict]) -> None:
         for s in slots:
             self._insert("live_slots", s)

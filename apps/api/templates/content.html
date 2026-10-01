@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Sản xuất video — AI Creator OS{% endblock %}
+{% block content %}
+<h1>Sản xuất video</h1>
+<p class="subtitle">Tạo video dọc 1080×1920 kiểu kinetic-typography từ caption, kèm lồng tiếng AI nếu có.</p>
+
+<div class="form-card">
+<form method="post" action="/content">
+  <div class="field">
+    <label>Tiêu đề <span class="req">*</span></label>
+    <input type="text" name="title" required placeholder="vd: Review tai nghe bluetooth dưới 500k">
+  </div>
+  <div class="field">
+    <label>Caption <span class="req">*</span></label>
+    <textarea name="captions" required placeholder="Mỗi dòng là một caption, hiển thị lần lượt"></textarea>
+    <div class="hint">Mỗi dòng một caption — video sẽ chuyển cảnh theo từng dòng.</div>
+  </div>
+  <div class="field">
+    <label>Lời dẫn (narration)</label>
+    <textarea name="narration" placeholder="Để trống = video không lời, chỉ phụ đề"></textarea>
+  </div>
+  <button type="submit" class="btn">Tạo video</button>
+</form>
+</div>
+
+<h2>Video đã tạo</h2>
+{% if jobs %}
+  {% for job in jobs %}
+  <div class="job">
+    <h3>{{ job.title }}</h3>
+    <div class="meta">
+      <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+      · tạo lúc {{ job.created_at or '—' }}
+      {% if job.finished_at %}· xong lúc {{ job.finished_at }}{% endif %}
+    </div>
+    {% if job.output %}
+    <video class="player" controls src="/media/{{ job.output }}"></video>
+    {% endif %}
+    {% if job.log %}<pre class="log">{{ job.log }}</pre>{% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+<p class="empty">Chưa có video nào. Tạo video đầu tiên ở form phía trên.</p>
+{% endif %}
+{% endblock %}

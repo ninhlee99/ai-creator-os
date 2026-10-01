@@ -75,17 +75,20 @@ def onboard_step(manager: AccountManager, account_id: int,
         return manager.transition(account_id, "researching").status
 
     if acct.status == "researching":
-        persona = assign_persona(acct.niche_hint, manager.active_personas())
+        # Persona is chosen to FIT the researched niche. The hint was only
+        # a suggestion; the niche resolved in the research step is never
+        # overwritten by the persona label.
+        niche_for_match = acct.niche or acct.niche_hint or ""
+        persona = assign_persona(niche_for_match, manager.active_personas())
         p = describe(persona)
         manager.ledger.decide(
             "onboarding", "persona_assigned", acct.username,
-            f"assigned {p['label']}",
-            {"persona": persona,
+            f"assigned {p['label']} for researched niche '{acct.niche}'",
+            {"persona": persona, "niche": acct.niche,
              "affiliate_niches": p["affiliate_niches"],
              "red_lines": p["red_lines"]})
         return manager.transition(
-            account_id, "persona_assigned",
-            persona=persona, niche=p["label"]).status
+            account_id, "persona_assigned", persona=persona).status
 
     if acct.status == "persona_assigned":
         # content factory grows the account with short videos

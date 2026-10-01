@@ -24,8 +24,10 @@ follower, xếp lịch live, live, đối soát, tối ưu — hệ thống tự
 
 ## 3. Persona: mỗi account một "con người AI" khác nhau
 
-Không bao giờ chạy 2 account cùng persona/nội dung na ná (chống spam filter
-và chống liên đới khi 1 account bị phạt).
+Ưu tiên mỗi account một persona khác nhau (chống spam filter và chống
+liên đới khi 1 account bị phạt). Khi số account vượt số persona khả dụng,
+tái sử dụng persona ít dùng nhất — nhưng không bao giờ để 2 account cùng
+persona/nội dung na ná trong cùng khung giờ.
 
 | Persona | Live làm gì | Nguồn thu chính | Kỹ thuật |
 |---|---|---|---|

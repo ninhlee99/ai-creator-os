@@ -1,4 +1,4 @@
--- tiktok-affiliate-os ledger schema (SQLite, WAL mode)
+-- ai-creator-os ledger schema (SQLite, WAL mode)
 -- Money tables are append-only: never UPDATE/DELETE orders, commissions.
 
 PRAGMA journal_mode=WAL;

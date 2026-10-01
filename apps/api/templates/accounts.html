@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Tài khoản — AI Creator OS{% endblock %}
+{% block content %}
+<h1>Tài khoản</h1>
+<p class="subtitle">Mỗi tài khoản là một AI creator với persona riêng. Cần tối thiểu {{ followers_need }} followers để đủ điều kiện live.</p>
+
+<div class="toolbar">
+  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+</div>
+
+{% if accounts %}
+<table>
+  <tr><th>Tài khoản</th><th>Trạng thái</th><th>Persona</th><th>Niche</th><th>Followers</th><th></th></tr>
+  {% for a in accounts %}
+  <tr>
+    <td><strong>{{ a.username }}</strong></td>
+    <td><span class="badge badge-{{ a.status }}">{{ a.status }}</span></td>
+    <td>{{ personas.get(a.persona, {}).get('label', a.persona or '—') }}</td>
+    <td>{{ a.niche or '—' }}</td>
+    <td>{{ a.followers }}{% if a.live_eligible %} <span class="badge badge-ok">đủ live</span>{% endif %}</td>
+    <td><a class="btn btn-secondary btn-sm" href="/accounts/{{ a.id }}">Chi tiết</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">Chưa có tài khoản nào. Hãy thêm tài khoản đầu tiên để bắt đầu onboarding.</p>
+{% endif %}
+{% endblock %}

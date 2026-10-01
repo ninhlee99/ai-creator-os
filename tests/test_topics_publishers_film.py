@@ -6,7 +6,8 @@ sys.path.insert(0, ".")
 
 from apps.orchestrator.network.account import Account, AccountManager
 from apps.orchestrator.network.onboarding import onboard_step
-from apps.orchestrator.network.topics import _parse_plan, resolve_topic
+from apps.orchestrator.network.topics import (_parse_plan, FALLBACK_NICHES,
+                                              plan_live_topic, resolve_topic)
 from ledger.store import Ledger
 from publishers import build_publishers
 from publishers.base import CONTENT_KINDS
@@ -41,16 +42,18 @@ def mk_account(**kw):
 
 # ---------- topic engine ----------
 
-def test_hint_honored_as_user_source():
+def test_hint_honored_as_soft_suggestion():
     llm = FakeLLM(payload=json.dumps({
         "niche": "sách self-help",
         "topics": ["tập 1", "tập 2"]}))
     acct = mk_account(niche_hint="bán sách self-help")
     plan = resolve_topic(acct, llm=llm, network_niches=[])
-    assert plan.source == "user"
+    # hint is a soft suggestion, not a final decision: source="hint"
+    assert plan.source == "hint"
     assert plan.niche == "sách self-help"
     assert plan.topics == ["tập 1", "tập 2"]
-    assert "sách self-help" in llm.last_prompt  # hint fed to the model
+    assert "bán sách self-help" in llm.last_prompt  # hint fed to the model
+    assert "gợi ý" in llm.last_prompt.lower() or "GỢI Ý" in llm.last_prompt
 
 
 def test_auto_avoids_taken_niches():
@@ -182,3 +185,42 @@ def test_film_end_to_end(tmp_path=None):
     assert "1080x1920" in probe.stderr
     # ~4s of narration
     assert 3.0 <= res["seconds"] <= 6.0
+
+
+# ---------- topic engine: fallback + live planner ----------
+
+def test_fallback_niche_covers_coder():
+    assert "coder" in FALLBACK_NICHES
+    acct = mk_account(persona="coder")
+    plan = resolve_topic(acct, llm=None)
+    assert plan.source == "fallback"
+    assert plan.niche == FALLBACK_NICHES["coder"]
+
+
+def test_plan_live_topic_round_robin_and_logged():
+    ledger = make_ledger()
+    mgr = AccountManager(ledger)
+    acct = mgr.add("live_chan")
+    mgr.set_topic_plan(acct.id, "truyện ma", ["tập A", "tập B"])
+
+    first = plan_live_topic(mgr, acct.id)
+    assert first["topic"] == "tập A"
+    second = plan_live_topic(mgr, acct.id)
+    assert second["topic"] == "tập B"  # avoids the recently used topic
+    third = plan_live_topic(mgr, acct.id)
+    assert third["topic"] == "tập A"  # wraps around when all used
+
+    rows = ledger.db.execute(
+        "SELECT COUNT(*) c FROM decisions WHERE agent = 'live_planner' "
+        "AND action = 'session_topic'").fetchone()
+    assert rows["c"] == 3
+
+
+def test_plan_live_topic_without_plan_uses_niche():
+    ledger = make_ledger()
+    mgr = AccountManager(ledger)
+    acct = mgr.add("plain_chan", niche_hint="nấu ăn")
+    mgr.set_topic_plan(acct.id, "nấu ăn", [])
+    res = plan_live_topic(mgr, acct.id)
+    assert res["topic"] == "nấu ăn"
+    assert "no episode plan" in res["basis"]
