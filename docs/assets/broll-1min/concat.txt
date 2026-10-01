@@ -1,0 +1,6 @@
+file 'media-generation-aicos-1min-scene1-0-d736c53a-2461-494b-b644-a27d7aa55131.mp4'
+file 'media-generation-aicos-1min-scene2-0-f2c567df-6314-4ed4-aaec-165751f020da.mp4'
+file 'media-generation-aicos-1min-scene3-0-258b3bd7-8058-4a73-8b1f-9172a734c991.mp4'
+file 'media-generation-aicos-1min-scene4-0-1e0ae53f-c32e-4953-82b2-cc1bb080ed47.mp4'
+file 'media-generation-aicos-1min-scene5-0-8378cb97-a39f-4e1e-83b7-2c161244b28b.mp4'
+file 'media-generation-aicos-1min-scene6-0-f72d9fef-c973-4ba7-b5b2-7ff7ab5f2892.mp4'
