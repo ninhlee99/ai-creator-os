@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS content_items (
 
 CREATE TABLE IF NOT EXISTS live_sessions (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id    INTEGER REFERENCES accounts(id),
     started_at    TEXT NOT NULL DEFAULT (datetime('now')),
     ended_at      TEXT,
     duration_min  INTEGER DEFAULT 0,
@@ -94,3 +95,46 @@ CREATE TABLE IF NOT EXISTS api_usage (
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_api_usage_day ON api_usage(engine, created_at);
+
+-- ============ AI Creator Network (multi-account) ============
+
+CREATE TABLE IF NOT EXISTS accounts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE,
+    status        TEXT NOT NULL DEFAULT 'onboarding',
+    -- onboarding | researching | persona_assigned | growing
+    -- | live_ready | live | paused | penalized | retired
+    persona       TEXT,               -- storyteller | teacher | musician | gamer | dancer
+    niche         TEXT,               -- free-text niche from research/hint
+    niche_hint    TEXT,               -- what the human suggested at add time
+    followers     INTEGER NOT NULL DEFAULT 0,
+    rtmp_key_ref  TEXT,               -- env var NAME holding the RTMP key, never the key itself
+    rest_weekday  INTEGER NOT NULL DEFAULT 0,  -- 0=Mon .. 6=Sun
+    gift_usd      REAL NOT NULL DEFAULT 0,     -- cached lifetime gift revenue
+    created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- APPEND-ONLY: LIVE gift revenue per account (provider evidence only)
+CREATE TABLE IF NOT EXISTS gifts (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id    INTEGER NOT NULL REFERENCES accounts(id),
+    session_id    INTEGER REFERENCES live_sessions(id),
+    diamonds      INTEGER NOT NULL,
+    usd           REAL NOT NULL,      -- diamonds * usd_per_diamond at record time
+    recorded_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_gifts_account ON gifts(account_id);
+
+-- scheduled live slots (scheduler output, auditable)
+CREATE TABLE IF NOT EXISTS live_slots (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id    INTEGER NOT NULL REFERENCES accounts(id),
+    slot_date     TEXT NOT NULL,      -- YYYY-MM-DD (Asia/Ho_Chi_Minh)
+    start_min     INTEGER NOT NULL,   -- minutes since midnight ICT
+    duration_min  INTEGER NOT NULL,
+    status        TEXT NOT NULL DEFAULT 'planned',
+    -- planned | started | done | skipped
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_slots_date ON live_slots(slot_date, start_min);
