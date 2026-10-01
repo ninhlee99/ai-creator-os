@@ -1,16 +1,25 @@
 # tiktok-affiliate-os — Architecture
 
-Autonomous TikTok affiliate commerce system: AI agents discover high-commission
-products, produce short videos, run entertainment livestreams, and reconcile
-commissions — with the human fully hands-off during operation.
+> Mô hình kinh doanh đã chốt tại `docs/MODEL.md` (AI Creator Network:
+> multi-account, mỗi account một persona). File này mô tả kỹ thuật thực thi.
+> Khi mâu thuẫn, MODEL.md thắng.
+
+Autonomous multi-account TikTok network: AI personas run entertainment
+livestreams on staggered schedules, earn LIVE gifts, sell affiliate products
+via short videos, and release AI-composed music — with the human only
+flipping the master switch and watching the dashboard.
 
 ## 1. Design principles
 
-1. **One money loop.** Everything serves: discover → attract → convert →
-   reconcile → reinvest. No component exists without a measurable link to revenue.
-2. **Lightweight stack.** Python for brains, Go for streaming, SQLite for state.
-   No Kubernetes, no Java, no heavy frontend build. Must run comfortably on a
-   Mac M1 Pro 32GB alongside Ollama.
+1. **One money loop, per account.** Everything serves: discover → attract →
+   convert → reconcile → reinvest. Tracked separately for each account so
+   winners get prime slots and losers get cut.
+2. **Lightweight stack — Go first.** Go for orchestration, scheduling,
+   account management, streaming and API (one ~10MB binary, 5–20MB RAM per
+   service, instant start). Python only where the ecosystem forces it
+   (game-playing agent, local TTS/music glue) as isolated workers.
+   SQLite for state. No Kubernetes, no Java, no Node, no heavy frontend
+   build. Must run comfortably on a Mac M1 Pro 32GB.
 3. **Free API first, local second, paid optional.** Every external capability
    (LLM, TTS, avatar) is a provider interface with a priority chain. Free
    realtime APIs are tried first; local models are the fallback; paid APIs are
@@ -19,44 +28,55 @@ commissions — with the human fully hands-off during operation.
    disposes. Budgets, kill thresholds and payouts are code, not prompts.
 5. **Provider evidence only.** Revenue, orders and commissions are recorded
    only from TikTok's own data. The system never invents a number.
-6. **Account safety is a feature.** The TikTok account is the scarcest asset.
-   Anti-ban behavior is enforced in code, not left to agent discretion.
+6. **Account safety is a feature.** Accounts are the scarcest asset.
+   Multi-account guardrails (no cross-interaction, no duplicate content,
+   no ban evasion) are enforced in code, not left to agent discretion.
 
 ## 2. Component map
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ ORCHESTRATOR (Python)                                       │
-│  scheduler + agent loop + governance rules engine           │
-│  triggers: hunter (daily) → content (hourly) →              │
-│            streamer (live windows) → analyst (after live)   │
+│ MASTER SWITCH + DASHBOARD                                   │
+│  human: ON/OFF, add account, watch. One kill switch stops   │
+│  every account within seconds.                              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌───────────────────────▼─────────────────────────────────────┐
+│ ORCHESTRATOR (Go - target; Python scaffold is reference)    │
+│  AccountManager: registry, onboarding pipeline, RTMP keys  │
+│  PersonaEngine:  persona per account (voice, avatar, niche) │
+│  Scheduler:      golden-hour slots, max 2 concurrent lives  │
+│  Governance:     deterministic rules, budget caps, audit    │
 └──────┬──────────┬──────────────┬──────────────┬──────────────┘
        │          │              │              │
 ┌──────▼───┐ ┌────▼─────┐ ┌──────▼──────┐ ┌─────▼──────┐
 │ HUNTER   │ │ CONTENT  │ │ STREAMER    │ │ ANALYST    │
-│ agent    │ │ agent    │ │ agent       │ │ agent      │
-│ product  │ │ short    │ │ live show   │ │ ROI, kill/ │
-│ discovery│ │ video    │ │ director    │ │ scale      │
+│ per-acct │ │ per-acct │ │ per-account │ │ per-account│
+│ niche    │ │ short    │ │ live show   │ │ gift/ROI,  │
+│ products │ │ video    │ │ director    │ │ slot       │
+│          │ │ factory  │ │ (persona)   │ │ optimizer  │
 └──────┬───┘ └────┬─────┘ └──────┬──────┘ └─────┬──────┘
        │          │              │              │
-┌──────▼──────────▼──────────────▼──────────────▼──────────────┐
-│ ENGINES (provider interfaces: free API → local → paid)      │
-│  llm/      gemini-free → ollama                             │
-│  tts/      free-vi-tts → local                              │
-│  avatar/   local-stylized → streaming-api (paid, optional)   │
+┌──────▼───────────▼──────────────▼──────────────▼──────────────┐
+│ ENGINES (free API -> local -> paid)                         │
+│  llm/    gemini-free -> ollama                              │
+│  tts/    free-vi-tts -> local                               │
+│  avatar/ local-stylized -> streaming-api (paid, optional)    │
+│  music/  licensed-ai-model -> human-edit -> similarity-check │
+│  game/   python worker: vision + controller (per game)       │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│ STREAM-ENGINE (Go)                                          │
-│  supervises FFmpeg: RTMP publish, scene/overlay hot-reload, │
+│ STREAM-ENGINE (Go) x N - one supervisor per live account    │
+│  FFmpeg RTMP publish (per-account key), overlay hot-reload, │
 │  watchdog + auto-reconnect, resource-capped                 │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│ LEDGER (SQLite WAL)  append-only: products, sessions,       │
-│ orders, commissions, events, decisions                       │
+│ LEDGER (SQLite WAL) - per-account: products, sessions,      │
+│ gifts, orders, commissions, decisions, api_usage            │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│ API + DASHBOARD (FastAPI, minimal HTML)                      │
-│  control plane: start/stop, kill switch, review queue        │
+│ API + DASHBOARD (minimal HTML)                              │
+│  master switch, accounts, slots, review queue, per-acct P&L │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -167,10 +187,31 @@ A tiny supervisor, not a media framework:
 8. **Cost meters.** Every engine call logs usage; free-tier caps are hard
    stops, not warnings.
 
-## 10. What this v1 does NOT do
+## 10. Language decision record (2026-10-01)
+
+**Go is the primary language** for everything hot: orchestrator, scheduler,
+account manager, stream supervisor, control-plane API. One static binary
+(~10MB), 5–20MB RAM per service, millisecond startup, goroutines multiplex
+N accounts on one machine. It is the lightest choice that stays easy to
+write and debug for a one-person team.
+
+**Python stays only where the ecosystem forces it**, as isolated workers
+invoked by the Go orchestrator:
+- game-playing agent (mss / pyautogui / OpenCV have no Go equivalent worth
+  using),
+- local Vietnamese TTS glue and music-pipeline glue.
+
+The current Python scaffold remains the executable reference for business
+logic (persona rules, schedule policy, governance); hot paths migrate to Go
+during production wiring. No logic changes in migration — only the runtime.
+
+**Not used:** Node.js (RAM-hungry), Rust (slow iteration for solo dev),
+Kubernetes/Java/heavy frontend builds (ops cost with zero revenue link).
+
+## 11. What this v1 does NOT do
 
 - No real-time TikTok chat reading unless an authorized event source exists
   (no unofficial scraping — ban risk is unacceptable).
 - No photorealistic avatar (see §5).
 - No autonomous spending beyond configured caps.
-- No multi-account operation (one account, well protected).
+- No cross-account interaction, ever (guardrail, not a missing feature).

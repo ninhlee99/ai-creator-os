@@ -73,8 +73,16 @@ class Ledger:
         )
 
     # ---- sessions / events / decisions / usage ----
-    def start_session(self) -> int:
-        return self._insert("live_sessions", {})
+    def start_session(self, account_id: int | None = None) -> int:
+        if account_id is None:
+            self.db.execute("INSERT INTO live_sessions DEFAULT VALUES")
+        else:
+            self.db.execute(
+                "INSERT INTO live_sessions (account_id) VALUES (?)",
+                (account_id,),
+            )
+        self.db.commit()
+        return self.db.execute("SELECT last_insert_rowid()").fetchone()[0]
 
     def end_session(self, session_id: int, **fields):
         sets = ", ".join(f"{k} = ?" for k in fields)
@@ -126,3 +134,84 @@ class Ledger:
         ).fetchone()
         return {"orders": row["orders"], "revenue": row["revenue"],
                 "commission": row["commission"], "views": views["v"]}
+
+    # ---- accounts (AI Creator Network) ----
+    def add_account(self, username: str, niche_hint: str = "",
+                    rtmp_key_ref: str = "") -> int:
+        """Register a new TikTok account. Returns account id.
+        The RTMP key itself is NEVER stored here — only the env var name."""
+        try:
+            return self._insert("accounts", {
+                "username": username,
+                "niche_hint": niche_hint,
+                "rtmp_key_ref": rtmp_key_ref,
+                "rest_weekday": self.db.execute(
+                    "SELECT COUNT(*) FROM accounts").fetchone()[0] % 7,
+            })
+        except sqlite3.IntegrityError:
+            row = self.db.execute(
+                "SELECT id FROM accounts WHERE username = ?", (username,)
+            ).fetchone()
+            return row["id"]
+
+    def get_account(self, account_id: int):
+        return self.db.execute(
+            "SELECT * FROM accounts WHERE id = ?", (account_id,)).fetchone()
+
+    def list_accounts(self, statuses: tuple | None = None):
+        if statuses:
+            ph = ",".join("?" for _ in statuses)
+            return self.db.execute(
+                f"SELECT * FROM accounts WHERE status IN ({ph}) "
+                "ORDER BY id", statuses).fetchall()
+        return self.db.execute("SELECT * FROM accounts ORDER BY id").fetchall()
+
+    def set_account_status(self, account_id: int, status: str,
+                           **fields) -> None:
+        fields["status"] = status
+        sets = ", ".join(f"{k} = ?" for k in fields)
+        self.db.execute(
+            f"UPDATE accounts SET {sets}, updated_at = datetime('now') "
+            "WHERE id = ?", tuple(fields.values()) + (account_id,))
+        self.db.commit()
+
+    def set_followers(self, account_id: int, followers: int) -> None:
+        self.db.execute(
+            "UPDATE accounts SET followers = ?, updated_at = datetime('now') "
+            "WHERE id = ?", (followers, account_id))
+        self.db.commit()
+
+    # ---- gifts (append-only, provider evidence) ----
+    def record_gift(self, account_id: int, diamonds: int, usd: float,
+                    session_id: int | None = None) -> int:
+        gid = self._insert("gifts", {
+            "account_id": account_id, "session_id": session_id,
+            "diamonds": diamonds, "usd": usd})
+        self.db.execute(
+            "UPDATE accounts SET gift_usd = gift_usd + ? WHERE id = ?",
+            (usd, account_id))
+        self.db.commit()
+        return gid
+
+    def account_gift_usd(self, account_id: int) -> float:
+        row = self.db.execute(
+            "SELECT COALESCE(SUM(usd),0) AS s FROM gifts WHERE account_id = ?",
+            (account_id,)).fetchone()
+        return row["s"]
+
+    # ---- live slots ----
+    def save_slots(self, slots: list[dict]) -> None:
+        for s in slots:
+            self._insert("live_slots", s)
+
+    def due_slots(self, slot_date: str, now_min: int):
+        """Slots planned for today whose start time has arrived."""
+        return self.db.execute(
+            "SELECT * FROM live_slots WHERE slot_date = ? "
+            "AND status = 'planned' AND start_min <= ? "
+            "ORDER BY start_min", (slot_date, now_min)).fetchall()
+
+    def set_slot_status(self, slot_id: int, status: str) -> None:
+        self.db.execute("UPDATE live_slots SET status = ? WHERE id = ?",
+                        (status, slot_id))
+        self.db.commit()

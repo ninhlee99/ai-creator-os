@@ -37,41 +37,84 @@ Mọi agent chỉ phục vụ một mục tiêu: **đồng hoa hồng quay vòng
 
 ---
 
+## 🧭 Mô hình chốt: AI Creator Network (2026-10-01)
+
+> Chi tiết đầy đủ: [`docs/MODEL.md`](docs/MODEL.md). Đây là bản tóm tắt để bạn đọc 1 phút.
+
+**Một hệ thống, N tài khoản TikTok.** Mỗi account là một "AI creator" với persona riêng — tự live giải trí theo giờ được phân bổ, thu **quà tặng LIVE**, bán **affiliate qua video ngắn**, nhạc AI tự sáng tác thì phát hành lấy **royalty**. Bạn chỉ **bật ON, thêm account, và theo dõi**.
+
+| Persona (mỗi account 1 cái) | Live làm gì | Nguồn thu |
+|---|---|---|
+| 📖 Storyteller | Kể chuyện đêm khuya | Gift + affiliate sách |
+| 🎓 AI Teacher | Dạy tiếng Anh qua truyện | Gift + affiliate sách/khóa học |
+| 🎤 AI Musician *(phase 3)* | Hát nhạc AI tự sáng tác | Gift + SoundOn royalty |
+| 🎮 Game Master *(phase 2)* | AI tự chơi game | Gift + affiliate gear |
+
+**Bạn làm 3 việc:** bật/tắt master switch · thêm account (username + RTMP key + gợi ý niche) · xem dashboard.
+**Hệ thống tự làm phần còn lại:** research niche → gán persona → đăng video cày đủ 1.000 follow → xếp lịch live giờ vàng (tối đa 2 live cùng lúc trên M1 32GB) → live → đối soát → tối ưu.
+
+**Ngôn ngữ chốt:** **Go** cho orchestrator/scheduler/stream/API (1 binary ~10MB, RAM 5–20MB/service — nhẹ hơn Python hàng chục lần); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái.
+
+```mermaid
+flowchart TB
+    YOU([Bạn: bật ON + thêm account]) --> ORC[Orchestrator]
+    ORC --> ACC[AccountManager<br/>vòng đời account]
+    ORC --> PER[PersonaEngine<br/>mỗi account 1 persona]
+    ORC --> SCH[Scheduler<br/>giờ vàng, max 2 live]
+    SCH --> LIVE[Streamer × N account]
+    LIVE --> GIFT[🎁 Quà tặng LIVE]
+    ORC --> VID[Content × N account]
+    VID --> AFF[🛒 Affiliate video ngắn]
+    GIFT --> LEDGER[(Ledger per-account)]
+    AFF --> LEDGER
+```
+
+---
+
 ## 🏗️ Kiến trúc tổng quan
 
 ```mermaid
 flowchart TB
-    subgraph Agents["Bốn agent"]
-        H[🎯 Hunter<br/>săn sản phẩm]
-        C[🎬 Content<br/>làm video]
-        S[📡 Streamer<br/>điều khiển live]
-        A[📊 Analyst<br/>phân tích, kill/scale]
+    subgraph Net["Network — multi-account"]
+        AM[AccountManager<br/>vòng đời account]
+        PE[PersonaEngine<br/>storyteller/teacher/...]
+        SC[Scheduler<br/>giờ vàng, max 2 live]
     end
-    subgraph Core["Core — Python stdlib, không lib ngoài"]
-        O[Orchestrator<br/>điều phối lịch chạy]
+    subgraph Agents["Bốn agent × N account"]
+        H[🎯 Hunter<br/>săn sản phẩm theo niche]
+        C[🎬 Content<br/>video ngắn per-account]
+        S[📡 Streamer<br/>live theo persona]
+        A[📊 Analyst<br/>gift/ROI, tối ưu lịch]
+    end
+    subgraph Core["Core"]
+        O[Orchestrator<br/>Go — target]
         G[Governance<br/>luật cứng, không LLM]
-        L[(Ledger<br/>SQLite WAL)]
+        L[(Ledger<br/>SQLite WAL, per-account)]
     end
     subgraph Engines["Engines — chuỗi provider"]
         LLM[LLM<br/>Gemini free → Ollama local]
-        TTS[TTS<br/>VieNeu local → Gemini → Azure]
+        TTS[TTS<br/>free API → local]
         AV[Avatar<br/>stylized realtime]
+        MU[Music · Game<br/>Python worker]
     end
     subgraph Platform["TikTok — API chính thức"]
         SHOP[Shop Open API<br/>săn + đối soát]
         POST[Content Posting API<br/>đăng video]
-        RTMP[RTMP<br/>đẩy live]
+        RTMP[RTMP × N key<br/>đẩy live]
+        GIFT[🎁 LIVE gifts<br/>trụ cột doanh thu]
     end
+    O --> AM & PE & SC
     O --> H & C & S & A
     H & C & S & A --> G --> L
     H --> SHOP
     A --> SHOP
     C --> POST
     S --> RTMP
-    H & C & S --> LLM & TTS & AV
+    S --> GIFT
+    H & C & S --> LLM & TTS & AV & MU
 ```
 
-**Nguyên tắc chọn công nghệ:** nhẹ, ít RAM/CPU/SSD → Python cho não, Go cho stream-engine, SQLite cho sổ cái. API miễn phí trước, local fallback sau, trả phí chỉ khi tùy chọn.
+**Nguyên tắc chọn công nghệ:** nhẹ, ít RAM/CPU/SSD → **Go** cho orchestrator/scheduler/stream/API (binary ~10MB, RAM 5–20MB/service); **Python** chỉ cho game agent và TTS/music glue (bắt buộc vì thư viện); **SQLite WAL** cho sổ cái. API miễn phí trước, local fallback sau, trả phí chỉ khi tùy chọn.
 
 ![Đội agent](docs/assets/agents-team.webp)
 
@@ -195,15 +238,16 @@ Video demo thật sẽ được quay lại sau khi chạy rehearsal trên máy b
 
 ---
 
-## 📌 Trạng thái thật của dự án (v0.1)
+## 📌 Trạng thái thật của dự án (v0.2 — AI Creator Network)
 
 | Phần | Trạng thái |
 |---|---|
-| Kiến trúc, 4 agent, governance, ledger, stream-engine | ✅ Code xong, test governance pass |
-| Research API TikTok Shop / LIVE policy / TTS+avatar | ✅ Xong, trong `docs/RESEARCH/` |
-| Wire provider thật (TTS, Shop API, Posting API) | ⏳ Chờ quyết định hướng đi |
-| Streamer live | ⚠️ Chờ quyết định sau phát hiện policy TikTok |
+| Mô hình chốt (multi-account, persona, scheduler) | ✅ `docs/MODEL.md` |
+| Kiến trúc + chốt ngôn ngữ (Go-first, Python phụ trợ) | ✅ `docs/ARCHITECTURE.md` §2, §10 |
+| AccountManager, PersonaEngine, Scheduler, Onboarding, daemon | ✅ Code xong, **16/16 test pass** |
+| Research Shop API / LIVE policy / TTS+avatar / vertical AI / monetization | ✅ Xong, trong `docs/RESEARCH/` |
+| Wire provider thật (TTS, Shop API, Posting API, RTMP) | ⏳ Bước tiếp theo |
+| Streamer live theo persona | ⏳ Sau khi wire provider |
+| Game agent (Python), music pipeline | ⏳ Phase 2–3 |
 
-**Các hướng đang cân nhắc:** A) thuê host người + AI làm còn lại · B) chỉ làm video ngắn AI · C) live full-AI chấp nhận rủi ro · D) **live game không lộ mặt** (AI voice + chatbot, không bán hàng trong live) + bán qua video ngắn.
-
-📄 Tài liệu chi tiết: `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/POLICY_AND_SAFETY.md`
+📄 Tài liệu chi tiết: `docs/MODEL.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/POLICY_AND_SAFETY.md`

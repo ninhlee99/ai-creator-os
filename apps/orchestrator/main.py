@@ -87,17 +87,54 @@ def daemon(ledger: Ledger):
         time.sleep(60)
 
 
+def network_daemon(ledger: Ledger):
+    """Multi-account network loop (docs/MODEL.md). One tick/minute.
+
+    Master switch: MASTER_SWITCH=1 in env (default OFF). Kill: KILL_SWITCH=1.
+    Nothing starts in dry-run; slot plans are still computed and audited.
+    """
+    import os
+    from apps.orchestrator.network.account import AccountManager
+    from apps.orchestrator.network.daemon import (NetConfig, NetState, tick)
+
+    cfg = NetConfig(
+        master_switch=os.environ.get("MASTER_SWITCH") == "1",
+        kill_switch=config.kill_switch,
+        dry_run=config.dry_run,
+        max_concurrent_lives=int(os.environ.get("MAX_CONCURRENT_LIVES", "2")),
+    )
+    manager = AccountManager(ledger)
+    state = NetState()
+    print(f"network daemon started. master_switch={cfg.master_switch} "
+          f"dry_run={cfg.dry_run}. Ctrl-C to stop.")
+    while True:
+        try:
+            out = tick(state, cfg, ledger, manager,
+                       run_agent=lambda name: run_agent(name, ledger))
+            if any(out[k] for k in ("onboarded", "started", "stopped",
+                                    "stopped_all")):
+                print(f"[{datetime.now():%H:%M:%S}] {out}")
+        except Exception as e:  # noqa: BLE001
+            print(f"network tick failed: {e}")
+        time.sleep(60)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--once", choices=AGENTS)
     ap.add_argument("--rehearse", action="store_true")
+    ap.add_argument("--network", action="store_true",
+                    help="multi-account network daemon (docs/MODEL.md)")
     args = ap.parse_args()
 
     if args.dry_run:
         object.__setattr__(config, "dry_run", True)
 
     ledger = Ledger(config.database_path)
+    if args.network:
+        network_daemon(ledger)
+        return
     if args.rehearse or args.once:
         if args.once:
             print(run_agent(args.once, ledger))
