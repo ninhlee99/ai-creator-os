@@ -1,0 +1,211 @@
+{{define "title"}}Reup Douyin — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Reup Douyin</h1>
+<p class="subtitle">Tải video viral Douyin → kho chờ transform (Đợt E).</p>
+
+{{if .Reup.Error}}<p class="err">{{.Reup.Error}}</p>{{end}}
+
+{{if .Reup.StoreOK}}
+<p>
+  {{if .Reup.DiscoverOn}}<span class="badge badge-ok">Tự quét: BẬT</span>{{else}}<span class="badge badge-draft">Tự quét: TẮT</span>{{end}}
+  {{if .Reup.YtDlpInstalled}}<span class="badge badge-ok">yt-dlp: {{.Reup.YtDlpVersion}}</span>{{else}}<span class="badge badge-warn">yt-dlp: chưa tải</span>{{end}}
+  <span class="badge badge-info">Đã tải: {{.Reup.Stats.Downloaded}}</span>
+  <span class="badge badge-draft">Chờ: {{.Reup.Stats.Queued}}</span>
+  {{if gt .Reup.Stats.Failed 0}}<span class="badge badge-err">Lỗi: {{.Reup.Stats.Failed}}</span>{{end}}
+  {{if .Reup.DiscoverLastRun}}<span class="badge badge-draft">Quét gần nhất: {{.Reup.DiscoverLastRun}}</span>{{end}}
+</p>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Nguồn Douyin</h2>
+  <p class="hint">Nhập 1 lần, app tự quét video viral 6 giờ/lần. Hashtag chưa tự quét được — dùng ô “Thêm URL trực tiếp” bên dưới.</p>
+  {{if .Reup.Sources}}
+  <table class="clean">
+    <tr><th>Tên</th><th>Loại</th><th>Giá trị</th><th>Trạng thái</th><th></th></tr>
+    {{range .Reup.Sources}}
+    <tr>
+      <td>{{.DisplayName}}</td>
+      <td><span class="badge badge-info">{{.KindLabel}}</span></td>
+      <td class="hint">{{.Value}}</td>
+      <td>{{if .Enabled}}<span class="badge badge-ok">bật</span>{{else}}<span class="badge badge-draft">tắt</span>{{end}}</td>
+      <td style="white-space:nowrap">
+        <form method="post" action="/reup/sources/{{.ID}}/toggle" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm">{{if .Enabled}}Tắt{{else}}Bật{{end}}</button>
+        </form>
+        <form method="post" action="/reup/sources/{{.ID}}/delete" style="display:inline"
+              data-confirm="Xoá nguồn “{{.DisplayName}}”? Video đã tải giữ lại.">
+          <button type="submit" class="btn btn-secondary btn-sm">Xoá</button>
+        </form>
+      </td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có nguồn nào.</p>
+  {{end}}
+  <form method="post" action="/reup/sources" style="margin-top:12px">
+    <div class="grid2">
+      <div class="field">
+        <label>Loại</label>
+        <select name="kind">
+          <option value="user">User Douyin</option>
+          <option value="hashtag">Hashtag</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Giá trị <span class="req">*</span></label>
+        <input type="text" name="value" required placeholder="vd: thantien (không cần @)">
+      </div>
+    </div>
+    <div class="field">
+      <label>Tên hiển thị</label>
+      <input type="text" name="name" placeholder="vd: Thần Tiên">
+    </div>
+    <button type="submit" class="btn">Thêm nguồn</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">yt-dlp</h2>
+  <p class="hint">App tự tải binary từ GitHub release (không bundle vào app). Douyin đổi chữ ký định kỳ → yt-dlp gãy → app tự cập nhật rồi thử lại; gãy hẳn thì dùng TikWM (bên thứ ba, không SLA).</p>
+  <p id="ytdlp-status">
+    {{if .Reup.YtDlpInstalled}}
+    <span class="badge badge-ok">Đã cài: {{.Reup.YtDlpVersion}}</span>
+    {{else}}
+    <span class="badge badge-warn">Chưa tải</span>
+    {{end}}
+    {{if .Reup.YtDlpBusy}}<span class="badge badge-info">đang tải…</span>{{end}}
+  </p>
+  <button type="button" class="btn" id="ytdlp-ensure-btn" onclick="reupYtDlp('ensure', this)">Tải yt-dlp</button>
+  <button type="button" class="btn btn-secondary" id="ytdlp-update-btn" onclick="reupYtDlp('update', this)">Cập nhật</button>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Hàng đợi tải</h2>
+  <p>
+    <button type="button" class="btn" id="reup-scan-btn" onclick="reupScan()">Quét ngay</button>
+    <span class="hint">Quét nguồn → tải video mới (dedupe sha256, QC sau tải).</span>
+  </p>
+  <form method="post" action="/reup/videos/add">
+    <div class="field">
+      <label>Thêm URL video trực tiếp</label>
+      <input type="url" name="url" placeholder="https://www.douyin.com/video/…">
+    </div>
+    <button type="submit" class="btn btn-secondary">Tải URL này</button>
+  </form>
+  {{if .Reup.Videos}}
+  <table class="clean" style="margin-top:12px">
+    <tr><th>#</th><th>Video</th><th>Lượt xem</th><th>Watermark</th><th>Trạng thái</th><th></th></tr>
+    {{range .Reup.Videos}}
+    <tr>
+      <td class="hint">{{.ID}}</td>
+      <td>
+        <div>{{if .Title}}{{.Title}}{{else}}<span class="hint">(chưa có tiêu đề)</span>{{end}}</div>
+        <div class="hint">{{.Author}}{{if .DurationSec}} · {{printf "%.0f" .DurationSec}}s{{end}}{{if .Resolution}} · {{.Resolution}}{{end}}{{if .Via}} · {{.Via}}{{end}}</div>
+        {{if .FailReason}}<div class="hint" style="color:var(--err-text)">{{.FailReason}}</div>{{end}}
+      </td>
+      <td>{{if gt .PlayCount 0}}{{.PlayCount}}{{else}}<span class="hint">—</span>{{end}}</td>
+      <td><span class="hint">{{.WatermarkLabel}}</span></td>
+      <td>
+        {{if eq .Status "downloaded"}}<span class="badge badge-ok">{{.StatusLabel}}</span>
+        {{else if eq .Status "failed"}}<span class="badge badge-err">{{.StatusLabel}}</span>
+        {{else if eq .Status "downloading"}}<span class="badge badge-info">{{.StatusLabel}}</span>
+        {{else}}<span class="badge badge-draft">{{.StatusLabel}}</span>{{end}}
+      </td>
+      <td>
+        {{if eq .Status "failed"}}
+        <form method="post" action="/reup/videos/{{.ID}}/retry" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm">Tải lại</button>
+        </form>
+        {{end}}
+      </td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Kho trống — thêm nguồn rồi bấm “Quét ngay”.</p>
+  {{end}}
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Tự động</h2>
+  <div class="grid2">
+    <div class="field">
+      <label>Tự quét nguồn</label>
+      <select id="reup-set-on">
+        <option value="1"{{if .Reup.DiscoverOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .Reup.DiscoverOn}} selected{{end}}>Tắt</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Chu kỳ quét (giờ)</label>
+      <input type="number" id="reup-set-hours" min="1" max="168" value="{{.Reup.DiscoverHours}}">
+    </div>
+  </div>
+  <div class="field">
+    <label>Số video mỗi nguồn mỗi lần quét (tối đa 10)</label>
+    <input type="number" id="reup-set-per" min="1" max="10" value="{{.Reup.PerSource}}">
+  </div>
+  <button type="button" class="btn" id="reup-set-btn" onclick="reupSettingsSave()">Lưu</button>
+</div>
+
+{{else}}
+<p class="empty">Kho Reup chưa sẵn sàng — kiểm tra log khởi động app.</p>
+{{end}}
+
+<script>
+function reupPost(url, body, btn, okMsg) {
+  if (btn) btn.disabled = true;
+  fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: body || '{}'})
+    .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+    .then(function (x) {
+      if (btn) btn.disabled = false;
+      if (x.d && x.d.ok) {
+        window.showToast(okMsg(x.d), true);
+        setTimeout(function () { location.reload(); }, 1500);
+      } else {
+        window.showToast((x.d && x.d.error) || ('Lỗi HTTP ' + x.s), false);
+      }
+    })
+    .catch(function () { if (btn) btn.disabled = false; window.showToast('Không gọi được server.', false); });
+}
+function reupScan() {
+  reupPost('/reup/scan', '{}', document.getElementById('reup-scan-btn'), function (d) {
+    var msg = 'Tìm ' + d.found + ' video mới → ' + d.downloaded + ' đã tải';
+    if (d.dup) msg += ', ' + d.dup + ' trùng';
+    if (d.failed) msg += ', ' + d.failed + ' lỗi';
+    if (d.notes && d.notes.length) msg += '. ' + d.notes.join(' ');
+    return msg + '.';
+  });
+}
+function reupYtDlp(action, btn) {
+  reupPost('/reup/ytdlp/' + action, '{}', btn, function (d) {
+    pollYtDlp();
+    return d.started ? 'Đang tải yt-dlp, xem trạng thái bên dưới.' : 'Tác vụ đang chạy rồi.';
+  });
+}
+function pollYtDlp() {
+  fetch('/reup/ytdlp/status')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var el = document.getElementById('ytdlp-status');
+      if (!el) return;
+      var html = d.installed
+        ? '<span class="badge badge-ok">Đã cài: ' + d.version + '</span>'
+        : '<span class="badge badge-warn">Chưa tải</span>';
+      if (d.busy) html += ' <span class="badge badge-info">đang tải…</span>';
+      el.innerHTML = html;
+      if (d.busy) setTimeout(pollYtDlp, 5000);
+      else if (d.installed) setTimeout(function () { location.reload(); }, 1000);
+    })
+    .catch(function () {});
+}
+function reupSettingsSave() {
+  var btn = document.getElementById('reup-set-btn');
+  reupPost('/reup/settings', JSON.stringify({
+    discover_on: document.getElementById('reup-set-on').value === '1',
+    interval_hours: parseInt(document.getElementById('reup-set-hours').value, 10) || 6,
+    per_source: parseInt(document.getElementById('reup-set-per').value, 10) || 3
+  }), btn, function () { return 'Đã lưu cài đặt tự động.'; });
+}
+</script>
+{{end}}

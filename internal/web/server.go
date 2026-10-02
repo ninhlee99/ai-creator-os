@@ -21,6 +21,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
@@ -77,6 +78,12 @@ type Server struct {
 	VieNeu VieNeuCtl
 	Health map[string]HealthChecker
 	Jobs   *JobStore
+	// Reup là kho nguồn + video Douyin (trụ reup). Injected bởi cmd wiring;
+	// nil khi DB mở lỗi — trang /reup fail-closed trung thực.
+	Reup *reup.Store
+	// reupYtDlpMu/reupYtDlpBusy theo dõi tác vụ tải yt-dlp chạy nền.
+	reupYtDlpMu   sync.Mutex
+	reupYtDlpBusy bool
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
@@ -441,6 +448,7 @@ var pageFiles = map[string]string{
 	"studio_trends":         "studio_trends.html",
 	"publishers":            "publishers.html",
 	"products":              "products.html",
+	"reup":                  "reup.html",
 	"growth":                "growth.html",
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",

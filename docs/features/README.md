@@ -8,7 +8,7 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 > File nào ghi 🅿️ PARKED thì tính năng đó **không còn trong binary** — chỉ còn
 > code nguồn + test chạy bằng `go test -tags parked ./...`.
 
-## Mục lục (sidebar hiện tại: 7 mục)
+## Mục lục (sidebar hiện tại: 8 mục)
 
 | # | Tính năng | File | Trạng thái |
 |---|---|---|---|
@@ -17,6 +17,7 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 3 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [phat-trien-kenh.md](phat-trien-kenh.md) | ✅ |
 | 4 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ (phim đã park) |
 | 5 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [san-pham.md](san-pham.md) | ✅ (Accesstrade: đợt B/C) |
+| 5b | **Reup Douyin (`/reup`) — nguồn, yt-dlp sidecar, hàng đợi tải** | [reup.md](reup.md) | ✅ (Đợt D; transform/đăng ở Đợt E) |
 | 6 | Đa nền tảng (`/publishers`) — TikTok/YouTube/Facebook/RTMP | [da-nen-tang.md](da-nen-tang.md) | ✅ |
 | 7 | Cài đặt — 4 trang con (Hệ thống / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
 | 8 | Lịch live (`/schedule`) | [lich-live.md](lich-live.md) | 🅿️ PARKED |

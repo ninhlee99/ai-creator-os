@@ -10,6 +10,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
+	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -138,6 +139,19 @@ type Service struct {
 	// CommissionSource overrides the affiliate-orders feed (tests inject a
 	// fake). Nil = build the real one from the current env.
 	CommissionSource OrdersSource
+
+	// Reup automation (Đợt D): discover 6h/lần + download (yt-dlp →
+	// TikWM fallback, dedupe, QC). Nil Reup = tick bỏ qua im lặng.
+	Reup *reup.Store
+	// ReupWorkDir thư mục chứa video đã tải (<dataDir>/reup).
+	ReupWorkDir string
+	// ReupBinDir thư mục chứa binary yt-dlp do app quản lý (<dataDir>/bin).
+	ReupBinDir string
+	// ReupTikWMBaseURL override TikWM base URL (test hook; "" = production).
+	ReupTikWMBaseURL string
+	// ReupYtDlpRelease override GitHub release base của yt-dlp
+	// (test hook; "" = production).
+	ReupYtDlpRelease string
 
 	// Timezone is the IANA name for "today" boundaries; falls back to
 	// fixed UTC+7 like the rest of the app.
