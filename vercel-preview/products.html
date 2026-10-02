@@ -21,6 +21,7 @@
 </head>
 <body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
+
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">AI Creator OS</div>
@@ -30,6 +31,7 @@
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
       <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
       <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
@@ -68,7 +70,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tìm sản phẩm</h2>
-  <form method="post" action="/products/search">
+  <form method="post" action="products.html/search">
     <div class="grid2">
       <div class="field">
         <label>Chủ đề</label>
@@ -104,7 +106,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">➕ Thêm sản phẩm thủ công</h2>
   <p class="subtitle">Khi TikTok Shop API chưa kết nối, dán thông tin sản phẩm hoa hồng cao vào đây — autopilot sẽ dùng như sản phẩm tìm được.</p>
-  <form method="post" action="/products/add">
+  <form method="post" action="products.html/add">
     <div class="grid2">
       <div class="field">
         <label>Tên sản phẩm *</label>
@@ -152,7 +154,7 @@
       </div>
       <div class="field">
         <label>Link sản phẩm</label>
-        <input type="url" name="product_url" placeholder="https://shop.tiktok.com/...">
+        <input type="url" name="product_url" placeholder="https:/shop.html.tiktok.com/...">
       </div>
     </div>
     <div class="field">
@@ -170,7 +172,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">⏰ Lịch autopilot tự động</h2>
   <p class="subtitle">Bật để hệ thống tự chạy video cho mọi account đã sẵn sàng (đã bật autopilot + có theme + đã upload ảnh mẫu) — không cần chạm vào máy.</p>
-  <form method="post" action="/products/schedule">
+  <form method="post" action="products.htmlschedule.html">
     <div class="grid2">
       <div class="field">
         <label><input type="checkbox" name="enabled"> Bật chạy tự động</label>
@@ -193,7 +195,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">🎵 Nhạc nền autopilot</h2>
   <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot. Chưa có nhạc — video sẽ không tiếng.</p>
-  <form method="post" action="/products/music" enctype="multipart/form-data">
+  <form method="post" action="products.html/music" enctype="multipart/form-data">
     <div class="field">
       <label>Tải file nhạc lên (mp3/m4a/wav/ogg/aac, tối đa 25MB)</label>
       <div class="file-pick">

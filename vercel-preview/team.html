@@ -3,18 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Team — AI Creator OS Preview</title>
+<title>Agent Team — AI Creator OS</title>
 <link rel="stylesheet" href="static/style.css">
-<style>
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.grid figure{margin:0;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center}
-.grid img{width:84px;height:84px;border-radius:50%;object-fit:cover}
-.grid figcaption b{display:block;font-size:13px}
-.grid figcaption span{color:var(--muted);font-size:12px}
-</style>
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
 </head>
-<body>
-<div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — bấm vào tác vụ để xem trạng thái đội agent. Dữ liệu mẫu, thao tác thật chạy ở app aicos trên máy của Ninh.</div>
+<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">AI Creator OS</div>
@@ -22,102 +29,193 @@
       <div class="nav-group">Vận hành</div>
       <a href="index.html">Trang chủ</a>
       <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
-      <a href="team.html" class="active">Agent Team 🤖</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
       <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
       <a href="settings.html">Cài đặt</a>
     </nav>
   </aside>
   <div class="main">
-    <main class="content">
-      <h1>🤖 Agent Team</h1>
-      <p class="subtitle">Bấm vào một tác vụ để xem cả đội đang làm gì.</p>
-
-      <div class="team-layout">
-        <section class="team-tasks" id="tasks"></section>
-        <section class="team-board">
-          <div class="legend">
-            <span><i class="dot done"></i>Xong</span>
-            <span><i class="dot working"></i>Đang làm</span>
-            <span><i class="dot exchange"></i>Đang nhận việc</span>
-            <span><i class="dot waiting"></i>Chờ</span>
-            <span><i class="dot failed"></i>Lỗi</span>
-          </div>
-          <div class="tree">
-            <div class="node root" id="root-node">
-              <img src="assets/agents/orchestrator.jpg" alt="Orchestrator">
-              <b>Orchestrator</b><span class="pill">Đang làm</span>
-            </div>
-            <div class="tree-row guards">
-              <div class="node st-guard small"><img src="assets/agents/governance.jpg" alt="Governance"><b>Governance</b><span class="pill">gác cổng</span></div>
-              <div class="node st-guard small"><img src="assets/agents/scheduler.jpg" alt="Scheduler"><b>Scheduler</b><span class="pill">gác cổng</span></div>
-            </div>
-            <div class="pipe" id="pipe"></div>
-          </div>
-
-          <h2 style="margin-top:28px">Persona của account</h2>
-          <div class="grid" id="personas"></div>
-        </section>
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
       </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>🤖 Agent Team</h1>
+<p class="subtitle">Bấm vào một tác vụ để xem cả đội đang làm gì.</p>
+
+<div class="team-layout">
+  <section class="team-tasks">
+    
+    <a class="task-card selected" href="team.html?job=demo-1">
+      <span class="task-icon st-running">▶</span>
+      <span class="task-meta"><b>Video affiliate — túi kem quilted</b><span>affiliate · 55%</span></span>
+      <span class="task-bar"><span style="width:55%"></span></span>
+    </a>
+    
+    <a class="task-card " href="team.html?job=demo-2">
+      <span class="task-icon st-done">✓</span>
+      <span class="task-meta"><b>Video affiliate — váy hoa mùa hè</b><span>affiliate · 100%</span></span>
+      <span class="task-bar"><span style="width:100%"></span></span>
+    </a>
+    
+    <a class="task-card " href="team.html?job=demo-3">
+      <span class="task-icon st-queued">…</span>
+      <span class="task-meta"><b>Phim ngắn — Người kể chuyện đêm</b><span>film · 0%</span></span>
+      <span class="task-bar"><span style="width:0%"></span></span>
+    </a>
+    
+  </section>
+
+  <section class="team-board">
+    <div class="legend">
+      <span><i class="dot done"></i>Xong</span>
+      <span><i class="dot working"></i>Đang làm</span>
+      <span><i class="dot exchange"></i>Đang nhận việc</span>
+      <span><i class="dot waiting"></i>Chờ</span>
+      <span><i class="dot failed"></i>Lỗi</span>
+    </div>
+
+    <div class="tree">
+      <div class="node st-working root">
+        <img src="assets/agents/orchestrator.jpg" alt="Orchestrator">
+        <b>Orchestrator</b><span class="pill">Đang làm</span>
+      </div>
+
+      <div class="tree-row guards">
+        
+        <div class="node st-guard small">
+          <img src="assets/agents/governance.jpg" alt="Governance">
+          <b>Governance</b><span class="pill">gác cổng</span>
+        </div>
+        
+        <div class="node st-guard small">
+          <img src="assets/agentsschedule.htmlr.jpg" alt="Scheduler">
+          <b>Scheduler</b><span class="pill">gác cổng</span>
+        </div>
+        
+      </div>
+
+      <div class="pipe">
+        
+        <div class="pipe-step">
+          <div class="node st-done">
+            <img src="assets/agents/hunter.jpg" alt="Hunter">
+            <b>Hunter</b>
+            <span class="pill">Hoàn thành</span>
+          </div>
+          <div class="flow flow-done"></div>
+        </div>
+        
+        <div class="pipe-step">
+          <div class="node st-done">
+            <img src="assets/agents/director.jpg" alt="Director">
+            <b>Director</b>
+            <span class="pill">Hoàn thành</span>
+          </div>
+          <div class="flow flow-done"></div>
+        </div>
+        
+        <div class="pipe-step">
+          <div class="node st-working">
+            <img src="assets/agents/producer.jpg" alt="Producer">
+            <b>Producer</b>
+            <span class="pill">Đang làm</span>
+          </div>
+          <div class="flow flow-live"></div>
+        </div>
+        
+        <div class="pipe-step">
+          <div class="node st-exchange">
+            <img src="assets/agents/qc.jpg" alt="QC">
+            <b>QC</b>
+            <span class="pill">Đang nhận việc</span>
+          </div>
+          <div class="flow "></div>
+        </div>
+        
+        <div class="pipe-step">
+          <div class="node st-waiting">
+            <img src="assets/agents/publisher.jpg" alt="Publisher">
+            <b>Publisher</b>
+            <span class="pill">Đang chờ</span>
+          </div>
+          <div class="flow "></div>
+        </div>
+        
+        <div class="pipe-step">
+          <div class="node st-waiting">
+            <img src="assets/agents/analyst.jpg" alt="Analyst">
+            <b>Analyst</b>
+            <span class="pill">Đang chờ</span>
+          </div>
+          <div class="flow "></div>
+        </div>
+        
+        <div class="node st-waiting small">
+          <img src="assets/agents/streamer.jpg" alt="Streamer">
+          <b>Streamer</b><span class="pill">live khi đến giờ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
     </main>
   </div>
 </div>
 <script>
-var PIPE = [
-  ["hunter","Hunter"],["director","Director"],["producer","Producer"],
-  ["qc","QC"],["publisher","Publisher"],["analyst","Analyst"]
-];
-var TASKS = [
-  {id:"t1", title:"Video affiliate — túi kem quilted", meta:"affiliate · 55%", progress:55, icon:"▶",
-   states:["done","done","working","exchange","waiting","waiting"], root:"working"},
-  {id:"t2", title:"Video affiliate — váy hoa mùa hè", meta:"affiliate · 100%", progress:100, icon:"✓",
-   states:["done","done","done","done","done","done"], root:"done"},
-  {id:"t3", title:"Phim ngắn — Người kể chuyện đêm", meta:"film · 0%", progress:0, icon:"…",
-   states:["waiting","waiting","waiting","waiting","waiting","waiting"], root:"waiting"},
-  {id:"t4", title:"Video affiliate — giày cao gót đỏ", meta:"affiliate · 82%", progress:82, icon:"!",
-   states:["done","done","done","failed","waiting","waiting"], root:"failed"}
-];
-var PERSONAS = [
-  ["storyteller","Storyteller","Kể chuyện"],["teacher","AI Teacher","Dạy tiếng Anh"],
-  ["musician","AI Musician","Nhạc tự sáng tác"],["gamemaster","Game Master","Chơi game"],
-  ["aicoder","AI Coder","Live code"],["dancer","Dancer","Bắt trend"]
-];
-function renderPipe(states){
-  var html = "";
-  PIPE.forEach(function(p, i){
-    var st = states[i];
-    html += '<div class="pipe-step"><div class="node st-' + st + '">' +
-      '<img src="assets/agents/' + p[0] + '.jpg" alt="' + p[1] + '"><b>' + p[1] + '</b>' +
-      '<span class="pill">' + st + '</span></div>' +
-      '<div class="flow ' + (st === "working" ? "flow-live" : st === "done" ? "flow-done" : "") + '"></div></div>';
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
   });
-  html += '<div class="node st-waiting small"><img src="assets/agents/streamer.jpg" alt="Streamer"><b>Streamer</b><span class="pill">live khi đến giờ</span></div>';
-  document.getElementById("pipe").innerHTML = html;
-}
-function selectTask(t, el){
-  document.querySelectorAll(".task-card").forEach(function(c){ c.classList.remove("selected"); });
-  if (el) el.classList.add("selected");
-  renderPipe(t.states);
-  var root = document.getElementById("root-node");
-  root.className = "node root st-" + t.root;
-  root.querySelector(".pill").textContent = {working:"Đang làm",done:"Xong",failed:"Lỗi",waiting:"Đang chờ"}[t.root] || t.root;
-}
-var box = document.getElementById("tasks");
-TASKS.forEach(function(t, i){
-  var a = document.createElement("a");
-  a.className = "task-card" + (i === 0 ? " selected" : "");
-  a.href = "javascript:void(0)";
-  a.innerHTML = '<span class="task-icon st-' + (t.progress===100?"done":t.icon==="!"?"failed":"running") + '">' + t.icon + '</span>' +
-    '<span class="task-meta"><b>' + t.title + '</b><span>' + t.meta + '</span></span>' +
-    '<span class="task-bar"><span style="width:' + t.progress + '%"></span></span>';
-  a.onclick = function(){ selectTask(t, a); };
-  box.appendChild(a);
+})();
+
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
 });
-document.getElementById("personas").innerHTML = PERSONAS.map(function(p){
-  return '<figure><img src="assets/agents/' + p[0] + '.jpg" alt="' + p[1] + '"><figcaption><b>' + p[1] + '</b><span>' + p[2] + '</span></figcaption></figure>';
-}).join("");
-selectTask(TASKS[0], box.querySelector(".task-card"));
+
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
+  });
+})();
 </script>
 </body>
 </html>

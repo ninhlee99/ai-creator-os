@@ -21,6 +21,7 @@
 </head>
 <body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
+
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">AI Creator OS</div>
@@ -30,6 +31,7 @@
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
       <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
       <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
@@ -64,40 +66,10 @@
 <p class="subtitle">Ngày 2026-10-02 · Giám sát toàn bộ AI creator, lịch live và doanh thu.</p>
 
 
-<div class="card steps-card" style="margin-bottom:20px">
-  <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
-  <ol class="steps">
-    <li>
-      <span class="n">1</span>
-      <div class="step-body">
-        <b>Thêm tài khoản TikTok</b>
-        <span>Tạo tài khoản AI creator đầu tiên để hệ thống bắt đầu thiết lập.</span>
-      </div>
-      <a class="btn btn-sm" href="accounts.html">Thêm tài khoản</a>
-    </li>
-    <li class="">
-      <span class="n">2</span>
-      <div class="step-body">
-        <b>Cấu hình API key ở Cài đặt</b>
-        <span>Thêm Gemini API key để AI viết kịch bản, tạo ảnh và dựng video.</span>
-      </div>
-      <a class="btn btn-secondary btn-sm" href="settings.html">Mở Cài đặt</a>
-    </li>
-    <li class="">
-      <span class="n">3</span>
-      <div class="step-body">
-        <b>Tạo video đầu tiên ở Studio AI</b>
-        <span>Nhập tên sản phẩm, AI tự viết kịch bản, chụp ảnh và dựng video.</span>
-      </div>
-      <a class="btn btn-secondary btn-sm" href="studio.html">Mở Studio AI</a>
-    </li>
-  </ol>
-</div>
-
 
 <div class="cards">
   <div class="card">
-    <div class="num">0</div>
+    <div class="num">2</div>
     <div class="label">Tổng tài khoản</div>
   </div>
   <div class="card green">
@@ -120,11 +92,13 @@
 
 <h2>Trạng thái tài khoản</h2>
 
-<div class="empty-state compact">
-  <div class="es-icon">👤</div>
-  <h3>Chưa có tài khoản nào</h3>
-  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
-  <a class="btn" href="accounts.html">+ Thêm tài khoản</a>
+<div class="cards">
+  
+  <div class="card">
+    <div class="num"><span class="badge badge-info">Đang tăng trưởng</span></div>
+    <div class="label">2 tài khoản</div>
+  </div>
+  
 </div>
 
 
@@ -140,11 +114,49 @@
 
 <h2>Hoạt động gần đây</h2>
 
-<div class="empty-state compact">
-  <div class="es-icon">📝</div>
-  <h3>Chưa có hoạt động nào</h3>
-  <p>Khi các agent bắt đầu làm việc, mọi quyết định của chúng sẽ hiện ở đây.</p>
-</div>
+<ul class="clean">
+  
+  <li><strong>growth_director</strong> · <span class="badge badge-draft">generate plan</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">Sinh kế hoạch 30 ngày (giai đoạn cold_start, 30 vị trí)</span>
+  </li>
+  
+  <li><strong>growth_director</strong> · <span class="badge badge-draft">generate plan</span>
+     → kechuyen_ai_yt
+    <br><span style="color:var(--muted)">Sinh kế hoạch 30 ngày (giai đoạn cold_start, 60 vị trí)</span>
+  </li>
+  
+  <li><strong>orchestrator</strong> · <span class="badge badge-draft">account transition</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">persona_assigned -&gt; growing</span>
+  </li>
+  
+  <li><strong>orchestrator</strong> · <span class="badge badge-draft">account transition</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">researching -&gt; persona_assigned</span>
+  </li>
+  
+  <li><strong>onboarding</strong> · <span class="badge badge-draft">Đã gán persona</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">assigned 💻 AI Coder for researched niche &#39;mẹo công nghệ&#39;</span>
+  </li>
+  
+  <li><strong>orchestrator</strong> · <span class="badge badge-draft">account transition</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">onboarding -&gt; researching</span>
+  </li>
+  
+  <li><strong>onboarding</strong> · <span class="badge badge-draft">Nghiên cứu niche</span>
+     → meovatcongnghe_tiktok
+    <br><span style="color:var(--muted)">topic resolved (source=hint)</span>
+  </li>
+  
+  <li><strong>engines</strong> · <span class="badge badge-draft">tier failover</span>
+    
+    <br><span style="color:var(--muted)">gemini -&gt; llama-server (missing-key)</span>
+  </li>
+  
+</ul>
 
 
     </main>
