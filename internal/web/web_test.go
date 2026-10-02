@@ -235,10 +235,11 @@ func TestAllPagesRender(t *testing.T) {
 		"/accounts/new":            "Thêm tài khoản mới",
 		"/accounts/1":              "sample_acct",
 		"/schedule":                "Lịch live",
-		"/content":                 "Sản xuất video",
+		"/studio":                  "Studio AI",
+		"/studio?tab=chu":          "Video chữ động",
+		"/products":                "Sản phẩm Affiliate",
+		"/products?tab=ke":         "Thêm sản phẩm vào kệ",
 		"/publishers":              "Đa nền tảng",
-		"/shop":                    "Shop Affiliate",
-		"/analytics":               "Phân tích",
 		"/team":                    "Agent Team",
 		"/settings":                "Cài đặt",
 		"/settings/chain?name=tts": `"name":"gemini"`,
@@ -256,7 +257,7 @@ func TestAllPagesRender(t *testing.T) {
 
 	// settings page shows both chain sections and the vieneu panel
 	body := get(t, s, "/settings").Body.String()
-	for _, marker := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM", "Giọng đọc chạy trên máy (VieNeu)", "Kiểm tra kết nối"} {
+	for _, marker := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM", "Giọng đọc chạy trên máy (VieNeu)", "Kiểm tra kết nối", "Chi phí API theo engine/provider"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("settings page missing %q", marker)
 		}
@@ -280,6 +281,79 @@ func TestAllPagesRender(t *testing.T) {
 	// static css served
 	if rec := get(t, s, "/static/style.css"); rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Content-Type"), "text/css") {
 		t.Errorf("GET /static/style.css = %d (%s)", rec.Code, rec.Header().Get("Content-Type"))
+	}
+}
+
+// Đợt 2 (gộp trang): /content và /shop redirect 303 sang tab thay thế,
+// /analytics tan hẳn (404), và dữ liệu cũ (job kinetic, kệ hàng) vẫn xem
+// và tạo mới được ở nhà mới.
+func TestMergedPagesRedirects(t *testing.T) {
+	s := newTestServer(t)
+
+	// legacy URLs -> 303 to the tab that replaced them
+	for _, tc := range []struct{ method, path, wantLoc string }{
+		{http.MethodGet, "/content", "/studio?tab=chu"},
+		{http.MethodPost, "/content", "/studio?tab=chu"},
+		{http.MethodGet, "/shop", "/products?tab=ke"},
+		{http.MethodPost, "/shop/add", "/products?tab=ke"},
+	} {
+		var rec *httptest.ResponseRecorder
+		if tc.method == http.MethodPost {
+			rec = postForm(t, s, tc.path, url.Values{})
+		} else {
+			rec = get(t, s, tc.path)
+		}
+		if rec.Code != http.StatusSeeOther {
+			t.Errorf("%s %s = %d, want 303", tc.method, tc.path, rec.Code)
+			continue
+		}
+		if loc := rec.Header().Get("Location"); loc != tc.wantLoc {
+			t.Errorf("%s %s Location = %q, want %q", tc.method, tc.path, loc, tc.wantLoc)
+		}
+	}
+
+	// /analytics dissolved -> 404
+	if rec := get(t, s, "/analytics"); rec.Code != http.StatusNotFound {
+		t.Errorf("GET /analytics = %d, want 404", rec.Code)
+	}
+
+	// sidebar no longer links to the three dissolved pages
+	home := get(t, s, "/").Body.String()
+	for _, dead := range []string{`href="/content"`, `href="/shop"`, `href="/analytics"`} {
+		if strings.Contains(home, dead) {
+			t.Errorf("sidebar still links %s", dead)
+		}
+	}
+
+	// an "old-DB" kinetic job (created before the merge, straight into the
+	// store) is still listed and playable in the Studio tab
+	s.Jobs.Add(Job{ID: "oldjob01", Title: "Video cũ trước gộp", Status: "done",
+		CreatedAt: "2026-09-01T10:00:00", Output: "oldjob01.mp4", Log: "Xong"})
+	body := get(t, s, "/studio?tab=chu").Body.String()
+	if !strings.Contains(body, "Video cũ trước gộp") || !strings.Contains(body, "/media/oldjob01.mp4") {
+		t.Errorf("studio kinetic tab does not show the pre-merge job")
+	}
+
+	// creating from the tab works and lands back on the tab
+	rec := postForm(t, s, "/studio/kinetic", url.Values{
+		"title": {"Video chữ động mới"}, "captions": {"Dòng một\nDòng hai"},
+	})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/studio?tab=chu" {
+		t.Fatalf("POST /studio/kinetic = %d (%q), want 303 /studio?tab=chu", rec.Code, rec.Header().Get("Location"))
+	}
+	if s.Jobs.Count() != 2 {
+		t.Fatalf("jobs = %d, want 2 (old + new)", s.Jobs.Count())
+	}
+
+	// shelf add from the products tab lands on the shelf and renders there
+	rec = postForm(t, s, "/products/shelf/add", url.Values{
+		"platform_pid": {"TT-KE-1"}, "title": {"Kệ test"}, "price": {"10"}, "commission_rate": {"0.2"},
+	})
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/products?tab=ke" {
+		t.Fatalf("POST /products/shelf/add = %d (%q), want 303 /products?tab=ke", rec.Code, rec.Header().Get("Location"))
+	}
+	if body := get(t, s, "/products?tab=ke").Body.String(); !strings.Contains(body, "Kệ test") {
+		t.Errorf("products shelf tab does not show the added product")
 	}
 }
 

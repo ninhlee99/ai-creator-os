@@ -28,7 +28,28 @@
     <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
     <div class="label">Cơ sở dữ liệu</div>
   </div>
+  <div class="card">
+    <div class="num">{{fmtUSD .Spend}}</div>
+    <div class="label">Chi phí API hôm nay</div>
+  </div>
 </div>
+
+<h3>Chi phí API theo engine/provider</h3>
+{{if .Usage}}
+<table>
+  <tr><th>Engine</th><th>Provider</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
+  {{range .Usage}}
+  <tr>
+    <td>{{.Engine}}</td>
+    <td>{{.Provider}}</td>
+    <td>{{.N}}</td>
+    <td>{{fmtUSD .Cost}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
+{{end}}
 
 <h2 id="bien-moi-truong">Khóa &amp; biến cấu hình</h2>
 <p class="subtitle">Các khóa kết nối dịch vụ bên ngoài. Giá trị chỉ hiện 4 ký tự cuối, không bao giờ hiện đầy đủ. Bấm <strong>Lưu</strong> là áp dụng ngay cho app đang chạy và được ghi nhớ cho lần khởi động sau; để trống rồi Lưu để xóa.</p>

@@ -64,11 +64,18 @@ func resolveMinCommission(theme, raw string) float64 {
 // ---------------------------------------------------------------- products
 
 // handleProducts renders the product discovery page: theme + commission
-// floor form, plus the best saved products for the selected theme.
+// floor form, plus the best saved products for the selected theme. The
+// "ke" tab is the affiliate shelf (trang /shop cũ đã gộp vào đây — Đợt 2).
 func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
+	tab := r.URL.Query().Get("tab")
+	if tab != "ke" {
+		tab = "tim"
+	}
 	if s.Products == nil {
 		s.render(w, "products", s.ctx(
+			"Tab", tab,
 			"Themes", themeOptions(),
+			"Shelf", s.shelfViews(),
 			"Error", "Kho sản phẩm chưa được khởi tạo. Hãy kiểm tra cấu hình app rồi thử lại.",
 		))
 		return
@@ -81,9 +88,11 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		results, err = s.Products.TopByTheme(theme, minPct/100, 0, 30)
 		if err != nil {
 			s.render(w, "products", s.ctx(
+				"Tab", tab,
 				"Themes", themeOptions(),
 				"Theme", theme,
 				"MinPct", minPct,
+				"Shelf", s.shelfViews(),
 				"Error", "Không đọc được kho sản phẩm: "+err.Error(),
 			))
 			return
@@ -91,10 +100,12 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	enabled, hours, lastRun, music, autoPub := s.scheduleView()
 	s.render(w, "products", s.ctx(
+		"Tab", tab,
 		"Themes", themeOptions(),
 		"Theme", theme,
 		"MinPct", minPct,
 		"Results", results,
+		"Shelf", s.shelfViews(),
 		"Notice", r.URL.Query().Get("ok"),
 		"SchedEnabled", enabled,
 		"SchedHours", hours,
@@ -102,6 +113,69 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"MusicName", music,
 		"AutoPublish", autoPub,
 	))
+}
+
+// productView is the template projection of one shelf product (Kệ hàng).
+type productView struct {
+	Title           string
+	PlatformPID     string
+	Category        string
+	Price           float64
+	CommissionRate  float64
+	CommissionValue float64
+	Score           float64
+	Status          string
+}
+
+// shelfViews projects the ledger shelf (status shelf/scaled) for the
+// "Kệ hàng" tab — the products AI gắn vào video/live.
+func (s *Server) shelfViews() []productView {
+	shelf, err := s.Ledger.ShelfProducts(50)
+	if err != nil {
+		log.Printf("web: shelf products: %v", err)
+		return nil
+	}
+	views := make([]productView, 0, len(shelf))
+	for _, p := range shelf {
+		views = append(views, productView{
+			Title: p.Title, PlatformPID: p.PlatformPID,
+			Category: nullStr(p.Category), Price: p.Price,
+			CommissionRate: p.CommissionRate, CommissionValue: p.CommissionValue,
+			Score: p.Score, Status: p.Status,
+		})
+	}
+	return views
+}
+
+// handleProductsShelfAdd adds one product straight onto the shelf (Kệ
+// hàng tab) — the manual fallback while the TikTok Shop API is not wired.
+func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse shelf form")
+		return
+	}
+	pid := strings.TrimSpace(r.PostFormValue("platform_pid"))
+	title := strings.TrimSpace(r.PostFormValue("title"))
+	price, _ := strconv.ParseFloat(r.PostFormValue("price"), 64)
+	rate, _ := strconv.ParseFloat(r.PostFormValue("commission_rate"), 64)
+	if pid == "" || title == "" {
+		seeOther(w, r, "/products?tab=ke")
+		return
+	}
+	category := strings.TrimSpace(r.PostFormValue("category"))
+	fields := map[string]any{
+		"title": title, "price": price, "commission_rate": rate,
+		"commission_value": price * rate,
+		"category":         nil,
+		"status":           "shelf", "score": 0.0,
+	}
+	if category != "" {
+		fields["category"] = category
+	}
+	if _, err := s.Ledger.UpsertProduct(pid, fields); err != nil {
+		log.Printf("web: upsert product: %v", err)
+	}
+	seeOther(w, r, "/products?tab=ke")
 }
 
 // handleProductsAdd saves a manually-entered product into the store. This is
