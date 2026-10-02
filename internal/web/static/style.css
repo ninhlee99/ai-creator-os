@@ -277,3 +277,47 @@ ul.clean li:last-child { border-bottom: none; }
   overflow: hidden; background: var(--bg2); }
 .model-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
 .model-card form { padding: 8px; text-align: center; }
+
+/* ---- Agent Team tree (icon-first, animated states) ---- */
+.team-layout { display:grid; grid-template-columns: 300px 1fr; gap:20px; align-items:start; }
+@media (max-width: 900px){ .team-layout{ grid-template-columns:1fr; } }
+.team-tasks { display:flex; flex-direction:column; gap:10px; }
+.task-card { display:flex; gap:10px; align-items:center; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--text); position:relative; overflow:hidden; }
+.task-card:hover { text-decoration:none; border-color:var(--accent); }
+.task-card.selected { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+.task-icon { width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-weight:800; background:var(--bg3); flex-shrink:0; }
+.task-icon.st-running { background:#b45309; color:#fff; animation:pulse 1.2s infinite; }
+.task-icon.st-done { background:#047857; color:#fff; }
+.task-icon.st-failed { background:#b91c1c; color:#fff; }
+.task-meta { display:flex; flex-direction:column; min-width:0; }
+.task-meta b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task-meta span { color:var(--muted); font-size:12px; }
+.task-bar { position:absolute; left:0; bottom:0; height:3px; width:100%; background:var(--bg3); }
+.task-bar span { display:block; height:100%; background:var(--accent); }
+.legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; color:var(--muted); font-size:13px; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#6b7280; }
+.dot.done{ background:#10b981; } .dot.working{ background:#f59e0b; animation:pulse 1.2s infinite; }
+.dot.exchange{ background:#38bdf8; animation:pulse 1.2s infinite; } .dot.failed{ background:#ef4444; }
+.tree { display:flex; flex-direction:column; align-items:center; gap:18px; }
+.tree-row.guards { display:flex; gap:16px; }
+.pipe { display:flex; align-items:flex-start; gap:0; flex-wrap:wrap; justify-content:center; }
+.pipe-step { display:flex; align-items:center; }
+.node { width:118px; text-align:center; background:var(--bg2); border:2px solid var(--border); border-radius:14px; padding:10px 6px 8px; position:relative; }
+.node img { width:64px; height:64px; border-radius:50%; object-fit:cover; }
+.node b { display:block; font-size:13px; margin-top:6px; }
+.node .pill { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.node.small { width:104px; } .node.small img{ width:52px; height:52px; }
+.node.st-done { border-color:#10b981; }
+.node.st-done::after { content:"✓"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background:#10b981; color:#fff; font-weight:800; display:grid; place-items:center; }
+.node.st-working { border-color:#f59e0b; animation:pulse-ring 1.4s infinite; }
+.node.st-exchange { border-color:#38bdf8; animation:pulse-ring 1.4s infinite; }
+.node.st-failed { border-color:#ef4444; }
+.node.st-failed::after { content:"!"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background:#ef4444; color:#fff; font-weight:800; display:grid; place-items:center; }
+.node.st-waiting { opacity:.55; filter:grayscale(.4); }
+.node.st-guard { border-style:dashed; }
+.flow { width:26px; height:4px; border-radius:2px; background:var(--bg3); margin:0 2px; align-self:center; }
+.flow-done { background:#10b981; }
+.flow-live { background:linear-gradient(90deg,#f59e0b,#38bdf8,#f59e0b); background-size:200% 100%; animation:flowmove 1s linear infinite; }
+@keyframes flowmove { to { background-position:200% 0; } }
+@keyframes pulse { 50% { transform:scale(1.18); } }
+@keyframes pulse-ring { 0%{ box-shadow:0 0 0 0 rgba(245,158,11,.5);} 100%{ box-shadow:0 0 0 10px rgba(245,158,11,0);} }

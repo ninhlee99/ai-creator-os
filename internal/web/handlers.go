@@ -26,6 +26,8 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
+	mux.HandleFunc("GET /static/agents/{file}", s.handleAgentAvatar)
+	mux.HandleFunc("GET /team", s.handleTeam)
 
 	mux.HandleFunc("GET /", s.handleDashboard)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
