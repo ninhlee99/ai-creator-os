@@ -1,14 +1,14 @@
 package web
 
-// Reup Douyin (Đợt D): trang /reup — nguồn Douyin, quản lý yt-dlp sidecar,
-// hàng đợi tải, thêm URL trực tiếp, công tắc tick.
+// Reup Douyin (Đợt D+E): trang /reup — nguồn Douyin, quản lý yt-dlp sidecar,
+// hàng đợi tải, thêm URL trực tiếp, transform 2 mức, bài đăng + before/after,
+// công tắc tick.
 //
 // Fail-closed mọi nơi: kho chưa mở → trang báo rõ thay vì sập; yt-dlp
 // chưa tải → nút tải + trạng thái (tick tự Ensure theo mẫu sidecar).
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,8 +38,24 @@ type reupView struct {
 	DiscoverHours   int
 	PerSource       int
 	DiscoverLastRun string
-	Error           string
-	Notice          string
+	// Đợt E: transform + post + kill.
+	Posts          []reupPostView
+	AccountNames   []string
+	PostAccount    string
+	TransformOn    bool
+	TransformLevel int
+	VoiceoverOn    bool
+	PostOn         bool
+	VideosPerDay   int
+	KillOn         bool
+	KillN          int
+	WarmupOn       bool
+	MusicOK        bool
+	// Level2IDs: video downloaded nào đủ ≥3 clip cùng nguồn để UI hiện
+	// option Mức 2 (tránh bấm rồi fail).
+	Level2IDs     map[int64]bool
+	Error         string
+	Notice        string
 }
 
 // reupDirs trả về (binDir, workDir) cho yt-dlp + video đã tải.
@@ -95,6 +111,20 @@ func (s *Server) reupPageData() reupView {
 	} else {
 		v.Stats = st
 	}
+	// Mức 2 (compilation) cần ≥3 clip downloaded cùng nguồn: đánh dấu để
+	// UI chỉ hiện option Mức 2 cho video đủ điều kiện.
+	bySource := map[int64]int{}
+	for _, vd := range v.Videos {
+		if vd.Status == reup.StatusDownloaded {
+			bySource[vd.SourceID]++
+		}
+	}
+	v.Level2IDs = map[int64]bool{}
+	for _, vd := range v.Videos {
+		if vd.Status == reup.StatusDownloaded && bySource[vd.SourceID] >= 3 {
+			v.Level2IDs[vd.ID] = true
+		}
+	}
 	binDir, _ := s.reupDirs()
 	mgr := reup.NewManager(binDir)
 	if ver, err := mgr.Version(context.Background()); err == nil {
@@ -104,6 +134,7 @@ func (s *Server) reupPageData() reupView {
 	s.reupYtDlpMu.Lock()
 	v.YtDlpBusy = s.reupYtDlpBusy
 	s.reupYtDlpMu.Unlock()
+	s.reupPageDataTransform(&v)
 	return v
 }
 
@@ -356,49 +387,4 @@ func (s *Server) handleReupVideoRetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reupRedirect(w, r, "", fmt.Sprintf("Video #%d: %s", v.ID, v.FailReason))
-}
-
-// handleReupSettings lưu công tắc tick reup (AJAX JSON).
-func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		DiscoverOn *bool `json:"discover_on"`
-		Hours      *int  `json:"interval_hours"`
-		PerSource  *int  `json:"per_source"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		writeJSONErr(w, "JSON không hợp lệ.", http.StatusBadRequest)
-		return
-	}
-	if s.Ledger == nil {
-		writeJSONErr(w, "Ledger chưa sẵn sàng.", http.StatusPreconditionFailed)
-		return
-	}
-	setBool := func(key string, b *bool) {
-		if b == nil {
-			return
-		}
-		_ = s.Ledger.SetSetting(key, map[bool]string{true: "1", false: "0"}[*b])
-	}
-	setBool(automation.KeyReupDiscoverEnabled, in.DiscoverOn)
-	if in.Hours != nil {
-		h := *in.Hours
-		if h < 1 {
-			h = 1
-		}
-		if h > 168 {
-			h = 168
-		}
-		_ = s.Ledger.SetSetting(automation.KeyReupDiscoverIntervalH, strconv.Itoa(h))
-	}
-	if in.PerSource != nil {
-		n := *in.PerSource
-		if n < 1 {
-			n = 1
-		}
-		if n > 10 {
-			n = 10
-		}
-		_ = s.Ledger.SetSetting(automation.KeyReupVideosPerSource, strconv.Itoa(n))
-	}
-	writeJSON(w, map[string]any{"ok": true})
 }

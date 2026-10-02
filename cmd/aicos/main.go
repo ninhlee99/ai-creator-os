@@ -657,11 +657,12 @@ func main() {
 		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
 	}
 
-	// -- 7d. reup automation: discover 6 giờ/lần → download --------------
-	// Zero-touch reup (Đợt D): tìm video viral từ nguồn Douyin đang bật
+	// -- 7d. reup automation: discover → download → transform → đăng ----
+	// Zero-touch reup (Đợt D+E): tìm video viral từ nguồn Douyin đang bật
 	// (TikWM metadata, pick theo play_count) → tải ngay (yt-dlp → TikWM
-	// fallback, dedupe sha256, QC). Kill switch + DRY-RUN chặn tick;
-	// chưa có nguồn → bỏ qua + note. Chưa nối transform/đăng (Đợt E).
+	// fallback, dedupe sha256, QC) → transform 2 mức → đăng theo lịch +
+	// kill rule 0-view. Kill switch + DRY-RUN chặn tick; chưa có nguồn →
+	// bỏ qua + note.
 	if srv.Reup != nil {
 		go func() {
 			tick := time.NewTicker(5 * time.Minute)
@@ -673,6 +674,18 @@ func main() {
 					return
 				case <-tick.C:
 					for _, note := range auto.ReupTick(ctx) {
+						log.Printf("reup: %s", note)
+					}
+					// Đợt E: transform 2 mức (15 phút/lần) + đăng (2 giờ/lần)
+					// + kill rule 0-view (1 giờ/lần) — mỗi tick tự kiểm tra
+					// đến hạn bên trong.
+					for _, note := range auto.ReupTransformTick(ctx) {
+						log.Printf("reup: %s", note)
+					}
+					for _, note := range auto.ReupPostTick(ctx) {
+						log.Printf("reup: %s", note)
+					}
+					for _, note := range auto.ReupKillTick(ctx) {
 						log.Printf("reup: %s", note)
 					}
 				}

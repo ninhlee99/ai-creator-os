@@ -32,6 +32,16 @@ var videoEncoder = sync.OnceValue(func() []string {
 	return []string{"-c:v", "libx264", "-preset", "medium", "-crf", "18"}
 })
 
+// VideoEncoderArgs trả về args encoder H.264 đã chọn cho process này —
+// dùng chung cho reup transform (Đợt E) để không copy logic chọn encoder.
+func VideoEncoderArgs() []string { return videoEncoder() }
+
+// FFmpegRun chạy ffmpeg -y với args cho trước; lỗi kèm 500 ký tự cuối
+// stderr để debug. Export cho reup transform (Đợt E) dùng chung.
+func FFmpegRun(ctx context.Context, args ...string) error {
+	return ffmpegRun(ctx, args...)
+}
+
 func ffmpegRun(ctx context.Context, args ...string) error {
 	cmd := exec.CommandContext(ctx, "ffmpeg", append([]string{"-y"}, args...)...)
 	var stderr bytes.Buffer
