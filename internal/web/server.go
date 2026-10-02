@@ -43,8 +43,13 @@ type Server struct {
 	Cfg    *Config
 	LLM    LLMClient
 	TTS    TTSChainAPI
-	Avatar AvatarChainAPI
 	Studio *studio.Studio
+	// --- Parked-build support (PIVOT 2026-10-02) ---
+	// Avatar / AvatarSidecar / AvatarDir chỉ được dùng khi build với
+	// -tags parked (handler avatar đã park). Giữ field ở bản thường để
+	// build parked biên dịch được; bản thường không nối gì vào chúng.
+	Avatar    AvatarChainAPI
+	AvatarDir string
 	// Growth is the channel-growth engine store (nil when its tables could
 	// not be created; the /growth page then shows an honest error).
 	Growth *growth.Store
@@ -65,16 +70,15 @@ type Server struct {
 	Products         *products.Store
 	ProductProviders []products.Provider
 	VieNeu           VieNeuCtl
-	AvatarSidecar    AvatarSidecarCtl
 	Health           map[string]HealthChecker
 	Jobs             *JobStore
+	// AvatarSidecar: parked-build support (như Avatar ở trên).
+	AvatarSidecar AvatarSidecarCtl
 
-	// OutDir holds rendered videos (served at /media/); AvatarDir holds
-	// character reference images (served at /avatars/). JobsPath is the
+	// OutDir holds rendered videos (served at /media/). JobsPath is the
 	// JobStore file.
-	OutDir    string
-	AvatarDir string
-	JobsPath  string
+	OutDir   string
+	JobsPath string
 	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
 	// single place state lives; derived from the ledger path (R2-W7).
 	DataDir string
@@ -94,15 +98,15 @@ type Server struct {
 	vieneuDone       bool
 	vieneuErr        string
 
-	// Avatar model-download progress (polled by the settings page).
+	// Avatar model-download progress — parked-build support (như trên).
 	avatarDlMu         sync.Mutex
 	avatarDlDownloaded int64
 	avatarDlTotal      int64
 	avatarDlDone       bool
 	avatarDlErr        string
 
-	// Zero-touch live-schedule auto-build (Đợt 3): the day the schedule
-	// was last auto-built by a page view; guards once-a-day rebuilds.
+	// Live-schedule auto-build guard — parked-build support (như trên;
+	// handler /schedule đã park).
 	schedMu    sync.Mutex
 	schedBuilt string
 }
@@ -128,7 +132,7 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		Cfg:       cfg,
 		Health:    map[string]HealthChecker{},
 		OutDir:    "data/output",
-		AvatarDir: "data/avatars",
+		AvatarDir: "data/avatars", // parked-build support (handler avatar)
 		DataDir:   filepath.Dir(dbPath),
 		db:        db,
 	}
@@ -143,10 +147,6 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 	}
 	s.renderer = ffmpegRenderer{s: s}
 	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
-		db.Close()
-		return nil, err
-	}
-	if err := os.MkdirAll(s.AvatarDir, 0o755); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -431,7 +431,6 @@ var pageFiles = map[string]string{
 	"accounts":              "accounts.html",
 	"account_new":           "account_new.html",
 	"account_detail":        "account_detail.html",
-	"schedule":              "schedule.html",
 	"studio":                "studio.html",
 	"studio_jobs":           "studio_jobs.html",
 	"studio_trends":         "studio_trends.html",
@@ -441,9 +440,7 @@ var pageFiles = map[string]string{
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
 	"settings_model_local":  "settings/model-local.html",
-	"settings_nhan_vat":     "settings/nhan-vat.html",
 	"settings_an_toan":      "settings/an-toan.html",
-	"team":                  "team.html",
 	"onboard":               "onboard.html",
 }
 
@@ -509,30 +506,6 @@ func personaLabel(key string) string {
 
 func (s *Server) wrapAccount(a *network.Account) *accountView {
 	return &accountView{Account: a, PersonaLabel: personaLabel(a.Persona)}
-}
-
-// slotView couples a slot with its account's username for display.
-type slotView struct {
-	ledger.Slot
-	AccountName string
-}
-
-func (s *Server) slotViews(slots []ledger.Slot) []slotView {
-	names := map[int64]string{}
-	if accts, err := s.Mgr.List(); err == nil {
-		for _, a := range accts {
-			names[a.ID] = a.Username
-		}
-	}
-	out := make([]slotView, 0, len(slots))
-	for _, sl := range slots {
-		name, ok := names[sl.AccountID]
-		if !ok {
-			name = strconv.FormatInt(sl.AccountID, 10)
-		}
-		out = append(out, slotView{Slot: sl, AccountName: name})
-	}
-	return out
 }
 
 type statusCount struct {

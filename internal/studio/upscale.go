@@ -20,9 +20,7 @@ const (
 // that. If the source already meets the target, it is copied as-is.
 //
 // w/h define the delivery frame: 9:16 affiliate masters use (2160,3840) /
-// (4320,7680); film finals pass their own frame (e.g. 3840x2160 for a
-// 4K 16:9 master — films ship 16:9 per Ninh's final 2026-10-02 decision,
-// CreateFilmJob forces Aspect="16:9").
+// (4320,7680).
 func UpscalePhoto(ctx context.Context, src, dst string, w, h int) error {
 	if w <= 0 || h <= 0 {
 		return fmt.Errorf("upscale: kích thước %dx%d không hợp lệ", w, h)
@@ -44,19 +42,4 @@ func UpscalePhoto(ctx context.Context, src, dst string, w, h int) error {
 		"-vf", fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,"+
 			"crop=%d:%d,unsharp=5:5:0.6:5:5:0.0", w, h, w, h),
 		"-frames:v", "1", "-q:v", "2", dst)
-}
-
-// UpscaleVideo masters a finished video to w×h with lanczos. This is an
-// UPSCALE, not native 4K — the UI must label it honestly. Slow: only for
-// finals the user explicitly asks to upscale.
-func UpscaleVideo(ctx context.Context, src, dst string, w, h int) error {
-	if w <= 0 || h <= 0 {
-		return fmt.Errorf("upscale: kích thước %dx%d không hợp lệ", w, h)
-	}
-	args := []string{"-i", src,
-		"-vf", fmt.Sprintf("scale=%d:%d:flags=lanczos", w, h),
-	}
-	args = append(args, videoEncoder()...)
-	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "copy", dst)
-	return ffmpegRun(ctx, args...)
 }

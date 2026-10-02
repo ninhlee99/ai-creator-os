@@ -1,7 +1,7 @@
 {{define "title"}}Trang chủ — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Tổng quan mạng lưới</h1>
-<p class="subtitle">Ngày {{.Today}} · Giám sát toàn bộ AI creator, lịch live và doanh thu.</p>
+<p class="subtitle">Ngày {{.Today}} · Giám sát toàn bộ AI creator và doanh thu.</p>
 
 {{if not .Accounts}}
 <div class="card steps-card" style="margin-bottom:20px">
@@ -44,10 +44,6 @@
     <div class="num">{{len .Accounts}}</div>
     <div class="label">Tổng tài khoản</div>
   </div>
-  <div class="card green">
-    <div class="num">{{.EligibleCount}}</div>
-    <div class="label">Đủ điều kiện live</div>
-  </div>
   <div class="card accent">
     <div class="num">{{fmtVND .Revenue}}</div>
     <div class="label">Doanh thu affiliate</div>
@@ -55,14 +51,6 @@
   <div class="card accent">
     <div class="num">{{fmtVND .CommissionRevenue}}</div>
     <div class="label">Hoa hồng đã ghi nhận</div>
-  </div>
-  <div class="card">
-    <div class="num">{{len .Slots}}</div>
-    <div class="label">Slot live hôm nay</div>
-  </div>
-  <div class="card">
-    <div class="num">{{.LiveSessions}}</div>
-    <div class="label">Phiên live đã chạy</div>
   </div>
   <div class="card">
     <div class="num">{{.NJobs}}</div>
@@ -86,28 +74,6 @@
   <h3>Chưa có tài khoản nào</h3>
   <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
   <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
-</div>
-{{end}}
-
-<h2>Lịch live hôm nay</h2>
-{{if .Slots}}
-<table>
-  <tr><th>Giờ</th><th>Thời lượng</th><th>Tài khoản</th><th>Trạng thái</th></tr>
-  {{range .Slots}}
-  <tr>
-    <td>{{fmtTime .StartMin}}</td>
-    <td>{{.DurationMin}} phút</td>
-    <td>{{.AccountName}}</td>
-    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-  </tr>
-  {{end}}
-</table>
-{{else}}
-<div class="empty-state compact">
-  <div class="es-icon">📅</div>
-  <h3>Hôm nay chưa có lịch live</h3>
-  <p>Tự xuất hiện khi có tài khoản đủ điều kiện live.</p>
-  <a class="btn btn-secondary" href="/schedule">Tạo lịch live</a>
 </div>
 {{end}}
 

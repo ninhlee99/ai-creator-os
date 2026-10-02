@@ -6,10 +6,8 @@ import (
 	"net/http"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
-	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 // ------------------------------------------------------------ settings
@@ -35,8 +33,10 @@ type studioGrowthProducer struct{ s *Server }
 
 // Enqueue renders one plan item. Product-theme accounts go through the
 // affiliate autopilot (theme -> product -> 30s format, per-account model
-// photos); persona accounts get a film job whose length follows the
-// variant. Either way every variant is its OWN job and its own file.
+// photos). Persona accounts used to get a film job — the film pipeline is
+// parked (PIVOT 2026-10-02); they now fail closed with an honest error
+// until the "Kể chuyện" pipeline lands (Wave F). Either way every variant
+// is its OWN job and its own file.
 func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.ProduceRequest) (string, error) {
 	a := req.Account
 	if a.Theme != "" {
@@ -52,14 +52,7 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 		}
 		return res.JobID, nil
 	}
-	if p.s.Studio == nil {
-		return "", fmt.Errorf("Studio chưa sẵn sàng")
-	}
-	return p.s.Studio.CreateFilmJob(studio.FilmParams{
-		Topic:   req.Item.Topic,
-		Seconds: growth.VariantSeconds(req.Item.Variant),
-		Aspect:  growth.VariantAspect(req.Item.Variant),
-	})
+	return "", fmt.Errorf("tài khoản persona: pipeline kể chuyện YouTube chưa có (đang phát triển ở đợt F) — item được bỏ qua")
 }
 
 func (p studioGrowthProducer) JobState(jobID string) (string, string) {
