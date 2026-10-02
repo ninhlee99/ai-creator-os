@@ -84,6 +84,8 @@ type Server struct {
 	// reupYtDlpMu/reupYtDlpBusy theo dõi tác vụ tải yt-dlp chạy nền.
 	reupYtDlpMu   sync.Mutex
 	reupYtDlpBusy bool
+	// reupTransformMu serialize transform (nặng CPU — 1 lượt tại 1 thời điểm).
+	reupTransformMu sync.Mutex
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
@@ -455,6 +457,7 @@ var pageFiles = map[string]string{
 	"settings_model_local":  "settings/model-local.html",
 	"settings_an_toan":      "settings/an-toan.html",
 	"settings_accesstrade":  "settings/accesstrade.html",
+	"settings_reup":         "settings/reup.html",
 	"onboard":               "onboard.html",
 }
 

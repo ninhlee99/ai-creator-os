@@ -228,6 +228,8 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"ATMasked":    s.atMasked(),
 		"ATCampaigns": s.atCachedCount(),
 		"ATStoreOK":   s.AT != nil,
+		// Reup (Đợt E): tab Cài đặt · Reup.
+		"ReupCfg": s.reupSettingsCfg(),
 		// R2-W7: legacy /api/* switch (default OFF), app version, runtime
 		// probes, pending-restore flag — all shown in Settings · Hệ thống.
 		"APIEnabled":     automation.APIEnabled(s.settings()),

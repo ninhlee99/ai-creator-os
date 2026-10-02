@@ -149,6 +149,14 @@ type Service struct {
 	ReupBinDir string
 	// ReupTikWMBaseURL override TikWM base URL (test hook; "" = production).
 	ReupTikWMBaseURL string
+
+	// Reup transform/post automation (Đợt E): transform 2 mức + đăng +
+	// kill rule 0-view. Nil TTS = voiceover fail-closed khi được bật;
+	// nil LLM = lời bình luận dùng template trung thực.
+	ReupTTS reup.VoiceSynth
+	ReupLLM reup.Commentator
+	// ReupMusicPath là file nhạc licensed cho transform ("", = chỉ voiceover).
+	ReupMusicPath string
 	// ReupYtDlpRelease override GitHub release base của yt-dlp
 	// (test hook; "" = production).
 	ReupYtDlpRelease string

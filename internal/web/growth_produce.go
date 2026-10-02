@@ -144,6 +144,18 @@ func (s *Server) automation() *automation.Service {
 		svc.Reup = s.Reup
 		svc.ReupWorkDir = filepath.Join(dataDir, "reup")
 		svc.ReupBinDir = filepath.Join(dataDir, "bin")
+		// Reup transform/post (Đợt E): voiceover VieNeu local (không tốn
+		// key), lời bình luận LLM (nil = template trung thực), nhạc nền
+		// licensed dùng chung file autopilot Ninh đã upload.
+		if s.TTS != nil {
+			svc.ReupTTS = s.TTS
+		}
+		if s.LLM != nil {
+			svc.ReupLLM = s.LLM
+		}
+		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
+			svc.ReupMusicPath = mp
+		}
 	}
 	if s.Cfg != nil {
 		svc.Gate = s.Cfg

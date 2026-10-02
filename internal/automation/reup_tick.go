@@ -19,7 +19,8 @@ import (
 //
 // Cùng cổng an toàn như các tick khác: kill switch + DRY-RUN chặn;
 // store chưa mở → bỏ qua im lặng; công tắc riêng mặc định BẬT
-// (unset = bật — tiền lệ Đợt 3). Chưa nối transform/đăng (Đợt E).
+// (unset = bật — tiền lệ Đợt 3). Transform/đăng/kill rule ở
+// reup_transform.go (Đợt E), cùng goroutine reup trong main.go.
 // ---------------------------------------------------------------------------
 
 // Setting keys cho reup automation (ledger settings).

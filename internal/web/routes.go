@@ -109,6 +109,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /reup/videos/add", s.handleReupVideoAdd)
 	mux.HandleFunc("POST /reup/videos/{id}/retry", s.handleReupVideoRetry)
 	mux.HandleFunc("POST /reup/settings", s.handleReupSettings)
+	// Đợt E: transform 2 mức + đăng.
+	mux.HandleFunc("POST /reup/videos/{id}/transform", s.handleReupTransform)
+	mux.HandleFunc("GET /reup/posts/{id}/status", s.handleReupPostStatus)
+	mux.HandleFunc("GET /reup/file/{id}", s.handleReupFile)
+	mux.HandleFunc("GET /reup/videos/{id}/file", s.handleReupVideoFile)
+	mux.HandleFunc("POST /reup/posts/{id}/publish", s.handleReupPostPublish)
+	// Cài đặt · Reup (Đợt E).
+	mux.HandleFunc("GET /settings/reup", s.handleSettingsReup)
+	mux.HandleFunc("POST /settings/reup/save", s.handleSettingsReupSave)
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)

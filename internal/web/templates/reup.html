@@ -1,7 +1,7 @@
 {{define "title"}}Reup Douyin — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Reup Douyin</h1>
-<p class="subtitle">Tải video viral Douyin → kho chờ transform (Đợt E).</p>
+<p class="subtitle">Tải video viral Douyin → transform 2 mức → đăng (tự động).</p>
 
 {{if .Reup.Error}}<p class="err">{{.Reup.Error}}</p>{{end}}
 
@@ -13,6 +13,9 @@
   <span class="badge badge-draft">Chờ: {{.Reup.Stats.Queued}}</span>
   {{if gt .Reup.Stats.Failed 0}}<span class="badge badge-err">Lỗi: {{.Reup.Stats.Failed}}</span>{{end}}
   {{if .Reup.DiscoverLastRun}}<span class="badge badge-draft">Quét gần nhất: {{.Reup.DiscoverLastRun}}</span>{{end}}
+  {{if .Reup.TransformOn}}<span class="badge badge-ok">Transform: BẬT</span>{{else}}<span class="badge badge-draft">Transform: TẮT</span>{{end}}
+  {{if .Reup.KillOn}}<span class="badge badge-info">Kill {{.Reup.KillN}}×0-view: BẬT</span>{{else}}<span class="badge badge-draft">Kill: TẮT</span>{{end}}
+  {{if not .Reup.PostOn}}<span class="badge badge-warn">Đăng: TẠM DỪNG</span>{{end}}
 </p>
 
 <div class="form-card">
@@ -94,7 +97,7 @@
   </form>
   {{if .Reup.Videos}}
   <table class="clean" style="margin-top:12px">
-    <tr><th>#</th><th>Video</th><th>Lượt xem</th><th>Watermark</th><th>Trạng thái</th><th></th></tr>
+    <tr><th>#</th><th>Video</th><th>Lượt xem</th><th>Watermark</th><th>Trạng thái</th><th>Transform</th><th></th></tr>
     {{range .Reup.Videos}}
     <tr>
       <td class="hint">{{.ID}}</td>
@@ -111,6 +114,15 @@
         {{else if eq .Status "downloading"}}<span class="badge badge-info">{{.StatusLabel}}</span>
         {{else}}<span class="badge badge-draft">{{.StatusLabel}}</span>{{end}}
       </td>
+      <td style="white-space:nowrap">
+        {{if eq .Status "downloaded"}}
+        <select id="reup-level-{{.ID}}" class="btn-sm" style="margin-right:4px">
+          <option value="1">Mức 1</option>
+          {{if index $.Reup.Level2IDs .ID}}<option value="2">Mức 2 — 3 clip</option>{{end}}
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="reupTransform({{.ID}}, this)">Transform</button>
+        {{else}}<span class="hint">—</span>{{end}}
+      </td>
       <td>
         {{if eq .Status "failed"}}
         <form method="post" action="/reup/videos/{{.ID}}/retry" style="display:inline">
@@ -123,6 +135,55 @@
   </table>
   {{else}}
   <p class="empty">Kho trống — thêm nguồn rồi bấm “Quét ngay”.</p>
+  {{end}}
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Bài đăng (transform)</h2>
+  <p class="hint">Transform giúp <b>giảm rủi ro</b> bản quyền — không đảm bảo an toàn 100%. Không bao giờ đăng video chưa transform. Xem trước before/after trước khi duyệt.</p>
+  {{if .Reup.Posts}}
+  <table class="clean">
+    <tr><th>#</th><th>Mức</th><th>Trạng thái</th><th>View</th><th>Trước / Sau</th><th></th></tr>
+    {{range .Reup.Posts}}
+    <tr>
+      <td class="hint">{{.Post.ID}}</td>
+      <td><span class="badge badge-info">{{.Post.LevelLabel}}</span></td>
+      <td>
+        {{if eq .Post.Status "transformed"}}<span class="badge badge-ok">{{.Post.StatusLabel}}</span>
+        {{else if eq .Post.Status "posted"}}<span class="badge badge-ok">{{.Post.StatusLabel}}</span>
+        {{else if eq .Post.Status "failed"}}<span class="badge badge-err">{{.Post.StatusLabel}}</span>
+        {{else if eq .Post.Status "transforming"}}<span class="badge badge-info">{{.Post.StatusLabel}}</span>
+        {{else}}<span class="badge badge-draft">{{.Post.StatusLabel}}</span>{{end}}
+        {{if .Post.FailReason}}<div class="hint" style="color:var(--err-text)">{{.Post.FailReason}}</div>{{end}}
+        {{if .Post.Platform}}<div class="hint">{{.Post.Platform}}</div>{{end}}
+      </td>
+      <td>{{if lt .Post.Views 0}}<span class="hint">chờ số liệu</span>{{else}}{{.Post.Views}}{{end}}</td>
+      <td>
+        {{if .HasFile}}
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          {{if .OrigFile}}
+          <div><div class="hint">Trước</div><video src="/reup/videos/{{.OrigFile}}/file" controls preload="none" style="width:120px;border-radius:8px"></video></div>
+          {{end}}
+          <div><div class="hint">Sau</div><video src="/reup/file/{{.Post.ID}}" controls preload="none" style="width:120px;border-radius:8px"></video></div>
+        </div>
+        {{else}}<span class="hint">—</span>{{end}}
+      </td>
+      <td style="white-space:nowrap">
+        {{if eq .Post.Status "transformed"}}
+        <form method="post" action="/reup/posts/{{.Post.ID}}/publish" style="display:inline">
+          <select name="account" class="btn-sm" style="margin-right:4px" required>
+            <option value="">Kênh…</option>
+            {{range $.Reup.AccountNames}}<option value="{{.}}"{{if eq $.Reup.PostAccount .}} selected{{end}}>{{.}}</option>{{end}}
+          </select>
+          <button type="submit" class="btn btn-sm">Đăng</button>
+        </form>
+        {{end}}
+      </td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có bài nào — bấm “Transform” ở video đã tải.</p>
   {{end}}
 </div>
 
@@ -206,6 +267,37 @@ function reupSettingsSave() {
     interval_hours: parseInt(document.getElementById('reup-set-hours').value, 10) || 6,
     per_source: parseInt(document.getElementById('reup-set-per').value, 10) || 3
   }), btn, function () { return 'Đã lưu cài đặt tự động.'; });
+}
+function reupTransform(id, btn) {
+  var sel = document.getElementById('reup-level-' + id);
+  var level = sel ? parseInt(sel.value, 10) : 1;
+  if (btn) btn.disabled = true;
+  fetch('/reup/videos/' + id + '/transform', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({level: level})})
+    .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+    .then(function (x) {
+      if (btn) btn.disabled = false;
+      if (x.d && x.d.ok) {
+        window.showToast('Đang transform bài #' + x.d.post_id + ' (mức ' + level + ')…', true);
+        pollReupPost(x.d.post_id);
+      } else {
+        window.showToast((x.d && x.d.error) || ('Lỗi HTTP ' + x.s), false);
+      }
+    })
+    .catch(function () { if (btn) btn.disabled = false; window.showToast('Không gọi được server.', false); });
+}
+function pollReupPost(postId) {
+  fetch('/reup/posts/' + postId + '/status')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var done = d.status === 'transformed' || d.status === 'failed' || d.status === 'posted';
+      if (done) {
+        window.showToast(d.status === 'failed' ? ('Transform lỗi: ' + (d.fail_reason || '')) : 'Transform xong bài #' + postId + '.', d.status !== 'failed');
+        setTimeout(function () { location.reload(); }, 1500);
+      } else {
+        setTimeout(function () { pollReupPost(postId); }, 5000);
+      }
+    })
+    .catch(function () { setTimeout(function () { pollReupPost(postId); }, 8000); });
 }
 </script>
 {{end}}

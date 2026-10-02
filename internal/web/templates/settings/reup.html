@@ -1,0 +1,112 @@
+{{define "title"}}Cài đặt · Reup — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Cài đặt · Reup</h1>
+<p class="subtitle">Transform 2 mức, đăng bài và kill rule 0-view cho pipeline reup Douyin.</p>
+{{template "settings-nav" .}}
+
+{{with .ReupCfg}}
+<div class="cards">
+  <div class="card">
+    <div class="num">{{if .StoreOK}}<span class="badge badge-ok">Sẵn sàng</span>{{else}}<span class="badge badge-err">Lỗi</span>{{end}}</div>
+    <div class="label">Kho Reup</div>
+  </div>
+  <div class="card">
+    <div class="num">{{if .TransformOn}}<span class="badge badge-ok">Bật</span>{{else}}<span class="badge badge-draft">Tắt</span>{{end}}</div>
+    <div class="label">Tự transform · mặc định {{if eq .TransformLevel 2}}Mức 2{{else}}Mức 1{{end}}</div>
+  </div>
+  <div class="card">
+    <div class="num">{{if .MusicOK}}<span class="badge badge-ok">Có nhạc</span>{{else}}<span class="badge badge-warn">Chưa có</span>{{end}}</div>
+    <div class="label">Nhạc nền licensed{{if not .MusicOK}} <span class="hint">(upload autopilot-music.m4a vào thư mục data)</span>{{end}}</div>
+  </div>
+  <div class="card">
+    <div class="num">{{if .KillOn}}<span class="badge badge-ok">Bật</span>{{else}}<span class="badge badge-draft">Tắt</span>{{end}}</div>
+    <div class="label">Kill rule · {{.KillN}} bài 0-view</div>
+  </div>
+</div>
+
+<p class="hint">Transform giúp <b>giảm rủi ro</b> bản quyền — không đảm bảo an toàn 100%. Không bao giờ đăng video chưa transform.</p>
+
+<form method="post" action="/settings/reup/save">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Transform</h2>
+  <div class="grid2">
+    <div class="field">
+      <label>Tự transform video đã tải</label>
+      <select name="transform_on">
+        <option value="1"{{if .TransformOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .TransformOn}} selected{{end}}>Tắt</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Mức transform mặc định</label>
+      <select name="transform_level">
+        <option value="1"{{if eq .TransformLevel 1}} selected{{end}}>Mức 1 — mọi video (zoom + tốc độ + voiceover + nhạc)</option>
+        <option value="2"{{if eq .TransformLevel 2}} selected{{end}}>Mức 2 — compilation 3 clip (video hot)</option>
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label>Voiceover bình luận tiếng Việt (VieNeu local, không tốn key)</label>
+    <select name="voiceover_on">
+      <option value="1"{{if .VoiceoverOn}} selected{{end}}>Bật</option>
+      <option value="0"{{if not .VoiceoverOn}} selected{{end}}>Tắt</option>
+    </select>
+  </div>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Đăng bài</h2>
+  <div class="grid2">
+    <div class="field">
+      <label>Tự đăng bài đã transform</label>
+      <select name="post_on">
+        <option value="1"{{if .PostOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .PostOn}} selected{{end}}>Tắt</option>
+      </select>
+      <span class="hint">Kill rule 0-view sẽ tự tắt mục này.</span>
+    </div>
+    <div class="field">
+      <label>Kênh đăng tự động</label>
+      <select name="post_account">
+        <option value="">— chỉ đăng tay —</option>
+        {{range .AccountNames}}<option value="{{.}}"{{if eq $.ReupCfg.PostAccount .}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Giới hạn video / ngày / kênh</label>
+      <input type="number" name="videos_per_day" min="1" max="20" value="{{.VideosPerDay}}">
+    </div>
+    <div class="field">
+      <label>Warm-up kênh mới (tăng dần ngày đầu)</label>
+      <select name="warmup_on">
+        <option value="1"{{if .WarmupOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .WarmupOn}} selected{{end}}>Tắt</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Kill rule 0-view</h2>
+  <p class="hint">Chỉ đếm bài <b>đã có số liệu view thật</b> (YouTube). Bài "chờ số liệu" không tính. Kích hoạt → dừng đăng reup + báo, không xoá bài đã đăng.</p>
+  <div class="grid2">
+    <div class="field">
+      <label>Bật kill rule</label>
+      <select name="kill_on">
+        <option value="1"{{if .KillOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .KillOn}} selected{{end}}>Tắt</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Số bài 0-view liên tiếp</label>
+      <input type="number" name="kill_n" min="2" max="20" value="{{.KillN}}">
+    </div>
+  </div>
+</div>
+
+<button type="submit" class="btn">Lưu cài đặt Reup</button>
+</form>
+{{end}}
+{{end}}
