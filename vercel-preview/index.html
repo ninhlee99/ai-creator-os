@@ -5,8 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trang chủ — AI Creator OS</title>
 <link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
 </head>
-<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -20,12 +33,12 @@
       <div class="nav-group">Sản xuất</div>
       <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
       <a href="products.html">Tìm sản phẩm</a>
       <a href="shop.html">Shop Affiliate</a>
       <div class="nav-group">Hệ thống</div>
       <a href="publishers.html">Đa nền tảng</a>
       <a href="settings.html">Cài đặt</a>
-      <a href="team.html">Agent Team 🤖</a>
     </nav>
   </aside>
   <div class="main">
@@ -35,6 +48,8 @@
         
       </div>
       <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
         
         <form method="post" action="/kill" style="display:inline"
               onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
@@ -48,6 +63,38 @@
 <h1>Tổng quan mạng lưới</h1>
 <p class="subtitle">Ngày 2026-10-02 · Giám sát toàn bộ AI creator, lịch live và doanh thu.</p>
 
+
+<div class="card steps-card" style="margin-bottom:20px">
+  <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
+  <ol class="steps">
+    <li>
+      <span class="n">1</span>
+      <div class="step-body">
+        <b>Thêm tài khoản TikTok</b>
+        <span>Tạo tài khoản AI creator đầu tiên để hệ thống bắt đầu thiết lập.</span>
+      </div>
+      <a class="btn btn-sm" href="accounts.html">Thêm tài khoản</a>
+    </li>
+    <li class="">
+      <span class="n">2</span>
+      <div class="step-body">
+        <b>Cấu hình API key ở Cài đặt</b>
+        <span>Thêm Gemini API key để AI viết kịch bản, tạo ảnh và dựng video.</span>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="settings.html">Mở Cài đặt</a>
+    </li>
+    <li class="">
+      <span class="n">3</span>
+      <div class="step-body">
+        <b>Tạo video đầu tiên ở Studio AI</b>
+        <span>Nhập tên sản phẩm, AI tự viết kịch bản, chụp ảnh và dựng video.</span>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="studio.html">Mở Studio AI</a>
+    </li>
+  </ol>
+</div>
+
+
 <div class="cards">
   <div class="card">
     <div class="num">0</div>
@@ -58,7 +105,7 @@
     <div class="label">Đủ điều kiện live</div>
   </div>
   <div class="card accent">
-    <div class="num">$0.00</div>
+    <div class="num">0 ₫</div>
     <div class="label">Doanh thu affiliate</div>
   </div>
   <div class="card">
@@ -66,26 +113,38 @@
     <div class="label">Slot live hôm nay</div>
   </div>
   <div class="card">
-    <div class="num">1</div>
+    <div class="num">0</div>
     <div class="label">Video jobs</div>
   </div>
 </div>
 
 <h2>Trạng thái tài khoản</h2>
-<div class="cards">
-  
-  <p class="empty">Chưa có tài khoản nào. <a href="accounts.html">Thêm tài khoản đầu tiên</a>.</p>
-  
+
+<div class="empty-state compact">
+  <div class="es-icon">👤</div>
+  <h3>Chưa có tài khoản nào</h3>
+  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
+  <a class="btn" href="accounts.html">+ Thêm tài khoản</a>
 </div>
+
 
 <h2>Lịch live hôm nay</h2>
 
-<p class="empty">Chưa có lịch hôm nay. <a href="schedule.html">Tạo lịch</a>.</p>
+<div class="empty-state compact">
+  <div class="es-icon">📅</div>
+  <h3>Hôm nay chưa có lịch live</h3>
+  <p>Lịch live sẽ tự xuất hiện khi có tài khoản đủ điều kiện, hoặc bạn tạo lịch thủ công.</p>
+  <a class="btn btn-secondary" href="schedule.html">Tạo lịch live</a>
+</div>
 
 
 <h2>Hoạt động gần đây</h2>
 
-<p class="empty">Chưa có hoạt động nào được ghi lại.</p>
+<div class="empty-state compact">
+  <div class="es-icon">📝</div>
+  <h3>Chưa có hoạt động nào</h3>
+  <p>Khi các agent bắt đầu làm việc, mọi quyết định của chúng sẽ hiện ở đây.</p>
+</div>
 
 
     </main>
@@ -98,6 +157,28 @@
   document.querySelectorAll('.sidebar nav a').forEach(function (a) {
     var h = a.getAttribute('href');
     if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
+});
+
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
   });
 })();
 </script>

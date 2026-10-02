@@ -5,8 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cài đặt — AI Creator OS</title>
 <link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
 </head>
-<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -20,6 +33,7 @@
       <div class="nav-group">Sản xuất</div>
       <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
       <a href="products.html">Tìm sản phẩm</a>
       <a href="shop.html">Shop Affiliate</a>
       <div class="nav-group">Hệ thống</div>
@@ -34,6 +48,8 @@
         
       </div>
       <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
         
         <form method="post" action="/kill" style="display:inline"
               onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
@@ -61,61 +77,127 @@
 <h2 id="he-thong">Trạng thái hệ thống</h2>
 <div class="cards">
   <div class="card">
-    <div class="num"><span class="badge badge-paused">DRY-RUN</span></div>
+    <div class="num"><span class="badge badge-warn">Chế độ thử (dry-run)</span></div>
     <div class="label">Chế độ chạy</div>
   </div>
   <div class="card">
     <div class="num"><span class="badge badge-ok">TẮT</span></div>
-    <div class="label">Kill switch</div>
+    <div class="label">Nút dừng khẩn cấp (kill switch)</div>
   </div>
-  <div class="card">
-    <div class="num" style="font-size:14px;word-break:break-all">/tmp/aicos-preview-data/ledger.db</div>
-    <div class="label">Đường dẫn database</div>
+  <div class="card" title="/tmp/aicos-uirev2-data/ledger.db">
+    <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
+    <div class="label">Cơ sở dữ liệu</div>
   </div>
 </div>
 
-<h2 id="bien-moi-truong">Biến môi trường</h2>
+<h2 id="bien-moi-truong">Khóa &amp; biến cấu hình</h2>
+<p class="subtitle">Các khóa kết nối dịch vụ bên ngoài. Giá trị chỉ hiện 4 ký tự cuối, không bao giờ hiện đầy đủ. Bấm <strong>Lưu</strong> là áp dụng ngay cho app đang chạy và được ghi nhớ cho lần khởi động sau; để trống rồi Lưu để xóa.</p>
+
 <table>
-  <tr><th>Biến</th><th>Trạng thái</th></tr>
+  <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
   
   <tr>
     <td><code>TTS_API_KEY</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="TTS_API_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>TIKTOK_SHOP_APP_KEY</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_SHOP_APP_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>TIKTOK_SHOP_APP_SECRET</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_SHOP_APP_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>TIKTOK_CLIENT_KEY</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_CLIENT_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>TIKTOK_CLIENT_SECRET</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_CLIENT_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>YOUTUBE_CLIENT_ID</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_CLIENT_ID">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>YOUTUBE_CLIENT_SECRET</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_CLIENT_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
   <tr>
     <td><code>FB_PAGE_ID</code></td>
-    <td><span class="badge badge-no">Chưa</span></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="FB_PAGE_ID">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   
 </table>
@@ -141,7 +223,12 @@
     </div>
     <div class="field">
       <label>Ảnh chân dung (PNG/JPG, rõ mặt)</label>
-      <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+      <div class="file-pick">
+        <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
+          <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+        </label>
+        <span class="file-name">Chưa chọn ảnh</span>
+      </div>
     </div>
     <div class="field">
       <label>Seed <span class="label-hint">— để trống = ngẫu nhiên</span></label>
@@ -397,7 +484,7 @@
 </div>
 
 <h2 id="provider-avatar">Chuỗi provider Avatar</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. <span class="badge badge-ok">Realtime: có tier hỗ trợ stream</span></p>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. <span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span></p>
 <div class="form-card" style="max-width:none">
 <form method="post" action="/settings/chain?name=avatar">
   
@@ -412,9 +499,9 @@
     <div class="provider-grid">
       
       <div class="field field-span">
-        <label>Sidecar</label>
+        <label>Chương trình chạy trên máy</label>
         <input type="hidden" name="apikey" value="">
-        <div class="hint">Chạy model local (mặc định: MuseTalk v1.5 bản Apple Silicon) dưới dạng sidecar do aicos quản lý — xem mục “Avatar sidecar” bên dưới.</div>
+        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem mục “Hình đại diện chạy trên máy” bên dưới. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
       </div>
       
       <div class="field">
@@ -502,7 +589,7 @@
 </form>
 </div>
 
-<h2 id="model-local">VieNeu sidecar</h2>
+<h2 id="model-local">Giọng đọc chạy trên máy (VieNeu)</h2>
 <div class="form-card" style="max-width:none">
 
   <dl class="kv">
@@ -510,7 +597,7 @@
   </dl>
   <div class="grid2" style="margin-top:12px">
     <div class="field">
-      <label>Voice preset</label>
+      <label>Giọng đọc (Voice preset)</label>
       <form method="post" action="/settings/vieneu/voice" class="inline-form">
         <select name="preset">
           <option value="bac">bac</option><option value="trung">trung</option><option value="nam">nam</option>
@@ -519,12 +606,12 @@
       </form>
     </div>
     <div class="field">
-      <label>Model</label>
+      <label>Mô hình giọng (Model)</label>
       <div class="toolbar" style="margin:0">
         <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải model</button>
         <form method="post" action="/settings/vieneu/restart" class="inline-form"
-              onsubmit="return confirm('Restart VieNeu sidecar?')">
-          <button type="submit" class="btn btn-secondary btn-sm">Restart</button>
+              onsubmit="return confirm('Khởi động lại chương trình giọng đọc VieNeu?')">
+          <button type="submit" class="btn btn-secondary btn-sm">Khởi động lại</button>
         </form>
       </div>
       <div id="vieneu-progress" class="hint" style="margin-top:8px"></div>
@@ -533,7 +620,7 @@
 
 </div>
 
-<h2 id="avatar-sidecar">Avatar sidecar</h2>
+<h2 id="avatar-sidecar">Hình đại diện chạy trên máy (Avatar)</h2>
 <p class="subtitle">Quản lý model avatar local (mặc định: MuseTalk v1.5 bản Apple Silicon). aicos khởi động/stop sidecar theo nhu cầu và không cho render khi model chưa sẵn sàng — không cần can thiệp thủ công.</p>
 <div class="form-card" style="max-width:none">
   <div class="toolbar">
@@ -558,8 +645,8 @@
   <div class="field">
     <label>Chế độ chạy</label>
     <select name="value">
-      <option value="on" selected>Bật dry-run (chế độ an toàn, không thao tác thật)</option>
-      <option value="off" >Tắt dry-run (chạy thật)</option>
+      <option value="on" selected>Bật chế độ thử (dry-run) — an toàn, không thao tác thật</option>
+      <option value="off" >Tắt chế độ thử — chạy thật</option>
     </select>
   </div>
   <button type="submit" class="btn btn-secondary">Lưu</button>
@@ -727,7 +814,7 @@ document.querySelectorAll('.health-btn').forEach(function (btn) {
       var r = await fetch('/settings/chain/health?name=' + encodeURIComponent(btn.dataset.chain) +
         '&provider=' + encodeURIComponent(btn.dataset.provider), {method: 'POST'});
       var j = await r.json();
-      res.textContent = j.ok ? 'OK' : 'Fail';
+      res.textContent = j.ok ? 'Kết nối tốt ✓' : 'Không kết nối được';
       res.className = 'health-result ' + (j.ok ? 'ok' : 'fail');
     } catch (e) {
       res.textContent = 'Lỗi';
@@ -773,12 +860,12 @@ async function refreshAvatarSidecar() {
     if (!j.connected) {
       badge.textContent = 'chưa kết nối';
       badge.className = 'badge badge-no';
-      detail.textContent = 'wiring worker sẽ nối sau';
+      detail.textContent = 'chưa được nối — tính năng sẽ khả dụng sau';
       hint.textContent = '';
       dlBtn.hidden = true;
       return;
     }
-    badge.textContent = j.state;
+    badge.textContent = j.state === 'running' ? 'Đang chạy' : j.state;
     badge.className = 'badge badge-' + (j.state === 'running' ? 'ok' : 'draft');
     detail.textContent = j.detail || '';
     if (!j.model_configured) {
@@ -920,6 +1007,28 @@ document.querySelectorAll('.char-card').forEach(function (card) {
   document.querySelectorAll('.sidebar nav a').forEach(function (a) {
     var h = a.getAttribute('href');
     if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
+});
+
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
   });
 })();
 </script>

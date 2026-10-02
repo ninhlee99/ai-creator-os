@@ -36,3 +36,37 @@ Phạm vi: toàn bộ dashboard (Trang chủ, Tài khoản, Studio AI, Agent Tea
 
 ## Điểm tự chấm (khó tính)
 - Cấu trúc/điều hướng: 7/10 · Màu sắc: 5/10 · Font/chữ: 6/10 · Luồng công việc: 5/10 · Độ tin cậy/trình bày: 5/10 → **Tổng ~5.5/10**: "chạy được, tin được, nhưng chưa đã mắt và chưa giống sản phẩm bán được".
+
+---
+
+# Kết quả thực hiện (2026-10-02)
+
+## Thay đổi hướng thiết kế (theo yêu cầu Ninh)
+Đợt C đổi hướng: **hệ màu cơ bản kiểu macOS, sáng là mặc định** (không còn đen toàn bộ). Nền sáng `#f5f5f7`, thẻ trắng `#ffffff`, chữ `#1d1d1f`/`#6e6e73`; chế độ tối macOS (`#1c1c1e`/`#2c2c2e`) qua nút ☀/🌙 ở topbar, lưu localStorage, theo `prefers-color-scheme` lần đầu, script chống chớp sáng trước khi vẽ. Màu accent đổi từ hồng `#EF476F` sang **xanh hệ thống macOS `#007AFF`** (tối: `#0A84FF`); semantic: xanh lá `#34C759`, cam `#FF9500` (đang chạy), đỏ `#FF3B30`, vàng `#FFCC00`. Toàn bộ qua biến CSS; chỉ vùng log/video giữ nền tối kiểu terminal ở cả hai theme.
+
+## Trạng thái từng mục
+| # | Mục | Trạng thái |
+|---|-----|-----------|
+| 1 | Badge job/shot Studio có màu (running cam nhấp nháy, queued xám, done xanh, failed đỏ) + audit mọi badge-* | ✅ ĐÃ LÀM |
+| 2 | Tiền `$` → VNĐ (`fmtVND`: 1.234.500 ₫); USD giữ nguyên ở mục vốn là USD (quà/chi phí API) với `fmtUSD` | ✅ ĐÃ LÀM |
+| 3 | Component `.empty-state` (icon tròn + tiêu đề + mô tả + nút CTA) cho dashboard/tài khoản/studio | ✅ ĐÃ LÀM |
+| 3b | Checklist "Bắt đầu trong 3 bước" ở trang chủ khi chưa có tài khoản (check theo dữ liệu thật: có key? có job?) | ✅ ĐÃ LÀM |
+| 4 | Form affiliate Studio: trường chính trước, nâng cao (BPM/link nhạc/điểm bắt đầu) vào `<details>`; ô chọn file có nút tối + hiện tên file | ✅ ĐÃ LÀM |
+| 5 | Settings gộp 1 mục khóa/biến: tên + badge Đã đặt/Chưa + đuôi đã che (••••abcd) + ô nhập + nút Lưu từng dòng (lưu vào DB, áp dụng ngay + nạp lại khi khởi động); thẻ DB ẩn path (chỉ tooltip) | ✅ ĐÃ LÀM |
+| 6 | Studio bỏ reload 15s → polling AJAX 5s cập nhật badge/tiến độ/video tại chỗ | ✅ ĐÃ LÀM |
+| 7 | Dịch trạng thái sang tiếng Việt có dấu toàn app (statusLabel/statusClass): tài khoản, slot, job, asset, team, action log | ✅ ĐÃ LÀM |
+| 8 | Chuẩn hóa palette 1 accent + semantic, xóa các class badge-<status> cũ | ✅ ĐÃ LÀM (đổi sang hệ macOS, xem trên) |
+| 9 | Thang type 12/13/15/18/24/28, tăng tương phản chữ phụ, placeholder sáng hơn, `:focus-visible` rõ | ✅ ĐÃ LÀM |
+| 10 | Sanitize tiêu đề trending (bỏ ký tự điều khiển/format, gấp chữ toán học/fullwidth về ASCII) + font fallback cho bảng | ✅ ĐÃ LÀM |
+| 11 | Dịch nhãn Anh→Việt (giọng đọc/hình đại diện chạy trên máy, Voice preset→Giọng đọc…, Media-gen để trong ngoặc) | ✅ ĐÃ LÀM |
+| 12 | Preview avatar .png→.jpg + xóa 16 PNG thừa | ✅ ĐÃ LÀM |
+| 13 | Nhãn "realtime" avatar local gây hiểu lầm → local ghi rõ "Dựng offline (không realtime), clip 60s ≈ 6–10 phút trên M1"; badge realtime chỉ tính khi bật provider đám mây | ✅ ĐÃ LÀM |
+
+## Kiểm chứng
+- `go build ./...` OK; `go test ./...`: **19/19 package pass** (2 test kỳ vọng nhãn cũ "VieNeu sidecar"/"Avatar sidecar" đã cập nhật theo nhãn Việt mới).
+- Smoke test local (binary mới, data tạm): `/`, `/accounts`, `/studio`, `/team`, `/settings` đều HTTP 200; render đúng checklist, `0 ₫`, badge realtime trung thực, không còn `location.reload`.
+- **Preview Vercel**: tái xuất toàn bộ trang từ app mới + CSS theme mới, deploy production mới `dpl_3inmhMXq4dqhhUQioA1tjBzemG6J` (READY) tại https://ai-creator-os-preview.vercel.app — kiểm chứng 200 cho trang chủ/team/studio/settings/CSS và `assets/agents/hunter.jpg`.
+
+## Còn lại (chưa làm, có chủ đích)
+- Bản preview tĩnh vẫn là dữ liệu trống/mẫu (đúng bản chất preview); thao tác thật chạy ở app local.
+- Điểm số >9/10 **không tự khẳng định**: cần Ninh soi trực tiếp bản sáng mới (đặc biệt tương phản ở theme sáng và mật độ trang Settings) rồi chấm lại.
