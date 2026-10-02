@@ -198,7 +198,7 @@ A tiny supervisor, not a media framework:
 ## 9. Strict operational rules (encoded, not suggested)
 
 1. **Dry-run default.** Nothing touches TikTok until `--live` is explicitly
-   passed and the checklist in docs/OPERATIONS.md is signed off in config.
+   passed and the checklist in docs/USER_GUIDE.md is signed off in config.
 2. **Anti-ban pacing.** Max live duration per session, mandatory breaks,
    no duplicate content spam, AI disclosure on stream per TikTok policy.
 3. **Idempotency.** Every external action carries an idempotency key; retries

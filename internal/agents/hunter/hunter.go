@@ -59,7 +59,7 @@ type TikTokShopAffiliateClient struct {
 func NewTikTokShopAffiliateClient(cfg config.Config) (*TikTokShopAffiliateClient, error) {
 	if cfg.TikTokShopAppKey == "" || cfg.TikTokShopAccessToken == "" {
 		return nil, fmt.Errorf("missing TIKTOK_SHOP_APP_KEY / TIKTOK_SHOP_ACCESS_TOKEN " +
-			"(see docs/OPERATIONS.md for the setup checklist)")
+			"(see docs/USER_GUIDE.md for the setup checklist)")
 	}
 	return &TikTokShopAffiliateClient{cfg: cfg, client: &tiktok.ShopClient{
 		AppKey:      cfg.TikTokShopAppKey,
