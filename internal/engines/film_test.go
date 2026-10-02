@@ -136,7 +136,7 @@ func TestRenderScene(t *testing.T) {
 	out := filepath.Join(dir, "scene.mp4")
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
-	if err := RenderScene(ctx, img, wav, 2.0, out); err != nil {
+	if err := RenderScene(ctx, img, wav, 2.0, "9:16", out); err != nil {
 		t.Fatalf("RenderScene: %v", err)
 	}
 	st, err := os.Stat(out)

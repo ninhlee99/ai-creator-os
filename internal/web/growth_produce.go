@@ -58,6 +58,7 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 	return p.s.Studio.CreateFilmJob(studio.FilmParams{
 		Topic:   req.Item.Topic,
 		Seconds: growth.VariantSeconds(req.Item.Variant),
+		Aspect:  growth.VariantAspect(req.Item.Variant),
 	})
 }
 

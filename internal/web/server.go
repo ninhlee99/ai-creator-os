@@ -208,6 +208,10 @@ var templateFuncs = template.FuncMap{
 	// agentLabel renders a raw agent slug as its Vietnamese label + icon
 	// for the decision feed (R2-11: no raw slugs in the UI).
 	"agentLabel": agentLabel,
+	// variantAspect renders a plan variant's delivery frame ("16:9" for the
+	// YouTube long-form cut, "9:16" otherwise) so /growth shows the true
+	// render shape of each variant.
+	"variantAspect": growth.VariantAspect,
 	// dict builds a string-keyed map for passing named arguments to
 	// partial templates ({{template "x" (dict "A" .B)}}).
 	"dict": func(kv ...any) map[string]any {

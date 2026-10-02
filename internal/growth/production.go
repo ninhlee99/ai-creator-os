@@ -40,6 +40,18 @@ func VariantSeconds(variant string) int {
 	}
 }
 
+// VariantAspect is the delivery frame for a plan variant: the YouTube
+// long-form cut renders true 16:9 (1920x1080); TikTok and Shorts stay
+// 9:16 (1080x1920). The studio job carries this through director prompt,
+// Veo aspectRatio and the ffmpeg render — a "long" YouTube cut can no
+// longer silently render vertical.
+func VariantAspect(variant string) string {
+	if variant == VariantYouTube {
+		return "16:9"
+	}
+	return "9:16"
+}
+
 // VariantKind maps a plan variant to the publishers content kind used for
 // channel gating and YouTube category selection.
 func VariantKind(variant string) string {
