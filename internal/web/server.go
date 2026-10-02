@@ -103,6 +103,7 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		JobsPath:  "data/content_jobs.json",
 		db:        db,
 	}
+	s.applyPersistedEnv()
 	s.renderer = ffmpegRenderer{s: s}
 	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
 		db.Close()
@@ -153,6 +154,15 @@ var templateFuncs = template.FuncMap{
 	"fmtTime": func(min int) string {
 		return fmt.Sprintf("%02d:%02d", min/60, min%60)
 	},
+	// fmtVND renders a VND amount with dot thousands separators:
+	// 1234500 → "1.234.500 ₫".
+	"fmtVND": func(v float64) string { return formatVND(v) },
+	// fmtUSD renders a USD amount with comma separators: "$1,234.50".
+	"fmtUSD": func(v float64) string { return formatUSD(v) },
+	// statusLabel renders a raw status slug as its Vietnamese label.
+	"statusLabel": statusLabel,
+	// statusClass maps a raw status slug to a semantic badge class suffix.
+	"statusClass": statusClass,
 	"mul": func(a, b float64) float64 { return a * b },
 	"pct": func(f float64) float64 { return f * 100 },
 	"join": func(sep string, xs []string) string {
@@ -168,6 +178,131 @@ var templateFuncs = template.FuncMap{
 		}
 		return slug
 	},
+}
+
+// statusLabel maps raw status slugs (accounts, slots, jobs, assets,
+// products, decisions) to Vietnamese labels with diacritics. Unknown slugs
+// fall back to a humanized form so nothing renders with underscores.
+func statusLabel(s string) string {
+	if l, ok := statusLabels[s]; ok {
+		return l
+	}
+	if s == "" {
+		return "—"
+	}
+	return strings.ReplaceAll(s, "_", " ")
+}
+
+var statusLabels = map[string]string{
+	// account lifecycle
+	"onboarding":       "Đang thiết lập",
+	"researching":      "Đang nghiên cứu",
+	"persona_assigned": "Đã gán persona",
+	"growing":          "Đang tăng trưởng",
+	"live_ready":       "Đủ điều kiện live",
+	"live":             "Đang live",
+	"paused":           "Đã tạm dừng",
+	"penalized":        "Bị phạt",
+	"retired":          "Đã nghỉ",
+	// live slots
+	"planned": "Đã lên lịch",
+	"started": "Đang diễn ra",
+	"skipped": "Đã bỏ qua",
+	// jobs & assets
+	"queued":  "Đang chờ",
+	"pending": "Đang chờ",
+	"running": "Đang chạy",
+	"done":    "Hoàn thành",
+	"failed":  "Thất bại",
+	// agent team node states
+	"working":  "Đang làm",
+	"exchange": "Đang nhận việc",
+	"waiting":  "Đang chờ",
+	"guard":    "Gác cổng",
+	// shop products
+	"shelf":  "Đang bán",
+	"scaled": "Đang mở rộng",
+	// decision actions shown in the activity feed
+	"niche_research": "Nghiên cứu niche",
+	"live_unlocked":  "Mở khóa live",
+}
+
+// statusClass maps a raw status slug to a semantic badge class suffix
+// (ok/warn/err/info/no/running/queued/draft) defined in style.css.
+func statusClass(s string) string {
+	switch s {
+	case "live", "live_ready", "done", "started", "shelf", "scaled":
+		return "ok"
+	case "running", "working":
+		return "running"
+	case "queued", "pending":
+		return "queued"
+	case "failed", "penalized":
+		return "err"
+	case "onboarding", "paused", "skipped":
+		return "warn"
+	case "researching", "persona_assigned", "growing", "planned", "exchange":
+		return "info"
+	default:
+		return "no"
+	}
+}
+
+// formatVND renders v as a Vietnamese dong amount: 1234500 → "1.234.500 ₫".
+func formatVND(v float64) string {
+	n := int64(v + 0.5)
+	if v < 0 {
+		n = int64(v - 0.5)
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	digits := strconv.FormatInt(n, 10)
+	var b strings.Builder
+	for i, c := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			b.WriteByte('.')
+		}
+		b.WriteRune(c)
+	}
+	if neg {
+		return "-" + b.String() + " ₫"
+	}
+	return b.String() + " ₫"
+}
+
+// formatUSD renders v as a US dollar amount: 1234.5 → "$1,234.50".
+// Sub-cent values (API micro-costs) keep 4 decimals instead of "$0.00".
+func formatUSD(v float64) string {
+	neg := v < 0
+	if neg {
+		v = -v
+	}
+	if v > 0 && v < 0.01 {
+		if neg {
+			return fmt.Sprintf("-$%.4f", v)
+		}
+		return fmt.Sprintf("$%.4f", v)
+	}
+	whole := int64(v)
+	frac := int64((v-float64(whole))*100 + 0.5)
+	if frac == 100 {
+		whole++
+		frac = 0
+	}
+	digits := strconv.FormatInt(whole, 10)
+	var b strings.Builder
+	for i, c := range digits {
+		if i > 0 && (len(digits)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	if neg {
+		return fmt.Sprintf("-$%s.%02d", b.String(), frac)
+	}
+	return fmt.Sprintf("$%s.%02d", b.String(), frac)
 }
 
 // pageFiles maps a page key to the template file rendered inside base.

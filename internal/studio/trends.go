@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // TrendingSound is one row of the Vietnam TikTok trending-sounds chart.
@@ -108,7 +109,7 @@ func parseKworbVN(html string) []TrendingSound {
 		var rank int
 		fmt.Sscanf(m[1], "%d", &rank)
 		name := kworbSpRe.ReplaceAllString(kworbTagRe.ReplaceAllString(m[3], " "), " ")
-		name = strings.TrimSpace(name)
+		name = sanitizeChartText(name)
 		artist, title := splitArtistTitle(name)
 		out = append(out, TrendingSound{
 			Rank:     rank,
@@ -129,4 +130,57 @@ func splitArtistTitle(name string) (artist, title string) {
 		return strings.TrimSpace(name[:i]), strings.TrimSpace(name[i+3:])
 	}
 	return "", name
+}
+
+// sanitizeChartText cleans chart text for display: it strips Unicode
+// format/control characters (bidi overrides, zero-width marks) and folds
+// stylized letters (mathematical alphanumerics like 𝐅𝐋𝐈:𝐏, fullwidth
+// ＦＬＩＰ) back to plain ASCII so titles render in normal fonts instead
+// of broken mirrored fallback glyphs. Vietnamese diacritics are untouched.
+func sanitizeChartText(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Cc, r):
+			// Drop format/control characters entirely.
+		case r >= 0xFF01 && r <= 0xFF5E:
+			b.WriteRune(r - 0xFEE0) // fullwidth → ASCII
+		case r >= 0x1D400 && r <= 0x1D7FF:
+			if c, ok := foldMathAlnum(r); ok {
+				b.WriteRune(c)
+			} else {
+				b.WriteRune(r)
+			}
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return strings.Join(strings.Fields(b.String()), " ")
+}
+
+// foldMathAlnum maps a mathematical alphanumeric rune (U+1D400–U+1D7FF)
+// to its plain ASCII letter/digit. The block is laid out as runs of 26
+// capitals, 26 smalls, then runs of 10 digits per style.
+func foldMathAlnum(r rune) (rune, bool) {
+	caps := []rune{0x1D400, 0x1D434, 0x1D468, 0x1D49C, 0x1D4D0, 0x1D504,
+		0x1D538, 0x1D56C, 0x1D5A0, 0x1D5D4, 0x1D608, 0x1D63C, 0x1D670}
+	smalls := []rune{0x1D41A, 0x1D44E, 0x1D482, 0x1D4B6, 0x1D4EA, 0x1D51E,
+		0x1D552, 0x1D586, 0x1D5BA, 0x1D5EE, 0x1D622, 0x1D656, 0x1D68A}
+	digits := []rune{0x1D7CE, 0x1D7D8, 0x1D7E2, 0x1D7EC, 0x1D7F6}
+	for _, start := range caps {
+		if d := r - start; d >= 0 && d < 26 {
+			return 'A' + d, true
+		}
+	}
+	for _, start := range smalls {
+		if d := r - start; d >= 0 && d < 26 {
+			return 'a' + d, true
+		}
+	}
+	for _, start := range digits {
+		if d := r - start; d >= 0 && d < 10 {
+			return '0' + d, true
+		}
+	}
+	return r, false
 }

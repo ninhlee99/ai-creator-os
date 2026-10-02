@@ -18,7 +18,7 @@ func TestSettingsTemplateRendersWithAvatar(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Nhân vật AI", "Chuỗi provider Avatar", "Avatar sidecar",
+		"Nhân vật AI", "Chuỗi provider Avatar", "Hình đại diện chạy trên máy (Avatar)",
 		"avatar-sidecar-badge", "char-add-form", "local",
 	} {
 		if !strings.Contains(body, want) {

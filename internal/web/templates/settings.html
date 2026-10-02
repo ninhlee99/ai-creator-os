@@ -17,26 +17,36 @@
 <h2 id="he-thong">Trạng thái hệ thống</h2>
 <div class="cards">
   <div class="card">
-    <div class="num">{{if .DryRun}}<span class="badge badge-paused">DRY-RUN</span>{{else}}<span class="badge badge-ok">LIVE</span>{{end}}</div>
+    <div class="num">{{if .DryRun}}<span class="badge badge-warn">Chế độ thử (dry-run)</span>{{else}}<span class="badge badge-ok">Đang chạy thật</span>{{end}}</div>
     <div class="label">Chế độ chạy</div>
   </div>
   <div class="card">
-    <div class="num">{{if .Kill}}<span class="badge badge-penalized">ĐANG BẬT</span>{{else}}<span class="badge badge-ok">TẮT</span>{{end}}</div>
-    <div class="label">Kill switch</div>
+    <div class="num">{{if .Kill}}<span class="badge badge-err">ĐANG BẬT</span>{{else}}<span class="badge badge-ok">TẮT</span>{{end}}</div>
+    <div class="label">Nút dừng khẩn cấp (kill switch)</div>
   </div>
-  <div class="card">
-    <div class="num" style="font-size:14px;word-break:break-all">{{.DbPath}}</div>
-    <div class="label">Đường dẫn database</div>
+  <div class="card" title="{{.DbPath}}">
+    <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
+    <div class="label">Cơ sở dữ liệu</div>
   </div>
 </div>
 
-<h2 id="bien-moi-truong">Biến môi trường</h2>
+<h2 id="bien-moi-truong">Khóa &amp; biến cấu hình</h2>
+<p class="subtitle">Các khóa kết nối dịch vụ bên ngoài. Giá trị chỉ hiện 4 ký tự cuối, không bao giờ hiện đầy đủ. Bấm <strong>Lưu</strong> là áp dụng ngay cho app đang chạy và được ghi nhớ cho lần khởi động sau; để trống rồi Lưu để xóa.</p>
+{{if .EnvSaved}}<p class="notice">Đã lưu <code>{{.EnvSaved}}</code> — áp dụng ngay, không cần khởi động lại.</p>{{end}}
 <table>
-  <tr><th>Biến</th><th>Trạng thái</th></tr>
+  <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
   {{range .EnvStatus}}
   <tr>
-    <td><code>{{.Name}}</code></td>
-    <td>{{if .Ok}}<span class="badge badge-ok">Đã cấu hình</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td><code>{{.Name}}</code>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
+    <td>{{if .Ok}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-no">Chưa đặt</span>{{end}}</td>
+    <td>{{if .Ok}}<code class="key-masked">{{.Masked}}</code>{{else}}<span class="env-hint">—</span>{{end}}</td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="{{.Name}}">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
   </tr>
   {{end}}
 </table>
@@ -90,7 +100,12 @@
     </div>
     <div class="field">
       <label>Ảnh chân dung (PNG/JPG, rõ mặt)</label>
-      <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+      <div class="file-pick">
+        <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
+          <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+        </label>
+        <span class="file-name">Chưa chọn ảnh</span>
+      </div>
     </div>
     <div class="field">
       <label>Seed <span class="label-hint">— để trống = ngẫu nhiên</span></label>
@@ -262,7 +277,7 @@
 </div>
 
 <h2 id="provider-avatar">Chuỗi provider Avatar</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. {{if .AvatarRealtime}}<span class="badge badge-ok">Realtime: có tier hỗ trợ stream</span>{{else}}<span class="badge badge-no">Realtime: chưa có tier nào</span>{{end}}</p>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. {{if .AvatarRealtime}}<span class="badge badge-info">Trực tiếp (realtime): có thể qua nhà cung cấp đám mây đang bật</span>{{else}}<span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span>{{end}}</p>
 <div class="form-card" style="max-width:none">
 <form method="post" action="/settings/chain?name=avatar">
   {{range $i, $p := .AvatarChain.Order}}
@@ -277,9 +292,9 @@
     <div class="provider-grid">
       {{if eq $p.Name "local"}}
       <div class="field field-span">
-        <label>Sidecar</label>
+        <label>Chương trình chạy trên máy</label>
         <input type="hidden" name="apikey" value="">
-        <div class="hint">Chạy model local (mặc định: MuseTalk v1.5 bản Apple Silicon) dưới dạng sidecar do aicos quản lý — xem mục “Avatar sidecar” bên dưới.</div>
+        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem mục “Hình đại diện chạy trên máy” bên dưới. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
       </div>
       {{else}}
       <div class="field">
@@ -308,15 +323,15 @@
 </form>
 </div>
 
-<h2 id="model-local">VieNeu sidecar</h2>
+<h2 id="model-local">Giọng đọc chạy trên máy (VieNeu)</h2>
 <div class="form-card" style="max-width:none">
 {{if .VieNeu.Connected}}
   <dl class="kv">
-    <dt>Trạng thái</dt><dd><span class="badge badge-{{if eq .VieNeu.State "running"}}ok{{else}}draft{{end}}">{{.VieNeu.State}}</span> {{.VieNeu.Detail}}</dd>
+    <dt>Trạng thái</dt><dd><span class="badge badge-{{if eq .VieNeu.State "running"}}ok{{else}}draft{{end}}">{{statusLabel .VieNeu.State}}</span> {{.VieNeu.Detail}}</dd>
   </dl>
   <div class="grid2" style="margin-top:12px">
     <div class="field">
-      <label>Voice preset</label>
+      <label>Giọng đọc (Voice preset)</label>
       <form method="post" action="/settings/vieneu/voice" class="inline-form">
         <select name="preset">
           {{range .VieNeu.Voices}}<option value="{{.}}">{{.}}</option>{{end}}
@@ -325,23 +340,23 @@
       </form>
     </div>
     <div class="field">
-      <label>Model</label>
+      <label>Mô hình giọng (Model)</label>
       <div class="toolbar" style="margin:0">
         <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải model</button>
         <form method="post" action="/settings/vieneu/restart" class="inline-form"
-              onsubmit="return confirm('Restart VieNeu sidecar?')">
-          <button type="submit" class="btn btn-secondary btn-sm">Restart</button>
+              onsubmit="return confirm('Khởi động lại chương trình giọng đọc VieNeu?')">
+          <button type="submit" class="btn btn-secondary btn-sm">Khởi động lại</button>
         </form>
       </div>
       <div id="vieneu-progress" class="hint" style="margin-top:8px"></div>
     </div>
   </div>
 {{else}}
-  <p class="empty">Sidecar VieNeu chưa được kết nối (wiring worker sẽ nối sau). Các nút điều khiển sẽ khả dụng khi sidecar được inject.</p>
+  <p class="empty">Chương trình giọng đọc VieNeu chưa được kết nối. Các nút điều khiển sẽ khả dụng khi nó được nối vào app.</p>
 {{end}}
 </div>
 
-<h2 id="avatar-sidecar">Avatar sidecar</h2>
+<h2 id="avatar-sidecar">Hình đại diện chạy trên máy (Avatar)</h2>
 <p class="subtitle">Quản lý model avatar local (mặc định: MuseTalk v1.5 bản Apple Silicon). aicos khởi động/stop sidecar theo nhu cầu và không cho render khi model chưa sẵn sàng — không cần can thiệp thủ công.</p>
 <div class="form-card" style="max-width:none">
   <div class="toolbar">
@@ -366,8 +381,8 @@
   <div class="field">
     <label>Chế độ chạy</label>
     <select name="value">
-      <option value="on" {{if .DryRun}}selected{{end}}>Bật dry-run (chế độ an toàn, không thao tác thật)</option>
-      <option value="off" {{if not .DryRun}}selected{{end}}>Tắt dry-run (chạy thật)</option>
+      <option value="on" {{if .DryRun}}selected{{end}}>Bật chế độ thử (dry-run) — an toàn, không thao tác thật</option>
+      <option value="off" {{if not .DryRun}}selected{{end}}>Tắt chế độ thử — chạy thật</option>
     </select>
   </div>
   <button type="submit" class="btn btn-secondary">Lưu</button>
@@ -539,7 +554,7 @@ document.querySelectorAll('.health-btn').forEach(function (btn) {
       var r = await fetch('/settings/chain/health?name=' + encodeURIComponent(btn.dataset.chain) +
         '&provider=' + encodeURIComponent(btn.dataset.provider), {method: 'POST'});
       var j = await r.json();
-      res.textContent = j.ok ? 'OK' : 'Fail';
+      res.textContent = j.ok ? 'Kết nối tốt ✓' : 'Không kết nối được';
       res.className = 'health-result ' + (j.ok ? 'ok' : 'fail');
     } catch (e) {
       res.textContent = 'Lỗi';
@@ -585,12 +600,12 @@ async function refreshAvatarSidecar() {
     if (!j.connected) {
       badge.textContent = 'chưa kết nối';
       badge.className = 'badge badge-no';
-      detail.textContent = 'wiring worker sẽ nối sau';
+      detail.textContent = 'chưa được nối — tính năng sẽ khả dụng sau';
       hint.textContent = '';
       dlBtn.hidden = true;
       return;
     }
-    badge.textContent = j.state;
+    badge.textContent = j.state === 'running' ? 'Đang chạy' : j.state;
     badge.className = 'badge badge-' + (j.state === 'running' ? 'ok' : 'draft');
     detail.textContent = j.detail || '';
     if (!j.model_configured) {

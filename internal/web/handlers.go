@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -86,6 +87,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
+	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
@@ -198,7 +200,20 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"Decisions", decisions,
 		"Today", today,
 		"NJobs", s.Jobs.Count(),
+		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
+		"HasKeys", s.hasAnyAPIKey(),
+		"HasStudioJobs", s.Studio != nil && len(s.Studio.ListJobs(1)) > 0,
 	))
+}
+
+// hasAnyAPIKey reports whether any Gemini key is configured (keyring in the
+// database or the GEMINI_API_KEYS environment variable).
+func (s *Server) hasAnyAPIKey() bool {
+	if len(s.keyRingStatuses("tts", "gemini")) > 0 ||
+		len(s.keyRingStatuses("llm", "gemini")) > 0 {
+		return true
+	}
+	return getenv("GEMINI_API_KEYS", "") != "" || getenv("TTS_API_KEY", "") != ""
 }
 
 // ---------------------------------------------------------------- accounts
@@ -767,6 +782,63 @@ func (s *Server) queryUsage() ([]usageRow, error) {
 type envRow struct {
 	Name string
 	Ok   bool
+	// Masked is the secret-safe tail display ("••••abcd"); empty when unset.
+	Masked string
+	// FromDB marks values saved through the settings UI (persisted in the
+	// settings table) as opposed to process environment variables.
+	FromDB bool
+}
+
+// envNames is the allowlist of environment variables editable in Settings.
+// Values apply to the running process immediately and persist in the
+// settings table (applied at startup), so they survive restarts.
+var envNames = []string{"TTS_API_KEY", "TIKTOK_SHOP_APP_KEY", "TIKTOK_SHOP_APP_SECRET",
+	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
+	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID"}
+
+// envSettingKey namespaces a UI-saved env value inside the settings table.
+func envSettingKey(name string) string { return "env:" + name }
+
+// maskSecret renders "••••" + last 4 chars; never reveals more of a secret.
+func maskSecret(v string) string {
+	if len(v) <= 4 {
+		return "••••"
+	}
+	return "••••" + v[len(v)-4:]
+}
+
+// effectiveEnv resolves a variable's current value: UI-saved (settings
+// table) wins over the process environment.
+func (s *Server) effectiveEnv(name string) (string, bool) {
+	if s.Ledger != nil {
+		if v, ok, err := s.Ledger.GetSetting(envSettingKey(name)); err == nil && ok {
+			return v, v != ""
+		}
+	}
+	v := getenv(name, "")
+	return v, v != ""
+}
+
+// applyPersistedEnv re-applies UI-saved env values into the process
+// environment at startup so call-time getenv consumers see them after a
+// restart. Called from NewServer.
+func (s *Server) applyPersistedEnv() {
+	if s.Ledger == nil {
+		return
+	}
+	all, err := s.Ledger.AllSettings()
+	if err != nil {
+		return
+	}
+	for k, v := range all {
+		if name, ok := strings.CutPrefix(k, "env:"); ok {
+			if v == "" {
+				os.Unsetenv(name)
+			} else {
+				os.Setenv(name, v)
+			}
+		}
+	}
 }
 
 type rtmpRow struct {
@@ -868,12 +940,19 @@ func (s *Server) vieneuView() vieneuView {
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
-	envNames := []string{"TTS_API_KEY", "TIKTOK_SHOP_APP_KEY", "TIKTOK_SHOP_APP_SECRET",
-		"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
-		"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID"}
 	envs := make([]envRow, 0, len(envNames))
 	for _, e := range envNames {
-		envs = append(envs, envRow{Name: e, Ok: getenv(e, "") != ""})
+		v, ok := s.effectiveEnv(e)
+		row := envRow{Name: e, Ok: ok}
+		if ok {
+			row.Masked = maskSecret(v)
+		}
+		if s.Ledger != nil {
+			if _, inDB, err := s.Ledger.GetSetting(envSettingKey(e)); err == nil && inDB {
+				row.FromDB = true
+			}
+		}
+		envs = append(envs, row)
 	}
 	accounts, err := s.Mgr.List()
 	if err != nil {
@@ -886,6 +965,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "settings", s.ctx(
 		"EnvStatus", envs,
+		"EnvSaved", r.URL.Query().Get("envsaved"),
 		"RtmpRows", rtmps,
 		"DbPath", s.Cfg.DatabasePath,
 		"TTSChain", s.loadChain("tts"),
@@ -900,12 +980,54 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-// avatarRealtime reports whether any avatar tier can stream frames.
-func (s *Server) avatarRealtime() bool {
-	if s.Avatar == nil {
-		return false
+// handleSettingsEnvSave saves one environment variable from the Settings
+// UI: it applies to the running process immediately and persists in the
+// settings table, so it is re-applied at startup. An empty value clears
+// the variable.
+func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse env form")
+		return
 	}
-	return s.Avatar.SupportsRealtime()
+	name := strings.TrimSpace(r.FormValue("name"))
+	allowed := false
+	for _, n := range envNames {
+		if n == name {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		http.Error(w, "biến không được phép sửa tại đây", http.StatusBadRequest)
+		return
+	}
+	value := strings.TrimSpace(r.FormValue("value"))
+	if value == "" {
+		os.Unsetenv(name)
+	} else {
+		os.Setenv(name, value)
+	}
+	if s.Ledger != nil {
+		if err := s.Ledger.SetSetting(envSettingKey(name), value); err != nil {
+			s.fail(w, err, "save env setting")
+			return
+		}
+	}
+	http.Redirect(w, r, "/settings?envsaved="+name+"#bien-moi-truong", http.StatusSeeOther)
+}
+
+// avatarRealtime reports whether a CLOUD avatar tier (HeyGen/D-ID) is
+// enabled — the only tiers that can truly stream in realtime. The local
+// MuseTalk tier renders offline only (ước tính 6–10 phút cho clip 60
+// giây trên Mac M1) and must never count toward this badge, even though
+// its contract exposes a stream interface (see docs/MAC_M1_CORE_AUDIT.md).
+func (s *Server) avatarRealtime() bool {
+	for _, p := range s.loadChain("avatar").Order {
+		if p.Enabled && p.Name != "local" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {

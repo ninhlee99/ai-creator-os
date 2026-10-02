@@ -5,11 +5,11 @@
 
 <div class="cards">
   <div class="card accent">
-    <div class="num">${{printf "%.2f" .Revenue}}</div>
+    <div class="num">{{fmtVND .Revenue}}</div>
     <div class="label">Doanh thu affiliate (đơn hàng)</div>
   </div>
   <div class="card">
-    <div class="num">${{printf "%.2f" .Commissions}}</div>
+    <div class="num">{{fmtVND .Commissions}}</div>
     <div class="label">Hoa hồng đã ghi nhận</div>
   </div>
   <div class="card green">
@@ -17,7 +17,7 @@
     <div class="label">Phiên live đã chạy</div>
   </div>
   <div class="card">
-    <div class="num">${{printf "%.2f" .Spend}}</div>
+    <div class="num">{{fmtUSD .Spend}}</div>
     <div class="label">Chi phí API hôm nay</div>
   </div>
 </div>
@@ -27,7 +27,7 @@
 <table>
   <tr><th>Tài khoản</th><th>Quà tặng (USD)</th></tr>
   {{range .GiftRows}}
-  <tr><td><strong>{{.Username}}</strong></td><td>${{printf "%.2f" .USD}}</td></tr>
+  <tr><td><strong>{{.Username}}</strong></td><td>{{fmtUSD .USD}}</td></tr>
   {{end}}
 </table>
 {{else}}
@@ -43,7 +43,7 @@
     <td>{{.Engine}}</td>
     <td>{{.Provider}}</td>
     <td>{{.N}}</td>
-    <td>${{printf "%.4f" .Cost}}</td>
+    <td>{{fmtUSD .Cost}}</td>
   </tr>
   {{end}}
 </table>

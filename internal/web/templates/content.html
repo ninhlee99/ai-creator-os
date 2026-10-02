@@ -28,7 +28,7 @@
   <div class="job">
     <h3>{{.Title}}</h3>
     <div class="meta">
-      <span class="badge badge-{{.Status}}">{{.Status}}</span>
+      <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
       · tạo lúc {{if .CreatedAt}}{{.CreatedAt}}{{else}}—{{end}}
       {{if .FinishedAt}}· xong lúc {{.FinishedAt}}{{end}}
     </div>

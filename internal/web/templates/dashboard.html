@@ -3,6 +3,38 @@
 <h1>Tổng quan mạng lưới</h1>
 <p class="subtitle">Ngày {{.Today}} · Giám sát toàn bộ AI creator, lịch live và doanh thu.</p>
 
+{{if not .Accounts}}
+<div class="card steps-card" style="margin-bottom:20px">
+  <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
+  <ol class="steps">
+    <li>
+      <span class="n">1</span>
+      <div class="step-body">
+        <b>Thêm tài khoản TikTok</b>
+        <span>Tạo tài khoản AI creator đầu tiên để hệ thống bắt đầu thiết lập.</span>
+      </div>
+      <a class="btn btn-sm" href="/accounts/new">Thêm tài khoản</a>
+    </li>
+    <li class="{{if .HasKeys}}done{{end}}">
+      <span class="n">{{if .HasKeys}}✓{{else}}2{{end}}</span>
+      <div class="step-body">
+        <b>Cấu hình API key ở Cài đặt</b>
+        <span>Thêm Gemini API key để AI viết kịch bản, tạo ảnh và dựng video.</span>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="/settings">Mở Cài đặt</a>
+    </li>
+    <li class="{{if .HasStudioJobs}}done{{end}}">
+      <span class="n">{{if .HasStudioJobs}}✓{{else}}3{{end}}</span>
+      <div class="step-body">
+        <b>Tạo video đầu tiên ở Studio AI</b>
+        <span>Nhập tên sản phẩm, AI tự viết kịch bản, chụp ảnh và dựng video.</span>
+      </div>
+      <a class="btn btn-secondary btn-sm" href="/studio">Mở Studio AI</a>
+    </li>
+  </ol>
+</div>
+{{end}}
+
 <div class="cards">
   <div class="card">
     <div class="num">{{len .Accounts}}</div>
@@ -13,7 +45,7 @@
     <div class="label">Đủ điều kiện live</div>
   </div>
   <div class="card accent">
-    <div class="num">${{printf "%.2f" .Revenue}}</div>
+    <div class="num">{{fmtVND .Revenue}}</div>
     <div class="label">Doanh thu affiliate</div>
   </div>
   <div class="card">
@@ -27,16 +59,23 @@
 </div>
 
 <h2>Trạng thái tài khoản</h2>
+{{if .ByStatus}}
 <div class="cards">
   {{range .ByStatus}}
   <div class="card">
-    <div class="num"><span class="badge badge-{{.Status}}">{{.Status}}</span></div>
+    <div class="num"><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></div>
     <div class="label">{{.N}} tài khoản</div>
   </div>
-  {{else}}
-  <p class="empty">Chưa có tài khoản nào. <a href="/accounts/new">Thêm tài khoản đầu tiên</a>.</p>
   {{end}}
 </div>
+{{else}}
+<div class="empty-state compact">
+  <div class="es-icon">👤</div>
+  <h3>Chưa có tài khoản nào</h3>
+  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
+  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+</div>
+{{end}}
 
 <h2>Lịch live hôm nay</h2>
 {{if .Slots}}
@@ -47,25 +86,34 @@
     <td>{{fmtTime .StartMin}}</td>
     <td>{{.DurationMin}} phút</td>
     <td>{{.AccountName}}</td>
-    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
   </tr>
   {{end}}
 </table>
 {{else}}
-<p class="empty">Chưa có lịch hôm nay. <a href="/schedule">Tạo lịch</a>.</p>
+<div class="empty-state compact">
+  <div class="es-icon">📅</div>
+  <h3>Hôm nay chưa có lịch live</h3>
+  <p>Lịch live sẽ tự xuất hiện khi có tài khoản đủ điều kiện, hoặc bạn tạo lịch thủ công.</p>
+  <a class="btn btn-secondary" href="/schedule">Tạo lịch live</a>
+</div>
 {{end}}
 
 <h2>Hoạt động gần đây</h2>
 {{if .Decisions}}
 <ul class="clean">
   {{range .Decisions}}
-  <li><strong>{{.Agent}}</strong> · <span class="badge badge-draft">{{.Action}}</span>
+  <li><strong>{{.Agent}}</strong> · <span class="badge badge-draft">{{statusLabel .Action}}</span>
     {{if .Target}} → {{.Target}}{{end}}
     {{if .Reason}}<br><span style="color:var(--muted)">{{.Reason}}</span>{{end}}
   </li>
   {{end}}
 </ul>
 {{else}}
-<p class="empty">Chưa có hoạt động nào được ghi lại.</p>
+<div class="empty-state compact">
+  <div class="es-icon">📝</div>
+  <h3>Chưa có hoạt động nào</h3>
+  <p>Khi các agent bắt đầu làm việc, mọi quyết định của chúng sẽ hiện ở đây.</p>
+</div>
 {{end}}
 {{end}}

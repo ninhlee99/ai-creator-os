@@ -20,7 +20,7 @@
     <td>{{fmtTime .StartMin}}</td>
     <td>{{.DurationMin}} phút</td>
     <td>{{.AccountID}}</td>
-    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
   </tr>
   {{end}}
 </table>

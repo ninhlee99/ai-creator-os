@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{template "title" .}}</title>
 <link rel="stylesheet" href="/static/style.css">
+<script>
+// Áp dụng giao diện sáng/tối TRƯỚC khi vẽ trang (tránh chớp sáng):
+// ưu tiên lựa chọn đã lưu, chưa có thì theo hệ điều hành, mặc định sáng.
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
 </head>
 <body>
 {{if .Kill}}
@@ -40,6 +53,8 @@
         {{if .Kill}}<span class="chip chip-kill">KILL SWITCH</span>{{end}}
       </div>
       <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
         {{if .Kill}}
         <form method="post" action="/unkill" style="display:inline">
           <button type="submit" class="btn btn-secondary">Gỡ kill switch</button>
@@ -64,6 +79,28 @@
   document.querySelectorAll('.sidebar nav a').forEach(function (a) {
     var h = a.getAttribute('href');
     if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+// File picker: hiện tên file đã chọn bên cạnh nút chọn file.
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
+});
+// Nút đổi giao diện sáng/tối: lưu lựa chọn vào localStorage.
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
   });
 })();
 </script>
