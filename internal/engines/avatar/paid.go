@@ -3,7 +3,6 @@ package avatar
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 )
 
@@ -118,19 +117,4 @@ type DIDProvider struct{ *paidProvider }
 // enables it in Settings after adding an API key.
 func NewDIDProvider(apiKeys []string) *DIDProvider {
 	return &DIDProvider{newPaidProvider("did", apiKeys)}
-}
-
-// maskedKeys returns the providers' keys in masked form for the dashboard.
-// Full keys are never exposed.
-func maskedKeys(keys []string) []string {
-	out := make([]string, len(keys))
-	for i, k := range keys {
-		k = strings.TrimSpace(k)
-		if len(k) <= 4 {
-			out[i] = "••••"
-		} else {
-			out[i] = "••••••••" + k[len(k)-4:]
-		}
-	}
-	return out
 }

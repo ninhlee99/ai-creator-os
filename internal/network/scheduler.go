@@ -157,12 +157,3 @@ func BuildSchedule(accounts []ledger.Account, weekday int) []ledger.Slot {
 	}
 	return out
 }
-
-// SlotsForDashboard renders slots as human-readable labels.
-func SlotsForDashboard(slots []Slot) []string {
-	out := make([]string, 0, len(slots))
-	for _, s := range slots {
-		out = append(out, s.Label())
-	}
-	return out
-}

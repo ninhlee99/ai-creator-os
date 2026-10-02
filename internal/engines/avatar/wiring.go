@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -95,32 +94,4 @@ func ParseAvatarChainJSON(raw json.RawMessage) (ChainConfig, error) {
 		})
 	}
 	return cfg, nil
-}
-
-// MarshalAvatarChain serializes a ChainConfig with seconds timeouts (the
-// dashboard contract).
-func MarshalAvatarChain(cfg ChainConfig) (string, error) {
-	type entryJSON struct {
-		Name    string   `json:"name"`
-		Enabled bool     `json:"enabled"`
-		APIKey  string   `json:"api_key,omitempty"`
-		APIKeys []string `json:"api_keys,omitempty"`
-		Timeout int      `json:"timeout"`
-		Retries int      `json:"retries"`
-	}
-	out := struct {
-		Order []entryJSON `json:"order"`
-	}{}
-	for _, e := range cfg.Order {
-		out.Order = append(out.Order, entryJSON{
-			Name: e.Name, Enabled: e.Enabled,
-			APIKey: e.APIKey, APIKeys: e.APIKeys,
-			Timeout: int(e.Timeout / time.Second), Retries: e.Retries,
-		})
-	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return "", fmt.Errorf("marshal avatar chain: %w", err)
-	}
-	return string(b), nil
 }

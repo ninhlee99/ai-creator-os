@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -343,3 +344,97 @@ func (s *Server) handleStudioMediaGenHealth(w http.ResponseWriter, r *http.Reque
 		"provider": name, "healthy": healthy, "keys": keys,
 	})
 }
+
+var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.mp4$`)
+
+// handleStudioKineticCreate queues one kinetic-typography render from the
+// Studio "Video chữ động" tab (trang /content cũ đã gộp vào đây — Đợt 2).
+// Old jobs stay in the same JSON store, so videos created before the merge
+// remain listed and playable under the tab.
+func (s *Server) handleStudioKineticCreate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse kinetic form")
+		return
+	}
+	var captions []string
+	for _, c := range strings.Split(r.PostFormValue("captions"), "\n") {
+		if c = strings.TrimSpace(c); c != "" {
+			captions = append(captions, c)
+		}
+	}
+	job := Job{
+		ID:        NewJobID(),
+		Title:     strings.TrimSpace(r.PostFormValue("title")),
+		Captions:  captions,
+		Narration: strings.TrimSpace(r.PostFormValue("narration")),
+		Status:    "queued",
+		CreatedAt: s.nowISO(),
+		Log:       "Đang chờ…",
+	}
+	if job.Title == "" {
+		seeOther(w, r, "/studio?tab=chu")
+		return
+	}
+	s.Jobs.Add(job)
+	go s.runJob(job.ID) // never blocks the dashboard; panics are contained
+	seeOther(w, r, "/studio?tab=chu")
+}
+
+// runJob renders one content job in the background and records the
+// decision. It never crashes the dashboard.
+func (s *Server) runJob(jobID string) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("web: job %s panic: %v", jobID, rec)
+			s.Jobs.Update(jobID, func(j *Job) {
+				j.Status = "failed"
+				j.FinishedAt = s.nowISO()
+			})
+		}
+	}()
+	job, ok := s.Jobs.Get(jobID)
+	if !ok {
+		return
+	}
+	s.Jobs.Update(jobID, func(j *Job) {
+		j.Status = "running"
+		j.Log = "Bắt đầu dựng video…"
+	})
+	ctx := context.Background()
+	res, err := s.renderer.Render(ctx, job, s.TTS, func(line string) {
+		s.Jobs.AppendLog(jobID, line)
+	})
+	if err != nil {
+		log.Printf("web: render job %s: %v", jobID, err)
+		s.Jobs.Update(jobID, func(j *Job) {
+			j.Status = "failed"
+			j.FinishedAt = s.nowISO()
+		})
+		s.Jobs.AppendLog(jobID, fmt.Sprintf("Lỗi: %v", err))
+		return
+	}
+	title := job.Title
+	if err := s.Ledger.Decide("content", "video_rendered", &title,
+		fmt.Sprintf("kinetic video %.1fs", res.Seconds),
+		map[string]any{"job": job.ID, "voice": res.HasAudio}); err != nil {
+		log.Printf("web: decide video_rendered: %v", err)
+	}
+	s.Jobs.Update(jobID, func(j *Job) {
+		j.Status = "done"
+		j.Output = res.Output
+		j.FinishedAt = s.nowISO()
+	})
+}
+
+func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	// Strict allowlist: a single path segment, .mp4 only. Anything else
+	// (including "..") is a 404.
+	if !mediaNameRe.MatchString(name) {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeFile(w, r, s.OutDir+"/"+name)
+}
+
+// --------------------------------------------------------------- publishers

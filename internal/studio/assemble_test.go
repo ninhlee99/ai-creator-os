@@ -1,7 +1,9 @@
 package studio
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,7 +80,7 @@ func TestAssembleBeatBounceRender(t *testing.T) {
 	if err := AssembleBeatBounce(ctx, photos, 2.0, 120, "", 0, out); err != nil {
 		t.Fatalf("render: %v", err)
 	}
-	dur := ProbeDuration(ctx, out)
+	dur := probeDuration(ctx, out)
 	if dur < 5.5 || dur > 6.5 {
 		t.Fatalf("duration = %v, want ~6s", dur)
 	}
@@ -86,10 +88,10 @@ func TestAssembleBeatBounceRender(t *testing.T) {
 	// Frames must differ — otherwise the "giật" isn't happening.
 	f1 := filepath.Join(dir, "f1.png")
 	f2 := filepath.Join(dir, "f2.png")
-	if err := ExtractFrame(ctx, out, 0.15, f1); err != nil {
+	if err := extractFrame(ctx, out, 0.15, f1); err != nil {
 		t.Fatal(err)
 	}
-	if err := ExtractFrame(ctx, out, 0.40, f2); err != nil {
+	if err := extractFrame(ctx, out, 0.40, f2); err != nil {
 		t.Fatal(err)
 	}
 	b1, err := os.ReadFile(f1)
@@ -136,4 +138,30 @@ func TestAssembleBeatBounceMusic(t *testing.T) {
 	if !strings.Contains(sb.String(), "audio") {
 		t.Fatal("output missing audio stream")
 	}
+}
+
+// extractFrame/probeDuration are test-only ffmpeg helpers (moved here from
+// assemble.go when the production API no longer needed them): the render
+// verification tests below still need stills and durations.
+func extractFrame(ctx context.Context, videoPath string, at float64, outPath string) error {
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	return ffmpegRun(ctx,
+		"-ss", fmt.Sprintf("%.2f", at), "-i", videoPath,
+		"-frames:v", "1", "-q:v", "3", outPath)
+}
+
+func probeDuration(ctx context.Context, path string) float64 {
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "error", "-show_entries", "format=duration",
+		"-of", "csv=p=0", path)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0
+	}
+	var d float64
+	fmt.Sscanf(strings.TrimSpace(out.String()), "%f", &d)
+	return d
 }

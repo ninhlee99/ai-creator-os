@@ -229,12 +229,10 @@ func TestPaidStubsHonest(t *testing.T) {
 }
 
 func TestChainJSONRoundTrip(t *testing.T) {
-	cfg := DefaultAvatarConfig()
-	raw, err := MarshalAvatarChain(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	back, err := ParseAvatarChainJSON(json.RawMessage(raw))
+	// The dashboard contract expresses timeouts in seconds; ParseAvatarChainJSON
+	// must restore them to durations.
+	raw := json.RawMessage(`{"order":[{"name":"local","enabled":true,"timeout":1800,"retries":2},{"name":"heygen","enabled":false,"timeout":120,"retries":1},{"name":"did","enabled":false,"timeout":120,"retries":1}]}`)
+	back, err := ParseAvatarChainJSON(raw)
 	if err != nil {
 		t.Fatal(err)
 	}

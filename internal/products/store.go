@@ -29,6 +29,10 @@ func NewStore(dbPath string) (*Store, error) {
 			return nil, fmt.Errorf("products: pragma %q: %w", p, err)
 		}
 	}
+	if err := stampUserVersion(db, 1); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("products: pragma user_version: %w", err)
+	}
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
 		db.Close()
@@ -296,4 +300,19 @@ func (s *Store) SearchThemes() ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// stampUserVersion records the schema generation for future migrations
+// (R2-W7): a fresh database is marked with v, an existing stamp is never
+// overwritten here.
+func stampUserVersion(db *sql.DB, v int) error {
+	var cur int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&cur); err != nil {
+		return err
+	}
+	if cur == 0 {
+		_, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", v))
+		return err
+	}
+	return nil
 }
