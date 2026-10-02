@@ -15,11 +15,11 @@ an toàn vì file thật chỉ bị thay khi app chưa mở DB.
    - file đơn: `content_jobs.json`
    - thư mục: `tokens/` (đệ quy 1 cấp, bỏ thư mục con)
    - manifest `aicos-backup.json` (`{"app":"aicos","created":"..."}`)
-   
+
    File nào thiếu thì bỏ qua (không fail cả bản). Thư mục trống → lỗi
    "thư mục dữ liệu trống — không có gì để sao lưu". File tải về tên
    `aicos-backup-YYYYMMDD-HHMMSS.zip`; ghi decision `human/backup_create`.
-   
+
    **Cố ý loại trừ**: `output/` (video render), `avatars/`, `models/` — nặng,
    tái tạo được.
 2. **Khôi phục** (`handleBackupRestore`): upload (tối đa 512MB) → `backup.Stage`:

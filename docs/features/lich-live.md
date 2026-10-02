@@ -1,33 +1,23 @@
-# Lịch live (`/schedule`)
+# 🅿️ PARKED — Lịch live (`/schedule`)
 
-## 1. Mục đích
-Xem các khung giờ live hôm nay của mọi tài khoản đủ điều kiện; build lại thủ công khi cần.
+**Trạng thái: đã park từ Đợt A (commit `efa218b`, 2026-10-02).** Route
+`/schedule` không còn trong binary → mở trang này trả **404**. Ninh chốt bỏ
+live ngày 2026-10-02 (xem `docs/PIVOT_REDESIGN.md` §0).
 
-## 2. Kích hoạt
-- `GET /schedule` → `handleSchedule` (`internal/web/schedule.go:15`).
-- Nút "Xây lại lịch" → `POST /schedule/build` → `handleScheduleBuild`.
-- Tự động: `ensureTodaySchedule()` được gọi mỗi khi mở Trang chủ hoặc trang Lịch live.
+## Code còn lại ở đâu
 
-## 3. Luồng vận hành chi tiết
-1. `ensureTodaySchedule()` (`internal/web/schedule.go:70`): đọc `s.Ledger.GetSlots(today)`
-   (bảng `live_slots`); nếu hôm nay **chưa có slot nào** và có ít nhất một tài khoản
-   `live_ready`/`live` → gọi `buildTodaySchedule()` **tối đa 1 lần/ngày/process**
-   (cờ `s.schedBuilt`, mutex `s.schedMu`). Không có tài khoản đủ điều kiện → không làm gì.
-2. `buildTodaySchedule()`:
-   - `s.Ledger.ListAccounts(nil)` → `network.BuildSchedule(accts, weekday)` —
-     allocator chỉ xếp tài khoản đủ điều kiện; mỗi slot gán `SlotDate = today`,
-     `Status = "planned"`.
-   - `DELETE FROM live_slots WHERE slot_date=today` rồi `s.Ledger.SaveSlots(slots)`
-     → build lại là thay thế toàn bộ lịch hôm nay (không cộng dồn).
-   - Ghi decision `scheduler/build_schedule` ("N slot") vào bảng `decisions`.
-3. Daemon mạng (`internal/network/daemon.go`, tick **60 giây**) mới là nơi quyết định
-   slot nào thật sự lên live — dưới cổng master/kill/dry-run (xem
-   `kill-switch-dry-run-master.md`). Trang lịch chỉ hiển thị kế hoạch.
+- Handler: `internal/web/schedule.go` — có `//go:build parked` (không biên dịch).
+- Template: `internal/web/templates_parked/schedule.html` (ngoài `go:embed`).
+- Stream engine: `internal/stream/` — `//go:build parked`.
+- Avatar: `internal/engines/avatar/` — `//go:build parked`.
+- Daemon mạng (`internal/network/daemon.go`) vẫn tick 60s nhưng **không nối
+  `OnStartLive`** (chỉ test mới nối) → không mở live thật.
+- Test vùng parked: `go test -tags parked ./...`.
 
-## 4. Fail-closed & an toàn
-- Lỗi build → log `web: auto build schedule`, trang vẫn mở (không crash).
-- Nút build tay lỗi → `s.fail` 500 với tên bước.
-- Lịch chỉ là "planned"; việc mở live thật do daemon tick quyết định, bị dry-run chặn.
+## Logic cũ (để tham khảo khi cần lôi lại)
 
-## 5. API key rotation
-Không dùng key cloud.
+Trước khi park: `ensureTodaySchedule()` tự build lịch live mỗi ngày khi mở
+Trang chủ; `buildTodaySchedule()` xếp slot cho tài khoản `live_ready`/`live`
+vào bảng `live_slots`; daemon mạng tick 60s quyết định slot nào lên live dưới
+cổng master/kill/dry-run. Chi tiết đầy đủ nằm trong git history
+(`git log -- internal/web/schedule.go`).

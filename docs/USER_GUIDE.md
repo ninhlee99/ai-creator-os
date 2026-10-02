@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+>
+
 # Hướng dẫn sử dụng (dành cho Ninh)
 
 Tất cả quản trị đều qua **dashboard web** — không cần chạm CLI. Chạy app rồi mở `http://127.0.0.1:8080`.

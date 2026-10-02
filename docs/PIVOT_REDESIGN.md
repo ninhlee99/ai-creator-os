@@ -1,6 +1,6 @@
 # PIVOT REDESIGN — Thiết kế lại toàn app theo 3 trụ mới
 
-Ngày: 2026-10-02 · Người chốt: Ninh · Trạng thái: **thiết kế, chưa code**
+Ngày: 2026-10-02 · Người chốt: Ninh · Trạng thái: **Đợt A xong (commit `efa218b`)** — live + phim đã park, sidebar 7 mục; các đợt B–G đang triển khai
 
 ## 0. Quyết định phạm vi
 

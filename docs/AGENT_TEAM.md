@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+>
+
 # AGENT_TEAM.md — Thiết kế Agent Team chuyên sâu cho AI Creator OS
 
 > Tài liệu thiết kế chốt ngày 2026-10-02, theo yêu cầu của Ninh: toàn bộ hệ

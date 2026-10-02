@@ -1,13 +1,19 @@
-# Sản phẩm — Kệ hàng, tìm kiếm, lịch autopilot affiliate
+# Affiliate (`/products` — sidebar "Affiliate")
 
 ## 1. Mục đích
 Kho sản phẩm duy nhất của app (`products.Store` trong `products.db`): tìm sản phẩm
 hoa hồng cao theo theme, xếp lên "Kệ hàng" cho autopilot affiliate dùng, đặt lịch
 chạy autopilot + nhạc nền + tự đăng.
 
+> Sidebar sau Đợt A đổi label "Sản phẩm" → **"Affiliate"**.
+> **Accesstrade chưa nối** — client API, campaign/link, datafeed hunter và đối
+> soát hoa hồng AT là Đợt B/C (xem `docs/PIVOT_REDESIGN.md`). Trang hiện tại vẫn
+> là kho sản phẩm cũ; đối soát tiền hiện vẫn đọc TikTok Shop API legacy
+> (xem `daemon-tu-dong.md` §3.4) và sẽ được thay bằng Accesstrade ở đợt C.
+
 ## 2. Kích hoạt
 - `GET /products` → `handleProducts` (`internal/web/products.go:69`): 2 tab
-  (`?tab=ke` Kệ hàng — gộp từ `/shop` cũ; tab tìm kiếm).
+  (`?tab=ke` Kệ hàng; tab tìm kiếm).
 - `POST /products/search`: tìm theo theme + % hoa hồng tối thiểu.
 - `POST /products/shelf/add`: đưa sản phẩm lên kệ (`shelf_status`, `shelf_score`).
 - `POST /products/add`: thêm sản phẩm thủ công.
