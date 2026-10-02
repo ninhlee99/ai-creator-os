@@ -36,6 +36,20 @@ Google Cloud project **bật billing** trên key — chưa bật thì API trả 
 Mọi ước tính chi phí Veo trong app đều ghi
 "ước tính chưa kiểm chứng" cho tới khi chạy thật.
 
+### Ràng buộc free tier (Ninh chốt 2026-10-02: chỉ dùng key free, không key trả phí)
+- Veo không bao giờ khả dụng với key free (đòi billing) — app không thử, không tốn tiền.
+- Quota free tính **riêng từng key** (per project per model) nên càng nhiều key trong
+  `GEMINI_API_KEYS` càng đỡ nghẽn: keyring xoay round-robin, key nào 429/quota thì
+  cooldown theo thang 60s → 5m → 15m, key khác gánh tiếp.
+- Số liệu tham khảo (nguồn bên thứ ba, chưa kiểm chứng, Google thay đổi thường xuyên):
+  image gen free khoảng ~10 request/phút và ~50 ảnh/ngày/key; text gen khoảng
+  15 request/phút, ~1500 request/ngày/key. Phim 4 phút ≈ 34 lần vẽ ảnh (4 chân dung +
+  30 keyframe) + vài chục call LLM/TTS — **nên có từ 3 key free trở lên** cho một
+  phiên render. Hết quota ngày giữa chừng: job chờ cooldown, hôm sau bấm **Chạy tiếp**
+  (resume bỏ qua shot đã xong, không render lại).
+- TTS/LLM có tier local dự phòng (VieNeu, llama-server) nên phim vẫn dựng được
+  khi key free hết quota — chỉ phần vẽ keyframe là bắt buộc chờ key.
+
 ## 3. Fail-closed toàn app
 - **Tiền**: `ReconcileCommissions` — không nguồn → giữ 0 + decision `no_source`;
   đơn idempotent theo `external_id` (không ghi trùng).
