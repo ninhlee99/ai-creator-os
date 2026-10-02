@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài đặt · Nhân vật AI — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Cài đặt · Nhân vật AI</h1>
+<p class="subtitle">Có những khuôn mặt AI nào, render thử ra sao.</p>
+
+<nav class="tabs" role="tablist" aria-label="Cài đặt">
+  <a href="settings-he-thong.html">Hệ thống</a>
+  <a href="settings-nha-cung-cap.html">Nhà cung cấp</a>
+  <a href="settings-model-local.html">Model local</a>
+  <a href="settings-nhan-vat.html" class="active">Nhân vật AI</a>
+  <a href="settings-an-toan.html">⚠️ An toàn</a>
+</nav>
+
+
+<p class="subtitle">Mỗi nhân vật là một khuôn mặt khóa identity (ảnh + seed): mọi khung hình của mọi clip đều phải là đúng khuôn mặt này. Upload ảnh chân dung rõ mặt, chính diện.</p>
+<div class="form-card" style="max-width:none">
+  <div class="char-grid" id="char-grid">
+    
+    <p class="empty" id="char-empty">Chưa có nhân vật nào. Upload ảnh chân dung bên dưới để tạo nhân vật đầu tiên.</p>
+    
+  </div>
+  <h3 style="margin-top:16px">Thêm nhân vật</h3>
+  <form id="char-add-form" class="grid2">
+    <div class="field">
+      <label>Tên nhân vật</label>
+      <input type="text" name="name" placeholder="VD: MC Linh" required maxlength="80">
+    </div>
+    <div class="field">
+      <label>Ảnh chân dung (PNG/JPG, rõ mặt)</label>
+      <div class="file-pick">
+        <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
+          <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+        </label>
+        <span class="file-name">Chưa chọn ảnh</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Seed <span class="label-hint">— để trống = ngẫu nhiên</span></label>
+      <input type="number" name="seed" placeholder="tùy chọn">
+    </div>
+    <div class="field">
+      <label>Voice preset <span class="label-hint">— liên kết giọng TTS</span></label>
+      <input type="text" name="voice" placeholder="VD: bac-nu-1" maxlength="60">
+    </div>
+    <div class="field field-span">
+      <label>Ghi chú</label>
+      <input type="text" name="notes" maxlength="200" placeholder="tùy chọn">
+    </div>
+    <div class="field-span">
+      <button type="submit" class="btn">+ Thêm nhân vật</button>
+      <span class="hint" id="char-add-msg" aria-live="polite"></span>
+    </div>
+  </form>
+</div>
+
+<script>
+
+var charAddForm = document.getElementById('char-add-form');
+if (charAddForm) {
+  charAddForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById('char-add-msg');
+    msg.textContent = 'Đang upload…';
+    try {
+      var r = await previewFetch('/settings/avatar/characters', {method: 'POST', body: new FormData(charAddForm)});
+      var j = await r.json();
+      if (j.ok) {
+        msg.textContent = 'Đã thêm nhân vật ✓ — tải lại trang để xem.';
+        charAddForm.reset();
+        setTimeout(function () { location.reload(); }, 800);
+      } else {
+        msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+      }
+    } catch (e) {
+      msg.textContent = 'Upload thất bại.';
+    }
+  });
+}
+document.querySelectorAll('.char-card').forEach(function (card) {
+  var id = card.dataset.id;
+  var msg = card.querySelector('.char-msg');
+  var video = card.querySelector('.char-video');
+  var delBtn = card.querySelector('.char-del-btn');
+  var renderBtn = card.querySelector('.char-render-btn');
+  if (delBtn) {
+    delBtn.addEventListener('click', async function () {
+      if (!confirm('Xóa nhân vật này? File ảnh được giữ lại trên máy.')) return;
+      try {
+        var r = await previewFetch('/settings/avatar/characters/' + id + '/delete', {method: 'POST'});
+        var j = await r.json();
+        if (j.ok) { card.remove(); showToast('Đã xóa nhân vật', true); }
+        else showToast(j.error || 'Xóa thất bại', false);
+      } catch (e) { showToast('Xóa thất bại', false); }
+    }
+  }
+  if (renderBtn) {
+    renderBtn.addEventListener('click', async function () {
+      var text = card.querySelector('.char-text').value.trim();
+      if (!text) { msg.hidden = false; msg.textContent = 'Nhập câu nói trước đã.'; return; }
+      renderBtn.disabled = true;
+      msg.hidden = false; msg.textContent = 'Đang render (có thể mất vài phút cho clip dài)…';
+      video.hidden = true; video.removeAttribute('src');
+      try {
+        var r = await previewFetch('/settings/avatar/render-test', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({character_id: parseInt(id, 10), text: text})
+        });
+        var j = await r.json();
+        if (j.ok) {
+          msg.textContent = 'Render xong ✓';
+          video.src = j.video;
+          video.hidden = false;
+        } else {
+          msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+        }
+      } catch (e) {
+        msg.textContent = 'Render thất bại.';
+      }
+      renderBtn.disabled = false;
+    });
+  }
+});
+</script>
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>

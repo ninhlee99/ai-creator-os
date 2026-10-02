@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài đặt · Model local — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Cài đặt · Model local</h1>
+<p class="subtitle">Model chạy trên máy đã sẵn sàng chưa.</p>
+
+<nav class="tabs" role="tablist" aria-label="Cài đặt">
+  <a href="settings-he-thong.html">Hệ thống</a>
+  <a href="settings-nha-cung-cap.html">Nhà cung cấp</a>
+  <a href="settings-model-local.html" class="active">Model local</a>
+  <a href="settings-nhan-vat.html">Nhân vật AI</a>
+  <a href="settings-an-toan.html">⚠️ An toàn</a>
+</nav>
+
+
+<h2>Giọng đọc chạy trên máy (VieNeu)</h2>
+<div class="form-card" style="max-width:none">
+
+  <dl class="kv">
+    <dt>Trạng thái</dt><dd><span class="badge badge-draft">downloading</span> đang tải VieNeu repo/model…</dd>
+  </dl>
+  <div class="grid2" style="margin-top:12px">
+    <div class="field">
+      <label>Giọng đọc (Voice preset)</label>
+      <form method="post" action="settings.html" class="inline-form">
+        <select name="preset">
+          <option value="bac">bac</option><option value="trung">trung</option><option value="nam">nam</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px">Đổi voice</button>
+      </form>
+    </div>
+    <div class="field">
+      <label>Mô hình giọng (Model)</label>
+      <div class="toolbar" style="margin:0">
+        <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải model</button>
+        <form method="post" action="settings.html" class="inline-form"
+              data-confirm="Khởi động lại chương trình giọng đọc VieNeu?">
+          <button type="submit" class="btn btn-secondary btn-sm">Khởi động lại</button>
+        </form>
+      </div>
+      <div id="vieneu-progress" class="hint" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+</div>
+
+<h2>Hình đại diện chạy trên máy (Avatar)</h2>
+<p class="subtitle">Quản lý model avatar local (mặc định: MuseTalk v1.5 bản Apple Silicon). aicos khởi động/stop sidecar theo nhu cầu và không cho render khi model chưa sẵn sàng — không cần can thiệp thủ công.</p>
+<div class="form-card" style="max-width:none">
+  <div class="toolbar">
+    <span class="badge" id="avatar-sidecar-badge">đang tải…</span>
+    <span id="avatar-sidecar-detail" class="hint"></span>
+  </div>
+  <div class="hint" id="avatar-model-hint" style="margin-top:8px"></div>
+  <div class="toolbar" style="margin-top:12px">
+    <button type="button" class="btn btn-secondary" id="avatar-download-btn" hidden>⬇ Tải model</button>
+    <button type="button" class="btn btn-secondary" id="avatar-restart-btn">⟳ Khởi động lại sidecar</button>
+    <span class="hint" id="avatar-msg" aria-live="polite"></span>
+  </div>
+  <div class="progress" id="avatar-progress" hidden>
+    <div class="progress-bar" id="avatar-progress-bar" style="width:0%"></div>
+  </div>
+</div>
+
+<script>
+
+var dlBtn = document.getElementById('vieneu-download');
+if (dlBtn) {
+  dlBtn.addEventListener('click', async function () {
+    var box = document.getElementById('vieneu-progress');
+    box.textContent = 'Bắt đầu tải…';
+    try {
+      await previewFetch('/settings/vieneu/ensure', {method: 'POST'});
+      var timer = setInterval(async function () {
+        var r = await previewFetch('/settings/vieneu/progress');
+        var j = await r.json();
+        if (j.error) { box.textContent = 'Lỗi: ' + j.error; clearInterval(timer); return; }
+        if (j.done) { box.textContent = 'Đã tải xong model.'; clearInterval(timer); return; }
+        if (j.total > 0) {
+          var pct = Math.round(j.downloaded / j.total * 100);
+          box.textContent = 'Đang tải: ' + pct + '%';
+        } else {
+          box.textContent = 'Đang tải…';
+        }
+      }, 2000);
+    } catch (e) {
+      box.textContent = 'Không khởi động được quá trình tải.';
+    }
+  });
+}
+
+async function refreshAvatarSidecar() {
+  var badge = document.getElementById('avatar-sidecar-badge');
+  var detail = document.getElementById('avatar-sidecar-detail');
+  var hint = document.getElementById('avatar-model-hint');
+  var dlBtn = document.getElementById('avatar-download-btn');
+  if (!badge) return;
+  try {
+    var r = await previewFetch('/settings/avatar-sidecar/status');
+    var j = await r.json();
+    if (!j.connected) {
+      badge.textContent = 'chưa kết nối';
+      badge.className = 'badge badge-no';
+      detail.textContent = 'chưa được nối — tính năng sẽ khả dụng sau';
+      hint.textContent = '';
+      dlBtn.hidden = true;
+      return;
+    }
+    badge.textContent = j.state === 'running' ? 'Đang chạy' : j.state;
+    badge.className = 'badge badge-' + (j.state === 'running' ? 'ok' : 'draft');
+    detail.textContent = j.detail || '';
+    if (!j.model_configured) {
+      hint.textContent = 'Chưa cấu hình model: đặt biến môi trường AVATAR_MODEL_URL (zip model) rồi tải.';
+    } else if (!j.model_present) {
+      hint.textContent = 'Model chưa có trên máy. Nhấn “Tải model” để tải về (dung lượng lớn, chỉ tải 1 lần).';
+    } else {
+      hint.textContent = 'Model đã sẵn sàng trên máy.';
+    }
+    dlBtn.hidden = !(j.model_configured && !j.model_present);
+  } catch (e) {
+    badge.textContent = 'lỗi';
+    badge.className = 'badge badge-no';
+  }
+}
+refreshAvatarSidecar();
+var avatarDlBtn = document.getElementById('avatar-download-btn');
+if (avatarDlBtn) {
+  avatarDlBtn.addEventListener('click', async function () {
+    var box = document.getElementById('avatar-progress');
+    var bar = document.getElementById('avatar-progress-bar');
+    var msg = document.getElementById('avatar-msg');
+    box.hidden = false; bar.style.width = '0%';
+    msg.textContent = 'Bắt đầu tải…';
+    try {
+      var r0 = await previewFetch('/settings/avatar-sidecar/ensure', {method: 'POST'});
+      var j0 = await r0.json();
+      if (!j0.ok) { msg.textContent = 'Lỗi: ' + (j0.error || 'không rõ'); box.hidden = true; return; }
+      var timer = setInterval(async function () {
+        var r = await previewFetch('/settings/avatar-sidecar/progress');
+        var j = await r.json();
+        if (j.error) { msg.textContent = 'Lỗi: ' + j.error; box.hidden = true; clearInterval(timer); return; }
+        if (j.done) { msg.textContent = 'Đã tải xong model.'; box.hidden = true; clearInterval(timer); refreshAvatarSidecar(); return; }
+        if (j.total > 0) {
+          var pct = Math.round(j.downloaded / j.total * 100);
+          bar.style.width = pct + '%';
+          msg.textContent = 'Đang tải: ' + pct + '%';
+        } else {
+          msg.textContent = 'Đang tải…';
+        }
+      }, 2000);
+    } catch (e) {
+      msg.textContent = 'Không khởi động được quá trình tải.';
+      box.hidden = true;
+    }
+  });
+}
+var avatarRestartBtn = document.getElementById('avatar-restart-btn');
+if (avatarRestartBtn) {
+  avatarRestartBtn.addEventListener('click', async function () {
+    var msg = document.getElementById('avatar-msg');
+    msg.textContent = 'Đang khởi động lại…';
+    try {
+      var r = await previewFetch('/settings/avatar-sidecar/restart', {method: 'POST'});
+      var j = await r.json();
+      msg.textContent = j.ok ? 'Sidecar đã khởi động lại ✓' : 'Lỗi: ' + (j.error || 'không rõ');
+      refreshAvatarSidecar();
+    } catch (e) {
+      msg.textContent = 'Không khởi động lại được.';
+    }
+  });
+}
+</script>
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>
