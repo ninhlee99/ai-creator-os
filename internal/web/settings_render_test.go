@@ -7,10 +7,15 @@ import (
 )
 
 // Renders the real settings pages against the real handlers (no chains
-// wired) to catch template field mismatches (R2-W3: 5 sub-pages).
-func TestSettingsTemplateRendersWithAvatar(t *testing.T) {
+// wired) to catch template field mismatches. PIVOT 2026-10-02: the avatar
+// pages/cards are parked — the remaining pages must render without any
+// avatar remnant.
+func TestSettingsTemplateRenders(t *testing.T) {
 	s := newTestServer(t)
-	for _, path := range []string{"/settings/nhan-vat", "/settings/nha-cung-cap", "/settings/model-local"} {
+	for _, path := range []string{
+		"/settings/he-thong", "/settings/nha-cung-cap",
+		"/settings/model-local", "/settings/an-toan",
+	} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
 		s.Routes().ServeHTTP(rec, req)
@@ -18,26 +23,45 @@ func TestSettingsTemplateRendersWithAvatar(t *testing.T) {
 			t.Fatalf("GET %s = %d", path, rec.Code)
 		}
 	}
-	body := get(t, s, "/settings/nhan-vat").Body.String()
-	for _, want := range []string{
-		"Nhân vật AI", "char-add-form",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("nhan-vat page missing %q", want)
+	// Parked routes must 404, not 500.
+	for _, path := range []string{"/settings/nhan-vat", "/team", "/schedule"} {
+		req := httptest.NewRequest("GET", path, nil)
+		rec := httptest.NewRecorder()
+		s.Routes().ServeHTTP(rec, req)
+		if rec.Code == 200 {
+			t.Errorf("GET %s = 200, want non-200 (parked)", path)
 		}
 	}
-	body = get(t, s, "/settings/nha-cung-cap").Body.String()
-	for _, want := range []string{"Chuỗi provider Avatar", "local"} {
+	body := get(t, s, "/settings/nha-cung-cap").Body.String()
+	for _, want := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("nha-cung-cap page missing %q", want)
 		}
 	}
+	for _, gone := range []string{"Chuỗi provider Avatar", "provider-avatar"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("nha-cung-cap page still has avatar remnant %q", gone)
+		}
+	}
 	body = get(t, s, "/settings/model-local").Body.String()
-	for _, want := range []string{
-		"Hình đại diện chạy trên máy (Avatar)", "avatar-sidecar-badge",
-	} {
+	if !strings.Contains(body, "Khả năng AI") {
+		t.Error("model-local page missing Khả năng AI table")
+	}
+	for _, gone := range []string{"avatar-sidecar-badge", "Hình đại diện chạy trên máy"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("model-local page still has avatar remnant %q", gone)
+		}
+	}
+	// Sidebar: no live schedule, no agent team; relabeled sections.
+	body = get(t, s, "/").Body.String()
+	for _, gone := range []string{"/schedule", "/team", "Lịch live", "Agent Team"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("sidebar still references %q", gone)
+		}
+	}
+	for _, want := range []string{">Kênh<", ">Affiliate<"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("model-local page missing %q", want)
+			t.Errorf("sidebar missing relabel %q", want)
 		}
 	}
 }

@@ -19,21 +19,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "list accounts")
 		return
 	}
-	eligible := 0
-	for _, a := range accounts {
-		if a.Status == "live_ready" || a.Status == "live" {
-			eligible++
-		}
-	}
 	revenue := s.scalarFloat("SELECT COALESCE(SUM(commission),0) FROM orders")
 	commRevenue, _ := s.Ledger.TotalRevenue()
-	s.ensureTodaySchedule()
 	today := s.today()
-	slots, err := s.Ledger.GetSlots(today)
-	if err != nil {
-		s.fail(w, err, "get slots")
-		return
-	}
 	decisions, err := s.queryDecisions(
 		"SELECT id, agent, action, target, reason, created_at FROM decisions ORDER BY id DESC LIMIT 8")
 	if err != nil {
@@ -42,12 +30,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "dashboard", s.ctx(
 		"Accounts", accounts,
-		"EligibleCount", eligible,
 		"ByStatus", sortedStatusCounts(accounts),
 		"Revenue", revenue,
 		"CommissionRevenue", commRevenue,
-		"LiveSessions", s.scalarInt("SELECT COUNT(*) FROM live_sessions"),
-		"Slots", s.slotViews(slots),
 		"Decisions", decisions,
 		"GrowthAlerts", s.recentGrowthAlerts(accounts),
 		"LocalRuntimes", s.localRuntimeViews(),

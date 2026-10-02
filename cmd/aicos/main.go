@@ -37,7 +37,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
-	"github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -214,73 +213,6 @@ func (a vieNeuAdapter) Voices() []string {
 	return names
 }
 
-// avatarChainAdapter adapts *avatar.AvatarChain to web.AvatarChainAPI.
-// RenderTestClip loads the character from the ledger (identity lock
-// enforced by the chain), synthesizes speech through the TTS chain and
-// renders the clip. The returned path is the /media/ URL for preview.
-type avatarChainAdapter struct {
-	c      *avatar.AvatarChain
-	tts    *engines.TTSChain
-	l      *ledger.Ledger
-	outDir string
-}
-
-func (a avatarChainAdapter) RenderTestClip(ctx context.Context, characterID int64, text string) (string, error) {
-	ch, err := a.l.GetCharacter(characterID)
-	if err != nil {
-		return "", fmt.Errorf("character %d: %w", characterID, err)
-	}
-	wav, err := a.tts.Synthesize(ctx, text, ch.VoicePreset)
-	if err != nil {
-		return "", fmt.Errorf("tts: %w", err)
-	}
-	path, err := a.c.RenderClip(ctx, avatar.Character{
-		ID:             ch.ID,
-		Name:           ch.Name,
-		ReferenceImage: ch.ReferenceImage,
-		Seed:           ch.Seed,
-		IdentityLock:   ch.IdentityLock,
-	}, wav, avatar.RenderOpts{OutDir: a.outDir})
-	if err != nil {
-		return "", err
-	}
-	return "/media/" + filepath.Base(path), nil
-}
-
-func (a avatarChainAdapter) SetConfig(raw json.RawMessage) {
-	cfg, err := avatar.ParseAvatarChainJSON(raw)
-	if err != nil {
-		log.Printf("avatar: SetConfig: invalid JSON, keeping current config: %v", err)
-		return
-	}
-	a.c.SetConfig(cfg)
-	log.Printf("avatar: config updated via dashboard: providers=%v", a.c.ActiveProviders())
-}
-
-func (a avatarChainAdapter) ProviderNames() []string { return a.c.ActiveProviders() }
-
-func (a avatarChainAdapter) SupportsRealtime() bool { return a.c.SupportsRealtime() }
-
-// avatarSidecarAdapter adapts the local avatar provider's sidecar
-// passthrough methods to web.AvatarSidecarCtl.
-type avatarSidecarAdapter struct{ p *avatar.LocalAvatarProvider }
-
-func (a avatarSidecarAdapter) Status() (string, string) { return a.p.SidecarStatus() }
-
-func (a avatarSidecarAdapter) Start(ctx context.Context) error { return a.p.Start(ctx) }
-
-func (a avatarSidecarAdapter) Stop() error { return a.p.Stop() }
-
-func (a avatarSidecarAdapter) Restart(ctx context.Context) error { return a.p.Restart(ctx) }
-
-func (a avatarSidecarAdapter) EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error {
-	return a.p.EnsureModel(ctx, onProgress)
-}
-
-func (a avatarSidecarAdapter) ModelConfigured() bool { return a.p.ModelConfigured() }
-
-func (a avatarSidecarAdapter) ModelPresent() bool { return a.p.ModelPresent() }
-
 func getenvBool(name string, def bool) bool {
 	v := os.Getenv(name)
 	if v == "" {
@@ -396,33 +328,6 @@ func main() {
 		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
 	}
 
-	// -- 4b. avatar chain ----------------------------------------------------
-	// local (free sidecar, default) -> heygen -> did (paid, disabled).
-	// The sidecar is started on demand (before render), never at boot: the
-	// model is heavy and the user asked for manual control of the app.
-	avatarCfgSrc := func() avatar.ChainConfig {
-		raw, ok, err := l.GetSetting(ledger.SettingAvatarChain)
-		if err != nil || !ok || raw == "" {
-			return avatar.ChainConfig{}
-		}
-		cfg, perr := avatar.ParseAvatarChainJSON(json.RawMessage(raw))
-		if perr != nil || len(cfg.Order) == 0 {
-			log.Printf("avatar: saved chain config invalid, using default: %v", perr)
-			return avatar.ChainConfig{}
-		}
-		log.Printf("avatar: using saved chain config (avatar.chain)")
-		return cfg
-	}
-	avatarChain := avatar.DefaultAvatarChain(*dataDir, decider,
-		getenvList("HEYGEN_API_KEYS"), getenvList("DID_API_KEYS"), avatarCfgSrc)
-	log.Printf("avatar: active providers: %v", avatarChain.ActiveProviders())
-	var avatarLocal *avatar.LocalAvatarProvider
-	if p, ok := avatarChain.Provider("local"); ok {
-		if lp, ok := p.(*avatar.LocalAvatarProvider); ok {
-			avatarLocal = lp
-		}
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -482,13 +387,6 @@ func main() {
 			}
 		}
 	}
-	for _, name := range avatarChain.ActiveProviders() {
-		if p, ok := avatarChain.Provider(name); ok {
-			if h, ok := any(p).(web.HealthChecker); ok {
-				health["avatar:"+name] = h
-			}
-		}
-	}
 	log.Printf("health: %d probes wired", len(health))
 
 	// -- 6. accounts + web server -------------------------------------------
@@ -525,22 +423,13 @@ func main() {
 	// automation switches, the master switch, growth thresholds and the
 	// API budget live here.
 	autoSettings := automation.LedgerSettings{L: l}
-	// OutDir/AvatarDir follow the -data flag (NewServer defaults to
-	// ./data/* relative to the working directory).
+	// OutDir follows the -data flag (NewServer defaults to ./data/*
+	// relative to the working directory).
 	outDir := filepath.Join(*dataDir, "output")
-	avatarDir := filepath.Join(*dataDir, "avatars")
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		log.Fatalf("web: out dir: %v", err)
 	}
-	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
-		log.Fatalf("web: avatar dir: %v", err)
-	}
 	srv.OutDir = outDir
-	srv.AvatarDir = avatarDir
-	srv.Avatar = avatarChainAdapter{c: avatarChain, tts: ttsChain, l: l, outDir: outDir}
-	if avatarLocal != nil {
-		srv.AvatarSidecar = avatarSidecarAdapter{p: avatarLocal}
-	}
 	srv.Health = health
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
@@ -549,9 +438,10 @@ func main() {
 	// progress shows in Settings + the homepage runtime block.
 	go srv.EnsureLocalModels(ctx)
 
-	// -- 6b. studio: AI video creation (affiliate / short film) ---------------
-	// The studio reuses the LLM chain (director), the TTS chain (film
-	// narration) and the Gemini keys (image + Veo generation).
+	// -- 6b. studio: AI video creation (affiliate) --------------------------------
+	// The studio reuses the LLM chain (director), the TTS chain (narration)
+	// and the Gemini keys (image generation). (Film pipeline parked —
+	// PIVOT 2026-10-02.)
 	studioMG := studio.NewGeminiMediaGen(geminiKeys)
 	studioNarrator := studio.Narrator(func(ctx context.Context, text string) ([]byte, error) {
 		return ttsChain.Synthesize(ctx, text, "default")
@@ -560,31 +450,11 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
-		// Film Wave 2 (P0-5): the Veo spend ceiling comes from the same
-		// automation settings facade as every other knob (R2-W4) — the
-		// operator edits it at Settings · Hệ thống, the film pipeline
-		// enforces it before every Veo call.
-		st.BudgetUSD = func() float64 {
-			return automation.APIBudgetUSD(autoSettings, 0)
-		}
 		// Film Wave 1 (P0-3): jobs left "running" died with the previous
 		// process — mark them failed so the UI offers "Chạy tiếp".
 		if n := st.MarkInterruptedJobs(); n > 0 {
 			log.Printf("studio: %d job(s) interrupted by restart — marked failed (resume from Studio)", n)
 		}
-		// Film Wave 3: probe khả năng AI lúc khởi động — vẽ thử 1 ảnh
-		// (tốn tối thiểu); quay video KHÔNG tự probe (tốn ~8s Veo tiền
-		// thật) mà lấy từ lịch sử lần quay gần nhất.
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-			defer cancel()
-			if err := st.ProbeImageGen(ctx); err != nil {
-				log.Printf("studio: image-gen probe: %v", err)
-			} else {
-				log.Printf("studio: image-gen probe OK")
-			}
-			st.RefreshVideoStatusFromHistory()
-		}()
 		defer func() {
 			if err := st.Close(); err != nil {
 				log.Printf("studio close: %v", err)
@@ -758,11 +628,6 @@ func main() {
 	if vieNeu != nil {
 		if err := vieNeu.Stop(); err != nil {
 			log.Printf("sidecar: vieneu stop: %v", err)
-		}
-	}
-	if avatarLocal != nil {
-		if err := avatarLocal.Stop(); err != nil {
-			log.Printf("sidecar: avatar stop: %v", err)
 		}
 	}
 	if err := llamaProc.Stop(); err != nil {

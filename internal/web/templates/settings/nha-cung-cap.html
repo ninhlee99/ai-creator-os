@@ -7,7 +7,6 @@
 <nav class="tabs">
   <a href="#provider-tts">TTS</a>
   <a href="#provider-llm">LLM</a>
-  <a href="#provider-avatar">Avatar</a>
 </nav>
 
 <h2 id="provider-tts">Chuỗi provider TTS</h2>
@@ -18,9 +17,6 @@
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 {{template "chain-card" (dict "Chain" .LLMChain "Keys" .LLMKeys "ChainName" "llm" "SaveLabel" "Lưu cấu hình LLM")}}
 
-<h2 id="provider-avatar">Chuỗi provider Avatar</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. {{if .AvatarRealtime}}<span class="badge badge-info">Trực tiếp (realtime): có thể qua nhà cung cấp đám mây đang bật</span>{{else}}<span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span>{{end}}</p>
-{{template "chain-card" (dict "Chain" .AvatarChain "Keys" nil "ChainName" "avatar" "SaveLabel" "Lưu cấu hình Avatar")}}
 
 <script>
 // Keyring: quản lý API key theo từng key (thêm/xóa/kiểm tra) không reload trang.

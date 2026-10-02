@@ -12,7 +12,7 @@ import (
 	"text/template"
 )
 
-//go:embed prompts/*.txt
+//go:embed prompts/*.txt prompts/parked/*.txt
 var promptFS embed.FS
 
 // promptTemplates caches parsed templates. Film jobs render in background
@@ -29,6 +29,11 @@ func directorPrompt(name string, data any) (string, error) {
 	promptTemplatesMu.Unlock()
 	if !ok {
 		raw, err := promptFS.ReadFile("prompts/" + name)
+		if err != nil {
+			// Prompt đã park (PIVOT 2026-10-02) nằm ở prompts/parked/ —
+			// thử đó trước khi báo lỗi để build parked vẫn chạy được.
+			raw, err = promptFS.ReadFile("prompts/parked/" + name)
+		}
 		if err != nil {
 			return "", fmt.Errorf("director prompt %s: %w", name, err)
 		}

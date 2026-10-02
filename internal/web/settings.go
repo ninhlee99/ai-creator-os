@@ -4,7 +4,6 @@ package web
 // kill switch, provider chain configuration storage and the VieNeu view.
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
@@ -94,8 +92,6 @@ func (s *Server) chainKey(name string) (string, bool) {
 		return ledger.SettingTTSChain, true
 	case "llm":
 		return ledger.SettingLLMChain, true
-	case "avatar":
-		return ledger.SettingAvatarChain, true
 	}
 	return "", false
 }
@@ -115,9 +111,6 @@ func (s *Server) loadChain(name string) ChainConfig {
 	}
 	if name == "tts" {
 		return DefaultTTSConfig(s.Cfg.GeminiAPIKeys)
-	}
-	if name == "avatar" {
-		return DefaultAvatarConfig()
 	}
 	return DefaultLLMConfig(s.Cfg.GeminiAPIKeys)
 }
@@ -151,10 +144,6 @@ func (s *Server) applyChain(name string, raw ChainConfigJSON) {
 		// by the wiring worker) also implements SetConfig.
 		if sc, ok := s.LLM.(interface{ SetConfig(ChainConfigJSON) }); ok && s.LLM != nil {
 			sc.SetConfig(raw)
-		}
-	case "avatar":
-		if s.Avatar != nil {
-			s.Avatar.SetConfig(raw)
 		}
 	}
 }
@@ -218,21 +207,17 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		}
 	}
 	return map[string]any{
-		"EnvStatus":      envs,
-		"EnvSaved":       r.URL.Query().Get("envsaved"),
-		"RtmpRows":       rtmps,
-		"DbPath":         s.Cfg.DatabasePath,
-		"Usage":          usage,
-		"Spend":          spend,
-		"TTSChain":       s.loadChain("tts"),
-		"LLMChain":       s.loadChain("llm"),
-		"TTSKeys":        s.keyRingStatuses("tts", "gemini"),
-		"LLMKeys":        s.keyRingStatuses("llm", "gemini"),
-		"VieNeu":         s.vieneuView(),
-		"AvatarChain":    s.loadChain("avatar"),
-		"AvatarRealtime": s.avatarRealtime(),
-		"Characters":     s.characterViews(),
-		"AvatarSidecar":  s.avatarSidecarView(),
+		"EnvStatus": envs,
+		"EnvSaved":  r.URL.Query().Get("envsaved"),
+		"RtmpRows":  rtmps,
+		"DbPath":    s.Cfg.DatabasePath,
+		"Usage":     usage,
+		"Spend":     spend,
+		"TTSChain":  s.loadChain("tts"),
+		"LLMChain":  s.loadChain("llm"),
+		"TTSKeys":   s.keyRingStatuses("tts", "gemini"),
+		"LLMKeys":   s.keyRingStatuses("llm", "gemini"),
+		"VieNeu":    s.vieneuView(),
 		// R2-W4: persisted master switch + daily API budget, editable in
 		// Settings · Hệ thống.
 		"MasterOn":   automation.MasterOn(s.settings()),
@@ -313,7 +298,7 @@ func (s *Server) handleSettingsAPIToggle(w http.ResponseWriter, r *http.Request)
 // handleSettingsModelLocal: "Model local đã sẵn sàng chưa?"
 func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "model-local", "settings_model_local",
-		"VieNeu", "AvatarSidecar", "RuntimeTools", "AICapabilities")
+		"VieNeu", "RuntimeTools", "AICapabilities")
 }
 
 // aiCapabilityView là một dòng trong bảng "Khả năng AI".
@@ -346,28 +331,6 @@ func (s *Server) aiCapabilityViews() []aiCapabilityView {
 		out = append(out, v)
 	}
 	return out
-}
-
-// handleProbeVideo quay thử đúng 1 clip 8s bằng Veo — TỐN TIỀN THẬT nên UI
-// hiện modal cảnh báo trước (data-confirm), và job chạy nền để không treo
-// request (Veo poll vài phút).
-func (s *Server) handleProbeVideo(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		http.NotFound(w, r)
-		return
-	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
-		defer cancel()
-		_ = s.Studio.ProbeVideoGen(ctx)
-	}()
-	seeOther(w, r, "/settings/model-local?ok="+url.QueryEscape(
-		"Đang kiểm tra quay video (~8s Veo, tốn phí thật) — quay lại sau ít phút để xem kết quả."))
-}
-
-// handleSettingsNhanVat: "Có những khuôn mặt AI nào, render thử ra sao?"
-func (s *Server) handleSettingsNhanVat(w http.ResponseWriter, r *http.Request) {
-	s.settingsPage(w, r, "nhan-vat", "settings_nhan_vat", "Characters")
 }
 
 // handleSettingsAnToan: "Dừng khẩn cấp bằng cách nào?"
@@ -456,20 +419,6 @@ func (s *Server) handleSettingsAPIBudget(w http.ResponseWriter, r *http.Request)
 		fmt.Sprintf("ngân sách API/ngày đặt thành $%.2f qua UI", usd),
 		map[string]any{"usd": usd})
 	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(fmt.Sprintf("Đã lưu ngân sách API: $%.2f/ngày.", usd)))
-}
-
-// avatarRealtime reports whether a CLOUD avatar tier (HeyGen/D-ID) is
-// enabled — the only tiers that can truly stream in realtime. The local
-// MuseTalk tier renders offline only (ước tính 6–10 phút cho clip 60
-// giây trên Mac M1) and must never count toward this badge, even though
-// its contract exposes a stream interface (see docs/RESEARCH.md §6).
-func (s *Server) avatarRealtime() bool {
-	for _, p := range s.loadChain("avatar").Order {
-		if p.Enabled && p.Name != "local" {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {

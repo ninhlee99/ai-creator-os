@@ -77,16 +77,6 @@ func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	}}
 }
 
-// DefaultAvatarConfig mirrors the avatar engine default:
-// local (free sidecar) -> heygen (paid, disabled) -> did (paid, disabled).
-func DefaultAvatarConfig() ChainConfig {
-	return ChainConfig{Order: []ProviderEntry{
-		{Name: "local", Enabled: true, TimeoutSec: 1800, Retries: 0},
-		{Name: "heygen", Enabled: false, TimeoutSec: 600, Retries: 1},
-		{Name: "did", Enabled: false, TimeoutSec: 600, Retries: 1},
-	}}
-}
-
 // MarshalChain serializes a chain config for the settings table.
 func MarshalChain(c ChainConfig) (string, error) {
 	b, err := json.Marshal(c)
@@ -126,6 +116,20 @@ type TTSChainAPI interface {
 	ProviderNames() []string
 }
 
+// HealthChecker is one provider's cheap "can it serve right now?" probe,
+// used by the settings page "Kiểm tra kết nối" button.
+type HealthChecker interface {
+	Healthy(ctx context.Context) bool
+	Name() string
+}
+
+// ---------------------------------------------------------------------------
+// Parked-build support (PIVOT 2026-10-02): các interface dưới đây chỉ được
+// dùng khi build với -tags parked (handler avatar/live/film đã park).
+// Giữ lại ở bản thường để `go build -tags parked ./...` biên dịch được;
+// bản thường không nối implementation nào vào chúng.
+// ---------------------------------------------------------------------------
+
 // AvatarChainAPI is the avatar provider chain behind clip rendering and
 // the settings "render thử" button.
 type AvatarChainAPI interface {
@@ -148,13 +152,6 @@ type AvatarSidecarCtl interface {
 	EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error
 	ModelConfigured() bool
 	ModelPresent() bool
-}
-
-// HealthChecker is one provider's cheap "can it serve right now?" probe,
-// used by the settings page "Kiểm tra kết nối" button.
-type HealthChecker interface {
-	Healthy(ctx context.Context) bool
-	Name() string
 }
 
 // KeyStatus is one API key's rotation state, shown on the settings page.

@@ -142,16 +142,6 @@
     }
   };
 
-  // Chuyển tab Truyện / Kịch bản / Nhân vật trong card 📖 (mở một, đóng hai).
-  window.toggleScript = function (showId, panId) {
-    var pan = document.getElementById(panId);
-    if (!pan) return;
-    var kids = pan.children;
-    for (var i = 0; i < kids.length; i++) {
-      kids[i].style.display = (kids[i].id === showId && kids[i].style.display === 'none') ? '' : 'none';
-    }
-  };
-
   window.toggleBoard = function (id) {
     var box = document.querySelector('[data-job="' + id + '"] .board');
     if (!box) return;
@@ -169,53 +159,14 @@
             'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
             '<div class="hint" id="cap-' + id + '">' + d.job.caption.replace(/\n/g, '<br>') + '</div></div>';
         }
-        // Truyện → kịch bản → breakdown: cho xem lại từng pha sáng tạo.
-        var bd = d.bundle || {};
-        if (bd.story || bd.screenplay || bd.breakdown) {
-          h += '<div class="shot"><div class="shot-head">📖 Truyện & kịch bản ' +
-            (bd.story ? '<button type="button" class="btn btn-secondary btn-sm" onclick="toggleScript(\'story-' + id + '\',\'pan-' + id + '\')">Truyện</button> ' : '') +
-            (bd.screenplay ? '<button type="button" class="btn btn-secondary btn-sm" onclick="toggleScript(\'screen-' + id + '\',\'pan-' + id + '\')">Kịch bản</button> ' : '') +
-            (bd.breakdown ? '<button type="button" class="btn btn-secondary btn-sm" onclick="toggleScript(\'break-' + id + '\',\'pan-' + id + '\')">Nhân vật</button>' : '') +
-            '</div><div id="pan-' + id + '">';
-          if (bd.story) {
-            h += '<div class="hint" id="story-' + id + '" style="display:none;white-space:pre-wrap;max-height:320px;overflow:auto"><b>' +
-              bd.story.title + '</b><br><i>' + (bd.story.logline || '') + '</i><br><br>' + bd.story.text + '</div>';
-          }
-          if (bd.screenplay) {
-            var sh = '<div class="hint" id="screen-' + id + '" style="display:none;max-height:320px;overflow:auto">';
-            (bd.screenplay.scenes || []).forEach(function (sc, i) {
-              sh += '<b>Cảnh ' + (i + 1) + ' — ' + sc.location + ' · ' + sc.time_of_day + '</b><br>' + sc.action + '<br>';
-              (sc.dialogue || []).forEach(function (dl) {
-                sh += '<i>' + dl.character + ':</i> ' + dl.text + '<br>';
-              });
-              if (sc.narration) sh += '<i>Lời dẫn:</i> ' + sc.narration + '<br>';
-              sh += '<br>';
-            });
-            h += sh + '</div>';
-          }
-          if (bd.breakdown) {
-            var bh = '<div class="hint" id="break-' + id + '" style="display:none;max-height:320px;overflow:auto">';
-            (bd.breakdown.characters || []).forEach(function (c) {
-              bh += '🧍 <b>' + c.name + '</b> — ' + c.appearance + '<br>👕 ' + c.wardrobe +
-                (c.design_note ? '<br>💡 <i>' + c.design_note + '</i>' : '') + '<br><br>';
-            });
-            h += bh + '</div>';
-          }
-          h += '</div></div>';
-        }
         (d.assets || []).forEach(function (a) {
           var name;
-          if (a.kind === 'shot') name = 'Shot ' + (a.seq + 1);
-          else if (a.kind === 'trailer') name = '📱 Trailer ' + (a.idx - 1999);
-          else if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
-          else if (a.kind === 'portrait') name = 'Chân dung';
+          if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
           else name = a.kind + ' ' + (a.idx + 1);
           var pid = 'prompt-' + id + '-' + a.id;
           (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
           h += '<div class="shot"><div class="shot-head">' + name +
             ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
-            (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') +
-            (a.trailer ? ' <span class="badge" title="Shot đắt giá — đã dùng cắt trailer">📱 trailer</span>' : '') +
             '</div>';
           if (a.preview) {
             if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
@@ -223,10 +174,6 @@
           }
           h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
           h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
-          if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
-            h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại rồi dựng lại phim.">' +
-              '<button class="btn btn-sm">🎬 Quay lại shot này</button></form>';
-          }
           h += '</div></div>';
         });
         box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';

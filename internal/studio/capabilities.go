@@ -37,7 +37,8 @@ type AICapability struct {
 
 var capabilityLabels = map[string]string{
 	CapImageGen: "Vẽ ảnh (Gemini)",
-	CapVideoGen: "Quay video (Veo)",
+	// CapVideoGen đã park cùng pipeline phim (film.go) — bảng "Khả năng AI"
+	// giờ chỉ còn vẽ ảnh (dùng cho ảnh minh họa kể chuyện, đợt F).
 }
 
 func (s *Studio) ensureCapabilitiesTable() error {
@@ -60,12 +61,10 @@ func (s *Studio) SetCapability(key, status, detail string) error {
 	return err
 }
 
-// GetCapabilities trả về cả hai khả năng theo thứ tự cố định; chưa từng
-// kiểm tra → "unknown".
+// GetCapabilities trả về khả năng vẽ ảnh; chưa từng kiểm tra → "unknown".
 func (s *Studio) GetCapabilities() []AICapability {
 	out := []AICapability{
 		{Key: CapImageGen, Label: capabilityLabels[CapImageGen], Status: CapUnknown},
-		{Key: CapVideoGen, Label: capabilityLabels[CapVideoGen], Status: CapUnknown},
 	}
 	if err := s.ensureCapabilitiesTable(); err != nil {
 		return out
@@ -91,16 +90,6 @@ func (s *Studio) GetCapabilities() []AICapability {
 	return out
 }
 
-// VideoCapOK báo key có quay được video không (theo lần kiểm tra gần nhất).
-func (s *Studio) VideoCapOK() bool {
-	for _, c := range s.GetCapabilities() {
-		if c.Key == CapVideoGen {
-			return c.Status == CapOK
-		}
-	}
-	return false
-}
-
 // ProbeImageGen vẽ thử 1 ảnh siêu đơn giản lúc khởi động — tốn tối thiểu,
 // cho hệ thống biết image gen có sống không trước khi nhận job.
 func (s *Studio) ProbeImageGen(ctx context.Context) error {
@@ -118,76 +107,6 @@ func (s *Studio) ProbeImageGen(ctx context.Context) error {
 		return err
 	}
 	_ = s.SetCapability(CapImageGen, CapOK, "vẽ thử thành công")
-	return nil
-}
-
-// RefreshVideoStatusFromHistory suy trạng thái quay video từ N lần quay
-// thật gần nhất (method từng shot — Wave 1 đã log): có shot nào "veo"
-// thành công → ok; toàn "anh-tts" → fail (key không tạo được video);
-// chưa quay lần nào → unknown. Chỉ ghi khi trạng thái hiện tại là
-// unknown — probe tay luôn thắng.
-func (s *Studio) RefreshVideoStatusFromHistory() {
-	for _, c := range s.GetCapabilities() {
-		if c.Key == CapVideoGen && c.Status != CapUnknown {
-			return
-		}
-	}
-	rows, err := s.db.Query(
-		`SELECT method FROM studio_assets
-		 WHERE kind='shot' AND method != '' ORDER BY id DESC LIMIT 30`)
-	if err != nil {
-		return
-	}
-	defer rows.Close()
-	n := 0
-	veoOK := false
-	for rows.Next() {
-		var m string
-		if err := rows.Scan(&m); err != nil {
-			continue
-		}
-		n++
-		if m == "veo" {
-			veoOK = true
-		}
-	}
-	switch {
-	case veoOK:
-		_ = s.SetCapability(CapVideoGen, CapOK, "shot gần nhất quay bằng Veo thành công")
-	case n > 0:
-		_ = s.SetCapability(CapVideoGen, CapFail,
-			fmt.Sprintf("%d lần quay gần nhất đều rớt về ảnh + giọng đọc — key có thể không tạo được video", n))
-	default:
-		_ = s.SetCapability(CapVideoGen, CapUnknown, "chưa có lần quay nào")
-	}
-}
-
-// ProbeVideoGen quay thử đúng 1 clip 8s bằng Veo — TỐN TIỀN THẬT (~8s
-// billed). Chỉ gọi từ nút bấm tay "Kiểm tra quay video" (đã cảnh báo chi
-// phí trên UI), không bao giờ tự chạy ngầm.
-func (s *Studio) ProbeVideoGen(ctx context.Context) error {
-	if s.mg == nil || !s.mg.Healthy(ctx) {
-		_ = s.SetCapability(CapVideoGen, CapFail, "thiếu GEMINI_API_KEYS hoặc key lỗi")
-		return fmt.Errorf("media-gen chưa sẵn sàng")
-	}
-	img := filepath.Join(os.TempDir(), "aicos-probe-key.png")
-	defer os.Remove(img)
-	if err := s.mg.GenerateImage(ctx,
-		"a red sports car on an empty road at sunset, cinematic photo, no text",
-		nil, img); err != nil {
-		_ = s.SetCapability(CapVideoGen, CapFail, "không vẽ được keyframe kiểm tra: "+truncErr(err, 120))
-		return fmt.Errorf("keyframe kiểm tra: %w", err)
-	}
-	out := filepath.Join(os.TempDir(), "aicos-probe-veo.mp4")
-	defer os.Remove(out)
-	err := s.mg.GenerateVideo(ctx,
-		"the red sports car drives slowly forward on the road, cinematic, natural motion, no text",
-		img, veoMaxSeconds, "16:9", out)
-	if err != nil {
-		_ = s.SetCapability(CapVideoGen, CapFail, "Veo lỗi: "+truncErr(err, 160))
-		return err
-	}
-	_ = s.SetCapability(CapVideoGen, CapOK, "quay thử 8s thành công")
 	return nil
 }
 

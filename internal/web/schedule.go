@@ -1,3 +1,5 @@
+//go:build parked
+
 package web
 
 // Live schedule page: rendering today's slots plus the auto-build that
@@ -7,8 +9,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 )
 
@@ -109,3 +113,40 @@ func (s *Server) handleScheduleBuild(w http.ResponseWriter, r *http.Request) {
 // -------------------------------------------------- video chữ động (kinetic)
 
 var weekdayNames = []string{"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"}
+
+// slotView couples a slot with its account's username for display.
+type slotView struct {
+	ledger.Slot
+	AccountName string
+}
+
+func (s *Server) slotViews(slots []ledger.Slot) []slotView {
+	names := map[int64]string{}
+	if accts, err := s.Mgr.List(); err == nil {
+		for _, a := range accts {
+			names[a.ID] = a.Username
+		}
+	}
+	out := make([]slotView, 0, len(slots))
+	for _, sl := range slots {
+		name, ok := names[sl.AccountID]
+		if !ok {
+			name = strconv.FormatInt(sl.AccountID, 10)
+		}
+		out = append(out, slotView{Slot: sl, AccountName: name})
+	}
+	return out
+}
+
+func (s *Server) handleAccountLiveTopic(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.accountID(w, r)
+	if !ok {
+		return
+	}
+	errMsg := ""
+	if _, _, err := s.Mgr.PlanLiveTopic(s.LLM, id); err != nil {
+		errMsg = err.Error()
+		log.Printf("web: plan live topic: %v", err)
+	}
+	s.accountBack(w, r, id, "ket-noi", errMsg)
+}

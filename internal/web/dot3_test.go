@@ -108,63 +108,20 @@ func TestDashboardRestoredStats(t *testing.T) {
 	if _, err := s.Ledger.RecordCommission("2026-10", 150000, "dot3-test"); err != nil {
 		t.Fatalf("record commission: %v", err)
 	}
-	for i := 0; i < 2; i++ {
-		if _, err := s.Ledger.StartSession(nil); err != nil {
-			t.Fatalf("start session: %v", err)
-		}
-	}
 	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Hoa hồng đã ghi nhận", "150.000 ₫", "Phiên live đã chạy"} {
+	for _, want := range []string{"Hoa hồng đã ghi nhận", "150.000 ₫"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard missing restored stat %q", want)
 		}
 	}
-}
-
-func TestDashboardAutoBuildsSchedule(t *testing.T) {
-	s := newTestServer(t)
-	a, err := s.Mgr.Add("auto_sched", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, to := range []string{"researching", "persona_assigned", "growing", "live_ready"} {
-		if _, err := s.Mgr.Transition(a.ID, to, nil); err != nil {
-			t.Fatalf("transition to %s: %v", to, err)
+	for _, gone := range []string{"Phiên live", "Lịch live", "Slot live"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("dashboard still shows live remnant %q", gone)
 		}
-	}
-	if err := s.Ledger.SetFollowers(a.ID, 1500); err != nil {
-		t.Fatal(err)
-	}
-	// Today must not be the account's rest day, whatever weekday the
-	// test happens to run on.
-	wd := (int(time.Now().In(s.location()).Weekday()) + 6) % 7
-	if _, err := s.db.Exec("UPDATE accounts SET rest_weekday=? WHERE id=?", (wd+1)%7, a.ID); err != nil {
-		t.Fatal(err)
-	}
-
-	if slots, _ := s.Ledger.GetSlots(s.today()); len(slots) != 0 {
-		t.Fatalf("precondition: %d slots before any page view", len(slots))
-	}
-	if rec := get(t, s, "/"); rec.Code != http.StatusOK {
-		t.Fatalf("GET / = %d, want 200", rec.Code)
-	}
-	slots, err := s.Ledger.GetSlots(s.today())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(slots) == 0 {
-		t.Fatal("opening the homepage did not auto-build today's schedule")
-	}
-	// A second view (another page that ensures) must not duplicate.
-	if rec := get(t, s, "/schedule"); rec.Code != http.StatusOK {
-		t.Fatalf("GET /schedule = %d, want 200", rec.Code)
-	}
-	if slots2, _ := s.Ledger.GetSlots(s.today()); len(slots2) != len(slots) {
-		t.Errorf("slots changed across views: %d -> %d", len(slots), len(slots2))
 	}
 }
 
@@ -190,55 +147,27 @@ func (f *fakeVieNeuCtl) EnsureModel(context.Context, func(int64, int64)) error {
 }
 func (f *fakeVieNeuCtl) Voices() []string { return nil }
 
-type fakeAvatarCtl struct {
-	configured, present bool
-	calls               atomic.Int32
-}
-
-func (f *fakeAvatarCtl) Status() (string, string) { return "stopped", "fake" }
-func (f *fakeAvatarCtl) Start(context.Context) error {
-	return nil
-}
-func (f *fakeAvatarCtl) Stop() error { return nil }
-func (f *fakeAvatarCtl) Restart(context.Context) error {
-	return nil
-}
-func (f *fakeAvatarCtl) EnsureModel(context.Context, func(int64, int64)) error {
-	f.calls.Add(1)
-	return nil
-}
-func (f *fakeAvatarCtl) ModelConfigured() bool { return f.configured }
-func (f *fakeAvatarCtl) ModelPresent() bool    { return f.present }
-
 func TestEnsureLocalModels(t *testing.T) {
 	s := newTestServer(t)
 	vn := &fakeVieNeuCtl{state: "stopped"}
-	av := &fakeAvatarCtl{configured: true, present: false}
 	s.VieNeu = vn
-	s.AvatarSidecar = av
 
 	s.EnsureLocalModels(context.Background())
 	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) && (vn.calls.Load() == 0 || av.calls.Load() == 0) {
+	for time.Now().Before(deadline) && vn.calls.Load() == 0 {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if vn.calls.Load() == 0 {
 		t.Error("vieneu ensure not kicked at startup (sidecar stopped)")
 	}
-	if av.calls.Load() == 0 {
-		t.Error("avatar ensure not kicked at startup (model missing)")
-	}
 
 	// Already-ready runtimes must not be kicked.
 	s2 := newTestServer(t)
 	vn2 := &fakeVieNeuCtl{state: "running"}
-	av2 := &fakeAvatarCtl{configured: true, present: true}
 	s2.VieNeu = vn2
-	s2.AvatarSidecar = av2
 	s2.EnsureLocalModels(context.Background())
 	time.Sleep(150 * time.Millisecond)
-	if vn2.calls.Load() != 0 || av2.calls.Load() != 0 {
-		t.Errorf("ready runtimes kicked: vieneu=%d avatar=%d, want 0/0",
-			vn2.calls.Load(), av2.calls.Load())
+	if vn2.calls.Load() != 0 {
+		t.Errorf("ready runtime kicked: vieneu=%d, want 0", vn2.calls.Load())
 	}
 }

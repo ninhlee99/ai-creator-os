@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package avatar renders audio-driven talking-head video: every frame's
 // motion (lips, eyes, head, expression, gesture) is synthesized from the
 // audio at that frame. Identity is locked per character so the same face

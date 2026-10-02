@@ -1,12 +1,11 @@
 package web
 
-// Film Wave 3 — test web: endpoint "Kiểm tra quay video" và bảng khả năng AI
-// trên trang Model local.
+// Film Wave 3 — test web: bảng khả năng AI trên trang Model local
+// (endpoint "Kiểm tra quay video" đã park cùng pipeline phim).
 
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,25 +44,6 @@ func newWave3Studio(t *testing.T) *studio.Studio {
 	return st
 }
 
-func TestProbeVideoEndpoint(t *testing.T) {
-	s := newTestServer(t)
-	// Chưa gắn Studio → 404.
-	rec := postForm(t, s, "/settings/model-local/probe-video", url.Values{})
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("thiếu Studio → 404, got %d", rec.Code)
-	}
-	// Gắn Studio → 303 về trang Model local (probe chạy nền).
-	s.Studio = newWave3Studio(t)
-	rec = postForm(t, s, "/settings/model-local/probe-video", url.Values{})
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("POST probe → 303, got %d", rec.Code)
-	}
-	loc := rec.Header().Get("Location")
-	if !strings.Contains(loc, "/settings/model-local") || !strings.Contains(loc, "ok=") {
-		t.Fatalf("redirect về model-local kèm ?ok=, got %q", loc)
-	}
-}
-
 func TestModelLocalCapabilityTable(t *testing.T) {
 	s := newTestServer(t)
 	s.Studio = newWave3Studio(t)
@@ -72,9 +52,14 @@ func TestModelLocalCapabilityTable(t *testing.T) {
 		t.Fatalf("model-local → 200, got %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Khả năng AI", "probe-video", "Vẽ ảnh", "Quay video"} {
+	for _, want := range []string{"Khả năng AI", "Vẽ ảnh"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang model-local thiếu %q", want)
+		}
+	}
+	for _, gone := range []string{"probe-video", "Quay video"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("trang model-local còn tàn dư video %q", gone)
 		}
 	}
 }

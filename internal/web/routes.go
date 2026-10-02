@@ -16,8 +16,6 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
-	mux.HandleFunc("GET /static/agents/{file}", s.handleAgentAvatar)
-	mux.HandleFunc("GET /team", s.handleTeam)
 
 	mux.HandleFunc("GET /", s.handleDashboard)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
@@ -28,7 +26,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/youtube", s.handleAccountYoutube)
 	mux.HandleFunc("POST /accounts/{id}/onboard", s.handleAccountOnboard)
 	mux.HandleFunc("POST /accounts/{id}/replan", s.handleAccountReplan)
-	mux.HandleFunc("POST /accounts/{id}/live-topic", s.handleAccountLiveTopic)
 
 	// Affiliate autopilot: theme policy, hands-off toggle, model library.
 	mux.HandleFunc("POST /accounts/{id}/theme", s.handleAccountTheme)
@@ -38,9 +35,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
 	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
 
-	mux.HandleFunc("GET /schedule", s.handleSchedule)
-	mux.HandleFunc("POST /schedule/build", s.handleScheduleBuild)
-
 	// Video chữ động (kinetic) — tab trong Studio (gộp từ trang /content cũ).
 	mux.HandleFunc("POST /studio/kinetic", s.handleStudioKineticCreate)
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
@@ -48,11 +42,8 @@ func (s *Server) Routes() http.Handler {
 	// Studio: AI video creation (affiliate / short film) + VN trends.
 	mux.HandleFunc("GET /studio", s.handleStudio)
 	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
-	mux.HandleFunc("POST /studio/film", s.handleStudioFilmCreate)
 	mux.HandleFunc("GET /studio/jobs", s.handleStudioJobs)
 	mux.HandleFunc("GET /studio/jobs/{id}", s.handleStudioJobDetail)
-	mux.HandleFunc("POST /studio/jobs/{id}/rerun", s.handleStudioJobRerun)
-	mux.HandleFunc("POST /studio/jobs/{id}/shots/{seq}/rerender", s.handleStudioShotRerun)
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
 	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
@@ -85,8 +76,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
 	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
 	mux.HandleFunc("GET /settings/model-local", s.handleSettingsModelLocal)
-	mux.HandleFunc("POST /settings/model-local/probe-video", s.handleProbeVideo)
-	mux.HandleFunc("GET /settings/nhan-vat", s.handleSettingsNhanVat)
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
@@ -117,17 +106,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/vieneu/progress", s.handleVieneuProgress)
 	mux.HandleFunc("POST /settings/vieneu/restart", s.handleVieneuRestart)
 	mux.HandleFunc("POST /settings/vieneu/voice", s.handleVieneuVoice)
-
-	// Avatar: characters, render test, sidecar
-	mux.HandleFunc("GET /avatars/{file}", s.handleAvatarImage)
-	mux.HandleFunc("GET /settings/avatar/characters", s.handleAvatarCharacters)
-	mux.HandleFunc("POST /settings/avatar/characters", s.handleAvatarCharacterCreate)
-	mux.HandleFunc("POST /settings/avatar/characters/{id}/delete", s.handleAvatarCharacterDelete)
-	mux.HandleFunc("POST /settings/avatar/render-test", s.handleAvatarRenderTest)
-	mux.HandleFunc("GET /settings/avatar-sidecar/status", s.handleAvatarSidecarStatus)
-	mux.HandleFunc("POST /settings/avatar-sidecar/ensure", s.handleAvatarSidecarEnsure)
-	mux.HandleFunc("GET /settings/avatar-sidecar/progress", s.handleAvatarSidecarProgress)
-	mux.HandleFunc("POST /settings/avatar-sidecar/restart", s.handleAvatarSidecarRestart)
 
 	// legacy JSON API — mặc định TẮT (R2-W7, R2-09): không có UI nào gọi,
 	// mở ra chỉ khi người vận hành bật công tắc ở Cài đặt · Hệ thống.

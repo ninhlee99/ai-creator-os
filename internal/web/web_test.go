@@ -240,7 +240,6 @@ func TestAllPagesRender(t *testing.T) {
 		"/accounts/1?tab=tong-quan": "Tổng quan",
 		"/accounts/1?tab=autopilot": "Autopilot Affiliate",
 		"/accounts/1?tab=ket-noi":   "Điều khiển",
-		"/schedule":                 "Lịch live",
 		"/studio":                   "Studio AI",
 		"/studio?tab=chu":           "Video chữ động",
 		"/studio/jobs":              "Job Studio",
@@ -248,11 +247,9 @@ func TestAllPagesRender(t *testing.T) {
 		"/products":                 "Sản phẩm Affiliate",
 		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
 		"/publishers":               "Đa nền tảng",
-		"/team":                     "Agent Team",
 		"/settings/he-thong":        "Cài đặt · Hệ thống",
 		"/settings/nha-cung-cap":    "Chuỗi provider TTS",
 		"/settings/model-local":     "Giọng đọc chạy trên máy (VieNeu)",
-		"/settings/nhan-vat":        "Nhân vật AI",
 		"/settings/an-toan":         "Kill switch",
 		"/settings/chain?name=tts":  `"name":"gemini"`,
 	}
@@ -275,7 +272,7 @@ func TestAllPagesRender(t *testing.T) {
 	// each settings sub-page renders inside base with the shared sub-nav
 	// and its own concern section (R2-W3)
 	body := get(t, s, "/settings/nha-cung-cap").Body.String()
-	for _, marker := range []string{"Chuỗi provider LLM", "Chuỗi provider Avatar", "Kiểm tra kết nối", "Hệ thống</a>"} {
+	for _, marker := range []string{"Chuỗi provider LLM", "Kiểm tra kết nối", "Hệ thống</a>"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("nha-cung-cap page missing %q", marker)
 		}
@@ -456,26 +453,6 @@ func TestKillSwitch(t *testing.T) {
 	}
 	if s.Cfg.KillSwitch() {
 		t.Fatal("kill switch should be released")
-	}
-}
-
-// Schedule build produces slots for today and the page shows them.
-func TestScheduleBuild(t *testing.T) {
-	s := newTestServer(t)
-	if _, err := s.Mgr.Add("sched_acct", "", ""); err != nil {
-		t.Fatal(err)
-	}
-	if rec := postForm(t, s, "/schedule/build", url.Values{}); rec.Code != http.StatusSeeOther {
-		t.Fatalf("POST /schedule/build = %d, want 303", rec.Code)
-	}
-	slots, err := s.Ledger.GetSlots(s.today())
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, sl := range slots {
-		if sl.SlotDate != s.today() {
-			t.Fatalf("slot date = %q, want today", sl.SlotDate)
-		}
 	}
 }
 

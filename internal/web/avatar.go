@@ -1,3 +1,5 @@
+//go:build parked
+
 package web
 
 import (
@@ -72,6 +74,30 @@ func (s *Server) avatarSidecarView() avatarSidecarView {
 	v.ModelConfigured = s.AvatarSidecar.ModelConfigured()
 	v.ModelPresent = s.AvatarSidecar.ModelPresent()
 	return v
+}
+
+// kickAvatarEnsure starts the avatar sidecar model ensure in the
+// background; progress is polled via /settings/avatar-sidecar/progress.
+func (s *Server) kickAvatarEnsure() {
+	if s.AvatarSidecar == nil {
+		return
+	}
+	s.avatarDlMu.Lock()
+	s.avatarDlDone, s.avatarDlErr = false, ""
+	s.avatarDlMu.Unlock()
+	go func() {
+		err := s.AvatarSidecar.EnsureModel(context.Background(), func(downloaded, total int64) {
+			s.avatarDlMu.Lock()
+			s.avatarDlDownloaded, s.avatarDlTotal = downloaded, total
+			s.avatarDlMu.Unlock()
+		})
+		s.avatarDlMu.Lock()
+		s.avatarDlDone = true
+		if err != nil {
+			s.avatarDlErr = err.Error()
+		}
+		s.avatarDlMu.Unlock()
+	}()
 }
 
 // handleAvatarCharacters serves the character list as JSON (used by the

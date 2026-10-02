@@ -9,25 +9,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 )
 
-// TestTeamPageEmptyState: a fresh app (no Studio jobs) must show the
-// honest empty state on /team — never invented demo tasks.
-func TestTeamPageEmptyState(t *testing.T) {
-	s := newTestServer(t)
-	rec := get(t, s, "/team")
-	if rec.Code != 200 {
-		t.Fatalf("GET /team = %d, want 200", rec.Code)
-	}
-	body := rec.Body.String()
-	if !strings.Contains(body, "Chưa có tác vụ nào") || !strings.Contains(body, "Mở Studio AI") {
-		t.Error("/team without jobs must render the empty state with the Studio CTA")
-	}
-	for _, fake := range []string{"demo-1", "demo-2", "demo-3", "quilted", "váy hoa", "Người kể chuyện đêm"} {
-		if strings.Contains(body, fake) {
-			t.Errorf("/team still shows fabricated demo content %q", fake)
-		}
-	}
-}
-
 // TestAccountDetailFollowersComeFromSnapshot: the detail page shows the
 // follower count from the latest growth snapshot; without one it says
 // "chưa kết nối"; and the old manual followers form is gone.

@@ -28,10 +28,8 @@ type Config struct {
 	OllamaBaseURL string
 	OllamaModel   string
 
-	// TTS / avatar
-	TTSAPIKey      string
-	AvatarProvider string
-	AvatarAPIKey   string
+	// TTS (avatar đã park — PIVOT 2026-10-02)
+	TTSAPIKey string
 
 	// TikTok
 	TiktokShopAppKey      string
@@ -131,8 +129,6 @@ func LoadConfig() *Config {
 		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
 
 		TTSAPIKey:      getenv("TTS_API_KEY", ""),
-		AvatarProvider: getenv("AVATAR_PROVIDER", "local-stylized"),
-		AvatarAPIKey:   getenv("AVATAR_API_KEY", ""),
 
 		TiktokShopAppKey:      getenv("TIKTOK_SHOP_APP_KEY", ""),
 		TiktokShopAppSecret:   getenv("TIKTOK_SHOP_APP_SECRET", ""),

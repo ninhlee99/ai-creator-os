@@ -93,12 +93,6 @@ func (s *Server) advanceOnboarding(accountID int64) {
 	}
 }
 
-type lastTopicView struct {
-	Topic     string
-	Reason    string
-	CreatedAt string
-}
-
 func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -141,22 +135,6 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "account gifts")
 		return
 	}
-	var lastTopic *lastTopicView
-	rows, err := s.queryDecisions(
-		`SELECT id, agent, action, target, reason, created_at FROM decisions
-		 WHERE agent='live_planner' AND action='session_topic' AND target LIKE ? ORDER BY id DESC LIMIT 1`,
-		acct.Username+":%")
-	if err != nil {
-		s.fail(w, err, "last topic")
-		return
-	}
-	if len(rows) > 0 {
-		topic := rows[0].Target
-		if i := strings.Index(topic, ":"); i >= 0 {
-			topic = topic[i+1:]
-		}
-		lastTopic = &lastTopicView{Topic: topic, Reason: rows[0].Reason, CreatedAt: rows[0].CreatedAt}
-	}
 	detailCtx := s.ctx(
 		"Acct", s.wrapAccount(acct),
 		"Tab", s.accountTab(r),
@@ -165,7 +143,6 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"Decisions", decisions,
 		"Publishers", pubNames,
 		"Gifts", gifts,
-		"LastTopic", lastTopic,
 		"Themes", themeOptions(),
 		"AutopilotReady", network.AutopilotReady(acct),
 		"ModelPhotos", s.modelPhotoViews(id),
@@ -270,19 +247,6 @@ func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		errMsg = err.Error()
-	}
-	s.accountBack(w, r, id, "ket-noi", errMsg)
-}
-
-func (s *Server) handleAccountLiveTopic(w http.ResponseWriter, r *http.Request) {
-	id, ok := s.accountID(w, r)
-	if !ok {
-		return
-	}
-	errMsg := ""
-	if _, _, err := s.Mgr.PlanLiveTopic(s.LLM, id); err != nil {
-		errMsg = err.Error()
-		log.Printf("web: plan live topic: %v", err)
 	}
 	s.accountBack(w, r, id, "ket-noi", errMsg)
 }

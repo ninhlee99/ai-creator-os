@@ -1,3 +1,5 @@
+//go:build parked
+
 package studio
 
 // Film Wave 3 — "Điện ảnh từ ảnh": tests cho capability probe, cinematic
@@ -120,9 +122,11 @@ func TestCineZoompanExprs(t *testing.T) {
 
 func TestCapabilityRoundtrip(t *testing.T) {
 	s := newWave2Studio(t, &stubLLM{reply: "{}"}, &stubMG{})
+	// Bản thường chỉ còn hàng image_gen (video_gen đã park khỏi bảng UI);
+	// parked code đọc video_gen trực tiếp từ DB.
 	caps := s.GetCapabilities()
-	if len(caps) != 2 || caps[0].Status != CapUnknown || caps[1].Status != CapUnknown {
-		t.Fatalf("mặc định phải unknown: %+v", caps)
+	if len(caps) != 1 || caps[0].Key != CapImageGen || caps[0].Status != CapUnknown {
+		t.Fatalf("mặc định phải 1 hàng image unknown: %+v", caps)
 	}
 	if err := s.SetCapability(CapImageGen, CapOK, "vẽ thử OK"); err != nil {
 		t.Fatal(err)
@@ -155,25 +159,25 @@ func TestRefreshVideoStatusFromHistory(t *testing.T) {
 	s1 := newWave2Studio(t, &stubLLM{reply: "{}"}, &stubMG{})
 	newJob(t, s1, "anh-tts", "anh-tts", "cinematic")
 	s1.RefreshVideoStatusFromHistory()
-	if got := s1.GetCapabilities()[1].Status; got != CapFail {
+	if got := s1.videoCapStatus(); got != CapFail {
 		t.Errorf("toàn fallback → fail, got %q", got)
 	}
 	// Có 1 veo → ok.
 	s2 := newWave2Studio(t, &stubLLM{reply: "{}"}, &stubMG{})
 	newJob(t, s2, "anh-tts", "veo")
 	s2.RefreshVideoStatusFromHistory()
-	if got := s2.GetCapabilities()[1].Status; got != CapOK {
+	if got := s2.videoCapStatus(); got != CapOK {
 		t.Errorf("có veo → ok, got %q", got)
 	}
 	// Chưa quay lần nào → unknown.
 	s3 := newWave2Studio(t, &stubLLM{reply: "{}"}, &stubMG{})
 	s3.RefreshVideoStatusFromHistory()
-	if got := s3.GetCapabilities()[1].Status; got != CapUnknown {
+	if got := s3.videoCapStatus(); got != CapUnknown {
 		t.Errorf("chưa quay → unknown, got %q", got)
 	}
 	// Probe tay thắng lịch sử: đã fail thì refresh không ghi đè.
 	s1.RefreshVideoStatusFromHistory()
-	if got := s1.GetCapabilities()[1].Status; got != CapFail {
+	if got := s1.videoCapStatus(); got != CapFail {
 		t.Errorf("đã fail thì giữ nguyên, got %q", got)
 	}
 }
