@@ -136,8 +136,9 @@ type Asset struct {
 	Path   string `json:"path"`
 	Prompt string `json:"prompt"`
 	Status string `json:"status"` // queued|running|done|failed
-	// Method is how this asset was really rendered: "veo" or "anh-tts"
-	// (keyframe + TTS fallback). "" = unknown/legacy.
+	// Method is how this asset was really rendered: "veo", "cinematic"
+	// (điện ảnh từ ảnh, chế độ chính Wave 3), "anh-tts" (keyframe + TTS
+	// fallback, legacy), "trailer". "" = unknown/legacy.
 	Method string `json:"method"`
 }
 
@@ -364,8 +365,9 @@ func (s *Studio) setAsset(id int64, status, path string) {
 	s.db.Exec(`UPDATE studio_assets SET status=?, path=? WHERE id=?`, status, path, id)
 }
 
-// setAssetMethod records how an asset was really rendered ("veo" or
-// "anh-tts") so the storyboard stays honest about Veo usage.
+// setAssetMethod records how an asset was really rendered ("veo",
+// "cinematic", "anh-tts", "trailer") so the storyboard stays honest about
+// Veo usage.
 func (s *Studio) setAssetMethod(id int64, method string) {
 	s.db.Exec(`UPDATE studio_assets SET method=? WHERE id=?`, method, id)
 }
