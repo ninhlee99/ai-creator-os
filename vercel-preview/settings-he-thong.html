@@ -80,9 +80,13 @@
     <div class="num"><span class="badge badge-ok">TẮT</span></div>
     <div class="label">Nút dừng khẩn cấp (kill switch)</div>
   </div>
-  <div class="card" title="/tmp/aicos-prev-data/ledger.db">
+  <div class="card" title="/tmp/aicos-export-data/ledger.db">
     <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
     <div class="label">Cơ sở dữ liệu</div>
+  </div>
+  <div class="card" title="/tmp/aicos-export-data">
+    <div class="num"><code>dev</code></div>
+    <div class="label">Phiên bản app</div>
   </div>
   <div class="card">
     <div class="num">$0.00</div>
@@ -107,6 +111,32 @@
     <form method="post" action="settings.html" class="env-form">
       <input type="number" name="value" step="0.5" min="0" max="10000" value="5.00" style="width:7em">
       <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">API /api/* (dữ liệu JSON) — đang TẮT</div>
+    <form method="post" action="settings.html">
+      <input type="hidden" name="value" value="1">
+      <button type="submit" class="btn btn-primary btn-sm">Bật</button>
+    </form>
+  </div>
+</div>
+
+<h2>Sao lưu &amp; khôi phục</h2>
+<p class="subtitle">Ảnh chụp thư mục dữ liệu (3 database + file job + token). Khôi phục cần khởi động lại app.</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Tạo bản sao lưu</div>
+    <form method="post" action="settings.html">
+      <button type="submit" class="btn btn-primary btn-sm">Tải bản sao lưu (.zip)</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">Khôi phục từ file</div>
+    <form method="post" action="settings.html" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".zip" required>
+      <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Khôi phục sẽ THAY THẾ toàn bộ dữ liệu hiện tại sau khi restart. Tiếp tục?">Khôi phục</button>
     </form>
   </div>
 </div>

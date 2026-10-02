@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thiết lập lần đầu — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Chào mừng đến AI Creator OS 🎬</h1>
+<p class="subtitle">Thiết lập một lần duy nhất — xong là app tự chạy.</p>
+
+<div class="form-card" style="max-width:640px">
+  <dl class="kv">
+    <dt>Phiên bản</dt><dd><code>dev</code></dd>
+    <dt>Thư mục dữ liệu</dt><dd><code>/tmp/aicos-export-data</code><br><span class="hint">Muốn đổi thư mục: khởi động lại app với <code>-data=/đường/dẫn</code>.</span></dd>
+  </dl>
+  <form method="post" action="onboard.html" style="margin-top:16px">
+    <label class="check"><input type="checkbox" name="dryrun" value="1" checked>
+      Chế độ thử (dry-run) — an toàn, không thao tác thật</label>
+    <p class="hint">Tắt khi bạn đã sẵn sàng cho app chạy thật. Có thể đổi lại bất cứ lúc nào ở Cài đặt · An toàn.</p>
+    <button type="submit" class="btn btn-primary" style="margin-top:12px">Bắt đầu →</button>
+  </form>
+</div>
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>
