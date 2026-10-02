@@ -1,3 +1,5 @@
+//go:build parked
+
 package streamer
 
 import (
@@ -7,14 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
+	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 
 	_ "modernc.org/sqlite"
 )
 
-func testCfg() config.Config {
-	return config.Config{
+func testCfg() governance.Config {
+	return governance.Config{
 		DryRun:                   true, // 1s pacing per segment
 		MaxLiveMinutesPerSession: 120,
 		AIDisclosureText:         "AI-generated stream",

@@ -1,3 +1,5 @@
+//go:build parked
+
 package stream
 
 import (

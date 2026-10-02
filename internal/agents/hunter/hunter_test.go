@@ -1,3 +1,5 @@
+//go:build parked
+
 package hunter
 
 import (
@@ -6,12 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
+	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
 
-func testCfg() config.Config {
-	return config.Config{
+func testCfg() governance.Config {
+	return governance.Config{
 		DryRun:          false,
 		MinSellerRating: 4.0,
 		MaxPrice:        1_000_000,
@@ -100,10 +102,10 @@ func TestRunClientError(t *testing.T) {
 }
 
 func TestNewClientMissingCreds(t *testing.T) {
-	if _, err := NewTikTokShopAffiliateClient(config.Config{}); err == nil {
+	if _, err := NewTikTokShopAffiliateClient(governance.Config{}); err == nil {
 		t.Error("expected error for missing credentials")
 	}
-	cfg := config.Config{TikTokShopAppKey: "k", TikTokShopAccessToken: "tok"}
+	cfg := governance.Config{TikTokShopAppKey: "k", TikTokShopAccessToken: "tok"}
 	if _, err := NewTikTokShopAffiliateClient(cfg); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

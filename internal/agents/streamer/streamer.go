@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package streamer is the Go port of agents/streamer/agent.py.
 //
 // Streamer: live show director.
@@ -21,7 +23,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
@@ -89,7 +90,7 @@ func truncateRunes(s string, n int) string {
 // (governance limit, plan exhausted, or ctx cancelled). The stream engine
 // is always stopped and the session always closed, mirroring Python's
 // try/finally.
-func RunLive(ctx context.Context, cfg config.Config, l *ledger.Ledger,
+func RunLive(ctx context.Context, cfg governance.Config, l *ledger.Ledger,
 	llm engines.LLMProvider, t tts.TTSProvider,
 	avatar AvatarAPI, se StreamEngineAPI, maxMinutes int) map[string]any {
 	limit := maxMinutes

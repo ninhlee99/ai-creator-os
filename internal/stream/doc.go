@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package stream is the in-process FFmpeg RTMP supervisor for AI Creator OS.
 //
 // It replaces the standalone stream-engine binary: instead of a separate

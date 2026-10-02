@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package analyst is the Go port of agents/analyst/agent.py.
 //
 // Analyst: money. Runs after each live session + daily rollup.
@@ -20,7 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
@@ -33,7 +34,7 @@ type OrdersClient interface {
 
 // ReconcileOrders fetches affiliate orders from the TikTok Shop API and
 // inserts them idempotently (duplicate platform_oid -> (0, nil)).
-func ReconcileOrders(ctx context.Context, cfg config.Config, l *ledger.Ledger, shopClient OrdersClient) (int, error) {
+func ReconcileOrders(ctx context.Context, cfg governance.Config, l *ledger.Ledger, shopClient OrdersClient) (int, error) {
 	if v := governance.CheckKillSwitch(cfg); !v.Allowed {
 		return 0, nil
 	}
@@ -63,7 +64,7 @@ func ReconcileOrders(ctx context.Context, cfg config.Config, l *ledger.Ledger, s
 
 // ReviewProducts applies kill/scale rules to every shelf/scaled product
 // and records the decisions in the ledger.
-func ReviewProducts(cfg config.Config, l *ledger.Ledger) (map[string][]string, error) {
+func ReviewProducts(cfg governance.Config, l *ledger.Ledger) (map[string][]string, error) {
 	review := map[string][]string{"killed": {}, "scaled": {}, "kept": {}}
 	products, err := l.GetProducts()
 	if err != nil {
@@ -117,7 +118,7 @@ func ReviewProducts(cfg config.Config, l *ledger.Ledger) (map[string][]string, e
 // Run reconciles orders (when a shop client is given) and reviews the
 // shelf. Unverified shop endpoints fail closed and surface as
 // {"ok": False, "reason": ...}.
-func Run(ctx context.Context, cfg config.Config, l *ledger.Ledger, shopClient OrdersClient) map[string]any {
+func Run(ctx context.Context, cfg governance.Config, l *ledger.Ledger, shopClient OrdersClient) map[string]any {
 	if v := governance.CheckKillSwitch(cfg); !v.Allowed {
 		return map[string]any{"ok": false, "reason": v.Reason}
 	}
