@@ -82,11 +82,14 @@ func NewLocalAvatarProvider(dataDir string) *LocalAvatarProvider {
 
 func (p *LocalAvatarProvider) Name() string { return "local" }
 
-// SupportsRealtime reports the contract capability. Whether frames arrive
-// at wall-clock speed depends on the sidecar's fps on the owner's machine
-// (MuseTalk-class models do NOT reach realtime on M1 Pro — see the
-// FrameStream contract); the stream engine must pace accordingly.
-func (p *LocalAvatarProvider) SupportsRealtime() bool { return true }
+// SupportsRealtime is false on purpose: the local provider is an OFFLINE
+// renderer. A MuseTalk-class sidecar renders a 60s clip in minutes on an
+// M1 Pro — far from wall-clock fps (see docs/MAC_M1_CORE_AUDIT.md) — so
+// its frames can never feed a live stream, and the chain must not treat
+// a paced sidecar session as realtime. Only cloud tiers (HeyGen/D-ID)
+// report true; OpenStream stays implemented for the interface contract
+// but is unreachable through the chain while this reports false.
+func (p *LocalAvatarProvider) SupportsRealtime() bool { return false }
 
 func (p *LocalAvatarProvider) SetEnabled(b bool) {
 	p.mu.Lock()

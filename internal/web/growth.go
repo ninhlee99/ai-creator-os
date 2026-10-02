@@ -405,6 +405,13 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 	out["GrowthProfile"] = prof
 	latest, _ := s.Growth.LatestSnapshot(a.ID)
 	out["GrowthHasSnapshot"] = latest != nil
+	// Followers on the detail page come from the latest synced snapshot
+	// only — there is no manual entry anymore (kills the fake-number
+	// door); no snapshot yet -> the page says "chưa kết nối".
+	if v, ok := metricValue(latest, "followers"); ok {
+		out["GrowthFollowers"] = int64(v)
+		out["GrowthHasFollowers"] = true
+	}
 	if targets, err := s.Growth.ListTargets(a.ID); err == nil {
 		views := make([]growthTargetView, 0, len(targets))
 		for _, t := range targets {

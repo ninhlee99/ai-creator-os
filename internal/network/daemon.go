@@ -22,15 +22,29 @@ import (
 // OnRunAgent) so rehearsal/tests run without touching TikTok. When DryRun is
 // set, no external action is ever started.
 
+// Gate is the shared, live view of the operator safety switches. When
+// set, it is the SINGLE source of truth for kill/dry-run: Tick reads it
+// on every pass, so a dashboard toggle stops (or releases) the daemon
+// without a restart. The static KillSwitch/DryRun fields below are only
+// the fallback for standalone use (unit tests, no dashboard wired).
+type Gate interface {
+	KillSwitch() bool
+	DryRun() bool
+}
+
 // NetConfig is the daemon configuration.
 type NetConfig struct {
 	MasterSwitch       bool   // THE on/off button. Default OFF.
-	KillSwitch         bool   // emergency stop, checked alongside MasterSwitch
-	DryRun             bool   // when true, due slots are never started
+	KillSwitch         bool   // emergency stop (fallback; Gate wins when set)
+	DryRun             bool   // when true, due slots are never started (fallback; Gate wins when set)
 	Timezone           string // IANA name; falls back to fixed UTC+7
 	MaxConcurrentLives int
 	LivesPerDay        int
 	LiveMinutes        int
+
+	// Gate, when non-nil, supplies kill/dry-run live from the shared
+	// operator state (the web *Config) on every Tick.
+	Gate Gate
 }
 
 // DefaultNetConfig returns the safe defaults: everything OFF, dry-run on.
@@ -125,7 +139,14 @@ func (d *Daemon) Tick(ctx context.Context) (TickSummary, error) {
 	var done TickSummary
 	_ = ctx
 
-	if !d.cfg.MasterSwitch || d.cfg.KillSwitch {
+	// Kill/dry-run come from the shared Gate when wired (one source of
+	// truth, read fresh every tick); the static fields are the fallback.
+	kill, dry := d.cfg.KillSwitch, d.cfg.DryRun
+	if d.cfg.Gate != nil {
+		kill, dry = d.cfg.Gate.KillSwitch(), d.cfg.Gate.DryRun()
+	}
+
+	if !d.cfg.MasterSwitch || kill {
 		if len(d.state.Running) > 0 && d.OnStopLive != nil {
 			for id, rs := range d.state.Running {
 				d.OnStopLive(rs.Handle)
@@ -181,8 +202,8 @@ func (d *Daemon) Tick(ctx context.Context) (TickSummary, error) {
 		d.state.LastSlotDate = dateStr
 	}
 
-	// 3. start due slots — never when dry-run
-	if d.OnStartLive != nil && !d.cfg.DryRun {
+	// 3. start due slots — never in dry-run
+	if d.OnStartLive != nil && !dry {
 		due, err := d.ledger.DueSlots(dateStr, nowMin)
 		if err != nil {
 			return done, err

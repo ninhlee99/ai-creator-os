@@ -172,3 +172,14 @@ func TestSidecarLifecycleHonest(t *testing.T) {
 		t.Error("start without binary must fail")
 	}
 }
+
+// TestLocalSupportsRealtimeIsFalse pins the honest capability contract:
+// the local provider is an offline renderer (minutes per 60s clip on an
+// M1 Pro), so it must never claim realtime — the chain then only lets
+// cloud tiers open live streams.
+func TestLocalSupportsRealtimeIsFalse(t *testing.T) {
+	p, _ := testLocalProvider(t, &mockSidecar{})
+	if p.SupportsRealtime() {
+		t.Error("local avatar provider must not claim realtime")
+	}
+}

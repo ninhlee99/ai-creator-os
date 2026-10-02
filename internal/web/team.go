@@ -4,8 +4,6 @@ import (
 	"embed"
 	"net/http"
 	"strings"
-
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 //go:embed static/agents/*.jpg
@@ -123,26 +121,20 @@ func (s *Server) teamTasks(r *http.Request) []teamTask {
 			})
 		}
 	}
-	if len(tasks) == 0 {
-		// Demo tasks so the page is never empty before the first job.
-		demo := []studio.Job{
-			{ID: "demo-1", Kind: "affiliate", Title: "Video affiliate — túi kem quilted", Status: "running", Progress: 55},
-			{ID: "demo-2", Kind: "affiliate", Title: "Video affiliate — váy hoa mùa hè", Status: "done", Progress: 100},
-			{ID: "demo-3", Kind: "film", Title: "Phim ngắn — Người kể chuyện đêm", Status: "queued", Progress: 0},
-		}
-		for _, j := range demo {
-			tasks = append(tasks, teamTask{
-				ID: j.ID, Title: j.Title, Kind: j.Kind, Status: j.Status,
-				Progress: j.Progress, Icon: taskIcon(j.Status),
-				Agents: agentsFor(j.Status, j.Progress),
-			})
-		}
-	}
+	// No jobs yet -> empty list; the page renders the honest empty state.
+	// Never invent demo tasks: the owner must only see real work.
 	return tasks
 }
 
 func (s *Server) handleTeam(w http.ResponseWriter, r *http.Request) {
 	tasks := s.teamTasks(r)
+	if len(tasks) == 0 {
+		s.render(w, "team", s.ctx(
+			"Tasks", tasks,
+			"Empty", true,
+		))
+		return
+	}
 	sel := 0
 	if id := r.URL.Query().Get("job"); id != "" {
 		for i, t := range tasks {
