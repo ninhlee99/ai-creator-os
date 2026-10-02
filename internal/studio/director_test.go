@@ -88,7 +88,7 @@ func TestWriteFilmScript(t *testing.T) {
 	 "dialogue":[{"character":"An","text":"Anh đến rồi à?","emotion":"dịu dàng"}],
 	 "image_prompt":"woman in cafe window, rain",
 	 "narration":"Đêm mưa Hà Nội."}]}`
-	script, err := WriteFilmScript(context.Background(), &stubLLM{reply: reply}, "tình yêu", 60)
+	script, err := WriteFilmScript(context.Background(), &stubLLM{reply: reply}, "tình yêu", 60, "9:16")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestWriteFilmScript(t *testing.T) {
 func TestWriteFilmScriptEmpty(t *testing.T) {
 	_, err := WriteFilmScript(context.Background(),
 		&stubLLM{reply: `{"title":"x","logline":"y","characters":[],"scenes":[]}`},
-		"t", 60)
+		"t", 60, "9:16")
 	if err == nil {
 		t.Fatal("want error for empty script")
 	}

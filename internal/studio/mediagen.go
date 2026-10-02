@@ -28,10 +28,12 @@ type MediaGen interface {
 	// GenerateImage renders one image for prompt (+ optional reference
 	// images) into outPath.
 	GenerateImage(ctx context.Context, prompt string, refs []ImageRef, outPath string) error
-	// GenerateVideo renders a short clip (seconds hint, 16:9 or 9:16 by
-	// prompt). firstFrame may be "" (text-to-video) or a local image path
-	// (image-to-video, used for identity/product lock).
-	GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, outPath string) error
+	// GenerateVideo renders a short clip (seconds hint). aspect is
+	// "9:16" (1080x1920) or "16:9" (1920x1080) — passed to Veo as
+	// aspectRatio; "" means "9:16". firstFrame may be "" (text-to-video)
+	// or a local image path (image-to-video, used for identity/product
+	// lock).
+	GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, aspect, outPath string) error
 	// Name is the stable provider id.
 	Name() string
 	// Healthy is a cheap check (keys configured, no quota burned).
@@ -325,11 +327,20 @@ type veoPredictRequest struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
+// veoAspect normalizes a job aspect to a Veo API aspectRatio value.
+// Veo only accepts "9:16"/"16:9"; anything else falls back to vertical.
+func veoAspect(aspect string) string {
+	if aspect == "16:9" {
+		return "16:9"
+	}
+	return "9:16"
+}
+
 // GenerateVideo renders a clip with Veo 3 (image-to-video when firstFrame is
 // set). Veo requires a billing-enabled Google Cloud project; without it the
 // API returns 400/403 and the caller should fall back to the photo-list
 // format (GenerateImage only).
-func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, outPath string) error {
+func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, aspect, outPath string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
 	}
@@ -350,7 +361,7 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 	req := veoPredictRequest{
 		Instances: []veoInstance{inst},
 		Parameters: map[string]any{
-			"aspectRatio":     "9:16",
+			"aspectRatio":     veoAspect(aspect),
 			"durationSeconds": seconds,
 		},
 	}

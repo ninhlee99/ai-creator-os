@@ -133,7 +133,7 @@ func MakeShortVideo(ctx context.Context, topic string, t tts.TTSProvider,
 		return nil, err
 	}
 	out := filepath.Join(workdir, "short.mp4")
-	if err := engines.RenderScene(ctx, cover, wav, secs+0.5, out); err != nil {
+	if err := engines.RenderScene(ctx, cover, wav, secs+0.5, "9:16", out); err != nil {
 		return nil, fmt.Errorf("render: %w", err)
 	}
 	return map[string]any{

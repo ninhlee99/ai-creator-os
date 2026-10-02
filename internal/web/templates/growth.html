@@ -116,7 +116,7 @@
 <tr>
   <td>{{.PlannedFor}}</td>
   <td>{{.Username}}</td>
-  <td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+  <td>{{.Variant}} <span class="badge badge-info">{{variantAspect .Variant}}</span>{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
   <td>{{.Topic}}{{if .DedupAction}} <span class="badge badge-warn">đã đổi góc chống trùng</span>{{end}}{{if .RelatedItemID}} <span class="badge badge-info">có bản liên kết</span>{{end}}</td>
   <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener">{{.PublishedRef}}</a>{{end}}</td>
   <td>{{if .PubNote}}<span class="hint">{{.PubNote}}</span>{{else}}<span class="hint">{{.Hook}}</span>{{end}}</td>

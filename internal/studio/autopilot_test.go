@@ -19,7 +19,7 @@ import (
 )
 
 func TestPhotoListFilter(t *testing.T) {
-	f, total := photoListFilter(5, 6)
+	f, total := photoListFilter(5, 6, 1080, 1920)
 	if total != 5*6-4*0.6 {
 		t.Fatalf("total=%v want %v", total, 5*6-4*0.6)
 	}
@@ -36,7 +36,7 @@ func TestPhotoListFilter(t *testing.T) {
 	if !strings.Contains(f, "offset=5.40") {
 		t.Fatalf("bad first offset in %s", f)
 	}
-	f1, total1 := photoListFilter(1, 6)
+	f1, total1 := photoListFilter(1, 6, 1080, 1920)
 	if total1 != 6 || strings.Count(f1, "xfade") != 0 || !strings.Contains(f1, "[vout]") {
 		t.Fatalf("single photo: %v %s", total1, f1)
 	}

@@ -121,7 +121,7 @@
   <table>
   <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Hook</th></tr>
   {{range .GrowthPlanItems}}
-  <tr><td>{{.PlannedFor}}</td><td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td><td>{{.Topic}}</td><td>{{.Hook}}</td></tr>
+  <tr><td>{{.PlannedFor}}</td><td>{{.Variant}} <span class="badge badge-info">{{variantAspect .Variant}}</span>{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td><td>{{.Topic}}</td><td>{{.Hook}}</td></tr>
   {{end}}
   </table>
   {{else}}<p class="hint">Không còn mục nào sắp tới trong plan này.</p>{{end}}
@@ -131,7 +131,7 @@
   <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Trạng thái</th><th>Ghi chú</th></tr>
   {{range .GrowthRecentItems}}
   <tr>
-    <td>{{.PlannedFor}}</td><td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+    <td>{{.PlannedFor}}</td><td>{{.Variant}} <span class="badge badge-info">{{variantAspect .Variant}}</span>{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
     <td>{{.Topic}}{{if .DedupAction}} <span class="badge badge-warn">đổi góc chống trùng</span>{{end}}{{if .RelatedItemID}} <span class="badge badge-info">bản liên kết #{{.RelatedItemID}}</span>{{end}}</td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener">xem video</a>{{end}}{{if .StudioJobID}}<br><span class="hint">job {{.StudioJobID}}</span>{{end}}</td>
     <td><span class="hint">{{.PubNote}}</span></td>

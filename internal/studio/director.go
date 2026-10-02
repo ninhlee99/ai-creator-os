@@ -166,8 +166,9 @@ Chỉ trả JSON: {"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camer
 
 // WriteFilmScript viết kịch bản phim ngắn chuyên nghiệp: character bible
 // khóa nhân vật + từng cảnh khóa địa điểm/thời gian/không gian + shot điện
-// ảnh + thoại có cảm xúc.
-func WriteFilmScript(ctx context.Context, llm LLM, topic string, seconds int) (FilmScriptPro, error) {
+// ảnh + thoại có cảm xúc. aspect ("9:16"|"16:9") tells the director the
+// delivery frame so the shot list is composed for the real format.
+func WriteFilmScript(ctx context.Context, llm LLM, topic string, seconds int, aspect string) (FilmScriptPro, error) {
 	var script FilmScriptPro
 	n := seconds / 20
 	if n < 2 {
@@ -177,7 +178,7 @@ func WriteFilmScript(ctx context.Context, llm LLM, topic string, seconds int) (F
 		n = 6
 	}
 	sys := "Bạn là biên kịch phim ngắn Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Chủ đề phim: %s. Phim dài khoảng %ds, gồm %d cảnh, vertical 9:16.
+	prompt := fmt.Sprintf(`Chủ đề phim: %s. Phim dài khoảng %ds, gồm %d cảnh, %s.
 
 Viết kịch bản NHƯ PHIM THẬT:
 1. characters: 1-3 nhân vật, mỗi người có name + appearance (tuổi, khuôn mặt, tóc, da, dáng người — tiếng Anh, CHI TIẾT để khóa identity) + wardrobe (trang phục — tiếng Anh).
@@ -194,7 +195,7 @@ Viết kịch bản NHƯ PHIM THẬT:
 Yêu cầu: nhân vật NHẤT QUÁN mọi cảnh, bối cảnh mỗi cảnh NHẤT QUÁN mọi shot, thoại rõ ràng mạch lạc có cảm xúc, có mở-thân-kết.
 
 Chỉ trả JSON: {"title":"...","logline":"...","characters":[{"name":"...","appearance":"...","wardrobe":"..."}],"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","seconds":18,"shots":[{"shot_size":"WS","camera_move":"slow dolly-in","lens_light":"35mm, golden hour","action":"..."}],"dialogue":[{"character":"...","text":"...","emotion":"..."}],"image_prompt":"...","narration":"..."}]}`,
-		topic, seconds, n)
+		topic, seconds, n, orientationWord(aspect))
 	text, err := llm.Complete(ctx, sys, prompt)
 	if err != nil {
 		return script, fmt.Errorf("director: %w", err)

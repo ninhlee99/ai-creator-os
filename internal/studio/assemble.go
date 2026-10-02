@@ -11,11 +11,11 @@ import (
 	"sync"
 )
 
-const (
-	outW   = 1080
-	outH   = 1920
-	outFPS = 30
-)
+const outFPS = 30
+
+// (Delivery dimensions come from AspectDims in studio.go: every renderer
+// takes the job aspect explicitly, so a "long" YouTube cut can never
+// silently render vertical.)
 
 // videoEncoder picks the H.264 encoder once per process: Apple's hardware
 // encoder (h264_videotoolbox — included in macOS ffmpeg builds such as
@@ -51,8 +51,11 @@ func ffmpegRun(ctx context.Context, args ...string) error {
 // 0.6s crossfades between photos, and the trending track loudness-matched
 // to -14 LUFS with fades. No text, no voiceover — Ninh's fashion format.
 //
+// aspect is "9:16" (1080x1920) or "16:9" (1920x1080) — the delivery frame
+// comes from the job, never a package constant.
+//
 // When musicPath == "" the output is a silent video (no bogus audio input).
-func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath string) error {
+func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath, aspect string) error {
 	if len(photos) == 0 {
 		return fmt.Errorf("no photos")
 	}
@@ -63,7 +66,8 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 	for _, p := range photos {
 		args = append(args, "-i", p) // single image each; zoompan multiplies frames
 	}
-	filter, total := photoListFilter(len(photos), secsPer)
+	w, h := AspectDims(aspect)
+	filter, total := photoListFilter(len(photos), secsPer, w, h)
 
 	if musicPath != "" {
 		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
@@ -89,9 +93,10 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 	return ffmpegRun(ctx, args...)
 }
 
-// photoListFilter builds the Ken Burns + xfade graph for n photos.
-// Returns the filter string and the total output duration.
-func photoListFilter(n int, secsPer float64) (string, float64) {
+// photoListFilter builds the Ken Burns + xfade graph for n photos at the
+// given output dimensions. Returns the filter string and the total output
+// duration.
+func photoListFilter(n int, secsPer float64, outW, outH int) (string, float64) {
 	const fade = 0.6
 	frames := int(secsPer*outFPS + 0.5)
 	var sb strings.Builder
@@ -132,8 +137,10 @@ func photoListFilter(n int, secsPer float64) (string, float64) {
 // positional shake, hard cuts between photos — no crossfades. Music is
 // loudness-matched to -14 LUFS with fades. No text, no voiceover.
 //
+// aspect is "9:16" (1080x1920) or "16:9" (1920x1080).
+//
 // When musicPath == "" the output is a silent video.
-func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, bpm int, musicPath string, musicStart float64, outPath string) error {
+func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, bpm int, musicPath string, musicStart float64, outPath, aspect string) error {
 	if len(photos) == 0 {
 		return fmt.Errorf("no photos")
 	}
@@ -147,7 +154,7 @@ func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, b
 	for _, p := range photos {
 		args = append(args, "-i", p)
 	}
-	filter, total := beatBounceFilter(len(photos), secsPer, bpm)
+	filter, total := beatBounceFilter(len(photos), secsPer, bpm, aspect)
 
 	if musicPath != "" {
 		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
@@ -178,12 +185,14 @@ func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, b
 // on every beat (sharpened with pow 2 so the "giật" feels snappy), then a
 // crop with an oscillating offset for the handheld shake. Base zoom 1.06
 // keeps the shake inside the frame (no black corners).
-func beatBounceFilter(n int, secsPer float64, bpm int) (string, float64) {
+func beatBounceFilter(n int, secsPer float64, bpm int, aspect string) (string, float64) {
 	frames := int(secsPer*outFPS + 0.5)
 	beat := float64(outFPS) * 60 / float64(bpm) // frames per beat
-	// Overscan headroom: zoompan renders slightly larger than the output
-	// so the shake crop never reveals edges.
-	const overW, overH = 1200, 2133
+	// Output frame + overscan headroom: zoompan renders slightly larger
+	// than the output so the shake crop never reveals edges (overscan is
+	// ~11% per axis, the old 1200x2133 constants generalized).
+	outW, outH := AspectDims(aspect)
+	overW, overH := outW*10/9, outH*10/9
 	var sb strings.Builder
 	for i := 0; i < n; i++ {
 		zoom := fmt.Sprintf("1.06+0.14*pow(max(0,sin(2*PI*on/%.4f)),2)", beat)

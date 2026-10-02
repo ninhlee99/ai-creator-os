@@ -41,3 +41,15 @@ func TestVariantMetadataDifferentiates(t *testing.T) {
 		t.Errorf("caption should carry the AI tag: %q", VariantCaption(tk))
 	}
 }
+
+func TestVariantAspect(t *testing.T) {
+	if VariantAspect(VariantYouTube) != "16:9" {
+		t.Error("youtube_long variant must render 16:9")
+	}
+	if VariantAspect(VariantTikTok) != "9:16" || VariantAspect(VariantShorts) != "9:16" {
+		t.Error("tiktok/shorts variants must stay 9:16")
+	}
+	if VariantAspect("unknown") != "9:16" {
+		t.Error("unknown variant must fall back to 9:16")
+	}
+}

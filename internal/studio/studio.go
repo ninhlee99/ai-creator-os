@@ -70,6 +70,29 @@ type AffiliateParams struct {
 type FilmParams struct {
 	Topic   string `json:"topic"`
 	Seconds int    `json:"seconds"`
+	// Aspect is the delivery frame: "9:16" (Shorts/TikTok) or "16:9"
+	// (YouTube long-form). Empty means "9:16" — every pre-existing flow
+	// keeps its old behavior.
+	Aspect string `json:"aspect"`
+}
+
+// AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or
+// empty aspects fall back to 9:16 so old jobs/params keep rendering.
+func AspectDims(aspect string) (w, h int) {
+	if aspect == "16:9" {
+		return 1920, 1080
+	}
+	return 1080, 1920
+}
+
+// orientationWord renders the aspect for image/video generation prompts
+// (director + Veo keyframe/video prompts must ask for the real frame,
+// otherwise a "long" YouTube cut would be generated vertical).
+func orientationWord(aspect string) string {
+	if aspect == "16:9" {
+		return "horizontal 16:9"
+	}
+	return "vertical 9:16"
 }
 
 // Job is one studio render job.
@@ -569,10 +592,10 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			vprompt := fmt.Sprintf("%s. Camera: %s. Lens/lighting: %s. "+
 				"Vertical 9:16 cinematic product video, smooth professional motion, no text, no watermark.",
 				sh.VideoPrompt, sh.CameraMove, sh.LensLight)
-			if err := s.mg.GenerateVideo(ctx, vprompt, key, sh.Seconds, out); err != nil {
+			if err := s.mg.GenerateVideo(ctx, vprompt, key, sh.Seconds, "9:16", out); err != nil {
 				s.appendLog(id, fmt.Sprintf("Shot %d lỗi video: %v (giữ keyframe Ken Burns)", i+1, err))
 				still := filepath.Join(work, fmt.Sprintf("shot-%02d-still.mp4", i))
-				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still); kerr == nil {
+				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still, "9:16"); kerr == nil {
 					s.setAsset(aid, StatusDone, still)
 					clips = append(clips, still)
 				} else {
@@ -593,7 +616,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		} else {
 			s.appendLog(id, "Veo không khả dụng — dùng bản list ảnh.")
-			if err := AssemblePhotoList(ctx, photos, secsPer, "", 0, silent); err != nil {
+			if err := AssemblePhotoList(ctx, photos, secsPer, "", 0, silent, "9:16"); err != nil {
 				fail(err)
 				return
 			}
@@ -611,13 +634,13 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	} else {
 		s.appendLog(id, "Dựng giật-giật theo nhịp nhạc…")
 		if p.MusicPath != "" {
-			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, p.MusicPath, p.MusicStart, final); err != nil {
+			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, p.MusicPath, p.MusicStart, final, "9:16"); err != nil {
 				fail(err)
 				return
 			}
 		} else {
 			s.appendLog(id, "Chưa có file nhạc — xuất bản không nhạc (tải sound trending ở tab Trending rồi tạo lại).")
-			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, "", 0, filepath.Join(work, "silent.mp4")); err != nil {
+			if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, "", 0, filepath.Join(work, "silent.mp4"), "9:16"); err != nil {
 				fail(err)
 				return
 			}
@@ -699,7 +722,8 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	}
 
 	s.appendLog(id, "Biên kịch đang viết kịch bản phim…")
-	script, err := WriteFilmScript(ctx, s.llm, p.Topic, p.Seconds)
+	orient := orientationWord(p.Aspect)
+	script, err := WriteFilmScript(ctx, s.llm, p.Topic, p.Seconds, p.Aspect)
 	if err != nil {
 		fail(err)
 		return
@@ -713,6 +737,9 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	}
 
 	// Character portraits: khóa identity — mọi cảnh sau dùng làm reference.
+	// Portraits stay vertical 9:16 on purpose: they are identity references
+	// for generation, not delivery frames (the scenes themselves render in
+	// the job's aspect).
 	for i := range script.Characters {
 		c := &script.Characters[i]
 		pp := fmt.Sprintf("Cinematic character portrait, %s. Wardrobe: %s. "+
@@ -740,7 +767,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		made := false
 		// Keyframe: khóa nhân vật + khóa bối cảnh (địa điểm/thời gian/ánh sáng).
 		keyPrompt := sc.ImagePrompt + charLocks + "\n" + sc.SceneLockBlock() +
-			" Cinematic photorealistic, vertical 9:16, no text, no watermark."
+			" Cinematic photorealistic, " + orient + ", no text, no watermark."
 		img := filepath.Join(work, fmt.Sprintf("scene%02d.png", i))
 		if kerr := s.mg.GenerateImage(ctx, keyPrompt, charRefs, img); kerr != nil {
 			s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi keyframe: %v", i+1, kerr))
@@ -752,10 +779,10 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		for _, sh := range sc.Shots {
 			camBits = append(camBits, fmt.Sprintf("%s %s", sh.ShotSize, sh.CameraMove))
 		}
-		vprompt := fmt.Sprintf("%s. Shots: %s. Vertical 9:16 cinematic film, natural motion, no text.",
-			sc.ImagePrompt, strings.Join(camBits, "; ")) + charLocks + "\n" + sc.SceneLockBlock()
+		vprompt := fmt.Sprintf("%s. Shots: %s. %s cinematic film, natural motion, no text.",
+			sc.ImagePrompt, strings.Join(camBits, "; "), orient) + charLocks + "\n" + sc.SceneLockBlock()
 		s.appendLog(id, fmt.Sprintf("Quay cảnh %d/%d…", i+1, len(script.Scenes)))
-		if err := s.mg.GenerateVideo(ctx, vprompt, img, sc.Seconds, mp4); err == nil {
+		if err := s.mg.GenerateVideo(ctx, vprompt, img, sc.Seconds, p.Aspect, mp4); err == nil {
 			made = true
 		} else {
 			s.appendLog(id, fmt.Sprintf("Veo lỗi (%v) — dùng keyframe + thoại", err))
@@ -785,9 +812,9 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 			}
 			var rerr error
 			if wavPath == "" {
-				rerr = AssemblePhotoList(ctx, []string{img}, dur, "", 0, mp4)
+				rerr = AssemblePhotoList(ctx, []string{img}, dur, "", 0, mp4, p.Aspect)
 			} else {
-				rerr = engines.RenderScene(ctx, img, wavPath, dur, mp4)
+				rerr = engines.RenderScene(ctx, img, wavPath, dur, p.Aspect, mp4)
 			}
 			if rerr != nil {
 				s.appendLog(id, fmt.Sprintf("Cảnh %d lỗi dựng: %v", i+1, rerr))

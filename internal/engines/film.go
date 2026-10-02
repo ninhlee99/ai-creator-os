@@ -31,6 +31,15 @@ const (
 	filmFPS = 30
 )
 
+// filmDims maps an aspect to scene render dimensions ("16:9" ->
+// 1920x1080, anything else -> 1080x1920).
+func filmDims(aspect string) (w, h int) {
+	if aspect == "16:9" {
+		return 1920, 1080
+	}
+	return filmW, filmH
+}
+
 // FilmScene is one scene of a film plan.
 type FilmScene struct {
 	Narration   string `json:"narration"`
@@ -208,12 +217,13 @@ func ffmpegRun(ctx context.Context, args ...string) error {
 }
 
 // RenderScene builds a scene mp4: still image + Ken Burns slow zoom +
-// narration audio.
-func RenderScene(ctx context.Context, imagePath, audioPath string, seconds float64, outPath string) error {
+// narration audio. aspect is "9:16" (1080x1920) or "16:9" (1920x1080).
+func RenderScene(ctx context.Context, imagePath, audioPath string, seconds float64, aspect, outPath string) error {
 	dur := seconds
 	if dur < 1.0 {
 		dur = 1.0
 	}
+	fw, fh := filmDims(aspect)
 	return ffmpegRun(ctx,
 		"-loop", "1", "-framerate", fmt.Sprint(filmFPS), "-i", imagePath,
 		"-i", audioPath,
@@ -222,7 +232,7 @@ func RenderScene(ctx context.Context, imagePath, audioPath string, seconds float
 			"crop=%d:%d,"+
 			"zoompan=z='min(zoom+0.0012,1.25)':d=1:"+
 			"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"+
-			"s=%dx%d:fps=%d[v]", filmW, filmH, filmW, filmH, filmW, filmH, filmFPS),
+			"s=%dx%d:fps=%d[v]", fw, fh, fw, fh, fw, fh, filmFPS),
 		"-map", "[v]", "-map", "1:a",
 		"-t", fmt.Sprintf("%.2f", dur),
 		"-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
@@ -316,7 +326,7 @@ func MakeFilm(ctx context.Context, topic string, llm LLMProvider, t tts.TTSProvi
 			dur = wavSec
 		}
 		mp4 := filepath.Join(workdir, fmt.Sprintf("scene%d.mp4", i))
-		if err := RenderScene(ctx, img, wavPath, dur, mp4); err != nil {
+		if err := RenderScene(ctx, img, wavPath, dur, "9:16", mp4); err != nil {
 			return FilmResult{}, err
 		}
 		scenes = append(scenes, mp4)

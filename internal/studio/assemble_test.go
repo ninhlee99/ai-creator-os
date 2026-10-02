@@ -13,7 +13,7 @@ import (
 )
 
 func TestBeatBounceFilter(t *testing.T) {
-	filter, total := beatBounceFilter(4, 3.0, 120)
+	filter, total := beatBounceFilter(4, 3.0, 120, "9:16")
 	if total != 12.0 {
 		t.Fatalf("total = %v, want 12", total)
 	}
@@ -37,8 +37,8 @@ func TestBeatBounceFilter(t *testing.T) {
 }
 
 func TestBeatBounceFilterBPM(t *testing.T) {
-	f120, _ := beatBounceFilter(2, 3.0, 120)
-	f100, _ := beatBounceFilter(2, 3.0, 100)
+	f120, _ := beatBounceFilter(2, 3.0, 120, "9:16")
+	f100, _ := beatBounceFilter(2, 3.0, 100, "9:16")
 	if f120 == f100 {
 		t.Fatal("bpm must change the beat period")
 	}
@@ -77,7 +77,7 @@ func TestAssembleBeatBounceRender(t *testing.T) {
 	out := filepath.Join(dir, "beat.mp4")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := AssembleBeatBounce(ctx, photos, 2.0, 120, "", 0, out); err != nil {
+	if err := AssembleBeatBounce(ctx, photos, 2.0, 120, "", 0, out, "9:16"); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	dur := probeDuration(ctx, out)
@@ -125,7 +125,7 @@ func TestAssembleBeatBounceMusic(t *testing.T) {
 	out := filepath.Join(dir, "beat-music.mp4")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := AssembleBeatBounce(ctx, photos, 2.0, 120, music, 0, out); err != nil {
+	if err := AssembleBeatBounce(ctx, photos, 2.0, 120, music, 0, out, "9:16"); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	probe := exec.Command("ffprobe", "-v", "error", "-show_entries",
@@ -164,4 +164,75 @@ func probeDuration(ctx context.Context, path string) float64 {
 	var d float64
 	fmt.Sscanf(strings.TrimSpace(out.String()), "%f", &d)
 	return d
+}
+
+// probeDims returns the (width, height) of the first video stream.
+func probeDims(t *testing.T, path string) (int, int) {
+	t.Helper()
+	cmd := exec.Command("ffprobe", "-v", "error",
+		"-select_streams", "v:0",
+		"-show_entries", "stream=width,height", "-of", "csv=p=0", path)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("ffprobe dims: %v", err)
+	}
+	var w, h int
+	fmt.Sscanf(strings.TrimSpace(out.String()), "%d,%d", &w, &h)
+	return w, h
+}
+
+// TestAssemble16x9 is the R2-W5 acceptance test: a 16:9 job (YouTube
+// long-form) must render a true 1920x1080 file — never a vertical cut
+// mislabeled as long-form.
+func TestAssemble16x9(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg not available")
+	}
+	dir := t.TempDir()
+	photo := makeTestPNG(t, dir, "a.png", "testsrc")
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	pl := filepath.Join(dir, "long-photolist.mp4")
+	if err := AssemblePhotoList(ctx, []string{photo}, 2.0, "", 0, pl, "16:9"); err != nil {
+		t.Fatalf("photo-list 16:9 render: %v", err)
+	}
+	if w, h := probeDims(t, pl); w != 1920 || h != 1080 {
+		t.Fatalf("photo-list 16:9 = %dx%d, want 1920x1080", w, h)
+	}
+
+	bb := filepath.Join(dir, "long-beat.mp4")
+	if err := AssembleBeatBounce(ctx, []string{photo}, 2.0, 120, "", 0, bb, "16:9"); err != nil {
+		t.Fatalf("beat-bounce 16:9 render: %v", err)
+	}
+	if w, h := probeDims(t, bb); w != 1920 || h != 1080 {
+		t.Fatalf("beat-bounce 16:9 = %dx%d, want 1920x1080", w, h)
+	}
+
+	// 9:16 (the default for every pre-existing flow) is unchanged.
+	v := filepath.Join(dir, "vert-beat.mp4")
+	if err := AssembleBeatBounce(ctx, []string{photo}, 2.0, 120, "", 0, v, "9:16"); err != nil {
+		t.Fatalf("beat-bounce 9:16 render: %v", err)
+	}
+	if w, h := probeDims(t, v); w != 1080 || h != 1920 {
+		t.Fatalf("beat-bounce 9:16 = %dx%d, want 1080x1920", w, h)
+	}
+}
+
+// TestAspectDims pins the aspect -> dimension contract both renderers and
+// the engine path rely on. Unknown aspects fall back to vertical (the
+// old behavior) instead of failing the job.
+func TestAspectDims(t *testing.T) {
+	if w, h := AspectDims("16:9"); w != 1920 || h != 1080 {
+		t.Fatalf("16:9 = %dx%d", w, h)
+	}
+	for _, a := range []string{"9:16", "", "1:1", "weird"} {
+		if w, h := AspectDims(a); w != 1080 || h != 1920 {
+			t.Fatalf("aspect %q = %dx%d, want 1080x1920 fallback", a, w, h)
+		}
+	}
+	if veoAspect("16:9") != "16:9" || veoAspect("") != "9:16" || veoAspect("x") != "9:16" {
+		t.Fatal("veoAspect normalization wrong")
+	}
 }
