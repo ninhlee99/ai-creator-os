@@ -130,6 +130,18 @@
   // Storyboard từng job: dùng nhãn/class do server trả (không định nghĩa
   // lại nhãn ở client — R2-W3).
   var boards = {};
+  // Xem prompt đầy đủ của một shot (storyboard QC — Film Wave 2 / P1-3).
+  window.togglePrompt = function (pid) {
+    var el = document.getElementById(pid);
+    if (!el) return;
+    if (el.style.display === 'none') {
+      el.textContent = (window.__shotPrompts || {})[pid] || '(không có prompt)';
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  };
+
   window.toggleBoard = function (id) {
     var box = document.querySelector('[data-job="' + id + '"] .board');
     if (!box) return;
@@ -148,14 +160,30 @@
             '<div class="hint" id="cap-' + id + '">' + d.job.caption.replace(/\n/g, '<br>') + '</div></div>';
         }
         (d.assets || []).forEach(function (a) {
-          h += '<div class="shot"><div class="shot-head">Cảnh ' + (a.idx + 1) +
-            ' <span class="badge badge-' + a.class + '">' + a.label + '</span> <em>' + a.kind + '</em>' +
-            (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') + '</div>';
+          var name;
+          if (a.kind === 'shot') name = 'Shot ' + (a.seq + 1);
+          else if (a.kind === 'trailer') name = '📱 Trailer ' + (a.idx - 1999);
+          else if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
+          else if (a.kind === 'portrait') name = 'Chân dung';
+          else name = a.kind + ' ' + (a.idx + 1);
+          var pid = 'prompt-' + id + '-' + a.id;
+          (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+          h += '<div class="shot"><div class="shot-head">' + name +
+            ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
+            (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') +
+            (a.trailer ? ' <span class="badge" title="Shot đắt giá — đã dùng cắt trailer">📱 trailer</span>' : '') +
+            '</div>';
           if (a.preview) {
-            if (a.kind === 'clip') { h += '<video controls src="' + a.preview + '" style="max-width:220px"></video>'; }
-            else { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
+            if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
+            else { h += '<video controls preload="metadata" src="' + a.preview + '" style="max-width:220px"></video>'; }
           }
-          h += '<div class="hint">' + a.prompt + '</div></div>';
+          h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
+          h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
+          if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
+            h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại (tốn chi phí Veo) rồi dựng lại phim.">' +
+              '<button class="btn btn-sm">🎬 Quay lại shot này</button></form>';
+          }
+          h += '</div></div>';
         });
         box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
       });
@@ -201,11 +229,13 @@
     if (!sec || !est) return;
     var rate = parseFloat(est.getAttribute('data-rate') || '0.05') || 0.05;
     function upd() {
-      var s = Math.max(30, parseInt(sec.value || '90', 10) || 90);
-      var scenes = Math.ceil(s / 8);
-      var cost = (scenes * 8 * rate).toFixed(2);
-      var eta = scenes * 3;
-      est.textContent = '≈ ' + scenes + ' cảnh × 8s Veo × $' + rate + '/s ≈ $' + cost +
+      var s = parseInt(sec.value || '90', 10) || 90;
+      if (s < 30) s = 30;
+      if (s > 3600) s = 3600;
+      var shots = Math.ceil(s / 8);
+      var cost = (shots * 8 * rate).toFixed(2);
+      var eta = shots * 3;
+      est.textContent = '≈ ' + shots + ' shot × 8s Veo × $' + rate + '/s ≈ $' + cost +
         ' · render ~' + eta + ' phút (ước tính chưa kiểm chứng)';
     }
     sec.addEventListener('input', upd);

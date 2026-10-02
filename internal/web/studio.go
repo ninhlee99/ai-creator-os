@@ -140,17 +140,17 @@ func filmRateValue() string {
 }
 
 // filmEstimate renders the one-line cost/ETA estimate shown on the film
-// form before creation (Film Wave 1 / P0-4): scenes ≈ ceil(90s/8s) because
-// Veo renders ~8s per call, render ≈ 3 min/scene of Veo polling.
+// form before creation: shots ≈ ceil(seconds/8) because Veo renders ~8s per
+// call, render ≈ 3 min per Veo shot of polling.
 func filmEstimate() string {
 	rateF, _ := strconv.ParseFloat(filmRateValue(), 64)
 	if rateF <= 0 {
 		rateF = 0.05
 	}
-	scenes := (90 + 7) / 8
-	cost := float64(scenes*8) * rateF
-	return fmt.Sprintf("≈ %d cảnh × 8s Veo × $%s/s ≈ $%.2f · render ~%d phút (ước tính chưa kiểm chứng)",
-		scenes, filmRateValue(), cost, scenes*3)
+	shots := (90 + 7) / 8
+	cost := float64(shots*8) * rateF
+	return fmt.Sprintf("≈ %d shot × 8s Veo × $%s/s ≈ $%.2f · render ~%d phút (ước tính chưa kiểm chứng)",
+		shots, filmRateValue(), cost, shots*3)
 }
 
 // topSound returns "Artist – Title" of the top-ranked trending sound.
@@ -263,13 +263,15 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	http.Redirect(w, r, "/studio/jobs", http.StatusSeeOther)
 }
 
-// handleStudioFilmCreate queues a short-film job.
+// handleStudioFilmCreate queues a film job. Ninh 2026-10-02 (final):
+// every film is 16:9 — no aspect choice on the form (the Wave-1 radio is
+// gone); vertical 9:16 trailers are center-cropped automatically.
 func (s *Server) handleStudioFilmCreate(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		s.fail(w, fmt.Errorf("studio nil"), "studio film")
 		return
 	}
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(60 << 20); err != nil {
 		s.fail(w, err, "parse film form")
 		return
 	}
@@ -279,13 +281,23 @@ func (s *Server) handleStudioFilmCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	seconds, _ := strconv.Atoi(r.PostFormValue("seconds"))
-	// P1-7: the manual film form now picks the delivery frame (the growth
-	// automation path already set it since R2-W5).
-	aspect := r.PostFormValue("aspect")
-	if aspect != "16:9" {
-		aspect = "9:16"
+	if seconds < 30 {
+		seconds = 30
 	}
-	if _, err := s.Studio.CreateFilmJob(studio.FilmParams{Topic: topic, Seconds: seconds, Aspect: aspect}); err != nil {
+	if seconds > 3600 {
+		seconds = 3600
+	}
+	genre := strings.TrimSpace(r.PostFormValue("genre"))
+	musicPath, err := saveUpload(r, "music_file", s.Studio.UploadDir())
+	if err != nil {
+		s.fail(w, err, "upload music")
+		return
+	}
+	upscale := r.PostFormValue("upscale_final") == "1"
+	if _, err := s.Studio.CreateFilmJob(studio.FilmParams{
+		Topic: topic, Seconds: seconds, Aspect: "16:9",
+		Genre: genre, MusicPath: musicPath, UpscaleFinal: upscale,
+	}); err != nil {
 		s.fail(w, err, "create film job")
 		return
 	}
@@ -305,6 +317,23 @@ func (s *Server) handleStudioJobRerun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	seeOther(w, r, "/studio/jobs?ok="+url.QueryEscape("Đang chạy tiếp job phim"))
+}
+
+// handleStudioShotRerun re-renders one storyboard shot, then re-assembles
+// the film (Film Wave 2 / P1-3: "Quay lại shot này"). Runs synchronously in
+// a goroutine and redirects with ?ok=/?err= like every other POST.
+func (s *Server) handleStudioShotRerun(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.NotFound(w, r)
+		return
+	}
+	id := r.PathValue("id")
+	seq, _ := strconv.Atoi(r.PathValue("seq"))
+	if err := s.Studio.QueueRerenderShot(id, seq); err != nil {
+		seeOther(w, r, "/studio/jobs?err="+url.QueryEscape(err.Error()))
+		return
+	}
+	seeOther(w, r, "/studio/jobs?ok="+url.QueryEscape(fmt.Sprintf("Đang quay lại shot %d — xong sẽ tự dựng lại phim", seq+1)))
 }
 
 // handleStudioJobs serves the job list: HTML page for deep links
@@ -334,8 +363,10 @@ type studioAssetView struct {
 	Preview     string `json:"preview"`
 	Label       string `json:"label"`
 	Class       string `json:"class"`
-	Method      string `json:"method"`       // veo | anh-tts | ""
-	MethodLabel string `json:"method_label"` // server-rendered badge text
+	Method      string `json:"method"`        // veo | anh-tts | trailer | ""
+	MethodLabel string `json:"method_label"`  // server-rendered badge text
+	Trailer     bool   `json:"trailer"`       // shot marked trailer_worthy
+	Seq         int    `json:"seq,omitempty"` // render-shot sequence (for re-render)
 }
 
 // filmMethodLabel renders the honest per-scene render method for the
@@ -346,6 +377,8 @@ func filmMethodLabel(m string) string {
 		return "🎬 Veo"
 	case "anh-tts":
 		return "🖼 Ảnh + giọng đọc"
+	case "trailer":
+		return "📱 Trailer 9:16"
 	default:
 		return ""
 	}
@@ -364,11 +397,16 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	assets := s.Studio.ListAssets(id)
+	trailerSeq := s.filmTrailerSeq(id)
 	views := make([]studioAssetView, 0, len(assets))
 	for _, a := range assets {
 		v := studioAssetView{ID: a.ID, Idx: a.Idx, Kind: a.Kind, Status: a.Status, Prompt: a.Prompt,
 			Label: statusLabel(a.Status), Class: statusClass(a.Status),
 			Method: a.Method, MethodLabel: filmMethodLabel(a.Method)}
+		if a.Kind == "shot" {
+			v.Seq = a.Idx
+			v.Trailer = trailerSeq[a.Idx]
+		}
 		if a.Status == "done" && a.Path != "" {
 			v.Preview = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
 		}
@@ -378,6 +416,20 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 		"job":    j,
 		"assets": views,
 	})
+}
+
+// filmTrailerSeq returns the exact render-shot sequence numbers the
+// director marked trailer_worthy (recomputed deterministically from the
+// cached script, so it matches the storyboard asset indexes).
+func (s *Server) filmTrailerSeq(id string) map[int]bool {
+	out := map[int]bool{}
+	if s.Studio == nil {
+		return out
+	}
+	for _, seq := range s.Studio.TrailerShotSeqs(id) {
+		out[seq] = true
+	}
+	return out
 }
 
 var studioAssetRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|mp4)$`)

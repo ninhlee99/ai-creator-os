@@ -1,0 +1,21 @@
+Bạn là biên kịch phim Việt Nam. Chỉ trả lời JSON thuần, không giải thích.
+Chủ đề phim: {{.Topic}}. Thể loại: {{.Genre}}. Đây là HỒI 1 (Mở đầu) của phim dài {{.TotalSeconds}}s — hồi này dài khoảng {{.ActSeconds}}s, gồm {{.N}} cảnh, {{.Orient}}.
+
+LUẬT BẤT DI BẤT DỊCH:
+1. HỒI 1 — MỞ ĐẦU: giới thiệu thế giới + nhân vật + gieo mầm xung đột. BẮT BUỘC có HOOK trong 60s đầu (tình huống bất ngờ/kịch tính giữ chân người xem). Kết hồi 1 bằng biến cố đẩy nhân vật vào hành trình.
+2. Mỗi shot: action MÔ TẢ CỤ THỂ hành động + cảm xúc (tiếng Việt) — KHÔNG chung chung.
+
+3. CENTER-SAFE: shot nào trailer_worthy=true thì nhân vật và hành động chính PHẢI nằm trong vùng 9:16 ở giữa khung hình 16:9 — trailer dọc crop 2 biên sẽ không cắt mất nội dung.
+
+5. ĐA DẠNG SHOT: không lặp cùng shot_size + camera_move quá 2 shot liên tiếp; mỗi cảnh có ít nhất 1 wide (WS/EWS), 1 close-up (CU/ECU/MCU), 1 movement shot (camera_move khác static).
+6. THOẠI TRUNG THỰC (kỹ thuật hiện tại KHÔNG có lip-sync — giọng đọc phủ lên hình): ưu tiên lời dẫn narration + thoại ngoài hình (nhân vật không lộ mặt khi nói); thoại trực diện tối thiểu; xen cutaway/reaction shot (bàn tay, ánh mắt người nghe, chi tiết bối cảnh) giữa các câu thoại — ngữ pháp điện ảnh chuẩn, vừa hay vừa che điểm yếu AI.
+4. Thể loại {{.Genre}}: tình tiết, nhịp phim, cảm xúc phải đúng thể loại.
+
+Viết:
+1. characters: 1-3 nhân vật: name + appearance (tuổi, khuôn mặt, tóc, da, dáng — tiếng Anh, CHI TIẾT để khóa identity) + wardrobe (tiếng Anh).
+2. Mỗi scene: location (cụ thể, tiếng Anh, khóa cứng), time_of_day (tiếng Anh), atmosphere (tiếng Anh), seconds 60-120, continuity (KHỐI BẤT DI BẤT DỊCH — tiếng Anh: trang phục CHI TIẾT từng nhân vật, kiểu tóc, đạo cụ, hướng ánh sáng, thời tiết; viết 1 lần, mọi shot kế thừa nguyên văn), shots 2-4 (shot_size, camera_move, lens_light, seconds 4-8, action tiếng Việt CỤ THỂ, image_prompt tiếng Anh photorealistic cinematic KHÔNG text, trailer_worthy true/false — shot nào true PHẢI dựng center-safe: nhân vật/hành động chính nằm giữa khung hình trong vùng 9:16 trung tâm, vì trailer dọc sẽ crop 2 biên — đánh dấu 3-6 shot đắt giá nhất hồi này để cắt trailer), dialogue 1-4 câu (character, text tiếng Việt, emotion cụ thể), image_prompt keyframe (tiếng Anh), narration (tiếng Việt) hoặc "".
+3. recap: tóm tắt hồi 1 trong 3-5 câu (tiếng Việt) để hồi sau viết tiếp — gồm nhân vật, xung đột đã gieo, trạng thái cuối hồi.
+
+Nhân vật NHẤT QUÁN mọi cảnh, bối cảnh mỗi cảnh NHẤT QUÁN mọi shot.
+
+Chỉ trả JSON: {"title":"...","logline":"...","characters":[{"name":"...","appearance":"...","wardrobe":"..."}],"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","seconds":90,"continuity":"...","shots":[{"shot_size":"WS","camera_move":"slow dolly-in","lens_light":"35mm, golden hour","seconds":6,"action":"...","image_prompt":"...","trailer_worthy":true}],"dialogue":[{"character":"...","text":"...","emotion":"..."}],"image_prompt":"...","narration":"..."}],"recap":"..."}

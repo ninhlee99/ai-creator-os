@@ -560,6 +560,13 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
+		// Film Wave 2 (P0-5): the Veo spend ceiling comes from the same
+		// automation settings facade as every other knob (R2-W4) — the
+		// operator edits it at Settings · Hệ thống, the film pipeline
+		// enforces it before every Veo call.
+		st.BudgetUSD = func() float64 {
+			return automation.APIBudgetUSD(autoSettings, 0)
+		}
 		// Film Wave 1 (P0-3): jobs left "running" died with the previous
 		// process — mark them failed so the UI offers "Chạy tiếp".
 		if n := st.MarkInterruptedJobs(); n > 0 {

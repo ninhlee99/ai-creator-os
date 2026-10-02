@@ -46,7 +46,7 @@ func TestUpscalePhoto4K(t *testing.T) {
 	dst := filepath.Join(dir, "big.png")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := UpscalePhoto(ctx, src, dst, PhotoWidth4K); err != nil {
+	if err := UpscalePhoto(ctx, src, dst, PhotoWidth4K, PhotoWidth4K*16/9); err != nil {
 		t.Fatalf("upscale: %v", err)
 	}
 	if w := ProbeWidth(ctx, dst); w != 2160 {
@@ -66,7 +66,7 @@ func TestUpscalePhotoSkipsWhenAlready4K(t *testing.T) {
 	dst := filepath.Join(dir, "out.png")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := UpscalePhoto(ctx, src, dst, PhotoWidth4K); err != nil {
+	if err := UpscalePhoto(ctx, src, dst, PhotoWidth4K, PhotoWidth4K*16/9); err != nil {
 		t.Fatalf("upscale: %v", err)
 	}
 	a, _ := os.ReadFile(src)
@@ -78,7 +78,7 @@ func TestUpscalePhotoSkipsWhenAlready4K(t *testing.T) {
 
 func TestUpscalePhotoBadWidth(t *testing.T) {
 	ctx := context.Background()
-	if err := UpscalePhoto(ctx, "a.png", "b.png", 1234); err == nil {
+	if err := UpscalePhoto(ctx, "a.png", "b.png", 1234, 9999); err == nil {
 		t.Fatal("want error for unsupported width")
 	}
 }

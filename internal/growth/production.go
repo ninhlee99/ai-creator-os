@@ -40,11 +40,12 @@ func VariantSeconds(variant string) int {
 	}
 }
 
-// VariantAspect is the delivery frame for a plan variant: the YouTube
-// long-form cut renders true 16:9 (1920x1080); TikTok and Shorts stay
-// 9:16 (1080x1920). The studio job carries this through director prompt,
-// Veo aspectRatio and the ffmpeg render — a "long" YouTube cut can no
-// longer silently render vertical.
+// VariantAspect is the delivery frame for a plan variant. Ninh decided
+// 2026-10-02 (final): EVERY film is 16:9 — the cinematic standard,
+// including the YouTube long-form cut. Vertical 9:16 trailers are cut
+// automatically from trailer_worthy shots by center-crop (see
+// CropCenterVertical); nothing is ever re-shot. Shorts/TikTok variants
+// stay 9:16 (they are trailers, not films).
 func VariantAspect(variant string) string {
 	if variant == VariantYouTube {
 		return "16:9"

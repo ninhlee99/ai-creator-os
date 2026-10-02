@@ -188,26 +188,42 @@
 </form>
 </div>
 
-<h2>2 · Phim ngắn</h2>
+<h2>2 · Phim</h2>
 <div class="form-card">
-<form method="post" action="/studio/film">
+<form method="post" action="/studio/film" enctype="multipart/form-data">
   <div class="field">
     <label>Chủ đề phim <span class="req">*</span></label>
     <input type="text" name="topic" required placeholder="Ví dụ: Cô gái và chiếc túi bí ẩn">
-    <div class="hint">AI viết kịch bản → quay từng cảnh bằng Veo (nếu có) → dựng phim dọc. Không có Veo sẽ dùng ảnh + giọng thuyết minh.</div>
+    <div class="hint">AI viết kịch bản 3 hồi → quay từng shot 8s bằng Veo (nếu có) → dựng phim 16:9 + phụ đề. Không có Veo sẽ dùng ảnh + giọng thuyết minh.</div>
+  </div>
+  <div class="field">
+    <label>Thể loại</label>
+    <select name="genre">
+      <option value="Tâm lý">Tâm lý</option>
+      <option value="Tình cảm">Tình cảm</option>
+      <option value="Hành động">Hành động</option>
+      <option value="Kinh dị">Kinh dị</option>
+      <option value="Hài">Hài</option>
+      <option value="Khoa học viễn tưởng">Khoa học viễn tưởng</option>
+      <option value="Tài liệu">Tài liệu</option>
+    </select>
   </div>
   <div class="field">
     <label>Thời lượng (giây)</label>
-    <input type="number" id="film-seconds" name="seconds" value="90" min="30" max="180">
-    <div class="hint">Phim dài 30–60 phút cần kiến trúc shot-level (đợt sau) — hiện tại tối đa 180s.</div>
+    <input type="number" id="film-seconds" name="seconds" value="90" min="30" max="3600">
+    <div class="hint">Phim dài viết theo 3 hồi, mỗi shot ≤8s. Phim xuất 16:9 — trailer dọc tự cắt từ phim.</div>
   </div>
   <div class="field">
-    <label>Khổ hình</label>
-    <label class="radio"><input type="radio" name="aspect" value="9:16" checked> 9:16 (dọc — Shorts/TikTok)</label>
-    <label class="radio"><input type="radio" name="aspect" value="16:9"> 16:9 (ngang — YouTube)</label>
+    <label>Nhạc nền (tùy chọn)</label>
+    <input type="file" name="music_file" accept=".mp3,.m4a,.wav,.ogg">
+    <div class="hint">Nhạc bed tự hạ −8dB khi có thoại, chuẩn −14 LUFS.</div>
+  </div>
+  <div class="field">
+    <label class="radio"><input type="checkbox" name="upscale_final" value="1"> Upscale 4K cho bản cuối</label>
+    <div class="hint">Lanczos upscale — không phải 4K native, render rất lâu.</div>
   </div>
   <div class="hint" id="film-est" data-rate="{{.FilmRate}}">{{.FilmEst}}</div>
-  <button type="submit" class="btn">🎞️ Tạo phim ngắn</button>
+  <button type="submit" class="btn">🎞️ Tạo phim</button>
 </form>
 </div>
 
