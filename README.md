@@ -11,11 +11,11 @@
 
 ## 🎯 Ba trụ
 
-| Trụ | Trạng thái code (sau Đợt A, commit `efa218b`) |
+| Trụ | Trạng thái code (sau Đợt G, commit `c457999`) |
 |---|---|
-| **1. Affiliate qua Accesstrade** | 🚧 Đợt B/C: client API + datafeed hunter + đối soát hoa hồng. Hiện tại trang **Affiliate** (`/products`) vẫn là kho sản phẩm cũ — label đã đổi, nội dung rework ở đợt B/C |
-| **2. Reup video Douyin** | 🚧 Đợt D/E: downloader (yt-dlp + TikWM) + transform 2 mức + kill rule 0-view |
-| **3. YouTube kể chuyện ngôi thứ nhất** | 🚧 Đợt F: truyện → ảnh minh họa từng cảnh → giọng đọc TTS → dựng đơn giản → đăng YouTube. **Không quay video** |
+| **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật** |
+| **2. Reup video Douyin** | ✅ Đợt D/E xong: downloader (yt-dlp do app tự quản + TikWM fallback) + dedupe 2 lớp + QC + tick 6h tìm video viral theo play_count; transform 2 mức (zoom động, tốc độ ±5%, voiceover bình luận tiếng Việt, nhạc licensed, compilation 3 clip) + kill rule 0-view (5 video liên tiếp → dừng đăng + báo động) |
+| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 + subtitle → QC → đăng private-first, mặc định chờ Ninh duyệt + tick 24h lấy chủ đề từ hàng đợi |
 
 Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
@@ -26,7 +26,7 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 
 ---
 
-## 🖥️ Giao diện hiện tại (sidebar 7 mục)
+## 🖥️ Giao diện hiện tại (sidebar 9 mục)
 
 | Mục | Route | Vai trò hiện tại |
 |---|---|---|
@@ -68,27 +68,28 @@ vào app.
 
 ---
 
-## 📌 Trạng thái thật (Đợt A, commit `efa218b` — đã tự review 85/100)
+## 📌 Trạng thái thật (Đợt G, commit `c457999` — đã tự review 91/100)
 
 | Phần | Trạng thái |
 |---|---|
-| Dashboard 7 mục, không link chết | ✅ Code chạy thật |
+| Sidebar 9 mục, 6 tab Cài đặt, không link chết | ✅ Code chạy thật |
 | Studio AI — video affiliate + video chữ động + trends | ✅ Code chạy thật |
 | Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |
 | Sổ cái, kill switch, dry-run, MASTER_SWITCH | ✅ |
-| Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ (persona → fail-closed "pipeline kể chuyện chưa có — đợt F") |
+| Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ |
 | Live (stream engine, avatar, lịch live, tab Nhân vật AI) | 🅿️ **Parked** — build tag `parked`, không vào binary |
 | Phim điện ảnh (film mode, cinematic, Veo) | 🅿️ **Parked** — build tag `parked` |
 | Agent Team (`/team`) | 🅿️ Parked — sẽ định nghĩa lại quanh 3 pipeline |
-| Accesstrade API (token, campaign, datafeed, đối soát) | 🚧 Đợt B/C — chưa có code |
-| Reup Douyin (download, transform) | 🚧 Đợt D/E — chưa có code |
-| YouTube kể chuyện | 🚧 Đợt F — chưa có code |
+| Accesstrade API (token, campaign, datafeed, đối soát) | ✅ Đợt B/C — chưa test bằng token thật |
+| Reup Douyin (download, transform, kill rule 0-view) | ✅ Đợt D/E — chưa tải video thật (cần máy Ninh có mạng) |
+| YouTube kể chuyện (truyện → ảnh → TTS → dựng → đăng private) | ✅ Đợt F — pipeline test bằng provider fake; cần key thật trên máy Ninh |
+| 8 tick automation (growth, AT, reup ×4, story) | ✅ Đợt G — đang bật; AT "chờ key", kill rule "chờ số liệu" (trung thực trong UI) |
 | TikTok Shop API chính thức | ❌ Đã loại theo quyết định của Ninh (2026-10-01) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** 279 hàm test trong 52 file (không tính vùng parked; 14 file test
+**Test:** 524 hàm test trong 82 file (không tính vùng parked; 14 file test
 parked chạy riêng bằng `-tags parked`). Build/vet/test xanh cả 2 tag ở commit
-`efa218b` — kiểm chứng lại bằng lệnh ở trên.
+`c457999` — kiểm chứng lại bằng lệnh ở trên.
 
 ---
 
