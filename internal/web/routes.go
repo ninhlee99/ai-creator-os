@@ -109,6 +109,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /reup/videos/add", s.handleReupVideoAdd)
 	mux.HandleFunc("POST /reup/videos/{id}/retry", s.handleReupVideoRetry)
 	mux.HandleFunc("POST /reup/settings", s.handleReupSettings)
+	// Đợt F: Kể chuyện YouTube (truyện ngôi thứ nhất + ảnh 16:9 + TTS).
+	mux.HandleFunc("GET /stories", s.handleStories)
+	mux.HandleFunc("POST /stories", s.handleStoryCreate)
+	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
+	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
+	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
 	// Đợt E: transform 2 mức + đăng.
 	mux.HandleFunc("POST /reup/videos/{id}/transform", s.handleReupTransform)
 	mux.HandleFunc("GET /reup/posts/{id}/status", s.handleReupPostStatus)

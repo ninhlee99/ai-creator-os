@@ -161,6 +161,12 @@ type Service struct {
 	// (test hook; "" = production).
 	ReupYtDlpRelease string
 
+	// Story automation (Đợt F): kể chuyện ngôi thứ nhất + ảnh 16:9 + TTS.
+	// Nil Story = tick bỏ qua im lặng (studio chưa khởi tạo).
+	Story StoryRunner
+	// StoryMusicPath là file nhạc nền licensed cho truyện ("" = không nhạc).
+	StoryMusicPath string
+
 	// Timezone is the IANA name for "today" boundaries; falls back to
 	// fixed UTC+7 like the rest of the app.
 	Timezone string

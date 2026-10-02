@@ -694,6 +694,30 @@ func main() {
 		log.Printf("reup: automation tick armed (discover 6 giờ/lần, download ngay)")
 	}
 
+	// -- 7e. story automation: kể chuyện ngôi thứ nhất (Đợt F) --------------
+	// Zero-touch: đến hạn (24h/lần) lấy chủ đề từ hàng đợi → tạo job kể
+	// chuyện (truyện → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC. Mặc định
+	// CHỜ Ninh duyệt rồi bấm Đăng; bật story.auto_publish mới tự đăng
+	// private. Kill switch + DRY-RUN chặn tick.
+	if srv.Studio != nil {
+		go func() {
+			tick := time.NewTicker(5 * time.Minute)
+			defer tick.Stop()
+			auto := srv.AutomationService()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+					for _, note := range auto.StoryTick(ctx) {
+						log.Printf("story: %s", note)
+					}
+				}
+			}
+		}()
+		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, chờ duyệt mới đăng)")
+	}
+
 	// -- 8. http server + graceful shutdown ----------------------------------
 	httpSrv := &http.Server{Addr: *addr, Handler: srv.Routes()}
 	go func() {

@@ -451,6 +451,7 @@ var pageFiles = map[string]string{
 	"publishers":            "publishers.html",
 	"products":              "products.html",
 	"reup":                  "reup.html",
+	"stories":               "stories.html",
 	"growth":                "growth.html",
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
