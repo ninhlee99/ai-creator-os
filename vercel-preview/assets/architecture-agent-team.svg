@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1226"/><stop offset="1" stop-color="#12233f"/>
+    </linearGradient>
+    <linearGradient id="ctrl" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+    <linearGradient id="team" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2563eb"/><stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="svc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#059669"/><stop offset="1" stop-color="#84cc16"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .title{fill:#f8fafc;font-size:34px;font-weight:800}
+      .sub{fill:#cbd5e1;font-size:17px}
+      .h{fill:#fff;font-size:19px;font-weight:700}
+      .t{fill:#e2e8f0;font-size:14.5px}
+      .s{fill:#cbd5e1;font-size:12.5px}
+      .box{rx:16;stroke:#ffffff2e;stroke-width:1.2}
+      .flow{stroke:#94a3b8;stroke-width:2.2;fill:none;marker-end:url(#arr)}
+      .dash{stroke:#64748b;stroke-width:1.6;stroke-dasharray:7 6;fill:none;marker-end:url(#arr)}
+    </style>
+  </defs>
+  <rect width="1600" height="1040" fill="url(#bg)"/>
+  <text x="48" y="58" class="title">AI Creator OS — Kiến trúc Agent Team (v2)</text>
+  <text x="48" y="86" class="sub">1 binary Go · Orchestrator là quản đốc duy nhất · Mỗi nhiệm vụ = 1 bản sao team chạy song song, cô lập theo taskID</text>
+
+  <!-- Human -->
+  <rect x="48" y="116" width="420" height="104" class="box" fill="#1e293b"/>
+  <text x="72" y="150" class="h">👤 NINH — Chủ hệ thống</text>
+  <text x="72" y="176" class="t">Bật/tắt Master Switch · thêm account · upload ảnh mẫu</text>
+  <text x="72" y="198" class="t">Duyệt lần đầu · xem dashboard · Kill Switch khẩn cấp</text>
+
+  <!-- Dashboard -->
+  <rect x="540" y="116" width="470" height="104" class="box" fill="#1e293b"/>
+  <text x="564" y="150" class="h">🖥️ DASHBOARD (UI-first)</text>
+  <text x="564" y="176" class="t">Mỗi trang = 1 vấn đề: Accounts · Studio · Products</text>
+  <text x="564" y="198" class="t">Autopilot · Settings (Hệ thống / Provider / Model local / An toàn)</text>
+
+  <!-- External -->
+  <rect x="1082" y="116" width="470" height="104" class="box" fill="#1e293b"/>
+  <text x="1106" y="150" class="h">🌐 NỀN TẢNG &amp; API CHÍNH THỨC</text>
+  <text x="1106" y="176" class="t">TikTok Posting / LIVE · Gemini API (key trong Settings)</text>
+  <text x="1106" y="198" class="t">Chỉ API đã cấu hình — không dùng bản web/subscription trong app</text>
+
+  <path d="M468 168 L540 168" class="flow"/>
+  <path d="M1010 168 L1082 168" class="flow"/>
+
+  <!-- Control plane -->
+  <rect x="48" y="262" width="1504" height="168" class="box" fill="url(#ctrl)" opacity="0.96"/>
+  <text x="72" y="298" class="h">TẦNG ĐIỀU KHIỂN — singleton toàn cục, KHÔNG nhân bản</text>
+  <g>
+    <rect x="72" y="316" width="340" height="88" rx="12" fill="#00000038"/>
+    <text x="92" y="346" class="h">🎯 Orchestrator / Supervisor</text>
+    <text x="92" y="370" class="t">Nhận nhiệm vụ → lập DAG → giao việc → retry/escalate</text>
+    <text x="92" y="390" class="s">Nơi duy nhất được nhân bản team</text>
+    <rect x="436" y="316" width="340" height="88" rx="12" fill="#00000038"/>
+    <text x="456" y="346" class="h">⚖️ Governance (code, không LLM)</text>
+    <text x="456" y="370" class="t">Ngân sách · kill/scale · chống trùng persona/nội dung</text>
+    <text x="456" y="390" class="s">LLM đề xuất — luật cứng quyết định</text>
+    <rect x="800" y="316" width="340" height="88" rx="12" fill="#00000038"/>
+    <text x="820" y="346" class="h">🗓️ Scheduler + Ledger</text>
+    <text x="820" y="370" class="t">Giờ vàng VN · tối đa 2 live · SQLite WAL per-account</text>
+    <text x="820" y="390" class="s">Tiền chỉ ghi từ bằng chứng nhà cung cấp</text>
+    <rect x="1164" y="316" width="340" height="88" rx="12" fill="#00000038"/>
+    <text x="1184" y="346" class="h">🛡️ Safety Gate</text>
+    <text x="1184" y="370" class="t">Dry-run mặc định · fail-closed khi thiếu OAuth/API</text>
+    <text x="1184" y="390" class="s">Kill switch dừng toàn mạng trong vài giây</text>
+  </g>
+
+  <path d="M800 220 L800 262" class="flow"/>
+
+  <!-- Team instances -->
+  <rect x="48" y="472" width="1504" height="268" class="box" fill="url(#team)" opacity="0.95"/>
+  <text x="72" y="508" class="h">TẦNG ĐỘI THI CÔNG — TeamTemplate bất biến → mỗi nhiệm vụ 1 TeamInstance (taskID, context, ngân sách, thư mục riêng)</text>
+
+  <g>
+    <rect x="72" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="88" y="556" class="h">🔍 Hunter</text>
+    <text x="88" y="580" class="t">Săn sản phẩm/ngách</text>
+    <text x="88" y="600" class="s">Chỉ đọc · chấm hoa hồng</text>
+    <text x="88" y="620" class="s">ADB / API chính thức</text>
+    <rect x="284" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="300" y="556" class="h">🎬 Director</text>
+    <text x="300" y="580" class="t">Kịch bản · shot list</text>
+    <text x="300" y="600" class="s">Khóa địa điểm/nhân vật</text>
+    <text x="300" y="620" class="s">Hook 3 giây đầu</text>
+    <rect x="496" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="512" y="556" class="h">🏭 Producer</text>
+    <text x="512" y="580" class="t">Sinh ảnh/video · TTS</text>
+    <text x="512" y="600" class="s">FFmpeg render · 4K master</text>
+    <text x="512" y="620" class="s">Không có quyền đăng</text>
+    <rect x="708" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="724" y="556" class="h">🔎 QC (độc lập)</text>
+    <text x="724" y="580" class="t">Chấm mù theo rubric</text>
+    <text x="724" y="600" class="s">ffprobe/LUFS/identity trước</text>
+    <text x="724" y="620" class="s">Tối đa 2 vòng sửa</text>
+    <rect x="920" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="936" y="556" class="h">📤 Publisher</text>
+    <text x="936" y="580" class="t">Đăng / draft nền tảng</text>
+    <text x="936" y="600" class="s">Cửa ghi DUY NHẤT ra ngoài</text>
+    <text x="936" y="620" class="s">Draft-first · idempotency</text>
+    <rect x="1132" y="528" width="196" height="118" rx="12" fill="#00000038"/>
+    <text x="1148" y="556" class="h">📊 Analyst</text>
+    <text x="1148" y="580" class="t">Gift · đơn · hoa hồng</text>
+    <text x="1148" y="600" class="s">Kill/scale theo số thật</text>
+    <text x="1148" y="620" class="s">Ghi bài học dài hạn</text>
+    <rect x="1344" y="528" width="160" height="118" rx="12" fill="#00000038"/>
+    <text x="1360" y="556" class="h">📡 Streamer</text>
+    <text x="1360" y="580" class="t">Live theo persona</text>
+    <text x="1360" y="600" class="s">TTS + avatar từng frame</text>
+    <text x="1360" y="620" class="s">Tối đa 2 live cùng lúc</text>
+  </g>
+  <text x="72" y="676" class="t">Trao đổi qua 3 kênh: ① Task queue/DAG (SQLite, sống sót khi restart) ② Blackboard theo task (artifact chỉ-ghi-thêm, có version) ③ Event log → UI vẽ lại cuộc trao đổi THẬT</text>
+  <text x="72" y="702" class="s">Ví dụ song song: Team #video-101 (account A) · Team #video-102 (account B) · Team #live-07 — chung tài nguyên qua semaphore (FFmpeg, keyring), không chung bộ nhớ account</text>
+
+  <path d="M170 646 L170 700" class="dash"/><path d="M382 646 L382 700" class="dash"/><path d="M594 646 L594 700" class="dash"/><path d="M806 646 L806 700" class="dash"/><path d="M1018 646 L1018 700" class="dash"/>
+
+  <!-- Services -->
+  <rect x="48" y="782" width="1504" height="118" class="box" fill="url(#svc)" opacity="0.95"/>
+  <text x="72" y="818" class="h">TẦNG DỊCH VỤ DÙNG CHUNG — là CÔNG CỤ, không phải agent (gọi qua interface, có giới hạn tài nguyên tập trung)</text>
+  <text x="72" y="848" class="t">LLM: Gemini → llama-server local   ·   TTS: Gemini → VieNeu-TTS v3 local → Edge   ·   Avatar: MuseTalk sidecar → HeyGen → D-ID (paid, tắt mặc định)   ·   MediaGen: Gemini image / Veo   ·   FFmpeg</text>
+  <text x="72" y="874" class="s">Keyring xoay nhiều Gemini key (cooldown khi 429) · Mọi lần gọi đều ghi api_usage vào Ledger · Provider là hạng mục cấu hình riêng trong Settings</text>
+
+  <!-- Data -->
+  <rect x="48" y="928" width="728" height="72" class="box" fill="#1e293b"/>
+  <text x="72" y="958" class="h">💾 DỮ LIỆU: SQLite WAL — ledger.db · studio.db · products.db</text>
+  <text x="72" y="982" class="s">Bộ nhớ 3 tầng: theo task (xóa sau xong) · theo account (cô lập) · toàn cục (chỉ Analyst ghi qua Governance)</text>
+  <rect x="800" y="928" width="752" height="72" class="box" fill="#1e293b"/>
+  <text x="824" y="958" class="h">💰 VÒNG TIỀN DUY NHẤT: Discover → Attract → Convert → Reconcile → Reinvest</text>
+  <text x="824" y="982" class="s">Mọi agent chỉ phục vụ vòng này · Số liệu tiền chỉ từ bằng chứng nhà cung cấp, không bịa</text>
+</svg>

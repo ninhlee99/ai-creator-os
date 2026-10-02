@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio AI — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Studio AI 🎬</h1>
+<p class="subtitle">Tạo video affiliate, phim ngắn như Milo làm: đạo diễn AI viết shot list → chụp/quay từng shot → dựng → ghép nhạc trending. Bạn chỉ bật app và theo dõi.</p>
+
+
+
+<div class="cards">
+  <div class="card">
+    <h3>Media-gen</h3>
+    
+      <span class="badge badge-err">Chưa sẵn sàng</span>
+      <div class="hint">Cần GEMINI_API_KEYS. Veo cần key có bật billing (Google Cloud) — nếu không, Studio tự dùng chế độ list ảnh.</div>
+    
+  </div>
+  <div class="card">
+    <h3>Nhạc trending VN</h3>
+    
+      <span class="badge badge-ok">50 sound</span>
+      <div class="hint">Top 1 hiện tại: Dunghoangpham – Mật Ngọt - Nam Con Remix</div>
+    
+  </div>
+</div>
+
+<h2>1 · Video Affiliate</h2>
+<div class="form-card">
+<form method="post" action="/studio/affiliate" enctype="multipart/form-data">
+  <div class="field">
+    <label>Tên sản phẩm <span class="req">*</span></label>
+    <input type="text" name="product_name" required placeholder="vd: Túi kem quilted">
+  </div>
+  <div class="field">
+    <label>Niche</label>
+    <select name="niche">
+      <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
+      <option value="mỹ phẩm">Mỹ phẩm</option>
+      <option value="gia dụng">Gia dụng</option>
+      <option value="công nghệ">Công nghệ</option>
+      <option value="khác">Khác</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>Định dạng</label>
+    <select name="mode">
+      <option value="photo">Giật giật theo nhịp — 3–5 ảnh + nhạc (khuyên dùng)</option>
+      <option value="shots">Nhiều cảnh video nối nhau (cần Veo)</option>
+    </select>
+    <div class="hint">Giật giật kiểu CapCut: 3–5 ảnh mẫu dùng sản phẩm thật, zoom nảy + rung theo từng nhịp nhạc, cắt cứng. Không chữ, không voiceover.</div>
+  </div>
+  <div class="field">
+    <label>Thời lượng (giây)</label>
+    <input type="number" name="seconds" value="30" min="10" max="120">
+  </div>
+  <div class="field">
+    <label>Nhịp nhạc (BPM)</label>
+    <input type="number" name="bpm" value="120" min="60" max="200">
+    <div class="hint">Nhạc trending TikTok thường 100–130 BPM. Để 120 nếu không chắc.</div>
+  </div>
+  <div class="field">
+    <label>Ảnh nhân vật (giữ khuôn mặt)</label>
+    <input type="file" name="model_photo" accept="image/*">
+  </div>
+  <div class="field">
+    <label>Ảnh sản phẩm (giữ đúng sản phẩm)</label>
+    <input type="file" name="product_photo" accept="image/*">
+  </div>
+  <div class="field">
+    <label>Nhạc trending — chọn sound (để ghi chú)</label>
+    <select id="trend-pick" onchange="pickTrend(this)">
+      <option value="">— Không chọn —</option>
+      
+      <option value="Mật Ngọt - Nam Con Remix|Dunghoangpham">#1 Dunghoangpham – Mật Ngọt - Nam Con Remix</option>
+      
+      <option value="มองนานๆ|FLI:P">#2 FLI:P – มองนานๆ</option>
+      
+      <option value="Mật Ngọt - Ebe Remix|Dunghoangpham">#3 Dunghoangpham – Mật Ngọt - Ebe Remix</option>
+      
+      <option value="Gió Speed up|Toxic Dope &amp; JanK">#4 Toxic Dope &amp; JanK – Gió Speed up</option>
+      
+      <option value="Sắc Ngọc Ngà - Đại Mèo Remix|Hữu Trí">#5 Hữu Trí – Sắc Ngọc Ngà - Đại Mèo Remix</option>
+      
+      <option value="Mật Ngọt|Dunghoangpham">#6 Dunghoangpham – Mật Ngọt</option>
+      
+      <option value="Alejandro|LUCKY3RD">#7 LUCKY3RD – Alejandro</option>
+      
+      <option value="Cậu Cả|XAVI Phạm">#8 XAVI Phạm – Cậu Cả</option>
+      
+      <option value="đưa em về nhàa - speed up|GREY D &amp; Chillies">#9 GREY D &amp; Chillies – đưa em về nhàa - speed up</option>
+      
+      <option value="特别的爱给特别的你DJ版（刘汉成 Remix）|刘汉成">#10 刘汉成 – 特别的爱给特别的你DJ版（刘汉成 Remix）</option>
+      
+      <option value="Dj Play X Unity (Remix)|ILan Lamante">#11 ILan Lamante – Dj Play X Unity (Remix)</option>
+      
+      <option value="Cha Của Con|Gia Bin">#12 Gia Bin – Cha Của Con</option>
+      
+      <option value="Đơn GIản Anh Yêu Em (Ciray Remix)|Dunghoangpham, ACV">#13 Dunghoangpham, ACV – Đơn GIản Anh Yêu Em (Ciray Remix)</option>
+      
+      <option value="Chào Mừng Đến Bình Nguyên Vô Tận - Remix|VuHuynh">#14 VuHuynh – Chào Mừng Đến Bình Nguyên Vô Tận - Remix</option>
+      
+      <option value="A Y Mạc x Watch Me - Remix|Rith Guess">#15 Rith Guess – A Y Mạc x Watch Me - Remix</option>
+      
+      <option value="Buông Hàng (Slowed)|My Girl CT &amp; Young Milo">#16 My Girl CT &amp; Young Milo – Buông Hàng (Slowed)</option>
+      
+      <option value="《可不可以》 (Cover 张紫豪)|边巴顿珠">#17 边巴顿珠 – 《可不可以》 (Cover 张紫豪)</option>
+      
+      <option value="Tôi Sống Cho Gia Đình - Parody, Short Version|Hoàng Hồng Quân">#18 Hoàng Hồng Quân – Tôi Sống Cho Gia Đình - Parody, Short Version</option>
+      
+      <option value="Vận Mệnh Trong Tay|Khánh Phương">#19 Khánh Phương – Vận Mệnh Trong Tay</option>
+      
+      <option value="Hãy Là Của Riêng Anh - Remix|Triệu Minh Đạt">#20 Triệu Minh Đạt – Hãy Là Của Riêng Anh - Remix</option>
+      
+      <option value="你是我唯一的执着|马健涛">#21 马健涛 – 你是我唯一的执着</option>
+      
+      <option value="Cơn Bão Tình Yêu|Yuni Boo, H2K">#22 Yuni Boo, H2K – Cơn Bão Tình Yêu</option>
+      
+      <option value="Shay Nắnggg|Amee &amp; Obito">#23 Amee &amp; Obito – Shay Nắnggg</option>
+      
+      <option value="528 Hz the Dna Healing Love Frequency Tuning Fork|Sound ॐ Love ❤ Alchemy☿">#24 Sound ॐ Love ❤ Alchemy☿ – 528 Hz the Dna Healing Love Frequency Tuning Fork</option>
+      
+      <option value="Không Tiền Sẽ Thấy Hết|Đoàn Lâm">#25 Đoàn Lâm – Không Tiền Sẽ Thấy Hết</option>
+      
+      <option value="Khi Yêu Nào Ai Đâu Muốn (Remix)|Qinn Media &amp; Trịnh Thiên Ân">#26 Qinn Media &amp; Trịnh Thiên Ân – Khi Yêu Nào Ai Đâu Muốn (Remix)</option>
+      
+      <option value="冬眠 钢琴版 (Cover 司南)|汪琪灿">#27 汪琪灿 – 冬眠 钢琴版 (Cover 司南)</option>
+      
+      <option value="Nên Duyên Nên Phận|Duyên Kendy &amp; Đỗ Thành Duy">#28 Duyên Kendy &amp; Đỗ Thành Duy – Nên Duyên Nên Phận</option>
+      
+      <option value="Fadeaway|BCD Studio">#29 BCD Studio – Fadeaway</option>
+      
+      <option value="Laughing|Gianluca Marino">#30 Gianluca Marino – Laughing</option>
+      
+      <option value="Anh Em MaCau (SinKra Remix) [ Short Version 4] - SinKra remix|Sakhar &amp; XAVI">#31 Sakhar &amp; XAVI – Anh Em MaCau (SinKra Remix) [ Short Version 4] - SinKra remix</option>
+      
+      <option value="So Cute|Audiosphere">#32 Audiosphere – So Cute</option>
+      
+      <option value="Trách Duyên Trách Phận (Remix)|NH4T Remix &amp; Đỗ Thành Duy">#33 NH4T Remix &amp; Đỗ Thành Duy – Trách Duyên Trách Phận (Remix)</option>
+      
+      <option value="TUNA TUNA (TikTok Ver.) #2|MiiNa &amp; Tun Phạm">#34 MiiNa &amp; Tun Phạm – TUNA TUNA (TikTok Ver.) #2</option>
+      
+      <option value="Cats - sped up|3thqv">#35 3thqv – Cats - sped up</option>
+      
+      <option value="Một Ngày Chẳng Nắng|Pháo">#36 Pháo – Một Ngày Chẳng Nắng</option>
+      
+      <option value="最甜情歌（Cover 红人馆）|仙言">#37 仙言 – 最甜情歌（Cover 红人馆）</option>
+      
+      <option value="Ba Kiếp Tình Một Kiếp Duyên (Lâm Tuấn x 20X Remix) [Short Version 2]|20X Remix &amp; Lâm Tuấn">#38 20X Remix &amp; Lâm Tuấn – Ba Kiếp Tình Một Kiếp Duyên (Lâm Tuấn x 20X Remix) [Short Version 2]</option>
+      
+      <option value="Bạn Ơi - #1|Myra Trần">#39 Myra Trần – Bạn Ơi - #1</option>
+      
+      <option value="Chắc Em Đã Quên Rồi (Speedup Remix)|Quang Chợ Lầm">#40 Quang Chợ Lầm – Chắc Em Đã Quên Rồi (Speedup Remix)</option>
+      
+      <option value="别知己（DJ版）|张忠华&#43;刘志雄&#43;贺大美人">#41 张忠华&#43;刘志雄&#43;贺大美人 – 别知己（DJ版）</option>
+      
+      <option value="Mưa Tuyết (DN TEAM REMIX) - Từng Hạt Tuyết Rơi Đi Khóc Cho Nơi Đây Anh Lẻ Loi|Mee Media &amp; Jimmy Nguyễn">#42 Mee Media &amp; Jimmy Nguyễn – Mưa Tuyết (DN TEAM REMIX) - Từng Hạt Tuyết Rơi Đi Khóc Cho Nơi Đây Anh Lẻ Loi</option>
+      
+      <option value="Sao Mình Chưa Nắm Tay Nhau|Yan Nguyễn">#43 Yan Nguyễn – Sao Mình Chưa Nắm Tay Nhau</option>
+      
+      <option value="Đừng Xem Ai Đó Là Cả Thế Giới (Lofi Ver.)|Orinn &amp; Reddy">#44 Orinn &amp; Reddy – Đừng Xem Ai Đó Là Cả Thế Giới (Lofi Ver.)</option>
+      
+      <option value="Chờ Trông Ai - MK Remix|Nal">#45 Nal – Chờ Trông Ai - MK Remix</option>
+      
+      <option value="Sound Hoo Aa Hoo Ee|ASBUN">#46 ASBUN – Sound Hoo Aa Hoo Ee</option>
+      
+      <option value="Ngẫm (Remix) - Hãy Sống Tốt Giống Như Chưa Từng|Thiên Tú">#47 Thiên Tú – Ngẫm (Remix) - Hãy Sống Tốt Giống Như Chưa Từng</option>
+      
+      <option value="Trai Nhà Nghèo|Ngọc Khang">#48 Ngọc Khang – Trai Nhà Nghèo</option>
+      
+      <option value="BORN FOR THIS|Foxxi">#49 Foxxi – BORN FOR THIS</option>
+      
+      <option value="Sai Cách Yêu (V.A Remix)|Lê Bảo Bình">#50 Lê Bảo Bình – Sai Cách Yêu (V.A Remix)</option>
+      
+    </select>
+    <input type="hidden" name="music_title" id="music_title">
+    <input type="hidden" name="music_artist" id="music_artist">
+    <div class="hint">TikTok không cho tải trực tiếp sound. Sau khi chọn, bạn tải file nhạc (từ app TikTok hoặc link trực tiếp) rồi upload ở dưới, hoặc dán link audio trực tiếp.</div>
+  </div>
+  <div class="field">
+    <label>File nhạc (mp3/m4a)</label>
+    <input type="file" name="music_file" accept="audio/*">
+  </div>
+  <div class="field">
+    <label>hoặc link audio trực tiếp</label>
+    <input type="text" name="music_url" placeholder="https://…/audio.m4a">
+  </div>
+  <div class="field">
+    <label>Bắt đầu nhạc từ giây thứ</label>
+    <input type="number" name="music_start" value="0" min="0" step="1">
+  </div>
+  <button type="submit" class="btn">🎬 Tạo video affiliate</button>
+</form>
+</div>
+
+<h2>2 · Phim ngắn</h2>
+<div class="form-card">
+<form method="post" action="/studio/film">
+  <div class="field">
+    <label>Chủ đề phim <span class="req">*</span></label>
+    <input type="text" name="topic" required placeholder="vd: Cô gái và chiếc túi bí ẩn">
+    <div class="hint">AI viết kịch bản → quay từng cảnh bằng Veo (nếu có) → dựng phim dọc. Không có Veo sẽ dùng ảnh + voiceover.</div>
+  </div>
+  <div class="field">
+    <label>Thời lượng (giây)</label>
+    <input type="number" name="seconds" value="90" min="30" max="180">
+  </div>
+  <button type="submit" class="btn">🎞️ Tạo phim ngắn</button>
+</form>
+</div>
+
+<h2>3 · Nhạc trending TikTok Việt Nam</h2>
+<p class="hint">Nguồn: Kworb — TikTok Trending Songs Vietnam (kworb.net/charts/tiktok/vn.html). Đây là chart bên thứ ba, không phải số liệu chính thức từ TikTok Creative Center.</p>
+<form method="post" action="/studio/trends/refresh" class="inline-form">
+  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới chart</button>
+</form>
+
+<table class="clean">
+  <tr><th>#</th><th>Biến động</th><th>Sound</th></tr>
+  
+  <tr><td>1</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt - Nam Con Remix</td></tr>
+  
+  <tr><td>2</td><td>=</td><td><strong>FLI:P</strong> – มองนานๆ</td></tr>
+  
+  <tr><td>3</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt - Ebe Remix</td></tr>
+  
+  <tr><td>4</td><td>=</td><td><strong>Toxic Dope &amp; JanK</strong> – Gió Speed up</td></tr>
+  
+  <tr><td>5</td><td>=</td><td><strong>Hữu Trí</strong> – Sắc Ngọc Ngà - Đại Mèo Remix</td></tr>
+  
+  <tr><td>6</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt</td></tr>
+  
+  <tr><td>7</td><td>&#43;1</td><td><strong>LUCKY3RD</strong> – Alejandro</td></tr>
+  
+  <tr><td>8</td><td>&#43;1</td><td><strong>XAVI Phạm</strong> – Cậu Cả</td></tr>
+  
+  <tr><td>9</td><td>&#43;2</td><td><strong>GREY D &amp; Chillies</strong> – đưa em về nhàa - speed up</td></tr>
+  
+  <tr><td>10</td><td>=</td><td><strong>刘汉成</strong> – 特别的爱给特别的你DJ版（刘汉成 Remix）</td></tr>
+  
+  <tr><td>11</td><td>&#43;1</td><td><strong>ILan Lamante</strong> – Dj Play X Unity (Remix)</td></tr>
+  
+  <tr><td>12</td><td>&#43;1</td><td><strong>Gia Bin</strong> – Cha Của Con</td></tr>
+  
+  <tr><td>13</td><td>&#43;5</td><td><strong>Dunghoangpham, ACV</strong> – Đơn GIản Anh Yêu Em (Ciray Remix)</td></tr>
+  
+  <tr><td>14</td><td>=</td><td><strong>VuHuynh</strong> – Chào Mừng Đến Bình Nguyên Vô Tận - Remix</td></tr>
+  
+  <tr><td>15</td><td>&#43;2</td><td><strong>Rith Guess</strong> – A Y Mạc x Watch Me - Remix</td></tr>
+  
+  <tr><td>16</td><td>-1</td><td><strong>My Girl CT &amp; Young Milo</strong> – Buông Hàng (Slowed)</td></tr>
+  
+  <tr><td>17</td><td>&#43;2</td><td><strong>边巴顿珠</strong> – 《可不可以》 (Cover 张紫豪)</td></tr>
+  
+  <tr><td>18</td><td>&#43;6</td><td><strong>Hoàng Hồng Quân</strong> – Tôi Sống Cho Gia Đình - Parody, Short Version</td></tr>
+  
+  <tr><td>19</td><td>NEW</td><td><strong>Khánh Phương</strong> – Vận Mệnh Trong Tay</td></tr>
+  
+  <tr><td>20</td><td>&#43;5</td><td><strong>Triệu Minh Đạt</strong> – Hãy Là Của Riêng Anh - Remix</td></tr>
+  
+  <tr><td>21</td><td>&#43;5</td><td><strong>马健涛</strong> – 你是我唯一的执着</td></tr>
+  
+  <tr><td>22</td><td>&#43;5</td><td><strong>Yuni Boo, H2K</strong> – Cơn Bão Tình Yêu</td></tr>
+  
+  <tr><td>23</td><td>&#43;6</td><td><strong>Amee &amp; Obito</strong> – Shay Nắnggg</td></tr>
+  
+  <tr><td>24</td><td>&#43;6</td><td><strong>Sound ॐ Love ❤ Alchemy☿</strong> – 528 Hz the Dna Healing Love Frequency Tuning Fork</td></tr>
+  
+  <tr><td>25</td><td>NEW</td><td><strong>Đoàn Lâm</strong> – Không Tiền Sẽ Thấy Hết</td></tr>
+  
+  <tr><td>26</td><td>&#43;9</td><td><strong>Qinn Media &amp; Trịnh Thiên Ân</strong> – Khi Yêu Nào Ai Đâu Muốn (Remix)</td></tr>
+  
+  <tr><td>27</td><td>&#43;14</td><td><strong>汪琪灿</strong> – 冬眠 钢琴版 (Cover 司南)</td></tr>
+  
+  <tr><td>28</td><td>&#43;4</td><td><strong>Duyên Kendy &amp; Đỗ Thành Duy</strong> – Nên Duyên Nên Phận</td></tr>
+  
+  <tr><td>29</td><td>NEW</td><td><strong>BCD Studio</strong> – Fadeaway</td></tr>
+  
+  <tr><td>30</td><td>&#43;4</td><td><strong>Gianluca Marino</strong> – Laughing</td></tr>
+  
+  <tr><td>31</td><td>&#43;11</td><td><strong>Sakhar &amp; XAVI</strong> – Anh Em MaCau (SinKra Remix) [ Short Version 4] - SinKra remix</td></tr>
+  
+  <tr><td>32</td><td>&#43;4</td><td><strong>Audiosphere</strong> – So Cute</td></tr>
+  
+  <tr><td>33</td><td>&#43;19</td><td><strong>NH4T Remix &amp; Đỗ Thành Duy</strong> – Trách Duyên Trách Phận (Remix)</td></tr>
+  
+  <tr><td>34</td><td>&#43;6</td><td><strong>MiiNa &amp; Tun Phạm</strong> – TUNA TUNA (TikTok Ver.) #2</td></tr>
+  
+  <tr><td>35</td><td>&#43;3</td><td><strong>3thqv</strong> – Cats - sped up</td></tr>
+  
+  <tr><td>36</td><td>&#43;17</td><td><strong>Pháo</strong> – Một Ngày Chẳng Nắng</td></tr>
+  
+  <tr><td>37</td><td>&#43;6</td><td><strong>仙言</strong> – 最甜情歌（Cover 红人馆）</td></tr>
+  
+  <tr><td>38</td><td>&#43;7</td><td><strong>20X Remix &amp; Lâm Tuấn</strong> – Ba Kiếp Tình Một Kiếp Duyên (Lâm Tuấn x 20X Remix) [Short Version 2]</td></tr>
+  
+  <tr><td>39</td><td>&#43;5</td><td><strong>Myra Trần</strong> – Bạn Ơi - #1</td></tr>
+  
+  <tr><td>40</td><td>&#43;8</td><td><strong>Quang Chợ Lầm</strong> – Chắc Em Đã Quên Rồi (Speedup Remix)</td></tr>
+  
+  <tr><td>41</td><td>&#43;5</td><td><strong>张忠华&#43;刘志雄&#43;贺大美人</strong> – 别知己（DJ版）</td></tr>
+  
+  <tr><td>42</td><td>NEW</td><td><strong>Mee Media &amp; Jimmy Nguyễn</strong> – Mưa Tuyết (DN TEAM REMIX) - Từng Hạt Tuyết Rơi Đi Khóc Cho Nơi Đây Anh Lẻ Loi</td></tr>
+  
+  <tr><td>43</td><td>&#43;7</td><td><strong>Yan Nguyễn</strong> – Sao Mình Chưa Nắm Tay Nhau</td></tr>
+  
+  <tr><td>44</td><td>&#43;7</td><td><strong>Orinn &amp; Reddy</strong> – Đừng Xem Ai Đó Là Cả Thế Giới (Lofi Ver.)</td></tr>
+  
+  <tr><td>45</td><td>&#43;9</td><td><strong>Nal</strong> – Chờ Trông Ai - MK Remix</td></tr>
+  
+  <tr><td>46</td><td>&#43;9</td><td><strong>ASBUN</strong> – Sound Hoo Aa Hoo Ee</td></tr>
+  
+  <tr><td>47</td><td>&#43;12</td><td><strong>Thiên Tú</strong> – Ngẫm (Remix) - Hãy Sống Tốt Giống Như Chưa Từng</td></tr>
+  
+  <tr><td>48</td><td>&#43;10</td><td><strong>Ngọc Khang</strong> – Trai Nhà Nghèo</td></tr>
+  
+  <tr><td>49</td><td>NEW</td><td><strong>Foxxi</strong> – BORN FOR THIS</td></tr>
+  
+  <tr><td>50</td><td>&#43;6</td><td><strong>Lê Bảo Bình</strong> – Sai Cách Yêu (V.A Remix)</td></tr>
+  
+</table>
+
+
+<h2>Job đã tạo</h2>
+<div id="jobs">
+
+<p class="empty">Chưa có job nào. Tạo video đầu tiên ở form phía trên.</p>
+
+</div>
+
+<script>
+function pickTrend(sel){
+  var v = sel.value.split("|");
+  document.getElementById("music_title").value = v[0] || "";
+  document.getElementById("music_artist").value = v[1] || "";
+}
+var boards = {};
+function toggleBoard(id){
+  var box = document.querySelector('[data-job="'+id+'"] .board');
+  if(boards[id]){ box.innerHTML=""; boards[id]=false; return; }
+  boards[id]=true;
+  fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
+    var h = "";
+    if(d.job && d.job.log){ document.getElementById("log-"+id).textContent = d.job.log; }
+    if(d.job && d.job.caption){
+      h += '<div class="shot"><div class="shot-head">📝 Caption + hashtag <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById(\'cap-'+id+'\').textContent)">Copy</button></div><div class="hint" id="cap-'+id+'">'+d.job.caption.replace(/\n/g,"<br>")+'</div></div>';
+    }
+    (d.assets||[]).forEach(function(a){
+      h += '<div class="shot"><div class="shot-head">#'+(a.idx+1)+' <span class="badge badge-'+a.status+'">'+a.status+'</span> <em>'+a.kind+'</em></div>';
+      if(a.preview){
+        if(a.kind==="clip"){ h += '<video controls src="'+a.preview+'" style="max-width:220px"></video>'; }
+        else { h += '<img src="'+a.preview+'" style="max-width:220px">'; }
+      }
+      h += '<div class="hint">'+a.prompt+'</div></div>';
+    });
+    box.innerHTML = h || '<p class="empty">Chưa có shot nào.</p>';
+  });
+}
+
+setInterval(function(){
+  var running = false;
+  document.querySelectorAll(".badge-running,.badge-queued").forEach(function(){running=true;});
+  if(running){ location.reload(); }
+}, 15000);
+</script>
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>

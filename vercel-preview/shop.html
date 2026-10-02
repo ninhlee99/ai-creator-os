@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop Affiliate — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Shop Affiliate</h1>
+<p class="subtitle">Kệ hàng sản phẩm affiliate — AI tự tìm, chấm điểm và gắn vào video/live.</p>
+
+<div class="form-card">
+<h2 style="margin-top:0;border:none;padding:0">Thêm sản phẩm vào kệ</h2>
+<form method="post" action="/shop/add">
+  <div class="field">
+    <label>Mã sản phẩm (platform_pid) <span class="req">*</span></label>
+    <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
+  </div>
+  <div class="field">
+    <label>Tên sản phẩm <span class="req">*</span></label>
+    <input type="text" name="title" required placeholder="vd: Tai nghe bluetooth X10">
+  </div>
+  <div class="grid2">
+    <div class="field">
+      <label>Giá (USD) <span class="req">*</span></label>
+      <input type="number" name="price" step="0.01" min="0" required>
+    </div>
+    <div class="field">
+      <label>Tỷ lệ hoa hồng (0–1) <span class="req">*</span></label>
+      <input type="number" name="commission_rate" step="0.01" min="0" max="1" required
+             placeholder="vd: 0.12">
+    </div>
+  </div>
+  <div class="field">
+    <label>Danh mục</label>
+    <input type="text" name="category" placeholder="vd: điện tử">
+  </div>
+  <button type="submit" class="btn">Thêm vào kệ</button>
+</form>
+</div>
+
+<h2>Kệ hàng</h2>
+
+<p class="empty">Kệ hàng trống. Thêm sản phẩm đầu tiên ở form phía trên.</p>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>
