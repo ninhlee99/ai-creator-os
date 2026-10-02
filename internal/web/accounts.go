@@ -58,7 +58,8 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 	if ch := strings.TrimSpace(r.PostFormValue("youtube_channel")); ch != "" {
 		if err := s.Ledger.SetAccountStatus(acct.ID, acct.Status,
 			map[string]any{"youtube_channel": ch}); err != nil {
-			log.Printf("web: set youtube channel: %v", err)
+			seeOther(w, r, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"?err="+url.QueryEscape("Không lưu được kênh YouTube: "+err.Error()))
+			return
 		}
 	}
 	s.advanceOnboarding(acct.ID)

@@ -34,10 +34,15 @@ type Gate interface {
 
 // NetConfig is the daemon configuration.
 type NetConfig struct {
-	MasterSwitch       bool   // THE on/off button. Default OFF.
-	KillSwitch         bool   // emergency stop (fallback; Gate wins when set)
-	DryRun             bool   // when true, due slots are never started (fallback; Gate wins when set)
-	Timezone           string // IANA name; falls back to fixed UTC+7
+	// MasterSwitch is the startup seed for the master on/off button.
+	// Default OFF. The live decision comes from MasterGate when wired
+	// (R2-W4, R2-08): the persisted Settings toggle, read fresh every
+	// tick — the UI toggle takes effect without a restart.
+	MasterSwitch       bool
+	MasterGate         MasterGate // live master switch; nil = MasterSwitch field wins
+	KillSwitch         bool       // emergency stop (fallback; Gate wins when set)
+	DryRun             bool       // when true, due slots are never started (fallback; Gate wins when set)
+	Timezone           string     // IANA name; falls back to fixed UTC+7
 	MaxConcurrentLives int
 	LivesPerDay        int
 	LiveMinutes        int
@@ -45,6 +50,21 @@ type NetConfig struct {
 	// Gate, when non-nil, supplies kill/dry-run live from the shared
 	// operator state (the web *Config) on every Tick.
 	Gate Gate
+}
+
+// MasterGate reports the persisted master switch. automation.MasterSwitchGate
+// (backed by the settings facade) implements it.
+type MasterGate interface {
+	MasterEnabled() bool
+}
+
+// masterOn resolves the effective master switch: the live gate wins when
+// wired, otherwise the startup-seeded field.
+func (c NetConfig) masterOn() bool {
+	if c.MasterGate != nil {
+		return c.MasterGate.MasterEnabled()
+	}
+	return c.MasterSwitch
 }
 
 // DefaultNetConfig returns the safe defaults: everything OFF, dry-run on.
@@ -146,7 +166,7 @@ func (d *Daemon) Tick(ctx context.Context) (TickSummary, error) {
 		kill, dry = d.cfg.Gate.KillSwitch(), d.cfg.Gate.DryRun()
 	}
 
-	if !d.cfg.MasterSwitch || kill {
+	if !d.cfg.masterOn() || kill {
 		if len(d.state.Running) > 0 && d.OnStopLive != nil {
 			for id, rs := range d.state.Running {
 				d.OnStopLive(rs.Handle)

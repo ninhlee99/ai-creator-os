@@ -34,6 +34,25 @@
     </form>
   </div>
   <div class="hint" style="margin-top:8px">Sinh plan 30 ngày cho từng tài khoản: vào trang tài khoản → tab Autopilot → “↻ Replan 30 ngày ngay”.</div>
+  <h3 style="margin-top:16px">Ngưỡng quyết định growth</h3>
+  <p class="hint">Không cần chỉnh khi hệ thống đang chạy tốt — chỉ đổi khi bạn hiểu rõ luật kill/double-down.</p>
+  <form method="post" action="/growth/thresholds">
+    <table>
+      <tr><td>Video tối thiểu trước khi kill</td><td><input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}" style="width:6em"></td></tr>
+      <tr><td>Ngày tối thiểu trước khi kill</td><td><input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}" style="width:6em"></td></tr>
+      <tr><td>Ngưỡng completion (0–1)</td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}" style="width:6em"></td></tr>
+      <tr><td>Ngưỡng share/save (0–1)</td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}" style="width:6em"></td></tr>
+      <tr><td>Hệ số double-down (× median)</td><td><input type="number" name="double_down_factor" step="0.5" min="1" value="{{.Thresholds.DoubleDownFactor}}" style="width:6em"></td></tr>
+      <tr><td>Hệ số breakout (× median)</td><td><input type="number" name="breakout_factor" step="1" min="1" value="{{.Thresholds.BreakoutFactor}}" style="width:6em"></td></tr>
+      <tr><td>Ngày chững trước khi đánh dấu</td><td><input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}" style="width:6em"></td></tr>
+    </table>
+    <button class="btn btn-primary btn-sm" type="submit">Lưu ngưỡng</button>
+  </form>
+  <form method="post" action="/growth/thresholds" style="display:inline;margin-top:8px"
+        data-confirm="Đặt lại mọi ngưỡng về mặc định?">
+    <input type="hidden" name="reset" value="1">
+    <button class="btn btn-secondary btn-sm" type="submit">Về mặc định</button>
+  </form>
 </details>
 
 {{if not .Accounts}}

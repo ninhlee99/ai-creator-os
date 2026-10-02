@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -23,13 +24,13 @@ type fakeJob struct{ status, output string }
 type fakeProducer struct {
 	jobs     map[string]*fakeJob
 	seq      int
-	enqueued []growthProduceRequest
+	enqueued []automation.ProduceRequest
 	failErr  error
 }
 
 func newFakeProducer() *fakeProducer { return &fakeProducer{jobs: map[string]*fakeJob{}} }
 
-func (f *fakeProducer) Enqueue(_ context.Context, req growthProduceRequest) (string, error) {
+func (f *fakeProducer) Enqueue(_ context.Context, req automation.ProduceRequest) (string, error) {
 	if f.failErr != nil {
 		return "", f.failErr
 	}
@@ -53,12 +54,12 @@ const studioStatusDone = "done"
 type ytCall struct{ title, desc, kind string }
 
 type fakeYT struct {
-	state   growthYTState
+	state   automation.YTState
 	result  publishers.PublishResult
 	uploads []ytCall
 }
 
-func (f *fakeYT) State(*network.Account) growthYTState { return f.state }
+func (f *fakeYT) State(*network.Account) automation.YTState { return f.state }
 func (f *fakeYT) Upload(_ context.Context, _ *network.Account, _, title, description, kind string) publishers.PublishResult {
 	f.uploads = append(f.uploads, ytCall{title: title, desc: description, kind: kind})
 	return f.result
@@ -66,7 +67,7 @@ func (f *fakeYT) Upload(_ context.Context, _ *network.Account, _, title, descrip
 
 func readyYT() *fakeYT {
 	return &fakeYT{
-		state:  growthYTState{HasClient: true, HasToken: true, HasChannel: true, Privacy: "private"},
+		state:  automation.YTState{HasClient: true, HasToken: true, HasChannel: true, Privacy: "private"},
 		result: publishers.PublishResult{Ok: true, Platform: "youtube", RemoteID: "VID123", URL: "https://youtu.be/VID123", Draft: true},
 	}
 }
@@ -272,7 +273,7 @@ func TestGrowthTickRestartDoesNotDuplicate(t *testing.T) {
 func TestGrowthTickWaitingConnectThenReady(t *testing.T) {
 	s, _, yt := newGrowthServer(t)
 	enableProduction(t, s)
-	yt.state = growthYTState{HasClient: true, HasToken: false, Privacy: "private"}
+	yt.state = automation.YTState{HasClient: true, HasToken: false, Privacy: "private"}
 	a := growthAccount(t, s, "wait_connect")
 	seedPlan(t, s, a.ID, draftOn(daysAgo(s, 1), growth.VariantShorts, "mẹo học tiếng Anh"))
 
@@ -491,8 +492,8 @@ func TestGrowthTickProductionCapPerTick(t *testing.T) {
 
 	s.GrowthAutomationTick(context.Background())
 
-	if len(fp.enqueued) != maxGrowthProductionsPerTick {
-		t.Errorf("enqueued = %d, want cap %d", len(fp.enqueued), maxGrowthProductionsPerTick)
+	if want := s.automation().MaxProductionsPerTick; len(fp.enqueued) != want {
+		t.Errorf("enqueued = %d, want cap %d", len(fp.enqueued), want)
 	}
 }
 

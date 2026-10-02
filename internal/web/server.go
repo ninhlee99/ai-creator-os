@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -51,10 +52,10 @@ type Server struct {
 	// means the real Studio/publishers adapters; tests inject fakes.
 	// CommissionSource is the affiliate-orders feed for money
 	// reconciliation (R2-W1). Nil means the real TikTok Shop client is
-	// built from Settings config; tests inject fakes.
-	CommissionSource affiliateOrdersSource
-	GrowthProducer   growthProducer
-	GrowthYT         growthYTUploader
+	// built from the current env at call time; tests inject fakes.
+	CommissionSource automation.OrdersSource
+	GrowthProducer   automation.Producer
+	GrowthYT         automation.Uploader
 	// Autopilot runs hands-off affiliate cycles (products -> video).
 	// Products is the affiliate product store. ProductProviders are the
 	// configured product search providers. All three are injected by the

@@ -75,6 +75,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /growth/accounts/{id}/plan", s.handleGrowthPlan)
 	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
 	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
+	mux.HandleFunc("POST /growth/thresholds", s.handleGrowthThresholds)
 
 	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
 	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.
@@ -86,6 +87,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
+	mux.HandleFunc("POST /settings/master", s.handleSettingsMaster)
+	mux.HandleFunc("POST /settings/api-budget", s.handleSettingsAPIBudget)
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 

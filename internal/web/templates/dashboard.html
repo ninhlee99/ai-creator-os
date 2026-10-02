@@ -37,6 +37,10 @@
 
 <div class="cards">
   <div class="card">
+    <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
+    <div class="label">Công tắc chính{{if .MasterOn}} — daemon được phép chạy theo lịch{{else}} — daemon đang đứng yên{{end}}</div>
+  </div>
+  <div class="card">
     <div class="num">{{len .Accounts}}</div>
     <div class="label">Tổng tài khoản</div>
   </div>

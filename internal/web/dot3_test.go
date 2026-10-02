@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
-	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
 // ------------------------------------------------------- setting semantics
@@ -40,28 +39,24 @@ func TestGrowthProductionSettingSemantics(t *testing.T) {
 
 func TestAutopilotSwitchesDefaultOn(t *testing.T) {
 	s := newTestServer(t)
-	store, err := products.NewStore("products-dot3.db")
-	if err != nil {
-		t.Fatalf("products store: %v", err)
-	}
-	t.Cleanup(func() { store.Close() })
-	s.Products = store
+	// R2-W4: the autopilot switches live in the single settings facade
+	// (ledger settings), not the products store.
 
 	enabled, _, _, _, autoPub := s.scheduleView()
 	if !enabled || !autoPub {
 		t.Fatalf("unset switches: enabled=%v autoPublish=%v, want both ON", enabled, autoPub)
 	}
-	if err := store.SetSetting(SettingAutopilotEnabled, "0"); err != nil {
+	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "0"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SetSetting(SettingAutopilotAutoPublish, "0"); err != nil {
+	if err := s.Ledger.SetSetting(SettingAutopilotAutoPublish, "0"); err != nil {
 		t.Fatal(err)
 	}
 	enabled, _, _, _, autoPub = s.scheduleView()
 	if enabled || autoPub {
 		t.Fatalf("stored 0: enabled=%v autoPublish=%v, want both OFF", enabled, autoPub)
 	}
-	if err := store.SetSetting(SettingAutopilotEnabled, "1"); err != nil {
+	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "1"); err != nil {
 		t.Fatal(err)
 	}
 	if enabled, _, _, _, _ = s.scheduleView(); !enabled {
