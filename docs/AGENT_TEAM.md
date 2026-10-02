@@ -67,6 +67,49 @@ Chúng không có "ý chí": agent gọi qua interface, mọi lần gọi ghi `a
 vào Ledger, và tài nguyên khan hiếm (FFmpeg, GPU, key Gemini) đi qua
 semaphore/keyring tập trung.
 
+## 2b. Avatar của từng agent và persona (chốt 2026-10-02)
+
+Mỗi agent và mỗi persona đều có avatar riêng, đúng chất "người nhà" của
+Milo (linh vật lông xù màu kem, mắt đen hạt, má hồng) nhưng khác trang phục
+và đạo cụ theo đúng công việc — nhìn avatar là biết vai trò, không cần đọc
+chữ. File gốc nằm ở `docs/assets/agents/` (từng avatar riêng + 2 bản lưới
+tổng). Đây là bộ mặt dùng cho dashboard, tài liệu và UI mô phỏng quá trình
+làm việc; không dùng làm ảnh mẫu identity-lock cho video (việc đó vẫn theo
+ảnh Ninh upload, xem §2 của GOAL).
+
+![Toàn đội agent + persona](assets/agents/contact-sheet.png)
+
+**Đội agent:**
+
+| Avatar | Vai trò | Nhận diện |
+|---|---|---|
+| ![Orchestrator](assets/agents/orchestrator.png) | Orchestrator | Tai nghe vàng + đũa chỉ huy — điều phối cả đội |
+| ![Governance](assets/agents/governance.png) | Governance | Cân công lý + khiên đỏ — luật cứng, chặn/không chặn |
+| ![Scheduler](assets/agents/scheduler.png) | Scheduler | Lịch + đồng hồ — giữ giờ vàng, tối đa 2 live |
+| ![Hunter](assets/agents/hunter.png) | Hunter | Kính lúp + túi mua sắm — săn sản phẩm hoa hồng cao |
+| ![Director](assets/agents/director.png) | Director | Clapperboard — viết kịch bản, shot list |
+| ![Producer](assets/agents/producer.png) | Producer | Máy quay tím + tai nghe — sản xuất, render |
+| ![QC](assets/agents/qc.png) | QC | Kính lúp to + checklist — chấm mù, gác cổng chất lượng |
+| ![Publisher](assets/agents/publisher.png) | Publisher | Hộp "tải lên" + máy bay giấy — cửa đăng duy nhất |
+| ![Analyst](assets/agents/analyst.png) | Analyst | Tablet biểu đồ + đồng xu — đối soát tiền, kill/scale |
+| ![Streamer](assets/agents/streamer.png) | Streamer | Tai nghe mic + ring light — lên sóng live |
+
+**Persona (nhân vật mỗi account đóng):**
+
+| Avatar | Persona | Nhận diện |
+|---|---|---|
+| ![Storyteller](assets/agents/storyteller.png) | Storyteller | Sách truyện + đèn lồng — kể chuyện đêm khuya |
+| ![Teacher](assets/agents/teacher.png) | AI Teacher | Kính + sách + que chỉ — dạy tiếng Anh qua truyện |
+| ![Musician](assets/agents/musician.png) | AI Musician | Micro + guitar — hát nhạc tự sáng tác |
+| ![Game Master](assets/agents/gamemaster.png) | Game Master | Tai nghe gaming + tay cầm — chơi game được phép |
+| ![AI Coder](assets/agents/aicoder.png) | AI Coder | Hoodie + laptop code — live code theo yêu cầu viewer |
+| ![Dancer](assets/agents/dancer.png) | Dancer | Điệu nhảy + nốt nhạc — bắt trend (phase sau) |
+
+Quy ước dùng: avatar agent chỉ xuất hiện cạnh đúng vai trò đó trong UI/log
+(ví dụ event của QC thì hiện avatar QC). Khi một TeamInstance được nhân bản,
+cả đội dùng chung bộ avatar này — bản sao khác nhau ở taskID và dữ liệu,
+không khác mặt.
+
 ## 3. Cơ chế nhân bản team cho mỗi nhiệm vụ mới
 
 Đây là phần Ninh yêu cầu cốt lõi: *mỗi nhiệm vụ mới → tạo một bản sao giống y

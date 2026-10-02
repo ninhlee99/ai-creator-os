@@ -286,3 +286,7 @@ Video demo thật sẽ được quay lại sau khi chạy rehearsal trên máy b
 ![Kiến trúc Agent Team](docs/assets/architecture-agent-team.svg)
 
 *Mỗi nhiệm vụ mới = một bản sao Agent Team chạy song song — xem mô phỏng trao đổi giữa các agent tại `docs/assets/agent-team-workflow.svg` và thiết kế đầy đủ tại `docs/AGENT_TEAM.md`.*
+
+![Đội agent và persona của AI Creator OS](docs/assets/agents/contact-sheet.png)
+
+*Mỗi agent và mỗi persona đều có avatar riêng cùng "họ" với Milo — nhìn đạo cụ là biết vai trò: Hunter cầm kính lúp đi săn sản phẩm, QC cầm checklist gác cổng, AI Coder ôm laptop... Bộ avatar đầy đủ ở `docs/assets/agents/`.*
