@@ -213,6 +213,27 @@ func beatBounceFilter(n int, secsPer float64, bpm int, aspect string) (string, f
 	return strings.TrimSuffix(sb.String(), ";"), total
 }
 
+// CropCenterVertical center-crops a 16:9 film clip to the central 9:16
+// band and scales it to 1080x1920 — the automatic vertical trailer cut
+// (Ninh 2026-10-02: trailers are cropped, never re-shot).
+//
+// TRADEOFF, stated honestly: the crop keeps only the middle ~32% of the
+// frame width (~68% of horizontal pixels are dropped), then upscales
+// ~1.78x to 1080x1920, so trailers are softer than the film. This is why
+// trailer_worthy shots must be composed center-safe (see FILM_RULES.md):
+// main character/action inside the central 9:16 zone.
+func CropCenterVertical(ctx context.Context, src, dst string) error {
+	if dir := filepath.Dir(dst); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	args := []string{"-i", src,
+		"-vf", "crop=ih*9/16:ih,scale=1080:1920:flags=lanczos,setsar=1",
+	}
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "aac", dst)
+	return ffmpegRun(ctx, args...)
+}
+
 // ProbeDims returns a video/image's width×height in pixels (0,0 on failure).
 func ProbeDims(ctx context.Context, path string) (int, int) {
 	cmd := exec.CommandContext(ctx, "ffprobe",
@@ -292,6 +313,61 @@ func MuxMusic(ctx context.Context, videoPath, musicPath string, musicStart float
 		"-i", videoPath, "-i", musicPath,
 		"-ss", fmt.Sprintf("%.1f", musicStart),
 		"-map", "0:v", "-map", "1:a",
+		"-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+		"-shortest", outPath)
+}
+
+// MuxSubtitles muxes an SRT subtitle track into a finished video without
+// re-encoding (mov_text, Vietnamese language tag). Empty srtText is a no-op
+// that copies the input — callers don't branch on "has subtitles".
+func MuxSubtitles(ctx context.Context, videoPath, srtText, outPath string) error {
+	if strings.TrimSpace(srtText) == "" {
+		return ffmpegRun(ctx, "-i", videoPath, "-c", "copy", outPath)
+	}
+	dir := filepath.Dir(outPath)
+	srt := filepath.Join(dir, "subs.srt")
+	if err := os.WriteFile(srt, []byte(srtText), 0o644); err != nil {
+		return err
+	}
+	defer os.Remove(srt)
+	return ffmpegRun(ctx,
+		"-i", videoPath, "-i", srt,
+		"-map", "0", "-map", "1",
+		"-c:v", "copy", "-c:a", "copy", "-c:s", "mov_text",
+		"-metadata:s:s:0", "language=vie",
+		outPath)
+}
+
+// MixMusicBed mixes a music bed under a film's existing audio. When the
+// video has a voice track the music is ducked ~8dB under it
+// (sidechaincompress); when the video is silent the music is laid straight.
+// The final mix is loudness-normalized to -14 LUFS like the affiliate
+// spots. Empty musicPath returns an error — callers check before calling.
+func MixMusicBed(ctx context.Context, videoPath, musicPath, outPath string) error {
+	if strings.TrimSpace(musicPath) == "" {
+		return fmt.Errorf("mix music: thiếu file nhạc")
+	}
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	if !ProbeHasAudio(ctx, videoPath) {
+		// Silent film (pure Veo shots): music becomes the audio track.
+		return ffmpegRun(ctx,
+			"-i", videoPath, "-i", musicPath,
+			"-map", "0:v", "-map", "1:a",
+			"-c:v", "copy", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
+			"-c:a", "aac", "-b:a", "160k", "-shortest", outPath)
+	}
+	// Voice present: duck the bed ~8dB under speech, then normalize.
+	// sidechaincompress takes [main][sidechain]: music ducks when voice hits.
+	filter := "[1:a]volume=0.5,atrim=0:3600[m];" +
+		"[m][0:a]sidechaincompress=threshold=-24dB:ratio=8:attack=20:release=500:makeup=1[dm];" +
+		"[0:a][dm]amix=inputs=2:duration=first:dropout_transition=0," +
+		"loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
+	return ffmpegRun(ctx,
+		"-i", videoPath, "-i", musicPath,
+		"-filter_complex", filter,
+		"-map", "0:v", "-map", "[aout]",
 		"-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
 		"-shortest", outPath)
 }

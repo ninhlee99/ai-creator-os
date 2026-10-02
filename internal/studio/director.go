@@ -20,15 +20,16 @@ import (
 
 // ProShot là một shot quay theo ngôn ngữ điện ảnh.
 type ProShot struct {
-	Index       int    `json:"index"`
-	Purpose     string `json:"purpose"`     // hook | build | payoff …
-	ShotSize    string `json:"shot_size"`   // ECU, CU, MCU, MS, WS, EWS, drone …
-	CameraMove  string `json:"camera_move"` // dolly-in, tracking, handheld, static …
-	LensLight   string `json:"lens_light"`  // 35mm f/1.8, golden hour …
-	Seconds     int    `json:"seconds"`
-	Action      string `json:"action"`       // diễn xuất/hành động (tiếng Việt)
-	ImagePrompt string `json:"image_prompt"` // prompt ảnh (tiếng Anh)
-	VideoPrompt string `json:"video_prompt"` // prompt video (tiếng Anh)
+	Index         int    `json:"index"`
+	Purpose       string `json:"purpose"`     // hook | build | payoff …
+	ShotSize      string `json:"shot_size"`   // ECU, CU, MCU, MS, WS, EWS, drone …
+	CameraMove    string `json:"camera_move"` // dolly-in, tracking, handheld, static …
+	LensLight     string `json:"lens_light"`  // 35mm f/1.8, golden hour …
+	Seconds       int    `json:"seconds"`
+	Action        string `json:"action"`         // diễn xuất/hành động (tiếng Việt)
+	ImagePrompt   string `json:"image_prompt"`   // prompt ảnh (tiếng Anh)
+	VideoPrompt   string `json:"video_prompt"`   // prompt video (tiếng Anh)
+	TrailerWorthy bool   `json:"trailer_worthy"` // shot đắt giá → cắt trailer 9:16
 }
 
 // ---------------------------------------------------------------------------
@@ -61,14 +62,20 @@ type DialogueLine struct {
 // FilmScenePro là một cảnh phim với đầy đủ khóa bối cảnh.
 type FilmScenePro struct {
 	Index       int            `json:"index"`
-	Location    string         `json:"location"`    // khóa địa điểm — tiếng Anh
-	TimeOfDay   string         `json:"time_of_day"` // khóa thời gian — tiếng Anh
-	Atmosphere  string         `json:"atmosphere"`  // khóa không gian/ánh sáng — tiếng Anh
+	Act         int            `json:"act,omitempty"` // hồi 1|2|3 (phim dài), 0 = phim ngắn
+	Location    string         `json:"location"`      // khóa địa điểm — tiếng Anh
+	TimeOfDay   string         `json:"time_of_day"`   // khóa thời gian — tiếng Anh
+	Atmosphere  string         `json:"atmosphere"`    // khóa không gian/ánh sáng — tiếng Anh
 	Seconds     int            `json:"seconds"`
 	Shots       []ProShot      `json:"shots"`
 	Dialogue    []DialogueLine `json:"dialogue"`
 	ImagePrompt string         `json:"image_prompt"` // keyframe của cảnh — tiếng Anh
 	Narration   string         `json:"narration"`    // lời dẫn (nếu có) — tiếng Việt
+	// Continuity là khối bất di bất dịch của cảnh: trang phục chi tiết từng
+	// nhân vật, tóc, đạo cụ, hướng ánh sáng, thời tiết. MỌI shot trong cảnh
+	// kế thừa NGUYÊN VĂN vào prompt (không diễn đạt lại) — continuity lock
+	// từng khung hình (Ninh 2026-10-02).
+	Continuity string `json:"continuity,omitempty"`
 }
 
 // SceneLockBlock khóa bối cảnh của cảnh để gắn vào prompt từng shot.
@@ -82,6 +89,7 @@ func (s FilmScenePro) SceneLockBlock() string {
 type FilmScriptPro struct {
 	Title      string         `json:"title"`
 	Logline    string         `json:"logline"`
+	Genre      string         `json:"genre,omitempty"`
 	Characters []Character    `json:"characters"`
 	Scenes     []FilmScenePro `json:"scenes"`
 }
@@ -119,21 +127,12 @@ func WriteProShotList(ctx context.Context, llm LLM, productName, niche string, s
 		n = 10
 	}
 	sys := "Bạn là đạo diễn quảng cáo TikTok Việt Nam đẳng cấp quốc tế. Chỉ trả lời JSON thuần."
-	prompt := fmt.Sprintf(`Sản phẩm: %s. Niche: %s. Video dài %ds, KHÔNG chữ, KHÔNG voiceover, chỉ hình + nhạc.
-
-Viết %d shot theo story arc: shot 1 là HOOK (3s đầu giữ chân), giữa BUILD (lifestyle, macro chất liệu, khoảnh khắc dùng sản phẩm thật), cuối PAYOFF ấm áp ôm sản phẩm.
-
-Mỗi shot gồm:
-- purpose: hook | build | payoff
-- shot_size: ECU/CU/MCU/MS/WS/EWS/aerial — chọn như cameraman thật
-- camera_move: dolly-in, dolly-out, tracking, pan, handheld nhẹ, static…
-- lens_light: ví dụ "35mm f/1.8, golden hour" / "macro 100mm, softbox"
-- seconds: 4-9
-- action: mẫu nữ Việt Nam diễn gì với sản phẩm (tiếng Việt, chi tiết, hành động hợp lý)
-- image_prompt, video_prompt: tiếng Anh, photorealistic, vertical 9:16, KHÔNG text/watermark
-
-Chỉ trả JSON: {"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camera_move":"dolly-in","lens_light":"35mm f/1.8, golden hour","seconds":5,"action":"...","image_prompt":"...","video_prompt":"..."}]}`,
-		productName, niche, seconds, n)
+	prompt, err := directorPrompt("affiliate_shotlist.txt", promptData{
+		Topic: productName, Niche: niche, Seconds: seconds, N: n,
+	})
+	if err != nil {
+		return nil, err
+	}
 	text, err := llm.Complete(ctx, sys, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("director: %w", err)
@@ -164,11 +163,34 @@ Chỉ trả JSON: {"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camer
 // phim ngắn: kịch bản chuyên nghiệp
 // ---------------------------------------------------------------------------
 
-// WriteFilmScript viết kịch bản phim ngắn chuyên nghiệp: character bible
-// khóa nhân vật + từng cảnh khóa địa điểm/thời gian/không gian + shot điện
-// ảnh + thoại có cảm xúc. aspect ("9:16"|"16:9") tells the director the
-// delivery frame so the shot list is composed for the real format.
-func WriteFilmScript(ctx context.Context, llm LLM, topic string, seconds int, aspect string) (FilmScriptPro, error) {
+// ---------------------------------------------------------------------------
+// phim: kịch bản chuyên nghiệp (chuẩn điện ảnh — luật ở docs/FILM_RULES.md)
+// ---------------------------------------------------------------------------
+
+// defaultFilmGenre là thể loại khi người dùng không chọn.
+const defaultFilmGenre = "Tâm lý"
+
+// WriteFilmScript viết kịch bản phim chuyên nghiệp: character bible khóa
+// nhân vật + từng cảnh khóa địa điểm/thời gian/không gian + shot điện ảnh
+// + thoại có cảm xúc. aspect ("9:16"|"16:9") tells the director the
+// delivery frame so the shot list is composed for the real frame.
+//
+// Phim ≤180s: một lần gọi LLM (cấu trúc 3 hồi thu nhỏ). Phim dài hơn:
+// viết theo 3 hồi, mỗi hồi một lần gọi — vừa ép đúng cấu trúc điện ảnh
+// (hook 60s đầu → bước ngoặt giữa → cao trào + kết), vừa không vượt giới
+// hạn độ dài một response của LLM.
+func WriteFilmScript(ctx context.Context, llm LLM, topic, genre string, seconds int, aspect string) (FilmScriptPro, error) {
+	if strings.TrimSpace(genre) == "" {
+		genre = defaultFilmGenre
+	}
+	if seconds <= 180 {
+		return writeFilmScriptShort(ctx, llm, topic, genre, seconds, aspect)
+	}
+	return writeFilmScriptThreeActs(ctx, llm, topic, genre, seconds, aspect)
+}
+
+// writeFilmScriptShort viết kịch bản phim ngắn trong một lần gọi LLM.
+func writeFilmScriptShort(ctx context.Context, llm LLM, topic, genre string, seconds int, aspect string) (FilmScriptPro, error) {
 	var script FilmScriptPro
 	n := seconds / 20
 	if n < 2 {
@@ -177,34 +199,112 @@ func WriteFilmScript(ctx context.Context, llm LLM, topic string, seconds int, as
 	if n > 6 {
 		n = 6
 	}
-	sys := "Bạn là biên kịch phim ngắn Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Chủ đề phim: %s. Phim dài khoảng %ds, gồm %d cảnh, %s.
-
-Viết kịch bản NHƯ PHIM THẬT:
-1. characters: 1-3 nhân vật, mỗi người có name + appearance (tuổi, khuôn mặt, tóc, da, dáng người — tiếng Anh, CHI TIẾT để khóa identity) + wardrobe (trang phục — tiếng Anh).
-2. Mỗi scene có:
-   - location: địa điểm CỤ THỂ khóa cứng (tiếng Anh)
-   - time_of_day: thời gian khóa cứng (tiếng Anh, vd "late afternoon golden hour")
-   - atmosphere: không gian/ánh sáng/không khí khóa cứng (tiếng Anh)
-   - seconds: 12-25
-   - shots: 2-4 shot, mỗi shot có shot_size, camera_move, lens_light, action (tiếng Việt), image_prompt (tiếng Anh, photorealistic cinematic, KHÔNG text)
-   - dialogue: 1-4 câu thoại tiếng Việt, mỗi câu có character, text, emotion (vui/buồn/căng thẳng/dịu dàng…)
-   - image_prompt: keyframe đại diện cảnh (tiếng Anh)
-   - narration: lời dẫn ngắn (tiếng Việt) hoặc "" nếu thoại đã đủ
-
-Yêu cầu: nhân vật NHẤT QUÁN mọi cảnh, bối cảnh mỗi cảnh NHẤT QUÁN mọi shot, thoại rõ ràng mạch lạc có cảm xúc, có mở-thân-kết.
-
-Chỉ trả JSON: {"title":"...","logline":"...","characters":[{"name":"...","appearance":"...","wardrobe":"..."}],"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","seconds":18,"shots":[{"shot_size":"WS","camera_move":"slow dolly-in","lens_light":"35mm, golden hour","action":"..."}],"dialogue":[{"character":"...","text":"...","emotion":"..."}],"image_prompt":"...","narration":"..."}]}`,
-		topic, seconds, n, orientationWord(aspect))
-	text, err := llm.Complete(ctx, sys, prompt)
+	prompt, err := directorPrompt("film_short.txt", promptData{
+		Topic: topic, Genre: genre, Seconds: seconds, N: n,
+		Orient: orientationWord(aspect),
+	})
+	if err != nil {
+		return script, err
+	}
+	text, err := llm.Complete(ctx,
+		"Bạn là biên kịch phim Việt Nam. Chỉ trả lời JSON thuần, không giải thích.",
+		prompt)
 	if err != nil {
 		return script, fmt.Errorf("director: %w", err)
 	}
 	if err := parseDirectorJSON(text, &script); err != nil {
 		return script, err
 	}
+	script.Genre = genre
 	if len(script.Characters) == 0 || len(script.Scenes) == 0 {
 		return script, fmt.Errorf("director: kịch bản rỗng (0 nhân vật / 0 cảnh)")
+	}
+	return script, nil
+}
+
+// actDef mô tả một hồi của phim dài: tỉ trọng thời lượng + vai trò kịch bản.
+type actDef struct {
+	num      int
+	share    float64
+	role     string
+	template string
+}
+
+// writeFilmScriptThreeActs viết kịch bản phim dài theo đúng 3 hồi điện ảnh.
+// Hồi 1 dựng character bible + gieo hook; hồi 2/3 nhận bible + recap các hồi
+// trước để viết tiếp mà không lặp hay lệch nhân vật.
+func writeFilmScriptThreeActs(ctx context.Context, llm LLM, topic, genre string, seconds int, aspect string) (FilmScriptPro, error) {
+	var script FilmScriptPro
+	script.Genre = genre
+	acts := []actDef{
+		{1, 0.20, "Mở đầu", "film_act1.txt"},
+		{2, 0.55, "Diễn biến", "film_act2.txt"},
+		{3, 0.25, "Kết", "film_act3.txt"},
+	}
+	sys := "Bạn là biên kịch phim Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
+	var recap1, recap2, charJSON string
+	sceneBase := 0
+	for _, a := range acts {
+		actSecs := int(float64(seconds) * a.share)
+		n := actSecs / 120
+		if n < 3 {
+			n = 3
+		}
+		if n > 10 {
+			n = 10
+		}
+		prompt, err := directorPrompt(a.template, promptData{
+			Topic: topic, Genre: genre, TotalSeconds: seconds,
+			ActSeconds: actSecs, N: n, Orient: orientationWord(aspect),
+			Characters: charJSON, Recap1: recap1, Recap2: recap2,
+		})
+		if err != nil {
+			return script, err
+		}
+		text, err := llm.Complete(ctx, sys, prompt)
+		if err != nil {
+			return script, fmt.Errorf("director hồi %d (%s): %w", a.num, a.role, err)
+		}
+		var act struct {
+			Title      string         `json:"title"`
+			Logline    string         `json:"logline"`
+			Characters []Character    `json:"characters"`
+			Scenes     []FilmScenePro `json:"scenes"`
+			Recap      string         `json:"recap"`
+		}
+		if err := parseDirectorJSON(text, &act); err != nil {
+			return script, fmt.Errorf("director hồi %d: %w", a.num, err)
+		}
+		if a.num == 1 {
+			script.Title = act.Title
+			script.Logline = act.Logline
+			script.Characters = act.Characters
+			if len(script.Characters) == 0 {
+				return script, fmt.Errorf("director hồi 1: thiếu character bible")
+			}
+			var cb strings.Builder
+			for _, c := range script.Characters {
+				fmt.Fprintf(&cb, "- %s: %s | Trang phục: %s\n", c.Name, c.Appearance, c.Wardrobe)
+			}
+			charJSON = cb.String()
+		}
+		if len(act.Scenes) == 0 {
+			return script, fmt.Errorf("director hồi %d (%s): 0 cảnh", a.num, a.role)
+		}
+		for i := range act.Scenes {
+			act.Scenes[i].Act = a.num
+			act.Scenes[i].Index = sceneBase + i + 1
+		}
+		sceneBase += len(act.Scenes)
+		script.Scenes = append(script.Scenes, act.Scenes...)
+		if a.num == 1 {
+			recap1 = act.Recap
+		} else if a.num == 2 {
+			recap2 = act.Recap
+		}
+	}
+	if len(script.Scenes) == 0 {
+		return script, fmt.Errorf("director: kịch bản rỗng (0 cảnh)")
 	}
 	return script, nil
 }

@@ -43,6 +43,8 @@ func TestVariantMetadataDifferentiates(t *testing.T) {
 }
 
 func TestVariantAspect(t *testing.T) {
+	// Ninh 2026-10-02 (final): every film is 16:9 (cinematic standard);
+	// vertical trailers are center-cropped, never re-shot.
 	if VariantAspect(VariantYouTube) != "16:9" {
 		t.Error("youtube_long variant must render 16:9")
 	}
