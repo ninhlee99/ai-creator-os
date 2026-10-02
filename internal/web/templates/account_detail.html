@@ -102,6 +102,81 @@
 </div>
 </div>
 
+{{if .GrowthProfile}}
+<h2>Phát triển kênh 🌱</h2>
+<p>
+  Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
+  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hệ thống tự quyết nhịp đăng, giết/nhân đôi format; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
+</p>
+{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức (cần YOUTUBE_API_KEY trong Cài đặt + gắn kênh YouTube bên dưới).</p>{{end}}
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Thang mốc kiếm tiền</h2>
+  {{if .GrowthTargets}}
+  <table>
+  <tr><th>Mốc</th><th>Hiện tại</th><th>Mục tiêu</th><th>Tiến độ</th></tr>
+  {{range .GrowthTargets}}
+  <tr>
+    <td>{{.Label}}{{if .Deadline}}<br><span class="hint">hạn {{.Deadline}}</span>{{end}}</td>
+    <td>{{if .HasValue}}{{printf "%.0f" .Value}}{{else}}—{{end}}</td>
+    <td>{{printf "%.0f" .Threshold}}</td>
+    <td>{{if .ReachedAt}}<span class="badge badge-ok">đã đạt {{.ReachedAt}}</span>{{else}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .Pct}}%"></div></div>{{end}}</td>
+  </tr>
+  {{end}}
+  </table>
+  {{else}}<p class="hint">Chưa có thang mốc.</p>{{end}}
+  <form method="post" action="/growth/accounts/{{.Acct.ID}}/plan" style="margin-top:10px">
+    <input type="hidden" name="from" value="detail">
+    <button class="btn btn-secondary btn-sm" type="submit">↻ Replan 30 ngày ngay</button>
+    <span class="hint">Plan mới thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).</span>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Kế hoạch nội dung</h2>
+  {{if .GrowthPlan}}
+  <p class="hint">Plan #{{.GrowthPlan.ID}} · {{statusLabel .GrowthPlan.Status}} · tạo {{.GrowthPlan.CreatedAt}}{{if .GrowthPlan.Rationale}} · {{.GrowthPlan.Rationale}}{{end}}</p>
+  {{if .GrowthPlanItems}}
+  <table>
+  <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Hook</th></tr>
+  {{range .GrowthPlanItems}}
+  <tr><td>{{.PlannedFor}}</td><td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td><td>{{.Topic}}</td><td>{{.Hook}}</td></tr>
+  {{end}}
+  </table>
+  {{else}}<p class="hint">Không còn mục nào sắp tới trong plan này.</p>{{end}}
+  {{else}}
+  <p class="hint">Chưa có kế hoạch. Hệ thống sinh tự động khi cần; bấm nút bên trái để sinh ngay.</p>
+  {{end}}
+</div>
+</div>
+
+{{if .GrowthStats}}
+<h3>Hiệu quả theo format</h3>
+<table>
+<tr><th>Format</th><th>Video</th><th>View trung vị</th><th>Hoàn tất trung vị</th><th>Phán quyết</th><th>Lý do</th></tr>
+{{range .GrowthStats}}
+<tr>
+  <td>{{.FormatID}}</td><td>{{.Videos}}</td><td>{{printf "%.0f" .MedianViews}}</td>
+  <td>{{if .MedianCompletion}}{{printf "%.0f%%" (mul .MedianCompletion 100)}}{{else}}— (dùng share/save){{end}}</td>
+  <td><span class="badge badge-{{statusClass .Verdict}}">{{statusLabel .Verdict}}</span></td>
+  <td>{{.VerdictReason}}</td>
+</tr>
+{{end}}
+</table>
+{{end}}
+
+{{if .GrowthAlerts}}
+<h3>Cảnh báo growth gần đây</h3>
+<table>
+<tr><th>Thời gian</th><th>Nội dung</th><th>Hệ thống đã làm</th></tr>
+{{range .GrowthAlerts}}
+<tr><td>{{.CreatedAt}}</td><td>{{.Message}}</td><td>{{.ActionTaken}}</td></tr>
+{{end}}
+</table>
+{{end}}
+{{end}}
+
 <h2>Autopilot Affiliate 🤖</h2>
 <div class="grid2">
 <div class="form-card">

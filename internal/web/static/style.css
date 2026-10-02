@@ -239,6 +239,7 @@ h2[id] { scroll-margin-top: 64px; }
 .field label { display: block; font-weight: 600; margin-bottom: 6px;
   font-size: 14px; }
 .field .hint { font-size: var(--fs-sm); color: var(--muted); margin-top: 4px; }
+.hint { font-size: var(--fs-sm); color: var(--muted); }
 input[type=text], input[type=password], input[type=number], textarea, select {
   width: 100%; background: var(--input-bg); border: 1px solid var(--border);
   color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 14px;

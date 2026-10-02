@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -39,6 +40,9 @@ type Server struct {
 	TTS    TTSChainAPI
 	Avatar AvatarChainAPI
 	Studio *studio.Studio
+	// Growth is the channel-growth engine store (nil when its tables could
+	// not be created; the /growth page then shows an honest error).
+	Growth *growth.Store
 	// Autopilot runs hands-off affiliate cycles (products -> video).
 	// Products is the affiliate product store. ProductProviders are the
 	// configured product search providers. All three are injected by the
@@ -104,6 +108,11 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		db:        db,
 	}
 	s.applyPersistedEnv()
+	if gs, err := growth.NewStore(db); err != nil {
+		log.Printf("web: growth store: %v", err)
+	} else {
+		s.Growth = gs
+	}
 	s.renderer = ffmpegRenderer{s: s}
 	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
 		db.Close()
@@ -163,8 +172,8 @@ var templateFuncs = template.FuncMap{
 	"statusLabel": statusLabel,
 	// statusClass maps a raw status slug to a semantic badge class suffix.
 	"statusClass": statusClass,
-	"mul": func(a, b float64) float64 { return a * b },
-	"pct": func(f float64) float64 { return f * 100 },
+	"mul":         func(a, b float64) float64 { return a * b },
+	"pct":         func(f float64) float64 { return f * 100 },
 	"join": func(sep string, xs []string) string {
 		return strings.Join(xs, sep)
 	},
@@ -225,24 +234,42 @@ var statusLabels = map[string]string{
 	// decision actions shown in the activity feed
 	"niche_research": "Nghiên cứu niche",
 	"live_unlocked":  "Mở khóa live",
+	// growth stages (CHANNEL_GROWTH)
+	"cold_start":        "Khởi động (canary)",
+	"format_testing":    "Đang test format",
+	"scaling":           "Đang mở rộng",
+	"monetization_push": "Đẩy tới mốc kiếm tiền",
+	"monetized":         "Đã qua cửa kiếm tiền",
+	"stalled":           "Đang chững (chờ replan)",
+	// growth format verdicts + plan item statuses
+	"testing":    "Đang test",
+	"winner":     "Format thắng",
+	"killed":     "Đã dừng format",
+	"producing":  "Đang sản xuất",
+	"published":  "Đã đăng",
+	"dropped":    "Đã loại",
+	"active":     "Đang hiệu lực",
+	"superseded": "Đã thay thế",
 }
 
 // statusClass maps a raw status slug to a semantic badge class suffix
 // (ok/warn/err/info/no/running/queued/draft) defined in style.css.
 func statusClass(s string) string {
 	switch s {
-	case "live", "live_ready", "done", "started", "shelf", "scaled":
+	case "live", "live_ready", "done", "started", "shelf", "scaled", "monetized", "winner", "published", "active":
 		return "ok"
-	case "running", "working":
+	case "running", "working", "producing":
 		return "running"
 	case "queued", "pending":
 		return "queued"
-	case "failed", "penalized":
+	case "failed", "penalized", "killed":
 		return "err"
-	case "onboarding", "paused", "skipped":
+	case "onboarding", "paused", "skipped", "cold_start", "stalled":
 		return "warn"
-	case "researching", "persona_assigned", "growing", "planned", "exchange":
+	case "researching", "persona_assigned", "growing", "planned", "exchange", "format_testing", "monetization_push", "scaling", "testing":
 		return "info"
+	case "dropped", "superseded":
+		return "no"
 	default:
 		return "no"
 	}
@@ -318,6 +345,7 @@ var pageFiles = map[string]string{
 	"shop":           "shop.html",
 	"products":       "products.html",
 	"analytics":      "analytics.html",
+	"growth":         "growth.html",
 	"settings":       "settings.html",
 	"team":           "team.html",
 }

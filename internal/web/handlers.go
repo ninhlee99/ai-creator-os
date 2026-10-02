@@ -84,6 +84,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
 
 	mux.HandleFunc("GET /analytics", s.handleAnalytics)
+	mux.HandleFunc("GET /growth", s.handleGrowth)
+	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
+	mux.HandleFunc("POST /growth/accounts/{id}/plan", s.handleGrowthPlan)
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
@@ -355,7 +358,7 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		lastTopic = &lastTopicView{Topic: topic, Reason: rows[0].Reason, CreatedAt: rows[0].CreatedAt}
 	}
-	s.render(w, "account_detail", s.ctx(
+	detailCtx := s.ctx(
 		"Acct", s.wrapAccount(acct),
 		"Allowed", allowed,
 		"Persona", persona,
@@ -369,7 +372,11 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"StudioOK", s.Studio != nil,
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
-	))
+	)
+	for k, v := range s.accountGrowthView(acct) {
+		detailCtx[k] = v
+	}
+	s.render(w, "account_detail", detailCtx)
 }
 
 func (s *Server) accountID(w http.ResponseWriter, r *http.Request) (int64, bool) {
@@ -794,7 +801,7 @@ type envRow struct {
 // settings table (applied at startup), so they survive restarts.
 var envNames = []string{"TTS_API_KEY", "TIKTOK_SHOP_APP_KEY", "TIKTOK_SHOP_APP_SECRET",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
-	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID"}
+	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY"}
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
 func envSettingKey(name string) string { return "env:" + name }
