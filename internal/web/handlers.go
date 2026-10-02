@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
@@ -1552,23 +1554,30 @@ type productJSON struct {
 	Status          string  `json:"status"`
 }
 
+// handleAPIProducts lists the shared product store (best score first).
+// R2-W1: one store — it reads what the Kệ hàng tab and the autopilot see.
 func (s *Server) handleAPIProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := s.Ledger.GetProducts()
+	if s.Products == nil {
+		writeJSON(w, []productJSON{})
+		return
+	}
+	items, err := s.Products.All(50)
 	if err != nil {
 		s.fail(w, err, "get products")
 		return
 	}
-	sort.Slice(products, func(i, j int) bool { return products[i].Score > products[j].Score })
-	if len(products) > 50 {
-		products = products[:50]
-	}
-	out := make([]productJSON, 0, len(products))
-	for _, p := range products {
+	out := make([]productJSON, 0, len(items))
+	for _, p := range items {
+		status := p.ShelfStatus
+		if status == "" {
+			status = "candidate"
+		}
 		out = append(out, productJSON{
-			ID: p.ID, PlatformPID: p.PlatformPID, Title: p.Title,
-			Category: nullStr(p.Category), Price: p.Price,
-			CommissionRate: p.CommissionRate, CommissionValue: p.CommissionValue,
-			Score: p.Score, Status: p.Status,
+			ID: p.ID, PlatformPID: p.SourceID, Title: p.Title,
+			Category: p.Category, Price: p.Price,
+			CommissionRate:  p.CommissionRate,
+			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
+			Score:           products.Score(p), Status: status,
 		})
 	}
 	writeJSON(w, out)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -142,10 +143,15 @@ type productView struct {
 	Status          string
 }
 
-// shelfViews projects the ledger shelf (status shelf/scaled) for the
-// "Kệ hàng" tab — the products AI gắn vào video/live.
+// shelfViews projects the shared product store's shelf (status
+// shelf/scaled) for the "Kệ hàng" tab — the products AI gắn vào
+// video/live. R2-W1: one store — autopilot and the shelf read the same
+// kho, so adding here makes the product immediately pickable.
 func (s *Server) shelfViews() []productView {
-	shelf, err := s.Ledger.ShelfProducts(50)
+	if s.Products == nil {
+		return nil
+	}
+	shelf, err := s.Products.Shelf(50)
 	if err != nil {
 		log.Printf("web: shelf products: %v", err)
 		return nil
@@ -153,18 +159,71 @@ func (s *Server) shelfViews() []productView {
 	views := make([]productView, 0, len(shelf))
 	for _, p := range shelf {
 		views = append(views, productView{
-			Title: p.Title, PlatformPID: p.PlatformPID,
-			Category: nullStr(p.Category), Price: p.Price,
-			CommissionRate: p.CommissionRate, CommissionValue: p.CommissionValue,
-			Score: p.Score, Status: p.Status,
+			Title: p.Title, PlatformPID: p.SourceID,
+			Category: p.Category, Price: p.Price,
+			CommissionRate:  p.CommissionRate,
+			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
+			Score:           products.Score(p), Status: p.ShelfStatus,
 		})
 	}
 	return views
 }
 
+// ledgerShelfMigrationKey marks the one-time import of the legacy ledger
+// products table into the shared store.
+const ledgerShelfMigrationKey = "migration.ledger_products_v1"
+
+// MigrateLedgerShelf imports the legacy ledger products table (the Kệ
+// hàng tab's old home) into the shared product store — once, idempotently.
+// Shelf/scaled rows keep their shelf status + score; discovered/candidate
+// rows become plain store products. The ledger table itself is left
+// untouched for the parked agent universe (hunter/analyst/streamer).
+func (s *Server) MigrateLedgerShelf() (int, error) {
+	if s.Products == nil || s.Ledger == nil {
+		return 0, nil
+	}
+	if _, done := s.Products.GetSetting(ledgerShelfMigrationKey); done {
+		return 0, nil
+	}
+	legacy, err := s.Ledger.GetProducts()
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, lp := range legacy {
+		rating := 0.0
+		if lp.SellerRating.Valid {
+			rating = lp.SellerRating.Float64
+		}
+		id, err := s.Products.Save(products.Product{
+			Source: "tiktok_shop", SourceID: lp.PlatformPID, Title: lp.Title,
+			Category: nullStr(lp.Category), Price: lp.Price,
+			CommissionRate: lp.CommissionRate, Rating: rating,
+		})
+		if err != nil {
+			return n, err
+		}
+		if lp.Status == "shelf" || lp.Status == "scaled" {
+			if err := s.Products.SetShelf(id, lp.Status, lp.Score); err != nil {
+				return n, err
+			}
+		}
+		n++
+	}
+	if err := s.Products.SetSetting(ledgerShelfMigrationKey, "1"); err != nil {
+		return n, err
+	}
+	return n, nil
+}
+
 // handleProductsShelfAdd adds one product straight onto the shelf (Kệ
 // hàng tab) — the manual fallback while the TikTok Shop API is not wired.
+// Writes the shared store so the autopilot picks it up immediately.
 func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) {
+	if s.Products == nil {
+		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "add shelf product")
+		return
+	}
 	if err := r.ParseForm(); err != nil {
 		s.fail(w, err, "parse shelf form")
 		return
@@ -177,18 +236,26 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 		seeOther(w, r, "/products?tab=ke")
 		return
 	}
-	category := strings.TrimSpace(r.PostFormValue("category"))
-	fields := map[string]any{
-		"title": title, "price": price, "commission_rate": rate,
-		"commission_value": price * rate,
-		"category":         nil,
-		"status":           "shelf", "score": 0.0,
+	theme := strings.TrimSpace(r.PostFormValue("theme"))
+	if theme == "" {
+		// Don't wipe the theme of a product we already discovered.
+		if prev, err := s.Products.GetBySource("tiktok_shop", pid); err == nil {
+			theme = prev.Theme
+		}
 	}
-	if category != "" {
-		fields["category"] = category
+	p := products.Product{
+		Source: "tiktok_shop", SourceID: pid, Title: title,
+		Category: strings.TrimSpace(r.PostFormValue("category")),
+		Price:    price, CommissionRate: rate, Theme: theme,
 	}
-	if _, err := s.Ledger.UpsertProduct(pid, fields); err != nil {
-		log.Printf("web: upsert product: %v", err)
+	id, err := s.Products.Save(p)
+	if err != nil {
+		log.Printf("web: save shelf product: %v", err)
+		seeOther(w, r, "/products?tab=ke")
+		return
+	}
+	if err := s.Products.SetShelf(id, "shelf", 0); err != nil {
+		log.Printf("web: set shelf status: %v", err)
 	}
 	seeOther(w, r, "/products?tab=ke")
 }

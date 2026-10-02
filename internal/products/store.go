@@ -60,6 +60,40 @@ func (s *Store) migrate() error {
 	-- not env vars or CLI — is the control plane for operations.
 	CREATE TABLE IF NOT EXISTS settings(
 		key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');`)
+	if err != nil {
+		return err
+	}
+	// R2-W1: shelf state moved into this store (it used to live in the
+	// ledger products table, invisible to the autopilot). Columns are
+	// added to installs created before this change.
+	if err := s.addColumn("products", "shelf_status", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	return s.addColumn("products", "shelf_score", "REAL NOT NULL DEFAULT 0")
+}
+
+// addColumn appends a column unless it already exists (idempotent).
+func (s *Store) addColumn(table, column, decl string) error {
+	rows, err := s.db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid, notNull, pk int
+		var name, typ string
+		var dflt any
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column + ` ` + decl)
 	return err
 }
 
@@ -125,7 +159,7 @@ func scanProduct(row interface {
 	var imgs string
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price,
 		&p.Currency, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount,
-		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt)
+		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt, &p.ShelfStatus, &p.ShelfScore)
 	if err != nil {
 		return p, err
 	}
@@ -134,7 +168,8 @@ func scanProduct(row interface {
 }
 
 const productCols = `id,source,source_id,title,image_urls,price,currency,` +
-	`commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at`
+	`commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at,` +
+	`shelf_status,shelf_score`
 
 // TopByTheme returns the best unused-by-account products for a theme,
 // ordered by score. Products already promoted for accountID are excluded.
@@ -172,6 +207,78 @@ func (s *Store) RecordUse(productID, accountID int64, jobID string) error {
 		`INSERT INTO product_usage(product_id,account_id,job_id,used_at) VALUES(?,?,?,?)`,
 		productID, accountID, jobID, time.Now().Format("2006-01-02T15:04:05"))
 	return err
+}
+
+// SetShelf marks a product's shelf state ("shelf"/"scaled") with its
+// curated score, or removes it from the shelf with an empty status.
+// Shelf state lives in this same store so the autopilot (TopByTheme) sees
+// shelf-curated products immediately.
+func (s *Store) SetShelf(productID int64, status string, score float64) error {
+	_, err := s.db.Exec(
+		`UPDATE products SET shelf_status=?, shelf_score=? WHERE id=?`,
+		status, score, productID)
+	return err
+}
+
+// Shelf returns products curated onto the shelf (status shelf/scaled),
+// curated score first.
+func (s *Store) Shelf(limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.Query(`
+		SELECT `+productCols+` FROM products
+		WHERE shelf_status IN ('shelf','scaled')
+		ORDER BY shelf_score DESC, commission_rate DESC, id LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Product
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// All returns up to limit products, best first by Score (API surface).
+func (s *Store) All(limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.db.Query(`SELECT ` + productCols + ` FROM products ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Product
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	ranked := Rank(out)
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+	return ranked, nil
+}
+
+// GetBySource fetches one product by its provider coordinates.
+func (s *Store) GetBySource(source, sourceID string) (Product, error) {
+	p, err := scanProduct(s.db.QueryRow(
+		`SELECT `+productCols+` FROM products WHERE source=? AND source_id=?`,
+		source, sourceID))
+	return p, err
 }
 
 // SearchThemes lists distinct themes with product counts (for the UI).

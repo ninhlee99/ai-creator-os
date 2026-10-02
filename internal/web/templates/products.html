@@ -46,6 +46,15 @@
     <label>Danh mục</label>
     <input type="text" name="category" placeholder="vd: điện tử">
   </div>
+  <div class="field">
+    <label>Chủ đề</label>
+    <select name="theme">
+      <option value="">— chưa gán —</option>
+      {{range .Themes}}
+      <option value="{{.Slug}}">{{.Label}}</option>
+      {{end}}
+    </select>
+  </div>
   <button type="submit" class="btn">Thêm vào kệ</button>
 </form>
 </div>

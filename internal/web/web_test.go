@@ -11,6 +11,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
 func newTestServer(t *testing.T) *Server {
@@ -289,6 +290,14 @@ func TestAllPagesRender(t *testing.T) {
 // và tạo mới được ở nhà mới.
 func TestMergedPagesRedirects(t *testing.T) {
 	s := newTestServer(t)
+	// R2-W1: the shelf now lives in the shared products store, so the
+	// test server gets one (like the real cmd wiring does).
+	store, err := products.NewStore("products-webtest.db")
+	if err != nil {
+		t.Fatalf("products store: %v", err)
+	}
+	t.Cleanup(func() { store.Close() })
+	s.Products = store
 
 	// legacy URLs -> 303 to the tab that replaced them
 	for _, tc := range []struct{ method, path, wantLoc string }{
