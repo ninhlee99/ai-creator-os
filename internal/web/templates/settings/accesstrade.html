@@ -1,0 +1,56 @@
+{{define "title"}}Cài đặt · Accesstrade — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Cài đặt · Accesstrade</h1>
+<p class="subtitle">Nối tài khoản publisher Accesstrade để lấy chiến dịch và tạo link affiliate.</p>
+{{template "settings-nav" .}}
+
+<div class="cards">
+  <div class="card">
+    <div class="num">{{if .ATKeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}</div>
+    <div class="label">Trạng thái key{{if .ATKeySet}} · <code>{{.ATMasked}}</code>{{end}}</div>
+  </div>
+  <div class="card">
+    <div class="num">{{.ATCampaigns}}</div>
+    <div class="label">Chiến dịch đã lưu trong cache</div>
+  </div>
+  <div class="card">
+    <div class="num">{{if .ATStoreOK}}<span class="badge badge-ok">Sẵn sàng</span>{{else}}<span class="badge badge-err">Lỗi</span>{{end}}</div>
+    <div class="label">Kho Accesstrade</div>
+  </div>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Access key</h2>
+  <p class="subtitle">Lấy trong trang publisher Accesstrade (mục thông tin API). Key chỉ lưu trên máy này, không hiện lại sau khi lưu.</p>
+  <form method="post" action="/settings/accesstrade/key">
+    <div class="field">
+      <label>Access key{{if .ATKeySet}} <span class="hint">— đang dùng <code>{{.ATMasked}}</code>, nhập key mới để thay</span>{{end}}</label>
+      <input type="password" name="access_key" autocomplete="off" placeholder="dán access_key của publisher"{{if not .ATKeySet}} required{{end}}>
+    </div>
+    <div style="display:flex;gap:0.5rem">
+      <button type="submit" class="btn btn-primary btn-sm">Lưu key</button>
+      {{if .ATKeySet}}<button type="button" class="btn btn-secondary btn-sm" id="at-test">Kiểm tra kết nối</button>{{end}}
+    </div>
+  </form>
+</div>
+
+{{if .ATKeySet}}
+<script>
+(function () {
+  var btn = document.getElementById('at-test');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    fetch('/settings/accesstrade/test', {method: 'POST'})
+      .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+      .then(function (x) {
+        btn.disabled = false;
+        if (x.d && x.d.ok) window.showToast('Kết nối OK — Accesstrade phản hồi bình thường.', true);
+        else window.showToast((x.d && x.d.error) || ('Lỗi HTTP ' + x.s), false);
+      })
+      .catch(function () { btn.disabled = false; window.showToast('Không gọi được server.', false); });
+  });
+})();
+</script>
+{{end}}
+{{end}}
