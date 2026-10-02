@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phân tích — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Phân tích</h1>
+<p class="subtitle">Doanh thu, quà tặng, phiên live và chi phí API của toàn mạng lưới.</p>
+
+<div class="cards">
+  <div class="card accent">
+    <div class="num">$0.00</div>
+    <div class="label">Doanh thu affiliate (đơn hàng)</div>
+  </div>
+  <div class="card">
+    <div class="num">$0.00</div>
+    <div class="label">Hoa hồng đã ghi nhận</div>
+  </div>
+  <div class="card green">
+    <div class="num">0</div>
+    <div class="label">Phiên live đã chạy</div>
+  </div>
+  <div class="card">
+    <div class="num">$0.00</div>
+    <div class="label">Chi phí API hôm nay</div>
+  </div>
+</div>
+
+<h2>Quà tặng theo tài khoản</h2>
+
+<p class="empty">Chưa có quà tặng nào được ghi nhận.</p>
+
+
+<h2>Chi phí API theo engine/provider</h2>
+
+<p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#e2e8f0"/>
+    </marker>
+    <style>
+      .title{fill:#f8fafc;font-size:32px;font-weight:800}
+      .sub{fill:#cbd5e1;font-size:16px}
+      .actor{fill:#0f172a;font-size:17px;font-weight:800}
+      .small{fill:#e2e8f0;font-size:13.5px}
+      .msg{fill:#f8fafc;font-size:14.5px}
+      .note{fill:#fde68a;font-size:13.5px;font-style:italic}
+      .life{stroke:#475569;stroke-width:2;stroke-dasharray:8 7}
+      .flow{stroke:#e2e8f0;stroke-width:2.2;marker-end:url(#a2)}
+      .ret{stroke:#38bdf8;stroke-width:2.2;stroke-dasharray:8 5;marker-end:url(#a2)}
+    </style>
+  </defs>
+  <rect width="1600" height="940" fill="url(#bg2)"/>
+  <text x="48" y="56" class="title">Mô phỏng: một nhiệm vụ mới → nhân bản Agent Team → các agent trao đổi</text>
+  <text x="48" y="84" class="sub">Nhiệm vụ mẫu: "Làm video affiliate túi xách cho account @creator-a" — mọi tin nhắn đi qua Task Queue + Blackboard, UI vẽ lại từ event log thật</text>
+
+  <!-- actors -->
+  <g>
+    <rect x="60" y="116" width="150" height="54" rx="12" fill="#f59e0b"/><text x="135" y="150" text-anchor="middle" class="actor">👤 Ninh</text>
+    <rect x="252" y="116" width="196" height="54" rx="12" fill="#fca5a5"/><text x="350" y="150" text-anchor="middle" class="actor">🎯 Orchestrator</text>
+    <rect x="490" y="116" width="160" height="54" rx="12" fill="#93c5fd"/><text x="570" y="150" text-anchor="middle" class="actor">🔍 Hunter</text>
+    <rect x="692" y="116" width="160" height="54" rx="12" fill="#93c5fd"/><text x="772" y="150" text-anchor="middle" class="actor">🎬 Director</text>
+    <rect x="894" y="116" width="160" height="54" rx="12" fill="#93c5fd"/><text x="974" y="150" text-anchor="middle" class="actor">🏭 Producer</text>
+    <rect x="1096" y="116" width="160" height="54" rx="12" fill="#c4b5fd"/><text x="1176" y="150" text-anchor="middle" class="actor">🔎 QC</text>
+    <rect x="1298" y="116" width="120" height="54" rx="12" fill="#6ee7b7"/><text x="1358" y="150" text-anchor="middle" class="actor">📤 Publisher</text>
+    <rect x="1450" y="116" width="120" height="54" rx="12" fill="#6ee7b7"/><text x="1510" y="150" text-anchor="middle" class="actor">📊 Analyst</text>
+  </g>
+  <g stroke-linecap="round">
+    <line x1="135" y1="170" x2="135" y2="892" class="life"/><line x1="350" y1="170" x2="350" y2="892" class="life"/>
+    <line x1="570" y1="170" x2="570" y2="892" class="life"/><line x1="772" y1="170" x2="772" y2="892" class="life"/>
+    <line x1="974" y1="170" x2="974" y2="892" class="life"/><line x1="1176" y1="170" x2="1176" y2="892" class="life"/>
+    <line x1="1358" y1="170" x2="1358" y2="892" class="life"/><line x1="1510" y1="170" x2="1510" y2="892" class="life"/>
+  </g>
+
+  <!-- messages -->
+  <line x1="135" y1="206" x2="350" y2="206" class="flow"/><text x="160" y="196" class="msg">1 · Bật autopilot / giao nhiệm vụ</text>
+  <line x1="350" y1="248" x2="570" y2="248" class="flow"/><text x="368" y="238" class="msg">2 · Tạo TeamInstance #task-101 (bản sao team, ngân sách riêng) → Hunter: tìm sản phẩm theme "túi xách"</text>
+  <line x1="570" y1="290" x2="350" y2="290" class="ret"/><text x="380" y="280" class="msg">3 · Blackboard: 12 ứng viên, top: túi kem quilted (hoa hồng 18%, đã bán 2,1k)</text>
+  <line x1="350" y1="332" x2="772" y2="332" class="flow"/><text x="368" y="322" class="msg">4 · Governance duyệt (đúng theme, không trùng account khác) → Director viết shot list</text>
+  <line x1="772" y1="374" x2="350" y2="374" class="ret"/><text x="400" y="364" class="msg">5 · Blackboard v2: 5 shot · khóa 1 địa điểm (quán café) · khóa mặt mẫu + khóa sản phẩm</text>
+  <line x1="350" y1="416" x2="974" y2="416" class="flow"/><text x="368" y="406" class="msg">6 · Producer: sinh 5 ảnh (song song, semaphore 3) → upscale 4K → dựng beat-bounce 120 BPM</text>
+  <line x1="974" y1="458" x2="1176" y2="458" class="flow"/><text x="990" y="448" class="msg">7 · Bàn giao bản dựng v1 cho QC</text>
+  <line x1="1176" y1="500" x2="974" y2="500" class="ret"/><text x="992" y="490" class="msg">8 · QC chấm MÙ: shot 3 tay lỗi ngón → trả lại đúng 1 shot (vòng sửa 1/2)</text>
+  <line x1="974" y1="542" x2="1176" y2="542" class="flow"/><text x="990" y="532" class="msg">9 · Producer sửa shot 3 → bản v2</text>
+  <line x1="1176" y1="584" x2="350" y2="584" class="ret"/><text x="420" y="574" class="msg">10 · QC đạt: 1080×1920/30fps ✓ · −14 LUFS ✓ · identity ✓ · hook 3s ✓ → đề xuất đăng</text>
+  <line x1="350" y1="626" x2="1358" y2="626" class="flow"/><text x="368" y="616" class="msg">11 · Governance mở cổng → Publisher đăng DRAFT TikTok (idempotency key = task-101)</text>
+  <line x1="1358" y1="668" x2="1510" y2="668" class="flow"/><text x="1370" y="658" class="msg">12 · Sau đăng: số liệu về Analyst</text>
+  <line x1="1510" y1="710" x2="350" y2="710" class="ret"/><text x="430" y="700" class="msg">13 · Analyst: 0 đơn sau N phiên → kill · có đơn tốt → scale + ghi bài học vào bộ nhớ account</text>
+  <line x1="350" y1="752" x2="135" y2="752" class="ret"/><text x="160" y="742" class="msg">14 · Báo cáo lên Dashboard: Ninh chỉ xem, không phải làm</text>
+
+  <rect x="60" y="792" width="1510" height="86" rx="14" fill="#00000045" stroke="#f59e0b88"/>
+  <text x="84" y="824" class="note">Nguyên tắc vàng: agent không chat tự do với nhau — mọi trao đổi là job/artifact có cấu trúc, ghi trace theo taskID.</text>
+  <text x="84" y="850" class="note">QC không thấy lý luận của Producer (chấm mù) · Publisher là cửa ghi duy nhất · Vượt 2 vòng sửa → Governance / Ninh quyết.</text>
+</svg>

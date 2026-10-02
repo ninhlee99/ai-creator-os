@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lịch live — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Lịch live — Thứ 6, 2026-10-02</h1>
+<p class="subtitle">Hệ thống tự xếp slot cho các tài khoản đủ điều kiện, tránh trùng persona/niche cùng giờ.</p>
+
+<div class="toolbar">
+  <form method="post" action="/schedule/build"
+        onsubmit="return confirm('Tạo lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.')">
+    <button type="submit" class="btn">Tạo lịch hôm nay</button>
+  </form>
+</div>
+
+<p><strong>0</strong> tài khoản đủ điều kiện live.</p>
+
+
+<p class="empty">Chưa có slot nào hôm nay. Nhấn "Tạo lịch hôm nay" để hệ thống tự xếp.</p>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>

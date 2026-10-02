@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trang chủ — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body><div style="background:#7c2d12;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+      <a href="team.html">Agent Team 🤖</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Tổng quan mạng lưới</h1>
+<p class="subtitle">Ngày 2026-10-02 · Giám sát toàn bộ AI creator, lịch live và doanh thu.</p>
+
+<div class="cards">
+  <div class="card">
+    <div class="num">0</div>
+    <div class="label">Tổng tài khoản</div>
+  </div>
+  <div class="card green">
+    <div class="num">0</div>
+    <div class="label">Đủ điều kiện live</div>
+  </div>
+  <div class="card accent">
+    <div class="num">$0.00</div>
+    <div class="label">Doanh thu affiliate</div>
+  </div>
+  <div class="card">
+    <div class="num">0</div>
+    <div class="label">Slot live hôm nay</div>
+  </div>
+  <div class="card">
+    <div class="num">1</div>
+    <div class="label">Video jobs</div>
+  </div>
+</div>
+
+<h2>Trạng thái tài khoản</h2>
+<div class="cards">
+  
+  <p class="empty">Chưa có tài khoản nào. <a href="accounts.html">Thêm tài khoản đầu tiên</a>.</p>
+  
+</div>
+
+<h2>Lịch live hôm nay</h2>
+
+<p class="empty">Chưa có lịch hôm nay. <a href="schedule.html">Tạo lịch</a>.</p>
+
+
+<h2>Hoạt động gần đây</h2>
+
+<p class="empty">Chưa có hoạt động nào được ghi lại.</p>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
+</body>
+</html>
