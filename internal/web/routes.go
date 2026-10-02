@@ -87,6 +87,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
+	mux.HandleFunc("GET /settings/accesstrade", s.handleSettingsAccesstrade)
+	mux.HandleFunc("POST /settings/accesstrade/key", s.handleATKeySave)
+	mux.HandleFunc("POST /settings/accesstrade/test", s.handleATTest)
+	// Accesstrade (Đợt B): sync campaign + tạo tracking link.
+	mux.HandleFunc("POST /at/campaigns/sync", s.handleATSyncCampaigns)
+	mux.HandleFunc("POST /at/links/create", s.handleATCreateLink)
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)

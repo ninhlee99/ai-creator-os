@@ -223,6 +223,11 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"MasterOn":   automation.MasterOn(s.settings()),
 		"APIBudget":  automation.APIBudgetUSD(s.settings(), s.Cfg.DailyAPIBudgetUSD),
 		"BudgetFrom": s.apiBudgetFrom(),
+		// Accesstrade (Đợt B): key + trạng thái kết nối cho tab Cài đặt · Accesstrade.
+		"ATKeySet":    s.atKeySet(),
+		"ATMasked":    s.atMasked(),
+		"ATCampaigns": s.atCachedCount(),
+		"ATStoreOK":   s.AT != nil,
 		// R2-W7: legacy /api/* switch (default OFF), app version, runtime
 		// probes, pending-restore flag — all shown in Settings · Hệ thống.
 		"APIEnabled":     automation.APIEnabled(s.settings()),

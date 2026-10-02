@@ -73,6 +73,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	if s.Products == nil {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Tab", tab,
 			"Themes", themeOptions(),
 			"Shelf", s.shelfViews(),
@@ -88,6 +89,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		results, err = s.Products.TopByTheme(theme, minPct/100, 0, 30)
 		if err != nil {
 			s.render(w, "products", s.ctx(
+				"AT", s.atPageData(),
 				"Tab", tab,
 				"Themes", themeOptions(),
 				"Theme", theme,
@@ -113,6 +115,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		stock = n
 	}
 	s.render(w, "products", s.ctx(
+		"AT", s.atPageData(),
 		"Tab", tab,
 		"Themes", themeOptions(),
 		"Theme", theme,
@@ -316,6 +319,7 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Themes", themeOptions(),
 			"Error", "Kho sản phẩm chưa được khởi tạo. Hãy kiểm tra cấu hình app rồi thử lại.",
 		))
@@ -334,6 +338,7 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(s.ProductProviders) == 0 {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Themes", themeOptions(),
 			"Theme", theme,
 			"MinPct", minPct,
@@ -378,6 +383,7 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	if rerr != nil {
 		data["Error"] = "Không đọc được kho sản phẩm: " + rerr.Error()
 	}
+	data["AT"] = s.atPageData()
 	s.render(w, "products", data)
 }
 
@@ -462,6 +468,7 @@ func (s *Server) handleAutopilotMusicUpload(w http.ResponseWriter, r *http.Reque
 	r.Body = http.MaxBytesReader(w, r.Body, 25<<20) // 25 MB cap
 	if err := r.ParseMultipartForm(25 << 20); err != nil {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Themes", themeOptions(),
 			"Error", "File nhạc quá lớn hoặc lỗi upload (tối đa 25MB).",
 		))
@@ -470,6 +477,7 @@ func (s *Server) handleAutopilotMusicUpload(w http.ResponseWriter, r *http.Reque
 	f, hdr, err := r.FormFile("music")
 	if err != nil {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Themes", themeOptions(),
 			"Error", "Chưa chọn file nhạc.",
 		))
@@ -478,6 +486,7 @@ func (s *Server) handleAutopilotMusicUpload(w http.ResponseWriter, r *http.Reque
 	defer f.Close()
 	if !audioFileRe.MatchString(hdr.Filename) {
 		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
 			"Themes", themeOptions(),
 			"Error", "Chỉ nhận file nhạc mp3/m4a/wav/ogg/aac.",
 		))
