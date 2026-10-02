@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài đặt · Hệ thống — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Cài đặt · Hệ thống</h1>
+<p class="subtitle">App đang chạy chế độ gì, còn thiếu biến cấu hình nào.</p>
+
+<nav class="tabs" role="tablist" aria-label="Cài đặt">
+  <a href="settings-he-thong.html" class="active">Hệ thống</a>
+  <a href="settings-nha-cung-cap.html">Nhà cung cấp</a>
+  <a href="settings-model-local.html">Model local</a>
+  <a href="settings-nhan-vat.html">Nhân vật AI</a>
+  <a href="settings-an-toan.html">⚠️ An toàn</a>
+</nav>
+
+
+<h2>Trạng thái hệ thống</h2>
+<div class="cards">
+  <div class="card">
+    <div class="num"><span class="badge badge-warn">Chế độ thử (dry-run)</span></div>
+    <div class="label">Chế độ chạy</div>
+  </div>
+  <div class="card">
+    <div class="num"><span class="badge badge-ok">TẮT</span></div>
+    <div class="label">Nút dừng khẩn cấp (kill switch)</div>
+  </div>
+  <div class="card" title="/tmp/aicos-prev-data/ledger.db">
+    <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
+    <div class="label">Cơ sở dữ liệu</div>
+  </div>
+  <div class="card">
+    <div class="num">$0.00</div>
+    <div class="label">Chi phí API hôm nay</div>
+  </div>
+  <div class="card">
+    <div class="num"><span class="badge badge-no">TẮT</span></div>
+    <div class="label">Công tắc chính (daemon mạng) — đang đứng yên</div>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Công tắc chính</div>
+    <form method="post" action="settings.html">
+      <input type="hidden" name="value" value="1">
+      <button type="submit" class="btn btn-primary btn-sm">Bật</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">Ngân sách API/ngày (USD) · từ biến môi trường</div>
+    <form method="post" action="settings.html" class="env-form">
+      <input type="number" name="value" step="0.5" min="0" max="10000" value="5.00" style="width:7em">
+      <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
+</div>
+
+<h3>Chi phí API theo engine/provider</h3>
+
+<p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
+
+
+<h2>Khóa &amp; biến cấu hình</h2>
+
+<table>
+  <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
+  
+  <tr>
+    <td><code>TTS_API_KEY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="TTS_API_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>TIKTOK_SHOP_APP_KEY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_SHOP_APP_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>TIKTOK_SHOP_APP_SECRET</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_SHOP_APP_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>TIKTOK_CLIENT_KEY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_CLIENT_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>TIKTOK_CLIENT_SECRET</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="TIKTOK_CLIENT_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>YOUTUBE_CLIENT_ID</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_CLIENT_ID">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>YOUTUBE_CLIENT_SECRET</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_CLIENT_SECRET">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>FB_PAGE_ID</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="FB_PAGE_ID">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>YOUTUBE_API_KEY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_API_KEY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>YOUTUBE_DEFAULT_PRIVACY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_DEFAULT_PRIVACY">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+</table>
+
+<h2>RTMP theo tài khoản</h2>
+
+<p class="empty">Chưa có tài khoản nào.</p>
+
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài đặt · Nhà cung cấp — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Cài đặt · Nhà cung cấp</h1>
+<p class="subtitle">AI dùng nhà cung cấp nào trước, key nào còn sống.</p>
+
+<nav class="tabs" role="tablist" aria-label="Cài đặt">
+  <a href="settings-he-thong.html">Hệ thống</a>
+  <a href="settings-nha-cung-cap.html" class="active">Nhà cung cấp</a>
+  <a href="settings-model-local.html">Model local</a>
+  <a href="settings-nhan-vat.html">Nhân vật AI</a>
+  <a href="settings-an-toan.html">⚠️ An toàn</a>
+</nav>
+
+
+<nav class="tabs">
+  <a href="#provider-tts">TTS</a>
+  <a href="#provider-llm">LLM</a>
+  <a href="#provider-avatar">Avatar</a>
+</nav>
+
+<h2 id="provider-tts">Chuỗi provider TTS</h2>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
+
+
+
+<div class="form-card" style="max-width:none">
+<form method="post" action="settings.html">
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>gemini</strong>
+      <span class="provider-order">#0</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="0" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="gemini">
+    <div class="provider-grid">
+      
+      <div class="field field-span">
+        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <input type="hidden" name="apikey" value="">
+        
+
+<div class="keyring" data-chain="tts" data-provider="gemini">
+  <div class="key-list">
+    
+  </div>
+  <div class="key-empty" data-empty >
+    <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+    <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+  </div>
+  <div class="key-add" hidden>
+    <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+    <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
+    <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
+  </div>
+  <button type="button" class="btn btn-secondary btn-sm key-add-btn">+ Thêm key</button>
+</div>
+
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="1" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="60" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="gemini">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>vieneu</strong>
+      <span class="provider-order">#1</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="vieneu">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="180" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="vieneu">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>edge</strong>
+      <span class="provider-order">#2</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="edge">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="1" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="60" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="edge">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <button type="submit" class="btn">Lưu cấu hình TTS</button>
+</form>
+</div>
+
+
+<h2 id="provider-llm">Chuỗi provider LLM</h2>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
+
+
+
+<div class="form-card" style="max-width:none">
+<form method="post" action="settings.html">
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>gemini</strong>
+      <span class="provider-order">#0</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="0" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="gemini">
+    <div class="provider-grid">
+      
+      <div class="field field-span">
+        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <input type="hidden" name="apikey" value="">
+        
+
+<div class="keyring" data-chain="llm" data-provider="gemini">
+  <div class="key-list">
+    
+  </div>
+  <div class="key-empty" data-empty >
+    <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+    <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+  </div>
+  <div class="key-add" hidden>
+    <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+    <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
+    <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
+  </div>
+  <button type="button" class="btn btn-secondary btn-sm key-add-btn">+ Thêm key</button>
+</div>
+
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="1" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="30" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="gemini">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>llama-server</strong>
+      <span class="provider-order">#1</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="llama-server">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="120" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="llama-server">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>paid</strong>
+      <span class="provider-order">#2</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" > Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="paid">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="0" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="paid">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <button type="submit" class="btn">Lưu cấu hình LLM</button>
+</form>
+</div>
+
+
+<h2 id="provider-avatar">Chuỗi provider Avatar</h2>
+<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. <span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span></p>
+
+
+
+<div class="form-card" style="max-width:none">
+<form method="post" action="settings.html">
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>local</strong>
+      <span class="provider-order">#0</span>
+      
+        <span class="badge badge-ok">miễn phí</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="0" checked> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="local">
+    <div class="provider-grid">
+      
+      <div class="field field-span">
+        <label>Chương trình chạy trên máy</label>
+        <input type="hidden" name="apikey" value="">
+        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem trang Model local. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="0" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="1800" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="local">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>heygen</strong>
+      <span class="provider-order">#1</span>
+      
+        <span class="badge badge-no">trả phí · tắt mặc định</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" > Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="heygen">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="1" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="600" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="heygen">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>did</strong>
+      <span class="provider-order">#2</span>
+      
+        <span class="badge badge-no">trả phí · tắt mặc định</span>
+      
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" > Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="did">
+    <div class="provider-grid">
+      
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
+      </div>
+      
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="1" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="600" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="did">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  
+  <button type="submit" class="btn">Lưu cấu hình Avatar</button>
+</form>
+</div>
+
+
+<script>
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+  });
+}
+function keyCardHTML(k) {
+  var badge = k.state === 'cooldown'
+    ? '<span class="badge ' + escHtml(k.badge_class) + '" data-cool="' + k.cooldown_remaining_sec + '">Nghỉ cooldown còn ' + k.cooldown_remaining_sec + 's</span>'
+    : '<span class="badge ' + escHtml(k.badge_class) + '">' + escHtml(k.state_label) + '</span>';
+  var meta = k.requests + ' lượt dùng';
+  if (k.rate_limit_hits > 0) {
+    meta += ' · rate-limit ' + k.rate_limit_hits + ' lần';
+    if (k.last_rate_limit_label) meta += ' (gần nhất ' + k.last_rate_limit_label + ')';
+  }
+  return '<div class="key-card" data-idx="' + k.index + '">' +
+    '<code class="key-masked">' + escHtml(k.masked) + '</code>' + badge +
+    '<span class="key-meta">' + escHtml(meta) + '</span>' +
+    '<span class="key-actions">' +
+      '<button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>' +
+      '<button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>' +
+    '</span>' +
+    '<span class="key-msg" aria-live="polite" hidden></span>' +
+  '</div>';
+}
+document.querySelectorAll('.keyring').forEach(function (root) {
+  var chain = root.dataset.chain, provider = root.dataset.provider;
+  var list = root.querySelector('.key-list');
+  var emptyBox = root.querySelector('[data-empty]');
+  var addBox = root.querySelector('.key-add');
+  var addBtn = root.querySelector('.key-add-btn');
+  var keyInput = root.querySelector('.key-input');
+  var saveBtn = root.querySelector('.key-save-btn');
+  root._refresh = refresh;
+
+  function qs(p) {
+    return '/settings/keys/' + p + '?chain=' + encodeURIComponent(chain) +
+      '&provider=' + encodeURIComponent(provider);
+  }
+  function postQS(p, body) {
+    return previewFetch(qs(p), {method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body});
+  }
+  async function refresh() {
+    try {
+      var r = await previewFetch(qs('status'));
+      var j = await r.json();
+      var keys = j.keys || [];
+      list.innerHTML = keys.map(keyCardHTML).join('');
+      if (emptyBox) emptyBox.hidden = keys.length > 0;
+    } catch (e) {   }
+  }
+  
+  list.addEventListener('click', async function (ev) {
+    var card = ev.target.closest('.key-card');
+    if (!card) return;
+    var idx = card.dataset.idx;
+    var msg = card.querySelector('.key-msg');
+    if (ev.target.closest('.key-del-btn')) {
+      var masked = card.querySelector('.key-masked').textContent;
+      if (!confirm('Xóa key ' + masked + ' khỏi ' + provider + '?')) return;
+      msg.hidden = true;
+      try {
+        var r = await postQS('delete', 'idx=' + encodeURIComponent(idx));
+        var j = await r.json();
+        if (j.ok) { showToast('Đã xóa key ' + j.masked, true); refresh(); }
+        else showToast(j.error || 'Xóa key thất bại', false);
+      } catch (e) { showToast('Xóa key thất bại', false); }
+      return;
+    }
+    if (ev.target.closest('.key-test-btn')) {
+      var btn = ev.target.closest('.key-test-btn');
+      btn.disabled = true;
+      msg.hidden = false; msg.textContent = 'Đang kiểm tra…'; msg.className = 'key-msg';
+      try {
+        var r2 = await postQS('test', 'idx=' + encodeURIComponent(idx));
+        var j2 = await r2.json();
+        if (j2.ok) { msg.textContent = 'Key hoạt động tốt ✓'; msg.className = 'key-msg ok'; }
+        else { msg.textContent = 'Lỗi: ' + (j2.error || 'không rõ'); msg.className = 'key-msg fail'; }
+      } catch (e) {
+        msg.textContent = 'Không kiểm tra được'; msg.className = 'key-msg fail';
+      }
+      btn.disabled = false;
+      refresh(); 
+    }
+  });
+  
+  addBtn.addEventListener('click', function () {
+    addBox.hidden = false; addBtn.hidden = true; keyInput.value = ''; keyInput.focus();
+  });
+  root.querySelector('.key-cancel-btn').addEventListener('click', function () {
+    addBox.hidden = true; addBtn.hidden = false; keyInput.value = '';
+  });
+  async function saveKey() {
+    var key = keyInput.value.trim();
+    if (!key) { keyInput.focus(); return; }
+    saveBtn.disabled = true;
+    try {
+      var r = await postQS('add', 'key=' + encodeURIComponent(key));
+      var j = await r.json();
+      if (j.ok) {
+        showToast(j.duplicate ? 'Key ' + j.masked + ' đã có rồi' : 'Đã thêm key ' + j.masked, true);
+        addBox.hidden = true; addBtn.hidden = false; keyInput.value = '';
+        refresh();
+      } else showToast(j.error || 'Thêm key thất bại', false);
+    } catch (e) { showToast('Thêm key thất bại', false); }
+    saveBtn.disabled = false;
+  }
+  saveBtn.addEventListener('click', saveKey);
+  keyInput.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); saveKey(); }
+  });
+});
+
+setInterval(function () {
+  document.querySelectorAll('.key-card .badge[data-cool]').forEach(function (b) {
+    var s = parseInt(b.dataset.cool, 10);
+    if (isNaN(s)) return;
+    s -= 1;
+    var root = b.closest('.keyring');
+    if (s <= 0) {
+      b.removeAttribute('data-cool');
+      if (root && root._refresh) root._refresh();
+    } else {
+      b.dataset.cool = s;
+      b.textContent = 'Nghỉ cooldown còn ' + s + 's';
+    }
+  });
+}, 1000);
+document.querySelectorAll('.health-btn').forEach(function (btn) {
+  btn.addEventListener('click', async function () {
+    var res = btn.parentElement.querySelector('.health-result');
+    res.textContent = 'Đang kiểm tra…';
+    res.className = 'health-result';
+    try {
+      var r = await previewFetch('/settings/chain/health?name=' + encodeURIComponent(btn.dataset.chain) +
+        '&provider=' + encodeURIComponent(btn.dataset.provider), {method: 'POST'});
+      var j = await r.json();
+      res.textContent = j.ok ? 'Kết nối tốt ✓' : 'Không kết nối được';
+      res.className = 'health-result ' + (j.ok ? 'ok' : 'fail');
+    } catch (e) {
+      res.textContent = 'Lỗi';
+      res.className = 'health-result fail';
+    }
+  });
+});
+</script>
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+</body>
+</html>
