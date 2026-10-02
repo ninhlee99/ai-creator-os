@@ -26,7 +26,7 @@
     <div class="tree">
       <div class="node st-{{if .RootStatus}}{{.RootStatus}}{{else}}waiting{{end}} root">
         <img src="/static/agents/orchestrator.jpg" alt="Orchestrator">
-        <b>Orchestrator</b><span class="pill">{{if .RootStatus}}{{.RootStatus}}{{else}}waiting{{end}}</span>
+        <b>Orchestrator</b><span class="pill">{{if .RootStatus}}{{statusLabel .RootStatus}}{{else}}Đang chờ{{end}}</span>
       </div>
 
       <div class="tree-row guards">
@@ -44,7 +44,7 @@
           <div class="node st-{{.Status}}">
             <img src="/static/agents/{{.Key}}.jpg" alt="{{.Name}}">
             <b>{{.Name}}</b>
-            <span class="pill">{{.Status}}</span>
+            <span class="pill">{{statusLabel .Status}}</span>
           </div>
           <div class="flow {{if eq .Status "working"}}flow-live{{else if eq .Status "done"}}flow-done{{end}}"></div>
         </div>

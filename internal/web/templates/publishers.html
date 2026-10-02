@@ -14,7 +14,7 @@
   {{range .Rows}}
   <tr>
     <td><strong>{{.Username}}</strong></td>
-    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
       {{if .TiktokClient}}<a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}">{{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}</a>
       {{else}}<span class="hint">thiếu client key</span>{{end}}</td>

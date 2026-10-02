@@ -42,11 +42,11 @@
   <tr>
     <td><strong>{{.Title}}</strong><br><span style="color:var(--muted);font-size:12px">{{.PlatformPID}}</span></td>
     <td>{{if .Category}}{{.Category}}{{else}}—{{end}}</td>
-    <td>${{printf "%.2f" .Price}}</td>
-    <td>${{printf "%.2f" .CommissionValue}}
+    <td>{{fmtVND .Price}}</td>
+    <td>{{fmtVND .CommissionValue}}
       <span style="color:var(--muted)">({{printf "%.0f" (pct .CommissionRate)}}%)</span></td>
     <td>{{printf "%.2f" .Score}}</td>
-    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
   </tr>
   {{end}}
 </table>

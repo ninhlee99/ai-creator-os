@@ -256,7 +256,7 @@ func TestAllPagesRender(t *testing.T) {
 
 	// settings page shows both chain sections and the vieneu panel
 	body := get(t, s, "/settings").Body.String()
-	for _, marker := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM", "VieNeu sidecar", "Kiểm tra kết nối"} {
+	for _, marker := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM", "Giọng đọc chạy trên máy (VieNeu)", "Kiểm tra kết nối"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("settings page missing %q", marker)
 		}

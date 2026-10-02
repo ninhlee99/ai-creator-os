@@ -120,8 +120,13 @@
   <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot.{{if .MusicName}} Đang dùng: <strong>{{.MusicName}}</strong>{{else}} Chưa có nhạc — video sẽ không tiếng.{{end}}</p>
   <form method="post" action="/products/music" enctype="multipart/form-data">
     <div class="field">
-      <label>Upload file nhạc (mp3/m4a/wav/ogg/aac, tối đa 25MB)</label>
-      <input type="file" name="music" accept="audio/*">
+      <label>Tải file nhạc lên (mp3/m4a/wav/ogg/aac, tối đa 25MB)</label>
+      <div class="file-pick">
+        <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
+          <input type="file" name="music" accept="audio/*">
+        </label>
+        <span class="file-name">Chưa chọn file</span>
+      </div>
     </div>
     <button type="submit" class="btn">⬆️ Cập nhật nhạc nền</button>
   </form>
@@ -135,7 +140,7 @@
   <tr>
     <td><strong>{{.Title}}</strong>{{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener">xem sản phẩm ↗</a>{{end}}</td>
     <td>{{if .ShopName}}{{.ShopName}}{{else}}—{{end}}</td>
-    <td>{{printf "%.0f" .Price}}</td>
+    <td>{{fmtVND .Price}}</td>
     <td><strong>{{printf "%.1f" (pct .CommissionRate)}}%</strong></td>
     <td>{{.SoldCount}}</td>
     <td>{{if .Rating}}{{printf "%.1f" .Rating}}★{{else}}—{{end}}</td>

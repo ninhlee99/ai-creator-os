@@ -16,7 +16,7 @@
       {{if .Theme}} <span class="badge badge-draft">{{themeLabel .Theme}}</span>{{end}}
       {{if .Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}
     </td>
-    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td>{{.PersonaLabel}}</td>
     <td>{{if .Niche}}{{.Niche}}{{else}}—{{end}}</td>
     <td>{{.Followers}}{{if .LiveEligible}} <span class="badge badge-ok">đủ live</span>{{end}}</td>
@@ -25,6 +25,11 @@
   {{end}}
 </table>
 {{else}}
-<p class="empty">Chưa có tài khoản nào. Hãy thêm tài khoản đầu tiên để bắt đầu onboarding.</p>
+<div class="empty-state">
+  <div class="es-icon">👤</div>
+  <h3>Chưa có tài khoản nào</h3>
+  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator: chọn persona, nghiên cứu niche và lên lịch live.</p>
+  <a class="btn" href="/accounts/new">+ Thêm tài khoản đầu tiên</a>
+</div>
 {{end}}
 {{end}}
