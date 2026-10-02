@@ -22,6 +22,11 @@ type Product struct {
 	ProductURL     string
 	Theme          string // theme it was discovered under
 	FoundAt        string
+	// Shelf state (R2-W1): "shelf"/"scaled" = curated onto the Kệ hàng
+	// shelf; "" = discovery pool only. Lives in this same store so the
+	// autopilot sees shelf-added products immediately.
+	ShelfStatus string
+	ShelfScore  float64
 }
 
 // Query describes what the autopilot is hunting.

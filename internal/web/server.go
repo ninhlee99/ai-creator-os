@@ -46,8 +46,12 @@ type Server struct {
 	// GrowthProducer / GrowthYT are the production backends of the growth
 	// automation tick (plan item -> Studio job -> YouTube upload). Nil
 	// means the real Studio/publishers adapters; tests inject fakes.
-	GrowthProducer growthProducer
-	GrowthYT       growthYTUploader
+	// CommissionSource is the affiliate-orders feed for money
+	// reconciliation (R2-W1). Nil means the real TikTok Shop client is
+	// built from Settings config; tests inject fakes.
+	CommissionSource affiliateOrdersSource
+	GrowthProducer   growthProducer
+	GrowthYT         growthYTUploader
 	// Autopilot runs hands-off affiliate cycles (products -> video).
 	// Products is the affiliate product store. ProductProviders are the
 	// configured product search providers. All three are injected by the

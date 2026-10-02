@@ -621,6 +621,11 @@ func main() {
 				}
 			}()
 			srv.Products = pstore
+			if n, err := srv.MigrateLedgerShelf(); err != nil {
+				log.Printf("products: migrate legacy ledger shelf: %v", err)
+			} else if n > 0 {
+				log.Printf("products: moved %d legacy ledger products into the shared store", n)
+			}
 			shopClient := &tiktok.ShopClient{
 				AppKey:      os.Getenv("TIKTOK_SHOP_APP_KEY"),
 				AppSecret:   os.Getenv("TIKTOK_SHOP_APP_SECRET"),

@@ -144,3 +144,66 @@ func TestParseShopProducts(t *testing.T) {
 		t.Fatalf("bad fields: %+v", p)
 	}
 }
+
+// TestShelfLifecycle — trạng thái kệ sống cùng kho: thêm vào kệ → hiện
+// trong Shelf; gỡ khỏi kệ → không còn; hạ cấp dữ liệu cũ (DB không có cột
+// kệ) được migration tự thêm cột khi mở.
+func TestShelfLifecycle(t *testing.T) {
+	s, err := NewStore(filepath.Join(t.TempDir(), "products.db"))
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	defer s.Close()
+
+	id, err := s.Save(Product{Source: "manual", SourceID: "P1", Title: "Tai nghe",
+		Theme: "cong-nghe", CommissionRate: 0.2})
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if shelf, _ := s.Shelf(50); len(shelf) != 0 {
+		t.Fatalf("shelf = %d, want 0 before SetShelf", len(shelf))
+	}
+	if err := s.SetShelf(id, "shelf", 0); err != nil {
+		t.Fatalf("SetShelf: %v", err)
+	}
+	shelf, err := s.Shelf(50)
+	if err != nil || len(shelf) != 1 || shelf[0].ShelfStatus != "shelf" {
+		t.Fatalf("Shelf = (%v, %v), want 1 with status shelf", shelf, err)
+	}
+	if err := s.SetShelf(id, "", 0); err != nil {
+		t.Fatalf("SetShelf off: %v", err)
+	}
+	if shelf, _ := s.Shelf(50); len(shelf) != 0 {
+		t.Fatalf("shelf = %d after removal, want 0", len(shelf))
+	}
+
+	// Old DB without shelf columns: opening adds them (idempotent).
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "legacy.db")
+	raw, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	if _, err := raw.db.Exec(`ALTER TABLE products DROP COLUMN shelf_status`); err != nil {
+		t.Fatalf("drop column: %v", err)
+	}
+	if _, err := raw.db.Exec(`ALTER TABLE products DROP COLUMN shelf_score`); err != nil {
+		t.Fatalf("drop column: %v", err)
+	}
+	raw.Close()
+	reopened, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("reopen legacy db: %v", err)
+	}
+	defer reopened.Close()
+	id2, err := reopened.Save(Product{Source: "manual", SourceID: "P2", Title: "Loa"})
+	if err != nil {
+		t.Fatalf("Save after migration: %v", err)
+	}
+	if err := reopened.SetShelf(id2, "shelf", 0); err != nil {
+		t.Fatalf("SetShelf after migration: %v", err)
+	}
+	if shelf, _ := reopened.Shelf(50); len(shelf) != 1 {
+		t.Fatalf("shelf = %d after migration, want 1", len(shelf))
+	}
+}

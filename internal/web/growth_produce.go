@@ -224,6 +224,10 @@ func (s *Server) growthTick(ctx context.Context, force bool) []string {
 	var notes []string
 
 	if s.growthSyncDue() {
+		// R2-W1: affiliate money reconcile rides the hourly sync — real
+		// API payload only, fail-closed (no source -> honest decision,
+		// numbers stay 0).
+		notes = append(notes, s.reconcileCommissions(ctx)...)
 		if accounts, err := s.Mgr.List(); err == nil {
 			for _, a := range accounts {
 				notes = append(notes, s.syncOneAccount(ctx, a)...)
