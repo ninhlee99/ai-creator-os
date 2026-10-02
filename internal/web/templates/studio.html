@@ -194,7 +194,7 @@
   <div class="field">
     <label>Chủ đề phim <span class="req">*</span></label>
     <input type="text" name="topic" required placeholder="Ví dụ: Cô gái và chiếc túi bí ẩn">
-    <div class="hint">AI viết kịch bản 3 hồi → quay từng shot 8s bằng Veo (nếu có) → dựng phim 16:9 + phụ đề. Không có Veo sẽ dùng ảnh + giọng thuyết minh.</div>
+    <div class="hint">AI viết kịch bản 3 hồi → dựng từng shot 8s (điện ảnh từ ảnh, hoặc Veo nếu key quay được) → phim 16:9 + phụ đề.</div>
   </div>
   <div class="field">
     <label>Thể loại</label>
@@ -214,6 +214,14 @@
     <div class="hint">Phim dài viết theo 3 hồi, mỗi shot ≤8s. Phim xuất 16:9 — trailer dọc tự cắt từ phim.</div>
   </div>
   <div class="field">
+    <label>Chế độ dựng</label>
+    <select name="render_mode" id="film-mode">
+      <option value="auto" selected>Tự động (khuyên dùng) — thử Veo nếu key quay được, không thì dựng điện ảnh từ ảnh</option>
+      <option value="cinematic">Điện ảnh từ ảnh (miễn phí) — không dùng Veo, chỉ tốn image gen (rẻ)</option>
+      <option value="veo">Veo (tốn phí) — luôn thử quay từng shot bằng Veo</option>
+    </select>
+  </div>
+  <div class="field">
     <label>Nhạc nền (tùy chọn)</label>
     <input type="file" name="music_file" accept=".mp3,.m4a,.wav,.ogg">
     <div class="hint">Nhạc bed tự hạ −8dB khi có thoại, chuẩn −14 LUFS.</div>
@@ -222,7 +230,7 @@
     <label class="radio"><input type="checkbox" name="upscale_final" value="1"> Upscale 4K cho bản cuối</label>
     <div class="hint">Lanczos upscale — không phải 4K native, render rất lâu.</div>
   </div>
-  <div class="hint" id="film-est" data-rate="{{.FilmRate}}">{{.FilmEst}}</div>
+  <div class="hint" id="film-est" data-rate="{{.FilmRate}}" data-video-ok="{{.FilmVideoOK}}">{{.FilmEst}}</div>
   <button type="submit" class="btn">🎞️ Tạo phim</button>
 </form>
 </div>

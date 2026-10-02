@@ -55,6 +55,26 @@
   </div>
 </div>
 
+<h2>Khả năng AI</h2>
+<p class="subtitle">Kiểm tra thật key Gemini vẽ ảnh / quay video được không — hệ thống tự chọn chế độ dựng phim dựa vào đây.</p>
+<table>
+  <tr><th>Khả năng</th><th>Trạng thái</th><th>Kiểm tra lúc</th><th>Chi tiết</th></tr>
+  {{range .AICapabilities}}
+  <tr>
+    <td><strong>{{.Label}}</strong></td>
+    <td><span class="badge {{.Badge}}">{{.Text}}</span></td>
+    <td>{{if .CheckedAt}}{{.CheckedAt}}{{else}}—{{end}}</td>
+    <td>{{if .Detail}}<span class="hint">{{.Detail}}</span>{{else}}—{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+<div class="toolbar" style="margin-top:12px">
+  <form method="post" action="/settings/model-local/probe-video" style="display:inline" data-confirm="Quay thử 1 clip 8s bằng Veo — sẽ TỐN ~8s Veo (tiền thật, ước tính chưa kiểm chứng). Tiếp tục?">
+    <button type="submit" class="btn btn-secondary">🎬 Kiểm tra quay video</button>
+  </form>
+  <span class="hint">Vẽ ảnh được kiểm tra tự động mỗi lần mở app; quay video không tự kiểm tra vì tốn tiền.</span>
+</div>
+
 <h2>Công cụ hệ thống</h2>
 <p class="subtitle">Kiểm tra thật lúc mở trang — thiếu thì làm theo bước tiếp theo.</p>
 <table>

@@ -56,7 +56,7 @@ const (
 
 // AffiliateParams describes one affiliate-video job.
 type AffiliateParams struct {
-	Mode         string  `json:"mode"` // photo | shots
+	Mode         string  `json:"mode"`                 // photo | shots
 	AccountID    int64   `json:"account_id,omitempty"` // set by autopilot
 	Niche        string  `json:"niche"`
 	ProductName  string  `json:"product_name"`
@@ -87,6 +87,10 @@ type FilmParams struct {
 	// UpscaleFinal renders an extra lanczos-upscaled master. This is an
 	// UPSCALE, not native 4K — the UI labels it honestly.
 	UpscaleFinal bool `json:"upscale_final,omitempty"`
+	// RenderMode: "auto" (default, khuyên dùng — Veo nếu key quay được,
+	// ngược lại điện ảnh từ ảnh), "cinematic" (chỉ dựng từ ảnh, miễn phí),
+	// "veo" (luôn thử Veo từng shot, tốn phí). "" = "auto".
+	RenderMode string `json:"render_mode,omitempty"`
 }
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or
@@ -253,6 +257,10 @@ func (s *Studio) migrate() error {
 			!strings.Contains(err.Error(), "duplicate column") {
 			return err
 		}
+	}
+	// Film Wave 3: bảng capabilities (khả năng AI: vẽ ảnh / quay video).
+	if err := s.ensureCapabilitiesTable(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -716,6 +724,12 @@ func (s *Studio) CreateFilmJob(p FilmParams) (string, error) {
 	if strings.TrimSpace(p.Genre) == "" {
 		p.Genre = defaultFilmGenre
 	}
+	// Film Wave 3: chuẩn hoá chế độ dựng — giá trị lạ → "auto".
+	switch p.RenderMode {
+	case "", RenderModeAuto, RenderModeCinematic, RenderModeVeo:
+	default:
+		p.RenderMode = RenderModeAuto
+	}
 	id, err := s.insertJob(KindFilm, p.Topic, p)
 	if err != nil {
 		return "", err
@@ -886,40 +900,47 @@ const trailerIdxBase = 2000
 // it (resume renders the SAME scenes so index-based resume stays aligned),
 // otherwise asks the director to write a new one.
 func (s *Studio) loadOrWriteScript(ctx context.Context, id string, p FilmParams, work string) (FilmScriptPro, error) {
-	var script FilmScriptPro
-	scriptPath := filepath.Join(work, "script.json")
-	if raw, rerr := os.ReadFile(scriptPath); rerr == nil {
-		if jerr := json.Unmarshal(raw, &script); jerr == nil && len(script.Scenes) > 0 {
-			s.appendLog(id, "Dùng lại kịch bản đã viết (resume)…")
-			return script, nil
-		}
+	// Director 3 pha: "truyện → kịch bản → breakdown → storyboard → quay →
+	// dựng". Output từng pha lưu vào script.json (FilmScriptBundle) để
+	// storyboard UI xem lại khi cần; quay + dựng dùng bản ráp cuối.
+	if b, rerr := loadScriptBundle(work); rerr == nil && len(b.Script.Scenes) > 0 {
+		s.appendLog(id, "Dùng lại kịch bản đã viết (resume)…")
+		return b.Script, nil
 	}
-	s.appendLog(id, "Biên kịch đang viết kịch bản phim…")
-	script, err := WriteFilmScript(ctx, s.llm, p.Topic, p.Genre, p.Seconds, p.Aspect)
+	s.appendLog(id, "Biên kịch 3 pha: truyện → kịch bản → breakdown…")
+	bundle, err := WriteFilmScriptBundle(ctx, s.llm, p.Topic, p.Genre, p.Seconds, p.Aspect,
+		func(line string) { s.appendLog(id, line) })
 	if err != nil {
-		return script, err
+		return FilmScriptPro{}, err
 	}
-	if raw, jerr := json.Marshal(script); jerr == nil {
-		_ = os.WriteFile(scriptPath, raw, 0o644)
+	if raw, jerr := json.Marshal(bundle); jerr == nil {
+		_ = os.WriteFile(filepath.Join(work, "script.json"), raw, 0o644)
 	}
-	return script, nil
+	return bundle.Script, nil
 }
 
 // loadCachedScript reads script.json written by a previous run (used by
 // "Quay lại shot này" and re-assembly — never re-rolls the director).
+// Tương thích cả bundle mới lẫn FilmScriptPro cũ (Wave 1–2).
 func (s *Studio) loadCachedScript(work string) (FilmScriptPro, error) {
-	var script FilmScriptPro
-	raw, err := os.ReadFile(filepath.Join(work, "script.json"))
+	b, err := loadScriptBundle(work)
 	if err != nil {
-		return script, err
+		return FilmScriptPro{}, err
 	}
-	if err := json.Unmarshal(raw, &script); err != nil {
-		return script, err
+	if len(b.Script.Scenes) == 0 {
+		return FilmScriptPro{}, fmt.Errorf("kịch bản rỗng")
 	}
-	if len(script.Scenes) == 0 {
-		return script, fmt.Errorf("kịch bản rỗng")
+	return b.Script, nil
+}
+
+// ScriptBundle trả bundle từng pha của job (truyện/kịch bản/breakdown) để
+// storyboard UI xem lại khi cần.
+func (s *Studio) ScriptBundle(jobID string) (FilmScriptBundle, error) {
+	var b FilmScriptBundle
+	if _, ok := s.GetJob(jobID); !ok {
+		return b, fmt.Errorf("job không tồn tại")
 	}
-	return script, nil
+	return loadScriptBundle(filepath.Join(s.workRoot, jobID))
 }
 
 // expandScriptShots flattens every scene into render shots (≤8s each),
@@ -1056,20 +1077,28 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	s.appendLog(id, fmt.Sprintf("Chia %d cảnh → %d shot (mỗi shot ≤%ds)",
 		len(script.Scenes), len(shots), veoMaxSeconds))
 
-	// 4. Trần chi phí Veo (P0-5): nối knob ops.api_budget_usd.
+	// 4. Chế độ dựng (Film Wave 3): "auto" → Veo nếu key quay được
+	// (probe/lịch sử), ngược lại đi thẳng điện ảnh từ ảnh — không thử Veo,
+	// đỡ tốn phút poll API chết.
+	renderMode := s.resolveRenderMode(p)
+	s.appendLog(id, "Chế độ dựng: "+renderModeLabel(renderMode))
+
+	// 5. Trần chi phí Veo (P0-5): nối knob ops.api_budget_usd. Chế độ điện
+	// ảnh không gọi Veo nên chỉ ghi nhận, không tính toán chi phí.
 	budget := &veoBudget{rate: veoRateUSD()}
 	if s.BudgetUSD != nil {
 		budget.cap = s.BudgetUSD()
 	}
-	if budget.cap > 0 {
+	if renderMode == RenderModeCinematic {
+		s.appendLog(id, "Không tốn Veo — chỉ tốn image gen cho keyframe (rẻ)")
+	} else if budget.cap > 0 {
 		s.appendLog(id, fmt.Sprintf("Trần chi phí API: $%.2f — vượt trần sẽ dừng (giá Veo ước tính chưa kiểm chứng)", budget.cap))
 	} else {
 		s.appendLog(id, fmt.Sprintf("Chưa đặt trần chi phí API — %.0f shot × ≤%ds × $%.3f/s (ước tính chưa kiểm chứng)",
 			float64(len(shots)), veoMaxSeconds, budget.rate))
 	}
 
-	// 5. Render từng shot — keyframe → Veo (firstFrame = frame cuối shot
-	// trước) → fallback ảnh + TTS khi Veo lỗi.
+	// 6. Render từng shot theo chế độ.
 	var rendered []renderedShot
 	var subTexts []string
 	var subDurs []float64
@@ -1090,7 +1119,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 			s.setStatus(id, StatusRunning, 10+int(70*float64(len(rendered))/float64(len(shots))))
 			continue
 		}
-		rs, rerr := s.renderFilmShot(ctx, id, p, work, scenes[sh.SceneIdx], charLocks, charRefs, sh, prevMp4, budget)
+		rs, rerr := s.renderFilmShot(ctx, id, p, work, scenes[sh.SceneIdx], charLocks, charRefs, sh, prevMp4, budget, renderMode)
 		if rerr != nil {
 			if errors.Is(rerr, errBudgetExceeded) {
 				fail(rerr)
@@ -1112,8 +1141,8 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		return
 	}
 
-	// 6. Dựng phim cuối: nối → phụ đề → nhạc → upscale.
-	final, err := s.assembleFilmFinal(ctx, id, p, work, rendered, subTexts, subDurs)
+	// 7. Dựng phim cuối: nối → phụ đề → nhạc → upscale.
+	final, err := s.assembleFilmFinal(ctx, id, p, work, rendered, subTexts, subDurs, renderMode)
 	if err != nil {
 		fail(err)
 		return
@@ -1122,18 +1151,23 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Xong: "+filepath.Base(final))
 
-	// 7. Trailer dọc 9:16 từ shot trailer_worthy (Ninh 2026-10-02).
+	// 8. Trailer dọc 9:16 từ shot trailer_worthy (Ninh 2026-10-02).
 	s.buildTrailers(ctx, id, p, work, rendered)
 
 	s.fireOnDone(id)
 }
 
 // renderFilmShot renders one ≤8s shot and records it as a "shot" asset.
-// firstFrame chaining: shot 0 uses its own keyframe; every later shot feeds
-// Veo the previous shot's last frame, so motion continues across the cut.
+// Film Wave 3 — hai chế độ dựng:
+//   - "veo": firstFrame chaining (shot 0 dùng keyframe của chính nó; các
+//     shot sau đưa Veo frame cuối của shot trước) → Veo 8s; Veo lỗi thì rơi
+//     về điện ảnh từ ảnh, không fail job.
+//   - "cinematic" (CHẾ ĐỘ CHÍNH — key Gemini của Ninh không quay được
+//     video): keyframe (bố cục cho chuyển động) → chuyển động điện ảnh theo
+//     camera_move → voice/silence audio.
 func (s *Studio) renderFilmShot(ctx context.Context, id string, p FilmParams, work string,
 	sc FilmScenePro, charLocks string, charRefs []ImageRef,
-	sh RenderShot, prevMp4 string, budget *veoBudget) (*renderedShot, error) {
+	sh RenderShot, prevMp4 string, budget *veoBudget, renderMode string) (*renderedShot, error) {
 
 	orient := orientationWord(p.Aspect)
 	aid := s.addAsset(id, sh.Seq, "shot", sh.ImagePrompt)
@@ -1151,22 +1185,42 @@ func (s *Studio) renderFilmShot(ctx context.Context, id string, p FilmParams, wo
 	keyPrompt := sh.ImagePrompt + charLocks + "\n" + sc.SceneLockBlock() + contBlock +
 		" Cinematic photorealistic, " + orient + ", no text, no watermark."
 
+	if renderMode == RenderModeVeo {
+		if rs, ok, ferr := s.tryVeoShot(ctx, id, p, work, sc, charLocks, charRefs,
+			sh, prevMp4, budget, aid, mp4, keyPath, keyPrompt, orient, contBlock); ferr != nil {
+			return nil, ferr
+		} else if ok {
+			return rs, nil
+		}
+		// Veo lỗi → rơi về điện ảnh từ ảnh (log đã ghi trong tryVeoShot).
+	}
+	return s.renderCinematicShot(ctx, id, p, work, sc, charLocks, charRefs,
+		sh, aid, mp4, keyPath, keyPrompt)
+}
+
+// tryVeoShot attempts one ≤8s Veo render with firstFrame chaining.
+// (rs, true, nil) = quay được; (nil, false, nil) = Veo lỗi → caller rơi về
+// điện ảnh từ ảnh; (nil, false, err) = lỗi nghiêm trọng (vượt trần chi phí).
+func (s *Studio) tryVeoShot(ctx context.Context, id string, p FilmParams, work string,
+	sc FilmScenePro, charLocks string, charRefs []ImageRef,
+	sh RenderShot, prevMp4 string, budget *veoBudget,
+	aid int64, mp4, keyPath, keyPrompt, orient, contBlock string) (*renderedShot, bool, error) {
+
 	// FirstFrame: shot đầu dùng keyframe của chính nó; các shot sau dùng
 	// frame cuối của shot trước (không cắt được frame → vẽ keyframe mới).
 	firstFrame := ""
-	keyframeDone := false
 	if sh.Seq == 0 || prevMp4 == "" {
 		if kerr := s.mg.GenerateImage(ctx, keyPrompt, charRefs, keyPath); kerr != nil {
 			s.setAsset(aid, StatusFailed, "")
-			return nil, fmt.Errorf("keyframe: %w", kerr)
+			return nil, false, fmt.Errorf("keyframe: %w", kerr)
 		}
-		firstFrame, keyframeDone = keyPath, true
+		firstFrame = keyPath
 	} else if err := extractLastFrame(ctx, prevMp4, keyPath); err != nil {
 		if kerr := s.mg.GenerateImage(ctx, keyPrompt, charRefs, keyPath); kerr != nil {
 			s.setAsset(aid, StatusFailed, "")
-			return nil, fmt.Errorf("keyframe: %w", kerr)
+			return nil, false, fmt.Errorf("keyframe: %w", kerr)
 		}
-		firstFrame, keyframeDone = keyPath, true
+		firstFrame = keyPath
 	} else {
 		firstFrame = keyPath
 	}
@@ -1180,114 +1234,180 @@ func (s *Studio) renderFilmShot(ctx context.Context, id string, p FilmParams, wo
 	billed := float64(min(sh.Seconds, veoMaxSeconds))
 	if err := budget.check(billed); err != nil {
 		s.setAsset(aid, StatusFailed, "")
-		return nil, fmt.Errorf("%w: %v", errBudgetExceeded, err)
+		return nil, false, fmt.Errorf("%w: %v", errBudgetExceeded, err)
 	}
 	vprompt := fmt.Sprintf("%s. Camera: %s, %s, %s. %s cinematic film, natural motion, no text.",
 		sh.ImagePrompt, sh.ShotSize, sh.CameraMove, sh.LensLight, orient) +
 		charLocks + "\n" + sc.SceneLockBlock() + contBlock + performanceBlock(sh)
 	s.appendLog(id, fmt.Sprintf("Quay shot %d (%ds)…", sh.Seq+1, sh.Seconds))
-	method := ""
-	if err := s.mg.GenerateVideo(ctx, vprompt, firstFrame, sh.Seconds, p.Aspect, mp4); err == nil {
-		method = "veo"
-		budget.spentSecs += billed
-		s.appendLog(id, fmt.Sprintf("Shot %d: Veo ✓ (~$%.2f ước tính)", sh.Seq+1, billed*budget.rate))
-	} else {
-		s.appendLog(id, fmt.Sprintf("Shot %d: Veo lỗi (%v) — dùng ảnh + giọng đọc", sh.Seq+1, err))
+	if err := s.mg.GenerateVideo(ctx, vprompt, firstFrame, sh.Seconds, p.Aspect, mp4); err != nil {
+		s.appendLog(id, fmt.Sprintf("Shot %d: Veo lỗi (%v) — dùng điện ảnh từ ảnh", sh.Seq+1, err))
+		return nil, false, nil
 	}
-	if method == "" {
-		method = "anh-tts"
-		// Fallback cần keyframe thật (shot>0 dùng frame cắt từ clip trước).
-		if !keyframeDone {
-			if kerr := s.mg.GenerateImage(ctx, keyPrompt, charRefs, keyPath); kerr != nil {
-				s.setAsset(aid, StatusFailed, "")
-				return nil, fmt.Errorf("keyframe fallback: %w", kerr)
-			}
-		}
-		// Thoại + lời dẫn của shot, TTS từng đoạn ≤800 ký tự rồi nối (P0-6).
-		speech := shotSpokenText(sh)
-		wavPath := ""
-		if s.narrator != nil && strings.TrimSpace(speech) != "" {
-			var wavs [][]byte
-			ttsOK := true
-			for _, ch := range splitTextChunks(speech, maxTTSChunkChars) {
-				w, err := s.narrator(ctx, ch)
-				if err != nil || len(w) == 0 {
-					s.appendLog(id, fmt.Sprintf("Shot %d: TTS lỗi (%v) — dựng bản câm", sh.Seq+1, err))
-					ttsOK = false
-					break
-				}
-				wavs = append(wavs, w)
-			}
-			if ttsOK {
-				if joined, jerr := tts.ConcatWavs(wavs); jerr == nil {
-					wavPath = filepath.Join(work, fmt.Sprintf("shot%04d.wav", sh.Seq))
-					if werr := os.WriteFile(wavPath, joined, 0o644); werr != nil {
-						s.appendLog(id, fmt.Sprintf("Shot %d: không ghi được WAV: %v", sh.Seq+1, werr))
-						wavPath = ""
-					}
-				} else {
-					s.appendLog(id, fmt.Sprintf("Shot %d: nối WAV lỗi (%v) — dựng bản câm", sh.Seq+1, jerr))
-				}
-			}
-		}
-		dur := float64(sh.Seconds)
-		if wavPath != "" {
-			if ws, err := engines.WavSeconds(wavPath); err == nil && ws > dur {
-				dur = ws
-			}
-		}
-		var rerr error
-		if wavPath == "" {
-			rerr = AssemblePhotoList(ctx, []string{keyPath}, dur, "", 0, mp4, p.Aspect)
-		} else {
-			rerr = engines.RenderScene(ctx, keyPath, wavPath, dur, p.Aspect, mp4)
-		}
-		if rerr != nil {
-			s.setAsset(aid, StatusFailed, "")
-			return nil, fmt.Errorf("dựng fallback: %w", rerr)
-		}
-	}
+	budget.spentSecs += billed
+	s.appendLog(id, fmt.Sprintf("Shot %d: Veo ✓ (~$%.2f ước tính)", sh.Seq+1, billed*budget.rate))
+	// Veo thành công → key quay được video (capability học từ lần chạy thật).
+	_ = s.SetCapability(CapVideoGen, CapOK, fmt.Sprintf("shot %d quay bằng Veo thành công", sh.Seq+1))
 	dur := ProbeDuration(ctx, mp4)
 	if dur <= 0 {
 		dur = float64(sh.Seconds)
 	}
-	s.setAssetMethod(aid, method)
+	s.setAssetMethod(aid, "veo")
 	s.setAsset(aid, StatusDone, mp4)
-	return &renderedShot{Shot: sh, MP4: mp4, Dur: dur}, nil
+	return &renderedShot{Shot: sh, MP4: mp4, Dur: dur}, true, nil
+}
+
+// renderCinematicShot renders one shot in the primary "cinematic stills"
+// mode (Film Wave 3): keyframe (bố cục chừa biên cho chuyển động —
+// prompts/film_keyframe.txt) → chuyển động điện ảnh theo đúng camera_move
+// của đạo diễn → voice/silence audio. Không tốn Veo.
+func (s *Studio) renderCinematicShot(ctx context.Context, id string, p FilmParams, work string,
+	sc FilmScenePro, charLocks string, charRefs []ImageRef,
+	sh RenderShot, aid int64, mp4, keyPath, keyPrompt string) (*renderedShot, error) {
+
+	cinePrompt := keyPrompt + keyframeCompBlock()
+	move := strings.ToLower(strings.TrimSpace(sh.CameraMove))
+	if move == "" {
+		move = "drift"
+	}
+	s.appendLog(id, fmt.Sprintf("Shot %d: dựng điện ảnh từ ảnh (%s)…", sh.Seq+1, move))
+	if kerr := s.mg.GenerateImage(ctx, cinePrompt, charRefs, keyPath); kerr != nil {
+		s.setAsset(aid, StatusFailed, "")
+		return nil, fmt.Errorf("keyframe: %w", kerr)
+	}
+
+	// QC chống drift (mặc định no-op trung thực — xem qc.go).
+	if s.QC != nil {
+		_ = s.QC.CheckShot(ctx, firstPortraitPath(charRefs), keyPath, "")
+	}
+
+	// Giọng đọc của shot (TTS từng đoạn ≤800 ký tự — P0-6); lỗi → bản câm.
+	wavPath := s.synthShotVoice(ctx, id, sh, work)
+	dur := float64(sh.Seconds)
+	if wavPath != "" {
+		if ws, err := engines.WavSeconds(wavPath); err == nil && ws > dur {
+			dur = ws
+		}
+	}
+	tmpV := filepath.Join(work, fmt.Sprintf("shot%04d.cine.mp4", sh.Seq))
+	if err := RenderCinematicShot(ctx, CinematicShot{
+		ImagePath: keyPath, Seconds: dur,
+		CameraMove: sh.CameraMove, Mood: sc.Atmosphere,
+	}, tmpV); err != nil {
+		s.setAsset(aid, StatusFailed, "")
+		return nil, fmt.Errorf("dựng điện ảnh: %w", err)
+	}
+	defer os.Remove(tmpV)
+	if err := AddShotAudio(ctx, tmpV, wavPath, dur, mp4); err != nil {
+		s.setAsset(aid, StatusFailed, "")
+		return nil, fmt.Errorf("gắn giọng đọc: %w", err)
+	}
+	d := ProbeDuration(ctx, mp4)
+	if d <= 0 {
+		d = dur
+	}
+	s.setAssetMethod(aid, "cinematic")
+	s.setAsset(aid, StatusDone, mp4)
+	return &renderedShot{Shot: sh, MP4: mp4, Dur: d}, nil
+}
+
+// synthShotVoice synthesizes a shot's dialogue + narration in ≤800-char
+// chunks (P0-6) and joins them into one WAV. Returns "" when there is
+// nothing to say or synthesis fails — fail-soft: silent shot, logged.
+func (s *Studio) synthShotVoice(ctx context.Context, id string, sh RenderShot, work string) string {
+	speech := shotSpokenText(sh)
+	if s.narrator == nil || strings.TrimSpace(speech) == "" {
+		return ""
+	}
+	var wavs [][]byte
+	for _, ch := range splitTextChunks(speech, maxTTSChunkChars) {
+		w, err := s.narrator(ctx, ch)
+		if err != nil || len(w) == 0 {
+			s.appendLog(id, fmt.Sprintf("Shot %d: TTS lỗi (%v) — dựng bản câm", sh.Seq+1, err))
+			return ""
+		}
+		wavs = append(wavs, w)
+	}
+	joined, jerr := tts.ConcatWavs(wavs)
+	if jerr != nil {
+		s.appendLog(id, fmt.Sprintf("Shot %d: nối WAV lỗi (%v) — dựng bản câm", sh.Seq+1, jerr))
+		return ""
+	}
+	wavPath := filepath.Join(work, fmt.Sprintf("shot%04d.wav", sh.Seq))
+	if werr := os.WriteFile(wavPath, joined, 0o644); werr != nil {
+		s.appendLog(id, fmt.Sprintf("Shot %d: không ghi được WAV: %v", sh.Seq+1, werr))
+		return ""
+	}
+	return wavPath
 }
 
 // assembleFilmFinal nối các shot → mux phụ đề → mix nhạc bed → upscale
 // (nếu chọn) → file cuối trong outDir. Dùng chung cho runFilm và dựng lại
 // sau "Quay lại shot này".
+//
+// Film Wave 3: chế độ "cinematic" dựng bằng xfade (chuyển cảnh mượt) +
+// letterbox 2.35:1 + phụ đề theo đúng timeline xfade; chế độ "veo" giữ
+// đường nối cứng cũ.
 func (s *Studio) assembleFilmFinal(ctx context.Context, id string, p FilmParams, work string,
-	rendered []renderedShot, subTexts []string, subDurs []float64) (string, error) {
+	rendered []renderedShot, subTexts []string, subDurs []float64, renderMode string) (string, error) {
 
 	var clips []string
 	for _, r := range rendered {
 		clips = append(clips, r.MP4)
 	}
-	s.appendLog(id, fmt.Sprintf("Nối %d shot…", len(clips)))
-	concat := filepath.Join(work, "film_concat.mp4")
-	if err := ConcatClips(ctx, clips, p.Aspect, concat); err != nil {
-		return "", err
-	}
-	cur := concat
-	// Phụ đề (P1-1): SRT từ thoại + lời dẫn, khớp thời lượng từng shot.
-	var st []string
-	var sd []float64
-	for i, t := range subTexts {
-		if strings.TrimSpace(t) != "" && i < len(subDurs) {
-			st = append(st, t)
-			sd = append(sd, subDurs[i])
+	var cur string
+	if renderMode == RenderModeCinematic {
+		s.appendLog(id, fmt.Sprintf("Dựng điện ảnh: chuyển cảnh mượt %d shot…", len(clips)))
+		var cc []CinematicClip
+		for _, r := range rendered {
+			cc = append(cc, CinematicClip{Path: r.MP4, CameraMove: r.Shot.CameraMove})
 		}
-	}
-	if len(st) > 0 {
-		s.appendLog(id, fmt.Sprintf("Mux phụ đề (%d câu)…", len(st)))
-		subbed := filepath.Join(work, "film_subs.mp4")
-		if err := MuxSubtitles(ctx, cur, engines.BuildSRT(st, sd), subbed); err != nil {
-			return "", fmt.Errorf("mux phụ đề: %w", err)
+		xfade := filepath.Join(work, "film_xfade.mp4")
+		if err := AssembleCinematic(ctx, cc, xfade); err != nil {
+			return "", err
 		}
-		cur = subbed
+		cur = xfade
+		// Letterbox 2.35:1 — viền điện ảnh, chỉ ở bản phim cuối (trailer
+		// cắt từ shot gốc nên không dính viền).
+		lb := filepath.Join(work, "film_letterbox.mp4")
+		if err := ApplyLetterbox(ctx, cur, lb); err != nil {
+			s.appendLog(id, "⚠ Letterbox lỗi ("+err.Error()+") — giữ bản không viền")
+		} else {
+			cur = lb
+		}
+		// Phụ đề theo đúng timeline xfade (shot sau bắt đầu sớm hơn 0.7s).
+		if cues := cinematicCues(subTexts, subDurs); len(cues) > 0 {
+			s.appendLog(id, fmt.Sprintf("Mux phụ đề (%d câu)…", len(cues)))
+			subbed := filepath.Join(work, "film_subs.mp4")
+			if err := MuxSubtitles(ctx, cur, formatSRT(cues), subbed); err != nil {
+				return "", fmt.Errorf("mux phụ đề: %w", err)
+			}
+			cur = subbed
+		}
+	} else {
+		s.appendLog(id, fmt.Sprintf("Nối %d shot…", len(clips)))
+		concat := filepath.Join(work, "film_concat.mp4")
+		if err := ConcatClips(ctx, clips, p.Aspect, concat); err != nil {
+			return "", err
+		}
+		cur = concat
+		// Phụ đề (P1-1): SRT từ thoại + lời dẫn, khớp thời lượng từng shot.
+		var st []string
+		var sd []float64
+		for i, t := range subTexts {
+			if strings.TrimSpace(t) != "" && i < len(subDurs) {
+				st = append(st, t)
+				sd = append(sd, subDurs[i])
+			}
+		}
+		if len(st) > 0 {
+			s.appendLog(id, fmt.Sprintf("Mux phụ đề (%d câu)…", len(st)))
+			subbed := filepath.Join(work, "film_subs.mp4")
+			if err := MuxSubtitles(ctx, cur, engines.BuildSRT(st, sd), subbed); err != nil {
+				return "", fmt.Errorf("mux phụ đề: %w", err)
+			}
+			cur = subbed
+		}
 	}
 	// Nhạc bed (P1-2): duck −8dB khi có voice + loudnorm −14 LUFS.
 	if strings.TrimSpace(p.MusicPath) != "" {
@@ -1430,7 +1550,8 @@ func (s *Studio) RerenderShot(id string, seq int) error {
 	ctx := context.Background()
 	s.appendLog(id, fmt.Sprintf("Quay lại shot %d…", seq+1))
 	s.setStatus(id, StatusRunning, 50)
-	if _, err := s.renderFilmShot(ctx, id, p, work, scenes[sh.SceneIdx], characterLocks(script), charRefs, sh, prevMp4, budget); err != nil {
+	renderMode := s.resolveRenderMode(p)
+	if _, err := s.renderFilmShot(ctx, id, p, work, scenes[sh.SceneIdx], characterLocks(script), charRefs, sh, prevMp4, budget, renderMode); err != nil {
 		s.setStatus(id, StatusFailed, 100)
 		return err
 	}
@@ -1516,7 +1637,7 @@ func (s *Studio) ReassembleFilm(id string) error {
 		}
 	}
 	s.appendLog(id, "Dựng lại phim từ các shot…")
-	final, err := s.assembleFilmFinal(ctx, id, p, work, rendered, subTexts, subDurs)
+	final, err := s.assembleFilmFinal(ctx, id, p, work, rendered, subTexts, subDurs, s.resolveRenderMode(p))
 	if err != nil {
 		s.setStatus(id, StatusFailed, 100)
 		return err

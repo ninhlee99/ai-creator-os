@@ -85,6 +85,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
 	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
 	mux.HandleFunc("GET /settings/model-local", s.handleSettingsModelLocal)
+	mux.HandleFunc("POST /settings/model-local/probe-video", s.handleProbeVideo)
 	mux.HandleFunc("GET /settings/nhan-vat", s.handleSettingsNhanVat)
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)

@@ -86,7 +86,7 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 			"Tab", tab,
 			"ContentJobs", contentJobs,
 			"Error", "Studio chưa được khởi tạo.",
-			"FilmEst", filmEstimate(),
+			"FilmEst", filmEstimate("auto", false),
 			"FilmRate", filmRateValue()))
 		return
 	}
@@ -124,8 +124,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"MediaGenKeys", mgKeys,
-		"FilmEst", filmEstimate(),
+		"FilmEst", filmEstimate("auto", s.Studio.VideoCapOK()),
 		"FilmRate", filmRateValue(),
+		"FilmVideoOK", s.Studio.VideoCapOK(),
 	))
 }
 
@@ -140,9 +141,21 @@ func filmRateValue() string {
 }
 
 // filmEstimate renders the one-line cost/ETA estimate shown on the film
-// form before creation: shots ≈ ceil(seconds/8) because Veo renders ~8s per
-// call, render ≈ 3 min per Veo shot of polling.
-func filmEstimate() string {
+// form before creation. Mode-aware (Film Wave 3): the cinematic stills mode
+// costs ~$0 (image gen only); Veo ≈ ceil(seconds/8) shots × $rate/s with
+// ~3 min polling per shot.
+func filmEstimate(mode string, videoOK bool) string {
+	eff := mode
+	if eff == "" || eff == studio.RenderModeAuto {
+		if videoOK {
+			eff = studio.RenderModeVeo
+		} else {
+			eff = studio.RenderModeCinematic
+		}
+	}
+	if eff == studio.RenderModeCinematic {
+		return "Điện ảnh từ ảnh: ≈ $0 — chỉ tốn image gen (rẻ), không dùng Veo (ước tính chưa kiểm chứng)"
+	}
 	rateF, _ := strconv.ParseFloat(filmRateValue(), 64)
 	if rateF <= 0 {
 		rateF = 0.05
@@ -294,9 +307,16 @@ func (s *Server) handleStudioFilmCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	upscale := r.PostFormValue("upscale_final") == "1"
+	renderMode := strings.TrimSpace(r.PostFormValue("render_mode"))
+	switch renderMode {
+	case studio.RenderModeAuto, studio.RenderModeCinematic, studio.RenderModeVeo, "":
+	default:
+		renderMode = studio.RenderModeAuto
+	}
 	if _, err := s.Studio.CreateFilmJob(studio.FilmParams{
 		Topic: topic, Seconds: seconds, Aspect: "16:9",
 		Genre: genre, MusicPath: musicPath, UpscaleFinal: upscale,
+		RenderMode: renderMode,
 	}); err != nil {
 		s.fail(w, err, "create film job")
 		return
@@ -377,6 +397,8 @@ func filmMethodLabel(m string) string {
 		return "🎬 Veo"
 	case "anh-tts":
 		return "🖼 Ảnh + giọng đọc"
+	case "cinematic":
+		return "🎞 Điện ảnh"
 	case "trailer":
 		return "📱 Trailer 9:16"
 	default:

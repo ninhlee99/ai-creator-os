@@ -1,0 +1,25 @@
+Bạn là script supervisor + production designer điện ảnh. Chỉ trả lời JSON thuần, không giải thích.
+
+KỊCH BẢN (pha 1 đã viết xong — action + thoại là CHUẨN, không viết lại):
+{{.Screenplay}}
+
+Đây là PHA 2 — BREAKDOWN: đọc kỹ kịch bản trên và trích xuất toàn bộ yếu tố sản xuất. Mọi quyết định thiết kế PHẢI lý giải từ nhu cầu kịch bản.
+
+1. CHARACTER BIBLE — chỉ những nhân vật thật sự xuất hiện/có thoại trong kịch bản, name GIỮ NGUYÊN chính tả như trong kịch bản:
+   - appearance: tuổi, khuôn mặt, tóc, da, dáng người (tiếng Anh, CHI TIẾT để khóa identity mọi shot)
+   - wardrobe: trang phục (tiếng Anh)
+   - design_note: LÝ GIẢI thiết kế từ nhu cầu kịch bản (tiếng Việt) — BẮT BUỘC gắn mỗi lựa chọn ngoại hình/trang phục với một beat kịch bản cụ thể. Ví dụ: "váy vàng cảnh 4 = sự hồi sinh sau biến cố cảnh 3", "tóc búi cao gọn = người phụ nữ công sở kỷ luật, đối lập với tóc xõa lúc suy sụp cảnh 7".
+
+2. Mỗi cảnh (giữ nguyên index như kịch bản):
+   - location/time_of_day/atmosphere: KHÓA CỨNG thành mô tả sản xuất chi tiết (tiếng Anh) — cụ thể đến mức mọi shot đều dựng được cùng một nơi, cùng ánh sáng
+   - continuity: KHỐI BẤT DI BẤT DỊCH (tiếng Anh) — trang phục CHI TIẾT từng nhân vật có mặt (khớp wardrobe trong bible), kiểu tóc, đạo cụ trong tay/bối cảnh, hướng ánh sáng (vd "key light from left window"), thời tiết
+   - props: danh sách đạo cụ quan trọng của cảnh (tiếng Anh)
+   - shots: mỗi cảnh 2-6 shot, mỗi shot có shot_size (ECU/CU/MCU/MS/WS/EWS…), camera_move (slow dolly-in, pan left/right, tilt up/down, static, tracking… — CHỌN THEO ĐÚNG action của cảnh, KHÔNG random), lens_light (ống kính + ánh sáng, tiếng Anh), seconds (4-8), action (tiếng Việt, CỤ THỂ, bám sát action của cảnh trong kịch bản), image_prompt (tiếng Anh, photorealistic cinematic, KHÔNG text), video_prompt (tiếng Anh, mô tả chuyển động cho máy quay), trailer_worthy (true/false)
+   - image_prompt: keyframe đại diện cảnh (tiếng Anh)
+
+3. LUẬT SHOT (bắt buộc):
+   - ĐA DẠNG SHOT: không lặp cùng shot_size + camera_move quá 2 shot liên tiếp; mỗi cảnh có ít nhất 1 wide (WS/EWS), 1 close-up (CU/ECU/MCU), 1 movement shot (camera_move khác static)
+   - CENTER-SAFE: shot nào trailer_worthy=true thì nhân vật và hành động chính PHẢI nằm trong vùng 9:16 ở giữa khung hình 16:9 — trailer dọc crop 2 biên sẽ không cắt mất nội dung. Đánh dấu 1-2 shot đắt giá nhất mỗi cảnh.
+   - THOẠI TRUNG THỰC (kỹ thuật hiện tại KHÔNG có lip-sync — giọng đọc phủ lên hình): ưu tiên narration + thoại ngoài hình (nhân vật không lộ mặt khi nói); xen cutaway/reaction shot (bàn tay, ánh mắt người nghe, chi tiết bối cảnh) giữa các câu thoại.
+
+Chỉ trả JSON: {"characters":[{"name":"...","appearance":"...","wardrobe":"...","design_note":"..."}],"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","continuity":"...","props":["..."],"shots":[{"shot_size":"WS","camera_move":"slow dolly-in","lens_light":"35mm, golden hour","seconds":6,"action":"...","image_prompt":"...","video_prompt":"...","trailer_worthy":false}],"image_prompt":"..."}]}
