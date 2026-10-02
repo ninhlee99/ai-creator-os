@@ -150,6 +150,30 @@
   
 </table>
 
+<h2>Khả năng AI</h2>
+<p class="subtitle">Kiểm tra thật key Gemini vẽ ảnh / quay video được không — hệ thống tự chọn chế độ dựng phim dựa vào đây.</p>
+<table>
+  <tr><th>Khả năng</th><th>Trạng thái</th><th>Kiểm tra lúc</th><th>Chi tiết</th></tr>
+  <tr>
+    <td><strong>Vẽ ảnh (image gen)</strong></td>
+    <td><span class="badge badge-ok">Dùng được</span></td>
+    <td>2026-10-02 09:41</td>
+    <td><span class="hint">Vẽ thử 1 ảnh lúc mở app — OK</span></td>
+  </tr>
+  <tr>
+    <td><strong>Quay video (Veo)</strong></td>
+    <td><span class="badge badge-draft">Chưa kiểm tra</span></td>
+    <td>—</td>
+    <td><span class="hint">Không tự kiểm tra vì tốn tiền — suy từ lịch sử render gần nhất</span></td>
+  </tr>
+</table>
+<div class="toolbar" style="margin-top:12px">
+  <form method="post" action="settings-model-local.html" style="display:inline" onsubmit="return confirm('Quay thử 1 clip 8s bằng Veo — sẽ TỐN ~8s Veo (tiền thật, ước tính chưa kiểm chứng). Tiếp tục? (bản preview: không chạy thật)')">
+    <button type="submit" class="btn btn-secondary">🎬 Kiểm tra quay video</button>
+  </form>
+  <span class="hint">Vẽ ảnh được kiểm tra tự động mỗi lần mở app; quay video không tự kiểm tra vì tốn tiền.</span>
+</div>
+
 <script>
 
 var dlBtn = document.getElementById('vieneu-download');
