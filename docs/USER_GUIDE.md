@@ -7,7 +7,9 @@ Tất cả quản trị đều qua **dashboard web** — không cần chạm CLI
 ## 1. Cài đặt và chạy trên Mac
 
 ```bash
-brew install ffmpeg          # bắt buộc duy nhất
+brew install ffmpeg          # bắt buộc
+brew install llama.cpp       # cần cho LLM local (llama-server bản Metal)
+# cài `uv` (cho VieNeu-TTS local) theo hướng dẫn chính thức của uv
 chmod +x aicos-darwin-arm64
 ./aicos-darwin-arm64
 ```
@@ -27,13 +29,11 @@ Build từ source (nếu cần): `brew install go` rồi `go build -o aicos ./cm
 | Trang chủ | Tổng quan mạng lưới, kill switch |
 | Tài khoản | Thêm account (username + gợi ý niche), AI tự research + gán persona, onboarding |
 | Lịch live | Xếp giờ vàng, tối đa 2 live cùng lúc |
+| Phát triển kênh | Theo dõi tăng trưởng từng tài khoản/ngưỡng KPI, tự kill/nhân đôi format |
+| Studio AI | Tạo video affiliate / phim ngắn: dựng kịch bản → chụp ảnh → dựng video → caption (gồm tab "Video chữ động") |
 | Agent Team | Cây agent theo thời gian thật — bấm tác vụ để xem trạng thái từng agent |
-| Studio AI | Tạo video affiliate / phim ngắn: dựng kịch bản → chụp ảnh → dựng video → caption |
-| Sản xuất video | Tạo video từ kịch bản + lồng tiếng AI |
-| Đa nền tảng | Kết nối TikTok/Facebook/YouTube, nút Kết nối TikTok (OAuth) |
-| Shop Affiliate | Kệ sản phẩm, bật "Tự đăng TikTok khi video xong" |
-| Sản phẩm | Tìm sản phẩm affiliate, thêm sản phẩm tay |
-| Phân tích | Doanh thu, gift, chi phí API |
+| Sản phẩm | Tìm sản phẩm affiliate, thêm sản phẩm tay, tab "Kệ hàng", bật "Tự đăng TikTok khi video xong" |
+| Đa nền tảng | Kết nối TikTok/Facebook/YouTube, nút Kết nối TikTok (OAuth); doanh thu và chi phí API nằm ở Trang chủ/Cài đặt |
 | Cài đặt | API key, chuỗi provider TTS/LLM, dry-run, vùng nguy hiểm |
 
 ---
@@ -89,7 +89,7 @@ chmod 600 .env
 
 6. Mở app: `set -a; source .env; set +a; ./aicos-darwin-arm64`.
 7. Trang **Đa nền tảng** → bấm **Kết nối TikTok** → đăng nhập đúng tài khoản creator → Allow. Token lưu vào `tiktok_token_<username>.json` (quyền 600).
-8. Trang **Sản phẩm** → bật **"Tự đăng TikTok khi video xong"**. Video lên dạng **nháp trong Hộp thư TikTok**, không public.
+8. Trang **Sản phẩm** → kiểm tra **"Tự đăng TikTok khi video xong"** (bản cài mới mặc định bật; bản cài cũ giữ nguyên lựa chọn đã lưu). Video lên dạng **nháp trong Hộp thư TikTok**, không public.
 
 ---
 
@@ -137,6 +137,7 @@ Script tạo `My Drive/AICOS/videos/<YYYY-MM-DD>_<slug>/` chứa: video final, v
 
 - **Kill switch:** nút trên Trang chủ, hoặc `kill -USR1` — dừng toàn hệ thống trong vài giây, sổ cái vẫn giữ nguyên.
 - **Dry-run:** bật trong Cài đặt để xem trước mọi hành động mà không tác động ra ngoài.
+- **Tự động mặc định bật:** sản xuất theo plan, lịch autopilot, lịch live tự xây, plan tự sinh khi tạo tài khoản/đổi chủ đề. Khi Dry-run còn bật thì mọi hành động thật đều bị chặn; muốn tắt hẳn từng mục thì lưu "tắt" ở trang tương ứng (lựa chọn đã lưu luôn được tôn trọng).
 - Không xóa file trong `data/output/`. Hỏi trước khi ghi đè file trên Drive.
 - Không đọc, in ra hay gửi đi API key/secret/token.
 

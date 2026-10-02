@@ -142,14 +142,18 @@ caps are never silently exceeded.
 
 Photorealistic + realtime + frame-coherent lip-sync + free does not exist as
 a production-ready option today. Anyone promising all four is selling
-something. Therefore (research: `docs/RESEARCH/avatar_pipeline.md`):
+something. Therefore (kết luận nghiên cứu: `docs/RESEARCH.md` §6):
 
 - **Default local = MuseTalk v1.5** (`dunso/musetalk-mac` port, MPS) run
   as a Go-managed sidecar. It lip-syncs from audio but does NOT generate
   head motion from audio, and it is NOT realtime on M1 Pro (~2.5–4 fps
   estimated → offline render ~6–10 min for a 60s clip). These numbers are
   extrapolated estimates — a real benchmark on the owner's Mac is required
-  before the sidecar contract is final.
+  before the sidecar contract is final. Lệnh khởi chạy llama-server local
+  trước đây thiếu `-ngl 99` nên chạy CPU 100% thay vì GPU Metal — đã sửa
+  (từ audit lõi AI, 2026-10-02); VieNeu-TTS v3 vẫn chạy ONNX/CPU vì
+  upstream không có đường MPS/CoreML, chế độ int8 (nhanh ~1.6–2×) chưa
+  bật. Ràng buộc cài đặt + benchmark còn nợ: xem `docs/DEVELOPER.md` §9.
 - **Quality bar (owner's requirement, enforced in code):** every frame must
   look like a real person filmed — lips, eyes, head, expression and gesture
   driven by the audio in every frame, consistent identity throughout.
@@ -244,6 +248,11 @@ not our code.
 - No autonomous spending beyond configured caps.
 - No cross-account interaction, ever (guardrail, not a missing feature).
 
+> **Trạng thái (2026-10-02):** các đợt sửa theo `docs/PROJECT_REVIEW.md`
+> (Đợt 1–3 đã/đang chạy — gộp trang, zero-touch mặc định) có thể làm vài mô
+> tả trạng thái trong file này lệch nhẹ; khi các đợt hoàn tất, file này sẽ
+> được rà lại một lần và phần review sẽ gộp vào đây.
+
 ## 12. Known gaps & perfection criteria (audit 2026-10-02)
 
 "Hoàn hảo" được định nghĩa bằng tiêu chí kiểm chứng được dưới đây — không
@@ -288,3 +297,32 @@ phải trạng thái vô hạn. Audit phân hai loại:
 - **Thật:** một account live thật + một video affiliate đăng thật + một
   khoản hoa hồng đối soát vào Ledger từ bằng chứng nhà cung cấp.
 - **Chất lượng:** Ninh duyệt mắt người trên sản phẩm thật, không qua trung gian.
+
+## 13. Pipeline affiliate video (tóm tắt từ spec v2 ngày 2026-10-01)
+
+> Tóm tắt định hướng; chi tiết triển khai nằm trong chính code
+> (`internal/studio`, `internal/products`, `docs/CHANNEL_GROWTH.md` §4–§5
+> cho vòng growth). Spec gốc của pipeline affiliate (ngày 2026-10-01) đã xoá
+> ngày 2026-10-02 vì phần lớn đã thành hiện thực hoặc được kế thừa.
+
+**Nguyên tắc (Ninh, bất di bất dịch):** input duy nhất của người dùng là ảnh
+nhân vật + ảnh sản phẩm; mọi khâu còn lại tự động. Thời trang/phụ kiện:
+video + nhạc licensed/trending, **không chữ, không voiceover**. Mỗi video
+xem lại được tới từng shot/frame qua storyboard; asset tự lưu Google Drive.
+Mọi chức năng có UI, không có vận hành CLI.
+
+**Chuỗi pipeline:** Input (ảnh nhân vật + ảnh sản phẩm + niche) → Director
+(LLM viết kịch bản/shot list, hook 2–3s đầu, sản phẩm là nhân vật chính) →
+Identity/Product Lock (giữ đúng mặt + đúng sản phẩm mọi shot) → Shoot →
+QC tự động (so frame giữa clip: mặt, tay, sản phẩm; rớt thì quay lại, tối
+đa N lần) → Edit (FFmpeg; mặc định không chữ/không voiceover cho fashion;
+xuất 1080×1920 30fps) → Music (thư viện licensed sạch phân theo mood; khi
+publish có thể đổi sang sound trending) → Review UI (storyboard lưới shot
++ frame scrubber + xem final) → Publish (gắn giỏ hàng, lên lịch giờ vàng)
+→ Drive Backup (folder `AICOS/videos/<ngày>_<sản-phẩm>/` chứa shots, audio,
+final, `storyboard.json`).
+
+**Quy luật sản xuất đã chốt thêm từ vận hành:** mỗi video chỉ một địa điểm
+duy nhất (3–5 ảnh cùng location, đổi góc máy); ảnh master 4K–8K; render
+TikTok 1080×1920. Mức đăng đều 2–3 video/ngày trong khung giờ vàng
+11:00–13:00 và 19:00–22:00.

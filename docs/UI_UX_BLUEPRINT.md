@@ -61,6 +61,30 @@ kèm link chéo giữa hai nơi để không ai nhầm tầng cấu hình.
    đơn vị tiền (VND + %); kill switch chỉ một nút thường trực ở topbar + một
    trang An toàn.
 
+7. **Trực quan là chính, ít chữ tối đa (Ninh chốt 2026-10-02).** Ưu tiên
+   **box/thẻ, slide/carousel, popup/modal**; càng ít chữ càng tốt, bỏ các
+   đoạn giải thích chức năng dài trong UI. Trạng thái thể hiện bằng **màu +
+   icon**; chi tiết dài chỉ hiện khi bấm vào (modal/tooltip); thông báo kết
+   quả dùng toast góc màn hình. Nhãn nút/hành động để động từ ngắn.
+   Nguyên tắc này thắng mọi thói quen "viết đoạn mô tả cho rõ" từ trước.
+
+8. **Bảng màu cổ điển, hoài cổ (Ninh chốt 2026-10-02).** KHÔNG dùng màu
+   chói (đỏ/vàng/xanh lá/cam tươi) khi không thật cần. Hướng đích:
+   - Nền giấy ấm ngà, thẻ trắng ngà, chữ mực nâu-đen; dark mode dùng
+     charcoal-nâu ấm thay vì đen/xám lạnh thuần.
+   - Màu chính: xanh navy cổ điển trầm; điểm nhấn đồng (brass) trầm.
+   - Màu trạng thái cũng dùng sắc trầm: sage (ok), ochre (chú ý), gạch
+     nung (lỗi); nút Kill giữ burgundy sẫm để vẫn nhận ra khẩn cấp.
+   Sắc trầm thống nhất toàn app, chỉ dùng màu trạng thái khi thật cần
+   (trạng thái quan trọng/emergency), không trang trí bằng màu trạng thái.
+   *Trạng thái hiện tại trước đợt màu:* theme sáng mặc định kiểu macOS
+   (`#f5f5f7`/`#007AFF`, dark `#1c1c1e`/`#0A84FF`) với semantic tươi
+   (xanh lá `#34C759`, cam `#FF9500`, đỏ `#FF3B30`) — đợt màu cổ điển sẽ
+   thay design tokens này; các điểm tốt đã làm (thang type 12/13/15/18/24/28,
+   tương phản chữ phụ, `:focus-visible`, badge trạng thái tiếng Việt,
+   `.empty-state`, Studio polling AJAX, tiền VNĐ `fmtVND`) giữ nguyên và
+   là chuẩn UI hiện hành.
+
 ## 4. Lộ trình thực hiện
 
 **Đã làm trong đợt 2026-10-02 (template/CSS thuần, không đổi backend):**
@@ -70,14 +94,20 @@ kèm link chéo giữa hai nơi để không ai nhầm tầng cấu hình.
   đậm mục đang mở.
 - Trang Settings thêm thanh mục lục dính nhảy tới từng mục (hết cuộn vô tận).
 
+**Đã làm thêm (đợt gộp trang 2026-10-02, theo PROJECT_REVIEW Đợt 2):** gộp
+`shop` thành tab trong `/products`; `/content` thành tab trong Studio;
+giải thể `/analytics` (doanh thu về Trang chủ, chi phí API vào Settings,
+số liệu theo video ở `/growth`); sidebar 12 → 9 mục.
+
 **Làm tiếp (cần đổi route/handler, làm theo đợt riêng có test đi kèm):**
 1. Tách `/autopilot` (lịch + nhạc toàn mạng) ra khỏi `products.html`.
-2. Gộp `shop.html` vào `/products`, một form thêm sản phẩm duy nhất (VND + %).
+2. ~~Gộp `shop.html` vào `/products`~~ — đã làm ở đợt gộp trang (tab "Kệ hàng").
 3. Tab hoá `account_detail.html`: Tổng quan / Autopilot / Kết nối.
 4. Tách `/studio/jobs` và `/trends` ra khỏi `studio.html`; form affiliate
    chia 4 fieldset như §3.4.
 5. Tách Settings thành 5 trang con theo §2 (giữ nguyên handler, chỉ chuyển
-   template), chuyển Nhân vật AI về Studio.
+   template), chuyển Nhân vật AI về Studio — đồng thời áp dụng §3.7 (box/
+   slide/modal, ít chữ) và §3.8 (bảng màu cổ điển) khi đụng vào template.
 
 Mỗi bước trên làm riêng một commit, chạy `go test ./...` xanh mới push —
 không gộp nhiều bước vào một lần sửa lớn.

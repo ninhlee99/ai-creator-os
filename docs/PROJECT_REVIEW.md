@@ -1,5 +1,10 @@
 # PROJECT REVIEW — Senior Expert Audit (2026-10-02)
 
+> **Trạng thái:** tài liệu này là **spec đang điều phối các đợt sửa đang
+> chạy** (Đợt 1–3). Khi các đợt hoàn tất, nội dung sẽ được gộp vào
+> `docs/ARCHITECTURE.md` và file này sẽ bị xoá — giữ nguyên nguyên văn
+> trong lúc điều phối để không lệch spec giữa chừng.
+
 > Người rà soát: Milo (vai Senior Expert Engineer). Phạm vi: trạng thái đã commit tại
 > `bc1a247` (growth giai đoạn 2 vừa lên main trong lúc rà soát — các nhận định về growth
 > dựa trên đúng commit này, kiểm chứng bằng `git log`/`go vet`; xem mục 0.3).

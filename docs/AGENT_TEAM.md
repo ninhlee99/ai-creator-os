@@ -208,6 +208,12 @@ Kill switch toàn mạng và kill theo task luôn thắng mọi ngân sách.
 | Dịch vụ dùng chung | `internal/engines` (llm/tts/avatar/local) | Xong; paid avatar tier còn khung |
 | TeamInstance/blackboard | `internal/studio` job + SQLite `studio.db` | Là hạt nhân sẵn có để nâng thành blackboard theo task |
 
+*Cập nhật 2026-10-02 (sau bảng trên): Analyst đã khôi phục luật kill theo
+phiên live (`Ledger.SessionsFeatured` + test); các đợt sửa theo
+`docs/PROJECT_REVIEW.md` đang làm tiếp phần việc trong bảng (kill switch
+một nguồn, zero-touch mặc định, daemon nối callback). Component map và
+khoảng trống tổng thể vẫn ở `docs/ARCHITECTURE.md` §12.*
+
 ## 9. Những gì KHÔNG làm (và vì sao)
 
 - Không agent chat tự do không giới hạn (vòng lặp, nổ token, không tái lập được).

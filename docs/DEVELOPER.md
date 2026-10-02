@@ -59,7 +59,34 @@ Avatar agent: file JPEG 160px trong `internal/web/static/agents/`, serve qua `GE
 - **Provider chains:** TTS Gemini → VieNeu-TTS v3 local → Edge; LLM Gemini → llama-server local. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
 - **Affiliate:** ADB quét Product Marketplace trên Android (không dùng TikTok Shop API — đã loại theo quyết định user). Video 30s = 3–5 ảnh 4K cùng 1 địa điểm, zoom nảy theo BPM, không chữ không voiceover.
 
-Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`affiliate-pipeline-v2-design.md`](affiliate-pipeline-v2-design.md)
+Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affiliate: `ARCHITECTURE.md` §13
+
+## 9. Ràng buộc & benchmark trên Mac của Ninh (MacBook Pro M1 Pro 32GB)
+
+Trích từ audit lõi AI của chính dự án (2026-10-02, file audit điểm-thời đã
+gộp vào đây và `docs/RESEARCH.md` §5–§6):
+
+- **Cài đặt phía Mac (guide người dùng chưa liệt kê đủ trước đây):** ngoài
+  `brew install ffmpeg`, tầng local cần `brew install llama.cpp` (bản
+  Metal) cho llama-server và `uv` cho VieNeu-TTS. Thiếu cái nào thì tầng
+  đó **tắt lặng** — chỉ ghi log, không báo UI. Đừng để giới thiệu sai cho
+  người dùng rằng local "có sẵn".
+- **Lệnh khởi chạy llama-server phải có `-ngl 99`** để offload lên GPU
+  Metal; thiếu là chạy CPU 100% (ước 8–15 tok/s thay vì 25–45 tok/s, chưa
+  đo thật trên máy Ninh). Đã sửa, đừng hồi quy.
+- **Mọi con số hiệu năng hiện tại là ƯỚC TÍNH, chưa phải số đo trên máy
+  Ninh:** llama tok/s, RTF VieNeu fp32/int8 (chờ A/B nghe thử), fps
+  MuseTalk thật (ước 2.5–4 fps → render 60s ≈ 6–10 phút, ngoại suy từ M2
+  Pro đo thật 1,6 fps — xem `docs/RESEARCH.md` §6), thời gian upscale 4K.
+  Benchmark these đúng máy của chủ sở hữu là việc đang nợ; không được lấy
+  số ước tính làm cam kết với người dùng.
+- **Avatar local không realtime** (chốt: `docs/RESEARCH.md` §6): MuseTalk
+  chạy offline qua sidecar; sidecar phải được cài riêng trên Mac (binary
+  `avatar-server` trong `data/third_party/avatar-sidecar`, contract
+  `/render`, `/stream/*` — xem `internal/engines/avatar/sidecar.go`).
+  Encoder video ưu tiên `h264_videotoolbox` trên Mac, fallback libx264;
+  upscale 4K là lanczos+unsharp, **không** phải chi tiết AI thật — tài
+  liệu/mô tả phải nói đúng như vậy.
 
 ## Những gì đang treo (cần Mac/Ninh — xem `ARCHITECTURE.md` §12)
 

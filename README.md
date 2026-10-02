@@ -77,7 +77,7 @@ go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm 
 
 | Phần | Trạng thái |
 |---|---|
-| Dashboard web (11 trang: Trang chủ, Tài khoản, Lịch live, Agent Team, Studio AI, Sản xuất video, Đa nền tảng, Shop, Sản phẩm, Phân tích, Cài đặt) | ✅ Code chạy thật |
+| Dashboard web (9 trang: Trang chủ, Tài khoản, Lịch live, Phát triển kênh, Sản phẩm, Studio AI, Agent Team, Đa nền tảng, Cài đặt) | ✅ Code chạy thật |
 | Studio AI — tạo video affiliate/phim ngắn từ dashboard | ✅ Code xong, chưa có verdict mắt người |
 | Multi-Gemini API key rotation (round-robin, cooldown khi hết quota) | ✅ |
 | Sổ cái per-account, Governance luật cứng, Scheduler, kill switch | ✅ |
@@ -101,7 +101,8 @@ go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm 
 | Mô hình kinh doanh | [`docs/MODEL.md`](docs/MODEL.md) |
 | Thiết kế Agent Team | [`docs/AGENT_TEAM.md`](docs/AGENT_TEAM.md) |
 | Kiến trúc kỹ thuật | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
-| Thiết kế pipeline affiliate | [`docs/affiliate-pipeline-v2-design.md`](docs/affiliate-pipeline-v2-design.md) |
-| Blueprint UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
+| Thiết kế phát triển kênh | [`docs/CHANNEL_GROWTH.md`](docs/CHANNEL_GROWTH.md) |
+| Review dự án + spec các đợt sửa (đang điều phối) | [`docs/PROJECT_REVIEW.md`](docs/PROJECT_REVIEW.md) |
+| Thiết kế UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
 | Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
-| Research (Shop API, LIVE policy, TTS/avatar, monetization) | [`docs/RESEARCH/`](docs/RESEARCH/) |
+| Kiến thức nền đã kiểm chứng (chính sách nền tảng, kiếm tiền, TTS, avatar, API) | [`docs/RESEARCH.md`](docs/RESEARCH.md) |
