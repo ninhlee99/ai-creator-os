@@ -1,49 +1,62 @@
-/* AI Creator OS — macOS-style design system.
-   Light theme is the default; dark theme follows [data-theme="dark"] on
-   <html> (set pre-paint by the inline script in base.html from
-   localStorage or prefers-color-scheme). Every color goes through the
-   variables below — no hardcoded dark backgrounds outside the log/video
-   wells, which stay terminal-dark in both themes. */
+/* AI Creator OS — classic vintage design system.
+   Warm paper, classic navy and muted brass; status colors are muted
+   (sage / ochre / brick) and used only when truly needed. Light theme is
+   the default; dark theme follows [data-theme="dark"] on <html> (set
+   pre-paint by the inline script in base.html from localStorage or
+   prefers-color-scheme). Every color goes through the variables below —
+   no hardcoded dark backgrounds outside the log/video wells, which stay
+   terminal-dark in both themes. */
 :root {
   color-scheme: light;
-  /* macOS light palette */
-  --bg: #f5f5f7;          /* page */
-  --bg2: #ffffff;         /* cards / panels */
-  --bg3: #f5f5f7;         /* inset areas, table headers */
-  --hover-bg: #e8e8ec;
-  --input-bg: #ffffff;
-  --border: #d2d2d7;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --placeholder: #71717a;
-  --shadow: 0 1px 3px rgba(0,0,0,.08);
-  /* macOS system colors */
-  --accent: #007AFF;
-  --accent-dark: #0062CC;
-  --ok: #34C759;
-  --ok-text: #187A2E;
-  --ok-bg: rgba(52,199,89,.14);
-  --warn: #FF9500;
-  --warn-text: #A85B00;
-  --warn-bg: rgba(255,149,0,.14);
-  --err: #FF3B30;
-  --err-text: #C81E1E;
-  --err-bg: rgba(255,59,48,.10);
-  --info: #007AFF;
-  --info-text: #0066CC;
-  --info-bg: rgba(0,122,255,.10);
-  --yellow: #FFCC00;
-  --neutral: #8E8E93;
+  /* classic light palette — warm paper */
+  --bg: #F6F1E7;          /* page */
+  --bg2: #FFFBF2;         /* cards / panels */
+  --bg3: #EFE7D4;         /* inset areas, table headers */
+  --hover-bg: #E9DFC9;
+  --input-bg: #FFFBF2;
+  --border: #E3D9C6;
+  --text: #2B2620;
+  --muted: #8A7F6E;
+  --placeholder: #A3967E;
+  --shadow: 0 1px 3px rgba(43,38,32,.10);
+  /* classic navy + brass */
+  --accent: #2F4858;
+  --accent-dark: #243A49;
+  --brass: #A98B5F;
+  --on-accent: #FAF4E6;
+  /* muted status tones */
+  --ok: #7D8C6F;
+  --ok-text: #4F613E;
+  --ok-bg: rgba(125,140,111,.16);
+  --warn: #B08A3E;
+  --warn-text: #77591F;
+  --warn-bg: rgba(176,138,62,.15);
+  --err: #A65A40;
+  --err-text: #83452D;
+  --err-bg: rgba(166,90,64,.12);
+  --info: #46677C;
+  --info-text: #33566B;
+  --info-bg: rgba(70,103,124,.12);
+  --yellow: #B08A3E;
+  --neutral: #8A7F6E;
   /* Deep tones for icon chips carrying white glyphs. */
-  --ok-deep: #248A3D;
-  --warn-deep: #C93400;
-  --err-deep: #D70015;
-  /* Kill switch / danger: soft tint in light mode. */
-  --kill: #D70015;
-  --kill-hover: #B00012;
-  --kill-banner-bg: rgba(255,59,48,.12);
-  --kill-banner-text: #A50011;
-  --danger-zone-bg: rgba(255,59,48,.05);
+  --ok-deep: #5C6B4C;
+  --warn-deep: #8A6524;
+  --err-deep: #8F4A33;
+  /* Kill switch / danger: muted burgundy. */
+  --kill: #7A2E2E;
+  --kill-hover: #632424;
+  --on-kill: #F7E9E2;
+  --kill-banner-bg: rgba(122,46,46,.12);
+  --kill-banner-text: #7A2E2E;
+  --danger-zone-bg: rgba(122,46,46,.05);
+  /* Sidebar: deep classic navy in both themes, paper text, brass active. */
+  --sidebar-bg: #22333F;
+  --sidebar-text: #EDE4D3;
+  --sidebar-link: rgba(237,228,211,.72);
+  --sidebar-faint: rgba(237,228,211,.48);
+  --sidebar-hover: rgba(237,228,211,.08);
+  --sidebar-border: rgba(237,228,211,.18);
   /* Aliases kept for older rules. */
   --green: var(--ok);
   --red: var(--err);
@@ -58,42 +71,54 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* macOS dark palette */
-  --bg: #1c1c1e;
-  --bg2: #2c2c2e;
-  --bg3: #3a3a3c;
-  --hover-bg: #48484a;
-  --input-bg: #1c1c1e;
-  --border: rgba(255,255,255,.14);
-  --text: #f5f5f7;
-  --muted: #98989f;
-  --placeholder: #98989f;
+  /* classic dark palette — warm charcoal */
+  --bg: #201B16;
+  --bg2: #2A241D;
+  --bg3: #332A20;
+  --hover-bg: #3D342A;
+  --input-bg: #241D16;
+  --border: #3D342A;
+  --text: #EDE4D3;
+  --muted: #A2937F;
+  --placeholder: #877A66;
   --shadow: 0 1px 3px rgba(0,0,0,.5);
-  --accent: #0A84FF;
-  --accent-dark: #409CFF;
-  --ok: #30D158;
-  --ok-text: #30D158;
-  --ok-bg: rgba(48,209,88,.16);
-  --warn: #FF9F0A;
-  --warn-text: #FF9F0A;
-  --warn-bg: rgba(255,159,10,.16);
-  --err: #FF453A;
-  --err-text: #FF6961;
-  --err-bg: rgba(255,69,58,.16);
-  --info: #0A84FF;
-  --info-text: #64B5FF;
-  --info-bg: rgba(10,132,255,.16);
-  --yellow: #FFD60A;
-  --neutral: #98989f;
-  --ok-deep: #248A3D;
-  --warn-deep: #C93400;
-  --err-deep: #D70015;
-  --kill: #FF453A;
-  --kill-hover: #FF6961;
-  --kill-banner-bg: #5C1611;
-  --kill-banner-text: #FFD2CE;
-  --danger-zone-bg: rgba(255,69,58,.10);
+  --accent: #8FA9BC;
+  --accent-dark: #7E9BB0;
+  --brass: #C6A877;
+  --on-accent: #22303A;
+  --ok: #A3B18A;
+  --ok-text: #A3B18A;
+  --ok-bg: rgba(163,177,138,.16);
+  --warn: #D3A94F;
+  --warn-text: #D3A94F;
+  --warn-bg: rgba(211,169,79,.16);
+  --err: #C97B5A;
+  --err-text: #DCA183;
+  --err-bg: rgba(201,123,90,.16);
+  --info: #8FA9BC;
+  --info-text: #AEC4D4;
+  --info-bg: rgba(143,169,188,.14);
+  --yellow: #D3A94F;
+  --neutral: #A2937F;
+  --ok-deep: #6B7B52;
+  --warn-deep: #8A6524;
+  --err-deep: #9C5A41;
+  --kill: #5C2626;
+  --kill-hover: #713232;
+  --on-kill: #F0D9CE;
+  --kill-banner-bg: rgba(92,38,38,.45);
+  --kill-banner-text: #F0D9CE;
+  --danger-zone-bg: rgba(201,123,90,.10);
+  --sidebar-bg: #1B2833;
+  --sidebar-text: #EDE4D3;
+  --sidebar-link: rgba(237,228,211,.72);
+  --sidebar-faint: rgba(237,228,211,.48);
+  --sidebar-hover: rgba(237,228,211,.08);
+  --sidebar-border: rgba(237,228,211,.16);
 }
+/* Dark theme: light sage / light navy surfaces need dark glyphs. */
+:root[data-theme="dark"] .node.st-done::after,
+:root[data-theme="dark"] .steps li.done .n { color: #2A3320; }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
@@ -124,23 +149,23 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
 /* layout */
 .layout { display: flex; min-height: 100vh; }
 .sidebar {
-  width: 220px; flex-shrink: 0; background: var(--bg2);
-  border-right: 1px solid var(--border); padding: 20px 0;
+  width: 220px; flex-shrink: 0; background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border); padding: 20px 0;
   position: sticky; top: 0; height: 100vh;
 }
 .brand { padding: 0 20px 16px; font-size: 19px; font-weight: 700;
-  color: var(--accent); border-bottom: 1px solid var(--border);
+  color: var(--brass); border-bottom: 1px solid var(--sidebar-border);
   margin-bottom: 12px; }
 .sidebar nav a {
-  display: block; padding: 10px 20px; color: var(--muted);
+  display: block; padding: 10px 20px; color: var(--sidebar-link);
   font-size: var(--fs-md);
 }
-.sidebar nav a:hover { background: var(--bg3); color: var(--text);
+.sidebar nav a:hover { background: var(--sidebar-hover); color: var(--sidebar-text);
   text-decoration: none; }
-.sidebar nav a.active { background: var(--bg3); color: var(--accent);
-  font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+.sidebar nav a.active { background: var(--sidebar-hover); color: var(--brass);
+  font-weight: 700; box-shadow: inset 3px 0 0 var(--brass); }
 .nav-group { padding: 14px 20px 6px; font-size: 11px; font-weight: 700;
-  letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--sidebar-faint); }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
@@ -200,7 +225,7 @@ tr:hover td { background: var(--bg3); }
   border: 1px solid var(--border); }
 .badge-draft { background: var(--bg3); color: var(--muted);
   border: 1px solid var(--border); }
-/* Job states: running pulses orange, queued stays quiet grey. */
+/* Job states: running pulses muted ochre, queued stays quiet grey. */
 .badge-running { background: var(--warn-bg); color: var(--warn-text);
   border: 1px solid var(--warn); animation: badge-pulse 1.6s infinite; }
 .badge-queued { background: var(--bg3); color: var(--muted);
@@ -210,12 +235,12 @@ tr:hover td { background: var(--bg3); }
 /* buttons */
 .btn { display: inline-block; border: none; cursor: pointer;
   padding: 9px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
-  color: #fff; background: var(--accent); }
+  color: var(--on-accent); background: var(--accent); }
 .btn:hover { background: var(--accent-dark); text-decoration: none; }
 .btn-secondary { background: var(--bg3); color: var(--text);
   border: 1px solid var(--border); }
 .btn-secondary:hover { background: var(--hover-bg); }
-.btn-danger { background: var(--kill); }
+.btn-danger { background: var(--kill); color: var(--on-kill); }
 .btn-danger:hover { background: var(--kill-hover); }
 .btn-sm { padding: 5px 12px; font-size: var(--fs-sm); }
 .toolbar { margin: 16px 0; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -239,7 +264,7 @@ tr:hover td { background: var(--bg3); }
   border: 1px solid var(--border);
   border-radius: 999px; color: var(--muted); background: var(--bg2); }
 .tabs a:hover { color: var(--accent); text-decoration: none; }
-.tabs a.active { color: #fff; background: var(--accent);
+.tabs a.active { color: var(--on-accent); background: var(--accent);
   border-color: var(--accent); }
 h2[id] { scroll-margin-top: 64px; }
 .field { margin-bottom: 14px; }
@@ -257,8 +282,8 @@ textarea { min-height: 90px; resize: vertical; }
 .req { color: var(--err); }
 
 /* log + video wells — terminal-dark in both themes (intentional) */
-pre.log { background: #0d1117; border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #b7c3d1;
+pre.log { background: #262019; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D9CCB4;
   max-height: 220px; overflow: auto; white-space: pre-wrap; }
 video.player { width: 100%; max-width: 360px; border-radius: 12px;
   border: 1px solid var(--border); background: #000; }
@@ -416,7 +441,7 @@ ul.clean li:last-child { border-bottom: none; }
 .node.small { width:104px; } .node.small img{ width:52px; height:52px; }
 .node.st-done { border-color: var(--ok); }
 .node.st-done::after { content:"✓"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background: var(--ok); color:#fff; font-weight:800; display:grid; place-items:center; }
-.node.st-working { border-color: var(--warn); animation:pulse-ring 1.4s infinite; }
+.node.st-working { border-color: var(--brass); animation:pulse-ring 1.4s infinite; }
 .node.st-exchange { border-color: var(--info); animation:pulse-ring 1.4s infinite; }
 .node.st-failed { border-color: var(--err); }
 .node.st-failed::after { content:"!"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background: var(--err); color:#fff; font-weight:800; display:grid; place-items:center; }
@@ -427,7 +452,7 @@ ul.clean li:last-child { border-bottom: none; }
 .flow-live { background:linear-gradient(90deg, var(--warn), var(--info), var(--warn)); background-size:200% 100%; animation:flowmove 1s linear infinite; }
 @keyframes flowmove { to { background-position:200% 0; } }
 @keyframes pulse { 50% { transform:scale(1.18); } }
-@keyframes pulse-ring { 0%{ box-shadow:0 0 0 0 rgba(255,149,0,.45);} 100%{ box-shadow:0 0 0 10px rgba(255,149,0,0);} }
+@keyframes pulse-ring { 0%{ box-shadow:0 0 0 0 rgba(169,139,95,.45);} 100%{ box-shadow:0 0 0 10px rgba(169,139,95,0);} }
 
 /* ---- Empty states: icon + heading + one line + CTA ---- */
 .empty-state { text-align: center; padding: 36px 20px; margin-bottom: 16px;
