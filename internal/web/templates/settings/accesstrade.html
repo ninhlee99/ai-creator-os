@@ -34,6 +34,24 @@
   </form>
 </div>
 
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Tự động</h2>
+  <p class="subtitle">Bật/tắt từng tick ở trang <a href="/products">Affiliate</a> (mục “Tự động Accesstrade”). Ở đây chỉnh chu kỳ.</p>
+  <form method="post" action="/settings/accesstrade/automation">
+    <div class="grid2">
+      <div class="field">
+        <label>Săn sản phẩm — chu kỳ (giờ)</label>
+        <input type="number" name="hunter_hours" min="1" max="168" value="{{.ATHunterHours}}">
+      </div>
+      <div class="field">
+        <label>Đồng bộ đơn hàng — chu kỳ (phút)</label>
+        <input type="number" name="ordersync_mins" min="5" max="1440" value="{{.ATOrderSyncMins}}">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu chu kỳ</button>
+  </form>
+</div>
+
 {{if .ATKeySet}}
 <script>
 (function () {

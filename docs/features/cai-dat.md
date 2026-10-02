@@ -1,14 +1,17 @@
-# Cài đặt — 4 trang con
+# Cài đặt — 6 trang con
 
 ## 1. Mục đích
-Mọi cấu hình vận hành của app, chia 4 trang — mỗi trang trả lời đúng một câu hỏi.
+Mọi cấu hình vận hành của app, chia 6 trang — mỗi trang trả lời đúng một câu hỏi.
 `/settings` redirect 303 về `/settings/he-thong`.
 
 > Đợt A đã gỡ tab **Nhân vật AI** (park theo avatar live). Chuỗi provider Avatar
 > không còn trong `internal/engines/chains.go`.
+> Đợt B thêm tab **Accesstrade**; Đợt E thêm tab **Reup**.
 
 ## 2. Kích hoạt
 - `GET /settings/he-thong` → `handleSettingsHeThong`
+- `GET /settings/accesstrade` → Accesstrade key UI (nhập key 1 lần, nút test kết nối, badge trạng thái)
+- `GET /settings/reup` → tab Reup (trạng thái kho/transform/nhạc/kill + form lưu mức transform, voiceover, tự đăng, video/ngày, ngưỡng kill rule, warm-up)
 - `GET /settings/nha-cung-cap` → `handleSettingsNhaCungCap`
 - `GET /settings/model-local` → `handleSettingsModelLocal`
 - `GET /settings/an-toan` → `handleSettingsAnToan`
@@ -47,8 +50,16 @@ Mọi cấu hình vận hành của app, chia 4 trang — mỗi trang trả lờ
   - LLM: Gemini → llama-server local → paid (placeholder tắt).
 - **Keyring từng engine**: `POST /settings/keys/add|delete`, `GET /settings/keys/status`,
   `POST /settings/keys/test` — key hiện dạng `••••abcd`, không bao giờ render raw.
-- **Tab Accesstrade** sẽ thêm ở Đợt B (nhập access_key, test, trạng thái) —
-  hiện tại **chưa có**.
+- **Tab Accesstrade** (Đợt B): nhập `access_key` 1 lần → `POST` lưu ledger,
+  nút **Test kết nối** (gọi API thật, không log key), badge trạng thái +
+  số campaign đã duyệt. Chưa có key → tick bỏ qua im lặng (không spam alert).
+
+### Reup (`templates/settings/reup.html`, Đợt E)
+- **Trạng thái**: kho reup (video đã tải/thất bại), transform (sẵn sàng/chưa),
+  nhạc nền (`autopilot-music.m4a` có/không), kill rule (bật/tắt + ngưỡng).
+- **Form lưu** `POST /settings/reup/save` → 303 + toast: transform on/off, mức
+  mặc định (1/2), voiceover, tự đăng, kênh, video/ngày (1–20), kill rule +
+  ngưỡng 0-view (2–20), warm-up. Mọi key `reup.*` lưu ledger, hiệu lực ngay.
 
 ### Model local (`model-local.html`)
 - **VieNeu TTS**: `GET /settings/vieneu/status`, `POST /settings/vieneu/ensure|restart`,

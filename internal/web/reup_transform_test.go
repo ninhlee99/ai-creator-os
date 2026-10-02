@@ -182,7 +182,7 @@ func TestSettingsReupTab(t *testing.T) {
 		t.Fatalf("GET /settings/reup = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Cài đặt · Reup", "Kill rule", "Warm-up", "giảm rủi ro", "không đảm bảo"} {
+	for _, want := range []string{"Cài đặt · Reup", "Kill rule", "Warm-up", "giảm rủi ro", "không đảm bảo", "Quét nguồn"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("tab reup thiếu %q", want)
 		}
@@ -202,6 +202,9 @@ func TestSettingsReupTab(t *testing.T) {
 		"kill_on":         {"1"},
 		"kill_n":          {"6"},
 		"warmup_on":       {"1"},
+		"discover_on":     {"1"},
+		"discover_hours":  {"12"},
+		"videos_per_source": {"5"},
 	})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("lưu form phải redirect, được %d", rec.Code)
@@ -214,6 +217,16 @@ func TestSettingsReupTab(t *testing.T) {
 	}
 	if s.atSettingOn(automation.KeyReupVoiceoverEnabled, true) {
 		t.Errorf("voiceover phải tắt")
+	}
+	// Đợt G: discover settings có UI + lưu đúng.
+	if v := s.atSettingInt(automation.KeyReupDiscoverIntervalH, 6); v != 12 {
+		t.Errorf("discover_hours phải 12, được %d", v)
+	}
+	if v := s.atSettingInt(automation.KeyReupVideosPerSource, 3); v != 5 {
+		t.Errorf("videos_per_source phải 5, được %d", v)
+	}
+	if !s.atSettingOn(automation.KeyReupDiscoverEnabled, false) {
+		t.Errorf("discover phải bật")
 	}
 }
 

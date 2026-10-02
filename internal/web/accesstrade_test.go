@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 func postJSON(t *testing.T, s *Server, path, body string) *httptest.ResponseRecorder {
@@ -106,5 +107,47 @@ func TestProductsATCard(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang Affiliate thiếu %q", want)
 		}
+	}
+}
+
+// Đợt G: chu kỳ tick AT có UI ở tab Cài đặt · Accesstrade (interval),
+// công tắc on/off ở trang Affiliate (POST /at/settings) — đúng nguyên tắc
+// "UI cho mọi khả năng".
+func TestATAutomationSave(t *testing.T) {
+	s := newTestServer(t)
+	// Trang hiện form chu kỳ.
+	body := get(t, s, "/settings/accesstrade").Body.String()
+	for _, want := range []string{"Tự động", "hunter_hours", "ordersync_mins"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("tab accesstrade thiếu %q", want)
+		}
+	}
+	// Lưu + clamp.
+	rec := postForm(t, s, "/settings/accesstrade/automation", url.Values{
+		"hunter_hours":  {"48"},
+		"ordersync_mins": {"15"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("lưu phải redirect, được %d", rec.Code)
+	}
+	if v := s.atSettingInt(automation.KeyATHunterIntervalHrs, 24); v != 48 {
+		t.Errorf("hunter_hours phải 48, được %d", v)
+	}
+	if v := s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30); v != 15 {
+		t.Errorf("ordersync_mins phải 15, được %d", v)
+	}
+	// Giá trị vô lý → clamp.
+	rec = postForm(t, s, "/settings/accesstrade/automation", url.Values{
+		"hunter_hours":  {"9999"},
+		"ordersync_mins": {"0"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("lưu phải redirect, được %d", rec.Code)
+	}
+	if v := s.atSettingInt(automation.KeyATHunterIntervalHrs, 24); v != 168 {
+		t.Errorf("hunter_hours phải clamp 168, được %d", v)
+	}
+	if v := s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30); v != 5 {
+		t.Errorf("ordersync_mins phải clamp 5, được %d", v)
 	}
 }

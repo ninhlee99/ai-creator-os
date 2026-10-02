@@ -78,7 +78,9 @@ func ffmpegPresent() bool {
 
 func waitStoryDone(t *testing.T, st *Studio, id string) Job {
 	t.Helper()
-	deadline := time.Now().Add(120 * time.Second)
+	// Pipeline render FFmpeg thật (~80s khi chạy riêng); nới timeout để
+	// không flake khi máy tải nặng (VD: chạy full suite song song).
+	deadline := time.Now().Add(240 * time.Second)
 	for time.Now().Before(deadline) {
 		j, ok := st.GetJob(id)
 		if !ok {
@@ -89,7 +91,7 @@ func waitStoryDone(t *testing.T, st *Studio, id string) Job {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatalf("job %s không xong sau 120s", id)
+	t.Fatalf("job %s không xong sau 240s", id)
 	return Job{}
 }
 

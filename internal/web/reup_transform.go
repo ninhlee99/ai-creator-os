@@ -390,7 +390,10 @@ func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
 }
 // reupSettingsView gom cấu hình reup cho tab Cài đặt · Reup.
 type reupSettingsView struct {
-	TransformOn    bool
+	DiscoverOn       bool
+	DiscoverHours    int
+	VideosPerSource  int
+	TransformOn      bool
 	TransformLevel int
 	VoiceoverOn    bool
 	PostOn         bool
@@ -406,6 +409,9 @@ type reupSettingsView struct {
 
 func (s *Server) reupSettingsCfg() reupSettingsView {
 	v := reupSettingsView{
+		DiscoverOn:       s.atSettingOn(automation.KeyReupDiscoverEnabled, true),
+		DiscoverHours:    s.atSettingInt(automation.KeyReupDiscoverIntervalH, 6),
+		VideosPerSource:  s.atSettingInt(automation.KeyReupVideosPerSource, 3),
 		TransformOn:    s.atSettingOn(automation.KeyReupTransformEnabled, true),
 		TransformLevel: s.atSettingInt(automation.KeyReupTransformLevel, 1),
 		VoiceoverOn:    s.atSettingOn(automation.KeyReupVoiceoverEnabled, true),
@@ -463,6 +469,30 @@ func (s *Server) handleSettingsReupSave(w http.ResponseWriter, r *http.Request) 
 	setBool(automation.KeyReupPostEnabled, "post_on")
 	setBool(automation.KeyReupKillEnabled, "kill_on")
 	setBool(automation.KeyReupWarmupEnabled, "warmup_on")
+	if f.Has("discover_on") {
+		setBool(automation.KeyReupDiscoverEnabled, "discover_on")
+	}
+	// Chỉ ghi đè khi form có field (tránh form cũ/cache reset lặng lẽ).
+	if f.Has("discover_hours") {
+		discH, _ := strconv.Atoi(f.Get("discover_hours"))
+		if discH < 1 {
+			discH = 1
+		}
+		if discH > 72 {
+			discH = 72
+		}
+		_ = s.Ledger.SetSetting(automation.KeyReupDiscoverIntervalH, strconv.Itoa(discH))
+	}
+	if f.Has("videos_per_source") {
+		perSrc, _ := strconv.Atoi(f.Get("videos_per_source"))
+		if perSrc < 1 {
+			perSrc = 1
+		}
+		if perSrc > 10 {
+			perSrc = 10
+		}
+		_ = s.Ledger.SetSetting(automation.KeyReupVideosPerSource, strconv.Itoa(perSrc))
+	}
 	level, _ := strconv.Atoi(f.Get("transform_level"))
 	if level != 2 {
 		level = 1

@@ -10,12 +10,25 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | Autopilot affiliate | kiểm tra **mỗi phút**, chạy khi đủ `autopilot_interval_hours` (mặc định **6h**) | `Service.AutopilotTick` (`autopilot.go`) |
 | Growth (sản xuất + đăng) | **mỗi 5 phút** | `Service.GrowthTick(ctx, false)` (`growth_tick.go`) |
 | Đồng bộ số liệu + đối soát tiền | **mỗi giờ** (nằm trong GrowthTick khi `growthSyncDue()`) | `SyncOneAccount`, `ReconcileCommissions` (`sync_reconcile.go`) |
+| Accesstrade (hunter/order/campaign) | **mỗi 5 phút** (hunter daily, order sync 30′, campaign check daily) | `Service.ATTick` (`at_tick.go`; đợt C) |
+| Reup discover + download | **mỗi 5 phút**, đến hạn **6 giờ** | `Service.ReupTick` → `RunReupScan` (`reup_tick.go`; đợt D) |
+| Reup transform | **mỗi 5 phút**, đến hạn **15′** (≤2 bài/lượt) | `Service.ReupTransformTick` (`reup_transform.go`; đợt E) |
+| Reup post | **mỗi 5 phút**, đến hạn **2 giờ** (giới hạn/ngày + warm-up) | `Service.ReupPostTick` (`reup_transform.go`; đợt E) |
+| Reup kill rule 0-view | **mỗi 5 phút**, đến hạn **1 giờ** | `Service.ReupKillTick` (`reup_transform.go`; đợt E) |
+| Kể chuyện | **mỗi 5 phút**, đến hạn **24 giờ** (mặc định chờ Ninh duyệt mới đăng) | `Service.StoryTick` (`story_tick.go`; đợt F) |
 | Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
 | Nút "chạy ngay" trên UI | thủ công | `GrowthTick(ctx, force=true)` — vẫn bị kill + dry-run chặn |
 
 > 🅿️ Live đã park: `network.Daemon` vẫn tick 60s nhưng **không nối
 > `OnStartLive`** (chỉ test mới nối) → không mở live thật. Slot live
 > (`live_slots`) không còn được build.
+
+Mọi tick: **kill switch + dry-run chặn đầu**; công tắc riêng (unset = **BẬT**,
+zero-touch); store/key nil → bỏ qua im lặng (AT log 1 dòng, không spam alert);
+watermark last-run trong ledger settings; interval ≤ 0 → default. Trạng thái
+thật hiển thị ở `/settings/reup`, `/settings/accesstrade`, `/stories` — chỗ
+nào "chờ số liệu"/"chờ key"/"chờ OAuth" phải nói rõ, không giả vờ đang chạy.
+Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
 
 `internal/automation` không import `web`: mọi phụ thuộc qua interface
 (`Producer`, `Uploader`, `AccountManager`, `EnvProvider`, `Settings`).
