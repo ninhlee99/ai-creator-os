@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const (
@@ -15,6 +16,21 @@ const (
 	outH   = 1920
 	outFPS = 30
 )
+
+// videoEncoder picks the H.264 encoder once per process: Apple's hardware
+// encoder (h264_videotoolbox — included in macOS ffmpeg builds such as
+// Homebrew's) when present, libx264 otherwise. Delivery renders are
+// 1080x1920 for platforms that re-encode on upload anyway, so the hardware
+// encoder's fixed bitrate costs nothing visible, runs several times
+// faster, and frees CPU cores for the zoompan/scale filters — which stay
+// on CPU either way and are the real bottleneck of these graphs.
+var videoEncoder = sync.OnceValue(func() []string {
+	if out, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output(); err == nil &&
+		bytes.Contains(out, []byte("h264_videotoolbox")) {
+		return []string{"-c:v", "h264_videotoolbox", "-b:v", "12M", "-maxrate", "16M"}
+	}
+	return []string{"-c:v", "libx264", "-preset", "medium", "-crf", "18"}
+})
 
 func ffmpegRun(ctx context.Context, args ...string) error {
 	cmd := exec.CommandContext(ctx, "ffmpeg", append([]string{"-y"}, args...)...)
@@ -60,8 +76,9 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 		"-map", "[vout]",
 		"-t", fmt.Sprintf("%.2f", total),
 		"-r", fmt.Sprint(outFPS),
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
 	)
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p")
 	if musicPath != "" {
 		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
 	}
@@ -143,8 +160,9 @@ func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, b
 		"-map", "[vout]",
 		"-t", fmt.Sprintf("%.2f", total),
 		"-r", fmt.Sprint(outFPS),
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
 	)
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p")
 	if musicPath != "" {
 		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
 	}
@@ -207,10 +225,10 @@ func ConcatClips(ctx context.Context, clips []string, outPath string) error {
 	if err := os.WriteFile(lst, []byte(sb.String()), 0o644); err != nil {
 		return err
 	}
-	return ffmpegRun(ctx,
-		"-f", "concat", "-safe", "0", "-i", lst,
-		"-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
-		"-c:a", "aac", outPath)
+	args := []string{"-f", "concat", "-safe", "0", "-i", lst}
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "aac", outPath)
+	return ffmpegRun(ctx, args...)
 }
 
 // MuxMusic replaces/adds the music bed on a silent edit.

@@ -52,7 +52,13 @@ type LocalAvatarProvider struct {
 	mu      sync.RWMutex
 	baseURL string
 	client  *http.Client
-	enabled bool
+	// renderClient serves /render only. Offline renders take minutes on
+	// M1 (MuseTalk-class, ~2.5–4 fps), far beyond the shared client's
+	// 60s timeout — with the shared client every real render died at
+	// 60s even though the chain allows 30m. The caller's ctx (the
+	// chain's per-attempt timeout) still bounds the wait.
+	renderClient *http.Client
+	enabled      bool
 
 	// lifecycle (see sidecar.go)
 	lc *sidecarLifecycle
@@ -66,10 +72,11 @@ func NewLocalAvatarProvider(dataDir string) *LocalAvatarProvider {
 		url = defaultSidecarURL
 	}
 	return &LocalAvatarProvider{
-		baseURL: url,
-		client:  &http.Client{Timeout: 60 * time.Second},
-		enabled: true,
-		lc:      newSidecarLifecycle(dataDir, url),
+		baseURL:      url,
+		client:       &http.Client{Timeout: 60 * time.Second},
+		renderClient: &http.Client{Timeout: 30 * time.Minute},
+		enabled:      true,
+		lc:           newSidecarLifecycle(dataDir, url),
 	}
 }
 
@@ -141,7 +148,7 @@ func (p *LocalAvatarProvider) RenderClip(ctx context.Context, ch Character, audi
 		FPS:               orDefault(opts.FPS, 25),
 	}
 	var resp renderResp
-	if err := p.post(ctx, "/render", req, &resp); err != nil {
+	if err := p.postRender(ctx, req, &resp); err != nil {
 		return "", fmt.Errorf("local avatar: render: %w", err)
 	}
 	if resp.IdentityLock != "" && resp.IdentityLock != lock {
@@ -342,6 +349,21 @@ func (p *LocalAvatarProvider) get(ctx context.Context, path string, out any) err
 }
 
 func (p *LocalAvatarProvider) post(ctx context.Context, path string, body any, out any) error {
+	return p.postWith(ctx, p.client, path, body, out)
+}
+
+// postRender is post() against /render with the long-timeout client (see
+// the renderClient field). Falls back to the shared client when the
+// provider was built as a struct literal (tests).
+func (p *LocalAvatarProvider) postRender(ctx context.Context, body any, out any) error {
+	c := p.renderClient
+	if c == nil {
+		c = p.client
+	}
+	return p.postWith(ctx, c, "/render", body, out)
+}
+
+func (p *LocalAvatarProvider) postWith(ctx context.Context, client *http.Client, path string, body any, out any) error {
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(body); err != nil {
 		return err
@@ -351,7 +373,7 @@ func (p *LocalAvatarProvider) post(ctx context.Context, path string, body any, o
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := p.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

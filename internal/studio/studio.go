@@ -111,6 +111,27 @@ type Studio struct {
 	workRoot string
 	running  map[string]context.CancelFunc
 	onDone   OnDoneFunc
+	// jobSem caps concurrent renders (see jobSlot); lazily built because
+	// tests also construct Studio as a struct literal.
+	jobSem chan struct{}
+}
+
+// maxConcurrentStudioJobs bounds how many jobs render at once. Each job
+// runs heavy local ffmpeg work (1080x1920 zoompan graphs plus a lanczos
+// 4K upscale per photo) on the same machine as the llama-server and
+// VieNeu sidecars; on the target Mac (M1, 32 GB unified memory) more
+// than 2 parallel renders thrash CPU and memory for no wall-clock win.
+// Extra jobs wait with status "queued" (their DB state until they start).
+const maxConcurrentStudioJobs = 2
+
+// jobSlot returns the render semaphore, creating it on first use.
+func (s *Studio) jobSlot() chan struct{} {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.jobSem == nil {
+		s.jobSem = make(chan struct{}, maxConcurrentStudioJobs)
+	}
+	return s.jobSem
 }
 
 // New opens (or creates) the studio database and returns the orchestrator.
@@ -436,6 +457,19 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		s.mu.Unlock()
 	}()
 
+	// Render-slot gate: wait for one of maxConcurrentStudioJobs slots
+	// before marking the job running, so queued jobs keep their honest
+	// "queued" status while heavier renders finish ahead of them.
+	sem := s.jobSlot()
+	select {
+	case sem <- struct{}{}:
+		defer func() { <-sem }()
+	case <-ctx.Done():
+		s.setStatus(id, StatusFailed, 100)
+		s.appendLog(id, "LỖI: job bị hủy khi đang chờ lượt render")
+		return
+	}
+
 	s.setStatus(id, StatusRunning, 5)
 	fail := func(err error) {
 		s.appendLog(id, "LỖI: "+err.Error())
@@ -633,6 +667,17 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		delete(s.running, id)
 		s.mu.Unlock()
 	}()
+
+	// Render-slot gate: same cap as affiliate jobs (see runAffiliate).
+	sem := s.jobSlot()
+	select {
+	case sem <- struct{}{}:
+		defer func() { <-sem }()
+	case <-ctx.Done():
+		s.setStatus(id, StatusFailed, 100)
+		s.appendLog(id, "LỖI: job bị hủy khi đang chờ lượt render")
+		return
+	}
 
 	s.setStatus(id, StatusRunning, 5)
 	fail := func(err error) {
