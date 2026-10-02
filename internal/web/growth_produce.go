@@ -156,6 +156,14 @@ func (s *Server) automation() *automation.Service {
 		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
 			svc.ReupMusicPath = mp
 		}
+		// Story automation (Đợt F): kể chuyện ngôi thứ nhất. Nhạc nền dùng
+		// chung file autopilot Ninh đã upload.
+		if s.Studio != nil {
+			svc.Story = s.Studio
+		}
+		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
+			svc.StoryMusicPath = mp
+		}
 	}
 	if s.Cfg != nil {
 		svc.Gate = s.Cfg

@@ -1,0 +1,137 @@
+{{define "title"}}Kể chuyện — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Kể chuyện YouTube</h1>
+<p class="subtitle">Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → giọng đọc → video 16:9.</p>
+
+{{if .Stories.Error}}<p class="err">{{.Stories.Error}}</p>{{end}}
+
+{{if .Stories.StudioOK}}
+<p>
+  {{if .Stories.TickOn}}<span class="badge badge-ok">Tự tạo: BẬT ({{.Stories.TickHours}}h/lần)</span>{{else}}<span class="badge badge-draft">Tự tạo: TẮT</span>{{end}}
+  {{if .Stories.AutoOn}}<span class="badge badge-warn">Tự đăng (private): BẬT</span>{{else}}<span class="badge badge-info">Chờ duyệt mới đăng</span>{{end}}
+  {{if .Stories.MusicOK}}<span class="badge badge-ok">Nhạc nền: có</span>{{else}}<span class="badge badge-draft">Nhạc nền: chưa có</span>{{end}}
+</p>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Kể chuyện mới</h2>
+  <p class="hint">App viết truyện ở ngôi thứ nhất, vẽ ảnh 16:9 từng cảnh, đọc giọng, dựng video 16:9 có phụ đề. QC: đủ 1920×1080 + có audio + dài &gt; 30s.</p>
+  <form method="post" action="/stories">
+    <div class="field">
+      <label>Chủ đề <span class="req">*</span></label>
+      <input type="text" name="topic" required placeholder="vd: đêm mưa ở Đà Lạt khiến tôi đổi nghề">
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Thể loại</label>
+        <input type="text" name="genre" value="{{.Stories.DefGenre}}" placeholder="tâm lý">
+      </div>
+      <div class="field">
+        <label>Số cảnh (3–12)</label>
+        <input type="number" name="scenes" value="{{.Stories.DefScenes}}" min="3" max="12">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Độ dài truyện (từ, 200–1200)</label>
+        <input type="number" name="words" value="{{.Stories.DefWords}}" min="200" max="1200" step="50">
+      </div>
+      <div class="field">
+        <label>Nhạc nền</label>
+        <select name="music_on">
+          <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Có (file autopilot)</option>
+          <option value="0"{{if not .Stories.MusicOn}} selected{{end}}>Không</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Viết &amp; dựng</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Truyện đã tạo</h2>
+  {{if .Stories.Jobs}}
+  <table class="clean">
+    <tr><th>Tiêu đề</th><th>Trạng thái</th><th>Cảnh</th><th>Dài</th><th></th></tr>
+    {{range .Stories.Jobs}}
+    <tr>
+      <td>{{.Title}}<br><span class="hint">{{.CreatedAt}}</span></td>
+      <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
+      <td>{{.Scenes}}</td>
+      <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
+      <td style="white-space:nowrap">
+        {{if .MediaURL}}<a class="btn btn-secondary btn-sm" href="{{.MediaURL}}" target="_blank">Xem</a>{{end}}
+        {{if and (eq .Status "done") (not .Published)}}
+        <form method="post" action="/stories/{{.ID}}/publish" style="display:inline">
+          <select name="account" required>
+            <option value="">— kênh —</option>
+            {{range $.Stories.AccountNames}}<option value="{{.}}"{{if eq . $.Stories.PostAccount}} selected{{end}}>{{.}}</option>{{end}}
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm" data-confirm="Đăng video này lên YouTube ở chế độ RIÊNG TƯ?">Đăng</button>
+        </form>
+        {{end}}
+        <form method="post" action="/stories/{{.ID}}/delete" style="display:inline" data-confirm="Xoá truyện này khỏi danh sách? File video sẽ bị xoá.">
+          <button type="submit" class="btn btn-secondary btn-sm">Xoá</button>
+        </form>
+      </td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có truyện nào — tạo truyện đầu tiên ở trên.</p>
+  {{end}}
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Mặc định</h2>
+  <form method="post" action="/stories/settings">
+    <div class="grid2">
+      <div class="field">
+        <label>Thể loại mặc định</label>
+        <input type="text" name="genre" value="{{.Stories.DefGenre}}">
+      </div>
+      <div class="field">
+        <label>Kênh đăng mặc định</label>
+        <select name="account">
+          <option value="">— chưa chọn —</option>
+          {{range .Stories.AccountNames}}<option value="{{.}}"{{if eq . $.Stories.PostAccount}} selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Từ/truyện</label>
+        <input type="number" name="words" value="{{.Stories.DefWords}}" min="200" max="1200" step="50">
+      </div>
+      <div class="field">
+        <label>Số cảnh</label>
+        <input type="number" name="scenes" value="{{.Stories.DefScenes}}" min="3" max="12">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Tự tạo mỗi (giờ)</label>
+        <input type="number" name="interval_hours" value="{{.Stories.TickHours}}" min="1" max="168">
+      </div>
+      <div class="field">
+        <label>Nhạc nền</label>
+        <select name="music_on">
+          <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Bật</option>
+          <option value="0"{{if not .Stories.MusicOn}} selected{{end}}>Tắt</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Hàng đợi chủ đề (mỗi dòng 1 chủ đề — tick lấy dần)</label>
+      <textarea name="topics" rows="4" placeholder="vd:&#10;tuổi thơ ở quê ngoại&#10;lần đầu đi chợ Tết một mình">{{.Stories.Topics}}</textarea>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" name="tick_on" value="1"{{if .Stories.TickOn}} checked{{end}}> Tự tạo truyện theo lịch</label>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng private sau khi QC (mặc định: chờ Ninh duyệt)</label>
+    </div>
+    <button type="submit" class="btn btn-secondary">Lưu</button>
+  </form>
+</div>
+{{end}}
+{{end}}
