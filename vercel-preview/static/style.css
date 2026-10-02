@@ -1,62 +1,61 @@
-/* AI Creator OS — classic vintage design system.
-   Warm paper, classic navy and muted brass; status colors are muted
-   (sage / ochre / brick) and used only when truly needed. Light theme is
-   the default; dark theme follows [data-theme="dark"] on <html> (set
-   pre-paint by the inline script in base.html from localStorage or
-   prefers-color-scheme). Every color goes through the variables below —
-   no hardcoded dark backgrounds outside the log/video wells, which stay
-   terminal-dark in both themes. */
+/* AI Creator OS — modern minimal warm-gray design system.
+   Light warm gray, warm black-gray text and a muted indigo-slate accent;
+   status colors are muted (sage / ochre / terracotta) and used only when
+   truly needed. Light theme is the default; dark theme follows
+   [data-theme="dark"] on <html> (set pre-paint by the inline script in
+   base.html from localStorage or prefers-color-scheme). Every color goes
+   through the variables below — no hardcoded dark backgrounds outside the
+   log/video wells, which stay terminal-dark in both themes. */
 :root {
   color-scheme: light;
-  /* classic light palette — warm paper */
-  --bg: #F6F1E7;          /* page */
-  --bg2: #FFFBF2;         /* cards / panels */
-  --bg3: #EFE7D4;         /* inset areas, table headers */
-  --hover-bg: #E9DFC9;
-  --input-bg: #FFFBF2;
-  --border: #E3D9C6;
-  --text: #2B2620;
-  --muted: #8A7F6E;
-  --placeholder: #A3967E;
-  --shadow: 0 1px 3px rgba(43,38,32,.10);
-  /* classic navy + brass */
-  --accent: #2F4858;
-  --accent-dark: #243A49;
-  --brass: #A98B5F;
-  --on-accent: #FAF4E6;
+  /* modern light palette — warm gray */
+  --bg: #F5F4F1;          /* page */
+  --bg2: #FFFFFF;         /* cards / panels */
+  --bg3: #ECEAE4;         /* inset areas, table headers */
+  --hover-bg: #E7E4DC;
+  --input-bg: #FFFFFF;
+  --border: #E3E0D9;
+  --text: #2B2A26;
+  --muted: #75726A;
+  --placeholder: #A19D93;
+  --shadow: 0 1px 3px rgba(43,42,38,.08);
+  /* muted indigo-slate accent */
+  --accent: #525F8A;
+  --accent-dark: #455174;
+  --on-accent: #FFFFFF;
   /* muted status tones */
-  --ok: #7D8C6F;
-  --ok-text: #4F613E;
-  --ok-bg: rgba(125,140,111,.16);
-  --warn: #B08A3E;
-  --warn-text: #77591F;
-  --warn-bg: rgba(176,138,62,.15);
-  --err: #A65A40;
-  --err-text: #83452D;
-  --err-bg: rgba(166,90,64,.12);
-  --info: #46677C;
-  --info-text: #33566B;
-  --info-bg: rgba(70,103,124,.12);
-  --yellow: #B08A3E;
-  --neutral: #8A7F6E;
+  --ok: #71836B;
+  --ok-text: #4A5A41;
+  --ok-bg: rgba(113,131,107,.16);
+  --warn: #A98B4F;
+  --warn-text: #7A5E26;
+  --warn-bg: rgba(169,139,79,.15);
+  --err: #B26A58;
+  --err-text: #8C4A3A;
+  --err-bg: rgba(178,106,88,.12);
+  --info: #525F8A;
+  --info-text: #455174;
+  --info-bg: rgba(82,95,138,.12);
+  --yellow: #A98B4F;
+  --neutral: #75726A;
   /* Deep tones for icon chips carrying white glyphs. */
-  --ok-deep: #5C6B4C;
-  --warn-deep: #8A6524;
-  --err-deep: #8F4A33;
-  /* Kill switch / danger: muted burgundy. */
-  --kill: #7A2E2E;
-  --kill-hover: #632424;
-  --on-kill: #F7E9E2;
-  --kill-banner-bg: rgba(122,46,46,.12);
-  --kill-banner-text: #7A2E2E;
-  --danger-zone-bg: rgba(122,46,46,.05);
-  /* Sidebar: deep classic navy in both themes, paper text, brass active. */
-  --sidebar-bg: #22333F;
-  --sidebar-text: #EDE4D3;
-  --sidebar-link: rgba(237,228,211,.72);
-  --sidebar-faint: rgba(237,228,211,.48);
-  --sidebar-hover: rgba(237,228,211,.08);
-  --sidebar-border: rgba(237,228,211,.18);
+  --ok-deep: #57684A;
+  --warn-deep: #856427;
+  --err-deep: #96523D;
+  /* Kill switch / danger: muted deep red. */
+  --kill: #8C3A3A;
+  --kill-hover: #773131;
+  --on-kill: #FBF0EC;
+  --kill-banner-bg: rgba(140,58,58,.12);
+  --kill-banner-text: #8C3A3A;
+  --danger-zone-bg: rgba(140,58,58,.05);
+  /* Sidebar: light warm surface, accent-tinted active item. */
+  --sidebar-bg: #FBFAF7;
+  --sidebar-text: #2B2A26;
+  --sidebar-link: rgba(43,42,38,.66);
+  --sidebar-faint: rgba(43,42,38,.45);
+  --sidebar-hover: #E9EBF2;
+  --sidebar-border: #E3E0D9;
   /* Aliases kept for older rules. */
   --green: var(--ok);
   --red: var(--err);
@@ -71,54 +70,53 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* classic dark palette — warm charcoal */
-  --bg: #201B16;
-  --bg2: #2A241D;
-  --bg3: #332A20;
-  --hover-bg: #3D342A;
-  --input-bg: #241D16;
-  --border: #3D342A;
-  --text: #EDE4D3;
-  --muted: #A2937F;
-  --placeholder: #877A66;
+  /* modern dark palette — warm charcoal */
+  --bg: #1B1A18;
+  --bg2: #252422;
+  --bg3: #2E2C29;
+  --hover-bg: #37352F;
+  --input-bg: #252422;
+  --border: #37352F;
+  --text: #ECE9E2;
+  --muted: #A29D92;
+  --placeholder: #7E786C;
   --shadow: 0 1px 3px rgba(0,0,0,.5);
-  --accent: #8FA9BC;
-  --accent-dark: #7E9BB0;
-  --brass: #C6A877;
-  --on-accent: #22303A;
-  --ok: #A3B18A;
-  --ok-text: #A3B18A;
-  --ok-bg: rgba(163,177,138,.16);
-  --warn: #D3A94F;
-  --warn-text: #D3A94F;
-  --warn-bg: rgba(211,169,79,.16);
-  --err: #C97B5A;
-  --err-text: #DCA183;
-  --err-bg: rgba(201,123,90,.16);
-  --info: #8FA9BC;
-  --info-text: #AEC4D4;
-  --info-bg: rgba(143,169,188,.14);
-  --yellow: #D3A94F;
-  --neutral: #A2937F;
-  --ok-deep: #6B7B52;
+  --accent: #99A5C9;
+  --accent-dark: #A9B5D4;
+  --on-accent: #23272F;
+  --ok: #9DB08F;
+  --ok-text: #9DB08F;
+  --ok-bg: rgba(157,176,143,.16);
+  --warn: #C9A86A;
+  --warn-text: #C9A86A;
+  --warn-bg: rgba(201,168,106,.16);
+  --err: #CD8A76;
+  --err-text: #DDA48F;
+  --err-bg: rgba(205,138,118,.16);
+  --info: #99A5C9;
+  --info-text: #B4BEDB;
+  --info-bg: rgba(153,165,201,.14);
+  --yellow: #C9A86A;
+  --neutral: #A29D92;
+  --ok-deep: #687A50;
   --warn-deep: #8A6524;
-  --err-deep: #9C5A41;
-  --kill: #5C2626;
-  --kill-hover: #713232;
-  --on-kill: #F0D9CE;
-  --kill-banner-bg: rgba(92,38,38,.45);
-  --kill-banner-text: #F0D9CE;
-  --danger-zone-bg: rgba(201,123,90,.10);
-  --sidebar-bg: #1B2833;
-  --sidebar-text: #EDE4D3;
-  --sidebar-link: rgba(237,228,211,.72);
-  --sidebar-faint: rgba(237,228,211,.48);
-  --sidebar-hover: rgba(237,228,211,.08);
-  --sidebar-border: rgba(237,228,211,.16);
+  --err-deep: #9A5C44;
+  --kill: #4A2424;
+  --kill-hover: #5A2B2B;
+  --on-kill: #EFD9D2;
+  --kill-banner-bg: rgba(140,58,58,.35);
+  --kill-banner-text: #EFD9D2;
+  --danger-zone-bg: rgba(205,138,118,.10);
+  --sidebar-bg: #211F1E;
+  --sidebar-text: #ECE9E2;
+  --sidebar-link: rgba(236,233,226,.66);
+  --sidebar-faint: rgba(236,233,226,.42);
+  --sidebar-hover: rgba(153,165,201,.14);
+  --sidebar-border: #37352F;
 }
-/* Dark theme: light sage / light navy surfaces need dark glyphs. */
+/* Dark theme: light sage surfaces need dark glyphs. */
 :root[data-theme="dark"] .node.st-done::after,
-:root[data-theme="dark"] .steps li.done .n { color: #2A3320; }
+:root[data-theme="dark"] .steps li.done .n { color: #2E3324; }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
@@ -154,7 +152,7 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   position: sticky; top: 0; height: 100vh;
 }
 .brand { padding: 0 20px 16px; font-size: 19px; font-weight: 700;
-  color: var(--brass); border-bottom: 1px solid var(--sidebar-border);
+  color: var(--accent); border-bottom: 1px solid var(--sidebar-border);
   margin-bottom: 12px; }
 .sidebar nav a {
   display: block; padding: 10px 20px; color: var(--sidebar-link);
@@ -162,8 +160,8 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
 }
 .sidebar nav a:hover { background: var(--sidebar-hover); color: var(--sidebar-text);
   text-decoration: none; }
-.sidebar nav a.active { background: var(--sidebar-hover); color: var(--brass);
-  font-weight: 700; box-shadow: inset 3px 0 0 var(--brass); }
+.sidebar nav a.active { background: var(--sidebar-hover); color: var(--accent);
+  font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
 .nav-group { padding: 14px 20px 6px; font-size: 11px; font-weight: 700;
   letter-spacing: 1.5px; text-transform: uppercase; color: var(--sidebar-faint); }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -282,8 +280,8 @@ textarea { min-height: 90px; resize: vertical; }
 .req { color: var(--err); }
 
 /* log + video wells — terminal-dark in both themes (intentional) */
-pre.log { background: #262019; border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D9CCB4;
+pre.log { background: #262420; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D9D4C7;
   max-height: 220px; overflow: auto; white-space: pre-wrap; }
 video.player { width: 100%; max-width: 360px; border-radius: 12px;
   border: 1px solid var(--border); background: #000; }
@@ -441,7 +439,7 @@ ul.clean li:last-child { border-bottom: none; }
 .node.small { width:104px; } .node.small img{ width:52px; height:52px; }
 .node.st-done { border-color: var(--ok); }
 .node.st-done::after { content:"✓"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background: var(--ok); color:#fff; font-weight:800; display:grid; place-items:center; }
-.node.st-working { border-color: var(--brass); animation:pulse-ring 1.4s infinite; }
+.node.st-working { border-color: var(--accent); animation:pulse-ring 1.4s infinite; }
 .node.st-exchange { border-color: var(--info); animation:pulse-ring 1.4s infinite; }
 .node.st-failed { border-color: var(--err); }
 .node.st-failed::after { content:"!"; position:absolute; top:-9px; right:-9px; width:24px; height:24px; border-radius:50%; background: var(--err); color:#fff; font-weight:800; display:grid; place-items:center; }
@@ -452,7 +450,7 @@ ul.clean li:last-child { border-bottom: none; }
 .flow-live { background:linear-gradient(90deg, var(--warn), var(--info), var(--warn)); background-size:200% 100%; animation:flowmove 1s linear infinite; }
 @keyframes flowmove { to { background-position:200% 0; } }
 @keyframes pulse { 50% { transform:scale(1.18); } }
-@keyframes pulse-ring { 0%{ box-shadow:0 0 0 0 rgba(169,139,95,.45);} 100%{ box-shadow:0 0 0 10px rgba(169,139,95,0);} }
+@keyframes pulse-ring { 0%{ box-shadow:0 0 0 0 rgba(82,95,138,.4);} 100%{ box-shadow:0 0 0 10px rgba(82,95,138,0);} }
 
 /* ---- Empty states: icon + heading + one line + CTA ---- */
 .empty-state { text-align: center; padding: 36px 20px; margin-bottom: 16px;
