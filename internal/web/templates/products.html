@@ -132,6 +132,126 @@
 </div>
 {{end}}
 
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">🎯 Săn sản phẩm
+    {{if .AT.HunterOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}
+  </h2>
+  {{if .AT.KeySet}}
+  <p>
+    <button type="button" class="btn btn-primary btn-sm" id="at-hunt-btn" onclick="atHunt()">Săn ngay</button>
+    <span class="hint">quét datafeed → kho sản phẩm → tạo video cho top mới</span>
+  </p>
+  {{else}}
+  <p class="subtitle">Nhập access_key ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để săn sản phẩm.</p>
+  {{end}}
+  {{if .AT.Hunted}}
+  <table>
+    <tr><th>Sản phẩm</th><th>Giá</th><th>Hoa hồng</th><th>Danh mục</th></tr>
+    {{range .AT.Hunted}}
+    <tr>
+      <td><strong>{{.Title}}</strong><br><span class="hint">{{.ShopName}}</span></td>
+      <td>{{fmtVND .Price}}</td>
+      <td>{{printf "%.0f" (pct .CommissionRate)}}%</td>
+      <td>{{if .Category}}{{.Category}}{{else}}—{{end}}</td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có sản phẩm nào từ Accesstrade — bấm “Săn ngay”.</p>
+  {{end}}
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">⚙️ Tự động Accesstrade</h2>
+  <div class="grid2">
+    <div class="field">
+      <label><input type="checkbox" id="at-set-hunter"{{if .AT.HunterOn}} checked{{end}}> Săn sản phẩm mỗi ngày</label>
+    </div>
+    <div class="field">
+      <label>Số video mỗi lần săn</label>
+      <input type="number" id="at-set-videos" min="0" max="10" value="{{.AT.HunterVideos}}">
+    </div>
+    <div class="field">
+      <label><input type="checkbox" id="at-set-ordersync"{{if .AT.OrderSyncOn}} checked{{end}}> Đồng bộ đơn mỗi 30 phút</label>
+    </div>
+    <div class="field">
+      <label><input type="checkbox" id="at-set-campaign"{{if .AT.CampaignChkOn}} checked{{end}}> Kiểm tra duyệt chiến dịch mỗi ngày</label>
+    </div>
+  </div>
+  <button type="button" class="btn btn-secondary btn-sm" onclick="atSettingsSave()">Lưu</button>
+  <span class="hint">kill switch + dry-run vẫn chặn mọi tick</span>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">💰 Đối soát hoa hồng
+    {{if .AT.OrderSyncOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}
+  </h2>
+  <p>
+    <span class="badge badge-ok">Đã duyệt: {{.AT.OrderStats.ApprovedCount}} đơn · {{fmtVND .AT.OrderStats.ApprovedTotal}}</span>
+    <span class="badge badge-warn">Chờ duyệt: {{.AT.OrderStats.PendingCount}} đơn · {{fmtVND .AT.OrderStats.PendingTotal}}</span>
+    <span class="badge badge-draft">Từ chối: {{.AT.OrderStats.RejectedCount}} đơn</span>
+  </p>
+  <p class="hint">Đơn chờ duyệt hiện riêng — không cộng vào “đã duyệt”.</p>
+  {{if .AT.KeySet}}
+  <p>
+    <button type="button" class="btn btn-secondary btn-sm" id="at-sync-btn" onclick="atOrderSync()">Đồng bộ đơn</button>
+    <span class="hint">quét 7 ngày gần nhất, đơn pending được cập nhật tại chỗ</span>
+  </p>
+  {{end}}
+  {{if .AT.Orders}}
+  <table>
+    <tr><th>Mã đơn</th><th>Chiến dịch</th><th>Hoa hồng</th><th>Trạng thái</th><th>Ngày đặt</th></tr>
+    {{range .AT.Orders}}
+    <tr>
+      <td><code class="hint">{{.MaskedID}}</code></td>
+      <td>{{if .CampaignName}}{{.CampaignName}}{{else}}—{{end}}</td>
+      <td>{{.CommissionLabel}}</td>
+      <td><span class="badge {{if eq .Status 1}}badge-ok{{else if eq .Status 2}}badge-draft{{else}}badge-warn{{end}}">{{.StatusLabel}}</span></td>
+      <td class="hint">{{.OrderedAt}}</td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có đơn nào — bấm “Đồng bộ đơn”.</p>
+  {{end}}
+</div>
+<script>
+function atPost(url, body, btnId, okMsg) {
+  var btn = document.getElementById(btnId);
+  if (btn) btn.disabled = true;
+  fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: body || '{}'})
+    .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+    .then(function (x) {
+      if (btn) btn.disabled = false;
+      if (x.d && x.d.ok) {
+        window.showToast(okMsg(x.d), true);
+        setTimeout(function () { location.reload(); }, 1200);
+      } else {
+        window.showToast((x.d && x.d.error) || ('Lỗi HTTP ' + x.s), false);
+      }
+    })
+    .catch(function () { if (btn) btn.disabled = false; window.showToast('Không gọi được server.', false); });
+}
+function atHunt() {
+  atPost('/at/hunt', '{}', 'at-hunt-btn', function (d) {
+    return 'Đã săn ' + d.new + ' sản phẩm mới, tạo ' + d.videos + ' video.';
+  });
+}
+function atOrderSync() {
+  atPost('/at/orders/sync', '{}', 'at-sync-btn', function (d) {
+    return 'Đã đồng bộ ' + d.total + ' đơn (' + d.added + ' mới, ' + d.updated + ' cập nhật).';
+  });
+}
+function atSettingsSave() {
+  atPost('/at/settings', JSON.stringify({
+    hunter_on: document.getElementById('at-set-hunter').checked,
+    hunter_videos: parseInt(document.getElementById('at-set-videos').value || '3', 10),
+    order_sync_on: document.getElementById('at-set-ordersync').checked,
+    campaign_on: document.getElementById('at-set-campaign').checked
+  }), null, function () { return 'Đã lưu cài đặt tự động.'; });
+}
+</script>
+
 <div class="modal-backdrop" id="at-link-modal" hidden>
   <div class="modal" role="dialog" aria-modal="true" style="max-width:26rem">
     <h3 style="margin-top:0">Tạo tracking link</h3>

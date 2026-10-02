@@ -205,6 +205,37 @@ func (s *Store) TopByTheme(theme string, minCommission float64, accountID int64,
 	return ranked, nil
 }
 
+// TopUnusedBySource trả về sản phẩm tốt nhất (chưa dùng cho accountID)
+// của một nguồn (vd "accesstrade"), sort theo Score. Hunter Accesstrade
+// dùng accountID 0 cho video trực tiếp — không va chạm usage theo account.
+func (s *Store) TopUnusedBySource(source string, minCommission float64, accountID int64, limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	rows, err := s.db.Query(`
+		SELECT `+productCols+` FROM products
+		WHERE source = ? AND commission_rate >= ?
+		  AND id NOT IN (SELECT product_id FROM product_usage WHERE account_id = ?)`,
+		source, minCommission, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Product
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	ranked := Rank(out)
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+	return ranked, rows.Err()
+}
+
 // RecordUse marks a product as promoted for an account (by studio job id).
 func (s *Store) RecordUse(productID, accountID int64, jobID string) error {
 	_, err := s.db.Exec(

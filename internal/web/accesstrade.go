@@ -18,11 +18,12 @@ import (
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
-// atKeySetting là key lưu access_key trong bảng settings của ledger.
-// Đọc mỗi lần gọi API → đổi key có hiệu lực ngay, không restart.
-const atKeySetting = "at.access_key"
+// Key lưu access_key: dùng chung accesstrade.KeySetting với automation tick
+// (một nguồn duy nhất — đọc mỗi lần gọi API, đổi key hiệu lực ngay).
 
 // atTimeout là timeout cho mỗi thao tác AT từ UI.
 const atTimeout = 45 * time.Second
@@ -34,7 +35,7 @@ func (s *Server) atAccessKey() (string, bool) {
 	if s.Ledger == nil {
 		return "", false
 	}
-	v, ok, err := s.Ledger.GetSetting(atKeySetting)
+	v, ok, err := s.Ledger.GetSetting(accesstrade.KeySetting)
 	if err != nil || !ok || strings.TrimSpace(v) == "" {
 		return "", false
 	}
@@ -68,6 +69,16 @@ type atView struct {
 	StoreOK   bool
 	Campaigns []accesstrade.Campaign
 	Links     []accesstrade.SavedLink
+	// Đợt C: hunter + đối soát.
+	Hunted        []products.Product
+	Orders        []accesstrade.SavedOrder
+	OrderStats    accesstrade.OrderStats
+	HunterOn      bool
+	OrderSyncOn   bool
+	CampaignChkOn bool
+	HunterVideos  int
+	HunterLastRun string
+	OrderLastRun  string
 }
 
 // atPageData đọc cache campaign + link đã tạo; lỗi đọc chỉ log, UI hiện
@@ -76,6 +87,20 @@ func (s *Server) atPageData() atView {
 	v := atView{StoreOK: s.AT != nil}
 	if _, ok := s.atAccessKey(); ok {
 		v.KeySet = true
+	}
+	// Công tắc tick chỉ cần Ledger — đọc luôn để UI hiển thị đúng
+	// cả khi kho AT chưa mở.
+	v.HunterOn = s.atSettingOn(automation.KeyATHunterEnabled, true)
+	v.OrderSyncOn = s.atSettingOn(automation.KeyATOrderSyncEnabled, true)
+	v.CampaignChkOn = s.atSettingOn(automation.KeyATCampaignCheckOn, true)
+	v.HunterVideos = s.atSettingInt(automation.KeyATHunterVideos, 3)
+	if s.Ledger != nil {
+		if lr, ok, _ := s.Ledger.GetSetting("at.hunter_last_run"); ok {
+			v.HunterLastRun = lr
+		}
+		if lr, ok, _ := s.Ledger.GetSetting("at.ordersync_last_run"); ok {
+			v.OrderLastRun = lr
+		}
 	}
 	if s.AT == nil {
 		return v
@@ -90,7 +115,49 @@ func (s *Server) atPageData() atView {
 	} else {
 		v.Links = ls
 	}
+	if os, err := s.AT.ListOrders(20); err != nil {
+		log.Printf("web: at orders: %v", err)
+	} else {
+		v.Orders = os
+	}
+	if st, err := s.AT.GetOrderStats(); err != nil {
+		log.Printf("web: at order stats: %v", err)
+	} else {
+		v.OrderStats = st
+	}
+	if s.Products != nil {
+		if hs, err := s.Products.TopUnusedBySource(
+			accesstrade.HunterSource, 0, 0, 10); err != nil {
+			log.Printf("web: at hunted: %v", err)
+		} else {
+			v.Hunted = hs
+		}
+	}
 	return v
+}
+
+// atSettingOn / atSettingInt đọc công tắc UI cho tick AT (unset = def).
+func (s *Server) atSettingOn(key string, def bool) bool {
+	if s.Ledger == nil {
+		return def
+	}
+	v, ok, err := s.Ledger.GetSetting(key)
+	if err != nil || !ok {
+		return def
+	}
+	return v == "1" || v == "true"
+}
+
+func (s *Server) atSettingInt(key string, def int) int {
+	if s.Ledger == nil {
+		return def
+	}
+	if v, ok, err := s.Ledger.GetSetting(key); err == nil && ok {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return def
 }
 
 // atKeySet / atMasked / atCachedCount phục vụ settingsData (tab Accesstrade).
@@ -139,7 +206,7 @@ func (s *Server) handleATKeySave(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kho dữ liệu chưa sẵn sàng."))
 		return
 	}
-	if err := s.Ledger.SetSetting(atKeySetting, key); err != nil {
+	if err := s.Ledger.SetSetting(accesstrade.KeySetting, key); err != nil {
 		seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Lưu key thất bại: "+err.Error()))
 		return
 	}
@@ -273,3 +340,141 @@ func (s *Server) atRequireApproved(campaignID string) error {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// ------------------------------------------------------------------ Đợt C
+
+// handleATHunt chạy hunter tay (AJAX): quét datafeed → kho sản phẩm →
+// top N mới tạo video affiliate. Trả JSON cho toast.
+func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
+	cl, err := s.atClient()
+	if err != nil {
+		writeJSONErr(w, err.Error(), http.StatusPreconditionFailed)
+		return
+	}
+	if s.Products == nil {
+		writeJSONErr(w, "kho sản phẩm chưa sẵn sàng", http.StatusPreconditionFailed)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{})
+	if err != nil {
+		writeJSONErr(w, "Săn sản phẩm thất bại: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	// Tạo video cho top N sản phẩm mới (nối hunter → studio, như tick).
+	videos := 0
+	want := s.atSettingInt(automation.KeyATHunterVideos, 3)
+	if s.Studio != nil && want > 0 {
+		for _, p := range res.Products {
+			if videos >= want {
+				break
+			}
+			jobID, jerr := s.makeHunterVideo(ctx, p)
+			if jerr != nil {
+				log.Printf("web: at hunt video %q: %v", p.Title, jerr)
+				continue
+			}
+			_ = s.Products.RecordUse(p.ID, 0, jobID)
+			videos++
+		}
+	}
+	if s.Ledger != nil {
+		_ = s.Ledger.SetSetting("at.hunter_last_run", time.Now().Format(time.RFC3339))
+	}
+	writeJSON(w, map[string]any{
+		"ok": true, "new": res.New, "updated": res.Updated,
+		"skipped": res.Skipped, "videos": videos,
+	})
+}
+
+// makeHunterVideo tạo 1 studio job affiliate từ sản phẩm hunter (bản web
+// của automation tick — tải ảnh listing + gọi CreateAffiliateJob).
+func (s *Server) makeHunterVideo(ctx context.Context, p products.Product) (string, error) {
+	auto := s.automation()
+	auto.StudioRunner = s.Studio
+	return auto.MakeHunterVideo(ctx, p)
+}
+
+// handleATOrderSync đồng bộ đơn tay (AJAX): order-list → upsert → JSON
+// số liệu đối soát cho toast + cập nhật card.
+func (s *Server) handleATOrderSync(w http.ResponseWriter, r *http.Request) {
+	cl, err := s.atClient()
+	if err != nil {
+		writeJSONErr(w, err.Error(), http.StatusPreconditionFailed)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+	until := time.Now()
+	since := until.Add(-7 * 24 * time.Hour)
+	orders, err := cl.ListOrders(ctx, since, until)
+	if err != nil {
+		writeJSONErr(w, "Đồng bộ đơn thất bại: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	added, updated, uerr := s.AT.UpsertOrders(orders)
+	if uerr != nil {
+		writeJSONErr(w, "Lưu đơn thất bại: "+uerr.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = s.AT.SetSyncState("orders.until", until.UTC().Format(time.RFC3339))
+	if s.Ledger != nil {
+		_ = s.Ledger.SetSetting("at.ordersync_last_run", time.Now().Format(time.RFC3339))
+	}
+	st, _ := s.AT.GetOrderStats()
+	writeJSON(w, map[string]any{
+		"ok": true, "total": len(orders), "added": added, "updated": updated,
+		"approved_count": st.ApprovedCount, "approved_total": st.ApprovedTotal,
+		"pending_count": st.PendingCount, "pending_total": st.PendingTotal,
+		"rejected_count": st.RejectedCount,
+	})
+}
+
+// atSettingsJSON là body JSON của POST /at/settings.
+type atSettingsJSON struct {
+	HunterOn     *bool `json:"hunter_on"`
+	HunterVideos *int  `json:"hunter_videos"`
+	OrderSyncOn  *bool `json:"order_sync_on"`
+	CampaignOn   *bool `json:"campaign_on"`
+}
+
+// handleATSettings lưu công tắc tick AT (AJAX, JSON).
+func (s *Server) handleATSettings(w http.ResponseWriter, r *http.Request) {
+	if s.Ledger == nil {
+		writeJSONErr(w, "kho dữ liệu chưa sẵn sàng", http.StatusPreconditionFailed)
+		return
+	}
+	var in atSettingsJSON
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&in); err != nil {
+		writeJSONErr(w, "JSON không hợp lệ.", http.StatusBadRequest)
+		return
+	}
+	set := func(key string, v *bool) {
+		if v == nil {
+			return
+		}
+		_ = s.Ledger.SetSetting(key, boolStr(*v))
+	}
+	set(automation.KeyATHunterEnabled, in.HunterOn)
+	set(automation.KeyATOrderSyncEnabled, in.OrderSyncOn)
+	set(automation.KeyATCampaignCheckOn, in.CampaignOn)
+	if in.HunterVideos != nil {
+		n := *in.HunterVideos
+		if n < 0 {
+			n = 0
+		}
+		if n > 10 {
+			n = 10
+		}
+		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(n))
+	}
+	writeJSON(w, map[string]any{"ok": true})
+}
+
+func boolStr(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
