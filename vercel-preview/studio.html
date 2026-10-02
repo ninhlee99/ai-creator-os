@@ -18,7 +18,7 @@
   document.documentElement.dataset.theme = t;
 })();
 </script>
-</head>
+<script>function previewFetch(){return Promise.reject(new Error("static preview: no backend"));}</script></head>
 <body>
 
 <div class="layout">
@@ -42,7 +42,7 @@
   <div class="main">
     <header class="topbar">
       <div class="status-chips">
-        <span class="chip chip-dry">DRY-RUN</span>
+        
         
       </div>
       <div class="topbar-actions">
@@ -50,7 +50,7 @@
                 title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
         
         <form method="post" action="/kill" style="display:inline"
-              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
           <button type="submit" class="btn btn-danger">Kill switch</button>
         </form>
         
@@ -84,6 +84,15 @@
       <span class="badge badge-ok">50 bài hát</span>
       <div class="hint">Đang đứng đầu: Dunghoangpham – Mật Ngọt - Nam Con Remix</div>
     
+    <a class="btn btn-secondary btn-sm" href="studio.html" style="margin-top:8px">Xem bảng xếp hạng</a>
+  </div>
+  <div class="card">
+    <h3>Job dựng video</h3>
+    
+      <span class="badge badge-running">1 đang chạy</span>
+    
+    <div class="hint">Tiến độ dựng + storyboard từng cảnh.</div>
+    <a class="btn btn-secondary btn-sm" href="studio-jobs.html" style="margin-top:8px">Xem job</a>
   </div>
 </div>
 
@@ -279,248 +288,69 @@
 </form>
 </div>
 
-<h2>2 · Phim ngắn</h2>
+<h2>2 · Phim</h2>
 <div class="form-card">
-<form method="post" action="studio.html">
+<form method="post" action="studio.html" enctype="multipart/form-data">
   <div class="field">
     <label>Chủ đề phim <span class="req">*</span></label>
     <input type="text" name="topic" required placeholder="Ví dụ: Cô gái và chiếc túi bí ẩn">
-    <div class="hint">AI viết kịch bản → quay từng cảnh bằng Veo (nếu có) → dựng phim dọc. Không có Veo sẽ dùng ảnh + giọng thuyết minh.</div>
+    <div class="hint">AI viết kịch bản 3 hồi → quay từng shot 8s bằng Veo (nếu có) → dựng phim 16:9 + phụ đề. Không có Veo sẽ dùng ảnh + giọng thuyết minh.</div>
+  </div>
+  <div class="field">
+    <label>Thể loại</label>
+    <select name="genre">
+      <option value="Tâm lý">Tâm lý</option>
+      <option value="Tình cảm">Tình cảm</option>
+      <option value="Hành động">Hành động</option>
+      <option value="Kinh dị">Kinh dị</option>
+      <option value="Hài">Hài</option>
+      <option value="Khoa học viễn tưởng">Khoa học viễn tưởng</option>
+      <option value="Tài liệu">Tài liệu</option>
+    </select>
   </div>
   <div class="field">
     <label>Thời lượng (giây)</label>
-    <input type="number" name="seconds" value="90" min="30" max="180">
+    <input type="number" id="film-seconds" name="seconds" value="90" min="30" max="3600">
+    <div class="hint">Phim dài viết theo 3 hồi, mỗi shot ≤8s. Phim xuất 16:9 — trailer dọc tự cắt từ phim.</div>
   </div>
-  <button type="submit" class="btn">🎞️ Tạo phim ngắn</button>
+  <div class="field">
+    <label>Nhạc nền (tùy chọn)</label>
+    <input type="file" name="music_file" accept=".mp3,.m4a,.wav,.ogg">
+    <div class="hint">Nhạc bed tự hạ −8dB khi có thoại, chuẩn −14 LUFS.</div>
+  </div>
+  <div class="field">
+    <label class="radio"><input type="checkbox" name="upscale_final" value="1"> Upscale 4K cho bản cuối</label>
+    <div class="hint">Lanczos upscale — không phải 4K native, render rất lâu.</div>
+  </div>
+  <div class="hint" id="film-est" data-rate="0.05">≈ 12 shot × 8s Veo × $0.05/s ≈ $4.80 · render ~36 phút (ước tính chưa kiểm chứng)</div>
+  <button type="submit" class="btn">🎞️ Tạo phim</button>
 </form>
 </div>
 
-<h2>3 · Nhạc thịnh hành TikTok Việt Nam</h2>
-<p class="hint">Nguồn: Kworb — TikTok Trending Songs Vietnam (kworb.net/charts/tiktok/vn.html). Đây là bảng xếp hạng của bên thứ ba, không phải số liệu chính thức từ TikTok.</p>
-<form method="post" action="studio.html" class="inline-form">
-  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
-</form>
-
-<table class="trends-table">
-  <tr><th>#</th><th>Biến động</th><th>Bài hát</th></tr>
-  
-  <tr><td>1</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt - Nam Con Remix</td></tr>
-  
-  <tr><td>2</td><td>=</td><td><strong>FLI:P</strong> – มองนานๆ</td></tr>
-  
-  <tr><td>3</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt - Ebe Remix</td></tr>
-  
-  <tr><td>4</td><td>=</td><td><strong>Toxic Dope &amp; JanK</strong> – Gió Speed up</td></tr>
-  
-  <tr><td>5</td><td>=</td><td><strong>Hữu Trí</strong> – Sắc Ngọc Ngà - Đại Mèo Remix</td></tr>
-  
-  <tr><td>6</td><td>=</td><td><strong>Dunghoangpham</strong> – Mật Ngọt</td></tr>
-  
-  <tr><td>7</td><td>&#43;1</td><td><strong>LUCKY3RD</strong> – Alejandro</td></tr>
-  
-  <tr><td>8</td><td>&#43;1</td><td><strong>XAVI Phạm</strong> – Cậu Cả</td></tr>
-  
-  <tr><td>9</td><td>&#43;2</td><td><strong>GREY D &amp; Chillies</strong> – đưa em về nhàa - speed up</td></tr>
-  
-  <tr><td>10</td><td>=</td><td><strong>刘汉成</strong> – 特别的爱给特别的你DJ版(刘汉成 Remix)</td></tr>
-  
-  <tr><td>11</td><td>&#43;1</td><td><strong>ILan Lamante</strong> – Dj Play X Unity (Remix)</td></tr>
-  
-  <tr><td>12</td><td>&#43;1</td><td><strong>Gia Bin</strong> – Cha Của Con</td></tr>
-  
-  <tr><td>13</td><td>&#43;5</td><td><strong>Dunghoangpham, ACV</strong> – Đơn GIản Anh Yêu Em (Ciray Remix)</td></tr>
-  
-  <tr><td>14</td><td>=</td><td><strong>VuHuynh</strong> – Chào Mừng Đến Bình Nguyên Vô Tận - Remix</td></tr>
-  
-  <tr><td>15</td><td>&#43;2</td><td><strong>Rith Guess</strong> – A Y Mạc x Watch Me - Remix</td></tr>
-  
-  <tr><td>16</td><td>-1</td><td><strong>My Girl CT &amp; Young Milo</strong> – Buông Hàng (Slowed)</td></tr>
-  
-  <tr><td>17</td><td>&#43;2</td><td><strong>边巴顿珠</strong> – 《可不可以》 (Cover 张紫豪)</td></tr>
-  
-  <tr><td>18</td><td>&#43;6</td><td><strong>Hoàng Hồng Quân</strong> – Tôi Sống Cho Gia Đình - Parody, Short Version</td></tr>
-  
-  <tr><td>19</td><td>NEW</td><td><strong>Khánh Phương</strong> – Vận Mệnh Trong Tay</td></tr>
-  
-  <tr><td>20</td><td>&#43;5</td><td><strong>Triệu Minh Đạt</strong> – Hãy Là Của Riêng Anh - Remix</td></tr>
-  
-  <tr><td>21</td><td>&#43;5</td><td><strong>马健涛</strong> – 你是我唯一的执着</td></tr>
-  
-  <tr><td>22</td><td>&#43;5</td><td><strong>Yuni Boo, H2K</strong> – Cơn Bão Tình Yêu</td></tr>
-  
-  <tr><td>23</td><td>&#43;6</td><td><strong>Amee &amp; Obito</strong> – Shay Nắnggg</td></tr>
-  
-  <tr><td>24</td><td>&#43;6</td><td><strong>Sound ॐ Love ❤ Alchemy☿</strong> – 528 Hz the Dna Healing Love Frequency Tuning Fork</td></tr>
-  
-  <tr><td>25</td><td>NEW</td><td><strong>Đoàn Lâm</strong> – Không Tiền Sẽ Thấy Hết</td></tr>
-  
-  <tr><td>26</td><td>&#43;9</td><td><strong>Qinn Media &amp; Trịnh Thiên Ân</strong> – Khi Yêu Nào Ai Đâu Muốn (Remix)</td></tr>
-  
-  <tr><td>27</td><td>&#43;14</td><td><strong>汪琪灿</strong> – 冬眠 钢琴版 (Cover 司南)</td></tr>
-  
-  <tr><td>28</td><td>&#43;4</td><td><strong>Duyên Kendy &amp; Đỗ Thành Duy</strong> – Nên Duyên Nên Phận</td></tr>
-  
-  <tr><td>29</td><td>NEW</td><td><strong>BCD Studio</strong> – Fadeaway</td></tr>
-  
-  <tr><td>30</td><td>&#43;4</td><td><strong>Gianluca Marino</strong> – Laughing</td></tr>
-  
-  <tr><td>31</td><td>&#43;11</td><td><strong>Sakhar &amp; XAVI</strong> – Anh Em MaCau (SinKra Remix) [ Short Version 4] - SinKra remix</td></tr>
-  
-  <tr><td>32</td><td>&#43;4</td><td><strong>Audiosphere</strong> – So Cute</td></tr>
-  
-  <tr><td>33</td><td>&#43;19</td><td><strong>NH4T Remix &amp; Đỗ Thành Duy</strong> – Trách Duyên Trách Phận (Remix)</td></tr>
-  
-  <tr><td>34</td><td>&#43;6</td><td><strong>MiiNa &amp; Tun Phạm</strong> – TUNA TUNA (TikTok Ver.) #2</td></tr>
-  
-  <tr><td>35</td><td>&#43;3</td><td><strong>3thqv</strong> – Cats - sped up</td></tr>
-  
-  <tr><td>36</td><td>&#43;17</td><td><strong>Pháo</strong> – Một Ngày Chẳng Nắng</td></tr>
-  
-  <tr><td>37</td><td>&#43;6</td><td><strong>仙言</strong> – 最甜情歌(Cover 红人馆)</td></tr>
-  
-  <tr><td>38</td><td>&#43;7</td><td><strong>20X Remix &amp; Lâm Tuấn</strong> – Ba Kiếp Tình Một Kiếp Duyên (Lâm Tuấn x 20X Remix) [Short Version 2]</td></tr>
-  
-  <tr><td>39</td><td>&#43;5</td><td><strong>Myra Trần</strong> – Bạn Ơi - #1</td></tr>
-  
-  <tr><td>40</td><td>&#43;8</td><td><strong>Quang Chợ Lầm</strong> – Chắc Em Đã Quên Rồi (Speedup Remix)</td></tr>
-  
-  <tr><td>41</td><td>&#43;5</td><td><strong>张忠华&#43;刘志雄&#43;贺大美人</strong> – 别知己(DJ版)</td></tr>
-  
-  <tr><td>42</td><td>NEW</td><td><strong>Mee Media &amp; Jimmy Nguyễn</strong> – Mưa Tuyết (DN TEAM REMIX) - Từng Hạt Tuyết Rơi Đi Khóc Cho Nơi Đây Anh Lẻ Loi</td></tr>
-  
-  <tr><td>43</td><td>&#43;7</td><td><strong>Yan Nguyễn</strong> – Sao Mình Chưa Nắm Tay Nhau</td></tr>
-  
-  <tr><td>44</td><td>&#43;7</td><td><strong>Orinn &amp; Reddy</strong> – Đừng Xem Ai Đó Là Cả Thế Giới (Lofi Ver.)</td></tr>
-  
-  <tr><td>45</td><td>&#43;9</td><td><strong>Nal</strong> – Chờ Trông Ai - MK Remix</td></tr>
-  
-  <tr><td>46</td><td>&#43;9</td><td><strong>ASBUN</strong> – Sound Hoo Aa Hoo Ee</td></tr>
-  
-  <tr><td>47</td><td>&#43;12</td><td><strong>Thiên Tú</strong> – Ngẫm (Remix) - Hãy Sống Tốt Giống Như Chưa Từng</td></tr>
-  
-  <tr><td>48</td><td>&#43;10</td><td><strong>Ngọc Khang</strong> – Trai Nhà Nghèo</td></tr>
-  
-  <tr><td>49</td><td>NEW</td><td><strong>Foxxi</strong> – BORN FOR THIS</td></tr>
-  
-  <tr><td>50</td><td>&#43;6</td><td><strong>Lê Bảo Bình</strong> – Sai Cách Yêu (V.A Remix)</td></tr>
-  
-</table>
-
-
-<h2>Video đã tạo</h2>
-<div id="jobs">
-
-<div class="empty-state">
-  <div class="es-icon">🎬</div>
-  <h3>Chưa có video nào</h3>
-  <p>Điền tên sản phẩm ở mẫu phía trên, AI sẽ tự viết kịch bản, chụp ảnh và dựng video cho bạn.</p>
-  <a class="btn" href="#studio-form">Tạo video đầu tiên</a>
-</div>
-
-</div>
-
-<script>
-function pickTrend(sel){
-  var v = sel.value.split("|");
-  document.getElementById("music_title").value = v[0] || "";
-  document.getElementById("music_artist").value = v[1] || "";
-}
-
-var JOB_LABELS = {queued:"Đang chờ", pending:"Đang chờ", running:"Đang chạy",
-  done:"Hoàn thành", failed:"Thất bại"};
-var JOB_CLASSES = {queued:"queued", pending:"queued", running:"running",
-  done:"ok", failed:"err"};
-function jobLabel(s){ return JOB_LABELS[s] || s; }
-function jobClass(s){ return JOB_CLASSES[s] || "no"; }
-
-var boards = {};
-function toggleBoard(id){
-  var box = document.querySelector('[data-job="'+id+'"] .board');
-  if(boards[id]){ box.innerHTML=""; boards[id]=false; return; }
-  boards[id]=true;
-  fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
-    var h = "";
-    var logEl = document.getElementById("log-"+id);
-    if(d.job && d.job.log){ logEl.textContent = d.job.log; logEl.hidden = false; }
-    if(d.job && d.job.caption){
-      h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById(\'cap-'+id+'\').textContent)">Sao chép</button></div><div class="hint" id="cap-'+id+'">'+d.job.caption.replace(/\n/g,"<br>")+'</div></div>';
-    }
-    (d.assets||[]).forEach(function(a){
-      h += '<div class="shot"><div class="shot-head">Cảnh '+(a.idx+1)+' <span class="badge badge-'+jobClass(a.status)+'">'+jobLabel(a.status)+'</span> <em>'+a.kind+'</em></div>';
-      if(a.preview){
-        if(a.kind==="clip"){ h += '<video controls src="'+a.preview+'" style="max-width:220px"></video>'; }
-        else { h += '<img src="'+a.preview+'" style="max-width:220px">'; }
-      }
-      h += '<div class="hint">'+a.prompt+'</div></div>';
-    });
-    box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
-  });
-}
-
-
-(function(){
-  var cards = document.querySelectorAll('[data-job]');
-  if(!cards.length) return;
-  var timer = setInterval(function(){
-    fetch('/studio/jobs').then(function(r){return r.json();}).then(function(d){
-      var anyActive = false;
-      (d.jobs||[]).forEach(function(j){
-        if(j.status==='running' || j.status==='queued') anyActive = true;
-        var card = document.querySelector('[data-job="'+j.id+'"]');
-        if(!card) return;
-        var b = card.querySelector('.job-status');
-        if(b){ b.className = 'badge job-status badge-'+jobClass(j.status); b.textContent = jobLabel(j.status); }
-        var p = card.querySelector('.prog');
-        if(p) p.textContent = j.progress+'%';
-        if(j.output && !card.querySelector('video.player')){
-          var v = document.createElement('video');
-          v.className = 'player'; v.controls = true; v.src = '/media/'+j.output;
-          var btn = card.querySelector('button');
-          card.insertBefore(v, btn);
-        }
-        if(boards[j.id]) { boards[j.id] = false; toggleBoard(j.id); }
-      });
-      if(!anyActive) clearInterval(timer);
-    }).catch(function(){   });
-  }, 5000);
-})();
-</script>
 
 
     </main>
   </div>
 </div>
-<script>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
 
-(function () {
-  var p = location.pathname;
-  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
-    var h = a.getAttribute('href');
-    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
-  });
-})();
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
 
-document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
-  inp.addEventListener('change', function () {
-    var name = inp.closest('.file-pick').querySelector('.file-name');
-    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
-  });
-});
-
-(function () {
-  var btn = document.getElementById('theme-toggle');
-  if (!btn) return;
-  function sync() {
-    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
-  }
-  sync();
-  btn.addEventListener('click', function () {
-    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
-    sync();
-  });
-})();
-</script>
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
 </body>
 </html>

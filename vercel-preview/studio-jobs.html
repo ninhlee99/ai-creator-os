@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Studio — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+<script>function previewFetch(){return Promise.reject(new Error("static preview: no backend"));}</script></head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Sản phẩm</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Job Studio</h1>
+<p class="subtitle">Việc dựng video đang chạy tới đâu, storyboard ở đâu.</p>
+
+<nav class="tabs">
+  <a href="studio.html">Tạo video</a>
+  <a href="studio-jobs.html" class="active">Job đã tạo</a>
+  <a href="studio.html">Nhạc thịnh hành</a>
+</nav>
+
+
+
+<div class="job" data-job="film-demo01">
+  <h3>Sài Gòn 3 giờ sáng <span class="badge badge-draft">Phim ngắn</span></h3>
+  <div class="meta">
+    <span class="badge badge-running job-status">Đang chạy</span>
+    <span class="prog">62%</span>
+    · tạo lúc 2026-10-02 09:02
+  </div>
+  <div class="board"></div>
+  
+  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo01')">Xem chi tiết từng cảnh</button>
+  
+  <pre class="log" id="log-film-demo01" hidden></pre>
+</div>
+
+<div class="job" data-job="aff-demo01">
+  <h3>Túi kem quilted — cafe Yên <span class="badge badge-draft">Affiliate</span></h3>
+  <div class="meta">
+    <span class="badge badge-ok job-status">Hoàn thành</span>
+    <span class="prog">100%</span>
+    · tạo lúc 2026-10-02 09:02 · xong lúc 2026-10-02 09:02
+  </div>
+  <div class="board"></div>
+  <video class="player" controls src="#"></video>
+  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('aff-demo01')">Xem chi tiết từng cảnh</button>
+  
+  <pre class="log" id="log-aff-demo01" ></pre>
+</div>
+
+<div class="job" data-job="film-demo02">
+  <h3>Phở đêm <span class="badge badge-draft">Phim ngắn</span></h3>
+  <div class="meta">
+    <span class="badge badge-err job-status">Thất bại</span>
+    <span class="prog">25%</span>
+    · tạo lúc 2026-10-02 09:02 · xong lúc 2026-10-02 09:02
+  </div>
+  <div class="board"></div>
+  
+  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo02')">Xem chi tiết từng cảnh</button>
+  
+  <form method="post" action="studio-jobs.html" style="display:inline">
+    <button class="btn btn-sm">▶ Chạy tiếp</button>
+  </form>
+  
+  <pre class="log" id="log-film-demo02" hidden></pre>
+</div>
+
+
+
+    </main>
+  </div>
+</div>
+<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>
+
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="static/app.js"></script>
+
+<script>
+window.__sampleBoard = {"assets": [{"id": 3, "idx": 0, "kind": "shot", "status": "done", "prompt": "WS, slow dolly-in — Linh đi bộ một mình trên cầu Thủ Thiêm lúc 3 giờ sáng, đèn thành phố phía xa, gió thổi tóc. Cinematic photorealistic, horizontal 16:9, no text.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "veo", "method_label": "🎬 Veo", "trailer": false}, {"id": 4, "idx": 1, "kind": "shot", "status": "done", "prompt": "CU — khuôn mặt Linh, mắt nhìn xa xăm, ánh đèn đường vàng hắt nửa mặt. Biểu cảm trầm tư, nhớ nhung.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "veo", "method_label": "🎬 Veo", "trailer": false, "seq": 1}, {"id": 5, "idx": 2, "kind": "shot", "status": "done", "prompt": "MS — quán cà phê vỉa hè, Minh ngồi đối diện ghế trống, tay xoay ly cà phê đen. Không gian vắng, mưa nhẹ ngoài hiên.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "anh-tts", "method_label": "🖼 Ảnh + giọng đọc", "trailer": false, "seq": 2}, {"id": 6, "idx": 3, "kind": "shot", "status": "done", "prompt": "ECU — bàn tay Minh đặt lên tấm ảnh cũ của hai người trên bàn. Run tay nhẹ, cảm xúc dồn nén.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "veo", "method_label": "🎬 Veo", "trailer": false, "seq": 3}, {"id": 7, "idx": 4, "kind": "shot", "status": "done", "prompt": "Tracking — Linh chạy dưới mưa về phía quán cà phê, váy ướt sũng, center-safe cho trailer dọc.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "veo", "method_label": "🎬 Veo", "trailer": false, "seq": 4}, {"id": 8, "idx": 5, "kind": "shot", "status": "running", "prompt": "MCU — hai người nhìn nhau qua ô cửa kính đầy hơi nước, chưa nói lời nào. Shot đắt giá nhất phim.", "preview": "", "label": "Đang chạy", "class": "running", "method": "", "method_label": "", "trailer": false, "seq": 5}, {"id": 9, "idx": 6, "kind": "shot", "status": "queued", "prompt": "WS — bình minh lên trên sông Sài Gòn, hai bóng người đi cạnh nhau, xa dần.", "preview": "", "label": "Đang chờ", "class": "queued", "method": "", "method_label": "", "trailer": false, "seq": 6}, {"id": 10, "idx": 7, "kind": "shot", "status": "failed", "prompt": "Aerial — toàn cảnh thành phố lúc rạng đông. (Veo timeout 2 lần — bấm Quay lại shot này để thử lại)", "preview": "", "label": "Thất bại", "class": "err", "method": "veo", "method_label": "🎬 Veo", "trailer": false, "seq": 7}, {"id": 1, "idx": 1000, "kind": "portrait", "status": "done", "prompt": "Linh, 24 tuổi, khuôn mặt trái xoan, tóc đen dài ngang vai, da ngăm, áo sơ mi trắng + quần jeans — portrait photorealistic, 9:16", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "", "method_label": "", "trailer": false}, {"id": 2, "idx": 1001, "kind": "portrait", "status": "done", "prompt": "Minh, 27 tuổi, khuôn mặt góc cạnh, tóc ngắn undercut, áo thun đen — portrait photorealistic, 9:16", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "", "method_label": "", "trailer": false}, {"id": 11, "idx": 2000, "kind": "trailer", "status": "done", "prompt": "Trailer 1 (45s): hook cầu Thủ Thiêm + chạy dưới mưa + nhìn qua ô cửa kính — center-crop 9:16, nhạc bed.", "preview": "", "label": "Hoàn thành", "class": "ok", "method": "trailer", "method_label": "📱 Trailer 9:16", "trailer": false}, {"id": 12, "idx": 2001, "kind": "trailer", "status": "queued", "prompt": "Trailer 2 (30s): khoảnh khắc tấm ảnh cũ + bình minh — teaser cảm xúc.", "preview": "", "label": "Đang chờ", "class": "queued", "method": "trailer", "method_label": "📱 Trailer 9:16", "trailer": false}], "job": {"id": "film-demo01", "kind": "film", "title": "Sài Gòn 3 giờ sáng", "status": "running", "progress": 62, "log": "[10:21] Viết kịch bản 3 hồi: \"Sài Gòn 3 giờ sáng\" (Tình cảm, 90s, 12 shot)\n[10:22] Vẽ chân dung nhân vật: Linh (xong), Minh (xong)\n[10:23] Cảnh 1: quay bằng Veo (8s)\n[10:24] Cảnh 1: quay bằng Veo (8s)\n[10:26] Cảnh 2: Veo lỗi (429 hết quota key 1, đổi key 2) — dùng ảnh + giọng đọc\n[10:28] Cảnh 2: quay bằng Veo (8s)\n[10:29] Cảnh 3: quay bằng Veo (8s)\n[10:31] Cảnh 3: Veo lỗi (timeout) — dùng ảnh + giọng đọc\n[10:33] Đang dựng trailer dọc từ 4 shot trailer_worthy…", "output": "", "caption": "", "params": "{\"topic\": \"Sài Gòn 3 giờ sáng\", \"genre\": \"Tình cảm\", \"seconds\": 90, \"aspect\": \"16:9\", \"upscale_final\": false}", "created_at": "2026-10-02 09:02", "finished_at": ""}};
+(function () {
+  var origPoll = true; // polling 5s của app.js sẽ fail silently (previewFetch reject)
+  window.toggleBoard = function (id) {
+    var box = document.querySelector('[data-job="' + id + '"] .board');
+    if (!box) return;
+    if (box.dataset.open === '1') { box.innerHTML = ''; box.dataset.open = ''; return; }
+    box.dataset.open = '1';
+    var d = window.__sampleBoard;
+    if (id !== 'film-demo01' || !d) {
+      box.innerHTML = '<p class="empty">Bản preview tĩnh: storyboard mẫu chỉ có cho job phim demo.</p>';
+      return;
+    }
+    var logEl = document.getElementById('log-' + id);
+    if (d.job && d.job.log) { logEl.textContent = d.job.log; logEl.hidden = false; }
+    var hh = '';
+    (d.assets || []).forEach(function (a) {
+      var name;
+      if (a.kind === 'shot') name = 'Shot ' + ((a.seq != null ? a.seq : a.idx) + 1);
+      else if (a.kind === 'trailer') name = '\uD83D\uDCF1 Trailer ' + (a.idx - 1999);
+      else if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
+      else if (a.kind === 'portrait') name = 'Chân dung';
+      else name = a.kind + ' ' + (a.idx + 1);
+      var pid = 'prompt-' + id + '-' + a.id;
+      (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+      hh += '<div class="shot"><div class="shot-head">' + name +
+        ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
+        (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') +
+        (a.trailer ? ' <span class="badge" title="Shot đắt giá — đã dùng cắt trailer">\uD83D\uDCF1 trailer</span>' : '') +
+        '</div>';
+      hh += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
+      hh += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
+      if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
+        hh += ' <form method="post" action="studio-job-detail.html" style="display:inline" onsubmit="return confirm(\'Quay lại shot này? (bản preview: không chạy thật)\')">' +
+          '<button class="btn btn-sm">\uD83C\uDFAC Quay lại shot này</button></form>';
+      }
+      hh += '</div></div>';
+    });
+    box.innerHTML = hh || '<p class="empty">Chưa có cảnh nào.</p>';
+  };
+})();
+</script>
+</body>
+</html>
