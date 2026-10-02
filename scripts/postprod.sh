@@ -8,7 +8,7 @@
 #        [--artist "Artist"] [--link URL] [--music nhac.mp3] [--date YYYY-MM-DD] \
 #        [--drive-root DIR] [--dry-run]
 #
-# Quy tắc (docs/POSTPROD_RUNBOOK.md): chỉ ĐỌC + COPY từ data/output, không
+# Quy tắc (docs/USER_GUIDE.md): chỉ ĐỌC + COPY từ data/output, không
 # ghi đè gì trên Drive (trùng tên → dừng, hỏi Ninh), không đụng API key,
 # không đăng lên nền tảng nào.
 set -euo pipefail
