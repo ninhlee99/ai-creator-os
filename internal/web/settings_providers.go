@@ -111,7 +111,7 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "save chain")
 		return
 	}
-	seeOther(w, r, "/settings")
+	seeOther(w, r, "/settings/nha-cung-cap")
 }
 
 // handleChainMove reorders one provider up/down (replaces drag-drop).
@@ -137,7 +137,7 @@ func (s *Server) handleChainMove(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	seeOther(w, r, "/settings")
+	seeOther(w, r, "/settings/nha-cung-cap")
 }
 
 // handleChainHealth probes one provider ("Kiểm tra kết nối") and returns
@@ -477,7 +477,7 @@ func (s *Server) handleVieneuRestart(w http.ResponseWriter, r *http.Request) {
 	if err := s.VieNeu.Restart(r.Context()); err != nil {
 		log.Printf("web: vieneu restart: %v", err)
 	}
-	seeOther(w, r, "/settings")
+	seeOther(w, r, "/settings/model-local")
 }
 
 func (s *Server) handleVieneuVoice(w http.ResponseWriter, r *http.Request) {
@@ -490,7 +490,7 @@ func (s *Server) handleVieneuVoice(w http.ResponseWriter, r *http.Request) {
 			log.Printf("web: vieneu set voice: %v", err)
 		}
 	}
-	seeOther(w, r, "/settings")
+	seeOther(w, r, "/settings/model-local")
 }
 
 // ----------------------------------------------------------- legacy JSON API

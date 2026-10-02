@@ -388,15 +388,15 @@ func (s *Server) handleGrowthPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	base := "/accounts/" + strconv.FormatInt(id, 10)
 	if s.Growth == nil {
-		seeOther(w, r, base+"?err="+url.QueryEscape("Module Phát triển kênh chưa sẵn sàng."))
+		seeOther(w, r, base+"?tab=autopilot&err="+url.QueryEscape("Module Phát triển kênh chưa sẵn sàng."))
 		return
 	}
 	n, err := s.generatePlanFor(a, "Sinh từ giao diện")
 	if err != nil {
-		seeOther(w, r, base+"?err="+url.QueryEscape("Không sinh được kế hoạch: "+err.Error()))
+		seeOther(w, r, base+"?tab=autopilot&err="+url.QueryEscape("Không sinh được kế hoạch: "+err.Error()))
 		return
 	}
-	seeOther(w, r, base+"?ok="+url.QueryEscape(fmt.Sprintf("Đã sinh kế hoạch 30 ngày: %d vị trí nội dung.", n)))
+	seeOther(w, r, base+"?tab=autopilot&ok="+url.QueryEscape(fmt.Sprintf("Đã sinh kế hoạch 30 ngày: %d vị trí nội dung.", n)))
 }
 
 // growthTargetView is one ladder milestone with its live progress.

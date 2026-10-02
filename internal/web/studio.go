@@ -22,6 +22,8 @@ import (
 // ---------------------------------------------------------------------------
 
 // studioJobView is the template/JSON projection of a studio job.
+// Label/Class are rendered server-side so clients never redefine status
+// labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
@@ -32,6 +34,8 @@ type studioJobView struct {
 	CreatedAt  string `json:"created_at"`
 	FinishedAt string `json:"finished_at"`
 	KindLabel  string `json:"kind_label"`
+	Label      string `json:"label"`
+	Class      string `json:"class"`
 }
 
 func kindLabel(kind string) string {
@@ -53,6 +57,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			Progress: j.Progress, Output: j.Output,
 			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
 			KindLabel: kindLabel(j.Kind),
+			Label:     statusLabel(j.Status), Class: statusClass(j.Status),
 		})
 	}
 	return out
@@ -89,6 +94,12 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		studio.RefreshVNTrendingAsync()
 	}
 	sounds, trendsErr := studio.FetchVNTrending(r.Context())
+	activeJobs, jobCount := 0, len(jobs)
+	for _, j := range jobs {
+		if j.Status == "running" || j.Status == "queued" {
+			activeJobs++
+		}
+	}
 	mgOK := false
 	mgKeys := 0
 	if mg := s.Studio.MediaGen(); mg != nil {
@@ -100,13 +111,25 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "studio", s.ctx(
 		"Tab", tab,
 		"ContentJobs", contentJobs,
-		"Jobs", jobs,
+		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
+		"JobCount", jobCount,
+		"ActiveJobs", activeJobs,
 		"Sounds", sounds,
+		"SoundCount", len(sounds),
+		"TopSound", topSound(sounds),
 		"TrendsSource", studio.TrendsSource,
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"MediaGenKeys", mgKeys,
 	))
+}
+
+// topSound returns "Artist – Title" of the top-ranked trending sound.
+func topSound(sounds []studio.TrendingSound) string {
+	if len(sounds) == 0 {
+		return ""
+	}
+	return sounds[0].Artist + " – " + sounds[0].Title
 }
 
 func errText(err error) string {
@@ -208,7 +231,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		s.fail(w, err, "create affiliate job")
 		return
 	}
-	http.Redirect(w, r, "/studio", http.StatusSeeOther)
+	http.Redirect(w, r, "/studio/jobs", http.StatusSeeOther)
 }
 
 // handleStudioFilmCreate queues a short-film job.
@@ -231,27 +254,36 @@ func (s *Server) handleStudioFilmCreate(w http.ResponseWriter, r *http.Request) 
 		s.fail(w, err, "create film job")
 		return
 	}
-	http.Redirect(w, r, "/studio", http.StatusSeeOther)
+	http.Redirect(w, r, "/studio/jobs", http.StatusSeeOther)
 }
 
-// handleStudioJobs returns the job list as JSON (dashboard polling).
+// handleStudioJobs serves the job list: HTML page for deep links
+// (R2-W3), JSON for polling when Accept: application/json.
 func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		s.writeJSON(w, map[string]any{"jobs": []any{}})
+	var jobs []studioJobView
+	if s.Studio != nil {
+		jobs = s.studioJobViews(s.Studio.ListJobs(30))
+	}
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		s.writeJSON(w, map[string]any{"jobs": jobs})
 		return
 	}
-	s.writeJSON(w, map[string]any{"jobs": s.studioJobViews(s.Studio.ListJobs(30))})
+	s.render(w, "studio_jobs", s.ctx(
+		"Title", "Job Studio", "Path", "/studio/jobs", "Jobs", jobs,
+	))
 }
 
 // studioAssetView projects a storyboard asset for JSON.
+// Label/Class are server-rendered so clients never redefine them (R2-W3).
 type studioAssetView struct {
-	ID     int64  `json:"id"`
-	Idx    int    `json:"idx"`
-	Kind   string `json:"kind"`
-	Status string `json:"status"`
-	Prompt string `json:"prompt"`
-	// Preview is the /studio/assets/... URL when the file is viewable.
+	ID      int64  `json:"id"`
+	Idx     int    `json:"idx"`
+	Kind    string `json:"kind"`
+	Status  string `json:"status"`
+	Prompt  string `json:"prompt"`
 	Preview string `json:"preview"`
+	Label   string `json:"label"`
+	Class   string `json:"class"`
 }
 
 // handleStudioJobDetail returns one job + its storyboard assets as JSON.
@@ -269,7 +301,8 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	assets := s.Studio.ListAssets(id)
 	views := make([]studioAssetView, 0, len(assets))
 	for _, a := range assets {
-		v := studioAssetView{ID: a.ID, Idx: a.Idx, Kind: a.Kind, Status: a.Status, Prompt: a.Prompt}
+		v := studioAssetView{ID: a.ID, Idx: a.Idx, Kind: a.Kind, Status: a.Status, Prompt: a.Prompt,
+			Label: statusLabel(a.Status), Class: statusClass(a.Status)}
 		if a.Status == "done" && a.Path != "" {
 			v.Preview = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
 		}
@@ -312,20 +345,28 @@ func (s *Server) handleStudioAsset(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path)
 }
 
-// handleStudioTrends returns the VN trending sounds as JSON.
+// handleStudioTrends serves the VN trending chart: HTML page (R2-W3),
+// JSON when Accept: application/json.
 func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	sounds, err := studio.FetchVNTrending(r.Context())
-	s.writeJSON(w, map[string]any{
-		"source": studio.TrendsSource,
-		"sounds": sounds,
-		"error":  errText(err),
-	})
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		s.writeJSON(w, map[string]any{
+			"source": studio.TrendsSource,
+			"sounds": sounds,
+			"error":  errText(err),
+		})
+		return
+	}
+	s.render(w, "studio_trends", s.ctx(
+		"Title", "Nhạc thịnh hành", "Path", "/studio/trends",
+		"Sounds", sounds, "TrendsSource", studio.TrendsSource, "TrendsErr", errText(err),
+	))
 }
 
 // handleStudioTrendsRefresh forces a chart refresh.
 func (s *Server) handleStudioTrendsRefresh(w http.ResponseWriter, r *http.Request) {
 	_, _ = studio.RefreshVNTrending(r.Context())
-	http.Redirect(w, r, "/studio", http.StatusSeeOther)
+	http.Redirect(w, r, "/studio/trends", http.StatusSeeOther)
 }
 
 // handleStudioMediaGenHealth reports media-gen provider health as JSON.

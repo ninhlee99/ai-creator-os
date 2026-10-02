@@ -1,13 +1,19 @@
 {{define "title"}}{{.Acct.Username}} — AI Creator OS{{end}}
 {{define "content"}}
+{{$id := .Acct.ID}}
 <h1>{{.Acct.Username}}</h1>
 <p class="subtitle"><span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
 {{if .Acct.LiveEligible}} <span class="badge badge-ok">đủ điều kiện live</span>{{end}}
 {{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
 {{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
 
-{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
-{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+<nav class="tabs">
+  <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
+  <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
+  <a href="/accounts/{{$id}}?tab=ket-noi"{{if eq .Tab "ket-noi"}} class="active"{{end}}>Kết nối</a>
+</nav>
+
+{{if eq .Tab "tong-quan"}}
 
 <div class="grid2">
 <div class="form-card">
@@ -53,43 +59,28 @@
 </ul>
 {{end}}
 
-<h2>Điều khiển</h2>
-<div class="toolbar">
-  {{range .Allowed}}
-  <form class="inline-form" method="post" action="/accounts/{{$.Acct.ID}}/transition">
-    <input type="hidden" name="to" value="{{.}}">
-    <button type="submit" class="btn btn-secondary btn-sm">→ {{.}}</button>
-  </form>
-  {{end}}
-  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/onboard">
-    <button type="submit" class="btn btn-secondary btn-sm">Chạy bước onboarding tiếp</button>
-  </form>
-  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/replan"
-        onsubmit="return confirm('Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.')">
-    <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
-  </form>
-  <form class="inline-form" method="post" action="/accounts/{{.Acct.ID}}/live-topic">
-    <button type="submit" class="btn btn-secondary btn-sm">Lên topic cho phiên live tiếp theo</button>
-  </form>
-</div>
+{{if .GrowthProfile}}
+<h2>Phát triển kênh 🌱</h2>
+<p>
+  Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
+  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — xem &amp; điều chỉnh tại tab Autopilot.</span>
+</p>
+{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức.</p>{{end}}
+{{end}}
 
-<div class="grid2">
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
-  <form method="post" action="/accounts/{{.Acct.ID}}/youtube">
-    <div class="field">
-      <label>Channel ID</label>
-      <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}">
-    </div>
-    <div class="field">
-      <label>Loại nội dung (phân tách bằng dấu phẩy)</label>
-      <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
-             placeholder="vd: short_video, ai_music">
-    </div>
-    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
-  </form>
-</div>
-</div>
+<h2>Lịch sử quyết định</h2>
+{{if .Decisions}}
+<ul class="clean">
+  {{range .Decisions}}
+  <li>{{with agentLabel .Agent}}{{.Icon}} {{.Label}}{{end}} · <span class="badge badge-draft">{{statusLabel .Action}}</span>
+    {{if .Target}} → {{.Target}}{{end}}{{if .Reason}}<br><span style="color:var(--muted)">{{.Reason}}</span>{{end}}</li>
+  {{end}}
+</ul>
+{{else}}
+<p class="empty">Chưa có quyết định nào cho tài khoản này.</p>
+{{end}}
+
+{{else if eq .Tab "autopilot"}}
 
 {{if .GrowthProfile}}
 <h2>Phát triển kênh 🌱</h2>
@@ -97,7 +88,7 @@
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
   <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hệ thống tự quyết nhịp đăng, giết/nhân đôi format; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
 </p>
-{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức (cần YOUTUBE_API_KEY trong Cài đặt + gắn kênh YouTube bên dưới).</p>{{end}}
+{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức (cần YOUTUBE_API_KEY trong Cài đặt + gắn kênh YouTube ở tab Kết nối).</p>{{end}}
 
 <div class="grid2">
 <div class="form-card">
@@ -115,10 +106,10 @@
   {{end}}
   </table>
   {{else}}<p class="hint">Chưa có thang mốc.</p>{{end}}
-  <form method="post" action="/growth/accounts/{{.Acct.ID}}/plan" style="margin-top:10px">
+  <form method="post" action="/growth/accounts/{{$id}}/plan" style="margin-top:10px"
+        data-confirm="Sinh lại plan 30 ngày? Plan mới sẽ thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).">
     <input type="hidden" name="from" value="detail">
     <button class="btn btn-secondary btn-sm" type="submit">↻ Replan 30 ngày ngay</button>
-    <span class="hint">Plan mới thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).</span>
   </form>
 </div>
 
@@ -184,7 +175,7 @@
 <div class="grid2">
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chủ đề sản phẩm</h2>
-  <form method="post" action="/accounts/{{.Acct.ID}}/theme">
+  <form method="post" action="/accounts/{{$id}}/theme">
     <div class="field">
       <label>Chủ đề affiliate của tài khoản này</label>
       <select name="theme">
@@ -201,7 +192,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chế độ tự động</h2>
-  <form method="post" action="/accounts/{{.Acct.ID}}/autopilot">
+  <form method="post" action="/accounts/{{$id}}/autopilot">
     <div class="field">
       <label><input type="checkbox" name="enabled" value="on"{{if .Acct.Autopilot}} checked{{end}}> Bật autopilot</label>
       <div class="hint">Khi bật: hệ thống tự tìm sản phẩm → làm video → xếp lịch. Bạn chỉ theo dõi.</div>
@@ -216,8 +207,8 @@
   <div style="margin-top:12px">
   {{if .AutopilotReady}}
     <p><span class="badge badge-ok">Sẵn sàng chạy tự động</span></p>
-    <form method="post" action="/accounts/{{.Acct.ID}}/autopilot/run"
-          onsubmit="return confirm('Chạy autopilot ngay? Hệ thống sẽ tìm sản phẩm và làm video — có thể mất vài phút.')">
+    <form method="post" action="/accounts/{{$id}}/autopilot/run"
+          data-confirm="Chạy autopilot ngay? Hệ thống sẽ tìm sản phẩm và làm video — có thể mất vài phút.">
       <button type="submit" class="btn btn-sm">▶ Chạy autopilot ngay</button>
     </form>
   {{else}}
@@ -234,8 +225,8 @@
     {{range .ModelPhotos}}
     <div class="model-card">
       <img src="{{.URL}}" alt="ảnh mẫu" loading="lazy">
-      <form method="post" action="/accounts/{{$.Acct.ID}}/models/{{.ID}}/delete"
-            onsubmit="return confirm('Xóa ảnh mẫu này?')">
+      <form method="post" action="/accounts/{{$id}}/models/{{.ID}}/delete"
+            data-confirm="Xóa ảnh mẫu này?">
         <button type="submit" class="btn btn-danger btn-sm">Xóa</button>
       </form>
     </div>
@@ -246,7 +237,7 @@
   {{end}}
   <div class="form-card">
     <h2 style="margin-top:0;border:none;padding:0">Tải ảnh mẫu lên</h2>
-    <form method="post" action="/accounts/{{.Acct.ID}}/models/upload" enctype="multipart/form-data">
+    <form method="post" action="/accounts/{{$id}}/models/upload" enctype="multipart/form-data">
       <div class="field">
         <label>Chọn ảnh (jpg/png/webp, tối đa 10MB)</label>
         <div class="file-pick">
@@ -263,14 +254,47 @@
 <p class="empty">Studio chưa được khởi tạo nên chưa dùng được thư viện ảnh mẫu.</p>
 {{end}}
 
-<h2>Lịch sử quyết định</h2>
-{{if .Decisions}}
-<ul class="clean">
-  {{range .Decisions}}
-  <li><span class="badge badge-draft">{{.Action}}</span> {{.Reason}}</li>
-  {{end}}
-</ul>
 {{else}}
-<p class="empty">Chưa có quyết định nào cho tài khoản này.</p>
+
+<h2>Điều khiển</h2>
+<p class="hint">Xem trạng thái RTMP của tài khoản này tại <a href="/settings/he-thong">Cài đặt · Hệ thống</a>.</p>
+<div class="toolbar">
+  {{range .Allowed}}
+  <form class="inline-form" method="post" action="/accounts/{{$id}}/transition"
+        data-confirm="Chuyển trạng thái sang “{{statusLabel .}}”?">
+    <input type="hidden" name="to" value="{{.}}">
+    <button type="submit" class="btn btn-secondary btn-sm">→ {{statusLabel .}}</button>
+  </form>
+  {{end}}
+  <form class="inline-form" method="post" action="/accounts/{{$id}}/onboard">
+    <button type="submit" class="btn btn-secondary btn-sm">Chạy bước onboarding tiếp</button>
+  </form>
+  <form class="inline-form" method="post" action="/accounts/{{$id}}/replan"
+        data-confirm="Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.">
+    <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
+  </form>
+  <form class="inline-form" method="post" action="/accounts/{{$id}}/live-topic">
+    <button type="submit" class="btn btn-secondary btn-sm">Lên topic cho phiên live tiếp theo</button>
+  </form>
+</div>
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
+  <form method="post" action="/accounts/{{$id}}/youtube">
+    <div class="field">
+      <label>Channel ID</label>
+      <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}">
+    </div>
+    <div class="field">
+      <label>Loại nội dung (phân tách bằng dấu phẩy)</label>
+      <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
+             placeholder="vd: short_video, ai_music">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+</div>
+</div>
+
 {{end}}
 {{end}}

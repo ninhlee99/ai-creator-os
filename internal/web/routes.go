@@ -15,6 +15,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
+	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/agents/{file}", s.handleAgentAvatar)
 	mux.HandleFunc("GET /team", s.handleTeam)
 
@@ -75,7 +76,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
 	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
 
-	mux.HandleFunc("GET /settings", s.handleSettings)
+	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
+	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.
+	mux.HandleFunc("GET /settings", s.handleSettingsIndex)
+	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
+	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
+	mux.HandleFunc("GET /settings/model-local", s.handleSettingsModelLocal)
+	mux.HandleFunc("GET /settings/nhan-vat", s.handleSettingsNhanVat)
+	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
 	mux.HandleFunc("POST /kill", s.handleKill)
@@ -156,10 +164,19 @@ func redirectTo(loc string) http.HandlerFunc {
 
 // ------------------------------------------------------------------ static
 
+// handleStaticCSS serves the embedded dashboard stylesheet.
 func (s *Server) handleStaticCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	_, _ = w.Write(staticCSS)
+}
+
+// handleStaticJS serves the embedded shared client script (toast, confirm
+// modal, studio polling — R2-W3: một nguồn JS dùng chung toàn app).
+func (s *Server) handleStaticJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	_, _ = w.Write(staticJS)
 }
 
 // --------------------------------------------------------------- dashboard

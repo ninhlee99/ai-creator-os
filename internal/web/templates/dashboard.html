@@ -128,7 +128,7 @@
 {{if .Decisions}}
 <ul class="clean">
   {{range .Decisions}}
-  <li><strong>{{.Agent}}</strong> · <span class="badge badge-draft">{{statusLabel .Action}}</span>
+  <li>{{with agentLabel .Agent}}{{.Icon}} <strong>{{.Label}}</strong>{{end}} · <span class="badge badge-draft">{{statusLabel .Action}}</span>
     {{if .Target}} → {{.Target}}{{end}}
     {{if .Reason}}<br><span style="color:var(--muted)">{{.Reason}}</span>{{end}}
   </li>

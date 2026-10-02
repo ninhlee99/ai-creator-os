@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -231,19 +232,28 @@ func TestAllPagesRender(t *testing.T) {
 	}
 
 	pages := map[string]string{
-		"/":                        "Tổng quan mạng lưới",
-		"/accounts":                "Tài khoản",
-		"/accounts/new":            "Thêm tài khoản mới",
-		"/accounts/1":              "sample_acct",
-		"/schedule":                "Lịch live",
-		"/studio":                  "Studio AI",
-		"/studio?tab=chu":          "Video chữ động",
-		"/products":                "Sản phẩm Affiliate",
-		"/products?tab=ke":         "Thêm sản phẩm vào kệ",
-		"/publishers":              "Đa nền tảng",
-		"/team":                    "Agent Team",
-		"/settings":                "Cài đặt",
-		"/settings/chain?name=tts": `"name":"gemini"`,
+		"/":                         "Tổng quan mạng lưới",
+		"/accounts":                 "Tài khoản",
+		"/accounts/new":             "Thêm tài khoản mới",
+		"/accounts/1":               "sample_acct",
+		"/accounts/1?tab=tong-quan": "Tổng quan",
+		"/accounts/1?tab=autopilot": "Autopilot Affiliate",
+		"/accounts/1?tab=ket-noi":   "Điều khiển",
+		"/schedule":                 "Lịch live",
+		"/studio":                   "Studio AI",
+		"/studio?tab=chu":           "Video chữ động",
+		"/studio/jobs":              "Job Studio",
+		"/studio/trends":            "Nhạc thịnh hành",
+		"/products":                 "Sản phẩm Affiliate",
+		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
+		"/publishers":               "Đa nền tảng",
+		"/team":                     "Agent Team",
+		"/settings/he-thong":        "Cài đặt · Hệ thống",
+		"/settings/nha-cung-cap":    "Chuỗi provider TTS",
+		"/settings/model-local":     "Giọng đọc chạy trên máy (VieNeu)",
+		"/settings/nhan-vat":        "Nhân vật AI",
+		"/settings/an-toan":         "Kill switch",
+		"/settings/chain?name=tts":  `"name":"gemini"`,
 	}
 	for path, marker := range pages {
 		rec := get(t, s, path)
@@ -256,11 +266,36 @@ func TestAllPagesRender(t *testing.T) {
 		}
 	}
 
-	// settings page shows both chain sections and the vieneu panel
-	body := get(t, s, "/settings").Body.String()
-	for _, marker := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM", "Giọng đọc chạy trên máy (VieNeu)", "Kiểm tra kết nối", "Chi phí API theo engine/provider"} {
+	// /settings redirects 303 to the first sub-page (he-thong).
+	if rec := get(t, s, "/settings"); rec.Code != http.StatusSeeOther {
+		t.Errorf("GET /settings = %d, want 303", rec.Code)
+	}
+
+	// each settings sub-page renders inside base with the shared sub-nav
+	// and its own concern section (R2-W3)
+	body := get(t, s, "/settings/nha-cung-cap").Body.String()
+	for _, marker := range []string{"Chuỗi provider LLM", "Chuỗi provider Avatar", "Kiểm tra kết nối", "Hệ thống</a>"} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("settings page missing %q", marker)
+			t.Errorf("nha-cung-cap page missing %q", marker)
+		}
+	}
+	body = get(t, s, "/settings/he-thong").Body.String()
+	for _, marker := range []string{"Chi phí API theo engine/provider", "Khóa &amp; biến cấu hình", "RTMP theo tài khoản"} {
+		if !strings.Contains(body, marker) {
+			t.Errorf("he-thong page missing %q", marker)
+		}
+	}
+
+	// studio create page links out to the split pages instead of
+	// rendering the job list inline
+	body = get(t, s, "/studio").Body.String()
+	for _, marker := range []string{`href="/studio/jobs"`, `href="/studio/trends"`, "JOB_LABELS"} {
+		present := strings.Contains(body, marker)
+		if marker == "JOB_LABELS" && present {
+			t.Errorf("/studio still inlines JOB_LABELS (should live only in app.js)")
+		}
+		if marker != "JOB_LABELS" && !present {
+			t.Errorf("/studio missing %q", marker)
 		}
 	}
 
@@ -279,9 +314,45 @@ func TestAllPagesRender(t *testing.T) {
 		t.Errorf("GET /no-such-page = %d, want 404", rec.Code)
 	}
 
-	// static css served
+	// static css + js served
 	if rec := get(t, s, "/static/style.css"); rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Content-Type"), "text/css") {
 		t.Errorf("GET /static/style.css = %d (%s)", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if rec := get(t, s, "/static/app.js"); rec.Code != http.StatusOK || !strings.Contains(rec.Header().Get("Content-Type"), "javascript") {
+		t.Errorf("GET /static/app.js = %d (%s)", rec.Code, rec.Header().Get("Content-Type"))
+	}
+}
+
+// R2-W3/R2-13: account POST errors redirect back to the ket-noi tab with
+// ?err= (surfaced as a toast) instead of a plain silent redirect.
+func TestAccountPostErrorsCarryTabAndErr(t *testing.T) {
+	s := newTestServer(t)
+	acct, err := s.Mgr.Add("err_acct", "hint", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// invalid transition target -> backend rejects -> ?err=
+	rec := postForm(t, s, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"/transition",
+		url.Values{"to": {"bogus_state"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("POST transition = %d, want 303", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "?tab=ket-noi&err=") {
+		t.Errorf("transition Location = %q, want ?tab=ket-noi&err=", loc)
+	}
+	// valid transition stays silent (no ?err=) but keeps the tab
+	rec = postForm(t, s, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"/transition",
+		url.Values{"to": {"researching"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("POST transition = %d, want 303", rec.Code)
+	}
+	loc = rec.Header().Get("Location")
+	if !strings.HasPrefix(loc, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"?tab=ket-noi") {
+		t.Errorf("transition Location = %q, want tab=ket-noi", loc)
+	}
+	if strings.Contains(loc, "err=") {
+		t.Errorf("transition Location = %q, unexpected err= on success", loc)
 	}
 }
 
@@ -554,9 +625,9 @@ func TestSettingsPageMasksKeys(t *testing.T) {
 		url.Values{"key": {key}}); rec.Code != http.StatusOK {
 		t.Fatalf("add = %d, want 200", rec.Code)
 	}
-	rec := get(t, s, "/settings")
+	rec := get(t, s, "/settings/nha-cung-cap")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /settings = %d, want 200", rec.Code)
+		t.Fatalf("GET /settings/nha-cung-cap = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	if strings.Contains(body, key) {

@@ -166,7 +166,9 @@ func (s *Server) vieneuView() vieneuView {
 	return v
 }
 
-func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
+// settingsData builds the full settings context once; each sub-page picks
+// the keys it needs (R2-W3: một trang = một mối quan tâm).
+func (s *Server) settingsData(r *http.Request) map[string]any {
 	envs := make([]envRow, 0, len(envNames))
 	for _, e := range envNames {
 		v, ok := s.effectiveEnv(e)
@@ -183,8 +185,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	accounts, err := s.Mgr.List()
 	if err != nil {
-		s.fail(w, err, "list accounts")
-		return
+		log.Printf("web: settings list accounts: %v", err)
 	}
 	rtmps := make([]rtmpRow, 0, len(accounts))
 	for _, a := range accounts {
@@ -202,23 +203,68 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			spend = v
 		}
 	}
-	s.render(w, "settings", s.ctx(
-		"EnvStatus", envs,
-		"EnvSaved", r.URL.Query().Get("envsaved"),
-		"RtmpRows", rtmps,
-		"DbPath", s.Cfg.DatabasePath,
-		"Usage", usage,
-		"Spend", spend,
-		"TTSChain", s.loadChain("tts"),
-		"LLMChain", s.loadChain("llm"),
-		"TTSKeys", s.keyRingStatuses("tts", "gemini"),
-		"LLMKeys", s.keyRingStatuses("llm", "gemini"),
-		"VieNeu", s.vieneuView(),
-		"AvatarChain", s.loadChain("avatar"),
-		"AvatarRealtime", s.avatarRealtime(),
-		"Characters", s.characterViews(),
-		"AvatarSidecar", s.avatarSidecarView(),
-	))
+	return map[string]any{
+		"EnvStatus":      envs,
+		"EnvSaved":       r.URL.Query().Get("envsaved"),
+		"RtmpRows":       rtmps,
+		"DbPath":         s.Cfg.DatabasePath,
+		"Usage":          usage,
+		"Spend":          spend,
+		"TTSChain":       s.loadChain("tts"),
+		"LLMChain":       s.loadChain("llm"),
+		"TTSKeys":        s.keyRingStatuses("tts", "gemini"),
+		"LLMKeys":        s.keyRingStatuses("llm", "gemini"),
+		"VieNeu":         s.vieneuView(),
+		"AvatarChain":    s.loadChain("avatar"),
+		"AvatarRealtime": s.avatarRealtime(),
+		"Characters":     s.characterViews(),
+		"AvatarSidecar":  s.avatarSidecarView(),
+	}
+}
+
+// settingsPage renders one settings sub-page with its nav key and the
+// requested data keys.
+func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, page, key string, keys ...string) {
+	data := s.settingsData(r)
+	ctx := s.ctx("SettingsPage", page)
+	for _, k := range keys {
+		ctx[k] = data[k]
+	}
+	s.render(w, key, ctx)
+}
+
+// handleSettingsIndex keeps the old entry point working: it redirects to
+// the first sub-page.
+func (s *Server) handleSettingsIndex(w http.ResponseWriter, r *http.Request) {
+	seeOther(w, r, "/settings/he-thong")
+}
+
+// handleSettingsHeThong: "App đang chạy chế độ gì, còn thiếu biến nào?"
+func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, "he-thong", "settings_he_thong",
+		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend")
+}
+
+// handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
+func (s *Server) handleSettingsNhaCungCap(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, "nha-cung-cap", "settings_nha_cung_cap",
+		"TTSChain", "TTSKeys", "LLMChain", "LLMKeys", "AvatarChain", "AvatarRealtime")
+}
+
+// handleSettingsModelLocal: "Model local đã sẵn sàng chưa?"
+func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, "model-local", "settings_model_local",
+		"VieNeu", "AvatarSidecar")
+}
+
+// handleSettingsNhanVat: "Có những khuôn mặt AI nào, render thử ra sao?"
+func (s *Server) handleSettingsNhanVat(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, "nhan-vat", "settings_nhan_vat", "Characters")
+}
+
+// handleSettingsAnToan: "Dừng khẩn cấp bằng cách nào?"
+func (s *Server) handleSettingsAnToan(w http.ResponseWriter, r *http.Request) {
+	s.settingsPage(w, r, "an-toan", "settings_an_toan")
 }
 
 // handleSettingsEnvSave saves one environment variable from the Settings
@@ -254,7 +300,7 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.Redirect(w, r, "/settings?envsaved="+name+"#bien-moi-truong", http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/he-thong?envsaved="+name, http.StatusSeeOther)
 }
 
 // avatarRealtime reports whether a CLOUD avatar tier (HeyGen/D-ID) is
@@ -280,7 +326,7 @@ func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("set dry_run=%v via dashboard", on), map[string]any{}); err != nil {
 		log.Printf("web: decide dry_run: %v", err)
 	}
-	seeOther(w, r, "/settings")
+	seeOther(w, r, "/settings/an-toan")
 }
 
 func (s *Server) handleKill(w http.ResponseWriter, r *http.Request) {

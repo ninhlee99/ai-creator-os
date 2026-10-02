@@ -5,7 +5,7 @@
 
 <div class="toolbar">
   <form method="post" action="/schedule/build"
-        onsubmit="return confirm('Xây lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.')">
+        data-confirm="Xây lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.">
     <button type="submit" class="btn btn-secondary btn-sm">Xây lại ngay</button>
   </form>
 </div>
@@ -14,12 +14,12 @@
 
 {{if .Slots}}
 <table>
-  <tr><th>Giờ bắt đầu</th><th>Thời lượng</th><th>Account ID</th><th>Trạng thái</th></tr>
+  <tr><th>Giờ bắt đầu</th><th>Thời lượng</th><th>Tài khoản</th><th>Trạng thái</th></tr>
   {{range .Slots}}
   <tr>
     <td>{{fmtTime .StartMin}}</td>
     <td>{{.DurationMin}} phút</td>
-    <td>{{.AccountID}}</td>
+    <td>{{.AccountName}}</td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
   </tr>
   {{end}}
