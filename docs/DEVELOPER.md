@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+>
+
 # Developer Guide
 
 Dành cho dev và AI code assistant (Claude, Agy, Codex) làm việc trên repo này. Người dùng đọc [`USER_GUIDE.md`](USER_GUIDE.md).

@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu lịch sử:** tính năng phim điện ảnh đã park (build tag `parked`, Đợt A 2026-10-02). Giữ để tham khảo, không còn là tính năng hiện tại.
+>
+
 # Luật làm phim — AI Creator OS (bất di bất dịch)
 
 Mọi thay đổi pipeline phim phải tôn trọng các luật dưới đây. Luật nào bị phá

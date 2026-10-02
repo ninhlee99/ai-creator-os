@@ -10,8 +10,12 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | Autopilot affiliate | kiểm tra **mỗi phút**, chạy khi đủ `autopilot_interval_hours` (mặc định **6h**) | `Service.AutopilotTick` (`autopilot.go`) |
 | Growth (sản xuất + đăng) | **mỗi 5 phút** | `Service.GrowthTick(ctx, false)` (`growth_tick.go`) |
 | Đồng bộ số liệu + đối soát tiền | **mỗi giờ** (nằm trong GrowthTick khi `growthSyncDue()`) | `SyncOneAccount`, `ReconcileCommissions` (`sync_reconcile.go`) |
-| Live (daemon mạng) | **mỗi 60 giây** | `network.Daemon.Tick` (xem `lich-live.md`) |
+| Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
 | Nút "chạy ngay" trên UI | thủ công | `GrowthTick(ctx, force=true)` — vẫn bị kill + dry-run chặn |
+
+> 🅿️ Live đã park: `network.Daemon` vẫn tick 60s nhưng **không nối
+> `OnStartLive`** (chỉ test mới nối) → không mở live thật. Slot live
+> (`live_slots`) không còn được build.
 
 `internal/automation` không import `web`: mọi phụ thuộc qua interface
 (`Producer`, `Uploader`, `AccountManager`, `EnvProvider`, `Settings`).
@@ -20,7 +24,7 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 
 ### 3.1. `AutopilotTick` — chu kỳ affiliate (`autopilot.go`)
 1. Chặn đầu: kill switch hoặc dry-run → return (không làm gì).
-2. `AutopilotEnabled(settings)` — unset = ON (zero-touch Đợt 3), `"0"` = tắt.
+2. `AutopilotEnabled(settings)` — unset = ON (zero-touch), `"0"` = tắt.
 3. Chưa đủ `autopilot_interval_hours` từ `autopilot_last_run` → return.
 4. `Autopilot.RunAll(ctx)` → với mỗi tài khoản `AutopilotReady`:
    `studio.Autopilot.Run` (`internal/studio/autopilot.go:58`):
@@ -30,7 +34,7 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
    - b. Tải ≤3 ảnh thật của sản phẩm (`downloadImage`) — ground truth.
    - c. Ảnh mẫu người mẫu của tài khoản (upload tay trong UI — identity lock).
    - d. `CreateAffiliateJob(AffiliateParams{Mode: photo, Seconds: 30, ...})`
-     → job affiliate 30s (xem `studio-ai.md` §3.3).
+     → job affiliate 30s (xem `studio-ai.md` §3.2).
    - e. `RecordUse(prod.ID, accountID, jobID)` — không dùng lại sản phẩm cho
      cùng tài khoản.
    - Thiếu theme/ảnh mẫu/sản phẩm → lỗi tiếng Việt rõ lý do, không tạo job rỗng.
@@ -53,7 +57,8 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
      - Dry-run → chỉ log "DRY-RUN — chưa sản xuất thật".
      - `Producer.Enqueue` → `studioGrowthProducer.Enqueue` (`growth_produce.go:40`):
        tài khoản có theme → `Autopilot.Run` (affiliate 30s);
-       tài khoản persona → `CreateFilmJob{Topic, Seconds: VariantSeconds, Aspect}`.
+       tài khoản persona → **fail-closed** "pipeline kể chuyện YouTube chưa có
+       (đang phát triển ở đợt F)" — item được bỏ qua.
      - Lỗi enqueue → `NoteItemFailure` + alert warn (thử lại tick sau).
    - `advanceAccount`: item `producing` → hỏi `JobState(jobID)`:
      `done` → `produced` (TikTok: ghi chú "chờ đăng nháp"); `failed` → `failed`;
@@ -81,9 +86,12 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
    `Accounts.Transition(id, "paused")` + note "ĐÃ TỰ TẠM DỪNG".
 
 ### 3.4. `ReconcileCommissions` — đối soát tiền thật (`sync_reconcile.go`)
-1. `commissionSource()`: thiếu `TIKTOK_SHOP_APP_KEY`/`APP_SECRET`/`ACCESS_TOKEN`
-   (đọc live qua `EnvProvider` mỗi lần gọi — R2-W4/R2-05) **hoặc** endpoint
-   `affiliate_orders_search` chưa xác thực → fail-closed: ghi decision
+> ⚠️ **Legacy, sẽ thay bằng Accesstrade ở Đợt C.** Hiện tại code vẫn đọc
+> TikTok Shop API (`TIKTOK_SHOP_APP_KEY`/`APP_SECRET`/`ACCESS_TOKEN`).
+> TikTok Shop API chính thức đã bị Ninh loại (2026-10-01) → thực tế nguồn này
+> thường fail-closed "no_source".
+1. `commissionSource()`: thiếu key/token (đọc live qua `EnvProvider` mỗi lần gọi)
+   **hoặc** endpoint `affiliate_orders_search` chưa xác thực → fail-closed: ghi decision
    `system/commission_reconcile` ("no_source"/"error") **một lần mỗi lần đổi trạng
    thái** (không spam tick giờ), số tiền giữ 0.
 2. Có nguồn: `AffiliateOrders(24h qua, page 1, 50)` → với mỗi đơn:
@@ -110,5 +118,4 @@ gắn giỏ được).
 ## 5. API key rotation
 - Sản xuất (Studio): `GEMINI_API_KEYS` keyring xoay vòng (xem `key-rotation.md`).
 - Metrics YouTube: `YOUTUBE_API_KEY` (key đơn).
-- TikTok Shop: `TIKTOK_SHOP_APP_KEY/APP_SECRET/ACCESS_TOKEN` đọc live qua EnvProvider.
 - Đăng YouTube: refresh token từng tài khoản, tự refresh qua `oauth2.googleapis.com/token`.

@@ -53,6 +53,10 @@ double-down khi gấp 5× median; breakout khi 10×; penalty khi views rơi >70%
 stalled khi 14 ngày tăng trưởng <2%. Vượt luật → `Evaluate` đề xuất hành động;
 `SyncOneAccount` tự `Transition(id, "paused")` khi chạm kill.
 
+> **Kill rule reup** (N video liên tiếp 0-view → dừng nguồn / đổi phong cách
+> transform + báo) là yêu cầu của `docs/PIVOT_REDESIGN.md` §7 — **chưa code**,
+> sẽ thêm ở Đợt E.
+
 ### Sản xuất & đăng (trong tick)
 Xem `daemon-tu-dong.md` — tóm tắt: item quá hạn 14 ngày → `dropped`; tối đa
 **3 job/tài khoản/tick**; TikTok chỉ tới `produced` (draft-only trước audit Direct Post);
@@ -60,6 +64,12 @@ YouTube đăng khi đủ OAuth + còn quota (**1600 units/lượt**, trần **10
 `internal/growth/quota.go`); thiếu gì thì item ở `waiting_connect`/`waiting_quota`
 với ghi chú tiếng Việt trung thực. Mọi lượt đăng gắn cờ AI-generated
 (`containsSyntheticMedia`, `Synthetic=true` — bắt buộc).
+
+> Tài khoản **persona** (không có theme): pipeline phim đã park nên
+> `studioGrowthProducer.Enqueue` hiện **fail-closed** với lỗi trung thực
+> "tài khoản persona: pipeline kể chuyện YouTube chưa có (đang phát triển ở
+> đợt F) — item được bỏ qua" (`internal/web/growth_produce.go:55`). Tài khoản
+> có **theme** vẫn chạy affiliate 30s bình thường.
 
 ## 4. Fail-closed & an toàn
 - Không backend sản xuất → item giữ `planned` + alert "backend chưa được nối", tick sau thử lại.

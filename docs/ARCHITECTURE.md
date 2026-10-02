@@ -1,337 +1,152 @@
 # ai-creator-os — Architecture
 
-> Mô hình kinh doanh đã chốt tại `docs/MODEL.md` (AI Creator Network:
-> multi-account, mỗi account một persona). File này mô tả kỹ thuật thực thi.
-> Khi mâu thuẫn, MODEL.md thắng.
-
-Autonomous multi-account TikTok network: AI personas run entertainment
-livestreams on staggered schedules, earn LIVE gifts, sell affiliate products
-via short videos, and release AI-composed music — with the human only
-flipping the master switch and watching the dashboard.
-
-> **2026-10-02 — Kiến trúc Agent Team v2:** hệ thống được tổ chức lại thành
-> một đội agent chuyên sâu (Orchestrator + Hunter/Director/Producer/QC/
-> Publisher/Analyst/Streamer), mỗi nhiệm vụ mới nhân bản cả đội thành một
-> TeamInstance song song, cô lập theo taskID. Thiết kế đầy đủ:
-> [`docs/AGENT_TEAM.md`](AGENT_TEAM.md) · Sơ đồ:
-> [`docs/assets/architecture-agent-team.svg`](assets/architecture-agent-team.svg) ·
-> Mô phỏng trao đổi: [`docs/assets/agent-team-workflow.svg`](assets/agent-team-workflow.svg) ·
-> UI/UX: [`docs/UI_UX_BLUEPRINT.md`](UI_UX_BLUEPRINT.md).
+> **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar + bỏ phim điện ảnh, tập trung
+> 3 trụ — Affiliate qua Accesstrade · Reup video Douyin · YouTube kể chuyện
+> ngôi thứ nhất. Thiết kế đích: `docs/PIVOT_REDESIGN.md`.
+> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại** (sau Đợt A, commit
+> `efa218b`). Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
 
 ## 1. Design principles
 
-1. **One money loop, per account.** Everything serves: discover → attract →
-   convert → reconcile → reinvest. Tracked separately for each account so
-   winners get prime slots and losers get cut.
-2. **Lightweight stack — Go only.** The entire codebase is Go: orchestration,
-   scheduling, account management, streaming, API/dashboard, provider chains
-   and governance — one static binary (`aicos`), ~15MB, tens of MB RAM,
-   instant start, goroutines multiplex N accounts on one machine.
-   No Python runtime, no venv, no pip. SQLite for state. No Kubernetes,
-   no Java, no Node, no heavy frontend build. Runs comfortably on a
-   Mac M1 Pro 32GB.
-   Third-party model servers (VieNeu-TTS v3, llama-server) run as isolated
-   sidecar subprocesses managed by the Go binary — they are external tools
-   like FFmpeg, not our code.
-3. **Free API first, local second, paid optional.** Every external capability
-   (LLM, TTS, avatar) is a provider interface with a priority chain. Free
-   realtime APIs are tried first; local models are the fallback; paid APIs are
-   opt-in and capped.
-4. **Deterministic governance over money.** LLMs propose; a small rules engine
-   disposes. Budgets, kill thresholds and payouts are code, not prompts.
-5. **Provider evidence only.** Revenue, orders and commissions are recorded
-   only from TikTok's own data. The system never invents a number.
-6. **Account safety is a feature.** Accounts are the scarcest asset.
-   Multi-account guardrails (no cross-interaction, no duplicate content,
-   no ban evasion) are enforced in code, not left to agent discretion.
+1. **Three money pillars.** Mọi thứ phục vụ 3 trụ: affiliate (hoa hồng),
+   reup (view → tiền nền tảng/affiliate), kể chuyện YouTube (view dài).
+   Live và phim điện ảnh đã park — không phục vụ trụ nào nữa.
+2. **Lightweight stack — Go only.** Toàn bộ code là Go: orchestration,
+   account management, API/dashboard, provider chains, governance — một
+   binary tĩnh (`aicos`). Không Python runtime, không venv, không pip.
+   SQLite WAL cho state. Không Kubernetes, không Java, không Node, không
+   frontend build nặng. Chạy tốt trên Mac M1 Pro 32GB.
+   Model server bên thứ ba (VieNeu-TTS v3, llama-server) chạy như sidecar
+   subprocess do binary Go quản lý — công cụ ngoài như FFmpeg, không phải
+   code của dự án.
+3. **Free API first, local second, paid never.** Mọi khả năng ngoài (LLM, TTS,
+   vẽ ảnh) là provider interface với chuỗi ưu tiên. Free thử trước, local
+   fallback; **paid tắt** (luật cứng của Ninh: key free-only, không billing,
+   không Veo).
+4. **Deterministic governance over money.** LLM đề xuất; rules engine (Go)
+   quyết định. Ngưỡng kill/double-down, quota, kill switch là code, không
+   phải prompt.
+5. **Provider evidence only.** Doanh thu, đơn hàng, hoa hồng chỉ ghi từ dữ
+   liệu thật của provider. Hệ thống không bao giờ bịa số.
+6. **Zero-touch.** Ninh không can thiệp vận hành: mọi quyết định (provider,
+   fallback, lịch, kill/double-down) do hệ thống tự quyết theo rule đã định.
 
-## 2. Component map
+## 2. Component map (hiện tại)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ MASTER SWITCH + DASHBOARD                                   │
-│  human: ON/OFF, add account, watch. One kill switch stops   │
-│  every account within seconds.                              │
+│ DASHBOARD (7 mục sidebar) + MASTER SWITCH + KILL SWITCH     │
+│  Trang chủ · Kênh · Phát triển kênh · Studio AI 🎬 ·        │
+│  Affiliate · Đa nền tảng · Cài đặt                          │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌───────────────────────▼─────────────────────────────────────┐
-│ ORCHESTRATOR (Go — done since v0.5)                           │
-│  AccountManager: registry, onboarding pipeline, RTMP keys  │
-│  PersonaEngine:  persona per account (voice, avatar, niche) │
-│  Scheduler:      golden-hour slots, max 2 concurrent lives  │
-│  Governance:     deterministic rules, budget caps, audit    │
-└──────┬──────────┬──────────────┬──────────────┬──────────────┘
-       │          │              │              │
-┌──────▼───┐ ┌────▼─────┐ ┌──────▼──────┐ ┌─────▼──────┐
-│ HUNTER   │ │ CONTENT  │ │ STREAMER    │ │ ANALYST    │
-│ per-acct │ │ per-acct │ │ per-account │ │ per-account│
-│ niche    │ │ short    │ │ live show   │ │ gift/ROI,  │
-│ products │ │ video    │ │ director    │ │ slot       │
-│          │ │ factory  │ │ (persona)   │ │ optimizer  │
-└──────┬───┘ └────┬─────┘ └──────┬──────┘ └─────┬──────┘
-       │          │              │              │
-┌──────▼───────────▼──────────────▼──────────────▼──────────────┐
-│ ENGINES (user-configurable provider chains)                   │
-│  llm/    gemini -> llama-server local (GGUF) -> paid (off)    │
-│  tts/    gemini -> vieneu-v3 local -> edge (all swappable)    │
-│  avatar/ local-stylized -> streaming-api (paid, optional)    │
-│  music/  phase 3: licensed-ai-model -> human-edit            │
-│  game/   phase 2: Go-native where allowed by game ToS        │
-└─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│ STREAM-ENGINE (Go) x N - one supervisor per live account    │
-│  FFmpeg RTMP publish (per-account key), overlay hot-reload, │
-│  watchdog + auto-reconnect, resource-capped                 │
-└─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│ LEDGER (SQLite WAL) - per-account: products, sessions,      │
-│ gifts, orders, commissions, decisions, api_usage            │
-└─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│ API + DASHBOARD (minimal HTML)                              │
-│  master switch, accounts, slots, review queue, per-acct P&L │
+│ internal/web — HTTP layer (routes.go, handler theo miền)     │
+│  Template: templates/<page>.html ({{define "title"}} +       │
+│  {{define "content"}}); static/app.js + style.css chung      │
+└──────┬──────────────┬──────────────┬──────────────┬──────────┘
+       │              │              │              │
+┌──────▼──────┐ ┌─────▼───────┐ ┌────▼────────┐ ┌───▼──────────┐
+│ automation  │ │ studio      │ │ growth      │ │ publishers   │
+│ daemon ticks│ │ video jobs  │ │ plan 30d,   │ │ TikTok/YT/   │
+│ (1'/5'/60') │ │ (affiliate, │ │ ngưỡng,     │ │ FB/RTMP      │
+│ autopilot,  │ │ kinetic,    │ │ quota       │ │ OAuth        │
+│ reconcile   │ │ trends)     │ │             │ │              │
+└──────┬──────┘ └─────────────┘ └─────────────┘ └──────────────┘
+       │
+┌──────▼──────────────────────────────────────────────────────┐
+│ engines: LLM chain (Gemini→llama→paid tắt) · TTS chain      │
+│ (Gemini→VieNeu→Edge) · keyring xoay vòng, cooldown          │
+│ 60s→5m→15m khi 429                                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 3. The four agents
+**Parked (build tag `parked`, không vào binary):** `internal/stream`
+(stream engine), `internal/engines/avatar` (avatar + MuseTalk),
+`internal/agents/{analyst,content,governance,hunter,streamer}`,
+`internal/studio/film*.go` + `cinematic.go` (phim điện ảnh),
+`internal/web/{schedule,team,avatar,studio_film}.go`,
+`internal/web/templates_parked/`, `internal/studio/prompts/parked/`.
+Test vùng parked chạy bằng `go test -tags parked ./...`.
 
-### Hunter — product discovery (scheduled, daily)
-- Pulls affiliate products from TikTok Shop affiliate marketplace API.
-- Scores each product: `score = commission_value × conversion_rate / competition`
-  (commission %, not commission value alone — a 30% cut of nothing is nothing).
-- Writes ranked candidates to ledger. Top-N enter the "shelf" after passing
-  governance (category allowlist, price band, seller rating floor).
+**Chưa code (đợt B→F):** Accesstrade client + datafeed hunter + đối soát
+(`internal/accesstrade` mới), Douyin downloader + transform
+(`internal/reup` mới), pipeline kể chuyện (`internal/stories` mới hoặc tách
+từ studio).
 
-### Content — short video factory (scheduled, hourly during day)
-- Takes products from the shelf, generates script → TTS voiceover → FFmpeg
-  assembles video (stock/AI visuals + captions + product card).
-- Posts via TikTok Content Posting API (draft-first mode by default).
-- Every video links the affiliate product. Metrics flow back to analyst.
+## 3. Routes hiện tại (internal/web/routes.go)
 
-### Streamer — live show director (during live windows)
-- Show format: entertainment-first (games, trivia, stories, challenges),
-  product moments woven in — never a pure selling stream.
-- Loop: LLM director produces the next segment → TTS speaks → avatar renders →
-  stream-engine publishes via RTMP. Chat/votes feed back where an authorized
-  event source exists.
-- Session policy enforced in code: max duration, pacing, break intervals,
-  AI disclosure overlay.
+| Route | Handler | Ghi chú |
+|---|---|---|
+| `GET /` | `handleDashboard` | Trang chủ |
+| `/accounts*` | `handleAccounts*` | Kênh (sidebar "Kênh") |
+| `/growth*` | `handleGrowth*` | Phát triển kênh |
+| `/studio*` | `handleStudio*` | Studio AI (affiliate/kinetic/jobs/trends) |
+| `/products*` | `handleProducts*` | Affiliate (kho sản phẩm cũ, rework đợt B/C) |
+| `/publishers*` | `handlePublishers*` | Đa nền tảng |
+| `/settings*` | `handleSettings*` | 4 trang con |
+| `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
+| `/onboard` | `handleOnboard` | Wizard lần đầu |
+| `/kill`, `/unkill` | `handleKill` | Kill switch |
 
-### Analyst — money (after each live session + daily rollup)
-- Pulls orders/commissions from TikTok Shop API (provider evidence only).
-- Computes per-product and per-session ROI: revenue, commission, cost
-  (API usage, compute), net.
-- Kill/scale rules (examples, tuned in config):
-  - kill product if 0 orders after N sessions or X views;
-  - scale winners by increasing content cadence and live product moments.
-- Decisions go through governance; analyst cannot spend, only propose.
+`/schedule`, `/team` → 404 (parked).
 
 ## 4. Engines: the provider chains
 
-Each engine is an interface. The orchestrator asks for a capability; the
-engine walks its chain until one succeeds. Usage is metered so free-tier
-caps are never silently exceeded.
+`internal/engines/chains.go` — chỉ còn 2 chuỗi:
+- **LLM**: Gemini (free API) → llama-server local (`127.0.0.1:8081`) → paid (placeholder, tắt).
+- **TTS**: Gemini → VieNeu-TTS v3 local (sidecar `127.0.0.1:8000`) → Edge.
+- Chuỗi Avatar đã gỡ theo live (Đợt A).
 
-| Engine | Default chain (user-reorderable in Settings) | Notes |
-|---|---|---|
-| LLM | Gemini → llama-server local (GGUF 8B) → paid (opt-in, off) | Director/reasoning. Free API first for speed; local GGUF for offline/privacy. Chain order, keys and retry policy editable in dashboard Settings; failover is logged to decisions. |
-| TTS | Gemini → VieNeu-TTS v3 local → Edge TTS | Must support natural Vietnamese prosody: rhythm, pitch, stress. VieNeu runs as a managed sidecar (OpenAI-compatible `POST /v1/audio/speech`); emotion cues (`[cười]`, `[thở dài]`) pass through untouched. |
-| Avatar | Local sidecar (MuseTalk v1.5) → HeyGen → D-ID (paid, off by default) | Every frame is rendered per audio frame — static image + Ken Burns transitions are banned by design. See §5 — honest limitations documented. |
+Keyring mỗi engine độc lập: round-robin, bỏ key invalid, cooldown 429/quota
+thang 60s→5m→15m, key khoẻ lại reset thang. Failover tier nào cũng ghi
+decision log (`engines/tier_failover`).
 
-## 5. Avatar: the hard truth
+## 5. Governance (deterministic, Go)
 
-Photorealistic + realtime + frame-coherent lip-sync + free does not exist as
-a production-ready option today. Anyone promising all four is selling
-something. Therefore (kết luận nghiên cứu: `docs/RESEARCH.md` §6):
+- Kill switch > MASTER_SWITCH > dry-run — thứ tự thắng cứng, kiểm tra đầu
+  mọi tick (`internal/automation/service.go`).
+- Ngưỡng growth chỉnh được trên UI (`/growth/thresholds`), hỏng từng trường
+  → fallback default (`internal/growth`).
+- Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
+- Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
 
-- **Default local = MuseTalk v1.5** (`dunso/musetalk-mac` port, MPS) run
-  as a Go-managed sidecar. It lip-syncs from audio but does NOT generate
-  head motion from audio, and it is NOT realtime on M1 Pro (~2.5–4 fps
-  estimated → offline render ~6–10 min for a 60s clip). These numbers are
-  extrapolated estimates — a real benchmark on the owner's Mac is required
-  before the sidecar contract is final. Lệnh khởi chạy llama-server local
-  trước đây thiếu `-ngl 99` nên chạy CPU 100% thay vì GPU Metal — đã sửa
-  (từ audit lõi AI, 2026-10-02); VieNeu-TTS v3 vẫn chạy ONNX/CPU vì
-  upstream không có đường MPS/CoreML, chế độ int8 (nhanh ~1.6–2×) chưa
-  bật. Ràng buộc cài đặt + benchmark còn nợ: xem `docs/DEVELOPER.md` §9.
-- **Quality bar (owner's requirement, enforced in code):** every frame must
-  look like a real person filmed — lips, eyes, head, expression and gesture
-  driven by the audio in every frame, consistent identity throughout.
-  Static-image slideshows with transitions are banned: the pipeline refuses
-  to render when the sidecar is down instead of returning a half-baked clip.
-- **Identity lock:** `sha256(reference image + seed)`; a render is refused
-  when the lock doesn't match the image on disk (no silent face drift).
-- **Emotion cues:** 17 Vietnamese tags (`[cười]`, `[thở dài]`, `[hắng giọng]`,
-  …) parsed from the TTS script and mapped to expressions per segment.
-- The chain is `local → heygen → did` (paid tiers off by default, need API
-  keys). Failover is logged to decisions, like every other engine.
-- The `engines/avatar` interface stays swappable: when a future open model
-  (or cloud GPU tier) meets the bar, it plugs in with zero changes to show
-  logic.
+## 6. Ledger (SQLite, WAL mode)
 
-## 6. Governance (deterministic, Go)
+- `ledger.db`: accounts, decisions, settings, orders, live_slots (legacy),
+  growth_*, api_usage…
+- `studio.db`: studio_jobs, studio_assets, capabilities.
+- `products.db`: products, shelf.
+- Migration qua `PRAGMA user_version`, có test round-trip.
 
-`internal/agents/governance` — pure functions, no LLM inside:
+## 7. Strict operational rules (encoded, not suggested)
 
-- Budget caps: per-day API spend, per-session stream cost.
-- Kill thresholds: products and content formats die by rule, not by debate.
-- Approval gates: first-time actions (new product category, new stream
-  format) require human approval via dashboard; afterwards the rule runs alone.
-- Global kill switch: one call stops all agents and the stream within seconds.
-- Every decision is written to the ledger with its inputs (audit trail).
+1. Không nguồn dữ liệu thật → giữ 0 + decision log lý do, không bịa số.
+2. `Gate == nil` → coi như dry-run.
+3. Kill switch thắng mọi tick.
+4. TikTok draft-only (chưa audit Direct Post); YouTube private-first/fail-closed.
+5. Mọi lượt đăng YouTube gắn cờ AI-generated (`containsSyntheticMedia`) — bắt buộc.
+6. Không hứa "đảm bảo 100%" điều không chắc (bản quyền reup…).
 
-## 7. Ledger (SQLite, WAL mode)
+## 8. Language decision record (2026-10-01, executed as v0.5-go)
 
-Single file, zero ops, SSD-friendly. Tables: products, content_items,
-live_sessions, live_events, orders, commissions, decisions, api_usage.
-Append-only for money tables. Nightly snapshot backup. Postgres migration
-path documented for when (if) scale demands it.
+Go được chọn (Ninh giao cho Milo quyết): 1 binary, pure Go, cấm cgo mới,
+cấm runtime Python/Node đi kèm. Sidecar chỉ theo mẫu uv-managed đã có.
 
-## 8. Stream engine (Go)
+## 9. What this version does NOT do
 
-A tiny supervisor, not a media framework:
+- ❌ Live / livestream / avatar (parked).
+- ❌ Phim điện ảnh 30–60 phút, Veo, realism upgrades (parked).
+- ❌ Accesstrade API — chưa code (đợt B/C).
+- ❌ Reup Douyin — chưa code (đợt D/E).
+- ❌ YouTube kể chuyện — chưa code (đợt F).
+- ❌ TikTok Shop API chính thức (đã loại theo quyết định của Ninh).
+- ❌ Key trả phí / billing / Veo (luật cứng free-only).
 
-- Owns the FFmpeg process: builds the filter graph (avatar scene + overlays +
-  audio), pushes RTMP to TikTok.
-- Hot-reloads overlays (product cards, AI responses, game scores) without
-  restarting the stream.
-- Watchdog: detects FFmpeg death or RTMP drop, reconnects with backoff,
-  gives up and alerts after N tries.
-- Resource caps: pinned CPU/memory so a runaway never takes the machine down.
+## 10. Affiliate video pipeline (đang chạy)
 
-## 9. Strict operational rules (encoded, not suggested)
-
-1. **Dry-run default.** Nothing touches TikTok until `--live` is explicitly
-   passed and the checklist in docs/USER_GUIDE.md is signed off in config.
-2. **Anti-ban pacing.** Max live duration per session, mandatory breaks,
-   no duplicate content spam, AI disclosure on stream per TikTok policy.
-3. **Idempotency.** Every external action carries an idempotency key; retries
-   never double-post or double-count.
-4. **Secrets.** Env vars / macOS Keychain only. Never in repo, logs or chat.
-5. **Alerting.** Telegram alerts on: stream death, API quota near-limit,
-   governance kill, any error in money path. The human is hands-off but
-   never blind.
-6. **Rehearsal.** Full pipeline runs end-to-end against mocks before any
-   real session. `go test ./...` must pass.
-7. **Backups.** Nightly SQLite snapshot + config backup, 30-day retention.
-8. **Cost meters.** Every engine call logs usage; free-tier caps are hard
-   stops, not warnings.
-
-## 10. Language decision record (2026-10-01, executed as v0.5-go)
-
-**Go was chosen over Rust and Python** (owner delegated the choice):
-- vs Python — one static binary, no interpreter/venv/pip; no GIL so N live
-  accounts truly run concurrently; far lower RAM for 24/7 processes;
-  compile-time type safety catches bugs (missing helpers, wrong signatures)
-  that Python only reveals at runtime. Nothing in the design needs
-  numpy/torch — AI goes through HTTP APIs, video through FFmpeg.
-- vs Rust — this workload is I/O-bound (web server, API calls, scheduling,
-  DB), not CPU-bound, so Rust's zero-cost abstractions buy little; Go ships
-  features far faster for a one-person team (no borrow checker fights);
-  builds take seconds not minutes; `net/http` + `html/template` are in the
-  standard library.
-
-**The codebase is now 100% Go.** Số liệu kiểm chứng lại ngày 2026-10-02:
-119 file Go, 25.741 dòng, 43 file test / 250 test function, 20 package —
-`go test ./...` xanh toàn bộ (xem §12 về những gì test chưa bao phủ).
-
-**Not used:** Node.js (RAM-hungry), Kubernetes/Java/heavy frontend builds
-(ops cost with zero revenue link). Local model sidecars (VieNeu-TTS,
-llama-server) are third-party tools managed as subprocesses — like FFmpeg —
-not our code.
-
-## 11. What this v1 does NOT do
-
-- No real-time TikTok chat reading unless an authorized event source exists
-  (no unofficial scraping — ban risk is unacceptable).
-- No photorealistic avatar (see §5).
-- No autonomous spending beyond configured caps.
-- No cross-account interaction, ever (guardrail, not a missing feature).
-
-> **Trạng thái (2026-10-02):** các đợt sửa theo `docs/PROJECT_REVIEW.md`
-> (Đợt 1–3 đã/đang chạy — gộp trang, zero-touch mặc định) có thể làm vài mô
-> tả trạng thái trong file này lệch nhẹ; khi các đợt hoàn tất, file này sẽ
-> được rà lại một lần và phần review sẽ gộp vào đây.
-
-## 12. Known gaps & perfection criteria (audit 2026-10-02)
-
-"Hoàn hảo" được định nghĩa bằng tiêu chí kiểm chứng được dưới đây — không
-phải trạng thái vô hạn. Audit phân hai loại:
-
-### 12.1 Sửa được trong VM (không cần Mac/tài khoản của Ninh)
-
-| # | Khoảng trống | Trạng thái |
-|---|---|---|
-| 1 | Analyst mất luật kill theo phiên live (`sessionsFeatured` hard-code 0) | **Đã sửa 2026-10-02:** `Ledger.SessionsFeatured` (khớp `product_id` chính xác + fallback tựa đề 20 ký tự cho dữ liệu cũ), Streamer ghi event `product_moment` kèm `product_id`, có test |
-| 2 | Dashboard bind mọi interface `:8080`, không auth | **Đã giảm rủi ro 2026-10-02:** mặc định `127.0.0.1:8080` (localhost); mở LAN phải chỉ định `-addr :8080` có chủ đích. Auth đầy đủ: việc tiếp theo |
-| 3 | Daemon production chưa nối `OnStartLive`/`OnRunAgent` | **Đã quyết 2026-10-02 (Q-B, `docs/REVIEW_ROUND2.md` §6): park.** 7 package agent/stream/affiliatehunter không vào binary — mọi file `.go` có `//go:build parked`, vẫn build + test được bằng `go build`/`go test -tags parked ./...`. `internal/agents/config` (bộ Config thứ hai có KillSwitch/DryRun riêng — mầm kill-switch hai nguồn) đã **xoá**; Config còn dùng trong vùng parked nằm ở `internal/agents/governance/parked_config.go` (runtime chính không chạm tới). Nối thật là quyết định mới của Ninh — không tự nối. |
-| 4 | Stream engine phát test pattern (`testsrc` + sine 440Hz), chưa phát avatar thật | Chưa sửa — cần thiết kế pipe frame/audio vào FFmpeg + benchmark M1 |
-| 5 | `affiliatehunter` (ADB) chưa cắm vào products/UI | Chưa sửa — cần flow scan → store + nút UI; chạy thật cần Android của Ninh cắm USB vào Mac |
-| 6 | Avatar paid tier (HeyGen/D-ID) còn khung "wiring pending" | Chưa sửa — cần API key thật để test hợp đồng REST |
-| 7 | QC chưa thành agent độc lập chấm mù | Đã có thiết kế ở `AGENT_TEAM.md` §5; code là việc tiếp theo trên hạt nhân Studio job |
-| 8 | Telegram alert + nightly backup được docs hứa nhưng chưa có code | Chưa sửa — phải hoặc làm, hoặc sửa docs; không để docs nói quá code |
-| 9 | Đường content agent còn dùng ảnh tĩnh + zoompan (mâu thuẫn luật cấm slideshow cho phim) | Chưa sửa — cần chốt: chỉ dùng cho B-roll, phim đi đường Veo/Studio |
-| 10 | UI/UX Settings trộn ~8 vấn đề; autopilot xé 3 nơi | Đã có bản thiết kế lại `UI_UX_BLUEPRINT.md`; đã làm các bước template thuần của đợt 1 (ô key `type=password`, vùng nguy hiểm viền đỏ, sidebar nhóm + active, mục lục Settings). Tách trang là các commit tiếp theo |
-
-> **Bằng chứng binary gọn (2026-10-02, sau R2-W6):** `go list -deps ./cmd/aicos`
-> = 227 package, **không chứa** `internal/affiliatehunter`,
-> `internal/agents/{analyst,config,content,governance,hunter,streamer}`,
-> `internal/stream` (diff trước/sau rỗng tuyệt đối — binary không đổi một byte
-> phụ thuộc nào). Cross-build 5 đích trên cùng HEAD: windows/amd64 22.316.032 B,
-> darwin/arm64 21.349.170 B, darwin/amd64 22.275.584 B, linux/amd64 22.086.932 B,
-> linux/arm64 21.014.671 B — thuần Go, một dependency trực tiếp
-> (`modernc.org/sqlite v1.60.1`), không `import "C"`.
-
-### 12.2 Cần Mac / tài khoản / quyết định của Ninh (không ai làm thay được)
-
-1. E2E affiliate trên Mac thật: OAuth TikTok từng account, gắn giỏ hàng thủ
-   công trong app (API không cho phép), đăng draft → public.
-2. Benchmark avatar MuseTalk trên M1 Pro 32GB: fps/RAM thật (số 2.5–4fps
-   hiện tại là ước tính), tải weights qua `AVATAR_MODEL_URL`.
-3. Veo: Google Cloud project bật billing trên Gemini key; thiếu thì Studio
-   tự rơi về photo-list.
-4. RTMP key + quyền LIVE từng account, Gemini keys, FB Page ID (Facebook/
-   YouTube Ninh đã chủ động hoãn).
-5. Săn sản phẩm tự động: TikTok Shop API cần Partner Center + duyệt app
-   (Ninh đã từ chối vì phức tạp) — đường thay thế ADB cần chiếc Android duy
-   nhất của Ninh cắm vào Mac khi máy rảnh.
-6. Nghiệm thu mắt người: bản dựng producer (mẫu chưa đủ đẹp, còn "AI", chưa
-   nét) vẫn chờ verdict của Ninh từ 2026-10-01.
-
-### 12.3 Tiêu chí được gọi là "xong" cho từng tầng
-
-- **Logic:** `go test ./...` xanh + test mới cho mọi luật tiền/an toàn.
-- **Nối dây:** daemon → agent → stream chạy end-to-end ở chế độ dry-run trên
-  Mac, có event log để UI vẽ lại quá trình.
-- **Thật:** một account live thật + một video affiliate đăng thật + một
-  khoản hoa hồng đối soát vào Ledger từ bằng chứng nhà cung cấp.
-- **Chất lượng:** Ninh duyệt mắt người trên sản phẩm thật, không qua trung gian.
-
-## 13. Pipeline affiliate video (tóm tắt từ spec v2 ngày 2026-10-01)
-
-> Tóm tắt định hướng; chi tiết triển khai nằm trong chính code
-> (`internal/studio`, `internal/products`, `docs/CHANNEL_GROWTH.md` §4–§5
-> cho vòng growth). Spec gốc của pipeline affiliate (ngày 2026-10-01) đã xoá
-> ngày 2026-10-02 vì phần lớn đã thành hiện thực hoặc được kế thừa.
-
-**Nguyên tắc (Ninh, bất di bất dịch):** input duy nhất của người dùng là ảnh
-nhân vật + ảnh sản phẩm; mọi khâu còn lại tự động. Thời trang/phụ kiện:
-video + nhạc licensed/trending, **không chữ, không voiceover**. Mỗi video
-xem lại được tới từng shot/frame qua storyboard; asset tự lưu Google Drive.
-Mọi chức năng có UI, không có vận hành CLI.
-
-**Chuỗi pipeline:** Input (ảnh nhân vật + ảnh sản phẩm + niche) → Director
-(LLM viết kịch bản/shot list, hook 2–3s đầu, sản phẩm là nhân vật chính) →
-Identity/Product Lock (giữ đúng mặt + đúng sản phẩm mọi shot) → Shoot →
-QC tự động (so frame giữa clip: mặt, tay, sản phẩm; rớt thì quay lại, tối
-đa N lần) → Edit (FFmpeg; mặc định không chữ/không voiceover cho fashion;
-xuất 1080×1920 30fps) → Music (thư viện licensed sạch phân theo mood; khi
-publish có thể đổi sang sound trending) → Review UI (storyboard lưới shot
-+ frame scrubber + xem final) → Publish (gắn giỏ hàng, lên lịch giờ vàng)
-→ Drive Backup (folder `AICOS/videos/<ngày>_<sản-phẩm>/` chứa shots, audio,
-final, `storyboard.json`).
-
-**Quy luật sản xuất đã chốt thêm từ vận hành:** mỗi video chỉ một địa điểm
-duy nhất (3–5 ảnh cùng location, đổi góc máy); ảnh master 4K–8K; render
-TikTok 1080×1920. Mức đăng đều 2–3 video/ngày trong khung giờ vàng
-11:00–13:00 và 19:00–22:00.
+`internal/studio/studio.go` `runAffiliate`: director LLM viết shot list +
+khóa 1 địa điểm → Gemini vẽ 3–5 ảnh (identity/product lock bằng ảnh tham
+chiếu, upscale 4K) → `AssemblePhotoList`/`AssembleBeatBounce` (Ken Burns 9:16)
+→ `MuxMusic` (nhạc bản quyền, loudnorm −14 LUFS) → caption tiếng Việt →
+`fireOnDone` → tự đăng TikTok **nháp** nếu bật. Không chữ, không voiceover.

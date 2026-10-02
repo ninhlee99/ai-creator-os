@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+>
+
 # MODEL.md — Mô hình chốt: AI Creator Network
 
 > Quyết định cuối ngày 2026-10-01. Đây là tài liệu định hướng mọi code và

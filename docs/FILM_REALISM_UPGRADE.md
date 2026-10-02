@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu lịch sử:** tính năng phim điện ảnh đã park (build tag `parked`, Đợt A 2026-10-02). Giữ để tham khảo, không còn là tính năng hiện tại.
+>
+
 # Nâng "điện ảnh từ ảnh" tiến gần video quay thật — Nghiên cứu & thiết kế
 
 Trạng thái: **nghiên cứu, chưa code**. Mọi con số render là ước tính (chưa đo

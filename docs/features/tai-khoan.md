@@ -1,14 +1,18 @@
-# Tài khoản (3 tab: Tổng quan / Autopilot / Kết nối)
+# Kênh (`/accounts` — sidebar "Kênh")
 
 ## 1. Mục đích
 Quản lý một kênh: xem trạng thái + quyết định liên quan, cấu hình autopilot affiliate,
 nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 
+> Sidebar sau Đợt A đổi label "Tài khoản" → **"Kênh"** (theo
+> `docs/PIVOT_REDESIGN.md` §1). Nội dung trang `/accounts` vẫn dùng từ
+> "Tài khoản" ở tiêu đề/bảng — sẽ đồng bộ ở đợt UI sau.
+
 ## 2. Kích hoạt
 - `GET /accounts` → `handleAccounts` (`internal/web/accounts.go:20`): danh sách.
 - `GET /accounts/new` → form tạo; `POST /accounts` → `handleAccountCreate`.
 - `GET /accounts/{id}?tab=tong-quan|autopilot|ket-noi` → `handleAccountDetail`
-  (`internal/web/accounts.go:102`); tab mặc định/tên tab do `accountTab` đọc query.
+  (`internal/web/accounts.go:102`); tab mặc định/tên tab do `s.accountTab` đọc query.
 - Các nút POST trong từng tab (xem mục 3).
 
 ## 3. Luồng vận hành chi tiết
@@ -19,8 +23,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
   (máy trạng thái, không cho nhảy trạng thái bừa),
   `network.PERSONAS[acct.Persona]` → persona + content pillars,
   20 decision mới nhất có `target = username`,
-  `s.Ledger.AccountGiftUSD(id)` → tổng gift (USD),
-  decision `live_planner/session_topic` mới nhất → chủ đề live gần nhất.
+  `s.Ledger.AccountGiftUSD(id)` → tổng gift (USD, legacy từ thời live).
 - `POST /accounts/{id}/transition` (`handleAccountTransition`): `s.Mgr.Transition(id, to, nil)`
   → 303 về tab `ket-noi`, lỗi thì `?err=` + toast (không redirect câm).
 
@@ -43,17 +46,15 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
   đẩy tài khoản qua một bước onboarding (`network.onboardStep`).
 - `POST /accounts/{id}/replan` (`handleAccountReplan`): chạy lại topic research
   (`network.MakeTopicResearch(s.Mgr, id, s.LLM)`).
-- `POST /accounts/{id}/live-topic` (`handleAccountLiveTopic`): `s.Mgr.PlanLiveTopic`
-  — LLM viết chủ đề phiên live, ghi decision `live_planner/session_topic`.
 - Hiển thị trạng thái publisher từng nền tảng (`publishers.BuildPublishers`):
   TikTok token/client, YouTube token, FB Page, RTMP — badge trung thực "thiếu/chưa".
 
 ## 4. Fail-closed & an toàn
-- Mọi POST lỗi → `accountBack(..., errMsg)` → 303 về đúng tab kèm `?err=` + toast;
-  không có chỗ nào log-and-redirect-như-thành-công (R2-W4/R2-13).
+- Mọi POST lỗi → `s.accountBack(..., errMsg)` → 303 về đúng tab kèm `?err=` + toast;
+  không có chỗ nào log-and-redirect-như-thành-công.
 - Chuyển trạng thái chỉ cho phép các đích trong `network.TRANSITIONS`.
 
 ## 5. API key rotation
-- Tab Kết nối không hiện key. Topic research / live topic dùng `s.LLM`
+- Tab Kết nối không hiện key. Topic research dùng `s.LLM`
   (LLMChain: xem `key-rotation.md`).
 - `handleAccountReplan` dùng LLM keyring engine `llm` (round-robin, cooldown 429).

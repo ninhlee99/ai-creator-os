@@ -1,3 +1,6 @@
+> ⚠️ **Tài liệu lịch sử:** tính năng phim điện ảnh đã park (build tag `parked`, Đợt A 2026-10-02). Giữ để tham khảo, không còn là tính năng hiện tại.
+>
+
 # Studio Phim — Tài liệu kỹ thuật chi tiết
 
 > Đọc code thật tại `internal/studio/` (branch main, HEAD `ffffa0a` — Film Wave 3).

@@ -1,59 +1,45 @@
 # AI Creator OS
 
-**Hệ điều hành cho mạng lưới AI creator tự vận hành — mỗi tài khoản TikTok là một creator AI với persona riêng: tự tìm niche, tự sản xuất video, tự livestream, tự đăng đa nền tảng. Bạn chỉ bật ON và theo dõi.**
+**Hệ điều hành tự vận hành cho 3 trụ kiếm tiền: Affiliate qua Accesstrade, Reup video Douyin, YouTube kể chuyện ngôi thứ nhất.** Bạn chỉ bật app và theo dõi — mọi quyết định vận hành do hệ thống tự quyết theo rule đã định.
 
-![Tổng quan mạng lưới AI creator](docs/assets/hero-network.webp)
-
-> 🖼️ **Ghi chú trung thực:** ảnh concept do AI tạo để minh họa ý tưởng — không phải ảnh chụp sản phẩm thật. Các video demo bên dưới được **dựng thật bằng pipeline FFmpeg + lồng tiếng AI** của dự án.
-
----
-
-## 🎬 Xem nhanh
-
-**Quy trình tự động — từ săn sản phẩm đến đăng video**
-
-<video src="docs/assets/demo-pipeline.mp4" controls width="100%"></video>
-
-**Video affiliate demo — sản phẩm AI làm từ A–Z** (kịch bản + lồng tiếng + phụ đề, đúng chuẩn pipeline Content)
-
-<video src="docs/assets/demo-affiliate-video.mp4" controls width="360"></video>
-
-**Video concept 1 phút — do Milo (AI assistant) dựng** (6 clip AI × 10s, ghép bằng FFmpeg — minh họa khả năng B-roll cho video ngắn)
-
-<video src="docs/assets/demo-1min.mp4" controls width="100%"></video>
-
-**Dashboard điều khiển** — mọi quản trị qua UI web, không dùng CLI:
-
-![Dashboard](docs/assets/dashboard-mockup.webp)
-
-`./aicos` → mở `http://localhost:8080`
+> **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar và bỏ làm phim điện ảnh.
+> Code live/phim đã **park bằng build tag `parked`** (không biên dịch vào
+> binary, vẫn nằm trong git để lôi lại khi cần). Thiết kế đầy đủ:
+> [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md).
 
 ---
 
-## 🧭 Mô hình chốt: AI Creator Network
+## 🎯 Ba trụ
 
-**Một hệ thống, N tài khoản TikTok.** Mỗi account là một "AI creator" với persona riêng — tự live giải trí theo giờ được phân bổ, thu **quà tặng LIVE**, bán **affiliate qua video ngắn**, nhạc AI tự sáng tác thì phát hành lấy **royalty**.
+| Trụ | Trạng thái code (sau Đợt A, commit `efa218b`) |
+|---|---|
+| **1. Affiliate qua Accesstrade** | 🚧 Đợt B/C: client API + datafeed hunter + đối soát hoa hồng. Hiện tại trang **Affiliate** (`/products`) vẫn là kho sản phẩm cũ — label đã đổi, nội dung rework ở đợt B/C |
+| **2. Reup video Douyin** | 🚧 Đợt D/E: downloader (yt-dlp + TikWM) + transform 2 mức + kill rule 0-view |
+| **3. YouTube kể chuyện ngôi thứ nhất** | 🚧 Đợt F: truyện → ảnh minh họa từng cảnh → giọng đọc TTS → dựng đơn giản → đăng YouTube. **Không quay video** |
 
-| Persona (mỗi account 1 cái) | Live làm gì | Nguồn thu |
+Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+
+> ⚠️ **Trung thực về reup:** không có transform nào đảm bảo 100% không bị
+> đánh bản quyền. Hệ thống chỉ giảm rủi ro (voiceover Việt gốc, nhạc bản
+> quyền thay thế, restructure/compilation, crop/zoom động…), và rủi ro thực tế
+> lớn nhất có thể là **0 view / bị giảm phân phối**, không chỉ là strike.
+
+---
+
+## 🖥️ Giao diện hiện tại (sidebar 7 mục)
+
+| Mục | Route | Vai trò hiện tại |
 |---|---|---|
-| 📖 Storyteller | Kể chuyện, phim ngắn AI | Gift + affiliate |
-| 🎓 AI Teacher | Dạy tiếng Anh qua truyện | Gift + affiliate |
-| 🎮 Game Master *(phase 2)* | AI tự chơi game được phép | Gift + affiliate gear |
-| 💻 AI Coder *(phase 2)* | Live code game/mini-app theo yêu cầu viewer | Gift |
-| 🎤 AI Musician *(phase 3)* | Hát nhạc AI tự sáng tác | Gift + royalty |
-| 💃 Dancer *(phase 4)* | Nhảy theo trend | Gift |
+| Trang chủ | `/` | Thẻ số liệu, feed 8 quyết định, cảnh báo growth, trạng thái runtime local, chip MASTER_SWITCH |
+| Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth |
+| Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
+| Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video chữ động · Jobs · Nhạc trending. Phim điện ảnh đã park |
+| Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (rework Accesstrade ở đợt B/C) |
+| Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
+| Cài đặt | `/settings` | 4 trang: Hệ thống · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
 
-Chi tiết: [`docs/MODEL.md`](docs/MODEL.md)
-
-**Bạn làm 3 việc trên dashboard web:** bật/tắt master switch · thêm account (AI tự research niche, gán persona) · theo dõi. **Hệ thống tự làm phần còn lại:** research → đăng video cày đủ 1.000 follow → xếp lịch live giờ vàng (tối đa 2 live cùng lúc) → live → đối soát → tối ưu.
-
-### 🤖 Agent Team
-
-Trang **Agent Team** trong dashboard vẽ cây trạng thái **suy ra từ tiến độ job Studio** (đang làm · đang nhận việc · xong · lỗi) — trung thực, không bịa agent đang chạy. 7 package agent/stream cũ (analyst, content, governance, hunter, streamer, affiliatehunter, stream) đã **park** sau tag build `parked` ngày 2026-10-02: không vào binary, test vẫn chạy bằng `go test -tags parked ./...` (chi tiết: `docs/ARCHITECTURE.md` §12).
-
-![Đội agent và persona](docs/assets/agents/contact-sheet.png)
-
-Thiết kế đầy đủ: [`docs/AGENT_TEAM.md`](docs/AGENT_TEAM.md)
+`/schedule` (Lịch live) và `/team` (Agent Team bản live) đã park → **404**.
+Agent Team sẽ được định nghĩa lại quanh 3 pipeline ở đợt sau.
 
 ---
 
@@ -65,53 +51,42 @@ go build -o aicos ./cmd/aicos
 ./aicos   # mở http://localhost:8080
 ```
 
-100% Go trong 1 binary (~21–22MB, không Python/venv/pip). SQLite WAL cho sổ cái. Model local (VieNeu-TTS v3, llama-server) tải bằng một nút trong trang Settings.
+100% Go trong 1 binary (~21–22MB, không Python/venv/pip — "ước tính chưa kiểm
+chứng" cho từng bản build cụ thể). SQLite WAL. Model local (VieNeu-TTS v3,
+llama-server) tải bằng một nút trong Cài đặt · Model local.
 
 ```bash
-go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm TikTok thật
+go test ./...                  # runtime chính (không gồm vùng parked)
+go test -tags parked ./...     # vùng parked vẫn test được riêng
+bash scripts/check-reachable.sh  # không package nào bị bỏ rơi
 ```
+
+Lần đầu chạy (thư mục dữ liệu trống) → wizard `/onboard` → chọn chế độ thử →
+vào app.
 
 ---
 
-## 📌 Trạng thái thật của dự án
+## 📌 Trạng thái thật (Đợt A, commit `efa218b` — đã tự review 85/100)
 
 | Phần | Trạng thái |
 |---|---|
-| Dashboard web (9 trang: Trang chủ, Tài khoản, Lịch live, Phát triển kênh, Sản phẩm, Studio AI, Agent Team, Đa nền tảng, Cài đặt) | ✅ Code chạy thật |
-| Studio AI — tạo video affiliate/phim ngắn từ dashboard | ✅ Code xong, chưa có verdict mắt người |
-| Multi-Gemini API key rotation (round-robin, cooldown khi hết quota) | ✅ |
-| Sổ cái per-account, Governance luật cứng, Scheduler, kill switch | ✅ |
-| Agent Team: tree UI, trạng thái suy ra từ tiến độ job Studio (không phải agent thật đang chạy) | ✅ |
-| Stream engine phát avatar thật | ⏳ Đang phát test pattern — cần benchmark trên Mac |
-| Nối daemon → live (cổng dry-run/cadence) | ⏳ |
-| ADB Hunter — quét Product Marketplace trên Android của bạn | ⏳ Cần Mac + máy của bạn |
-| TikTok Shop API chính thức | ❌ Đã loại theo quyết định của bạn |
-| Test E2E trên tài khoản thật | ⏳ Cần bạn |
+| Dashboard 7 mục, không link chết | ✅ Code chạy thật |
+| Studio AI — video affiliate + video chữ động + trends | ✅ Code chạy thật |
+| Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |
+| Sổ cái, kill switch, dry-run, MASTER_SWITCH | ✅ |
+| Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ (persona → fail-closed "pipeline kể chuyện chưa có — đợt F") |
+| Live (stream engine, avatar, lịch live, tab Nhân vật AI) | 🅿️ **Parked** — build tag `parked`, không vào binary |
+| Phim điện ảnh (film mode, cinematic, Veo) | 🅿️ **Parked** — build tag `parked` |
+| Agent Team (`/team`) | 🅿️ Parked — sẽ định nghĩa lại quanh 3 pipeline |
+| Accesstrade API (token, campaign, datafeed, đối soát) | 🚧 Đợt B/C — chưa có code |
+| Reup Douyin (download, transform) | 🚧 Đợt D/E — chưa có code |
+| YouTube kể chuyện | 🚧 Đợt F — chưa có code |
+| TikTok Shop API chính thức | ❌ Đã loại theo quyết định của Ninh (2026-10-01) |
+| Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** 298 test function / 14 package pass (không tag; 20 package với `-tags parked`), kiểm tra lần cuối 2026-10-02. Lệnh kiểm chứng:
-
-```bash
-go build ./... && go vet ./... && go test -count=1 ./...          # runtime chính
-go test -count=1 -tags parked ./...                              # vùng parked
-bash scripts/check-reachable.sh                                  # không package nào bị bỏ rơi
-```
-
----
-
-## 📚 Tài liệu
-
-| Ai đọc | File |
-|---|---|
-| Người dùng (bạn) | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — cài đặt, chạy trên Mac, từng trang dashboard, vận hành hằng ngày, hậu kỳ tay, kill switch, backup |
-| Dev / AI code assistant (Claude, Agy, Codex) | [`docs/DEVELOPER.md`](docs/DEVELOPER.md) — cấu trúc repo, build/test, quy ước code, bản đồ kiến trúc |
-| Mô hình kinh doanh | [`docs/MODEL.md`](docs/MODEL.md) |
-| Thiết kế Agent Team | [`docs/AGENT_TEAM.md`](docs/AGENT_TEAM.md) |
-| Kiến trúc kỹ thuật | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
-| Thiết kế phát triển kênh | [`docs/CHANNEL_GROWTH.md`](docs/CHANNEL_GROWTH.md) |
-| Review dự án + spec các đợt sửa (đang điều phối) | [`docs/PROJECT_REVIEW.md`](docs/PROJECT_REVIEW.md) |
-| Thiết kế UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
-| Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
-| Kiến thức nền đã kiểm chứng (chính sách nền tảng, kiếm tiền, TTS, avatar, API) | [`docs/RESEARCH.md`](docs/RESEARCH.md) |
+**Test:** 279 hàm test trong 52 file (không tính vùng parked; 14 file test
+parked chạy riêng bằng `-tags parked`). Build/vet/test xanh cả 2 tag ở commit
+`efa218b` — kiểm chứng lại bằng lệnh ở trên.
 
 ---
 
@@ -123,12 +98,25 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 ./aicos -version   # aicos v1.0.0
 ```
 
-- **1 binary / 1 nền tảng** (Windows/macOS/Linux, ~15MB khi strip): `GOOS=windows GOARCH=amd64 go build ./cmd/aicos`… — CI cross-build cả 5 đích tự động (`.github/workflows/ci.yml`).
-- **Dữ liệu nằm gọn trong 1 thư mục** (`-data`, mặc định `./data`): 3 database SQLite, `content_jobs.json`, `tokens/` (OAuth TikTok/YouTube — app tự di trú file token cũ từ thư mục làm việc vào đây lần đầu chạy), `output/`, `avatars/`.
-- **Lần đầu chạy** thư mục dữ liệu trống → app mở wizard `/onboard` (chọn chế độ thử, xong mới vào app).
+- **1 binary / 1 nền tảng** (Windows/macOS/Linux): `GOOS=windows GOARCH=amd64 go build ./cmd/aicos`…
+- **Dữ liệu nằm gọn trong 1 thư mục** (`-data`, mặc định `./data`): `ledger.db`, `studio.db`, `products.db`, `content_jobs.json`, `tokens/`, `output/`, `models/`.
 - **Sao lưu/khôi phục** ở Cài đặt · Hệ thống: tải `.zip` ảnh chụp dữ liệu; khôi phục upload zip → kiểm chứng → khởi động lại app để áp dụng.
 - **API `/api/*` mặc định TẮT** (bật bằng công tắc ở Cài đặt · Hệ thống khi cần).
-- CI: build + vet + test (cả chế độ `parked`) + `scripts/check-reachable.sh` + cross-build 5 đích. Trên GitHub, bật *branch protection* cho `main` (Require status checks → `ci`) để PR fail không merge được.
+
+## 📚 Tài liệu
+
+| Ai đọc | File |
+|---|---|
+| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (16 file, mỗi tính năng một file) |
+| Thiết kế pivot 3 trụ (đích đến các đợt B→G) | [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md) |
+| Nghiên cứu Accesstrade + Douyin | [`docs/REUP_AFFILIATE_RESEARCH.md`](docs/REUP_AFFILIATE_RESEARCH.md) |
+| Chuẩn tuân thủ nghiêm ngặt (kiến trúc, docs, UI, quy trình, zero-touch) | [`docs/STANDARDS.md`](docs/STANDARDS.md) |
+| Kiến trúc kỹ thuật | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
+| Thiết kế UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
+| Người dùng: cài đặt, chạy trên Mac, vận hành hằng ngày | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) |
+| Dev / AI code assistant | [`docs/DEVELOPER.md`](docs/DEVELOPER.md) |
+| Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
+| Lịch sử: nghiên cứu phim (đã park) | `docs/FILM_REALISM_UPGRADE.md`, `docs/STUDIO_FILM.md`, `docs/FILM_RULES.md` |
 
 ## ⚖️ Giấy phép
 
