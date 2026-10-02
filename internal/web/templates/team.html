@@ -3,6 +3,14 @@
 <h1>🤖 Agent Team</h1>
 <p class="subtitle">Bấm vào một tác vụ để xem cả đội đang làm gì.</p>
 
+{{if .Empty}}
+<div class="empty-state">
+  <div class="es-icon">🎬</div>
+  <h3>Chưa có tác vụ nào</h3>
+  <p>Tạo video đầu tiên ở Studio AI — cả đội agent sẽ hiện trạng thái thật tại đây.</p>
+  <a class="btn" href="/studio">Mở Studio AI</a>
+</div>
+{{else}}
 <div class="team-layout">
   <section class="team-tasks">
     {{range .Tasks}}
@@ -57,4 +65,5 @@
     </div>
   </section>
 </div>
+{{end}}
 {{end}}

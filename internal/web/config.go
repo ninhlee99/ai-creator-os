@@ -10,7 +10,9 @@ import (
 // Config is the Go port of apps/orchestrator/config.py: env vars only,
 // typed, validated once. dryRun/killSwitch are runtime-mutable (the
 // dashboard toggles them) so they are atomic; everything else is
-// read-once at startup.
+// read-once at startup. This Config is the SINGLE source of truth for
+// kill/dry-run: cmd wiring passes it to the network daemon as its
+// network.Gate, so every layer observes the same switches live.
 type Config struct {
 	AppEnv       string
 	DatabasePath string

@@ -36,7 +36,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts", s.handleAccountCreate)
 	mux.HandleFunc("GET /accounts/{id}", s.handleAccountDetail)
 	mux.HandleFunc("POST /accounts/{id}/transition", s.handleAccountTransition)
-	mux.HandleFunc("POST /accounts/{id}/followers", s.handleAccountFollowers)
 	mux.HandleFunc("POST /accounts/{id}/youtube", s.handleAccountYoutube)
 	mux.HandleFunc("POST /accounts/{id}/onboard", s.handleAccountOnboard)
 	mux.HandleFunc("POST /accounts/{id}/replan", s.handleAccountReplan)
@@ -400,22 +399,6 @@ func (s *Server) handleAccountTransition(w http.ResponseWriter, r *http.Request)
 		if _, err := s.Mgr.Transition(id, to, nil); err != nil {
 			log.Printf("web: transition: %v", err)
 		}
-	}
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
-}
-
-func (s *Server) handleAccountFollowers(w http.ResponseWriter, r *http.Request) {
-	id, ok := s.accountID(w, r)
-	if !ok {
-		return
-	}
-	_ = r.ParseForm()
-	n, _ := strconv.ParseInt(r.PostFormValue("n"), 10, 64)
-	if n < 0 {
-		n = 0
-	}
-	if err := s.Ledger.SetFollowers(id, n); err != nil {
-		log.Printf("web: set followers: %v", err)
 	}
 	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
 }

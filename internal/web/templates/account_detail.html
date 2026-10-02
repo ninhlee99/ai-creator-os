@@ -16,7 +16,7 @@
     <dt>Persona</dt><dd>{{.Acct.PersonaLabel}}</dd>
     <dt>Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
-    <dt>Followers</dt><dd>{{.Acct.Followers}}</dd>
+    <dt>Followers</dt><dd>{{if .GrowthHasFollowers}}{{.GrowthFollowers}}{{else}}chưa kết nối{{end}}</dd>
     <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
     <dt>Loại nội dung YT</dt><dd>{{if .Acct.YoutubeContentTypes}}{{join ", " .Acct.YoutubeContentTypes}}{{else}}—{{end}}</dd>
     <dt>Quà tặng nhận</dt><dd>{{fmtUSD .Gifts}}</dd>
@@ -74,17 +74,6 @@
 </div>
 
 <div class="grid2">
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Cập nhật followers</h2>
-  <form method="post" action="/accounts/{{.Acct.ID}}/followers">
-    <div class="field">
-      <label>Số followers hiện tại</label>
-      <input type="number" name="n" min="0" value="{{.Acct.Followers}}">
-    </div>
-    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
-  </form>
-</div>
-
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
   <form method="post" action="/accounts/{{.Acct.ID}}/youtube">

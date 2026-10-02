@@ -710,6 +710,10 @@ func main() {
 	netCfg.MasterSwitch = getenvBool("MASTER_SWITCH", false)
 	netCfg.DryRun = getenvBool("DRY_RUN", true)
 	netCfg.KillSwitch = getenvBool("KILL_SWITCH", false)
+	// ONE source of truth for kill/dry-run: the daemon reads the very
+	// *Config the dashboard toggles (webCfg) live on every tick, so the
+	// UI Kill switch stops the daemon without a restart.
+	netCfg.Gate = webCfg
 	log.Printf("network: master=%v dry_run=%v kill_switch=%v", netCfg.MasterSwitch, netCfg.DryRun, netCfg.KillSwitch)
 	daemon := network.NewDaemon(l, mgr, llmChain, netCfg) // *engines.LLMChain satisfies network.LLMClient
 	go daemon.Run(ctx, 60*time.Second)
