@@ -21,6 +21,11 @@
   <div class="board"></div>
   {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
   <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+  {{if and (eq .Kind "film") (eq .Status "failed")}}
+  <form method="post" action="/studio/jobs/{{.ID}}/rerun" style="display:inline">
+    <button class="btn btn-sm">▶ Chạy tiếp</button>
+  </form>
+  {{end}}
   <pre class="log" id="log-{{.ID}}" {{if not .Output}}hidden{{end}}></pre>
 </div>
 {{end}}

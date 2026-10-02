@@ -149,7 +149,8 @@
         }
         (d.assets || []).forEach(function (a) {
           h += '<div class="shot"><div class="shot-head">Cảnh ' + (a.idx + 1) +
-            ' <span class="badge badge-' + a.class + '">' + a.label + '</span> <em>' + a.kind + '</em></div>';
+            ' <span class="badge badge-' + a.class + '">' + a.label + '</span> <em>' + a.kind + '</em>' +
+            (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') + '</div>';
           if (a.preview) {
             if (a.kind === 'clip') { h += '<video controls src="' + a.preview + '" style="max-width:220px"></video>'; }
             else { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
@@ -191,3 +192,22 @@
     }, 5000);
   })();
 })();
+
+  // Ước tính chi phí/ETA trên form phim (Film Wave 1 / P0-4): cập nhật theo
+  // ô thời lượng. Server render sẵn dòng cho 90s mặc định (no-JS vẫn thấy).
+  (function () {
+    var sec = document.getElementById('film-seconds');
+    var est = document.getElementById('film-est');
+    if (!sec || !est) return;
+    var rate = parseFloat(est.getAttribute('data-rate') || '0.05') || 0.05;
+    function upd() {
+      var s = Math.max(30, parseInt(sec.value || '90', 10) || 90);
+      var scenes = Math.ceil(s / 8);
+      var cost = (scenes * 8 * rate).toFixed(2);
+      var eta = scenes * 3;
+      est.textContent = '≈ ' + scenes + ' cảnh × 8s Veo × $' + rate + '/s ≈ $' + cost +
+        ' · render ~' + eta + ' phút (ước tính chưa kiểm chứng)';
+    }
+    sec.addEventListener('input', upd);
+    upd();
+  })();

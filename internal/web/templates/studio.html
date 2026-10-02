@@ -198,8 +198,15 @@
   </div>
   <div class="field">
     <label>Thời lượng (giây)</label>
-    <input type="number" name="seconds" value="90" min="30" max="180">
+    <input type="number" id="film-seconds" name="seconds" value="90" min="30" max="180">
+    <div class="hint">Phim dài 30–60 phút cần kiến trúc shot-level (đợt sau) — hiện tại tối đa 180s.</div>
   </div>
+  <div class="field">
+    <label>Khổ hình</label>
+    <label class="radio"><input type="radio" name="aspect" value="9:16" checked> 9:16 (dọc — Shorts/TikTok)</label>
+    <label class="radio"><input type="radio" name="aspect" value="16:9"> 16:9 (ngang — YouTube)</label>
+  </div>
+  <div class="hint" id="film-est" data-rate="{{.FilmRate}}">{{.FilmEst}}</div>
   <button type="submit" class="btn">🎞️ Tạo phim ngắn</button>
 </form>
 </div>

@@ -12,10 +12,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
+	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 )
 
 // LLM is the text-generation backend for the director. It matches
@@ -115,10 +117,13 @@ type Asset struct {
 	ID     int64  `json:"id"`
 	JobID  string `json:"job_id"`
 	Idx    int    `json:"idx"`
-	Kind   string `json:"kind"` // photo | clip
+	Kind   string `json:"kind"` // photo | clip | portrait
 	Path   string `json:"path"`
 	Prompt string `json:"prompt"`
 	Status string `json:"status"` // queued|running|done|failed
+	// Method is how this asset was really rendered: "veo" or "anh-tts"
+	// (keyframe + TTS fallback). "" = unknown/legacy.
+	Method string `json:"method"`
 }
 
 // Studio orchestrates creation jobs: director -> shoot -> assemble ->
@@ -220,6 +225,9 @@ func (s *Studio) migrate() error {
 	// Additive migrations: tolerate "duplicate column" on re-run.
 	for _, q := range []string{
 		`ALTER TABLE studio_jobs ADD COLUMN caption TEXT NOT NULL DEFAULT ''`,
+		// Film Wave 1 (P0-7): per-scene render method ("veo" | "anh-tts" |
+		// ""), shown on the storyboard so the UI never overstates Veo usage.
+		`ALTER TABLE studio_assets ADD COLUMN method TEXT NOT NULL DEFAULT ''`,
 	} {
 		if _, err := s.db.Exec(q); err != nil &&
 			!strings.Contains(err.Error(), "duplicate column") {
@@ -328,6 +336,12 @@ func (s *Studio) setAsset(id int64, status, path string) {
 	s.db.Exec(`UPDATE studio_assets SET status=?, path=? WHERE id=?`, status, path, id)
 }
 
+// setAssetMethod records how an asset was really rendered ("veo" or
+// "anh-tts") so the storyboard stays honest about Veo usage.
+func (s *Studio) setAssetMethod(id int64, method string) {
+	s.db.Exec(`UPDATE studio_assets SET method=? WHERE id=?`, method, id)
+}
+
 // GetJob returns one job.
 func (s *Studio) GetJob(id string) (Job, bool) {
 	var j Job
@@ -355,7 +369,7 @@ func (s *Studio) ListJobs(limit int) []Job {
 
 // ListAssets returns a job's storyboard assets in order.
 func (s *Studio) ListAssets(jobID string) []Asset {
-	rows, err := s.db.Query(`SELECT id,job_id,idx,kind,path,prompt,status FROM studio_assets WHERE job_id=? ORDER BY idx`, jobID)
+	rows, err := s.db.Query(`SELECT id,job_id,idx,kind,path,prompt,status,method FROM studio_assets WHERE job_id=? ORDER BY idx`, jobID)
 	if err != nil {
 		return nil
 	}
@@ -363,7 +377,7 @@ func (s *Studio) ListAssets(jobID string) []Asset {
 	var out []Asset
 	for rows.Next() {
 		var a Asset
-		if err := rows.Scan(&a.ID, &a.JobID, &a.Idx, &a.Kind, &a.Path, &a.Prompt, &a.Status); err == nil {
+		if err := rows.Scan(&a.ID, &a.JobID, &a.Idx, &a.Kind, &a.Path, &a.Prompt, &a.Status, &a.Method); err == nil {
 			out = append(out, a)
 		}
 	}
@@ -610,7 +624,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		silent := filepath.Join(work, "silent.mp4")
 		if len(clips) > 0 {
 			s.appendLog(id, "Nối các shot…")
-			if err := ConcatClips(ctx, clips, silent); err != nil {
+			if err := ConcatClips(ctx, clips, "9:16", silent); err != nil {
 				fail(err)
 				return
 			}
@@ -684,6 +698,129 @@ func (s *Studio) CreateFilmJob(p FilmParams) (string, error) {
 	return id, nil
 }
 
+// MarkInterruptedJobs fails every job left "running" from a previous process
+// (their render goroutines died with it). Call once at startup; returns the
+// number of jobs swept. The user can resume film jobs with RerunFilmJob.
+func (s *Studio) MarkInterruptedJobs() int {
+	rows, err := s.db.Query(`SELECT id FROM studio_jobs WHERE status=?`, StatusRunning)
+	if err != nil {
+		return 0
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+	for _, id := range ids {
+		s.appendLog(id, "Gián đoạn khi khởi động lại — bấm Chạy tiếp để tiếp tục")
+		s.setStatus(id, StatusFailed, 100)
+	}
+	return len(ids)
+}
+
+// RerunFilmJob resumes a film job from its stored params. Scenes whose output
+// asset is done and still on disk are skipped by runFilm (see
+// resumeAssetPath), so this is a true resume, not a from-scratch restart.
+func (s *Studio) RerunFilmJob(id string) error {
+	j, ok := s.GetJob(id)
+	if !ok {
+		return fmt.Errorf("job không tồn tại")
+	}
+	if j.Kind != KindFilm {
+		return fmt.Errorf("chỉ job phim mới chạy tiếp được")
+	}
+	s.mu.Lock()
+	_, already := s.running[id]
+	s.mu.Unlock()
+	if already {
+		return fmt.Errorf("job đang chạy")
+	}
+	var p FilmParams
+	if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
+		return fmt.Errorf("đọc tham số job: %w", err)
+	}
+	s.appendLog(id, "Chạy tiếp từ cảnh chưa xong…")
+	s.setStatus(id, StatusRunning, 5)
+	go s.runFilm(id, p)
+	return nil
+}
+
+// resumeAssetPath returns the on-disk output of an already-finished asset
+// (same job, index and kind), or "" when the scene must be rendered again.
+// A "done" asset whose file is missing or empty does NOT count — the scene
+// is rebuilt instead of silently linking a dead file.
+func (s *Studio) resumeAssetPath(jobID string, idx int, kind string) string {
+	var path, status string
+	_ = s.db.QueryRow(
+		`SELECT path, status FROM studio_assets WHERE job_id=? AND idx=? AND kind=? ORDER BY id DESC LIMIT 1`,
+		jobID, idx, kind).Scan(&path, &status)
+	if status != StatusDone || path == "" {
+		return ""
+	}
+	fi, err := os.Stat(path)
+	if err != nil || fi.IsDir() || fi.Size() == 0 {
+		return ""
+	}
+	return path
+}
+
+// maxTTSChunkChars caps one TTS call: long narration is split by sentence so
+// a film never becomes a single giant synthesis request (P0-6).
+const maxTTSChunkChars = 800
+
+// portraitIdxBase keeps portrait assets in their own index space, after the
+// scene clips (which use 0..n), in the storyboard ordering.
+const portraitIdxBase = 1000
+
+// splitTextChunks splits text into sentence-boundary chunks of at most
+// maxChars runes, preserving order. Sentence ends are . ! ? and newlines;
+// "…" is kept inside chunks as a pause cue for the TTS voice.
+func splitTextChunks(text string, maxChars int) []string {
+	var sents []string
+	var cur strings.Builder
+	flush := func() {
+		t := strings.TrimSpace(cur.String())
+		if t != "" {
+			sents = append(sents, t)
+		}
+		cur.Reset()
+	}
+	for _, r := range text {
+		cur.WriteRune(r)
+		if r == '.' || r == '!' || r == '?' || r == '\n' {
+			flush()
+		}
+	}
+	flush()
+	var chunks []string
+	var acc strings.Builder
+	push := func() {
+		t := strings.TrimSpace(acc.String())
+		if t != "" {
+			chunks = append(chunks, t)
+		}
+		acc.Reset()
+	}
+	for _, sn := range sents {
+		if acc.Len() > 0 &&
+			utf8.RuneCountInString(acc.String())+1+utf8.RuneCountInString(sn) > maxChars {
+			push()
+		}
+		if acc.Len() > 0 {
+			acc.WriteByte(' ')
+		}
+		acc.WriteString(sn)
+	}
+	push()
+	if len(chunks) == 0 && strings.TrimSpace(text) != "" {
+		chunks = []string{strings.TrimSpace(text)}
+	}
+	return chunks
+}
+
 func (s *Studio) runFilm(id string, p FilmParams) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.mu.Lock()
@@ -723,10 +860,28 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 
 	s.appendLog(id, "Biên kịch đang viết kịch bản phim…")
 	orient := orientationWord(p.Aspect)
-	script, err := WriteFilmScript(ctx, s.llm, p.Topic, p.Seconds, p.Aspect)
-	if err != nil {
-		fail(err)
-		return
+	// P0-3: the script is cached in the work dir so a resumed run renders
+	// the SAME scenes (index-based resume stays aligned) and doesn't pay
+	// the LLM twice.
+	var script FilmScriptPro
+	scriptPath := filepath.Join(work, "script.json")
+	if raw, rerr := os.ReadFile(scriptPath); rerr == nil {
+		if jerr := json.Unmarshal(raw, &script); jerr == nil && len(script.Scenes) > 0 {
+			s.appendLog(id, "Dùng lại kịch bản đã viết (resume)…")
+		} else {
+			script = FilmScriptPro{}
+		}
+	}
+	if len(script.Scenes) == 0 {
+		var err error
+		script, err = WriteFilmScript(ctx, s.llm, p.Topic, p.Seconds, p.Aspect)
+		if err != nil {
+			fail(err)
+			return
+		}
+		if raw, jerr := json.Marshal(script); jerr == nil {
+			_ = os.WriteFile(scriptPath, raw, 0o644)
+		}
 	}
 	s.appendLog(id, fmt.Sprintf("Kịch bản: %q — %d nhân vật, %d cảnh",
 		script.Title, len(script.Characters), len(script.Scenes)))
@@ -742,15 +897,27 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	// the job's aspect).
 	for i := range script.Characters {
 		c := &script.Characters[i]
+		if done := s.resumeAssetPath(id, portraitIdxBase+i, "portrait"); done != "" {
+			s.appendLog(id, fmt.Sprintf("Chân dung %q đã có — bỏ qua", c.Name))
+			c.Portrait = done
+			continue
+		}
 		pp := fmt.Sprintf("Cinematic character portrait, %s. Wardrobe: %s. "+
 			"Photorealistic, vertical 9:16, neutral expression, plain background, no text, no watermark.",
 			c.Appearance, c.Wardrobe)
 		out := filepath.Join(work, fmt.Sprintf("char-%02d.png", i))
+		pid := s.addAsset(id, portraitIdxBase+i, "portrait", pp)
+		s.setAsset(pid, StatusRunning, "")
 		s.appendLog(id, fmt.Sprintf("Vẽ chân dung nhân vật %q (khóa identity)…", c.Name))
 		if err := s.mg.GenerateImage(ctx, pp, nil, out); err != nil {
-			s.appendLog(id, fmt.Sprintf("Chân dung %q lỗi: %v", c.Name, err))
+			// P2-4: a broken portrait must show up failed on the storyboard,
+			// never vanish silently — scenes still render from the text
+			// description via charLocks.
+			s.appendLog(id, fmt.Sprintf("⚠ Chân dung %q lỗi: %v — cảnh vẫn quay bằng mô tả chữ", c.Name, err))
+			s.setAsset(pid, StatusFailed, "")
 			continue
 		}
+		s.setAsset(pid, StatusDone, out)
 		c.Portrait = out
 	}
 	charRefs := script.CharacterRefs()
@@ -761,10 +928,18 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 
 	var scenes []string
 	for i, sc := range script.Scenes {
+		// P0-3: resume — skip scenes that already rendered in a previous run.
+		if done := s.resumeAssetPath(id, i, "clip"); done != "" {
+			s.appendLog(id, fmt.Sprintf("Cảnh %d đã dựng xong — bỏ qua", i+1))
+			scenes = append(scenes, done)
+			s.setStatus(id, StatusRunning, 10+int(80*float64(i+1)/float64(len(script.Scenes))))
+			continue
+		}
 		aid := s.addAsset(id, i, "clip", sc.ImagePrompt)
 		mp4 := filepath.Join(work, fmt.Sprintf("scene%02d.mp4", i))
 		s.setAsset(aid, StatusRunning, "")
 		made := false
+		method := ""
 		// Keyframe: khóa nhân vật + khóa bối cảnh (địa điểm/thời gian/ánh sáng).
 		keyPrompt := sc.ImagePrompt + charLocks + "\n" + sc.SceneLockBlock() +
 			" Cinematic photorealistic, " + orient + ", no text, no watermark."
@@ -782,13 +957,19 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		vprompt := fmt.Sprintf("%s. Shots: %s. %s cinematic film, natural motion, no text.",
 			sc.ImagePrompt, strings.Join(camBits, "; "), orient) + charLocks + "\n" + sc.SceneLockBlock()
 		s.appendLog(id, fmt.Sprintf("Quay cảnh %d/%d…", i+1, len(script.Scenes)))
+		// P0-7: Veo 3 renders at most ~8s/clip — clampVeoSeconds enforces it
+		// inside GenerateVideo; the log states the real duration honestly.
 		if err := s.mg.GenerateVideo(ctx, vprompt, img, sc.Seconds, p.Aspect, mp4); err == nil {
 			made = true
+			method = "veo"
+			s.appendLog(id, fmt.Sprintf("Cảnh %d: quay bằng Veo (%ds)", i+1, min(sc.Seconds, veoMaxSeconds)))
 		} else {
-			s.appendLog(id, fmt.Sprintf("Veo lỗi (%v) — dùng keyframe + thoại", err))
+			s.appendLog(id, fmt.Sprintf("Cảnh %d: Veo lỗi (%v) — dùng ảnh + giọng đọc", i+1, err))
 		}
 		if !made {
-			// Thoại: nối các câu thoại (kèm lời dẫn nếu có), TTS một lần.
+			method = "anh-tts"
+			// Thoại: nối các câu thoại (kèm lời dẫn nếu có), TTS từng đoạn
+			// ≤800 ký tự rồi nối lại — không gọi 1 lần cho cả phim (P0-6).
 			var lines []string
 			for _, d := range sc.Dialogue {
 				lines = append(lines, d.Text)
@@ -799,9 +980,27 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 			}
 			wavPath := ""
 			if s.narrator != nil && strings.TrimSpace(speech) != "" {
-				if wav, err := s.narrator(ctx, speech); err == nil && len(wav) > 0 {
-					wavPath = filepath.Join(work, fmt.Sprintf("scene%02d.wav", i))
-					_ = os.WriteFile(wavPath, wav, 0o644)
+				var wavs [][]byte
+				ttsOK := true
+				for _, ch := range splitTextChunks(speech, maxTTSChunkChars) {
+					w, err := s.narrator(ctx, ch)
+					if err != nil || len(w) == 0 {
+						s.appendLog(id, fmt.Sprintf("Cảnh %d: TTS lỗi (%v) — dựng bản câm", i+1, err))
+						ttsOK = false
+						break
+					}
+					wavs = append(wavs, w)
+				}
+				if ttsOK {
+					if joined, jerr := tts.ConcatWavs(wavs); jerr == nil {
+						wavPath = filepath.Join(work, fmt.Sprintf("scene%02d.wav", i))
+						if werr := os.WriteFile(wavPath, joined, 0o644); werr != nil {
+							s.appendLog(id, fmt.Sprintf("Cảnh %d: không ghi được WAV: %v", i+1, werr))
+							wavPath = ""
+						}
+					} else {
+						s.appendLog(id, fmt.Sprintf("Cảnh %d: nối WAV lỗi (%v) — dựng bản câm", i+1, jerr))
+					}
 				}
 			}
 			dur := float64(sc.Seconds)
@@ -822,6 +1021,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 				continue
 			}
 		}
+		s.setAssetMethod(aid, method)
 		s.setAsset(aid, StatusDone, mp4)
 		scenes = append(scenes, mp4)
 		s.setStatus(id, StatusRunning, 10+int(80*float64(i+1)/float64(len(script.Scenes))))
@@ -832,7 +1032,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 	}
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
 	s.appendLog(id, "Nối các cảnh…")
-	if err := ConcatClips(ctx, scenes, final); err != nil {
+	if err := ConcatClips(ctx, scenes, p.Aspect, final); err != nil {
 		fail(err)
 		return
 	}

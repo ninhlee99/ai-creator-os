@@ -236,3 +236,46 @@ func TestAspectDims(t *testing.T) {
 		t.Fatal("veoAspect normalization wrong")
 	}
 }
+
+// P1-6: ConcatClips probes every clip and normalizes mismatched frames to
+// the job aspect instead of emitting a broken concat.
+func TestConcatClipsNormalizesAspect(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
+	ctx := context.Background()
+	dir := t.TempDir()
+	mk := func(name string, w, h int) string {
+		p := filepath.Join(dir, name)
+		cmd := exec.CommandContext(ctx, "ffmpeg", "-v", "error", "-y",
+			"-f", "lavfi", "-i", fmt.Sprintf("color=c=red:s=%dx%d:d=1:r=30", w, h),
+			"-pix_fmt", "yuv420p", p)
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("make %s: %v", name, err)
+		}
+		return p
+	}
+	vertical := mk("v.mp4", 1080, 1920)
+	horizontal := mk("h.mp4", 1920, 1080) // wrong frame for a 9:16 job
+	out := filepath.Join(dir, "final.mp4")
+	if err := ConcatClips(ctx, []string{vertical, horizontal}, "9:16", out); err != nil {
+		t.Fatalf("concat: %v", err)
+	}
+	w, h := ProbeDims(ctx, out)
+	if w != 1080 || h != 1920 {
+		t.Fatalf("final = %dx%d, want 1080x1920", w, h)
+	}
+}
+
+// P1-6: an unreadable clip fails loudly instead of a silent bad edit.
+func TestConcatClipsBadClip(t *testing.T) {
+	dir := t.TempDir()
+	bad := filepath.Join(dir, "bad.mp4")
+	if err := os.WriteFile(bad, []byte("not a video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := ConcatClips(context.Background(), []string{bad}, "9:16", filepath.Join(dir, "out.mp4"))
+	if err == nil {
+		t.Fatal("want error for unreadable clip, got nil")
+	}
+}
