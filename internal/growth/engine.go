@@ -228,17 +228,6 @@ func GeneratePlan(req PlanRequest) []PlanDraft {
 	return out
 }
 
-// CadencePerDay reports the nominal items/day a stage schedules (for
-// display in the profile header).
-func CadencePerDay(stage string, hasYouTube bool) float64 {
-	tk, sh, _ := dailyCadence(stage, CanaryDays, hasYouTube) // post-canary rate
-	n := float64(tk + sh)
-	if stage == StageScaling || stage == StageMonetizationPush {
-		n += 2.0 / 7 // long-form amortized
-	}
-	return n
-}
-
 // -------------------------------------------------------------- decisions
 
 // FormatInput is the evidence the kill rule reads for one format family.

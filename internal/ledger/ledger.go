@@ -69,6 +69,10 @@ func New(path string) (*Ledger, error) {
 			return nil, fmt.Errorf("pragma %q: %w", p, err)
 		}
 	}
+	if err := stampUserVersion(db, 1); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("pragma user_version: %w", err)
+	}
 	l := &Ledger{db: db}
 	if err := l.migrate(); err != nil {
 		db.Close()
@@ -973,4 +977,19 @@ func (l *Ledger) AllSettings() (map[string]string, error) {
 		out[k] = v
 	}
 	return out, rows.Err()
+}
+
+// stampUserVersion records the schema generation for future migrations
+// (R2-W7): a fresh database is marked with v, an existing stamp is never
+// overwritten here.
+func stampUserVersion(db *sql.DB, v int) error {
+	var cur int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&cur); err != nil {
+		return err
+	}
+	if cur == 0 {
+		_, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", v))
+		return err
+	}
+	return nil
 }

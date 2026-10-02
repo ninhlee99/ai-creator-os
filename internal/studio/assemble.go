@@ -241,16 +241,6 @@ func MuxMusic(ctx context.Context, videoPath, musicPath string, musicStart float
 		"-shortest", outPath)
 }
 
-// ExtractFrame grabs a still at seconds for the storyboard keyframe.
-func ExtractFrame(ctx context.Context, videoPath string, at float64, outPath string) error {
-	if dir := filepath.Dir(outPath); dir != "" {
-		_ = os.MkdirAll(dir, 0o755)
-	}
-	return ffmpegRun(ctx,
-		"-ss", fmt.Sprintf("%.2f", at), "-i", videoPath,
-		"-frames:v", "1", "-q:v", "3", outPath)
-}
-
 // ProbeWidth returns the video/image width in pixels (0 on failure).
 func ProbeWidth(ctx context.Context, path string) int {
 	cmd := exec.CommandContext(ctx, "ffprobe",
@@ -264,19 +254,4 @@ func ProbeWidth(ctx context.Context, path string) int {
 	var w int
 	fmt.Sscanf(strings.TrimSpace(out.String()), "%d", &w)
 	return w
-}
-
-// ProbeDuration returns media duration in seconds (0 on failure).
-func ProbeDuration(ctx context.Context, path string) float64 {
-	cmd := exec.CommandContext(ctx, "ffprobe",
-		"-v", "error", "-show_entries", "format=duration",
-		"-of", "csv=p=0", path)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return 0
-	}
-	var d float64
-	fmt.Sscanf(strings.TrimSpace(out.String()), "%f", &d)
-	return d
 }

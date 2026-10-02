@@ -76,12 +76,6 @@ func OnboardStepWithLLM(mgr *AccountManager, accountID int64, llm LLMClient) (st
 	return onboardStep(mgr, accountID, nil, llm)
 }
 
-// OnboardStepWithResearch is OnboardStep with a fully injected research
-// function (tests/rehearsal).
-func OnboardStepWithResearch(mgr *AccountManager, accountID int64, research ResearchFunc) (string, error) {
-	return onboardStep(mgr, accountID, research, nil)
-}
-
 func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, llm LLMClient) (string, error) {
 	acct, err := mgr.Get(accountID)
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
@@ -398,27 +397,6 @@ func (s *Server) handleGrowthPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	seeOther(w, r, base+"?ok="+url.QueryEscape(fmt.Sprintf("Đã sinh kế hoạch 30 ngày: %d vị trí nội dung.", n)))
-}
-
-// growthNum renders a metric value with Vietnamese dot thousands separators.
-func growthNum(f float64) string {
-	n := int64(f)
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	digits := strconv.FormatInt(n, 10)
-	var b strings.Builder
-	for i, c := range digits {
-		if i > 0 && (len(digits)-i)%3 == 0 {
-			b.WriteByte('.')
-		}
-		b.WriteRune(c)
-	}
-	if neg {
-		return "-" + b.String()
-	}
-	return b.String()
 }
 
 // growthTargetView is one ladder milestone with its live progress.

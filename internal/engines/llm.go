@@ -314,12 +314,6 @@ type GeminiProvider struct {
 	http    *http.Client
 }
 
-// NewGeminiProvider builds the tier-1 LLM provider. Empty key => Healthy()
-// is false and Complete fails fast without touching the network.
-func NewGeminiProvider(apiKey string) *GeminiProvider {
-	return NewGeminiProviderKeys([]string{apiKey})
-}
-
 // NewGeminiProviderKeys builds the tier-1 LLM provider with key rotation.
 func NewGeminiProviderKeys(keys []string) *GeminiProvider {
 	return &GeminiProvider{

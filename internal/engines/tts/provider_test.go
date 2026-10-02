@@ -139,7 +139,7 @@ func TestTTSChainMissingKeyFailsFast(t *testing.T) {
 }
 
 func TestGeminiTTSMissingKey(t *testing.T) {
-	g := NewGeminiTTSProvider("")
+	g := NewGeminiTTSProviderKeys([]string{""})
 	if g.Name() != "gemini" {
 		t.Fatalf("name = %q", g.Name())
 	}

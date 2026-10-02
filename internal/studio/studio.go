@@ -151,6 +151,10 @@ func New(dbPath string, llm LLM, mg MediaGen, narrator Narrator, outDir string) 
 			return nil, err
 		}
 	}
+	if err := stampUserVersion(db, 1); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("studio db: pragma user_version: %w", err)
+	}
 	s := &Studio{
 		db:       db,
 		llm:      llm,
@@ -845,4 +849,19 @@ func DownloadAudio(ctx context.Context, url, outPath string) error {
 		return err
 	}
 	return cerr
+}
+
+// stampUserVersion records the schema generation for future migrations
+// (R2-W7): a fresh database is marked with v, an existing stamp is never
+// overwritten here.
+func stampUserVersion(db *sql.DB, v int) error {
+	var cur int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&cur); err != nil {
+		return err
+	}
+	if cur == 0 {
+		_, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", v))
+		return err
+	}
+	return nil
 }

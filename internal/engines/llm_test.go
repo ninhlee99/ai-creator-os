@@ -240,7 +240,7 @@ func TestParseChatCompletion(t *testing.T) {
 }
 
 func TestGeminiMissingKey(t *testing.T) {
-	g := NewGeminiProvider("")
+	g := NewGeminiProviderKeys([]string{""})
 	if g.Healthy(context.Background()) {
 		t.Fatal("Healthy should be false without key")
 	}

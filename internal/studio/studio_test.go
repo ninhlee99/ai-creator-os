@@ -113,7 +113,7 @@ func TestGeminiMediaGenNoKeys(t *testing.T) {
 }
 
 func TestProbeDurationMissing(t *testing.T) {
-	if d := ProbeDuration(context.Background(), "/nonexistent/file.mp4"); d != 0 {
+	if d := probeDuration(context.Background(), "/nonexistent/file.mp4"); d != 0 {
 		t.Fatalf("want 0, got %f", d)
 	}
 }

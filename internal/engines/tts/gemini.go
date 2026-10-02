@@ -51,11 +51,6 @@ type GeminiTTSProvider struct {
 	http  *http.Client
 }
 
-// NewGeminiTTSProvider builds the tier-1 TTS provider (single key).
-func NewGeminiTTSProvider(apiKey string) *GeminiTTSProvider {
-	return NewGeminiTTSProviderKeys([]string{apiKey})
-}
-
 // NewGeminiTTSProviderKeys builds the tier-1 TTS provider with key rotation.
 func NewGeminiTTSProviderKeys(keys []string) *GeminiTTSProvider {
 	return &GeminiTTSProvider{
