@@ -560,6 +560,11 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
+		// Film Wave 1 (P0-3): jobs left "running" died with the previous
+		// process — mark them failed so the UI offers "Chạy tiếp".
+		if n := st.MarkInterruptedJobs(); n > 0 {
+			log.Printf("studio: %d job(s) interrupted by restart — marked failed (resume from Studio)", n)
+		}
 		defer func() {
 			if err := st.Close(); err != nil {
 				log.Printf("studio close: %v", err)

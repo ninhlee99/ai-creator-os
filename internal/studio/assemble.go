@@ -213,18 +213,64 @@ func beatBounceFilter(n int, secsPer float64, bpm int, aspect string) (string, f
 	return strings.TrimSuffix(sb.String(), ";"), total
 }
 
-// ConcatClips joins per-shot clips end to end (multi-shot mode).
-func ConcatClips(ctx context.Context, clips []string, outPath string) error {
+// ProbeDims returns a video/image's width×height in pixels (0,0 on failure).
+func ProbeDims(ctx context.Context, path string) (int, int) {
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "error", "-select_streams", "v:0",
+		"-show_entries", "stream=width,height", "-of", "csv=p=0", path)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0, 0
+	}
+	var w, h int
+	fmt.Sscanf(strings.TrimSpace(out.String()), "%d,%d", &w, &h)
+	return w, h
+}
+
+// ConcatClips joins per-shot clips end to end (multi-shot mode). Every clip
+// is probed and, when its frame differs from the job aspect, scaled+padded
+// to AspectDims(aspect) first — ffmpeg's concat demuxer would otherwise emit
+// a broken file. An unreadable clip fails loudly instead of a silent bad
+// edit (P1-6).
+func ConcatClips(ctx context.Context, clips []string, aspect, outPath string) error {
 	if len(clips) == 0 {
 		return fmt.Errorf("no clips")
 	}
+	w, h := AspectDims(aspect)
 	dir := filepath.Dir(outPath)
 	if dir != "" {
 		_ = os.MkdirAll(dir, 0o755)
 	}
+	var norm []string
+	var tmp []string
+	defer func() {
+		for _, t := range tmp {
+			_ = os.Remove(t)
+		}
+	}()
+	for _, c := range clips {
+		pw, ph := ProbeDims(ctx, c)
+		if pw == 0 || ph == 0 {
+			return fmt.Errorf("clip không đọc được (ffprobe thất bại): %s", filepath.Base(c))
+		}
+		if pw == w && ph == h {
+			norm = append(norm, c)
+			continue
+		}
+		nc := filepath.Join(dir, fmt.Sprintf("norm-%d-%s", len(tmp), filepath.Base(c)))
+		vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1",
+			w, h, w, h)
+		if err := ffmpegRun(ctx, "-v", "error", "-y", "-i", c,
+			"-vf", vf, "-c:a", "aac", nc); err != nil {
+			return fmt.Errorf("chuẩn hoá khổ %s về %dx%d: %w", filepath.Base(c), w, h, err)
+		}
+		tmp = append(tmp, nc)
+		norm = append(norm, nc)
+	}
 	lst := filepath.Join(dir, "concat.txt")
 	var sb strings.Builder
-	for _, c := range clips {
+	for _, c := range norm {
 		abs, err := filepath.Abs(c)
 		if err != nil {
 			return err

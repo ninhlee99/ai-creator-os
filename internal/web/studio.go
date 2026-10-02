@@ -85,7 +85,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "studio", s.ctx(
 			"Tab", tab,
 			"ContentJobs", contentJobs,
-			"Error", "Studio chưa được khởi tạo."))
+			"Error", "Studio chưa được khởi tạo.",
+			"FilmEst", filmEstimate(),
+			"FilmRate", filmRateValue()))
 		return
 	}
 	jobs := s.studioJobViews(s.Studio.ListJobs(30))
@@ -122,7 +124,33 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"MediaGenKeys", mgKeys,
+		"FilmEst", filmEstimate(),
+		"FilmRate", filmRateValue(),
 	))
+}
+
+// filmRateValue reads the Veo price from the environment. The default is
+// explicitly an unverified estimate until Ninh confirms real pricing.
+func filmRateValue() string {
+	rate := strings.TrimSpace(os.Getenv("VEO_USD_PER_SEC"))
+	if rate == "" {
+		return "0.05"
+	}
+	return rate
+}
+
+// filmEstimate renders the one-line cost/ETA estimate shown on the film
+// form before creation (Film Wave 1 / P0-4): scenes ≈ ceil(90s/8s) because
+// Veo renders ~8s per call, render ≈ 3 min/scene of Veo polling.
+func filmEstimate() string {
+	rateF, _ := strconv.ParseFloat(filmRateValue(), 64)
+	if rateF <= 0 {
+		rateF = 0.05
+	}
+	scenes := (90 + 7) / 8
+	cost := float64(scenes*8) * rateF
+	return fmt.Sprintf("≈ %d cảnh × 8s Veo × $%s/s ≈ $%.2f · render ~%d phút (ước tính chưa kiểm chứng)",
+		scenes, filmRateValue(), cost, scenes*3)
 }
 
 // topSound returns "Artist – Title" of the top-ranked trending sound.
@@ -247,15 +275,36 @@ func (s *Server) handleStudioFilmCreate(w http.ResponseWriter, r *http.Request) 
 	}
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
-		http.Redirect(w, r, "/studio", http.StatusSeeOther)
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Nhập chủ đề phim trước đã"))
 		return
 	}
 	seconds, _ := strconv.Atoi(r.PostFormValue("seconds"))
-	if _, err := s.Studio.CreateFilmJob(studio.FilmParams{Topic: topic, Seconds: seconds}); err != nil {
+	// P1-7: the manual film form now picks the delivery frame (the growth
+	// automation path already set it since R2-W5).
+	aspect := r.PostFormValue("aspect")
+	if aspect != "16:9" {
+		aspect = "9:16"
+	}
+	if _, err := s.Studio.CreateFilmJob(studio.FilmParams{Topic: topic, Seconds: seconds, Aspect: aspect}); err != nil {
 		s.fail(w, err, "create film job")
 		return
 	}
 	http.Redirect(w, r, "/studio/jobs", http.StatusSeeOther)
+}
+
+// handleStudioJobRerun resumes a failed/interrupted film job from its
+// unfinished scenes (Film Wave 1 / P0-3).
+func (s *Server) handleStudioJobRerun(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.NotFound(w, r)
+		return
+	}
+	id := r.PathValue("id")
+	if err := s.Studio.RerunFilmJob(id); err != nil {
+		seeOther(w, r, "/studio/jobs?err="+url.QueryEscape(err.Error()))
+		return
+	}
+	seeOther(w, r, "/studio/jobs?ok="+url.QueryEscape("Đang chạy tiếp job phim"))
 }
 
 // handleStudioJobs serves the job list: HTML page for deep links
@@ -277,14 +326,29 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 // studioAssetView projects a storyboard asset for JSON.
 // Label/Class are server-rendered so clients never redefine them (R2-W3).
 type studioAssetView struct {
-	ID      int64  `json:"id"`
-	Idx     int    `json:"idx"`
-	Kind    string `json:"kind"`
-	Status  string `json:"status"`
-	Prompt  string `json:"prompt"`
-	Preview string `json:"preview"`
-	Label   string `json:"label"`
-	Class   string `json:"class"`
+	ID          int64  `json:"id"`
+	Idx         int    `json:"idx"`
+	Kind        string `json:"kind"`
+	Status      string `json:"status"`
+	Prompt      string `json:"prompt"`
+	Preview     string `json:"preview"`
+	Label       string `json:"label"`
+	Class       string `json:"class"`
+	Method      string `json:"method"`       // veo | anh-tts | ""
+	MethodLabel string `json:"method_label"` // server-rendered badge text
+}
+
+// filmMethodLabel renders the honest per-scene render method for the
+// storyboard (Film Wave 1 / P0-7): never overstates Veo usage.
+func filmMethodLabel(m string) string {
+	switch m {
+	case "veo":
+		return "🎬 Veo"
+	case "anh-tts":
+		return "🖼 Ảnh + giọng đọc"
+	default:
+		return ""
+	}
 }
 
 // handleStudioJobDetail returns one job + its storyboard assets as JSON.
@@ -303,7 +367,8 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	views := make([]studioAssetView, 0, len(assets))
 	for _, a := range assets {
 		v := studioAssetView{ID: a.ID, Idx: a.Idx, Kind: a.Kind, Status: a.Status, Prompt: a.Prompt,
-			Label: statusLabel(a.Status), Class: statusClass(a.Status)}
+			Label: statusLabel(a.Status), Class: statusClass(a.Status),
+			Method: a.Method, MethodLabel: filmMethodLabel(a.Method)}
 		if a.Status == "done" && a.Path != "" {
 			v.Preview = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
 		}

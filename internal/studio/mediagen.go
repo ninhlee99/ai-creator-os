@@ -327,6 +327,23 @@ type veoPredictRequest struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
+// veoMaxSeconds is the longest clip Veo 3 renders in one call (~8s).
+// Requesting more is silently accepted by the API but the returned clip is
+// still ~8s, so we clamp up front and log the real duration (P0-7).
+const veoMaxSeconds = 8
+
+// clampVeoSeconds bounds a requested scene duration to what Veo 3 actually
+// produces: below 4s the API rejects, above 8s it silently returns ~8s.
+func clampVeoSeconds(seconds int) int {
+	if seconds < 4 {
+		return 8
+	}
+	if seconds > veoMaxSeconds {
+		return veoMaxSeconds
+	}
+	return seconds
+}
+
 // veoAspect normalizes a job aspect to a Veo API aspectRatio value.
 // Veo only accepts "9:16"/"16:9"; anything else falls back to vertical.
 func veoAspect(aspect string) string {
@@ -344,9 +361,7 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
 	}
-	if seconds < 4 {
-		seconds = 8
-	}
+	seconds = clampVeoSeconds(seconds)
 	inst := veoInstance{Prompt: prompt}
 	if firstFrame != "" {
 		b, err := os.ReadFile(firstFrame)
