@@ -87,6 +87,125 @@
 {{else}}
 
 <div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade
+    {{if .AT.KeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
+  </h2>
+  {{if not .AT.KeySet}}
+  <p class="subtitle">Nhập access_key ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để tải chiến dịch và tạo link.</p>
+  {{else}}
+  <form method="post" action="/at/campaigns/sync" style="margin-bottom:0.75rem">
+    <button type="submit" class="btn btn-secondary btn-sm">Tải chiến dịch</button>
+    <span class="hint">đồng bộ từ Accesstrade API vào cache</span>
+  </form>
+  {{if .AT.Campaigns}}
+  <table>
+    <tr><th>Chiến dịch</th><th>Duyệt</th><th>Hoa hồng</th><th></th></tr>
+    {{range .AT.Campaigns}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{if eq .Approval "successful"}}<span class="badge badge-ok">Đã duyệt</span>{{else}}<span class="badge badge-warn">{{.ApprovalLabel}}</span>{{end}}</td>
+      <td>{{.CommissionLabel}}</td>
+      <td>{{if eq .Approval "successful"}}<button type="button" class="btn btn-primary btn-sm" onclick="atLinkModal('{{.ID}}','{{.Name}}')">Tạo link</button>{{end}}</td>
+    </tr>
+    {{end}}
+  </table>
+  {{else}}
+  <p class="empty">Chưa có chiến dịch nào — bấm “Tải chiến dịch”.</p>
+  {{end}}
+  {{end}}
+</div>
+
+{{if .AT.Links}}
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Link đã tạo</h2>
+  <table>
+    <tr><th>Sản phẩm</th><th>Chiến dịch</th><th>Tracking link</th><th></th></tr>
+    {{range .AT.Links}}
+    <tr>
+      <td class="hint">{{.ProductURL}}</td>
+      <td>{{if .Campaign}}{{.Campaign}}{{else}}{{.CampaignID}}{{end}}</td>
+      <td><code class="hint">{{.TrackingURL}}</code>{{if .ShortURL}}<br><code class="hint">{{.ShortURL}}</code>{{end}}</td>
+      <td><button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('{{.TrackingURL}}').then(function(){window.showToast('Đã sao chép link.',true)})">Sao chép</button></td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+{{end}}
+
+<div class="modal-backdrop" id="at-link-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:26rem">
+    <h3 style="margin-top:0">Tạo tracking link</h3>
+    <p class="subtitle" id="at-link-campaign"></p>
+    <div class="field">
+      <label>URL sản phẩm *</label>
+      <input type="url" id="at-link-url" placeholder="https://shopee.vn/..." required>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>utm_source</label><input type="text" id="at-link-utm-source" placeholder="tiktok"></div>
+      <div class="field"><label>utm_medium</label><input type="text" id="at-link-utm-medium" placeholder="video"></div>
+      <div class="field"><label>sub1 (kênh)</label><input type="text" id="at-link-sub1" placeholder="vd: kenh1"></div>
+      <div class="field"><label>sub2</label><input type="text" id="at-link-sub2"></div>
+    </div>
+    <div id="at-link-result" class="hint" style="margin:0.5rem 0" hidden></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="at-link-cancel">Hủy</button>
+      <button type="button" class="btn btn-primary" id="at-link-submit">Tạo link</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('at-link-modal');
+  var campaignId = '';
+  window.atLinkModal = function (id, name) {
+    campaignId = id;
+    document.getElementById('at-link-campaign').textContent = name;
+    document.getElementById('at-link-url').value = '';
+    var r = document.getElementById('at-link-result');
+    r.hidden = true; r.innerHTML = '';
+    modal.hidden = false;
+  };
+  document.getElementById('at-link-cancel').addEventListener('click', function () { modal.hidden = true; });
+  modal.addEventListener('click', function (ev) { if (ev.target === modal) modal.hidden = true; });
+  document.getElementById('at-link-submit').addEventListener('click', function () {
+    var u = document.getElementById('at-link-url').value.trim();
+    if (!u) { window.showToast('Nhập URL sản phẩm.', false); return; }
+    var btn = this; btn.disabled = true;
+    fetch('/at/links/create', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        product_url: u, campaign_id: campaignId,
+        utm_source: document.getElementById('at-link-utm-source').value.trim(),
+        utm_medium: document.getElementById('at-link-utm-medium').value.trim(),
+        sub1: document.getElementById('at-link-sub1').value.trim(),
+        sub2: document.getElementById('at-link-sub2').value.trim()
+      })
+    })
+      .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
+      .then(function (x) {
+        btn.disabled = false;
+        var r = document.getElementById('at-link-result');
+        r.hidden = false;
+        if (x.d && x.d.ok) {
+          var link = x.d.tracking_link;
+          r.innerHTML = 'Link: <code></code> <button type="button" class="btn btn-secondary btn-sm" id="at-link-copy">Sao chép</button>' +
+            (x.d.short_link ? '<br>Rút gọn: <code>' + x.d.short_link + '</code>' : '');
+          r.querySelector('code').textContent = link;
+          document.getElementById('at-link-copy').addEventListener('click', function () {
+            navigator.clipboard.writeText(link).then(function () { window.showToast('Đã sao chép link.', true); });
+          });
+          window.showToast('Đã tạo link.', true);
+        } else {
+          r.textContent = (x.d && x.d.error) || ('Lỗi HTTP ' + x.s);
+          window.showToast(r.textContent, false);
+        }
+      })
+      .catch(function () { btn.disabled = false; window.showToast('Không gọi được server.', false); });
+  });
+})();
+</script>
+
+<div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tìm sản phẩm</h2>
   <form method="post" action="/products/search">
     <div class="grid2">

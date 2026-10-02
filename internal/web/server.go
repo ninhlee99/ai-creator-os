@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
@@ -69,9 +70,13 @@ type Server struct {
 	Autopilot        *studio.Autopilot
 	Products         *products.Store
 	ProductProviders []products.Provider
-	VieNeu           VieNeuCtl
-	Health           map[string]HealthChecker
-	Jobs             *JobStore
+	// AT is the Accesstrade cache store (campaigns + created links).
+	// Injected by cmd wiring; nil when its DB could not be opened —
+	// handlers then fail closed with an honest message.
+	AT     *accesstrade.Store
+	VieNeu VieNeuCtl
+	Health map[string]HealthChecker
+	Jobs   *JobStore
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
@@ -441,6 +446,7 @@ var pageFiles = map[string]string{
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
 	"settings_model_local":  "settings/model-local.html",
 	"settings_an_toan":      "settings/an-toan.html",
+	"settings_accesstrade":  "settings/accesstrade.html",
 	"onboard":               "onboard.html",
 }
 

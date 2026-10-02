@@ -34,6 +34,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
@@ -461,6 +462,20 @@ func main() {
 			}
 		}()
 		log.Printf("studio: ready (mediagen=%s keys=%d)", studioMG.Name(), studioMG.KeyCount())
+	}
+
+	// -- 6b. Accesstrade (Đợt B): cache chiến dịch + link đã tạo.
+	// Fail-soft: mở DB lỗi thì srv.AT = nil, UI fail-closed trung thực.
+	if atStore, err := accesstrade.NewStore(filepath.Join(*dataDir, "accesstrade.db")); err != nil {
+		log.Printf("accesstrade: init failed: %v (Accesstrade disabled)", err)
+	} else {
+		defer func() {
+			if err := atStore.Close(); err != nil {
+				log.Printf("accesstrade close: %v", err)
+			}
+		}()
+		srv.AT = atStore
+		log.Printf("accesstrade: ready")
 	}
 
 	// -- 6c. affiliate autopilot: theme -> high-commission product -> video --
