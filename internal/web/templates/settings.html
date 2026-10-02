@@ -2,8 +2,19 @@
 {{define "content"}}
 <h1>Cài đặt</h1>
 <p class="subtitle">Biến môi trường, RTMP, chế độ dry-run và kill switch. Giá trị secret không bao giờ hiển thị ở đây.</p>
+<nav class="subnav">
+  <a href="#he-thong">Hệ thống</a>
+  <a href="#bien-moi-truong">Biến môi trường</a>
+  <a href="#rtmp">RTMP</a>
+  <a href="#nhan-vat">Nhân vật AI</a>
+  <a href="#provider-tts">Provider TTS</a>
+  <a href="#provider-llm">Provider LLM</a>
+  <a href="#provider-avatar">Provider Avatar</a>
+  <a href="#model-local">Model local</a>
+  <a href="#an-toan">⚠️ An toàn</a>
+</nav>
 
-<h2>Trạng thái hệ thống</h2>
+<h2 id="he-thong">Trạng thái hệ thống</h2>
 <div class="cards">
   <div class="card">
     <div class="num">{{if .DryRun}}<span class="badge badge-paused">DRY-RUN</span>{{else}}<span class="badge badge-ok">LIVE</span>{{end}}</div>
@@ -19,7 +30,7 @@
   </div>
 </div>
 
-<h2>Biến môi trường</h2>
+<h2 id="bien-moi-truong">Biến môi trường</h2>
 <table>
   <tr><th>Biến</th><th>Trạng thái</th></tr>
   {{range .EnvStatus}}
@@ -30,7 +41,7 @@
   {{end}}
 </table>
 
-<h2>RTMP theo tài khoản</h2>
+<h2 id="rtmp">RTMP theo tài khoản</h2>
 {{if .RtmpRows}}
 <table>
   <tr><th>Tài khoản</th><th>Key ref</th><th>Key khả dụng</th></tr>
@@ -46,7 +57,7 @@
 <p class="empty">Chưa có tài khoản nào.</p>
 {{end}}
 
-<h2>Nhân vật AI</h2>
+<h2 id="nhan-vat">Nhân vật AI</h2>
 <p class="subtitle">Mỗi nhân vật là một khuôn mặt khóa identity (ảnh + seed): mọi khung hình của mọi clip đều phải là đúng khuôn mặt này. Upload ảnh chân dung rõ mặt, chính diện.</p>
 <div class="form-card" style="max-width:none">
   <div class="char-grid" id="char-grid">
@@ -100,7 +111,7 @@
   </form>
 </div>
 
-<h2>Chuỗi provider TTS</h2>
+<h2 id="provider-tts">Chuỗi provider TTS</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình được lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 <div class="form-card" style="max-width:none">
 <form method="post" action="/settings/chain?name=tts">
@@ -141,7 +152,7 @@
             <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
           </div>
           <div class="key-add" hidden>
-            <input type="text" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+            <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
             <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
             <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
           </div>
@@ -175,7 +186,7 @@
 </form>
 </div>
 
-<h2>Chuỗi provider LLM</h2>
+<h2 id="provider-llm">Chuỗi provider LLM</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình được lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 <div class="form-card" style="max-width:none">
 <form method="post" action="/settings/chain?name=llm">
@@ -216,7 +227,7 @@
             <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
           </div>
           <div class="key-add" hidden>
-            <input type="text" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+            <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
             <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
             <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
           </div>
@@ -250,7 +261,7 @@
 </form>
 </div>
 
-<h2>Chuỗi provider Avatar</h2>
+<h2 id="provider-avatar">Chuỗi provider Avatar</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. {{if .AvatarRealtime}}<span class="badge badge-ok">Realtime: có tier hỗ trợ stream</span>{{else}}<span class="badge badge-no">Realtime: chưa có tier nào</span>{{end}}</p>
 <div class="form-card" style="max-width:none">
 <form method="post" action="/settings/chain?name=avatar">
@@ -297,7 +308,7 @@
 </form>
 </div>
 
-<h2>VieNeu sidecar</h2>
+<h2 id="model-local">VieNeu sidecar</h2>
 <div class="form-card" style="max-width:none">
 {{if .VieNeu.Connected}}
   <dl class="kv">
@@ -330,7 +341,7 @@
 {{end}}
 </div>
 
-<h2>Avatar sidecar</h2>
+<h2 id="avatar-sidecar">Avatar sidecar</h2>
 <p class="subtitle">Quản lý model avatar local (mặc định: MuseTalk v1.5 bản Apple Silicon). aicos khởi động/stop sidecar theo nhu cầu và không cho render khi model chưa sẵn sàng — không cần can thiệp thủ công.</p>
 <div class="form-card" style="max-width:none">
   <div class="toolbar">
@@ -348,8 +359,9 @@
   </div>
 </div>
 
-<h2>Chế độ dry-run</h2>
-<div class="form-card">
+<h2 id="an-toan">⚠️ Vùng an toàn — dry-run &amp; kill switch</h2>
+<div class="form-card danger-zone">
+<h3 style="margin-top:0">Chế độ dry-run</h3>
 <form method="post" action="/settings/dryrun">
   <div class="field">
     <label>Chế độ chạy</label>
@@ -360,10 +372,8 @@
   </div>
   <button type="submit" class="btn btn-secondary">Lưu</button>
 </form>
-</div>
 
-<h2>Kill switch</h2>
-<div class="form-card">
+<h3>Kill switch</h3>
   <p>Dừng toàn bộ hoạt động tự động ngay lập tức. Dùng khi phát hiện sự cố.</p>
   {{if .Kill}}
   <form method="post" action="/unkill">

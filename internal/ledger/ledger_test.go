@@ -573,3 +573,44 @@ func applySchemaWithoutSettings(t *testing.T, db *sql.DB) error {
 	}
 	return nil
 }
+
+func TestSessionsFeatured(t *testing.T) {
+	l := newTestLedger(t)
+	pid, err := l.AddProduct("pid-1", "Túi kem quilted cao cấp chính hãng", 500000, 0.18, "fashion")
+	if err != nil {
+		t.Fatalf("AddProduct: %v", err)
+	}
+	other, err := l.AddProduct("pid-2", "Ví da mini", 200000, 0.2, "fashion")
+	if err != nil {
+		t.Fatalf("AddProduct: %v", err)
+	}
+	s1, err := l.StartSession(nil)
+	if err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+	s2, err := l.StartSession(nil)
+	if err != nil {
+		t.Fatalf("StartSession: %v", err)
+	}
+	// Exact product_moment events in two sessions + one duplicate in s1.
+	for _, sid := range []int64{s1, s1, s2} {
+		if err := l.LogEvent(sid, "product_moment", map[string]any{"product_id": pid, "product_title": "Túi kem quilted cao cấp chính hãng"}); err != nil {
+			t.Fatalf("LogEvent: %v", err)
+		}
+	}
+	// Legacy segment event that only embeds the title.
+	if err := l.LogEvent(s1, "segment", map[string]any{"script": "Giới thiệu Túi kem quilted cao cấp hôm nay"}); err != nil {
+		t.Fatalf("LogEvent legacy: %v", err)
+	}
+	// A different product must not be counted.
+	if err := l.LogEvent(s2, "product_moment", map[string]any{"product_id": other}); err != nil {
+		t.Fatalf("LogEvent other: %v", err)
+	}
+	n, err := l.SessionsFeatured(pid)
+	if err != nil {
+		t.Fatalf("SessionsFeatured: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("SessionsFeatured = %d, want 2 distinct sessions", n)
+	}
+}

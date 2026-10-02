@@ -10,10 +10,9 @@
 //
 // Semantic difference from Python: the original review_products counted
 // "sessions featured" with a raw SQL query (live_events payload LIKE
-// %title[:20]%). The Go ledger does not expose raw queries, so the
-// sessions-based kill trigger is disabled (sessionsFeatured = 0) and only
-// the views-based trigger applies. Kill/scale decisions are still recorded
-// in the ledger.
+// %title[:20]%). The Go ledger now exposes SessionsFeatured (exact
+// product_id match on product_moment events, title-prefix fallback for
+// legacy rows), so both kill triggers apply again.
 package analyst
 
 import (
@@ -78,14 +77,16 @@ func ReviewProducts(cfg config.Config, l *ledger.Ledger) (map[string][]string, e
 		if err != nil {
 			return nil, err
 		}
-		// sessionsFeatured: the Go ledger exposes no raw SQL, so the
-		// original LIKE-based session count is unavailable (see package
-		// doc). Pass 0 — only the views trigger applies.
-		kv := governance.ShouldKillProduct(cfg, stats, 0)
+		sessionsFeatured, err := l.SessionsFeatured(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		kv := governance.ShouldKillProduct(cfg, stats, sessionsFeatured)
 		target := strconv.FormatInt(p.ID, 10)
 		inputs := map[string]any{
 			"orders": stats.Orders, "revenue": stats.Revenue,
 			"commission": stats.Commission, "views": stats.Views,
+			"sessions_featured": sessionsFeatured,
 		}
 		if kv.Allowed {
 			if err := l.SetProductStatus(p.ID, "killed"); err != nil {

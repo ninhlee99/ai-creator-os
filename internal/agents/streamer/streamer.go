@@ -129,6 +129,7 @@ func RunLive(ctx context.Context, cfg config.Config, l *ledger.Ledger,
 			break
 		}
 		featured := "chưa có"
+		var featuredID int64
 		if seg.Kind == "product_moment" {
 			products, err := l.ShelfProducts(3)
 			if err != nil {
@@ -136,6 +137,7 @@ func RunLive(ctx context.Context, cfg config.Config, l *ledger.Ledger,
 			}
 			if len(products) > 0 {
 				featured = products[0].Title
+				featuredID = products[0].ID
 			}
 		}
 		script, err := DirectSegment(ctx, llm, seg.Kind,
@@ -163,6 +165,10 @@ func RunLive(ctx context.Context, cfg config.Config, l *ledger.Ledger,
 		}
 		_ = l.LogEvent(sid, "segment", map[string]any{
 			"kind": seg.Kind, "script": truncateRunes(script, 200)})
+		if seg.Kind == "product_moment" && featuredID != 0 {
+			_ = l.LogEvent(sid, "product_moment", map[string]any{
+				"product_id": featuredID, "product_title": featured})
+		}
 		elapsed += seg.Minutes
 		// Paced in real time; in rehearsal (dry-run) this is 1s per segment.
 		pace := time.Duration(seg.Minutes) * 60 * time.Second

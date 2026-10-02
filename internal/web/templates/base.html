@@ -17,15 +17,18 @@
   <aside class="sidebar">
     <div class="brand">AI Creator OS</div>
     <nav>
+      <div class="nav-group">Vận hành</div>
       <a href="/">Trang chủ</a>
       <a href="/accounts">Tài khoản</a>
       <a href="/schedule">Lịch live</a>
+      <a href="/analytics">Phân tích</a>
+      <div class="nav-group">Sản xuất</div>
       <a href="/content">Sản xuất video</a>
       <a href="/studio">Studio AI 🎬</a>
-      <a href="/publishers">Đa nền tảng</a>
-      <a href="/shop">Shop Affiliate</a>
       <a href="/products">Tìm sản phẩm</a>
-      <a href="/analytics">Phân tích</a>
+      <a href="/shop">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="/publishers">Đa nền tảng</a>
       <a href="/settings">Cài đặt</a>
     </nav>
   </aside>
@@ -53,5 +56,15 @@
     </main>
   </div>
 </div>
+<script>
+// Tô đậm mục sidebar đang mở (khớp đường dẫn hiện tại).
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+</script>
 </body>
 </html>{{end}}

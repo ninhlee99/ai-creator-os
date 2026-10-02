@@ -281,4 +281,8 @@ Video demo thật sẽ được quay lại sau khi chạy rehearsal trên máy b
 | Game agent, music pipeline | ⏳ Phase 2–3 |
 | Xóa code Python cũ (giữ làm tham chiếu) | ⏳ Sau khi test parity trên Mac |
 
-📄 Tài liệu chi tiết: `docs/MODEL.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/POLICY_AND_SAFETY.md`
+📄 Tài liệu chi tiết: `docs/MODEL.md` · `docs/ARCHITECTURE.md` · `docs/AGENT_TEAM.md` · `docs/UI_UX_BLUEPRINT.md` · `docs/OPERATIONS.md` · `docs/POLICY_AND_SAFETY.md`
+
+![Kiến trúc Agent Team](docs/assets/architecture-agent-team.svg)
+
+*Mỗi nhiệm vụ mới = một bản sao Agent Team chạy song song — xem mô phỏng trao đổi giữa các agent tại `docs/assets/agent-team-workflow.svg` và thiết kế đầy đủ tại `docs/AGENT_TEAM.md`.*

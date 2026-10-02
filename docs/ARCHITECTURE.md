@@ -9,6 +9,15 @@ livestreams on staggered schedules, earn LIVE gifts, sell affiliate products
 via short videos, and release AI-composed music — with the human only
 flipping the master switch and watching the dashboard.
 
+> **2026-10-02 — Kiến trúc Agent Team v2:** hệ thống được tổ chức lại thành
+> một đội agent chuyên sâu (Orchestrator + Hunter/Director/Producer/QC/
+> Publisher/Analyst/Streamer), mỗi nhiệm vụ mới nhân bản cả đội thành một
+> TeamInstance song song, cô lập theo taskID. Thiết kế đầy đủ:
+> [`docs/AGENT_TEAM.md`](AGENT_TEAM.md) · Sơ đồ:
+> [`docs/assets/architecture-agent-team.svg`](assets/architecture-agent-team.svg) ·
+> Mô phỏng trao đổi: [`docs/assets/agent-team-workflow.svg`](assets/agent-team-workflow.svg) ·
+> UI/UX: [`docs/UI_UX_BLUEPRINT.md`](UI_UX_BLUEPRINT.md).
+
 ## 1. Design principles
 
 1. **One money loop, per account.** Everything serves: discover → attract →
@@ -218,9 +227,9 @@ A tiny supervisor, not a media framework:
   builds take seconds not minutes; `net/http` + `html/template` are in the
   standard library.
 
-**The codebase is now 100% Go** (v0.5-go: 75 files, 16 packages,
-176 tests green). The old Python sources are kept untouched as reference
-until feature parity is signed off on the owner's Mac, then removed.
+**The codebase is now 100% Go.** Số liệu kiểm chứng lại ngày 2026-10-02:
+119 file Go, 25.741 dòng, 43 file test / 250 test function, 20 package —
+`go test ./...` xanh toàn bộ (xem §12 về những gì test chưa bao phủ).
 
 **Not used:** Node.js (RAM-hungry), Kubernetes/Java/heavy frontend builds
 (ops cost with zero revenue link). Local model sidecars (VieNeu-TTS,
@@ -234,3 +243,48 @@ not our code.
 - No photorealistic avatar (see §5).
 - No autonomous spending beyond configured caps.
 - No cross-account interaction, ever (guardrail, not a missing feature).
+
+## 12. Known gaps & perfection criteria (audit 2026-10-02)
+
+"Hoàn hảo" được định nghĩa bằng tiêu chí kiểm chứng được dưới đây — không
+phải trạng thái vô hạn. Audit phân hai loại:
+
+### 12.1 Sửa được trong VM (không cần Mac/tài khoản của Ninh)
+
+| # | Khoảng trống | Trạng thái |
+|---|---|---|
+| 1 | Analyst mất luật kill theo phiên live (`sessionsFeatured` hard-code 0) | **Đã sửa 2026-10-02:** `Ledger.SessionsFeatured` (khớp `product_id` chính xác + fallback tựa đề 20 ký tự cho dữ liệu cũ), Streamer ghi event `product_moment` kèm `product_id`, có test |
+| 2 | Dashboard bind mọi interface `:8080`, không auth | **Đã giảm rủi ro 2026-10-02:** mặc định `127.0.0.1:8080` (localhost); mở LAN phải chỉ định `-addr :8080` có chủ đích. Auth đầy đủ: việc tiếp theo |
+| 3 | Daemon production chưa nối `OnStartLive`/`OnRunAgent` | Chưa nối — **cố ý chưa nối mù:** nối thẳng sẽ cho agent chạy mỗi 60s kể cả dry-run. Cần cổng cadence + dry-run gate trước (việc tiếp theo, kèm test) |
+| 4 | Stream engine phát test pattern (`testsrc` + sine 440Hz), chưa phát avatar thật | Chưa sửa — cần thiết kế pipe frame/audio vào FFmpeg + benchmark M1 |
+| 5 | `affiliatehunter` (ADB) chưa cắm vào products/UI | Chưa sửa — cần flow scan → store + nút UI; chạy thật cần Android của Ninh cắm USB vào Mac |
+| 6 | Avatar paid tier (HeyGen/D-ID) còn khung "wiring pending" | Chưa sửa — cần API key thật để test hợp đồng REST |
+| 7 | QC chưa thành agent độc lập chấm mù | Đã có thiết kế ở `AGENT_TEAM.md` §5; code là việc tiếp theo trên hạt nhân Studio job |
+| 8 | Telegram alert + nightly backup được docs hứa nhưng chưa có code | Chưa sửa — phải hoặc làm, hoặc sửa docs; không để docs nói quá code |
+| 9 | Đường content agent còn dùng ảnh tĩnh + zoompan (mâu thuẫn luật cấm slideshow cho phim) | Chưa sửa — cần chốt: chỉ dùng cho B-roll, phim đi đường Veo/Studio |
+| 10 | UI/UX Settings trộn ~8 vấn đề; autopilot xé 3 nơi | Đã có bản thiết kế lại `UI_UX_BLUEPRINT.md`; đã làm các bước template thuần của đợt 1 (ô key `type=password`, vùng nguy hiểm viền đỏ, sidebar nhóm + active, mục lục Settings). Tách trang là các commit tiếp theo |
+
+### 12.2 Cần Mac / tài khoản / quyết định của Ninh (không ai làm thay được)
+
+1. E2E affiliate trên Mac thật: OAuth TikTok từng account, gắn giỏ hàng thủ
+   công trong app (API không cho phép), đăng draft → public.
+2. Benchmark avatar MuseTalk trên M1 Pro 32GB: fps/RAM thật (số 2.5–4fps
+   hiện tại là ước tính), tải weights qua `AVATAR_MODEL_URL`.
+3. Veo: Google Cloud project bật billing trên Gemini key; thiếu thì Studio
+   tự rơi về photo-list.
+4. RTMP key + quyền LIVE từng account, Gemini keys, FB Page ID (Facebook/
+   YouTube Ninh đã chủ động hoãn).
+5. Săn sản phẩm tự động: TikTok Shop API cần Partner Center + duyệt app
+   (Ninh đã từ chối vì phức tạp) — đường thay thế ADB cần chiếc Android duy
+   nhất của Ninh cắm vào Mac khi máy rảnh.
+6. Nghiệm thu mắt người: bản dựng producer (mẫu chưa đủ đẹp, còn "AI", chưa
+   nét) vẫn chờ verdict của Ninh từ 2026-10-01.
+
+### 12.3 Tiêu chí được gọi là "xong" cho từng tầng
+
+- **Logic:** `go test ./...` xanh + test mới cho mọi luật tiền/an toàn.
+- **Nối dây:** daemon → agent → stream chạy end-to-end ở chế độ dry-run trên
+  Mac, có event log để UI vẽ lại quá trình.
+- **Thật:** một account live thật + một video affiliate đăng thật + một
+  khoản hoa hồng đối soát vào Ledger từ bằng chứng nhà cung cấp.
+- **Chất lượng:** Ninh duyệt mắt người trên sản phẩm thật, không qua trung gian.
