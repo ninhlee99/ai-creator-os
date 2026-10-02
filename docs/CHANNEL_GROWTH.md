@@ -590,3 +590,89 @@ trail như luật tiền); metric chỉ lấy từ API nhà cung cấp — **kh�
    trong config, có test như luật tiền).
 3. Pipeline một-ý-tưởng-nhiều-biến-t
 ...[truncated 6241 chars]
+
+---
+
+## 10. Trạng thái triển khai (cập nhật 2026-10-02 — MVP đã code xong, chưa commit)
+
+Package `internal/growth` + trang `/growth`. Mọi mục dưới đây đều có test tự
+động kèm theo (`go test ./internal/growth/`, 23 test).
+
+### ĐÃ LÀM (MVP)
+
+1. **Schema** (`internal/growth/store.go`, DDL theo tiền lệ studio.go — tự tạo
+   bảng lúc khởi tạo store, không sửa `schema.sql`): `growth_profiles`,
+   `growth_targets`, `content_plans`, `content_plan_items`, `format_stats`,
+   `metric_snapshots` (tên trong code; doc gọi là
+   `account_metric_snapshots`), `video_metric_snapshots`, `growth_alerts`.
+   Hồ sơ + thang mốc tự sinh khi gặp tài khoản mới (zero-touch bootstrap):
+   TikTok 100/1.000/10.000 follower; YouTube 100/500/1.000 sub + 4.000 giờ
+   xem 12 tháng HOẶC 10 triệu view Shorts/90 ngày, mốc đầy đủ gắn hạn YPP
+   **2027-02-01**.
+2. **Trang `/growth`** (nhóm Vận hành): thẻ tổng theo dõi/lượt xem, đếm ngược
+   tới hạn YPP, bảng từng tài khoản (badge giai đoạn, progress tới mốc kế,
+   trạng thái kết nối YouTube), cảnh báo kèm hành động hệ thống đã làm, danh
+   sách plan sắp tới toàn mạng, nút "Đồng bộ số liệu + chạy vòng quyết định"
+   và nút sinh plan 30 ngày từng tài khoản. Account detail có khối Phát
+   triển kênh (thang mốc + progress, plan sắp tới, hiệu quả theo format,
+   cảnh báo, nút Replan). Empty-state đầy đủ, nhãn tiếng Việt, đúng CSS
+   variables hai theme.
+3. **Plan engine thuần logic** (`engine.go`): nhịp theo giai đoạn đúng §9 —
+   cold_start canary 7 ngày (TikTok 1/ngày, Shorts 1/ngày nếu có YouTube,
+   KHÔNG video dài) rồi mới ramp; format_testing/shorts; scaling nhân đôi
+   (series đánh số tập, 2 video dài/tuần); monetization_push 3 video
+   dài/tuần. Slugify bỏ dấu tiếng Việt cho `format_id`.
+4. **Luật quyết định** (config `DefaultConfig`, có table test):
+   - Kill format: ≥8 video VÀ ≥14 ngày VÀ median completion < 35%; không có
+     completion thì dùng proxy (share+save)/view < 1% — đúng ngưỡng §4.2 có
+     thể chỉnh.
+   - Double-down: video ≥5× median view toàn kênh → format winner (series);
+     breakout ≥10×.
+   - Penalty: views 30 ngày rơi >70% giữa hai lần đọc → tự tạm dừng tài
+     khoản (qua AccountManager, giữ nguyên máy trạng thái hợp lệ) + alert
+     critical + decision log. Policy-error/vỡ video: **chưa có nguồn số
+     liệu ở MVP nên để 0** — chỉ leg views là sống.
+   - Stalled: follower tăng <2% trong ≥14 ngày → stage `stalled`.
+   - Chuyển giai đoạn: canary sạch 7 ngày → format_testing; có winner →
+     scaling; ≥80% mốc kế → monetization_push; qua cửa (TikTok: mốc 1.000;
+     YouTube: 1.000 sub + giờ/view đủ) → monetized. Không nhảy bậc.
+   - Mọi quyết định ghi `decisions` (audit dùng chung) + alert notify-only
+     ghi rõ việc hệ thống ĐÃ làm.
+5. **Metrics** (`metrics.go`): interface `MetricsSource` + client YouTube
+   Data API v3 (`channels.list?part=statistics`, key qua Settings
+   `YOUTUBE_API_KEY`, gắn kênh qua trường Kênh YouTube sẵn có ở account
+   detail). **Fail-closed tuyệt đối**: thiếu key/quota/lỗi HTTP → lỗi
+   "chưa kết nối", không ghi snapshot, không bịa số. TikTok: nguồn luôn
+   "chưa kết nối" (draft-only tới khi có audit Direct Post) — không
+   scraping. Giới hạn trung thực: Data API chỉ cho tổng view tích lũy +
+   số video; `views_30d` và giờ xem YPP cần Analytics API (OAuth) — để
+   trống, luật penalty views-30d chỉ chạy khi có nguồn cấp chỉ số đó.
+
+### CHƯA (nợ giai đoạn 2)
+
+- **Biến thể đa nền tảng + dedup enforcement** (một ý tưởng → TikTok/Shorts/
+  long-form, chặn trùng lặp lịch sử): plan engine mới lên lịch theo ngày
+  và trụ; chưa có `concept_hash` dedup chéo.
+- **Hook A/B** và biến thể thumbnail/title: chưa có cột/bucket thử nghiệm.
+- **TikTok full metrics** qua Business/Display API sau audit: chưa có OAuth
+  số liệu; hiện TikTok không có snapshot nào (trang growth nói rõ).
+- **Nguồn policy-error/takedown** cho luật penalty: chưa có provider nào
+  cấp; hiện chỉ leg views-30d hoạt động, mà leg đó cũng chờ chỉ số 30 ngày
+  (YouTube Analytics API OAuth).
+- **Nối plan item → Studio job**: chưa có hook sạch (plan item không tự
+  sinh job; trạng thái published chỉ được ghi khi có nguồn đăng thật ghi
+  `published_ref`). Plan engine chỉ lên lịch/mô tả.
+- **Đồng bộ nền theo lịch (daemon)**: vòng sync hiện chạy khi bấm nút ở
+  /growth; chưa cắm vào daemon nền zero-touch.
+- **Quota YouTube theo project/kênh** (§6.3): chưa triển khai bộ đếm quota;
+  cần khi bắt đầu Analytics API.
+
+### Kiểm chứng (2026-10-02)
+
+`go build ./...` OK; `go test ./...` xanh 20/20 package có test (package
+`internal/growth` mới: 23 test gồm table test luật kill/double-down/
+penalty/stalled/chuyển giai đoạn, test DB supersede plan, snapshot
+append-only, metrics fail-closed qua httptest). Smoke test binary thật:
+`/growth`, `/`, `/accounts`, `/accounts/new`, `/settings` → 200; tạo tài
+khoản → stage canary hiển thị đúng; sinh plan → 303; account detail render
+khối growth; đồng bộ không key → báo "chưa kết nối" cho cả hai nguồn.

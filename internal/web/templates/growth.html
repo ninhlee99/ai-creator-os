@@ -1,0 +1,94 @@
+{{define "title"}}Phát triển kênh — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Phát triển kênh 🌱</h1>
+<p class="subtitle">Hệ thống tự vận hành theo chu kỳ 30-60-90 ngày: test format, giết format yếu,
+nhân đôi format thắng, đẩy tới mốc kiếm tiền — bạn không cần can thiệp.
+Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ thống báo rõ, không bao giờ bịa số.</p>
+
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+
+{{if not .Accounts}}
+<div class="empty-state">
+  <strong>Chưa có tài khoản nào</strong>
+  <p>Tạo tài khoản TikTok/YouTube đầu tiên để hệ thống bắt đầu vòng khởi động (canary 7 ngày).</p>
+  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+</div>
+{{else}}
+
+<div class="cards">
+  <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng người theo dõi (snapshot mới nhất)</div></div>
+  <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
+  <div class="card"><div class="num">{{.YPPDaysLeft}} ngày</div><div class="label">Tới hạn nộp YPP {{.YPPDeadline}} (ngưỡng mới gấp đôi sau hạn này)</div></div>
+  <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (YOUTUBE_API_KEY){{end}}</div></div>
+</div>
+
+<form method="post" action="/growth/sync" style="margin:12px 0">
+  <button class="btn" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
+  <span class="hint">Nguồn chưa kết nối sẽ được báo rõ trong kết quả — hệ thống không bịa số.</span>
+</form>
+
+<h2>Trạng thái từng tài khoản</h2>
+<table>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>YouTube API</th><th></th></tr>
+{{range .Rows}}
+<tr>
+  <td><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
+  <td><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
+  <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mọi mốc thang{{else}}Chưa có số liệu thật{{end}}</td>
+  <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}} ({{printf "%.0f" .NextPct}}%)</span>{{else}}—{{end}}</td>
+  <td>{{if .HasSnapshot}}{{.Followers}}{{else}}<span class="hint">chưa có snapshot</span>{{end}}</td>
+  <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
+  <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
+  <td>
+    <form method="post" action="/growth/accounts/{{.Account.ID}}/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
+  </td>
+</tr>
+{{end}}
+</table>
+
+<div class="grid2">
+<div>
+<h2>Cảnh báo &amp; hành động tự động</h2>
+{{if .Alerts}}
+<table>
+<tr><th>Tài khoản</th><th>Nội dung</th><th>Hệ thống đã làm</th></tr>
+{{range .Alerts}}
+<tr>
+  <td>{{.Username}}</td>
+  <td><span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}">{{.Kind}}</span> {{.Message}}</td>
+  <td>{{.ActionTaken}}</td>
+</tr>
+{{end}}
+</table>
+{{else}}
+<div class="empty-state compact"><strong>Chưa có cảnh báo</strong><p>Khi format bị dừng, kênh chững số hay có tín hiệu phạt, hệ thống ghi lại tại đây kèm hành động đã thực hiện.</p></div>
+{{end}}
+</div>
+
+<div>
+<h2>Kế hoạch sắp tới (toàn mạng)</h2>
+{{if .Upcoming}}
+<table>
+<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Hook gợi ý</th></tr>
+{{range .Upcoming}}
+<tr>
+  <td>{{.PlannedFor}}</td>
+  <td>{{.Username}}</td>
+  <td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+  <td>{{.Topic}}</td>
+  <td>{{.Hook}}</td>
+</tr>
+{{end}}
+</table>
+{{else}}
+<div class="empty-state compact"><strong>Chưa có kế hoạch</strong><p>Bấm “Sinh plan 30 ngày” ở bảng trên cho từng tài khoản — hệ thống lên lịch theo giai đoạn hiện tại (canary 7 ngày đầu nhịp tối thiểu).</p></div>
+{{end}}
+</div>
+</div>
+
+<p class="hint">Giới hạn trung thực của bản MVP: YouTube Data API chỉ cấp tổng lượt xem tích lũy và số video —
+chỉ số 30 ngày / giờ xem YPP cần YouTube Analytics API (OAuth) ở giai đoạn 2. TikTok chưa có nguồn số liệu
+(Display API cần OAuth từng tài khoản + audit Direct Post) nên kênh TikTok hiện chỉ đăng nháp và chưa đồng bộ metrics.</p>
+{{end}}
+{{end}}
