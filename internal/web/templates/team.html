@@ -1,0 +1,60 @@
+{{define "title"}}Agent Team — AI Creator OS{{end}}
+{{define "content"}}
+<h1>🤖 Agent Team</h1>
+<p class="subtitle">Bấm vào một tác vụ để xem cả đội đang làm gì.</p>
+
+<div class="team-layout">
+  <section class="team-tasks">
+    {{range .Tasks}}
+    <a class="task-card {{if eq .ID $.Selected.ID}}selected{{end}}" href="/team?job={{.ID}}">
+      <span class="task-icon st-{{.Status}}">{{.Icon}}</span>
+      <span class="task-meta"><b>{{.Title}}</b><span>{{.Kind}} · {{.Progress}}%</span></span>
+      <span class="task-bar"><span style="width:{{.Progress}}%"></span></span>
+    </a>
+    {{end}}
+  </section>
+
+  <section class="team-board">
+    <div class="legend">
+      <span><i class="dot done"></i>Xong</span>
+      <span><i class="dot working"></i>Đang làm</span>
+      <span><i class="dot exchange"></i>Đang nhận việc</span>
+      <span><i class="dot waiting"></i>Chờ</span>
+      <span><i class="dot failed"></i>Lỗi</span>
+    </div>
+
+    <div class="tree">
+      <div class="node st-{{if .RootStatus}}{{.RootStatus}}{{else}}waiting{{end}} root">
+        <img src="/static/agents/orchestrator.jpg" alt="Orchestrator">
+        <b>Orchestrator</b><span class="pill">{{if .RootStatus}}{{.RootStatus}}{{else}}waiting{{end}}</span>
+      </div>
+
+      <div class="tree-row guards">
+        {{range .Guard}}
+        <div class="node st-guard small">
+          <img src="/static/agents/{{.Key}}.jpg" alt="{{.Name}}">
+          <b>{{.Name}}</b><span class="pill">gác cổng</span>
+        </div>
+        {{end}}
+      </div>
+
+      <div class="pipe">
+        {{range .Agents}}
+        <div class="pipe-step">
+          <div class="node st-{{.Status}}">
+            <img src="/static/agents/{{.Key}}.jpg" alt="{{.Name}}">
+            <b>{{.Name}}</b>
+            <span class="pill">{{.Status}}</span>
+          </div>
+          <div class="flow {{if eq .Status "working"}}flow-live{{else if eq .Status "done"}}flow-done{{end}}"></div>
+        </div>
+        {{end}}
+        <div class="node st-waiting small">
+          <img src="/static/agents/streamer.jpg" alt="Streamer">
+          <b>Streamer</b><span class="pill">live khi đến giờ</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{{end}}

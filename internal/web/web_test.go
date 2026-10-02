@@ -239,6 +239,7 @@ func TestAllPagesRender(t *testing.T) {
 		"/publishers":              "Đa nền tảng",
 		"/shop":                    "Shop Affiliate",
 		"/analytics":               "Phân tích",
+		"/team":                    "Agent Team",
 		"/settings":                "Cài đặt",
 		"/settings/chain?name=tts": `"name":"gemini"`,
 	}

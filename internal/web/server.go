@@ -184,6 +184,7 @@ var pageFiles = map[string]string{
 	"products":       "products.html",
 	"analytics":      "analytics.html",
 	"settings":       "settings.html",
+	"team":           "team.html",
 }
 
 func (s *Server) parseTemplates() error {
