@@ -1,3 +1,5 @@
+//go:build parked
+
 package content
 
 import (
@@ -8,14 +10,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
+	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
-func testCfg() config.Config {
-	return config.Config{DryRun: false, DailyAPIBudgetUSD: 5.0}
+func testCfg() governance.Config {
+	return governance.Config{DryRun: false, DailyAPIBudgetUSD: 5.0}
 }
 
 func testLedger(t *testing.T) *ledger.Ledger {

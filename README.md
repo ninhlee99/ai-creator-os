@@ -49,7 +49,7 @@ Chi tiết: [`docs/MODEL.md`](docs/MODEL.md)
 
 ### 🤖 Agent Team
 
-Mỗi nhiệm vụ mới = một bản sao cả team chạy song song. Trang **Agent Team** trong dashboard cho thấy từng agent đang làm gì theo thời gian thật: đang làm · đang nhận việc · xong · lỗi — nhìn icon là biết, không đọc chữ dài.
+Trang **Agent Team** trong dashboard vẽ cây trạng thái **suy ra từ tiến độ job Studio** (đang làm · đang nhận việc · xong · lỗi) — trung thực, không bịa agent đang chạy. 7 package agent/stream cũ (analyst, content, governance, hunter, streamer, affiliatehunter, stream) đã **park** sau tag build `parked` ngày 2026-10-02: không vào binary, test vẫn chạy bằng `go test -tags parked ./...` (chi tiết: `docs/ARCHITECTURE.md` §12).
 
 ![Đội agent và persona](docs/assets/agents/contact-sheet.png)
 
@@ -65,7 +65,7 @@ go build -o aicos ./cmd/aicos
 ./aicos   # mở http://localhost:8080
 ```
 
-100% Go trong 1 binary (~15MB, không Python/venv/pip). SQLite WAL cho sổ cái. Model local (VieNeu-TTS v3, llama-server) tải bằng một nút trong trang Settings.
+100% Go trong 1 binary (~21–22MB, không Python/venv/pip). SQLite WAL cho sổ cái. Model local (VieNeu-TTS v3, llama-server) tải bằng một nút trong trang Settings.
 
 ```bash
 go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm TikTok thật
@@ -81,7 +81,7 @@ go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm 
 | Studio AI — tạo video affiliate/phim ngắn từ dashboard | ✅ Code xong, chưa có verdict mắt người |
 | Multi-Gemini API key rotation (round-robin, cooldown khi hết quota) | ✅ |
 | Sổ cái per-account, Governance luật cứng, Scheduler, kill switch | ✅ |
-| Agent Team: tree UI, trạng thái từng agent theo thời gian thật | ✅ |
+| Agent Team: tree UI, trạng thái suy ra từ tiến độ job Studio (không phải agent thật đang chạy) | ✅ |
 | Stream engine phát avatar thật | ⏳ Đang phát test pattern — cần benchmark trên Mac |
 | Nối daemon → live (cổng dry-run/cadence) | ⏳ |
 | ADB Hunter — quét Product Marketplace trên Android của bạn | ⏳ Cần Mac + máy của bạn |

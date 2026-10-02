@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package content is the Go port of agents/content/agent.py.
 //
 // Content factory: short videos + AI short films, multi-platform.
@@ -33,7 +35,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
@@ -216,7 +217,7 @@ func asString(m map[string]any, key, def string) string {
 
 // RunForAccount produces and distributes one content item for one account.
 // The persona picks the kind; the account config picks the platforms.
-func RunForAccount(ctx context.Context, cfg config.Config, l *ledger.Ledger,
+func RunForAccount(ctx context.Context, cfg governance.Config, l *ledger.Ledger,
 	llm engines.LLMProvider, t tts.TTSProvider,
 	account *network.Account, imageFn engines.ImageFunc) map[string]any {
 	spent, err := l.DailySpendUSD()
@@ -278,7 +279,7 @@ func RunForAccount(ctx context.Context, cfg config.Config, l *ledger.Ledger,
 // Run is the network entry: run for every onboarded account. Per-account
 // panics are captured and recorded as content/error decisions, mirroring
 // Python's per-account try/except.
-func Run(ctx context.Context, cfg config.Config, l *ledger.Ledger,
+func Run(ctx context.Context, cfg governance.Config, l *ledger.Ledger,
 	llm engines.LLMProvider, t tts.TTSProvider) map[string]any {
 	mgr, err := network.NewAccountManager(l, cfg.DatabasePath)
 	if err != nil {

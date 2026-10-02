@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package governance is the Go port of apps/orchestrator/governance.py.
 //
 // Deterministic rules engine. Pure functions, NO LLM inside.
@@ -21,7 +23,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
 
@@ -32,7 +33,7 @@ type Verdict struct {
 }
 
 // CheckKillSwitch blocks everything when the global kill switch is on.
-func CheckKillSwitch(cfg config.Config) Verdict {
+func CheckKillSwitch(cfg Config) Verdict {
 	if cfg.KillSwitch {
 		return Verdict{false, "global kill switch is ON"}
 	}
@@ -40,7 +41,7 @@ func CheckKillSwitch(cfg config.Config) Verdict {
 }
 
 // CheckBudget blocks external actions once the daily API budget is spent.
-func CheckBudget(cfg config.Config, spentTodayUSD float64) Verdict {
+func CheckBudget(cfg Config, spentTodayUSD float64) Verdict {
 	if spentTodayUSD >= cfg.DailyAPIBudgetUSD {
 		return Verdict{false, fmt.Sprintf(
 			"daily API budget exhausted (%.2f/%.2f USD)",
@@ -50,7 +51,7 @@ func CheckBudget(cfg config.Config, spentTodayUSD float64) Verdict {
 }
 
 // CheckLiveSession is called every segment during a live session.
-func CheckLiveSession(cfg config.Config, elapsedMin int) Verdict {
+func CheckLiveSession(cfg Config, elapsedMin int) Verdict {
 	if v := CheckKillSwitch(cfg); !v.Allowed {
 		return v
 	}
@@ -64,7 +65,7 @@ func CheckLiveSession(cfg config.Config, elapsedMin int) Verdict {
 
 // ProductEligible is the hunter gate: a product may enter the shelf only
 // if eligible.
-func ProductEligible(cfg config.Config, price, commissionRate float64,
+func ProductEligible(cfg Config, price, commissionRate float64,
 	sellerRating *float64, category string,
 	blockedCategories []string) Verdict {
 	for _, b := range blockedCategories {
@@ -93,7 +94,7 @@ func HunterScore(price, commissionRate, conversionRate, competition float64) flo
 }
 
 // ShouldKillProduct applies the analyst rule: cut losers fast.
-func ShouldKillProduct(cfg config.Config, stats ledger.ProductStats, sessionsFeatured int) Verdict {
+func ShouldKillProduct(cfg Config, stats ledger.ProductStats, sessionsFeatured int) Verdict {
 	if stats.Orders == 0 && stats.Views >= float64(cfg.KillViewsNoOrder) {
 		return Verdict{true, fmt.Sprintf(
 			"kill: 0 orders after %.0f views (threshold %d)",
@@ -123,7 +124,7 @@ func ShouldScaleProduct(stats ledger.ProductStats, minOrders int, minROI float64
 }
 
 // EvaluateAll is the top-level gate before any external action.
-func EvaluateAll(cfg config.Config, spentTodayUSD float64) Verdict {
+func EvaluateAll(cfg Config, spentTodayUSD float64) Verdict {
 	for _, v := range []Verdict{
 		CheckKillSwitch(cfg),
 		CheckBudget(cfg, spentTodayUSD),

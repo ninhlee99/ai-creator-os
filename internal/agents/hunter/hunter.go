@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package hunter is the Go port of agents/hunter/agent.py.
 //
 // Hunter discovers high-commission affiliate products. Scheduled daily.
@@ -16,7 +18,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ninhlee99/ai-creator-os/internal/agents/config"
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
@@ -50,13 +51,13 @@ type ProductSource interface {
 // TikTokShopAffiliateClient is a thin wrapper over the TikTok Shop Open
 // Platform affiliate endpoints (HMAC-signed via tiktok.ShopClient).
 type TikTokShopAffiliateClient struct {
-	cfg    config.Config
+	cfg    governance.Config
 	client *tiktok.ShopClient
 }
 
 // NewTikTokShopAffiliateClient builds the client. It errors when the shop
 // credentials are missing, like Python's RuntimeError in _get().
-func NewTikTokShopAffiliateClient(cfg config.Config) (*TikTokShopAffiliateClient, error) {
+func NewTikTokShopAffiliateClient(cfg governance.Config) (*TikTokShopAffiliateClient, error) {
 	if cfg.TikTokShopAppKey == "" || cfg.TikTokShopAccessToken == "" {
 		return nil, fmt.Errorf("missing TIKTOK_SHOP_APP_KEY / TIKTOK_SHOP_ACCESS_TOKEN " +
 			"(see docs/USER_GUIDE.md for the setup checklist)")
@@ -159,7 +160,7 @@ func toCandidate(r map[string]any) Candidate {
 // Run discovers candidates, gates them through governance, and shelves
 // the winners. Failures from the shop client (unverified endpoint paths,
 // missing credentials) surface as {"ok": False, "reason": ...}.
-func Run(ctx context.Context, cfg config.Config, l *ledger.Ledger, client ProductSource) map[string]any {
+func Run(ctx context.Context, cfg governance.Config, l *ledger.Ledger, client ProductSource) map[string]any {
 	v := governance.CheckKillSwitch(cfg)
 	if !v.Allowed {
 		return map[string]any{"ok": false, "reason": v.Reason}

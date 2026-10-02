@@ -1,3 +1,5 @@
+//go:build parked
+
 // Package affiliatehunter điều khiển điện thoại Android qua ADB để tự quét
 // Product Marketplace trong app TikTok (Affiliate Center) mà không cần
 // TikTok Shop API: không app review, không business/company setup.

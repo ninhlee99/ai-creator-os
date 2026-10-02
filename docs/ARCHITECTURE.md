@@ -264,7 +264,7 @@ phải trạng thái vô hạn. Audit phân hai loại:
 |---|---|---|
 | 1 | Analyst mất luật kill theo phiên live (`sessionsFeatured` hard-code 0) | **Đã sửa 2026-10-02:** `Ledger.SessionsFeatured` (khớp `product_id` chính xác + fallback tựa đề 20 ký tự cho dữ liệu cũ), Streamer ghi event `product_moment` kèm `product_id`, có test |
 | 2 | Dashboard bind mọi interface `:8080`, không auth | **Đã giảm rủi ro 2026-10-02:** mặc định `127.0.0.1:8080` (localhost); mở LAN phải chỉ định `-addr :8080` có chủ đích. Auth đầy đủ: việc tiếp theo |
-| 3 | Daemon production chưa nối `OnStartLive`/`OnRunAgent` | Chưa nối — **cố ý chưa nối mù:** nối thẳng sẽ cho agent chạy mỗi 60s kể cả dry-run. Cần cổng cadence + dry-run gate trước (việc tiếp theo, kèm test) |
+| 3 | Daemon production chưa nối `OnStartLive`/`OnRunAgent` | **Đã quyết 2026-10-02 (Q-B, `docs/REVIEW_ROUND2.md` §6): park.** 7 package agent/stream/affiliatehunter không vào binary — mọi file `.go` có `//go:build parked`, vẫn build + test được bằng `go build`/`go test -tags parked ./...`. `internal/agents/config` (bộ Config thứ hai có KillSwitch/DryRun riêng — mầm kill-switch hai nguồn) đã **xoá**; Config còn dùng trong vùng parked nằm ở `internal/agents/governance/parked_config.go` (runtime chính không chạm tới). Nối thật là quyết định mới của Ninh — không tự nối. |
 | 4 | Stream engine phát test pattern (`testsrc` + sine 440Hz), chưa phát avatar thật | Chưa sửa — cần thiết kế pipe frame/audio vào FFmpeg + benchmark M1 |
 | 5 | `affiliatehunter` (ADB) chưa cắm vào products/UI | Chưa sửa — cần flow scan → store + nút UI; chạy thật cần Android của Ninh cắm USB vào Mac |
 | 6 | Avatar paid tier (HeyGen/D-ID) còn khung "wiring pending" | Chưa sửa — cần API key thật để test hợp đồng REST |
@@ -272,6 +272,15 @@ phải trạng thái vô hạn. Audit phân hai loại:
 | 8 | Telegram alert + nightly backup được docs hứa nhưng chưa có code | Chưa sửa — phải hoặc làm, hoặc sửa docs; không để docs nói quá code |
 | 9 | Đường content agent còn dùng ảnh tĩnh + zoompan (mâu thuẫn luật cấm slideshow cho phim) | Chưa sửa — cần chốt: chỉ dùng cho B-roll, phim đi đường Veo/Studio |
 | 10 | UI/UX Settings trộn ~8 vấn đề; autopilot xé 3 nơi | Đã có bản thiết kế lại `UI_UX_BLUEPRINT.md`; đã làm các bước template thuần của đợt 1 (ô key `type=password`, vùng nguy hiểm viền đỏ, sidebar nhóm + active, mục lục Settings). Tách trang là các commit tiếp theo |
+
+> **Bằng chứng binary gọn (2026-10-02, sau R2-W6):** `go list -deps ./cmd/aicos`
+> = 227 package, **không chứa** `internal/affiliatehunter`,
+> `internal/agents/{analyst,config,content,governance,hunter,streamer}`,
+> `internal/stream` (diff trước/sau rỗng tuyệt đối — binary không đổi một byte
+> phụ thuộc nào). Cross-build 5 đích trên cùng HEAD: windows/amd64 22.316.032 B,
+> darwin/arm64 21.349.170 B, darwin/amd64 22.275.584 B, linux/amd64 22.086.932 B,
+> linux/arm64 21.014.671 B — thuần Go, một dependency trực tiếp
+> (`modernc.org/sqlite v1.60.1`), không `import "C"`.
 
 ### 12.2 Cần Mac / tài khoản / quyết định của Ninh (không ai làm thay được)
 

@@ -1,9 +1,15 @@
-// Package config is the Go port of apps/orchestrator/config.py.
+//go:build parked
+
+// parked_config.go — bản sao parked của internal/agents/config (đã xoá).
+//
+// Giữ lại trong vùng parked để 5 package agent (governance/hunter/analyst/content/streamer)
+// vẫn build được khi bật tag -tags parked. Runtime chính KHÔNG dùng Config này:
+// cấu hình thật duy nhất nằm ở ledger settings (xem docs/ARCHITECTURE.md §12).
 //
 // Central configuration: environment variables only, typed, read once.
 // Every operational capability of the AI Creator OS reads its settings
 // from here; nothing hardcodes credentials or tuning knobs.
-package config
+package governance
 
 import (
 	"os"
@@ -14,10 +20,10 @@ import (
 // Config mirrors the Python dataclass field for field. The zero value is
 // NOT usable on its own — call Load() to read the environment.
 type Config struct {
-	AppEnv      string
-	DryRun      bool
+	AppEnv       string
+	DryRun       bool
 	DatabasePath string
-	Timezone    string
+	Timezone     string
 
 	// LLM chain
 	GeminiAPIKey  string
@@ -30,13 +36,13 @@ type Config struct {
 	AvatarAPIKey   string
 
 	// TikTok
-	TikTokShopAppKey     string
-	TikTokShopAppSecret  string
+	TikTokShopAppKey      string
+	TikTokShopAppSecret   string
 	TikTokShopAccessToken string
-	TikTokShopCipher     string
-	TikTokRTMPURL        string
-	TikTokRTMPKey        string
-	AIDisclosureText     string
+	TikTokShopCipher      string
+	TikTokRTMPURL         string
+	TikTokRTMPKey         string
+	AIDisclosureText      string
 
 	// Governance
 	DailyAPIBudgetUSD        float64
