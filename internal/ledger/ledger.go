@@ -531,6 +531,29 @@ func (l *Ledger) ProductStats(productID int64) (ProductStats, error) {
 	return st, err
 }
 
+// SessionsFeatured counts distinct live sessions in which a product was
+// featured. A session counts when the streamer logged a product_moment
+// event whose payload carries this product_id (exact JSON match); legacy
+// events that only embedded the product title in the payload are matched
+// on the first 20 runes of the title, mirroring the original Python query.
+func (l *Ledger) SessionsFeatured(productID int64) (int, error) {
+	var title string
+	if err := l.db.QueryRow("SELECT title FROM products WHERE id = ?", productID).Scan(&title); err != nil {
+		return 0, err
+	}
+	runes := []rune(title)
+	if len(runes) > 20 {
+		runes = runes[:20]
+	}
+	var n int
+	err := l.db.QueryRow(
+		"SELECT COUNT(DISTINCT session_id) FROM live_events WHERE "+
+			"(kind = 'product_moment' AND json_extract(payload, '$.product_id') = ?) "+
+			"OR payload LIKE ?",
+		productID, "%"+string(runes)+"%").Scan(&n)
+	return n, err
+}
+
 // ---- accounts (AI Creator Network) ----
 
 // AddAccount registers a TikTok account. A duplicate username returns the

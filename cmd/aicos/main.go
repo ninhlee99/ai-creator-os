@@ -7,7 +7,7 @@
 //
 // Usage:
 //
-//	aicos                 # serve dashboard on :8080, run workers
+//	aicos                 # serve dashboard on 127.0.0.1:8080, run workers
 //	aicos -addr :9000     # custom listen address
 //	aicos -data ./data    # custom data directory
 //
@@ -360,7 +360,7 @@ func autoPublishAffiliate(ctx context.Context, st *studio.Studio, mgr *network.A
 }
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address for the web dashboard")
+	addr := flag.String("addr", "127.0.0.1:8080", "listen address for the web dashboard (default localhost-only; pass :8080 to expose on LAN)")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
