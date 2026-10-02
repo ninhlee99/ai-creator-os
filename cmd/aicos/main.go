@@ -34,13 +34,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
-	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
@@ -306,64 +306,6 @@ func fileExists(path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
-// autoPublishAffiliate posts a finished autopilot affiliate video to TikTok
-// (the toggle defaults ON when unset, Đợt 3; a stored "0" opts out).
-// Fail-closed at every step: kill switch / DRY-RUN, non-affiliate jobs,
-// manual jobs (no AccountID), disabled toggle, and missing TikTok OAuth all
-// skip quietly with a job-log line. TikTok posts as draft by default
-// (TIKTOK_DRAFT_ONLY), so Ninh/Claude attaches the product link in the
-// TikTok app before going public.
-func autoPublishAffiliate(ctx context.Context, cfg *web.Config, st *studio.Studio, mgr *network.AccountManager, pstore *products.Store, jobID string) {
-	// Đợt 3: the shared kill switch and DRY-RUN gate every real publish.
-	if cfg != nil && (cfg.KillSwitch() || cfg.DryRun()) {
-		return
-	}
-	j, ok := st.GetJob(jobID)
-	if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
-		return
-	}
-	var p studio.AffiliateParams
-	if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
-		return // manual studio job — never auto-publish
-	}
-	if v, _ := pstore.GetSetting(web.SettingAutopilotAutoPublish); v == "0" {
-		return
-	}
-	acct, err := mgr.Get(p.AccountID)
-	if err != nil {
-		st.AppendLog(jobID, "Tự đăng: không tìm thấy account — bỏ qua.")
-		return
-	}
-	var pub publishers.Publisher
-	for _, c := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes) {
-		if c.Name() == "tiktok" && c.IsConfigured() && c.Handles("short_video") {
-			pub = c
-			break
-		}
-	}
-	if pub == nil {
-		st.AppendLog(jobID, "Tự đăng: TikTok chưa cấu hình OAuth — video nằm ở output, đăng tay hoặc bật sau khi OAuth xong.")
-		return
-	}
-	title := j.Title
-	if p.ProductName != "" {
-		title = p.ProductName
-	}
-	st.AppendLog(jobID, "Tự đăng TikTok…")
-	res := pub.Publish(ctx, j.Output, title, j.Caption, "short_video")
-	if !res.Ok {
-		st.AppendLog(jobID, "Tự đăng thất bại: "+res.Error)
-		log.Printf("autopublish job %s: %s", jobID, res.Error)
-		return
-	}
-	if res.Draft {
-		st.AppendLog(jobID, "Đã đăng lên TikTok dưới dạng NHÁP (draft id "+res.RemoteID+") — gắn giỏ hàng + sound trong app TikTok rồi hãy public.")
-	} else {
-		st.AppendLog(jobID, "Đã đăng TikTok (id "+res.RemoteID+").")
-	}
-	log.Printf("autopublish job %s -> tiktok draft=%v id=%s", jobID, res.Draft, res.RemoteID)
-}
-
 func main() {
 	addr := flag.String("addr", "127.0.0.1:8080", "listen address for the web dashboard (default localhost-only; pass :8080 to expose on LAN)")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
@@ -564,6 +506,10 @@ func main() {
 	}()
 	srv.LLM = llmChainAdapter{c: llmChain} // satisfies web.LLMClient + chain-config interfaces
 	srv.TTS = ttsChainAdapter{c: ttsChain}
+	// R2-W4: the single configuration facade — ledger settings. All
+	// automation switches, the master switch, growth thresholds and the
+	// API budget live here.
+	autoSettings := automation.LedgerSettings{L: l}
 	// OutDir/AvatarDir follow the -data flag (NewServer defaults to
 	// ./data/* relative to the working directory).
 	outDir := filepath.Join(*dataDir, "output")
@@ -626,6 +572,12 @@ func main() {
 			} else if n > 0 {
 				log.Printf("products: moved %d legacy ledger products into the shared store", n)
 			}
+			// R2-W4: single settings facade (ledger settings). One-time
+			// copy of the legacy products.db control settings; after
+			// that the facade is the only control plane.
+			if err := automation.MigrateProductsSettings(pstore, autoSettings); err != nil {
+				log.Printf("settings: migrate products settings: %v", err)
+			}
 			shopClient := &tiktok.ShopClient{
 				AppKey:      os.Getenv("TIKTOK_SHOP_APP_KEY"),
 				AppSecret:   os.Getenv("TIKTOK_SHOP_APP_SECRET"),
@@ -652,9 +604,7 @@ func main() {
 				// After every finished studio job: auto-publish affiliate
 				// videos to TikTok when the UI toggle is on. Fail-closed:
 				// without a configured TikTok publisher nothing is posted.
-				srv.Studio.SetOnDone(func(id string) {
-					go autoPublishAffiliate(ctx, webCfg, srv.Studio, mgr, pstore, id)
-				})
+				srv.Studio.SetOnDone(srv.AutomationService().AutoPublishHook())
 				// One-time seed from env so existing deployments keep working;
 				// after that the web UI (/products) is the only control plane.
 				// Đợt 3: automation defaults ON when unset and a stored "0"
@@ -662,14 +612,14 @@ func main() {
 				// is explicitly present — a fresh install writes nothing, and an
 				// existing stored choice is never overwritten. DRY-RUN stays
 				// the safety gate (see the scheduler loop below).
-				if _, ok := pstore.GetSetting(web.SettingAutopilotEnabled); !ok {
+				if _, ok := autoSettings.Get(web.SettingAutopilotEnabled); !ok {
 					if _, present := os.LookupEnv("AUTOPILOT_SCHEDULE"); present {
 						if getenvBool("AUTOPILOT_SCHEDULE", false) {
-							_ = pstore.SetSetting(web.SettingAutopilotEnabled, "1")
-							_ = pstore.SetSetting(web.SettingAutopilotInterval,
+							_ = autoSettings.Set(web.SettingAutopilotEnabled, "1")
+							_ = autoSettings.Set(web.SettingAutopilotInterval,
 								strconv.Itoa(getenvInt("AUTOPILOT_INTERVAL_HOURS", 6)))
 						} else {
-							_ = pstore.SetSetting(web.SettingAutopilotEnabled, "0")
+							_ = autoSettings.Set(web.SettingAutopilotEnabled, "0")
 						}
 					}
 				}
@@ -680,45 +630,15 @@ func main() {
 				go func() {
 					tick := time.NewTicker(time.Minute)
 					defer tick.Stop()
+					auto := srv.AutomationService()
 					for {
 						select {
 						case <-ctx.Done():
 							return
 						case <-tick.C:
-							// Đợt 3: the shared kill switch + DRY-RUN gate the
-							// whole cycle; the switch defaults ON when unset
-							// and a stored "0" stops it.
-							if webCfg.KillSwitch() || webCfg.DryRun() {
-								continue
+							for _, note := range auto.AutopilotTick(ctx) {
+								log.Printf("%s", note)
 							}
-							en, _ := pstore.GetSetting(web.SettingAutopilotEnabled)
-							if en == "0" {
-								continue
-							}
-							iv, _ := pstore.GetSetting(web.SettingAutopilotInterval)
-							hours, err := strconv.Atoi(iv)
-							if err != nil || hours < 1 {
-								hours = 6
-							}
-							due := true
-							if last, ok := pstore.GetSetting(web.SettingAutopilotLastRun); ok && last != "" {
-								if t, err := time.Parse(time.RFC3339, last); err == nil {
-									due = time.Since(t) >= time.Duration(hours)*time.Hour
-								}
-							}
-							if !due {
-								continue
-							}
-							results := ap.RunAll(ctx)
-							done := 0
-							for _, r := range results {
-								if r.JobID != "" {
-									done++
-								}
-							}
-							_ = pstore.SetSetting(web.SettingAutopilotLastRun,
-								time.Now().Format(time.RFC3339))
-							log.Printf("autopilot: scheduled cycle finished (%d videos queued)", done)
 						}
 					}
 				}()
@@ -728,8 +648,16 @@ func main() {
 	}
 
 	// -- 7. network daemon ---------------------------------------------------
+	// R2-W4 (R2-08): MASTER_SWITCH is a persisted setting now, default
+	// OFF. The env seeds it exactly once; afterwards the Settings UI is
+	// the only control plane, and the daemon reads the gate live every
+	// tick — no restart needed for the toggle to take effect.
+	if err := automation.SeedMasterSwitch(autoSettings, getenvBool("MASTER_SWITCH", false)); err != nil {
+		log.Printf("settings: seed master switch: %v", err)
+	}
 	netCfg := network.DefaultNetConfig()
-	netCfg.MasterSwitch = getenvBool("MASTER_SWITCH", false)
+	netCfg.MasterSwitch = automation.MasterOn(autoSettings)
+	netCfg.MasterGate = automation.MasterSwitchGate{Settings: autoSettings}
 	netCfg.DryRun = getenvBool("DRY_RUN", true)
 	netCfg.KillSwitch = getenvBool("KILL_SWITCH", false)
 	// ONE source of truth for kill/dry-run: the daemon reads the very
@@ -750,12 +678,13 @@ func main() {
 		go func() {
 			tick := time.NewTicker(5 * time.Minute)
 			defer tick.Stop()
+			auto := srv.AutomationService()
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-tick.C:
-					for _, note := range srv.GrowthAutomationTick(ctx) {
+					for _, note := range auto.GrowthTick(ctx, false) {
 						log.Printf("growth: %s", note)
 					}
 				}

@@ -5,6 +5,8 @@ package web
 
 import (
 	"net/http"
+
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +56,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
 		"HasKeys", s.hasAnyAPIKey(),
 		"HasStudioJobs", s.Studio != nil && len(s.Studio.ListJobs(1)) > 0,
+		// R2-W4 (R2-08): chip công tắc chính — nhãn trung thực: đang TẮT
+		// hay đang cho phép daemon chạy theo lịch.
+		"MasterOn", automation.MasterOn(s.settings()),
 	))
 }
 

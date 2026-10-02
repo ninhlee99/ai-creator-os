@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 )
@@ -92,6 +92,7 @@ func (s *Server) growthView() map[string]any {
 	// production card renders honestly even with zero accounts.
 	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
 	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
+	ctx["Thresholds"] = automation.LoadThresholds(s.settings())
 	ctx["QuotaUsed"] = 0
 	ctx["QuotaLeft"] = growth.QuotaUploadsLeft(0)
 	ctx["QuotaLimit"] = growth.DailyQuotaUnits
@@ -243,68 +244,6 @@ func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {
 }
 
 // ------------------------------------------------------- sync + decide
-
-// syncOneAccount pulls fresh metrics for one account from every wired
-// source, persists what came back, and runs the growth decision loop.
-// It returns honest status lines (Vietnamese) for the UI — a source that
-// is not connected is reported as such, never silently skipped.
-func (s *Server) syncOneAccount(ctx context.Context, a *network.Account) []string {
-	if s.Growth == nil {
-		return []string{a.Username + ": module growth chưa sẵn sàng"}
-	}
-	var notes []string
-	if _, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err != nil {
-		return append(notes, a.Username+": "+err.Error())
-	}
-	srcAcct := growth.SourceAccount{ID: a.ID, Username: a.Username, YoutubeChannel: a.YoutubeChannel}
-	ytKeyVal, _ := s.effectiveEnv("YOUTUBE_API_KEY")
-	sources := []growth.MetricsSource{
-		growth.NewYouTubeSource(ytKeyVal),
-		growth.TikTokSource{},
-	}
-	gotSnapshot := false
-	for _, src := range sources {
-		snap, err := growth.RecordSnapshot(ctx, s.Growth, src, srcAcct)
-		if err != nil {
-			notes = append(notes, a.Username+": "+err.Error())
-			continue
-		}
-		gotSnapshot = true
-		notes = append(notes, fmt.Sprintf("%s: đã đồng bộ số liệu từ %s", a.Username, src.Name()))
-		if snap.Followers != nil {
-			_ = s.Ledger.SetFollowers(a.ID, *snap.Followers)
-			cur := map[string]float64{"followers": float64(*snap.Followers), "subs": float64(*snap.Followers)}
-			if reached, err := s.Growth.MarkTargetsReached(a.ID, cur); err == nil {
-				for _, label := range reached {
-					target := a.Username
-					_ = s.Ledger.Decide("growth_analyst", "milestone_reached", &target,
-						"Đạt mốc "+label, nil)
-					notes = append(notes, a.Username+": đạt mốc "+label)
-				}
-			}
-		}
-	}
-	if !gotSnapshot {
-		return notes // nothing real came back; decide nothing on stale air
-	}
-	res, err := s.Growth.Evaluate(a.ID, a.Username, growth.DefaultConfig(), time.Now())
-	if err != nil {
-		return append(notes, a.Username+": lỗi đánh giá growth — "+err.Error())
-	}
-	for _, act := range res.Actions {
-		notes = append(notes, a.Username+": "+act)
-	}
-	if res.PauseAccount {
-		if _, err := s.Mgr.Transition(a.ID, "paused", map[string]any{
-			"reason": "growth: " + res.PauseReason,
-		}); err != nil {
-			log.Printf("web: growth auto-pause %s: %v", a.Username, err)
-		} else {
-			notes = append(notes, a.Username+": ĐÃ TỰ TẠM DỪNG — "+res.PauseReason)
-		}
-	}
-	return notes
-}
 
 func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Mgr.List()

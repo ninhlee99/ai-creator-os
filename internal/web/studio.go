@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -413,7 +414,7 @@ func (s *Server) handleStudioKineticCreate(w http.ResponseWriter, r *http.Reques
 		Log:       "Đang chờ…",
 	}
 	if job.Title == "" {
-		seeOther(w, r, "/studio?tab=chu")
+		seeOther(w, r, "/studio?tab=chu&err="+url.QueryEscape("Chưa nhập tiêu đề."))
 		return
 	}
 	s.Jobs.Add(job)

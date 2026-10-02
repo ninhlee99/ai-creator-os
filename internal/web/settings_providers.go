@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -475,7 +476,8 @@ func (s *Server) handleVieneuRestart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.VieNeu.Restart(r.Context()); err != nil {
-		log.Printf("web: vieneu restart: %v", err)
+		seeOther(w, r, "/settings/model-local?err="+url.QueryEscape("Khởi động lại VieNeu thất bại: "+err.Error()))
+		return
 	}
 	seeOther(w, r, "/settings/model-local")
 }
@@ -487,10 +489,11 @@ func (s *Server) handleVieneuVoice(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	if preset := strings.TrimSpace(r.PostFormValue("preset")); preset != "" {
 		if err := s.VieNeu.SetVoice(preset); err != nil {
-			log.Printf("web: vieneu set voice: %v", err)
+			seeOther(w, r, "/settings/model-local?err="+url.QueryEscape("Đổi giọng VieNeu thất bại: "+err.Error()))
+			return
 		}
 	}
-	seeOther(w, r, "/settings/model-local")
+	seeOther(w, r, "/settings/model-local?ok="+url.QueryEscape("Đã đổi giọng VieNeu."))
 }
 
 // ----------------------------------------------------------- legacy JSON API

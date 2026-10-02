@@ -155,6 +155,21 @@ func LoadConfig() *Config {
 	return c
 }
 
+// RefreshEnv re-reads the UI-editable env vars into the Config fields
+// that were read once at startup (R2-W4, R2-05). The Settings env-save
+// handler calls this right after persisting, so the runtime Config
+// reflects UI edits without a restart. Fields with no UI-editable env
+// counterpart are untouched.
+func (c *Config) RefreshEnv() {
+	if c == nil {
+		return
+	}
+	c.TTSAPIKey = os.Getenv("TTS_API_KEY")
+	c.TiktokShopAppKey = os.Getenv("TIKTOK_SHOP_APP_KEY")
+	c.TiktokShopAppSecret = os.Getenv("TIKTOK_SHOP_APP_SECRET")
+	c.TiktokShopAccessToken = os.Getenv("TIKTOK_SHOP_ACCESS_TOKEN")
+}
+
 // DryRun reports whether the system is in dry-run (safe) mode.
 func (c *Config) DryRun() bool { return c.dryRun.Load() }
 

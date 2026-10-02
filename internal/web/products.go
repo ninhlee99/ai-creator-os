@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
@@ -248,12 +249,12 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {
-		log.Printf("web: save shelf product: %v", err)
-		seeOther(w, r, "/products?tab=ke")
+		seeOther(w, r, "/products?tab=ke&err="+url.QueryEscape("Không lưu được sản phẩm: "+err.Error()))
 		return
 	}
 	if err := s.Products.SetShelf(id, "shelf", 0); err != nil {
-		log.Printf("web: set shelf status: %v", err)
+		seeOther(w, r, "/products?tab=ke&err="+url.QueryEscape("Đã lưu sản phẩm nhưng không chuyển được vào kệ: "+err.Error()))
+		return
 	}
 	seeOther(w, r, "/products?tab=ke")
 }
@@ -393,37 +394,23 @@ func autopilotMusicPath(databasePath string) string {
 
 // scheduleView reads the current schedule state for the products page.
 func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string, autoPublish bool) {
-	hours = 6
-	if s.Products == nil {
-		return
-	}
-	// Automation switches default ON when unset (Đợt 3); a stored "0"
-	// is an explicit operator choice and always wins.
-	if v, ok := s.Products.GetSetting(setSchedEnabled); !ok || v != "0" {
-		enabled = true
-	}
-	if v, ok := s.Products.GetSetting(setSchedInterval); ok {
-		if h, err := strconv.Atoi(v); err == nil && h >= 1 && h <= 168 {
-			hours = h
-		}
-	}
-	if v, ok := s.Products.GetSetting(setSchedLastRun); ok && v != "" {
-		lastRun = v
-	}
-	if v, ok := s.Products.GetSetting(setMusicName); ok {
-		music = v
-	}
-	if v, ok := s.Products.GetSetting(SettingAutopilotAutoPublish); !ok || v != "0" {
-		autoPublish = true
-	}
+	// Automation switches read from the single settings facade (R2-W4):
+	// ledger settings. Switches default ON when unset (Đợt 3); a stored
+	// "0" is an explicit operator choice and always wins.
+	st := s.settings()
+	enabled = automation.AutopilotEnabled(st)
+	hours = automation.AutopilotIntervalHours(st)
+	lastRun = automation.AutopilotLastRun(st)
+	music = automation.AutopilotMusicName(st)
+	autoPublish = automation.AutopilotAutoPublish(st)
 	return
 }
 
 // handleProductsSchedule saves the autopilot background schedule from the
 // web UI: enable toggle + interval in hours + auto-publish toggle.
 func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) {
-	if s.Products == nil {
-		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "save schedule")
+	if s.Ledger == nil {
+		s.fail(w, fmt.Errorf("kho cài đặt chưa khởi tạo"), "save schedule")
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -442,15 +429,16 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
 	}
-	if err := s.Products.SetSetting(setSchedEnabled, enabled); err != nil {
+	st := s.settings()
+	if err := st.Set(SettingAutopilotEnabled, enabled); err != nil {
 		s.fail(w, err, "save schedule")
 		return
 	}
-	if err := s.Products.SetSetting(setSchedInterval, strconv.Itoa(hours)); err != nil {
+	if err := st.Set(SettingAutopilotInterval, strconv.Itoa(hours)); err != nil {
 		s.fail(w, err, "save schedule")
 		return
 	}
-	if err := s.Products.SetSetting(SettingAutopilotAutoPublish, autoPub); err != nil {
+	if err := st.Set(SettingAutopilotAutoPublish, autoPub); err != nil {
 		s.fail(w, err, "save schedule")
 		return
 	}
@@ -514,7 +502,7 @@ func (s *Server) handleAutopilotMusicUpload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	out.Close()
-	_ = s.Products.SetSetting(setMusicName, hdr.Filename)
+	_ = s.settings().Set(SettingAutopilotMusic, hdr.Filename)
 	if s.Autopilot != nil {
 		s.Autopilot.MusicPath = dst
 	}
@@ -524,19 +512,14 @@ func (s *Server) handleAutopilotMusicUpload(w http.ResponseWriter, r *http.Reque
 var audioFileRe = regexp.MustCompile(`(?i)\.(mp3|m4a|wav|ogg|aac)$`)
 
 // The autopilot background schedule is managed in the web UI (not via env
-// or CLI): these settings live in the products store. Exported so cmd/aicos
-// (the scheduler loop) reads the same keys the UI writes.
+// or CLI). R2-W4: these keys live in the single settings facade (ledger
+// settings table) — see internal/automation. Exported so cmd/aicos (the
+// scheduler wiring) and internal/automation read the same keys the UI
+// writes.
 const (
 	SettingAutopilotEnabled     = "autopilot_enabled"
 	SettingAutopilotInterval    = "autopilot_interval_hours"
 	SettingAutopilotLastRun     = "autopilot_last_run"
 	SettingAutopilotMusic       = "autopilot_music_name"
 	SettingAutopilotAutoPublish = "autopilot_auto_publish"
-)
-
-const (
-	setSchedEnabled  = SettingAutopilotEnabled
-	setSchedInterval = SettingAutopilotInterval
-	setSchedLastRun  = SettingAutopilotLastRun
-	setMusicName     = SettingAutopilotMusic
 )

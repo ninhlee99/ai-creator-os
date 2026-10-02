@@ -61,15 +61,15 @@ const CanaryDays = 7
 // read from here so they stay tunable in one place (docs §0: thresholds
 // are Governance parameters, never per-decision human calls).
 type Config struct {
-	KillMinVideos       int     // videos a format needs before it can be killed
-	KillMinDays         int     // days of data a format needs before it can be killed
-	KillCompletionFloor float64 // median completion below this kills (0..1)
-	KillProxyFloor      float64 // fallback when completion is unavailable: median (shares+saves)/views
-	DoubleDownFactor    float64 // video views >= factor * account median => series
-	BreakoutFactor      float64 // video views >= factor * account median => breakout
-	PenaltyViewsDrop    float64 // views_30d drop fraction that signals a penalty
-	StalledDays         int     // window for the stalled check
-	StalledGrowthMax    float64 // follower growth below this over the window = stalled
+	KillMinVideos       int     `json:"kill_min_videos"`       // videos a format needs before it can be killed
+	KillMinDays         int     `json:"kill_min_days"`         // days of data a format needs before it can be killed
+	KillCompletionFloor float64 `json:"kill_completion_floor"` // median completion below this kills (0..1)
+	KillProxyFloor      float64 `json:"kill_proxy_floor"`      // fallback when completion is unavailable: median (shares+saves)/views
+	DoubleDownFactor    float64 `json:"double_down_factor"`    // video views >= factor * account median => series
+	BreakoutFactor      float64 `json:"breakout_factor"`       // video views >= factor * account median => breakout
+	PenaltyViewsDrop    float64 `json:"penalty_views_drop"`    // views_30d drop fraction that signals a penalty
+	StalledDays         int     `json:"stalled_days"`          // window for the stalled check
+	StalledGrowthMax    float64 `json:"stalled_growth_max"`    // follower growth below this over the window = stalled
 }
 
 // DefaultConfig returns the doc §4.2 defaults.

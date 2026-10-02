@@ -22,6 +22,27 @@
     <div class="num">{{fmtUSD .Spend}}</div>
     <div class="label">Chi phí API hôm nay</div>
   </div>
+  <div class="card">
+    <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
+    <div class="label">Công tắc chính (daemon mạng){{if .MasterOn}} — đang cho phép chạy theo lịch{{else}} — đang đứng yên{{end}}</div>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">Công tắc chính</div>
+    <form method="post" action="/settings/master">
+      <input type="hidden" name="value" value="{{if .MasterOn}}0{{else}}1{{end}}">
+      <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc chính? Daemon mạng sẽ đứng yên."{{end}}>{{if .MasterOn}}Tắt{{else}}Bật{{end}}</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">Ngân sách API/ngày (USD){{if eq .BudgetFrom "ui"}} · đã lưu trong Cài đặt{{else}} · từ biến môi trường{{end}}</div>
+    <form method="post" action="/settings/api-budget" class="env-form">
+      <input type="number" name="value" step="0.5" min="0" max="10000" value="{{printf "%.2f" .APIBudget}}" style="width:7em">
+      <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
 </div>
 
 <h3>Chi phí API theo engine/provider</h3>
