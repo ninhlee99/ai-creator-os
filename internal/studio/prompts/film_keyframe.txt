@@ -1,0 +1,20 @@
+KEYFRAME COMPOSITION — for cinematic stills-to-film rendering. This keyframe
+will be ANIMATED with a slow camera move (push-in, pull-out, pan, tilt), so
+compose it like the first frame of a real cinema shot, not a still photo:
+
+1. HEADROOM FOR MOTION: leave generous headroom above the subject's head and
+   breathing room on the side the camera will move toward. Never crop tight
+   against the frame edge — the move needs pixels to travel into.
+2. DEPTH LAYERS: build foreground / midground / background layers (a soft
+   foreground element, the subject, a textured background) so the slow move
+   feels three-dimensional, never like a flat slide.
+3. CINEMATIC LIGHT: one motivated key light with a clear direction (window
+   left, neon right, low sun behind...), soft shadows, gentle falloff. No
+   flat even lighting.
+4. RULE OF THIRDS, CENTER-SAFE: subject near a third-line, but keep the face
+   and key action inside the central 9:16 band — the vertical trailer crop
+   must not lose them.
+5. CLEAN PLATE: no text, no logos, no watermark, no extra limbs; hands must
+   look natural and complete.
+6. Match the CONTINUITY BIBLE exactly: wardrobe, hair, props, light
+   direction, weather. Photorealistic cinematic still, horizontal 16:9.

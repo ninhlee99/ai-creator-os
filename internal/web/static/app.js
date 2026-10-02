@@ -180,7 +180,7 @@
           h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
           h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
           if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
-            h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại (tốn chi phí Veo) rồi dựng lại phim.">' +
+            h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại rồi dựng lại phim.">' +
               '<button class="btn btn-sm">🎬 Quay lại shot này</button></form>';
           }
           h += '</div></div>';
@@ -221,14 +221,25 @@
   })();
 })();
 
-  // Ước tính chi phí/ETA trên form phim (Film Wave 1 / P0-4): cập nhật theo
-  // ô thời lượng. Server render sẵn dòng cho 90s mặc định (no-JS vẫn thấy).
+  // Ước tính chi phí/ETA trên form phim (Film Wave 1 / P0-4, Wave 3:
+  // theo chế độ dựng). Server render sẵn dòng cho 90s mặc định (no-JS vẫn thấy).
   (function () {
     var sec = document.getElementById('film-seconds');
     var est = document.getElementById('film-est');
+    var mode = document.getElementById('film-mode');
     if (!sec || !est) return;
     var rate = parseFloat(est.getAttribute('data-rate') || '0.05') || 0.05;
+    var videoOK = est.getAttribute('data-video-ok') === 'true';
+    function effMode() {
+      var m = mode ? mode.value : 'auto';
+      if (m === 'auto') return videoOK ? 'veo' : 'cinematic';
+      return m;
+    }
     function upd() {
+      if (effMode() === 'cinematic') {
+        est.textContent = 'Điện ảnh từ ảnh: ≈ $0 — chỉ tốn image gen (rẻ), không dùng Veo (ước tính chưa kiểm chứng)';
+        return;
+      }
       var s = parseInt(sec.value || '90', 10) || 90;
       if (s < 30) s = 30;
       if (s > 3600) s = 3600;
@@ -239,5 +250,6 @@
         ' · render ~' + eta + ' phút (ước tính chưa kiểm chứng)';
     }
     sec.addEventListener('input', upd);
+    if (mode) mode.addEventListener('change', upd);
     upd();
   })();

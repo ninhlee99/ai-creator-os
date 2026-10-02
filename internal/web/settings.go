@@ -4,6 +4,7 @@ package web
 // kill switch, provider chain configuration storage and the VieNeu view.
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
@@ -241,6 +243,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"APIEnabled":     automation.APIEnabled(s.settings()),
 		"Version":        s.Cfg.Version,
 		"RuntimeTools":   probeRuntimeTools(),
+		"AICapabilities": s.aiCapabilityViews(),
 		"RestorePending": backup.PendingRestore(s.DataDir),
 		"DataDir":        s.DataDir,
 	}
@@ -310,7 +313,56 @@ func (s *Server) handleSettingsAPIToggle(w http.ResponseWriter, r *http.Request)
 // handleSettingsModelLocal: "Model local đã sẵn sàng chưa?"
 func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "model-local", "settings_model_local",
-		"VieNeu", "AvatarSidecar", "RuntimeTools")
+		"VieNeu", "AvatarSidecar", "RuntimeTools", "AICapabilities")
+}
+
+// aiCapabilityView là một dòng trong bảng "Khả năng AI".
+type aiCapabilityView struct {
+	Label     string
+	Status    string // ok | fail | unknown
+	Badge     string // badge-ok | badge-no | badge-warn
+	Text      string // nhãn tiếng Việt
+	CheckedAt string
+	Detail    string
+}
+
+// aiCapabilityViews đọc trạng thái khả năng AI từ studio (Film Wave 3).
+func (s *Server) aiCapabilityViews() []aiCapabilityView {
+	if s.Studio == nil {
+		return nil
+	}
+	var out []aiCapabilityView
+	for _, c := range s.Studio.GetCapabilities() {
+		v := aiCapabilityView{Label: c.Label, Status: c.Status,
+			CheckedAt: c.CheckedAt, Detail: c.Detail}
+		switch c.Status {
+		case "ok":
+			v.Badge, v.Text = "badge-ok", "Hoạt động"
+		case "fail":
+			v.Badge, v.Text = "badge-no", "Không hoạt động"
+		default:
+			v.Badge, v.Text = "badge-warn", "Chưa kiểm tra"
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// handleProbeVideo quay thử đúng 1 clip 8s bằng Veo — TỐN TIỀN THẬT nên UI
+// hiện modal cảnh báo trước (data-confirm), và job chạy nền để không treo
+// request (Veo poll vài phút).
+func (s *Server) handleProbeVideo(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.NotFound(w, r)
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+		defer cancel()
+		_ = s.Studio.ProbeVideoGen(ctx)
+	}()
+	seeOther(w, r, "/settings/model-local?ok="+url.QueryEscape(
+		"Đang kiểm tra quay video (~8s Veo, tốn phí thật) — quay lại sau ít phút để xem kết quả."))
 }
 
 // handleSettingsNhanVat: "Có những khuôn mặt AI nào, render thử ra sao?"

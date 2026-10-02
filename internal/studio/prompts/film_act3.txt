@@ -1,8 +1,13 @@
-Bạn là biên kịch phim Việt Nam. Chỉ trả lời JSON thuần, không giải thích.
+Bạn là biên kịch chuyển thể phim Việt Nam. Chỉ trả lời JSON thuần, không giải thích.
 Chủ đề phim: {{.Topic}}. Thể loại: {{.Genre}}. Đây là HỒI 3 (Kết) của phim — hồi này dài khoảng {{.ActSeconds}}s, gồm {{.N}} cảnh, {{.Orient}}.
 
-Nhân vật (KHÓA CỨNG — không được đổi ngoại hình/trang phục):
-{{.Characters}}
+TRUYỆN GỐC (pha 0 — chuyển thể TRUNG THÀNH phần kết, đúng kết truyện):
+{{.Story}}
+
+Đây là PHA 1 — CHUYỂN THỂ KỊCH BẢN (screenplay). Chưa cần character sheet, chưa cần shot list — pha 2 (breakdown) sẽ lo phần đó sau.
+
+DÀN NHÂN VẬT (tên đã chốt — GIỮ NGUYÊN, không đổi tên):
+{{.Cast}}
 
 Tóm tắt hồi 1:
 {{.Recap1}}
@@ -10,18 +15,11 @@ Tóm tắt hồi 1:
 Tóm tắt hồi 2:
 {{.Recap2}}
 
-LUẬT BẤT DI BẤT DỊCH:
-1. HỒI 3 — CAO TRÀO + KẾT: mở đầu bằng CAO TRÀO (đối đầu lớn nhất, mọi xung đột bùng nổ — cảnh đắt giá nhất phim), sau đó hạ nhiệt dần về KẾT THÚC trọn vẹn: nút thắt được gỡ, nhân vật thay đổi rõ rệt so với đầu phim, dư âm cảm xúc đọng lại (không kết cụt, không moralize sáo rỗng).
-2. Mỗi shot: action MÔ TẢ CỤ THỂ hành động + cảm xúc (tiếng Việt) — KHÔNG chung chung.
+LUẬT CHUYỂN THỂ:
+1. HỒI 3 — KẾT: cao trào + giải quyết xung đột + kết thúc trọn vẹn như truyện, dư âm cảm xúc. Mọi manh mối đã gieo phải được khép lại. KHÔNG đổi kết truyện.
+2. Mỗi cảnh: action MÔ TẢ CỤ THỂ, CHI TIẾT hành động + diễn biến tâm lý (tiếng Việt) — KHÔNG chung chung. Ưu tiên chi tiết giác quan trong truyện. Đủ chi tiết để pha 2 dựng được shot list.
+3. Thoại: lấy đối thoại hay của truyện, 1-4 câu mỗi cảnh, tiếng Việt tự nhiên, character PHẢI là tên trong dàn nhân vật trên, text + emotion cụ thể.
+4. THOẠI TRUNG THỰC (không có lip-sync): ưu tiên lời dẫn narration + thoại ngoài hình; thoại trực diện tối thiểu.
+5. Thể loại {{.Genre}}: tiếp nối mạch hồi 1-2, không lặp lại tình huống cũ.
 
-3. CENTER-SAFE: shot nào trailer_worthy=true thì nhân vật và hành động chính PHẢI nằm trong vùng 9:16 ở giữa khung hình 16:9 — trailer dọc crop 2 biên sẽ không cắt mất nội dung.
-
-5. ĐA DẠNG SHOT: không lặp cùng shot_size + camera_move quá 2 shot liên tiếp; mỗi cảnh có ít nhất 1 wide (WS/EWS), 1 close-up (CU/ECU/MCU), 1 movement shot (camera_move khác static).
-6. THOẠI TRUNG THỰC (kỹ thuật hiện tại KHÔNG có lip-sync — giọng đọc phủ lên hình): ưu tiên lời dẫn narration + thoại ngoài hình (nhân vật không lộ mặt khi nói); thoại trực diện tối thiểu; xen cutaway/reaction shot (bàn tay, ánh mắt người nghe, chi tiết bối cảnh) giữa các câu thoại — ngữ pháp điện ảnh chuẩn, vừa hay vừa che điểm yếu AI.
-4. Thể loại {{.Genre}}: cao trào và cái kết phải đúng thể loại. Giải quyết mọi manh mối đã gieo ở hồi 1-2, không bỏ lửng.
-
-Mỗi scene: location (cụ thể, tiếng Anh, khóa cứng), time_of_day (tiếng Anh), atmosphere (tiếng Anh), seconds 60-120, continuity (KHỐI BẤT DI BẤT DỊCH — tiếng Anh: trang phục CHI TIẾT từng nhân vật, kiểu tóc, đạo cụ, hướng ánh sáng, thời tiết; viết 1 lần, mọi shot kế thừa nguyên văn), shots 2-4 (shot_size, camera_move, lens_light, seconds 4-8, action tiếng Việt CỤ THỂ, image_prompt tiếng Anh photorealistic cinematic KHÔNG text, trailer_worthy true/false — shot nào true PHẢI dựng center-safe: nhân vật/hành động chính nằm giữa khung hình trong vùng 9:16 trung tâm, vì trailer dọc sẽ crop 2 biên — đánh dấu 3-6 shot đắt giá nhất hồi này, ưu tiên cảnh cao trào), dialogue 1-4 câu (character PHẢI là tên nhân vật đã cho, text tiếng Việt, emotion cụ thể), image_prompt keyframe (tiếng Anh), narration (tiếng Việt) hoặc "".
-
-Nhân vật NHẤT QUÁN mọi cảnh, bối cảnh mỗi cảnh NHẤT QUÁN mọi shot.
-
-Chỉ trả JSON: {"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","seconds":90,"continuity":"...","shots":[{"shot_size":"WS","camera_move":"slow dolly-in","lens_light":"35mm, golden hour","seconds":6,"action":"...","image_prompt":"...","trailer_worthy":true}],"dialogue":[{"character":"...","text":"...","emotion":"..."}],"image_prompt":"...","narration":"..."}]}
+Chỉ trả JSON: {"scenes":[{"index":1,"location":"...","time_of_day":"...","atmosphere":"...","seconds":90,"action":"...","dialogue":[{"character":"...","text":"...","emotion":"..."}],"narration":"..."}]}

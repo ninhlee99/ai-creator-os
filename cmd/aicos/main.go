@@ -572,6 +572,19 @@ func main() {
 		if n := st.MarkInterruptedJobs(); n > 0 {
 			log.Printf("studio: %d job(s) interrupted by restart — marked failed (resume from Studio)", n)
 		}
+		// Film Wave 3: probe khả năng AI lúc khởi động — vẽ thử 1 ảnh
+		// (tốn tối thiểu); quay video KHÔNG tự probe (tốn ~8s Veo tiền
+		// thật) mà lấy từ lịch sử lần quay gần nhất.
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+			defer cancel()
+			if err := st.ProbeImageGen(ctx); err != nil {
+				log.Printf("studio: image-gen probe: %v", err)
+			} else {
+				log.Printf("studio: image-gen probe OK")
+			}
+			st.RefreshVideoStatusFromHistory()
+		}()
 		defer func() {
 			if err := st.Close(); err != nil {
 				log.Printf("studio close: %v", err)
