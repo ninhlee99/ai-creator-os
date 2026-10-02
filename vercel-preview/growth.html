@@ -19,8 +19,8 @@
 })();
 </script>
 </head>
-<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
-
+<body>
+<div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -30,14 +30,11 @@
       <a href="index.html">Trang chủ</a>
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
-      <a href="analytics.html">Phân tích</a>
       <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
-      <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
       <a href="team.html">Agent Team 🤖</a>
-      <a href="products.html">Tìm sản phẩm</a>
-      <a href="shop.html">Shop Affiliate</a>
+      <a href="products.html">Sản phẩm</a>
       <div class="nav-group">Hệ thống</div>
       <a href="publishers.html">Đa nền tảng</a>
       <a href="settings.html">Cài đặt</a>
@@ -63,12 +60,29 @@
     <main class="content">
       
 <h1>Phát triển kênh 🌱</h1>
-<p class="subtitle">Hệ thống tự vận hành theo chu kỳ 30-60-90 ngày: test format, giết format yếu,
-nhân đôi format thắng, đẩy tới mốc kiếm tiền — bạn không cần can thiệp.
-Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ thống báo rõ, không bao giờ bịa số.</p>
+<p class="subtitle">Tự vận hành chu kỳ 30-60-90 ngày. Số liệu chỉ từ API chính thức — chưa kết nối thì báo rõ.</p>
 
 
 
+
+<div class="form-card" style="margin:12px 0">
+  <h2 style="margin-top:0;border:none;padding:0">Sản xuất &amp; đăng tự động</h2>
+  <p>
+    <span class="badge badge-ok">đang bật</span>
+    <span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi DRY-RUN bật">DRY-RUN</span>
+    
+    <span class="badge badge-draft" title="Quota YouTube hôm nay (mỗi lượt tải = 1600 units)">Quota 0/10000 · còn 6 lượt</span>
+    <span class="badge badge-draft" title="Đổi ở Cài đặt: YOUTUBE_DEFAULT_PRIVACY; luôn gắn cờ nội dung AI">Đăng YouTube: private</span>
+  </p>
+  <p class="hint">DRY-RUN là cổng an toàn toàn cục. TikTok: nháp tới khi qua audit.</p>
+  <form method="post" action="growth.html" style="display:inline">
+    <input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt sản xuất tự động</button>
+    
+  </form>
+  <form method="post" action="growth.html" style="display:inline">
+    <button class="btn btn-secondary" type="submit">▶ Chạy ngay</button>
+  </form>
+</div>
 
 
 
@@ -79,14 +93,14 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <div class="card"><div class="num">Chưa nhập</div><div class="label">YouTube API key — nhập tại <a href="settings.html">Cài đặt</a> (YOUTUBE_API_KEY)</div></div>
 </div>
 
-<form method="post" action="growth.html/sync" style="margin:12px 0">
+<form method="post" action="growth.html" style="margin:12px 0">
   <button class="btn" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
   <span class="hint">Nguồn chưa kết nối sẽ được báo rõ trong kết quả — hệ thống không bịa số.</span>
 </form>
 
 <h2>Trạng thái từng tài khoản</h2>
 <table>
-<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>YouTube API</th><th></th></tr>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
 
 <tr>
   <td><a href="account-detail.html">kechuyen_ai_yt</a></td>
@@ -96,21 +110,23 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td><span class="hint">chưa có snapshot</span></td>
   <td>—</td>
   <td><span class="badge badge-no">chưa kết nối</span></td>
+  <td><span class="badge badge-warn">thiếu OAuth app</span></td>
   <td>
-    <form method="post" action="growth.htmlaccount-detail.html/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
+    <form method="post" action="growth.html"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
   </td>
 </tr>
 
 <tr>
-  <td><a href="accounts.html/2">meovatcongnghe_tiktok</a></td>
+  <td><a href="account-detail.html">meovatcongnghe_tiktok</a></td>
   <td><span class="badge badge-warn">Khởi động (canary)</span></td>
   <td>Chưa có số liệu thật</td>
   <td>—</td>
   <td><span class="hint">chưa có snapshot</span></td>
   <td>—</td>
   <td><span class="badge badge-no">chưa kết nối</span></td>
+  <td><span class="badge badge-warn">thiếu OAuth app</span></td>
   <td>
-    <form method="post" action="growth.htmlaccounts.html/2/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
+    <form method="post" action="growth.html"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
   </td>
 </tr>
 
@@ -125,17 +141,18 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 </div>
 
 <div>
-<h2>Kế hoạch sắp tới (toàn mạng)</h2>
+<h2>Kế hoạch &amp; sản xuất sắp tới (toàn mạng)</h2>
 
 <table>
-<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Hook gợi ý</th></tr>
+<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Trạng thái</th><th>Ghi chú</th></tr>
 
 <tr>
   <td>2026-10-02</td>
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>truyện ngắn</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -143,7 +160,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>truyện ngắn</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -151,7 +169,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>code game theo yêu cầu</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -159,7 +178,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>truyện ma</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -167,7 +187,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>truyện ma</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -175,7 +196,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>debug live</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -183,7 +205,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>câu chuyện đời</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -191,7 +214,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>câu chuyện đời</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -199,7 +223,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>thử thách 30 phút 1 game</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -207,7 +232,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>truyện ngắn</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -215,7 +241,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>truyện ngắn</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -223,7 +250,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>tính năng theo yêu cầu quà tặng</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -231,7 +259,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>truyện ma</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -239,7 +268,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>truyện ma</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -247,7 +277,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>code game theo yêu cầu</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -255,7 +286,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>câu chuyện đời</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -263,7 +295,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>câu chuyện đời</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -271,7 +304,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>meovatcongnghe_tiktok</td>
   <td>tiktok</td>
   <td>debug live</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 <tr>
@@ -279,7 +313,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>youtube_shorts</td>
   <td>truyện ngắn</td>
-  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</span></td>
 </tr>
 
 <tr>
@@ -287,7 +322,8 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>kechuyen_ai_yt</td>
   <td>tiktok</td>
   <td>truyện ngắn</td>
-  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+  <td><span class="badge badge-info">Đã lên lịch</span></td>
+  <td><span class="hint">Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</span></td>
 </tr>
 
 </table>
@@ -295,9 +331,7 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 </div>
 </div>
 
-<p class="hint">Giới hạn trung thực của bản MVP: YouTube Data API chỉ cấp tổng lượt xem tích lũy và số video —
-chỉ số 30 ngày / giờ xem YPP cần YouTube Analytics API (OAuth) ở giai đoạn 2. TikTok chưa có nguồn số liệu
-(Display API cần OAuth từng tài khoản + audit Direct Post) nên kênh TikTok hiện chỉ đăng nháp và chưa đồng bộ metrics.</p>
+<p class="hint">Giới hạn: views-30d/giờ-xem chờ YouTube Analytics API · TikTok chưa có số liệu (chỉ sản xuất + đăng nháp) · quota YouTube dùng chung 1 project (10.000 units/ngày).</p>
 
 
     </main>

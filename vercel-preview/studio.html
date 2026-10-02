@@ -19,8 +19,8 @@
 })();
 </script>
 </head>
-<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
-
+<body>
+<div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -30,14 +30,11 @@
       <a href="index.html">Trang chủ</a>
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
-      <a href="analytics.html">Phân tích</a>
       <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
-      <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
       <a href="team.html">Agent Team 🤖</a>
-      <a href="products.html">Tìm sản phẩm</a>
-      <a href="shop.html">Shop Affiliate</a>
+      <a href="products.html">Sản phẩm</a>
       <div class="nav-group">Hệ thống</div>
       <a href="publishers.html">Đa nền tảng</a>
       <a href="settings.html">Cài đặt</a>
@@ -67,6 +64,13 @@
 
 
 
+<nav class="tabs">
+  <a href="studio.html" class="active">Studio AI</a>
+  <a href="studio-chu.html">Video chữ động</a>
+</nav>
+
+
+
 <div class="cards">
   <div class="card">
     <h3>Tạo ảnh &amp; video <span class="label-hint">(Media-gen)</span></h3>
@@ -86,7 +90,7 @@
 
 <h2>1 · Video affiliate</h2>
 <div class="form-card">
-<form method="post" action="studio.html/affiliate" enctype="multipart/form-data" id="studio-form">
+<form method="post" action="studio.html" enctype="multipart/form-data" id="studio-form">
   <div class="field">
     <label>Tên sản phẩm <span class="req">*</span></label>
     <input type="text" name="product_name" required placeholder="Ví dụ: Túi kem quilted">
@@ -278,7 +282,7 @@
 
 <h2>2 · Phim ngắn</h2>
 <div class="form-card">
-<form method="post" action="studio.html/film">
+<form method="post" action="studio.html">
   <div class="field">
     <label>Chủ đề phim <span class="req">*</span></label>
     <input type="text" name="topic" required placeholder="Ví dụ: Cô gái và chiếc túi bí ẩn">
@@ -294,7 +298,7 @@
 
 <h2>3 · Nhạc thịnh hành TikTok Việt Nam</h2>
 <p class="hint">Nguồn: Kworb — TikTok Trending Songs Vietnam (kworb.net/charts/tiktok/vn.html). Đây là bảng xếp hạng của bên thứ ba, không phải số liệu chính thức từ TikTok.</p>
-<form method="post" action="studio.html/trends/refresh" class="inline-form">
+<form method="post" action="studio.html" class="inline-form">
   <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
 </form>
 
@@ -435,7 +439,7 @@ function toggleBoard(id){
   var box = document.querySelector('[data-job="'+id+'"] .board');
   if(boards[id]){ box.innerHTML=""; boards[id]=false; return; }
   boards[id]=true;
-  fetch("studio.html/jobs/"+id).then(function(r){return r.json();}).then(function(d){
+  fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
     var h = "";
     var logEl = document.getElementById("log-"+id);
     if(d.job && d.job.log){ logEl.textContent = d.job.log; logEl.hidden = false; }
@@ -459,7 +463,7 @@ function toggleBoard(id){
   var cards = document.querySelectorAll('[data-job]');
   if(!cards.length) return;
   var timer = setInterval(function(){
-    fetch('studio.html/jobs').then(function(r){return r.json();}).then(function(d){
+    fetch('/studio/jobs').then(function(r){return r.json();}).then(function(d){
       var anyActive = false;
       (d.jobs||[]).forEach(function(j){
         if(j.status==='running' || j.status==='queued') anyActive = true;
@@ -482,6 +486,7 @@ function toggleBoard(id){
   }, 5000);
 })();
 </script>
+
 
     </main>
   </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Shop Affiliate — AI Creator OS</title>
+<title>Sản phẩm Affiliate — AI Creator OS</title>
 <link rel="stylesheet" href="static/style.css">
 <script>
 
@@ -19,8 +19,8 @@
 })();
 </script>
 </head>
-<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
-
+<body>
+<div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
 <div class="layout">
   <aside class="sidebar">
@@ -30,14 +30,11 @@
       <a href="index.html">Trang chủ</a>
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
-      <a href="analytics.html">Phân tích</a>
       <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
-      <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
       <a href="team.html">Agent Team 🤖</a>
-      <a href="products.html">Tìm sản phẩm</a>
-      <a href="shop.html">Shop Affiliate</a>
+      <a href="products.html">Sản phẩm</a>
       <div class="nav-group">Hệ thống</div>
       <a href="publishers.html">Đa nền tảng</a>
       <a href="settings.html">Cài đặt</a>
@@ -62,12 +59,29 @@
     </header>
     <main class="content">
       
-<h1>Shop Affiliate</h1>
-<p class="subtitle">Kệ hàng sản phẩm affiliate — AI tự tìm, chấm điểm và gắn vào video/live.</p>
+<h1>Sản phẩm Affiliate</h1>
+<p class="subtitle">Autopilot tự dùng sản phẩm trong kho.</p>
+
+
+
+
+<p>
+  <span class="badge badge-ok">Autopilot: BẬT</span>
+  <span class="badge badge-info">Tự đăng: BẬT</span>
+  
+  <span class="badge badge-draft">Chạy tiếp: vòng tới</span>
+  <span class="badge badge-draft">Kho: 0 sản phẩm</span>
+</p>
+
+<nav class="tabs">
+  <a href="products.html">Tìm sản phẩm</a>
+  <a href="products-ke.html" class="active">Kệ hàng</a>
+</nav>
+
 
 <div class="form-card">
 <h2 style="margin-top:0;border:none;padding:0">Thêm sản phẩm vào kệ</h2>
-<form method="post" action="shop.html/add">
+<form method="post" action="products.html">
   <div class="field">
     <label>Mã sản phẩm (platform_pid) <span class="req">*</span></label>
     <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
@@ -96,8 +110,14 @@
 </div>
 
 <h2>Kệ hàng</h2>
+<p class="subtitle">Sản phẩm affiliate trên kệ — AI tự tìm, chấm điểm và gắn vào video/live.</p>
 
-<p class="empty">Kệ hàng trống. Thêm sản phẩm đầu tiên ở form phía trên.</p>
+<div class="empty-state compact">
+  <div class="es-icon">🛍️</div>
+  <h3>Kệ hàng trống</h3>
+  <p>Thêm sản phẩm đầu tiên ở mẫu phía trên — AI sẽ gắn chúng vào video và phiên live.</p>
+</div>
+
 
 
     </main>
