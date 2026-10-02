@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,6 +31,8 @@ type growthAccountRow struct {
 	Followers   int64
 	ViewsTotal  int64
 	YTConnected bool
+	YTUpload    string // YouTube upload readiness label (phase 2)
+	YTReady     bool
 }
 
 type growthAlertRow struct {
@@ -86,6 +89,15 @@ func (s *Server) growthView() map[string]any {
 		return ctx
 	}
 	ctx["Accounts"] = accounts
+	// Phase-2 production defaults — set before any early return so the
+	// production card renders honestly even with zero accounts.
+	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
+	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
+	ctx["QuotaUsed"] = 0
+	ctx["QuotaLeft"] = growth.QuotaUploadsLeft(0)
+	ctx["QuotaLimit"] = growth.DailyQuotaUnits
+	ctx["QuotaPerUpload"] = growth.UploadCostUnits
+	ctx["YTPrivacy"] = "private"
 	if s.Growth == nil {
 		ctx["Error"] = "Module Phát triển kênh chưa khởi tạo được (xem log máy chủ)."
 		return ctx
@@ -104,6 +116,9 @@ func (s *Server) growthView() map[string]any {
 			continue
 		}
 		row := growthAccountRow{Account: *a, Stage: prof.Stage, YTConnected: ytKey && a.YoutubeChannel != ""}
+		ytState := s.yt().State(a)
+		row.YTUpload = ytState.Label()
+		row.YTReady = ytState.Ready()
 		latest, _ := s.Growth.LatestSnapshot(a.ID)
 		if latest != nil {
 			row.HasSnapshot = true
@@ -144,9 +159,15 @@ func (s *Server) growthView() map[string]any {
 				alerts = append(alerts, growthAlertRow{Alert: x, Username: a.Username})
 			}
 		}
-		if items, err := s.Growth.UpcomingItems(a.ID, today, 60); err == nil {
+		if items, err := s.Growth.ActivePlanItems(a.ID); err == nil {
 			for _, it := range items {
-				upcoming = append(upcoming, growthItemRow{PlanItem: it, Username: a.Username})
+				switch it.Status {
+				case growth.ItemPlanned, growth.ItemProducing, growth.ItemProduced,
+					growth.ItemWaitingConnect, growth.ItemWaitingQuota:
+					if it.Status != growth.ItemPlanned || it.PlannedFor >= today {
+						upcoming = append(upcoming, growthItemRow{PlanItem: it, Username: a.Username})
+					}
+				}
 			}
 		}
 	}
@@ -169,6 +190,20 @@ func (s *Server) growthView() map[string]any {
 	ctx["TotalFollowers"] = totalFollowers
 	ctx["TotalViews"] = totalViews
 	ctx["HasYTKey"] = ytKey
+	// Phase-2 production state: toggle, quota today, upload privacy.
+	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
+	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
+	if used, err := s.Growth.QuotaUsed(today); err == nil {
+		ctx["QuotaUsed"] = used
+		ctx["QuotaLeft"] = growth.QuotaUploadsLeft(used)
+	}
+	ctx["QuotaLimit"] = growth.DailyQuotaUnits
+	ctx["QuotaPerUpload"] = growth.UploadCostUnits
+	if priv, _ := s.effectiveEnv("YOUTUBE_DEFAULT_PRIVACY"); priv != "" {
+		ctx["YTPrivacy"] = priv
+	} else {
+		ctx["YTPrivacy"] = "private"
+	}
 	deadline, _ := time.Parse("2006-01-02", growth.YPPDeadline)
 	ctx["YPPDeadline"] = growth.YPPDeadline
 	ctx["YPPDaysLeft"] = int(time.Until(deadline).Hours() / 24)
@@ -190,7 +225,7 @@ func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {
 // source, persists what came back, and runs the growth decision loop.
 // It returns honest status lines (Vietnamese) for the UI — a source that
 // is not connected is reported as such, never silently skipped.
-func (s *Server) syncOneAccount(r *http.Request, a *network.Account) []string {
+func (s *Server) syncOneAccount(ctx context.Context, a *network.Account) []string {
 	if s.Growth == nil {
 		return []string{a.Username + ": module growth chưa sẵn sàng"}
 	}
@@ -206,7 +241,7 @@ func (s *Server) syncOneAccount(r *http.Request, a *network.Account) []string {
 	}
 	gotSnapshot := false
 	for _, src := range sources {
-		snap, err := growth.RecordSnapshot(r.Context(), s.Growth, src, srcAcct)
+		snap, err := growth.RecordSnapshot(ctx, s.Growth, src, srcAcct)
 		if err != nil {
 			notes = append(notes, a.Username+": "+err.Error())
 			continue
@@ -256,7 +291,7 @@ func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 	}
 	var notes []string
 	for _, a := range accounts {
-		notes = append(notes, s.syncOneAccount(r, a)...)
+		notes = append(notes, s.syncOneAccount(r.Context(), a)...)
 	}
 	data := s.ctx()
 	for k, v := range s.growthView() {
@@ -391,15 +426,26 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 		out["GrowthPlan"] = plan
 		today := time.Now().Format("2006-01-02")
 		var upcoming []growth.PlanItem
+		var recent []growth.PlanItem
 		for _, it := range items {
 			if it.Status == growth.ItemPlanned && it.PlannedFor >= today {
 				upcoming = append(upcoming, it)
+			} else if it.Status != growth.ItemPlanned {
+				recent = append(recent, it)
 			}
 		}
 		if len(upcoming) > 7 {
 			upcoming = upcoming[:7]
 		}
+		// Newest production activity first.
+		for i, j := 0, len(recent)-1; i < j; i, j = i+1, j-1 {
+			recent[i], recent[j] = recent[j], recent[i]
+		}
+		if len(recent) > 7 {
+			recent = recent[:7]
+		}
 		out["GrowthPlanItems"] = upcoming
+		out["GrowthRecentItems"] = recent
 	}
 	if stats, err := s.Growth.ListFormatStats(a.ID); err == nil {
 		out["GrowthStats"] = stats

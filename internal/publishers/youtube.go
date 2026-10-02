@@ -94,6 +94,10 @@ type YouTubePublisher struct {
 	clientID     string
 	clientSecret string
 	privacy      string
+	// Synthetic marks uploads as AI-generated content: the API's
+	// containsSyntheticMedia disclosure is set on insert. Growth
+	// publishing always sets this (the flag is mandatory, never off).
+	Synthetic bool
 	// HTTP is the injectable transport; nil means defaultYouTubeHTTP.
 	HTTP YouTubeHTTPFunc
 }
@@ -215,16 +219,20 @@ func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, descri
 	if category == "" {
 		category = "22"
 	}
+	statusObj := map[string]any{
+		"privacyStatus":           p.privacy,
+		"selfDeclaredMadeForKids": false,
+	}
+	if p.Synthetic {
+		statusObj["containsSyntheticMedia"] = true
+	}
 	meta, _ := json.Marshal(map[string]any{
 		"snippet": map[string]any{
 			"title":       truncate(title, 100),
 			"description": truncate(description, 5000),
 			"categoryId":  category,
 		},
-		"status": map[string]any{
-			"privacyStatus":           p.privacy,
-			"selfDeclaredMadeForKids": false,
-		},
+		"status": statusObj,
 	})
 	status, headers, raw, err := p.http()("POST", youtubeUploadURL,
 		map[string]string{

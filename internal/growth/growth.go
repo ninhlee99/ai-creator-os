@@ -30,12 +30,16 @@ const (
 
 // Plan item statuses.
 const (
-	ItemPlanned   = "planned"
-	ItemProducing = "producing"
-	ItemQC        = "qc"
-	ItemQueued    = "queued"
-	ItemPublished = "published"
-	ItemDropped   = "dropped"
+	ItemPlanned        = "planned"
+	ItemProducing      = "producing"
+	ItemQC             = "qc"
+	ItemQueued         = "queued"
+	ItemProduced       = "produced"        // render finished, not (yet) published
+	ItemWaitingConnect = "waiting_connect" // rendered, blocked on missing platform credentials
+	ItemWaitingQuota   = "waiting_quota"   // rendered, blocked on the daily API quota
+	ItemPublished      = "published"
+	ItemDropped        = "dropped"
+	ItemFailed         = "failed" // linked Studio job failed / vanished
 )
 
 // Format verdicts.
@@ -116,18 +120,35 @@ type Plan struct {
 }
 
 // PlanItem is one scheduled piece of content (content_plan_items row).
+// The phase-2 fields record the production/publishing trail: which Studio
+// job rendered it, the concept fingerprint used by the anti-duplicate
+// guard, the variant lineage (Group + RelatedItemID), and the honest
+// publish state (PubNote) — never a fabricated "published".
 type PlanItem struct {
-	ID           int64
-	PlanID       int64
-	AccountID    int64
-	PlannedFor   string // YYYY-MM-DD (ICT)
-	FormatID     string
-	Variant      string // tiktok | youtube_shorts | youtube_long
-	Topic        string
-	Hook         string
-	SeriesEp     int
-	Status       string
-	PublishedRef string
+	ID            int64
+	PlanID        int64
+	AccountID     int64
+	PlannedFor    string // YYYY-MM-DD (ICT)
+	FormatID      string
+	Variant       string // tiktok | youtube_shorts | youtube_long
+	Topic         string
+	Hook          string
+	SeriesEp      int
+	Status        string
+	ContentItemID int64
+	PublishedRef  string
+	// Phase 2 — production + anti-duplicate trail.
+	StudioJobID   string // studio_jobs.id (TEXT) that rendered this item
+	ConceptText   string // normalized concept the dedup guard compared
+	ConceptHash   string // sha256 over the concept token set
+	VariantGroup  string // "YYYY-MM-DD|<format_id>" — variants of one idea
+	DedupAction   string // "" | "angle_regenerated"
+	Attempts      int    // failed enqueue attempts so far
+	PubTitle      string // per-variant publish title decided at production
+	PubCaption    string // per-variant caption/description base
+	PubNote       string // honest publish/production state note (Vietnamese)
+	RelatedItemID int64  // plan item of the sibling variant (Short <-> long)
+	ProducedAt    string // when the render finished
 }
 
 // FormatStat is the aggregated score of one format family on one account.
