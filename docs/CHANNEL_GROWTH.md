@@ -8,6 +8,11 @@
 > Khi mâu thuẫn: `docs/MODEL.md` thắng về mô hình kinh doanh,
 > `docs/ARCHITECTURE.md` thắng về kỹ thuật hiện tại, `docs/AGENT_TEAM.md`
 > thắng về tổ chức đội agent. File này thắng về tính năng growth.
+>
+> **Trạng thái:** spec sống — MVP + giai đoạn 2 đã triển khai (xem §10–§11,
+> kèm giới hạn trung thực còn lại ở cuối §11). Phần triển khai đã bị
+> `docs/PROJECT_REVIEW.md` Đợt 1–3 phủ quyết/điều chỉnh (gộp trang, đổi
+> mặc định zero-touch, cắt dữ liệu giả) thì làm theo PROJECT_REVIEW.
 
 ---
 
@@ -688,8 +693,10 @@ trong daemon `aicos` (`web.Server.GrowthAutomationTick`), gồm 3 việc theo
 thứ tự: đồng bộ số liệu (tối đa mỗi giờ, dùng lại `syncOneAccount` của
 /growth thủ công), sản xuất các mục plan đến hạn, và đăng YouTube các biến
 thể đã render xong. Riêng 2 việc cuối gác cổng bằng toggle "Sản xuất & đăng
-tự động theo kế hoạch" ở trang /growth (setting `growth.production_enabled`,
-**mặc định TẮT**, ghi sổ quyết định mỗi lần đổi). Bút toán đồng bộ cuối ghi ở
+tự động" ở trang /growth (setting `growth.production_enabled`, ghi sổ quyết
+định mỗi lần đổi). **Đợt 3 (zero-touch): mặc định BẬT khi chưa từng lưu —
+giá trị "0" đã lưu luôn được tôn trọng; DRY-RUN là cổng an toàn toàn cục
+chặn mọi sản xuất/đăng thật, kill switch thắng tất cả.** Bút toán đồng bộ cuối ghi ở
 `growth.last_sync`. Nút "Chạy một vòng ngay" bỏ qua giờ chờ đồng bộ để kiểm
 tra bằng tay.
 
@@ -787,4 +794,5 @@ enqueue lỗi → retry có kiểm soát, dry-run chặn đứng), và toggle/m�
 /growth. Smoke test binary thật trên cổng riêng: tạo tài khoản → /growth
 hiển thị thẻ sản xuất ở trạng thái TẮT (đúng mặc định) → bật toggle →
 "đang bật" → chạy một vòng → sinh plan → bảng sắp tới + cột "Đăng YouTube"
-render đúng; log máy chủ không panic, tick báo đã gác cổng.
+render đúng; log máy chủ không panic, tick báo đã gác cổng. *(Ghi chú Đợt 3:
+mặc định nay là BẬT khi chưa lưu — bản cài cũ đã lưu "0" vẫn giữ TẮT.)*

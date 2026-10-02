@@ -75,9 +75,17 @@ phụ đề → 1080x1920.
 **Cấm** kiểu "ảnh tĩnh + Ken Burns + hiệu ứng chuyển cảnh" — mọi khung hình
 phải là nhân vật cử động như người thật quay. Pipeline avatar:
 `internal/engines/avatar` (local MuseTalk v1.5 sidecar → HeyGen → D-ID),
-chi tiết ở `docs/RESEARCH/avatar_pipeline.md`.
+kết luận kiểm chứng ở `docs/RESEARCH.md` §6.
 
 ## 4. Trụ cột doanh thu (theo thứ tự ưu tiên)
+
+> **Cập nhật ưu tiên (Ninh chốt 2026-10-02):** thứ tự triển khai thực tế hiện
+> là 1) affiliate video ngắn → 2) tạo video → 3) Shorts TikTok/YouTube →
+> 4) video dài YouTube → 5) xây kênh thành tài sản. **Live avatar hạ xuống ưu
+> tiên thấp nhất** vì đã kiểm chứng không có avatar photoreal realtime nào
+> chạy local được trên M1 Pro (`docs/RESEARCH.md` §6) — không đầu tư thêm
+> vào live cho tới khi công nghệ đổi hẳn. Danh sách dưới đây vẫn là bản đồ
+> nguồn thu theo persona; thứ tự *làm trước* theo ghi chú này.
 
 1. **Quà tặng LIVE** — đã verify: mở ở VN, không phân biệt AI/người, miễn
    không phải live bán hàng. Trụ cột #1 của mọi persona.
@@ -148,7 +156,7 @@ Nguyên tắc: **nhẹ + nhanh + dễ** — RAM/CPU là tài nguyên khan nhất
 | Game-playing agent (phase 2) | **Go** | Chỉ chơi game có bot/API chính thức hoặc offline (xem §8b) — Go gọi API/input automation, không cần Python. |
 | Local TTS (VieNeu-TTS v3) | Sidecar độc lập | Server tương thích OpenAI do binary Go quản lý (start/stop/health check) — như FFmpeg, không phải code dự án. |
 | Local LLM (llama-server) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình. |
-| Local avatar (MuseTalk v1.5) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình; render offline, không realtime trên M1 Pro. Chi tiết: `docs/RESEARCH/avatar_pipeline.md`. |
+| Local avatar (MuseTalk v1.5) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình; render offline, không realtime trên M1 Pro. Căn cứ: `docs/RESEARCH.md` §6. |
 | Music pipeline (phase 3) | **Go + API** | Ưu tiên API; local chỉ khi có model đủ tốt. |
 | Ledger | **SQLite WAL** | 0 ops, nhẹ SSD, đủ cho quy mô này. |
 | Media | **FFmpeg** (binary ngoài) | Chuẩn ngành, không thay thế. |
