@@ -140,6 +140,10 @@ func (s *Server) automation() *automation.Service {
 		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
 			svc.ATMusicPath = mp
 		}
+		// Reup automation (Đợt D): discover + download.
+		svc.Reup = s.Reup
+		svc.ReupWorkDir = filepath.Join(dataDir, "reup")
+		svc.ReupBinDir = filepath.Join(dataDir, "bin")
 	}
 	if s.Cfg != nil {
 		svc.Gate = s.Cfg

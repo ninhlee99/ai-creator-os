@@ -43,6 +43,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
+	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
@@ -478,7 +479,21 @@ func main() {
 		log.Printf("accesstrade: ready")
 	}
 
-	// -- 6c. affiliate autopilot: theme -> high-commission product -> video --
+	// -- 6c. Reup Douyin (Đợt D): nguồn + video viral tải về.
+	// Fail-soft: mở DB lỗi thì srv.Reup = nil, UI fail-closed trung thực.
+	if reupStore, err := reup.NewStore(filepath.Join(*dataDir, "reup.db")); err != nil {
+		log.Printf("reup: init failed: %v (Reup disabled)", err)
+	} else {
+		defer func() {
+			if err := reupStore.Close(); err != nil {
+				log.Printf("reup close: %v", err)
+			}
+		}()
+		srv.Reup = reupStore
+		log.Printf("reup: ready")
+	}
+
+	// -- 6d. affiliate autopilot: theme -> high-commission product -> video --
 	// Ninh uploads model photos per account (Studio UI) and picks a theme;
 	// the system hunts products and builds the videos hands-off.
 	if srv.Studio != nil {
@@ -640,6 +655,30 @@ func main() {
 			}
 		}()
 		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
+	}
+
+	// -- 7d. reup automation: discover 6 giờ/lần → download --------------
+	// Zero-touch reup (Đợt D): tìm video viral từ nguồn Douyin đang bật
+	// (TikWM metadata, pick theo play_count) → tải ngay (yt-dlp → TikWM
+	// fallback, dedupe sha256, QC). Kill switch + DRY-RUN chặn tick;
+	// chưa có nguồn → bỏ qua + note. Chưa nối transform/đăng (Đợt E).
+	if srv.Reup != nil {
+		go func() {
+			tick := time.NewTicker(5 * time.Minute)
+			defer tick.Stop()
+			auto := srv.AutomationService()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+					for _, note := range auto.ReupTick(ctx) {
+						log.Printf("reup: %s", note)
+					}
+				}
+			}
+		}()
+		log.Printf("reup: automation tick armed (discover 6 giờ/lần, download ngay)")
 	}
 
 	// -- 8. http server + graceful shutdown ----------------------------------
