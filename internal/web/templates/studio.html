@@ -5,6 +5,59 @@
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
+<nav class="tabs">
+  <a href="/studio"{{if ne .Tab "chu"}} class="active"{{end}}>Studio AI</a>
+  <a href="/studio?tab=chu"{{if eq .Tab "chu"}} class="active"{{end}}>Video chữ động</a>
+</nav>
+
+{{if eq .Tab "chu"}}
+<h2>Video chữ động</h2>
+<p class="subtitle">Tạo video dọc 1080×1920 kiểu chữ động (kinetic-typography) từ caption, kèm lồng tiếng AI nếu có.</p>
+
+<div class="form-card">
+<form method="post" action="/studio/kinetic">
+  <div class="field">
+    <label>Tiêu đề <span class="req">*</span></label>
+    <input type="text" name="title" required placeholder="vd: Review tai nghe bluetooth dưới 500k">
+  </div>
+  <div class="field">
+    <label>Caption <span class="req">*</span></label>
+    <textarea name="captions" required placeholder="Mỗi dòng là một caption, hiển thị lần lượt"></textarea>
+    <div class="hint">Mỗi dòng một caption — video sẽ chuyển cảnh theo từng dòng.</div>
+  </div>
+  <div class="field">
+    <label>Lời dẫn (narration)</label>
+    <textarea name="narration" placeholder="Để trống = video không lời, chỉ phụ đề"></textarea>
+  </div>
+  <button type="submit" class="btn">Tạo video</button>
+</form>
+</div>
+
+<h2>Video chữ động đã tạo</h2>
+{{if .ContentJobs}}
+  {{range .ContentJobs}}
+  <div class="job">
+    <h3>{{.Title}}</h3>
+    <div class="meta">
+      <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
+      · tạo lúc {{if .CreatedAt}}{{.CreatedAt}}{{else}}—{{end}}
+      {{if .FinishedAt}}· xong lúc {{.FinishedAt}}{{end}}
+    </div>
+    {{if .Output}}
+    <video class="player" controls src="/media/{{.Output}}"></video>
+    {{end}}
+    {{if .Log}}<pre class="log">{{.Log}}</pre>{{end}}
+  </div>
+  {{end}}
+{{else}}
+<div class="empty-state compact">
+  <div class="es-icon">🔤</div>
+  <h3>Chưa có video chữ động nào</h3>
+  <p>Điền tiêu đề và caption ở mẫu phía trên để tạo video đầu tiên.</p>
+</div>
+{{end}}
+{{else}}
+
 <div class="cards">
   <div class="card">
     <h3>Tạo ảnh &amp; video <span class="label-hint">(Media-gen)</span></h3>
@@ -251,4 +304,5 @@ function toggleBoard(id){
   }, 5000);
 })();
 </script>
+{{end}}
 {{end}}

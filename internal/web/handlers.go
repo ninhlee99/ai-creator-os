@@ -52,8 +52,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /schedule", s.handleSchedule)
 	mux.HandleFunc("POST /schedule/build", s.handleScheduleBuild)
 
-	mux.HandleFunc("GET /content", s.handleContent)
-	mux.HandleFunc("POST /content", s.handleContentCreate)
+	// Video chữ động (kinetic) — tab trong Studio (gộp từ trang /content cũ).
+	mux.HandleFunc("POST /studio/kinetic", s.handleStudioKineticCreate)
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
 
 	// Studio: AI video creation (affiliate / short film) + VN trends.
@@ -72,17 +72,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
 	mux.HandleFunc("GET /publishers/tiktok/callback", s.handleTikTokCallback)
 
-	mux.HandleFunc("GET /shop", s.handleShop)
-	mux.HandleFunc("POST /shop/add", s.handleShopAdd)
-
 	// Affiliate product discovery (theme search -> save into product store).
+	// Tab "Kệ hàng" (gộp từ trang /shop cũ) nằm trong cùng trang này.
 	mux.HandleFunc("GET /products", s.handleProducts)
 	mux.HandleFunc("POST /products/search", s.handleProductsSearch)
 	mux.HandleFunc("POST /products/add", s.handleProductsAdd)
+	mux.HandleFunc("POST /products/shelf/add", s.handleProductsShelfAdd)
 	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
 	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
 
-	mux.HandleFunc("GET /analytics", s.handleAnalytics)
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
 	mux.HandleFunc("POST /growth/accounts/{id}/plan", s.handleGrowthPlan)
@@ -131,6 +129,19 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/products", s.handleAPIProducts)
 	mux.HandleFunc("GET /api/decisions", s.handleAPIDecisions)
 
+	// Đợt 2 (gộp trang): URL cũ của các trang đã gộp redirect 303 sang tab
+	// thay thế, để bookmark/form cũ vẫn tới đúng chỗ. Trang /analytics đã
+	// tan hẳn (doanh thu ở Trang chủ, chi phí API ở Cài đặt, số liệu video
+	// ở /growth) nên không giữ redirect.
+	for _, legacy := range []struct{ pattern, target string }{
+		{"GET /content", "/studio?tab=chu"},
+		{"POST /content", "/studio?tab=chu"},
+		{"GET /shop", "/products?tab=ke"},
+		{"POST /shop/add", "/products?tab=ke"},
+	} {
+		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
+	}
+
 	return s.recoverer(mux)
 }
 
@@ -149,6 +160,14 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 
 func seeOther(w http.ResponseWriter, r *http.Request, loc string) {
 	http.Redirect(w, r, loc, http.StatusSeeOther)
+}
+
+// redirectTo returns a handler that 303-redirects every request to loc.
+// Used for the legacy page URLs replaced by tabs in the Đợt 2 merge.
+func redirectTo(loc string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		seeOther(w, r, loc)
+	}
 }
 
 func (s *Server) fail(w http.ResponseWriter, err error, what string) {
@@ -510,15 +529,15 @@ func (s *Server) handleScheduleBuild(w http.ResponseWriter, r *http.Request) {
 	seeOther(w, r, "/schedule")
 }
 
-// ----------------------------------------------------------------- content
+// -------------------------------------------------- video chữ động (kinetic)
 
-func (s *Server) handleContent(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "content", s.ctx("Jobs", s.Jobs.All()))
-}
-
-func (s *Server) handleContentCreate(w http.ResponseWriter, r *http.Request) {
+// handleStudioKineticCreate queues one kinetic-typography render from the
+// Studio "Video chữ động" tab (trang /content cũ đã gộp vào đây — Đợt 2).
+// Old jobs stay in the same JSON store, so videos created before the merge
+// remain listed and playable under the tab.
+func (s *Server) handleStudioKineticCreate(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		s.fail(w, err, "parse content form")
+		s.fail(w, err, "parse kinetic form")
 		return
 	}
 	var captions []string
@@ -537,12 +556,12 @@ func (s *Server) handleContentCreate(w http.ResponseWriter, r *http.Request) {
 		Log:       "Đang chờ…",
 	}
 	if job.Title == "" {
-		seeOther(w, r, "/content")
+		seeOther(w, r, "/studio?tab=chu")
 		return
 	}
 	s.Jobs.Add(job)
 	go s.runJob(job.ID) // never blocks the dashboard; panics are contained
-	seeOther(w, r, "/content")
+	seeOther(w, r, "/studio?tab=chu")
 }
 
 // runJob renders one content job in the background and records the
@@ -636,118 +655,15 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal()))
 }
 
-// --------------------------------------------------------------------- shop
+// --------------------------------------------------------------------- usage
 
-type productView struct {
-	Title           string
-	PlatformPID     string
-	Category        string
-	Price           float64
-	CommissionRate  float64
-	CommissionValue float64
-	Score           float64
-	Status          string
-}
-
-func (s *Server) handleShop(w http.ResponseWriter, r *http.Request) {
-	products, err := s.Ledger.ShelfProducts(50)
-	if err != nil {
-		s.fail(w, err, "shelf products")
-		return
-	}
-	views := make([]productView, 0, len(products))
-	for _, p := range products {
-		views = append(views, productView{
-			Title: p.Title, PlatformPID: p.PlatformPID,
-			Category: nullStr(p.Category), Price: p.Price,
-			CommissionRate: p.CommissionRate, CommissionValue: p.CommissionValue,
-			Score: p.Score, Status: p.Status,
-		})
-	}
-	s.render(w, "shop", s.ctx("Products", views))
-}
-
-func (s *Server) handleShopAdd(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		s.fail(w, err, "parse shop form")
-		return
-	}
-	pid := strings.TrimSpace(r.PostFormValue("platform_pid"))
-	title := strings.TrimSpace(r.PostFormValue("title"))
-	price, _ := strconv.ParseFloat(r.PostFormValue("price"), 64)
-	rate, _ := strconv.ParseFloat(r.PostFormValue("commission_rate"), 64)
-	if pid == "" || title == "" {
-		seeOther(w, r, "/shop")
-		return
-	}
-	category := strings.TrimSpace(r.PostFormValue("category"))
-	fields := map[string]any{
-		"title": title, "price": price, "commission_rate": rate,
-		"commission_value": price * rate,
-		"category":         nil,
-		"status":           "shelf", "score": 0.0,
-	}
-	if category != "" {
-		fields["category"] = category
-	}
-	if _, err := s.Ledger.UpsertProduct(pid, fields); err != nil {
-		log.Printf("web: upsert product: %v", err)
-	}
-	seeOther(w, r, "/shop")
-}
-
-// ---------------------------------------------------------------- analytics
-
-type giftRow struct {
-	Username string
-	USD      float64
-}
-
+// usageRow is one engine/provider API-cost aggregate (Settings ▸ Trạng
+// thái hệ thống — trang /analytics cũ đã tan vào đây, Đợt 2).
 type usageRow struct {
 	Engine   string
 	Provider string
 	N        int64
 	Cost     float64
-}
-
-func (s *Server) handleAnalytics(w http.ResponseWriter, r *http.Request) {
-	revenue := s.scalarFloat("SELECT COALESCE(SUM(commission),0) FROM orders")
-	commissions, err := s.Ledger.TotalRevenue()
-	if err != nil {
-		s.fail(w, err, "total revenue")
-		return
-	}
-	sessions := s.scalarInt("SELECT COUNT(*) FROM live_sessions")
-
-	accounts, err := s.Mgr.List()
-	if err != nil {
-		s.fail(w, err, "list accounts")
-		return
-	}
-	var gifts []giftRow
-	for _, a := range accounts {
-		if g, err := s.Ledger.AccountGiftUSD(a.ID); err == nil && g > 0 {
-			gifts = append(gifts, giftRow{Username: a.Username, USD: g})
-		}
-	}
-	usage, err := s.queryUsage()
-	if err != nil {
-		s.fail(w, err, "usage")
-		return
-	}
-	spend, err := s.Ledger.DailySpendUSD()
-	if err != nil {
-		s.fail(w, err, "daily spend")
-		return
-	}
-	s.render(w, "analytics", s.ctx(
-		"Revenue", revenue,
-		"Commissions", commissions,
-		"Sessions", sessions,
-		"GiftRows", gifts,
-		"Usage", usage,
-		"Spend", spend,
-	))
 }
 
 func (s *Server) queryUsage() ([]usageRow, error) {
@@ -956,11 +872,25 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	for _, a := range accounts {
 		rtmps = append(rtmps, rtmpRow{Username: a.Username, Ref: a.RtmpKeyRef, Ok: a.RtmpKey() != ""})
 	}
+	// Chi phí API (khối trong "Trạng thái hệ thống") — fail-soft: lỗi truy
+	// vấn chỉ ghi log, không làm sập trang Cài đặt.
+	usage, uerr := s.queryUsage()
+	if uerr != nil {
+		log.Printf("web: settings usage: %v", uerr)
+	}
+	var spend float64
+	if s.Ledger != nil {
+		if v, err := s.Ledger.DailySpendUSD(); err == nil {
+			spend = v
+		}
+	}
 	s.render(w, "settings", s.ctx(
 		"EnvStatus", envs,
 		"EnvSaved", r.URL.Query().Get("envsaved"),
 		"RtmpRows", rtmps,
 		"DbPath", s.Cfg.DatabasePath,
+		"Usage", usage,
+		"Spend", spend,
 		"TTSChain", s.loadChain("tts"),
 		"LLMChain", s.loadChain("llm"),
 		"TTSKeys", s.keyRingStatuses("tts", "gemini"),

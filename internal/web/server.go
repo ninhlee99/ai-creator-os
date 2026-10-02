@@ -350,12 +350,9 @@ var pageFiles = map[string]string{
 	"account_new":    "account_new.html",
 	"account_detail": "account_detail.html",
 	"schedule":       "schedule.html",
-	"content":        "content.html",
 	"studio":         "studio.html",
 	"publishers":     "publishers.html",
-	"shop":           "shop.html",
 	"products":       "products.html",
-	"analytics":      "analytics.html",
 	"growth":         "growth.html",
 	"settings":       "settings.html",
 	"team":           "team.html",
@@ -507,14 +504,6 @@ func (s *Server) queryDecisions(query string, args ...any) ([]decisionView, erro
 // scalarFloat is a tiny helper for the one-off aggregate queries.
 func (s *Server) scalarFloat(query string, args ...any) float64 {
 	var v float64
-	if err := s.db.QueryRow(query, args...).Scan(&v); err != nil {
-		return 0
-	}
-	return v
-}
-
-func (s *Server) scalarInt(query string, args ...any) int64 {
-	var v int64
 	if err := s.db.QueryRow(query, args...).Scan(&v); err != nil {
 		return 0
 	}

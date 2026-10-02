@@ -63,9 +63,22 @@ func (s *Server) writeJSON(w http.ResponseWriter, v any) {
 }
 
 // handleStudio renders the Studio page: creation forms, job list, trends.
+// Tab "ai" (mặc định) là Studio AI; tab "chu" là Video chữ động (kinetic —
+// trang /content cũ đã gộp vào đây, Đợt 2; job cũ trong store vẫn hiện).
 func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
+	tab := r.URL.Query().Get("tab")
+	if tab != "chu" {
+		tab = "ai"
+	}
+	var contentJobs []Job
+	if s.Jobs != nil {
+		contentJobs = s.Jobs.All()
+	}
 	if s.Studio == nil {
-		s.render(w, "studio", s.ctx("Error", "Studio chưa được khởi tạo."))
+		s.render(w, "studio", s.ctx(
+			"Tab", tab,
+			"ContentJobs", contentJobs,
+			"Error", "Studio chưa được khởi tạo."))
 		return
 	}
 	jobs := s.studioJobViews(s.Studio.ListJobs(30))
@@ -79,6 +92,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.render(w, "studio", s.ctx(
+		"Tab", tab,
+		"ContentJobs", contentJobs,
 		"Jobs", jobs,
 		"Sounds", sounds,
 		"TrendsSource", studio.TrendsSource,

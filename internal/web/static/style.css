@@ -234,6 +234,13 @@ tr:hover td { background: var(--bg3); }
   border: 1px solid var(--border);
   border-radius: 999px; color: var(--muted); background: var(--bg2); }
 .subnav a:hover { color: var(--accent); text-decoration: none; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
+.tabs a { font-size: var(--fs-sm); padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px; color: var(--muted); background: var(--bg2); }
+.tabs a:hover { color: var(--accent); text-decoration: none; }
+.tabs a.active { color: #fff; background: var(--accent);
+  border-color: var(--accent); }
 h2[id] { scroll-margin-top: 64px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-weight: 600; margin-bottom: 6px;
