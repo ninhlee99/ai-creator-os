@@ -146,8 +146,13 @@ func itemByVariant(t *testing.T, s *Server, accountID int64, variant string) gro
 
 // ------------------------------------------------------------- tests
 
-func TestGrowthTickToggleOffProducesNothing(t *testing.T) {
+func TestGrowthTickStoredOffProducesNothing(t *testing.T) {
 	s, fp, _ := newGrowthServer(t)
+	// Đợt 3: unset now defaults ON — this test pins the other half of
+	// the contract: a stored "0" is always respected.
+	if err := s.Ledger.SetSetting(SettingGrowthProduction, "0"); err != nil {
+		t.Fatalf("store off: %v", err)
+	}
 	a := growthAccount(t, s, "toggle_off")
 	seedPlan(t, s, a.ID, draftOn(s.today(), growth.VariantTikTok, "truyện ma — tập 1"))
 
@@ -507,7 +512,7 @@ func TestGrowthProductionToggleAndPage(t *testing.T) {
 		t.Fatalf("GET /growth = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Sản xuất &amp; đăng tự động", "đang bật", "Chạy một vòng ngay", "Đăng YouTube"} {
+	for _, want := range []string{"Sản xuất &amp; đăng tự động", "đang bật", "Chạy ngay", "Đăng YouTube"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("/growth missing %q", want)
 		}

@@ -202,6 +202,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	revenue := s.scalarFloat("SELECT COALESCE(SUM(commission),0) FROM orders")
+	commRevenue, _ := s.Ledger.TotalRevenue()
+	s.ensureTodaySchedule()
 	today := s.today()
 	slots, err := s.Ledger.GetSlots(today)
 	if err != nil {
@@ -219,8 +221,12 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"EligibleCount", eligible,
 		"ByStatus", sortedStatusCounts(accounts),
 		"Revenue", revenue,
+		"CommissionRevenue", commRevenue,
+		"LiveSessions", s.scalarInt("SELECT COUNT(*) FROM live_sessions"),
 		"Slots", s.slotViews(slots),
 		"Decisions", decisions,
+		"GrowthAlerts", s.recentGrowthAlerts(accounts),
+		"LocalRuntimes", s.localRuntimeViews(),
 		"Today", today,
 		"NJobs", s.Jobs.Count(),
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
@@ -286,6 +292,8 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.advanceOnboarding(acct.ID)
+	// Zero-touch (Đợt 3): the first 30-day growth plan writes itself.
+	s.autoGeneratePlan(acct, "Tự sinh khi tạo tài khoản")
 	seeOther(w, r, "/accounts/"+strconv.FormatInt(acct.ID, 10))
 }
 
@@ -481,6 +489,7 @@ func (s *Server) handleAccountLiveTopic(w http.ResponseWriter, r *http.Request) 
 var weekdayNames = []string{"Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"}
 
 func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
+	s.ensureTodaySchedule()
 	today := s.today()
 	slots, err := s.Ledger.GetSlots(today)
 	if err != nil {
@@ -501,12 +510,14 @@ func (s *Server) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
-func (s *Server) handleScheduleBuild(w http.ResponseWriter, r *http.Request) {
+// buildTodaySchedule (re)builds today's live slots from every account
+// (the allocator itself filters to eligible ones). Shared by the manual
+// rebuild button and the zero-touch auto-build.
+func (s *Server) buildTodaySchedule() (int, error) {
 	today := s.today()
 	accts, err := s.Ledger.ListAccounts(nil)
 	if err != nil {
-		s.fail(w, err, "list accounts for schedule")
-		return
+		return 0, err
 	}
 	wd := (int(time.Now().In(s.location()).Weekday()) + 6) % 7
 	slots := network.BuildSchedule(accts, wd)
@@ -515,16 +526,58 @@ func (s *Server) handleScheduleBuild(w http.ResponseWriter, r *http.Request) {
 		slots[i].Status = "planned"
 	}
 	if _, err := s.db.Exec("DELETE FROM live_slots WHERE slot_date=?", today); err != nil {
-		s.fail(w, err, "clear old slots")
-		return
+		return 0, err
 	}
 	if err := s.Ledger.SaveSlots(slots); err != nil {
-		s.fail(w, err, "save slots")
-		return
+		return 0, err
 	}
 	if err := s.Ledger.Decide("scheduler", "build_schedule", &today,
 		fmt.Sprintf("%d slots", len(slots)), map[string]any{}); err != nil {
 		log.Printf("web: decide build_schedule: %v", err)
+	}
+	return len(slots), nil
+}
+
+// ensureTodaySchedule makes the live schedule build itself (Đợt 3):
+// when today has no slots yet and at least one account could take one,
+// build once — at most one auto-build per day per process. Opening the
+// homepage or the schedule page is enough; no button to remember. The
+// daemon still decides what actually goes live under master/kill/dry-run.
+func (s *Server) ensureTodaySchedule() {
+	today := s.today()
+	if slots, err := s.Ledger.GetSlots(today); err != nil || len(slots) > 0 {
+		return
+	}
+	accts, err := s.Ledger.ListAccounts(nil)
+	if err != nil {
+		return
+	}
+	eligible := false
+	for _, a := range accts {
+		if a.Status == "live_ready" || a.Status == "live" {
+			eligible = true
+			break
+		}
+	}
+	if !eligible {
+		return
+	}
+	s.schedMu.Lock()
+	if s.schedBuilt == today {
+		s.schedMu.Unlock()
+		return
+	}
+	s.schedBuilt = today
+	s.schedMu.Unlock()
+	if _, err := s.buildTodaySchedule(); err != nil {
+		log.Printf("web: auto build schedule: %v", err)
+	}
+}
+
+func (s *Server) handleScheduleBuild(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.buildTodaySchedule(); err != nil {
+		s.fail(w, err, "build schedule")
+		return
 	}
 	seeOther(w, r, "/schedule")
 }
@@ -1423,23 +1476,7 @@ func (s *Server) handleVieneuEnsure(w http.ResponseWriter, r *http.Request) {
 	if !s.vieneuRequired(w, r) {
 		return
 	}
-	s.vieneuMu.Lock()
-	s.vieneuDownloaded, s.vieneuTotal, s.vieneuErr = 0, 0, ""
-	s.vieneuDone = false
-	s.vieneuMu.Unlock()
-	go func() {
-		err := s.VieNeu.EnsureModel(context.Background(), func(downloaded, total int64) {
-			s.vieneuMu.Lock()
-			s.vieneuDownloaded, s.vieneuTotal = downloaded, total
-			s.vieneuMu.Unlock()
-		})
-		s.vieneuMu.Lock()
-		s.vieneuDone = true
-		if err != nil {
-			s.vieneuErr = err.Error()
-		}
-		s.vieneuMu.Unlock()
-	}()
+	s.kickVieneuEnsure()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"started": true})
 }

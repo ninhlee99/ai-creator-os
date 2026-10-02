@@ -82,6 +82,11 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jobs := s.studioJobViews(s.Studio.ListJobs(30))
+	// Zero-touch (Đợt 3 / A6): a stale chart refreshes itself in the
+	// background — nobody has to remember the refresh button.
+	if studio.TrendsStale() {
+		studio.RefreshVNTrendingAsync()
+	}
 	sounds, trendsErr := studio.FetchVNTrending(r.Context())
 	mgOK := false
 	mgKeys := 0

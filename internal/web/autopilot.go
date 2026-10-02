@@ -99,6 +99,19 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	enabled, hours, lastRun, music, autoPub := s.scheduleView()
+	// Autopilot status surface (A5): next scheduled run + stock on hand.
+	nextRun := ""
+	if enabled {
+		if lt, err := time.Parse(time.RFC3339, lastRun); err == nil {
+			nextRun = lt.Add(time.Duration(hours) * time.Hour).Format("15:04 02/01")
+		} else {
+			nextRun = "vòng tới"
+		}
+	}
+	var stock int64
+	if n, err := s.Products.Count(); err == nil {
+		stock = n
+	}
 	s.render(w, "products", s.ctx(
 		"Tab", tab,
 		"Themes", themeOptions(),
@@ -110,6 +123,8 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"SchedEnabled", enabled,
 		"SchedHours", hours,
 		"SchedLastRun", lastRun,
+		"SchedNextRun", nextRun,
+		"StockCount", stock,
 		"MusicName", music,
 		"AutoPublish", autoPub,
 	))
@@ -334,6 +349,10 @@ func (s *Server) handleAccountTheme(w http.ResponseWriter, r *http.Request) {
 	if theme == "" {
 		s.accountRedirect(w, r, id, "Đã xóa chủ đề của tài khoản.", "")
 		return
+	}
+	// Zero-touch (Đợt 3): a fresh theme means a fresh 30-day plan.
+	if a, err := s.Mgr.Get(id); err == nil {
+		s.autoGeneratePlan(a, "Tự sinh khi đổi chủ đề")
 	}
 	s.accountRedirect(w, r, id, "Đã lưu chủ đề: "+themeLabelOf(theme)+".", "")
 }
@@ -583,7 +602,9 @@ func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string,
 	if s.Products == nil {
 		return
 	}
-	if v, ok := s.Products.GetSetting(setSchedEnabled); ok && v == "1" {
+	// Automation switches default ON when unset (Đợt 3); a stored "0"
+	// is an explicit operator choice and always wins.
+	if v, ok := s.Products.GetSetting(setSchedEnabled); !ok || v != "0" {
 		enabled = true
 	}
 	if v, ok := s.Products.GetSetting(setSchedInterval); ok {
@@ -597,7 +618,7 @@ func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string,
 	if v, ok := s.Products.GetSetting(setMusicName); ok {
 		music = v
 	}
-	if v, ok := s.Products.GetSetting(SettingAutopilotAutoPublish); ok && v == "1" {
+	if v, ok := s.Products.GetSetting(SettingAutopilotAutoPublish); !ok || v != "0" {
 		autoPublish = true
 	}
 	return

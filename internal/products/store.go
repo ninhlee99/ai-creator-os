@@ -82,6 +82,14 @@ func (s *Store) SetSetting(key, val string) error {
 // Close releases the database handle.
 func (s *Store) Close() error { return s.db.Close() }
 
+// Count returns the total number of products in the store (autopilot
+// status surface on /products).
+func (s *Store) Count() (int64, error) {
+	var n int64
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM products`).Scan(&n)
+	return n, err
+}
+
 // Save inserts or refreshes a product (dedupe on source+source_id).
 func (s *Store) Save(p Product) (int64, error) {
 	imgs, _ := json.Marshal(p.ImageURLs)
