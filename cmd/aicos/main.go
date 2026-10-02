@@ -714,6 +714,29 @@ func main() {
 	daemon := network.NewDaemon(l, mgr, llmChain, netCfg) // *engines.LLMChain satisfies network.LLMClient
 	go daemon.Run(ctx, 60*time.Second)
 
+	// -- 7b. growth automation: plan -> production -> YouTube publish ------
+	// Zero-touch channel growth (docs/CHANNEL_GROWTH.md): due plan items
+	// render in Studio and upload to YouTube inside the daily quota. The
+	// /growth toggle (default OFF) arms it; dry-run and the kill switch
+	// still gate every real action. TikTok stays draft-only pre-audit.
+	if srv.Growth != nil {
+		go func() {
+			tick := time.NewTicker(5 * time.Minute)
+			defer tick.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+					for _, note := range srv.GrowthAutomationTick(ctx) {
+						log.Printf("growth: %s", note)
+					}
+				}
+			}
+		}()
+		log.Printf("growth: automation tick armed (toggle in /growth, default off)")
+	}
+
 	// -- 8. http server + graceful shutdown ----------------------------------
 	httpSrv := &http.Server{Addr: *addr, Handler: srv.Routes()}
 	go func() {

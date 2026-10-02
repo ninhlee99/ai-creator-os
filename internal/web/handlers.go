@@ -87,6 +87,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
 	mux.HandleFunc("POST /growth/accounts/{id}/plan", s.handleGrowthPlan)
+	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
+	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
 
 	mux.HandleFunc("GET /settings", s.handleSettings)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
@@ -801,7 +803,8 @@ type envRow struct {
 // settings table (applied at startup), so they survive restarts.
 var envNames = []string{"TTS_API_KEY", "TIKTOK_SHOP_APP_KEY", "TIKTOK_SHOP_APP_SECRET",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
-	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY"}
+	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY",
+	"YOUTUBE_DEFAULT_PRIVACY"}
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
 func envSettingKey(name string) string { return "env:" + name }

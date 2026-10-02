@@ -43,6 +43,11 @@ type Server struct {
 	// Growth is the channel-growth engine store (nil when its tables could
 	// not be created; the /growth page then shows an honest error).
 	Growth *growth.Store
+	// GrowthProducer / GrowthYT are the production backends of the growth
+	// automation tick (plan item -> Studio job -> YouTube upload). Nil
+	// means the real Studio/publishers adapters; tests inject fakes.
+	GrowthProducer growthProducer
+	GrowthYT       growthYTUploader
 	// Autopilot runs hands-off affiliate cycles (products -> video).
 	// Products is the affiliate product store. ProductProviders are the
 	// configured product search providers. All three are injected by the
@@ -250,6 +255,10 @@ var statusLabels = map[string]string{
 	"dropped":    "Đã loại",
 	"active":     "Đang hiệu lực",
 	"superseded": "Đã thay thế",
+	// growth phase-2 production/publish states
+	"produced":        "Đã sản xuất",
+	"waiting_connect": "Chờ kết nối YouTube",
+	"waiting_quota":   "Chờ quota YouTube",
 }
 
 // statusClass maps a raw status slug to a semantic badge class suffix
@@ -266,8 +275,10 @@ func statusClass(s string) string {
 		return "err"
 	case "onboarding", "paused", "skipped", "cold_start", "stalled":
 		return "warn"
-	case "researching", "persona_assigned", "growing", "planned", "exchange", "format_testing", "monetization_push", "scaling", "testing":
+	case "researching", "persona_assigned", "growing", "planned", "exchange", "format_testing", "monetization_push", "scaling", "testing", "produced":
 		return "info"
+	case "waiting_connect", "waiting_quota":
+		return "warn"
 	case "dropped", "superseded":
 		return "no"
 	default:

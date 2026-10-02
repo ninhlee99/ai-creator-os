@@ -8,6 +8,27 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 
+<div class="form-card" style="margin:12px 0">
+  <h2 style="margin-top:0;border:none;padding:0">Sản xuất &amp; đăng tự động theo kế hoạch</h2>
+  <p>
+    Trạng thái:
+    {{if .ProdEnabled}}<span class="badge badge-ok">đang bật</span>{{else}}<span class="badge badge-no">đang tắt</span>{{end}}
+    {{if .ProdDryRun}}<span class="badge badge-warn">DRY-RUN — chưa sản xuất/đăng thật</span>{{end}}
+    {{if .Kill}}<span class="badge badge-err">kill switch đang bật</span>{{end}}
+  </p>
+  <p class="hint">Khi bật: mục đến hạn trong plan tự vào Studio sản xuất (mỗi biến thể một bản render riêng, chống trùng ý tưởng giữa các tài khoản),
+  tự đăng YouTube trong quota ngày (hiện đã dùng {{.QuotaUsed}}/{{.QuotaLimit}} units — còn khoảng {{.QuotaLeft}} lượt tải; mỗi lượt tải = {{.QuotaPerUpload}} units).
+  Video tải lên ở chế độ <strong>{{.YTPrivacy}}</strong> (đổi ở Cài đặt: YOUTUBE_DEFAULT_PRIVACY) và luôn gắn cờ nội dung AI.
+  TikTok vẫn chỉ đăng nháp tới khi qua audit Direct Post.</p>
+  <form method="post" action="/growth/production" style="display:inline">
+    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt sản xuất tự động</button>
+    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật sản xuất tự động</button>{{end}}
+  </form>
+  <form method="post" action="/growth/production/run" style="display:inline">
+    <button class="btn btn-secondary" type="submit">▶ Chạy một vòng ngay</button>
+  </form>
+</div>
+
 {{if not .Accounts}}
 <div class="empty-state">
   <strong>Chưa có tài khoản nào</strong>
@@ -30,7 +51,7 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 
 <h2>Trạng thái từng tài khoản</h2>
 <table>
-<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>YouTube API</th><th></th></tr>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
 {{range .Rows}}
 <tr>
   <td><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
@@ -40,6 +61,7 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
   <td>{{if .HasSnapshot}}{{.Followers}}{{else}}<span class="hint">chưa có snapshot</span>{{end}}</td>
   <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
   <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
+  <td>{{if .YTReady}}<span class="badge badge-ok">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn">{{.YTUpload}}</span>{{end}}</td>
   <td>
     <form method="post" action="/growth/accounts/{{.Account.ID}}/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
   </td>
@@ -67,17 +89,18 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 </div>
 
 <div>
-<h2>Kế hoạch sắp tới (toàn mạng)</h2>
+<h2>Kế hoạch &amp; sản xuất sắp tới (toàn mạng)</h2>
 {{if .Upcoming}}
 <table>
-<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Hook gợi ý</th></tr>
+<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Trạng thái</th><th>Ghi chú</th></tr>
 {{range .Upcoming}}
 <tr>
   <td>{{.PlannedFor}}</td>
   <td>{{.Username}}</td>
   <td>{{.Variant}}{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
-  <td>{{.Topic}}</td>
-  <td>{{.Hook}}</td>
+  <td>{{.Topic}}{{if .DedupAction}} <span class="badge badge-warn">đã đổi góc chống trùng</span>{{end}}{{if .RelatedItemID}} <span class="badge badge-info">có bản liên kết</span>{{end}}</td>
+  <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener">{{.PublishedRef}}</a>{{end}}</td>
+  <td>{{if .PubNote}}<span class="hint">{{.PubNote}}</span>{{else}}<span class="hint">{{.Hook}}</span>{{end}}</td>
 </tr>
 {{end}}
 </table>
@@ -87,8 +110,9 @@ Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ th�
 </div>
 </div>
 
-<p class="hint">Giới hạn trung thực của bản MVP: YouTube Data API chỉ cấp tổng lượt xem tích lũy và số video —
-chỉ số 30 ngày / giờ xem YPP cần YouTube Analytics API (OAuth) ở giai đoạn 2. TikTok chưa có nguồn số liệu
-(Display API cần OAuth từng tài khoản + audit Direct Post) nên kênh TikTok hiện chỉ đăng nháp và chưa đồng bộ metrics.</p>
+<p class="hint">Giới hạn trung thực hiện tại: YouTube Data API chỉ cấp tổng lượt xem tích lũy và số video —
+chỉ số 30 ngày / giờ xem YPP cần YouTube Analytics API (OAuth, chưa nối). TikTok chưa có nguồn số liệu
+(Display API cần OAuth từng tài khoản + audit Direct Post) nên kênh TikTok chỉ sản xuất + đăng nháp, chưa đồng bộ metrics.
+Quota YouTube tính theo project dùng chung (10.000 units/ngày); khi cần đăng nhiều hơn phải tách project theo kênh (việc bootstrap một lần).</p>
 {{end}}
 {{end}}

@@ -676,3 +676,115 @@ append-only, metrics fail-closed qua httptest). Smoke test binary thật:
 `/growth`, `/`, `/accounts`, `/accounts/new`, `/settings` → 200; tạo tài
 khoản → stage canary hiển thị đúng; sinh plan → 303; account detail render
 khối growth; đồng bộ không key → báo "chưa kết nối" cho cả hai nguồn.
+
+---
+
+## 11. Giai đoạn 2 — nối plan vào sản xuất thật (cập nhật 2026-10-02)
+
+Giai đoạn 2 đóng đúng 4 món nợ của mục 10: hook plan → Studio, biến thể đa
+nền tảng + chống trùng, đường đăng YouTube fail-closed có quota guard, và
+đồng bộ nền. Toàn bộ chạy dưới một **vòng tự động (growth tick) 5 phút**
+trong daemon `aicos` (`web.Server.GrowthAutomationTick`), gồm 3 việc theo
+thứ tự: đồng bộ số liệu (tối đa mỗi giờ, dùng lại `syncOneAccount` của
+/growth thủ công), sản xuất các mục plan đến hạn, và đăng YouTube các biến
+thể đã render xong. Riêng 2 việc cuối gác cổng bằng toggle "Sản xuất & đăng
+tự động theo kế hoạch" ở trang /growth (setting `growth.production_enabled`,
+**mặc định TẮT**, ghi sổ quyết định mỗi lần đổi). Bút toán đồng bộ cuối ghi ở
+`growth.last_sync`. Nút "Chạy một vòng ngay" bỏ qua giờ chờ đồng bộ để kiểm
+tra bằng tay.
+
+### ĐÃ NỐI (phase 2)
+
+1. **Hook plan → Studio** (`internal/web/growth_produce.go`): mục plan đến
+   ngày (kèm stagger, xem dưới) của tài khoản đang hoạt động sẽ vào Studio:
+   tài khoản có chủ đề sản phẩm → luồng affiliate (tự chọn sản phẩm theo cơ
+   chế luân phiên sẵn có của autopilot); tài khoản persona → film job với
+   độ dài theo biến thể. Mục chuyển `producing` + ghi `studio_job_id`
+   **trước khi** enqueue, nên mọi tick tiếp theo hoặc restart app đều chỉ
+   thấy "đã có job" — không sinh trùng (có test restart dùng lại cùng thư
+   mục data). Mỗi tick tối đa 3 job/tài khoản. Lỗi enqueue: item ở lại
+   `planned`, tăng `attempts`, không bao giờ lặp nóng (chờ tick sau); lỗi
+   render: item `failed` + alert + ghi quyết định, không tự thử lại vô hạn.
+   DRY-RUN và kill switch chặn enqueue (item ở nguyên `planned`, trang
+   /growth hiện badge lý do) nhưng KHÔNG chặn đồng bộ số liệu và đánh giá
+   luật kênh.
+2. **Biến thể theo nền tảng** (`internal/growth/production.go`): cùng ý
+   tưởng, mỗi biến thể là một render riêng — TikTok 60s đăng nháp (xem giới
+   hạn), Shorts 45s, bản dài 150s + tiêu đề thêm "— bản đầy đủ" (Shorts thêm
+   ` #Shorts`), caption/hashtag riêng theo biến thể, và **stagger lịch**:
+   TikTok ngày N, Shorts N+1, bản dài N+3 (plan engine đã ghi
+   `variant_group = <ngày>|<format>` cho mọi mục; cùng group = các anh em
+   của một ý tưởng). Mốc cũ quá 14 ngày bị `dropped` thay vì render muộn.
+3. **Chống trùng chéo** (`internal/growth/dedup.go`): khi một mục được sản
+   xuất, hệ thống tính `concept_hash` = SHA-256 của tập token đã chuẩn hoá
+   (gấp dấu tiếng Việt, bỏ chữ 1 ký tự) của ý tưởng (chủ đề gốc trước hậu tố
+   "— tập N"/"— bản dài"), và so độ tương đồng Jaccard token-set với mọi
+   item đã sản xuất/đăng 45 ngày gần nhất TRÊN TOÀN MẠNG (mọi tài khoản).
+   Miễn so: chính item, anh em cùng variant group trên cùng tài khoản, và
+   cùng dòng series (cùng tài khoản + format — script của Studio luôn viết
+   mới theo tập). ≥0,8 → item bị ép đổi góc kể (8 góc xác định, deterministic
+   theo item id + số lần thử) rồi mới enqueue, kèm alert `dedup` + quyết
+   định trong sổ; pipeline không dừng. Lưu ý trung thực: renderer không
+   nhận seed viết kịch bản, nên "đổi góc" thực thi bằng đổi tiêu đề/góc kể
+   của item — script Studio vốn đã viết mới mỗi job, đây là lớp bảo vệ ở
+   tầng kế hoạch.
+4. **Đăng YouTube fail-closed + quota** (`PublishVideo` của
+   `internal/publishers` — resumable upload Data API v3, quota 1.600
+   units/lượt): trạng thái kết nối đọc từ chính cơ chế `/settings/env`
+   (`YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` + token OAuth theo từng
+   tài khoản tại `data/youtube_token_<username>.json` + trường channel id,
+   ẩn danh mặc định lấy từ `YOUTUBE_DEFAULT_PRIVACY` — đã thêm vào danh sách
+   biến môi trường Cài đặt). Thiếu bất kỳ mảnh nào: item ở trạng thái
+   `waiting_connect` ("Chờ kết nối YouTube") với ghi chú nêu đúng mảnh
+   thiếu; không có đường nào giả vờ đã đăng. Bộ đếm quota theo ngày ở bảng
+   `growth_youtube_quota` (1 ngày = 10.000 units ≈ 6 lượt tải cho TOÀN BỘ
+   project OAuth): hết quota → `waiting_quota` + alert + quyết định, chờ
+   qua ngày. Chỉ trừ quota khi tải lên thành công (upload lỗi giữ quota,
+   tránh khoá oan). Video luôn đăng kèm cờ `containsSyntheticMedia` và
+   dòng công khai "nội dung tạo/hỗ trợ bởi AI" trong mô tả. Khi cả Shorts
+   và bản dài của cùng ý tưởng đã có link, hai item tự nối
+   `related_item_id` hai chiều (metadata cho tính năng Related Video của
+   YouTube; mô tả của bản đăng sau chứa link youtu.be của bản đăng trước).
+   Kênh chưa bật loại nội dung tương ứng cũng rơi về `waiting_connect`
+   thay vì thử lại vô hạn.
+5. **UI**: thẻ "Sản xuất & đăng tự động theo kế hoạch" ở /growth (bật/tắt,
+   badge dry-run/kill, đồng hồ quota ngày, nút chạy ngay); cột "Đăng
+   YouTube" (Đã sẵn sàng / thiếu mảnh nào) ở bảng tài khoản; bảng "Kế
+   hoạch & sản xuất sắp tới" hiện trạng thái từng mục kể cả `produced` /
+   `waiting_connect` / `waiting_quota`, badge "đã đổi góc" khi dedup can
+   thiệp, badge anh em "Shorts ↔ bản đầy đủ"; trang chi tiết tài khoản có
+   bảng "Đã sản xuất / đang xử lý gần đây" (job Studio, link youtu.be).
+   Tất cả tiếng Việt, dùng biến màu theme sẵn có.
+
+### CÒN LẠI (sau phase 2)
+
+- **Bản dài YouTube chưa có render 16:9 thật**: Studio hiện render dọc
+  9:16 cho mọi job; biến thể long-form khác ở độ dài (150s) và metadata,
+  CHƯA khác ở khung hình. Render ngang là việc của Studio, không nằm trong
+  vòng growth.
+- **Quota theo kênh (§6.3)**: bộ đếm hiện là 1 project dùng chung — đúng
+  cho cấu hình OAuth hiện tại. Tách project theo kênh khi scale (nhiều
+  OAuth client + token theo tài khoản đã hỗ trợ sẵn ở tầng token).
+- **YouTube Analytics API** (views 30 ngày, giờ xem YPP): vẫn là nợ từ MVP —
+  luật penalty giờ-xem chưa có số thật; đường OAuth hiện có là cho upload.
+- **TikTok**: vẫn đăng nháp qua luồng affiliate sẵn có; đăng công khai chờ
+  audit Direct Post; metrics TikTok chờ OAuth số liệu (MVP đã ghi rõ).
+- **A/B hook + thumbnail**: chưa có bucket thử nghiệm; trường `attempts` và
+  lineage biến thể đã sẵn làm nền.
+- **Đồng bộ nền phụ thuộc app đang chạy**: tick nằm trong tiến trình
+  `aicos` (không phải daemon hệ thống riêng) — đúng mô hình Ninh mở máy
+  24/7 và chạy app như hiện tại.
+
+### Kiểm chứng phase 2 (2026-10-02)
+
+`go build ./...`, `go vet ./internal/...`, `gofmt` sạch trên file mới;
+`go test ./...` xanh 20/20 package. Riêng `internal/growth` +
+`internal/web`: 63 test đạt, gồm hash/similarity/dedup (gấp dấu, anh em
+miễn trừ, ≥0,8 ép đổi góc), biến thể (lag/tựa/caption khác nhau), quota
+guard (6 lượt/ngày, chỉ trừ khi thành công), hook idempotent (tick 2 lần +
+restart không trùng job), fail-closed (chưa kết nối → waiting_connect,
+enqueue lỗi → retry có kiểm soát, dry-run chặn đứng), và toggle/mẫu trang
+/growth. Smoke test binary thật trên cổng riêng: tạo tài khoản → /growth
+hiển thị thẻ sản xuất ở trạng thái TẮT (đúng mặc định) → bật toggle →
+"đang bật" → chạy một vòng → sinh plan → bảng sắp tới + cột "Đăng YouTube"
+render đúng; log máy chủ không panic, tick báo đã gác cổng.

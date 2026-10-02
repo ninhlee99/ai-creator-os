@@ -95,7 +95,8 @@ type PlanDraft struct {
 	Variant  string
 	Topic    string
 	Hook     string
-	SeriesEp int // >0 for numbered series episodes (scaling+)
+	SeriesEp int    // >0 for numbered series episodes (scaling+)
+	Group    string // variant lineage group: "<date>|<format_id>"
 }
 
 // hookByVariant is the retention contract per surface (docs §2/§5.2): the
@@ -194,6 +195,7 @@ func GeneratePlan(req PlanRequest) []PlanDraft {
 			out = append(out, PlanDraft{
 				Date: dateStr, FormatID: fid, Variant: variant,
 				Topic: topic, Hook: hookByVariant[variant], SeriesEp: ep,
+				Group: dateStr + "|" + fid,
 			})
 		}
 		for i := 0; i < tk; i++ {
@@ -219,7 +221,7 @@ func GeneratePlan(req PlanRequest) []PlanDraft {
 			out = append(out, PlanDraft{
 				Date: date.Format("2006-01-02"), FormatID: Slugify(pillar),
 				Variant: VariantYouTube, Topic: topic, Hook: hookByVariant[VariantYouTube],
-				SeriesEp: ep,
+				SeriesEp: ep, Group: date.Format("2006-01-02") + "|" + Slugify(pillar),
 			})
 		}
 	}

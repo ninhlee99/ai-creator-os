@@ -100,6 +100,22 @@ var schemaDDL = []string{
 	)`,
 }
 
+// Phase-2 columns on content_plan_items (additive migration, duplicate
+// column tolerated like studio's own migrations).
+var itemColumnDDL = []string{
+	`ALTER TABLE content_plan_items ADD COLUMN studio_job_id TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN concept_text TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN concept_hash TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN variant_group TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN dedup_action TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0`,
+	`ALTER TABLE content_plan_items ADD COLUMN pub_title TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN pub_caption TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN pub_note TEXT`,
+	`ALTER TABLE content_plan_items ADD COLUMN related_item_id INTEGER`,
+	`ALTER TABLE content_plan_items ADD COLUMN produced_at TEXT`,
+}
+
 // Store persists growth state in the app's shared SQLite database.
 type Store struct {
 	db *sql.DB
@@ -109,6 +125,18 @@ type Store struct {
 func NewStore(db *sql.DB) (*Store, error) {
 	for _, ddl := range schemaDDL {
 		if _, err := db.Exec(ddl); err != nil {
+			return nil, fmt.Errorf("growth schema: %w", err)
+		}
+	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS growth_youtube_quota (
+		day TEXT PRIMARY KEY,
+		units INTEGER NOT NULL DEFAULT 0
+	)`); err != nil {
+		return nil, fmt.Errorf("growth schema: %w", err)
+	}
+	for _, ddl := range itemColumnDDL {
+		if _, err := db.Exec(ddl); err != nil &&
+			!strings.Contains(err.Error(), "duplicate column") {
 			return nil, fmt.Errorf("growth schema: %w", err)
 		}
 	}
@@ -274,11 +302,15 @@ func (s *Store) InsertPlan(accountID int64, phase, rationale string, drafts []Pl
 		return 0, err
 	}
 	for _, d := range drafts {
+		group := d.Group
+		if group == "" {
+			group = d.Date + "|" + d.FormatID
+		}
 		if _, err := tx.Exec(
 			`INSERT OR IGNORE INTO content_plan_items
-			 (plan_id, account_id, planned_for, format_id, platform_variant, topic, hook, series_ep, status)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planned')`,
-			planID, accountID, d.Date, d.FormatID, d.Variant, d.Topic, d.Hook, d.SeriesEp); err != nil {
+			 (plan_id, account_id, planned_for, format_id, platform_variant, topic, hook, series_ep, status, variant_group)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'planned', ?)`,
+			planID, accountID, d.Date, d.FormatID, d.Variant, d.Topic, d.Hook, d.SeriesEp, group); err != nil {
 			return 0, err
 		}
 	}
@@ -305,20 +337,34 @@ func (s *Store) ActivePlan(accountID int64) (*Plan, []PlanItem, error) {
 	return &p, items, err
 }
 
+const planItemCols = `id, plan_id, account_id, planned_for, format_id, platform_variant,
+	COALESCE(topic,''), COALESCE(hook,''), series_ep, status, COALESCE(content_item_id,0),
+	COALESCE(published_ref,''), COALESCE(studio_job_id,''), COALESCE(concept_text,''),
+	COALESCE(concept_hash,''), COALESCE(variant_group,''), COALESCE(dedup_action,''),
+	attempts, COALESCE(pub_title,''), COALESCE(pub_caption,''), COALESCE(pub_note,''),
+	COALESCE(related_item_id,0), COALESCE(produced_at,'')`
+
+func scanPlanItem(rows *sql.Rows) (PlanItem, error) {
+	var it PlanItem
+	err := rows.Scan(&it.ID, &it.PlanID, &it.AccountID, &it.PlannedFor, &it.FormatID,
+		&it.Variant, &it.Topic, &it.Hook, &it.SeriesEp, &it.Status, &it.ContentItemID,
+		&it.PublishedRef, &it.StudioJobID, &it.ConceptText, &it.ConceptHash,
+		&it.VariantGroup, &it.DedupAction, &it.Attempts, &it.PubTitle, &it.PubCaption,
+		&it.PubNote, &it.RelatedItemID, &it.ProducedAt)
+	return it, err
+}
+
 func (s *Store) planItems(planID int64) ([]PlanItem, error) {
 	rows, err := s.db.Query(
-		`SELECT id, plan_id, account_id, planned_for, format_id, platform_variant,
-		        COALESCE(topic,''), COALESCE(hook,''), series_ep, status, COALESCE(published_ref,'')
-		 FROM content_plan_items WHERE plan_id = ? ORDER BY planned_for, id`, planID)
+		`SELECT `+planItemCols+` FROM content_plan_items WHERE plan_id = ? ORDER BY planned_for, id`, planID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []PlanItem
 	for rows.Next() {
-		var it PlanItem
-		if err := rows.Scan(&it.ID, &it.PlanID, &it.AccountID, &it.PlannedFor, &it.FormatID,
-			&it.Variant, &it.Topic, &it.Hook, &it.SeriesEp, &it.Status, &it.PublishedRef); err != nil {
+		it, err := scanPlanItem(rows)
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, it)
@@ -342,6 +388,217 @@ func (s *Store) UpcomingItems(accountID int64, today string, limit int) ([]PlanI
 		}
 	}
 	return out, nil
+}
+
+// --------------------------------------------------- production (ph. 2)
+
+// ActivePlanItems returns every item of the account's active plan (any
+// status), oldest scheduled first.
+func (s *Store) ActivePlanItems(accountID int64) ([]PlanItem, error) {
+	_, items, err := s.ActivePlan(accountID)
+	return items, err
+}
+
+// PlannedItemsDue returns still-planned items scheduled on or before
+// today (the caller applies the per-variant schedule lag and caps).
+func (s *Store) PlannedItemsDue(accountID int64, today string, limit int) ([]PlanItem, error) {
+	rows, err := s.db.Query(
+		`SELECT `+planItemCols+` FROM content_plan_items
+		 WHERE account_id = ? AND status = 'planned' AND planned_for <= ?
+		 ORDER BY planned_for, id LIMIT ?`, accountID, today, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlanItem
+	for rows.Next() {
+		it, err := scanPlanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+// ItemsByStatus returns the account's items in any of the given statuses,
+// across all plans (production history included), newest activity last.
+func (s *Store) ItemsByStatus(accountID int64, statuses []string, limit int) ([]PlanItem, error) {
+	if len(statuses) == 0 {
+		return nil, nil
+	}
+	ph := make([]string, len(statuses))
+	args := []any{accountID}
+	for i, st := range statuses {
+		ph[i] = "?"
+		args = append(args, st)
+	}
+	args = append(args, limit)
+	rows, err := s.db.Query(
+		`SELECT `+planItemCols+` FROM content_plan_items
+		 WHERE account_id = ? AND status IN (`+strings.Join(ph, ",")+`)
+		 ORDER BY planned_for, id LIMIT ?`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlanItem
+	for rows.Next() {
+		it, err := scanPlanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+// GetItem returns one plan item (nil when absent).
+func (s *Store) GetItem(id int64) (*PlanItem, error) {
+	rows, err := s.db.Query(`SELECT `+planItemCols+` FROM content_plan_items WHERE id = ?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, rows.Err()
+	}
+	it, err := scanPlanItem(rows)
+	if err != nil {
+		return nil, err
+	}
+	return &it, nil
+}
+
+// SetItemConcept stamps the dedup fingerprint on an item.
+func (s *Store) SetItemConcept(id int64, conceptText, conceptHash string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET concept_text = ?, concept_hash = ? WHERE id = ?`,
+		conceptText, conceptHash, id)
+	return err
+}
+
+// SetItemDedup records a forced re-generation: new topic + concept and the
+// dedup_action marker for the UI lineage display.
+func (s *Store) SetItemDedup(id int64, topic, conceptText, conceptHash string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET topic = ?, concept_text = ?, concept_hash = ?,
+		   dedup_action = 'angle_regenerated' WHERE id = ?`,
+		topic, conceptText, conceptHash, id)
+	return err
+}
+
+// SetItemProduction links the Studio job and the per-variant publish
+// metadata, moving the item to producing.
+func (s *Store) SetItemProduction(id int64, jobID, pubTitle, pubCaption string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'producing', studio_job_id = ?,
+		   pub_title = ?, pub_caption = ? WHERE id = ?`,
+		jobID, pubTitle, pubCaption, id)
+	return err
+}
+
+// NoteItemFailure records a failed enqueue attempt (item stays planned and
+// will be retried next tick). Returns the new attempt count.
+func (s *Store) NoteItemFailure(id int64, note string) (int, error) {
+	if _, err := s.db.Exec(
+		`UPDATE content_plan_items SET attempts = attempts + 1, pub_note = ? WHERE id = ?`,
+		note, id); err != nil {
+		return 0, err
+	}
+	it, err := s.GetItem(id)
+	if err != nil || it == nil {
+		return 0, err
+	}
+	return it.Attempts, nil
+}
+
+// SetItemStatus moves an item to a status with an honest state note.
+func (s *Store) SetItemStatus(id int64, status, note string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = ?, pub_note = ? WHERE id = ?`,
+		status, note, id)
+	return err
+}
+
+// SetItemProduced marks the render finished (produced_at stamped).
+func (s *Store) SetItemProduced(id int64, note string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'produced', produced_at = ?, pub_note = ? WHERE id = ?`,
+		nowStr(), note, id)
+	return err
+}
+
+// SetItemPublished records the platform video id after a real upload.
+func (s *Store) SetItemPublished(id int64, ref string) error {
+	_, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'published', published_ref = ?, pub_note = '' WHERE id = ?`,
+		ref, id)
+	return err
+}
+
+// LinkRelatedItems records the sibling relation (Short <-> long-form)
+// both ways.
+func (s *Store) LinkRelatedItems(aID, bID int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE content_plan_items SET related_item_id = ? WHERE id = ?`, bID, aID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE content_plan_items SET related_item_id = ? WHERE id = ?`, aID, bID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// RecentNetworkItems returns recently produced/published items across the
+// whole network (the dedup guard's comparison set). produced_at falls back
+// to the plan date for items still rendering.
+func (s *Store) RecentNetworkItems(sinceDate string, limit int) ([]PlanItem, error) {
+	rows, err := s.db.Query(
+		`SELECT `+planItemCols+` FROM content_plan_items
+		 WHERE COALESCE(concept_hash,'') != ''
+		   AND status IN ('producing','produced','waiting_connect','waiting_quota','published')
+		   AND COALESCE(NULLIF(produced_at,''), planned_for) >= ?
+		 ORDER BY id DESC LIMIT ?`, sinceDate, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlanItem
+	for rows.Next() {
+		it, err := scanPlanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+// ------------------------------------------------------------- YT quota
+
+// QuotaUsed returns the YouTube Data API units charged on a day
+// (YYYY-MM-DD, ICT).
+func (s *Store) QuotaUsed(day string) (int, error) {
+	var units int
+	err := s.db.QueryRow(
+		`SELECT COALESCE(units,0) FROM growth_youtube_quota WHERE day = ?`, day).Scan(&units)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	return units, err
+}
+
+// AddQuota charges units to a day's YouTube quota counter.
+func (s *Store) AddQuota(day string, units int) error {
+	_, err := s.db.Exec(
+		`INSERT INTO growth_youtube_quota (day, units) VALUES (?, ?)
+		 ON CONFLICT(day) DO UPDATE SET units = units + excluded.units`, day, units)
+	return err
 }
 
 // ------------------------------------------------------------- snapshots
