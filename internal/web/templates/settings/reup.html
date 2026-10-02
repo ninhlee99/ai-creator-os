@@ -28,6 +28,27 @@
 
 <form method="post" action="/settings/reup/save">
 <div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Quét nguồn</h2>
+  <div class="grid2">
+    <div class="field">
+      <label>Tự quét video viral từ nguồn Douyin</label>
+      <select name="discover_on">
+        <option value="1"{{if .DiscoverOn}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .DiscoverOn}} selected{{end}}>Tắt</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Chu kỳ quét (giờ)</label>
+      <input type="number" name="discover_hours" min="1" max="72" value="{{.DiscoverHours}}">
+    </div>
+  </div>
+  <div class="field">
+    <label>Video lấy mỗi nguồn / lần quét (theo lượt xem cao nhất)</label>
+    <input type="number" name="videos_per_source" min="1" max="10" value="{{.VideosPerSource}}">
+  </div>
+</div>
+
+<div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Transform</h2>
   <div class="grid2">
     <div class="field">

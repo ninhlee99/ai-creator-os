@@ -228,6 +228,10 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"ATMasked":    s.atMasked(),
 		"ATCampaigns": s.atCachedCount(),
 		"ATStoreOK":   s.AT != nil,
+		// Accesstrade automation (Đợt G): interval tick cho tab Cài đặt ·
+		// Accesstrade (công tắc on/off nằm ở trang Affiliate, POST /at/settings).
+		"ATHunterHours":  s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
+		"ATOrderSyncMins": s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30),
 		// Reup (Đợt E): tab Cài đặt · Reup.
 		"ReupCfg": s.reupSettingsCfg(),
 		// R2-W7: legacy /api/* switch (default OFF), app version, runtime

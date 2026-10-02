@@ -301,39 +301,21 @@ func (s *Server) handleReupYtDlpUpdate(w http.ResponseWriter, r *http.Request) {
 
 // handleReupScan quét tay (AJAX): discover + download ngay, trả JSON.
 func (s *Server) handleReupScan(w http.ResponseWriter, r *http.Request) {
-	dl := s.reupDownloader()
-	if dl == nil {
+	auto := s.automation()
+	if auto.Reup == nil {
 		writeJSONErr(w, "Kho Reup chưa sẵn sàng.", http.StatusPreconditionFailed)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), reupTimeout)
 	defer cancel()
-	perSource := s.atSettingInt(automation.KeyReupVideosPerSource, 3)
-	disc := reup.NewDiscoverer(s.Reup, reup.NewTikWM())
-	cands, notes := disc.Discover(ctx, perSource)
-	var okN, dupN, failN int
-	for _, c := range cands {
-		v, err := dl.DownloadCandidate(ctx, c)
-		if err != nil {
-			failN++
-			log.Printf("web: reup scan tải %s: %v", c.DouyinID, err)
-			continue
-		}
-		switch {
-		case v.Status == reup.StatusDownloaded:
-			okN++
-		case strings.Contains(v.FailReason, "trùng nội dung"):
-			dupN++
-		default:
-			failN++
-		}
-	}
+	// Tái dùng logic tick (không copy vòng discover+download).
+	res := auto.RunReupScan(ctx)
 	if s.Ledger != nil {
 		_ = s.Ledger.SetSetting(automation.KeyReupDiscoverLastRun, time.Now().Format(time.RFC3339))
 	}
 	writeJSON(w, map[string]any{
-		"ok": true, "found": len(cands), "downloaded": okN,
-		"dup": dupN, "failed": failN, "notes": notes,
+		"ok": true, "found": res.Found, "downloaded": res.OK,
+		"dup": res.Dup, "failed": res.Failed, "notes": res.Notes,
 	})
 }
 

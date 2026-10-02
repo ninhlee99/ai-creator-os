@@ -35,8 +35,10 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 | Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
 | Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video chữ động · Jobs · Nhạc trending. Phim điện ảnh đã park |
 | Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (rework Accesstrade ở đợt B/C) |
+| Reup | `/reup` | Nguồn Douyin · Hàng đợi tải · Transform 2 mức · Xem trước before/after · Metrics · Kill rule 0-view |
+| Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → đăng YouTube (chờ duyệt) |
 | Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
-| Cài đặt | `/settings` | 4 trang: Hệ thống · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
+| Cài đặt | `/settings` | 6 trang: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
 
 `/schedule` (Lịch live) và `/team` (Agent Team bản live) đã park → **404**.
 Agent Team sẽ được định nghĩa lại quanh 3 pipeline ở đợt sau.

@@ -188,7 +188,40 @@ func (s *Server) atCachedCount() int {
 // handleSettingsAccesstrade: "Accesstrade đã nối chưa, key còn sống không?"
 func (s *Server) handleSettingsAccesstrade(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "accesstrade", "settings_accesstrade",
-		"ATKeySet", "ATMasked", "ATCampaigns", "ATStoreOK")
+		"ATKeySet", "ATMasked", "ATCampaigns", "ATStoreOK",
+		"ATHunterHours", "ATOrderSyncMins")
+}
+
+// handleATAutomationSave lưu interval tick AT từ form (POST, redirect 303).
+// Công tắc on/off nằm ở trang Affiliate (POST /at/settings) — tab này chỉ
+// chỉnh chu kỳ, đúng nguyên tắc "UI cho mọi khả năng".
+func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) {
+	if s.Ledger == nil {
+		seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kho dữ liệu chưa sẵn sàng."))
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Không đọc được form."))
+		return
+	}
+	hunterH, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_hours")))
+	if hunterH < 1 {
+		hunterH = 1
+	}
+	if hunterH > 168 {
+		hunterH = 168
+	}
+	_ = s.Ledger.SetSetting(automation.KeyATHunterIntervalHrs, strconv.Itoa(hunterH))
+	syncM, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("ordersync_mins")))
+	if syncM < 5 {
+		syncM = 5
+	}
+	if syncM > 1440 {
+		syncM = 1440
+	}
+	_ = s.Ledger.SetSetting(automation.KeyATOrderSyncIntervalM, strconv.Itoa(syncM))
+	_ = s.Ledger.Decide("human", "at_automation_save", nil, "Lưu chu kỳ tự động Accesstrade.", nil)
+	seeOther(w, r, "/settings/accesstrade?ok="+url.QueryEscape("Đã lưu chu kỳ tự động Accesstrade."))
 }
 
 // handleATKeySave lưu access_key từ form (POST, redirect 303).

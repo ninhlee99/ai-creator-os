@@ -69,10 +69,12 @@
 `internal/web/templates_parked/`, `internal/studio/prompts/parked/`.
 Test vùng parked chạy bằng `go test -tags parked ./...`.
 
-**Chưa code (đợt B→F):** Accesstrade client + datafeed hunter + đối soát
-(`internal/accesstrade` mới), Douyin downloader + transform
-(`internal/reup` mới), pipeline kể chuyện (`internal/stories` mới hoặc tách
-từ studio).
+**Đã code xong (đợt B→F):** Accesstrade client + datafeed hunter + đối soát
+(`internal/accesstrade`), Douyin downloader + transform 2 mức + kill rule
+0-view (`internal/reup`), pipeline kể chuyện (`internal/studio/story.go` —
+tách từ studio, kind `story` trên `studio_jobs`; automation
+`internal/automation/story_tick.go` 24h/lần, đăng private-first, mặc định
+chờ Ninh duyệt).
 
 ## 3. Routes hiện tại (internal/web/routes.go)
 
@@ -82,9 +84,11 @@ từ studio).
 | `/accounts*` | `handleAccounts*` | Kênh (sidebar "Kênh") |
 | `/growth*` | `handleGrowth*` | Phát triển kênh |
 | `/studio*` | `handleStudio*` | Studio AI (affiliate/kinetic/jobs/trends) |
-| `/products*` | `handleProducts*` | Affiliate (kho sản phẩm cũ, rework đợt B/C) |
+| `/products*` | `handleProducts*` | Affiliate (Accesstrade: chiến dịch/link/đối soát, đợt B/C) |
+| `/reup*` | `handleReup*` | Reup Douyin: nguồn, hàng đợi tải, transform 2 mức, đăng (đợt D/E) |
+| `/stories*` | `handleStory*` | Kể chuyện: tạo truyện, jobs, đăng YouTube (đợt F) |
 | `/publishers*` | `handlePublishers*` | Đa nền tảng |
-| `/settings*` | `handleSettings*` | 4 trang con |
+| `/settings*` | `handleSettings*` | 6 trang con: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
 | `/onboard` | `handleOnboard` | Wizard lần đầu |
 | `/kill`, `/unkill` | `handleKill` | Kill switch |
@@ -110,6 +114,28 @@ decision log (`engines/tier_failover`).
   → fallback default (`internal/growth`).
 - Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
 - Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
+- Kill rule reup 0-view (đợt E, `internal/growth/reup_kill.go`): N video liên
+  tiếp 0-view (mặc định 5, chỉnh ở `/settings/reup`) → `reup.post_enabled=0`
+  + alert + decision log. Bài chưa có số liệu (`views<0`) không tính, không
+  reset streak. Không bao giờ tự xoá video đã đăng.
+
+## 5b. Ticks automation (zero-touch, Ninh không chạm)
+
+| Tick | Chu kỳ | Công tắc (unset = BẬT) | Fail-closed khi thiếu |
+|---|---|---|---|
+| AutopilotTick | 1′ | master/dry-run/kill | — |
+| GrowthTick | 5′ | `growth.production_enabled` | `Growth == nil` → im lặng |
+| ATTick (hunter/order/campaign) | 5′ | `at.hunter_enabled` / `at.ordersync_enabled` / `at.campaigncheck_enabled` | thiếu key → log + im lặng |
+| ReupTick (discover+download) | 5′/đến hạn 6h | `reup.discover_enabled` | `Reup == nil` → im lặng |
+| ReupTransformTick | 5′/đến hạn 15′ | `reup.transform_enabled` | `Reup == nil` → im lặng |
+| ReupPostTick | 5′/đến hạn 2h | `reup.post_enabled` | `Reup == nil` → im lặng |
+| ReupKillTick | 5′/đến hạn 1h | `reup.killrule_enabled` | thiếu OAuth → "chờ số liệu" |
+| StoryTick | 5′/đến hạn 24h | `story.enabled` | `Story == nil` → im lặng |
+
+Mọi tick: kill switch + dry-run chặn đầu; watermark last-run trong settings;
+interval ≤ 0 → default. Trạng thái thật hiển thị ở `/settings/reup`,
+`/settings/accesstrade`, `/stories` — chỗ nào "chờ số liệu"/"chờ key" phải
+nói rõ, không giả vờ đang chạy.
 
 ## 6. Ledger (SQLite, WAL mode)
 
@@ -117,6 +143,8 @@ decision log (`engines/tier_failover`).
   growth_*, api_usage…
 - `studio.db`: studio_jobs, studio_assets, capabilities.
 - `products.db`: products, shelf.
+- `accesstrade.db`: campaigns, links, orders (đợt B/C).
+- `reup.db`: reup_sources, reup_videos, reup_posts (đợt D/E).
 - Migration qua `PRAGMA user_version`, có test round-trip.
 
 ## 7. Strict operational rules (encoded, not suggested)

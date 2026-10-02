@@ -47,6 +47,7 @@ không cần restart.
 |---|---|---|
 | 🎯 Săn sản phẩm | Nút **Săn ngay** (AJAX → toast "Đã săn X sản phẩm mới, tạo Y video"); bảng sản phẩm AT mới nhất (chưa dùng làm video) | `POST /at/hunt` → `handleATHunt`: `Client.Hunt` → `products.Store` (Source="accesstrade") → top N mới → `automation.Service.MakeHunterVideo` → `studio.CreateAffiliateJob` (ảnh listing + nhạc, không chữ/voiceover) |
 | ⚙️ Tự động Accesstrade | Checkbox hunter/ordersync/campaigncheck + số video mỗi lần săn (AJAX → toast) | `POST /at/settings` → `handleATSettings` (lưu ledger settings `at.hunter_enabled`, `at.hunter_videos`, `at.ordersync_enabled`, `at.campaigncheck_enabled`) |
+| ⏱️ Chu kỳ tự động (tab Cài đặt · Accesstrade) | Chu kỳ săn sản phẩm (giờ, 1–168) + chu kỳ đồng bộ đơn (phút, 5–1440); công tắc on/off ở trang Affiliate (form → 303 → toast) | `GET /settings/accesstrade`, `POST /settings/accesstrade/automation` → `handleATAutomationSave` (lưu `at.hunter_interval_hours`, `at.ordersync_interval_minutes`) |
 | 💰 Đối soát hoa hồng | Badge **Đã duyệt** / **Chờ duyệt** / **Từ chối** (hiện RIÊNG — pending không cộng vào đã duyệt); nút **Đồng bộ đơn** (AJAX → toast); bảng đơn gần nhất (mã đơn mask `AT12••••9X7Q`) | `POST /at/orders/sync` → `handleATOrderSync`: `ListOrders` (cửa sổ 7 ngày) → `UpsertOrders` (update pending tại chỗ) |
 
 ## 4. Fail-closed

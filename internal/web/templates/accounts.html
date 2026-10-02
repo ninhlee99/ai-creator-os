@@ -1,7 +1,7 @@
 {{define "title"}}Tài khoản — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Tài khoản</h1>
-<p class="subtitle">Mỗi tài khoản là một AI creator với persona riêng. Cần tối thiểu {{.FollowersNeed}} followers để đủ điều kiện live.</p>
+<p class="subtitle">Kênh TikTok / YouTube / Facebook chạy 3 trụ: Affiliate, Reup, Kể chuyện. Mỗi kênh có lịch đăng và giới hạn riêng.</p>
 
 <div class="toolbar">
   <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
@@ -19,7 +19,7 @@
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td>{{.PersonaLabel}}</td>
     <td>{{if .Niche}}{{.Niche}}{{else}}—{{end}}</td>
-    <td>{{.Followers}}{{if .LiveEligible}} <span class="badge badge-ok">đủ live</span>{{end}}</td>
+    <td>{{.Followers}}</td>
     <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}">Chi tiết</a></td>
   </tr>
   {{end}}

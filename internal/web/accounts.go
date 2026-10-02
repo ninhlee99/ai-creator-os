@@ -29,7 +29,6 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "accounts", s.ctx(
 		"Accounts", views,
-		"FollowersNeed", network.FollowersToLive,
 	))
 }
 

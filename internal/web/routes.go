@@ -90,6 +90,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/accesstrade", s.handleSettingsAccesstrade)
 	mux.HandleFunc("POST /settings/accesstrade/key", s.handleATKeySave)
 	mux.HandleFunc("POST /settings/accesstrade/test", s.handleATTest)
+	mux.HandleFunc("POST /settings/accesstrade/automation", s.handleATAutomationSave)
 	// Accesstrade (Đợt B): sync campaign + tạo tracking link.
 	mux.HandleFunc("POST /at/campaigns/sync", s.handleATSyncCampaigns)
 	mux.HandleFunc("POST /at/links/create", s.handleATCreateLink)

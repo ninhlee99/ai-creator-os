@@ -3,7 +3,6 @@
 {{$id := .Acct.ID}}
 <h1>{{.Acct.Username}}</h1>
 <p class="subtitle"><span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
-{{if .Acct.LiveEligible}} <span class="badge badge-ok">đủ điều kiện live</span>{{end}}
 {{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
 {{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
 

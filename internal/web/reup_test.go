@@ -39,6 +39,29 @@ func TestReupPageNoStore(t *testing.T) {
 	}
 }
 
+// Đợt G: handleReupScan tái dùng Service.RunReupScan — khi có kho thì đi
+// qua automation (không copy vòng discover+download). Fail-closed kho nil
+// đã có test ở cuối file (TestReupScanNoStore).
+func TestReupScanUsesAutomation(t *testing.T) {
+	s := newReupServer(t) // kho thật, không nguồn nào đang bật
+	rec := postForm(t, s, "/reup/scan", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /reup/scan = %d, want 200", rec.Code)
+	}
+	var res struct {
+		OK         bool     `json:"ok"`
+		Found      int      `json:"found"`
+		Downloaded int      `json:"downloaded"`
+		Notes      []string `json:"notes"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !res.OK || res.Found != 0 {
+		t.Fatalf("res = %+v, want ok với found=0 (không nguồn đang bật)", res)
+	}
+}
+
 func TestReupPageRenders(t *testing.T) {
 	s := newReupServer(t)
 	if _, err := s.Reup.AddSource("user", "than_tien", "Thần Tiên"); err != nil {

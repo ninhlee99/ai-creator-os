@@ -100,6 +100,24 @@ func TestAccountCreate(t *testing.T) {
 	}
 }
 
+// Đợt G: trang Kênh không còn copy pre-pivot về live (live đã park).
+func TestAccountsPageNoLiveCopy(t *testing.T) {
+	s := newTestServer(t)
+	rec := get(t, s, "/accounts")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /accounts = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, bad := range []string{"đủ điều kiện live", "đủ live", "1000 followers"} {
+		if strings.Contains(body, bad) {
+			t.Fatalf("trang Kênh còn copy live pre-pivot: %q", bad)
+		}
+	}
+	if !strings.Contains(body, "Affiliate") || !strings.Contains(body, "Reup") {
+		t.Fatalf("trang Kênh phải nêu 3 trụ, body thiếu")
+	}
+}
+
 // (3) POST /settings/dryrun: value=on -> true (required bugfix), off -> false.
 func TestDryRunToggle(t *testing.T) {
 	s := newTestServer(t)
