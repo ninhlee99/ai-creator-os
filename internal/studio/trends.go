@@ -30,10 +30,11 @@ const kworbVNURL = "https://kworb.net/charts/tiktok/vn.html"
 const trendsCacheTTL = 6 * time.Hour
 
 var (
-	trendsMu     sync.Mutex
-	trendsCache  []TrendingSound
-	trendsCached time.Time
-	trendsErr    error
+	trendsMu         sync.Mutex
+	trendsCache      []TrendingSound
+	trendsCached     time.Time
+	trendsErr        error
+	trendsRefreshing bool
 )
 
 // FetchVNTrending returns the current TikTok-Vietnam trending sounds,
@@ -69,6 +70,35 @@ func RefreshVNTrending(ctx context.Context) ([]TrendingSound, error) {
 	return FetchVNTrending(ctx)
 }
 
+// TrendsStale reports whether the cached chart is older than the TTL (or
+// was never fetched) — the Studio page uses it to self-refresh (Đợt 3).
+func TrendsStale() bool {
+	trendsMu.Lock()
+	defer trendsMu.Unlock()
+	return time.Since(trendsCached) >= trendsCacheTTL
+}
+
+// RefreshVNTrendingAsync refreshes the chart in the background when stale;
+// at most one refresh runs at a time. Errors land in the cache like a
+// normal fetch, so a failed refresh never storms the source.
+func RefreshVNTrendingAsync() {
+	trendsMu.Lock()
+	if trendsRefreshing {
+		trendsMu.Unlock()
+		return
+	}
+	trendsRefreshing = true
+	trendsMu.Unlock()
+	go func() {
+		defer func() {
+			trendsMu.Lock()
+			trendsRefreshing = false
+			trendsMu.Unlock()
+		}()
+		_, _ = FetchVNTrending(context.Background())
+	}()
+}
+
 func fetchKworbVN(ctx context.Context) ([]TrendingSound, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, kworbVNURL, nil)
 	if err != nil {
@@ -98,9 +128,9 @@ func fetchKworbVN(ctx context.Context) ([]TrendingSound, error) {
 // Rows look like:
 // <tr><td>1</td><td>=</td><td class="mp text"><div>Artist - Title</div></td>
 var (
-	kworbRowRe  = regexp.MustCompile(`(?s)<tr>\s*<td>(\d+)</td>\s*<td>([^<]*)</td>\s*<td[^>]*>\s*<div>([^<]+)</div>`)
-	kworbTagRe  = regexp.MustCompile(`<[^>]+>`)
-	kworbSpRe   = regexp.MustCompile(`\s+`)
+	kworbRowRe = regexp.MustCompile(`(?s)<tr>\s*<td>(\d+)</td>\s*<td>([^<]*)</td>\s*<td[^>]*>\s*<div>([^<]+)</div>`)
+	kworbTagRe = regexp.MustCompile(`<[^>]+>`)
+	kworbSpRe  = regexp.MustCompile(`\s+`)
 )
 
 func parseKworbVN(html string) []TrendingSound {

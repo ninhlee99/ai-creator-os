@@ -48,9 +48,17 @@
     <div class="num">{{fmtVND .Revenue}}</div>
     <div class="label">Doanh thu affiliate</div>
   </div>
+  <div class="card accent">
+    <div class="num">{{fmtVND .CommissionRevenue}}</div>
+    <div class="label">Hoa hồng đã ghi nhận</div>
+  </div>
   <div class="card">
     <div class="num">{{len .Slots}}</div>
     <div class="label">Slot live hôm nay</div>
+  </div>
+  <div class="card">
+    <div class="num">{{.LiveSessions}}</div>
+    <div class="label">Phiên live đã chạy</div>
   </div>
   <div class="card">
     <div class="num">{{.NJobs}}</div>
@@ -94,9 +102,26 @@
 <div class="empty-state compact">
   <div class="es-icon">📅</div>
   <h3>Hôm nay chưa có lịch live</h3>
-  <p>Lịch live sẽ tự xuất hiện khi có tài khoản đủ điều kiện, hoặc bạn tạo lịch thủ công.</p>
+  <p>Tự xuất hiện khi có tài khoản đủ điều kiện live.</p>
   <a class="btn btn-secondary" href="/schedule">Tạo lịch live</a>
 </div>
+{{end}}
+
+{{if .GrowthAlerts}}
+<h2>Cảnh báo tăng trưởng</h2>
+<ul class="clean">
+  {{range .GrowthAlerts}}
+  <li><strong>{{.Username}}</strong> · {{.Message}}{{if .ActionTaken}} — {{.ActionTaken}}{{end}}</li>
+  {{end}}
+</ul>
+<p><a href="/growth">Mở Phát triển kênh</a></p>
+{{end}}
+
+{{if .LocalRuntimes}}
+<h2>Runtime local</h2>
+<p>
+  {{range .LocalRuntimes}}<span class="badge badge-{{statusClass .State}}" title="{{.Detail}}">{{.Name}}: {{.State}}</span> {{end}}
+</p>
 {{end}}
 
 <h2>Hoạt động gần đây</h2>

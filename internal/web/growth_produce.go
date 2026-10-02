@@ -15,9 +15,10 @@ import (
 
 // ------------------------------------------------------------ settings
 
-// Growth automation settings (ledger settings table). Production is OFF
-// by default: the toggle in /growth is the one deliberate switch, after
-// which the system runs zero-touch inside the dry-run/kill-switch gates.
+// Growth automation settings (ledger settings table). Production is ON
+// by default when unset (Đợt 3 zero-touch): a stored "0" is an explicit
+// operator choice and always wins. DRY-RUN stays the global safety gate —
+// while it is on nothing real is produced or published.
 const (
 	SettingGrowthProduction = "growth.production_enabled"
 	SettingGrowthLastSync   = "growth.last_sync"
@@ -53,9 +54,10 @@ func (s *Server) setGrowthSetting(key, val string) {
 	}
 }
 
-// GrowthProductionEnabled reports the dashboard toggle state.
+// GrowthProductionEnabled reports the dashboard toggle state: ON unless
+// the operator explicitly stored "0" (unset = ON, Đợt 3 zero-touch).
 func (s *Server) GrowthProductionEnabled() bool {
-	return s.growthSetting(SettingGrowthProduction) == "1"
+	return s.growthSetting(SettingGrowthProduction) != "0"
 }
 
 // ------------------------------------------------------- backend ports
@@ -198,9 +200,9 @@ func (u youtubeGrowthUploader) Upload(ctx context.Context, a *network.Account, v
 
 // GrowthAutomationTick runs one zero-touch production pass: due plan
 // items -> Studio renders -> YouTube uploads (quota-guarded), plus an
-// hourly metrics sync + decision loop through the existing engine. It is
-// driven by the /growth toggle (default OFF); the cmd daemon calls it on
-// a timer. Returned notes are for logs/UI — the pass also writes alerts
+// hourly metrics sync + decision loop through the existing engine. It
+// runs by default (stored "0" opts out); the cmd daemon calls it on a
+// timer. Returned notes are for logs/UI — the pass also writes alerts
 // and decision rows itself.
 func (s *Server) GrowthAutomationTick(ctx context.Context) []string {
 	return s.growthTick(ctx, false)

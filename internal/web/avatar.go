@@ -268,22 +268,7 @@ func (s *Server) handleAvatarSidecarEnsure(w http.ResponseWriter, r *http.Reques
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": "sidecar chưa được kết nối"})
 		return
 	}
-	s.avatarDlMu.Lock()
-	s.avatarDlDone, s.avatarDlErr = false, ""
-	s.avatarDlMu.Unlock()
-	go func() {
-		err := s.AvatarSidecar.EnsureModel(context.Background(), func(downloaded, total int64) {
-			s.avatarDlMu.Lock()
-			s.avatarDlDownloaded, s.avatarDlTotal = downloaded, total
-			s.avatarDlMu.Unlock()
-		})
-		s.avatarDlMu.Lock()
-		s.avatarDlDone = true
-		if err != nil {
-			s.avatarDlErr = err.Error()
-		}
-		s.avatarDlMu.Unlock()
-	}()
+	s.kickAvatarEnsure()
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }
 

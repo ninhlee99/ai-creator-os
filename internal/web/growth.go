@@ -211,6 +211,30 @@ func (s *Server) growthView() map[string]any {
 	return ctx
 }
 
+// recentGrowthAlerts merges the newest growth alerts across accounts
+// for the homepage (Đợt 3 / A10): what the system already decided is
+// visible without hunting through /growth.
+func (s *Server) recentGrowthAlerts(accounts []*network.Account) []growthAlertRow {
+	if s.Growth == nil {
+		return nil
+	}
+	var out []growthAlertRow
+	for _, a := range accounts {
+		als, err := s.Growth.ListAlerts(a.ID, 3)
+		if err != nil {
+			continue
+		}
+		for _, al := range als {
+			out = append(out, growthAlertRow{Alert: al, Username: a.Username})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
+	if len(out) > 5 {
+		out = out[:5]
+	}
+	return out
+}
+
 func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {
 	data := s.ctx()
 	for k, v := range s.growthView() {
@@ -337,6 +361,19 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 		fmt.Sprintf("Sinh kế hoạch 30 ngày (giai đoạn %s, %d vị trí)", prof.Stage, len(drafts)),
 		map[string]any{"stage": prof.Stage, "items": len(drafts)})
 	return len(drafts), nil
+}
+
+// autoGeneratePlan is the zero-touch wrapper (Đợt 3): plans appear on
+// their own when an account is created or its theme changes — no visit
+// to /growth needed. Best-effort: a failure only logs, never blocks the
+// operator action that triggered it.
+func (s *Server) autoGeneratePlan(a *network.Account, why string) {
+	if s.Growth == nil || a == nil {
+		return
+	}
+	if _, err := s.generatePlanFor(a, why); err != nil {
+		log.Printf("web: auto plan %s: %v", a.Username, err)
+	}
 }
 
 func (s *Server) handleGrowthPlan(w http.ResponseWriter, r *http.Request) {

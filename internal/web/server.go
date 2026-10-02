@@ -85,6 +85,11 @@ type Server struct {
 	avatarDlTotal      int64
 	avatarDlDone       bool
 	avatarDlErr        string
+
+	// Zero-touch live-schedule auto-build (Đợt 3): the day the schedule
+	// was last auto-built by a page view; guards once-a-day rebuilds.
+	schedMu    sync.Mutex
+	schedBuilt string
 }
 
 // NewServer wires a dashboard against an existing ledger + account manager.
@@ -504,6 +509,15 @@ func (s *Server) queryDecisions(query string, args ...any) ([]decisionView, erro
 // scalarFloat is a tiny helper for the one-off aggregate queries.
 func (s *Server) scalarFloat(query string, args ...any) float64 {
 	var v float64
+	if err := s.db.QueryRow(query, args...).Scan(&v); err != nil {
+		return 0
+	}
+	return v
+}
+
+// scalarInt is scalarFloat's integer sibling (COUNT-style aggregates).
+func (s *Server) scalarInt(query string, args ...any) int64 {
+	var v int64
 	if err := s.db.QueryRow(query, args...).Scan(&v); err != nil {
 		return 0
 	}

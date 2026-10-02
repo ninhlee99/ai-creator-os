@@ -5,8 +5,8 @@
 
 <div class="toolbar">
   <form method="post" action="/schedule/build"
-        onsubmit="return confirm('Tạo lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.')">
-    <button type="submit" class="btn">Tạo lịch hôm nay</button>
+        onsubmit="return confirm('Xây lại lịch live hôm nay? Lịch cũ trong ngày sẽ bị thay thế.')">
+    <button type="submit" class="btn btn-secondary btn-sm">Xây lại ngay</button>
   </form>
 </div>
 
@@ -25,6 +25,6 @@
   {{end}}
 </table>
 {{else}}
-<p class="empty">Chưa có slot nào hôm nay. Nhấn "Tạo lịch hôm nay" để hệ thống tự xếp.</p>
+<p class="empty">Chưa có slot nào hôm nay — lịch tự xây khi có tài khoản đủ điều kiện.</p>
 {{end}}
 {{end}}

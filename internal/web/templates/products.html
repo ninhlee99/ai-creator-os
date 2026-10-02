@@ -1,10 +1,18 @@
 {{define "title"}}Sản phẩm Affiliate — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Sản phẩm Affiliate</h1>
-<p class="subtitle">Tìm sản phẩm hoa hồng cao theo chủ đề. Kết quả tìm được sẽ lưu vào kho để autopilot dùng dần.</p>
+<p class="subtitle">Autopilot tự dùng sản phẩm trong kho.</p>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+
+{{if .SchedHours}}<p>
+  {{if .SchedEnabled}}<span class="badge badge-ok">Autopilot: BẬT</span>{{else}}<span class="badge badge-draft">Autopilot: TẮT</span>{{end}}
+  {{if .AutoPublish}}<span class="badge badge-info">Tự đăng: BẬT</span>{{else}}<span class="badge badge-draft">Tự đăng: TẮT</span>{{end}}
+  {{if .SchedLastRun}}<span class="badge badge-draft">Chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
+  {{if .SchedNextRun}}<span class="badge badge-draft">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}
+  <span class="badge badge-draft">Kho: {{.StockCount}} sản phẩm</span>
+</p>{{end}}
 
 <nav class="tabs">
   <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Tìm sản phẩm</a>
@@ -88,13 +96,13 @@
                placeholder="để trống = ngưỡng gợi ý của chủ đề">
       </div>
     </div>
-    <button type="submit" class="btn">🔍 Tìm sản phẩm</button>
+    <button type="submit" class="btn btn-secondary btn-sm">🔍 Tìm thủ công</button>
   </form>
 </div>
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">➕ Thêm sản phẩm thủ công</h2>
-  <p class="subtitle">Khi TikTok Shop API chưa kết nối, dán thông tin sản phẩm hoa hồng cao vào đây — autopilot sẽ dùng như sản phẩm tìm được.</p>
+  <p class="subtitle">Khi TikTok Shop API chưa kết nối — autopilot dùng như sản phẩm đã tìm được.</p>
   <form method="post" action="/products/add">
     <div class="grid2">
       <div class="field">
@@ -157,7 +165,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">⏰ Lịch autopilot tự động</h2>
-  <p class="subtitle">Bật để hệ thống tự chạy video cho mọi account đã sẵn sàng (đã bật autopilot + có theme + đã upload ảnh mẫu) — không cần chạm vào máy.</p>
+  <p class="subtitle">Tự chạy video cho tài khoản đã sẵn sàng (autopilot + chủ đề + ảnh mẫu).</p>
   <form method="post" action="/products/schedule">
     <div class="grid2">
       <div class="field">
@@ -170,10 +178,12 @@
     </div>
     <div class="field" style="margin-top:8px">
       <label><input type="checkbox" name="auto_publish"{{if .AutoPublish}} checked{{end}}> Tự đăng TikTok khi video xong</label>
-      <p class="hint">Đăng dưới dạng <strong>nháp</strong> qua TikTok API (cần OAuth TikTok đã cấu hình). Gắn giỏ hàng + sound trending làm trong app TikTok trước khi public. Mặc định tắt để an toàn.</p>
+      <p class="hint">Đăng <strong>nháp</strong> qua TikTok API (cần OAuth). Gắn giỏ + nhạc trong app TikTok.</p>
     </div>
     <button type="submit" class="btn">💾 Lưu lịch</button>
     {{if .SchedLastRun}}<span class="badge badge-ok" style="margin-left:8px">Lần chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
+    {{if .SchedNextRun}}<span class="badge badge-draft" style="margin-left:8px">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}
+    <span class="badge badge-draft" style="margin-left:8px">Kho: {{.StockCount}} sản phẩm</span>
     {{if .SchedEnabled}}<span class="badge badge-ok" style="margin-left:8px">ĐANG BẬT</span>{{else}}<span class="badge badge-draft" style="margin-left:8px">ĐANG TẮT</span>{{end}}
   </form>
 </div>

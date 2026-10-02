@@ -307,12 +307,17 @@ func fileExists(path string) bool {
 }
 
 // autoPublishAffiliate posts a finished autopilot affiliate video to TikTok
-// when the UI toggle is on. Fail-closed at every step: non-affiliate jobs,
+// (the toggle defaults ON when unset, Đợt 3; a stored "0" opts out).
+// Fail-closed at every step: kill switch / DRY-RUN, non-affiliate jobs,
 // manual jobs (no AccountID), disabled toggle, and missing TikTok OAuth all
 // skip quietly with a job-log line. TikTok posts as draft by default
 // (TIKTOK_DRAFT_ONLY), so Ninh/Claude attaches the product link in the
 // TikTok app before going public.
-func autoPublishAffiliate(ctx context.Context, st *studio.Studio, mgr *network.AccountManager, pstore *products.Store, jobID string) {
+func autoPublishAffiliate(ctx context.Context, cfg *web.Config, st *studio.Studio, mgr *network.AccountManager, pstore *products.Store, jobID string) {
+	// Đợt 3: the shared kill switch and DRY-RUN gate every real publish.
+	if cfg != nil && (cfg.KillSwitch() || cfg.DryRun()) {
+		return
+	}
 	j, ok := st.GetJob(jobID)
 	if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
 		return
@@ -321,7 +326,7 @@ func autoPublishAffiliate(ctx context.Context, st *studio.Studio, mgr *network.A
 	if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
 		return // manual studio job — never auto-publish
 	}
-	if v, _ := pstore.GetSetting(web.SettingAutopilotAutoPublish); v != "1" {
+	if v, _ := pstore.GetSetting(web.SettingAutopilotAutoPublish); v == "0" {
 		return
 	}
 	acct, err := mgr.Get(p.AccountID)
@@ -579,6 +584,9 @@ func main() {
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
 	}
+	// Đợt 3 (A7): enabled local tiers ensure their own models at startup;
+	// progress shows in Settings + the homepage runtime block.
+	go srv.EnsureLocalModels(ctx)
 
 	// -- 6b. studio: AI video creation (affiliate / short film) ---------------
 	// The studio reuses the LLM chain (director), the TTS chain (film
@@ -640,25 +648,28 @@ func main() {
 				// videos to TikTok when the UI toggle is on. Fail-closed:
 				// without a configured TikTok publisher nothing is posted.
 				srv.Studio.SetOnDone(func(id string) {
-					go autoPublishAffiliate(ctx, srv.Studio, mgr, pstore, id)
+					go autoPublishAffiliate(ctx, webCfg, srv.Studio, mgr, pstore, id)
 				})
 				// One-time seed from env so existing deployments keep working;
 				// after that the web UI (/products) is the only control plane.
-				// Default off — a fresh install never spends quota by surprise.
+				// Đợt 3: automation defaults ON when unset and a stored "0"
+				// always wins, so the env seed only lands when AUTOPILOT_SCHEDULE
+				// is explicitly present — a fresh install writes nothing, and an
+				// existing stored choice is never overwritten. DRY-RUN stays
+				// the safety gate (see the scheduler loop below).
 				if _, ok := pstore.GetSetting(web.SettingAutopilotEnabled); !ok {
-					if getenvBool("AUTOPILOT_SCHEDULE", false) {
-						_ = pstore.SetSetting(web.SettingAutopilotEnabled, "1")
-						_ = pstore.SetSetting(web.SettingAutopilotInterval,
-							strconv.Itoa(getenvInt("AUTOPILOT_INTERVAL_HOURS", 6)))
-					} else {
-						_ = pstore.SetSetting(web.SettingAutopilotEnabled, "0")
+					if _, present := os.LookupEnv("AUTOPILOT_SCHEDULE"); present {
+						if getenvBool("AUTOPILOT_SCHEDULE", false) {
+							_ = pstore.SetSetting(web.SettingAutopilotEnabled, "1")
+							_ = pstore.SetSetting(web.SettingAutopilotInterval,
+								strconv.Itoa(getenvInt("AUTOPILOT_INTERVAL_HOURS", 6)))
+						} else {
+							_ = pstore.SetSetting(web.SettingAutopilotEnabled, "0")
+						}
 					}
 				}
-				// Auto-publish defaults OFF: posting is public and hard to
-				// undo — Ninh enables it explicitly in the /products UI.
-				if _, ok := pstore.GetSetting(web.SettingAutopilotAutoPublish); !ok {
-					_ = pstore.SetSetting(web.SettingAutopilotAutoPublish, "0")
-				}
+				// Auto-publish also defaults ON when unset (Đợt 3) — the old
+				// forced "0" seed is gone; kill switch + DRY-RUN gate it.
 				// Background scheduler, driven by UI-managed settings.
 				// Checks every minute; runs when enabled and the interval elapsed.
 				go func() {
@@ -669,8 +680,14 @@ func main() {
 						case <-ctx.Done():
 							return
 						case <-tick.C:
+							// Đợt 3: the shared kill switch + DRY-RUN gate the
+							// whole cycle; the switch defaults ON when unset
+							// and a stored "0" stops it.
+							if webCfg.KillSwitch() || webCfg.DryRun() {
+								continue
+							}
 							en, _ := pstore.GetSetting(web.SettingAutopilotEnabled)
-							if en != "1" {
+							if en == "0" {
 								continue
 							}
 							iv, _ := pstore.GetSetting(web.SettingAutopilotInterval)
@@ -721,8 +738,9 @@ func main() {
 	// -- 7b. growth automation: plan -> production -> YouTube publish ------
 	// Zero-touch channel growth (docs/CHANNEL_GROWTH.md): due plan items
 	// render in Studio and upload to YouTube inside the daily quota. The
-	// /growth toggle (default OFF) arms it; dry-run and the kill switch
-	// still gate every real action. TikTok stays draft-only pre-audit.
+	// /growth toggle defaults ON (a stored "0" opts out); dry-run and the
+	// kill switch still gate every real action. TikTok stays draft-only
+	// pre-audit.
 	if srv.Growth != nil {
 		go func() {
 			tick := time.NewTicker(5 * time.Minute)
@@ -738,7 +756,7 @@ func main() {
 				}
 			}
 		}()
-		log.Printf("growth: automation tick armed (toggle in /growth, default off)")
+		log.Printf("growth: automation tick armed (mặc định bật ở /growth; dry-run là cổng an toàn)")
 	}
 
 	// -- 8. http server + graceful shutdown ----------------------------------
