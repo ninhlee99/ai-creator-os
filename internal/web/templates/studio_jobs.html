@@ -1,0 +1,35 @@
+{{define "title"}}Job Studio — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Job Studio</h1>
+<p class="subtitle">Việc dựng video đang chạy tới đâu, storyboard ở đâu.</p>
+
+<nav class="tabs">
+  <a href="/studio">Tạo video</a>
+  <a href="/studio/jobs" class="active">Job đã tạo</a>
+  <a href="/studio/trends">Nhạc thịnh hành</a>
+</nav>
+
+{{if .Jobs}}
+{{range .Jobs}}
+<div class="job" data-job="{{.ID}}">
+  <h3>{{.Title}} <span class="badge badge-draft">{{.KindLabel}}</span></h3>
+  <div class="meta">
+    <span class="badge badge-{{.Class}} job-status">{{.Label}}</span>
+    <span class="prog">{{.Progress}}%</span>
+    · tạo lúc {{.CreatedAt}}{{if .FinishedAt}} · xong lúc {{.FinishedAt}}{{end}}
+  </div>
+  <div class="board"></div>
+  {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
+  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+  <pre class="log" id="log-{{.ID}}" {{if not .Output}}hidden{{end}}></pre>
+</div>
+{{end}}
+{{else}}
+<div class="empty-state">
+  <div class="es-icon">🎬</div>
+  <h3>Chưa có video nào</h3>
+  <p>Tạo video đầu tiên ở Studio AI — trạng thái dựng hiện tại đây.</p>
+  <a class="btn" href="/studio">Mở Studio AI</a>
+</div>
+{{end}}
+{{end}}

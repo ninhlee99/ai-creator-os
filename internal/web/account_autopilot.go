@@ -23,6 +23,7 @@ import (
 func (s *Server) accountRedirect(w http.ResponseWriter, r *http.Request, id int64, notice, errMsg string) {
 	loc := "/accounts/" + strconv.FormatInt(id, 10)
 	q := url.Values{}
+	q.Set("tab", "autopilot")
 	if notice != "" {
 		q.Set("ok", notice)
 	}

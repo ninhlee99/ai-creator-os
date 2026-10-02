@@ -1,0 +1,134 @@
+{{define "title"}}Cài đặt · Nhân vật AI — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Cài đặt · Nhân vật AI</h1>
+<p class="subtitle">Có những khuôn mặt AI nào, render thử ra sao.</p>
+{{template "settings-nav" .}}
+
+<p class="subtitle">Mỗi nhân vật là một khuôn mặt khóa identity (ảnh + seed): mọi khung hình của mọi clip đều phải là đúng khuôn mặt này. Upload ảnh chân dung rõ mặt, chính diện.</p>
+<div class="form-card" style="max-width:none">
+  <div class="char-grid" id="char-grid">
+    {{range .Characters}}
+    <div class="char-card" data-id="{{.ID}}">
+      <img src="{{.ImgURL}}" alt="{{.Name}}" class="char-preview" loading="lazy">
+      <div class="char-info">
+        <strong>{{.Name}}</strong>
+        <div class="hint">seed <code>{{.Seed}}</code> · lock <code>{{.ShortLock}}</code>{{if .VoicePreset}} · voice <code>{{.VoicePreset}}</code>{{end}}</div>
+      </div>
+      <div class="char-test">
+        <input type="text" class="char-text" placeholder="Nhập câu nói để render thử… [cười]" maxlength="300">
+        <div class="toolbar" style="margin:8px 0 0">
+          <button type="button" class="btn btn-sm char-render-btn">🎬 Render thử</button>
+          <button type="button" class="btn btn-secondary btn-sm char-del-btn" title="Xóa nhân vật">🗑</button>
+        </div>
+        <div class="char-msg hint" aria-live="polite" hidden></div>
+        <video class="char-video" controls hidden style="width:100%;margin-top:8px"></video>
+      </div>
+    </div>
+    {{else}}
+    <p class="empty" id="char-empty">Chưa có nhân vật nào. Upload ảnh chân dung bên dưới để tạo nhân vật đầu tiên.</p>
+    {{end}}
+  </div>
+  <h3 style="margin-top:16px">Thêm nhân vật</h3>
+  <form id="char-add-form" class="grid2">
+    <div class="field">
+      <label>Tên nhân vật</label>
+      <input type="text" name="name" placeholder="VD: MC Linh" required maxlength="80">
+    </div>
+    <div class="field">
+      <label>Ảnh chân dung (PNG/JPG, rõ mặt)</label>
+      <div class="file-pick">
+        <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
+          <input type="file" name="image" accept=".png,.jpg,.jpeg" required>
+        </label>
+        <span class="file-name">Chưa chọn ảnh</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Seed <span class="label-hint">— để trống = ngẫu nhiên</span></label>
+      <input type="number" name="seed" placeholder="tùy chọn">
+    </div>
+    <div class="field">
+      <label>Voice preset <span class="label-hint">— liên kết giọng TTS</span></label>
+      <input type="text" name="voice" placeholder="VD: bac-nu-1" maxlength="60">
+    </div>
+    <div class="field field-span">
+      <label>Ghi chú</label>
+      <input type="text" name="notes" maxlength="200" placeholder="tùy chọn">
+    </div>
+    <div class="field-span">
+      <button type="submit" class="btn">+ Thêm nhân vật</button>
+      <span class="hint" id="char-add-msg" aria-live="polite"></span>
+    </div>
+  </form>
+</div>
+
+<script>
+// Nhân vật AI: thêm / xóa / render thử.
+var charAddForm = document.getElementById('char-add-form');
+if (charAddForm) {
+  charAddForm.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var msg = document.getElementById('char-add-msg');
+    msg.textContent = 'Đang upload…';
+    try {
+      var r = await fetch('/settings/avatar/characters', {method: 'POST', body: new FormData(charAddForm)});
+      var j = await r.json();
+      if (j.ok) {
+        msg.textContent = 'Đã thêm nhân vật ✓ — tải lại trang để xem.';
+        charAddForm.reset();
+        setTimeout(function () { location.reload(); }, 800);
+      } else {
+        msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+      }
+    } catch (e) {
+      msg.textContent = 'Upload thất bại.';
+    }
+  });
+}
+document.querySelectorAll('.char-card').forEach(function (card) {
+  var id = card.dataset.id;
+  var msg = card.querySelector('.char-msg');
+  var video = card.querySelector('.char-video');
+  var delBtn = card.querySelector('.char-del-btn');
+  var renderBtn = card.querySelector('.char-render-btn');
+  if (delBtn) {
+    delBtn.addEventListener('click', async function () {
+      if (!confirm('Xóa nhân vật này? File ảnh được giữ lại trên máy.')) return;
+      try {
+        var r = await fetch('/settings/avatar/characters/' + id + '/delete', {method: 'POST'});
+        var j = await r.json();
+        if (j.ok) { card.remove(); showToast('Đã xóa nhân vật', true); }
+        else showToast(j.error || 'Xóa thất bại', false);
+      } catch (e) { showToast('Xóa thất bại', false); }
+    }
+  }
+  if (renderBtn) {
+    renderBtn.addEventListener('click', async function () {
+      var text = card.querySelector('.char-text').value.trim();
+      if (!text) { msg.hidden = false; msg.textContent = 'Nhập câu nói trước đã.'; return; }
+      renderBtn.disabled = true;
+      msg.hidden = false; msg.textContent = 'Đang render (có thể mất vài phút cho clip dài)…';
+      video.hidden = true; video.removeAttribute('src');
+      try {
+        var r = await fetch('/settings/avatar/render-test', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({character_id: parseInt(id, 10), text: text})
+        });
+        var j = await r.json();
+        if (j.ok) {
+          msg.textContent = 'Render xong ✓';
+          video.src = j.video;
+          video.hidden = false;
+        } else {
+          msg.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+        }
+      } catch (e) {
+        msg.textContent = 'Render thất bại.';
+      }
+      renderBtn.disabled = false;
+    });
+  }
+});
+</script>
+{{end}}

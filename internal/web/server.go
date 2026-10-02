@@ -23,11 +23,14 @@ import (
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 )
 
-//go:embed templates/*.html
+//go:embed templates/*.html templates/*/*.html
 var templateFS embed.FS
 
 //go:embed static/style.css
 var staticCSS []byte
+
+//go:embed static/app.js
+var staticJS []byte
 
 // Server is the web dashboard. Exported fields are the wiring surface:
 // the parent worker injects the ledger, account manager, config, engines
@@ -201,6 +204,20 @@ var templateFuncs = template.FuncMap{
 		}
 		return slug
 	},
+	// agentLabel renders a raw agent slug as its Vietnamese label + icon
+	// for the decision feed (R2-11: no raw slugs in the UI).
+	"agentLabel": agentLabel,
+	// dict builds a string-keyed map for passing named arguments to
+	// partial templates ({{template "x" (dict "A" .B)}}).
+	"dict": func(kv ...any) map[string]any {
+		m := map[string]any{}
+		for i := 0; i+1 < len(kv); i += 2 {
+			if k, ok := kv[i].(string); ok {
+				m[k] = kv[i+1]
+			}
+		}
+		return m
+	},
 }
 
 // statusLabel maps raw status slugs (accounts, slots, jobs, assets,
@@ -352,26 +369,74 @@ func formatUSD(v float64) string {
 	return fmt.Sprintf("$%s.%02d", b.String(), frac)
 }
 
+// agentMeta is the display form of an agent slug in the decision feed.
+type agentMeta struct {
+	Icon  string
+	Label string
+}
+
+// agentLabels maps raw agent slugs (ledger.decisions.agent) to Vietnamese
+// display labels. Unknown slugs fall back to a humanized form so nothing
+// renders with underscores (R2-11).
+var agentLabels = map[string]agentMeta{
+	"growth_director":  {Icon: "🌱", Label: "Đạo diễn tăng trưởng"},
+	"growth_analyst":   {Icon: "📊", Label: "Phân tích tăng trưởng"},
+	"growth_publisher": {Icon: "📤", Label: "Đăng bài tăng trưởng"},
+	"growth":           {Icon: "🌱", Label: "Tăng trưởng"},
+	"live_planner":     {Icon: "📅", Label: "Lập lịch live"},
+	"scheduler":        {Icon: "🗓", Label: "Xếp lịch"},
+	"governance":       {Icon: "🛡", Label: "Kiểm soát"},
+	"governor":         {Icon: "🛡", Label: "Kiểm soát"},
+	"analyst":          {Icon: "📊", Label: "Phân tích"},
+	"hunter":           {Icon: "🔎", Label: "Săn sản phẩm"},
+	"director":         {Icon: "🎬", Label: "Đạo diễn"},
+	"producer":         {Icon: "🎥", Label: "Sản xuất"},
+	"content":          {Icon: "✍️", Label: "Nội dung"},
+	"onboarding":       {Icon: "🚀", Label: "Thiết lập"},
+	"orchestrator":     {Icon: "🤖", Label: "Điều phối"},
+	"engines":          {Icon: "⚙️", Label: "Động cơ AI"},
+	"system":           {Icon: "⚙️", Label: "Hệ thống"},
+	"human":            {Icon: "👤", Label: "Người dùng"},
+	"test":             {Icon: "🧪", Label: "Kiểm thử"},
+}
+
+func agentLabel(slug string) agentMeta {
+	if m, ok := agentLabels[slug]; ok {
+		return m
+	}
+	if slug == "" {
+		return agentMeta{Icon: "⚙️", Label: "—"}
+	}
+	return agentMeta{Icon: "⚙️", Label: strings.ReplaceAll(slug, "_", " ")}
+}
+
 // pageFiles maps a page key to the template file rendered inside base.
 var pageFiles = map[string]string{
-	"dashboard":      "dashboard.html",
-	"accounts":       "accounts.html",
-	"account_new":    "account_new.html",
-	"account_detail": "account_detail.html",
-	"schedule":       "schedule.html",
-	"studio":         "studio.html",
-	"publishers":     "publishers.html",
-	"products":       "products.html",
-	"growth":         "growth.html",
-	"settings":       "settings.html",
-	"team":           "team.html",
+	"dashboard":             "dashboard.html",
+	"accounts":              "accounts.html",
+	"account_new":           "account_new.html",
+	"account_detail":        "account_detail.html",
+	"schedule":              "schedule.html",
+	"studio":                "studio.html",
+	"studio_jobs":           "studio_jobs.html",
+	"studio_trends":         "studio_trends.html",
+	"publishers":            "publishers.html",
+	"products":              "products.html",
+	"growth":                "growth.html",
+	"settings_he_thong":     "settings/he-thong.html",
+	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
+	"settings_model_local":  "settings/model-local.html",
+	"settings_nhan_vat":     "settings/nhan-vat.html",
+	"settings_an_toan":      "settings/an-toan.html",
+	"team":                  "team.html",
 }
 
 func (s *Server) parseTemplates() error {
 	s.templates = make(map[string]*template.Template, len(pageFiles))
 	for key, file := range pageFiles {
 		t, err := template.New("base").Funcs(templateFuncs).ParseFS(
-			templateFS, "templates/base.html", "templates/"+file)
+			templateFS, "templates/base.html", "templates/partials/shared.html",
+			"templates/"+file)
 		if err != nil {
 			return fmt.Errorf("parse template %s: %w", file, err)
 		}

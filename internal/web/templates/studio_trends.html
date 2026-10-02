@@ -1,0 +1,30 @@
+{{define "title"}}Nhạc thịnh hành — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Nhạc thịnh hành TikTok Việt Nam</h1>
+<p class="subtitle">Nguồn: {{.TrendsSource}}. Bảng xếp hạng của bên thứ ba, không phải số liệu chính thức từ TikTok.</p>
+
+<nav class="tabs">
+  <a href="/studio">Tạo video</a>
+  <a href="/studio/jobs">Job đã tạo</a>
+  <a href="/studio/trends" class="active">Nhạc thịnh hành</a>
+</nav>
+
+<form method="post" action="/studio/trends/refresh" class="inline-form" style="margin-bottom:12px">
+  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
+</form>
+
+{{if .Sounds}}
+<table class="trends-table">
+  <tr><th>#</th><th>Biến động</th><th>Bài hát</th></tr>
+  {{range .Sounds}}
+  <tr><td>{{.Rank}}</td><td>{{.Movement}}</td><td><strong>{{.Artist}}</strong> – {{.Title}}</td></tr>
+  {{end}}
+</table>
+{{else}}
+<div class="empty-state compact">
+  <div class="es-icon">🎵</div>
+  <h3>Chưa tải được bảng xếp hạng</h3>
+  <p>{{.TrendsErr}}</p>
+</div>
+{{end}}
+{{end}}

@@ -1,0 +1,79 @@
+{{define "title"}}Cài đặt · Hệ thống — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Cài đặt · Hệ thống</h1>
+<p class="subtitle">App đang chạy chế độ gì, còn thiếu biến cấu hình nào.</p>
+{{template "settings-nav" .}}
+
+<h2>Trạng thái hệ thống</h2>
+<div class="cards">
+  <div class="card">
+    <div class="num">{{if .DryRun}}<span class="badge badge-warn">Chế độ thử (dry-run)</span>{{else}}<span class="badge badge-ok">Đang chạy thật</span>{{end}}</div>
+    <div class="label">Chế độ chạy</div>
+  </div>
+  <div class="card">
+    <div class="num">{{if .Kill}}<span class="badge badge-err">ĐANG BẬT</span>{{else}}<span class="badge badge-ok">TẮT</span>{{end}}</div>
+    <div class="label">Nút dừng khẩn cấp (kill switch)</div>
+  </div>
+  <div class="card" title="{{.DbPath}}">
+    <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
+    <div class="label">Cơ sở dữ liệu</div>
+  </div>
+  <div class="card">
+    <div class="num">{{fmtUSD .Spend}}</div>
+    <div class="label">Chi phí API hôm nay</div>
+  </div>
+</div>
+
+<h3>Chi phí API theo engine/provider</h3>
+{{if .Usage}}
+<table>
+  <tr><th>Engine</th><th>Provider</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
+  {{range .Usage}}
+  <tr>
+    <td>{{.Engine}}</td>
+    <td>{{.Provider}}</td>
+    <td>{{.N}}</td>
+    <td>{{fmtUSD .Cost}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
+{{end}}
+
+<h2>Khóa &amp; biến cấu hình</h2>
+{{if .EnvSaved}}<p class="notice">Đã lưu <code>{{.EnvSaved}}</code> — áp dụng ngay, không cần khởi động lại.</p>{{end}}
+<table>
+  <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
+  {{range .EnvStatus}}
+  <tr>
+    <td><code>{{.Name}}</code>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
+    <td>{{if .Ok}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-no">Chưa đặt</span>{{end}}</td>
+    <td>{{if .Ok}}<code class="key-masked">{{.Masked}}</code>{{else}}<span class="env-hint">—</span>{{end}}</td>
+    <td>
+      <form method="post" action="/settings/env" class="env-form">
+        <input type="hidden" name="name" value="{{.Name}}">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+</table>
+
+<h2>RTMP theo tài khoản</h2>
+{{if .RtmpRows}}
+<table>
+  <tr><th>Tài khoản</th><th>Key ref</th><th>Key khả dụng</th></tr>
+  {{range .RtmpRows}}
+  <tr>
+    <td><strong>{{.Username}}</strong></td>
+    <td><code>{{if .Ref}}{{.Ref}}{{else}}—{{end}}</code></td>
+    <td>{{if .Ok}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="empty">Chưa có tài khoản nào.</p>
+{{end}}
+{{end}}

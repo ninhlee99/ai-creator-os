@@ -1,0 +1,131 @@
+{{/* Shared partials (R2-W3): settings sub-nav, confirm modal, provider
+chain card, keyring card. Parsed into every page via parseTemplates;
+each page includes only what it uses. */}}
+
+{{/* Minimal modal styles (kept here because style.css is frozen for now). */}}
+{{define "modal-css"}}<style>
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,16,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:420px;width:calc(100% - 48px);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.modal p{margin:0 0 4px;font-size:var(--fs-md)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+</style>{{end}}
+
+{{/* Sub-nav across the 5 settings sub-pages. .SettingsPage selects active. */}}
+{{define "settings-nav"}}
+<nav class="subnav">
+  <a href="/settings/he-thong"{{if eq .SettingsPage "he-thong"}} class="active"{{end}}>Hệ thống</a>
+  <a href="/settings/nha-cung-cap"{{if eq .SettingsPage "nha-cung-cap"}} class="active"{{end}}>Nhà cung cấp</a>
+  <a href="/settings/model-local"{{if eq .SettingsPage "model-local"}} class="active"{{end}}>Model local</a>
+  <a href="/settings/nhan-vat"{{if eq .SettingsPage "nhan-vat"}} class="active"{{end}}>Nhân vật AI</a>
+  <a href="/settings/an-toan"{{if eq .SettingsPage "an-toan"}} class="active"{{end}}>⚠️ An toàn</a>
+</nav>
+{{end}}
+
+{{/* Reusable confirm modal. Forms with data-confirm="..." are intercepted
+by app.js and only submit after the user confirms here. */}}
+{{define "confirm-modal"}}
+<div class="modal-backdrop" id="confirm-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <p id="confirm-modal-msg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirm-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-danger" id="confirm-modal-ok">Xác nhận</button>
+    </div>
+  </div>
+</div>
+{{end}}
+
+{{/* Keyring card for Gemini API keys. Args (dict): Keys, Chain. */}}
+{{define "keyring"}}
+{{$chain := .Chain}}
+<div class="keyring" data-chain="{{$chain}}" data-provider="gemini">
+  <div class="key-list">
+    {{range .Keys}}
+    <div class="key-card" data-idx="{{.Index}}">
+      <code class="key-masked">{{.Masked}}</code>
+      {{if eq .State "cooldown"}}
+      <span class="badge {{.BadgeClass}}" data-cool="{{.CooldownRemainingSec}}">{{.CooldownLabel}}</span>
+      {{else}}
+      <span class="badge {{.BadgeClass}}">{{.StateLabel}}</span>
+      {{end}}
+      <span class="key-meta">{{.Requests}} lượt dùng{{if gt .RateLimitHits 0}} · rate-limit {{.RateLimitHits}} lần{{if .LastRateLimitLabel}} (gần nhất {{.LastRateLimitLabel}}){{end}}{{end}}</span>
+      <span class="key-actions">
+        <button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>
+        <button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>
+      </span>
+      <span class="key-msg" aria-live="polite" hidden></span>
+    </div>
+    {{end}}
+  </div>
+  <div class="key-empty" data-empty {{if .Keys}}hidden{{end}}>
+    <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+    <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+  </div>
+  <div class="key-add" hidden>
+    <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">
+    <button type="button" class="btn btn-sm key-save-btn">Lưu</button>
+    <button type="button" class="btn btn-secondary btn-sm key-cancel-btn">Hủy</button>
+  </div>
+  <button type="button" class="btn btn-secondary btn-sm key-add-btn">+ Thêm key</button>
+</div>
+{{end}}
+
+{{/* Provider chain card. Args (dict): Chain, Keys (nil for avatar),
+ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
+{{define "chain-card"}}
+{{$d := .}}
+{{$chain := .ChainName}}
+<div class="form-card" style="max-width:none">
+<form method="post" action="/settings/chain?name={{$chain}}">
+  {{range $i, $p := $d.Chain.Order}}
+  <div class="provider-card">
+    <div class="provider-head">
+      <strong>{{$p.Name}}</strong>
+      <span class="provider-order">#{{$i}}</span>
+      {{if eq $chain "avatar"}}
+        {{if eq $p.Name "local"}}<span class="badge badge-ok">miễn phí</span>{{else}}<span class="badge badge-no">trả phí · tắt mặc định</span>{{end}}
+      {{end}}
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="{{$i}}" {{if $p.Enabled}}checked{{end}}> Bật</label>
+    </div>
+    <input type="hidden" name="pname" value="{{$p.Name}}">
+    <div class="provider-grid">
+      {{if eq $p.Name "gemini"}}
+      <div class="field field-span">
+        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <input type="hidden" name="apikey" value="">
+        {{template "keyring" (dict "Keys" $d.Keys "Chain" $chain)}}
+      </div>
+      {{else if and (eq $chain "avatar") (eq $p.Name "local")}}
+      <div class="field field-span">
+        <label>Chương trình chạy trên máy</label>
+        <input type="hidden" name="apikey" value="">
+        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem trang Model local. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
+      </div>
+      {{else}}
+      <div class="field">
+        <label>API key</label>
+        <input type="password" name="apikey" value="{{$p.APIKey}}" placeholder="nếu cần" autocomplete="off">
+      </div>
+      {{end}}
+      <div class="field">
+        <label>Số lần thử lại</label>
+        <input type="number" name="retries" value="{{$p.Retries}}" min="0">
+      </div>
+      <div class="field">
+        <label>Timeout (giây)</label>
+        <input type="number" name="timeout" value="{{$p.TimeoutSec}}" min="1">
+      </div>
+    </div>
+    <div class="provider-actions">
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=up&i={{$i}}">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name={{$chain}}&dir=down&i={{$i}}">↓ Xuống</button>
+      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="{{$chain}}" data-provider="{{$p.Name}}">Kiểm tra kết nối</button>
+      <span class="health-result" aria-live="polite"></span>
+    </div>
+  </div>
+  {{end}}
+  <button type="submit" class="btn">{{$d.SaveLabel}}</button>
+</form>
+</div>
+{{end}}

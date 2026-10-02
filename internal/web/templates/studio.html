@@ -75,9 +75,22 @@
       <span class="badge badge-warn">Không tải được bảng xếp hạng</span>
       <div class="hint">{{.TrendsErr}}</div>
     {{else}}
-      <span class="badge badge-ok">{{len .Sounds}} bài hát</span>
-      <div class="hint">Đang đứng đầu: {{if .Sounds}}{{(index .Sounds 0).Artist}} – {{(index .Sounds 0).Title}}{{end}}</div>
+      <span class="badge badge-ok">{{.SoundCount}} bài hát</span>
+      <div class="hint">Đang đứng đầu: {{.TopSound}}</div>
     {{end}}
+    <a class="btn btn-secondary btn-sm" href="/studio/trends" style="margin-top:8px">Xem bảng xếp hạng</a>
+  </div>
+  <div class="card">
+    <h3>Job dựng video</h3>
+    {{if .ActiveJobs}}
+      <span class="badge badge-running">{{.ActiveJobs}} đang chạy</span>
+    {{else if .JobCount}}
+      <span class="badge badge-ok">{{.JobCount}} job</span>
+    {{else}}
+      <span class="badge badge-draft">chưa có job</span>
+    {{end}}
+    <div class="hint">Tiến độ dựng + storyboard từng cảnh.</div>
+    <a class="btn btn-secondary btn-sm" href="/studio/jobs" style="margin-top:8px">Xem job</a>
   </div>
 </div>
 
@@ -191,118 +204,5 @@
 </form>
 </div>
 
-<h2>3 · Nhạc thịnh hành TikTok Việt Nam</h2>
-<p class="hint">Nguồn: {{.TrendsSource}}. Đây là bảng xếp hạng của bên thứ ba, không phải số liệu chính thức từ TikTok.</p>
-<form method="post" action="/studio/trends/refresh" class="inline-form">
-  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
-</form>
-{{if .Sounds}}
-<table class="trends-table">
-  <tr><th>#</th><th>Biến động</th><th>Bài hát</th></tr>
-  {{range .Sounds}}
-  <tr><td>{{.Rank}}</td><td>{{.Movement}}</td><td><strong>{{.Artist}}</strong> – {{.Title}}</td></tr>
-  {{end}}
-</table>
-{{else}}
-<div class="empty-state compact">
-  <div class="es-icon">🎵</div>
-  <h3>Chưa tải được bảng xếp hạng</h3>
-  <p>{{.TrendsErr}}</p>
-</div>
-{{end}}
-
-<h2>Video đã tạo</h2>
-<div id="jobs">
-{{if .Jobs}}
-  {{range .Jobs}}
-  <div class="job" data-job="{{.ID}}">
-    <h3>{{.Title}} <span class="badge badge-draft">{{.KindLabel}}</span></h3>
-    <div class="meta">
-      <span class="badge badge-{{statusClass .Status}} job-status">{{statusLabel .Status}}</span>
-      <span class="prog">{{.Progress}}%</span>
-      · tạo lúc {{.CreatedAt}}{{if .FinishedAt}} · xong lúc {{.FinishedAt}}{{end}}
-    </div>
-    <div class="board"></div>
-    {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
-    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
-    <pre class="log" id="log-{{.ID}}" {{if not .Output}}hidden{{end}}></pre>
-  </div>
-  {{end}}
-{{else}}
-<div class="empty-state">
-  <div class="es-icon">🎬</div>
-  <h3>Chưa có video nào</h3>
-  <p>Điền tên sản phẩm ở mẫu phía trên, AI sẽ tự viết kịch bản, chụp ảnh và dựng video cho bạn.</p>
-  <a class="btn" href="#studio-form">Tạo video đầu tiên</a>
-</div>
-{{end}}
-</div>
-
-<script>
-function pickTrend(sel){
-  var v = sel.value.split("|");
-  document.getElementById("music_title").value = v[0] || "";
-  document.getElementById("music_artist").value = v[1] || "";
-}
-// Nhãn + class trạng thái, khớp statusLabel/statusClass phía server.
-var JOB_LABELS = {queued:"Đang chờ", pending:"Đang chờ", running:"Đang chạy",
-  done:"Hoàn thành", failed:"Thất bại"};
-var JOB_CLASSES = {queued:"queued", pending:"queued", running:"running",
-  done:"ok", failed:"err"};
-function jobLabel(s){ return JOB_LABELS[s] || s; }
-function jobClass(s){ return JOB_CLASSES[s] || "no"; }
-
-var boards = {};
-function toggleBoard(id){
-  var box = document.querySelector('[data-job="'+id+'"] .board');
-  if(boards[id]){ box.innerHTML=""; boards[id]=false; return; }
-  boards[id]=true;
-  fetch("/studio/jobs/"+id).then(function(r){return r.json();}).then(function(d){
-    var h = "";
-    var logEl = document.getElementById("log-"+id);
-    if(d.job && d.job.log){ logEl.textContent = d.job.log; logEl.hidden = false; }
-    if(d.job && d.job.caption){
-      h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById(\'cap-'+id+'\').textContent)">Sao chép</button></div><div class="hint" id="cap-'+id+'">'+d.job.caption.replace(/\n/g,"<br>")+'</div></div>';
-    }
-    (d.assets||[]).forEach(function(a){
-      h += '<div class="shot"><div class="shot-head">Cảnh '+(a.idx+1)+' <span class="badge badge-'+jobClass(a.status)+'">'+jobLabel(a.status)+'</span> <em>'+a.kind+'</em></div>';
-      if(a.preview){
-        if(a.kind==="clip"){ h += '<video controls src="'+a.preview+'" style="max-width:220px"></video>'; }
-        else { h += '<img src="'+a.preview+'" style="max-width:220px">'; }
-      }
-      h += '<div class="hint">'+a.prompt+'</div></div>';
-    });
-    box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
-  });
-}
-
-// Cập nhật trạng thái + tiến độ job tại chỗ (không tải lại trang).
-(function(){
-  var cards = document.querySelectorAll('[data-job]');
-  if(!cards.length) return;
-  var timer = setInterval(function(){
-    fetch('/studio/jobs').then(function(r){return r.json();}).then(function(d){
-      var anyActive = false;
-      (d.jobs||[]).forEach(function(j){
-        if(j.status==='running' || j.status==='queued') anyActive = true;
-        var card = document.querySelector('[data-job="'+j.id+'"]');
-        if(!card) return;
-        var b = card.querySelector('.job-status');
-        if(b){ b.className = 'badge job-status badge-'+jobClass(j.status); b.textContent = jobLabel(j.status); }
-        var p = card.querySelector('.prog');
-        if(p) p.textContent = j.progress+'%';
-        if(j.output && !card.querySelector('video.player')){
-          var v = document.createElement('video');
-          v.className = 'player'; v.controls = true; v.src = '/media/'+j.output;
-          var btn = card.querySelector('button');
-          card.insertBefore(v, btn);
-        }
-        if(boards[j.id]) { boards[j.id] = false; toggleBoard(j.id); }
-      });
-      if(!anyActive) clearInterval(timer);
-    }).catch(function(){ /* mạng chập chờn: giữ nguyên trạng thái hiện tại */ });
-  }, 5000);
-})();
-</script>
 {{end}}
 {{end}}

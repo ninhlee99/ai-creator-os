@@ -1,0 +1,33 @@
+{{define "title"}}Cài đặt · An toàn — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Cài đặt · An toàn</h1>
+<p class="subtitle">Dừng khẩn cấp bằng cách nào, điều kiện gì mới được chạy thật.</p>
+{{template "settings-nav" .}}
+
+<div class="form-card danger-zone">
+<h3 style="margin-top:0">Chế độ dry-run</h3>
+<form method="post" action="/settings/dryrun">
+  <div class="field">
+    <label>Chế độ chạy</label>
+    <select name="value">
+      <option value="on" {{if .DryRun}}selected{{end}}>Bật chế độ thử (dry-run) — an toàn, không thao tác thật</option>
+      <option value="off" {{if not .DryRun}}selected{{end}}>Tắt chế độ thử — chạy thật</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-secondary">Lưu</button>
+</form>
+
+<h3>Kill switch</h3>
+  <p>Dừng toàn bộ hoạt động tự động ngay lập tức. Dùng khi phát hiện sự cố.</p>
+  {{if .Kill}}
+  <form method="post" action="/unkill">
+    <button type="submit" class="btn btn-secondary">Gỡ kill switch</button>
+  </form>
+  {{else}}
+  <form method="post" action="/kill"
+        data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay lập tức.">
+    <button type="submit" class="btn btn-danger">BẬT kill switch</button>
+  </form>
+  {{end}}
+</div>
+{{end}}

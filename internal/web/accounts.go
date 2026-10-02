@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -157,6 +158,7 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	detailCtx := s.ctx(
 		"Acct", s.wrapAccount(acct),
+		"Tab", s.accountTab(r),
 		"Allowed", allowed,
 		"Persona", persona,
 		"Decisions", decisions,
@@ -185,18 +187,41 @@ func (s *Server) accountID(w http.ResponseWriter, r *http.Request) (int64, bool)
 	return id, true
 }
 
+// accountTab returns the current account-detail tab from ?tab=, defaulting
+// to "tong-quan".
+func (s *Server) accountTab(r *http.Request) string {
+	switch r.URL.Query().Get("tab") {
+	case "autopilot", "ket-noi":
+		return r.URL.Query().Get("tab")
+	default:
+		return "tong-quan"
+	}
+}
+
+// accountBack redirects to the account detail page preserving the given tab
+// and surfacing errMsg as a toast (R2-13) instead of a silent redirect.
+func (s *Server) accountBack(w http.ResponseWriter, r *http.Request, id int64, tab, errMsg string) {
+	u := "/accounts/" + strconv.FormatInt(id, 10) + "?tab=" + tab
+	if errMsg != "" {
+		u += "&err=" + url.QueryEscape(errMsg)
+	}
+	seeOther(w, r, u)
+}
+
 func (s *Server) handleAccountTransition(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.accountID(w, r)
 	if !ok {
 		return
 	}
 	_ = r.ParseForm()
+	errMsg := ""
 	if to := r.PostFormValue("to"); to != "" {
 		if _, err := s.Mgr.Transition(id, to, nil); err != nil {
+			errMsg = err.Error()
 			log.Printf("web: transition: %v", err)
 		}
 	}
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
+	s.accountBack(w, r, id, "ket-noi", errMsg)
 }
 
 func (s *Server) handleAccountYoutube(w http.ResponseWriter, r *http.Request) {
@@ -212,10 +237,12 @@ func (s *Server) handleAccountYoutube(w http.ResponseWriter, r *http.Request) {
 			kinds = append(kinds, k)
 		}
 	}
+	errMsg := ""
 	if _, err := s.Mgr.SetYoutube(id, channel, kinds); err != nil {
+		errMsg = err.Error()
 		log.Printf("web: set youtube: %v", err)
 	}
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
+	s.accountBack(w, r, id, "ket-noi", errMsg)
 }
 
 func (s *Server) handleAccountOnboard(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +251,7 @@ func (s *Server) handleAccountOnboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.advanceOnboarding(id)
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
+	s.accountBack(w, r, id, "ket-noi", "")
 }
 
 func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
@@ -232,14 +259,18 @@ func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	errMsg := ""
 	acct, err := s.Mgr.Get(id)
 	if err == nil {
 		research := network.MakeTopicResearch(s.Mgr, id, s.LLM)
 		if _, err := research(acct.NicheHint); err != nil {
+			errMsg = err.Error()
 			log.Printf("web: replan: %v", err)
 		}
+	} else {
+		errMsg = err.Error()
 	}
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
+	s.accountBack(w, r, id, "ket-noi", errMsg)
 }
 
 func (s *Server) handleAccountLiveTopic(w http.ResponseWriter, r *http.Request) {
@@ -247,10 +278,12 @@ func (s *Server) handleAccountLiveTopic(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
+	errMsg := ""
 	if _, _, err := s.Mgr.PlanLiveTopic(s.LLM, id); err != nil {
+		errMsg = err.Error()
 		log.Printf("web: plan live topic: %v", err)
 	}
-	seeOther(w, r, "/accounts/"+strconv.FormatInt(id, 10))
+	s.accountBack(w, r, id, "ket-noi", errMsg)
 }
 
 // ---------------------------------------------------------------- schedule

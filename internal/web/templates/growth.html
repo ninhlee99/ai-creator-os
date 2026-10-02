@@ -25,6 +25,17 @@
   </form>
 </div>
 
+<details class="advanced" style="margin:12px 0">
+  <summary>🧰 Tác vụ thủ công <span class="hint">— thường không cần, hệ thống tự làm</span></summary>
+  <div class="toolbar" style="margin-top:10px">
+    <form method="post" action="/growth/sync" style="display:inline"
+          data-confirm="Đồng bộ số liệu + chạy vòng quyết định ngay?">
+      <button class="btn btn-secondary btn-sm" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
+    </form>
+  </div>
+  <div class="hint" style="margin-top:8px">Sinh plan 30 ngày cho từng tài khoản: vào trang tài khoản → tab Autopilot → “↻ Replan 30 ngày ngay”.</div>
+</details>
+
 {{if not .Accounts}}
 <div class="empty-state">
   <strong>Chưa có tài khoản nào</strong>
@@ -40,11 +51,6 @@
   <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (YOUTUBE_API_KEY){{end}}</div></div>
 </div>
 
-<form method="post" action="/growth/sync" style="margin:12px 0">
-  <button class="btn" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
-  <span class="hint">Nguồn chưa kết nối sẽ được báo rõ trong kết quả — hệ thống không bịa số.</span>
-</form>
-
 <h2>Trạng thái từng tài khoản</h2>
 <table>
 <tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
@@ -58,9 +64,7 @@
   <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
   <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
   <td>{{if .YTReady}}<span class="badge badge-ok">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn">{{.YTUpload}}</span>{{end}}</td>
-  <td>
-    <form method="post" action="/growth/accounts/{{.Account.ID}}/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
-  </td>
+  <td><a class="btn-small" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở Autopilot</a></td>
 </tr>
 {{end}}
 </table>
