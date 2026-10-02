@@ -437,7 +437,32 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, map[string]any{
 		"job":    j,
 		"assets": views,
+		"bundle": s.filmScriptBundleView(id),
 	})
+}
+
+// filmScriptBundleView trả truyện/kịch bản/breakdown của job để storyboard UI
+// cho xem lại từng pha sáng tạo (truyện → kịch bản → breakdown). Job chưa có
+// bundle (chưa tới pha viết) trả map rỗng, UI tự ẩn.
+func (s *Server) filmScriptBundleView(id string) map[string]any {
+	out := map[string]any{}
+	if s.Studio == nil {
+		return out
+	}
+	b, err := s.Studio.ScriptBundle(id)
+	if err != nil {
+		return out
+	}
+	if b.Story.Text != "" {
+		out["story"] = b.Story
+	}
+	if len(b.Screenplay.Scenes) > 0 {
+		out["screenplay"] = b.Screenplay
+	}
+	if len(b.Breakdown.Characters) > 0 {
+		out["breakdown"] = b.Breakdown
+	}
+	return out
 }
 
 // filmTrailerSeq returns the exact render-shot sequence numbers the
