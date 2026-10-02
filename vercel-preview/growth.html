@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phát triển kênh — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>Phát triển kênh 🌱</h1>
+<p class="subtitle">Hệ thống tự vận hành theo chu kỳ 30-60-90 ngày: test format, giết format yếu,
+nhân đôi format thắng, đẩy tới mốc kiếm tiền — bạn không cần can thiệp.
+Số liệu chỉ lấy từ API chính thức; chưa kết nối thì hệ thống báo rõ, không bao giờ bịa số.</p>
+
+
+
+
+
+
+<div class="cards">
+  <div class="card"><div class="num">0</div><div class="label">Tổng người theo dõi (snapshot mới nhất)</div></div>
+  <div class="card"><div class="num">0</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
+  <div class="card"><div class="num">121 ngày</div><div class="label">Tới hạn nộp YPP 2027-02-01 (ngưỡng mới gấp đôi sau hạn này)</div></div>
+  <div class="card"><div class="num">Chưa nhập</div><div class="label">YouTube API key — nhập tại <a href="settings.html">Cài đặt</a> (YOUTUBE_API_KEY)</div></div>
+</div>
+
+<form method="post" action="growth.html/sync" style="margin:12px 0">
+  <button class="btn" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
+  <span class="hint">Nguồn chưa kết nối sẽ được báo rõ trong kết quả — hệ thống không bịa số.</span>
+</form>
+
+<h2>Trạng thái từng tài khoản</h2>
+<table>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>YouTube API</th><th></th></tr>
+
+<tr>
+  <td><a href="account-detail.html">kechuyen_ai_yt</a></td>
+  <td><span class="badge badge-warn">Khởi động (canary)</span></td>
+  <td>Chưa có số liệu thật</td>
+  <td>—</td>
+  <td><span class="hint">chưa có snapshot</span></td>
+  <td>—</td>
+  <td><span class="badge badge-no">chưa kết nối</span></td>
+  <td>
+    <form method="post" action="growth.htmlaccount-detail.html/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
+  </td>
+</tr>
+
+<tr>
+  <td><a href="accounts.html/2">meovatcongnghe_tiktok</a></td>
+  <td><span class="badge badge-warn">Khởi động (canary)</span></td>
+  <td>Chưa có số liệu thật</td>
+  <td>—</td>
+  <td><span class="hint">chưa có snapshot</span></td>
+  <td>—</td>
+  <td><span class="badge badge-no">chưa kết nối</span></td>
+  <td>
+    <form method="post" action="growth.htmlaccounts.html/2/plan"><button class="btn-small" type="submit">Sinh plan 30 ngày</button></form>
+  </td>
+</tr>
+
+</table>
+
+<div class="grid2">
+<div>
+<h2>Cảnh báo &amp; hành động tự động</h2>
+
+<div class="empty-state compact"><strong>Chưa có cảnh báo</strong><p>Khi format bị dừng, kênh chững số hay có tín hiệu phạt, hệ thống ghi lại tại đây kèm hành động đã thực hiện.</p></div>
+
+</div>
+
+<div>
+<h2>Kế hoạch sắp tới (toàn mạng)</h2>
+
+<table>
+<tr><th>Ngày</th><th>Tài khoản</th><th>Biến thể</th><th>Chủ đề</th><th>Hook gợi ý</th></tr>
+
+<tr>
+  <td>2026-10-02</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>truyện ngắn</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-02</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>truyện ngắn</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-02</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>code game theo yêu cầu</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-03</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>truyện ma</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-03</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>truyện ma</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-03</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>debug live</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-04</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>câu chuyện đời</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-04</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>câu chuyện đời</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-04</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>thử thách 30 phút 1 game</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-05</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>truyện ngắn</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-05</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>truyện ngắn</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-05</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>tính năng theo yêu cầu quà tặng</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-06</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>truyện ma</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-06</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>truyện ma</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-06</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>code game theo yêu cầu</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-07</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>câu chuyện đời</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-07</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>câu chuyện đời</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-07</td>
+  <td>meovatcongnghe_tiktok</td>
+  <td>tiktok</td>
+  <td>debug live</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+<tr>
+  <td>2026-10-08</td>
+  <td>kechuyen_ai_yt</td>
+  <td>youtube_shorts</td>
+  <td>truyện ngắn</td>
+  <td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td>
+</tr>
+
+<tr>
+  <td>2026-10-08</td>
+  <td>kechuyen_ai_yt</td>
+  <td>tiktok</td>
+  <td>truyện ngắn</td>
+  <td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td>
+</tr>
+
+</table>
+
+</div>
+</div>
+
+<p class="hint">Giới hạn trung thực của bản MVP: YouTube Data API chỉ cấp tổng lượt xem tích lũy và số video —
+chỉ số 30 ngày / giờ xem YPP cần YouTube Analytics API (OAuth) ở giai đoạn 2. TikTok chưa có nguồn số liệu
+(Display API cần OAuth từng tài khoản + audit Direct Post) nên kênh TikTok hiện chỉ đăng nháp và chưa đồng bộ metrics.</p>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
+});
+
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
+  });
+})();
+</script>
+</body>
+</html>

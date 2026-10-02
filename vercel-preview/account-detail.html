@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kechuyen_ai_yt — AI Creator OS</title>
+<link rel="stylesheet" href="static/style.css">
+<script>
+
+
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('aicos-theme'); } catch (e) {}
+  if (t !== 'dark' && t !== 'light') {
+    t = (window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  }
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+</head>
+<body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
+
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">AI Creator OS</div>
+    <nav>
+      <div class="nav-group">Vận hành</div>
+      <a href="index.html">Trang chủ</a>
+      <a href="accounts.html">Tài khoản</a>
+      <a href="schedule.html">Lịch live</a>
+      <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
+      <div class="nav-group">Sản xuất</div>
+      <a href="content.html">Sản xuất video</a>
+      <a href="studio.html">Studio AI 🎬</a>
+      <a href="team.html">Agent Team 🤖</a>
+      <a href="products.html">Tìm sản phẩm</a>
+      <a href="shop.html">Shop Affiliate</a>
+      <div class="nav-group">Hệ thống</div>
+      <a href="publishers.html">Đa nền tảng</a>
+      <a href="settings.html">Cài đặt</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="status-chips">
+        <span class="chip chip-dry">DRY-RUN</span>
+        
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
+                title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
+        
+        <form method="post" action="/kill" style="display:inline"
+              onsubmit="return confirm('BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.')">
+          <button type="submit" class="btn btn-danger">Kill switch</button>
+        </form>
+        
+      </div>
+    </header>
+    <main class="content">
+      
+<h1>kechuyen_ai_yt</h1>
+<p class="subtitle"><span class="badge badge-info">Đang tăng trưởng</span>
+
+
+</p>
+
+
+
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Thông tin</h2>
+  <dl class="kv">
+    <dt>Persona</dt><dd>📖 Storyteller</dd>
+    <dt>Niche</dt><dd>kể chuyện AI</dd>
+    <dt>Gợi ý ban đầu</dt><dd>kể chuyện AI</dd>
+    <dt>Followers</dt><dd>0</dd>
+    <dt>Kênh YouTube</dt><dd>UCx1234567890abcdef</dd>
+    <dt>Loại nội dung YT</dt><dd>—</dd>
+    <dt>Quà tặng nhận</dt><dd>$0.00</dd>
+    <dt>Nền tảng đã nối</dt><dd>—</dd>
+  </dl>
+</div>
+
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Persona: 📖 Storyteller</h2>
+  <p><strong>Phong cách live:</strong> Kể chuyện đêm khuya, truyện AI tự viết, giọng TTS ấm</p>
+  
+  <p><strong>Niche affiliate phù hợp:</strong></p>
+  <ul class="clean"><li>sách</li><li>đèn đọc sách</li><li>trà</li><li>nến thơm</li></ul>
+  
+  
+  <p><strong>Giới hạn:</strong></p>
+  <ul class="clean"><li>không đọc sách có bản quyền nguyên văn</li></ul>
+  
+</div>
+
+</div>
+
+
+
+
+
+<h2>Điều khiển</h2>
+<div class="toolbar">
+  
+  <form class="inline-form" method="post" action="account-detail.html/transition">
+    <input type="hidden" name="to" value="live_ready">
+    <button type="submit" class="btn btn-secondary btn-sm">→ live_ready</button>
+  </form>
+  
+  <form class="inline-form" method="post" action="account-detail.html/transition">
+    <input type="hidden" name="to" value="paused">
+    <button type="submit" class="btn btn-secondary btn-sm">→ paused</button>
+  </form>
+  
+  <form class="inline-form" method="post" action="account-detail.html/transition">
+    <input type="hidden" name="to" value="retired">
+    <button type="submit" class="btn btn-secondary btn-sm">→ retired</button>
+  </form>
+  
+  <form class="inline-form" method="post" action="account-detail.html/onboard">
+    <button type="submit" class="btn btn-secondary btn-sm">Chạy bước onboarding tiếp</button>
+  </form>
+  <form class="inline-form" method="post" action="account-detail.html/replan"
+        onsubmit="return confirm('Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.')">
+    <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
+  </form>
+  <form class="inline-form" method="post" action="account-detail.html/live-topic">
+    <button type="submit" class="btn btn-secondary btn-sm">Lên topic cho phiên live tiếp theo</button>
+  </form>
+</div>
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Cập nhật followers</h2>
+  <form method="post" action="account-detail.html/followers">
+    <div class="field">
+      <label>Số followers hiện tại</label>
+      <input type="number" name="n" min="0" value="0">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
+  <form method="post" action="account-detail.html/youtube">
+    <div class="field">
+      <label>Channel ID</label>
+      <input type="text" name="channel" value="UCx1234567890abcdef">
+    </div>
+    <div class="field">
+      <label>Loại nội dung (phân tách bằng dấu phẩy)</label>
+      <input type="text" name="content_types" value=""
+             placeholder="vd: short_video, ai_music">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+</div>
+</div>
+
+
+<h2>Phát triển kênh 🌱</h2>
+<p>
+  Giai đoạn hiện tại: <span class="badge badge-warn">Khởi động (canary)</span>
+  <span class="hint">(từ 2026-10-02 05:08:09) — hệ thống tự quyết nhịp đăng, giết/nhân đôi format; xem tổng quan tại <a href="growth.html">Phát triển kênh</a>.</span>
+</p>
+<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức (cần YOUTUBE_API_KEY trong Cài đặt + gắn kênh YouTube bên dưới).</p>
+
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Thang mốc kiếm tiền</h2>
+  
+  <table>
+  <tr><th>Mốc</th><th>Hiện tại</th><th>Mục tiêu</th><th>Tiến độ</th></tr>
+  
+  <tr>
+    <td>Mốc 100 follower</td>
+    <td>—</td>
+    <td>100</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>Mở LIVE (1.000 follower)</td>
+    <td>—</td>
+    <td>1000</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>Mốc uy tín / Shop (10.000)</td>
+    <td>—</td>
+    <td>10000</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>YPP full — 10 triệu view Shorts<br><span class="hint">hạn 2027-02-01</span></td>
+    <td>—</td>
+    <td>10000000</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>Mốc 100 subscriber</td>
+    <td>—</td>
+    <td>100</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>YPP tier 1 (500 sub)<br><span class="hint">hạn 2027-02-01</span></td>
+    <td>—</td>
+    <td>500</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>YPP full — subscriber<br><span class="hint">hạn 2027-02-01</span></td>
+    <td>—</td>
+    <td>1000</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  <tr>
+    <td>YPP full — 4.000 giờ xem<br><span class="hint">hạn 2027-02-01</span></td>
+    <td>—</td>
+    <td>4000</td>
+    <td><div class="progress"><div class="progress-bar" style="width:0%"></div></div></td>
+  </tr>
+  
+  </table>
+  
+  <form method="post" action="growth.htmlaccount-detail.html/plan" style="margin-top:10px">
+    <input type="hidden" name="from" value="detail">
+    <button class="btn btn-secondary btn-sm" type="submit">↻ Replan 30 ngày ngay</button>
+    <span class="hint">Plan mới thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).</span>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Kế hoạch nội dung</h2>
+  
+  <p class="hint">Plan #1 · Đang hiệu lực · tạo 2026-10-02 05:08:09 · Sinh từ giao diện</p>
+  
+  <table>
+  <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Hook</th></tr>
+  
+  <tr><td>2026-10-02</td><td>tiktok</td><td>truyện ngắn</td><td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td></tr>
+  
+  <tr><td>2026-10-02</td><td>youtube_shorts</td><td>truyện ngắn</td><td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td></tr>
+  
+  <tr><td>2026-10-03</td><td>tiktok</td><td>truyện ma</td><td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td></tr>
+  
+  <tr><td>2026-10-03</td><td>youtube_shorts</td><td>truyện ma</td><td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td></tr>
+  
+  <tr><td>2026-10-04</td><td>tiktok</td><td>câu chuyện đời</td><td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td></tr>
+  
+  <tr><td>2026-10-04</td><td>youtube_shorts</td><td>câu chuyện đời</td><td>Hook 1–2 giây đầu: khung hình thị giác mạnh chống swipe, vòng lặp liền mạch</td></tr>
+  
+  <tr><td>2026-10-05</td><td>tiktok</td><td>truyện ngắn</td><td>Hook 3 giây đầu: nêu kết quả/câu hỏi gây tò mò, payoff ở cuối video (giữ completion)</td></tr>
+  
+  </table>
+  
+  
+</div>
+</div>
+
+
+
+
+
+
+<h2>Autopilot Affiliate 🤖</h2>
+<div class="grid2">
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chủ đề sản phẩm</h2>
+  <form method="post" action="account-detail.html/theme">
+    <div class="field">
+      <label>Chủ đề affiliate của tài khoản này</label>
+      <select name="theme">
+        <option value="" selected>— Chưa chọn —</option>
+        
+        <option value="thoi-trang-nu">👗 Thời trang nữ</option>
+        
+        <option value="my-pham">💄 Mỹ phẩm</option>
+        
+        <option value="gia-dung">🏠 Gia dụng</option>
+        
+        <option value="me-va-be">🍼 Mẹ &amp; bé</option>
+        
+        <option value="cong-nghe">🎧 Công nghệ</option>
+        
+        <option value="the-thao">👟 Thể thao</option>
+        
+        <option value="sach-van-phong">📚 Sách &amp; văn phòng</option>
+        
+      </select>
+      <div class="hint">Hệ thống sẽ tự tìm sản phẩm hoa hồng cao đúng chủ đề này.</div>
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu chủ đề</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chế độ tự động</h2>
+  <form method="post" action="account-detail.html/autopilot">
+    <div class="field">
+      <label><input type="checkbox" name="enabled" value="on"> Bật autopilot</label>
+      <div class="hint">Khi bật: hệ thống tự tìm sản phẩm → làm video → xếp lịch. Bạn chỉ theo dõi.</div>
+    </div>
+    <div class="field">
+      <label>Hoa hồng tối thiểu (%)</label>
+      <input type="number" name="min_commission" min="0" max="100" step="0.5"
+             value="10.0">
+    </div>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+  </form>
+  <div style="margin-top:12px">
+  
+    <p class="hint">Cần bật autopilot, chọn chủ đề và upload ít nhất 1 ảnh mẫu để chạy tự động.</p>
+  
+  </div>
+</div>
+</div>
+
+<h2>Thư viện ảnh mẫu</h2>
+
+  
+  <p class="empty">Chưa có ảnh mẫu nào. Hãy upload ảnh của mẫu — hệ thống dùng để giữ đúng khuôn mặt khi làm video.</p>
+  
+  <div class="form-card">
+    <h2 style="margin-top:0;border:none;padding:0">Tải ảnh mẫu lên</h2>
+    <form method="post" action="account-detail.html/models/upload" enctype="multipart/form-data">
+      <div class="field">
+        <label>Chọn ảnh (jpg/png/webp, tối đa 10MB)</label>
+        <div class="file-pick">
+          <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
+            <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" required>
+          </label>
+          <span class="file-name">Chưa chọn ảnh</span>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Tải lên</button>
+    </form>
+  </div>
+
+
+<h2>Lịch sử quyết định</h2>
+
+<ul class="clean">
+  
+  <li><span class="badge badge-draft">generate_plan</span> Sinh kế hoạch 30 ngày (giai đoạn cold_start, 60 vị trí)</li>
+  
+  <li><span class="badge badge-draft">account_transition</span> persona_assigned -&gt; growing</li>
+  
+  <li><span class="badge badge-draft">account_transition</span> researching -&gt; persona_assigned</li>
+  
+  <li><span class="badge badge-draft">persona_assigned</span> assigned 📖 Storyteller for researched niche &#39;kể chuyện AI&#39;</li>
+  
+  <li><span class="badge badge-draft">account_transition</span> onboarding -&gt; researching</li>
+  
+  <li><span class="badge badge-draft">niche_research</span> topic resolved (source=hint)</li>
+  
+</ul>
+
+
+    </main>
+  </div>
+</div>
+<script>
+
+(function () {
+  var p = location.pathname;
+  document.querySelectorAll('.sidebar nav a').forEach(function (a) {
+    var h = a.getAttribute('href');
+    if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+  });
+})();
+
+document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
+  inp.addEventListener('change', function () {
+    var name = inp.closest('.file-pick').querySelector('.file-name');
+    if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+  });
+});
+
+(function () {
+  var btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  function sync() {
+    btn.textContent = document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('aicos-theme', next); } catch (e) {}
+    sync();
+  });
+})();
+</script>
+</body>
+</html>

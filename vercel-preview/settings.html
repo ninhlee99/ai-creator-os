@@ -21,6 +21,7 @@
 </head>
 <body><div style="background:#A85B00;color:#fff;padding:10px 16px;font:600 14px system-ui">BẢN PREVIEW UI/UX TĨNH — dữ liệu mẫu để soi giao diện. Nút bấm/đăng nhập/render thật chạy ở app aicos trên máy của Ninh, không chạy trên Vercel.</div>
 
+
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">AI Creator OS</div>
@@ -30,6 +31,7 @@
       <a href="accounts.html">Tài khoản</a>
       <a href="schedule.html">Lịch live</a>
       <a href="analytics.html">Phân tích</a>
+      <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
       <a href="content.html">Sản xuất video</a>
       <a href="studio.html">Studio AI 🎬</a>
@@ -84,7 +86,7 @@
     <div class="num"><span class="badge badge-ok">TẮT</span></div>
     <div class="label">Nút dừng khẩn cấp (kill switch)</div>
   </div>
-  <div class="card" title="/tmp/aicos-uirev2-data/ledger.db">
+  <div class="card" title="/tmp/aicos-preview-data/ledger.db">
     <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
     <div class="label">Cơ sở dữ liệu</div>
   </div>
@@ -101,7 +103,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="TTS_API_KEY">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -114,7 +116,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="TIKTOK_SHOP_APP_KEY">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -127,7 +129,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="TIKTOK_SHOP_APP_SECRET">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -140,7 +142,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="TIKTOK_CLIENT_KEY">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -153,7 +155,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="TIKTOK_CLIENT_SECRET">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -166,7 +168,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="YOUTUBE_CLIENT_ID">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -179,7 +181,7 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="YOUTUBE_CLIENT_SECRET">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
@@ -192,8 +194,21 @@
     <td><span class="badge badge-no">Chưa đặt</span></td>
     <td><span class="env-hint">—</span></td>
     <td>
-      <form method="post" action="/settings/env" class="env-form">
+      <form method="post" action="settings.html/env" class="env-form">
         <input type="hidden" name="name" value="FB_PAGE_ID">
+        <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </td>
+  </tr>
+  
+  <tr>
+    <td><code>YOUTUBE_API_KEY</code></td>
+    <td><span class="badge badge-no">Chưa đặt</span></td>
+    <td><span class="env-hint">—</span></td>
+    <td>
+      <form method="post" action="settings.html/env" class="env-form">
+        <input type="hidden" name="name" value="YOUTUBE_API_KEY">
         <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false">
         <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
       </form>
@@ -204,7 +219,22 @@
 
 <h2 id="rtmp">RTMP theo tài khoản</h2>
 
-<p class="empty">Chưa có tài khoản nào.</p>
+<table>
+  <tr><th>Tài khoản</th><th>Key ref</th><th>Key khả dụng</th></tr>
+  
+  <tr>
+    <td><strong>kechuyen_ai_yt</strong></td>
+    <td><code>—</code></td>
+    <td><span class="badge badge-no">Chưa</span></td>
+  </tr>
+  
+  <tr>
+    <td><strong>meovatcongnghe_tiktok</strong></td>
+    <td><code>—</code></td>
+    <td><span class="badge badge-no">Chưa</span></td>
+  </tr>
+  
+</table>
 
 
 <h2 id="nhan-vat">Nhân vật AI</h2>
@@ -252,7 +282,7 @@
 <h2 id="provider-tts">Chuỗi provider TTS</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình được lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 <div class="form-card" style="max-width:none">
-<form method="post" action="/settings/chain?name=tts">
+<form method="post" action="settings.html/chain?name=tts">
   
   <div class="provider-card">
     <div class="provider-head">
@@ -293,8 +323,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=up&i=0">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=down&i=0">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=up&i=0">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=down&i=0">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="gemini">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -324,8 +354,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=up&i=1">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=down&i=1">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=up&i=1">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=down&i=1">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="vieneu">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -355,8 +385,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=up&i=2">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=tts&dir=down&i=2">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=up&i=2">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=tts&dir=down&i=2">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="edge">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -369,7 +399,7 @@
 <h2 id="provider-llm">Chuỗi provider LLM</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình được lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 <div class="form-card" style="max-width:none">
-<form method="post" action="/settings/chain?name=llm">
+<form method="post" action="settings.html/chain?name=llm">
   
   <div class="provider-card">
     <div class="provider-head">
@@ -410,8 +440,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=up&i=0">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=down&i=0">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=up&i=0">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=down&i=0">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="gemini">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -441,8 +471,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=up&i=1">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=down&i=1">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=up&i=1">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=down&i=1">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="llama-server">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -472,8 +502,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=up&i=2">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=llm&dir=down&i=2">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=up&i=2">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=llm&dir=down&i=2">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="paid">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -486,7 +516,7 @@
 <h2 id="provider-avatar">Chuỗi provider Avatar</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. <span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span></p>
 <div class="form-card" style="max-width:none">
-<form method="post" action="/settings/chain?name=avatar">
+<form method="post" action="settings.html/chain?name=avatar">
   
   <div class="provider-card">
     <div class="provider-head">
@@ -514,8 +544,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=up&i=0">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=down&i=0">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=up&i=0">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=down&i=0">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="local">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -546,8 +576,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=up&i=1">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=down&i=1">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=up&i=1">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=down&i=1">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="heygen">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -578,8 +608,8 @@
       </div>
     </div>
     <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=up&i=2">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="/settings/chain/move?name=avatar&dir=down&i=2">↓ Xuống</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=up&i=2">↑ Lên</button>
+      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html/chain/move?name=avatar&dir=down&i=2">↓ Xuống</button>
       <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="did">Kiểm tra kết nối</button>
       <span class="health-result" aria-live="polite"></span>
     </div>
@@ -598,7 +628,7 @@
   <div class="grid2" style="margin-top:12px">
     <div class="field">
       <label>Giọng đọc (Voice preset)</label>
-      <form method="post" action="/settings/vieneu/voice" class="inline-form">
+      <form method="post" action="settings.html/vieneu/voice" class="inline-form">
         <select name="preset">
           <option value="bac">bac</option><option value="trung">trung</option><option value="nam">nam</option>
         </select>
@@ -609,7 +639,7 @@
       <label>Mô hình giọng (Model)</label>
       <div class="toolbar" style="margin:0">
         <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải model</button>
-        <form method="post" action="/settings/vieneu/restart" class="inline-form"
+        <form method="post" action="settings.html/vieneu/restart" class="inline-form"
               onsubmit="return confirm('Khởi động lại chương trình giọng đọc VieNeu?')">
           <button type="submit" class="btn btn-secondary btn-sm">Khởi động lại</button>
         </form>
@@ -641,7 +671,7 @@
 <h2 id="an-toan">⚠️ Vùng an toàn — dry-run &amp; kill switch</h2>
 <div class="form-card danger-zone">
 <h3 style="margin-top:0">Chế độ dry-run</h3>
-<form method="post" action="/settings/dryrun">
+<form method="post" action="settings.html/dryrun">
   <div class="field">
     <label>Chế độ chạy</label>
     <select name="value">
@@ -711,17 +741,17 @@ document.querySelectorAll('.keyring').forEach(function (root) {
   root._refresh = refresh;
 
   function qs(p) {
-    return '/settings/keys/' + p + '?chain=' + encodeURIComponent(chain) +
+    return 'settings.html/keys/' + p + '?chain=' + encodeURIComponent(chain) +
       '&provider=' + encodeURIComponent(provider);
   }
   function postQS(p, body) {
-    return fetch(qs(p), {method: 'POST',
+    return previewFetch(qs(p), {method: 'POST',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: body});
   }
   async function refresh() {
     try {
-      var r = await fetch(qs('status'));
+      var r = await previewFetch(qs('status'));
       var j = await r.json();
       var keys = j.keys || [];
       list.innerHTML = keys.map(keyCardHTML).join('');
@@ -811,7 +841,7 @@ document.querySelectorAll('.health-btn').forEach(function (btn) {
     res.textContent = 'Đang kiểm tra…';
     res.className = 'health-result';
     try {
-      var r = await fetch('/settings/chain/health?name=' + encodeURIComponent(btn.dataset.chain) +
+      var r = await previewFetch('settings.html/chain/health?name=' + encodeURIComponent(btn.dataset.chain) +
         '&provider=' + encodeURIComponent(btn.dataset.provider), {method: 'POST'});
       var j = await r.json();
       res.textContent = j.ok ? 'Kết nối tốt ✓' : 'Không kết nối được';
@@ -829,9 +859,9 @@ if (dlBtn) {
     var box = document.getElementById('vieneu-progress');
     box.textContent = 'Bắt đầu tải…';
     try {
-      await fetch('/settings/vieneu/ensure', {method: 'POST'});
+      await previewFetch('settings.html/vieneu/ensure', {method: 'POST'});
       var timer = setInterval(async function () {
-        var r = await fetch('/settings/vieneu/progress');
+        var r = await previewFetch('settings.html/vieneu/progress');
         var j = await r.json();
         if (j.error) { box.textContent = 'Lỗi: ' + j.error; clearInterval(timer); return; }
         if (j.done) { box.textContent = 'Đã tải xong model.'; clearInterval(timer); return; }
@@ -855,7 +885,7 @@ async function refreshAvatarSidecar() {
   var dlBtn = document.getElementById('avatar-download-btn');
   if (!badge) return;
   try {
-    var r = await fetch('/settings/avatar-sidecar/status');
+    var r = await previewFetch('settings.html/avatar-sidecar/status');
     var j = await r.json();
     if (!j.connected) {
       badge.textContent = 'chưa kết nối';
@@ -891,11 +921,11 @@ if (avatarDlBtn) {
     box.hidden = false; bar.style.width = '0%';
     msg.textContent = 'Bắt đầu tải…';
     try {
-      var r0 = await fetch('/settings/avatar-sidecar/ensure', {method: 'POST'});
+      var r0 = await previewFetch('settings.html/avatar-sidecar/ensure', {method: 'POST'});
       var j0 = await r0.json();
       if (!j0.ok) { msg.textContent = 'Lỗi: ' + (j0.error || 'không rõ'); box.hidden = true; return; }
       var timer = setInterval(async function () {
-        var r = await fetch('/settings/avatar-sidecar/progress');
+        var r = await previewFetch('settings.html/avatar-sidecar/progress');
         var j = await r.json();
         if (j.error) { msg.textContent = 'Lỗi: ' + j.error; box.hidden = true; clearInterval(timer); return; }
         if (j.done) { msg.textContent = 'Đã tải xong model.'; box.hidden = true; clearInterval(timer); refreshAvatarSidecar(); return; }
@@ -919,7 +949,7 @@ if (avatarRestartBtn) {
     var msg = document.getElementById('avatar-msg');
     msg.textContent = 'Đang khởi động lại…';
     try {
-      var r = await fetch('/settings/avatar-sidecar/restart', {method: 'POST'});
+      var r = await previewFetch('settings.html/avatar-sidecar/restart', {method: 'POST'});
       var j = await r.json();
       msg.textContent = j.ok ? 'Sidecar đã khởi động lại ✓' : 'Lỗi: ' + (j.error || 'không rõ');
       refreshAvatarSidecar();
@@ -936,7 +966,7 @@ if (charAddForm) {
     var msg = document.getElementById('char-add-msg');
     msg.textContent = 'Đang upload…';
     try {
-      var r = await fetch('/settings/avatar/characters', {method: 'POST', body: new FormData(charAddForm)});
+      var r = await previewFetch('settings.html/avatar/characters', {method: 'POST', body: new FormData(charAddForm)});
       var j = await r.json();
       if (j.ok) {
         msg.textContent = 'Đã thêm nhân vật ✓ — tải lại trang để xem.';
@@ -960,7 +990,7 @@ document.querySelectorAll('.char-card').forEach(function (card) {
     delBtn.addEventListener('click', async function () {
       if (!confirm('Xóa nhân vật này? File ảnh được giữ lại trên máy.')) return;
       try {
-        var r = await fetch('/settings/avatar/characters/' + id + '/delete', {method: 'POST'});
+        var r = await previewFetch('settings.html/avatar/characters/' + id + '/delete', {method: 'POST'});
         var j = await r.json();
         if (j.ok) { card.remove(); showToast('Đã xóa nhân vật', true); }
         else showToast(j.error || 'Xóa thất bại', false);
@@ -975,7 +1005,7 @@ document.querySelectorAll('.char-card').forEach(function (card) {
       msg.hidden = false; msg.textContent = 'Đang render (có thể mất vài phút cho clip dài)…';
       video.hidden = true; video.removeAttribute('src');
       try {
-        var r = await fetch('/settings/avatar/render-test', {
+        var r = await previewFetch('settings.html/avatar/render-test', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({character_id: parseInt(id, 10), text: text})
