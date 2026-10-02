@@ -33,7 +33,7 @@ type StreamOpts struct {
 // SupportsRealtime() == true can open one.
 //
 // Honest note: on a Mac M1 Pro no local model reaches realtime fps today
-// (see docs/RESEARCH/avatar_pipeline.md); OpenStream on the local provider
+// (see docs/RESEARCH.md §6); OpenStream on the local provider
 // works when the sidecar runs but frames arrive slower than wall-clock.
 // The stream engine must treat it as paced, not realtime, until a GPU
 // tier is attached.

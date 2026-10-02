@@ -131,7 +131,7 @@ func (l *sidecarLifecycle) Start(ctx context.Context) error {
 	}
 	bin := l.serverBin()
 	if _, err := os.Stat(bin); err != nil {
-		return fmt.Errorf("không tìm thấy avatar sidecar tại %s — cài sidecar (xem docs/RESEARCH/avatar_pipeline.md) hoặc đặt AVATAR_SIDECAR_CMD", bin)
+		return fmt.Errorf("không tìm thấy avatar sidecar tại %s — cài sidecar (xem docs/RESEARCH.md §6) hoặc đặt AVATAR_SIDECAR_CMD", bin)
 	}
 	if !l.ModelPresent() {
 		return fmt.Errorf("chưa có model avatar tại %s — bấm \"Tải model\" trong Settings trước", l.modelDir())

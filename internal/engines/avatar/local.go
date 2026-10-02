@@ -19,7 +19,7 @@ const defaultSidecarURL = "http://127.0.0.1:18080"
 
 // Sidecar HTTP contract (v1). The sidecar is third-party software (default:
 // a MuseTalk v1.5 based server with an MPS/Apple-Silicon port — see
-// docs/RESEARCH/avatar_pipeline.md); Go only speaks this contract and
+// docs/RESEARCH.md §6); Go only speaks this contract and
 // manages the process. Endpoints:
 //
 //	GET  /health → 200 {"status":"ok","model":"<id>","device":"mps","version":"1"}

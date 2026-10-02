@@ -5,7 +5,7 @@
 // them by EXPECTED EARNINGS (not commission % alone), passes governance,
 // and writes the shelf to the ledger.
 //
-// TikTok Shop API client details: docs/RESEARCH/tiktok_shop_api.md.
+// TikTok Shop API client details: docs/RESEARCH.md §4.
 // Endpoint paths must be verified in the Partner Center sandbox first —
 // until then the underlying client fails closed with a clear error, and
 // Run returns {"ok": False, "reason": ...} just like the Python agent.
