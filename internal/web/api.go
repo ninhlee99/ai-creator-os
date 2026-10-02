@@ -9,8 +9,22 @@ import (
 	"math"
 	"net/http"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
+
+// requireAPI gates the legacy JSON endpoints behind the api.enabled
+// switch (R2-W7, R2-09): default OFF. A closed gate answers 404 so a LAN
+// neighbor cannot even tell the endpoint exists.
+func (s *Server) requireAPI(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !automation.APIEnabled(s.settings()) {
+			http.NotFound(w, r)
+			return
+		}
+		next(w, r)
+	}
+}
 
 func (s *Server) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 	spend, err := s.Ledger.DailySpendUSD()

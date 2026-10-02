@@ -55,6 +55,19 @@
   </div>
 </div>
 
+<h2>Công cụ hệ thống</h2>
+<p class="subtitle">Kiểm tra thật lúc mở trang — thiếu thì làm theo bước tiếp theo.</p>
+<table>
+  <tr><th>Công cụ</th><th>Trạng thái</th><th>Chi tiết</th></tr>
+  {{range .RuntimeTools}}
+  <tr>
+    <td><strong>{{.Name}}</strong></td>
+    <td>{{if .Found}}<span class="badge badge-ok">Đã tìm thấy</span>{{else}}<span class="badge badge-no">Chưa có</span>{{end}}</td>
+    <td>{{if .Found}}<code>{{.Path}}</code>{{else}}<span class="hint">{{.Hint}}</span>{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+
 <script>
 // Tải model VieNeu: bắt đầu download rồi poll tiến độ.
 var dlBtn = document.getElementById('vieneu-download');

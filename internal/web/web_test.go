@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -299,7 +300,11 @@ func TestAllPagesRender(t *testing.T) {
 		}
 	}
 
-	// JSON APIs
+	// JSON APIs — gated behind the api.enabled switch (R2-W7, default OFF):
+	// enable like an operator would, then they must render.
+	if err := automation.SetAPIEnabled(s.settings(), true); err != nil {
+		t.Fatalf("enable api: %v", err)
+	}
 	for _, path := range []string{"/api/stats", "/api/products", "/api/decisions"} {
 		if rec := get(t, s, path); rec.Code != http.StatusOK {
 			t.Errorf("GET %s = %d, want 200", path, rec.Code)

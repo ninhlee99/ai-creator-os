@@ -1,0 +1,18 @@
+{{define "title"}}Thiết lập lần đầu — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Chào mừng đến AI Creator OS 🎬</h1>
+<p class="subtitle">Thiết lập một lần duy nhất — xong là app tự chạy.</p>
+
+<div class="form-card" style="max-width:640px">
+  <dl class="kv">
+    <dt>Phiên bản</dt><dd><code>{{.Version}}</code></dd>
+    <dt>Thư mục dữ liệu</dt><dd><code>{{.DataDir}}</code><br><span class="hint">Muốn đổi thư mục: khởi động lại app với <code>-data=/đường/dẫn</code>.</span></dd>
+  </dl>
+  <form method="post" action="/onboard" style="margin-top:16px">
+    <label class="check"><input type="checkbox" name="dryrun" value="1" checked>
+      Chế độ thử (dry-run) — an toàn, không thao tác thật</label>
+    <p class="hint">Tắt khi bạn đã sẵn sàng cho app chạy thật. Có thể đổi lại bất cứ lúc nào ở Cài đặt · An toàn.</p>
+    <button type="submit" class="btn btn-primary" style="margin-top:12px">Bắt đầu →</button>
+  </form>
+</div>
+{{end}}

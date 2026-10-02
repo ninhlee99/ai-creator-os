@@ -88,7 +88,13 @@ go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm 
 | TikTok Shop API chính thức | ❌ Đã loại theo quyết định của bạn |
 | Test E2E trên tài khoản thật | ⏳ Cần bạn |
 
-**Test:** 250 test function / 20 package pass (kiểm tra lần cuối 2026-10-02).
+**Test:** 298 test function / 14 package pass (không tag; 20 package với `-tags parked`), kiểm tra lần cuối 2026-10-02. Lệnh kiểm chứng:
+
+```bash
+go build ./... && go vet ./... && go test -count=1 ./...          # runtime chính
+go test -count=1 -tags parked ./...                              # vùng parked
+bash scripts/check-reachable.sh                                  # không package nào bị bỏ rơi
+```
 
 ---
 
@@ -106,3 +112,24 @@ go test ./...   # toàn bộ test chạy với dữ liệu giả, không chạm 
 | Thiết kế UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
 | Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
 | Kiến thức nền đã kiểm chứng (chính sách nền tảng, kiếm tiền, TTS, avatar, API) | [`docs/RESEARCH.md`](docs/RESEARCH.md) |
+
+---
+
+## 📦 Phát hành 1-binary
+
+```bash
+# Build phát hành có đóng dấu version (mặc định là "dev"):
+go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
+./aicos -version   # aicos v1.0.0
+```
+
+- **1 binary / 1 nền tảng** (Windows/macOS/Linux, ~15MB khi strip): `GOOS=windows GOARCH=amd64 go build ./cmd/aicos`… — CI cross-build cả 5 đích tự động (`.github/workflows/ci.yml`).
+- **Dữ liệu nằm gọn trong 1 thư mục** (`-data`, mặc định `./data`): 3 database SQLite, `content_jobs.json`, `tokens/` (OAuth TikTok/YouTube — app tự di trú file token cũ từ thư mục làm việc vào đây lần đầu chạy), `output/`, `avatars/`.
+- **Lần đầu chạy** thư mục dữ liệu trống → app mở wizard `/onboard` (chọn chế độ thử, xong mới vào app).
+- **Sao lưu/khôi phục** ở Cài đặt · Hệ thống: tải `.zip` ảnh chụp dữ liệu; khôi phục upload zip → kiểm chứng → khởi động lại app để áp dụng.
+- **API `/api/*` mặc định TẮT** (bật bằng công tắc ở Cài đặt · Hệ thống khi cần).
+- CI: build + vet + test (cả chế độ `parked`) + `scripts/check-reachable.sh` + cross-build 5 đích. Trên GitHub, bật *branch protection* cho `main` (Require status checks → `ci`) để PR fail không merge được.
+
+## ⚖️ Giấy phép
+
+All rights reserved — xem [`LICENSE`](LICENSE). Mọi quyền được bảo lưu; chưa cho phép sao chép/phân phối/sửa đổi khi chưa có văn bản đồng ý.

@@ -102,9 +102,10 @@ type YouTubePublisher struct {
 	HTTP YouTubeHTTPFunc
 }
 
-// YouTubeTokenPath is the refresh-token file for username.
+// YouTubeTokenPath is the refresh-token file for username, inside the
+// app's token directory (<dataDir>/tokens, see SetTokenDir).
 func YouTubeTokenPath(username string) string {
-	return "youtube_token_" + sanitizeUsername(username) + ".json"
+	return tokenPath("youtube_token_" + sanitizeUsername(username) + ".json")
 }
 
 // NewYouTubePublisher wires credentials from the environment:

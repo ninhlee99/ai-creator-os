@@ -46,10 +46,10 @@ func NewTikTokPublisher(username string) *TikTokPublisher {
 	}
 }
 
-// TikTokTokenPath is the OAuth token file for username, relative to the
-// app's working directory (non letter/digit runes become "_", case kept).
+// TikTokTokenPath is the OAuth token file for username, inside the
+// app's token directory (<dataDir>/tokens, see SetTokenDir).
 func TikTokTokenPath(username string) string {
-	return "tiktok_token_" + sanitizeUsername(username) + ".json"
+	return tokenPath("tiktok_token_" + sanitizeUsername(username) + ".json")
 }
 
 // DefaultTikTokRedirectURI is the local callback of the dashboard itself

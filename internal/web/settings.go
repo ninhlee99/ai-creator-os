@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
 
@@ -235,6 +236,13 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"MasterOn":   automation.MasterOn(s.settings()),
 		"APIBudget":  automation.APIBudgetUSD(s.settings(), s.Cfg.DailyAPIBudgetUSD),
 		"BudgetFrom": s.apiBudgetFrom(),
+		// R2-W7: legacy /api/* switch (default OFF), app version, runtime
+		// probes, pending-restore flag — all shown in Settings · Hệ thống.
+		"APIEnabled":     automation.APIEnabled(s.settings()),
+		"Version":        s.Cfg.Version,
+		"RuntimeTools":   probeRuntimeTools(),
+		"RestorePending": backup.PendingRestore(s.DataDir),
+		"DataDir":        s.DataDir,
 	}
 }
 
@@ -269,7 +277,8 @@ func (s *Server) handleSettingsIndex(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",
 		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
-		"MasterOn", "APIBudget", "BudgetFrom")
+		"MasterOn", "APIBudget", "BudgetFrom",
+		"APIEnabled", "Version", "RestorePending", "DataDir")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
@@ -278,10 +287,30 @@ func (s *Server) handleSettingsNhaCungCap(w http.ResponseWriter, r *http.Request
 		"TTSChain", "TTSKeys", "LLMChain", "LLMKeys", "AvatarChain", "AvatarRealtime")
 }
 
+// handleSettingsAPIToggle opens/closes the legacy /api/* JSON endpoints
+// (R2-W7, R2-09). Default OFF; the operator turns it on explicitly.
+func (s *Server) handleSettingsAPIToggle(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse api toggle")
+		return
+	}
+	on := r.PostFormValue("value") == "1"
+	if err := automation.SetAPIEnabled(s.settings(), on); err != nil {
+		s.fail(w, err, "save api switch")
+		return
+	}
+	msg := "Đã TẮT API /api/*."
+	if on {
+		msg = "Đã BẬT API /api/* — chỉ dùng nội bộ; cân nhắc rủi ro khi mở app ra mạng LAN."
+	}
+	_ = s.Ledger.Decide("human", "api_switch", nil, msg, map[string]any{"on": on})
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+}
+
 // handleSettingsModelLocal: "Model local đã sẵn sàng chưa?"
 func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "model-local", "settings_model_local",
-		"VieNeu", "AvatarSidecar")
+		"VieNeu", "AvatarSidecar", "RuntimeTools")
 }
 
 // handleSettingsNhanVat: "Có những khuôn mặt AI nào, render thử ra sao?"
