@@ -63,8 +63,9 @@
 //     manages its own Python, untouched system Python) OR Docker.
 //   - Edge TTS is an unofficial endpoint: unpublished rate limits, can be cut
 //     off without notice. Last resort only.
-//   - Local LLM quality/latency is a fallback, not the default: first-token
-//     latency on CPU is far worse than the free API.
+//   - Local LLM quality/latency is a fallback, not the default: even with
+//     Metal offload, first-token latency is worse than the free API.
 //   - llama.cpp needs a Metal-enabled build for GPU acceleration on Apple
-//     Silicon; a CPU-only build still works, just slower.
+//     Silicon (the launcher passes -ngl 99; a CPU-only build ignores the
+//     flag and still works, just slower).
 package engines

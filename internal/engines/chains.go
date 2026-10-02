@@ -108,20 +108,22 @@ func DefaultRegistry(dataDir string) *local.Registry {
 // NewLlamaServerProcess builds the supervised llama-server process for the
 // default GGUF model:
 //
-//	llama-server -m <data>/models/qwen2.5-7b-instruct-q4_k_m.gguf --port 8081 -c 4096
+//	llama-server -m <data>/models/qwen2.5-7b-instruct-q4_k_m.gguf --port 8081 -c 4096 -ngl 99
 //
 // Port 8081 is used instead of llama-server's default 8080 so it never
 // collides with the dashboard's default -addr :8080 in the same binary.
 //
-// A Metal-enabled llama.cpp build accelerates automatically on Apple Silicon;
-// a CPU-only build still works. The model file must exist (Registry.Download)
-// before starting.
+// -ngl 99 is REQUIRED for GPU speed on Apple Silicon: llama.cpp defaults
+// n-gpu-layers to 0 (CPU-only) even in Metal builds, so without this flag
+// the M1 GPU sits idle. 99 offloads every layer; a CPU-only llama.cpp
+// build ignores the flag (warning only), so it is safe everywhere. The
+// model file must exist (Registry.Download) before starting.
 func NewLlamaServerProcess(reg *local.Registry) *local.Process {
 	model := reg.ModelPath("qwen2.5-7b-instruct-q4_k_m.gguf")
 	return &local.Process{
 		Name:      "llama-server",
 		Bin:       "llama-server",
-		Args:      []string{"-m", model, "--port", "8081", "-c", "4096"},
+		Args:      []string{"-m", model, "--port", "8081", "-c", "4096", "-ngl", "99"},
 		HealthURL: "http://127.0.0.1:8081/health",
 	}
 }
