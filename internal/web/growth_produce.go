@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -122,6 +123,24 @@ func (s *Server) automation() *automation.Service {
 	svc.Autopilot = s.Autopilot
 	svc.JobStore = s.Studio
 	svc.CommissionSource = s.CommissionSource
+	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
+	svc.AT = s.AT
+	svc.Products = s.Products
+	if s.Studio != nil {
+		svc.StudioRunner = s.Studio
+	}
+	if s.Cfg != nil {
+		dataDir := filepath.Dir(s.Cfg.DatabasePath)
+		if dataDir == "" || dataDir == "." {
+			dataDir = "."
+		}
+		svc.ATWorkDir = filepath.Join(dataDir, "at-hunter")
+		// Nhạc nền cho video hunter: dùng chung file nhạc autopilot
+		// Ninh đã upload ("" = video câm, job log ghi rõ).
+		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
+			svc.ATMusicPath = mp
+		}
+	}
 	if s.Cfg != nil {
 		svc.Gate = s.Cfg
 		svc.Timezone = s.Cfg.Timezone

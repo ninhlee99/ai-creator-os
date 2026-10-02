@@ -4,9 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
@@ -120,6 +122,18 @@ type Service struct {
 	// JobStore is the studio job backend for the auto-publish hook.
 	// Nil = the hook never fires (videos stay in Studio output).
 	JobStore JobStore
+
+	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
+	// Nil AT/Products = tick bỏ qua im lặng (chưa cấu hình key).
+	AT           *accesstrade.Store
+	Products     *products.Store
+	StudioRunner StudioRunner
+	// ATMusicPath nhạc nền cho video hunter ("" = câm, job log ghi rõ).
+	ATMusicPath string
+	// ATWorkDir thư mục tải ảnh sản phẩm cho video hunter.
+	ATWorkDir string
+	// ATBaseURL override API base URL (test hook; "" = production).
+	ATBaseURL string
 
 	// CommissionSource overrides the affiliate-orders feed (tests inject a
 	// fake). Nil = build the real one from the current env.

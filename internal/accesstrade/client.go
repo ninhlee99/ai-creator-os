@@ -32,6 +32,9 @@ type Client struct {
 	BaseURL string
 	key     string
 	http    *http.Client
+	// orderLimit giới hạn nội bộ 10 req/phút cho /v1/order-list
+	// (spec Accesstrade). Lazy-init ở ListOrders.
+	orderLimit *rateLimiter
 }
 
 // NewClient tạo client với access_key của publisher.

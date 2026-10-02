@@ -618,6 +618,30 @@ func main() {
 		log.Printf("growth: automation tick armed (mặc định bật ở /growth; dry-run là cổng an toàn)")
 	}
 
+	// -- 7c. accesstrade automation: hunter + order sync + campaign check --
+	// Zero-touch affiliate (Đợt C): hunter quét datafeed daily → video;
+	// order sync 30 phút/lần → đối soát; campaign check daily → alert khi
+	// có campaign chờ duyệt. Kill switch + DRY-RUN chặn mọi tick; chưa có
+	// access_key → tick bỏ qua im lặng (không spam alert).
+	if srv.AT != nil {
+		go func() {
+			tick := time.NewTicker(5 * time.Minute)
+			defer tick.Stop()
+			auto := srv.AutomationService()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick.C:
+					for _, note := range auto.ATTick(ctx) {
+						log.Printf("accesstrade: %s", note)
+					}
+				}
+			}
+		}()
+		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
+	}
+
 	// -- 8. http server + graceful shutdown ----------------------------------
 	httpSrv := &http.Server{Addr: *addr, Handler: srv.Routes()}
 	go func() {

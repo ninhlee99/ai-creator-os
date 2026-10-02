@@ -25,7 +25,6 @@ type Autopilot struct {
 	store     *products.Store
 	providers []products.Provider
 	models    *ModelStore
-	http      *http.Client
 	// MusicPath is the trending-audio file to mix under autopilot videos.
 	// "" = silent video (the job log says so explicitly).
 	MusicPath string
@@ -42,7 +41,6 @@ func NewAutopilot(st *Studio, accounts *network.AccountManager,
 		store:     store,
 		providers: providers,
 		models:    models,
-		http:      &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
@@ -184,6 +182,16 @@ func (a *Autopilot) RunAll(ctx context.Context) []Result {
 
 // downloadImage fetches a product listing photo with sanity checks.
 func (a *Autopilot) downloadImage(ctx context.Context, url, dst string) error {
+	return DownloadImage(ctx, url, dst)
+}
+
+// downloadHTTP là client tải ảnh listing (timeout 60s như Autopilot).
+var downloadHTTP = &http.Client{Timeout: 60 * time.Second}
+
+// DownloadImage tải ảnh listing sản phẩm về file local (kiểm tra
+// content-type + giới hạn 15MB). Dùng chung cho autopilot theo account
+// và hunter Accesstrade (không viết lại logic tải ở automation).
+func DownloadImage(ctx context.Context, url, dst string) error {
 	if url == "" {
 		return fmt.Errorf("empty url")
 	}
@@ -192,7 +200,7 @@ func (a *Autopilot) downloadImage(ctx context.Context, url, dst string) error {
 		return err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
-	resp, err := a.http.Do(req)
+	resp, err := downloadHTTP.Do(req)
 	if err != nil {
 		return err
 	}
