@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
@@ -66,7 +67,11 @@ func TestShelfAddVisibleToAutopilot(t *testing.T) {
 		t.Error("shelf tab body does not show the added product")
 	}
 
-	// /api/products reads the shared store too (R2-W1).
+	// /api/products reads the shared store too (R2-W1). The legacy API is
+	// gated (R2-W7, default OFF): enable it first like an operator would.
+	if err := automation.SetAPIEnabled(s.settings(), true); err != nil {
+		t.Fatalf("enable api: %v", err)
+	}
 	rec = get(t, s, "/api/products")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /api/products = %d, want 200", rec.Code)

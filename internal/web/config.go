@@ -17,6 +17,9 @@ type Config struct {
 	AppEnv       string
 	DatabasePath string
 	Timezone     string
+	// Version là chuỗi đóng dấu lúc build (ldflags -X main.version=...),
+	// mặc định "dev". Hiện ở Cài đặt · Hệ thống (R2-W7).
+	Version string
 
 	// LLM chain
 	GeminiAPIKey  string   // legacy single key / first key (backward compat)

@@ -89,6 +89,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
 	mux.HandleFunc("POST /settings/master", s.handleSettingsMaster)
 	mux.HandleFunc("POST /settings/api-budget", s.handleSettingsAPIBudget)
+	mux.HandleFunc("POST /settings/api", s.handleSettingsAPIToggle)
+	mux.HandleFunc("POST /settings/backup", s.handleBackupCreate)
+	mux.HandleFunc("POST /settings/backup/restore", s.handleBackupRestore)
 	mux.HandleFunc("POST /kill", s.handleKill)
 	mux.HandleFunc("POST /unkill", s.handleUnkill)
 
@@ -123,10 +126,15 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/avatar-sidecar/progress", s.handleAvatarSidecarProgress)
 	mux.HandleFunc("POST /settings/avatar-sidecar/restart", s.handleAvatarSidecarRestart)
 
-	// legacy JSON API
-	mux.HandleFunc("GET /api/stats", s.handleAPIStats)
-	mux.HandleFunc("GET /api/products", s.handleAPIProducts)
-	mux.HandleFunc("GET /api/decisions", s.handleAPIDecisions)
+	// legacy JSON API — mặc định TẮT (R2-W7, R2-09): không có UI nào gọi,
+	// mở ra chỉ khi người vận hành bật công tắc ở Cài đặt · Hệ thống.
+	mux.HandleFunc("GET /api/stats", s.requireAPI(s.handleAPIStats))
+	mux.HandleFunc("GET /api/products", s.requireAPI(s.handleAPIProducts))
+	mux.HandleFunc("GET /api/decisions", s.requireAPI(s.handleAPIDecisions))
+
+	// First-run wizard (R2-W7): hiện khi thư mục dữ liệu chưa có ledger.db.
+	mux.HandleFunc("GET /onboard", s.handleOnboard)
+	mux.HandleFunc("POST /onboard", s.handleOnboard)
 
 	// Đợt 2 (gộp trang): URL cũ của các trang đã gộp redirect 303 sang tab
 	// thay thế, để bookmark/form cũ vẫn tới đúng chỗ. Trang /analytics đã
@@ -141,7 +149,7 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
 	}
 
-	return s.recoverer(mux)
+	return s.recoverer(s.onboardGate(mux))
 }
 
 // recoverer keeps a panicking handler from taking the server down.

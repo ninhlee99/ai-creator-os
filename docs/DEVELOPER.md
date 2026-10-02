@@ -15,11 +15,15 @@ Dành cho dev và AI code assistant (Claude, Agy, Codex) làm việc trên repo 
 ```bash
 go build ./...              # build toàn repo
 go build -o aicos ./cmd/aicos
-go test ./...               # toàn bộ test, dữ liệu giả, không chạm TikTok thật
+go test -count=1 ./...      # toàn bộ test, dữ liệu giả, không chạm TikTok thật
+go test -count=1 -tags parked ./...   # test vùng parked (agents/stream/affiliatehunter)
+bash scripts/check-reachable.sh       # package mới không được "chết lặng"
 ```
 
 - Ngôn ngữ: **100% Go**, 1 binary `aicos`. SQLite (pure Go, modernc driver). Không Docker, không Python runtime.
-- Quy ước: `gofmt` trước khi commit. Binary release: `aicos-darwin-arm64` qua GitHub Release.
+- Quy ước: `gofmt` trước khi commit. Binary release: `aicos-darwin-arm64` qua GitHub Release, đóng dấu version: `go build -ldflags "-X main.version=vX.Y.Z" ./cmd/aicos` (mặc định `dev`).
+- CI (`.github/workflows/ci.yml`): build + vet + test (2 chế độ tag) + reachability + cross-build 5 đích. Bật branch protection cho `main` trên GitHub (Require status checks → `ci`).
+- Test hiện tại: 298 hàm / 14 package (không tag), 20 package với `-tags parked` — cập nhật con số này mỗi khi thêm test mới (lệnh đếm: `go test -count=1 -v ./... | grep -c '^--- PASS'`).
 
 ## Cấu trúc repo
 

@@ -39,6 +39,10 @@ const (
 	// KeyProductsSettingsMigrated marks the one-time import of the legacy
 	// products.db settings into this facade.
 	KeyProductsSettingsMigrated = "migration.products_settings_v1"
+	// KeyAPIEnabled is the legacy /api/* JSON API switch ("1"/"0").
+	// Default OFF (R2-W7, R2-09): nothing in the UI uses it, so it stays
+	// closed unless the operator explicitly opens it.
+	KeyAPIEnabled = "api.enabled"
 )
 
 // LedgerSettings adapts *ledger.Ledger to the Settings facade.
@@ -214,6 +218,27 @@ func APIBudgetUSD(s Settings, envDefault float64) float64 {
 // SetAPIBudgetUSD persists the daily API spend ceiling.
 func SetAPIBudgetUSD(s Settings, usd float64) error {
 	return s.Set(KeyAPIBudgetUSD, strconv.FormatFloat(usd, 'f', 2, 64))
+}
+
+// ------------------------------------------------------ legacy API knob
+
+// APIEnabled reports whether the legacy /api/* JSON endpoints are open.
+// Default OFF (R2-09): no UI calls them, so they stay closed on LAN
+// exposure unless the operator explicitly opens the switch in Settings.
+func APIEnabled(s Settings) bool {
+	if s == nil {
+		return false
+	}
+	v, ok := s.Get(KeyAPIEnabled)
+	return ok && v == "1"
+}
+
+// SetAPIEnabled persists the legacy /api/* switch.
+func SetAPIEnabled(s Settings, on bool) error {
+	if on {
+		return s.Set(KeyAPIEnabled, "1")
+	}
+	return s.Set(KeyAPIEnabled, "0")
 }
 
 // ------------------------------------------------- autopilot switches

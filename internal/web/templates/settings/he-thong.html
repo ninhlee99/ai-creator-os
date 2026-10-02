@@ -18,6 +18,10 @@
     <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
     <div class="label">Cơ sở dữ liệu</div>
   </div>
+  <div class="card" title="{{.DataDir}}">
+    <div class="num"><code>{{.Version}}</code></div>
+    <div class="label">Phiên bản app</div>
+  </div>
   <div class="card">
     <div class="num">{{fmtUSD .Spend}}</div>
     <div class="label">Chi phí API hôm nay</div>
@@ -41,6 +45,32 @@
     <form method="post" action="/settings/api-budget" class="env-form">
       <input type="number" name="value" step="0.5" min="0" max="10000" value="{{printf "%.2f" .APIBudget}}" style="width:7em">
       <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">API /api/* (dữ liệu JSON){{if .APIEnabled}} — đang MỞ{{else}} — đang TẮT{{end}}</div>
+    <form method="post" action="/settings/api">
+      <input type="hidden" name="value" value="{{if .APIEnabled}}0{{else}}1{{end}}">
+      <button type="submit" class="btn {{if .APIEnabled}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .APIEnabled}} data-confirm="Tắt API /api/*? Các công cụ ngoài đang gọi sẽ mất kết nối."{{end}}>{{if .APIEnabled}}Tắt{{else}}Bật{{end}}</button>
+    </form>
+  </div>
+</div>
+
+<h2>Sao lưu &amp; khôi phục</h2>
+<p class="subtitle">Ảnh chụp thư mục dữ liệu (3 database + file job + token). Khôi phục cần khởi động lại app.</p>
+{{if .RestorePending}}<p class="notice">Có bản khôi phục đang chờ — khởi động lại app để áp dụng.</p>{{end}}
+<div class="cards">
+  <div class="card">
+    <div class="label">Tạo bản sao lưu</div>
+    <form method="post" action="/settings/backup">
+      <button type="submit" class="btn btn-primary btn-sm">Tải bản sao lưu (.zip)</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">Khôi phục từ file</div>
+    <form method="post" action="/settings/backup/restore" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".zip" required>
+      <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Khôi phục sẽ THAY THẾ toàn bộ dữ liệu hiện tại sau khi restart. Tiếp tục?">Khôi phục</button>
     </form>
   </div>
 </div>

@@ -35,18 +35,22 @@ import (
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/avatar"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
-var version = "v0.5-go"
+// version mặc định khi build thường; build phát hành truyền
+// -ldflags "-X main.version=vX.Y.Z" để đóng dấu thật.
+var version = "dev"
 
 // decideAdapter adapts *ledger.Ledger to engines.DecisionLogger: the ledger
 // returns errors, the chain interface does not — log instead of crashing.
@@ -323,7 +327,12 @@ func main() {
 	if err := os.MkdirAll(*dataDir, 0o755); err != nil {
 		log.Fatalf("data dir: %v", err)
 	}
+	// R2-W7: áp dụng bản khôi phục đang chờ TRƯỚC khi mở bất kỳ DB nào.
+	if err := backup.ApplyStaged(*dataDir); err != nil {
+		log.Fatalf("restore: %v", err)
+	}
 	dbPath := *dataDir + "/ledger.db"
+	firstRun := !fileExists(dbPath)
 	l, err := ledger.New(dbPath)
 	if err != nil {
 		log.Fatalf("ledger: %v", err)
@@ -495,10 +504,16 @@ func main() {
 
 	webCfg := web.LoadConfig()
 	webCfg.DatabasePath = dbPath
+	webCfg.Version = version
 	srv, err := web.NewServer(webCfg, l, mgr, dbPath)
 	if err != nil {
 		log.Fatalf("web: %v", err)
 	}
+	// R2-W7: thư mục dữ liệu trống (chưa có ledger.db) → mở wizard /onboard.
+	srv.Onboarding = firstRun
+	// R2-W7: token OAuth nằm trong thư mục dữ liệu, không rải ở CWD.
+	publishers.SetTokenDir(filepath.Join(*dataDir, "tokens"))
+	publishers.MigrateTokensFromCWD()
 	defer func() {
 		if err := srv.Close(); err != nil {
 			log.Printf("web close: %v", err)

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -74,6 +75,12 @@ type Server struct {
 	OutDir    string
 	AvatarDir string
 	JobsPath  string
+	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
+	// single place state lives; derived from the ledger path (R2-W7).
+	DataDir string
+	// Onboarding puts the server in first-run wizard mode: every route
+	// except /onboard redirects to the wizard until it completes.
+	Onboarding bool
 
 	db        *sql.DB // read handle for decision/analytics queries
 	oauth     oauthStates
@@ -122,9 +129,12 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		Health:    map[string]HealthChecker{},
 		OutDir:    "data/output",
 		AvatarDir: "data/avatars",
-		JobsPath:  "data/content_jobs.json",
+		DataDir:   filepath.Dir(dbPath),
 		db:        db,
 	}
+	// R2-W7: job file follows the -data flag (it used to be hardcoded to
+	// ./data/content_jobs.json regardless of where the DBs lived).
+	s.JobsPath = filepath.Join(s.DataDir, "content_jobs.json")
 	s.applyPersistedEnv()
 	if gs, err := growth.NewStore(db); err != nil {
 		log.Printf("web: growth store: %v", err)
@@ -434,6 +444,7 @@ var pageFiles = map[string]string{
 	"settings_nhan_vat":     "settings/nhan-vat.html",
 	"settings_an_toan":      "settings/an-toan.html",
 	"team":                  "team.html",
+	"onboard":               "onboard.html",
 }
 
 func (s *Server) parseTemplates() error {
