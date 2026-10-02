@@ -74,7 +74,7 @@
 <div class="form-card" style="max-width:none">
 
   <dl class="kv">
-    <dt>Trạng thái</dt><dd><span class="badge badge-draft">downloading</span> đang tải VieNeu repo/model…</dd>
+    <dt>Trạng thái</dt><dd><span class="badge badge-draft">stopped</span> sidecar chưa chạy (gọi Start)</dd>
   </dl>
   <div class="grid2" style="margin-top:12px">
     <div class="field">
@@ -118,6 +118,37 @@
     <div class="progress-bar" id="avatar-progress-bar" style="width:0%"></div>
   </div>
 </div>
+
+<h2>Công cụ hệ thống</h2>
+<p class="subtitle">Kiểm tra thật lúc mở trang — thiếu thì làm theo bước tiếp theo.</p>
+<table>
+  <tr><th>Công cụ</th><th>Trạng thái</th><th>Chi tiết</th></tr>
+  
+  <tr>
+    <td><strong>FFmpeg</strong></td>
+    <td><span class="badge badge-ok">Đã tìm thấy</span></td>
+    <td><code>/usr/bin/ffmpeg</code></td>
+  </tr>
+  
+  <tr>
+    <td><strong>llama-server (LLM local)</strong></td>
+    <td><span class="badge badge-no">Chưa có</span></td>
+    <td><span class="hint">Cần cho LLM chạy trên máy. Cài: brew install llama.cpp</span></td>
+  </tr>
+  
+  <tr>
+    <td><strong>uv (giọng đọc VieNeu)</strong></td>
+    <td><span class="badge badge-no">Chưa có</span></td>
+    <td><span class="hint">Cần cho giọng đọc VieNeu local. Cài: brew install uv</span></td>
+  </tr>
+  
+  <tr>
+    <td><strong>Docker (VieNeu dự phòng)</strong></td>
+    <td><span class="badge badge-no">Chưa có</span></td>
+    <td><span class="hint">Không bắt buộc — VieNeu ưu tiên chạy bằng uv.</span></td>
+  </tr>
+  
+</table>
 
 <script>
 
