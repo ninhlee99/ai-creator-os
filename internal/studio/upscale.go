@@ -20,9 +20,9 @@ const (
 // that. If the source already meets the target, it is copied as-is.
 //
 // w/h define the delivery frame: 9:16 affiliate masters use (2160,3840) /
-// (4320,7680); film finals can pass their own frame (e.g. 3840x2160 for a
-// 4K 16:9 master — the 16:9 film plumbing stays, even though every film
-// currently ships 9:16 per Ninh's 2026-10-02 decision).
+// (4320,7680); film finals pass their own frame (e.g. 3840x2160 for a
+// 4K 16:9 master — films ship 16:9 per Ninh's final 2026-10-02 decision,
+// CreateFilmJob forces Aspect="16:9").
 func UpscalePhoto(ctx context.Context, src, dst string, w, h int) error {
 	if w <= 0 || h <= 0 {
 		return fmt.Errorf("upscale: kích thước %dx%d không hợp lệ", w, h)

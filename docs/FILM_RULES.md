@@ -3,6 +3,18 @@
 Mọi thay đổi pipeline phim phải tôn trọng các luật dưới đây. Luật nào bị phá
 vỡ phải được sửa ngay, không "để sau".
 
+## 0. Thứ tự pipeline bắt buộc
+- **"truyện → kịch bản → breakdown → storyboard → quay → dựng"** — đúng quy
+  trình điện ảnh, không bỏ pha, không đảo pha (quyết định của Ninh 2026-10-02).
+- **Pha 0 — Truyện**: truyện ngắn/tiểu thuyết mini hoàn chỉnh là "linh hồn";
+  mọi thứ sau đó là chuyển thể từ nó.
+- **Pha 1 — Kịch bản**: action + thoại là CHUẨN; chưa cần character sheet hay
+  shot list.
+- **Pha 2 — Breakdown**: chỉ trích xuất nhân vật/bối cảnh/đạo cụ/shot từ kịch
+  bản pha 1 — **không được viết lại** action/thoại. Nhân vật nào không xuất hiện
+  trong kịch bản thì không tồn tại.
+- Breakdown thiếu cảnh hoặc cảnh không có shot → fail-closed, không quay.
+
 ## 1. Chuẩn điện ảnh
 - **Mọi phim xuất 16:9** (chuẩn điện ảnh). Không scale, không quay lại.
 - **Trailer dọc 9:16** được cắt tự động từ shot `trailer_worthy` bằng
@@ -57,8 +69,11 @@ vỡ phải được sửa ngay, không "để sau".
   (vừa ép cấu trúc, vừa không vượt giới hạn response).
 
 ## 6. Trung thực tuyệt đối
-- Veo lỗi → fallback ảnh + giọng đọc, **không bịa clip**. Log ghi rõ từng
-  shot render bằng gì (🎬 Veo / 🖼 Ảnh + giọng đọc).
+- **Điện ảnh từ ảnh là chế độ dựng chính** (miễn phí, chỉ tốn image gen);
+  **Veo là tuỳ chọn tốn phí** — chỉ chạy khi `video_gen = ok` hoặc người dùng
+  chọn tay. Chế độ `auto` không bao giờ thử Veo khi capability unknown/fail.
+- Veo lỗi → rơi về điện ảnh từ ảnh, **không bịa clip**. Log ghi rõ từng
+  shot render bằng gì (🎬 Veo / 🎞 Điện ảnh / 🖼 legacy).
 - Mọi con số tiền đều ghi **"ước tính chưa kiểm chứng"** cho tới khi Ninh
   xác nhận giá thật. Vượt trần chi phí → dừng job sạch sẽ.
 - Upscale là **lanczos, không phải 4K native** — UI ghi rõ.
