@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -34,7 +35,8 @@ type HuntResult struct {
 	Updated int
 	// Skipped số bỏ qua (thiếu aff_link/giá).
 	Skipped int
-	// Products sản phẩm MỚI, sort hoa hồng cao trước (để tạo video).
+	// Products sản phẩm MỚI, sort theo hoa hồng kỳ vọng (giá × tỷ lệ)
+	// giảm dần — video được làm trước cho sản phẩm "ngon" nhất.
 	Products []products.Product
 }
 
@@ -77,6 +79,12 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 			res.Updated++
 		}
 	}
+	// Sort thật theo hoa hồng kỳ vọng (giá × tỷ lệ) giảm dần — video
+	// affiliate được làm trước cho sản phẩm "ngon" nhất.
+	sort.Slice(res.Products, func(i, j int) bool {
+		return res.Products[i].Price*res.Products[i].CommissionRate >
+			res.Products[j].Price*res.Products[j].CommissionRate
+	})
 	return res, nil
 }
 
