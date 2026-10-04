@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  AI Creator OS — watchdog cho Mac (Đợt O1).
+
+  File MẪU: đừng copy tay. Chạy scripts/install-launchd.sh để sinh bản
+  đúng đường dẫn máy Ninh vào ~/Library/LaunchAgents/.
+
+  Tác dụng: Mac khởi động lại / app crash lúc 3h sáng → launchd tự chạy
+  lại app trong vài giây, không cần Ninh mở Terminal. Đây là mảnh cuối
+  của "máy chạy 24/7 không người trông".
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ninhlee.aicos</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__AICOS_BIN__</string>
+    <string>-data</string>
+    <string>__AICOS_DATA__</string>
+    <string>-addr</string>
+    <string>127.0.0.1:8080</string>
+  </array>
+
+  <!-- Chạy ngay khi đăng nhập + tự chạy lại khi crash -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Không spam restart nếu crash liên tục: chờ 30s giữa các lần -->
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>WorkingDirectory</key>
+  <string>__AICOS_DATA__</string>
+
+  <key>StandardOutPath</key>
+  <string>__AICOS_DATA__/logs/aicos.log</string>
+  <key>StandardErrorPath</key>
+  <string>__AICOS_DATA__/logs/aicos.log</string>
+
+  <!-- Xoay log: launchd không tự xoay — xem deploy/README.md (newsyslog) -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GEMINI_API_KEYS</key>
+    <string>__GEMINI_KEYS__</string>
+  </dict>
+</dict>
+</plist>
