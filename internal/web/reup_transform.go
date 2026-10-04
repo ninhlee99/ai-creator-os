@@ -331,6 +331,7 @@ func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
 		PostAccount  *string `json:"post_account"`
 		KillOn       *bool   `json:"kill_on"`
 		KillN        *int    `json:"kill_n"`
+		KillPerSrc   *bool   `json:"kill_per_source"`
 		WarmupOn     *bool   `json:"warmup_on"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -385,6 +386,7 @@ func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
 	if in.KillN != nil {
 		_ = s.Ledger.SetSetting(automation.KeyReupKillZeroN, strconv.Itoa(*in.KillN))
 	}
+	setBool(automation.KeyReupKillPerSource, in.KillPerSrc)
 	setBool(automation.KeyReupWarmupEnabled, in.WarmupOn)
 	writeJSON(w, map[string]any{"ok": true})
 }
@@ -403,6 +405,7 @@ type reupSettingsView struct {
 	AccountNames    []string
 	KillOn          bool
 	KillN           int
+	KillPerSource   bool
 	WarmupOn        bool
 	MusicOK         bool
 	StoreOK         bool
@@ -420,6 +423,7 @@ func (s *Server) reupSettingsCfg() reupSettingsView {
 		VideosPerDay:    s.atSettingInt(automation.KeyReupVideosPerDay, 3),
 		KillOn:          s.atSettingOn(automation.KeyReupKillEnabled, true),
 		KillN:           s.atSettingInt(automation.KeyReupKillZeroN, 5),
+		KillPerSource:   s.atSettingOn(automation.KeyReupKillPerSource, true),
 		WarmupOn:        s.atSettingOn(automation.KeyReupWarmupEnabled, true),
 		StoreOK:         s.Reup != nil,
 	}
@@ -469,6 +473,7 @@ func (s *Server) handleSettingsReupSave(w http.ResponseWriter, r *http.Request) 
 	setBool(automation.KeyReupVoiceoverEnabled, "voiceover_on")
 	setBool(automation.KeyReupPostEnabled, "post_on")
 	setBool(automation.KeyReupKillEnabled, "kill_on")
+	setBool(automation.KeyReupKillPerSource, "kill_per_source")
 	setBool(automation.KeyReupWarmupEnabled, "warmup_on")
 	if f.Has("discover_on") {
 		setBool(automation.KeyReupDiscoverEnabled, "discover_on")

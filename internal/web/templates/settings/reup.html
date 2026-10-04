@@ -124,6 +124,14 @@
       <label>Số bài 0-view liên tiếp</label>
       <input type="number" name="kill_n" min="2" max="20" value="{{.KillN}}">
     </div>
+    <div class="field">
+      <label>Tự tắt nguồn chết riêng</label>
+      <select name="kill_per_source">
+        <option value="1"{{if .KillPerSource}} selected{{end}}>Bật</option>
+        <option value="0"{{if not .KillPerSource}} selected{{end}}>Tắt</option>
+      </select>
+      <span class="hint">Nguồn nào đủ {{.KillN}} bài 0-view liên tiếp sẽ tự tắt — nguồn khác vẫn chạy.</span>
+    </div>
   </div>
 </div>
 

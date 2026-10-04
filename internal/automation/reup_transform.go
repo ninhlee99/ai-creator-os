@@ -43,6 +43,7 @@ const (
 	KeyReupPostAccount      = "reup.post_account"   // username kênh đăng
 	KeyReupKillEnabled      = "reup.killrule_enabled"
 	KeyReupKillZeroN        = "reup.killrule_zeroview_n" // mặc định 5
+	KeyReupKillPerSource    = "reup.killrule_per_source" // tắt nguồn chết riêng (mặc định bật)
 	KeyReupKillLastRun      = "reup.kill_last_run"
 	KeyReupWarmupEnabled    = "reup.warmup_enabled"
 	KeyReupWarmupStart      = "reup.warmup_start" // YYYY-MM-DD bài đăng đầu
@@ -358,12 +359,15 @@ func (s *Service) ReupKillTick(ctx context.Context) []string {
 		})
 	}
 	n := atInt(s.Settings, KeyReupKillZeroN, growth.DefaultReupZeroViewN)
+	// Kill theo nguồn (Đợt J): nguồn nào chuỗi 0-view đạt ngưỡng thì tự
+	// tắt riêng — các nguồn khác vẫn chạy. Chạy trước kill toàn cục.
+	out := s.perSourceKillTick(posts, n)
 	kill, reason, evaluated, skipped := growth.EvaluateReupZeroView(views, n)
 	if evaluated == 0 {
-		return []string{fmt.Sprintf("reup kill: chờ số liệu (%d bài chưa có view thật) — chưa đánh giá", skipped)}
+		return append(out, fmt.Sprintf("reup kill: chờ số liệu (%d bài chưa có view thật) — chưa đánh giá", skipped))
 	}
 	if !kill {
-		return []string{fmt.Sprintf("reup kill: ổn (%d bài có số liệu, %d chờ số liệu)", evaluated, skipped)}
+		return append(out, fmt.Sprintf("reup kill: ổn (%d bài có số liệu, %d chờ số liệu)", evaluated, skipped))
 	}
 	// 3. KILL: dừng đăng reup + alert + ledger.
 	_ = s.Settings.Set(KeyReupPostEnabled, "0")
@@ -376,7 +380,67 @@ func (s *Service) ReupKillTick(ctx context.Context) []string {
 	_ = s.decide("reup_kill", "stop_reup_posting", nil, reason, map[string]any{
 		"threshold": n, "evaluated": evaluated, "skipped": skipped,
 	})
-	return []string{"reup kill: KÍCH HOẠT — " + reason}
+	return append(out, "reup kill: KÍCH HOẠT — "+reason)
+}
+
+// perSourceKillTick tắt nguồn Douyin có chuỗi bài 0-view liên tiếp đạt
+// ngưỡng (dùng chung EvaluateReupZeroView + ngưỡng kill toàn cục).
+// Bài không rõ nguồn (video thêm tay, SourceID=0) được bỏ qua — chỉ kill
+// toàn cục đánh giá chúng. Nguồn bị tắt vẫn giữ trong danh sách để Ninh
+// bật lại tay ở trang Reup.
+func (s *Service) perSourceKillTick(posts []reup.Post, n int) []string {
+	if !atOn(s.Settings, KeyReupKillPerSource, true) {
+		return nil
+	}
+	names := map[int64]string{}
+	if srcs, err := s.Reup.ListSources(); err == nil {
+		for _, sc := range srcs {
+			if strings.TrimSpace(sc.DisplayName) != "" {
+				names[sc.ID] = sc.DisplayName
+			} else {
+				names[sc.ID] = sc.Value
+			}
+		}
+	}
+	// Gom bài đã đăng theo nguồn (qua video đầu tiên của bài).
+	groups := map[int64][]growth.ReupPostView{}
+	for _, p := range posts {
+		if len(p.VideoIDs) == 0 {
+			continue
+		}
+		v, err := s.Reup.GetVideo(p.VideoIDs[0])
+		if err != nil || v.SourceID == 0 {
+			continue
+		}
+		ts, _ := time.Parse(time.RFC3339, p.PostedAt)
+		groups[v.SourceID] = append(groups[v.SourceID], growth.ReupPostView{
+			PostID: p.ID, Views: p.Views, PostedAt: ts,
+		})
+	}
+	var notes []string
+	for srcID, views := range groups {
+		kill, reason, evaluated, _ := growth.EvaluateReupZeroView(views, n)
+		if evaluated == 0 || !kill {
+			continue
+		}
+		name := names[srcID]
+		if name == "" {
+			name = fmt.Sprintf("#%d", srcID)
+		}
+		if err := s.Reup.SetSourceEnabled(srcID, false); err != nil {
+			notes = append(notes, fmt.Sprintf("reup kill nguồn %s: tắt thất bại: %v", name, err))
+			continue
+		}
+		msg := fmt.Sprintf("Nguồn %s: %s", name, reason)
+		_ = s.Growth.InsertAlert(growth.Alert{
+			Severity:    "warn",
+			Kind:        "reup_kill_source",
+			Message:     msg,
+			ActionTaken: fmt.Sprintf("Đã TẮT nguồn %s (tự động). Các nguồn khác vẫn chạy bình thường.", name),
+		})
+		notes = append(notes, "reup kill nguồn: "+msg)
+	}
+	return notes
 }
 
 // syncReupMetrics đồng bộ view thật cho bài YouTube đã đăng (videos.list).
