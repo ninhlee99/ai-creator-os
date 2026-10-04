@@ -46,17 +46,18 @@ type storiesView struct {
 	AccountNames []string
 	PostAccount  string
 	// Mặc định form.
-	DefTopic  string
-	DefGenre  string
-	DefWords  int
-	DefScenes int
-	MusicOn   bool
-	MusicOK   bool
-	AutoOn    bool
-	TickOn    bool
-	TickHours int
-	Topics    string // hàng đợi chủ đề (mỗi dòng 1 chủ đề)
-	Error     string
+	DefTopic   string
+	DefGenre   string
+	DefWords   int
+	DefScenes  int
+	MusicOn    bool
+	MusicOK    bool
+	AutoOn     bool
+	TickOn     bool
+	AutofillOn bool // tự nghĩ chủ đề khi hàng đợi trống
+	TickHours  int
+	Topics     string // hàng đợi chủ đề (mỗi dòng 1 chủ đề)
+	Error      string
 }
 
 func storyStatusVN(st string) string {
@@ -82,7 +83,8 @@ func (s *Server) storiesPageData() storiesView {
 		DefWords:    s.atSettingInt(automation.KeyStoryWords, 600),
 		DefScenes:   s.atSettingInt(automation.KeyStoryScenes, 6),
 		MusicOn:     s.atSettingOn(automation.KeyStoryMusicOn, true),
-		AutoOn:      s.atSettingOn(automation.KeyStoryAutoPublish, false),
+		AutoOn:      s.atSettingOn(automation.KeyStoryAutoPublish, true),
+		AutofillOn:  s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
 		TickOn:      s.atSettingOn(automation.KeyStoryEnabled, true),
 		TickHours:   s.atSettingInt(automation.KeyStoryIntervalH, 24),
 		PostAccount: s.atSettingStr(automation.KeyStoryAccount, ""),
@@ -291,6 +293,7 @@ func (s *Server) handleStorySettings(w http.ResponseWriter, r *http.Request) {
 	setBool(automation.KeyStoryMusicOn, r.FormValue("music_on") == "1")
 	setBool(automation.KeyStoryAutoPublish, r.FormValue("auto_publish") == "1")
 	setBool(automation.KeyStoryEnabled, r.FormValue("tick_on") == "1")
+	setBool(automation.KeyStoryTopicsAutofill, r.FormValue("topics_autofill") == "1")
 	storiesRedirect(w, r, "Đã lưu mặc định kể chuyện.", "")
 }
 

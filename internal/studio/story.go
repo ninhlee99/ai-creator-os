@@ -124,6 +124,51 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 	return id, nil
 }
 
+// GenerateTopics nhờ LLM nghĩ ra n chủ đề truyện mới theo thể loại.
+// Dùng để tự refill hàng đợi khi Ninh không nhập tay (zero-touch).
+// Nil LLM → lỗi rõ ràng (caller giữ note trung thực, không bịa chủ đề).
+func (s *Studio) GenerateTopics(ctx context.Context, genre string, n int) ([]string, error) {
+	if s.llm == nil {
+		return nil, fmt.Errorf("cần LLM để nghĩ chủ đề (chưa cấu hình)")
+	}
+	if n < 1 {
+		n = 5
+	}
+	if n > 20 {
+		n = 20
+	}
+	genre = strings.TrimSpace(genre)
+	if genre == "" {
+		genre = "tâm lý"
+	}
+	text, err := s.llm.Complete(ctx,
+		"Bạn là biên tập truyện Việt Nam. Chỉ trả lời JSON thuần, không giải thích.",
+		fmt.Sprintf(`Nghĩ ra đúng %d chủ đề truyện ngắn ngôi thứ nhất, thể loại %s, `+
+			`hợp gu khán giả Việt Nam xem YouTube (đời thường, cảm xúc, kịch tính vừa phải, `+
+			`không kinh dị máu me, không chính trị). Mỗi chủ đề 1 dòng ngắn gọn, cụ thể, `+
+			`khác nhau, không trùng lặp ý tưởng.\n\nChỉ trả JSON: {"topics": ["...", ...]}`,
+			n, genre))
+	if err != nil {
+		return nil, fmt.Errorf("nghĩ chủ đề: %w", err)
+	}
+	var raw struct {
+		Topics []string `json:"topics"`
+	}
+	if err := parseDirectorJSON(text, &raw); err != nil {
+		return nil, fmt.Errorf("nghĩ chủ đề: %w", err)
+	}
+	var out []string
+	for _, t := range raw.Topics {
+		if t = strings.TrimSpace(t); t != "" {
+			out = append(out, t)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("nghĩ chủ đề: LLM không trả chủ đề nào")
+	}
+	return out, nil
+}
+
 // StoryJobs trả về các job kể chuyện mới nhất.
 func (s *Studio) StoryJobs(limit int) []Job {
 	var out []Job

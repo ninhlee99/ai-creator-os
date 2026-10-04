@@ -38,6 +38,45 @@ func (f *fakeStoryLLM) Complete(ctx context.Context, system, prompt string) (str
 func (f *fakeStoryLLM) Name() string                     { return "fake" }
 func (f *fakeStoryLLM) Healthy(ctx context.Context) bool { return true }
 
+// fakeTopicLLM trả danh sách chủ đề cho GenerateTopics.
+type fakeTopicLLM struct{ fakeStoryLLM }
+
+func (f *fakeTopicLLM) Complete(ctx context.Context, system, prompt string) (string, error) {
+	if strings.Contains(prompt, "chủ đề truyện ngắn") {
+		return `{"topics": ["Tuổi thơ chăn trâu", "Mối tình đầu thời sinh viên", ""]}`, nil
+	}
+	return f.fakeStoryLLM.Complete(ctx, system, prompt)
+}
+
+func TestGenerateTopics(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), &fakeTopicLLM{}, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	topics, err := st.GenerateTopics(context.Background(), "tình cảm", 5)
+	if err != nil {
+		t.Fatalf("GenerateTopics: %v", err)
+	}
+	if len(topics) != 2 { // chủ đề rỗng bị loại
+		t.Errorf("phải loại chủ đề rỗng, được %v", topics)
+	}
+	if topics[0] != "Tuổi thơ chăn trâu" {
+		t.Errorf("topics sai: %v", topics)
+	}
+}
+
+func TestGenerateTopicsNoLLM(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.GenerateTopics(context.Background(), "tâm lý", 5); err == nil {
+		t.Errorf("thiếu LLM phải lỗi rõ ràng, không bịa chủ đề")
+	}
+}
+
 // fakeStoryMG vẽ ảnh bằng ffmpeg color source (cần ffmpeg thật).
 type fakeStoryMG struct{}
 

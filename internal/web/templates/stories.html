@@ -126,9 +126,12 @@
     </div>
     <div class="field">
       <label><input type="checkbox" name="tick_on" value="1"{{if .Stories.TickOn}} checked{{end}}> Tự tạo truyện theo lịch</label>
+    <div class="field">
+      <label><input type="checkbox" name="topics_autofill" value="1"{{if .Stories.AutofillOn}} checked{{end}}> Tự nghĩ chủ đề mới khi hàng đợi trống (mặc định: bật)</label>
+    </div>
     </div>
     <div class="field">
-      <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng private sau khi QC (mặc định: chờ Ninh duyệt)</label>
+      <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng private sau khi QC (mặc định: bật — tắt nếu muốn duyệt tay)</label>
     </div>
     <button type="submit" class="btn btn-secondary">Lưu</button>
   </form>

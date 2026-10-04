@@ -19,9 +19,9 @@ import (
 // (story.topics, mỗi dòng 1 chủ đề) → tạo job kể chuyện (truyện ngôi thứ
 // nhất → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC.
 //
-// Sau QC: mặc định CHỜ Ninh duyệt ở trang Kể chuyện rồi bấm Đăng
-// (story.auto_publish=0). Bật story.auto_publish=1 → tick tự đăng
-// private-first (không bao giờ tự public).
+// Sau QC: mặc định TỰ ĐĂNG private-first (story.auto_publish=1, Đợt K) —
+// Ninh xem lại trên YouTube Studio; tắt ở trang Kể chuyện để duyệt tay.
+// Không bao giờ tự public.
 //
 // Cùng cổng an toàn như các tick khác: kill switch + DRY-RUN chặn;
 // công tắc riêng mặc định BẬT (unset = bật — tiền lệ Đợt 3).
@@ -40,6 +40,8 @@ const (
 	KeyStoryAutoPublish     = "story.auto_publish"
 	KeyStoryAccount         = "story.account"
 	KeyStoryPublishedPrefix = "story.published."
+	KeyStoryTopicsAutofill  = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định bật)
+	KeyStoryTopicsAutofillN = "story.topics_autofill_n" // số chủ đề mỗi lần refill (mặc định 10)
 	defaultStoryIntervalH   = 24
 )
 
@@ -100,6 +102,15 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	}
 	topic := s.popTopic()
 	if topic == "" {
+		// Hàng đợi trống → tự refill bằng LLM (zero-touch), thay vì chờ
+		// Ninh nhập tay. Refill lỗi (chưa cấu hình LLM) → note trung thực.
+		if refillNote := s.refillStoryTopics(ctx); refillNote != "" {
+			stampRun(s.Settings, KeyStoryLastRun)
+			return []string{refillNote}
+		}
+		topic = s.popTopic()
+	}
+	if topic == "" {
 		stampRun(s.Settings, KeyStoryLastRun)
 		return []string{"story: hàng đợi chủ đề trống — thêm chủ đề ở trang Kể chuyện"}
 	}
@@ -124,10 +135,44 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	return append(notes, s.storyAutoPublish(ctx)...)
 }
 
+// topicGenerator là khả năng tự nghĩ chủ đề (studio.Studio có, interface
+// StoryRunner không bắt buộc — assert mềm để không vỡ implement khác).
+type topicGenerator interface {
+	GenerateTopics(ctx context.Context, genre string, n int) ([]string, error)
+}
+
+// refillStoryTopics tự nghĩ chủ đề mới khi hàng đợi trống. Trả về ""
+// khi refill xong (caller pop lại), hoặc note trung thực khi không làm
+// được (tắt autofill / thiếu LLM / LLM lỗi).
+func (s *Service) refillStoryTopics(ctx context.Context) string {
+	if !atOn(s.Settings, KeyStoryTopicsAutofill, true) {
+		return "story: hàng đợi chủ đề trống (tự refill đang tắt) — thêm chủ đề ở trang Kể chuyện"
+	}
+	gen, ok := s.Story.(topicGenerator)
+	if !ok || gen == nil {
+		return "story: hàng đợi chủ đề trống — thêm chủ đề ở trang Kể chuyện"
+	}
+	n := atInt(s.Settings, KeyStoryTopicsAutofillN, 10)
+	genre := atStr(s.Settings, KeyStoryGenre, "tâm lý")
+	topics, err := gen.GenerateTopics(ctx, genre, n)
+	if err != nil {
+		return fmt.Sprintf("story: hàng đợi chủ đề trống — tự refill lỗi (%v)", err)
+	}
+	raw, _ := s.Settings.Get(KeyStoryTopics)
+	raw = strings.TrimSpace(raw)
+	if raw != "" {
+		raw += "\n"
+	}
+	_ = s.Settings.Set(KeyStoryTopics, raw+strings.Join(topics, "\n"))
+	log.Printf("story: tự refill %d chủ đề mới (thể loại %q)", len(topics), genre)
+	return ""
+}
+
 // storyAutoPublish tự đăng private các job đã xong khi bật auto_publish.
-// Mặc định TẮT — Ninh duyệt ở trang Kể chuyện rồi bấm Đăng.
+// (Đợt K: mặc định BẬT — private-first nên an toàn, Ninh xem lại trên
+// YouTube Studio; tắt ở trang Kể chuyện nếu muốn duyệt tay.)
 func (s *Service) storyAutoPublish(ctx context.Context) []string {
-	if !atOn(s.Settings, KeyStoryAutoPublish, false) {
+	if !atOn(s.Settings, KeyStoryAutoPublish, true) {
 		return nil
 	}
 	account := atStr(s.Settings, KeyStoryAccount, "")

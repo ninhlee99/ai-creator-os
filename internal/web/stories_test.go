@@ -47,7 +47,7 @@ func TestStoriesPageRenders(t *testing.T) {
 		t.Fatalf("GET /stories = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Kể chuyện YouTube", "Kể chuyện mới", "Truyện đã tạo", "Mặc định", "Hàng đợi chủ đề", "Chờ duyệt mới đăng", `href="/stories"`} {
+	for _, want := range []string{"Kể chuyện YouTube", "Kể chuyện mới", "Truyện đã tạo", "Mặc định", "Hàng đợi chủ đề", "Tự đăng (private)", `href="/stories"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /stories thiếu %q", want)
 		}
