@@ -45,7 +45,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
@@ -518,19 +517,16 @@ func main() {
 			if err := automation.MigrateProductsSettings(pstore, autoSettings); err != nil {
 				log.Printf("settings: migrate products settings: %v", err)
 			}
-			shopClient := &tiktok.ShopClient{
-				AppKey:      os.Getenv("TIKTOK_SHOP_APP_KEY"),
-				AppSecret:   os.Getenv("TIKTOK_SHOP_APP_SECRET"),
-				AccessToken: os.Getenv("TIKTOK_SHOP_ACCESS_TOKEN"),
-			}
-			shopProvider := &products.TikTokShopProvider{Client: shopClient}
-			srv.ProductProviders = []products.Provider{shopProvider}
+			// Đợt H1: TikTok Shop provider đã loại bỏ (Accesstrade-only).
+			// Nguồn sản phẩm duy nhất là Accesstrade datafeed → products.Store
+			// (hunter tick). Autopilot đọc store trước; providers để trống.
+			srv.ProductProviders = nil
 			models, err := srv.Studio.ModelLibrary()
 			if err != nil {
 				log.Printf("autopilot: model library failed: %v", err)
 			} else {
 				ap := studio.NewAutopilot(srv.Studio, mgr, pstore,
-					[]products.Provider{shopProvider}, models)
+					nil, models)
 				// Music bed: the UI upload (data/autopilot-music.m4a); the legacy
 				// data/trending-audio.m4a file is still honored as a fallback.
 				if mp := filepath.Join(*dataDir, "autopilot-music.m4a"); fileExists(mp) {
@@ -539,8 +535,7 @@ func main() {
 					ap.MusicPath = mp
 				}
 				srv.Autopilot = ap
-				log.Printf("autopilot: ready (tiktok_shop configured=%v)",
-					shopProvider.Configured())
+				log.Printf("autopilot: ready (nguồn sản phẩm: Accesstrade store)")
 				// After every finished studio job: auto-publish affiliate
 				// videos to TikTok when the UI toggle is on. Fail-closed:
 				// without a configured TikTok publisher nothing is posted.

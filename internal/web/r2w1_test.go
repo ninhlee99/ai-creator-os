@@ -204,13 +204,10 @@ func TestReconcileWritesRealMoney(t *testing.T) {
 	}
 }
 
-// TestReconcileFailClosedNoSource — chưa kết nối TikTok Shop → không ghi
-// số nào, ghi 1 quyết định lý do trung thực, lặp lại không spam quyết định.
+// TestReconcileFailClosedNoSource — TikTok Shop đã loại bỏ (Đợt H1) →
+// không ghi số nào, ghi 1 quyết định lý do trung thực, lặp lại không spam.
 func TestReconcileFailClosedNoSource(t *testing.T) {
 	s := newTestServer(t)
-	s.Cfg.TiktokShopAppKey = ""
-	s.Cfg.TiktokShopAppSecret = ""
-	s.Cfg.TiktokShopAccessToken = ""
 
 	if notes := s.reconcileCommissions(context.Background()); len(notes) != 0 {
 		t.Errorf("notes = %v, want none (fail-closed)", notes)
@@ -227,7 +224,7 @@ func TestReconcileFailClosedNoSource(t *testing.T) {
 	if len(decisions) != 1 {
 		t.Fatalf("decisions = %d, want exactly 1", len(decisions))
 	}
-	if !strings.Contains(decisions[0].Reason, "chưa kết nối TikTok Shop") {
+	if !strings.Contains(decisions[0].Reason, "TikTok Shop đã loại bỏ") {
 		t.Errorf("decision reason = %q, want the honest no-source reason", decisions[0].Reason)
 	}
 

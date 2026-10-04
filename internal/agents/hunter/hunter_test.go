@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
@@ -101,13 +102,15 @@ func TestRunClientError(t *testing.T) {
 	}
 }
 
-func TestNewClientMissingCreds(t *testing.T) {
-	if _, err := NewTikTokShopAffiliateClient(governance.Config{}); err == nil {
-		t.Error("expected error for missing credentials")
+func TestNilClientFailsClosed(t *testing.T) {
+	l := testLedger(t)
+	res := Run(context.Background(), testCfg(), l, nil)
+	if res["ok"] != false {
+		t.Fatalf("expected ok=false for nil client, got %v", res)
 	}
-	cfg := governance.Config{TikTokShopAppKey: "k", TikTokShopAccessToken: "tok"}
-	if _, err := NewTikTokShopAffiliateClient(cfg); err != nil {
-		t.Errorf("unexpected error: %v", err)
+	// Đợt H1: client mặc định (TikTok Shop) đã xóa — Run fail-closed rõ lý do.
+	if r, _ := res["reason"].(string); !strings.Contains(r, "loại bỏ") {
+		t.Errorf("reason should mention removal, got %q", r)
 	}
 }
 

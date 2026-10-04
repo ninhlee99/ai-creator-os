@@ -26,13 +26,14 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 )
 
-// OrdersClient is the shop-client surface the analyst needs. The real
-// *tiktok.ShopClient satisfies it; tests inject a fake.
+// OrdersClient is the orders-feed surface the analyst needs.
+// Đợt H1: TikTok Shop đã loại bỏ — interface giữ lại cho test/fake;
+// production dùng Accesstrade (ATOrderSyncTick).
 type OrdersClient interface {
 	AffiliateOrders(startTS, endTS int64, page, pageSize int) (map[string]any, error)
 }
 
-// ReconcileOrders fetches affiliate orders from the TikTok Shop API and
+// ReconcileOrders fetches affiliate orders from the orders feed and
 // inserts them idempotently (duplicate platform_oid -> (0, nil)).
 func ReconcileOrders(ctx context.Context, cfg governance.Config, l *ledger.Ledger, shopClient OrdersClient) (int, error) {
 	if v := governance.CheckKillSwitch(cfg); !v.Allowed {

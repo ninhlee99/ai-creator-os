@@ -20,7 +20,6 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/agents/governance"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
-	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 )
 
 // Candidate is one affiliate-marketplace product under consideration.
@@ -48,42 +47,9 @@ type ProductSource interface {
 	SearchProducts(ctx context.Context, keyword string) ([]map[string]any, error)
 }
 
-// TikTokShopAffiliateClient is a thin wrapper over the TikTok Shop Open
-// Platform affiliate endpoints (HMAC-signed via tiktok.ShopClient).
-type TikTokShopAffiliateClient struct {
-	cfg    governance.Config
-	client *tiktok.ShopClient
-}
-
-// NewTikTokShopAffiliateClient builds the client. It errors when the shop
-// credentials are missing, like Python's RuntimeError in _get().
-func NewTikTokShopAffiliateClient(cfg governance.Config) (*TikTokShopAffiliateClient, error) {
-	if cfg.TikTokShopAppKey == "" || cfg.TikTokShopAccessToken == "" {
-		return nil, fmt.Errorf("missing TIKTOK_SHOP_APP_KEY / TIKTOK_SHOP_ACCESS_TOKEN " +
-			"(see docs/USER_GUIDE.md for the setup checklist)")
-	}
-	return &TikTokShopAffiliateClient{cfg: cfg, client: &tiktok.ShopClient{
-		AppKey:      cfg.TikTokShopAppKey,
-		AppSecret:   cfg.TikTokShopAppSecret,
-		AccessToken: cfg.TikTokShopAccessToken,
-		ShopCipher:  cfg.TikTokShopCipher,
-	}}, nil
-}
-
-// SearchProducts queries the affiliate marketplace's open-collab products.
-func (c *TikTokShopAffiliateClient) SearchProducts(ctx context.Context, keyword string) ([]map[string]any, error) {
-	data, err := c.client.SearchOpenCollabProducts(keyword, "", 0, 1, 20)
-	if err != nil {
-		return nil, err
-	}
-	return productList(data), nil
-}
-
-// CommissionReport is a placeholder: via AffiliateOrders() once the
-// endpoint path is verified.
-func (c *TikTokShopAffiliateClient) CommissionReport(_ context.Context) ([]map[string]any, error) {
-	return nil, nil
-}
+// Đợt H1 (2026-10-04): TikTokShopAffiliateClient đã xóa — TikTok Shop loại
+// bỏ hoàn toàn (Accesstrade-only). File này đã park từ Đợt A, giữ lại phần
+// logic chung (governance gating, scoring) để tham khảo.
 
 // productList extracts the product list from a shop response envelope.
 // Python: data.get("products", data) when data is a dict.
@@ -166,11 +132,8 @@ func Run(ctx context.Context, cfg governance.Config, l *ledger.Ledger, client Pr
 		return map[string]any{"ok": false, "reason": v.Reason}
 	}
 	if client == nil {
-		c, err := NewTikTokShopAffiliateClient(cfg)
-		if err != nil {
-			return map[string]any{"ok": false, "reason": err.Error()}
-		}
-		client = c
+		return map[string]any{"ok": false,
+			"reason": "TikTok Shop đã loại bỏ (Accesstrade-only từ Đợt H1) — client mặc định không còn tồn tại"}
 	}
 
 	added, rejected := 0, 0

@@ -241,12 +241,12 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
 	if theme == "" {
 		// Don't wipe the theme of a product we already discovered.
-		if prev, err := s.Products.GetBySource("tiktok_shop", pid); err == nil {
+		if prev, err := s.Products.GetBySource("manual", pid); err == nil {
 			theme = prev.Theme
 		}
 	}
 	p := products.Product{
-		Source: "tiktok_shop", SourceID: pid, Title: title,
+		Source: "manual", SourceID: pid, Title: title,
 		Category: strings.TrimSpace(r.PostFormValue("category")),
 		Price:    price, CommissionRate: rate, Theme: theme,
 	}
@@ -342,7 +342,7 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 			"Themes", themeOptions(),
 			"Theme", theme,
 			"MinPct", minPct,
-			"Error", "Chưa cấu hình nguồn sản phẩm. Hãy thêm provider (ví dụ: TikTok Shop) rồi thử lại.",
+			"Error", "Kho sản phẩm trống cho theme này. Hunter Accesstrade tự quét datafeed mỗi ngày — kiểm tra tab Accesstrade trong Cài đặt (nhập API key một lần).",
 		))
 		return
 	}

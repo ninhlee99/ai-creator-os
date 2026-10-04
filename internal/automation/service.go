@@ -94,10 +94,10 @@ type AutopilotRunner interface {
 	RunAll(ctx context.Context) []studio.Result
 }
 
-// OrdersSource is the affiliate-orders feed for money reconciliation. The
-// real *tiktok.ShopClient satisfies it once its endpoint paths are
-// verified; tests inject a fake. Payload shape mirrors the TikTok Shop
-// affiliate orders API.
+// OrdersSource is the affiliate-orders feed for money reconciliation.
+// Tests inject a fake; production removed its TikTok Shop default in
+// Đợt H1 (Accesstrade-only) — commission sync now rides ATOrderSyncTick.
+// Payload shape mirrors a generic affiliate orders API.
 type OrdersSource interface {
 	AffiliateOrders(startTS, endTS int64, page, pageSize int) (map[string]any, error)
 }
