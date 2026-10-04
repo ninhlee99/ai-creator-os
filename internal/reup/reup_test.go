@@ -287,15 +287,15 @@ func tikwmMock(t *testing.T) *TikWM {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/user/posts"):
 			fmt.Fprint(w, `{"code":0,"msg":"success","data":{"videos":[
-				{"video_id":"v1","title":"Một","play":"http://x/1.mp4","play_count":100,"digg_count":10,"duration":10,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
-				{"video_id":"v2","title":"Hai","play":"http://x/2.mp4","play_count":300,"digg_count":30,"duration":12,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
-				{"video_id":"v3","title":"Ba","play":"http://x/3.mp4","play_count":200,"digg_count":20,"duration":11,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
-				{"video_id":"v4","title":"Bốn","play":"http://x/4.mp4","play_count":50,"digg_count":5,"duration":9,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}
+				{"video_id":"v1","title":"Một","play_count":100,"digg_count":10,"duration":10,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
+				{"video_id":"v2","title":"Hai","play_count":300,"digg_count":30,"duration":12,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
+				{"video_id":"v3","title":"Ba","play_count":200,"digg_count":20,"duration":11,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
+				{"video_id":"v4","title":"Bốn","play_count":50,"digg_count":5,"duration":9,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}
 			],"cursor":0,"hasMore":false}}`)
 		case strings.HasPrefix(r.URL.Path, "/api/"):
 			fmt.Fprint(w, `{"code":0,"msg":"success","data":{
 				"id":"v9","title":"Chín","cover":"http://x/c.jpg",
-				"play":"http://x/9.mp4","hdplay":"http://x/9hd.mp4","wmplay":"http://x/9wm.mp4",
+				"wmplay":"http://x/9wm.mp4",
 				"duration":14,"play_count":999,"digg_count":99,
 				"author":{"id":"a1","unique_id":"than_tien","nickname":"Thần Tiên"}}}`)
 		default:
@@ -314,11 +314,30 @@ func TestTikWMLookup(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Lookup: %v", err)
 	}
-	if v.ID != "v9" || v.PlayURL != "http://x/9.mp4" || v.HDPlayURL != "http://x/9hd.mp4" {
+	if v.ID != "v9" || v.WMPlayURL != "http://x/9wm.mp4" {
 		t.Errorf("parse lookup sai: %+v", v)
 	}
 	if v.Nickname != "Thần Tiên" || v.PlayCount != 999 {
 		t.Errorf("metadata sai: %+v", v)
+	}
+}
+
+// TestTikWMLookupRequiresWatermark: thiếu wmplay → fail-closed, không
+// bao giờ rơi xuống bản no-watermark (ranh giới cứng Đợt I).
+func TestTikWMLookupRequiresWatermark(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"code":0,"msg":"success","data":{
+			"id":"v9","title":"Chín","play":"http://x/9.mp4","hdplay":"http://x/9hd.mp4",
+			"duration":14,"author":{"unique_id":"than_tien"}}}`)
+	}))
+	defer srv.Close()
+	tw := NewTikWM()
+	tw.BaseURL = srv.URL
+	if _, err := tw.Lookup(context.Background(), "https://www.douyin.com/video/v9"); err == nil {
+		t.Fatalf("thiếu wmplay phải lỗi (không dùng bản no-watermark)")
+	} else if !strings.Contains(err.Error(), "wmplay") {
+		t.Errorf("lỗi phải nhắc tới wmplay: %v", err)
 	}
 }
 
@@ -388,6 +407,7 @@ func TestDownloadSha256Dedupe(t *testing.T) {
 }
 
 func TestDownloadTikWMFallback(t *testing.T) {
+	noFFprobePATH(t) // fake video không phải mp4 thật → QC size-only
 	s := newTestStore(t)
 	dir := t.TempDir()
 	// yt-dlp không có binary + release gãy → Ensure thất bại → fallback TikWM.
@@ -397,23 +417,33 @@ func TestDownloadTikWMFallback(t *testing.T) {
 	}))
 	defer bad.Close()
 	m.ReleaseBase = bad.URL
-	// Mock file server cho link play của TikWM.
-	tw := tikwmMock(t)
+	// File server cho link wmplay (có watermark).
 	fileSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "video/mp4")
 		fmt.Fprint(w, "fake-tikwm-video-bytes")
 	}))
 	defer fileSrv.Close()
-	// Ghi đè PlayURL trỏ về file server: dùng Lookup thật rồi thay host —
-	// đơn giản hơn: wrap transport? Ở đây test fetchFile trực tiếp.
+	// API server trả wmplay trỏ về file server.
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"code":0,"msg":"success","data":{"id":"v9","title":"Chín","wmplay":%q,"duration":14}}`, fileSrv.URL+"/v.mp4")
+	}))
+	defer apiSrv.Close()
+	tw := NewTikWM()
+	tw.BaseURL = apiSrv.URL
 	d := NewDownloader(m, tw, s, filepath.Join(dir, "out"))
-	dst := filepath.Join(dir, "out", "t.mp4")
-	os.MkdirAll(filepath.Join(dir, "out"), 0o755)
-	if err := d.fetchFile(context.Background(), fileSrv.URL+"/v.mp4", dst); err != nil {
-		t.Fatalf("fetchFile: %v", err)
+	v, err := d.DownloadVideo(context.Background(), "https://www.douyin.com/video/v9")
+	if err != nil {
+		t.Fatalf("DownloadVideo qua TikWM fallback: %v", err)
 	}
-	if b, _ := os.ReadFile(dst); string(b) != "fake-tikwm-video-bytes" {
-		t.Errorf("nội dung file sai")
+	if v.Status != StatusDownloaded || v.Via != "tikwm" {
+		t.Errorf("phải downloaded qua tikwm: %+v", v)
+	}
+	if v.WatermarkFree {
+		t.Errorf("TikWM fallback phải giữ watermark (wmplay) — WatermarkFree phải false")
+	}
+	if v.WatermarkLabel() != "có watermark" {
+		t.Errorf("nhãn phải là 'có watermark', được %q", v.WatermarkLabel())
 	}
 }
 
@@ -484,8 +514,13 @@ func TestDiscoverNoSources(t *testing.T) {
 
 func TestVideoLabels(t *testing.T) {
 	v := Video{Status: StatusDownloaded, Via: "tikwm"}
-	if v.StatusLabel() != "đã tải" || v.WatermarkLabel() != "không watermark" {
+	if v.StatusLabel() != "đã tải" || v.WatermarkLabel() != "có watermark" {
 		t.Errorf("label sai: %+v", v)
+	}
+	// Bản ghi cũ trước Đợt I (từng tải no-watermark) vẫn giữ nhãn lịch sử.
+	v0 := Video{Status: StatusDownloaded, Via: "tikwm", WatermarkFree: true}
+	if v0.WatermarkLabel() != "không watermark" {
+		t.Errorf("bản ghi cũ phải giữ nhãn lịch sử: %q", v0.WatermarkLabel())
 	}
 	v2 := Video{Status: StatusDownloaded, Via: "ytdlp"}
 	if v2.WatermarkLabel() != "có thể có watermark" {

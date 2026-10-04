@@ -21,12 +21,13 @@ import (
 // ---------------------------------------------------------------------------
 
 // Candidate là video được pick để tải.
+// URL luôn là link share gốc (douyin.com/video/<id>) — Downloader tự
+// thử yt-dlp trước (giữ watermark), gãy → TikWM Lookup lấy link wmplay
+// (có watermark). Không bao giờ nhúng link CDN no-watermark vào kho.
 type Candidate struct {
 	SourceID  int64
 	DouyinID  string
 	URL       string
-	DirectURL bool // true: URL đã là link file trực tiếp (TikWM play) —
-	// downloader tải thẳng, không Lookup lại
 	PlayCount int64
 	DiggCount int64
 	Duration  float64
@@ -117,19 +118,11 @@ func (d *Discoverer) discoverUser(ctx context.Context, src Source, perSource int
 		if author == "" {
 			author = v.UniqueID
 		}
-		url := v.PlayURL
-		direct := true
-		if url == "" {
-			url = v.HDPlayURL
-		}
-		if url == "" {
-			// Không có link tải trực tiếp — vẫn queue theo URL gốc để
-			// Downloader thử yt-dlp rồi TikWM Lookup.
-			url = "https://www.douyin.com/video/" + v.ID
-			direct = false
-		}
+		// Luôn queue URL share gốc — link tải do Downloader tự lấy
+		// (yt-dlp giữ watermark; TikWM chỉ dùng wmplay có watermark).
+		url := "https://www.douyin.com/video/" + v.ID
 		c := Candidate{
-			SourceID: src.ID, DouyinID: v.ID, URL: url, DirectURL: direct,
+			SourceID: src.ID, DouyinID: v.ID, URL: url,
 			PlayCount: v.PlayCount, DiggCount: v.DiggCount,
 			Duration: v.Duration, Author: author, Title: v.Title,
 		}
