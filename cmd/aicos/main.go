@@ -712,6 +712,10 @@ func main() {
 					for _, note := range auto.SelfHealTick(ctx) {
 						log.Printf("selfheal: %s", note)
 					}
+					// Đợt M2: tự sao lưu data dir, 1 ngày/lần.
+					for _, note := range auto.BackupTick(ctx) {
+						log.Printf("backup: %s", note)
+					}
 				}
 			}
 		}()
