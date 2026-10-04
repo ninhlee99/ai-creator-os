@@ -51,6 +51,7 @@
 {{end}}
 {{end}}
 <p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key → set <code>TIKTOK_CLIENT_KEY</code>/<code>TIKTOK_CLIENT_SECRET</code> (xem <code>docs/POSTPROD_RUNBOOK.md</code>) rồi khởi động lại app.</p>
+<p class="hint"><b>Lưu ý trung thực:</b> TikTok chỉ cho đăng qua API khi app của bạn đã được TikTok <b>duyệt (app audit)</b> — chưa duyệt thì kết nối xong vẫn không đăng được. Kể cả khi đã duyệt, app chỉ đăng ở chế độ <b>bản nháp</b>: bạn phải mở TikTok bấm Đăng tay cho từng video.</p>
 {{else}}
 <p class="empty">Chưa có tài khoản nào để hiển thị.</p>
 {{end}}

@@ -81,7 +81,7 @@ func flatten(x xmlNode, out *UINodes) {
 // ParseUIDump parse XML từ `uiautomator dump` thành danh sách node phẳng.
 func ParseUIDump(dump string) (UINodes, error) {
 	var root struct {
-		XMLName xml.Name `xml:"hierarchy"`
+		XMLName xml.Name  `xml:"hierarchy"`
 		Nodes   []xmlNode `xml:"node"`
 	}
 	dec := xml.NewDecoder(strings.NewReader(dump))

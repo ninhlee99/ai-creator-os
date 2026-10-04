@@ -4,11 +4,12 @@ Chủ đề: {{.Topic}}. Thể loại: {{.Genre}}. {{.Orient}}.
 Đây là PHA 0 — TRUYỆN (story). Viết TRUYỆN NGẮN / tiểu thuyết mini HOÀN CHỈNH khoảng {{.StoryWords}} từ — đây là "linh hồn" của phim, pha 1 sẽ chuyển thể nó thành kịch bản điện ảnh. Viết từ đầu đến cuối, không bỏ dở.
 
 YÊU CẦU VĂN XUÔI:
-1. Cấu trúc 3 hồi: mở đầu lôi cuốn (HOOK trong đoạn đầu — tình huống bất ngờ/kịch tính), giữa truyện có BƯỚC NGOẶT (bí mật/twist đổi hướng câu chuyện), cuối truyện CAO TRÀO + kết thúc trọn vẹn, dư âm cảm xúc.
+1. Cấu trúc 3 hồi: mở đầu lôi cuốn (HOOK trong 2 câu đầu — tình huống bất ngờ/kịch tính, TUYỆT ĐỐI không mở bằng giới thiệu lai lịch dài dòng), giữa truyện có BƯỚC NGOẶT (bí mật/twist đổi hướng câu chuyện), cuối truyện CAO TRÀO + kết thúc trọn vẹn, dư âm cảm xúc.
 2. Giàu chi tiết giác quan mà máy quay "nhìn thấy" được: không gian, ánh sáng, màu sắc, âm thanh, mùi vị, đồ vật — đừng chỉ kể cảm xúc trừu tượng.
 3. Nhân vật có TÊN Việt Nam cụ thể, tính cách hiện qua hành động + lời nói, không qua miêu tả dán nhãn.
 4. Đối thoại tự nhiên như người Việt nói thật, mỗi câu gắn cảm xúc và đẩy câu chuyện.
 5. Thể loại {{.Genre}} phải thấm trong từng chi tiết: tình tiết, nhịp, cảm xúc đúng thể loại.
 6. Phim dài khoảng {{.Seconds}}s — truyện phải đủ "thịt" (tình tiết, nhân vật, biến cố) để dựng từng ấy thời lượng, không sơ sài.
+7. GIỮ CHÂN NGƯỜI NGHE (quan trọng nhất): mỗi 3–4 câu phải có một "móc" — câu hỏi chưa trả lời, mối nguy mới, hoặc chi tiết lạ khiến người nghe không thể dừng. Không đoạn văn nào "chết" (chỉ tả cảnh mà không đẩy câu chuyện). Kết mỗi phân đoạn bằng dư âm hoặc tò mò, không kết cụt.
 
 Chỉ trả JSON: {"title":"...","logline":"...","text":"..."}

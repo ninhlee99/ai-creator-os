@@ -32,10 +32,10 @@ func testLedger(t *testing.T) *ledger.Ledger {
 
 func TestPickKind(t *testing.T) {
 	cases := []struct {
-		name  string
-		acc   *network.Account
-		ytc   []string
-		want  string
+		name string
+		acc  *network.Account
+		ytc  []string
+		want string
 	}{
 		{"storyteller film allowed", &network.Account{Persona: "storyteller"}, []string{"short_film"}, "short_film"},
 		{"storyteller film via tiktok/fb", &network.Account{Persona: "storyteller"}, nil, "short_film"},
@@ -74,8 +74,8 @@ type fakePublisher struct {
 	result  publishers.PublishResult
 }
 
-func (f fakePublisher) Name() string { return f.name }
-func (f fakePublisher) IsConfigured() bool { return true }
+func (f fakePublisher) Name() string          { return f.name }
+func (f fakePublisher) IsConfigured() bool    { return true }
 func (f fakePublisher) Handles(_ string) bool { return f.handles }
 func (f fakePublisher) Publish(_ context.Context, _, _, _, _ string) publishers.PublishResult {
 	return f.result
@@ -129,8 +129,8 @@ func TestDistributeFailureRecorded(t *testing.T) {
 type fakeTTS struct{ wav []byte }
 
 func (f fakeTTS) Synthesize(_ context.Context, _, _ string) ([]byte, error) { return f.wav, nil }
-func (f fakeTTS) Name() string                                             { return "fake-tts" }
-func (f fakeTTS) Healthy(_ context.Context) bool                           { return true }
+func (f fakeTTS) Name() string                                              { return "fake-tts" }
+func (f fakeTTS) Healthy(_ context.Context) bool                            { return true }
 
 func testWav(seconds float64) []byte {
 	const sr = 8000

@@ -13,8 +13,8 @@
 
 | Trụ | Trạng thái code (sau Đợt H3) |
 |---|---|
-| **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật** |
-| **2. Reup video Douyin** | ✅ Đợt D/E xong: downloader (yt-dlp do app tự quản + TikWM fallback) + dedupe 2 lớp + QC + tick 6h tìm video viral theo play_count; transform 2 mức (zoom động, tốc độ ±5%, voiceover bình luận tiếng Việt, nhạc licensed, compilation 3 clip) + kill rule 0-view (5 video liên tiếp → dừng đăng + báo động) |
+| **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật**. Lưu ý: link chỉ ra tiền khi có người mua — cần traffic từ kênh; TikTok hiện chỉ đăng bản nháp (bấm Đăng tay từng video) |
+| **2. Reup video Douyin** | ✅ Đợt D/E xong: downloader (yt-dlp do app tự quản + TikWM fallback **chỉ link có watermark** — giữ attribution tác giả, không bao giờ tải bản gỡ watermark) + dedupe 2 lớp + QC + tick 6h tìm video viral theo play_count; transform 2 mức (zoom động, tốc độ ±5%, voiceover bình luận tiếng Việt, nhạc licensed, compilation 3 clip) + kill rule 0-view (5 video liên tiếp → dừng đăng + báo động) |
 | **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 + subtitle → QC → đăng private-first, mặc định chờ Ninh duyệt + tick 24h lấy chủ đề từ hàng đợi |
 
 Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
@@ -23,6 +23,14 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 > đánh bản quyền. Hệ thống chỉ giảm rủi ro (voiceover Việt gốc, nhạc bản
 > quyền thay thế, restructure/compilation, crop/zoom động…), và rủi ro thực tế
 > lớn nhất có thể là **0 view / bị giảm phân phối**, không chỉ là strike.
+> Video tải về **giữ nguyên watermark gốc** của tác giả Douyin — hệ thống
+> không gỡ watermark của người khác.
+>
+> **Đánh giá khắc khe (2026-10-04):** xếp hạng khả năng ra tiền thật trong
+> 12 tháng: Kể chuyện YouTube > Affiliate Accesstrade > Reup Douyin. Reup
+> không xây được "kênh thành tài sản" (rủi ro bản quyền + chính sách
+> unoriginal/reused content); cái bán được là công cụ/quy trình, không phải
+> kênh (mua bán tài khoản vi phạm ToS nền tảng).
 
 ---
 
