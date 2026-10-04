@@ -16,24 +16,35 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 )
 
-// reupTestServer mock TikWM: user posts + lookup (play trỏ về file server)
-// + file mp4 giả (QC đi nhánh size-only vì test ẩn ffprobe khỏi PATH).
+// reupTestServer mock TikWM: user posts + lookup (wmplay có watermark
+// trỏ về file server) + file mp4 giả (QC đi nhánh size-only vì test ẩn
+// ffprobe khỏi PATH).
 func reupTestServer() *httptest.Server {
 	var base string
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/user/posts", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"code":0,"msg":"success","data":{"videos":[
-			{"video_id":"r1","title":"Một","play":"%s/f.mp4?v=r1","play_count":500,"digg_count":50,"duration":10,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
-			{"video_id":"r2","title":"Hai","play":"%s/f.mp4?v=r2","play_count":900,"digg_count":90,"duration":12,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}
-		],"cursor":0,"hasMore":false}}`, base, base)
+			{"video_id":"r1","title":"Một","play_count":500,"digg_count":50,"duration":10,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}},
+			{"video_id":"r2","title":"Hai","play_count":900,"digg_count":90,"duration":12,"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}
+		],"cursor":0,"hasMore":false}}`)
 	})
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		// Trích id từ ?url= (share URL) để mỗi video có wmplay riêng —
+		// tránh dedupe sha256 trong test.
+		id := "r9"
+		if u := r.URL.Query().Get("url"); u != "" {
+			if i := strings.LastIndex(u, "/video/"); i >= 0 {
+				if s := strings.SplitN(u[i+7:], "?", 2)[0]; s != "" {
+					id = s
+				}
+			}
+		}
 		fmt.Fprintf(w, `{"code":0,"msg":"success","data":{
-			"id":"r9","title":"Chín","play":"%s/f.mp4","hdplay":"","duration":14,
+			"id":%q,"title":"Chín","wmplay":"%s/f.mp4?v=%s","duration":14,
 			"play_count":999,"digg_count":99,
-			"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}}`, base)
+			"author":{"unique_id":"than_tien","nickname":"Thần Tiên"}}}`, id, base, id)
 	})
 	mux.HandleFunc("/f.mp4", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "video/mp4")
@@ -151,8 +162,8 @@ func TestReupTickDiscoversAndDownloads(t *testing.T) {
 		if v.Status != reup.StatusDownloaded {
 			t.Errorf("video %s phải downloaded: %+v", v.DouyinID, v)
 		}
-		if v.Via != "tikwm" || !v.WatermarkFree {
-			t.Errorf("fallback tikwm phải ghi via + watermark_free: %+v", v)
+		if v.Via != "tikwm" || v.WatermarkFree {
+			t.Errorf("fallback tikwm phải ghi via=tikwm và giữ watermark (watermark_free=false): %+v", v)
 		}
 		if v.QCMethod != "size-only" {
 			t.Errorf("QC phải ghi phương pháp trung thực: %+v", v)

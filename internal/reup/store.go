@@ -284,12 +284,18 @@ func (v Video) StatusLabel() string {
 }
 
 // WatermarkLabel nhãn trung thực về watermark (không đoán mò).
+// Từ Đợt I mọi video tải về đều giữ watermark gốc (yt-dlp giữ nguyên;
+// TikWM chỉ dùng link wmplay) — "không watermark" chỉ còn là giá trị
+// lịch sử cho bản ghi cũ trước Đợt I.
 func (v Video) WatermarkLabel() string {
 	if v.Status != StatusDownloaded {
 		return "—"
 	}
-	if v.Via == "tikwm" || v.WatermarkFree {
+	if v.WatermarkFree {
 		return "không watermark"
+	}
+	if v.Via == "tikwm" {
+		return "có watermark"
 	}
 	return "có thể có watermark"
 }

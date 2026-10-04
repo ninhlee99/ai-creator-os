@@ -15,7 +15,12 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Downloader: yt-dlp trước, gãy → TikWM ngay lập tức.
+// Downloader: yt-dlp trước, gãy → TikWM Lookup (CHỈ link wmplay có
+// watermark).
+//
+// RANH GIỚI CỨNG (Đợt I): không bao giờ tải bản no-watermark của video
+// người khác. yt-dlp giữ nguyên watermark gốc; TikWM fallback chỉ dùng
+// link wmplay (giữ attribution tác giả) — thiếu wmplay thì fail-closed.
 //
 //   - Dedupe 2 lớp: douyin_id (trước tải — không tải lại) và sha256
 //     (sau tải — URL khác nhưng cùng nội dung thì bỏ file trùng).
@@ -49,18 +54,18 @@ func NewDownloader(yt *Manager, tw *TikWM, store *Store, outDir string) *Downloa
 // DownloadVideo tải 1 video từ URL Douyin share (trích douyin_id từ URL
 // khi được). Trả về Video đã lưu trong store.
 func (d *Downloader) DownloadVideo(ctx context.Context, url string) (Video, error) {
-	return d.download(ctx, ExtractDouyinID(url), url, false)
+	return d.download(ctx, ExtractDouyinID(url), url)
 }
 
 // DownloadCandidate tải 1 candidate từ discover: ưu tiên douyin_id của
-// candidate để nối đúng bản ghi đã queue — URL lúc này có thể là link
-// CDN TikWM (không chứa id), không được tạo bản ghi mới.
+// candidate để nối đúng bản ghi đã queue. Luôn tải qua URL share gốc
+// (yt-dlp → TikWM wmplay), không tải link CDN trực tiếp.
 func (d *Downloader) DownloadCandidate(ctx context.Context, c Candidate) (Video, error) {
-	return d.download(ctx, c.DouyinID, c.URL, c.DirectURL)
+	return d.download(ctx, c.DouyinID, c.URL)
 }
 
 // download là lõi chung của DownloadVideo/DownloadCandidate.
-func (d *Downloader) download(ctx context.Context, douyinID, url string, direct bool) (Video, error) {
+func (d *Downloader) download(ctx context.Context, douyinID, url string) (Video, error) {
 	url = strings.TrimSpace(url)
 	if url == "" {
 		return Video{}, fmt.Errorf("reup: URL trống")
@@ -134,46 +139,30 @@ func (d *Downloader) download(ctx context.Context, douyinID, url string, direct 
 		}
 	}
 
-	// Fallback TikWM.
-	//  - direct (candidate đã có link play): tải thẳng file, không Lookup
-	//    lại — Lookup trên link CDN là sai.
-	//  - URL share: Lookup lấy link play (no-watermark) rồi tải ngay
-	//    (CDN có chữ ký, hết hạn sau vài phút).
+	// Fallback TikWM — CHỈ link wmplay (có watermark, giữ attribution
+	// tác giả gốc). Không bao giờ dùng bản no-watermark: Lookup thiếu
+	// wmplay → fail-closed với lý do rõ ràng.
 	if !ytOK {
-		var ferr error
-		switch {
-		case direct:
-			dst := filepath.Join(d.OutDir, "tikwm_"+douyinID+".mp4")
-			if derr := d.fetchFile(ctx, url, dst); derr != nil {
-				ferr = joinErr(downloadErr, fmt.Errorf("tikwm tải file: %w", derr))
-			} else {
-				filePath, dlDouyinID, title = dst, douyinID, rec.Title
-				via, wmFree = "tikwm", true // link play TikWM = no-watermark
-			}
-		case d.TikWM == nil:
-			ferr = joinErr(downloadErr, fmt.Errorf("reup: không có TikWM fallback"))
-		default:
-			v, lerr := d.TikWM.Lookup(ctx, url)
-			if lerr != nil {
-				ferr = joinErr(downloadErr, fmt.Errorf("tikwm lookup: %w", lerr))
-			} else {
-				play := v.HDPlayURL
-				if play == "" {
-					play = v.PlayURL
-				}
-				dst := filepath.Join(d.OutDir, "tikwm_"+v.ID+".mp4")
-				if derr := d.fetchFile(ctx, play, dst); derr != nil {
-					ferr = joinErr(downloadErr, fmt.Errorf("tikwm tải file: %w", derr))
-				} else {
-					filePath, dlDouyinID, title, duration = dst, v.ID, v.Title, v.Duration
-					via, wmFree = "tikwm", true
-				}
-			}
-		}
-		if ferr != nil {
+		if d.TikWM == nil {
+			ferr := joinErr(downloadErr, fmt.Errorf("reup: không có TikWM fallback"))
 			d.fail(rec.ID, "", "tải thất bại: "+ferr.Error())
 			return Video{}, ferr
 		}
+		v, lerr := d.TikWM.Lookup(ctx, url)
+		if lerr != nil {
+			ferr := joinErr(downloadErr, fmt.Errorf("tikwm lookup: %w", lerr))
+			d.fail(rec.ID, "", "tải thất bại: "+ferr.Error())
+			return Video{}, ferr
+		}
+		// Link wmplay có chữ ký, hết hạn sau vài phút → tải ngay.
+		dst := filepath.Join(d.OutDir, "tikwm_"+v.ID+".mp4")
+		if derr := d.fetchFile(ctx, v.WMPlayURL, dst); derr != nil {
+			ferr := joinErr(downloadErr, fmt.Errorf("tikwm tải file: %w", derr))
+			d.fail(rec.ID, "", "tải thất bại: "+ferr.Error())
+			return Video{}, ferr
+		}
+		filePath, dlDouyinID, title, duration = dst, v.ID, v.Title, v.Duration
+		via, wmFree = "tikwm", false // wmplay = có watermark
 	}
 
 	// Cập nhật douyin_id/title nếu lượt tải trích được id mà bản ghi chưa
@@ -227,7 +216,7 @@ func (d *Downloader) Retry(ctx context.Context, id int64) (Video, error) {
 		return v, fmt.Errorf("reup: video #%d đang ở trạng thái %q — chỉ tải lại khi lỗi/chờ", id, v.StatusLabel())
 	}
 	_ = d.Store.SetStatus(id, StatusQueued, "")
-	return d.download(ctx, v.DouyinID, v.URL, false)
+	return d.download(ctx, v.DouyinID, v.URL)
 }
 
 // fetchFile tải URL vào dst (dùng cho link CDN TikWM hết hạn nhanh).
