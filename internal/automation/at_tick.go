@@ -33,22 +33,22 @@ import (
 // Setting keys cho Accesstrade automation (ledger settings; unset = mặc
 // định zero-touch BẬT — tiền lệ Đợt 3).
 const (
-	KeyATHunterEnabled       = "at.hunter_enabled"
-	KeyATHunterIntervalHrs   = "at.hunter_interval_hours"
-	KeyATHunterVideos        = "at.hunter_videos"
-	KeyATOrderSyncEnabled    = "at.ordersync_enabled"
-	KeyATOrderSyncIntervalM  = "at.ordersync_interval_minutes"
-	KeyATCampaignCheckOn     = "at.campaigncheck_enabled"
-	keyATHunterLastRun       = "at.hunter_last_run"
-	keyATOrderSyncLastRun    = "at.ordersync_last_run"
-	keyATCampaignCheckLast   = "at.campaigncheck_last_run"
-	keyATOrdersUntil         = "orders.until"
-	defaultATHunterVideos    = 3
-	defaultATHunterHours     = 24
-	defaultATOrderSyncMins   = 30
-	defaultATCampaignHours   = 24
-	orderSyncWindowDays      = 7 // cửa sổ quét rolling: bắt kịp đơn pending→approved
-	hunterDirectAccountID    = 0 // usage account 0 = video trực tiếp từ hunter
+	KeyATHunterEnabled      = "at.hunter_enabled"
+	KeyATHunterIntervalHrs  = "at.hunter_interval_hours"
+	KeyATHunterVideos       = "at.hunter_videos"
+	KeyATOrderSyncEnabled   = "at.ordersync_enabled"
+	KeyATOrderSyncIntervalM = "at.ordersync_interval_minutes"
+	KeyATCampaignCheckOn    = "at.campaigncheck_enabled"
+	keyATHunterLastRun      = "at.hunter_last_run"
+	keyATOrderSyncLastRun   = "at.ordersync_last_run"
+	keyATCampaignCheckLast  = "at.campaigncheck_last_run"
+	keyATOrdersUntil        = "orders.until"
+	defaultATHunterVideos   = 3
+	defaultATHunterHours    = 24
+	defaultATOrderSyncMins  = 30
+	defaultATCampaignHours  = 24
+	orderSyncWindowDays     = 7 // cửa sổ quét rolling: bắt kịp đơn pending→approved
+	hunterDirectAccountID   = 0 // usage account 0 = video trực tiếp từ hunter
 )
 
 // StudioRunner là biên render affiliate mà tick AT cần.
@@ -257,7 +257,6 @@ func (s *Service) ATOrderSyncTick(ctx context.Context) []string {
 		len(orders), added, updated,
 		st.ApprovedCount, accesstrade.Thousands(int64(st.ApprovedTotal)), st.PendingCount)}
 }
-
 
 // ----------------------------------------------------- campaign check tick
 

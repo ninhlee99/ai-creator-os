@@ -33,19 +33,19 @@ import (
 
 // Setting keys cho reup transform/post/kill (ledger settings).
 const (
-	KeyReupTransformEnabled  = "reup.transform_enabled"
-	KeyReupTransformLevel    = "reup.transform_level" // 1 | 2
-	KeyReupTransformLastRun  = "reup.transform_last_run"
-	KeyReupVoiceoverEnabled  = "reup.voiceover_enabled"
-	KeyReupPostEnabled       = "reup.post_enabled" // kill rule tắt khi trigger
-	KeyReupPostLastRun       = "reup.post_last_run"
-	KeyReupVideosPerDay      = "reup.videos_per_day" // mặc định 3
-	KeyReupPostAccount       = "reup.post_account"   // username kênh đăng
-	KeyReupKillEnabled       = "reup.killrule_enabled"
-	KeyReupKillZeroN         = "reup.killrule_zeroview_n" // mặc định 5
-	KeyReupKillLastRun       = "reup.kill_last_run"
-	KeyReupWarmupEnabled     = "reup.warmup_enabled"
-	KeyReupWarmupStart       = "reup.warmup_start" // YYYY-MM-DD bài đăng đầu
+	KeyReupTransformEnabled = "reup.transform_enabled"
+	KeyReupTransformLevel   = "reup.transform_level" // 1 | 2
+	KeyReupTransformLastRun = "reup.transform_last_run"
+	KeyReupVoiceoverEnabled = "reup.voiceover_enabled"
+	KeyReupPostEnabled      = "reup.post_enabled" // kill rule tắt khi trigger
+	KeyReupPostLastRun      = "reup.post_last_run"
+	KeyReupVideosPerDay     = "reup.videos_per_day" // mặc định 3
+	KeyReupPostAccount      = "reup.post_account"   // username kênh đăng
+	KeyReupKillEnabled      = "reup.killrule_enabled"
+	KeyReupKillZeroN        = "reup.killrule_zeroview_n" // mặc định 5
+	KeyReupKillLastRun      = "reup.kill_last_run"
+	KeyReupWarmupEnabled    = "reup.warmup_enabled"
+	KeyReupWarmupStart      = "reup.warmup_start" // YYYY-MM-DD bài đăng đầu
 
 	defaultReupTransformLevel = 1
 	defaultReupVideosPerDay   = 3

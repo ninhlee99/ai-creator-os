@@ -62,9 +62,9 @@ Avatar agent: file JPEG 160px trong `internal/web/static/agents/`, serve qua `GE
 ## Bản đồ kiến trúc (tóm tắt)
 
 - **Orchestrator** điều phối; **AccountManager** vòng đời account; **PersonaEngine** gán persona; **Scheduler** xếp giờ live (max 2 live cùng lúc).
-- **Agent Team:** mỗi nhiệm vụ = 1 TeamInstance (taskID riêng, blackboard, ngân sách cứng). QC 3 lớp chấm mù, tối đa 2 vòng sửa. Publisher là cửa ghi duy nhất. Chi tiết: [`AGENT_TEAM.md`](AGENT_TEAM.md).
+- **Agent Team:** mỗi trụ = 1 team (Affiliate / Reup / Story), trạng thái suy ra từ dữ liệu thật, xem tại `/team`. Chi tiết: [`AGENT_TEAM.md`](AGENT_TEAM.md).
 - **Provider chains:** TTS Gemini → VieNeu-TTS v3 local → Edge; LLM Gemini → llama-server local. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
-- **Affiliate:** ADB quét Product Marketplace trên Android (không dùng TikTok Shop API — đã loại theo quyết định user). Video 30s = 3–5 ảnh 4K cùng 1 địa điểm, zoom nảy theo BPM, không chữ không voiceover.
+- **Affiliate:** nguồn duy nhất Accesstrade datafeed (hunter tick → kho; TikTok Shop đã loại bỏ Đợt H1). Video 30s = 3–5 ảnh 4K cùng 1 địa điểm, zoom nảy theo BPM, không chữ không voiceover.
 
 Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affiliate: `ARCHITECTURE.md` §13
 

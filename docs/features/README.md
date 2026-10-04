@@ -8,21 +8,22 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 > File nào ghi 🅿️ PARKED thì tính năng đó **không còn trong binary** — chỉ còn
 > code nguồn + test chạy bằng `go test -tags parked ./...`.
 
-## Mục lục (sidebar hiện tại: 9 mục)
+## Mục lục (sidebar hiện tại: 10 mục)
 
 | # | Tính năng | File | Trạng thái |
 |---|---|---|---|
 | 1 | Trang chủ (`/`) — thẻ số liệu, feed quyết định, chip công tắc chính | [trang-chu.md](trang-chu.md) | ✅ |
 | 2 | Kênh (`/accounts`, sidebar "Kênh") — 3 tab Tổng quan / Autopilot / Kết nối | [tai-khoan.md](tai-khoan.md) | ✅ |
 | 3 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [phat-trien-kenh.md](phat-trien-kenh.md) | ✅ |
+| 3b | **Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật** | [agent-team.md](agent-team.md) | ✅ (Đợt H2) |
 | 4 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ (phim đã park) |
 | 5 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [san-pham.md](san-pham.md) | ✅ (Accesstrade: đợt B/C) |
 | 5b | **Reup Douyin (`/reup`) — nguồn, yt-dlp sidecar, hàng đợi tải** | [reup.md](reup.md) | ✅ (Đợt D; transform/đăng ở Đợt E) |
 | 5c | **Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9** | [ke-chuyen.md](ke-chuyen.md) | ✅ (Đợt F) |
 | 6 | Đa nền tảng (`/publishers`) — TikTok/YouTube/Facebook/RTMP | [da-nen-tang.md](da-nen-tang.md) | ✅ |
-| 7 | Cài đặt — 4 trang con (Hệ thống / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
+| 7 | Cài đặt — 6 trang (Hệ thống / Accesstrade / Reup / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
 | 8 | Lịch live (`/schedule`) | [lich-live.md](lich-live.md) | 🅿️ PARKED |
-| 9 | Agent Team (`/team`) | [agent-team.md](agent-team.md) | 🅿️ PARKED (sẽ định nghĩa lại) |
+| 9 | Agent Team (`/team`) — xem dòng 3b | [agent-team.md](agent-team.md) | ✅ (Đợt H2) |
 | 10 | Wizard lần đầu (`/onboard`) | [wizard-lan-dau.md](wizard-lan-dau.md) | ✅ |
 | 11 | Sao lưu & khôi phục | [sao-luu-khoi-phuc.md](sao-luu-khoi-phuc.md) | ✅ |
 | 12 | API nội bộ (`/api/*`) — mặc định TẮT | [api-noi-bo.md](api-noi-bo.md) | ✅ |

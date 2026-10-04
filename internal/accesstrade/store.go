@@ -210,18 +210,18 @@ func (s *Store) ListLinks(limit int) ([]SavedLink, error) {
 
 // SavedOrder là một đơn hàng đã sync trong at_orders.
 type SavedOrder struct {
-	OrderID      string
-	CampaignID   string
-	CampaignName string
-	Status       int
+	OrderID       string
+	CampaignID    string
+	CampaignName  string
+	Status        int
 	PubCommission float64
-	UTMSource    string
-	UTMMedium    string
-	Sub1         string
-	Sub2         string
-	OrderedAt    string
-	SyncedAt     string
-	UpdatedAt    string
+	UTMSource     string
+	UTMMedium     string
+	Sub1          string
+	Sub2          string
+	OrderedAt     string
+	SyncedAt      string
+	UpdatedAt     string
 }
 
 // StatusLabel nhãn tiếng Việt cho trạng thái đơn.

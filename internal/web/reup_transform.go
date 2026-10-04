@@ -320,18 +320,18 @@ func (s *Server) handleReupPostPublish(w http.ResponseWriter, r *http.Request) {
 // handler Đợt D (các key cũ giữ nguyên).
 func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		DiscoverOn  *bool   `json:"discover_on"`
-		Hours       *int    `json:"interval_hours"`
-		PerSource   *int    `json:"per_source"`
-		TransformOn *bool   `json:"transform_on"`
-		Level       *int    `json:"transform_level"`
-		VoiceoverOn *bool   `json:"voiceover_on"`
-		PostOn      *bool   `json:"post_on"`
-		VideosPerDay *int   `json:"videos_per_day"`
-		PostAccount *string `json:"post_account"`
-		KillOn      *bool   `json:"kill_on"`
-		KillN       *int    `json:"kill_n"`
-		WarmupOn    *bool   `json:"warmup_on"`
+		DiscoverOn   *bool   `json:"discover_on"`
+		Hours        *int    `json:"interval_hours"`
+		PerSource    *int    `json:"per_source"`
+		TransformOn  *bool   `json:"transform_on"`
+		Level        *int    `json:"transform_level"`
+		VoiceoverOn  *bool   `json:"voiceover_on"`
+		PostOn       *bool   `json:"post_on"`
+		VideosPerDay *int    `json:"videos_per_day"`
+		PostAccount  *string `json:"post_account"`
+		KillOn       *bool   `json:"kill_on"`
+		KillN        *int    `json:"kill_n"`
+		WarmupOn     *bool   `json:"warmup_on"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		writeJSONErr(w, "JSON không hợp lệ.", http.StatusBadRequest)
@@ -388,39 +388,40 @@ func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
 	setBool(automation.KeyReupWarmupEnabled, in.WarmupOn)
 	writeJSON(w, map[string]any{"ok": true})
 }
+
 // reupSettingsView gom cấu hình reup cho tab Cài đặt · Reup.
 type reupSettingsView struct {
-	DiscoverOn       bool
-	DiscoverHours    int
-	VideosPerSource  int
-	TransformOn      bool
-	TransformLevel int
-	VoiceoverOn    bool
-	PostOn         bool
-	VideosPerDay   int
-	PostAccount    string
-	AccountNames   []string
-	KillOn         bool
-	KillN          int
-	WarmupOn       bool
-	MusicOK        bool
-	StoreOK        bool
+	DiscoverOn      bool
+	DiscoverHours   int
+	VideosPerSource int
+	TransformOn     bool
+	TransformLevel  int
+	VoiceoverOn     bool
+	PostOn          bool
+	VideosPerDay    int
+	PostAccount     string
+	AccountNames    []string
+	KillOn          bool
+	KillN           int
+	WarmupOn        bool
+	MusicOK         bool
+	StoreOK         bool
 }
 
 func (s *Server) reupSettingsCfg() reupSettingsView {
 	v := reupSettingsView{
-		DiscoverOn:       s.atSettingOn(automation.KeyReupDiscoverEnabled, true),
-		DiscoverHours:    s.atSettingInt(automation.KeyReupDiscoverIntervalH, 6),
-		VideosPerSource:  s.atSettingInt(automation.KeyReupVideosPerSource, 3),
-		TransformOn:    s.atSettingOn(automation.KeyReupTransformEnabled, true),
-		TransformLevel: s.atSettingInt(automation.KeyReupTransformLevel, 1),
-		VoiceoverOn:    s.atSettingOn(automation.KeyReupVoiceoverEnabled, true),
-		PostOn:         s.atSettingOn(automation.KeyReupPostEnabled, true),
-		VideosPerDay:   s.atSettingInt(automation.KeyReupVideosPerDay, 3),
-		KillOn:         s.atSettingOn(automation.KeyReupKillEnabled, true),
-		KillN:          s.atSettingInt(automation.KeyReupKillZeroN, 5),
-		WarmupOn:       s.atSettingOn(automation.KeyReupWarmupEnabled, true),
-		StoreOK:        s.Reup != nil,
+		DiscoverOn:      s.atSettingOn(automation.KeyReupDiscoverEnabled, true),
+		DiscoverHours:   s.atSettingInt(automation.KeyReupDiscoverIntervalH, 6),
+		VideosPerSource: s.atSettingInt(automation.KeyReupVideosPerSource, 3),
+		TransformOn:     s.atSettingOn(automation.KeyReupTransformEnabled, true),
+		TransformLevel:  s.atSettingInt(automation.KeyReupTransformLevel, 1),
+		VoiceoverOn:     s.atSettingOn(automation.KeyReupVoiceoverEnabled, true),
+		PostOn:          s.atSettingOn(automation.KeyReupPostEnabled, true),
+		VideosPerDay:    s.atSettingInt(automation.KeyReupVideosPerDay, 3),
+		KillOn:          s.atSettingOn(automation.KeyReupKillEnabled, true),
+		KillN:           s.atSettingInt(automation.KeyReupKillZeroN, 5),
+		WarmupOn:        s.atSettingOn(automation.KeyReupWarmupEnabled, true),
+		StoreOK:         s.Reup != nil,
 	}
 	if s.Ledger != nil {
 		if val, ok, _ := s.Ledger.GetSetting(automation.KeyReupPostAccount); ok {

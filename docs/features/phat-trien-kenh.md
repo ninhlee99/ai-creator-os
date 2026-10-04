@@ -8,6 +8,10 @@ tự tạm dừng tài khoản khi chạm luật kill.
 ## 2. Kích hoạt
 - `GET /growth` → `handleGrowth` (`internal/web/growth.go:238`): tổng quan
   (profile, plan items, alerts, thresholds hiện tại).
+- Nguồn số liệu (`SyncOneAccount`): `youtube_api` (Data API — lifetime totals)
+  + `youtube_analytics` (Đợt H3 — views/watch hours/subs 30 ngày, cần token
+  OAuth scope `yt-analytics.readonly`, badge trạng thái ở trang Kênh) +
+  `tiktok_api`. Thiếu kết nối → fail-closed, báo rõ trong notes.
 - `POST /growth/sync` → `handleGrowthSync`: đồng bộ số liệu + vòng quyết định ngay
   cho mọi tài khoản (gọi `syncOneAccount` — xem `daemon-tu-dong.md`).
 - `POST /growth/accounts/{id}/plan` → `handleGrowthPlan`: sinh lại kế hoạch 30 ngày.

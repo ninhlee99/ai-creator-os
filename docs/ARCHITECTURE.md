@@ -3,8 +3,8 @@
 > **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar + bỏ phim điện ảnh, tập trung
 > 3 trụ — Affiliate qua Accesstrade · Reup video Douyin · YouTube kể chuyện
 > ngôi thứ nhất. Thiết kế đích: `docs/PIVOT_REDESIGN.md`.
-> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại** (sau Đợt A, commit
-> `efa218b`). Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
+> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại** (sau Đợt H3).
+> Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
 
 ## 1. Design principles
 
@@ -35,9 +35,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ DASHBOARD (7 mục sidebar) + MASTER SWITCH + KILL SWITCH     │
-│  Trang chủ · Kênh · Phát triển kênh · Studio AI 🎬 ·        │
-│  Affiliate · Đa nền tảng · Cài đặt                          │
+│ DASHBOARD (10 mục sidebar) + MASTER SWITCH + KILL SWITCH    │
+│  Trang chủ · Kênh · Phát triển kênh · Đội ngũ · Studio AI  │
+│  🎬 · Affiliate · Reup · Kể chuyện · Đa nền tảng · Cài đặt  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌───────────────────────▼─────────────────────────────────────┐
@@ -50,8 +50,9 @@
 │ automation  │ │ studio      │ │ growth      │ │ publishers   │
 │ daemon ticks│ │ video jobs  │ │ plan 30d,   │ │ TikTok/YT/   │
 │ (1'/5'/60') │ │ (affiliate, │ │ ngưỡng,     │ │ FB/RTMP      │
-│ autopilot,  │ │ kinetic,    │ │ quota       │ │ OAuth        │
-│ reconcile   │ │ trends)     │ │             │ │              │
+│ autopilot,  │ │ kinetic,    │ │ quota,      │ │ OAuth        │
+│ reconcile,  │ │ trends,     │ │ YT Analytics│ │              │
+│ team view   │ │ story 16:9) │ │ (views 30d) │ │              │
 └──────┬──────┘ └─────────────┘ └─────────────┘ └──────────────┘
        │
 ┌──────▼──────────────────────────────────────────────────────┐
@@ -76,6 +77,20 @@ tách từ studio, kind `story` trên `studio_jobs`; automation
 `internal/automation/story_tick.go` 24h/lần, đăng private-first, mặc định
 chờ Ninh duyệt).
 
+**Đợt H (2026-10-04):**
+- **H1**: loại bỏ TikTok Shop hoàn toàn (Accesstrade-only) — xóa
+  `internal/tiktok/shop.go`, `TikTokShopProvider`, wiring trong main.go,
+  nhánh đối soát legacy, config `TIKTOK_SHOP_*` (kể cả vùng parked).
+- **H2**: Agent Team định nghĩa lại quanh 3 pipeline — `/team` mới
+  (`internal/web/team_pipeline.go`, không còn park): Affiliate
+  (Hunter→Producer→Publisher→Analyst), Reup (Hunter→Director→Producer→
+  QC→Publisher→Analyst), Story (Writer→Illustrator→Voice→Producer→
+  Publisher). Trạng thái suy ra từ dữ liệu thật.
+- **H3**: YouTube Analytics API (`internal/growth/youtube_analytics.go`,
+  free) điền Views30d + watch hours 30 ngày cho growth thresholds;
+  badge trạng thái trên trang Kênh; scope `yt-analytics.readonly`
+  (script `get-youtube-token.py`).
+
 ## 3. Routes hiện tại (internal/web/routes.go)
 
 | Route | Handler | Ghi chú |
@@ -87,13 +102,14 @@ chờ Ninh duyệt).
 | `/products*` | `handleProducts*` | Affiliate (Accesstrade: chiến dịch/link/đối soát, đợt B/C) |
 | `/reup*` | `handleReup*` | Reup Douyin: nguồn, hàng đợi tải, transform 2 mức, đăng (đợt D/E) |
 | `/stories*` | `handleStory*` | Kể chuyện: tạo truyện, jobs, đăng YouTube (đợt F) |
+| `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline (đợt H2, định nghĩa lại — không còn park) |
 | `/publishers*` | `handlePublishers*` | Đa nền tảng |
 | `/settings*` | `handleSettings*` | 6 trang con: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
 | `/onboard` | `handleOnboard` | Wizard lần đầu |
 | `/kill`, `/unkill` | `handleKill` | Kill switch |
 
-`/schedule`, `/team` → 404 (parked).
+`/schedule` → 404 (parked). `/team` đã định nghĩa lại ở đợt H2 (không còn park).
 
 ## 4. Engines: the provider chains
 
@@ -165,10 +181,8 @@ cấm runtime Python/Node đi kèm. Sidecar chỉ theo mẫu uv-managed đã có
 
 - ❌ Live / livestream / avatar (parked).
 - ❌ Phim điện ảnh 30–60 phút, Veo, realism upgrades (parked).
-- ❌ Accesstrade API — chưa code (đợt B/C).
-- ❌ Reup Douyin — chưa code (đợt D/E).
-- ❌ YouTube kể chuyện — chưa code (đợt F).
-- ❌ TikTok Shop API chính thức (đã loại theo quyết định của Ninh).
+- ❌ TikTok Shop API — đã loại bỏ hoàn toàn ở đợt H1 (Accesstrade-only).
+- ❌ TikTok đăng trực tiếp (cần app audit — Ninh từ chối) → chỉ nháp.
 - ❌ Key trả phí / billing / Veo (luật cứng free-only).
 
 ## 10. Affiliate video pipeline (đang chạy)

@@ -53,9 +53,9 @@ type reupView struct {
 	MusicOK        bool
 	// Level2IDs: video downloaded nào đủ ≥3 clip cùng nguồn để UI hiện
 	// option Mức 2 (tránh bấm rồi fail).
-	Level2IDs     map[int64]bool
-	Error         string
-	Notice        string
+	Level2IDs map[int64]bool
+	Error     string
+	Notice    string
 }
 
 // reupDirs trả về (binDir, workDir) cho yt-dlp + video đã tải.

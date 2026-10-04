@@ -20,7 +20,7 @@
 | 6 | Đa nền tảng | `/publishers` | "Kênh nào đã nối được nền tảng nào?" |
 | 7 | Cài đặt | `/settings` | 4 trang con (dưới) |
 
-Không link chết: `/schedule`, `/team` đã gỡ khỏi sidebar (park → 404).
+Không link chết: `/schedule` đã gỡ khỏi sidebar (park → 404). `/team` đã định nghĩa lại ở đợt H2 (Đội ngũ — 3 pipeline).
 
 ## 2. Cài đặt — 4 trang con (`internal/web/templates/settings/`)
 
@@ -41,7 +41,7 @@ Tab Nhân vật AI đã gỡ (park theo avatar live).
 | **Reup** (`/reup` mới) | chưa có | Đợt D/E |
 | **Kể chuyện** (`/stories` mới) | chưa có | Đợt F |
 | Studio AI thu gọn | hiện tại | Đợt F: 2 mode (affiliate + kể chuyện) |
-| Agent Team định nghĩa lại | parked | sau khi 3 pipeline có team |
+| Agent Team định nghĩa lại | ✅ đợt H2 | `/team` — Đội ngũ 3 pipeline |
 
 ## 4. Quy ước component
 

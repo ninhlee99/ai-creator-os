@@ -18,6 +18,10 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 ## 3. Luồng vận hành chi tiết
 
 ### Tab Tổng quan
+- Badge **YouTube Analytics** (Đợt H3): `Đã nối` (có token file) / `Chưa có
+  token` / `Chưa gắn kênh` — trung thực theo file tồn tại; thiếu scope
+  `yt-analytics.readonly` thì lúc sync API báo 403 với hướng dẫn chạy lại
+  `scripts/get-youtube-token.py`.
 - `handleAccountDetail` đọc: `s.Mgr.GetWithAutopilot(id)` (account + cấu hình autopilot),
   `network.TRANSITIONS[acct.Status]` → các nút chuyển trạng thái được phép
   (máy trạng thái, không cho nhảy trạng thái bừa),

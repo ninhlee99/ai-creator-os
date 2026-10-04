@@ -11,7 +11,7 @@
 
 **Bước 1 — Mở sidebar.**
 [Thao tác: mở app, chỉ vào sidebar trái.]
-"Đây là AI Creator OS. Bên trái là 9 mục: Trang chủ, Kênh, Phát triển kênh, Studio AI, Affiliate, Reup, Kể chuyện, Đa nền tảng, Cài đặt."
+"Đây là AI Creator OS. Bên trái là 10 mục: Trang chủ, Kênh, Phát triển kênh, Đội ngũ, Studio AI, Affiliate, Reup, Kể chuyện, Đa nền tảng, Cài đặt."
 
 **Bước 2 — Thẻ số liệu.**
 [Thao tác: cuộn qua các thẻ số liệu trên Trang chủ.]

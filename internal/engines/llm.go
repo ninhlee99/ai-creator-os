@@ -156,7 +156,9 @@ func (c *LLMChain) ValidateKey(ctx context.Context, provider string, idx int) er
 	if !ok {
 		return fmt.Errorf("unknown provider %q", provider)
 	}
-	v, ok := p.(interface{ ValidateKey(context.Context, int) error })
+	v, ok := p.(interface {
+		ValidateKey(context.Context, int) error
+	})
 	if !ok {
 		return fmt.Errorf("provider %q does not support key testing", provider)
 	}

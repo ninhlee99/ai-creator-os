@@ -193,17 +193,17 @@ func TestSettingsReupTab(t *testing.T) {
 	}
 	// Lưu form.
 	rec = postForm(t, s, "/settings/reup/save", url.Values{
-		"transform_on":    {"1"},
-		"transform_level": {"2"},
-		"voiceover_on":    {"0"},
-		"post_on":         {"1"},
-		"videos_per_day":  {"4"},
-		"post_account":    {"kenh1"},
-		"kill_on":         {"1"},
-		"kill_n":          {"6"},
-		"warmup_on":       {"1"},
-		"discover_on":     {"1"},
-		"discover_hours":  {"12"},
+		"transform_on":      {"1"},
+		"transform_level":   {"2"},
+		"voiceover_on":      {"0"},
+		"post_on":           {"1"},
+		"videos_per_day":    {"4"},
+		"post_account":      {"kenh1"},
+		"kill_on":           {"1"},
+		"kill_n":            {"6"},
+		"warmup_on":         {"1"},
+		"discover_on":       {"1"},
+		"discover_hours":    {"12"},
 		"videos_per_source": {"5"},
 	})
 	if rec.Code != http.StatusSeeOther {
@@ -229,7 +229,6 @@ func TestSettingsReupTab(t *testing.T) {
 		t.Errorf("discover phải bật")
 	}
 }
-
 
 func TestReupLevel2OptionOnlyWhenEnoughClips(t *testing.T) {
 	s := newReupServer(t)
