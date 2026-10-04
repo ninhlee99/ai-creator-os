@@ -163,12 +163,12 @@ func TestATHunterTick(t *testing.T) {
 	if !strings.Contains(notes[0], "2 mới") || !strings.Contains(notes[0], "1 video") {
 		t.Errorf("note sai: %q", notes[0])
 	}
-	// Chỉ top 1 (hoa hồng cao nhất = T2) được tạo video.
+	// Chỉ top 1 (hoa hồng kỳ vọng cao nhất = T1: 459000×10%) được tạo video.
 	if len(sr.jobs) != 1 {
 		t.Fatalf("muốn 1 job, được %d", len(sr.jobs))
 	}
 	j := sr.jobs[0]
-	if j.ProductName != "Váy hoa" || j.Mode != studio.AffiliateModePhoto {
+	if j.ProductName != "Tai nghe Pro" || j.Mode != studio.AffiliateModePhoto {
 		t.Errorf("job sai: %+v", j)
 	}
 	if j.ProductPhoto == "" {
@@ -179,8 +179,8 @@ func TestATHunterTick(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(top) != 1 || top[0].SourceID != "T1" {
-		t.Errorf("sau khi dùng T2, chỉ còn T1 chưa dùng: %+v", top)
+	if len(top) != 1 || top[0].SourceID != "T2" {
+		t.Errorf("sau khi dùng T1, chỉ còn T2 chưa dùng: %+v", top)
 	}
 	// Cadence: chạy lại ngay → không chạy nữa.
 	if notes := svc.ATHunterTick(context.Background()); len(notes) != 0 {

@@ -362,11 +362,12 @@ func TestHunt(t *testing.T) {
 	if len(res.Products) != 2 {
 		t.Fatalf("Products mới = %d, muốn 2", len(res.Products))
 	}
-	// Sort hoa hồng cao trước: H2 (15%) trước H1 (10%).
-	if res.Products[0].SourceID != "H2" {
-		t.Errorf("sản phẩm đầu phải là H2 (hoa hồng cao nhất): %+v", res.Products[0])
+	// Sort theo hoa hồng kỳ vọng: H1 (459000×10%=45900đ) trước
+	// H2 (189000×15%=28350đ) — tỷ lệ cao nhưng giá thấp thì kỳ vọng thấp hơn.
+	if res.Products[0].SourceID != "H1" || res.Products[1].SourceID != "H2" {
+		t.Errorf("phải sort theo hoa hồng kỳ vọng giảm dần (H1, H2): %+v", res.Products)
 	}
-	p := res.Products[0]
+	p := res.Products[1] // H2
 	if p.Source != HunterSource || p.ProductURL != "https://go.at/h2" {
 		t.Errorf("map sai: %+v", p)
 	}
