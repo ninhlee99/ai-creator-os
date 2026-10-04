@@ -99,10 +99,11 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
    `Accounts.Transition(id, "paused")` + note "ĐÃ TỰ TẠM DỪNG".
 
 ### 3.4. `ReconcileCommissions` — đối soát tiền thật (`sync_reconcile.go`)
-> ⚠️ **Legacy, sẽ thay bằng Accesstrade ở Đợt C.** Hiện tại code vẫn đọc
-> TikTok Shop API (`TIKTOK_SHOP_APP_KEY`/`APP_SECRET`/`ACCESS_TOKEN`).
-> TikTok Shop API chính thức đã bị Ninh loại (2026-10-01) → thực tế nguồn này
-> thường fail-closed "no_source".
+> **Đợt H1 (2026-10-04):** TikTok Shop đã loại bỏ hoàn toàn. Đối soát hoa
+> hồng production chạy qua **Accesstrade** (`ATOrderSyncTick` →
+> `/at/orders/sync`, upsert vào `accesstrade.db`). `commissionSource()`
+> legacy luôn fail-closed với lý do trung thực; `CommissionSource` giữ lại
+> làm điểm tiêm cho test.
 1. `commissionSource()`: thiếu key/token (đọc live qua `EnvProvider` mỗi lần gọi)
    **hoặc** endpoint `affiliate_orders_search` chưa xác thực → fail-closed: ghi decision
    `system/commission_reconcile` ("no_source"/"error") **một lần mỗi lần đổi trạng

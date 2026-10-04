@@ -268,7 +268,7 @@ var statusLabels = map[string]string{
 	"researching":      "Đang nghiên cứu",
 	"persona_assigned": "Đã gán persona",
 	"growing":          "Đang tăng trưởng",
-	"live_ready":       "Sẵn sàng", // legacy: trạng thái sẵn sàng từ pipeline cũ (live đã park)
+	"live_ready":       "Sẵn sàng",       // legacy: trạng thái sẵn sàng từ pipeline cũ (live đã park)
 	"live":             "Live (đã park)", // legacy — giữ để không vỡ status cũ
 	"paused":           "Đã tạm dừng",
 	"penalized":        "Bị phạt",

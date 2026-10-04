@@ -20,12 +20,12 @@ import (
 // are SECONDS in JSON — decode with ParseChainJSON, not json.Unmarshal,
 // so the seconds->time.Duration conversion happens in one place.
 type ProviderEntry struct {
-	Name    string        `json:"name"`              // "gemini", "vieneu", "edge", "llama-server", "paid"
-	Enabled bool          `json:"enabled"`           // false = skipped entirely
-	APIKey  string        `json:"api_key,omitempty"` // legacy single key; used only when APIKeys is empty
+	Name    string        `json:"name"`               // "gemini", "vieneu", "edge", "llama-server", "paid"
+	Enabled bool          `json:"enabled"`            // false = skipped entirely
+	APIKey  string        `json:"api_key,omitempty"`  // legacy single key; used only when APIKeys is empty
 	APIKeys []string      `json:"api_keys,omitempty"` // multi-key rotation (round-robin + per-key cooldown)
-	Timeout time.Duration `json:"timeout"`           // per-attempt timeout; <=0 = provider default
-	Retries int           `json:"retries"`           // retries before failover (attempts = Retries+1)
+	Timeout time.Duration `json:"timeout"`            // per-attempt timeout; <=0 = provider default
+	Retries int           `json:"retries"`            // retries before failover (attempts = Retries+1)
 }
 
 // ChainConfig is the user-editable chain order. The web settings page loads
@@ -184,7 +184,9 @@ func (c *TTSChain) ValidateKey(ctx context.Context, provider string, idx int) er
 	if !ok {
 		return fmt.Errorf("unknown provider %q", provider)
 	}
-	v, ok := p.(interface{ ValidateKey(context.Context, int) error })
+	v, ok := p.(interface {
+		ValidateKey(context.Context, int) error
+	})
 	if !ok {
 		return fmt.Errorf("provider %q does not support key testing", provider)
 	}

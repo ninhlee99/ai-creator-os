@@ -11,7 +11,7 @@
 
 ## 🎯 Ba trụ
 
-| Trụ | Trạng thái code (sau Đợt G, commit `c457999`) |
+| Trụ | Trạng thái code (sau Đợt H3) |
 |---|---|
 | **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật** |
 | **2. Reup video Douyin** | ✅ Đợt D/E xong: downloader (yt-dlp do app tự quản + TikWM fallback) + dedupe 2 lớp + QC + tick 6h tìm video viral theo play_count; transform 2 mức (zoom động, tốc độ ±5%, voiceover bình luận tiếng Việt, nhạc licensed, compilation 3 clip) + kill rule 0-view (5 video liên tiếp → dừng đăng + báo động) |
@@ -26,22 +26,22 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 
 ---
 
-## 🖥️ Giao diện hiện tại (sidebar 9 mục)
+## 🖥️ Giao diện hiện tại (sidebar 10 mục)
 
 | Mục | Route | Vai trò hiện tại |
 |---|---|---|
 | Trang chủ | `/` | Thẻ số liệu, feed 8 quyết định, cảnh báo growth, trạng thái runtime local, chip MASTER_SWITCH |
-| Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth |
+| Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth, badge YouTube Analytics |
 | Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
+| Đội ngũ | `/team` | Sức khỏe 3 pipeline (Affiliate/Reup/Story) từ dữ liệu thật — đợt H2 |
 | Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video chữ động · Jobs · Nhạc trending. Phim điện ảnh đã park |
-| Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (rework Accesstrade ở đợt B/C) |
+| Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (Accesstrade-only từ đợt H1) |
 | Reup | `/reup` | Nguồn Douyin · Hàng đợi tải · Transform 2 mức · Xem trước before/after · Metrics · Kill rule 0-view |
 | Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → đăng YouTube (chờ duyệt) |
 | Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
 | Cài đặt | `/settings` | 6 trang: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
 
-`/schedule` (Lịch live) và `/team` (Agent Team bản live) đã park → **404**.
-Agent Team sẽ được định nghĩa lại quanh 3 pipeline ở đợt sau.
+`/schedule` (Lịch live) đã park → **404**.
 
 ---
 
@@ -68,28 +68,30 @@ vào app.
 
 ---
 
-## 📌 Trạng thái thật (Đợt G, commit `c457999` — đã tự review 91/100)
+## 📌 Trạng thái thật (Đợt H3 — đã tự review 92/100)
 
 | Phần | Trạng thái |
 |---|---|
-| Sidebar 9 mục, 6 tab Cài đặt, không link chết | ✅ Code chạy thật |
+| Sidebar 10 mục, 6 tab Cài đặt, không link chết | ✅ Code chạy thật |
+| Đội ngũ (`/team`): sức khỏe 3 pipeline từ dữ liệu thật | ✅ Đợt H2 |
 | Studio AI — video affiliate + video chữ động + trends | ✅ Code chạy thật |
 | Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |
 | Sổ cái, kill switch, dry-run, MASTER_SWITCH | ✅ |
 | Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ |
 | Live (stream engine, avatar, lịch live, tab Nhân vật AI) | 🅿️ **Parked** — build tag `parked`, không vào binary |
 | Phim điện ảnh (film mode, cinematic, Veo) | 🅿️ **Parked** — build tag `parked` |
-| Agent Team (`/team`) | 🅿️ Parked — sẽ định nghĩa lại quanh 3 pipeline |
+| Agent Team (`/team`) | ✅ Đợt H2 — 3 pipeline, trạng thái từ dữ liệu thật |
 | Accesstrade API (token, campaign, datafeed, đối soát) | ✅ Đợt B/C — chưa test bằng token thật |
 | Reup Douyin (download, transform, kill rule 0-view) | ✅ Đợt D/E — chưa tải video thật (cần máy Ninh có mạng) |
 | YouTube kể chuyện (truyện → ảnh → TTS → dựng → đăng private) | ✅ Đợt F — pipeline test bằng provider fake; cần key thật trên máy Ninh |
+| YouTube Analytics (views/watch hours 30 ngày) | ✅ Đợt H3 — cần token OAuth scope yt-analytics.readonly |
+| TikTok Shop | ❌ Đã loại bỏ hoàn toàn ở Đợt H1 (Accesstrade-only) |
 | 8 tick automation (growth, AT, reup ×4, story) | ✅ Đợt G — đang bật; AT "chờ key", kill rule "chờ số liệu" (trung thực trong UI) |
-| TikTok Shop API chính thức | ❌ Đã loại theo quyết định của Ninh (2026-10-01) |
+| TikTok đăng trực tiếp | ❌ Cần app audit (Ninh từ chối) — chỉ chế độ nháp |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** 524 hàm test trong 82 file (không tính vùng parked; 14 file test
-parked chạy riêng bằng `-tags parked`). Build/vet/test xanh cả 2 tag ở commit
-`c457999` — kiểm chứng lại bằng lệnh ở trên.
+**Test:** 524 hàm test trong 83 file (không tính vùng parked). Build/vet/test
+xanh cả 2 tag — kiểm chứng lại bằng lệnh ở trên.
 
 ---
 

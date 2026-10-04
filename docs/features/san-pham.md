@@ -6,10 +6,9 @@ hoa hồng cao theo theme, xếp lên "Kệ hàng" cho autopilot affiliate dùng
 chạy autopilot + nhạc nền + tự đăng.
 
 > Sidebar sau Đợt A đổi label "Sản phẩm" → **"Affiliate"**.
-> **Accesstrade chưa nối** — client API, campaign/link, datafeed hunter và đối
-> soát hoa hồng AT là Đợt B/C (xem `docs/PIVOT_REDESIGN.md`). Trang hiện tại vẫn
-> là kho sản phẩm cũ; đối soát tiền hiện vẫn đọc TikTok Shop API legacy
-> (xem `daemon-tu-dong.md` §3.4) và sẽ được thay bằng Accesstrade ở đợt C.
+> Nguồn sản phẩm duy nhất: **Accesstrade datafeed** (hunter tick hàng ngày →
+> kho). TikTok Shop đã loại bỏ hoàn toàn ở Đợt H1 (2026-10-04) — không còn
+> code, config hay document nào trỏ vào nó như nguồn đang hoạt động.
 
 ## 2. Kích hoạt
 - `GET /products` → `handleProducts` (`internal/web/products.go:69`): 2 tab

@@ -124,7 +124,7 @@ func TestATAutomationSave(t *testing.T) {
 	}
 	// Lưu + clamp.
 	rec := postForm(t, s, "/settings/accesstrade/automation", url.Values{
-		"hunter_hours":  {"48"},
+		"hunter_hours":   {"48"},
 		"ordersync_mins": {"15"},
 	})
 	if rec.Code != http.StatusSeeOther {
@@ -138,7 +138,7 @@ func TestATAutomationSave(t *testing.T) {
 	}
 	// Giá trị vô lý → clamp.
 	rec = postForm(t, s, "/settings/accesstrade/automation", url.Values{
-		"hunter_hours":  {"9999"},
+		"hunter_hours":   {"9999"},
 		"ordersync_mins": {"0"},
 	})
 	if rec.Code != http.StatusSeeOther {

@@ -35,11 +35,11 @@ const (
 
 // ReupScanResult là kết quả một pass discover + download.
 type ReupScanResult struct {
-	Found int
-	OK    int
-	Dup   int
+	Found  int
+	OK     int
+	Dup    int
 	Failed int
-	Notes []string
+	Notes  []string
 }
 
 // RunReupScan chạy 1 pass discover + download (dùng chung cho tick và nút
@@ -82,6 +82,7 @@ func (s *Service) RunReupScan(ctx context.Context) ReupScanResult {
 	}
 	return res
 }
+
 // ReupTick chạy pass discover + download đến hạn. main.go gọi mỗi 5 phút
 // (cùng vòng với ATTick).
 func (s *Service) ReupTick(ctx context.Context) []string {

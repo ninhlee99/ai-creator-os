@@ -17,7 +17,7 @@ Non-negotiable rules encoded in the system. Violating any of these is a bug.
 
 ## 2. Money integrity
 
-- Revenue/orders/commissions recorded ONLY from TikTok Shop API responses.
+- Revenue/orders/commissions recorded ONLY from real provider APIs (Accesstrade order sync). TikTok Shop was removed entirely in Đợt H1.
 - Money tables append-only. No UPDATE/DELETE on orders/commissions.
 - Idempotency keys on every external action: retries never double-post.
 - Analyst proposes; governance disposes. No agent spends beyond caps.

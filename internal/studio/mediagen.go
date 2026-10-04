@@ -45,7 +45,7 @@ type MediaGen interface {
 // ---------------------------------------------------------------------------
 
 const (
-	geminiBase      = "https://generativelanguage.googleapis.com"
+	geminiBase       = "https://generativelanguage.googleapis.com"
 	geminiImageModel = "gemini-2.0-flash-preview-image-generation"
 	geminiVeoModel   = "veo-3.0-generate-001"
 )
@@ -72,7 +72,7 @@ type GeminiMediaGen struct {
 func NewGeminiMediaGen(keys []string) *GeminiMediaGen {
 	return &GeminiMediaGen{
 		baseURL:  geminiBase,
-		client:  &http.Client{Timeout: 130 * time.Second},
+		client:   &http.Client{Timeout: 130 * time.Second},
 		keys:     append([]string{}, keys...),
 		coolDown: map[int]time.Time{},
 		backoff:  map[int]int{},
@@ -150,8 +150,8 @@ func (g *GeminiMediaGen) noteResult(idx int, err error) {
 // ---------------------------------------------------------------------------
 
 type geminiPart struct {
-	Text       string                `json:"text,omitempty"`
-	InlineData *geminiInlineData     `json:"inlineData,omitempty"`
+	Text       string            `json:"text,omitempty"`
+	InlineData *geminiInlineData `json:"inlineData,omitempty"`
 }
 
 type geminiInlineData struct {
@@ -164,8 +164,8 @@ type geminiContent struct {
 }
 
 type geminiGenRequest struct {
-	Contents         []geminiContent       `json:"contents"`
-	GenerationConfig map[string]any       `json:"generationConfig,omitempty"`
+	Contents         []geminiContent `json:"contents"`
+	GenerationConfig map[string]any  `json:"generationConfig,omitempty"`
 }
 
 type geminiGenResponse struct {
@@ -323,7 +323,7 @@ type veoInstance struct {
 }
 
 type veoPredictRequest struct {
-	Instances  []veoInstance   `json:"instances"`
+	Instances  []veoInstance  `json:"instances"`
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
@@ -439,8 +439,8 @@ func (g *GeminiMediaGen) generateVideoWithKey(ctx context.Context, key string, r
 			continue
 		}
 		var op struct {
-			Done     bool `json:"done"`
-			Error    *struct {
+			Done  bool `json:"done"`
+			Error *struct {
 				Message string `json:"message"`
 			} `json:"error,omitempty"`
 			Response *struct {
