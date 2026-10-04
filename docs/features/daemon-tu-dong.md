@@ -19,6 +19,7 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | SEO + thumbnail khi đăng truyện | trong lúc đăng | LLM viết title/desc/tags tiếng Việt (thiếu LLM → template), ảnh cảnh đầu làm thumbnail (`story_tick.go`, `publishers.VideoMeta`; đợt M1) |
 | Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
 | Tự sao lưu | **mỗi ngày** (nằm trong story tick) | `Service.BackupTick` (`backup_tick.go`; đợt M2): zip data dir vào `backups/`, giữ 7 bản mới nhất |
+| Tự chuyển public | **mỗi 5 phút** (nằm trong story tick) | `Service.StoryPublicTick` (`story_tick.go`; đợt N): video private quá `story.public_after_hours` giờ → public qua `videos.update`. Mặc định 0 = tắt |
 | Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
 | Nút "chạy ngay" trên UI | thủ công | `GrowthTick(ctx, force=true)` — vẫn bị kill + dry-run chặn |
 

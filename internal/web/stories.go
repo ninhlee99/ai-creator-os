@@ -55,9 +55,11 @@ type storiesView struct {
 	AutoOn     bool
 	TickOn     bool
 	AutofillOn bool // tự nghĩ chủ đề khi hàng đợi trống
-	TickHours  int
-	Topics     string // hàng đợi chủ đề (mỗi dòng 1 chủ đề)
-	Error      string
+	// PublicAfterH: giờ private trước khi tự chuyển public (đợt N, 0 = tắt)
+	PublicAfterH int
+	TickHours    int
+	Topics       string // hàng đợi chủ đề (mỗi dòng 1 chủ đề)
+	Error        string
 }
 
 func storyStatusVN(st string) string {
@@ -78,16 +80,17 @@ func storyStatusVN(st string) string {
 // thái trung thực thay vì sập trang.
 func (s *Server) storiesPageData() storiesView {
 	v := storiesView{
-		StudioOK:    s.Studio != nil,
-		DefGenre:    s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
-		DefWords:    s.atSettingInt(automation.KeyStoryWords, 600),
-		DefScenes:   s.atSettingInt(automation.KeyStoryScenes, 6),
-		MusicOn:     s.atSettingOn(automation.KeyStoryMusicOn, true),
-		AutoOn:      s.atSettingOn(automation.KeyStoryAutoPublish, true),
-		AutofillOn:  s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
-		TickOn:      s.atSettingOn(automation.KeyStoryEnabled, true),
-		TickHours:   s.atSettingInt(automation.KeyStoryIntervalH, 24),
-		PostAccount: s.atSettingStr(automation.KeyStoryAccount, ""),
+		StudioOK:     s.Studio != nil,
+		DefGenre:     s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
+		DefWords:     s.atSettingInt(automation.KeyStoryWords, 600),
+		DefScenes:    s.atSettingInt(automation.KeyStoryScenes, 6),
+		MusicOn:      s.atSettingOn(automation.KeyStoryMusicOn, true),
+		AutoOn:       s.atSettingOn(automation.KeyStoryAutoPublish, true),
+		AutofillOn:   s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
+		PublicAfterH: s.atSettingInt(automation.KeyStoryPublicAfterHours, 0),
+		TickOn:       s.atSettingOn(automation.KeyStoryEnabled, true),
+		TickHours:    s.atSettingInt(automation.KeyStoryIntervalH, 24),
+		PostAccount:  s.atSettingStr(automation.KeyStoryAccount, ""),
 	}
 	if s.Ledger != nil {
 		if t, ok, _ := s.Ledger.GetSetting(automation.KeyStoryTopics); ok {
@@ -294,6 +297,9 @@ func (s *Server) handleStorySettings(w http.ResponseWriter, r *http.Request) {
 	setBool(automation.KeyStoryAutoPublish, r.FormValue("auto_publish") == "1")
 	setBool(automation.KeyStoryEnabled, r.FormValue("tick_on") == "1")
 	setBool(automation.KeyStoryTopicsAutofill, r.FormValue("topics_autofill") == "1")
+	if h, err := strconv.Atoi(r.FormValue("public_after_hours")); err == nil {
+		set(automation.KeyStoryPublicAfterHours, strconv.Itoa(clamp(h, 0, 168)))
+	}
 	storiesRedirect(w, r, "Đã lưu mặc định kể chuyện.", "")
 }
 

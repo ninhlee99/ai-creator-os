@@ -113,3 +113,34 @@ func TestPublishBackwardCompatible(t *testing.T) {
 		t.Fatal("Publish cũ không gọi thumbnail")
 	}
 }
+
+func TestUpdatePrivacy(t *testing.T) {
+	p, _, _ := metaTestPublisher(t, 200)
+	// ghi đè HTTP để bắt PUT videos
+	var gotMethod, gotURL string
+	var gotBody map[string]any
+	p.HTTP = func(method, url string, headers map[string]string, body []byte) (int, map[string]string, []byte, error) {
+		if strings.Contains(url, "oauth2.googleapis.com") {
+			return 200, nil, []byte(`{"access_token":"ya29.test","expires_in":3600}`), nil
+		}
+		gotMethod, gotURL = method, url
+		_ = json.Unmarshal(body, &gotBody)
+		return 200, nil, []byte(`{}`), nil
+	}
+	if err := p.UpdatePrivacy("vidABC", "public"); err != nil {
+		t.Fatalf("UpdatePrivacy: %v", err)
+	}
+	if gotMethod != "PUT" || !strings.Contains(gotURL, "youtube/v3/videos") {
+		t.Fatalf("method=%q url=%q", gotMethod, gotURL)
+	}
+	if gotBody["id"] != "vidABC" {
+		t.Fatalf("body id = %v", gotBody["id"])
+	}
+	status := gotBody["status"].(map[string]any)
+	if status["privacyStatus"] != "public" {
+		t.Fatalf("privacyStatus = %v", status["privacyStatus"])
+	}
+	if err := p.UpdatePrivacy("vidABC", "bogus"); err == nil {
+		t.Fatal("privacy không hợp lệ phải trả lỗi")
+	}
+}
