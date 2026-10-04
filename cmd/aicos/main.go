@@ -720,6 +720,10 @@ func main() {
 					for _, note := range auto.StoryPublicTick(ctx) {
 						log.Printf("story: %s", note)
 					}
+					// Đợt O2: gửi alert mới qua Telegram (nếu Ninh đã bật).
+					for _, note := range auto.NotifyTick(ctx) {
+						log.Printf("notify: %s", note)
+					}
 				}
 			}
 		}()

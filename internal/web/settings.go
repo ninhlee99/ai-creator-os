@@ -15,6 +15,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
+	"github.com/ninhlee99/ai-creator-os/internal/notify"
 )
 
 type envRow struct {
@@ -246,6 +247,13 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"DiskUsage": s.diskUsageView(),
 		// Đợt M2: lần sao lưu tự động gần nhất.
 		"BackupLastOK": automation.BackupLastOK(s.settings()),
+		// Đợt O2: cấu hình Telegram (token không bao giờ hiện lại ra UI).
+		"NotifyOn":   s.atSettingOn(automation.KeyNotifyTelegramOn, false),
+		"NotifyChat": s.atSettingStr(automation.KeyNotifyTelegramChat, ""),
+		"NotifyHasBot": func() bool {
+			v, ok, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
+			return ok && strings.TrimSpace(v) != ""
+		}(),
 	}
 }
 
@@ -298,7 +306,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
-		"BackupLastOK")
+		"BackupLastOK", "NotifyOn", "NotifyChat", "NotifyHasBot")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
@@ -494,3 +502,34 @@ var envNames = []string{"TTS_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY"}
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
+
+// ------------------------------------------------------- notify (Đợt O2)
+
+// handleNotifySave lưu cấu hình Telegram (bot token, chat ID, bật/tắt).
+func (s *Server) handleNotifySave(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse notify form")
+		return
+	}
+	set := func(k, v string) {
+		_ = s.Ledger.SetSetting(k, v)
+	}
+	set(automation.KeyNotifyTelegramOn, map[bool]string{true: "1", false: "0"}[r.PostFormValue("notify_on") == "1"])
+	if bot := strings.TrimSpace(r.PostFormValue("notify_bot")); bot != "" {
+		set(automation.KeyNotifyTelegramBot, bot) // chỉ ghi đè khi nhập mới
+	}
+	set(automation.KeyNotifyTelegramChat, strings.TrimSpace(r.PostFormValue("notify_chat")))
+	_ = s.Ledger.Decide("human", "notify_save", nil, "Đã lưu cấu hình thông báo Telegram.", map[string]any{})
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã lưu cấu hình Telegram."))
+}
+
+// handleNotifyTest gửi tin nhắn thử qua Telegram với cấu hình hiện tại.
+func (s *Server) handleNotifyTest(w http.ResponseWriter, r *http.Request) {
+	bot, _, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
+	chat, _, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramChat)
+	if err := notify.SendTelegram(bot, chat, "✅ AI Creator OS đã nối Telegram. Từ giờ cảnh báo sẽ gửi về đây."); err != nil {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Gửi thử thất bại: "+err.Error()))
+		return
+	}
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã gửi tin nhắn thử — kiểm tra Telegram."))
+}
