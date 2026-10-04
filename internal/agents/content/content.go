@@ -5,10 +5,11 @@
 // Content factory: short videos + AI short films, multi-platform.
 //
 // Per account, per persona:
-//   storyteller -> short_film (AI illustrated films) + short_video (affiliate)
-//   teacher      -> short_video (lessons)
-//   gamer/coder  -> short_video (highlights/tips)
-//   musician     -> ai_music / ai_remix (phase 3)
+//
+//	storyteller -> short_film (AI illustrated films) + short_video (affiliate)
+//	teacher      -> short_video (lessons)
+//	gamer/coder  -> short_video (highlights/tips)
+//	musician     -> ai_music / ai_remix (phase 3)
 //
 // Every rendered video is published through all configured publishers for
 // the account (TikTok, Facebook Page, YouTube). YouTube additionally
