@@ -135,6 +135,8 @@ func (s *Server) automation() *automation.Service {
 			dataDir = "."
 		}
 		svc.ATWorkDir = filepath.Join(dataDir, "at-hunter")
+		// Disk guard (Đợt L): đo % đĩa đã dùng tại thư mục dữ liệu.
+		svc.DataDir = dataDir
 		// Nhạc nền cho video hunter: dùng chung file nhạc autopilot
 		// Ninh đã upload ("" = video câm, job log ghi rõ).
 		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {

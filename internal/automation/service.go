@@ -133,6 +133,9 @@ type Service struct {
 	ATMusicPath string
 	// ATWorkDir thư mục tải ảnh sản phẩm cho video hunter.
 	ATWorkDir string
+	// DataDir thư mục dữ liệu app — disk guard (Đợt L) đo % đĩa đã dùng
+	// tại đây để tự dọn khi đầy.
+	DataDir string
 	// ATBaseURL override API base URL (test hook; "" = production).
 	ATBaseURL string
 

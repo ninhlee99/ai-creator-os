@@ -15,7 +15,8 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | Reup transform | **mỗi 5 phút**, đến hạn **15′** (≤2 bài/lượt) | `Service.ReupTransformTick` (`reup_transform.go`; đợt E) |
 | Reup post | **mỗi 5 phút**, đến hạn **2 giờ** (giới hạn/ngày + warm-up) | `Service.ReupPostTick` (`reup_transform.go`; đợt E) |
 | Reup kill rule 0-view | **mỗi 5 phút**, đến hạn **1 giờ** | `Service.ReupKillTick` (`reup_transform.go`; đợt E) |
-| Kể chuyện | **mỗi 5 phút**, đến hạn **24 giờ** (mặc định chờ Ninh duyệt mới đăng) | `Service.StoryTick` (`story_tick.go`; đợt F) |
+| Kể chuyện | **mỗi 5 phút**, đến hạn **24 giờ** (tự đăng private-first; tắt `story.auto_publish` để duyệt tay) | `Service.StoryTick` (`story_tick.go`; đợt F, K) |
+| Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
 | Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
 | Nút "chạy ngay" trên UI | thủ công | `GrowthTick(ctx, force=true)` — vẫn bị kill + dry-run chặn |
 

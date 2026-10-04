@@ -242,7 +242,25 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"AICapabilities": s.aiCapabilityViews(),
 		"RestorePending": backup.PendingRestore(s.DataDir),
 		"DataDir":        s.DataDir,
+		// Đợt L: % đĩa đã dùng cho thẻ Hệ thống (disk guard tự dọn khi đầy).
+		"DiskUsage": s.diskUsageView(),
 	}
+}
+
+// diskUsageView trả về % đĩa đã dùng tại DataDir cho thẻ Hệ thống.
+func (s *Server) diskUsageView() map[string]any {
+	pct, err := automation.DiskUsagePct(s.DataDir)
+	if err != nil || s.DataDir == "" {
+		return map[string]any{"Pct": -1, "Badge": "badge-draft"}
+	}
+	badge := "badge-ok"
+	switch {
+	case pct >= 90:
+		badge = "badge-no"
+	case pct >= 75:
+		badge = "badge-warn"
+	}
+	return map[string]any{"Pct": pct, "Badge": badge}
 }
 
 // apiBudgetFrom reports where the API budget value comes from (honest
@@ -277,7 +295,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",
 		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
-		"APIEnabled", "Version", "RestorePending", "DataDir")
+		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
