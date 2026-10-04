@@ -22,6 +22,10 @@
     <div class="num"><code>{{.Version}}</code></div>
     <div class="label">Phiên bản app</div>
   </div>
+  <div class="card" title="Đầy quá 85% hệ thống tự dọn file tạm job lỗi + video đã đăng cũ">
+    <div class="num">{{if ge .DiskUsage.Pct 0}}<span class="badge {{.DiskUsage.Badge}}">{{.DiskUsage.Pct}}%</span>{{else}}<span class="badge badge-draft">không rõ</span>{{end}}</div>
+    <div class="label">Đĩa dữ liệu đã dùng</div>
+  </div>
   <div class="card">
     <div class="num">{{fmtUSD .Spend}}</div>
     <div class="label">Chi phí API hôm nay</div>

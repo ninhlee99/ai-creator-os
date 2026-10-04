@@ -691,9 +691,10 @@ func main() {
 
 	// -- 7e. story automation: kể chuyện ngôi thứ nhất (Đợt F) --------------
 	// Zero-touch: đến hạn (24h/lần) lấy chủ đề từ hàng đợi → tạo job kể
-	// chuyện (truyện → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC. Mặc định
-	// CHỜ Ninh duyệt rồi bấm Đăng; bật story.auto_publish mới tự đăng
-	// private. Kill switch + DRY-RUN chặn tick.
+	// chuyện (truyện → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC →
+	// tự đăng private-first (story.auto_publish mặc định BẬT từ Đợt K;
+	// tắt trong /stories để duyệt tay). Tự chữa lành (Đợt L): quét job
+	// treo + canh đĩa 1 giờ/lần. Kill switch + DRY-RUN chặn tick.
 	if srv.Studio != nil {
 		go func() {
 			tick := time.NewTicker(5 * time.Minute)
@@ -707,10 +708,14 @@ func main() {
 					for _, note := range auto.StoryTick(ctx) {
 						log.Printf("story: %s", note)
 					}
+					// Đợt L: tự chữa lành (job treo + canh đĩa), 1 giờ/lần.
+					for _, note := range auto.SelfHealTick(ctx) {
+						log.Printf("selfheal: %s", note)
+					}
 				}
 			}
 		}()
-		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, chờ duyệt mới đăng)")
+		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, tự đăng private-first, self-heal 1 giờ/lần)")
 	}
 
 	// -- 8. http server + graceful shutdown ----------------------------------
