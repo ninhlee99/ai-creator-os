@@ -63,6 +63,7 @@
 <h2>Sao lưu &amp; khôi phục</h2>
 <p class="subtitle">Ảnh chụp thư mục dữ liệu (3 database + file job + token). Khôi phục cần khởi động lại app.</p>
 {{if .RestorePending}}<p class="notice">Có bản khôi phục đang chờ — khởi động lại app để áp dụng.</p>{{end}}
+<p class="hint">Tự động sao lưu mỗi ngày, giữ 7 bản mới nhất trong thư mục dữ liệu/backups/{{if .BackupLastOK}} · Bản gần nhất: <code>{{.BackupLastOK}}</code>{{else}} · <span class="badge badge-draft">chưa có bản tự động</span>{{end}}</p>
 <div class="cards">
   <div class="card">
     <div class="label">Tạo bản sao lưu</div>

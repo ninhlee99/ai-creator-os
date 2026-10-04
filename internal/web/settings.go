@@ -244,6 +244,8 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"DataDir":        s.DataDir,
 		// Đợt L: % đĩa đã dùng cho thẻ Hệ thống (disk guard tự dọn khi đầy).
 		"DiskUsage": s.diskUsageView(),
+		// Đợt M2: lần sao lưu tự động gần nhất.
+		"BackupLastOK": automation.BackupLastOK(s.settings()),
 	}
 }
 
@@ -295,7 +297,8 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",
 		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
-		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage")
+		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
+		"BackupLastOK")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
