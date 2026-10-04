@@ -23,8 +23,9 @@ func TestSettingsTemplateRenders(t *testing.T) {
 			t.Fatalf("GET %s = %d", path, rec.Code)
 		}
 	}
-	// Parked routes must 404, not 500.
-	for _, path := range []string{"/settings/nhan-vat", "/team", "/schedule"} {
+	// Parked routes must 404, not 500. Đợt H2: /team đã định nghĩa lại
+	// quanh 3 pipeline (không còn park) nên ra khỏi danh sách này.
+	for _, path := range []string{"/settings/nhan-vat", "/schedule"} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
 		s.Routes().ServeHTTP(rec, req)
@@ -52,12 +53,16 @@ func TestSettingsTemplateRenders(t *testing.T) {
 			t.Errorf("model-local page still has avatar remnant %q", gone)
 		}
 	}
-	// Sidebar: no live schedule, no agent team; relabeled sections.
+	// Sidebar: no live schedule; /team đã định nghĩa lại ở Đợt H2
+	// (Đội ngũ — 3 pipeline) nên được phép xuất hiện.
 	body = get(t, s, "/").Body.String()
-	for _, gone := range []string{"/schedule", "/team", "Lịch live", "Agent Team"} {
+	for _, gone := range []string{"/schedule", "Lịch live", "Agent Team"} {
 		if strings.Contains(body, gone) {
 			t.Errorf("sidebar still references %q", gone)
 		}
+	}
+	if !strings.Contains(body, "/team") {
+		t.Error("sidebar missing /team (Đội ngũ — 3 pipeline, Đợt H2)")
 	}
 	for _, want := range []string{">Kênh<", ">Affiliate<"} {
 		if !strings.Contains(body, want) {

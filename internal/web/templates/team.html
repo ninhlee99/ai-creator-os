@@ -1,0 +1,21 @@
+{{define "title"}}Đội ngũ — AI Creator OS{{end}}
+{{define "content"}}
+<h1>Đội ngũ</h1>
+<p class="subtitle">Sức khỏe 3 pipeline, suy ra từ dữ liệu thật (job, kho, tick) — không phải agent đang chạy.</p>
+
+{{range .Pipelines}}
+<div class="card">
+  <h2>{{.Icon}} Team {{.Name}}</h2>
+  <div class="team-stages">
+    {{range $i, $st := .Stages}}
+    {{if $i}}<span class="team-arrow">→</span>{{end}}
+    <div class="team-stage team-{{$st.Status}}" title="{{$st.Detail}}">
+      <span class="team-icon">{{$st.Icon}}</span>
+      <span class="team-label">{{$st.Label}}</span>
+      <span class="team-detail">{{$st.Detail}}</span>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{end}}
