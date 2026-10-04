@@ -227,6 +227,52 @@ func TestReupKillTickTriggers(t *testing.T) {
 	}
 }
 
+// TestReupKillTickPerSource: nguồn 5 bài 0-view liên tiếp → tự tắt;
+// nguồn có view vẫn sống; kill toàn cục không kích hoạt oan.
+func TestReupKillTickPerSource(t *testing.T) {
+	ctx := context.Background()
+	svc, rs, gs := newE2EHarness(t, mapSettings{})
+	srcA, _ := rs.AddSource("user", "chet", "Nguồn Chết")
+	srcB, _ := rs.AddSource("user", "song", "Nguồn Sống")
+	// Nguồn A: 5 bài 0-view liên tiếp → bị tắt.
+	for i := 0; i < 5; i++ {
+		v, _ := rs.QueueVideo(reup.Video{SourceID: srcA.ID, DouyinID: fmt.Sprintf("a%d", i), URL: "https://x/a", Status: reup.StatusDownloaded})
+		p, _ := rs.CreatePost([]int64{v.ID}, reup.Level1)
+		_ = rs.SetPostTransformed(p.ID, "/tmp/x.mp4")
+		_ = rs.MarkPostPosted(p.ID, "youtube", fmt.Sprintf("yta%d", i), "")
+		_ = rs.SetPostMetrics(p.ID, 0)
+	}
+	// Nguồn B: 2 bài có view → sống.
+	for i := 0; i < 2; i++ {
+		v, _ := rs.QueueVideo(reup.Video{SourceID: srcB.ID, DouyinID: fmt.Sprintf("b%d", i), URL: "https://x/b", Status: reup.StatusDownloaded})
+		p, _ := rs.CreatePost([]int64{v.ID}, reup.Level1)
+		_ = rs.SetPostTransformed(p.ID, "/tmp/x.mp4")
+		_ = rs.MarkPostPosted(p.ID, "youtube", fmt.Sprintf("ytb%d", i), "")
+		_ = rs.SetPostMetrics(p.ID, 100)
+	}
+	notes := svc.ReupKillTick(ctx)
+	t.Logf("notes: %v", notes)
+	srcs, _ := rs.ListSources()
+	for _, sc := range srcs {
+		if sc.ID == srcA.ID && sc.Enabled {
+			t.Errorf("nguồn 5 bài 0-view phải bị tắt tự động")
+		}
+		if sc.ID == srcB.ID && !sc.Enabled {
+			t.Errorf("nguồn có view không được tắt")
+		}
+	}
+	alerts, _ := gs.ListAlerts(0, 10)
+	found := false
+	for _, a := range alerts {
+		if a.Kind == "reup_kill_source" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("phải có alert reup_kill_source, notes=%v", notes)
+	}
+}
+
 func TestReupPostTickNoAccount(t *testing.T) {
 	ctx := context.Background()
 	svc, rs, _ := newE2EHarness(t, mapSettings{})
