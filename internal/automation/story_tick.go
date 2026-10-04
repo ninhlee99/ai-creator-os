@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,7 +46,12 @@ const (
 	KeyStoryPublishedPrefix = "story.published."
 	KeyStoryTopicsAutofill  = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định bật)
 	KeyStoryTopicsAutofillN = "story.topics_autofill_n" // số chủ đề mỗi lần refill (mặc định 10)
-	defaultStoryIntervalH   = 24
+	// KeyStoryPublicAfterHours: số giờ private trước khi tự chuyển public
+	// (đợt N). 0 = tắt (mặc định: giữ private để Ninh duyệt tay).
+	KeyStoryPublicAfterHours = "story.public_after_hours"
+	// KeyStoryPendingPublic: JSON map jobID -> "ISOTime|videoID" chờ chuyển public.
+	KeyStoryPendingPublic = "story.pending_public"
+	defaultStoryIntervalH = 24
 )
 
 // StoryRunner tạo và tra cứu job kể chuyện. *studio.Studio thỏa mãn.
@@ -267,12 +273,123 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	s.Story.AppendLog(jobID, logLine)
 	if s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
+		// Đợt N: hẹn giờ chuyển public (nếu bật). Không có videoID thì bỏ qua.
+		s.enqueuePublic(jobID, res.RemoteID)
 	}
 	note := fmt.Sprintf("story %q: đã đăng YouTube (private)", j.Title)
 	if res.URL != "" {
 		note += " (" + res.URL + ")"
 	}
+	if h := atInt(s.Settings, KeyStoryPublicAfterHours, 0); h > 0 && res.RemoteID != "" {
+		note += fmt.Sprintf(" — tự chuyển công khai sau %d giờ", h)
+	}
 	return note, true
+}
+
+// enqueuePublic thêm video vào hàng chờ chuyển public (đợt N).
+// Chỉ hẹn khi Ninh đã bật story.public_after_hours > 0.
+func (s *Service) enqueuePublic(jobID, videoID string) {
+	if s.Settings == nil || videoID == "" {
+		return
+	}
+	if atInt(s.Settings, KeyStoryPublicAfterHours, 0) <= 0 {
+		return
+	}
+	pending := s.pendingPublic()
+	pending[jobID] = time.Now().Format("2006-01-02T15:04:05") + "|" + videoID
+	s.savePendingPublic(pending)
+}
+
+// pendingPublic đọc hàng chờ chuyển public (map rỗng khi chưa có/lỗi).
+func (s *Service) pendingPublic() map[string]string {
+	out := map[string]string{}
+	if s.Settings == nil {
+		return out
+	}
+	raw, ok := s.Settings.Get(KeyStoryPendingPublic)
+	if !ok || raw == "" {
+		return out
+	}
+	_ = json.Unmarshal([]byte(raw), &out)
+	return out
+}
+
+func (s *Service) savePendingPublic(m map[string]string) {
+	if s.Settings == nil {
+		return
+	}
+	raw, _ := json.Marshal(m)
+	_ = s.Settings.Set(KeyStoryPendingPublic, string(raw))
+}
+
+// PrivacyUpdater: uploader đổi được quyền riêng tư video (soft-assert).
+type PrivacyUpdater interface {
+	UpdatePrivacy(ctx context.Context, a *network.Account, videoID, privacy string) error
+}
+
+// StoryPublicTick chuyển public các video private đã quá thời gian chờ
+// (đợt N). 0 giờ = tắt. Tôn trọng kill switch + dry-run.
+func (s *Service) StoryPublicTick(ctx context.Context) []string {
+	if s.killed() || s.dryRun() {
+		return nil
+	}
+	hours := atInt(s.Settings, KeyStoryPublicAfterHours, 0)
+	if hours <= 0 || s.Settings == nil {
+		return nil
+	}
+	pending := s.pendingPublic()
+	if len(pending) == 0 {
+		return nil
+	}
+	account := atStr(s.Settings, KeyStoryAccount, "")
+	if account == "" || s.Accounts == nil || s.Uploader == nil {
+		return nil
+	}
+	var acct *network.Account
+	if accts, err := s.Accounts.List(); err == nil {
+		for _, a := range accts {
+			if a.Username == account {
+				acct = a
+				break
+			}
+		}
+	}
+	if acct == nil {
+		return []string{fmt.Sprintf("story: không tìm thấy kênh %q để chuyển public", account)}
+	}
+	pu, ok := s.Uploader.(PrivacyUpdater)
+	if !ok || pu == nil {
+		return []string{"story: uploader không hỗ trợ đổi quyền riêng tư"}
+	}
+	// So sánh chuỗi theo format "2006-01-02T15:04:05" (cùng cách ghi khi
+	// enqueue bằng time.Now().Format) — tránh bẫy timezone của time.Parse
+	// (parse ra UTC trong khi Now() là giờ local).
+	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour).Format("2006-01-02T15:04:05")
+	var notes []string
+	changed := false
+	for jobID, val := range pending {
+		ts, vid, _ := strings.Cut(val, "|")
+		if vid == "" || ts == "" || ts >= cutoff {
+			continue // chưa tới giờ → giữ lại
+		}
+		if _, err := time.ParseInLocation("2006-01-02T15:04:05", ts, time.Local); err != nil {
+			continue // dữ liệu hỏng → giữ lại, không crash tick
+		}
+		if err := pu.UpdatePrivacy(ctx, acct, vid, "public"); err != nil {
+			notes = append(notes, fmt.Sprintf("story %s: chuyển public thất bại — %v (thử lại vòng sau)", jobID, err))
+			continue
+		}
+		delete(pending, jobID)
+		changed = true
+		if s.Story != nil {
+			s.Story.AppendLog(jobID, "Tự chuyển công khai sau "+strconv.Itoa(hours)+" giờ (đợt N)")
+		}
+		notes = append(notes, fmt.Sprintf("story %s: đã tự chuyển công khai", jobID))
+	}
+	if changed {
+		s.savePendingPublic(pending)
+	}
+	return notes
 }
 
 // atStr đọc setting chuỗi (def khi chưa có).

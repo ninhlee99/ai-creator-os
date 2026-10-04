@@ -133,6 +133,10 @@
     <div class="field">
       <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng private sau khi QC (mặc định: bật — tắt nếu muốn duyệt tay)</label>
     </div>
+    <div class="field">
+      <label>Tự chuyển công khai sau (giờ) — 0 = tắt, giữ private để duyệt tay</label>
+      <input type="number" name="public_after_hours" min="0" max="168" value="{{.Stories.PublicAfterH}}" style="width:5em">
+    </div>
     <button type="submit" class="btn btn-secondary">Lưu</button>
   </form>
 </div>

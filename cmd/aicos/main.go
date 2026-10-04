@@ -716,6 +716,10 @@ func main() {
 					for _, note := range auto.BackupTick(ctx) {
 						log.Printf("backup: %s", note)
 					}
+					// Đợt N: tự chuyển public video private quá thời gian chờ.
+					for _, note := range auto.StoryPublicTick(ctx) {
+						log.Printf("story: %s", note)
+					}
 				}
 			}
 		}()

@@ -99,6 +99,12 @@ func (u youtubeGrowthUploader) UploadMeta(ctx context.Context, a *network.Accoun
 	return pub.PublishMeta(ctx, videoPath, meta, kind)
 }
 
+// UpdatePrivacy (Đợt N): đổi quyền riêng tư video (private → public).
+func (u youtubeGrowthUploader) UpdatePrivacy(ctx context.Context, a *network.Account, videoID, privacy string) error {
+	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
+	return pub.UpdatePrivacy(videoID, privacy)
+}
+
 func (s *Server) producer() automation.Producer {
 	if s.GrowthProducer != nil {
 		return s.GrowthProducer
