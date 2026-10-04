@@ -5,6 +5,8 @@ package automation
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -122,6 +124,74 @@ func TestStoryTickDefaultOnWhenUnset(t *testing.T) {
 	svc.StoryTick(context.Background())
 	if len(r.params) != 1 {
 		t.Fatal("công tắc unset phải = BẬT (tiền lệ zero-touch Đợt 3)")
+	}
+}
+
+// fakeTopicRunner = fakeStoryRunner + tự nghĩ chủ đề (test autofill Đợt K).
+type fakeTopicRunner struct {
+	fakeStoryRunner
+	topics []string
+	genErr error
+}
+
+func (f *fakeTopicRunner) GenerateTopics(ctx context.Context, genre string, n int) ([]string, error) {
+	if f.genErr != nil {
+		return nil, f.genErr
+	}
+	return f.topics, nil
+}
+
+func TestStoryTickAutofillsTopics(t *testing.T) {
+	l, _ := openTestLedger(t)
+	svc := NewService()
+	svc.Settings = LedgerSettings{L: l}
+	svc.Gate = &fakeGate{}
+	r := &fakeTopicRunner{topics: []string{"chủ đề A", "chủ đề B"}}
+	svc.Story = r
+	notes := svc.StoryTick(context.Background())
+	if len(r.params) != 1 || r.params[0].Topic != "chủ đề A" {
+		t.Fatalf("phải tự refill rồi tạo job với chủ đề đầu, params=%+v notes=%v", r.params, notes)
+	}
+	rest, _ := svc.Settings.Get(KeyStoryTopics)
+	if !contains(rest, "chủ đề B") {
+		t.Errorf("chủ đề B phải còn trong hàng đợi: %q", rest)
+	}
+}
+
+func TestStoryTickAutofillHonestOnError(t *testing.T) {
+	l, _ := openTestLedger(t)
+	svc := NewService()
+	svc.Settings = LedgerSettings{L: l}
+	svc.Gate = &fakeGate{}
+	r := &fakeTopicRunner{genErr: fmt.Errorf("hết quota")}
+	svc.Story = r
+	notes := svc.StoryTick(context.Background())
+	if len(r.params) != 0 {
+		t.Fatalf("refill lỗi không được tạo job")
+	}
+	found := false
+	for _, n := range notes {
+		if strings.Contains(n, "tự refill lỗi") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("phải note trung thực khi refill lỗi: %v", notes)
+	}
+}
+
+func TestStoryAutoPublishDefaultOn(t *testing.T) {
+	svc, _ := storyTestService(t)
+	// Đợt K: mặc định BẬT (private-first). Chưa chọn kênh → note rõ.
+	notes := svc.storyAutoPublish(context.Background())
+	found := false
+	for _, n := range notes {
+		if contains(n, "auto_publish bật nhưng chưa chọn kênh") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("mặc định phải bật auto_publish: %v", notes)
 	}
 }
 

@@ -15,7 +15,7 @@
 |---|---|
 | **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật**. Lưu ý: link chỉ ra tiền khi có người mua — cần traffic từ kênh; TikTok hiện chỉ đăng bản nháp (bấm Đăng tay từng video) |
 | **2. Reup video Douyin** | ✅ Đợt D/E xong + **Đợt J nâng cấp**: discover chấm điểm engagement (play × tỷ lệ like) + lọc độ dài; transform 4 hướng Ken Burns + caption có style; voiceover văn nói có móc tò mò (3 template xoay); kill rule theo nguồn (tự tắt nguồn chết, nguồn khác vẫn chạy). Downloader (yt-dlp + TikWM fallback **chỉ link có watermark** — giữ attribution tác giả) + dedupe 2 lớp + QC + tick 6h + kill rule 0-view toàn cục |
-| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 + subtitle → QC → đăng private-first, mặc định chờ Ninh duyệt + tick 24h lấy chủ đề từ hàng đợi |
+| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 + subtitle → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
 
 Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
@@ -45,7 +45,7 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 | Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video chữ động · Jobs · Nhạc trending. Phim điện ảnh đã park |
 | Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (Accesstrade-only từ đợt H1) |
 | Reup | `/reup` | Nguồn Douyin · Hàng đợi tải · Transform 2 mức · Xem trước before/after · Metrics · Kill rule 0-view |
-| Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → đăng YouTube (chờ duyệt) |
+| Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → tự đăng YouTube private (mặc định bật) |
 | Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
 | Cài đặt | `/settings` | 6 trang: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
 
