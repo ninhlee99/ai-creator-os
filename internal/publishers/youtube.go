@@ -212,6 +212,20 @@ func YouTubeAccessToken(username string) (string, error) {
 // Publish uploads the video via resumable upload. Expected API failures
 // come back as PublishResult{Ok:false}.
 func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, description, kind string) PublishResult {
+	return p.PublishMeta(ctx, videoPath, VideoMeta{Title: title, Description: description}, kind)
+}
+
+// VideoMeta là metadata đầy đủ cho 1 video (Đợt M1): tags + thumbnail.
+// Publish giữ chữ ký cũ để tương thích, PublishMeta là đường đầy đủ.
+type VideoMeta struct {
+	Title         string
+	Description   string
+	Tags          []string
+	ThumbnailPath string // "" = không đặt thumbnail tùy chỉnh
+}
+
+// PublishMeta đăng video kèm tags + thumbnail tùy chỉnh (nếu có).
+func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, meta VideoMeta, kind string) PublishResult {
 	if !p.IsConfigured() {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: "youtube not configured"}
 	}
@@ -228,6 +242,7 @@ func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, descri
 	if err != nil {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300)}
 	}
+	title := meta.Title
 	if title == "" {
 		title = "AI video"
 	}
@@ -242,13 +257,25 @@ func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, descri
 	if p.Synthetic {
 		statusObj["containsSyntheticMedia"] = true
 	}
-	meta, _ := json.Marshal(map[string]any{
-		"snippet": map[string]any{
-			"title":       truncate(title, 100),
-			"description": truncate(description, 5000),
-			"categoryId":  category,
-		},
-		"status": statusObj,
+	snippet := map[string]any{
+		"title":       truncate(title, 100),
+		"description": truncate(meta.Description, 5000),
+		"categoryId":  category,
+	}
+	if len(meta.Tags) > 0 {
+		tags := make([]string, 0, len(meta.Tags))
+		for _, t := range meta.Tags {
+			if t = truncate(t, 60); t != "" {
+				tags = append(tags, t)
+			}
+		}
+		if len(tags) > 0 {
+			snippet["tags"] = tags
+		}
+	}
+	metaJSON, _ := json.Marshal(map[string]any{
+		"snippet": snippet,
+		"status":  statusObj,
 	})
 	status, headers, raw, err := p.http()("POST", youtubeUploadURL,
 		map[string]string{
@@ -256,7 +283,7 @@ func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, descri
 			"Content-Type":            "application/json; charset=UTF-8",
 			"X-Upload-Content-Length": fmt.Sprintf("%d", size),
 			"X-Upload-Content-Type":   "video/mp4",
-		}, meta)
+		}, metaJSON)
 	if err != nil {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300)}
 	}
@@ -295,6 +322,55 @@ func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, descri
 	if vid != "" {
 		videoURL = "https://youtu.be/" + vid
 	}
-	return PublishResult{Ok: true, Platform: p.Name(), RemoteID: vid,
+	res := PublishResult{Ok: true, Platform: p.Name(), RemoteID: vid,
 		URL: videoURL, Draft: p.privacy != "public"}
+	// Thumbnail là phần tăng thêm: thất bại thì video vẫn đã đăng,
+	// ghi rõ để automation log trung thực.
+	if vid != "" && meta.ThumbnailPath != "" {
+		if err := p.setThumbnail(vid, meta.ThumbnailPath); err != nil {
+			res.ThumbnailError = truncate(err.Error(), 200)
+		} else {
+			res.ThumbnailSet = true
+		}
+	}
+	return res
+}
+
+// youtubeThumbnailSetURL đặt thumbnail tùy chỉnh cho video.
+const youtubeThumbnailSetURL = "https://www.googleapis.com/upload/youtube/v3/thumbnails/set"
+
+// setThumbnail tải ảnh lên làm thumbnail YouTube (yêu cầu kênh đã xác minh;
+// chưa xác minh → API trả 403, caller ghi log rõ).
+func (p *YouTubePublisher) setThumbnail(videoID, imagePath string) error {
+	img, err := os.ReadFile(imagePath)
+	if err != nil {
+		return fmt.Errorf("đọc ảnh thumbnail: %w", err)
+	}
+	if len(img) > 2*1024*1024 {
+		return fmt.Errorf("ảnh thumbnail quá 2MB (YouTube giới hạn)")
+	}
+	mime := "image/jpeg"
+	switch {
+	case len(img) > 3 && img[0] == 0x89 && img[1] == 0x50:
+		mime = "image/png"
+	case len(img) > 3 && img[0] == 0x47 && img[1] == 0x49:
+		mime = "image/gif"
+	}
+	token, err := p.accessToken()
+	if err != nil {
+		return err
+	}
+	u := youtubeThumbnailSetURL + "?videoId=" + url.QueryEscape(videoID)
+	status, _, raw, err := p.http()("POST", u,
+		map[string]string{
+			"Authorization": "Bearer " + token,
+			"Content-Type":  mime,
+		}, img)
+	if err != nil {
+		return err
+	}
+	if status != 200 {
+		return fmt.Errorf("đặt thumbnail: HTTP %d %.200s", status, raw)
+	}
+	return nil
 }

@@ -2,13 +2,16 @@ package automation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -239,18 +242,29 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if s.Uploader == nil {
 		return "story: chưa nối YouTube uploader", false
 	}
-	title := j.Title
-	if title == "" {
-		title = "Kể chuyện"
+	// Đợt M1: SEO + thumbnail tự động. LLM viết title/desc/tags tiếng Việt;
+	// thiếu LLM thì dùng template trung thực. Thumbnail = ảnh cảnh đầu tiên.
+	vmeta := s.storySEOMeta(ctx, j)
+	vmeta.ThumbnailPath = s.storyThumbnailPath(j.ID)
+	var res publishers.PublishResult
+	if mu, ok := s.Uploader.(MetaUploader); ok && mu != nil {
+		res = mu.UploadMeta(ctx, acct, j.Output, vmeta, "short_film")
+	} else {
+		res = s.Uploader.Upload(ctx, acct, j.Output, vmeta.Title, vmeta.Description, "short_film")
 	}
-	desc := title + "\n\n" + growth.DisclosureLine
-	// "short_film" = Entertainment (24) — kind gần nhất cho truyện dài 16:9.
-	res := s.Uploader.Upload(ctx, acct, j.Output, title, desc, "short_film")
 	if !res.Ok {
 		s.Story.AppendLog(jobID, "Đăng YouTube thất bại: "+res.Error)
 		return fmt.Sprintf("story %q: đăng thất bại — %s", j.Title, res.Error), false
 	}
-	s.Story.AppendLog(jobID, "Đã đăng YouTube (private): "+res.RemoteID)
+	logLine := "Đã đăng YouTube (private): " + res.RemoteID
+	if vmeta.ThumbnailPath != "" {
+		if res.ThumbnailSet {
+			logLine += " + thumbnail"
+		} else if res.ThumbnailError != "" {
+			logLine += " (thumbnail lỗi: " + res.ThumbnailError + ")"
+		}
+	}
+	s.Story.AppendLog(jobID, logLine)
 	if s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
 	}
@@ -270,4 +284,68 @@ func atStr(st Settings, key, def string) string {
 		return strings.TrimSpace(v)
 	}
 	return def
+}
+
+// ---------------------------------------------------------------------------
+// Đợt M1: SEO + thumbnail tự động khi đăng story.
+
+// seoGenerator: Studio viết metadata YouTube bằng LLM (soft-assert).
+type seoGenerator interface {
+	GenerateSEOMeta(ctx context.Context, topic, genre, fallbackTitle string) (studio.SEOMeta, error)
+}
+
+// assetLister: Studio liệt kê asset của job (soft-assert).
+type assetLister interface {
+	ListAssets(jobID string) []studio.Asset
+}
+
+// MetaUploader: uploader hỗ trợ metadata đầy đủ (tags + thumbnail).
+// Không bắt buộc — uploader cũ vẫn chạy qua Upload thường.
+type MetaUploader interface {
+	UploadMeta(ctx context.Context, a *network.Account, videoPath string, meta publishers.VideoMeta, kind string) publishers.PublishResult
+}
+
+// storySEOMeta dựng metadata đăng YouTube: LLM viết, lỗi/thiếu LLM thì
+// dùng template trung thực (không bịa "tối ưu").
+func (s *Service) storySEOMeta(ctx context.Context, j studio.Job) publishers.VideoMeta {
+	var sp studio.StoryParams
+	_ = json.Unmarshal([]byte(j.Params), &sp)
+	topic := strings.TrimSpace(sp.Topic)
+	if topic == "" {
+		topic = strings.TrimSpace(j.Title)
+	}
+	if g, ok := s.Story.(seoGenerator); ok && g != nil {
+		if m, err := g.GenerateSEOMeta(ctx, topic, sp.Genre, j.Title); err == nil && m.Title != "" {
+			desc := strings.TrimSpace(m.Description)
+			if desc != "" {
+				desc += "\n\n"
+			}
+			return publishers.VideoMeta{
+				Title:       m.Title,
+				Description: desc + growth.DisclosureLine,
+				Tags:        m.Tags,
+			}
+		}
+		s.Story.AppendLog(j.ID, "SEO: không viết được bằng LLM — dùng tiêu đề/mô tả cơ bản")
+	}
+	t := studio.TemplateSEOMeta(topic, sp.Genre, growth.DisclosureLine)
+	return publishers.VideoMeta{Title: t.Title, Description: t.Description, Tags: t.Tags}
+}
+
+// storyThumbnailPath chọn ảnh cảnh đầu tiên còn file làm thumbnail YouTube.
+// "" = không đặt thumbnail tùy chỉnh (YouTube tự lấy khung hình).
+func (s *Service) storyThumbnailPath(jobID string) string {
+	al, ok := s.Story.(assetLister)
+	if !ok || al == nil {
+		return ""
+	}
+	for _, a := range al.ListAssets(jobID) {
+		if a.Kind != "photo" || a.Status != studio.StatusDone || a.Path == "" {
+			continue
+		}
+		if fi, err := os.Stat(a.Path); err == nil && !fi.IsDir() {
+			return a.Path
+		}
+	}
+	return ""
 }

@@ -92,6 +92,13 @@ func (u youtubeGrowthUploader) Upload(ctx context.Context, a *network.Account, v
 	return pub.Publish(ctx, videoPath, title, description, kind)
 }
 
+// UploadMeta (Đợt M1): đăng kèm tags + thumbnail tùy chỉnh.
+func (u youtubeGrowthUploader) UploadMeta(ctx context.Context, a *network.Account, videoPath string, meta publishers.VideoMeta, kind string) publishers.PublishResult {
+	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
+	pub.Synthetic = true
+	return pub.PublishMeta(ctx, videoPath, meta, kind)
+}
+
 func (s *Server) producer() automation.Producer {
 	if s.GrowthProducer != nil {
 		return s.GrowthProducer
