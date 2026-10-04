@@ -58,8 +58,8 @@ func RecordSnapshot(ctx context.Context, store *Store, src MetricsSource, acct S
 // and the account's channel mapping (account detail: Kênh YouTube).
 //
 // Honest limits: Data API gives lifetime totals, not 30-day views or watch
-// hours — those need the OAuth-only YouTube Analytics API, so Views30d and
-// the YPP hour/view readings stay unset until that lands.
+// hours — those come from YouTubeAnalyticsSource (Đợt H3, OAuth-only), so
+// Views30d stays unset until the Analytics token/scope is connected.
 type YouTubeSource struct {
 	APIKey  string
 	BaseURL string // default https://www.googleapis.com

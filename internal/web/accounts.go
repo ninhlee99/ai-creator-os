@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +17,19 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
+
+// ytAnalyticsStatus: "ok" (có token file), "chuakenh" (chưa gắn kênh),
+// "chuacotoken" (chưa có token). Trung thực — chỉ kiểm tra file tồn tại,
+// không đoán scope (thiếu scope → API báo 403 lúc sync).
+func ytAnalyticsStatus(username, channel string) string {
+	if strings.TrimSpace(channel) == "" {
+		return "chuakenh"
+	}
+	if _, err := os.Stat(publishers.YouTubeTokenPath(username)); err != nil {
+		return "chuacotoken"
+	}
+	return "ok"
+}
 
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Mgr.ListWithAutopilot()
@@ -146,6 +160,7 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"AutopilotReady", network.AutopilotReady(acct),
 		"ModelPhotos", s.modelPhotoViews(id),
 		"StudioOK", s.Studio != nil,
+		"YTAnalytics", ytAnalyticsStatus(acct.Username, acct.YoutubeChannel),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
 	)

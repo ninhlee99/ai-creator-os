@@ -18,7 +18,11 @@ import argparse, http.server, json, os, socket, sys, urllib.parse, urllib.reques
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
-SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+SCOPE = ("https://www.googleapis.com/auth/youtube.upload"
+         " https://www.googleapis.com/auth/yt-analytics.readonly")
+# Đợt H3: thêm yt-analytics.readonly để growth lấy view 30 ngày/watch hours.
+# Token cũ (chỉ youtube.upload) vẫn đăng video được, nhưng Analytics sẽ 403 —
+# chạy lại script này để cấp thêm scope.
 
 
 def main():

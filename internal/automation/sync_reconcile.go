@@ -8,6 +8,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
 // ------------------------------------------------------- sync + decide
@@ -32,6 +33,9 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 	ytKeyVal := s.env("YOUTUBE_API_KEY")
 	sources := []growth.MetricsSource{
 		growth.NewYouTubeSource(ytKeyVal),
+		// Đợt H3: Analytics điền Views30d + watch hours (OAuth, free).
+		// Chưa có token/scope → fail-closed, báo rõ trong notes.
+		growth.NewYouTubeAnalyticsSource(publishers.YouTubeAccessToken),
 		growth.TikTokSource{},
 	}
 	gotSnapshot := false

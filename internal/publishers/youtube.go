@@ -194,6 +194,21 @@ func (p *YouTubePublisher) accessToken() (string, error) {
 	return tok, nil
 }
 
+// YouTubeAccessToken đổi refresh token đã lưu của username thành access
+// token (dùng cho YouTube Analytics API — cùng OAuth client với upload).
+// Fail-closed: chưa có token file / client id → lỗi rõ ràng, không gọi mạng.
+//
+// LƯU Ý QUYỀN: Analytics cần scope yt-analytics.readonly. Token cũ chỉ có
+// youtube.upload sẽ bị API trả 403 — Fetch của growth báo rõ để Ninh chạy
+// lại scripts/get-youtube-token.py với scope mới.
+func YouTubeAccessToken(username string) (string, error) {
+	p := NewYouTubePublisher(username, nil, "")
+	if p.clientID == "" || p.clientSecret == "" {
+		return "", fmt.Errorf("thiếu YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET")
+	}
+	return p.accessToken()
+}
+
 // Publish uploads the video via resumable upload. Expected API failures
 // come back as PublishResult{Ok:false}.
 func (p *YouTubePublisher) Publish(ctx context.Context, videoPath, title, description, kind string) PublishResult {
