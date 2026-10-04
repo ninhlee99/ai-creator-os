@@ -502,3 +502,18 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .env-form { display: flex; gap: 8px; align-items: center; }
 .env-form input[type=password] { width: 220px; }
 .env-hint { color: var(--muted); font-size: var(--fs-sm); }
+
+/* ---- Team pipelines (Đợt H2): stage chips, icon-first, ít chữ ---- */
+.team-stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin-top: 8px; }
+.team-stage { background: var(--bg3); border-radius: 10px; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 2px; min-width: 110px;
+  border-left: 3px solid var(--neutral); }
+.team-icon { font-size: 20px; }
+.team-label { font-weight: 600; font-size: var(--fs-sm); }
+.team-detail { color: var(--muted); font-size: var(--fs-xs); }
+.team-arrow { color: var(--muted); align-self: center; }
+.team-ok { border-left-color: var(--ok); }
+.team-working { border-left-color: var(--info); animation: badge-pulse 1.6s infinite; }
+.team-waiting { border-left-color: var(--neutral); }
+.team-fail { border-left-color: var(--err); }
+.team-idle { border-left-color: var(--neutral); border-left-style: dashed; opacity: .65; }

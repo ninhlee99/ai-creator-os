@@ -59,8 +59,8 @@ type Server struct {
 	// automation tick (plan item -> Studio job -> YouTube upload). Nil
 	// means the real Studio/publishers adapters; tests inject fakes.
 	// CommissionSource is the affiliate-orders feed for money
-	// reconciliation (R2-W1). Nil means the real TikTok Shop client is
-	// built from the current env at call time; tests inject fakes.
+	// reconciliation (R2-W1). Nil = fail-closed legacy source (TikTok Shop
+	// đã loại bỏ ở Đợt H1); tests inject fakes.
 	CommissionSource automation.OrdersSource
 	GrowthProducer   automation.Producer
 	GrowthYT         automation.Uploader
@@ -452,6 +452,7 @@ var pageFiles = map[string]string{
 	"products":              "products.html",
 	"reup":                  "reup.html",
 	"stories":               "stories.html",
+	"team":                  "team.html",
 	"growth":                "growth.html",
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",

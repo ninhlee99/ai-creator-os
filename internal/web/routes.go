@@ -116,6 +116,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
 	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
 	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
+	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
+	mux.HandleFunc("GET /team", s.handleTeamPipelines)
 	// Đợt E: transform 2 mức + đăng.
 	mux.HandleFunc("POST /reup/videos/{id}/transform", s.handleReupTransform)
 	mux.HandleFunc("GET /reup/posts/{id}/status", s.handleReupPostStatus)
