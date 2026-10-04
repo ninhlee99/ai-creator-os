@@ -36,13 +36,9 @@ type Config struct {
 	AvatarAPIKey   string
 
 	// TikTok
-	TikTokShopAppKey      string
-	TikTokShopAppSecret   string
-	TikTokShopAccessToken string
-	TikTokShopCipher      string
-	TikTokRTMPURL         string
-	TikTokRTMPKey         string
-	AIDisclosureText      string
+	TikTokRTMPURL    string
+	TikTokRTMPKey    string
+	AIDisclosureText string
 
 	// Governance
 	DailyAPIBudgetUSD        float64
@@ -114,13 +110,9 @@ func Load() Config {
 		AvatarProvider: get("AVATAR_PROVIDER", "local-stylized"),
 		AvatarAPIKey:   get("AVATAR_API_KEY", ""),
 
-		TikTokShopAppKey:      get("TIKTOK_SHOP_APP_KEY", ""),
-		TikTokShopAppSecret:   get("TIKTOK_SHOP_APP_SECRET", ""),
-		TikTokShopAccessToken: get("TIKTOK_SHOP_ACCESS_TOKEN", ""),
-		TikTokShopCipher:      get("TIKTOK_SHOP_CIPHER", ""),
-		TikTokRTMPURL:         get("TIKTOK_RTMP_URL", ""),
-		TikTokRTMPKey:         get("TIKTOK_RTMP_KEY", ""),
-		AIDisclosureText:      get("AI_DISCLOSURE_TEXT", "AI-generated stream"),
+		TikTokRTMPURL:    get("TIKTOK_RTMP_URL", ""),
+		TikTokRTMPKey:    get("TIKTOK_RTMP_KEY", ""),
+		AIDisclosureText: get("AI_DISCLOSURE_TEXT", "AI-generated stream"),
 
 		DailyAPIBudgetUSD:        getFloat("DAILY_API_BUDGET_USD", 5.0),
 		MaxLiveMinutesPerSession: getInt("MAX_LIVE_MINUTES_PER_SESSION", 120),
@@ -148,9 +140,7 @@ func (c Config) ValidateForLive() []string {
 	if c.KillSwitch {
 		blockers = append(blockers, "KILL_SWITCH is on")
 	}
-	if c.TikTokShopAccessToken == "" {
-		blockers = append(blockers, "missing TIKTOK_SHOP_ACCESS_TOKEN")
-	}
+	// Đợt H1: TikTok Shop đã loại bỏ (Accesstrade-only).
 	if c.TikTokRTMPURL == "" || c.TikTokRTMPKey == "" {
 		blockers = append(blockers, "missing TIKTOK_RTMP_URL/KEY")
 	}

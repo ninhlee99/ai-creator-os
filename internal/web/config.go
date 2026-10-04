@@ -31,14 +31,10 @@ type Config struct {
 	// TTS (avatar đã park — PIVOT 2026-10-02)
 	TTSAPIKey string
 
-	// TikTok
-	TiktokShopAppKey      string
-	TiktokShopAppSecret   string
-	TiktokShopAccessToken string
-	TiktokShopCipher      string
-	TiktokRTMPURL         string
-	TiktokRTMPKey         string
-	AIDisclosureText      string
+	// TikTok (RTMP live đã park — giữ field cho tương thích cấu hình cũ)
+	TiktokRTMPURL    string
+	TiktokRTMPKey    string
+	AIDisclosureText string
 
 	// governance
 	DailyAPIBudgetUSD        float64
@@ -128,15 +124,11 @@ func LoadConfig() *Config {
 		OllamaBaseURL: getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
 		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
 
-		TTSAPIKey:      getenv("TTS_API_KEY", ""),
+		TTSAPIKey: getenv("TTS_API_KEY", ""),
 
-		TiktokShopAppKey:      getenv("TIKTOK_SHOP_APP_KEY", ""),
-		TiktokShopAppSecret:   getenv("TIKTOK_SHOP_APP_SECRET", ""),
-		TiktokShopAccessToken: getenv("TIKTOK_SHOP_ACCESS_TOKEN", ""),
-		TiktokShopCipher:      getenv("TIKTOK_SHOP_CIPHER", ""),
-		TiktokRTMPURL:         getenv("TIKTOK_RTMP_URL", ""),
-		TiktokRTMPKey:         getenv("TIKTOK_RTMP_KEY", ""),
-		AIDisclosureText:      getenv("AI_DISCLOSURE_TEXT", "AI-generated stream"),
+		TiktokRTMPURL:    getenv("TIKTOK_RTMP_URL", ""),
+		TiktokRTMPKey:    getenv("TIKTOK_RTMP_KEY", ""),
+		AIDisclosureText: getenv("AI_DISCLOSURE_TEXT", "AI-generated stream"),
 
 		DailyAPIBudgetUSD:        getenvFloat("DAILY_API_BUDGET_USD", 5.0),
 		MaxLiveMinutesPerSession: getenvInt("MAX_LIVE_MINUTES_PER_SESSION", 120),
@@ -164,9 +156,6 @@ func (c *Config) RefreshEnv() {
 		return
 	}
 	c.TTSAPIKey = os.Getenv("TTS_API_KEY")
-	c.TiktokShopAppKey = os.Getenv("TIKTOK_SHOP_APP_KEY")
-	c.TiktokShopAppSecret = os.Getenv("TIKTOK_SHOP_APP_SECRET")
-	c.TiktokShopAccessToken = os.Getenv("TIKTOK_SHOP_ACCESS_TOKEN")
 }
 
 // DryRun reports whether the system is in dry-run (safe) mode.
@@ -184,22 +173,3 @@ func (c *Config) SetKillSwitch(v bool) { c.killSwitch.Store(v) }
 // LiveEnabled mirrors config.py's live_enabled: nothing automated runs
 // while dry-run is on or the kill switch is engaged.
 func (c *Config) LiveEnabled() bool { return !c.DryRun() && !c.KillSwitch() }
-
-// ValidateForLive returns the list of blockers for going live; empty
-// means clear to go live. Mirrors config.py validate_for_live.
-func (c *Config) ValidateForLive() []string {
-	var blockers []string
-	if c.KillSwitch() {
-		blockers = append(blockers, "KILL_SWITCH is on")
-	}
-	if c.TiktokShopAccessToken == "" {
-		blockers = append(blockers, "missing TIKTOK_SHOP_ACCESS_TOKEN")
-	}
-	if c.TiktokRTMPURL == "" || c.TiktokRTMPKey == "" {
-		blockers = append(blockers, "missing TIKTOK_RTMP_URL/KEY")
-	}
-	if c.TTSAPIKey == "" {
-		blockers = append(blockers, "missing TTS_API_KEY (Gemini; Edge fallback needs no key)")
-	}
-	return blockers
-}

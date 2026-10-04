@@ -8,7 +8,7 @@ import (
 // Product is one affiliate candidate from a provider.
 type Product struct {
 	ID             int64
-	Source         string // provider name, e.g. "tiktok_shop"
+	Source         string // provider name, e.g. "accesstrade", "manual"
 	SourceID       string // provider-side product id
 	Title          string
 	ImageURLs      []string // listing photos (ground truth for product lock)

@@ -230,7 +230,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"ATStoreOK":   s.AT != nil,
 		// Accesstrade automation (Đợt G): interval tick cho tab Cài đặt ·
 		// Accesstrade (công tắc on/off nằm ở trang Affiliate, POST /at/settings).
-		"ATHunterHours":  s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
+		"ATHunterHours":   s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
 		"ATOrderSyncMins": s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30),
 		// Reup (Đợt E): tab Cài đặt · Reup.
 		"ReupCfg": s.reupSettingsCfg(),
@@ -467,7 +467,7 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 // envNames is the allowlist of environment variables editable in Settings.
 // Values apply to the running process immediately and persist in the
 // settings table (applied at startup), so they survive restarts.
-var envNames = []string{"TTS_API_KEY", "TIKTOK_SHOP_APP_KEY", "TIKTOK_SHOP_APP_SECRET",
+var envNames = []string{"TTS_API_KEY",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
 	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY"}

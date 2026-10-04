@@ -8,7 +8,6 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 )
 
 // ------------------------------------------------------- sync + decide
@@ -96,30 +95,18 @@ func (s *Service) env(name string) string {
 const commissionStateSetting = "commission.source_state"
 
 // commissionSource returns the real affiliate-orders feed when one can
-// actually flow. Credentials missing OR endpoint path unverified both mean
-// fail-closed: no fabricated money, ever.
+// actually flow. Fail-closed: no fabricated money, ever.
 //
-// R2-W4 (R2-05): credentials are read through EnvProvider at call time —
-// the old code read s.Cfg fields once at startup, so a UI save never
-// reached the reconcile (stale-config bug).
+// Đợt H1 (2026-10-04): TikTok Shop đã loại bỏ hoàn toàn (Accesstrade-only
+// theo quyết định của Ninh). Đối soát hoa hồng chạy qua Accesstrade
+// (ATOrderSyncTick → /at/orders/sync); nguồn legacy này luôn fail-closed.
+// CommissionSource vẫn là điểm tiêm cho test.
 func (s *Service) commissionSource() (OrdersSource, string) {
 	if s.CommissionSource != nil {
 		return s.CommissionSource, ""
 	}
-	appKey := s.env("TIKTOK_SHOP_APP_KEY")
-	appSecret := s.env("TIKTOK_SHOP_APP_SECRET")
-	token := s.env("TIKTOK_SHOP_ACCESS_TOKEN")
-	if appKey == "" || appSecret == "" || token == "" {
-		return nil, "chưa kết nối TikTok Shop (thiếu app key/secret/access token trong Cài đặt)"
-	}
-	if tiktok.Endpoints["affiliate_orders_search"] == "" {
-		return nil, "endpoint hoa hồng TikTok chưa được xác thực trong Partner Center — xem hướng dẫn ở Cài đặt"
-	}
-	return &tiktok.ShopClient{
-		AppKey:      appKey,
-		AppSecret:   appSecret,
-		AccessToken: token,
-	}, ""
+	return nil, "TikTok Shop đã loại bỏ (Accesstrade-only từ Đợt H1) — " +
+		"đối soát hoa hồng chạy qua Accesstrade: /at/orders/sync"
 }
 
 // noteCommissionState records the current source state only when it
@@ -189,7 +176,7 @@ func (s *Service) ReconcileCommissions(ctx context.Context) []string {
 	}
 	if newCommission > 0 {
 		if _, err := s.Ledger.RecordCommission(now.Format("2006-01"),
-			newCommission, "tiktok_shop_api"); err != nil {
+			newCommission, "orders_api"); err != nil {
 			s.noteCommissionState("error",
 				"Đối soát hoa hồng lỗi ghi sổ: "+err.Error())
 			return nil

@@ -70,15 +70,13 @@ func TestAggregateDedupes(t *testing.T) {
 	}
 }
 
-func TestTikTokShopProviderFailClosed(t *testing.T) {
-	p := &TikTokShopProvider{}
-	if p.Configured() {
-		t.Fatal("unconfigured provider must not report configured")
+func TestAggregateEmptyProviders(t *testing.T) {
+	ps, errs := Aggregate(context.Background(), nil, Query{Theme: "thời trang"})
+	if len(ps) != 0 || len(errs) != 0 {
+		t.Fatalf("empty providers should yield nothing, got %d products %d errs", len(ps), len(errs))
 	}
-	_, err := p.Search(context.Background(), Query{Theme: "thời trang"})
-	if err == nil {
-		t.Fatal("expected fail-closed error")
-	}
+	// Đợt H1: nguồn sản phẩm duy nhất là Accesstrade → products.Store;
+	// providers là fallback (hiện để trống).
 }
 
 func TestStoreRoundTrip(t *testing.T) {
@@ -117,31 +115,6 @@ func TestStoreRoundTrip(t *testing.T) {
 	top, err = s.TopByTheme("thời trang nữ", 0.10, 8, 10)
 	if err != nil || len(top) != 1 {
 		t.Fatalf("other account should still see product: %v", len(top))
-	}
-}
-
-func TestParseShopProducts(t *testing.T) {
-	data := map[string]any{
-		"products": []any{
-			map[string]any{
-				"product_id": "42", "product_name": "Son lì",
-				"price": 159000.0, "commission_rate": 18.0,
-				"shop_name": "BeautyVN", "rating": 4.9,
-				"sold_count": 5300.0, "main_image": "https://x/son.jpg",
-			},
-			map[string]any{"product_id": "43"}, // no title -> skipped
-		},
-	}
-	ps := parseShopProducts(data, "mỹ phẩm")
-	if len(ps) != 1 {
-		t.Fatalf("want 1 parsed, got %d", len(ps))
-	}
-	p := ps[0]
-	if p.CommissionRate != 0.18 {
-		t.Fatalf("commission percent->rate: %v", p.CommissionRate)
-	}
-	if len(p.ImageURLs) != 1 || p.SoldCount != 5300 {
-		t.Fatalf("bad fields: %+v", p)
 	}
 }
 
