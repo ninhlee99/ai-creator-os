@@ -80,6 +80,33 @@
   </div>
 </div>
 
+<h2>Thông báo Telegram</h2>
+<p class="subtitle">Máy tự gửi cảnh báo (đĩa đầy, job treo, nguồn chết…) về điện thoại Ninh. Tạo bot bằng BotFather rồi dán token vào đây — chỉ làm 1 lần.</p>
+<div class="cards">
+  <div class="card">
+    <form method="post" action="/settings/notify">
+      <div class="field">
+        <label><input type="checkbox" name="notify_on" value="1"{{if .NotifyOn}} checked{{end}}> Bật thông báo Telegram</label>
+      </div>
+      <div class="field">
+        <label>Bot token {{if .NotifyHasBot}}<span class="badge badge-ok">đã lưu</span>{{end}}</label>
+        <input type="password" name="notify_bot" placeholder="{{if .NotifyHasBot}}đã lưu — nhập mới để thay{{else}}dán token từ BotFather{{end}}" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Chat ID</label>
+        <input type="text" name="notify_chat" value="{{.NotifyChat}}" placeholder="vd: 123456789">
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="label">Kiểm tra kết nối</div>
+    <form method="post" action="/settings/notify-test">
+      <button type="submit" class="btn btn-secondary btn-sm">Gửi tin nhắn thử</button>
+    </form>
+  </div>
+</div>
+
 <h3>Chi phí API theo engine/provider</h3>
 {{if .Usage}}
 <table>

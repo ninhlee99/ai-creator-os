@@ -20,6 +20,8 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
 | Tự sao lưu | **mỗi ngày** (nằm trong story tick) | `Service.BackupTick` (`backup_tick.go`; đợt M2): zip data dir vào `backups/`, giữ 7 bản mới nhất |
 | Tự chuyển public | **mỗi 5 phút** (nằm trong story tick) | `Service.StoryPublicTick` (`story_tick.go`; đợt N): video private quá `story.public_after_hours` giờ → public qua `videos.update`. Mặc định 0 = tắt |
+| Watchdog Mac | ngoài app (launchd) | `deploy/com.ninhlee.aicos.plist` + `scripts/install-launchd.sh` (đợt O1): crash/restart → tự chạy lại |
+| Thông báo Telegram | **mỗi giờ** (nằm trong story tick) | `Service.NotifyTick` (`notify_tick.go`; đợt O2): alert warn+ mới → Telegram. Cấu hình ở Cài đặt · Hệ thống |
 | Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
 | Nút "chạy ngay" trên UI | thủ công | `GrowthTick(ctx, force=true)` — vẫn bị kill + dry-run chặn |
 
