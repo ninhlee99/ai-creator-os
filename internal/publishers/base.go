@@ -35,6 +35,10 @@ type PublishResult struct {
 	URL      string
 	Error    string
 	Draft    bool
+	// ThumbnailSet/Error: kết quả đặt thumbnail tùy chỉnh (Đợt M1).
+	// Thumbnail là phần tăng thêm — video vẫn đăng thành công dù lỗi.
+	ThumbnailSet   bool
+	ThumbnailError string
 }
 
 // Publisher is one platform endpoint for a rendered video.
