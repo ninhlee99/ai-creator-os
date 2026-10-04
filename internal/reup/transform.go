@@ -106,6 +106,8 @@ func encoderArgs() []string { return studio.VideoEncoderArgs() }
 // ---------------------------------------------------------------------------
 
 // videoChainFilter dựng filter cho 1 clip. Trả về (filter, độ dài output giây).
+// T5 nâng cấp (Đợt J): 4 hướng Ken Burns xoay theo seed — mỗi video một
+// chuyển động khác nhau (fingerprint đa dạng hơn thay vì chỉ push-in).
 func videoChainFilter(durSec float64, seed int64) (string, float64) {
 	if durSec <= 0 {
 		durSec = 5
@@ -118,19 +120,45 @@ func videoChainFilter(durSec float64, seed int64) (string, float64) {
 		setpts = "1.052632*PTS"
 	}
 	outDur := durSec / speed
-	// T5: zoom động push-in 1.0 → 1.12 (zoompan d=1 tính theo từng frame
-	// của video input — khác với crop w/h vốn chỉ tính 1 lần lúc init).
 	frames := int(outDur*reupFPS + 0.5)
 	if frames < 1 {
 		frames = 1
 	}
+	// T5: 4 hướng Ken Burns theo seed (ổn định, không random runtime).
+	var zpParams []string
+	switch ((seed % 4) + 4) % 4 {
+	case 1: // pull-out: 1.12 → 1.0
+		zpParams = []string{
+			fmt.Sprintf("z='max(1.12-0.12*on/%d,1.0)'", frames),
+			"x='iw/2-(iw/zoom/2)'", "y='ih/2-(ih/zoom/2)'",
+		}
+	case 2: // pan trái→phải (giữ zoom 1.12)
+		zpParams = []string{
+			"z='1.12'",
+			fmt.Sprintf("x='(iw-iw/zoom)*on/%d'", frames),
+			"y='ih/2-(ih/zoom/2)'",
+		}
+	case 3: // pan phải→trái (giữ zoom 1.12)
+		zpParams = []string{
+			"z='1.12'",
+			fmt.Sprintf("x='(iw-iw/zoom)*(1-on/%d)'", frames),
+			"y='ih/2-(ih/zoom/2)'",
+		}
+	default: // push-in: 1.0 → 1.12
+		zpParams = []string{
+			fmt.Sprintf("z='min(1+0.12*on/%d,1.12)'", frames),
+			"x='iw/2-(iw/zoom/2)'", "y='ih/2-(ih/zoom/2)'",
+		}
+	}
+	zp := "zoompan=d=1:" + strings.Join(zpParams, ":") +
+		fmt.Sprintf(":s=%dx%d:fps=%d", reupOutW, reupOutH, reupFPS)
 	// T4: grade nhẹ.
 	filter := fmt.Sprintf(
 		"scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1,"+
-			"zoompan=z='min(1+0.12*on/%d,1.12)':d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d,"+
+			"%s,"+
 			"setpts=%s,eq=contrast=1.06:saturation=1.12:brightness=0.01",
 		reupOutW*2, reupOutH*2, reupOutW*2, reupOutH*2,
-		frames, reupOutW, reupOutH, reupFPS, setpts)
+		zp, setpts)
 	return filter, outDur
 }
 
@@ -192,7 +220,11 @@ func (t *Transformer) voiceoverText(ctx context.Context, vs []Video) string {
 			return s
 		}
 	}
-	return templateCommentary(vs)
+	var seed int64
+	for _, v := range vs {
+		seed += v.ID
+	}
+	return templateCommentary(vs, seed)
 }
 
 // llmCommentary nhờ LLM viết lời bình luận ngắn. Lỗi → "" (caller dùng template).
@@ -205,17 +237,21 @@ func (t *Transformer) llmCommentary(ctx context.Context, vs []Video) string {
 		}
 		sb.WriteString("\n")
 	}
-	system := "Bạn viết lời bình luận tiếng Việt cho video Douyin thể loại " +
-		"tiên hiệp/thần tiên. Yêu cầu: 1-2 câu ngắn gọn, tự nhiên như người xem " +
-		"bình luận; CHỈ dùng thông tin đã cho, tuyệt đối không bịa tình tiết, " +
-		"không khẳng định điều không có trong dữ liệu; tối đa 300 ký tự."
+	// Văn nói thân thiện với TTS: câu ngắn, từ dễ đọc, có móc tò mò,
+	// đúng chất tiên hiệp/thần tiên; tuyệt đối không bịa tình tiết.
+	system := "Bạn là người dẫn chuyện tiên hiệp, đang kể cho bạn bè nghe " +
+		"bằng giọng tự nhiên, hào hứng. Yêu cầu: văn NÓI (câu ngắn, từ ngữ " +
+		"đời thường dễ đọc thành tiếng, không dùng ký tự đặc biệt/ký hiệu); " +
+		"câu đầu phải có móc tò mò khiến người nghe muốn xem tiếp; " +
+		"CHỈ dùng thông tin đã cho, tuyệt đối không bịa tình tiết, không " +
+		"khẳng định điều không có trong dữ liệu; tối đa 300 ký tự."
 	n := len(vs)
 	kind := "một video"
 	if n > 1 {
 		kind = fmt.Sprintf("tuyển tập %d video", n)
 	}
 	out, err := t.LLM.Complete(ctx, system,
-		fmt.Sprintf("Viết lời bình luận cho %s:\n%s", kind, sb.String()))
+		fmt.Sprintf("Viết lời dẫn cho %s:\n%s", kind, sb.String()))
 	if err != nil {
 		return ""
 	}
@@ -223,27 +259,37 @@ func (t *Transformer) llmCommentary(ctx context.Context, vs []Video) string {
 }
 
 // templateCommentary: dự phòng trung thực khi không có LLM.
-func templateCommentary(vs []Video) string {
+// 3 biến thể xoay theo seed để các video không đọc cùng một câu.
+func templateCommentary(vs []Video, seed int64) string {
 	if len(vs) > 1 {
-		return fmt.Sprintf("Tuyển tập %d khoảnh khắc tiên hiệp đang được yêu thích trên Douyin. Mời bạn xem.", len(vs))
+		variants := []string{
+			fmt.Sprintf("Tuyển tập %d khoảnh khắc tiên hiệp đang gây sốt trên Douyin — mở đầu đã cuốn, xem tiếp nhé.", len(vs)),
+			fmt.Sprintf("Gom %d cảnh đẹp nhất dòng tiên hiệp Douyin tuần này. Cảnh nào cũng đáng xem.", len(vs)),
+			fmt.Sprintf("%d video tiên hiệp hot nhất Douyin trong một clip — bạn đoán được cảnh cuối không?", len(vs)),
+		}
+		return variants[int(seed%3+3)%3]
 	}
 	v := vs[0]
-	var sb strings.Builder
+	var core strings.Builder
 	if strings.TrimSpace(v.Title) != "" {
-		fmt.Fprintf(&sb, "Video %q", strings.TrimSpace(v.Title))
+		fmt.Fprintf(&core, "Video %q", strings.TrimSpace(v.Title))
 	} else {
-		sb.WriteString("Video này")
+		core.WriteString("Video này")
 	}
 	if strings.TrimSpace(v.Author) != "" {
-		fmt.Fprintf(&sb, " của %s", strings.TrimSpace(v.Author))
+		fmt.Fprintf(&core, " của %s", strings.TrimSpace(v.Author))
 	}
 	if v.PlayCount > 0 {
-		fmt.Fprintf(&sb, ", đang được xem nhiều trên Douyin với %d lượt xem", v.PlayCount)
+		fmt.Fprintf(&core, ", đang viral trên Douyin với %d lượt xem", v.PlayCount)
 	} else {
-		sb.WriteString(", đang được chú ý trên Douyin")
+		core.WriteString(", đang được chú ý trên Douyin")
 	}
-	sb.WriteString(". Mời bạn xem.")
-	return sb.String()
+	variants := []string{
+		core.String() + ". Mở đầu đã gay cấn — xem tiếp nhé.",
+		"Bạn phải xem " + core.String() + ". Càng xem càng cuốn.",
+		core.String() + ". Tin tôi đi, đoạn cuối mới là đỉnh nhất.",
+	}
+	return variants[int(seed%3+3)%3]
 }
 
 // sanitizeCommentary làm sạch text LLM: gọn whitespace, cắt 300 ký tự.
@@ -497,7 +543,12 @@ func burnCaptions(ctx context.Context, inPath, srtText, outPath string) error {
 	}
 	// Escape cho filter subtitles: \ : '
 	esc := strings.NewReplacer("\\", "\\\\", ":", "\\:", "'", "\\'").Replace(abs)
-	args := []string{"-i", inPath, "-vf", "subtitles=" + esc}
+	// Style caption (Đợt J): chữ trắng viền đen mờ, canh giữa-dưới —
+	// đọc được trên nền video sáng/tối mà không che nhân vật giữa khung.
+	style := "force_style='FontSize=24,PrimaryColour=&H00FFFFFF," +
+		"OutlineColour=&H99000000,BorderStyle=1,Outline=2,Shadow=0," +
+		"MarginV=70,Alignment=2'"
+	args := []string{"-i", inPath, "-vf", "subtitles=" + esc + ":" + style}
 	args = append(args, encoderArgs()...)
 	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "copy", outPath)
 	return ffmpegRun(ctx, args...)

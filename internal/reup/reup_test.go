@@ -488,6 +488,49 @@ func TestDiscoverPicksTopPlayCount(t *testing.T) {
 	}
 }
 
+// TestEngagementScore: video ít view nhưng tỷ lệ like cao phải thắng
+// video nhiều view nhưng like thấp.
+func TestEngagementScore(t *testing.T) {
+	viral := TikWMVideo{ID: "a", PlayCount: 1000, DiggCount: 500} // 1000×1.5=1500
+	liked := TikWMVideo{ID: "b", PlayCount: 800, DiggCount: 800}  // 800×2=1600
+	flat := TikWMVideo{ID: "c", PlayCount: 5000, DiggCount: 10}   // 5000×1.002≈5010
+	if engagementScore(liked) <= engagementScore(viral) {
+		t.Errorf("like-rate cao phải thắng view thuần: %f vs %f",
+			engagementScore(liked), engagementScore(viral))
+	}
+	if engagementScore(flat) <= engagementScore(liked) {
+		t.Errorf("view vượt trội vẫn phải thắng: %f vs %f",
+			engagementScore(flat), engagementScore(liked))
+	}
+	if engagementScore(TikWMVideo{}) != 0 {
+		t.Errorf("video 0 view phải điểm 0")
+	}
+}
+
+// TestDiscoverFiltersDuration: video quá ngắn/dài bị loại khỏi pick.
+func TestDiscoverFiltersDuration(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"code":0,"msg":"success","data":{"videos":[
+			{"video_id":"ngan","title":"Ngắn","play_count":9999,"digg_count":999,"duration":2,"author":{"unique_id":"u","nickname":"U"}},
+			{"video_id":"dai","title":"Dài","play_count":9999,"digg_count":999,"duration":500,"author":{"unique_id":"u","nickname":"U"}},
+			{"video_id":"vua","title":"Vừa","play_count":100,"digg_count":10,"duration":30,"author":{"unique_id":"u","nickname":"U"}}
+		],"cursor":0,"hasMore":false}}`)
+	}))
+	defer srv.Close()
+	tw := NewTikWM()
+	tw.BaseURL = srv.URL
+	s := newTestStore(t)
+	if _, err := s.AddSource("user", "u", "U"); err != nil {
+		t.Fatal(err)
+	}
+	d := NewDiscoverer(s, tw)
+	cands, _ := d.Discover(context.Background(), 5)
+	if len(cands) != 1 || cands[0].DouyinID != "vua" {
+		t.Errorf("chỉ video 30s được pick, được %+v", cands)
+	}
+}
+
 func TestDiscoverHashtagHonest(t *testing.T) {
 	s := newTestStore(t)
 	if _, err := s.AddSource("hashtag", "thantien", ""); err != nil {

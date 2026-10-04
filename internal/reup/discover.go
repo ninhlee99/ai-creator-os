@@ -88,7 +88,10 @@ func (d *Discoverer) discoverSource(ctx context.Context, src Source, perSource i
 	}
 }
 
-// discoverUser lấy video của user qua TikWM, pick top play_count chưa có.
+// discoverUser lấy video của user qua TikWM, pick theo điểm engagement
+// (không chỉ lượt xem thuần — video nhiều like/view hơn thường "chất"
+// hơn), bỏ qua video quá ngắn/dài. Video pick được lưu vào kho ở trạng
+// thái queued — tải thật do Downloader (tick hoặc nút "Quét ngay").
 func (d *Discoverer) discoverUser(ctx context.Context, src Source, perSource int) ([]Candidate, string) {
 	if d.TikWM == nil {
 		return nil, fmt.Sprintf("nguồn @%s: TikWM chưa sẵn sàng", src.Value)
@@ -97,18 +100,26 @@ func (d *Discoverer) discoverUser(ctx context.Context, src Source, perSource int
 	if err != nil {
 		return nil, fmt.Sprintf("nguồn @%s: không lấy được danh sách video (%v)", src.Value, err)
 	}
-	// Bỏ video đã có trong kho.
+	// Bỏ video đã có trong kho + video độ dài không phù hợp transform
+	// (quá ngắn <5s không đủ làm bài; quá dài >180s tốn quota mà Shorts
+	// chỉ cần ≤60s — giữ 180s cho linh hoạt).
 	var fresh []TikWMVideo
 	for _, v := range videos {
-		if !d.Store.HasDouyinID(v.ID) {
-			fresh = append(fresh, v)
+		if d.Store.HasDouyinID(v.ID) {
+			continue
 		}
+		if v.Duration > 0 && (v.Duration < 5 || v.Duration > 180) {
+			continue
+		}
+		fresh = append(fresh, v)
 	}
 	if len(fresh) == 0 {
 		return nil, ""
 	}
-	// Auto-pick theo play_count cao nhất.
-	sort.Slice(fresh, func(i, j int) bool { return fresh[i].PlayCount > fresh[j].PlayCount })
+	// Auto-pick theo điểm engagement cao nhất.
+	sort.Slice(fresh, func(i, j int) bool {
+		return engagementScore(fresh[i]) > engagementScore(fresh[j])
+	})
 	if len(fresh) > perSource {
 		fresh = fresh[:perSource]
 	}
@@ -140,3 +151,18 @@ func (d *Discoverer) discoverUser(ctx context.Context, src Source, perSource int
 }
 
 func shortID(id int64) string { return fmt.Sprint(id) }
+
+// engagementScore chấm điểm video để pick: lượt xem nhân với
+// (1 + tỷ lệ like/view). Video ít view nhưng tỷ lệ like cao (nội dung
+// "chất", đang lên) được ưu tiên hơn video view cao nhưng like thấp.
+// Pure function — test được không cần mạng.
+func engagementScore(v TikWMVideo) float64 {
+	if v.PlayCount <= 0 {
+		return 0
+	}
+	likeRate := float64(v.DiggCount) / float64(v.PlayCount)
+	if likeRate < 0 {
+		likeRate = 0
+	}
+	return float64(v.PlayCount) * (1 + likeRate)
+}
