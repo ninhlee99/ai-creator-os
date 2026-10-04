@@ -110,6 +110,25 @@ func TestVideoChainFilter(t *testing.T) {
 	}
 }
 
+// TestVideoChainFilterDirections: 4 seed liên tiếp → 4 hướng Ken Burns
+// khác nhau (fingerprint đa dạng).
+func TestVideoChainFilterDirections(t *testing.T) {
+	got := map[string]bool{}
+	for seed := int64(0); seed < 4; seed++ {
+		f, _ := videoChainFilter(20, seed)
+		// Trích biểu thức zoompan để so sánh hướng.
+		start := strings.Index(f, "zoompan=d=1:")
+		if start < 0 {
+			t.Fatalf("thiếu zoompan: %s", f)
+		}
+		end := strings.Index(f[start:], ",setpts=")
+		got[f[start:start+end]] = true
+	}
+	if len(got) != 4 {
+		t.Errorf("4 seed phải cho 4 hướng khác nhau, được %d", len(got))
+	}
+}
+
 func TestFinalFilter(t *testing.T) {
 	f, total := finalFilter(10, "Tiêu đề", 1, 2)
 	want := cardDur + 10 + cardDur
@@ -131,7 +150,7 @@ func TestFinalFilter(t *testing.T) {
 // ------------------------------------------------------------ unit: text
 
 func TestTemplateCommentaryHonest(t *testing.T) {
-	s := templateCommentary([]Video{{Title: "Tiên kiếm", Author: "than_tien", PlayCount: 1500000}})
+	s := templateCommentary([]Video{{Title: "Tiên kiếm", Author: "than_tien", PlayCount: 1500000}}, 1)
 	for _, want := range []string{"Tiên kiếm", "than_tien", "1500000"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("commentary thiếu sự thật %q: %s", want, s)
@@ -144,13 +163,26 @@ func TestTemplateCommentaryHonest(t *testing.T) {
 		}
 	}
 	// Metadata trống → vẫn có câu hợp lệ.
-	s2 := templateCommentary([]Video{{}})
+	s2 := templateCommentary([]Video{{}}, 2)
 	if strings.TrimSpace(s2) == "" {
 		t.Errorf("metadata trống vẫn phải có lời bình")
 	}
-	s3 := templateCommentary([]Video{{}, {}, {}})
+	s3 := templateCommentary([]Video{{}, {}, {}}, 3)
 	if !strings.Contains(s3, "3") {
 		t.Errorf("compilation phải nhắc số clip: %s", s3)
+	}
+}
+
+// TestTemplateCommentaryRotates: seed khác nhau → biến thể khác nhau
+// (không đọc cùng một câu cho mọi video).
+func TestTemplateCommentaryRotates(t *testing.T) {
+	v := []Video{{Title: "T", Author: "A"}}
+	seen := map[string]bool{}
+	for seed := int64(0); seed < 6; seed++ {
+		seen[templateCommentary(v, seed)] = true
+	}
+	if len(seen) < 3 {
+		t.Errorf("phải có ≥3 biến thể theo seed, được %d", len(seen))
 	}
 }
 
