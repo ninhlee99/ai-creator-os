@@ -59,7 +59,11 @@ type storiesView struct {
 	PublicAfterH int
 	TickHours    int
 	Topics       string // hàng đợi chủ đề (mỗi dòng 1 chủ đề)
-	Error        string
+	// Retry (đợt P): tự thử lại job lỗi.
+	RetryOn       bool
+	RetryMax      int
+	RetryCooldown int
+	Error         string
 }
 
 func storyStatusVN(st string) string {
@@ -80,17 +84,20 @@ func storyStatusVN(st string) string {
 // thái trung thực thay vì sập trang.
 func (s *Server) storiesPageData() storiesView {
 	v := storiesView{
-		StudioOK:     s.Studio != nil,
-		DefGenre:     s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
-		DefWords:     s.atSettingInt(automation.KeyStoryWords, 600),
-		DefScenes:    s.atSettingInt(automation.KeyStoryScenes, 6),
-		MusicOn:      s.atSettingOn(automation.KeyStoryMusicOn, true),
-		AutoOn:       s.atSettingOn(automation.KeyStoryAutoPublish, true),
-		AutofillOn:   s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
-		PublicAfterH: s.atSettingInt(automation.KeyStoryPublicAfterHours, 0),
-		TickOn:       s.atSettingOn(automation.KeyStoryEnabled, true),
-		TickHours:    s.atSettingInt(automation.KeyStoryIntervalH, 24),
-		PostAccount:  s.atSettingStr(automation.KeyStoryAccount, ""),
+		StudioOK:      s.Studio != nil,
+		DefGenre:      s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
+		DefWords:      s.atSettingInt(automation.KeyStoryWords, 600),
+		DefScenes:     s.atSettingInt(automation.KeyStoryScenes, 6),
+		MusicOn:       s.atSettingOn(automation.KeyStoryMusicOn, true),
+		AutoOn:        s.atSettingOn(automation.KeyStoryAutoPublish, true),
+		AutofillOn:    s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
+		PublicAfterH:  s.atSettingInt(automation.KeyStoryPublicAfterHours, 0),
+		TickOn:        s.atSettingOn(automation.KeyStoryEnabled, true),
+		TickHours:     s.atSettingInt(automation.KeyStoryIntervalH, 24),
+		RetryOn:       s.atSettingOn(automation.KeyStoryRetryEnabled, true),
+		RetryMax:      s.atSettingInt(automation.KeyStoryRetryMax, 3),
+		RetryCooldown: s.atSettingInt(automation.KeyStoryRetryCooldown, 6),
+		PostAccount:   s.atSettingStr(automation.KeyStoryAccount, ""),
 	}
 	if s.Ledger != nil {
 		if t, ok, _ := s.Ledger.GetSetting(automation.KeyStoryTopics); ok {
@@ -299,6 +306,14 @@ func (s *Server) handleStorySettings(w http.ResponseWriter, r *http.Request) {
 	setBool(automation.KeyStoryTopicsAutofill, r.FormValue("topics_autofill") == "1")
 	if h, err := strconv.Atoi(r.FormValue("public_after_hours")); err == nil {
 		set(automation.KeyStoryPublicAfterHours, strconv.Itoa(clamp(h, 0, 168)))
+	}
+	// Đợt P: tự thử lại job lỗi.
+	setBool(automation.KeyStoryRetryEnabled, r.FormValue("retry_on") == "1")
+	if n, err := strconv.Atoi(r.FormValue("retry_max")); err == nil {
+		set(automation.KeyStoryRetryMax, strconv.Itoa(clamp(n, 1, 10)))
+	}
+	if h, err := strconv.Atoi(r.FormValue("retry_cooldown")); err == nil {
+		set(automation.KeyStoryRetryCooldown, strconv.Itoa(clamp(h, 1, 72)))
 	}
 	storiesRedirect(w, r, "Đã lưu mặc định kể chuyện.", "")
 }
