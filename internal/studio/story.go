@@ -80,6 +80,9 @@ type StoryParams struct {
 	MusicOn   bool   `json:"music_on"`   // lồng nhạc nền
 	MusicPath string `json:"music_path"` // file nhạc local ("" = không nhạc)
 	AccountID int64  `json:"account_id,omitempty"`
+	// Attempt: lần thử thứ mấy (0 = lần đầu). Đợt P: retry tự động tăng
+	// dần; đạt story.retry_max thì dừng để không đốt quota vô ích.
+	Attempt int `json:"attempt,omitempty"`
 }
 
 // storyScene là 1 cảnh: đoạn văn kể + prompt vẽ ảnh.

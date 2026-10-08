@@ -137,6 +137,15 @@
       <label>Tự chuyển công khai sau (giờ) — 0 = tắt, giữ private để duyệt tay</label>
       <input type="number" name="public_after_hours" min="0" max="168" value="{{.Stories.PublicAfterH}}" style="width:5em">
     </div>
+    <div class="field">
+      <label><input type="checkbox" name="retry_on" value="1"{{if .Stories.RetryOn}} checked{{end}}> Tự thử lại khi job lỗi (mặc định: bật)</label>
+    </div>
+    <div class="field">
+      <label>Số lần thử lại tối đa</label>
+      <input type="number" name="retry_max" min="1" max="10" value="{{.Stories.RetryMax}}" style="width:5em">
+      <label style="margin-left:1em">Nghỉ giữa các lần (giờ)</label>
+      <input type="number" name="retry_cooldown" min="1" max="72" value="{{.Stories.RetryCooldown}}" style="width:5em">
+    </div>
     <button type="submit" class="btn btn-secondary">Lưu</button>
   </form>
 </div>

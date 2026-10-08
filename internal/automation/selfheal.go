@@ -93,6 +93,9 @@ func (s *Service) diskGuard() []string {
 	fj, freed1 := pr.PruneFailedWork()
 	pruneDays := atInt(s.Settings, KeyDiskPruneDays, defaultDiskPruneDays)
 	isPub := func(id string) bool {
+		if s.Settings == nil {
+			return false
+		}
 		_, done := s.Settings.Get(KeyStoryPublishedPrefix + id)
 		return done
 	}
