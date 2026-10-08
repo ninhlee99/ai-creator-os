@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -85,9 +86,6 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
 		return // manual studio job — never auto-publish
 	}
-	if !AutopilotAutoPublish(s.Settings) {
-		return
-	}
 	if s.Accounts == nil {
 		return
 	}
@@ -96,6 +94,19 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 		s.JobStore.AppendLog(jobID, "Tự đăng: không tìm thấy account — bỏ qua.")
 		return
 	}
+	// TikTok: nháp (giới hạn nền tảng — gắn giỏ hàng tay trong app).
+	if AutopilotAutoPublish(s.Settings) {
+		s.autoPublishTikTokAffiliate(ctx, jobID, j, p, acct)
+	}
+	// Đợt Q: YouTube Shorts private-first — kênh phân phối thứ hai, hoàn
+	// toàn tự động (không cần chạm tay như TikTok).
+	if AutopilotYouTubeEnabled(s.Settings) {
+		s.autoPublishYouTubeAffiliate(ctx, jobID, j, p, acct)
+	}
+}
+
+// autoPublishTikTokAffiliate đăng video affiliate lên TikTok (nháp).
+func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
 	var pub publishers.Publisher
 	for _, c := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes) {
 		if c.Name() == "tiktok" && c.IsConfigured() && c.Handles("short_video") {
@@ -124,6 +135,58 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	} else {
 		s.JobStore.AppendLog(jobID, "Đã đăng TikTok (id "+res.RemoteID+").")
 	}
+}
+
+// youtubeAffiliatePublisher dựng YouTube publisher cho tài khoản
+// (package-level seam để test inject HTTP giả).
+var youtubeAffiliatePublisher = func(acct *network.Account) *publishers.YouTubePublisher {
+	pub := publishers.NewYouTubePublisher(acct.Username, acct.YoutubeContentTypes, acct.YoutubeChannel)
+	pub.Synthetic = true // AI disclosure bắt buộc — video dựng từ ảnh AI
+	return pub
+}
+
+// autoPublishYouTubeAffiliate đăng video affiliate lên YouTube Shorts
+// (private-first, Ninh duyệt trong YouTube Studio). Quota-guarded: hết
+// quota ngày thì ghi log trung thực và bỏ qua (video vẫn nằm ở output).
+func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	pub := youtubeAffiliatePublisher(acct)
+	if !pub.IsConfigured() || !pub.Handles("short_video") {
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: kênh chưa cấu hình OAuth hoặc chưa bật loại short_video — bỏ qua.")
+		return
+	}
+	today := s.today()
+	if s.Growth != nil {
+		if used, err := s.Growth.QuotaUsed(today); err == nil && !growth.QuotaCanUpload(used) {
+			s.JobStore.AppendLog(jobID, fmt.Sprintf("Tự đăng YouTube: chờ quota (hôm nay đã dùng %d/%d units) — video nằm ở output, đăng tay nếu cần.", used, growth.DailyQuotaUnits))
+			return
+		}
+	}
+	title := j.Title
+	if p.ProductName != "" {
+		title = p.ProductName
+	}
+	desc := "Video giới thiệu sản phẩm dựng bằng AI."
+	if p.AffLink != "" {
+		desc += "\nLink mua: " + p.AffLink
+	}
+	desc += "\n\n" + growth.DisclosureLine
+	s.JobStore.AppendLog(jobID, "Tự đăng YouTube Shorts (private)…")
+	res := pub.Publish(ctx, j.Output, title, desc, "short_video")
+	if !res.Ok {
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube thất bại: "+res.Error)
+		_ = s.decide("autopilot", "autopublish_yt_failed", &jobID,
+			"tự đăng YouTube thất bại: "+res.Error, nil)
+		return
+	}
+	if s.Growth != nil {
+		_ = s.Growth.AddQuota(today, growth.UploadCostUnits)
+	}
+	note := "Đã đăng YouTube Shorts (private)"
+	if res.URL != "" {
+		note += " (" + res.URL + ")"
+	}
+	note += " — xem lại trong YouTube Studio."
+	s.JobStore.AppendLog(jobID, note)
 }
 
 // AutoPublishLoggable wraps SetOnDone wiring: the closure form main.go

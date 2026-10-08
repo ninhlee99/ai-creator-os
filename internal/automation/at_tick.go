@@ -213,6 +213,7 @@ func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (stri
 		ProductPhoto: dst,
 		Seconds:      30,
 		MusicPath:    s.ATMusicPath, // "" = video câm (job log ghi rõ)
+		AffLink:      p.ProductURL,  // đợt Q: link Accesstrade vào mô tả YouTube
 	})
 }
 
