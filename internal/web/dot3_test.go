@@ -42,9 +42,9 @@ func TestAutopilotSwitchesDefaultOn(t *testing.T) {
 	// R2-W4: the autopilot switches live in the single settings facade
 	// (ledger settings), not the products store.
 
-	enabled, _, _, _, autoPub := s.scheduleView()
-	if !enabled || !autoPub {
-		t.Fatalf("unset switches: enabled=%v autoPublish=%v, want both ON", enabled, autoPub)
+	enabled, _, _, _, autoPub, youTube := s.scheduleView()
+	if !enabled || !autoPub || !youTube {
+		t.Fatalf("unset switches: enabled=%v autoPublish=%v youTube=%v, want all ON", enabled, autoPub, youTube)
 	}
 	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "0"); err != nil {
 		t.Fatal(err)
@@ -52,14 +52,14 @@ func TestAutopilotSwitchesDefaultOn(t *testing.T) {
 	if err := s.Ledger.SetSetting(SettingAutopilotAutoPublish, "0"); err != nil {
 		t.Fatal(err)
 	}
-	enabled, _, _, _, autoPub = s.scheduleView()
+	enabled, _, _, _, autoPub, _ = s.scheduleView()
 	if enabled || autoPub {
 		t.Fatalf("stored 0: enabled=%v autoPublish=%v, want both OFF", enabled, autoPub)
 	}
 	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "1"); err != nil {
 		t.Fatal(err)
 	}
-	if enabled, _, _, _, _ = s.scheduleView(); !enabled {
+	if enabled, _, _, _, _, _ = s.scheduleView(); !enabled {
 		t.Error("stored 1: enabled = false, want ON")
 	}
 }

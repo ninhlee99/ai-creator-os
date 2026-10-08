@@ -61,6 +61,9 @@ type AffiliateParams struct {
 	MusicStart   float64 `json:"music_start"` // seconds into the track
 	MusicTitle   string  `json:"music_title"`
 	MusicArtist  string  `json:"music_artist"`
+	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
+	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
+	AffLink string `json:"aff_link,omitempty"`
 }
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or

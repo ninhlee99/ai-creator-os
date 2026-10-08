@@ -75,6 +75,7 @@ var productsSettingKeys = []string{
 	"autopilot_interval_hours",
 	"autopilot_last_run",
 	"autopilot_auto_publish",
+	"autopilot_youtube_enabled",
 	"autopilot_music_name",
 }
 
@@ -280,6 +281,11 @@ func AutopilotLastRun(s Settings) string {
 
 // AutopilotAutoPublish reports the auto-publish-to-TikTok switch.
 func AutopilotAutoPublish(s Settings) bool { return autopilotOn(s, "autopilot_auto_publish") }
+
+// AutopilotYouTubeEnabled reports the auto-publish-to-YouTube-Shorts
+// switch (đợt Q). Mặc định BẬT (unset = bật — tiền lệ Đợt 3); private-first
+// nên an toàn, Ninh duyệt trong YouTube Studio.
+func AutopilotYouTubeEnabled(s Settings) bool { return autopilotOn(s, "autopilot_youtube_enabled") }
 
 // AutopilotMusicName returns the UI-uploaded music bed filename, "" when none.
 func AutopilotMusicName(s Settings) string {

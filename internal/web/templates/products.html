@@ -429,6 +429,10 @@ function atSettingsSave() {
       <label><input type="checkbox" name="auto_publish"{{if .AutoPublish}} checked{{end}}> Tự đăng TikTok khi video xong</label>
       <p class="hint">Đăng <strong>nháp</strong> qua TikTok API (cần OAuth). Gắn giỏ + nhạc trong app TikTok.</p>
     </div>
+    <div class="field" style="margin-top:8px">
+      <label><input type="checkbox" name="youtube_enabled"{{if .YouTubeEnabled}} checked{{end}}> Tự đăng YouTube Shorts khi video xong</label>
+      <p class="hint">Đăng <strong>private</strong> (kèm link affiliate trong mô tả). Duyệt trong YouTube Studio.</p>
+    </div>
     <button type="submit" class="btn">💾 Lưu lịch</button>
     {{if .SchedLastRun}}<span class="badge badge-ok" style="margin-left:8px">Lần chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
     {{if .SchedNextRun}}<span class="badge badge-draft" style="margin-left:8px">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}

@@ -73,6 +73,20 @@ không cần restart.
 Key đọc từ `accesstrade.KeySetting` (`at.access_key`) — **một nguồn duy nhất**
 cho cả web và automation (định nghĩa trong package accesstrade).
 
+## 5b. Tự đăng video affiliate (Đợt 3 + Đợt Q)
+
+`AutoPublishAffiliate` (hook `SetOnDone` của Studio) đăng video affiliate
+xong việc lên 2 kênh — mỗi kênh một công tắc riêng ở trang Affiliate
+(card ⚙️, unset = BẬT):
+
+| Kênh | Chế độ | Ghi chú |
+|---|---|---|
+| TikTok (`autopilot_auto_publish`) | **nháp** | Giới hạn nền tảng: gắn giỏ hàng + nhạc tay trong app TikTok |
+| YouTube Shorts (`autopilot_youtube_enabled`, đợt Q) | **private** | Kèm link affiliate trong mô tả + dòng khai báo AI; AI disclosure `Synthetic=true`; quota-guarded (hết quota → log trung thực, không đăng) |
+
+Mô tả YouTube: tên sản phẩm + link Accesstrade (`AffiliateParams.AffLink`,
+hunter điền từ `ProductURL`) + `growth.DisclosureLine`.
+
 ## 6. Giới hạn đã biết (trung thực)
 
 - Chưa test với key thật của Ninh — mapping field response đang defensive;

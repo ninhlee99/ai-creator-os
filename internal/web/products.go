@@ -100,7 +100,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	enabled, hours, lastRun, music, autoPub := s.scheduleView()
+	enabled, hours, lastRun, music, autoPub, youTube := s.scheduleView()
 	// Autopilot status surface (A5): next scheduled run + stock on hand.
 	nextRun := ""
 	if enabled {
@@ -130,6 +130,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"StockCount", stock,
 		"MusicName", music,
 		"AutoPublish", autoPub,
+		"YouTubeEnabled", youTube,
 	))
 }
 
@@ -399,7 +400,7 @@ func autopilotMusicPath(databasePath string) string {
 }
 
 // scheduleView reads the current schedule state for the products page.
-func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string, autoPublish bool) {
+func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string, autoPublish, youTube bool) {
 	// Automation switches read from the single settings facade (R2-W4):
 	// ledger settings. Switches default ON when unset (Đợt 3); a stored
 	// "0" is an explicit operator choice and always wins.
@@ -409,6 +410,7 @@ func (s *Server) scheduleView() (enabled bool, hours int, lastRun, music string,
 	lastRun = automation.AutopilotLastRun(st)
 	music = automation.AutopilotMusicName(st)
 	autoPublish = automation.AutopilotAutoPublish(st)
+	youTube = automation.AutopilotYouTubeEnabled(st)
 	return
 }
 
@@ -431,6 +433,10 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 	if r.PostFormValue("auto_publish") == "on" {
 		autoPub = "1"
 	}
+	youTube := "0"
+	if r.PostFormValue("youtube_enabled") == "on" {
+		youTube = "1"
+	}
 	hours := 6
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
@@ -445,6 +451,10 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := st.Set(SettingAutopilotAutoPublish, autoPub); err != nil {
+		s.fail(w, err, "save schedule")
+		return
+	}
+	if err := st.Set(SettingAutopilotYouTube, youTube); err != nil {
 		s.fail(w, err, "save schedule")
 		return
 	}
@@ -531,4 +541,5 @@ const (
 	SettingAutopilotLastRun     = "autopilot_last_run"
 	SettingAutopilotMusic       = "autopilot_music_name"
 	SettingAutopilotAutoPublish = "autopilot_auto_publish"
+	SettingAutopilotYouTube     = "autopilot_youtube_enabled"
 )
