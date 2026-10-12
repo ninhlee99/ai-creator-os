@@ -19,7 +19,6 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "list accounts")
 		return
 	}
-	revenue := s.scalarFloat("SELECT COALESCE(SUM(commission),0) FROM orders")
 	commRevenue, _ := s.Ledger.TotalRevenue()
 	today := s.today()
 	decisions, err := s.queryDecisions(
@@ -29,15 +28,15 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "dashboard", s.ctx(
+		"Notice", r.URL.Query().Get("ok"),
 		"Accounts", accounts,
 		"ByStatus", sortedStatusCounts(accounts),
-		"Revenue", revenue,
 		"CommissionRevenue", commRevenue,
 		"Decisions", decisions,
 		"GrowthAlerts", s.recentGrowthAlerts(accounts),
 		"LocalRuntimes", s.localRuntimeViews(),
 		"Today", today,
-		"NJobs", s.Jobs.Count(),
+		"NJobs", s.Jobs.ActiveCount(),
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
 		"HasKeys", s.hasAnyAPIKey(),
 		"HasStudioJobs", s.Studio != nil && len(s.Studio.ListJobs(1)) > 0,

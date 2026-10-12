@@ -253,7 +253,7 @@ func TestAllPagesRender(t *testing.T) {
 	pages := map[string]string{
 		"/":                         "Tổng quan mạng lưới",
 		"/accounts":                 "Kênh",
-		"/accounts/new":             "Thêm tài khoản mới",
+		"/accounts/new":             "Thêm kênh mới",
 		"/accounts/1":               "sample_acct",
 		"/accounts/1?tab=tong-quan": "Tổng quan",
 		"/accounts/1?tab=autopilot": "Autopilot Affiliate",

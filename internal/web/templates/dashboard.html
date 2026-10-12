@@ -3,25 +3,25 @@
 <h1>Tổng quan mạng lưới</h1>
 <p class="subtitle">Ngày {{.Today}} · Giám sát toàn bộ AI creator và doanh thu.</p>
 
-{{if not .Accounts}}
+{{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:20px">
   <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
   <ol class="steps">
-    <li>
-      <span class="n">1</span>
+    <li class="{{if .HasKeys}}done{{end}}">
+      <span class="n">{{if .HasKeys}}✓{{else}}1{{end}}</span>
+      <div class="step-body">
+        <b>Thêm Gemini API key</b>
+        <span>Không có key thì không tính năng nào chạy được — đây là bước chặn cứng đầu tiên.</span>
+      </div>
+      <a class="btn btn-sm" href="/settings">Thêm key</a>
+    </li>
+    <li class="{{if .Accounts}}done{{end}}">
+      <span class="n">{{if .Accounts}}✓{{else}}2{{end}}</span>
       <div class="step-body">
         <b>Thêm kênh đầu tiên</b>
-        <span>Tạo tài khoản creator đầu tiên (TikTok/YouTube) để hệ thống bắt đầu thiết lập.</span>
+        <span>Tạo kênh creator đầu tiên (TikTok/YouTube) để hệ thống bắt đầu thiết lập.</span>
       </div>
-      <a class="btn btn-sm" href="/accounts/new">Thêm tài khoản</a>
-    </li>
-    <li class="{{if .HasKeys}}done{{end}}">
-      <span class="n">{{if .HasKeys}}✓{{else}}2{{end}}</span>
-      <div class="step-body">
-        <b>Cấu hình API key ở Cài đặt</b>
-        <span>Thêm Gemini API key để AI viết kịch bản, tạo ảnh và dựng video.</span>
-      </div>
-      <a class="btn btn-secondary btn-sm" href="/settings">Mở Cài đặt</a>
+      <a class="btn btn-secondary btn-sm" href="/accounts/new">Thêm kênh</a>
     </li>
     <li class="{{if .HasStudioJobs}}done{{end}}">
       <span class="n">{{if .HasStudioJobs}}✓{{else}}3{{end}}</span>
@@ -35,6 +35,8 @@
 </div>
 {{end}}
 
+{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+
 <div class="cards">
   <div class="card">
     <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
@@ -45,12 +47,8 @@
     <div class="label">Tổng tài khoản</div>
   </div>
   <div class="card accent">
-    <div class="num">{{fmtVND .Revenue}}</div>
-    <div class="label">Doanh thu affiliate</div>
-  </div>
-  <div class="card accent">
     <div class="num">{{fmtVND .CommissionRevenue}}</div>
-    <div class="label">Hoa hồng đã ghi nhận</div>
+    <div class="label">Hoa hồng Accesstrade</div>
   </div>
   <div class="card">
     <div class="num">{{.NJobs}}</div>
@@ -72,8 +70,8 @@
 <div class="empty-state compact">
   <div class="es-icon">👤</div>
   <h3>Chưa có tài khoản nào</h3>
-  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
-  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+  <p>Thêm kênh TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
+  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
 {{end}}
 

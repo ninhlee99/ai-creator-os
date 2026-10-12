@@ -1,7 +1,8 @@
-{{define "title"}}Thêm tài khoản — AI Creator OS{{end}}
+{{define "title"}}Thêm kênh — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Thêm tài khoản mới</h1>
+<h1>Thêm kênh mới</h1>
 <p class="subtitle">Tạo tài khoản và chạy onboarding tự động: gán persona, nghiên cứu niche, lên topic plan.</p>
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
 <div class="form-card">
 <form method="post" action="/accounts">

@@ -140,6 +140,20 @@ func (js *JobStore) Count() int {
 	return len(js.jobs)
 }
 
+// ActiveCount returns the number of jobs still in progress (queued or
+// running) — the honest number for a "đang dựng" card.
+func (js *JobStore) ActiveCount() int {
+	js.mu.Lock()
+	defer js.mu.Unlock()
+	n := 0
+	for _, j := range js.jobs {
+		if j.Status == "queued" || j.Status == "running" {
+			n++
+		}
+	}
+	return n
+}
+
 // RenderResult is the outcome of rendering one job.
 type RenderResult struct {
 	Output   string  // file name under the output dir

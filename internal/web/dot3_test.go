@@ -113,7 +113,7 @@ func TestDashboardRestoredStats(t *testing.T) {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Hoa hồng đã ghi nhận", "150.000 ₫"} {
+	for _, want := range []string{"Hoa hồng Accesstrade", "150.000 ₫"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("dashboard missing restored stat %q", want)
 		}
