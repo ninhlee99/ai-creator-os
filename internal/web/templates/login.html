@@ -1,0 +1,31 @@
+{{define "login"}}<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đăng nhập — AI Creator OS</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{max-width:380px;width:100%}
+.login-card input[type=password]{width:100%;padding:10px;border:1px solid #d8d4cc;border-radius:8px;font-size:16px;margin:8px 0 12px}
+.login-err{color:#a33b2e;font-size:14px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="form-card login-card">
+    <h1 style="margin-top:0">AI Creator OS</h1>
+    <p class="subtitle">Khu vực riêng tư — nhập mật khẩu để tiếp tục.</p>
+    {{if .Err}}<p class="login-err">{{.Err}}</p>{{end}}
+    <form method="post" action="/login">
+      <input type="hidden" name="next" value="{{.Next}}">
+      <label for="pw">Mật khẩu</label>
+      <input type="password" id="pw" name="password" autocomplete="current-password" autofocus>
+      <button type="submit" class="btn btn-primary" style="width:100%">Đăng nhập →</button>
+    </form>
+    <p class="hint" style="margin-top:12px">Quên mật khẩu? Dừng app, chạy <code>sqlite3 data/ledger.db "DELETE FROM settings WHERE key='auth.password_hash'"</code>, mở app lại rồi đặt mật khẩu mới.</p>
+  </div>
+</div>
+</body>
+</html>{{end}}

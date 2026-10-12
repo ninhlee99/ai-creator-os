@@ -162,6 +162,13 @@ func (s *Server) Routes() http.Handler {
 	// First-run wizard (R2-W7): hiện khi thư mục dữ liệu chưa có ledger.db.
 	mux.HandleFunc("GET /onboard", s.handleOnboard)
 	mux.HandleFunc("POST /onboard", s.handleOnboard)
+	// Đợt T: đăng nhập/đăng xuất dashboard (authGate cho /login đi qua).
+	mux.HandleFunc("GET /login", s.handleLogin)
+	mux.HandleFunc("POST /login", s.handleLogin)
+	mux.HandleFunc("POST /logout", s.handleLogout)
+	// Đợt T: đặt/tắt mật khẩu dashboard.
+	mux.HandleFunc("POST /settings/auth/password", s.handleAuthPasswordSet)
+	mux.HandleFunc("POST /settings/auth/password/disable", s.handleAuthPasswordDisable)
 
 	// Đợt 2 (gộp trang): URL cũ của các trang đã gộp redirect 303 sang tab
 	// thay thế, để bookmark/form cũ vẫn tới đúng chỗ. Trang /analytics đã
@@ -176,7 +183,7 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
 	}
 
-	return s.recoverer(s.onboardGate(mux))
+	return s.recoverer(s.authGate(s.onboardGate(mux)))
 }
 
 // recoverer keeps a panicking handler from taking the server down.

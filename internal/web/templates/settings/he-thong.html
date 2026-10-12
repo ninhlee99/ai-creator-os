@@ -60,6 +60,31 @@
   </div>
 </div>
 
+<h2>Mật khẩu truy cập</h2>
+<p class="subtitle">Đặt mật khẩu trước khi mở app ra mạng LAN/VPS. Chưa đặt thì ai mở được địa chỉ app cũng vào được.</p>
+<div class="cards">
+  <div class="card">
+    <div class="label">Trạng thái</div>
+    <div class="value">{{if .AuthOn}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-dim">Chưa đặt</span>{{end}}</div>
+    {{if .AuthOn}}
+    <form method="post" action="/settings/auth/password">
+      <label class="label" for="pw-new">Đổi mật khẩu mới</label>
+      <input type="password" id="pw-new" name="password" autocomplete="new-password" minlength="4">
+      <button type="submit" class="btn btn-primary btn-sm">Đổi mật khẩu</button>
+    </form>
+    <form method="post" action="/settings/auth/password/disable" style="margin-top:8px">
+      <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Tắt mật khẩu? Dashboard sẽ mở cho bất kỳ ai truy cập được địa chỉ app.">Tắt mật khẩu</button>
+    </form>
+    {{else}}
+    <form method="post" action="/settings/auth/password">
+      <label class="label" for="pw-new">Mật khẩu mới (tối thiểu 4 ký tự)</label>
+      <input type="password" id="pw-new" name="password" autocomplete="new-password" minlength="4">
+      <button type="submit" class="btn btn-primary btn-sm">Đặt mật khẩu</button>
+    </form>
+    {{end}}
+  </div>
+</div>
+
 <h2>Tự động nền (tick)</h2>
 <p class="subtitle">Mỗi tick chạy độc lập có giám sát: panic tự phục hồi, treo quá hạn tự hủy. Ngắt mạch quota mở khi hết quota Gemini ngày.</p>
 <div class="cards">

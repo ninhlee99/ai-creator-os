@@ -303,6 +303,31 @@ func (s *Server) handleSettingsIndex(w http.ResponseWriter, r *http.Request) {
 	seeOther(w, r, "/settings/he-thong")
 }
 
+// handleAuthPasswordSet đặt/đổi mật khẩu dashboard (Đợt T).
+func (s *Server) handleAuthPasswordSet(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse password")
+		return
+	}
+	pw := r.PostFormValue("password")
+	if err := s.setAuthPassword(pw); err != nil {
+		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
+		return
+	}
+	_ = s.Ledger.Decide("human", "auth_password", nil, "Đặt/đổi mật khẩu truy cập dashboard.", nil)
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã đặt mật khẩu. Từ giờ truy cập dashboard cần đăng nhập."))
+}
+
+// handleAuthPasswordDisable tắt mật khẩu dashboard (Đợt T).
+func (s *Server) handleAuthPasswordDisable(w http.ResponseWriter, r *http.Request) {
+	if err := s.clearAuthPassword(); err != nil {
+		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
+		return
+	}
+	_ = s.Ledger.Decide("human", "auth_password", nil, "Tắt mật khẩu truy cập dashboard.", map[string]any{"off": true})
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã tắt mật khẩu."))
+}
+
 // handleSettingsHeThong: "App đang chạy chế độ gì, còn thiếu biến nào?"
 func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",

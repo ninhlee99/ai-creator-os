@@ -1,155 +1,81 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
->
-
 # Hướng dẫn sử dụng (dành cho Ninh)
 
-Tất cả quản trị đều qua **dashboard web** — không cần chạm CLI. Chạy app rồi mở `http://127.0.0.1:8080`.
+> Viết lại 2026-10-12 theo app thật (post-pivot: 3 trụ — Affiliate Accesstrade,
+> Reup Douyin, YouTube kể chuyện). Mọi quản trị đều qua **dashboard web** —
+> không cần chạm CLI.
 
----
+## 1. Cài đặt
 
-## 1. Cài đặt và chạy trên Mac
+**Cách nhanh nhất:** tải binary đúng máy tại **GitHub Releases**
+(`github.com/ninhlee99/ai-creator-os` → Releases), chạy là dùng — không cài
+thêm gì (Go runtime không cần).
 
-```bash
-brew install ffmpeg          # bắt buộc
-brew install llama.cpp       # cần cho LLM local (llama-server bản Metal)
-# cài `uv` (cho VieNeu-TTS local) theo hướng dẫn chính thức của uv
-chmod +x aicos-darwin-arm64
-./aicos-darwin-arm64
-```
+| Máy | File | Chạy |
+|---|---|---|
+| Mac M1/M2/M3 | `aicos-darwin-arm64` | `chmod +x aicos-darwin-arm64 && ./aicos-darwin-arm64` |
+| Mac Intel | `aicos-darwin-amd64` | tương tự |
+| Windows | `aicos-windows-amd64.exe` | nhấp đúp |
+| Linux | `aicos-linux-amd64` | `chmod +x` rồi chạy |
 
-Mở trình duyệt: `http://127.0.0.1:8080`. Tắt app: `Ctrl+C`. Dữ liệu nằm trong thư mục `data/` cạnh binary.
+Mở trình duyệt: `http://127.0.0.1:8080`. Lần đầu app hỏi thiết lập 1 bước
+(dry-run bật sẵn cho an toàn).
 
-Model local (VieNeu-TTS v3, LLM GGUF): bấm nút **Tải** trong trang Cài đặt.
+**Công cụ ngoài** (trang Cài đặt · Hệ thống tự kiểm tra và báo thiếu, hướng dẫn
+cài theo đúng hệ điều hành của máy):
 
-Build từ source (nếu cần): `brew install go` rồi `go build -o aicos ./cmd/aicos`.
+| Công cụ | Để làm gì | Cài |
+|---|---|---|
+| FFmpeg | dựng video (bắt buộc) | Mac: `brew install ffmpeg` · Win: `winget install Gyan.FFmpeg` · Linux: `sudo apt install ffmpeg` |
+| llama.cpp | LLM chạy trên máy (không bắt buộc — có Gemini free) | Mac: `brew install llama.cpp` · Win/Linux: tải bản build tại `github.com/ggerganov/llama.cpp/releases` |
+| uv | giọng đọc VieNeu local (không bắt buộc) | Mac: `brew install uv` · Win: `winget install astral-sh.uv` · Linux: `curl -LsSf astral.sh/uv/install.sh \| sh` |
 
----
+**Build từ source** (nếu cần): cài Go 1.26 rồi `go build -o aicos ./cmd/aicos`.
 
 ## 2. Các trang trong dashboard
 
 | Trang | Làm gì |
 |---|---|
-| Trang chủ | Tổng quan mạng lưới, kill switch |
-| Tài khoản | Thêm account (username + gợi ý niche), AI tự research + gán persona, onboarding |
-| Lịch live | Xếp giờ vàng, tối đa 2 live cùng lúc |
-| Phát triển kênh | Theo dõi tăng trưởng từng tài khoản/ngưỡng KPI, tự kill/nhân đôi format |
-| Studio AI | Tạo video affiliate / phim ngắn: dựng kịch bản → chụp ảnh → dựng video → caption (gồm tab "Video chữ động") |
-| Agent Team | Cây agent theo thời gian thật — bấm tác vụ để xem trạng thái từng agent |
-| Sản phẩm | Tìm sản phẩm affiliate, thêm sản phẩm tay, tab "Kệ hàng", bật "Tự đăng TikTok khi video xong" |
-| Đa nền tảng | Kết nối TikTok/Facebook/YouTube, nút Kết nối TikTok (OAuth); doanh thu và chi phí API nằm ở Trang chủ/Cài đặt |
-| Cài đặt | API key, chuỗi provider TTS/LLM, dry-run, vùng nguy hiểm |
-
----
+| Trang chủ | Tổng quan + kill switch |
+| Kênh | Tài khoản TikTok/YouTube/Facebook đã kết nối |
+| Phát triển kênh | Kế hoạch 30 ngày, canary 7 ngày, luật kill/nhân đôi |
+| Đội ngũ | Pipeline Hunter → Director → Producer → Publisher → Analyst |
+| Studio AI | Tạo video tay: kịch bản → ảnh → dựng → caption |
+| Affiliate | Chiến dịch Accesstrade, tạo link, video affiliate tự đăng |
+| Reup | Nguồn Douyin, transform, lịch đăng, kill rule |
+| Kể chuyện | Truyện YouTube: hàng đợi chủ đề, job, tự thử lại khi lỗi |
+| Đa nền tảng | Kết nối OAuth TikTok/YouTube/Facebook |
+| Cài đặt | Nhà cung cấp AI, Reup, Accesstrade, An toàn, Hệ thống |
 
 ## 3. Vận hành hằng ngày (hands-off)
 
-1. Mở app khi muốn hệ thống ON; orchestrator chạy agents theo lịch, stream theo lịch LIVE.
-2. Trang chủ cho thấy commission, chi phí, quyết định hệ thống đã đưa ra.
-3. Telegram báo khi: stream sập, quota gần hết, có sự kiện kill, lỗi đường tiền.
-4. Mỗi tuần xem lại quyết định và chỉnh ngưỡng trong Cài đặt.
+1. **Mở máy + mạng + start app** — đó là toàn bộ việc của Ninh. Mọi quyết định
+   vận hành (chọn provider, fallback khi hết quota, lịch đăng) do app tự quyết
+   theo nguyên tắc "free trước".
+2. Telegram báo khi: lỗi/quota/có sự kiện kill (bật ở Cài đặt · Hệ thống).
+3. Muốn app tự chạy lại khi crash/restart máy (Mac): làm theo
+   `deploy/README.md` (watchdog launchd).
+4. Kiểm tra sức khỏe định kỳ: `scripts/watch-health.sh` (cron mỗi 5 phút) —
+   phát hiện app treo mà process chưa chết.
 
----
+## 4. Cập nhật app
 
-## 4. Checklist trước khi live thật
+1. Tải binary mới từ GitHub Releases, thay file cũ.
+2. Restart app (watchdog launchd tự chạy lại bản mới).
+3. Xem version đang chạy ở Cài đặt · Hệ thống (thẻ "Phiên bản app").
 
-- [ ] `go test ./...` pass (trên máy build)
-- [ ] Cài đặt: chuỗi provider TTS/LLM + API key đã cấu hình
-- [ ] Tài khoản TikTok: đã xác minh quyền Shop Creator + LIVE
-- [ ] `DRY_RUN=false` — bật có chủ ý trong Cài đặt
-- [ ] Telegram alert đã test
-- [ ] Phiên live đầu tiên giám sát trực tiếp qua dashboard
+## 5. An toàn
 
-**API key cần chuẩn bị** (khóa lưu trong `.env` đã gitignore, không bao giờ hiện trên UI hay log):
-
-| Key | Lấy ở đâu | Ghi chú |
-|---|---|---|
-| `GEMINI_API_KEYS` (nhiều key, cách nhau bằng dấu phẩy) | aistudio.google.com | TTS + LLM, có xoay vòng + cooldown tự động |
-| `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET` | developers.tiktok.com | Xem phần 5 |
-| `TIKTOK_REDIRECT_URI` | — | `https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html` |
-| `RTMP_KEY_<USERNAME>` | TikTok LIVE Center → Go LIVE | Một key mỗi account |
-
-Không có Gemini key thì TTS tự rơi về Edge (giọng kém hơn). Không có app TikTok qua audit thì Posting API chỉ đăng ở chế độ riêng tư cho tối đa 5 tài khoản test.
-
----
-
-## 5. Kết nối TikTok (một lần mỗi tài khoản)
-
-1. **developers.tiktok.com → Manage apps → Connect an app.** Category: `Others`. Description: công cụ cá nhân đẩy video AI của chính bạn lên hộp thư nháp TikTok để duyệt trước khi đăng. Platforms: chỉ tick **Desktop**.
-2. Add products: **Login Kit** + **Content Posting API** (Direct Post để TẮT). Ghi lại Client Key + Client Secret.
-3. Terms/Privacy URL bắt buộc là link công khai: dán nội dung `docs/tiktok-app-site/terms.md` và `privacy.md` vào GitHub Gist public (thay `CONTACT_EMAIL`) hoặc Google Docs → Publish to web.
-4. Redirect URI: `https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html` (trang trung chuyển tĩnh, tự đưa code về app local).
-5. Ghi vào `.env` ở thư mục app (không gõ secret thẳng vào Terminal):
-
-```bash
-cat >> .env <<'EOF'
-TIKTOK_CLIENT_KEY=...
-TIKTOK_CLIENT_SECRET=...
-TIKTOK_REDIRECT_URI=https://ninhlee99.github.io/ai-creator-os/tiktok-app-site/callback.html
-TIKTOK_DRAFT_ONLY=1
-EOF
-chmod 600 .env
-```
-
-6. Mở app: `set -a; source .env; set +a; ./aicos-darwin-arm64`.
-7. Trang **Đa nền tảng** → bấm **Kết nối TikTok** → đăng nhập đúng tài khoản creator → Allow. Token lưu vào `tiktok_token_<username>.json` (quyền 600).
-8. Trang **Sản phẩm** → kiểm tra **"Tự đăng TikTok khi video xong"** (bản cài mới mặc định bật; bản cài cũ giữ nguyên lựa chọn đã lưu). Video lên dạng **nháp trong Hộp thư TikTok**, không public.
-
----
-
-## 6. Hậu kỳ mỗi video (bắt buộc làm tay)
-
-API TikTok **không cho gắn giỏ hàng qua code**, nên mỗi video cần mấy phút tay:
-
-1. Mở nháp từ thông báo Hộp thư TikTok trên điện thoại.
-2. **Thêm liên kết → Sản phẩm** → tìm đúng sản phẩm affiliate → gắn.
-3. Đổi nhạc sang **sound trending** trong thư viện TikTok nếu bản nháp chưa dùng.
-4. Dán caption: Studio → Xem storyboard → Copy caption (hoặc `caption.txt` trong folder Drive).
-5. Kiểm tra lần cuối (mặt mẫu, tay, sản phẩm đúng) → **Đăng**.
-
-**Không bao giờ** tự đăng video lên TikTok hay nền tảng nào. App chỉ đẩy **nháp**.
-
-### Tinh chỉnh CapCut (chỉ khi cần)
-
-Video từ app đã có giật-giật theo nhịp + nhạc. Chỉ mở CapCut khi cần căn lại beat hoặc thay sound: project 9:16, snap điểm cắt vào nhịp trống, 2–3 giây đầu phải bùng nổ nhất, **không thêm chữ/voiceover/sticker**, export MP4 1080×1920 30fps bitrate ≥ 12 Mbps, tên file `<YYYY-MM-DD>_<ten-san-pham>_final.mp4`.
-
-### QC trước khi đăng
-
-- [ ] Mặt mẫu đồng nhất suốt video
-- [ ] Tay tự nhiên, không dị dạng
-- [ ] Sản phẩm đúng mẫu, không méo
-- [ ] Không chữ / watermark / logo lạ
-- [ ] Nhạc khớp nhịp cắt
-
-Có thể chạy `scripts/postprod.sh qc <video> --final` để máy kiểm thông số kỹ thuật (độ phân giải, fps, thời lượng, bitrate, âm thanh).
-
-### Lưu lên Google Drive
-
-```bash
-scripts/postprod.sh pack \
-  --product "Túi kem quilted" \
-  --final ~/Movies/CapCut/…/export.mp4 \
-  --sound "Tên sound" --artist "Artist" --link "https://www.tiktok.com/music/…"
-# thêm --dry-run để xem trước, không copy
-```
-
-Script tạo `My Drive/AICOS/videos/<YYYY-MM-DD>_<slug>/` chứa: video final, video gốc từ app, ảnh master 4K, file nhạc, `sound.txt`, `caption.txt`. Không ghi đè file trùng tên.
-
----
-
-## 7. An toàn
-
-- **Kill switch:** nút trên Trang chủ, hoặc `kill -USR1` — dừng toàn hệ thống trong vài giây, sổ cái vẫn giữ nguyên.
-- **Dry-run:** bật trong Cài đặt để xem trước mọi hành động mà không tác động ra ngoài.
-- **Tự động mặc định bật:** sản xuất theo plan, lịch autopilot, lịch live tự xây, plan tự sinh khi tạo tài khoản/đổi chủ đề. Khi Dry-run còn bật thì mọi hành động thật đều bị chặn; muốn tắt hẳn từng mục thì lưu "tắt" ở trang tương ứng (lựa chọn đã lưu luôn được tôn trọng).
-- Không xóa file trong `data/output/`. Hỏi trước khi ghi đè file trên Drive.
+- **Kill switch:** nút trên thanh topbar — dừng mọi hoạt động tự động trong vài giây.
+- **Dry-run:** bật ở Cài đặt · An toàn để xem trước mọi hành động mà không tác động ra ngoài.
+- **Mật khẩu dashboard:** đặt ở Cài đặt · Hệ thống → "Mật khẩu truy cập".
+  Bắt buộc đặt trước khi mở app ra mạng LAN/VPS. Quên mật khẩu: dừng app, chạy
+  `sqlite3 data/ledger.db "DELETE FROM settings WHERE key='auth.password_hash'"`,
+  mở app lại và đặt mật khẩu mới.
 - Không đọc, in ra hay gửi đi API key/secret/token.
 
----
+## 6. Backup & khôi phục
 
-## 8. Backup
-
-```bash
-sqlite3 data/ledger.db ".backup data/backup/ledger-$(date +%F).db"
-```
-
-Giữ 30 ngày. Backup config cùng thư mục.
+App **tự sao lưu mỗi ngày** vào `backups/` (giữ 7 bản mới nhất) — đủ 5 database
+(ledger, studio, products, accesstrade, reup). Khôi phục: dừng app, giải nén bản
+muốn về, chép đè 5 file `.db` vào `data/`, mở app lại. Chi tiết:
+`docs/features/sao-luu-khoi-phuc.md`.

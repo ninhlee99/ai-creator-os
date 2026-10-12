@@ -109,6 +109,11 @@ type Server struct {
 	// ngày. Nil = không dùng.
 	QuotaCircuit func() (open bool, until string)
 
+	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
+	// thời điểm hết hạn; restart là đăng nhập lại.
+	authMu       sync.Mutex
+	authSessions map[string]time.Time
+
 	db        *sql.DB // read handle for decision/analytics queries
 	oauth     oauthStates
 	templates map[string]*template.Template
@@ -489,6 +494,13 @@ func (s *Server) parseTemplates() error {
 		}
 		s.templates[key] = t
 	}
+	// Đợt T: trang đăng nhập standalone (không sidebar) cho authGate.
+	t, err := template.New("login").Funcs(templateFuncs).ParseFS(
+		templateFS, "templates/login.html")
+	if err != nil {
+		return fmt.Errorf("parse template login.html: %w", err)
+	}
+	s.templates["login"] = t
 	return nil
 }
 
@@ -497,6 +509,7 @@ func (s *Server) ctx(kv ...any) map[string]any {
 	m := map[string]any{
 		"Kill":   s.Cfg.KillSwitch(),
 		"DryRun": s.Cfg.DryRun(),
+		"AuthOn": s.authEnabled(),
 	}
 	for i := 0; i+1 < len(kv); i += 2 {
 		if k, ok := kv[i].(string); ok {

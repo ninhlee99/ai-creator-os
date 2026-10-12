@@ -64,6 +64,11 @@
           <button type="submit" class="btn btn-danger">Kill switch</button>
         </form>
         {{end}}
+        {{if .AuthOn}}
+        <form method="post" action="/logout" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm" title="Đăng xuất khỏi dashboard">Đăng xuất</button>
+        </form>
+        {{end}}
       </div>
     </header>
     <main class="content">

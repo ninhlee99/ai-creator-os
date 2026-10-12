@@ -34,14 +34,16 @@ BIN="$1"; DATA="$2"
 mkdir -p "$DATA/logs" "$HOME/Library/LaunchAgents"
 
 # GEMINI_API_KEYS: lấy từ môi trường hiện tại nếu có (launchd không đọc
-# được shell profile của Ninh, nên phải nhúng thẳng vào plist).
+# được shell profile của Ninh). Không bắt buộc: bỏ trống cũng được, nhập
+# key sau ở Cài đặt · Nhà cung cấp trong dashboard.
 KEYS="${GEMINI_API_KEYS:-}"
 
 sed -e "s#__AICOS_BIN__#$BIN#g" \
     -e "s#__AICOS_DATA__#$DATA#g" \
     -e "s#__GEMINI_KEYS__#$KEYS#g" \
     "$TEMPLATE" > "$DEST"
-chmod 644 "$DEST"
+# Đợt T: plist 600 (thay vì 644) — file chứa key plaintext, chỉ chủ máy đọc được.
+chmod 600 "$DEST"
 
 # Nạp lại (idempotent): gỡ bản cũ nếu có rồi nạp bản mới.
 launchctl bootout "gui/$(id -u)" "$DEST" 2>/dev/null || true
@@ -51,6 +53,6 @@ echo "Đã cài watchdog: $DEST"
 echo "Kiểm tra: launchctl print gui/$(id -u)/$LABEL | grep -i state"
 echo "Log: $DATA/logs/aicos.log"
 if [[ -z "$KEYS" ]]; then
-  echo "CHÚ Ý: GEMINI_API_KEYS đang trống — app vẫn chạy nhưng tier Gemini sẽ fail-over."
-  echo "Đặt biến môi trường rồi chạy lại script để nhúng key vào plist."
+  echo "CHÚ Ý: GEMINI_API_KEYS đang trống — không sao, nhập key ở Cài đặt ·"
+  echo "Nhà cung cấp trong dashboard là app tự dùng ngay (không cần cài lại)."
 fi
