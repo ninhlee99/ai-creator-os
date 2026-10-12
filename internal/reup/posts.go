@@ -167,6 +167,30 @@ func (s *Store) ListPosts(limit int) ([]Post, error) {
 	return out, rows.Err()
 }
 
+// ListPostsByStatusSince liệt kê bài theo trạng thái từ thời điểm since
+// (posted_at >= since), mới nhất trước. Dùng cho digest "bản nháp chờ đăng"
+// — tránh LIMIT cắt mất bài mới khi tổng bài đã vượt giới hạn.
+func (s *Store) ListPostsByStatusSince(status, since string, limit int) ([]Post, error) {
+	q := `SELECT ` + postColumns + ` FROM reup_posts WHERE status=? AND posted_at >= ? ORDER BY id DESC`
+	if limit > 0 {
+		q += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	rows, err := s.db.Query(q, status, since)
+	if err != nil {
+		return nil, fmt.Errorf("reup: liệt kê bài từ %s: %w", since, err)
+	}
+	defer rows.Close()
+	var out []Post
+	for rows.Next() {
+		p, err := scanPost(rows)
+		if err != nil {
+			return nil, fmt.Errorf("reup: liệt kê bài: %w", err)
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // ListPostsByStatus liệt kê bài theo trạng thái.
 func (s *Store) ListPostsByStatus(status string, limit int) ([]Post, error) {
 	q := `SELECT ` + postColumns + ` FROM reup_posts WHERE status=? ORDER BY id ASC`

@@ -36,22 +36,24 @@ func (s *Service) DraftDigestTick(ctx context.Context) []string {
 		return nil
 	}
 	today := time.Now().Format("2006-01-02")
+	// So sánh theo UTC vì posted_at lưu UTC (nowUTC) — giờ local +07 sẽ bỏ
+	// sót bài đăng 0h–7h sáng.
+	todayUTC := time.Now().UTC().Format("2006-01-02")
 	if last, _ := s.Settings.Get(KeyDraftDigestLastDate); last == today {
 		return nil // đã báo hôm nay
 	}
 
 	var parts []string
 
-	// 1. Bản nháp TikTok/Facebook mới trong hôm nay.
+	// 1. Bản nháp TikTok/Facebook/YouTube mới trong hôm nay.
 	if s.Reup != nil {
 		counts := map[string]int{}
-		if posts, err := s.Reup.ListPostsByStatus(reup.PostPosted, 200); err == nil {
+		// ListPostsByStatusSince: lọc theo posted_at + mới nhất trước — tránh
+		// LIMIT cắt mất bài mới khi tổng bài đã vượt giới hạn.
+		if posts, err := s.Reup.ListPostsByStatusSince(reup.PostPosted, todayUTC, 200); err == nil {
 			for _, p := range posts {
-				if p.PostedAt < today {
-					continue
-				}
 				switch p.Platform {
-				case "tiktok", "facebook":
+				case "tiktok", "facebook", "youtube":
 					counts[p.Platform]++
 				}
 			}
@@ -61,6 +63,9 @@ func (s *Service) DraftDigestTick(ctx context.Context) []string {
 		}
 		if n := counts["facebook"]; n > 0 {
 			parts = append(parts, fmt.Sprintf("Facebook: %d bản nháp mới — mở Page để đăng", n))
+		}
+		if n := counts["youtube"]; n > 0 {
+			parts = append(parts, fmt.Sprintf("YouTube: %d video reup riêng tư mới chờ duyệt", n))
 		}
 	}
 
@@ -80,11 +85,12 @@ func (s *Service) DraftDigestTick(ctx context.Context) []string {
 		}
 	}
 
-	_ = s.Settings.Set(KeyDraftDigestLastDate, today)
 	if len(parts) == 0 {
+		_ = s.Settings.Set(KeyDraftDigestLastDate, today)
 		return nil
 	}
 	msg := "Có bản nháp chờ đăng: " + strings.Join(parts, "; ") + "."
 	s.alert("draft_digest", "warn", msg, "")
+	_ = s.Settings.Set(KeyDraftDigestLastDate, today)
 	return []string{"draft_digest: " + msg}
 }
