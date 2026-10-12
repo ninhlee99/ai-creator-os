@@ -479,17 +479,22 @@ func (s *Server) handleSettingsMaster(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "parse master form")
 		return
 	}
-	on := r.PostFormValue("value") == "1"
+	on := r.PostFormValue("value") == "1" || r.PostFormValue("on") == "1"
 	if err := automation.SetMasterOn(s.settings(), on); err != nil {
 		s.fail(w, err, "save master switch")
 		return
 	}
-	msg := "Đã TẮT công tắc chính: daemon mạng đứng yên (không tự mở live)."
+	msg := "Đã TẮT chế độ tự động: hệ thống đứng yên."
 	if on {
-		msg = "Đã BẬT công tắc chính: daemon mạng được phép chạy theo lịch (kill switch / DRY-RUN vẫn chặn như thường)."
+		msg = "Đã BẬT chế độ tự động: hệ thống chạy theo lịch."
 	}
 	_ = s.Ledger.Decide("system", "master_switch", nil, msg, map[string]any{"on": on})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	// Đợt AG: quay lại trang đã bấm nút (dashboard hoặc he-thong).
+	back := r.PostFormValue("back")
+	if back == "" || !strings.HasPrefix(back, "/") || strings.HasPrefix(back, "//") {
+		back = "/settings/he-thong"
+	}
+	seeOther(w, r, back+"?ok="+url.QueryEscape(msg))
 }
 
 // handleSettingsAPIBudget saves the UI-tuned daily API spend ceiling

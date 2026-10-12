@@ -1,7 +1,7 @@
 {{define "title"}}Trang chủ — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Tổng quan mạng lưới</h1>
-<p class="subtitle">Ngày {{.Today}} · Giám sát toàn bộ AI creator và doanh thu.</p>
+<p class="subtitle">Ngày {{.Today}} · Theo dõi kênh, video và hoa hồng của bạn.</p>
 
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:20px">
@@ -13,7 +13,7 @@
         <b>Thêm Gemini API key</b>
         <span>Không có key thì không tính năng nào chạy được — đây là bước chặn cứng đầu tiên.</span>
       </div>
-      <a class="btn btn-sm" href="/settings">Thêm key</a>
+      <a class="btn btn-sm" href="/settings/nha-cung-cap">Thêm key</a>
     </li>
     <li class="{{if .Accounts}}done{{end}}">
       <span class="n">{{if .Accounts}}✓{{else}}2{{end}}</span>
@@ -26,10 +26,13 @@
     <li class="{{if .HasStudioJobs}}done{{end}}">
       <span class="n">{{if .HasStudioJobs}}✓{{else}}3{{end}}</span>
       <div class="step-body">
-        <b>Tạo video đầu tiên ở Studio AI</b>
-        <span>Nhập tên sản phẩm, AI tự viết kịch bản, chụp ảnh và dựng video.</span>
+        <b>Tạo video đầu tiên</b>
+        <span>Chọn 1 trong 2: kể chuyện (chỉ cần chủ đề) hoặc video bán hàng (cần tên sản phẩm).</span>
       </div>
-      <a class="btn btn-secondary btn-sm" href="/studio">Mở Studio AI</a>
+      <div style="display:flex;gap:8px">
+        <a class="btn btn-secondary btn-sm" href="/stories">📖 Kể chuyện</a>
+        <a class="btn btn-secondary btn-sm" href="/studio">🎬 Bán hàng</a>
+      </div>
     </li>
   </ol>
 </div>
@@ -40,7 +43,12 @@
 <div class="cards">
   <div class="card">
     <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
-    <div class="label">Công tắc chính{{if .MasterOn}} — chế độ tự động được phép chạy theo lịch{{else}} — chế độ tự động đang đứng yên{{end}}</div>
+    <div class="label">Chế độ tự động{{if .MasterOn}} — đang chạy theo lịch{{else}} — đang đứng yên{{end}}</div>
+    <form method="post" action="/settings/master" style="margin-top:8px">
+      <input type="hidden" name="on" value="{{if .MasterOn}}0{{else}}1{{end}}">
+      <input type="hidden" name="back" value="/">
+      <button type="submit" class="btn btn-sm">{{if .MasterOn}}Tắt{{else}}Bật tự động{{end}}</button>
+    </form>
   </div>
   <div class="card">
     <div class="num">{{len .Accounts}}</div>
