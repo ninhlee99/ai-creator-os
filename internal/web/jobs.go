@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -215,6 +216,9 @@ func (r ffmpegRenderer) Render(ctx context.Context, job Job, tts TTSChainAPI, lo
 	if font == "" {
 		return RenderResult{}, fmt.Errorf("Không tìm thấy font hệ thống để vẽ phụ đề.")
 	}
+	// Đợt X: path Windows chứa `\` và `:` sẽ phá cú pháp filter ffmpeg —
+	// escape theo cùng quy tắc dtEscape trước khi nhét vào fontfile=.
+	font = dtEscape(font)
 	var bgImg string
 	for _, cand := range []string{"docs/assets/hero-network.webp", "docs/assets/personas-team.webp"} {
 		if _, err := os.Stat(cand); err == nil {
@@ -292,8 +296,31 @@ func dtEscape(text string) string {
 	return r.Replace(text)
 }
 
+// windowsFontCandidates trả các đường dẫn font đậm ưu tiên trên Windows.
+// Tách riêng để test được logic dựng path mà không cần chạy trên Windows.
+func windowsFontCandidates(windir string) []string {
+	if windir == "" {
+		windir = `C:\Windows`
+	}
+	var out []string
+	for _, name := range []string{"arialbd.ttf", "arial.ttf"} {
+		out = append(out, filepath.Join(windir, "Fonts", name))
+	}
+	return out
+}
+
 // findFont locates a bold system font (port of _find_font).
 func findFont() string {
+	// Đợt X: Windows không có đường dẫn Unix/macOS lẫn fc-list —
+	// trước đây luôn trả "" khiến vẽ phụ đề chết 100% trên Windows.
+	if runtime.GOOS == "windows" {
+		for _, p := range windowsFontCandidates(os.Getenv("WINDIR")) {
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		}
+		return ""
+	}
 	for _, c := range []string{
 		"/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",

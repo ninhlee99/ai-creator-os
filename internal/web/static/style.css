@@ -503,6 +503,9 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .env-form input[type=password] { width: 220px; }
 .env-hint { color: var(--muted); font-size: var(--fs-sm); }
 
+/* ---- Đợt X: bảng cuộn ngang trên mobile (không vỡ layout) ---- */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
 /* ---- Team pipelines (Đợt H2): stage chips, icon-first, ít chữ ---- */
 .team-stages { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin-top: 8px; }
 .team-stage { background: var(--bg3); border-radius: 10px; padding: 8px 12px;

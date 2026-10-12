@@ -24,7 +24,7 @@
       <input type="password" id="pw" name="password" autocomplete="current-password" autofocus>
       <button type="submit" class="btn btn-primary" style="width:100%">Đăng nhập →</button>
     </form>
-    <p class="hint" style="margin-top:12px">Quên mật khẩu? Dừng app, chạy <code>sqlite3 data/ledger.db "DELETE FROM settings WHERE key='auth.password_hash'"</code>, mở app lại rồi đặt mật khẩu mới.</p>
+    <p class="hint" style="margin-top:12px">Quên mật khẩu? Dừng app, chạy lại với <code>AICOS_RESET_AUTH=1</code> (hoặc xóa key <code>auth.password_hash</code> bằng sqlite3 trên Mac/Linux), mở app lại rồi đặt mật khẩu mới ở Cài đặt · Hệ thống.</p>
   </div>
 </div>
 </body>

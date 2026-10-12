@@ -18,7 +18,25 @@ DATA_DIR="${DATA_DIR:-$APP_DIR/data}"
 OUT_DIR="$DATA_DIR/output"
 
 die() { echo "DỪNG: $*" >&2; exit 1; }
-need() { command -v "$1" >/dev/null 2>&1 || die "thiếu '$1' (brew install ${2:-$1})"; }
+
+# Đợt X: hint cài theo OS — trước đây need() luôn báo "brew install"
+# cả khi chạy trên Linux/Windows.
+pkg_hint() {
+	case "$(uname -s)" in
+		Darwin) printf 'brew install %s' "$1" ;;
+		Linux)  printf 'sudo apt install %s' "$1" ;;
+		*)      printf 'winget install %s' "$1" ;; # Git Bash/MSYS trên Windows
+	esac
+}
+need() { command -v "$1" >/dev/null 2>&1 || die "thiếu '$1' ($(pkg_hint "${2:-$1}"))"; }
+
+# Tên package ffmpeg theo OS (cho hint ở trên).
+ffmpeg_pkg() {
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*) printf 'Gyan.FFmpeg' ;;
+		*) printf 'ffmpeg' ;;
+	esac
+}
 
 # slugify "Túi Kem Quilted!" -> "tui-kem-quilted" (bỏ dấu tiếng Việt).
 slugify() {
@@ -61,7 +79,7 @@ fail() { printf '  [FAIL] %s\n' "$*"; QC_FAIL=1; }
 probe() { ffprobe -v error -select_streams "$2" -show_entries "$3" -of default=nw=1:nk=1 "$1" 2>/dev/null | head -1; }
 
 cmd_qc() {
-	need ffprobe ffmpeg; need ffmpeg
+	need ffprobe "$(ffmpeg_pkg)"; need ffmpeg "$(ffmpeg_pkg)"
 	local f="${1:-}" final=0
 	[ -n "$f" ] || die "qc cần đường dẫn file"
 	[ -f "$f" ] || die "không thấy file: $f"

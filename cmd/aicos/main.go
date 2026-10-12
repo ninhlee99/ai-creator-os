@@ -197,6 +197,17 @@ func main() {
 	}()
 	log.Printf("ledger: opened %s", dbPath)
 
+	// Đợt X: quên mật khẩu dashboard — chủ máy chạy lại app với
+	// AICOS_RESET_AUTH=1 để xóa mật khẩu (Windows thường không có sqlite3
+	// CLI để xóa tay). Chỉ người start process mới set được env này nên an toàn.
+	if os.Getenv("AICOS_RESET_AUTH") == "1" {
+		if err := l.SetSetting(web.KeyAuthPasswordHash, ""); err != nil {
+			log.Printf("auth reset: %v", err)
+		} else {
+			log.Printf("auth reset: đã xóa mật khẩu dashboard theo AICOS_RESET_AUTH=1 — đặt mật khẩu mới ở Cài đặt · Hệ thống")
+		}
+	}
+
 	// -- 2. decision logger ------------------------------------------------
 	decider := decideAdapter{l: l}
 
@@ -398,6 +409,8 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
+		// Đợt V: pre-flight đĩa — từ chối job render mới khi đĩa gần đầy.
+		st.DiskGuard = func() (int, error) { return automation.DiskUsagePct(*dataDir) }
 		// Film Wave 1 (P0-3): jobs left "running" died with the previous
 		// process — mark them failed so the UI offers "Chạy tiếp".
 		if n := st.MarkInterruptedJobs(); n > 0 {
