@@ -141,9 +141,82 @@ func checkpointDB(path string) {
 	_, _ = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 }
 
-// Validate kiểm tra một bản sao lưu: phải có manifest và ledger.db phải
-// là file SQLite thật. Fail-closed: zip lạ/hỏng bị từ chối trước khi đụng
-// tới dữ liệu thật.
+// IntegrityCheck chạy PRAGMA integrity_check trên một file DB và báo lỗi
+// nếu DB hỏng (Đợt V). Khác với kiểm tra magic header: phát hiện được DB
+// đã corrupt nhưng header còn nguyên — trường hợp Validate() bỏ lọt.
+func IntegrityCheck(dbPath string) error {
+	if _, err := os.Stat(dbPath); err != nil {
+		return fmt.Errorf("không thấy file DB: %w", err)
+	}
+	db, err := sql.Open("sqlite", dbPath+"?cache=shared")
+	if err != nil {
+		return fmt.Errorf("mở DB: %w", err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	rows, err := db.Query("PRAGMA integrity_check")
+	if err != nil {
+		return fmt.Errorf("integrity_check: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var msg string
+		if err := rows.Scan(&msg); err != nil {
+			return fmt.Errorf("đọc integrity_check: %w", err)
+		}
+		if msg != "ok" {
+			return fmt.Errorf("DB hỏng: %s", msg)
+		}
+	}
+	return rows.Err()
+}
+
+// ValidateZipFile kiểm tra một file zip sao lưu trên đĩa: cấu trúc hợp lệ
+// (Validate) + ledger.db bên trong vượt integrity_check (Đợt V). Dùng sau
+// khi tạo backup để không lưu bản hỏng vào kho.
+func ValidateZipFile(path string) error {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return fmt.Errorf("mở zip: %w", err)
+	}
+	defer zr.Close()
+	if err := Validate(&zr.Reader); err != nil {
+		return err
+	}
+	// Giải nén ledger.db ra file tạm rồi integrity_check.
+	var lf *zip.File
+	for _, f := range zr.File {
+		if filepath.Clean(f.Name) == "ledger.db" {
+			lf = f
+			break
+		}
+	}
+	if lf == nil {
+		return fmt.Errorf("thiếu ledger.db trong bản sao lưu")
+	}
+	rc, err := lf.Open()
+	if err != nil {
+		return fmt.Errorf("mở ledger.db trong zip: %w", err)
+	}
+	defer rc.Close()
+	tmp, err := os.CreateTemp("", "aicos-ledger-check-*.db")
+	if err != nil {
+		return fmt.Errorf("tạo file tạm: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := io.Copy(tmp, rc); err != nil {
+		tmp.Close()
+		return fmt.Errorf("giải nén ledger.db: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("đóng file tạm: %w", err)
+	}
+	if err := IntegrityCheck(tmpName); err != nil {
+		return fmt.Errorf("ledger.db trong bản sao lưu: %w", err)
+	}
+	return nil
+}
 func Validate(zr *zip.Reader) error {
 	var manifest, ledger bool
 	for _, f := range zr.File {

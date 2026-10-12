@@ -2,6 +2,7 @@ package growth
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -70,3 +71,30 @@ func nullStr(s string) any {
 }
 
 var _ = strings.TrimSpace // keep strings import if helpers shrink
+
+// PruneOldAlerts xóa alert cũ (Đợt V): info cũ hơn infoDays, còn lại cũ hơn
+// otherDays. Trả về số alert đã xóa.
+func (s *Store) PruneOldAlerts(infoDays, otherDays int) (int64, error) {
+	var total int64
+	if infoDays > 0 {
+		res, err := s.db.Exec(`DELETE FROM growth_alerts
+			WHERE severity = 'info' AND created_at < datetime('now', ?)`,
+			fmt.Sprintf("-%d days", infoDays))
+		if err != nil {
+			return total, fmt.Errorf("prune alerts info: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	if otherDays > 0 {
+		res, err := s.db.Exec(`DELETE FROM growth_alerts
+			WHERE severity != 'info' AND created_at < datetime('now', ?)`,
+			fmt.Sprintf("-%d days", otherDays))
+		if err != nil {
+			return total, fmt.Errorf("prune alerts: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	return total, nil
+}

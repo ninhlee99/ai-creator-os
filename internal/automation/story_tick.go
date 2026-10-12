@@ -267,12 +267,39 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID, "1")
 	}
 	var res publishers.PublishResult
+	if stalePublishing {
+		// Đợt V: lần trước đăng dở (crash/kill giữa upload và marker) — trước
+		// khi đăng lại, hỏi YouTube xem video cùng tiêu đề đã có chưa để
+		// tránh bản trùng tích lũy im lặng (mất mạng sau khi YouTube đã nhận
+		// đủ bytes nhưng trước khi response về là kịch bản thật).
+		if dup, derr := s.checkDuplicateUpload(ctx, acct, vmeta.Title); derr != nil {
+			s.Story.AppendLog(jobID, "Kiểm tra trùng thất bại ("+derr.Error()+") — vẫn đăng lại.")
+		} else if dup {
+			s.Story.AppendLog(jobID, "Phát hiện video cùng tiêu đề đã có trên kênh (lần đăng dở trước đó) — bỏ qua đăng lại để tránh trùng.")
+			if s.Settings != nil {
+				_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
+				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+			}
+			return fmt.Sprintf("story %q: đã có trên kênh (lần đăng dở trước đó) — bỏ qua để tránh trùng", j.Title), true
+		}
+	}
 	if mu, ok := s.Uploader.(MetaUploader); ok && mu != nil {
 		res = mu.UploadMeta(ctx, acct, j.Output, vmeta, "short_film")
 	} else {
 		res = s.Uploader.Upload(ctx, acct, j.Output, vmeta.Title, vmeta.Description, "short_film")
 	}
 	if !res.Ok {
+		// Đợt V: token chết (invalid_grant) thì retry vô ích — alert critical
+		// "cần nối lại YouTube" ngay thay vì đốt 3 lần retry cách nhau 6h.
+		if strings.Contains(res.Error, "cần nối lại YouTube") {
+			s.alert("youtube_oauth_revoked", "critical",
+				"YouTube: refresh token hết hạn hoặc bị thu hồi — video không đăng được.",
+				"Nối lại YouTube ở trang Đa nền tảng rồi chạy lại job.")
+			if s.Settings != nil {
+				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+			}
+			return fmt.Sprintf("story %q: YouTube cần nối lại — đã dừng retry", j.Title), false
+		}
 		s.Story.AppendLog(jobID, "Đăng YouTube thất bại: "+res.Error)
 		if s.Settings != nil {
 			_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
@@ -281,7 +308,7 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	}
 	logLine := "Đã đăng YouTube (private): " + res.RemoteID
 	if stalePublishing {
-		logLine += " (lưu ý: lần trước đăng dở — kiểm tra trùng bản private trên kênh)"
+		logLine += " (đã kiểm tra trùng trước khi đăng lại)"
 	}
 	if vmeta.ThumbnailPath != "" {
 		if res.ThumbnailSet {
@@ -442,6 +469,22 @@ type assetLister interface {
 // Không bắt buộc — uploader cũ vẫn chạy qua Upload thường.
 type MetaUploader interface {
 	UploadMeta(ctx context.Context, a *network.Account, videoPath string, meta publishers.VideoMeta, kind string) publishers.PublishResult
+}
+
+// DuplicateChecker: uploader có thể kiểm tra video trùng đã đăng gần đây.
+// Không bắt buộc — uploader không hỗ trợ thì bỏ qua bước kiểm tra.
+type DuplicateChecker interface {
+	HasRecentUpload(ctx context.Context, a *network.Account, title string, within time.Duration) (bool, error)
+}
+
+// checkDuplicateUpload hỏi uploader xem video cùng tiêu đề đã có trên kênh
+// chưa. Uploader không hỗ trợ → (false, nil) để caller đăng như thường.
+func (s *Service) checkDuplicateUpload(ctx context.Context, acct *network.Account, title string) (bool, error) {
+	dc, ok := s.Uploader.(DuplicateChecker)
+	if !ok || dc == nil {
+		return false, nil
+	}
+	return dc.HasRecentUpload(ctx, acct, title, 24*time.Hour)
 }
 
 // storySEOMeta dựng metadata đăng YouTube: LLM viết, lỗi/thiếu LLM thì

@@ -13,9 +13,11 @@ package automation
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
+	"github.com/ninhlee99/ai-creator-os/internal/notify"
 )
 
 const (
@@ -42,6 +44,12 @@ type workPruner interface {
 	PruneOldPublishedOutputs(maxAge time.Duration, isPublished func(id string) bool) (int, int64)
 }
 
+// jobPruner: khả năng dọn job cũ của Studio (Đợt V), soft-assert như
+// hungSweeper/workPruner để automation không phụ thuộc cứng.
+type jobPruner interface {
+	PruneOldJobs(maxAge time.Duration) int
+}
+
 // SelfHealTick chạy 1 giờ/lần. Tôn trọng kill switch + dry-run như mọi tick.
 func (s *Service) SelfHealTick(ctx context.Context) []string {
 	_ = ctx
@@ -66,6 +74,34 @@ func (s *Service) SelfHealTick(ctx context.Context) []string {
 		}
 	}
 	notes = append(notes, s.diskGuard()...)
+	notes = append(notes, s.pruneTables()...)
+	return notes
+}
+
+// pruneTables dọn các bảng phình theo thời gian (Đợt V — máy 24/7):
+// decisions/usage 90 ngày, alert info 30 ngày (warn/critical 90 ngày),
+// job studio đã xong 60 ngày. Chạy trong SelfHealTick (1 giờ/lần).
+func (s *Service) pruneTables() []string {
+	var notes []string
+	if s.Ledger != nil {
+		if n, err := s.Ledger.PruneOld(90, 90); err != nil {
+			notes = append(notes, fmt.Sprintf("dọn bảng: lỗi ledger — %v", err))
+		} else if n > 0 {
+			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d dòng decisions/usage cũ", n))
+		}
+	}
+	if s.Growth != nil {
+		if n, err := s.Growth.PruneOldAlerts(30, 90); err != nil {
+			notes = append(notes, fmt.Sprintf("dọn bảng: lỗi alerts — %v", err))
+		} else if n > 0 {
+			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d alert cũ", n))
+		}
+	}
+	if jp, ok := s.Story.(jobPruner); ok && jp != nil {
+		if n := jp.PruneOldJobs(60 * 24 * time.Hour); n > 0 {
+			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d job studio cũ (>60 ngày)", n))
+		}
+	}
 	return notes
 }
 
@@ -110,7 +146,32 @@ func (s *Service) diskGuard() []string {
 		action += " Đĩa vẫn đầy sau khi dọn: cần can thiệp tay."
 	}
 	s.alert("disk_guard", "warn", msg, action)
+	// Đợt V: đĩa gần kẹt (>=95%) thì alert qua DB có thể INSERT lỗi im lặng
+	// (SQLite đầy → ghi alert thất bại → Telegram không có gì để gửi). Gửi
+	// thẳng Telegram + log file, không qua DB.
+	if pct2, err := DiskUsagePct(s.DataDir); err == nil && pct2 >= 95 {
+		s.alertCriticalDirect("disk_critical",
+			fmt.Sprintf("🚨 ĐĨA GẦN KẸT: %d%% — app có thể ngừng ghi DB bất cứ lúc nào. Dọn đĩa ngay.", pct2))
+	}
 	return []string{"tự chữa đĩa: " + msg}
+}
+
+// alertCriticalDirect gửi cảnh báo nghiêm trọng KHÔNG qua database — dùng
+// khi chính DB có thể không ghi được (đĩa đầy) hoặc cần chắc chắn tới tay
+// Ninh. Ghi log file + thử Telegram trực tiếp, best-effort.
+func (s *Service) alertCriticalDirect(kind, msg string) {
+	log.Printf("[alert-direct] %s: %s", kind, msg)
+	if s.Settings == nil || !atOn(s.Settings, KeyNotifyTelegramOn, false) {
+		return
+	}
+	bot, _ := s.Settings.Get(KeyNotifyTelegramBot)
+	chat, _ := s.Settings.Get(KeyNotifyTelegramChat)
+	if bot == "" || chat == "" {
+		return
+	}
+	if err := notify.SendTelegram(bot, chat, msg); err != nil {
+		log.Printf("[alert-direct] telegram thất bại: %v", err)
+	}
 }
 
 // alert ghi growth alert nếu Growth khả dụng; im lặng nếu không.

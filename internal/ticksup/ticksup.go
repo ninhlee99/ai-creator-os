@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 )
@@ -44,6 +45,14 @@ type Supervisor struct {
 	inflight   map[string]bool
 	alerterFn  func() Alerter
 	quotaAlert QuotaAlert
+	// watches: nhịp kỳ vọng của từng tick (Đợt V — watchdog).
+	watches map[string]watchSpec
+}
+
+// watchSpec ghi nhịp kỳ vọng + thời điểm đăng ký của một tick.
+type watchSpec struct {
+	every        time.Duration
+	registeredAt time.Time
 }
 
 // New tạo supervisor. alerterFn build Alerter lúc cần báo (lazy — để
@@ -54,6 +63,7 @@ func New(alerterFn func() Alerter, quotaAlert QuotaAlert) *Supervisor {
 		inflight:   make(map[string]bool),
 		alerterFn:  alerterFn,
 		quotaAlert: quotaAlert,
+		watches:    make(map[string]watchSpec),
 	}
 }
 
@@ -149,4 +159,69 @@ func (s *Supervisor) beatErr(name, msg string) {
 		b.LastErr = msg
 	}
 	s.mu.Unlock()
+}
+
+// Watch đăng ký nhịp kỳ vọng cho một tick (Đợt V — watchdog trong app).
+// every là khoảng cách tối đa giữa hai lần Dispatch (bằng nhịp của loop).
+func (s *Supervisor) Watch(name string, every time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.watches[name]; !ok {
+		s.watches[name] = watchSpec{every: every, registeredAt: time.Now()}
+	}
+}
+
+// Stale trả về tên các tick đã quá 3×nhịp kỳ vọng mà chưa Dispatch —
+// dấu hiệu tick deadlock hoặc loop chết mà /healthz không phát hiện được
+// (beats cũ vẫn hiển thị bình thường).
+func (s *Supervisor) Stale(now time.Time) []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []string
+	for name, w := range s.watches {
+		limit := 3 * w.every
+		if b, ok := s.beats[name]; ok && !b.LastStart.IsZero() {
+			if now.Sub(b.LastStart) > limit {
+				out = append(out, name)
+			}
+			continue
+		}
+		// Chưa từng chạy: chỉ tính stale khi đã qua 3×nhịp từ lúc đăng ký
+		// (loại trừ giai đoạn khởi động).
+		if now.Sub(w.registeredAt) > limit {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// RunWatchdog chạy vòng kiểm tra mỗi interval; tick stale → alert critical
+// (Đợt V). Gọi một lần trong ArmLoops.
+func (s *Supervisor) RunWatchdog(ctx context.Context, interval time.Duration) {
+	go func() {
+		tick := time.NewTicker(interval)
+		defer tick.Stop()
+		lastAlert := map[string]time.Time{}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				now := time.Now()
+				for _, name := range s.Stale(now) {
+					// Cooldown 1 giờ mỗi tick — tránh spam alert mỗi 5 phút
+					// cho cùng một tick kẹt.
+					if la, ok := lastAlert[name]; ok && now.Sub(la) < time.Hour {
+						continue
+					}
+					lastAlert[name] = now
+					log.Printf("watchdog: tick %q stale — quá lâu chưa chạy", name)
+					s.raiseAlert("tick_stale", "critical",
+						fmt.Sprintf("Tác vụ nền %q quá lâu chưa chạy — có thể đã kẹt.", name),
+						"Khởi động lại app nếu sau 30 phút vẫn báo.")
+				}
+			}
+		}
+	}()
 }

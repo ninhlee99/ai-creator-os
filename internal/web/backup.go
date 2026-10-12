@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 )
 
@@ -74,4 +76,30 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		"Đã nhận bản khôi phục — chờ restart app để áp dụng.", nil)
 	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(
 		"Đã nhận bản khôi phục. Khởi động lại app để áp dụng."))
+}
+
+// handleBackupOffsite lưu thư mục offsite cho bản sao lưu tự động (Đợt V).
+// Sau mỗi lần sao lưu thành công, BackupTick copy bản mới nhất sang đây.
+func (s *Server) handleBackupOffsite(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse offsite form")
+		return
+	}
+	dir := strings.TrimSpace(r.PostFormValue("offsite_dir"))
+	_ = s.Ledger.SetSetting(automation.KeyBackupOffsiteDir, dir)
+	if dir != "" {
+		// Reset đếm lỗi để lần copy tới đánh giá lại từ đầu.
+		_ = s.Ledger.SetSetting(automation.KeyBackupOffsiteFails, "0")
+	}
+	_ = s.Ledger.Decide("human", "backup_offsite", nil,
+		"Đã lưu thư mục offsite cho sao lưu: "+dir, map[string]any{"dir": dir})
+	msg := "Đã lưu thư mục offsite."
+	if dir == "" {
+		msg = "Đã tắt copy offsite."
+	}
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
 }

@@ -16,6 +16,7 @@ thêm gì (Go runtime không cần).
 | Mac Intel | `aicos-darwin-amd64` | tương tự |
 | Windows | `aicos-windows-amd64.exe` | nhấp đúp |
 | Linux | `aicos-linux-amd64` | `chmod +x` rồi chạy |
+| Linux ARM64 | `aicos-linux-arm64` | `chmod +x` rồi chạy |
 
 Mở trình duyệt: `http://127.0.0.1:8080`. Lần đầu app hỏi thiết lập 1 bước
 (dry-run bật sẵn cho an toàn).
@@ -68,14 +69,22 @@ cài theo đúng hệ điều hành của máy):
 - **Kill switch:** nút trên thanh topbar — dừng mọi hoạt động tự động trong vài giây.
 - **Dry-run:** bật ở Cài đặt · An toàn để xem trước mọi hành động mà không tác động ra ngoài.
 - **Mật khẩu dashboard:** đặt ở Cài đặt · Hệ thống → "Mật khẩu truy cập".
-  Bắt buộc đặt trước khi mở app ra mạng LAN/VPS. Quên mật khẩu: dừng app, chạy
-  `sqlite3 data/ledger.db "DELETE FROM settings WHERE key='auth.password_hash'"`,
-  mở app lại và đặt mật khẩu mới.
+  Bắt buộc đặt trước khi mở app ra mạng LAN/VPS. Quên mật khẩu: dừng app,
+  chạy lại với `AICOS_RESET_AUTH=1` (hoặc xóa key `auth.password_hash` bằng
+  sqlite3 trên Mac/Linux), mở app lại và đặt mật khẩu mới.
 - Không đọc, in ra hay gửi đi API key/secret/token.
 
 ## 6. Backup & khôi phục
 
 App **tự sao lưu mỗi ngày** vào `backups/` (giữ 7 bản mới nhất) — đủ 5 database
-(ledger, studio, products, accesstrade, reup). Khôi phục: dừng app, giải nén bản
-muốn về, chép đè 5 file `.db` vào `data/`, mở app lại. Chi tiết:
+(ledger, studio, products, accesstrade, reup). Trước khi lưu, app kiểm tra
+toàn vẹn từng database; bản hỏng bị loại, giữ bản cũ dùng được. Muốn có bản
+ở chỗ khác (phòng chết đĩa): nhập thư mục USB/ổ mạng ở Cài đặt · Hệ thống →
+"Sao lưu & khôi phục" → "Bản sao dự phòng (offsite)" — app tự copy bản mới
+nhất sang đó mỗi ngày. Khôi phục: dừng app, giải nén bản muốn về, chép đè 5
+file `.db` vào `data/`, mở app lại. Chi tiết:
 `docs/features/sao-luu-khoi-phuc.md`.
+
+- **Kênh cảnh báo dự phòng:** ngoài Telegram, có thể nhập "Webhook dự phòng" ở
+  Cài đặt · Hệ thống → "Thông báo Telegram" — khi Telegram gửi lỗi, cảnh báo
+  tự gửi tới địa chỉ này.

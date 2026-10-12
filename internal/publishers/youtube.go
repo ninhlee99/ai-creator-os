@@ -189,9 +189,65 @@ func (p *YouTubePublisher) accessToken() (string, error) {
 	}
 	tok, _ := data["access_token"].(string)
 	if status != 200 || tok == "" {
+		// Đợt V: phân biệt "token chết" với "mạng lỗi". invalid_grant =
+		// refresh token bị thu hồi hoặc hết hạn (app OAuth ở testing mode
+		// thì refresh token hết hạn sau 7 ngày) — retry vô ích, cần Ninh
+		// nối lại YouTube.
+		if strings.Contains(string(raw), "invalid_grant") {
+			return "", ErrOAuthRevoked
+		}
 		return "", fmt.Errorf("oauth refresh failed: HTTP %d %.200v", status, data)
 	}
 	return tok, nil
+}
+
+// ErrOAuthRevoked: refresh token YouTube hết hạn hoặc bị thu hồi —
+// retry không có tác dụng, cần người dùng nối lại YouTube.
+var ErrOAuthRevoked = fmt.Errorf("youtube: refresh token hết hạn hoặc bị thu hồi — cần nối lại YouTube ở trang Đa nền tảng")
+
+// FindRecentByTitle kiểm tra kênh có video nào cùng tiêu đề (khớp gần đúng)
+// được đăng trong khoảng `within` trở lại đây không (Đợt V — chống đăng
+// trùng khi upload dở dang rồi retry). Dùng search.list forMine (tốn quota
+// ~100 units/lượt) nên chỉ gọi khi thật cần (marker publishing cũ).
+func (p *YouTubePublisher) FindRecentByTitle(ctx context.Context, title string, within time.Duration) (bool, error) {
+	tok, err := p.accessToken()
+	if err != nil {
+		return false, err
+	}
+	after := time.Now().Add(-within).UTC().Format(time.RFC3339)
+	q := url.Values{}
+	q.Set("part", "snippet")
+	q.Set("forMine", "true")
+	q.Set("type", "video")
+	q.Set("q", title)
+	q.Set("publishedAfter", after)
+	q.Set("maxResults", "5")
+	q.Set("order", "date")
+	status, _, raw, err := p.http()("GET", "https://www.googleapis.com/youtube/v3/search?"+q.Encode(),
+		map[string]string{"Authorization": "Bearer " + tok}, nil)
+	if err != nil {
+		return false, err
+	}
+	if status != 200 {
+		return false, fmt.Errorf("youtube search: HTTP %d", status)
+	}
+	var data struct {
+		Items []struct {
+			Snippet struct {
+				Title string `json:"title"`
+			} `json:"snippet"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return false, fmt.Errorf("youtube search: bad JSON: %w", err)
+	}
+	want := strings.ToLower(strings.TrimSpace(title))
+	for _, it := range data.Items {
+		if strings.ToLower(strings.TrimSpace(it.Snippet.Title)) == want {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // YouTubeAccessToken đổi refresh token đã lưu của username thành access

@@ -124,6 +124,10 @@ type Studio struct {
 	// jobSem caps concurrent renders (see jobSlot); lazily built because
 	// tests also construct Studio as a struct literal.
 	jobSem chan struct{}
+	// DiskGuard, nếu khác nil, trả về % đĩa đã dùng của workRoot (Đợt V).
+	// insertJob từ chối job mới khi vượt MaxDiskPct (mặc định 95).
+	DiskGuard  func() (int, error)
+	MaxDiskPct int
 }
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job
@@ -253,6 +257,17 @@ func newID() string {
 }
 
 func (s *Studio) insertJob(kind, title string, params any) (string, error) {
+	// Đợt V: pre-flight đĩa — từ chối job mới khi đĩa gần đầy thay vì để
+	// job render dở rồi kẹt (video + backup zip có thể lấp đĩa rất nhanh).
+	if s.DiskGuard != nil {
+		limit := s.MaxDiskPct
+		if limit <= 0 {
+			limit = 95
+		}
+		if pct, err := s.DiskGuard(); err == nil && pct >= limit {
+			return "", fmt.Errorf("đĩa đã dùng %d%% (ngưỡng %d%%) — dọn đĩa rồi tạo job mới", pct, limit)
+		}
+	}
 	pj, _ := json.Marshal(params)
 	id := newID()
 	_, err := s.db.Exec(

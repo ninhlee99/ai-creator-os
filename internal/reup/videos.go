@@ -284,6 +284,19 @@ func migrateV2(db *sql.DB) error {
 	return nil
 }
 
+// migrateV3 (Đợt V): reup_posts thêm updated_at để sweeper nhận ra bài kẹt
+// ở trạng thái "posting" quá lâu (crash giữa upload và cập nhật trạng thái).
+func migrateV3(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE reup_posts ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("reup: migrate v3: %w", err)
+	}
+	// Backfill: bài cũ lấy created_at làm mốc.
+	if _, err := db.Exec(`UPDATE reup_posts SET updated_at = created_at WHERE updated_at = ''`); err != nil {
+		return fmt.Errorf("reup: migrate v3 backfill: %w", err)
+	}
+	return nil
+}
+
 // ------------------------------------------------------------------ posts
 // reup_posts: mỗi video (hoặc compilation) → transform → bài đăng per kênh.
 

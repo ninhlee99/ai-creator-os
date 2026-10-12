@@ -87,6 +87,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/api", s.handleSettingsAPIToggle)
 	mux.HandleFunc("POST /settings/backup", s.handleBackupCreate)
 	mux.HandleFunc("POST /settings/backup/restore", s.handleBackupRestore)
+	mux.HandleFunc("POST /settings/backup/offsite", s.handleBackupOffsite)
 	// Đợt O2: cấu hình + gửi thử thông báo Telegram.
 	mux.HandleFunc("POST /settings/notify", s.handleNotifySave)
 	mux.HandleFunc("POST /settings/notify-test", s.handleNotifyTest)

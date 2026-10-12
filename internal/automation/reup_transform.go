@@ -95,6 +95,14 @@ func (s *Service) ReupTransformTick(ctx context.Context) []string {
 	if tr == nil {
 		return nil
 	}
+	var sweepNotes []string
+	// Đợt V: reset bài kẹt "posting" quá 2h (crash/kill giữa upload và cập
+	// nhật trạng thái) về "transformed" để tick sau đăng lại, khỏi chết im.
+	if n, err := s.Reup.SweepStuckPosting(2 * time.Hour); err != nil {
+		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: lỗi — %v", err))
+	} else if n > 0 {
+		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: %d bài kẹt 'đang đăng' quá 2h → cho đăng lại", n))
+	}
 	level := atInt(s.Settings, KeyReupTransformLevel, defaultReupTransformLevel)
 	if level != reup.Level2 {
 		level = reup.Level1
@@ -103,6 +111,7 @@ func (s *Service) ReupTransformTick(ctx context.Context) []string {
 
 	var done, failed int
 	var notes []string
+	notes = append(notes, sweepNotes...)
 	if level == reup.Level2 {
 		done, failed, notes = s.transformPassCompilation(ctx, tr, voiceover)
 	} else {

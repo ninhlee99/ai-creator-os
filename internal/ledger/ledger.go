@@ -367,3 +367,28 @@ func stampUserVersion(db *sql.DB, v int) error {
 	}
 	return nil
 }
+
+// PruneOld xóa decisions và api_usage cũ hơn số ngày cho trước (Đợt V —
+// máy 24/7 không prune thì DB phình vô hạn). Trả về tổng số dòng đã xóa.
+func (l *Ledger) PruneOld(decisionsDays, usageDays int) (int64, error) {
+	var total int64
+	if decisionsDays > 0 {
+		res, err := l.db.Exec(`DELETE FROM decisions WHERE created_at < datetime('now', ?)`,
+			fmt.Sprintf("-%d days", decisionsDays))
+		if err != nil {
+			return total, fmt.Errorf("prune decisions: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	if usageDays > 0 {
+		res, err := l.db.Exec(`DELETE FROM api_usage WHERE created_at < datetime('now', ?)`,
+			fmt.Sprintf("-%d days", usageDays))
+		if err != nil {
+			return total, fmt.Errorf("prune api_usage: %w", err)
+		}
+		n, _ := res.RowsAffected()
+		total += n
+	}
+	return total, nil
+}

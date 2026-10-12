@@ -16,7 +16,8 @@ type Store struct {
 // v1 (Đợt D): reup_sources + reup_videos + reup_posts (posts để Đợt E dùng).
 // v2 (Đợt E): reup_posts thêm video_ids, file_path, fail_reason, views,
 // metrics_at, remote_id, remote_url (transform + đăng + kill rule 0-view).
-const schemaVersion = 2
+// v3 (Đợt V): reup_posts thêm updated_at — sweeper reset bài kẹt "posting".
+const schemaVersion = 3
 
 // NewStore mở (hoặc tạo) reup.db trong dataDir.
 func NewStore(dbPath string) (*Store, error) {
@@ -57,6 +58,11 @@ func migrate(db *sql.DB, from int) error {
 	}
 	if from < 2 {
 		if err := migrateV2(db); err != nil {
+			return err
+		}
+	}
+	if from < 3 {
+		if err := migrateV3(db); err != nil {
 			return err
 		}
 	}

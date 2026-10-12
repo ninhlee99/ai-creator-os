@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Post struct {
@@ -122,10 +123,10 @@ func (s *Store) CreatePost(videoIDs []int64, level int) (Post, error) {
 	legacyID := videoIDs[0]
 	res, err := s.db.Exec(`INSERT INTO reup_posts
 		(video_id, account_ref, platform, transform_level, status,
-		 posted_at, created_at, video_ids, file_path, fail_reason,
+		 posted_at, created_at, updated_at, video_ids, file_path, fail_reason,
 		 views, metrics_at, remote_id, remote_url)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		legacyID, "", "", level, PostPending, "", nowUTC(),
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		legacyID, "", "", level, PostPending, "", nowUTC(), nowUTC(),
 		joinVideoIDs(videoIDs), "", "", -1, "", "", "")
 	if err != nil {
 		return Post{}, fmt.Errorf("reup: tạo bài: %w", err)
@@ -228,12 +229,27 @@ func (s *Store) LivePostForVideo(videoID int64) (*Post, error) {
 
 // SetPostStatus đổi trạng thái bài (+ lý do khi failed).
 func (s *Store) SetPostStatus(id int64, status, failReason string) error {
-	_, err := s.db.Exec(`UPDATE reup_posts SET status=?, fail_reason=? WHERE id=?`,
-		status, failReason, id)
+	_, err := s.db.Exec(`UPDATE reup_posts SET status=?, fail_reason=?, updated_at=? WHERE id=?`,
+		status, failReason, nowUTC(), id)
 	if err != nil {
 		return fmt.Errorf("reup: đổi trạng thái bài: %w", err)
 	}
 	return nil
+}
+
+// SweepStuckPosting (Đợt V): bài kẹt ở "posting" quá maxAge (crash/kill -9
+// giữa upload và cập nhật trạng thái) → trả về "transformed" để tick sau
+// đăng lại. Trả về số bài đã reset.
+func (s *Store) SweepStuckPosting(maxAge time.Duration) (int, error) {
+	cutoff := time.Now().Add(-maxAge).UTC().Format(time.RFC3339)
+	res, err := s.db.Exec(`UPDATE reup_posts SET status='transformed', updated_at=?
+		WHERE status='posting' AND updated_at != '' AND updated_at < ?`,
+		nowUTC(), cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("reup: sweep posting kẹt: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }
 
 // SetPostTransformed ghi nhận transform xong.

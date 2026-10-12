@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
@@ -99,7 +100,12 @@ func (u youtubeGrowthUploader) UploadMeta(ctx context.Context, a *network.Accoun
 	return pub.PublishMeta(ctx, videoPath, meta, kind)
 }
 
-// UpdatePrivacy (Đợt N): đổi quyền riêng tư video (private → public).
+// HasRecentUpload (Đợt V — DuplicateChecker): kiểm tra video cùng tiêu đề
+// đã có trên kênh YouTube trong 24h qua chưa (chống đăng trùng khi retry).
+func (u youtubeGrowthUploader) HasRecentUpload(ctx context.Context, a *network.Account, title string, within time.Duration) (bool, error) {
+	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
+	return pub.FindRecentByTitle(ctx, title, within)
+}
 func (u youtubeGrowthUploader) UpdatePrivacy(ctx context.Context, a *network.Account, videoID, privacy string) error {
 	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
 	return pub.UpdatePrivacy(videoID, privacy)

@@ -4,10 +4,13 @@ package automation
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 func backupTestService(t *testing.T) *Service {
@@ -17,10 +20,16 @@ func backupTestService(t *testing.T) *Service {
 	svc.Settings = LedgerSettings{L: l}
 	svc.Gate = &fakeGate{}
 	svc.DataDir = t.TempDir()
-	// tạo file db giả để backup có gì đó để zip
-	if err := os.WriteFile(filepath.Join(svc.DataDir, "ledger.db"), []byte("fake-db"), 0o644); err != nil {
+	// Tạo DB SQLite thật để backup có gì đó để zip (Đợt V: BackupTick kiểm
+	// tra integrity trước khi zip nên file giả "fake-db" không qua được).
+	db, err := sql.Open("sqlite", filepath.Join(svc.DataDir, "ledger.db"))
+	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec("CREATE TABLE t(a)"); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
 	return svc
 }
 
