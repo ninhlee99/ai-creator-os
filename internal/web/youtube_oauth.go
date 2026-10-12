@@ -25,9 +25,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
+
+// googleOAuthClient — client riêng có timeout cho mọi gọi tới Google OAuth.
+// http.DefaultClient không timeout: Google treo là handler treo theo.
+var googleOAuthClient = &http.Client{Timeout: 30 * time.Second}
 
 const (
 	youtubeOAuthAuthURL  = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -130,7 +135,7 @@ func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (strin
 		"redirect_uri":  {redirectURI},
 		"grant_type":    {"authorization_code"},
 	}
-	resp, err := http.PostForm(youtubeOAuthTokenURL, form)
+	resp, err := googleOAuthClient.PostForm(youtubeOAuthTokenURL, form)
 	if err != nil {
 		return "", fmt.Errorf("gọi Google thất bại: %w", err)
 	}
