@@ -47,6 +47,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
+	"github.com/ninhlee99/ai-creator-os/internal/runtimeguard"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
@@ -263,6 +264,8 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	guard := runtimeguard.New()
+
 	// -- 5. sidecars --------------------------------------------------------
 	reg := engines.DefaultRegistry(*dataDir)
 
@@ -271,14 +274,14 @@ func main() {
 	// so it never collides with the dashboard's default -addr :8080.
 	llamaProc := engines.NewLlamaServerProcess(reg)
 	if reg.Has(llamaModel) {
-		go func() {
+		guard.Go(ctx, "sidecar:llama-server", func(c context.Context) {
 			log.Printf("sidecar: llama-server starting (model %s)", llamaModel)
-			if err := llamaProc.Start(ctx); err != nil {
+			if err := llamaProc.Start(c); err != nil {
 				log.Printf("sidecar: llama-server failed to start: %v", err)
 			} else {
 				log.Printf("sidecar: llama-server running")
 			}
-		}()
+		})
 	} else {
 		log.Printf("sidecar: llama-server not started — model %s chưa được tải (dashboard settings để tải)", llamaModel)
 	}
@@ -287,16 +290,16 @@ func main() {
 	var vieNeu *tts.VieNeuProvider
 	if p, ok := ttsChain.Provider("vieneu"); ok {
 		if vn, ok := p.(*tts.VieNeuProvider); ok {
-			vieNeu = vn
+		vieNeu = vn
 			if reg.VieNeuPresent() {
-				go func() {
+				guard.Go(ctx, "sidecar:vieneu", func(c context.Context) {
 					log.Printf("sidecar: vieneu starting (first run can take a while)")
-					if err := vieNeu.Start(ctx); err != nil {
+					if err := vieNeu.Start(c); err != nil {
 						log.Printf("sidecar: vieneu failed to start: %v", err)
 					} else {
 						log.Printf("sidecar: vieneu running")
 					}
-				}()
+				})
 			} else {
 				log.Printf("sidecar: vieneu not started — repo chưa có tại data dir (dashboard settings để tải/cài đặt)")
 			}
@@ -395,7 +398,9 @@ func main() {
 	}
 	// Đợt 3 (A7): enabled local tiers ensure their own models at startup;
 	// progress shows in Settings + the homepage runtime block.
-	go srv.EnsureLocalModels(ctx)
+	guard.Go(ctx, "local-models:ensure", func(c context.Context) {
+		srv.EnsureLocalModels(c)
+	})
 
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------
 	// The studio reuses the LLM chain (director), the TTS chain (narration)
@@ -554,10 +559,10 @@ func main() {
 	// Đợt R: recover để daemon panic không giết cả process.
 	// Đợt AI 24/7: vòng lặp tự hồi phục — panic 1 lần không được giết daemon
 	// vĩnh viễn (trước đây goroutine chết luôn, network ngừng im lặng).
-	go func() {
+	guard.Go(ctx, "network:daemon", func(c context.Context) {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-c.Done():
 				return
 			default:
 			}
@@ -567,16 +572,16 @@ func main() {
 						log.Printf("daemon: PANIC recovered, khởi động lại vòng sau: %v", r)
 					}
 				}()
-				daemon.Run(ctx, 60*time.Second)
+				daemon.Run(c, 60*time.Second)
 			}()
 			// Run thoát bất thường (không phải do ctx) → chờ 5s rồi chạy lại.
 			select {
-			case <-ctx.Done():
+			case <-c.Done():
 				return
 			case <-time.After(5 * time.Second):
 			}
 		}
-	}()
+	})
 
 	// -- 7b→7e. automation ticks (Đợt R) -------------------------------------
 	// Mọi vòng tick khởi động tập trung qua ticksup.ArmLoops: cadence,
