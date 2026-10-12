@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 )
 
@@ -298,7 +300,8 @@ func truncate(s string, n int) string {
 // ---------------------------------------------------------------------------
 // Tier 1: Gemini free tier ("gemini")
 
-const defaultGeminiLLMModel = "gemini-2.0-flash"
+// Model không ghi cứng: gmodels.Resolve(gmodels.Text) chọn model còn sống
+// (ghi đè GEMINI_TEXT_MODEL → tự dò khi model bị Google tắt → mặc định).
 
 // GeminiProvider calls the Gemini free tier (AI Studio keys).
 //
@@ -311,7 +314,7 @@ const defaultGeminiLLMModel = "gemini-2.0-flash"
 type GeminiProvider struct {
 	mu      sync.RWMutex
 	ring    *tts.KeyRing
-	model   string
+	model   string // "" = gmodels.Resolve(gmodels.Text)
 	baseURL string // test hook; default is the public Gemini endpoint
 	http    *http.Client
 }
@@ -320,7 +323,6 @@ type GeminiProvider struct {
 func NewGeminiProviderKeys(keys []string) *GeminiProvider {
 	return &GeminiProvider{
 		ring:    tts.NewKeyRing(keys),
-		model:   defaultGeminiLLMModel,
 		baseURL: "https://generativelanguage.googleapis.com",
 		http:    &http.Client{Timeout: 30 * time.Second},
 	}
@@ -460,6 +462,22 @@ func (g *GeminiProvider) completeWithKey(ctx context.Context, key, system, promp
 	g.mu.RLock()
 	baseURL, model, httpc := g.baseURL, g.model, g.http
 	g.mu.RUnlock()
+	auto := model == ""
+	if auto {
+		model = gmodels.Resolve(gmodels.Text)
+	}
+	text, err := g.completeModel(ctx, httpc, baseURL, model, key, system, prompt, minimal)
+	if err != nil && auto && gmodels.IsModelGone(err) {
+		// Model bị Google tắt/đổi tên: dò model còn sống rồi thử lại 1 lần.
+		if nm, derr := gmodels.Rediscover(ctx, httpc, baseURL, key, gmodels.Text); derr == nil {
+			log.Printf("gemini: model %s không còn — chuyển sang %s", model, nm)
+			return g.completeModel(ctx, httpc, baseURL, nm, key, system, prompt, minimal)
+		}
+	}
+	return text, err
+}
+
+func (g *GeminiProvider) completeModel(ctx context.Context, httpc *http.Client, baseURL, model, key, system, prompt string, minimal bool) (string, error) {
 	url := baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	body := map[string]any{
 		"contents": []any{map[string]any{"parts": []any{map[string]any{"text": prompt}}}},

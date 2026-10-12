@@ -132,7 +132,72 @@ func (y *YouTubeAnalyticsSource) Fetch(ctx context.Context, acct SourceAccount) 
 	if s, ok := vals["subscribersGained"]; ok {
 		snap.Extra["subs_gained_30d"] = s
 	}
+	// Tiến độ YPP (best-effort — lỗi thì giữ snapshot 30 ngày ở trên).
+	if m, err := y.report(ctx, token, acct.YoutubeChannel, 365, "estimatedMinutesWatched", ""); err == nil {
+		if v, ok := m["estimatedMinutesWatched"]; ok {
+			snap.Extra["watch_hours_12m"] = v / 60
+		}
+	}
+	if m, err := y.report(ctx, token, acct.YoutubeChannel, 90, "views", "creatorContentType"); err == nil {
+		snap.Extra["shorts_views_90d"] = m["SHORTS"]
+	}
 	return snap, nil
+}
+
+// report chạy 1 truy vấn Analytics `days` ngày gần nhất. dimension == ""
+// → map metric→giá trị (hàng tổng); dimension != "" → map giá trị
+// dimension→metric (vd "SHORTS"→views).
+func (y *YouTubeAnalyticsSource) report(ctx context.Context, token, channel string, days int, metric, dimension string) (map[string]float64, error) {
+	end := time.Now().UTC()
+	q := url.Values{}
+	q.Set("ids", "channel=="+channel)
+	q.Set("startDate", end.AddDate(0, 0, -(days-1)).Format("2006-01-02"))
+	q.Set("endDate", end.Format("2006-01-02"))
+	q.Set("metrics", metric)
+	if dimension != "" {
+		q.Set("dimensions", dimension)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, y.base()+"/v2/reports?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := y.httpClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	var rep struct {
+		ColumnHeaders []struct {
+			Name string `json:"name"`
+		} `json:"columnHeaders"`
+		Rows [][]any `json:"rows"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&rep); err != nil {
+		return nil, err
+	}
+	out := map[string]float64{}
+	if dimension == "" {
+		if len(rep.Rows) > 0 {
+			for i, h := range rep.ColumnHeaders {
+				if i < len(rep.Rows[0]) {
+					out[h.Name] = numOf(rep.Rows[0][i])
+				}
+			}
+		}
+		return out, nil
+	}
+	for _, row := range rep.Rows {
+		if len(row) >= 2 {
+			if k, ok := row[0].(string); ok {
+				out[k] = numOf(row[1])
+			}
+		}
+	}
+	return out, nil
 }
 
 func numOf(v any) float64 {

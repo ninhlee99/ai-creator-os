@@ -11,13 +11,13 @@ func TestCircuitTripsAfterThreshold(t *testing.T) {
 	if c.Open() {
 		t.Fatal("mạch mới phải đóng")
 	}
-	if c.ObserveExhausted() {
+	if observe(c) {
 		t.Fatal("lần 1 chưa được trip")
 	}
-	if c.ObserveExhausted() {
+	if observe(c) {
 		t.Fatal("lần 2 chưa được trip")
 	}
-	if !c.ObserveExhausted() {
+	if !observe(c) {
 		t.Fatal("lần 3 phải trip")
 	}
 	if !c.Open() {
@@ -45,9 +45,9 @@ func TestCircuitTripsAfterThreshold(t *testing.T) {
 // Một lần thành công → đóng mạch, reset bộ đếm.
 func TestCircuitClosesOnSuccess(t *testing.T) {
 	c := &Circuit{minInterval: time.Nanosecond}
-	c.ObserveExhausted()
-	c.ObserveExhausted()
-	c.ObserveExhausted()
+	observe(c)
+	observe(c)
+	observe(c)
 	if !c.Open() {
 		t.Fatal("setup: mạch phải mở")
 	}
@@ -56,8 +56,8 @@ func TestCircuitClosesOnSuccess(t *testing.T) {
 		t.Fatal("thành công phải đóng mạch")
 	}
 	// Bộ đếm reset: cần lại đủ 3 lần mới trip.
-	c.ObserveExhausted()
-	c.ObserveExhausted()
+	observe(c)
+	observe(c)
 	if c.Open() {
 		t.Fatal("mới 2 lần sau reset, mạch phải còn đóng")
 	}
@@ -67,10 +67,20 @@ func TestCircuitClosesOnSuccess(t *testing.T) {
 func TestCircuitNoTripOnInterleavedSuccess(t *testing.T) {
 	c := &Circuit{minInterval: time.Nanosecond}
 	for i := 0; i < 10; i++ {
-		c.ObserveExhausted()
+		observe(c)
 		c.ObserveSuccess()
 	}
 	if c.Open() {
 		t.Fatal("xen kẽ thành công thì mạch phải đóng")
 	}
+}
+
+// observe gọi ObserveExhausted sau khi xoá mốc lần trước — tránh flaky
+// trên máy có đồng hồ thô (M1: 2 lời gọi liền nhau có thể cách 0ns nên
+// bị dedup minInterval nuốt mất).
+func observe(c *Circuit) bool {
+	c.mu.Lock()
+	c.lastObserved = time.Time{}
+	c.mu.Unlock()
+	return c.ObserveExhausted()
 }

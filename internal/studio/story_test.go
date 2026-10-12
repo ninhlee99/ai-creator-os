@@ -169,17 +169,6 @@ func TestStoryJobsFilter(t *testing.T) {
 	}
 }
 
-func TestBuildSRT(t *testing.T) {
-	scenes := []storyScene{{Text: "Một."}, {Text: "Hai."}}
-	srt := buildSRT(scenes, []float64{2.5, 3.0})
-	if !strings.Contains(srt, "00:00:00,000 --> 00:00:02,500") {
-		t.Fatalf("timing cảnh 1 sai:\n%s", srt)
-	}
-	if !strings.Contains(srt, "00:00:02,500 --> 00:00:05,500") {
-		t.Fatalf("timing cảnh 2 sai:\n%s", srt)
-	}
-}
-
 func TestSplitScenesFake(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), &fakeStoryLLM{scenes: 5}, nil, nil, filepath.Join(dir, "out"))
@@ -238,11 +227,11 @@ func TestStoryPipelineSuccess(t *testing.T) {
 	if d := storyProbeDuration(context.Background(), j.Output); d < 30 {
 		t.Fatalf("dài %.1fs, cần > 30s", d)
 	}
-	// Phụ đề phải được mux (mov_text).
+	// Không chèn chữ vào video: không có track phụ đề.
 	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "s",
 		"-show_entries", "stream=codec_name", "-of", "csv=p=0", j.Output)
-	if out, _ := cmd.Output(); !strings.Contains(string(out), "mov_text") {
-		t.Fatalf("thiếu track phụ đề mov_text: %q", string(out))
+	if out, _ := cmd.Output(); strings.TrimSpace(string(out)) != "" {
+		t.Fatalf("video kể chuyện không được có track phụ đề: %q", string(out))
 	}
 	if len(st.ListAssets(id)) != 3 {
 		t.Fatalf("assets = %d, want 3", len(st.ListAssets(id)))

@@ -301,7 +301,29 @@ func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
 		writeJSONErr(w, "key trống — hãy dán API key vào ô nhập", http.StatusBadRequest)
 		return
 	}
+	if provider == "gemini" && !looksLikeGeminiKey(key) {
+		writeJSONErr(w, "Đây không phải key Gemini: key Gemini (Google AI Studio) bắt đầu bằng “AIza” và dài 39 ký tự. "+
+			"Lấy key miễn phí tại aistudio.google.com/apikey rồi dán lại.", http.StatusBadRequest)
+		return
+	}
 	duplicate := false
+	if provider == "gemini" {
+		// 1 key Gemini dùng chung cho viết chữ + giọng đọc + tạo ảnh.
+		defer s.SyncGeminiKeys()
+		for _, other := range []string{"llm", "tts"} {
+			if other == chainName {
+				continue
+			}
+			_, _ = s.mutateKeys(other, provider, func(keys []string) []string {
+				for _, k := range keys {
+					if k == key {
+						return keys
+					}
+				}
+				return append(keys, key)
+			})
+		}
+	}
 	keys, err := s.mutateKeys(chainName, provider, func(keys []string) []string {
 		for _, k := range keys {
 			if k == key {
@@ -328,6 +350,52 @@ func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// looksLikeGeminiKey: key Google API (AI Studio) có dạng "AIza" + 35 ký tự
+// [A-Za-z0-9_-]. Chặn ngay khi dán nhầm (đo thật: dán nhầm token "gen-…"
+// 26 ký tự → Google trả API_KEY_INVALID lúc chạy, khó hiểu với người dùng).
+func looksLikeGeminiKey(k string) bool {
+	if len(k) != 39 || !strings.HasPrefix(k, "AIza") {
+		return false
+	}
+	for _, r := range k {
+		if !(r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+			return false
+		}
+	}
+	return true
+}
+
+// SyncGeminiKeys gộp key Gemini của 2 chuỗi (viết chữ + giọng đọc) cùng
+// biến môi trường, ghi đủ vào cả 2 chuỗi và đẩy sang phần tạo ảnh. Gọi
+// lúc khởi động và sau mỗi lần thêm/xóa key — một key nhập 1 lần là đủ.
+func (s *Server) SyncGeminiKeys() []string {
+	seen := map[string]bool{}
+	var all []string
+	add := func(ks []string) {
+		for _, k := range ks {
+			if k = strings.TrimSpace(k); k != "" && !seen[k] {
+				seen[k] = true
+				all = append(all, k)
+			}
+		}
+	}
+	add(s.storedKeys("llm", "gemini"))
+	add(s.storedKeys("tts", "gemini"))
+	add(strings.Split(getenv("GEMINI_API_KEYS", ""), ","))
+	add([]string{getenv("GEMINI_API_KEY", "")})
+	if s.Ledger != nil {
+		for _, c := range []string{"llm", "tts"} {
+			if len(s.storedKeys(c, "gemini")) != len(all) {
+				_, _ = s.mutateKeys(c, "gemini", func([]string) []string { return append([]string(nil), all...) })
+			}
+		}
+	}
+	if s.OnGeminiKeys != nil {
+		s.OnGeminiKeys(all)
+	}
+	return all
+}
+
 // handleKeyDelete removes one API key by index and applies immediately.
 func (s *Server) handleKeyDelete(w http.ResponseWriter, r *http.Request) {
 	chainName, provider, ok := s.keyChainParams(r)
@@ -350,9 +418,27 @@ func (s *Server) handleKeyDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	masked := MaskKey(before[idx])
+	removed := before[idx]
 	keys, err := s.mutateKeys(chainName, provider, func(keys []string) []string {
 		return append(keys[:idx], keys[idx+1:]...)
 	})
+	if err == nil && provider == "gemini" {
+		// Key dùng chung → xóa ở mọi chuỗi + phần tạo ảnh.
+		for _, other := range []string{"llm", "tts"} {
+			if other != chainName {
+				_, _ = s.mutateKeys(other, provider, func(keys []string) []string {
+					out := keys[:0]
+					for _, k := range keys {
+						if k != removed {
+							out = append(out, k)
+						}
+					}
+					return out
+				})
+			}
+		}
+		s.SyncGeminiKeys()
+	}
 	if err != nil {
 		writeJSONErr(w, "không xóa được key: "+err.Error(), http.StatusInternalServerError)
 		return

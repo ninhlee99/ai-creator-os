@@ -54,6 +54,11 @@ func atTestServer() *httptest.Server {
 			w.Header().Set("Content-Type", "image/png")
 			_, _ = w.Write(tinyPNG)
 		case "/v1/datafeeds":
+			// Như API thật: lọc theo merchant; merchant khác → rỗng.
+			if m := r.URL.Query().Get("merchant"); m != "" && m != "shopee" {
+				_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+				return
+			}
 			_, _ = fmt.Fprintf(w, `{"data":[
 				{"sku":"T1","name":"Tai nghe Pro","price":459000,"currency":"VND",
 				 "aff_link":"https://go.at/t1","category":"công nghệ","commission_rate":10,
@@ -67,10 +72,15 @@ func atTestServer() *httptest.Server {
 				{"order_id":"DO2","campaign_name":"Lazada","status":0,"pub_commission":0}
 			]}`))
 		case "/v1/campaigns":
+			// API thật chỉ lọc được approval=successful (đo 12/10/2026).
+			if r.URL.Query().Get("approval") == "successful" {
+				_, _ = w.Write([]byte(`{"data":[{"campaign_id":"c1","name":"Shopee","merchant":"shopee","approval":"successful"}],"page":1,"total_page":1}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"data":[
 				{"campaign_id":"c1","name":"Shopee","approval":"successful"},
-				{"campaign_id":"c2","name":"Bank X","approval":"pending"}
-			]}`))
+				{"campaign_id":"c2","name":"Bank X","approval":"unregistered"}
+			],"page":1,"total_page":1}`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -257,12 +267,14 @@ func TestATCampaignCheckTick(t *testing.T) {
 	if len(notes) != 1 {
 		t.Fatalf("muốn 1 note, được %v", notes)
 	}
-	if !strings.Contains(notes[0], "chưa duyệt") || !strings.Contains(notes[0], "Bank X") {
-		t.Errorf("phải cảnh báo campaign pending: %q", notes[0])
+	// Chỉ lấy chiến dịch đã duyệt; chiến dịch công khai chưa đăng ký không
+	// phải "chờ duyệt" nên không cảnh báo.
+	if !strings.Contains(notes[0], "1 chiến dịch đã duyệt") || strings.Contains(notes[0], "Bank X") {
+		t.Errorf("note sai: %q", notes[0])
 	}
-	// Cache campaign đã làm mới.
+	// Cache campaign đã làm mới (chỉ chiến dịch đã duyệt).
 	cs, err := svc.AT.CachedCampaigns()
-	if err != nil || len(cs) != 2 {
+	if err != nil || len(cs) != 1 {
 		t.Errorf("cache campaign sai: %+v %v", cs, err)
 	}
 	// Chạy lại ngay → im lặng (daily).

@@ -30,7 +30,7 @@ func (t *Transformer) TransformVideo(ctx context.Context, v Video, opts Transfor
 	}
 	defer os.Remove(mainPath)
 
-	// Pass 2: voiceover + nhạc + intro/outro + caption.
+	// Pass 2: voiceover + nhạc (không chèn chữ).
 	voiceText := ""
 	if opts.Voiceover {
 		voiceText = t.voiceoverText(ctx, []Video{v})
@@ -102,13 +102,10 @@ func (t *Transformer) TransformCompilation(ctx context.Context, vs []Video, opts
 	defer os.Remove(xfadePath)
 	compDur := segs[0].dur + segs[1].dur + segs[2].dur - 2*xd
 
-	// Pass 3: voiceover chung + nhạc + intro/outro + caption.
+	// Pass 3: voiceover chung + nhạc (không chèn chữ).
 	voiceText := ""
 	if opts.Voiceover {
 		voiceText = t.voiceoverText(ctx, vs)
-	}
-	if strings.TrimSpace(opts.Title) == "" {
-		opts.Title = "Tuyển tập"
 	}
 	outPath := filepath.Join(t.WorkDir, fmt.Sprintf("reup_%s_l2.mp4", tag))
 	if err := t.finalizeTransform(ctx, xfadePath, compDur, voiceText, opts, outPath); err != nil {

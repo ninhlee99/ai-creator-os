@@ -5,10 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 )
 
 // persona voice style -> Gemini prebuilt voice (port of GEMINI_VOICES).
@@ -54,8 +57,8 @@ type GeminiTTSProvider struct {
 // NewGeminiTTSProviderKeys builds the tier-1 TTS provider with key rotation.
 func NewGeminiTTSProviderKeys(keys []string) *GeminiTTSProvider {
 	return &GeminiTTSProvider{
-		ring:    NewKeyRing(keys),
-		model:   "gemini-2.5-flash-preview-tts",
+		ring: NewKeyRing(keys),
+		// model "" = gmodels.Resolve(gmodels.TTS): tự đổi khi Google tắt model.
 		baseURL: "https://generativelanguage.googleapis.com",
 		http:    &http.Client{Timeout: 60 * time.Second},
 	}
@@ -194,6 +197,21 @@ func (g *GeminiTTSProvider) synthesizeWithKey(ctx context.Context, key, text, vo
 	g.mu.RLock()
 	baseURL, model, style, httpc := g.baseURL, g.model, g.Style, g.http
 	g.mu.RUnlock()
+	auto := model == ""
+	if auto {
+		model = gmodels.Resolve(gmodels.TTS)
+	}
+	wav, err := g.synthesizeModel(ctx, httpc, baseURL, model, style, key, text, voice)
+	if err != nil && auto && gmodels.IsModelGone(err) {
+		if nm, derr := gmodels.Rediscover(ctx, httpc, baseURL, key, gmodels.TTS); derr == nil {
+			log.Printf("gemini tts: model %s không còn — chuyển sang %s", model, nm)
+			return g.synthesizeModel(ctx, httpc, baseURL, nm, style, key, text, voice)
+		}
+	}
+	return wav, err
+}
+
+func (g *GeminiTTSProvider) synthesizeModel(ctx context.Context, httpc *http.Client, baseURL, model, style, key, text, voice string) ([]byte, error) {
 	voiceName := geminiTTSVoices[voice]
 	if voiceName == "" {
 		voiceName = geminiTTSVoices["default"]

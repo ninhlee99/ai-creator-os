@@ -50,6 +50,7 @@
       <div class="status-chips">
         {{if .DryRun}}<span class="chip chip-dry" title="Chế độ thử — chưa đăng/thao tác thật lên kênh">CHẠY THỬ</span>{{end}}
         {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
+        {{if .LocalDL}}<a class="chip chip-dry" href="/settings/model-local" title="Model chạy trên máy để không phụ thuộc key — xem/tắt ở Cài đặt · Model local">⬇ {{.LocalDL}}</a>{{end}}
       </div>
       <div class="topbar-actions">
         <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"

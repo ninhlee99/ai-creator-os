@@ -14,8 +14,8 @@
 | Trụ | Trạng thái code (sau Đợt H3) |
 |---|---|
 | **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật**. Lưu ý: link chỉ ra tiền khi có người mua — cần traffic từ kênh; TikTok hiện chỉ đăng bản nháp (bấm Đăng tay từng video) |
-| **2. Reup video Douyin** | ✅ Đợt D/E xong + **Đợt J nâng cấp**: discover chấm điểm engagement (play × tỷ lệ like) + lọc độ dài; transform 4 hướng Ken Burns + caption có style; voiceover văn nói có móc tò mò (3 template xoay); kill rule theo nguồn (tự tắt nguồn chết, nguồn khác vẫn chạy). Downloader (yt-dlp + TikWM fallback **chỉ link có watermark** — giữ attribution tác giả) + dedupe 2 lớp + QC + tick 6h + kill rule 0-view toàn cục |
-| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 + subtitle → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
+| **2. Reup video Douyin** | ✅ Đợt D/E xong + **Đợt J nâng cấp**: discover chấm điểm engagement (play × tỷ lệ like) + lọc độ dài; transform 4 hướng Ken Burns, **không chèn chữ vào video**; voiceover văn nói có móc tò mò (3 template xoay); kill rule theo nguồn (tự tắt nguồn chết, nguồn khác vẫn chạy). Downloader (yt-dlp + TikWM fallback **chỉ link có watermark** — giữ attribution tác giả) + dedupe 2 lớp + QC + tick 6h + kill rule 0-view toàn cục |
+| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 (không chèn chữ/phụ đề) → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
 
 Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
@@ -95,7 +95,17 @@ vào app.
 | YouTube Analytics (views/watch hours 30 ngày) | ✅ Đợt H3 — cần token OAuth scope yt-analytics.readonly |
 | TikTok Shop | ❌ Đã loại bỏ hoàn toàn ở Đợt H1 (Accesstrade-only) |
 | 8 tick automation (growth, AT, reup ×4, story) | ✅ Đợt G — đang bật; AT "chờ key", kill rule "chờ số liệu" (trung thực trong UI) |
+| Facebook Page · Instagram Reels · Threads (Meta Graph API trực tiếp, không cần CLI) | ✅ 2026-10-12 — FB tải lên chưa công khai; IG chỉ đăng khi `IG_AUTO_PUBLISH=1` (API không có nháp); Threads đăng bài chữ kèm link (API không nhận video local) |
+| Studio không cần key — dựng từ ảnh tải lên + caption mẫu | ✅ 2026-10-12 |
+| Không chèn chữ vào video (reup, kể chuyện, affiliate) | ✅ 2026-10-12 |
+| Checklist “sẵn sàng lên xu hướng” 7 tiêu chí / video | ✅ 2026-10-12 — yếu tố phân phối đã biết, không phải cam kết viral |
+| Hẹn giờ vàng YouTube (`YOUTUBE_GOLDEN_HOUR=1`, 11:30 / 19:30 giờ VN) | ✅ 2026-10-12 |
+| Tiến độ YPP (500/1.000 sub · 3.000/4.000 giờ · 3M/10M view Shorts) | ✅ 2026-10-12 — cần OAuth Analytics |
+| “Mở bằng CapCut” — xuất gói video + ảnh cảnh + nhạc, mở Finder + CapCut | ✅ 2026-10-12 — CapCut không có API nên kéo thả tay |
 | TikTok đăng trực tiếp | ❌ Cần app audit (Ninh từ chối) — chỉ chế độ nháp |
+| Model Gemini tự dò (viết chữ / tạo ảnh / giọng đọc) | ✅ 2026-10-12 — Google tắt model cũ (2.0-flash, 2.0-flash-preview-image-generation) thì app tự dò model còn sống qua ListModels; ghi đè bằng `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` / `GEMINI_TTS_MODEL` ở Cài đặt · Hệ thống. **Chưa thử bằng key thật** |
+| Video không cần key — nhiều ảnh | ✅ 2026-10-12 — tải tối đa 7 ảnh (Studio) / 6 ảnh listing (săn Accesstrade); ≥3 ảnh thì mỗi ảnh 2 khung, video không lặp 1 ảnh |
+| Bảng “Tự động hóa” trên Trang chủ | ✅ 2026-10-12 — 6 công tắc tự động gom 1 chỗ (vẫn ghi đúng khóa của trang gốc) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
 **Test:** 591 hàm test trong 100 file (không tính vùng parked). Build/vet/test

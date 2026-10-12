@@ -109,8 +109,7 @@ func (s *Service) commissionSource() (OrdersSource, string) {
 	if s.CommissionSource != nil {
 		return s.CommissionSource, ""
 	}
-	return nil, "TikTok Shop đã loại bỏ (Accesstrade-only từ Đợt H1) — " +
-		"đối soát hoa hồng chạy qua Accesstrade: /at/orders/sync"
+	return nil, "Hoa hồng được đối soát tự động qua Accesstrade (30 phút/lần) — xem ở trang Affiliate."
 }
 
 // noteCommissionState records the current source state only when it
@@ -126,7 +125,7 @@ func (s *Service) noteCommissionState(status, msg string) {
 	}
 	_ = s.Settings.Set(commissionStateSetting, status)
 	_ = s.Settings.Set("commission.note", msg)
-	target := "reconcile"
+	target := "Accesstrade"
 	_ = s.decide("system", "commission_reconcile", &target, msg,
 		map[string]any{"source_state": status})
 }

@@ -1,7 +1,7 @@
 {{define "title"}}Đa nền tảng — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Đa nền tảng</h1>
-<p class="subtitle">Trạng thái kết nối TikTok, Facebook và YouTube của từng kênh.</p>
+<p class="subtitle">Trạng thái kết nối TikTok, YouTube, Facebook, Instagram và Threads của từng kênh.</p>
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
@@ -10,7 +10,7 @@
 <table>
   <tr>
     <th>Tài khoản</th><th>Trạng thái</th><th>TikTok token</th>
-    <th>YouTube token</th><th>Trang FB</th><th>Nền tảng</th>
+    <th>YouTube token</th><th>Trang FB</th><th>Instagram</th><th>Threads</th><th>Nền tảng</th>
   </tr>
   {{range .Rows}}
   <tr>
@@ -24,11 +24,21 @@
       {{if .YoutubeClient}}<a class="btn btn-secondary btn-sm" href="/publishers/youtube/authorize?username={{.Username}}">{{if or .YoutubeToken .YoutubeTokenDead}}Nối lại{{else}}Nối YouTube{{end}}</a>
       {{else}}<button type="button" class="btn btn-secondary btn-sm" data-yt-setup>Nối YouTube</button>{{end}}</td>
     <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .Instagram}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .Threads}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
   </tr>
   {{end}}
 </table>
 </div>
+
+<h2>Kết nối Facebook · Instagram · Threads (Meta)</h2>
+<ol>
+  <li>Tạo app miễn phí tại <code>developers.facebook.com</code> → thêm sản phẩm <b>Facebook Login</b>, <b>Instagram Graph API</b>, <b>Threads API</b>.</li>
+  <li>Lấy <b>Page access token</b> (quyền <code>pages_manage_posts</code>, <code>instagram_content_publish</code>) và <b>Threads token</b>.</li>
+  <li>Dán vào Cài đặt · Hệ thống (mục “Mã &amp; biến cấu hình”): <code>FB_PAGE_ID</code>, <code>META_PAGE_TOKEN</code>, <code>IG_USER_ID</code>, <code>THREADS_USER_ID</code>, <code>THREADS_TOKEN</code>.</li>
+</ol>
+<p class="hint">Facebook: tải video thẳng từ máy, mặc định <b>chưa công khai</b> để bạn duyệt. Instagram Reels: tải thẳng từ máy; API không có nháp nên chỉ đăng công khai khi bật <code>IG_AUTO_PUBLISH=1</code>. Threads: API chỉ nhận video qua link công khai, nên app đăng <b>bài chữ kèm link</b> sản phẩm/video để kéo traffic chéo.</p>
 
 <h2>Kết nối TikTok (làm một lần mỗi tài khoản)</h2>
 <p>Redirect URI phải khai báo y hệt trên developers.tiktok.com: <code>{{.RedirectURI}}</code></p>
@@ -60,10 +70,10 @@
 <h2>Kết nối YouTube (làm một lần mỗi tài khoản)</h2>
 <ol>
   <li>Bấm <strong>Nối YouTube</strong> ở dòng tài khoản → trang Google mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng kênh YouTube → <strong>Cho phép</strong>.</li>
-  <li>Google tự chuyển về app này và lưu token — không cần copy gì. Mở app tại <code>http://127.0.0.1:8080</code> (cùng cổng).</li>
+  <li>Google tự chuyển về app này và lưu token — không cần copy gì. Mở app tại <code>{{.AppBase}}</code> (địa chỉ máy local, đúng cổng đang chạy).</li>
 </ol>
 <p class="hint">Chưa có Client ID/Secret? Bấm <strong>Nối YouTube</strong> để xem hướng dẫn tạo (miễn phí) rồi dán vào Cài đặt · Hệ thống (mục “Mã &amp; biến cấu hình”). Token chỉ ghi vào file <code>youtube_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang.</p>
-<p class="hint">Video đăng lên ở chế độ <b>riêng tư</b> trước — bạn xem lại rồi mới cho công khai (đổi ở Cài đặt · Kể chuyện).</p>
+<p class="hint">Video đăng lên ở chế độ <b>riêng tư</b> trước — bạn xem lại rồi mới cho công khai (đổi ở trang Kể chuyện → mục “Mặc định &amp; tự động”).</p>
 
 <div class="modal-backdrop" id="yt-setup-modal" hidden>
   <div class="modal" role="dialog" aria-modal="true" style="max-width:30rem">

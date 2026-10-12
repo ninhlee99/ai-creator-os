@@ -23,6 +23,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
 	mux.HandleFunc("GET /", s.handleDashboard)
+	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
 	mux.HandleFunc("GET /accounts/new", s.handleAccountNew)
 	mux.HandleFunc("POST /accounts", s.handleAccountCreate)
@@ -50,6 +51,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/jobs/{id}/cancel", s.handleStudioJobCancel)
 	mux.HandleFunc("POST /studio/jobs/{id}/delete", s.handleStudioJobDelete)
 	mux.HandleFunc("POST /studio/jobs/{id}/retry", s.handleStudioJobRetry)
+	mux.HandleFunc("POST /studio/jobs/{id}/capcut", s.handleStudioJobCapCut)
+	mux.HandleFunc("POST /studio/jobs/{id}/remix", s.handleStudioJobRemix)
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
 	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)

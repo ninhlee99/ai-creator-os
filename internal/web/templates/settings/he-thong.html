@@ -21,7 +21,7 @@
     <div class="label">Cơ sở dữ liệu</div>
   </div>
   <div class="card" title="{{.DataDir}}">
-    <div class="num"><code>{{.Version}}</code></div>
+    <div class="num num-text"><code>{{.Version}}</code></div>
     <div class="label">Phiên bản app</div>
   </div>
   <div class="card" title="Đầy quá 85% hệ thống tự dọn file tạm job lỗi + video đã đăng cũ">
@@ -30,7 +30,7 @@
   </div>
   <div class="card">
     <div class="num">{{fmtUSD .Spend}}</div>
-    <div class="label">Chi phí API hôm nay</div>
+    <div class="label">Chi phí API hôm nay (USD — Google tính phí bằng USD; dùng key miễn phí thì luôn $0)</div>
   </div>
   <div class="card">
     <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
@@ -217,10 +217,11 @@
 {{if .EnvErr}}<p class="err">{{.EnvErr}}</p>{{end}}
 <div class="table-wrap">
 <table>
-  <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
+  <tr><th>Cấu hình</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
   {{range .EnvStatus}}
+  {{if .NewGroup}}<tr class="env-group"><th colspan="4">{{.Group}}</th></tr>{{end}}
   <tr>
-    <td><code>{{.Name}}</code><br><span class="env-hint">{{.Help}}</span>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
+    <td><b>{{.Label}}</b> <code class="env-name">{{.Name}}</code><br><span class="env-hint">{{.Help}}</span>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
     <td>{{if .Ok}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-no">Chưa đặt</span>{{end}}</td>
     <td>{{if .Ok}}<code class="key-masked">{{.Masked}}</code>{{else}}<span class="env-hint">—</span>{{end}}</td>
     <td>

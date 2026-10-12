@@ -46,12 +46,18 @@ const (
 
 // AffiliateParams describes one affiliate-video job.
 type AffiliateParams struct {
-	Mode         string  `json:"mode"`                 // photo | shots
-	AccountID    int64   `json:"account_id,omitempty"` // set by autopilot
-	Niche        string  `json:"niche"`
-	ProductName  string  `json:"product_name"`
-	ModelPhoto   string  `json:"model_photo"`   // local path (identity lock)
-	ProductPhoto string  `json:"product_photo"` // local path (product lock)
+	Mode         string `json:"mode"`                 // photo | shots
+	AccountID    int64  `json:"account_id,omitempty"` // set by autopilot
+	Niche        string `json:"niche"`
+	ProductName  string `json:"product_name"`
+	ModelPhoto   string `json:"model_photo"`   // local path (identity lock)
+	ProductPhoto string `json:"product_photo"` // local path (product lock)
+	// ExtraPhotos: ảnh thêm (góc khác, chi tiết, ảnh listing) — chế độ
+	// không key dựng từ cả bộ để video không lặp 1 ảnh.
+	ExtraPhotos []string `json:"extra_photos,omitempty"`
+	// FixedCaption: chú thích người dùng tự viết (Chỉnh sửa & dựng lại) —
+	// có thì dùng nguyên văn, không gọi AI/mẫu.
+	FixedCaption string  `json:"fixed_caption,omitempty"`
 	Seconds      int     `json:"seconds"`
 	BPM          int     `json:"bpm"`         // beat tempo for the giật-giật cut; 0 = 120
 	MusicPath    string  `json:"music_path"`  // local audio file, "" = silent

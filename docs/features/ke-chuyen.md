@@ -4,7 +4,7 @@
 
 Trụ kể chuyện sau pivot: viết **truyện ngôi thứ nhất (xưng "tôi")** →
 vẽ 1 **ảnh minh họa 16:9** cho mỗi cảnh → đọc **giọng TTS** từng cảnh →
-dựng video **16:9** (ảnh tĩnh + Ken Burns nhẹ + phụ đề) → đăng YouTube.
+dựng video **16:9** (ảnh tĩnh + Ken Burns nhẹ, **không chèn chữ/phụ đề**) → đăng YouTube.
 **Không quay video, không cinematic** (đã park).
 
 > **Trung thực:** video là ảnh minh họa tĩnh + giọng đọc — không hứa
@@ -24,7 +24,7 @@ TTS chain, `AssemblePhotoList` Ken Burns, `MuxSubtitles` caption,
 | Chia cảnh | `splitScenes` | LLM → JSON `{scenes:[{text, image_prompt}]}`; ≥3 cảnh hợp lệ |
 | Ảnh | mỗi cảnh `mg.GenerateImage(16:9)` + asset `studio_assets` | **fail-closed: vẽ lỗi → dừng, không bỏ cảnh** |
 | Giọng | `narrator.Speak(text)` → wav + `storyProbeDuration` (ffprobe; không có → 3s ước tính, ghi rõ) | **fail-closed: TTS lỗi → dừng, không dựng video câm** |
-| Dựng | `AssemblePhotoList` (1 ảnh/cảnh, thời lượng = audio thật) → `ConcatClips` → `concatWAVs` → mux audio + `MuxSubtitles` (SRT từ thời lượng audio thật) + `MixMusicBed` (nếu MusicOn) | 16:9 MP4 — trả nợ "true 16:9 long-form renderer" của growth |
+| Dựng | `AssemblePhotoList` (1 ảnh/cảnh, thời lượng = audio thật) → `ConcatClips` → `concatWAVs` → mux audio (không phụ đề — không chèn chữ vào video) + `MixMusicBed` (nếu MusicOn) | 16:9 MP4 — trả nợ "true 16:9 long-form renderer" của growth |
 | QC | 1920×1080 + có video+audio stream + > 30s + đủ số cảnh | rớt → `failed` + lý do tiếng Việt |
 
 Lời bài hát nhạc nền: chung file `autopilot-music.m4a` Ninh upload
@@ -74,9 +74,9 @@ Thất bại job: log cuối hiện trong bảng; thời lượng job chưa done
 
 ## 5. Test
 
-- `internal/studio/story_test.go`: parse JSON 2 lớp, build SRT, pipeline
+- `internal/studio/story_test.go`: parse JSON 2 lớp, pipeline
   đầy đủ với fake LLM/image/TTS + FFmpeg thật (36s → done, 1920×1080,
-  có audio, subtitle mov_text, 3 assets), QC rớt khi ngắn (<30s),
+  có audio, không phụ đề, 3 assets), QC rớt khi ngắn (<30s),
   TTS lỗi → failed không output, ảnh lỗi → failed không output,
   `DeleteStoryJob` (xoá file+assets+row, chặn khi không phải story).
 - `internal/automation/story_tick_test.go`: hàng đợi trống → cảnh báo

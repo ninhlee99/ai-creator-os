@@ -32,6 +32,7 @@ type growthAccountRow struct {
 	YTConnected bool
 	YTUpload    string // YouTube upload readiness label (phase 2)
 	YTReady     bool
+	YPP         []growth.YPPTierProgress // chỉ kênh YouTube
 }
 
 type growthAlertRow struct {
@@ -120,6 +121,9 @@ func (s *Server) growthView() map[string]any {
 		row.YTUpload = ytState.Label()
 		row.YTReady = ytState.Ready()
 		latest, _ := s.Growth.LatestSnapshot(a.ID)
+		if hasYouTube(a) {
+			row.YPP = growth.YPPProgress(latest)
+		}
 		if latest != nil {
 			row.HasSnapshot = true
 			if latest.Followers != nil {
@@ -209,10 +213,7 @@ func (s *Server) growthView() map[string]any {
 	} else {
 		ctx["YTPrivacy"] = "private"
 	}
-	deadline, _ := time.Parse("2006-01-02", growth.YPPDeadline)
-	ctx["YPPDeadline"] = growth.YPPDeadline
-	ctx["YPPDaysLeft"] = int(time.Until(deadline).Hours() / 24)
-	// Đợt AA: chỉ hiện card đếm ngược YPP khi có ít nhất 1 kênh YouTube.
+	// Chỉ hiện bảng tiến độ YPP khi có ít nhất 1 kênh YouTube.
 	hasYT := false
 	for i := range accounts {
 		if hasYouTube(accounts[i]) {

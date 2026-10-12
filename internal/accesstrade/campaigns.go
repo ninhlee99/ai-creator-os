@@ -25,6 +25,8 @@ type Campaign struct {
 	CommissionRate float64
 	// CookieDuration thời gian lưu cookie (text từ API, nếu có).
 	CookieDuration string
+	// Merchant mã merchant (vd "shopee") — khớp trường merchant của datafeed.
+	Merchant string
 }
 
 // ApprovedOnly lọc chỉ chiến dịch đã duyệt (đủ điều kiện tạo link).
@@ -46,28 +48,56 @@ type CampaignFilter struct {
 	Limit int
 }
 
-// ListCampaigns gọi GET /v1/campaigns, parse danh sách chiến dịch.
-// Không gọi khi chưa có key (client.do fail-closed).
+// maxCampaignPages giới hạn số trang đọc mỗi lần (mỗi trang ≤50 chiến
+// dịch, trang đầy đủ ~9MB vì mô tả dài).
+const maxCampaignPages = 20
+
+// ListCampaigns gọi GET /v1/campaigns, parse danh sách chiến dịch, đọc
+// tiếp các trang theo "page"/"total_page" (đo thật 12/10/2026: API trả
+// tối đa 50/trang, ~207 trang công khai; chỉ filter approval=successful có
+// tác dụng — giá trị khác bị bỏ qua). Không gọi khi chưa có key.
 func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaign, error) {
-	q := url.Values{}
-	if f.Approval != "" {
-		q.Set("approval", f.Approval)
+	var out []Campaign
+	for page := 1; page <= maxCampaignPages; page++ {
+		q := url.Values{}
+		if f.Approval != "" {
+			q.Set("approval", f.Approval)
+		}
+		if f.Limit > 0 {
+			q.Set("limit", strconv.Itoa(f.Limit))
+		}
+		if page > 1 {
+			q.Set("page", strconv.Itoa(page))
+		}
+		path := "/v1/campaigns"
+		if enc := q.Encode(); enc != "" {
+			path += "?" + enc
+		}
+		data, err := c.do(ctx, "GET", path, nil)
+		if err != nil {
+			return out, err
+		}
+		raws, err := decodeList(data, "data", "campaigns", "results", "items")
+		if err != nil {
+			return out, err
+		}
+		out = append(out, parseCampaigns(raws)...)
+		if f.Limit > 0 && len(out) >= f.Limit {
+			return out[:f.Limit], nil
+		}
+		var meta struct {
+			TotalPage json.Number `json:"total_page"`
+		}
+		_ = json.Unmarshal(data, &meta)
+		total, _ := meta.TotalPage.Float64()
+		if len(raws) == 0 || float64(page) >= total {
+			break
+		}
 	}
-	if f.Limit > 0 {
-		q.Set("limit", strconv.Itoa(f.Limit))
-	}
-	path := "/v1/campaigns"
-	if enc := q.Encode(); enc != "" {
-		path += "?" + enc
-	}
-	data, err := c.do(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-	raws, err := decodeList(data, "data", "campaigns", "results", "items")
-	if err != nil {
-		return nil, err
-	}
+	return out, nil
+}
+
+func parseCampaigns(raws []json.RawMessage) []Campaign {
 	out := make([]Campaign, 0, len(raws))
 	for _, raw := range raws {
 		var m map[string]json.RawMessage
@@ -78,8 +108,9 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 			ID:               firstString(m, "campaign_id", "id", "campaignId"),
 			Name:             firstString(m, "name", "campaign_name", "title"),
 			Approval:         firstString(m, "approval", "approval_status", "status"),
-			CommissionPolicy: firstString(m, "commission_policy", "commission", "policy"),
+			CommissionPolicy: firstString(m, "commission_policy", "commission", "policy", "max_com"),
 			CookieDuration:   firstString(m, "cookie_duration", "cookie", "cookieDuration"),
+			Merchant:         firstString(m, "merchant"),
 		}
 		if rs := firstString(m, "commission_rate", "commissionRate", "rate"); rs != "" {
 			if f, err := strconv.ParseFloat(rs, 64); err == nil {
@@ -93,7 +124,7 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 		}
 		out = append(out, cp)
 	}
-	return out, nil
+	return out
 }
 
 // ApprovalLabel trả về nhãn tiếng Việt ngắn cho trạng thái duyệt.

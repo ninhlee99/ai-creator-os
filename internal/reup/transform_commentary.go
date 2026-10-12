@@ -82,51 +82,27 @@ func sanitizeCommentary(s string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Finalize: intro/outro card + trộn voiceover/nhạc + caption.
+// Finalize: trộn voiceover/nhạc lên hình đã biến đổi.
 //
-// Một pass ffmpeg: [intro][main][outro] concat (video) + voiceover delay
-// + nhạc nền duck nhẹ + loudnorm. Caption chạy pass riêng (burn-in thử
-// trước, gãy → mux SRT mov_text như studio).
+// Một pass ffmpeg: giữ nguyên hình (copy stream) + voiceover delay nhẹ
+// + nhạc nền nhỏ + loudnorm. KHÔNG chèn chữ vào video — không card
+// intro/outro, không caption (Ninh chốt 2026-10-12). Lời bình luận chỉ
+// tồn tại dưới dạng giọng đọc.
 // ---------------------------------------------------------------------------
 
-const (
-	cardDur   = 1.2 // giây mỗi card intro/outro
-	cardColor = "0x2b2f4a"
-	voiceLead = 2.0 // voiceover bắt đầu sau intro 0.8s
-)
+const voiceLead = 0.3 // giây — voiceover vào gần như ngay để giữ hook giây đầu
 
-// escapeDrawtext escape text cho filter drawtext.
-func escapeDrawtext(s string) string {
-	r := strings.NewReplacer("\\", "\\\\", ":", "\\:", "'", "\\'", "%", "\\%")
-	return r.Replace(s)
-}
-
-// finalFilter dựng filter_complex cho pass finalize.
-// voiceIdx/musicIdx: -1 = không có input tương ứng.
-func finalFilter(mainDur float64, title string, voiceIdx, musicIdx int) (filter string, totalDur float64) {
-	totalDur = cardDur + mainDur + cardDur
+// finalFilter dựng filter_complex audio cho pass finalize.
+// voiceIdx/musicIdx: -1 = không có input tương ứng (cả hai -1 → "").
+func finalFilter(mainDur float64, voiceIdx, musicIdx int) string {
 	var sb strings.Builder
-	// Card intro/outro: input card (index 3) split làm đôi; chữ khi có title.
-	intro, outro := "[3:v]split=2[intro0][outro0]", ""
-	_ = outro
-	if strings.TrimSpace(title) != "" {
-		intro = fmt.Sprintf("[3:v]split=2[i0][o0];"+
-			"[i0]drawtext=text='%s':fontsize=52:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2[intro];"+
-			"[o0]drawtext=text='Hẹn gặp lại':fontsize=44:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2[outro]",
-			escapeDrawtext(strings.TrimSpace(title)))
-		sb.WriteString(intro + ";")
-	} else {
-		sb.WriteString("[3:v]split=2[intro][outro];")
-	}
-	sb.WriteString("[intro][0:v][outro]concat=n=3:v=1:a=0[vcat];")
-	// Audio: voiceover delay sau intro; nhạc nền nhỏ + fade; trộn + loudnorm.
 	if voiceIdx >= 0 {
 		fmt.Fprintf(&sb, "[%d:a]aresample=44100,adelay=%d|%d,apad[vo];",
 			voiceIdx, int(voiceLead*1000), int(voiceLead*1000))
 	}
 	if musicIdx >= 0 {
 		fmt.Fprintf(&sb, "[%d:a]atrim=0:%.2f,afade=t=in:st=0:d=1,afade=t=out:st=%.2f:d=1,volume=0.35[mu];",
-			musicIdx, totalDur, totalDur-1)
+			musicIdx, mainDur, mainDur-1)
 	}
 	switch {
 	case voiceIdx >= 0 && musicIdx >= 0:
@@ -137,7 +113,7 @@ func finalFilter(mainDur float64, title string, voiceIdx, musicIdx int) (filter 
 	case musicIdx >= 0:
 		sb.WriteString("[mu]loudnorm=I=-14:TP=-1.5:LRA=11[aout]")
 	}
-	return strings.TrimSuffix(sb.String(), ";"), totalDur
+	return strings.TrimSuffix(sb.String(), ";")
 }
 
 // finalizeTransform pass cuối: card + audio mix → outPath, rồi caption.

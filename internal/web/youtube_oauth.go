@@ -51,7 +51,7 @@ func youtubeRedirectURI(r *http.Request) (string, error) {
 	}
 	host = strings.Trim(host, "[]")
 	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
-		return "", fmt.Errorf("mở app qua http://127.0.0.1:8080 (đang mở qua %s) rồi bấm lại “Nối YouTube” — Google chỉ cho phép quay về địa chỉ máy local", r.Host)
+		return "", fmt.Errorf("mở app qua http://127.0.0.1 (đúng cổng đang chạy; đang mở qua %s) rồi bấm lại “Nối YouTube” — Google chỉ cho phép quay về địa chỉ máy local", r.Host)
 	}
 	return "http://" + r.Host + "/publishers/youtube/callback", nil
 }

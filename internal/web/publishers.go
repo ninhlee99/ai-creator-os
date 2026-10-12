@@ -5,7 +5,6 @@ package web
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
@@ -37,7 +36,9 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 			YoutubeToken:     fileExists(publishers.YouTubeTokenPath(a.Username)),
 			YoutubeClient:    publishers.NewYouTubePublisher(a.Username, nil, "").HasClient(),
 			YoutubeTokenDead: ytDead,
-			FbPage:           strings.TrimSpace(getenv("FB_PAGE_ID_"+strings.ToUpper(a.Username), "")) != "",
+			FbPage:           publishers.FacebookPageID(a.Username) != "",
+			Instagram:        publishers.NewInstagramPublisher(a.Username).IsConfigured(),
+			Threads:          publishers.NewThreadsPublisher(a.Username).IsConfigured(),
 			Platforms:        plats,
 		})
 	}
@@ -47,7 +48,8 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTiktokClient", anyClient,
 		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
-		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal()))
+		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal(),
+		"AppBase", "http://"+r.Host))
 }
 
 // --------------------------------------------------------------------- usage

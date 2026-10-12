@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // maxDatafeedLimit là giới hạn API cho mỗi lần gọi /v1/datafeeds.
@@ -41,6 +42,22 @@ type DatafeedProduct struct {
 	CommissionRate float64
 	// CampaignID chiến dịch chứa sản phẩm (nếu API trả).
 	CampaignID string
+	// Merchant mã merchant/chiến dịch (vd "shopee") — để chỉ săn sản phẩm
+	// thuộc chiến dịch đã được duyệt.
+	Merchant string
+	// UpdatedAt thời điểm datafeed cập nhật sản phẩm (zero = không rõ).
+	UpdatedAt time.Time
+}
+
+// parseFeedTime đọc "12-10-2026T01:30:14" (định dạng thật của API) hoặc
+// RFC3339. Zero khi không đọc được.
+func parseFeedTime(s string) time.Time {
+	for _, layout := range []string{"02-01-2006T15:04:05", time.RFC3339, "2006-01-02T15:04:05"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 // Image trả về ảnh đầu tiên ("" khi không có).
@@ -67,6 +84,8 @@ type DatafeedFilter struct {
 	MinPrice, MaxPrice float64
 	// Limit số lượng tối đa (0 = mặc định, >200 bị cắt về 200).
 	Limit int
+	// Merchant lọc theo mã merchant (vd "shopee"), "" = tất cả.
+	Merchant string
 }
 
 // ListDatafeeds gọi GET /v1/datafeeds, parse danh sách sản phẩm.
@@ -85,6 +104,9 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 		q := url.Values{}
 		if f.Domain != "" {
 			q.Set("domain", f.Domain)
+		}
+		if f.Merchant != "" {
+			q.Set("merchant", f.Merchant)
 		}
 		if f.MinPrice > 0 {
 			q.Set("min_price", strconv.FormatFloat(f.MinPrice, 'f', -1, 64))
@@ -110,15 +132,19 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 				continue
 			}
 			p := DatafeedProduct{
-				SKU:        firstString(m, "sku", "product_id", "id", "item_id"),
-				Name:       firstString(m, "name", "product_name", "title"),
-				Price:      firstFloat(m, "price", "sale_price", "discounted_price"),
-				OldPrice:   firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price"),
-				Currency:   firstString(m, "currency"),
-				AffLink:    firstString(m, "aff_link", "affiliate_link", "deeplink", "url", "link"),
+				SKU:      firstString(m, "sku", "product_id", "id", "item_id"),
+				Name:     firstString(m, "name", "product_name", "title"),
+				Price:    firstFloat(m, "price", "sale_price", "discounted_price"),
+				OldPrice: firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price"),
+				Currency: firstString(m, "currency"),
+				// Chỉ link có mã affiliate — KHÔNG lấy "url" (link gốc của
+				// shop, không ra hoa hồng).
+				AffLink:    firstString(m, "aff_link", "affiliate_link", "deeplink"),
 				Category:   firstString(m, "category", "category_name", "cat"),
 				ShopName:   firstString(m, "shop_name", "advertiser", "merchant", "domain"),
 				CampaignID: firstString(m, "campaign_id", "campaignId"),
+				Merchant:   firstString(m, "merchant", "campaign"),
+				UpdatedAt:  parseFeedTime(firstString(m, "update_time", "updated_at")),
 			}
 			p.Images = stringList(m, "images", "image_urls", "photos")
 			if img := firstString(m, "image", "image_url", "thumbnail", "picture"); img != "" {

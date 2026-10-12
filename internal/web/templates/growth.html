@@ -69,7 +69,6 @@
 <div class="cards">
   <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng người theo dõi (số liệu mới nhất)</div></div>
   <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
-  {{if .HasYTAccount}}<div class="card"><div class="num">{{.YPPDaysLeft}} ngày</div><div class="label">Tới hạn đăng ký kiếm tiền YouTube {{.YPPDeadline}} (ngưỡng mới gấp đôi sau hạn này)</div></div>{{end}}
   <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
 </div>
 
@@ -92,6 +91,28 @@
 {{end}}
 </table>
 </div>
+
+{{if .HasYTAccount}}
+<h2>Tiến độ kiếm tiền YouTube (YPP)</h2>
+<p class="hint">Ngưỡng YouTube: <b>mức sớm</b> 500 sub + 3.000 giờ xem/12 tháng hoặc 3 triệu view Shorts/90 ngày · <b>mức đầy đủ</b> 1.000 sub + 4.000 giờ xem hoặc 10 triệu view Shorts. Giờ xem là ước tính từ Analytics (YouTube chỉ tính video dài công khai) — số chốt xem ở YouTube Studio.</p>
+<div class="table-wrap">
+<table>
+<tr><th>Kênh</th><th>Mức</th><th>Người đăng ký</th><th>Giờ xem 12 tháng</th><th>View Shorts 90 ngày</th><th>Tổng</th></tr>
+{{range $r := .Rows}}{{range $r.YPP}}
+<tr>
+  <td>{{$r.Account.Username}}</td>
+  <td>{{.Tier.Name}}</td>
+  <td>{{printf "%.0f" .SubsPct}}%</td>
+  <td>{{if lt .WatchPct 0.0}}<span class="hint">chưa có số liệu</span>{{else}}{{printf "%.0f" .WatchPct}}%{{end}}</td>
+  <td>{{if lt .ShortsPct 0.0}}<span class="hint">chưa có số liệu</span>{{else}}{{printf "%.0f" .ShortsPct}}%{{end}}</td>
+  <td>{{if .Eligible}}<span class="badge badge-ok">Đủ điều kiện — đăng ký trong YouTube Studio</span>
+      {{else if .MissingData}}<span class="badge badge-no">Thiếu số liệu — nối YouTube (quyền Analytics) rồi bấm Đồng bộ</span>
+      {{else}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .OverallPct}}%"></div></div><span class="hint">{{printf "%.0f" .OverallPct}}%{{if .BestPath}} · đường nhanh nhất: {{.BestPath}}{{end}}</span>{{end}}</td>
+</tr>
+{{end}}{{end}}
+</table>
+</div>
+{{end}}
 
 <div class="grid2">
 <div>

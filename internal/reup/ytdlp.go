@@ -83,13 +83,26 @@ func assetName() (string, error) {
 	}
 }
 
-// BinaryPath là đường dẫn binary yt-dlp trong binDir.
+// lookPath tìm yt-dlp người dùng đã cài sẵn (Homebrew/pip). Biến để test
+// thay được.
+var lookPath = exec.LookPath
+
+// BinaryPath là binary yt-dlp sẽ dùng: bản app tự tải trong binDir nếu đã
+// có; chưa có thì dùng bản đã cài sẵn trên máy (vd. /opt/homebrew/bin) —
+// khỏi bắt tải lại. Update() luôn ghi vào binDir, không đụng bản hệ thống.
 func (m *Manager) BinaryPath() (string, error) {
 	name, err := assetName()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(m.binDir, name), nil
+	own := filepath.Join(m.binDir, name)
+	if st, err := os.Stat(own); err == nil && st.Size() > 0 {
+		return own, nil
+	}
+	if sys, err := lookPath("yt-dlp"); err == nil {
+		return sys, nil
+	}
+	return own, nil
 }
 
 // Installed báo binary đã có và chạy được (--version thành công).

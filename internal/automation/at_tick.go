@@ -158,9 +158,14 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 	if !dueSince(s.Settings, keyATHunterLastRun, interval) {
 		return nil
 	}
-	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{})
+	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{ApprovedOnly: true, MaxAgeDays: 180})
 	if err != nil {
 		return []string{"săn sản phẩm thất bại: " + err.Error()}
+	}
+	if res.Note != "" && res.New == 0 {
+		stampRun(s.Settings, keyATHunterLastRun)
+		_ = s.decide("at_hunter", "hunt_blocked", nil, res.Note, nil)
+		return []string{"săn sản phẩm: " + res.Note}
 	}
 	videos := 0
 	if s.StudioRunner != nil {
@@ -209,6 +214,17 @@ func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (stri
 	if err := studio.DownloadImage(ctx, p.ImageURLs[0], dst); err != nil {
 		return "", fmt.Errorf("tải ảnh: %w", err)
 	}
+	// Ảnh listing thêm (góc khác) → video nhiều ảnh thật, không lặp 1 ảnh.
+	var extra []string
+	for i, u := range p.ImageURLs[1:] {
+		if len(extra) >= 5 {
+			break
+		}
+		e := filepath.Join(dir, fmt.Sprintf("prod-%d.jpg", i+1))
+		if studio.DownloadImage(ctx, u, e) == nil {
+			extra = append(extra, e)
+		}
+	}
 	niche := p.Category
 	if niche == "" {
 		niche = p.Theme
@@ -218,6 +234,7 @@ func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (stri
 		Niche:        niche,
 		ProductName:  p.Title,
 		ProductPhoto: dst,
+		ExtraPhotos:  extra,
 		Seconds:      30,
 		MusicPath:    s.ATMusicPath, // "" = video câm (job log ghi rõ)
 		AffLink:      p.ProductURL,  // đợt Q: link Accesstrade vào mô tả YouTube
@@ -291,26 +308,21 @@ func (s *Service) ATCampaignCheckTick(ctx context.Context) []string {
 		defaultATCampaignHours*time.Hour) {
 		return nil
 	}
-	cs, err := cl.ListCampaigns(ctx, accesstrade.CampaignFilter{})
+	// API chỉ lọc được approval=successful (đo thật 12/10/2026); danh
+	// sách công khai ~10.000 chiến dịch chưa đăng ký — không phải "chờ
+	// duyệt" nên không cảnh báo theo đó.
+	cs, err := cl.ListCampaigns(ctx, accesstrade.CampaignFilter{Approval: "successful"})
 	if err != nil {
 		return []string{"kiểm tra chiến dịch thất bại: " + err.Error()}
 	}
 	if uerr := s.AT.UpsertCampaigns(cs); uerr != nil {
 		log.Printf("accesstrade: lưu cache campaign: %v", uerr)
 	}
-	var pending []string
-	for _, c := range cs {
-		if c.Approval != "successful" {
-			pending = append(pending, c.Name+" ("+c.ApprovalLabel()+")")
-		}
-	}
 	stampRun(s.Settings, keyATCampaignCheckLast)
-	if len(pending) > 0 {
-		target := strings.Join(pending, "; ")
-		_ = s.decide("at_hunter", "campaign_pending", &target,
-			fmt.Sprintf("%d chiến dịch Accesstrade chưa duyệt — đăng ký/duyệt tay trên pub.accesstrade.vn", len(pending)), nil)
-		return []string{fmt.Sprintf("cảnh báo: %d chiến dịch chưa duyệt: %s",
-			len(pending), strings.Join(pending, ", "))}
+	if len(cs) == 0 {
+		_ = s.decide("at_hunter", "campaign_pending", nil,
+			"Chưa có chiến dịch Accesstrade nào được duyệt — đăng ký chiến dịch trên pub.accesstrade.vn", nil)
+		return []string{"cảnh báo: chưa có chiến dịch nào được duyệt"}
 	}
-	return []string{fmt.Sprintf("kiểm tra chiến dịch: %d chiến dịch đều đã duyệt", len(cs))}
+	return []string{fmt.Sprintf("kiểm tra chiến dịch: %d chiến dịch đã duyệt", len(cs))}
 }

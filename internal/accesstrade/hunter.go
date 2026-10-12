@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
@@ -25,6 +26,12 @@ type HunterFilter struct {
 	MinCommissionRate float64
 	// ThemeFallback theme gán khi không map được từ category ("" = để trống).
 	ThemeFallback string
+	// ApprovedOnly: chỉ săn sản phẩm của merchant thuộc chiến dịch bạn đã
+	// được duyệt (link chiến dịch chưa duyệt không ra hoa hồng).
+	ApprovedOnly bool
+	// MaxAgeDays bỏ sản phẩm datafeed cũ hơn N ngày (ảnh/link hay đã chết;
+	// đo thật: feed 30shine cập nhật 2023 → 100% ảnh 404). 0 = không lọc.
+	MaxAgeDays int
 }
 
 // HuntResult kết quả một lần săn.
@@ -38,6 +45,9 @@ type HuntResult struct {
 	// Products sản phẩm MỚI, sort theo hoa hồng kỳ vọng (giá × tỷ lệ)
 	// giảm dần — video được làm trước cho sản phẩm "ngon" nhất.
 	Products []products.Product
+	// Note giải thích cho người dùng khi không săn được gì (vd chưa có
+	// chiến dịch sản phẩm nào được duyệt).
+	Note string
 }
 
 // Hunt quét datafeed Accesstrade → lọc (có aff_link, giá > 0) → lưu vào
@@ -47,14 +57,51 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 	if ps == nil {
 		return nil, fmt.Errorf("accesstrade: kho sản phẩm chưa sẵn sàng")
 	}
-	feed, err := c.ListDatafeeds(ctx, DatafeedFilter{
-		Domain: f.Domain, MinPrice: f.MinPrice, MaxPrice: f.MaxPrice, Limit: f.Limit,
-	})
-	if err != nil {
-		return nil, err
-	}
 	res := &HuntResult{}
+	var feed []DatafeedProduct
+	if f.ApprovedOnly {
+		cs, err := c.ListCampaigns(ctx, CampaignFilter{Approval: "successful"})
+		if err != nil {
+			return nil, err
+		}
+		var names []string
+		for _, cp := range cs {
+			names = append(names, cp.Name)
+			if cp.Merchant == "" {
+				continue
+			}
+			part, err := c.ListDatafeeds(ctx, DatafeedFilter{Merchant: cp.Merchant,
+				Domain: f.Domain, MinPrice: f.MinPrice, MaxPrice: f.MaxPrice, Limit: f.Limit})
+			if err != nil {
+				return nil, err
+			}
+			feed = append(feed, part...)
+		}
+		switch {
+		case len(cs) == 0:
+			res.Note = "Chưa có chiến dịch Accesstrade nào được duyệt — đăng ký chiến dịch (Shopee, Lazada, Tiki…) trên pub.accesstrade.vn rồi chạy lại."
+			return res, nil
+		case len(feed) == 0:
+			res.Note = "Chiến dịch đã duyệt (" + strings.Join(names, ", ") + ") không có datafeed sản phẩm — đăng ký thêm chiến dịch bán hàng (Shopee, Lazada, Tiki…) trên pub.accesstrade.vn."
+			return res, nil
+		}
+	} else {
+		var err error
+		feed, err = c.ListDatafeeds(ctx, DatafeedFilter{
+			Domain: f.Domain, MinPrice: f.MinPrice, MaxPrice: f.MaxPrice, Limit: f.Limit,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	stale := 0
 	for _, dp := range feed {
+		if f.MaxAgeDays > 0 && !dp.UpdatedAt.IsZero() &&
+			time.Since(dp.UpdatedAt) > time.Duration(f.MaxAgeDays)*24*time.Hour {
+			res.Skipped++
+			stale++
+			continue
+		}
 		if strings.TrimSpace(dp.AffLink) == "" || dp.Price <= 0 {
 			res.Skipped++
 			continue
@@ -78,6 +125,9 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 		} else {
 			res.Updated++
 		}
+	}
+	if stale > 0 && res.New == 0 && res.Updated == 0 {
+		res.Note = fmt.Sprintf("Bỏ %d sản phẩm datafeed quá cũ (>%d ngày, ảnh/link thường đã chết).", stale, f.MaxAgeDays)
 	}
 	// Sort thật theo hoa hồng kỳ vọng (giá × tỷ lệ) giảm dần — video
 	// affiliate được làm trước cho sản phẩm "ngon" nhất.

@@ -14,13 +14,17 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/notify"
 )
 
 type envRow struct {
 	Name string
-	Ok   bool
+	// Label/Group: tên dễ hiểu + nhóm nền tảng (biến kỹ thuật chỉ hiện phụ).
+	Label, Group string
+	NewGroup     bool // hàng đầu tiên của nhóm → in tiêu đề nhóm
+	Ok           bool
 	// Masked is the secret-safe tail display ("••••abcd"); empty when unset.
 	Masked string
 	// FromDB marks values saved through the settings UI (persisted in the
@@ -28,6 +32,29 @@ type envRow struct {
 	FromDB bool
 	// Help là giải thích ngắn cho người không rành (Đợt AA).
 	Help string
+}
+
+// envLabels: biến → {tên dễ hiểu, nhóm}. Trang Cài đặt hiện tên dễ hiểu
+// làm chính, tên biến chỉ là chữ nhỏ phụ (để đối chiếu tài liệu).
+var envLabels = map[string][2]string{
+	"TTS_API_KEY":             {"Key Gemini cho giọng đọc", "Google Gemini"},
+	"GEMINI_TEXT_MODEL":       {"Model viết chữ (tùy chọn)", "Google Gemini"},
+	"GEMINI_IMAGE_MODEL":      {"Model tạo ảnh (tùy chọn)", "Google Gemini"},
+	"GEMINI_TTS_MODEL":        {"Model giọng đọc (tùy chọn)", "Google Gemini"},
+	"TIKTOK_CLIENT_KEY":       {"Client Key ứng dụng TikTok", "TikTok"},
+	"TIKTOK_CLIENT_SECRET":    {"Client Secret ứng dụng TikTok", "TikTok"},
+	"YOUTUBE_CLIENT_ID":       {"Client ID Google (nối YouTube)", "YouTube"},
+	"YOUTUBE_CLIENT_SECRET":   {"Client Secret Google", "YouTube"},
+	"YOUTUBE_API_KEY":         {"Key đọc số liệu YouTube", "YouTube"},
+	"YOUTUBE_DEFAULT_PRIVACY": {"Chế độ hiển thị khi đăng", "YouTube"},
+	"YOUTUBE_GOLDEN_HOUR":     {"Hẹn giờ vàng công khai", "YouTube"},
+	"FB_PAGE_ID":              {"ID Trang Facebook", "Facebook · Instagram · Threads"},
+	"META_PAGE_TOKEN":         {"Mã truy cập Trang (Meta)", "Facebook · Instagram · Threads"},
+	"FB_DRAFT_ONLY":           {"Facebook: chỉ tải lên chưa công khai", "Facebook · Instagram · Threads"},
+	"IG_USER_ID":              {"ID tài khoản Instagram", "Facebook · Instagram · Threads"},
+	"IG_AUTO_PUBLISH":         {"Instagram: tự đăng công khai", "Facebook · Instagram · Threads"},
+	"THREADS_USER_ID":         {"ID tài khoản Threads", "Facebook · Instagram · Threads"},
+	"THREADS_TOKEN":           {"Mã truy cập Threads", "Facebook · Instagram · Threads"},
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
@@ -172,7 +199,12 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	envs := make([]envRow, 0, len(envNames))
 	for _, e := range envNames {
 		v, ok := s.effectiveEnv(e)
-		row := envRow{Name: e, Ok: ok, Help: envHelp[e]}
+		lg := envLabels[e]
+		row := envRow{Name: e, Ok: ok, Help: envHelp[e], Label: lg[0], Group: lg[1]}
+		if row.Label == "" {
+			row.Label = e
+		}
+		row.NewGroup = len(envs) == 0 || envs[len(envs)-1].Group != row.Group
 		if ok {
 			row.Masked = maskSecret(v)
 		}
@@ -572,10 +604,13 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 // envNames is the allowlist of environment variables editable in Settings.
 // Values apply to the running process immediately and persist in the
 // settings table (applied at startup), so they survive restarts.
-var envNames = []string{"TTS_API_KEY",
+var envNames = []string{
+	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL", "GEMINI_TTS_MODEL",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
-	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY",
-	"YOUTUBE_DEFAULT_PRIVACY"}
+	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_API_KEY",
+	"YOUTUBE_DEFAULT_PRIVACY", "YOUTUBE_GOLDEN_HOUR",
+	"FB_PAGE_ID", "META_PAGE_TOKEN", "FB_DRAFT_ONLY", "IG_USER_ID", "IG_AUTO_PUBLISH",
+	"THREADS_USER_ID", "THREADS_TOKEN"}
 
 // envHelp giải thích ngắn gọn từng biến cho người không rành (Đợt AA,
 // finding C3) — hiện dưới tên biến ở trang Cài đặt · Hệ thống.
@@ -588,6 +623,16 @@ var envHelp = map[string]string{
 	"FB_PAGE_ID":              "ID Trang Facebook — để đăng bài lên Trang. Bỏ trống thì không đăng Facebook.",
 	"YOUTUBE_API_KEY":         "Key YouTube Data API (riêng với OAuth) — để đọc số liệu Analytics. Không bắt buộc.",
 	"YOUTUBE_DEFAULT_PRIVACY": "Chế độ riêng tư mặc định khi đăng video. Chỉ nhận: private, unlisted, public.",
+	"YOUTUBE_GOLDEN_HOUR":     "1 = video YouTube (private) tự hẹn giờ công khai vào khung giờ vàng VN kế tiếp (11:30 hoặc 19:30). Trống = giữ private để bạn tự duyệt.",
+	"META_PAGE_TOKEN":         "Page access token Meta (developers.facebook.com → Graph API Explorer, quyền pages_manage_posts + instagram_content_publish). Dùng chung cho Facebook Page và Instagram.",
+	"FB_DRAFT_ONLY":           "1 (mặc định) = video Facebook tải lên ở trạng thái chưa công khai để bạn duyệt; 0 = đăng công khai luôn.",
+	"IG_USER_ID":              "ID tài khoản Instagram Business/Creator đã nối với Trang Facebook — để đăng Reels.",
+	"IG_AUTO_PUBLISH":         "Instagram không có nháp qua API. 1 = đăng Reels công khai luôn; trống/0 = chỉ tải lên + xử lý (an toàn), không đăng.",
+	"THREADS_USER_ID":         "ID tài khoản Threads (developers.facebook.com → Threads API) — để đăng bài kèm link sản phẩm/video.",
+	"THREADS_TOKEN":           "Access token Threads (quyền threads_basic + threads_content_publish).",
+	"GEMINI_TEXT_MODEL":       "Không bắt buộc. Trống = app tự chọn model Gemini viết chữ (mặc định " + gmodels.Default(gmodels.Text) + "; Google tắt model thì app tự dò model mới).",
+	"GEMINI_IMAGE_MODEL":      "Không bắt buộc. Trống = app tự chọn model Gemini tạo ảnh (mặc định " + gmodels.Default(gmodels.Image) + "; tự dò model mới khi model cũ bị tắt).",
+	"GEMINI_TTS_MODEL":        "Không bắt buộc. Trống = app tự chọn model Gemini giọng đọc (mặc định " + gmodels.Default(gmodels.TTS) + "; tự dò model mới khi model cũ bị tắt).",
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.

@@ -72,11 +72,11 @@ tái dùng từ `internal/studio/assemble.go`):
   1080×1920, fps=30.
 - T8 voiceover tiếng Việt: TTS VieNeu local (không tốn Gemini key); nội
   dung do LLM bình luận ngắn từ title/metadata, hoặc **template trung
-  thực** khi không có LLM. Delay 2.0s, lồng với nhạc nền (volume 0.35,
+  thực** khi không có LLM. Delay 0.3s, lồng với nhạc nền (volume 0.35,
   fade in/out) qua `amix` + `loudnorm` −14 LUFS.
-- T7: audio gốc bị thay bằng nhạc licensed; intro/outro card 1.2s mỗi đầu
-  (drawtext tiêu đề, nền `#2b2f4a`, fallback card trơn khi thiếu font);
-  caption tiếng Việt (SRT burn-in, fallback mov_text khi thiếu font).
+- T7: audio gốc bị thay bằng nhạc licensed. **Không chèn chữ vào video**
+  (2026-10-12): không card intro/outro, không caption/phụ đề — pass cuối
+  copy nguyên hình, chỉ thay audio.
 - **Mức 2** (video hot): mức 1 + T9 compilation 3 clip cùng nguồn/chủ đề
   (seed offset mỗi clip, `xfade` 0.5s chuyển cảnh).
 - Fail-closed: transform lỗi → không xuất file đăng được; voiceover bật mà
@@ -135,9 +135,9 @@ thêm/bật-tắt/xoá nguồn (303); lưu settings (cắt trần per_source=10)
 scan thiếu kho → 412.
 
 **Đợt E** — `internal/reup/transform_test.go`: FFmpeg thật (testsrc 720×1280
-+ sine): mức 1 ra 1080×1920 có audio, độ dài ≈ gốc + 2.4s intro/outro;
++ sine): mức 1 ra 1080×1920 có audio, độ dài ≈ gốc (không card), không có track phụ đề;
 compilation mức 2 nối 3 clip + xfade ≈ 15s; QC rớt khi file rỗng/thiếu
-audio/không tồn tại; voiceover fail-closed (TTS nil); filter/text/SRT unit.
+audio/không tồn tại; voiceover fail-closed (TTS nil); filter (cấm drawtext/subtitles)/text unit.
 `internal/reup/posts_test.go`: CRUD reup_posts, metrics, CountPostedSince,
 VideosNeedingTransform (failed được transform lại), compilation ordering.
 `internal/growth/reup_kill_test.go`: kill đúng 5 bài 0-view liên tiếp;

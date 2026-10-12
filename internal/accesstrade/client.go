@@ -99,14 +99,26 @@ func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte,
 			lastErr = fmt.Errorf("accesstrade: lỗi mạng (lần %d, key %s): %w", attempt+1, c.maskedKey(), err)
 			continue
 		}
-		data, readErr := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		// Danh sách chiến dịch đầy đủ thật nặng ~9MB (đo 12/10/2026) — giới
+		// hạn cũ 8MB cắt cụt JSON → "không phải JSON hợp lệ". Đọc tới
+		// maxBody+1 để phát hiện vượt trần thay vì cắt im lặng.
+		data, readErr := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 		resp.Body.Close()
 		if readErr != nil {
 			lastErr = fmt.Errorf("accesstrade: đọc response: %w", readErr)
 			continue
 		}
+		if readErr == nil && len(data) > maxBody {
+			return nil, fmt.Errorf("accesstrade: response quá lớn (>%dMB) — thu hẹp bộ lọc", maxBody>>20)
+		}
 		switch {
 		case resp.StatusCode >= 200 && resp.StatusCode < 300:
+			// API có lúc trả 200 kèm chuỗi lỗi JSON, vd "{\"message\": \"Max
+			// limited is 50\"}" — coi là lỗi rõ ràng, không phải dữ liệu.
+			var msg string
+			if json.Unmarshal(data, &msg) == nil {
+				return nil, &apiError{status: resp.StatusCode, msg: snippet([]byte(msg))}
+			}
 			return data, nil
 		case resp.StatusCode >= 500:
 			// 5xx → retry.
@@ -122,6 +134,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte,
 	}
 	return nil, fmt.Errorf("accesstrade: hết số lần thử lại")
 }
+
+// maxBody là trần đọc response (danh sách chiến dịch thật ~9MB).
+const maxBody = 32 << 20
 
 // snippet cắt body lỗi để hiển thị (tối đa 200 ký tự, không chứa key).
 func snippet(b []byte) string {

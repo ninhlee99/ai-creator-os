@@ -9,8 +9,8 @@ package studio
 //   - Ảnh minh họa: MediaGen (Gemini, xoay key) — 1 ảnh 16:9 / cảnh.
 //   - Giọng đọc: Narrator (chuỗi TTS Gemini→VieNeu→Edge) — 1 wav / cảnh.
 //   - Dựng: tái dùng AssemblePhotoList (Ken Burns) từng cảnh → ConcatClips →
-//     mux audio TTS → MuxSubtitles (SRT từ thời lượng audio thật) →
-//     MixMusicBed (tùy chọn) → 16:9 MP4.
+//     mux audio TTS → MixMusicBed (tùy chọn) → 16:9 MP4. KHÔNG chèn
+//     chữ/phụ đề vào video (Ninh chốt 2026-10-12).
 //   - QC: 1920x1080 + có audio + dài > 30s. Rớt → failed + lý do tiếng Việt.
 //
 // Fail-closed: thiếu LLM / thiếu ảnh / thiếu giọng đọc → không dựng video
@@ -283,31 +283,6 @@ func concatWAVs(ctx context.Context, wavs []string, outPath string) error {
 	return ffmpegRun(ctx, args...)
 }
 
-// buildSRT dựng SRT từ văn bản từng cảnh và thời lượng audio thật.
-func buildSRT(scenes []storyScene, durs []float64) string {
-	var sb strings.Builder
-	t := 0.0
-	n := 1
-	for i, sc := range scenes {
-		d := 2.0
-		if i < len(durs) && durs[i] > 0.5 {
-			d = durs[i]
-		}
-		fmt.Fprintf(&sb, "%d\n%s --> %s\n%s\n\n", n, storySRTTime(t), storySRTTime(t+d), sc.Text)
-		t += d
-		n++
-	}
-	return sb.String()
-}
-
-func storySRTTime(sec float64) string {
-	ms := int(sec*1000 + 0.5)
-	h, ms := ms/3600000, ms%3600000
-	m, ms := ms/60000, ms%60000
-	s := ms / 1000
-	return fmt.Sprintf("%02d:%02d:%02d,%03d", h, m, s, ms%1000)
-}
-
 // findDonePhoto tìm ảnh đã vẽ xong của job cũ có cùng prompt — để job
 // retry tái dùng, khỏi đốt image-gen vẽ lại (đợt Y). "" = không có.
 func (s *Studio) findDonePhoto(jobID, prompt string) string {
@@ -424,7 +399,6 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	// 3+4. Vẽ ảnh + đọc giọng từng cảnh (fail-closed từng cảnh).
 	var clips []string
 	var wavs []string
-	var durs []float64
 	for i, sc := range scenes {
 		aid := s.addAsset(id, i, "photo", sc.ImagePrompt)
 		s.setAsset(aid, StatusRunning, "")
@@ -454,26 +428,27 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		wav := filepath.Join(work, fmt.Sprintf("scene-%02d.wav", i))
 		// Đợt AC: job retry tái dùng wav đã tổng hợp ở job cũ — khỏi đốt
 		// quota TTS (giống findDonePhoto cho ảnh ở đợt Y).
+		// Không `continue` ở nhánh dùng lại: cảnh vẫn phải dựng clip, nếu
+		// không video sẽ thiếu cảnh so với giọng đọc.
+		reusedWav := false
 		if oldWav := s.findDoneAudio(p.ReuseFromJobID, i); oldWav != "" {
 			if cerr := copyStoryFile(oldWav, wav); cerr == nil {
 				s.appendLog(id, fmt.Sprintf("Dùng lại giọng đọc cảnh %d/%d từ lần trước (khỏi tổng hợp lại)", i+1, len(scenes)))
-				s.setAsset(aid, StatusDone, img)
-				dur := storyProbeDuration(ctx, wav)
-				wavs = append(wavs, wav)
-				durs = append(durs, dur)
-				continue
+				reusedWav = true
 			}
 		}
-		wavBytes, err := s.narrator(ctx, sc.Text, p.Voice)
-		if err != nil {
-			s.setAsset(aid, StatusFailed, "")
-			fail(fmt.Errorf("cảnh %d: TTS lỗi (%v) — dừng, không tạo video câm", i+1, err))
-			return
-		}
-		if err := os.WriteFile(wav, wavBytes, 0o644); err != nil {
-			s.setAsset(aid, StatusFailed, "")
-			fail(err)
-			return
+		if !reusedWav {
+			wavBytes, err := s.narrator(ctx, sc.Text, p.Voice)
+			if err != nil {
+				s.setAsset(aid, StatusFailed, "")
+				fail(fmt.Errorf("cảnh %d: TTS lỗi (%v) — dừng, không tạo video câm", i+1, err))
+				return
+			}
+			if err := os.WriteFile(wav, wavBytes, 0o644); err != nil {
+				s.setAsset(aid, StatusFailed, "")
+				fail(err)
+				return
+			}
 		}
 		dur := storyProbeDuration(ctx, wav)
 		if dur < 1 {
@@ -482,7 +457,6 @@ func (s *Studio) runStory(id string, p StoryParams) {
 			return
 		}
 		wavs = append(wavs, wav)
-		durs = append(durs, dur)
 
 		// Clip Ken Burns cho cảnh (tái dùng AssemblePhotoList, khổ 16:9).
 		clip := filepath.Join(work, fmt.Sprintf("scene-%02d.mp4", i))
@@ -496,7 +470,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		s.setStatus(id, StatusRunning, 25+int(45*float64(i+1)/float64(len(scenes))))
 	}
 
-	// 5. Dựng: nối clip → mux audio TTS → subtitle → nhạc nền.
+	// 5. Dựng: nối clip → mux audio TTS → nhạc nền (không chữ).
 	s.appendLog(id, "Nối các cảnh…")
 	videoOnly := filepath.Join(work, "video-only.mp4")
 	if err := ConcatClips(ctx, clips, "16:9", videoOnly); err != nil {
@@ -516,12 +490,8 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		fail(fmt.Errorf("ghép audio: %w", err))
 		return
 	}
-	s.appendLog(id, "Thêm phụ đề…")
-	subbed := filepath.Join(work, "subbed.mp4")
-	if err := MuxSubtitles(ctx, withAudio, buildSRT(scenes, durs), subbed); err != nil {
-		fail(fmt.Errorf("phụ đề: %w", err))
-		return
-	}
+	// Không chèn chữ vào video (Ninh chốt 2026-10-12): không phụ đề.
+	subbed := withAudio
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
 	if p.MusicOn && strings.TrimSpace(p.MusicPath) != "" {
 		s.appendLog(id, "Lồng nhạc nền…")

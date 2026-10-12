@@ -109,11 +109,53 @@
     }
   })();
 
+  // ----------------------------------------------------- emoji spacing
+  // Chrome/macOS vẽ khoảng trắng ngay sau emoji bằng font emoji (gần như
+  // rộng 0) → "📖Kể chuyện". Bọc emoji vào span.ico có lề phải, bỏ khoảng
+  // trắng thừa. Bỏ qua ô nhập/code để không đổi dữ liệu người dùng.
+  function spaceEmoji(root) {
+    var re = /(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?)[ \u00A0]+(?=\S)/u;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        var p = n.parentNode;
+        if (!p || /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION)$/.test(p.nodeName) ||
+            (p.classList && p.classList.contains('ico'))) return NodeFilter.FILTER_REJECT;
+        return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+      }
+    });
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (n) {
+      var m, rest = n.nodeValue, frag = document.createDocumentFragment();
+      while ((m = re.exec(rest))) {
+        if (m.index) frag.appendChild(document.createTextNode(rest.slice(0, m.index)));
+        var sp = document.createElement('span');
+        sp.className = 'ico';
+        sp.textContent = m[1];
+        frag.appendChild(sp);
+        rest = rest.slice(m.index + m[0].length);
+      }
+      frag.appendChild(document.createTextNode(rest));
+      n.parentNode.replaceChild(frag, n);
+    });
+  }
+  spaceEmoji(document.body);
+  if (window.MutationObserver) {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (mu) {
+        mu.addedNodes.forEach(function (n) {
+          if (n.nodeType === 1) spaceEmoji(n);
+        });
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+
   // -------------------------------------------------------- file-picker
   document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
     inp.addEventListener('change', function () {
       var name = inp.closest('.file-pick').querySelector('.file-name');
-      if (name) name.textContent = inp.files.length ? inp.files[0].name : 'Chưa chọn file';
+      if (name) name.textContent = inp.files.length > 1 ? inp.files.length + ' ảnh đã chọn'
+        : inp.files.length ? inp.files[0].name : 'Chưa chọn file';
     });
   });
 
@@ -167,6 +209,13 @@
         var h = '';
         var logEl = document.getElementById('log-' + id);
         if (d.job && d.job.log) { logEl.textContent = d.job.log; logEl.hidden = false; }
+        if (d.trend) {
+          h += '<div class="shot"><div class="shot-head">📈 Sẵn sàng lên xu hướng: <b>' + d.trend.score + '/' + d.trend.total + '</b></div><ul class="clean">';
+          (d.trend.checks || []).forEach(function (c) {
+            h += '<li>' + (c.ok ? '✅ ' : '⚠️ ') + esc(c.label) + (c.ok ? '' : ' — <span class="hint">' + esc(c.tip) + '</span>') + '</li>';
+          });
+          h += '</ul><p class="hint">Checklist yếu tố phân phối đã biết — không phải cam kết viral.</p></div>';
+        }
         if (d.job && d.job.caption) {
           h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag ' +
             '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(' +

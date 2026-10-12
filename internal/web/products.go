@@ -134,6 +134,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"MusicName", music,
 		"AutoPublish", autoPub,
 		"YouTubeEnabled", youTube,
+		"MetaEnabled", automation.AutopilotMetaEnabled(s.settings()),
 	))
 }
 
@@ -509,6 +510,14 @@ func (s *Server) handleProductsSchedule(w http.ResponseWriter, r *http.Request) 
 		s.fail(w, err, "save schedule")
 		return
 	}
+	meta := "0"
+	if r.PostFormValue("meta_enabled") == "on" {
+		meta = "1"
+	}
+	if err := st.Set(SettingAutopilotMeta, meta); err != nil {
+		s.fail(w, err, "save schedule")
+		return
+	}
 	msg := "Đã tắt lịch autopilot."
 	if enabled == "1" {
 		msg = fmt.Sprintf("Đã bật lịch autopilot — chạy mỗi %d giờ cho các account đã sẵn sàng.", hours)
@@ -593,4 +602,5 @@ const (
 	SettingAutopilotMusic       = "autopilot_music_name"
 	SettingAutopilotAutoPublish = "autopilot_auto_publish"
 	SettingAutopilotYouTube     = "autopilot_youtube_enabled"
+	SettingAutopilotMeta        = "autopilot_meta_enabled"
 )

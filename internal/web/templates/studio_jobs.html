@@ -2,6 +2,8 @@
 {{define "content"}}
 <h1>Video đã tạo</h1>
 <p class="subtitle">Xem video đang dựng tới đâu, từng cảnh ra sao.</p>
+{{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
+{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
 <nav class="tabs">
   <a href="/studio">Tạo video</a>
@@ -19,13 +21,48 @@
     · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
   </div>
   <div class="board"></div>
-  {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
+  {{if .Output}}<video class="player" controls preload="metadata" src="/media/{{.Output}}"></video>{{end}}
   <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
   <div class="job-actions">
     {{if or (eq .Status "running") (eq .Status "queued")}}
     <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
       <button class="btn btn-secondary btn-sm" type="submit">Hủy</button>
     </form>
+    {{end}}
+    {{if .Output}}
+    <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:inline">
+      <button class="btn btn-secondary btn-sm" type="submit" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở bằng CapCut</button>
+    </form>
+    {{end}}
+    {{if and .Output (eq .Kind "affiliate")}}
+    <details class="advanced remix">
+      <summary>✏️ Chỉnh sửa &amp; dựng lại</summary>
+      <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data">
+        <div class="remix-grid">
+          <label>Thời lượng (giây)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên"></label>
+          <label>Nhịp cắt (BPM)<input type="number" name="bpm" min="60" max="200" placeholder="giữ nguyên"></label>
+          <label>Bắt đầu nhạc từ giây<input type="number" name="music_start" min="0" step="1" placeholder="giữ nguyên"></label>
+          <label>Thứ tự ảnh
+            <select name="order">
+              <option value="">Giữ nguyên</option>
+              <option value="reverse">Đảo ngược</option>
+              <option value="rotate">Ảnh thứ 2 lên đầu</option>
+            </select>
+          </label>
+        </div>
+        <div class="file-pick">
+          <label class="btn btn-secondary btn-sm">🎵 Đổi file nhạc…
+            <input type="file" name="music_file" accept="audio/*">
+          </label>
+          <span class="file-name">Giữ nhạc cũ</span>
+        </div>
+        <label>Chú thích (để trống = giữ/viết lại tự động)
+          <textarea name="caption" rows="3" placeholder="Câu mở + lời kêu gọi + hashtag"></textarea>
+        </label>
+        <button class="btn btn-sm" type="submit">Dựng lại bản mới</button>
+        <span class="hint">Bản cũ được giữ nguyên để so sánh.</span>
+      </form>
+    </details>
     {{end}}
     {{if eq .Status "failed"}}
     <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
@@ -36,7 +73,7 @@
       <button class="btn btn-secondary btn-sm" type="submit">Xóa</button>
     </form>
   </div>
-  <pre class="log" id="log-{{.ID}}" {{if not .Output}}hidden{{end}}></pre>
+  <pre class="log" id="log-{{.ID}}" hidden></pre>
 </div>
 {{end}}
 {{else}}

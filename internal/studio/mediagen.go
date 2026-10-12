@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 )
 
@@ -45,9 +47,8 @@ type MediaGen interface {
 // ---------------------------------------------------------------------------
 
 const (
-	geminiBase       = "https://generativelanguage.googleapis.com"
-	geminiImageModel = "gemini-2.0-flash-preview-image-generation"
-	geminiVeoModel   = "veo-3.0-generate-001"
+	geminiBase     = "https://generativelanguage.googleapis.com"
+	geminiVeoModel = "veo-3.0-generate-001"
 )
 
 // keyBackoffs mirrors the TTS keyring ladder: 60s -> 5m -> 15m.
@@ -97,7 +98,24 @@ func (g *GeminiMediaGen) Healthy(_ context.Context) bool {
 func (g *GeminiMediaGen) SetBaseURL(u string) { g.baseURL = u }
 
 // KeyCount reports configured keys (dashboard).
-func (g *GeminiMediaGen) KeyCount() int { return len(g.keys) }
+func (g *GeminiMediaGen) KeyCount() int {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return len(g.keys)
+}
+
+// SetKeys thay bộ key lúc đang chạy (key nhập ở Cài đặt áp dụng ngay cho
+// tạo ảnh — trước chỉ đọc biến môi trường lúc khởi động). Cùng bộ key thì
+// giữ nguyên trạng thái cooldown.
+func (g *GeminiMediaGen) SetKeys(keys []string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if strings.Join(keys, "\n") == strings.Join(g.keys, "\n") {
+		return
+	}
+	g.keys = append([]string{}, keys...)
+	g.coolDown, g.backoff, g.invalid, g.rr = map[int]time.Time{}, map[int]int{}, map[int]bool{}, 0
+}
 
 // pickKey returns the next usable key index (round-robin, skipping
 // cooling-down and invalid keys).
@@ -266,7 +284,20 @@ func (g *GeminiMediaGen) generateImageWithKey(ctx context.Context, key string, r
 	if err != nil {
 		return nil, err
 	}
-	url := g.baseURL + "/v1beta/models/" + geminiImageModel + ":generateContent?key=" + key
+	model := gmodels.Resolve(gmodels.Image)
+	img, err := g.generateImageModel(ctx, model, key, body)
+	if err != nil && gmodels.IsModelGone(err) {
+		// Model ảnh bị Google tắt/đổi tên: dò model còn sống, thử lại 1 lần.
+		if nm, derr := gmodels.Rediscover(ctx, g.client, g.baseURL, key, gmodels.Image); derr == nil {
+			log.Printf("gemini image: model %s không còn — chuyển sang %s", model, nm)
+			return g.generateImageModel(ctx, nm, key, body)
+		}
+	}
+	return img, err
+}
+
+func (g *GeminiMediaGen) generateImageModel(ctx context.Context, model, key string, body []byte) ([]byte, error) {
+	url := g.baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
