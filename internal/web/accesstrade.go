@@ -403,12 +403,17 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 			if videos >= want {
 				break
 			}
+			// Đợt Y: claim trước khi dựng video — chống đua với tick hunter.
+			claimed, cerr := s.Products.RecordUse(p.ID, 0, "")
+			if cerr != nil || !claimed {
+				continue
+			}
 			jobID, jerr := s.makeHunterVideo(ctx, p)
 			if jerr != nil {
 				log.Printf("web: at hunt video %q: %v", p.Title, jerr)
 				continue
 			}
-			_ = s.Products.RecordUse(p.ID, 0, jobID)
+			_ = s.Products.SetUsageJobID(p.ID, 0, jobID)
 			videos++
 		}
 	}
@@ -441,10 +446,13 @@ func (s *Server) handleATOrderSync(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	until := time.Now()
 	since := until.Add(-7 * 24 * time.Hour)
-	orders, err := cl.ListOrders(ctx, since, until)
+	orders, truncated, err := cl.ListOrders(ctx, since, until)
 	if err != nil {
 		writeJSONErr(w, "Đồng bộ đơn thất bại: "+err.Error(), http.StatusBadGateway)
 		return
+	}
+	if truncated {
+		log.Printf("accesstrade: CẢNH BÁO — đồng bộ tay bị cắt ở 10 trang (2000 đơn), một số đơn có thể chưa về.")
 	}
 	added, updated, uerr := s.AT.UpsertOrders(orders)
 	if uerr != nil {
@@ -460,7 +468,7 @@ func (s *Server) handleATOrderSync(w http.ResponseWriter, r *http.Request) {
 		"ok": true, "total": len(orders), "added": added, "updated": updated,
 		"approved_count": st.ApprovedCount, "approved_total": st.ApprovedTotal,
 		"pending_count": st.PendingCount, "pending_total": st.PendingTotal,
-		"rejected_count": st.RejectedCount,
+		"rejected_count": st.RejectedCount, "truncated": truncated,
 	})
 }
 

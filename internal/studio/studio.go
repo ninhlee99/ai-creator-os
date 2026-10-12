@@ -227,6 +227,16 @@ func (s *Studio) migrate() error {
 	if err := s.ensureCapabilitiesTable(); err != nil {
 		return err
 	}
+	// Đợt Y: bảng chân đăng — idempotency cho auto-publish affiliate.
+	// Mỗi (job, platform) ghi trạng thái: "done" (kèm remote_id) hoặc
+	// "failed" (lỗi tạm thời, tick sau thử lại). Không có dòng = chưa đăng.
+	if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS studio_publish_legs(
+		job_id TEXT NOT NULL, platform TEXT NOT NULL,
+		remote_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
+		updated_at TEXT NOT NULL DEFAULT '',
+		PRIMARY KEY(job_id, platform))`); err != nil {
+		return err
+	}
 	return nil
 }
 

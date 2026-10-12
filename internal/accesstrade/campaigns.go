@@ -83,7 +83,9 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 		}
 		if rs := firstString(m, "commission_rate", "commissionRate", "rate"); rs != "" {
 			if f, err := strconv.ParseFloat(rs, 64); err == nil {
-				cp.CommissionRate = f
+				// Đợt Y: chuẩn hoá về 0..1 như datafeed (API có thể trả
+				// 8.5 hoặc 0.085) — trước đây 0.085 hiện thành "0.085%".
+				cp.CommissionRate = normalizeRate(f)
 			}
 		}
 		if cp.ID == "" && cp.Name == "" {
@@ -109,10 +111,17 @@ func (c Campaign) ApprovalLabel() string {
 }
 
 // CommissionLabel hiển thị hoa hồng trung thực: có số thì hiện số,
-// không có thì "—" (không bịa).
+// không có thì "—" (không bịa). CommissionRate đã chuẩn hoá 0..1
+// (normalizeRate) nên nhân 100 khi hiển thị %; giá trị cache cũ (>1,
+// lưu trước Đợt Y) được giữ nguyên để không hiện sai trong lúc chờ
+// làm mới cache.
 func (c Campaign) CommissionLabel() string {
 	if c.CommissionRate > 0 {
-		return fmt.Sprintf("%g%%", c.CommissionRate)
+		r := c.CommissionRate
+		if r <= 1 {
+			r *= 100
+		}
+		return fmt.Sprintf("%g%%", r)
 	}
 	if c.CommissionPolicy != "" {
 		return c.CommissionPolicy

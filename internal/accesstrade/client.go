@@ -163,10 +163,13 @@ func firstString(m map[string]json.RawMessage, keys ...string) string {
 			if err := json.Unmarshal(raw, &s); err == nil && s != "" {
 				return s
 			}
-			// Một số field có thể là số — ép về string.
-			var f float64
-			if err := json.Unmarshal(raw, &f); err == nil {
-				return fmt.Sprintf("%v", f)
+			// Một số field có thể là số — ép về string. Đợt Y: dùng
+			// json.Number để giữ nguyên chuỗi số (float64 làm tròn ID
+			// nguyên lớn, vd 123456789012345678 → 1.2345678901234568e+17,
+			// khiến dedupe đơn theo order_id vỡ).
+			var n json.Number
+			if err := json.Unmarshal(raw, &n); err == nil {
+				return n.String()
 			}
 		}
 	}

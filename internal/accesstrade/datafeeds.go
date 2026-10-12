@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"sort"
 	"strconv"
@@ -71,59 +72,70 @@ type DatafeedFilter struct {
 // ListDatafeeds gọi GET /v1/datafeeds, parse danh sách sản phẩm.
 // API không có sort theo hoa hồng → sort HIGH_COMMISSION_RATE phía client
 // (commission cao nhất trước). Không gọi khi chưa có key (fail-closed).
+// Đợt Y: theo phân trang (page_token) tối đa 5 trang thay vì 1 trang duy
+// nhất — trước đây sản phẩm ngoài top-200 không bao giờ được săn.
 func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]DatafeedProduct, error) {
-	q := url.Values{}
-	if f.Domain != "" {
-		q.Set("domain", f.Domain)
-	}
-	if f.MinPrice > 0 {
-		q.Set("min_price", strconv.FormatFloat(f.MinPrice, 'f', -1, 64))
-	}
-	if f.MaxPrice > 0 {
-		q.Set("max_price", strconv.FormatFloat(f.MaxPrice, 'f', -1, 64))
-	}
 	limit := f.Limit
 	if limit <= 0 || limit > maxDatafeedLimit {
 		limit = maxDatafeedLimit
 	}
-	q.Set("limit", strconv.Itoa(limit))
-	path := "/v1/datafeeds?" + q.Encode()
-
-	data, err := c.do(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-	raws, err := decodeList(data, "data", "datafeeds", "products", "results", "items")
-	if err != nil {
-		return nil, err
-	}
-	out := make([]DatafeedProduct, 0, len(raws))
-	for _, raw := range raws {
-		var m map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &m); err != nil {
-			continue
+	var out []DatafeedProduct
+	pageToken := ""
+	for page := 0; page < 5; page++ {
+		q := url.Values{}
+		if f.Domain != "" {
+			q.Set("domain", f.Domain)
 		}
-		p := DatafeedProduct{
-			SKU:        firstString(m, "sku", "product_id", "id", "item_id"),
-			Name:       firstString(m, "name", "product_name", "title"),
-			Price:      firstFloat(m, "price", "sale_price", "discounted_price"),
-			OldPrice:   firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price"),
-			Currency:   firstString(m, "currency"),
-			AffLink:    firstString(m, "aff_link", "affiliate_link", "deeplink", "url", "link"),
-			Category:   firstString(m, "category", "category_name", "cat"),
-			ShopName:   firstString(m, "shop_name", "advertiser", "merchant", "domain"),
-			CampaignID: firstString(m, "campaign_id", "campaignId"),
+		if f.MinPrice > 0 {
+			q.Set("min_price", strconv.FormatFloat(f.MinPrice, 'f', -1, 64))
 		}
-		p.Images = stringList(m, "images", "image_urls", "photos")
-		if img := firstString(m, "image", "image_url", "thumbnail", "picture"); img != "" {
-			p.Images = append([]string{img}, p.Images...)
+		if f.MaxPrice > 0 {
+			q.Set("max_price", strconv.FormatFloat(f.MaxPrice, 'f', -1, 64))
 		}
-		p.CommissionRate = normalizeRate(firstFloat(m,
-			"commission_rate", "commissionRate", "commission", "rate"))
-		if p.Name == "" && p.SKU == "" {
-			continue
+		q.Set("limit", strconv.Itoa(limit))
+		if pageToken != "" {
+			q.Set("page_token", pageToken)
 		}
-		out = append(out, p)
+		data, err := c.do(ctx, "GET", "/v1/datafeeds?"+q.Encode(), nil)
+		if err != nil {
+			return nil, err
+		}
+		raws, err := decodeList(data, "data", "datafeeds", "products", "results", "items")
+		if err != nil {
+			return nil, err
+		}
+		for _, raw := range raws {
+			var m map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &m); err != nil {
+				continue
+			}
+			p := DatafeedProduct{
+				SKU:        firstString(m, "sku", "product_id", "id", "item_id"),
+				Name:       firstString(m, "name", "product_name", "title"),
+				Price:      firstFloat(m, "price", "sale_price", "discounted_price"),
+				OldPrice:   firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price"),
+				Currency:   firstString(m, "currency"),
+				AffLink:    firstString(m, "aff_link", "affiliate_link", "deeplink", "url", "link"),
+				Category:   firstString(m, "category", "category_name", "cat"),
+				ShopName:   firstString(m, "shop_name", "advertiser", "merchant", "domain"),
+				CampaignID: firstString(m, "campaign_id", "campaignId"),
+			}
+			p.Images = stringList(m, "images", "image_urls", "photos")
+			if img := firstString(m, "image", "image_url", "thumbnail", "picture"); img != "" {
+				p.Images = append([]string{img}, p.Images...)
+			}
+			p.CommissionRate = normalizeRate(firstFloat(m,
+				"commission_rate", "commissionRate", "commission", "rate"))
+			if p.Name == "" && p.SKU == "" {
+				continue
+			}
+			out = append(out, p)
+		}
+		next := datafeedNextToken(data)
+		if next == "" {
+			break
+		}
+		pageToken = next
 	}
 	// Sort client-side: hoa hồng cao nhất trước (ổn định theo tên).
 	sort.SliceStable(out, func(i, j int) bool {
@@ -133,6 +145,16 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 		return out[i].Name < out[j].Name
 	})
 	return out, nil
+}
+
+// datafeedNextToken tách token trang tiếp theo khỏi response datafeed
+// ("" khi hết). API không trả token → chỉ 1 trang, đúng như trước.
+func datafeedNextToken(data []byte) string {
+	var env map[string]json.RawMessage
+	if err := json.Unmarshal(data, &env); err != nil {
+		return ""
+	}
+	return firstString(env, "next_page_token", "page_token", "nextPageToken", "cursor")
 }
 
 // normalizeRate chuẩn hoá tỷ lệ hoa hồng về 0..1: API trả 8.5 (= 8.5%)
@@ -192,10 +214,11 @@ func stringList(m map[string]json.RawMessage, keys ...string) []string {
 }
 
 // PriceLabel hiển thị giá trung thực (VND làm tròn, ngoại tệ 2 số lẻ).
+// Đợt Y: math.Round thay vì cắt ngọn.
 func (p DatafeedProduct) PriceLabel() string {
 	cur := strings.ToUpper(strings.TrimSpace(p.Currency))
 	if cur == "" || cur == "VND" || cur == "Đ" || cur == "₫" {
-		return fmt.Sprintf("%s₫", Thousands(int64(p.Price)))
+		return fmt.Sprintf("%s₫", Thousands(int64(math.Round(p.Price))))
 	}
 	return fmt.Sprintf("%s %.2f", cur, p.Price)
 }

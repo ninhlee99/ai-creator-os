@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -168,12 +169,18 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 			if videos >= want {
 				break
 			}
+			// Đợt Y: claim trước khi dựng video (như Autopilot.Run) —
+			// nút "Săn ngay" bấm tay có thể đua với tick định kỳ.
+			claimed, cerr := s.Products.RecordUse(p.ID, hunterDirectAccountID, "")
+			if cerr != nil || !claimed {
+				continue
+			}
 			jobID, jerr := s.MakeHunterVideo(ctx, p)
 			if jerr != nil {
 				log.Printf("accesstrade hunter: tạo video cho %q thất bại: %v", p.Title, jerr)
 				continue
 			}
-			_ = s.Products.RecordUse(p.ID, hunterDirectAccountID, jobID)
+			_ = s.Products.SetUsageJobID(p.ID, hunterDirectAccountID, jobID)
 			videos++
 		}
 	}
@@ -242,9 +249,14 @@ func (s *Service) ATOrderSyncTick(ctx context.Context) []string {
 	}
 	until := time.Now()
 	since := until.Add(-orderSyncWindowDays * 24 * time.Hour)
-	orders, err := cl.ListOrders(ctx, since, until)
+	orders, truncated, err := cl.ListOrders(ctx, since, until)
 	if err != nil {
 		return []string{"đồng bộ đơn thất bại: " + err.Error()}
+	}
+	if truncated {
+		s.alert("at_orders", "warn",
+			"Đồng bộ đơn Accesstrade bị cắt ở 10 trang (2000 đơn) — một số đơn có thể chưa về. Thu hẹp khoảng đồng bộ hoặc kiểm tra sau đợt sale lớn.",
+			"đã log cảnh báo, chu kỳ sau đồng bộ tiếp")
 	}
 	added, updated, uerr := s.AT.UpsertOrders(orders)
 	if uerr != nil {
@@ -256,7 +268,7 @@ func (s *Service) ATOrderSyncTick(ctx context.Context) []string {
 	return []string{fmt.Sprintf(
 		"đồng bộ đơn: %d đơn (%d mới, %d cập nhật) — đã duyệt %d (%s₫), chờ duyệt %d",
 		len(orders), added, updated,
-		st.ApprovedCount, accesstrade.Thousands(int64(st.ApprovedTotal)), st.PendingCount)}
+		st.ApprovedCount, accesstrade.Thousands(int64(math.Round(st.ApprovedTotal))), st.PendingCount)}
 }
 
 // ----------------------------------------------------- campaign check tick

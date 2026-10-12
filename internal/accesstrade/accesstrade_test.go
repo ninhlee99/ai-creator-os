@@ -50,8 +50,11 @@ func TestListCampaigns(t *testing.T) {
 	if len(cs) != 3 {
 		t.Fatalf("muốn 3 campaign, được %d", len(cs))
 	}
-	if cs[0].ID != "c1" || cs[0].Name != "Shopee" || cs[0].CommissionRate != 8.5 {
-		t.Errorf("campaign[0] parse sai: %+v", cs[0])
+	if cs[0].ID != "c1" || cs[0].Name != "Shopee" || cs[0].CommissionRate != 0.085 {
+		t.Errorf("campaign[0] parse sai (muốn rate chuẩn hoá 0.085): %+v", cs[0])
+	}
+	if cs[0].CommissionLabel() != "8.5%" {
+		t.Errorf("commission label sai: %q (muốn 8.5%%)", cs[0].CommissionLabel())
 	}
 	if cs[1].Approval != "pending" {
 		t.Errorf("campaign[1].Approval = %q", cs[1].Approval)

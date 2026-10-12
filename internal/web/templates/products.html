@@ -34,7 +34,7 @@
   </div>
   <div class="grid2">
     <div class="field">
-      <label>Giá (USD) <span class="req">*</span></label>
+      <label>Giá (VND) <span class="req">*</span></label>
       <input type="number" name="price" step="0.01" min="0" required>
     </div>
     <div class="field">
@@ -109,7 +109,7 @@
       <td>{{.Name}}</td>
       <td>{{if eq .Approval "successful"}}<span class="badge badge-ok">Đã duyệt</span>{{else}}<span class="badge badge-warn">{{.ApprovalLabel}}</span>{{end}}</td>
       <td>{{.CommissionLabel}}</td>
-      <td>{{if eq .Approval "successful"}}<button type="button" class="btn btn-primary btn-sm" onclick="atLinkModal('{{.ID}}','{{.Name}}')">Tạo link</button>{{end}}</td>
+      <td>{{if eq .Approval "successful"}}<button type="button" class="btn btn-primary btn-sm at-link-btn" data-campaign-id="{{.ID}}" data-campaign-name="{{.Name}}">Tạo link</button>{{end}}</td>
     </tr>
     {{end}}
   </table>
@@ -250,7 +250,9 @@ function atHunt() {
 }
 function atOrderSync() {
   atPost('/at/orders/sync', '{}', 'at-sync-btn', function (d) {
-    return 'Đã đồng bộ ' + d.total + ' đơn (' + d.added + ' mới, ' + d.updated + ' cập nhật).';
+    var msg = 'Đã đồng bộ ' + d.total + ' đơn (' + d.added + ' mới, ' + d.updated + ' cập nhật).';
+    if (d.truncated) { msg += ' Lưu ý: vượt quá 2000 đơn, một số đơn chưa về.'; }
+    return msg;
   });
 }
 function atSettingsSave() {
@@ -296,6 +298,14 @@ function atSettingsSave() {
     r.hidden = true; r.innerHTML = '';
     modal.hidden = false;
   };
+  // Đợt Y: data-* thay cho onclick('...','...') — tên chiến dịch có dấu
+  // nháy đơn (vd Ninh's Shop) không còn làm vỡ JS (Go escape HTML trong
+  // attribute, DOM decode lại đúng).
+  document.querySelectorAll('.at-link-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      window.atLinkModal(btn.getAttribute('data-campaign-id'), btn.getAttribute('data-campaign-name'));
+    });
+  });
   document.getElementById('at-link-cancel').addEventListener('click', function () { modal.hidden = true; });
   modal.addEventListener('click', function (ev) { if (ev.target === modal) modal.hidden = true; });
   document.getElementById('at-link-submit').addEventListener('click', function () {

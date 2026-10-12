@@ -24,6 +24,7 @@ import (
 type fakeJobStore struct {
 	jobs map[string]studio.Job
 	logs []string
+	legs map[string]string
 }
 
 func (f *fakeJobStore) GetJob(id string) (studio.Job, bool) {
@@ -34,6 +35,21 @@ func (f *fakeJobStore) GetJob(id string) (studio.Job, bool) {
 func (f *fakeJobStore) AppendLog(id, line string) {
 	f.logs = append(f.logs, id+":"+line)
 }
+
+// Publish legs (Đợt Y): fake lưu trạng thái trong map để test idempotency.
+func (f *fakeJobStore) PublishLegStatus(jobID, platform string) string {
+	return f.legs[jobID+"/"+platform]
+}
+
+func (f *fakeJobStore) SetPublishLeg(jobID, platform, status, remoteID string) error {
+	if f.legs == nil {
+		f.legs = map[string]string{}
+	}
+	f.legs[jobID+"/"+platform] = status
+	return nil
+}
+
+func (f *fakeJobStore) FailedPublishLegs() []studio.PublishLeg { return nil }
 
 func (f *fakeJobStore) has(substr string) bool {
 	for _, l := range f.logs {
@@ -159,5 +175,42 @@ func TestAutoPublishYouTubeAffiliateToggleOff(t *testing.T) {
 	svc.AutoPublishAffiliate(context.Background(), j.ID)
 	if *calls != 0 {
 		t.Fatal("đã tắt vẫn đăng")
+	}
+}
+
+// Đợt Y: hook fire 2 lần cho cùng job không được đăng trùng — chân done
+// thì lần 2 bỏ qua.
+func TestAutoPublishYouTubeIdempotent(t *testing.T) {
+	svc, js, _, calls, _ := ytTestService(t)
+	_ = svc.Settings.Set("autopilot_auto_publish", "0") // tắt TikTok để cô lập
+	j := ytTestJob(t)
+	js.jobs[j.ID] = j
+	svc.AutoPublishAffiliate(context.Background(), j.ID)
+	afterFirst := *calls
+	if afterFirst == 0 {
+		t.Fatal("lần 1 không gọi YouTube API")
+	}
+	svc.AutoPublishAffiliate(context.Background(), j.ID)
+	if *calls != afterFirst {
+		t.Fatalf("lần 2 gọi thêm API (%d → %d) — mất idempotency", afterFirst, *calls)
+	}
+	if !js.has("đã đăng rồi — bỏ qua") {
+		t.Fatalf("thiếu log bỏ qua lần 2: %q", js.logs)
+	}
+	if got := js.PublishLegStatus(j.ID, "youtube"); got != studio.LegDone {
+		t.Fatalf("leg youtube = %q, muốn done", got)
+	}
+}
+
+// Đợt Y: chân lỗi tạm thời (hết quota) được đánh failed để tick thử lại.
+func TestAutoPublishYouTubeQuotaMarksLegFailed(t *testing.T) {
+	svc, js, gs, _, _ := ytTestService(t)
+	_ = svc.Settings.Set("autopilot_auto_publish", "0")
+	_ = gs.AddQuota(svc.today(), growth.DailyQuotaUnits) // cạn quota
+	j := ytTestJob(t)
+	js.jobs[j.ID] = j
+	svc.AutoPublishAffiliate(context.Background(), j.ID)
+	if got := js.PublishLegStatus(j.ID, "youtube"); got != studio.LegFailed {
+		t.Fatalf("leg youtube = %q, muốn failed để retry", got)
 	}
 }

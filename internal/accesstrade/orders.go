@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math"
 	"net/url"
 	"sync"
 	"time"
@@ -57,10 +59,11 @@ func (o Order) StatusLabel() string {
 }
 
 // CommissionLabel hiển thị hoa hồng trung thực: đơn chờ duyệt chưa có số
-// thì hiện "—" (không cộng vào "đã nhận").
+// thì hiện "—" (không cộng vào "đã nhận"). Đợt Y: math.Round thay vì cắt
+// ngọn (99999.9₫ phải hiện 100.000₫, không phải 99.999₫).
 func (o Order) CommissionLabel() string {
 	if o.PubCommission > 0 {
-		return fmt.Sprintf("%s₫", Thousands(int64(o.PubCommission)))
+		return fmt.Sprintf("%s₫", Thousands(int64(math.Round(o.PubCommission))))
 	}
 	return "—"
 }
@@ -125,12 +128,15 @@ func (l *rateLimiter) wait(ctx context.Context) error {
 // ListOrders gọi GET /v1/order-list trong khoảng since..until (ISO).
 // Tự theo phân trang (nếu API trả) tối đa 10 trang; MỖI request đều qua
 // rate limiter nội bộ 10 req/phút. Không gọi khi chưa có key.
-func (c *Client) ListOrders(ctx context.Context, since, until time.Time) ([]Order, error) {
+// Trả về truncated=true khi vẫn còn trang sau trang thứ 10 — caller phải
+// cảnh báo (Đợt Y: trước đây phần còn lại bị bỏ im lặng).
+func (c *Client) ListOrders(ctx context.Context, since, until time.Time) ([]Order, bool, error) {
 	if c.orderLimit == nil {
 		c.orderLimit = newOrderLimiter()
 	}
 	var out []Order
 	pageToken := ""
+	truncated := false
 	for page := 0; page < 10; page++ {
 		q := url.Values{}
 		if !since.IsZero() {
@@ -144,23 +150,29 @@ func (c *Client) ListOrders(ctx context.Context, since, until time.Time) ([]Orde
 			q.Set("page_token", pageToken)
 		}
 		if err := c.orderLimit.wait(ctx); err != nil {
-			return out, fmt.Errorf("accesstrade: rate limit bị hủy: %w", err)
+			return out, truncated, fmt.Errorf("accesstrade: rate limit bị hủy: %w", err)
 		}
 		data, err := c.do(ctx, "GET", "/v1/order-list?"+q.Encode(), nil)
 		if err != nil {
-			return out, err
+			return out, truncated, err
 		}
 		orders, next, err := parseOrderPage(data)
 		if err != nil {
-			return out, err
+			return out, truncated, err
 		}
 		out = append(out, orders...)
 		if next == "" {
 			break
 		}
 		pageToken = next
+		if page == 9 {
+			// Hết 10 trang mà API vẫn báo còn — dừng để giữ rate limit,
+			// nhưng báo rõ thay vì im lặng.
+			truncated = true
+			log.Printf("accesstrade: CẢNH BÁO — order-list vượt quá 10 trang (2000 đơn), phần còn lại bị bỏ. Thu hẹp khoảng thời gian đồng bộ nếu cần.")
+		}
 	}
-	return out, nil
+	return out, truncated, nil
 }
 
 // parseOrderPage tách danh sách đơn + token trang tiếp theo khỏi response.

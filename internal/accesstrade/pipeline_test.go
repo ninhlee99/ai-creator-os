@@ -110,9 +110,12 @@ func TestListOrders(t *testing.T) {
 	c := NewClient("k123")
 	c.BaseURL = srv.URL
 	since := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
-	orders, err := c.ListOrders(context.Background(), since, time.Now())
+	orders, truncated, err := c.ListOrders(context.Background(), since, time.Now())
 	if err != nil {
 		t.Fatalf("ListOrders: %v", err)
+	}
+	if truncated {
+		t.Fatalf("ListOrders: truncated=true trong khi chỉ có 1 trang")
 	}
 	if len(orders) != 3 {
 		t.Fatalf("muốn 3 đơn, được %d", len(orders))

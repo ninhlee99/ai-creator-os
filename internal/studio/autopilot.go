@@ -100,6 +100,28 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 		}
 	}
 	prod := cands[0]
+	// Đợt Y: claim nguyên tử TRƯỚC khi dựng job — 2 chu kỳ chồng nhau
+	// (chạy tay từ UI + tick định kỳ) không bao giờ dựng 2 video cho cùng
+	// 1 sản phẩm. UNIQUE(product_id, account_id) + ON CONFLICT DO NOTHING
+	// ở RecordUse là chốt chặn ở tầng DB.
+	claimed := false
+	for _, c := range cands {
+		if c.ID == 0 {
+			continue
+		}
+		ok, err := a.store.RecordUse(c.ID, accountID, "")
+		if err != nil {
+			return r, err
+		}
+		if ok {
+			prod = c
+			claimed = true
+			break
+		}
+	}
+	if !claimed {
+		return r, fmt.Errorf("autopilot: sản phẩm vừa bị chu kỳ khác chọn mất — thử lại ở vòng sau")
+	}
 	r.Product = prod
 
 	// 2. Product photos: download real listing images (ground truth).
@@ -138,20 +160,23 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 		AccountID:    accountID,
 		Niche:        themeLabel,
 		ProductName:  prod.Title,
-		ModelPhoto:   mps[0].Path,
 		ProductPhoto: prodPhotos[0],
-		Seconds:      30,
-		MusicPath:    a.MusicPath,
-		MusicTitle:   "trending",
+		// Đợt Y: trước đây thiếu AffLink → video YouTube Shorts đăng lên
+		// không có link mua trong mô tả (mất doanh thu).
+		AffLink:    prod.ProductURL,
+		ModelPhoto: mps[0].Path,
+		Seconds:    30,
+		MusicPath:  a.MusicPath,
+		MusicTitle: "trending",
 	})
 	if err != nil {
 		return r, err
 	}
 	r.JobID = jobID
 
-	// 5. Don't promote the same product twice for this account.
+	// Ghi job id vào dòng usage đã claim ở trên (bookkeeping).
 	if prod.ID != 0 {
-		_ = a.store.RecordUse(prod.ID, accountID, jobID)
+		_ = a.store.SetUsageJobID(prod.ID, accountID, jobID)
 	}
 	return r, nil
 }

@@ -25,22 +25,32 @@ func (s *Studio) CancelRunning(id string) bool {
 // MarkInterruptedJobs fails every job left "running" from a previous process
 // (their render goroutines died with it). Call once at startup; returns the
 // number of jobs swept. The user can resume film jobs with RerunFilmJob.
+//
+// Đợt Y: also fails jobs left "queued" — a queued job's goroutine died with
+// the old process too, and nothing ever re-dispatches it, so it would sit
+// at "đang chờ" forever while the UI pretends work is happening.
 func (s *Studio) MarkInterruptedJobs() int {
-	rows, err := s.db.Query(`SELECT id FROM studio_jobs WHERE status=?`, StatusRunning)
+	rows, err := s.db.Query(`SELECT id, status FROM studio_jobs WHERE status IN (?,?)`,
+		StatusRunning, StatusQueued)
 	if err != nil {
 		return 0
 	}
-	var ids []string
+	type swept struct{ id, status string }
+	var ids []swept
 	for rows.Next() {
-		var id string
-		if rows.Scan(&id) == nil {
-			ids = append(ids, id)
+		var sw swept
+		if rows.Scan(&sw.id, &sw.status) == nil {
+			ids = append(ids, sw)
 		}
 	}
 	rows.Close()
-	for _, id := range ids {
-		s.appendLog(id, "Gián đoạn khi khởi động lại")
-		s.setStatus(id, StatusFailed, 100)
+	for _, sw := range ids {
+		if sw.status == StatusQueued {
+			s.appendLog(sw.id, "Kẹt sau restart (đang chờ mà tiến trình cũ đã chết) — đánh dấu thất bại, tạo lại job nếu cần")
+		} else {
+			s.appendLog(sw.id, "Gián đoạn khi khởi động lại")
+		}
+		s.setStatus(sw.id, StatusFailed, 100)
 	}
 	return len(ids)
 }

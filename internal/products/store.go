@@ -73,7 +73,19 @@ func (s *Store) migrate() error {
 	if err := s.addColumn("products", "shelf_status", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
-	return s.addColumn("products", "shelf_score", "REAL NOT NULL DEFAULT 0")
+	if err := s.addColumn("products", "shelf_score", "REAL NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	// Đợt Y: một sản phẩm chỉ được chọn một lần cho mỗi account — chống
+	// race khi 2 chu kỳ (chạy tay + tick) cùng chọn 1 sản phẩm trước khi
+	// RecordUse commit. Dedupe bản ghi cũ trước để tạo được UNIQUE index.
+	if _, err := s.db.Exec(`DELETE FROM product_usage WHERE id NOT IN (
+		SELECT MIN(id) FROM product_usage GROUP BY product_id, account_id)`); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_product_account
+		ON product_usage(product_id, account_id)`)
+	return err
 }
 
 // addColumn appends a column unless it already exists (idempotent).
@@ -237,10 +249,26 @@ func (s *Store) TopUnusedBySource(source string, minCommission float64, accountI
 }
 
 // RecordUse marks a product as promoted for an account (by studio job id).
-func (s *Store) RecordUse(productID, accountID int64, jobID string) error {
-	_, err := s.db.Exec(
-		`INSERT INTO product_usage(product_id,account_id,job_id,used_at) VALUES(?,?,?,?)`,
+// Đợt Y: INSERT ... ON CONFLICT DO NOTHING — trả về claimed=true chỉ khi
+// dòng được chèn thật (chống 2 chu kỳ cùng chọn 1 sản phẩm cho 1 account).
+func (s *Store) RecordUse(productID, accountID int64, jobID string) (bool, error) {
+	res, err := s.db.Exec(
+		`INSERT INTO product_usage(product_id,account_id,job_id,used_at) VALUES(?,?,?,?)
+		ON CONFLICT(product_id, account_id) DO NOTHING`,
 		productID, accountID, jobID, time.Now().Format("2006-01-02T15:04:05"))
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
+// SetUsageJobID updates the job id on an existing usage claim (used when
+// the product was claimed before its studio job existed).
+func (s *Store) SetUsageJobID(productID, accountID int64, jobID string) error {
+	_, err := s.db.Exec(
+		`UPDATE product_usage SET job_id=? WHERE product_id=? AND account_id=?`,
+		jobID, productID, accountID)
 	return err
 }
 

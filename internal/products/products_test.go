@@ -104,8 +104,12 @@ func TestStoreRoundTrip(t *testing.T) {
 	if err != nil || len(top) != 1 || top[0].CommissionRate != 0.25 {
 		t.Fatalf("top: %v %+v", err, top)
 	}
-	if err := s.RecordUse(id, 7, "job1"); err != nil {
-		t.Fatal(err)
+	if claimed, err := s.RecordUse(id, 7, "job1"); err != nil || !claimed {
+		t.Fatalf("RecordUse: claimed=%v err=%v", claimed, err)
+	}
+	// Đợt Y: claim lần 2 cho cùng (product, account) phải trượt (UNIQUE).
+	if claimed, err := s.RecordUse(id, 7, "job2"); err != nil || claimed {
+		t.Fatalf("RecordUse lần 2: claimed=%v err=%v (muốn false)", claimed, err)
 	}
 	top, err = s.TopByTheme("thời trang nữ", 0.10, 7, 10)
 	if err != nil || len(top) != 0 {

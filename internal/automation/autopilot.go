@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
@@ -19,6 +20,11 @@ import (
 type JobStore interface {
 	GetJob(id string) (studio.Job, bool)
 	AppendLog(id, line string)
+	// Publish legs (Đợt Y): idempotency cho auto-publish — check trước
+	// khi đăng, ghi sau khi đăng, tick thử lại chân failed.
+	PublishLegStatus(jobID, platform string) string
+	SetPublishLeg(jobID, platform, status, remoteID string) error
+	FailedPublishLegs() []studio.PublishLeg
 }
 
 // ----------------------------------------------------------- the tick
@@ -52,12 +58,77 @@ func (s *Service) AutopilotTick(ctx context.Context) []string {
 	for _, r := range results {
 		if r.JobID != "" {
 			done++
+			continue
+		}
+		// Đợt Y: lỗi autopilot theo account trước đây vô hình (nhét vào
+		// Title rồi chỉ đi vào server log). Giờ alert warn để Ninh thấy.
+		if msg, ok := strings.CutPrefix(r.Product.Title, "LỖI: "); ok {
+			s.alertAccountOnce(r.AccountID, r.AccountName,
+				"Autopilot "+r.AccountName+" lỗi: "+msg,
+				"kiểm tra theme/ảnh mẫu/API key trong UI rồi bật lại")
 		}
 	}
+	// Đợt Y: thử lại các chân đăng lỗi tạm thời ở chu kỳ trước.
+	retryNotes := s.retryFailedPublishLegs(ctx)
 	if s.Settings != nil {
 		_ = s.Settings.Set("autopilot_last_run", time.Now().Format(time.RFC3339))
 	}
-	return []string{fmt.Sprintf("autopilot: chu kỳ đã xong (%d video đã xếp)", done)}
+	notes := []string{fmt.Sprintf("autopilot: chu kỳ đã xong (%d video đã xếp)", done)}
+	return append(notes, retryNotes...)
+}
+
+// alertAccountOnce gửi alert warn cho account, tối đa 1 lần/24h cho cùng
+// account (tránh spam Telegram mỗi chu kỳ khi lỗi kéo dài).
+func (s *Service) alertAccountOnce(accountID int64, accountName, msg, action string) {
+	if s.Growth == nil {
+		return
+	}
+	cutoff := time.Now().Add(-24 * time.Hour).Format("2006-01-02T15:04:05")
+	if alerts, err := s.Growth.ListAlerts(0, 100); err == nil {
+		for _, a := range alerts {
+			if a.Kind == "autopilot_account" && a.CreatedAt > cutoff &&
+				strings.Contains(a.Message, accountName) {
+				return
+			}
+		}
+	}
+	s.alert("autopilot_account", "warn", msg, action)
+}
+
+// retryFailedPublishLegs thử lại các chân đăng (TikTok/YouTube) bị lỗi tạm
+// thời ở chu kỳ trước (Đợt Y). Job phải còn done + output còn nguyên.
+func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
+	if s.JobStore == nil || s.Accounts == nil {
+		return nil
+	}
+	var notes []string
+	for _, leg := range s.JobStore.FailedPublishLegs() {
+		j, ok := s.JobStore.GetJob(leg.JobID)
+		if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
+			continue
+		}
+		var p studio.AffiliateParams
+		if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
+			continue
+		}
+		acct, err := s.Accounts.Get(p.AccountID)
+		if err != nil {
+			continue
+		}
+		switch leg.Platform {
+		case "tiktok":
+			if AutopilotAutoPublish(s.Settings) {
+				s.autoPublishTikTokAffiliate(ctx, leg.JobID, j, p, acct)
+				notes = append(notes, "thử lại chân đăng TikTok cho job "+leg.JobID)
+			}
+		case "youtube":
+			if AutopilotYouTubeEnabled(s.Settings) {
+				s.autoPublishYouTubeAffiliate(ctx, leg.JobID, j, p, acct)
+				notes = append(notes, "thử lại chân đăng YouTube cho job "+leg.JobID)
+			}
+		}
+	}
+	return notes
 }
 
 // ------------------------------------------------------ auto-publish
@@ -107,6 +178,12 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 
 // autoPublishTikTokAffiliate đăng video affiliate lên TikTok (nháp).
 func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	// Đợt Y: idempotency — chân này đã done thì bỏ qua (chống hook fire
+	// 2 lần hoặc retry tick chạy lại sau khi đã đăng).
+	if s.JobStore.PublishLegStatus(jobID, "tiktok") == studio.LegDone {
+		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: đã đăng rồi — bỏ qua.")
+		return
+	}
 	var pub publishers.Publisher
 	for _, c := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes) {
 		if c.Name() == "tiktok" && c.IsConfigured() && c.Handles("short_video") {
@@ -126,10 +203,12 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 	res := pub.Publish(ctx, j.Output, title, j.Caption, "short_video")
 	if !res.Ok {
 		s.JobStore.AppendLog(jobID, "Tự đăng thất bại: "+res.Error)
+		_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegFailed, "")
 		_ = s.decide("autopilot", "autopublish_failed", &jobID,
 			"tự đăng TikTok thất bại: "+res.Error, nil)
 		return
 	}
+	_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegDone, res.RemoteID)
 	if res.Draft {
 		s.JobStore.AppendLog(jobID, "Đã đăng lên TikTok dưới dạng NHÁP (draft id "+res.RemoteID+") — gắn giỏ hàng + sound trong app TikTok rồi hãy public.")
 	} else {
@@ -149,6 +228,11 @@ var youtubeAffiliatePublisher = func(acct *network.Account) *publishers.YouTubeP
 // (private-first, Ninh duyệt trong YouTube Studio). Quota-guarded: hết
 // quota ngày thì ghi log trung thực và bỏ qua (video vẫn nằm ở output).
 func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	// Đợt Y: idempotency — chân này đã done thì bỏ qua.
+	if s.JobStore.PublishLegStatus(jobID, "youtube") == studio.LegDone {
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: đã đăng rồi — bỏ qua.")
+		return
+	}
 	pub := youtubeAffiliatePublisher(acct)
 	if !pub.IsConfigured() || !pub.Handles("short_video") {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: kênh chưa cấu hình OAuth hoặc chưa bật loại short_video — bỏ qua.")
@@ -158,6 +242,8 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 	if s.Growth != nil {
 		if used, err := s.Growth.QuotaUsed(today); err == nil && !growth.QuotaCanUpload(used) {
 			s.JobStore.AppendLog(jobID, fmt.Sprintf("Tự đăng YouTube: chờ quota (hôm nay đã dùng %d/%d units) — video nằm ở output, đăng tay nếu cần.", used, growth.DailyQuotaUnits))
+			// Lỗi tạm thời: đánh failed để chu kỳ sau (quota đã reset) thử lại.
+			_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegFailed, "")
 			return
 		}
 	}
@@ -174,10 +260,12 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 	res := pub.Publish(ctx, j.Output, title, desc, "short_video")
 	if !res.Ok {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube thất bại: "+res.Error)
+		_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegFailed, "")
 		_ = s.decide("autopilot", "autopublish_yt_failed", &jobID,
 			"tự đăng YouTube thất bại: "+res.Error, nil)
 		return
 	}
+	_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegDone, res.RemoteID)
 	if s.Growth != nil {
 		_ = s.Growth.AddQuota(today, growth.UploadCostUnits)
 	}

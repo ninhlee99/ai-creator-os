@@ -123,6 +123,9 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"Results", results,
 		"Shelf", s.shelfViews(),
 		"Notice", r.URL.Query().Get("ok"),
+		// Đợt Y: lỗi redirect ?err= trước đây bị nuốt im lặng — user không
+		// bao giờ thấy. Giờ hiện ra như Error bình thường.
+		"Error", r.URL.Query().Get("err"),
 		"SchedEnabled", enabled,
 		"SchedHours", hours,
 		"SchedLastRun", lastRun,
@@ -219,6 +222,31 @@ func (s *Server) MigrateLedgerShelf() (int, error) {
 	return n, nil
 }
 
+// parseBounded parses an optional form number: empty → 0 (ok); otherwise
+// the value must be a valid number within [0, max]. Used to validate
+// product input server-side (Đợt Y) — client-side min/max is not enough.
+func parseBounded(s string, max float64) (float64, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, true
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil || v < 0 || v > max {
+		return 0, false
+	}
+	return v, true
+}
+
+// productErr redirects back to the product page with a visible error
+// (Đợt Y: ?err= is now rendered by handleProducts — no more silent fails).
+func productErr(w http.ResponseWriter, r *http.Request, tab, msg string) {
+	u := "/products?err=" + url.QueryEscape(msg)
+	if tab != "" {
+		u = "/products?tab=" + tab + "&err=" + url.QueryEscape(msg)
+	}
+	seeOther(w, r, u)
+}
+
 // handleProductsShelfAdd adds one product straight onto the shelf (Kệ
 // hàng tab) — the manual fallback while the TikTok Shop API is not wired.
 // Writes the shared store so the autopilot picks it up immediately.
@@ -233,10 +261,18 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	}
 	pid := strings.TrimSpace(r.PostFormValue("platform_pid"))
 	title := strings.TrimSpace(r.PostFormValue("title"))
-	price, _ := strconv.ParseFloat(r.PostFormValue("price"), 64)
-	rate, _ := strconv.ParseFloat(r.PostFormValue("commission_pct"), 64)
+	price, ok := parseBounded(r.PostFormValue("price"), 1e12)
+	if !ok {
+		productErr(w, r, "ke", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
+		return
+	}
+	rate, ok := parseBounded(r.PostFormValue("commission_pct"), 100)
+	if !ok {
+		productErr(w, r, "ke", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
+		return
+	}
 	if pid == "" || title == "" {
-		seeOther(w, r, "/products?tab=ke")
+		productErr(w, r, "ke", "Thiếu mã hoặc tên sản phẩm.")
 		return
 	}
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
@@ -249,7 +285,7 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	p := products.Product{
 		Source: "manual", SourceID: pid, Title: title,
 		Category: strings.TrimSpace(r.PostFormValue("category")),
-		Price:    price, CommissionRate: rate / 100, Theme: theme,
+		Price:    price, Currency: "VND", CommissionRate: rate / 100, Theme: theme,
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {
@@ -279,14 +315,29 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 	title := strings.TrimSpace(r.PostFormValue("title"))
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
 	if title == "" || theme == "" {
-		s.fail(w, fmt.Errorf("thiếu tên sản phẩm hoặc theme"), "add product")
+		productErr(w, r, "", "Thiếu tên sản phẩm hoặc chủ đề.")
 		return
 	}
-	price, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("price")), 64)
-	commPct, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("commission_pct")), 64)
-	rating, _ := strconv.ParseFloat(strings.TrimSpace(r.PostFormValue("rating")), 64)
+	price, ok := parseBounded(r.PostFormValue("price"), 1e12)
+	if !ok {
+		productErr(w, r, "", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
+		return
+	}
+	commPct, ok := parseBounded(r.PostFormValue("commission_pct"), 100)
+	if !ok {
+		productErr(w, r, "", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
+		return
+	}
+	rating, ok := parseBounded(r.PostFormValue("rating"), 5)
+	if !ok {
+		productErr(w, r, "", "Đánh giá không hợp lệ — nhập số từ 0 đến 5.")
+		return
+	}
 	var sold int64
 	fmt.Sscanf(strings.TrimSpace(r.PostFormValue("sold")), "%d", &sold)
+	if sold < 0 {
+		sold = 0
+	}
 	var imgs []string
 	for _, u := range strings.Split(r.PostFormValue("image_url"), "\n") {
 		if u = strings.TrimSpace(u); u != "" {
