@@ -32,7 +32,7 @@
   </div>
   <div class="card">
     <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
-    <div class="label">Công tắc chính (daemon mạng){{if .MasterOn}} — đang cho phép chạy theo lịch{{else}} — đang đứng yên{{end}}</div>
+    <div class="label">Công tắc chính (chế độ tự động){{if .MasterOn}} — đang cho phép chạy theo lịch{{else}} — đang đứng yên{{end}}</div>
   </div>
 </div>
 
@@ -52,10 +52,10 @@
     </form>
   </div>
   <div class="card">
-    <div class="label">API /api/* (dữ liệu JSON){{if .APIEnabled}} — đang MỞ{{else}} — đang TẮT{{end}}</div>
+    <div class="label">Cổng dữ liệu cho công cụ ngoài{{if .APIEnabled}} — đang MỞ{{else}} — đang TẮT{{end}}</div>
     <form method="post" action="/settings/api">
       <input type="hidden" name="value" value="{{if .APIEnabled}}0{{else}}1{{end}}">
-      <button type="submit" class="btn {{if .APIEnabled}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .APIEnabled}} data-confirm="Tắt API /api/*? Các công cụ ngoài đang gọi sẽ mất kết nối."{{end}}>{{if .APIEnabled}}Tắt{{else}}Bật{{end}}</button>
+      <button type="submit" class="btn {{if .APIEnabled}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .APIEnabled}} data-confirm="Tắt cổng dữ liệu? Các công cụ ngoài đang gọi sẽ mất kết nối."{{end}}>{{if .APIEnabled}}Tắt{{else}}Bật{{end}}</button>
     </form>
   </div>
 </div>
@@ -85,8 +85,8 @@
   </div>
 </div>
 
-<h2>Tự động nền (tick)</h2>
-<p class="subtitle">Mỗi tick chạy độc lập có giám sát: panic tự phục hồi, treo quá hạn tự hủy. Ngắt mạch quota mở khi hết quota Gemini ngày.</p>
+<h2>Tự động nền</h2>
+<p class="subtitle">Mỗi tác vụ nền chạy độc lập có giám sát: gặp lỗi nghiêm trọng tự phục hồi, treo quá lâu tự dừng. Ngắt mạch quota mở khi hết quota Gemini ngày.</p>
 <div class="cards">
   <div class="card">
     <div class="num">{{if .QuotaCircuit.Open}}<span class="badge badge-warn">ĐANG MỞ tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">ĐÓNG</span>{{end}}</div>
@@ -94,8 +94,9 @@
   </div>
 </div>
 {{if .TickBeats}}
+<div class="table-wrap">
 <table class="tbl">
-  <tr><th>Tick</th><th>Lượt chạy</th><th>Xong lần cuối</th><th>Trạng thái</th></tr>
+  <tr><th>Tác vụ</th><th>Lượt chạy</th><th>Xong lần cuối</th><th>Trạng thái</th></tr>
   {{range .TickBeats}}
   <tr>
     <td><code>{{.Name}}</code></td>
@@ -105,6 +106,7 @@
   </tr>
   {{end}}
 </table>
+</div>
 {{else}}
 <p class="hint">Chưa có tick nào chạy — số liệu hiện sau vài phút app hoạt động.</p>
 {{end}}
@@ -115,7 +117,7 @@
 <p class="hint">Tự động sao lưu mỗi ngày, giữ 7 bản mới nhất trong thư mục dữ liệu/backups/{{if .BackupLastOK}} · Bản gần nhất: <code>{{.BackupLastOK}}</code>{{else}} · <span class="badge badge-draft">chưa có bản tự động</span>{{end}}</p>
 <div class="cards">
   <div class="card">
-    <div class="label">Tạo bản sao lưu</div>
+    <div class="label">Tạo & tải bản sao lưu</div>
     <form method="post" action="/settings/backup">
       <button type="submit" class="btn btn-primary btn-sm">Tải bản sao lưu (.zip)</button>
     </form>
@@ -127,10 +129,18 @@
       <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Khôi phục sẽ THAY THẾ toàn bộ dữ liệu hiện tại sau khi restart. Tiếp tục?">Khôi phục</button>
     </form>
   </div>
+  <div class="card">
+    <div class="label">Bản sao dự phòng (offsite)</div>
+    <form method="post" action="/settings/backup/offsite">
+      <input type="text" name="offsite_dir" value="{{.BackupOffsiteDir}}" placeholder="vd: /Volumes/USB/aicos-backup">
+      <div class="hint">Sau mỗi lần sao lưu, app copy bản mới nhất sang thư mục này (USB/ổ mạng). Để trống nếu không cần.</div>
+      <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+    </form>
+  </div>
 </div>
 
 <h2>Thông báo Telegram</h2>
-<p class="subtitle">Máy tự gửi cảnh báo (đĩa đầy, job treo, nguồn chết…) về điện thoại Ninh. Tạo bot bằng BotFather rồi dán token vào đây — chỉ làm 1 lần.</p>
+<p class="subtitle">Máy tự gửi cảnh báo (đĩa đầy, job treo, nguồn chết…) về điện thoại của bạn. Tạo bot bằng BotFather rồi dán token vào đây — chỉ làm 1 lần.</p>
 <div class="cards">
   <div class="card">
     <form method="post" action="/settings/notify">
@@ -144,6 +154,12 @@
       <div class="field">
         <label>Chat ID</label>
         <input type="text" name="notify_chat" value="{{.NotifyChat}}" placeholder="vd: 123456789">
+        <div class="hint">Nhắn /start cho bot, rồi mở https://api.telegram.org/bot&lt;token&gt;/getUpdates để xem chat id.</div>
+      </div>
+      <div class="field">
+        <label>Webhook dự phòng (không bắt buộc)</label>
+        <input type="text" name="notify_webhook" value="{{.NotifyWebhook}}" placeholder="https://…">
+        <div class="hint">Khi Telegram gửi lỗi, app tự gửi cảnh báo tới địa chỉ này. Để trống nếu không cần.</div>
       </div>
       <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
     </form>
@@ -156,10 +172,11 @@
   </div>
 </div>
 
-<h3>Chi phí API theo engine/provider</h3>
+<h3>Chi phí API theo bộ máy/nhà cung cấp</h3>
 {{if .Usage}}
+<div class="table-wrap">
 <table>
-  <tr><th>Engine</th><th>Provider</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
+  <tr><th>Bộ máy</th><th>Nhà cung cấp</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
   {{range .Usage}}
   <tr>
     <td>{{.Engine}}</td>
@@ -169,12 +186,14 @@
   </tr>
   {{end}}
 </table>
+</div>
 {{else}}
 <p class="empty">Chưa có chi phí API nào được ghi nhận.</p>
 {{end}}
 
-<h2>Khóa &amp; biến cấu hình</h2>
+<h2>Mã &amp; biến cấu hình</h2>
 {{if .EnvSaved}}<p class="notice">Đã lưu <code>{{.EnvSaved}}</code> — áp dụng ngay, không cần khởi động lại.</p>{{end}}
+<div class="table-wrap">
 <table>
   <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
   {{range .EnvStatus}}
@@ -192,20 +211,5 @@
   </tr>
   {{end}}
 </table>
-
-<h2>RTMP theo tài khoản</h2>
-{{if .RtmpRows}}
-<table>
-  <tr><th>Tài khoản</th><th>Key ref</th><th>Key khả dụng</th></tr>
-  {{range .RtmpRows}}
-  <tr>
-    <td><strong>{{.Username}}</strong></td>
-    <td><code>{{if .Ref}}{{.Ref}}{{else}}—{{end}}</code></td>
-    <td>{{if .Ok}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
-  </tr>
-  {{end}}
-</table>
-{{else}}
-<p class="empty">Chưa có tài khoản nào.</p>
-{{end}}
+</div>
 {{end}}

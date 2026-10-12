@@ -234,7 +234,7 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	pid := strings.TrimSpace(r.PostFormValue("platform_pid"))
 	title := strings.TrimSpace(r.PostFormValue("title"))
 	price, _ := strconv.ParseFloat(r.PostFormValue("price"), 64)
-	rate, _ := strconv.ParseFloat(r.PostFormValue("commission_rate"), 64)
+	rate, _ := strconv.ParseFloat(r.PostFormValue("commission_pct"), 64)
 	if pid == "" || title == "" {
 		seeOther(w, r, "/products?tab=ke")
 		return
@@ -249,7 +249,7 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	p := products.Product{
 		Source: "manual", SourceID: pid, Title: title,
 		Category: strings.TrimSpace(r.PostFormValue("category")),
-		Price:    price, CommissionRate: rate, Theme: theme,
+		Price:    price, CommissionRate: rate / 100, Theme: theme,
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {

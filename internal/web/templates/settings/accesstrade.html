@@ -6,12 +6,12 @@
 
 <div class="cards">
   <div class="card">
-    <div class="num">{{if .ATKeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}</div>
-    <div class="label">Trạng thái key{{if .ATKeySet}} · <code>{{.ATMasked}}</code>{{end}}</div>
+    <div class="num">{{if .ATKeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có mã</span>{{end}}</div>
+    <div class="label">Trạng thái mã{{if .ATKeySet}} · <code>{{.ATMasked}}</code>{{end}}</div>
   </div>
   <div class="card">
     <div class="num">{{.ATCampaigns}}</div>
-    <div class="label">Chiến dịch đã lưu trong cache</div>
+    <div class="label">Chiến dịch đã tải về</div>
   </div>
   <div class="card">
     <div class="num">{{if .ATStoreOK}}<span class="badge badge-ok">Sẵn sàng</span>{{else}}<span class="badge badge-err">Lỗi</span>{{end}}</div>
@@ -20,12 +20,12 @@
 </div>
 
 <div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Access key</h2>
+  <h2 style="margin-top:0;border:none;padding:0">Mã truy cập</h2>
   <p class="subtitle">Lấy trong trang publisher Accesstrade (mục thông tin API). Key chỉ lưu trên máy này, không hiện lại sau khi lưu.</p>
   <form method="post" action="/settings/accesstrade/key">
     <div class="field">
-      <label>Access key{{if .ATKeySet}} <span class="hint">— đang dùng <code>{{.ATMasked}}</code>, nhập key mới để thay</span>{{end}}</label>
-      <input type="password" name="access_key" autocomplete="off" placeholder="dán access_key của publisher"{{if not .ATKeySet}} required{{end}}>
+      <label>Mã truy cập{{if .ATKeySet}} <span class="hint">— đang dùng <code>{{.ATMasked}}</code>, nhập key mới để thay</span>{{end}}</label>
+      <input type="password" name="access_key" autocomplete="off" placeholder="dán mã truy cập của publisher"{{if not .ATKeySet}} required{{end}}>
     </div>
     <div style="display:flex;gap:0.5rem">
       <button type="submit" class="btn btn-primary btn-sm">Lưu key</button>
@@ -36,7 +36,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tự động</h2>
-  <p class="subtitle">Bật/tắt từng tick ở trang <a href="/products">Affiliate</a> (mục “Tự động Accesstrade”). Ở đây chỉnh chu kỳ.</p>
+  <p class="subtitle">Bật/tắt từng tác vụ tự động ở trang <a href="/products">Affiliate</a> (mục “Tự động Accesstrade”). Ở đây chỉnh chu kỳ.</p>
   <form method="post" action="/settings/accesstrade/automation">
     <div class="grid2">
       <div class="field">

@@ -252,7 +252,7 @@ func TestAllPagesRender(t *testing.T) {
 
 	pages := map[string]string{
 		"/":                         "Tổng quan mạng lưới",
-		"/accounts":                 "Tài khoản",
+		"/accounts":                 "Kênh",
 		"/accounts/new":             "Thêm tài khoản mới",
 		"/accounts/1":               "sample_acct",
 		"/accounts/1?tab=tong-quan": "Tổng quan",
@@ -260,13 +260,13 @@ func TestAllPagesRender(t *testing.T) {
 		"/accounts/1?tab=ket-noi":   "Điều khiển",
 		"/studio":                   "Studio AI",
 		"/studio?tab=chu":           "Video chữ động",
-		"/studio/jobs":              "Job Studio",
+		"/studio/jobs":              "Video đã tạo",
 		"/studio/trends":            "Nhạc thịnh hành",
 		"/products":                 "Sản phẩm Affiliate",
 		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
 		"/publishers":               "Đa nền tảng",
 		"/settings/he-thong":        "Cài đặt · Hệ thống",
-		"/settings/nha-cung-cap":    "Chuỗi provider TTS",
+		"/settings/nha-cung-cap":    "Thứ tự nhà cung cấp giọng đọc (TTS)",
 		"/settings/model-local":     "Giọng đọc chạy trên máy (VieNeu)",
 		"/settings/an-toan":         "Kill switch",
 		"/settings/chain?name=tts":  `"name":"gemini"`,
@@ -290,13 +290,13 @@ func TestAllPagesRender(t *testing.T) {
 	// each settings sub-page renders inside base with the shared sub-nav
 	// and its own concern section (R2-W3)
 	body := get(t, s, "/settings/nha-cung-cap").Body.String()
-	for _, marker := range []string{"Chuỗi provider LLM", "Kiểm tra kết nối", "Hệ thống</a>"} {
+	for _, marker := range []string{"Thứ tự nhà cung cấp viết nội dung (LLM)", "Kiểm tra kết nối", "Hệ thống</a>"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("nha-cung-cap page missing %q", marker)
 		}
 	}
 	body = get(t, s, "/settings/he-thong").Body.String()
-	for _, marker := range []string{"Chi phí API theo engine/provider", "Khóa &amp; biến cấu hình", "RTMP theo tài khoản"} {
+	for _, marker := range []string{"Chi phí API theo bộ máy/nhà cung cấp", "Mã &amp; biến cấu hình"} {
 		if !strings.Contains(body, marker) {
 			t.Errorf("he-thong page missing %q", marker)
 		}
@@ -447,7 +447,7 @@ func TestMergedPagesRedirects(t *testing.T) {
 
 	// shelf add from the products tab lands on the shelf and renders there
 	rec = postForm(t, s, "/products/shelf/add", url.Values{
-		"platform_pid": {"TT-KE-1"}, "title": {"Kệ test"}, "price": {"10"}, "commission_rate": {"0.2"},
+		"platform_pid": {"TT-KE-1"}, "title": {"Kệ test"}, "price": {"10"}, "commission_pct": {"20"},
 	})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/products?tab=ke" {
 		t.Fatalf("POST /products/shelf/add = %d (%q), want 303 /products?tab=ke", rec.Code, rec.Header().Get("Location"))

@@ -1,7 +1,7 @@
 {{define "title"}}Reup Douyin — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Reup Douyin</h1>
-<p class="subtitle">Tải video viral Douyin → transform 2 mức → đăng (tự động).</p>
+<p class="subtitle">Tải video viral Douyin → chỉnh sửa 2 mức → đăng tự động.</p>
 
 {{if .Reup.Error}}<p class="err">{{.Reup.Error}}</p>{{end}}
 
@@ -14,7 +14,7 @@
   {{if gt .Reup.Stats.Failed 0}}<span class="badge badge-err">Lỗi: {{.Reup.Stats.Failed}}</span>{{end}}
   {{if .Reup.DiscoverLastRun}}<span class="badge badge-draft">Quét gần nhất: {{.Reup.DiscoverLastRun}}</span>{{end}}
   {{if .Reup.TransformOn}}<span class="badge badge-ok">Transform: BẬT</span>{{else}}<span class="badge badge-draft">Transform: TẮT</span>{{end}}
-  {{if .Reup.KillOn}}<span class="badge badge-info">Kill {{.Reup.KillN}}×0-view: BẬT</span>{{else}}<span class="badge badge-draft">Kill: TẮT</span>{{end}}
+  {{if .Reup.KillOn}}<span class="badge badge-info">Tự dừng nguồn chết: BẬT</span>{{else}}<span class="badge badge-draft">Kill: TẮT</span>{{end}}
   {{if not .Reup.PostOn}}<span class="badge badge-warn">Đăng: TẠM DỪNG</span>{{end}}
 </p>
 <p class="hint">Nguồn nào {{.Reup.KillN}} bài 0-view liên tiếp sẽ tự tắt riêng — các nguồn khác vẫn chạy. Bật lại tay ở danh sách nguồn bên dưới.</p>
@@ -23,7 +23,8 @@
   <h2 style="margin-top:0;border:none;padding:0">Nguồn Douyin</h2>
   <p class="hint">Nhập 1 lần, app tự quét video viral 6 giờ/lần. Hashtag chưa tự quét được — dùng ô “Thêm URL trực tiếp” bên dưới.</p>
   {{if .Reup.Sources}}
-  <table class="clean">
+  <div class="table-wrap">
+<table class="clean">
     <tr><th>Tên</th><th>Loại</th><th>Giá trị</th><th>Trạng thái</th><th></th></tr>
     {{range .Reup.Sources}}
     <tr>
@@ -43,6 +44,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có nguồn nào.</p>
   {{end}}
@@ -51,7 +53,7 @@
       <div class="field">
         <label>Loại</label>
         <select name="kind">
-          <option value="user">User Douyin</option>
+          <option value="user">Người dùng Douyin</option>
           <option value="hashtag">Hashtag</option>
         </select>
       </div>
@@ -70,7 +72,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">yt-dlp</h2>
-  <p class="hint">App tự tải binary từ GitHub release (không bundle vào app). Douyin đổi chữ ký định kỳ → yt-dlp gãy → app tự cập nhật rồi thử lại; gãy hẳn thì dùng TikWM (bên thứ ba, không SLA).</p>
+  <p class="hint">App tự tải binary từ GitHub release (không bundle vào app). Douyin đổi chữ ký định kỳ → yt-dlp gãy → app tự cập nhật rồi thử lại; gãy hẳn thì dùng TikWM (bên thứ ba, không đảm bảo).</p>
   <p id="ytdlp-status">
     {{if .Reup.YtDlpInstalled}}
     <span class="badge badge-ok">Đã cài: {{.Reup.YtDlpVersion}}</span>
@@ -87,7 +89,7 @@
   <h2 style="margin-top:0;border:none;padding:0">Hàng đợi tải</h2>
   <p>
     <button type="button" class="btn" id="reup-scan-btn" onclick="reupScan()">Quét ngay</button>
-    <span class="hint">Quét nguồn → tải video mới (dedupe sha256, QC sau tải).</span>
+    <span class="hint">Quét nguồn → tải video mới (bỏ video trùng, kiểm tra chất lượng sau tải).</span>
   </p>
   <form method="post" action="/reup/videos/add">
     <div class="field">
@@ -97,7 +99,8 @@
     <button type="submit" class="btn btn-secondary">Tải URL này</button>
   </form>
   {{if .Reup.Videos}}
-  <table class="clean" style="margin-top:12px">
+  <div class="table-wrap">
+<table class="clean" style="margin-top:12px">
     <tr><th>#</th><th>Video</th><th>Lượt xem</th><th>Watermark</th><th>Trạng thái</th><th>Transform</th><th></th></tr>
     {{range .Reup.Videos}}
     <tr>
@@ -118,8 +121,8 @@
       <td style="white-space:nowrap">
         {{if eq .Status "downloaded"}}
         <select id="reup-level-{{.ID}}" class="btn-sm" style="margin-right:4px">
-          <option value="1">Mức 1</option>
-          {{if index $.Reup.Level2IDs .ID}}<option value="2">Mức 2 — 3 clip</option>{{end}}
+          <option value="1">Mức 1 (chỉnh nhẹ)</option>
+          {{if index $.Reup.Level2IDs .ID}}<option value="2">Mức 2 (ghép 3 clip)</option>{{end}}
         </select>
         <button type="button" class="btn btn-secondary btn-sm" onclick="reupTransform({{.ID}}, this)">Transform</button>
         {{else}}<span class="hint">—</span>{{end}}
@@ -134,6 +137,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Kho trống — thêm nguồn rồi bấm “Quét ngay”.</p>
   {{end}}
@@ -141,9 +145,10 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Bài đăng (transform)</h2>
-  <p class="hint">Video gốc thuộc về tác giả trên Douyin — hệ thống <b>giữ nguyên watermark</b> khi tải, không gỡ. Transform (zoom, tốc độ, voiceover bình luận) chỉ giúp <b>giảm rủi ro</b> bị máy quét bản quyền — không làm việc đăng lại trở nên hợp pháp, không đảm bảo an toàn 100%. Rủi ro lớn nhất là video 0-view (chính sách "unoriginal content"). Không bao giờ đăng video chưa transform. Xem trước before/after trước khi duyệt.</p>
+  <p class="hint">Video gốc thuộc về tác giả trên Douyin — hệ thống <b>giữ nguyên watermark</b> khi tải, không gỡ. Transform (zoom, tốc độ, voiceover bình luận) chỉ giúp <b>giảm rủi ro</b> bị máy quét bản quyền — không làm việc đăng lại trở nên hợp pháp, không đảm bảo an toàn 100%. Rủi ro lớn nhất là video 0-view (chính sách "unoriginal content"). Không bao giờ đăng video chưa transform. Xem bản trước/sau trước khi duyệt.</p>
   {{if .Reup.Posts}}
-  <table class="clean">
+  <div class="table-wrap">
+<table class="clean">
     <tr><th>#</th><th>Mức</th><th>Trạng thái</th><th>View</th><th>Trước / Sau</th><th></th></tr>
     {{range .Reup.Posts}}
     <tr>
@@ -183,6 +188,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có bài nào — bấm “Transform” ở video đã tải.</p>
   {{end}}

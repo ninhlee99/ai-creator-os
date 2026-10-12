@@ -8,13 +8,13 @@
 {{if .Stories.StudioOK}}
 <p>
   {{if .Stories.TickOn}}<span class="badge badge-ok">Tự tạo: BẬT ({{.Stories.TickHours}}h/lần)</span>{{else}}<span class="badge badge-draft">Tự tạo: TẮT</span>{{end}}
-  {{if .Stories.AutoOn}}<span class="badge badge-warn">Tự đăng (private): BẬT</span>{{else}}<span class="badge badge-info">Chờ duyệt mới đăng</span>{{end}}
+  {{if .Stories.AutoOn}}<span class="badge badge-warn">Tự đăng (riêng tư): BẬT</span>{{else}}<span class="badge badge-info">Chờ duyệt mới đăng</span>{{end}}
   {{if .Stories.MusicOK}}<span class="badge badge-ok">Nhạc nền: có</span>{{else}}<span class="badge badge-draft">Nhạc nền: chưa có</span>{{end}}
 </p>
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Kể chuyện mới</h2>
-  <p class="hint">App viết truyện ở ngôi thứ nhất, vẽ ảnh 16:9 từng cảnh, đọc giọng, dựng video 16:9 có phụ đề. QC: đủ 1920×1080 + có audio + dài &gt; 30s.</p>
+  <p class="hint">App viết truyện ở ngôi thứ nhất, vẽ ảnh 16:9 từng cảnh, đọc giọng, dựng video 16:9 có phụ đề. Kiểm tra: đủ nét 1920×1080, có tiếng, dài hơn 30 giây.</p>
   <form method="post" action="/stories">
     <div class="field">
       <label>Chủ đề <span class="req">*</span></label>
@@ -38,7 +38,7 @@
       <div class="field">
         <label>Nhạc nền</label>
         <select name="music_on">
-          <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Có (file autopilot)</option>
+          <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Có (dùng nhạc chung của app)</option>
           <option value="0"{{if not .Stories.MusicOn}} selected{{end}}>Không</option>
         </select>
       </div>
@@ -50,7 +50,8 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Truyện đã tạo</h2>
   {{if .Stories.Jobs}}
-  <table class="clean">
+  <div class="table-wrap">
+<table class="clean">
     <tr><th>Tiêu đề</th><th>Trạng thái</th><th>Cảnh</th><th>Dài</th><th></th></tr>
     {{range .Stories.Jobs}}
     <tr>
@@ -76,6 +77,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có truyện nào — tạo truyện đầu tiên ở trên.</p>
   {{end}}
@@ -121,7 +123,7 @@
       </div>
     </div>
     <div class="field">
-      <label>Hàng đợi chủ đề (mỗi dòng 1 chủ đề — tick lấy dần)</label>
+      <label>Hàng đợi chủ đề (mỗi dòng 1 chủ đề — hệ thống lấy dần)</label>
       <textarea name="topics" rows="4" placeholder="vd:&#10;tuổi thơ ở quê ngoại&#10;lần đầu đi chợ Tết một mình">{{.Stories.Topics}}</textarea>
     </div>
     <div class="field">
@@ -131,10 +133,10 @@
     </div>
     </div>
     <div class="field">
-      <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng private sau khi QC (mặc định: bật — tắt nếu muốn duyệt tay)</label>
+      <label><input type="checkbox" name="auto_publish" value="1"{{if .Stories.AutoOn}} checked{{end}}> Tự đăng riêng tư sau khi kiểm tra (mặc định: bật — tắt nếu muốn duyệt tay)</label>
     </div>
     <div class="field">
-      <label>Tự chuyển công khai sau (giờ) — 0 = tắt, giữ private để duyệt tay</label>
+      <label>Tự chuyển công khai sau (giờ) — 0 = tắt, giữ riêng tư để duyệt tay</label>
       <input type="number" name="public_after_hours" min="0" max="168" value="{{.Stories.PublicAfterH}}" style="width:5em">
     </div>
     <div class="field">
@@ -148,6 +150,13 @@
     </div>
     <button type="submit" class="btn btn-secondary">Lưu</button>
   </form>
+</div>
+{{else}}
+<div class="empty-state">
+  <div class="es-icon">🎬</div>
+  <h3>Studio chưa sẵn sàng</h3>
+  <p>Kiểm tra công cụ ở Cài đặt · Hệ thống (mục Công cụ trên máy).</p>
+  <a class="btn" href="/settings/he-thong">Mở Cài đặt · Hệ thống</a>
 </div>
 {{end}}
 {{end}}

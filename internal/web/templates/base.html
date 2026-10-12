@@ -48,7 +48,7 @@
   <div class="main">
     <header class="topbar">
       <div class="status-chips">
-        {{if .DryRun}}<span class="chip chip-dry">DRY-RUN</span>{{end}}
+        {{if .DryRun}}<span class="chip chip-dry" title="Chế độ thử — không thao tác thật">DRY-RUN</span>{{end}}
         {{if .Kill}}<span class="chip chip-kill">KILL SWITCH</span>{{end}}
       </div>
       <div class="topbar-actions">

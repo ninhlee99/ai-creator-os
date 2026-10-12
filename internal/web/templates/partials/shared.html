@@ -50,7 +50,7 @@ by app.js and only submit after the user confirms here. */}}
       {{else}}
       <span class="badge {{.BadgeClass}}">{{.StateLabel}}</span>
       {{end}}
-      <span class="key-meta">{{.Requests}} lượt dùng{{if gt .RateLimitHits 0}} · rate-limit {{.RateLimitHits}} lần{{if .LastRateLimitLabel}} (gần nhất {{.LastRateLimitLabel}}){{end}}{{end}}</span>
+      <span class="key-meta">{{.Requests}} lượt dùng{{if gt .RateLimitHits 0}} · bị giới hạn {{.RateLimitHits}} lần{{if .LastRateLimitLabel}} (gần nhất {{.LastRateLimitLabel}}){{end}}{{end}}</span>
       <span class="key-actions">
         <button type="button" class="btn btn-secondary btn-sm key-test-btn">Kiểm tra</button>
         <button type="button" class="btn btn-secondary btn-sm key-del-btn" title="Xóa key này">🗑</button>
@@ -114,7 +114,7 @@ ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
         <input type="number" name="retries" value="{{$p.Retries}}" min="0">
       </div>
       <div class="field">
-        <label>Timeout (giây)</label>
+        <label>Chờ tối đa (giây)</label>
         <input type="number" name="timeout" value="{{$p.TimeoutSec}}" min="1">
       </div>
     </div>

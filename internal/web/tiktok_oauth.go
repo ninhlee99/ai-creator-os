@@ -106,7 +106,7 @@ func (s *Server) handleTikTokAuthorize(w http.ResponseWriter, r *http.Request) {
 	}
 	p := publishers.NewTikTokPublisher(username)
 	if !p.HasClient() {
-		publishersMsg(w, r, "err", "Chưa set TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET cho "+username+" — xem docs/USER_GUIDE.md Phần 5.")
+		publishersMsg(w, r, "err", "Thiếu Client Key/Secret TikTok cho "+username+" — nhập ở Cài đặt · Hệ thống, mục Mã & biến cấu hình.")
 		return
 	}
 	// PKCE always: required by TikTok's Desktop platform, harmless on Web

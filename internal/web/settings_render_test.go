@@ -34,7 +34,7 @@ func TestSettingsTemplateRenders(t *testing.T) {
 		}
 	}
 	body := get(t, s, "/settings/nha-cung-cap").Body.String()
-	for _, want := range []string{"Chuỗi provider TTS", "Chuỗi provider LLM"} {
+	for _, want := range []string{"Thứ tự nhà cung cấp giọng đọc (TTS)", "Thứ tự nhà cung cấp viết nội dung (LLM)"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("nha-cung-cap page missing %q", want)
 		}

@@ -1,15 +1,16 @@
-{{define "title"}}Tài khoản — AI Creator OS{{end}}
+{{define "title"}}Kênh — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Tài khoản</h1>
+<h1>Kênh</h1>
 <p class="subtitle">Kênh TikTok / YouTube / Facebook chạy 3 trụ: Affiliate, Reup, Kể chuyện. Mỗi kênh có lịch đăng và giới hạn riêng.</p>
 
 <div class="toolbar">
-  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
 
 {{if .Accounts}}
+<div class="table-wrap">
 <table>
-  <tr><th>Tài khoản</th><th>Trạng thái</th><th>Persona</th><th>Niche</th><th>Followers</th><th></th></tr>
+  <tr><th>Kênh</th><th>Trạng thái</th><th title="Chân dung người dẫn mà AI đóng vai">Tính cách</th><th>Niche</th><th>Người theo dõi</th><th></th></tr>
   {{range .Accounts}}
   <tr>
     <td><strong>{{.Username}}</strong>
@@ -24,12 +25,13 @@
   </tr>
   {{end}}
 </table>
+</div>
 {{else}}
 <div class="empty-state">
   <div class="es-icon">👤</div>
-  <h3>Chưa có tài khoản nào</h3>
-  <p>Thêm tài khoản TikTok đầu tiên để AI bắt đầu thiết lập creator: chọn persona, nghiên cứu niche và lên kế hoạch nội dung.</p>
-  <a class="btn" href="/accounts/new">+ Thêm tài khoản đầu tiên</a>
+  <h3>Chưa có kênh nào</h3>
+  <p>Thêm kênh đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
+  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
 {{end}}
 {{end}}

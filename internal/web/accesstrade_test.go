@@ -31,7 +31,7 @@ func TestSettingsAccesstradePage(t *testing.T) {
 		t.Fatalf("GET /settings/accesstrade = %d, muốn 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Cài đặt · Accesstrade", "Chưa có key", "access_key", `href="/settings/accesstrade"`} {
+	for _, want := range []string{"Cài đặt · Accesstrade", "Chưa có mã", "access_key", `href="/settings/accesstrade"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang thiếu %q", want)
 		}

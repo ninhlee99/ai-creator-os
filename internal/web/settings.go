@@ -81,12 +81,6 @@ func (s *Server) applyPersistedEnv() {
 	}
 }
 
-type rtmpRow struct {
-	Username string
-	Ref      string
-	Ok       bool
-}
-
 func (s *Server) chainKey(name string) (string, bool) {
 	switch name {
 	case "tts":
@@ -187,14 +181,6 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		}
 		envs = append(envs, row)
 	}
-	accounts, err := s.Mgr.List()
-	if err != nil {
-		log.Printf("web: settings list accounts: %v", err)
-	}
-	rtmps := make([]rtmpRow, 0, len(accounts))
-	for _, a := range accounts {
-		rtmps = append(rtmps, rtmpRow{Username: a.Username, Ref: a.RtmpKeyRef, Ok: a.RtmpKey() != ""})
-	}
 	// Chi phí API (khối trong "Trạng thái hệ thống") — fail-soft: lỗi truy
 	// vấn chỉ ghi log, không làm sập trang Cài đặt.
 	usage, uerr := s.queryUsage()
@@ -210,7 +196,6 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	return map[string]any{
 		"EnvStatus": envs,
 		"EnvSaved":  r.URL.Query().Get("envsaved"),
-		"RtmpRows":  rtmps,
 		"DbPath":    s.Cfg.DatabasePath,
 		"Usage":     usage,
 		"Spend":     spend,
@@ -250,9 +235,12 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"DiskUsage": s.diskUsageView(),
 		// Đợt M2: lần sao lưu tự động gần nhất.
 		"BackupLastOK": automation.BackupLastOK(s.settings()),
+		// Đợt V: thư mục offsite cho bản sao lưu.
+		"BackupOffsiteDir": s.atSettingStr(automation.KeyBackupOffsiteDir, ""),
 		// Đợt O2: cấu hình Telegram (token không bao giờ hiện lại ra UI).
-		"NotifyOn":   s.atSettingOn(automation.KeyNotifyTelegramOn, false),
-		"NotifyChat": s.atSettingStr(automation.KeyNotifyTelegramChat, ""),
+		"NotifyOn":      s.atSettingOn(automation.KeyNotifyTelegramOn, false),
+		"NotifyChat":    s.atSettingStr(automation.KeyNotifyTelegramChat, ""),
+		"NotifyWebhook": s.atSettingStr(automation.KeyNotifyWebhookURL, ""),
 		"NotifyHasBot": func() bool {
 			v, ok, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
 			return ok && strings.TrimSpace(v) != ""
@@ -331,10 +319,10 @@ func (s *Server) handleAuthPasswordDisable(w http.ResponseWriter, r *http.Reques
 // handleSettingsHeThong: "App đang chạy chế độ gì, còn thiếu biến nào?"
 func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",
-		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
+		"EnvStatus", "EnvSaved", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
-		"BackupLastOK", "NotifyOn", "NotifyChat", "NotifyHasBot",
+		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
 		"TickBeats", "QuotaCircuit")
 }
 
@@ -548,6 +536,7 @@ func (s *Server) handleNotifySave(w http.ResponseWriter, r *http.Request) {
 		set(automation.KeyNotifyTelegramBot, bot) // chỉ ghi đè khi nhập mới
 	}
 	set(automation.KeyNotifyTelegramChat, strings.TrimSpace(r.PostFormValue("notify_chat")))
+	set(automation.KeyNotifyWebhookURL, strings.TrimSpace(r.PostFormValue("notify_webhook")))
 	_ = s.Ledger.Decide("human", "notify_save", nil, "Đã lưu cấu hình thông báo Telegram.", map[string]any{})
 	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã lưu cấu hình Telegram."))
 }

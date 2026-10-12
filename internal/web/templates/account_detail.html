@@ -23,7 +23,7 @@
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
     <dt>Followers</dt><dd>{{if .GrowthHasFollowers}}{{.GrowthFollowers}}{{else}}chưa kết nối{{end}}</dd>
     <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
-    <dt>YouTube Analytics</dt><dd>{{if eq .YTAnalytics "ok"}}<span class="badge badge-ok">Đã nối</span>{{else if eq .YTAnalytics "chuakenh"}}<span class="badge badge-no">Chưa gắn kênh</span>{{else}}<span class="badge badge-warn" title="Chạy scripts/get-youtube-token.py với scope yt-analytics.readonly">Chưa có token</span>{{end}}</dd>
+    <dt>YouTube Analytics</dt><dd>{{if eq .YTAnalytics "ok"}}<span class="badge badge-ok">Đã nối</span>{{else if eq .YTAnalytics "chuakenh"}}<span class="badge badge-no">Chưa gắn kênh</span>{{else}}<span class="badge badge-warn" title="Cần nối lại YouTube ở tab Đa nền tảng và cấp quyền đọc số liệu">Chưa có token</span>{{end}}</dd>
     <dt>Loại nội dung YT</dt><dd>{{if .Acct.YoutubeContentTypes}}{{join ", " .Acct.YoutubeContentTypes}}{{else}}—{{end}}</dd>
     <dt>Quà tặng nhận</dt><dd>{{fmtUSD .Gifts}}</dd>
     <dt>Nền tảng đã nối</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
@@ -33,7 +33,7 @@
 {{if .Persona}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Persona: {{.Persona.Label}}</h2>
-  <p><strong>Phong cách live:</strong> {{.Persona.LiveStyle}}</p>
+  <p><strong>Phong cách nội dung:</strong> {{.Persona.LiveStyle}}</p>
   {{if .Persona.AffiliateNiches}}
   <p><strong>Niche affiliate phù hợp:</strong></p>
   <ul class="clean">{{range .Persona.AffiliateNiches}}<li>{{.}}</li>{{end}}</ul>
@@ -49,7 +49,7 @@
 
 
 {{if .Acct.Topics}}
-<h2>Topic plan</h2>
+<h2>Kế hoạch chủ đề</h2>
 <ul class="clean">
   {{range .Acct.Topics}}<li>{{.}}</li>{{end}}
 </ul>
@@ -73,7 +73,7 @@
   {{end}}
 </ul>
 {{else}}
-<p class="empty">Chưa có quyết định nào cho tài khoản này.</p>
+<p class="empty">Chưa có quyết định nào cho kênh này.</p>
 {{end}}
 
 {{else if eq .Tab "autopilot"}}
@@ -90,7 +90,8 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Thang mốc kiếm tiền</h2>
   {{if .GrowthTargets}}
-  <table>
+  <div class="table-wrap">
+<table>
   <tr><th>Mốc</th><th>Hiện tại</th><th>Mục tiêu</th><th>Tiến độ</th></tr>
   {{range .GrowthTargets}}
   <tr>
@@ -101,11 +102,12 @@
   </tr>
   {{end}}
   </table>
+</div>
   {{else}}<p class="hint">Chưa có thang mốc.</p>{{end}}
   <form method="post" action="/growth/accounts/{{$id}}/plan" style="margin-top:10px"
         data-confirm="Sinh lại plan 30 ngày? Plan mới sẽ thay bản đang hiệu lực (bản cũ vẫn giữ trong lịch sử).">
     <input type="hidden" name="from" value="detail">
-    <button class="btn btn-secondary btn-sm" type="submit">↻ Replan 30 ngày ngay</button>
+    <button class="btn btn-secondary btn-sm" type="submit">Lập lại kế hoạch 30 ngày</button>
   </form>
 </div>
 
@@ -114,16 +116,19 @@
   {{if .GrowthPlan}}
   <p class="hint">Plan #{{.GrowthPlan.ID}} · {{statusLabel .GrowthPlan.Status}} · tạo {{.GrowthPlan.CreatedAt}}{{if .GrowthPlan.Rationale}} · {{.GrowthPlan.Rationale}}{{end}}</p>
   {{if .GrowthPlanItems}}
-  <table>
+  <div class="table-wrap">
+<table>
   <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Hook</th></tr>
   {{range .GrowthPlanItems}}
   <tr><td>{{.PlannedFor}}</td><td>{{.Variant}} <span class="badge badge-info">{{variantAspect .Variant}}</span>{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td><td>{{.Topic}}</td><td>{{.Hook}}</td></tr>
   {{end}}
   </table>
+</div>
   {{else}}<p class="hint">Không còn mục nào sắp tới trong plan này.</p>{{end}}
   {{if .GrowthRecentItems}}
   <h3 style="margin-top:14px">Đã sản xuất / đang xử lý gần đây</h3>
-  <table>
+  <div class="table-wrap">
+<table>
   <tr><th>Ngày</th><th>Biến thể</th><th>Chủ đề</th><th>Trạng thái</th><th>Ghi chú</th></tr>
   {{range .GrowthRecentItems}}
   <tr>
@@ -134,6 +139,7 @@
   </tr>
   {{end}}
   </table>
+</div>
   {{end}}
   {{else}}
   <p class="hint">Chưa có kế hoạch. Hệ thống sinh tự động khi cần; bấm nút bên trái để sinh ngay.</p>
@@ -143,6 +149,7 @@
 
 {{if .GrowthStats}}
 <h3>Hiệu quả theo format</h3>
+<div class="table-wrap">
 <table>
 <tr><th>Format</th><th>Video</th><th>View trung vị</th><th>Hoàn tất trung vị</th><th>Phán quyết</th><th>Lý do</th></tr>
 {{range .GrowthStats}}
@@ -154,16 +161,19 @@
 </tr>
 {{end}}
 </table>
+</div>
 {{end}}
 
 {{if .GrowthAlerts}}
 <h3>Cảnh báo growth gần đây</h3>
+<div class="table-wrap">
 <table>
 <tr><th>Thời gian</th><th>Nội dung</th><th>Hệ thống đã làm</th></tr>
 {{range .GrowthAlerts}}
 <tr><td>{{.CreatedAt}}</td><td>{{.Message}}</td><td>{{.ActionTaken}}</td></tr>
 {{end}}
 </table>
+</div>
 {{end}}
 {{end}}
 
@@ -173,7 +183,7 @@
   <h2 style="margin-top:0;border:none;padding:0">Chủ đề sản phẩm</h2>
   <form method="post" action="/accounts/{{$id}}/theme">
     <div class="field">
-      <label>Chủ đề affiliate của tài khoản này</label>
+      <label>Chủ đề affiliate của kênh này</label>
       <select name="theme">
         <option value=""{{if eq .Acct.Theme ""}} selected{{end}}>— Chưa chọn —</option>
         {{range .Themes}}
@@ -253,7 +263,6 @@
 {{else}}
 
 <h2>Điều khiển</h2>
-<p class="hint">Xem trạng thái RTMP của tài khoản này tại <a href="/settings/he-thong">Cài đặt · Hệ thống</a>.</p>
 <div class="toolbar">
   {{range .Allowed}}
   <form class="inline-form" method="post" action="/accounts/{{$id}}/transition"

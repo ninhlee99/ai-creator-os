@@ -1,6 +1,6 @@
-{{define "title"}}Cài đặt · Model local — AI Creator OS{{end}}
+{{define "title"}}Cài đặt · AI trên máy — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Cài đặt · Model local</h1>
+<h1>Cài đặt · AI trên máy</h1>
 <p class="subtitle">Model chạy trên máy đã sẵn sàng chưa.</p>
 {{template "settings-nav" .}}
 
@@ -12,18 +12,18 @@
   </dl>
   <div class="grid2" style="margin-top:12px">
     <div class="field">
-      <label>Giọng đọc (Voice preset)</label>
+      <label>Giọng đọc (kiểu giọng)</label>
       <form method="post" action="/settings/vieneu/voice" class="inline-form">
         <select name="preset">
           {{range .VieNeu.Voices}}<option value="{{.}}">{{.}}</option>{{end}}
         </select>
-        <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px">Đổi voice</button>
+        <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px">Đổi giọng</button>
       </form>
     </div>
     <div class="field">
       <label>Mô hình giọng (Model)</label>
       <div class="toolbar" style="margin:0">
-        <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải model</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="vieneu-download">Tải mô hình</button>
         <form method="post" action="/settings/vieneu/restart" class="inline-form"
               data-confirm="Khởi động lại chương trình giọng đọc VieNeu?">
           <button type="submit" class="btn btn-secondary btn-sm">Khởi động lại</button>
@@ -39,6 +39,7 @@
 
 <h2>Khả năng AI</h2>
 <p class="subtitle">Kiểm tra thật key Gemini vẽ ảnh được không — dùng cho ảnh sản phẩm và ảnh minh họa.</p>
+<div class="table-wrap">
 <table>
   <tr><th>Khả năng</th><th>Trạng thái</th><th>Kiểm tra lúc</th><th>Chi tiết</th></tr>
   {{range .AICapabilities}}
@@ -50,9 +51,11 @@
   </tr>
   {{end}}
 </table>
+</div>
 
 <h2>Công cụ hệ thống</h2>
 <p class="subtitle">Kiểm tra thật lúc mở trang — thiếu thì làm theo bước tiếp theo.</p>
+<div class="table-wrap">
 <table>
   <tr><th>Công cụ</th><th>Trạng thái</th><th>Chi tiết</th></tr>
   {{range .RuntimeTools}}
@@ -63,9 +66,10 @@
   </tr>
   {{end}}
 </table>
+</div>
 
 <script>
-// Tải model VieNeu: bắt đầu download rồi poll tiến độ.
+// Tải mô hình VieNeu: bắt đầu download rồi poll tiến độ.
 var dlBtn = document.getElementById('vieneu-download');
 if (dlBtn) {
   dlBtn.addEventListener('click', async function () {
@@ -77,7 +81,7 @@ if (dlBtn) {
         var r = await fetch('/settings/vieneu/progress');
         var j = await r.json();
         if (j.error) { box.textContent = 'Lỗi: ' + j.error; clearInterval(timer); return; }
-        if (j.done) { box.textContent = 'Đã tải xong model.'; clearInterval(timer); return; }
+        if (j.done) { box.textContent = 'Đã tải xong mô hình.'; clearInterval(timer); return; }
         if (j.total > 0) {
           var pct = Math.round(j.downloaded / j.total * 100);
           box.textContent = 'Đang tải: ' + pct + '%';

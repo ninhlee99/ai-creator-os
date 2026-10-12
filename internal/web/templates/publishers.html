@@ -1,15 +1,16 @@
 {{define "title"}}Đa nền tảng — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Đa nền tảng</h1>
-<p class="subtitle">Trạng thái kết nối TikTok, Facebook, YouTube và RTMP của từng tài khoản.</p>
+<p class="subtitle">Trạng thái kết nối TikTok, Facebook và YouTube của từng kênh.</p>
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
 {{if .Rows}}
+<div class="table-wrap">
 <table>
   <tr>
     <th>Tài khoản</th><th>Trạng thái</th><th>TikTok token</th>
-    <th>YouTube token</th><th>FB Page</th><th>RTMP key</th><th>Nền tảng</th>
+    <th>YouTube token</th><th>Trang FB</th><th>Nền tảng</th>
   </tr>
   {{range .Rows}}
   <tr>
@@ -20,13 +21,13 @@
       {{else}}<span class="hint">thiếu client key</span>{{end}}</td>
     <td>{{if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
-    <td>{{if .Rtmp}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
   </tr>
   {{end}}
 </table>
+</div>
 
-<h2>Kết nối TikTok (OAuth, làm một lần mỗi tài khoản)</h2>
+<h2>Kết nối TikTok (làm một lần mỗi tài khoản)</h2>
 <p>Redirect URI phải khai báo y hệt trên developers.tiktok.com: <code>{{.RedirectURI}}</code></p>
 {{if .RedirectLocal}}
 <ol>
@@ -50,7 +51,7 @@
 </form>
 {{end}}
 {{end}}
-<p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key → set <code>TIKTOK_CLIENT_KEY</code>/<code>TIKTOK_CLIENT_SECRET</code> (xem <code>docs/POSTPROD_RUNBOOK.md</code>) rồi khởi động lại app.</p>
+<p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key: tạo app tại developers.tiktok.com, rồi nhập Client Key/Secret ở Cài đặt · Hệ thống (mục "Mã & biến cấu hình").</p>
 <p class="hint"><b>Lưu ý trung thực:</b> TikTok chỉ cho đăng qua API khi app của bạn đã được TikTok <b>duyệt (app audit)</b> — chưa duyệt thì kết nối xong vẫn không đăng được. Kể cả khi đã duyệt, app chỉ đăng ở chế độ <b>bản nháp</b>: bạn phải mở TikTok bấm Đăng tay cho từng video.</p>
 {{else}}
 <p class="empty">Chưa có tài khoản nào để hiển thị.</p>

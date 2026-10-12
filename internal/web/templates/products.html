@@ -25,7 +25,7 @@
 <h2 style="margin-top:0;border:none;padding:0">Thêm sản phẩm vào kệ</h2>
 <form method="post" action="/products/shelf/add">
   <div class="field">
-    <label>Mã sản phẩm (platform_pid) <span class="req">*</span></label>
+    <label>Mã sản phẩm <span class="req">*</span></label>
     <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
   </div>
   <div class="field">
@@ -38,9 +38,9 @@
       <input type="number" name="price" step="0.01" min="0" required>
     </div>
     <div class="field">
-      <label>Tỷ lệ hoa hồng (0–1) <span class="req">*</span></label>
-      <input type="number" name="commission_rate" step="0.01" min="0" max="1" required
-             placeholder="vd: 0.12">
+      <label>Hoa hồng (%) <span class="req">*</span></label>
+      <input type="number" name="commission_pct" step="0.5" min="0" max="100" required
+             placeholder="vd: 12">
     </div>
   </div>
   <div class="field">
@@ -63,9 +63,10 @@
 <h2>Kệ hàng</h2>
 <p class="subtitle">Sản phẩm affiliate trên kệ — AI tự tìm, chấm điểm và gắn vào video/live.</p>
 {{if .Shelf}}
+<div class="table-wrap">
 <table>
   <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
-      <th>Điểm AI</th><th>Trạng thái</th></tr>
+      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Trạng thái</th></tr>
   {{range .Shelf}}
   <tr>
     <td><strong>{{.Title}}</strong><br><span style="color:var(--muted);font-size:12px">{{.PlatformPID}}</span></td>
@@ -78,11 +79,12 @@
   </tr>
   {{end}}
 </table>
+</div>
 {{else}}
 <div class="empty-state compact">
   <div class="es-icon">🛍️</div>
   <h3>Kệ hàng trống</h3>
-  <p>Thêm sản phẩm đầu tiên ở mẫu phía trên — AI sẽ gắn chúng vào video và phiên live.</p>
+  <p>Thêm sản phẩm đầu tiên ở mẫu phía trên — AI sẽ gắn chúng vào video.</p>
 </div>
 {{end}}
 {{else}}
@@ -92,14 +94,15 @@
     {{if .AT.KeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
   </h2>
   {{if not .AT.KeySet}}
-  <p class="subtitle">Nhập access_key ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để tải chiến dịch và tạo link.</p>
+  <p class="subtitle">Nhập mã truy cập ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để tải chiến dịch và tạo link.</p>
   {{else}}
   <form method="post" action="/at/campaigns/sync" style="margin-bottom:0.75rem">
     <button type="submit" class="btn btn-secondary btn-sm">Tải chiến dịch</button>
     <span class="hint">đồng bộ từ Accesstrade API vào cache</span>
   </form>
   {{if .AT.Campaigns}}
-  <table>
+  <div class="table-wrap">
+<table>
     <tr><th>Chiến dịch</th><th>Duyệt</th><th>Hoa hồng</th><th></th></tr>
     {{range .AT.Campaigns}}
     <tr>
@@ -110,6 +113,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có chiến dịch nào — bấm “Tải chiến dịch”.</p>
   {{end}}
@@ -119,8 +123,9 @@
 {{if .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Link đã tạo</h2>
-  <table>
-    <tr><th>Sản phẩm</th><th>Chiến dịch</th><th>Tracking link</th><th></th></tr>
+  <div class="table-wrap">
+<table>
+    <tr><th>Sản phẩm</th><th>Chiến dịch</th><th>Link theo dõi</th><th></th></tr>
     {{range .AT.Links}}
     <tr>
       <td class="hint">{{.ProductURL}}</td>
@@ -131,6 +136,7 @@
     {{end}}
   </table>
 </div>
+</div>
 {{end}}
 
 <div class="form-card">
@@ -140,13 +146,14 @@
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-primary btn-sm" id="at-hunt-btn" onclick="atHunt()">Săn ngay</button>
-    <span class="hint">quét datafeed → kho sản phẩm → tạo video cho top mới</span>
+    <span class="hint">quét nguồn hàng → kho sản phẩm → tạo video cho top mới</span>
   </p>
   {{else}}
-  <p class="subtitle">Nhập access_key ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để săn sản phẩm.</p>
+  <p class="subtitle">Nhập mã truy cập ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để săn sản phẩm.</p>
   {{end}}
   {{if .AT.Hunted}}
-  <table>
+  <div class="table-wrap">
+<table>
     <tr><th>Sản phẩm</th><th>Giá</th><th>Hoa hồng</th><th>Danh mục</th></tr>
     {{range .AT.Hunted}}
     <tr>
@@ -157,6 +164,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có sản phẩm nào từ Accesstrade — bấm “Săn ngay”.</p>
   {{end}}
@@ -180,7 +188,7 @@
     </div>
   </div>
   <button type="button" class="btn btn-secondary btn-sm" onclick="atSettingsSave()">Lưu</button>
-  <span class="hint">kill switch + dry-run vẫn chặn mọi tick</span>
+  <span class="hint">kill switch + dry-run vẫn chặn mọi tác vụ tự động</span>
 </div>
 
 <div class="form-card">
@@ -196,11 +204,12 @@
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-secondary btn-sm" id="at-sync-btn" onclick="atOrderSync()">Đồng bộ đơn</button>
-    <span class="hint">quét 7 ngày gần nhất, đơn pending được cập nhật tại chỗ</span>
+    <span class="hint">quét 7 ngày gần nhất, đơn chờ duyệt được cập nhật tại chỗ</span>
   </p>
   {{end}}
   {{if .AT.Orders}}
-  <table>
+  <div class="table-wrap">
+<table>
     <tr><th>Mã đơn</th><th>Chiến dịch</th><th>Hoa hồng</th><th>Trạng thái</th><th>Ngày đặt</th></tr>
     {{range .AT.Orders}}
     <tr>
@@ -212,6 +221,7 @@
     </tr>
     {{end}}
   </table>
+</div>
   {{else}}
   <p class="empty">Chưa có đơn nào — bấm “Đồng bộ đơn”.</p>
   {{end}}
@@ -255,17 +265,17 @@ function atSettingsSave() {
 
 <div class="modal-backdrop" id="at-link-modal" hidden>
   <div class="modal" role="dialog" aria-modal="true" style="max-width:26rem">
-    <h3 style="margin-top:0">Tạo tracking link</h3>
+    <h3 style="margin-top:0">Tạo link theo dõi</h3>
     <p class="subtitle" id="at-link-campaign"></p>
     <div class="field">
       <label>URL sản phẩm *</label>
       <input type="url" id="at-link-url" placeholder="https://shopee.vn/..." required>
     </div>
     <div class="grid2">
-      <div class="field"><label>utm_source</label><input type="text" id="at-link-utm-source" placeholder="tiktok"></div>
-      <div class="field"><label>utm_medium</label><input type="text" id="at-link-utm-medium" placeholder="video"></div>
-      <div class="field"><label>sub1 (kênh)</label><input type="text" id="at-link-sub1" placeholder="vd: kenh1"></div>
-      <div class="field"><label>sub2</label><input type="text" id="at-link-sub2"></div>
+      <div class="field"><label>Nguồn (utm_source)</label><input type="text" id="at-link-utm-source" placeholder="tiktok"></div>
+      <div class="field"><label>Phương tiện (utm_medium)</label><input type="text" id="at-link-utm-medium" placeholder="video"></div>
+      <div class="field"><label>Mã kênh (sub1)</label><input type="text" id="at-link-sub1" placeholder="vd: kenh1"></div>
+      <div class="field"><label>Mã phụ (sub2)</label><input type="text" id="at-link-sub2" placeholder="để trống nếu không rõ"></div>
     </div>
     <div id="at-link-result" class="hint" style="margin:0.5rem 0" hidden></div>
     <div class="modal-actions">
@@ -351,7 +361,6 @@ function atSettingsSave() {
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">➕ Thêm sản phẩm thủ công</h2>
-  <p class="subtitle">Khi TikTok Shop API chưa kết nối — autopilot dùng như sản phẩm đã tìm được.</p>
   <form method="post" action="/products/add">
     <div class="grid2">
       <div class="field">
@@ -460,6 +469,7 @@ function atSettingsSave() {
 
 {{if .Results}}
 <h2>Sản phẩm tốt nhất trong kho</h2>
+<div class="table-wrap">
 <table>
   <tr><th>Sản phẩm</th><th>Shop</th><th>Giá</th><th>Hoa hồng</th><th>Đã bán</th><th>Đánh giá</th><th>Nguồn</th><th>Ảnh</th></tr>
   {{range .Results}}
@@ -475,6 +485,7 @@ function atSettingsSave() {
   </tr>
   {{end}}
 </table>
+</div>
 {{else if .Theme}}
 <p class="empty">Chưa có sản phẩm nào cho chủ đề này trong kho. Hãy bấm "Tìm sản phẩm" để quét các nguồn.</p>
 {{end}}

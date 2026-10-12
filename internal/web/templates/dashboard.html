@@ -38,7 +38,7 @@
 <div class="cards">
   <div class="card">
     <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
-    <div class="label">Công tắc chính{{if .MasterOn}} — daemon được phép chạy theo lịch{{else}} — daemon đang đứng yên{{end}}</div>
+    <div class="label">Công tắc chính{{if .MasterOn}} — chế độ tự động được phép chạy theo lịch{{else}} — chế độ tự động đang đứng yên{{end}}</div>
   </div>
   <div class="card">
     <div class="num">{{len .Accounts}}</div>
@@ -54,7 +54,7 @@
   </div>
   <div class="card">
     <div class="num">{{.NJobs}}</div>
-    <div class="label">Video jobs</div>
+    <div class="label">Video đang dựng</div>
   </div>
 </div>
 
@@ -88,7 +88,7 @@
 {{end}}
 
 {{if .LocalRuntimes}}
-<h2>Runtime local</h2>
+<h2>Công cụ trên máy</h2>
 <p>
   {{range .LocalRuntimes}}<span class="badge badge-{{statusClass .State}}" title="{{.Detail}}">{{.Name}}: {{.State}}</span> {{end}}
 </p>

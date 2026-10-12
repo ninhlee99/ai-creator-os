@@ -182,7 +182,7 @@ func TestSettingsReupTab(t *testing.T) {
 		t.Fatalf("GET /settings/reup = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Cài đặt · Reup", "Kill rule", "Warm-up", "giảm rủi ro", "không đảm bảo", "Quét nguồn"} {
+	for _, want := range []string{"Cài đặt · Reup", "Tự dừng", "Làm nóng", "giảm rủi ro", "không đảm bảo", "Quét nguồn"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("tab reup thiếu %q", want)
 		}
@@ -259,10 +259,10 @@ func TestReupLevel2OptionOnlyWhenEnoughClips(t *testing.T) {
 		t.Fatalf("GET /reup = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	if strings.Count(body, "Mức 2 — 3 clip") != 3 {
-		t.Errorf("3 video đủ clip phải có option Mức 2, đếm được %d", strings.Count(body, "Mức 2 — 3 clip"))
+	if strings.Count(body, "Mức 2 (ghép 3 clip)") != 3 {
+		t.Errorf("3 video đủ clip phải có option Mức 2, đếm được %d", strings.Count(body, "Mức 2 (ghép 3 clip)"))
 	}
-	if !strings.Contains(body, "Mức 1</option>") {
+	if !strings.Contains(body, "Mức 1 (chỉnh nhẹ)</option>") {
 		t.Errorf("mọi video downloaded phải có option Mức 1")
 	}
 }

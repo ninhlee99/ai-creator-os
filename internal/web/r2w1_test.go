@@ -35,12 +35,12 @@ func TestShelfAddVisibleToAutopilot(t *testing.T) {
 	s.Products = store
 
 	rec := postForm(t, s, "/products/shelf/add", url.Values{
-		"platform_pid":    {"TT-999"},
-		"title":           {"Tai nghe X10"},
-		"price":           {"50"},
-		"commission_rate": {"0.2"},
-		"category":        {"điện tử"},
-		"theme":           {"cong-nghe"},
+		"platform_pid":   {"TT-999"},
+		"title":          {"Tai nghe X10"},
+		"price":          {"50"},
+		"commission_pct": {"20"},
+		"category":       {"điện tử"},
+		"theme":          {"cong-nghe"},
 	})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("shelf add = %d, want 303", rec.Code)

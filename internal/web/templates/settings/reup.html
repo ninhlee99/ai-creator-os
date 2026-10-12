@@ -1,7 +1,7 @@
 {{define "title"}}Cài đặt · Reup — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Cài đặt · Reup</h1>
-<p class="subtitle">Transform 2 mức, đăng bài và kill rule 0-view cho pipeline reup Douyin.</p>
+<p class="subtitle">Chỉnh sửa video, đăng bài và tự dừng khi video không có view.</p>
 {{template "settings-nav" .}}
 
 {{with .ReupCfg}}
@@ -16,11 +16,11 @@
   </div>
   <div class="card">
     <div class="num">{{if .MusicOK}}<span class="badge badge-ok">Có nhạc</span>{{else}}<span class="badge badge-warn">Chưa có</span>{{end}}</div>
-    <div class="label">Nhạc nền licensed{{if not .MusicOK}} <span class="hint">(upload autopilot-music.m4a vào thư mục data)</span>{{end}}</div>
+    <div class="label">Nhạc nền có bản quyền{{if not .MusicOK}} <span class="hint">(upload autopilot-music.m4a vào thư mục data)</span>{{end}}</div>
   </div>
   <div class="card">
     <div class="num">{{if .KillOn}}<span class="badge badge-ok">Bật</span>{{else}}<span class="badge badge-draft">Tắt</span>{{end}}</div>
-    <div class="label">Kill rule · {{.KillN}} bài 0-view</div>
+    <div class="label">Tự dừng: {{.KillN}} video 0 view liên tiếp</div>
   </div>
 </div>
 
@@ -62,7 +62,7 @@
       <label>Mức transform mặc định</label>
       <select name="transform_level">
         <option value="1"{{if eq .TransformLevel 1}} selected{{end}}>Mức 1 — mọi video (zoom + tốc độ + voiceover + nhạc)</option>
-        <option value="2"{{if eq .TransformLevel 2}} selected{{end}}>Mức 2 — compilation 3 clip (video hot)</option>
+        <option value="2"{{if eq .TransformLevel 2}} selected{{end}}>Mức 2 — ghép 3 clip (video hot)</option>
       </select>
     </div>
   </div>
@@ -84,7 +84,7 @@
         <option value="1"{{if .PostOn}} selected{{end}}>Bật</option>
         <option value="0"{{if not .PostOn}} selected{{end}}>Tắt</option>
       </select>
-      <span class="hint">Kill rule 0-view sẽ tự tắt mục này.</span>
+      <span class="hint">Tự dừng khi không có view sẽ tự tắt mục này.</span>
     </div>
     <div class="field">
       <label>Kênh đăng tự động</label>
@@ -100,7 +100,7 @@
       <input type="number" name="videos_per_day" min="1" max="20" value="{{.VideosPerDay}}">
     </div>
     <div class="field">
-      <label>Warm-up kênh mới (tăng dần ngày đầu)</label>
+      <label>Làm nóng kênh mới (tăng dần ngày đầu)</label>
       <select name="warmup_on">
         <option value="1"{{if .WarmupOn}} selected{{end}}>Bật</option>
         <option value="0"{{if not .WarmupOn}} selected{{end}}>Tắt</option>
@@ -110,11 +110,11 @@
 </div>
 
 <div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Kill rule 0-view</h2>
+  <h2 style="margin-top:0;border:none;padding:0">Tự dừng khi không có view</h2>
   <p class="hint">Chỉ đếm bài <b>đã có số liệu view thật</b> (YouTube). Bài "chờ số liệu" không tính. Kích hoạt → dừng đăng reup + báo, không xoá bài đã đăng.</p>
   <div class="grid2">
     <div class="field">
-      <label>Bật kill rule</label>
+      <label>Bật tự dừng</label>
       <select name="kill_on">
         <option value="1"{{if .KillOn}} selected{{end}}>Bật</option>
         <option value="0"{{if not .KillOn}} selected{{end}}>Tắt</option>

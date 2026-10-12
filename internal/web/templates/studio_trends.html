@@ -14,12 +14,14 @@
 </form>
 
 {{if .Sounds}}
+<div class="table-wrap">
 <table class="trends-table">
   <tr><th>#</th><th>Biến động</th><th>Bài hát</th></tr>
   {{range .Sounds}}
   <tr><td>{{.Rank}}</td><td>{{.Movement}}</td><td><strong>{{.Artist}}</strong> – {{.Title}}</td></tr>
   {{end}}
 </table>
+</div>
 {{else}}
 <div class="empty-state compact">
   <div class="es-icon">🎵</div>

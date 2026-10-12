@@ -1,7 +1,7 @@
 {{define "title"}}Cài đặt · Nhà cung cấp — AI Creator OS{{end}}
 {{define "content"}}
 <h1>Cài đặt · Nhà cung cấp</h1>
-<p class="subtitle">AI dùng nhà cung cấp nào trước, key nào còn sống.</p>
+<p class="subtitle">AI dùng nhà cung cấp nào trước, mã nào còn dùng được.</p>
 {{template "settings-nav" .}}
 
 <nav class="tabs">
@@ -9,11 +9,11 @@
   <a href="#provider-llm">LLM</a>
 </nav>
 
-<h2 id="provider-tts">Chuỗi provider TTS</h2>
+<h2 id="provider-tts">Thứ tự nhà cung cấp giọng đọc (TTS)</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 {{template "chain-card" (dict "Chain" .TTSChain "Keys" .TTSKeys "ChainName" "tts" "SaveLabel" "Lưu cấu hình TTS")}}
 
-<h2 id="provider-llm">Chuỗi provider LLM</h2>
+<h2 id="provider-llm">Thứ tự nhà cung cấp viết nội dung (LLM)</h2>
 <p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 {{template "chain-card" (dict "Chain" .LLMChain "Keys" .LLMKeys "ChainName" "llm" "SaveLabel" "Lưu cấu hình LLM")}}
 
@@ -27,7 +27,7 @@ function escHtml(s) {
 }
 function keyCardHTML(k) {
   var badge = k.state === 'cooldown'
-    ? '<span class="badge ' + escHtml(k.badge_class) + '" data-cool="' + k.cooldown_remaining_sec + '">Nghỉ cooldown còn ' + k.cooldown_remaining_sec + 's</span>'
+    ? '<span class="badge ' + escHtml(k.badge_class) + '" data-cool="' + k.cooldown_remaining_sec + '">Nghỉ còn ' + k.cooldown_remaining_sec + 's</span>'
     : '<span class="badge ' + escHtml(k.badge_class) + '">' + escHtml(k.state_label) + '</span>';
   var meta = k.requests + ' lượt dùng';
   if (k.rate_limit_hits > 0) {
@@ -145,7 +145,7 @@ setInterval(function () {
       if (root && root._refresh) root._refresh();
     } else {
       b.dataset.cool = s;
-      b.textContent = 'Nghỉ cooldown còn ' + s + 's';
+      b.textContent = 'Nghỉ còn ' + s + 's';
     }
   });
 }, 1000);

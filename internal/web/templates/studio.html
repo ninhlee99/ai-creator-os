@@ -1,7 +1,7 @@
 {{define "title"}}Studio AI — AI Creator OS{{end}}
 {{define "content"}}
 <h1 id="studio-top">Studio AI 🎬</h1>
-<p class="subtitle">Tạo video affiliate: đạo diễn AI viết shot list → chụp từng ảnh → dựng video → ghép nhạc đang thịnh hành. Bạn chỉ cần nhập tên sản phẩm rồi bấm tạo.</p>
+<p class="subtitle">Tạo video affiliate: đạo diễn AI viết kịch bản quay → chụp từng ảnh → dựng video → ghép nhạc đang thịnh hành. Bạn chỉ cần nhập tên sản phẩm rồi bấm tạo.</p>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
@@ -12,7 +12,7 @@
 
 {{if eq .Tab "chu"}}
 <h2>Video chữ động</h2>
-<p class="subtitle">Tạo video dọc 1080×1920 kiểu chữ động (kinetic-typography) từ caption, kèm lồng tiếng AI nếu có.</p>
+<p class="subtitle">Tạo video dọc 1080×1920 kiểu chữ động từ caption, kèm lồng tiếng AI nếu có.</p>
 
 <div class="form-card">
 <form method="post" action="/studio/kinetic">
@@ -26,7 +26,7 @@
     <div class="hint">Mỗi dòng một caption — video sẽ chuyển cảnh theo từng dòng.</div>
   </div>
   <div class="field">
-    <label>Lời dẫn (narration)</label>
+    <label>Lời dẫn</label>
     <textarea name="narration" placeholder="Để trống = video không lời, chỉ phụ đề"></textarea>
   </div>
   <button type="submit" class="btn">Tạo video</button>
@@ -60,13 +60,13 @@
 
 <div class="cards">
   <div class="card">
-    <h3>Tạo ảnh &amp; video <span class="label-hint">(Media-gen)</span></h3>
+    <h3>Tạo ảnh &amp; video</h3>
     {{if .MediaGenOK}}
       <span class="badge badge-ok">Sẵn sàng</span>
       <div class="hint">{{.MediaGenKeys}} Gemini key · tạo ảnh + video Veo</div>
     {{else}}
       <span class="badge badge-err">Chưa sẵn sàng</span>
-      <div class="hint">Cần thêm Gemini API key ở Cài đặt. Video Veo cần key có bật thanh toán (Google Cloud) — nếu không có, Studio tự dùng chế độ ghép ảnh theo nhịp.</div>
+      <div class="hint">Cần thêm Gemini API key ở Cài đặt. Chưa có key thì Studio tự dùng chế độ ghép ảnh theo nhịp.</div>
     {{end}}
   </div>
   <div class="card">
@@ -81,13 +81,13 @@
     <a class="btn btn-secondary btn-sm" href="/studio/trends" style="margin-top:8px">Xem bảng xếp hạng</a>
   </div>
   <div class="card">
-    <h3>Job dựng video</h3>
+    <h3>Video đang dựng</h3>
     {{if .ActiveJobs}}
       <span class="badge badge-running">{{.ActiveJobs}} đang chạy</span>
     {{else if .JobCount}}
-      <span class="badge badge-ok">{{.JobCount}} job</span>
+      <span class="badge badge-ok">{{.JobCount}} video</span>
     {{else}}
-      <span class="badge badge-draft">chưa có job</span>
+      <span class="badge badge-draft">chưa có video</span>
     {{end}}
     <div class="hint">Tiến độ dựng + storyboard từng cảnh.</div>
     <a class="btn btn-secondary btn-sm" href="/studio/jobs" style="margin-top:8px">Xem job</a>
@@ -116,7 +116,7 @@
     <label>Kiểu video</label>
     <select name="mode">
       <option value="photo">Ảnh giật theo nhịp nhạc — 3–5 ảnh (khuyên dùng)</option>
-      <option value="shots">Nhiều cảnh video nối nhau (cần Veo)</option>
+      <option value="shots">Nhiều cảnh nối nhau (ảnh động từng cảnh)</option>
     </select>
     <div class="hint">Kiểu giật theo nhịp: 3–5 ảnh người mẫu dùng sản phẩm thật, phóng to nảy + rung theo từng nhịp nhạc, cắt cứng giữa các ảnh. Không chữ, không lời thoại — đúng định dạng bán hàng thời trang.</div>
   </div>
