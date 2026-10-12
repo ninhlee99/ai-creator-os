@@ -52,6 +52,7 @@ type Supervisor struct {
 // watchSpec ghi nhịp kỳ vọng + thời điểm đăng ký của một tick.
 type watchSpec struct {
 	every        time.Duration
+	timeout      time.Duration // timeout của Dispatch — Stale phải tính cả
 	registeredAt time.Time
 }
 
@@ -163,11 +164,13 @@ func (s *Supervisor) beatErr(name, msg string) {
 
 // Watch đăng ký nhịp kỳ vọng cho một tick (Đợt V — watchdog trong app).
 // every là khoảng cách tối đa giữa hai lần Dispatch (bằng nhịp của loop).
-func (s *Supervisor) Watch(name string, every time.Duration) {
+// timeout là timeout của Dispatch — Stale tính max(3×every, timeout+buffer)
+// để tick chạy lâu nhưng hợp lệ không bị báo sai (đợt AI).
+func (s *Supervisor) Watch(name string, every, timeout time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.watches[name]; !ok {
-		s.watches[name] = watchSpec{every: every, registeredAt: time.Now()}
+		s.watches[name] = watchSpec{every: every, timeout: timeout, registeredAt: time.Now()}
 	}
 }
 
@@ -179,7 +182,12 @@ func (s *Supervisor) Stale(now time.Time) []string {
 	defer s.mu.Unlock()
 	var out []string
 	for name, w := range s.watches {
+		// Đợt AI: tick chạy lâu nhưng trong timeout cho phép thì không stale.
+		// limit = max(3×nhịp, timeout + 2 phút đệm).
 		limit := 3 * w.every
+		if t := w.timeout + 2*time.Minute; t > limit {
+			limit = t
+		}
 		if b, ok := s.beats[name]; ok && !b.LastStart.IsZero() {
 			if now.Sub(b.LastStart) > limit {
 				out = append(out, name)

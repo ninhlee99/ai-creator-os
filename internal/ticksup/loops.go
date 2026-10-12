@@ -36,14 +36,14 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 	go sup.RunWatchdog(ctx, 5*time.Minute)
 	if d.Autopilot {
 		// Kiểm tra mỗi phút; chạy khi đủ autopilot_interval_hours (mặc định 6h).
-		sup.Watch("autopilot", time.Minute)
+		sup.Watch("autopilot", time.Minute, 15*time.Minute)
 		go loop(ctx, time.Minute, func() {
 			sup.Dispatch(ctx, "autopilot", 15*time.Minute, d.NewService().AutopilotTick)
 		})
 		log.Printf("autopilot: scheduler armed (managed in web UI /products)")
 	}
 	if d.Growth {
-		sup.Watch("growth", 5*time.Minute)
+		sup.Watch("growth", 5*time.Minute, 20*time.Minute)
 		go loop(ctx, 5*time.Minute, func() {
 			auto := d.NewService()
 			sup.Dispatch(ctx, "growth", 20*time.Minute,
@@ -52,7 +52,7 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 		log.Printf("growth: automation tick armed (mặc định bật ở /growth; dry-run là cổng an toàn)")
 	}
 	if d.AT {
-		sup.Watch("accesstrade", 5*time.Minute)
+		sup.Watch("accesstrade", 5*time.Minute, 15*time.Minute)
 		go loop(ctx, 5*time.Minute, func() {
 			sup.Dispatch(ctx, "accesstrade", 15*time.Minute, d.NewService().ATTick)
 		})
@@ -60,7 +60,7 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 	}
 	if d.Reup {
 		for _, n := range []string{"reup", "reup_transform", "reup_post", "reup_kill"} {
-			sup.Watch(n, 5*time.Minute)
+			sup.Watch(n, 5*time.Minute, 20*time.Minute)
 		}
 		go loop(ctx, 5*time.Minute, func() {
 			auto := d.NewService()
@@ -75,7 +75,7 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 	}
 	if d.Story {
 		for _, n := range []string{"story", "selfheal", "backup", "story_public", "story_retry", "notify", "draft_digest"} {
-			sup.Watch(n, 5*time.Minute)
+			sup.Watch(n, 5*time.Minute, 30*time.Minute)
 		}
 		go loop(ctx, 5*time.Minute, func() {
 			auto := d.NewService()

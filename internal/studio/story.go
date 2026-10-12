@@ -348,6 +348,14 @@ func copyStoryFile(src, dst string) error {
 
 // runStory chạy pipeline kể chuyện trong goroutine nền.
 func (s *Studio) runStory(id string, p StoryParams) {
+	// Đợt AI 24/7: recover panic — một panic không được giết cả app
+	// (pipeline chạy hàng chục phút, chạm nhiều dữ liệu ngoài).
+	defer func() {
+		if r := recover(); r != nil {
+			s.setStatus(id, StatusFailed, 100)
+			s.appendLog(id, fmt.Sprintf("LỖI: panic (%v) — job dừng, app vẫn chạy.", r))
+		}
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.mu.Lock()
 	s.running[id] = cancel

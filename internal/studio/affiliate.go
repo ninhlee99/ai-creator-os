@@ -107,6 +107,13 @@ Chỉ trả JSON: {"location": "<mô tả địa điểm chi tiết bằng tiế
 }
 
 func (s *Studio) runAffiliate(id string, p AffiliateParams) {
+	// Đợt AI 24/7: recover panic — giống runStory.
+	defer func() {
+		if r := recover(); r != nil {
+			s.setStatus(id, StatusFailed, 100)
+			s.appendLog(id, fmt.Sprintf("LỖI: panic (%v) — job dừng, app vẫn chạy.", r))
+		}
+	}()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.mu.Lock()
 	s.running[id] = cancel

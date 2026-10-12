@@ -552,13 +552,30 @@ func main() {
 	log.Printf("network: master=%v dry_run=%v kill_switch=%v", netCfg.MasterSwitch, netCfg.DryRun, netCfg.KillSwitch)
 	daemon := network.NewDaemon(l, mgr, llmChain, netCfg) // *engines.LLMChain satisfies network.LLMClient
 	// Đợt R: recover để daemon panic không giết cả process.
+	// Đợt AI 24/7: vòng lặp tự hồi phục — panic 1 lần không được giết daemon
+	// vĩnh viễn (trước đây goroutine chết luôn, network ngừng im lặng).
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("daemon: PANIC recovered: %v", r)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
-		}()
-		daemon.Run(ctx, 60*time.Second)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("daemon: PANIC recovered, khởi động lại vòng sau: %v", r)
+					}
+				}()
+				daemon.Run(ctx, 60*time.Second)
+			}()
+			// Run thoát bất thường (không phải do ctx) → chờ 5s rồi chạy lại.
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+		}
 	}()
 
 	// -- 7b→7e. automation ticks (Đợt R) -------------------------------------

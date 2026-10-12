@@ -8,7 +8,7 @@ import (
 func TestWatchStale(t *testing.T) {
 	sup := New(nil, nil)
 	// Tick chưa từng chạy nhưng mới đăng ký → chưa stale.
-	sup.Watch("fresh", time.Minute)
+	sup.Watch("fresh", time.Minute, time.Minute)
 	if got := sup.Stale(time.Now()); len(got) != 0 {
 		t.Fatalf("mới đăng ký không được stale: %v", got)
 	}
@@ -20,7 +20,7 @@ func TestWatchStale(t *testing.T) {
 		t.Fatalf("tick cũ chưa chạy phải stale: %v", got)
 	}
 	// Tick vừa dispatch → không stale.
-	sup.Watch("recent", time.Minute)
+	sup.Watch("recent", time.Minute, time.Minute)
 	sup.beatStart("recent")
 	if got := sup.Stale(time.Now()); len(got) != 1 || got[0] != "old" {
 		t.Fatalf("tick vừa chạy không được stale: %v", got)
