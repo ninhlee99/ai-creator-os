@@ -22,7 +22,7 @@ type LLM interface {
 }
 
 // Narrator synthesizes narration WAV bytes (TTS chain), or nil for silent.
-type Narrator func(ctx context.Context, text string) ([]byte, error)
+type Narrator func(ctx context.Context, text, voice string) ([]byte, error)
 
 // Job kinds.
 const (

@@ -209,7 +209,7 @@ func TestStoryPipelineSuccess(t *testing.T) {
 	}
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "out")
-	narr := Narrator(func(ctx context.Context, text string) ([]byte, error) {
+	narr := Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
 		return silenceWAV(12), nil
 	})
 	st, err := New(filepath.Join(dir, "studio.db"), &fakeStoryLLM{scenes: 3}, fakeStoryMG{}, narr, outDir)
@@ -255,7 +255,7 @@ func TestStoryPipelineQCFail(t *testing.T) {
 		t.Skip("thiếu ffmpeg/ffprobe")
 	}
 	dir := t.TempDir()
-	narr := Narrator(func(ctx context.Context, text string) ([]byte, error) {
+	narr := Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
 		return silenceWAV(2), nil
 	})
 	st, err := New(filepath.Join(dir, "studio.db"), &fakeStoryLLM{scenes: 3}, fakeStoryMG{}, narr, filepath.Join(dir, "out"))
@@ -282,7 +282,7 @@ func TestStoryPipelineTTSError(t *testing.T) {
 		t.Skip("thiếu ffmpeg/ffprobe")
 	}
 	dir := t.TempDir()
-	narr := Narrator(func(ctx context.Context, text string) ([]byte, error) {
+	narr := Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
 		return nil, fmt.Errorf("tts down")
 	})
 	st, err := New(filepath.Join(dir, "studio.db"), &fakeStoryLLM{scenes: 3}, fakeStoryMG{}, narr, filepath.Join(dir, "out"))
@@ -309,7 +309,7 @@ func TestStoryPipelineImageError(t *testing.T) {
 		t.Skip("thiếu ffmpeg/ffprobe")
 	}
 	dir := t.TempDir()
-	narr := Narrator(func(ctx context.Context, text string) ([]byte, error) {
+	narr := Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
 		return silenceWAV(12), nil
 	})
 	st, err := New(filepath.Join(dir, "studio.db"), &fakeStoryLLM{scenes: 3},

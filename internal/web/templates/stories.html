@@ -26,6 +26,14 @@
         <input type="text" name="genre" value="{{.Stories.DefGenre}}" placeholder="tâm lý">
       </div>
       <div class="field">
+        <label>Giọng đọc</label>
+        <select name="voice">
+          <option value="">Mặc định</option>
+          <option value="female">Nữ</option>
+          <option value="male">Nam</option>
+        </select>
+      </div>
+      <div class="field">
         <label>Số cảnh (3–12)</label>
         <input type="number" name="scenes" value="{{.Stories.DefScenes}}" min="3" max="12">
       </div>

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -68,6 +69,9 @@ type VieNeuProvider struct {
 
 	downloading atomic.Bool
 	note        atomic.Value // string: note about the last output format
+	// lastPingOK: cache kết quả ping /health 30s — khỏi ping trước mỗi scene
+	// (12 cảnh = tới 36s overhead vô ích). Đợt AC.
+	lastPingOK atomic.Int64 // unix nano của lần ping thành công gần nhất
 }
 
 // NewVieNeuProvider builds the tier-2 TTS provider. The sidecar is NOT
@@ -110,6 +114,10 @@ func (v *VieNeuProvider) Healthy(ctx context.Context) bool {
 }
 
 func (v *VieNeuProvider) ping(ctx context.Context) error {
+	// Cache 30s: sidecar vừa dùng xong ở cảnh trước thì không ping lại.
+	if time.Since(time.Unix(0, v.lastPingOK.Load())) < 30*time.Second {
+		return nil
+	}
 	cctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(cctx, http.MethodGet, v.getBaseURL()+"/health", nil)
@@ -132,6 +140,7 @@ func (v *VieNeuProvider) ping(ctx context.Context) error {
 		body.Status != "" && body.Status != "ok" {
 		return fmt.Errorf("status=%s", body.Status)
 	}
+	v.lastPingOK.Store(time.Now().UnixNano())
 	return nil
 }
 
@@ -257,6 +266,9 @@ func (v *VieNeuProvider) normalizeWav(ctx context.Context, wav []byte) ([]byte, 
 		}
 	}
 	v.note.Store(fmt.Sprintf("giữ nguyên %dHz (không có ffmpeg để resample về 24kHz)", rate))
+	// Đợt AC: note này trước đây không ai đọc — log ra để user biết audio
+	// không đúng chuẩn 24kHz mono (có thể gây lỗi khi dựng video).
+	log.Printf("vieneu: audio giữ nguyên %dHz (thiếu ffmpeg) — nên cài ffmpeg để resample về 24kHz mono", rate)
 	return wav, nil
 }
 

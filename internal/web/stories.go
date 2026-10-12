@@ -228,6 +228,7 @@ func storyParamsFromForm(r *http.Request) studio.StoryParams {
 		Words:   words,
 		Scenes:  scenes,
 		MusicOn: r.FormValue("music_on") == "1",
+		Voice:   strings.TrimSpace(r.FormValue("voice")),
 	}
 }
 

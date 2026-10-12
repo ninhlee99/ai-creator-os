@@ -33,6 +33,9 @@ type Circuit struct {
 	consecutive int
 	openUntil   time.Time
 	alerted     bool // đã báo alert cho lần mở mạch hiện tại chưa
+	// lastObserved: lần đếm gần nhất. Chain retry gọi provider 2 lần cho 1
+	// request logic — dedup theo thời gian để không đếm gấp đôi (đợt AC).
+	lastObserved time.Time
 }
 
 var geminiCircuit = &Circuit{}
@@ -48,6 +51,12 @@ func (c *Circuit) ObserveExhausted() bool {
 	if c.isOpenLocked() {
 		return false
 	}
+	// Dedup: chain retry gọi provider 2 lần cho 1 request logic — chỉ đếm khi
+	// cách lần trước >30s để không đếm gấp đôi (đợt AC).
+	if time.Since(c.lastObserved) < 30*time.Second {
+		return false
+	}
+	c.lastObserved = time.Now()
 	c.consecutive++
 	if c.consecutive >= circuitTripThreshold {
 		c.openUntil = nextMidnight(time.Now())

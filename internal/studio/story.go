@@ -76,6 +76,9 @@ type StoryParams struct {
 	MusicOn   bool   `json:"music_on"`   // lồng nhạc nền
 	MusicPath string `json:"music_path"` // file nhạc local ("" = không nhạc)
 	AccountID int64  `json:"account_id,omitempty"`
+	// Voice: giọng đọc ("default", "male", "female"...). Đợt AC: user chọn ở
+	// form tạo truyện thay vì hardcode.
+	Voice string `json:"voice,omitempty"`
 	// Attempt: lần thử thứ mấy (0 = lần đầu). Đợt P: retry tự động tăng
 	// dần; đạt story.retry_max thì dừng để không đốt quota vô ích.
 	Attempt int `json:"attempt,omitempty"`
@@ -453,7 +456,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 				continue
 			}
 		}
-		wavBytes, err := s.narrator(ctx, sc.Text)
+		wavBytes, err := s.narrator(ctx, sc.Text, p.Voice)
 		if err != nil {
 			s.setAsset(aid, StatusFailed, "")
 			fail(fmt.Errorf("cảnh %d: TTS lỗi (%v) — dừng, không tạo video câm", i+1, err))

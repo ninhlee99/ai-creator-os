@@ -168,7 +168,7 @@ func (s *Studio) synthShotVoice(ctx context.Context, id string, sh RenderShot, w
 	}
 	var wavs [][]byte
 	for _, ch := range splitTextChunks(speech, maxTTSChunkChars) {
-		w, err := s.narrator(ctx, ch)
+		w, err := s.narrator(ctx, ch, "default")
 		if err != nil || len(w) == 0 {
 			s.appendLog(id, fmt.Sprintf("Shot %d: TTS lỗi (%v) — dựng bản câm", sh.Seq+1, err))
 			return ""

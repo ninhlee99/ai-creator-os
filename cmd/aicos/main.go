@@ -402,8 +402,11 @@ func main() {
 	// and the Gemini keys (image generation). (Film pipeline parked —
 	// PIVOT 2026-10-02.)
 	studioMG := studio.NewGeminiMediaGen(geminiKeys)
-	studioNarrator := studio.Narrator(func(ctx context.Context, text string) ([]byte, error) {
-		return ttsChain.Synthesize(ctx, text, "default")
+	studioNarrator := studio.Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
+		if voice == "" {
+			voice = "default"
+		}
+		return ttsChain.Synthesize(ctx, text, voice)
 	})
 	if st, err := studio.New(filepath.Join(*dataDir, "studio.db"), studioLLMAdapter{c: llmChain}, studioMG, studioNarrator, outDir); err != nil {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
