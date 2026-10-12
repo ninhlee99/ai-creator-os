@@ -520,3 +520,28 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .team-waiting { border-left-color: var(--neutral); }
 .team-fail { border-left-color: var(--err); }
 .team-idle { border-left-color: var(--neutral); border-left-style: dashed; opacity: .65; }
+
+/* ---- Đợt AE mobile: iOS zoom, nút chạm, topbar, kv, nav ngang, class chết ---- */
+/* 1. iOS tự zoom khi input <16px → ép 16px trên mobile */
+@media (max-width: 800px) {
+  input[type=text], input[type=password], input[type=number],
+  input[type=url], input[type=email], textarea, select { font-size: 16px; }
+  /* 2. Nút nhỏ đủ 44px để chạm */
+  .btn-sm { padding: 10px 16px; font-size: 14px; min-height: 44px; }
+  /* 3. Topbar wrap */
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .topbar-actions { flex-wrap: wrap; gap: 8px; }
+  /* 4. Grid kv 1 cột */
+  .kv { grid-template-columns: 1fr; gap: 2px; }
+  .kv dt { font-weight: 600; margin-top: 8px; }
+  /* 5. Sidebar nav cuộn ngang 1 dòng */
+  .sidebar nav { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .sidebar nav a { display: inline-block; padding: 12px 14px; }
+}
+/* 6. Class chết: alias để template cũ không rơi về style lạ */
+.btn-primary { display: inline-block; padding: 8px 16px; border-radius: 8px;
+  background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: var(--fs-md); }
+.badge-dim { display: inline-block; padding: 2px 8px; border-radius: 99px;
+  background: var(--bg3); color: var(--muted); font-size: var(--fs-xs); }
+.check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+.check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }

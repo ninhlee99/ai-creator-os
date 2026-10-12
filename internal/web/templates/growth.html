@@ -87,7 +87,7 @@
   <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
   <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
   <td>{{if .YTReady}}<span class="badge badge-ok">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn">{{.YTUpload}}</span>{{end}}</td>
-  <td><a class="btn-small" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở Autopilot</a></td>
+  <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở Autopilot</a></td>
 </tr>
 {{end}}
 </table>
