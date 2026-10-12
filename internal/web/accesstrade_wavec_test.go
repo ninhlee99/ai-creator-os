@@ -6,8 +6,12 @@ package web
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 // postJSON đã có trong accesstrade_test.go — dùng chung.
@@ -35,44 +39,59 @@ func TestATOrderSyncNoKey(t *testing.T) {
 	}
 }
 
+// Đợt AK: công tắc tick AT gộp về form Cài đặt · Accesstrade (bỏ JSON
+// /at/settings ở trang Affiliate). Checkbox trống = tắt; số video bị cắt.
 func TestATSettingsSave(t *testing.T) {
 	s := newTestServer(t)
-	rec := postJSON(t, s, "/at/settings",
-		`{"hunter_on":false,"hunter_videos":5,"order_sync_on":true,"campaign_on":false}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("lưu settings phải 200, được %d", rec.Code)
+	rec := postForm(t, s, "/settings/accesstrade/automation", url.Values{
+		"toggles": {"1"}, "ordersync_on": {"1"}, "hunter_videos": {"5"},
+		"hunter_hours": {"24"}, "ordersync_mins": {"30"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("lưu phải redirect, được %d", rec.Code)
 	}
-	if v := s.atSettingOn("at.hunter_enabled", true); v {
-		t.Errorf("hunter_on=false phải lưu thành tắt")
+	if s.atSettingOn("at.hunter_enabled", true) {
+		t.Errorf("hunter_on trống phải lưu thành tắt")
+	}
+	if !s.atSettingOn(automation.KeyATOrderSyncEnabled, false) {
+		t.Errorf("ordersync_on=1 phải bật")
 	}
 	if v := s.atSettingInt("at.hunter_videos", 3); v != 5 {
 		t.Errorf("hunter_videos phải = 5, được %d", v)
 	}
-	// JSON sai → 400.
-	rec = postJSON(t, s, "/at/settings", "{invalid")
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("JSON sai phải 400, được %d", rec.Code)
-	}
-	// hunter_videos vượt trần → cắt về 10.
-	rec = postJSON(t, s, "/at/settings", `{"hunter_videos":99}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d", rec.Code)
-	}
+	postForm(t, s, "/settings/accesstrade/automation", url.Values{"toggles": {"1"}, "ordersync_on": {"1"}, "hunter_videos": {"99"}})
 	if v := s.atSettingInt("at.hunter_videos", 3); v != 10 {
 		t.Errorf("hunter_videos phải cắt về 10, được %d", v)
+	}
+	// Không có cờ toggles (chỉ gửi chu kỳ) → công tắc giữ nguyên.
+	postForm(t, s, "/settings/accesstrade/automation", url.Values{"hunter_hours": {"12"}})
+	if !s.atSettingOn(automation.KeyATOrderSyncEnabled, false) {
+		t.Errorf("form chỉ có chu kỳ không được tắt công tắc")
+	}
+	if body := get(t, s, "/settings/accesstrade").Body.String(); !strings.Contains(body, `name="hunter_on"`) {
+		t.Errorf("Cài đặt · Accesstrade thiếu công tắc săn sản phẩm")
 	}
 }
 
 func TestProductsPageRendersNewCards(t *testing.T) {
 	s := newTestServer(t)
+	// Chưa có key (Đợt AK): đúng 1 thẻ kết nối, không lặp 3 khối rỗng.
+	body := get(t, s, "/products").Body.String()
+	if !strings.Contains(body, "Nhập mã truy cập") || strings.Contains(body, "Đối soát hoa hồng") {
+		t.Errorf("chưa có key phải chỉ hiện thẻ kết nối Accesstrade")
+	}
+	// Có key: đủ các khối săn / đối soát.
+	if err := s.Ledger.SetSetting(accesstrade.KeySetting, "test-key"); err != nil {
+		t.Fatal(err)
+	}
 	rec := get(t, s, "/products")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /products phải 200, được %d", rec.Code)
 	}
-	body := rec.Body.String()
+	body = rec.Body.String()
 	for _, want := range []string{
-		"Săn sản phẩm", "Tự động Accesstrade", "Đối soát hoa hồng",
-		"/at/hunt", "/at/orders/sync", "/at/settings",
+		"Săn sản phẩm", "Đối soát hoa hồng",
+		"/at/hunt", "/at/orders/sync",
 		"Chờ duyệt", // nhãn trung thực cho pending
 	} {
 		if !strings.Contains(body, want) {

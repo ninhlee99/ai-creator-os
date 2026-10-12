@@ -393,6 +393,14 @@ func (v *VieNeuProvider) buildProcess() (*local.Process, error) {
 }
 
 // Stop terminates the sidecar.
+// Process returns the supervised sidecar, or nil when it was never started.
+// Used by /healthz to report sidecar health.
+func (v *VieNeuProvider) Process() *local.Process {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.proc
+}
+
 func (v *VieNeuProvider) Stop() error {
 	v.mu.RLock()
 	proc := v.proc

@@ -10,13 +10,13 @@
   <h2 style="margin-top:0;border:none;padding:0">Sản xuất &amp; đăng tự động</h2>
   <p>
     {{if .ProdEnabled}}<span class="badge badge-ok">đang bật</span>{{else}}<span class="badge badge-no">đang tắt</span>{{end}}
-    {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi DRY-RUN bật">DRY-RUN</span>{{end}}
-    {{if .Kill}}<span class="badge badge-err">kill switch</span>{{end}}
+    {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi chạy thử">CHẠY THỬ</span>{{end}}
+    {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
     <span class="badge badge-draft" title="Quota YouTube hôm nay (mỗi lượt đăng tốn {{.QuotaPerUpload}} điểm quota)">Quota {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>
     <span class="badge badge-draft" title="Đổi ở Cài đặt · Đa nền tảng; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
     {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
-  <p class="hint">DRY-RUN là cổng an toàn toàn cục. TikTok: nháp tới khi qua audit.</p>
+  <p class="hint">Chế độ chạy thử chặn mọi thao tác thật. TikTok: chỉ đăng nháp tới khi app được TikTok duyệt.</p>
   <form method="post" action="/growth/production" style="display:inline">
     {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt sản xuất tự động</button>
     {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật sản xuất tự động</button>{{end}}
@@ -35,7 +35,7 @@
     </form>
   </div>
   <div class="hint" style="margin-top:8px">Sinh plan 30 ngày cho từng tài khoản: vào trang tài khoản → tab Autopilot → “↻ Replan 30 ngày ngay”.</div>
-  <h3 style="margin-top:16px">Ngưỡng quyết định growth</h3>
+  <h3 style="margin-top:16px">Ngưỡng quyết định tăng trưởng</h3>
   <p class="hint">Không cần chỉnh khi hệ thống đang chạy tốt — chỉ đổi khi bạn hiểu rõ luật kill/double-down.</p>
   <form method="post" action="/growth/thresholds">
     <div class="table-wrap">
@@ -62,7 +62,7 @@
 <div class="empty-state">
   <strong>Chưa có tài khoản nào</strong>
   <p>Tạo tài khoản TikTok/YouTube đầu tiên để hệ thống bắt đầu vòng khởi động (thử nghiệm 7 ngày).</p>
-  <a class="btn" href="/accounts/new">+ Thêm tài khoản</a>
+  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
 {{else}}
 

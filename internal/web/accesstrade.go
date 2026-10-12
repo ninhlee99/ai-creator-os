@@ -189,7 +189,7 @@ func (s *Server) atCachedCount() int {
 func (s *Server) handleSettingsAccesstrade(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "accesstrade", "settings_accesstrade",
 		"ATKeySet", "ATMasked", "ATCampaigns", "ATStoreOK",
-		"ATHunterHours", "ATOrderSyncMins")
+		"ATHunterHours", "ATOrderSyncMins", "ATAuto")
 }
 
 // handleATAutomationSave lưu interval tick AT từ form (POST, redirect 303).
@@ -220,8 +220,18 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 		syncM = 1440
 	}
 	_ = s.Ledger.SetSetting(automation.KeyATOrderSyncIntervalM, strconv.Itoa(syncM))
-	_ = s.Ledger.Decide("human", "at_automation_save", nil, "Lưu chu kỳ tự động Accesstrade.", nil)
-	seeOther(w, r, "/settings/accesstrade?ok="+url.QueryEscape("Đã lưu chu kỳ tự động Accesstrade."))
+	// Đợt AK: form gộp gửi kèm công tắc (checkbox bỏ trống = tắt). Chỉ áp
+	// khi có cờ toggles để form/gọi cũ chỉ gửi chu kỳ không vô tình tắt hết.
+	if r.PostFormValue("toggles") == "1" {
+		on := func(k string) string { return boolStr(r.PostFormValue(k) == "1") }
+		_ = s.Ledger.SetSetting(automation.KeyATHunterEnabled, on("hunter_on"))
+		_ = s.Ledger.SetSetting(automation.KeyATOrderSyncEnabled, on("ordersync_on"))
+		_ = s.Ledger.SetSetting(automation.KeyATCampaignCheckOn, on("campaign_on"))
+		n, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_videos")))
+		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(clampInt(n, 0, 10)))
+	}
+	_ = s.Ledger.Decide("human", "at_automation_save", nil, "Lưu cài đặt tự động Accesstrade.", nil)
+	seeOther(w, r, "/settings/accesstrade?ok="+url.QueryEscape("Đã lưu cài đặt tự động Accesstrade."))
 }
 
 // handleATKeySave lưu access_key từ form (POST, redirect 303).
@@ -470,47 +480,6 @@ func (s *Server) handleATOrderSync(w http.ResponseWriter, r *http.Request) {
 		"pending_count": st.PendingCount, "pending_total": st.PendingTotal,
 		"rejected_count": st.RejectedCount, "truncated": truncated,
 	})
-}
-
-// atSettingsJSON là body JSON của POST /at/settings.
-type atSettingsJSON struct {
-	HunterOn     *bool `json:"hunter_on"`
-	HunterVideos *int  `json:"hunter_videos"`
-	OrderSyncOn  *bool `json:"order_sync_on"`
-	CampaignOn   *bool `json:"campaign_on"`
-}
-
-// handleATSettings lưu công tắc tick AT (AJAX, JSON).
-func (s *Server) handleATSettings(w http.ResponseWriter, r *http.Request) {
-	if s.Ledger == nil {
-		writeJSONErr(w, "kho dữ liệu chưa sẵn sàng", http.StatusPreconditionFailed)
-		return
-	}
-	var in atSettingsJSON
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&in); err != nil {
-		writeJSONErr(w, "JSON không hợp lệ.", http.StatusBadRequest)
-		return
-	}
-	set := func(key string, v *bool) {
-		if v == nil {
-			return
-		}
-		_ = s.Ledger.SetSetting(key, boolStr(*v))
-	}
-	set(automation.KeyATHunterEnabled, in.HunterOn)
-	set(automation.KeyATOrderSyncEnabled, in.OrderSyncOn)
-	set(automation.KeyATCampaignCheckOn, in.CampaignOn)
-	if in.HunterVideos != nil {
-		n := *in.HunterVideos
-		if n < 0 {
-			n = 0
-		}
-		if n > 10 {
-			n = 10
-		}
-		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(n))
-	}
-	writeJSON(w, map[string]any{"ok": true})
 }
 
 func boolStr(b bool) string {

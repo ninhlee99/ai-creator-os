@@ -5,96 +5,13 @@
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<nav class="tabs">
-  <a href="/studio"{{if ne .Tab "chu"}} class="active"{{end}}>Studio AI</a>
-  <a href="/studio?tab=chu"{{if eq .Tab "chu"}} class="active"{{end}}>Video chữ động</a>
-</nav>
+{{if not .MediaGenOK}}<p class="notice notice-warn">Chưa có Gemini key — Studio tạm dùng chế độ ghép ảnh theo nhịp. <a href="/settings/nha-cung-cap">Thêm key</a> để AI tạo ảnh minh họa.</p>{{end}}
+<p class="hint">
+  <a href="/studio/jobs">Video đã tạo{{if .ActiveJobs}} ({{.ActiveJobs}} đang dựng){{else if .JobCount}} ({{.JobCount}}){{end}}</a>
+  · <a href="/studio/trends">Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — đứng đầu: {{.TopSound}}{{end}}{{end}}</a>
+</p>
 
-{{if eq .Tab "chu"}}
-<h2>Video chữ động</h2>
-<p class="subtitle">Tạo video dọc 1080×1920 kiểu chữ động từ caption, kèm lồng tiếng AI nếu có.</p>
-
-<div class="form-card">
-<form method="post" action="/studio/kinetic">
-  <div class="field">
-    <label>Tiêu đề <span class="req">*</span></label>
-    <input type="text" name="title" required placeholder="vd: Review tai nghe bluetooth dưới 500k">
-  </div>
-  <div class="field">
-    <label>Caption <span class="req">*</span></label>
-    <textarea name="captions" required placeholder="Mỗi dòng là một caption, hiển thị lần lượt"></textarea>
-    <div class="hint">Mỗi dòng một caption — video sẽ chuyển cảnh theo từng dòng.</div>
-  </div>
-  <div class="field">
-    <label>Lời dẫn</label>
-    <textarea name="narration" placeholder="Để trống = video không lời, chỉ phụ đề"></textarea>
-  </div>
-  <button type="submit" class="btn">Tạo video</button>
-</form>
-</div>
-
-<h2>Video chữ động đã tạo</h2>
-{{if .ContentJobs}}
-  {{range .ContentJobs}}
-  <div class="job">
-    <h3>{{.Title}}</h3>
-    <div class="meta">
-      <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
-      {{if .CreatedAt}}· tạo lúc {{fmtVN .CreatedAt}}{{end}}
-      {{if .FinishedAt}}· xong lúc {{.FinishedAt}}{{end}}
-    </div>
-    {{if .Output}}
-    <video class="player" controls src="/media/{{.Output}}"></video>
-    {{end}}
-    {{if .Log}}<pre class="log">{{.Log}}</pre>{{end}}
-  </div>
-  {{end}}
-{{else}}
-<div class="empty-state compact">
-  <div class="es-icon">🔤</div>
-  <h3>Chưa có video chữ động nào</h3>
-  <p>Điền tiêu đề và caption ở mẫu phía trên để tạo video đầu tiên.</p>
-</div>
-{{end}}
-{{else}}
-
-<div class="cards">
-  <div class="card">
-    <h3>Tạo ảnh &amp; video</h3>
-    {{if .MediaGenOK}}
-      <span class="badge badge-ok">Sẵn sàng</span>
-      <div class="hint">{{.MediaGenKeys}} Gemini key · tạo ảnh minh họa (video dựng từ ảnh)</div>
-    {{else}}
-      <span class="badge badge-err">Chưa sẵn sàng</span>
-      <div class="hint">Cần thêm Gemini API key ở Cài đặt. Chưa có key thì Studio tự dùng chế độ ghép ảnh theo nhịp.</div>
-    {{end}}
-  </div>
-  <div class="card">
-    <h3>Nhạc thịnh hành Việt Nam</h3>
-    {{if .TrendsErr}}
-      <span class="badge badge-warn">Không tải được bảng xếp hạng</span>
-      <div class="hint">{{.TrendsErr}}</div>
-    {{else}}
-      <span class="badge badge-ok">{{.SoundCount}} bài hát</span>
-      <div class="hint">Đang đứng đầu: {{.TopSound}}</div>
-    {{end}}
-    <a class="btn btn-secondary btn-sm" href="/studio/trends" style="margin-top:8px">Xem bảng xếp hạng</a>
-  </div>
-  <div class="card">
-    <h3>Video đang dựng</h3>
-    {{if .ActiveJobs}}
-      <span class="badge badge-running">{{.ActiveJobs}} đang chạy</span>
-    {{else if .JobCount}}
-      <span class="badge badge-ok">{{.JobCount}} video</span>
-    {{else}}
-      <span class="badge badge-draft">chưa có video</span>
-    {{end}}
-    <div class="hint">Tiến độ dựng + storyboard từng cảnh.</div>
-    <a class="btn btn-secondary btn-sm" href="/studio/jobs" style="margin-top:8px">Xem job</a>
-  </div>
-</div>
-
-<h2>1 · Video affiliate</h2>
+<h2>Tạo video affiliate</h2>
 <div class="form-card">
 <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="studio-form">
   <div class="field">
@@ -111,19 +28,6 @@
       <option value="công nghệ">Công nghệ</option>
       <option value="khác">Khác</option>
     </select>
-  </div>
-  <div class="field">
-    <label>Kiểu video</label>
-    <select name="mode">
-      <option value="photo">Ảnh giật theo nhịp nhạc — 3–5 ảnh (khuyên dùng)</option>
-      <option value="shots">Nhiều cảnh nối nhau (ảnh động từng cảnh)</option>
-    </select>
-    <div class="hint">Kiểu giật theo nhịp: 3–5 ảnh người mẫu dùng sản phẩm thật, phóng to nảy + rung theo từng nhịp nhạc, cắt cứng giữa các ảnh. Không chữ, không lời thoại — đúng định dạng bán hàng thời trang.</div>
-  </div>
-  <div class="field">
-    <label>Thời lượng (giây)</label>
-    <input type="number" name="seconds" value="30" min="10" max="120">
-    <div class="hint">30 giây là chuẩn cho video affiliate.</div>
   </div>
   <div class="field">
     <label>Ảnh người mẫu</label>
@@ -155,7 +59,7 @@
     </select>
     <input type="hidden" name="music_title" id="music_title">
     <input type="hidden" name="music_artist" id="music_artist">
-    <div class="hint">TikTok không cho tải trực tiếp bài hát. Hãy tải file nhạc về máy rồi tải lên ở ô dưới, hoặc dán link file nhạc trực tiếp trong “Tùy chọn nâng cao”.</div>
+    <div class="hint">Chỉ để ghi tên bài — cần tải file nhạc lên ở ô dưới (TikTok không cho tải thẳng).</div>
   </div>
   <div class="field">
     <label>File nhạc (mp3/m4a)</label>
@@ -167,7 +71,20 @@
     </div>
   </div>
   <details class="advanced">
-    <summary>⚙️ Tùy chọn nâng cao (nhịp nhạc, link nhạc, điểm bắt đầu)</summary>
+    <summary>⚙️ Tùy chọn nâng cao (kiểu video, thời lượng, nhịp nhạc, link nhạc)</summary>
+    <div class="field">
+      <label>Kiểu video</label>
+      <select name="mode">
+        <option value="photo">Ảnh giật theo nhịp nhạc — 3–5 ảnh (khuyên dùng)</option>
+        <option value="shots">Nhiều cảnh nối nhau (ảnh động từng cảnh)</option>
+      </select>
+      <div class="hint">Kiểu giật theo nhịp: 3–5 ảnh người mẫu dùng sản phẩm thật, phóng to nảy + rung theo từng nhịp nhạc, cắt cứng giữa các ảnh. Không chữ, không lời thoại — đúng định dạng bán hàng thời trang.</div>
+    </div>
+    <div class="field">
+      <label>Thời lượng (giây)</label>
+      <input type="number" name="seconds" value="30" min="10" max="120">
+      <div class="hint">30 giây là chuẩn cho video affiliate.</div>
+    </div>
     <div class="field">
       <label>Nhịp nhạc (BPM)</label>
       <input type="number" name="bpm" value="120" min="60" max="200">
@@ -188,5 +105,4 @@
 </form>
 </div>
 
-{{end}}
 {{end}}

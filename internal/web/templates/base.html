@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{template "title" .}}</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v={{assetVer}}">
 <script>
 // Áp dụng giao diện sáng/tối TRƯỚC khi vẽ trang (tránh chớp sáng):
 // ưu tiên lựa chọn đã lưu, chưa có thì theo hệ điều hành, mặc định sáng.
@@ -48,20 +48,20 @@
   <div class="main">
     <header class="topbar">
       <div class="status-chips">
-        {{if .DryRun}}<span class="chip chip-dry" title="Chế độ thử — không thao tác thật">DRY-RUN</span>{{end}}
-        {{if .Kill}}<span class="chip chip-kill">KILL SWITCH</span>{{end}}
+        {{if .DryRun}}<span class="chip chip-dry" title="Chế độ thử — chưa đăng/thao tác thật lên kênh">CHẠY THỬ</span>{{end}}
+        {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
       </div>
       <div class="topbar-actions">
         <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"
                 title="Chuyển giao diện sáng / tối" aria-label="Chuyển giao diện sáng tối">🌙</button>
         {{if .Kill}}
         <form method="post" action="/unkill" style="display:inline">
-          <button type="submit" class="btn btn-secondary">Gỡ kill switch</button>
+          <button type="submit" class="btn btn-secondary">Chạy lại</button>
         </form>
         {{else}}
         <form method="post" action="/kill" style="display:inline"
-              data-confirm="BẬT kill switch? Mọi hoạt động tự động sẽ dừng ngay.">
-          <button type="submit" class="btn btn-danger">Kill switch</button>
+              data-confirm="Dừng khẩn cấp? Mọi hoạt động tự động sẽ dừng ngay (bấm Chạy lại để tiếp tục).">
+          <button type="submit" class="btn btn-danger" title="Kill switch — dừng mọi hoạt động tự động">Dừng khẩn cấp</button>
         </form>
         {{end}}
         {{if .AuthOn}}
@@ -79,6 +79,6 @@
 {{template "modal-css" .}}
 {{template "confirm-modal" .}}
 <div id="toast" class="toast" hidden></div>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v={{assetVer}}"></script>
 </body>
 </html>{{end}}

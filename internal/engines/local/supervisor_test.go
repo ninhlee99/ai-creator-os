@@ -100,6 +100,9 @@ func TestProcessHealthCheck(t *testing.T) {
 	if err := p.LastHealthError(); err != nil {
 		t.Fatalf("LastHealthError = %v", err)
 	}
+	if err, checkedAt, fails := p.HealthStatus(); err != nil || checkedAt.IsZero() || fails != 0 {
+		t.Fatalf("HealthStatus = err=%v checkedAt=%v fails=%d", err, checkedAt, fails)
+	}
 	if out := p.RecentOutput(); out == nil {
 		t.Fatal("RecentOutput should be non-nil")
 	}

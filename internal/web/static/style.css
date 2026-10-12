@@ -1,61 +1,59 @@
-/* AI Creator OS — modern minimal warm-gray design system.
-   Light warm gray, warm black-gray text and a muted indigo-slate accent;
-   status colors are muted (sage / ochre / terracotta) and used only when
-   truly needed. Light theme is the default; dark theme follows
-   [data-theme="dark"] on <html> (set pre-paint by the inline script in
-   base.html from localStorage or prefers-color-scheme). Every color goes
-   through the variables below — no hardcoded dark backgrounds outside the
-   log/video wells, which stay terminal-dark in both themes. */
+/* AI Creator OS — bảng màu cơ bản (Đợt AK UI).
+   Nền xám trung tính, chữ gần đen, MỘT màu nhấn xanh dương chuẩn; màu
+   trạng thái theo quy ước ai cũng hiểu: xanh lá = ổn, cam = cần chú ý,
+   đỏ = lỗi. Mọi cặp chữ/nền đạt WCAG AA (≥4.5:1). Light là mặc định; dark
+   theo [data-theme="dark"] trên <html> (script inline trong base.html đặt
+   trước khi vẽ, từ localStorage hoặc prefers-color-scheme). Mọi màu đi qua
+   biến bên dưới — chỉ khung log/video giữ nền tối ở cả hai theme. */
 :root {
   color-scheme: light;
-  /* modern light palette — warm gray */
-  --bg: #F5F4F1;          /* page */
+  --bg: #F6F7F9;          /* page */
   --bg2: #FFFFFF;         /* cards / panels */
-  --bg3: #ECEAE4;         /* inset areas, table headers */
-  --hover-bg: #E7E4DC;
+  --bg3: #F0F2F5;         /* inset areas, table headers */
+  --hover-bg: #E9ECF1;
   --input-bg: #FFFFFF;
-  --border: #E3E0D9;
-  --text: #2B2A26;
-  --muted: #75726A;
-  --placeholder: #A19D93;
-  --shadow: 0 1px 3px rgba(43,42,38,.08);
-  /* muted indigo-slate accent */
-  --accent: #525F8A;
-  --accent-dark: #455174;
+  --border: #D8DCE3;
+  --text: #1F2328;
+  --muted: #5B616B;
+  --placeholder: #6B7280;
+  --shadow: 0 1px 2px rgba(16,24,40,.06);
+  /* một màu nhấn duy nhất: xanh dương */
+  --accent: #2563EB;
+  --accent-dark: #1D4ED8;
   --on-accent: #FFFFFF;
-  /* muted status tones */
-  --ok: #71836B;
-  --ok-text: #4A5A41;
-  --ok-bg: rgba(113,131,107,.16);
-  --warn: #A98B4F;
-  --warn-text: #7A5E26;
-  --warn-bg: rgba(169,139,79,.15);
-  --err: #B26A58;
-  --err-text: #8C4A3A;
-  --err-bg: rgba(178,106,88,.12);
-  --info: #525F8A;
-  --info-text: #455174;
-  --info-bg: rgba(82,95,138,.12);
-  --yellow: #A98B4F;
-  --neutral: #75726A;
+  /* trạng thái: xanh lá / cam / đỏ */
+  --ok: #16A34A;
+  --ok-text: #166534;
+  --ok-bg: #E7F6EC;
+  --warn: #D97706;
+  --warn-text: #A15C07;
+  --warn-bg: #FEF3E2;
+  --err: #DC2626;
+  --err-text: #B91C1C;
+  --err-bg: #FDECEC;
+  --info: #2563EB;
+  --info-text: #1D4ED8;
+  --info-bg: #EAF1FE;
+  --yellow: #D97706;
+  --neutral: #5B616B;
   /* Deep tones for icon chips carrying white glyphs. */
-  --ok-deep: #57684A;
-  --warn-deep: #856427;
-  --err-deep: #96523D;
-  /* Kill switch / danger: muted deep red. */
-  --kill: #8C3A3A;
-  --kill-hover: #773131;
-  --on-kill: #FBF0EC;
-  --kill-banner-bg: rgba(140,58,58,.12);
-  --kill-banner-text: #8C3A3A;
-  --danger-zone-bg: rgba(140,58,58,.05);
-  /* Sidebar: light warm surface, accent-tinted active item. */
-  --sidebar-bg: #FBFAF7;
-  --sidebar-text: #2B2A26;
-  --sidebar-link: rgba(43,42,38,.66);
-  --sidebar-faint: rgba(43,42,38,.45);
-  --sidebar-hover: #E9EBF2;
-  --sidebar-border: #E3E0D9;
+  --ok-deep: #15803D;
+  --warn-deep: #B45309;
+  --err-deep: #B91C1C;
+  /* Dừng khẩn cấp: đỏ rõ ràng, không lẫn với nút thường. */
+  --kill: #DC2626;
+  --kill-hover: #B91C1C;
+  --on-kill: #FFFFFF;
+  --kill-banner-bg: #FDECEC;
+  --kill-banner-text: #B91C1C;
+  --danger-zone-bg: #FFF7F7;
+  /* Sidebar: trắng, mục đang chọn tô xanh nhạt. */
+  --sidebar-bg: #FFFFFF;
+  --sidebar-text: #1F2328;
+  --sidebar-link: #4B525C;
+  --sidebar-faint: #6B7280;
+  --sidebar-hover: #EAF1FE;
+  --sidebar-border: #D8DCE3;
   /* Aliases kept for older rules. */
   --green: var(--ok);
   --red: var(--err);
@@ -70,54 +68,56 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* modern dark palette — warm charcoal */
-  --bg: #1B1A18;
-  --bg2: #252422;
-  --bg3: #2E2C29;
-  --hover-bg: #37352F;
-  --input-bg: #252422;
-  --border: #37352F;
-  --text: #ECE9E2;
-  --muted: #A29D92;
-  --placeholder: #7E786C;
-  --shadow: 0 1px 3px rgba(0,0,0,.5);
-  --accent: #99A5C9;
-  --accent-dark: #A9B5D4;
-  --on-accent: #23272F;
-  --ok: #9DB08F;
-  --ok-text: #9DB08F;
-  --ok-bg: rgba(157,176,143,.16);
-  --warn: #C9A86A;
-  --warn-text: #C9A86A;
-  --warn-bg: rgba(201,168,106,.16);
-  --err: #CD8A76;
-  --err-text: #DDA48F;
-  --err-bg: rgba(205,138,118,.16);
-  --info: #99A5C9;
-  --info-text: #B4BEDB;
-  --info-bg: rgba(153,165,201,.14);
-  --yellow: #C9A86A;
-  --neutral: #A29D92;
-  --ok-deep: #687A50;
-  --warn-deep: #8A6524;
-  --err-deep: #9A5C44;
-  --kill: #4A2424;
-  --kill-hover: #5A2B2B;
-  --on-kill: #EFD9D2;
-  --kill-banner-bg: rgba(140,58,58,.35);
-  --kill-banner-text: #EFD9D2;
-  --danger-zone-bg: rgba(205,138,118,.10);
-  --sidebar-bg: #211F1E;
-  --sidebar-text: #ECE9E2;
-  --sidebar-link: rgba(236,233,226,.66);
-  --sidebar-faint: rgba(236,233,226,.42);
-  --sidebar-hover: rgba(153,165,201,.14);
-  --sidebar-border: #37352F;
+  --bg: #0F1115;
+  --bg2: #171A20;
+  --bg3: #1E222A;
+  --hover-bg: #262B34;
+  --input-bg: #171A20;
+  --border: #2E343E;
+  --text: #E6E8EB;
+  --muted: #A0A6B0;
+  --placeholder: #7A818C;
+  --shadow: 0 1px 2px rgba(0,0,0,.5);
+  --accent: #60A5FA;
+  --accent-dark: #93C5FD;
+  --on-accent: #0B1220;
+  --ok: #4ADE80;
+  --ok-text: #4ADE80;
+  --ok-bg: rgba(74,222,128,.14);
+  --warn: #FBBF24;
+  --warn-text: #FBBF24;
+  --warn-bg: rgba(251,191,36,.14);
+  --err: #F87171;
+  --err-text: #F87171;
+  --err-bg: rgba(248,113,113,.14);
+  --info: #60A5FA;
+  --info-text: #93C5FD;
+  --info-bg: rgba(96,165,250,.14);
+  --yellow: #FBBF24;
+  --neutral: #A0A6B0;
+  --ok-deep: #15803D;
+  --warn-deep: #B45309;
+  --err-deep: #B91C1C;
+  --kill: #DC2626;
+  --kill-hover: #EF4444;
+  --on-kill: #FFFFFF;
+  --kill-banner-bg: rgba(220,38,38,.22);
+  --kill-banner-text: #FCA5A5;
+  --danger-zone-bg: rgba(248,113,113,.06);
+  --sidebar-bg: #13161B;
+  --sidebar-text: #E6E8EB;
+  --sidebar-link: #B4BAC4;
+  --sidebar-faint: #8B929C;
+  --sidebar-hover: rgba(96,165,250,.16);
+  --sidebar-border: #2E343E;
 }
-/* Dark theme: light sage surfaces need dark glyphs. */
+/* Dark theme: light green surfaces need dark glyphs. */
 :root[data-theme="dark"] .node.st-done::after,
-:root[data-theme="dark"] .steps li.done .n { color: #2E3324; }
+:root[data-theme="dark"] .steps li.done .n { color: #052E16; }
 * { box-sizing: border-box; }
+/* Đợt AK: ô chọn file có bề rộng cố định của trình duyệt — tràn khỏi thẻ hẹp
+   trên điện thoại (trang Hệ thống bị cuộn ngang). */
+input[type=file] { max-width: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
@@ -270,7 +270,8 @@ h2[id] { scroll-margin-top: 64px; }
   font-size: 14px; }
 .field .hint { font-size: var(--fs-sm); color: var(--muted); margin-top: 4px; }
 .hint { font-size: var(--fs-sm); color: var(--muted); }
-input[type=text], input[type=password], input[type=number], textarea, select {
+input[type=text], input[type=password], input[type=number], input[type=url],
+input[type=email], textarea, select {
   width: 100%; background: var(--input-bg); border: 1px solid var(--border);
   color: var(--text); border-radius: 8px; padding: 9px 12px; font-size: 14px;
   font-family: inherit; }
@@ -280,8 +281,8 @@ textarea { min-height: 90px; resize: vertical; }
 .req { color: var(--err); }
 
 /* log + video wells — terminal-dark in both themes (intentional) */
-pre.log { background: #262420; border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D9D4C7;
+pre.log { background: #1A1D23; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D6DAE0;
   max-height: 220px; overflow: auto; white-space: pre-wrap; }
 video.player { width: 100%; max-width: 360px; border-radius: 12px;
   border: 1px solid var(--border); background: #000; }
@@ -401,6 +402,8 @@ ul.clean li:last-child { border-bottom: none; }
 .notice { color: var(--ok-text); background: var(--ok-bg);
   border: 1px solid var(--ok); border-radius: 12px;
   padding: 10px 14px; margin: 12px 0; }
+/* Cần chú ý (cam) — khác .notice (xanh = đã xong/thành công). */
+.notice.notice-warn { color: var(--warn-text); background: var(--warn-bg); border-color: var(--warn); }
 .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 14px; margin: 12px 0; }
 .model-card { border: 1px solid var(--border); border-radius: 12px;
@@ -488,7 +491,7 @@ ul.clean li:last-child { border-bottom: none; }
 
 /* ---- Advanced options disclosure (studio form) ---- */
 details.advanced { margin: 14px 0; border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px 14px; background: var(--bg3); }
+  border-radius: 12px; padding: 12px 14px; background: var(--bg3); max-width: 640px; }
 details.advanced summary { cursor: pointer; font-weight: 600;
   font-size: var(--fs-sm); color: var(--muted); }
 details.advanced summary:hover { color: var(--text); }
@@ -537,10 +540,15 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   /* 5. Sidebar nav cuộn ngang 1 dòng */
   .sidebar nav { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
   .sidebar nav a { display: inline-block; padding: 12px 14px; }
+  /* Đợt AK: tiêu đề nhóm là khối riêng làm menu vỡ thành 3 hàng, chiếm nửa
+     màn hình điện thoại → ẩn trên mobile để menu đúng 1 dòng cuộn ngang. */
+  .sidebar .nav-group { display: none; }
+  .sidebar { padding: 8px 0 0; }
+  .brand { padding: 0 16px 8px; font-size: 17px; }
 }
 /* 6. Class chết: alias để template cũ không rơi về style lạ */
 .btn-primary { display: inline-block; padding: 8px 16px; border-radius: 8px;
-  background: var(--accent); color: #fff; border: none; cursor: pointer; font-size: var(--fs-md); }
+  background: var(--accent); color: var(--on-accent); border: none; cursor: pointer; font-size: var(--fs-md); }
 .badge-dim { display: inline-block; padding: 2px 8px; border-radius: 99px;
   background: var(--bg3); color: var(--muted); font-size: var(--fs-xs); }
 .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }

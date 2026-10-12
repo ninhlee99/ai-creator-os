@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"hash"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -174,6 +175,14 @@ func (s *Server) destroyAuthSession(w http.ResponseWriter, r *http.Request) {
 func (s *Server) authGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !s.authEnabled() {
+			// Đợt AK: chưa đặt mật khẩu thì chỉ chính máy chủ được vào — mở
+			// app ra LAN/tunnel mà quên mật khẩu không biến thành cửa mở.
+			if s.RemoteNeedsPassword && r.URL.Path != "/healthz" && isRemoteRequest(r) {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(remoteBlockedHTML))
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -190,6 +199,32 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 		http.Redirect(w, r, "/login?next="+r.URL.Path, http.StatusSeeOther)
 	})
 }
+
+// isRemoteRequest: request không đến từ chính máy chủ — địa chỉ không phải
+// loopback, hoặc đi qua proxy/tunnel (cloudflared, Tailscale serve, nginx…)
+// vốn kết nối từ 127.0.0.1 nhưng gắn header chuyển tiếp.
+func isRemoteRequest(r *http.Request) bool {
+	for _, h := range []string{"X-Forwarded-For", "Forwarded", "X-Real-Ip", "Cf-Connecting-Ip", "Tailscale-User-Login"} {
+		if r.Header.Get(h) != "" {
+			return true
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	return ip == nil || !ip.IsLoopback()
+}
+
+const remoteBlockedHTML = `<!doctype html><html lang="vi"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cần đặt mật khẩu — AI Creator OS</title>
+<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;line-height:1.5;color:#1F2328">
+<h1 style="font-size:22px">Cần đặt mật khẩu trước</h1>
+<p>App chưa có mật khẩu nên chỉ mở được trên chính máy đang chạy app.</p>
+<p>Trên máy đó, mở <b>http://127.0.0.1:8080/settings/he-thong</b> → mục <b>Mật khẩu truy cập</b> → đặt mật khẩu. Sau đó vào lại trang này.</p>
+</body></html>`
 
 // handleLogin: GET → trang đăng nhập; POST → kiểm tra mật khẩu.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

@@ -110,9 +110,7 @@ func TestProductsATCard(t *testing.T) {
 	}
 }
 
-// Đợt G: chu kỳ tick AT có UI ở tab Cài đặt · Accesstrade (interval),
-// công tắc on/off ở trang Affiliate (POST /at/settings) — đúng nguyên tắc
-// "UI cho mọi khả năng".
+// Đợt G→AK: chu kỳ + công tắc tick AT cùng ở tab Cài đặt · Accesstrade.
 func TestATAutomationSave(t *testing.T) {
 	s := newTestServer(t)
 	// Trang hiện form chu kỳ.

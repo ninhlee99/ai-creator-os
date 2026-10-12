@@ -46,7 +46,7 @@ func TestReupPageTransformSection(t *testing.T) {
 		t.Fatalf("GET /reup = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Bài đăng (transform)", "giảm rủi ro", "Transform", "Kill"} {
+	for _, want := range []string{"Bài đăng (đã biến đổi)", "giảm rủi ro", "Transform", "Kill"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /reup thiếu %q", want)
 		}
@@ -141,37 +141,6 @@ func TestReupPostPublishValidation(t *testing.T) {
 	rec = postForm(t, s, "/reup/posts/"+strconv.FormatInt(p.ID, 10)+"/publish", url.Values{})
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "err=") {
 		t.Errorf("thiếu kênh phải redirect kèm err, được %q", loc)
-	}
-}
-
-func TestReupSettingsExtended(t *testing.T) {
-	s := newReupServer(t)
-	rec := postJSON(t, s, "/reup/settings",
-		`{"transform_on":true,"transform_level":2,"voiceover_on":false,"videos_per_day":5,"kill_on":true,"kill_n":7,"warmup_on":true,"post_account":"kenh1"}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("lưu settings phải 200, được %d: %s", rec.Code, rec.Body.String())
-	}
-	if v := s.atSettingInt(automation.KeyReupTransformLevel, 1); v != 2 {
-		t.Errorf("transform_level phải 2, được %d", v)
-	}
-	if s.atSettingOn(automation.KeyReupVoiceoverEnabled, true) {
-		t.Errorf("voiceover_on=false phải lưu thành tắt")
-	}
-	if v := s.atSettingInt(automation.KeyReupVideosPerDay, 3); v != 5 {
-		t.Errorf("videos_per_day phải 5, được %d", v)
-	}
-	if v := s.atSettingInt(automation.KeyReupKillZeroN, 5); v != 7 {
-		t.Errorf("kill_n phải 7, được %d", v)
-	}
-	// kill_n vượt trần → cắt về 20.
-	_ = postJSON(t, s, "/reup/settings", `{"kill_n":99}`)
-	if v := s.atSettingInt(automation.KeyReupKillZeroN, 5); v != 20 {
-		t.Errorf("kill_n phải cắt về 20, được %d", v)
-	}
-	// JSON sai → 400.
-	rec = postJSON(t, s, "/reup/settings", "{invalid")
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("JSON sai phải 400, được %d", rec.Code)
 	}
 }
 

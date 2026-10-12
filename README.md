@@ -42,7 +42,7 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 | Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth, badge YouTube Analytics |
 | Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
 | Đội ngũ | `/team` | Sức khỏe 3 pipeline (Affiliate/Reup/Story) từ dữ liệu thật — đợt H2 |
-| Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video chữ động · Jobs · Nhạc trending. Phim điện ảnh đã park |
+| Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video đã tạo · Nhạc trending. Phim điện ảnh và video chữ động đã gỡ |
 | Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (Accesstrade-only từ đợt H1) |
 | Reup | `/reup` | Nguồn Douyin · Hàng đợi tải · Transform 2 mức · Xem trước before/after · Metrics · Kill rule 0-view |
 | Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → tự đăng YouTube private (mặc định bật) |
@@ -82,7 +82,7 @@ vào app.
 |---|---|
 | Sidebar 10 mục, 6 tab Cài đặt, không link chết | ✅ Code chạy thật |
 | Đội ngũ (`/team`): sức khỏe 3 pipeline từ dữ liệu thật | ✅ Đợt H2 |
-| Studio AI — video affiliate + video chữ động + trends | ✅ Code chạy thật |
+| Studio AI — video affiliate + trends | ✅ Code chạy thật |
 | Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |
 | Sổ cái, kill switch, dry-run, MASTER_SWITCH | ✅ |
 | Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ |

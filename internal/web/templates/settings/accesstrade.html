@@ -36,19 +36,25 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tự động</h2>
-  <p class="subtitle">Bật/tắt từng tác vụ tự động ở trang <a href="/products">Affiliate</a> (mục “Tự động Accesstrade”). Ở đây chỉnh chu kỳ.</p>
+  <p class="subtitle">Dừng khẩn cấp và chế độ chạy thử vẫn chặn mọi tác vụ tự động.</p>
   <form method="post" action="/settings/accesstrade/automation">
+    <input type="hidden" name="toggles" value="1">
     <div class="grid2">
       <div class="field">
-        <label>Săn sản phẩm — chu kỳ (giờ)</label>
+        <label class="check"><input type="checkbox" name="hunter_on" value="1"{{if .ATAuto.HunterOn}} checked{{end}}> Tự săn sản phẩm</label>
+        <label>Chu kỳ (giờ)</label>
         <input type="number" name="hunter_hours" min="1" max="168" value="{{.ATHunterHours}}">
+        <label>Số video mỗi lần săn</label>
+        <input type="number" name="hunter_videos" min="0" max="10" value="{{.ATAuto.HunterVideos}}">
       </div>
       <div class="field">
-        <label>Đồng bộ đơn hàng — chu kỳ (phút)</label>
+        <label class="check"><input type="checkbox" name="ordersync_on" value="1"{{if .ATAuto.OrderSyncOn}} checked{{end}}> Tự đồng bộ đơn hàng</label>
+        <label>Chu kỳ (phút)</label>
         <input type="number" name="ordersync_mins" min="5" max="1440" value="{{.ATOrderSyncMins}}">
+        <label class="check"><input type="checkbox" name="campaign_on" value="1"{{if .ATAuto.CampaignChkOn}} checked{{end}}> Kiểm tra duyệt chiến dịch mỗi ngày</label>
       </div>
     </div>
-    <button type="submit" class="btn btn-secondary btn-sm">Lưu chu kỳ</button>
+    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
   </form>
 </div>
 

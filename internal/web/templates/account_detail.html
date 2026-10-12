@@ -19,7 +19,7 @@
   <h2 style="margin-top:0;border:none;padding:0">Thông tin</h2>
   <dl class="kv">
     <dt>Persona</dt><dd>{{.Acct.PersonaLabel}}</dd>
-    <dt>Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
+    <dt>Chủ đề</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
     <dt>Followers</dt><dd>{{if .GrowthHasFollowers}}{{.GrowthFollowers}}{{else}}chưa kết nối{{end}}</dd>
     <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
@@ -35,7 +35,7 @@
   <h2 style="margin-top:0;border:none;padding:0">Persona: {{.Persona.Label}}</h2>
   <p><strong>Phong cách nội dung:</strong> {{.Persona.LiveStyle}}</p>
   {{if .Persona.AffiliateNiches}}
-  <p><strong>Niche affiliate phù hợp:</strong></p>
+  <p><strong>Chủ đề affiliate phù hợp:</strong></p>
   <ul class="clean">{{range .Persona.AffiliateNiches}}<li>{{.}}</li>{{end}}</ul>
   {{end}}
   {{if .Persona.RedLines}}

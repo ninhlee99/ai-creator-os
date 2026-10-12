@@ -39,6 +39,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
+	"github.com/ninhlee99/ai-creator-os/internal/engines/local"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
@@ -290,7 +291,7 @@ func main() {
 	var vieNeu *tts.VieNeuProvider
 	if p, ok := ttsChain.Provider("vieneu"); ok {
 		if vn, ok := p.(*tts.VieNeuProvider); ok {
-		vieNeu = vn
+			vieNeu = vn
 			if reg.VieNeuPresent() {
 				guard.Go(ctx, "sidecar:vieneu", func(c context.Context) {
 					log.Printf("sidecar: vieneu starting (first run can take a while)")
@@ -395,6 +396,31 @@ func main() {
 	}
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
+	}
+	// Đợt AK: /healthz báo tick kẹt (needs_restart) + sức khỏe sidecar để
+	// watchdog ngoài tự khởi động lại app thay vì chỉ ghi log.
+	srv.RemoteNeedsPassword = true
+	srv.StaleTicks = func() []string { return tickSup.Stale(time.Now()) }
+	srv.Sidecars = func() map[string]web.SidecarBeat {
+		out := map[string]web.SidecarBeat{}
+		add := func(name string, p *local.Process) {
+			if p == nil {
+				return
+			}
+			herr, at, fails := p.HealthStatus()
+			b := web.SidecarBeat{State: p.State(), Restarts: p.RestartCount(), HealthFails: fails, CheckedAt: at}
+			if herr != nil {
+				b.HealthErr = herr.Error()
+			}
+			out[name] = b
+		}
+		if reg.Has(llamaModel) {
+			add("llama-server", llamaProc)
+		}
+		if vieNeu != nil {
+			add("vieneu", vieNeu.Process())
+		}
+		return out
 	}
 	// Đợt 3 (A7): enabled local tiers ensure their own models at startup;
 	// progress shows in Settings + the homepage runtime block.

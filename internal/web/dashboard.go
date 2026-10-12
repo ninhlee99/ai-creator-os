@@ -34,9 +34,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"CommissionRevenue", commRevenue,
 		"Decisions", decisions,
 		"GrowthAlerts", s.recentGrowthAlerts(accounts),
-		"LocalRuntimes", s.localRuntimeViews(),
 		"Today", today,
-		"NJobs", s.Jobs.ActiveCount(),
+		"NJobs", s.activeStudioJobs(),
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
 		"HasKeys", s.hasAnyAPIKey(),
 		"HasStudioJobs", s.Studio != nil && len(s.Studio.ListJobs(1)) > 0,
@@ -57,3 +56,19 @@ func (s *Server) hasAnyAPIKey() bool {
 }
 
 // ---------------------------------------------------------------- accounts
+
+// activeStudioJobs đếm video Studio/Kể chuyện đang chờ hoặc đang dựng
+// (Đợt AK: trước đây thẻ "Video đang dựng" chỉ đếm job video chữ động nên
+// luôn báo "chưa có" dù Studio đang dựng).
+func (s *Server) activeStudioJobs() int {
+	if s.Studio == nil {
+		return 0
+	}
+	n := 0
+	for _, j := range s.Studio.ListJobs(100) {
+		if j.Status == "queued" || j.Status == "running" {
+			n++
+		}
+	}
+	return n
+}

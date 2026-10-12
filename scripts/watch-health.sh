@@ -1,40 +1,67 @@
 #!/bin/bash
-# Watchdog ngoài cho AI Creator OS (Đợt S) — chạy định kỳ bằng cron hoặc
-# launchd (StartInterval), vd: kiểm tra mỗi 5 phút.
+# Watchdog ngoài cho AI Creator OS (Đợt S, tự hồi phục từ Đợt AK).
 #
 # Vì sao cần: KeepAlive của launchd chỉ restart khi process *exit*. Process
 # bị deadlock/treo (tick kẹt) thì launchd tưởng vẫn khỏe. Script này gọi
-# GET /healthz: không kết nối được hoặc db_ok=false → ghi log + exit 1
-# (cron/launchd ghi nhận), để người vận hành hoặc bước tiếp theo xử lý.
+# GET /healthz và coi là LỖI khi: không kết nối được, db_ok=false, hoặc
+# needs_restart=true (có tác vụ nền kẹt).
 #
-# Dùng với cron (crontab -e):
+# Lỗi 2 lần LIÊN TIẾP (tránh restart nhầm lúc app đang khởi động) → tự
+# khởi động lại app: Mac qua launchd (scripts/install-launchd.sh), Linux qua
+# systemd --user unit "aicos" (deploy/README.md). Không có cả hai → chỉ ghi
+# log + exit 1.
+#
+# scripts/install-launchd.sh đã tự cài script này chạy mỗi 5 phút — không
+# cần cron. Muốn dùng cron thay thế:
 #   */5 * * * * /path/to/ai-creator-os/scripts/watch-health.sh >> ~/aicos-data/logs/watchdog.log 2>&1
 #
 # Biến môi trường:
-#   AICOS_HEALTH_URL  URL health (mặc định http://127.0.0.1:8080/healthz)
+#   AICOS_HEALTH_URL         URL health (mặc định http://127.0.0.1:8080/healthz)
+#   AICOS_WATCHDOG_RESTART   =0 → chỉ ghi log, không tự khởi động lại
+#   AICOS_LAUNCHD_LABEL      nhãn launchd của app (mặc định com.ninhlee.aicos)
+#   WATCHDOG_VERBOSE         =1 → ghi 1 dòng cả khi khỏe
 set -u
 
 URL="${AICOS_HEALTH_URL:-http://127.0.0.1:8080/healthz}"
-
-resp="$(curl -sS --max-time 10 "$URL" 2>&1)"
-rc=$?
+LABEL="${AICOS_LAUNCHD_LABEL:-com.ninhlee.aicos}"
+STATE="${TMPDIR:-/tmp}/aicos-watchdog.fails"
 stamp="$(date '+%Y-%m-%d %H:%M:%S')"
 
-if [ $rc -ne 0 ]; then
-  echo "$stamp WATCHDOG: không kết nối được $URL ($resp)"
-  exit 1
+problem=""
+resp="$(curl -sS --max-time 10 "$URL" 2>&1)"
+if [ $? -ne 0 ]; then
+  problem="không kết nối được $URL ($resp)"
+elif ! printf '%s' "$resp" | grep -q '"db_ok":true'; then
+  problem="app trả lời nhưng DB không khỏe: $resp"
+elif printf '%s' "$resp" | grep -q '"needs_restart":true'; then
+  problem="có tác vụ nền kẹt: $(printf '%s' "$resp" | grep -o '"stale_ticks":\[[^]]*\]')"
 fi
 
-# db_ok=false → app sống nhưng DB có vấn đề.
-if ! printf '%s' "$resp" | grep -q '"db_ok":true'; then
-  echo "$stamp WATCHDOG: app trả lời nhưng DB không khỏe: $resp"
-  exit 1
+if [ -z "$problem" ]; then
+  rm -f "$STATE"
+  if [ "${WATCHDOG_VERBOSE:-0}" = "1" ]; then
+    echo "$stamp WATCHDOG: OK ($(printf '%s' "$resp" | grep -o '"uptime_sec":[0-9]*'))"
+  fi
+  exit 0
 fi
 
-# Ghi 1 dòng gọn mỗi lần kiểm tra OK? Không — chỉ ghi khi có vấn đề,
-# tránh spam log trên máy 24/7. Muốn verbose: WATCHDOG_VERBOSE=1.
-if [ "${WATCHDOG_VERBOSE:-0}" = "1" ]; then
-  uptime="$(printf '%s' "$resp" | grep -o '"uptime_sec":[0-9]*')"
-  echo "$stamp WATCHDOG: OK ($uptime)"
+fails=$(( $(cat "$STATE" 2>/dev/null || echo 0) + 1 ))
+echo "$fails" > "$STATE"
+echo "$stamp WATCHDOG: $problem (lần $fails liên tiếp)"
+
+if [ "$fails" -ge 2 ] && [ "${AICOS_WATCHDOG_RESTART:-1}" != "0" ]; then
+  if command -v launchctl >/dev/null 2>&1 &&
+     launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    echo "$stamp WATCHDOG: tự khởi động lại app ($LABEL)"
+    launchctl kickstart -k "gui/$(id -u)/$LABEL" && rm -f "$STATE"
+  elif command -v systemctl >/dev/null 2>&1; then
+    # Linux: unit user "aicos" (deploy/README.md). cron không có biến
+    # môi trường của phiên đăng nhập → tự đặt XDG_RUNTIME_DIR.
+    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    if systemctl --user is-enabled aicos >/dev/null 2>&1; then
+      echo "$stamp WATCHDOG: tự khởi động lại app (systemd --user aicos)"
+      systemctl --user restart aicos && rm -f "$STATE"
+    fi
+  fi
 fi
-exit 0
+exit 1

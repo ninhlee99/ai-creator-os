@@ -149,3 +149,55 @@ func TestAuthGateEnabledFullFlow(t *testing.T) {
 		t.Fatal("đăng xuất rồi mà session vẫn sống")
 	}
 }
+
+// Đợt AK: chưa có mật khẩu → chỉ chính máy chủ vào được; LAN/tunnel bị chặn,
+// /healthz vẫn mở. Đặt mật khẩu xong → về luồng đăng nhập bình thường.
+func TestRemoteBlockedWithoutPassword(t *testing.T) {
+	s := newTestServer(t)
+	s.RemoteNeedsPassword = true
+	h := s.Routes()
+	do := func(path, remote string, hdr map[string]string) int {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.RemoteAddr = remote
+		for k, v := range hdr {
+			r.Header.Set(k, v)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, r)
+		return rec.Code
+	}
+	if c := do("/settings", "192.168.1.5:5000", nil); c != http.StatusForbidden {
+		t.Errorf("LAN chưa mật khẩu = %d, want 403", c)
+	}
+	if c := do("/settings", "127.0.0.1:5000", map[string]string{"Cf-Connecting-Ip": "1.2.3.4"}); c != http.StatusForbidden {
+		t.Errorf("tunnel chưa mật khẩu = %d, want 403", c)
+	}
+	if c := do("/healthz", "192.168.1.5:5000", nil); c != http.StatusOK {
+		t.Errorf("/healthz từ LAN = %d, want 200", c)
+	}
+	if c := do("/settings/he-thong", "[::1]:5000", nil); c == http.StatusForbidden {
+		t.Errorf("máy chủ (::1) không được bị chặn")
+	}
+	if err := s.setAuthPassword("mat-khau-dai-123"); err != nil {
+		t.Fatal(err)
+	}
+	if c := do("/settings", "192.168.1.5:5000", nil); c != http.StatusSeeOther {
+		t.Errorf("LAN có mật khẩu = %d, want 303 tới đăng nhập", c)
+	}
+}
+
+func TestSameOriginBehindProxy(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8080/kill", nil)
+	r.Header.Set("Origin", "https://may.tailnet.ts.net")
+	if sameOrigin(r) {
+		t.Fatal("origin lạ không có X-Forwarded-Host phải bị chặn")
+	}
+	r.Header.Set("X-Forwarded-Host", "may.tailnet.ts.net")
+	if !sameOrigin(r) {
+		t.Fatal("origin khớp X-Forwarded-Host phải qua")
+	}
+	r.Header.Set("Origin", "https://evil.example")
+	if sameOrigin(r) {
+		t.Fatal("origin lạ vẫn phải bị chặn")
+	}
+}

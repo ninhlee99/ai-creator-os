@@ -101,6 +101,12 @@
       var h = a.getAttribute('href');
       if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
     });
+    // Mobile: menu là 1 dòng cuộn ngang — đưa mục đang mở vào tầm nhìn.
+    var nav = document.querySelector('.sidebar nav');
+    var act = nav && nav.querySelector('a.active');
+    if (act && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = act.offsetLeft - nav.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+    }
   })();
 
   // -------------------------------------------------------- file-picker

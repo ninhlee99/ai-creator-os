@@ -260,7 +260,7 @@ func (s *Server) handleModelPhoto(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, path)
+	serveMediaFile(w, r, path)
 }
 
 var modelFileRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(jpg|jpeg|png|webp)$`)

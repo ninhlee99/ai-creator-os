@@ -3,19 +3,18 @@
 <h1>Kênh</h1>
 <p class="subtitle">Danh sách kênh TikTok, YouTube, Facebook của bạn. Mỗi kênh có lịch đăng và giới hạn riêng.</p>
 
+{{if .Accounts}}
 <div class="toolbar">
   <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
-
-{{if .Accounts}}
 <div class="table-wrap">
 <table>
-  <tr><th>Kênh</th><th>Trạng thái</th><th title="Chân dung người dẫn mà AI đóng vai">Tính cách</th><th>Niche</th><th>Người theo dõi</th><th></th></tr>
+  <tr><th>Kênh</th><th>Trạng thái</th><th title="Chân dung người dẫn mà AI đóng vai">Tính cách</th><th>Chủ đề</th><th>Người theo dõi</th><th></th></tr>
   {{range .Accounts}}
   <tr>
     <td><strong>{{.Username}}</strong>
       {{if .Theme}} <span class="badge badge-draft">{{themeLabel .Theme}}</span>{{end}}
-      {{if .Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}
+      {{if .Autopilot}} <span class="badge badge-ok">tự động</span>{{end}}
     </td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td>{{.PersonaLabel}}</td>

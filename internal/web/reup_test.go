@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 )
 
@@ -74,7 +75,7 @@ func TestReupPageRenders(t *testing.T) {
 		t.Fatalf("GET /reup = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Reup Douyin", "Thần Tiên", "Nguồn Douyin", "yt-dlp", "Hàng đợi tải", "Tự động"} {
+	for _, want := range []string{"Reup Douyin", "Thần Tiên", "Nguồn Douyin", "yt-dlp", "Hàng đợi tải", "Tự quét"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /reup thiếu %q", want)
 		}
@@ -209,34 +210,34 @@ func TestReupSourceAddToggleDelete(t *testing.T) {
 	}
 }
 
+// Đợt AK: cài đặt Reup chỉ còn 1 chỗ — form Cài đặt · Reup (bỏ JSON
+// /reup/settings trùng ở trang Reup). Giá trị được cắt về biên.
 func TestReupSettingsSave(t *testing.T) {
 	s := newReupServer(t)
-	rec := postJSON(t, s, "/reup/settings",
-		`{"discover_on":false,"interval_hours":12,"per_source":5}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("lưu settings phải 200, được %d", rec.Code)
+	rec := postForm(t, s, "/settings/reup/save", url.Values{
+		"discover_hours": {"12"}, "videos_per_source": {"99"},
+		"transform_level": {"2"}, "videos_per_day": {"5"},
+		"kill_on": {"1"}, "kill_n": {"99"}, "post_account": {"kenh1"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("lưu phải redirect, được %d", rec.Code)
 	}
-	if v := s.atSettingOn("reup.discover_enabled", true); v {
-		t.Errorf("discover_on=false phải lưu thành tắt")
+	for key, want := range map[string]int{
+		automation.KeyReupDiscoverIntervalH: 12,
+		automation.KeyReupVideosPerSource:   10,
+		automation.KeyReupTransformLevel:    2,
+		automation.KeyReupVideosPerDay:      5,
+		automation.KeyReupKillZeroN:         20,
+	} {
+		if v := s.atSettingInt(key, -1); v != want {
+			t.Errorf("%s = %d, want %d", key, v, want)
+		}
 	}
-	if v := s.atSettingInt("reup.discover_interval_hours", 6); v != 12 {
-		t.Errorf("interval_hours phải = 12, được %d", v)
+	if s.atSettingOn(automation.KeyReupDiscoverEnabled, true) != true {
+		t.Errorf("form không có discover_on không được tắt tự quét")
 	}
-	if v := s.atSettingInt("reup.videos_per_source", 3); v != 5 {
-		t.Errorf("per_source phải = 5, được %d", v)
-	}
-	// JSON sai → 400.
-	rec = postJSON(t, s, "/reup/settings", "{invalid")
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("JSON sai phải 400, được %d", rec.Code)
-	}
-	// per_source vượt trần → cắt về 10.
-	rec = postJSON(t, s, "/reup/settings", `{"per_source":99}`)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status %d", rec.Code)
-	}
-	if v := s.atSettingInt("reup.videos_per_source", 3); v != 10 {
-		t.Errorf("per_source phải cắt về 10, được %d", v)
+	if rec := postJSON(t, s, "/reup/settings", "{}"); rec.Code != http.StatusNotFound && rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("/reup/settings đã gỡ, được %d", rec.Code)
 	}
 }
 

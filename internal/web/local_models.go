@@ -60,23 +60,3 @@ func (s *Server) EnsureLocalModels(ctx context.Context) {
 		}
 	}
 }
-
-// localRuntimeView is one wired local runtime's homepage status: name +
-// state (rendered as a badge); the detail rides in the tooltip.
-type localRuntimeView struct {
-	Name   string
-	State  string
-	Detail string
-}
-
-// localRuntimeViews lists every wired (non-nil) local runtime — VieNeu
-// TTS. Unwired runtimes never appear, so the homepage block only ever
-// states what is actually connected. (Avatar sidecar đã park — PIVOT
-// 2026-10-02.)
-func (s *Server) localRuntimeViews() []localRuntimeView {
-	var out []localRuntimeView
-	if v := s.vieneuView(); v.Connected {
-		out = append(out, localRuntimeView{Name: "VieNeu TTS", State: v.State, Detail: v.Detail})
-	}
-	return out
-}

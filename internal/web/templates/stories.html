@@ -14,12 +14,14 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Kể chuyện mới</h2>
-  <p class="hint">App viết truyện ở ngôi thứ nhất, vẽ ảnh 16:9 từng cảnh, đọc giọng, dựng video 16:9 có phụ đề. Kiểm tra: đủ nét 1920×1080, có tiếng, dài hơn 30 giây.</p>
+  <p class="hint">Chỉ cần nhập chủ đề — app tự viết truyện, vẽ ảnh, đọc giọng và dựng video có phụ đề.</p>
   <form method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang tạo…';}">
     <div class="field">
       <label>Chủ đề <span class="req">*</span></label>
       <input type="text" name="topic" required placeholder="vd: đêm mưa ở Đà Lạt khiến tôi đổi nghề">
     </div>
+    <details class="advanced">
+      <summary>Tùy chọn (thể loại, giọng, số cảnh, độ dài, nhạc)</summary>
     <div class="grid2">
       <div class="field">
         <label>Thể loại</label>
@@ -51,6 +53,7 @@
         </select>
       </div>
     </div>
+    </details>
     <button type="submit" class="btn btn-primary">Viết &amp; dựng</button>
   </form>
 </div>
@@ -97,9 +100,9 @@
   {{end}}
 </div>
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Mặc định</h2>
-  <form method="post" action="/stories/settings">
+<details class="advanced">
+  <summary>⚙️ Mặc định &amp; tự động (lịch, hàng đợi chủ đề, tự đăng, thử lại)</summary>
+  <form method="post" action="/stories/settings" style="margin-top:12px">
     <div class="grid2">
       <div class="field">
         <label>Thể loại mặc định</label>
@@ -164,12 +167,12 @@
     </div>
     <button type="submit" class="btn btn-secondary">Lưu</button>
   </form>
-</div>
+</details>
 {{else}}
 <div class="empty-state">
   <div class="es-icon">🎬</div>
   <h3>Studio chưa sẵn sàng</h3>
-  <p>Kiểm tra công cụ ở Cài đặt · Hệ thống (mục Công cụ trên máy).</p>
+  <p>Kiểm tra công cụ ở Cài đặt · Hệ thống.</p>
   <a class="btn" href="/settings/he-thong">Mở Cài đặt · Hệ thống</a>
 </div>
 {{end}}

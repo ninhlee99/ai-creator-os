@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,22 +66,12 @@ func (s *Server) writeJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// handleStudio renders the Studio page: creation forms, job list, trends.
-// Tab "ai" (mặc định) là Studio AI; tab "chu" là Video chữ động (kinetic —
-// trang /content cũ đã gộp vào đây, Đợt 2; job cũ trong store vẫn hiện).
+// handleStudio renders the Studio page: creation form, job links, trends.
+// Đợt AK: tab "Video chữ động" (kinetic) đã gỡ — trái format affiliate đã
+// chốt (ảnh + nhạc, không chữ) và không tự động hóa nào dùng.
 func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
-	tab := r.URL.Query().Get("tab")
-	if tab != "chu" {
-		tab = "ai"
-	}
-	var contentJobs []Job
-	if s.Jobs != nil {
-		contentJobs = s.Jobs.All()
-	}
 	if s.Studio == nil {
 		s.render(w, "studio", s.ctx(
-			"Tab", tab,
-			"ContentJobs", contentJobs,
 			"Error", "Studio chưa được khởi tạo."))
 		return
 	}
@@ -100,26 +89,18 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	mgOK := false
-	mgKeys := 0
 	if mg := s.Studio.MediaGen(); mg != nil {
 		mgOK = mg.Healthy(r.Context())
-		if g, ok := mg.(interface{ KeyCount() int }); ok {
-			mgKeys = g.KeyCount()
-		}
 	}
 	s.render(w, "studio", s.ctx(
-		"Tab", tab,
-		"ContentJobs", contentJobs,
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
 		"JobCount", jobCount,
 		"ActiveJobs", activeJobs,
 		"Sounds", sounds,
-		"SoundCount", len(sounds),
 		"TopSound", topSound(sounds),
 		"TrendsSource", studio.TrendsSource,
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
-		"MediaGenKeys", mgKeys,
 		"Error", r.URL.Query().Get("err"),
 	))
 }
@@ -380,7 +361,7 @@ func (s *Server) handleStudioAsset(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, path)
+	serveMediaFile(w, r, path)
 }
 
 // handleStudioTrends serves the VN trending chart: HTML page (R2-W3),
@@ -426,85 +407,6 @@ func (s *Server) handleStudioMediaGenHealth(w http.ResponseWriter, r *http.Reque
 
 var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.mp4$`)
 
-// handleStudioKineticCreate queues one kinetic-typography render from the
-// Studio "Video chữ động" tab (trang /content cũ đã gộp vào đây — Đợt 2).
-// Old jobs stay in the same JSON store, so videos created before the merge
-// remain listed and playable under the tab.
-func (s *Server) handleStudioKineticCreate(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		s.fail(w, err, "parse kinetic form")
-		return
-	}
-	var captions []string
-	for _, c := range strings.Split(r.PostFormValue("captions"), "\n") {
-		if c = strings.TrimSpace(c); c != "" {
-			captions = append(captions, c)
-		}
-	}
-	job := Job{
-		ID:        NewJobID(),
-		Title:     strings.TrimSpace(r.PostFormValue("title")),
-		Captions:  captions,
-		Narration: strings.TrimSpace(r.PostFormValue("narration")),
-		Status:    "queued",
-		CreatedAt: s.nowISO(),
-		Log:       "Đang chờ…",
-	}
-	if job.Title == "" {
-		seeOther(w, r, "/studio?tab=chu&err="+url.QueryEscape("Chưa nhập tiêu đề."))
-		return
-	}
-	s.Jobs.Add(job)
-	go s.runJob(job.ID) // never blocks the dashboard; panics are contained
-	seeOther(w, r, "/studio?tab=chu")
-}
-
-// runJob renders one content job in the background and records the
-// decision. It never crashes the dashboard.
-func (s *Server) runJob(jobID string) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			log.Printf("web: job %s panic: %v", jobID, rec)
-			s.Jobs.Update(jobID, func(j *Job) {
-				j.Status = "failed"
-				j.FinishedAt = s.nowISO()
-			})
-		}
-	}()
-	job, ok := s.Jobs.Get(jobID)
-	if !ok {
-		return
-	}
-	s.Jobs.Update(jobID, func(j *Job) {
-		j.Status = "running"
-		j.Log = "Bắt đầu dựng video…"
-	})
-	ctx := context.Background()
-	res, err := s.renderer.Render(ctx, job, s.TTS, func(line string) {
-		s.Jobs.AppendLog(jobID, line)
-	})
-	if err != nil {
-		log.Printf("web: render job %s: %v", jobID, err)
-		s.Jobs.Update(jobID, func(j *Job) {
-			j.Status = "failed"
-			j.FinishedAt = s.nowISO()
-		})
-		s.Jobs.AppendLog(jobID, fmt.Sprintf("Lỗi: %v", err))
-		return
-	}
-	title := job.Title
-	if err := s.Ledger.Decide("content", "video_rendered", &title,
-		fmt.Sprintf("kinetic video %.1fs", res.Seconds),
-		map[string]any{"job": job.ID, "voice": res.HasAudio}); err != nil {
-		log.Printf("web: decide video_rendered: %v", err)
-	}
-	s.Jobs.Update(jobID, func(j *Job) {
-		j.Status = "done"
-		j.Output = res.Output
-		j.FinishedAt = s.nowISO()
-	})
-}
-
 func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	// Strict allowlist: a single path segment, .mp4 only. Anything else
@@ -513,7 +415,7 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, s.OutDir+"/"+name)
+	serveMediaFile(w, r, filepath.Join(s.OutDir, name))
 }
 
 // --------------------------------------------------------------- publishers

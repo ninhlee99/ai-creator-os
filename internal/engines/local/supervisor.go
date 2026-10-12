@@ -47,17 +47,19 @@ type Process struct {
 	MaxRestarts    int
 	BackoffBase    time.Duration
 
-	mu          sync.Mutex
-	cmd         *exec.Cmd
-	state       string
-	stopping    bool
-	stopCh      chan struct{}
-	monitorDone chan struct{}
-	healthStop  chan struct{}
-	startedAt   time.Time
-	restarts    int
-	lastErr     error
-	lastHealth  error
+	mu           sync.Mutex
+	cmd          *exec.Cmd
+	state        string
+	stopping     bool
+	stopCh       chan struct{}
+	monitorDone  chan struct{}
+	healthStop   chan struct{}
+	startedAt    time.Time
+	restarts     int
+	lastErr      error
+	lastHealth   error
+	lastHealthAt time.Time
+	healthFails  int
 
 	outMu    sync.Mutex
 	outLines []string
@@ -102,6 +104,8 @@ func (p *Process) Start(ctx context.Context) error {
 	p.restarts = 0
 	p.lastErr = nil
 	p.lastHealth = nil
+	p.lastHealthAt = time.Time{}
+	p.healthFails = 0
 	if err := p.spawnLocked(); err != nil {
 		return err
 	}
@@ -323,6 +327,16 @@ func (p *Process) LastHealthError() error {
 	return p.lastHealth
 }
 
+// HealthStatus returns lightweight health telemetry for monitoring surfaces.
+// The returned error is the latest health error (nil means the last check passed),
+// checkedAt is when the latest probe completed, and fails is the consecutive
+// failure count.
+func (p *Process) HealthStatus() (err error, checkedAt time.Time, fails int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.lastHealth, p.lastHealthAt, p.healthFails
+}
+
 func (p *Process) healthLoop() {
 	t := time.NewTicker(p.healthInterval())
 	defer t.Stop()
@@ -358,6 +372,12 @@ func (p *Process) checkHealth() {
 	}
 	p.mu.Lock()
 	p.lastHealth = herr
+	p.lastHealthAt = time.Now()
+	if herr != nil {
+		p.healthFails++
+	} else {
+		p.healthFails = 0
+	}
 	p.mu.Unlock()
 }
 

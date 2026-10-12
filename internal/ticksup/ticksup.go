@@ -227,7 +227,7 @@ func (s *Supervisor) RunWatchdog(ctx context.Context, interval time.Duration) {
 					log.Printf("watchdog: tick %q stale — quá lâu chưa chạy", name)
 					s.raiseAlert("tick_stale", "critical",
 						fmt.Sprintf("Tác vụ nền %q quá lâu chưa chạy — có thể đã kẹt.", name),
-						"Khởi động lại app nếu sau 30 phút vẫn báo.")
+						"Watchdog sức khỏe sẽ tự khởi động lại app trong ~10 phút; chưa cài watchdog thì tự khởi động lại app.")
 				}
 			}
 		}

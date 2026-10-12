@@ -1,8 +1,10 @@
 package web
 
 import (
+	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"log"
@@ -35,6 +37,14 @@ var staticCSS []byte
 
 //go:embed static/app.js
 var staticJS []byte
+
+// assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
+// nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
+// trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
+var assetVersion = func() string {
+	h := sha256.Sum256(append(append([]byte{}, staticCSS...), staticJS...))
+	return hex.EncodeToString(h[:])[:10]
+}()
 
 // Server is the web dashboard. Exported fields are the wiring surface:
 // the parent worker injects the ledger, account manager, config, engines
@@ -77,7 +87,6 @@ type Server struct {
 	AT     *accesstrade.Store
 	VieNeu VieNeuCtl
 	Health map[string]HealthChecker
-	Jobs   *JobStore
 	// Reup là kho nguồn + video Douyin (trụ reup). Injected bởi cmd wiring;
 	// nil khi DB mở lỗi — trang /reup fail-closed trung thực.
 	Reup *reup.Store
@@ -92,10 +101,8 @@ type Server struct {
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
-	// OutDir holds rendered videos (served at /media/). JobsPath is the
-	// JobStore file.
-	OutDir   string
-	JobsPath string
+	// OutDir holds rendered videos (served at /media/).
+	OutDir string
 	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
 	// single place state lives; derived from the ledger path (R2-W7).
 	DataDir string
@@ -111,6 +118,14 @@ type Server struct {
 	// QuotaCircuit trả về (đang mở, mở tới khi nào) của ngắt mạch quota
 	// ngày. Nil = không dùng.
 	QuotaCircuit func() (open bool, until string)
+	// RemoteNeedsPassword: chưa đặt mật khẩu thì chặn mọi truy cập không
+	// đến từ chính máy chủ (Đợt AK). main bật; test mặc định tắt.
+	RemoteNeedsPassword bool
+	// StaleTicks trả về tên các tick quá hạn chưa chạy (kẹt) — Đợt AK:
+	// /healthz báo needs_restart để watchdog ngoài tự khởi động lại app.
+	StaleTicks func() []string
+	// Sidecars trả về sức khỏe các tiến trình phụ (llama-server, VieNeu).
+	Sidecars func() map[string]SidecarBeat
 
 	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
 	// thời điểm hết hạn; restart là đăng nhập lại.
@@ -120,7 +135,6 @@ type Server struct {
 	db        *sql.DB // read handle for decision/analytics queries
 	oauth     oauthStates
 	templates map[string]*template.Template
-	renderer  Renderer
 
 	// VieNeu model-download progress (polled by the settings page).
 	vieneuMu         sync.Mutex
@@ -173,21 +187,16 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		StartedAt: time.Now(), // Đợt S: /healthz
 		db:        db,
 	}
-	// R2-W7: job file follows the -data flag (it used to be hardcoded to
-	// ./data/content_jobs.json regardless of where the DBs lived).
-	s.JobsPath = filepath.Join(s.DataDir, "content_jobs.json")
 	s.applyPersistedEnv()
 	if gs, err := growth.NewStore(db); err != nil {
 		log.Printf("web: growth store: %v", err)
 	} else {
 		s.Growth = gs
 	}
-	s.renderer = ffmpegRenderer{s: s}
 	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
 		db.Close()
 		return nil, err
 	}
-	s.Jobs = NewJobStore(s.JobsPath)
 	if err := s.parseTemplates(); err != nil {
 		db.Close()
 		return nil, err
@@ -224,6 +233,7 @@ func (s *Server) nowISO() string {
 // -------------------------------------------------------------- templates
 
 var templateFuncs = template.FuncMap{
+	"assetVer": func() string { return assetVersion },
 	// fmtTime renders slot minutes-since-midnight as HH:MM.
 	"fmtTime": func(min int) string {
 		return fmt.Sprintf("%02d:%02d", min/60, min%60)

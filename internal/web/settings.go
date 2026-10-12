@@ -221,7 +221,14 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"ATStoreOK":   s.AT != nil,
 		// Accesstrade automation (Đợt G): interval tick cho tab Cài đặt ·
 		// Accesstrade (công tắc on/off nằm ở trang Affiliate, POST /at/settings).
-		"ATHunterHours":   s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
+		"ATHunterHours": s.atSettingInt(automation.KeyATHunterIntervalHrs, 24),
+		// Đợt AK: bật/tắt tick AT gộp về đây (trước nằm rời ở trang Affiliate).
+		"ATAuto": map[string]any{
+			"HunterOn":      s.atSettingOn(automation.KeyATHunterEnabled, true),
+			"OrderSyncOn":   s.atSettingOn(automation.KeyATOrderSyncEnabled, true),
+			"CampaignChkOn": s.atSettingOn(automation.KeyATCampaignCheckOn, true),
+			"HunterVideos":  s.atSettingInt(automation.KeyATHunterVideos, 3),
+		},
 		"ATOrderSyncMins": s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30),
 		// Reup (Đợt E): tab Cài đặt · Reup.
 		"ReupCfg": s.reupSettingsCfg(),
@@ -236,6 +243,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		// Đợt R+S: heartbeat các tick + trạng thái ngắt mạch quota.
 		"TickBeats":    s.tickBeatViews(),
 		"QuotaCircuit": s.quotaCircuitView(),
+		"Sidecars":     s.sidecarViews(),
 		// Đợt L: % đĩa đã dùng cho thẻ Hệ thống (disk guard tự dọn khi đầy).
 		"DiskUsage": s.diskUsageView(),
 		// Đợt M2: lần sao lưu tự động gần nhất.
@@ -259,14 +267,20 @@ func (s *Server) diskUsageView() map[string]any {
 	if err != nil || s.DataDir == "" {
 		return map[string]any{"Pct": -1, "Badge": "badge-draft"}
 	}
-	badge := "badge-ok"
+	return map[string]any{"Pct": pct, "Badge": diskBadge(pct)}
+}
+
+// diskBadge: đỏ từ 85% (ngưỡng tự dọn mặc định của self-heal), cam từ 75%.
+// Đợt AK: trước đây ≥90% dùng badge-no (xám, nghĩa "tắt") — đĩa sắp đầy mà
+// trông như bình thường.
+func diskBadge(pct int) string {
 	switch {
-	case pct >= 90:
-		badge = "badge-no"
+	case pct >= 85:
+		return "badge-err"
 	case pct >= 75:
-		badge = "badge-warn"
+		return "badge-warn"
 	}
-	return map[string]any{"Pct": pct, "Badge": badge}
+	return "badge-ok"
 }
 
 // apiBudgetFrom reports where the API budget value comes from (honest
@@ -349,7 +363,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
-		"TickBeats", "QuotaCircuit")
+		"TickBeats", "QuotaCircuit", "Sidecars")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
@@ -388,7 +402,7 @@ func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request
 type aiCapabilityView struct {
 	Label     string
 	Status    string // ok | fail | unknown
-	Badge     string // badge-ok | badge-no | badge-warn
+	Badge     string // badge-ok | badge-err | badge-warn
 	Text      string // nhãn tiếng Việt
 	CheckedAt string
 	Detail    string
@@ -407,7 +421,7 @@ func (s *Server) aiCapabilityViews() []aiCapabilityView {
 		case "ok":
 			v.Badge, v.Text = "badge-ok", "Hoạt động"
 		case "fail":
-			v.Badge, v.Text = "badge-no", "Không hoạt động"
+			v.Badge, v.Text = "badge-err", "Không hoạt động"
 		default:
 			v.Badge, v.Text = "badge-warn", "Chưa kiểm tra"
 		}

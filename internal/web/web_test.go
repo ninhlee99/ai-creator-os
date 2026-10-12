@@ -68,7 +68,7 @@ func TestDashboard(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "Tổng quan mạng lưới") {
+	if body := rec.Body.String(); !strings.Contains(body, "<h1>Tổng quan</h1>") {
 		t.Fatalf("dashboard body missing title; got %d bytes", len(body))
 	}
 }
@@ -251,7 +251,7 @@ func TestAllPagesRender(t *testing.T) {
 	}
 
 	pages := map[string]string{
-		"/":                         "Tổng quan mạng lưới",
+		"/":                         "<h1>Tổng quan</h1>",
 		"/accounts":                 "Kênh",
 		"/accounts/new":             "Thêm kênh mới",
 		"/accounts/1":               "sample_acct",
@@ -259,7 +259,6 @@ func TestAllPagesRender(t *testing.T) {
 		"/accounts/1?tab=autopilot": "Autopilot Affiliate",
 		"/accounts/1?tab=ket-noi":   "Điều khiển",
 		"/studio":                   "Studio AI",
-		"/studio?tab=chu":           "Video chữ động",
 		"/studio/jobs":              "Video đã tạo",
 		"/studio/trends":            "Nhạc thịnh hành",
 		"/products":                 "Sản phẩm Affiliate",
@@ -392,8 +391,8 @@ func TestMergedPagesRedirects(t *testing.T) {
 
 	// legacy URLs -> 303 to the tab that replaced them
 	for _, tc := range []struct{ method, path, wantLoc string }{
-		{http.MethodGet, "/content", "/studio?tab=chu"},
-		{http.MethodPost, "/content", "/studio?tab=chu"},
+		{http.MethodGet, "/content", "/studio"},
+		{http.MethodPost, "/content", "/studio"},
 		{http.MethodGet, "/shop", "/products?tab=ke"},
 		{http.MethodPost, "/shop/add", "/products?tab=ke"},
 	} {
@@ -425,28 +424,8 @@ func TestMergedPagesRedirects(t *testing.T) {
 		}
 	}
 
-	// an "old-DB" kinetic job (created before the merge, straight into the
-	// store) is still listed and playable in the Studio tab
-	s.Jobs.Add(Job{ID: "oldjob01", Title: "Video cũ trước gộp", Status: "done",
-		CreatedAt: "2026-09-01T10:00:00", Output: "oldjob01.mp4", Log: "Xong"})
-	body := get(t, s, "/studio?tab=chu").Body.String()
-	if !strings.Contains(body, "Video cũ trước gộp") || !strings.Contains(body, "/media/oldjob01.mp4") {
-		t.Errorf("studio kinetic tab does not show the pre-merge job")
-	}
-
-	// creating from the tab works and lands back on the tab
-	rec := postForm(t, s, "/studio/kinetic", url.Values{
-		"title": {"Video chữ động mới"}, "captions": {"Dòng một\nDòng hai"},
-	})
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/studio?tab=chu" {
-		t.Fatalf("POST /studio/kinetic = %d (%q), want 303 /studio?tab=chu", rec.Code, rec.Header().Get("Location"))
-	}
-	if s.Jobs.Count() != 2 {
-		t.Fatalf("jobs = %d, want 2 (old + new)", s.Jobs.Count())
-	}
-
 	// shelf add from the products tab lands on the shelf and renders there
-	rec = postForm(t, s, "/products/shelf/add", url.Values{
+	rec := postForm(t, s, "/products/shelf/add", url.Values{
 		"platform_pid": {"TT-KE-1"}, "title": {"Kệ test"}, "price": {"10"}, "commission_pct": {"20"},
 	})
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/products?tab=ke" {

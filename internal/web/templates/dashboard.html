@@ -1,7 +1,7 @@
 {{define "title"}}Trang chủ — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Tổng quan mạng lưới</h1>
-<p class="subtitle">Ngày {{.Today}} · Theo dõi kênh, video và hoa hồng của bạn.</p>
+<h1>Tổng quan</h1>
+<p class="subtitle">Ngày {{fmtVN .Today}} · Theo dõi kênh, video và hoa hồng của bạn.</p>
 
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:20px">
@@ -52,7 +52,8 @@
   </div>
   <div class="card">
     <div class="num">{{len .Accounts}}</div>
-    <div class="label">Tổng tài khoản</div>
+    <div class="label">Kênh{{if not .Accounts}} — <a href="/accounts/new">thêm kênh</a>{{end}}</div>
+    {{if .ByStatus}}<div class="hint">{{range .ByStatus}}<span class="badge badge-{{statusClass .Status}}">{{.N}} {{statusLabel .Status}}</span> {{end}}</div>{{end}}
   </div>
   <div class="card accent">
     <div class="num">{{fmtVND .CommissionRevenue}}</div>
@@ -64,25 +65,6 @@
   </div>
 </div>
 
-<h2>Trạng thái tài khoản</h2>
-{{if .ByStatus}}
-<div class="cards">
-  {{range .ByStatus}}
-  <div class="card">
-    <div class="num"><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></div>
-    <div class="label">{{.N}} tài khoản</div>
-  </div>
-  {{end}}
-</div>
-{{else}}
-<div class="empty-state compact">
-  <div class="es-icon">👤</div>
-  <h3>Chưa có tài khoản nào</h3>
-  <p>Thêm kênh TikTok đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
-  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
-</div>
-{{end}}
-
 {{if .GrowthAlerts}}
 <h2>Cảnh báo tăng trưởng</h2>
 <ul class="clean">
@@ -91,13 +73,6 @@
   {{end}}
 </ul>
 <p><a href="/growth">Mở Phát triển kênh</a></p>
-{{end}}
-
-{{if .LocalRuntimes}}
-<h2>Công cụ trên máy</h2>
-<p>
-  {{range .LocalRuntimes}}<span class="badge badge-{{statusClass .State}}" title="{{.Detail}}">{{.Name}}: {{.State}}</span> {{end}}
-</p>
 {{end}}
 
 <h2>Hoạt động gần đây</h2>
@@ -111,10 +86,6 @@
   {{end}}
 </ul>
 {{else}}
-<div class="empty-state compact">
-  <div class="es-icon">📝</div>
-  <h3>Chưa có hoạt động nào</h3>
-  <p>Khi các agent bắt đầu làm việc, mọi quyết định của chúng sẽ hiện ở đây.</p>
-</div>
+<p class="hint">Chưa có hoạt động nào — việc hệ thống tự làm sẽ hiện ở đây.</p>
 {{end}}
 {{end}}

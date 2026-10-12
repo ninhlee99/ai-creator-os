@@ -258,7 +258,7 @@ func (s *Server) serveReupFile(w http.ResponseWriter, r *http.Request, dir, path
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, abs)
+	serveMediaFile(w, r, abs)
 }
 
 // handleReupFile (GET /reup/file/{id}): file transform của bài (preview after).
@@ -380,81 +380,6 @@ func (s *Server) handleReupPostRetry(w http.ResponseWriter, r *http.Request) {
 		Voiceover: voiceover,
 	})
 	reupRedirect(w, r, fmt.Sprintf("Đang thử lại bài #%d.", id), "")
-}
-
-// handleReupSettings lưu cài đặt transform/post/kill (AJAX JSON) — mở rộng
-// handler Đợt D (các key cũ giữ nguyên).
-func (s *Server) handleReupSettings(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		DiscoverOn   *bool   `json:"discover_on"`
-		Hours        *int    `json:"interval_hours"`
-		PerSource    *int    `json:"per_source"`
-		TransformOn  *bool   `json:"transform_on"`
-		Level        *int    `json:"transform_level"`
-		VoiceoverOn  *bool   `json:"voiceover_on"`
-		PostOn       *bool   `json:"post_on"`
-		VideosPerDay *int    `json:"videos_per_day"`
-		PostAccount  *string `json:"post_account"`
-		KillOn       *bool   `json:"kill_on"`
-		KillN        *int    `json:"kill_n"`
-		KillPerSrc   *bool   `json:"kill_per_source"`
-		WarmupOn     *bool   `json:"warmup_on"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		writeJSONErr(w, "JSON không hợp lệ.", http.StatusBadRequest)
-		return
-	}
-	if s.Ledger == nil {
-		writeJSONErr(w, "Ledger chưa sẵn sàng.", http.StatusPreconditionFailed)
-		return
-	}
-	setBool := func(key string, b *bool) {
-		if b == nil {
-			return
-		}
-		_ = s.Ledger.SetSetting(key, map[bool]string{true: "1", false: "0"}[*b])
-	}
-	clamp := func(n *int, lo, hi int) {
-		if n == nil {
-			return
-		}
-		if *n < lo {
-			*n = lo
-		}
-		if *n > hi {
-			*n = hi
-		}
-	}
-	setBool(automation.KeyReupDiscoverEnabled, in.DiscoverOn)
-	clamp(in.Hours, 1, 168)
-	if in.Hours != nil {
-		_ = s.Ledger.SetSetting(automation.KeyReupDiscoverIntervalH, strconv.Itoa(*in.Hours))
-	}
-	clamp(in.PerSource, 1, 10)
-	if in.PerSource != nil {
-		_ = s.Ledger.SetSetting(automation.KeyReupVideosPerSource, strconv.Itoa(*in.PerSource))
-	}
-	setBool(automation.KeyReupTransformEnabled, in.TransformOn)
-	if in.Level != nil && (*in.Level == 1 || *in.Level == 2) {
-		_ = s.Ledger.SetSetting(automation.KeyReupTransformLevel, strconv.Itoa(*in.Level))
-	}
-	setBool(automation.KeyReupVoiceoverEnabled, in.VoiceoverOn)
-	setBool(automation.KeyReupPostEnabled, in.PostOn)
-	clamp(in.VideosPerDay, 1, 20)
-	if in.VideosPerDay != nil {
-		_ = s.Ledger.SetSetting(automation.KeyReupVideosPerDay, strconv.Itoa(*in.VideosPerDay))
-	}
-	if in.PostAccount != nil {
-		_ = s.Ledger.SetSetting(automation.KeyReupPostAccount, strings.TrimSpace(*in.PostAccount))
-	}
-	setBool(automation.KeyReupKillEnabled, in.KillOn)
-	clamp(in.KillN, 2, 20)
-	if in.KillN != nil {
-		_ = s.Ledger.SetSetting(automation.KeyReupKillZeroN, strconv.Itoa(*in.KillN))
-	}
-	setBool(automation.KeyReupKillPerSource, in.KillPerSrc)
-	setBool(automation.KeyReupWarmupEnabled, in.WarmupOn)
-	writeJSON(w, map[string]any{"ok": true})
 }
 
 // reupSettingsView gom cấu hình reup cho tab Cài đặt · Reup.

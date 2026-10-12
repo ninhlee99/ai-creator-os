@@ -40,8 +40,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
 	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
 
-	// Video chữ động (kinetic) — tab trong Studio (gộp từ trang /content cũ).
-	mux.HandleFunc("POST /studio/kinetic", s.handleStudioKineticCreate)
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
 
 	// Studio: AI video creation (affiliate / short film) + VN trends.
@@ -112,7 +110,6 @@ func (s *Server) Routes() http.Handler {
 	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
 	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
 	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
-	mux.HandleFunc("POST /at/settings", s.handleATSettings)
 	// Reup Douyin (Đợt D): nguồn, yt-dlp sidecar, hàng đợi tải.
 	mux.HandleFunc("GET /reup", s.handleReup)
 	mux.HandleFunc("POST /reup/sources", s.handleReupSourceAdd)
@@ -124,7 +121,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /reup/scan", s.handleReupScan)
 	mux.HandleFunc("POST /reup/videos/add", s.handleReupVideoAdd)
 	mux.HandleFunc("POST /reup/videos/{id}/retry", s.handleReupVideoRetry)
-	mux.HandleFunc("POST /reup/settings", s.handleReupSettings)
 	// Đợt F: Kể chuyện YouTube (truyện ngôi thứ nhất + ảnh 16:9 + TTS).
 	mux.HandleFunc("GET /stories", s.handleStories)
 	mux.HandleFunc("POST /stories", s.handleStoryCreate)
@@ -187,8 +183,8 @@ func (s *Server) Routes() http.Handler {
 	// tan hẳn (doanh thu ở Trang chủ, chi phí API ở Cài đặt, số liệu video
 	// ở /growth) nên không giữ redirect.
 	for _, legacy := range []struct{ pattern, target string }{
-		{"GET /content", "/studio?tab=chu"},
-		{"POST /content", "/studio?tab=chu"},
+		{"GET /content", "/studio"},
+		{"POST /content", "/studio"},
 		{"GET /shop", "/products?tab=ke"},
 		{"POST /shop/add", "/products?tab=ke"},
 	} {
@@ -232,7 +228,14 @@ func sameOrigin(r *http.Request) bool {
 	if strings.EqualFold(u.Host, "null") {
 		return false
 	}
-	return strings.EqualFold(u.Host, r.Host)
+	if strings.EqualFold(u.Host, r.Host) {
+		return true
+	}
+	// Đợt AK: sau tunnel/proxy (cloudflared, Tailscale serve) Host có thể bị
+	// ghi đè thành 127.0.0.1 — so thêm host gốc proxy chuyển tiếp. Form CSRF
+	// từ site lạ không tự đặt được header này.
+	fh := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Host"), ",")[0])
+	return fh != "" && strings.EqualFold(u.Host, fh)
 }
 
 // recoverer keeps a panicking handler from taking the server down.
@@ -258,10 +261,21 @@ func redirectTo(loc string) http.HandlerFunc {
 
 // ------------------------------------------------------------------ static
 
+// setAssetCache: URL có ?v=<hash> khớp bản hiện tại → cache lâu (nội dung
+// không bao giờ đổi dưới URL đó); không có/không khớp → bắt trình duyệt hỏi
+// lại mỗi lần, tránh giao diện cũ sau khi cập nhật app (Đợt AK).
+func setAssetCache(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("v") == assetVersion {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-cache")
+}
+
 // handleStaticCSS serves the embedded dashboard stylesheet.
 func (s *Server) handleStaticCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	setAssetCache(w, r)
 	_, _ = w.Write(staticCSS)
 }
 
@@ -269,7 +283,7 @@ func (s *Server) handleStaticCSS(w http.ResponseWriter, r *http.Request) {
 // modal, studio polling — R2-W3: một nguồn JS dùng chung toàn app).
 func (s *Server) handleStaticJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
+	setAssetCache(w, r)
 	_, _ = w.Write(staticJS)
 }
 

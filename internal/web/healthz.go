@@ -14,6 +14,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -26,6 +27,15 @@ type TickBeat struct {
 	LastOK    time.Time `json:"last_ok"`
 	LastErr   string    `json:"last_err"`
 	Runs      int64     `json:"runs"`
+}
+
+// SidecarBeat là sức khỏe một tiến trình phụ local (Đợt AK).
+type SidecarBeat struct {
+	State       string    `json:"state"` // stopped | running | error
+	Restarts    int       `json:"restarts"`
+	HealthErr   string    `json:"health_err,omitempty"`
+	HealthFails int       `json:"health_fails"`
+	CheckedAt   time.Time `json:"checked_at"`
 }
 
 // handleHealthz: GET /healthz → JSON trạng thái sống của app.
@@ -44,6 +54,16 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	if s.QuotaCircuit != nil {
 		qOpen, qUntil = s.QuotaCircuit()
 	}
+	stale := []string{}
+	if s.StaleTicks != nil {
+		if st := s.StaleTicks(); st != nil {
+			stale = st
+		}
+	}
+	sidecars := map[string]SidecarBeat{}
+	if s.Sidecars != nil {
+		sidecars = s.Sidecars()
+	}
 	var uptime int64
 	if !s.StartedAt.IsZero() {
 		uptime = int64(time.Since(s.StartedAt).Seconds())
@@ -57,6 +77,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		"ticks":               beats,
 		"quota_circuit_open":  qOpen,
 		"quota_circuit_until": qUntil,
+		"stale_ticks":         stale,
+		"sidecars":            sidecars,
+		// needs_restart: app còn trả lời nhưng có tác vụ nền kẹt — chỉ
+		// khởi động lại mới gỡ được. Watchdog ngoài dựa vào cờ này.
+		"needs_restart": len(stale) > 0,
 	})
 }
 
@@ -68,6 +93,8 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 // TickBeatView là một dòng heartbeat tick cho template.
 type TickBeatView struct {
 	Name    string
+	Label   string // tên tiếng Việt cho người dùng (Đợt AK)
+	Stale   bool   // quá hạn chưa chạy — có thể đã kẹt
 	Runs    int64
 	LastOK  string // "chưa xong lần nào" khi trống
 	LastErr string
@@ -86,9 +113,15 @@ func (s *Server) tickBeatViews() []TickBeatView {
 		return nil
 	}
 	beats := s.TickBeats()
+	stale := map[string]bool{}
+	if s.StaleTicks != nil {
+		for _, n := range s.StaleTicks() {
+			stale[n] = true
+		}
+	}
 	out := make([]TickBeatView, 0, len(beats))
 	for name, b := range beats {
-		v := TickBeatView{Name: name, Runs: b.Runs, LastErr: b.LastErr}
+		v := TickBeatView{Name: name, Label: tickLabel(name), Stale: stale[name], Runs: b.Runs, LastErr: b.LastErr}
 		if b.LastOK.IsZero() {
 			v.LastOK = "chưa xong lần nào"
 		} else {
@@ -97,7 +130,74 @@ func (s *Server) tickBeatViews() []TickBeatView {
 		v.Running = !b.LastStart.IsZero() && b.LastStart.After(b.LastOK)
 		out = append(out, v)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	sort.Slice(out, func(i, j int) bool { return out[i].Label < out[j].Label })
+	return out
+}
+
+// tickLabels dịch tên kỹ thuật của tick sang tiếng người (Đợt AK): Ninh đọc
+// "Đăng video reup" thay vì `reup_post`.
+var tickLabels = map[string]string{
+	"autopilot":      "Tự động đăng (autopilot)",
+	"growth":         "Phát triển kênh",
+	"accesstrade":    "Affiliate Accesstrade",
+	"reup":           "Reup: tìm & tải video",
+	"reup_transform": "Reup: biến đổi video",
+	"reup_post":      "Reup: đăng video",
+	"reup_kill":      "Reup: tắt nguồn 0 view",
+	"story":          "Kể chuyện: dựng video",
+	"story_public":   "Kể chuyện: công khai video",
+	"story_retry":    "Kể chuyện: thử lại video lỗi",
+	"selfheal":       "Tự hồi phục",
+	"backup":         "Sao lưu tự động",
+	"notify":         "Gửi thông báo",
+	"draft_digest":   "Nhắc bản nháp chờ đăng",
+}
+
+func tickLabel(name string) string {
+	if l, ok := tickLabels[name]; ok {
+		return l
+	}
+	return name
+}
+
+// SidecarView là một dòng tiến trình phụ cho trang Cài đặt · Hệ thống.
+type SidecarView struct {
+	Label    string
+	State    string // ok | warn | err | off
+	Note     string
+	Restarts int
+}
+
+var sidecarLabels = map[string]string{
+	"llama-server": "LLM local (llama-server)",
+	"vieneu":       "Giọng đọc VieNeu",
+}
+
+// sidecarViews dịch SidecarBeat sang dòng dễ đọc: đang chạy + kiểm tra gần
+// nhất ổn → "ổn"; kiểm tra lỗi → "chập chờn" kèm lỗi; dừng/lỗi → nêu rõ.
+func (s *Server) sidecarViews() []SidecarView {
+	if s.Sidecars == nil {
+		return nil
+	}
+	var out []SidecarView
+	for name, b := range s.Sidecars() {
+		v := SidecarView{Label: sidecarLabels[name], Restarts: b.Restarts}
+		if v.Label == "" {
+			v.Label = name
+		}
+		switch {
+		case b.State == "error":
+			v.State, v.Note = "err", "đã dừng sau nhiều lần lỗi — khởi động lại app"
+		case b.State != "running":
+			v.State, v.Note = "off", "chưa chạy"
+		case b.HealthErr != "":
+			v.State, v.Note = "warn", fmt.Sprintf("kiểm tra lỗi %d lần liên tiếp: %s", b.HealthFails, b.HealthErr)
+		default:
+			v.State, v.Note = "ok", "đang chạy"
+		}
+		out = append(out, v)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Label < out[j].Label })
 	return out
 }
 

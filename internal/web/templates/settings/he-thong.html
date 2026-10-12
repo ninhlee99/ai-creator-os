@@ -105,21 +105,35 @@
   <tr><th>Tác vụ</th><th>Lượt chạy</th><th>Xong lần cuối</th><th>Trạng thái</th></tr>
   {{range .TickBeats}}
   <tr>
-    <td><code>{{.Name}}</code></td>
+    <td title="{{.Name}}">{{.Label}}</td>
     <td>{{.Runs}}</td>
-    <td>{{fmtVN .LastOK}}</td>
-    <td>{{if .LastErr}}<span class="badge badge-err" title="{{.LastErr}}">lỗi</span>{{else if .Running}}<span class="badge badge-warn">đang chạy</span>{{else}}<span class="badge badge-ok">ổn</span>{{end}}</td>
+    <td>{{.LastOK}}</td>
+    <td>{{if .Stale}}<span class="badge badge-err">kẹt</span> <span class="hint">watchdog sẽ tự khởi động lại app</span>{{else if .LastErr}}<span class="badge badge-err">lỗi</span> <span class="hint">{{.LastErr}}</span>{{else if .Running}}<span class="badge badge-warn">đang chạy</span>{{else}}<span class="badge badge-ok">ổn</span>{{end}}</td>
   </tr>
   {{end}}
 </table>
 </div>
 {{else}}
-<p class="hint">Chưa có tick nào chạy — số liệu hiện sau vài phút app hoạt động.</p>
+<p class="hint">Chưa có tác vụ nền nào chạy — số liệu hiện sau vài phút app hoạt động.</p>
+{{end}}
+{{if .Sidecars}}
+<div class="table-wrap">
+<table class="tbl">
+  <tr><th>Tiến trình phụ</th><th>Tự chạy lại</th><th>Trạng thái</th></tr>
+  {{range .Sidecars}}
+  <tr>
+    <td>{{.Label}}</td>
+    <td>{{.Restarts}} lần</td>
+    <td><span class="badge {{if eq .State "ok"}}badge-ok{{else if eq .State "warn"}}badge-warn{{else if eq .State "err"}}badge-err{{else}}badge-draft{{end}}">{{.Note}}</span></td>
+  </tr>
+  {{end}}
+</table>
+</div>
 {{end}}
 
 <h2>Sao lưu &amp; khôi phục</h2>
 <p class="subtitle">Ảnh chụp thư mục dữ liệu (5 database + file job + token). Khôi phục cần khởi động lại app.</p>
-{{if .RestorePending}}<p class="notice">Có bản khôi phục đang chờ — khởi động lại app để áp dụng.</p>{{end}}
+{{if .RestorePending}}<p class="notice notice-warn">Có bản khôi phục đang chờ — khởi động lại app để áp dụng.</p>{{end}}
 <p class="hint">Tự động sao lưu mỗi ngày, giữ 7 bản mới nhất trong thư mục dữ liệu/backups/{{if .BackupLastOK}} · Bản gần nhất: <code>{{fmtVN .BackupLastOK}}</code>{{else}} · <span class="badge badge-draft">chưa có bản tự động</span>{{end}}</p>
 <div class="cards">
   <div class="card">

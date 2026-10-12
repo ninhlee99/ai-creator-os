@@ -89,6 +89,7 @@
 {{end}}
 {{else}}
 
+{{if or .AT.KeySet .AT.Hunted .AT.Orders .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade
     {{if .AT.KeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
@@ -141,7 +142,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">🎯 Săn sản phẩm
-    {{if .AT.HunterOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}
+    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.HunterOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}</a>
   </h2>
   {{if .AT.KeySet}}
   <p>
@@ -171,29 +172,8 @@
 </div>
 
 <div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">⚙️ Tự động Accesstrade</h2>
-  <div class="grid2">
-    <div class="field">
-      <label><input type="checkbox" id="at-set-hunter"{{if .AT.HunterOn}} checked{{end}}> Săn sản phẩm mỗi ngày</label>
-    </div>
-    <div class="field">
-      <label>Số video mỗi lần săn</label>
-      <input type="number" id="at-set-videos" min="0" max="10" value="{{.AT.HunterVideos}}">
-    </div>
-    <div class="field">
-      <label><input type="checkbox" id="at-set-ordersync"{{if .AT.OrderSyncOn}} checked{{end}}> Đồng bộ đơn mỗi 30 phút</label>
-    </div>
-    <div class="field">
-      <label><input type="checkbox" id="at-set-campaign"{{if .AT.CampaignChkOn}} checked{{end}}> Kiểm tra duyệt chiến dịch mỗi ngày</label>
-    </div>
-  </div>
-  <button type="button" class="btn btn-secondary btn-sm" onclick="atSettingsSave()">Lưu</button>
-  <span class="hint">kill switch + dry-run vẫn chặn mọi tác vụ tự động</span>
-</div>
-
-<div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">💰 Đối soát hoa hồng
-    {{if .AT.OrderSyncOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}
+    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.OrderSyncOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}</a>
   </h2>
   <p>
     <span class="badge badge-ok">Đã duyệt: {{.AT.OrderStats.ApprovedCount}} đơn · {{fmtVND .AT.OrderStats.ApprovedTotal}}</span>
@@ -254,14 +234,6 @@ function atOrderSync() {
     if (d.truncated) { msg += ' Lưu ý: vượt quá 2000 đơn, một số đơn chưa về.'; }
     return msg;
   });
-}
-function atSettingsSave() {
-  atPost('/at/settings', JSON.stringify({
-    hunter_on: document.getElementById('at-set-hunter').checked,
-    hunter_videos: parseInt(document.getElementById('at-set-videos').value || '3', 10),
-    order_sync_on: document.getElementById('at-set-ordersync').checked,
-    campaign_on: document.getElementById('at-set-campaign').checked
-  }), null, function () { return 'Đã lưu cài đặt tự động.'; });
 }
 </script>
 
@@ -349,6 +321,14 @@ function atSettingsSave() {
 })();
 </script>
 
+{{else}}
+<div class="form-card">
+  <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade <span class="badge badge-draft">Chưa có key</span></h2>
+  <p class="subtitle">Nhập mã truy cập Accesstrade một lần — app tự săn sản phẩm, tạo link theo dõi và đối soát hoa hồng.</p>
+  <a class="btn btn-sm" href="/settings/accesstrade">Nhập mã truy cập</a>
+</div>
+{{end}}
+
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tìm sản phẩm</h2>
   <form method="post" action="/products/search">
@@ -372,8 +352,8 @@ function atSettingsSave() {
   </form>
 </div>
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">➕ Thêm sản phẩm thủ công</h2>
+<details class="advanced">
+  <summary>➕ Thêm sản phẩm thủ công</summary>
   <form method="post" action="/products/add">
     <div class="grid2">
       <div class="field">
@@ -419,7 +399,7 @@ function atSettingsSave() {
     </div>
     <button type="submit" class="btn">💾 Lưu sản phẩm</button>
   </form>
-</div>
+</details>
 
 {{if .Searched}}
 <p><span class="badge badge-ok">Đã tìm kiếm</span> Tìm thấy {{.Found}} sản phẩm, đã lưu {{.Saved}} vào kho.</p>
@@ -456,13 +436,11 @@ function atSettingsSave() {
       <p class="hint">Đăng <strong>private</strong> (kèm link affiliate trong mô tả). Duyệt trong YouTube Studio.</p>
     </div>
     <button type="submit" class="btn">💾 Lưu lịch</button>
-    <span class="badge badge-draft" style="margin-left:8px">Kho: {{.StockCount}} sản phẩm</span>
-    {{if .SchedEnabled}}<span class="badge badge-ok" style="margin-left:8px">ĐANG BẬT</span>{{else}}<span class="badge badge-draft" style="margin-left:8px">ĐANG TẮT</span>{{end}}
   </form>
 </div>
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0" id="music">🎵 Nhạc nền autopilot</h2>
+<details class="advanced" id="music"{{if not .MusicName}} open{{end}}>
+  <summary>🎵 Nhạc nền autopilot{{if .MusicName}} — {{.MusicName}}{{else}} — chưa có, video sẽ không tiếng{{end}}</summary>
   <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot.{{if .MusicName}} Đang dùng: <strong>{{.MusicName}}</strong>{{else}} Chưa có nhạc — video sẽ không tiếng.{{end}}</p>
   <form method="post" action="/products/music" enctype="multipart/form-data">
     <div class="field">
@@ -476,7 +454,7 @@ function atSettingsSave() {
     </div>
     <button type="submit" class="btn">⬆️ Cập nhật nhạc nền</button>
   </form>
-</div>
+</details>
 
 {{if .Results}}
 <h2>Sản phẩm tốt nhất trong kho</h2>

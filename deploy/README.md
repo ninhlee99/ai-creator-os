@@ -30,7 +30,7 @@ Gỡ:
 ./scripts/install-launchd.sh --uninstall
 ```
 
-### Watchdog ngoài (tùy chọn, Đợt S)
+### Watchdog sức khỏe (tự cài, Đợt S → AK)
 
 `KeepAlive` của launchd chỉ chạy lại app khi process **thoát**. Process bị
 treo (deadlock) mà chưa chết thì launchd tưởng vẫn khỏe. `scripts/watch-health.sh`
@@ -41,8 +41,11 @@ gọi `GET /healthz` định kỳ để phát hiện trường hợp này:
 */5 * * * * ~/ai-creator-os/scripts/watch-health.sh >> ~/aicos-data/logs/watchdog.log 2>&1
 ```
 
-Không kết nối được hoặc `db_ok=false` → ghi 1 dòng log + exit 1. Khi khỏe thì
-im lặng (không spam log).
+**Từ Đợt AK, `install-launchd.sh` tự cài watchdog này chạy mỗi 5 phút** —
+không cần cron. Không kết nối được, `db_ok=false` hoặc `needs_restart=true`
+(tác vụ nền kẹt) **2 lần liên tiếp** → tự `launchctl kickstart -k` app. Khi
+khỏe thì im lặng (không spam log). Log: `<data>/logs/watchdog.log`. Chỉ muốn
+ghi log, không tự restart: `AICOS_WATCHDOG_RESTART=0`.
 
 ### Lưu ý riêng Mac
 
@@ -78,6 +81,8 @@ Task thứ hai, trigger mỗi 5 phút lặp vô thời hạn:
 - Program: `powershell.exe`
 - Add arguments: `-NoProfile -ExecutionPolicy Bypass -File "C:\path\to\ai-creator-os\scripts\watch-health.ps1"`
 - (Tùy chọn) đổi URL kiểm tra bằng biến môi trường `AICOS_HEALTH_URL`.
+- Lỗi 2 lần liên tiếp (mất kết nối, DB lỗi, tác vụ nền kẹt) → script tự
+  Stop + Start task `aicos` (Đợt AK). Tên task khác: đặt `AICOS_TASK_NAME`.
 
 Không kết nối được hoặc `db_ok=false` → ghi 1 dòng log + exit 1. Khi khỏe thì
 im lặng (muốn ghi cả khi khỏe: set `WATCHDOG_VERBOSE=1`).
@@ -109,6 +114,13 @@ systemctl --user enable --now aicos
 systemctl --user status aicos
 ```
 
+**Bắt buộc cho 24/7:** dịch vụ `--user` mặc định DỪNG khi bạn đăng xuất. Bật
+chạy cả khi không đăng nhập (1 lần):
+
+```bash
+sudo loginctl enable-linger "$USER"
+```
+
 Gỡ: `systemctl --user disable --now aicos`.
 
 ### Watchdog ngoài (tùy chọn)
@@ -118,7 +130,29 @@ Gỡ: `systemctl --user disable --now aicos`.
 */5 * * * * /path/to/ai-creator-os/scripts/watch-health.sh >> ~/aicos-data/logs/watchdog.log 2>&1
 ```
 
-(Cùng script với Mac — pure sh, không phụ thuộc launchd.)
+(Cùng script với Mac.) Lỗi 2 lần liên tiếp → tự `systemctl --user restart aicos`
+(Đợt AK).
+
+## 4. Dùng từ bất kỳ đâu (điện thoại, máy khác) — Đợt AK
+
+App mặc định chỉ nghe ở `127.0.0.1` (an toàn). Muốn mở từ xa:
+
+1. **Đặt mật khẩu trước**: Cài đặt · Hệ thống → Mật khẩu truy cập. Chưa có
+   mật khẩu thì app **tự chặn** mọi truy cập không đến từ chính máy chủ (kể cả
+   qua tunnel) và hiện hướng dẫn — không có chuyện quên mật khẩu mà lộ app.
+2. **Cách khuyên dùng — Tailscale** (miễn phí, không mở port, mã hóa sẵn):
+   cài Tailscale trên máy chạy app và trên điện thoại, đăng nhập cùng tài
+   khoản, rồi trên máy chạy app:
+
+   ```bash
+   tailscale serve --bg 8080
+   ```
+
+   Mở `https://<tên-máy>.<tailnet>.ts.net` trên điện thoại.
+3. Thay thế: Cloudflare Tunnel (`cloudflared tunnel --url http://127.0.0.1:8080`).
+   Không cần đổi `-addr`; app nhận ra request đi qua tunnel.
+
+Không khuyên mở `-addr :8080` thẳng ra Internet (không có HTTPS).
 
 ## Xoay log (tự động trong app — Đợt R, mọi OS)
 
