@@ -88,7 +88,8 @@ func (s *Store) HasSHA256(sha string) bool {
 }
 
 // QueueVideo ghi nhận video phát hiện được (chờ tải). Trùng douyin_id
-// thì trả về bản đã có, không tạo trùng.
+// thì trả về bản đã có, không tạo trùng (ON CONFLICT là chốt chặn khi
+// 2 luồng cùng insert song song — check-then-insert ở trên không đủ).
 func (s *Store) QueueVideo(v Video) (Video, error) {
 	if v.DouyinID != "" {
 		if ex, err := s.GetByDouyinID(v.DouyinID); err == nil {
@@ -101,13 +102,22 @@ func (s *Store) QueueVideo(v Video) (Video, error) {
 	res, err := s.db.Exec(`INSERT INTO reup_videos
 		(source_id, douyin_id, url, file_path, sha256, duration_sec, resolution,
 		 play_count, author, title, watermark_free, via, status, fail_reason,
-		 qc_method, downloaded_at, created_at)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		 qc_method, downloaded_at, created_at, updated_at)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT(douyin_id) WHERE douyin_id != '' DO NOTHING`,
 		v.SourceID, v.DouyinID, v.URL, v.FilePath, v.SHA256, v.DurationSec, v.Resolution,
 		v.PlayCount, v.Author, v.Title, boolInt(v.WatermarkFree), v.Via, v.Status,
-		v.FailReason, v.QCMethod, v.DownloadedAt, nowUTC())
+		v.FailReason, v.QCMethod, v.DownloadedAt, nowUTC(), nowUTC())
 	if err != nil {
 		return Video{}, fmt.Errorf("reup: xếp hàng video: %w", err)
+	}
+	if v.DouyinID != "" {
+		if n, _ := res.RowsAffected(); n == 0 {
+			// Đua insert: luồng khác đã ghi trước → trả về bản có sẵn.
+			if ex, qerr := s.GetByDouyinID(v.DouyinID); qerr == nil {
+				return ex, nil
+			}
+		}
 	}
 	v.ID, _ = res.LastInsertId()
 	v.CreatedAt = nowUTC()
@@ -209,10 +219,11 @@ func (s *Store) Stats() (VideoStats, error) {
 	return st, rows.Err()
 }
 
-// SetStatus đổi trạng thái video (+ lý do lỗi khi failed).
+// SetStatus đổi trạng thái video (+ lý do lỗi khi failed). Đóng dấu
+// updated_at để sweeper nhận ra video kẹt "downloading" (Đợt Y).
 func (s *Store) SetStatus(id int64, status, failReason string) error {
-	_, err := s.db.Exec(`UPDATE reup_videos SET status=?, fail_reason=? WHERE id=?`,
-		status, failReason, id)
+	_, err := s.db.Exec(`UPDATE reup_videos SET status=?, fail_reason=?, updated_at=? WHERE id=?`,
+		status, failReason, nowUTC(), id)
 	if err != nil {
 		return fmt.Errorf("reup: đổi trạng thái: %w", err)
 	}
@@ -228,10 +239,11 @@ func (s *Store) MarkDownloaded(id int64, filePath, sha256, via string, watermark
 	}
 	_, err := s.db.Exec(`UPDATE reup_videos SET
 		file_path=?, sha256=?, via=?, watermark_free=?, duration_sec=?,
-		resolution=?, qc_method=?, status=?, fail_reason='', downloaded_at=?
+		resolution=?, qc_method=?, status=?, fail_reason='', downloaded_at=?,
+		updated_at=?
 		WHERE id=?`,
 		filePath, sha256, via, wf, durationSec, resolution, qcMethod,
-		StatusDownloaded, nowUTC(), id)
+		StatusDownloaded, nowUTC(), nowUTC(), id)
 	if err != nil {
 		return fmt.Errorf("reup: ghi nhận tải xong: %w", err)
 	}
@@ -293,6 +305,38 @@ func migrateV3(db *sql.DB) error {
 	// Backfill: bài cũ lấy created_at làm mốc.
 	if _, err := db.Exec(`UPDATE reup_posts SET updated_at = created_at WHERE updated_at = ''`); err != nil {
 		return fmt.Errorf("reup: migrate v3 backfill: %w", err)
+	}
+	return nil
+}
+
+// migrateV4 (Đợt Y):
+//   - reup_videos thêm updated_at: sweeper nhận diện video kẹt ở
+//     "downloading" (crash/kill giữa chừng) để cho tải lại.
+//   - reup_sources thêm last_error: UI hiện lỗi quét gần nhất của từng
+//     nguồn, khỏi đoán vì sao không có video.
+//   - UNIQUE(douyin_id): chặn insert trùng khi "Quét ngay" tay đua với
+//     tick (check-then-insert ở QueueVideo không đủ khi song song).
+func migrateV4(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE reup_videos ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("reup: migrate v4: %w", err)
+	}
+	// Backfill: video cũ lấy created_at làm mốc.
+	if _, err := db.Exec(`UPDATE reup_videos SET updated_at = created_at WHERE updated_at = ''`); err != nil {
+		return fmt.Errorf("reup: migrate v4 backfill: %w", err)
+	}
+	if _, err := db.Exec(`ALTER TABLE reup_sources ADD COLUMN last_error TEXT NOT NULL DEFAULT ''`); err != nil {
+		return fmt.Errorf("reup: migrate v4: %w", err)
+	}
+	// DB cũ có thể đã có bản trùng douyin_id (đúng bug đang fix) → dọn
+	// trước khi dựng index unique, giữ bản id nhỏ nhất.
+	if _, err := db.Exec(`DELETE FROM reup_videos
+		WHERE douyin_id != '' AND id NOT IN (
+			SELECT MIN(id) FROM reup_videos WHERE douyin_id != '' GROUP BY douyin_id)`); err != nil {
+		return fmt.Errorf("reup: migrate v4 dedupe: %w", err)
+	}
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_reup_videos_douyin_uniq
+		ON reup_videos(douyin_id) WHERE douyin_id != ''`); err != nil {
+		return fmt.Errorf("reup: migrate v4 index: %w", err)
 	}
 	return nil
 }

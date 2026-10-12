@@ -12,6 +12,9 @@ type Source struct {
 	DisplayName string
 	Enabled     bool
 	AddedAt     string
+	// LastError là lỗi quét gần nhất của nguồn ("" = lần quét cuối ổn).
+	// UI hiện để user biết vì sao nguồn không ra video (Đợt Y).
+	LastError string
 }
 
 // KindLabel nhãn tiếng Việt.
@@ -46,9 +49,9 @@ func (s *Store) AddSource(kind, value, displayName string) (Source, error) {
 func (s *Store) GetSource(kind, value string) (Source, error) {
 	var src Source
 	var enabled int
-	err := s.db.QueryRow(`SELECT id, kind, value, display_name, enabled, added_at
-		FROM reup_sources WHERE kind=? AND value=?`, normKind(kind), trimWS(value)).
-		Scan(&src.ID, &src.Kind, &src.Value, &src.DisplayName, &enabled, &src.AddedAt)
+	err := s.db.QueryRow(`SELECT id, kind, value, display_name, enabled, added_at,
+		last_error FROM reup_sources WHERE kind=? AND value=?`, normKind(kind), trimWS(value)).
+		Scan(&src.ID, &src.Kind, &src.Value, &src.DisplayName, &enabled, &src.AddedAt, &src.LastError)
 	if err != nil {
 		return Source{}, fmt.Errorf("reup: đọc nguồn: %w", err)
 	}
@@ -58,8 +61,8 @@ func (s *Store) GetSource(kind, value string) (Source, error) {
 
 // ListSources liệt kê nguồn (mới nhất trước).
 func (s *Store) ListSources() ([]Source, error) {
-	rows, err := s.db.Query(`SELECT id, kind, value, display_name, enabled, added_at
-		FROM reup_sources ORDER BY id DESC`)
+	rows, err := s.db.Query(`SELECT id, kind, value, display_name, enabled, added_at,
+		last_error FROM reup_sources ORDER BY id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("reup: liệt kê nguồn: %w", err)
 	}
@@ -68,7 +71,7 @@ func (s *Store) ListSources() ([]Source, error) {
 	for rows.Next() {
 		var src Source
 		var enabled int
-		if err := rows.Scan(&src.ID, &src.Kind, &src.Value, &src.DisplayName, &enabled, &src.AddedAt); err != nil {
+		if err := rows.Scan(&src.ID, &src.Kind, &src.Value, &src.DisplayName, &enabled, &src.AddedAt, &src.LastError); err != nil {
 			return nil, fmt.Errorf("reup: liệt kê nguồn: %w", err)
 		}
 		src.Enabled = enabled == 1
@@ -104,6 +107,16 @@ func (s *Store) SetSourceEnabled(id int64, enabled bool) error {
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return fmt.Errorf("reup: không tìm thấy nguồn #%d", id)
+	}
+	return nil
+}
+
+// SetSourceLastError ghi lỗi quét gần nhất của nguồn ("" = lần quét
+// cuối ổn). UI hiện để user biết vì sao nguồn không ra video (Đợt Y).
+func (s *Store) SetSourceLastError(id int64, msg string) error {
+	_, err := s.db.Exec(`UPDATE reup_sources SET last_error=? WHERE id=?`, msg, id)
+	if err != nil {
+		return fmt.Errorf("reup: ghi lỗi quét nguồn: %w", err)
 	}
 	return nil
 }

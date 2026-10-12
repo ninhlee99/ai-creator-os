@@ -162,7 +162,9 @@ func reupRedirect(w http.ResponseWriter, r *http.Request, okMsg, errMsg string) 
 	seeOther(w, r, loc)
 }
 
-// handleReupSourceAdd thêm nguồn Douyin (form POST).
+// handleReupSourceAdd thêm nguồn Douyin (form POST). Nguồn user được
+// validate ngay bằng TikWM (gõ sai tên kênh → báo lỗi ở form, khỏi chờ
+// quét 6h mới biết nguồn chết — Đợt Y).
 func (s *Server) handleReupSourceAdd(w http.ResponseWriter, r *http.Request) {
 	if s.Reup == nil {
 		reupRedirect(w, r, "", "Kho Reup chưa sẵn sàng.")
@@ -171,12 +173,50 @@ func (s *Server) handleReupSourceAdd(w http.ResponseWriter, r *http.Request) {
 	kind := r.FormValue("kind")
 	value := r.FormValue("value")
 	name := r.FormValue("name")
+	var warn string
+	if kind != "hashtag" {
+		var verr error
+		if warn, verr = s.reupValidateUserSource(r.Context(), value); verr != nil {
+			reupRedirect(w, r, "", verr.Error())
+			return
+		}
+	}
 	src, err := s.Reup.AddSource(kind, value, name)
 	if err != nil {
 		reupRedirect(w, r, "", err.Error())
 		return
 	}
-	reupRedirect(w, r, fmt.Sprintf("Đã thêm nguồn %s (%s).", src.DisplayName, src.KindLabel()), "")
+	okMsg := fmt.Sprintf("Đã thêm nguồn %s (%s).", src.DisplayName, src.KindLabel())
+	if warn != "" {
+		okMsg += " Lưu ý: " + warn + "."
+	}
+	reupRedirect(w, r, okMsg, "")
+}
+
+// reupValidateUserSource kiểm tra kênh Douyin có tồn tại qua TikWM.
+// Trả về (cảnh báo, lỗi chặn):
+//   - API báo lỗi (kênh không tồn tại) → lỗi chặn, báo ngay ở form.
+//   - TikWM chặn/tạm lỗi mạng (không kiểm chứng được) → cảnh báo nhưng
+//     vẫn cho thêm (lượt quét đầu + cột "lỗi quét" ở UI sẽ báo nếu sai).
+//   - Ổn → ("", nil).
+func (s *Server) reupValidateUserSource(ctx context.Context, value string) (string, error) {
+	norm := strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(value), "#"), "@")
+	if norm == "" {
+		return "", nil
+	}
+	tw := reup.NewTikWM()
+	if s.ReupTikWMBaseURL != "" {
+		tw.BaseURL = s.ReupTikWMBaseURL // test hook
+	}
+	vctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if _, err := tw.UserPosts(vctx, norm, 1); err != nil {
+		if strings.Contains(err.Error(), "API báo lỗi") {
+			return "", fmt.Errorf("không tìm thấy kênh Douyin @%s — kiểm tra lại tên", norm)
+		}
+		return "chưa kiểm chứng được kênh (TikWM tạm lỗi) — lượt quét đầu sẽ báo nếu tên sai", nil
+	}
+	return "", nil
 }
 
 // handleReupSourceToggle bật/tắt nguồn.

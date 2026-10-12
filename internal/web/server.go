@@ -81,11 +81,14 @@ type Server struct {
 	// Reup là kho nguồn + video Douyin (trụ reup). Injected bởi cmd wiring;
 	// nil khi DB mở lỗi — trang /reup fail-closed trung thực.
 	Reup *reup.Store
+	// ReupTikWMBaseURL override TikWM base URL khi validate nguồn user
+	// (test hook; "" = production). Đợt Y.
+	ReupTikWMBaseURL string
 	// reupYtDlpMu/reupYtDlpBusy theo dõi tác vụ tải yt-dlp chạy nền.
 	reupYtDlpMu   sync.Mutex
 	reupYtDlpBusy bool
-	// reupTransformMu serialize transform (nặng CPU — 1 lượt tại 1 thời điểm).
-	reupTransformMu sync.Mutex
+	// Serialize transform reup dùng Store.TransformMu (chung với tick tự
+	// động ở automation — Đợt Y), không dùng mutex riêng ở đây nữa.
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 

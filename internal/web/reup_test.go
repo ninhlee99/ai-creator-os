@@ -4,7 +4,9 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strconv"
@@ -98,8 +100,77 @@ func TestReupScanNoStore(t *testing.T) {
 	}
 }
 
+// Đợt Y: nguồn user gõ sai tên → TikWM báo lỗi API → chặn, báo ngay ở form.
+func TestReupSourceAddInvalidUser(t *testing.T) {
+	s := newReupServer(t)
+	tw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"code":-1,"msg":"user not found"}`)
+	}))
+	t.Cleanup(tw.Close)
+	s.ReupTikWMBaseURL = tw.URL
+	rec := postForm(t, s, "/reup/sources", url.Values{
+		"kind": {"user"}, "value": {"@khong_ton_tai_12345"}, "name": {""},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("phải 303, được %d", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "err=") {
+		t.Fatalf("phải redirect kèm err, được %q", loc)
+	}
+	if srcs, _ := s.Reup.ListSources(); len(srcs) != 0 {
+		t.Fatalf("nguồn chết không được lưu, có %d", len(srcs))
+	}
+}
+
+// Đợt Y: TikWM chặn/tạm lỗi (không kiểm chứng được) → vẫn cho thêm kèm
+// cảnh báo (đỡ kẹt cứng cả trụ khi TikWM chặn IP).
+func TestReupSourceAddUnverifiable(t *testing.T) {
+	s := newReupServer(t)
+	tw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(tw.Close)
+	s.ReupTikWMBaseURL = tw.URL
+	rec := postForm(t, s, "/reup/sources", url.Values{
+		"kind": {"user"}, "value": {"@than_tien"}, "name": {"Thần Tiên"},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("phải 303, được %d", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	if !strings.Contains(loc, "ok=") || !strings.Contains(loc, "u+%C3%BD") {
+		t.Fatalf("phải redirect kèm ok + cảnh báo 'Lưu ý', được %q", loc)
+	}
+	if srcs, _ := s.Reup.ListSources(); len(srcs) != 1 {
+		t.Fatalf("nguồn phải được lưu, có %d", len(srcs))
+	}
+}
+
+// Đợt Y: thử lại bài lỗi → chạy transform lại.
+func TestReupPostRetryValidation(t *testing.T) {
+	s := newReupServer(t)
+	// Bài không tồn tại.
+	rec := postForm(t, s, "/reup/posts/999/retry", url.Values{})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("phải 303, được %d", rec.Code)
+	}
+	// Bài chưa lỗi thì không cho thử lại.
+	p, _ := s.Reup.CreatePost([]int64{1}, reup.Level1)
+	rec = postForm(t, s, "/reup/posts/"+strconv.FormatInt(p.ID, 10)+"/retry", url.Values{})
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "err=") {
+		t.Fatalf("bài chưa lỗi phải báo err, được %q", loc)
+	}
+}
 func TestReupSourceAddToggleDelete(t *testing.T) {
 	s := newReupServer(t)
+	// Mock TikWM: kênh nào cũng "tồn tại" để test qua được bước validate.
+	tw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"code":0,"msg":"success","data":{"videos":[],"cursor":0,"hasMore":false}}`)
+	}))
+	t.Cleanup(tw.Close)
+	s.ReupTikWMBaseURL = tw.URL
 	rec := postForm(t, s, "/reup/sources", url.Values{
 		"kind": {"user"}, "value": {"@than_tien"}, "name": {"Thần Tiên"},
 	})

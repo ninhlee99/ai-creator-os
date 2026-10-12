@@ -103,11 +103,24 @@ func (s *Service) ReupTransformTick(ctx context.Context) []string {
 	} else if n > 0 {
 		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: %d bài kẹt 'đang đăng' quá 2h → cho đăng lại", n))
 	}
+	// Đợt Y: reset bài kẹt "pending"/"transforming" quá 4h (crash giữa
+	// CreatePost và chạy transform) về "failed" — tick sau tự tạo bài mới
+	// cho video (NOT EXISTS loại bài failed).
+	if n, err := s.Reup.SweepStuckTransforming(4 * time.Hour); err != nil {
+		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: lỗi — %v", err))
+	} else if n > 0 {
+		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: %d bài kẹt 'đang transform' quá 4h → đánh lỗi, lượt sau tạo bài mới", n))
+	}
 	level := atInt(s.Settings, KeyReupTransformLevel, defaultReupTransformLevel)
 	if level != reup.Level2 {
 		level = reup.Level1
 	}
 	voiceover := atOn(s.Settings, KeyReupVoiceoverEnabled, true)
+
+	// Đợt Y: serialize với transform bấm tay từ UI (cùng Store.TransformMu)
+	// — tránh 2 ffmpeg nặng chạy song song + 2 bài cho 1 video.
+	s.Reup.TransformMu.Lock()
+	defer s.Reup.TransformMu.Unlock()
 
 	var done, failed int
 	var notes []string
@@ -243,9 +256,11 @@ func (s *Service) ReupPostTick(ctx context.Context) []string {
 	if !dueSince(s.Settings, KeyReupPostLastRun, postTickEvery) {
 		return nil
 	}
-	// Giới hạn/ngày (+ warm-up).
+	// Giới hạn/ngày (+ warm-up). posted_at lưu UTC (nowUTC) nên mốc cũng
+	// phải UTC — dùng giờ local sẽ đếm thiếu bài đăng 0h–7h sáng (+07).
+	// (Đợt Y)
 	limit := s.reupDailyLimit()
-	today := time.Now().Format("2006-01-02")
+	today := time.Now().UTC().Format("2006-01-02")
 	n, err := s.Reup.CountPostedSince(account, today+"T00:00:00Z")
 	if err != nil {
 		return []string{"reup post: đếm bài đã đăng lỗi: " + err.Error()}

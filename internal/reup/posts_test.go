@@ -3,6 +3,7 @@ package reup
 // Test Đợt E: reup_posts (transform + đăng + metrics) và migration v2.
 
 import (
+	"sync"
 	"testing"
 )
 
@@ -158,6 +159,103 @@ func TestVideosForCompilation(t *testing.T) {
 	// Sắp xếp theo play_count giảm dần.
 	if vs[0].PlayCount != 500 || vs[1].PlayCount != 300 || vs[2].PlayCount != 100 {
 		t.Errorf("thứ tự play_count sai: %d %d %d", vs[0].PlayCount, vs[1].PlayCount, vs[2].PlayCount)
+	}
+}
+
+// Đợt Y: video đã có bài còn hiệu lực thì không được pick lại cho
+// compilation (chặn tick 15 phút spam bản trùng từ cùng 3 video).
+func TestVideosForCompilationSkipsLivePosts(t *testing.T) {
+	s := newTestStore(t)
+	src, _ := s.AddSource("user", "than_tien", "Thần Tiên")
+	var ids []int64
+	for i := 0; i < 4; i++ {
+		v, _ := s.QueueVideo(Video{DouyinID: "c" + string(rune('a'+i)), SourceID: src.ID, PlayCount: int64(100 * (i + 1))})
+		_ = s.MarkDownloaded(v.ID, "/tmp/x.mp4", "shac"+string(rune('a'+i)), "ytdlp", false, 5, "", "size-only")
+		ids = append(ids, v.ID)
+	}
+	// Bài compilation cho 3 video đầu (còn hiệu lực).
+	p, err := s.CreatePost(ids[:3], Level2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPostStatus(p.ID, PostTransformed, ""); err != nil {
+		t.Fatal(err)
+	}
+	vs, err := s.VideosForCompilation(src.ID, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Chỉ còn video thứ 4 chưa có bài.
+	if len(vs) != 1 || vs[0].ID != ids[3] {
+		t.Fatalf("phải loại 3 video đã có bài, được %d video", len(vs))
+	}
+	// Bài failed → 3 video được pick lại.
+	if err := s.SetPostStatus(p.ID, PostFailed, "lỗi test"); err != nil {
+		t.Fatal(err)
+	}
+	vs, err = s.VideosForCompilation(src.ID, 3)
+	if err != nil || len(vs) != 3 {
+		t.Fatalf("bài failed thì được pick lại: %v %d", err, len(vs))
+	}
+}
+
+// Đợt Y: bài kẹt pending/transforming quá lâu → failed để tick sau tạo
+// bài mới cho video.
+func TestSweepStuckTransforming(t *testing.T) {
+	s := newTestStore(t)
+	p1, _ := s.CreatePost([]int64{1}, Level1) // pending
+	p2, _ := s.CreatePost([]int64{2}, Level1)
+	_ = s.SetPostStatus(p2.ID, PostTransforming, "")
+	old := "2026-10-10T00:00:00Z"
+	s.db.Exec(`UPDATE reup_posts SET updated_at=? WHERE id IN (?,?)`, old, p1.ID, p2.ID)
+	n, err := s.SweepStuckTransforming(4 * 3600 * 1000000000)
+	if err != nil || n != 2 {
+		t.Fatalf("sweep: n=%d err=%v, muốn 2", n, err)
+	}
+	for _, id := range []int64{p1.ID, p2.ID} {
+		got, _ := s.GetPost(id)
+		if got.Status != PostFailed {
+			t.Errorf("bài #%d phải failed, được %s", id, got.Status)
+		}
+	}
+	// Bài transforming mới → không đụng.
+	p3, _ := s.CreatePost([]int64{3}, Level1)
+	_ = s.SetPostStatus(p3.ID, PostTransforming, "")
+	n, err = s.SweepStuckTransforming(4 * 3600 * 1000000000)
+	if err != nil || n != 0 {
+		t.Fatalf("bài mới không được sweep: n=%d err=%v", n, err)
+	}
+}
+
+// Đợt Y: 2 luồng cùng QueueVideo 1 douyin_id → chỉ 1 bản ghi, cùng trả về
+// bản đó (UNIQUE + ON CONFLICT).
+func TestQueueVideoConcurrentConflict(t *testing.T) {
+	s := newTestStore(t)
+	const workers = 8
+	ids := make([]int64, workers)
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			v, err := s.QueueVideo(Video{DouyinID: "race1", URL: "https://x/1"})
+			if err != nil {
+				t.Errorf("QueueVideo: %v", err)
+				return
+			}
+			ids[i] = v.ID
+		}(i)
+	}
+	wg.Wait()
+	var n int
+	s.db.QueryRow(`SELECT COUNT(*) FROM reup_videos WHERE douyin_id='race1'`).Scan(&n)
+	if n != 1 {
+		t.Fatalf("phải chỉ 1 bản ghi, được %d", n)
+	}
+	for i := 1; i < workers; i++ {
+		if ids[i] != ids[0] || ids[0] == 0 {
+			t.Fatalf("các luồng phải trả cùng id, được %v", ids)
+		}
 	}
 }
 

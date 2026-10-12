@@ -103,9 +103,18 @@ func (s *Service) ReupTick(ctx context.Context) []string {
 	if !dueSince(s.Settings, KeyReupDiscoverLastRun, interval) {
 		return nil
 	}
+	// Đợt Y: reset video kẹt "downloading" quá 2h (crash/kill giữa chừng)
+	// về "queued" để tải lại, khỏi chết im.
+	var pre []string
+	if n, err := s.Reup.SweepStuckDownloading(2 * time.Hour); err != nil {
+		pre = append(pre, fmt.Sprintf("reup sweep: lỗi — %v", err))
+	} else if n > 0 {
+		pre = append(pre, fmt.Sprintf("reup sweep: %d video kẹt 'đang tải' quá 2h → cho tải lại", n))
+	}
 	res := s.RunReupScan(ctx)
 	stampRun(s.Settings, KeyReupDiscoverLastRun)
 	out := []string{fmt.Sprintf("reup discover: %d video mới từ nguồn → %d đã tải, %d trùng, %d lỗi",
 		res.Found, res.OK, res.Dup, res.Failed)}
+	out = append(out, pre...)
 	return append(out, res.Notes...)
 }

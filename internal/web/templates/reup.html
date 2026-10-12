@@ -28,7 +28,7 @@
     <tr><th>Tên</th><th>Loại</th><th>Giá trị</th><th>Trạng thái</th><th></th></tr>
     {{range .Reup.Sources}}
     <tr>
-      <td>{{.DisplayName}}</td>
+      <td>{{.DisplayName}}{{if .LastError}}<div class="hint" style="color:var(--err-text)">Quét lỗi: {{.LastError}}</div>{{end}}</td>
       <td><span class="badge badge-info">{{.KindLabel}}</span></td>
       <td class="hint">{{.Value}}</td>
       <td>{{if .Enabled}}<span class="badge badge-ok">bật</span>{{else}}<span class="badge badge-draft">tắt</span>{{end}}</td>
@@ -182,6 +182,12 @@
             {{range $.Reup.AccountNames}}<option value="{{.}}"{{if eq $.Reup.PostAccount .}} selected{{end}}>{{.}}</option>{{end}}
           </select>
           <button type="submit" class="btn btn-sm">Đăng</button>
+        </form>
+        {{end}}
+        {{if eq .Post.Status "failed"}}
+        <form method="post" action="/reup/posts/{{.Post.ID}}/retry" style="display:inline"
+              data-confirm="Thử transform lại bài #{{.Post.ID}}?">
+          <button type="submit" class="btn btn-secondary btn-sm">Thử lại</button>
         </form>
         {{end}}
       </td>

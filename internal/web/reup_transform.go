@@ -161,18 +161,28 @@ func (s *Server) handleReupTransform(w http.ResponseWriter, r *http.Request) {
 		ids = []int64{v.ID}
 	}
 	// Chặn transform trùng từ UI: video đã có bài còn hiệu lực (khác
-	// failed) thì không tạo bài mới. (Tick tự động đã an toàn nhờ
-	// VideosNeedingTransform.)
-	if live, err := s.Reup.LivePostForVideo(v.ID); err != nil {
-		writeJSONErr(w, "Kiểm tra bài trùng: "+err.Error(), http.StatusInternalServerError)
+	// failed) thì không tạo bài mới. Check + tạo bài bọc trong
+	// Store.TransformMu chung với tick tự động — chặn cửa sổ race tick
+	// vừa check VideosNeedingTransform xong thì UI chen CreatePost
+	// (Đợt Y).
+	s.Reup.TransformMu.Lock()
+	live, lerr := s.Reup.LivePostForVideo(v.ID)
+	var post reup.Post
+	var perr error
+	if lerr == nil && live == nil {
+		post, perr = s.Reup.CreatePost(ids, level)
+	}
+	s.Reup.TransformMu.Unlock()
+	if lerr != nil {
+		writeJSONErr(w, "Kiểm tra bài trùng: "+lerr.Error(), http.StatusInternalServerError)
 		return
-	} else if live != nil {
+	}
+	if live != nil {
 		writeJSONErr(w, fmt.Sprintf("Video đã có bài #%d (%s) — không tạo trùng.", live.ID, live.StatusLabel()), http.StatusPreconditionFailed)
 		return
 	}
-	post, err := s.Reup.CreatePost(ids, level)
-	if err != nil {
-		writeJSONErr(w, "Tạo bài: "+err.Error(), http.StatusInternalServerError)
+	if perr != nil {
+		writeJSONErr(w, "Tạo bài: "+perr.Error(), http.StatusInternalServerError)
 		return
 	}
 	voiceover := s.atSettingOn(automation.KeyReupVoiceoverEnabled, true)
@@ -190,9 +200,11 @@ func (s *Server) handleReupTransform(w http.ResponseWriter, r *http.Request) {
 }
 
 // runReupTransform chạy transform nền (serialize 1 lượt — nặng CPU).
+// Dùng Store.TransformMu chung với tick tự động (automation) để không
+// bao giờ có 2 ffmpeg chạy song song hay 2 bài cho 1 video (Đợt Y).
 func (s *Server) runReupTransform(postID int64, tr *reup.Transformer, clips []reup.Video, opts reup.TransformOptions) {
-	s.reupTransformMu.Lock()
-	defer s.reupTransformMu.Unlock()
+	s.Reup.TransformMu.Lock()
+	defer s.Reup.TransformMu.Unlock()
 	_ = s.Reup.SetPostStatus(postID, reup.PostTransforming, "")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
@@ -314,6 +326,60 @@ func (s *Server) handleReupPostPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reupRedirect(w, r, note, "")
+}
+
+// handleReupPostRetry (POST /reup/posts/{id}/retry): thử lại bài lỗi —
+// chạy transform lại với cùng video/mức (serialize qua Store.TransformMu
+// như handleReupTransform). Đợt Y.
+func (s *Server) handleReupPostRetry(w http.ResponseWriter, r *http.Request) {
+	if s.Reup == nil {
+		reupRedirect(w, r, "", "Kho Reup chưa sẵn sàng.")
+		return
+	}
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		reupRedirect(w, r, "", "ID bài không hợp lệ.")
+		return
+	}
+	p, err := s.Reup.GetPost(id)
+	if err != nil {
+		reupRedirect(w, r, "", "Không tìm thấy bài.")
+		return
+	}
+	if p.Status != reup.PostFailed {
+		reupRedirect(w, r, "", fmt.Sprintf("Bài #%d đang %s — chỉ thử lại bài lỗi.", id, p.StatusLabel()))
+		return
+	}
+	tr := s.reupTransformer()
+	if tr == nil {
+		reupRedirect(w, r, "", "Kho Reup chưa sẵn sàng.")
+		return
+	}
+	var clips []reup.Video
+	for _, vid := range p.VideoIDs {
+		v, verr := s.Reup.GetVideo(vid)
+		if verr != nil || v.Status != reup.StatusDownloaded {
+			reupRedirect(w, r, "", fmt.Sprintf("Video #%d không còn để transform lại.", vid))
+			return
+		}
+		clips = append(clips, v)
+	}
+	if len(clips) == 0 {
+		reupRedirect(w, r, "", "Bài không còn video để transform lại.")
+		return
+	}
+	title := clips[0].Title
+	if p.TransformLevel == reup.Level2 {
+		title = "Tuyển tập"
+	}
+	voiceover := s.atSettingOn(automation.KeyReupVoiceoverEnabled, true)
+	go s.runReupTransform(p.ID, tr, clips, reup.TransformOptions{
+		Level:     p.TransformLevel,
+		Seed:      clips[0].ID,
+		Title:     title,
+		Voiceover: voiceover,
+	})
+	reupRedirect(w, r, fmt.Sprintf("Đang thử lại bài #%d.", id), "")
 }
 
 // handleReupSettings lưu cài đặt transform/post/kill (AJAX JSON) — mở rộng

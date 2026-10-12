@@ -3,6 +3,7 @@ package reup
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -252,6 +253,63 @@ func (s *Store) SweepStuckPosting(maxAge time.Duration) (int, error) {
 	return int(n), nil
 }
 
+// SweepStuckTransforming (Đợt Y): bài kẹt ở "pending"/"transforming" quá
+// maxAge (crash/kill giữa CreatePost và chạy transform) → "failed" với lý
+// do rõ. Tick sau tự tạo bài mới cho video (NOT EXISTS loại bài failed).
+// Trả về số bài đã reset.
+func (s *Store) SweepStuckTransforming(maxAge time.Duration) (int, error) {
+	cutoff := time.Now().Add(-maxAge).UTC().Format(time.RFC3339)
+	res, err := s.db.Exec(`UPDATE reup_posts SET status='failed',
+		fail_reason='treo quá lâu ở trạng thái transform (tự reset)', updated_at=?
+		WHERE status IN ('pending','transforming') AND updated_at != '' AND updated_at < ?`,
+		nowUTC(), cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("reup: sweep transform kẹt: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
+// SweepStuckDownloading (Đợt Y): video kẹt ở "downloading" quá maxAge
+// (crash/kill giữa SetStatus và tải xong) → trả về "queued" để tải lại,
+// xoá file dở nếu còn. Trả về số video đã reset.
+func (s *Store) SweepStuckDownloading(maxAge time.Duration) (int, error) {
+	cutoff := time.Now().Add(-maxAge).UTC().Format(time.RFC3339)
+	rows, err := s.db.Query(`SELECT id, file_path FROM reup_videos
+		WHERE status='downloading' AND updated_at != '' AND updated_at < ?`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("reup: sweep downloading kẹt: %w", err)
+	}
+	var ids []int64
+	var paths []string
+	for rows.Next() {
+		var id int64
+		var fp string
+		if err := rows.Scan(&id, &fp); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("reup: sweep downloading kẹt: %w", err)
+		}
+		ids = append(ids, id)
+		paths = append(paths, fp)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("reup: sweep downloading kẹt: %w", err)
+	}
+	n := 0
+	for i, id := range ids {
+		if paths[i] != "" {
+			_ = os.Remove(paths[i]) // file dở — lỗi thì kệ, tải lại sẽ ghi đè
+		}
+		if _, uerr := s.db.Exec(`UPDATE reup_videos SET status='queued',
+			file_path='', fail_reason='', updated_at=? WHERE id=?`, nowUTC(), id); uerr != nil {
+			return n, fmt.Errorf("reup: sweep downloading kẹt: %w", uerr)
+		}
+		n++
+	}
+	return n, nil
+}
+
 // SetPostTransformed ghi nhận transform xong.
 func (s *Store) SetPostTransformed(id int64, filePath string) error {
 	_, err := s.db.Exec(`UPDATE reup_posts SET status=?, file_path=?, fail_reason='' WHERE id=?`,
@@ -344,11 +402,18 @@ func (s *Store) VideosNeedingTransform(limit int) ([]Video, error) {
 }
 
 // VideosForCompilation lấy n video đã tải cùng nguồn (mới nhất) cho mức 2.
+// Loại video đã có bài còn hiệu lực (khác failed) — cùng mẫu NOT EXISTS
+// với VideosNeedingTransform, chặn tick 15 phút tạo compilation trùng
+// từ cùng 3 video (Đợt Y).
 func (s *Store) VideosForCompilation(sourceID int64, n int) ([]Video, error) {
 	rows, err := s.db.Query(`SELECT id, source_id, douyin_id, url, file_path, sha256,
 		duration_sec, resolution, play_count, author, title, watermark_free, via,
 		status, fail_reason, qc_method, downloaded_at, created_at
-		FROM reup_videos WHERE status='downloaded' AND source_id=?
+		FROM reup_videos v WHERE v.status='downloaded' AND v.source_id=?
+		AND NOT EXISTS (
+			SELECT 1 FROM reup_posts p
+			WHERE (',' || p.video_ids || ',') LIKE '%,' || CAST(v.id AS TEXT) || ',%'
+			AND p.status != 'failed')
 		ORDER BY play_count DESC, id DESC LIMIT ?`, sourceID, n)
 	if err != nil {
 		return nil, fmt.Errorf("reup: video compilation: %w", err)

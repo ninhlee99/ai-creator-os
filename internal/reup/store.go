@@ -4,12 +4,17 @@ import (
 	"database/sql"
 	"fmt"
 	_ "modernc.org/sqlite"
+	"sync"
 	"time"
 )
 
 // Store lưu nguồn + video reup (SQLite WAL, một DB một nhiệm vụ: reup.db).
 type Store struct {
 	db *sql.DB
+	// TransformMu serialize transform (nặng CPU — 1 lượt tại 1 thời điểm)
+	// cho cả tick tự động (automation) lẫn bấm tay (web): hai bên dùng
+	// chung một Store nên cùng một mutex là đủ. (Đợt Y)
+	TransformMu sync.Mutex
 }
 
 // schemaVersion hiện tại; migration qua PRAGMA user_version.
@@ -17,7 +22,10 @@ type Store struct {
 // v2 (Đợt E): reup_posts thêm video_ids, file_path, fail_reason, views,
 // metrics_at, remote_id, remote_url (transform + đăng + kill rule 0-view).
 // v3 (Đợt V): reup_posts thêm updated_at — sweeper reset bài kẹt "posting".
-const schemaVersion = 3
+// v4 (Đợt Y): reup_videos thêm updated_at (sweeper nhận video kẹt
+// "downloading"); reup_sources thêm last_error (hiện lỗi quét gần nhất
+// ở UI); UNIQUE(douyin_id) chặn insert trùng khi đua.
+const schemaVersion = 4
 
 // NewStore mở (hoặc tạo) reup.db trong dataDir.
 func NewStore(dbPath string) (*Store, error) {
@@ -63,6 +71,11 @@ func migrate(db *sql.DB, from int) error {
 	}
 	if from < 3 {
 		if err := migrateV3(db); err != nil {
+			return err
+		}
+	}
+	if from < 4 {
+		if err := migrateV4(db); err != nil {
 			return err
 		}
 	}

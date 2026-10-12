@@ -94,12 +94,17 @@ func (d *Discoverer) discoverSource(ctx context.Context, src Source, perSource i
 // thái queued — tải thật do Downloader (tick hoặc nút "Quét ngay").
 func (d *Discoverer) discoverUser(ctx context.Context, src Source, perSource int) ([]Candidate, string) {
 	if d.TikWM == nil {
-		return nil, fmt.Sprintf("nguồn @%s: TikWM chưa sẵn sàng", src.Value)
+		msg := "TikWM chưa sẵn sàng"
+		_ = d.Store.SetSourceLastError(src.ID, msg)
+		return nil, fmt.Sprintf("nguồn @%s: %s", src.Value, msg)
 	}
 	videos, err := d.TikWM.UserPosts(ctx, strings.TrimPrefix(src.Value, "@"), 30)
 	if err != nil {
-		return nil, fmt.Sprintf("nguồn @%s: không lấy được danh sách video (%v)", src.Value, err)
+		msg := fmt.Sprintf("không lấy được danh sách video (%v)", err)
+		_ = d.Store.SetSourceLastError(src.ID, msg)
+		return nil, fmt.Sprintf("nguồn @%s: %s", src.Value, msg)
 	}
+	_ = d.Store.SetSourceLastError(src.ID, "")
 	// Bỏ video đã có trong kho + video độ dài không phù hợp transform
 	// (quá ngắn <5s không đủ làm bài; quá dài >180s tốn quota mà Shorts
 	// chỉ cần ≤60s — giữ 180s cho linh hoạt).
