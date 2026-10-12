@@ -112,6 +112,17 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "save chain")
 		return
 	}
+	// Đợt AC: bật VieNeu trong chain TTS sau khi app đã boot → tự khởi động
+	// sidecar (trước đây EnsureLocalModels chỉ chạy 1 lần lúc boot nên tier
+	// local "chết lâm sàng", UI vẫn hiện đã bật).
+	if name == "tts" {
+		for _, e := range cfg.Order {
+			if e.Enabled && (e.Name == "vieneu" || e.Name == "vieneu-tts") {
+				s.kickVieneuEnsure()
+				break
+			}
+		}
+	}
 	seeOther(w, r, "/settings/nha-cung-cap")
 }
 

@@ -321,7 +321,20 @@ func (s *Studio) findDonePhoto(jobID, prompt string) string {
 	return path
 }
 
-// copyStoryFile chép file (dùng khi tái dùng ảnh job cũ — đợt Y).
+// findDoneAudio tìm file wav đã tổng hợp xong của job cũ — để job retry tái
+// dùng, khỏi đốt quota TTS tổng hợp lại (đợt AC). Scene retry dùng cùng params
+// nên scene thứ i có text giống nhau; chỉ cần file tồn tại và >0 byte.
+func (s *Studio) findDoneAudio(jobID string, sceneIdx int) string {
+	if jobID == "" {
+		return ""
+	}
+	p := filepath.Join(s.workRoot, jobID, fmt.Sprintf("scene-%02d.wav", sceneIdx))
+	fi, err := os.Stat(p)
+	if err != nil || fi.IsDir() || fi.Size() == 0 {
+		return ""
+	}
+	return p
+}
 func copyStoryFile(src, dst string) error {
 	b, err := os.ReadFile(src)
 	if err != nil {
@@ -427,13 +440,25 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 
 		s.appendLog(id, fmt.Sprintf("Đọc giọng cảnh %d/%d…", i+1, len(scenes)))
+		wav := filepath.Join(work, fmt.Sprintf("scene-%02d.wav", i))
+		// Đợt AC: job retry tái dùng wav đã tổng hợp ở job cũ — khỏi đốt
+		// quota TTS (giống findDonePhoto cho ảnh ở đợt Y).
+		if oldWav := s.findDoneAudio(p.ReuseFromJobID, i); oldWav != "" {
+			if cerr := copyStoryFile(oldWav, wav); cerr == nil {
+				s.appendLog(id, fmt.Sprintf("Dùng lại giọng đọc cảnh %d/%d từ lần trước (khỏi tổng hợp lại)", i+1, len(scenes)))
+				s.setAsset(aid, StatusDone, img)
+				dur := storyProbeDuration(ctx, wav)
+				wavs = append(wavs, wav)
+				durs = append(durs, dur)
+				continue
+			}
+		}
 		wavBytes, err := s.narrator(ctx, sc.Text)
 		if err != nil {
 			s.setAsset(aid, StatusFailed, "")
 			fail(fmt.Errorf("cảnh %d: TTS lỗi (%v) — dừng, không tạo video câm", i+1, err))
 			return
 		}
-		wav := filepath.Join(work, fmt.Sprintf("scene-%02d.wav", i))
 		if err := os.WriteFile(wav, wavBytes, 0o644); err != nil {
 			s.setAsset(aid, StatusFailed, "")
 			fail(err)
