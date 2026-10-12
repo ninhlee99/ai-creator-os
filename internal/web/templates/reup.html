@@ -268,6 +268,11 @@ function pollYtDlp() {
         : '<span class="badge badge-warn">Chưa tải</span>';
       if (d.busy) html += ' <span class="badge badge-info">đang tải…</span>';
       el.innerHTML = html;
+      // Đợt AH: đang bận thì disable cả 2 nút (tránh bấm chồng request).
+      var b1 = document.getElementById('ytdlp-ensure-btn');
+      var b2 = document.getElementById('ytdlp-update-btn');
+      if (b1) b1.disabled = !!d.busy;
+      if (b2) b2.disabled = !!d.busy;
       if (d.busy) setTimeout(pollYtDlp, 5000);
       else if (d.installed) setTimeout(function () { location.reload(); }, 1000);
     })

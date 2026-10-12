@@ -15,7 +15,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Kể chuyện mới</h2>
   <p class="hint">App viết truyện ở ngôi thứ nhất, vẽ ảnh 16:9 từng cảnh, đọc giọng, dựng video 16:9 có phụ đề. Kiểm tra: đủ nét 1920×1080, có tiếng, dài hơn 30 giây.</p>
-  <form method="post" action="/stories">
+  <form method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang tạo…';}">
     <div class="field">
       <label>Chủ đề <span class="req">*</span></label>
       <input type="text" name="topic" required placeholder="vd: đêm mưa ở Đà Lạt khiến tôi đổi nghề">
@@ -63,7 +63,7 @@
     <tr><th>Tiêu đề</th><th>Trạng thái</th><th>Cảnh</th><th>Dài</th><th></th></tr>
     {{range .Stories.Jobs}}
     <tr>
-      <td>{{.Title}}<br><span class="hint">{{.CreatedAt}}</span></td>
+      <td>{{.Title}}<br><span class="hint">{{fmtVN .CreatedAt}}</span></td>
       <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}{{if or (eq .Status "running") (eq .Status "queued")}}<br><div class="progress" style="max-width:8em"><div class="progress-bar" style="width:{{.Progress}}%"></div></div><span class="hint">{{.Progress}}%</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
       <td>{{.Scenes}}</td>
       <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>

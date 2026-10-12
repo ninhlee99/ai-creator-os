@@ -228,6 +228,19 @@ var templateFuncs = template.FuncMap{
 	"fmtTime": func(min int) string {
 		return fmt.Sprintf("%02d:%02d", min/60, min%60)
 	},
+	// fmtVN renders an ISO timestamp ("2006-01-02T15:04:05") as Vietnamese
+	// "02/01/2006 15:04". Đợt AH: người Việt đọc ngày/tháng/năm tự nhiên hơn.
+	"fmtVN": func(s string) string {
+		for _, layout := range []string{"2006-01-02T15:04:05", time.RFC3339, "2006-01-02 15:04:05", "2006-01-02"} {
+			if t, err := time.Parse(layout, s); err == nil {
+				if layout == "2006-01-02" {
+					return t.Format("02/01/2006")
+				}
+				return t.Format("02/01/2006 15:04")
+			}
+		}
+		return s
+	},
 	// fmtVND renders a VND amount with dot thousands separators:
 	// 1234500 → "1.234.500 ₫".
 	"fmtVND": func(v float64) string { return formatVND(v) },

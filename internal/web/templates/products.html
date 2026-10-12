@@ -456,8 +456,6 @@ function atSettingsSave() {
       <p class="hint">Đăng <strong>private</strong> (kèm link affiliate trong mô tả). Duyệt trong YouTube Studio.</p>
     </div>
     <button type="submit" class="btn">💾 Lưu lịch</button>
-    {{if .SchedLastRun}}<span class="badge badge-ok" style="margin-left:8px">Lần chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
-    {{if .SchedNextRun}}<span class="badge badge-draft" style="margin-left:8px">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}
     <span class="badge badge-draft" style="margin-left:8px">Kho: {{.StockCount}} sản phẩm</span>
     {{if .SchedEnabled}}<span class="badge badge-ok" style="margin-left:8px">ĐANG BẬT</span>{{else}}<span class="badge badge-draft" style="margin-left:8px">ĐANG TẮT</span>{{end}}
   </form>

@@ -59,7 +59,7 @@
     <div class="label">Hoa hồng Accesstrade</div>
   </div>
   <div class="card">
-    <div class="num">{{.NJobs}}</div>
+    <div class="num">{{if .NJobs}}{{.NJobs}}{{else}}<span class="hint">chưa có</span>{{end}}</div>
     <div class="label">Video đang dựng</div>
   </div>
 </div>

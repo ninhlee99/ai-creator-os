@@ -123,7 +123,7 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	seeOther(w, r, "/settings/nha-cung-cap")
+	seeOther(w, r, "/settings/nha-cung-cap?ok="+url.QueryEscape("Đã lưu cấu hình nhà cung cấp."))
 }
 
 // handleChainMove reorders one provider up/down (replaces drag-drop).
@@ -149,7 +149,7 @@ func (s *Server) handleChainMove(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	seeOther(w, r, "/settings/nha-cung-cap")
+	seeOther(w, r, "/settings/nha-cung-cap?ok="+url.QueryEscape("Đã đổi thứ tự nhà cung cấp."))
 }
 
 // handleChainHealth probes one provider ("Kiểm tra kết nối") and returns

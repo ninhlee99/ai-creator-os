@@ -16,7 +16,7 @@
   <div class="meta">
     <span class="badge badge-{{.Class}} job-status">{{.Label}}</span>
     <span class="prog">{{.Progress}}%</span>
-    · tạo lúc {{.CreatedAt}}{{if .FinishedAt}} · xong lúc {{.FinishedAt}}{{end}}
+    · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
   </div>
   <div class="board"></div>
   {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
