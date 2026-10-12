@@ -10,6 +10,7 @@ package automation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -51,41 +52,32 @@ func (s *Service) BackupTick(ctx context.Context) []string {
 		return nil
 	}
 
-	// Đợt V: kiểm tra toàn vẹn 5 DB TRƯỚC khi zip — DB đã corrupt thì không
-	// tạo bản sao lưu hỏng đè lên bản tốt (giữ bản cũ dùng được).
-	// File chưa tồn tại thì bỏ qua (backup.Create cũng bỏ qua).
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
-		dbPath := filepath.Join(s.DataDir, db)
-		if _, err := os.Stat(dbPath); err != nil {
-			continue
-		}
-		if err := backup.IntegrityCheck(dbPath); err != nil {
-			msg := fmt.Sprintf("sao lưu: bỏ qua — %s hỏng (%v), giữ bản cũ", db, err)
-			s.alert("backup_integrity", "critical", msg,
-				"Database hỏng nhưng bản sao lưu cũ vẫn còn. Khôi phục từ bản cũ sớm.")
-			return []string{msg}
-		}
-	}
-
 	dir := filepath.Join(s.DataDir, "backups")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return []string{fmt.Sprintf("sao lưu tự động thất bại: %v", err)}
 	}
 	name := fmt.Sprintf("aicos-backup-%s.zip", time.Now().Format("20060102-150405"))
 	path := filepath.Join(dir, name)
-	if err := writeBackup(s.DataDir, path); err != nil {
-		_ = os.Remove(path) // xóa file dở
+	// Pipeline dùng chung với nút "Tải bản sao lưu" bấm tay:
+	// integrity_check 5 DB nguồn TRƯỚC khi zip (DB hỏng → bỏ qua, giữ bản
+	// cũ + alert critical), kiểm tra bản zip SAU khi tạo.
+	raw, err := backup.CreateValidated(s.DataDir)
+	if err != nil {
+		var cse *backup.CorruptSourceError
+		if errors.As(err, &cse) {
+			msg := fmt.Sprintf("sao lưu: bỏ qua — %v, giữ bản cũ", err)
+			s.alert("backup_integrity", "critical", msg,
+				"Database hỏng nhưng bản sao lưu cũ vẫn còn. Khôi phục từ bản cũ sớm.")
+			return []string{msg}
+		}
 		msg := fmt.Sprintf("sao lưu tự động thất bại: %v", err)
 		s.alert("backup_fail", "warn", msg, "Kiểm tra dung lượng đĩa và quyền ghi thư mục dữ liệu.")
 		return []string{msg}
 	}
-	// Đợt V: kiểm tra lại bản vừa tạo — zip dở (vd: đĩa đầy giữa chừng) thì
-	// xóa ngay, không để bản hỏng trong kho.
-	if err := backup.ValidateZipFile(path); err != nil {
-		_ = os.Remove(path)
-		msg := fmt.Sprintf("sao lưu: bản vừa tạo không đạt kiểm tra (%v) — đã xóa, giữ bản cũ", err)
-		s.alert("backup_integrity", "critical", msg,
-			"Bản sao lưu hỏng đã bị xóa để không đè bản tốt. Kiểm tra đĩa.")
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		_ = os.Remove(path) // xóa file dở
+		msg := fmt.Sprintf("sao lưu tự động thất bại: %v", err)
+		s.alert("backup_fail", "warn", msg, "Kiểm tra dung lượng đĩa và quyền ghi thư mục dữ liệu.")
 		return []string{msg}
 	}
 	kept := pruneBackups(dir, atInt(s.Settings, KeyBackupKeepN, defaultBackupKeep))
@@ -131,6 +123,8 @@ func (s *Service) backupOffsite(path string) string {
 }
 
 // copyFileOffsite copy file zip sang thư mục đích (giữ nguyên tên file).
+// Nguyên tử: copy vào file .tmp rồi rename — copy lỗi giữa chừng thì bản
+// cũ còn nguyên, không bao giờ mất cả hai.
 func copyFileOffsite(src, destDir string) error {
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return err
@@ -141,29 +135,24 @@ func copyFileOffsite(src, destDir string) error {
 		return err
 	}
 	defer in.Close()
-	out, err := os.Create(dst)
+	tmp := dst + ".tmp"
+	out, err := os.Create(tmp)
 	if err != nil {
 		return err
 	}
 	_, cerr := io.Copy(out, in)
-	if err := out.Close(); err != nil {
+	if cerr2 := out.Close(); cerr == nil {
+		cerr = cerr2
+	}
+	if cerr != nil {
+		_ = os.Remove(tmp)
+		return cerr
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
 		return err
 	}
-	return cerr
-}
-
-// writeBackup tạo zip sao lưu vào path (đóng file trước khi trả về).
-func writeBackup(dataDir, path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	berr := backup.Create(dataDir, f)
-	cerr := f.Close()
-	if berr != nil {
-		return berr
-	}
-	return cerr
+	return nil
 }
 
 // pruneBackups xóa bản cũ, chỉ giữ n bản mới nhất. Trả về số bản còn lại.

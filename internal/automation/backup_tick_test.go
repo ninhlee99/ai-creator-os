@@ -84,3 +84,46 @@ func TestPruneBackupsKeepsN(t *testing.T) {
 		t.Fatal("file lạ không được đụng")
 	}
 }
+
+// Copy offsite nguyên tử: thành công thì byte giống hệt, không sót file .tmp.
+func TestCopyFileOffsiteAtomic(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "aicos-backup-20260101-000000.zip")
+	content := []byte("fake-zip-content-12345")
+	if err := os.WriteFile(src, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	offsite := filepath.Join(dir, "offsite")
+	if err := copyFileOffsite(src, offsite); err != nil {
+		t.Fatalf("copyFileOffsite: %v", err)
+	}
+	dst := filepath.Join(offsite, "aicos-backup-20260101-000000.zip")
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("thiếu file đích: %v", err)
+	}
+	if string(got) != string(content) {
+		t.Fatal("nội dung file đích không khớp nguồn")
+	}
+	if _, err := os.Stat(dst + ".tmp"); !os.IsNotExist(err) {
+		t.Fatal("file .tmp phải được dọn sau khi copy xong")
+	}
+	// Ghi đè bản cũ: copy lần 2 vẫn nguyên tử (không truncate trước).
+	content2 := []byte("fake-zip-content-67890-longer")
+	if err := os.WriteFile(src, content2, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyFileOffsite(src, offsite); err != nil {
+		t.Fatalf("copyFileOffsite lần 2: %v", err)
+	}
+	got, _ = os.ReadFile(dst)
+	if string(got) != string(content2) {
+		t.Fatal("ghi đè lần 2 không đúng nội dung mới")
+	}
+}
+
+func TestCopyFileOffsiteMissingSrc(t *testing.T) {
+	if err := copyFileOffsite(filepath.Join(t.TempDir(), "khong-co.zip"), t.TempDir()); err == nil {
+		t.Fatal("nguồn không tồn tại phải báo lỗi")
+	}
+}

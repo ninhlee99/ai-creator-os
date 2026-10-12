@@ -20,13 +20,15 @@ import (
 // áp dụng (an toàn vì file chỉ được đổi khi chưa có handle DB nào mở).
 
 // handleBackupCreate tạo ảnh chụp data dir và trả về file zip để tải.
+// Dùng chung pipeline với BackupTick tự động: integrity_check DB nguồn
+// trước, kiểm tra bản zip sau — không bao giờ trả về bản hỏng.
 func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var buf bytes.Buffer
-	if err := backup.Create(s.DataDir, &buf); err != nil {
+	raw, err := backup.CreateValidated(s.DataDir)
+	if err != nil {
 		s.fail(w, err, "tạo bản sao lưu")
 		return
 	}
@@ -35,7 +37,7 @@ func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
 		"Đã tạo bản sao lưu "+name+".", map[string]any{"file": name})
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
-	w.Write(buf.Bytes())
+	w.Write(raw)
 }
 
 // handleBackupRestore nhận file zip, kiểm chứng rồi stage để restart áp dụng.

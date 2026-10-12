@@ -171,6 +171,55 @@ func IntegrityCheck(dbPath string) error {
 	return rows.Err()
 }
 
+// CorruptSourceError đánh dấu lỗi CreateValidated do DB nguồn đã hỏng
+// (khác với lỗi tạo zip chung chung) — để BackupTick alert critical đúng
+// mức: "DB hỏng, khôi phục từ bản cũ sớm".
+type CorruptSourceError struct {
+	DB  string
+	Err error
+}
+
+func (e *CorruptSourceError) Error() string {
+	return fmt.Sprintf("%s hỏng (%v)", e.DB, e.Err)
+}
+
+func (e *CorruptSourceError) Unwrap() error { return e.Err }
+
+// CheckSourceDBs chạy integrity_check cho 5 DB nguồn TRƯỚC khi zip.
+// File chưa tồn tại thì bỏ qua (Create cũng bỏ qua) — chỉ DB có mặt mà
+// hỏng mới báo lỗi.
+func CheckSourceDBs(dataDir string) error {
+	for _, db := range snapshotDBs {
+		dbPath := filepath.Join(dataDir, db)
+		if _, err := os.Stat(dbPath); err != nil {
+			continue
+		}
+		if err := IntegrityCheck(dbPath); err != nil {
+			return &CorruptSourceError{DB: db, Err: err}
+		}
+	}
+	return nil
+}
+
+// CreateValidated tạo ảnh chụp vào bộ nhớ theo đúng pipeline của BackupTick
+// tự động: integrity_check 5 DB nguồn TRƯỚC khi zip, kiểm tra bản zip SAU
+// khi tạo. Dùng chung cho nút "Tải bản sao lưu" bấm tay và BackupTick —
+// một pipeline duy nhất, không lệch.
+func CreateValidated(dataDir string) ([]byte, error) {
+	if err := CheckSourceDBs(dataDir); err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	if err := Create(dataDir, &buf); err != nil {
+		return nil, err
+	}
+	raw := buf.Bytes()
+	if err := ValidateZipBytes(raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
 // ValidateZipFile kiểm tra một file zip sao lưu trên đĩa: cấu trúc hợp lệ
 // (Validate) + ledger.db bên trong vượt integrity_check (Đợt V). Dùng sau
 // khi tạo backup để không lưu bản hỏng vào kho.
@@ -180,7 +229,23 @@ func ValidateZipFile(path string) error {
 		return fmt.Errorf("mở zip: %w", err)
 	}
 	defer zr.Close()
-	if err := Validate(&zr.Reader); err != nil {
+	return validateZipReader(&zr.Reader)
+}
+
+// ValidateZipBytes kiểm tra bytes zip trong bộ nhớ — cùng pipeline với
+// ValidateZipFile, dùng cho nút "Tải bản sao lưu" bấm tay.
+func ValidateZipBytes(raw []byte) error {
+	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	if err != nil {
+		return fmt.Errorf("mở zip: %w", err)
+	}
+	return validateZipReader(zr)
+}
+
+// validateZipReader kiểm tra cấu trúc zip + integrity_check ledger.db
+// đã giải nén ra file tạm.
+func validateZipReader(zr *zip.Reader) error {
+	if err := Validate(zr); err != nil {
 		return err
 	}
 	// Giải nén ledger.db ra file tạm rồi integrity_check.
@@ -289,6 +354,22 @@ func Stage(dataDir string, zr *zip.Reader) error {
 		out.Close()
 		if err != nil {
 			return err
+		}
+	}
+	// Kiểm tra toàn vẹn mọi DB trong staging TRƯỚC khi đặt cờ —
+	// bản sao lưu chứa DB hỏng thì từ chối stage, xóa staging, dữ liệu
+	// hiện tại nguyên vẹn (không có RESTORE_PENDING).
+	for _, f := range zr.File {
+		rel := filepath.Clean(f.Name)
+		if strings.Contains(rel, "..") || filepath.Dir(rel) != "." {
+			continue
+		}
+		if !strings.HasSuffix(rel, ".db") {
+			continue
+		}
+		if err := IntegrityCheck(filepath.Join(stage, rel)); err != nil {
+			_ = os.RemoveAll(stage)
+			return fmt.Errorf("%s trong bản sao lưu hỏng (%v) — không stage", rel, err)
 		}
 	}
 	flag := filepath.Join(dataDir, RestorePending)

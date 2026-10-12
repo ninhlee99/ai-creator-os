@@ -4,8 +4,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -13,12 +15,23 @@ import (
 
 func seedData(t *testing.T, dir string) map[string][]byte {
 	t.Helper()
+	// DB thật (SQLite) — Stage() integrity_check mọi *.db nên file giả
+	// chỉ có magic header sẽ không qua được.
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+		p := filepath.Join(dir, db)
+		sdb, err := sql.Open("sqlite", p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := sdb.Exec("CREATE TABLE kv(k TEXT PRIMARY KEY, v TEXT)"); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := sdb.Exec("INSERT INTO kv(k,v) VALUES (?,?)", db, db+"-v1"); err != nil {
+			t.Fatal(err)
+		}
+		sdb.Close()
+	}
 	files := map[string][]byte{
-		"ledger.db":         append([]byte("SQLite format 3\x00"), []byte("ledger-v1")...),
-		"studio.db":         append([]byte("SQLite format 3\x00"), []byte("studio-v1")...),
-		"products.db":       append([]byte("SQLite format 3\x00"), []byte("products-v1")...),
-		"accesstrade.db":    append([]byte("SQLite format 3\x00"), []byte("at-v1")...),
-		"reup.db":           append([]byte("SQLite format 3\x00"), []byte("reup-v1")...),
 		"content_jobs.json": []byte(`{"jobs":[]}`),
 		"tokens/a.json":     []byte(`{"refresh_token":"r"}`),
 	}
@@ -31,7 +44,19 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 			t.Fatal(err)
 		}
 	}
-	return files
+	// Đọc lại bytes DB thật để so sánh sau round-trip.
+	out := map[string][]byte{}
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+		raw, err := os.ReadFile(filepath.Join(dir, db))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[db] = raw
+	}
+	for rel, body := range files {
+		out[rel] = body
+	}
+	return out
 }
 
 func openZip(t *testing.T, raw []byte) *zip.Reader {
@@ -180,5 +205,89 @@ func TestCheckpointLiveWALDB(t *testing.T) {
 	var n int
 	if err := db.QueryRow("SELECT COUNT(*) FROM t").Scan(&n); err != nil || n != 1 {
 		t.Fatalf("DB hỏng sau checkpoint: n=%d err=%v", n, err)
+	}
+}
+
+// Đợt fix backup: Stage phải từ chối bản sao lưu chứa DB hỏng (dù header
+// còn nguyên — Validate cũ bỏ lọt), không đặt cờ RESTORE_PENDING.
+func TestStageRejectsCorruptDB(t *testing.T) {
+	dir := t.TempDir()
+	seedData(t, dir)
+	// Làm hỏng studio.db trong data dir rồi zip lại thành "bản sao lưu hỏng".
+	p := filepath.Join(dir, "studio.db")
+	f, err := os.OpenFile(p, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteAt([]byte("XXXXCORRUPTXXXX"), 100); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	var buf bytes.Buffer
+	if err := Create(dir, &buf); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zr := openZip(t, buf.Bytes())
+	err = Stage(dir, zr)
+	if err == nil {
+		t.Fatal("Stage phải từ chối bản chứa DB hỏng")
+	}
+	if !strings.Contains(err.Error(), "studio.db") {
+		t.Fatalf("lỗi phải nêu tên file hỏng, got: %v", err)
+	}
+	if PendingRestore(dir) {
+		t.Fatal("không được đặt cờ RESTORE_PENDING khi stage thất bại")
+	}
+	if _, serr := os.Stat(filepath.Join(dir, stagingDir)); !os.IsNotExist(serr) {
+		t.Fatal("thư mục staging phải được dọn khi stage thất bại")
+	}
+	// Dữ liệu hiện tại không bị đụng tới.
+	if _, serr := os.Stat(filepath.Join(dir, "ledger.db")); serr != nil {
+		t.Fatal("Stage thất bại không được đụng dữ liệu hiện tại")
+	}
+}
+
+// CreateValidated: pipeline dùng chung cho nút bấm tay và BackupTick.
+func TestCreateValidatedOK(t *testing.T) {
+	dir := t.TempDir()
+	seedData(t, dir)
+	raw, err := CreateValidated(dir)
+	if err != nil {
+		t.Fatalf("CreateValidated: %v", err)
+	}
+	if err := ValidateZipBytes(raw); err != nil {
+		t.Fatalf("ValidateZipBytes: %v", err)
+	}
+}
+
+func TestCreateValidatedCorruptSource(t *testing.T) {
+	dir := t.TempDir()
+	seedData(t, dir)
+	p := filepath.Join(dir, "ledger.db")
+	f, _ := os.OpenFile(p, os.O_WRONLY, 0)
+	_, _ = f.WriteAt([]byte("XXXXCORRUPTXXXX"), 100)
+	f.Close()
+	_, err := CreateValidated(dir)
+	if err == nil {
+		t.Fatal("DB nguồn hỏng phải chặn tạo bản sao lưu")
+	}
+	var cse *CorruptSourceError
+	if !errors.As(err, &cse) {
+		t.Fatalf("lỗi phải là *CorruptSourceError, got %T: %v", err, err)
+	}
+	if cse.DB != "ledger.db" {
+		t.Fatalf("cse.DB=%q, want ledger.db", cse.DB)
+	}
+}
+
+func TestCheckSourceDBsSkipsMissing(t *testing.T) {
+	if err := CheckSourceDBs(t.TempDir()); err != nil {
+		t.Fatalf("thư mục trống (DB chưa có) phải bỏ qua, got: %v", err)
+	}
+}
+
+func TestValidateZipBytesRejects(t *testing.T) {
+	if err := ValidateZipBytes([]byte("không phải zip")); err == nil {
+		t.Fatal("bytes rác phải bị từ chối")
 	}
 }
