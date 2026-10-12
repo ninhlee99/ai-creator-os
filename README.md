@@ -98,7 +98,7 @@ vào app.
 | TikTok đăng trực tiếp | ❌ Cần app audit (Ninh từ chối) — chỉ chế độ nháp |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** 524 hàm test trong 83 file (không tính vùng parked). Build/vet/test
+**Test:** 591 hàm test trong 100 file (không tính vùng parked). Build/vet/test
 xanh cả 2 tag — kiểm chứng lại bằng lệnh ở trên.
 
 ---

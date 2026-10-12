@@ -43,8 +43,9 @@ này. Vi phạm = làm lại. (Ninh chốt 2026-10-02.)
 
 ## 4. UI/UX
 
-- Sidebar theo `docs/PIVOT_REDESIGN.md` §1 (đích 8 mục; hiện tại 7 mục — các
-  trang Reup/Kể chuyện xuất hiện cùng đợt D/F). Không link chết.
+- Sidebar theo `docs/PIVOT_REDESIGN.md` §1 (10 mục: Trang chủ, Kênh, Phát triển
+  kênh, Đội ngũ, Studio AI, Affiliate, Reup, Kể chuyện, Đa nền tảng, Cài đặt).
+  Không link chết.
 - Ít chữ: card/modal/tooltip/toast; trạng thái = màu + icon (trầm, không chói).
 - Palette: nền xám ấm `#F5F4F1`, khung trắng/xám, chữ đen-xám ấm, nhấn
   chàm–slate trầm `#525F8A`. Mỗi trụ một màu nhận diện nhẹ ở badge/icon.
