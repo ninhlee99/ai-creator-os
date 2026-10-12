@@ -7,7 +7,7 @@ import (
 
 // Đủ 3 lần cạn kiệt liên tiếp → mạch mở tới nửa đêm; alert đúng 1 lần.
 func TestCircuitTripsAfterThreshold(t *testing.T) {
-	c := &Circuit{}
+	c := &Circuit{minInterval: time.Nanosecond}
 	if c.Open() {
 		t.Fatal("mạch mới phải đóng")
 	}
@@ -44,7 +44,7 @@ func TestCircuitTripsAfterThreshold(t *testing.T) {
 
 // Một lần thành công → đóng mạch, reset bộ đếm.
 func TestCircuitClosesOnSuccess(t *testing.T) {
-	c := &Circuit{}
+	c := &Circuit{minInterval: time.Nanosecond}
 	c.ObserveExhausted()
 	c.ObserveExhausted()
 	c.ObserveExhausted()
@@ -65,7 +65,7 @@ func TestCircuitClosesOnSuccess(t *testing.T) {
 
 // Xen kẽ thành công thì không bao giờ trip (không phải cạn quota ngày).
 func TestCircuitNoTripOnInterleavedSuccess(t *testing.T) {
-	c := &Circuit{}
+	c := &Circuit{minInterval: time.Nanosecond}
 	for i := 0; i < 10; i++ {
 		c.ObserveExhausted()
 		c.ObserveSuccess()

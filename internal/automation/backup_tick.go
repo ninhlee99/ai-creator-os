@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -173,7 +174,11 @@ func pruneBackups(dir string, n int) int {
 	}
 	sort.Strings(zips) // tên có timestamp → sort = cũ trước
 	for len(zips) > n {
-		_ = os.Remove(filepath.Join(dir, zips[0]))
+		// Đợt AC: log khi xóa lỗi thay vì nuốt im (đĩa lỗi/quyền sai → backups/ phình).
+		if err := os.Remove(filepath.Join(dir, zips[0])); err != nil {
+			log.Printf("backup: không xóa được bản cũ %s: %v", zips[0], err)
+			break
+		}
 		zips = zips[1:]
 	}
 	return len(zips)

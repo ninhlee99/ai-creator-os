@@ -126,9 +126,10 @@
   </div>
   <div class="card">
     <div class="label">Khôi phục từ file</div>
-    <form method="post" action="/settings/backup/restore" enctype="multipart/form-data">
+    <form method="post" action="/settings/backup/restore" enctype="multipart/form-data" onsubmit="return this.hieu.checked">
       <input type="file" name="file" accept=".zip" required>
-      <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Khôi phục sẽ THAY THẾ toàn bộ dữ liệu hiện tại sau khi restart. Tiếp tục?">Khôi phục</button>
+      <label class="check"><input type="checkbox" name="hieu"> Tôi hiểu dữ liệu hiện tại sẽ bị THAY THẾ sau khi restart</label>
+      <button type="submit" class="btn btn-secondary btn-sm">Khôi phục</button>
     </form>
   </div>
   <div class="card">

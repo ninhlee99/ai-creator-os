@@ -377,7 +377,7 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	_ = s.Growth.SetItemPublished(it.ID, res.RemoteID)
 	// Đánh dấu story job đã đăng để digest "bản nháp chờ đăng" không đếm nhầm
 	// video này mỗi ngày (đợt AC).
-	if it.StudioJobID != "" {
+	if it.StudioJobID != "" && s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishedPrefix+it.StudioJobID, "1")
 	}
 	_ = s.Growth.Decide("growth_publisher", "publish_youtube", a.Username,

@@ -149,6 +149,10 @@ func saveUpload(r *http.Request, field, dir string) (string, error) {
 	if hdr.Size == 0 {
 		return "", nil
 	}
+	// Đợt AC: báo rõ khi file quá lớn thay vì cắt im lặng 50MB.
+	if hdr.Size > 50<<20 {
+		return "", fmt.Errorf("file %s quá lớn (%.1fMB, tối đa 50MB)", field, float64(hdr.Size)/(1<<20))
+	}
 	ext := strings.ToLower(filepath.Ext(hdr.Filename))
 	switch ext {
 	case ".jpg", ".jpeg", ".png", ".webp", ".mp3", ".m4a", ".wav", ".ogg":
@@ -214,6 +218,13 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
 	bpm, _ := strconv.Atoi(r.FormValue("bpm"))
 	musicStart, _ := strconv.ParseFloat(r.FormValue("music_start"), 64)
+	// Đợt AC: clamp biên server-side (template có min/max nhưng POST tay
+	// bypass được; nhập chữ → Atoi trả 0).
+	seconds = clampInt(seconds, 10, 120)
+	bpm = clampInt(bpm, 60, 200)
+	if musicStart < 0 {
+		musicStart = 0
+	}
 	p := studio.AffiliateParams{
 		Mode:         r.FormValue("mode"),
 		Niche:        strings.TrimSpace(r.FormValue("niche")),

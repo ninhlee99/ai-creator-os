@@ -91,7 +91,8 @@ func (s *Server) handleYouTubeAuthorize(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if e := q.Get("error"); e != "" {
-		publishersMsg(w, r, "err", "Google từ chối: "+e+" "+q.Get("error_description"))
+		publishersMsg(w, r, "err", "Google từ chối: "+e+" "+q.Get("error_description")+
+			" — bấm lại “Nối YouTube” để thử lại (nhớ chọn đúng kênh rồi bấm Cho phép).")
 		return
 	}
 	code := q.Get("code")
@@ -102,6 +103,12 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	if code == "" {
 		publishersMsg(w, r, "err", "Không có ?code= — bấm lại “Nối YouTube”.")
+		return
+	}
+	// Đợt AC: kênh có thể đã bị xóa trong lúc chờ consent (15 phút) — kiểm
+	// tra lại trước khi ghi token file mồ côi.
+	if !s.accountExists(st.username) {
+		publishersMsg(w, r, "err", "Kênh "+st.username+" không còn tồn tại — thêm lại kênh rồi nối.")
 		return
 	}
 	p := publishers.NewYouTubePublisher(st.username, nil, "")

@@ -17,3 +17,14 @@ func (s *Server) fail(w http.ResponseWriter, err error, what string) {
 	log.Printf("web: %s: %v", what, err)
 	http.Error(w, "internal server error", http.StatusInternalServerError)
 }
+
+// clampInt giới hạn v trong [lo, hi]. Dùng cho validate biên server-side.
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}

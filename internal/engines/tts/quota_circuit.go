@@ -36,6 +36,9 @@ type Circuit struct {
 	// lastObserved: lần đếm gần nhất. Chain retry gọi provider 2 lần cho 1
 	// request logic — dedup theo thời gian để không đếm gấp đôi (đợt AC).
 	lastObserved time.Time
+	// minInterval: khoảng cách tối thiểu giữa 2 lần đếm (mặc định 30s).
+	// Test set 0 để không phụ thuộc thời gian.
+	minInterval time.Duration
 }
 
 var geminiCircuit = &Circuit{}
@@ -52,8 +55,12 @@ func (c *Circuit) ObserveExhausted() bool {
 		return false
 	}
 	// Dedup: chain retry gọi provider 2 lần cho 1 request logic — chỉ đếm khi
-	// cách lần trước >30s để không đếm gấp đôi (đợt AC).
-	if time.Since(c.lastObserved) < 30*time.Second {
+	// cách lần trước > minInterval để không đếm gấp đôi (đợt AC).
+	interval := c.minInterval
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	if time.Since(c.lastObserved) < interval {
 		return false
 	}
 	c.lastObserved = time.Now()
