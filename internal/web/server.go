@@ -100,6 +100,15 @@ type Server struct {
 	// except /onboard redirects to the wizard until it completes.
 	Onboarding bool
 
+	// StartedAt là thời điểm NewServer chạy xong — cho /healthz tính uptime.
+	StartedAt time.Time
+	// TickBeats trả về heartbeat các automation tick (do supervisor ở
+	// cmd/aicos cập nhật). Nil = chưa wiring — /healthz trả ticks rỗng.
+	TickBeats func() map[string]TickBeat
+	// QuotaCircuit trả về (đang mở, mở tới khi nào) của ngắt mạch quota
+	// ngày. Nil = không dùng.
+	QuotaCircuit func() (open bool, until string)
+
 	db        *sql.DB // read handle for decision/analytics queries
 	oauth     oauthStates
 	templates map[string]*template.Template
@@ -136,6 +145,11 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 	if err != nil {
 		return nil, fmt.Errorf("open web read db: %w", err)
 	}
+	// Đợt S: 1 connection duy nhất — PRAGMA busy_timeout bên dưới chỉ có
+	// tác dụng khi mọi query đi qua cùng connection (khớp các store khác:
+	// ledger/studio). Trước đây pool nhiều connection → dashboard thỉnh
+	// thoảng SQLITE_BUSY đúng lúc tick đang ghi.
+	db.SetMaxOpenConns(1)
 	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
 		db.Close()
 		return nil, err
@@ -148,6 +162,7 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		OutDir:    "data/output",
 		AvatarDir: "data/avatars", // parked-build support (handler avatar)
 		DataDir:   filepath.Dir(dbPath),
+		StartedAt: time.Now(), // Đợt S: /healthz
 		db:        db,
 	}
 	// R2-W7: job file follows the -data flag (it used to be hardcoded to

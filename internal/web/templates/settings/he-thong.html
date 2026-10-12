@@ -60,8 +60,32 @@
   </div>
 </div>
 
+<h2>Tự động nền (tick)</h2>
+<p class="subtitle">Mỗi tick chạy độc lập có giám sát: panic tự phục hồi, treo quá hạn tự hủy. Ngắt mạch quota mở khi hết quota Gemini ngày.</p>
+<div class="cards">
+  <div class="card">
+    <div class="num">{{if .QuotaCircuit.Open}}<span class="badge badge-warn">ĐANG MỞ tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">ĐÓNG</span>{{end}}</div>
+    <div class="label">Ngắt mạch quota Gemini{{if .QuotaCircuit.Open}} — tier Gemini nghỉ, tier local vẫn chạy{{end}}</div>
+  </div>
+</div>
+{{if .TickBeats}}
+<table class="tbl">
+  <tr><th>Tick</th><th>Lượt chạy</th><th>Xong lần cuối</th><th>Trạng thái</th></tr>
+  {{range .TickBeats}}
+  <tr>
+    <td><code>{{.Name}}</code></td>
+    <td>{{.Runs}}</td>
+    <td>{{.LastOK}}</td>
+    <td>{{if .LastErr}}<span class="badge badge-err" title="{{.LastErr}}">lỗi</span>{{else if .Running}}<span class="badge badge-warn">đang chạy</span>{{else}}<span class="badge badge-ok">ổn</span>{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+{{else}}
+<p class="hint">Chưa có tick nào chạy — số liệu hiện sau vài phút app hoạt động.</p>
+{{end}}
+
 <h2>Sao lưu &amp; khôi phục</h2>
-<p class="subtitle">Ảnh chụp thư mục dữ liệu (3 database + file job + token). Khôi phục cần khởi động lại app.</p>
+<p class="subtitle">Ảnh chụp thư mục dữ liệu (5 database + file job + token). Khôi phục cần khởi động lại app.</p>
 {{if .RestorePending}}<p class="notice">Có bản khôi phục đang chờ — khởi động lại app để áp dụng.</p>{{end}}
 <p class="hint">Tự động sao lưu mỗi ngày, giữ 7 bản mới nhất trong thư mục dữ liệu/backups/{{if .BackupLastOK}} · Bản gần nhất: <code>{{.BackupLastOK}}</code>{{else}} · <span class="badge badge-draft">chưa có bản tự động</span>{{end}}</p>
 <div class="cards">

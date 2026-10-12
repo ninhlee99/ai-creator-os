@@ -17,7 +17,8 @@ func (s *Server) onboardGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.Onboarding {
 			p := r.URL.Path
-			if p != "/onboard" && !strings.HasPrefix(p, "/static/") && p != "/favicon.ico" {
+			// Đợt S: /healthz cho watchdog ngoài gọi bất cứ lúc nào.
+			if p != "/onboard" && p != "/healthz" && !strings.HasPrefix(p, "/static/") && p != "/favicon.ico" {
 				seeOther(w, r, "/onboard")
 				return
 			}

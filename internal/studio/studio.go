@@ -671,6 +671,22 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 // helpers
 // ---------------------------------------------------------------------------
 
+// CancelRunning hủy context của job đang chạy trong process này (nếu có) —
+// ffmpeg/ffprobe được chạy bằng exec.CommandContext nên sẽ bị kill thật,
+// giải phóng cả slot render semaphore. Dùng bởi SweepHungJobs (Đợt S):
+// job treo trước đây chỉ bị đánh dấu failed trên DB trong khi process vẫn
+// ngốn CPU/đĩa và giữ slot tới khi restart app.
+func (s *Studio) CancelRunning(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cancel, ok := s.running[id]
+	if !ok {
+		return false
+	}
+	cancel()
+	return true
+}
+
 // MarkInterruptedJobs fails every job left "running" from a previous process
 // (their render goroutines died with it). Call once at startup; returns the
 // number of jobs swept. The user can resume film jobs with RerunFilmJob.

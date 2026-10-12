@@ -17,6 +17,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 
+	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
+	mux.HandleFunc("GET /healthz", s.handleHealthz)
+
 	mux.HandleFunc("GET /", s.handleDashboard)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
 	mux.HandleFunc("GET /accounts/new", s.handleAccountNew)

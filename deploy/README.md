@@ -25,17 +25,30 @@ Gỡ:
 ./scripts/install-launchd.sh --uninstall
 ```
 
-## Xoay log (khỏi đầy đĩa)
+## Watchdog ngoài (tùy chọn, Đợt S)
 
-launchd ghi mọi log vào `~/aicos-data/logs/aicos.log` và không tự xoay.
-Tạo file `/etc/newsyslog.d/aicos.conf` (cần sudo, 1 lần):
+`KeepAlive` của launchd chỉ chạy lại app khi process **thoát**. Process bị
+treo (deadlock) mà chưa chết thì launchd tưởng vẫn khỏe. `scripts/watch-health.sh`
+gọi `GET /healthz` định kỳ để phát hiện trường hợp này:
 
+```bash
+# cron: kiểm tra mỗi 5 phút
+*/5 * * * * ~/ai-creator-os/scripts/watch-health.sh >> ~/aicos-data/logs/watchdog.log 2>&1
 ```
-# logfile                    [owner:group] mode count size when  flags
-/Users/NINH/aicos-data/logs/aicos.log  NINH:staff   644  7     20480  *     Z
-```
 
-Thay `NINH` bằng username thật. Giữ 7 bản, mỗi bản 20MB.
+Không kết nối được hoặc `db_ok=false` → ghi 1 dòng log + exit 1. Khi khỏe thì
+im lặng (không spam log).
+
+## Xoay log (tự động trong app — Đợt R)
+
+App tự ghi và xoay log tại `~/aicos-data/logs/aicos.log`: mỗi file tối đa
+20MB, giữ 7 bản cũ (`aicos.log.1` … `aicos.log.7`). Không cần cấu hình gì thêm.
+
+> Vì sao không dùng newsyslog nữa: launchd mở `StandardOutPath` một lần lúc
+> start job và giữ file descriptor — newsyslog rename file nhưng launchd vẫn
+> ghi vào inode cũ, file "đã xoay" tiếp tục phình vô hạn. App tự quản lý file
+> log của mình thì xoay mới thật sự có tác dụng. Plist mẫu cũng đã bỏ
+> `StandardOutPath`/`StandardErrorPath` để tránh ghi đúp.
 
 ## Lưu ý
 
@@ -46,3 +59,5 @@ Thay `NINH` bằng username thật. Giữ 7 bản, mỗi bản 20MB.
   `docs/features/daemon-tu-dong.md`).
 - Muốn app không chạy nữa: gỡ watchdog (lệnh trên) rồi tắt app —
   nếu chỉ tắt app mà không gỡ, launchd sẽ chạy lại nó (đúng thiết kế).
+- Chạy binary tay trong khi watchdog đang chạy: app phát hiện đã có instance
+  (khóa `aicos.lock`) và thoát êm — không chạy đúp, không giành database.

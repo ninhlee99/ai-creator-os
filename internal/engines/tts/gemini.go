@@ -113,6 +113,7 @@ func (g *GeminiTTSProvider) ValidateKey(ctx context.Context, idx int) error {
 	defer g.mu.Unlock()
 	if err == nil {
 		g.ring.ReportSuccess(idx)
+		GeminiQuotaCircuit().ObserveSuccess() // nút "test" thành công → quota đã hồi
 		return nil
 	}
 	switch ClassifyKeyError(err) {
@@ -131,6 +132,11 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("gemini: empty text")
 	}
+	// Đợt S: mạch quota đang mở (hết quota ngày) → fail-fast, không chạm
+	// keyring, để chain chuyển sang tier local (VieNeu/edge) ngay.
+	if GeminiQuotaCircuit().Open() {
+		return nil, fmt.Errorf("gemini: quota circuit open (hết quota ngày) — failing over")
+	}
 	tried := map[int]bool{}
 	var lastErr error
 	for {
@@ -146,6 +152,8 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 				// Every key is cooling down: fail over to the next tier
 				// NOW (VieNeu/edge) instead of spamming retries.
 				// "quota" in the message lets the chain log the reason.
+				// Đợt S: đếm lần cạn kiệt liên tiếp cho ngắt mạch quota ngày.
+				GeminiQuotaCircuit().ObserveExhausted()
 				return nil, fmt.Errorf("gemini: all API keys cooling down (quota/rate-limit), failing over")
 			case lastErr != nil:
 				return nil, lastErr
@@ -159,6 +167,7 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 			g.mu.Lock()
 			g.ring.ReportSuccess(idx)
 			g.mu.Unlock()
+			GeminiQuotaCircuit().ObserveSuccess()
 			return wav, nil
 		}
 		lastErr = err

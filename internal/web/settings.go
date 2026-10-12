@@ -243,6 +243,9 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"AICapabilities": s.aiCapabilityViews(),
 		"RestorePending": backup.PendingRestore(s.DataDir),
 		"DataDir":        s.DataDir,
+		// Đợt R+S: heartbeat các tick + trạng thái ngắt mạch quota.
+		"TickBeats":    s.tickBeatViews(),
+		"QuotaCircuit": s.quotaCircuitView(),
 		// Đợt L: % đĩa đã dùng cho thẻ Hệ thống (disk guard tự dọn khi đầy).
 		"DiskUsage": s.diskUsageView(),
 		// Đợt M2: lần sao lưu tự động gần nhất.
@@ -306,7 +309,8 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"EnvStatus", "EnvSaved", "RtmpRows", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
-		"BackupLastOK", "NotifyOn", "NotifyChat", "NotifyHasBot")
+		"BackupLastOK", "NotifyOn", "NotifyChat", "NotifyHasBot",
+		"TickBeats", "QuotaCircuit")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"

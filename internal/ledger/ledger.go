@@ -961,6 +961,15 @@ func (l *Ledger) SetSetting(key, value string) error {
 	return err
 }
 
+// DeleteSetting xóa một key khỏi bảng settings. Không có key thì no-op
+// (không báo lỗi) — dùng để dọn các marker tạm như story.publishing.*.
+func (l *Ledger) DeleteSetting(key string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, err := l.db.Exec("DELETE FROM settings WHERE key = ?", key)
+	return err
+}
+
 // AllSettings returns every stored key/value pair (for the dashboard).
 func (l *Ledger) AllSettings() (map[string]string, error) {
 	rows, err := l.db.Query("SELECT key, value FROM settings ORDER BY key")

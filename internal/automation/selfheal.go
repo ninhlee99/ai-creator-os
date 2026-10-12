@@ -13,7 +13,6 @@ package automation
 import (
 	"context"
 	"fmt"
-	"syscall"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
@@ -127,20 +126,11 @@ func (s *Service) alert(kind, severity, msg, action string) {
 	})
 }
 
-// DiskUsagePct trả về % đĩa đã dùng tại path. Pure Go (syscall.Statfs),
-// chạy được trên linux/darwin, không cgo.
-func DiskUsagePct(path string) (int, error) {
-	var st syscall.Statfs_t
-	if err := syscall.Statfs(path, &st); err != nil {
-		return 0, err
-	}
-	total := st.Blocks * uint64(st.Bsize)
-	if total == 0 {
-		return 0, fmt.Errorf("không đo được dung lượng đĩa")
-	}
-	free := st.Bavail * uint64(st.Bsize)
-	used := total - free
-	return int(used * 100 / total), nil
+// RaiseAlert là bản public của alert — cho cmd/aicos gọi khi supervisor
+// tick phát hiện panic/treo (Đợt R) hoặc ngắt mạch quota mở (Đợt S).
+// Alert warn/critical sẽ tới Telegram của Ninh ở NotifyTick kế tiếp.
+func (s *Service) RaiseAlert(kind, severity, msg, action string) {
+	s.alert(kind, severity, msg, action)
 }
 
 // formatBytes định dạng bytes cho người đọc (tiếng Việt, ngắn gọn).

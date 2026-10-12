@@ -1,5 +1,5 @@
 // Package backup tạo và khôi phục ảnh chụp (snapshot) thư mục dữ liệu
-// của app (R2-W7, R2-07). Ảnh chụp là zip gồm 3 database, file job và
+// của app (R2-W7, R2-07). Ảnh chụp là zip gồm 5 database, file job và
 // thư mục token — cố ý loại trừ output/, avatars/, models/ (nặng và tái
 // tạo được). Khôi phục gồm 2 bước: Stage (giải nén vào thư mục chờ +
 // đặt cờ RESTORE_PENDING) rồi ApplyStaged (đổi file vào vị trí thật) —
@@ -10,12 +10,15 @@ package backup
 import (
 	"archive/zip"
 	"bytes"
+	"database/sql"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	_ "modernc.org/sqlite" // driver "sqlite" pure Go (khớp các store khác)
 )
 
 // ManifestName là file nhận diện "đây là bản sao lưu của aicos".
@@ -28,7 +31,9 @@ const RestorePending = "RESTORE_PENDING"
 const stagingDir = "restore-staging"
 
 // snapshotDBs là các database được đưa vào ảnh chụp (kèm -wal/-shm nếu có).
-var snapshotDBs = []string{"ledger.db", "studio.db", "products.db"}
+// Đợt S: đủ cả 5 DB đang mở ở cmd/aicos — thiếu accesstrade.db/reup.db thì
+// khôi phục sẽ mất cache chiến dịch và state reup (dedupe → tải/đăng trùng).
+var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"}
 
 // snapshotFiles là các file đơn lẻ được đưa vào ảnh chụp.
 var snapshotFiles = []string{"content_jobs.json"}
@@ -41,6 +46,13 @@ var sqliteMagic = []byte("SQLite format 3\x00")
 
 // Create ghi ảnh chụp của dataDir vào w.
 func Create(dataDir string, w io.Writer) error {
+	// Đợt R: checkpoint WAL của từng DB TRƯỚC khi copy — gộp mọi giao dịch
+	// đang treo vào file chính để bộ ba db/-wal/-shm nhất quán. Best-effort:
+	// checkpoint hỏng (vd: DB đang bị khóa) thì copy như cũ, không fail cả
+	// bản sao lưu vì một DB kẹt.
+	for _, db := range snapshotDBs {
+		checkpointDB(filepath.Join(dataDir, db))
+	}
 	zw := zip.NewWriter(w)
 	added := 0
 	add := func(rel string) error {
@@ -110,6 +122,23 @@ func Create(dataDir string, w io.Writer) error {
 		return fmt.Errorf("thư mục dữ liệu trống — không có gì để sao lưu")
 	}
 	return nil
+}
+
+// checkpointDB gộp WAL vào file DB chính (PRAGMA wal_checkpoint).
+// Bỏ qua im lặng khi file không tồn tại hoặc checkpoint không làm được —
+// người gọi coi đây là best-effort trước khi copy file.
+func checkpointDB(path string) {
+	if _, err := os.Stat(path); err != nil {
+		return
+	}
+	db, err := sql.Open("sqlite", path+"?cache=shared")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+	_, _ = db.Exec("PRAGMA busy_timeout=5000")
+	_, _ = db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 }
 
 // Validate kiểm tra một bản sao lưu: phải có manifest và ledger.db phải

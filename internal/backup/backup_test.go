@@ -3,9 +3,12 @@ package backup
 import (
 	"archive/zip"
 	"bytes"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
+
+	_ "modernc.org/sqlite"
 )
 
 func seedData(t *testing.T, dir string) map[string][]byte {
@@ -14,6 +17,8 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 		"ledger.db":         append([]byte("SQLite format 3\x00"), []byte("ledger-v1")...),
 		"studio.db":         append([]byte("SQLite format 3\x00"), []byte("studio-v1")...),
 		"products.db":       append([]byte("SQLite format 3\x00"), []byte("products-v1")...),
+		"accesstrade.db":    append([]byte("SQLite format 3\x00"), []byte("at-v1")...),
+		"reup.db":           append([]byte("SQLite format 3\x00"), []byte("reup-v1")...),
 		"content_jobs.json": []byte(`{"jobs":[]}`),
 		"tokens/a.json":     []byte(`{"refresh_token":"r"}`),
 	}
@@ -131,5 +136,49 @@ func TestCreateEmptyDirFails(t *testing.T) {
 func TestApplyStagedNoop(t *testing.T) {
 	if err := ApplyStaged(t.TempDir()); err != nil {
 		t.Fatalf("ApplyStaged không có gì chờ phải no-op: %v", err)
+	}
+}
+
+// Đợt S: ảnh chụp phải gồm đủ 5 DB đang mở (thiếu accesstrade.db/reup.db
+// thì khôi phục mất cache chiến dịch + state reup → tải/đăng trùng).
+func TestCreateIncludesAllFiveDBs(t *testing.T) {
+	dir := t.TempDir()
+	seedData(t, dir)
+	var buf bytes.Buffer
+	if err := Create(dir, &buf); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zr := openZip(t, buf.Bytes())
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+		if !names[db] {
+			t.Errorf("thiếu %s trong ảnh chụp", db)
+		}
+	}
+}
+
+// Đợt R: checkpoint chạy best-effort trên DB thật đang mở (WAL) — không
+// lỗi, và DB vẫn đọc được sau checkpoint.
+func TestCheckpointLiveWALDB(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "live.db")
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Skipf("không mở được sqlite test: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO t (v) VALUES ('x')"); err != nil {
+		t.Fatal(err)
+	}
+	checkpointDB(path) // best-effort: không được panic/lỗi lan ra ngoài
+	var n int
+	if err := db.QueryRow("SELECT COUNT(*) FROM t").Scan(&n); err != nil || n != 1 {
+		t.Fatalf("DB hỏng sau checkpoint: n=%d err=%v", n, err)
 	}
 }

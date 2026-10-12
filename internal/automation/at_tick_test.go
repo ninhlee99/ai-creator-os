@@ -21,6 +21,7 @@ type mapSettings map[string]string
 
 func (m mapSettings) Get(k string) (string, bool) { v, ok := m[k]; return v, ok }
 func (m mapSettings) Set(k, v string) error       { m[k] = v; return nil }
+func (m mapSettings) Delete(k string) error       { delete(m, k); return nil }
 
 // fakeStudioRunner ghi nhận job affiliate được tạo.
 type fakeStudioRunner struct {

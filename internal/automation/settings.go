@@ -23,6 +23,8 @@ type Settings interface {
 	Get(key string) (string, bool)
 	// Set persists the value.
 	Set(key, value string) error
+	// Delete removes the key; no-op when absent. Đợt S: dọn marker tạm.
+	Delete(key string) error
 }
 
 // Setting keys (all live in the ledger settings table).
@@ -64,6 +66,13 @@ func (s LedgerSettings) Set(key, value string) error {
 		return errNoLedger
 	}
 	return s.L.SetSetting(key, value)
+}
+
+func (s LedgerSettings) Delete(key string) error {
+	if s.L == nil {
+		return errNoLedger
+	}
+	return s.L.DeleteSetting(key)
 }
 
 // ------------------------------------------------------------ migration

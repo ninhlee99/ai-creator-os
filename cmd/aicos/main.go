@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -40,124 +41,20 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
+	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
+	"github.com/ninhlee99/ai-creator-os/internal/logx"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
 
 // version mặc định khi build thường; build phát hành truyền
 // -ldflags "-X main.version=vX.Y.Z" để đóng dấu thật.
 var version = "dev"
-
-// decideAdapter adapts *ledger.Ledger to engines.DecisionLogger: the ledger
-// returns errors, the chain interface does not — log instead of crashing.
-type decideAdapter struct{ l *ledger.Ledger }
-
-func (d decideAdapter) Decide(agent, action string, target *string, reason string, inputs map[string]any) {
-	if err := d.l.Decide(agent, action, target, reason, inputs); err != nil {
-		log.Printf("decide(%s/%s): %v", agent, action, err)
-	}
-}
-
-// ttsChainAdapter adapts *engines.TTSChain to web.TTSChainAPI. The engines
-// chain takes a typed ChainConfig; the web layer passes raw JSON in the
-// dashboard contract (timeouts in seconds) — decoded by tts.ParseChainJSON.
-type ttsChainAdapter struct{ c *engines.TTSChain }
-
-func (a ttsChainAdapter) Synthesize(ctx context.Context, text, voice string) ([]byte, error) {
-	return a.c.Synthesize(ctx, text, voice)
-}
-
-func (a ttsChainAdapter) ProviderNames() []string { return a.c.ActiveProviders() }
-
-func (a ttsChainAdapter) SetConfig(raw json.RawMessage) {
-	cfg, err := tts.ParseChainJSON(raw)
-	if err != nil {
-		log.Printf("tts: SetConfig: invalid JSON, keeping current config: %v", err)
-		return
-	}
-	a.c.SetConfig(cfg)
-	log.Printf("tts: config updated via dashboard: active=%v", a.c.ActiveProviders())
-}
-
-// KeyStatus exposes per-key rotation state for the settings page.
-func (a ttsChainAdapter) KeyStatus(provider string) []web.KeyStatus {
-	return toWebKeyStatus(a.c.KeyStatus(provider))
-}
-
-// ValidateKey tests one API key of a provider (settings "test" button).
-func (a ttsChainAdapter) ValidateKey(ctx context.Context, provider string, idx int) error {
-	return a.c.ValidateKey(ctx, provider, idx)
-}
-
-// llmChainAdapter adapts *engines.LLMChain to the web layer: it satisfies
-// web.LLMClient (Complete + Name) and additionally offers raw-JSON
-// SetConfig plus key-status / key-test for the settings page. (The typed
-// SetConfig(ChainConfig) cannot satisfy the web's SetConfig(json.RawMessage)
-// interface, hence this adapter.)
-type llmChainAdapter struct{ c *engines.LLMChain }
-
-func (a llmChainAdapter) Complete(ctx context.Context, system, prompt string) (string, error) {
-	return a.c.Complete(ctx, system, prompt)
-}
-
-func (a llmChainAdapter) Name() string { return a.c.Name() }
-
-// studioLLMAdapter adapts *engines.LLMChain to studio.LLM (the director).
-type studioLLMAdapter struct{ c *engines.LLMChain }
-
-func (a studioLLMAdapter) Complete(ctx context.Context, system, prompt string) (string, error) {
-	return a.c.Complete(ctx, system, prompt)
-}
-
-func (a studioLLMAdapter) Name() string { return a.c.Name() }
-
-func (a studioLLMAdapter) Healthy(context.Context) bool { return len(a.c.ActiveProviders()) > 0 }
-
-func (a llmChainAdapter) SetConfig(raw json.RawMessage) {
-	cfg, err := tts.ParseChainJSON(raw)
-	if err != nil {
-		log.Printf("llm: SetConfig: invalid JSON, keeping current config: %v", err)
-		return
-	}
-	a.c.SetConfig(cfg)
-	log.Printf("llm: config updated via dashboard: active=%v", a.c.ActiveProviders())
-}
-
-// KeyStatus exposes per-key rotation state for the settings page.
-func (a llmChainAdapter) KeyStatus(provider string) []web.KeyStatus {
-	return toWebKeyStatus(a.c.KeyStatus(provider))
-}
-
-// ValidateKey tests one API key of a provider (settings "test" button).
-func (a llmChainAdapter) ValidateKey(ctx context.Context, provider string, idx int) error {
-	return a.c.ValidateKey(ctx, provider, idx)
-}
-
-// toWebKeyStatus converts the engines keyring statuses to the web
-// package's render-ready type (masked, with badge/label fields). The web
-// package never imports internal/engines, so the conversion lives here.
-func toWebKeyStatus(in []tts.KeyStatus) []web.KeyStatus {
-	out := make([]web.KeyStatus, 0, len(in))
-	for _, ks := range in {
-		w := web.KeyStatus{
-			Index:                ks.Index,
-			Last4:                ks.Last4,
-			State:                ks.State,
-			CooldownRemainingSec: ks.CooldownRemainingSec,
-			RateLimitHits:        ks.RateLimitHits,
-			Requests:             ks.Requests,
-			LastRateLimitUnix:    ks.LastRateLimitUnix,
-			Total:                len(in),
-		}
-		w.FillDerived()
-		out = append(out, w)
-	}
-	return out
-}
 
 // getenvList reads a comma-separated env var into trimmed non-empty items.
 func getenvList(name string) []string {
@@ -243,6 +140,7 @@ func fileExists(path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
+// ---------------------------------------------------------------------------
 func main() {
 	addr := flag.String("addr", "127.0.0.1:8080", "listen address for the web dashboard (default localhost-only; pass :8080 to expose on LAN)")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
@@ -259,6 +157,28 @@ func main() {
 	// -- 1. data dir + ledger ---------------------------------------------
 	if err := os.MkdirAll(*dataDir, 0o755); err != nil {
 		log.Fatalf("data dir: %v", err)
+	}
+	// Đợt S: single-instance — flock giữ suốt thời gian process sống; OS tự
+	// giải phóng khi crash nên không bao giờ kẹt khóa "ma". Đã có instance
+	// khác (vd: launchd) đang chạy → thoát êm, không giành SQLite.
+	lk, err := lockfile.Acquire(filepath.Join(*dataDir, "aicos.lock"))
+	if err != nil {
+		log.Fatalf("lock: %v", err)
+	}
+	if lk == nil {
+		log.Printf("aicos: đã có instance khác đang chạy trên %s — thoát (không khởi động đúp)", *dataDir)
+		os.Exit(0)
+	}
+	defer lk.Close()
+	// Đợt R: app tự xoay log theo dung lượng (20MB, giữ 7 bản). launchd mở
+	// StandardOutPath một lần và giữ fd nên newsyslog KHÔNG xoay được log
+	// của nó — xem deploy/README.md.
+	if rot, rerr := logx.New(filepath.Join(*dataDir, "logs", "aicos.log"), logx.DefaultMaxSize, logx.DefaultMaxBackup); rerr != nil {
+		log.Printf("log: không mở được file log xoay (%v) — ghi tiếp ra stderr", rerr)
+	} else {
+		defer rot.Close()
+		log.SetOutput(io.MultiWriter(os.Stderr, rot))
+		log.Printf("log: ghi vào %s (tự xoay 20MB, giữ 7 bản)", rot.Path())
 	}
 	// R2-W7: áp dụng bản khôi phục đang chờ TRƯỚC khi mở bất kỳ DB nào.
 	if err := backup.ApplyStaged(*dataDir); err != nil {
@@ -432,6 +352,33 @@ func main() {
 	}
 	srv.OutDir = outDir
 	srv.Health = health
+	// Đợt R: một supervisor duy nhất giám sát mọi automation tick (timeout +
+	// recover + heartbeat). Service build lazy để luôn thấy đủ các store đã
+	// wiring xong (Studio/AT/Reup được gán sau điểm này).
+	tickSup := ticksup.New(
+		func() ticksup.Alerter { return srv.AutomationService() },
+		tts.GeminiQuotaCircuit().TakeAlert,
+	)
+	// Đợt R+S: /healthz đọc heartbeat tick + trạng thái ngắt mạch quota.
+	srv.TickBeats = func() map[string]web.TickBeat {
+		out := make(map[string]web.TickBeat)
+		for k, v := range tickSup.Snapshot() {
+			out[k] = web.TickBeat{
+				LastStart: v.LastStart,
+				LastOK:    v.LastOK,
+				LastErr:   v.LastErr,
+				Runs:      v.Runs,
+			}
+		}
+		return out
+	}
+	srv.QuotaCircuit = func() (bool, string) {
+		qc := tts.GeminiQuotaCircuit()
+		if !qc.Open() {
+			return false, ""
+		}
+		return true, qc.OpenUntil().Format("02/01 15:04")
+	}
 	if vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
 	}
@@ -491,6 +438,9 @@ func main() {
 		srv.Reup = reupStore
 		log.Printf("reup: ready")
 	}
+
+	// Đợt R: cờ arm vòng tick — khởi động tập trung ở cuối main qua ticksup.ArmLoops.
+	autopilotArmed := false
 
 	// -- 6d. affiliate autopilot: theme -> high-commission product -> video --
 	// Ninh uploads model photos per account (Studio UI) and picks a theme;
@@ -560,24 +510,8 @@ func main() {
 				}
 				// Auto-publish also defaults ON when unset (Đợt 3) — the old
 				// forced "0" seed is gone; kill switch + DRY-RUN gate it.
-				// Background scheduler, driven by UI-managed settings.
-				// Checks every minute; runs when enabled and the interval elapsed.
-				go func() {
-					tick := time.NewTicker(time.Minute)
-					defer tick.Stop()
-					auto := srv.AutomationService()
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case <-tick.C:
-							for _, note := range auto.AutopilotTick(ctx) {
-								log.Printf("%s", note)
-							}
-						}
-					}
-				}()
-				log.Printf("autopilot: scheduler armed (managed in web UI /products)")
+				// Vòng tick khởi động tập trung ở cuối main (ticksup.ArmLoops).
+				autopilotArmed = true
 			}
 		}
 	}
@@ -601,141 +535,38 @@ func main() {
 	netCfg.Gate = webCfg
 	log.Printf("network: master=%v dry_run=%v kill_switch=%v", netCfg.MasterSwitch, netCfg.DryRun, netCfg.KillSwitch)
 	daemon := network.NewDaemon(l, mgr, llmChain, netCfg) // *engines.LLMChain satisfies network.LLMClient
-	go daemon.Run(ctx, 60*time.Second)
-
-	// -- 7b. growth automation: plan -> production -> YouTube publish ------
-	// Zero-touch channel growth (docs/CHANNEL_GROWTH.md): due plan items
-	// render in Studio and upload to YouTube inside the daily quota. The
-	// /growth toggle defaults ON (a stored "0" opts out); dry-run and the
-	// kill switch still gate every real action. TikTok stays draft-only
-	// pre-audit.
-	if srv.Growth != nil {
-		go func() {
-			tick := time.NewTicker(5 * time.Minute)
-			defer tick.Stop()
-			auto := srv.AutomationService()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tick.C:
-					for _, note := range auto.GrowthTick(ctx, false) {
-						log.Printf("growth: %s", note)
-					}
-				}
+	// Đợt R: recover để daemon panic không giết cả process.
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("daemon: PANIC recovered: %v", r)
 			}
 		}()
-		log.Printf("growth: automation tick armed (mặc định bật ở /growth; dry-run là cổng an toàn)")
-	}
+		daemon.Run(ctx, 60*time.Second)
+	}()
 
-	// -- 7c. accesstrade automation: hunter + order sync + campaign check --
-	// Zero-touch affiliate (Đợt C): hunter quét datafeed daily → video;
-	// order sync 30 phút/lần → đối soát; campaign check daily → alert khi
-	// có campaign chờ duyệt. Kill switch + DRY-RUN chặn mọi tick; chưa có
-	// access_key → tick bỏ qua im lặng (không spam alert).
-	if srv.AT != nil {
-		go func() {
-			tick := time.NewTicker(5 * time.Minute)
-			defer tick.Stop()
-			auto := srv.AutomationService()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tick.C:
-					for _, note := range auto.ATTick(ctx) {
-						log.Printf("accesstrade: %s", note)
-					}
-				}
-			}
-		}()
-		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
-	}
-
-	// -- 7d. reup automation: discover → download → transform → đăng ----
-	// Zero-touch reup (Đợt D+E): tìm video viral từ nguồn Douyin đang bật
-	// (TikWM metadata, pick theo play_count) → tải ngay (yt-dlp → TikWM
-	// fallback, dedupe sha256, QC) → transform 2 mức → đăng theo lịch +
-	// kill rule 0-view. Kill switch + DRY-RUN chặn tick; chưa có nguồn →
-	// bỏ qua + note.
-	if srv.Reup != nil {
-		go func() {
-			tick := time.NewTicker(5 * time.Minute)
-			defer tick.Stop()
-			auto := srv.AutomationService()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tick.C:
-					for _, note := range auto.ReupTick(ctx) {
-						log.Printf("reup: %s", note)
-					}
-					// Đợt E: transform 2 mức (15 phút/lần) + đăng (2 giờ/lần)
-					// + kill rule 0-view (1 giờ/lần) — mỗi tick tự kiểm tra
-					// đến hạn bên trong.
-					for _, note := range auto.ReupTransformTick(ctx) {
-						log.Printf("reup: %s", note)
-					}
-					for _, note := range auto.ReupPostTick(ctx) {
-						log.Printf("reup: %s", note)
-					}
-					for _, note := range auto.ReupKillTick(ctx) {
-						log.Printf("reup: %s", note)
-					}
-				}
-			}
-		}()
-		log.Printf("reup: automation tick armed (discover 6 giờ/lần, download ngay)")
-	}
-
-	// -- 7e. story automation: kể chuyện ngôi thứ nhất (Đợt F) --------------
-	// Zero-touch: đến hạn (24h/lần) lấy chủ đề từ hàng đợi → tạo job kể
-	// chuyện (truyện → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC →
-	// tự đăng private-first (story.auto_publish mặc định BẬT từ Đợt K;
-	// tắt trong /stories để duyệt tay). Tự chữa lành (Đợt L): quét job
-	// treo + canh đĩa 1 giờ/lần. Kill switch + DRY-RUN chặn tick.
-	if srv.Studio != nil {
-		go func() {
-			tick := time.NewTicker(5 * time.Minute)
-			defer tick.Stop()
-			auto := srv.AutomationService()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-tick.C:
-					for _, note := range auto.StoryTick(ctx) {
-						log.Printf("story: %s", note)
-					}
-					// Đợt L: tự chữa lành (job treo + canh đĩa), 1 giờ/lần.
-					for _, note := range auto.SelfHealTick(ctx) {
-						log.Printf("selfheal: %s", note)
-					}
-					// Đợt M2: tự sao lưu data dir, 1 ngày/lần.
-					for _, note := range auto.BackupTick(ctx) {
-						log.Printf("backup: %s", note)
-					}
-					// Đợt N: tự chuyển public video private quá thời gian chờ.
-					for _, note := range auto.StoryPublicTick(ctx) {
-						log.Printf("story: %s", note)
-					}
-					// Đợt P: tự thử lại job story lỗi (backoff + giới hạn).
-					for _, note := range auto.StoryRetryTick(ctx) {
-						log.Printf("story: %s", note)
-					}
-					// Đợt O2: gửi alert mới qua Telegram (nếu Ninh đã bật).
-					for _, note := range auto.NotifyTick(ctx) {
-						log.Printf("notify: %s", note)
-					}
-				}
-			}
-		}()
-		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, tự đăng private-first, self-heal 1 giờ/lần)")
-	}
+	// -- 7b→7e. automation ticks (Đợt R) -------------------------------------
+	// Mọi vòng tick khởi động tập trung qua ticksup.ArmLoops: cadence,
+	// timeout, recover, heartbeat nằm gọn trong internal/ticksup (loops.go),
+	// main chỉ quyết định tick nào được arm theo store đã wiring xong.
+	ticksup.ArmLoops(ctx, tickSup, ticksup.Deps{
+		NewService: srv.AutomationService,
+		Autopilot:  autopilotArmed,
+		Growth:     srv.Growth != nil,
+		AT:         srv.AT != nil,
+		Reup:       srv.Reup != nil,
+		Story:      srv.Studio != nil,
+	})
 
 	// -- 8. http server + graceful shutdown ----------------------------------
-	httpSrv := &http.Server{Addr: *addr, Handler: srv.Routes()}
+	// Đợt S: timeout chống slowloris/treo kết nối trên máy 24/7.
+	httpSrv := &http.Server{
+		Addr:         *addr,
+		Handler:      srv.Routes(),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
 	go func() {
 		log.Printf("http: listening on %s", *addr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

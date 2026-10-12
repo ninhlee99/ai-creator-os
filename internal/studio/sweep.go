@@ -19,6 +19,11 @@ import (
 
 // SweepHungJobs đánh dấu failed các job kẹt ở "running" quá maxAge.
 // Trả về số job đã xử lý. Không đụng queued/done/failed.
+//
+// Đợt S: trước khi đánh failed, hủy context thật của job (CancelRunning) —
+// ffmpeg/ffprobe treo bị kill, slot render được giải phóng. Trước đây sweep
+// chỉ sửa DB trong khi process treo vẫn ngốn CPU/đĩa và giữ slot tới khi
+// restart app.
 func (s *Studio) SweepHungJobs(maxAge time.Duration) int {
 	cutoff := time.Now().Add(-maxAge).Format("2006-01-02T15:04:05")
 	rows, err := s.db.Query(
@@ -36,7 +41,12 @@ func (s *Studio) SweepHungJobs(maxAge time.Duration) int {
 	}
 	rows.Close()
 	for _, id := range ids {
-		s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đánh dấu thất bại", maxAge))
+		killed := s.CancelRunning(id)
+		if killed {
+			s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đã kill process, đánh dấu thất bại", maxAge))
+		} else {
+			s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đánh dấu thất bại", maxAge))
+		}
 		s.setStatus(id, StatusFailed, 100)
 	}
 	return len(ids)

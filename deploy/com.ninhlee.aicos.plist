@@ -36,12 +36,12 @@
   <key>WorkingDirectory</key>
   <string>__AICOS_DATA__</string>
 
-  <key>StandardOutPath</key>
-  <string>__AICOS_DATA__/logs/aicos.log</string>
-  <key>StandardErrorPath</key>
-  <string>__AICOS_DATA__/logs/aicos.log</string>
+  <!-- Đợt R: app tự ghi + xoay log tại __AICOS_DATA__/logs/aicos.log
+       (20MB x 7 bản, trong app). launchd KHÔNG capture stdout/stderr nữa:
+       trước đây StandardOutPath trỏ cùng file gây ghi đúp, và newsyslog
+       không xoay được file do launchd giữ fd (xem deploy/README.md). -->
 
-  <!-- Xoay log: launchd không tự xoay — xem deploy/README.md (newsyslog) -->
+  <!-- Xoay log: do app tự làm — xem deploy/README.md -->
   <key>EnvironmentVariables</key>
   <dict>
     <key>GEMINI_API_KEYS</key>

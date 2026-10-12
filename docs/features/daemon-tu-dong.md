@@ -140,3 +140,51 @@ gắn giỏ được).
 - Sản xuất (Studio): `GEMINI_API_KEYS` keyring xoay vòng (xem `key-rotation.md`).
 - Metrics YouTube: `YOUTUBE_API_KEY` (key đơn).
 - Đăng YouTube: refresh token từng tài khoản, tự refresh qua `oauth2.googleapis.com/token`.
+
+## 6. Giám sát tick — chạy 24/7 không người trông (Đợt R+S)
+
+### 6.1. Tick supervisor (`internal/ticksup`, wiring ở `cmd/aicos/main.go`)
+Mỗi tick chạy trong goroutine riêng qua `Supervisor.Dispatch`:
+- **recover**: panic trong tick → recover, ghi alert critical (`tick_panic`), tick chạy lại vòng sau. Process và dashboard không chết theo.
+- **timeout**: story 30′, reup/growth 20′, còn lại 5–15′ — treo quá hạn thì context bị hủy (tick fail, thử lại vòng sau).
+- **bỏ qua khi kẹt**: lượt trước chưa xong → bỏ qua lượt mới, không dồn goroutine.
+- **heartbeat**: mỗi tick ghi `Beat{LastStart, LastOK, LastErr, Runs}` — đọc ở `GET /healthz` và Cài đặt · Hệ thống ("Tự động nền").
+- Trước đây 6 tick story chạy nối tiếp: StoryTick treo là self-heal + backup + Telegram alert đứng im theo. Giờ đã tách độc lập.
+
+### 6.2. Health endpoint (`GET /healthz`, `internal/web/healthz.go`)
+JSON: `ok`, `version`, `uptime_sec`, `db_ok` (ping SQLite), `ticks` (heartbeat), `quota_circuit_open/until`.
+Luôn trả 200 (kể cả db_ok=false) để phân biệt "app treo" (không kết nối được) với "app sống nhưng DB lỗi".
+Không qua cổng onboard — watchdog ngoài gọi được bất cứ lúc nào.
+Dùng với launchd: KeepAlive chỉ restart khi process exit; cron kiểm tra `/healthz` định kỳ phát hiện treo mà process chưa chết.
+
+### 6.3. Ngắt mạch quota ngày (`internal/engines/tts/quota_circuit.go`)
+KeyRing backoff tối đa 15′ và chỉ trong bộ nhớ — hết quota ngày thì máy vẫn xoay key đốt API call vô vọng.
+Circuit đếm 3 lần liên tiếp "mọi key cooldown" → mở mạch tới 0h đêm (giờ địa phương):
+- các Gemini tier (LLM/TTS/image) fail-fast ngay, chain chuyển sang tier local như bình thường;
+- 1 API call thành công (kể cả nút "test" ở Cài đặt) → đóng mạch;
+- mở mạch → đúng 1 alert warn (`quota_circuit`) tới dashboard + Telegram.
+Trạng thái hiện ở Cài đặt · Hệ thống ("Ngắt mạch quota Gemini").
+
+### 6.4. Single-instance (`internal/lockfile`, `cmd/aicos/main.go`)
+`flock` file `<dataDir>/aicos.lock` ngay đầu main, giữ suốt thời gian process sống.
+OS tự giải phóng khi crash nên không kẹt khóa "ma". Instance thứ hai (vd: Ninh bấm đúp binary trong khi
+launchd đang chạy) → thoát êm với log rõ ràng, không giành SQLite với instance đang chạy.
+
+### 6.5. Xoay log trong app (`internal/logx`, `cmd/aicos/main.go`)
+App tự ghi `<dataDir>/logs/aicos.log` và xoay theo dung lượng (20MB, giữ 7 bản).
+Lý do: launchd mở `StandardOutPath` một lần và giữ fd — newsyslog rename file nhưng launchd vẫn ghi vào
+inode cũ, log phình vô hạn. Hướng dẫn newsyslog cũ trong `deploy/README.md` đã gỡ bỏ; plist mẫu không còn
+`StandardOutPath`/`StandardErrorPath` (tránh ghi đúp).
+
+### 6.6. Cứng rắn thêm (cùng đợt)
+- **Backup** (`internal/backup/backup.go`): checkpoint WAL trước khi copy (ảnh chụp nhất quán); đủ 5 DB
+  (`ledger/studio/products/accesstrade/reup`) — trước đây thiếu 2 DB, khôi phục mất state reup/Accesstrade.
+- **Sweep** (`internal/studio/sweep.go`): job treo → `CancelRunning` kill ffmpeg/ffprobe thật trước khi đánh
+  failed (trước đây process treo vẫn ngốn CPU/đĩa và giữ slot render).
+- **Web DB** (`internal/web/server.go`): `SetMaxOpenConns(1)` — `busy_timeout` trước đây chỉ tác dụng trên 1
+  connection trong pool → dashboard thỉnh thoảng `SQLITE_BUSY`.
+- **Đăng truyện** (`internal/automation/story_tick.go`): marker `story.publishing.<jobID>` đặt trước upload,
+  xóa khi xong/lỗi — crash giữa upload và marker để lại dấu vết thay vì im lặng đăng trùng.
+- **HTTP timeouts**: `ReadTimeout 15s / WriteTimeout 60s / IdleTimeout 120s` trên máy 24/7.
+- **Windows**: `DiskUsagePct` tách build tag (`diskusage_unix.go`/`diskusage_windows.go`) — trước đây
+  `syscall.Statfs` làm gãy build Windows, đi ngược claim "1 binary / 1 nền tảng".

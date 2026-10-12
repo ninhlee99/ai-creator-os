@@ -44,8 +44,14 @@ const (
 	KeyStoryAutoPublish     = "story.auto_publish"
 	KeyStoryAccount         = "story.account"
 	KeyStoryPublishedPrefix = "story.published."
-	KeyStoryTopicsAutofill  = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định bật)
-	KeyStoryTopicsAutofillN = "story.topics_autofill_n" // số chủ đề mỗi lần refill (mặc định 10)
+	// KeyStoryPublishingPrefix: marker "đang đăng" — đặt TRƯỚC khi upload,
+	// xóa khi xong/lỗi (Đợt S). Crash/mất điện giữa upload và marker
+	// published để lại dấu vết: vòng sau thấy publishing mà chưa published
+	// thì biết lần trước đăng dở (có thể đã lên 1 bản private) thay vì im
+	// lặng đăng trùng.
+	KeyStoryPublishingPrefix = "story.publishing."
+	KeyStoryTopicsAutofill   = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định bật)
+	KeyStoryTopicsAutofillN  = "story.topics_autofill_n" // số chủ đề mỗi lần refill (mặc định 10)
 	// KeyStoryPublicAfterHours: số giờ private trước khi tự chuyển public
 	// (đợt N). 0 = tắt (mặc định: giữ private để Ninh duyệt tay).
 	KeyStoryPublicAfterHours = "story.public_after_hours"
@@ -252,6 +258,14 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	// thiếu LLM thì dùng template trung thực. Thumbnail = ảnh cảnh đầu tiên.
 	vmeta := s.storySEOMeta(ctx, j)
 	vmeta.ThumbnailPath = s.storyThumbnailPath(j.ID)
+	// Đợt S: phát hiện lần đăng dở trước đó (crash giữa upload và marker).
+	stalePublishing := false
+	if s.Settings != nil {
+		if _, was := s.Settings.Get(KeyStoryPublishingPrefix + jobID); was {
+			stalePublishing = true
+		}
+		_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID, "1")
+	}
 	var res publishers.PublishResult
 	if mu, ok := s.Uploader.(MetaUploader); ok && mu != nil {
 		res = mu.UploadMeta(ctx, acct, j.Output, vmeta, "short_film")
@@ -260,9 +274,15 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	}
 	if !res.Ok {
 		s.Story.AppendLog(jobID, "Đăng YouTube thất bại: "+res.Error)
+		if s.Settings != nil {
+			_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+		}
 		return fmt.Sprintf("story %q: đăng thất bại — %s", j.Title, res.Error), false
 	}
 	logLine := "Đã đăng YouTube (private): " + res.RemoteID
+	if stalePublishing {
+		logLine += " (lưu ý: lần trước đăng dở — kiểm tra trùng bản private trên kênh)"
+	}
 	if vmeta.ThumbnailPath != "" {
 		if res.ThumbnailSet {
 			logLine += " + thumbnail"
@@ -273,6 +293,8 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	s.Story.AppendLog(jobID, logLine)
 	if s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
+		// Đợt S: đăng xong → xóa marker "đang đăng".
+		_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
 		// Đợt N: hẹn giờ chuyển public (nếu bật). Không có videoID thì bỏ qua.
 		s.enqueuePublic(jobID, res.RemoteID)
 	}

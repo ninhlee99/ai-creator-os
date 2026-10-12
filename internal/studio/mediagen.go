@@ -213,6 +213,10 @@ func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs 
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
 	}
+	// Đợt S: mạch quota đang mở (hết quota ngày) → không đốt API call.
+	if tts.GeminiQuotaCircuit().Open() {
+		return fmt.Errorf("generate image: quota circuit open (hết quota ngày) — thử lại sau 0h")
+	}
 	parts := []geminiPart{{Text: prompt}}
 	for _, r := range refs {
 		p, err := loadRef(r.Path)
@@ -360,6 +364,10 @@ func veoAspect(aspect string) string {
 func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, aspect, outPath string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
+	}
+	// Đợt S: mạch quota đang mở (hết quota ngày) → không đốt API call.
+	if tts.GeminiQuotaCircuit().Open() {
+		return fmt.Errorf("generate video: quota circuit open (hết quota ngày) — thử lại sau 0h")
 	}
 	seconds = clampVeoSeconds(seconds)
 	inst := veoInstance{Prompt: prompt}
