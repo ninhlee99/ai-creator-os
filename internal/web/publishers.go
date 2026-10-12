@@ -22,15 +22,23 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 		for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, a.YoutubeContentTypes) {
 			plats = append(plats, p.Name())
 		}
+		// Đợt AA: token chết (invalid_grant) thì badge đỏ thay vì "Có" xanh.
+		ytDead := false
+		if s.Ledger != nil {
+			if _, ok, _ := s.Ledger.GetSetting(tokenDeadKey(a.Username)); ok {
+				ytDead = true
+			}
+		}
 		rows = append(rows, publisherRow{
-			Username:     a.Username,
-			Status:       a.Status,
-			TiktokToken:  fileExists(publishers.TikTokTokenPath(a.Username)),
-			TiktokClient: publishers.NewTikTokPublisher(a.Username).HasClient(),
-			YoutubeToken: fileExists(publishers.YouTubeTokenPath(a.Username)),
-			FbPage:       strings.TrimSpace(getenv("FB_PAGE_ID_"+strings.ToUpper(a.Username), "")) != "",
-			Rtmp:         a.RtmpKey() != "",
-			Platforms:    plats,
+			Username:         a.Username,
+			Status:           a.Status,
+			TiktokToken:      fileExists(publishers.TikTokTokenPath(a.Username)),
+			TiktokClient:     publishers.NewTikTokPublisher(a.Username).HasClient(),
+			YoutubeToken:     fileExists(publishers.YouTubeTokenPath(a.Username)),
+			YoutubeClient:    publishers.NewYouTubePublisher(a.Username, nil, "").HasClient(),
+			YoutubeTokenDead: ytDead,
+			FbPage:           strings.TrimSpace(getenv("FB_PAGE_ID_"+strings.ToUpper(a.Username), "")) != "",
+			Platforms:        plats,
 		})
 	}
 	anyClient := false

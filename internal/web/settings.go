@@ -26,6 +26,8 @@ type envRow struct {
 	// FromDB marks values saved through the settings UI (persisted in the
 	// settings table) as opposed to process environment variables.
 	FromDB bool
+	// Help là giải thích ngắn cho người không rành (Đợt AA).
+	Help string
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
@@ -170,7 +172,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	envs := make([]envRow, 0, len(envNames))
 	for _, e := range envNames {
 		v, ok := s.effectiveEnv(e)
-		row := envRow{Name: e, Ok: ok}
+		row := envRow{Name: e, Ok: ok, Help: envHelp[e]}
 		if ok {
 			row.Masked = maskSecret(v)
 		}
@@ -196,6 +198,9 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	return map[string]any{
 		"EnvStatus": envs,
 		"EnvSaved":  r.URL.Query().Get("envsaved"),
+		"EnvErr":    r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
+		"Ok":        r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
+		"Err":       r.URL.Query().Get("err"),
 		"DbPath":    s.Cfg.DatabasePath,
 		"Usage":     usage,
 		"Spend":     spend,
@@ -319,7 +324,7 @@ func (s *Server) handleAuthPasswordDisable(w http.ResponseWriter, r *http.Reques
 // handleSettingsHeThong: "App đang chạy chế độ gì, còn thiếu biến nào?"
 func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "he-thong", "settings_he_thong",
-		"EnvStatus", "EnvSaved", "DbPath", "Usage", "Spend",
+		"EnvStatus", "EnvSaved", "EnvErr", "Ok", "Err", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
@@ -329,7 +334,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
 func (s *Server) handleSettingsNhaCungCap(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "nha-cung-cap", "settings_nha_cung_cap",
-		"TTSChain", "TTSKeys", "LLMChain", "LLMKeys", "AvatarChain", "AvatarRealtime")
+		"TTSChain", "TTSKeys", "LLMChain", "LLMKeys")
 }
 
 // handleSettingsAPIToggle opens/closes the legacy /api/* JSON endpoints
@@ -417,6 +422,17 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	value := strings.TrimSpace(r.FormValue("value"))
+	// Đợt AA: validate giá trị các biến có miền hợp lệ — tránh gõ sai rồi
+	// chỉ phát hiện lúc đăng video mới lỗi khó hiểu.
+	if name == "YOUTUBE_DEFAULT_PRIVACY" && value != "" {
+		switch strings.ToLower(value) {
+		case "private", "unlisted", "public":
+			value = strings.ToLower(value)
+		default:
+			seeOther(w, r, "/settings/he-thong?enverr="+url.QueryEscape("YOUTUBE_DEFAULT_PRIVACY chỉ nhận: private, unlisted hoặc public."))
+			return
+		}
+	}
 	if value == "" {
 		os.Unsetenv(name)
 	} else {
@@ -479,7 +495,10 @@ func (s *Server) handleSettingsAPIBudget(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {
-	_ = r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse dry-run form")
+		return
+	}
 	// NOTE: the required bugfix — dry_run is ON exactly when value == "on".
 	on := r.PostFormValue("value") == "on"
 	s.Cfg.SetDryRun(on)
@@ -517,6 +536,19 @@ var envNames = []string{"TTS_API_KEY",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
 	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "FB_PAGE_ID", "YOUTUBE_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY"}
+
+// envHelp giải thích ngắn gọn từng biến cho người không rành (Đợt AA,
+// finding C3) — hiện dưới tên biến ở trang Cài đặt · Hệ thống.
+var envHelp = map[string]string{
+	"TTS_API_KEY":             "Key Gemini dùng cho giọng đọc (Text-to-Speech). Chưa có thì app dùng giọng đọc miễn phí của máy.",
+	"TIKTOK_CLIENT_KEY":       "Client Key của app TikTok (tạo ở developers.tiktok.com) — để nối tài khoản TikTok.",
+	"TIKTOK_CLIENT_SECRET":    "Client Secret đi kèm Client Key TikTok.",
+	"YOUTUBE_CLIENT_ID":       "Client ID OAuth Google (loại “Desktop app”) — để bấm “Nối YouTube” ở trang Đa nền tảng.",
+	"YOUTUBE_CLIENT_SECRET":   "Client Secret đi kèm Client ID Google.",
+	"FB_PAGE_ID":              "ID Trang Facebook — để đăng bài lên Trang. Bỏ trống thì không đăng Facebook.",
+	"YOUTUBE_API_KEY":         "Key YouTube Data API (riêng với OAuth) — để đọc số liệu Analytics. Không bắt buộc.",
+	"YOUTUBE_DEFAULT_PRIVACY": "Chế độ riêng tư mặc định khi đăng video. Chỉ nhận: private, unlisted, public.",
+}
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
 

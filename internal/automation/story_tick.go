@@ -333,6 +333,10 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 				"Nối lại YouTube ở trang Đa nền tảng rồi chạy lại job.")
 			if s.Settings != nil {
 				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+				// Đợt AA: đánh dấu token chết để trang Đa nền tảng hiện
+				// badge đỏ "Hết hạn — cần nối lại" thay vì "Có" xanh.
+				// Xóa cờ khi nối lại thành công (youtube_oauth.go).
+				_ = s.Settings.Set("token_dead:"+acct.Username, time.Now().Format(time.RFC3339))
 			}
 			return fmt.Sprintf("story %q: YouTube cần nối lại — đã dừng retry", j.Title), false
 		}

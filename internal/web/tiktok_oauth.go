@@ -25,7 +25,10 @@ type oauthStates struct {
 type oauthState struct {
 	username string
 	verifier string // PKCE code_verifier ("" for the Web flow)
-	at       time.Time
+	// redirectURI: callback URL đã dùng lúc authorize (YouTube yêu cầu khớp
+	// y hệt lúc đổi code; lưu ở đây để không phụ thuộc Host lúc callback).
+	redirectURI string
+	at          time.Time
 }
 
 const oauthStateTTL = 15 * time.Minute
@@ -45,6 +48,19 @@ func (o *oauthStates) issue(username, verifier string) string {
 		}
 	}
 	o.m[st] = oauthState{username: username, verifier: verifier, at: time.Now()}
+	return st
+}
+
+// issueWithRedirect như issue nhưng nhớ thêm redirect URI (dùng cho
+// YouTube OAuth: Google yêu cầu redirect_uri lúc đổi code khớp y hệt
+// lúc authorize).
+func (o *oauthStates) issueWithRedirect(username, redirectURI string) string {
+	st := o.issue(username, "")
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	v := o.m[st]
+	v.redirectURI = redirectURI
+	o.m[st] = v
 	return st
 }
 

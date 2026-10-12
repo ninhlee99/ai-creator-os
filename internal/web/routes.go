@@ -7,6 +7,8 @@ package web
 import (
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 )
 
 // Routes wires every dashboard route. POST redirects use 303 See Other,
@@ -56,6 +58,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
 	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
 	mux.HandleFunc("GET /publishers/tiktok/callback", s.handleTikTokCallback)
+	// Đợt AA: YouTube OAuth trong app (trước đây chỉ có script Python).
+	mux.HandleFunc("GET /publishers/youtube/authorize", s.handleYouTubeAuthorize)
+	mux.HandleFunc("GET /publishers/youtube/callback", s.handleYouTubeCallback)
 
 	// Affiliate product discovery (theme search -> save into product store).
 	// Tab "Kệ hàng" (gộp từ trang /shop cũ) nằm trong cùng trang này.
@@ -187,7 +192,44 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
 	}
 
-	return s.recoverer(s.authGate(s.onboardGate(mux)))
+	return s.recoverer(s.originGate(s.authGate(s.onboardGate(mux))))
+}
+
+// originGate chống CSRF đơn giản mà bao phủ mọi POST (Đợt AA, finding C4):
+// với POST/PUT/PATCH/DELETE, nếu request mang header Origin (hoặc Referer)
+// mà host không khớp host của app → 403. Không có Origin/Referer (curl,
+// gọi nội bộ, healthcheck) thì cho qua như cũ — không cần sửa 24 template.
+func (s *Server) originGate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+			if !sameOrigin(r) {
+				log.Printf("web: từ chối %s %s — origin không khớp (chống CSRF)", r.Method, r.URL.Path)
+				http.Error(w, "origin không khớp — từ chối để chống CSRF", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func sameOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		if ref := r.Header.Get("Referer"); ref != "" {
+			origin = ref
+		} else {
+			return true // curl / gọi nội bộ: không có header để kiểm
+		}
+	}
+	u, err := url.Parse(origin)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	if strings.EqualFold(u.Host, "null") {
+		return false
+	}
+	return strings.EqualFold(u.Host, r.Host)
 }
 
 // recoverer keeps a panicking handler from taking the server down.

@@ -3,6 +3,8 @@
 <h1>Cài đặt · Hệ thống</h1>
 <p class="subtitle">App đang chạy chế độ gì, còn thiếu biến cấu hình nào.</p>
 {{template "settings-nav" .}}
+{{if .Ok}}<p class="notice">{{.Ok}}</p>{{end}}
+{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
 <h2>Trạng thái hệ thống</h2>
 <div class="cards">
@@ -193,12 +195,13 @@
 
 <h2>Mã &amp; biến cấu hình</h2>
 {{if .EnvSaved}}<p class="notice">Đã lưu <code>{{.EnvSaved}}</code> — áp dụng ngay, không cần khởi động lại.</p>{{end}}
+{{if .EnvErr}}<p class="err">{{.EnvErr}}</p>{{end}}
 <div class="table-wrap">
 <table>
   <tr><th>Biến</th><th>Trạng thái</th><th>Giá trị hiện tại (đã che)</th><th>Đặt giá trị mới</th></tr>
   {{range .EnvStatus}}
   <tr>
-    <td><code>{{.Name}}</code>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
+    <td><code>{{.Name}}</code><br><span class="env-hint">{{.Help}}</span>{{if .FromDB}}<br><span class="env-hint">đã lưu trong Cài đặt</span>{{end}}</td>
     <td>{{if .Ok}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-no">Chưa đặt</span>{{end}}</td>
     <td>{{if .Ok}}<code class="key-masked">{{.Masked}}</code>{{else}}<span class="env-hint">—</span>{{end}}</td>
     <td>

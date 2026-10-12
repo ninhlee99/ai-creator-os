@@ -130,6 +130,15 @@ func NewYouTubePublisher(username string, allowedKinds []string, channel string)
 // Name returns the platform key.
 func (p *YouTubePublisher) Name() string { return "youtube" }
 
+// HasClient reports whether the OAuth client ID + secret are set.
+// Đợt AA: dùng cho nút "Nối YouTube" ở trang Đa nền tảng.
+func (p *YouTubePublisher) HasClient() bool { return p.clientID != "" && p.clientSecret != "" }
+
+// ClientID/ClientSecret expose the OAuth client credentials for the
+// in-app connect flow (never rendered to a page).
+func (p *YouTubePublisher) ClientID() string     { return p.clientID }
+func (p *YouTubePublisher) ClientSecret() string { return p.clientSecret }
+
 // IsConfigured requires OAuth client credentials, a token file, and a
 // non-empty allowed-kinds list for the channel.
 func (p *YouTubePublisher) IsConfigured() bool {

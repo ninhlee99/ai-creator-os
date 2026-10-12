@@ -19,7 +19,10 @@
     <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
       {{if .TiktokClient}}<a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}">{{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}</a>
       {{else}}<span class="hint">thiếu client key</span>{{end}}</td>
-    <td>{{if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>{{if .YoutubeTokenDead}}<span class="badge badge-err">Hết hạn — cần nối lại</span>
+      {{else if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
+      {{if .YoutubeClient}}<a class="btn btn-secondary btn-sm" href="/publishers/youtube/authorize?username={{.Username}}">{{if or .YoutubeToken .YoutubeTokenDead}}Nối lại{{else}}Nối YouTube{{end}}</a>
+      {{else}}<button type="button" class="btn btn-secondary btn-sm" data-yt-setup>Nối YouTube</button>{{end}}</td>
     <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
     <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
   </tr>
@@ -53,6 +56,40 @@
 {{end}}
 <p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key: tạo app tại developers.tiktok.com, rồi nhập Client Key/Secret ở Cài đặt · Hệ thống (mục "Mã & biến cấu hình").</p>
 <p class="hint"><b>Lưu ý trung thực:</b> TikTok chỉ cho đăng qua API khi app của bạn đã được TikTok <b>duyệt (app audit)</b> — chưa duyệt thì kết nối xong vẫn không đăng được. Kể cả khi đã duyệt, app chỉ đăng ở chế độ <b>bản nháp</b>: bạn phải mở TikTok bấm Đăng tay cho từng video.</p>
+
+<h2>Kết nối YouTube (làm một lần mỗi tài khoản)</h2>
+<ol>
+  <li>Bấm <strong>Nối YouTube</strong> ở dòng tài khoản → trang Google mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng kênh YouTube → <strong>Cho phép</strong>.</li>
+  <li>Google tự chuyển về app này và lưu token — không cần copy gì. Mở app tại <code>http://127.0.0.1:8080</code> (cùng cổng).</li>
+</ol>
+<p class="hint">Chưa có Client ID/Secret? Bấm <strong>Nối YouTube</strong> để xem hướng dẫn tạo (miễn phí) rồi dán vào Cài đặt · Hệ thống (mục “Mã &amp; biến cấu hình”). Token chỉ ghi vào file <code>youtube_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang.</p>
+<p class="hint">Video đăng lên ở chế độ <b>riêng tư</b> trước — bạn xem lại rồi mới cho công khai (đổi ở Cài đặt · Kể chuyện).</p>
+
+<div class="modal-backdrop" id="yt-setup-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:30rem">
+    <h3>Lấy Client ID/Secret YouTube (miễn phí, làm một lần)</h3>
+    <ol>
+      <li>Vào <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> → tạo project mới (hoặc chọn project cũ).</li>
+      <li>“API &amp; Dịch vụ” → “Thư viện” → tìm <b>YouTube Data API v3</b> → <b>Bật</b>.</li>
+      <li>“Màn hình đồng ý OAuth” → loại <b>Ngoài</b> → điền tên app → Lưu.</li>
+      <li>“Thông tin xác thực” → “Tạo thông tin xác thực” → <b>Mã khách hàng OAuth</b> → loại ứng dụng <b>Ứng dụng dành cho máy tính</b> → Tạo.</li>
+      <li>Copy <b>Client ID</b> và <b>Client Secret</b> → dán vào Cài đặt · Hệ thống → “Mã &amp; biến cấu hình” (<code>YOUTUBE_CLIENT_ID</code>, <code>YOUTUBE_CLIENT_SECRET</code>) → quay lại đây bấm <b>Nối YouTube</b>.</li>
+    </ol>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="yt-setup-close">Đã hiểu</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('yt-setup-modal');
+  function open(e) { if (e) e.preventDefault(); modal.hidden = false; }
+  function close() { modal.hidden = true; }
+  document.querySelectorAll('[data-yt-setup]').forEach(function (b) { b.addEventListener('click', open); });
+  document.getElementById('yt-setup-close').addEventListener('click', close);
+  modal.addEventListener('click', function (ev) { if (ev.target === modal) close(); });
+})();
+</script>
 {{else}}
 <p class="empty">Chưa có tài khoản nào để hiển thị.</p>
 {{end}}

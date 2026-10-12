@@ -47,7 +47,7 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "account_new", s.ctx())
+	s.render(w, "account_new", s.ctx("Error", r.URL.Query().Get("err")))
 }
 
 func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
@@ -58,12 +58,21 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.PostFormValue("username"))
 	username = strings.TrimLeft(username, "@")
 	if username == "" {
-		seeOther(w, r, "/accounts/new")
+		seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Chưa nhập username."))
 		return
 	}
+	// Đợt AA: username đã tồn tại thì báo rõ thay vì im lặng "nhận vơ"
+	// kênh cũ (và trigger onboarding/plan mới cho kênh đang chạy).
+	if s.accountExists(username) {
+		seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Kênh \""+username+"\" đã tồn tại."))
+		return
+	}
+	// Đợt AA: form đã gỡ field rtmp_key_ref (đợt W) — truyền rỗng, giữ
+	// signature Mgr.Add vì network daemon + ledger vẫn dùng cột RTMP
+	// (live engine, không thuộc phạm vi dọn UI).
 	acct, err := s.Mgr.Add(username,
 		strings.TrimSpace(r.PostFormValue("niche_hint")),
-		strings.TrimSpace(r.PostFormValue("rtmp_key_ref")))
+		"")
 	if err != nil {
 		s.fail(w, err, "add account")
 		return
