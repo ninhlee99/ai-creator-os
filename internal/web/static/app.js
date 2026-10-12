@@ -6,6 +6,14 @@
 (function () {
   'use strict';
 
+  // esc: escape HTML entities — chống stored XSS khi nối dữ liệu (caption do
+  // LLM/user sinh, preview, link API) vào innerHTML (đợt AF bảo mật).
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   // ------------------------------------------------------------- toast
   var toastTimer = null;
   function toastEl() {
@@ -157,7 +165,7 @@
           h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag ' +
             '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(' +
             'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
-            '<div class="hint" id="cap-' + id + '">' + d.job.caption.replace(/\n/g, '<br>') + '</div></div>';
+            '<div class="hint" id="cap-' + id + '">' + esc(d.job.caption).replace(/\n/g, '<br>') + '</div></div>';
         }
         (d.assets || []).forEach(function (a) {
           var name;
@@ -169,8 +177,8 @@
             ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
             '</div>';
           if (a.preview) {
-            if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
-            else { h += '<video controls preload="metadata" src="' + a.preview + '" style="max-width:220px"></video>'; }
+            if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + esc(a.preview) + '" style="max-width:220px">'; }
+            else { h += '<video controls preload="metadata" src="' + esc(a.preview) + '" style="max-width:220px"></video>'; }
           }
           h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
           h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';

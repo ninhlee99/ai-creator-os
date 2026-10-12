@@ -70,11 +70,15 @@
     <div class="value">{{if .AuthOn}}<span class="badge badge-ok">Đã đặt</span>{{else}}<span class="badge badge-dim">Chưa đặt</span>{{end}}</div>
     {{if .AuthOn}}
     <form method="post" action="/settings/auth/password">
+      <label class="label" for="pw-cur">Mật khẩu hiện tại</label>
+      <input type="password" id="pw-cur" name="current_password" autocomplete="current-password" required>
       <label class="label" for="pw-new">Đổi mật khẩu mới</label>
       <input type="password" id="pw-new" name="password" autocomplete="new-password" minlength="4">
       <button type="submit" class="btn btn-primary btn-sm">Đổi mật khẩu</button>
     </form>
     <form method="post" action="/settings/auth/password/disable" style="margin-top:8px">
+      <label class="label" for="pw-cur2">Mật khẩu hiện tại</label>
+      <input type="password" id="pw-cur2" name="current_password" autocomplete="current-password" required>
       <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Tắt mật khẩu? Dashboard sẽ mở cho bất kỳ ai truy cập được địa chỉ app.">Tắt mật khẩu</button>
     </form>
     {{else}}

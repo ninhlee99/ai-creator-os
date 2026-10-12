@@ -330,8 +330,11 @@ function atSettingsSave() {
         if (x.d && x.d.ok) {
           var link = x.d.tracking_link;
           r.innerHTML = 'Link: <code></code> <button type="button" class="btn btn-secondary btn-sm" id="at-link-copy">Sao chép</button>' +
-            (x.d.short_link ? '<br>Rút gọn: <code>' + x.d.short_link + '</code>' : '');
+            (x.d.short_link ? '<br>Rút gọn: <code class="at-short"></code>' : '');
           r.querySelector('code').textContent = link;
+          // Đợt AF: short_link từ API bên thứ ba → gán qua textContent chống XSS.
+          var sc = r.querySelector('code.at-short');
+          if (sc) sc.textContent = x.d.short_link;
           document.getElementById('at-link-copy').addEventListener('click', function () {
             navigator.clipboard.writeText(link).then(function () { window.showToast('Đã sao chép link.', true); });
           });
@@ -461,7 +464,7 @@ function atSettingsSave() {
 </div>
 
 <div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">🎵 Nhạc nền autopilot</h2>
+  <h2 style="margin-top:0;border:none;padding:0" id="music">🎵 Nhạc nền autopilot</h2>
   <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot.{{if .MusicName}} Đang dùng: <strong>{{.MusicName}}</strong>{{else}} Chưa có nhạc — video sẽ không tiếng.{{end}}</p>
   <form method="post" action="/products/music" enctype="multipart/form-data">
     <div class="field">

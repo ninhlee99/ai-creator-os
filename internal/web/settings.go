@@ -302,6 +302,16 @@ func (s *Server) handleAuthPasswordSet(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "parse password")
 		return
 	}
+	// Đợt AF: đã có mật khẩu thì phải nhập đúng mật khẩu hiện tại mới được
+	// đổi — chống người khác đổi mật khẩu khóa chủ máy (máy dùng chung).
+	if s.authEnabled() {
+		cur := r.PostFormValue("current_password")
+		stored, ok, _ := s.Ledger.GetSetting(KeyAuthPasswordHash)
+		if !ok || !checkAuthPassword(cur, stored) {
+			seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
+			return
+		}
+	}
 	pw := r.PostFormValue("password")
 	if err := s.setAuthPassword(pw); err != nil {
 		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
@@ -313,6 +323,17 @@ func (s *Server) handleAuthPasswordSet(w http.ResponseWriter, r *http.Request) {
 
 // handleAuthPasswordDisable tắt mật khẩu dashboard (Đợt T).
 func (s *Server) handleAuthPasswordDisable(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse password")
+		return
+	}
+	// Đợt AF: tắt cũng cần nhập đúng mật khẩu hiện tại.
+	cur := r.PostFormValue("current_password")
+	stored, ok, _ := s.Ledger.GetSetting(KeyAuthPasswordHash)
+	if !ok || !checkAuthPassword(cur, stored) {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
+		return
+	}
 	if err := s.clearAuthPassword(); err != nil {
 		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
 		return

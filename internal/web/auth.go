@@ -219,7 +219,9 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			SameSite: http.SameSiteLaxMode,
 		})
 		next := r.PostFormValue("next")
-		if next == "" || !strings.HasPrefix(next, "/") {
+		// Đợt AF: chặn open redirect — "//evil.com" cũng có prefix "/" nên
+		// phải loại riêng (protocol-relative URL).
+		if next == "" || !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") {
 			next = "/"
 		}
 		_ = s.Ledger.Decide("human", "login", nil, "Đăng nhập dashboard.", nil)
