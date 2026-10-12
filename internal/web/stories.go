@@ -9,6 +9,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -248,6 +249,59 @@ func (s *Server) handleStoryPublish(w http.ResponseWriter, r *http.Request) {
 	storiesRedirect(w, r, note, "")
 }
 
+// handleStoryRetry tạo job mới từ job lỗi (thử lại tay, đợt Y): cùng
+// params, Attempt=0, tái dùng ảnh đã vẽ xong ở job cũ.
+func (s *Server) handleStoryRetry(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		storiesRedirect(w, r, "", "Studio chưa sẵn sàng.")
+		return
+	}
+	id := r.PathValue("id")
+	j, ok := s.Studio.GetJob(id)
+	if !ok || j.Kind != studio.KindStory {
+		storiesRedirect(w, r, "", "Không tìm thấy truyện để thử lại.")
+		return
+	}
+	var p studio.StoryParams
+	if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
+		storiesRedirect(w, r, "", "Tham số truyện hỏng — tạo truyện mới tay.")
+		return
+	}
+	p.Attempt = 0
+	p.ReuseFromJobID = id
+	// Nhạc nền: cùng file chung như lúc tạo.
+	if p.MusicOn {
+		if mp := filepath.Join(s.DataDir, "autopilot-music.m4a"); fileExists(mp) {
+			p.MusicPath = mp
+		} else {
+			p.MusicOn = false
+		}
+	}
+	newID, err := s.Studio.CreateStoryJob(p)
+	if err != nil {
+		storiesRedirect(w, r, "", err.Error())
+		return
+	}
+	log.Printf("web: story retry %s → job mới %s", id, newID)
+	storiesRedirect(w, r, "Đã tạo lại truyện (tái dùng ảnh đã vẽ xong ở lần trước).", "")
+}
+
+// handleStoryLog trả toàn bộ log của job (dạng text, mở tab mới, đợt Y).
+func (s *Server) handleStoryLog(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.Error(w, "Studio chưa sẵn sàng.", http.StatusServiceUnavailable)
+		return
+	}
+	id := r.PathValue("id")
+	j, ok := s.Studio.GetJob(id)
+	if !ok || j.Kind != studio.KindStory {
+		http.Error(w, "Không tìm thấy truyện.", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Fprint(w, s.Studio.StoryLogFull(id))
+}
+
 // handleStoryDelete xoá 1 job kể chuyện (form POST, có confirm ở UI).
 func (s *Server) handleStoryDelete(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
@@ -305,7 +359,13 @@ func (s *Server) handleStorySettings(w http.ResponseWriter, r *http.Request) {
 	setBool(automation.KeyStoryEnabled, r.FormValue("tick_on") == "1")
 	setBool(automation.KeyStoryTopicsAutofill, r.FormValue("topics_autofill") == "1")
 	if h, err := strconv.Atoi(r.FormValue("public_after_hours")); err == nil {
-		set(automation.KeyStoryPublicAfterHours, strconv.Itoa(clamp(h, 0, 168)))
+		h = clamp(h, 0, 168)
+		set(automation.KeyStoryPublicAfterHours, strconv.Itoa(h))
+		// Đợt Y: tắt tự-public → xóa luôn hàng chờ cũ, nếu không bật lại
+		// sau này sẽ làm video cũ public bất ngờ.
+		if h == 0 {
+			_ = s.Ledger.DeleteSetting(automation.KeyStoryPendingPublic)
+		}
 	}
 	// Đợt P: tự thử lại job lỗi.
 	setBool(automation.KeyStoryRetryEnabled, r.FormValue("retry_on") == "1")

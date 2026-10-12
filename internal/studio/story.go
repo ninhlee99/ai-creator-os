@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // KindStory là job kind cho pipeline kể chuyện.
@@ -43,6 +44,15 @@ func (s *Studio) StoryLogTail(id string) string {
 	return lines[len(lines)-1]
 }
 
+// StoryLogFull trả về toàn bộ log của job (cho trang Nhật ký, đợt Y).
+func (s *Studio) StoryLogFull(id string) string {
+	var lg string
+	if err := s.db.QueryRow(`SELECT log FROM studio_jobs WHERE id=?`, id).Scan(&lg); err != nil {
+		return ""
+	}
+	return lg
+}
+
 // DeleteStoryJob xoá 1 job kể chuyện: assets, file output, thư mục work,
 // các row DB. Chỉ xoá job kind=story (không đụng job kind khác).
 func (s *Studio) DeleteStoryJob(id string) error {
@@ -52,6 +62,20 @@ func (s *Studio) DeleteStoryJob(id string) error {
 	}
 	if j.Kind != KindStory {
 		return fmt.Errorf("job %s không phải truyện kể", id)
+	}
+	// Đợt Y: job đang chạy phải hủy goroutine trước khi xoá file — nếu
+	// không render tiếp tục chạy mồ côi (work dir bị xoá sẽ tự tạo lại,
+	// để lại file mồ côi + đốt CPU).
+	s.CancelRunning(id)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		s.mu.Lock()
+		_, stillRunning := s.running[id]
+		s.mu.Unlock()
+		if !stillRunning || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 	for _, a := range s.ListAssets(id) {
 		os.Remove(a.Path)
@@ -83,6 +107,9 @@ type StoryParams struct {
 	// Attempt: lần thử thứ mấy (0 = lần đầu). Đợt P: retry tự động tăng
 	// dần; đạt story.retry_max thì dừng để không đốt quota vô ích.
 	Attempt int `json:"attempt,omitempty"`
+	// ReuseFromJobID: job cũ để tái dùng ảnh đã vẽ xong (đợt Y — retry
+	// không vẽ lại ảnh từ đầu, tiết kiệm image-gen).
+	ReuseFromJobID string `json:"reuse_from_job,omitempty"`
 }
 
 // storyScene là 1 cảnh: đoạn văn kể + prompt vẽ ảnh.
@@ -306,6 +333,31 @@ func storySRTTime(sec float64) string {
 	return fmt.Sprintf("%02d:%02d:%02d,%03d", h, m, s, ms%1000)
 }
 
+// findDonePhoto tìm ảnh đã vẽ xong của job cũ có cùng prompt — để job
+// retry tái dùng, khỏi đốt image-gen vẽ lại (đợt Y). "" = không có.
+func (s *Studio) findDonePhoto(jobID, prompt string) string {
+	var path string
+	err := s.db.QueryRow(`SELECT path FROM studio_assets
+		WHERE job_id=? AND kind='photo' AND status=? AND prompt=? LIMIT 1`,
+		jobID, StatusDone, prompt).Scan(&path)
+	if err != nil || path == "" {
+		return ""
+	}
+	if fi, statErr := os.Stat(path); statErr != nil || fi.IsDir() {
+		return ""
+	}
+	return path
+}
+
+// copyStoryFile chép file (dùng khi tái dùng ảnh job cũ — đợt Y).
+func copyStoryFile(src, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, b, 0o644)
+}
+
 // runStory chạy pipeline kể chuyện trong goroutine nền.
 func (s *Studio) runStory(id string, p StoryParams) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -384,11 +436,22 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		img := filepath.Join(work, fmt.Sprintf("scene-%02d.png", i))
 		imgPrompt := sc.ImagePrompt + ". Cinematic illustration, 16:9 widescreen, " +
 			"Vietnamese characters if any, no text, no watermark."
-		s.appendLog(id, fmt.Sprintf("Vẽ ảnh cảnh %d/%d…", i+1, len(scenes)))
-		if err := s.mg.GenerateImage(ctx, imgPrompt, nil, img); err != nil {
-			s.setAsset(aid, StatusFailed, "")
-			fail(fmt.Errorf("cảnh %d: vẽ ảnh lỗi (%v) — dừng, không dựng thiếu cảnh", i+1, err))
-			return
+		// Đợt Y: job retry tái dùng ảnh đã vẽ xong ở job cũ (cùng prompt) —
+		// khỏi đốt image-gen vẽ lại.
+		reused := false
+		if oldImg := s.findDonePhoto(p.ReuseFromJobID, sc.ImagePrompt); oldImg != "" {
+			if cerr := copyStoryFile(oldImg, img); cerr == nil {
+				s.appendLog(id, fmt.Sprintf("Dùng lại ảnh cảnh %d/%d từ lần trước (khỏi vẽ lại)", i+1, len(scenes)))
+				reused = true
+			}
+		}
+		if !reused {
+			s.appendLog(id, fmt.Sprintf("Vẽ ảnh cảnh %d/%d…", i+1, len(scenes)))
+			if err := s.mg.GenerateImage(ctx, imgPrompt, nil, img); err != nil {
+				s.setAsset(aid, StatusFailed, "")
+				fail(fmt.Errorf("cảnh %d: vẽ ảnh lỗi (%v) — dừng, không dựng thiếu cảnh", i+1, err))
+				return
+			}
 		}
 
 		s.appendLog(id, fmt.Sprintf("Đọc giọng cảnh %d/%d…", i+1, len(scenes)))

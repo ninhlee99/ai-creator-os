@@ -56,7 +56,7 @@
     {{range .Stories.Jobs}}
     <tr>
       <td>{{.Title}}<br><span class="hint">{{.CreatedAt}}</span></td>
-      <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
+      <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}{{if or (eq .Status "running") (eq .Status "queued")}}<br><div class="progress" style="max-width:8em"><div class="progress-bar" style="width:{{.Progress}}%"></div></div><span class="hint">{{.Progress}}%</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
       <td>{{.Scenes}}</td>
       <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
       <td style="white-space:nowrap">
@@ -70,6 +70,12 @@
           <button type="submit" class="btn btn-primary btn-sm" data-confirm="Đăng video này lên YouTube ở chế độ RIÊNG TƯ?">Đăng</button>
         </form>
         {{end}}
+        {{if eq .Status "failed"}}
+        <form method="post" action="/stories/{{.ID}}/retry" style="display:inline">
+          <button type="submit" class="btn btn-secondary btn-sm" data-confirm="Tạo lại truyện này (tái dùng ảnh đã vẽ xong ở lần trước)?">Thử lại</button>
+        </form>
+        {{end}}
+        <a class="btn btn-secondary btn-sm" href="/stories/{{.ID}}/log" target="_blank">Nhật ký</a>
         <form method="post" action="/stories/{{.ID}}/delete" style="display:inline" data-confirm="Xoá truyện này khỏi danh sách? File video sẽ bị xoá.">
           <button type="submit" class="btn btn-secondary btn-sm">Xoá</button>
         </form>

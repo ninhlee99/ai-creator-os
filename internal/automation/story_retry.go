@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -37,6 +38,26 @@ const (
 // có, test inject fake).
 type storyJobLister interface {
 	StoryJobs(limit int) []studio.Job
+}
+
+// storyLogTailer: khả năng đọc dòng log cuối (soft-assert — *studio.Studio có).
+type storyLogTailer interface {
+	StoryLogTail(id string) string
+}
+
+// isStoryConfigError: log lỗi thuộc nhóm "cấu hình" (thiếu key/key sai/
+// chưa cấu hình) → retry vô ích, bỏ qua ngay thay vì đốt quota LLM.
+func isStoryConfigError(logTail string) bool {
+	l := strings.ToLower(logTail)
+	for _, p := range []string{
+		"chưa sẵn sàng", "chưa cấu hình", "invalid",
+		"thiếu gemini_api_keys", "không có chuỗi giọng đọc",
+	} {
+		if strings.Contains(l, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // StoryRetryTick thử lại các job story lỗi còn trong giới hạn.
@@ -83,6 +104,20 @@ func (s *Service) StoryRetryTick(ctx context.Context) []string {
 		if err := json.Unmarshal([]byte(j.Params), &sp); err != nil {
 			continue // params hỏng → bỏ qua, không crash tick
 		}
+		// Đợt Y: lỗi cấu hình (thiếu key/key sai/chưa cấu hình) → thử lại
+		// vô ích, bỏ qua ngay + báo 1 lần để Ninh sửa cài đặt.
+		if lt, ok := s.Story.(storyLogTailer); ok && lt != nil {
+			if isStoryConfigError(lt.StoryLogTail(j.ID)) {
+				if _, alerted := s.Settings.Get(KeyStoryRetryAlerted + j.ID); !alerted {
+					s.alert("story_retry_config", "warn",
+						fmt.Sprintf("Truyện %q lỗi do cấu hình (thiếu key/chưa cấu hình) — máy không tự thử lại để khỏi đốt quota", j.Title),
+						"Sửa cài đặt (API key) ở Cài đặt · Hệ thống rồi bấm Thử lại ở trang Kể chuyện.")
+					_ = s.Settings.Set(KeyStoryRetryAlerted+j.ID, "1")
+				}
+				_ = s.Settings.Set(KeyStoryRetriedPrefix+j.ID, "1")
+				continue
+			}
+		}
 		if sp.Attempt >= maxAtt {
 			// Hết lượt thử lại → báo 1 lần để Ninh xem tay (không spam).
 			if _, alerted := s.Settings.Get(KeyStoryRetryAlerted + j.ID); !alerted {
@@ -106,6 +141,8 @@ func (s *Service) StoryRetryTick(ctx context.Context) []string {
 			continue // lỗi quá cũ → để yên, Ninh xem tay nếu cần
 		}
 		sp.Attempt++
+		// Đợt Y: tái dùng ảnh đã vẽ xong ở job cũ (khỏi đốt image-gen lại).
+		sp.ReuseFromJobID = j.ID
 		newID, err := s.Story.CreateStoryJob(sp)
 		if err != nil {
 			notes = append(notes, fmt.Sprintf("story: thử lại %q lỗi: %v", j.Title, err))

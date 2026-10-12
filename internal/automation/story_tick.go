@@ -199,15 +199,28 @@ func (s *Service) storyAutoPublish(ctx context.Context) []string {
 		return nil
 	}
 	var notes []string
-	for _, j := range st.StoryJobs(10) {
-		if j.Status != studio.StatusDone || j.Output == "" {
-			continue
-		}
-		if s.Settings != nil {
-			if _, done := s.Settings.Get(KeyStoryPublishedPrefix + j.ID); done {
+	// Đợt Y: duyệt theo batch cho đến khi hết job done-chưa-đăng (trước đây
+	// chỉ xét 10 job mới nhất → job cũ thứ 11+ bị bỏ qua vĩnh viễn).
+	var pending []studio.Job
+	for limit := 50; ; limit *= 2 {
+		batch := st.StoryJobs(limit)
+		pending = pending[:0]
+		for _, j := range batch {
+			if j.Status != studio.StatusDone || j.Output == "" {
 				continue
 			}
+			if s.Settings != nil {
+				if _, done := s.Settings.Get(KeyStoryPublishedPrefix + j.ID); done {
+					continue
+				}
+			}
+			pending = append(pending, j)
 		}
+		if len(batch) < limit || limit >= 1000 {
+			break
+		}
+	}
+	for _, j := range pending {
 		note, ok := s.PublishStoryNow(ctx, j.ID, account)
 		notes = append(notes, note)
 		if !ok {
@@ -226,6 +239,8 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if s.Story == nil {
 		return "story: studio chưa sẵn sàng", false
 	}
+	stalePublishing := false
+	staleTitle := ""
 	j, ok := s.Story.GetJob(jobID)
 	if !ok {
 		return fmt.Sprintf("story: không tìm thấy job %s", jobID), false
@@ -254,17 +269,38 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if s.Uploader == nil {
 		return "story: chưa nối YouTube uploader", false
 	}
+	// Đợt Y: chống đăng trùng khi bấm 2 lần (double-click / đua với
+	// auto-publish). Marker "đang đăng": "title|RFC3339" — phân biệt "đang
+	// đăng thật" (mới < 30 phút → bỏ qua) và "đăng dở do crash" (cũ →
+	// kiểm tra trùng rồi đăng lại, đợt S/V). Đặt marker ngay trước bước
+	// chậm (SEO/LLM, upload) để lần gọi đồng thời thứ hai thấy và bỏ qua.
+	if s.Settings != nil {
+		if _, done := s.Settings.Get(KeyStoryPublishedPrefix + jobID); done {
+			return fmt.Sprintf("story %q: đã đăng rồi — bỏ qua để tránh trùng", jobID), true
+		}
+		if raw, uploading := s.Settings.Get(KeyStoryPublishingPrefix + jobID); uploading {
+			title, ts := parsePublishingMarker(raw)
+			if freshPublishingMarker(ts) {
+				return fmt.Sprintf("story %q: đang đăng rồi — bỏ qua để tránh trùng", jobID), true
+			}
+			stalePublishing = true
+			staleTitle = title
+		} else {
+			_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID, "|"+time.Now().Format(time.RFC3339))
+		}
+	}
 	// Đợt M1: SEO + thumbnail tự động. LLM viết title/desc/tags tiếng Việt;
 	// thiếu LLM thì dùng template trung thực. Thumbnail = ảnh cảnh đầu tiên.
 	vmeta := s.storySEOMeta(ctx, j)
 	vmeta.ThumbnailPath = s.storyThumbnailPath(j.ID)
-	// Đợt S: phát hiện lần đăng dở trước đó (crash giữa upload và marker).
-	stalePublishing := false
+	// Đợt Y: khi đăng lại sau lần dở, GIỮ NGUYÊN title đã dùng lần trước
+	// (lưu trong marker) thay vì sinh mới bằng LLM — search trùng mới trúng.
+	if staleTitle != "" {
+		vmeta.Title = staleTitle
+	}
 	if s.Settings != nil {
-		if _, was := s.Settings.Get(KeyStoryPublishingPrefix + jobID); was {
-			stalePublishing = true
-		}
-		_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID, "1")
+		_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID,
+			vmeta.Title+"|"+time.Now().Format(time.RFC3339))
 	}
 	var res publishers.PublishResult
 	if stalePublishing {
@@ -416,8 +452,12 @@ func (s *Service) StoryPublicTick(ctx context.Context) []string {
 	cutoff := time.Now().Add(-time.Duration(hours) * time.Hour).Format("2006-01-02T15:04:05")
 	var notes []string
 	changed := false
+	const maxPublicFails = 10 // quá 10 lần lỗi liên tiếp → bỏ entry + báo 1 lần
 	for jobID, val := range pending {
-		ts, vid, _ := strings.Cut(val, "|")
+		// Đợt Y: value "ts|vid|fails" — đếm lỗi liên tiếp mỗi entry.
+		ts, rest, _ := strings.Cut(val, "|")
+		vid, failsStr, _ := strings.Cut(rest, "|")
+		fails, _ := strconv.Atoi(failsStr)
 		if vid == "" || ts == "" || ts >= cutoff {
 			continue // chưa tới giờ → giữ lại
 		}
@@ -425,7 +465,19 @@ func (s *Service) StoryPublicTick(ctx context.Context) []string {
 			continue // dữ liệu hỏng → giữ lại, không crash tick
 		}
 		if err := pu.UpdatePrivacy(ctx, acct, vid, "public"); err != nil {
-			notes = append(notes, fmt.Sprintf("story %s: chuyển public thất bại — %v (thử lại vòng sau)", jobID, err))
+			fails++
+			if fails > maxPublicFails {
+				delete(pending, jobID)
+				changed = true
+				s.alert("story_public_failed_"+jobID, "warn",
+					fmt.Sprintf("Video %s chuyển công khai thất bại %d lần liên tiếp — đã dừng thử (có thể video bị xoá tay trên YouTube)", jobID, fails),
+					"Kiểm tra video trên YouTube rồi đăng/chuyển tay nếu cần.")
+				notes = append(notes, fmt.Sprintf("story %s: chuyển public lỗi %d lần — đã dừng và báo", jobID, fails))
+			} else {
+				pending[jobID] = ts + "|" + vid + "|" + strconv.Itoa(fails)
+				changed = true
+				notes = append(notes, fmt.Sprintf("story %s: chuyển public thất bại — %v (thử lại vòng sau, lần %d/%d)", jobID, err, fails, maxPublicFails))
+			}
 			continue
 		}
 		delete(pending, jobID)
@@ -475,6 +527,29 @@ type MetaUploader interface {
 // Không bắt buộc — uploader không hỗ trợ thì bỏ qua bước kiểm tra.
 type DuplicateChecker interface {
 	HasRecentUpload(ctx context.Context, a *network.Account, title string, within time.Duration) (bool, error)
+}
+
+// parsePublishingMarker tách marker "đang đăng" dạng "title|RFC3339".
+// Legacy (đợt S/V) lưu "1" → trả ("", "") để caller coi như đăng dở cũ.
+func parsePublishingMarker(raw string) (title, ts string) {
+	if raw == "" || raw == "1" {
+		return "", ""
+	}
+	title, ts, _ = strings.Cut(raw, "|")
+	return title, ts
+}
+
+// freshPublishingMarker: marker mới (< 30 phút) = đang đăng thật — lần gọi
+// đồng thời thứ hai phải bỏ qua. Cũ hơn = đăng dở do crash (đợt S/V).
+func freshPublishingMarker(ts string) bool {
+	if ts == "" {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return false
+	}
+	return time.Since(t) < 30*time.Minute
 }
 
 // checkDuplicateUpload hỏi uploader xem video cùng tiêu đề đã có trên kênh

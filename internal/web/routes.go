@@ -122,6 +122,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /stories", s.handleStoryCreate)
 	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
 	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
+	mux.HandleFunc("POST /stories/{id}/retry", s.handleStoryRetry) // đợt Y: thử lại tay
+	mux.HandleFunc("GET /stories/{id}/log", s.handleStoryLog)      // đợt Y: nhật ký đầy đủ
 	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
 	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
@@ -131,6 +133,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /reup/file/{id}", s.handleReupFile)
 	mux.HandleFunc("GET /reup/videos/{id}/file", s.handleReupVideoFile)
 	mux.HandleFunc("POST /reup/posts/{id}/publish", s.handleReupPostPublish)
+	mux.HandleFunc("POST /reup/posts/{id}/retry", s.handleReupPostRetry) // Đợt Y
 	// Cài đặt · Reup (Đợt E).
 	mux.HandleFunc("GET /settings/reup", s.handleSettingsReup)
 	mux.HandleFunc("POST /settings/reup/save", s.handleSettingsReupSave)
