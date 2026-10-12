@@ -74,7 +74,7 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 		log.Printf("reup: automation tick armed (discover 6 giờ/lần, download ngay)")
 	}
 	if d.Story {
-		for _, n := range []string{"story", "selfheal", "backup", "story_public", "story_retry", "notify"} {
+		for _, n := range []string{"story", "selfheal", "backup", "story_public", "story_retry", "notify", "draft_digest"} {
 			sup.Watch(n, 5*time.Minute)
 		}
 		go loop(ctx, 5*time.Minute, func() {
@@ -90,6 +90,9 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 			sup.Dispatch(ctx, "story_retry", 10*time.Minute, auto.StoryRetryTick)
 			// Đợt O2: gửi alert mới qua Telegram (nếu Ninh đã bật).
 			sup.Dispatch(ctx, "notify", 5*time.Minute, auto.NotifyTick)
+			// Digest "bản nháp chờ đăng" 1 lần/ngày → Telegram (Ninh bấm Đăng tay,
+			// không dùng Playwright tự đăng để tránh ban kênh).
+			sup.Dispatch(ctx, "draft_digest", 30*time.Minute, auto.DraftDigestTick)
 		})
 		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, tự đăng private-first, self-heal 1 giờ/lần)")
 	}

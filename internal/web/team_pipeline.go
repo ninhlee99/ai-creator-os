@@ -234,7 +234,7 @@ func (s *Server) storyTeam() pipeTeam {
 			keys[i].Detail = "xong"
 		case i == cur:
 			keys[i].Status = tmWorking
-			keys[i].Detail = "đang làm"
+			keys[i].Detail = "đang làm (ước lượng)"
 		default:
 			keys[i].Status = tmWaiting
 			keys[i].Detail = "chờ"

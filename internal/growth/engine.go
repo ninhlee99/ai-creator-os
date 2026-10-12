@@ -86,6 +86,9 @@ type PlanRequest struct {
 	Pillars    []string // persona content pillars = initial format families
 	Start      time.Time
 	Days       int // horizon (30 for the rolling plan)
+	// KilledFormats: format_id đã bị kill (VerdictKilled) — plan mới không
+	// lên lịch lại các format này (đợt AA).
+	KilledFormats []string
 }
 
 // PlanDraft is one item GeneratePlan wants scheduled.
@@ -169,6 +172,22 @@ func GeneratePlan(req PlanRequest) []PlanDraft {
 	if len(pillars) == 0 {
 		pillars = []string{"nội dung ngắn"}
 	}
+	// Đợt AA: loại pillar đã bị kill khỏi vòng xoay.
+	killed := map[string]bool{}
+	for _, k := range req.KilledFormats {
+		killed[k] = true
+	}
+	var live []string
+	for _, p := range pillars {
+		if !killed[Slugify(p)] {
+			live = append(live, p)
+		}
+	}
+	if len(live) > 0 {
+		pillars = live
+	}
+	// Nếu TẤT CẢ pillar đều bị kill: giữ nguyên để plan không trống rỗng,
+	// nhưng đánh dấu bằng decision ở caller (generatePlanFor).
 	days := req.Days
 	if days <= 0 {
 		days = 30
@@ -266,26 +285,38 @@ func DecideKill(cfg Config, in FormatInput, now time.Time) (bool, string) {
 
 // DecideDoubleDown: one video at >= 5x the account's 30-day median views
 // earns a 3-episode series (doc §4.2). Median <= 0 means no baseline yet.
+// Factor <= 0 disables the rule (UI có thể đặt 0 để tắt).
 func DecideDoubleDown(cfg Config, accountMedianViews float64, v VideoStat) bool {
+	if cfg.DoubleDownFactor <= 0 {
+		return false
+	}
 	return accountMedianViews > 0 && float64(v.Views) >= cfg.DoubleDownFactor*accountMedianViews
 }
 
 // DecideBreakout: >= 10x median — triggers the fast 24h replan.
+// Factor <= 0 disables the rule.
 func DecideBreakout(cfg Config, accountMedianViews float64, v VideoStat) bool {
+	if cfg.BreakoutFactor <= 0 {
+		return false
+	}
 	return accountMedianViews > 0 && float64(v.Views) >= cfg.BreakoutFactor*accountMedianViews
 }
 
 // PenaltyInput is the evidence for the auto-pause rule.
 type PenaltyInput struct {
-	PolicyErrors  int     // platform policy/API violation errors in the window
-	RemovedVideos int     // videos taken down in the window
-	Views30dNow   float64 // current 30-day views (0 with HasViews=false)
-	Views30dPrev  float64 // previous 30-day views
-	HasViews      bool    // both view figures are real readings
+	PolicyErrors  int           // platform policy/API violation errors in the window
+	RemovedVideos int           // videos taken down in the window
+	Views30dNow   float64       // current 30-day views (0 with HasViews=false)
+	Views30dPrev  float64       // previous 30-day views
+	HasViews      bool          // both view figures are real readings
+	ViewsSpan     time.Duration // time between the two view readings (đợt AA)
 }
 
 // DecidePenalty implements doc §4.2: any policy error, any takedown, or a
 // >70% views collapse not explained by cadence pauses the account.
+// Đợt AA: cú rơi view chỉ tính khi CẢ HAI reading > 0 và cách nhau ≥ 24h —
+// metric 30 ngày không thể rơi thật 70% trong 1h, nên trường hợp đó là số
+// liệu lỗi (token hết hạn trả 0, API glitch) và không được pause oan.
 func DecidePenalty(cfg Config, in PenaltyInput) (bool, string) {
 	if in.PolicyErrors > 0 {
 		return true, fmt.Sprintf("%d lỗi chính sách từ API nền tảng", in.PolicyErrors)
@@ -293,7 +324,7 @@ func DecidePenalty(cfg Config, in PenaltyInput) (bool, string) {
 	if in.RemovedVideos > 0 {
 		return true, fmt.Sprintf("%d video bị gỡ trong kỳ", in.RemovedVideos)
 	}
-	if in.HasViews && in.Views30dPrev > 0 {
+	if in.HasViews && in.Views30dPrev > 0 && in.Views30dNow > 0 && in.ViewsSpan >= 24*time.Hour {
 		drop := (in.Views30dPrev - in.Views30dNow) / in.Views30dPrev
 		if drop > cfg.PenaltyViewsDrop {
 			return true, fmt.Sprintf("view 30 ngày rơi %.0f%% (ngưỡng %.0f%%)", drop*100, cfg.PenaltyViewsDrop*100)

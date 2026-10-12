@@ -41,11 +41,17 @@ func (f *fakeJobStore) PublishLegStatus(jobID, platform string) string {
 	return f.legs[jobID+"/"+platform]
 }
 
+// Đợt AA: remote id lưu cùng key với hậu tố "/rid".
+func (f *fakeJobStore) PublishLegRemoteID(jobID, platform string) string {
+	return f.legs[jobID+"/"+platform+"/rid"]
+}
+
 func (f *fakeJobStore) SetPublishLeg(jobID, platform, status, remoteID string) error {
 	if f.legs == nil {
 		f.legs = map[string]string{}
 	}
 	f.legs[jobID+"/"+platform] = status
+	f.legs[jobID+"/"+platform+"/rid"] = remoteID
 	return nil
 }
 

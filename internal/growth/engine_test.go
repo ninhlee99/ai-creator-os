@@ -152,10 +152,12 @@ func TestDecidePenalty(t *testing.T) {
 	}{
 		{"policy error", PenaltyInput{PolicyErrors: 1}, true},
 		{"takedown", PenaltyInput{RemovedVideos: 1}, true},
-		{"views collapse 80%", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 2000}, true},
-		{"views dip 50% survives", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 5000}, false},
+		{"views collapse 80% over 25h", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 2000, ViewsSpan: 25 * time.Hour}, true},
+		{"views collapse 80% but only 1h apart (số liệu lỗi)", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 2000, ViewsSpan: time.Hour}, false},
+		{"views collapse to zero (token chết)", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 0, ViewsSpan: 25 * time.Hour}, false},
+		{"views dip 50% survives", PenaltyInput{HasViews: true, Views30dPrev: 10000, Views30dNow: 5000, ViewsSpan: 25 * time.Hour}, false},
 		{"no views data", PenaltyInput{}, false},
-		{"prev zero", PenaltyInput{HasViews: true, Views30dPrev: 0, Views30dNow: 0}, false},
+		{"prev zero", PenaltyInput{HasViews: true, Views30dPrev: 0, Views30dNow: 0, ViewsSpan: 25 * time.Hour}, false},
 	}
 	for _, c := range cases {
 		if got, _ := DecidePenalty(cfg, c.in); got != c.want {

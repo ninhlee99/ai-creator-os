@@ -128,15 +128,20 @@ func (s *Store) Evaluate(accountID int64, username string, cfg Config, now time.
 	penalty := PenaltyInput{}
 	if series, err := s.SnapshotSeries(accountID, 10); err == nil {
 		var readings []float64
+		var taken []time.Time
 		for _, sn := range series {
 			if sn.Views30d != nil {
 				readings = append(readings, *sn.Views30d)
+				taken = append(taken, sn.TakenAt)
 			}
 		}
 		if len(readings) >= 2 {
 			penalty.Views30dPrev = readings[len(readings)-2]
 			penalty.Views30dNow = readings[len(readings)-1]
 			penalty.HasViews = true
+			// Đợt AA: khoảng cách giữa 2 reading — DecidePenalty yêu cầu
+			// ≥ 24h mới được pause vì view rơi (chống pause oan do số liệu lỗi).
+			penalty.ViewsSpan = taken[len(taken)-1].Sub(taken[len(taken)-2])
 		}
 	}
 	if pause, reason := DecidePenalty(cfg, penalty); pause {

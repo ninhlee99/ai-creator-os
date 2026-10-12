@@ -193,6 +193,11 @@ func (s *Server) growthView() map[string]any {
 	// Phase-2 production state: toggle, quota today, upload privacy.
 	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
 	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
+	// Đợt AA: số job đang chờ/đang chạy trong Studio — user biết hàng đợi dài bao nhiêu.
+	ctx["StudioPending"] = 0
+	if s.Studio != nil {
+		ctx["StudioPending"] = s.Studio.PendingJobCount()
+	}
 	if used, err := s.Growth.QuotaUsed(today); err == nil {
 		ctx["QuotaUsed"] = used
 		ctx["QuotaLeft"] = growth.QuotaUploadsLeft(used)
@@ -207,6 +212,15 @@ func (s *Server) growthView() map[string]any {
 	deadline, _ := time.Parse("2006-01-02", growth.YPPDeadline)
 	ctx["YPPDeadline"] = growth.YPPDeadline
 	ctx["YPPDaysLeft"] = int(time.Until(deadline).Hours() / 24)
+	// Đợt AA: chỉ hiện card đếm ngược YPP khi có ít nhất 1 kênh YouTube.
+	hasYT := false
+	for i := range accounts {
+		if hasYouTube(accounts[i]) {
+			hasYT = true
+			break
+		}
+	}
+	ctx["HasYTAccount"] = hasYT
 	ctx["Today"] = today
 	return ctx
 }
@@ -277,6 +291,25 @@ func pillarsFor(a *network.Account) []string {
 	return []string{"video ngắn mỗi ngày"}
 }
 
+// killedFormats trả về danh sách format_id đã bị kill (VerdictKilled) của
+// tài khoản — plan mới loại các format này (đợt AA).
+func (s *Server) killedFormats(accountID int64) []string {
+	if s.Growth == nil {
+		return nil
+	}
+	stats, err := s.Growth.ListFormatStats(accountID)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, st := range stats {
+		if st.Verdict == growth.VerdictKilled {
+			out = append(out, st.FormatID)
+		}
+	}
+	return out
+}
+
 // generatePlanFor creates (or replaces) the account's active 30-day plan
 // from its current growth stage. Returns the number of scheduled items.
 func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, error) {
@@ -285,11 +318,12 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 		return 0, err
 	}
 	drafts := growth.GeneratePlan(growth.PlanRequest{
-		Stage:      prof.Stage,
-		HasYouTube: hasYouTube(a),
-		Pillars:    pillarsFor(a),
-		Start:      time.Now(),
-		Days:       30,
+		Stage:         prof.Stage,
+		HasYouTube:    hasYouTube(a),
+		Pillars:       pillarsFor(a),
+		Start:         time.Now(),
+		Days:          30,
+		KilledFormats: s.killedFormats(a.ID),
 	})
 	if _, err := s.Growth.InsertPlan(a.ID, "d30", rationale, drafts); err != nil {
 		return 0, err

@@ -342,6 +342,19 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 		return nil
 	}
 
+	// Đợt AA: chân YouTube của job đã done (do autopilot OnDone đăng trước)
+	// thì không đăng lại — đánh dấu item đã đăng từ leg.
+	if s.JobStore != nil && it.StudioJobID != "" {
+		if s.JobStore.PublishLegStatus(it.StudioJobID, "youtube") == studio.LegDone {
+			rid := s.JobStore.PublishLegRemoteID(it.StudioJobID, "youtube")
+			_ = s.Growth.SetItemPublished(it.ID, rid)
+			_ = s.Growth.Decide("growth_publisher", "skip_duplicate_youtube", a.Username,
+				"chân YouTube đã đăng xong bởi autopilot — bỏ qua để tránh trùng",
+				map[string]any{"item": it.ID, "video": rid})
+			return []string{a.Username + ": \"" + it.Topic + "\" đã được đăng YouTube trước đó — bỏ qua (tránh trùng)"}
+		}
+	}
+
 	desc := it.PubCaption
 	if sib := s.siblingRef(a, it); sib != "" {
 		desc += "\n\n▶ Xem thêm: https://youtu.be/" + sib

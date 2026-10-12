@@ -23,6 +23,7 @@ type JobStore interface {
 	// Publish legs (Đợt Y): idempotency cho auto-publish — check trước
 	// khi đăng, ghi sau khi đăng, tick thử lại chân failed.
 	PublishLegStatus(jobID, platform string) string
+	PublishLegRemoteID(jobID, platform string) string
 	SetPublishLeg(jobID, platform, status, remoteID string) error
 	FailedPublishLegs() []studio.PublishLeg
 }

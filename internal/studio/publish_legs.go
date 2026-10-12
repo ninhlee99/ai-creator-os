@@ -32,6 +32,15 @@ func (s *Studio) PublishLegStatus(jobID, platform string) string {
 	return st
 }
 
+// PublishLegRemoteID trả về remote_id của chân đăng ("" khi chưa có).
+// Dùng khi growth phát hiện chân đã done để đánh dấu item đã đăng.
+func (s *Studio) PublishLegRemoteID(jobID, platform string) string {
+	var rid string
+	_ = s.db.QueryRow(`SELECT remote_id FROM studio_publish_legs WHERE job_id=? AND platform=?`,
+		jobID, platform).Scan(&rid)
+	return rid
+}
+
 // SetPublishLeg ghi (upsert) trạng thái chân đăng.
 func (s *Studio) SetPublishLeg(jobID, platform, status, remoteID string) error {
 	_, err := s.db.Exec(`INSERT INTO studio_publish_legs(job_id,platform,remote_id,status,updated_at)

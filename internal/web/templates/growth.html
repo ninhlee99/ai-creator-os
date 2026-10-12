@@ -14,6 +14,7 @@
     {{if .Kill}}<span class="badge badge-err">kill switch</span>{{end}}
     <span class="badge badge-draft" title="Quota YouTube hôm nay (mỗi lượt đăng tốn {{.QuotaPerUpload}} điểm quota)">Quota {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>
     <span class="badge badge-draft" title="Đổi ở Cài đặt · Đa nền tảng; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
+    {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
   <p class="hint">DRY-RUN là cổng an toàn toàn cục. TikTok: nháp tới khi qua audit.</p>
   <form method="post" action="/growth/production" style="display:inline">
@@ -41,10 +42,10 @@
 <table>
       <tr><td>Video tối thiểu trước khi kill</td><td><input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}" style="width:6em"></td></tr>
       <tr><td>Ngày tối thiểu trước khi kill</td><td><input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}" style="width:6em"></td></tr>
-      <tr><td>Ngưỡng completion (0–1)</td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}" style="width:6em"></td></tr>
-      <tr><td>Ngưỡng share/save (0–1)</td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}" style="width:6em"></td></tr>
-      <tr><td>Hệ số double-down (× median)</td><td><input type="number" name="double_down_factor" step="0.5" min="1" value="{{.Thresholds.DoubleDownFactor}}" style="width:6em"></td></tr>
-      <tr><td>Hệ số breakout (× median)</td><td><input type="number" name="breakout_factor" step="1" min="1" value="{{.Thresholds.BreakoutFactor}}" style="width:6em"></td></tr>
+      <tr><td><span title="Video giữ chân dưới mức này (tỉ lệ xem hết) thì format bị dừng. Đặt 0 để tắt luật này.">Ngưỡng completion (0–1)</span></td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}" style="width:6em"></td></tr>
+      <tr><td><span title="Tỉ lệ chia sẻ/lưu dưới mức này thì format bị dừng (khi không có số liệu xem hết). Đặt 0 để tắt.">Ngưỡng share/save (0–1)</span></td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}" style="width:6em"></td></tr>
+      <tr><td><span title="Video đạt gấp X lần view trung bình thì hệ thống làm tiếp series 3 tập cùng hướng. Đặt 0 để tắt.">Hệ số double-down (× median)</span></td><td><input type="number" name="double_down_factor" step="0.5" min="0" value="{{.Thresholds.DoubleDownFactor}}" style="width:6em"></td></tr>
+      <tr><td><span title="Video đạt gấp X lần view trung bình thì hệ thống lên kế hoạch nhanh trong 24h. Đặt 0 để tắt.">Hệ số breakout (× median)</span></td><td><input type="number" name="breakout_factor" step="1" min="0" value="{{.Thresholds.BreakoutFactor}}" style="width:6em"></td></tr>
       <tr><td>Ngày chững trước khi đánh dấu</td><td><input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}" style="width:6em"></td></tr>
     </table>
 </div>
@@ -68,7 +69,7 @@
 <div class="cards">
   <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng người theo dõi (số liệu mới nhất)</div></div>
   <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
-  <div class="card"><div class="num">{{.YPPDaysLeft}} ngày</div><div class="label">Tới hạn đăng ký kiếm tiền YouTube {{.YPPDeadline}} (ngưỡng mới gấp đôi sau hạn này)</div></div>
+  {{if .HasYTAccount}}<div class="card"><div class="num">{{.YPPDaysLeft}} ngày</div><div class="label">Tới hạn đăng ký kiếm tiền YouTube {{.YPPDeadline}} (ngưỡng mới gấp đôi sau hạn này)</div></div>{{end}}
   <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
 </div>
 

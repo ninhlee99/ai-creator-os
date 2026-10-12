@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 // ------------------------------------------------------------ settings
@@ -35,10 +37,9 @@ type studioGrowthProducer struct{ s *Server }
 
 // Enqueue renders one plan item. Product-theme accounts go through the
 // affiliate autopilot (theme -> product -> 30s format, per-account model
-// photos). Persona accounts used to get a film job — the film pipeline is
-// parked (PIVOT 2026-10-02); they now fail closed with an honest error
-// until the "Kể chuyện" pipeline lands (Wave F). Either way every variant
-// is its OWN job and its own file.
+// photos). Persona accounts go through the "Kể chuyện" YouTube pipeline
+// (story job) — fail-closed with an honest error when the Studio is not
+// ready or the item has no topic.
 func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.ProduceRequest) (string, error) {
 	a := req.Account
 	if a.Theme != "" {
@@ -54,7 +55,33 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 		}
 		return res.JobID, nil
 	}
-	return "", fmt.Errorf("tài khoản persona: pipeline kể chuyện YouTube chưa có (đang phát triển ở đợt F) — item được bỏ qua")
+	// Tài khoản persona: tạo job kể chuyện YouTube từ chủ đề của plan item.
+	if p.s.Studio == nil {
+		return "", fmt.Errorf("studio chưa sẵn sàng — không tạo được job kể chuyện")
+	}
+	topic := strings.TrimSpace(req.Item.Topic)
+	if topic == "" {
+		return "", fmt.Errorf("plan item thiếu chủ đề — không tạo được truyện")
+	}
+	mp := ""
+	if p.s.Cfg != nil {
+		if m := filepath.Join(filepath.Dir(p.s.Cfg.DatabasePath), "autopilot-music.m4a"); fileExists(m) {
+			mp = m
+		}
+	}
+	id, err := p.s.Studio.CreateStoryJob(studio.StoryParams{
+		Topic:     topic,
+		Genre:     "tâm lý",
+		Words:     600,
+		Scenes:    6,
+		MusicOn:   mp != "",
+		MusicPath: mp,
+		AccountID: a.ID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("tạo job kể chuyện lỗi: %w", err)
+	}
+	return id, nil
 }
 
 func (p studioGrowthProducer) JobState(jobID string) (string, string) {
@@ -140,7 +167,12 @@ func (s *Server) automation() *automation.Service {
 	svc.Producer = s.producer()
 	svc.Uploader = s.yt()
 	svc.Autopilot = s.Autopilot
-	svc.JobStore = s.Studio
+	// Đợt AA: chỉ gán JobStore khi Studio thật sự tồn tại — gán nil
+	// *studio.Studio vào interface tạo interface non-nil chứa nil pointer,
+	// gọi method sẽ panic.
+	if s.Studio != nil {
+		svc.JobStore = s.Studio
+	}
 	svc.CommissionSource = s.CommissionSource
 	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
 	svc.AT = s.AT
@@ -289,7 +321,7 @@ func (s *Server) handleGrowthThresholds(w http.ResponseWriter, r *http.Request) 
 	num := func(name string, cur float64) float64 {
 		if raw := r.FormValue(name); raw != "" {
 			var f float64
-			if _, err := fmt.Sscanf(raw, "%f", &f); err == nil && f > 0 {
+			if _, err := fmt.Sscanf(raw, "%f", &f); err == nil && f >= 0 {
 				return f
 			}
 		}
@@ -298,7 +330,7 @@ func (s *Server) handleGrowthThresholds(w http.ResponseWriter, r *http.Request) 
 	intg := func(name string, cur int) int {
 		if raw := r.FormValue(name); raw != "" {
 			var n int
-			if _, err := fmt.Sscanf(raw, "%d", &n); err == nil && n > 0 {
+			if _, err := fmt.Sscanf(raw, "%d", &n); err == nil && n >= 0 {
 				return n
 			}
 		}

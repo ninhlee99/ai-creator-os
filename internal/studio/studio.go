@@ -307,5 +307,14 @@ func (s *Studio) setCaption(id, caption string) {
 // (e.g. the auto-publish hook in cmd/aicos).
 func (s *Studio) AppendLog(id, line string) { s.appendLog(id, line) }
 
+// PendingJobCount đếm job đang chờ hoặc đang chạy (đợt AA — trang growth
+// hiện số này để user biết hàng đợi dài bao nhiêu).
+func (s *Studio) PendingJobCount() int {
+	var n int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`,
+		StatusQueued, StatusRunning).Scan(&n)
+	return n
+}
+
 // OnDoneFunc runs after a studio job finishes successfully. It is called
 // from the job's goroutine; keep it quick or spawn its own goroutine.
