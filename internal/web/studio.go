@@ -120,6 +120,7 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"MediaGenKeys", mgKeys,
+		"Error", r.URL.Query().Get("err"),
 	))
 }
 
@@ -170,28 +171,31 @@ func saveUpload(r *http.Request, field, dir string) (string, error) {
 
 // handleStudioAffiliateCreate queues an affiliate video job.
 func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Request) {
+	studioErr := func(msg string) {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(msg))
+	}
 	if s.Studio == nil {
-		s.fail(w, fmt.Errorf("studio nil"), "studio affiliate")
+		studioErr("Studio chưa sẵn sàng — thử tải lại trang.")
 		return
 	}
 	if err := r.ParseMultipartForm(60 << 20); err != nil {
-		s.fail(w, err, "parse affiliate form")
+		studioErr("Không đọc được form — thử lại.")
 		return
 	}
 	upDir := s.Studio.UploadDir()
 	modelPhoto, err := saveUpload(r, "model_photo", upDir)
 	if err != nil {
-		s.fail(w, err, "upload model photo")
+		studioErr("Ảnh mẫu lỗi: " + err.Error())
 		return
 	}
 	productPhoto, err := saveUpload(r, "product_photo", upDir)
 	if err != nil {
-		s.fail(w, err, "upload product photo")
+		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
 		return
 	}
 	musicPath, err := saveUpload(r, "music_file", upDir)
 	if err != nil {
-		s.fail(w, err, "upload music")
+		studioErr("File nhạc lỗi: " + err.Error())
 		return
 	}
 	// Optional: direct audio URL for the trending sound.
@@ -201,7 +205,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 			defer cancel()
 			if derr := studio.DownloadAudio(ctx, u, dst); derr != nil {
-				s.fail(w, derr, "download music")
+				studioErr("Không tải được nhạc từ link: " + derr.Error())
 				return
 			}
 			musicPath = dst
@@ -227,10 +231,10 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		p.ProductName = "Sản phẩm"
 	}
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
-		s.fail(w, err, "create affiliate job")
+		studioErr("Không tạo được job: " + err.Error())
 		return
 	}
-	http.Redirect(w, r, "/studio/jobs", http.StatusSeeOther)
+	seeOther(w, r, "/studio/jobs")
 }
 
 // (R2-W3), JSON for polling when Accept: application/json.
@@ -246,6 +250,57 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "studio_jobs", s.ctx(
 		"Title", "Job Studio", "Path", "/studio/jobs", "Jobs", jobs,
 	))
+}
+
+// handleStudioJobCancel cancels a running/queued job.
+func (s *Server) handleStudioJobCancel(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if s.Studio != nil {
+		s.Studio.CancelRunning(id)
+	}
+	seeOther(w, r, "/studio/jobs")
+}
+
+// handleStudioJobDelete removes a job and all its files.
+func (s *Server) handleStudioJobDelete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if s.Studio == nil {
+		seeOther(w, r, "/studio/jobs")
+		return
+	}
+	if err := s.Studio.DeleteJob(id); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không xoá được job: "+err.Error()))
+		return
+	}
+	seeOther(w, r, "/studio/jobs")
+}
+
+// handleStudioJobRetry creates a new affiliate job from an old job's params.
+func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if s.Studio == nil {
+		seeOther(w, r, "/studio/jobs")
+		return
+	}
+	j, ok := s.Studio.GetJob(id)
+	if !ok {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tìm thấy job "+id))
+		return
+	}
+	if j.Kind != studio.KindAffiliate {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Chỉ thử lại được job affiliate"))
+		return
+	}
+	var p studio.AffiliateParams
+	if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không đọc được tham số job cũ"))
+		return
+	}
+	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job mới: "+err.Error()))
+		return
+	}
+	seeOther(w, r, "/studio/jobs")
 }
 
 // studioAssetView projects a storyboard asset for JSON.

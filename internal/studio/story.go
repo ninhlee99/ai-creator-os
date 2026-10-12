@@ -24,7 +24,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 // KindStory là job kind cho pipeline kể chuyện.
@@ -63,34 +62,7 @@ func (s *Studio) DeleteStoryJob(id string) error {
 	if j.Kind != KindStory {
 		return fmt.Errorf("job %s không phải truyện kể", id)
 	}
-	// Đợt Y: job đang chạy phải hủy goroutine trước khi xoá file — nếu
-	// không render tiếp tục chạy mồ côi (work dir bị xoá sẽ tự tạo lại,
-	// để lại file mồ côi + đốt CPU).
-	s.CancelRunning(id)
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		s.mu.Lock()
-		_, stillRunning := s.running[id]
-		s.mu.Unlock()
-		if !stillRunning || time.Now().After(deadline) {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	for _, a := range s.ListAssets(id) {
-		os.Remove(a.Path)
-	}
-	if j.Output != "" {
-		os.Remove(j.Output)
-	}
-	os.RemoveAll(filepath.Join(s.workRoot, id))
-	if _, err := s.db.Exec(`DELETE FROM studio_assets WHERE job_id=?`, id); err != nil {
-		return fmt.Errorf("xoá assets: %w", err)
-	}
-	if _, err := s.db.Exec(`DELETE FROM studio_jobs WHERE id=? AND kind=?`, id, KindStory); err != nil {
-		return fmt.Errorf("xoá job: %w", err)
-	}
-	return nil
+	return s.DeleteJob(id)
 }
 
 const KindStory = "story"

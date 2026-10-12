@@ -21,6 +21,21 @@
   <div class="board"></div>
   {{if .Output}}<video class="player" controls src="/media/{{.Output}}"></video>{{end}}
   <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+  <div class="job-actions">
+    {{if or (eq .Status "running") (eq .Status "queued")}}
+    <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
+      <button class="btn btn-secondary btn-sm" type="submit">Hủy</button>
+    </form>
+    {{end}}
+    {{if eq .Status "failed"}}
+    <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
+      <button class="btn btn-secondary btn-sm" type="submit">Thử lại</button>
+    </form>
+    {{end}}
+    <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file?')">
+      <button class="btn btn-secondary btn-sm" type="submit">Xóa</button>
+    </form>
+  </div>
   <pre class="log" id="log-{{.ID}}" {{if not .Output}}hidden{{end}}></pre>
 </div>
 {{end}}

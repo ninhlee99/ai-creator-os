@@ -22,6 +22,41 @@ func (s *Studio) CancelRunning(id string) bool {
 	return true
 }
 
+// DeleteJob cancels a running job (if any), waits for its goroutine to exit,
+// then removes its assets, output, work dir and DB rows. Works for any job
+// kind — DeleteStoryJob keeps its kind check and delegates here.
+func (s *Studio) DeleteJob(id string) error {
+	j, ok := s.GetJob(id)
+	if !ok {
+		return fmt.Errorf("không tìm thấy job %s", id)
+	}
+	s.CancelRunning(id)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		s.mu.Lock()
+		_, stillRunning := s.running[id]
+		s.mu.Unlock()
+		if !stillRunning || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	for _, a := range s.ListAssets(id) {
+		os.Remove(a.Path)
+	}
+	if j.Output != "" {
+		os.Remove(j.Output)
+	}
+	os.RemoveAll(filepath.Join(s.workRoot, id))
+	if _, err := s.db.Exec(`DELETE FROM studio_assets WHERE job_id=?`, id); err != nil {
+		return fmt.Errorf("xoá assets: %w", err)
+	}
+	if _, err := s.db.Exec(`DELETE FROM studio_jobs WHERE id=?`, id); err != nil {
+		return fmt.Errorf("xoá job: %w", err)
+	}
+	return nil
+}
+
 // MarkInterruptedJobs fails every job left "running" from a previous process
 // (their render goroutines died with it). Call once at startup; returns the
 // number of jobs swept. The user can resume film jobs with RerunFilmJob.
