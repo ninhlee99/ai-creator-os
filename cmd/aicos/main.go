@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -192,6 +193,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("ledger: %v", err)
 	}
+	// Đợt AM (fix nợ vòng 8): kiểm tra toàn vẹn DB lúc boot — DB corrupt +
+	// launchd KeepAlive = crash-loop vô hạn. Báo rõ cách khôi phục thay vì
+	// chết im lặng.
+	if err := checkDBIntegrity(*dataDir); err != nil {
+		log.Fatalf("DB hỏng: %v", err)
+	}
 	defer func() {
 		if err := l.Close(); err != nil {
 			log.Printf("ledger close: %v", err)
@@ -289,6 +296,7 @@ func main() {
 
 	// VieNeu TTS sidecar: controlled through the provider inside the chain.
 	var vieNeu *tts.VieNeuProvider
+	var studioInst *studio.Studio
 	if p, ok := ttsChain.Provider("vieneu"); ok {
 		if vn, ok := p.(*tts.VieNeuProvider); ok {
 			vieNeu = vn
@@ -443,6 +451,7 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
+		studioInst = st
 		// Key Gemini nhập ở Cài đặt dùng chung cho tạo ảnh (trước chỉ đọc
 		// GEMINI_API_KEYS lúc khởi động → key nhập qua UI không tới tạo ảnh).
 		srv.OnGeminiKeys = studioMG.SetKeys
@@ -662,9 +671,38 @@ func main() {
 			log.Printf("sidecar: vieneu stop: %v", err)
 		}
 	}
+	// Đợt AM: chờ job studio đang render xong (tối đa 30s) trước khi thoát.
+	if studioInst != nil {
+		log.Printf("shutdown: chờ job studio đang chạy...")
+		studioInst.Shutdown(30 * time.Second)
+	}
 	if err := llamaProc.Stop(); err != nil {
 		log.Printf("sidecar: llama-server stop: %v", err)
 	}
 
 	log.Printf("shutdown: complete")
+}
+
+// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 5 DB chính.
+// DB nào hỏng → trả lỗi kèm hướng dẫn khôi phục từ backup (tránh crash-loop).
+func checkDBIntegrity(dataDir string) error {
+	dbs := []string{"ledger.db", "studio.db", "products.db", "reup.db", "accesstrade.db"}
+	for _, name := range dbs {
+		p := filepath.Join(dataDir, name)
+		if !fileExists(p) {
+			continue
+		}
+		db, err := sql.Open("sqlite", p+"?mode=ro")
+		if err != nil {
+			continue
+		}
+		var result string
+		err = db.QueryRow("PRAGMA integrity_check").Scan(&result)
+		db.Close()
+		if err != nil || result != "ok" {
+			backupDir := filepath.Join(dataDir, "backups")
+			return fmt.Errorf("%s hỏng (integrity_check: %s). Khôi phục: vào Cài đặt → Hệ thống → Khôi phục từ file, chọn bản mới nhất trong %s, rồi restart app", name, result, backupDir)
+		}
+	}
+	return nil
 }

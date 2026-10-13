@@ -43,6 +43,7 @@ type Supervisor struct {
 	mu         sync.Mutex
 	beats      map[string]*Beat
 	inflight   map[string]bool
+	inflightAt map[string]time.Time // khi nào tick bắt đầu — để phát hiện kẹt
 	alerterFn  func() Alerter
 	quotaAlert QuotaAlert
 	// watches: nhịp kỳ vọng của từng tick (Đợt V — watchdog).
@@ -62,6 +63,7 @@ func New(alerterFn func() Alerter, quotaAlert QuotaAlert) *Supervisor {
 	return &Supervisor{
 		beats:      make(map[string]*Beat),
 		inflight:   make(map[string]bool),
+		inflightAt: make(map[string]time.Time),
 		alerterFn:  alerterFn,
 		quotaAlert: quotaAlert,
 		watches:    make(map[string]watchSpec),
@@ -83,17 +85,26 @@ func (s *Supervisor) raiseAlert(kind, severity, msg, action string) {
 func (s *Supervisor) Dispatch(ctx context.Context, name string, timeout time.Duration, tick func(context.Context) []string) {
 	s.mu.Lock()
 	if s.inflight[name] {
-		s.mu.Unlock()
-		log.Printf("tick %s: lượt trước vẫn đang chạy — bỏ qua lượt này", name)
-		return
+		// Đợt AM: tick kẹt quá timeout+5p (không tôn trọng ctx) → cho phép
+		// chạy lại, goroutine cũ thành orphan (tự hồi phục thay vì kẹt vĩnh viễn).
+		if since := time.Since(s.inflightAt[name]); since > timeout+5*time.Minute {
+			log.Printf("tick %s: kẹt %.0f phút (quá timeout) — cho phép chạy lại, goroutine cũ bỏ rơi", name, since.Minutes())
+			delete(s.inflight, name)
+		} else {
+			s.mu.Unlock()
+			log.Printf("tick %s: lượt trước vẫn đang chạy — bỏ qua lượt này", name)
+			return
+		}
 	}
 	s.inflight[name] = true
+	s.inflightAt[name] = time.Now()
 	s.mu.Unlock()
 
 	go func() {
 		defer func() {
 			s.mu.Lock()
 			delete(s.inflight, name)
+			delete(s.inflightAt, name)
 			s.mu.Unlock()
 		}()
 		s.beatStart(name)

@@ -324,3 +324,27 @@ func (s *Studio) PendingJobCount() int {
 
 // OnDoneFunc runs after a studio job finishes successfully. It is called
 // from the job's goroutine; keep it quick or spawn its own goroutine.
+
+// Shutdown chờ các job đang chạy xong (tối đa timeout) trước khi app thoát.
+// Đợt AM: graceful drain — SIGTERM không giết job đang render giữa chừng.
+func (s *Studio) Shutdown(timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	for {
+		s.mu.Lock()
+		n := len(s.running)
+		s.mu.Unlock()
+		if n == 0 || time.Now().After(deadline) {
+			if n > 0 {
+				// Hết timeout: hủy các job còn lại để không treo shutdown.
+				s.mu.Lock()
+				for id, cancel := range s.running {
+					cancel()
+					s.appendLog(id, "App đang tắt — job bị hủy.")
+				}
+				s.mu.Unlock()
+			}
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
