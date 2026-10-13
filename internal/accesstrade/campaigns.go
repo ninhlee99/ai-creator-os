@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 )
@@ -92,6 +93,10 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 		total, _ := meta.TotalPage.Float64()
 		if len(raws) == 0 || float64(page) >= total {
 			break
+		}
+		// Đợt AM: chạm trần 20 trang mà vẫn còn → log warn thay vì cắt im lặng.
+		if page == maxCampaignPages && float64(page) < total {
+			log.Printf("accesstrade: chạm trần %d trang (còn %v trang) — một số chiến dịch bị bỏ qua", maxCampaignPages, total)
 		}
 	}
 	return out, nil

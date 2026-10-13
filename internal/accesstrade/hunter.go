@@ -65,17 +65,34 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 			return nil, err
 		}
 		var names []string
+		seen := map[string]bool{}
+		var noMerchant []string
 		for _, cp := range cs {
 			names = append(names, cp.Name)
 			if cp.Merchant == "" {
+				// Đợt AM: ghi nhận riêng thay vì bỏ qua im lặng.
+				noMerchant = append(noMerchant, cp.Name)
 				continue
 			}
+			// Đợt AM: dedupe merchant — 2 campaign cùng shop chỉ gọi API 1 lần.
+			if seen[cp.Merchant] {
+				continue
+			}
+			seen[cp.Merchant] = true
 			part, err := c.ListDatafeeds(ctx, DatafeedFilter{Merchant: cp.Merchant,
 				Domain: f.Domain, MinPrice: f.MinPrice, MaxPrice: f.MaxPrice, Limit: f.Limit})
 			if err != nil {
 				return nil, err
 			}
 			feed = append(feed, part...)
+		}
+		if len(noMerchant) > 0 {
+			note := fmt.Sprintf("Bỏ qua %d chiến dịch không rõ merchant: %s", len(noMerchant), strings.Join(noMerchant, ", "))
+			if res.Note != "" {
+				res.Note += "; " + note
+			} else {
+				res.Note = note
+			}
 		}
 		switch {
 		case len(cs) == 0:
