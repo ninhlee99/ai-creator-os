@@ -59,7 +59,6 @@ type Commentator interface {
 type TransformOptions struct {
 	Level     int    // Level1 | Level2
 	Seed      int64  // fingerprint riêng (video id + kênh) — mỗi kênh một seed
-	Title     string // chữ trên intro/outro card ("" = card trơn)
 	Voiceover bool   // T8: bật voiceover bình luận tiếng Việt
 	Voice     string // preset voice VieNeu ("" = mặc định)
 }

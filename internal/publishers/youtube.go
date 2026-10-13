@@ -322,6 +322,10 @@ func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, me
 	if p.Synthetic {
 		statusObj["containsSyntheticMedia"] = true
 	}
+	// Giờ vàng: chỉ áp cho private (YouTube yêu cầu) — tự công khai đúng lịch.
+	if p.privacy == "private" && goldenHourEnabled(p.Username) {
+		statusObj["publishAt"] = NextGoldenHour(time.Now()).UTC().Format(time.RFC3339)
+	}
 	snippet := map[string]any{
 		"title":       truncate(title, 100),
 		"description": truncate(meta.Description, 5000),

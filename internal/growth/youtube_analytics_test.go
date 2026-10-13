@@ -107,3 +107,31 @@ func TestYouTubeAnalyticsEmptyRows(t *testing.T) {
 		t.Errorf("Views30d = %v, want nil (no fabrication)", *snap.Views30d)
 	}
 }
+
+// Tiến độ YPP: truy vấn 365 ngày (giờ xem) + 90 ngày theo creatorContentType.
+func TestYouTubeAnalyticsYPPMetrics(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		switch {
+		case q.Get("dimensions") == "creatorContentType":
+			_, _ = w.Write([]byte(`{"columnHeaders":[{"name":"creatorContentType"},{"name":"views"}],
+				"rows":[["SHORTS",2500000],["VIDEO_ON_DEMAND",9000]]}`))
+		case q.Get("metrics") == "estimatedMinutesWatched":
+			_, _ = w.Write([]byte(`{"columnHeaders":[{"name":"estimatedMinutesWatched"}],"rows":[[120000]]}`))
+		default:
+			_, _ = w.Write([]byte(analyticsReport))
+		}
+	}))
+	defer srv.Close()
+	y := &YouTubeAnalyticsSource{
+		TokenFor: func(string) (string, error) { return "tok123", nil },
+		BaseURL:  srv.URL, Client: srv.Client(),
+	}
+	snap, err := y.Fetch(context.Background(), SourceAccount{ID: 1, Username: "u", YoutubeChannel: "UCx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.Extra["watch_hours_12m"] != 2000.0 || snap.Extra["shorts_views_90d"] != 2500000.0 {
+		t.Fatalf("extra = %v", snap.Extra)
+	}
+}

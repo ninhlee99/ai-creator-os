@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"log"
 )
 
@@ -19,6 +20,7 @@ func (s *Server) kickVieneuEnsure() {
 	s.vieneuMu.Lock()
 	s.vieneuDownloaded, s.vieneuTotal, s.vieneuErr = 0, 0, ""
 	s.vieneuDone = false
+	s.vieneuActive = true
 	s.vieneuMu.Unlock()
 	go func() {
 		err := s.VieNeu.EnsureModel(context.Background(), func(downloaded, total int64) {
@@ -28,11 +30,27 @@ func (s *Server) kickVieneuEnsure() {
 		})
 		s.vieneuMu.Lock()
 		s.vieneuDone = true
+		s.vieneuActive = false
 		if err != nil {
 			s.vieneuErr = err.Error()
 		}
 		s.vieneuMu.Unlock()
 	}()
+}
+
+// localDownloadChip trả nhãn chip "đang tải model nền" cho thanh trên cùng
+// ("" = không tải gì): người dùng luôn thấy app đang tải gì, bao nhiêu.
+func (s *Server) localDownloadChip() string {
+	s.vieneuMu.Lock()
+	defer s.vieneuMu.Unlock()
+	if !s.vieneuActive {
+		return ""
+	}
+	if s.vieneuTotal > 0 {
+		return fmt.Sprintf("Đang tải giọng đọc VieNeu %d%% (%d/%d MB)",
+			s.vieneuDownloaded*100/s.vieneuTotal, s.vieneuDownloaded>>20, s.vieneuTotal>>20)
+	}
+	return "Đang cài giọng đọc VieNeu (~800MB, chạy nền)"
 }
 
 // chainHasEnabled reports whether the named provider is an enabled tier

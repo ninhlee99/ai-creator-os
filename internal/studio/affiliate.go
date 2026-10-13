@@ -3,6 +3,7 @@ package studio
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -143,15 +144,22 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		s.setStatus(id, StatusFailed, 100)
 	}
 
-	if s.mg == nil || !s.mg.Healthy(ctx) {
-		fail(fmt.Errorf("media-gen chưa sẵn sàng (thiếu GEMINI_API_KEYS hoặc key lỗi)"))
-		return
-	}
-
 	work := filepath.Join(s.workRoot, id)
 	if err := os.MkdirAll(work, 0o755); err != nil {
 		fail(err)
 		return
+	}
+
+	// Không có key: dùng ảnh người dùng tải lên (chế độ "ảnh có sẵn").
+	ownPhotos := false
+	if s.mg == nil || !s.mg.Healthy(ctx) {
+		if !p.HasOwnPhotos() {
+			fail(fmt.Errorf("chưa có Gemini key — thêm key ở Cài đặt · Nhà cung cấp, hoặc tải lên ít nhất 1 ảnh sản phẩm để dựng bằng ảnh có sẵn"))
+			return
+		}
+		s.appendLog(id, fmt.Sprintf("Chưa có Gemini key — dựng bằng %d ảnh bạn tải lên (chế độ ảnh có sẵn).", len(ownSources(p))))
+		p.Mode = AffiliateModePhoto
+		ownPhotos = true
 	}
 
 	refs := []ImageRef{}
@@ -167,7 +175,19 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	// here — saves quota).
 	var photos []string
 	var secsPer float64
-	if p.Mode != AffiliateModeShots {
+	if ownPhotos {
+		photos = ownPhotoSet(ctx, p, work)
+		for i, ph := range photos {
+			aid := s.addAsset(id, i, "photo", "ảnh có sẵn")
+			s.setAsset(aid, StatusDone, ph)
+		}
+		if len(photos) < 3 {
+			fail(fmt.Errorf("không xử lý được ảnh tải lên (%d khung) — thử ảnh JPG/PNG khác", len(photos)))
+			return
+		}
+		s.setStatus(id, StatusRunning, 60)
+		secsPer = float64(p.Seconds) / float64(len(photos))
+	} else if p.Mode != AffiliateModeShots {
 		s.appendLog(id, "Director đang khóa địa điểm + viết shot list…")
 		plan, err := s.directorPhotoPlan(ctx, p)
 		if err != nil {
@@ -294,14 +314,22 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	s.setOutput(id, final)
 	// Caption + hashtag for the post (used by auto-publish, and shown in
 	// the UI for manual posting).
-	if s.llm != nil {
+	caption := strings.TrimSpace(p.FixedCaption)
+	if caption != "" {
+		s.appendLog(id, "Dùng chú thích bạn đã sửa.")
+	} else if s.llm != nil {
 		s.appendLog(id, "Viết caption + hashtag…")
 		if cap, cerr := WriteCaption(ctx, s.llm, p.ProductName, p.Niche); cerr == nil {
-			s.setCaption(id, cap)
+			caption = cap
 		} else {
-			s.appendLog(id, "Caption lỗi: "+cerr.Error())
+			log.Printf("studio: caption AI lỗi (job %s): %v", id, cerr)
+			s.appendLog(id, "Chưa có AI viết caption (thiếu key/model) — dùng caption mẫu.")
 		}
 	}
+	if caption == "" {
+		caption = TemplateCaption(p.ProductName, p.Niche)
+	}
+	s.setCaption(id, caption)
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Xong: "+filepath.Base(final))
 	s.fireOnDone(id)

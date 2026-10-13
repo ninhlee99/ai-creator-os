@@ -151,7 +151,6 @@ func (s *Service) transformPassSingle(ctx context.Context, tr *reup.Transformer,
 		opts := reup.TransformOptions{
 			Level:     reup.Level1,
 			Seed:      v.ID,
-			Title:     v.Title,
 			Voiceover: voiceover,
 		}
 		out, terr := tr.TransformVideo(ctx, v, opts)
@@ -189,7 +188,6 @@ func (s *Service) transformPassCompilation(ctx context.Context, tr *reup.Transfo
 		opts := reup.TransformOptions{
 			Level:     reup.Level2,
 			Seed:      vs[0].ID,
-			Title:     src.DisplayName,
 			Voiceover: voiceover,
 		}
 		out, terr := tr.TransformCompilation(ctx, vs, opts)
@@ -328,6 +326,9 @@ func (s *Service) publishReupPost(ctx context.Context, post reup.Post, username 
 	}
 	desc := "Video reup đã transform (giảm rủi ro bản quyền — không đảm bảo)."
 	for _, pub := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes, "short_video") {
+		if pub.Name() == "threads" {
+			continue // Threads chỉ đăng bài chữ — không phải chỗ cho video reup
+		}
 		res := pub.Publish(ctx, post.FilePath, title, desc, "short_video")
 		if !res.Ok {
 			log.Printf("reup: đăng %s thất bại: %s", pub.Name(), res.Error)

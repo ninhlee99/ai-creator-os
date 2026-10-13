@@ -456,8 +456,8 @@ func TestKillSwitch(t *testing.T) {
 // (8) Keyring endpoints: add / duplicate / status / delete, all masked.
 func TestKeyAddDeleteStatus(t *testing.T) {
 	s := newTestServer(t)
-	const key1 = "test-key-ABCDEF1234"
-	const key2 = "test-key-ZZZZZZ5678"
+	const key1 = "AIzaxxxxxxxxxxxxxxxxtest-key-ABCDEF1234"
+	const key2 = "AIzaxxxxxxxxxxxxxxxxtest-key-ZZZZZZ5678"
 
 	add := func(key string) map[string]any {
 		t.Helper()
@@ -568,7 +568,7 @@ func TestKeyAddDeleteStatus(t *testing.T) {
 // the stored keys.
 func TestChainSavePreservesGeminiKeys(t *testing.T) {
 	s := newTestServer(t)
-	const key = "preserve-me-KEY9999"
+	const key = "AIzaxxxxxxxxxxxxxxxxpreserve-me-KEY9999"
 	if rec := postForm(t, s, "/settings/keys/add?chain=tts&provider=gemini",
 		url.Values{"key": {key}}); rec.Code != http.StatusOK {
 		t.Fatalf("add = %d, want 200", rec.Code)
@@ -599,7 +599,7 @@ func TestChainSavePreservesGeminiKeys(t *testing.T) {
 // (10) The settings page renders the keyring UI with masked keys only.
 func TestSettingsPageMasksKeys(t *testing.T) {
 	s := newTestServer(t)
-	const key = "page-render-SECRET4321"
+	const key = "AIzaxxxxxxxxxxxxxpage-render-SECRET4321"
 	if rec := postForm(t, s, "/settings/keys/add?chain=llm&provider=gemini",
 		url.Values{"key": {key}}); rec.Code != http.StatusOK {
 		t.Fatalf("add = %d, want 200", rec.Code)

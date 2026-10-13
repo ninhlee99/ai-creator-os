@@ -246,7 +246,7 @@ tr:hover td { background: var(--bg3); }
 
 /* forms */
 .form-card { background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 12px; padding: 20px; max-width: 640px; margin-bottom: 24px;
+  border-radius: 12px; padding: 20px; max-width: 960px; margin-bottom: 24px;
   box-shadow: var(--shadow); }
 .form-card.danger-zone { border: 2px solid var(--err);
   background: var(--danger-zone-bg); }
@@ -284,8 +284,9 @@ textarea { min-height: 90px; resize: vertical; }
 pre.log { background: #1A1D23; border: 1px solid var(--border);
   border-radius: 8px; padding: 12px; font-size: var(--fs-sm); color: #D6DAE0;
   max-height: 220px; overflow: auto; white-space: pre-wrap; }
-video.player { width: 100%; max-width: 360px; border-radius: 12px;
-  border: 1px solid var(--border); background: #000; }
+video.player { display: block; width: auto; max-width: 100%; max-height: 520px;
+  border-radius: 12px; border: 1px solid var(--border); background: #000; margin-bottom: 8px; }
+pre.log:empty { display: none; }
 .job { background: var(--bg2); border: 1px solid var(--border);
   border-radius: 12px; padding: 16px; margin-bottom: 14px;
   box-shadow: var(--shadow); }
@@ -491,7 +492,7 @@ ul.clean li:last-child { border-bottom: none; }
 
 /* ---- Advanced options disclosure (studio form) ---- */
 details.advanced { margin: 14px 0; border: 1px solid var(--border);
-  border-radius: 12px; padding: 12px 14px; background: var(--bg3); max-width: 640px; }
+  border-radius: 12px; padding: 12px 14px; background: var(--bg3); max-width: 960px; }
 details.advanced summary { cursor: pointer; font-weight: 600;
   font-size: var(--fs-sm); color: var(--muted); }
 details.advanced summary:hover { color: var(--text); }
@@ -553,3 +554,13 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   background: var(--bg3); color: var(--muted); font-size: var(--fs-xs); }
 .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
 .check input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* Emoji đầu nhãn: lề phải thay cho khoảng trắng (xem spaceEmoji ở app.js). */
+.ico { margin-right: .35em; }
+/* Số liệu dạng chữ dài (vd. phiên bản) — không tràn khỏi thẻ. */
+.num.num-text { font-size: 18px; overflow-wrap: anywhere; }
+.env-group th { background: var(--bg3); text-align: left; font-size: var(--fs-sm); }
+.env-name { font-size: 11px; color: var(--muted); }
+.remix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 10px 0; }
+.remix-grid label, details.remix > form > label { display: block; font-size: var(--fs-sm); }
+.remix textarea { width: 100%; margin: 6px 0 10px; }

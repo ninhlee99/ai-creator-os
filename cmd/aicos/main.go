@@ -443,6 +443,12 @@ func main() {
 		log.Printf("studio: init failed: %v (studio page disabled)", err)
 	} else {
 		srv.Studio = st
+		// Key Gemini nhập ở Cài đặt dùng chung cho tạo ảnh (trước chỉ đọc
+		// GEMINI_API_KEYS lúc khởi động → key nhập qua UI không tới tạo ảnh).
+		srv.OnGeminiKeys = studioMG.SetKeys
+		if ks := srv.SyncGeminiKeys(); len(ks) > 0 {
+			log.Printf("gemini: %d key dùng chung cho viết chữ + giọng đọc + tạo ảnh", len(ks))
+		}
 		// Đợt V: pre-flight đĩa — từ chối job render mới khi đĩa gần đầy.
 		st.DiskGuard = func() (int, error) { return automation.DiskUsagePct(*dataDir) }
 		// Film Wave 1 (P0-3): jobs left "running" died with the previous

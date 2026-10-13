@@ -22,9 +22,13 @@ var facebookKinds = []string{"short_video", "short_film"}
 // review the draft in the Page first).
 //
 // Per-account Page mapping: FB_PAGE_ID_<USERNAME>, else shared FB_PAGE_ID.
+//
+// Có META_PAGE_TOKEN → gọi Graph API trực tiếp (không cần CLI ngoài);
+// không có → dùng facebook-cli nếu máy có.
 type FacebookPublisher struct {
 	Username  string
 	pageID    string
+	token     string
 	draftOnly bool
 }
 
@@ -37,7 +41,8 @@ func NewFacebookPublisher(username string) *FacebookPublisher {
 	}
 	return &FacebookPublisher{
 		Username:  username,
-		pageID:    envFor(username, "FB_PAGE_ID"),
+		pageID:    FacebookPageID(username),
+		token:     metaPageToken(username),
 		draftOnly: draftOnly,
 	}
 }
@@ -45,10 +50,14 @@ func NewFacebookPublisher(username string) *FacebookPublisher {
 // Name returns the platform key.
 func (p *FacebookPublisher) Name() string { return "facebook" }
 
-// IsConfigured reports whether a page id exists and facebook-cli is on PATH.
+// IsConfigured reports whether a page id exists and either a Page token
+// (Graph API) or facebook-cli on PATH.
 func (p *FacebookPublisher) IsConfigured() bool {
 	if p.pageID == "" {
 		return false
+	}
+	if p.token != "" {
+		return true
 	}
 	_, err := exec.LookPath("facebook-cli")
 	return err == nil
@@ -115,6 +124,9 @@ func firstID(m map[string]any, keys ...string) string {
 func (p *FacebookPublisher) Publish(ctx context.Context, videoPath, title, description, kind string) PublishResult {
 	if !p.IsConfigured() {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: "facebook page not configured"}
+	}
+	if p.token != "" {
+		return publishFacebookGraph(ctx, p.pageID, p.token, videoPath, title, description, p.draftOnly)
 	}
 	// Mirror Python's f"{title}\n\n{description}".strip()[:2000].
 	text := truncate(strings.TrimSpace(title+"\n\n"+description), 2000)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -52,7 +53,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 	for _, j := range jobs {
 		out = append(out, studioJobView{
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
-			Progress: j.Progress, Output: j.Output,
+			Progress: j.Progress, Output: mediaName(j.Output),
 			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
 			KindLabel: kindLabel(j.Kind),
 			Label:     statusLabel(j.Status), Class: statusClass(j.Status),
@@ -154,6 +155,49 @@ func saveUpload(r *http.Request, field, dir string) (string, error) {
 	return dst, nil
 }
 
+// saveUploads lưu tối đa max ảnh từ 1 ô chọn nhiều file (chỉ nhận ảnh).
+func saveUploads(r *http.Request, field, dir string, max int) ([]string, error) {
+	if r.MultipartForm == nil {
+		return nil, nil
+	}
+	var out []string
+	for i, hdr := range r.MultipartForm.File[field] {
+		if i >= max {
+			break
+		}
+		if hdr.Size == 0 {
+			continue
+		}
+		if hdr.Size > 50<<20 {
+			return nil, fmt.Errorf("ảnh %s quá lớn (tối đa 50MB)", hdr.Filename)
+		}
+		ext := strings.ToLower(filepath.Ext(hdr.Filename))
+		switch ext {
+		case ".jpg", ".jpeg", ".png", ".webp":
+		default:
+			return nil, fmt.Errorf("ảnh %s: định dạng %s không hỗ trợ", hdr.Filename, ext)
+		}
+		f, err := hdr.Open()
+		if err != nil {
+			return nil, err
+		}
+		dst := filepath.Join(dir, fmt.Sprintf("%d-%s-%d%s", time.Now().UnixNano(), field, i, ext))
+		out2, err := os.Create(dst)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+		_, err = io.Copy(out2, f)
+		out2.Close()
+		f.Close()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, dst)
+	}
+	return out, nil
+}
+
 // handleStudioAffiliateCreate queues an affiliate video job.
 func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Request) {
 	studioErr := func(msg string) {
@@ -176,6 +220,11 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	productPhoto, err := saveUpload(r, "product_photo", upDir)
 	if err != nil {
 		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
+		return
+	}
+	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
+	if err != nil {
+		studioErr("Ảnh thêm lỗi: " + err.Error())
 		return
 	}
 	musicPath, err := saveUpload(r, "music_file", upDir)
@@ -212,6 +261,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		ProductName:  strings.TrimSpace(r.FormValue("product_name")),
 		ModelPhoto:   modelPhoto,
 		ProductPhoto: productPhoto,
+		ExtraPhotos:  extraPhotos,
 		Seconds:      seconds,
 		BPM:          bpm,
 		MusicPath:    musicPath,
@@ -241,6 +291,7 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "studio_jobs", s.ctx(
 		"Title", "Job Studio", "Path", "/studio/jobs", "Jobs", jobs,
+		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
 	))
 }
 
@@ -330,10 +381,17 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		views = append(views, v)
 	}
-	s.writeJSON(w, map[string]any{
+	resp := map[string]any{
 		"job":    j,
 		"assets": views,
-	})
+	}
+	// Checklist lên xu hướng cho video affiliate đã xong (đo từ file thật).
+	if j.Kind == studio.KindAffiliate && j.Status == studio.StatusDone && j.Output != "" {
+		var p studio.AffiliateParams
+		_ = json.Unmarshal([]byte(j.Params), &p)
+		resp["trend"] = studio.TrendReadiness(r.Context(), j.Output, p, j.Caption)
+	}
+	s.writeJSON(w, resp)
 }
 
 var studioAssetRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|mp4)$`)
@@ -419,3 +477,116 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 // --------------------------------------------------------------- publishers
+
+// capcutExportRoot là nơi xuất gói chỉnh sửa (~/Movies/AI Creator OS).
+// Biến để test trỏ về thư mục tạm.
+var capcutExportRoot = func() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Movies", "AI Creator OS")
+}
+
+// openOnMac chạy lệnh `open` của macOS (seam cho test).
+var openOnMac = func(args ...string) error { return exec.Command("open", args...).Run() }
+
+// handleStudioJobCapCut xuất gói chỉnh sửa, mở Finder tới thư mục và bật
+// CapCut nếu máy có (CapCut không có API — người dùng kéo thả file vào).
+func (s *Server) handleStudioJobCapCut(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.NotFound(w, r)
+		return
+	}
+	dir, err := s.Studio.ExportForEditing(r.PathValue("id"), capcutExportRoot())
+	if err != nil {
+		seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Xuất cho CapCut lỗi: "+err.Error()))
+		return
+	}
+	_ = openOnMac("-R", dir)
+	msg := "Đã xuất vào " + dir + " — kéo các file vào timeline CapCut."
+	if openOnMac("-a", "CapCut") != nil {
+		msg += " (Chưa thấy app CapCut — cài từ capcut.com rồi mở thư mục này.)"
+	}
+	seeOther(w, r, "/studio/jobs?msg="+url.QueryEscape(msg))
+}
+
+// mediaName trả tên file để phát qua /media/{name} (route chỉ nhận 1
+// đoạn tên). j.Output là đường dẫn đầy đủ — dùng thẳng sẽ ra URL hỏng.
+func mediaName(output string) string {
+	if output == "" {
+		return ""
+	}
+	return filepath.Base(output)
+}
+
+// handleStudioJobRemix dựng lại 1 video affiliate với tham số đã sửa
+// (thời lượng, nhịp, đoạn nhạc, file nhạc, thứ tự ảnh, chú thích). Bản cũ
+// giữ nguyên — đây là "chỉnh sửa" trong app vì CapCut không có API.
+func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
+	back := func(q string) { seeOther(w, r, "/studio/jobs?"+q) }
+	if s.Studio == nil {
+		back("err=" + url.QueryEscape("Studio chưa sẵn sàng."))
+		return
+	}
+	j, ok := s.Studio.GetJob(r.PathValue("id"))
+	if !ok || j.Kind != studio.KindAffiliate {
+		back("err=" + url.QueryEscape("Chỉ chỉnh sửa được video affiliate đã có."))
+		return
+	}
+	var p studio.AffiliateParams
+	if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
+		back("err=" + url.QueryEscape("Không đọc được tham số video cũ."))
+		return
+	}
+	if err := r.ParseMultipartForm(60 << 20); err != nil {
+		back("err=" + url.QueryEscape("Không đọc được form — thử lại."))
+		return
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("seconds"))); err == nil {
+		p.Seconds = clampInt(v, 10, 120)
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("bpm"))); err == nil {
+		p.BPM = clampInt(v, 60, 200)
+	}
+	if v, err := strconv.ParseFloat(strings.TrimSpace(r.FormValue("music_start")), 64); err == nil && v >= 0 {
+		p.MusicStart = v
+	}
+	music, err := saveUpload(r, "music_file", s.Studio.UploadDir())
+	if err != nil {
+		back("err=" + url.QueryEscape("File nhạc lỗi: "+err.Error()))
+		return
+	}
+	if music != "" {
+		p.MusicPath = music
+	}
+	p = reorderPhotos(p, r.FormValue("order"))
+	p.FixedCaption = strings.TrimSpace(r.FormValue("caption"))
+	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
+		back("err=" + url.QueryEscape("Không dựng lại được: "+err.Error()))
+		return
+	}
+	back("msg=" + url.QueryEscape("Đang dựng bản chỉnh sửa — bản cũ vẫn giữ để so sánh."))
+}
+
+// reorderPhotos đổi thứ tự ảnh sản phẩm + ảnh thêm (ảnh người mẫu giữ
+// nguyên vì là ảnh khóa khuôn mặt). order: "reverse" | "rotate" | "".
+func reorderPhotos(p studio.AffiliateParams, order string) studio.AffiliateParams {
+	var all []string
+	if p.ProductPhoto != "" {
+		all = append(all, p.ProductPhoto)
+	}
+	all = append(all, p.ExtraPhotos...)
+	if len(all) < 2 {
+		return p
+	}
+	switch order {
+	case "reverse":
+		for i, k := 0, len(all)-1; i < k; i, k = i+1, k-1 {
+			all[i], all[k] = all[k], all[i]
+		}
+	case "rotate":
+		all = append(all[1:], all[0])
+	default:
+		return p
+	}
+	p.ProductPhoto, p.ExtraPhotos = all[0], append([]string(nil), all[1:]...)
+	return p
+}

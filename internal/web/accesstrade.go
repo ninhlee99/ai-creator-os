@@ -284,7 +284,9 @@ func (s *Server) handleATSyncCampaigns(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), atTimeout)
 	defer cancel()
-	cs, err := cl.ListCampaigns(ctx, accesstrade.CampaignFilter{})
+	// Chỉ chiến dịch đã duyệt mới tạo được link; danh sách công khai có
+	// ~10.000 chiến dịch (~9MB/trang) nên không tải hết.
+	cs, err := cl.ListCampaigns(ctx, accesstrade.CampaignFilter{Approval: "successful"})
 	if err != nil {
 		seeOther(w, r, "/products?err="+url.QueryEscape("Tải chiến dịch thất bại: "+err.Error()))
 		return
@@ -293,9 +295,13 @@ func (s *Server) handleATSyncCampaigns(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/products?err="+url.QueryEscape("Lưu cache thất bại: "+err.Error()))
 		return
 	}
-	approved := len(accesstrade.ApprovedOnly(cs))
-	seeOther(w, r, "/products?ok="+url.QueryEscape(
-		"Đã tải "+itoa(len(cs))+" chiến dịch ("+itoa(approved)+" đã duyệt)."))
+	msg := "Đã tải " + itoa(len(cs)) + " chiến dịch bạn đã được duyệt."
+	if len(cs) == 0 {
+		msg = "Chưa có chiến dịch nào được duyệt — đăng ký chiến dịch trên pub.accesstrade.vn rồi tải lại."
+	} else if len(cs) < 3 {
+		msg += " Nên đăng ký thêm chiến dịch đúng ngành hàng (thời trang, mỹ phẩm, gia dụng…) trên pub.accesstrade.vn."
+	}
+	seeOther(w, r, "/products?ok="+url.QueryEscape(msg))
 }
 
 // linkCreateJSON là body JSON của POST /at/links/create.
@@ -400,7 +406,7 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{})
+	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{ApprovedOnly: true, MaxAgeDays: 180})
 	if err != nil {
 		writeJSONErr(w, "Săn sản phẩm thất bại: "+err.Error(), http.StatusBadGateway)
 		return
@@ -432,7 +438,7 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]any{
 		"ok": true, "new": res.New, "updated": res.Updated,
-		"skipped": res.Skipped, "videos": videos,
+		"skipped": res.Skipped, "videos": videos, "note": res.Note,
 	})
 }
 

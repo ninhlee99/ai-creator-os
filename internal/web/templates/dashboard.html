@@ -3,6 +3,7 @@
 <h1>Tổng quan</h1>
 <p class="subtitle">Ngày {{fmtVN .Today}} · Theo dõi kênh, video và hoa hồng của bạn.</p>
 
+{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/nha-cung-cap">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:20px">
   <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
@@ -10,8 +11,8 @@
     <li class="{{if .HasKeys}}done{{end}}">
       <span class="n">{{if .HasKeys}}✓{{else}}1{{end}}</span>
       <div class="step-body">
-        <b>Thêm Gemini API key</b>
-        <span>Không có key thì không tính năng nào chạy được — đây là bước chặn cứng đầu tiên.</span>
+        <b>Thêm Gemini API key (miễn phí, nên có)</b>
+        <span>Chưa có key vẫn dựng được video bán hàng từ ảnh bạn tải lên. Có key thì AI tự viết kịch bản, vẽ ảnh, viết caption và kể chuyện.</span>
       </div>
       <a class="btn btn-sm" href="/settings/nha-cung-cap">Thêm key</a>
     </li>
@@ -39,6 +40,7 @@
 {{end}}
 
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
 <div class="cards">
   <div class="card">
@@ -65,6 +67,42 @@
   </div>
 </div>
 
+<h2>Tự động hóa</h2>
+<p class="hint">Mọi công tắc tự động ở một chỗ.{{if not .MasterOn}} <b>Công tắc chính đang TẮT</b> — các việc dưới đây chỉ chạy khi bạn bấm “Bật tự động” ở trên.{{end}}{{if .DryRun}} Đang <b>chạy thử</b>: có dựng video nhưng không đăng thật.{{end}}</p>
+<div class="table-wrap">
+<table class="auto-panel">
+  <tr><th>Việc tự động</th><th>Trạng thái</th><th></th></tr>
+  {{range .AutoSwitches}}
+  <tr>
+    <td><b>{{.Label}}</b><br><span class="hint">{{.Hint}} · <a href="{{.Page}}">chỉnh chi tiết</a></span></td>
+    <td>{{if .On}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</td>
+    <td>
+      <form method="post" action="/automation/switch" class="inline-form">
+        <input type="hidden" name="key" value="{{.Key}}">
+        <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
+        <button type="submit" class="btn btn-secondary btn-sm">{{if .On}}Tắt{{else}}Bật{{end}}</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+</table>
+</div>
+
+<h2>Sẵn sàng kiếm tiền</h2>
+<p class="hint">Mỗi nguồn tiền đang ở đâu và còn thiếu bước gì — đọc từ cấu hình thật, không ước doanh thu.</p>
+<div class="table-wrap">
+<table>
+  <tr><th>Nguồn tiền</th><th>Trạng thái</th><th>Bước tiếp theo</th></tr>
+  {{range .Money}}
+  <tr>
+    <td><b>{{.Name}}</b></td>
+    <td>{{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}<br><span class="hint">{{.State}}</span></td>
+    <td>{{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}">{{.Next}}</a>{{else}}<span class="hint">—</span>{{end}}</td>
+  </tr>
+  {{end}}
+</table>
+</div>
+
 {{if .GrowthAlerts}}
 <h2>Cảnh báo tăng trưởng</h2>
 <ul class="clean">
@@ -81,7 +119,7 @@
   {{range .Decisions}}
   <li>{{with agentLabel .Agent}}{{.Icon}} <strong>{{.Label}}</strong>{{end}} · <span class="badge badge-draft">{{statusLabel .Action}}</span>
     {{if .Target}} → {{.Target}}{{end}}
-    {{if .Reason}}<br><span style="color:var(--muted)">{{.Reason}}</span>{{end}}
+    {{if .Reason}}<br><span style="color:var(--muted)">{{reasonLabel .Reason}}</span>{{end}}
   </li>
   {{end}}
 </ul>

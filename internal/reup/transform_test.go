@@ -130,19 +130,20 @@ func TestVideoChainFilterDirections(t *testing.T) {
 }
 
 func TestFinalFilter(t *testing.T) {
-	f, total := finalFilter(10, "Tiêu đề", 1, 2)
-	want := cardDur + 10 + cardDur
-	if total-want > 0.001 || want-total > 0.001 {
-		t.Errorf("total=%f, muốn %f", total, want)
-	}
-	for _, want := range []string{"concat=n=3", "adelay=", "amix=", "loudnorm=", "drawtext="} {
+	f := finalFilter(10, 1, 2)
+	for _, want := range []string{"adelay=", "amix=", "loudnorm="} {
 		if !strings.Contains(f, want) {
 			t.Errorf("final filter thiếu %q: %s", want, f)
 		}
 	}
+	// Không chèn chữ vào video: không drawtext, không card, không phụ đề.
+	for _, bad := range []string{"drawtext", "concat=", "subtitles"} {
+		if strings.Contains(f, bad) {
+			t.Errorf("final filter không được có %q: %s", bad, f)
+		}
+	}
 	// Không voice, không nhạc → không có map audio.
-	f2, _ := finalFilter(10, "", -1, -1)
-	if strings.Contains(f2, "[aout]") {
+	if f2 := finalFilter(10, -1, -1); strings.Contains(f2, "[aout]") {
 		t.Errorf("không audio input mà vẫn có [aout]: %s", f2)
 	}
 }
@@ -197,19 +198,6 @@ func TestSanitizeCommentary(t *testing.T) {
 	}
 }
 
-func TestBuildSRT(t *testing.T) {
-	srt := buildSRT("Xin chào", 2, 5.5)
-	if !strings.Contains(srt, "00:00:02,000 --> 00:00:05,500") {
-		t.Errorf("SRT time sai: %q", srt)
-	}
-	if !strings.Contains(srt, "Xin chào") {
-		t.Errorf("SRT thiếu text: %q", srt)
-	}
-	if buildSRT("  ", 0, 1) != "" {
-		t.Errorf("text rỗng phải trả SRT rỗng")
-	}
-}
-
 // ------------------------------------------------------------ ffmpeg thật
 
 func TestTransformVideoLevel1(t *testing.T) {
@@ -222,7 +210,7 @@ func TestTransformVideoLevel1(t *testing.T) {
 	v := queueDownloadedVideo(t, tr, clip, "Tiên kiếm kỳ hiệp", "than_tien", 1500000)
 
 	out, err := tr.TransformVideo(ctx, v, TransformOptions{
-		Level: 1, Seed: v.ID, Title: v.Title, Voiceover: true,
+		Level: 1, Seed: v.ID, Voiceover: true,
 	})
 	if err != nil {
 		t.Fatalf("TransformVideo: %v", err)
@@ -236,9 +224,14 @@ func TestTransformVideoLevel1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("qcTransform output: %v", err)
 	}
-	// 5s nhanh 5% + 2 card 1.2s ≈ 7.16s.
-	if dur < 6 || dur > 9 {
-		t.Errorf("dur=%.2f, muốn khoảng 7.2s", dur)
+	// 5s nhanh 5% ≈ 4.76s — không còn card intro/outro chữ.
+	if dur < 4 || dur > 6 {
+		t.Errorf("dur=%.2f, muốn khoảng 4.8s", dur)
+	}
+	// Không chèn chữ: không có track phụ đề nào.
+	if subs, _ := exec.Command("ffprobe", "-v", "error", "-select_streams", "s",
+		"-show_entries", "stream=codec_name", "-of", "csv=p=0", out).Output(); strings.TrimSpace(string(subs)) != "" {
+		t.Errorf("video reup không được có track phụ đề: %q", subs)
 	}
 }
 
@@ -297,7 +290,7 @@ func TestTransformCompilationLevel2(t *testing.T) {
 			fmt.Sprintf("Clip %d", i+1), "than_tien", int64(1000*(i+1))))
 	}
 	out, err := tr.TransformCompilation(ctx, vs, TransformOptions{
-		Level: 2, Seed: 7, Title: "Thần Tiên", Voiceover: true,
+		Level: 2, Seed: 7, Voiceover: true,
 	})
 	if err != nil {
 		t.Fatalf("TransformCompilation: %v", err)

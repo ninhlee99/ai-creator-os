@@ -186,14 +186,9 @@ func (s *Server) handleReupTransform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	voiceover := s.atSettingOn(automation.KeyReupVoiceoverEnabled, true)
-	title := v.Title
-	if level == reup.Level2 {
-		title = "Tuyển tập"
-	}
 	go s.runReupTransform(post.ID, tr, clips, reup.TransformOptions{
 		Level:     level,
 		Seed:      v.ID,
-		Title:     title,
 		Voiceover: voiceover,
 	})
 	writeJSON(w, map[string]any{"ok": true, "post_id": post.ID})
@@ -368,15 +363,10 @@ func (s *Server) handleReupPostRetry(w http.ResponseWriter, r *http.Request) {
 		reupRedirect(w, r, "", "Bài không còn video để transform lại.")
 		return
 	}
-	title := clips[0].Title
-	if p.TransformLevel == reup.Level2 {
-		title = "Tuyển tập"
-	}
 	voiceover := s.atSettingOn(automation.KeyReupVoiceoverEnabled, true)
 	go s.runReupTransform(p.ID, tr, clips, reup.TransformOptions{
 		Level:     p.TransformLevel,
 		Seed:      clips[0].ID,
-		Title:     title,
 		Voiceover: voiceover,
 	})
 	reupRedirect(w, r, fmt.Sprintf("Đang thử lại bài #%d.", id), "")

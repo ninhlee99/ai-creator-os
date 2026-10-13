@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -86,7 +87,10 @@ type Server struct {
 	// handlers then fail closed with an honest message.
 	AT     *accesstrade.Store
 	VieNeu VieNeuCtl
-	Health map[string]HealthChecker
+	// OnGeminiKeys nhận bộ key Gemini dùng chung mỗi khi đổi (main nối vào
+	// phần tạo ảnh của Studio).
+	OnGeminiKeys func(keys []string)
+	Health       map[string]HealthChecker
 	// Reup là kho nguồn + video Douyin (trụ reup). Injected bởi cmd wiring;
 	// nil khi DB mở lỗi — trang /reup fail-closed trung thực.
 	Reup *reup.Store
@@ -142,6 +146,7 @@ type Server struct {
 	vieneuTotal      int64
 	vieneuDone       bool
 	vieneuErr        string
+	vieneuActive     bool // đang tải nền — hiện chip trên thanh trên cùng
 
 	// Avatar model-download progress — parked-build support (như trên).
 	avatarDlMu         sync.Mutex
@@ -258,6 +263,8 @@ var templateFuncs = template.FuncMap{
 	"fmtUSD": func(v float64) string { return formatUSD(v) },
 	// statusLabel renders a raw status slug as its Vietnamese label.
 	"statusLabel": statusLabel,
+	// reasonLabel dịch lý do dạng "slug_a -> slug_b" sang tiếng Việt.
+	"reasonLabel": reasonLabel,
 	// statusClass maps a raw status slug to a semantic badge class suffix.
 	"statusClass": statusClass,
 	"mul":         func(a, b float64) float64 { return a * b },
@@ -308,6 +315,67 @@ func statusLabel(s string) string {
 	return strings.ReplaceAll(s, "_", " ")
 }
 
+// reasonLabel dịch lý do kỹ thuật trong feed hoạt động: "a_b -> c_d" →
+// nhãn tiếng Việt hai đầu, "(missing-key)" → "(thiếu key)". Lý do khác
+// giữ nguyên.
+func reasonLabel(r string) string {
+	r = strings.ReplaceAll(r, "(missing-key)", "(thiếu key)")
+	// Bản ghi cũ (trước khi việt hóa) vẫn nằm trong sổ cái: dịch khi hiện.
+	if m := legacyTopicRe.FindStringSubmatch(r); m != nil {
+		return "đã chốt chủ đề (nguồn: " + sourceLabel(m[1]) + ")"
+	}
+	if m := legacyAssignRe.FindStringSubmatch(r); m != nil {
+		return "gán tính cách " + m[1] + " cho chủ đề “" + m[2] + "”"
+	}
+	if strings.HasPrefix(r, "đã chốt chủ đề (nguồn: ") {
+		src := strings.TrimSuffix(strings.TrimPrefix(r, "đã chốt chủ đề (nguồn: "), ")")
+		return "đã chốt chủ đề (nguồn: " + sourceLabel(src) + ")"
+	}
+	if a, b, ok := strings.Cut(r, " -> "); ok {
+		// Đổi nhà cung cấp AI: "gemini -> llama-server (thiếu key)".
+		if pa, ok1 := providerLabels[a]; ok1 {
+			bName, why, _ := strings.Cut(b, " ")
+			if pb, ok2 := providerLabels[bName]; ok2 {
+				out := pa + " → " + pb
+				if why = strings.Trim(why, "()"); why != "" {
+					out += " (lý do: " + why + ")"
+				}
+				return out
+			}
+		}
+		if !strings.ContainsAny(a+b, " ") {
+			return statusLabel(a) + " → " + statusLabel(b)
+		}
+	}
+	return r
+}
+
+var (
+	legacyTopicRe  = regexp.MustCompile(`^topic resolved \(source=(\w+)\)$`)
+	legacyAssignRe = regexp.MustCompile(`^assigned (.+) for researched niche '(.*)'$`)
+)
+
+// providerLabels: tên nhà cung cấp AI dễ hiểu cho feed hoạt động.
+var providerLabels = map[string]string{
+	"gemini":       "Gemini (Google)",
+	"llama-server": "AI chạy trên máy",
+	"vieneu":       "giọng VieNeu trên máy",
+	"edge":         "giọng Edge miễn phí",
+	"paid":         "nhà cung cấp trả phí",
+}
+
+func sourceLabel(s string) string {
+	switch s {
+	case "fallback":
+		return "mặc định theo tính cách, vì chưa có AI"
+	case "hint":
+		return "gợi ý của bạn"
+	case "auto":
+		return "AI tự chọn"
+	}
+	return s
+}
+
 var statusLabels = map[string]string{
 	// account lifecycle
 	"onboarding":       "Đang thiết lập",
@@ -338,8 +406,69 @@ var statusLabels = map[string]string{
 	"shelf":  "Đang bán",
 	"scaled": "Đang mở rộng",
 	// decision actions shown in the activity feed
-	"niche_research": "Nghiên cứu niche",
-	"live_unlocked":  "Mở khóa live",
+	"niche_research":          "Nghiên cứu niche",
+	"account_transition":      "Chuyển giai đoạn",
+	"auto_switch":             "Công tắc tự động",
+	"account_penalized":       "Kênh bị phạt",
+	"advance_stage":           "Lên giai đoạn mới",
+	"api_budget":              "Ngân sách API",
+	"api_key_add":             "Thêm API key",
+	"api_key_delete":          "Xóa API key",
+	"api_switch":              "Bật/tắt API",
+	"at_automation_save":      "Lưu tự động Accesstrade",
+	"auth_password":           "Đổi mật khẩu",
+	"auto_pause_account":      "Tự tạm dừng kênh",
+	"autopublish_failed":      "Tự đăng TikTok lỗi",
+	"autopublish_meta_failed": "Tự đăng Meta lỗi",
+	"autopublish_yt_failed":   "Tự đăng YouTube lỗi",
+	"avatar_character_add":    "Thêm nhân vật",
+	"avatar_character_delete": "Xóa nhân vật",
+	"avatar_render_test":      "Thử dựng avatar",
+	"avatar_sidecar_restart":  "Khởi động lại avatar",
+	"avatar_tier_failover":    "Đổi nhà cung cấp avatar",
+	"backup_create":           "Tạo bản sao lưu",
+	"backup_offsite":          "Sao lưu ngoài máy",
+	"backup_restore":          "Khôi phục sao lưu",
+	"breakout_video":          "Video bứt phá",
+	"build_schedule":          "Lập lịch",
+	"campaign_pending":        "Chiến dịch chờ duyệt",
+	"hunt_blocked":            "Chưa săn được sản phẩm",
+	"commission_reconcile":    "Đối soát hoa hồng",
+	"daily_plan":              "Kế hoạch ngày",
+	"dedup_regenerate_angle":  "Đổi góc tránh trùng",
+	"defer_quota":             "Hoãn vì hết quota",
+	"deny":                    "Từ chối",
+	"distributed":             "Đã phân phối",
+	"double_down_format":      "Nhân đôi format tốt",
+	"drop_stale_item":         "Bỏ mục quá hạn",
+	"dry_run":                 "Chế độ chạy thử",
+	"error":                   "Lỗi",
+	"generate_plan":           "Tạo kế hoạch",
+	"kill_format":             "Dừng format kém",
+	"kill_product":            "Dừng sản phẩm",
+	"kill_switch":             "Dừng khẩn cấp",
+	"login":                   "Đăng nhập",
+	"mark_stalled":            "Đánh dấu chững",
+	"master_switch":           "Công tắc chính",
+	"milestone_reached":       "Đạt mốc",
+	"network_pause":           "Tạm dừng toàn mạng",
+	"notify_save":             "Lưu thông báo",
+	"onboard":                 "Thiết lập ban đầu",
+	"production_toggle":       "Bật/tắt sản xuất",
+	"publish_youtube":         "Đăng YouTube",
+	"reup_settings_save":      "Lưu cài đặt Reup",
+	"scale_product":           "Mở rộng sản phẩm",
+	"seed":                    "Khởi tạo",
+	"session_topic":           "Chủ đề phiên",
+	"shelf_product":           "Lên kệ sản phẩm",
+	"skip":                    "Bỏ qua",
+	"skip_duplicate_youtube":  "Bỏ video trùng",
+	"slot_skipped":            "Bỏ lượt",
+	"stop_reup_posting":       "Dừng đăng reup",
+	"thresholds_reset":        "Đặt lại ngưỡng",
+	"thresholds_updated":      "Cập nhật ngưỡng",
+	"tier_failover":           "Đổi nhà cung cấp AI",
+	"live_unlocked":           "Mở khóa live",
 	// growth stages (CHANNEL_GROWTH)
 	"cold_start":        "Khởi động (canary)",
 	"format_testing":    "Đang test format",
@@ -533,9 +662,10 @@ func (s *Server) parseTemplates() error {
 // ctx builds the template context: base flags (Kill/DryRun) plus page data.
 func (s *Server) ctx(kv ...any) map[string]any {
 	m := map[string]any{
-		"Kill":   s.Cfg.KillSwitch(),
-		"DryRun": s.Cfg.DryRun(),
-		"AuthOn": s.authEnabled(),
+		"Kill":    s.Cfg.KillSwitch(),
+		"DryRun":  s.Cfg.DryRun(),
+		"AuthOn":  s.authEnabled(),
+		"LocalDL": s.localDownloadChip(),
 	}
 	for i := 0; i+1 < len(kv); i += 2 {
 		if k, ok := kv[i].(string); ok {
@@ -666,6 +796,8 @@ type publisherRow struct {
 	YoutubeClient    bool // OAuth client ID + secret present in env (Đợt AA)
 	YoutubeTokenDead bool // refresh token chết (invalid_grant) — Đợt AA
 	FbPage           bool
+	Instagram        bool // IG_USER_ID + META_PAGE_TOKEN
+	Threads          bool // THREADS_USER_ID + THREADS_TOKEN
 	Platforms        []string
 }
 

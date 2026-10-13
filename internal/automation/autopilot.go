@@ -175,6 +175,60 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	if AutopilotYouTubeEnabled(s.Settings) {
 		s.autoPublishYouTubeAffiliate(ctx, jobID, j, p, acct)
 	}
+	// Đăng chéo Meta (Facebook Page nháp · Instagram Reels · Threads bài
+	// chữ kèm link). Chỉ nền tảng đã cấu hình key mới chạy.
+	if AutopilotMetaEnabled(s.Settings) {
+		s.autoPublishMetaAffiliate(ctx, jobID, j, p, acct)
+	}
+}
+
+// metaPublishersFor là seam để test inject publisher giả.
+var metaPublishersFor = func(acct *network.Account) []publishers.Publisher {
+	return publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes, "short_video")
+}
+
+// metaPlatforms là các chân đăng chéo Meta, theo thứ tự đăng.
+var metaPlatforms = []string{"facebook", "instagram", "threads"}
+
+// autoPublishMetaAffiliate đăng video affiliate lên các nền tảng Meta đã
+// cấu hình. Mỗi nền tảng là một chân riêng (idempotent theo leg).
+func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	pubs := map[string]publishers.Publisher{}
+	for _, c := range metaPublishersFor(acct) {
+		pubs[c.Name()] = c
+	}
+	title := j.Title
+	if p.ProductName != "" {
+		title = p.ProductName
+	}
+	desc := strings.TrimSpace(j.Caption)
+	if p.AffLink != "" {
+		desc += "\nLink mua: " + p.AffLink
+	}
+	desc = strings.TrimSpace(desc + "\n\n" + growth.DisclosureLine)
+	for _, name := range metaPlatforms {
+		pub, ok := pubs[name]
+		if !ok {
+			continue
+		}
+		if s.JobStore.PublishLegStatus(jobID, name) == studio.LegDone {
+			continue
+		}
+		res := pub.Publish(ctx, j.Output, title, desc, "short_video")
+		if !res.Ok {
+			s.JobStore.AppendLog(jobID, "Tự đăng "+name+" thất bại: "+res.Error)
+			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegFailed, "")
+			_ = s.decide("autopilot", "autopublish_meta_failed", &jobID,
+				"tự đăng "+name+" thất bại: "+res.Error, nil)
+			continue
+		}
+		_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegDone, res.RemoteID)
+		note := "Đã đăng " + name
+		if res.Draft {
+			note += " (nháp — duyệt rồi công khai)"
+		}
+		s.JobStore.AppendLog(jobID, note+".")
+	}
 }
 
 // autoPublishTikTokAffiliate đăng video affiliate lên TikTok (nháp).

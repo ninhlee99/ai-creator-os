@@ -93,7 +93,7 @@ func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, ll
 		}
 		target := acct.Username
 		if err := mgr.ledger.Decide("onboarding", "niche_research", &target,
-			"topic resolved (source="+brief.Source+")",
+			"đã chốt chủ đề (nguồn: "+brief.Source+")",
 			map[string]any{
 				"brief": map[string]any{
 					"niche":  brief.Niche,
@@ -129,7 +129,7 @@ func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, ll
 		p, _ := Describe(persona)
 		target := acct.Username
 		if err := mgr.ledger.Decide("onboarding", "persona_assigned", &target,
-			fmt.Sprintf("assigned %s for researched niche '%s'", p.Label, acct.Niche),
+			fmt.Sprintf("gán tính cách %s cho chủ đề “%s”", p.Label, acct.Niche),
 			map[string]any{
 				"persona":          persona,
 				"niche":            acct.Niche,

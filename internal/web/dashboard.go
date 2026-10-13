@@ -5,6 +5,7 @@ package web
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
@@ -29,6 +30,9 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "dashboard", s.ctx(
 		"Notice", r.URL.Query().Get("ok"),
+		"Error", r.URL.Query().Get("err"),
+		"AutoSwitches", s.autoSwitches(),
+		"Money", s.moneyReadiness(),
 		"Accounts", accounts,
 		"ByStatus", sortedStatusCounts(accounts),
 		"CommissionRevenue", commRevenue,
@@ -38,6 +42,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"NJobs", s.activeStudioJobs(),
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
 		"HasKeys", s.hasAnyAPIKey(),
+		"KeyWrong", s.geminiKeyWrong(),
 		"HasStudioJobs", s.Studio != nil && len(s.Studio.ListJobs(1)) > 0,
 		// R2-W4 (R2-08): chip công tắc chính — nhãn trung thực: đang TẮT
 		// hay đang cho phép daemon chạy theo lịch.
@@ -48,11 +53,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 // hasAnyAPIKey reports whether any Gemini key is configured (keyring in the
 // database or the GEMINI_API_KEYS environment variable).
 func (s *Server) hasAnyAPIKey() bool {
-	if len(s.keyRingStatuses("tts", "gemini")) > 0 ||
-		len(s.keyRingStatuses("llm", "gemini")) > 0 {
-		return true
+	for _, k := range append(s.storedKeys("llm", "gemini"), s.storedKeys("tts", "gemini")...) {
+		if looksLikeGeminiKey(strings.TrimSpace(k)) {
+			return true
+		}
 	}
 	return getenv("GEMINI_API_KEYS", "") != "" || getenv("TTS_API_KEY", "") != ""
+}
+
+// geminiKeyWrong: đã nhập key nhưng không key nào đúng dạng Gemini (dán
+// nhầm) — Trang chủ báo rõ thay vì tick "đã có key".
+func (s *Server) geminiKeyWrong() bool {
+	ks := append(s.storedKeys("llm", "gemini"), s.storedKeys("tts", "gemini")...)
+	return len(ks) > 0 && !s.hasAnyAPIKey()
 }
 
 // ---------------------------------------------------------------- accounts

@@ -12,6 +12,8 @@ func BuildPublishers(username, youtubeChannel string, youtubeContentTypes []stri
 	pubs := []Publisher{
 		NewTikTokPublisher(username),
 		NewFacebookPublisher(username),
+		NewInstagramPublisher(username),
+		NewThreadsPublisher(username),
 		NewYouTubePublisher(username, youtubeContentTypes, youtubeChannel),
 	}
 	var out []Publisher

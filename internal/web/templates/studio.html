@@ -5,7 +5,7 @@
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-{{if not .MediaGenOK}}<p class="notice notice-warn">Chưa có Gemini key — Studio tạm dùng chế độ ghép ảnh theo nhịp. <a href="/settings/nha-cung-cap">Thêm key</a> để AI tạo ảnh minh họa.</p>{{end}}
+{{if not .MediaGenOK}}<p class="notice notice-warn">Chưa có Gemini key — Studio dựng bằng <b>ảnh bạn tải lên</b> (bắt buộc ít nhất 1 ảnh sản phẩm). <a href="/settings/nha-cung-cap">Thêm key miễn phí</a> để AI tự chụp ảnh người mẫu dùng sản phẩm.</p>{{end}}
 <p class="hint">
   <a href="/studio/jobs">Video đã tạo{{if .ActiveJobs}} ({{.ActiveJobs}} đang dựng){{else if .JobCount}} ({{.JobCount}}){{end}}</a>
   · <a href="/studio/trends">Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — đứng đầu: {{.TopSound}}{{end}}{{end}}</a>
@@ -48,6 +48,16 @@
       <span class="file-name">Chưa chọn ảnh</span>
     </div>
     <div class="hint">AI giữ đúng sản phẩm này (màu, kiểu dáng) trong mọi cảnh. Để trống nếu chưa có ảnh.</div>
+  </div>
+  <div class="field">
+    <label>Ảnh thêm (không bắt buộc, tối đa 6)</label>
+    <div class="file-pick">
+      <label class="btn btn-secondary btn-sm">📁 Chọn nhiều ảnh…
+        <input type="file" name="extra_photos" accept="image/*" multiple>
+      </label>
+      <span class="file-name">Chưa chọn ảnh</span>
+    </div>
+    <div class="hint">Góc khác, cận chi tiết, ảnh khách dùng thật… Chưa có Gemini key thì video dựng từ cả bộ ảnh này — càng nhiều ảnh khác nhau, video càng đỡ lặp.</div>
   </div>
   <div class="field">
     <label>Chọn bài nhạc đang thịnh hành</label>
