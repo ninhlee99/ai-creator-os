@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -177,6 +178,13 @@ func (p *Process) RecentOutput() []string {
 // supervise waits for the process and restarts it on unexpected exit.
 func (p *Process) supervise() {
 	defer close(p.monitorDone)
+	// Đợt AM: recover panic trong vòng giám sát — sidecar crash không được
+	// giết cả app (guard ở main.go chỉ bọc lời gọi Start, không bọc vòng này).
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("sidecar supervise: PANIC recovered (%v) — sidecar dừng giám sát, app vẫn chạy", r)
+		}
+	}()
 	for {
 		err := p.cmd.Wait()
 		p.mu.Lock()

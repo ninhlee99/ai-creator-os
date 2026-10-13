@@ -33,6 +33,13 @@ func (g *Guard) Go(ctx context.Context, name string, fn func(context.Context)) {
 			if r := recover(); r != nil {
 				log.Printf("runtimeguard: job %q panic recovered: %v\n%s", name, r, debug.Stack())
 			}
+			// Đợt AM: job kết thúc khi ctx chưa done = "chết lâm sàng" —
+			// log warning để không chết im lặng.
+			select {
+			case <-ctx.Done():
+			default:
+				log.Printf("runtimeguard: job %q đã kết thúc trước khi app dừng — kiểm tra log phía trên xem có lỗi khởi động không", name)
+			}
 			g.mu.Lock()
 			g.jobs[name]--
 			if g.jobs[name] <= 0 {
