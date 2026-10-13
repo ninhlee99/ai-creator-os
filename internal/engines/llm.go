@@ -472,6 +472,8 @@ func (g *GeminiProvider) completeWithKey(ctx context.Context, key, system, promp
 		if nm, derr := gmodels.Rediscover(ctx, httpc, baseURL, key, gmodels.Text); derr == nil {
 			log.Printf("gemini: model %s không còn — chuyển sang %s", model, nm)
 			return g.completeModel(ctx, httpc, baseURL, nm, key, system, prompt, minimal)
+		} else {
+			log.Printf("gemini: model %s không còn nhưng dò model mới thất bại: %v", model, derr)
 		}
 	}
 	return text, err

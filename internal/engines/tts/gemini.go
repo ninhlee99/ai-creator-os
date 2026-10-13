@@ -206,6 +206,8 @@ func (g *GeminiTTSProvider) synthesizeWithKey(ctx context.Context, key, text, vo
 		if nm, derr := gmodels.Rediscover(ctx, httpc, baseURL, key, gmodels.TTS); derr == nil {
 			log.Printf("gemini tts: model %s không còn — chuyển sang %s", model, nm)
 			return g.synthesizeModel(ctx, httpc, baseURL, nm, style, key, text, voice)
+		} else {
+			log.Printf("gemini tts: model %s không còn nhưng dò model mới thất bại: %v", model, derr)
 		}
 	}
 	return wav, err

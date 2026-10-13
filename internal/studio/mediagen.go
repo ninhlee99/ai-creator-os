@@ -291,6 +291,8 @@ func (g *GeminiMediaGen) generateImageWithKey(ctx context.Context, key string, r
 		if nm, derr := gmodels.Rediscover(ctx, g.client, g.baseURL, key, gmodels.Image); derr == nil {
 			log.Printf("gemini image: model %s không còn — chuyển sang %s", model, nm)
 			return g.generateImageModel(ctx, nm, key, body)
+		} else {
+			log.Printf("gemini image: model %s không còn nhưng dò model mới thất bại: %v", model, derr)
 		}
 	}
 	return img, err

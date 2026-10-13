@@ -60,6 +60,9 @@ func EnvName(k Kind) string {
 var (
 	mu         sync.RWMutex
 	discovered = map[Kind]string{}
+	// discMu serialize quá trình discovery — tránh N goroutine cùng gọi
+	// ListModels khi model chết đồng loạt (đợt AM fix).
+	discMu sync.Mutex
 )
 
 // Default trả model mặc định trong code (không tính ghi đè/tự dò).
@@ -159,11 +162,20 @@ func ListModels(ctx context.Context, httpc *http.Client, baseURL, key string) ([
 // và trả model mới. Model hiện tại vẫn còn trong danh sách thì giữ nguyên
 // (lỗi không phải do model) — trả lỗi để caller không thử lại vô ích.
 func Rediscover(ctx context.Context, httpc *http.Client, baseURL, key string, k Kind) (string, error) {
+	discMu.Lock()
+	defer discMu.Unlock()
+	// Double-check: goroutine khác có thể đã dò xong trong lúc chờ lock.
+	cur := Resolve(k)
+	mu.RLock()
+	if d := discovered[k]; d != "" && d != cur {
+		mu.RUnlock()
+		return d, nil
+	}
+	mu.RUnlock()
 	names, err := ListModels(ctx, httpc, baseURL, key)
 	if err != nil {
 		return "", err
 	}
-	cur := Resolve(k)
 	for _, n := range names {
 		if n == cur {
 			return "", fmt.Errorf("model %s vẫn còn — lỗi không do model", cur)
