@@ -217,19 +217,19 @@ func TestStoryPipelineSuccess(t *testing.T) {
 	if j.Output == "" {
 		t.Fatal("thiếu output")
 	}
-	w, h := ProbeDims(context.Background(), j.Output)
+	w, h := ProbeDims(context.Background(), filepath.Join(outDir, j.Output))
 	if w != 1920 || h != 1080 {
 		t.Fatalf("khổ %dx%d, cần 1920x1080", w, h)
 	}
-	if !ProbeHasAudio(context.Background(), j.Output) {
+	if !ProbeHasAudio(context.Background(), filepath.Join(outDir, j.Output)) {
 		t.Fatal("thiếu audio")
 	}
-	if d := storyProbeDuration(context.Background(), j.Output); d < 30 {
+	if d := storyProbeDuration(context.Background(), filepath.Join(outDir, j.Output)); d < 30 {
 		t.Fatalf("dài %.1fs, cần > 30s", d)
 	}
 	// Không chèn chữ vào video: không có track phụ đề.
 	cmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "s",
-		"-show_entries", "stream=codec_name", "-of", "csv=p=0", j.Output)
+		"-show_entries", "stream=codec_name", "-of", "csv=p=0", filepath.Join(outDir, j.Output))
 	if out, _ := cmd.Output(); strings.TrimSpace(string(out)) != "" {
 		t.Fatalf("video kể chuyện không được có track phụ đề: %q", string(out))
 	}

@@ -21,7 +21,7 @@
     · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
   </div>
   <div class="board"></div>
-  {{if .Output}}<video class="player" controls preload="metadata" src="/media/{{.Output}}"></video>{{end}}
+  {{if .Output}}<video class="player" controls preload="metadata" src="/media/{{.Output}}"></video>{{else if eq .Status "done"}}<p class="notice notice-warn">Job xong nhưng không có file video — kiểm tra nhật ký bên dưới hoặc <a href="/settings/nha-cung-cap">thêm Gemini key</a>.</p>{{end}}
   <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
   <div class="job-actions">
     {{if or (eq .Status "running") (eq .Status "queued")}}

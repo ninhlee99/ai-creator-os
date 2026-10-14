@@ -526,7 +526,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	dur := storyProbeDuration(ctx, final)
 	s.appendLog(id, fmt.Sprintf("QC đạt: 1920x1080, có audio, %.0fs, %d cảnh", dur, len(scenes)))
 
-	s.setOutput(id, final)
+	s.setOutput(id, filepath.Base(final))
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, fmt.Sprintf("Xong: %s (%.0fs, %d cảnh)", filepath.Base(final), dur, len(scenes)))
 	s.fireOnDone(id)

@@ -169,7 +169,7 @@ func (s *Studio) runFilm(id string, p FilmParams) {
 		fail(err)
 		return
 	}
-	s.setOutput(id, final)
+	s.setOutput(id, filepath.Base(final))
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Xong: "+filepath.Base(final))
 

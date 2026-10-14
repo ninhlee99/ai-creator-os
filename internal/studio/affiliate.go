@@ -311,7 +311,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		}
 	}
 
-	s.setOutput(id, final)
+	s.setOutput(id, filepath.Base(final))
 	// Caption + hashtag for the post (used by auto-publish, and shown in
 	// the UI for manual posting).
 	caption := strings.TrimSpace(p.FixedCaption)

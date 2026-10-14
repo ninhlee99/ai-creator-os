@@ -37,7 +37,7 @@ func (s *Studio) ExportForEditing(id, destRoot string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	if err := copyStoryFile(j.Output, filepath.Join(dir, "00-video-hoan-chinh"+filepath.Ext(j.Output))); err != nil {
+	if err := copyStoryFile(filepath.Join(s.outDir, j.Output), filepath.Join(dir, "00-video-hoan-chinh"+filepath.Ext(j.Output))); err != nil {
 		return "", fmt.Errorf("copy video: %w", err)
 	}
 	n := 1

@@ -306,7 +306,7 @@ func (s *Studio) ReassembleFilm(id string) error {
 		s.setStatus(id, StatusFailed, 100)
 		return err
 	}
-	s.setOutput(id, final)
+	s.setOutput(id, filepath.Base(final))
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, "Dựng lại xong: "+filepath.Base(final))
 	s.buildTrailers(ctx, id, p, work, rendered)

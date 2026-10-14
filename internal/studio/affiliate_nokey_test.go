@@ -37,7 +37,7 @@ func TestAffiliateOwnPhotosWithoutKey(t *testing.T) {
 	if j.Status != StatusDone {
 		t.Fatalf("status=%s log=%s", j.Status, j.Log)
 	}
-	if w, h := ProbeDims(t.Context(), j.Output); w != 1080 || h != 1920 {
+	if w, h := ProbeDims(t.Context(), filepath.Join(dir, "out", j.Output)); w != 1080 || h != 1920 {
 		t.Fatalf("khổ %dx%d", w, h)
 	}
 	if !strings.Contains(j.Log, "ảnh có sẵn") || !strings.Contains(j.Caption, "#thoitrang") {
