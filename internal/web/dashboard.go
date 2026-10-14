@@ -23,7 +23,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	commRevenue, _ := s.Ledger.TotalRevenue()
 	today := s.today()
 	decisions, err := s.queryDecisions(
-		"SELECT id, agent, action, target, reason, created_at FROM decisions ORDER BY id DESC LIMIT 8")
+		"SELECT id, agent, action, target, reason, created_at FROM decisions WHERE action != 'onboard' ORDER BY id DESC LIMIT 8")
 	if err != nil {
 		s.fail(w, err, "recent decisions")
 		return
