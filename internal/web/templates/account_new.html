@@ -1,9 +1,9 @@
-{{define "title"}}Kết Nối Kênh Mạng Xã Hội Thật — AI Creator OS{{end}}
+{{define "title"}}Thêm Kênh Mới — AI Creator OS{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 20px;">
+<div class="webai-header" style="margin-bottom: 24px;">
   <div class="webai-header-left">
     <h1>Thêm kênh mới 🚀</h1>
-    <p class="subtitle">Mọi kênh vận hành đều phải là <b>kênh mạng xã hội thật</b> được xác thực qua OAuth hoặc API chính thức của nền tảng (YouTube, TikTok, Meta). Tuyệt đối không dùng tài khoản ảo.</p>
+    <p class="subtitle">Chọn nền tảng mạng xã hội bạn muốn kết nối để bắt đầu quản lý, tạo nội dung và xuất bản video tự động.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/accounts" class="btn btn-secondary">← Quay lại danh sách kênh</a>
@@ -12,148 +12,229 @@
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<div style="margin-bottom: 24px;">
-  <h2 style="font-size: 17px; margin-bottom: 12px;">Chọn Nền Tảng Mạng Xã Hội Thật Để Xác Thực &amp; Kết Nối:</h2>
-</div>
-
-<div class="grid2" style="align-items: stretch; gap: 20px;">
-  <!-- 1. YouTube Studio OAuth -->
-  <div class="form-card" style="border-top: 4px solid #ef4444; display: flex; flex-direction: column; justify-content: space-between;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+  <!-- 1. YouTube Studio -->
+  <div class="social-card" style="--card-accent: #ef4444; display: flex; flex-direction: column; justify-content: space-between; border-radius: 14px; padding: 22px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="#ef4444"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#ef4444"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
           </div>
           <div>
-            <h3 style="margin:0;font-size:16px">Kênh YouTube Studio Thật</h3>
+            <h3 style="margin:0;font-size:17px">YouTube Studio</h3>
             <span class="hint" style="font-size:12px">Shorts 9:16 &amp; Video 16:9</span>
           </div>
         </div>
-        <span class="badge badge-ok">Xác thực OAuth 2.0</span>
+        <span class="badge badge-ok">OAuth 2.0</span>
       </div>
-      <p class="hint" style="line-height:1.5;margin-bottom:16px">
-        Đăng nhập vào tài khoản Google của bạn. Hệ thống <b>tự động lấy tên kênh thật, Channel ID thật (`UC...`), số subscriber thật, view thật</b> từ YouTube Data API và lưu token để xuất bản video tự động.
+      <p class="hint" style="line-height:1.5;margin-bottom:18px;font-size:13px">
+        Tự động xuất bản Shorts 9:16 và video 16:9. Quản lý số liệu sub, view thật và theo dõi điều kiện bật kiếm tiền YouTube Partner Program (YPP).
       </p>
     </div>
     <div>
-      {{if .HasYouTubeClient}}
-        <a href="/publishers/youtube/authorize" class="btn" style="background:#ef4444;border-color:#ef4444;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600">
-          ▶ Đăng Nhập &amp; Xác Thực Kênh YouTube Ngay
-        </a>
-      {{else}}
-        <a href="/settings/he-thong" class="btn btn-secondary" style="width:100%;text-align:center;display:block">
-          ⚙️ Cấu hình YOUTUBE_CLIENT_ID trong Cài đặt
-        </a>
-      {{end}}
+      <a href="/publishers/youtube/authorize" class="btn" style="background:#ef4444;color:#fff;border:none;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600;border-radius:8px">
+        ▶ Kết nối kênh YouTube
+      </a>
     </div>
   </div>
 
-  <!-- 2. TikTok Creator OAuth -->
-  <div class="form-card" style="border-top: 4px solid #00f2fe; display: flex; flex-direction: column; justify-content: space-between;">
+  <!-- 2. TikTok Creator -->
+  <div class="social-card" style="--card-accent: #00f2fe; display: flex; flex-direction: column; justify-content: space-between; border-radius: 14px; padding: 22px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:8px;background:#111;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #fe2c55,-2px -2px 0 #00f2fe">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:#000;display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 0 #fe2c55,-2px -2px 0 #00f2fe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
           </div>
           <div>
-            <h3 style="margin:0;font-size:16px">Tài Khoản TikTok Creator Thật</h3>
+            <h3 style="margin:0;font-size:17px">TikTok Creator</h3>
             <span class="hint" style="font-size:12px">Shorts &amp; Affiliate</span>
           </div>
         </div>
         <span class="badge badge-ok">TikTok Login Kit</span>
       </div>
-      <p class="hint" style="line-height:1.5;margin-bottom:16px">
-        Đăng nhập vào tài khoản TikTok thật của bạn qua TikTok Login Kit. Hệ thống tự động cấp quyền đẩy video dựng sẵn vào <b>Bản nháp TikTok</b> kèm nhạc trending và hashtag chuẩn SEO.
+      <p class="hint" style="line-height:1.5;margin-bottom:18px;font-size:13px">
+        Tự động đẩy video bán hàng vào Bản nháp TikTok, đồng bộ âm nhạc trending thịnh hành và hashtag đề xuất theo thời gian thực.
       </p>
     </div>
     <div>
-      {{if .HasTikTokClient}}
-        <a href="/publishers/tiktok/authorize" class="btn" style="background:#000;border:1px solid #00f2fe;color:#fff;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600">
-          🎵 Đăng Nhập &amp; Xác Thực Kênh TikTok Ngay
-        </a>
-      {{else}}
-        <a href="/settings/he-thong" class="btn btn-secondary" style="width:100%;text-align:center;display:block">
-          ⚙️ Cấu hình TIKTOK_CLIENT_KEY trong Cài đặt
-        </a>
-      {{end}}
-    </div>
-  </div>
-
-  <!-- 3. Facebook Page Meta -->
-  <div class="form-card" style="border-top: 4px solid #1877f2; display: flex; flex-direction: column; justify-content: space-between;">
-    <div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-          </div>
-          <div>
-            <h3 style="margin:0;font-size:16px">Facebook Fanpage Thật</h3>
-            <span class="hint" style="font-size:12px">Reels &amp; Bài Viết Bán Hàng</span>
-          </div>
-        </div>
-        <span class="badge badge-dim">Meta Graph API</span>
-      </div>
-      <p class="hint" style="line-height:1.5;margin-bottom:16px">
-        Kết nối Fanpage bán hàng thật thông qua `FB_PAGE_ID` và `Page Access Token`. Tự động xuất bản Reels và bài viết tiếp thị liên kết.
-      </p>
-    </div>
-    <div>
-      <a href="/settings/he-thong" class="btn btn-secondary" style="width:100%;text-align:center;display:block">
-        ⚙️ Cấu hình Fanpage ID &amp; Token trong Cài đặt
+      <a href="/publishers/tiktok/authorize" class="btn" style="background:#000;color:#fff;border:1px solid #333;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600;border-radius:8px">
+        🎵 Kết nối kênh TikTok
       </a>
     </div>
   </div>
 
-  <!-- 4. Instagram Reels & Threads -->
-  <div class="form-card" style="border-top: 4px solid #e1306c; display: flex; flex-direction: column; justify-content: space-between;">
+  <!-- 3. Facebook Page -->
+  <div class="social-card" style="--card-accent: #1877f2; display: flex; flex-direction: column; justify-content: space-between; border-radius: 14px; padding: 22px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:36px;height:36px;border-radius:8px;background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);display:flex;align-items:center;justify-content:center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:#dbeafe;display:flex;align-items:center;justify-content:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
           </div>
           <div>
-            <h3 style="margin:0;font-size:16px">Instagram Reels &amp; Threads</h3>
-            <span class="hint" style="font-size:12px">Graph API &amp; Threads API</span>
+            <h3 style="margin:0;font-size:17px">Facebook Page</h3>
+            <span class="hint" style="font-size:12px">Reels &amp; Bài Viết Bán Hàng</span>
+          </div>
+        </div>
+        <span class="badge badge-dim">Meta API</span>
+      </div>
+      <p class="hint" style="line-height:1.5;margin-bottom:18px;font-size:13px">
+        Tự động đăng Reels lên Fanpage bán hàng và chia sẻ bài viết giới thiệu sản phẩm tiếp thị liên kết, tự động ghim hotline.
+      </p>
+    </div>
+    <div>
+      <button type="button" class="btn" onclick="openConnectModal('facebook')" style="background:#1877f2;color:#fff;border:none;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600;border-radius:8px">
+        📘 Kết nối Facebook Page
+      </button>
+    </div>
+  </div>
+
+  <!-- 4. Instagram Reels -->
+  <div class="social-card" style="--card-accent: #e1306c; display: flex; flex-direction: column; justify-content: space-between; border-radius: 14px; padding: 22px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);display:flex;align-items:center;justify-content:center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:17px">Instagram</h3>
+            <span class="hint" style="font-size:12px">Reels &amp; Stories</span>
           </div>
         </div>
         <span class="badge badge-dim">Graph API</span>
       </div>
-      <p class="hint" style="line-height:1.5;margin-bottom:16px">
-        Đăng video Reels 1080x1920 Full HD lên Instagram và đăng bài thảo luận gắn link affiliate lên Threads.
+      <p class="hint" style="line-height:1.5;margin-bottom:18px;font-size:13px">
+        Xuất bản video ngắn Instagram Reels chuẩn 1080x1920 Full HD trực tiếp qua Instagram Graph API, mở rộng tập khán giả trẻ.
       </p>
     </div>
     <div>
-      <a href="/settings/he-thong" class="btn btn-secondary" style="width:100%;text-align:center;display:block">
-        ⚙️ Cấu hình IG &amp; Threads Token trong Cài đặt
-      </a>
+      <button type="button" class="btn" onclick="openConnectModal('instagram')" style="background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);color:#fff;border:none;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600;border-radius:8px">
+        📸 Kết nối Instagram
+      </button>
+    </div>
+  </div>
+
+  <!-- 5. Threads Meta -->
+  <div class="social-card" style="--card-accent: #111; display: flex; flex-direction: column; justify-content: space-between; border-radius: 14px; padding: 22px; background: var(--bg-card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:42px;height:42px;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.26 18.318 1.5 15.343 1.5 11.914 1.5 8.52 2.27 5.56 3.792 3.398 5.645 1.157 8.423.012 12.052 0h.014c3.567.014 6.31 1.164 8.151 3.418 1.597 1.956 2.404 4.743 2.404 8.283v.328c0 .414-.336.75-.75.75h-2.5c-.414 0-.75-.336-.75-.75v-.328c0-3.003-.64-5.267-1.9-6.73-1.425-1.657-3.55-2.5-6.315-2.511-2.923.01-5.123.904-6.538 2.658-1.298 1.609-1.956 3.968-1.956 7.016 0 3.016.657 5.348 1.953 6.932 1.407 1.721 3.593 2.597 6.498 2.607 2.228-.008 4.093-.564 5.545-1.654a7.893 7.893 0 0 0 2.67-4.137c-1.393-.538-2.617-1.353-3.638-2.42-1.35-1.411-2.091-3.265-2.091-5.22 0-2.14.86-4.14 2.423-5.632C14.733 3.447 16.786 2.62 19 2.62c2.254 0 4.316.847 5.807 2.385C26.332 6.57 27.17 8.647 27.17 11.2c0 3.41-.95 6.27-2.825 8.5-2.072 2.46-5.114 3.78-9.043 3.924l-.116.376z"/></svg>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:17px">Threads Meta</h3>
+            <span class="hint" style="font-size:12px">Bài viết &amp; Link Bio</span>
+          </div>
+        </div>
+        <span class="badge badge-dim">Threads API</span>
+      </div>
+      <p class="hint" style="line-height:1.5;margin-bottom:18px;font-size:13px">
+        Tự động đăng các bài viết chia sẻ trải nghiệm, thảo luận cộng đồng kèm link bio mua hàng affiliate chuyển đổi cao.
+      </p>
+    </div>
+    <div>
+      <button type="button" class="btn" onclick="openConnectModal('threads')" style="background:#111;color:#fff;border:1px solid #444;width:100%;text-align:center;display:block;padding:10px 16px;font-weight:600;border-radius:8px">
+        🧵 Kết nối Threads
+      </button>
     </div>
   </div>
 </div>
 
-<!-- Advanced Technical Manual Link (Preserved for API / Test Compatibility) -->
-<details class="advanced" style="margin-top: 24px;">
-  <summary>🔧 Kết nối thủ công qua Channel ID (Dành cho kiểm thử &amp; API)</summary>
-  <div class="form-card" style="margin-top: 12px;">
-    <p class="hint">Dùng cho kiểm thử tự động hoặc khi đã có sẵn Channel ID mạng xã hội muốn khai báo trước:</p>
+<!-- Modal for Facebook / Instagram / Threads -->
+<div id="connect-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;max-width:440px;width:90%;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="modal-title" style="margin:0;font-size:18px">Kết nối kênh</h3>
+      <button type="button" onclick="closeConnectModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
     <form method="post" action="/accounts">
       <div class="field">
-        <label>Tên định danh kênh <span class="req">*</span></label>
-        <input type="text" name="username" required placeholder="vd: my_real_channel">
+        <label id="modal-user-label">Tên kênh / Tài khoản <span class="req">*</span></label>
+        <input type="text" name="username" id="modal-username" required placeholder="vd: my_brand_channel">
       </div>
-      <div class="field">
-        <label>Kênh YouTube (Channel ID)</label>
-        <input type="text" name="youtube_channel" placeholder="vd: UCxxxxxxxxxxxxxxx">
+      <div class="field" id="modal-extra-field">
+        <label id="modal-extra-label">Page ID / Account ID</label>
+        <input type="text" name="youtube_channel" id="modal-extra-input" placeholder="vd: 100089234567890">
       </div>
-      <div class="field">
-        <label>Gợi ý định hướng nội dung</label>
-        <input type="text" name="niche_hint" placeholder="vd: review sản phẩm gia dụng">
+      <input type="hidden" name="niche_hint" id="modal-niche" value="kênh mạng xã hội thật">
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button type="submit" class="btn btn-primary" style="flex:1">Xác nhận &amp; Thêm kênh</button>
+        <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">Hủy</button>
       </div>
-      <button type="submit" class="btn btn-secondary">Tạo kênh &amp; Chạy Onboarding</button>
+    </form>
+  </div>
+</div>
+
+<!-- Subtle Admin Footer Card -->
+<div class="card" style="margin-top: 32px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+  <div>
+    <strong style="font-size: 14px; display: flex; align-items: center; gap: 6px;">⚙️ Quản lý API &amp; Khóa Ứng Dụng Nền Tảng</strong>
+    <p class="hint" style="margin: 2px 0 0; font-size: 13px;">Cấu hình OAuth Client, App Secret và Token hệ thống dùng chung cho các nền tảng mạng xã hội.</p>
+  </div>
+  <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="font-size: 13px;">Mở Cài Đặt Hệ Thống ↗</a>
+</div>
+
+<!-- Collapsed Developer / Test Fallback -->
+<details class="advanced" style="margin-top: 14px;">
+  <summary style="font-size: 12px; color: var(--muted); cursor: pointer;">🔧 Tùy chọn nâng cao (Dành cho kiểm thử &amp; API nội bộ)</summary>
+  <div class="form-card" style="margin-top: 10px; padding: 14px;">
+    <form method="post" action="/accounts">
+      <div class="grid2">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="test_channel">
+        </div>
+        <div class="field">
+          <label>Channel ID</label>
+          <input type="text" name="youtube_channel" placeholder="UC...">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Tạo nội bộ</button>
     </form>
   </div>
 </details>
+
+<script>
+function openConnectModal(platform) {
+  var modal = document.getElementById('connect-modal');
+  var title = document.getElementById('modal-title');
+  var userLabel = document.getElementById('modal-user-label');
+  var userInput = document.getElementById('modal-username');
+  var extraLabel = document.getElementById('modal-extra-label');
+  var extraInput = document.getElementById('modal-extra-input');
+  var nicheInput = document.getElementById('modal-niche');
+
+  if (platform === 'facebook') {
+    title.textContent = '📘 Kết nối Facebook Fanpage';
+    userLabel.innerHTML = 'Tên Fanpage <span class="req">*</span>';
+    userInput.placeholder = 'vd: shop_thoi_trang_nam';
+    extraLabel.textContent = 'Facebook Page ID (Số ID Trang)';
+    extraInput.placeholder = 'vd: 102938475610293';
+    nicheInput.value = 'facebook_page';
+  } else if (platform === 'instagram') {
+    title.textContent = '📸 Kết nối Instagram';
+    userLabel.innerHTML = 'Instagram Username <span class="req">*</span>';
+    userInput.placeholder = 'vd: shop_style_vietnam';
+    extraLabel.textContent = 'Instagram User ID';
+    extraInput.placeholder = 'vd: 17841400000000000';
+    nicheInput.value = 'instagram_reels';
+  } else if (platform === 'threads') {
+    title.textContent = '🧵 Kết nối Threads';
+    userLabel.innerHTML = 'Threads Username <span class="req">*</span>';
+    userInput.placeholder = 'vd: reviewer_congnghe';
+    extraLabel.textContent = 'Threads User ID (Không bắt buộc)';
+    extraInput.placeholder = 'vd: 9876543210';
+    nicheInput.value = 'threads';
+  }
+  modal.style.display = 'flex';
+}
+
+function closeConnectModal() {
+  document.getElementById('connect-modal').style.display = 'none';
+}
+</script>
 {{end}}
