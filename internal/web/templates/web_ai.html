@@ -25,7 +25,9 @@
 <!-- Streamlined AI Status Pill Bar -->
 <div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span class="status-pill status-pill-ok"><span class="pulse-dot"></span> {{.ConnectedCount}}/4 AI Sẵn Sàng</span>
+    <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
+      {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}}/4 AI Sẵn Sàng
+    </span>
     <span style="font-size:13px;color:var(--text)"><b>Cụm Web AI:</b> ChatGPT Web · Claude Web · Gemini Web · Muse AI</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">

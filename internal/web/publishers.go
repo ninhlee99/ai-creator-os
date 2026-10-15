@@ -9,6 +9,32 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
+func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []string, status string) publisherRow {
+	var plats []string
+	for _, p := range publishers.BuildPublishers(username, ytChannel, ytContentTypes) {
+		plats = append(plats, p.Name())
+	}
+	ytDead := false
+	if s.Ledger != nil {
+		if _, ok, _ := s.Ledger.GetSetting(tokenDeadKey(username)); ok {
+			ytDead = true
+		}
+	}
+	return publisherRow{
+		Username:         username,
+		Status:           status,
+		TiktokToken:      fileExists(publishers.TikTokTokenPath(username)),
+		TiktokClient:     publishers.NewTikTokPublisher(username).HasClient(),
+		YoutubeToken:     fileExists(publishers.YouTubeTokenPath(username)),
+		YoutubeClient:    publishers.NewYouTubePublisher(username, nil, "").HasClient(),
+		YoutubeTokenDead: ytDead,
+		FbPage:           publishers.FacebookPageID(username) != "",
+		Instagram:        publishers.NewInstagramPublisher(username).IsConfigured(),
+		Threads:          publishers.NewThreadsPublisher(username).IsConfigured(),
+		Platforms:        plats,
+	}
+}
+
 func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Mgr.List()
 	if err != nil {
@@ -17,30 +43,7 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]publisherRow, 0, len(accounts))
 	for _, a := range accounts {
-		var plats []string
-		for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, a.YoutubeContentTypes) {
-			plats = append(plats, p.Name())
-		}
-		// Đợt AA: token chết (invalid_grant) thì badge đỏ thay vì "Có" xanh.
-		ytDead := false
-		if s.Ledger != nil {
-			if _, ok, _ := s.Ledger.GetSetting(tokenDeadKey(a.Username)); ok {
-				ytDead = true
-			}
-		}
-		rows = append(rows, publisherRow{
-			Username:         a.Username,
-			Status:           a.Status,
-			TiktokToken:      fileExists(publishers.TikTokTokenPath(a.Username)),
-			TiktokClient:     publishers.NewTikTokPublisher(a.Username).HasClient(),
-			YoutubeToken:     fileExists(publishers.YouTubeTokenPath(a.Username)),
-			YoutubeClient:    publishers.NewYouTubePublisher(a.Username, nil, "").HasClient(),
-			YoutubeTokenDead: ytDead,
-			FbPage:           publishers.FacebookPageID(a.Username) != "",
-			Instagram:        publishers.NewInstagramPublisher(a.Username).IsConfigured(),
-			Threads:          publishers.NewThreadsPublisher(a.Username).IsConfigured(),
-			Platforms:        plats,
-		})
+		rows = append(rows, s.publisherRowFor(a.Username, a.YoutubeChannel, a.YoutubeContentTypes, a.Status))
 	}
 	anyClient := false
 	for _, row := range rows {

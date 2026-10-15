@@ -54,13 +54,17 @@
       </div>
     </div>
     <div class="social-card-actions">
-      {{range .Rows}}
-        {{if .YoutubeClient}}
-          <a class="btn btn-sm" style="flex:1" href="/publishers/youtube/authorize?username={{.Username}}">
-            {{if or .YoutubeToken .YoutubeTokenDead}}🔄 Nối lại YouTube{{else}}🔗 Nối YouTube OAuth{{end}}
-          </a>
-        {{else}}
-          <button type="button" class="btn btn-secondary btn-sm" style="flex:1" data-yt-setup>⚙️ Hướng dẫn cài OAuth</button>
+      {{if not .Rows}}
+        <a href="/accounts/new" class="btn btn-primary btn-sm" style="flex:1">+ Thêm kênh để kết nối</a>
+      {{else}}
+        {{range .Rows}}
+          {{if .YoutubeClient}}
+            <a class="btn btn-sm" style="flex:1" href="/publishers/youtube/authorize?username={{.Username}}">
+              {{if or .YoutubeToken .YoutubeTokenDead}}🔄 Nối lại ({{.Username}}){{else}}🔗 Nối YouTube ({{.Username}}){{end}}
+            </a>
+          {{else}}
+            <button type="button" class="btn btn-secondary btn-sm" style="flex:1" data-yt-setup>⚙️ Cài OAuth ({{.Username}})</button>
+          {{end}}
         {{end}}
       {{end}}
     </div>
@@ -104,13 +108,17 @@
       </div>
     </div>
     <div class="social-card-actions">
-      {{range .Rows}}
-        {{if .TiktokClient}}
-          <a class="btn btn-sm" style="flex:1" href="/publishers/tiktok/authorize?username={{.Username}}">
-            {{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}
-          </a>
-        {{else}}
-          <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cài TikTok Client Key</a>
+      {{if not .Rows}}
+        <a href="/accounts/new" class="btn btn-primary btn-sm" style="flex:1">+ Thêm kênh để kết nối</a>
+      {{else}}
+        {{range .Rows}}
+          {{if .TiktokClient}}
+            <a class="btn btn-sm" style="flex:1" href="/publishers/tiktok/authorize?username={{.Username}}">
+              {{if .TiktokToken}}🔄 Nối lại ({{.Username}}){{else}}🔗 Nối TikTok ({{.Username}}){{end}}
+            </a>
+          {{else}}
+            <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cài TikTok Key ({{.Username}})</a>
+          {{end}}
         {{end}}
       {{end}}
     </div>
@@ -301,6 +309,13 @@
   {{end}}
   </tbody>
 </table>
+</div>
+{{else}}
+<div class="empty-state" style="padding: 32px; text-align: center; background: var(--bg2); border-radius: 12px; border: 1px dashed var(--border); margin-top: 12px;">
+  <div class="es-icon" style="font-size: 32px; margin-bottom: 8px;">📱</div>
+  <h3 style="margin: 0 0 6px; font-size: 16px;">Chưa có kênh nào trong hệ thống</h3>
+  <p class="hint" style="margin: 0 0 16px; font-size: 13px;">Hãy tạo tài khoản Creator đầu tiên để kết nối và tự động xuất bản video lên các nền tảng mạng xã hội.</p>
+  <a href="/accounts/new" class="btn btn-primary">+ Tạo kênh mới ngay</a>
 </div>
 {{end}}
 

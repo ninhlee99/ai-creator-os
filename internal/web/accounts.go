@@ -170,6 +170,7 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"ModelPhotos", s.modelPhotoViews(id),
 		"StudioOK", s.Studio != nil,
 		"YTAnalytics", ytAnalyticsStatus(acct.Username, acct.YoutubeChannel),
+		"PubStatus", s.publisherRowFor(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes, acct.Status),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
 	)

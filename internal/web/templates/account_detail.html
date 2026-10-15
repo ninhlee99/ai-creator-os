@@ -262,8 +262,125 @@
 
 {{else}}
 
-<h2>Điều khiển</h2>
-<div class="toolbar">
+<!-- Tab: Kết nối nền tảng xuất bản (Publishing Platforms & Social Integration) -->
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div>
+    <h2 style="margin:0 0 4px;font-size:18px">Kết nối nền tảng xuất bản 🚀</h2>
+    <p class="subtitle" style="margin:0">Trạng thái kết nối và phân phối video tự động của kênh <strong>{{.Acct.Username}}</strong> lên các mạng xã hội.</p>
+  </div>
+  <a href="/publishers" class="btn btn-secondary btn-sm" style="font-size:13px">🌐 Mở Cổng Xuất Bản Toàn Mạng ↗</a>
+</div>
+
+<div class="grid2" style="margin-bottom:24px">
+  <!-- YouTube Connection Card -->
+  <div class="form-card" style="border-top:3px solid #ef4444">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+          <span style="color:#ef4444">▶</span> YouTube Studio
+        </h3>
+        <span class="hint">Shorts 9:16 &amp; Video 16:9</span>
+      </div>
+      <div>
+        {{if .PubStatus.YoutubeTokenDead}}
+          <span class="badge badge-err">⚠️ Token hết hạn</span>
+        {{else if .PubStatus.YoutubeToken}}
+          <span class="badge badge-ok">✓ Đã kết nối OAuth</span>
+        {{else}}
+          <span class="badge badge-no">Chưa có OAuth Token</span>
+        {{end}}
+      </div>
+    </div>
+
+    <form method="post" action="/accounts/{{$id}}/youtube" style="margin-bottom:16px">
+      <div class="field">
+        <label>Channel ID (hoặc link kênh)</label>
+        <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}" placeholder="vd: UCxxxxxxxxxxxxxxx">
+        <div class="hint">Dùng để quét số liệu subscribers, view và xếp hạng YPP.</div>
+      </div>
+      <div class="field">
+        <label>Loại nội dung sản xuất</label>
+        <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
+               placeholder="vd: short_video, ai_music">
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Lưu kênh YouTube</button>
+    </form>
+
+    <div style="border-top:1px dashed var(--border);padding-top:12px">
+      {{if .PubStatus.YoutubeClient}}
+        <a class="btn btn-sm" href="/publishers/youtube/authorize?username={{.Acct.Username}}">
+          {{if or .PubStatus.YoutubeToken .PubStatus.YoutubeTokenDead}}🔄 Cấp lại quyền YouTube OAuth{{else}}🔗 Nối YouTube OAuth ngay{{end}}
+        </a>
+      {{else}}
+        <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Cấu hình YOUTUBE_CLIENT_ID</a>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- TikTok Connection Card -->
+  <div class="form-card" style="border-top:3px solid #00f2fe">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+          <span>🎵</span> TikTok Creator
+        </h3>
+        <span class="hint">Video ngắn &amp; Giỏ hàng Affiliate</span>
+      </div>
+      <div>
+        {{if .PubStatus.TiktokToken}}
+          <span class="badge badge-ok">✓ Đã kết nối Token</span>
+        {{else}}
+          <span class="badge badge-no">Chưa kết nối</span>
+        {{end}}
+      </div>
+    </div>
+    <p class="hint" style="line-height:1.5;margin-bottom:16px">
+      Hệ thống hỗ trợ đẩy video tự động vào <b>Bản nháp TikTok</b> kèm caption, hashtag và âm nhạc trending chuẩn chỉ số viral.
+    </p>
+    <div>
+      {{if .PubStatus.TiktokClient}}
+        <a class="btn btn-sm" href="/publishers/tiktok/authorize?username={{.Acct.Username}}">
+          {{if .PubStatus.TiktokToken}}🔄 Cấp lại quyền TikTok{{else}}🔗 Kết nối TikTok OAuth ngay{{end}}
+        </a>
+      {{else}}
+        <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Cấu hình TIKTOK_CLIENT_KEY</a>
+      {{end}}
+    </div>
+  </div>
+</div>
+
+<div class="form-card" style="margin-bottom:24px">
+  <h3 style="margin-top:0">Meta &amp; Mạng xã hội khác</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-top:12px">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>📘 Facebook Page</b>
+        {{if .PubStatus.FbPage}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+      </div>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Đăng Reels &amp; bài viết bán hàng</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>📸 Instagram Reels</b>
+        {{if .PubStatus.Instagram}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+      </div>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Graph API 1080x1920 Full HD</p>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>🧵 Threads</b>
+        {{if .PubStatus.Threads}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+      </div>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Bài viết tâm sự gắn link bio</p>
+    </div>
+  </div>
+  <div style="margin-top:14px">
+    <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Quản lý Token FB / IG / Threads trong Cài đặt</a>
+  </div>
+</div>
+
+<h2>Điều khiển &amp; Vòng đời Creator</h2>
+<div class="toolbar" style="margin-bottom:20px">
   {{range .Allowed}}
   <form class="inline-form" method="post" action="/accounts/{{$id}}/transition"
         data-confirm="Chuyển trạng thái sang “{{statusLabel .}}”?">
@@ -278,24 +395,6 @@
         data-confirm="Tạo lại topic plan? AI sẽ nghiên cứu lại từ đầu.">
     <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
   </form>
-</div>
-
-<div class="grid2">
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Cấu hình YouTube</h2>
-  <form method="post" action="/accounts/{{$id}}/youtube">
-    <div class="field">
-      <label>Channel ID</label>
-      <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}">
-    </div>
-    <div class="field">
-      <label>Loại nội dung (phân tách bằng dấu phẩy)</label>
-      <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
-             placeholder="vd: short_video, ai_music">
-    </div>
-    <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
-  </form>
-</div>
 </div>
 
 {{end}}
