@@ -387,7 +387,7 @@ func (v *VieNeuProvider) buildProcess() (*local.Process, error) {
 	}
 	return &local.Process{
 		Name: "vieneu-sidecar", Bin: "uv",
-		Args: []string{"run", "python", "-m", "apps.openai_speech"},
+		Args: []string{"run", "--no-sync", "python", "-m", "apps.openai_speech"},
 		Dir:  repoDir, HealthURL: healthURL,
 	}, nil
 }
