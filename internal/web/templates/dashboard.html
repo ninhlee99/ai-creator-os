@@ -3,10 +3,10 @@
 <div class="webai-header" style="margin-bottom: 22px;">
   <div class="webai-header-left">
     <h1>Tổng quan</h1>
-    <p class="subtitle">Ngày {{fmtVN .Today}} · Hệ thống sản xuất video AI và vận hành kênh mạng xã hội tự động 24/7.</p>
+    <p class="subtitle" style="font-size:14px">Ngày {{fmtVN .Today}} · Hệ thống sản xuất video AI và vận hành mạng lưới kênh truyền thông tự động 24/7.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/studio" class="btn btn-primary">🎬 Dựng Video AI</a>
+    <a href="/studio" class="btn btn-primary">🎬 Dựng Video AI Mới</a>
     <a href="/accounts/new" class="btn btn-secondary">📱 + Kết nối Kênh</a>
     <a href="/products" class="btn btn-secondary">🛍️ Sàn Affiliate</a>
   </div>
@@ -14,7 +14,7 @@
 
 {{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/he-thong#tab-apikeys">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
-<div class="card steps-card" style="margin-bottom:20px">
+<div class="card steps-card" style="margin-bottom:24px;border-radius:14px">
   <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
   <ol class="steps">
     <li class="{{if .HasKeys}}done{{end}}">
@@ -51,28 +51,67 @@
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<div class="cards">
-  <div class="card">
-    <div class="num">{{if .MasterOn}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</div>
-    <div class="label">Chế độ tự động{{if .MasterOn}} — đang chạy theo lịch{{else}} — đang đứng yên{{end}}</div>
-    <form method="post" action="/settings/master" style="margin-top:8px">
+<div class="cards" style="margin-bottom: 24px;">
+  <div class="card accent" style="border-radius:14px;padding:20px;">
+    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">💰 Doanh Thu Hoa Hồng (Affiliate)</div>
+    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{fmtVND .CommissionRevenue}}</div>
+    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/products">Accesstrade, Shopee &amp; TikTok Shop ↗</a></div>
+  </div>
+  <div class="card" style="border-radius:14px;padding:20px;">
+    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🌐 Mạng Lưới Kênh Quản Lý</div>
+    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{len .Accounts}} Kênh</div>
+    <div class="hint" style="margin-top:6px;font-size:12px">{{if not .Accounts}}<a href="/accounts/new">+ Thêm kênh đầu tiên</a>{{else}}{{range .ByStatus}}<span class="badge badge-{{statusClass .Status}}" style="margin-right:4px">{{.N}} {{statusLabel .Status}}</span>{{end}}{{end}}</div>
+  </div>
+  <div class="card" style="border-radius:14px;padding:20px;">
+    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🎬 Hàng Đợi Sản Xuất Video</div>
+    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{if .NJobs}}{{.NJobs}} video{{else}}Sẵn sàng{{end}}</div>
+    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/studio/jobs">Xem tiến độ render Studio ↗</a></div>
+  </div>
+  <div class="card" style="border-radius:14px;padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
+    <div>
+      <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">⚡ Trạng Thái Tự Động Hóa 24/7</div>
+      <div class="num" style="font-size:18px;font-weight:700">{{if .MasterOn}}<span class="badge badge-ok" style="font-size:13px;padding:4px 8px">● Đang Chạy Theo Lịch</span>{{else}}<span class="badge badge-no" style="font-size:13px;padding:4px 8px">Tạm Dừng</span>{{end}}</div>
+    </div>
+    <form method="post" action="/settings/master" style="margin-top:10px">
       <input type="hidden" name="on" value="{{if .MasterOn}}0{{else}}1{{end}}">
       <input type="hidden" name="back" value="/">
-      <button type="submit" class="btn btn-sm">{{if .MasterOn}}Tắt{{else}}Bật tự động{{end}}</button>
+      <button type="submit" class="btn btn-sm btn-secondary" style="width:100%;font-size:12px">{{if .MasterOn}}Tạm dừng tự động{{else}}Bật tự động 24/7{{end}}</button>
     </form>
   </div>
-  <div class="card">
-    <div class="num">{{len .Accounts}}</div>
-    <div class="label">Kênh{{if not .Accounts}} — <a href="/accounts/new">thêm kênh</a>{{end}}</div>
-    {{if .ByStatus}}<div class="hint">{{range .ByStatus}}<span class="badge badge-{{statusClass .Status}}">{{.N}} {{statusLabel .Status}}</span> {{end}}</div>{{end}}
+</div>
+
+<!-- Business Production Pipeline Overview -->
+<div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:28px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <strong style="font-size:15px">Dây Chuyền Vận Hành Sản Xuất Tự Động Khép Kín</strong>
+    <a href="/team" class="btn btn-secondary btn-sm" style="font-size:12px">Chi tiết dây chuyền ↗</a>
   </div>
-  <div class="card accent">
-    <div class="num">{{fmtVND .CommissionRevenue}}</div>
-    <div class="label">Hoa hồng Accesstrade</div>
-  </div>
-  <div class="card">
-    <div class="num">{{if .NJobs}}{{.NJobs}}{{else}}<span class="hint">chưa có</span>{{end}}</div>
-    <div class="label">Video đang dựng</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:12px;color:var(--muted)">1. Săn Sản Phẩm</div>
+      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🛍️ Hunter Affiliate</div>
+      <a href="/products" style="font-size:12px">Kệ hàng ↗</a>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:12px;color:var(--muted)">2. Dựng Video AI</div>
+      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🎬 AI Producer</div>
+      <a href="/studio" style="font-size:12px">Studio ↗</a>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:12px;color:var(--muted)">3. Chống Trùng Lặp</div>
+      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🔁 Reup &amp; Transform</div>
+      <a href="/reup" style="font-size:12px">Nguồn Reup ↗</a>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:12px;color:var(--muted)">4. Phân Phối MXH</div>
+      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🚀 Multi-Publisher</div>
+      <a href="/publishers" style="font-size:12px">Xuất bản MXH ↗</a>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div style="font-size:12px;color:var(--muted)">5. Tăng Trưởng &amp; Tiền</div>
+      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">📈 Growth Engine</div>
+      <a href="/growth" style="font-size:12px">Phát triển kênh ↗</a>
+    </div>
   </div>
 </div>
 
