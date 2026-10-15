@@ -13,7 +13,7 @@
     {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi chạy thử">CHẠY THỬ</span>{{end}}
     {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
     <span class="badge badge-draft" title="Quota YouTube hôm nay (mỗi lượt đăng tốn {{.QuotaPerUpload}} điểm quota)">Quota {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>
-    <span class="badge badge-draft" title="Đổi ở Cài đặt · Đa nền tảng; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
+    <span class="badge badge-draft" title="Đổi ở Cài đặt · Kênh MXH; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
     {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
   <p class="hint">Chế độ chạy thử chặn mọi thao tác thật. TikTok: chỉ đăng nháp tới khi app được TikTok duyệt.</p>

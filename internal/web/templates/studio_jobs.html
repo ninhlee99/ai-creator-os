@@ -34,7 +34,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
         <button type="button" class="btn btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')">▶ Phóng to Player</button>
         <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download>⬇ Tải MP4</a>
-        <a class="btn btn-primary btn-sm" href="/publishers?video={{.Output}}&title={{urlQuery .Title}}">🚀 Xuất bản Đa nền tảng</a>
+        <a class="btn btn-primary btn-sm" href="/accounts">📱 Đăng lên Kênh</a>
         <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:inline">
           <button class="btn btn-secondary btn-sm" type="submit" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở CapCut</button>
         </form>

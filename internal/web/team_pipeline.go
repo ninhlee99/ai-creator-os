@@ -124,7 +124,7 @@ func (s *Server) affiliateTeam() pipeTeam {
 	if done > 0 {
 		st = tmOK
 	}
-	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("video xong", done), Link: "/publishers", RoleDesc: "Tự động đăng video lên TikTok Shop & Shorts"})
+	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("video xong", done), Link: "/accounts", RoleDesc: "Tự động đăng video lên TikTok Shop & Shorts"})
 	// Analyst: đối soát hoa hồng AT.
 	if s.AT == nil {
 		stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: tmIdle, Detail: "chưa cấu hình Accesstrade", Link: "/products?tab=orders", RoleDesc: "Đối soát đơn hàng, hoa hồng và doanh thu"})
@@ -157,7 +157,7 @@ func (s *Server) reupTeam() pipeTeam {
 			{Key: "director", Label: "Director", Icon: "📋", Link: "/reup", RoleDesc: "Lên kế hoạch đảo góc nội dung"},
 			{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/reup", RoleDesc: "Biên tập video & chèn hiệu ứng"},
 			{Key: "qc", Label: "QC", Icon: "✅", Link: "/reup", RoleDesc: "Kiểm tra chất lượng video & bản quyền"},
-			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Đăng video lên các kênh mạng xã hội"},
+			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng video lên các kênh mạng xã hội"},
 			{Key: "analyst", Label: "Analyst", Icon: "📊", Link: "/reup", RoleDesc: "Giám sát view & kill format lỗi"},
 		} {
 			st.Status = tmIdle
@@ -215,7 +215,7 @@ func (s *Server) reupTeam() pipeTeam {
 	if len(posted) > 0 {
 		st = tmOK
 	}
-	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("bài đã đăng", int64(len(posted))), Link: "/publishers", RoleDesc: "Đăng video lên các kênh mạng xã hội theo lịch"})
+	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("bài đã đăng", int64(len(posted))), Link: "/accounts", RoleDesc: "Đăng video lên các kênh mạng xã hội theo lịch"})
 	// Analyst: bài lỗi + kill rule 0-view.
 	failed, _ := s.Reup.ListPostsByStatus("failed", 1000)
 	st = tmOK
@@ -244,7 +244,7 @@ func (s *Server) storyTeam() pipeTeam {
 			{Key: "illustrator", Label: "Illustrator", Icon: "🎨", Link: "/stories", RoleDesc: "Vẽ tranh minh họa từng cảnh bằng AI"},
 			{Key: "voice", Label: "Voice", Icon: "🎙️", Link: "/stories", RoleDesc: "Đọc giọng truyền cảm xúc bằng AI Voice TTS"},
 			{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/stories", RoleDesc: "Ghép cảnh, hòa âm và dựng video 16:9"},
-			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Xuất bản video lên YouTube"},
+			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Xuất bản video lên YouTube"},
 		} {
 			st.Status = tmWaiting
 			st.Detail = "chưa có truyện"
@@ -267,7 +267,7 @@ func (s *Server) storyTeam() pipeTeam {
 		{Key: "illustrator", Label: "Illustrator", Icon: "🎨", Link: "/stories", RoleDesc: "Vẽ tranh minh họa từng cảnh bằng AI"},
 		{Key: "voice", Label: "Voice", Icon: "🎙️", Link: "/stories", RoleDesc: "Đọc giọng truyền cảm xúc bằng AI Voice TTS"},
 		{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/stories", RoleDesc: "Ghép cảnh, hòa âm và dựng video 16:9"},
-		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Xuất bản video lên YouTube"},
+		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Xuất bản video lên YouTube"},
 	}
 	for i := range keys {
 		switch {
