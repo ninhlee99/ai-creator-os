@@ -57,20 +57,33 @@ func youtubeRedirectURI(r *http.Request) (string, error) {
 }
 
 // handleYouTubeAuthorize đưa trình duyệt tới trang consent của Google
-// cho một tài khoản.
+// cho một tài khoản hoặc để tạo kênh mới trực tiếp từ OAuth.
 func (s *Server) handleYouTubeAuthorize(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	if !s.accountExists(username) {
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	fromNew := false
+	if username == "" {
+		username = "__new_channel__"
+		fromNew = true
+	} else if !s.accountExists(username) {
 		publishersMsg(w, r, "err", "Không có tài khoản "+username)
 		return
 	}
 	p := publishers.NewYouTubePublisher(username, nil, "")
 	if !p.HasClient() {
-		publishersMsg(w, r, "err", "Thiếu YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET — nhập ở Cài đặt · Hệ thống, mục “Mã & biến cấu hình”.")
+		msg := "Thiếu YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET — nhập ở Cài đặt · Hệ thống, mục “Mã & biến cấu hình”."
+		if fromNew {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape(msg))
+			return
+		}
+		publishersMsg(w, r, "err", msg)
 		return
 	}
 	redirect, err := youtubeRedirectURI(r)
 	if err != nil {
+		if fromNew {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape(err.Error()))
+			return
+		}
 		publishersMsg(w, r, "err", err.Error())
 		return
 	}
@@ -105,19 +118,55 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		publishersMsg(w, r, "err", "Không có ?code= — bấm lại “Nối YouTube”.")
 		return
 	}
-	// Đợt AC: kênh có thể đã bị xóa trong lúc chờ consent (15 phút) — kiểm
-	// tra lại trước khi ghi token file mồ côi.
-	if !s.accountExists(st.username) {
-		publishersMsg(w, r, "err", "Kênh "+st.username+" không còn tồn tại — thêm lại kênh rồi nối.")
-		return
-	}
+
 	p := publishers.NewYouTubePublisher(st.username, nil, "")
-	refresh, err := exchangeGoogleCode(p.ClientID(), p.ClientSecret(), code, st.redirectURI)
+	refresh, accessToken, err := exchangeGoogleCode(p.ClientID(), p.ClientSecret(), code, st.redirectURI)
 	if err != nil {
 		publishersMsg(w, r, "err", "Đổi code lấy token thất bại: "+err.Error())
 		return
 	}
-	path := publishers.YouTubeTokenPath(st.username)
+
+	targetUsername := st.username
+	var targetAccountID int64
+	var foundChannelID string
+
+	// Khi kết nối từ màn hình Thêm kênh mới (__new_channel__)
+	if targetUsername == "__new_channel__" {
+		chID, chTitle, err := fetchGoogleChannelInfo(accessToken)
+		candidateName := ""
+		if err == nil && chTitle != "" {
+			candidateName = sanitizeUsername(chTitle)
+			foundChannelID = chID
+		}
+		if candidateName == "" {
+			candidateName = fmt.Sprintf("yt_creator_%d", time.Now().Unix()%10000)
+		}
+		baseName := candidateName
+		counter := 1
+		for s.accountExists(candidateName) {
+			counter++
+			candidateName = fmt.Sprintf("%s_%d", baseName, counter)
+		}
+		acct, err := s.Mgr.Add(candidateName, "kênh YouTube tự động", "")
+		if err != nil {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Không tạo được kênh từ YouTube: "+err.Error()))
+			return
+		}
+		targetUsername = candidateName
+		targetAccountID = acct.ID
+		if foundChannelID != "" && s.Ledger != nil {
+			_ = s.Ledger.SetAccountStatus(acct.ID, acct.Status, map[string]any{"youtube_channel": foundChannelID})
+		}
+		s.advanceOnboarding(acct.ID)
+		s.autoGeneratePlan(acct, "Tự sinh khi kết nối kênh YouTube qua OAuth")
+	} else {
+		if !s.accountExists(targetUsername) {
+			publishersMsg(w, r, "err", "Kênh "+targetUsername+" không còn tồn tại — thêm lại kênh rồi nối.")
+			return
+		}
+	}
+
+	path := publishers.YouTubeTokenPath(targetUsername)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		publishersMsg(w, r, "err", "Không tạo được thư mục token: "+err.Error())
 		return
@@ -128,13 +177,18 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Ledger != nil {
-		_ = s.Ledger.DeleteSetting(tokenDeadKey(st.username))
+		_ = s.Ledger.DeleteSetting(tokenDeadKey(targetUsername))
 	}
-	publishersMsg(w, r, "msg", "Đã nối YouTube cho "+st.username+". Token lưu ở "+path+".")
+
+	if targetAccountID > 0 {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=ket-noi&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh YouTube "+targetUsername+"!")))
+		return
+	}
+	publishersMsg(w, r, "msg", "Đã nối YouTube cho "+targetUsername+". Token lưu ở "+path+".")
 }
 
-// exchangeGoogleCode đổi authorization code lấy refresh token.
-func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (string, error) {
+// exchangeGoogleCode đổi authorization code lấy refresh token và access token.
+func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (string, string, error) {
 	form := url.Values{
 		"code":          {code},
 		"client_id":     {clientID},
@@ -144,7 +198,7 @@ func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (strin
 	}
 	resp, err := googleOAuthClient.PostForm(youtubeOAuthTokenURL, form)
 	if err != nil {
-		return "", fmt.Errorf("gọi Google thất bại: %w", err)
+		return "", "", fmt.Errorf("gọi Google thất bại: %w", err)
 	}
 	defer resp.Body.Close()
 	var tok struct {
@@ -154,15 +208,68 @@ func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (strin
 		AccessToken  string `json:"access_token"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
-		return "", fmt.Errorf("đọc response Google: %w", err)
+		return "", "", fmt.Errorf("đọc response Google: %w", err)
 	}
 	if tok.Error != "" {
-		return "", fmt.Errorf("Google báo lỗi %s: %s", tok.Error, tok.ErrorDesc)
+		return "", "", fmt.Errorf("Google báo lỗi %s: %s", tok.Error, tok.ErrorDesc)
 	}
 	if tok.RefreshToken == "" {
-		return "", fmt.Errorf("Google không trả refresh_token (tài khoản này có thể đã cấp quyền trước đây — thử thu hồi quyền ở myaccount.google.com/permissions rồi nối lại)")
+		return "", "", fmt.Errorf("Google không trả refresh_token (tài khoản này có thể đã cấp quyền trước đây — thử thu hồi quyền ở myaccount.google.com/permissions rồi nối lại)")
 	}
-	return tok.RefreshToken, nil
+	return tok.RefreshToken, tok.AccessToken, nil
+}
+
+func fetchGoogleChannelInfo(accessToken string) (string, string, error) {
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := googleOAuthClient.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("Google YouTube API status %d", resp.StatusCode)
+	}
+	var data struct {
+		Items []struct {
+			ID      string `json:"id"`
+			Snippet struct {
+				Title     string `json:"title"`
+				CustomURL string `json:"customUrl"`
+			} `json:"snippet"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", "", err
+	}
+	if len(data.Items) == 0 {
+		return "", "", fmt.Errorf("tài khoản Google này chưa tạo kênh YouTube")
+	}
+	title := data.Items[0].Snippet.Title
+	if data.Items[0].Snippet.CustomURL != "" {
+		title = strings.TrimPrefix(data.Items[0].Snippet.CustomURL, "@")
+	}
+	return data.Items[0].ID, title, nil
+}
+
+func sanitizeUsername(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	var buf strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' {
+			buf.WriteRune(r)
+		} else if r == ' ' || r == '-' {
+			buf.WriteRune('_')
+		}
+	}
+	res := strings.Trim(buf.String(), "_")
+	if len(res) > 30 {
+		res = res[:30]
+	}
+	return res
 }
 
 // tokenDeadKey là setting đánh dấu refresh token YouTube đã chết

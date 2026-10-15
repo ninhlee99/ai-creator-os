@@ -1,26 +1,102 @@
-{{define "title"}}Thêm kênh — AI Creator OS{{end}}
+{{define "title"}}Thêm Kênh Mới — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Thêm kênh mới</h1>
-<p class="subtitle">Tạo tài khoản và chạy onboarding tự động: gán persona, nghiên cứu niche, lên topic plan.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Thêm kênh mới 🚀</h1>
+    <p class="subtitle">Bạn có thể <b>xác thực &amp; kết nối trực tiếp kênh mạng xã hội thật</b> qua OAuth, hoặc <b>tạo hồ sơ AI Creator mới</b> để AI lập kế hoạch nội dung từ đầu.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/accounts" class="btn btn-secondary">← Quay lại danh sách kênh</a>
+  </div>
+</div>
+
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<div class="form-card">
-<form method="post" action="/accounts">
-  <div class="field">
-    <label>Username <span class="req">*</span></label>
-    <input type="text" name="username" required placeholder="vd: kechuyen_ai">
+<div class="grid2" style="align-items: stretch; gap: 24px;">
+  <!-- Phương thức 1: Kết nối trực tiếp tài khoản mạng xã hội thật qua OAuth (Khuyên dùng) -->
+  <div class="form-card" style="border-top: 4px solid #ef4444; display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:24px">🔗</span>
+        <div>
+          <h2 style="margin:0;font-size:17px;border:none;padding:0">Cách 1: Xác Thực Kênh Mạng Xã Hội Thật (OAuth)</h2>
+          <span class="badge badge-ok" style="font-size:11px;margin-top:2px">Khuyên dùng · 1-Click Connect</span>
+        </div>
+      </div>
+      <p class="hint" style="line-height:1.5;margin-bottom:18px">
+        Đăng nhập vào tài khoản Google hoặc TikTok của bạn. Hệ thống sẽ <b>tự động lấy tên kênh thật, Channel ID thật</b> và lưu token xác thực để sẵn sàng xuất bản video tự động — <b>không cần gõ thủ công!</b>
+      </p>
+
+      <!-- YouTube OAuth Connect Block -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#ef4444"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          <strong style="font-size:15px">Kênh YouTube Studio</strong>
+        </div>
+        <p class="hint" style="font-size:12px;margin:0 0 12px">Tự động kết nối kênh Shorts/Video dài, đồng bộ người theo dõi và giờ xem YPP.</p>
+        {{if .HasYouTubeClient}}
+          <a href="/publishers/youtube/authorize" class="btn btn-sm" style="background:#ef4444;border-color:#ef4444;width:100%;text-align:center;display:block">
+            ▶ Đăng nhập &amp; Kết nối Kênh YouTube Ngay
+          </a>
+        {{else}}
+          <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;display:block">
+            ⚙️ Cần nhập YOUTUBE_CLIENT_ID trong Cài đặt trước
+          </a>
+        {{end}}
+      </div>
+
+      <!-- TikTok OAuth Connect Block -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+          <strong style="font-size:15px">Tài khoản TikTok Creator</strong>
+        </div>
+        <p class="hint" style="font-size:12px;margin:0 0 12px">Tự động kết nối đăng video vào Bản nháp kèm hashtag xu hướng.</p>
+        <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;display:block">
+          ⚙️ Cấu hình TikTok API Key trong Cài đặt
+        </a>
+      </div>
+    </div>
+    <div style="margin-top:16px;border-top:1px dashed var(--border);padding-top:10px">
+      <span class="hint" style="font-size:12px">💡 Chưa có mã OAuth? Lấy Client ID miễn phí tại Google Cloud và TikTok Developer.</span>
+    </div>
   </div>
-  <div class="field">
-    <label>Gợi ý niche (không bắt buộc)</label>
-    <input type="text" name="niche_hint" placeholder="vd: review đồ gia dụng">
-    <div class="hint">Đây chỉ là gợi ý — AI tự nghiên cứu và quyết định niche cuối cùng.</div>
+
+  <!-- Phương thức 2: Tạo Hồ sơ AI Creator mới (Dành cho kênh thử nghiệm / Chưa lập SNS) -->
+  <div class="form-card" style="border-top: 4px solid var(--accent); display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <span style="font-size:24px">🤖</span>
+        <div>
+          <h2 style="margin:0;font-size:17px;border:none;padding:0">Cách 2: Tạo Hồ Sơ Kênh AI Mới (Persona)</h2>
+          <span class="badge badge-draft" style="font-size:11px;margin-top:2px">Lập kế hoạch trước · Nối mạng xã hội sau</span>
+        </div>
+      </div>
+      <p class="hint" style="line-height:1.5;margin-bottom:18px">
+        Dành cho bạn muốn để AI nghiên cứu thị trường, thiết kế tính cách (Persona), lên kế hoạch 30 ngày và dựng sẵn video thử nghiệm <b>trước khi</b> tạo hoặc liên kết tài khoản mạng xã hội thật.
+      </p>
+
+      <form method="post" action="/accounts">
+        <div class="field">
+          <label>Tên Creator / Username định danh <span class="req">*</span></label>
+          <input type="text" name="username" required placeholder="vd: kechuyen_ai, viet_review...">
+          <div class="hint">Tên quản lý trong hệ thống, không dấu cách.</div>
+        </div>
+        <div class="field">
+          <label>Gợi ý chủ đề / Niche định hướng</label>
+          <input type="text" name="niche_hint" placeholder="vd: review đồ gia dụng thông minh, chuyện tâm linh...">
+          <div class="hint">Gợi ý để AI tự nghiên cứu đối tượng khán giả và phong cách phù hợp.</div>
+        </div>
+        <div class="field">
+          <label>Kênh YouTube (nếu có sẵn ID)</label>
+          <input type="text" name="youtube_channel" placeholder="vd: UCxxxxxxxxxxxxxxx">
+        </div>
+        <button type="submit" class="btn" style="width:100%;margin-top:8px">✨ Tạo Hồ Sơ Kênh &amp; Chạy Onboarding AI</button>
+      </form>
+    </div>
+    <div style="margin-top:16px;border-top:1px dashed var(--border);padding-top:10px">
+      <span class="hint" style="font-size:12px">Sau khi tạo xong, bạn luôn có thể vào tab <b>Kết nối</b> của kênh để nối YouTube/TikTok OAuth bất kỳ lúc nào.</span>
+    </div>
   </div>
-  <div class="field">
-    <label>Kênh YouTube (không bắt buộc)</label>
-    <input type="text" name="youtube_channel" placeholder="vd: UCxxxxxxxx">
-  </div>
-  <button type="submit" class="btn">Tạo &amp; chạy onboarding</button>
-  <a class="btn btn-secondary" href="/accounts">Hủy</a>
-</form>
 </div>
 {{end}}

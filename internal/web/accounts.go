@@ -47,7 +47,11 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "account_new", s.ctx("Error", r.URL.Query().Get("err")))
+	s.render(w, "account_new", s.ctx(
+		"Error", r.URL.Query().Get("err"),
+		"HasYouTubeClient", publishers.NewYouTubePublisher("", nil, "").HasClient(),
+		"HasTikTokClient", publishers.NewTikTokPublisher("").HasClient(),
+	))
 }
 
 func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
