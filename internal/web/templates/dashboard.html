@@ -53,9 +53,9 @@
 
 <div class="cards" style="margin-bottom: 24px;">
   <div class="card accent" style="border-radius:14px;padding:20px;">
-    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">💰 Doanh Thu Hoa Hồng (Affiliate)</div>
-    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{fmtVND .CommissionRevenue}}</div>
-    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/products">Accesstrade, Shopee &amp; TikTok Shop ↗</a></div>
+    <div class="num">{{fmtVND .CommissionRevenue}}</div>
+    <div class="label">Hoa hồng Accesstrade</div>
+    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/products">Sàn Affiliate ↗</a></div>
   </div>
   <div class="card" style="border-radius:14px;padding:20px;">
     <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🌐 Mạng Lưới Kênh Quản Lý</div>
@@ -80,43 +80,27 @@
   </div>
 </div>
 
-<!-- Business Production Pipeline Overview -->
-<div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:28px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-    <strong style="font-size:15px">Dây Chuyền Vận Hành Sản Xuất Tự Động Khép Kín</strong>
-    <a href="/team" class="btn btn-secondary btn-sm" style="font-size:12px">Chi tiết dây chuyền ↗</a>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:12px;color:var(--muted)">1. Săn Sản Phẩm</div>
-      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🛍️ Hunter Affiliate</div>
-      <a href="/products" style="font-size:12px">Kệ hàng ↗</a>
+<h2>Sẵn sàng kiếm tiền</h2>
+<p class="hint">Tình trạng kết nối và điều kiện mở khóa doanh thu từ các nền tảng đối tác.</p>
+<div class="monetization-grid">
+  {{range .Money}}
+  <div class="monetization-card">
+    <div class="monetization-card-top">
+      <div class="monetization-card-name">{{.Name}}</div>
+      <div>
+        {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
+      </div>
     </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:12px;color:var(--muted)">2. Dựng Video AI</div>
-      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🎬 AI Producer</div>
-      <a href="/studio" style="font-size:12px">Studio ↗</a>
-    </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:12px;color:var(--muted)">3. Chống Trùng Lặp</div>
-      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🔁 Reup &amp; Transform</div>
-      <a href="/reup" style="font-size:12px">Nguồn Reup ↗</a>
-    </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:12px;color:var(--muted)">4. Phân Phối MXH</div>
-      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">🚀 Multi-Publisher</div>
-      <a href="/publishers" style="font-size:12px">Xuất bản MXH ↗</a>
-    </div>
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="font-size:12px;color:var(--muted)">5. Tăng Trưởng &amp; Tiền</div>
-      <div style="font-weight:700;font-size:13px;margin:2px 0 6px">📈 Growth Engine</div>
-      <a href="/growth" style="font-size:12px">Phát triển kênh ↗</a>
+    <div class="monetization-card-status">{{.State}}</div>
+    <div class="monetization-card-footer">
+      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:12px;padding:4px 12px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:12px">Hoàn tất ✓</span>{{end}}
     </div>
   </div>
+  {{end}}
 </div>
 
 <h2>Tự động hóa</h2>
-<p class="hint">Mọi công tắc tự động ở một chỗ.{{if not .MasterOn}} <b>Công tắc chính đang TẮT</b> — các việc dưới đây chỉ chạy khi bạn bấm “Bật tự động” ở trên.{{end}}{{if .DryRun}} Đang <b>chạy thử</b>: có dựng video nhưng không đăng thật.{{end}}</p>
+<p class="hint">Trạng thái vận hành của các phân hệ tự động hóa trong hệ thống.</p>
 <div class="auto-grid">
   {{range .AutoSwitches}}
   <div class="auto-card">
@@ -141,24 +125,7 @@
   {{end}}
 </div>
 
-<h2>Sẵn sàng kiếm tiền</h2>
-<p class="hint">Mỗi nguồn tiền đang ở đâu và còn thiếu bước gì — đọc từ cấu hình thật, không ước doanh thu.</p>
-<div class="monetization-grid">
-  {{range .Money}}
-  <div class="monetization-card">
-    <div class="monetization-card-top">
-      <div class="monetization-card-name">{{.Name}}</div>
-      <div>
-        {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
-      </div>
-    </div>
-    <div class="monetization-card-status">{{.State}}</div>
-    <div class="monetization-card-footer">
-      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:12px;padding:4px 12px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:12px">Hoàn tất ✓</span>{{end}}
-    </div>
-  </div>
-  {{end}}
-</div>
+
 
 {{if .GrowthAlerts}}
 <h2>Cảnh báo tăng trưởng</h2>
