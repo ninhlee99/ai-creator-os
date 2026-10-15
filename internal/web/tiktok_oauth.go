@@ -3,6 +3,7 @@ package web
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -113,16 +114,25 @@ func publishersMsg(w http.ResponseWriter, r *http.Request, key, text string) {
 }
 
 // handleTikTokAuthorize sends the browser (already logged in to TikTok)
-// to the Login Kit consent page for one account.
+// to the Login Kit consent page for one account or to onboard a new real account.
 func (s *Server) handleTikTokAuthorize(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
-	if !s.accountExists(username) {
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	fromNew := false
+	if username == "" {
+		username = "__new_tiktok__"
+		fromNew = true
+	} else if !s.accountExists(username) {
 		publishersMsg(w, r, "err", "Không có tài khoản "+username)
 		return
 	}
 	p := publishers.NewTikTokPublisher(username)
 	if !p.HasClient() {
-		publishersMsg(w, r, "err", "Thiếu Client Key/Secret TikTok cho "+username+" — nhập ở Cài đặt · Hệ thống, mục Mã & biến cấu hình.")
+		msg := "Thiếu Client Key/Secret TikTok — nhập ở Cài đặt · Hệ thống, mục Mã & biến cấu hình."
+		if fromNew {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape(msg))
+			return
+		}
+		publishersMsg(w, r, "err", msg)
 		return
 	}
 	// PKCE always: required by TikTok's Desktop platform, harmless on Web
@@ -172,10 +182,28 @@ func (s *Server) finishTikTokConnect(w http.ResponseWriter, r *http.Request, use
 		publishersMsg(w, r, "err", "state không khớp hoặc đã hết hạn (15 phút) — bấm lại “Kết nối TikTok”.")
 		return
 	}
-	scope, err := publishers.NewTikTokPublisher(st.username).ExchangeCode(code, st.verifier)
+	targetUsername := st.username
+	var targetAccountID int64
+	if targetUsername == "__new_tiktok__" {
+		candidateName := fmt.Sprintf("tiktok_creator_%d", time.Now().Unix()%10000)
+		acct, err := s.Mgr.Add(candidateName, "kênh TikTok thật đã xác thực", "")
+		if err != nil {
+			publishersMsg(w, r, "err", "Không tạo được kênh từ TikTok: "+err.Error())
+			return
+		}
+		targetUsername = candidateName
+		targetAccountID = acct.ID
+		s.advanceOnboarding(acct.ID)
+		s.autoGeneratePlan(acct, "Tự sinh cho kênh TikTok thật")
+	}
+	scope, err := publishers.NewTikTokPublisher(targetUsername).ExchangeCode(code, st.verifier)
 	if err != nil {
 		publishersMsg(w, r, "err", "Đổi code lấy token thất bại: "+err.Error())
 		return
 	}
-	publishersMsg(w, r, "msg", "Đã kết nối TikTok cho "+st.username+" (scope: "+scope+"). Token lưu ở "+publishers.TikTokTokenPath(st.username)+".")
+	if targetAccountID > 0 {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=ket-noi&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh TikTok "+targetUsername+"!")))
+		return
+	}
+	publishersMsg(w, r, "msg", "Đã kết nối TikTok cho "+targetUsername+" (scope: "+scope+"). Token lưu ở "+publishers.TikTokTokenPath(targetUsername)+".")
 }

@@ -128,18 +128,17 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 
 	targetUsername := st.username
 	var targetAccountID int64
-	var foundChannelID string
 
 	// Khi kết nối từ màn hình Thêm kênh mới (__new_channel__)
 	if targetUsername == "__new_channel__" {
-		chID, chTitle, err := fetchGoogleChannelInfo(accessToken)
-		candidateName := ""
-		if err == nil && chTitle != "" {
-			candidateName = sanitizeUsername(chTitle)
-			foundChannelID = chID
+		chInfo, err := fetchGoogleChannelInfo(accessToken)
+		if err != nil {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Không đọc được kênh YouTube thật: "+err.Error()))
+			return
 		}
+		candidateName := sanitizeUsername(chInfo.Title)
 		if candidateName == "" {
-			candidateName = fmt.Sprintf("yt_creator_%d", time.Now().Unix()%10000)
+			candidateName = fmt.Sprintf("yt_%s", strings.ToLower(chInfo.ID))
 		}
 		baseName := candidateName
 		counter := 1
@@ -147,18 +146,21 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 			counter++
 			candidateName = fmt.Sprintf("%s_%d", baseName, counter)
 		}
-		acct, err := s.Mgr.Add(candidateName, "kênh YouTube tự động", "")
+		acct, err := s.Mgr.Add(candidateName, "kênh YouTube thật đã xác thực", "")
 		if err != nil {
 			seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Không tạo được kênh từ YouTube: "+err.Error()))
 			return
 		}
 		targetUsername = candidateName
 		targetAccountID = acct.ID
-		if foundChannelID != "" && s.Ledger != nil {
-			_ = s.Ledger.SetAccountStatus(acct.ID, acct.Status, map[string]any{"youtube_channel": foundChannelID})
+		if s.Ledger != nil {
+			_ = s.Ledger.SetAccountStatus(acct.ID, acct.Status, map[string]any{"youtube_channel": chInfo.ID})
+			if chInfo.Subs > 0 {
+				_ = s.Ledger.SetFollowers(acct.ID, chInfo.Subs)
+			}
 		}
 		s.advanceOnboarding(acct.ID)
-		s.autoGeneratePlan(acct, "Tự sinh khi kết nối kênh YouTube qua OAuth")
+		s.autoGeneratePlan(acct, "Tự sinh cho kênh YouTube thật: "+chInfo.Title)
 	} else {
 		if !s.accountExists(targetUsername) {
 			publishersMsg(w, r, "err", "Kênh "+targetUsername+" không còn tồn tại — thêm lại kênh rồi nối.")
@@ -219,19 +221,26 @@ func exchangeGoogleCode(clientID, clientSecret, code, redirectURI string) (strin
 	return tok.RefreshToken, tok.AccessToken, nil
 }
 
-func fetchGoogleChannelInfo(accessToken string) (string, string, error) {
-	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", nil)
+type googleChannelData struct {
+	ID    string
+	Title string
+	Subs  int64
+	Views int64
+}
+
+func fetchGoogleChannelInfo(accessToken string) (*googleChannelData, error) {
+	req, err := http.NewRequest("GET", "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true", nil)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	resp, err := googleOAuthClient.Do(req)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("Google YouTube API status %d", resp.StatusCode)
+		return nil, fmt.Errorf("Google YouTube API status %d", resp.StatusCode)
 	}
 	var data struct {
 		Items []struct {
@@ -240,19 +249,32 @@ func fetchGoogleChannelInfo(accessToken string) (string, string, error) {
 				Title     string `json:"title"`
 				CustomURL string `json:"customUrl"`
 			} `json:"snippet"`
+			Statistics struct {
+				SubscriberCount string `json:"subscriberCount"`
+				ViewCount       string `json:"viewCount"`
+			} `json:"statistics"`
 		} `json:"items"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", "", err
+		return nil, err
 	}
 	if len(data.Items) == 0 {
-		return "", "", fmt.Errorf("tài khoản Google này chưa tạo kênh YouTube")
+		return nil, fmt.Errorf("tài khoản Google này chưa tạo kênh YouTube")
 	}
-	title := data.Items[0].Snippet.Title
-	if data.Items[0].Snippet.CustomURL != "" {
-		title = strings.TrimPrefix(data.Items[0].Snippet.CustomURL, "@")
+	item := data.Items[0]
+	title := item.Snippet.Title
+	if item.Snippet.CustomURL != "" {
+		title = strings.TrimPrefix(item.Snippet.CustomURL, "@")
 	}
-	return data.Items[0].ID, title, nil
+	var subs, views int64
+	fmt.Sscanf(item.Statistics.SubscriberCount, "%d", &subs)
+	fmt.Sscanf(item.Statistics.ViewCount, "%d", &views)
+	return &googleChannelData{
+		ID:    item.ID,
+		Title: title,
+		Subs:  subs,
+		Views: views,
+	}, nil
 }
 
 func sanitizeUsername(s string) string {
