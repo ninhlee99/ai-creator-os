@@ -34,7 +34,7 @@
       <a href="/">Trang chủ</a>
       <a href="/accounts">Kênh</a>
       <a href="/growth">Phát triển kênh</a>
-      <a href="/team">Đội ngũ</a>
+      <a href="/team">Dây chuyền AI ⚙️</a>
       <div class="nav-group">Sản xuất</div>
       <a href="/studio">Studio AI 🎬</a>
       <a href="/products">Affiliate</a>
@@ -48,6 +48,7 @@
   <div class="main">
     <header class="topbar">
       <div class="status-chips">
+        {{if .WebAICount}}<a class="chip chip-ai" href="/settings/he-thong#tab-webai" title="Tài khoản Web AI đã kết nối (Claude, ChatGPT, Gemini, Muse AI)">{{.WebAICount}}/4 WEB AI ●</a>{{else}}<a class="chip chip-dry" href="/settings/he-thong#tab-webai" title="Cài đặt tài khoản Web AI">+ WEB AI</a>{{end}}
         {{if .DryRun}}<span class="chip chip-dry" title="Chế độ thử — chưa đăng/thao tác thật lên kênh">CHẠY THỬ</span>{{end}}
         {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
         {{if .LocalDL}}<a class="chip chip-dry" href="/settings/model-local" title="Model chạy trên máy để không phụ thuộc key — xem/tắt ở Cài đặt · Model local">⬇ {{.LocalDL}}</a>{{end}}

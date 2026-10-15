@@ -1,19 +1,61 @@
-{{define "title"}}Đội ngũ — AI Creator OS{{end}}
+{{define "title"}}Dây chuyền AI — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Đội ngũ</h1>
-<p class="subtitle">Sức khỏe 3 dây chuyền, suy ra từ dữ liệu thật (việc đã chạy, kho, tác vụ nền) — không phải agent đang chạy.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Dây Chuyền Tự Động Hóa AI ⚙️</h1>
+    <p class="subtitle">Sức khỏe 3 dây chuyền sản xuất tự động, suy ra từ dữ liệu thật (việc đã chạy, kho, tác vụ nền) — không phải agent đang chạy.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/studio" class="btn">🎬 Mở Studio Dàn Dựng AI</a>
+  </div>
+</div>
+
+<!-- Introductory Purpose Card -->
+<div class="card" style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
+  <div style="flex:1;min-width:300px">
+    <h3 style="margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:8px">💡 Dây chuyền tự động hóa AI là gì và dùng để làm gì?</h3>
+    <p class="hint" style="margin:0;font-size:13px;line-height:1.6">
+      Thay vì phải thao tác thủ công từng bước, hệ thống vận hành tự động theo mô hình dây chuyền liên hoàn khép kín: từ <b>Cào dữ liệu (Hunter)</b> → <b>Dựng video tự động (Producer)</b> → <b>Kiểm duyệt chất lượng (QC)</b> → <b>Xuất bản đa nền tảng (Publisher)</b> → <b>Đối soát doanh thu (Analyst)</b>. Bạn có thể bấm vào từng công đoạn để mở ngay công cụ điều khiển tương ứng.
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/products" class="btn btn-secondary btn-sm" style="font-size:13px">🛍️ Kệ hàng Affiliate</a>
+    <a href="/reup" class="btn btn-secondary btn-sm" style="font-size:13px">🔁 Nguồn Reup</a>
+    <a href="/stories" class="btn btn-secondary btn-sm" style="font-size:13px">📖 Kể chuyện</a>
+  </div>
+</div>
 
 {{range .Pipelines}}
-<div class="card">
-  <h2>{{.Icon}} Team {{.Name}}</h2>
-  <div class="team-stages">
-    {{range $i, $st := .Stages}}
-    {{if $i}}<span class="team-arrow">→</span>{{end}}
-    <div class="team-stage team-{{$st.Status}}" title="{{$st.Detail}}">
-      <span class="team-icon">{{$st.Icon}}</span>
-      <span class="team-label">{{$st.Label}}</span>
-      <span class="team-detail">{{$st.Detail}}</span>
+<div class="card" style="margin-bottom:24px;border-radius:16px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+    <div>
+      <h2 style="margin:0;display:flex;align-items:center;gap:8px;font-size:18px">
+        <span>{{.Icon}}</span> Team {{.Name}}
+      </h2>
+      <p class="hint" style="margin:4px 0 0;font-size:13px">{{.Description}}</p>
     </div>
+    <div>
+      {{if .ActionLink}}
+      <a href="{{.ActionLink}}" class="btn btn-secondary btn-sm" style="font-size:13px;padding:6px 14px">{{.ActionLabel}} ↗</a>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="pipeline-flow-grid">
+    {{range $i, $st := .Stages}}
+    {{if $i}}<div class="pipeline-connector">➔</div>{{end}}
+    <a href="{{if $st.Link}}{{$st.Link}}{{else}}#{{end}}" class="pipeline-step-card stage-{{$st.Status}}" title="{{$st.RoleDesc}}">
+      <div class="pipeline-step-header">
+        <span class="pipeline-step-icon">{{$st.Icon}}</span>
+        <span class="badge badge-{{if eq $st.Status "ok"}}ok{{else if eq $st.Status "working"}}info{{else if eq $st.Status "fail"}}err{{else}}dim{{end}}" style="font-size:10px;text-transform:uppercase">
+          {{if eq $st.Status "ok"}}Sẵn sàng{{else if eq $st.Status "working"}}Đang chạy{{else if eq $st.Status "fail"}}Cần xem{{else}}Chờ việc{{end}}
+        </span>
+      </div>
+      <div class="pipeline-step-name">{{$st.Label}}</div>
+      <div class="pipeline-step-detail">{{$st.Detail}}</div>
+      {{if $st.RoleDesc}}<div class="pipeline-step-role">{{$st.RoleDesc}}</div>{{end}}
+      <div class="pipeline-step-action">Mở công cụ ↗</div>
+    </a>
     {{end}}
   </div>
 </div>

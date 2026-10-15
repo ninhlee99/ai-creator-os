@@ -1,107 +1,483 @@
 {{define "title"}}Đa nền tảng — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Đa nền tảng</h1>
-<p class="subtitle">Trạng thái kết nối TikTok, YouTube, Facebook, Instagram và Threads của từng kênh.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Cổng Xuất Bản Đa Nền Tảng 🚀</h1>
+    <p class="subtitle">Quản lý kết nối tự động đăng tải video và bài viết lên YouTube, TikTok, Facebook, Instagram và Threads.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/studio" class="btn btn-secondary">🎬 Dựng video mới</a>
+    <a href="/settings/he-thong" class="btn btn-secondary">⚙️ Cài đặt Token & API</a>
+  </div>
+</div>
+
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
+<!-- 5 Social Platforms Grid -->
+<div class="social-hub-grid">
+  <!-- 1. YouTube -->
+  <div class="social-card" style="--card-accent: #ef4444;">
+    <div>
+      <div class="social-card-top">
+        <div class="social-brand">
+          <div class="social-icon-box" style="--icon-bg: #ef4444;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          </div>
+          <div class="social-title-area">
+            <h3>YouTube Studio</h3>
+            <span>Shorts &amp; Video Dài</span>
+          </div>
+        </div>
+        <div>
+          {{$hasYt := false}}
+          {{range .Rows}}{{if .YoutubeToken}}{{$hasYt = true}}{{end}}{{end}}
+          {{if $hasYt}}
+          <span class="social-status-pill connected">● Đã kết nối</span>
+          {{else}}
+          <span class="social-status-pill disconnected">Chưa nối</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="social-card-body">
+        Tự động xuất bản <b>YouTube Shorts</b> và video chuẩn 16:9. Tự động ghim link affiliate vào bình luận đầu tiên.
+        <div class="social-meta-details">
+          <div class="social-meta-row">
+            <span class="social-meta-label">Định dạng tối ưu:</span>
+            <span class="social-meta-val">Dọc 9:16 (Shorts)</span>
+          </div>
+          <div class="social-meta-row">
+            <span class="social-meta-label">Chế độ xuất bản:</span>
+            <span class="social-meta-val">Riêng tư / Công khai</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="social-card-actions">
+      {{range .Rows}}
+        {{if .YoutubeClient}}
+          <a class="btn btn-sm" style="flex:1" href="/publishers/youtube/authorize?username={{.Username}}">
+            {{if or .YoutubeToken .YoutubeTokenDead}}🔄 Nối lại YouTube{{else}}🔗 Nối YouTube OAuth{{end}}
+          </a>
+        {{else}}
+          <button type="button" class="btn btn-secondary btn-sm" style="flex:1" data-yt-setup>⚙️ Hướng dẫn cài OAuth</button>
+        {{end}}
+      {{end}}
+    </div>
+  </div>
+
+  <!-- 2. TikTok -->
+  <div class="social-card" style="--card-accent: #00f2fe;">
+    <div>
+      <div class="social-card-top">
+        <div class="social-brand">
+          <div class="social-icon-box" style="--icon-bg: #000; box-shadow: 2px 2px 0 #fe2c55, -2px -2px 0 #00f2fe;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+          </div>
+          <div class="social-title-area">
+            <h3>TikTok Creator</h3>
+            <span>Shorts &amp; Affiliate</span>
+          </div>
+        </div>
+        <div>
+          {{$hasTk := false}}
+          {{range .Rows}}{{if .TiktokToken}}{{$hasTk = true}}{{end}}{{end}}
+          {{if $hasTk}}
+          <span class="social-status-pill connected">● Đã kết nối</span>
+          {{else}}
+          <span class="social-status-pill disconnected">Chưa nối</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="social-card-body">
+        Đăng video trực tiếp vào <b>Bản nháp TikTok</b> hoặc tự động công khai. Kèm hashtag xu hướng và âm nhạc thịnh hành.
+        <div class="social-meta-details">
+          <div class="social-meta-row">
+            <span class="social-meta-label">Cơ chế an toàn:</span>
+            <span class="social-meta-val">Bản nháp (Duyệt trước)</span>
+          </div>
+          <div class="social-meta-row">
+            <span class="social-meta-label">Âm nhạc:</span>
+            <span class="social-meta-val">Trending Sound Sync</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="social-card-actions">
+      {{range .Rows}}
+        {{if .TiktokClient}}
+          <a class="btn btn-sm" style="flex:1" href="/publishers/tiktok/authorize?username={{.Username}}">
+            {{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}
+          </a>
+        {{else}}
+          <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cài TikTok Client Key</a>
+        {{end}}
+      {{end}}
+    </div>
+  </div>
+
+  <!-- 3. Facebook Page -->
+  <div class="social-card" style="--card-accent: #1877f2;">
+    <div>
+      <div class="social-card-top">
+        <div class="social-brand">
+          <div class="social-icon-box" style="--icon-bg: #1877f2;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          </div>
+          <div class="social-title-area">
+            <h3>Facebook Page</h3>
+            <span>Reels &amp; Bài Viết</span>
+          </div>
+        </div>
+        <div>
+          {{$hasFb := false}}
+          {{range .Rows}}{{if .FbPage}}{{$hasFb = true}}{{end}}{{end}}
+          {{if $hasFb}}
+          <span class="social-status-pill connected">● Đã kết nối</span>
+          {{else}}
+          <span class="social-status-pill disconnected">Chưa nối</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="social-card-body">
+        Xuất bản <b>Facebook Reels</b> tự động lên Fanpage bán hàng. Tự động gắn kèm link affiliate và số hotline.
+        <div class="social-meta-details">
+          <div class="social-meta-row">
+            <span class="social-meta-label">Quyền API:</span>
+            <span class="social-meta-val">pages_manage_posts</span>
+          </div>
+          <div class="social-meta-row">
+            <span class="social-meta-label">Trạng thái:</span>
+            <span class="social-meta-val">{{if $hasFb}}Page Token Sẵn Sàng{{else}}Chưa nhập Token{{end}}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="social-card-actions">
+      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình FB_PAGE_ID</a>
+    </div>
+  </div>
+
+  <!-- 4. Instagram Reels -->
+  <div class="social-card" style="--card-accent: #e1306c;">
+    <div>
+      <div class="social-card-top">
+        <div class="social-brand">
+          <div class="social-icon-box" style="background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </div>
+          <div class="social-title-area">
+            <h3>Instagram Reels</h3>
+            <span>Reels &amp; Story</span>
+          </div>
+        </div>
+        <div>
+          {{$hasIg := false}}
+          {{range .Rows}}{{if .Instagram}}{{$hasIg = true}}{{end}}{{end}}
+          {{if $hasIg}}
+          <span class="social-status-pill connected">● Đã kết nối</span>
+          {{else}}
+          <span class="social-status-pill disconnected">Chưa nối</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="social-card-body">
+        Đăng <b>Instagram Reels</b> 9:16 trực tiếp qua Instagram Graph API. Tiếp cận tập khách hàng trẻ và yêu thích phong cách thẩm mỹ.
+        <div class="social-meta-details">
+          <div class="social-meta-row">
+            <span class="social-meta-label">Tài khoản:</span>
+            <span class="social-meta-val">Instagram Business / Creator</span>
+          </div>
+          <div class="social-meta-row">
+            <span class="social-meta-label">Độ phân giải:</span>
+            <span class="social-meta-val">1080x1920 (Full HD)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="social-card-actions">
+      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình IG_USER_ID</a>
+    </div>
+  </div>
+
+  <!-- 5. Threads -->
+  <div class="social-card" style="--card-accent: #000000;">
+    <div>
+      <div class="social-card-top">
+        <div class="social-brand">
+          <div class="social-icon-box" style="--icon-bg: #111;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.26 18.318 1.5 15.343 1.5 11.914 1.5 8.52 2.27 5.56 3.792 3.398 5.645 1.157 8.423.012 12.052 0h.014c3.567.014 6.31 1.164 8.151 3.418 1.597 1.956 2.404 4.743 2.404 8.283v.328c0 .414-.336.75-.75.75h-2.5c-.414 0-.75-.336-.75-.75v-.328c0-3.003-.64-5.267-1.9-6.73-1.425-1.657-3.55-2.5-6.315-2.511-2.923.01-5.123.904-6.538 2.658-1.298 1.609-1.956 3.968-1.956 7.016 0 3.016.657 5.348 1.953 6.932 1.407 1.721 3.593 2.597 6.498 2.607 2.228-.008 4.093-.564 5.545-1.654a7.893 7.893 0 0 0 2.67-4.137c-1.393-.538-2.617-1.353-3.638-2.42-1.35-1.411-2.091-3.265-2.091-5.22 0-2.14.86-4.14 2.423-5.632C14.733 3.447 16.786 2.62 19 2.62c2.254 0 4.316.847 5.807 2.385C26.332 6.57 27.17 8.647 27.17 11.2c0 3.41-.95 6.27-2.825 8.5-2.072 2.46-5.114 3.78-9.043 3.924l-.116.376z"/></svg>
+          </div>
+          <div class="social-title-area">
+            <h3>Threads Meta</h3>
+            <span>Bài Viết Kèm Link Bio</span>
+          </div>
+        </div>
+        <div>
+          {{$hasTh := false}}
+          {{range .Rows}}{{if .Threads}}{{$hasTh = true}}{{end}}{{end}}
+          {{if $hasTh}}
+          <span class="social-status-pill connected">● Đã kết nối</span>
+          {{else}}
+          <span class="social-status-pill disconnected">Chưa nối</span>
+          {{end}}
+        </div>
+      </div>
+      <div class="social-card-body">
+        Đăng bài viết dạng tâm sự / review trải nghiệm trên <b>Threads</b> kèm link sản phẩm hoặc liên kết xem video.
+        <div class="social-meta-details">
+          <div class="social-meta-row">
+            <span class="social-meta-label">Đặc tính:</span>
+            <span class="social-meta-val">Viral thuật toán thảo luận</span>
+          </div>
+          <div class="social-meta-row">
+            <span class="social-meta-label">Chuyển đổi:</span>
+            <span class="social-meta-val">Gắn link bio/comment</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="social-card-actions">
+      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình THREADS_TOKEN</a>
+    </div>
+  </div>
+</div>
+
+<!-- Channels Matrix Table -->
+<h2 style="margin: 32px 0 12px; font-size: 18px;">Kênh Đang Vận Hành &amp; Trạng Thái Kết Nối</h2>
 {{if .Rows}}
-<div class="table-wrap">
+<div class="table-wrap" style="border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
 <table>
-  <tr>
-    <th>Tài khoản</th><th>Trạng thái</th><th>TikTok token</th>
-    <th>YouTube token</th><th>Trang FB</th><th>Instagram</th><th>Threads</th><th>Nền tảng</th>
-  </tr>
+  <thead>
+    <tr>
+      <th>Tài khoản Creator</th>
+      <th>Trạng thái</th>
+      <th>TikTok</th>
+      <th>YouTube</th>
+      <th>Facebook</th>
+      <th>Instagram</th>
+      <th>Threads</th>
+      <th>Nền tảng mục tiêu</th>
+    </tr>
+  </thead>
+  <tbody>
   {{range .Rows}}
   <tr>
     <td><strong>{{.Username}}</strong></td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-    <td>{{if .TiktokToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
-      {{if .TiktokClient}}<a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}">{{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}</a>
-      {{else}}<span class="hint">thiếu client key</span>{{end}}</td>
-    <td>{{if .YoutubeTokenDead}}<span class="badge badge-err">Hết hạn — cần nối lại</span>
-      {{else if .YoutubeToken}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
-      {{if .YoutubeClient}}<a class="btn btn-secondary btn-sm" href="/publishers/youtube/authorize?username={{.Username}}">{{if or .YoutubeToken .YoutubeTokenDead}}Nối lại{{else}}Nối YouTube{{end}}</a>
-      {{else}}<button type="button" class="btn btn-secondary btn-sm" data-yt-setup>Nối YouTube</button>{{end}}</td>
-    <td>{{if .FbPage}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
-    <td>{{if .Instagram}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
-    <td>{{if .Threads}}<span class="badge badge-ok">Có</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}</td>
+    <td>
+      {{if .TiktokToken}}
+        <span class="badge badge-ok">✓ Sẵn sàng</span>
+      {{else}}
+        <span class="badge badge-no">Chưa có</span>
+      {{end}}
+      {{if .TiktokClient}}
+        <a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}" style="margin-left:4px">
+          {{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}
+        </a>
+      {{end}}
+    </td>
+    <td>
+      {{if .YoutubeTokenDead}}
+        <span class="badge badge-err">Hết hạn — cần nối lại</span>
+      {{else if .YoutubeToken}}
+        <span class="badge badge-ok">✓ Sẵn sàng</span>
+      {{else}}
+        <span class="badge badge-no">Chưa có</span>
+      {{end}}
+      {{if .YoutubeClient}}
+        <a class="btn btn-secondary btn-sm" href="/publishers/youtube/authorize?username={{.Username}}" style="margin-left:4px">
+          {{if or .YoutubeToken .YoutubeTokenDead}}Nối lại{{else}}Nối YouTube{{end}}
+        </a>
+      {{else}}
+        <button type="button" class="btn btn-secondary btn-sm" data-yt-setup style="margin-left:4px">Nối YouTube</button>
+      {{end}}
+    </td>
+    <td>{{if .FbPage}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
+    <td>{{if .Instagram}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
+    <td>{{if .Threads}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
     <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
   </tr>
   {{end}}
+  </tbody>
 </table>
 </div>
-
-<h2>Kết nối Facebook · Instagram · Threads (Meta)</h2>
-<ol>
-  <li>Tạo app miễn phí tại <code>developers.facebook.com</code> → thêm sản phẩm <b>Facebook Login</b>, <b>Instagram Graph API</b>, <b>Threads API</b>.</li>
-  <li>Lấy <b>Page access token</b> (quyền <code>pages_manage_posts</code>, <code>instagram_content_publish</code>) và <b>Threads token</b>.</li>
-  <li>Dán vào Cài đặt · Hệ thống (mục “Mã &amp; biến cấu hình”): <code>FB_PAGE_ID</code>, <code>META_PAGE_TOKEN</code>, <code>IG_USER_ID</code>, <code>THREADS_USER_ID</code>, <code>THREADS_TOKEN</code>.</li>
-</ol>
-<p class="hint">Facebook: tải video thẳng từ máy, mặc định <b>chưa công khai</b> để bạn duyệt. Instagram Reels: tải thẳng từ máy; API không có nháp nên chỉ đăng công khai khi bật <code>IG_AUTO_PUBLISH=1</code>. Threads: API chỉ nhận video qua link công khai, nên app đăng <b>bài chữ kèm link</b> sản phẩm/video để kéo traffic chéo.</p>
-
-<h2>Kết nối TikTok (làm một lần mỗi tài khoản)</h2>
-<p>Redirect URI phải khai báo y hệt trên developers.tiktok.com: <code>{{.RedirectURI}}</code></p>
-{{if .RedirectLocal}}
-<ol>
-  <li>Bấm <strong>Kết nối TikTok</strong> ở dòng tài khoản → trang TikTok mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng tài khoản creator → <strong>Allow</strong>.</li>
-  <li>TikTok tự chuyển về app này và lưu token — không cần copy gì. Mở app tại đúng địa chỉ trong Redirect URI (cùng cổng).</li>
-</ol>
-{{else}}
-<ol>
-  <li>Bấm <strong>Kết nối TikTok</strong> ở dòng tài khoản → trang TikTok mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng tài khoản creator → <strong>Allow</strong>.</li>
-  <li>TikTok chuyển về <code>{{.RedirectURI}}</code>; trang đó tự chuyển tiếp về app này và lưu token. Nếu không tự chuyển (app chạy cổng khác 8080), copy <strong>nguyên URL</strong> trên thanh địa chỉ, dán vào ô dưới (trong 15 phút).</li>
-</ol>
-{{if .AnyTiktokClient}}
-<form method="post" action="/publishers/tiktok/connect">
-  <label>Tài khoản
-    <select name="username">{{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}</select>
-  </label>
-  <label>URL sau khi Allow
-    <input type="text" name="redirect" placeholder="{{.RedirectURI}}?code=...&amp;state=..." required style="width:100%">
-  </label>
-  <button type="submit" class="btn">Lưu token</button>
-</form>
 {{end}}
-{{end}}
-<p class="hint">Token chỉ ghi vào file <code>tiktok_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang. Thiếu client key: tạo app tại developers.tiktok.com, rồi nhập Client Key/Secret ở Cài đặt · Hệ thống (mục "Mã & biến cấu hình").</p>
-<p class="hint"><b>Lưu ý trung thực:</b> TikTok chỉ cho đăng qua API khi app của bạn đã được TikTok <b>duyệt (app audit)</b> — chưa duyệt thì kết nối xong vẫn không đăng được. Kể cả khi đã duyệt, app chỉ đăng ở chế độ <b>bản nháp</b>: bạn phải mở TikTok bấm Đăng tay cho từng video.</p>
 
-<h2>Kết nối YouTube (làm một lần mỗi tài khoản)</h2>
-<ol>
-  <li>Bấm <strong>Nối YouTube</strong> ở dòng tài khoản → trang Google mở bằng phiên đã đăng nhập trên trình duyệt → chọn đúng kênh YouTube → <strong>Cho phép</strong>.</li>
-  <li>Google tự chuyển về app này và lưu token — không cần copy gì. Mở app tại <code>{{.AppBase}}</code> (địa chỉ máy local, đúng cổng đang chạy).</li>
-</ol>
-<p class="hint">Chưa có Client ID/Secret? Bấm <strong>Nối YouTube</strong> để xem hướng dẫn tạo (miễn phí) rồi dán vào Cài đặt · Hệ thống (mục “Mã &amp; biến cấu hình”). Token chỉ ghi vào file <code>youtube_token_&lt;username&gt;.json</code> cạnh app, không hiển thị lên trang.</p>
-<p class="hint">Video đăng lên ở chế độ <b>riêng tư</b> trước — bạn xem lại rồi mới cho công khai (đổi ở trang Kể chuyện → mục “Mặc định &amp; tự động”).</p>
+<!-- Interactive Collapsible Setup Guide (Replaces plain text walls) -->
+<details class="interactive-guide-box" open style="margin-top: 28px;">
+  <summary class="guide-accordion-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📖</span>
+      <strong style="font-size:15px">Hướng Dẫn Thiết Lập Từng Nền Tảng (Interactive Wizard)</strong>
+    </div>
+    <span class="hint">Bấm để thu gọn/mở rộng ▼</span>
+  </summary>
 
+  <!-- Tabs Navigation inside Guide -->
+  <div class="guide-tabs-nav">
+    <button type="button" class="guide-tab-btn active" onclick="switchGuideTab('yt')">YouTube OAuth</button>
+    <button type="button" class="guide-tab-btn" onclick="switchGuideTab('tiktok')">TikTok Creator</button>
+    <button type="button" class="guide-tab-btn" onclick="switchGuideTab('meta')">Facebook &amp; Instagram (Meta)</button>
+    <button type="button" class="guide-tab-btn" onclick="switchGuideTab('threads')">Threads API</button>
+  </div>
+
+  <!-- Tab 1: YouTube -->
+  <div id="guide-tab-yt" class="guide-tab-content">
+    <div class="step-card-timeline">
+      <div class="step-timeline-row">
+        <div class="step-circle">1</div>
+        <div class="step-text-body">
+          <b>Tạo OAuth Client ID miễn phí tại Google Cloud Console</b>
+          <p class="hint" style="margin:4px 0">Truy cập <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> → Bật <b>YouTube Data API v3</b> → Tạo OAuth client ID loại <b>Desktop app</b>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">2</div>
+        <div class="step-text-body">
+          <b>Lưu Client ID &amp; Secret vào Cài Đặt Hệ Thống</b>
+          <p class="hint" style="margin:4px 0">Dán vào <code>YOUTUBE_CLIENT_ID</code> và <code>YOUTUBE_CLIENT_SECRET</code> trong <a href="/settings/he-thong">Cài đặt · Hệ thống</a>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">3</div>
+        <div class="step-text-body">
+          <b>Bấm Nối YouTube và Cấp Quyền</b>
+          <p class="hint" style="margin:4px 0">Quay lại đây, bấm <b>Nối YouTube</b> để đăng nhập kênh. Token sẽ được cấp và tự động đồng bộ ngay lập tức!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: TikTok -->
+  <div id="guide-tab-tiktok" class="guide-tab-content" style="display:none">
+    <div class="step-card-timeline">
+      <div class="step-timeline-row">
+        <div class="step-circle">1</div>
+        <div class="step-text-body">
+          <b>Khai báo Redirect URI chuẩn tại TikTok Developer Portal</b>
+          <div class="step-code-box">
+            <span>{{.RedirectURI}}</span>
+            <button type="button" class="btn btn-sm" onclick="navigator.clipboard.writeText('{{.RedirectURI}}');alert('Đã copy Redirect URI!')">Copy URI</button>
+          </div>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">2</div>
+        <div class="step-text-body">
+          <b>Bấm "Kết nối TikTok"</b>
+          <p class="hint" style="margin:4px 0">Đăng nhập tài khoản TikTok Creator trên trình duyệt và bấm <b>Allow</b>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">3</div>
+        <div class="step-text-body">
+          <b>Tự động lưu Token phiên làm việc</b>
+          <p class="hint" style="margin:4px 0">TikTok tự chuyển về app và kích hoạt cổng đăng tự động vào thư mục bản nháp.</p>
+        </div>
+      </div>
+    </div>
+
+    {{if .AnyTiktokClient}}
+    <div style="margin-top:16px;background:var(--bg3);padding:14px;border-radius:10px">
+      <b style="font-size:13px">Dán URL Callback Thủ Công (nếu app chạy cổng khác 8080):</b>
+      <form method="post" action="/publishers/tiktok/connect" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <select name="username" style="width:160px">
+          {{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}
+        </select>
+        <input type="text" name="redirect" placeholder="{{.RedirectURI}}?code=...&amp;state=..." required style="flex:1">
+        <button type="submit" class="btn btn-sm">Lưu token</button>
+      </form>
+    </div>
+    {{end}}
+  </div>
+
+  <!-- Tab 3: Meta (FB & IG) -->
+  <div id="guide-tab-meta" class="guide-tab-content" style="display:none">
+    <div class="step-card-timeline">
+      <div class="step-timeline-row">
+        <div class="step-circle">1</div>
+        <div class="step-text-body">
+          <b>Tạo App tại developers.facebook.com</b>
+          <p class="hint" style="margin:4px 0">Thêm sản phẩm <b>Facebook Login</b> và <b>Instagram Graph API</b>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">2</div>
+        <div class="step-text-body">
+          <b>Lấy Page Access Token &amp; Instagram Business ID</b>
+          <p class="hint" style="margin:4px 0">Cấp quyền <code>pages_manage_posts</code> và <code>instagram_content_publish</code>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">3</div>
+        <div class="step-text-body">
+          <b>Dán vào Cài Đặt Hệ Thống</b>
+          <p class="hint" style="margin:4px 0">Dán vào các biến <code>FB_PAGE_ID</code>, <code>META_PAGE_TOKEN</code>, <code>IG_USER_ID</code> trong Cài đặt.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Threads -->
+  <div id="guide-tab-threads" class="guide-tab-content" style="display:none">
+    <div class="step-card-timeline">
+      <div class="step-timeline-row">
+        <div class="step-circle">1</div>
+        <div class="step-text-body">
+          <b>Bật Threads API trong Meta App</b>
+          <p class="hint" style="margin:4px 0">Đăng ký Threads API để lấy <code>THREADS_USER_ID</code> và <code>THREADS_TOKEN</code>.</p>
+        </div>
+      </div>
+      <div class="step-timeline-row">
+        <div class="step-circle">2</div>
+        <div class="step-text-body">
+          <b>Tự động đăng bài viral kèm link kéo traffic chéo</b>
+          <p class="hint" style="margin:4px 0">Hệ thống sẽ đăng các mẩu tin ngắn, review sản phẩm hấp dẫn kèm link giỏ hàng hoặc video Shorts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+<!-- Setup YouTube Modal -->
 <div class="modal-backdrop" id="yt-setup-modal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" style="max-width:30rem">
-    <h3>Lấy Client ID/Secret YouTube (miễn phí, làm một lần)</h3>
-    <ol>
-      <li>Vào <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> → tạo project mới (hoặc chọn project cũ).</li>
-      <li>“API &amp; Dịch vụ” → “Thư viện” → tìm <b>YouTube Data API v3</b> → <b>Bật</b>.</li>
-      <li>“Màn hình đồng ý OAuth” → loại <b>Ngoài</b> → điền tên app → Lưu.</li>
-      <li>“Thông tin xác thực” → “Tạo thông tin xác thực” → <b>Mã khách hàng OAuth</b> → loại ứng dụng <b>Ứng dụng dành cho máy tính</b> → Tạo.</li>
-      <li>Copy <b>Client ID</b> và <b>Client Secret</b> → dán vào Cài đặt · Hệ thống → “Mã &amp; biến cấu hình” (<code>YOUTUBE_CLIENT_ID</code>, <code>YOUTUBE_CLIENT_SECRET</code>) → quay lại đây bấm <b>Nối YouTube</b>.</li>
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:32rem">
+    <h3>Lấy Client ID/Secret YouTube (Miễn phí, 1 lần duy nhất)</h3>
+    <ol style="line-height:1.6;font-size:13px;padding-left:18px">
+      <li>Vào <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> → Tạo project mới.</li>
+      <li>Vào <b>API &amp; Dịch vụ</b> → <b>Thư viện</b> → Bật <b>YouTube Data API v3</b>.</li>
+      <li>Vào <b>Màn hình đồng ý OAuth</b> → Loại <b>Ngoài</b> → Điền tên app → Lưu.</li>
+      <li>Vào <b>Thông tin xác thực</b> → <b>Tạo thông tin xác thực</b> → <b>Mã khách hàng OAuth</b> → Loại <b>Ứng dụng dành cho máy tính (Desktop)</b> → Tạo.</li>
+      <li>Copy <b>Client ID</b> và <b>Client Secret</b> → Dán vào Cài đặt · Hệ thống (<code>YOUTUBE_CLIENT_ID</code>, <code>YOUTUBE_CLIENT_SECRET</code>) → Quay lại đây bấm <b>Nối YouTube</b>.</li>
     </ol>
-    <p class="note">Lưu ý: app đang ở chế độ Thử nghiệm → Google thu hồi quyền sau <b>7 ngày</b>. Để dùng lâu dài: vào “Màn hình đồng ý OAuth” → <b>Xuất bản ứng dụng</b>.</p>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="yt-setup-close">Đã hiểu</button>
+    <div class="modal-actions" style="margin-top:16px">
+      <button type="button" class="btn" id="yt-setup-close">Đã hiểu &amp; Đóng</button>
     </div>
   </div>
 </div>
+
 <script>
+function switchGuideTab(tab) {
+  var tabs = ['yt', 'tiktok', 'meta', 'threads'];
+  tabs.forEach(function(t) {
+    var el = document.getElementById('guide-tab-' + t);
+    if (el) el.style.display = (t === tab) ? 'block' : 'none';
+  });
+  var btns = document.querySelectorAll('.guide-tab-btn');
+  btns.forEach(function(b, idx) {
+    if (tabs[idx] === tab) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+}
+
 (function () {
   var modal = document.getElementById('yt-setup-modal');
   function open(e) { if (e) e.preventDefault(); modal.hidden = false; }
   function close() { modal.hidden = true; }
   document.querySelectorAll('[data-yt-setup]').forEach(function (b) { b.addEventListener('click', open); });
-  document.getElementById('yt-setup-close').addEventListener('click', close);
-  modal.addEventListener('click', function (ev) { if (ev.target === modal) close(); });
+  var closeBtn = document.getElementById('yt-setup-close');
+  if (closeBtn) closeBtn.addEventListener('click', close);
 })();
 </script>
-{{else}}
-<p class="empty">Chưa có tài khoản nào để hiển thị.</p>
-{{end}}
 {{end}}

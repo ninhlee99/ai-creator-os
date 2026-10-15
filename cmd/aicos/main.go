@@ -53,6 +53,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 // version mặc định khi build thường; build phát hành truyền
@@ -576,6 +577,20 @@ func main() {
 				autopilotArmed = true
 			}
 		}
+	}
+
+	// -- 6e. Web AI Hub (Claude, ChatGPT, Gemini, Muse AI).
+	if webAIStore, err := webai.NewStore(filepath.Join(*dataDir, "webai.db")); err != nil {
+		log.Printf("webai: init failed: %v", err)
+	} else {
+		defer func() {
+			if err := webAIStore.Close(); err != nil {
+				log.Printf("webai close: %v", err)
+			}
+		}()
+		srv.WebAI = webAIStore
+		srv.WebAIRelay = webai.NewProxyRelay(webAIStore)
+		log.Printf("webai: ready (%d accounts connected)", webAIStore.CountConnected())
 	}
 
 	// -- 7. network daemon ---------------------------------------------------

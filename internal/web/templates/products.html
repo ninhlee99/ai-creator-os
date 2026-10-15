@@ -66,7 +66,7 @@
 <div class="table-wrap">
 <table>
   <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
-      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Trạng thái</th></tr>
+      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Shelf}}
   <tr>
     <td><strong>{{.Title}}</strong><br><span style="color:var(--muted);font-size:12px">{{.PlatformPID}}</span></td>
@@ -76,6 +76,9 @@
       <span style="color:var(--muted)">({{printf "%.0f" (pct .CommissionRate)}}%)</span></td>
     <td>{{printf "%.2f" .Score}}</td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
+    <td style="text-align:right">
+      <a href="/studio?product_name={{.Title}}#tab-ad-creative" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;white-space:nowrap">🎬 Dựng video AI</a>
+    </td>
   </tr>
   {{end}}
 </table>
@@ -466,7 +469,7 @@ function atOrderSync() {
 <h2>Sản phẩm tốt nhất trong kho</h2>
 <div class="table-wrap">
 <table>
-  <tr><th>Sản phẩm</th><th>Shop</th><th>Giá</th><th>Hoa hồng</th><th>Đã bán</th><th>Đánh giá</th><th>Nguồn</th><th>Ảnh</th></tr>
+  <tr><th>Sản phẩm</th><th>Shop</th><th>Giá</th><th>Hoa hồng</th><th>Đã bán</th><th>Đánh giá</th><th>Nguồn</th><th>Ảnh</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Results}}
   <tr>
     <td><strong>{{.Title}}</strong>{{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener">xem sản phẩm ↗</a>{{end}}</td>
@@ -477,6 +480,9 @@ function atOrderSync() {
     <td>{{if .Rating}}{{printf "%.1f" .Rating}}★{{else}}—{{end}}</td>
     <td><span class="badge badge-draft">{{.Source}}</span></td>
     <td>{{len .ImageURLs}}</td>
+    <td style="text-align:right">
+      <a href="/studio?product_name={{.Title}}{{if .ProductURL}}&aff_link={{.ProductURL}}{{end}}#tab-ad-creative" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;white-space:nowrap">🎬 Dựng video AI</a>
+    </td>
   </tr>
   {{end}}
 </table>

@@ -18,6 +18,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
+	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
 
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
@@ -57,6 +58,19 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
+	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
+
+	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
+	mux.HandleFunc("GET /web-ai", s.handleWebAI)
+	mux.HandleFunc("POST /web-ai/connect", s.handleWebAIConnect)
+	mux.HandleFunc("POST /web-ai/disconnect", s.handleWebAIDisconnect)
+	mux.HandleFunc("POST /web-ai/accounts/add", s.handleWebAIAccountAdd)
+	mux.HandleFunc("POST /web-ai/accounts/delete", s.handleWebAIAccountDelete)
+	mux.HandleFunc("POST /web-ai/accounts/test", s.handleWebAIAccountTest)
+	mux.HandleFunc("POST /web-ai/accounts/reset-cooldown", s.handleWebAIAccountResetCooldown)
+	mux.HandleFunc("POST /web-ai/prompt-generate", s.handleWebAIPromptGenerate)
+	mux.HandleFunc("GET /web-ai/proxy/", s.handleWebAIProxy)
+
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
@@ -288,6 +302,13 @@ func (s *Server) handleStaticJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	setAssetCache(w, r)
 	_, _ = w.Write(staticJS)
+}
+
+// handleStaticPreviewAudio serves the bundled sample preview music.
+func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "audio/mpeg")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, _ = w.Write(staticPreviewAudio)
 }
 
 // --------------------------------------------------------------- dashboard

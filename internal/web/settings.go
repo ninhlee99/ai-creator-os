@@ -41,6 +41,10 @@ var envLabels = map[string][2]string{
 	"GEMINI_TEXT_MODEL":       {"Model viết chữ (tùy chọn)", "Google Gemini"},
 	"GEMINI_IMAGE_MODEL":      {"Model tạo ảnh (tùy chọn)", "Google Gemini"},
 	"GEMINI_TTS_MODEL":        {"Model giọng đọc (tùy chọn)", "Google Gemini"},
+	"OPENAI_API_KEY":          {"Key OpenAI (ChatGPT / GPT-4o)", "OpenAI & Claude & AI Khác"},
+	"ANTHROPIC_API_KEY":       {"Key Anthropic (Claude 3.5 Sonnet)", "OpenAI & Claude & AI Khác"},
+	"ELEVENLABS_API_KEY":      {"Key ElevenLabs (Giọng đọc siêu thực)", "OpenAI & Claude & AI Khác"},
+	"MUSEAI_API_KEY":          {"Key Muse AI (Video Studio)", "OpenAI & Claude & AI Khác"},
 	"TIKTOK_CLIENT_KEY":       {"Client Key ứng dụng TikTok", "TikTok"},
 	"TIKTOK_CLIENT_SECRET":    {"Client Secret ứng dụng TikTok", "TikTok"},
 	"YOUTUBE_CLIENT_ID":       {"Client ID Google (nối YouTube)", "YouTube"},
@@ -227,9 +231,12 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 			spend = v
 		}
 	}
+	webAIViews, webAIConnected := s.webAIPlatformViews()
 	return map[string]any{
-		"EnvStatus": envs,
-		"EnvSaved":  r.URL.Query().Get("envsaved"),
+		"EnvStatus":      envs,
+		"WebAIPlatforms": webAIViews,
+		"WebAIConnected": webAIConnected,
+		"EnvSaved":       r.URL.Query().Get("envsaved"),
 		"EnvErr":    r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
 		"Ok":        r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
 		"Err":       r.URL.Query().Get("err"),
@@ -395,7 +402,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
-		"TickBeats", "QuotaCircuit", "Sidecars")
+		"TickBeats", "QuotaCircuit", "Sidecars", "WebAIPlatforms", "WebAIConnected")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
@@ -606,6 +613,7 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 // settings table (applied at startup), so they survive restarts.
 var envNames = []string{
 	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL", "GEMINI_TTS_MODEL",
+	"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "MUSEAI_API_KEY",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
 	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY", "YOUTUBE_GOLDEN_HOUR",
@@ -616,6 +624,10 @@ var envNames = []string{
 // finding C3) — hiện dưới tên biến ở trang Cài đặt · Hệ thống.
 var envHelp = map[string]string{
 	"TTS_API_KEY":             "Key Gemini dùng cho giọng đọc (Text-to-Speech). Chưa có thì app dùng giọng đọc miễn phí của máy.",
+	"OPENAI_API_KEY":          "Key OpenAI từ platform.openai.com — Dùng cho kịch bản ChatGPT GPT-4o và sinh ảnh DALL-E.",
+	"ANTHROPIC_API_KEY":       "Key Anthropic từ console.anthropic.com — Dùng cho đạo diễn phân cảnh điện ảnh Claude 3.5 Sonnet.",
+	"ELEVENLABS_API_KEY":      "Key ElevenLabs từ elevenlabs.io — Lồng tiếng voiceover siêu thực đa cảm xúc.",
+	"MUSEAI_API_KEY":          "Key Muse AI từ muse.ai/account — Dùng cho video studio và chuyển động mượt mà.",
 	"TIKTOK_CLIENT_KEY":       "Client Key của app TikTok (tạo ở developers.tiktok.com) — để nối tài khoản TikTok.",
 	"TIKTOK_CLIENT_SECRET":    "Client Secret đi kèm Client Key TikTok.",
 	"YOUTUBE_CLIENT_ID":       "Client ID OAuth Google (loại “Desktop app”) — để bấm “Nối YouTube” ở trang Đa nền tảng.",

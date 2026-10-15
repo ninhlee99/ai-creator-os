@@ -1,0 +1,365 @@
+{{define "title"}}Xưởng Kịch Bản &amp; Prompt — AI Web Hub{{end}}
+{{define "content"}}
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Xưởng Sáng Tạo Kịch Bản &amp; Prompt — AI Web Hub ✍️</h1>
+    <p class="subtitle">Tự động hóa phối hợp sức mạnh của <b>ChatGPT Web</b>, <b>Claude Web</b>, <b>Gemini Web</b> và <b>Muse AI</b> để sản xuất kịch bản bán hàng triệu view, 4 Hook 3s tâm lý học, prompt ảnh 4K và clip motion camera.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary">⚙️ Quản lý tài khoản AI</a>
+    <a href="/studio" class="btn btn-secondary">🎬 Mở Studio AI</a>
+  </div>
+</div>
+
+{{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+
+<div class="card" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div style="flex:1;min-width:280px">
+    <h3 style="margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:6px">💡 Quy trình đã được hợp nhất trực tiếp vào Studio AI</h3>
+    <span class="hint" style="font-size:13px">Mọi công cụ sinh kịch bản AI, Hook 3s tâm lý học và prompt phân cảnh hiện đã được tích hợp sẵn bên trong <b>Studio AI 🎬</b>. Bạn không cần phải mở 2 trang riêng biệt nữa!</span>
+  </div>
+  <a href="/studio#tab-ad-creative" class="btn btn-primary" style="font-size:13px">🎬 Mở Studio AI Dựng Video ↗</a>
+</div>
+
+<!-- Streamlined AI Status Pill Bar -->
+<div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span class="status-pill status-pill-ok"><span class="pulse-dot"></span> {{.ConnectedCount}}/4 AI Sẵn Sàng</span>
+    <span style="font-size:13px;color:var(--text)"><b>Cụm Web AI:</b> ChatGPT Web · Claude Web · Gemini Web · Muse AI</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="hint" style="font-size:12px">Cần thêm tài khoản hoặc đổi cookie?</span>
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm" style="font-size:12px">⚙️ Quản lý trong Cài Đặt ↗️</a>
+  </div>
+</div>
+
+<!-- =========================================================================
+     CREATIVE PRODUCTION COCKPIT
+     ========================================================================= -->
+<div class="webai-cockpit-container" id="cockpit-section" style="margin-top:0">
+  <div class="cockpit-header">
+    <div class="cockpit-title">
+      <h2>⚡ Bộ Điều Phối Sản Xuất Kịch Bản &amp; Prompt 4 AI</h2>
+      <p>Nhập sản phẩm một lần — Hệ thống tự động phân phối thế mạnh từng AI: <b>ChatGPT Web</b> (Kịch bản &amp; Hook 3s), <b>Claude Web</b> (Đạo diễn điện ảnh), <b>Gemini Web</b> (Ảnh 4K Imagen 3) và <b>Muse AI</b> (Video chuyển động camera).</p>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu nhanh:</span>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('polo')">👔 Áo Polo</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('fryer')">🍳 Nồi Chiên</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('serum')">✨ Serum Da</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('headphone')">🎧 Tai Nghe</button>
+    </div>
+  </div>
+
+  <div class="prompt-inputs-grid" style="margin-bottom:20px">
+    <div class="field">
+      <label>Tên sản phẩm <span class="req">*</span></label>
+      <input type="text" id="syn-product-name" placeholder="Ví dụ: Tai Nghe Chống Ồn Sony WH-1000XM5, Áo Polo Lụa Lạnh...">
+    </div>
+    <div class="field">
+      <label>Nhóm ngành hàng</label>
+      <select id="syn-niche">
+        <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
+        <option value="mỹ phẩm & làm đẹp">Mỹ phẩm &amp; Làm đẹp</option>
+        <option value="gia dụng thông minh">Gia dụng thông minh</option>
+        <option value="công nghệ & phụ kiện">Công nghệ &amp; Điện tử</option>
+        <option value="sức khỏe & đời sống">Sức khỏe &amp; Đời sống</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Khung kịch bản chuyển đổi cao</label>
+      <select id="syn-framework">
+        <option value="problem_solution">Đánh trúng nỗi đau &amp; Giải pháp đỉnh cao (PAS)</option>
+        <option value="three_reasons">3 Lý do nhất định phải sở hữu ngay</option>
+        <option value="transformation">Trước &amp; Sau khi sử dụng (Biến hình ngoạn mục)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Điểm nổi bật / Công năng đắt giá</label>
+      <input type="text" id="syn-benefits" placeholder="Ví dụ: Chống ồn chủ động 99%, pin 30h, đệm tai êm ái thoáng khí...">
+    </div>
+    <div class="field">
+      <label>Lời kêu gọi hành động (CTA)</label>
+      <input type="text" id="syn-cta" placeholder="Ví dụ: Bấm ngay vào giỏ hàng hoặc link bên dưới để nhận ưu đãi 40%...">
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:24px">
+    <button type="button" class="btn btn-mega-render" style="max-width:480px;margin:0 auto" onclick="generateMultiAIPrompts()">
+      ✨ Kích Hoạt Cả 4 AI: Sinh Kịch Bản, Ảnh 4K &amp; Clip Motion
+    </button>
+  </div>
+
+  <!-- Results Area with Visual Tabs -->
+  <div id="prompts-result-area" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px">
+    <div class="result-tabs" style="margin-bottom:16px">
+      <button type="button" class="res-tab active" onclick="showPromptSection('hooks')">🎯 4 Biến Thể Hook 3s</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('social')">📱 Bài Đăng Đa Kênh</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản Bán Hàng</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn Claude</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt Ảnh 4K Gemini</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Prompt Video Muse AI</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Lấy Media</button>
+    </div>
+
+    <!-- Section 1: Hook Variants -->
+    <div id="sec-hooks" class="prompt-sec-content">
+      <div class="sec-actions">
+        <b>🎯 4 Biến Thể Hook 3s Giữ Chân Người Xem (Neuromarketing)</b>
+        <span class="hint">Thử nghiệm 4 góc tiếp cận tâm lý để tối đa hóa chỉ số Retention trên TikTok &amp; Shorts</span>
+      </div>
+      <div id="txt-hooks-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:12px"></div>
+    </div>
+
+    <!-- Section 2: Social Posts -->
+    <div id="sec-social" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>📱 Bài Đăng Tối Ưu Tương Tác Theo Từng Kênh (Đã SEO &amp; Gắn Kêu Gọi Hành Động)</b>
+      </div>
+      <div id="txt-social-posts" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:12px"></div>
+    </div>
+
+    <!-- Section 3: ChatGPT Script -->
+    <div id="sec-chatgpt" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>💬 Kịch Bản &amp; Lời Thoại Bán Hàng Chi Tiết</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-chatgpt-prompt')">📋 Sao chép kịch bản</button>
+      </div>
+      <pre class="prompt-box" id="txt-chatgpt-prompt" style="max-height:280px"></pre>
+    </div>
+
+    <!-- Section 4: Claude Director -->
+    <div id="sec-claude" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>🟣 Chỉ Đạo Nghệ Thuật &amp; Phân Cảnh Điện Ảnh (Claude)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-claude-prompt')">📋 Sao chép cho Claude</button>
+      </div>
+      <pre class="prompt-box" id="txt-claude-prompt" style="max-height:280px"></pre>
+    </div>
+
+    <!-- Section 5: Gemini 4K Prompts -->
+    <div id="sec-gemini" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>✨ Bộ Prompt Tạo Ảnh Sản Phẩm 4K (Gemini Imagen 3)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-gemini-prompts')">📋 Sao chép tất cả prompt ảnh</button>
+      </div>
+      <div id="txt-gemini-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
+      <pre class="prompt-box" id="txt-gemini-prompts" style="display:none"></pre>
+    </div>
+
+    <!-- Section 6: Muse AI Motion Prompts -->
+    <div id="sec-museai" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>🎬 Bộ Prompt Tạo Chuyển Động Camera (Muse AI Motion)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-museai-prompts')">📋 Sao chép tất cả prompt video</button>
+      </div>
+      <div id="txt-museai-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
+      <pre class="prompt-box" id="txt-museai-prompts" style="display:none"></pre>
+    </div>
+
+    <!-- Section 7: Media Guides -->
+    <div id="sec-guide" class="prompt-sec-content" style="display:none">
+      <div class="sec-actions">
+        <b>📥 Hướng Dẫn Trích Xuất Media Từ Muse AI &amp; Gemini Về Studio</b>
+      </div>
+      <div id="txt-guides-list" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    <!-- Transfer to Studio Mega Card -->
+    <div class="send-to-studio-card" style="margin-top:24px;background:var(--bg2);border:2px solid var(--accent);border-radius:14px;padding:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;box-shadow:0 6px 20px rgba(37,99,235,0.12)">
+      <div style="flex:1;min-width:280px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">🎬</span>
+          Sẵn sàng đưa vào phòng dựng Studio AI?
+        </div>
+        <p class="hint" style="margin:4px 0 0;font-size:13px">Hệ thống sẽ chuyển toàn bộ kịch bản, lời bình voiceover, prompt media và thông tin sản phẩm sang Studio AI — Tự động điền 100% dữ liệu!</p>
+      </div>
+      <button type="button" class="btn btn-mega-render" style="width:auto;padding:12px 24px" onclick="transferScriptToStudio()">
+        🚀 Chuyển Kịch Bản Sang Studio Dựng Video Ngay ↗️
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+var lastGeneratedPkg = null;
+
+function loadSamplePreset(preset) {
+  var samples = {
+    polo: {
+      name: 'Áo Polo Nam Lụa Lạnh Cao Cấp',
+      niche: 'thời trang/phụ kiện',
+      framework: 'problem_solution',
+      benefits: 'Chất vải lụa băng mát lạnh giảm 3 độ, co giãn 4 chiều, không nhăn xù sau 50 lần giặt',
+      cta: 'Bấm ngay vào giỏ hàng nhận deal giảm 50k hôm nay!'
+    },
+    fryer: {
+      name: 'Nồi Chiên Không Dầu Điện Tử 8L',
+      niche: 'gia dụng thông minh',
+      framework: 'three_reasons',
+      benefits: 'Dung tích khổng lồ chiên gà nguyên con, giảm 90% dầu mỡ thừa, màn hình cảm ứng 1-chạm',
+      cta: 'Mua ngay để nhận trọn bộ khay nướng chống dính miễn phí!'
+    },
+    serum: {
+      name: 'Serum Dưỡng Trắng & Mờ Thâm Nám 7 Ngày',
+      niche: 'mỹ phẩm & làm đẹp',
+      framework: 'transformation',
+      benefits: 'Niacinamide 10% kết hợp Arbutin tinh khiết, da sáng đều màu sau 7 ngày, mờ thâm mụn',
+      cta: 'Bấm link nhận voucher mua 1 tặng 1 trong hôm nay!'
+    },
+    headphone: {
+      name: 'Tai Nghe Chống Ồn Chủ Động Sony WH-1000XM5',
+      niche: 'công nghệ & phụ kiện',
+      framework: 'problem_solution',
+      benefits: 'Chống ồn đỉnh cao cách ly âm thanh môi trường, pin 30 giờ liên tục, đàm thoại AI siêu nét',
+      cta: 'Bấm vào giỏ hàng nhận deal giảm 500k cùng quà tặng bao da!'
+    }
+  };
+  var s = samples[preset];
+  if (!s) return;
+  document.getElementById('syn-product-name').value = s.name;
+  document.getElementById('syn-niche').value = s.niche;
+  document.getElementById('syn-framework').value = s.framework;
+  document.getElementById('syn-benefits').value = s.benefits;
+  document.getElementById('syn-cta').value = s.cta;
+  generateMultiAIPrompts();
+}
+
+function showPromptSection(sec) {
+  document.querySelectorAll('.result-tabs .res-tab').forEach(function(t) { t.classList.remove('active'); });
+  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'museai', 'guide'].forEach(function(s) {
+    var el = document.getElementById('sec-' + s);
+    if (el) el.style.display = (s === sec) ? 'block' : 'none';
+  });
+  if (event && event.target) event.target.classList.add('active');
+}
+
+function copyText(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(function() {
+    window.showToast('Đã sao chép prompt vào bộ nhớ tạm!', true);
+  });
+}
+
+function transferScriptToStudio() {
+  if (!lastGeneratedPkg) {
+    window.location.href = '/studio';
+    return;
+  }
+  var vo = '';
+  (lastGeneratedPkg.scenes || []).forEach(function(sc) {
+    if (sc.voiceover_text) vo += sc.voiceover_text + ' ';
+  });
+  var data = {
+    product_name: lastGeneratedPkg.product_name,
+    niche: lastGeneratedPkg.niche,
+    voiceover_text: vo.trim(),
+    caption: lastGeneratedPkg.caption,
+    cta: lastGeneratedPkg.call_to_action
+  };
+  sessionStorage.setItem('webai_to_studio', JSON.stringify(data));
+  window.location.href = '/studio';
+}
+
+function generateMultiAIPrompts() {
+  var name = document.getElementById('syn-product-name').value;
+  if (!name.trim()) {
+    alert('Vui lòng nhập tên sản phẩm.');
+    return;
+  }
+  var data = new URLSearchParams();
+  data.append('product_name', name);
+  data.append('niche', document.getElementById('syn-niche').value);
+  data.append('framework', document.getElementById('syn-framework').value);
+  data.append('key_benefits', document.getElementById('syn-benefits').value);
+  data.append('cta', document.getElementById('syn-cta').value);
+
+  fetch('/web-ai/prompt-generate', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(pkg) {
+    lastGeneratedPkg = pkg;
+    document.getElementById('txt-chatgpt-prompt').textContent = pkg.chatgpt_prompt;
+    document.getElementById('txt-claude-prompt').textContent = pkg.claude_prompt;
+
+    // Render Hook Variants
+    var hList = document.getElementById('txt-hooks-list');
+    if (hList) {
+      hList.innerHTML = '';
+      (pkg.hook_variants || []).forEach(function(h, idx) {
+        hList.innerHTML += '<div class="hook-variant-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.02)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+            '<span class="badge badge-ok">#' + (idx+1) + ' ' + h.title + '</span>' +
+            '<button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + h.text.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép hook!\', true)">📋 Copy</button>' +
+          '</div>' +
+          '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4">“' + h.text + '”</div>' +
+          '<div class="hint" style="font-size:12px">🎯 <b>Chiến lược:</b> ' + h.angle + '</div>' +
+        '</div>';
+      });
+    }
+
+    // Render Social Posts
+    var sList = document.getElementById('txt-social-posts');
+    if (sList && pkg.platform_posts) {
+      sList.innerHTML = '';
+      for (var pkey in pkg.platform_posts) {
+        var post = pkg.platform_posts[pkey];
+        var fullPost = post.title + '\n\n' + post.caption + '\n\n' + (post.hashtags || []).join(' ');
+        sList.innerHTML += '<div class="social-post-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.02)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+            '<div><span class="badge badge-ok">' + post.platform + '</span> <b>' + post.title + '</b></div>' +
+            '<button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + fullPost.replace(/'/g, "\\'").replace(/\n/g, '\\n') + '\');window.showToast(\'Đã sao chép bài đăng ' + post.platform + '!\', true)">📋 Copy Post</button>' +
+          '</div>' +
+          '<pre class="prompt-box" style="white-space:pre-wrap;font-size:13px;max-height:140px;margin:8px 0">' + fullPost + '</pre>' +
+          '<div class="hint" style="font-size:12px">💡 <b>Mẹo tăng tương tác:</b> ' + post.tip + '</div>' +
+        '</div>';
+      }
+    }
+
+    // Render Guides
+    var gGuide = document.getElementById('txt-guides-list');
+    if (gGuide && pkg.media_retrieval_guides) {
+      gGuide.innerHTML = '';
+      for (var gkey in pkg.media_retrieval_guides) {
+        var gtext = pkg.media_retrieval_guides[gkey];
+        gGuide.innerHTML += '<div class="guide-item-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px">' +
+          '<strong style="text-transform:uppercase;color:var(--accent);display:block;margin-bottom:4px">' + gkey + '</strong>' +
+          '<span>' + gtext + '</span>' +
+        '</div>';
+      }
+    }
+
+    // Render Gemini & Muse AI prompts
+    var gList = document.getElementById('txt-gemini-prompts-list');
+    gList.innerHTML = '';
+    var gAll = '';
+    var mList = document.getElementById('txt-museai-prompts-list');
+    mList.innerHTML = '';
+    var mAll = '';
+
+    (pkg.scenes || []).forEach(function(sc, i) {
+      gAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.gemini_prompt + '\n\n';
+      gList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.gemini_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt ảnh cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.gemini_prompt + '</p></div>';
+
+      mAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.muse_ai_prompt + '\n\n';
+      mList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.muse_ai_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt video cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.muse_ai_prompt + '</p></div>';
+    });
+
+    document.getElementById('txt-gemini-prompts').textContent = gAll;
+    document.getElementById('txt-museai-prompts').textContent = mAll;
+
+    document.getElementById('prompts-result-area').style.display = 'block';
+    window.showToast('Đã kích hoạt cả 4 AI: Kịch bản, 4 Biến thể Hook & Bài đăng đa kênh sẵn sàng!', true);
+    document.getElementById('prompts-result-area').scrollIntoView({ behavior: 'smooth' });
+  })
+  .catch(function(err) {
+    alert('Lỗi tạo prompt: ' + err);
+  });
+}
+</script>
+{{end}}

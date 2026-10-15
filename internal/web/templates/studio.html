@@ -1,118 +1,825 @@
 {{define "title"}}Studio AI — AI Creator OS{{end}}
 {{define "content"}}
-<h1 id="studio-top">Studio AI 🎬</h1>
-<p class="subtitle">Tạo video affiliate: đạo diễn AI viết kịch bản quay → chụp từng ảnh → dựng video → ghép nhạc đang thịnh hành. Bạn chỉ cần nhập tên sản phẩm rồi bấm tạo.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1 id="studio-top">Studio Dàn Dựng Video AI 🎬</h1>
+    <p class="subtitle">Sản xuất video quảng cáo sản phẩm chất lượng cao chuẩn dọc 9:16 (TikTok / Reels / Shorts) hoặc ngang 16:9 với hiệu ứng Ken Burns, Audio Ducking và tăng tốc phần cứng Apple Silicon.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary" title="Quản lý tài khoản Claude, ChatGPT, Gemini, Muse AI">⚙️ Tài khoản Web AI</a>
+    <a href="/studio/trends" class="btn btn-secondary">🎵 Nhạc Việt hot TikTok 🇻🇳</a>
+    <a href="/studio/jobs" class="btn btn-secondary">📂 Hàng đợi video ({{if .ActiveJobs}}{{.ActiveJobs}} đang dựng · {{end}}{{.JobCount}})</a>
+  </div>
+</div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-{{if not .MediaGenOK}}<p class="notice notice-warn">Chưa có Gemini key — Studio dựng bằng <b>ảnh bạn tải lên</b> (bắt buộc ít nhất 1 ảnh sản phẩm). <a href="/settings/nha-cung-cap">Thêm key miễn phí</a> để AI tự chụp ảnh người mẫu dùng sản phẩm.</p>{{end}}
-<p class="hint">
-  <a href="/studio/jobs">Video đã tạo{{if .ActiveJobs}} ({{.ActiveJobs}} đang dựng){{else if .JobCount}} ({{.JobCount}}){{end}}</a>
-  · <a href="/studio/trends">Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — đứng đầu: {{.TopSound}}{{end}}{{end}}</a>
-</p>
-
-<h2>Tạo video affiliate</h2>
-<div class="form-card">
-<form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="studio-form">
-  <div class="field">
-    <label>Tên sản phẩm <span class="req">*</span></label>
-    <input type="text" name="product_name" required placeholder="Ví dụ: Túi kem quilted">
-    <div class="hint">Chỉ cần nhập tên sản phẩm — AI tự viết kịch bản và chọn cảnh quay.</div>
-  </div>
-  <div class="field">
-    <label>Nhóm sản phẩm</label>
-    <select name="niche">
-      <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
-      <option value="mỹ phẩm">Mỹ phẩm</option>
-      <option value="gia dụng">Gia dụng</option>
-      <option value="công nghệ">Công nghệ</option>
-      <option value="khác">Khác</option>
-    </select>
-  </div>
-  <div class="field">
-    <label>Ảnh người mẫu</label>
-    <div class="file-pick">
-      <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
-        <input type="file" name="model_photo" accept="image/*">
-      </label>
-      <span class="file-name">Chưa chọn ảnh</span>
-    </div>
-    <div class="hint">AI giữ đúng khuôn mặt này trong mọi ảnh của video. Để trống nếu muốn AI tự tạo người mẫu.</div>
-  </div>
-  <div class="field">
-    <label>Ảnh sản phẩm</label>
-    <div class="file-pick">
-      <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
-        <input type="file" name="product_photo" accept="image/*">
-      </label>
-      <span class="file-name">Chưa chọn ảnh</span>
-    </div>
-    <div class="hint">AI giữ đúng sản phẩm này (màu, kiểu dáng) trong mọi cảnh. Để trống nếu chưa có ảnh.</div>
-  </div>
-  <div class="field">
-    <label>Ảnh thêm (không bắt buộc, tối đa 6)</label>
-    <div class="file-pick">
-      <label class="btn btn-secondary btn-sm">📁 Chọn nhiều ảnh…
-        <input type="file" name="extra_photos" accept="image/*" multiple>
-      </label>
-      <span class="file-name">Chưa chọn ảnh</span>
-    </div>
-    <div class="hint">Góc khác, cận chi tiết, ảnh khách dùng thật… Chưa có Gemini key thì video dựng từ cả bộ ảnh này — càng nhiều ảnh khác nhau, video càng đỡ lặp.</div>
-  </div>
-  <div class="field">
-    <label>Chọn bài nhạc đang thịnh hành</label>
-    <select id="trend-pick" onchange="pickTrend(this)">
-      <option value="">— Không chọn —</option>
-      {{range .Sounds}}
-      <option value="{{.Title}}|{{.Artist}}">#{{.Rank}} {{.Artist}} – {{.Title}}</option>
-      {{end}}
-    </select>
-    <input type="hidden" name="music_title" id="music_title">
-    <input type="hidden" name="music_artist" id="music_artist">
-    <div class="hint">Chỉ để ghi tên bài — cần tải file nhạc lên ở ô dưới (TikTok không cho tải thẳng).</div>
-  </div>
-  <div class="field">
-    <label>File nhạc (mp3/m4a)</label>
-    <div class="file-pick">
-      <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
-        <input type="file" name="music_file" accept="audio/*">
-      </label>
-      <span class="file-name">Chưa chọn file</span>
-    </div>
-  </div>
-  <details class="advanced">
-    <summary>⚙️ Tùy chọn nâng cao (kiểu video, thời lượng, nhịp nhạc, link nhạc)</summary>
-    <div class="field">
-      <label>Kiểu video</label>
-      <select name="mode">
-        <option value="photo">Ảnh giật theo nhịp nhạc — 3–5 ảnh (khuyên dùng)</option>
-        <option value="shots">Nhiều cảnh nối nhau (ảnh động từng cảnh)</option>
-      </select>
-      <div class="hint">Kiểu giật theo nhịp: 3–5 ảnh người mẫu dùng sản phẩm thật, phóng to nảy + rung theo từng nhịp nhạc, cắt cứng giữa các ảnh. Không chữ, không lời thoại — đúng định dạng bán hàng thời trang.</div>
-    </div>
-    <div class="field">
-      <label>Thời lượng (giây)</label>
-      <input type="number" name="seconds" value="30" min="10" max="120">
-      <div class="hint">30 giây là chuẩn cho video affiliate.</div>
-    </div>
-    <div class="field">
-      <label>Nhịp nhạc (BPM)</label>
-      <input type="number" name="bpm" value="120" min="60" max="200">
-      <div class="hint">Nhạc thịnh hành TikTok thường 100–130 BPM. Cứ để 120 nếu không chắc.</div>
-    </div>
-    <div class="field">
-      <label>Link file nhạc trực tiếp</label>
-      <input type="text" name="music_url" placeholder="https://…/audio.m4a">
-      <div class="hint">Dùng khi không tải file lên: dán link tải thẳng file mp3/m4a.</div>
-    </div>
-    <div class="field">
-      <label>Bắt đầu nhạc từ giây thứ</label>
-      <input type="number" name="music_start" value="0" min="0" step="1">
-      <div class="hint">Đặt ví dụ 15 nếu muốn video bắt đầu ngay đoạn điệp khúc.</div>
-    </div>
-  </details>
-  <button type="submit" class="btn">🎬 Tạo video affiliate</button>
-</form>
+<!-- Studio Navigation Tabs (Đồng nhất ngôn ngữ thiết kế giữa các tab) -->
+<div class="studio-tabs" style="margin-bottom: 24px;">
+  <a href="#tab-ad-creative" id="tab-btn-creative" class="active" onclick="switchStudioTab('creative')">🚀 Video Quảng Cáo Web AI (Đầy đủ kịch bản &amp; phân cảnh)</a>
+  <a href="#tab-quick-affiliate" id="tab-btn-quick" onclick="switchStudioTab('quick')">📸 Video Beat-Bounce Nhanh (Ảnh chụp + Nhạc giật theo beat)</a>
+  <a href="/studio/trends">🎵 Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — Top: {{.TopSound}}{{end}}{{end}}</a>
 </div>
 
+<!-- =========================================================================
+     TAB 1: High Quality Web AI Product Ad Creative (2-Column Split Workbench)
+     ========================================================================= -->
+<div id="panel-creative">
+  <!-- Visual Step Flow Indicator -->
+  <div class="studio-steps-flow" style="margin-bottom: 24px;">
+    <div class="step-item">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <b>Sản phẩm</b>
+        <span>Thông tin &amp; tính năng</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <b>Kịch bản &amp; Prompts</b>
+        <span>ChatGPT + Claude</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <b>Tài sản Media</b>
+        <span>Muse AI + Gemini</span>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <b>Hòa âm &amp; Dựng</b>
+        <span>TTS + Nhạc + Ducking</span>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
+    <div class="studio-workbench-split">
+      <!-- LEFT COLUMN: Form Controls & Media Workbench (60%) -->
+      <div class="studio-controls-col">
+        
+        <!-- Section 1: Product Info -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">📦</span> 1. Thông tin sản phẩm &amp; Kịch bản
+          </h3>
+          <div class="grid2">
+            <div class="field">
+              <label>Tên sản phẩm <span class="req">*</span></label>
+              <input type="text" name="product_name" id="cr-product-name" required placeholder="Ví dụ: Nồi chiên không dầu 8L, Áo polo lụa lạnh..." oninput="updateMockupPreview('cr')">
+            </div>
+            <div class="field">
+              <label>Nhóm ngành hàng</label>
+              <select name="niche" id="cr-niche" onchange="updateMockupPreview('cr')">
+                <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
+                <option value="mỹ phẩm">Mỹ phẩm &amp; Làm đẹp</option>
+                <option value="gia dụng">Gia dụng thông minh</option>
+                <option value="công nghệ">Công nghệ &amp; Điện tử</option>
+                <option value="khác">Khác</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Link Affiliate / Giỏ hàng</label>
+            <input type="url" name="aff_link" placeholder="https://go.isclix.com/deep_link/... hoặc link shopee/tiktok shop">
+            <div class="hint">Hệ thống tự động ghim link này vào caption khi xuất bản hoặc sao chép.</div>
+          </div>
+
+          <!-- Quick Prompt Assistant Bar -->
+          <div style="background:var(--bg3);padding:14px;border-radius:12px;margin-top:14px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div>
+                <b>⚡ Trợ lý Prompt Web AI:</b>
+                <span class="hint" style="display:inline;margin-left:6px">Tạo ngay kịch bản cho Claude/ChatGPT và prompt cho Gemini &amp; Muse AI</span>
+              </div>
+              <button type="button" class="btn btn-sm" onclick="quickGeneratePrompts()">✨ Sinh Kịch Bản Ngay</button>
+            </div>
+            <div id="quick-prompt-result" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              <div class="hint" style="margin-bottom:6px"><b>Đã tạo xong prompt!</b> Bấm để sao chép nhanh hoặc mở Web AI Hub:</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('chatgpt')">📋 Copy ChatGPT</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('claude')">📋 Copy Claude</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('gemini')">📋 Copy Prompt Ảnh</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('museai')">📋 Copy Prompt Video</button>
+                <a href="/web-ai" target="_blank" class="btn btn-secondary btn-sm">🌐 Mở Web AI Hub ↗️</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Media Assets -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🎬</span> 2. Tài sản Media (Video Clips &amp; Ảnh 4K)
+          </h3>
+          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Tận dụng video chuyển động từ <b>Muse AI</b> hoặc ảnh 4K từ <b>Gemini Imagen 3</b> (không tốn phí API). Tải file lên hoặc dán link CDN để tự động tải về.</p>
+
+          <div class="field">
+            <label>Video Clips (Tối đa 8 clips MP4 từ Muse AI hoặc quay thật)</label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm">📁 Chọn nhiều video clip…
+                <input type="file" name="clip_files" accept="video/mp4,video/quicktime,video/webm" multiple onchange="onClipsPicked(this)">
+              </label>
+              <span class="file-name" id="clip-file-count">Chưa chọn clip</span>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:8px">
+            <label>Hoặc dán URL Video từ Muse AI / CDN <span class="hint">— mỗi dòng một link .mp4 (tự động tải)</span></label>
+            <textarea name="clip_urls" id="cr-clip-urls" rows="2" placeholder="https://cdn.muse.ai/.../video.mp4&#10;https://..."></textarea>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label>Ảnh sản phẩm chính (Gemini Imagen 3 hoặc ảnh chụp)</label>
+              <div class="file-pick">
+                <label class="btn btn-secondary btn-sm">📁 Chọn ảnh sản phẩm…
+                  <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
+                </label>
+                <span class="file-name" id="prod-photo-label-cr">Chưa chọn ảnh</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Ảnh người mẫu (Đồng nhất khuôn mặt)</label>
+              <div class="file-pick">
+                <label class="btn btn-secondary btn-sm">📁 Chọn ảnh mẫu…
+                  <input type="file" name="model_photo" accept="image/*">
+                </label>
+                <span class="file-name">Chưa chọn ảnh</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Ảnh phụ / Cận cảnh chi tiết (Tối đa 8 ảnh Ken Burns)</label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh phụ…
+                <input type="file" name="extra_photos" accept="image/*" multiple>
+              </label>
+              <span class="file-name">Chưa chọn ảnh</span>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:8px">
+            <label>Hoặc dán URL Ảnh Sản Phẩm từ Gemini Imagen 3 / Web CDN <span class="hint">— mỗi dòng một link ảnh</span></label>
+            <textarea name="photo_urls" id="cr-photo-urls" rows="2" placeholder="https://lh3.googleusercontent.com/...&#10;https://..."></textarea>
+          </div>
+        </div>
+
+        <!-- Section 3: Voiceover & Audio Engine -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🎙️</span> 3. Lồng tiếng (Voiceover) &amp; Âm nhạc
+          </h3>
+          <div class="field">
+            <label>Kịch bản lời đọc Voiceover <span class="hint">— AI tự động đọc tiếng Việt truyền cảm nếu chưa có thu âm</span></label>
+            <textarea name="voiceover_text" id="cr-voiceover-text" rows="3" placeholder="Nhập lời bình bán hàng... Nếu không tải file âm thanh, AI TTS sẽ tự động lồng tiếng đọc đoạn này!" oninput="updateMockupPreview('cr')"></textarea>
+            <div class="hint" style="color:var(--accent);margin-top:4px">🎙️ Tự động giảm nhạc nền 8dB (Audio Ducking) khi có giọng đọc + chuẩn hóa EBU R128 (-14 LUFS).</div>
+          </div>
+
+          <div class="field">
+            <label>Hoặc tải lên file âm thanh giọng đọc có sẵn (mp3/m4a/wav)</label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm">📁 Chọn file voiceover…
+                <input type="file" name="voiceover_file" accept="audio/*">
+              </label>
+              <span class="file-name">Chưa chọn file</span>
+            </div>
+          </div>
+
+          <!-- Music Selection -->
+          <div class="field">
+            <label>Chọn bài nhạc nền thịnh hành</label>
+            <select id="creative-trend-pick" onchange="pickStudioTrend('cr', this)">
+              <option value="">— Không chọn nhạc nền —</option>
+              {{range .Sounds}}
+              <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
+              {{end}}
+            </select>
+            <input type="hidden" name="music_title" id="cr_music_title">
+            <input type="hidden" name="music_artist" id="cr_music_artist">
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label>Hoặc tải lên file nhạc riêng (mp3/m4a)</label>
+              <div class="file-pick">
+                <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
+                  <input type="file" name="music_file" accept="audio/*" onchange="onStudioMusicFilePicked('cr', this)">
+                </label>
+                <span class="file-name" id="cr-music-file-label">Chưa chọn file</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Bắt đầu nhạc từ giây thứ</label>
+              <input type="number" name="music_start" value="0" min="0" step="1">
+            </div>
+          </div>
+
+          <!-- Audio Preview Player Widget -->
+          <div class="audio-preview-card" id="cr-audio-preview" data-url="/static/preview.mp3">
+            <div class="audio-preview-header">
+              <div class="audio-preview-left">
+                <button type="button" class="btn-audio-play" id="cr-audio-play-btn" onclick="toggleAudioPreview('cr')" title="Nghe thử bài nhạc">
+                  <span id="cr-audio-icon">▶</span>
+                </button>
+                <div class="audio-preview-meta">
+                  <div class="audio-preview-title" id="cr-audio-title">Chưa chọn nhạc nền</div>
+                  <div class="audio-preview-sub" id="cr-audio-sub">Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp</div>
+                </div>
+              </div>
+              <div class="audio-waveform-bars" id="cr-audio-bars">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="audio-preview-timeline">
+              <div class="audio-preview-progress" id="cr-audio-progress"></div>
+            </div>
+          </div>
+
+          <details class="advanced" style="margin-top:14px">
+            <summary>⚙️ Tùy chọn nâng cao (Tỉ lệ khung hình, thời lượng, chú thích)</summary>
+            <div class="grid2" style="margin-top:10px">
+              <div class="field">
+                <label>Tỉ lệ khung hình</label>
+                <select name="aspect_ratio" id="cr-aspect-ratio" onchange="updateMockupPreview('cr')">
+                  <option value="9:16">Dọc 9:16 (TikTok, Reels, YouTube Shorts) — Chuẩn</option>
+                  <option value="16:9">Ngang 16:9 (YouTube chuẩn)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Thời lượng mong muốn (giây)</label>
+                <input type="number" name="seconds" id="cr-seconds" value="30" min="10" max="120" oninput="updateMockupPreview('cr')">
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label>Nhịp điệu dựng (BPM)</label>
+                <input type="number" name="bpm" value="120" min="60" max="200">
+                <div class="hint">Chuyển cảnh theo nhịp beat âm nhạc</div>
+              </div>
+              <div class="field">
+                <label>Chế độ dựng</label>
+                <select name="mode">
+                  <option value="story">Kể chuyện cảm xúc + Giới thiệu</option>
+                  <option value="direct">Giới thiệu sản phẩm trực diện</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>Tiêu đề / Chú thích cố định trên video (Fixed Caption)</label>
+              <input type="text" name="fixed_caption" id="cr-caption" placeholder="Ví dụ: SALE 50% DUY NHẤT HÔM NAY" oninput="updateMockupPreview('cr')">
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Interactive Smartphone Mockup & Action Bar (40%) -->
+      <div class="studio-preview-col">
+        <div class="phone-mockup-frame">
+          <div class="phone-dynamic-island"></div>
+          <div class="phone-screen-inner" id="cr-mockup-screen-bg">
+            <div class="phone-badge-top">
+              <span id="cr-mockup-aspect-pill">📱 9:16 (1080x1920)</span>
+              <span>60 FPS</span>
+            </div>
+
+            <div class="phone-preview-center">
+              <div class="phone-hook-tag" id="cr-mockup-hook-tag">🔥 ĐỪNG BỎ LỠ DEAL HỜI</div>
+              <div class="phone-product-name-preview" id="cr-mockup-product-name">Video Quảng Cáo Sản Phẩm</div>
+              <div class="hint" style="color:#cbd5e1;font-size:12px" id="cr-mockup-niche-tag">Thời trang / Phụ kiện</div>
+              
+              <!-- Beat Waveform Visualizer -->
+              <div class="phone-waveform-box">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Audio Ducking -8dB • LUFS -14</span>
+            </div>
+
+            <div class="phone-bottom-overlay">
+              <div style="font-weight:700;margin-bottom:2px" id="cr-mockup-caption-preview">🔥 Ưu đãi số lượng có hạn</div>
+              <div style="font-size:11px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="cr-mockup-vo-snippet">AI Voiceover: Tự động lồng tiếng tiếng Việt truyền cảm...</div>
+              <div class="phone-specs-pill">
+                <span id="cr-mockup-duration">⏱️ 30s</span>
+                <span>⚡ GPU VideoToolbox</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mockup-render-action-card">
+          <button type="submit" class="btn-mega-render" id="btn-submit-render-cr">
+            🚀 Bắt Đầu Dựng Video Chất Lượng Cao
+          </button>
+          <div class="hint" style="text-align:center;margin-top:8px;font-size:12px">
+            Tự động tăng tốc phần cứng GPU • Chuẩn Full HD 1080p sắc nét
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- =========================================================================
+     TAB 2: Quick Beat-Bounce Video (Đồng nhất ngôn ngữ thiết kế 2 cột với Tab 1)
+     ========================================================================= -->
+<div id="panel-quick" style="display:none">
+  <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="quick-affiliate-form">
+    <div class="studio-workbench-split">
+      <!-- LEFT COLUMN: Form Controls (60%) -->
+      <div class="studio-controls-col">
+        
+        <!-- Section 1: Product Info & Photos -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">📸</span> 1. Sản phẩm &amp; Ảnh chụp
+          </h3>
+          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Tạo nhanh video ngắn giật theo beat âm nhạc chỉ từ ảnh chụp có sẵn (10 giây hoàn thành).</p>
+          
+          <div class="grid2">
+            <div class="field">
+              <label>Tên sản phẩm <span class="req">*</span></label>
+              <input type="text" name="product_name" id="qk-product-name" required placeholder="Ví dụ: Giày sneaker trắng nam nữ..." oninput="updateMockupPreview('qk')">
+            </div>
+            <div class="field">
+              <label>Nhóm ngành hàng</label>
+              <input type="text" name="niche" id="qk-niche" placeholder="thời trang" oninput="updateMockupPreview('qk')">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Ảnh sản phẩm chính <span class="req">*</span></label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh sản phẩm…
+                <input type="file" name="product_photo" accept="image/*" required onchange="onProductPhotoPicked(this, 'qk')">
+              </label>
+              <span class="file-name" id="prod-photo-label-qk">Chưa chọn ảnh</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Ảnh phụ / Cận cảnh (Tối đa 4 ảnh ghép beat chuyển cảnh)</label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh phụ…
+                <input type="file" name="extra_photos" accept="image/*" multiple>
+              </label>
+              <span class="file-name">Chưa chọn ảnh</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Beat Music & Audio Preview -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🎵</span> 2. Âm nhạc giật theo Beat &amp; Trình nghe thử
+          </h3>
+          
+          <div class="field">
+            <label>Chọn bài nhạc nền thịnh hành</label>
+            <select id="quick-trend-pick" onchange="pickStudioTrend('qk', this)">
+              <option value="">— Không chọn nhạc nền —</option>
+              {{range .Sounds}}
+              <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
+              {{end}}
+            </select>
+            <input type="hidden" name="music_title" id="qk_music_title">
+            <input type="hidden" name="music_artist" id="qk_music_artist">
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label>Hoặc tải lên file nhạc riêng (mp3/m4a)</label>
+              <div class="file-pick">
+                <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
+                  <input type="file" name="music_file" accept="audio/*" onchange="onStudioMusicFilePicked('qk', this)">
+                </label>
+                <span class="file-name" id="qk-music-file-label">Chưa chọn file</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Bắt đầu nhạc từ giây thứ</label>
+              <input type="number" name="music_start" value="0" min="0" step="1">
+            </div>
+          </div>
+
+          <!-- Audio Preview Player Widget for Tab 2 -->
+          <div class="audio-preview-card" id="qk-audio-preview" data-url="/static/preview.mp3">
+            <div class="audio-preview-header">
+              <div class="audio-preview-left">
+                <button type="button" class="btn-audio-play" id="qk-audio-play-btn" onclick="toggleAudioPreview('qk')" title="Nghe thử bài nhạc">
+                  <span id="qk-audio-icon">▶</span>
+                </button>
+                <div class="audio-preview-meta">
+                  <div class="audio-preview-title" id="qk-audio-title">Chưa chọn nhạc nền</div>
+                  <div class="audio-preview-sub" id="qk-audio-sub">Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp</div>
+                </div>
+              </div>
+              <div class="audio-waveform-bars" id="qk-audio-bars">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="audio-preview-timeline">
+              <div class="audio-preview-progress" id="qk-audio-progress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Format & Timing -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">⚙️</span> 3. Định dạng &amp; Thời lượng
+          </h3>
+          <div class="grid2">
+            <div class="field">
+              <label>Tỉ lệ</label>
+              <select name="aspect_ratio" id="qk-aspect-ratio" onchange="updateMockupPreview('qk')">
+                <option value="9:16">Dọc 9:16 (Shorts / TikTok)</option>
+                <option value="16:9">Ngang 16:9 (YouTube)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Thời lượng (giây)</label>
+              <input type="number" name="seconds" id="qk-seconds" value="20" min="10" max="60" oninput="updateMockupPreview('qk')">
+            </div>
+          </div>
+          <div class="field">
+            <label>Nhịp điệu giật beat (BPM)</label>
+            <input type="number" name="bpm" value="128" min="60" max="200">
+            <div class="hint">Ảnh tự động phóng to thu nhỏ nhịp nhàng theo tiếng trống</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Smartphone Mockup & Action Bar (40%) -->
+      <div class="studio-preview-col">
+        <div class="phone-mockup-frame">
+          <div class="phone-dynamic-island"></div>
+          <div class="phone-screen-inner" id="qk-mockup-screen-bg">
+            <div class="phone-badge-top">
+              <span id="qk-mockup-aspect-pill">📱 9:16 (1080x1920)</span>
+              <span>BEAT BOUNCE</span>
+            </div>
+
+            <div class="phone-preview-center">
+              <div class="phone-hook-tag">⚡ NHANH CHÓNG · BẮT TREND</div>
+              <div class="phone-product-name-preview" id="qk-mockup-product-name">Video Beat Nhanh</div>
+              <div class="hint" style="color:#cbd5e1;font-size:12px" id="qk-mockup-niche-tag">thời trang</div>
+              
+              <!-- Beat Waveform Visualizer -->
+              <div class="phone-waveform-box">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Chuyển cảnh giật theo beat nhạc</span>
+            </div>
+
+            <div class="phone-bottom-overlay">
+              <div style="font-weight:700;margin-bottom:2px">🔥 Video Beat-Bounce Nhanh</div>
+              <div style="font-size:11px;color:#e2e8f0">Hiệu ứng phóng to thu nhỏ giật nảy theo điệu nhạc</div>
+              <div class="phone-specs-pill">
+                <span id="qk-mockup-duration">⏱️ 20s</span>
+                <span>⚡ GPU VideoToolbox</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mockup-render-action-card">
+          <button type="submit" class="btn-mega-render" id="btn-submit-render-qk">
+            ⚡ Bắt Đầu Tạo Video Beat-Bounce Nhanh
+          </button>
+          <div class="hint" style="text-align:center;margin-top:8px;font-size:12px">
+            Hoàn tất trong vài giây • Thích hợp kéo view TikTok &amp; Shorts
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Global Audio Element for Audio Previews -->
+<audio id="global-preview-player" preload="none" style="display:none"></audio>
+
+<script>
+function switchStudioTab(tab) {
+  var creativePanel = document.getElementById('panel-creative');
+  var quickPanel = document.getElementById('panel-quick');
+  var creativeBtn = document.getElementById('tab-btn-creative');
+  var quickBtn = document.getElementById('tab-btn-quick');
+
+  if (tab === 'creative') {
+    creativePanel.style.display = 'block';
+    quickPanel.style.display = 'none';
+    creativeBtn.classList.add('active');
+    quickBtn.classList.remove('active');
+  } else {
+    creativePanel.style.display = 'none';
+    quickPanel.style.display = 'block';
+    creativeBtn.classList.remove('active');
+    quickBtn.classList.add('active');
+  }
+}
+
+function updateMockupPreview(prefix) {
+  var name = document.getElementById(prefix + '-product-name').value;
+  var niche = document.getElementById(prefix + '-niche').value;
+  var aspect = document.getElementById(prefix + '-aspect-ratio').value;
+  var secs = document.getElementById(prefix + '-seconds').value;
+
+  if (name.trim()) {
+    document.getElementById(prefix + '-mockup-product-name').textContent = name;
+  }
+  document.getElementById(prefix + '-mockup-niche-tag').textContent = niche;
+  document.getElementById(prefix + '-mockup-aspect-pill').textContent = aspect === '16:9' ? '🖥️ 16:9 (1920x1080)' : '📱 9:16 (1080x1920)';
+  document.getElementById(prefix + '-mockup-duration').textContent = '⏱️ ' + secs + 's';
+
+  if (prefix === 'cr') {
+    var vo = document.getElementById('cr-voiceover-text').value;
+    var caption = document.getElementById('cr-caption').value;
+    if (caption.trim()) {
+      document.getElementById('cr-mockup-caption-preview').textContent = caption;
+      document.getElementById('cr-mockup-hook-tag').textContent = '🔥 ' + caption;
+    }
+    if (vo.trim()) {
+      document.getElementById('cr-mockup-vo-snippet').textContent = '🎙️ ' + vo.substring(0, 45) + '...';
+    }
+  }
+}
+
+function onClipsPicked(input) {
+  var count = input.files.length;
+  var el = document.getElementById('clip-file-count');
+  if (el) el.textContent = count > 0 ? (count + ' video clip đã chọn') : 'Chưa chọn clip';
+}
+
+function onProductPhotoPicked(input, prefix) {
+  var el = document.getElementById('prod-photo-label-' + prefix);
+  if (input.files.length > 0 && el) {
+    el.textContent = input.files[0].name;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AUDIO PREVIEW ENGINE (Hỗ trợ cả bài thịnh hành, file tải lên & synth beat)
+// ---------------------------------------------------------------------------
+var globalAudio = document.getElementById('global-preview-player');
+var audioPlayingSource = null;
+var webAudioCtx = null;
+var synthInterval = null;
+
+function pickStudioTrend(prefix, sel) {
+  var v = sel.value.split('|');
+  var title = v[0] || '';
+  var artist = v[1] || '';
+  
+  document.getElementById(prefix + '_music_title').value = title;
+  document.getElementById(prefix + '_music_artist').value = artist;
+  
+  var titleEl = document.getElementById(prefix + '-audio-title');
+  var subEl = document.getElementById(prefix + '-audio-sub');
+  var card = document.getElementById(prefix + '-audio-preview');
+  
+  if (title) {
+    if (titleEl) titleEl.textContent = title;
+    if (subEl) subEl.textContent = 'Nghệ sĩ: ' + artist + ' (Bấm ▶ để nghe thử)';
+    if (card) {
+      card.setAttribute('data-url', '/static/preview.mp3');
+      card.setAttribute('data-title', title);
+    }
+  } else {
+    if (titleEl) titleEl.textContent = 'Chưa chọn nhạc nền';
+    if (subEl) subEl.textContent = 'Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp';
+  }
+}
+
+function onStudioMusicFilePicked(prefix, input) {
+  if (input.files && input.files[0]) {
+    var f = input.files[0];
+    var url = URL.createObjectURL(f);
+    var label = document.getElementById(prefix + '-music-file-label');
+    if (label) label.textContent = f.name;
+    
+    var titleEl = document.getElementById(prefix + '-audio-title');
+    var subEl = document.getElementById(prefix + '-audio-sub');
+    var card = document.getElementById(prefix + '-audio-preview');
+    
+    if (titleEl) titleEl.textContent = f.name;
+    if (subEl) subEl.textContent = 'File âm thanh đã tải lên (Bấm ▶ để nghe thử)';
+    if (card) {
+      card.setAttribute('data-url', url);
+      card.setAttribute('data-title', f.name);
+    }
+  }
+}
+
+function toggleAudioPreview(prefix) {
+  var card = document.getElementById(prefix + '-audio-preview');
+  if (!card) return;
+  var targetUrl = card.getAttribute('data-url') || '/static/preview.mp3';
+
+  if (audioPlayingSource === prefix && !globalAudio.paused) {
+    stopAllAudio();
+    return;
+  }
+
+  stopAllAudio();
+
+  globalAudio.src = targetUrl;
+  globalAudio.currentTime = 0;
+  var p = globalAudio.play();
+  if (p !== undefined) {
+    p.then(function() {
+      audioPlayingSource = prefix;
+      setAudioUIState(prefix, true);
+    }).catch(function(e) {
+      // Fallback: Web Audio Synth Beat
+      startSynthBeat();
+      audioPlayingSource = prefix;
+      setAudioUIState(prefix, true);
+    });
+  }
+}
+
+function stopAllAudio() {
+  if (globalAudio) {
+    globalAudio.pause();
+  }
+  if (synthInterval) {
+    clearInterval(synthInterval);
+    synthInterval = null;
+  }
+  if (audioPlayingSource) {
+    setAudioUIState(audioPlayingSource, false);
+    audioPlayingSource = null;
+  }
+}
+
+function setAudioUIState(prefix, isPlaying) {
+  var icon = document.getElementById(prefix + '-audio-icon');
+  var bars = document.getElementById(prefix + '-audio-bars');
+  var card = document.getElementById(prefix + '-audio-preview');
+  if (icon) icon.textContent = isPlaying ? '⏸' : '▶';
+  if (bars) {
+    if (isPlaying) bars.classList.add('playing');
+    else bars.classList.remove('playing');
+  }
+  if (card) {
+    if (isPlaying) card.classList.add('active-playing');
+    else card.classList.remove('active-playing');
+  }
+}
+
+globalAudio.addEventListener('ended', function() {
+  stopAllAudio();
+});
+
+globalAudio.addEventListener('timeupdate', function() {
+  if (audioPlayingSource && globalAudio.duration) {
+    var pct = (globalAudio.currentTime / globalAudio.duration) * 100;
+    var prog = document.getElementById(audioPlayingSource + '-audio-progress');
+    if (prog) prog.style.width = pct + '%';
+  }
+});
+
+function startSynthBeat() {
+  try {
+    if (!webAudioCtx) {
+      webAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (webAudioCtx.state === 'suspended') {
+      webAudioCtx.resume();
+    }
+    var step = 0;
+    synthInterval = setInterval(function() {
+      var t = webAudioCtx.currentTime;
+      var osc = webAudioCtx.createOscillator();
+      var gain = webAudioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(webAudioCtx.destination);
+      if (step % 2 === 0) {
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.2);
+        gain.gain.setValueAtTime(0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      } else {
+        osc.frequency.setValueAtTime(260, t);
+        osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      }
+      osc.start(t);
+      osc.stop(t + 0.2);
+      step = (step + 1) % 8;
+    }, 250);
+  } catch (err) {}
+}
+
+var lastGeneratedPkg = null;
+
+function quickGeneratePrompts() {
+  var name = document.getElementById('cr-product-name').value;
+  if (!name.trim()) {
+    alert('Vui lòng nhập Tên sản phẩm ở mục 1 trước khi tạo prompt.');
+    document.getElementById('cr-product-name').focus();
+    return;
+  }
+  var data = new URLSearchParams();
+  data.append('product_name', name);
+  data.append('niche', document.getElementById('cr-niche').value);
+  data.append('framework', 'problem_solution');
+
+  fetch('/web-ai/prompt-generate', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(pkg) {
+    lastGeneratedPkg = pkg;
+    document.getElementById('quick-prompt-result').style.display = 'block';
+    if (pkg.caption && document.getElementById('cr-caption')) {
+      document.getElementById('cr-caption').value = pkg.caption;
+    }
+    updateMockupPreview('cr');
+    window.showToast('Đã tạo thành công bộ kịch bản & prompt cho Claude, ChatGPT, Gemini và Muse AI!', true);
+  })
+  .catch(function(err) {
+    alert('Lỗi tạo prompt: ' + err);
+  });
+}
+
+function copyGenPrompt(type) {
+  if (!lastGeneratedPkg) return;
+  var txt = '';
+  if (type === 'chatgpt') txt = lastGeneratedPkg.chatgpt_prompt;
+  else if (type === 'claude') txt = lastGeneratedPkg.claude_prompt;
+  else if (type === 'gemini') {
+    (lastGeneratedPkg.scenes || []).forEach(function(sc, i) {
+      txt += 'Scene ' + (i+1) + ': ' + sc.gemini_prompt + '\n\n';
+    });
+  } else if (type === 'museai') {
+    (lastGeneratedPkg.scenes || []).forEach(function(sc, i) {
+      txt += 'Scene ' + (i+1) + ': ' + sc.muse_ai_prompt + '\n\n';
+    });
+  }
+  navigator.clipboard.writeText(txt).then(function() {
+    window.showToast('Đã sao chép prompt cho ' + type.toUpperCase() + '!', true);
+  });
+}
+
+// Auto-fill from URL params or Web AI transfer
+window.addEventListener('DOMContentLoaded', function() {
+  try {
+    var urlParams = new URLSearchParams(window.location.search);
+    var pName = urlParams.get('product_name');
+    var affLink = urlParams.get('aff_link');
+    var mTitle = urlParams.get('music_title');
+    var mArtist = urlParams.get('music_artist');
+
+    if (pName && document.getElementById('cr-product-name')) {
+      document.getElementById('cr-product-name').value = pName;
+      if (document.getElementById('qb-product-name')) document.getElementById('qb-product-name').value = pName;
+    }
+    if (affLink) {
+      var affInput = document.querySelector('input[name="aff_link"]');
+      if (affInput) affInput.value = affLink;
+    }
+    if (mTitle) {
+      var crPick = document.getElementById('creative-trend-pick');
+      if (crPick) {
+        for (var i = 0; i < crPick.options.length; i++) {
+          if (crPick.options[i].value.indexOf(mTitle) !== -1) {
+            crPick.selectedIndex = i;
+            pickStudioTrend('cr', crPick);
+            break;
+          }
+        }
+      }
+    }
+
+    var raw = sessionStorage.getItem('webai_to_studio');
+    if (raw) {
+      var d = JSON.parse(raw);
+      if (d.product_name && document.getElementById('cr-product-name')) {
+        document.getElementById('cr-product-name').value = d.product_name;
+      }
+      if (d.niche && document.getElementById('cr-niche')) {
+        document.getElementById('cr-niche').value = d.niche;
+      }
+      if (d.voiceover_text && document.getElementById('cr-voiceover-text')) {
+        document.getElementById('cr-voiceover-text').value = d.voiceover_text;
+      }
+      if (d.caption && document.getElementById('cr-caption')) {
+        document.getElementById('cr-caption').value = d.caption;
+      }
+      sessionStorage.removeItem('webai_to_studio');
+    }
+    updateMockupPreview('cr');
+  } catch (e) {}
+});
+</script>
 {{end}}

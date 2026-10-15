@@ -67,6 +67,23 @@ type AffiliateParams struct {
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
 	AffLink string `json:"aff_link,omitempty"`
+	// Clips: danh sách video clip (tạo từ Muse AI, Gemini video, tải lên)
+	Clips []string `json:"clips,omitempty"`
+	// VoiceoverPath: file âm thanh lồng tiếng (từ VieNeu-TTS hoặc tải lên)
+	VoiceoverPath string `json:"voiceover_path,omitempty"`
+	VoiceoverText string `json:"voiceover_text,omitempty"`
+	// AspectRatio: tỉ lệ khung hình ("9:16" hoặc "16:9")
+	AspectRatio string `json:"aspect_ratio,omitempty"`
+}
+
+// HasClips kiểm tra xem job có video clip sẵn (từ Muse AI / video gen) hay không.
+func (p AffiliateParams) HasClips() bool {
+	for _, c := range p.Clips {
+		if strings.TrimSpace(c) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or

@@ -14,18 +14,23 @@ import (
 // Trang ghi rõ điều này, không bịa trạng thái.
 
 type pipeStage struct {
-	Key    string // hunter, producer, ...
-	Label  string // tiếng Việt, ngắn
-	Icon   string // emoji
-	Status string // ok | working | waiting | fail | idle
-	Detail string // 1 dòng số liệu thật
+	Key      string // hunter, producer, ...
+	Label    string // tiếng Việt, ngắn
+	Icon     string // emoji
+	Status   string // ok | working | waiting | fail | idle
+	Detail   string // 1 dòng số liệu thật
+	Link     string // đường dẫn tới công cụ thực tế
+	RoleDesc string // giải thích nhiệm vụ ngắn gọn
 }
 
 type pipeTeam struct {
-	Key    string
-	Name   string
-	Icon   string
-	Stages []pipeStage
+	Key         string
+	Name        string
+	Icon        string
+	Description string
+	ActionLink  string
+	ActionLabel string
+	Stages      []pipeStage
 }
 
 // stage statuses
@@ -57,20 +62,28 @@ type studioJobLite struct {
 }
 
 // jobStage maps a studio job to a producer stage chip.
-func jobStage(label, icon string, j *studioJobLite) pipeStage {
+func jobStage(label, icon string, j *studioJobLite, link, roleDesc string) pipeStage {
+	res := pipeStage{Key: "producer", Label: label, Icon: icon, Link: link, RoleDesc: roleDesc}
 	if j == nil {
-		return pipeStage{Key: "producer", Label: label, Icon: icon, Status: tmWaiting, Detail: "chưa có job"}
+		res.Status = tmWaiting
+		res.Detail = "chưa có job"
+		return res
 	}
 	switch j.Status {
 	case "running":
-		return pipeStage{Key: "producer", Label: label, Icon: icon, Status: tmWorking, Detail: "đang render"}
+		res.Status = tmWorking
+		res.Detail = "đang render"
 	case "done":
-		return pipeStage{Key: "producer", Label: label, Icon: icon, Status: tmOK, Detail: "job mới nhất xong"}
+		res.Status = tmOK
+		res.Detail = "job mới nhất xong"
 	case "failed":
-		return pipeStage{Key: "producer", Label: label, Icon: icon, Status: tmFail, Detail: "job mới nhất lỗi"}
+		res.Status = tmFail
+		res.Detail = "job mới nhất lỗi"
 	default:
-		return pipeStage{Key: "producer", Label: label, Icon: icon, Status: tmWaiting, Detail: "chờ"}
+		res.Status = tmWaiting
+		res.Detail = "chờ"
 	}
+	return res
 }
 
 // countJobsByKind counts studio jobs of a kind with the given status.
@@ -91,7 +104,7 @@ func (s *Server) affiliateTeam() pipeTeam {
 	stages := []pipeStage{}
 	// Hunter: quét AT datafeed → kho sản phẩm.
 	if s.AT == nil || s.Products == nil {
-		stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: tmIdle, Detail: "chưa cấu hình Accesstrade"})
+		stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: tmIdle, Detail: "chưa cấu hình Accesstrade", Link: "/products", RoleDesc: "Cào & săn deal sản phẩm hoa hồng cao từ sàn"})
 	} else {
 		n, _ := s.Products.Count()
 		camps, _ := s.AT.CachedCampaigns()
@@ -100,20 +113,21 @@ func (s *Server) affiliateTeam() pipeTeam {
 			st = tmOK
 		}
 		stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: st,
-			Detail: formatCount("sản phẩm", n) + " · " + formatCount("chiến dịch", int64(len(camps)))})
+			Detail: formatCount("sản phẩm", n) + " · " + formatCount("chiến dịch", int64(len(camps))),
+			Link: "/products", RoleDesc: "Cào & săn deal sản phẩm hoa hồng cao từ sàn"})
 	}
 	// Producer: render video affiliate.
-	stages = append(stages, jobStage("Producer", "🎬", s.latestJobByKind("affiliate")))
+	stages = append(stages, jobStage("Producer", "🎬", s.latestJobByKind("affiliate"), "/studio#tab-ad-creative", "AI viết kịch bản, 4 Hook 3s & dựng video quảng cáo"))
 	// Publisher: video đã xong, sẵn sàng đăng.
 	done := s.countJobsByKind("affiliate", "done")
 	st := tmWaiting
 	if done > 0 {
 		st = tmOK
 	}
-	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("video xong", done)})
+	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("video xong", done), Link: "/publishers", RoleDesc: "Tự động đăng video lên TikTok Shop & Shorts"})
 	// Analyst: đối soát hoa hồng AT.
 	if s.AT == nil {
-		stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: tmIdle, Detail: "chưa cấu hình Accesstrade"})
+		stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: tmIdle, Detail: "chưa cấu hình Accesstrade", Link: "/products?tab=orders", RoleDesc: "Đối soát đơn hàng, hoa hồng và doanh thu"})
 	} else {
 		os_, _ := s.AT.GetOrderStats()
 		st := tmWaiting
@@ -121,27 +135,44 @@ func (s *Server) affiliateTeam() pipeTeam {
 			st = tmOK
 		}
 		stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: st,
-			Detail: formatCount("đơn duyệt", os_.ApprovedCount) + " · " + formatCount("đơn chờ", os_.PendingCount)})
+			Detail: formatCount("đơn duyệt", os_.ApprovedCount) + " · " + formatCount("đơn chờ", os_.PendingCount),
+			Link: "/products?tab=orders", RoleDesc: "Đối soát đơn hàng, hoa hồng và doanh thu"})
 	}
-	return pipeTeam{Key: "affiliate", Name: "Affiliate", Icon: "🛒", Stages: stages}
+	return pipeTeam{
+		Key:         "affiliate",
+		Name:        "Affiliate",
+		Icon:        "🛒",
+		Description: "Tự động săn sản phẩm hot, tạo video bán hàng 9:16 và đăng kênh TikTok Shop / YouTube Shorts.",
+		ActionLink:  "/studio",
+		ActionLabel: "🎬 Dựng video mới",
+		Stages:      stages,
+	}
 }
 
 func (s *Server) reupTeam() pipeTeam {
 	stages := []pipeStage{}
 	if s.Reup == nil {
 		for _, st := range []pipeStage{
-			{Key: "hunter", Label: "Hunter", Icon: "🔎"},
-			{Key: "director", Label: "Director", Icon: "📋"},
-			{Key: "producer", Label: "Producer", Icon: "🎬"},
-			{Key: "qc", Label: "QC", Icon: "✅"},
-			{Key: "publisher", Label: "Publisher", Icon: "📤"},
-			{Key: "analyst", Label: "Analyst", Icon: "📊"},
+			{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/reup", RoleDesc: "Quét & tải video Douyin không watermark"},
+			{Key: "director", Label: "Director", Icon: "📋", Link: "/reup", RoleDesc: "Lên kế hoạch đảo góc nội dung"},
+			{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/reup", RoleDesc: "Biên tập video & chèn hiệu ứng"},
+			{Key: "qc", Label: "QC", Icon: "✅", Link: "/reup", RoleDesc: "Kiểm tra chất lượng video & bản quyền"},
+			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Đăng video lên các kênh mạng xã hội"},
+			{Key: "analyst", Label: "Analyst", Icon: "📊", Link: "/reup", RoleDesc: "Giám sát view & kill format lỗi"},
 		} {
 			st.Status = tmIdle
 			st.Detail = "chưa cấu hình Reup"
 			stages = append(stages, st)
 		}
-		return pipeTeam{Key: "reup", Name: "Reup", Icon: "🔁", Stages: stages}
+		return pipeTeam{
+			Key:         "reup",
+			Name:        "Reup",
+			Icon:        "🔁",
+			Description: "Tự động quét video viral Douyin, biến đổi lách bản quyền và đăng tải đa nền tảng.",
+			ActionLink:  "/reup",
+			ActionLabel: "🔁 Quản lý Reup",
+			Stages:      stages,
+		}
 	}
 	vst, _ := s.Reup.Stats()
 	srcs, _ := s.Reup.ListSources()
@@ -153,21 +184,22 @@ func (s *Server) reupTeam() pipeTeam {
 		st = tmOK
 	}
 	stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: st,
-		Detail: formatCount("nguồn", int64(len(srcs))) + " · " + formatCount("chờ tải", vst.Queued)})
+		Detail: formatCount("nguồn", int64(len(srcs))) + " · " + formatCount("chờ tải", vst.Queued),
+		Link: "/reup", RoleDesc: "Quét tài khoản Douyin và tải video viral không watermark"})
 	// Director: bài chờ transform (kế hoạch).
 	pending, _ := s.Reup.ListPostsByStatus("pending", 1000)
 	st = tmWaiting
 	if len(pending) > 0 {
 		st = tmOK
 	}
-	stages = append(stages, pipeStage{Key: "director", Label: "Director", Icon: "📋", Status: st, Detail: formatCount("bài chờ transform", int64(len(pending)))})
+	stages = append(stages, pipeStage{Key: "director", Label: "Director", Icon: "📋", Status: st, Detail: formatCount("bài chờ transform", int64(len(pending))), Link: "/reup", RoleDesc: "Lên kế hoạch đảo góc nội dung tránh quét trùng"})
 	// Producer: đang transform.
 	transforming, _ := s.Reup.ListPostsByStatus("transforming", 1000)
 	st = tmWaiting
 	if len(transforming) > 0 {
 		st = tmWorking
 	}
-	stages = append(stages, pipeStage{Key: "producer", Label: "Producer", Icon: "🎬", Status: st, Detail: formatCount("đang transform", int64(len(transforming)))})
+	stages = append(stages, pipeStage{Key: "producer", Label: "Producer", Icon: "🎬", Status: st, Detail: formatCount("đang transform", int64(len(transforming))), Link: "/reup", RoleDesc: "Biên tập video, tăng tốc, cắt cúp và chèn hiệu ứng"})
 	// QC: tải xong (QC đạt) vs lỗi.
 	st = tmOK
 	if vst.Failed > 0 && vst.Downloaded == 0 {
@@ -176,14 +208,14 @@ func (s *Server) reupTeam() pipeTeam {
 		st = tmWorking
 	}
 	stages = append(stages, pipeStage{Key: "qc", Label: "QC", Icon: "✅", Status: st,
-		Detail: formatCount("đạt", vst.Downloaded) + " · " + formatCount("lỗi", vst.Failed)})
+		Detail: formatCount("đạt", vst.Downloaded) + " · " + formatCount("lỗi", vst.Failed), Link: "/reup", RoleDesc: "Kiểm tra chất lượng video, bitrate và âm thanh"})
 	// Publisher: bài đã đăng.
 	posted, _ := s.Reup.ListPostsByStatus("posted", 1000)
 	st = tmWaiting
 	if len(posted) > 0 {
 		st = tmOK
 	}
-	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("bài đã đăng", int64(len(posted)))})
+	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("bài đã đăng", int64(len(posted))), Link: "/publishers", RoleDesc: "Đăng video lên các kênh mạng xã hội theo lịch"})
 	// Analyst: bài lỗi + kill rule 0-view.
 	failed, _ := s.Reup.ListPostsByStatus("failed", 1000)
 	st = tmOK
@@ -191,8 +223,16 @@ func (s *Server) reupTeam() pipeTeam {
 		st = tmFail
 	}
 	stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: st,
-		Detail: formatCount("bài lỗi", int64(len(failed))) + " · kill rule 0-view: 5 bài liên tiếp → dừng"})
-	return pipeTeam{Key: "reup", Name: "Reup", Icon: "🔁", Stages: stages}
+		Detail: formatCount("bài lỗi", int64(len(failed))) + " · kill rule 0-view: 5 bài liên tiếp → dừng", Link: "/reup", RoleDesc: "Giám sát lượt xem và tự động dừng format 0-view"})
+	return pipeTeam{
+		Key:         "reup",
+		Name:        "Reup",
+		Icon:        "🔁",
+		Description: "Tự động quét video viral Douyin, biến đổi lách bản quyền và đăng tải đa nền tảng.",
+		ActionLink:  "/reup",
+		ActionLabel: "🔁 Quản lý Reup",
+		Stages:      stages,
+	}
 }
 
 func (s *Server) storyTeam() pipeTeam {
@@ -200,26 +240,34 @@ func (s *Server) storyTeam() pipeTeam {
 	j := s.latestJobByKind("story")
 	if j == nil {
 		for _, st := range []pipeStage{
-			{Key: "writer", Label: "Writer", Icon: "✍️"},
-			{Key: "illustrator", Label: "Illustrator", Icon: "🎨"},
-			{Key: "voice", Label: "Voice", Icon: "🎙️"},
-			{Key: "producer", Label: "Producer", Icon: "🎬"},
-			{Key: "publisher", Label: "Publisher", Icon: "📤"},
+			{Key: "writer", Label: "Writer", Icon: "✍️", Link: "/stories", RoleDesc: "Viết kịch bản cốt truyện lôi cuốn"},
+			{Key: "illustrator", Label: "Illustrator", Icon: "🎨", Link: "/stories", RoleDesc: "Vẽ tranh minh họa từng cảnh bằng AI"},
+			{Key: "voice", Label: "Voice", Icon: "🎙️", Link: "/stories", RoleDesc: "Đọc giọng truyền cảm xúc bằng AI Voice TTS"},
+			{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/stories", RoleDesc: "Ghép cảnh, hòa âm và dựng video 16:9"},
+			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Xuất bản video lên YouTube"},
 		} {
 			st.Status = tmWaiting
 			st.Detail = "chưa có truyện"
 			stages = append(stages, st)
 		}
-		return pipeTeam{Key: "story", Name: "Kể chuyện", Icon: "📖", Stages: stages}
+		return pipeTeam{
+			Key:         "story",
+			Name:        "Kể chuyện",
+			Icon:        "📖",
+			Description: "Tự động sáng tác truyện dài, vẽ minh họa từng cảnh và đọc giọng truyền cảm xúc.",
+			ActionLink:  "/stories",
+			ActionLabel: "📖 Viết truyện mới",
+			Stages:      stages,
+		}
 	}
 	// Ánh xạ tiến độ job → chặng đang làm (ước lượng, ghi rõ trong UI).
 	cur := storyStageFor(j)
 	keys := []pipeStage{
-		{Key: "writer", Label: "Writer", Icon: "✍️"},
-		{Key: "illustrator", Label: "Illustrator", Icon: "🎨"},
-		{Key: "voice", Label: "Voice", Icon: "🎙️"},
-		{Key: "producer", Label: "Producer", Icon: "🎬"},
-		{Key: "publisher", Label: "Publisher", Icon: "📤"},
+		{Key: "writer", Label: "Writer", Icon: "✍️", Link: "/stories", RoleDesc: "Viết kịch bản cốt truyện lôi cuốn"},
+		{Key: "illustrator", Label: "Illustrator", Icon: "🎨", Link: "/stories", RoleDesc: "Vẽ tranh minh họa từng cảnh bằng AI"},
+		{Key: "voice", Label: "Voice", Icon: "🎙️", Link: "/stories", RoleDesc: "Đọc giọng truyền cảm xúc bằng AI Voice TTS"},
+		{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/stories", RoleDesc: "Ghép cảnh, hòa âm và dựng video 16:9"},
+		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/publishers", RoleDesc: "Xuất bản video lên YouTube"},
 	}
 	for i := range keys {
 		switch {
@@ -241,7 +289,15 @@ func (s *Server) storyTeam() pipeTeam {
 		}
 		stages = append(stages, keys[i])
 	}
-	return pipeTeam{Key: "story", Name: "Kể chuyện", Icon: "📖", Stages: stages}
+	return pipeTeam{
+		Key:         "story",
+		Name:        "Kể chuyện",
+		Icon:        "📖",
+		Description: "Tự động sáng tác truyện dài, vẽ minh họa từng cảnh và đọc giọng truyền cảm xúc.",
+		ActionLink:  "/stories",
+		ActionLabel: "📖 Viết truyện mới",
+		Stages:      stages,
+	}
 }
 
 // storyStageFor ước lượng chặng hiện tại từ tiến độ job (0-100).

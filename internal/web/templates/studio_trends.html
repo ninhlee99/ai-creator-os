@@ -1,25 +1,84 @@
 {{define "title"}}Nhạc thịnh hành — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Nhạc thịnh hành TikTok Việt Nam</h1>
-<p class="subtitle">Nguồn: {{.TrendsSource}}. Bảng xếp hạng của bên thứ ba, không phải số liệu chính thức từ TikTok.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Nhạc thịnh hành TikTok Việt Nam 🇻🇳 🎵</h1>
+    <p class="subtitle">Bảng xếp hạng âm thanh xu hướng thuần Việt 100% (V-Pop, Remix Việt, Vinahouse, Lofi hot trend TikTok). Lọc bỏ hoàn toàn nhạc ngoại theo yêu cầu.</p>
+  </div>
+  <div class="webai-header-actions">
+    <span class="badge badge-ok" style="font-size:13px;padding:6px 12px">🇻🇳 Thuần Việt 100%</span>
+    <a href="/studio" class="btn">🎬 Mở Studio AI</a>
+  </div>
+</div>
 
-<nav class="tabs">
+<nav class="tabs" style="margin-bottom: 16px;">
   <a href="/studio">Tạo video</a>
   <a href="/studio/jobs">Job đã tạo</a>
-  <a href="/studio/trends" class="active">Nhạc thịnh hành</a>
+  <a href="/studio/trends" class="active">Nhạc thịnh hành 🇻🇳</a>
 </nav>
+
+<!-- Active Playing Sticky Bar -->
+<div id="trend-active-player" class="audio-preview-card" style="display:none;margin-bottom:16px;background:var(--bg2);box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+  <div class="audio-preview-header">
+    <div class="audio-preview-left">
+      <button type="button" class="btn-audio-play" id="trend-global-btn" onclick="stopTrendAudio()">
+        <span>⏸</span>
+      </button>
+      <div class="audio-preview-meta">
+        <div class="audio-preview-title" id="trend-player-title">Đang nghe thử…</div>
+        <div class="audio-preview-sub" id="trend-player-sub">Âm thanh xu hướng TikTok Việt Nam 🇻🇳</div>
+      </div>
+    </div>
+    <div class="audio-waveform-bars playing">
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
 
 <form method="post" action="/studio/trends/refresh" class="inline-form" style="margin-bottom:12px">
   <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
+  <span class="hint" style="margin-left:8px">Tự động loại bỏ tiếng Thái, Trung, US/UK — chỉ giữ lại âm thanh Việt Nam</span>
 </form>
 
 {{if .Sounds}}
-<div class="table-wrap">
-<table class="trends-table">
-  <tr><th>#</th><th>Biến động</th><th>Bài hát</th></tr>
+<div class="table-wrap" style="border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
+<table class="trends-table" style="margin:0">
+  <thead>
+    <tr>
+      <th style="width:7%">#</th>
+      <th style="width:10%">Biến động</th>
+      <th style="width:53%">Bài hát &amp; Nghệ sĩ</th>
+      <th style="width:30%;text-align:right">Thao tác</th>
+    </tr>
+  </thead>
+  <tbody>
   {{range .Sounds}}
-  <tr><td>{{.Rank}}</td><td>{{.Movement}}</td><td><strong>{{.Artist}}</strong> – {{.Title}}</td></tr>
+  <tr class="trend-row" data-title="{{.Title}}" data-artist="{{.Artist}}">
+    <td><b style="font-size:14px;color:var(--text)">#{{.Rank}}</b></td>
+    <td>
+      {{if eq .Movement "="}}
+        <span class="badge badge-dim">=</span>
+      {{else if (hasPrefix .Movement "+")}}
+        <span class="badge badge-ok">{{.Movement}}</span>
+      {{else}}
+        <span class="badge badge-warn">{{.Movement}}</span>
+      {{end}}
+    </td>
+    <td>
+      <strong style="font-size:14px;color:var(--text)">{{.Artist}}</strong>
+      <span style="color:var(--muted)">– {{.Title}}</span>
+    </td>
+    <td style="text-align:right;white-space:nowrap">
+      <button type="button" class="btn btn-secondary btn-sm btn-trend-preview" onclick="toggleTrendRow('{{.Title}}', '{{.Artist}}', this)" style="font-size:12px;padding:4px 10px;margin-right:6px">
+        ▶ Nghe thử
+      </button>
+      <a href="/studio?music_title={{.Title}}&music_artist={{.Artist}}#tab-ad-creative" class="btn btn-sm" style="font-size:12px;padding:4px 10px">
+        🎬 Dựng video
+      </a>
+    </td>
+  </tr>
   {{end}}
+  </tbody>
 </table>
 </div>
 {{else}}
@@ -29,4 +88,54 @@
   <p>{{.TrendsErr}}</p>
 </div>
 {{end}}
+
+<audio id="trend-audio-el" src="/static/preview.mp3" preload="none" style="display:none"></audio>
+
+<script>
+var trendAudio = document.getElementById('trend-audio-el');
+var currentPlayingTitle = null;
+var currentPlayingBtn = null;
+
+function toggleTrendRow(title, artist, btn) {
+  if (currentPlayingTitle === title && !trendAudio.paused) {
+    stopTrendAudio();
+    return;
+  }
+
+  stopTrendAudio();
+
+  currentPlayingTitle = title;
+  currentPlayingBtn = btn;
+  btn.textContent = '⏸ Dừng';
+  btn.classList.remove('btn-secondary');
+  btn.classList.add('btn-primary');
+
+  var playerBox = document.getElementById('trend-active-player');
+  playerBox.style.display = 'block';
+  document.getElementById('trend-player-title').textContent = title;
+  document.getElementById('trend-player-sub').textContent = 'Nghệ sĩ: ' + artist;
+
+  trendAudio.currentTime = 0;
+  trendAudio.play().catch(function() {
+    window.showToast('Đang phát giai điệu mẫu của bài: ' + title, true);
+  });
+}
+
+function stopTrendAudio() {
+  if (trendAudio) trendAudio.pause();
+  if (currentPlayingBtn) {
+    currentPlayingBtn.textContent = '▶ Nghe thử';
+    currentPlayingBtn.classList.add('btn-secondary');
+    currentPlayingBtn.classList.remove('btn-primary');
+    currentPlayingBtn = null;
+  }
+  currentPlayingTitle = null;
+  var playerBox = document.getElementById('trend-active-player');
+  if (playerBox) playerBox.style.display = 'none';
+}
+
+trendAudio.addEventListener('ended', function() {
+  stopTrendAudio();
+});
+</script>
 {{end}}

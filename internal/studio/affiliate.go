@@ -150,11 +150,11 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		return
 	}
 
-	// Không có key: dùng ảnh người dùng tải lên (chế độ "ảnh có sẵn").
+	// Không có key: dùng ảnh người dùng tải lên (chế độ "ảnh có sẵn") hoặc video clips từ Web AI.
 	ownPhotos := false
-	if s.mg == nil || !s.mg.Healthy(ctx) {
+	if !p.HasClips() && (s.mg == nil || !s.mg.Healthy(ctx)) {
 		if !p.HasOwnPhotos() {
-			fail(fmt.Errorf("chưa có Gemini key — thêm key ở Cài đặt · Nhà cung cấp, hoặc tải lên ít nhất 1 ảnh sản phẩm để dựng bằng ảnh có sẵn"))
+			fail(fmt.Errorf("chưa có Gemini key — thêm key ở Cài đặt · Nhà cung cấp, hoặc tải lên ít nhất 1 ảnh/clip sản phẩm để dựng bằng ảnh có sẵn"))
 			return
 		}
 		s.appendLog(id, fmt.Sprintf("Chưa có Gemini key — dựng bằng %d ảnh bạn tải lên (chế độ ảnh có sẵn).", len(ownSources(p))))
@@ -227,7 +227,65 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	}
 
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
-	if p.Mode == AffiliateModeShots {
+	aspect := p.AspectRatio
+	if aspect == "" {
+		aspect = "9:16"
+	}
+	if p.HasClips() {
+		s.appendLog(id, fmt.Sprintf("Dựng video quảng cáo từ %d clip (Muse AI / Web AI)…", len(p.Clips)))
+		var clips []string
+		for i, c := range p.Clips {
+			aid := s.addAsset(id, 200+i, "clip", fmt.Sprintf("Clip quảng cáo %d", i+1))
+			s.setAsset(aid, StatusDone, c)
+			clips = append(clips, c)
+		}
+		if p.HasOwnPhotos() {
+			s.appendLog(id, "Bổ sung ảnh chi tiết sản phẩm xen kẽ…")
+			photoClips := ownPhotoSet(ctx, p, work)
+			for i, ph := range photoClips {
+				dstClip := filepath.Join(work, fmt.Sprintf("photo-clip-%02d.mp4", i))
+				if kerr := AssemblePhotoList(ctx, []string{ph}, 2.5, "", 0, dstClip, aspect); kerr == nil {
+					clips = append(clips, dstClip)
+				}
+			}
+		}
+
+		s.appendLog(id, "Nối các phân cảnh thành video hoàn chỉnh…")
+		silent := filepath.Join(work, "merged.mp4")
+		if err := ConcatClips(ctx, clips, aspect, silent); err != nil {
+			fail(err)
+			return
+		}
+
+		if p.VoiceoverPath != "" && p.MusicPath != "" {
+			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
+			voiceVideo := filepath.Join(work, "voice.mp4")
+			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
+				if err := MixMusicBed(ctx, voiceVideo, p.MusicPath, final); err != nil {
+					s.appendLog(id, "Hòa âm lỗi, dùng bản voiceover: "+err.Error())
+					_ = os.Rename(voiceVideo, final)
+				}
+			} else {
+				s.appendLog(id, "Lồng tiếng lỗi, dùng nhạc nền: "+err.Error())
+				_ = MuxMusic(ctx, silent, p.MusicPath, p.MusicStart, final)
+			}
+		} else if p.VoiceoverPath != "" {
+			s.appendLog(id, "Ghép voiceover vào video…")
+			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final); err != nil {
+				fail(err)
+				return
+			}
+		} else if p.MusicPath != "" {
+			s.appendLog(id, "Ghép nhạc trending…")
+			if err := MuxMusic(ctx, silent, p.MusicPath, p.MusicStart, final); err != nil {
+				fail(err)
+				return
+			}
+		} else if err := os.Rename(silent, final); err != nil {
+			fail(err)
+			return
+		}
+	} else if p.Mode == AffiliateModeShots {
 		s.appendLog(id, "Director điện ảnh đang viết shot list…")
 		shots, err := WriteProShotList(ctx, s.llm, p.ProductName, p.Niche, p.Seconds)
 		if err != nil {

@@ -15,3 +15,4 @@ youtube_token_*.json
 # macOS app release artifacts (published via GitHub Releases)
 **/Contents/Resources/aicos
 **/AI-Creator-OS-mac-arm64.zip
+/aicos

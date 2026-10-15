@@ -7,23 +7,46 @@
 <div class="toolbar">
   <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
-<div class="table-wrap">
-<table>
-  <tr><th>Kênh</th><th>Trạng thái</th><th title="Chân dung người dẫn mà AI đóng vai">Tính cách</th><th title="Chủ đề nội dung video của kênh">Chủ đề nội dung</th><th>Người theo dõi</th><th></th></tr>
+<div class="channel-grid">
   {{range .Accounts}}
-  <tr>
-    <td><strong>{{.Username}}</strong>
-      {{if .Theme}} <span class="badge badge-draft" title="Nhóm sản phẩm affiliate kênh này bán (khác chủ đề nội dung)">bán: {{themeLabel .Theme}}</span>{{end}}
-      {{if .Autopilot}} <span class="badge badge-ok">tự động</span>{{end}}
-    </td>
-    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-    <td>{{.PersonaLabel}}</td>
-    <td>{{if .Niche}}{{.Niche}}{{else}}—{{end}}</td>
-    <td>{{.Followers}}</td>
-    <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}">Chi tiết</a></td>
-  </tr>
+  <div class="channel-card">
+    <div class="channel-card-header">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <div class="channel-avatar-box">
+          📱
+        </div>
+        <div class="channel-info-meta">
+          <div class="channel-username">{{.Username}}</div>
+          <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+            <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
+            {{if .Autopilot}}<span class="badge badge-ok">Tự động</span>{{end}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="channel-stats-row">
+      <div class="channel-stat-item" style="flex:1">
+        <span class="channel-stat-label">Người theo dõi</span>
+        <span class="channel-stat-val">{{.Followers}}</span>
+      </div>
+      <div class="channel-stat-item" style="flex:1">
+        <span class="channel-stat-label">Tính cách AI</span>
+        <span class="channel-stat-val" style="font-size:13px">{{.PersonaLabel}}</span>
+      </div>
+    </div>
+
+    <div class="channel-tags-row">
+      {{if .Niche}}<span class="badge badge-dim" title="Chủ đề nội dung kênh">🎯 {{.Niche}}</span>{{end}}
+      {{if .Theme}}<span class="badge badge-draft" title="Nhóm sản phẩm affiliate bán">🛍️ {{themeLabel .Theme}}</span>{{end}}
+    </div>
+
+    <div class="channel-card-footer">
+      <span class="hint" style="font-size:12px">ID: {{.ID}}</span>
+      <a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}" style="font-size:13px;padding:6px 14px">Quản lý kênh ↗</a>
+    </div>
+  </div>
   {{end}}
-</table>
 </div>
 {{else}}
 <div class="empty-state">

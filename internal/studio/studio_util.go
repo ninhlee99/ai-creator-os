@@ -122,6 +122,39 @@ func DownloadAudio(ctx context.Context, url, outPath string) error {
 	return cerr
 }
 
+// DownloadVideo fetches a direct video URL (mp4/webm/mov) to a local file — used
+// when the user pastes a Muse AI video link or CDN URL.
+func DownloadVideo(ctx context.Context, url, outPath string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	client := &http.Client{Timeout: 10 * time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("video HTTP %d", resp.StatusCode)
+	}
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	f, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(f, io.LimitReader(resp.Body, 250<<20))
+	cerr := f.Close()
+	if err != nil {
+		return err
+	}
+	return cerr
+}
+
+
 // stampUserVersion records the schema generation for future migrations
 // (R2-W7): a fresh database is marked with v, an existing stamp is never
 // overwritten here.

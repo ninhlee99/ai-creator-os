@@ -26,6 +26,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 )
@@ -38,6 +39,9 @@ var staticCSS []byte
 
 //go:embed static/app.js
 var staticJS []byte
+
+//go:embed static/preview.mp3
+var staticPreviewAudio []byte
 
 // assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
@@ -104,6 +108,10 @@ type Server struct {
 	// động ở automation — Đợt Y), không dùng mutex riêng ở đây nữa.
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
+
+	// WebAI quản lý kết nối và phiên đăng nhập Claude, ChatGPT, Gemini, Muse AI.
+	WebAI      *webai.Store
+	WebAIRelay *webai.ProxyRelay
 
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
@@ -272,6 +280,7 @@ var templateFuncs = template.FuncMap{
 	"join": func(sep string, xs []string) string {
 		return strings.Join(xs, sep)
 	},
+	"hasPrefix": strings.HasPrefix,
 	// themeLabel renders a theme slug as its catalog label.
 	"themeLabel": func(slug string) string {
 		if t, ok := products.DescribeTheme(slug); ok {
@@ -635,6 +644,7 @@ var pageFiles = map[string]string{
 	"settings_an_toan":      "settings/an-toan.html",
 	"settings_accesstrade":  "settings/accesstrade.html",
 	"settings_reup":         "settings/reup.html",
+	"web_ai":                "web_ai.html",
 	"onboard":               "onboard.html",
 }
 
@@ -666,6 +676,9 @@ func (s *Server) ctx(kv ...any) map[string]any {
 		"DryRun":  s.Cfg.DryRun(),
 		"AuthOn":  s.authEnabled(),
 		"LocalDL": s.localDownloadChip(),
+	}
+	if s.WebAI != nil {
+		m["WebAICount"] = s.WebAI.CountConnected()
 	}
 	for i := 0; i+1 < len(kv); i += 2 {
 		if k, ok := kv[i].(string); ok {

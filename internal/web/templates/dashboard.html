@@ -69,38 +69,47 @@
 
 <h2>Tự động hóa</h2>
 <p class="hint">Mọi công tắc tự động ở một chỗ.{{if not .MasterOn}} <b>Công tắc chính đang TẮT</b> — các việc dưới đây chỉ chạy khi bạn bấm “Bật tự động” ở trên.{{end}}{{if .DryRun}} Đang <b>chạy thử</b>: có dựng video nhưng không đăng thật.{{end}}</p>
-<div class="table-wrap">
-<table class="auto-panel">
-  <tr><th>Việc tự động</th><th>Trạng thái</th><th></th></tr>
+<div class="auto-grid">
   {{range .AutoSwitches}}
-  <tr>
-    <td><b>{{.Label}}</b><br><span class="hint">{{.Hint}} · <a href="{{.Page}}">chỉnh chi tiết</a></span></td>
-    <td>{{if .On}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}</td>
-    <td>
-      <form method="post" action="/automation/switch" class="inline-form">
+  <div class="auto-card">
+    <div class="auto-card-top">
+      <div class="auto-card-title">
+        <span>⚡</span> {{.Label}}
+      </div>
+      <div>
+        {{if .On}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}
+      </div>
+    </div>
+    <div class="auto-card-desc">{{.Hint}}</div>
+    <div class="auto-card-footer">
+      <a href="{{.Page}}" class="auto-card-link">Chỉnh chi tiết ↗</a>
+      <form method="post" action="/automation/switch" class="inline-form" style="margin:0">
         <input type="hidden" name="key" value="{{.Key}}">
         <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
-        <button type="submit" class="btn btn-secondary btn-sm">{{if .On}}Tắt{{else}}Bật{{end}}</button>
+        <button type="submit" class="btn btn-secondary btn-sm" style="padding:4px 12px;font-size:12px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
       </form>
-    </td>
-  </tr>
+    </div>
+  </div>
   {{end}}
-</table>
 </div>
 
 <h2>Sẵn sàng kiếm tiền</h2>
 <p class="hint">Mỗi nguồn tiền đang ở đâu và còn thiếu bước gì — đọc từ cấu hình thật, không ước doanh thu.</p>
-<div class="table-wrap">
-<table>
-  <tr><th>Nguồn tiền</th><th>Trạng thái</th><th>Bước tiếp theo</th></tr>
+<div class="monetization-grid">
   {{range .Money}}
-  <tr>
-    <td><b>{{.Name}}</b></td>
-    <td>{{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}<br><span class="hint">{{.State}}</span></td>
-    <td>{{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}">{{.Next}}</a>{{else}}<span class="hint">—</span>{{end}}</td>
-  </tr>
+  <div class="monetization-card">
+    <div class="monetization-card-top">
+      <div class="monetization-card-name">{{.Name}}</div>
+      <div>
+        {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
+      </div>
+    </div>
+    <div class="monetization-card-status">{{.State}}</div>
+    <div class="monetization-card-footer">
+      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:12px;padding:4px 12px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:12px">Hoàn tất ✓</span>{{end}}
+    </div>
+  </div>
   {{end}}
-</table>
 </div>
 
 {{if .GrowthAlerts}}
