@@ -312,7 +312,7 @@
           {{if or .PubStatus.YoutubeToken .PubStatus.YoutubeTokenDead}}🔄 Cấp lại quyền YouTube OAuth{{else}}🔗 Nối YouTube OAuth ngay{{end}}
         </a>
       {{else}}
-        <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Cấu hình YOUTUBE_CLIENT_ID</a>
+        <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối YouTube</a>
       {{end}}
     </div>
   </div>
@@ -343,7 +343,7 @@
           {{if .PubStatus.TiktokToken}}🔄 Cấp lại quyền TikTok{{else}}🔗 Kết nối TikTok OAuth ngay{{end}}
         </a>
       {{else}}
-        <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Cấu hình TIKTOK_CLIENT_KEY</a>
+        <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối TikTok</a>
       {{end}}
     </div>
   </div>

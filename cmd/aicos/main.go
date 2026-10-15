@@ -46,6 +46,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
 	"github.com/ninhlee99/ai-creator-os/internal/logx"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/notify"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
@@ -357,6 +358,19 @@ func main() {
 	// R2-W7: token OAuth nằm trong thư mục dữ liệu, không rải ở CWD.
 	publishers.SetTokenDir(filepath.Join(*dataDir, "tokens"))
 	publishers.MigrateTokensFromCWD()
+	publishers.StartTokenWorker(ctx, 30*time.Minute)
+	publishers.SetOnTokenAlert(func(rep publishers.TokenHealthReport) {
+		msg := fmt.Sprintf("⚠️ [Cảnh báo Token] Kênh %s (%s) bị gián đoạn: %s. Vui lòng kết nối lại trong Cài đặt.", rep.Username, rep.Platform, rep.Message)
+		bot, _, _ := l.GetSetting(automation.KeyNotifyTelegramBot)
+		chat, _, _ := l.GetSetting(automation.KeyNotifyTelegramChat)
+		if bot != "" && chat != "" {
+			_ = notify.SendTelegram(bot, chat, msg)
+		}
+		wh, _, _ := l.GetSetting(automation.KeyNotifyWebhookURL)
+		if wh != "" {
+			_ = notify.SendDiscord(wh, "⚠️ Cảnh Báo Kết Nối Kênh", msg)
+		}
+	})
 	defer func() {
 		if err := srv.Close(); err != nil {
 			log.Printf("web close: %v", err)

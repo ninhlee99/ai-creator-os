@@ -20,18 +20,39 @@
     <span class="prog">{{.Progress}}%</span>
     · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
   </div>
+  {{if .Output}}
+  <div class="media-preview-container" style="display:flex;gap:18px;margin:12px 0;flex-wrap:wrap;align-items:flex-start">
+    <div style="width:200px;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative;aspect-ratio:9/16;box-shadow:0 4px 16px rgba(0,0,0,0.15)">
+      <video class="player" controls preload="metadata" src="/media/{{.Output}}" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+    </div>
+    <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge badge-ok">✓ Video hoàn chỉnh</span>
+        <span class="badge badge-draft">📱 1080×1920 (9:16 Shorts/TikTok)</span>
+        <span class="badge badge-draft">H.264 MP4</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button type="button" class="btn btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')">▶ Phóng to Player</button>
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download>⬇ Tải MP4</a>
+        <a class="btn btn-primary btn-sm" href="/publishers?video={{.Output}}&title={{urlQuery .Title}}">🚀 Xuất bản Đa nền tảng</a>
+        <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:inline">
+          <button class="btn btn-secondary btn-sm" type="submit" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở CapCut</button>
+        </form>
+        <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard</button>
+      </div>
+    </div>
+  </div>
+  {{else if eq .Status "done"}}
+    <p class="notice notice-warn">Job xong nhưng không có file video — kiểm tra nhật ký bên dưới hoặc <a href="/settings/nha-cung-cap">thêm Gemini key</a>.</p>
+    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+  {{else}}
+    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+  {{end}}
   <div class="board"></div>
-  {{if .Output}}<video class="player" controls preload="metadata" src="/media/{{.Output}}"></video>{{else if eq .Status "done"}}<p class="notice notice-warn">Job xong nhưng không có file video — kiểm tra nhật ký bên dưới hoặc <a href="/settings/nha-cung-cap">thêm Gemini key</a>.</p>{{end}}
-  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
   <div class="job-actions">
     {{if or (eq .Status "running") (eq .Status "queued")}}
     <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
       <button class="btn btn-secondary btn-sm" type="submit">Hủy</button>
-    </form>
-    {{end}}
-    {{if .Output}}
-    <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:inline">
-      <button class="btn btn-secondary btn-sm" type="submit" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở bằng CapCut</button>
     </form>
     {{end}}
     {{if and .Output (eq .Kind "affiliate")}}

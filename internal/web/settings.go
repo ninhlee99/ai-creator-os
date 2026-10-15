@@ -680,3 +680,17 @@ func (s *Server) handleNotifyTest(w http.ResponseWriter, r *http.Request) {
 	}
 	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã gửi tin nhắn thử — kiểm tra Telegram."))
 }
+
+// handleNotifyDiscordTest gửi tin nhắn thử qua Discord Webhook.
+func (s *Server) handleNotifyDiscordTest(w http.ResponseWriter, r *http.Request) {
+	webhook, _, _ := s.Ledger.GetSetting(automation.KeyNotifyWebhookURL)
+	if strings.TrimSpace(webhook) == "" {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Chưa cấu hình Discord Webhook URL."))
+		return
+	}
+	if err := notify.SendDiscord(webhook, "🔔 Kiểm tra Discord Webhook", "✅ Kết nối thành công! AI Creator OS đã liên kết với kênh Discord này. Từ giờ các sự kiện render video, xuất bản và cảnh báo sẽ gửi về đây."); err != nil {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Gửi Discord thất bại: "+err.Error()))
+		return
+	}
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã gửi tin nhắn thử thành công tới Discord!"))
+}

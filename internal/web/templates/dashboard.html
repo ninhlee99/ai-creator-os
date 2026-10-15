@@ -1,7 +1,16 @@
 {{define "title"}}Trang chủ — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Tổng quan</h1>
-<p class="subtitle">Ngày {{fmtVN .Today}} · Theo dõi kênh, video và hoa hồng của bạn.</p>
+<div class="webai-header" style="margin-bottom: 22px;">
+  <div class="webai-header-left">
+    <h1>Tổng quan</h1>
+    <p class="subtitle">Ngày {{fmtVN .Today}} · Hệ thống sản xuất video AI và vận hành kênh mạng xã hội tự động 24/7.</p>
+  </div>
+  <div class="webai-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/studio" class="btn btn-primary">🎬 Dựng Video AI</a>
+    <a href="/accounts/new" class="btn btn-secondary">📱 + Kết nối Kênh</a>
+    <a href="/products" class="btn btn-secondary">🛍️ Sàn Affiliate</a>
+  </div>
+</div>
 
 {{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/nha-cung-cap">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}

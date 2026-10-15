@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -281,6 +282,7 @@ var templateFuncs = template.FuncMap{
 		return strings.Join(xs, sep)
 	},
 	"hasPrefix": strings.HasPrefix,
+	"urlQuery":  url.QueryEscape,
 	// themeLabel renders a theme slug as its catalog label.
 	"themeLabel": func(slug string) string {
 		if t, ok := products.DescribeTheme(slug); ok {

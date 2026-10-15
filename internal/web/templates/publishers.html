@@ -63,7 +63,7 @@
               {{if or .YoutubeToken .YoutubeTokenDead}}🔄 Nối lại ({{.Username}}){{else}}🔗 Nối YouTube ({{.Username}}){{end}}
             </a>
           {{else}}
-            <button type="button" class="btn btn-secondary btn-sm" style="flex:1" data-yt-setup>⚙️ Cài OAuth ({{.Username}})</button>
+            <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình kết nối YouTube</a>
           {{end}}
         {{end}}
       {{end}}
@@ -117,7 +117,7 @@
               {{if .TiktokToken}}🔄 Nối lại ({{.Username}}){{else}}🔗 Nối TikTok ({{.Username}}){{end}}
             </a>
           {{else}}
-            <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cài TikTok Key ({{.Username}})</a>
+            <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình kết nối TikTok</a>
           {{end}}
         {{end}}
       {{end}}
@@ -156,13 +156,13 @@
           </div>
           <div class="social-meta-row">
             <span class="social-meta-label">Trạng thái:</span>
-            <span class="social-meta-val">{{if $hasFb}}Page Token Sẵn Sàng{{else}}Chưa nhập Token{{end}}</span>
+            <span class="social-meta-val">{{if $hasFb}}Page Token Sẵn Sàng{{else}}Chưa kết nối Token{{end}}</span>
           </div>
         </div>
       </div>
     </div>
     <div class="social-card-actions">
-      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình FB_PAGE_ID</a>
+      <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình Facebook Page</a>
     </div>
   </div>
 
@@ -204,7 +204,7 @@
       </div>
     </div>
     <div class="social-card-actions">
-      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình IG_USER_ID</a>
+      <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình Instagram Reels</a>
     </div>
   </div>
 
@@ -246,7 +246,7 @@
       </div>
     </div>
     <div class="social-card-actions">
-      <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình THREADS_TOKEN</a>
+      <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="flex:1">⚙️ Cấu hình Threads</a>
     </div>
   </div>
 </div>

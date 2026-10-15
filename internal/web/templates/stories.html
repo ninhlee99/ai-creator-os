@@ -70,8 +70,10 @@
       <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}{{if or (eq .Status "running") (eq .Status "queued")}}<br><div class="progress" style="max-width:8em"><div class="progress-bar" style="width:{{.Progress}}%"></div></div><span class="hint">{{.Progress}}%</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
       <td>{{.Scenes}}</td>
       <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
-      <td style="white-space:nowrap">
-        {{if .MediaURL}}<a class="btn btn-secondary btn-sm" href="{{.MediaURL}}" target="_blank">Xem</a>{{end}}
+        {{if .MediaURL}}
+          <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')">▶ Xem</button>
+          <a class="btn btn-secondary btn-sm" href="{{.MediaURL}}" download title="Tải file video">⬇ Tải</a>
+        {{end}}
         {{if and (eq .Status "done") (not .Published)}}
         <form method="post" action="/stories/{{.ID}}/publish" style="display:inline">
           <select name="account" required>

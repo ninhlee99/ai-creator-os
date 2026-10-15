@@ -355,14 +355,15 @@
       {{end}}
     </div>
 
-    <!-- Thông báo Telegram -->
+    <!-- Thông báo Đa Kênh (Telegram & Discord Webhook) -->
     <div class="form-card">
-      <h4 style="margin-top:0">📱 Thông báo Telegram</h4>
-      <p class="hint" style="margin-top:-4px">Nhận thông báo khi xong video, lỗi upload hoặc cảnh báo đĩa.</p>
+      <h4 style="margin-top:0">📢 Thông báo Đa Kênh (Telegram &amp; Discord)</h4>
+      <p class="hint" style="margin-top:-4px">Nhận thông báo tức thì khi render video hoàn tất, xuất bản thành công hoặc cảnh báo hệ thống.</p>
       <form method="post" action="/settings/notify">
         <div class="field">
-          <label><input type="checkbox" name="notify_on" value="1"{{if .NotifyOn}} checked{{end}}> Bật cảnh báo Telegram</label>
+          <label><input type="checkbox" name="notify_on" value="1"{{if .NotifyOn}} checked{{end}}> Bật thông báo đẩy tự động</label>
         </div>
+        <div style="font-weight:600;font-size:13px;margin:8px 0 4px;color:var(--text)">1. Kênh Telegram Bot</div>
         <div class="grid2">
           <div class="field">
             <label>Bot token {{if .NotifyHasBot}}<span class="badge badge-ok">Đã lưu</span>{{end}}</label>
@@ -373,9 +374,16 @@
             <input type="text" name="notify_chat" value="{{.NotifyChat}}" placeholder="vd: 123456789">
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button type="submit" class="btn btn-secondary btn-sm">Lưu cấu hình</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-test', {method:'POST'}).then(function(){alert('Đã gửi tin thử!')})">Gửi tin thử</button>
+        <div style="font-weight:600;font-size:13px;margin:12px 0 4px;color:var(--text)">2. Kênh Discord Webhook</div>
+        <div class="field">
+          <label>Discord Webhook URL {{if .NotifyWebhook}}<span class="badge badge-ok">Đã cấu hình</span>{{end}}</label>
+          <input type="url" name="notify_webhook" value="{{.NotifyWebhook}}" placeholder="https://discord.com/api/webhooks/...">
+          <span class="hint" style="font-size:11px">Tạo trong Cài đặt Kênh Discord → Tích hợp (Integrations) → Webhooks.</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary btn-sm">Lưu cấu hình</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Telegram!');else alert('Lỗi gửi Telegram!');})">✈️ Test Telegram</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-discord-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Discord!');else alert('Lỗi gửi Discord!');})">🎮 Test Discord</button>
         </div>
       </form>
     </div>

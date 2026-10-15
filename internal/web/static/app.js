@@ -94,6 +94,37 @@
     modal.hidden = false;
   });
 
+  // ------------------------------------------------------ video modal
+  window.playVideoModal = function (src, title) {
+    var m = document.getElementById('video-modal');
+    var p = document.getElementById('video-modal-player');
+    var t = document.getElementById('video-modal-title');
+    var d = document.getElementById('video-modal-download');
+    var pub = document.getElementById('video-modal-publish');
+    if (!m || !p) return;
+    if (t) t.textContent = title || 'Xem trước video';
+    p.src = src;
+    if (d) d.href = src;
+    if (pub) pub.href = '/publishers?video=' + encodeURIComponent(src.replace('/media/', ''));
+    m.hidden = false;
+    p.play().catch(function () {});
+  };
+  (function () {
+    var m = document.getElementById('video-modal');
+    var p = document.getElementById('video-modal-player');
+    var c = document.getElementById('video-modal-close');
+    if (!m) return;
+    function close() {
+      if (p) { p.pause(); p.src = ''; }
+      m.hidden = true;
+    }
+    if (c) c.addEventListener('click', close);
+    m.addEventListener('click', function (e) { if (e.target === m) close(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !m.hidden) close();
+    });
+  })();
+
   // ------------------------------------------------------ sidebar active
   (function () {
     var p = location.pathname;
