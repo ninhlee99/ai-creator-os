@@ -25,6 +25,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/webai"
@@ -710,6 +711,7 @@ func (s *Server) render(w http.ResponseWriter, page string, data map[string]any)
 type accountView struct {
 	*network.Account
 	PersonaLabel string
+	Platforms    []string
 }
 
 func personaLabel(key string) string {
@@ -723,7 +725,11 @@ func personaLabel(key string) string {
 }
 
 func (s *Server) wrapAccount(a *network.Account) *accountView {
-	return &accountView{Account: a, PersonaLabel: personaLabel(a.Persona)}
+	var plats []string
+	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, a.YoutubeContentTypes) {
+		plats = append(plats, p.Name())
+	}
+	return &accountView{Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats}
 }
 
 type statusCount struct {

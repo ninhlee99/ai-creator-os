@@ -40,6 +40,10 @@
       {{if .Niche}}<span class="badge badge-dim" title="Chủ đề nội dung kênh">🎯 {{.Niche}}</span>{{end}}
       {{if .Theme}}<span class="badge badge-draft" title="Nhóm sản phẩm affiliate bán">🛍️ {{themeLabel .Theme}}</span>{{end}}
     </div>
+    <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
+      {{range .Platforms}}<span class="badge badge-ok" style="font-size:11px" title="Nền tảng đã kết nối">✓ {{.}}</span>{{end}}
+      {{if not .Platforms}}<span class="badge badge-no" style="font-size:11px">Chưa kết nối MXH</span>{{end}}
+    </div>
 
     <div class="channel-card-footer">
       <span class="hint" style="font-size:12px">ID: {{.ID}}</span>
