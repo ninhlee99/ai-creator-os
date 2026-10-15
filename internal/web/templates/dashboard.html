@@ -12,7 +12,7 @@
   </div>
 </div>
 
-{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/nha-cung-cap">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
+{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/he-thong#tab-apikeys">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:20px">
   <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
@@ -23,7 +23,7 @@
         <b>Thêm Gemini API key (miễn phí, nên có)</b>
         <span>Chưa có key vẫn dựng được video bán hàng từ ảnh bạn tải lên. Có key thì AI tự viết kịch bản, vẽ ảnh, viết caption và kể chuyện.</span>
       </div>
-      <a class="btn btn-sm" href="/settings/nha-cung-cap">Thêm key</a>
+      <a class="btn btn-sm" href="/settings/he-thong#tab-apikeys">Thêm key</a>
     </li>
     <li class="{{if .Accounts}}done{{end}}">
       <span class="n">{{if .Accounts}}✓{{else}}2{{end}}</span>

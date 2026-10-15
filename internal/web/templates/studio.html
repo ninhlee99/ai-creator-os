@@ -6,7 +6,7 @@
     <p class="subtitle">Sản xuất video quảng cáo sản phẩm chất lượng cao chuẩn dọc 9:16 (TikTok / Reels / Shorts) hoặc ngang 16:9 với hiệu ứng Ken Burns, Audio Ducking và tăng tốc phần cứng Apple Silicon.</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary" title="Quản lý tài khoản Claude, ChatGPT, Gemini, Muse AI">⚙️ Tài khoản Web AI</a>
+    <a href="/settings/he-thong#tab-apikeys" class="btn btn-secondary" title="Quản lý Khóa API AI">⚙️ Khóa API &amp; Hệ thống</a>
     <a href="/studio/trends" class="btn btn-secondary">🎵 Nhạc Việt hot TikTok 🇻🇳</a>
     <a href="/studio/jobs" class="btn btn-secondary">📂 Hàng đợi video ({{if .ActiveJobs}}{{.ActiveJobs}} đang dựng · {{end}}{{.JobCount}})</a>
   </div>
@@ -16,7 +16,7 @@
 
 <!-- Studio Navigation Tabs (Đồng nhất ngôn ngữ thiết kế giữa các tab) -->
 <div class="studio-tabs" style="margin-bottom: 24px;">
-  <a href="#tab-ad-creative" id="tab-btn-creative" class="active" onclick="switchStudioTab('creative')">🚀 Video Quảng Cáo Web AI (Đầy đủ kịch bản &amp; phân cảnh)</a>
+  <a href="#tab-ad-creative" id="tab-btn-creative" class="active" onclick="switchStudioTab('creative')">🚀 Video Quảng Cáo Sản Phẩm (Kịch bản &amp; Phân cảnh)</a>
   <a href="#tab-quick-affiliate" id="tab-btn-quick" onclick="switchStudioTab('quick')">📸 Video Beat-Bounce Nhanh (Ảnh chụp + Nhạc giật theo beat)</a>
   <a href="/studio/trends">🎵 Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — Top: {{.TopSound}}{{end}}{{end}}</a>
 </div>
@@ -117,10 +117,10 @@
           <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">🎬</span> 2. Tài sản Media (Video Clips &amp; Ảnh 4K)
           </h3>
-          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Tận dụng video chuyển động từ <b>Muse AI</b> hoặc ảnh 4K từ <b>Gemini Imagen 3</b> (không tốn phí API). Tải file lên hoặc dán link CDN để tự động tải về.</p>
+          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Sử dụng video clip minh họa hoặc ảnh sản phẩm độ phân giải cao. Bạn có thể tải file từ máy lên hoặc dán đường dẫn CDN trực tiếp.</p>
 
           <div class="field">
-            <label>Video Clips (Tối đa 8 clips MP4 từ Muse AI hoặc quay thật)</label>
+            <label>Video Clips (Tối đa 8 clips MP4 từ AI hoặc quay thật)</label>
             <div class="file-pick">
               <label class="btn btn-secondary btn-sm">📁 Chọn nhiều video clip…
                 <input type="file" name="clip_files" accept="video/mp4,video/quicktime,video/webm" multiple onchange="onClipsPicked(this)">

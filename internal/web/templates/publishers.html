@@ -2,7 +2,7 @@
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Cổng Xuất Bản Đa Nền Tảng 🚀</h1>
+    <h1>Cổng Xuất Bản Mạng Xã Hội 🚀</h1>
     <p class="subtitle">Quản lý kết nối tự động đăng tải video và bài viết lên YouTube, TikTok, Facebook, Instagram và Threads.</p>
   </div>
   <div class="webai-header-actions">
@@ -394,16 +394,16 @@
     </div>
 
     {{if .AnyTiktokClient}}
-    <div style="margin-top:16px;background:var(--bg3);padding:14px;border-radius:10px">
-      <b style="font-size:13px">Dán URL Callback Thủ Công (nếu app chạy cổng khác 8080):</b>
-      <form method="post" action="/publishers/tiktok/connect" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+    <details style="margin-top:16px;background:var(--bg3);padding:10px 14px;border-radius:10px">
+      <summary style="font-size:12px;color:var(--muted);cursor:pointer">🔧 Chuyển tiếp URL Callback thủ công (Dành cho cổng mạng tùy biến)</summary>
+      <form method="post" action="/publishers/tiktok/connect" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         <select name="username" style="width:160px">
           {{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}
         </select>
         <input type="text" name="redirect" placeholder="{{.RedirectURI}}?code=...&amp;state=..." required style="flex:1">
         <button type="submit" class="btn btn-sm">Lưu token</button>
       </form>
-    </div>
+    </details>
     {{end}}
   </div>
 
