@@ -2,6 +2,8 @@ package automation
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
@@ -232,4 +234,31 @@ func (s *Service) decide(agent, action string, target *string, reason string, in
 		return errNoLedger
 	}
 	return s.Ledger.Decide(agent, action, target, reason, inputs)
+}
+
+// OutputPath resolves a job's output filename to its full filesystem path.
+func (s *Service) OutputPath(name string) string {
+	if name == "" {
+		return ""
+	}
+	if filepath.IsAbs(name) {
+		return name
+	}
+	if s.DataDir != "" {
+		cand := filepath.Join(s.DataDir, "output", name)
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+	}
+	cand := filepath.Join("data", "output", name)
+	if _, err := os.Stat(cand); err == nil {
+		return cand
+	}
+	if _, err := os.Stat(name); err == nil {
+		return name
+	}
+	if s.DataDir != "" {
+		return filepath.Join(s.DataDir, "output", name)
+	}
+	return name
 }

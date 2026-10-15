@@ -389,7 +389,11 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	if j.Kind == studio.KindAffiliate && j.Status == studio.StatusDone && j.Output != "" {
 		var p studio.AffiliateParams
 		_ = json.Unmarshal([]byte(j.Params), &p)
-		resp["trend"] = studio.TrendReadiness(r.Context(), j.Output, p, j.Caption)
+		outPath := j.Output
+		if s.Studio != nil {
+			outPath = s.Studio.OutputPath(j.Output)
+		}
+		resp["trend"] = studio.TrendReadiness(r.Context(), outPath, p, j.Caption)
 	}
 	s.writeJSON(w, resp)
 }

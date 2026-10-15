@@ -92,7 +92,11 @@ func (p studioGrowthProducer) JobState(jobID string) (string, string) {
 	if !ok {
 		return "", ""
 	}
-	return j.Status, j.Output
+	outPath := j.Output
+	if p.s.Studio != nil {
+		outPath = p.s.Studio.OutputPath(j.Output)
+	}
+	return j.Status, outPath
 }
 
 // youtubeGrowthUploader adapts the YouTube publisher to

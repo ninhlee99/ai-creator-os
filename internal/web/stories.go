@@ -127,7 +127,11 @@ func (s *Server) storiesPageData() storiesView {
 		}
 		if j.Output != "" {
 			sv.MediaURL = "/media/" + filepath.Base(j.Output)
-			if d := probeStoryDuration(j.Output); d > 0 {
+			outPath := j.Output
+			if s.Studio != nil {
+				outPath = s.Studio.OutputPath(j.Output)
+			}
+			if d := probeStoryDuration(outPath); d > 0 {
 				m, sec := int(d)/60, int(d)%60
 				sv.Duration = fmt.Sprintf("%d:%02d", m, sec)
 			}

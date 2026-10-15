@@ -319,10 +319,11 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			return fmt.Sprintf("story %q: đã có trên kênh (lần đăng dở trước đó) — bỏ qua để tránh trùng", j.Title), true
 		}
 	}
+	videoPath := s.OutputPath(j.Output)
 	if mu, ok := s.Uploader.(MetaUploader); ok && mu != nil {
-		res = mu.UploadMeta(ctx, acct, j.Output, vmeta, "short_film")
+		res = mu.UploadMeta(ctx, acct, videoPath, vmeta, "short_film")
 	} else {
-		res = s.Uploader.Upload(ctx, acct, j.Output, vmeta.Title, vmeta.Description, "short_film")
+		res = s.Uploader.Upload(ctx, acct, videoPath, vmeta.Title, vmeta.Description, "short_film")
 	}
 	if !res.Ok {
 		// Đợt V: token chết (invalid_grant) thì retry vô ích — alert critical

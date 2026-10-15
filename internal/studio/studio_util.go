@@ -45,7 +45,7 @@ func (s *Studio) DeleteJob(id string) error {
 		os.Remove(a.Path)
 	}
 	if j.Output != "" {
-		os.Remove(j.Output)
+		os.Remove(s.OutputPath(j.Output))
 	}
 	os.RemoveAll(filepath.Join(s.workRoot, id))
 	if _, err := s.db.Exec(`DELETE FROM studio_assets WHERE job_id=?`, id); err != nil {

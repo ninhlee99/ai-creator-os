@@ -281,6 +281,29 @@ func (s *Studio) WorkDir() string { return s.workRoot }
 // MediaGen exposes the provider (dashboard health card).
 func (s *Studio) MediaGen() MediaGen { return s.mg }
 
+// OutputPath resolves a job's output filename to its full filesystem path.
+func (s *Studio) OutputPath(name string) string {
+	if name == "" {
+		return ""
+	}
+	if filepath.IsAbs(name) {
+		return name
+	}
+	if s.outDir != "" {
+		cand := filepath.Join(s.outDir, name)
+		if _, err := os.Stat(cand); err == nil {
+			return cand
+		}
+	}
+	if _, err := os.Stat(name); err == nil {
+		return name
+	}
+	if s.outDir != "" {
+		return filepath.Join(s.outDir, name)
+	}
+	return name
+}
+
 // ---------------------------------------------------------------------------
 // job bookkeeping
 // ---------------------------------------------------------------------------

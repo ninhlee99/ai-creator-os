@@ -214,7 +214,8 @@ func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j 
 		if s.JobStore.PublishLegStatus(jobID, name) == studio.LegDone {
 			continue
 		}
-		res := pub.Publish(ctx, j.Output, title, desc, "short_video")
+		videoPath := s.OutputPath(j.Output)
+		res := pub.Publish(ctx, videoPath, title, desc, "short_video")
 		if !res.Ok {
 			s.JobStore.AppendLog(jobID, "Tự đăng "+name+" thất bại: "+res.Error)
 			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegFailed, "")
@@ -255,7 +256,8 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 		title = p.ProductName
 	}
 	s.JobStore.AppendLog(jobID, "Tự đăng TikTok…")
-	res := pub.Publish(ctx, j.Output, title, j.Caption, "short_video")
+	videoPath := s.OutputPath(j.Output)
+	res := pub.Publish(ctx, videoPath, title, j.Caption, "short_video")
 	if !res.Ok {
 		s.JobStore.AppendLog(jobID, "Tự đăng thất bại: "+res.Error)
 		_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegFailed, "")
@@ -312,7 +314,8 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 	}
 	desc += "\n\n" + growth.DisclosureLine
 	s.JobStore.AppendLog(jobID, "Tự đăng YouTube Shorts (private)…")
-	res := pub.Publish(ctx, j.Output, title, desc, "short_video")
+	videoPath := s.OutputPath(j.Output)
+	res := pub.Publish(ctx, videoPath, title, desc, "short_video")
 	if !res.Ok {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube thất bại: "+res.Error)
 		_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegFailed, "")
