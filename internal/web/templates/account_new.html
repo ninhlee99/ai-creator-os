@@ -169,34 +169,7 @@
   </div>
 </div>
 
-<!-- Subtle Admin Footer Card -->
-<div class="card" style="margin-top: 32px; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-  <div>
-    <strong style="font-size: 14px; display: flex; align-items: center; gap: 6px;">⚙️ Quản lý API &amp; Khóa Ứng Dụng Nền Tảng</strong>
-    <p class="hint" style="margin: 2px 0 0; font-size: 13px;">Cấu hình OAuth Client, App Secret và Token hệ thống dùng chung cho các nền tảng mạng xã hội.</p>
-  </div>
-  <a href="/settings/he-thong" class="btn btn-secondary btn-sm" style="font-size: 13px;">Mở Cài Đặt Hệ Thống ↗</a>
-</div>
 
-<!-- Collapsed Developer / Test Fallback -->
-<details class="advanced" style="margin-top: 14px;">
-  <summary style="font-size: 12px; color: var(--muted); cursor: pointer;">🔧 Tùy chọn nâng cao (Dành cho kiểm thử &amp; API nội bộ)</summary>
-  <div class="form-card" style="margin-top: 10px; padding: 14px;">
-    <form method="post" action="/accounts">
-      <div class="grid2">
-        <div class="field">
-          <label>Username</label>
-          <input type="text" name="username" placeholder="test_channel">
-        </div>
-        <div class="field">
-          <label>Channel ID</label>
-          <input type="text" name="youtube_channel" placeholder="UC...">
-        </div>
-      </div>
-      <button type="submit" class="btn btn-secondary btn-sm">Tạo nội bộ</button>
-    </form>
-  </div>
-</details>
 
 <script>
 function openConnectModal(platform) {
