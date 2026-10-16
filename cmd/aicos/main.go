@@ -549,10 +549,32 @@ func main() {
 				}
 				srv.Autopilot = ap
 				log.Printf("autopilot: ready (nguồn sản phẩm: Accesstrade store)")
-				// After every finished studio job: auto-publish affiliate
-				// videos to TikTok when the UI toggle is on. Fail-closed:
-				// without a configured TikTok publisher nothing is posted.
-				srv.Studio.SetOnDone(srv.AutomationService().AutoPublishHook())
+				publishHook := srv.AutomationService().AutoPublishHook()
+				srv.Studio.SetOnDone(func(jobID string) {
+					if publishHook != nil {
+						publishHook(jobID)
+					}
+					go func() {
+						j, ok := srv.Studio.GetJob(jobID)
+						if !ok {
+							return
+						}
+						title := j.Title
+						if title == "" {
+							title = "Video AI Studio"
+						}
+						msg := fmt.Sprintf("🎬 [STUDIO] ✨ Video hoàn tất: \"%s\" (ID: %s, Thể loại: %s)!\nĐã sẵn sàng xuất bản đa kênh.", title, jobID, j.Kind)
+						bot, _ := srv.EffectiveEnv("TELEGRAM_BOT_TOKEN")
+						chat, _ := srv.EffectiveEnv("TELEGRAM_CHAT_ID")
+						if bot != "" && chat != "" {
+							_ = notify.SendTelegram(bot, chat, msg)
+						}
+						disc, _ := srv.EffectiveEnv("DISCORD_WEBHOOK_URL")
+						if disc != "" {
+							_ = notify.SendDiscord(disc, "✨ Video Studio Hoàn Tất", msg)
+						}
+					}()
+				})
 				// One-time seed from env so existing deployments keep working;
 				// after that the web UI (/products) is the only control plane.
 				// Đợt 3: automation defaults ON when unset and a stored "0"

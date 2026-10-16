@@ -208,7 +208,7 @@ func (s *Server) accountID(w http.ResponseWriter, r *http.Request) (int64, bool)
 // to "tong-quan".
 func (s *Server) accountTab(r *http.Request) string {
 	switch r.URL.Query().Get("tab") {
-	case "autopilot", "ket-noi", "brand-dna":
+	case "autopilot", "ket-noi", "brand-dna", "comments":
 		return r.URL.Query().Get("tab")
 	default:
 		return "tong-quan"
@@ -358,4 +358,87 @@ func (s *Server) handleAccountBrandDNAReset(w http.ResponseWriter, r *http.Reque
 	seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&ok=%s", id, url.QueryEscape("Đã khôi phục Brand DNA chuẩn AI theo ngành hàng!")))
 }
 
-// ---------------------------------------------------------------- schedule
+// ---------------------------------------------------------------- comment auto-reply
+
+func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.accountID(w, r)
+	if !ok {
+		return
+	}
+	acct, err := s.Mgr.Get(id)
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Không tìm thấy kênh"})
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Dữ liệu không hợp lệ"})
+		return
+	}
+
+	userComment := strings.TrimSpace(r.FormValue("comment"))
+	if userComment == "" {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Vui lòng nhập nội dung bình luận để thử nghiệm"})
+		return
+	}
+
+	low := strings.ToLower(userComment)
+	intent := "Tương tác cộng đồng"
+	intentCode := "engagement"
+	action := "Thả tim + Trả lời tự nhiên"
+	delaySec := 45 + (len(userComment)*7)%75
+
+	var reply string
+	affLink := "https://go.isclix.com/deal-hot"
+
+	isPurchase := strings.Contains(low, "giá") || strings.Contains(low, "bao nhiêu") ||
+		strings.Contains(low, "mua") || strings.Contains(low, "link") ||
+		strings.Contains(low, "shop") || strings.Contains(low, "ship") ||
+		strings.Contains(low, "inbox") || strings.Contains(low, "tư vấn") ||
+		strings.Contains(low, "đâu") || strings.Contains(low, "chỗ nào")
+
+	isPraise := strings.Contains(low, "hay") || strings.Contains(low, "đẹp") ||
+		strings.Contains(low, "đỉnh") || strings.Contains(low, "chuẩn") ||
+		strings.Contains(low, "tuyệt") || strings.Contains(low, "thích")
+
+	isToxic := strings.Contains(low, "lừa đảo") || strings.Contains(low, "dở") ||
+		strings.Contains(low, "xấu") || strings.Contains(low, "nhảm")
+
+	if isPurchase {
+		intent = "Hỏi mua hàng / Chốt đơn Affiliate (80% GMV)"
+		intentCode = "purchase"
+		action = "Tự động phản hồi kèm Deep-link & Ghim bình luận"
+		switch acct.Persona {
+		case "genz", "playful":
+			reply = fmt.Sprintf("Dạ sốp gửi mình link săn sale giảm tới 45%% kèm mã freeship ở giỏ hàng góc trái video hoặc bấm vào đây nha: %s ✨ Tranh thủ kẻo hết deal nè bác ơi!", affLink)
+		case "expert", "tech":
+			reply = fmt.Sprintf("Chào bạn, dòng này hiệu năng thực tế rất ổn trong tầm giá. Bạn có thể xem chi tiết thông số và nhận ưu đãi bảo hành chính hãng ở link giỏ hàng này nhé: %s", affLink)
+		default:
+			reply = fmt.Sprintf("Dạ em gửi mình link săn ưu đãi chính hãng kèm freeship ở giỏ hàng góc trái video hoặc bấm vào đây xem nhé: %s 💖 Cần tư vấn thêm bạn cứ nhắn em nha!", affLink)
+		}
+	} else if isPraise {
+		intent = "Khen ngợi / Đồng tình (Tăng điểm thuật toán FYP)"
+		intentCode = "praise"
+		action = "Thả tim + Cảm ơn & Kêu gọi Follow"
+		reply = "Cảm ơn bạn nhiều nha! Follow kênh để đón xem video hữu ích tiếp theo vào 19h tối mai nhé! 🔥"
+	} else if isToxic {
+		intent = "Tiêu cực / Cần kiểm duyệt (Bảo vệ thương hiệu)"
+		intentCode = "toxic"
+		action = "Gắn cờ kiểm duyệt / Tự động ẩn comment"
+		reply = "(Hệ thống tự động ẩn hoặc báo cáo để bảo vệ uy tín kênh)"
+	} else {
+		intent = "Thắc mắc & Tranh luận (Kích thích Watch Time)"
+		intentCode = "inquiry"
+		action = "Trả lời gợi mở tăng thảo luận"
+		reply = "Theo bạn thì yếu tố nào quan trọng nhất? Cùng để lại bình luận để mình bàn luận thêm ở video sau nha! 👇"
+	}
+
+	s.writeJSON(w, map[string]any{
+		"ok":          true,
+		"intent":      intent,
+		"intent_code": intentCode,
+		"action":      action,
+		"reply":       reply,
+		"delay_sec":   delaySec,
+		"comment":     userComment,
+	})
+}

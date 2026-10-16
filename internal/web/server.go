@@ -702,11 +702,18 @@ func (s *Server) render(w http.ResponseWriter, page string, data map[string]any)
 
 // --------------------------------------------------------------- view types
 
-// accountView is a network account plus its rendered persona label.
+// accountView is a network account plus its rendered persona label and growth metrics.
 type accountView struct {
 	*network.Account
 	PersonaLabel string
 	Platforms    []string
+	GrowthStage  string
+	Views30d     int64
+	FollowersCnt int64
+	NextTarget   string
+	NextPct      float64
+	HasNext      bool
+	AffiliateLink string
 }
 
 func personaLabel(key string) string {
@@ -724,7 +731,49 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, a.YoutubeContentTypes) {
 		plats = append(plats, p.Name())
 	}
-	return &accountView{Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats}
+	av := &accountView{Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats}
+	if s.Growth != nil {
+		if prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err == nil && prof != nil {
+			switch prof.Stage {
+			case "cold_start":
+				av.GrowthStage = "Khởi động (0-1K)"
+			case "monetization":
+				av.GrowthStage = "Bật kiếm tiền / YPP"
+			case "scaling":
+				av.GrowthStage = "Mở rộng quy mô"
+			default:
+				av.GrowthStage = prof.Stage
+			}
+		}
+		if snap, err := s.Growth.LatestSnapshot(a.ID); err == nil && snap != nil {
+			if v, ok := metricValue(snap, "followers"); ok {
+				av.FollowersCnt = int64(v)
+			}
+			if v, ok := metricValue(snap, "views_30d"); ok {
+				av.Views30d = int64(v)
+			}
+		}
+		if targets, err := s.Growth.ListTargets(a.ID); err == nil && len(targets) > 0 {
+			for _, t := range targets {
+				if t.ReachedAt == "" {
+					av.NextTarget = t.Label
+					av.HasNext = true
+					if t.Threshold > 0 && av.FollowersCnt > 0 {
+						av.NextPct = float64(av.FollowersCnt) / t.Threshold * 100
+						if av.NextPct > 100 {
+							av.NextPct = 100
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	if av.GrowthStage == "" {
+		av.GrowthStage = "Đang vận hành"
+	}
+	av.AffiliateLink = "https://go.isclix.com/deal-hot"
+	return av
 }
 
 type statusCount struct {

@@ -9,6 +9,7 @@
 <nav class="tabs">
   <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
   <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
+  <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Tự Động Rep Comment &amp; Chốt Đơn</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
   <a href="/accounts/{{$id}}?tab=ket-noi"{{if eq .Tab "ket-noi"}} class="active"{{end}}>Kết nối</a>
 </nav>
@@ -498,6 +499,145 @@
     <button type="submit" class="btn btn-secondary btn-sm">Tạo lại topic plan</button>
   </form>
 </div>
+
+{{end}}
+
+{{if eq .Tab "comments"}}
+<div class="card" style="border-radius:14px;padding:18px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent)">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:26px">💬</span>
+      <div>
+        <h2 style="margin:0;font-size:16px;color:var(--text)">Hệ Thống Tự Động Trả Lời Bình Luận &amp; Chốt Đơn 24/7</h2>
+        <div class="hint" style="font-size:12px">AI tự động lắng nghe người xem, phân loại ý định mua hàng và trả lời kèm link affiliate giỏ hàng ngay lập tức.</div>
+      </div>
+    </div>
+    <span class="badge badge-ok" style="font-weight:700"><span class="pulse-dot"></span> ĐANG BẢO VỆ &amp; CHỐT ĐƠN 24/7</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;margin-top:14px">
+    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--accent)">1. HỎI MUA HÀNG (80% DOANH THU)</div>
+      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Khách hỏi giá, link, ship -> AI gửi link affiliate giỏ hàng + lời kêu gọi hành động.</p>
+    </div>
+    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:#10b981">2. KHEN NGỢI &amp; FYP BOOST</div>
+      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Thả tim ngay + cảm ơn dí dỏm -> kích thích tương tác để thuật toán đẩy video lên triệu view.</p>
+    </div>
+    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:#f59e0b">3. TRANH LUẬN &amp; WATCH TIME</div>
+      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Đặt câu hỏi mở kéo người xem ở lại tranh luận, tăng thời gian xem và tỷ lệ xem lại.</p>
+    </div>
+    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:#ef4444">4. CHỐNG SPAM &amp; TOXIC</div>
+      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Tự động phát hiện chửi bới, link rác, lừa đảo -> gắn cờ ẩn comment bảo vệ uy tín kênh.</p>
+    </div>
+  </div>
+</div>
+
+<div class="grid2" style="margin-bottom:20px">
+  <!-- Cấu hình quy tắc kênh -->
+  <div class="form-card">
+    <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+      <span>⚙️</span> Quy Tắc Trả Lời &amp; Persona Kênh
+    </h3>
+    <dl class="kv">
+      <dt>Kênh phát sóng</dt><dd><b>@{{.Acct.Username}}</b></dd>
+      <dt>Tính cách AI (Persona)</dt><dd><span class="badge badge-info">{{.Acct.PersonaLabel}}</span></dd>
+      <dt>Ngành hàng / Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}Đa năng{{end}}</dd>
+      <dt>Link Affiliate Mặc Định</dt><dd><code style="font-size:11px;word-break:break-all">{{if .Acct.AffiliateLink}}{{.Acct.AffiliateLink}}{{else}}https://go.isclix.com/deal-hot{{end}}</code></dd>
+      <dt>Thuật toán Anti-Spam</dt><dd><span class="badge badge-ok">✓ Bật Anti-Bot Jitter (Trễ ngẫu nhiên 45s – 120s)</span></dd>
+    </dl>
+    <div class="hint" style="margin-top:12px;line-height:1.4">
+      💡 <b>Mẹo thực chiến:</b> Thuật toán TikTok và YouTube ưu tiên cao nhất cho các video có chủ kênh phản hồi bình luận trong 15 phút đầu sau khi đăng. Tự động trả lời giúp kênh tăng gấp 3 lần tỷ lệ giữ chân và doanh số giỏ hàng.
+    </div>
+  </div>
+
+  <!-- Trình giả lập phản hồi AI trực tiếp -->
+  <div class="form-card" style="border:1.5px solid var(--border)">
+    <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+      <span>⚡</span> Trình Giả Lập Phản Hồi Bình Luận AI
+    </h3>
+    <p class="hint" style="margin-top:-4px;margin-bottom:12px">Chọn một mẫu comment hoặc gõ câu hỏi bất kỳ của người xem để kiểm tra xem AI sẽ nhận diện ý định và trả lời ra sao:</p>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Áo này bao nhiêu tiền shop, có freeship không ạ?')">🛍️ Hỏi giá áo polo</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Xin link mua tai nghe sony với ad ơi')">🎧 Xin link mua tai nghe</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Video cuốn quá, làm thêm tập 2 đi bạn!')">🔥 Khen ngợi video</button>
+      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Dùng cái này coi chừng lừa đảo nha mọi người')">⚠️ Phản biện / Hoài nghi</button>
+    </div>
+
+    <div class="field" style="margin-bottom:12px">
+      <label>Nội dung bình luận của khán giả:</label>
+      <input type="text" id="sim-input-comment" placeholder="Ví dụ: Áo này giá bao nhiêu, cho em xin link mua với shop..." value="Áo này giá bao nhiêu, cho em xin link mua với shop...">
+    </div>
+
+    <button type="button" id="btn-sim-run" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px" onclick="runCommentSimulation({{$id}})">
+      ⚡ Kiểm Tra AI Phản Hồi Ngay
+    </button>
+
+    <!-- Kết quả mô phỏng -->
+    <div id="sim-result-box" style="display:none;margin-top:14px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="badge badge-ok" id="sim-intent-tag" style="font-size:11px">Ý định: Hỏi mua hàng</span>
+        <span class="badge badge-dim" id="sim-delay-tag" style="font-size:10.5px">⏱️ Trễ ngẫu nhiên: 65s</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Hành động AI tự động:</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px" id="sim-action-text">Tự động phản hồi kèm Deep-link &amp; Ghim bình luận</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Nội dung phản hồi tự động gửi cho khách:</div>
+      <div style="background:var(--bg2);padding:10px 12px;border-radius:8px;border-left:3px solid var(--accent);font-size:13px;line-height:1.5;color:var(--text)" id="sim-reply-text">
+        Dạ em gửi mình link săn ưu đãi giảm 45%...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setSimComment(text) {
+  document.getElementById('sim-input-comment').value = text;
+}
+
+function runCommentSimulation(acctId) {
+  var comment = document.getElementById('sim-input-comment').value.trim();
+  if (!comment) {
+    alert('Vui lòng nhập nội dung bình luận.');
+    return;
+  }
+  var btn = document.getElementById('btn-sim-run');
+  var oldBtnText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Đang phân tích ý định...';
+
+  var data = new URLSearchParams();
+  data.append('comment', comment);
+
+  fetch('/accounts/' + acctId + '/comments/simulate', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    btn.disabled = false;
+    btn.innerHTML = oldBtnText;
+    if (!res.ok) {
+      alert('Lỗi: ' + (res.error || 'Không thử nghiệm được'));
+      return;
+    }
+    document.getElementById('sim-result-box').style.display = 'block';
+    document.getElementById('sim-intent-tag').textContent = '🎯 ' + res.intent;
+    document.getElementById('sim-delay-tag').textContent = '⏱️ Anti-Spam: ' + res.delay_sec + 's trễ';
+    document.getElementById('sim-action-text').textContent = res.action;
+    document.getElementById('sim-reply-text').textContent = res.reply;
+    window.showToast('✓ AI đã phân tích ý định và sinh câu trả lời chuẩn xác!', true);
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.innerHTML = oldBtnText;
+    alert('Lỗi kết nối: ' + err);
+  });
+}
+</script>
 
 {{end}}
 {{end}}
