@@ -104,9 +104,9 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 
 	if s.Harness == nil {
 		hv.HarnessOK = false
-		hv.AutonomyLevelName = "Disconnected"
+		hv.AutonomyLevelName = "Chưa kết nối (Disconnected)"
 		hv.AutonomyLevelBadge = "warn"
-		hv.AutonomyDesc = "Master Harness Agent is not initialized in the current configuration."
+		hv.AutonomyDesc = "Bộ điều khiển Harness Agent chưa được khởi tạo trong cấu hình hiện tại."
 		s.render(w, "harness", s.ctx("Harness", hv))
 		return
 	}
@@ -117,19 +117,19 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 
 	switch level {
 	case harness.AutonomyAssisted:
-		hv.AutonomyLevelName = "Level 1: Assisted (Advisory)"
+		hv.AutonomyLevelName = "Cấp độ 1: Trợ lý đề xuất (Assisted)"
 		hv.AutonomyLevelBadge = "info"
-		hv.AutonomyDesc = "Agent observes, diagnoses, and suggests strategic action plans. Requires human sign-off before rendering or publishing."
+		hv.AutonomyDesc = "Agent quan sát, chẩn đoán và đề xuất kế hoạch hành động. Yêu cầu chủ doanh nghiệp duyệt từng bước trước khi dựng hoặc xuất bản."
 	case harness.AutonomySemiAutonomous:
-		hv.AutonomyLevelName = "Level 2: Semi-Autonomous (Draft-First)"
+		hv.AutonomyLevelName = "Cấp độ 2: Bán tự động (Semi-Autonomous)"
 		hv.AutonomyLevelBadge = "running"
-		hv.AutonomyDesc = "Agent autonomously detects viral trends and renders preview cuts. Human approval is only required for official publishing."
+		hv.AutonomyDesc = "Agent tự động phát hiện xu hướng và dựng video nháp. Chủ doanh nghiệp kiểm tra và duyệt trước khi đăng bài thật."
 	case harness.AutonomyFullyAutonomous:
-		hv.AutonomyLevelName = "Level 3: Fully Autonomous (Zero-Touch)"
+		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (Fully Autonomous)"
 		hv.AutonomyLevelBadge = "ok"
-		hv.AutonomyDesc = "Agent operates 100% hands-free: channel portfolio control, affiliate deal selection, video production, publishing, and closed-loop self-correction."
+		hv.AutonomyDesc = "Agent tự vận hành 24/7 khép kín: săn deal affiliate, sản xuất video viral, đăng bài giờ vàng và tự học hỏi sửa sai."
 	default:
-		hv.AutonomyLevelName = "Level 3: Fully Autonomous"
+		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (Fully Autonomous)"
 		hv.AutonomyLevelBadge = "ok"
 	}
 
@@ -415,13 +415,13 @@ func mapMemoryToView(m *harness.AgentMemory) *harnessMemoryView {
 	domainVN := string(m.MemoryType)
 	switch m.MemoryType {
 	case harness.MemHookPerformance:
-		domainVN = "Hook Retention (3s)"
+		domainVN = "Giữ chân 3s (Hook)"
 	case harness.MemConversionInsight:
-		domainVN = "Affiliate Conversion"
+		domainVN = "Chuyển đổi Affiliate"
 	case harness.MemFormatReflection:
-		domainVN = "Video Format Lifecycle"
+		domainVN = "Định dạng Video"
 	case harness.MemChannelLearning:
-		domainVN = "Channel Audience Persona"
+		domainVN = "Khán giả Kênh"
 	}
 
 	isWarning := m.ImpactScore < 0

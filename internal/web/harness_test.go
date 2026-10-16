@@ -44,8 +44,8 @@ func TestHarnessPageNoHarness(t *testing.T) {
 	if !strings.Contains(body, "Agent Harness") {
 		t.Errorf("trang /harness thiếu tiêu đề Agent Harness: %s", body)
 	}
-	if !strings.Contains(body, "Disconnected") {
-		t.Errorf("trang /harness thiếu nhãn Disconnected: %s", body)
+	if !strings.Contains(body, "Chưa kết nối") && !strings.Contains(body, "Disconnected") {
+		t.Errorf("trang /harness thiếu nhãn Chưa kết nối / Disconnected: %s", body)
 	}
 }
 
@@ -58,9 +58,9 @@ func TestHarnessPageWithHarness(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"Agent Harness",
-		"Level 3: Fully Autonomous",
-		"Run OODA Cycle Now",
-		"Episodic Memory Bank",
+		"Cấp độ 3: Tự hành 100%",
+		"Chạy chu kỳ OODA ngay",
+		"Kho Ký Ức Thực Chiến",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /harness thiếu nội dung %q", want)
