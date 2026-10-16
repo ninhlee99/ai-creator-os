@@ -1,171 +1,201 @@
-{{define "title"}}Bộ Não Tự Hành (Harness Agent) — AI Creator OS{{end}}
+{{define "title"}}Agent Harness — Autonomous Control Plane — AI Creator OS{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 24px;">
+<!-- Header: Agent Harness Executive Command Center -->
+<div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Bộ Não Tự Hành Cấp Cao (Agent Harness) 🧠</h1>
-      <span class="badge badge-{{.Harness.AutonomyLevelBadge}}" style="font-size:11px;padding:3px 8px;font-weight:700">{{.Harness.AutonomyLevelName}}</span>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Agent Harness</h1>
+      <span class="badge badge-dim" style="font-family:monospace;font-size:11px;padding:2px 8px">AUTONOMOUS CONTROL PLANE</span>
+      <span class="badge badge-{{.Harness.AutonomyLevelBadge}}" style="font-size:11px;padding:3px 10px;font-weight:700">
+        {{.Harness.AutonomyLevelName}}
+      </span>
     </div>
-    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:850px;line-height:1.5">
-      Kiến trúc <b>OODA Closed-Loop Cognitive Engine</b> (Quan sát → Định hướng → Quyết định → Hành động → Đúc kết kinh nghiệm). Vận hành toàn diện: xây dựng đa kênh, săn deal affiliate, sản xuất nội dung, đăng bài và tự tối ưu mà không cần can thiệp thủ công.
+    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13px;max-width:860px;line-height:1.5">
+      Closed-loop cognitive architecture (<b>Observe &rarr; Orient &rarr; Decide &rarr; Act &rarr; Reflect</b>). Manages multi-channel portfolio, hunts high-yield affiliate deals, auto-produces 9:16 viral videos, and self-optimizes using long-term episodic memory.
     </p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
     <form method="post" action="/harness/cycle" style="margin:0">
-      <button type="submit" class="btn btn-primary" style="font-weight:700">⚡ Kích hoạt Chu kỳ Nhận thức OODA ngay</button>
+      <button type="submit" class="btn btn-primary" style="font-weight:700;display:flex;align-items:center;gap:6px">
+        <span>⚡</span> Run OODA Cycle Now
+      </button>
     </form>
   </div>
 </div>
 
 {{if .Harness.Notice}}
-<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
-  <span style="color:#10b981;font-size:18px">✓</span>
-  <div style="font-size:13.5px">{{.Harness.Notice}}</div>
+<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:16px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
+  <span style="color:#10b981;font-size:16px">✓</span>
+  <div style="font-size:13px">{{.Harness.Notice}}</div>
 </div>
 {{end}}
 
 {{if .Harness.Error}}
-<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
-  <span style="color:#ef4444;font-size:18px">⚠</span>
-  <div style="font-size:13.5px">{{.Harness.Error}}</div>
+<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:16px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
+  <span style="color:#ef4444;font-size:16px">⚠</span>
+  <div style="font-size:13px">{{.Harness.Error}}</div>
 </div>
 {{end}}
 
-<!-- Bảng Cấu Hình Cấp Độ Tự Chủ (Autonomy Policy) -->
-<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border)">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+<!-- Key Performance & Perception Metrics -->
+<div class="grid4" style="margin-bottom: 20px;">
+  <div class="card" style="padding:14px 18px;border-radius:10px">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Monitored Channels</div>
+    <div style="font-size:24px;font-weight:800;font-family:monospace;color:var(--accent)">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ChannelCount}}{{else}}0{{end}}
+      <span style="font-size:12px;font-weight:500;color:var(--muted);font-family:sans-serif">channels</span>
+    </div>
+    <div class="hint" style="font-size:11px;margin-top:2px">Portfolio health tracking live</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:10px">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">High-Yield Deals</div>
+    <div style="font-size:24px;font-weight:800;font-family:monospace;color:var(--text)">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}}
+      <span style="font-size:12px;font-weight:500;color:var(--muted);font-family:sans-serif">active deals</span>
+    </div>
+    <div class="hint" style="font-size:11px;margin-top:2px">Accesstrade verified commission</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:10px">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Dispatched Actions</div>
+    <div style="font-size:24px;font-weight:800;font-family:monospace;color:#10b981">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}}
+      <span style="font-size:12px;font-weight:500;color:var(--muted);font-family:sans-serif">tasks</span>
+    </div>
+    <div class="hint" style="font-size:11px;margin-top:2px">Executed in last cognitive cycle</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:10px">
+    <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px">Episodic Memories</div>
+    <div style="font-size:24px;font-weight:800;font-family:monospace;color:var(--text)">
+      {{.Harness.TotalMemories}}
+      <span style="font-size:12px;font-weight:500;color:var(--muted);font-family:sans-serif">records</span>
+    </div>
+    <div class="hint" style="font-size:11px;margin-top:2px">Stored in SQLite memory bank</div>
+  </div>
+</div>
+
+<!-- Autonomy Policy Controller -->
+<div class="card" style="padding:16px 20px;border-radius:12px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px">
     <div>
-      <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
-        <span>🛡️ Thiết lập Cấp độ Tự hành của Doanh chủ</span>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
-        {{.Harness.AutonomyDesc}}
-      </div>
+      <div style="font-weight:800;font-size:14px;letter-spacing:-0.2px">🛡️ Autonomy Level Policy</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">{{.Harness.AutonomyDesc}}</div>
     </div>
     <form method="post" action="/harness/autonomy" style="display:flex;gap:8px;align-items:center;margin:0">
-      <select name="level" class="form-select" style="padding:6px 12px;font-size:13px;font-weight:600;border-radius:6px">
-        <option value="1" {{if eq .Harness.AutonomyLevel 1}}selected{{end}}>Cấp độ 1: Trợ lý tư vấn (Assisted)</option>
-        <option value="2" {{if eq .Harness.AutonomyLevel 2}}selected{{end}}>Cấp độ 2: Bán tự động (Semi-Autonomous)</option>
-        <option value="3" {{if eq .Harness.AutonomyLevel 3}}selected{{end}}>Cấp độ 3: Tự hành toàn diện (Fully Autonomous)</option>
+      <select name="level" class="form-select" style="padding:5px 10px;font-size:12.5px;font-weight:600;border-radius:6px">
+        <option value="1" {{if eq .Harness.AutonomyLevel 1}}selected{{end}}>Level 1: Assisted (Advisory)</option>
+        <option value="2" {{if eq .Harness.AutonomyLevel 2}}selected{{end}}>Level 2: Semi-Autonomous (Draft-First)</option>
+        <option value="3" {{if eq .Harness.AutonomyLevel 3}}selected{{end}}>Level 3: Fully Autonomous (Zero-Touch)</option>
       </select>
-      <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600">Áp dụng</button>
+      <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600;font-size:12px">Apply Policy</button>
     </form>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;margin-top:10px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:10px">
     <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--border){{end}}">
-      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--text){{end}}">
-        Cấp độ 1: Trợ lý tư vấn
+      <div style="font-weight:700;font-size:12.5px;color:{{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--text){{end}}">
+        Level 1: Assisted
       </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
-        Giám sát số liệu, chẩn đoán cơ hội. Người dùng bấm duyệt từng khâu sản xuất và xuất bản.
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px">
+        Agent chẩn đoán và đề xuất. Yêu cầu phê duyệt thủ công từng khâu sản xuất và xuất bản.
       </div>
     </div>
     <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--border){{end}}">
-      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--text){{end}}">
-        Cấp độ 2: Bán tự động
+      <div style="font-weight:700;font-size:12.5px;color:{{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--text){{end}}">
+        Level 2: Semi-Autonomous
       </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
-        Tự động tạo kịch bản, dựng video demo theo lịch. Người dùng duyệt trước khi phát sóng thật.
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px">
+        Tự động tạo kịch bản và render video nháp. Người dùng bấm duyệt trước khi đăng bài thật.
       </div>
     </div>
     <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--border){{end}}">
-      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--text){{end}}">
-        Cấp độ 3: Tự hành toàn diện
+      <div style="font-weight:700;font-size:12.5px;color:{{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--text){{end}}">
+        Level 3: Fully Autonomous
       </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
-        Agent chủ động 100%: Lập kế hoạch, điều phối 9 khối AI, sản xuất, đăng kênh và đúc kết kinh nghiệm.
+      <div style="font-size:11.5px;color:var(--muted);margin-top:3px">
+        Tự vận hành 100%: Quản lý danh mục kênh, săn deal, sản xuất, đăng tải và tự sửa sai theo dữ liệu.
       </div>
     </div>
   </div>
 </div>
 
-<!-- Thẻ Chỉ số Chu kỳ Nhận thức gần nhất -->
-<div class="grid4" style="margin-bottom: 24px;">
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Kênh Giám Sát</div>
-    <div style="font-size:22px;font-weight:800;color:var(--accent)">
-      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ChannelCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">kênh</span>
-    </div>
-    <div class="hint" style="font-size:11.5px;margin-top:4px">Được theo dõi sức khỏe liên tục</div>
-  </div>
-
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Deal Tiềm Năng Cao</div>
-    <div style="font-size:22px;font-weight:800;color:var(--text)">
-      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">sản phẩm</span>
-    </div>
-    <div class="hint" style="font-size:11.5px;margin-top:4px">Hoa hồng cao sẵn sàng gắn link</div>
-  </div>
-
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Quyết Định Hành Động</div>
-    <div style="font-size:22px;font-weight:800;color:#10b981">
-      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">hành động</span>
-    </div>
-    <div class="hint" style="font-size:11.5px;margin-top:4px">Trong chu kỳ nhận thức gần nhất</div>
-  </div>
-
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Kho Ký Ức Thực Chiến</div>
-    <div style="font-size:22px;font-weight:800;color:var(--text)">
-      {{.Harness.TotalMemories}} <span style="font-size:13px;font-weight:500;color:var(--muted)">bài học</span>
-    </div>
-    <div class="hint" style="font-size:11.5px;margin-top:4px">Rút ra từ kết quả giữ chân &amp; bán hàng</div>
-  </div>
-</div>
-
-<!-- Chẩn Đoán & Định Hướng Chu kỳ Gần Nhất -->
+<!-- Active Cognitive State & Latest Cycle Inspector -->
 {{if .Harness.LatestCycle}}
-<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--accent)">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-    <div style="font-size:15px;font-weight:700">
-      🎯 Chẩn Đoán Nhận Thức Chu Kỳ <span style="font-family:monospace;color:var(--accent)">{{.Harness.LatestCycle.CycleID}}</span>
+<div class="card" style="padding:18px 20px;border-radius:12px;margin-bottom:20px;border-left:4px solid var(--accent)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>🎯 Active Cognitive Stream</span>
+        <span style="font-family:monospace;font-size:12px;color:var(--accent);font-weight:600">Cycle: {{.Harness.LatestCycle.CycleID}}</span>
+        <span class="badge badge-ok" style="font-size:10px;padding:2px 6px">{{.Harness.LatestCycle.Status}}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+        Executed: {{fmtVN .Harness.LatestCycle.StartedAt}} &bull; Duration: {{.Harness.LatestCycle.Duration}} &bull; Actions: {{.Harness.LatestCycle.ActionCount}}
+      </div>
     </div>
-    <div style="font-size:12px;color:var(--muted)">
-      Thời gian: {{fmtVN .Harness.LatestCycle.StartedAt}} (Thời lượng: {{.Harness.LatestCycle.Duration}})
+    <div style="display:flex;gap:6px">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="openCycleModal('{{.Harness.LatestCycle.CycleID}}')" style="font-size:11.5px;font-weight:600">
+        🔍 Inspect Full Cycle Data
+      </button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="showRawJson('Latest Cycle JSON', {{.Harness.LatestCycle.RawJSON}})" style="font-size:11.5px;font-weight:600;font-family:monospace">
+        { } JSON
+      </button>
     </div>
   </div>
-  <p style="margin:0 0 16px 0;font-size:13.5px;line-height:1.6;color:var(--text)">
-    {{.Harness.LatestCycle.Diagnosis}}
-  </p>
 
+  <!-- Strategic Diagnosis -->
+  <div style="background:var(--bg);padding:12px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">
+      LLM Strategic Diagnosis &amp; Orientation
+    </div>
+    <p style="margin:0;font-size:13px;line-height:1.55;color:var(--text)">
+      {{.Harness.LatestCycle.Diagnosis}}
+    </p>
+  </div>
+
+  <!-- Decisions Matrix -->
   {{if .Harness.LatestCycle.Decisions}}
-  <div style="font-size:13px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
-    Danh sách Quyết định &amp; Tác vụ Tự hành được kích hoạt:
+  <div style="font-size:12px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
+    Active Decision Tasks Dispatched:
   </div>
   <div style="overflow-x:auto">
-    <table class="table" style="font-size:13px;margin:0">
+    <table class="table" style="font-size:12.5px;margin:0">
       <thead>
         <tr>
-          <th>Kênh phụ trách</th>
-          <th>Loại hành động</th>
-          <th>Chủ đề / Mục tiêu</th>
-          <th>Căn cứ chiến lược &amp; Lý do AI</th>
-          <th>Độ ưu tiên</th>
-          <th>Trạng thái</th>
+          <th>Target Channel</th>
+          <th>Action Type</th>
+          <th>Strategy Topic</th>
+          <th>Reasoning &amp; Rationale</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Result ID</th>
         </tr>
       </thead>
       <tbody>
         {{range .Harness.LatestCycle.Decisions}}
         <tr>
-          <td style="font-weight:600">{{if .TargetUser}}@{{.TargetUser}}{{else}}<i>Tất cả kênh</i>{{end}}</td>
+          <td style="font-weight:700">{{if .TargetUser}}@{{.TargetUser}}{{else}}<i>All Channels</i>{{end}}</td>
           <td>
-            <span class="badge badge-info" style="font-size:11px">{{.ActionType}}</span>
+            <span class="badge badge-info" style="font-size:10.5px;font-family:monospace">{{.ActionType}}</span>
           </td>
-          <td style="font-weight:600">{{.Topic}}</td>
-          <td style="max-width:380px">{{.Reasoning}}</td>
+          <td style="font-weight:600;max-width:200px">{{.Topic}}</td>
+          <td style="max-width:340px;color:var(--text);line-height:1.4">{{.Reasoning}}</td>
           <td>
             {{if eq .Priority 1}}
-            <span style="color:#ef4444;font-weight:700">P1 (Khẩn cấp)</span>
+            <span style="color:#ef4444;font-weight:800;font-size:11.5px">P1 High</span>
             {{else if eq .Priority 2}}
-            <span style="color:#f59e0b;font-weight:600">P2 (Cao)</span>
+            <span style="color:#f59e0b;font-weight:700;font-size:11.5px">P2 Mid</span>
             {{else}}
-            <span style="color:var(--muted);font-weight:600">P{{.Priority}}</span>
+            <span style="color:var(--muted);font-weight:600;font-size:11.5px">P{{.Priority}}</span>
             {{end}}
           </td>
           <td>
-            <span class="badge badge-ok" style="font-size:11px">{{.Status}}</span>
+            <span class="badge badge-ok" style="font-size:10.5px">{{.Status}}</span>
+          </td>
+          <td style="font-family:monospace;font-size:11px;color:var(--muted)">
+            {{if .ResultID}}{{.ResultID}}{{else}}&mdash;{{end}}
           </td>
         </tr>
         {{end}}
@@ -176,120 +206,207 @@
 </div>
 {{end}}
 
-<!-- Kho Ký Ức Thực Chiến (Experiential Memory) -->
-<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+<!-- Interactive Prompt Context Simulator -->
+<div class="card" style="padding:16px 20px;border-radius:12px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div>
-      <div style="font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px">
-        <span>📚 Kho Ký Ức Dài Hạn &amp; Bài Học Thực Chiến (Episodic Memory)</span>
+      <div style="font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>⚡ Prompt Context Simulator (Live Memory Injection)</span>
+        <span class="badge badge-dim" style="font-size:10.5px">PROMPT ENHANCER</span>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
-        Hệ thống tự động inject các bài học này vào LLM prompt khi lập kế hoạch sản xuất để tránh lặp lại sai lầm và nhân đôi thành công.
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+        Trực quan hóa đoạn ngữ cảnh và quy tắc bài học mà Harness Agent tự động tiêm vào LLM khi sản xuất video.
       </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="simNiche" class="form-select" style="padding:4px 8px;font-size:12px;border-radius:6px" onchange="refreshPromptPreview()">
+        {{range .Harness.SimulatedNiches}}
+        <option value="{{.}}">{{.}}</option>
+        {{end}}
+      </select>
+      <select id="simChannel" class="form-select" style="padding:4px 8px;font-size:12px;border-radius:6px" onchange="refreshPromptPreview()">
+        <option value="">(Tất cả kênh)</option>
+        {{range .Harness.AccountNames}}
+        <option value="{{.}}">@{{.}}</option>
+        {{end}}
+      </select>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="refreshPromptPreview()" style="font-size:11.5px">Refresh</button>
     </div>
   </div>
 
+  <div style="position:relative">
+    <pre id="promptPreviewBox" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;font-family:monospace;line-height:1.5;color:var(--text);max-height:160px;overflow-y:auto;white-space:pre-wrap;margin:0">{{if .Harness.DefaultPromptContext}}{{.Harness.DefaultPromptContext}}{{else}}Chưa có bài học nào khớp với bộ lọc này. Hãy thêm bài học bên dưới để huấn luyện Agent.{{end}}</pre>
+  </div>
+</div>
+
+<!-- Episodic Memory Bank (Storage Inspector) -->
+<div class="card" style="padding:18px 20px;border-radius:12px;margin-bottom:20px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>📚 Episodic Memory Bank</span>
+        <span class="badge badge-dim" style="font-family:monospace;font-size:11px">{{.Harness.TotalMemories}} RECORDS</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+        Dữ liệu tri thức lưu bền vững trong SQLite (<code style="font-size:11px">harness_memories</code>). Tự động học từ retention rate và doanh thu thực tế.
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleMemoryForm()" style="font-size:12px;font-weight:600">
+      + Add Custom Guideline
+    </button>
+  </div>
+
   {{if .Harness.Memories}}
-  <div style="overflow-x:auto;margin-bottom:20px">
-    <table class="table" style="font-size:13px;margin:0">
+  <div style="overflow-x:auto;margin-bottom:14px">
+    <table class="table" style="font-size:12.5px;margin:0">
       <thead>
         <tr>
-          <th>Lĩnh vực</th>
-          <th>Kênh</th>
-          <th>Chủ đề / Format</th>
-          <th>Kinh nghiệm / Bài học đúc kết</th>
-          <th>Độ tin cậy</th>
-          <th>Thời gian</th>
+          <th>Memory ID</th>
+          <th>Domain / Type</th>
+          <th>Target Channel</th>
+          <th>Subject / Format</th>
+          <th>Core Insight / Rule</th>
+          <th>Confidence</th>
+          <th>Impact</th>
+          <th>Created</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
         {{range .Harness.Memories}}
         <tr>
+          <td style="font-family:monospace;font-size:11px;color:var(--muted)">{{.ID}}</td>
           <td>
-            <span class="badge badge-dim" style="font-size:11px">{{.DomainVN}}</span>
+            <span class="badge badge-dim" style="font-size:10.5px">{{.DomainVN}}</span>
           </td>
-          <td>{{if .Channel}}@{{.Channel}}{{else}}<i>Tất cả kênh</i>{{end}}</td>
+          <td>{{if .Channel}}<b>@{{.Channel}}</b>{{else}}<i>All</i>{{end}}</td>
           <td style="font-weight:600">{{.Subject}}</td>
-          <td style="max-width:420px;line-height:1.5">
-            {{if .IsWarning}}<span style="color:#ef4444;font-weight:700">⚠ Chú ý:</span> {{end}}{{.Insight}}
+          <td style="max-width:380px;line-height:1.45">
+            {{if .IsWarning}}<span style="color:#ef4444;font-weight:700">⚠ AVOID:</span> {{end}}{{.Insight}}
           </td>
           <td>
-            <span class="badge badge-{{.ScoreColor}}" style="font-size:11px;font-weight:700">{{.Confidence}}</span>
+            <span class="badge badge-{{.ScoreColor}}" style="font-size:10.5px;font-weight:700;font-family:monospace">{{.Confidence}}</span>
           </td>
-          <td style="color:var(--muted);font-size:12px">{{fmtVN .CreatedAt}}</td>
+          <td style="font-family:monospace;font-size:11.5px;font-weight:700;color:{{if .IsWarning}}#ef4444{{else}}#10b981{{end}}">
+            {{.ImpactPercent}}
+          </td>
+          <td style="color:var(--muted);font-size:11.5px">{{fmtVN .CreatedAt}}</td>
+          <td>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px;font-size:11px" onclick="showRawJson('Memory Record: {{.ID}}', {{.RawJSON}})">
+                { }
+              </button>
+              <form method="post" action="/harness/memory/delete" style="display:inline;margin:0" data-confirm="Xóa bài học kinh nghiệm này khỏi kho ký ức?">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="padding:2px 6px;font-size:11px;color:#ef4444" title="Delete memory">
+                  ✕
+                </button>
+              </form>
+            </div>
+          </td>
         </tr>
         {{end}}
       </tbody>
     </table>
   </div>
   {{else}}
-  <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">
-    Chưa có bài học nào được ghi nhận. Agent sẽ tự động tích lũy khi hoàn thành các chu kỳ sản xuất đầu tiên.
+  <div style="padding:20px;text-align:center;color:var(--muted);font-size:12.5px">
+    No episodic memories stored yet. Trigger an OODA cycle or add custom domain guidelines below.
   </div>
   {{end}}
 
-  <!-- Form Nạp thêm luật hoặc kinh nghiệm thủ công cho Agent -->
-  <div style="background:var(--bg);padding:14px 18px;border-radius:10px;border:1px solid var(--border)">
-    <div style="font-size:13px;font-weight:700;margin-bottom:10px">
-      ➕ Nạp thêm Định hướng / Kinh nghiệm cho Bộ Não Agent
+  <!-- Collapsible Form: Add Custom Memory -->
+  <div id="memoryAddForm" style="display:none;background:var(--bg);padding:14px 18px;border-radius:10px;border:1px solid var(--border);margin-top:10px">
+    <div style="font-size:13px;font-weight:800;margin-bottom:8px">
+      ➕ Add Strategic Learning / Rule to Agent Brain
     </div>
-    <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 120px;gap:10px;align-items:end;margin:0">
+    <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)) 110px;gap:8px;align-items:end;margin:0">
       <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Lĩnh vực:</label>
-        <select name="domain" class="form-select" style="width:100%;padding:6px;font-size:12.5px">
-          <option value="hook_performance">Tỷ lệ giữ chân (Hook)</option>
-          <option value="conversion_insight">Chuyển đổi Affiliate</option>
-          <option value="format_reflection">Định dạng Video</option>
-          <option value="channel_learning">Định vị Kênh</option>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Domain:</label>
+        <select name="domain" class="form-select" style="width:100%;padding:5px;font-size:12px">
+          <option value="hook_performance">Hook Retention (3s)</option>
+          <option value="conversion_insight">Affiliate Conversion</option>
+          <option value="format_reflection">Video Format Lifecycle</option>
+          <option value="channel_learning">Channel Audience Persona</option>
         </select>
       </div>
       <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Kênh (tuỳ chọn):</label>
-        <input type="text" name="channel" placeholder="vd: ai_news_vn" class="form-control" style="width:100%;padding:6px;font-size:12.5px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Channel (Optional):</label>
+        <input type="text" name="channel" placeholder="e.g. ai_tech_vn" class="form-control" style="width:100%;padding:5px;font-size:12px">
       </div>
       <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Chủ đề:</label>
-        <input type="text" name="subject" placeholder="vd: Hook tò mò công nghệ" class="form-control" style="width:100%;padding:6px;font-size:12.5px" required>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Niche:</label>
+        <input type="text" name="niche" placeholder="e.g. cong_nghe" class="form-control" style="width:100%;padding:5px;font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Subject:</label>
+        <input type="text" name="subject" placeholder="e.g. Pattern Interrupt" class="form-control" style="width:100%;padding:5px;font-size:12px" required>
       </div>
       <div style="grid-column: span 2">
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Nội dung bài học / Chỉ đạo:</label>
-        <input type="text" name="insight" placeholder="vd: Không nên dùng câu hỏi mở ở 2s đầu, hãy dùng câu khẳng định gây sốc." class="form-control" style="width:100%;padding:6px;font-size:12.5px" required>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px">Core Insight / Operating Rule:</label>
+        <input type="text" name="insight" placeholder="e.g. Cắt khung hình bất ngờ kèm âm thanh sấm sét giúp tăng tỷ lệ xem tiếp 42%" class="form-control" style="width:100%;padding:5px;font-size:12px" required>
       </div>
       <div>
-        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px">Lưu Ký Ức</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:6px;font-size:12px">Save Record</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Lịch Sử Các Chu Kỳ OODA Đã Thực Hiện -->
+<!-- SQLite Cycle Audit History & Detailed Inspector -->
 {{if .Harness.RecentCycles}}
-<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px">
-  <div style="font-size:15px;font-weight:700;margin-bottom:12px">
-    ⏱️ Lịch Sử Các Chu Kỳ Nhận Thức &amp; Ra Quyết Định Gần Đây
+<div class="card" style="padding:18px 20px;border-radius:12px;margin-bottom:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>⏱️ Cognitive Cycle Audit History</span>
+        <span class="badge badge-dim" style="font-family:monospace;font-size:11px">{{.Harness.TotalCycles}} RUNS</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+        Nhật ký toàn bộ các chu kỳ OODA đã ghi vào cơ sở dữ liệu SQLite (<code style="font-size:11px">harness_cycles</code>). Bấm Inspect để xem toàn bộ dữ liệu thô.
+      </div>
+    </div>
   </div>
+
   <div style="overflow-x:auto">
     <table class="table" style="font-size:12.5px;margin:0">
       <thead>
         <tr>
-          <th>Mã chu kỳ</th>
-          <th>Thời gian chạy</th>
-          <th>Thời lượng</th>
-          <th>Chẩn đoán tóm tắt</th>
-          <th>Số hành động</th>
-          <th>Trạng thái</th>
+          <th>Cycle ID</th>
+          <th>Timestamp</th>
+          <th>Duration</th>
+          <th>Observed Portfolio</th>
+          <th>Dispatched Tasks</th>
+          <th>Diagnosis Excerpt</th>
+          <th>Status</th>
+          <th>Inspect Storage</th>
         </tr>
       </thead>
       <tbody>
         {{range .Harness.RecentCycles}}
         <tr>
-          <td style="font-family:monospace;font-weight:600">{{.CycleID}}</td>
+          <td style="font-family:monospace;font-weight:700;font-size:12px">{{.CycleID}}</td>
           <td>{{fmtVN .StartedAt}}</td>
-          <td>{{.Duration}}</td>
-          <td style="max-width:350px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{.Diagnosis}}</td>
-          <td style="font-weight:700">{{.ActionCount}}</td>
+          <td style="font-family:monospace;color:var(--muted)">{{.Duration}}</td>
           <td>
-            <span class="badge badge-ok" style="font-size:11px">{{.Status}}</span>
+            <b>{{.ChannelCount}}</b> channels, <b>{{.ProductCount}}</b> deals
+          </td>
+          <td style="font-weight:700;color:#10b981">{{.ActionCount}} actions</td>
+          <td style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)">
+            {{.Diagnosis}}
+          </td>
+          <td>
+            <span class="badge badge-ok" style="font-size:10.5px">{{.Status}}</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="openCycleModal('{{.CycleID}}')" style="font-size:11px;padding:2px 8px;font-weight:600">
+                🔍 Inspect
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="showRawJson('Cycle: {{.CycleID}}', {{.RawJSON}})" style="font-size:11px;padding:2px 6px;font-family:monospace">
+                { } JSON
+              </button>
+            </div>
           </td>
         </tr>
         {{end}}
@@ -299,4 +416,206 @@
 </div>
 {{end}}
 
+<!-- Modal: Comprehensive Cycle Inspector -->
+<div id="cycleInspectModal" class="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:850px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h3 id="cycleModalTitle" style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.3px">Cycle Inspector</h3>
+        <div id="cycleModalSub" style="font-size:12px;color:var(--muted);margin-top:2px">Stored in SQLite harness_cycles</div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeCycleModal()" style="font-size:13px;padding:4px 10px">✕ Close</button>
+    </div>
+    <div id="cycleModalBody" style="padding:20px;overflow-y:auto;flex:1;font-size:13px;line-height:1.5">
+      <!-- Injected dynamically via JS -->
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg)">
+      <button type="button" class="btn btn-secondary btn-sm" id="cycleModalCopyBtn" onclick="copyCycleJson()">📋 Copy Stored JSON</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="closeCycleModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Raw JSON Inspector -->
+<div id="rawJsonModal" class="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;width:100%;max-width:780px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 40px rgba(0,0,0,0.5)">
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <h3 id="rawJsonTitle" style="margin:0;font-size:15px;font-weight:800">Raw Storage Payload</h3>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeRawJsonModal()">✕ Close</button>
+    </div>
+    <div style="padding:16px;overflow-y:auto;flex:1">
+      <pre id="rawJsonContent" style="margin:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;font-family:monospace;white-space:pre-wrap;color:var(--text)"></pre>
+    </div>
+    <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg)">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="copyRawJson()">📋 Copy to Clipboard</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="closeRawJsonModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentCycleData = null;
+
+function toggleMemoryForm() {
+  const el = document.getElementById('memoryAddForm');
+  el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+}
+
+function refreshPromptPreview() {
+  const niche = document.getElementById('simNiche').value;
+  const channel = document.getElementById('simChannel').value;
+  const box = document.getElementById('promptPreviewBox');
+  box.textContent = "Loading live prompt context...";
+
+  fetch('/api/harness/prompt-context?niche=' + encodeURIComponent(niche) + '&channel=' + encodeURIComponent(channel))
+    .then(r => r.json())
+    .then(data => {
+      if (data.prompt_context && data.prompt_context.trim().length > 0) {
+        box.textContent = data.prompt_context;
+      } else {
+        box.textContent = "Không có bài học nào được kích hoạt cho ngách [" + niche + "] và kênh [" + (channel || 'tất cả') + "].\nAgent sẽ sử dụng cấu trúc viral chuẩn mặc định.";
+      }
+    })
+    .catch(err => {
+      box.textContent = "Lỗi tải prompt context: " + err;
+    });
+}
+
+function openCycleModal(cycleID) {
+  const modal = document.getElementById('cycleInspectModal');
+  const title = document.getElementById('cycleModalTitle');
+  const sub = document.getElementById('cycleModalSub');
+  const body = document.getElementById('cycleModalBody');
+
+  title.textContent = "Inspecting Cycle: " + cycleID;
+  sub.textContent = "Fetching complete state from SQLite database...";
+  body.innerHTML = "<div style='text-align:center;padding:30px;color:var(--muted)'>Đang tải dữ liệu chu kỳ...</div>";
+  modal.style.display = 'flex';
+
+  fetch('/api/harness/cycles/' + encodeURIComponent(cycleID))
+    .then(r => r.json())
+    .then(data => {
+      currentCycleData = data;
+      sub.textContent = "Started: " + (data.started_at || '') + " | Finished: " + (data.finished_at || '') + " | Status: " + (data.status || 'completed');
+
+      let channelsHtml = '';
+      if (data.observations && data.observations.channels && data.observations.channels.length > 0) {
+        channelsHtml = data.observations.channels.map(c => `
+          <div style="background:var(--surface);padding:8px 12px;border-radius:6px;border:1px solid var(--border)">
+            <div style="font-weight:700">@${c.username} (${c.brand_niche || 'General'})</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+              Followers: <b>${c.followers || 0}</b> &bull; Status: <span class="badge badge-dim" style="font-size:10px">${c.health_status || 'normal'}</span>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        channelsHtml = '<div style="color:var(--muted);font-size:12px">Không có dữ liệu kênh trong chu kỳ này.</div>';
+      }
+
+      let decisionsHtml = '';
+      if (data.decisions && data.decisions.length > 0) {
+        decisionsHtml = data.decisions.map(d => `
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px;font-weight:700">@${d.target_user || 'All'}</td>
+            <td style="padding:6px"><span class="badge badge-info" style="font-size:10px">${d.action_type}</span></td>
+            <td style="padding:6px;font-weight:600">${d.topic}</td>
+            <td style="padding:6px;font-size:12px">${d.reasoning}</td>
+            <td style="padding:6px"><span class="badge badge-ok" style="font-size:10px">${d.status}</span></td>
+            <td style="padding:6px;font-family:monospace;font-size:11px">${d.result_id || '—'}</td>
+          </tr>
+        `).join('');
+      } else {
+        decisionsHtml = '<tr><td colspan="6" style="padding:10px;text-align:center;color:var(--muted)">Không có quyết định hành động trong chu kỳ này.</td></tr>';
+      }
+
+      body.innerHTML = `
+        <div style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">1. Strategic Diagnosis</div>
+          <div style="background:var(--bg);padding:10px 12px;border-radius:8px;border:1px solid var(--border);line-height:1.5">
+            ${data.diagnosis || 'Không có chẩn đoán'}
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px">
+          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">2. Perception Matrix (Observations Snapshot)</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:8px;margin-bottom:8px">
+            <div style="background:var(--bg);padding:8px 10px;border-radius:6px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted)">System Health</div>
+              <div style="font-weight:700;color:#10b981">${(data.observations && data.observations.system_health) || 'optimal'}</div>
+            </div>
+            <div style="background:var(--bg);padding:8px 10px;border-radius:6px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted)">High ROI Product</div>
+              <div style="font-weight:700;font-size:12px">${(data.observations && data.observations.high_roi_product) || 'None'}</div>
+            </div>
+            <div style="background:var(--bg);padding:8px 10px;border-radius:6px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted)">Top Trending Audio</div>
+              <div style="font-weight:700;font-size:12px">${(data.observations && data.observations.top_trending_song) || 'None'}</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:6px">
+            ${channelsHtml}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">3. Dispatched Action Tasks (${data.action_count || 0})</div>
+          <div style="overflow-x:auto">
+            <table class="table" style="font-size:12px;margin:0">
+              <thead>
+                <tr>
+                  <th>Target</th>
+                  <th>Action</th>
+                  <th>Topic</th>
+                  <th>Reasoning</th>
+                  <th>Status</th>
+                  <th>Result ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${decisionsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    })
+    .catch(err => {
+      body.innerHTML = "<div style='color:#ef4444;padding:20px'>Lỗi tải chi tiết chu kỳ: " + err + "</div>";
+    });
+}
+
+function closeCycleModal() {
+  document.getElementById('cycleInspectModal').style.display = 'none';
+}
+
+function copyCycleJson() {
+  if (currentCycleData) {
+    navigator.clipboard.writeText(JSON.stringify(currentCycleData, null, 2))
+      .then(() => alert("Đã copy toàn bộ dữ liệu chu kỳ dạng JSON vào clipboard!"))
+      .catch(err => alert("Lỗi copy: " + err));
+  }
+}
+
+let activeRawPayload = "";
+
+function showRawJson(title, jsonPayload) {
+  document.getElementById('rawJsonTitle').textContent = title;
+  const str = (typeof jsonPayload === 'string') ? jsonPayload : JSON.stringify(jsonPayload, null, 2);
+  activeRawPayload = str;
+  document.getElementById('rawJsonContent').textContent = str;
+  document.getElementById('rawJsonModal').style.display = 'flex';
+}
+
+function closeRawJsonModal() {
+  document.getElementById('rawJsonModal').style.display = 'none';
+}
+
+function copyRawJson() {
+  if (activeRawPayload) {
+    navigator.clipboard.writeText(activeRawPayload)
+      .then(() => alert("Đã copy JSON vào clipboard!"))
+      .catch(err => alert("Lỗi copy: " + err));
+  }
+}
+</script>
 {{end}}

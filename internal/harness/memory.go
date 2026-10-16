@@ -154,6 +154,40 @@ func (ms *MemoryStore) ListAllMemories(ctx context.Context, limit int) ([]AgentM
 	return ms.QueryRelevantMemories(ctx, "", "", limit)
 }
 
+// Delete xóa một ký ức theo ID.
+func (ms *MemoryStore) Delete(ctx context.Context, id string) error {
+	if ms.db == nil {
+		return nil
+	}
+	_, err := ms.db.ExecContext(ctx, "DELETE FROM harness_memories WHERE id = ?", id)
+	return err
+}
+
+// GetMemory lấy chi tiết một bản ghi ký ức theo ID.
+func (ms *MemoryStore) GetMemory(ctx context.Context, id string) (*AgentMemory, error) {
+	if ms.db == nil {
+		return nil, sql.ErrNoRows
+	}
+	var m AgentMemory
+	var mType string
+	err := ms.db.QueryRowContext(ctx, `
+		SELECT id, memory_type, channel_id, niche, format_id, title,
+		       insight, confidence_score, impact_score, sample_size, source_ref,
+		       created_at, updated_at
+		FROM harness_memories
+		WHERE id = ?
+	`, id).Scan(
+		&m.ID, &mType, &m.ChannelID, &m.Niche, &m.FormatID, &m.Title,
+		&m.Insight, &m.ConfidenceScore, &m.ImpactScore, &m.SampleSize, &m.SourceRef,
+		&m.CreatedAt, &m.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	m.MemoryType = MemoryType(mType)
+	return &m, nil
+}
+
 // GeneratePromptContext tổng hợp các bài học thành ngữ cảnh ngắn gọn để tiêm vào prompt của LLM.
 func (ms *MemoryStore) GeneratePromptContext(ctx context.Context, niche, channelID string) string {
 	mems, err := ms.QueryRelevantMemories(ctx, niche, channelID, 5)

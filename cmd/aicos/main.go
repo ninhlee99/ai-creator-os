@@ -667,6 +667,9 @@ func main() {
 		log.Printf("harness: init failed: %v", err)
 	} else {
 		srv.Harness = harnessInst
+		if srv.Studio != nil && harnessInst.Memory() != nil {
+			srv.Studio.PromptEnhancer = harnessInst.Memory().GeneratePromptContext
+		}
 		harnessInst.StartBackgroundLoop(ctx)
 		log.Printf("harness: autonomous master agent loop started (level 3: fully autonomous)")
 	}

@@ -153,6 +153,8 @@ type Studio struct {
 	// insertJob từ chối job mới khi vượt MaxDiskPct (mặc định 95).
 	DiskGuard  func() (int, error)
 	MaxDiskPct int
+	// PromptEnhancer tiêm các kinh nghiệm thực chiến từ Agent Harness vào prompt sinh kịch bản.
+	PromptEnhancer func(ctx context.Context, niche, channel string) string
 }
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job

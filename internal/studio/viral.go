@@ -122,6 +122,12 @@ Yêu cầu định dạng đầu ra DUY NHẤT: Trả về một JSON hợp lệ
   ]
 }`, p.Topic, p.Genre, p.VisualMood, p.Account)
 
+	if s.PromptEnhancer != nil {
+		if enhancement := s.PromptEnhancer(ctx, p.Genre, p.Account); enhancement != "" {
+			prompt += "\n" + enhancement
+		}
+	}
+
 	var script ViralScript
 
 	// Nếu chưa cấu hình LLM, tạo kịch bản mẫu chuẩn để hệ thống vẫn chạy ổn định (không crash)

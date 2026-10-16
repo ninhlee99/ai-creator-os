@@ -160,6 +160,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /harness/cycle", s.handleHarnessRunCycle)
 	mux.HandleFunc("POST /harness/autonomy", s.handleHarnessAutonomy)
 	mux.HandleFunc("POST /harness/memory", s.handleHarnessMemoryAdd)
+	mux.HandleFunc("POST /harness/memory/delete", s.handleHarnessMemoryDelete)
+	mux.HandleFunc("GET /api/harness/cycles/{id}", s.handleHarnessCycleDetailJSON)
+	mux.HandleFunc("GET /api/harness/prompt-context", s.handleHarnessPromptPreview)
 	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
 	mux.HandleFunc("POST /team/agents/create", s.handleAgentCreate)

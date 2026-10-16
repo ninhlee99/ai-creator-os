@@ -1,49 +1,70 @@
-# Bộ Não Tự Hành Cấp Cao (Autonomous Agent Harness)
+# Agent Harness — Autonomous Control Plane
 
-AI Creator OS triển khai kiến trúc **Autonomous Agent Harness** đạt chuẩn các hệ thống tự hành tiên tiến nhất trên thế giới.
-
----
-
-## 1. Bản Chất của Agent Harness
-
-Một hệ thống tự động hóa truyền thống (như Cron Job hay Simple Pipeline) chỉ thực thi các mệnh lệnh cố định theo kịch bản có sẵn. Nếu video bị flop hoặc thuật toán nền tảng thay đổi, hệ thống cũ sẽ mù quáng lặp lại kịch bản thất bại.
-
-Ngược lại, **Agent Harness** hoạt động như một **Bộ Não Điều Hành Khép Kín (Closed-Loop Cognitive Architecture)**:
-1. **Quan sát (Observe):** Thu thập liên tục số liệu sức khỏe của mọi kênh, độ giữ chân người xem (Hook 3s), tỷ lệ hoàn thành video, chuyển đổi affiliate và xu hướng thị trường.
-2. **Định hướng (Orient):** Đối chiếu với kho ký ức dài hạn (Episodic Memory), nhận diện điểm nghẽn, phát hiện format nội dung đang suy thoái hoặc cơ hội bứt phá.
-3. **Quyết định (Decide):** Tự động lập kế hoạch đa kênh, ra lệnh điều phối 9 khối chuyên môn AI (Nội dung, Đạo diễn, Săn sản phẩm, Xuất bản, v.v.).
-4. **Hành động (Act):** Tự động sản xuất video gốc (AI MediaGen, TTS giọng đọc truyền cảm, ghép nhạc xu hướng) và xuất bản lên các nền tảng (TikTok, YouTube Shorts).
-5. **Đúc kết (Reflect & Learn):** Đánh giá kết quả của chu kỳ, rút ra bài học kinh nghiệm (Insights) và nạp ngược lại vào kho ký ức để các chu kỳ sau thông minh hơn.
+AI Creator OS triển khai kiến trúc **Agent Harness (Autonomous Control Plane)** đạt chuẩn các hệ thống tự hành tiên tiến nhất trên thế giới.
 
 ---
 
-## 2. 3 Cấp Độ Tự Hành (Autonomy Policy)
+## 1. Vị trí của Agent Harness trong Quy trình Tự động 24/7
 
-Doanh chủ nắm quyền quyết định mức độ can thiệp thông qua bảng điều khiển `/harness`:
+Nhiều người dùng thắc mắc: *Harness Agent nằm ở khâu nào trong quy trình 24/7? Nó là một tính năng độc lập hay gắn liền với toàn hệ thống?*
 
-| Cấp độ | Tên gọi | Phạm vi hoạt động của Agent | Mức độ can thiệp của con người |
-|---|---|---|---|
-| **Cấp độ 1** | **Trợ lý tư vấn (Assisted)** | Giám sát, chẩn đoán, đề xuất kế hoạch sản xuất và kịch bản. | Con người bấm duyệt từng video trước khi render và xuất bản. |
-| **Cấp độ 2** | **Bán tự động (Semi-Autonomous)** | Tự động nghiên cứu xu hướng, render video demo sẵn sàng. | Con người kiểm tra chất lượng lần cuối và bấm xuất bản lên kênh chính thức. |
-| **Cấp độ 3** | **Tự hành toàn diện (Fully Autonomous)** | Chủ động 100%: Quản lý danh mục kênh, săn deal affiliate, dựng video, đăng bài, đo lường và tự sửa sai. | Không cần can thiệp. Doanh chủ chỉ theo dõi doanh thu và báo cáo nhận thức. |
+**Câu trả lời chuẩn kiến trúc phần mềm:**
+Hệ thống AI Creator OS được chia làm 2 tầng rõ rệt:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│              COGNITIVE CONTROL PLANE (LỚP ĐIỀU KHIỂN NHẬN THỨC)        │
+│                         ★ AGENT HARNESS (OODA) ★                       │
+│  - Phân tích danh mục kênh (Portfolio State: views, followers, stages) │
+│  - Kho Ký ức thực chiến (Episodic Memory Bank: Hook 3s, Conversion)    │
+│  - Sinh Prompt Context tiêm vào các kịch bản của Studio                │
+│  - Ra quyết định điều phối ưu tiên (Decision Stream: P1, P2...)        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Directs & Enhances
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                 EXECUTION PLANE (LỚP THỰC THI 24/7 NỀN)                │
+│                         ★ AUTOMATION TICKS ★                           │
+│  - Hunter Tick (Accesstrade / Products Store)                          │
+│  - Studio Engine (AI MediaGen 9:16 + Voiceover + FFMPEG Renderer)      │
+│  - Autopilot Tick (Sản xuất video định kỳ 6h)                          │
+│  - Publishers Gateway (Đăng tải lên TikTok, YouTube Shorts)            │
+│  - Watchdog & Self-Healing (Tự phục hồi, dọn ổ đĩa, alert Telegram)   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Không phải tính năng rời rạc:** Harness Agent đóng vai trò **Bộ Não Chỉ Huy Cấp Cao (Strategic Commander)**, còn các Tick tự động (`AutopilotTick`, `GrowthTick`, `HunterTick`, `Studio`) là **Cánh Tay Thực Thi (Execution Plane)**.
+2. **Khâu Tham Gia Cụ Thể:**
+   - **Khâu Lập Kịch Bản (Script Generation):** Thông qua hook `srv.Studio.PromptEnhancer`, mỗi khi Studio tạo kịch bản video viral hoặc affiliate, nó tự động gọi `harness.Memory().GeneratePromptContext()` để tiêm các bài học giữ chân 3s và lỗi cần tránh vào LLM prompt.
+   - **Khâu Kích Hoạt Đợt Sản Xuất (Job Dispatch):** Trong giai đoạn **Act** của chu kỳ OODA, Harness Agent trực tiếp gọi `studioInst.EnqueueViral(...)` để sinh các lượt dựng video mới cho kênh cần đẩy mạnh mà không cần người dùng tự bấm tạo từng video.
+   - **Khâu Tối Ưu Hóa (Continuous Reflection):** Đọc lại dữ liệu chuyển đổi và hiệu quả video để lưu bài học mới vào `harness_memories`.
 
 ---
 
-## 3. Kho Ký Ức Thực Chiến (Episodic & Semantic Memory)
+## 2. Kiểm Tra Dữ Liệu Lưu Trữ (Data Storage Inspection)
 
-Được lưu trữ bền vững trong bảng `harness_memories` (SQLite):
-- **Hook Performance (`hook_performance`):** Đúc kết cấu trúc mở đầu 3s giữ chân người xem tốt nhất theo từng ngách (câu hỏi tò mò, khẳng định gây sốc, cắt cảnh gián đoạn).
-- **Conversion Insight (`conversion_insight`):** Học cách gắn link bio, CTA và sản phẩm có tỷ lệ hoa hồng / đơn hàng thực tế cao nhất.
-- **Format Reflection (`format_reflection`):** Nhận diện các format đã bão hòa để khai tử (kill) và nhân đôi (double-down) các format chiến thắng.
-- **Channel Learning (`channel_learning`):** Tối ưu phong cách và nhịp độ video riêng biệt cho từng kênh.
+Harness Agent minh bạch 100% mọi dữ liệu được lưu trong SQLite:
 
-Mỗi khi lên kịch bản mới, Harness tự động kích hoạt `GeneratePromptContext()` để inject các bài học này vào LLM Prompt, đảm bảo video sau luôn hay hơn video trước.
+1. **Bảng Chu Kỳ Nhận Thức (`harness_cycles`):**
+   - Lưu trữ: `id`, `started_at`, `finished_at`, `diagnosis`, `observations_json`, `decisions_json`, `action_count`, `status`.
+   - **Cycle Inspector Modal:** Nhấp vào bất kỳ chu kỳ nào để xem toàn bộ ảnh chụp môi trường (Perception Matrix: số lượng follower, stage kênh, tải hệ thống, âm thanh hot, sản phẩm hot) và danh sách quyết định hành động.
+   - **Raw JSON Viewer:** Cho phép copy trực tiếp toàn bộ chuỗi JSON lưu trong cơ sở dữ liệu với nút `[ 📋 Copy Stored JSON ]`.
+   - **API nội bộ:** `GET /api/harness/cycles/{id}` trả về JSON đầy đủ của chu kỳ.
+
+2. **Bảng Ký Ức Thực Chiến (`harness_memories`):**
+   - Lưu trữ: `id`, `memory_type`, `channel_id`, `niche`, `format_id`, `title`, `insight`, `confidence_score`, `impact_score`, `sample_size`, `source_ref`, `created_at`, `updated_at`.
+   - Mỗi bản ghi có nút `[ { } JSON ]` để soi dữ liệu thô và nút `[ ✕ ]` để xóa nếu người dùng muốn loại bỏ bài học không phù hợp.
+
+3. **Prompt Context Simulator (Trình Mô Phỏng Tiêm Ngữ Cảnh):**
+   - Cho phép chọn ngách nội dung (Niche) và kênh (Channel).
+   - Tức thì gọi API `GET /api/harness/prompt-context` để hiển thị chính xác đoạn prompt markdown mà LLM nhận được khi viết kịch bản.
 
 ---
 
-## 4. Giao Diện Điều Hành `/harness`
+## 3. 3 Cấp Độ Tự Trị (Autonomy Policy)
 
-- **Executive Cockpit:** Xem chẩn đoán nhận thức thời gian thực, thời lượng chu kỳ và số quyết định hành động.
-- **Decision Stream Table:** Xem chi tiết từng quyết định do AI đưa ra (Kênh phụ trách, Loại hành động, Căn cứ chiến lược, Độ ưu tiên P1-P5, Trạng thái).
-- **Memory Bank:** Quản lý danh mục kinh nghiệm và cho phép doanh chủ nạp thêm các chỉ đạo / triết lý kinh doanh riêng biệt.
-- **Nút Kích Hoạt Nhanh:** `⚡ Kích hoạt Chu kỳ Nhận thức OODA ngay` cho phép chạy chu kỳ kiểm tra và sản xuất ngay lập tức mà không cần đợi ticker định kỳ.
+| Cấp độ | Tên gọi chuẩn | Mô tả hành vi |
+|---|---|---|
+| **Level 1** | **Assisted (Advisory)** | Agent chẩn đoán và đề xuất. Yêu cầu phê duyệt thủ công từng khâu sản xuất và xuất bản. |
+| **Level 2** | **Semi-Autonomous (Draft-First)** | Tự động tạo kịch bản và render video nháp. Người dùng bấm duyệt trước khi xuất bản lên kênh thật. |
+| **Level 3** | **Fully Autonomous (Zero-Touch)** | Tự vận hành 100%: Quản lý danh mục kênh, săn deal, sản xuất, đăng tải và tự sửa sai theo dữ liệu. |

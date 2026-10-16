@@ -153,4 +153,35 @@ func TestOODACycleAndHarness(t *testing.T) {
 	if len(cycles) == 0 {
 		t.Errorf("expected at least 1 recent cycle")
 	}
+
+	// Kiểm tra GetCycle
+	fetched, err := h.GetCycle(cycleRes.CycleID)
+	if err != nil {
+		t.Fatalf("h.GetCycle: %v", err)
+	}
+	if fetched.CycleID != cycleRes.CycleID {
+		t.Errorf("GetCycle ID mismatch: %s != %s", fetched.CycleID, cycleRes.CycleID)
+	}
+
+	// Kiểm tra MemoryStore.Delete và GetMemory
+	delMemID := "mem-del-unit"
+	err = h.Memory().RecordInsight(ctx, AgentMemory{
+		ID:         delMemID,
+		MemoryType: MemConversionInsight,
+		Title:      "Temp insight",
+		Insight:    "Will be deleted",
+	})
+	if err != nil {
+		t.Fatalf("RecordInsight: %v", err)
+	}
+	gotMem, err := h.Memory().GetMemory(ctx, delMemID)
+	if err != nil || gotMem == nil {
+		t.Fatalf("GetMemory: %v", err)
+	}
+	if err := h.Memory().Delete(ctx, delMemID); err != nil {
+		t.Fatalf("ms.Delete: %v", err)
+	}
+	if _, err := h.Memory().GetMemory(ctx, delMemID); err == nil {
+		t.Errorf("expected error after deleting memory, got nil")
+	}
 }

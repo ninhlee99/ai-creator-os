@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -40,11 +41,11 @@ func TestHarnessPageNoHarness(t *testing.T) {
 		t.Fatalf("GET /harness = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Bộ Não Tự Hành") {
-		t.Errorf("trang /harness thiếu tiêu đề: %s", body)
+	if !strings.Contains(body, "Agent Harness") {
+		t.Errorf("trang /harness thiếu tiêu đề Agent Harness: %s", body)
 	}
-	if !strings.Contains(body, "Chưa kết nối") {
-		t.Errorf("trang /harness thiếu nhãn chưa kết nối: %s", body)
+	if !strings.Contains(body, "Disconnected") {
+		t.Errorf("trang /harness thiếu nhãn Disconnected: %s", body)
 	}
 }
 
@@ -56,10 +57,10 @@ func TestHarnessPageWithHarness(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Bộ Não Tự Hành Cấp Cao (Agent Harness)",
-		"Cấp độ 3: Tự hành toàn diện (Fully Autonomous)",
-		"Kích hoạt Chu kỳ Nhận thức OODA ngay",
-		"Kho Ký Ức Thực Chiến",
+		"Agent Harness",
+		"Level 3: Fully Autonomous",
+		"Run OODA Cycle Now",
+		"Episodic Memory Bank",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /harness thiếu nội dung %q", want)
@@ -145,3 +146,89 @@ func TestHarnessMemoryAdd(t *testing.T) {
 		t.Errorf("Không tìm thấy ký ức vừa nạp trong store")
 	}
 }
+
+func TestHarnessCycleDetailAPI(t *testing.T) {
+	s := newHarnessServer(t)
+
+	// Run 1 cycle first so we have a cycle ID
+	cycle, err := s.Harness.RunCycle(context.Background())
+	if err != nil {
+		t.Fatalf("RunCycle: %v", err)
+	}
+
+	rec := get(t, s, "/api/harness/cycles/"+cycle.CycleID)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/harness/cycles/%s = %d, want 200", cycle.CycleID, rec.Code)
+	}
+
+	var res harness.OODACycleResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("Unmarshal cycle JSON: %v", err)
+	}
+	if res.CycleID != cycle.CycleID {
+		t.Errorf("CycleID = %s, want %s", res.CycleID, cycle.CycleID)
+	}
+	if res.Status != "completed" {
+		t.Errorf("Status = %s, want completed", res.Status)
+	}
+}
+
+func TestHarnessPromptPreviewAPI(t *testing.T) {
+	s := newHarnessServer(t)
+
+	// Seed an insight
+	_ = s.Harness.Memory().RecordInsight(context.Background(), harness.AgentMemory{
+		MemoryType:      harness.MemHookPerformance,
+		Niche:           "tech",
+		ChannelID:       "chan-1",
+		Title:           "Fast Cut",
+		Insight:         "Fast cut in first 3s increases retention",
+		ConfidenceScore: 0.9,
+		ImpactScore:     0.8,
+	})
+
+	rec := get(t, s, "/api/harness/prompt-context?niche=tech&channel=chan-1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/harness/prompt-context = %d, want 200", rec.Code)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &data); err != nil {
+		t.Fatalf("Unmarshal prompt-context JSON: %v", err)
+	}
+	promptCtx, _ := data["prompt_context"].(string)
+	if !strings.Contains(promptCtx, "Fast cut in first 3s") {
+		t.Errorf("prompt_context missing seeded insight: %s", promptCtx)
+	}
+}
+
+func TestHarnessMemoryDelete(t *testing.T) {
+	s := newHarnessServer(t)
+
+	memID := "mem-test-del"
+	_ = s.Harness.Memory().RecordInsight(context.Background(), harness.AgentMemory{
+		ID:              memID,
+		MemoryType:      harness.MemHookPerformance,
+		Title:           "To be deleted",
+		Insight:         "Delete me",
+		ConfidenceScore: 0.8,
+	})
+
+	rec := postForm(t, s, "/harness/memory/delete", url.Values{
+		"id": {memID},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("POST /harness/memory/delete = %d, want 303", rec.Code)
+	}
+
+	mems, err := s.Harness.Memory().ListAllMemories(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("ListAllMemories: %v", err)
+	}
+	for _, m := range mems {
+		if m.ID == memID {
+			t.Errorf("Ký ức %s vẫn còn sau khi xóa", memID)
+		}
+	}
+}
+
