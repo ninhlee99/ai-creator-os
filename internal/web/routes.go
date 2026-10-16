@@ -154,6 +154,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
 	mux.HandleFunc("POST /viral/quick", s.handleViralQuick)
+
+	// Master Autonomous Harness Agent (OODA loop, experiential memory, portfolio control).
+	mux.HandleFunc("GET /harness", s.handleHarness)
+	mux.HandleFunc("POST /harness/cycle", s.handleHarnessRunCycle)
+	mux.HandleFunc("POST /harness/autonomy", s.handleHarnessAutonomy)
+	mux.HandleFunc("POST /harness/memory", s.handleHarnessMemoryAdd)
 	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
 	mux.HandleFunc("POST /team/agents/create", s.handleAgentCreate)

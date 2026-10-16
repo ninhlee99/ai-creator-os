@@ -13,8 +13,9 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | # | Tính năng | File | Trạng thái |
 |---|---|---|---|
 | 1 | Trang chủ (`/`) — thẻ số liệu, feed quyết định, chip công tắc chính | [trang-chu.md](trang-chu.md) | ✅ |
-| 2 | Kênh (`/accounts`, sidebar "Kênh") — 4 tab Tổng quan / Autopilot / Bản sắc / Kết nối | [tai-khoan.md](tai-khoan.md) | ✅ |
-| 3 | **Bản sắc thương hiệu & Mission Control (`/accounts/{id}?tab=brand-dna`, `/missions`) — Brand DNA, Trend Intelligence, Mission Engine** | [brand-dna-va-mission-control.md](brand-dna-va-mission-control.md) | ✅ |
+| 2 | **Bộ Não Tự Hành Cấp Cao (`/harness`) — Master Agent Harness, OODA Cognitive Engine, Episodic Memory** | [harness-agent.md](harness-agent.md) | ✅ |
+| 3 | Kênh (`/accounts`, sidebar "Kênh") — 4 tab Tổng quan / Autopilot / Bản sắc / Kết nối | [tai-khoan.md](tai-khoan.md) | ✅ |
+| 4 | **Bản sắc thương hiệu & Mission Control (`/accounts/{id}?tab=brand-dna`, `/missions`) — Brand DNA, Trend Intelligence, Mission Engine** | [brand-dna-va-mission-control.md](brand-dna-va-mission-control.md) | ✅ |
 | 4 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [phat-trien-kenh.md](phat-trien-kenh.md) | ✅ |
 | 5 | Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật | [agent-team.md](agent-team.md) | ✅ |
 | 6 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |

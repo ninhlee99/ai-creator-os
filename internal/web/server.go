@@ -22,6 +22,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
+	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -102,6 +103,9 @@ type Server struct {
 	// WebAI quản lý kết nối và phiên đăng nhập Claude, ChatGPT, Gemini, Muse AI.
 	WebAI      *webai.Store
 	WebAIRelay *webai.ProxyRelay
+
+	// Harness là Master Autonomous Agent điều phối nhận thức OODA và tự học.
+	Harness *harness.Harness
 
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
@@ -458,6 +462,9 @@ var statusLabels = map[string]string{
 	"publish_youtube":         "Đăng YouTube",
 	"viral_produce":          "Sản xuất video viral",
 	"viral_auto_toggle":      "Bật/tắt tự động viral",
+	"harness_cycle":          "Chu kỳ nhận thức OODA",
+	"harness_autonomy":       "Đổi cấp độ tự hành",
+	"harness_memory":         "Ghi nhớ kinh nghiệm",
 	"scale_product":           "Mở rộng sản phẩm",
 	"seed":                    "Khởi tạo",
 	"session_topic":           "Chủ đề phiên",
@@ -629,6 +636,7 @@ var pageFiles = map[string]string{
 	"stories":               "stories.html",
 	"team":                  "team.html",
 	"growth":                "growth.html",
+	"harness":               "harness.html",
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
 	"settings_model_local":  "settings/model-local.html",
@@ -812,4 +820,9 @@ type publisherRow struct {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// DB returns the underlying sqlite DB handle.
+func (s *Server) DB() *sql.DB {
+	return s.db
 }

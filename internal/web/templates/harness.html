@@ -1,0 +1,302 @@
+{{define "title"}}Bộ Não Tự Hành (Harness Agent) — AI Creator OS{{end}}
+{{define "content"}}
+<div class="webai-header" style="margin-bottom: 24px;">
+  <div class="webai-header-left">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Bộ Não Tự Hành Cấp Cao (Agent Harness) 🧠</h1>
+      <span class="badge badge-{{.Harness.AutonomyLevelBadge}}" style="font-size:11px;padding:3px 8px;font-weight:700">{{.Harness.AutonomyLevelName}}</span>
+    </div>
+    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:850px;line-height:1.5">
+      Kiến trúc <b>OODA Closed-Loop Cognitive Engine</b> (Quan sát → Định hướng → Quyết định → Hành động → Đúc kết kinh nghiệm). Vận hành toàn diện: xây dựng đa kênh, săn deal affiliate, sản xuất nội dung, đăng bài và tự tối ưu mà không cần can thiệp thủ công.
+    </p>
+  </div>
+  <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
+    <form method="post" action="/harness/cycle" style="margin:0">
+      <button type="submit" class="btn btn-primary" style="font-weight:700">⚡ Kích hoạt Chu kỳ Nhận thức OODA ngay</button>
+    </form>
+  </div>
+</div>
+
+{{if .Harness.Notice}}
+<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
+  <span style="color:#10b981;font-size:18px">✓</span>
+  <div style="font-size:13.5px">{{.Harness.Notice}}</div>
+</div>
+{{end}}
+
+{{if .Harness.Error}}
+<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
+  <span style="color:#ef4444;font-size:18px">⚠</span>
+  <div style="font-size:13.5px">{{.Harness.Error}}</div>
+</div>
+{{end}}
+
+<!-- Bảng Cấu Hình Cấp Độ Tự Chủ (Autonomy Policy) -->
+<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
+        <span>🛡️ Thiết lập Cấp độ Tự hành của Doanh chủ</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
+        {{.Harness.AutonomyDesc}}
+      </div>
+    </div>
+    <form method="post" action="/harness/autonomy" style="display:flex;gap:8px;align-items:center;margin:0">
+      <select name="level" class="form-select" style="padding:6px 12px;font-size:13px;font-weight:600;border-radius:6px">
+        <option value="1" {{if eq .Harness.AutonomyLevel 1}}selected{{end}}>Cấp độ 1: Trợ lý tư vấn (Assisted)</option>
+        <option value="2" {{if eq .Harness.AutonomyLevel 2}}selected{{end}}>Cấp độ 2: Bán tự động (Semi-Autonomous)</option>
+        <option value="3" {{if eq .Harness.AutonomyLevel 3}}selected{{end}}>Cấp độ 3: Tự hành toàn diện (Fully Autonomous)</option>
+      </select>
+      <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600">Áp dụng</button>
+    </form>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;margin-top:10px">
+    <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--border){{end}}">
+      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--text){{end}}">
+        Cấp độ 1: Trợ lý tư vấn
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+        Giám sát số liệu, chẩn đoán cơ hội. Người dùng bấm duyệt từng khâu sản xuất và xuất bản.
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--border){{end}}">
+      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--text){{end}}">
+        Cấp độ 2: Bán tự động
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+        Tự động tạo kịch bản, dựng video demo theo lịch. Người dùng duyệt trước khi phát sóng thật.
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-radius:8px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--border){{end}}">
+      <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--text){{end}}">
+        Cấp độ 3: Tự hành toàn diện
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:4px">
+        Agent chủ động 100%: Lập kế hoạch, điều phối 9 khối AI, sản xuất, đăng kênh và đúc kết kinh nghiệm.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Thẻ Chỉ số Chu kỳ Nhận thức gần nhất -->
+<div class="grid4" style="margin-bottom: 24px;">
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Kênh Giám Sát</div>
+    <div style="font-size:22px;font-weight:800;color:var(--accent)">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ChannelCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">kênh</span>
+    </div>
+    <div class="hint" style="font-size:11.5px;margin-top:4px">Được theo dõi sức khỏe liên tục</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Deal Tiềm Năng Cao</div>
+    <div style="font-size:22px;font-weight:800;color:var(--text)">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">sản phẩm</span>
+    </div>
+    <div class="hint" style="font-size:11.5px;margin-top:4px">Hoa hồng cao sẵn sàng gắn link</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Quyết Định Hành Động</div>
+    <div style="font-size:22px;font-weight:800;color:#10b981">
+      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}} <span style="font-size:13px;font-weight:500;color:var(--muted)">hành động</span>
+    </div>
+    <div class="hint" style="font-size:11.5px;margin-top:4px">Trong chu kỳ nhận thức gần nhất</div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Kho Ký Ức Thực Chiến</div>
+    <div style="font-size:22px;font-weight:800;color:var(--text)">
+      {{.Harness.TotalMemories}} <span style="font-size:13px;font-weight:500;color:var(--muted)">bài học</span>
+    </div>
+    <div class="hint" style="font-size:11.5px;margin-top:4px">Rút ra từ kết quả giữ chân &amp; bán hàng</div>
+  </div>
+</div>
+
+<!-- Chẩn Đoán & Định Hướng Chu kỳ Gần Nhất -->
+{{if .Harness.LatestCycle}}
+<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--accent)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:15px;font-weight:700">
+      🎯 Chẩn Đoán Nhận Thức Chu Kỳ <span style="font-family:monospace;color:var(--accent)">{{.Harness.LatestCycle.CycleID}}</span>
+    </div>
+    <div style="font-size:12px;color:var(--muted)">
+      Thời gian: {{fmtVN .Harness.LatestCycle.StartedAt}} (Thời lượng: {{.Harness.LatestCycle.Duration}})
+    </div>
+  </div>
+  <p style="margin:0 0 16px 0;font-size:13.5px;line-height:1.6;color:var(--text)">
+    {{.Harness.LatestCycle.Diagnosis}}
+  </p>
+
+  {{if .Harness.LatestCycle.Decisions}}
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
+    Danh sách Quyết định &amp; Tác vụ Tự hành được kích hoạt:
+  </div>
+  <div style="overflow-x:auto">
+    <table class="table" style="font-size:13px;margin:0">
+      <thead>
+        <tr>
+          <th>Kênh phụ trách</th>
+          <th>Loại hành động</th>
+          <th>Chủ đề / Mục tiêu</th>
+          <th>Căn cứ chiến lược &amp; Lý do AI</th>
+          <th>Độ ưu tiên</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Harness.LatestCycle.Decisions}}
+        <tr>
+          <td style="font-weight:600">{{if .TargetUser}}@{{.TargetUser}}{{else}}<i>Tất cả kênh</i>{{end}}</td>
+          <td>
+            <span class="badge badge-info" style="font-size:11px">{{.ActionType}}</span>
+          </td>
+          <td style="font-weight:600">{{.Topic}}</td>
+          <td style="max-width:380px">{{.Reasoning}}</td>
+          <td>
+            {{if eq .Priority 1}}
+            <span style="color:#ef4444;font-weight:700">P1 (Khẩn cấp)</span>
+            {{else if eq .Priority 2}}
+            <span style="color:#f59e0b;font-weight:600">P2 (Cao)</span>
+            {{else}}
+            <span style="color:var(--muted);font-weight:600">P{{.Priority}}</span>
+            {{end}}
+          </td>
+          <td>
+            <span class="badge badge-ok" style="font-size:11px">{{.Status}}</span>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+<!-- Kho Ký Ức Thực Chiến (Experiential Memory) -->
+<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px">
+        <span>📚 Kho Ký Ức Dài Hạn &amp; Bài Học Thực Chiến (Episodic Memory)</span>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">
+        Hệ thống tự động inject các bài học này vào LLM prompt khi lập kế hoạch sản xuất để tránh lặp lại sai lầm và nhân đôi thành công.
+      </div>
+    </div>
+  </div>
+
+  {{if .Harness.Memories}}
+  <div style="overflow-x:auto;margin-bottom:20px">
+    <table class="table" style="font-size:13px;margin:0">
+      <thead>
+        <tr>
+          <th>Lĩnh vực</th>
+          <th>Kênh</th>
+          <th>Chủ đề / Format</th>
+          <th>Kinh nghiệm / Bài học đúc kết</th>
+          <th>Độ tin cậy</th>
+          <th>Thời gian</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Harness.Memories}}
+        <tr>
+          <td>
+            <span class="badge badge-dim" style="font-size:11px">{{.DomainVN}}</span>
+          </td>
+          <td>{{if .Channel}}@{{.Channel}}{{else}}<i>Tất cả kênh</i>{{end}}</td>
+          <td style="font-weight:600">{{.Subject}}</td>
+          <td style="max-width:420px;line-height:1.5">
+            {{if .IsWarning}}<span style="color:#ef4444;font-weight:700">⚠ Chú ý:</span> {{end}}{{.Insight}}
+          </td>
+          <td>
+            <span class="badge badge-{{.ScoreColor}}" style="font-size:11px;font-weight:700">{{.Confidence}}</span>
+          </td>
+          <td style="color:var(--muted);font-size:12px">{{fmtVN .CreatedAt}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">
+    Chưa có bài học nào được ghi nhận. Agent sẽ tự động tích lũy khi hoàn thành các chu kỳ sản xuất đầu tiên.
+  </div>
+  {{end}}
+
+  <!-- Form Nạp thêm luật hoặc kinh nghiệm thủ công cho Agent -->
+  <div style="background:var(--bg);padding:14px 18px;border-radius:10px;border:1px solid var(--border)">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">
+      ➕ Nạp thêm Định hướng / Kinh nghiệm cho Bộ Não Agent
+    </div>
+    <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 120px;gap:10px;align-items:end;margin:0">
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Lĩnh vực:</label>
+        <select name="domain" class="form-select" style="width:100%;padding:6px;font-size:12.5px">
+          <option value="hook_performance">Tỷ lệ giữ chân (Hook)</option>
+          <option value="conversion_insight">Chuyển đổi Affiliate</option>
+          <option value="format_reflection">Định dạng Video</option>
+          <option value="channel_learning">Định vị Kênh</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Kênh (tuỳ chọn):</label>
+        <input type="text" name="channel" placeholder="vd: ai_news_vn" class="form-control" style="width:100%;padding:6px;font-size:12.5px">
+      </div>
+      <div>
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Chủ đề:</label>
+        <input type="text" name="subject" placeholder="vd: Hook tò mò công nghệ" class="form-control" style="width:100%;padding:6px;font-size:12.5px" required>
+      </div>
+      <div style="grid-column: span 2">
+        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Nội dung bài học / Chỉ đạo:</label>
+        <input type="text" name="insight" placeholder="vd: Không nên dùng câu hỏi mở ở 2s đầu, hãy dùng câu khẳng định gây sốc." class="form-control" style="width:100%;padding:6px;font-size:12.5px" required>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px">Lưu Ký Ức</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lịch Sử Các Chu Kỳ OODA Đã Thực Hiện -->
+{{if .Harness.RecentCycles}}
+<div class="card" style="padding:18px 22px;border-radius:12px;margin-bottom:24px">
+  <div style="font-size:15px;font-weight:700;margin-bottom:12px">
+    ⏱️ Lịch Sử Các Chu Kỳ Nhận Thức &amp; Ra Quyết Định Gần Đây
+  </div>
+  <div style="overflow-x:auto">
+    <table class="table" style="font-size:12.5px;margin:0">
+      <thead>
+        <tr>
+          <th>Mã chu kỳ</th>
+          <th>Thời gian chạy</th>
+          <th>Thời lượng</th>
+          <th>Chẩn đoán tóm tắt</th>
+          <th>Số hành động</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Harness.RecentCycles}}
+        <tr>
+          <td style="font-family:monospace;font-weight:600">{{.CycleID}}</td>
+          <td>{{fmtVN .StartedAt}}</td>
+          <td>{{.Duration}}</td>
+          <td style="max-width:350px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{.Diagnosis}}</td>
+          <td style="font-weight:700">{{.ActionCount}}</td>
+          <td>
+            <span class="badge badge-ok" style="font-size:11px">{{.Status}}</span>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+{{end}}

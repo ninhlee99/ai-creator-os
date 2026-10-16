@@ -42,6 +42,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/local"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
+	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
 	"github.com/ninhlee99/ai-creator-os/internal/logx"
@@ -649,6 +650,26 @@ func main() {
 		AT:         srv.AT != nil,
 		Story:      srv.Studio != nil,
 	})
+
+	// -- 7f. master autonomous harness agent (OODA cognitive engine) ---------
+	harnessInst, err := harness.New(
+		srv.DB(),
+		srv.Studio,
+		mgr,
+		srv.Growth,
+		studioLLMAdapter{c: llmChain},
+		harness.Config{
+			AutonomyLevel: harness.AutonomyFullyAutonomous,
+			Interval:      6 * time.Hour,
+		},
+	)
+	if err != nil {
+		log.Printf("harness: init failed: %v", err)
+	} else {
+		srv.Harness = harnessInst
+		harnessInst.StartBackgroundLoop(ctx)
+		log.Printf("harness: autonomous master agent loop started (level 3: fully autonomous)")
+	}
 
 	// -- 8. http server + graceful shutdown ----------------------------------
 	// Đợt S: timeout chống slowloris/treo kết nối trên máy 24/7.
