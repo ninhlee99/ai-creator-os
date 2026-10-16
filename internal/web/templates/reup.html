@@ -24,8 +24,122 @@
   <a href="/settings/reup" title="Chỉnh ở Cài đặt · Reup">{{if .Reup.DiscoverOn}}<span class="badge badge-ok">Tự quét: BẬT</span>{{else}}<span class="badge badge-draft">Tự quét: TẮT</span>{{end}}</a>
 </p>
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Nguồn Douyin</h2>
+<!-- =========================================================================
+     DOUYIN VIRAL TOPIC EXPLORER (SĂN VIDEO VIRAL THEO CHỦ ĐỀ)
+     ========================================================================= -->
+<div class="topic-explorer-card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:24px">🔥</span>
+        <h2 style="margin:0;font-size:18px;font-weight:800;color:var(--text)">Săn Video Viral Douyin Theo Chủ Đề</h2>
+      </div>
+      <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">
+        Khám phá các ngách thị trường triệu view, vượt tường lửa đăng nhập Douyin qua Google Index và 1-Click thêm idol vào kho quét tự động.
+      </p>
+    </div>
+    <span class="badge badge-ok" style="font-size:11.5px;padding:4px 10px"><span class="pulse-dot"></span> BỘ TỪ KHÓA CHUẨN DOUYIN</span>
+  </div>
+
+  <!-- Custom Topic Search & Bypass Tool -->
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;color:var(--text);display:flex;align-items:center;gap:6px">
+      <span>🔎 Tìm kiếm chủ đề tùy chỉnh & Vượt Login Wall:</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input type="text" id="topic-custom-query" placeholder="Nhập chủ đề tiếng Việt hoặc tiếng Trung: vd: nhảy sexy, biến hình, gia dụng, mỹ phẩm, gái xinh..." style="flex:1;min-width:260px;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2)">
+      <button type="button" class="btn btn-primary btn-sm" onclick="searchTopicCustom('google')" style="font-weight:700">🚀 Mở Google Douyin (Không Chặn)</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="searchTopicCustom('douyin')">🌐 Mở Douyin Web</button>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="searchTopicCustom('copy')">📋 Copy Từ Khóa Trung</button>
+    </div>
+    <div style="margin-top:8px;font-size:11.5px;color:var(--muted)">
+      💡 <b>Mẹo thông thái:</b> Nút <i>"Mở Google Douyin"</i> sử dụng toán tử <code>site:douyin.com/user</code> giúp bạn xem hàng ngàn trang cá nhân idol Douyin mà <b>hoàn toàn không bị dính popup bắt đăng nhập</b>.
+    </div>
+  </div>
+
+  <!-- Category Filter Pills -->
+  <div class="topic-filter-bar">
+    <button type="button" class="topic-pill-btn active" onclick="filterTopicCards('all', this)">🔥 Tất Cả Chủ Đề</button>
+    {{range .Reup.ViralTopics}}
+    <button type="button" class="topic-pill-btn" onclick="filterTopicCards('{{.ID}}', this)">{{.Icon}} {{.Title}}</button>
+    {{end}}
+  </div>
+
+  <!-- Topic Cards Grid -->
+  <div class="topic-grid">
+    {{range .Reup.ViralTopics}}
+    <div class="topic-card-item" data-topic-id="{{.ID}}">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:24px">{{.Icon}}</span>
+            <div>
+              <strong style="font-size:15px;color:var(--text);display:block">{{.Title}}</strong>
+              <span style="font-size:11.5px;color:var(--muted)">Tag: <code style="color:var(--accent)">{{.ChineseTag}}</code></span>
+            </div>
+          </div>
+          <span class="badge {{.BadgeClass}}" style="font-size:10px;font-weight:800">{{.Badge}}</span>
+        </div>
+
+        <p style="font-size:12.5px;color:var(--muted);line-height:1.45;margin:0 0 12px">{{.Description}}</p>
+
+        <!-- Keywords Chips with 1-Click Copy -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px">Từ khóa Douyin (Click để copy):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            {{range .Keywords}}
+            <span class="topic-kw-chip" onclick="copyTopicKeyword('{{.}}')" title="Click để copy '{{.}}' vào clipboard">
+              📋 {{.}}
+            </span>
+            {{end}}
+          </div>
+        </div>
+
+        <!-- Quick Search Buttons for this topic -->
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <a href="https://www.google.com/search?q=site:douyin.com/user+{{index .Keywords 0}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-size:11.5px;padding:4px 8px;text-decoration:none">
+            🔍 Google Douyin
+          </a>
+          <a href="https://www.douyin.com/search/{{index .Keywords 0}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-size:11.5px;padding:4px 8px;text-decoration:none">
+            🌐 Douyin Web
+          </a>
+        </div>
+      </div>
+
+      <!-- Curated Idol Channels for this Topic -->
+      <div style="border-top:1px dashed var(--border);padding-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:12px;font-weight:700;color:var(--text)">👑 Idol Douyin Gợi Ý Mẫu:</div>
+          <span class="hint" style="font-size:10.5px">Quét qua TikWM API</span>
+        </div>
+        <p class="hint" style="font-size:11px;margin:0 0 8px;line-height:1.35">
+          💡 <i>Lưu ý: Nếu cổng TikWM bị Cloudflare chặn (403), hãy copy link video Douyin thật và dán vào ô <b>"Thêm URL video trực tiếp"</b> ở dưới để tải ngay bằng yt-dlp.</i>
+        </p>
+        {{range .SampleUsers}}
+        <div class="topic-user-box">
+          <div style="min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:6px">
+              <strong style="font-size:12.5px;color:var(--text)">{{.DisplayName}}</strong>
+              <span class="badge badge-draft" style="font-size:9.5px">{{.Followers}}</span>
+            </div>
+            <div style="font-size:11px;color:var(--muted);font-family:monospace">@{{.Username}} · <span style="font-family:sans-serif">{{.Note}}</span></div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="addSourceFromTopic('{{.Username}}', '{{.DisplayName}}')" style="font-size:11px;padding:4px 9px;white-space:nowrap;font-weight:700">
+            ➕ Nạp Quét
+          </button>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<!-- Toast Feedback Container -->
+<div id="topic-toast" class="topic-toast"></div>
+
+<div class="form-card" id="reup-sources-card">
+  <h2 style="margin-top:0;border:none;padding:0">Nguồn Douyin Đang Theo Dõi</h2>
   <p class="hint">Nhập tài khoản Douyin 1 lần — app tự quét video viral {{.Reup.DiscoverHours}} giờ/lần. Muốn lấy 1 video cụ thể: dán link ở “Hàng đợi tải”.</p>
   {{if .Reup.Sources}}
   <div class="table-wrap">
@@ -53,19 +167,19 @@
   {{else}}
   <p class="empty">Chưa có nguồn nào.</p>
   {{end}}
-  <form method="post" action="/reup/sources" style="margin-top:12px">
+  <form method="post" action="/reup/sources" style="margin-top:12px" id="reup-source-form">
     <input type="hidden" name="kind" value="user">
     <div class="grid2">
       <div class="field">
         <label>Tài khoản Douyin <span class="req">*</span></label>
-        <input type="text" name="value" required placeholder="vd: thantien (không cần @)">
+        <input type="text" name="value" id="reup-input-value" required placeholder="vd: thantien (không cần @)">
       </div>
       <div class="field">
         <label>Tên hiển thị</label>
-        <input type="text" name="name" placeholder="vd: Thần Tiên">
+        <input type="text" name="name" id="reup-input-name" placeholder="vd: Thần Tiên">
       </div>
     </div>
-    <button type="submit" class="btn">Thêm nguồn</button>
+    <button type="submit" class="btn" id="reup-btn-submit-source">Thêm nguồn</button>
   </form>
 </div>
 
@@ -307,6 +421,129 @@ function pollReupPost(postId) {
       }
     })
     .catch(function () { setTimeout(function () { pollReupPost(postId); }, 8000); });
+}
+
+/* =========================================================================
+   DOUYIN VIRAL TOPIC EXPLORER JAVASCRIPT
+   ========================================================================= */
+var TOPIC_ZH_DICT = {
+  'nhay sexy': '热舞',
+  'nhảy sexy': '热舞',
+  'nhay': '舞蹈',
+  'nhảy': '舞蹈',
+  'gai xinh': '美女',
+  'gái xinh': '美女',
+  'sexy': '性感舞蹈',
+  'hot dance': '热舞',
+  'bien hinh': '变装',
+  'biến hình': '变装',
+  'gia dung': '家居好物',
+  'gia dụng': '家居好物',
+  'my pham': '美妆',
+  'mỹ phẩm': '美妆',
+  'duong da': '护肤',
+  'dưỡng da': '护肤',
+  'thoi trang': '穿搭',
+  'thời trang': '穿搭',
+  'phoi do': '穿搭技巧',
+  'phối đồ': '穿搭技巧',
+  'hai huoc': '搞笑',
+  'hài hước': '搞笑',
+  'am thuc': '美食',
+  'ẩm thực': '美食',
+  'nau an': '美食制作',
+  'nấu ăn': '美食制作',
+  'thu cung': '萌宠',
+  'thú cưng': '萌宠',
+  'meo': '猫咪',
+  'mèo': '猫咪',
+  'cho': '修狗',
+  'chó': '修狗'
+};
+
+function translateTopicQuery(q) {
+  if (!q) return '热舞';
+  var lower = q.trim().toLowerCase();
+  for (var k in TOPIC_ZH_DICT) {
+    if (lower.indexOf(k) !== -1) {
+      return TOPIC_ZH_DICT[k];
+    }
+  }
+  return q.trim();
+}
+
+function showTopicToast(msg) {
+  var toast = document.getElementById('topic-toast');
+  if (!toast) return;
+  toast.innerText = msg;
+  toast.style.display = 'block';
+  setTimeout(function() {
+    toast.style.display = 'none';
+  }, 2400);
+}
+
+function copyTopicKeyword(kw) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(kw).then(function() {
+      showTopicToast('📋 Đã copy từ khóa: ' + kw);
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = kw;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showTopicToast('📋 Đã copy từ khóa: ' + kw);
+  }
+}
+
+function searchTopicCustom(mode) {
+  var inp = document.getElementById('topic-custom-query');
+  var raw = inp ? inp.value.trim() : '';
+  if (!raw) {
+    raw = 'nhảy sexy';
+  }
+  var zh = translateTopicQuery(raw);
+  if (mode === 'google') {
+    var url = 'https://www.google.com/search?q=' + encodeURIComponent('site:douyin.com/user ' + zh);
+    window.open(url, '_blank');
+  } else if (mode === 'douyin') {
+    var url = 'https://www.douyin.com/search/' + encodeURIComponent(zh);
+    window.open(url, '_blank');
+  } else if (mode === 'copy') {
+    copyTopicKeyword(zh);
+  }
+}
+
+function filterTopicCards(topicId, btn) {
+  var pills = document.querySelectorAll('.topic-pill-btn');
+  pills.forEach(function(p) { p.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+
+  var cards = document.querySelectorAll('.topic-card-item');
+  cards.forEach(function(card) {
+    if (topicId === 'all' || card.getAttribute('data-topic-id') === topicId) {
+      card.style.display = 'flex';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
+function addSourceFromTopic(username, displayName) {
+  var valInp = document.getElementById('reup-input-value');
+  var nameInp = document.getElementById('reup-input-name');
+  var form = document.getElementById('reup-source-form');
+  if (valInp && nameInp && form) {
+    valInp.value = username;
+    nameInp.value = displayName;
+    showTopicToast('➕ Đang nạp kênh ' + displayName + ' (@' + username + ') vào kho quét...');
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(function() {
+      form.submit();
+    }, 600);
+  }
 }
 </script>
 {{end}}
