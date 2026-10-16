@@ -34,6 +34,7 @@
         <div class="brand-logo">⚡</div>
         <div class="brand-text">
           <span class="brand-title">AI Creator OS</span>
+          <span class="brand-badge">Autonomous OS v0.7</span>
         </div>
       </div>
       <nav>
@@ -65,6 +66,7 @@
         <button type="button" id="nav-toggle" class="nav-toggle-btn" aria-label="Mở menu" title="Mở menu">☰</button>
         <div class="mobile-brand-title">⚡ AI Creator OS</div>
         <div class="status-chips">
+          <span class="badge badge-dim" style="font-size:10px;font-weight:700;letter-spacing:0.5px">v0.7.0</span>
           {{if not .DryRun}}<span class="chip chip-live" title="Hệ thống đang hoạt động ở chế độ thật"><span class="pulse-dot"></span> CHẠY THẬT (LIVE)</span>{{else}}<span class="chip chip-dry" title="Chế độ thử nghiệm an toàn — chưa xuất bản video thật">CHẠY THỬ</span>{{end}}
           {{if .WebAICount}}<a class="chip chip-ai" href="/settings/he-thong#tab-webai" title="Tài khoản AI đã kết nối (Claude, ChatGPT, Gemini, Muse AI)"><span class="pulse-dot"></span> {{.WebAICount}}/4 AI</a>{{end}}
           {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
