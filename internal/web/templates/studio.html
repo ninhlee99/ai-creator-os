@@ -39,10 +39,17 @@
 </div>
 {{end}}
 
-<!-- Sub-mode Selector (Chế độ tạo video ngắn gọn) -->
-<div style="display:inline-flex;gap:6px;background:var(--bg2);padding:4px;border-radius:10px;margin-bottom:20px;border:1px solid var(--border)">
-  <button type="button" id="tab-btn-creative" class="btn btn-sm btn-primary active" onclick="switchStudioTab('creative')" style="border-radius:7px">🚀 Video Chuẩn QC</button>
-  <button type="button" id="tab-btn-quick" class="btn btn-sm btn-secondary" onclick="switchStudioTab('quick')" style="border-radius:7px">⚡ Video Nhịp Nhanh</button>
+<!-- 3 Chế Độ Sản Xuất Video Tập Trung (Single Video Hub) -->
+<div style="display:flex;gap:8px;background:var(--bg2);padding:6px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border);flex-wrap:wrap">
+  <button type="button" id="mode-btn-affiliate" class="btn btn-sm btn-primary active" onclick="switchProductionMode('affiliate')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
+    🛍️ 1. Video Bán Hàng &amp; Affiliate
+  </button>
+  <button type="button" id="mode-btn-viral" class="btn btn-sm btn-secondary" onclick="switchProductionMode('viral')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
+    ⚡ 2. Video Đu Trend &amp; Viral Shorts (9:16)
+  </button>
+  <button type="button" id="mode-btn-story" class="btn btn-sm btn-secondary" onclick="switchProductionMode('story')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
+    📖 3. Video Dài / Kể Chuyện YouTube &amp; Cắt Shorts
+  </button>
 </div>
 
 <!-- =========================================================================
@@ -111,7 +118,7 @@
           <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">📦</span> 1. Thông tin sản phẩm &amp; Kịch bản
           </h3>
-          <div class="grid2">
+          <div class="grid3">
             <div class="field">
               <label>Tên sản phẩm <span class="req">*</span></label>
               <input type="text" name="product_name" id="cr-product-name" required placeholder="Ví dụ: Nồi chiên không dầu 8L, Áo polo lụa lạnh..." oninput="updateMockupPreview('cr')">
@@ -125,6 +132,10 @@
                 <option value="công nghệ">Công nghệ &amp; Điện tử</option>
                 <option value="khác">Khác</option>
               </select>
+            </div>
+            <div class="field">
+              <label>Giá bán &amp; Ưu đãi</label>
+              <input type="text" name="product_price" placeholder="Ví dụ: 299.000đ (Giảm 45%)">
             </div>
           </div>
 
@@ -398,102 +409,51 @@
           </details>
         </div>
 
-        <!-- Section 4: Phân Bổ Phòng Ban Thực Hiện Dây Chuyền (Enterprise Department Assignment) -->
+        <!-- Section 4: Đội Ngũ Nhân Sự AI Tự Động Điều Phối (Zero-Touch) -->
         <div class="form-card" style="margin-bottom: 20px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">🏢</span> 4. Phân Bổ Phòng Ban Thực Hiện Dây Chuyền
-            </h3>
-            <span class="badge badge-info" style="font-size:11px">Dây Chuyền Doanh Nghiệp AI</span>
-          </div>
-          <p class="hint" style="margin:0 0 14px;font-size:12.5px;color:var(--muted)">
-            Lựa chọn các phòng ban chuyên trách tham gia vào quy trình sản xuất video này. Hệ thống sẽ tự động điều phối nhân sự và kết nối dữ liệu giữa các khâu theo sơ đồ dây chuyền.
-          </p>
-
-          <!-- Quick Presets -->
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'all')" style="font-size:11px;padding:3px 8px">⚡ Tất cả 5 phòng ban (Khuyên dùng)</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'prod')" style="font-size:11px;padding:3px 8px">🎬 Chỉ Sản xuất &amp; Dựng (DEP-03, 04)</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'content')" style="font-size:11px;padding:3px 8px">✍️ Kịch bản &amp; Dựng (DEP-02, 03, 04)</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'dist')" style="font-size:11px;padding:3px 8px">🚀 Dựng &amp; Social Network (DEP-03, 04, 05)</button>
+            <div>
+              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
+                <span style="font-size:20px">👥</span> 4. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
+              </h3>
+              <div class="hint" style="font-size:12px;margin-top:2px">Hệ thống tự động kích hoạt 5 phòng ban chuyên trách cho video bán hàng. Bạn không cần cấu hình thủ công.</div>
+            </div>
+            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI 100%</span>
           </div>
 
-          <!-- Department Checkbox Grid -->
-          <div style="display:grid;grid-template-columns:1fr;gap:10px">
-            <!-- DEP-01 -->
-            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
-              <input type="checkbox" name="assigned_depts" value="DEP-01" class="cr-dept-chk" checked style="margin-top:3px">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-01</span>
-                  <span style="font-size:14px">📊</span>
-                  <strong style="font-size:13px;color:var(--text)">Phòng Marketing &amp; Nghiên Cứu Thị Trường</strong>
-                </div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Nghiên cứu thị trường, săn deal hot sàn, phân tích đối thủ &amp; insight khách hàng (Bếp Mẹ Bi, Đức Huy)
-                </div>
-              </div>
-            </label>
+          <!-- Hidden inputs to supply all required department IDs -->
+          <input type="hidden" name="assigned_depts" value="DEP-01">
+          <input type="hidden" name="assigned_depts" value="DEP-02">
+          <input type="hidden" name="assigned_depts" value="DEP-03">
+          <input type="hidden" name="assigned_depts" value="DEP-04">
+          <input type="hidden" name="assigned_depts" value="DEP-05">
 
-            <!-- DEP-02 -->
-            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
-              <input type="checkbox" name="assigned_depts" value="DEP-02" class="cr-dept-chk" checked style="margin-top:3px">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-02</span>
-                  <span style="font-size:14px">✍️</span>
-                  <strong style="font-size:13px;color:var(--text)">Phòng Biên Kịch &amp; Sáng Tạo Nội Dung</strong>
-                </div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Soạn kịch bản 5 cảnh, Hook 3s giữ chân 84%+, lời thoại &amp; Prompts 4K (Minh Thư, Sơn Bách)
-                </div>
-              </div>
-            </label>
-
-            <!-- DEP-03 -->
-            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
-              <input type="checkbox" name="assigned_depts" value="DEP-03" class="cr-dept-chk" checked style="margin-top:3px">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-03</span>
-                  <span style="font-size:14px">🎬</span>
-                  <strong style="font-size:13px;color:var(--text)">Phòng Sản Xuất &amp; Quay Dựng Video</strong>
-                </div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Đạo diễn bối cảnh, render ảnh/video AI 4K nhất quán, dựng phim &amp; cắt cúp nhịp beat (Đức Huy, Minh Thư)
-                </div>
-              </div>
-            </label>
-
-            <!-- DEP-04 -->
-            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
-              <input type="checkbox" name="assigned_depts" value="DEP-04" class="cr-dept-chk" checked style="margin-top:3px">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-04</span>
-                  <span style="font-size:14px">🛡️</span>
-                  <strong style="font-size:13px;color:var(--text)">Phòng Đánh Giá Chất Lượng (QC)</strong>
-                </div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Kiểm tra độ giữ chân Hook 3s, chuẩn Safe Zone TikTok/Reels, độ nét 4K &amp; cấp chứng nhận QC (Sơn Bách)
-                </div>
-              </div>
-            </label>
-
-            <!-- DEP-05 -->
-            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
-              <input type="checkbox" name="assigned_depts" value="DEP-05" class="cr-dept-chk" checked style="margin-top:3px">
-              <div style="flex:1">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-05</span>
-                  <span style="font-size:14px">📱</span>
-                  <strong style="font-size:13px;color:var(--text)">Phòng Social Network &amp; Quản Trị Kênh</strong>
-                </div>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
-                  Quét ContentID bản quyền, lên lịch xuất bản đa nền tảng và đo lường tăng trưởng tương tác (Minh Thư, Sơn Bách)
-                </div>
-              </div>
-            </label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · SĂN DEAL</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu &amp; Sàn TMĐT</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Agent Hunter đối soát hoa hồng &amp; link sản phẩm</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · KỊCH BẢN</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Biên Kịch Bán Hàng</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Agent Copywriter viết Hook 3s kích thích mua</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · MEDIA 4K</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chụp Ảnh &amp; Dựng Bối Cảnh</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen tái tạo ảnh sản phẩm 4K sắc nét</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · DỰNG PHIM</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Lồng Tiếng &amp; Cắt Cúp</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">TTS Voiceover lồng tiếng truyền cảm &amp; khớp nhạc</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · PHÂN PHỐI</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">QC &amp; Quản Trị Kênh</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Kiểm tra Safe Zone &amp; ghim link giỏ hàng</div>
+            </div>
           </div>
         </div>
       </div>
@@ -543,230 +503,202 @@
     </div>
   </form>
 </div>
-
 <!-- =========================================================================
-     TAB 2: Quick Beat-Bounce Video (Đồng nhất ngôn ngữ thiết kế 2 cột với Tab 1)
+     TAB 2: Video Đu Trend & Viral Shorts 9:16 (Hot Trend & Ý Tưởng Nhanh)
      ========================================================================= -->
-<div id="panel-quick" style="display:none">
-  <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="quick-affiliate-form">
+<div id="panel-viral" style="display:none">
+  <!-- 1-Click Fast Launcher Từ Xu Hướng Triệu View Hôm Nay -->
+  <div class="card" style="border-radius:14px;padding:18px 20px;margin-bottom:24px;background:linear-gradient(135deg, rgba(239,68,68,0.05) 0%, rgba(245,158,11,0.05) 100%);border:1.5px solid var(--accent)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🔥</span>
+        <div>
+          <b style="font-size:15px;color:var(--text)">Khởi Tạo 1-Chạm Từ Xu Hướng Hot Trend Hôm Nay</b>
+          <div class="hint" style="font-size:12px">Chỉ cần 1 click: AI tự lấy chủ đề bắt trend, kịch bản Hook 3s giật gân, vẽ phân cảnh 9:16 và lồng nhạc thịnh hành.</div>
+        </div>
+      </div>
+      <span class="badge badge-ok" style="font-size:11px;font-weight:700"><span class="pulse-dot"></span> XU HƯỚNG MỚI NHẤT</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px">
+      {{range .ViralTrends}}
+      <div class="card" style="border-radius:10px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="badge badge-info" style="font-size:10px">{{.GenreVN}}</span>
+            <span style="font-size:10.5px;color:var(--accent);font-weight:700">🔥 {{.EstViews}}</span>
+          </div>
+          <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
+          <div style="background:var(--bg3);padding:6px 8px;border-radius:6px;font-size:11.5px;color:var(--muted);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4">
+            <i>"{{.Hook3s}}"</i>
+          </div>
+        </div>
+        <form method="post" action="/studio/viral/quick" onsubmit="var b=this.querySelector('button');b.disabled=true;b.textContent='Đang khởi chạy AI...';">
+          <input type="hidden" name="topic" value="{{.Title}}">
+          <input type="hidden" name="genre" value="{{.Genre}}">
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;font-size:12px;padding:6px">
+            ⚡ Tạo Video Này Ngay
+          </button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- Custom Viral Form (2 Cột Đồng Bộ Studio) -->
+  <form method="post" action="/studio/viral" id="viral-custom-form">
     <div class="studio-workbench-split">
-      <!-- LEFT COLUMN: Form Controls (60%) -->
+      <!-- LEFT COLUMN (60%) -->
       <div class="studio-controls-col">
-        
-        <!-- Section 1: Product Info & Photos -->
+        <!-- Section 1: Chủ đề & Ý tưởng -->
         <div class="form-card" style="margin-bottom: 20px;">
           <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">📸</span> 1. Sản phẩm &amp; Ảnh chụp
+            <span style="font-size:20px">💡</span> 1. Ý Tưởng &amp; Chủ Đề Video Đu Trend
           </h3>
-          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Tạo nhanh video ngắn giật theo beat âm nhạc chỉ từ ảnh chụp có sẵn (10 giây hoàn thành).</p>
-          
-          <div class="grid2">
+          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Nhập bất kỳ ý tưởng, tin tức nóng, hoặc câu hỏi gây tò mò nào — AI sẽ phân cảnh kịch bản 4 bước tự động.</p>
+
+          <div class="field" style="margin-bottom:14px">
+            <label>Chủ đề / Ý tưởng video <span class="req">*</span></label>
+            <input type="text" name="topic" id="vr-topic" required placeholder="Ví dụ: 3 thói quen buổi sáng giúp x2 hiệu suất, Bí mật tài chính ít ai biết..." oninput="updateMockupPreview('vr')">
+            <div class="hint">Càng cụ thể thì AI viết kịch bản càng sâu sắc và giữ chân người xem cao.</div>
+          </div>
+
+          <div class="grid3">
             <div class="field">
-              <label>Tên sản phẩm <span class="req">*</span></label>
-              <input type="text" name="product_name" id="qk-product-name" required placeholder="Ví dụ: Giày sneaker trắng nam nữ..." oninput="updateMockupPreview('qk')">
-            </div>
-            <div class="field">
-              <label>Nhóm ngành hàng</label>
-              <input type="text" name="niche" id="qk-niche" placeholder="thời trang" oninput="updateMockupPreview('qk')">
-            </div>
-          </div>
-
-          <div class="field">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0">Ảnh sản phẩm chính</label>
-              <button type="button" class="btn btn-sm btn-primary" id="btn-qk-gen-image" onclick="generateProductImageAI('qk')" style="font-size:12px;padding:3px 10px">
-                🎨 Tạo ảnh AI
-              </button>
-            </div>
-            <div class="file-pick">
-              <label class="btn btn-secondary btn-sm">📁 Tải ảnh từ máy…
-                <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'qk')">
-              </label>
-              <span class="file-name" id="prod-photo-label-qk">Chưa chọn ảnh</span>
-            </div>
-            <input type="hidden" name="generated_photo_path" id="qk-generated-photo-path">
-            <div id="qk-ai-photo-preview" style="display:none;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-              <img id="qk-ai-photo-img" src="" alt="Ảnh sản phẩm AI" style="width:100%;max-height:180px;object-fit:cover;display:block">
-              <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px">
-                <span class="badge badge-ok" id="qk-ai-photo-badge">✨ Đã tạo ảnh AI</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Ảnh phụ / Cận cảnh (Tối đa 4 ảnh ghép beat chuyển cảnh)</label>
-            <div class="file-pick">
-              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh phụ…
-                <input type="file" name="extra_photos" accept="image/*" multiple>
-              </label>
-              <span class="file-name">Chưa chọn ảnh</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Beat Music & Audio Preview -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎵</span> 2. Âm nhạc giật theo Beat &amp; Trình nghe thử
-          </h3>
-          
-          <div class="field">
-            <label>Chọn bài nhạc nền thịnh hành</label>
-            <select id="quick-trend-pick" onchange="pickStudioTrend('qk', this)">
-              <option value="">— Không chọn nhạc nền —</option>
-              {{range .Sounds}}
-              <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
-              {{end}}
-            </select>
-            <input type="hidden" name="music_title" id="qk_music_title">
-            <input type="hidden" name="music_artist" id="qk_music_artist">
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label>Hoặc tải lên file nhạc riêng (mp3/m4a)</label>
-              <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
-                  <input type="file" name="music_file" accept="audio/*" onchange="onStudioMusicFilePicked('qk', this)">
-                </label>
-                <span class="file-name" id="qk-music-file-label">Chưa chọn file</span>
-              </div>
-            </div>
-            <div class="field">
-              <label>Bắt đầu nhạc từ giây thứ</label>
-              <input type="number" name="music_start" value="0" min="0" step="1">
-            </div>
-          </div>
-
-          <!-- Audio Preview Player Widget for Tab 2 -->
-          <div class="audio-preview-card" id="qk-audio-preview" data-url="/static/preview.mp3">
-            <div class="audio-preview-header">
-              <div class="audio-preview-left">
-                <button type="button" class="btn-audio-play" id="qk-audio-play-btn" onclick="toggleAudioPreview('qk')" title="Nghe thử bài nhạc">
-                  <span id="qk-audio-icon">▶</span>
-                </button>
-                <div class="audio-preview-meta">
-                  <div class="audio-preview-title" id="qk-audio-title">Chưa chọn nhạc nền</div>
-                  <div class="audio-preview-sub" id="qk-audio-sub">Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp</div>
-                </div>
-              </div>
-              <div class="audio-waveform-bars" id="qk-audio-bars">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              </div>
-            </div>
-            <div class="audio-preview-timeline">
-              <div class="audio-preview-progress" id="qk-audio-progress"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 3: Format & Timing -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">⚙️</span> 3. Định dạng &amp; Thời lượng
-          </h3>
-          <div class="grid2">
-            <div class="field">
-              <label>Tỉ lệ</label>
-              <select name="aspect_ratio" id="qk-aspect-ratio" onchange="updateMockupPreview('qk')">
-                <option value="9:16">Dọc 9:16 (Shorts / TikTok)</option>
-                <option value="16:9">Ngang 16:9 (YouTube)</option>
+              <label>Thể loại &amp; Góc nhìn</label>
+              <select name="genre" id="vr-genre" onchange="updateMockupPreview('vr')">
+                <option value="trendjack" selected>🔥 Bắt trend &amp; Giật tít</option>
+                <option value="mystery">🕵️ Bí ẩn &amp; Sự thật</option>
+                <option value="lifehack">💡 Mẹo đời sống &amp; Tài chính</option>
+                <option value="tech_fact">⚡ Công nghệ &amp; Tri thức mới</option>
+                <option value="koc_review">⭐ Review trải nghiệm</option>
               </select>
             </div>
             <div class="field">
-              <label>Thời lượng (giây)</label>
-              <input type="number" name="seconds" id="qk-seconds" value="20" min="10" max="60" oninput="updateMockupPreview('qk')">
+              <label>Phong cách hình ảnh AI</label>
+              <select name="visual_mood">
+                <option value="cinematic" selected>🎬 Điện ảnh 9:16 (8K)</option>
+                <option value="vibrant_3d">🎨 3D Pixar nghệ thuật</option>
+                <option value="realistic">📸 Chân thực đời thường</option>
+                <option value="cyber_neon">🌃 Cyberpunk tương lai</option>
+              </select>
             </div>
-          </div>
-          <div class="field">
-            <label>Nhịp điệu giật beat (BPM)</label>
-            <input type="number" name="bpm" value="128" min="60" max="200">
-            <div class="hint">Ảnh tự động phóng to thu nhỏ nhịp nhàng theo tiếng trống</div>
+            <div class="field">
+              <label>Thời lượng mục tiêu</label>
+              <select name="duration" id="vr-duration" onchange="updateMockupPreview('vr')">
+                <option value="30" selected>⚡ 30s (Chuẩn viral giữ chân)</option>
+                <option value="15">⏱ 15s (Cực nhanh, lặp vòng)</option>
+                <option value="45">📖 45s (Giải thích chi tiết)</option>
+                <option value="60">🎯 60s (Phân tích sâu)</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Section 3: Phân Bổ Phòng Ban Thực Hiện Dây Chuyền (Panel Quick) -->
+        <!-- Section 2: Âm thanh & Kênh -->
         <div class="form-card" style="margin-bottom: 20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">🏢</span> 3. Phân Bổ Phòng Ban Thực Hiện Dây Chuyền
-            </h3>
-            <span class="badge badge-info" style="font-size:11px">Dây Chuyền Doanh Nghiệp AI</span>
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🎵</span> 2. Âm Thanh Xu Hướng &amp; Kênh Phát Sóng
+          </h3>
+          <div class="grid2">
+            <div class="field">
+              <label>Kênh phát sóng (Brand DNA)</label>
+              <select name="account">
+                <option value="">-- Dùng phong cách chuẩn chung --</option>
+                {{range .AccountNames}}
+                <option value="{{.}}">Kênh: @{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+            <div class="field">
+              <label>Giọng đọc AI (TTS)</label>
+              <select name="voice">
+                <option value="default" selected>Giọng tự nhiên miền Nam</option>
+                <option value="north_female">Giọng nữ truyền cảm miền Bắc</option>
+                <option value="north_male">Giọng nam trầm ấm miền Bắc</option>
+                <option value="south_male">Giọng nam cuốn hút miền Nam</option>
+              </select>
+            </div>
           </div>
-          <p class="hint" style="margin:0 0 14px;font-size:12.5px;color:var(--muted)">
-            Lựa chọn các phòng ban chuyên trách tham gia vào quy trình sản xuất video này.
-          </p>
+          <div class="field">
+            <label>Nhạc nền thịnh hành</label>
+            <select name="music_url" class="form-select">
+              <option value="">🔥 Tự động ghép bài hát Hot Trend #1 hôm nay ({{.TopSound}})</option>
+              {{range .Sounds}}
+              <option value="{{.PlayURL}}">🎵 {{.Title}} — {{.Artist}}</option>
+              {{end}}
+            </select>
+          </div>
+        </div>
 
-          <!-- Quick Presets -->
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'all')" style="font-size:11px;padding:3px 8px">⚡ Tất cả 5 phòng ban</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'prod')" style="font-size:11px;padding:3px 8px">🎬 Chỉ Sản xuất &amp; Dựng</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'dist')" style="font-size:11px;padding:3px 8px">🚀 Dựng &amp; Social Network</button>
+        <!-- Section 3: Đội ngũ AI tự động gán -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:12px">
+            <div>
+              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
+                <span style="font-size:20px">👥</span> 3. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
+              </h3>
+              <div class="hint" style="font-size:12px;margin-top:2px">Hệ thống tự động kích hoạt đội ngũ chuyên gia đu trend. Bạn không cần cấu hình thủ công.</div>
+            </div>
+            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI 100%</span>
           </div>
 
-          <!-- Department Checkbox Grid -->
-          <div style="display:grid;grid-template-columns:1fr;gap:10px">
-            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
-              <input type="checkbox" name="assigned_depts" value="DEP-01" class="qk-dept-chk" checked>
-              <div style="flex:1">
-                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-01</span> 📊 <b>Phòng Marketing &amp; Nghiên Cứu Thị Trường</b>
-              </div>
-            </label>
-            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
-              <input type="checkbox" name="assigned_depts" value="DEP-02" class="qk-dept-chk" checked>
-              <div style="flex:1">
-                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-02</span> ✍️ <b>Phòng Biên Kịch &amp; Sáng Tạo Nội Dung</b>
-              </div>
-            </label>
-            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
-              <input type="checkbox" name="assigned_depts" value="DEP-03" class="qk-dept-chk" checked>
-              <div style="flex:1">
-                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-03</span> 🎬 <b>Phòng Sản Xuất &amp; Quay Dựng Video</b>
-              </div>
-            </label>
-            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
-              <input type="checkbox" name="assigned_depts" value="DEP-04" class="qk-dept-chk" checked>
-              <div style="flex:1">
-                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-04</span> 🛡️ <b>Phòng Đánh Giá Chất Lượng (QC)</b>
-              </div>
-            </label>
-            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
-              <input type="checkbox" name="assigned_depts" value="DEP-05" class="qk-dept-chk" checked>
-              <div style="flex:1">
-                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-05</span> 📱 <b>Phòng Social Network &amp; Quản Trị Kênh</b>
-              </div>
-            </label>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · TREND ANALYST</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Quét Trend &amp; Âm Nhạc</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Quét TikTok Creative Center &amp; YouTube Shorts</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · VIRAL ARCHITECT</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Hook 3s &amp; Tâm Lý Học</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết kịch bản 4 phân đoạn giữ chân &gt;60%</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · AI ARTIST</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Vẽ Bối Cảnh 9:16</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ từng phân cảnh điện ảnh sắc nét</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · MOTION EDITOR</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Ghép Nhạc &amp; Dựng Video</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Dựng cúp nhịp nhanh theo âm thanh thịnh hành</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · STRATEGIST</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Đánh Giá QC &amp; Đăng Kênh</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tự động gắn Hashtags và lên lịch xuất bản</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Smartphone Mockup & Action Bar (40%) -->
+      <!-- RIGHT COLUMN: Smartphone Mockup (40%) -->
       <div class="studio-preview-col">
         <div class="phone-mockup-frame">
           <div class="phone-dynamic-island"></div>
-          <div class="phone-screen-inner" id="qk-mockup-screen-bg">
+          <div class="phone-screen-inner" style="background:linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('/static/preview.png') center/cover">
             <div class="phone-badge-top">
-              <span id="qk-mockup-aspect-pill">📱 9:16 (1080x1920)</span>
-              <span>BEAT BOUNCE</span>
+              <span>📱 9:16 (1080x1920)</span>
+              <span>VIRAL SHORTS</span>
             </div>
 
             <div class="phone-preview-center">
-              <div class="phone-hook-tag">⚡ NHANH CHÓNG · BẮT TREND</div>
-              <div class="phone-product-name-preview" id="qk-mockup-product-name">Video Beat Nhanh</div>
-              <div class="hint" style="color:#cbd5e1;font-size:12px" id="qk-mockup-niche-tag">thời trang</div>
+              <div class="phone-hook-tag">⚡ HOOK 3S GIẬT GÂN</div>
+              <div class="phone-product-name-preview" id="vr-mockup-title">3 Thói Quen x2 Hiệu Suất</div>
+              <div class="hint" style="color:#cbd5e1;font-size:12px" id="vr-mockup-genre">Bắt trend &amp; Giật tít</div>
               
-              <!-- Beat Waveform Visualizer -->
               <div class="phone-waveform-box">
                 <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               </div>
-              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Chuyển cảnh giật theo beat nhạc</span>
+              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Âm nhạc thịnh hành khớp chuyển động</span>
             </div>
 
             <div class="phone-bottom-overlay">
-              <div style="font-weight:700;margin-bottom:2px">🔥 Video Giật Nhịp Theo Nhạc</div>
-              <div style="font-size:11px;color:#e2e8f0">Hiệu ứng phóng to thu nhỏ giật nảy theo điệu nhạc</div>
+              <div style="font-weight:700;margin-bottom:2px">🔥 Video Viral Triệu View 100% Gốc</div>
+              <div style="font-size:11px;color:#e2e8f0">Không lo bản quyền hay shadowban</div>
               <div class="phone-specs-pill">
-                <span id="qk-mockup-duration">⏱️ 20s</span>
+                <span id="vr-mockup-duration">⏱️ 30s</span>
                 <span>⚡ GPU VideoToolbox</span>
               </div>
             </div>
@@ -774,11 +706,193 @@
         </div>
 
         <div class="mockup-render-action-card">
-          <button type="submit" class="btn-mega-render" id="btn-submit-render-qk">
-            ⚡ Bắt Đầu Tạo Video Nhịp Nhanh Theo Nhạc
+          <button type="submit" class="btn-mega-render" style="background:linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)">
+            ⚡ Bắt Đầu Sản Xuất Video Đu Trend AI 9:16
           </button>
           <div class="hint" style="text-align:center;margin-top:8px;font-size:12px">
-            Hoàn tất trong vài giây • Thích hợp kéo view TikTok &amp; Shorts
+            Tự động viết kịch bản, vẽ ảnh 9:16, thu âm và xuất bản
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- =========================================================================
+     TAB 3: Video Dài / Kể Chuyện YouTube & Cắt Short Clips Đa Nền Tảng
+     ========================================================================= -->
+<div id="panel-story" style="display:none">
+  <form method="post" action="/studio/story" id="story-form">
+    <div class="studio-workbench-split">
+      <!-- LEFT COLUMN (60%) -->
+      <div class="studio-controls-col">
+        <!-- Section 1: Kịch bản truyện & Đề tài -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">📖</span> 1. Chủ Đề Kịch Bản &amp; Truyện Dài YouTube
+          </h3>
+          <p class="hint" style="margin-top:-4px;margin-bottom:14px">Nhập chủ đề bất kỳ — AI sẽ tự chấp bút truyện kể ngôi thứ nhất cuốn hút, chia cảnh chi tiết và chuẩn bị vẽ tranh minh họa.</p>
+
+          <div class="field" style="margin-bottom:14px">
+            <label>Chủ đề câu chuyện / Kịch bản dài <span class="req">*</span></label>
+            <input type="text" name="topic" id="st-topic" required placeholder="Ví dụ: Hành trình khởi nghiệp từ 0 đồng, Ký ức đêm mưa định mệnh, Bí ẩn tam giác quỷ..." oninput="updateMockupPreview('st')">
+          </div>
+
+          <div class="grid3">
+            <div class="field">
+              <label>Thể loại câu chuyện</label>
+              <select name="genre" id="st-genre" onchange="updateMockupPreview('st')">
+                <option value="tâm lý" selected>Tâm lý &amp; Cảm xúc đời sống</option>
+                <option value="trinh thám">Trinh thám &amp; Hồi hộp</option>
+                <option value="lịch sử">Lịch sử &amp; Bí ẩn nhân loại</option>
+                <option value="kinh doanh">Bài học kinh doanh &amp; Khởi nghiệp</option>
+                <option value="triết lý">Triết lý sống &amp; Nhân sinh</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Độ dài mục tiêu</label>
+              <select name="words" id="st-words" onchange="updateMockupPreview('st')">
+                <option value="450" selected>450 từ (Khoảng 3–4 phút)</option>
+                <option value="750">750 từ (Khoảng 5–6 phút)</option>
+                <option value="1200">1200 từ (Khoảng 9–11 phút)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Số phân cảnh tranh vẽ</label>
+              <select name="scenes">
+                <option value="4">4 cảnh minh họa</option>
+                <option value="6" selected>6 cảnh minh họa</option>
+                <option value="8">8 cảnh minh họa</option>
+                <option value="12">12 cảnh minh họa</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Giọng đọc & Âm thanh -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">🎙️</span> 2. Giọng Đọc Truyền Cảm &amp; Nhạc Nền
+          </h3>
+          <div class="grid2">
+            <div class="field">
+              <label>Giọng đọc AI (Kể chuyện truyền cảm)</label>
+              <select name="voice">
+                <option value="default" selected>Giọng kể truyền cảm (Nam trầm ấm)</option>
+                <option value="female">Giọng kể sâu lắng (Nữ nhẹ nhàng)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Nhạc nền acoustic / lo-fi</label>
+              <div style="margin-top:8px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+                  <input type="checkbox" name="music_on" value="1" checked style="width:16px;height:16px">
+                  <span>Lồng nhạc nền nhẹ nhàng nâng cảm xúc</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Hộp Auto-Clipper Cắt Shorts 3-5 Phút Đa Kênh -->
+        <div class="form-card" style="margin-bottom: 20px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent)">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:10px">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text)">
+              <span>✂️</span> Tự Động Cắt Clip Ngắn 3–5 Phút Cho TikTok &amp; Reels
+            </h3>
+            <span class="badge badge-ok" style="font-size:10.5px;font-weight:700">TÁI SỬ DỤNG ĐA KÊNH</span>
+          </div>
+          <p class="hint" style="margin:0 0 12px;font-size:12.5px;line-height:1.5">
+            Khi bật tính năng này, sau khi hoàn tất video YouTube (16:9), hệ thống sẽ <b>tự động trích xuất các clip ngắn 3–5 phút (khổ dọc 9:16)</b> từ các cao trào của câu chuyện để bạn đăng ngay lên TikTok, Facebook Reels và YouTube Shorts mà không cần biên tập lại!
+          </p>
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;cursor:pointer">
+              <input type="checkbox" name="auto_clip_shorts" value="1" checked style="width:18px;height:18px">
+              <span>Bật tự động cắt clip ngắn đa kênh</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="font-size:12.5px;color:var(--muted)">Độ dài mỗi clip:</label>
+              <select name="clip_duration_sec" style="padding:4px 8px;font-size:12.5px;border-radius:6px">
+                <option value="180" selected>3 phút (180 giây)</option>
+                <option value="240">4 phút (240 giây)</option>
+                <option value="300">5 phút (300 giây)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Đội ngũ AI tự động gán -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:12px">
+            <div>
+              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
+                <span style="font-size:20px">👥</span> 4. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
+              </h3>
+              <div class="hint" style="font-size:12px;margin-top:2px">Hệ thống tự động kích hoạt phòng ban chuyên trách truyện dài &amp; cắt clip. Bạn không cần can thiệp.</div>
+            </div>
+            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI 100%</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · STORY RESEARCH</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu Đề Tài</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tuyển chọn tư liệu câu chuyện và thông điệp sâu sắc</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · SCREENWRITER</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chấp Bút &amp; Chia Cảnh</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết văn phong ngôi thứ nhất &amp; chia 6-12 cảnh</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · ILLUSTRATOR</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Tranh Vẽ &amp; Giọng Đọc</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ tranh minh họa + thu âm giọng kể</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · AUTO-CLIPPER</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Dựng 16:9 &amp; Cắt Shorts</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Dựng Ken Burns Full HD + tự trích xuất clip 9:16</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · YOUTUBE DIST</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Xuất Bản &amp; SEO Video</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tối ưu tiêu đề, mô tả và lịch đăng YouTube</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: YouTube Mockup (40%) -->
+      <div class="studio-preview-col">
+        <!-- YouTube 16:9 Player Frame Mockup -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,0.15)">
+          <div style="position:relative;width:100%;padding-top:56.25%;background:linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('/static/preview.png') center/cover">
+            <div style="position:absolute;top:12px;left:14px;display:flex;gap:6px">
+              <span class="badge badge-info" style="font-size:10px">🖥️ 16:9 FULL HD (1920x1080)</span>
+              <span class="badge badge-ok" style="font-size:10px">YOUTUBE READY</span>
+            </div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center">
+              <div style="font-size:28px;margin-bottom:6px">▶</div>
+              <div style="font-weight:800;font-size:15px;color:#fff;max-width:90%" id="st-mockup-title">Ký Ức Đêm Mưa</div>
+              <div style="font-size:12px;color:#cbd5e1;margin-top:4px" id="st-mockup-genre">Tâm lý &amp; Cảm xúc đời sống</div>
+            </div>
+            <div style="position:absolute;bottom:10px;right:14px">
+              <span class="badge badge-dim" style="font-size:11px" id="st-mockup-dur">⏱️ ~4 phút</span>
+            </div>
+          </div>
+          <div style="padding:14px 16px;background:var(--surface)">
+            <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:4px">Kèm Gói Tự Động Cắt Shorts 3-5 Phút (9:16)</div>
+            <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tối ưu đăng đồng thời lên YouTube Long-form, TikTok, Facebook Reels và Shorts.</div>
+          </div>
+        </div>
+
+        <div class="mockup-render-action-card" style="margin-top:16px">
+          <button type="submit" class="btn-mega-render" style="background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)">
+            📖 Bắt Đầu Dàn Dựng Video Truyện &amp; Cắt Shorts
+          </button>
+          <div class="hint" style="text-align:center;margin-top:8px;font-size:12px">
+            Tự động viết truyện, vẽ tranh minh họa, lồng tiếng và trích xuất clip ngắn
           </div>
         </div>
       </div>
@@ -790,51 +904,116 @@
 <audio id="global-preview-player" preload="none" style="display:none"></audio>
 
 <script>
-function switchStudioTab(tab) {
-  var creativePanel = document.getElementById('panel-creative');
-  var quickPanel = document.getElementById('panel-quick');
-  var creativeBtn = document.getElementById('tab-btn-creative');
-  var quickBtn = document.getElementById('tab-btn-quick');
+function switchProductionMode(mode) {
+  var pAff = document.getElementById('panel-creative');
+  var pVir = document.getElementById('panel-viral');
+  var pSto = document.getElementById('panel-story');
 
-  if (tab === 'creative') {
-    creativePanel.style.display = 'block';
-    quickPanel.style.display = 'none';
-    creativeBtn.classList.add('active', 'btn-primary');
-    creativeBtn.classList.remove('btn-secondary');
-    quickBtn.classList.remove('active', 'btn-primary');
-    quickBtn.classList.add('btn-secondary');
+  var bAff = document.getElementById('mode-btn-affiliate');
+  var bVir = document.getElementById('mode-btn-viral');
+  var bSto = document.getElementById('mode-btn-story');
+
+  if (pAff) pAff.style.display = 'none';
+  if (pVir) pVir.style.display = 'none';
+  if (pSto) pSto.style.display = 'none';
+
+  if (bAff) { bAff.classList.remove('active', 'btn-primary'); bAff.classList.add('btn-secondary'); }
+  if (bVir) { bVir.classList.remove('active', 'btn-primary'); bVir.classList.add('btn-secondary'); }
+  if (bSto) { bSto.classList.remove('active', 'btn-primary'); bSto.classList.add('btn-secondary'); }
+
+  if (mode === 'viral' || mode === 'quick') {
+    if (pVir) pVir.style.display = 'block';
+    if (bVir) { bVir.classList.add('active', 'btn-primary'); bVir.classList.remove('btn-secondary'); }
+  } else if (mode === 'story' || mode === 'stories') {
+    if (pSto) pSto.style.display = 'block';
+    if (bSto) { bSto.classList.add('active', 'btn-primary'); bSto.classList.remove('btn-secondary'); }
   } else {
-    creativePanel.style.display = 'none';
-    quickPanel.style.display = 'block';
-    creativeBtn.classList.remove('active', 'btn-primary');
-    creativeBtn.classList.add('btn-secondary');
-    quickBtn.classList.add('active', 'btn-primary');
-    quickBtn.classList.remove('btn-secondary');
+    if (pAff) pAff.style.display = 'block';
+    if (bAff) { bAff.classList.add('active', 'btn-primary'); bAff.classList.remove('btn-secondary'); }
   }
 }
 
+function switchStudioTab(tab) {
+  switchProductionMode(tab);
+}
+
 function updateMockupPreview(prefix) {
-  var name = document.getElementById(prefix + '-product-name').value;
-  var niche = document.getElementById(prefix + '-niche').value;
-  var aspect = document.getElementById(prefix + '-aspect-ratio').value;
-  var secs = document.getElementById(prefix + '-seconds').value;
+  if (prefix === 'vr') {
+    var topicEl = document.getElementById('vr-topic');
+    var genreEl = document.getElementById('vr-genre');
+    var durEl = document.getElementById('vr-duration');
+    if (topicEl && topicEl.value.trim()) {
+      var tEl = document.getElementById('vr-mockup-title');
+      if (tEl) tEl.textContent = topicEl.value;
+    }
+    if (genreEl && genreEl.selectedOptions && genreEl.selectedOptions[0]) {
+      var gEl = document.getElementById('vr-mockup-genre');
+      if (gEl) gEl.textContent = genreEl.selectedOptions[0].text;
+    }
+    if (durEl) {
+      var dEl = document.getElementById('vr-mockup-duration');
+      if (dEl) dEl.textContent = '⏱️ ' + durEl.value + 's';
+    }
+    return;
+  }
+  if (prefix === 'st') {
+    var sTopicEl = document.getElementById('st-topic');
+    var sGenreEl = document.getElementById('st-genre');
+    var sWordsEl = document.getElementById('st-words');
+    if (sTopicEl && sTopicEl.value.trim()) {
+      var stTitle = document.getElementById('st-mockup-title');
+      if (stTitle) stTitle.textContent = sTopicEl.value;
+    }
+    if (sGenreEl && sGenreEl.selectedOptions && sGenreEl.selectedOptions[0]) {
+      var stGenre = document.getElementById('st-mockup-genre');
+      if (stGenre) stGenre.textContent = sGenreEl.selectedOptions[0].text;
+    }
+    if (sWordsEl) {
+      var stDur = document.getElementById('st-mockup-dur');
+      if (stDur) {
+        var w = sWordsEl.value;
+        var mins = w === '1200' ? '~10 phút' : (w === '750' ? '~6 phút' : '~4 phút');
+        stDur.textContent = '⏱️ ' + mins;
+      }
+    }
+    return;
+  }
+
+  var nameEl = document.getElementById(prefix + '-product-name');
+  if (!nameEl) return;
+  var name = nameEl.value;
+  var nicheEl = document.getElementById(prefix + '-niche');
+  var niche = nicheEl ? nicheEl.value : '';
+  var aspectEl = document.getElementById(prefix + '-aspect-ratio');
+  var aspect = aspectEl ? aspectEl.value : '9:16';
+  var secsEl = document.getElementById(prefix + '-seconds');
+  var secs = secsEl ? secsEl.value : '30';
 
   if (name.trim()) {
-    document.getElementById(prefix + '-mockup-product-name').textContent = name;
+    var pName = document.getElementById(prefix + '-mockup-product-name');
+    if (pName) pName.textContent = name;
   }
-  document.getElementById(prefix + '-mockup-niche-tag').textContent = niche;
-  document.getElementById(prefix + '-mockup-aspect-pill').textContent = aspect === '16:9' ? '🖥️ 16:9 (1920x1080)' : '📱 9:16 (1080x1920)';
-  document.getElementById(prefix + '-mockup-duration').textContent = '⏱️ ' + secs + 's';
+  var nTag = document.getElementById(prefix + '-mockup-niche-tag');
+  if (nTag) nTag.textContent = niche;
+  var aPill = document.getElementById(prefix + '-mockup-aspect-pill');
+  if (aPill) aPill.textContent = aspect === '16:9' ? '🖥️ 16:9 (1920x1080)' : '📱 9:16 (1080x1920)';
+  var dPill = document.getElementById(prefix + '-mockup-duration');
+  if (dPill) dPill.textContent = '⏱️ ' + secs + 's';
 
   if (prefix === 'cr') {
-    var vo = document.getElementById('cr-voiceover-text').value;
-    var caption = document.getElementById('cr-caption').value;
+    var voEl = document.getElementById('cr-voiceover-text');
+    var vo = voEl ? voEl.value : '';
+    var capEl = document.getElementById('cr-caption');
+    var caption = capEl ? capEl.value : '';
     if (caption.trim()) {
-      document.getElementById('cr-mockup-caption-preview').textContent = caption;
-      document.getElementById('cr-mockup-hook-tag').textContent = '🔥 ' + caption;
+      var capPrev = document.getElementById('cr-mockup-caption-preview');
+      if (capPrev) capPrev.textContent = caption;
+      var hookTag = document.getElementById('cr-mockup-hook-tag');
+      if (hookTag) hookTag.textContent = '🔥 ' + caption;
     }
     if (vo.trim()) {
-      document.getElementById('cr-mockup-vo-snippet').textContent = '🎙️ ' + vo.substring(0, 45) + '...';
+      var voSnip = document.getElementById('cr-mockup-vo-snippet');
+      if (voSnip) voSnip.textContent = '🎙️ ' + vo.substring(0, 45) + '...';
     }
   }
 }
@@ -1333,6 +1512,11 @@ function copyGenPrompt(type) {
 window.addEventListener('DOMContentLoaded', function() {
   try {
     var urlParams = new URLSearchParams(window.location.search);
+    var initialMode = "{{.InitialMode}}";
+    var modeParam = urlParams.get('mode');
+    if (modeParam) initialMode = modeParam;
+    if (initialMode) switchProductionMode(initialMode);
+
     var pName = urlParams.get('product_name');
     var affLink = urlParams.get('aff_link');
     var mTitle = urlParams.get('music_title');

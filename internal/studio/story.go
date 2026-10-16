@@ -85,6 +85,10 @@ type StoryParams struct {
 	// ReuseFromJobID: job cũ để tái dùng ảnh đã vẽ xong (đợt Y — retry
 	// không vẽ lại ảnh từ đầu, tiết kiệm image-gen).
 	ReuseFromJobID string `json:"reuse_from_job,omitempty"`
+	// AutoClipShorts: Tự động trích xuất các clip 3-5 phút (9:16) cho TikTok/Reels.
+	AutoClipShorts bool `json:"auto_clip_shorts,omitempty"`
+	// ClipDurationSec: Thời lượng mỗi clip cắt nhỏ (giây, mặc định 180s = 3 phút).
+	ClipDurationSec int `json:"clip_duration_sec,omitempty"`
 }
 
 // storyScene là 1 cảnh: đoạn văn kể + prompt vẽ ảnh.
@@ -527,6 +531,47 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	s.appendLog(id, fmt.Sprintf("QC đạt: 1920x1080, có audio, %.0fs, %d cảnh", dur, len(scenes)))
 
 	s.setOutput(id, filepath.Base(final))
+
+	// 7. Auto-Clipper: Tự động trích xuất các clip ngắn 3-5 phút (9:16) cho TikTok/Reels nếu được bật
+	if p.AutoClipShorts && dur >= 30 {
+		s.appendLog(id, "Bắt đầu tự động trích xuất các clip ngắn 3–5 phút (9:16) cho TikTok & Reels…")
+		clipDur := 180.0 // 3 phút mặc định
+		if p.ClipDurationSec >= 30 && p.ClipDurationSec <= 300 {
+			clipDur = float64(p.ClipDurationSec)
+		} else if dur > 360 {
+			clipDur = 240.0 // 4 phút nếu truyện dài
+		}
+		part := 1
+		for start := 0.0; start < dur; start += clipDur {
+			length := clipDur
+			if start+length > dur {
+				length = dur - start
+			}
+			if length < 15 {
+				break
+			}
+			clipName := fmt.Sprintf("studio-%s-clip%d.mp4", id, part)
+			clipPath := filepath.Join(s.outDir, clipName)
+			// Crop 16:9 chính tâm thành 9:16 vertical cho TikTok/Reels/Shorts
+			args := []string{
+				"-ss", fmt.Sprintf("%.2f", start),
+				"-i", final,
+				"-t", fmt.Sprintf("%.2f", length),
+				"-vf", "crop=ih*9/16:ih:(iw-ih*9/16)/2:0,scale=1080:1920",
+				"-c:a", "copy",
+				clipPath,
+			}
+			if err := ffmpegRun(ctx, args...); err == nil {
+				aid := s.addAsset(id, 100+part, "short_clip", fmt.Sprintf("Clip %d (%.0fs, 9:16 TikTok/Reels)", part, length))
+				s.setAsset(aid, StatusDone, clipPath)
+				s.appendLog(id, fmt.Sprintf("✓ Đã xuất Clip %d: %s (%.0fs, 9:16)", part, clipName, length))
+			} else {
+				s.appendLog(id, fmt.Sprintf("Trích xuất Clip %d: %v (bỏ qua)", part, err))
+			}
+			part++
+		}
+	}
+
 	s.setStatus(id, StatusDone, 100)
 	s.appendLog(id, fmt.Sprintf("Xong: %s (%.0fs, %d cảnh)", filepath.Base(final), dur, len(scenes)))
 	s.fireOnDone(id)

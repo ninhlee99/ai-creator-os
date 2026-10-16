@@ -591,6 +591,27 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	if mg := s.Studio.MediaGen(); mg != nil {
 		mgOK = mg.Healthy(r.Context())
 	}
+
+	var accountNames []string
+	if s.Mgr != nil {
+		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			for _, a := range accounts {
+				if a != nil && a.Username != "" {
+					accountNames = append(accountNames, a.Username)
+				}
+			}
+		}
+	}
+
+	mode := r.URL.Query().Get("mode")
+	if mode == "" {
+		mode = "affiliate"
+	}
+	notice := r.URL.Query().Get("notice")
+	if notice == "" && r.URL.Query().Get("msg") == "created" {
+		notice = "Tác vụ sản xuất video đã được đưa vào hàng đợi AI thành công!"
+	}
+
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
 		"JobCount", jobCount,
@@ -598,11 +619,18 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"RunningCount", activeJobs,
 		"DoneCount", doneCount,
 		"CurrentTab", "create",
+		"InitialMode", mode,
+		"Notice", notice,
 		"Sounds", sounds,
 		"TopSound", topSound(sounds),
 		"TrendsSource", studio.TrendsSource,
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
+		"AccountNames", accountNames,
+		"ViralTrends", defaultViralTrends,
+		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
+		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
+		"DefStoryScenes", s.atSettingInt(automation.KeyStoryScenes, 6),
 		"Error", r.URL.Query().Get("err"),
 	))
 }
@@ -1353,3 +1381,157 @@ func reorderPhotos(p studio.AffiliateParams, order string) studio.AffiliateParam
 	p.ProductPhoto, p.ExtraPhotos = all[0], append([]string(nil), all[1:]...)
 	return p
 }
+
+// handleStudioViralCreate nhận yêu cầu tạo video đu trend / viral shorts 9:16 từ Studio.
+func (s *Server) handleStudioViralCreate(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
+		return
+	}
+	_ = r.ParseForm()
+	topic := strings.TrimSpace(r.PostFormValue("topic"))
+	if topic == "" {
+		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Vui lòng nhập chủ đề hoặc ý tưởng video"))
+		return
+	}
+	genre := r.PostFormValue("genre")
+	if genre == "" {
+		genre = "trendjack"
+	}
+	visualMood := r.PostFormValue("visual_mood")
+	if visualMood == "" {
+		visualMood = "cinematic"
+	}
+	voice := r.PostFormValue("voice")
+	account := r.PostFormValue("account")
+
+	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
+	if duration < 15 || duration > 60 {
+		duration = 30
+	}
+	musicURL := r.PostFormValue("music_url")
+
+	p := studio.ViralParams{
+		Topic:          topic,
+		Genre:          genre,
+		VisualMood:     visualMood,
+		Voice:          voice,
+		Account:        account,
+		TargetDuration: duration,
+		MusicURL:       musicURL,
+	}
+
+	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
+	if err != nil {
+		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Lỗi tạo job: "+err.Error()))
+		return
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Studio điều phối video viral 9:16 job=%s genre=%s: %s", jobID, genre, topic), nil)
+	}
+
+	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video đu trend '%s' vào dây chuyền sản xuất AI (Job: %s)!", topic, jobID)))
+}
+
+// handleStudioViralQuick khởi tạo tức thì từ mẫu xu hướng 1-chạm trong Studio.
+func (s *Server) handleStudioViralQuick(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
+		return
+	}
+	_ = r.ParseForm()
+	topic := strings.TrimSpace(r.PostFormValue("topic"))
+	genre := r.PostFormValue("genre")
+	if topic == "" {
+		topic = "Bí quyết phát triển bản thân và tư duy tài chính thông minh"
+	}
+	if genre == "" {
+		genre = "trendjack"
+	}
+
+	p := studio.ViralParams{
+		Topic:          topic,
+		Genre:          genre,
+		VisualMood:     "cinematic",
+		TargetDuration: 30,
+	}
+
+	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
+	if err != nil {
+		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Lỗi tạo job: "+err.Error()))
+		return
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "viral_quick_produce", nil, fmt.Sprintf("1-Chạm tạo video viral 9:16 job=%s: %s", jobID, topic), nil)
+	}
+
+	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video đu trend '%s' vào dây chuyền sản xuất AI (Job: %s)!", topic, jobID)))
+}
+
+// handleStudioStoryCreate nhận yêu cầu tạo video dài / kể chuyện YouTube & cắt Shorts từ Studio.
+func (s *Server) handleStudioStoryCreate(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
+		return
+	}
+	_ = r.ParseForm()
+	topic := strings.TrimSpace(r.PostFormValue("topic"))
+	if topic == "" {
+		seeOther(w, r, "/studio?mode=story&err="+url.QueryEscape("Vui lòng nhập chủ đề truyện / kịch bản dài"))
+		return
+	}
+
+	words, _ := strconv.Atoi(r.PostFormValue("words"))
+	scenes, _ := strconv.Atoi(r.PostFormValue("scenes"))
+	genre := strings.TrimSpace(r.PostFormValue("genre"))
+	if genre == "" {
+		genre = "tâm lý"
+	}
+	voice := strings.TrimSpace(r.PostFormValue("voice"))
+	autoClip := r.PostFormValue("auto_clip_shorts") == "1" || r.PostFormValue("auto_clip_shorts") == "true"
+	clipSec, _ := strconv.Atoi(r.PostFormValue("clip_duration_sec"))
+	if clipSec <= 0 {
+		clipSec = 180
+	}
+
+	musicOn := r.PostFormValue("music_on") == "1"
+	musicPath := ""
+	if musicOn {
+		if mp := filepath.Join(s.DataDir, "autopilot-music.m4a"); fileExists(mp) {
+			musicPath = mp
+		} else {
+			musicOn = false
+		}
+	}
+
+	p := studio.StoryParams{
+		Topic:           topic,
+		Genre:           genre,
+		Words:           words,
+		Scenes:          scenes,
+		MusicOn:         musicOn,
+		MusicPath:       musicPath,
+		Voice:           voice,
+		AutoClipShorts:  autoClip,
+		ClipDurationSec: clipSec,
+	}
+
+	id, err := s.Studio.CreateStoryJob(p)
+	if err != nil {
+		seeOther(w, r, "/studio?mode=story&err="+url.QueryEscape("Lỗi tạo video truyện: "+err.Error()))
+		return
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "story_produce", nil, fmt.Sprintf("Studio điều phối video truyện dài job=%s genre=%s auto_clip=%v: %s", id, genre, autoClip, topic), nil)
+	}
+
+	clipNote := ""
+	if autoClip {
+		clipNote = " và tự động cắt clip 3–5 phút cho TikTok/Reels"
+	}
+	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video truyện dài '%s' vào hàng đợi AI%s (Job: %s)!", topic, clipNote, id)))
+}
+
