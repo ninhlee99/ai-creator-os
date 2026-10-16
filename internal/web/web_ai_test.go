@@ -93,6 +93,12 @@ func TestWebAIHandlers(t *testing.T) {
 	if pkg.ProductName != "Áo Polo Cao Cấp" || len(pkg.Scenes) != 4 {
 		t.Errorf("unexpected script package: %+v", pkg)
 	}
+	if pkg.QC.OverallScore <= 0 || pkg.QC.HookScore <= 0 {
+		t.Errorf("expected positive QC scorecard scores, got: %+v", pkg.QC)
+	}
+	if len(pkg.QC.Strengths) == 0 {
+		t.Errorf("expected QC strengths, got none")
+	}
 
 	// 4. POST /web-ai/disconnect
 	dForm := url.Values{"platform": {"chatgpt"}}

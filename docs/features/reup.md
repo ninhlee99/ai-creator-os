@@ -19,10 +19,10 @@ Ninh nhập 1 lần → tải về kho → chờ transform + đăng (Đợt E).
 | `download.go` | `Downloader`: yt-dlp trước → gãy thì TikWM. **Dedupe 2 lớp:** douyin_id (trước tải — không tải lại video đã có/đang tải) và sha256 (sau tải — URL khác nhưng cùng nội dung thì bỏ). **QC sau tải:** có `ffprobe` → kiểm tra video stream thật; không có → chỉ size + đuôi file, ghi `qc_method="size-only"` (không đoán "đạt chuẩn"). Rớt QC → `failed` + lý do |
 | `discover.go` | `Discoverer`: với mỗi nguồn đang bật loại `user` → `UserPosts` → bỏ video đã biết → **auto-pick theo `play_count` cao nhất** → queue vào kho. Nguồn `hashtag`: TikWM không có endpoint list ổn định → **không bịa danh sách**, trả note "nhập URL trực tiếp" |
 
-Về watermark — đã kiểm chứng: yt-dlp gốc **không có flag `--no-watermark`**,
-nên không truyền (truyền flag không tồn tại sẽ làm mọi lượt tải lỗi).
-Ghi trung thực từng video: `via=tikwm` → "không watermark" (link `play`);
-`via=ytdlp` → "có thể có watermark".
+Về watermark và thông tin chủ sở hữu:
+- **Tải không watermark**: TikWM tự động bóc tách link sạch không watermark (`hdplay` hoặc `play`). Khi tải qua TikWM, video được đánh dấu `watermark_free = true` (nhãn "không watermark").
+- **yt-dlp**: yt-dlp gốc không có flag `--no-watermark`, video tải qua yt-dlp có nhãn "có thể có watermark".
+- **Loại bỏ thông tin chủ sở hữu**: Toàn bộ tên tác giả gốc và nền tảng nguồn được loại bỏ khỏi lời bình luận (commentary / voiceover) và mô tả bài đăng. Video sau khi qua pipeline transform (zoom Ken Burns 1.12, crop, chỉnh màu, đổi nhạc nền và voiceover AI) trở thành video độc lập hoàn toàn.
 
 ## 3. Automation — `internal/automation/reup_tick.go`
 

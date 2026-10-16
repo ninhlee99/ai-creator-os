@@ -326,5 +326,24 @@ func (s *Server) handleTeamPipelines(w http.ResponseWriter, r *http.Request) {
 		s.reupTeam(),
 		s.storyTeam(),
 	}
-	s.render(w, "team", s.ctx("Pipelines", pipelines))
+	agents := s.listAgents()
+	departments := s.listDepartments(agents)
+	activeDept := r.URL.Query().Get("dept")
+	if activeDept == "" && len(departments) > 0 {
+		activeDept = departments[0].ID
+	}
+	viewMode := r.URL.Query().Get("view")
+	if viewMode == "" {
+		viewMode = "departments"
+	}
+
+	s.render(w, "team", s.ctx(
+		"Pipelines", pipelines,
+		"Agents", agents,
+		"Departments", departments,
+		"ActiveDept", activeDept,
+		"ViewMode", viewMode,
+		"Notice", r.URL.Query().Get("ok"),
+		"Error", r.URL.Query().Get("err"),
+	))
 }

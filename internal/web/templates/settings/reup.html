@@ -24,7 +24,7 @@
   </div>
 </div>
 
-<p class="hint">Transform giúp <b>giảm rủi ro</b> bản quyền — không đảm bảo an toàn 100%. Không bao giờ đăng video chưa transform.</p>
+<p class="hint">Biến đổi video giúp <b>giảm rủi ro</b> vi phạm chính sách, nhưng <b>không đảm bảo</b> 100% tránh quét bản quyền. Hệ thống hỗ trợ Mức 1-2 (lọc video/ghép clip) và <b>Mức 3 AI Remake</b> (tạo lại nhân vật/bối cảnh bằng AI từ cốt truyện viral để triệt tiêu bản quyền).</p>
 
 <form method="post" action="/settings/reup/save">
 <div class="form-card">
@@ -61,8 +61,9 @@
     <div class="field">
       <label>Mức transform mặc định</label>
       <select name="transform_level">
-        <option value="1"{{if eq .TransformLevel 1}} selected{{end}}>Mức 1 — mọi video (zoom + tốc độ + voiceover + nhạc)</option>
-        <option value="2"{{if eq .TransformLevel 2}} selected{{end}}>Mức 2 — ghép 3 clip (video hot)</option>
+        <option value="1"{{if eq .TransformLevel 1}} selected{{end}}>Mức 1 — Chỉnh nhẹ (Zoom, đổi tốc độ, voiceover, nhạc nền)</option>
+        <option value="2"{{if eq .TransformLevel 2}} selected{{end}}>Mức 2 — Ghép 3 clip viral (Top view)</option>
+        <option value="3"{{if eq .TransformLevel 3}} selected{{end}}>✨ Mức 3 — AI Remake (Đổi nhân vật &amp; bối cảnh mới 100%)</option>
       </select>
     </div>
   </div>

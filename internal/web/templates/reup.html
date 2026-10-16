@@ -1,7 +1,15 @@
 {{define "title"}}Reup Douyin — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Reup Douyin</h1>
-<p class="subtitle">Tải video viral Douyin → chỉnh sửa 2 mức → đăng tự động.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Reup Douyin &amp; AI Remake 🔁</h1>
+    <p class="subtitle">Tự động tải video Douyin sạch watermark, đổi nhân vật AI 100% (Mức 3 AI Remake) và đăng đa nền tảng.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/settings/reup" class="btn btn-secondary">⚙️ Cấu hình Reup</a>
+    <a href="/accounts" class="btn btn-secondary">📱 Kênh xuất bản</a>
+  </div>
+</div>
 
 {{if .Reup.Error}}<p class="err">{{.Reup.Error}}</p>{{end}}
 
@@ -111,11 +119,20 @@
       </td>
       <td style="white-space:nowrap">
         {{if eq .Status "downloaded"}}
-        <select id="reup-level-{{.ID}}" class="btn-sm" style="margin-right:4px">
-          <option value="1">Mức 1 (chỉnh nhẹ)</option>
-          {{if index $.Reup.Level2IDs .ID}}<option value="2">Mức 2 (ghép 3 clip)</option>{{end}}
-        </select>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="reupTransform({{.ID}}, this)">Biến đổi</button>
+        <div style="display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <select id="reup-level-{{.ID}}" class="btn-sm" onchange="toggleReupStyle({{.ID}})">
+            <option value="3" selected>✨ Mức 3 (AI Remake)</option>
+            <option value="1">Mức 1 (chỉnh nhẹ)</option>
+            {{if index $.Reup.Level2IDs .ID}}<option value="2">Mức 2 (ghép 3 clip)</option>{{end}}
+          </select>
+          <select id="reup-style-{{.ID}}" class="btn-sm">
+            <option value="vietnamese_cinematic">🎬 Điện ảnh Việt</option>
+            <option value="anime">🌸 Anime hiện đại</option>
+            <option value="3d_character">🧸 3D hoạt hình</option>
+            <option value="fashion_model">👗 Thời trang</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" onclick="reupTransform({{.ID}}, this)">Biến đổi</button>
+        </div>
         {{else}}<span class="hint">—</span>{{end}}
       </td>
       <td>
@@ -136,7 +153,7 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Bài đăng (đã biến đổi)</h2>
-  <p class="hint">Video gốc thuộc về tác giả Douyin — app <b>giữ nguyên watermark</b>, không gỡ. Biến đổi chỉ <b>giảm rủi ro</b> bản quyền, không đảm bảo an toàn 100%; app không bao giờ đăng video chưa biến đổi.</p>
+  <p class="hint">⚡ Video được <b>tự động xóa watermark</b> và làm sạch. Chọn mức biến đổi phù hợp (Mức 1-2 chỉnh hiệu ứng/bình luận giúp <b>giảm rủi ro</b>, Mức 3 <b>AI Remake</b> thay thế 100% nhân vật &amp; bối cảnh mới bằng AI để loại bỏ hoàn toàn vi phạm bản quyền).</p>
   {{if .Reup.Posts}}
   <div class="table-wrap">
 <table class="clean">
@@ -247,16 +264,29 @@ function pollYtDlp() {
     })
     .catch(function () {});
 }
+function toggleReupStyle(id) {
+  var sel = document.getElementById('reup-level-' + id);
+  var styleSel = document.getElementById('reup-style-' + id);
+  if (styleSel) {
+    styleSel.style.display = (sel && sel.value === '3') ? 'inline-block' : 'none';
+  }
+}
 function reupTransform(id, btn) {
   var sel = document.getElementById('reup-level-' + id);
-  var level = sel ? parseInt(sel.value, 10) : 1;
+  var level = sel ? parseInt(sel.value, 10) : 3;
+  var styleSel = document.getElementById('reup-style-' + id);
+  var charStyle = (styleSel && level === 3) ? styleSel.value : '';
   if (btn) btn.disabled = true;
-  fetch('/reup/videos/' + id + '/transform', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({level: level})})
+  fetch('/reup/videos/' + id + '/transform', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({level: level, character_style: charStyle})
+  })
     .then(function (r) { return r.json().then(function (d) { return {s: r.status, d: d}; }); })
     .then(function (x) {
       if (btn) btn.disabled = false;
       if (x.d && x.d.ok) {
-        window.showToast('Đang biến đổi bài #' + x.d.post_id + ' (mức ' + level + ')…', true);
+        window.showToast('Đang biến đổi bài #' + x.d.post_id + ' (mức ' + level + (charStyle ? ' · ' + charStyle : '') + ')…', true);
         pollReupPost(x.d.post_id);
       } else {
         window.showToast((x.d && x.d.error) || ('Lỗi HTTP ' + x.s), false);

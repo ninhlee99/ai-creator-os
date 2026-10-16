@@ -45,6 +45,9 @@ func (p Post) StatusLabel() string {
 
 // LevelLabel nhãn mức transform.
 func (p Post) LevelLabel() string {
+	if p.TransformLevel == Level3 {
+		return "AI Remake"
+	}
 	if p.TransformLevel == Level2 {
 		return "Mức 2"
 	}

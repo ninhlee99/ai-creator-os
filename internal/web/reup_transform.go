@@ -124,11 +124,12 @@ func (s *Server) handleReupTransform(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Level *int `json:"level"`
+		Level          *int   `json:"level"`
+		CharacterStyle string `json:"character_style"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&in) // body trống → dùng mức mặc định
 	level := s.atSettingInt(automation.KeyReupTransformLevel, 1)
-	if in.Level != nil && (*in.Level == reup.Level1 || *in.Level == reup.Level2) {
+	if in.Level != nil && (*in.Level == reup.Level1 || *in.Level == reup.Level2 || *in.Level == reup.Level3) {
 		level = *in.Level
 	}
 
@@ -187,9 +188,10 @@ func (s *Server) handleReupTransform(w http.ResponseWriter, r *http.Request) {
 	}
 	voiceover := s.atSettingOn(automation.KeyReupVoiceoverEnabled, true)
 	go s.runReupTransform(post.ID, tr, clips, reup.TransformOptions{
-		Level:     level,
-		Seed:      v.ID,
-		Voiceover: voiceover,
+		Level:          level,
+		Seed:           v.ID,
+		Voiceover:      voiceover,
+		CharacterStyle: in.CharacterStyle,
 	})
 	writeJSON(w, map[string]any{"ok": true, "post_id": post.ID})
 }
@@ -205,7 +207,9 @@ func (s *Server) runReupTransform(postID int64, tr *reup.Transformer, clips []re
 	defer cancel()
 	var out string
 	var err error
-	if opts.Level == reup.Level2 {
+	if opts.Level == reup.Level3 {
+		out, err = tr.TransformRemake(ctx, clips[0], opts)
+	} else if opts.Level == reup.Level2 {
 		out, err = tr.TransformCompilation(ctx, clips, opts)
 	} else {
 		out, err = tr.TransformVideo(ctx, clips[0], opts)
@@ -425,7 +429,7 @@ func (s *Server) reupSettingsCfg() reupSettingsView {
 			}
 		}
 	}
-	if v.TransformLevel != 2 {
+	if v.TransformLevel != 2 && v.TransformLevel != 3 {
 		v.TransformLevel = 1
 	}
 	return v
@@ -481,7 +485,7 @@ func (s *Server) handleSettingsReupSave(w http.ResponseWriter, r *http.Request) 
 		_ = s.Ledger.SetSetting(automation.KeyReupVideosPerSource, strconv.Itoa(perSrc))
 	}
 	level, _ := strconv.Atoi(f.Get("transform_level"))
-	if level != 2 {
+	if level != 2 && level != 3 {
 		level = 1
 	}
 	_ = s.Ledger.SetSetting(automation.KeyReupTransformLevel, strconv.Itoa(level))

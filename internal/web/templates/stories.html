@@ -1,7 +1,15 @@
 {{define "title"}}Kể chuyện — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Kể chuyện YouTube</h1>
-<p class="subtitle">Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → giọng đọc → video 16:9.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Kể chuyện YouTube 📖</h1>
+    <p class="subtitle">Tự động viết truyện ngôi thứ nhất, vẽ minh họa từng cảnh, lồng tiếng truyền cảm và dựng video 16:9.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/studio" class="btn btn-secondary">🎬 Studio AI</a>
+    <a href="/accounts" class="btn btn-secondary">📱 Kênh YouTube</a>
+  </div>
+</div>
 
 {{if .Stories.Error}}<p class="err">{{.Stories.Error}}</p>{{end}}
 

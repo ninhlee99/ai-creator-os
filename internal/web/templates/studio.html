@@ -3,22 +3,46 @@
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1 id="studio-top">Studio Dàn Dựng Video AI 🎬</h1>
-    <p class="subtitle">Sản xuất video quảng cáo sản phẩm chất lượng cao chuẩn dọc 9:16 (TikTok / Reels / Shorts) hoặc ngang 16:9 với hiệu ứng Ken Burns, Audio Ducking và tăng tốc phần cứng Apple Silicon.</p>
+    <p class="subtitle">Sản xuất video chất lượng cao chuẩn dọc 9:16 hoặc ngang 16:9 với chuyển động điện ảnh và tự động cân bằng âm thanh.</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/settings/he-thong#tab-apikeys" class="btn btn-secondary" title="Quản lý Khóa API AI">⚙️ Khóa API &amp; Hệ thống</a>
-    <a href="/studio/trends" class="btn btn-secondary">🎵 Nhạc Việt hot TikTok 🇻🇳</a>
-    <a href="/studio/jobs" class="btn btn-secondary">📂 Hàng đợi video ({{if .ActiveJobs}}{{.ActiveJobs}} đang dựng · {{end}}{{.JobCount}})</a>
+    {{if .ActiveJobs}}<span class="badge badge-info"><span class="pulse-dot"></span> {{.ActiveJobs}} video đang dựng</span>{{end}}
   </div>
 </div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<!-- Studio Navigation Tabs (Đồng nhất ngôn ngữ thiết kế giữa các tab) -->
-<div class="studio-tabs" style="margin-bottom: 24px;">
-  <a href="#tab-ad-creative" id="tab-btn-creative" class="active" onclick="switchStudioTab('creative')">🚀 Video Quảng Cáo Sản Phẩm (Kịch bản &amp; Phân cảnh)</a>
-  <a href="#tab-quick-affiliate" id="tab-btn-quick" onclick="switchStudioTab('quick')">📸 Video Beat-Bounce Nhanh (Ảnh chụp + Nhạc giật theo beat)</a>
-  <a href="/studio/trends">🎵 Nhạc thịnh hành{{if not .TrendsErr}}{{if .TopSound}} — Top: {{.TopSound}}{{end}}{{end}}</a>
+<!-- Primary Studio Navigation Tabs -->
+<nav class="tabs" style="margin-bottom: 20px;">
+  <a href="/studio" class="active">🎬 Tạo video</a>
+  <a href="/studio/jobs?tab=running">
+    ⚡ Video đang dựng {{if .ActiveJobs}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.ActiveJobs}}</span>{{end}}
+  </a>
+  <a href="/studio/jobs?tab=schedule">📅 Lên lịch tự động</a>
+  <a href="/studio/jobs">
+    📂 Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+  </a>
+  <a href="/studio/trends">🎵 Nhạc thịnh hành</a>
+</nav>
+
+{{if .ActiveJobs}}
+<!-- Live AI Factory Production In-Progress Banner -->
+<div class="card" style="border-radius:12px;padding:12px 18px;margin-bottom:18px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="pulse-dot"></span>
+    <div>
+      <b style="color:var(--text);font-size:13.5px">⚡ Dây chuyền AI đang sản xuất {{.ActiveJobs}} video</b>
+      <div style="font-size:12px;color:var(--muted)">Các phòng ban AI đang phối hợp viết kịch bản, vẽ hình ảnh và thu âm voiceover.</div>
+    </div>
+  </div>
+  <a href="/studio/jobs?tab=running" class="btn btn-primary btn-sm" style="font-weight:700">Xem sơ đồ &amp; tiến độ trực tiếp ➔</a>
+</div>
+{{end}}
+
+<!-- Sub-mode Selector (Chế độ tạo video ngắn gọn) -->
+<div style="display:inline-flex;gap:6px;background:var(--bg2);padding:4px;border-radius:10px;margin-bottom:20px;border:1px solid var(--border)">
+  <button type="button" id="tab-btn-creative" class="btn btn-sm btn-primary active" onclick="switchStudioTab('creative')" style="border-radius:7px">🚀 Video Chuẩn QC</button>
+  <button type="button" id="tab-btn-quick" class="btn btn-sm btn-secondary" onclick="switchStudioTab('quick')" style="border-radius:7px">⚡ Video Nhịp Nhanh</button>
 </div>
 
 <!-- =========================================================================
@@ -90,24 +114,88 @@
             <div class="hint">Hệ thống tự động ghim link này vào caption khi xuất bản hoặc sao chép.</div>
           </div>
 
-          <!-- Quick Prompt Assistant Bar -->
-          <div style="background:var(--bg3);padding:14px;border-radius:12px;margin-top:14px;border:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <!-- Integrated AI Script & QC Studio Cockpit (Quy trình 1 màn hình duy nhất) -->
+          <div style="background:var(--bg3);padding:16px;border-radius:12px;margin-top:16px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
               <div>
-                <b>⚡ Trợ lý Prompt AI:</b>
-                <span class="hint" style="display:inline;margin-left:6px">Tạo kịch bản cho ChatGPT/Claude và prompt Gemini &amp; Muse AI</span>
+                <b style="font-size:14px;color:var(--text)">✍️ Khởi tạo Kịch bản &amp; QC (ChatGPT + Claude + Gemini + Muse AI)</b>
+                <div class="hint" style="margin-top:2px">Tự động sinh 4 Hook 3s giật gân, phân cảnh điện ảnh và kiểm duyệt chất lượng QC trước khi dựng.</div>
               </div>
-              <button type="button" class="btn btn-sm" onclick="quickGeneratePrompts()">✨ Sinh Kịch Bản Ngay</button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="hint" style="align-self:center;font-size:12px">Thử mẫu:</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('polo')">👔 Áo Polo</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('serum')">✨ Serum Da</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('fryer')">🍳 Nồi Chiên</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('headphone')">🎧 Tai Nghe</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-studio-gen-script" onclick="generateStudioScriptAndQC()">
+                  ✨ Sinh Kịch Bản &amp; QC
+                </button>
+              </div>
             </div>
-            <div id="quick-prompt-result" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-              <div class="hint" style="margin-bottom:6px"><b>Đã tạo xong prompt!</b> Sao chép hoặc mở AI Hub:</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('chatgpt')">📋 Copy ChatGPT</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('claude')">📋 Copy Claude</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('gemini')">📋 Copy Prompt Ảnh</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('museai')">📋 Copy Prompt Video</button>
-                <a href="/web-ai" target="_blank" class="btn btn-secondary btn-sm">🌐 Mở AI Hub ↗️</a>
+
+            <!-- QC & Script Workspace (Appears after generating) -->
+            <div id="studio-script-qc-result" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+              
+              <!-- QC Scorecard Banner -->
+              <div style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:22px">🛡️</span>
+                    <div>
+                      <strong style="font-size:14px">Đánh Giá QC Kịch Bản:</strong>
+                      <span class="badge badge-ok" id="st-qc-verdict" style="margin-left:6px;font-weight:700">Đạt Chuẩn Triệu View</span>
+                    </div>
+                  </div>
+                  <div style="font-size:18px;font-weight:800;color:var(--accent)">
+                    <span id="st-qc-score">--</span><span style="font-size:12px;color:var(--muted)">/100 QC</span>
+                  </div>
+                </div>
+                <!-- 4 Metrics Gauges -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;font-size:11px">
+                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between"><span>🎯 Hook 3s:</span><b id="st-qc-hook" style="color:var(--accent)">--%</b></div>
+                  </div>
+                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between"><span>🛍️ Ngành hàng:</span><b id="st-qc-niche" style="color:#10b981">--%</b></div>
+                  </div>
+                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between"><span>💰 Thuyết phục:</span><b id="st-qc-per" style="color:#f59e0b">--%</b></div>
+                  </div>
+                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between"><span>🎬 Dựng hình:</span><b id="st-qc-av" style="color:#8b5cf6">--%</b></div>
+                  </div>
+                </div>
               </div>
+
+              <!-- 4 Hook 3s Selector -->
+              <div style="margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <label style="font-size:13px;font-weight:700;margin:0">🎯 Chọn 1 trong 4 Hook 3 Giây Bắt Đầu Video:</label>
+                  <span class="hint" style="font-size:11px">Click chọn hook để tự động chèn vào đầu lời thoại Voiceover</span>
+                </div>
+                <div id="st-hooks-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:8px"></div>
+              </div>
+
+              <!-- Storyboard Scenes & Visual Consistency Section -->
+              <div style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <label style="font-size:13px;font-weight:700;margin:0">🎬 Storyboard 4 Phân Cảnh (Đồng bộ nhân vật &amp; sản phẩm):</label>
+                  <span class="badge badge-dim" style="font-size:11px">🔒 Visual Consistency Lock</span>
+                </div>
+                <div id="st-scenes-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:10px"></div>
+              </div>
+
+              <!-- Quick Copy & Management Toolstrip -->
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px dashed var(--border)">
+                <div class="hint" style="font-size:12px">✓ Lời thoại đã tự động điền vào Mục 3 (Voiceover) bên dưới.</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('chatgpt')">📋 Copy ChatGPT</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('claude')">📋 Copy Claude</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('gemini')">📋 Copy Prompt Ảnh</button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('museai')">📋 Copy Prompt Video</button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -191,7 +279,7 @@
           <div class="field">
             <label>Kịch bản lời đọc Voiceover <span class="hint">— AI tự động đọc tiếng Việt truyền cảm nếu chưa có thu âm</span></label>
             <textarea name="voiceover_text" id="cr-voiceover-text" rows="3" placeholder="Nhập lời bình bán hàng... Nếu không tải file âm thanh, AI TTS sẽ tự động lồng tiếng đọc đoạn này!" oninput="updateMockupPreview('cr')"></textarea>
-            <div class="hint" style="color:var(--accent);margin-top:4px">🎙️ Tự động giảm nhạc nền 8dB (Audio Ducking) khi có giọng đọc + chuẩn hóa EBU R128 (-14 LUFS).</div>
+            <div class="hint" style="color:var(--accent);margin-top:4px">🎙️ Tự động hạ nhạc nền 8dB khi có giọng đọc + chuẩn hóa âm lượng chuẩn phát sóng (-14 LUFS).</div>
           </div>
 
           <div class="field">
@@ -289,6 +377,105 @@
             </div>
           </details>
         </div>
+
+        <!-- Section 4: Phân Bổ Phòng Ban Thực Hiện Dây Chuyền (Enterprise Department Assignment) -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">🏢</span> 4. Phân Bổ Phòng Ban Thực Hiện Dây Chuyền
+            </h3>
+            <span class="badge badge-info" style="font-size:11px">Dây Chuyền Doanh Nghiệp AI</span>
+          </div>
+          <p class="hint" style="margin:0 0 14px;font-size:12.5px;color:var(--muted)">
+            Lựa chọn các phòng ban chuyên trách tham gia vào quy trình sản xuất video này. Hệ thống sẽ tự động điều phối nhân sự và kết nối dữ liệu giữa các khâu theo sơ đồ dây chuyền.
+          </p>
+
+          <!-- Quick Presets -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'all')" style="font-size:11px;padding:3px 8px">⚡ Tất cả 5 phòng ban (Khuyên dùng)</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'prod')" style="font-size:11px;padding:3px 8px">🎬 Chỉ Sản xuất &amp; Dựng (DEP-03, 04)</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'content')" style="font-size:11px;padding:3px 8px">✍️ Kịch bản &amp; Dựng (DEP-02, 03, 04)</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('cr', 'dist')" style="font-size:11px;padding:3px 8px">🚀 Dựng &amp; Social Network (DEP-03, 04, 05)</button>
+          </div>
+
+          <!-- Department Checkbox Grid -->
+          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+            <!-- DEP-01 -->
+            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
+              <input type="checkbox" name="assigned_depts" value="DEP-01" class="cr-dept-chk" checked style="margin-top:3px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-01</span>
+                  <span style="font-size:14px">📊</span>
+                  <strong style="font-size:13px;color:var(--text)">Phòng Marketing &amp; Nghiên Cứu Thị Trường</strong>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  Nghiên cứu thị trường, săn deal hot sàn, phân tích đối thủ &amp; insight khách hàng (Bếp Mẹ Bi, Đức Huy)
+                </div>
+              </div>
+            </label>
+
+            <!-- DEP-02 -->
+            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
+              <input type="checkbox" name="assigned_depts" value="DEP-02" class="cr-dept-chk" checked style="margin-top:3px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-02</span>
+                  <span style="font-size:14px">✍️</span>
+                  <strong style="font-size:13px;color:var(--text)">Phòng Biên Kịch &amp; Sáng Tạo Nội Dung</strong>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  Soạn kịch bản 5 cảnh, Hook 3s giữ chân 84%+, lời thoại &amp; Prompts 4K (Minh Thư, Sơn Bách)
+                </div>
+              </div>
+            </label>
+
+            <!-- DEP-03 -->
+            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
+              <input type="checkbox" name="assigned_depts" value="DEP-03" class="cr-dept-chk" checked style="margin-top:3px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-03</span>
+                  <span style="font-size:14px">🎬</span>
+                  <strong style="font-size:13px;color:var(--text)">Phòng Sản Xuất &amp; Quay Dựng Video</strong>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  Đạo diễn bối cảnh, render ảnh/video AI 4K nhất quán, dựng phim &amp; cắt cúp nhịp beat (Đức Huy, Minh Thư)
+                </div>
+              </div>
+            </label>
+
+            <!-- DEP-04 -->
+            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
+              <input type="checkbox" name="assigned_depts" value="DEP-04" class="cr-dept-chk" checked style="margin-top:3px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-04</span>
+                  <span style="font-size:14px">🛡️</span>
+                  <strong style="font-size:13px;color:var(--text)">Phòng Đánh Giá Chất Lượng (QC)</strong>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  Kiểm tra độ giữ chân Hook 3s, chuẩn Safe Zone TikTok/Reels, độ nét 4K &amp; cấp chứng nhận QC (Sơn Bách)
+                </div>
+              </div>
+            </label>
+
+            <!-- DEP-05 -->
+            <label class="dept-assign-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color 0.15s">
+              <input type="checkbox" name="assigned_depts" value="DEP-05" class="cr-dept-chk" checked style="margin-top:3px">
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-05</span>
+                  <span style="font-size:14px">📱</span>
+                  <strong style="font-size:13px;color:var(--text)">Phòng Social Network &amp; Quản Trị Kênh</strong>
+                </div>
+                <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
+                  Quét ContentID bản quyền, lên lịch xuất bản đa nền tảng và đo lường tăng trưởng tương tác (Minh Thư, Sơn Bách)
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- RIGHT COLUMN: Interactive Smartphone Mockup & Action Bar (40%) -->
@@ -310,7 +497,7 @@
               <div class="phone-waveform-box">
                 <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               </div>
-              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Audio Ducking -8dB • LUFS -14</span>
+              <span style="font-size:10px;color:#94a3b8;display:block;margin-top:4px">Tự động hạ nhạc nền • Âm lượng chuẩn -14 LUFS</span>
             </div>
 
             <div class="phone-bottom-overlay">
@@ -477,6 +664,60 @@
             <div class="hint">Ảnh tự động phóng to thu nhỏ nhịp nhàng theo tiếng trống</div>
           </div>
         </div>
+
+        <!-- Section 3: Phân Bổ Phòng Ban Thực Hiện Dây Chuyền (Panel Quick) -->
+        <div class="form-card" style="margin-bottom: 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">🏢</span> 3. Phân Bổ Phòng Ban Thực Hiện Dây Chuyền
+            </h3>
+            <span class="badge badge-info" style="font-size:11px">Dây Chuyền Doanh Nghiệp AI</span>
+          </div>
+          <p class="hint" style="margin:0 0 14px;font-size:12.5px;color:var(--muted)">
+            Lựa chọn các phòng ban chuyên trách tham gia vào quy trình sản xuất video này.
+          </p>
+
+          <!-- Quick Presets -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'all')" style="font-size:11px;padding:3px 8px">⚡ Tất cả 5 phòng ban</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'prod')" style="font-size:11px;padding:3px 8px">🎬 Chỉ Sản xuất &amp; Dựng</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setDeptsPreset('qk', 'dist')" style="font-size:11px;padding:3px 8px">🚀 Dựng &amp; Social Network</button>
+          </div>
+
+          <!-- Department Checkbox Grid -->
+          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" name="assigned_depts" value="DEP-01" class="qk-dept-chk" checked>
+              <div style="flex:1">
+                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-01</span> 📊 <b>Phòng Marketing &amp; Nghiên Cứu Thị Trường</b>
+              </div>
+            </label>
+            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" name="assigned_depts" value="DEP-02" class="qk-dept-chk" checked>
+              <div style="flex:1">
+                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-02</span> ✍️ <b>Phòng Biên Kịch &amp; Sáng Tạo Nội Dung</b>
+              </div>
+            </label>
+            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" name="assigned_depts" value="DEP-03" class="qk-dept-chk" checked>
+              <div style="flex:1">
+                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-03</span> 🎬 <b>Phòng Sản Xuất &amp; Quay Dựng Video</b>
+              </div>
+            </label>
+            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" name="assigned_depts" value="DEP-04" class="qk-dept-chk" checked>
+              <div style="flex:1">
+                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-04</span> 🛡️ <b>Phòng Đánh Giá Chất Lượng (QC)</b>
+              </div>
+            </label>
+            <label class="dept-assign-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer">
+              <input type="checkbox" name="assigned_depts" value="DEP-05" class="qk-dept-chk" checked>
+              <div style="flex:1">
+                <span class="badge badge-info" style="font-size:10px;font-weight:700">DEP-05</span> 📱 <b>Phòng Social Network &amp; Quản Trị Kênh</b>
+              </div>
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- RIGHT COLUMN: Smartphone Mockup & Action Bar (40%) -->
@@ -502,7 +743,7 @@
             </div>
 
             <div class="phone-bottom-overlay">
-              <div style="font-weight:700;margin-bottom:2px">🔥 Video Beat-Bounce Nhanh</div>
+              <div style="font-weight:700;margin-bottom:2px">🔥 Video Giật Nhịp Theo Nhạc</div>
               <div style="font-size:11px;color:#e2e8f0">Hiệu ứng phóng to thu nhỏ giật nảy theo điệu nhạc</div>
               <div class="phone-specs-pill">
                 <span id="qk-mockup-duration">⏱️ 20s</span>
@@ -514,7 +755,7 @@
 
         <div class="mockup-render-action-card">
           <button type="submit" class="btn-mega-render" id="btn-submit-render-qk">
-            ⚡ Bắt Đầu Tạo Video Beat-Bounce Nhanh
+            ⚡ Bắt Đầu Tạo Video Nhịp Nhanh Theo Nhạc
           </button>
           <div class="hint" style="text-align:center;margin-top:8px;font-size:12px">
             Hoàn tất trong vài giây • Thích hợp kéo view TikTok &amp; Shorts
@@ -538,13 +779,17 @@ function switchStudioTab(tab) {
   if (tab === 'creative') {
     creativePanel.style.display = 'block';
     quickPanel.style.display = 'none';
-    creativeBtn.classList.add('active');
-    quickBtn.classList.remove('active');
+    creativeBtn.classList.add('active', 'btn-primary');
+    creativeBtn.classList.remove('btn-secondary');
+    quickBtn.classList.remove('active', 'btn-primary');
+    quickBtn.classList.add('btn-secondary');
   } else {
     creativePanel.style.display = 'none';
     quickPanel.style.display = 'block';
-    creativeBtn.classList.remove('active');
-    quickBtn.classList.add('active');
+    creativeBtn.classList.remove('active', 'btn-primary');
+    creativeBtn.classList.add('btn-secondary');
+    quickBtn.classList.add('active', 'btn-primary');
+    quickBtn.classList.remove('btn-secondary');
   }
 }
 
@@ -820,14 +1065,48 @@ function startSynthBeat() {
 }
 
 var lastGeneratedPkg = null;
+var currentBaseVo = '';
 
-function quickGeneratePrompts() {
+function loadStudioSample(preset) {
+  var samples = {
+    polo: {
+      name: 'Áo Polo Nam Lụa Lạnh Cao Cấp',
+      niche: 'thời trang/phụ kiện'
+    },
+    serum: {
+      name: 'Serum Dưỡng Trắng & Mờ Thâm Nám 7 Ngày',
+      niche: 'mỹ phẩm'
+    },
+    fryer: {
+      name: 'Nồi Chiên Không Dầu Điện Tử 8L',
+      niche: 'gia dụng'
+    },
+    headphone: {
+      name: 'Tai Nghe Chống Ồn Sony WH-1000XM5',
+      niche: 'công nghệ'
+    }
+  };
+  var s = samples[preset];
+  if (!s) return;
+  if (document.getElementById('cr-product-name')) document.getElementById('cr-product-name').value = s.name;
+  if (document.getElementById('cr-niche')) document.getElementById('cr-niche').value = s.niche;
+  generateStudioScriptAndQC();
+}
+
+function generateStudioScriptAndQC() {
   var name = document.getElementById('cr-product-name').value;
   if (!name.trim()) {
-    alert('Vui lòng nhập Tên sản phẩm ở mục 1 trước khi tạo prompt.');
+    alert('Vui lòng nhập Tên sản phẩm trước khi tạo kịch bản.');
     document.getElementById('cr-product-name').focus();
     return;
   }
+  var btn = document.getElementById('btn-studio-gen-script');
+  var oldBtnText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang phân tích & tạo QC...';
+  }
+
   var data = new URLSearchParams();
   data.append('product_name', name);
   data.append('niche', document.getElementById('cr-niche').value);
@@ -840,16 +1119,174 @@ function quickGeneratePrompts() {
   })
   .then(function(r) { return r.json(); })
   .then(function(pkg) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldBtnText;
+    }
     lastGeneratedPkg = pkg;
-    document.getElementById('quick-prompt-result').style.display = 'block';
+    document.getElementById('studio-script-qc-result').style.display = 'block';
+
+    // 1. Populate QC Scorecard
+    var qc = pkg.qc || pkg.qc_scorecard;
+    if (qc) {
+      if (document.getElementById('st-qc-verdict')) document.getElementById('st-qc-verdict').textContent = qc.verdict || 'Đạt Chuẩn Triệu View';
+      if (document.getElementById('st-qc-score')) document.getElementById('st-qc-score').textContent = qc.overall_score || 95;
+      if (document.getElementById('st-qc-hook')) document.getElementById('st-qc-hook').textContent = (qc.hook_score || 95) + '%';
+      if (document.getElementById('st-qc-niche')) document.getElementById('st-qc-niche').textContent = (qc.niche_match_score || 95) + '%';
+      if (document.getElementById('st-qc-per')) document.getElementById('st-qc-per').textContent = (qc.persuasion_score || 95) + '%';
+      if (document.getElementById('st-qc-av')) document.getElementById('st-qc-av').textContent = (qc.audio_visual_score || 95) + '%';
+    }
+
+    // 2. Populate 4 Hook 3s Cards
+    var hBox = document.getElementById('st-hooks-container');
+    if (hBox) {
+      hBox.innerHTML = '';
+      (pkg.hook_variants || []).forEach(function(h, idx) {
+        var cardId = 'st-hook-card-' + idx;
+        var safeText = h.text.replace(/'/g, "\\'");
+        var activeBorder = idx === 0 ? 'border:1.5px solid var(--accent)' : 'border:1px solid var(--border)';
+        hBox.innerHTML += '<div id="' + cardId + '" class="st-hook-card" style="' + activeBorder + ';background:var(--bg2);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;transition:all 0.2s ease" onclick="selectStudioHook(\'' + safeText + '\', ' + idx + ')">' +
+          '<div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<span class="badge badge-ok" style="font-size:11px">#' + (idx+1) + ' ' + h.title + '</span>' +
+              '<span id="st-hook-check-' + idx + '" style="font-size:12px;color:var(--accent);font-weight:700">' + (idx===0 ? '✓ Đang chọn' : '') + '</span>' +
+            '</div>' +
+            '<div style="font-size:13px;font-weight:700;line-height:1.4;color:var(--text);margin-bottom:6px">“' + h.text + '”</div>' +
+          '</div>' +
+          '<div class="hint" style="font-size:11px;margin-top:4px">🎯 ' + h.angle + '</div>' +
+        '</div>';
+      });
+    }
+
+    // 3. Assemble Voiceover Text
+    var bodyVo = '';
+    (pkg.scenes || []).forEach(function(sc, i) {
+      if (i > 0 && sc.voiceover_text) {
+        bodyVo += (bodyVo ? ' ' : '') + sc.voiceover_text;
+      }
+    });
+    currentBaseVo = bodyVo;
+    var initialHook = (pkg.hook_variants && pkg.hook_variants.length > 0) ? pkg.hook_variants[0].text : (pkg.hook_text || '');
+    var fullVo = (initialHook ? initialHook + ' ' : '') + currentBaseVo;
+    if (document.getElementById('cr-voiceover-text')) {
+      document.getElementById('cr-voiceover-text').value = fullVo.trim();
+    }
+
+    // 4. Populate Caption
     if (pkg.caption && document.getElementById('cr-caption')) {
       document.getElementById('cr-caption').value = pkg.caption;
     }
+
+    // 5. Populate Storyboard Scenes with Consistency Anchor
+    var scBox = document.getElementById('st-scenes-container');
+    if (scBox) {
+      scBox.innerHTML = '';
+      (pkg.scenes || []).forEach(function(sc, i) {
+        var safePrompt = sc.gemini_prompt.replace(/'/g, "\\'");
+        scBox.innerHTML += '<div class="st-scene-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:space-between">' +
+          '<div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<b style="font-size:13px">' + sc.scene_name + ' (' + sc.duration_sec + 's)</b>' +
+              '<span class="badge badge-dim" style="font-size:10px">Cảnh ' + (i+1) + '</span>' +
+            '</div>' +
+            '<div class="hint" style="font-size:12px;margin-bottom:8px;line-height:1.4;color:var(--text)">' + sc.visual_concept + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div id="st-scene-preview-' + i + '" style="display:none;margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">' +
+              '<img id="st-scene-img-' + i + '" src="" style="width:100%;max-height:140px;object-fit:cover;display:block">' +
+            '</div>' +
+            '<div style="display:flex;gap:6px">' +
+              '<button type="button" class="btn btn-secondary btn-sm" id="btn-st-sc-gen-' + i + '" style="font-size:11px;padding:4px 8px;flex:1" onclick="generateSceneImageInStudio(' + i + ', \'' + safePrompt + '\')">🎨 Tạo ảnh 4K</button>' +
+              '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px" onclick="navigator.clipboard.writeText(\'' + safePrompt + '\');window.showToast(\'Đã chép prompt cảnh ' + (i+1) + '\', true)">Copy</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
     updateMockupPreview('cr');
-    window.showToast('Đã tạo thành công bộ kịch bản & prompt cho Claude, ChatGPT, Gemini và Muse AI!', true);
+    window.showToast('✓ Kịch bản thực chiến, 4 Hook & Báo cáo QC đã sẵn sàng ngay trong Studio!', true);
+    document.getElementById('studio-script-qc-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   })
   .catch(function(err) {
-    alert('Lỗi tạo prompt: ' + err);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldBtnText;
+    }
+    alert('Lỗi tạo kịch bản: ' + err);
+  });
+}
+
+var quickGeneratePrompts = generateStudioScriptAndQC;
+
+function selectStudioHook(hookText, idx) {
+  document.querySelectorAll('.st-hook-card').forEach(function(card, i) {
+    card.style.border = (i === idx) ? '1.5px solid var(--accent)' : '1px solid var(--border)';
+    var check = document.getElementById('st-hook-check-' + i);
+    if (check) check.textContent = (i === idx) ? '✓ Đang chọn' : '';
+  });
+  var fullVo = (hookText ? hookText + ' ' : '') + currentBaseVo;
+  if (document.getElementById('cr-voiceover-text')) {
+    document.getElementById('cr-voiceover-text').value = fullVo.trim();
+  }
+  updateMockupPreview('cr');
+  window.showToast('Đã áp dụng Hook #' + (idx+1) + ' vào đầu lời thoại video!', true);
+}
+
+function generateSceneImageInStudio(idx, prompt) {
+  var name = document.getElementById('cr-product-name').value;
+  var niche = document.getElementById('cr-niche').value;
+  var btn = document.getElementById('btn-st-sc-gen-' + idx);
+  var oldText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang tạo...';
+  }
+
+  var data = new URLSearchParams();
+  data.append('product_name', name);
+  data.append('niche', niche);
+  data.append('prompt', prompt);
+  data.append('aspect_ratio', '9:16');
+
+  fetch('/studio/generate-image', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    if (!res.ok) {
+      alert('Lỗi tạo ảnh: ' + (res.error || 'Thử lại'));
+      return;
+    }
+    var preview = document.getElementById('st-scene-preview-' + idx);
+    var img = document.getElementById('st-scene-img-' + idx);
+    if (preview && img) {
+      img.src = res.url;
+      preview.style.display = 'block';
+    }
+    // Automatically add to photo URLs if not present
+    var curUrls = document.getElementById('cr-photo-urls');
+    if (curUrls) {
+      var lines = curUrls.value.trim().split('\n').filter(function(l){ return l.trim(); });
+      if (lines.indexOf(res.url) === -1) {
+        lines.push(res.url);
+        curUrls.value = lines.join('\n');
+      }
+    }
+    window.showToast('✓ Đã tạo xong ảnh 4K cho Cảnh ' + (idx+1) + ' và gán vào danh sách dựng!', true);
+  })
+  .catch(function(err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    alert('Lỗi: ' + err);
   });
 }
 
@@ -950,5 +1387,20 @@ window.addEventListener('DOMContentLoaded', function() {
     updateMockupPreview('cr');
   } catch (e) {}
 });
+
+function setDeptsPreset(prefix, type) {
+  var chks = document.querySelectorAll('.' + prefix + '-dept-chk');
+  chks.forEach(function(c) {
+    if (type === 'all') {
+      c.checked = true;
+    } else if (type === 'prod') {
+      c.checked = (c.value === 'DEP-03' || c.value === 'DEP-04');
+    } else if (type === 'content') {
+      c.checked = (c.value === 'DEP-02' || c.value === 'DEP-03' || c.value === 'DEP-04');
+    } else if (type === 'dist') {
+      c.checked = (c.value === 'DEP-03' || c.value === 'DEP-04' || c.value === 'DEP-05');
+    }
+  });
+}
 </script>
 {{end}}

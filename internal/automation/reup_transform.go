@@ -112,7 +112,7 @@ func (s *Service) ReupTransformTick(ctx context.Context) []string {
 		sweepNotes = append(sweepNotes, fmt.Sprintf("reup sweep: %d bài kẹt 'đang transform' quá 4h → đánh lỗi, lượt sau tạo bài mới", n))
 	}
 	level := atInt(s.Settings, KeyReupTransformLevel, defaultReupTransformLevel)
-	if level != reup.Level2 {
+	if level != reup.Level2 && level != reup.Level3 {
 		level = reup.Level1
 	}
 	voiceover := atOn(s.Settings, KeyReupVoiceoverEnabled, true)
@@ -125,7 +125,9 @@ func (s *Service) ReupTransformTick(ctx context.Context) []string {
 	var done, failed int
 	var notes []string
 	notes = append(notes, sweepNotes...)
-	if level == reup.Level2 {
+	if level == reup.Level3 {
+		done, failed, notes = s.transformPassRemake(ctx, tr, voiceover)
+	} else if level == reup.Level2 {
 		done, failed, notes = s.transformPassCompilation(ctx, tr, voiceover)
 	} else {
 		done, failed, notes = s.transformPassSingle(ctx, tr, voiceover)
@@ -158,6 +160,39 @@ func (s *Service) transformPassSingle(ctx context.Context, tr *reup.Transformer,
 			failed++
 			_ = s.Reup.SetPostStatus(post.ID, reup.PostFailed, terr.Error())
 			notes = append(notes, fmt.Sprintf("transform video #%d lỗi: %v", v.ID, terr))
+			continue
+		}
+		_ = s.Reup.SetPostTransformed(post.ID, out)
+		done++
+	}
+	return done, failed, notes
+}
+
+// transformPassRemake: mỗi video downloaded → 1 bài mức 3 (AI Remake 100% nhân vật & hình ảnh mới).
+func (s *Service) transformPassRemake(ctx context.Context, tr *reup.Transformer, voiceover bool) (done, failed int, notes []string) {
+	videos, err := s.Reup.VideosNeedingTransform(maxTransformPerPass)
+	if err != nil {
+		return 0, 0, []string{"đọc video chờ transform: " + err.Error()}
+	}
+	for _, v := range videos {
+		post, cerr := s.Reup.CreatePost([]int64{v.ID}, reup.Level3)
+		if cerr != nil {
+			failed++
+			notes = append(notes, fmt.Sprintf("tạo bài remake cho video #%d: %v", v.ID, cerr))
+			continue
+		}
+		_ = s.Reup.SetPostStatus(post.ID, reup.PostTransforming, "")
+		opts := reup.TransformOptions{
+			Level:          reup.Level3,
+			Seed:           v.ID,
+			Voiceover:      voiceover,
+			CharacterStyle: "vietnamese_cinematic",
+		}
+		out, terr := tr.TransformRemake(ctx, v, opts)
+		if terr != nil {
+			failed++
+			_ = s.Reup.SetPostStatus(post.ID, reup.PostFailed, terr.Error())
+			notes = append(notes, fmt.Sprintf("AI remake video #%d lỗi: %v", v.ID, terr))
 			continue
 		}
 		_ = s.Reup.SetPostTransformed(post.ID, out)
@@ -324,7 +359,7 @@ func (s *Service) publishReupPost(ctx context.Context, post reup.Post, username 
 			title = v.Title
 		}
 	}
-	desc := "Video reup đã transform (giảm rủi ro bản quyền — không đảm bảo)."
+	desc := title
 	for _, pub := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes, "short_video") {
 		if pub.Name() == "threads" {
 			continue // Threads chỉ đăng bài chữ — không phải chỗ cho video reup

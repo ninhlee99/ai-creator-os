@@ -1,7 +1,15 @@
 {{define "title"}}Phát triển kênh — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Phát triển kênh 🌱</h1>
-<p class="subtitle">Tự vận hành chu kỳ 30-60-90 ngày. Số liệu chỉ từ API chính thức — chưa kết nối thì báo rõ.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Phát Triển Kênh &amp; Tăng Trưởng 🌱</h1>
+    <p class="subtitle">Tự động vận hành chu kỳ tăng trưởng 30-60-90 ngày, theo dõi mốc bật kiếm tiền YPP và số liệu thật.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/accounts" class="btn btn-secondary">📱 Kênh Creator</a>
+    <a href="/publishers" class="btn btn-secondary">🌐 Cổng xuất bản</a>
+  </div>
+</div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
@@ -94,7 +102,10 @@
 
 {{if .HasYTAccount}}
 <h2>Tiến độ kiếm tiền YouTube (YPP)</h2>
-<p class="hint">Ngưỡng YouTube: <b>mức sớm</b> 500 sub + 3.000 giờ xem/12 tháng hoặc 3 triệu view Shorts/90 ngày · <b>mức đầy đủ</b> 1.000 sub + 4.000 giờ xem hoặc 10 triệu view Shorts. Giờ xem là ước tính từ Analytics (YouTube chỉ tính video dài công khai) — số chốt xem ở YouTube Studio.</p>
+<p class="hint">
+  <span class="badge badge-dim">🎯 Mức sớm: 500 sub · 3.000 giờ xem (hoặc 3M view Shorts)</span>
+  <span class="badge badge-dim">🏆 Mức đầy đủ: 1.000 sub · 4.000 giờ xem (hoặc 10M view Shorts)</span>
+</p>
 <div class="table-wrap">
 <table>
 <tr><th>Kênh</th><th>Mức</th><th>Người đăng ký</th><th>Giờ xem 12 tháng</th><th>View Shorts 90 ngày</th><th>Tổng</th></tr>

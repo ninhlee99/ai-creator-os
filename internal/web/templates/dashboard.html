@@ -1,162 +1,248 @@
-{{define "title"}}Trang chủ — AI Creator OS{{end}}
+{{define "title"}}Trung Tâm Tác Chiến 24/7 — AI Creator Enterprise{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 22px;">
+<!-- Executive Corporate Header -->
+<div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Tổng quan</h1>
-    <p class="subtitle" style="font-size:14px">Ngày {{fmtVN .Today}} · Hệ thống sản xuất video AI và vận hành mạng lưới kênh truyền thông tự động 24/7.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="badge badge-info" style="font-weight:800;font-size:11px">DOANH NGHIỆP MEDIA</span>
+      <span class="badge badge-ok" style="font-weight:700;font-size:11px"><span class="pulse-dot"></span> 9 KHỐI PHÒNG BAN 24/7</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <h1>Tổng quan</h1>
+      <span class="badge badge-info" style="font-weight:700;font-size:11px">Trung Tâm Điều Hành 24/7</span>
+    </div>
+    <p class="subtitle" style="margin:0;font-size:13.5px">Ngày {{fmtVN .Today}} · Mạng lưới tự động săn xu hướng, sản xuất video điện ảnh và vận hành đa kênh.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/studio" class="btn btn-primary">🎬 Dựng Video AI Mới</a>
-    <a href="/accounts/new" class="btn btn-secondary">📱 + Kết nối Kênh</a>
-    <a href="/products" class="btn btn-secondary">🛍️ Sàn Affiliate</a>
+    <a href="/team" class="btn btn-secondary btn-sm" style="font-weight:600">🏢 9 Khối Phòng Ban</a>
+    <a href="/accounts" class="btn btn-secondary btn-sm" style="font-weight:600">📱 Mạng Lưới Kênh</a>
+    <a href="/studio" class="btn btn-primary btn-sm" style="font-weight:700">🎬 Studio AI</a>
   </div>
 </div>
-
-{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza” hoặc “AQ.”). Google từ chối key này nên AI chưa chạy. <a href="/settings/he-thong#tab-apikeys">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
-{{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
-<div class="card steps-card" style="margin-bottom:24px;border-radius:14px">
-  <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
-  <ol class="steps">
-    <li class="{{if .HasKeys}}done{{end}}">
-      <span class="n">{{if .HasKeys}}✓{{else}}1{{end}}</span>
-      <div class="step-body">
-        <b>Thêm Gemini API key (miễn phí, nên có)</b>
-        <span>Chưa có key vẫn dựng được video bán hàng từ ảnh bạn tải lên. Có key thì AI tự viết kịch bản, vẽ ảnh, viết caption và kể chuyện.</span>
-      </div>
-      <a class="btn btn-sm" href="/settings/he-thong#tab-apikeys">Thêm key</a>
-    </li>
-    <li class="{{if .Accounts}}done{{end}}">
-      <span class="n">{{if .Accounts}}✓{{else}}2{{end}}</span>
-      <div class="step-body">
-        <b>Thêm kênh đầu tiên</b>
-        <span>Tạo kênh creator đầu tiên (TikTok/YouTube) để hệ thống bắt đầu thiết lập.</span>
-      </div>
-      <a class="btn btn-secondary btn-sm" href="/accounts/new">Thêm kênh</a>
-    </li>
-    <li class="{{if .HasStudioJobs}}done{{end}}">
-      <span class="n">{{if .HasStudioJobs}}✓{{else}}3{{end}}</span>
-      <div class="step-body">
-        <b>Tạo video đầu tiên</b>
-        <span>Chọn 1 trong 2: kể chuyện (chỉ cần chủ đề) hoặc video bán hàng (cần tên sản phẩm).</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <a class="btn btn-secondary btn-sm" href="/stories">📖 Kể chuyện</a>
-        <a class="btn btn-secondary btn-sm" href="/studio">🎬 Bán hàng</a>
-      </div>
-    </li>
-  </ol>
-</div>
-{{end}}
 
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<div class="cards" style="margin-bottom: 24px;">
-  <div class="card accent" style="border-radius:14px;padding:20px;">
-    <div class="num">{{fmtVND .CommissionRevenue}}</div>
-    <div class="label">Hoa hồng Accesstrade</div>
-    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/products">Sàn Affiliate ↗</a></div>
+<!-- Top 4 Executive KPI Metric Cards -->
+<div class="cards" style="margin-bottom: 20px;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px">
+  <div class="card accent" style="border-radius:12px;padding:16px 18px">
+    <div class="label" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Hoa Hồng &amp; Doanh Thu</div>
+    <div class="num" style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:4px 0">{{fmtVND .CommissionRevenue}}</div>
+    <div class="hint" style="font-size:12px"><a href="/products" style="text-decoration:none;color:var(--accent)">Sàn Affiliate &amp; Deal ↗</a></div>
   </div>
-  <div class="card" style="border-radius:14px;padding:20px;">
-    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🌐 Mạng Lưới Kênh Quản Lý</div>
-    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{len .Accounts}} Kênh</div>
-    <div class="hint" style="margin-top:6px;font-size:12px">{{if not .Accounts}}<a href="/accounts/new">+ Thêm kênh đầu tiên</a>{{else}}{{range .ByStatus}}<span class="badge badge-{{statusClass .Status}}" style="margin-right:4px">{{.N}} {{statusLabel .Status}}</span>{{end}}{{end}}</div>
-  </div>
-  <div class="card" style="border-radius:14px;padding:20px;">
-    <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">🎬 Hàng Đợi Sản Xuất Video</div>
-    <div class="num" style="font-size:26px;font-weight:800;letter-spacing:-0.5px">{{if .NJobs}}{{.NJobs}} video{{else}}Sẵn sàng{{end}}</div>
-    <div class="hint" style="margin-top:6px;font-size:12px"><a href="/studio/jobs">Xem tiến độ render Studio ↗</a></div>
-  </div>
-  <div class="card" style="border-radius:14px;padding:20px;display:flex;flex-direction:column;justify-content:space-between;">
-    <div>
-      <div class="label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">⚡ Trạng Thái Tự Động Hóa 24/7</div>
-      <div class="num" style="font-size:18px;font-weight:700">{{if .MasterOn}}<span class="badge badge-ok" style="font-size:13px;padding:4px 8px">● Đang Chạy Theo Lịch</span>{{else}}<span class="badge badge-no" style="font-size:13px;padding:4px 8px">Tạm Dừng</span>{{end}}</div>
+  <div class="card" style="border-radius:12px;padding:16px 18px">
+    <div class="label" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Mạng Lưới Kênh</div>
+    <div class="num" style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:4px 0">{{len .Accounts}} Kênh</div>
+    <div class="hint" style="font-size:12px">
+      {{if not .Accounts}}<a href="/accounts/new" style="color:var(--accent)">+ Kết nối kênh đầu tiên</a>{{else}}{{range .ByStatus}}<span class="badge badge-{{statusClass .Status}}" style="margin-right:4px;font-size:10px">{{.N}} {{statusLabel .Status}}</span>{{end}}{{end}}
     </div>
-    <form method="post" action="/settings/master" style="margin-top:10px">
+  </div>
+  <div class="card" style="border-radius:12px;padding:16px 18px">
+    <div class="label" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Dây Chuyền Sản Xuất</div>
+    <div class="num" style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin:4px 0">{{if .NJobs}}{{.NJobs}} Video{{else}}Sẵn sàng{{end}}</div>
+    <div class="hint" style="font-size:12px"><a href="/studio/jobs?tab=running" style="text-decoration:none;color:var(--accent)">Theo dõi tiến độ render ↗</a></div>
+  </div>
+  <div class="card" style="border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between">
+    <div>
+      <div class="label" style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase">Tự Động Hóa 24/7</div>
+      <div class="num" style="font-size:16px;font-weight:700;margin:4px 0">
+        {{if .MasterOn}}<span class="badge badge-ok" style="font-size:12px;padding:3px 8px">● Vận Hành Theo Lịch</span>{{else}}<span class="badge badge-no" style="font-size:12px;padding:3px 8px">Tạm Dừng</span>{{end}}
+      </div>
+    </div>
+    <form method="post" action="/settings/master" style="margin-top:6px">
       <input type="hidden" name="on" value="{{if .MasterOn}}0{{else}}1{{end}}">
       <input type="hidden" name="back" value="/">
-      <button type="submit" class="btn btn-sm btn-secondary" style="width:100%;font-size:12px">{{if .MasterOn}}Tạm dừng tự động{{else}}Bật tự động 24/7{{end}}</button>
+      <button type="submit" class="btn btn-sm btn-secondary" style="width:100%;font-size:11.5px;padding:4px 8px">{{if .MasterOn}}Tạm dừng tự động{{else}}Bật tự động 24/7{{end}}</button>
     </form>
   </div>
 </div>
 
-<h2>Sẵn sàng kiếm tiền</h2>
-<p class="hint">Tình trạng kết nối và điều kiện mở khóa doanh thu từ các nền tảng đối tác.</p>
-<div class="monetization-grid">
+<!-- Omni-Goal 1-Click Executive Command Bar (Chỉ Huy Chiến Lược 1-Chạm) -->
+<div class="card exec-command-bar" style="background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent);border-radius:14px;padding:18px 20px;margin-bottom:24px">
+  <form method="post" action="/team/dispatch" style="margin:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🎯</span>
+        <div>
+          <b style="font-size:15px;color:var(--text)">Giao Mục Tiêu Chiến Lược 1-Chạm</b>
+          <p class="hint" style="margin:1px 0 0;font-size:12.5px">Hệ thống tự động phân bổ nhiệm vụ qua 9 khối phòng ban và thực thi trọn gói từ A đến Z.</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span class="hint" style="align-self:center;font-size:11.5px">Mục tiêu nhanh:</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tự động quét xu hướng Douyin và sản xuất 2 video bán hàng cho kênh TikTok')">🔥 Tự Động Bắt Xu Hướng 24/7</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tạo video review serum dưỡng trắng mờ nám 7 ngày cho kênh mỹ phẩm')">✨ Serum Mỹ Phẩm</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Làm video review nồi chiên không dầu 8L cho kênh gia dụng')">🍳 Nồi Chiên Gia Dụng</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tạo video tai nghe chống ồn Sony bắt trend deal giảm giá')">🎧 Tai Nghe Sony</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tạo video kể chuyện lịch sử Việt Nam bí ẩn')">📖 Kể Chuyện Lịch Sử</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input type="text" name="goal" id="dash-omni-goal-input" placeholder="Nhập mục tiêu: Ví dụ: Săn deal gia dụng bán chạy nhất và tạo 3 video viral cho kênh TikTok..." required style="flex:1;min-width:280px;font-size:13.5px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+      <button type="submit" class="btn btn-primary" style="padding:10px 20px;font-size:13.5px;font-weight:700">🚀 Kích Hoạt Chiến Dịch Toàn Công Ty</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function setDashboardGoal(txt) {
+  var inp = document.getElementById('dash-omni-goal-input');
+  if (inp) {
+    inp.value = txt;
+    inp.focus();
+  }
+}
+</script>
+
+<!-- Nhật ký tác chiến 24/7 và Tổng quan 9 phòng ban -->
+<div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:20px;margin-bottom:24px" class="dash-split-grid">
+  
+  <!-- LEFT: Realtime 24/7 Live Operations Activity Stream -->
+  <div class="card" style="border-radius:14px;padding:18px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="pulse-dot"></span>
+        <h2 style="margin:0;font-size:15px;font-weight:700">Dòng Chảy Tác Chiến Thời Gian Thực 24/7</h2>
+      </div>
+      <span class="badge badge-ok" style="font-size:10px">9 Khối Đang Chạy</span>
+    </div>
+
+    <div class="live-activity-feed" style="display:flex;flex-direction:column;gap:10px">
+      {{range .LiveOperations}}
+      <div class="live-event-item" style="display:flex;align-items:flex-start;gap:12px;padding:10px 12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-family:monospace;font-size:12px;color:var(--muted);white-space:nowrap;margin-top:2px">{{.Time}}</div>
+        <div style="font-size:22px;flex-shrink:0">{{.AgentAvatar}}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="badge badge-dim" style="font-size:9.5px;font-weight:700">{{.DeptCode}}</span>
+            <strong style="font-size:13px;color:var(--text)">{{.AgentName}}</strong>
+            <span style="font-size:12px;color:var(--muted)">· {{.Action}}</span>
+            <span class="badge {{.BadgeClass}}" style="font-size:9.5px;margin-left:auto">{{.Tag}}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4">{{.Detail}}</div>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- RIGHT: 9 Corporate Divisions Quick Status -->
+  <div class="card" style="border-radius:14px;padding:18px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0;font-size:15px;font-weight:700">🏢 9 Khối Phòng Ban Chuyên Trách</h2>
+      <a href="/team" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">Xem Sơ Đồ Trụ Sở ➔</a>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {{range .EnterpriseDepts}}
+      <a href="/team?view=departments&amp;dept={{.ID}}" style="text-decoration:none;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);transition:border-color 0.15s ease">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span style="font-size:18px">{{.Icon}}</span>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="badge badge-dim" style="font-size:9px;font-weight:700">{{.Code}}</span>
+              <strong style="font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{.Name}}</strong>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">SLA: {{.SLA}} · {{len .Members}} nhân sự</div>
+          </div>
+        </div>
+        <span class="badge badge-ok" style="font-size:9px;flex-shrink:0">TRỰC TUYẾN 24/7</span>
+      </a>
+      {{end}}
+    </div>
+  </div>
+
+</div>
+
+<!-- Monetization Readiness (Khai Thác Doanh Thu) -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <h2 style="margin:0;font-size:16px;font-weight:700">Khai Thác Doanh Thu &amp; Sàn Đối Tác</h2>
+  <span class="hint" style="font-size:12px">Tự động liên kết và đối soát hoa hồng ròng</span>
+</div>
+<div class="monetization-grid" style="margin-bottom:24px">
   {{range .Money}}
-  <div class="monetization-card">
+  <div class="monetization-card" style="border-radius:12px;padding:14px 16px">
     <div class="monetization-card-top">
-      <div class="monetization-card-name">{{.Name}}</div>
+      <div class="monetization-card-name" style="font-weight:700;font-size:13.5px">{{.Name}}</div>
       <div>
         {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
       </div>
     </div>
-    <div class="monetization-card-status">{{.State}}</div>
+    <div class="monetization-card-status" style="font-size:12px;margin:6px 0">{{.State}}</div>
     <div class="monetization-card-footer">
-      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:12px;padding:4px 12px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:12px">Hoàn tất ✓</span>{{end}}
+      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:11.5px;padding:3px 10px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:11.5px">Hoàn tất ✓</span>{{end}}
     </div>
   </div>
   {{end}}
 </div>
 
-<h2>Tự động hóa</h2>
-<p class="hint">Trạng thái vận hành của các phân hệ tự động hóa trong hệ thống.</p>
-<div class="auto-grid">
+<!-- Automation Control Panel -->
+<!-- Sẵn Sàng Kiếm Tiền (Monetization Readiness) -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px">
+  <h2 style="margin:0;font-size:16px;font-weight:700">Sẵn sàng kiếm tiền</h2>
+  <span class="hint" style="font-size:12px">Tình trạng kết nối và điều kiện mở khóa doanh thu đa nền tảng</span>
+</div>
+<div class="monetization-grid" style="margin-bottom:24px">
+  {{range .Money}}
+  <div class="monetization-card" style="border-radius:12px;padding:14px 16px">
+    <div class="monetization-card-top">
+      <div class="monetization-card-name" style="font-weight:700;font-size:13.5px">{{.Name}}</div>
+      <div>
+        {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
+      </div>
+    </div>
+    <div class="monetization-card-status" style="font-size:12px;margin:6px 0">{{.State}}</div>
+    <div class="monetization-card-footer">
+      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:11.5px;padding:3px 10px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:11.5px">Hoàn tất ✓</span>{{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+
+<!-- Phân Hệ Tự Động Hóa 24/7 -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <h2 style="margin:0;font-size:16px;font-weight:700">Tự động hóa</h2>
+  <span class="hint" style="font-size:12px">Các công tắc vận hành dây chuyền 24/7 độc lập</span>
+</div>
+<div class="auto-grid" style="margin-bottom:24px">
   {{range .AutoSwitches}}
-  <div class="auto-card">
+  <div class="auto-card" style="border-radius:12px;padding:14px 16px">
     <div class="auto-card-top">
-      <div class="auto-card-title">
+      <div class="auto-card-title" style="font-weight:700;font-size:13.5px">
         <span>⚡</span> {{.Label}}
       </div>
       <div>
         {{if .On}}<span class="badge badge-ok">BẬT</span>{{else}}<span class="badge badge-no">TẮT</span>{{end}}
       </div>
     </div>
-    <div class="auto-card-desc">{{.Hint}}</div>
+    <div class="auto-card-desc" style="font-size:12px;margin:6px 0">{{.Hint}}</div>
     <div class="auto-card-footer">
-      <a href="{{.Page}}" class="auto-card-link">Chỉnh chi tiết ↗</a>
+      <a href="{{.Page}}" class="auto-card-link" style="font-size:11.5px">Cấu hình ↗</a>
       <form method="post" action="/automation/switch" class="inline-form" style="margin:0">
         <input type="hidden" name="key" value="{{.Key}}">
         <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
-        <button type="submit" class="btn btn-secondary btn-sm" style="padding:4px 12px;font-size:12px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
+        <button type="submit" class="btn btn-secondary btn-sm" style="padding:3px 10px;font-size:11.5px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
       </form>
     </div>
   </div>
   {{end}}
 </div>
 
-
-
-{{if .GrowthAlerts}}
-<h2>Cảnh báo tăng trưởng</h2>
-<ul class="clean">
-  {{range .GrowthAlerts}}
-  <li><strong>{{.Username}}</strong> · {{.Message}}{{if .ActionTaken}} — {{.ActionTaken}}{{end}}</li>
-  {{end}}
-</ul>
-<p><a href="/growth">Mở Phát triển kênh</a></p>
-{{end}}
-
-<h2>Hoạt động gần đây</h2>
 {{if .Decisions}}
-<ul class="clean">
-  {{range .Decisions}}
-  <li>{{with agentLabel .Agent}}{{.Icon}} <strong>{{.Label}}</strong>{{end}} · <span class="badge badge-draft">{{statusLabel .Action}}</span>
-    {{if .Target}} → {{.Target}}{{end}}
-    {{if .Reason}}<br><span style="color:var(--muted)">{{reasonLabel .Reason}}</span>{{end}}
-  </li>
-  {{end}}
-</ul>
-{{else}}
-<div class="empty-state">
-  <div class="es-icon">🚀</div>
-  <h3>Chưa có hoạt động nào</h3>
-  <p>Hệ thống đang chờ bạn bắt đầu. Chọn 1 việc:</p>
-  <div class="es-actions">
-    <a class="btn btn-sm" href="/stories">📖 Kể chuyện YouTube</a>
-    <a class="btn btn-sm" href="/studio">🎬 Làm video bán hàng</a>
-    <a class="btn btn-sm" href="/reup">🔄 Thêm nguồn Reup</a>
-  </div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <h2 style="margin:0;font-size:16px;font-weight:700">Nhật Ký Quyết Định Hệ Thống</h2>
+  <span class="hint" style="font-size:12px">Audit log ghi nhận bởi Ledger append-only</span>
+</div>
+<div class="card" style="border-radius:12px;padding:14px 18px">
+  <ul class="clean" style="margin:0;display:flex;flex-direction:column;gap:8px">
+    {{range .Decisions}}
+    <li style="font-size:12.5px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+      {{with agentLabel .Agent}}{{.Icon}} <strong>{{.Label}}</strong>{{end}} · <span class="badge badge-draft" style="font-size:10px">{{statusLabel .Action}}</span>
+      {{if .Target}} ➔ <span style="color:var(--text)">{{.Target}}</span>{{end}}
+      {{if .Reason}}<div style="color:var(--muted);font-size:11.5px;margin-top:2px">{{reasonLabel .Reason}}</div>{{end}}
+    </li>
+    {{end}}
+  </ul>
 </div>
 {{end}}
 {{end}}

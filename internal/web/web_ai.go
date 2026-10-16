@@ -303,7 +303,7 @@ func (s *Server) handleWebAIPromptGenerate(w http.ResponseWriter, r *http.Reques
 	keyBenefits := r.FormValue("key_benefits")
 	cta := r.FormValue("cta")
 
-	pkg := webai.GenerateAdScriptPackage(productName, niche, framework, targetAudience, keyBenefits, cta)
+	pkg := webai.GenerateAdScriptPackageWithLLM(r.Context(), s.LLM, productName, niche, framework, targetAudience, keyBenefits, cta)
 	s.writeJSON(w, pkg)
 }
 
@@ -493,6 +493,17 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		aspectRatio = "9:16"
 	}
 
+	var assignedDepts []string
+	if r.MultipartForm != nil {
+		assignedDepts = r.MultipartForm.Value["assigned_depts"]
+	}
+	if len(assignedDepts) == 0 {
+		assignedDepts = r.Form["assigned_depts"]
+	}
+	if len(assignedDepts) == 0 {
+		assignedDepts = []string{"DEP-01", "DEP-02", "DEP-03", "DEP-04", "DEP-05"}
+	}
+
 	p := studio.AffiliateParams{
 		Mode:          r.FormValue("mode"),
 		Niche:         strings.TrimSpace(r.FormValue("niche")),
@@ -512,6 +523,7 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		MusicArtist:   strings.TrimSpace(r.FormValue("music_artist")),
 		FixedCaption:  strings.TrimSpace(r.FormValue("fixed_caption")),
 		AffLink:       strings.TrimSpace(r.FormValue("aff_link")),
+		AssignedDepts: assignedDepts,
 	}
 
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {

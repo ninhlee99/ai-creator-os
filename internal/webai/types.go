@@ -140,6 +140,20 @@ type PlatformPost struct {
 	Tip          string   `json:"tip"`
 }
 
+// QCScorecard holds rigorous quality evaluation metrics for the script and video package.
+type QCScorecard struct {
+	OverallScore     int      `json:"overall_score"`      // 0 - 100
+	HookScore        int      `json:"hook_score"`         // 0 - 100
+	NicheMatchScore  int      `json:"niche_match_score"`   // 0 - 100
+	PersuasionScore  int      `json:"persuasion_score"`   // 0 - 100
+	AudioVisualScore int      `json:"audio_visual_score"`  // 0 - 100
+	Verdict          string   `json:"verdict"`            // "ĐẠT CHUẨN XUẤT BẢN (A+)", "CHẤT LƯỢNG CAO (A)", etc.
+	Summary          string   `json:"summary"`            // Detailed analysis summary
+	Strengths        []string `json:"strengths"`          // Highlights
+	Recommendations  []string `json:"recommendations"`    // Actionable improvements
+	CheckedAt        string   `json:"checked_at"`
+}
+
 // AdScriptPackage is a complete creative package for a product ad.
 type AdScriptPackage struct {
 	ProductName           string                  `json:"product_name"`
@@ -157,5 +171,7 @@ type AdScriptPackage struct {
 	MediaRetrievalGuides  map[string]string       `json:"media_retrieval_guides"`
 	ClaudePrompt          string                  `json:"claude_prompt"`
 	ChatGPTPrompt         string                  `json:"chatgpt_prompt"`
+	QC                    QCScorecard             `json:"qc"`
 }
+
 

@@ -15,12 +15,12 @@ each page includes only what it uses. */}}
 {{/* Sub-nav across the 5 settings sub-pages. .SettingsPage selects active. */}}
 {{define "settings-nav"}}
 <nav class="tabs" role="tablist" aria-label="Cài đặt">
-  <a href="/settings/he-thong"{{if eq .SettingsPage "he-thong"}} class="active"{{end}}>Khóa API &amp; Hệ thống</a>
-  <a href="/settings/nha-cung-cap"{{if eq .SettingsPage "nha-cung-cap"}} class="active"{{end}}>Thứ tự AI (Priority)</a>
-  <a href="/settings/model-local"{{if eq .SettingsPage "model-local"}} class="active"{{end}}>Model Local (Offline)</a>
-  <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active"{{end}}>Affiliate Accesstrade</a>
-  <a href="/settings/reup"{{if eq .SettingsPage "reup"}} class="active"{{end}}>Reup Douyin</a>
-  <a href="/settings/an-toan"{{if eq .SettingsPage "an-toan"}} class="active"{{end}}>🛡️ An toàn</a>
+  <a href="/settings/he-thong"{{if eq .SettingsPage "he-thong"}} class="active"{{end}}>⚙️ Hệ thống</a>
+  <a href="/settings/nha-cung-cap"{{if eq .SettingsPage "nha-cung-cap"}} class="active"{{end}}>🔀 Thứ tự AI</a>
+  <a href="/settings/model-local"{{if eq .SettingsPage "model-local"}} class="active"{{end}}>💻 Model Local</a>
+  <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active"{{end}}>🛒 Accesstrade</a>
+  <a href="/settings/reup"{{if eq .SettingsPage "reup"}} class="active"{{end}}>🔁 Reup</a>
+  <a href="/settings/an-toan"{{if eq .SettingsPage "an-toan"}} class="active"{{end}}>🛡️ Bảo mật</a>
 </nav>
 {{end}}
 

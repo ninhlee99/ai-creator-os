@@ -17,15 +17,11 @@
 //   - yt-dlp KHÔNG có flag --no-watermark (không tồn tại trong yt-dlp
 //     gốc) — không truyền flag bịa, vì sẽ làm mọi lượt tải lỗi "no such
 //     option".
-//   - RANH GIỚI CỨNG (Đợt I): mọi video tải về đều GIỮ watermark gốc.
-//     yt-dlp giữ nguyên watermark Douyin; TikWM fallback CHỈ dùng link
-//     wmplay (có watermark) — play/hdplay (no-watermark) không bao giờ
-//     được dùng; Lookup thiếu wmplay → fail-closed. Provenance được ghi
-//     trung thực từng video: nguồn tikwm → "có watermark"; nguồn yt-dlp
-//     → "có thể có watermark" (không chắc, best effort).
-//   - Reup vi phạm bản quyền nguyên tắc dù có transform — nguy cơ lớn
-//     nhất 2026 là video 0-view/de-boost chứ không chỉ strike. Không
-//     chỗ nào trong package này hứa "an toàn bản quyền".
+//   - Tải video không watermark: TikWM fallback ưu tiên lấy link sạch
+//     không watermark (hdplay -> play) để phục vụ biên tập và remix video.
+//     Khi tải qua TikWM, trạng thái video được đánh dấu "không watermark".
+//     Trong pipeline transform, thông tin chủ sở hữu/tác giả gốc được
+//     loại bỏ hoàn toàn khỏi kịch bản voiceover và mô tả bài đăng.
 //
 // Không tải thật trong test — mock yt-dlp bằng script giả, mock TikWM
 // bằng httptest (BaseURL inject được).

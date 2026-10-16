@@ -1,16 +1,182 @@
-{{define "title"}}Video đã tạo — AI Creator OS{{end}}
+{{define "title"}}
+{{if eq .Tab "running"}}Video đang dựng — AI Creator OS
+{{else if eq .Tab "schedule"}}Lịch tự động — AI Creator OS
+{{else}}Video đã tạo — AI Creator OS{{end}}
+{{end}}
+
 {{define "content"}}
-<h1>Video đã tạo</h1>
-<p class="subtitle">Xem video đang dựng tới đâu, từng cảnh ra sao.</p>
+<!-- Studio Unified Navigation Tabs -->
+<nav class="tabs" style="margin-bottom: 20px;">
+  <a href="/studio">🎬 Tạo video</a>
+  <a href="/studio/jobs?tab=running" class="{{if eq .Tab "running"}}active{{end}}">
+    ⚡ Video đang dựng {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
+  </a>
+  <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
+    📅 Lên lịch tự động
+  </a>
+  <a href="/studio/jobs" class="{{if eq .Tab "done"}}active{{end}}">
+    📂 Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+  </a>
+  <a href="/studio/trends">🎵 Nhạc thịnh hành</a>
+</nav>
+
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
-<nav class="tabs">
-  <a href="/studio">Tạo video</a>
-  <a href="/studio/jobs" class="active">Video đã tạo</a>
-  <a href="/studio/trends">Nhạc thịnh hành</a>
-</nav>
+<!-- Dynamic Tab Header -->
+{{if eq .Tab "running"}}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div>
+    <h1 style="margin:0 0 4px;font-size:22px">⚡ Video Đang Được Dàn Dựng (Dây Chuyền AI Đang Chạy)</h1>
+    <p class="subtitle" style="margin:0">Theo dõi tiến độ sản xuất thời gian thực, sự phối hợp giữa các phòng ban AI và bàn giao thành phẩm.</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
+  </div>
+</div>
+{{else if eq .Tab "schedule"}}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div>
+    <h1 style="margin:0 0 4px;font-size:22px">📅 Lên Lịch Sản Xuất Video Tự Động (Autopilot Scheduler)</h1>
+    <p class="subtitle" style="margin:0">Cấu hình hệ thống AI tự động sản xuất video định kỳ 24/7 theo chu kỳ giờ và tự động xuất bản đa kênh.</p>
+  </div>
+  <form method="post" action="/studio/schedule/run-now" style="margin:0">
+    <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">🚀 Chạy 1 Lượt Sản Xuất Ngay</button>
+  </form>
+</div>
+{{else if eq .Tab "done"}}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div>
+    <h1 style="margin:0 0 4px;font-size:22px">📂 Kho Video Đã Tạo Hoàn Chỉnh</h1>
+    <p class="subtitle" style="margin:0">Toàn bộ video thành phẩm đã hoàn thiện, sẵn sàng xem, tải MP4 hoặc đăng tải lên các kênh mạng xã hội.</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
+  </div>
+</div>
+{{else}}
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+  <div>
+    <h1 style="margin:0 0 4px;font-size:22px">📋 Toàn Bộ Danh Sách Video Trong Studio</h1>
+    <p class="subtitle" style="margin:0">Tổng hợp tất cả các tác vụ sản xuất video từ trước đến nay.</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
+  </div>
+</div>
+{{end}}
 
+<!-- Quick Sub-Filter Pills -->
+<div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px">
+  <a href="/studio/jobs?tab=running" class="btn btn-sm {{if eq .Tab "running"}}btn-primary{{else}}btn-secondary{{end}}">
+    ⚡ Đang tạo {{if .RunningCount}}({{.RunningCount}}){{end}}
+  </a>
+  <a href="/studio/jobs?tab=schedule" class="btn btn-sm {{if eq .Tab "schedule"}}btn-primary{{else}}btn-secondary{{end}}">
+    📅 Lịch tự động
+  </a>
+  <a href="/studio/jobs?tab=done" class="btn btn-sm {{if eq .Tab "done"}}btn-primary{{else}}btn-secondary{{end}}">
+    ✓ Đã tạo xong {{if .DoneCount}}({{.DoneCount}}){{end}}
+  </a>
+  <a href="/studio/jobs?tab=all" class="btn btn-sm {{if eq .Tab "all"}}btn-primary{{else}}btn-secondary{{end}}">
+    📋 Tất cả ({{.TotalCount}})
+  </a>
+</div>
+
+{{if eq .Tab "schedule"}}
+<!-- =========================================================================
+     VIEW: AUTOPILOT SCHEDULE MANAGEMENT DASHBOARD
+     ========================================================================= -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:20px">
+  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TRẠNG THÁI TỰ HÀNH</div>
+    <div>
+      {{if .SchedEnabled}}
+      <span class="badge badge-ok" style="font-size:12px;font-weight:700">⚡ ĐANG BẬT 24/7</span>
+      {{else}}
+      <span class="badge badge-dim" style="font-size:12px;font-weight:700">⏸️ ĐANG TẮT</span>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">CHU KỲ SẢN XUẤT</div>
+    <div style="font-size:18px;font-weight:800;color:var(--text)">
+      Mỗi {{.SchedHours}} giờ / lượt
+    </div>
+  </div>
+
+  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">DỰ KIẾN LƯỢT CHẠY TIẾP THEO</div>
+    <div style="font-size:13.5px;font-weight:700;color:var(--accent)">
+      {{.SchedNextRun}}
+    </div>
+  </div>
+
+  <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">KÊNH TỰ ĐỘNG XUẤT BẢN</div>
+    <div style="font-size:12px;font-weight:600;color:var(--text)">
+      {{if .SchedAutoPub}}<span class="badge badge-ok" style="font-size:10px">TikTok</span>{{end}}
+      {{if .SchedYouTube}}<span class="badge badge-ok" style="font-size:10px">YouTube</span>{{end}}
+      {{if .SchedMeta}}<span class="badge badge-ok" style="font-size:10px">Reels</span>{{end}}
+      {{if not (or .SchedAutoPub (or .SchedYouTube .SchedMeta))}}<span class="badge badge-draft" style="font-size:10px">Lưu kho video</span>{{end}}
+    </div>
+  </div>
+</div>
+
+<div class="card" style="border-radius:14px;padding:22px;background:var(--bg2);margin-bottom:24px">
+  <h3 style="margin:0 0 16px;font-size:16px;display:flex;align-items:center;gap:8px">
+    <span>⚙️</span> Thiết Lập Lịch Sản Xuất Tự Động Định Kỳ
+  </h3>
+  <form method="post" action="/studio/schedule">
+    <div style="margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer">
+        <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}}>
+        <span>Kích hoạt Dây chuyền AI tự động tạo video định kỳ (Autopilot 24/7)</span>
+      </label>
+      <span class="hint" style="font-size:12px;margin-left:24px;display:block;margin-top:4px">
+        Hệ thống sẽ tự động quét sản phẩm/trend mới, tự động điều phối các phòng ban AI tạo kịch bản, vẽ hình ảnh và dựng video.
+      </span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-bottom:18px">
+      <div>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chu kỳ tự động tạo video</label>
+        <select name="interval_hours" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
+          <option value="2" {{if eq .SchedHours 2}}selected{{end}}>Mỗi 2 giờ (Tối đa công suất)</option>
+          <option value="4" {{if eq .SchedHours 4}}selected{{end}}>Mỗi 4 giờ (Khuyên dùng)</option>
+          <option value="6" {{if eq .SchedHours 6}}selected{{end}}>Mỗi 6 giờ (Chuẩn)</option>
+          <option value="12" {{if eq .SchedHours 12}}selected{{end}}>Mỗi 12 giờ (2 video/ngày)</option>
+          <option value="24" {{if eq .SchedHours 24}}selected{{end}}>Mỗi 24 giờ (1 video/ngày)</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Tự động xuất bản khi video dựng xong</label>
+        <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" name="auto_publish" {{if .SchedAutoPub}}checked{{end}}>
+            <span>Đăng lên TikTok Shop (dưới dạng nháp)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" name="youtube_enabled" {{if .SchedYouTube}}checked{{end}}>
+            <span>Đăng lên YouTube Shorts</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" name="meta_enabled" {{if .SchedMeta}}checked{{end}}>
+            <span>Đăng lên Facebook / Instagram Reels</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button type="submit" class="btn btn-primary" style="font-weight:700">💾 Lưu Cấu Hình Lịch Tự Động</button>
+    </div>
+  </form>
+</div>
+{{else}}
+
+<!-- Jobs List Section -->
 {{if .Jobs}}
 {{range .Jobs}}
 <div class="job" data-job="{{.ID}}">
@@ -20,6 +186,86 @@
     <span class="prog">{{.Progress}}%</span>
     · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
   </div>
+
+  <!-- Inter-Department Groups & Realtime Agent Execution Workflow (Chỉ hiển thị cho jobs đang thực hiện) -->
+  {{if and .DeptGroups (ne .Status "done")}}
+  <div class="job-dept-workflow-box">
+    <div class="job-dept-workflow-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">🏢</span>
+        <b style="font-size:13px;color:var(--text)">Sơ Đồ Phối Hợp Nhóm Phòng Ban &amp; Nhân Sự Thực Hiện Job:</b>
+      </div>
+      <span class="hint" style="font-size:11.5px">Studio điều phối • Mỗi phòng ban là 1 Group chứa các nhân sự chuyên trách</span>
+    </div>
+
+    <div class="job-groups-flow-scroll">
+      {{range $idx, $grp := .DeptGroups}}
+      {{if $idx}}
+      <!-- Orthogonal 1-Way Handoff Connector -->
+      <div class="job-group-connector {{if eq $grp.Status "done"}}connector-done{{else if eq $grp.Status "active"}}connector-active{{else}}connector-waiting{{end}}" title="{{$grp.HandoffNote}}">
+        <div class="connector-orthogonal-line">
+          {{if eq $grp.Status "active"}}
+          <!-- 1-Way Data Flow Packet (Chỉ chạy 1 chiều sang người nhận) -->
+          <div class="flow-dot-oneway"></div>
+          {{end}}
+        </div>
+        <div class="connector-arrow">➔</div>
+      </div>
+      {{end}}
+
+      <!-- Department Group Box -->
+      <div class="job-group-card group-{{$grp.Status}}">
+        <div class="job-group-card-header">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="job-group-icon">{{$grp.Icon}}</span>
+            <strong class="job-group-name">{{$grp.DeptName}}</strong>
+          </div>
+          <span class="badge badge-{{if eq $grp.Status "done"}}ok{{else if eq $grp.Status "active"}}info{{else if eq $grp.Status "failed"}}err{{else}}dim{{end}}" style="font-size:9.5px">
+            {{$grp.StatusLabel}}
+          </span>
+        </div>
+
+        <!-- In-Group Agents List -->
+        <div class="job-group-agents-list">
+          {{range $grp.Agents}}
+          <div class="job-group-agent-item {{if .IsActive}}agent-active{{else if .IsDone}}agent-done{{else}}agent-waiting{{end}}">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="job-agent-avatar">{{.Avatar}}</span>
+              <div class="job-agent-meta">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+                  <strong class="job-agent-name">{{.Name}}</strong>
+                  <span class="badge {{if .IsActive}}badge-info{{else if .IsDone}}badge-ok{{else}}badge-dim{{end}}" style="font-size:8.5px;padding:1px 4px">
+                    {{if .IsActive}}⚡ Đang làm{{else if .IsDone}}✓ Đã bàn giao{{else}}⏳ Chờ lượt{{end}}
+                  </span>
+                </div>
+                <div class="job-agent-role">{{.Role}}</div>
+              </div>
+            </div>
+            <div class="job-agent-task-text">{{.Task}}</div>
+          </div>
+          {{end}}
+        </div>
+
+        <!-- In-Group Two-Way Exchange Animation (Chỉ khi active và có 2 nhân sự trao đổi) -->
+        {{if and (eq $grp.Status "active") (eq $grp.FlowType "two_way")}}
+        <div class="group-twoway-exchange-bar">
+          <span class="twoway-title">⇄ Trao đổi kịch bản 2 chiều giữa 2 nhân sự</span>
+          <div class="twoway-track">
+            <div class="twoway-pulse-packet"></div>
+          </div>
+        </div>
+        {{end}}
+
+        <!-- Group Handoff Note -->
+        <div class="job-group-handoff-note">
+          <span>📦</span> <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{$grp.HandoffNote}}</span>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
   {{if .Output}}
   <div class="media-preview-container" style="display:flex;gap:18px;margin:12px 0;flex-wrap:wrap;align-items:flex-start">
     <div style="width:200px;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative;aspect-ratio:9/16;box-shadow:0 4px 16px rgba(0,0,0,0.15)">
@@ -98,11 +344,34 @@
 </div>
 {{end}}
 {{else}}
-<div class="empty-state">
-  <div class="es-icon">🎬</div>
-  <h3>Chưa có video nào</h3>
-  <p>Tạo video đầu tiên ở Studio AI — trạng thái dựng hiện tại đây.</p>
-  <a class="btn" href="/studio">Mở Studio AI</a>
+<!-- Empty States -->
+{{if eq .Tab "running"}}
+<div class="card" style="text-align:center;padding:48px 24px;border-radius:16px;background:var(--bg2);margin-bottom:24px">
+  <div style="font-size:46px;margin-bottom:14px">⚡</div>
+  <h3 style="margin:0 0 8px;font-size:18px">Hiện tại không có video nào đang trong dây chuyền dựng</h3>
+  <p style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.6">
+    Tất cả các phòng ban AI đang ở trạng thái sẵn sàng. Bạn có thể tự bấm tạo video mới ngay bây giờ hoặc thiết lập lịch tự động 24/7 để hệ thống tự sản xuất video đều đặn.
+  </p>
+  <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+    <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video mới ngay</a>
+    <a href="/studio/jobs?tab=schedule" class="btn btn-secondary">📅 Cấu hình lịch tự động</a>
+    <a href="/studio/jobs?tab=done" class="btn btn-secondary">📂 Xem video đã hoàn thành ({{.DoneCount}})</a>
+  </div>
+</div>
+{{else}}
+<div class="card" style="text-align:center;padding:48px 24px;border-radius:16px;background:var(--bg2);margin-bottom:24px">
+  <div style="font-size:46px;margin-bottom:14px">📂</div>
+  <h3 style="margin:0 0 8px;font-size:18px">Chưa có video nào hoàn thành</h3>
+  <p style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.6">
+    Hãy vào Studio tạo video đầu tiên của bạn hoặc kích hoạt chạy theo lịch tự động!
+  </p>
+  <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+    <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video đầu tiên ngay</a>
+  </div>
 </div>
 {{end}}
+{{end}}
+
+{{end}}
+
 {{end}}

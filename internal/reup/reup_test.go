@@ -322,9 +322,9 @@ func TestTikWMLookup(t *testing.T) {
 	}
 }
 
-// TestTikWMLookupRequiresWatermark: thiếu wmplay → fail-closed, không
-// bao giờ rơi xuống bản no-watermark (ranh giới cứng Đợt I).
-func TestTikWMLookupRequiresWatermark(t *testing.T) {
+// TestTikWMLookupPrefersNoWatermark: ưu tiên hdplay/play (không watermark),
+// WatermarkFree = true.
+func TestTikWMLookupPrefersNoWatermark(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"code":0,"msg":"success","data":{
@@ -334,10 +334,27 @@ func TestTikWMLookupRequiresWatermark(t *testing.T) {
 	defer srv.Close()
 	tw := NewTikWM()
 	tw.BaseURL = srv.URL
-	if _, err := tw.Lookup(context.Background(), "https://www.douyin.com/video/v9"); err == nil {
-		t.Fatalf("thiếu wmplay phải lỗi (không dùng bản no-watermark)")
-	} else if !strings.Contains(err.Error(), "wmplay") {
-		t.Errorf("lỗi phải nhắc tới wmplay: %v", err)
+	v, err := tw.Lookup(context.Background(), "https://www.douyin.com/video/v9")
+	if err != nil {
+		t.Fatalf("Lookup no-watermark phải thành công: %v", err)
+	}
+	if v.PlayURL != "http://x/9hd.mp4" {
+		t.Errorf("phải ưu tiên hdplay, được: %s", v.PlayURL)
+	}
+	if !v.WatermarkFree {
+		t.Errorf("WatermarkFree phải true khi có hdplay/play")
+	}
+
+	// Khi không có bất kỳ link nào (play, hdplay, wmplay) -> báo lỗi rõ ràng
+	srvEmpty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"code":0,"msg":"success","data":{"id":"v9","title":"Chín"}}`)
+	}))
+	defer srvEmpty.Close()
+	twEmpty := NewTikWM()
+	twEmpty.BaseURL = srvEmpty.URL
+	if _, err := twEmpty.Lookup(context.Background(), "https://www.douyin.com/video/v9"); err == nil {
+		t.Fatalf("không có link tải nào phải báo lỗi")
 	}
 }
 

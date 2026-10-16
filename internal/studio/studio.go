@@ -74,6 +74,8 @@ type AffiliateParams struct {
 	VoiceoverText string `json:"voiceover_text,omitempty"`
 	// AspectRatio: tỉ lệ khung hình ("9:16" hoặc "16:9")
 	AspectRatio string `json:"aspect_ratio,omitempty"`
+	// AssignedDepts: danh sách phòng ban được phân bổ cho job (DEP-01, DEP-02,...)
+	AssignedDepts []string `json:"assigned_depts,omitempty"`
 }
 
 // HasClips kiểm tra xem job có video clip sẵn (từ Muse AI / video gen) hay không.
@@ -377,11 +379,17 @@ func (s *Studio) Shutdown(timeout time.Duration) {
 			if n > 0 {
 				// Hết timeout: hủy các job còn lại để không treo shutdown.
 				s.mu.Lock()
+				cancels := make([]func(), 0, len(s.running))
+				ids := make([]string, 0, len(s.running))
 				for id, cancel := range s.running {
-					cancel()
-					s.appendLog(id, "App đang tắt — job bị hủy.")
+					cancels = append(cancels, cancel)
+					ids = append(ids, id)
 				}
 				s.mu.Unlock()
+				for i, cancel := range cancels {
+					cancel()
+					s.appendLog(ids[i], "App đang tắt — job bị hủy.")
+				}
 			}
 			return
 		}

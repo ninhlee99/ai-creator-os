@@ -47,6 +47,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		// R2-W4 (R2-08): chip công tắc chính — nhãn trung thực: đang TẮT
 		// hay đang cho phép daemon chạy theo lịch.
 		"MasterOn", automation.MasterOn(s.settings()),
+		"LiveOperations", s.listLiveOperations(),
+		"EnterpriseDepts", s.listDepartments(s.listAgents()),
 	))
 }
 

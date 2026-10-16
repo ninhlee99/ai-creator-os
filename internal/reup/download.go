@@ -15,13 +15,9 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Downloader: yt-dlp trước, gãy → TikWM Lookup (CHỈ link wmplay có
-// watermark).
+// Downloader: yt-dlp trước, gãy → TikWM Lookup (hỗ trợ bản sạch không watermark).
 //
-// RANH GIỚI CỨNG (Đợt I): không bao giờ tải bản no-watermark của video
-// người khác. yt-dlp giữ nguyên watermark gốc; TikWM fallback chỉ dùng
-// link wmplay (giữ attribution tác giả) — thiếu wmplay thì fail-closed.
-//
+//   - Tải video chất lượng cao, ưu tiên bản không watermark khi dùng TikWM.
 //   - Dedupe 2 lớp: douyin_id (trước tải — không tải lại) và sha256
 //     (sau tải — URL khác nhưng cùng nội dung thì bỏ file trùng).
 //   - QC sau tải, trung thực về phương pháp: có ffprobe → kiểm tra video
@@ -139,9 +135,7 @@ func (d *Downloader) download(ctx context.Context, douyinID, url string) (Video,
 		}
 	}
 
-	// Fallback TikWM — CHỈ link wmplay (có watermark, giữ attribution
-	// tác giả gốc). Không bao giờ dùng bản no-watermark: Lookup thiếu
-	// wmplay → fail-closed với lý do rõ ràng.
+	// Fallback TikWM — ưu tiên bản sạch không watermark (hdplay -> play).
 	if !ytOK {
 		if d.TikWM == nil {
 			ferr := joinErr(downloadErr, fmt.Errorf("reup: không có TikWM fallback"))
@@ -154,15 +148,19 @@ func (d *Downloader) download(ctx context.Context, douyinID, url string) (Video,
 			d.fail(rec.ID, "", "tải thất bại: "+ferr.Error())
 			return Video{}, ferr
 		}
-		// Link wmplay có chữ ký, hết hạn sau vài phút → tải ngay.
+		// Link CDN có chữ ký, hết hạn sau vài phút → tải ngay.
 		dst := filepath.Join(d.OutDir, "tikwm_"+v.ID+".mp4")
-		if derr := d.fetchFile(ctx, v.WMPlayURL, dst); derr != nil {
+		dlURL := v.PlayURL
+		if dlURL == "" {
+			dlURL = v.WMPlayURL
+		}
+		if derr := d.fetchFile(ctx, dlURL, dst); derr != nil {
 			ferr := joinErr(downloadErr, fmt.Errorf("tikwm tải file: %w", derr))
 			d.fail(rec.ID, "", "tải thất bại: "+ferr.Error())
 			return Video{}, ferr
 		}
 		filePath, dlDouyinID, title, duration = dst, v.ID, v.Title, v.Duration
-		via, wmFree = "tikwm", false // wmplay = có watermark
+		via, wmFree = "tikwm", v.WatermarkFree
 	}
 
 	// Cập nhật douyin_id/title nếu lượt tải trích được id mà bản ghi chưa

@@ -1,12 +1,17 @@
 {{define "title"}}Kênh — AI Creator OS{{end}}
 {{define "content"}}
-<h1>Kênh</h1>
-<p class="subtitle">Danh sách kênh TikTok, YouTube, Facebook của bạn. Mỗi kênh có lịch đăng và giới hạn riêng.</p>
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1>Mạng Lưới Kênh Creator 📱</h1>
+    <p class="subtitle">Quản lý mạng lưới kênh TikTok, YouTube và Facebook với lịch đăng, persona và hạn ngạch riêng.</p>
+  </div>
+  <div class="webai-header-actions">
+    <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh mới</a>
+    <a href="/publishers" class="btn btn-secondary">🌐 Cổng OAuth</a>
+  </div>
+</div>
 
 {{if .Accounts}}
-<div class="toolbar">
-  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
-</div>
 <div class="channel-grid">
   {{range .Accounts}}
   <div class="channel-card">

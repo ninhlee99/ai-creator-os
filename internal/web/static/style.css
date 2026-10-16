@@ -253,12 +253,28 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   gap: 14px; margin-bottom: 12px; }
 .card { background: var(--bg2); border: 1px solid var(--border);
   border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
-.card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.05); border-color: var(--accent); }
+  position: relative;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease; }
+.card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.06); z-index: 1; }
 .card .num { font-size: var(--fs-2xl); font-weight: 700; }
 .card .label { color: var(--muted); font-size: var(--fs-sm); margin-top: 4px; font-weight: 500; }
 .card.accent .num { color: var(--accent); }
 .card.green .num { color: var(--ok); }
+
+.agent-card {
+  position: relative;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.agent-card:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12) !important;
+  z-index: 2;
+  transform: none !important;
+}
 
 /* tables */
 table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--bg2);
@@ -345,6 +361,21 @@ input[type=email], textarea, select {
   font-family: inherit; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
 input:focus, textarea:focus, select:focus { outline: none;
   border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2714%27%20height%3D%2714%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23888888%27%20stroke-width%3D%272.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpolyline%20points%3D%276%209%2012%2015%2018%209%27%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+  padding-right: 38px;
+  cursor: pointer;
+}
+select.btn-sm, .btn-sm select {
+  padding-right: 28px;
+  background-position: right 10px center;
+}
 textarea { min-height: 90px; resize: vertical; }
 .req { color: var(--err); }
 
@@ -374,10 +405,6 @@ ul.clean li:last-child { border-bottom: none; }
 .empty { color: var(--muted); font-style: italic; padding: 16px 0; }
 
 @media (max-width: 800px) {
-  .layout { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: static; padding: 10px 0; }
-  .sidebar nav a { display: inline-block; padding: 8px 12px; }
-  .content { padding: 16px; }
   .grid2 { grid-template-columns: 1fr; }
   table { font-size: var(--fs-sm); }
 }
@@ -593,27 +620,117 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .team-fail { border-left-color: var(--err); }
 .team-idle { border-left-color: var(--neutral); border-left-style: dashed; opacity: .65; }
 
-/* ---- Đợt AE mobile: iOS zoom, nút chạm, topbar, kv, nav ngang, class chết ---- */
-/* 1. iOS tự zoom khi input <16px → ép 16px trên mobile */
+/* ---- Responsive Mobile & Tablet Drawer, iOS zoom, Touch Targets ---- */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 95;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.sidebar-backdrop.open {
+  display: block;
+  opacity: 1;
+}
+.nav-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+.nav-toggle-btn:hover {
+  background: var(--hover-bg);
+}
+.mobile-brand-title {
+  display: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
 @media (max-width: 800px) {
   input[type=text], input[type=password], input[type=number],
   input[type=url], input[type=email], textarea, select { font-size: 16px; }
-  /* 2. Nút nhỏ đủ 44px để chạm */
   .btn-sm { padding: 10px 16px; font-size: 14px; min-height: 44px; }
-  /* 3. Topbar wrap */
-  .topbar { flex-wrap: wrap; gap: 8px; }
-  .topbar-actions { flex-wrap: wrap; gap: 8px; }
-  /* 4. Grid kv 1 cột */
+  .nav-toggle-btn { display: inline-flex; }
+  .mobile-brand-title { display: inline-block; }
+  .layout { display: block; }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 270px;
+    height: 100vh;
+    z-index: 100;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar nav {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 0 4px;
+    white-space: normal;
+  }
+  .sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    margin: 2px 8px;
+    min-height: 44px;
+  }
+  .sidebar .nav-group {
+    display: block;
+    padding: 14px 18px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--sidebar-faint);
+  }
+  .main { width: 100%; min-width: 0; }
+  .topbar { padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
+  .status-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .content { padding: 16px 14px; }
   .kv { grid-template-columns: 1fr; gap: 2px; }
   .kv dt { font-weight: 600; margin-top: 8px; }
-  /* 5. Sidebar nav cuộn ngang 1 dòng */
-  .sidebar nav { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-  .sidebar nav a { display: inline-block; padding: 12px 14px; }
-  /* Đợt AK: tiêu đề nhóm là khối riêng làm menu vỡ thành 3 hàng, chiếm nửa
-     màn hình điện thoại → ẩn trên mobile để menu đúng 1 dòng cuộn ngang. */
-  .sidebar .nav-group { display: none; }
-  .sidebar { padding: 8px 0 0; }
-  .brand { padding: 0 16px 8px; font-size: 17px; }
+}
+
+@media (max-width: 480px) {
+  .topbar { padding: 8px 12px; }
+  .content { padding: 12px 10px; }
+  .content h1 { font-size: 20px; }
+  .content h2 { font-size: 16px; margin: 20px 0 10px; }
+  .cards { grid-template-columns: 1fr; }
+  .webai-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .webai-header-actions { width: 100%; justify-content: flex-start; }
+  .table-wrap { margin-left: -10px; margin-right: -10px; border-radius: 0; border-left: none; border-right: none; }
 }
 /* 6. Class chết: alias để template cũ không rơi về style lạ */
 .btn-primary { display: inline-block; padding: 8px 16px; border-radius: 8px;
@@ -1918,6 +2035,7 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 }
 
 .pipeline-step-card {
+  position: relative;
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -1930,14 +2048,15 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   text-decoration: none;
   color: var(--text);
   box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
 }
 
 .pipeline-step-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
   border-color: var(--accent);
+  z-index: 2;
+  transform: none;
 }
 
 .pipeline-step-header {
@@ -1987,11 +2106,820 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   text-align: right;
 }
 
-.pipeline-step-card.stage-ok { border-top: 3px solid #22c55e; }
-.pipeline-step-card.stage-working { border-top: 3px solid #3b82f6; }
-.pipeline-step-card.stage-waiting { border-top: 3px solid var(--border); }
-.pipeline-step-card.stage-fail { border-top: 3px solid #ef4444; }
-.pipeline-step-card.stage-idle { border-top: 3px dashed var(--border); opacity: 0.75; }
+.pipeline-step-card.stage-ok { border-top: 3px solid #22c55e !important; }
+.pipeline-step-card.stage-working { border-top: 3px solid #3b82f6 !important; }
+.pipeline-step-card.stage-waiting { border-top: 3px solid var(--border) !important; }
+.pipeline-step-card.stage-fail { border-top: 3px solid #ef4444 !important; }
+.pipeline-step-card.stage-idle { border-top: 3px dashed var(--border) !important; }
+
+/* ==========================================================================
+   AI Workforce Organizational Tree & Animated Inter-Agent Exchange
+   ========================================================================== */
+.org-tree-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 20px;
+  margin-bottom: 24px;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+  overflow-x: auto;
+}
+
+.org-tree-canvas {
+  min-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 6px 0 12px;
+}
+
+/* Tree Levels */
+.org-level {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.org-level-specialists {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin: 6px 0;
+}
+
+/* Agent Node Card */
+.org-node {
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  width: 220px;
+  max-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.org-node:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.16) !important;
+  z-index: 10;
+  transform: none !important;
+}
+
+.org-node.node-leader {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--bg2) 0%, rgba(37,99,235,0.05) 100%);
+  box-shadow: 0 3px 12px rgba(37,99,235,0.08);
+}
+
+.org-node.node-qc {
+  border-color: #10b981;
+  background: linear-gradient(180deg, var(--bg2) 0%, rgba(16,185,129,0.05) 100%);
+  box-shadow: 0 3px 12px rgba(16,185,129,0.08);
+}
+
+.org-node-avatar {
+  font-size: 26px;
+  width: 42px;
+  height: 42px;
+  background: var(--bg3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.org-node-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.org-node-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.org-node-role {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pulsing Agent Online Radar Dot */
+.org-radar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  box-shadow: 0 0 0 2px var(--bg2), 0 0 6px #10b981;
+  animation: radarBlink 1.4s infinite;
+}
+
+@keyframes radarBlink {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Animated Flow Connectors */
+.org-connector-vertical {
+  width: 2px;
+  height: 28px;
+  background: repeating-linear-gradient(to bottom, var(--accent) 0, var(--accent) 5px, transparent 5px, transparent 10px);
+  background-size: 2px 20px;
+  animation: streamFlowDown 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes streamFlowDown {
+  from { background-position: 0 0; }
+  to { background-position: 0 20px; }
+}
+
+.org-connector-qc {
+  width: 2px;
+  height: 28px;
+  background: repeating-linear-gradient(to bottom, #10b981 0, #10b981 5px, transparent 5px, transparent 10px);
+  background-size: 2px 20px;
+  animation: streamFlowDown 1s linear infinite;
+  margin: 0 auto;
+}
+
+/* Peer exchange horizontal link between same-level specialists */
+.org-peer-exchange-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0;
+  position: relative;
+}
+
+.org-peer-line {
+  height: 2px;
+  width: 60px;
+  background: repeating-linear-gradient(to right, var(--accent) 0, var(--accent) 5px, transparent 5px, transparent 10px);
+  background-size: 20px 2px;
+  animation: streamFlowRight 1.2s linear infinite;
+}
+
+@keyframes streamFlowRight {
+  from { background-position: 0 0; }
+  to { background-position: 20px 0; }
+}
+
+.org-exchange-chip {
+  background: var(--bg3);
+  border: 1px dashed var(--accent);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  animation: pulseChip 2.2s ease-in-out infinite;
+}
+
+@keyframes pulseChip {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
+}
+
+/* Branch split line from Leader to multiple specialists */
+.org-split-branch {
+  position: relative;
+  width: 260px;
+  height: 14px;
+  border-top: 2px dashed var(--accent);
+  border-left: 2px dashed var(--accent);
+  border-right: 2px dashed var(--accent);
+  margin: 0 auto;
+}
+
+.org-merge-branch {
+  position: relative;
+  width: 260px;
+  height: 14px;
+  border-bottom: 2px dashed #10b981;
+  border-left: 2px dashed #10b981;
+  border-right: 2px dashed #10b981;
+  margin: 0 auto;
+}
+
+/* Live Activity Stream footer under tree */
+.org-live-stream {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  margin-top: 14px;
+}
+
+/* ==========================================================================
+   AI Workforce Network Topology Diagram & Inter-Agent Packet Streams
+   ========================================================================== */
+/* ==========================================================================
+   Static Orthogonal Org Chart (Cơ cấu tổ chức phòng ban nét vẽ vuông tĩnh)
+   ========================================================================== */
+.org-chart-stage-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  user-select: none;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 1. Trưởng phòng Row (Cấp trên ở giữa) */
+.org-lead-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Thẻ nhân sự Org Chip vuông vức, sạch sẽ, tĩnh */
+.org-agent-chip {
+  width: 250px;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+}
+
+.org-agent-chip:hover {
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.22) !important;
+}
+
+.org-agent-chip.lead-chip {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: linear-gradient(180deg, var(--bg3) 0%, rgba(37, 99, 235, 0.05) 100%);
+}
+
+.org-agent-chip.senior-chip {
+  border-color: rgba(168, 85, 247, 0.4);
+  background: linear-gradient(180deg, var(--bg3) 0%, rgba(168, 85, 247, 0.05) 100%);
+}
+
+.org-agent-chip.specialist-chip {
+  border-color: rgba(6, 182, 212, 0.35);
+  background: linear-gradient(180deg, var(--bg3) 0%, rgba(6, 182, 212, 0.04) 100%);
+}
+
+.org-agent-chip.qc-chip {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(180deg, var(--bg3) 0%, rgba(16, 185, 129, 0.05) 100%);
+}
+
+.org-chip-badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  display: inline-block;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.org-chip-badge.lead {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.org-chip-badge.senior {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.org-chip-badge.specialist {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.org-chip-badge.qc {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.org-chip-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.org-chip-avatar {
+  width: 44px;
+  height: 44px;
+  font-size: 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.org-chip-online {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 1.5px solid var(--bg3);
+  position: absolute;
+  top: -2px;
+  right: -2px;
+}
+
+.org-chip-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.org-chip-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-chip-role {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-chip-niche {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2. Orthogonal Busbar (Nét vẽ vuông) */
+.org-busbar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.org-busbar-vertical-stem {
+  width: 2px;
+  height: 24px;
+  background: var(--border);
+}
+
+.org-busbar-horizontal-line {
+  height: 2px;
+  width: calc(100% - 240px);
+  max-width: 680px;
+  background: var(--border);
+}
+
+/* Multi-Tier Hierarchical Blocks */
+.org-tier-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.org-tier-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.org-tier-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.org-tier-title.lead {
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.org-tier-title.senior {
+  color: #a855f7;
+  border-color: rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.org-tier-title.specialist {
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.4);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.org-tier-title.qc {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.org-tier-members-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* 3. Cấp dưới Row */
+.org-subordinates-row {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.org-subordinate-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.org-busbar-branch-stem {
+  width: 2px;
+  height: 20px;
+  background: var(--border);
+}
+
+.org-stage-footer {
+  margin-top: 28px;
+  padding: 12px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* ==========================================================================
+   Studio Job Department Groups & Directional Flow (Sơ đồ Nhóm Phòng Ban trong Job)
+   ========================================================================== */
+.job-dept-workflow-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0 18px;
+}
+
+.job-dept-workflow-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.job-groups-flow-scroll {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 6px 2px 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Department Group Box (1 phòng ban là 1 group) */
+.job-group-card {
+  width: 270px;
+  min-width: 270px;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.job-group-card.group-done {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(180deg, var(--bg2) 0%, rgba(16, 185, 129, 0.03) 100%);
+}
+
+.job-group-card.group-active {
+  border-color: #06b6d4;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+  background: linear-gradient(180deg, var(--bg2) 0%, rgba(6, 182, 212, 0.04) 100%);
+}
+
+.job-group-card.group-waiting {
+  opacity: 0.65;
+}
+
+.job-group-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.job-group-icon {
+  font-size: 16px;
+}
+
+.job-group-name {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+/* In-group Agent Items List */
+.job-group-agents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.job-group-agent-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.job-group-agent-item.agent-active {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.job-group-agent-item.agent-done {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.job-group-agent-item.agent-waiting {
+  opacity: 0.7;
+}
+
+.job-agent-avatar {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.job-agent-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.job-agent-name {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-agent-role {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.job-agent-task-text {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+/* Two-Way Exchange Bar (Hiệu ứng chạy qua lại giữa 2 nhân sự) */
+.group-twoway-exchange-bar {
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px dashed #06b6d4;
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.twoway-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #06b6d4;
+  text-align: center;
+}
+
+.twoway-track {
+  height: 4px;
+  background: rgba(6, 182, 212, 0.2);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.twoway-pulse-packet {
+  width: 20px;
+  height: 100%;
+  background: #06b6d4;
+  border-radius: 2px;
+  position: absolute;
+  top: 0;
+  box-shadow: 0 0 8px #06b6d4;
+  animation: flowTwoWay 1.6s ease-in-out infinite;
+}
+
+@keyframes flowTwoWay {
+  0% { left: 0%; }
+  50% { left: calc(100% - 20px); }
+  100% { left: 0%; }
+}
+
+/* Group Handoff Note */
+.job-group-handoff-note {
+  font-size: 10.5px;
+  color: var(--muted);
+  background: var(--bg3);
+  padding: 6px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* Orthogonal 1-Way Handoff Connector (Nét vẽ vuông chỉ 1 chiều) */
+.job-group-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.connector-orthogonal-line {
+  width: 32px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.connector-done .connector-orthogonal-line {
+  background: #10b981;
+}
+
+.connector-active .connector-orthogonal-line {
+  background: rgba(6, 182, 212, 0.3);
+}
+
+/* 1-Way Data Flow Packet: chỉ chạy 1 chiều sang người nhận, không quay về */
+.flow-dot-oneway {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  background: #06b6d4;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #06b6d4;
+  animation: flowOneWayForward 1.2s linear infinite;
+}
+
+@keyframes flowOneWayForward {
+  0% { left: -12px; opacity: 0.2; }
+  30% { opacity: 1; }
+  100% { left: 32px; opacity: 0.2; }
+}
+
+.connector-arrow {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.connector-done .connector-arrow {
+  color: #10b981;
+}
+
+.connector-active .connector-arrow {
+  color: #06b6d4;
+}
+
+/* Executive War Room & Live Operations Styles */
+.dash-split-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .dash-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.live-event-item {
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.live-event-item:hover {
+  border-color: var(--accent) !important;
+  transform: translateX(2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.exec-command-bar {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.exec-command-bar:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.12) !important;
+}
+
 
 
 

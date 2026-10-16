@@ -125,18 +125,42 @@
     });
   })();
 
-  // ------------------------------------------------------ sidebar active
+  // ------------------------------------------------------ sidebar active & drawer
   (function () {
     var p = location.pathname;
     document.querySelectorAll('.sidebar nav a').forEach(function (a) {
       var h = a.getAttribute('href');
       if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
     });
-    // Mobile: menu là 1 dòng cuộn ngang — đưa mục đang mở vào tầm nhìn.
-    var nav = document.querySelector('.sidebar nav');
-    var act = nav && nav.querySelector('a.active');
-    if (act && nav.scrollWidth > nav.clientWidth) {
-      nav.scrollLeft = act.offsetLeft - nav.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
+
+    // Mobile drawer toggle
+    var toggleBtn = document.getElementById('nav-toggle');
+    var sidebar = document.querySelector('.sidebar');
+    var backdrop = document.getElementById('sidebar-backdrop');
+    if (toggleBtn && sidebar) {
+      toggleBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = sidebar.classList.toggle('open');
+        if (backdrop) backdrop.classList.toggle('open', open);
+      });
+      if (backdrop) {
+        backdrop.addEventListener('click', function () {
+          sidebar.classList.remove('open');
+          backdrop.classList.remove('open');
+        });
+      }
+      sidebar.querySelectorAll('nav a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          sidebar.classList.remove('open');
+          if (backdrop) backdrop.classList.remove('open');
+        });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+          sidebar.classList.remove('open');
+          if (backdrop) backdrop.classList.remove('open');
+        }
+      });
     }
   })();
 

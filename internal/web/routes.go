@@ -61,6 +61,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
 	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)
 	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
+	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
+	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
 
 	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
 	mux.HandleFunc("GET /web-ai", s.handleWebAI)
@@ -107,6 +109,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
+	mux.HandleFunc("GET /settings/env/export", s.handleEnvExport)
+	mux.HandleFunc("GET /settings/env/export-json", s.handleEnvExportJSON)
+	mux.HandleFunc("POST /settings/env/import", s.handleEnvImport)
 	mux.HandleFunc("POST /settings/master", s.handleSettingsMaster)
 	mux.HandleFunc("POST /settings/api-budget", s.handleSettingsAPIBudget)
 	mux.HandleFunc("POST /settings/api", s.handleSettingsAPIToggle)
@@ -151,6 +156,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
 	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
+	mux.HandleFunc("POST /team/agents/create", s.handleAgentCreate)
+	mux.HandleFunc("POST /team/agents/toggle", s.handleAgentToggleAutopilot)
+	mux.HandleFunc("POST /team/agents/delete", s.handleAgentDelete)
+	mux.HandleFunc("POST /team/departments/assign", s.handleDeptAssign)
+	mux.HandleFunc("POST /team/dispatch", s.handleTeamDispatchGoal)
 	// Đợt E: transform 2 mức + đăng.
 	mux.HandleFunc("POST /reup/videos/{id}/transform", s.handleReupTransform)
 	mux.HandleFunc("GET /reup/posts/{id}/status", s.handleReupPostStatus)

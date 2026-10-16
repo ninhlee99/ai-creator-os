@@ -27,6 +27,7 @@
 </div>
 {{end}}
 <div class="layout">
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
   <aside class="sidebar">
     <div>
       <div class="brand">
@@ -36,18 +37,19 @@
         </div>
       </div>
       <nav>
-        <div class="nav-group">Vận hành</div>
-        <a href="/">Trang chủ</a>
+        <div class="nav-group">Điều Hành &amp; Kênh</div>
+        <a href="/">Tổng quan</a>
         <a href="/accounts">Kênh</a>
         <a href="/growth">Phát triển kênh</a>
-        <a href="/team">Dây chuyền AI ⚙️</a>
-        <div class="nav-group">Sản xuất</div>
-        <a href="/studio">Studio AI 🎬</a>
+        <a href="/team">Tổng hành dinh AI (9 Khối)</a>
+        <div class="nav-group">Dây Chuyền Sản Xuất</div>
+        <a href="/studio">Studio AI</a>
         <a href="/products">Affiliate</a>
-        <a href="/reup">Reup</a>
-        <a href="/stories">Kể chuyện</a>
-        <div class="nav-group">Hệ thống</div>
-        <a href="/settings">Cài đặt</a>
+        <a href="/reup">Reup Douyin Remake</a>
+        <a href="/stories">Kho Kể chuyện</a>
+        <a href="/publishers">Cổng xuất bản</a>
+        <div class="nav-group">Quản Trị Hệ Thống</div>
+        <a href="/settings">Cài đặt &amp; Điều phối</a>
       </nav>
     </div>
     <div class="sidebar-footer">
@@ -59,11 +61,15 @@
   </aside>
   <div class="main">
     <header class="topbar">
-      <div class="status-chips">
-        {{if not .DryRun}}<span class="chip chip-live" title="Hệ thống đang hoạt động ở chế độ thật"><span class="pulse-dot"></span> CHẠY THẬT (LIVE)</span>{{else}}<span class="chip chip-dry" title="Chế độ thử nghiệm an toàn — chưa xuất bản video thật">CHẠY THỬ</span>{{end}}
-        {{if .WebAICount}}<a class="chip chip-ai" href="/settings/he-thong#tab-webai" title="Tài khoản AI đã kết nối (Claude, ChatGPT, Gemini, Muse AI)"><span class="pulse-dot"></span> {{.WebAICount}}/4 AI</a>{{end}}
-        {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
-        {{if .LocalDL}}<a class="chip chip-dry" href="/settings/model-local" title="Model chạy trên máy để không phụ thuộc key — xem/tắt ở Cài đặt · Model local">⬇ {{.LocalDL}}</a>{{end}}
+      <div style="display:flex;align-items:center;gap:10px">
+        <button type="button" id="nav-toggle" class="nav-toggle-btn" aria-label="Mở menu" title="Mở menu">☰</button>
+        <div class="mobile-brand-title">⚡ AI Creator OS</div>
+        <div class="status-chips">
+          {{if not .DryRun}}<span class="chip chip-live" title="Hệ thống đang hoạt động ở chế độ thật"><span class="pulse-dot"></span> CHẠY THẬT (LIVE)</span>{{else}}<span class="chip chip-dry" title="Chế độ thử nghiệm an toàn — chưa xuất bản video thật">CHẠY THỬ</span>{{end}}
+          {{if .WebAICount}}<a class="chip chip-ai" href="/settings/he-thong#tab-webai" title="Tài khoản AI đã kết nối (Claude, ChatGPT, Gemini, Muse AI)"><span class="pulse-dot"></span> {{.WebAICount}}/4 AI</a>{{end}}
+          {{if .Kill}}<span class="chip chip-kill">ĐÃ DỪNG KHẨN CẤP</span>{{end}}
+          {{if .LocalDL}}<a class="chip chip-dry" href="/settings/model-local" title="Model chạy trên máy để không phụ thuộc key — xem/tắt ở Cài đặt · Model local">⬇ {{.LocalDL}}</a>{{end}}
+        </div>
       </div>
       <div class="topbar-actions">
         <button type="button" id="theme-toggle" class="btn btn-secondary btn-sm"

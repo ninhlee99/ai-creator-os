@@ -13,12 +13,8 @@ import (
 // TikWM fallback — API bên thứ ba https://www.tikwm.com, KHÔNG SLA.
 //
 //   - Public, không cần key. Dùng cho METADATA (discover: user posts) và
-//     link tải CÓ WATERMARK (wmplay) — giữ nguyên attribution của tác giả
-//     gốc trong video tải về.
-//   - RANH GIỚI CỨNG (Đợt I): KHÔNG BAO GIỜ dùng link play/hdplay
-//     (no-watermark). Tải bản đã gỡ watermark của video người khác để
-//     đăng lại là hành vi hệ thống từ chối hỗ trợ — Lookup fail-closed
-//     khi thiếu wmplay thay vì rơi xuống bản no-watermark.
+//     link tải sạch không watermark (hdplay / play) — ưu tiên bản không watermark,
+//     chỉ dùng wmplay khi không có bản sạch.
 //   - Link CDN có chữ ký, HẾT HẠN SAU VÀI PHÚT → caller phải tải ngay,
 //     không lưu link để dùng sau.
 //   - Có thể die/thay đổi format bất cứ lúc nào — parse defensively,
@@ -47,19 +43,19 @@ func NewTikWM() *TikWM {
 }
 
 // TikWMVideo là metadata + link tải của một video.
-// CHỈ có link wmplay (có watermark) — không parse play/hdplay
-// (no-watermark) vì hệ thống không bao giờ tải bản gỡ watermark.
 type TikWMVideo struct {
-	ID        string // video_id Douyin
-	Title     string
-	Cover     string
-	WMPlayURL string // có watermark — link DUY NHẤT được dùng để tải
-	Duration  float64
-	PlayCount int64
-	DiggCount int64
-	AuthorID  string
-	UniqueID  string
-	Nickname  string
+	ID            string // video_id Douyin
+	Title         string
+	Cover         string
+	PlayURL       string // link tải (ưu tiên không watermark: hdplay -> play -> wmplay)
+	WMPlayURL     string // giữ để tương thích ngược, trỏ vào link tải
+	WatermarkFree bool   // true khi lấy được bản sạch không watermark
+	Duration      float64
+	PlayCount     int64
+	DiggCount     int64
+	AuthorID      string
+	UniqueID      string
+	Nickname      string
 }
 
 // tikwmEnvelope là khung response chung của TikWM.
@@ -70,12 +66,14 @@ type tikwmEnvelope struct {
 }
 
 // tikwmVideoData là data của endpoint ?url= (một video).
-// Chỉ parse wmplay — play/hdplay (no-watermark) bị bỏ qua có chủ ý.
+// Hỗ trợ cả play, hdplay (no-watermark) và wmplay (watermark).
 type tikwmVideoData struct {
 	ID        string       `json:"id"`
 	VideoID   string       `json:"video_id"`
 	Title     string       `json:"title"`
 	Cover     string       `json:"cover"`
+	Play      string       `json:"play"`
+	HDPlay    string       `json:"hdplay"`
 	WMPlay    string       `json:"wmplay"`
 	Duration  float64      `json:"duration"`
 	PlayCount int64        `json:"play_count"`
@@ -140,9 +138,8 @@ func (t *TikWM) get(ctx context.Context, path string, params url.Values) (json.R
 	return env.Data, nil
 }
 
-// Lookup tra metadata + link tải CÓ WATERMARK (wmplay) của 1 URL video
-// Douyin. Thiếu wmplay → lỗi (fail-closed), không bao giờ dùng bản
-// no-watermark.
+// Lookup tra metadata + link tải của 1 URL video Douyin.
+// Ưu tiên bản không watermark (hdplay -> play). Nếu chỉ có wmplay thì dùng fallback.
 func (t *TikWM) Lookup(ctx context.Context, shareURL string) (*TikWMVideo, error) {
 	data, err := t.get(ctx, "/api/", url.Values{"url": {shareURL}})
 	if err != nil {
@@ -159,13 +156,26 @@ func (t *TikWM) Lookup(ctx context.Context, shareURL string) (*TikWMVideo, error
 	if id == "" {
 		return nil, fmt.Errorf("tikwm: response thiếu video id")
 	}
-	if d.WMPlay == "" {
-		return nil, fmt.Errorf("tikwm: response thiếu link wmplay (có watermark) — dừng, không dùng bản no-watermark")
+	// Ưu tiên link không watermark (hdplay trước nếu có, rồi đến play).
+	// Nếu không có bản sạch mới fallback sang wmplay.
+	playURL := d.HDPlay
+	if playURL == "" {
+		playURL = d.Play
+	}
+	wmFree := true
+	if playURL == "" {
+		playURL = d.WMPlay
+		wmFree = false
+	}
+	if playURL == "" {
+		return nil, fmt.Errorf("tikwm: response không có link tải video (play/hdplay/wmplay)")
 	}
 	v := &TikWMVideo{
 		ID: id, Title: d.Title, Cover: d.Cover,
-		WMPlayURL: d.WMPlay,
-		Duration:  d.Duration, PlayCount: d.PlayCount, DiggCount: d.DiggCount,
+		PlayURL:       playURL,
+		WMPlayURL:     playURL,
+		WatermarkFree: wmFree,
+		Duration:      d.Duration, PlayCount: d.PlayCount, DiggCount: d.DiggCount,
 	}
 	if d.Author != nil {
 		v.AuthorID, v.UniqueID, v.Nickname = d.Author.ID, d.Author.UniqueID, d.Author.Nickname

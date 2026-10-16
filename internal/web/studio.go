@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -26,17 +27,508 @@ import (
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
+	ID         string         `json:"id"`
+	Kind       string         `json:"kind"`
+	Title      string         `json:"title"`
+	Status     string         `json:"status"`
+	Progress   int            `json:"progress"`
+	Output     string         `json:"output"`
+	CreatedAt  string         `json:"created_at"`
+	FinishedAt string         `json:"finished_at"`
+	KindLabel  string         `json:"kind_label"`
+	Label      string         `json:"label"`
+	Class      string         `json:"class"`
+	DeptStages []JobDeptStage `json:"dept_stages"`
+	DeptGroups []JobDeptGroup `json:"dept_groups"`
+}
+
+// JobDeptGroup represents a specialized department group participating in a job.
+type JobDeptGroup struct {
+	Step        int            `json:"step"`
+	DeptCode    string         `json:"dept_code"`
+	DeptName    string         `json:"dept_name"`
+	Icon        string         `json:"icon"`
+	Status      string         `json:"status"` // "done", "active", "waiting", "failed"
+	StatusLabel string         `json:"status_label"`
+	HandoffNote string         `json:"handoff_note"`
+	FlowType    string         `json:"flow_type"` // "two_way", "one_way"
+	Agents      []JobAgentNode `json:"agents"`
+}
+
+// JobAgentNode represents an individual agent participating in a job within a department.
+type JobAgentNode struct {
 	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Title      string `json:"title"`
-	Status     string `json:"status"`
-	Progress   int    `json:"progress"`
-	Output     string `json:"output"`
-	CreatedAt  string `json:"created_at"`
-	FinishedAt string `json:"finished_at"`
-	KindLabel  string `json:"kind_label"`
-	Label      string `json:"label"`
-	Class      string `json:"class"`
+	Name       string `json:"name"`
+	Avatar     string `json:"avatar"`
+	Role       string `json:"role"`
+	Task       string `json:"task"`
+	IsActive   bool   `json:"is_active"`
+	IsDone     bool   `json:"is_done"`
+	StateText  string `json:"state_text"`
+	ActionType string `json:"action_type"`
+}
+
+func buildJobDeptGroups(j studio.Job) []JobDeptGroup {
+	// Job đã hoàn thành -> Không hiển thị sơ đồ nhân sự, chỉ hiển thị cho job đang làm
+	if j.Status == "done" {
+		return nil
+	}
+
+	allMasterGroups := []JobDeptGroup{
+		{
+			Step:        1,
+			DeptCode:    "DEP-01",
+			DeptName:    "Khối Tình Báo & Thẩm Định Deal",
+			Icon:        "⚖️",
+			FlowType:    "one_way",
+			HandoffNote: "Bàn giao brief insight & thông số ➔ Khối Biên Kịch",
+			Agents: []JobAgentNode{
+				{
+					ID:     "agent-bep-me-bi",
+					Name:   "Elena Bùi",
+					Avatar: "⚖️",
+					Role:   "Trưởng Khối Thương Mại & Deal Hunter",
+					Task:   "Săn deal hoa hồng cao >20% & đối soát thị trường",
+				},
+				{
+					ID:     "agent-duc-huy",
+					Name:   "Đức Huy",
+					Avatar: "👨‍💻",
+					Role:   "Chuyên Viên Thông Số",
+					Task:   "Lập bảng thông số kỹ thuật & USP",
+				},
+			},
+		},
+		{
+			Step:        2,
+			DeptCode:    "DEP-02",
+			DeptName:    "Khối Sáng Tạo & Biên Kịch",
+			Icon:        "✍️",
+			FlowType:    "two_way",
+			HandoffNote: "Bàn giao kịch bản 5 cảnh & Prompts 4K ➔ Studio Sản Xuất",
+			Agents: []JobAgentNode{
+				{
+					ID:     "agent-minh-thu",
+					Name:   "Minh Thư",
+					Avatar: "✍️",
+					Role:   "Giám Đốc Sáng Tạo Kịch Bản",
+					Task:   "Soạn 4 Hook 3s giữ chân 86%+ & 5 phân cảnh",
+				},
+				{
+					ID:     "agent-son-bach",
+					Name:   "Sơn Bách",
+					Avatar: "📖",
+					Role:   "Chuyên Gia Cốt Truyện",
+					Task:   "Tối ưu hóa nhịp 3 hồi và chuyển hóa cảm xúc",
+				},
+			},
+		},
+		{
+			Step:        3,
+			DeptCode:    "DEP-03",
+			DeptName:    "Studio Sản Xuất Video AI",
+			Icon:        "🎬",
+			FlowType:    "one_way",
+			HandoffNote: "Bàn giao bản dựng video 4K ➔ Kiểm Soát Chất Lượng (QC)",
+			Agents: []JobAgentNode{
+				{
+					ID:     "agent-duc-huy",
+					Name:   "Đức Huy",
+					Avatar: "🎬",
+					Role:   "Đạo Diễn Visual & VFX 4K",
+					Task:   "Render 5 ảnh 4K Imagen 3 đồng nhất nhân vật",
+				},
+				{
+					ID:     "agent-minh-thu",
+					Name:   "Minh Thư",
+					Avatar: "👩‍💼",
+					Role:   "Chuyên Viên Phối Màu",
+					Task:   "Duyệt bảng màu pastel & storyboard",
+				},
+			},
+		},
+		{
+			Step:        4,
+			DeptCode:    "DEP-04",
+			DeptName:    "Hội Đồng Kiểm Định Chất Lượng Độc Lập",
+			Icon:        "🛡️",
+			FlowType:    "one_way",
+			HandoffNote: "Cấp chứng nhận QC 96/100 ➔ Khối Phân Phối Kênh",
+			Agents: []JobAgentNode{
+				{
+					ID:     "agent-son-bach",
+					Name:   "Sơn Bách",
+					Avatar: "🛡️",
+					Role:   "Thanh Tra Trưởng Kiểm Định Chất Lượng",
+					Task:   "Đo lường tỷ lệ giữ chân 3s & vùng an toàn hiển thị TikTok/Reels",
+				},
+				{
+					ID:     "agent-duc-huy",
+					Name:   "Đức Huy",
+					Avatar: "👨‍💻",
+					Role:   "Kỹ Sư Kiểm Soát Video",
+					Task:   "Kiểm tra tỷ lệ 9:16 & âm lượng chuẩn -14 LUFS",
+				},
+			},
+		},
+		{
+			Step:        5,
+			DeptCode:    "DEP-05",
+			DeptName:    "Khối Phân Phối Đa Nền Tảng",
+			Icon:        "📱",
+			FlowType:    "one_way",
+			HandoffNote: "Lên lịch phát hành đa nền tảng TikTok/Reels/Shorts giờ vàng",
+			Agents: []JobAgentNode{
+				{
+					ID:     "agent-minh-thu",
+					Name:   "Minh Thư",
+					Avatar: "📱",
+					Role:   "Điều Phối Phân Phối Kênh",
+					Task:   "Lên lịch phát hành đa nền tảng giờ vàng",
+				},
+				{
+					ID:     "agent-son-bach",
+					Name:   "Sơn Bách",
+					Avatar: "📖",
+					Role:   "Chuyên Viên Tương Tác & Chuyển Đổi",
+					Task:   "Quét ContentID bản quyền & tối ưu view",
+				},
+			},
+		},
+	}
+
+	// Dynamic filtering based on assigned departments for this job
+	var p studio.AffiliateParams
+	_ = json.Unmarshal([]byte(j.Params), &p)
+
+	groups := allMasterGroups
+	if len(p.AssignedDepts) > 0 {
+		assignedMap := make(map[string]bool)
+		for _, d := range p.AssignedDepts {
+			assignedMap[strings.ToUpper(strings.TrimSpace(d))] = true
+			assignedMap[strings.ToLower(strings.TrimSpace(d))] = true
+		}
+		var filtered []JobDeptGroup
+		for _, g := range allMasterGroups {
+			match := assignedMap[strings.ToUpper(g.DeptCode)]
+			switch g.DeptCode {
+			case "DEP-01":
+				if assignedMap["dept-affiliate"] || assignedMap["affiliate"] || assignedMap["marketing"] {
+					match = true
+				}
+			case "DEP-02":
+				if assignedMap["dept-story"] || assignedMap["story"] || assignedMap["script"] {
+					match = true
+				}
+			case "DEP-03":
+				if assignedMap["dept-studio"] || assignedMap["studio"] || assignedMap["production"] {
+					match = true
+				}
+			case "DEP-04":
+				if assignedMap["dept-audio"] || assignedMap["audio"] || assignedMap["qc"] {
+					match = true
+				}
+			case "DEP-05":
+				if assignedMap["dept-reup"] || assignedMap["reup"] || assignedMap["social"] {
+					match = true
+				}
+			}
+			if match {
+				filtered = append(filtered, g)
+			}
+		}
+		if len(filtered) > 0 {
+			groups = filtered
+		}
+	}
+
+	for i := range groups {
+		groups[i].Step = i + 1
+	}
+
+	numGroups := len(groups)
+	if numGroups == 0 {
+		return nil
+	}
+
+	switch j.Status {
+	case "running":
+		stageSpan := 100.0 / float64(numGroups)
+		activeIdx := int(float64(j.Progress) / stageSpan)
+		if activeIdx >= numGroups {
+			activeIdx = numGroups - 1
+		}
+
+		for i := 0; i < numGroups; i++ {
+			if i < activeIdx {
+				groups[i].Status = "done"
+				groups[i].StatusLabel = "✓ Đã xong & Bàn giao"
+				for a := range groups[i].Agents {
+					groups[i].Agents[a].IsDone = true
+					groups[i].Agents[a].IsActive = false
+					groups[i].Agents[a].StateText = "Đã hoàn thành và bàn giao"
+					groups[i].Agents[a].ActionType = "done"
+				}
+			} else if i == activeIdx {
+				groups[i].Status = "active"
+				groups[i].StatusLabel = "⚡ Đang xử lý khâu"
+				if groups[i].FlowType == "two_way" && len(groups[i].Agents) >= 2 {
+					groups[i].Agents[0].IsActive = true
+					groups[i].Agents[0].StateText = "Đang soạn thảo kịch bản & Hook 3s"
+					groups[i].Agents[0].ActionType = "exchanging"
+					groups[i].Agents[1].IsActive = true
+					groups[i].Agents[1].StateText = "Đang phản hồi cốt truyện & cấu trúc"
+					groups[i].Agents[1].ActionType = "exchanging"
+				} else {
+					for a := range groups[i].Agents {
+						if a == 0 {
+							groups[i].Agents[a].IsActive = true
+							groups[i].Agents[a].StateText = "Đang trực tiếp thực hiện nhiệm vụ"
+							groups[i].Agents[a].ActionType = "working"
+						} else {
+							groups[i].Agents[a].IsActive = false
+							groups[i].Agents[a].StateText = "Hỗ trợ và phối hợp nghiệp vụ"
+							groups[i].Agents[a].ActionType = "working"
+						}
+					}
+				}
+			} else {
+				groups[i].Status = "waiting"
+				groups[i].StatusLabel = "⏳ Chờ bàn giao"
+				for a := range groups[i].Agents {
+					groups[i].Agents[a].IsDone = false
+					groups[i].Agents[a].IsActive = false
+					groups[i].Agents[a].StateText = "Chờ khâu trước hoàn tất"
+					groups[i].Agents[a].ActionType = "waiting"
+				}
+			}
+		}
+
+	case "failed":
+		for i := range groups {
+			if i == 0 {
+				groups[i].Status = "failed"
+				groups[i].StatusLabel = "⚠️ Tạm dừng xử lý"
+				for a := range groups[i].Agents {
+					groups[i].Agents[a].IsDone = false
+					groups[i].Agents[a].IsActive = false
+					groups[i].Agents[a].StateText = "Tạm dừng xử lý"
+					groups[i].Agents[a].ActionType = "failed"
+				}
+			} else {
+				groups[i].Status = "waiting"
+				groups[i].StatusLabel = "Tạm dừng"
+				for a := range groups[i].Agents {
+					groups[i].Agents[a].IsDone = false
+					groups[i].Agents[a].IsActive = false
+					groups[i].Agents[a].StateText = "Chờ xử lý"
+					groups[i].Agents[a].ActionType = "waiting"
+				}
+			}
+		}
+
+	default: // queued
+		groups[0].Status = "active"
+		groups[0].StatusLabel = "⚡ Đang tiếp nhận đề bài"
+		groups[0].Agents[0].IsActive = true
+		groups[0].Agents[0].StateText = "Đang nhận đề bài từ Studio"
+		groups[0].Agents[0].ActionType = "working"
+		for i := 1; i < len(groups); i++ {
+			groups[i].Status = "waiting"
+			groups[i].StatusLabel = "⏳ Đang chờ lượt"
+			for a := range groups[i].Agents {
+				groups[i].Agents[a].IsDone = false
+				groups[i].Agents[a].IsActive = false
+				groups[i].Agents[a].StateText = "Chờ phân công"
+				groups[i].Agents[a].ActionType = "waiting"
+			}
+		}
+	}
+
+	return groups
+}
+
+// JobDeptStage represents one specialized department participating in a studio job.
+type JobDeptStage struct {
+	Step        int    `json:"step"`
+	DeptCode    string `json:"dept_code"`
+	DeptName    string `json:"dept_name"`
+	Icon        string `json:"icon"`
+	AgentName   string `json:"agent_name"`
+	AgentAvatar string `json:"agent_avatar"`
+	AgentRole   string `json:"agent_role"`
+	TaskName    string `json:"task_name"`
+	Deliverable string `json:"deliverable"`
+	Status      string `json:"status"` // "done", "running", "waiting", "failed"
+	StatusLabel string `json:"status_label"`
+	Progress    int    `json:"progress"`
+}
+
+func buildJobDeptStages(j studio.Job) []JobDeptStage {
+	stages := []JobDeptStage{
+		{
+			Step:        1,
+			DeptCode:    "DEP-01",
+			DeptName:    "P. Nghiên Cứu",
+			Icon:        "🔍",
+			AgentName:   "Bếp Mẹ Bi",
+			AgentAvatar: "🍳",
+			AgentRole:   "Trưởng Phòng Nghiên Cứu",
+			TaskName:    "Phân tích USP sản phẩm & insight đối thủ",
+			Deliverable: "Bản brief sản phẩm & thông số bán chạy",
+		},
+		{
+			Step:        2,
+			DeptCode:    "DEP-02",
+			DeptName:    "P. Biên Kịch",
+			Icon:        "✍️",
+			AgentName:   "Minh Thư",
+			AgentAvatar: "👩‍💼",
+			AgentRole:   "Trưởng Phòng Biên Kịch",
+			TaskName:    "Biên soạn kịch bản 5 cảnh & 4 Hook 3s giữ chân 84%+",
+			Deliverable: "Kịch bản phân cảnh hoàn chỉnh & prompts 4K",
+		},
+		{
+			Step:        3,
+			DeptCode:    "DEP-03",
+			DeptName:    "P. Mỹ Thuật AI",
+			Icon:        "🎨",
+			AgentName:   "Đức Huy",
+			AgentAvatar: "👨‍💻",
+			AgentRole:   "Đạo Diễn Hình Ảnh",
+			TaskName:    "Render 5 ảnh phân cảnh 4K chuẩn 9:16 đồng nhất",
+			Deliverable: "Bộ 5 ảnh bối cảnh 4K độ nét cao",
+		},
+		{
+			Step:        4,
+			DeptCode:    "DEP-04",
+			DeptName:    "P. Âm Thanh",
+			Icon:        "🎙️",
+			AgentName:   "Bếp Mẹ Bi",
+			AgentAvatar: "🍳",
+			AgentRole:   "Chuyên Viên Lồng Tiếng",
+			TaskName:    "Lồng tiếng VieNeu-TTS & tự động cân bằng âm lượng",
+			Deliverable: "File master audio đồng bộ nhịp nhạc",
+		},
+		{
+			Step:        5,
+			DeptCode:    "DEP-05",
+			DeptName:    "P. Thẩm Định QC",
+			Icon:        "🛡️",
+			AgentName:   "Sơn Bách",
+			AgentAvatar: "📖",
+			AgentRole:   "Giám Đốc Thẩm Định QC",
+			TaskName:    "Chấm điểm QC Hook/Text/Audio & quét ContentID",
+			Deliverable: "Điểm QC 96/100 — Đạt chuẩn phát hành",
+		},
+		{
+			Step:        6,
+			DeptCode:    "DEP-06",
+			DeptName:    "P. Phân Phối",
+			Icon:        "🚀",
+			AgentName:   "Tự hành 24/7",
+			AgentAvatar: "🤖",
+			AgentRole:   "Hệ Thống Đăng Kênh",
+			TaskName:    "Xuất bản TikTok, Reels, YouTube Shorts",
+			Deliverable: "Link video trực tuyến & báo cáo view",
+		},
+	}
+
+	switch j.Status {
+	case "done":
+		for i := range stages {
+			stages[i].Status = "done"
+			stages[i].Progress = 100
+			if i == 5 {
+				stages[i].StatusLabel = "Sẵn sàng đăng"
+			} else {
+				stages[i].StatusLabel = "✓ Hoàn tất"
+			}
+		}
+	case "running":
+		p := j.Progress
+		switch {
+		case p < 20:
+			stages[0].Status = "done"
+			stages[0].Progress = 100
+			stages[0].StatusLabel = "✓ Hoàn tất"
+			stages[1].Status = "running"
+			stages[1].Progress = p * 5
+			stages[1].StatusLabel = "⚡ Đang viết kịch bản"
+			for i := 2; i < len(stages); i++ {
+				stages[i].Status = "waiting"
+				stages[i].Progress = 0
+				stages[i].StatusLabel = "⏳ Chờ bàn giao"
+			}
+		case p < 50:
+			stages[0].Status = "done"
+			stages[0].Progress = 100
+			stages[0].StatusLabel = "✓ Hoàn tất"
+			stages[1].Status = "done"
+			stages[1].Progress = 100
+			stages[1].StatusLabel = "✓ Hoàn tất"
+			stages[2].Status = "running"
+			stages[2].Progress = (p - 20) * 100 / 30
+			stages[2].StatusLabel = "⚡ Đang render ảnh 4K"
+			for i := 3; i < len(stages); i++ {
+				stages[i].Status = "waiting"
+				stages[i].Progress = 0
+				stages[i].StatusLabel = "⏳ Chờ nhận ảnh"
+			}
+		case p < 80:
+			for i := 0; i < 3; i++ {
+				stages[i].Status = "done"
+				stages[i].Progress = 100
+				stages[i].StatusLabel = "✓ Hoàn tất"
+			}
+			stages[3].Status = "running"
+			stages[3].Progress = (p - 50) * 100 / 30
+			stages[3].StatusLabel = "⚡ Đang thu voice & mix"
+			for i := 4; i < len(stages); i++ {
+				stages[i].Status = "waiting"
+				stages[i].Progress = 0
+				stages[i].StatusLabel = "⏳ Chờ âm thanh"
+			}
+		default: // 80 <= p < 100
+			for i := 0; i < 4; i++ {
+				stages[i].Status = "done"
+				stages[i].Progress = 100
+				stages[i].StatusLabel = "✓ Hoàn tất"
+			}
+			stages[4].Status = "running"
+			stages[4].Progress = (p - 80) * 100 / 20
+			stages[4].StatusLabel = "⚡ Đang thẩm định QC"
+			stages[5].Status = "waiting"
+			stages[5].Progress = 0
+			stages[5].StatusLabel = "⏳ Chờ duyệt QC"
+		}
+	case "failed":
+		for i := range stages {
+			if i <= 2 {
+				stages[i].Status = "done"
+				stages[i].Progress = 100
+				stages[i].StatusLabel = "✓ Hoàn tất"
+			} else if i == 3 {
+				stages[i].Status = "failed"
+				stages[i].Progress = 50
+				stages[i].StatusLabel = "⚠️ Lỗi xử lý"
+			} else {
+				stages[i].Status = "waiting"
+				stages[i].Progress = 0
+				stages[i].StatusLabel = "Tạm dừng"
+			}
+		}
+	default: // queued
+		stages[0].Status = "running"
+		stages[0].Progress = 30
+		stages[0].StatusLabel = "⚡ Đang tiếp nhận"
+		for i := 1; i < len(stages); i++ {
+			stages[i].Status = "waiting"
+			stages[i].Progress = 0
+			stages[i].StatusLabel = "⏳ Đang chờ lượt"
+		}
+	}
+	return stages
 }
 
 func kindLabel(kind string) string {
@@ -55,8 +547,11 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
 			Progress: j.Progress, Output: mediaName(j.Output),
 			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
-			KindLabel: kindLabel(j.Kind),
-			Label:     statusLabel(j.Status), Class: statusClass(j.Status),
+			KindLabel:  kindLabel(j.Kind),
+			Label:      statusLabel(j.Status),
+			Class:      statusClass(j.Status),
+			DeptStages: buildJobDeptStages(j),
+			DeptGroups: buildJobDeptGroups(j),
 		})
 	}
 	return out
@@ -84,9 +579,12 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	}
 	sounds, trendsErr := studio.FetchVNTrending(r.Context())
 	activeJobs, jobCount := 0, len(jobs)
+	doneCount := 0
 	for _, j := range jobs {
 		if j.Status == "running" || j.Status == "queued" {
 			activeJobs++
+		} else if j.Status == "done" {
+			doneCount++
 		}
 	}
 	mgOK := false
@@ -97,6 +595,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
 		"JobCount", jobCount,
 		"ActiveJobs", activeJobs,
+		"RunningCount", activeJobs,
+		"DoneCount", doneCount,
+		"CurrentTab", "create",
 		"Sounds", sounds,
 		"TopSound", topSound(sounds),
 		"TrendsSource", studio.TrendsSource,
@@ -281,19 +782,31 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	if musicStart < 0 {
 		musicStart = 0
 	}
+	var assignedDepts []string
+	if r.MultipartForm != nil {
+		assignedDepts = r.MultipartForm.Value["assigned_depts"]
+	}
+	if len(assignedDepts) == 0 {
+		assignedDepts = r.Form["assigned_depts"]
+	}
+	if len(assignedDepts) == 0 {
+		assignedDepts = []string{"DEP-01", "DEP-02", "DEP-03", "DEP-04", "DEP-05"}
+	}
+
 	p := studio.AffiliateParams{
-		Mode:         r.FormValue("mode"),
-		Niche:        strings.TrimSpace(r.FormValue("niche")),
-		ProductName:  strings.TrimSpace(r.FormValue("product_name")),
-		ModelPhoto:   modelPhoto,
-		ProductPhoto: productPhoto,
-		ExtraPhotos:  extraPhotos,
-		Seconds:      seconds,
-		BPM:          bpm,
-		MusicPath:    musicPath,
-		MusicStart:   musicStart,
-		MusicTitle:   strings.TrimSpace(r.FormValue("music_title")),
-		MusicArtist:  strings.TrimSpace(r.FormValue("music_artist")),
+		Mode:          r.FormValue("mode"),
+		Niche:         strings.TrimSpace(r.FormValue("niche")),
+		ProductName:   strings.TrimSpace(r.FormValue("product_name")),
+		ModelPhoto:    modelPhoto,
+		ProductPhoto:  productPhoto,
+		ExtraPhotos:   extraPhotos,
+		Seconds:       seconds,
+		BPM:           bpm,
+		MusicPath:     musicPath,
+		MusicStart:    musicStart,
+		MusicTitle:    strings.TrimSpace(r.FormValue("music_title")),
+		MusicArtist:   strings.TrimSpace(r.FormValue("music_artist")),
+		AssignedDepts: assignedDepts,
 	}
 	if p.ProductName == "" {
 		p.ProductName = "Sản phẩm"
@@ -307,18 +820,157 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 
 // (R2-W3), JSON for polling when Accept: application/json.
 func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
-	var jobs []studioJobView
+	var allJobs []studioJobView
 	if s.Studio != nil {
-		jobs = s.studioJobViews(s.Studio.ListJobs(30))
+		allJobs = s.studioJobViews(s.Studio.ListJobs(50))
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
-		s.writeJSON(w, map[string]any{"jobs": jobs})
+		s.writeJSON(w, map[string]any{"jobs": allJobs})
 		return
 	}
+
+	var runningJobs, doneJobs, failedJobs []studioJobView
+	for _, j := range allJobs {
+		switch j.Status {
+		case "running", "queued":
+			runningJobs = append(runningJobs, j)
+		case "done":
+			doneJobs = append(doneJobs, j)
+		case "failed":
+			failedJobs = append(failedJobs, j)
+		}
+	}
+
+	tab := r.URL.Query().Get("tab")
+	if tab == "" {
+		if len(runningJobs) > 0 {
+			tab = "running"
+		} else {
+			tab = "done"
+		}
+	}
+
+	var displayedJobs []studioJobView
+	switch tab {
+	case "running":
+		displayedJobs = runningJobs
+	case "done":
+		displayedJobs = doneJobs
+	case "failed":
+		displayedJobs = failedJobs
+	case "schedule":
+		displayedJobs = runningJobs
+	default:
+		displayedJobs = allJobs
+	}
+
+	schedEnabled, schedHours, schedLastRun, schedMusic, schedAutoPub, schedYouTube := s.scheduleView()
+	schedMeta := false
+	if s.Ledger != nil {
+		schedMeta = automation.AutopilotMetaEnabled(s.settings())
+	}
+
+	nextRunStr := "Đang chờ lịch kích hoạt"
+	if schedEnabled {
+		if schedLastRun != "" {
+			if t, err := time.Parse(time.RFC3339, schedLastRun); err == nil {
+				next := t.Add(time.Duration(schedHours) * time.Hour)
+				if next.After(time.Now()) {
+					nextRunStr = next.Format("15:04 ngày 02/01/2006")
+				} else {
+					nextRunStr = "Sắp chạy ngay trong vài phút tới"
+				}
+			}
+		} else {
+			nextRunStr = "Sắp kích hoạt trong chu kỳ tiếp theo"
+		}
+	} else {
+		nextRunStr = "Tạm dừng (Lịch tự động đang tắt)"
+	}
+
 	s.render(w, "studio_jobs", s.ctx(
-		"Title", "Job Studio", "Path", "/studio/jobs", "Jobs", jobs,
-		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
+		"Title", "Quản lý Jobs & Lịch Studio",
+		"Path", "/studio/jobs",
+		"Jobs", displayedJobs,
+		"AllJobs", allJobs,
+		"RunningJobs", runningJobs,
+		"DoneJobs", doneJobs,
+		"FailedJobs", failedJobs,
+		"RunningCount", len(runningJobs),
+		"DoneCount", len(doneJobs),
+		"TotalCount", len(allJobs),
+		"Tab", tab,
+		"CurrentTab", tab,
+		"SchedEnabled", schedEnabled,
+		"SchedHours", schedHours,
+		"SchedLastRun", schedLastRun,
+		"SchedNextRun", nextRunStr,
+		"SchedMusic", schedMusic,
+		"SchedAutoPub", schedAutoPub,
+		"SchedYouTube", schedYouTube,
+		"SchedMeta", schedMeta,
+		"Msg", r.URL.Query().Get("msg"),
+		"Err", r.URL.Query().Get("err"),
 	))
+}
+
+// handleStudioScheduleSave saves the autopilot schedule settings directly from Studio.
+func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request) {
+	if s.Ledger == nil {
+		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Kho cài đặt chưa khởi tạo"))
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Không đọc được dữ liệu form: "+err.Error()))
+		return
+	}
+	enabled := "0"
+	if r.PostFormValue("enabled") == "on" {
+		enabled = "1"
+	}
+	autoPub := "0"
+	if r.PostFormValue("auto_publish") == "on" {
+		autoPub = "1"
+	}
+	youTube := "0"
+	if r.PostFormValue("youtube_enabled") == "on" {
+		youTube = "1"
+	}
+	meta := "0"
+	if r.PostFormValue("meta_enabled") == "on" {
+		meta = "1"
+	}
+	hours := 6
+	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
+		hours = h
+	}
+
+	st := s.settings()
+	_ = st.Set(SettingAutopilotEnabled, enabled)
+	_ = st.Set(SettingAutopilotInterval, strconv.Itoa(hours))
+	_ = st.Set(SettingAutopilotAutoPublish, autoPub)
+	_ = st.Set(SettingAutopilotYouTube, youTube)
+	_ = st.Set(SettingAutopilotMeta, meta)
+
+	msg := "Đã cập nhật lịch tự động: TẮT"
+	if enabled == "1" {
+		msg = fmt.Sprintf("Đã bật lịch tự động tạo video mỗi %d giờ.", hours)
+	}
+	seeOther(w, r, "/studio/jobs?tab=schedule&msg="+url.QueryEscape(msg))
+}
+
+// handleStudioScheduleRunNow triggers one immediate autopilot production cycle.
+func (s *Server) handleStudioScheduleRunNow(w http.ResponseWriter, r *http.Request) {
+	if s.Autopilot == nil {
+		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Hệ thống Autopilot chưa được cấu hình runner."))
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		_ = s.Autopilot.RunAll(ctx)
+	}()
+	seeOther(w, r, "/studio/jobs?tab=running&msg="+url.QueryEscape("Đã phát lệnh kích hoạt dây chuyền AI sản xuất video ngay lập tức!"))
 }
 
 // handleStudioJobCancel cancels a running/queued job.

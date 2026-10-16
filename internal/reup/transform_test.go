@@ -152,10 +152,14 @@ func TestFinalFilter(t *testing.T) {
 
 func TestTemplateCommentaryHonest(t *testing.T) {
 	s := templateCommentary([]Video{{Title: "Tiên kiếm", Author: "than_tien", PlayCount: 1500000}}, 1)
-	for _, want := range []string{"Tiên kiếm", "than_tien", "1500000"} {
+	for _, want := range []string{"Tiên kiếm", "1500000"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("commentary thiếu sự thật %q: %s", want, s)
 		}
+	}
+	// Không chứa thông tin tác giả gốc (đã loại bỏ theo yêu cầu).
+	if strings.Contains(s, "than_tien") {
+		t.Errorf("commentary không được chứa tên tác giả gốc: %s", s)
 	}
 	// Không bịa tình tiết.
 	for _, bad := range []string{"kiếm khách", "đánh nhau", "cứu"} {
@@ -312,3 +316,35 @@ func TestTransformCompilationLevel2(t *testing.T) {
 		t.Errorf("compilation 2 clip phải lỗi")
 	}
 }
+
+func TestTransformRemakeLevel3(t *testing.T) {
+	requireFFmpeg(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	dir := t.TempDir()
+	tr := newTestTransformer(t, fakeTTS{dir: dir})
+	clip := makeTestClip(t, dir, "orig.mp4")
+	v := queueDownloadedVideo(t, tr, clip, "Mẹo hay cuộc sống", "author_old", 500000)
+
+	out, err := tr.TransformRemake(ctx, v, TransformOptions{
+		Level:          3,
+		Seed:           99,
+		Voiceover:      true,
+		CharacterStyle: "anime",
+	})
+	if err != nil {
+		t.Fatalf("TransformRemake: %v", err)
+	}
+	w, h := studio.ProbeDims(ctx, out)
+	if w != 1080 || h != 1920 {
+		t.Errorf("output %dx%d, muốn 1080x1920", w, h)
+	}
+	dur, err := qcTransform(out)
+	if err != nil {
+		t.Fatalf("qcTransform remake: %v", err)
+	}
+	if dur < 10 || dur > 25 {
+		t.Errorf("dur=%.2f, muốn khoảng 15s", dur)
+	}
+}
+

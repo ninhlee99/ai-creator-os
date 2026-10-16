@@ -38,8 +38,9 @@ const (
 
 // Mức transform.
 const (
-	Level1 = 1 // mặc định mọi video
+	Level1 = 1 // mặc định mọi video (biến đổi video gốc)
 	Level2 = 2 // compilation 3 clip (video hot)
+	Level3 = 3 // Mức 3: AI Remake (Đổi nhân vật & tái tạo 100% bằng AI)
 )
 
 // VoiceSynth tổng hợp voiceover tiếng Việt. Hợp đồng output: WAV PCM s16le
@@ -57,10 +58,11 @@ type Commentator interface {
 
 // TransformOptions là tham số một lượt transform.
 type TransformOptions struct {
-	Level     int    // Level1 | Level2
-	Seed      int64  // fingerprint riêng (video id + kênh) — mỗi kênh một seed
-	Voiceover bool   // T8: bật voiceover bình luận tiếng Việt
-	Voice     string // preset voice VieNeu ("" = mặc định)
+	Level          int    // Level1 | Level2 | Level3
+	Seed           int64  // fingerprint riêng (video id + kênh) — mỗi kênh một seed
+	Voiceover      bool   // T8: bật voiceover bình luận tiếng Việt
+	Voice          string // preset voice VieNeu ("" = mặc định)
+	CharacterStyle string // "anime" | "3d_avatar" | "cinematic_vn" | "fashion"
 }
 
 // Transformer chạy transform bằng FFmpeg có sẵn (pure Go gọi binary).

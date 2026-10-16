@@ -9,20 +9,20 @@ import (
 func (t *Transformer) llmCommentary(ctx context.Context, vs []Video) string {
 	var sb strings.Builder
 	for i, v := range vs {
-		fmt.Fprintf(&sb, "- Video %d: tiêu đề %q, tác giả %q", i+1, v.Title, v.Author)
+		fmt.Fprintf(&sb, "- Video %d: tiêu đề %q", i+1, v.Title)
 		if v.PlayCount > 0 {
 			fmt.Fprintf(&sb, ", %d lượt xem", v.PlayCount)
 		}
 		sb.WriteString("\n")
 	}
 	// Văn nói thân thiện với TTS: câu ngắn, từ dễ đọc, có móc tò mò,
-	// đúng chất tiên hiệp/thần tiên; tuyệt đối không bịa tình tiết.
-	system := "Bạn là người dẫn chuyện tiên hiệp, đang kể cho bạn bè nghe " +
-		"bằng giọng tự nhiên, hào hứng. Yêu cầu: văn NÓI (câu ngắn, từ ngữ " +
+	// tự nhiên; không nhắc tác giả gốc; tối đa 300 ký tự.
+	system := "Bạn là người dẫn chuyện video, đang kể cho người xem nghe " +
+		"bằng giọng tự nhiên, cuốn hút. Yêu cầu: văn NÓI (câu ngắn, từ ngữ " +
 		"đời thường dễ đọc thành tiếng, không dùng ký tự đặc biệt/ký hiệu); " +
 		"câu đầu phải có móc tò mò khiến người nghe muốn xem tiếp; " +
-		"CHỈ dùng thông tin đã cho, tuyệt đối không bịa tình tiết, không " +
-		"khẳng định điều không có trong dữ liệu; tối đa 300 ký tự."
+		"tập trung vào diễn biến và nội dung, tuyệt đối KHÔNG nhắc tên tác giả gốc hay chủ sở hữu ban đầu; " +
+		"tối đa 300 ký tự."
 	n := len(vs)
 	kind := "một video"
 	if n > 1 {
@@ -36,14 +36,14 @@ func (t *Transformer) llmCommentary(ctx context.Context, vs []Video) string {
 	return sanitizeCommentary(out)
 }
 
-// templateCommentary: dự phòng trung thực khi không có LLM.
+// templateCommentary: dự phòng khi không có LLM (không nhắc tên tác giả gốc).
 // 3 biến thể xoay theo seed để các video không đọc cùng một câu.
 func templateCommentary(vs []Video, seed int64) string {
 	if len(vs) > 1 {
 		variants := []string{
-			fmt.Sprintf("Tuyển tập %d khoảnh khắc tiên hiệp đang gây sốt trên Douyin — mở đầu đã cuốn, xem tiếp nhé.", len(vs)),
-			fmt.Sprintf("Gom %d cảnh đẹp nhất dòng tiên hiệp Douyin tuần này. Cảnh nào cũng đáng xem.", len(vs)),
-			fmt.Sprintf("%d video tiên hiệp hot nhất Douyin trong một clip — bạn đoán được cảnh cuối không?", len(vs)),
+			fmt.Sprintf("Tuyển tập %d khoảnh khắc đang gây sốt — mở đầu đã cuốn, xem tiếp nhé.", len(vs)),
+			fmt.Sprintf("Gom %d cảnh đẹp và ấn tượng nhất tuần này. Cảnh nào cũng đáng xem.", len(vs)),
+			fmt.Sprintf("%d video hot nhất trong một clip — bạn đoán được cảnh cuối không?", len(vs)),
 		}
 		return variants[int(seed%3+3)%3]
 	}
@@ -54,13 +54,10 @@ func templateCommentary(vs []Video, seed int64) string {
 	} else {
 		core.WriteString("Video này")
 	}
-	if strings.TrimSpace(v.Author) != "" {
-		fmt.Fprintf(&core, " của %s", strings.TrimSpace(v.Author))
-	}
 	if v.PlayCount > 0 {
-		fmt.Fprintf(&core, ", đang viral trên Douyin với %d lượt xem", v.PlayCount)
+		fmt.Fprintf(&core, ", đang viral với %d lượt xem", v.PlayCount)
 	} else {
-		core.WriteString(", đang được chú ý trên Douyin")
+		core.WriteString(", đang rất được chú ý")
 	}
 	variants := []string{
 		core.String() + ". Mở đầu đã gay cấn — xem tiếp nhé.",

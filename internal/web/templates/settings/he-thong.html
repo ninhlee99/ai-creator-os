@@ -17,13 +17,13 @@
 {{if .EnvSaved}}<p class="notice">✓ Đã lưu biến cấu hình <code>{{.EnvSaved}}</code> — Áp dụng tức thì cho hệ thống.</p>{{end}}
 {{if .EnvErr}}<p class="err">{{.EnvErr}}</p>{{end}}
 
-<!-- Settings Top Tab Navigation (4 Dedicated Views) -->
-<div class="studio-tabs" style="margin: 20px 0 24px 0;">
-  <a href="#tab-apikeys" id="tab-btn-apikeys" class="active" onclick="switchSettingsTab('apikeys')">🔑 1. Khóa API Chính Thức</a>
-  <a href="#tab-social" id="tab-btn-social" onclick="switchSettingsTab('social')">🌐 2. Kênh Mạng Xã Hội</a>
-  <a href="#tab-webai" id="tab-btn-webai" onclick="switchSettingsTab('webai')">🤖 3. Tài Khoản AI</a>
-  <a href="#tab-system" id="tab-btn-system" onclick="switchSettingsTab('system')">⚙️ 4. Vận Hành &amp; Hệ Thống</a>
-</div>
+<!-- Settings Top Tab Navigation (4 Views) -->
+<nav class="tabs" style="margin: 16px 0 20px 0;">
+  <a href="#tab-apikeys" id="tab-btn-apikeys" class="active" onclick="switchSettingsTab('apikeys')">🔑 Khóa API</a>
+  <a href="#tab-social" id="tab-btn-social" onclick="switchSettingsTab('social')">🌐 Kênh mạng xã hội</a>
+  <a href="#tab-webai" id="tab-btn-webai" onclick="switchSettingsTab('webai')">🤖 Tài khoản AI</a>
+  <a href="#tab-system" id="tab-btn-system" onclick="switchSettingsTab('system')">⚙️ Vận hành</a>
+</nav>
 
 <!-- =========================================================================
      TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Muse AI)
@@ -111,10 +111,24 @@
   </div>
 </div>
 
-<!-- =========================================================================
-     TAB 1: OFFICIAL API KEYS (Google Gemini, OpenAI, Claude, ElevenLabs, Muse AI)
-     ========================================================================= -->
 <div id="panel-apikeys" class="settings-tab-panel">
+  <!-- Export / Import ENV Card -->
+  <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.03);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+    <div style="flex:1;min-width:280px">
+      <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
+        <span>📦</span> Di Chuyển Cấu Hình (Export / Import ENV)
+      </div>
+      <div class="hint" style="margin-top:4px;font-size:13px">
+        Xuất toàn bộ API Key và cài đặt ra file <code>.env</code> hoặc <code>JSON</code> để sao lưu hoặc chuyển sang máy khác chỉ trong 1 giây.
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/settings/env/export" class="btn btn-secondary btn-sm" title="Tải file aicos.env để đặt vào thư mục app hoặc import trên máy khác">⬇️ Xuất file .env</a>
+      <a href="/settings/env/export-json" class="btn btn-secondary btn-sm" title="Tải file JSON sao lưu đầy đủ kèm tài khoản WebAI">⬇️ Xuất JSON đầy đủ</a>
+      <button type="button" class="btn btn-primary btn-sm" onclick="openEnvImportModal()">⬆️ Nhập cấu hình vào máy này</button>
+    </div>
+  </div>
+
   <div style="margin-bottom: 16px;">
     <h3 style="margin:0">Mã &amp; biến cấu hình (API Keys Nhà Cung Cấp)</h3>
     <p class="subtitle" style="margin:4px 0 0">Cấu hình các API Key chính thức của Google Gemini, OpenAI, Anthropic, ElevenLabs, Muse AI và Accesstrade. Lưu giá trị áp dụng ngay lập tức.</p>
@@ -486,7 +500,58 @@
   </div>
 </div>
 
+<!-- Env Import Modal -->
+<div id="env-import-modal" class="webai-modal-backdrop" hidden>
+  <div class="webai-modal-box" style="border-radius:16px;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div class="modal-head">
+      <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px">
+        <span>📦</span> Nhập Cấu Hình Từ Máy Khác (Import ENV)
+      </h3>
+      <button type="button" class="modal-close-btn" onclick="closeEnvImportModal()">✕</button>
+    </div>
+    <form method="post" action="/settings/env/import" enctype="multipart/form-data">
+      <div class="modal-body">
+        <p class="hint" style="margin-top:0;margin-bottom:14px;font-size:13px;line-height:1.5">
+          Tải lên file <code>.env</code> hoặc <code>.json</code> đã xuất từ máy khác, hoặc dán trực tiếp nội dung cấu hình vào ô bên dưới.
+        </p>
+
+        <div class="field" style="margin-bottom:14px">
+          <label style="font-weight:600;font-size:13px">📁 Cách 1: Chọn file từ máy (.env, .json, .txt)</label>
+          <div class="file-pick">
+            <label class="btn btn-secondary btn-sm">Chọn file cấu hình…
+              <input type="file" name="env_file" accept=".env,.json,.txt" onchange="onEnvFilePicked(this)">
+            </label>
+            <span class="file-name" id="env-file-label">Chưa chọn file</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label style="font-weight:600;font-size:13px">📝 Cách 2: Hoặc dán trực tiếp nội dung key=value</label>
+          <textarea name="env_content" rows="6" placeholder="GEMINI_API_KEYS=&quot;AIzaSy...&quot;&#10;OPENAI_API_KEY=&quot;sk-...&quot;&#10;ACCESSTRADE_API_KEY=&quot;...&quot;" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;width:100%"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-secondary" onclick="closeEnvImportModal()">Hủy</button>
+        <button type="submit" class="btn btn-primary">🚀 Nhập cấu hình vào máy này</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+function openEnvImportModal() {
+  document.getElementById('env-import-modal').hidden = false;
+}
+function closeEnvImportModal() {
+  document.getElementById('env-import-modal').hidden = true;
+}
+function onEnvFilePicked(input) {
+  var label = document.getElementById('env-file-label');
+  if (label && input.files && input.files[0]) {
+    label.textContent = input.files[0].name + ' (' + Math.round(input.files[0].size / 1024) + ' KB)';
+  }
+}
+
 function switchSettingsTab(tab) {
   var panels = ['webai', 'apikeys', 'social', 'system'];
   panels.forEach(function(p) {
