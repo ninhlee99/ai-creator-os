@@ -31,9 +31,7 @@ const RestorePending = "RESTORE_PENDING"
 const stagingDir = "restore-staging"
 
 // snapshotDBs là các database được đưa vào ảnh chụp (kèm -wal/-shm nếu có).
-// Đợt S: đủ cả 5 DB đang mở ở cmd/aicos — thiếu accesstrade.db/reup.db thì
-// khôi phục sẽ mất cache chiến dịch và state reup (dedupe → tải/đăng trùng).
-var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"}
+var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
 
 // snapshotFiles là các file đơn lẻ được đưa vào ảnh chụp.
 var snapshotFiles = []string{"content_jobs.json"}

@@ -57,9 +57,7 @@ double-down khi gấp 5× median; breakout khi 10×; penalty khi views rơi >70%
 stalled khi 14 ngày tăng trưởng <2%. Vượt luật → `Evaluate` đề xuất hành động;
 `SyncOneAccount` tự `Transition(id, "paused")` khi chạm kill.
 
-> **Kill rule reup** (N video liên tiếp 0-view → dừng nguồn / đổi phong cách
-> transform + báo) là yêu cầu của `docs/PIVOT_REDESIGN.md` §7 — **chưa code**,
-> sẽ thêm ở Đợt E.
+> **Chiến lược Zero-Reup**: Toàn bộ video sản xuất tuân thủ nguyên tắc 100% tài sản gốc, tránh thuật toán phạt 0-view shadowban.
 
 ### Sản xuất & đăng (trong tick)
 Xem `daemon-tu-dong.md` — tóm tắt: item quá hạn 14 ngày → `dropped`; tối đa

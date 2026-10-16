@@ -27,7 +27,7 @@ var autoSwitchDefs = []struct {
 	{"growth.production_enabled", "Sản xuất theo kế hoạch kênh", "Tự sản xuất + đăng theo plan 30 ngày", "/growth", true},
 	{"autopilot_enabled", "Video affiliate tự động", "Tự dựng video từ sản phẩm trong kho theo lịch", "/products", true},
 	{automation.KeyATHunterEnabled, "Săn sản phẩm Accesstrade", "Mỗi ngày tìm sản phẩm hoa hồng tốt (cần mã Accesstrade)", "/products", true},
-	{automation.KeyReupDiscoverEnabled, "Quét video Douyin", "6 giờ/lần quét nguồn và tải video mới", "/reup", true},
+	{"viral.auto_produce_enabled", "Video Viral Xu Hướng 100% Gốc", "Tự động bắt trend và sản xuất video viral ngắn 9:16 mỗi ngày", "/viral", true},
 	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Mỗi ngày 1 truyện từ hàng đợi chủ đề", "/stories", true},
 	{automation.KeyStoryAutoPublish, "Tự đăng truyện lên YouTube (riêng tư)", "Đăng private để bạn duyệt trước khi công khai", "/stories", true},
 }

@@ -141,17 +141,6 @@ func (s *Server) Routes() http.Handler {
 	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
 	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
 	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
-	// Reup Douyin (Đợt D): nguồn, yt-dlp sidecar, hàng đợi tải.
-	mux.HandleFunc("GET /reup", s.handleReup)
-	mux.HandleFunc("POST /reup/sources", s.handleReupSourceAdd)
-	mux.HandleFunc("POST /reup/sources/{id}/toggle", s.handleReupSourceToggle)
-	mux.HandleFunc("POST /reup/sources/{id}/delete", s.handleReupSourceDelete)
-	mux.HandleFunc("GET /reup/ytdlp/status", s.handleReupYtDlpStatus)
-	mux.HandleFunc("POST /reup/ytdlp/ensure", s.handleReupYtDlpEnsure)
-	mux.HandleFunc("POST /reup/ytdlp/update", s.handleReupYtDlpUpdate)
-	mux.HandleFunc("POST /reup/scan", s.handleReupScan)
-	mux.HandleFunc("POST /reup/videos/add", s.handleReupVideoAdd)
-	mux.HandleFunc("POST /reup/videos/{id}/retry", s.handleReupVideoRetry)
 	// Đợt F: Kể chuyện YouTube (truyện ngôi thứ nhất + ảnh 16:9 + TTS).
 	mux.HandleFunc("GET /stories", s.handleStories)
 	mux.HandleFunc("POST /stories", s.handleStoryCreate)
@@ -160,6 +149,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /stories/{id}/retry", s.handleStoryRetry) // đợt Y: thử lại tay
 	mux.HandleFunc("GET /stories/{id}/log", s.handleStoryLog)      // đợt Y: nhật ký đầy đủ
 	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
+
+	// Video Viral AI 100% Gốc (Trendjack Spotlight Shorts 9:16).
+	mux.HandleFunc("GET /viral", s.handleViral)
+	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
+	mux.HandleFunc("POST /viral/quick", s.handleViralQuick)
 	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
 	mux.HandleFunc("POST /team/agents/create", s.handleAgentCreate)
@@ -167,16 +161,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /team/agents/delete", s.handleAgentDelete)
 	mux.HandleFunc("POST /team/departments/assign", s.handleDeptAssign)
 	mux.HandleFunc("POST /team/dispatch", s.handleTeamDispatchGoal)
-	// Đợt E: transform 2 mức + đăng.
-	mux.HandleFunc("POST /reup/videos/{id}/transform", s.handleReupTransform)
-	mux.HandleFunc("GET /reup/posts/{id}/status", s.handleReupPostStatus)
-	mux.HandleFunc("GET /reup/file/{id}", s.handleReupFile)
-	mux.HandleFunc("GET /reup/videos/{id}/file", s.handleReupVideoFile)
-	mux.HandleFunc("POST /reup/posts/{id}/publish", s.handleReupPostPublish)
-	mux.HandleFunc("POST /reup/posts/{id}/retry", s.handleReupPostRetry) // Đợt Y
-	// Cài đặt · Reup (Đợt E).
-	mux.HandleFunc("GET /settings/reup", s.handleSettingsReup)
-	mux.HandleFunc("POST /settings/reup/save", s.handleSettingsReupSave)
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)

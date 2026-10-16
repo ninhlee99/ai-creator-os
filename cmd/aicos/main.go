@@ -49,7 +49,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/notify"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
-	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/runtimeguard"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
@@ -502,20 +501,6 @@ func main() {
 		log.Printf("accesstrade: ready")
 	}
 
-	// -- 6c. Reup Douyin (Đợt D): nguồn + video viral tải về.
-	// Fail-soft: mở DB lỗi thì srv.Reup = nil, UI fail-closed trung thực.
-	if reupStore, err := reup.NewStore(filepath.Join(*dataDir, "reup.db")); err != nil {
-		log.Printf("reup: init failed: %v (Reup disabled)", err)
-	} else {
-		defer func() {
-			if err := reupStore.Close(); err != nil {
-				log.Printf("reup close: %v", err)
-			}
-		}()
-		srv.Reup = reupStore
-		log.Printf("reup: ready")
-	}
-
 	// Đợt R: cờ arm vòng tick — khởi động tập trung ở cuối main qua ticksup.ArmLoops.
 	autopilotArmed := false
 
@@ -662,7 +647,6 @@ func main() {
 		Autopilot:  autopilotArmed,
 		Growth:     srv.Growth != nil,
 		AT:         srv.AT != nil,
-		Reup:       srv.Reup != nil,
 		Story:      srv.Studio != nil,
 	})
 
@@ -712,10 +696,10 @@ func main() {
 	log.Printf("shutdown: complete")
 }
 
-// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 5 DB chính.
+// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 4 DB chính.
 // DB nào hỏng → trả lỗi kèm hướng dẫn khôi phục từ backup (tránh crash-loop).
 func checkDBIntegrity(dataDir string) error {
-	dbs := []string{"ledger.db", "studio.db", "products.db", "reup.db", "accesstrade.db"}
+	dbs := []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
 	for _, name := range dbs {
 		p := filepath.Join(dataDir, name)
 		if !fileExists(p) {

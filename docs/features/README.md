@@ -5,7 +5,7 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 (file, hàm, bảng SQLite, engine/API) → fail-closed & an toàn → key rotation (nếu dùng key cloud).
 
 > **Trọng tâm sản phẩm:** Hệ điều hành tăng trưởng tự động (AI Creator OS) với 3 pipeline
-> sản xuất chính (Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện), tích hợp Bản sắc thương hiệu (Brand DNA),
+> sản xuất chính (Affiliate Accesstrade, Video Viral AI 100% Gốc, YouTube Kể Chuyện), tích hợp Bản sắc thương hiệu (Brand DNA),
 > Quản trị cơ hội xu hướng (Trend Intelligence) và Bộ điều phối nhiệm vụ tự chủ (AI Mission Control).
 
 ## Mục lục tính năng (18 tài liệu)
@@ -19,10 +19,10 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 5 | Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật | [agent-team.md](agent-team.md) | ✅ |
 | 6 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |
 | 7 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [san-pham.md](san-pham.md) | ✅ |
-| 8 | Reup Douyin (`/reup`) — nguồn, yt-dlp sidecar, hàng đợi tải, transform 2 mức | [reup.md](reup.md) | ✅ |
+| 8 | Video Viral AI (`/viral`) — kịch bản tâm lý học 3s, phân cảnh 9:16 MediaGen, âm nhạc trending, 100% gốc | [video-viral.md](video-viral.md) | ✅ |
 | 9 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [ke-chuyen.md](ke-chuyen.md) | ✅ |
 | 10 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [da-nen-tang.md](da-nen-tang.md) | ✅ |
-| 11 | Cài đặt — 6 trang (Hệ thống / Accesstrade / Reup / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
+| 11 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
 | 12 | Wizard lần đầu (`/onboard`) | [wizard-lan-dau.md](wizard-lan-dau.md) | ✅ |
 | 13 | Sao lưu & khôi phục | [sao-luu-khoi-phuc.md](sao-luu-khoi-phuc.md) | ✅ |
 | 14 | API nội bộ (`/api/*`) — mặc định TẮT | [api-noi-bo.md](api-noi-bo.md) | ✅ |

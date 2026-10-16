@@ -1412,7 +1412,7 @@ func (s *Server) listDepartments(agents []AIAgent) []AIDepartment {
 			Icon:        "🛡️",
 			Workflow:    "Soi Từng Khung Hình Vùng An Toàn ➔ Kiểm Tra Khẩu Hình & Tần Số Âm ➔ Quét Từ Cấm Chính Sách Nền Tảng ➔ Cấp Chứng Nhận Đạt Chuẩn QC",
 			Description: "Hội đồng thẩm định độc lập gác cổng phát hành, chấm điểm khách quan không thiên vị. Đảm bảo mọi video xuất bản đều đạt chuẩn triệu view và an toàn 100%.",
-			ActionLink:  "/reup",
+			ActionLink:  "/studio",
 			ActionLabel: "Thẩm Định Chất Lượng QC 🛡️",
 			SLA:         "< 5s / video thẩm định",
 			KPI:         "100% video xuất bản đạt chuẩn >= 85 điểm",

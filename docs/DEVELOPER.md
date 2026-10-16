@@ -32,8 +32,7 @@ cmd/aicos/            điểm vào binary
 internal/web/         dashboard: routes.go, server.go, templates/*.html, static/style.css
 internal/growth/      Brand DNA, Trend Intelligence, Kế hoạch 30 ngày, YouTube Analytics
 internal/accesstrade/ Hunter quét chiến dịch & datafeed, tạo link tracking, đối soát hoa hồng
-internal/reup/        Douyin downloader (yt-dlp), transform 2 mức, kill rule 0-view
-internal/studio/      Studio AI: jobs (SQLite), affiliate video, kinetic text, story video 16:9
+internal/studio/      Studio AI: jobs (SQLite), video affiliate, video viral AI 9:16, story video 16:9
 internal/automation/  Vòng lặp daemon: Autopilot, Growth, Reconcile, Sync, Story
 internal/ledger/      Sổ cái SQLite WAL per-account & cài đặt hệ thống
 internal/engines/     LLM chain (Gemini/llama), TTS chain (Gemini/VieNeu/Edge)

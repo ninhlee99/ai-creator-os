@@ -26,7 +26,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
-	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/webai"
 
@@ -97,17 +96,6 @@ type Server struct {
 	// phần tạo ảnh của Studio).
 	OnGeminiKeys func(keys []string)
 	Health       map[string]HealthChecker
-	// Reup là kho nguồn + video Douyin (trụ reup). Injected bởi cmd wiring;
-	// nil khi DB mở lỗi — trang /reup fail-closed trung thực.
-	Reup *reup.Store
-	// ReupTikWMBaseURL override TikWM base URL khi validate nguồn user
-	// (test hook; "" = production). Đợt Y.
-	ReupTikWMBaseURL string
-	// reupYtDlpMu/reupYtDlpBusy theo dõi tác vụ tải yt-dlp chạy nền.
-	reupYtDlpMu   sync.Mutex
-	reupYtDlpBusy bool
-	// Serialize transform reup dùng Store.TransformMu (chung với tick tự
-	// động ở automation — Đợt Y), không dùng mutex riêng ở đây nữa.
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
@@ -468,7 +456,8 @@ var statusLabels = map[string]string{
 	"onboard":                 "Thiết lập ban đầu",
 	"production_toggle":       "Bật/tắt sản xuất",
 	"publish_youtube":         "Đăng YouTube",
-	"reup_settings_save":      "Lưu cài đặt Reup",
+	"viral_produce":          "Sản xuất video viral",
+	"viral_auto_toggle":      "Bật/tắt tự động viral",
 	"scale_product":           "Mở rộng sản phẩm",
 	"seed":                    "Khởi tạo",
 	"session_topic":           "Chủ đề phiên",
@@ -476,7 +465,6 @@ var statusLabels = map[string]string{
 	"skip":                    "Bỏ qua",
 	"skip_duplicate_youtube":  "Bỏ video trùng",
 	"slot_skipped":            "Bỏ lượt",
-	"stop_reup_posting":       "Dừng đăng reup",
 	"thresholds_reset":        "Đặt lại ngưỡng",
 	"thresholds_updated":      "Cập nhật ngưỡng",
 	"tier_failover":           "Đổi nhà cung cấp AI",
@@ -637,7 +625,7 @@ var pageFiles = map[string]string{
 	"studio_trends":         "studio_trends.html",
 	"publishers":            "publishers.html",
 	"products":              "products.html",
-	"reup":                  "reup.html",
+	"viral":                 "viral.html",
 	"stories":               "stories.html",
 	"team":                  "team.html",
 	"growth":                "growth.html",
@@ -646,7 +634,6 @@ var pageFiles = map[string]string{
 	"settings_model_local":  "settings/model-local.html",
 	"settings_an_toan":      "settings/an-toan.html",
 	"settings_accesstrade":  "settings/accesstrade.html",
-	"settings_reup":         "settings/reup.html",
 	"web_ai":                "web_ai.html",
 	"onboard":               "onboard.html",
 }

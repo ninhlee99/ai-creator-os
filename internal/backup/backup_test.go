@@ -17,7 +17,7 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 	t.Helper()
 	// DB thật (SQLite) — Stage() integrity_check mọi *.db nên file giả
 	// chỉ có magic header sẽ không qua được.
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
 		p := filepath.Join(dir, db)
 		sdb, err := sql.Open("sqlite", p)
 		if err != nil {
@@ -46,7 +46,7 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 	}
 	// Đọc lại bytes DB thật để so sánh sau round-trip.
 	out := map[string][]byte{}
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
 		raw, err := os.ReadFile(filepath.Join(dir, db))
 		if err != nil {
 			t.Fatal(err)
@@ -164,9 +164,9 @@ func TestApplyStagedNoop(t *testing.T) {
 	}
 }
 
-// Đợt S: ảnh chụp phải gồm đủ 5 DB đang mở (thiếu accesstrade.db/reup.db
-// thì khôi phục mất cache chiến dịch + state reup → tải/đăng trùng).
-func TestCreateIncludesAllFiveDBs(t *testing.T) {
+// TestCreateIncludesAllFourDBs: ảnh chụp phải gồm đủ 4 DB đang mở
+// (ledger.db, studio.db, products.db, accesstrade.db).
+func TestCreateIncludesAllFourDBs(t *testing.T) {
 	dir := t.TempDir()
 	seedData(t, dir)
 	var buf bytes.Buffer
@@ -178,7 +178,7 @@ func TestCreateIncludesAllFiveDBs(t *testing.T) {
 	for _, f := range zr.File {
 		names[f.Name] = true
 	}
-	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "reup.db"} {
+	for _, db := range []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"} {
 		if !names[db] {
 			t.Errorf("thiếu %s trong ảnh chụp", db)
 		}

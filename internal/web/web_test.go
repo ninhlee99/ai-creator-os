@@ -113,7 +113,7 @@ func TestAccountsPageNoLiveCopy(t *testing.T) {
 			t.Fatalf("trang Kênh còn copy live pre-pivot: %q", bad)
 		}
 	}
-	if !strings.Contains(body, "Affiliate") || !strings.Contains(body, "Reup") {
+	if !strings.Contains(body, "Affiliate") || !strings.Contains(body, "Video Viral") {
 		t.Fatalf("trang Kênh phải nêu 3 trụ, body thiếu")
 	}
 }

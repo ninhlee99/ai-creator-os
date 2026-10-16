@@ -29,8 +29,7 @@ local, và chip công tắc chính (MASTER_SWITCH).
    đứng yên" / "BẬT — daemon được phép chạy theo lịch".
 
 > Đợt A đã gỡ mọi thẻ/khối liên quan live (lịch live hôm nay, avatar sidecar).
-> Thẻ 3 trụ (doanh thu AT, reup, kể chuyện) sẽ thêm theo từng pipeline ở các
-> đợt B→F.
+> Thẻ 3 trụ (doanh thu AT, video viral 100% gốc, kể chuyện) hiển thị theo từng pipeline.
 
 ## 4. Fail-closed & an toàn
 - Trang chủ chỉ đọc; không thao tác thật nên không bị dry-run chặn.

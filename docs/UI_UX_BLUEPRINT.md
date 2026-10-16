@@ -38,7 +38,7 @@ Tab Nhân vật AI đã gỡ (park theo avatar live).
 | Mục đích | Từ | Khi |
 |---|---|---|
 | Affiliate (`/products` cải tiến sâu) | hiện tại | Đợt B/C: tab Chiến dịch AT · Sản phẩm · Link · Đối soát |
-| **Reup** (`/reup` mới) | chưa có | Đợt D/E |
+| **Video Viral AI** (`/viral`) | mới | Đợt Nâng Cấp: Xưởng Sáng Tạo Video Viral 100% Gốc |
 | **Kể chuyện** (`/stories` mới) | chưa có | Đợt F |
 | Studio AI thu gọn | hiện tại | Đợt F: 2 mode (affiliate + kể chuyện) |
 | Agent Team định nghĩa lại | ✅ đợt H2 | `/team` — Đội ngũ 3 pipeline |

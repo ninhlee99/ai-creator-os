@@ -28,12 +28,12 @@ mỗi khả năng có UI/UX, ít chữ + card/modal/toast, màu xám ấm + chà
 |---|---|---|---|
 | 1 | **Trang chủ** | `/` | Dashboard 3 trụ: doanh thu AT hôm nay, đơn hàng, video đã đăng theo trụ, view, cảnh báo (hết quota, transform fail, kênh bị flag). Kill switch giữ nguyên |
 | 2 | **Affiliate** | `/products` cải tiến sâu | Tab: Chiến dịch AT (approval) · Sản phẩm (sắp xếp theo hoa hồng) · Link đã tạo · Đối soát đơn/hoa hồng |
-| 3 | **Reup** | **mới** `/reup` | Nguồn Douyin (user/hashtag) · Hàng đợi tải · Xem trước before/after transform · Metrics từng video · Kill switch riêng pipeline |
+| 3 | **Video Viral AI** | **mới** `/viral` | Xưởng sáng tạo video ngắn 9:16 nguyên bản 100% · Kịch bản tâm lý học 3s Hook · Phân cảnh MediaGen · Lồng tiếng & nhạc trending · Zero rủi ro bản quyền/shadowban |
 | 4 | **Kể chuyện** | **mới** `/stories` (tách từ studio) | Danh sách truyện · Tạo truyện (chủ đề → truyện ngôi thứ nhất) · Storyboard ảnh · Nghe thử giọng đọc · Video đã dựng · Lịch đăng YouTube |
-| 5 | **Studio AI** | `/studio` thu gọn | Chỉ 2 mode: **Video affiliate** (ảnh sản phẩm + nhạc, không chữ không voiceover — giữ nguyên format Ninh chốt) và **Video kể chuyện** (truyện + ảnh + giọng đọc). BỎ: film dài, Veo. GIỮ: Nhạc thịnh hành (dùng cho reup/affiliate) |
-| 6 | **Kênh** | `/accounts` đổi tên | Quản lý kênh TikTok/YouTube/Facebook · trạng thái warm-up · fingerprint transform riêng mỗi kênh · OAuth |
-| 7 | **Phát triển** | `/growth` | Giữ nguyên + thêm **kill rule reup**: N video liên tiếp 0-view → dừng nguồn / đổi phong cách transform + báo |
-| 8 | **Cài đặt** | `/settings` | Tabs: Hệ thống · **Accesstrade** (mới: nhập access_key, test, trạng thái) · **Reup** (mới: yt-dlp, mức transform, giới hạn/ngày) · Nhà cung cấp · Model local · An toàn. BỎ tab Nhân vật AI (park theo avatar live) |
+| 5 | **Studio AI** | `/studio` thu gọn | Mode Video affiliate + Nhạc thịnh hành Kworb VN + Kho video đã tạo |
+| 6 | **Kênh** | `/accounts` đổi tên | Quản lý kênh TikTok/YouTube/Facebook · trạng thái warm-up · Brand DNA riêng mỗi kênh · OAuth |
+| 7 | **Phát triển** | `/growth` | Kế hoạch nội dung 30 ngày, Brand DNA, Trend Intelligence, sản xuất tự động |
+| 8 | **Cài đặt** | `/settings` | Tabs: Hệ thống · **Accesstrade** (nhập access_key, test, trạng thái) · Nhà cung cấp · Model local · An toàn. BỎ tab Nhân vật AI (park theo avatar live) |
 
 **Bỏ hẳn khỏi sidebar:** Lịch live (`/schedule` → park), Agent Team dạng live.
 
@@ -41,7 +41,7 @@ mỗi khả năng có UI/UX, ít chữ + card/modal/toast, màu xám ấm + chà
 Không xóa — **định nghĩa lại**: thay vì team phục vụ live, mỗi pipeline có một
 team chuyên trách hiển thị dạng cây:
 - **Affiliate team**: Hunter (quét AT datafeed) → Producer (render video) → Publisher (đăng) → Analyst (đối soát hoa hồng)
-- **Reup team**: Hunter (tìm video viral) → Director (kế hoạch transform + voiceover) → Producer (FFmpeg) → QC → Publisher → Analyst (view/flag)
+- **Video Viral team**: Hunter (tìm xu hướng & hook) → Director (kế hoạch kịch bản 3s) → Visual AI (vẽ ảnh 9:16) → Voice AI (lồng tiếng) → QC → Publisher
 - **Story team**: Writer (viết truyện) → Illustrator (vẽ ảnh) → Voice (giọng đọc) → Producer → Publisher
 - Governance/Scheduler gác cổng giữ nguyên. Đây vẫn là "linh hồn" kiến trúc, chỉ đổi nhiệm vụ.
 

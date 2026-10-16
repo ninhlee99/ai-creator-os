@@ -33,7 +33,7 @@ func TestHealthzStaleTicksAndSidecars(t *testing.T) {
 		t.Fatalf("needs_restart = %v, want false when nothing wired", b["needs_restart"])
 	}
 
-	s.StaleTicks = func() []string { return []string{"reup"} }
+	s.StaleTicks = func() []string { return []string{"story"} }
 	s.Sidecars = func() map[string]SidecarBeat {
 		return map[string]SidecarBeat{"vieneu": {State: "running", HealthFails: 2, HealthErr: "timeout", CheckedAt: time.Now()}}
 	}

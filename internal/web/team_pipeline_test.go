@@ -16,7 +16,7 @@ func TestTeamPipelines(t *testing.T) {
 		t.Fatalf("GET /team = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Team Affiliate", "Team Reup", "Team Kể chuyện",
+	for _, want := range []string{"Team Affiliate", "Video Viral", "Team Kể chuyện",
 		"không phải agent đang chạy"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("team page missing %q", want)

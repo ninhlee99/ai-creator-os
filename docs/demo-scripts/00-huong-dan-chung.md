@@ -25,10 +25,10 @@
 | 3 | `03-phat-trien-kenh.md` | Phát triển kênh | 4–5′ |
 | 4 | `04-studio-ai.md` | Studio AI | 4–5′ |
 | 5 | `05-affiliate.md` | Affiliate (Accesstrade) | 4–5′ |
-| 6 | `06-reup.md` | Reup Douyin | 4–5′ |
+| 6 | `06-video-viral.md` | Video Viral AI (100% Gốc) | 4–5′ |
 | 7 | `07-ke-chuyen.md` | Kể chuyện YouTube | 4–5′ |
 | 8 | `08-da-nen-tang.md` | Đa nền tảng | 2–3′ |
-| 9 | `09-cai-dat.md` | Cài đặt (6 tab) | 4–5′ |
+| 9 | `09-cai-dat.md` | Cài đặt (5 tab) | 4–5′ |
 
 ## 3. Quy tắc khi đọc thuyết minh
 

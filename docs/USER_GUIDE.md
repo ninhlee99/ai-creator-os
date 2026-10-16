@@ -77,7 +77,7 @@ cài theo đúng hệ điều hành của máy):
 ## 6. Backup & khôi phục
 
 App **tự sao lưu mỗi ngày** vào `backups/` (giữ 7 bản mới nhất) — đủ 5 database
-(ledger, studio, products, accesstrade, reup). Trước khi lưu, app kiểm tra
+(ledger, studio, products, accesstrade). Trước khi lưu, app kiểm tra
 toàn vẹn từng database; bản hỏng bị loại, giữ bản cũ dùng được. Muốn có bản
 ở chỗ khác (phòng chết đĩa): nhập thư mục USB/ổ mạng ở Cài đặt · Hệ thống →
 "Sao lưu & khôi phục" → "Bản sao dự phòng (offsite)" — app tự copy bản mới

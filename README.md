@@ -14,23 +14,12 @@
 | Trụ | Trạng thái code (sau Đợt H3) |
 |---|---|
 | **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật**. Lưu ý: link chỉ ra tiền khi có người mua — cần traffic từ kênh; TikTok hiện chỉ đăng bản nháp (bấm Đăng tay từng video) |
-| **2. Reup video Douyin** | ✅ Đợt D/E xong + **Đợt J nâng cấp**: discover chấm điểm engagement (play × tỷ lệ like) + lọc độ dài; transform 4 hướng Ken Burns, **không chèn chữ vào video**; voiceover văn nói có móc tò mò (3 template xoay); kill rule theo nguồn (tự tắt nguồn chết, nguồn khác vẫn chạy). Downloader (yt-dlp + TikWM fallback **chỉ link có watermark** — giữ attribution tác giả) + dedupe 2 lớp + QC + tick 6h + kill rule 0-view toàn cục |
+| **2. Video Viral AI 100% Gốc** | ✅ Xưởng sáng tạo video ngắn 9:16 (TikTok, Reels, Shorts) nguyên bản 100%. Kịch bản tâm lý học 3s Hook + Story + CTA, hình ảnh 9:16 MediaGen độc quyền, lồng tiếng truyền cảm, âm nhạc thịnh hành Kworb VN. Xóa bỏ hoàn toàn rủi ro vi phạm bản quyền và thuật toán phạt 0-view shadowban của việc reup |
 | **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 (không chèn chữ/phụ đề) → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
 
-Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), **Video Viral AI 100% Gốc** (`/viral`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
-> ⚠️ **Trung thực về reup:** không có transform nào đảm bảo 100% không bị
-> đánh bản quyền. Hệ thống chỉ giảm rủi ro (voiceover Việt gốc, nhạc bản
-> quyền thay thế, restructure/compilation, crop/zoom động…), và rủi ro thực tế
-> lớn nhất có thể là **0 view / bị giảm phân phối**, không chỉ là strike.
-> Video tải về **giữ nguyên watermark gốc** của tác giả Douyin — hệ thống
-> không gỡ watermark của người khác.
->
-> **Đánh giá khắc khe (2026-10-04):** xếp hạng khả năng ra tiền thật trong
-> 12 tháng: Kể chuyện YouTube > Affiliate Accesstrade > Reup Douyin. Reup
-> không xây được "kênh thành tài sản" (rủi ro bản quyền + chính sách
-> unoriginal/reused content); cái bán được là công cụ/quy trình, không phải
-> kênh (mua bán tài khoản vi phạm ToS nền tảng).
+> 💡 **Chiến lược Nội dung Bền Vững (Zero-Reup):** Hệ thống nói KHÔNG với việc cào hoặc tải lại video của bên thứ ba (vốn chịu rủi ro bản quyền, anti-bot Douyin và bị thuật toán phạt 0-view). Toàn bộ nội dung viral được sản xuất từ tài sản gốc 100% (Original Assets) chuẩn cấu trúc giữ chân 3 giây đầu tiên.
 
 ---
 
@@ -41,13 +30,13 @@ Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản 
 | Trang chủ | `/` | Thẻ số liệu, feed 8 quyết định, cảnh báo growth, trạng thái runtime local, chip MASTER_SWITCH |
 | Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth, badge YouTube Analytics |
 | Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
-| Đội ngũ | `/team` | Sức khỏe 3 pipeline (Affiliate/Reup/Story) từ dữ liệu thật — đợt H2 |
+| Đội ngũ | `/team` | Sức khỏe 3 pipeline (Affiliate/Video Viral/Story) từ dữ liệu thật |
 | Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video đã tạo · Nhạc trending. Phim điện ảnh và video chữ động đã gỡ |
 | Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (Accesstrade-only từ đợt H1) |
-| Reup | `/reup` | Nguồn Douyin · Hàng đợi tải · Transform 2 mức · Xem trước before/after · Metrics · Kill rule 0-view |
+| Video Viral AI | `/viral` | Xưởng sản xuất video ngắn 9:16 100% gốc · Khởi tạo 1-chạm · Hook tâm lý học · Trình phát video |
 | Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → tự đăng YouTube private (mặc định bật) |
 | Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
-| Cài đặt | `/settings` | 6 trang: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
+| Cài đặt | `/settings` | 5 trang: Hệ thống · Accesstrade · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
 
 `/schedule` (Lịch live) đã park → **404**.
 
@@ -88,16 +77,16 @@ vào app.
 | Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ |
 | Live (stream engine, avatar, lịch live, tab Nhân vật AI) | 🅿️ **Parked** — build tag `parked`, không vào binary |
 | Phim điện ảnh (film mode, cinematic, Veo) | 🅿️ **Parked** — build tag `parked` |
-| Agent Team (`/team`) | ✅ Đợt H2 — 3 pipeline, trạng thái từ dữ liệu thật |
+| Agent Team (`/team`) | ✅ 3 pipeline, trạng thái từ dữ liệu thật |
 | Accesstrade API (token, campaign, datafeed, đối soát) | ✅ Đợt B/C — chưa test bằng token thật |
-| Reup Douyin (download, transform, kill rule 0-view) | ✅ Đợt D/E — chưa tải video thật (cần máy Ninh có mạng) |
+| Video Viral AI (kịch bản 3s hook, ảnh 9:16, lồng tiếng, 100% gốc) | ✅ 2026-10-16 — Thay thế Reup, loại bỏ 0-view shadowban |
 | YouTube kể chuyện (truyện → ảnh → TTS → dựng → đăng private) | ✅ Đợt F — pipeline test bằng provider fake; cần key thật trên máy Ninh |
 | YouTube Analytics (views/watch hours 30 ngày) | ✅ Đợt H3 — cần token OAuth scope yt-analytics.readonly |
 | TikTok Shop | ❌ Đã loại bỏ hoàn toàn ở Đợt H1 (Accesstrade-only) |
-| 8 tick automation (growth, AT, reup ×4, story) | ✅ Đợt G — đang bật; AT "chờ key", kill rule "chờ số liệu" (trung thực trong UI) |
+| Automation ticks (growth, AT, viral, story) | ✅ Đang bật; trung thực trong UI |
 | Facebook Page · Instagram Reels · Threads (Meta Graph API trực tiếp, không cần CLI) | ✅ 2026-10-12 — FB tải lên chưa công khai; IG chỉ đăng khi `IG_AUTO_PUBLISH=1` (API không có nháp); Threads đăng bài chữ kèm link (API không nhận video local) |
 | Studio không cần key — dựng từ ảnh tải lên + caption mẫu | ✅ 2026-10-12 |
-| Không chèn chữ vào video (reup, kể chuyện, affiliate) | ✅ 2026-10-12 |
+| Không chèn chữ vào video (viral, kể chuyện, affiliate) | ✅ 2026-10-12 |
 | Checklist “sẵn sàng lên xu hướng” 7 tiêu chí / video | ✅ 2026-10-12 — yếu tố phân phối đã biết, không phải cam kết viral |
 | Hẹn giờ vàng YouTube (`YOUTUBE_GOLDEN_HOUR=1`, 11:30 / 19:30 giờ VN) | ✅ 2026-10-12 |
 | Tiến độ YPP (500/1.000 sub · 3.000/4.000 giờ · 3M/10M view Shorts) | ✅ 2026-10-12 — cần OAuth Analytics |

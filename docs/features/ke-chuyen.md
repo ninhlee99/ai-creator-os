@@ -28,7 +28,7 @@ TTS chain, `AssemblePhotoList` Ken Burns, `MuxSubtitles` caption,
 | QC | 1920×1080 + có video+audio stream + > 30s + đủ số cảnh | rớt → `failed` + lý do tiếng Việt |
 
 Lời bài hát nhạc nền: chung file `autopilot-music.m4a` Ninh upload
-(tránh bắt upload 2 lần) — cùng nguồn như autopilot + reup.
+(tránh bắt upload 2 lần) — cùng nguồn như autopilot + viral.
 
 ## 3. Automation — `internal/automation/story_tick.go`
 

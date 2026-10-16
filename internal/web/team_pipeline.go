@@ -149,89 +149,69 @@ func (s *Server) affiliateTeam() pipeTeam {
 	}
 }
 
-func (s *Server) reupTeam() pipeTeam {
-	stages := []pipeStage{}
-	if s.Reup == nil {
-		for _, st := range []pipeStage{
-			{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/reup", RoleDesc: "Quét & tải video Douyin không watermark"},
-			{Key: "director", Label: "Director", Icon: "📋", Link: "/reup", RoleDesc: "Lên kế hoạch đảo góc nội dung"},
-			{Key: "producer", Label: "Producer", Icon: "🎬", Link: "/reup", RoleDesc: "Biên tập video & chèn hiệu ứng"},
-			{Key: "qc", Label: "QC", Icon: "✅", Link: "/reup", RoleDesc: "Kiểm tra chất lượng video & bản quyền"},
-			{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng video lên các kênh mạng xã hội"},
-			{Key: "analyst", Label: "Analyst", Icon: "📊", Link: "/reup", RoleDesc: "Giám sát view & kill format lỗi"},
-		} {
-			st.Status = tmIdle
-			st.Detail = "chưa cấu hình Reup"
-			stages = append(stages, st)
+func (s *Server) viralTeam() pipeTeam {
+	latest := s.latestJobByKind("viral")
+	stages := []pipeStage{
+		{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/viral", RoleDesc: "Săn xu hướng nóng & chủ đề viral (Kworb VN, Douyin Concepts)"},
+		{Key: "director", Label: "Director", Icon: "🎬", Link: "/viral", RoleDesc: "Lên kịch bản đạo diễn Hook 3s + Story + CTA"},
+		{Key: "designer", Label: "Visual AI", Icon: "🎨", Link: "/viral", RoleDesc: "Sinh chuỗi hình ảnh 9:16 bản quyền 100% bằng Gemini Imagen"},
+		{Key: "voice", Label: "Voice AI", Icon: "🎙️", Link: "/viral", RoleDesc: "Lồng tiếng cảm xúc khớp kịch bản (VieNeu / Gemini TTS)"},
+		{Key: "qc", Label: "QC", Icon: "🛡️", Link: "/viral", RoleDesc: "Kiểm duyệt Red-lines, âm lượng và chuẩn dọc 9:16"},
+		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng tải video 9:16 lên TikTok, Shorts và Reels"},
+	}
+	cur := viralStageFor(latest)
+	for i := range stages {
+		if latest == nil {
+			stages[i].Status = tmWaiting
+			stages[i].Detail = "sẵn sàng"
+			continue
 		}
-		return pipeTeam{
-			Key:         "reup",
-			Name:        "Reup",
-			Icon:        "🔁",
-			Description: "Tự động quét video viral Douyin, biến đổi lách bản quyền và đăng tải đa nền tảng.",
-			ActionLink:  "/reup",
-			ActionLabel: "🔁 Quản lý Reup",
-			Stages:      stages,
+		switch {
+		case i < cur:
+			stages[i].Status = tmOK
+			stages[i].Detail = "xong"
+		case i == cur:
+			if latest.Status == "running" {
+				stages[i].Status = tmWorking
+				stages[i].Detail = "đang xử lý"
+			} else if latest.Status == "failed" {
+				stages[i].Status = tmFail
+				stages[i].Detail = "lỗi"
+			} else {
+				stages[i].Status = tmOK
+				stages[i].Detail = "hoàn tất"
+			}
+		default:
+			stages[i].Status = tmWaiting
+			stages[i].Detail = "chờ"
 		}
 	}
-	vst, _ := s.Reup.Stats()
-	srcs, _ := s.Reup.ListSources()
-	// Hunter: nguồn + video chờ tải.
-	st := tmWaiting
-	if vst.Queued+vst.Downloading > 0 {
-		st = tmWorking
-	} else if vst.Downloaded > 0 {
-		st = tmOK
-	}
-	stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: st,
-		Detail: formatCount("nguồn", int64(len(srcs))) + " · " + formatCount("chờ tải", vst.Queued),
-		Link: "/reup", RoleDesc: "Quét tài khoản Douyin và tải video viral không watermark"})
-	// Director: bài chờ transform (kế hoạch).
-	pending, _ := s.Reup.ListPostsByStatus("pending", 1000)
-	st = tmWaiting
-	if len(pending) > 0 {
-		st = tmOK
-	}
-	stages = append(stages, pipeStage{Key: "director", Label: "Director", Icon: "📋", Status: st, Detail: formatCount("bài chờ transform", int64(len(pending))), Link: "/reup", RoleDesc: "Lên kế hoạch đảo góc nội dung tránh quét trùng"})
-	// Producer: đang transform.
-	transforming, _ := s.Reup.ListPostsByStatus("transforming", 1000)
-	st = tmWaiting
-	if len(transforming) > 0 {
-		st = tmWorking
-	}
-	stages = append(stages, pipeStage{Key: "producer", Label: "Producer", Icon: "🎬", Status: st, Detail: formatCount("đang transform", int64(len(transforming))), Link: "/reup", RoleDesc: "Biên tập video, tăng tốc, cắt cúp và chèn hiệu ứng"})
-	// QC: tải xong (QC đạt) vs lỗi.
-	st = tmOK
-	if vst.Failed > 0 && vst.Downloaded == 0 {
-		st = tmFail
-	} else if vst.Failed > 0 {
-		st = tmWorking
-	}
-	stages = append(stages, pipeStage{Key: "qc", Label: "QC", Icon: "✅", Status: st,
-		Detail: formatCount("đạt", vst.Downloaded) + " · " + formatCount("lỗi", vst.Failed), Link: "/reup", RoleDesc: "Kiểm tra chất lượng video, bitrate và âm thanh"})
-	// Publisher: bài đã đăng.
-	posted, _ := s.Reup.ListPostsByStatus("posted", 1000)
-	st = tmWaiting
-	if len(posted) > 0 {
-		st = tmOK
-	}
-	stages = append(stages, pipeStage{Key: "publisher", Label: "Publisher", Icon: "📤", Status: st, Detail: formatCount("bài đã đăng", int64(len(posted))), Link: "/accounts", RoleDesc: "Đăng video lên các kênh mạng xã hội theo lịch"})
-	// Analyst: bài lỗi + kill rule 0-view.
-	failed, _ := s.Reup.ListPostsByStatus("failed", 1000)
-	st = tmOK
-	if len(failed) > 0 {
-		st = tmFail
-	}
-	stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: st,
-		Detail: formatCount("bài lỗi", int64(len(failed))) + " · kill rule 0-view: 5 bài liên tiếp → dừng", Link: "/reup", RoleDesc: "Giám sát lượt xem và tự động dừng format 0-view"})
 	return pipeTeam{
-		Key:         "reup",
-		Name:        "Reup",
-		Icon:        "🔁",
-		Description: "Tự động quét video viral Douyin, biến đổi lách bản quyền và đăng tải đa nền tảng.",
-		ActionLink:  "/reup",
-		ActionLabel: "🔁 Quản lý Reup",
+		Key:         "viral",
+		Name:        "Video Viral 100% Gốc",
+		Icon:        "🔥",
+		Description: "Săn xu hướng nóng, tự động sáng tạo video ngắn 9:16 độc quyền, không copy — Zero platform risk.",
+		ActionLink:  "/viral",
+		ActionLabel: "🔥 Xưởng Video Viral",
 		Stages:      stages,
+	}
+}
+
+func viralStageFor(j *studioJobLite) int {
+	if j == nil {
+		return 0
+	}
+	switch {
+	case j.Progress < 20:
+		return 1
+	case j.Progress < 50:
+		return 2
+	case j.Progress < 75:
+		return 3
+	case j.Progress < 95:
+		return 4
+	default:
+		return 5
 	}
 }
 
@@ -323,7 +303,7 @@ func formatCount(label string, n int64) string {
 func (s *Server) handleTeamPipelines(w http.ResponseWriter, r *http.Request) {
 	pipelines := []pipeTeam{
 		s.affiliateTeam(),
-		s.reupTeam(),
+		s.viralTeam(),
 		s.storyTeam(),
 	}
 	agents := s.listAgents()

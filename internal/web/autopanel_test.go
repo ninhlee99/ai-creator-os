@@ -4,8 +4,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 )
 
 // Bảng tự động trên Trang chủ ghi đúng khóa setting của trang gốc, và từ
@@ -13,15 +11,15 @@ import (
 func TestAutoPanelToggle(t *testing.T) {
 	s := newTestServer(t)
 	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Quét video Douyin") {
+	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Video Viral Xu Hướng") {
 		t.Fatal("Trang chủ thiếu bảng tự động hóa")
 	}
-	rec := postForm(t, s, "/automation/switch", url.Values{"key": {automation.KeyReupDiscoverEnabled}, "on": {"0"}})
+	rec := postForm(t, s, "/automation/switch", url.Values{"key": {"viral.auto_produce_enabled"}, "on": {"0"}})
 	if rec.Code != 303 {
 		t.Fatalf("toggle = %d", rec.Code)
 	}
-	if s.atSettingOn(automation.KeyReupDiscoverEnabled, true) {
-		t.Fatal("trang Reup phải thấy đã tắt")
+	if s.atSettingOn("viral.auto_produce_enabled", true) {
+		t.Fatal("switch viral phải thấy đã tắt")
 	}
 	if rec := postForm(t, s, "/automation/switch", url.Values{"key": {"master.switch"}, "on": {"1"}}); rec.Code != 400 {
 		t.Fatalf("khóa ngoài danh sách phải bị từ chối, got %d", rec.Code)

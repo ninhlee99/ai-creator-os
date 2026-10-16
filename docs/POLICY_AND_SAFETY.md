@@ -4,7 +4,7 @@ Các quy tắc bất di bất dịch được lập trình trực tiếp vào h�
 
 ## 1. Bảo vệ tài khoản & uy tín kênh (Tài sản quý giá nhất)
 
-- **Zero-Reup / Content Transformation**: Video reup Douyin bắt buộc qua bộ transform 2 mức (lật, zoom, speed curve, chỉnh màu, lọc audio) và gắn Brand DNA góc nhìn gốc; cấm reup thô nguyên bản.
+- **Zero-Reup / 100% Original Assets**: Tuyệt đối nói KHÔNG với reup video của bên thứ ba. Toàn bộ kịch bản, hình ảnh MediaGen, lồng tiếng và âm nhạc đều được tổng hợp nguyên bản 100%, bảo vệ kênh không bị shadowban hoặc dính bản quyền.
 - **Giới hạn tần suất đăng (Rate limiting)**: Giới hạn tối đa số video đăng mỗi ngày trên từng kênh (tự động nghỉ và dãn cách thời gian), tránh kích hoạt spam filter của TikTok / YouTube / Facebook.
 - **Minh bạch AI (AI Disclosure)**: Tự động khai báo nội dung do AI tạo (Synthetic Media) khi đăng tải qua API chính thức.
 - **Từ khóa đỏ & Cấm kỵ (Red-lines)**: Brand DNA tự động kiểm duyệt kịch bản, chặn đứng các từ ngữ bị cấm (hứa hẹn sai sự thật, y tế chưa kiểm chứng, xúc phạm, từ khóa nhạy cảm).

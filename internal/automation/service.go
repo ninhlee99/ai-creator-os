@@ -12,7 +12,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
-	"github.com/ninhlee99/ai-creator-os/internal/reup"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -144,27 +143,6 @@ type Service struct {
 	// CommissionSource overrides the affiliate-orders feed (tests inject a
 	// fake). Nil = build the real one from the current env.
 	CommissionSource OrdersSource
-
-	// Reup automation (Đợt D): discover 6h/lần + download (yt-dlp →
-	// TikWM fallback, dedupe, QC). Nil Reup = tick bỏ qua im lặng.
-	Reup *reup.Store
-	// ReupWorkDir thư mục chứa video đã tải (<dataDir>/reup).
-	ReupWorkDir string
-	// ReupBinDir thư mục chứa binary yt-dlp do app quản lý (<dataDir>/bin).
-	ReupBinDir string
-	// ReupTikWMBaseURL override TikWM base URL (test hook; "" = production).
-	ReupTikWMBaseURL string
-
-	// Reup transform/post automation (Đợt E): transform 2 mức + đăng +
-	// kill rule 0-view. Nil TTS = voiceover fail-closed khi được bật;
-	// nil LLM = lời bình luận dùng template trung thực.
-	ReupTTS reup.VoiceSynth
-	ReupLLM reup.Commentator
-	// ReupMusicPath là file nhạc licensed cho transform ("", = chỉ voiceover).
-	ReupMusicPath string
-	// ReupYtDlpRelease override GitHub release base của yt-dlp
-	// (test hook; "" = production).
-	ReupYtDlpRelease string
 
 	// Story automation (Đợt F): kể chuyện ngôi thứ nhất + ảnh 16:9 + TTS.
 	// Nil Story = tick bỏ qua im lặng (studio chưa khởi tạo).

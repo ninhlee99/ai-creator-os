@@ -11,10 +11,7 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 | Growth (sản xuất + đăng) | **mỗi 5 phút** | `Service.GrowthTick(ctx, false)` (`growth_tick.go`) |
 | Đồng bộ số liệu + đối soát tiền | **mỗi giờ** (nằm trong GrowthTick khi `growthSyncDue()`) | `SyncOneAccount`, `ReconcileCommissions` (`sync_reconcile.go`) |
 | Accesstrade (hunter/order/campaign) | **mỗi 5 phút** (hunter daily, order sync 30′, campaign check daily) | `Service.ATTick` (`at_tick.go`; đợt C) |
-| Reup discover + download | **mỗi 5 phút**, đến hạn **6 giờ** | `Service.ReupTick` → `RunReupScan` (`reup_tick.go`; đợt D) |
-| Reup transform | **mỗi 5 phút**, đến hạn **15′** (≤2 bài/lượt) | `Service.ReupTransformTick` (`reup_transform.go`; đợt E) |
-| Reup post | **mỗi 5 phút**, đến hạn **2 giờ** (giới hạn/ngày + warm-up) | `Service.ReupPostTick` (`reup_transform.go`; đợt E) |
-| Reup kill rule 0-view | **mỗi 5 phút**, đến hạn **1 giờ** | `Service.ReupKillTick` (`reup_transform.go`; đợt E) |
+| Video Viral AI tự động | **mỗi 5 phút**, đến hạn **24 giờ** | `viral.auto_produce_enabled` (Studio Studio Viral Engine) |
 | Kể chuyện | **mỗi 5 phút**, đến hạn **24 giờ** (tự đăng private-first; tắt `story.auto_publish` để duyệt tay) | `Service.StoryTick` (`story_tick.go`; đợt F, K) |
 | SEO + thumbnail khi đăng truyện | trong lúc đăng | LLM viết title/desc/tags tiếng Việt (thiếu LLM → template), ảnh cảnh đầu làm thumbnail (`story_tick.go`, `publishers.VideoMeta`; đợt M1) |
 | Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
@@ -33,7 +30,7 @@ Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), 
 Mọi tick: **kill switch + dry-run chặn đầu**; công tắc riêng (unset = **BẬT**,
 zero-touch); store/key nil → bỏ qua im lặng (AT log 1 dòng, không spam alert);
 watermark last-run trong ledger settings; interval ≤ 0 → default. Trạng thái
-thật hiển thị ở `/settings/reup`, `/settings/accesstrade`, `/stories` — chỗ
+thật hiển thị ở `/viral`, `/settings/accesstrade`, `/stories` — chỗ
 nào "chờ số liệu"/"chờ key"/"chờ OAuth" phải nói rõ, không giả vờ đang chạy.
 Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
 
@@ -146,7 +143,7 @@ gắn giỏ được).
 ### 6.1. Tick supervisor (`internal/ticksup`, wiring ở `cmd/aicos/main.go`)
 Mỗi tick chạy trong goroutine riêng qua `Supervisor.Dispatch`:
 - **recover**: panic trong tick → recover, ghi alert critical (`tick_panic`), tick chạy lại vòng sau. Process và dashboard không chết theo.
-- **timeout**: story 30′, reup/growth 20′, còn lại 5–15′ — treo quá hạn thì context bị hủy (tick fail, thử lại vòng sau).
+- **timeout**: story 30′, growth 20′, còn lại 5–15′ — treo quá hạn thì context bị hủy (tick fail, thử lại vòng sau).
 - **bỏ qua khi kẹt**: lượt trước chưa xong → bỏ qua lượt mới, không dồn goroutine.
 - **heartbeat**: mỗi tick ghi `Beat{LastStart, LastOK, LastErr, Runs}` — đọc ở `GET /healthz` và Cài đặt · Hệ thống ("Tự động nền").
 - Trước đây 6 tick story chạy nối tiếp: StoryTick treo là self-heal + backup + Telegram alert đứng im theo. Giờ đã tách độc lập.
@@ -177,8 +174,8 @@ inode cũ, log phình vô hạn. Hướng dẫn newsyslog cũ trong `deploy/READ
 `StandardOutPath`/`StandardErrorPath` (tránh ghi đúp).
 
 ### 6.6. Cứng rắn thêm (cùng đợt)
-- **Backup** (`internal/backup/backup.go`): checkpoint WAL trước khi copy (ảnh chụp nhất quán); đủ 5 DB
-  (`ledger/studio/products/accesstrade/reup`) — trước đây thiếu 2 DB, khôi phục mất state reup/Accesstrade.
+- **Backup** (`internal/backup/backup.go`): checkpoint WAL trước khi copy (ảnh chụp nhất quán); đủ 4 DB
+  (`ledger/studio/products/accesstrade`).
 - **Sweep** (`internal/studio/sweep.go`): job treo → `CancelRunning` kill ffmpeg/ffprobe thật trước khi đánh
   failed (trước đây process treo vẫn ngốn CPU/đĩa và giữ slot render).
 - **Web DB** (`internal/web/server.go`): `SetMaxOpenConns(1)` — `busy_timeout` trước đây chỉ tác dụng trên 1

@@ -21,7 +21,6 @@ type Deps struct {
 	Autopilot  bool // studio + products sẵn sàng
 	Growth     bool
 	AT         bool
-	Reup       bool
 	Story      bool // studio sẵn sàng
 }
 
@@ -57,21 +56,6 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 			sup.Dispatch(ctx, "accesstrade", 15*time.Minute, d.NewService().ATTick)
 		})
 		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
-	}
-	if d.Reup {
-		for _, n := range []string{"reup", "reup_transform", "reup_post", "reup_kill"} {
-			sup.Watch(n, 5*time.Minute, 20*time.Minute)
-		}
-		go loop(ctx, 5*time.Minute, func() {
-			auto := d.NewService()
-			sup.Dispatch(ctx, "reup", 20*time.Minute, auto.ReupTick)
-			// Đợt E: transform 2 mức (15 phút/lần) + đăng (2 giờ/lần)
-			// + kill rule 0-view (1 giờ/lần) — mỗi tick tự kiểm tra đến hạn.
-			sup.Dispatch(ctx, "reup_transform", 15*time.Minute, auto.ReupTransformTick)
-			sup.Dispatch(ctx, "reup_post", 15*time.Minute, auto.ReupPostTick)
-			sup.Dispatch(ctx, "reup_kill", 10*time.Minute, auto.ReupKillTick)
-		})
-		log.Printf("reup: automation tick armed (discover 6 giờ/lần, download ngay)")
 	}
 	if d.Story {
 		for _, n := range []string{"story", "selfheal", "backup", "story_public", "story_retry", "notify", "draft_digest"} {

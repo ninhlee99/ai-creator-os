@@ -269,8 +269,6 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 			"HunterVideos":  s.atSettingInt(automation.KeyATHunterVideos, 3),
 		},
 		"ATOrderSyncMins": s.atSettingInt(automation.KeyATOrderSyncIntervalM, 30),
-		// Reup (Đợt E): tab Cài đặt · Reup.
-		"ReupCfg": s.reupSettingsCfg(),
 		// R2-W7: legacy /api/* switch (default OFF), app version, runtime
 		// probes, pending-restore flag — all shown in Settings · Hệ thống.
 		"APIEnabled":     automation.APIEnabled(s.settings()),

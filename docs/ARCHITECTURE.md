@@ -9,7 +9,7 @@
 ## 1. Design principles
 
 1. **Three money pillars.** Mọi thứ phục vụ 3 trụ: affiliate (hoa hồng),
-   reup (view → tiền nền tảng/affiliate), kể chuyện YouTube (view dài).
+   video viral 100% gốc (tăng trưởng kênh & thương hiệu), kể chuyện YouTube (view dài).
    Live và phim điện ảnh đã park — không phục vụ trụ nào nữa.
 2. **Lightweight stack — Go only.** Toàn bộ code là Go: orchestration,
    account management, API/dashboard, provider chains, governance — một
@@ -71,8 +71,8 @@
 Test vùng parked chạy bằng `go test -tags parked ./...`.
 
 **Đã code xong (đợt B→F):** Accesstrade client + datafeed hunter + đối soát
-(`internal/accesstrade`), Douyin downloader + transform 2 mức + kill rule
-0-view (`internal/reup`), pipeline kể chuyện (`internal/studio/story.go` —
+(`internal/accesstrade`), xưởng Video Viral AI 100% gốc 9:16
+(`internal/studio/viral.go`), pipeline kể chuyện (`internal/studio/story.go` —
 tách từ studio, kind `story` trên `studio_jobs`; automation
 `internal/automation/story_tick.go` 24h/lần, đăng private-first, mặc định
 chờ Ninh duyệt).
@@ -100,11 +100,11 @@ chờ Ninh duyệt).
 | `/growth*` | `handleGrowth*` | Phát triển kênh |
 | `/studio*` | `handleStudio*` | Studio AI (affiliate/kinetic/jobs/trends) |
 | `/products*` | `handleProducts*` | Affiliate (Accesstrade: chiến dịch/link/đối soát, đợt B/C) |
-| `/reup*` | `handleReup*` | Reup Douyin: nguồn, hàng đợi tải, transform 2 mức, đăng (đợt D/E) |
+| `/viral*` | `handleViral*` | Video Viral AI: kịch bản 3s hook, hình ảnh 9:16, lồng tiếng 100% gốc |
 | `/stories*` | `handleStory*` | Kể chuyện: tạo truyện, jobs, đăng YouTube (đợt F) |
 | `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline (đợt H2, định nghĩa lại — không còn park) |
 | `/publishers*` | `handlePublishers*` | Đa nền tảng |
-| `/settings*` | `handleSettings*` | 6 trang con: Hệ thống · Accesstrade · Reup · Nhà cung cấp · Model local · An toàn |
+| `/settings*` | `handleSettings*` | 5 trang con: Hệ thống · Accesstrade · Nhà cung cấp · Model local · An toàn |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
 | `/onboard` | `handleOnboard` | Wizard lần đầu |
 | `/kill`, `/unkill` | `handleKill` | Kill switch |
@@ -130,10 +130,9 @@ decision log (`engines/tier_failover`).
   → fallback default (`internal/growth`).
 - Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
 - Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
-- Kill rule reup 0-view (đợt E, `internal/growth/reup_kill.go`): N video liên
-  tiếp 0-view (mặc định 5, chỉnh ở `/settings/reup`) → `reup.post_enabled=0`
-  + alert + decision log. Bài chưa có số liệu (`views<0`) không tính, không
-  reset streak. Không bao giờ tự xoá video đã đăng.
+- Giới hạn tần suất và Zero-Reup: Toàn bộ nội dung viral được sản xuất từ
+  tài sản gốc 100% (Gemini MediaGen + VieNeu TTS + Kworb VN music).
+  Không bao giờ tự xoá video đã đăng.
 
 ## 5b. Ticks automation (zero-touch, Ninh không chạm)
 
@@ -142,14 +141,11 @@ decision log (`engines/tier_failover`).
 | AutopilotTick | 1′ | master/dry-run/kill | — |
 | GrowthTick | 5′ | `growth.production_enabled` | `Growth == nil` → im lặng |
 | ATTick (hunter/order/campaign) | 5′ | `at.hunter_enabled` / `at.ordersync_enabled` / `at.campaigncheck_enabled` | thiếu key → log + im lặng |
-| ReupTick (discover+download) | 5′/đến hạn 6h | `reup.discover_enabled` | `Reup == nil` → im lặng |
-| ReupTransformTick | 5′/đến hạn 15′ | `reup.transform_enabled` | `Reup == nil` → im lặng |
-| ReupPostTick | 5′/đến hạn 2h | `reup.post_enabled` | `Reup == nil` → im lặng |
-| ReupKillTick | 5′/đến hạn 1h | `reup.killrule_enabled` | thiếu OAuth → "chờ số liệu" |
+| ViralAutoTick | 5′/đến hạn 24h | `viral.auto_produce_enabled` | `Studio == nil` → im lặng |
 | StoryTick | 5′/đến hạn 24h | `story.enabled` | `Story == nil` → im lặng |
 
 Mọi tick: kill switch + dry-run chặn đầu; watermark last-run trong settings;
-interval ≤ 0 → default. Trạng thái thật hiển thị ở `/settings/reup`,
+interval ≤ 0 → default. Trạng thái thật hiển thị ở `/viral`,
 `/settings/accesstrade`, `/stories` — chỗ nào "chờ số liệu"/"chờ key" phải
 nói rõ, không giả vờ đang chạy.
 
@@ -160,7 +156,6 @@ nói rõ, không giả vờ đang chạy.
 - `studio.db`: studio_jobs, studio_assets, capabilities.
 - `products.db`: products, shelf.
 - `accesstrade.db`: campaigns, links, orders (đợt B/C).
-- `reup.db`: reup_sources, reup_videos, reup_posts (đợt D/E).
 - Migration qua `PRAGMA user_version`, có test round-trip.
 
 ## 7. Strict operational rules (encoded, not suggested)
@@ -170,7 +165,7 @@ nói rõ, không giả vờ đang chạy.
 3. Kill switch thắng mọi tick.
 4. TikTok draft-only (chưa audit Direct Post); YouTube private-first/fail-closed.
 5. Mọi lượt đăng YouTube gắn cờ AI-generated (`containsSyntheticMedia`) — bắt buộc.
-6. Không hứa "đảm bảo 100%" điều không chắc (bản quyền reup…).
+6. Không hứa "đảm bảo 100%" điều không chắc (thuật toán phân phối viral...).
 
 ## 8. Language decision record (2026-10-01, executed as v0.5-go)
 
