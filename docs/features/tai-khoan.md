@@ -11,7 +11,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 ## 2. Kích hoạt
 - `GET /accounts` → `handleAccounts` (`internal/web/accounts.go:20`): danh sách.
 - `GET /accounts/new` → form tạo; `POST /accounts` → `handleAccountCreate`.
-- `GET /accounts/{id}?tab=tong-quan|autopilot|ket-noi` → `handleAccountDetail`
+- `GET /accounts/{id}?tab=tong-quan|autopilot|brand-dna|ket-noi` → `handleAccountDetail`
   (`internal/web/accounts.go:102`); tab mặc định/tên tab do `s.accountTab` đọc query.
 - Các nút POST trong từng tab (xem mục 3).
 
@@ -26,8 +26,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
   `network.TRANSITIONS[acct.Status]` → các nút chuyển trạng thái được phép
   (máy trạng thái, không cho nhảy trạng thái bừa),
   `network.PERSONAS[acct.Persona]` → persona + content pillars,
-  20 decision mới nhất có `target = username`,
-  `s.Ledger.AccountGiftUSD(id)` → tổng gift (USD, legacy từ thời live).
+  20 decision mới nhất có `target = username`.
 - `POST /accounts/{id}/transition` (`handleAccountTransition`): `s.Mgr.Transition(id, to, nil)`
   → 303 về tab `ket-noi`, lỗi thì `?err=` + toast (không redirect câm).
 
@@ -42,6 +41,13 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 - `POST /accounts/{id}/models/upload` (`handleAccountModelUpload`): upload ảnh mẫu
   người mẫu → `ModelStore` (identity lock cho video affiliate); xem được ở
   `GET /models/{account}/{file}`; xoá bằng `POST .../models/{photoID}/delete`.
+
+### Tab Bản sắc (Brand DNA)
+- Quản trị bản sắc và định vị thương hiệu cho kênh nhằm tăng trưởng organic lâu dài.
+- Form nhập: Niche, USP (lợi thế độc nhất), Tone giọng, Khán giả mục tiêu, Từ khóa đỏ (cấm kỵ), Cam kết an toàn.
+- Nút "Điền mẫu gợi ý": nạp nhanh 1 trong 5 bộ Brand DNA chuẩn hóa (`tech_gadgets`, `beauty_cosmetics`, `home_lifestyle`, `daily_story`, `fashion_lookbook`).
+- `POST /accounts/{id}/brand-dna`: lưu vào SQLite `growth.db` bảng `brand_dna`, xác thực từ khóa đỏ & chính sách.
+- `POST /accounts/{id}/brand-dna/reset`: đặt lại về bản sắc mặc định.
 
 ### Tab Kết nối
 - `POST /accounts/{id}/youtube` (`handleAccountYoutube`): lưu YouTube channel +

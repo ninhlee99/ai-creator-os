@@ -133,7 +133,7 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 
 | Ai đọc | File |
 |---|---|
-| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (20 file, mỗi tính năng một file) |
+| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (18 file chuyên sâu, mô tả chính xác logic code thật) |
 | Thiết kế pivot 3 trụ (đích đến các đợt B→G) | [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md) |
 | Nghiên cứu Accesstrade + Douyin | [`docs/REUP_AFFILIATE_RESEARCH.md`](docs/REUP_AFFILIATE_RESEARCH.md) |
 | Chuẩn tuân thủ nghiêm ngặt (kiến trúc, docs, UI, quy trình, zero-touch) | [`docs/STANDARDS.md`](docs/STANDARDS.md) |
@@ -142,7 +142,6 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 | Người dùng: cài đặt, chạy trên Mac, vận hành hằng ngày | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) |
 | Dev / AI code assistant | [`docs/DEVELOPER.md`](docs/DEVELOPER.md) |
 | Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
-| Lịch sử: nghiên cứu phim (đã park) | `docs/FILM_REALISM_UPGRADE.md`, `docs/STUDIO_FILM.md`, `docs/FILM_RULES.md` |
 
 ## ⚖️ Giấy phép
 

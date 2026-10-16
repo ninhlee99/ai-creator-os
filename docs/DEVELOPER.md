@@ -1,6 +1,3 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
->
-
 # Developer Guide
 
 Dành cho dev và AI code assistant (Claude, Agy, Codex) làm việc trên repo này. Người dùng đọc [`USER_GUIDE.md`](USER_GUIDE.md).
@@ -26,26 +23,23 @@ bash scripts/check-reachable.sh       # package mới không được "chết l�
 - Ngôn ngữ: **100% Go**, 1 binary `aicos`. SQLite (pure Go, modernc driver). Không Docker, không Python runtime.
 - Quy ước: `gofmt` trước khi commit. Binary release: `aicos-darwin-arm64` qua GitHub Release, đóng dấu version: `go build -ldflags "-X main.version=vX.Y.Z" ./cmd/aicos` (mặc định `dev`).
 - CI (`.github/workflows/ci.yml`): build + vet + test (2 chế độ tag) + reachability + cross-build 5 đích. Bật branch protection cho `main` trên GitHub (Require status checks → `ci`).
-- Test hiện tại: 298 hàm / 14 package (không tag), 20 package với `-tags parked` — cập nhật con số này mỗi khi thêm test mới (lệnh đếm: `go test -count=1 -v ./... | grep -c '^--- PASS'`).
+- Test hiện tại: 576+ hàm pass 100% — cập nhật con số này mỗi khi thêm test mới.
 
 ## Cấu trúc repo
 
 ```
 cmd/aicos/            điểm vào binary
-internal/web/         dashboard: handlers.go (routes), server.go, templates/*.html,
-                      static/style.css — template embed qua //go:embed
-internal/agents/      hunter, content, streamer, analyst...
-internal/studio/      Studio AI: jobs (SQLite), storyboard, render
-internal/orchestrator/daemon   vòng lặp agents
-internal/ledger/      sổ cái SQLite WAL per-account
-internal/governance/  luật cứng — code xác định, không LLM
-internal/mediagen/    Gemini image/video gen (xoay key)
-internal/trends/      trending sounds (Kworb, cache 6h)
-internal/tiktok/      Shop API signing, Posting API client
-docs/                 tài liệu (xem bảng ở README)
-docs/assets/agents/   avatar từng agent/persona (PNG 512px)
-vercel-preview/       bản preview tĩnh để test UI/UX trên Vercel
-scripts/postprod.sh   QC + đóng gói Drive (chạy trên Mac)
+internal/web/         dashboard: routes.go, server.go, templates/*.html, static/style.css
+internal/growth/      Brand DNA, Trend Intelligence, Kế hoạch 30 ngày, YouTube Analytics
+internal/accesstrade/ Hunter quét chiến dịch & datafeed, tạo link tracking, đối soát hoa hồng
+internal/reup/        Douyin downloader (yt-dlp), transform 2 mức, kill rule 0-view
+internal/studio/      Studio AI: jobs (SQLite), affiliate video, kinetic text, story video 16:9
+internal/automation/  Vòng lặp daemon: Autopilot, Growth, Reconcile, Sync, Story
+internal/ledger/      Sổ cái SQLite WAL per-account & cài đặt hệ thống
+internal/engines/     LLM chain (Gemini/llama), TTS chain (Gemini/VieNeu/Edge)
+internal/publishers/  TikTok Posting API, YouTube OAuth/upload, Facebook Page
+docs/                 Tài liệu hệ thống và 18 tài liệu tính năng chi tiết
+scripts/              Watchdog healthz, check-reachable, launchd service
 ```
 
 ## Thêm một trang dashboard mới

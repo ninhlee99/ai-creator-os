@@ -5,11 +5,6 @@ Xưởng sản xuất video bằng AI: **Video affiliate** (ảnh sản phẩm +
 chữ không voiceover — format Ninh chốt), Video chữ động, quản lý Jobs, bảng
 nhạc trending Việt Nam.
 
-> 🅿️ **Phim điện ảnh đã park** (Đợt A, commit `efa218b`): form tạo job phim,
-> `runFilm`, cinematic renderer, capability probe Veo — code còn trong
-> `internal/studio/film*.go`, `cinematic.go` và `internal/web/studio_film.go`
-> với `//go:build parked`; prompt phim ở `internal/studio/prompts/parked/`.
-
 ## 2. Kích hoạt
 - `GET /studio` → `handleStudio` (`internal/web/studio.go:73`): 2 tab —
   `ai` (Video affiliate, mặc định) và `?tab=chu` (Video chữ động).

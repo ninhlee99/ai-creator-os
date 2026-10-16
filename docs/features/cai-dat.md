@@ -3,11 +3,6 @@
 ## 1. Mục đích
 Mọi cấu hình vận hành của app, chia 6 trang — mỗi trang trả lời đúng một câu hỏi.
 `/settings` redirect 303 về `/settings/he-thong`.
-
-> Đợt A đã gỡ tab **Nhân vật AI** (park theo avatar live). Chuỗi provider Avatar
-> không còn trong `internal/engines/chains.go`.
-> Đợt B thêm tab **Accesstrade**; Đợt E thêm tab **Reup**.
-
 ## 2. Kích hoạt
 - `GET /settings/he-thong` → `handleSettingsHeThong`
 - `GET /settings/accesstrade` → Accesstrade key UI (nhập key 1 lần, nút test kết nối, badge trạng thái)
@@ -26,8 +21,7 @@ Mọi cấu hình vận hành của app, chia 6 trang — mỗi trang trả lờ
   theo engine/provider (bảng `api_usage`).
 - **Ngân sách API/ngày**: `POST /settings/api-budget` → `automation.SetAPIBudgetUSD`
   (key `ops.api_budget_usd`; validate 0–10000, sai → `?err=`); giá trị đã lưu thắng
-  env `DAILY_API_BUDGET_USD`. Hiện tại trần này chưa có consumer nào áp dụng
-  (đường Veo đã park) — knob giữ lại cho tương lai.
+  env `DAILY_API_BUDGET_USD` nhằm bảo vệ chi phí các API cloud có phí.
 - **Khóa & biến cấu hình**: `POST /settings/env` → `handleSettingsEnvSave` —
   chỉ cho sửa các tên trong `envNames` (tên lạ → 400); lưu 2 nơi: `os.Setenv`
   (hiệu lực ngay) + `ledger.settings` (key `env.<NAME>`, để khởi động sau nạp lại
@@ -68,7 +62,7 @@ Mọi cấu hình vận hành của app, chia 6 trang — mỗi trang trả lờ
 - **Khả năng AI** (`internal/studio/capabilities.go`, bảng `capabilities` trong
   studio.db): app tự biết mình vẽ ảnh được không trước khi hứa —
   `ProbeImageGen` vẽ thử 1 ảnh đơn giản lúc khởi động (goroutine, timeout 3 phút)
-  → badge ok/fail + thời điểm + chi tiết lỗi. Đường probe Veo/video đã park.
+  → badge ok/fail + thời điểm + chi tiết lỗi.
 - **Công cụ hệ thống** (`internal/web/runtime.go`): probe thật `exec.LookPath`
   FFmpeg, llama-server, uv, docker — badge "Đã tìm thấy + đường dẫn" hoặc
   "Chưa có + câu lệnh cài (≤1 dòng, vd `brew install ffmpeg`)". Không tuyên bố

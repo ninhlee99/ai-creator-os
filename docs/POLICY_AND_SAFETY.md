@@ -1,42 +1,34 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
->
+# Policy & Safety — Nguyên tắc An toàn & Tuân thủ
 
-# Policy & Safety
+Các quy tắc bất di bất dịch được lập trình trực tiếp vào hệ thống (code-level enforcement). Vi phạm bất kỳ điều nào dưới đây đều được xem là bug nghiêm trọng.
 
-Non-negotiable rules encoded in the system. Violating any of these is a bug.
+## 1. Bảo vệ tài khoản & uy tín kênh (Tài sản quý giá nhất)
 
-## 1. Account protection (the scarcest asset)
+- **Zero-Reup / Content Transformation**: Video reup Douyin bắt buộc qua bộ transform 2 mức (lật, zoom, speed curve, chỉnh màu, lọc audio) và gắn Brand DNA góc nhìn gốc; cấm reup thô nguyên bản.
+- **Giới hạn tần suất đăng (Rate limiting)**: Giới hạn tối đa số video đăng mỗi ngày trên từng kênh (tự động nghỉ và dãn cách thời gian), tránh kích hoạt spam filter của TikTok / YouTube / Facebook.
+- **Minh bạch AI (AI Disclosure)**: Tự động khai báo nội dung do AI tạo (Synthetic Media) khi đăng tải qua API chính thức.
+- **Từ khóa đỏ & Cấm kỵ (Red-lines)**: Brand DNA tự động kiểm duyệt kịch bản, chặn đứng các từ ngữ bị cấm (hứa hẹn sai sự thật, y tế chưa kiểm chứng, xúc phạm, từ khóa nhạy cảm).
 
-- Max 120 min per live session (tunable), mandatory breaks between sessions.
-- No duplicate/spam content: content agent deduplicates scripts per product.
-- AI disclosure overlay/text on every stream, per TikTok synthetic-media policy.
-- No unofficial scraping or bypass tools for chat/gifts — ever. If TikTok
-  offers no authorized event source, the show runs without live chat input
-  rather than risking the account.
-- One account. No multi-account schemes.
+## 2. Minh bạch tiền tệ & Hoa hồng
 
-## 2. Money integrity
+- **Dữ liệu thật 100%**: Doanh thu, đơn hàng, hoa hồng CHỈ được ghi nhận từ API nhà cung cấp chính thức (Accesstrade Order Sync). Tuyệt đối không giả lập hay bịa số liệu.
+- **Sổ cái bất biến (Append-only)**: Bảng đơn hàng và hoa hồng chỉ ghi thêm, không UPDATE/DELETE làm sai lệch lịch sử tài chính.
+- **Khóa trùng lặp (Idempotency)**: Mọi hành động gửi yêu cầu ra ngoài đều có khóa chống lặp; việc thử lại không bao giờ tạo tác vụ trùng.
+- **Ngân sách API**: Tuân thủ trần ngân sách hàng ngày (`DAILY_API_BUDGET_USD`).
 
-- Revenue/orders/commissions recorded ONLY from real provider APIs (Accesstrade order sync). TikTok Shop was removed entirely in Đợt H1.
-- Money tables append-only. No UPDATE/DELETE on orders/commissions.
-- Idempotency keys on every external action: retries never double-post.
-- Analyst proposes; governance disposes. No agent spends beyond caps.
+## 3. An toàn nội dung & Sản phẩm
 
-## 3. Content integrity
+- **Lọc danh mục cấm**: Các ngành hàng rủi ro cao (thuốc, thực phẩm chức năng chưa kiểm duyệt, cờ bạc...) bị chặn ngay tại khâu nạp sản phẩm (`product_eligible`).
+- **Gắn nhãn tiếp thị liên kết**: Đảm bảo tuân thủ chính sách affiliate của nền tảng phát hành.
 
-- Blocked categories (drugs, unverified supplements, etc.) can never enter
-  the shelf — enforced in `product_eligible`, not in prompts.
-- Affiliate disclosure on content per platform rules.
+## 4. Cơ chế an toàn (Fail-safes)
 
-## 4. Failsafes
+- **Công tắc khẩn cấp (Kill Switch)**: Dừng ngay lập tức mọi hoạt động daemon, pipeline render và autopilot chỉ sau một thao tác.
+- **Chế độ diễn tập (Dry-run)**: Mặc định bật khi chưa cấp quyền; cho phép kiểm tra toàn bộ luồng mà không gửi tác vụ thật ra bên ngoài.
+- **Công tắc chính (MASTER_SWITCH)**: Phải được người quản trị bật chủ động thì hệ thống mới xuất bản nội dung tự động.
+- **Nhật ký quyết định (Decision Log)**: Mọi quyết định của AI và daemon đều được lưu vết trong SQLite để kiểm toán minh bạch.
 
-- Global kill switch: stops agents + stream in seconds.
-- Free-tier API caps are hard stops, not warnings.
-- Dry-run is the default; live requires explicit checklist sign-off.
-- Every governance decision logged with inputs (audit trail in `decisions`).
+## 5. Quyền riêng tư & Bảo mật
 
-## 5. Privacy
-
-- Secrets in env/Keychain only. Never in repo, logs, or chat transcripts.
-- No viewer personal data stored beyond what TikTok's API returns for
-  reconciliation; nothing is resold or shared.
+- **Không rò rỉ khóa**: API key, client secret, OAuth token chỉ lưu trong env, SQLite được phân quyền bảo mật, không bao giờ in ra log hay lộ trên UI.
+- **Xác thực bảo vệ**: Bật mật khẩu bảo vệ dashboard khi chạy trên mạng LAN / môi trường ngoài.

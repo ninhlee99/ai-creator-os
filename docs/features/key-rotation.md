@@ -21,16 +21,12 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
 | Media (ảnh) | `internal/studio/mediagen.go` (`GeminiMediaGen`) | round-robin; bỏ key invalid; cooldown khi 429/quota theo thang **60s → 5m → 15m** (`keyBackoffs`); key khoẻ lại → reset thang |
 | TTS (giọng Gemini) | `internal/engines/tts/keyring.go` (`KeyRing`) | round-robin; `ReportRateLimit` → cooldown thang 60s→5m→15m; `ReportSuccess` → reset; `AllCoolingDown()` true → **failover sang tier tiếp theo**, không retry cào thêm |
 | LLM | `internal/engines/llm` (qua `LLMChain`) | cùng chính sách keyring như TTS |
-
-> 🅿️ Đường Veo trong media keyring đã park theo pipeline phim.
-
 ### Chuỗi provider (failover theo tier)
 `internal/engines/chains.go`:
 - **LLM**: Gemini (free API) → llama-server local (`127.0.0.1:8081`, model
   `qwen2.5-7b-instruct-q4_k_m.gguf`, `-ngl 99`) → paid (placeholder, tắt).
 - **TTS**: Gemini → VieNeu-TTS v3 local (sidecar `127.0.0.1:8000`, Go quản lý
   tiến trình) → Edge (phương án cuối).
-- ~~Avatar~~: chuỗi Avatar đã park theo live (Đợt A).
 - Thứ tự chuỗi chỉnh được ở Cài đặt · Nhà cung cấp (`ChainConfig`).
 
 ### Ràng buộc free tier
