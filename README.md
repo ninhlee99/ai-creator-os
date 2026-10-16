@@ -105,6 +105,9 @@ vào app.
 | TikTok đăng trực tiếp | ❌ Cần app audit (Ninh từ chối) — chỉ chế độ nháp |
 | Model Gemini tự dò (viết chữ / tạo ảnh / giọng đọc) | ✅ 2026-10-12 — Google tắt model cũ (2.0-flash, 2.0-flash-preview-image-generation) thì app tự dò model còn sống qua ListModels; ghi đè bằng `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` / `GEMINI_TTS_MODEL` ở Cài đặt · Hệ thống. **Chưa thử bằng key thật** |
 | Video không cần key — nhiều ảnh | ✅ 2026-10-12 — tải tối đa 7 ảnh (Studio) / 6 ảnh listing (săn Accesstrade); ≥3 ảnh thì mỗi ảnh 2 khung, video không lặp 1 ảnh |
+| AI Mission Control — Giao mục tiêu chiến lược 1-chạm & tự động thực thi | ✅ 2026-10-16 — Phân tích mục tiêu, tự động phối hợp các khối, theo dõi tiến độ thời gian thực |
+| Brand DNA & Original TikTok Engine — Bản sắc thương hiệu & nội dung nguyên bản | ✅ 2026-10-16 — Hồ sơ Brand DNA từng kênh (Định vị, Chân dung, 4 Hook 3s, Ranh giới đỏ, QC 10 tiêu chí) |
+| Trend Intelligence — Bóc tách xu hướng & tính điểm cơ hội (Zero-Reup) | ✅ 2026-10-16 — Phân tích tín hiệu Kworb VN & radar Douyin, chấm điểm tương thích Brand DNA |
 | Bảng “Tự động hóa” trên Trang chủ | ✅ 2026-10-12 — 6 công tắc tự động gom 1 chỗ (vẫn ghi đúng khóa của trang gốc) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
@@ -130,7 +133,7 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 
 | Ai đọc | File |
 |---|---|
-| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (16 file, mỗi tính năng một file) |
+| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (20 file, mỗi tính năng một file) |
 | Thiết kế pivot 3 trụ (đích đến các đợt B→G) | [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md) |
 | Nghiên cứu Accesstrade + Douyin | [`docs/REUP_AFFILIATE_RESEARCH.md`](docs/REUP_AFFILIATE_RESEARCH.md) |
 | Chuẩn tuân thủ nghiêm ngặt (kiến trúc, docs, UI, quy trình, zero-touch) | [`docs/STANDARDS.md`](docs/STANDARDS.md) |

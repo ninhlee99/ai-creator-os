@@ -60,6 +60,7 @@
 <!-- Omni-Goal 1-Click Executive Command Bar (Chỉ Huy Chiến Lược 1-Chạm) -->
 <div class="card exec-command-bar" style="background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent);border-radius:14px;padding:18px 20px;margin-bottom:24px">
   <form method="post" action="/team/dispatch" style="margin:0">
+    <input type="hidden" name="back" value="/">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:24px">🎯</span>
@@ -83,6 +84,52 @@
     </div>
   </form>
 </div>
+
+{{if .Missions}}
+<div class="card" style="border-radius:14px;padding:16px 20px;margin-bottom:24px;border:1px solid var(--border)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:18px">🚀</span>
+      <h2 style="margin:0;font-size:15px;font-weight:700">Chiến Dịch AI Vận Hành Tự Động (AI Mission Control)</h2>
+    </div>
+    <span class="badge badge-info" style="font-size:10px">{{len .Missions}} Nhiệm Vụ Gần Nhất</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    {{range .Missions}}
+    <div style="padding:12px 14px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge {{if eq .Status "completed"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}" style="font-size:9.5px;font-weight:700">{{if eq .Status "completed"}}✓ HOÀN TẤT{{else if eq .Status "failed"}}✕ THẤT BẠI{{else}}⚡ ĐANG CHẠY{{end}}</span>
+            <strong style="font-size:13.5px;color:var(--text)">{{.Goal}}</strong>
+            {{if .TargetAccount}}<span class="badge badge-dim" style="font-size:9.5px">@{{.TargetAccount}}</span>{{end}}
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">{{.ResultSummary}}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          {{if .ArtifactURL}}<a href="{{.ArtifactURL}}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">Xem Thành Phẩm ↗</a>{{end}}
+          <span style="font-family:monospace;font-size:11px;color:var(--muted)">{{.CreatedAt}}</span>
+        </div>
+      </div>
+      {{if eq .Status "running"}}
+      <div class="progress" style="height:6px;margin-top:8px;background:var(--border)">
+        <div class="progress-bar" style="width:{{.Progress}}%;background:var(--accent)"></div>
+      </div>
+      {{end}}
+      {{if .Steps}}
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        {{range .Steps}}
+        <span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-dim{{end}}" style="font-size:9.5px" title="{{.Detail}}">
+          {{if eq .Status "done"}}✓{{else}}●{{end}} {{.Title}}
+        </span>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
 
 <script>
 function setDashboardGoal(txt) {

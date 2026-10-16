@@ -198,7 +198,7 @@ func defaultEliteAgents() []AIAgent {
 			VideosProduced: 68,
 			TotalViews:     2450000,
 			Status:         "working",
-			CurrentTask:    "Thẩm định deal Serum và Nồi chiên không dầu hoa hồng 22% sàn TikTok Shop",
+			CurrentTask:    "Thẩm định deal Serum và Nồi chiên không dầu hoa hồng 22% sàn Accesstrade",
 			BestPractices: []string{
 				"Sản phẩm có rating 4.8★ và trên 1.000 lượt bán tạo tỷ lệ chuyển đổi affiliate cao nhất.",
 				"Video review có demo thử nghiệm tính năng thực tế giúp tỷ lệ bấm giỏ hàng tăng 2.3 lần.",
@@ -323,9 +323,9 @@ func defaultEliteAgents() []AIAgent {
 			VideosProduced: 79,
 			TotalViews:     3420000,
 			Status:         "working",
-			CurrentTask:    "Lên lịch phát sóng 19:30 trên TikTok Shop & Shorts, tự động ghim giỏ hàng và bio",
+			CurrentTask:    "Lên lịch phát sóng 19:30 trên TikTok & Shorts, gắn link bio và tracking link Accesstrade",
 			BestPractices: []string{
-				"Gắn thẻ sản phẩm TikTok Shop ngay trong 30 phút đầu đăng bài giúp đẩy tỷ lệ phân phối lên 180%.",
+				"Gắn link bio và tracking link Accesstrade ngay khi đăng bài giúp tối ưu tỷ lệ chuyển đổi đơn hàng.",
 				"Chống trùng bản quyền chéo bằng cách thay đổi mã băm video (hash MD5) và vi chỉnh tốc độ 1.02x.",
 				"Mổ xẻ đồ thị rớt người xem: nếu tụt mạnh ở giây 3, chuyển phản hồi ngay cho biên kịch đổi verbal hook.",
 			},
@@ -400,17 +400,21 @@ func (s *Server) ensureAgentTable() error {
 	_, _ = s.db.Exec(`ALTER TABLE ai_agents ADD COLUMN sla TEXT NOT NULL DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE ai_agents ADD COLUMN kpi TEXT NOT NULL DEFAULT ''`)
 
-	// Seed or update enterprise default agents
-	for _, ag := range defaultEliteAgents() {
-		bpBytes, _ := json.Marshal(ag.BestPractices)
-		apVal := 0
-		if ag.Autopilot {
-			apVal = 1
+	// Seed enterprise default agents only if table is empty (preserving runtime state)
+	var count int
+	_ = s.db.QueryRow(`SELECT COUNT(*) FROM ai_agents`).Scan(&count)
+	if count == 0 {
+		for _, ag := range defaultEliteAgents() {
+			bpBytes, _ := json.Marshal(ag.BestPractices)
+			apVal := 0
+			if ag.Autopilot {
+				apVal = 1
+			}
+			_, _ = s.db.Exec(`
+				INSERT INTO ai_agents (id, name, avatar, role, niche, tone, voice, level, videos_produced, total_views, status, current_task, best_practices_json, autopilot, is_custom, created_at, code, sla, kpi)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
+			`, ag.ID, ag.Name, ag.Avatar, ag.Role, ag.Niche, ag.Tone, ag.Voice, ag.Level, ag.VideosProduced, ag.TotalViews, ag.Status, ag.CurrentTask, string(bpBytes), apVal, ag.CreatedAt, ag.Code, ag.SLA, ag.KPI)
 		}
-		_, _ = s.db.Exec(`
-			INSERT OR REPLACE INTO ai_agents (id, name, avatar, role, niche, tone, voice, level, videos_produced, total_views, status, current_task, best_practices_json, autopilot, is_custom, created_at, code, sla, kpi)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
-		`, ag.ID, ag.Name, ag.Avatar, ag.Role, ag.Niche, ag.Tone, ag.Voice, ag.Level, ag.VideosProduced, ag.TotalViews, ag.Status, ag.CurrentTask, string(bpBytes), apVal, ag.CreatedAt, ag.Code, ag.SLA, ag.KPI)
 	}
 	return nil
 }
@@ -578,7 +582,7 @@ func (s *Server) handleAgentDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleTeamDispatchGoal takes an Omni-Goal from Dashboard or Team page,
-// selects the best agent, and forwards to Studio.
+// dispatches an autonomous mission via Mission Engine, and forwards to Studio/Dashboard.
 func (s *Server) handleTeamDispatchGoal(w http.ResponseWriter, r *http.Request) {
 	goal := strings.TrimSpace(r.FormValue("goal"))
 	if goal == "" {
@@ -586,47 +590,36 @@ func (s *Server) handleTeamDispatchGoal(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	agents := s.listAgents()
-	goalLower := strings.ToLower(goal)
+	mission, err := s.dispatchAIMission(r.Context(), goal)
+	if err != nil {
+		seeOther(w, r, "/?err="+url.QueryEscape("Không thể thực thi mục tiêu: "+err.Error()))
+		return
+	}
 
-	// Pick matching agent
-	selectedAgent := agents[0]
+	goalLower := strings.ToLower(goal)
 	matchedNiche := "mỹ phẩm"
 	productSample := "Serum Trắng Da Mờ Thâm Nám"
 
 	if strings.Contains(goalLower, "công nghệ") || strings.Contains(goalLower, "tai nghe") || strings.Contains(goalLower, "điện tử") || strings.Contains(goalLower, "sạc") {
-		for _, ag := range agents {
-			if strings.Contains(strings.ToLower(ag.Niche), "công nghệ") {
-				selectedAgent = ag
-				matchedNiche = "công nghệ"
-				productSample = "Tai Nghe Chống Ồn Sony WH-1000XM5"
-				break
-			}
-		}
+		matchedNiche = "công nghệ"
+		productSample = "Tai Nghe Chống Ồn Sony WH-1000XM5"
 	} else if strings.Contains(goalLower, "gia dụng") || strings.Contains(goalLower, "nồi") || strings.Contains(goalLower, "bếp") || strings.Contains(goalLower, "nhà") {
-		for _, ag := range agents {
-			if strings.Contains(strings.ToLower(ag.Niche), "gia dụng") {
-				selectedAgent = ag
-				matchedNiche = "gia dụng"
-				productSample = "Nồi Chiên Không Dầu Điện Tử 8L"
-				break
-			}
-		}
+		matchedNiche = "gia dụng"
+		productSample = "Nồi Chiên Không Dầu Điện Tử 8L"
 	} else if strings.Contains(goalLower, "kể chuyện") || strings.Contains(goalLower, "lịch sử") || strings.Contains(goalLower, "truyện") {
-		seeOther(w, r, "/stories")
+		seeOther(w, r, "/stories?ok="+url.QueryEscape("Đã khởi tạo kịch bản kể chuyện: "+mission.ResultSummary))
 		return
 	}
 
-	// Update agent task
-	if s.db != nil {
-		_, _ = s.db.Exec(`UPDATE ai_agents SET status = 'working', current_task = ? WHERE id = ?`, "Đang thực thi mục tiêu: "+goal, selectedAgent.ID)
+	if r.FormValue("back") == "/" {
+		seeOther(w, r, "/?ok="+url.QueryEscape("Đã kích hoạt chiến dịch AI: "+mission.ResultSummary))
+		return
 	}
 
-	// Forward to studio with goal and agent context
 	targetURL := fmt.Sprintf("/studio?product_name=%s&niche=%s&msg=%s",
 		url.QueryEscape(productSample),
 		url.QueryEscape(matchedNiche),
-		url.QueryEscape("Đã giao mục tiêu cho "+selectedAgent.Name+". Hãy bấm 'Sinh Kịch Bản & QC' để hoàn tất!"),
+		url.QueryEscape("Đã kích hoạt chiến dịch AI thành công: "+mission.ResultSummary),
 	)
 	seeOther(w, r, targetURL)
 }
@@ -700,7 +693,7 @@ func defaultDeptTasks() []AgentDeptTask {
 			RoleInDept:   "Trưởng Khối Thẩm Định Ý Tưởng & Săn Deal Sàn",
 			Rank:         "lead",
 			StepOrder:    1,
-			ReceivesFrom: "Sàn thương mại điện tử TikTok Shop, Shopee & Accesstrade",
+			ReceivesFrom: "Sàn thương mại điện tử qua đối tác Accesstrade (Shopee, Lazada, Tiki)",
 			HandsOffTo:   "Chuyên Viên Kỹ Thuật Đức Huy (Khâu 2)",
 			CurrentTask:  "Quét top 10 sản phẩm đồ gia dụng thông minh có hoa hồng trên 15% và đánh giá 4.8★",
 			TaskStatus:   "working",
@@ -922,7 +915,7 @@ func defaultDeptTasks() []AgentDeptTask {
 			StepOrder:    1,
 			ReceivesFrom: "Video hoàn chỉnh và chứng nhận QC từ Hội Đồng Thẩm Định",
 			HandsOffTo:   "Chuyên Viên Quét Bản Quyền ContentID Đức Huy (Khâu 2)",
-			CurrentTask:  "Lên lịch phát hành đa nền tảng TikTok Shop, Reels & Shorts giờ vàng",
+			CurrentTask:  "Lên lịch phát hành đa nền tảng TikTok, Reels & Shorts giờ vàng",
 			TaskStatus:   "working",
 			Progress:     90,
 			Deliverable:  "Lịch đăng tải đồng bộ đa nền tảng vào khung giờ vàng",
@@ -1064,8 +1057,140 @@ func (s *Server) listDeptTasks() []AgentDeptTask {
 	return fallbackDeptTasks
 }
 
-// listLiveOperations returns real-time activities across the 8 corporate departments.
+// listLiveOperations returns real-time activities across corporate departments,
+// prioritizing real operations from AI Missions, Studio video jobs, and Ledger decisions.
 func (s *Server) listLiveOperations() []LiveOperationEvent {
+	var events []LiveOperationEvent
+
+	// 1. Collect real operations from AI Missions
+	missions := s.listAIMissions(4)
+	for _, m := range missions {
+		deptCode := "DEP-01"
+		deptName := "Ban Điều Hành"
+		agentName := "Alex Vũ"
+		avatar := "🎯"
+		tag := "CHIẾN DỊCH AI"
+		badge := "badge-ok"
+		if m.Status == "running" {
+			badge = "badge-info"
+		} else if m.Status == "failed" {
+			badge = "badge-err"
+		}
+
+		switch m.Intent {
+		case "affiliate_campaign":
+			deptCode = "DEP-03"
+			deptName = "Thẩm Định Deal"
+			agentName = "Elena Bùi"
+			avatar = "⚖️"
+			tag = "AFFILIATE DEAL"
+		case "story_campaign":
+			deptCode = "DEP-04"
+			deptName = "Kể Chuyện"
+			agentName = "Lâm Phong"
+			avatar = "📖"
+			tag = "KHO TRUYỆN"
+		case "trend_campaign":
+			deptCode = "DEP-02"
+			deptName = "Săn Xu Hướng"
+			agentName = "Radar Kai"
+			avatar = "📡"
+			tag = "XU HƯỚNG NÓNG"
+		case "growth_campaign":
+			deptCode = "DEP-09"
+			deptName = "Phân Tích & Tăng Trưởng"
+			agentName = "Dr. Hoàng Nam"
+			avatar = "📊"
+			tag = "MA TRẬN 30 NGÀY"
+		}
+
+		tStr := m.CreatedAt
+		if len(tStr) >= 16 {
+			tStr = tStr[11:16]
+		}
+		events = append(events, LiveOperationEvent{
+			Time:        tStr,
+			DeptCode:    deptCode,
+			DeptName:    deptName,
+			AgentName:   agentName,
+			AgentAvatar: avatar,
+			Action:      "Thực Thi: " + m.Goal,
+			Detail:      m.ResultSummary,
+			Tag:         tag,
+			BadgeClass:  badge,
+		})
+	}
+
+	// 2. Collect real operations from Studio Jobs
+	if s.Studio != nil {
+		jobs := s.Studio.ListJobs(4)
+		for _, j := range jobs {
+			tStr := j.CreatedAt
+			if len(tStr) >= 16 {
+				tStr = tStr[11:16]
+			}
+			badge := "badge-info"
+			actionText := "Đang Render Video"
+			if j.Status == "done" {
+				badge = "badge-ok"
+				actionText = "Hoàn Tất Video"
+			} else if j.Status == "failed" {
+				badge = "badge-err"
+				actionText = "Render Thất Bại"
+			}
+			captionPreview := j.Caption
+			if len(captionPreview) > 80 {
+				captionPreview = captionPreview[:80] + "..."
+			}
+			events = append(events, LiveOperationEvent{
+				Time:        tStr,
+				DeptCode:    "DEP-06",
+				DeptName:    "Studio Sản Xuất Video",
+				AgentName:   "Đức Huy",
+				AgentAvatar: "🎬",
+				Action:      fmt.Sprintf("%s: %s", actionText, j.Title),
+				Detail:      fmt.Sprintf("Tiến độ: %d%% · %s", j.Progress, captionPreview),
+				Tag:         strings.ToUpper(j.Status),
+				BadgeClass:  badge,
+			})
+		}
+	}
+
+	// 3. Collect real operations from Decisions
+	if s.Ledger != nil {
+		decs, err := s.queryDecisions("SELECT id, agent, action, target, reason, created_at FROM decisions WHERE action != 'onboard' ORDER BY id DESC LIMIT 3")
+		if err == nil {
+			for _, d := range decs {
+				tStr := d.CreatedAt
+				if len(tStr) >= 16 {
+					tStr = tStr[11:16]
+				}
+				events = append(events, LiveOperationEvent{
+					Time:        tStr,
+					DeptCode:    "DEP-01",
+					DeptName:    "Ban Điều Hành & Tuân Thủ",
+					AgentName:   d.Agent,
+					AgentAvatar: "🛡️",
+					Action:      "Quyết Định: " + d.Action + " ➔ " + d.Target,
+					Detail:      d.Reason,
+					Tag:         "QUYẾT ĐỊNH",
+					BadgeClass:  "badge-draft",
+				})
+			}
+		}
+	}
+
+	if len(events) > 0 {
+		if len(events) > 8 {
+			events = events[:8]
+		}
+		return events
+	}
+
+	return baselineOperationEvents()
+}
+
+func baselineOperationEvents() []LiveOperationEvent {
 	return []LiveOperationEvent{
 		{
 			Time:        "16:28",
@@ -1073,9 +1198,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Phân Tích & Đổi Mới",
 			AgentName:   "Dr. Hoàng Nam",
 			AgentAvatar: "📊",
-			Action:      "Phát Hiện Mẫu Video Đột Phá (+35% View)",
-			Detail:      "Đồ thị giữ chân tăng vọt ở cấu trúc Hook câu hỏi · Đã khuyến nghị DEP-05 nhân bản 3 biến thể",
-			Tag:         "TỐI ƯU Ý TƯỞNG",
+			Action:      "Sẵn Sàng Phân Tích Mẫu Video Đột Phá",
+			Detail:      "Hệ thống đo lường đồ thị giữ chân và cấu trúc Hook 3s · Tự động nhân bản biến thể hiệu quả",
+			Tag:         "SẴN SÀNG",
 			BadgeClass:  "badge-ok",
 		},
 		{
@@ -1084,9 +1209,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Săn Ý Tưởng Viral",
 			AgentName:   "Radar Kai",
 			AgentAvatar: "📡",
-			Action:      "Bắt Âm Thanh Xu Hướng Douyin",
-			Detail:      "Âm thanh thịnh hành tăng 420% view trong 2h · Đã bóc tách cấu trúc 15s",
-			Tag:         "XU HƯỚNG NÓNG",
+			Action:      "Bắt Tín Hiệu Âm Thanh Xu Hướng TikTok VN",
+			Detail:      "Quét bảng xếp hạng Kworb TikTok VN định kỳ 6h · Phân tích tốc độ tăng trưởng và bóc tách cấu trúc 15s",
+			Tag:         "RADAR XU HƯỚNG",
 			BadgeClass:  "badge-ok",
 		},
 		{
@@ -1095,9 +1220,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Thẩm Định Deal",
 			AgentName:   "Elena Bùi",
 			AgentAvatar: "⚖️",
-			Action:      "Thẩm Định Đạt 94/100 Điểm",
-			Detail:      "Deal 'Serum phục hồi mờ nám' hoa hồng 22% · Tỷ lệ chuyển đổi ước tính 4.8%",
-			Tag:         "ĐÃ DUYỆT DEAL",
+			Action:      "Thẩm Định Deal Hoa Hồng Cao Sàn Accesstrade",
+			Detail:      "Lọc chiến dịch Shopee/Lazada/Tiki hoa hồng >15% · Tỷ lệ duyệt >= 85đ · Tự động gắn tracking link",
+			Tag:         "ACCESSTRADE",
 			BadgeClass:  "badge-ok",
 		},
 		{
@@ -1106,9 +1231,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Nội Dung & Kịch Bản",
 			AgentName:   "Minh Thư",
 			AgentAvatar: "✍️",
-			Action:      "Hoàn Tất Kịch Bản #KB-204",
-			Detail:      "Soạn 4 Hook 3s giữ chân 86% và phân cảnh kịch tính 5 hồi theo cấu trúc tâm lý",
-			Tag:         "ĐẠT CHUẨN 3S",
+			Action:      "Quy Trình Soạn Kịch Bản 4 Hook 3s Nguyên Bản",
+			Detail:      "Áp dụng nguyên tắc Brand DNA của kênh · Cấu trúc tâm lý 3 hồi · Tuyệt đối không reup vi phạm",
+			Tag:         "CHUẨN NGUYÊN BẢN",
 			BadgeClass:  "badge-info",
 		},
 		{
@@ -1117,9 +1242,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Studio Sản Xuất Video",
 			AgentName:   "Đức Huy",
 			AgentAvatar: "🎬",
-			Action:      "Dựng Video 4K Hoàn Tất",
-			Detail:      "Xuất bản video 9:16 Imagen 3, hòa âm chuẩn -14 LUFS & phụ đề động bắt mắt (SLA: 38s)",
-			Tag:         "ĐÃ DỰNG 4K",
+			Action:      "Dây Chuyền Render Video 9:16 & 16:9 Tự Động",
+			Detail:      "Ken Burns chuyển động mượt mà · Chuẩn âm thanh -14 LUFS · Xuất gói CapCut 1-click",
+			Tag:         "STUDIO AI",
 			BadgeClass:  "badge-draft",
 		},
 		{
@@ -1128,9 +1253,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Kiểm Soát Chất Lượng (QC)",
 			AgentName:   "Sơn Bách",
 			AgentAvatar: "🛡️",
-			Action:      "Cấp Chứng Nhận QC 96/100",
-			Detail:      "Vùng an toàn chuẩn 100% · Không lỗi phát âm · 0 từ cấm chính sách · Sẵn sàng đăng",
-			Tag:         "ĐẠT KIỂM DUYỆT",
+			Action:      "Gác Cổng 10 Tiêu Chí Chất Lượng Video",
+			Detail:      "Kiểm tra vùng an toàn 9:16 · Không lỗi âm thanh · 0 từ cấm chính sách nền tảng",
+			Tag:         "QC 10 TIÊU CHÍ",
 			BadgeClass:  "badge-ok",
 		},
 		{
@@ -1139,8 +1264,8 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Quản Trị Kênh Social",
 			AgentName:   "Marcus Lê",
 			AgentAvatar: "📱",
-			Action:      "Lên Lịch Xuất Bản Khung Giờ Vàng",
-			Detail:      "Khóa slot phát hành 19:30 trên TikTok Shop & YouTube Shorts · Ghim giỏ hàng tự động",
+			Action:      "Lên Lịch Xuất Bản Khung Giờ Vàng Đa Nền Tảng",
+			Detail:      "Hẹn giờ đăng 11:30 & 19:30 trên TikTok, YouTube Shorts & Facebook Reels",
 			Tag:         "KHUNG GIỜ VÀNG",
 			BadgeClass:  "badge-info",
 		},
@@ -1150,9 +1275,9 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 			DeptName:    "Ban Điều Hành",
 			AgentName:   "Alex Vũ",
 			AgentAvatar: "🏛️",
-			Action:      "Kiểm Soát An Toàn 24/7",
-			Detail:      "Quét bảo vệ tài khoản định kỳ · Hạn ngạch API ở mức tối ưu 18% · 0 cảnh báo rủi ro",
-			Tag:         "AN TOÀN 100%",
+			Action:      "Kiểm Soát An Toàn & Quota API 24/7",
+			Detail:      "Xoay key Gemini tự động · Tự ngắt mạch khi quá tải · Master Switch bảo vệ hệ thống",
+			Tag:         "AN TOÀN HỆ THỐNG",
 			BadgeClass:  "badge-ok",
 		},
 	}
@@ -1303,7 +1428,7 @@ func (s *Server) listDepartments(agents []AIAgent) []AIDepartment {
 			LeaderName:  "Marcus Lê (Trưởng Khối Tăng Trưởng & Phân Phối Đa Kênh)",
 			Icon:        "📱",
 			Workflow:    "Tiếp Nhận Video Đạt QC ➔ Tối Ưu Phễu Chuyển Đổi & Ghim Giỏ Hàng ➔ Phân Phối Đa Kênh Giờ Vàng ➔ Quản Trị Tương Tác & Tăng Trưởng Kênh",
-			Description: "Khối tiếp thị và tăng trưởng đa nền tảng (TikTok Shop, Facebook Reels, YouTube Shorts). Tự động điều phối lịch đăng, tối ưu hóa tỷ lệ chuyển đổi giỏ hàng, và mở rộng quy mô mạng lưới kênh 24/7.",
+			Description: "Khối tiếp thị và tăng trưởng đa nền tảng (TikTok, Facebook Reels, YouTube Shorts). Tự động điều phối lịch đăng, tối ưu hóa tỷ lệ chuyển đổi link bio/affiliate, và mở rộng quy mô mạng lưới kênh 24/7.",
 			ActionLink:  "/growth",
 			ActionLabel: "Quản Trị Kênh & Tăng Trưởng 📱",
 			SLA:         "Khớp 100% slot giờ vàng",

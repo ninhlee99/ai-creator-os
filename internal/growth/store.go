@@ -96,6 +96,20 @@ var schemaDDL = []string{
 		action_taken TEXT,
 		created_at TEXT NOT NULL DEFAULT (datetime('now'))
 	)`,
+	`CREATE TABLE IF NOT EXISTS brand_dna (
+		account_id INTEGER PRIMARY KEY,
+		positioning TEXT NOT NULL DEFAULT '',
+		audience_persona TEXT NOT NULL DEFAULT '',
+		value_promise TEXT NOT NULL DEFAULT '',
+		tone_of_voice TEXT NOT NULL DEFAULT '',
+		hook_rules_json TEXT NOT NULL DEFAULT '[]',
+		content_pillars_json TEXT NOT NULL DEFAULT '[]',
+		visual_style TEXT NOT NULL DEFAULT '',
+		audio_style TEXT NOT NULL DEFAULT '',
+		red_lines_json TEXT NOT NULL DEFAULT '[]',
+		qc_checklist_json TEXT NOT NULL DEFAULT '[]',
+		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+	)`,
 }
 
 // Phase-2 columns on content_plan_items (additive migration, duplicate

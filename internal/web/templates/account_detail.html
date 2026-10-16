@@ -8,6 +8,7 @@
 
 <nav class="tabs">
   <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
+  <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
   <a href="/accounts/{{$id}}?tab=ket-noi"{{if eq .Tab "ket-noi"}} class="active"{{end}}>Kết nối</a>
 </nav>
@@ -75,6 +76,111 @@
 {{else}}
 <p class="empty">Chưa có quyết định nào cho kênh này.</p>
 {{end}}
+
+{{else if eq .Tab "brand-dna"}}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+  <div>
+    <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu &amp; Nội Dung Nguyên Bản (Brand DNA)</h2>
+    <p class="subtitle" style="margin:0;font-size:13px">Hồ sơ bản sắc độc quyền của kênh <strong>{{.Acct.Username}}</strong>. Hệ thống AI dùng hồ sơ này để tạo kịch bản nguyên bản, tự động gác cổng từ cấm và đảm bảo video không dính thuật toán unoriginal content.</p>
+  </div>
+  <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Khôi phục Brand DNA chuẩn AI theo ngành hàng? Mọi tùy chỉnh hiện tại sẽ được thay bằng mẫu tối ưu.">
+    <button type="submit" class="btn btn-secondary btn-sm">🔄 Khôi phục mẫu AI chuẩn</button>
+  </form>
+</div>
+
+<form method="post" action="/accounts/{{$id}}/brand-dna">
+  <div class="grid2" style="margin-bottom:20px">
+    
+    <!-- Cột Trái: Định vị & Khán giả -->
+    <div class="form-card">
+      <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🎯</span> 1. Định Vị &amp; Khán Giả Mục Tiêu</h3>
+      
+      <div class="field">
+        <label>Định vị cốt lõi của kênh (Positioning)</label>
+        <textarea name="positioning" rows="2" placeholder="Ví dụ: Chuyên gia phân tích thành phần mỹ phẩm & hướng dẫn skincare khoa học" required style="font-size:13px">{{if .BrandDNA}}{{.BrandDNA.Positioning}}{{end}}</textarea>
+        <div class="hint">Kênh đại diện cho điều gì? Tại sao người xem nên theo dõi bạn thay vì hàng trăm kênh khác?</div>
+      </div>
+
+      <div class="field">
+        <label>Chân dung khán giả mục tiêu (Audience Persona)</label>
+        <textarea name="audience_persona" rows="2" placeholder="Ví dụ: Nữ 18-35 tuổi, dân văn phòng, lo lắng về mụn/thâm, sợ mua nhầm hàng giả" required style="font-size:13px">{{if .BrandDNA}}{{.BrandDNA.AudiencePersona}}{{end}}</textarea>
+        <div class="hint">Độ tuổi, giới tính, nỗi đau thầm kín và khao khát lớn nhất của người xem.</div>
+      </div>
+
+      <div class="field">
+        <label>Lời hứa giá trị (Value Promise)</label>
+        <input type="text" name="value_promise" value="{{if .BrandDNA}}{{.BrandDNA.ValuePromise}}{{end}}" placeholder="Ví dụ: Giúp bạn chọn đúng sản phẩm hiệu quả trong 60 giây, tiết kiệm tiền triệu" required style="font-size:13px">
+        <div class="hint">Khán giả nhận được gì cụ thể sau mỗi video?</div>
+      </div>
+
+      <div class="field">
+        <label>Tông giọng đặc trưng (Tone of Voice)</label>
+        <input type="text" name="tone_of_voice" value="{{if .BrandDNA}}{{.BrandDNA.ToneOfVoice}}{{end}}" placeholder="Ví dụ: Chân thành, sắc sảo, tự tin, đồng cảm, giải thích dễ hiểu" required style="font-size:13px">
+      </div>
+    </div>
+
+    <!-- Cột Phải: Thẩm Mỹ & Ranh Giới Đỏ -->
+    <div class="form-card">
+      <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🛡️</span> 2. Phong Cách &amp; Ranh Giới Đỏ</h3>
+
+      <div class="field">
+        <label>Phong cách hình ảnh (Visual Style)</label>
+        <textarea name="visual_style" rows="2" placeholder="Ví dụ: Ánh sáng tự nhiên trong trẻo, cận cảnh texture, bảng biểu so sánh tương phản cao" style="font-size:13px">{{if .BrandDNA}}{{.BrandDNA.VisualStyle}}{{end}}</textarea>
+      </div>
+
+      <div class="field">
+        <label>Phong cách âm thanh &amp; Nhạc nền (Audio Style)</label>
+        <input type="text" name="audio_style" value="{{if .BrandDNA}}{{.BrandDNA.AudioStyle}}{{end}}" placeholder="Ví dụ: Giọng đọc truyền cảm, tốc độ 140 từ/phút, nhạc lofi acoustic nhẹ nhàng" style="font-size:13px">
+      </div>
+
+      <div class="field">
+        <label>Ranh giới đỏ &amp; Từ cấm (Red Lines — Mỗi dòng 1 ranh giới)</label>
+        <textarea name="red_lines" rows="4" placeholder="Cấm cam kết trắng da sau 1 đêm&#10;Không nói quá công dụng y khoa&#10;Không dìm thương hiệu đối thủ vô căn cứ" style="font-size:13px;font-family:monospace">{{if .BrandDNA}}{{join "\n" .BrandDNA.RedLines}}{{end}}</textarea>
+        <div class="hint">Hệ thống AI sẽ tự động chặn các kịch bản vi phạm các dòng này trước khi sản xuất.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="grid2" style="margin-bottom:20px">
+    
+    <!-- Cột Trái 2: Công thức Hook 3s -->
+    <div class="form-card">
+      <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🪝</span> 3. Công Thức Mở Đầu 3 Giây (Hook Rules)</h3>
+      <div class="field">
+        <label>Nguyên tắc viết Hook giữ chân (Mỗi dòng 1 công thức)</label>
+        <textarea name="hook_rules" rows="5" placeholder="Câu hỏi ngược đời: 'Tại sao càng dưỡng da mụn càng bùng phát?'&#10;Đập vỡ ảo tưởng: 'Đừng phí tiền mua món này nếu chưa biết...'&#10;Con số gây sốc: '90% người dùng sai cách dẫn đến...'&#10;Tình huống đồng cảm: 'Có ai từng bị...?'" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.HookRules}}{{end}}</textarea>
+        <div class="hint">AI biên kịch sẽ xoay vòng các cấu trúc Hook này để giữ chân khán giả trong 3 giây vàng đầu tiên.</div>
+      </div>
+    </div>
+
+    <!-- Cột Phải 2: Trụ cột nội dung -->
+    <div class="form-card">
+      <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🏛️</span> 4. Trụ Cột Nội Dung (Content Pillars)</h3>
+      <div class="field">
+        <label>3–5 Trụ cột xuyên suốt (Mỗi dòng 1 trụ cột)</label>
+        <textarea name="content_pillars" rows="5" placeholder="Giải mã bảng thành phần hoạt chất&#10;So sánh trực diện 2 sản phẩm hot cùng tầm giá&#10;Thử nghiệm thực tế trước và sau 14 ngày&#10;Cảnh báo sai lầm kinh điển khi sử dụng&#10;Gợi ý chu trình tối giản cho người bận rộn" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.ContentPillars}}{{end}}</textarea>
+        <div class="hint">Định hình ma trận nội dung 30 ngày, phân bổ tỷ lệ 60% viral kéo phễu - 30% chia sẻ giá trị - 10% chuyển đổi.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- QC Checklist -->
+  <div class="form-card" style="margin-bottom:24px">
+    <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>✅</span> 5. Tiêu Chuẩn Nghiệm Thu QC Nguyên Bản (10 Tiêu Chí)</h3>
+    <div class="field">
+      <label>Checklist kiểm định trước khi đăng video (Mỗi dòng 1 tiêu chí)</label>
+      <textarea name="qc_checklist" rows="6" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.QCChecklist}}{{end}}</textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center">
+    <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;font-weight:700">💾 Lưu Bản Sắc Thương Hiệu (Brand DNA)</button>
+    <span class="hint">Lưu xong có hiệu lực ngay cho toàn bộ các lượt tạo video và kịch bản tự động.</span>
+  </div>
+</form>
 
 {{else if eq .Tab "autopilot"}}
 

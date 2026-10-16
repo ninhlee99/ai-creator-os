@@ -6,6 +6,7 @@ package web
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
@@ -161,11 +163,20 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "account gifts")
 		return
 	}
+	var brandDNA *growth.BrandDNA
+	if s.Growth != nil {
+		brandDNA, _ = s.Growth.GetBrandDNA(id)
+		if brandDNA == nil {
+			brandDNA = growth.DefaultBrandDNA(acct.Niche, id)
+		}
+	}
+
 	detailCtx := s.ctx(
 		"Acct", s.wrapAccount(acct),
 		"Tab", s.accountTab(r),
 		"Allowed", allowed,
 		"Persona", persona,
+		"BrandDNA", brandDNA,
 		"Decisions", decisions,
 		"Publishers", pubNames,
 		"Gifts", gifts,
@@ -197,7 +208,7 @@ func (s *Server) accountID(w http.ResponseWriter, r *http.Request) (int64, bool)
 // to "tong-quan".
 func (s *Server) accountTab(r *http.Request) string {
 	switch r.URL.Query().Get("tab") {
-	case "autopilot", "ket-noi":
+	case "autopilot", "ket-noi", "brand-dna":
 		return r.URL.Query().Get("tab")
 	default:
 		return "tong-quan"
@@ -277,6 +288,74 @@ func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
 		errMsg = err.Error()
 	}
 	s.accountBack(w, r, id, "ket-noi", errMsg)
+}
+
+func (s *Server) handleAccountBrandDNASave(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.accountID(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse form")
+		return
+	}
+	if s.Growth == nil {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&err=%s", id, url.QueryEscape("Hệ thống Growth chưa sẵn sàng")))
+		return
+	}
+
+	splitLines := func(val string) []string {
+		var out []string
+		for _, line := range strings.Split(val, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				out = append(out, line)
+			}
+		}
+		return out
+	}
+
+	dna := &growth.BrandDNA{
+		AccountID:       id,
+		Positioning:     strings.TrimSpace(r.FormValue("positioning")),
+		AudiencePersona: strings.TrimSpace(r.FormValue("audience_persona")),
+		ValuePromise:    strings.TrimSpace(r.FormValue("value_promise")),
+		ToneOfVoice:     strings.TrimSpace(r.FormValue("tone_of_voice")),
+		HookRules:       splitLines(r.FormValue("hook_rules")),
+		ContentPillars:  splitLines(r.FormValue("content_pillars")),
+		VisualStyle:     strings.TrimSpace(r.FormValue("visual_style")),
+		AudioStyle:      strings.TrimSpace(r.FormValue("audio_style")),
+		RedLines:        splitLines(r.FormValue("red_lines")),
+		QCChecklist:     splitLines(r.FormValue("qc_checklist")),
+	}
+
+	if err := s.Growth.SaveBrandDNA(dna); err != nil {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&err=%s", id, url.QueryEscape("Lỗi khi lưu Brand DNA: "+err.Error())))
+		return
+	}
+
+	seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&ok=%s", id, url.QueryEscape("Đã lưu Bản sắc thương hiệu (Brand DNA) thành công!")))
+}
+
+func (s *Server) handleAccountBrandDNAReset(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.accountID(w, r)
+	if !ok {
+		return
+	}
+	acct, err := s.Mgr.Get(id)
+	if err != nil {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&err=%s", id, url.QueryEscape("Không tìm thấy kênh")))
+		return
+	}
+	if s.Growth == nil {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&err=%s", id, url.QueryEscape("Hệ thống Growth chưa sẵn sàng")))
+		return
+	}
+
+	defaultDNA := growth.DefaultBrandDNA(acct.Niche, id)
+	_ = s.Growth.SaveBrandDNA(defaultDNA)
+
+	seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&ok=%s", id, url.QueryEscape("Đã khôi phục Brand DNA chuẩn AI theo ngành hàng!")))
 }
 
 // ---------------------------------------------------------------- schedule

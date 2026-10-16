@@ -40,7 +40,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/autopilot/run", s.handleAccountAutopilotRun)
 	mux.HandleFunc("POST /accounts/{id}/models/upload", s.handleAccountModelUpload)
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
-	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
+	// Brand DNA (Bản sắc thương hiệu cho kênh — Organic growth)
+	mux.HandleFunc("POST /accounts/{id}/brand-dna", s.handleAccountBrandDNASave)
+	mux.HandleFunc("POST /accounts/{id}/brand-dna/reset", s.handleAccountBrandDNAReset)
+
+	// AI Mission Control
+	mux.HandleFunc("POST /missions/{id}/cancel", s.handleMissionCancel)
+	mux.HandleFunc("GET /api/missions/{id}", s.handleMissionDetailJSON)
 
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
 
