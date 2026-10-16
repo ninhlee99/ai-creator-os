@@ -154,33 +154,10 @@ function setDashboardGoal(txt) {
 
 </div>
 
-<!-- Monetization Readiness (Khai Thác Doanh Thu) -->
+<!-- Khai Thác Doanh Thu & Sàn Đối Tác (Monetization Readiness) -->
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-  <h2 style="margin:0;font-size:16px;font-weight:700">Khai Thác Doanh Thu &amp; Sàn Đối Tác</h2>
+  <h2 style="margin:0;font-size:16px;font-weight:700">💰 Sẵn sàng kiếm tiền &amp; Khai thác doanh thu</h2>
   <span class="hint" style="font-size:12px">Tự động liên kết và đối soát hoa hồng ròng</span>
-</div>
-<div class="monetization-grid" style="margin-bottom:24px">
-  {{range .Money}}
-  <div class="monetization-card" style="border-radius:12px;padding:14px 16px">
-    <div class="monetization-card-top">
-      <div class="monetization-card-name" style="font-weight:700;font-size:13.5px">{{.Name}}</div>
-      <div>
-        {{if eq .Level "ok"}}<span class="badge badge-ok">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn">Một phần</span>{{else}}<span class="badge badge-no">Chưa</span>{{end}}
-      </div>
-    </div>
-    <div class="monetization-card-status" style="font-size:12px;margin:6px 0">{{.State}}</div>
-    <div class="monetization-card-footer">
-      {{if .Next}}<a class="btn btn-secondary btn-sm" href="{{.Link}}" style="font-size:11.5px;padding:3px 10px">{{.Next}} ↗</a>{{else}}<span class="hint" style="font-size:11.5px">Hoàn tất ✓</span>{{end}}
-    </div>
-  </div>
-  {{end}}
-</div>
-
-<!-- Automation Control Panel -->
-<!-- Sẵn Sàng Kiếm Tiền (Monetization Readiness) -->
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:12px">
-  <h2 style="margin:0;font-size:16px;font-weight:700">Sẵn sàng kiếm tiền</h2>
-  <span class="hint" style="font-size:12px">Tình trạng kết nối và điều kiện mở khóa doanh thu đa nền tảng</span>
 </div>
 <div class="monetization-grid" style="margin-bottom:24px">
   {{range .Money}}

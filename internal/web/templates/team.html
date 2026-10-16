@@ -8,7 +8,7 @@
       <span class="badge badge-ok" style="font-weight:700;font-size:11px"><span class="pulse-dot"></span> 9 KHỐI TÁC CHIẾN 24/7</span>
     </div>
     <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;letter-spacing:-0.5px">Tổng Hành Dinh &amp; Đội Ngũ Nhân Sự AI</h1>
-    <p class="subtitle" style="margin:0;font-size:13.5px">Mô hình tổ chức doanh nghiệp truyền thông số 24/7: Định biên nhân sự, phân cấp cấp bậc và dây chuyền SOP khép kín — không phải agent đang chạy giả lập.</p>
+    <p class="subtitle" style="margin:0;font-size:13.5px">Mô hình tổ chức doanh nghiệp truyền thông số tự hành 24/7: Định biên nhân sự, kiểm soát chất lượng SLA và vận hành dây chuyền khép kín.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
     <button type="button" class="btn btn-secondary btn-sm" onclick="openAssignModal()">🔗 Phân bổ phòng ban</button>
@@ -33,144 +33,205 @@
      VIEW 1: CÁC KHỐI PHÒNG BAN TÁC CHIẾN CÔNG TY (9 ENTERPRISE DIVISIONS)
      ========================================================================= -->
 
-<!-- Department Selector Pill Tabs (9 Khối) -->
-<div style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding:4px 2px">
+<!-- Grid 9 Khối Phòng Ban Doanh Nghiệp (Dạng Box Chuyên Nghiệp) -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+  <div>
+    <h2 style="margin:0 0 2px;font-size:16px;font-weight:700">🏢 Khối Phòng Ban Doanh Nghiệp ({{len .Departments}} Khối Tác Chiến 24/7)</h2>
+    <span class="hint" style="font-size:12.5px">Nhấp vào bất kỳ box phòng ban nào để xem trực tiếp sơ đồ phân cấp nhân sự và nhiệm vụ chuyên trách</span>
+  </div>
+  <span class="badge badge-ok" style="font-size:11px;font-weight:700"><span class="pulse-dot"></span> TỰ ĐỘNG TƯƠNG TÁC 1-CHẠM</span>
+</div>
+
+<!-- Lưới các Box Phòng Ban -->
+<div class="dept-boxes-grid" id="dept-boxes-container">
   {{range .Departments}}
-  <a href="/team?view=departments&amp;dept={{.ID}}" class="btn btn-sm {{if eq $.ActiveDept .ID}}btn-primary{{else}}btn-secondary{{end}}" style="display:flex;align-items:center;gap:6px;border-radius:8px;text-decoration:none;white-space:nowrap;padding:7px 12px">
-    <span class="badge badge-dim" style="font-size:9.5px;font-weight:800;background:rgba(255,255,255,0.08);padding:1px 5px">{{.Code}}</span>
-    <span>{{.Icon}}</span>
-    <span style="font-weight:600;font-size:12.5px">{{.Name}}</span>
-    <span class="badge {{if eq $.ActiveDept .ID}}badge-draft{{else}}badge-dim{{end}}" style="font-size:10px">{{len .Members}}</span>
-  </a>
+  <div class="dept-box-card"
+       id="dept-box-{{.ID}}"
+       onclick="openDeptOrgModal('{{.ID}}')"
+       tabindex="0"
+       role="button">
+    
+    <div class="dept-box-top">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="badge badge-dim" style="font-size:10px;font-weight:800">{{.Code}}</span>
+        <span class="badge badge-ok" style="font-size:9.5px;font-weight:700"><span class="pulse-dot"></span> 24/7</span>
+      </div>
+      <span class="badge badge-draft dept-members-badge" style="font-size:10px;font-weight:700">{{len .Members}} Nhân sự</span>
+    </div>
+
+    <div class="dept-box-middle">
+      <div class="dept-box-icon">{{.Icon}}</div>
+      <div class="dept-box-heading">
+        <h3 class="dept-box-title">{{.Name}}</h3>
+        <div class="dept-box-leader">Trưởng khối: <strong style="color:var(--text)">{{.LeaderName}}</strong></div>
+      </div>
+    </div>
+
+    <div class="dept-box-stats">
+      <div><span>SLA:</span> <strong>{{if .SLA}}{{.SLA}}{{else}}&lt; 30s{{end}}</strong></div>
+      <div><span>Năng suất:</span> <strong>{{if .Throughput}}{{.Throughput}}{{else}}Liên tục{{end}}</strong></div>
+    </div>
+
+    <div class="dept-box-bottom">
+      <span class="dept-box-hint" style="color:var(--accent);font-weight:700">
+        🔍 Mở sơ đồ phòng ban ↗
+      </span>
+      <span class="badge badge-dim" style="font-size:9.5px">Xem Modal</span>
+    </div>
+
+  </div>
   {{end}}
 </div>
 
-{{range .Departments}}
-{{if eq $.ActiveDept .ID}}
-<!-- Department Executive Master Header Card -->
-<div class="card" style="border-radius:14px;padding:18px 22px;margin-bottom:20px;border:1px solid var(--border);background:var(--bg2)">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:14px">
-    <div style="display:flex;align-items:flex-start;gap:14px">
-      <div style="font-size:32px;width:56px;height:56px;background:var(--bg3);border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex-shrink:0">
-        {{.Icon}}
-      </div>
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="badge badge-info" style="font-size:11px;font-weight:800;letter-spacing:0.5px">{{.Code}}</span>
-          <span class="badge badge-ok" style="font-size:11px;font-weight:700"><span class="pulse-dot"></span> TRỰC TUYẾN 24/7</span>
-          <span class="badge badge-draft" style="font-size:11px;font-weight:700">{{.TierName}}</span>
+<!-- =========================================================================
+     MODAL: SƠ ĐỒ CHI TIẾT PHÒNG BAN & PHÂN CẤP NHÂN SỰ (DEPARTMENT ORG MODAL)
+     ========================================================================= -->
+<div id="dept-org-modal" class="dept-modal-backdrop" onclick="onDeptModalBackdrop(event)" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(6px);z-index:9980;align-items:center;justify-content:center;padding:20px;">
+  <div class="dept-modal-container" style="background:var(--bg);border:1.5px solid var(--border);border-radius:20px;max-width:1080px;width:100%;max-height:92vh;overflow-y:auto;padding:26px 28px;box-shadow:0 30px 70px rgba(0,0,0,0.6);position:relative;">
+    
+    <!-- Header Modal Bar with Close Button -->
+    <button type="button" class="btn btn-secondary btn-sm" onclick="closeDeptOrgModal()" style="position:absolute;top:18px;right:20px;padding:6px 14px;font-size:13px;font-weight:700;border-radius:8px;z-index:20;background:var(--bg2)">✕ Đóng Modal</button>
+
+    {{range .Departments}}
+    {{$dept := .}}
+    <div class="dept-modal-panel" id="dept-modal-panel-{{$dept.ID}}" style="display:none;">
+      
+      <!-- Department Executive Master Header Card inside Modal -->
+      <div class="card" style="border-radius:14px;padding:20px 24px;margin-bottom:20px;border:1px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:14px;padding-right:90px">
+          <div style="display:flex;align-items:flex-start;gap:14px">
+            <div style="font-size:36px;width:60px;height:60px;background:var(--bg3);border-radius:14px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex-shrink:0">
+              {{$dept.Icon}}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span class="badge badge-info" style="font-size:11px;font-weight:800;letter-spacing:0.5px">{{$dept.Code}}</span>
+                <span class="badge badge-ok" style="font-size:11px;font-weight:700"><span class="pulse-dot"></span> TRỰC TUYẾN 24/7</span>
+                <span class="badge badge-draft" style="font-size:11px;font-weight:700">{{$dept.TierName}}</span>
+              </div>
+              <h2 style="margin:6px 0 2px;font-size:20px;font-weight:800;color:var(--text)">{{$dept.Name}}</h2>
+              <div style="font-size:13px;color:var(--muted)">
+                Trưởng khối: <b style="color:var(--text)">{{$dept.LeaderName}}</b> · Định biên {{len $dept.Members}} nhân sự chuyên trách
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <a href="{{$dept.ActionLink}}" class="btn btn-primary btn-sm" style="font-weight:700">{{$dept.ActionLabel}} ↗</a>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openAssignModalFor('{{$dept.ID}}')">+ Phân bổ nhân sự</button>
+          </div>
         </div>
-        <h2 style="margin:6px 0 2px;font-size:19px;font-weight:800;color:var(--text)">{{.Name}}</h2>
-        <div style="font-size:13px;color:var(--muted)">
-          Trưởng khối: <b style="color:var(--text)">{{.LeaderName}}</b> · Định biên {{len .Members}} nhân sự chuyên trách
+
+        <!-- SLA & KPI Metric Bar -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);font-size:12.5px">
+          <div><span style="color:var(--muted)">⚡ SLA Cam Kết:</span> <strong style="color:var(--accent)">{{if $dept.SLA}}{{$dept.SLA}}{{else}}&lt; 30s{{end}}</strong></div>
+          <div><span style="color:var(--muted)">🎯 Tiêu Chuẩn KPI:</span> <strong style="color:var(--text)">{{if $dept.KPI}}{{$dept.KPI}}{{else}}Đạt chuẩn 100%{{end}}</strong></div>
+          <div><span style="color:var(--muted)">📦 Năng Suất:</span> <strong style="color:#10b981">{{if $dept.Throughput}}{{$dept.Throughput}}{{else}}Liên tục 24/7{{end}}</strong></div>
+        </div>
+
+        <!-- Workflow Description -->
+        <div style="margin-top:12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <strong style="color:var(--text);white-space:nowrap">Dây chuyền SOP:</strong>
+          <span style="color:var(--text);font-family:monospace;font-size:11.5px">{{$dept.Workflow}}</span>
         </div>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <a href="{{.ActionLink}}" class="btn btn-primary btn-sm" style="font-weight:700">{{.ActionLabel}} ↗</a>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="openAssignModalFor('{{.ID}}')">+ Phân bổ nhân sự</button>
-    </div>
-  </div>
 
-  <!-- SLA & KPI Metric Bar -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;padding:12px 16px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);font-size:12.5px">
-    <div><span style="color:var(--muted)">⚡ SLA Cam Kết:</span> <strong style="color:var(--accent)">{{if .SLA}}{{.SLA}}{{else}}&lt; 30s{{end}}</strong></div>
-    <div><span style="color:var(--muted)">🎯 Tiêu Chuẩn KPI:</span> <strong style="color:var(--text)">{{if .KPI}}{{.KPI}}{{else}}Đạt chuẩn 100%{{end}}</strong></div>
-    <div><span style="color:var(--muted)">📦 Năng Suất:</span> <strong style="color:#10b981">{{if .Throughput}}{{.Throughput}}{{else}}Liên tục 24/7{{end}}</strong></div>
-  </div>
+      <!-- Sơ Đồ Cấp Bậc & Nhân Sự Trong Khối -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:0 2px">
+        <div>
+          <h3 style="margin:0 0 2px;font-size:16px;font-weight:800;display:flex;align-items:center;gap:6px">
+            <span>🌳</span> Sơ Đồ Phân Cấp &amp; Tác Vụ Nhân Sự — {{$dept.Name}}
+          </h3>
+          <span class="hint" style="font-size:12px">Nhấp vào từng nhân sự để xem bàn giao đầu vào/đầu ra, tiến độ và SLA</span>
+        </div>
+        <span class="badge badge-dim" style="font-size:10px">{{len $dept.Members}} Nhân sự trực tuyến</span>
+      </div>
 
-  <!-- Workflow Description -->
-  <div style="margin-top:12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-    <strong style="color:var(--text);white-space:nowrap">Dây chuyền SOP:</strong>
-    <span style="color:var(--text);font-family:monospace;font-size:11.5px">{{.Workflow}}</span>
-  </div>
-</div>
-
-<!-- Department Multi-Tier Hierarchy -->
-<div class="org-chart-stage-card" style="padding:24px 20px 20px;border-radius:14px;margin-bottom:24px">
-  
-  {{range $tIdx, $tier := .RankTiers}}
-  {{if $tIdx}}
-  <!-- Connector Stem -->
-  <div class="org-busbar-wrapper" style="margin:10px 0">
-    <div class="org-busbar-vertical-stem"></div>
-    {{if gt (len $tier.Members) 1}}
-    <div class="org-busbar-horizontal-line"></div>
-    {{end}}
-  </div>
-  {{end}}
-
-  <!-- Tier Level Block -->
-  <div class="org-tier-block tier-{{$tier.BadgeClass}}">
-    <div class="org-tier-header" style="margin-bottom:12px">
-      <span class="org-tier-title {{$tier.BadgeClass}}" style="font-size:11px;font-weight:800;letter-spacing:0.5px">{{$tier.TierTitle}}</span>
-    </div>
-
-    <div class="org-tier-members-row" style="gap:16px;flex-wrap:wrap">
-      {{range $tier.Members}}
-      <div class="org-subordinate-col">
-        {{if and (gt $tIdx 0) (gt (len $tier.Members) 1)}}
-        <div class="org-busbar-branch-stem"></div>
+      <div class="org-chart-stage-card" style="padding:24px 20px 20px;border-radius:14px;margin-bottom:10px;background:var(--bg2)">
+        {{range $tIdx, $tier := $dept.RankTiers}}
+        {{if $tIdx}}
+        <!-- Connector Stem -->
+        <div class="org-busbar-wrapper" style="margin:10px 0">
+          <div class="org-busbar-vertical-stem"></div>
+          {{if gt (len $tier.Members) 1}}
+          <div class="org-busbar-horizontal-line"></div>
+          {{end}}
+        </div>
         {{end}}
-        <div class="org-agent-chip {{$tier.BadgeClass}}-chip"
-             onclick="showDeptTaskDetail(this)"
-             data-agent-name="{{.Agent.Name}}"
-             data-agent-avatar="{{.Agent.Avatar}}"
-             data-agent-level="{{.Agent.Level}}"
-             data-agent-niche="{{.Agent.Niche}}"
-             data-dept-name="{{$.ActiveDept}}"
-             data-code="{{$.Code}}"
-             data-role="{{.RoleInDept}}"
-             data-rank="{{.Rank}}"
-             data-rank-label="{{.RankLabel}}"
-             data-step="{{.StepOrder}}"
-             data-receives="{{.ReceivesFrom}}"
-             data-handsoff="{{.HandsOffTo}}"
-             data-task="{{.CurrentTask}}"
-             data-status="{{.TaskStatus}}"
-             data-progress="{{.Progress}}"
-             data-deliverable="{{.Deliverable}}"
-             data-updated="{{.LastUpdated}}"
-             data-agent-id="{{.Agent.ID}}"
-             style="min-width:280px;border-radius:12px;padding:14px">
-          
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span class="badge badge-dim" style="font-size:9.5px;font-weight:800">{{if .Agent.Code}}{{.Agent.Code}}{{else}}AGENT-{{.StepOrder}}{{end}}</span>
-            <span class="org-chip-badge {{$tier.BadgeClass}}" style="margin:0">{{.RankLabel}}</span>
+
+        <!-- Tier Level Block -->
+        <div class="org-tier-block tier-{{$tier.BadgeClass}}">
+          <div class="org-tier-header" style="margin-bottom:12px">
+            <span class="org-tier-title {{$tier.BadgeClass}}" style="font-size:11px;font-weight:800;letter-spacing:0.5px">{{$tier.TierTitle}}</span>
           </div>
 
-          <div class="org-chip-body" style="align-items:flex-start">
-            <div class="org-chip-avatar" style="font-size:32px;width:44px;height:44px;background:var(--bg2);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex-shrink:0">
-              {{.Agent.Avatar}}
-              <span class="org-chip-online"></span>
+          <div class="org-tier-members-row" style="gap:16px;flex-wrap:wrap;justify-content:center">
+            {{range $tier.Members}}
+            <div class="org-subordinate-col">
+              {{if and (gt $tIdx 0) (gt (len $tier.Members) 1)}}
+              <div class="org-busbar-branch-stem"></div>
+              {{end}}
+              <div class="org-agent-chip {{$tier.BadgeClass}}-chip"
+                   onclick="showDeptTaskDetail(this)"
+                   data-agent-name="{{.Agent.Name}}"
+                   data-agent-avatar="{{.Agent.Avatar}}"
+                   data-agent-level="{{.Agent.Level}}"
+                   data-agent-niche="{{.Agent.Niche}}"
+                   data-dept-name="{{$dept.Name}}"
+                   data-code="{{$dept.Code}}"
+                   data-role="{{.RoleInDept}}"
+                   data-rank="{{.Rank}}"
+                   data-rank-label="{{.RankLabel}}"
+                   data-step="{{.StepOrder}}"
+                   data-receives="{{.ReceivesFrom}}"
+                   data-handsoff="{{.HandsOffTo}}"
+                   data-task="{{.CurrentTask}}"
+                   data-status="{{.TaskStatus}}"
+                   data-progress="{{.Progress}}"
+                   data-deliverable="{{.Deliverable}}"
+                   data-updated="{{.LastUpdated}}"
+                   data-agent-id="{{.Agent.ID}}"
+                   style="min-width:280px;border-radius:12px;padding:14px">
+                
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <span class="badge badge-dim" style="font-size:9.5px;font-weight:800">{{if .Agent.Code}}{{.Agent.Code}}{{else}}AGENT-{{.StepOrder}}{{end}}</span>
+                  <span class="org-chip-badge {{$tier.BadgeClass}}" style="margin:0">{{.RankLabel}}</span>
+                </div>
+
+                <div class="org-chip-body" style="align-items:flex-start">
+                  <div class="org-chip-avatar" style="font-size:32px;width:44px;height:44px;background:var(--bg3);border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);flex-shrink:0">
+                    {{.Agent.Avatar}}
+                    <span class="org-chip-online"></span>
+                  </div>
+                  <div class="org-chip-info" style="min-width:0;flex:1">
+                    <div class="org-chip-name" style="margin-bottom:2px">
+                      <strong style="font-size:13.5px">{{.Agent.Name}}</strong>
+                      <span class="badge badge-dim" style="font-size:9.5px">Lv.{{.Agent.Level}}</span>
+                    </div>
+                    <div class="org-chip-role" style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px">{{.RoleInDept}}</div>
+                    <div style="font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:6px">
+                      ⚡ <b>Tác vụ:</b> {{.CurrentTask}}
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted)">
+                      <span>Tiến độ: <b>{{.Progress}}%</b></span>
+                      <span class="badge {{if eq .TaskStatus "completed"}}badge-ok{{else if eq .TaskStatus "working"}}badge-info{{else}}badge-draft{{end}}" style="font-size:9px">
+                        {{if eq .TaskStatus "completed"}}Hoàn thành{{else if eq .TaskStatus "working"}}Đang chạy{{else}}Sẵn sàng{{end}}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="org-chip-info" style="min-width:0;flex:1">
-              <div class="org-chip-name" style="margin-bottom:2px">
-                <strong style="font-size:13.5px">{{.Agent.Name}}</strong>
-                <span class="badge badge-dim" style="font-size:9.5px">Lv.{{.Agent.Level}}</span>
-              </div>
-              <div class="org-chip-role" style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px">{{.RoleInDept}}</div>
-              <div style="font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:6px">
-                ⚡ <b>Tác vụ:</b> {{.CurrentTask}}
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--muted)">
-                <span>Tiến độ: <b>{{.Progress}}%</b></span>
-                <span class="badge {{if eq .TaskStatus "completed"}}badge-ok{{else if eq .TaskStatus "working"}}badge-info{{else}}badge-draft{{end}}" style="font-size:9px">
-                  {{if eq .TaskStatus "completed"}}Hoàn thành{{else if eq .TaskStatus "working"}}Đang chạy{{else}}Sẵn sàng{{end}}
-                </span>
-              </div>
-            </div>
+            {{end}}
           </div>
         </div>
+        {{end}}
       </div>
-      {{end}}
-    </div>
-  </div>
-  {{end}}
 
+    </div>
+    {{end}}
+
+  </div>
 </div>
-{{end}}
-{{end}}
 
 {{else}}
 <!-- =========================================================================
@@ -247,7 +308,7 @@
 <details class="card" style="margin-top:20px;border-radius:14px;padding:16px 20px" id="pipeline-health-section">
   <summary style="cursor:pointer;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center">
     <span>⚙️ Sức Khỏe Kỹ Thuật 3 Dây Chuyền Sản Xuất (Pipeline Diagnostics)</span>
-    <span class="hint" style="font-size:12px;font-weight:normal">Xem chi tiết trạng thái tác vụ nền ▼</span>
+    <span class="hint" style="font-size:12px;font-weight:normal">Dữ liệu thực thi thời gian thực — không phải agent đang chạy giả lập ▼</span>
   </summary>
   <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
     <p class="hint" style="margin-bottom:16px;font-size:12px">
@@ -579,6 +640,66 @@
 
 <script>
 var currentSelectedAgent = null;
+
+function openDeptOrgModal(deptId) {
+  // 1. Highlight target box
+  document.querySelectorAll('.dept-box-card').forEach(function(box) {
+    box.classList.remove('active');
+  });
+  var activeBox = document.getElementById('dept-box-' + deptId);
+  if (activeBox) {
+    activeBox.classList.add('active');
+  }
+
+  // 2. Hide all department panels inside modal and show target department panel
+  document.querySelectorAll('.dept-modal-panel').forEach(function(p) {
+    p.style.display = 'none';
+  });
+  var targetPanel = document.getElementById('dept-modal-panel-' + deptId);
+  if (targetPanel) {
+    targetPanel.style.display = 'block';
+  }
+
+  // 3. Open Modal
+  var m = document.getElementById('dept-org-modal');
+  if (m) {
+    m.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  // 4. Update browser URL without reload
+  try {
+    var url = new URL(window.location.href);
+    url.searchParams.set('dept', deptId);
+    window.history.replaceState({}, '', url.toString());
+  } catch(e) {}
+}
+
+function closeDeptOrgModal() {
+  var m = document.getElementById('dept-org-modal');
+  if (m) {
+    m.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function onDeptModalBackdrop(e) {
+  if (e.target && e.target.id === 'dept-org-modal') {
+    closeDeptOrgModal();
+  }
+}
+
+var selectDepartmentBox = openDeptOrgModal;
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeDeptOrgModal();
+    closeDeptTaskModal();
+    closeAgentProfileModal();
+    closeAssignModal();
+    closeAgentModal();
+  }
+});
 
 function openAssignModal() {
   var m = document.getElementById('assign-agent-modal');
