@@ -48,7 +48,7 @@ func TestWebAIHandlers(t *testing.T) {
 		t.Errorf("GET /web-ai status = %d, want 200", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "AI Web Hub") || !strings.Contains(body, "ChatGPT Web") || !strings.Contains(body, "Claude Web") {
+	if !strings.Contains(body, "AI Hub") || !strings.Contains(body, "ChatGPT") || !strings.Contains(body, "Claude") {
 		t.Errorf("GET /web-ai missing expected platform texts: %s", body[:min(len(body), 500)])
 	}
 

@@ -302,7 +302,7 @@ func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if provider == "gemini" && !looksLikeGeminiKey(key) {
-		writeJSONErr(w, "Đây không phải key Gemini: key Gemini (Google AI Studio) bắt đầu bằng “AIza” và dài 39 ký tự. "+
+		writeJSONErr(w, "Đây không phải key Gemini: key Gemini (Google AI Studio) bắt đầu bằng “AIza” hoặc “AQ.”. "+
 			"Lấy key miễn phí tại aistudio.google.com/apikey rồi dán lại.", http.StatusBadRequest)
 		return
 	}
@@ -350,19 +350,31 @@ func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// looksLikeGeminiKey: key Google API (AI Studio) có dạng "AIza" + 35 ký tự
-// [A-Za-z0-9_-]. Chặn ngay khi dán nhầm (đo thật: dán nhầm token "gen-…"
-// 26 ký tự → Google trả API_KEY_INVALID lúc chạy, khó hiểu với người dùng).
+// looksLikeGeminiKey kiểm tra định dạng key Google Gemini (Google AI Studio):
+// 1. Dạng mới: bắt đầu bằng "AQ." (Authentication Key, thường dài ~53-70 ký tự).
+// 2. Dạng truyền thống: bắt đầu bằng "AIza" và dài 39 ký tự [A-Za-z0-9_-].
 func looksLikeGeminiKey(k string) bool {
-	if len(k) != 39 || !strings.HasPrefix(k, "AIza") {
-		return false
-	}
-	for _, r := range k {
-		if !(r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+	k = strings.TrimSpace(k)
+	if strings.HasPrefix(k, "AQ.") {
+		if len(k) < 25 || len(k) > 120 {
 			return false
 		}
+		for _, r := range k {
+			if !(r == '.' || r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+				return false
+			}
+		}
+		return true
 	}
-	return true
+	if strings.HasPrefix(k, "AIza") && len(k) == 39 {
+		for _, r := range k {
+			if !(r == '-' || r == '_' || (r >= '0' && r <= '9') || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // SyncGeminiKeys gộp key Gemini của 2 chuỗi (viết chữ + giọng đọc) cùng

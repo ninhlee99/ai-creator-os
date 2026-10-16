@@ -41,6 +41,12 @@ func TestGeminiKeyFormatRejected(t *testing.T) {
 		t.Fatalf("key sai định dạng phải bị từ chối, got %d", rec.Code)
 	}
 	if !looksLikeGeminiKey("AIza" + strings.Repeat("x", 35)) {
-		t.Fatal("key đúng dạng phải được nhận")
+		t.Fatal("key AIza đúng dạng phải được nhận")
+	}
+	if !looksLikeGeminiKey("AQ.Ab8RN6JyFbfvKom9YnHcmTestKey12345678901234567890") {
+		t.Fatal("key AQ. đúng dạng phải được nhận")
+	}
+	if looksLikeGeminiKey("AQ.short") {
+		t.Fatal("key AQ. quá ngắn phải bị từ chối")
 	}
 }

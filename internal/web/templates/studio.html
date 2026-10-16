@@ -94,19 +94,19 @@
           <div style="background:var(--bg3);padding:14px;border-radius:12px;margin-top:14px;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
               <div>
-                <b>⚡ Trợ lý Prompt Web AI:</b>
-                <span class="hint" style="display:inline;margin-left:6px">Tạo ngay kịch bản cho Claude/ChatGPT và prompt cho Gemini &amp; Muse AI</span>
+                <b>⚡ Trợ lý Prompt AI:</b>
+                <span class="hint" style="display:inline;margin-left:6px">Tạo kịch bản cho ChatGPT/Claude và prompt Gemini &amp; Muse AI</span>
               </div>
               <button type="button" class="btn btn-sm" onclick="quickGeneratePrompts()">✨ Sinh Kịch Bản Ngay</button>
             </div>
             <div id="quick-prompt-result" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-              <div class="hint" style="margin-bottom:6px"><b>Đã tạo xong prompt!</b> Bấm để sao chép nhanh hoặc mở Web AI Hub:</div>
+              <div class="hint" style="margin-bottom:6px"><b>Đã tạo xong prompt!</b> Sao chép hoặc mở AI Hub:</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('chatgpt')">📋 Copy ChatGPT</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('claude')">📋 Copy Claude</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('gemini')">📋 Copy Prompt Ảnh</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('museai')">📋 Copy Prompt Video</button>
-                <a href="/web-ai" target="_blank" class="btn btn-secondary btn-sm">🌐 Mở Web AI Hub ↗️</a>
+                <a href="/web-ai" target="_blank" class="btn btn-secondary btn-sm">🌐 Mở AI Hub ↗️</a>
               </div>
             </div>
           </div>
@@ -136,12 +136,24 @@
 
           <div class="grid2">
             <div class="field">
-              <label>Ảnh sản phẩm chính (Gemini Imagen 3 hoặc ảnh chụp)</label>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <label style="margin:0">Ảnh sản phẩm chính</label>
+                <button type="button" class="btn btn-sm btn-primary" id="btn-cr-gen-image" onclick="generateProductImageAI('cr')" style="font-size:12px;padding:3px 10px">
+                  🎨 Tạo ảnh AI
+                </button>
+              </div>
               <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Chọn ảnh sản phẩm…
+                <label class="btn btn-secondary btn-sm">📁 Tải ảnh từ máy…
                   <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
                 </label>
                 <span class="file-name" id="prod-photo-label-cr">Chưa chọn ảnh</span>
+              </div>
+              <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
+              <div id="cr-ai-photo-preview" style="display:none;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+                <img id="cr-ai-photo-img" src="" alt="Ảnh sản phẩm AI" style="width:100%;max-height:180px;object-fit:cover;display:block">
+                <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px">
+                  <span class="badge badge-ok" id="cr-ai-photo-badge">✨ Đã tạo ảnh AI</span>
+                </div>
               </div>
             </div>
             <div class="field">
@@ -353,12 +365,24 @@
           </div>
 
           <div class="field">
-            <label>Ảnh sản phẩm chính <span class="req">*</span></label>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0">Ảnh sản phẩm chính</label>
+              <button type="button" class="btn btn-sm btn-primary" id="btn-qk-gen-image" onclick="generateProductImageAI('qk')" style="font-size:12px;padding:3px 10px">
+                🎨 Tạo ảnh AI
+              </button>
+            </div>
             <div class="file-pick">
-              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh sản phẩm…
-                <input type="file" name="product_photo" accept="image/*" required onchange="onProductPhotoPicked(this, 'qk')">
+              <label class="btn btn-secondary btn-sm">📁 Tải ảnh từ máy…
+                <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'qk')">
               </label>
               <span class="file-name" id="prod-photo-label-qk">Chưa chọn ảnh</span>
+            </div>
+            <input type="hidden" name="generated_photo_path" id="qk-generated-photo-path">
+            <div id="qk-ai-photo-preview" style="display:none;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+              <img id="qk-ai-photo-img" src="" alt="Ảnh sản phẩm AI" style="width:100%;max-height:180px;object-fit:cover;display:block">
+              <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px">
+                <span class="badge badge-ok" id="qk-ai-photo-badge">✨ Đã tạo ảnh AI</span>
+              </div>
             </div>
           </div>
 
@@ -560,7 +584,84 @@ function onProductPhotoPicked(input, prefix) {
   var el = document.getElementById('prod-photo-label-' + prefix);
   if (input.files.length > 0 && el) {
     el.textContent = input.files[0].name;
+    var preview = document.getElementById(prefix + '-ai-photo-preview');
+    if (preview) preview.style.display = 'none';
   }
+}
+
+function generateProductImageAI(prefix) {
+  var nameEl = document.getElementById(prefix + '-product-name');
+  var name = nameEl ? nameEl.value.trim() : '';
+  if (!name) {
+    alert('Vui lòng nhập tên sản phẩm trước khi tạo ảnh.');
+    if (nameEl) nameEl.focus();
+    return;
+  }
+  var nicheEl = document.getElementById(prefix + '-niche');
+  var niche = nicheEl ? nicheEl.value : '';
+  var aspectEl = document.getElementById(prefix + '-aspect-ratio');
+  var aspect = aspectEl ? aspectEl.value : '9:16';
+
+  var btn = document.getElementById('btn-' + prefix + '-gen-image');
+  var oldText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang tạo...';
+  }
+
+  var data = new URLSearchParams();
+  data.append('product_name', name);
+  data.append('niche', niche);
+  data.append('aspect_ratio', aspect);
+
+  fetch('/studio/generate-image', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    if (!res.ok) {
+      alert('Lỗi tạo ảnh: ' + (res.error || 'Thử lại'));
+      return;
+    }
+    var hidden = document.getElementById(prefix + '-generated-photo-path');
+    if (hidden) hidden.value = res.path;
+
+    var prevCard = document.getElementById(prefix + '-ai-photo-preview');
+    var prevImg = document.getElementById(prefix + '-ai-photo-img');
+    var badge = document.getElementById(prefix + '-ai-photo-badge');
+    if (prevCard && prevImg) {
+      prevImg.src = res.url;
+      prevCard.style.display = 'block';
+      if (badge) {
+        badge.textContent = res.source === 'gemini' ? '✨ Ảnh Gemini 4K' : '🎨 Ảnh Đồ Họa 4K';
+      }
+    }
+
+    var mockupBg = document.getElementById(prefix + '-mockup-screen-bg');
+    if (mockupBg) {
+      mockupBg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(' + res.url + ')';
+      mockupBg.style.backgroundSize = 'cover';
+      mockupBg.style.backgroundPosition = 'center';
+    }
+
+    var label = document.getElementById('prod-photo-label-' + prefix);
+    if (label) label.textContent = '✓ ' + res.filename;
+
+    window.showToast('✓ Đã tạo xong ảnh sản phẩm 4K!', true);
+  })
+  .catch(function(err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    alert('Lỗi: ' + err);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -818,6 +919,34 @@ window.addEventListener('DOMContentLoaded', function() {
       }
       sessionStorage.removeItem('webai_to_studio');
     }
+
+    var rawPhoto = sessionStorage.getItem('webai_scene_photo');
+    if (rawPhoto) {
+      var dp = JSON.parse(rawPhoto);
+      if (dp.product_name && document.getElementById('cr-product-name')) {
+        document.getElementById('cr-product-name').value = dp.product_name;
+      }
+      if (dp.niche && document.getElementById('cr-niche')) {
+        document.getElementById('cr-niche').value = dp.niche;
+      }
+      if (dp.photo_path && document.getElementById('cr-generated-photo-path')) {
+        document.getElementById('cr-generated-photo-path').value = dp.photo_path;
+      }
+      var prevCard = document.getElementById('cr-ai-photo-preview');
+      var prevImg = document.getElementById('cr-ai-photo-img');
+      if (prevCard && prevImg && dp.photo_url) {
+        prevImg.src = dp.photo_url;
+        prevCard.style.display = 'block';
+      }
+      var mockupBg = document.getElementById('cr-mockup-screen-bg');
+      if (mockupBg && dp.photo_url) {
+        mockupBg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(' + dp.photo_url + ')';
+        mockupBg.style.backgroundSize = 'cover';
+        mockupBg.style.backgroundPosition = 'center';
+      }
+      sessionStorage.removeItem('webai_scene_photo');
+    }
+
     updateMockupPreview('cr');
   } catch (e) {}
 });

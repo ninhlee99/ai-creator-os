@@ -277,12 +277,12 @@ func GenerateAdScriptPackage(productName, niche, framework, targetAudience, keyB
 		"Nỗi sợ bỏ lỡ cơ hội (FOMO & Limited Scarcity) thúc đẩy chốt đơn",
 	}
 
-	// Step-by-step guides for retrieving assets from Web AIs
+	// Step-by-step guides for retrieving assets from AIs
 	pkg.MediaRetrievalGuides = map[string]string{
-		"museai":  "Khi Muse AI sinh xong clip, bấm vào video hoặc nút Chia sẻ, chọn 'Copy Video Link' (URL dạng .mp4 hoặc CDN). Trong Studio AI, bạn có thể dán link này vào ô 'URL Video' để hệ thống tự động tải về, hoặc bấm tải về máy rồi upload.",
-		"gemini":  "Trên Gemini Web (Imagen 3), click chuột phải vào ảnh đã tạo chọn 'Sao chép địa chỉ hình ảnh' (Copy image address) hoặc 'Lưu hình ảnh'. Bạn có thể dán link ảnh hoặc kéo thả ảnh vào Studio để dựng video 4K.",
-		"chatgpt": "Sao chép prompt bên dưới và dán vào ChatGPT Web. Bạn có thể yêu cầu ChatGPT viết thêm các góc nhìn kịch tính hoặc thêm chi tiết về phân khúc khách hàng cụ thể.",
-		"claude":  "Sao chép prompt đạo diễn bên dưới và dán vào Claude Web. Claude sẽ phân tích chi tiết từng góc máy, ánh sáng và cử động điện ảnh cho từng giây của video.",
+		"museai":  "Khi Muse AI sinh xong clip, chọn 'Copy Video Link' hoặc tải về để đưa vào Studio dựng video.",
+		"gemini":  "Trên Gemini (Imagen 3), click chuột phải chọn 'Sao chép địa chỉ hình ảnh' hoặc tải về để đưa vào Studio.",
+		"chatgpt": "Sao chép prompt bên dưới và dán vào ChatGPT để nhận kịch bản chi tiết.",
+		"claude":  "Sao chép prompt bên dưới và dán vào Claude để nhận phân cảnh và góc máy chi tiết.",
 	}
 
 	// Craft specialized prompt for ChatGPT Web

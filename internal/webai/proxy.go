@@ -163,11 +163,11 @@ func renderFallbackHTML(platform, targetURL string) string {
 	name := platform
 	switch platform {
 	case PlatformChatGPT:
-		name = "ChatGPT Web"
+		name = "ChatGPT"
 	case PlatformClaude:
-		name = "Claude Web"
+		name = "Claude"
 	case PlatformGemini:
-		name = "Gemini Web"
+		name = "Gemini"
 	case PlatformMuseAI:
 		name = "Muse AI"
 	}

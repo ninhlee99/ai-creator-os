@@ -1,25 +1,24 @@
-{{define "title"}}Xưởng Kịch Bản &amp; Prompt — AI Web Hub{{end}}
+{{define "title"}}Xưởng Kịch Bản &amp; Prompt — AI Hub{{end}}
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Xưởng Sáng Tạo Kịch Bản &amp; Prompt — AI Web Hub ✍️</h1>
-    <p class="subtitle">Tự động hóa phối hợp sức mạnh của <b>ChatGPT Web</b>, <b>Claude Web</b>, <b>Gemini Web</b> và <b>Muse AI</b> để sản xuất kịch bản bán hàng triệu view, 4 Hook 3s tâm lý học, prompt ảnh 4K và clip motion camera.</p>
+    <h1>Xưởng Kịch Bản &amp; Prompt ✍️</h1>
+    <p class="subtitle">Phối hợp ChatGPT, Claude, Gemini và Muse AI sản xuất kịch bản bán hàng, hook 3s, prompt ảnh 4K và video motion.</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary">⚙️ Quản lý tài khoản AI</a>
-    <a href="/studio" class="btn btn-secondary">🎬 Mở Studio AI</a>
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary">⚙️ Tài khoản AI</a>
+    <a href="/studio" class="btn btn-secondary">🎬 Studio AI</a>
   </div>
 </div>
 
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<div class="card" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-  <div style="flex:1;min-width:280px">
-    <h3 style="margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:6px">💡 Quy trình đã được hợp nhất trực tiếp vào Studio AI</h3>
-    <span class="hint" style="font-size:13px">Mọi công cụ sinh kịch bản AI, Hook 3s tâm lý học và prompt phân cảnh hiện đã được tích hợp sẵn bên trong <b>Studio AI 🎬</b>. Bạn không cần phải mở 2 trang riêng biệt nữa!</span>
+<div class="card" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+  <div>
+    <h3 style="margin:0;font-size:14px">💡 Đã tích hợp trực tiếp vào Studio AI</h3>
   </div>
-  <a href="/studio#tab-ad-creative" class="btn btn-primary" style="font-size:13px">🎬 Mở Studio AI Dựng Video ↗</a>
+  <a href="/studio#tab-ad-creative" class="btn btn-primary" style="font-size:13px">🎬 Mở Studio AI ↗</a>
 </div>
 
 <!-- Streamlined AI Status Pill Bar -->
@@ -28,11 +27,10 @@
     <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
       {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}}/4 AI Sẵn Sàng
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>Cụm Web AI:</b> ChatGPT Web · Claude Web · Gemini Web · Muse AI</span>
+    <span style="font-size:13px;color:var(--text)"><b>AI:</b> ChatGPT · Claude · Gemini · Muse AI</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <span class="hint" style="font-size:12px">Cần thêm tài khoản hoặc đổi cookie?</span>
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm" style="font-size:12px">⚙️ Quản lý trong Cài Đặt ↗️</a>
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm" style="font-size:12px">⚙️ Quản lý tài khoản ↗</a>
   </div>
 </div>
 
@@ -42,11 +40,11 @@
 <div class="webai-cockpit-container" id="cockpit-section" style="margin-top:0">
   <div class="cockpit-header">
     <div class="cockpit-title">
-      <h2>⚡ Bộ Điều Phối Sản Xuất Kịch Bản &amp; Prompt 4 AI</h2>
-      <p>Nhập sản phẩm một lần — Hệ thống tự động phân phối thế mạnh từng AI: <b>ChatGPT Web</b> (Kịch bản &amp; Hook 3s), <b>Claude Web</b> (Đạo diễn điện ảnh), <b>Gemini Web</b> (Ảnh 4K Imagen 3) và <b>Muse AI</b> (Video chuyển động camera).</p>
+      <h2>⚡ Điều Phối Kịch Bản &amp; Prompt (4 AI)</h2>
+      <p>Thế mạnh từng AI: <b>ChatGPT</b> (Kịch bản &amp; Hook 3s), <b>Claude</b> (Đạo diễn), <b>Gemini</b> (Ảnh 4K) và <b>Muse AI</b> (Video motion).</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu nhanh:</span>
+      <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
       <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('polo')">👔 Áo Polo</button>
       <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('fryer')">🍳 Nồi Chiên</button>
       <button type="button" class="btn btn-secondary btn-sm" onclick="loadSamplePreset('serum')">✨ Serum Da</button>
@@ -57,10 +55,10 @@
   <div class="prompt-inputs-grid" style="margin-bottom:20px">
     <div class="field">
       <label>Tên sản phẩm <span class="req">*</span></label>
-      <input type="text" id="syn-product-name" placeholder="Ví dụ: Tai Nghe Chống Ồn Sony WH-1000XM5, Áo Polo Lụa Lạnh...">
+      <input type="text" id="syn-product-name" placeholder="Ví dụ: Tai Nghe Sony, Áo Polo...">
     </div>
     <div class="field">
-      <label>Nhóm ngành hàng</label>
+      <label>Ngành hàng</label>
       <select id="syn-niche">
         <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
         <option value="mỹ phẩm & làm đẹp">Mỹ phẩm &amp; Làm đẹp</option>
@@ -70,46 +68,45 @@
       </select>
     </div>
     <div class="field">
-      <label>Khung kịch bản chuyển đổi cao</label>
+      <label>Khung kịch bản</label>
       <select id="syn-framework">
-        <option value="problem_solution">Đánh trúng nỗi đau &amp; Giải pháp đỉnh cao (PAS)</option>
-        <option value="three_reasons">3 Lý do nhất định phải sở hữu ngay</option>
-        <option value="transformation">Trước &amp; Sau khi sử dụng (Biến hình ngoạn mục)</option>
+        <option value="problem_solution">Vấn đề &amp; Giải pháp (PAS)</option>
+        <option value="three_reasons">3 Lý do phải sở hữu</option>
+        <option value="transformation">Trước &amp; Sau khi dùng</option>
       </select>
     </div>
     <div class="field">
-      <label>Điểm nổi bật / Công năng đắt giá</label>
-      <input type="text" id="syn-benefits" placeholder="Ví dụ: Chống ồn chủ động 99%, pin 30h, đệm tai êm ái thoáng khí...">
+      <label>Ưu điểm nổi bật</label>
+      <input type="text" id="syn-benefits" placeholder="Ví dụ: Chống ồn 99%, pin 30h...">
     </div>
     <div class="field">
-      <label>Lời kêu gọi hành động (CTA)</label>
-      <input type="text" id="syn-cta" placeholder="Ví dụ: Bấm ngay vào giỏ hàng hoặc link bên dưới để nhận ưu đãi 40%...">
+      <label>Kêu gọi hành động (CTA)</label>
+      <input type="text" id="syn-cta" placeholder="Ví dụ: Bấm vào giỏ hàng nhận ưu đãi...">
     </div>
   </div>
 
   <div style="text-align:center;margin-bottom:24px">
-    <button type="button" class="btn btn-mega-render" style="max-width:480px;margin:0 auto" onclick="generateMultiAIPrompts()">
-      ✨ Kích Hoạt Cả 4 AI: Sinh Kịch Bản, Ảnh 4K &amp; Clip Motion
+    <button type="button" class="btn btn-mega-render" style="max-width:440px;margin:0 auto" onclick="generateMultiAIPrompts()">
+      ✨ Tạo Kịch Bản, Ảnh 4K &amp; Video Motion
     </button>
   </div>
 
   <!-- Results Area with Visual Tabs -->
   <div id="prompts-result-area" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px">
     <div class="result-tabs" style="margin-bottom:16px">
-      <button type="button" class="res-tab active" onclick="showPromptSection('hooks')">🎯 4 Biến Thể Hook 3s</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('social')">📱 Bài Đăng Đa Kênh</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản Bán Hàng</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn Claude</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt Ảnh 4K Gemini</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Prompt Video Muse AI</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Lấy Media</button>
+      <button type="button" class="res-tab active" onclick="showPromptSection('hooks')">🎯 4 Hook 3s</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('social')">📱 Bài Đăng</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản (ChatGPT)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn (Claude)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Ảnh 4K (Gemini)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
     </div>
 
     <!-- Section 1: Hook Variants -->
     <div id="sec-hooks" class="prompt-sec-content">
       <div class="sec-actions">
-        <b>🎯 4 Biến Thể Hook 3s Giữ Chân Người Xem (Neuromarketing)</b>
-        <span class="hint">Thử nghiệm 4 góc tiếp cận tâm lý để tối đa hóa chỉ số Retention trên TikTok &amp; Shorts</span>
+        <b>🎯 4 Biến Thể Hook 3 Giây</b>
       </div>
       <div id="txt-hooks-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:12px"></div>
     </div>
@@ -117,7 +114,7 @@
     <!-- Section 2: Social Posts -->
     <div id="sec-social" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>📱 Bài Đăng Tối Ưu Tương Tác Theo Từng Kênh (Đã SEO &amp; Gắn Kêu Gọi Hành Động)</b>
+        <b>📱 Bài Đăng Đa Kênh</b>
       </div>
       <div id="txt-social-posts" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;margin-top:12px"></div>
     </div>
@@ -125,8 +122,8 @@
     <!-- Section 3: ChatGPT Script -->
     <div id="sec-chatgpt" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>💬 Kịch Bản &amp; Lời Thoại Bán Hàng Chi Tiết</b>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-chatgpt-prompt')">📋 Sao chép kịch bản</button>
+        <b>💬 Kịch Bản Bán Hàng (ChatGPT)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-chatgpt-prompt')">📋 Copy</button>
       </div>
       <pre class="prompt-box" id="txt-chatgpt-prompt" style="max-height:280px"></pre>
     </div>
@@ -134,8 +131,8 @@
     <!-- Section 4: Claude Director -->
     <div id="sec-claude" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>🟣 Chỉ Đạo Nghệ Thuật &amp; Phân Cảnh Điện Ảnh (Claude)</b>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-claude-prompt')">📋 Sao chép cho Claude</button>
+        <b>🟣 Phân Cảnh &amp; Đạo Diễn (Claude)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-claude-prompt')">📋 Copy</button>
       </div>
       <pre class="prompt-box" id="txt-claude-prompt" style="max-height:280px"></pre>
     </div>
@@ -143,8 +140,8 @@
     <!-- Section 5: Gemini 4K Prompts -->
     <div id="sec-gemini" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>✨ Bộ Prompt Tạo Ảnh Sản Phẩm 4K (Gemini Imagen 3)</b>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-gemini-prompts')">📋 Sao chép tất cả prompt ảnh</button>
+        <b>✨ Prompt Ảnh 4K (Gemini)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-gemini-prompts')">📋 Copy tất cả</button>
       </div>
       <div id="txt-gemini-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
       <pre class="prompt-box" id="txt-gemini-prompts" style="display:none"></pre>
@@ -153,8 +150,8 @@
     <!-- Section 6: Muse AI Motion Prompts -->
     <div id="sec-museai" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>🎬 Bộ Prompt Tạo Chuyển Động Camera (Muse AI Motion)</b>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-museai-prompts')">📋 Sao chép tất cả prompt video</button>
+        <b>🎬 Prompt Video (Muse AI)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-museai-prompts')">📋 Copy tất cả</button>
       </div>
       <div id="txt-museai-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
       <pre class="prompt-box" id="txt-museai-prompts" style="display:none"></pre>
@@ -163,7 +160,7 @@
     <!-- Section 7: Media Guides -->
     <div id="sec-guide" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>📥 Hướng Dẫn Trích Xuất Media Từ Muse AI &amp; Gemini Về Studio</b>
+        <b>📥 Hướng Dẫn Trích Xuất Media</b>
       </div>
       <div id="txt-guides-list" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
     </div>
@@ -173,12 +170,12 @@
       <div style="flex:1;min-width:280px">
         <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px">
           <span style="font-size:22px">🎬</span>
-          Sẵn sàng đưa vào phòng dựng Studio AI?
+          Đưa kịch bản vào Studio AI
         </div>
-        <p class="hint" style="margin:4px 0 0;font-size:13px">Hệ thống sẽ chuyển toàn bộ kịch bản, lời bình voiceover, prompt media và thông tin sản phẩm sang Studio AI — Tự động điền 100% dữ liệu!</p>
+        <p class="hint" style="margin:4px 0 0;font-size:13px">Chuyển toàn bộ kịch bản, lời thoại và thông tin sản phẩm sang Studio để dựng video.</p>
       </div>
       <button type="button" class="btn btn-mega-render" style="width:auto;padding:12px 24px" onclick="transferScriptToStudio()">
-        🚀 Chuyển Kịch Bản Sang Studio Dựng Video Ngay ↗️
+        🚀 Chuyển Sang Studio Dựng Video ↗
       </button>
     </div>
   </div>
@@ -346,7 +343,23 @@ function generateMultiAIPrompts() {
 
     (pkg.scenes || []).forEach(function(sc, i) {
       gAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.gemini_prompt + '\n\n';
-      gList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.gemini_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt ảnh cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.gemini_prompt + '</p></div>';
+      gList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">' +
+        '<div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b>' +
+          '<div style="display:flex;gap:6px">' +
+            '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.gemini_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt ảnh cảnh ' + (i+1) + '\', true)">Copy</button>' +
+            '<button class="btn btn-primary btn-sm" id="btn-scene-gen-' + i + '" onclick="generateSceneImage(' + i + ', \'' + sc.gemini_prompt.replace(/'/g, "\\'") + '\')">🎨 Tạo ảnh</button>' +
+          '</div>' +
+        '</div>' +
+        '<p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.gemini_prompt + '</p>' +
+        '<div id="scene-img-preview-' + i + '" style="display:none;margin-top:10px;border-radius:8px;overflow:hidden;border:1px solid var(--border)">' +
+          '<img id="scene-img-' + i + '" src="" style="width:100%;max-height:220px;object-fit:cover;display:block">' +
+          '<div style="padding:6px 10px;background:var(--bg3);display:flex;justify-content:space-between;align-items:center">' +
+            '<span class="badge badge-ok" id="scene-badge-' + i + '">Ảnh 4K</span>' +
+            '<button type="button" class="btn btn-secondary btn-sm" id="btn-use-scene-' + i + '" style="font-size:11px;padding:2px 8px">🎬 Dùng cho Studio</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
 
       mAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.muse_ai_prompt + '\n\n';
       mList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.muse_ai_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt video cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.muse_ai_prompt + '</p></div>';
@@ -361,6 +374,64 @@ function generateMultiAIPrompts() {
   })
   .catch(function(err) {
     alert('Lỗi tạo prompt: ' + err);
+  });
+}
+
+function generateSceneImage(i, prompt) {
+  var name = document.getElementById('syn-product-name').value;
+  var niche = document.getElementById('syn-niche').value;
+  var btn = document.getElementById('btn-scene-gen-' + i);
+  var oldText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang tạo...';
+  }
+
+  var data = new URLSearchParams();
+  data.append('product_name', name);
+  data.append('niche', niche);
+  data.append('prompt', prompt);
+  data.append('aspect_ratio', '9:16');
+
+  fetch('/studio/generate-image', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    if (!res.ok) {
+      alert('Lỗi tạo ảnh: ' + (res.error || 'Thử lại'));
+      return;
+    }
+    var box = document.getElementById('scene-img-preview-' + i);
+    var img = document.getElementById('scene-img-' + i);
+    var badge = document.getElementById('scene-badge-' + i);
+    var useBtn = document.getElementById('btn-use-scene-' + i);
+    if (box && img) {
+      img.src = res.url;
+      box.style.display = 'block';
+      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini 4K' : '🎨 Đồ Họa 4K';
+      if (useBtn) {
+        useBtn.onclick = function() {
+          var d = { product_name: name, niche: niche, photo_url: res.url, photo_path: res.path };
+          sessionStorage.setItem('webai_scene_photo', JSON.stringify(d));
+          window.location.href = '/studio';
+        };
+      }
+    }
+    window.showToast('✓ Đã tạo xong ảnh cảnh ' + (i+1) + '!', true);
+  })
+  .catch(function(err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+    alert('Lỗi: ' + err);
   });
 }
 </script>

@@ -59,6 +59,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
 	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
+	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)
+	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
 
 	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
 	mux.HandleFunc("GET /web-ai", s.handleWebAI)

@@ -205,9 +205,12 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			s.appendLog(id, fmt.Sprintf("Chụp ảnh %d/%d…", i+1, len(plan.Prompts)))
 			s.setAsset(aid, StatusRunning, "")
 			if err := s.mg.GenerateImage(ctx, pr, refs, out); err != nil {
-				s.appendLog(id, fmt.Sprintf("Ảnh %d lỗi: %v", i+1, err))
-				s.setAsset(aid, StatusFailed, "")
-				continue
+				s.appendLog(id, fmt.Sprintf("Ảnh %d AI: %v (tự động tạo ảnh đồ họa sản phẩm)", i+1, err))
+				if verr := GenerateProductVisual(p.ProductName, p.Niche, fmt.Sprintf("PHÂN CẢNH %d · ĐẶT MUA NGAY", i+1), 1080, 1920, out); verr != nil {
+					s.appendLog(id, fmt.Sprintf("Tạo ảnh đồ họa lỗi: %v", verr))
+					s.setAsset(aid, StatusFailed, "")
+					continue
+				}
 			}
 			master := filepath.Join(work, fmt.Sprintf("photo-%02d-4k.png", i))
 			s.appendLog(id, fmt.Sprintf("Nâng ảnh %d lên 4K…", i+1))

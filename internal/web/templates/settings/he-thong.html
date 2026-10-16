@@ -3,7 +3,7 @@
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Cài đặt · Hệ thống</h1>
-    <p class="subtitle">Trung tâm quản lý toàn bộ kết nối: Tài khoản Web AI xoay tua, Khóa API nhà cung cấp, Kênh Mạng xã hội và Vận hành hệ thống.</p>
+    <p class="subtitle">Quản lý Khóa API, Kênh mạng xã hội, Tài khoản AI và Vận hành hệ thống.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/studio" class="btn btn-secondary">🎬 Studio AI</a>
@@ -21,29 +21,17 @@
 <div class="studio-tabs" style="margin: 20px 0 24px 0;">
   <a href="#tab-apikeys" id="tab-btn-apikeys" class="active" onclick="switchSettingsTab('apikeys')">🔑 1. Khóa API Chính Thức</a>
   <a href="#tab-social" id="tab-btn-social" onclick="switchSettingsTab('social')">🌐 2. Kênh Mạng Xã Hội</a>
-  <a href="#tab-webai" id="tab-btn-webai" onclick="switchSettingsTab('webai')">🤖 3. Tài Khoản Web AI</a>
+  <a href="#tab-webai" id="tab-btn-webai" onclick="switchSettingsTab('webai')">🤖 3. Tài Khoản AI</a>
   <a href="#tab-system" id="tab-btn-system" onclick="switchSettingsTab('system')">⚙️ 4. Vận Hành &amp; Hệ Thống</a>
 </div>
 
 <!-- =========================================================================
-     TAB 3: WEB AI KEYRING POOL (ChatGPT, Claude, Gemini, Muse AI)
+     TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Muse AI)
      ========================================================================= -->
 <div id="panel-webai" class="settings-tab-panel" style="display:none">
-  <!-- Professional Context Banner -->
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-    <div>
-      <div style="font-weight:700;font-size:14px;color:var(--text)">💡 Khuyến nghị chuẩn Production:</div>
-      <p class="hint" style="margin:2px 0 0;font-size:13px">Để hệ thống vận hành tự động 24/7 ổn định và bảo mật nhất, hãy sử dụng <b>Khóa API chính thức</b> (Google Gemini, OpenAI, Claude) ở Tab 1. Cụm Web AI dưới đây dành riêng cho người dùng muốn tận dụng thêm tài khoản ChatGPT Plus / Claude Pro cá nhân.</p>
-    </div>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="switchSettingsTab('apikeys')">Quản lý Khóa API ↗</button>
-  </div>
-
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <div>
-      <h3 style="margin:0">Cụm Tài Khoản Xoay Tua Web AI</h3>
-      <p class="hint" style="margin:4px 0 0">Tự động xoay vòng tài khoản khi gặp giới hạn tốc độ (rate limit), bảo đảm hệ thống sản xuất liên tục 24/7.</p>
-    </div>
-    <span class="badge badge-ok">{{.WebAIConnected}} tài khoản đang sẵn sàng</span>
+    <h3 style="margin:0">Tài Khoản AI</h3>
+    <span class="badge badge-ok">{{.WebAIConnected}} sẵn sàng</span>
   </div>
 
   <div class="webai-grid">
@@ -68,13 +56,12 @@
         </div>
       </div>
 
-      <p class="webai-desc">{{.Platform.Description}}</p>
+      <div class="webai-desc">{{.Platform.Description}}</div>
 
       <!-- Account Keyring Pool List -->
       <div class="webai-keyring-list" style="margin:12px 0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <b>Danh sách phiên ({{.TotalCount}}):</b>
-          <span class="hint">{{.ReadyCount}} hoạt động</span>
+          <b>Tài khoản ({{.TotalCount}})</b>
         </div>
         {{if .Accounts}}
           <div style="display:flex;flex-direction:column;gap:6px">
@@ -96,28 +83,28 @@
               <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
                 <input type="hidden" name="id" value="{{.ID}}">
                 <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Bỏ nghỉ, mở lại ngay" style="font-size:11px;padding:2px 6px">Bỏ nghỉ</button>
+                <button type="submit" class="btn btn-secondary btn-sm" title="Mở lại ngay" style="font-size:11px;padding:2px 6px">Mở lại</button>
               </form>
               {{end}}
               <form method="post" action="/web-ai/accounts/delete" style="display:inline">
                 <input type="hidden" name="id" value="{{.ID}}">
                 <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Xóa tài khoản này khỏi pool" style="font-size:11px;padding:2px 6px;color:var(--err)">🗑</button>
+                <button type="submit" class="btn btn-secondary btn-sm" title="Xóa tài khoản" style="font-size:11px;padding:2px 6px;color:var(--err)">🗑</button>
               </form>
             </div>
           </div>
           {{end}}
           </div>
         {{else}}
-          <div class="hint" style="padding:4px 0">Chưa có tài khoản. Bấm "+ Thêm tài khoản web" để kết nối miễn phí.</div>
+          <div class="hint" style="padding:4px 0">Chưa có tài khoản.</div>
         {{end}}
       </div>
 
       <div class="webai-card-actions">
         <button type="button" class="btn btn-sm" style="flex:1" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}')">
-          + Thêm tài khoản web
+          + Thêm tài khoản
         </button>
-        <a href="{{.Platform.URL}}" target="_blank" rel="noreferrer" class="btn btn-secondary btn-sm" title="Mở trên trình duyệt">↗️ Mở Web</a>
+        <a href="{{.Platform.URL}}" target="_blank" rel="noreferrer" class="btn btn-secondary btn-sm" title="Mở trang">↗ Mở</a>
       </div>
     </div>
     {{end}}
@@ -464,7 +451,7 @@
 <div id="connect-modal" class="webai-modal-backdrop" hidden>
   <div class="webai-modal-box" style="border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
     <div class="modal-head">
-      <h3 id="modal-title">Kết nối Web AI</h3>
+      <h3 id="modal-title">Thêm tài khoản</h3>
       <button type="button" class="modal-close-btn" onclick="closeConnectModal()">✕</button>
     </div>
     <form method="post" action="/web-ai/accounts/add">
@@ -472,29 +459,28 @@
       <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
       <div class="modal-body">
         <div class="field">
-          <label>Tên / Email hiển thị</label>
-          <input type="text" name="email" id="connect-email" placeholder="ví dụ: creator1@gmail.com">
-          <div class="hint">Để bạn dễ phân biệt các phiên đăng nhập trong pool xoay tua.</div>
+          <label>Tên / Email</label>
+          <input type="text" name="email" id="connect-email" placeholder="Email hoặc tên gợi nhớ">
         </div>
         <div class="field">
           <label>Gói tài khoản</label>
           <select name="tier" id="connect-tier">
-            <option value="free">Miễn phí (Free Tier)</option>
-            <option value="plus">Plus / Pro / Ultra</option>
+            <option value="free">Miễn phí (Free)</option>
+            <option value="plus">Plus / Pro</option>
           </select>
         </div>
         <div class="field">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label style="margin:0">Session Token / Phiên làm việc <span class="req">*</span></label>
-            <a href="#" id="connect-platform-link" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px">↗ Mở trang đăng nhập</a>
+            <label style="margin:0">Session Token / Cookie <span class="req">*</span></label>
+            <a href="#" id="connect-platform-link" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px">↗ Mở trang</a>
           </div>
-          <textarea name="session_key" id="connect-session-key" rows="3" required placeholder="Dán token phiên làm việc vào đây..."></textarea>
+          <textarea name="session_key" id="connect-session-key" rows="3" required placeholder="Dán token / cookie..."></textarea>
           <div class="hint" id="connect-auth-guide"></div>
         </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">Hủy</button>
-        <button type="submit" class="btn">Thêm Vào Pool Xoay Tua</button>
+        <button type="submit" class="btn btn-primary">Lưu tài khoản</button>
       </div>
     </form>
   </div>
@@ -527,7 +513,7 @@ function openConnectModal(p, name, ph, guide) {
     if (p === 'chatgpt') link.href = 'https://chatgpt.com';
     else if (p === 'claude') link.href = 'https://claude.ai';
     else if (p === 'gemini') link.href = 'https://gemini.google.com';
-    else if (p === 'muse') link.href = 'https://muse.ai';
+    else if (p === 'muse' || p === 'museai') link.href = 'https://muse.ai';
   }
   document.getElementById('connect-modal').hidden = false;
 }

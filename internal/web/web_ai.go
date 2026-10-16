@@ -343,6 +343,13 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
 		return
 	}
+	if productPhoto == "" {
+		if gen := strings.TrimSpace(r.FormValue("generated_photo_path")); gen != "" {
+			if _, serr := os.Stat(gen); serr == nil {
+				productPhoto = gen
+			}
+		}
+	}
 	modelPhoto, err := saveUpload(r, "model_photo", upDir)
 	if err != nil {
 		studioErr("Ảnh người mẫu lỗi: " + err.Error())
@@ -418,6 +425,27 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 				clips = append(clips, dst)
 			}
 			cancel()
+		}
+	}
+
+	// Auto-fallback: if user provided no photo and no clip, generate a 4K product visual
+	if productPhoto == "" && len(clips) == 0 {
+		genPath := filepath.Join(upDir, fmt.Sprintf("%d-autogen-prod.png", time.Now().UnixNano()))
+		prodName := strings.TrimSpace(r.FormValue("product_name"))
+		if prodName == "" {
+			prodName = "Sản phẩm AI Creator"
+		}
+		niche := strings.TrimSpace(r.FormValue("niche"))
+		if s.Studio != nil && s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
+			prompt := fmt.Sprintf("Ultra-detailed professional commercial advertising photograph of %s, %s, 4K quality, tack-sharp focus, photorealistic, cinematic lighting, 9:16 vertical, no text, no watermark", prodName, niche)
+			if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), prompt, nil, genPath); gerr == nil {
+				productPhoto = genPath
+			}
+		}
+		if productPhoto == "" {
+			if verr := studio.GenerateProductVisual(prodName, niche, "SAN PHAM CHINH HANG - DAT MUA NGAY", 1080, 1920, genPath); verr == nil {
+				productPhoto = genPath
+			}
 		}
 	}
 

@@ -12,7 +12,7 @@
   </div>
 </div>
 
-{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza”, dài 39 ký tự). Google từ chối key này nên AI chưa chạy. <a href="/settings/he-thong#tab-apikeys">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
+{{if .KeyWrong}}<p class="err">Key Gemini đã nhập <b>không phải key Gemini</b> (key Gemini bắt đầu bằng “AIza” hoặc “AQ.”). Google từ chối key này nên AI chưa chạy. <a href="/settings/he-thong#tab-apikeys">Xóa key sai và dán key đúng</a> — lấy miễn phí tại aistudio.google.com/apikey.</p>{{end}}
 {{if or (not .Accounts) (not .HasKeys) (not .HasStudioJobs)}}
 <div class="card steps-card" style="margin-bottom:24px;border-radius:14px">
   <h3 style="margin:0">🚀 Bắt đầu trong 3 bước</h3>
