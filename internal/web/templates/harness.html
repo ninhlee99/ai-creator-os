@@ -1,17 +1,93 @@
-{{define "title"}}Agent Harness — Bộ Não Tự Hành OODA — AI Creator OS{{end}}
+{{define "title"}}Agent Harness — Tổng Chỉ Huy Tự Động Hóa 24/7 — AI Creator OS{{end}}
 {{define "content"}}
-<!-- Header: Agent Harness Executive Command Center -->
-<div class="webai-header" style="margin-bottom: 28px;">
+<!-- Harness Modal Custom CSS (Fixed Center, Anti-Overflow, Responsive) -->
+<style>
+.harness-modal-overlay {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  width: 100vw !important; height: 100vh !important;
+  background: rgba(15, 23, 42, 0.78) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+}
+.harness-modal-overlay[hidden] {
+  display: none !important;
+}
+.harness-modal-window {
+  width: 100% !important;
+  max-width: 880px !important;
+  max-height: 88vh !important;
+  background: var(--bg2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  margin: auto !important;
+  animation: harnessModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes harnessModalPop {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.harness-modal-header {
+  padding: 18px 24px !important;
+  border-bottom: 1px solid var(--border) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  background: var(--surface) !important;
+}
+.harness-modal-body {
+  padding: 24px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+}
+.harness-modal-footer {
+  padding: 14px 24px !important;
+  border-top: 1px solid var(--border) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  background: var(--surface) !important;
+}
+.storage-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+</style>
+
+<!-- Header: Master Autonomous Orchestrator -->
+<div class="webai-header" style="margin-bottom: 24px;">
   <div class="webai-header-left">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
       <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Agent Harness</h1>
       <span class="badge badge-dim" style="font-family:monospace;font-size:11px;padding:3px 8px">BỘ NÃO TỰ HÀNH OODA</span>
       <span class="badge badge-{{.Harness.AutonomyLevelBadge}}" style="font-size:11.5px;padding:4px 12px;font-weight:700">
         {{.Harness.AutonomyLevelName}}
       </span>
     </div>
-    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:880px;line-height:1.55">
-      Kiến trúc nhận thức khép kín OODA (<b>Quan sát &rarr; Định hướng &rarr; Quyết định &rarr; Thực thi &rarr; Đúc kết</b>). Tự động điều phối danh mục kênh, săn deal affiliate hoa hồng cao, sản xuất video viral 9:16 và liên tục tự học hỏi qua kho ký ức thực chiến.
+    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:920px;line-height:1.55">
+      Bộ điều phối trung tâm (Master Autonomous Orchestrator) vận hành hệ thống khép kín 24/7: Giám sát toàn bộ kênh, săn deal affiliate hoa hồng cao, điều phối Studio AI dựng video và tự học hỏi qua kho ký ức thực chiến SQLite.
     </p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
@@ -24,22 +100,60 @@
 </div>
 
 {{if .Harness.Notice}}
-<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:28px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:12px">
+<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:24px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:12px">
   <span style="color:#10b981;font-size:18px;font-weight:bold">✓</span>
   <div style="font-size:13.5px">{{.Harness.Notice}}</div>
 </div>
 {{end}}
 
 {{if .Harness.Error}}
-<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:28px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:12px">
+<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:24px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:12px">
   <span style="color:#ef4444;font-size:18px;font-weight:bold">⚠</span>
   <div style="font-size:13.5px">{{.Harness.Error}}</div>
 </div>
 {{end}}
 
-<!-- Key Performance & Perception Metrics: 4 Spaced Cards -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:20px;margin-bottom:32px;">
-  <div class="card" style="padding:18px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
+<!-- Closed-Loop Autonomous Pipeline Architecture Banner -->
+<div class="card" style="padding:20px 24px;border-radius:14px;margin-bottom:24px;background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(16,185,129,0.05) 100%);border:1px solid var(--border)">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div>
+      <b style="font-size:14px;color:var(--text)">Vị Trí Của Harness Agent Trong Dây Chuyền Tự Động 24/7</b>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">Harness Agent đóng vai trò là "Tổng chỉ huy", kết nối dữ liệu từ mọi màn hình thành quy trình tự hành khép kín:</div>
+    </div>
+    <span class="badge badge-ok" style="font-size:10.5px;font-weight:700"><span class="pulse-dot"></span> KHÉP KÍN 100% TỰ ĐỘNG</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px">
+    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:0.5px">1. QUAN SÁT (OBSERVE)</div>
+      <div style="font-weight:700;font-size:13px;margin:3px 0">Quét Kênh &amp; Deal</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Dò kênh qua <a href="/accounts">Kênh</a>, quét hoa hồng qua <a href="/products">Affiliate</a> và bắt trend Douyin/TikTok.</div>
+    </div>
+    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:#8b5cf6;letter-spacing:0.5px">2. ĐỊNH HƯỚNG (ORIENT)</div>
+      <div style="font-weight:700;font-size:13px;margin:3px 0">Lọc Qua Ký Ức</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">So sánh với kho bài học thực chiến SQLite để chọn hook và cấu trúc kịch bản có tỷ lệ giữ chân cao nhất.</div>
+    </div>
+    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:0.5px">3. QUYẾT ĐỊNH (DECIDE)</div>
+      <div style="font-weight:700;font-size:13px;margin:3px 0">Ra Quyết Định Tác Vụ</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tự chọn loại video: Quảng cáo sản phẩm, bắt trend viral hoặc kể chuyện theo chính sách tự hành.</div>
+    </div>
+    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:#10b981;letter-spacing:0.5px">4. THỰC THI (ACT)</div>
+      <div style="font-weight:700;font-size:13px;margin:3px 0">Studio Sản Xuất Video</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tự kích hoạt <a href="/studio">Studio AI</a> tạo kịch bản, ảnh, âm thanh, giọng đọc và lên lịch đăng bài tự động.</div>
+    </div>
+    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:800;color:#ec4899;letter-spacing:0.5px">5. ĐÚC KẾT (LEARN)</div>
+      <div style="font-weight:700;font-size:13px;margin:3px 0">Lưu Vết &amp; Học Hỏi</div>
+      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Ghi nhận view thật, tỷ lệ chốt đơn vào bảng <code style="font-size:11px">harness_memories</code> để không lặp lại sai lầm.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Key Performance & Perception Metrics: 4 Spaced Cards with ample margins -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:20px;margin-bottom:24px;">
+  <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
     <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Kênh Đang Theo Dõi</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--accent)">
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ChannelCount}}{{else}}0{{end}}
@@ -48,7 +162,7 @@
     <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Giám sát sức khỏe danh mục kênh thời gian thực</div>
   </div>
 
-  <div class="card" style="padding:18px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
+  <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
     <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Deal Hoa Hồng Cao</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--text)">
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}}
@@ -57,7 +171,7 @@
     <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Accesstrade &amp; TikTok Shop đối soát tự động</div>
   </div>
 
-  <div class="card" style="padding:18px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
+  <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
     <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Tác Vụ Đã Điều Phối</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:#10b981">
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}}
@@ -66,18 +180,18 @@
     <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Đã kích hoạt trong chu kỳ nhận thức gần nhất</div>
   </div>
 
-  <div class="card" style="padding:18px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
+  <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
     <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Kho Ký Ức Thực Chiến</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--text)">
       {{.Harness.TotalMemories}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">bài học</span>
     </div>
-    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Lưu trữ bền vững trong cơ sở dữ liệu SQLite</div>
+    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Lưu bền vững trong cơ sở dữ liệu SQLite</div>
   </div>
 </div>
 
 <!-- Autonomy Policy Controller Section -->
-<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:32px;background:var(--surface);border:1px solid var(--border)">
+<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border)">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-weight:800;font-size:15px;letter-spacing:-0.2px">Chính Sách Cấp Độ Tự Hành (Autonomy Policy)</div>
@@ -93,7 +207,7 @@
     </form>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));gap:16px;margin-top:16px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;margin-top:16px">
     <div style="padding:16px 18px;border-radius:10px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--border){{end}}">
       <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 1}}var(--accent){{else}}var(--text){{end}}">
         Cấp độ 1: Trợ lý đề xuất
@@ -123,7 +237,7 @@
 
 <!-- Active Cognitive State & Latest Cycle Inspector -->
 {{if .Harness.LatestCycle}}
-<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:32px;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--accent)">
+<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-left:5px solid var(--accent)">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
@@ -206,156 +320,163 @@
 </div>
 {{end}}
 
-<!-- Interactive Prompt Context Simulator -->
-<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:32px;background:var(--surface);border:1px solid var(--border)">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:12px">
+<!-- =========================================================================
+     EXPLICIT STORAGE & MEMORY INSPECTOR (KIỂM TRA DỮ LIỆU LƯU TRỮ CỦA AGENT)
+     ========================================================================= -->
+<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
-        <span>Mô Phỏng Tiêm Ký Ức (Prompt Context Enhancer)</span>
-        <span class="badge badge-dim" style="font-size:10.5px">TỰ ĐỘNG TIÊM VÀO LLM</span>
+        <span>Kho Dữ Liệu &amp; Ký Ức Thực Chiến Đang Lưu Trữ</span>
+        <span class="badge badge-ok" style="font-size:11px;font-weight:700">SQLITE PERSISTENCE</span>
       </div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:3px">
-        Trực quan hóa đoạn ngữ cảnh và quy tắc bài học mà Harness Agent tự động đưa vào LLM khi sản xuất video để không bao giờ lặp lại sai lầm cũ.
+        Trực quan hóa toàn bộ dữ liệu Agent Harness đã đúc kết và ghi nhớ bền vững trong cơ sở dữ liệu SQLite để không bao giờ lặp lại lỗi sai.
       </div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <select id="simNiche" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
-        {{range .Harness.SimulatedNiches}}
-        <option value="{{.}}">{{.}}</option>
-        {{end}}
-      </select>
-      <select id="simChannel" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
-        <option value="">(Tất cả kênh)</option>
-        {{range .Harness.AccountNames}}
-        <option value="{{.}}">@{{.}}</option>
-        {{end}}
-      </select>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="refreshPromptPreview()" style="font-size:12px;padding:6px 12px">Làm mới ngữ cảnh</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="storage-stat-pill">📊 Bảng <code>harness_memories</code>: <b>{{.Harness.TotalMemories}}</b> bản ghi</span>
+      <span class="storage-stat-pill">⏱️ Bảng <code>harness_cycles</code>: <b>{{.Harness.TotalCycles}}</b> chu kỳ</span>
     </div>
   </div>
 
-  <div style="position:relative">
-    <pre id="promptPreviewBox" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;font-size:12.5px;font-family:monospace;line-height:1.6;color:var(--text);max-height:170px;overflow-y:auto;white-space:pre-wrap;margin:0">{{if .Harness.DefaultPromptContext}}{{.Harness.DefaultPromptContext}}{{else}}Chưa có bài học nào khớp với bộ lọc này. Hãy thêm bài học bên dưới để huấn luyện Agent.{{end}}</pre>
-  </div>
-</div>
-
-<!-- Episodic Memory Bank (Storage Inspector) -->
-<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:32px;background:var(--surface);border:1px solid var(--border)">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
-    <div>
-      <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
-        <span>Kho Ký Ức Thực Chiến</span>
-        <span class="badge badge-dim" style="font-family:monospace;font-size:11px">{{.Harness.TotalMemories}} BÀI HỌC KINH NGHIỆM</span>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-top:3px">
-        Dữ liệu tri thức lưu bền vững trong SQLite (bảng <code style="font-size:11.5px">harness_memories</code>). Tự động học từ tỷ lệ giữ chân người xem và doanh thu thực tế.
-      </div>
+  <!-- Episodic Memory Bank (Storage Inspector) -->
+  <div style="margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
+      <b style="font-size:13.5px;color:var(--text)">1. Danh Sách Bài Học Kinh Nghiệm &amp; Quy Tắc Tác Chiến (Episodic Memories)</b>
+      <button type="button" class="btn btn-secondary btn-sm" onclick="toggleMemoryForm()" style="font-size:12px;font-weight:600;padding:5px 12px">
+        + Thêm bài học kinh nghiệm mới
+      </button>
     </div>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleMemoryForm()" style="font-size:12.5px;font-weight:600;padding:6px 14px">
-      + Thêm bài học kinh nghiệm mới
-    </button>
-  </div>
 
-  {{if .Harness.Memories}}
-  <div style="overflow-x:auto;margin-bottom:14px">
-    <table class="table" style="font-size:12.5px;margin:0">
-      <thead>
-        <tr>
-          <th>Mã bài học</th>
-          <th>Lĩnh vực</th>
-          <th>Kênh áp dụng</th>
-          <th>Chủ đề / Định dạng</th>
-          <th>Quy tắc cốt lõi &amp; Bài học rút ra</th>
-          <th>Độ tin cậy</th>
-          <th>Tác động</th>
-          <th>Ngày tạo</th>
-          <th>Thao tác</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Harness.Memories}}
-        <tr>
-          <td style="font-family:monospace;font-size:11px;color:var(--muted)">{{.ID}}</td>
-          <td>
-            <span class="badge badge-dim" style="font-size:10.5px">{{.DomainVN}}</span>
-          </td>
-          <td>{{if .Channel}}<b>@{{.Channel}}</b>{{else}}<i>Tất cả</i>{{end}}</td>
-          <td style="font-weight:600">{{.Subject}}</td>
-          <td style="max-width:380px;line-height:1.45">
-            {{if .IsWarning}}<span style="color:#ef4444;font-weight:700">⚠ NÊN TRÁNH:</span> {{end}}{{.Insight}}
-          </td>
-          <td>
-            <span class="badge badge-{{.ScoreColor}}" style="font-size:10.5px;font-weight:700;font-family:monospace">{{.Confidence}}</span>
-          </td>
-          <td style="font-family:monospace;font-size:11.5px;font-weight:700;color:{{if .IsWarning}}#ef4444{{else}}#10b981{{end}}">
-            {{.ImpactPercent}}
-          </td>
-          <td style="color:var(--muted);font-size:11.5px">{{fmtVN .CreatedAt}}</td>
-          <td>
-            <div style="display:flex;gap:6px">
-              <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="showRawJson('Chi tiết bài học: {{.ID}}', {{.RawJSON}})">
-                { }
-              </button>
-              <form method="post" action="/harness/memory/delete" style="display:inline;margin:0" data-confirm="Xóa bài học kinh nghiệm này khỏi kho ký ức?">
-                <input type="hidden" name="id" value="{{.ID}}">
-                <button type="submit" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;color:#ef4444" title="Xóa bài học này">
-                  ✕
+    {{if .Harness.Memories}}
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
+      <table class="table" style="font-size:12.5px;margin:0">
+        <thead style="background:var(--bg)">
+          <tr>
+            <th style="padding:10px 12px">Mã bài học</th>
+            <th style="padding:10px 12px">Lĩnh vực</th>
+            <th style="padding:10px 12px">Kênh</th>
+            <th style="padding:10px 12px">Chủ đề</th>
+            <th style="padding:10px 12px">Quy tắc cốt lõi &amp; Bài học rút ra</th>
+            <th style="padding:10px 12px">Độ tin cậy</th>
+            <th style="padding:10px 12px">Tác động</th>
+            <th style="padding:10px 12px">Ngày ghi nhận</th>
+            <th style="padding:10px 12px">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Harness.Memories}}
+          <tr>
+            <td style="font-family:monospace;font-size:11px;color:var(--muted);padding:10px 12px">{{.ID}}</td>
+            <td style="padding:10px 12px">
+              <span class="badge badge-dim" style="font-size:10.5px">{{.DomainVN}}</span>
+            </td>
+            <td style="padding:10px 12px">{{if .Channel}}<b>@{{.Channel}}</b>{{else}}<i>Tất cả</i>{{end}}</td>
+            <td style="font-weight:600;padding:10px 12px">{{.Subject}}</td>
+            <td style="max-width:380px;line-height:1.45;padding:10px 12px">
+              {{if .IsWarning}}<span style="color:#ef4444;font-weight:700">⚠ NÊN TRÁNH:</span> {{end}}{{.Insight}}
+            </td>
+            <td style="padding:10px 12px">
+              <span class="badge badge-{{.ScoreColor}}" style="font-size:10.5px;font-weight:700;font-family:monospace">{{.Confidence}}</span>
+            </td>
+            <td style="font-family:monospace;font-size:11.5px;font-weight:700;color:{{if .IsWarning}}#ef4444{{else}}#10b981{{end}};padding:10px 12px">
+              {{.ImpactPercent}}
+            </td>
+            <td style="color:var(--muted);font-size:11.5px;padding:10px 12px">{{fmtVN .CreatedAt}}</td>
+            <td style="padding:10px 12px">
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px" onclick="showRawJson('Chi tiết bài học: {{.ID}}', {{.RawJSON}})">
+                  { }
                 </button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
-  </div>
-  {{else}}
-  <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;background:var(--bg);border-radius:10px;border:1px dashed var(--border)">
-    Chưa có bài học thực chiến nào được lưu. Hãy kích hoạt một chu kỳ OODA hoặc bấm vào nút phía trên để thêm quy tắc kinh nghiệm.
-  </div>
-  {{end}}
-
-  <!-- Collapsible Form: Add Custom Memory -->
-  <div id="memoryAddForm" style="display:none;background:var(--bg);padding:18px 22px;border-radius:12px;border:1px solid var(--border);margin-top:16px">
-    <div style="font-size:13.5px;font-weight:800;margin-bottom:12px">
-      Thêm Bài Học Chiến Lược / Quy Tắc Vận Hành Vào Bộ Não Agent
+                <form method="post" action="/harness/memory/delete" style="display:inline;margin:0" data-confirm="Xóa bài học kinh nghiệm này khỏi kho ký ức?">
+                  <input type="hidden" name="id" value="{{.ID}}">
+                  <button type="submit" class="btn btn-secondary btn-sm" style="padding:3px 8px;font-size:11px;color:#ef4444" title="Xóa bài học này">
+                    ✕
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
-    <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 120px;gap:12px;align-items:end;margin:0">
+    {{else}}
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;background:var(--bg);border-radius:10px;border:1px dashed var(--border)">
+      Chưa có bài học thực chiến nào được lưu. Hãy kích hoạt một chu kỳ OODA hoặc bấm vào nút phía trên để thêm quy tắc kinh nghiệm.
+    </div>
+    {{end}}
+
+    <!-- Collapsible Form: Add Custom Memory -->
+    <div id="memoryAddForm" style="display:none;background:var(--bg);padding:18px 22px;border-radius:12px;border:1px solid var(--border);margin-top:16px">
+      <div style="font-size:13.5px;font-weight:800;margin-bottom:12px">
+        Thêm Bài Học Chiến Lược / Quy Tắc Vận Hành Vào Bộ Não Agent
+      </div>
+      <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 120px;gap:12px;align-items:end;margin:0">
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Lĩnh vực:</label>
+          <select name="domain" class="form-select" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+            <option value="hook_performance">Tỷ lệ giữ chân 3s đầu (Hook)</option>
+            <option value="conversion_insight">Tỷ lệ chuyển đổi đơn hàng (Affiliate)</option>
+            <option value="format_reflection">Vòng đời định dạng video</option>
+            <option value="channel_learning">Chân dung khán giả kênh</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Kênh (Tùy chọn):</label>
+          <input type="text" name="channel" placeholder="vd: ai_tech_vn" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Ngách nội dung:</label>
+          <input type="text" name="niche" placeholder="vd: cong_nghe" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Chủ đề / Kỹ thuật:</label>
+          <input type="text" name="subject" placeholder="vd: Cắt nhịp bất ngờ" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
+        </div>
+        <div style="grid-column: span 2">
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Quy tắc vận hành / Bài học thực tế:</label>
+          <input type="text" name="insight" placeholder="vd: Cắt khung hình bất ngờ kèm âm thanh sấm sét giúp tăng tỷ lệ xem tiếp 42%" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px 12px;font-size:12.5px;border-radius:6px">Lưu bài học</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Interactive Prompt Context Simulator (Prompt Context Injection Inspector) -->
+  <div style="background:var(--bg);padding:18px 20px;border-radius:12px;border:1px solid var(--border)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:12px">
       <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Lĩnh vực:</label>
-        <select name="domain" class="form-select" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
-          <option value="hook_performance">Tỷ lệ giữ chân 3s đầu (Hook)</option>
-          <option value="conversion_insight">Tỷ lệ chuyển đổi đơn hàng (Affiliate)</option>
-          <option value="format_reflection">Vòng đời định dạng video</option>
-          <option value="channel_learning">Chân dung khán giả kênh</option>
+        <b style="font-size:13.5px;color:var(--text)">2. Ngữ Cảnh Tri Thức Tiêm Vào LLM (Prompt Context Injection)</b>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">
+          Mô phỏng đoạn bài học mà Harness Agent tự động đưa vào System Prompt khi Studio AI dựng video:
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="simNiche" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
+          {{range .Harness.SimulatedNiches}}
+          <option value="{{.}}">{{.}}</option>
+          {{end}}
         </select>
+        <select id="simChannel" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
+          <option value="">(Tất cả kênh)</option>
+          {{range .Harness.AccountNames}}
+          <option value="{{.}}">@{{.}}</option>
+          {{end}}
+        </select>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="refreshPromptPreview()" style="font-size:12px;padding:6px 12px">Làm mới ngữ cảnh</button>
       </div>
-      <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Kênh (Tùy chọn):</label>
-        <input type="text" name="channel" placeholder="vd: ai_tech_vn" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
-      </div>
-      <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Ngách nội dung:</label>
-        <input type="text" name="niche" placeholder="vd: cong_nghe" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
-      </div>
-      <div>
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Chủ đề / Kỹ thuật:</label>
-        <input type="text" name="subject" placeholder="vd: Cắt nhịp bất ngờ" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
-      </div>
-      <div style="grid-column: span 2">
-        <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Quy tắc vận hành / Bài học thực tế:</label>
-        <input type="text" name="insight" placeholder="vd: Cắt khung hình bất ngờ kèm âm thanh sấm sét giúp tăng tỷ lệ xem tiếp 42%" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
-      </div>
-      <div>
-        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px 12px;font-size:12.5px;border-radius:6px">Lưu bài học</button>
-      </div>
-    </form>
+    </div>
+    <pre id="promptPreviewBox" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px;font-family:monospace;line-height:1.6;color:var(--text);max-height:160px;overflow-y:auto;white-space:pre-wrap;margin:0">{{if .Harness.DefaultPromptContext}}{{.Harness.DefaultPromptContext}}{{else}}Chưa có bài học nào khớp với bộ lọc này. Hãy thêm bài học kinh nghiệm để huấn luyện Agent.{{end}}</pre>
   </div>
 </div>
 
 <!-- SQLite Cycle Audit History & Detailed Inspector -->
 {{if .Harness.RecentCycles}}
-<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:32px;background:var(--surface);border:1px solid var(--border)">
+<div class="card" style="padding:22px 26px;border-radius:14px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border)">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
@@ -368,37 +489,37 @@
     </div>
   </div>
 
-  <div style="overflow-x:auto">
+  <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px">
     <table class="table" style="font-size:12.5px;margin:0">
-      <thead>
+      <thead style="background:var(--bg)">
         <tr>
-          <th>Mã chu kỳ</th>
-          <th>Thời điểm</th>
-          <th>Thời lượng</th>
-          <th>Danh mục quan sát</th>
-          <th>Tác vụ điều phối</th>
-          <th>Tóm tắt chẩn đoán</th>
-          <th>Trạng thái</th>
-          <th>Kiểm tra lưu trữ</th>
+          <th style="padding:10px 12px">Mã chu kỳ</th>
+          <th style="padding:10px 12px">Thời điểm</th>
+          <th style="padding:10px 12px">Thời lượng</th>
+          <th style="padding:10px 12px">Danh mục quan sát</th>
+          <th style="padding:10px 12px">Tác vụ điều phối</th>
+          <th style="padding:10px 12px">Tóm tắt chẩn đoán</th>
+          <th style="padding:10px 12px">Trạng thái</th>
+          <th style="padding:10px 12px">Kiểm tra lưu trữ</th>
         </tr>
       </thead>
       <tbody>
         {{range .Harness.RecentCycles}}
         <tr>
-          <td style="font-family:monospace;font-weight:700;font-size:12px">{{.CycleID}}</td>
-          <td>{{fmtVN .StartedAt}}</td>
-          <td style="font-family:monospace;color:var(--muted)">{{.Duration}}</td>
-          <td>
+          <td style="font-family:monospace;font-weight:700;font-size:12px;padding:10px 12px">{{.CycleID}}</td>
+          <td style="padding:10px 12px">{{fmtVN .StartedAt}}</td>
+          <td style="font-family:monospace;color:var(--muted);padding:10px 12px">{{.Duration}}</td>
+          <td style="padding:10px 12px">
             <b>{{.ChannelCount}}</b> kênh, <b>{{.ProductCount}}</b> deal
           </td>
-          <td style="font-weight:700;color:#10b981">{{.ActionCount}} tác vụ</td>
-          <td style="max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)">
+          <td style="font-weight:700;color:#10b981;padding:10px 12px">{{.ActionCount}} tác vụ</td>
+          <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);padding:10px 12px">
             {{.Diagnosis}}
           </td>
-          <td>
+          <td style="padding:10px 12px">
             <span class="badge badge-ok" style="font-size:10.5px">{{.Status}}</span>
           </td>
-          <td>
+          <td style="padding:10px 12px">
             <div style="display:flex;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm" onclick="openCycleModal('{{.CycleID}}')" style="font-size:11.5px;padding:3px 8px;font-weight:600">
                 🔍 Xem chi tiết
@@ -416,37 +537,41 @@
 </div>
 {{end}}
 
-<!-- Modal: Comprehensive Cycle Inspector (Standard Centered Modal) -->
-<div class="modal-backdrop" id="cycleInspectModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" style="max-width:860px;width:92%;max-height:86vh;padding:0;display:flex;flex-direction:column;overflow:hidden;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,0.45);background:var(--bg2);border:1px solid var(--border)">
-    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)">
+<!-- =========================================================================
+     MODALS: STANDALONE FIXED-CENTER MODAL CONTAINERS (ANTI-OVERFLOW / ALIGNED)
+     ========================================================================= -->
+
+<!-- Modal 1: Comprehensive Cycle Inspector -->
+<div class="harness-modal-overlay" id="cycleInspectModal" hidden>
+  <div class="harness-modal-window" role="dialog" aria-modal="true">
+    <div class="harness-modal-header">
       <div>
         <h3 id="cycleModalTitle" style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">Chi Tiết Chu Kỳ Nhận Thức</h3>
         <div id="cycleModalSub" style="font-size:12px;color:var(--muted);margin-top:3px">Dữ liệu lưu vết từ bảng harness_cycles trong SQLite</div>
       </div>
       <button type="button" class="btn btn-secondary btn-sm" onclick="closeCycleModal()" style="font-size:14px;padding:4px 10px;line-height:1">✕</button>
     </div>
-    <div id="cycleModalBody" style="padding:24px;overflow-y:auto;flex:1;font-size:13px;line-height:1.6;display:flex;flex-direction:column;gap:20px">
+    <div id="cycleModalBody" class="harness-modal-body">
       <!-- Injected dynamically via JS -->
     </div>
-    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface)">
+    <div class="harness-modal-footer">
       <button type="button" class="btn btn-secondary btn-sm" id="cycleModalCopyBtn" onclick="copyCycleJson()">📋 Sao chép JSON</button>
       <button type="button" class="btn btn-primary btn-sm" onclick="closeCycleModal()">Đóng cửa sổ</button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Raw JSON Inspector (Standard Centered Modal) -->
-<div class="modal-backdrop" id="rawJsonModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" style="max-width:780px;width:92%;max-height:84vh;padding:0;display:flex;flex-direction:column;overflow:hidden;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,0.45);background:var(--bg2);border:1px solid var(--border)">
-    <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)">
+<!-- Modal 2: Raw JSON Inspector -->
+<div class="harness-modal-overlay" id="rawJsonModal" hidden>
+  <div class="harness-modal-window" role="dialog" aria-modal="true" style="max-width:760px">
+    <div class="harness-modal-header">
       <h3 id="rawJsonTitle" style="margin:0;font-size:15px;font-weight:800;color:var(--text)">Dữ Liệu JSON Gốc</h3>
       <button type="button" class="btn btn-secondary btn-sm" onclick="closeRawJsonModal()" style="font-size:14px;padding:4px 10px;line-height:1">✕</button>
     </div>
-    <div style="padding:20px;overflow-y:auto;flex:1">
-      <pre id="rawJsonContent" style="margin:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;font-family:monospace;white-space:pre-wrap;color:var(--text);line-height:1.5"></pre>
+    <div class="harness-modal-body" style="padding:16px">
+      <pre id="rawJsonContent" style="margin:0;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;font-family:monospace;white-space:pre-wrap;color:var(--text);line-height:1.5;overflow-x:auto"></pre>
     </div>
-    <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface)">
+    <div class="harness-modal-footer">
       <button type="button" class="btn btn-secondary btn-sm" onclick="copyRawJson()">📋 Sao chép vào Clipboard</button>
       <button type="button" class="btn btn-primary btn-sm" onclick="closeRawJsonModal()">Đóng</button>
     </div>
@@ -491,6 +616,7 @@ function openCycleModal(cycleID) {
   sub.textContent = "Đang tải dữ liệu chi tiết từ cơ sở dữ liệu SQLite...";
   body.innerHTML = "<div style='text-align:center;padding:36px;color:var(--muted)'>Đang tải dữ liệu chu kỳ...</div>";
   modal.hidden = false;
+  document.body.style.overflow = 'hidden';
 
   fetch('/api/harness/cycles/' + encodeURIComponent(cycleID))
     .then(r => r.json())
@@ -586,6 +712,7 @@ function openCycleModal(cycleID) {
 
 function closeCycleModal() {
   document.getElementById('cycleInspectModal').hidden = true;
+  document.body.style.overflow = '';
 }
 
 function copyCycleJson() {
@@ -604,10 +731,12 @@ function showRawJson(title, jsonPayload) {
   activeRawPayload = str;
   document.getElementById('rawJsonContent').textContent = str;
   document.getElementById('rawJsonModal').hidden = false;
+  document.body.style.overflow = 'hidden';
 }
 
 function closeRawJsonModal() {
   document.getElementById('rawJsonModal').hidden = true;
+  document.body.style.overflow = '';
 }
 
 function copyRawJson() {

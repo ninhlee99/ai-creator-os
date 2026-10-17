@@ -2,7 +2,7 @@
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1 id="studio-top">Studio Dàn Dựng Video AI 🎬</h1>
+    <h1 id="studio-top">Studio Dàn Dựng Video AI</h1>
     <p class="subtitle">Sản xuất video chất lượng cao chuẩn dọc 9:16 hoặc ngang 16:9 với chuyển động điện ảnh và tự động cân bằng âm thanh.</p>
   </div>
   <div class="webai-header-actions">
@@ -14,15 +14,15 @@
 
 <!-- Primary Studio Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio" class="active">🎬 Tạo video</a>
+  <a href="/studio" class="active">Tạo video</a>
   <a href="/studio/jobs?tab=running">
-    ⚡ Video đang dựng {{if .ActiveJobs}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.ActiveJobs}}</span>{{end}}
+    Video đang dựng {{if .ActiveJobs}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.ActiveJobs}}</span>{{end}}
   </a>
-  <a href="/studio/jobs?tab=schedule">📅 Lên lịch tự động</a>
+  <a href="/studio/jobs?tab=schedule">Lên lịch tự động</a>
   <a href="/studio/jobs">
-    📂 Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+    Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
   </a>
-  <a href="/studio/trends">🎵 Nhạc thịnh hành</a>
+  <a href="/studio/trends">Nhạc thịnh hành</a>
 </nav>
 
 {{if .ActiveJobs}}
