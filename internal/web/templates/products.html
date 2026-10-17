@@ -11,6 +11,13 @@
   </div>
 </div>
 
+<!-- Affiliate Unified Navigation Tabs -->
+<nav class="tabs" style="margin-bottom: 20px;">
+  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>🛍️ Tìm Kiếm &amp; Khám Phá Sản Phẩm</a>
+  <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>🛒 Kệ Hàng Sản Xuất AI</a>
+  <a href="/studio">🎬 Xưởng Dàn Dựng Studio</a>
+</nav>
+
 <div class="hint" style="margin-bottom:14px">💡 <b>Quy trình tự động:</b> Lựa chọn sản phẩm → Đưa vào Kệ hàng → AI tự dựng video bán hàng &amp; ghim link tiếp thị liên kết.</div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
@@ -23,11 +30,6 @@
   {{if .SchedNextRun}}<span class="badge badge-draft">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}
   <span class="badge badge-draft">Kho: {{.StockCount}} sản phẩm</span>
 </p>{{end}}
-
-<nav class="tabs">
-  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Tìm sản phẩm</a>
-  <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ hàng</a>
-</nav>
 
 {{if eq .Tab "ke"}}
 <div class="form-card">

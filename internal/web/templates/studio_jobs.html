@@ -5,6 +5,16 @@
 {{end}}
 
 {{define "content"}}
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1 id="studio-top">Studio Dàn Dựng Video AI 🎬</h1>
+    <p class="subtitle">Sản xuất video chất lượng cao chuẩn dọc 9:16 hoặc ngang 16:9 với chuyển động điện ảnh và tự động cân bằng âm thanh.</p>
+  </div>
+  <div class="webai-header-actions">
+    {{if .RunningCount}}<span class="badge badge-info"><span class="pulse-dot"></span> {{.RunningCount}} video đang dựng</span>{{end}}
+  </div>
+</div>
+
 <!-- Studio Unified Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
   <a href="/studio">🎬 Tạo video</a>

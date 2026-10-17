@@ -39,17 +39,34 @@
 </div>
 {{end}}
 
-<!-- 3 Chế Độ Sản Xuất Video Tập Trung (Single Video Hub) -->
-<div style="display:flex;gap:8px;background:var(--bg2);padding:6px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border);flex-wrap:wrap">
-  <button type="button" id="mode-btn-affiliate" class="btn btn-sm btn-primary active" onclick="switchProductionMode('affiliate')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
-    🛍️ 1. Video Bán Hàng &amp; Affiliate
-  </button>
-  <button type="button" id="mode-btn-viral" class="btn btn-sm btn-secondary" onclick="switchProductionMode('viral')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
-    ⚡ 2. Video Đu Trend &amp; Viral Shorts (9:16)
-  </button>
-  <button type="button" id="mode-btn-story" class="btn btn-sm btn-secondary" onclick="switchProductionMode('story')" style="border-radius:8px;padding:8px 16px;font-weight:700;font-size:13px">
-    📖 3. Video Dài / Kể Chuyện YouTube &amp; Cắt Shorts
-  </button>
+<!-- Bộ Chọn 3 Chế Độ Sản Xuất Video AI -->
+<div class="production-mode-bar" style="background:var(--bg2);padding:10px 14px;border-radius:14px;margin-bottom:24px;border:1px solid var(--border)">
+  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+    CHỌN KỊCH BẢN &amp; CHẾ ĐỘ SẢN XUẤT VIDEO:
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px">
+    <button type="button" id="mode-btn-affiliate" class="mode-select-btn active" onclick="switchProductionMode('affiliate')">
+      <span class="mode-icon">🛍️</span>
+      <div class="mode-text">
+        <strong>1. Video Bán Hàng &amp; Affiliate</strong>
+        <small>Sản phẩm rõ ràng, giá ưu đãi &amp; ghim link giỏ hàng</small>
+      </div>
+    </button>
+    <button type="button" id="mode-btn-viral" class="mode-select-btn" onclick="switchProductionMode('viral')">
+      <span class="mode-icon">⚡</span>
+      <div class="mode-text">
+        <strong>2. Video Đu Trend Shorts (9:16)</strong>
+        <small>Hook 3s giật tít, 4 phân cảnh AI &amp; nhạc thịnh hành</small>
+      </div>
+    </button>
+    <button type="button" id="mode-btn-story" class="mode-select-btn" onclick="switchProductionMode('story')">
+      <span class="mode-icon">📖</span>
+      <div class="mode-text">
+        <strong>3. Kể Chuyện Dài &amp; Cắt Shorts</strong>
+        <small>Video dài 16:9 + Tự trích xuất clip ngắn 3–5 phút đa kênh</small>
+      </div>
+    </button>
+  </div>
 </div>
 
 <!-- =========================================================================
@@ -625,7 +642,7 @@
             <select name="music_url" class="form-select">
               <option value="">🔥 Tự động ghép bài hát Hot Trend #1 hôm nay ({{.TopSound}})</option>
               {{range .Sounds}}
-              <option value="{{.PlayURL}}">🎵 {{.Title}} — {{.Artist}}</option>
+              <option value="{{.Title}}|{{.Artist}}">🎵 #{{.Rank}} {{.Title}} — {{.Artist}}</option>
               {{end}}
             </select>
           </div>
@@ -917,19 +934,19 @@ function switchProductionMode(mode) {
   if (pVir) pVir.style.display = 'none';
   if (pSto) pSto.style.display = 'none';
 
-  if (bAff) { bAff.classList.remove('active', 'btn-primary'); bAff.classList.add('btn-secondary'); }
-  if (bVir) { bVir.classList.remove('active', 'btn-primary'); bVir.classList.add('btn-secondary'); }
-  if (bSto) { bSto.classList.remove('active', 'btn-primary'); bSto.classList.add('btn-secondary'); }
+  if (bAff) bAff.classList.remove('active');
+  if (bVir) bVir.classList.remove('active');
+  if (bSto) bSto.classList.remove('active');
 
   if (mode === 'viral' || mode === 'quick') {
     if (pVir) pVir.style.display = 'block';
-    if (bVir) { bVir.classList.add('active', 'btn-primary'); bVir.classList.remove('btn-secondary'); }
+    if (bVir) bVir.classList.add('active');
   } else if (mode === 'story' || mode === 'stories') {
     if (pSto) pSto.style.display = 'block';
-    if (bSto) { bSto.classList.add('active', 'btn-primary'); bSto.classList.remove('btn-secondary'); }
+    if (bSto) bSto.classList.add('active');
   } else {
     if (pAff) pAff.style.display = 'block';
-    if (bAff) { bAff.classList.add('active', 'btn-primary'); bAff.classList.remove('btn-secondary'); }
+    if (bAff) bAff.classList.add('active');
   }
 }
 
