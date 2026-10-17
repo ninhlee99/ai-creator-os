@@ -28,12 +28,13 @@
 <div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
-      {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}}/4 AI Sẵn Sàng
+      {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}} AI Sẵn Sàng
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>AI:</b> ChatGPT · Claude · Gemini · Muse AI</span>
+    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok (xAI) · Muse AI</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm" style="font-size:12px">⚙️ Quản lý tài khoản ↗</a>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="copyBookmarkletScript()" style="font-size:12px">📱 Bookmarklet iPad / Điện Thoại</button>
+    <a href="/settings/he-thong#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Quản lý &amp; Đăng nhập Web ↗</a>
   </div>
 </div>
 
@@ -43,8 +44,8 @@
 <div class="webai-cockpit-container" id="cockpit-section" style="margin-top:0">
   <div class="cockpit-header">
     <div class="cockpit-title">
-      <h2>⚡ Điều Phối Kịch Bản &amp; Prompt (4 AI)</h2>
-      <p>Biên soạn kịch bản và phân cảnh cho từng mô hình AI.</p>
+      <h2>⚡ Điều Phối Kịch Bản &amp; Prompt Đa AI</h2>
+      <p>Biên soạn kịch bản và phân cảnh cho các mô hình AI (ChatGPT, Claude, Gemini, Grok, Muse).</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
@@ -558,6 +559,21 @@ function generateSceneImage(i, prompt) {
     }
     alert('Lỗi: ' + err);
   });
+}
+
+function copyBookmarkletScript() {
+  var server = window.location.origin;
+  var code = 'javascript:(function(){try{var h=location.hostname.toLowerCase();var p="chatgpt";if(h.includes("claude"))p="claude";else if(h.includes("gemini")||h.includes("google"))p="gemini";else if(h.includes("grok")||h.includes("x.ai"))p="grok";else if(h.includes("muse"))p="museai";else if(h.includes("openai")||h.includes("chatgpt"))p="chatgpt";var c=document.cookie||"";var t="";for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/token|auth|session|key/i.test(k)){var v=localStorage.getItem(k);if(v&&v.length>20){t=v;break;}}}var s="' + server + '";window.location.href=s+"/api/web-ai/capture-session?platform="+encodeURIComponent(p)+"&cookie="+encodeURIComponent(c)+"&session_key="+encodeURIComponent(t);}catch(e){alert("Lỗi:"+e.message);}})();';
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(function() {
+      alert('✓ ĐÃ COPY BOOKMARKLET 1-CHẠM CHO IPAD / ĐIỆN THOẠI!\n\nCách dùng trong 2 bước:\n1. Tạo một Dấu trang (Bookmark) trên Safari/Chrome của iPad/Điện thoại, đặt tên là "⚡ Nhận Token AI", dán mã vừa copy vào ô Địa chỉ URL.\n2. Mở tab ChatGPT, Claude, Grok, Gemini... trên điện thoại/iPad -> Chạm vào Bookmark "⚡ Nhận Token AI". Hệ thống tự nhận diện phiên đăng nhập và kích hoạt ngay!');
+    }).catch(function() {
+      prompt('Hãy copy mã Bookmarklet dưới đây để lưu vào Bookmark của iPad/Điện thoại:', code);
+    });
+  } else {
+    prompt('Hãy copy mã Bookmarklet dưới đây để lưu vào Bookmark của iPad/Điện thoại:', code);
+  }
 }
 </script>
 {{end}}

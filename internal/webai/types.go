@@ -7,6 +7,7 @@ const (
 	PlatformChatGPT = "chatgpt"
 	PlatformClaude  = "claude"
 	PlatformGemini  = "gemini"
+	PlatformGrok    = "grok"
 	PlatformMuseAI  = "museai"
 )
 
@@ -31,7 +32,7 @@ type PlatformInfo struct {
 	Features    []string `json:"features"`
 }
 
-// SupportedPlatforms returns metadata for all 4 supported web platforms.
+// SupportedPlatforms returns metadata for all supported web platforms.
 func SupportedPlatforms() []PlatformInfo {
 	return []PlatformInfo{
 		{
@@ -41,9 +42,9 @@ func SupportedPlatforms() []PlatformInfo {
 			Icon:        "💬",
 			Color:       "#10a37f",
 			Badge:       "OpenAI",
-			Description: "Kịch bản & Hook bán hàng",
-			AuthGuide:   "F12 > Application > Cookies > accessToken hoặc session token.",
-			Placeholder: "Dán token hoặc cookie...",
+			Description: "Kịch bản viral & Hook bán hàng",
+			AuthGuide:   "Đăng nhập qua Web (tự động nhận token) hoặc dùng Bookmarklet 1-chạm trên iPad/Điện thoại.",
+			Placeholder: "Tự động nhận khi login web hoặc dán token/cookie...",
 			Features:    []string{"Kịch bản bán hàng", "Hook 3 giây", "Lời thoại voiceover", "Phân tích khách hàng"},
 		},
 		{
@@ -54,8 +55,8 @@ func SupportedPlatforms() []PlatformInfo {
 			Color:       "#d97706",
 			Badge:       "Anthropic",
 			Description: "Phân cảnh & Chỉ đạo nghệ thuật",
-			AuthGuide:   "F12 > Application > Cookies > sessionKey (sk-ant-sid01-...).",
-			Placeholder: "Dán sessionKey...",
+			AuthGuide:   "Đăng nhập qua Web (tự động nhận token) hoặc dùng Bookmarklet 1-chạm trên iPad/Điện thoại.",
+			Placeholder: "Tự động nhận khi login web hoặc dán sessionKey...",
 			Features:    []string{"Phân cảnh điện ảnh", "Prompt Gemini & Muse", "Tối ưu câu từ", "Caption & hashtag"},
 		},
 		{
@@ -66,9 +67,21 @@ func SupportedPlatforms() []PlatformInfo {
 			Color:       "#4285f4",
 			Badge:       "Google",
 			Description: "Tạo ảnh sản phẩm 4K",
-			AuthGuide:   "F12 > Cookies > __Secure-1PSID.",
-			Placeholder: "Dán cookie __Secure-1PSID...",
+			AuthGuide:   "Đăng nhập qua Web (tự động nhận cookie) hoặc dùng Bookmarklet 1-chạm trên iPad/Điện thoại.",
+			Placeholder: "Tự động nhận khi login web hoặc dán __Secure-1PSID...",
 			Features:    []string{"Ảnh sản phẩm 4K", "Đồng nhất người mẫu", "Bối cảnh quảng cáo", "Miễn phí"},
+		},
+		{
+			ID:          PlatformGrok,
+			Name:        "Grok (xAI)",
+			URL:         "https://grok.com",
+			Icon:        "🚀",
+			Color:       "#111827",
+			Badge:       "xAI",
+			Description: "Ý tưởng viral & Logic phản biện sâu sắc",
+			AuthGuide:   "Đăng nhập qua Web (tự động nhận token) hoặc dùng Bookmarklet 1-chạm trên iPad/Điện thoại.",
+			Placeholder: "Tự động nhận khi login web hoặc dán auth token/sso...",
+			Features:    []string{"Bắt trend realtime X/Twitter", "Phản biện đa chiều", "Kịch bản tranh luận", "Tư duy sắc sảo"},
 		},
 		{
 			ID:          PlatformMuseAI,
@@ -78,8 +91,8 @@ func SupportedPlatforms() []PlatformInfo {
 			Color:       "#ec4899",
 			Badge:       "Video Studio",
 			Description: "Tạo video chuyển động",
-			AuthGuide:   "F12 > Cookies > session cookie hoặc API key.",
-			Placeholder: "Dán auth token hoặc cookie...",
+			AuthGuide:   "Đăng nhập qua Web (tự động nhận token) hoặc dùng Bookmarklet 1-chạm trên iPad/Điện thoại.",
+			Placeholder: "Tự động nhận khi login web hoặc dán auth token...",
 			Features:    []string{"Video chuyển động", "Lưu trữ 1080p/4K", "Vòng lặp sản phẩm", "Không watermark"},
 		},
 	}

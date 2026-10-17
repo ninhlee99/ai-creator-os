@@ -160,6 +160,51 @@ func (s *Store) UpdateAccount(acc Account) error {
 	return err
 }
 
+// UpsertAccountSession cập nhật phiên làm việc nếu đã có tài khoản cho nền tảng hoặc thêm mới.
+func (s *Store) UpsertAccountSession(platform, sessionKey, cookie, accountName, email, tier string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now().UTC().Format("2006-01-02 15:04:05")
+	if tier == "" {
+		tier = "free"
+	}
+	if accountName == "" {
+		accountName = fmt.Sprintf("Auto Session (%s)", time.Now().Format("02/01 15:04"))
+	}
+
+	var existingID, existingCookie, existingKey string
+	err := s.db.QueryRow(`
+		SELECT id, cookie, session_key FROM webai_accounts
+		WHERE platform = ?
+		ORDER BY is_active DESC, updated_at DESC LIMIT 1
+	`, platform).Scan(&existingID, &existingCookie, &existingKey)
+
+	if err == nil && existingID != "" {
+		newKey := sessionKey
+		if newKey == "" {
+			newKey = existingKey
+		}
+		newCookie := cookie
+		if newCookie == "" {
+			newCookie = existingCookie
+		}
+		_, uerr := s.db.Exec(`
+			UPDATE webai_accounts
+			SET session_key = ?, cookie = ?, status = 'ok', tier = ?, is_active = 1, updated_at = ?, last_checked = ?
+			WHERE id = ?
+		`, newKey, newCookie, tier, now, now, existingID)
+		return existingID, uerr
+	}
+
+	newID := fmt.Sprintf("acc_%s_%d", platform, time.Now().UnixNano())
+	_, ierr := s.db.Exec(`
+		INSERT INTO webai_accounts (id, platform, account_name, email, session_key, cookie, status, tier, cooldown_until, requests, rate_limit_hits, is_active, last_used, last_checked, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 'ok', ?, '', 0, 0, 1, ?, ?, ?, ?)
+	`, newID, platform, accountName, email, sessionKey, cookie, tier, now, now, now, now)
+	return newID, ierr
+}
+
 // DeleteAccount removes an account from the pool.
 func (s *Store) DeleteAccount(id string) error {
 	s.mu.Lock()

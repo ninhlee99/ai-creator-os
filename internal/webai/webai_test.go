@@ -63,8 +63,8 @@ func TestWebAIStore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAllAccounts failed: %v", err)
 	}
-	if len(all) != 4 {
-		t.Errorf("expected 4 platforms in map, got %d", len(all))
+	if len(all) != len(SupportedPlatforms()) {
+		t.Errorf("expected %d platforms in map, got %d", len(SupportedPlatforms()), len(all))
 	}
 	if claudeAccs := all[PlatformClaude]; len(claudeAccs) == 0 || claudeAccs[0].Status != StatusConnected {
 		t.Errorf("expected claude connected: %+v", claudeAccs)

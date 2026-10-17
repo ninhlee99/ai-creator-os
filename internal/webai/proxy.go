@@ -2,6 +2,7 @@ package webai
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -58,6 +59,8 @@ func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		targetBase = "https://claude.ai"
 	case PlatformGemini:
 		targetBase = "https://gemini.google.com"
+	case PlatformGrok:
+		targetBase = "https://grok.com"
 	case PlatformMuseAI:
 		targetBase = "https://muse.ai"
 	default:
@@ -119,6 +122,9 @@ func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					cookies = append(cookies, "__Secure-next-auth.session-token="+acc.SessionKey)
 				case PlatformGemini:
 					cookies = append(cookies, "__Secure-1PSID="+acc.SessionKey)
+				case PlatformGrok:
+					proxyReq.Header.Set("Authorization", "Bearer "+acc.SessionKey)
+					cookies = append(cookies, "sso="+acc.SessionKey)
 				case PlatformMuseAI:
 					proxyReq.Header.Set("Authorization", "Bearer "+acc.SessionKey)
 					cookies = append(cookies, "auth_token="+acc.SessionKey)
@@ -141,6 +147,14 @@ func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	// Intercept Set-Cookie to automatically harvest session tokens and save to store
+	if p.store != nil {
+		setCookies := resp.Header.Values("Set-Cookie")
+		if len(setCookies) > 0 {
+			p.harvestCookies(platform, setCookies)
+		}
+	}
+
 	// Copy response headers, stripping anti-embedding headers
 	for k, vv := range resp.Header {
 		lower := strings.ToLower(k)
@@ -159,6 +173,49 @@ func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, resp.Body)
 }
 
+func (p *ProxyRelay) harvestCookies(platform string, setCookies []string) {
+	fullCookie := strings.Join(setCookies, "; ")
+	var sessionKey string
+	for _, sc := range setCookies {
+		parts := strings.SplitN(sc, ";", 2)
+		cookiePair := strings.TrimSpace(parts[0])
+		kv := strings.SplitN(cookiePair, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		name := strings.TrimSpace(kv[0])
+		val := strings.TrimSpace(kv[1])
+		if val == "" {
+			continue
+		}
+		switch platform {
+		case PlatformChatGPT:
+			if name == "__Secure-next-auth.session-token" || name == "accessToken" {
+				sessionKey = val
+			}
+		case PlatformClaude:
+			if name == "sessionKey" {
+				sessionKey = val
+			}
+		case PlatformGemini:
+			if name == "__Secure-1PSID" || name == "SID" {
+				sessionKey = val
+			}
+		case PlatformGrok:
+			if name == "sso" || name == "sso-rw" || name == "auth_token" {
+				sessionKey = val
+			}
+		case PlatformMuseAI:
+			if name == "session" || name == "auth_token" {
+				sessionKey = val
+			}
+		}
+	}
+	if sessionKey != "" || len(setCookies) >= 2 {
+		_, _ = p.store.UpsertAccountSession(platform, sessionKey, fullCookie, fmt.Sprintf("Web Login (%s)", time.Now().Format("15:04")), "", "free")
+	}
+}
+
 func renderFallbackHTML(platform, targetURL string) string {
 	name := platform
 	switch platform {
@@ -168,6 +225,8 @@ func renderFallbackHTML(platform, targetURL string) string {
 		name = "Claude"
 	case PlatformGemini:
 		name = "Gemini"
+	case PlatformGrok:
+		name = "Grok (xAI)"
 	case PlatformMuseAI:
 		name = "Muse AI"
 	}

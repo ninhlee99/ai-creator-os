@@ -653,31 +653,49 @@
       </div>
     </div>
 
-    <!-- SUB-PANEL 2: Top 10 Drama Showbiz Việt -->
+    <!-- SUB-PANEL 2: Top 10 Drama Showbiz Việt (TikTok) -->
     <div id="radar-panel-drama-vn" style="display:none">
-      <div id="radar-grid-drama-vn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:14px">
+      <div id="radar-grid-drama-vn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px">
         {{range .ShowbizDramasVN}}
-        <div class="card" style="border-radius:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+        <div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
           <div>
-            {{if .ImageURL}}
-            <div style="position:relative;width:100%;height:135px;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px">
+            <!-- Video Dọc 9:16 TikTok VN -->
+            <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">
+              {{if .PlayURL}}
+              <video src="{{.PlayURL}}" poster="{{if .CoverURL}}{{.CoverURL}}{{else}}{{.ImageURL}}{{end}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
+              {{else if .CoverURL}}
+              <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+              {{else if .ImageURL}}
               <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              <span style="position:absolute;top:6px;left:6px;background:rgba(16,185,129,0.92);backdrop-filter:blur(4px);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px">
-                #{{.Rank}} V-BIZ
-              </span>
+              {{end}}
+              <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">
+                #{{.Rank}}
+              </div>
+              <div style="position:absolute;top:6px;right:6px;background:rgba(239,68,68,0.9);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">
+                🔥 {{if .Views}}{{.Views}}{{else}}HOT{{end}}
+              </div>
             </div>
-            {{end}}
-            <strong style="font-size:13.5px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">{{.Summary}}</p>
-            <div style="background:var(--bg);padding:6px 9px;border-radius:6px;font-size:11.5px;color:var(--text);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4">
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">
+              <span style="background:rgba(16,185,129,0.12);color:#10b981;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(16,185,129,0.25)">
+                🇻🇳 TikTok VN
+              </span>
+              <span style="font-size:10.5px;color:var(--muted)">{{if .UniqueID}}@{{.UniqueID}}{{else}}{{.Author}}{{end}}</span>
+            </div>
+
+            <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
+              {{.Title}}
+            </strong>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Summary}}</p>
+            <div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid var(--accent);line-height:1.35">
               <i>"{{.Hook3s}}"</i>
             </div>
           </div>
           <div style="display:flex;gap:6px">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:6px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Việt')">
-              🎬 Làm Video Drama Này
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Việt')">
+              ⚡ Đu Drama Này
             </button>
-            <a href="{{.SourceURL}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:12px" title="Đọc bài báo gốc">
+            <a href="{{if .VideoURL}}{{.VideoURL}}{{else}}{{.SourceURL}}{{end}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video TikTok">
               ↗
             </a>
           </div>
@@ -686,31 +704,49 @@
       </div>
     </div>
 
-    <!-- SUB-PANEL 3: Top 10 Drama Showbiz Trung -->
+    <!-- SUB-PANEL 3: Top 10 Drama Showbiz Trung (Douyin) -->
     <div id="radar-panel-drama-cn" style="display:none">
-      <div id="radar-grid-drama-cn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:14px">
+      <div id="radar-grid-drama-cn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px">
         {{range .ShowbizDramasCN}}
-        <div class="card" style="border-radius:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+        <div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
           <div>
-            {{if .ImageURL}}
-            <div style="position:relative;width:100%;height:135px;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px">
+            <!-- Video Dọc 9:16 Douyin CN -->
+            <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">
+              {{if .PlayURL}}
+              <video src="{{.PlayURL}}" poster="{{if .CoverURL}}{{.CoverURL}}{{else}}{{.ImageURL}}{{end}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
+              {{else if .CoverURL}}
+              <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+              {{else if .ImageURL}}
               <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              <span style="position:absolute;top:6px;left:6px;background:rgba(217,119,6,0.92);backdrop-filter:blur(4px);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px">
-                #{{.Rank}} WEIBO HOT
-              </span>
+              {{end}}
+              <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">
+                #{{.Rank}}
+              </div>
+              <div style="position:absolute;top:6px;right:6px;background:rgba(217,119,6,0.92);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">
+                🔥 {{if .Views}}{{.Views}}{{else}}DOUYIN{{end}}
+              </div>
             </div>
-            {{end}}
-            <strong style="font-size:13.5px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
-            <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">{{.Summary}}</p>
-            <div style="background:var(--bg);padding:6px 9px;border-radius:6px;font-size:11.5px;color:var(--text);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4">
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">
+              <span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(217,119,6,0.25)">
+                🇨🇳 Douyin CN
+              </span>
+              <span style="font-size:10.5px;color:var(--muted)">{{if .UniqueID}}@{{.UniqueID}}{{else}}{{.Author}}{{end}}</span>
+            </div>
+
+            <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
+              {{.Title}}
+            </strong>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Summary}}</p>
+            <div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid #d97706;line-height:1.35">
               <i>"{{.Hook3s}}"</i>
             </div>
           </div>
           <div style="display:flex;gap:6px">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:6px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Trung')">
-              🎬 Làm Video Drama Này
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Trung')">
+              ⚡ Đu Drama Này
             </button>
-            <a href="{{.SourceURL}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:12px" title="Đọc bài báo gốc">
+            <a href="{{if .VideoURL}}{{.VideoURL}}{{else}}{{.SourceURL}}{{end}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video Douyin">
               ↗
             </a>
           </div>
@@ -899,12 +935,12 @@
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
             <div>
               <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-                <span style="font-size:20px">📻</span> 1. Cốt Truyện Audio YouTube (AI Tự Nghĩ)
+                <span style="font-size:20px">📻</span> 1. Cốt Truyện Audio YouTube Trường Thiên (30 – 60 Phút)
               </h3>
             </div>
             <div style="display:flex;gap:6px">
               <button type="button" class="btn btn-primary btn-sm" onclick="rollRandomStoryPlot()" style="font-weight:700">
-                🎲 Đổi Cốt Truyện Khác (AI Nghĩ Mới)
+                🎲 Đổi Cốt Truyện Mới (Độc Bản)
               </button>
             </div>
           </div>
@@ -923,32 +959,46 @@
             <input type="hidden" name="genre" id="st-genre" value="tâm lý">
           </div>
 
-          <!-- Cốt truyện 3 Hồi AI Tự Động Soạn Thảo (Interactive Plot Card) -->
+          <!-- Cốt truyện 5 Hồi AI Tự Động Soạn Thảo (Interactive 5-Act Plot Card) -->
           <div id="audio-story-plot-card" style="background:var(--bg3);border:1.5px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:14px">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
               <div>
                 <span class="badge badge-ok" id="plot-genre-badge" style="font-size:10.5px;font-weight:700">Radio Kể Chuyện Đêm Khuya</span>
                 <strong id="plot-title-display" style="font-size:15px;display:block;color:var(--text);margin-top:4px">Đêm Mưa Bên Quán Trọ Cũ</strong>
               </div>
-              <span style="font-size:11px;color:var(--accent);font-weight:700">✓ AI Đã Lên Kịch Bản 3 Hồi</span>
+              <span id="plot-duration-badge" style="background:rgba(37,99,235,0.12);color:var(--accent);font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid rgba(37,99,235,0.25)">⏱️ 30 Phút (~4.500 từ)</span>
             </div>
+
+            <!-- Hook 3 giây mở màn -->
+            <div style="background:var(--bg);padding:7px 10px;border-radius:8px;font-size:12px;color:var(--text);margin-bottom:10px;border-left:3px solid #ef4444;line-height:1.4">
+              <b style="color:#ef4444">🎣 Hook 3s Mở Màn:</b> <i id="plot-hook-display">"Nửa đêm hôm ấy, khi tiếng sấm vừa rạch ngang bầu trời, một tiếng gõ cửa dồn dập vang lên..."</i>
+            </div>
+
             <p id="plot-logline-display" style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.4">
               Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.
             </p>
 
-            <!-- 3 Hồi cốt truyện YouTube -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:8px;margin-bottom:12px;font-size:11.5px">
+            <!-- 5 Hồi cốt truyện YouTube trường thiên -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;margin-bottom:12px;font-size:11px">
               <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
                 <b style="color:var(--accent);display:block;margin-bottom:3px">📖 Hồi 1: Mở Đầu</b>
                 <span id="plot-act1-display">Người đàn ông ướt sũng bước vào quán trọ ven sông giữa đêm bão táp...</span>
               </div>
               <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#f59e0b;display:block;margin-bottom:3px">⚡ Hồi 2: Biến Cố</b>
+                <b style="color:#3b82f6;display:block;margin-bottom:3px">⚡ Hồi 2: Thắt Nút</b>
                 <span id="plot-act2-display">Bà cụ chủ quán kể về chiếc hộp gỗ 10 năm trước của người khách bí ẩn...</span>
               </div>
               <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#10b981;display:block;margin-bottom:3px">✨ Hồi 3: Đỉnh Điểm &amp; Kết</b>
-                <span id="plot-act3-display">Bí mật tình cha con được hé lộ trong nước mắt và thông điệp ân nghĩa...</span>
+                <b style="color:#f59e0b;display:block;margin-bottom:3px">🔥 Hồi 3: Cao Trào</b>
+                <span id="plot-act3-display">Mọi sự nghi ngờ và tổn thương dồn nén nhiều năm bùng nổ nghẹt thở...</span>
+              </div>
+              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
+                <b style="color:#ec4899;display:block;margin-bottom:3px">🌪️ Hồi 4: Cú Twist</b>
+                <span id="plot-act4-display">Bước ngoặt bất ngờ xoay chuyển hoàn toàn sự thật người nghe không lường trước...</span>
+              </div>
+              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
+                <b style="color:#10b981;display:block;margin-bottom:3px">✨ Hồi 5: Dư Âm</b>
+                <span id="plot-act5-display">Bí mật tình cha con được hé lộ trong nước mắt và bài học nhân nghĩa...</span>
               </div>
             </div>
 
@@ -958,30 +1008,34 @@
             </div>
           </div>
 
-          <!-- Hidden / Editable Topic Field -->
+          <!-- Setting Chủ Đề Tuỳ Ý -->
           <div class="field" style="margin-bottom:14px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <label style="margin:0">Chủ đề câu chuyện (Hệ thống tự điền, bạn có thể sửa nếu muốn):</label>
+              <label style="margin:0;font-weight:700">⚙️ Cài đặt chủ đề truyện (Tùy ý nhập hoặc để AI tự nghĩ):</label>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="generatePlotForCustomTopic()" style="font-size:11px;padding:3px 8px">
+                ✨ Lên Kịch Bản Theo Chủ Đề Này
+              </button>
             </div>
-            <input type="text" name="topic" id="st-topic" value="Đêm Mưa Bên Quán Trọ Cũ" placeholder="Để trống nếu muốn AI tự nghĩ cốt truyện mới hoàn toàn..." oninput="updateMockupPreview('st')">
+            <input type="text" name="topic" id="st-topic" value="Đêm Mưa Bên Quán Trọ Cũ" placeholder="Nhập chủ đề tùy ý (vd: Người thợ may cổ phố Hội An, Căn biệt thự bỏ hoang Đà Lạt, Chuyến xe đêm Tây Bắc...)" oninput="updateMockupPreview('st')">
           </div>
 
+          <!-- Setting Thời Lượng 30 - 60 Phút -->
           <div class="grid2">
             <div class="field">
-              <label>Độ dài mục tiêu</label>
-              <select name="words" id="st-words" onchange="updateMockupPreview('st')">
-                <option value="450" selected>450 từ (Khoảng 3–4 phút)</option>
-                <option value="750">750 từ (Khoảng 5–6 phút)</option>
-                <option value="1200">1200 từ (Khoảng 9–11 phút)</option>
+              <label style="font-weight:700">⏱️ Thời lượng truyện audio (YouTube)</label>
+              <select name="duration_minutes" id="st-duration-minutes" onchange="onStoryDurationChange(this.value)">
+                <option value="30" selected>30 phút (~4.500 từ — Tiêu chuẩn Radio YouTube)</option>
+                <option value="45">45 phút (~6.750 từ — Truyện trường thiên cảm xúc)</option>
+                <option value="60">60 phút (~9.000 từ — Thính phòng đêm khuya trọn vẹn)</option>
               </select>
+              <input type="hidden" name="words" id="st-words" value="4500">
             </div>
             <div class="field">
-              <label>Số phân cảnh tranh vẽ minh họa 16:9</label>
-              <select name="scenes">
-                <option value="4">4 cảnh minh họa</option>
-                <option value="6" selected>6 cảnh minh họa</option>
-                <option value="8">8 cảnh minh họa</option>
-                <option value="12">12 cảnh minh họa</option>
+              <label style="font-weight:700">🖼️ Phân cảnh tranh minh họa 16:9 (Ken Burns)</label>
+              <select name="scenes" id="st-scenes">
+                <option value="10">10 cảnh minh họa (Mỗi cảnh 3-4 phút)</option>
+                <option value="15" selected>15 cảnh minh họa (Mỗi cảnh 2-3 phút)</option>
+                <option value="20">20 cảnh minh họa (Chuyển cảnh sinh động)</option>
               </select>
             </div>
           </div>
@@ -2062,27 +2116,40 @@ function renderDramaGrid(containerId, items, category) {
   var container = document.getElementById(containerId);
   if (!container || !items) return;
   var isCN = (category === 'Showbiz Trung');
-  var badgeText = isCN ? 'WEIBO HOT' : 'V-BIZ';
-  var badgeBg = isCN ? 'rgba(217,119,6,0.92)' : 'rgba(16,185,129,0.92)';
+  var badgeText = isCN ? '🇨🇳 Douyin CN' : '🇻🇳 TikTok VN';
+  var badgeStyle = isCN ? 'background:rgba(217,119,6,0.12);color:#d97706;border:1px solid rgba(217,119,6,0.25)' : 'background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.25)';
+  var rankBadgeBg = isCN ? 'rgba(217,119,6,0.92)' : 'rgba(239,68,68,0.9)';
   var html = '';
   items.forEach(function(item) {
-    var imgHtml = '';
-    if (item.image_url) {
-      imgHtml = '<div style="position:relative;width:100%;height:135px;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px">' +
-        '<img src="' + item.image_url + '" alt="' + (item.title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">' +
-        '<span style="position:absolute;top:6px;left:6px;background:' + badgeBg + ';backdrop-filter:blur(4px);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px">#' + item.rank + ' ' + badgeText + '</span>' +
-      '</div>';
+    var videoHtml = '';
+    var cover = item.cover_url || item.image_url || '';
+    if (item.play_url) {
+      videoHtml = '<video src="' + item.play_url + '" poster="' + cover + '" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>';
+    } else if (cover) {
+      videoHtml = '<img src="' + cover + '" alt="' + (item.title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">';
     }
-    html += '<div class="card" style="border-radius:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">' +
+    var handle = item.unique_id ? ('@' + item.unique_id) : (item.author || '');
+    var viewsText = item.views ? ('🔥 ' + item.views) : (isCN ? '🔥 DOUYIN' : '🔥 TIKTOK');
+    var targetUrl = item.video_url || item.source_url || '#';
+
+    html += '<div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">' +
       '<div>' +
-        imgHtml +
-        '<strong style="font-size:13.5px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">' + (item.title || '') + '</strong>' +
-        '<p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.45;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">' + (item.summary || '') + '</p>' +
-        '<div style="background:var(--bg);padding:6px 9px;border-radius:6px;font-size:11.5px;color:var(--text);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4"><i>"' + (item.hook_3s || '') + '"</i></div>' +
+        '<div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">' +
+          videoHtml +
+          '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">#' + item.rank + '</div>' +
+          '<div style="position:absolute;top:6px;right:6px;background:' + rankBadgeBg + ';backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">' + viewsText + '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">' +
+          '<span style="' + badgeStyle + ';font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px">' + badgeText + '</span>' +
+          '<span style="font-size:10.5px;color:var(--muted)">' + handle + '</span>' +
+        '</div>' +
+        '<strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="' + (item.title || '') + '">' + (item.title || '') + '</strong>' +
+        '<p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + (item.summary || '') + '</p>' +
+        '<div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid var(--accent);line-height:1.35"><i>"' + (item.hook_3s || '') + '"</i></div>' +
       '</div>' +
       '<div style="display:flex;gap:6px">' +
-        '<button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:6px" onclick="applyShowbizDrama(\'' + escapeJs(item.title) + '\', \'' + category + '\')">🎬 Làm Video Drama Này</button>' +
-        '<a href="' + (item.source_url || '#') + '" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:12px" title="Đọc bài báo gốc">↗</a>' +
+        '<button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama(\'' + escapeJs(item.title) + '\', \'' + category + '\')">⚡ Đu Drama Này</button>' +
+        '<a href="' + targetUrl + '" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video">↗</a>' +
       '</div>' +
     '</div>';
   });
@@ -2205,10 +2272,15 @@ var rawStoryPlots = [
     title: {{printf "%q" .Title}},
     genre: {{printf "%q" .Genre}},
     genre_label: {{printf "%q" .GenreLabel}},
+    duration_minutes: {{.DurationMinutes}},
+    words_count: {{.WordsCount}},
+    hook_3s: {{printf "%q" .Hook3s}},
     logline: {{printf "%q" .Logline}},
     act_1: {{printf "%q" .Act1}},
     act_2: {{printf "%q" .Act2}},
     act_3: {{printf "%q" .Act3}},
+    act_4: {{printf "%q" .Act4}},
+    act_5: {{printf "%q" .Act5}},
     message: {{printf "%q" .Message}},
     suggested_voice: {{printf "%q" .SuggestedVoice}},
     soundscape: {{printf "%q" .Soundscape}}
@@ -2231,12 +2303,31 @@ function selectStoryGenre(genre, btn) {
   var genreInput = document.getElementById('st-genre');
   if (genreInput) genreInput.value = genre;
 
-  var filtered = rawStoryPlots.filter(function(p) {
-    return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
-  });
-  currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
-  currentPlotIndex = 0;
-  displayCurrentStoryPlot();
+  var durInput = document.getElementById('st-duration-minutes');
+  var dur = durInput ? durInput.value : '30';
+
+  fetch('/api/studio/story-plots?refresh=1&genre=' + encodeURIComponent(genre) + '&duration=' + encodeURIComponent(dur))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.plots && data.plots.length > 0) {
+        currentStoryPlots = data.plots;
+      } else {
+        var filtered = rawStoryPlots.filter(function(p) {
+          return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
+        });
+        currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
+      }
+      currentPlotIndex = 0;
+      displayCurrentStoryPlot();
+    })
+    .catch(function() {
+      var filtered = rawStoryPlots.filter(function(p) {
+        return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
+      });
+      currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
+      currentPlotIndex = 0;
+      displayCurrentStoryPlot();
+    });
 }
 
 function rollRandomStoryPlot() {
@@ -2258,26 +2349,43 @@ function displayCurrentStoryPlot() {
   var genreBadge = document.getElementById('plot-genre-badge');
   if (genreBadge) genreBadge.textContent = p.genre_label || p.genre;
 
+  var durBadge = document.getElementById('plot-duration-badge');
+  var dur = p.duration_minutes || 30;
+  var words = p.words_count || (dur * 150);
+  if (durBadge) durBadge.textContent = '⏱️ ' + dur + ' Phút (~' + words.toLocaleString() + ' từ)';
+
+  var hookEl = document.getElementById('plot-hook-display');
+  if (hookEl) hookEl.textContent = '"' + (p.hook_3s || '') + '"';
+
   var loglineEl = document.getElementById('plot-logline-display');
   if (loglineEl) loglineEl.textContent = p.logline;
 
   var act1El = document.getElementById('plot-act1-display');
-  if (act1El) act1El.textContent = p.act_1;
+  if (act1El) act1El.textContent = p.act_1 || '';
 
   var act2El = document.getElementById('plot-act2-display');
-  if (act2El) act2El.textContent = p.act_2;
+  if (act2El) act2El.textContent = p.act_2 || '';
 
   var act3El = document.getElementById('plot-act3-display');
-  if (act3El) act3El.textContent = p.act_3;
+  if (act3El) act3El.textContent = p.act_3 || '';
+
+  var act4El = document.getElementById('plot-act4-display');
+  if (act4El) act4El.textContent = p.act_4 || '';
+
+  var act5El = document.getElementById('plot-act5-display');
+  if (act5El) act5El.textContent = p.act_5 || '';
 
   var msgEl = document.getElementById('plot-message-display');
-  if (msgEl) msgEl.textContent = p.message;
+  if (msgEl) msgEl.textContent = p.message || '';
 
   var soundEl = document.getElementById('plot-soundscape-display');
-  if (soundEl) soundEl.textContent = p.soundscape;
+  if (soundEl) soundEl.textContent = p.soundscape || '';
 
   var topicInput = document.getElementById('st-topic');
-  if (topicInput) topicInput.value = p.title;
+  if (topicInput && (!topicInput.value || topicInput.dataset.autoFilled === '1' || topicInput.value === p.title)) {
+    topicInput.value = p.title;
+    topicInput.dataset.autoFilled = '1';
+  }
 
   if (p.suggested_voice) {
     var voiceSelect = document.getElementById('st-voice');
@@ -2289,6 +2397,65 @@ function displayCurrentStoryPlot() {
 
   var stGenre = document.getElementById('st-mockup-genre');
   if (stGenre) stGenre.textContent = p.genre_label || p.genre;
+}
+
+function onStoryDurationChange(dur) {
+  dur = parseInt(dur, 10) || 30;
+  var words = dur * 150;
+  var wordsInput = document.getElementById('st-words');
+  if (wordsInput) wordsInput.value = words;
+
+  var durBadge = document.getElementById('plot-duration-badge');
+  if (durBadge) durBadge.textContent = '⏱️ ' + dur + ' Phút (~' + words.toLocaleString() + ' từ)';
+
+  var scenesSelect = document.getElementById('st-scenes');
+  if (scenesSelect) {
+    if (dur === 30) scenesSelect.value = '10';
+    else if (dur === 45) scenesSelect.value = '15';
+    else if (dur === 60) scenesSelect.value = '20';
+  }
+}
+
+function generatePlotForCustomTopic() {
+  var topicInput = document.getElementById('st-topic');
+  var topic = topicInput ? topicInput.value.trim() : '';
+  var genreInput = document.getElementById('st-genre');
+  var genre = genreInput ? genreInput.value : 'tâm lý';
+  var durInput = document.getElementById('st-duration-minutes');
+  var dur = durInput ? durInput.value : '30';
+
+  var btn = event ? event.target : null;
+  var oldText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang sáng tác kịch bản...';
+  }
+
+  var url = '/api/studio/story-plots?refresh=1&duration=' + encodeURIComponent(dur) + '&genre=' + encodeURIComponent(genre);
+  if (topic) {
+    url += '&topic=' + encodeURIComponent(topic);
+  }
+
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+      if (data && data.plots && data.plots.length > 0) {
+        currentStoryPlots = data.plots;
+        currentPlotIndex = 0;
+        displayCurrentStoryPlot();
+      }
+    })
+    .catch(function(err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+      console.error('Lỗi sinh cốt truyện:', err);
+    });
 }
 </script>
 {{end}}

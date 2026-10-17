@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -531,6 +532,108 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	seeOther(w, r, "/studio/jobs?msg="+url.QueryEscape("Đang dựng video quảng cáo sản phẩm chất lượng cao…"))
+}
+
+// handleWebAICaptureSession captures session tokens/cookies automatically
+// from web proxy, browser bookmarklet (especially mobile/iPad), or JSON post.
+func (s *Server) handleWebAICaptureSession(w http.ResponseWriter, r *http.Request) {
+	if s.WebAI == nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Kho Web AI chưa được khởi tạo"})
+		return
+	}
+
+	platform := strings.TrimSpace(r.FormValue("platform"))
+	cookie := strings.TrimSpace(r.FormValue("cookie"))
+	sessionKey := strings.TrimSpace(r.FormValue("session_key"))
+	accountName := strings.TrimSpace(r.FormValue("account_name"))
+	email := strings.TrimSpace(r.FormValue("email"))
+	tier := strings.TrimSpace(r.FormValue("tier"))
+
+	// Check JSON body if contentType is application/json
+	if r.Header.Get("Content-Type") == "application/json" || strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		var req struct {
+			Platform    string `json:"platform"`
+			Cookie      string `json:"cookie"`
+			SessionKey  string `json:"session_key"`
+			AccountName string `json:"account_name"`
+			Email       string `json:"email"`
+			Tier        string `json:"tier"`
+			Source      string `json:"source"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			if req.Platform != "" {
+				platform = req.Platform
+			}
+			if req.Cookie != "" {
+				cookie = req.Cookie
+			}
+			if req.SessionKey != "" {
+				sessionKey = req.SessionKey
+			}
+			if req.AccountName != "" {
+				accountName = req.AccountName
+			}
+			if req.Email != "" {
+				email = req.Email
+			}
+			if req.Tier != "" {
+				tier = req.Tier
+			}
+		}
+	}
+
+	if platform == "" {
+		platform = webai.PlatformChatGPT
+	}
+
+	if cookie == "" && sessionKey == "" {
+		if r.Method == http.MethodGet {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không tìm thấy Cookie hoặc Token phiên làm việc để đồng bộ."))
+			return
+		}
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Thiếu cookie hoặc token"})
+		return
+	}
+
+	if accountName == "" {
+		accountName = fmt.Sprintf("Web Sync (%s)", time.Now().Format("02/01 15:04"))
+	}
+	if tier == "" {
+		tier = "free"
+	}
+
+	id, err := s.WebAI.UpsertAccountSession(platform, sessionKey, cookie, accountName, email, tier)
+	if err != nil {
+		if r.Method == http.MethodGet {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Lỗi lưu phiên: "+err.Error()))
+			return
+		}
+		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("web_ai", "capture_session", nil, fmt.Sprintf("Tự động bắt và đồng bộ phiên Web AI platform=%s id=%s", platform, id), nil)
+	}
+
+	if r.Method == http.MethodGet {
+		platformName := platform
+		for _, p := range webai.SupportedPlatforms() {
+			if p.ID == platform {
+				platformName = p.Name
+				break
+			}
+		}
+		seeOther(w, r, fmt.Sprintf("/web-ai?tab=%s&ok=%s", platform, url.QueryEscape(fmt.Sprintf("✓ Đã nhận diện và đồng bộ phiên đăng nhập %s thành công từ trình duyệt!", platformName))))
+		return
+	}
+
+	s.writeJSON(w, map[string]any{
+		"ok":       true,
+		"id":       id,
+		"platform": platform,
+		"message":  "Đã nhận diện và lưu phiên làm việc thành công",
+	})
 }
 
 func logErr(format string, args ...any) {

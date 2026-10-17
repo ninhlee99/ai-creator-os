@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // KindStory là job kind cho pipeline kể chuyện.
@@ -69,13 +70,14 @@ const KindStory = "story"
 
 // StoryParams mô tả 1 job kể chuyện.
 type StoryParams struct {
-	Topic     string `json:"topic"`
-	Genre     string `json:"genre"`
-	Words     int    `json:"words"`      // độ dài truyện mục tiêu (từ)
-	Scenes    int    `json:"scenes"`     // số cảnh mục tiêu (3–12)
-	MusicOn   bool   `json:"music_on"`   // lồng nhạc nền
-	MusicPath string `json:"music_path"` // file nhạc local ("" = không nhạc)
-	AccountID int64  `json:"account_id,omitempty"`
+	Topic           string `json:"topic"`
+	Genre           string `json:"genre"`
+	DurationMinutes int    `json:"duration_minutes,omitempty"` // 30, 45, 60 phút
+	Words           int    `json:"words"`                       // độ dài truyện mục tiêu (từ)
+	Scenes          int    `json:"scenes"`                      // số cảnh mục tiêu (3–24)
+	MusicOn         bool   `json:"music_on"`                    // lồng nhạc nền
+	MusicPath       string `json:"music_path"`                  // file nhạc local ("" = không nhạc)
+	AccountID       int64  `json:"account_id,omitempty"`
 	// Voice: giọng đọc ("default", "male", "female"...). Đợt AC: user chọn ở
 	// form tạo truyện thay vì hardcode.
 	Voice string `json:"voice,omitempty"`
@@ -104,19 +106,24 @@ type storyDoc struct {
 	Text    string `json:"text"`
 }
 
-// AudioStoryPlot cấu trúc 1 cốt truyện audio YouTube chuẩn.
+// AudioStoryPlot cấu trúc 1 cốt truyện audio YouTube trường thiên chuẩn (30 - 60 phút).
 type AudioStoryPlot struct {
-	ID             string `json:"id"`
-	Title          string `json:"title"`
-	Genre          string `json:"genre"`
-	GenreLabel     string `json:"genre_label"`
-	Logline        string `json:"logline"`
-	Act1           string `json:"act_1"`
-	Act2           string `json:"act_2"`
-	Act3           string `json:"act_3"`
-	Message        string `json:"message"`
-	SuggestedVoice string `json:"suggested_voice"`
-	Soundscape     string `json:"soundscape"`
+	ID              string `json:"id"`
+	Title           string `json:"title"`
+	Genre           string `json:"genre"`
+	GenreLabel      string `json:"genre_label"`
+	DurationMinutes int    `json:"duration_minutes"` // 30, 45, 60 phút
+	WordsCount      int    `json:"words_count"`      // 4.500 - 9.000 từ
+	Hook3s          string `json:"hook_3s"`           // Mở màn giật gân trong 3 giây
+	Logline         string `json:"logline"`
+	Act1            string `json:"act_1"`             // Hồi 1: Khởi nguồn & Bí mật
+	Act2            string `json:"act_2"`             // Hồi 2: Dấn thân & Xung đột
+	Act3            string `json:"act_3"`             // Hồi 3: Cao trào kịch tính
+	Act4            string `json:"act_4"`             // Hồi 4: Bước ngoặt & Cú twist
+	Act5            string `json:"act_5"`             // Hồi 5: Lời giải & Dư âm sâu sắc
+	Message         string `json:"message"`
+	SuggestedVoice  string `json:"suggested_voice"`
+	Soundscape      string `json:"soundscape"`
 }
 
 // CuratedAudioStoryPlots chứa danh sách các cốt truyện audio YouTube kinh điển (hệ thống tự nghĩ sẵn 100%).
@@ -254,24 +261,176 @@ func DefaultAudioStoryTopic(genre string) string {
 	return "Đêm Mưa Bên Quán Trọ Cũ - Câu chuyện cảm động về ân nghĩa cuộc đời"
 }
 
+// GenerateUniqueAudioStory sinh ra 1 cốt truyện audio YouTube trường thiên (30 - 60 phút)
+// theo đúng chủ đề người dùng cài đặt, với cấu trúc 5 hồi kịch tính, lôi cuốn và không bao giờ trùng lặp.
+func GenerateUniqueAudioStory(customTopic, genre string, durationMinutes int) AudioStoryPlot {
+	if durationMinutes <= 0 {
+		durationMinutes = 30
+	}
+	if durationMinutes < 20 {
+		durationMinutes = 30
+	}
+	if durationMinutes > 90 {
+		durationMinutes = 60
+	}
+
+	genre = strings.ToLower(strings.TrimSpace(genre))
+	if genre == "" {
+		genre = "tâm lý"
+	}
+
+	words := durationMinutes * 150 // chuẩn 150 từ/phút đọc audio
+
+	// Danh sách bối cảnh độc bản
+	settings := []string{
+		"Quán trọ ven sông bên bến đò xưa trong đêm mưa bão mù mịt",
+		"Căn nhà cổ rêu phong ba gian nép mình sâu trong con ngõ nhỏ phố cổ",
+		"Chuyến tàu đêm Thống Nhất chở những mảnh đời tha hương về quê đón Tết",
+		"Trạm dừng chân heo hút trên đỉnh đèo mờ sương lạnh buốt",
+		"Xóm trọ nghèo ngoại thành nơi cưu mang những số phận bươn chải nhọc nhằn",
+		"Tiệm may áo dài gia truyền ba đời bên dòng kênh lịch sử",
+		"Ngôi làng chài ven biển miền Trung kiên cường sau cơn bão lớn",
+		"Căn biệt thự gỗ cổ kính ẩn mình giữa rừng thông sương giăng",
+		"Ngôi chùa cổ thanh tịnh trên sườn núi nơi lữ khách tìm lại sự bình yên",
+		"Khu chợ nổi miền sông nước với những nghĩa cử hào hiệp ấm lòng",
+	}
+
+	// Danh sách nhân vật chính
+	protagonists := []string{
+		"một người đàn ông trung niên mang vết sẹo ký ức và chiếc vali bí mật",
+		"người thợ thủ công già câm lặng với đôi bàn tay chai sần tài hoa",
+		"cô gái trẻ rời thành phố phồn hoa về lại quê xưa tìm câu trả lời cho biến cố cuộc đời",
+		"bác tài xế xe tải đường dài chuyên chở những chuyến hàng đêm qua miền đất lạ",
+		"cậu thanh niên nghèo tha hương mang theo lời dặn thiêng liêng của cha mẹ",
+		"người thương gia từng trải qua bờ vực phá sản tìm về cội nguồn tạ lỗi",
+		"cụ bà bán quán nước chè chén đầu đình lưu giữ bí mật 40 năm của cả làng",
+		"người thợ làm gốm bền bỉ lưu giữ hồn đất qua bao thăng trầm thời cuộc",
+	}
+
+	// Danh sách cú twist bất ngờ (Plot Twist)
+	twists := []string{
+		"Người khách lạ tá túc năm xưa chính là người anh trai thất lạc hơn 20 năm của gia đình.",
+		"Chiếc hộp gỗ cũ kỹ tưởng chừng rỗng không lại cất giữ cuốn sổ nợ đã được người cha trả hết bằng cả tính mạng.",
+		"Ân nhân cứu mạng gia tộc năm xưa lại chính là người từng bị hàm oan mà dòng họ hắt hủi.",
+		"Kẻ thù tưởng chừng tàn nhẫn thực chất lại âm thầm gánh chịu tiếng xấu để bảo vệ di sản của người mẹ.",
+		"Toàn bộ chuỗi biến cố bí ẩn xảy ra chỉ để thử lòng trung hiếu và hoàn thành lời thề son sắt ba mươi năm trước.",
+		"Bức thư giấu dưới đáy lư hương hé lộ bí mật chấn động về thân thế thực sự của người kế thừa.",
+	}
+
+	// Danh sách thông điệp nhân sinh sâu sắc
+	messages := []string{
+		"Ở đời, ân nghĩa và lòng hiếu thảo chính là ngọn đèn soi sáng qua mọi đêm đen giông bão.",
+		"Tiền bạc danh vọng trôi qua như mây khói, chỉ có tình thân và sự bao dung mới ở lại muôn đời.",
+		"Mỗi bước ngoặt định mệnh đều là bài học để con người ta học cách buông bỏ hận thù và trân trọng hiện tại.",
+		"Sống ngay thẳng, thiện lương thì dẫu phong ba bão táp, quỷ thần cũng phải kiêng nhường.",
+		"Một chút ấm áp sẻ chia giữa người với người có thể cứu rỗi cả một linh hồn lạc lối.",
+	}
+
+	// Danh sách câu Hook 3 giây giữ chân người nghe
+	hooks := []string{
+		"Nửa đêm hôm ấy, khi tiếng sấm vừa rạch ngang bầu trời, một tiếng gõ cửa dồn dập vang lên làm rung chuyển cả căn nhà cũ...",
+		"Có những bí mật nếu không được phơi bày trong đêm nay, có lẽ người ta sẽ mang theo cả mối ân oán xuống mồ...",
+		"Người đàn ông lạ mặt bước vào quán lúc 2 giờ sáng, đặt lên bàn một bọc vải đẫm nước mưa và run rẩy nói một câu...",
+		"Trước khi nhắm mắt, ông lão chỉ thì thầm đúng một câu khiến tất cả con cháu trong nhà đều chết lặng...",
+		"Đúng 12 giờ đêm, chiếc chuông đồng cổ xưa bỗng nhiên tự gióng lên 3 hồi chuông lạnh toát sống lưng...",
+	}
+
+	now := time.Now().UnixNano()
+	sIdx := int(now % int64(len(settings)))
+	pIdx := int((now / 7) % int64(len(protagonists)))
+	tIdx := int((now / 13) % int64(len(twists)))
+	mIdx := int((now / 19) % int64(len(messages)))
+	hIdx := int((now / 23) % int64(len(hooks)))
+
+	topicClean := strings.TrimSpace(customTopic)
+	var title string
+	if topicClean != "" {
+		title = topicClean
+	} else {
+		switch genre {
+		case "kinh dị":
+			title = "Tiếng Bước Chân Sau Bờ Tre Làng - Bí Mật Ngôi Mộ Vô Danh"
+		case "trinh thám":
+			title = "Vụ Mất Tích Kỳ Bí Dưới Đêm Mưa Lạnh"
+		case "kinh doanh":
+			title = "Cuộc Lội Ngược Dòng Của Kẻ Phá Sản"
+		default:
+			title = fmt.Sprintf("Ký Ức Bên %s - Chuyện Tình & Nghĩa Cuộc Đời", settings[sIdx])
+		}
+	}
+
+	genreLabel := "Radio Kể Chuyện Đêm Khuya"
+	switch genre {
+	case "kinh dị":
+		genreLabel = "Truyện Kinh Dị & Tâm Linh Làng Quê"
+	case "trinh thám":
+		genreLabel = "Kỳ Án Trinh Thám & Giải Mã"
+	case "kinh doanh":
+		genreLabel = "Thương Trường & Khởi Nghiệp Bất Khả Thi"
+	case "triết lý":
+		genreLabel = "Bài Học Nhân Sinh & Đạo Lý Sâu Sắc"
+	}
+
+	plotID := fmt.Sprintf("story-%s-%d", genre, now%100000)
+
+	return AudioStoryPlot{
+		ID:              plotID,
+		Title:           title,
+		Genre:           genre,
+		GenreLabel:      genreLabel,
+		DurationMinutes: durationMinutes,
+		WordsCount:      words,
+		Hook3s:          hooks[hIdx],
+		Logline:         fmt.Sprintf("Câu chuyện trường thiên %d phút: Cuộc hội ngộ định mệnh của %s tại %s, hé mở %s", durationMinutes, protagonists[pIdx], settings[sIdx], twists[tIdx]),
+		Act1:            fmt.Sprintf("Mở màn (0-%d phút): %s bối cảnh được thiết lập tại %s. Sự xuất hiện của %s mở ra những uẩn khúc chưa từng được giải đáp.", durationMinutes/5, hooks[hIdx], settings[sIdx], protagonists[pIdx]),
+		Act2:            fmt.Sprintf("Thắt nút (%d-%d phút): Những manh mối kỳ lạ dần hé lộ qua từng kỷ vật cũ. Mối xung đột ngấm ngầm giữa quá khứ và hiện tại bắt đầu đẩy các nhân vật vào thế khó.", durationMinutes/5, (durationMinutes*2)/5),
+		Act3:            fmt.Sprintf("Cao trào (%d-%d phút): Đỉnh điểm kịch tính khi bí mật lớn nhất bị đặt trước ranh giới phơi bày. Mọi sự nghi ngờ và tổn thương dồn nén nhiều năm bùng nổ nghẹt thở.", (durationMinutes*2)/5, (durationMinutes*3)/5),
+		Act4:            fmt.Sprintf("Bước ngoặt (%d-%d phút): Cú twist bất ngờ xoay chuyển hoàn toàn góc nhìn của người nghe: %s", (durationMinutes*3)/5, (durationMinutes*4)/5, twists[tIdx]),
+		Act5:            fmt.Sprintf("Mở nút & Lắng đọng (%d-%d phút): Mọi ân oán được cởi bỏ bằng sự thấu hiểu và giọt nước mắt hối hận. Thông điệp đọng lại: %s", (durationMinutes*4)/5, durationMinutes, messages[mIdx]),
+		Message:         messages[mIdx],
+		SuggestedVoice:  "default",
+		Soundscape:      "Tiếng mưa rơi đêm khuya + Piano lofi acoustic mộc mạc",
+	}
+}
+
 // CreateStoryJob kiểm tra tham số, xếp job kể chuyện và chạy nền.
 func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 	if strings.TrimSpace(p.Topic) == "" {
 		return "", fmt.Errorf("cần chủ đề truyện")
 	}
-	if p.Words < 200 {
-		p.Words = 450
+
+	// Chuẩn hóa thời lượng 30 - 60 phút theo yêu cầu người dùng
+	if p.DurationMinutes <= 0 {
+		p.DurationMinutes = 30
 	}
-	if p.Words > 1200 {
-		p.Words = 1200
+	if p.DurationMinutes < 15 {
+		p.DurationMinutes = 15
 	}
+	if p.DurationMinutes > 120 {
+		p.DurationMinutes = 60
+	}
+
+	// Tốc độ audio YouTube chuẩn: ~150 từ/phút
+	calcWords := p.DurationMinutes * 150
+	if p.Words < 200 || p.Words < calcWords {
+		p.Words = calcWords
+	}
+	if p.Words > 15000 {
+		p.Words = 15000
+	}
+
+	// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
 	if p.Scenes < 3 {
-		p.Scenes = 5
+		p.Scenes = p.DurationMinutes / 3
+		if p.Scenes < 6 {
+			p.Scenes = 6
+		}
 	}
-	if p.Scenes > 12 {
-		p.Scenes = 12
+	if p.Scenes > 24 {
+		p.Scenes = 24
 	}
-	title := "Kể chuyện: " + strings.TrimSpace(p.Topic)
+
+	title := fmt.Sprintf("Kể chuyện [%dp]: %s", p.DurationMinutes, strings.TrimSpace(p.Topic))
 	if len(title) > 90 {
 		title = string([]rune(title)[:90]) + "…"
 	}

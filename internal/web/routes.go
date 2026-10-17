@@ -89,6 +89,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /web-ai/accounts/reset-cooldown", s.handleWebAIAccountResetCooldown)
 	mux.HandleFunc("POST /web-ai/prompt-generate", s.handleWebAIPromptGenerate)
 	mux.HandleFunc("GET /web-ai/proxy/", s.handleWebAIProxy)
+	mux.HandleFunc("GET /api/web-ai/capture-session", s.handleWebAICaptureSession)
+	mux.HandleFunc("POST /api/web-ai/capture-session", s.handleWebAICaptureSession)
 
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
