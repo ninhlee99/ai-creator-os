@@ -3,10 +3,7 @@ package webai
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -41,7 +38,7 @@ func NewProxyRelay(store *Store) *ProxyRelay {
 	}
 }
 
-// ServeHTTP handles proxying for /web-ai/proxy/{platform}/...
+// ServeHTTP directs users to the official Web AI portal.
 func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Path format: /web-ai/proxy/{platform}/{rest...}
 	parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/web-ai/proxy/"), "/", 2)
@@ -76,101 +73,7 @@ func (p *ProxyRelay) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		targetURL += "?" + r.URL.RawQuery
 	}
 
-	u, err := url.Parse(targetURL)
-	if err != nil {
-		http.Error(w, "Invalid target URL", http.StatusInternalServerError)
-		return
-	}
-
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, u.String(), r.Body)
-	if err != nil {
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
-		return
-	}
-
-	// Copy standard headers
-	for k, vv := range r.Header {
-		lower := strings.ToLower(k)
-		if lower == "host" || lower == "x-forwarded-for" || lower == "origin" || lower == "referer" {
-			continue
-		}
-		for _, v := range vv {
-			proxyReq.Header.Add(k, v)
-		}
-	}
-	proxyReq.Header.Set("Host", u.Host)
-	proxyReq.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-	proxyReq.Header.Set("Referer", targetBase+"/")
-	proxyReq.Header.Set("Origin", targetBase)
-
-	// Inject saved session credentials / cookies if present in store
-	if p.store != nil {
-		if acc, err := p.store.GetAccount(platform); err == nil && acc != nil {
-			var cookies []string
-			if existing := proxyReq.Header.Get("Cookie"); existing != "" {
-				cookies = append(cookies, existing)
-			}
-			if acc.Cookie != "" {
-				cookies = append(cookies, acc.Cookie)
-			}
-			if acc.SessionKey != "" {
-				switch platform {
-				case PlatformClaude:
-					cookies = append(cookies, "sessionKey="+acc.SessionKey)
-				case PlatformChatGPT:
-					proxyReq.Header.Set("Authorization", "Bearer "+acc.SessionKey)
-					cookies = append(cookies, "__Secure-next-auth.session-token="+acc.SessionKey)
-				case PlatformGemini:
-					cookies = append(cookies, "__Secure-1PSID="+acc.SessionKey)
-				case PlatformGrok:
-					proxyReq.Header.Set("Authorization", "Bearer "+acc.SessionKey)
-					cookies = append(cookies, "sso="+acc.SessionKey)
-				case PlatformMuseAI:
-					proxyReq.Header.Set("Authorization", "Bearer "+acc.SessionKey)
-					cookies = append(cookies, "auth_token="+acc.SessionKey)
-				}
-			}
-			if len(cookies) > 0 {
-				proxyReq.Header.Set("Cookie", strings.Join(cookies, "; "))
-			}
-		}
-	}
-
-	resp, err := p.httpClient.Do(proxyReq)
-	if err != nil {
-		log.Printf("webai: proxy error to %s: %v", targetURL, err)
-		// Return friendly embedded fallback html with direct link & sync launcher
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(renderFallbackHTML(platform, targetBase)))
-		return
-	}
-	defer resp.Body.Close()
-
-	// Intercept Set-Cookie to automatically harvest session tokens and save to store
-	if p.store != nil {
-		setCookies := resp.Header.Values("Set-Cookie")
-		if len(setCookies) > 0 {
-			p.harvestCookies(platform, setCookies)
-		}
-	}
-
-	// Copy response headers, stripping anti-embedding headers
-	for k, vv := range resp.Header {
-		lower := strings.ToLower(k)
-		if lower == "x-frame-options" || lower == "content-security-policy" || lower == "cross-origin-opener-policy" {
-			continue // Strip frame-busting headers!
-		}
-		for _, v := range vv {
-			w.Header().Add(k, v)
-		}
-	}
-
-	// Allow embedding from current host
-	w.Header().Set("X-Frame-Options", "ALLOWALL")
-
-	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, resp.Body)
+	http.Redirect(w, r, targetURL, http.StatusTemporaryRedirect)
 }
 
 func (p *ProxyRelay) harvestCookies(platform string, setCookies []string) {

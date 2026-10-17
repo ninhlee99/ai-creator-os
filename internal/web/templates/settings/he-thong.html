@@ -34,36 +34,6 @@
     <span class="badge badge-ok">{{.WebAIConnected}} sẵn sàng</span>
   </div>
 
-  <!-- Giải pháp Đăng Nhập Tự Động Cho Mobile / iPad / Web (Không Cần F12) -->
-  <div class="card" style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(147,51,234,0.08) 100%);border:1.5px solid var(--accent);border-radius:14px;padding:16px 20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.04)">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
-      <div style="flex:1;min-width:280px">
-        <h4 style="margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:8px">
-          <span>📱</span> Đăng Nhập Tự Động — Hoàn Hảo Cho Điện Thoại, iPad &amp; Máy Tính
-        </h4>
-        <p style="margin:0;font-size:12.5px;color:var(--text);line-height:1.5">
-          Bạn <b>không cần mở F12 DevTools</b> để copy cookie thủ công nữa. Hệ thống hỗ trợ 2 cơ chế tự động nhận token &amp; cookie:
-        </p>
-        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px;font-size:12px">
-          <div style="background:var(--bg2);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
-            <b style="color:var(--accent);display:block;margin-bottom:3px">🌐 Cách 1: Đăng Nhập Web Trực Tiếp (1-Click)</b>
-            <span style="color:var(--muted)">Bấm <i>"🌐 Đăng Nhập Web"</i> trên từng thẻ AI. Sau khi đăng nhập, hệ thống tự động bắt Set-Cookie &amp; Token lưu vào máy.</span>
-          </div>
-          <div style="background:var(--bg2);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
-            <b style="color:#8b5cf6;display:block;margin-bottom:3px">⚡ Cách 2: Bookmarklet 1-Chạm (iPad &amp; Điện thoại)</b>
-            <span style="color:var(--muted)">Khi đang ở tab ChatGPT/Claude/Grok trên Safari/Chrome, chạm Bookmarklet để nạp phiên về AI Creator OS tức thì!</span>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;align-self:center">
-        <button type="button" class="btn btn-primary btn-sm" onclick="copyBookmarkletScript()" style="font-weight:700;font-size:12px;padding:8px 14px">
-          📋 Copy Bookmarklet 1-Chạm Cho iPad / Điện Thoại
-        </button>
-        <span class="hint" style="text-align:center;font-size:11px">Áp dụng cho Safari iOS &amp; Chrome Mobile</span>
-      </div>
-    </div>
-  </div>
-
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
     <div class="webai-card {{if .IsConnected}}connected{{end}}" style="--platform-color: {{.Platform.Color}}">
@@ -126,18 +96,15 @@
           {{end}}
           </div>
         {{else}}
-          <div class="hint" style="padding:4px 0">Chưa có tài khoản nào. Bấm Đăng nhập Web hoặc + Thêm bên dưới.</div>
+          <div class="hint" style="padding:4px 0">Chưa kết nối tài khoản.</div>
         {{end}}
       </div>
 
-      <div class="webai-card-actions" style="display:flex;gap:6px;flex-wrap:wrap">
-        <a href="/web-ai/proxy/{{.Platform.ID}}" target="_blank" rel="noreferrer" class="btn btn-primary btn-sm" style="flex:1.2;font-weight:700;font-size:11.5px;padding:6px 8px;text-align:center" title="Mở trang đăng nhập qua proxy để hệ thống tự động nhận token &amp; cookie">
-          🌐 Đăng Nhập Web
-        </a>
-        <button type="button" class="btn btn-secondary btn-sm" style="flex:1;font-size:11.5px;padding:6px 8px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}')">
-          + Nhập Thủ Công
+      <div class="webai-card-actions" style="display:flex;gap:8px">
+        <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:600;font-size:12px;padding:7px 10px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}')">
+          + Kết Nối Tài Khoản
         </button>
-        <a href="{{.Platform.URL}}" target="_blank" rel="noreferrer" class="btn btn-secondary btn-sm" style="padding:6px 9px" title="Mở trang gốc">↗</a>
+        <a href="{{.Platform.URL}}" target="_blank" rel="noreferrer" class="btn btn-secondary btn-sm" style="padding:7px 12px;font-size:12px" title="Mở trang {{.Platform.Name}}">↗ Mở web</a>
       </div>
     </div>
     {{end}}
@@ -496,59 +463,40 @@
 
 <!-- Connect Session Modal -->
 <div id="connect-modal" class="webai-modal-backdrop" hidden>
-  <div class="webai-modal-box" style="border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:540px">
+  <div class="webai-modal-box" style="border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:500px">
     <div class="modal-head">
-      <h3 id="modal-title">Thêm tài khoản AI</h3>
+      <h3 id="modal-title">Kết nối tài khoản</h3>
       <button type="button" class="modal-close-btn" onclick="closeConnectModal()">✕</button>
     </div>
-    
-    <!-- Lựa chọn 1: Đăng nhập tự động bắt Token (Khuyên dùng) -->
-    <div style="padding:16px 20px 0 20px">
-      <div style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent);border-radius:12px;padding:12px 14px">
-        <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px">
-          <span>✨</span> Cách 1: Đăng Nhập Tự Động (Khuyên Dùng)
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.45">
-          Mở trang đăng nhập qua proxy tích hợp. Hệ thống sẽ <b>tự động bắt Token &amp; Cookie</b> và lưu ngay mà không cần bạn copy thủ công!
-        </p>
-        <a href="#" id="connect-auto-login-link" target="_blank" rel="noreferrer" class="btn btn-primary btn-sm" style="display:block;text-align:center;font-weight:700;padding:8px;font-size:12.5px">
-          🚀 Mở Trang Đăng Nhập Tự Động Bắt Token ↗
-        </a>
-      </div>
-    </div>
-
     <form method="post" action="/web-ai/accounts/add">
       <input type="hidden" name="platform" id="connect-platform-id">
       <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
-      <div class="modal-body" style="padding-top:14px">
-        <div style="border-top:1px dashed var(--border);padding-top:12px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px">Cách 2: Nhập thủ công (nếu đã có sẵn Token / Cookie):</div>
+      <div class="modal-body">
+        <div class="field" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="margin:0;font-weight:700">Khóa API hoặc Session Token <span class="req">*</span></label>
+            <a href="#" id="connect-platform-link" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px">↗ Mở web</a>
+          </div>
+          <textarea name="session_key" id="connect-session-key" rows="3" required placeholder="Dán API Key hoặc Session Token..."></textarea>
+          <div class="hint" id="connect-auth-guide" style="font-size:11.5px;margin-top:4px"></div>
         </div>
         <div class="grid2">
           <div class="field">
-            <label>Tên / Email</label>
-            <input type="text" name="email" id="connect-email" placeholder="Email hoặc tên gợi nhớ">
+            <label>Tên gợi nhớ (tùy chọn)</label>
+            <input type="text" name="email" id="connect-email" placeholder="Ví dụ: Tài khoản chính">
           </div>
           <div class="field">
-            <label>Gói tài khoản</label>
+            <label>Gói dịch vụ</label>
             <select name="tier" id="connect-tier">
               <option value="free">Miễn phí (Free)</option>
               <option value="plus">Plus / Pro</option>
             </select>
           </div>
         </div>
-        <div class="field">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label style="margin:0">Session Token / Cookie</label>
-            <a href="#" id="connect-platform-link" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px">↗ Mở trang gốc</a>
-          </div>
-          <textarea name="session_key" id="connect-session-key" rows="3" placeholder="Dán token hoặc cookie nếu có..."></textarea>
-          <div class="hint" id="connect-auth-guide" style="font-size:11px;margin-top:4px"></div>
-        </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">Hủy</button>
-        <button type="submit" class="btn btn-primary">Lưu tài khoản thủ công</button>
+        <button type="submit" class="btn btn-primary">Lưu kết nối</button>
       </div>
     </form>
   </div>
@@ -593,21 +541,6 @@
 </div>
 
 <script>
-function copyBookmarkletScript() {
-  var server = window.location.origin;
-  var code = 'javascript:(function(){try{var h=location.hostname.toLowerCase();var p="chatgpt";if(h.includes("claude"))p="claude";else if(h.includes("gemini")||h.includes("google"))p="gemini";else if(h.includes("grok")||h.includes("x.ai"))p="grok";else if(h.includes("muse"))p="museai";else if(h.includes("openai")||h.includes("chatgpt"))p="chatgpt";var c=document.cookie||"";var t="";for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(/token|auth|session|key/i.test(k)){var v=localStorage.getItem(k);if(v&&v.length>20){t=v;break;}}}var s="' + server + '";window.location.href=s+"/api/web-ai/capture-session?platform="+encodeURIComponent(p)+"&cookie="+encodeURIComponent(c)+"&session_key="+encodeURIComponent(t);}catch(e){alert("Lỗi:"+e.message);}})();';
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(function() {
-      alert('✓ ĐÃ COPY BOOKMARKLET 1-CHẠM CHO IPAD / ĐIỆN THOẠI!\n\nCách dùng trong 2 bước:\n1. Tạo một Dấu trang (Bookmark) trên Safari/Chrome của iPad/Điện thoại, đặt tên là "⚡ Nhận Token AI", dán mã vừa copy vào ô Địa chỉ URL.\n2. Mở tab ChatGPT, Claude, Grok, Gemini... trên điện thoại/iPad -> Chạm vào Bookmark "⚡ Nhận Token AI". Hệ thống tự nhận diện phiên đăng nhập và kích hoạt ngay!');
-    }).catch(function() {
-      prompt('Hãy copy mã Bookmarklet dưới đây để lưu vào Bookmark của iPad/Điện thoại:', code);
-    });
-  } else {
-    prompt('Hãy copy mã Bookmarklet dưới đây để lưu vào Bookmark của iPad/Điện thoại:', code);
-  }
-}
-
 function openEnvImportModal() {
   document.getElementById('env-import-modal').hidden = false;
 }
@@ -639,25 +572,27 @@ function switchSettingsTab(tab) {
 
 function openConnectModal(p, name, ph, guide) {
   document.getElementById('connect-platform-id').value = p;
-  document.getElementById('modal-title').textContent = 'Thêm tài khoản ' + name;
-  document.getElementById('connect-session-key').placeholder = ph;
-  document.getElementById('connect-auth-guide').textContent = guide;
-
-  var autoLink = document.getElementById('connect-auto-login-link');
-  if (autoLink) {
-    autoLink.href = '/web-ai/proxy/' + p;
-    autoLink.textContent = '🚀 Mở Trang ' + name + ' (Tự Động Bắt Token)';
+  document.getElementById('modal-title').textContent = 'Kết nối ' + name;
+  var ta = document.getElementById('connect-session-key');
+  if (ta) {
+    ta.placeholder = ph;
+    ta.value = '';
   }
+  var gd = document.getElementById('connect-auth-guide');
+  if (gd) gd.textContent = guide;
 
   var link = document.getElementById('connect-platform-link');
   if (link) {
     if (p === 'chatgpt') link.href = 'https://chatgpt.com';
     else if (p === 'claude') link.href = 'https://claude.ai';
-    else if (p === 'gemini') link.href = 'https://gemini.google.com';
+    else if (p === 'gemini') link.href = 'https://aistudio.google.com/app/apikey';
     else if (p === 'grok') link.href = 'https://grok.com';
     else if (p === 'muse' || p === 'museai') link.href = 'https://muse.ai';
   }
   document.getElementById('connect-modal').hidden = false;
+  setTimeout(function() {
+    if (ta) ta.focus();
+  }, 100);
 }
 
 function closeConnectModal() {
