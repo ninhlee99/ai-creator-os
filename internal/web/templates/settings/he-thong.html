@@ -583,11 +583,22 @@ function openConnectModal(p, name, ph, guide) {
 
   var link = document.getElementById('connect-platform-link');
   if (link) {
-    if (p === 'chatgpt') link.href = 'https://chatgpt.com';
-    else if (p === 'claude') link.href = 'https://claude.ai';
-    else if (p === 'gemini') link.href = 'https://aistudio.google.com/app/apikey';
-    else if (p === 'grok') link.href = 'https://grok.com';
-    else if (p === 'muse' || p === 'museai') link.href = 'https://muse.ai';
+    if (p === 'chatgpt') {
+      link.href = 'https://platform.openai.com/api-keys';
+      link.textContent = '🔑 Lấy mã OpenAI ↗';
+    } else if (p === 'claude') {
+      link.href = 'https://console.anthropic.com/settings/keys';
+      link.textContent = '🔑 Lấy mã Claude ↗';
+    } else if (p === 'gemini') {
+      link.href = 'https://aistudio.google.com/app/apikey';
+      link.textContent = '✨ Lấy mã Miễn Phí ↗';
+    } else if (p === 'grok') {
+      link.href = 'https://console.x.ai';
+      link.textContent = '🔑 Lấy mã Grok ↗';
+    } else if (p === 'muse' || p === 'museai') {
+      link.href = 'https://muse.ai';
+      link.textContent = '↗ Mở Muse AI';
+    }
   }
   document.getElementById('connect-modal').hidden = false;
   setTimeout(function() {
