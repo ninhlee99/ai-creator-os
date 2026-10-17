@@ -3,7 +3,7 @@
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Phát Triển Kênh &amp; Tăng Trưởng</h1>
-    <p class="subtitle">Tự động vận hành chu kỳ tăng trưởng 30-60-90 ngày, theo dõi mốc bật kiếm tiền YPP và số liệu thật.</p>
+    <p class="subtitle">Theo dõi chu kỳ tăng trưởng và tiến độ các mốc kênh.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/accounts" class="btn btn-secondary">Kênh Creator</a>
@@ -31,7 +31,6 @@
     <span class="badge badge-draft" title="Đổi ở Cài đặt · Kênh MXH; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
     {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
-  <p class="hint">Chế độ chạy thử chặn mọi thao tác thật. TikTok: chỉ đăng nháp tới khi app được TikTok duyệt.</p>
   <form method="post" action="/growth/production" style="display:inline">
     {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt sản xuất tự động</button>
     {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật sản xuất tự động</button>{{end}}
@@ -42,7 +41,7 @@
 </div>
 
 <details class="advanced" style="margin:12px 0">
-  <summary>🧰 Tác vụ thủ công <span class="hint">— thường không cần, hệ thống tự làm</span></summary>
+  <summary>🧰 Tác vụ thủ công</summary>
   <div class="toolbar" style="margin-top:10px">
     <form method="post" action="/growth/sync" style="display:inline"
           data-confirm="Đồng bộ số liệu + chạy vòng quyết định ngay?">
@@ -51,7 +50,6 @@
   </div>
   <div class="hint" style="margin-top:8px">Sinh plan 30 ngày cho từng tài khoản: vào trang tài khoản → tab Autopilot → “↻ Replan 30 ngày ngay”.</div>
   <h3 style="margin-top:16px">Ngưỡng quyết định tăng trưởng</h3>
-  <p class="hint">Không cần chỉnh khi hệ thống đang chạy tốt — chỉ đổi khi bạn hiểu rõ luật kill/double-down.</p>
   <form method="post" action="/growth/thresholds">
     <div class="table-wrap">
 <table>

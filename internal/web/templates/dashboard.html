@@ -11,7 +11,7 @@
       <h1>Tổng quan</h1>
       <span class="badge badge-info" style="font-weight:700;font-size:11px">Trung Tâm Điều Hành 24/7</span>
     </div>
-    <p class="subtitle" style="margin:0;font-size:13.5px">Ngày {{fmtVN .Today}} · Mạng lưới tự động săn xu hướng, sản xuất video điện ảnh và vận hành đa kênh.</p>
+    <p class="subtitle" style="margin:0;font-size:13.5px">Ngày {{fmtVN .Today}} · Trung tâm điều hành sản xuất và mạng lưới kênh.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
     <a href="/team" class="btn btn-secondary btn-sm" style="font-weight:600">9 Khối Phòng Ban</a>
@@ -57,20 +57,16 @@
   </div>
 </div>
 
-<!-- Omni-Goal 1-Click Executive Command Bar (Chỉ Huy Chiến Lược 1-Chạm) -->
+<!-- Omni-Goal 1-Click Executive Command Bar -->
 <div class="card exec-command-bar" style="background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent);border-radius:14px;padding:18px 20px;margin-bottom:24px">
   <form method="post" action="/team/dispatch" style="margin:0">
     <input type="hidden" name="back" value="/">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:24px">🎯</span>
-        <div>
-          <b style="font-size:15px;color:var(--text)">Giao Mục Tiêu Chiến Lược 1-Chạm</b>
-          <p class="hint" style="margin:1px 0 0;font-size:12.5px">Hệ thống tự động phân bổ nhiệm vụ qua 9 khối phòng ban và thực thi trọn gói từ A đến Z.</p>
-        </div>
+        <b style="font-size:15px;color:var(--text)">Giao mục tiêu chiến dịch</b>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <span class="hint" style="align-self:center;font-size:11.5px">Mục tiêu nhanh:</span>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tự động quét xu hướng Douyin và sản xuất 2 video bán hàng cho kênh TikTok')">🔥 Tự Động Bắt Xu Hướng 24/7</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Tạo video review serum dưỡng trắng mờ nám 7 ngày cho kênh mỹ phẩm')">✨ Serum Mỹ Phẩm</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="setDashboardGoal('Làm video review nồi chiên không dầu 8L cho kênh gia dụng')">🍳 Nồi Chiên Gia Dụng</button>
@@ -80,7 +76,7 @@
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <input type="text" name="goal" id="dash-omni-goal-input" placeholder="Nhập mục tiêu: Ví dụ: Săn deal gia dụng bán chạy nhất và tạo 3 video viral cho kênh TikTok..." required style="flex:1;min-width:280px;font-size:13.5px;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
-      <button type="submit" class="btn btn-primary" style="padding:10px 20px;font-size:13.5px;font-weight:700">🚀 Kích Hoạt Chiến Dịch Toàn Công Ty</button>
+      <button type="submit" class="btn btn-primary" style="padding:10px 20px;font-size:13.5px;font-weight:700">🚀 Kích Hoạt Chiến Dịch</button>
     </div>
   </form>
 </div>
@@ -204,7 +200,6 @@ function setDashboardGoal(txt) {
 <!-- Khai Thác Doanh Thu & Sàn Đối Tác (Monetization Readiness) -->
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <h2 style="margin:0;font-size:16px;font-weight:700">💰 Sẵn sàng kiếm tiền &amp; Khai thác doanh thu</h2>
-  <span class="hint" style="font-size:12px">Tự động liên kết và đối soát hoa hồng ròng</span>
 </div>
 <div class="monetization-grid" style="margin-bottom:24px">
   {{range .Money}}
@@ -226,7 +221,6 @@ function setDashboardGoal(txt) {
 <!-- Phân Hệ Tự Động Hóa 24/7 -->
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <h2 style="margin:0;font-size:16px;font-weight:700">Tự động hóa</h2>
-  <span class="hint" style="font-size:12px">Các công tắc vận hành dây chuyền 24/7 độc lập</span>
 </div>
 <div class="auto-grid" style="margin-bottom:24px">
   {{range .AutoSwitches}}
@@ -255,7 +249,6 @@ function setDashboardGoal(txt) {
 {{if .Decisions}}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <h2 style="margin:0;font-size:16px;font-weight:700">Nhật Ký Quyết Định Hệ Thống</h2>
-  <span class="hint" style="font-size:12px">Audit log ghi nhận bởi Ledger append-only</span>
 </div>
 <div class="card" style="border-radius:12px;padding:14px 18px">
   <ul class="clean" style="margin:0;display:flex;flex-direction:column;gap:8px">

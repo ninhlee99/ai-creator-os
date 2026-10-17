@@ -8,7 +8,7 @@
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1 id="studio-top">Studio Dàn Dựng Video AI</h1>
-    <p class="subtitle">Sản xuất video chất lượng cao chuẩn dọc 9:16 hoặc ngang 16:9 với chuyển động điện ảnh và tự động cân bằng âm thanh.</p>
+    <p class="subtitle">Theo dõi tiến độ sản xuất, lịch tự động và kho video hoàn chỉnh.</p>
   </div>
   <div class="webai-header-actions">
     {{if .RunningCount}}<span class="badge badge-info"><span class="pulse-dot"></span> {{.RunningCount}} video đang dựng</span>{{end}}
@@ -37,8 +37,7 @@
 {{if eq .Tab "running"}}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
   <div>
-    <h1 style="margin:0 0 4px;font-size:22px">⚡ Video Đang Được Dàn Dựng (Dây Chuyền AI Đang Chạy)</h1>
-    <p class="subtitle" style="margin:0">Theo dõi tiến độ sản xuất thời gian thực, sự phối hợp giữa các phòng ban AI và bàn giao thành phẩm.</p>
+    <h2 style="margin:0;font-size:18px">⚡ Video đang dựng</h2>
   </div>
   <div style="display:flex;gap:8px">
     <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
@@ -47,18 +46,16 @@
 {{else if eq .Tab "schedule"}}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
   <div>
-    <h1 style="margin:0 0 4px;font-size:22px">📅 Lên Lịch Sản Xuất Video Tự Động (Autopilot Scheduler)</h1>
-    <p class="subtitle" style="margin:0">Cấu hình hệ thống AI tự động sản xuất video định kỳ 24/7 theo chu kỳ giờ và tự động xuất bản đa kênh.</p>
+    <h2 style="margin:0;font-size:18px">📅 Lịch sản xuất tự động</h2>
   </div>
   <form method="post" action="/studio/schedule/run-now" style="margin:0">
-    <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">🚀 Chạy 1 Lượt Sản Xuất Ngay</button>
+    <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">🚀 Chạy 1 Lượt Ngay</button>
   </form>
 </div>
 {{else if eq .Tab "done"}}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
   <div>
-    <h1 style="margin:0 0 4px;font-size:22px">📂 Kho Video Đã Tạo Hoàn Chỉnh</h1>
-    <p class="subtitle" style="margin:0">Toàn bộ video thành phẩm đã hoàn thiện, sẵn sàng xem, tải MP4 hoặc đăng tải lên các kênh mạng xã hội.</p>
+    <h2 style="margin:0;font-size:18px">📂 Video đã hoàn thành</h2>
   </div>
   <div style="display:flex;gap:8px">
     <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
@@ -67,8 +64,7 @@
 {{else}}
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
   <div>
-    <h1 style="margin:0 0 4px;font-size:22px">📋 Toàn Bộ Danh Sách Video Trong Studio</h1>
-    <p class="subtitle" style="margin:0">Tổng hợp tất cả các tác vụ sản xuất video từ trước đến nay.</p>
+    <h2 style="margin:0;font-size:18px">📋 Danh sách video</h2>
   </div>
   <div style="display:flex;gap:8px">
     <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
@@ -143,9 +139,6 @@
         <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}}>
         <span>Kích hoạt Dây chuyền AI tự động tạo video định kỳ (Autopilot 24/7)</span>
       </label>
-      <span class="hint" style="font-size:12px;margin-left:24px;display:block;margin-top:4px">
-        Hệ thống sẽ tự động quét sản phẩm/trend mới, tự động điều phối các phòng ban AI tạo kịch bản, vẽ hình ảnh và dựng video.
-      </span>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-bottom:18px">
@@ -203,9 +196,8 @@
     <div class="job-dept-workflow-header">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">🏢</span>
-        <b style="font-size:13px;color:var(--text)">Sơ Đồ Phối Hợp Nhóm Phòng Ban &amp; Nhân Sự Thực Hiện Job:</b>
+        <b style="font-size:13px;color:var(--text)">Phòng ban &amp; nhân sự thực hiện:</b>
       </div>
-      <span class="hint" style="font-size:11.5px">Studio điều phối • Mỗi phòng ban là 1 Group chứa các nhân sự chuyên trách</span>
     </div>
 
     <div class="job-groups-flow-scroll">

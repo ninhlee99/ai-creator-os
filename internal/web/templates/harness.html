@@ -87,7 +87,7 @@
       </span>
     </div>
     <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:920px;line-height:1.55">
-      Bộ điều phối trung tâm (Master Autonomous Orchestrator) vận hành hệ thống khép kín 24/7: Giám sát toàn bộ kênh, săn deal affiliate hoa hồng cao, điều phối Studio AI dựng video và tự học hỏi qua kho ký ức thực chiến SQLite.
+      Điều phối tự động các tác vụ sản xuất video, giám sát kênh và chu kỳ tăng trưởng.
     </p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
@@ -113,45 +113,7 @@
 </div>
 {{end}}
 
-<!-- Closed-Loop Autonomous Pipeline Architecture Banner -->
-<div class="card" style="padding:20px 24px;border-radius:14px;margin-bottom:24px;background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(16,185,129,0.05) 100%);border:1px solid var(--border)">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <div>
-      <b style="font-size:14px;color:var(--text)">Vị Trí Của Harness Agent Trong Dây Chuyền Tự Động 24/7</b>
-      <div style="font-size:12px;color:var(--muted);margin-top:2px">Harness Agent đóng vai trò là "Tổng chỉ huy", kết nối dữ liệu từ mọi màn hình thành quy trình tự hành khép kín:</div>
-    </div>
-    <span class="badge badge-ok" style="font-size:10.5px;font-weight:700"><span class="pulse-dot"></span> KHÉP KÍN 100% TỰ ĐỘNG</span>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px">
-    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:0.5px">1. QUAN SÁT (OBSERVE)</div>
-      <div style="font-weight:700;font-size:13px;margin:3px 0">Quét Kênh &amp; Deal</div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Dò kênh qua <a href="/accounts">Kênh</a>, quét hoa hồng qua <a href="/products">Affiliate</a> và bắt trend Douyin/TikTok.</div>
-    </div>
-    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:#8b5cf6;letter-spacing:0.5px">2. ĐỊNH HƯỚNG (ORIENT)</div>
-      <div style="font-weight:700;font-size:13px;margin:3px 0">Lọc Qua Ký Ức</div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">So sánh với kho bài học thực chiến SQLite để chọn hook và cấu trúc kịch bản có tỷ lệ giữ chân cao nhất.</div>
-    </div>
-    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:#f59e0b;letter-spacing:0.5px">3. QUYẾT ĐỊNH (DECIDE)</div>
-      <div style="font-weight:700;font-size:13px;margin:3px 0">Ra Quyết Định Tác Vụ</div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tự chọn loại video: Quảng cáo sản phẩm, bắt trend viral hoặc kể chuyện theo chính sách tự hành.</div>
-    </div>
-    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:#10b981;letter-spacing:0.5px">4. THỰC THI (ACT)</div>
-      <div style="font-weight:700;font-size:13px;margin:3px 0">Studio Sản Xuất Video</div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tự kích hoạt <a href="/studio">Studio AI</a> tạo kịch bản, ảnh, âm thanh, giọng đọc và lên lịch đăng bài tự động.</div>
-    </div>
-    <div style="background:var(--surface);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:800;color:#ec4899;letter-spacing:0.5px">5. ĐÚC KẾT (LEARN)</div>
-      <div style="font-weight:700;font-size:13px;margin:3px 0">Lưu Vết &amp; Học Hỏi</div>
-      <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Ghi nhận view thật, tỷ lệ chốt đơn vào bảng <code style="font-size:11px">harness_memories</code> để không lặp lại sai lầm.</div>
-    </div>
-  </div>
-</div>
-
-<!-- Key Performance & Perception Metrics: 4 Spaced Cards with ample margins -->
+<!-- Key Performance & Perception Metrics -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:20px;margin-bottom:24px;">
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
     <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Kênh Đang Theo Dõi</div>
@@ -159,7 +121,6 @@
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ChannelCount}}{{else}}0{{end}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">kênh</span>
     </div>
-    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Giám sát sức khỏe danh mục kênh thời gian thực</div>
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
@@ -168,7 +129,6 @@
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">sản phẩm</span>
     </div>
-    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Accesstrade &amp; TikTok Shop đối soát tự động</div>
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
@@ -177,7 +137,6 @@
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">tác vụ</span>
     </div>
-    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Đã kích hoạt trong chu kỳ nhận thức gần nhất</div>
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
@@ -186,7 +145,6 @@
       {{.Harness.TotalMemories}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">bài học</span>
     </div>
-    <div class="hint" style="font-size:11.5px;margin-top:6px;line-height:1.4">Lưu bền vững trong cơ sở dữ liệu SQLite</div>
   </div>
 </div>
 

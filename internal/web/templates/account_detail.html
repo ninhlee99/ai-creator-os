@@ -82,8 +82,8 @@
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
-    <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu &amp; Nội Dung Nguyên Bản (Brand DNA)</h2>
-    <p class="subtitle" style="margin:0;font-size:13px">Hồ sơ bản sắc độc quyền của kênh <strong>{{.Acct.Username}}</strong>. Hệ thống AI dùng hồ sơ này để tạo kịch bản nguyên bản, tự động gác cổng từ cấm và đảm bảo video không dính thuật toán unoriginal content.</p>
+    <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu (Brand DNA)</h2>
+    <p class="subtitle" style="margin:0;font-size:13px">Bản sắc thương hiệu và phong cách nội dung của kênh <strong>{{.Acct.Username}}</strong>.</p>
   </div>
   <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Khôi phục Brand DNA chuẩn AI theo ngành hàng? Mọi tùy chỉnh hiện tại sẽ được thay bằng mẫu tối ưu.">
     <button type="submit" class="btn btn-secondary btn-sm">🔄 Khôi phục mẫu AI chuẩn</button>
@@ -437,9 +437,6 @@
         {{end}}
       </div>
     </div>
-    <p class="hint" style="line-height:1.5;margin-bottom:16px">
-      Hệ thống hỗ trợ đẩy video tự động vào <b>Bản nháp TikTok</b> kèm caption, hashtag và âm nhạc trending chuẩn chỉ số viral.
-    </p>
     <div>
       {{if .PubStatus.TiktokClient}}
         <a class="btn btn-sm" href="/publishers/tiktok/authorize?username={{.Acct.Username}}">
@@ -503,36 +500,15 @@
 {{end}}
 
 {{if eq .Tab "comments"}}
-<div class="card" style="border-radius:14px;padding:18px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent)">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:26px">💬</span>
-      <div>
-        <h2 style="margin:0;font-size:16px;color:var(--text)">Hệ Thống Tự Động Trả Lời Bình Luận &amp; Chốt Đơn 24/7</h2>
-        <div class="hint" style="font-size:12px">AI tự động lắng nghe người xem, phân loại ý định mua hàng và trả lời kèm link affiliate giỏ hàng ngay lập tức.</div>
-      </div>
-    </div>
-    <span class="badge badge-ok" style="font-weight:700"><span class="pulse-dot"></span> ĐANG BẢO VỆ &amp; CHỐT ĐƠN 24/7</span>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px;margin-top:14px">
-    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:var(--accent)">1. HỎI MUA HÀNG (80% DOANH THU)</div>
-      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Khách hỏi giá, link, ship -> AI gửi link affiliate giỏ hàng + lời kêu gọi hành động.</p>
-    </div>
-    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:#10b981">2. KHEN NGỢI &amp; FYP BOOST</div>
-      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Thả tim ngay + cảm ơn dí dỏm -> kích thích tương tác để thuật toán đẩy video lên triệu view.</p>
-    </div>
-    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:#f59e0b">3. TRANH LUẬN &amp; WATCH TIME</div>
-      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Đặt câu hỏi mở kéo người xem ở lại tranh luận, tăng thời gian xem và tỷ lệ xem lại.</p>
-    </div>
-    <div style="background:var(--bg2);padding:12px;border-radius:10px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:#ef4444">4. CHỐNG SPAM &amp; TOXIC</div>
-      <p style="font-size:12px;margin:4px 0 0;color:var(--text);line-height:1.4">Tự động phát hiện chửi bới, link rác, lừa đảo -> gắn cờ ẩn comment bảo vệ uy tín kênh.</p>
+<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:26px">💬</span>
+    <div>
+      <h2 style="margin:0;font-size:18px;color:var(--text)">Tự Động Trả Lời Bình Luận &amp; Chốt Đơn</h2>
+      <div style="font-size:12.5px;color:var(--muted)">Phân loại ý định mua hàng và trả lời tự động cho kênh @{{.Acct.Username}}.</div>
     </div>
   </div>
+  <span class="badge badge-ok" style="font-weight:700"><span class="pulse-dot"></span> BẬT 24/7</span>
 </div>
 
 <div class="grid2" style="margin-bottom:20px">
