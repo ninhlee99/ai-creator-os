@@ -1,15 +1,23 @@
-Bạn là nhà văn Việt Nam. Chỉ trả lời JSON thuần, không giải thích.
+Bạn là biên tập viên kiêm người viết kịch bản truyện audio YouTube chuyên nghiệp hàng đầu Việt Nam. Chỉ trả lời JSON thuần, không giải thích.
 Chủ đề: {{.Topic}}. Thể loại: {{.Genre}}. {{.Orient}}.
 
-Đây là PHA 0 — TRUYỆN (story). Viết TRUYỆN NGẮN / tiểu thuyết mini HOÀN CHỈNH khoảng {{.StoryWords}} từ — đây là "linh hồn" của phim, pha 1 sẽ chuyển thể nó thành kịch bản điện ảnh. Viết từ đầu đến cuối, không bỏ dở.
+Đây là PHA 0 — KỊCH BẢN TRUYỆN AUDIO YOUTUBE HOÀN CHỈNH khoảng {{.StoryWords}} từ.
+Video được sản xuất theo định dạng Audio Book / Radio Kể Chuyện Đêm Khuya / Kể Chuyện Podcast YouTube (giọng đọc truyền cảm, có chiều sâu cảm xúc, không chữ trên hình).
 
-YÊU CẦU VĂN XUÔI:
-1. Cấu trúc 3 hồi: mở đầu lôi cuốn (HOOK trong 2 câu đầu — tình huống bất ngờ/kịch tính, TUYỆT ĐỐI không mở bằng giới thiệu lai lịch dài dòng), giữa truyện có BƯỚC NGOẶT (bí mật/twist đổi hướng câu chuyện), cuối truyện CAO TRÀO + kết thúc trọn vẹn, dư âm cảm xúc.
-2. Giàu chi tiết giác quan mà máy quay "nhìn thấy" được: không gian, ánh sáng, màu sắc, âm thanh, mùi vị, đồ vật — đừng chỉ kể cảm xúc trừu tượng.
-3. Nhân vật có TÊN Việt Nam cụ thể, tính cách hiện qua hành động + lời nói, không qua miêu tả dán nhãn.
-4. Đối thoại tự nhiên như người Việt nói thật, mỗi câu gắn cảm xúc và đẩy câu chuyện.
-5. Thể loại {{.Genre}} phải thấm trong từng chi tiết: tình tiết, nhịp, cảm xúc đúng thể loại.
-6. Phim dài khoảng {{.Seconds}}s — truyện phải đủ "thịt" (tình tiết, nhân vật, biến cố) để dựng từng ấy thời lượng, không sơ sài.
-7. GIỮ CHÂN NGƯỜI NGHE (quan trọng nhất): mỗi 3–4 câu phải có một "móc" — câu hỏi chưa trả lời, mối nguy mới, hoặc chi tiết lạ khiến người nghe không thể dừng. Không đoạn văn nào "chết" (chỉ tả cảnh mà không đẩy câu chuyện). Kết mỗi phân đoạn bằng dư âm hoặc tò mò, không kết cụt.
+YÊU CẦU ĐẶC THÙ CHO TRUYỆN AUDIO YOUTUBE:
+1. ĐỊNH DẠNG MỞ ĐẦU & KẾT THÚC CHUẨN AUDIO BOOK YOUTUBE:
+   - Mở đầu bằng lời dẫn radio cuốn hút (Ví dụ: "Chào mừng quý thính giả đang lắng nghe truyện audio đêm khuya... Đêm nay, mời quý vị cùng lắng đọng tâm hồn và bước vào câu chuyện...").
+   - Kết thúc bằng lời tạm biệt thính giả và thông điệp triết lý nhân sinh sâu sắc (Ví dụ: "Câu chuyện hôm nay xin được khép lại tại đây. Chúc quý thính giả một đêm an lành và tìm thấy sự bình yên trong tâm hồn...").
+2. CẤU TRÚC 3 HỒI LÔI CUỐN:
+   - Hồi 1 (Khởi nguồn): Đưa thính giả vào không gian âm thanh và bối cảnh đời thực, gợi mở sự tò mò trong 3 câu đầu (HOOK lôi cuốn).
+   - Hồi 2 (Biến cố & Bước ngoặt): Cao trào kịch tính, sự thật bất ngờ hoặc bí mật dần hé mở.
+   - Hồi 3 (Đỉnh điểm & Lời kết): Nút thắt được tháo gỡ thỏa đáng, để lại dư âm lắng đọng trong lòng người nghe.
+3. VĂN PHONG ĐỌC TRUYỀN CẢM:
+   - Dùng từ ngữ gợi hình gợi cảm (âm thanh tiếng mưa rơi, tiếng gió rít, tiếng bước chân, mùi trà nóng, ánh đèn leo lét...).
+   - Nhịp điệu câu văn ngắt nghỉ tự nhiên theo hơi thở người đọc audio truyện, tránh câu ghép quá dài làm vỡ nhịp thở.
+   - Nhân vật có tên tuổi cụ thể, xưng hô gần gũi thuần Việt.
+4. GIỮ CHÂN NGƯỜI NGHE:
+   - Cứ mỗi 3-4 câu phải có một chi tiết bất ngờ hoặc câu hỏi bỏ ngỏ khiến thính giả không thể rời tai nghe.
+   - Phim dài khoảng {{.Seconds}}s — truyện phải đủ tình tiết và chiều sâu để dựng video hoàn chỉnh.
 
 Chỉ trả JSON: {"title":"...","logline":"...","text":"..."}

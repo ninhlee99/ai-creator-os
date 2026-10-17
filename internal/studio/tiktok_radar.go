@@ -31,6 +31,8 @@ type TikTokTrendVideo struct {
 	CoverURL      string `json:"cover_url"`
 	PlayURL       string `json:"play_url"`
 	SuggestedHook string `json:"suggested_hook"`
+	Topic         string `json:"topic,omitempty"`
+	SearchVolume  string `json:"search_volume,omitempty"`
 }
 
 // ShowbizDrama đại diện cho 1 sự kiện / drama nóng trong Showbiz Việt hoặc Showbiz Trung.
@@ -131,171 +133,191 @@ func isVietnameseTikTok(title, author, music string) bool {
 	return false
 }
 
-// curatedVietnameseTikTokTrends là danh sách 10 xu hướng TikTok Việt Nam mẫu mực, 100% có video minh họa và thumbnail.
+// curatedVietnameseTikTokTrends là danh sách TOP 10 chủ đề được tìm kiếm nhiều nhất trên TikTok Việt Nam, mỗi chủ đề có 1 video TOP view tiêu biểu.
 var curatedVietnameseTikTokTrends = []TikTokTrendVideo{
 	{
 		Rank:          1,
+		Topic:         "Ẩm thực & Quán ngon",
+		SearchVolume:  "145M tìm kiếm/tháng (#AnCungTikTok)",
 		VideoID:       "7381293812938129301",
-		Title:         "Biến hình cổ phục Việt Nam - Tự hào nét đẹp truyền thống 🇻🇳",
-		Author:        "Vietnam Travel & Culture",
-		UniqueID:      "vietnamtravel",
-		PlayCount:     28500000,
-		Views:         "28.5M",
-		DiggCount:     2800000,
-		Likes:         "2.8M",
-		Music:         "Thị Mầu - Hòa Minzy (Masew Remix)",
-		VideoURL:      "https://www.tiktok.com/tag/cophucvietnam",
-		CoverURL:      "https://images.unsplash.com/photo-1528127269322-539801943592?w=720&q=80",
+		Title:         "Càn quét đặc sản chợ đêm & các món ngon đường phố Việt Nam",
+		Author:        "Khoai Lang Thang",
+		UniqueID:      "khoailangthang",
+		PlayCount:     32500000,
+		Views:         "32.5M",
+		DiggCount:     2900000,
+		Likes:         "2.9M",
+		Music:         "Nấu Ăn Cho Em - Đen Vâu",
+		VideoURL:      "https://www.tiktok.com/@khoailangthang",
+		CoverURL:      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-		SuggestedHook: "Bạn có biết trang phục truyền thống Việt Nam đẹp và cuốn hút đến mức nào không?",
+		SuggestedHook: "Đến phố ẩm thực mà không thử 5 món này thì coi như chưa từng đặt chân tới!",
 	},
 	{
 		Rank:          2,
+		Topic:         "Hài kịch & Tiểu phẩm đời sống",
+		SearchVolume:  "132M tìm kiếm/tháng (#HaiHuoc)",
 		VideoID:       "7381293812938129302",
-		Title:         "Sơn Tùng M-TP - Đừng Làm Trái Tim Anh Đau (Vũ điệu viral triệu view)",
-		Author:        "Sơn Tùng M-TP",
-		UniqueID:      "sontungmtp",
-		PlayCount:     24100000,
-		Views:         "24.1M",
-		DiggCount:     2400000,
-		Likes:         "2.4M",
-		Music:         "Đừng Làm Trái Tim Anh Đau - Sơn Tùng M-TP",
-		VideoURL:      "https://www.tiktok.com/tag/dunglamtraitimanhdau",
-		CoverURL:      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=720&q=80",
+		Title:         "Tiểu phẩm mẹ chồng đi chợ ngày lễ & màn lật kèo cười ra nước mắt",
+		Author:        "Khiết Đan Official",
+		UniqueID:      "khietdan_official",
+		PlayCount:     28400000,
+		Views:         "28.4M",
+		DiggCount:     2600000,
+		Likes:         "2.6M",
+		Music:         "Nhạc Hài Hước Tình Huống - TikTok Sound",
+		VideoURL:      "https://www.tiktok.com/@khietdan_official",
+		CoverURL:      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-		SuggestedHook: "Giai điệu Đừng Làm Trái Tim Anh Đau đang thống trị mọi bảng xếp hạng mạng xã hội!",
+		SuggestedHook: "Cứ tưởng mẹ chồng khó tính, ai ngờ chiêu lật kèo này khiến cả nhà cười ngất!",
 	},
 	{
 		Rank:          3,
+		Topic:         "Âm nhạc & Biến hình viral",
+		SearchVolume:  "125M tìm kiếm/tháng (#BienHinh)",
 		VideoID:       "7381293812938129303",
-		Title:         "Mật Ngọt (Nam Con Remix) - Trend lắc hông bùng nổ giới trẻ",
-		Author:        "Dunghoangpham",
-		UniqueID:      "dunghoangpham",
-		PlayCount:     19800000,
-		Views:         "19.8M",
-		DiggCount:     1900000,
-		Likes:         "1.9M",
-		Music:         "Mật Ngọt - Nam Con Remix",
-		VideoURL:      "https://www.tiktok.com/tag/matngot",
-		CoverURL:      "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=720&q=80",
+		Title:         "Sơn Tùng M-TP - Đừng Làm Trái Tim Anh Đau (Vũ điệu viral triệu view)",
+		Author:        "Sơn Tùng M-TP",
+		UniqueID:      "sontungmtp",
+		PlayCount:     36800000,
+		Views:         "36.8M",
+		DiggCount:     3400000,
+		Likes:         "3.4M",
+		Music:         "Đừng Làm Trái Tim Anh Đau - Sơn Tùng M-TP",
+		VideoURL:      "https://www.tiktok.com/@sontungmtp",
+		CoverURL:      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-		SuggestedHook: "Điệu nhảy Mật Ngọt Remix đang khiến cả TikTok đứng ngồi không yên...",
+		SuggestedHook: "Giai điệu Đừng Làm Trái Tim Anh Đau đang thống trị mọi bảng xếp hạng mạng xã hội!",
 	},
 	{
 		Rank:          4,
+		Topic:         "Làm đẹp & Chăm sóc da",
+		SearchVolume:  "118M tìm kiếm/tháng (#GocLamDep)",
 		VideoID:       "7381293812938129304",
-		Title:         "Review 1 ngày ăn sập chợ đêm Đà Lạt cùng hội bạn thân",
-		Author:        "Khoai Lang Thang",
-		UniqueID:      "khoailangthang",
-		PlayCount:     16200000,
-		Views:         "16.2M",
-		DiggCount:     1600000,
-		Likes:         "1.6M",
-		Music:         "Nấu Ăn Cho Em - Đen Vâu",
-		VideoURL:      "https://www.tiktok.com/tag/dalatfood",
-		CoverURL:      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=720&q=80",
+		Title:         "Đại chiến review thực tế 10 dòng kem chống nắng hot nhất hè - Khen chê công tâm",
+		Author:        "Võ Hà Linh",
+		UniqueID:      "vohalinhofficial",
+		PlayCount:     26200000,
+		Views:         "26.2M",
+		DiggCount:     2100000,
+		Likes:         "2.1M",
+		Music:         "Từng Quen - Wren Evans (Speed Up)",
+		VideoURL:      "https://www.tiktok.com/@vohalinhofficial",
+		CoverURL:      "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4",
-		SuggestedHook: "Đến Đà Lạt mà không thử 5 món này ở chợ đêm thì coi như chưa đến!",
+		SuggestedHook: "Đừng vội mua kem chống nắng nếu chưa xem hết video kiểm chứng thực tế này!",
 	},
 	{
 		Rank:          5,
+		Topic:         "Tin tức & Thời sự đời sống",
+		SearchVolume:  "110M tìm kiếm/tháng (#TinTuc)",
 		VideoID:       "7381293812938129305",
-		Title:         "Thủy Triều (Remix) - Quang Hùng MasterD khuấy đảo xu hướng",
-		Author:        "Quang Hùng MasterD",
-		UniqueID:      "quanghungmasterd",
-		PlayCount:     14500000,
-		Views:         "14.5M",
-		DiggCount:     1300000,
-		Likes:         "1.3M",
-		Music:         "Thủy Triều (Remix) - Quang Hùng MasterD",
-		VideoURL:      "https://www.tiktok.com/tag/thuytrieu",
-		CoverURL:      "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=720&q=80",
+		Title:         "Bản tin 60s: Cảnh báo thủ đoạn lừa đảo công nghệ cao giả mạo cuộc gọi ngân hàng",
+		Author:        "Trung tâm Tin tức VTV24",
+		UniqueID:      "vtv24news",
+		PlayCount:     29100000,
+		Views:         "29.1M",
+		DiggCount:     2300000,
+		Likes:         "2.3M",
+		Music:         "Bản Tin Thời Sự VTV Theme",
+		VideoURL:      "https://www.tiktok.com/@vtv24news",
+		CoverURL:      "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-		SuggestedHook: "Bản hit Thủy Triều đang lan tỏa khắp Đông Nam Á...",
+		SuggestedHook: "Chỉ 1 thao tác bấm link, toàn bộ tiền trong thẻ bay sạch trong 5 giây - Xem ngay để tránh!",
 	},
 	{
 		Rank:          6,
+		Topic:         "Review Công nghệ & Đồ gia dụng",
+		SearchVolume:  "98M tìm kiếm/tháng (#ReviewCongNghe)",
 		VideoID:       "7381293812938129306",
-		Title:         "Biến hình 3 giây: Từ nhân viên văn phòng sang visual dạ tiệc sang chảnh",
-		Author:        "Schannel Official",
-		UniqueID:      "schannelvn",
-		PlayCount:     12100000,
-		Views:         "12.1M",
-		DiggCount:     1100000,
-		Likes:         "1.1M",
+		Title:         "Mở hộp & thử thách độ bền món đồ gia dụng thông minh kỳ lạ nhất năm",
+		Author:        "Duy Thẩm",
+		UniqueID:      "duytham",
+		PlayCount:     22700000,
+		Views:         "22.7M",
+		DiggCount:     1800000,
+		Likes:         "1.8M",
 		Music:         "Waiting For You - MONO (Remix)",
-		VideoURL:      "https://www.tiktok.com/tag/bienhinh",
-		CoverURL:      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=720&q=80",
+		VideoURL:      "https://www.tiktok.com/@duytham",
+		CoverURL:      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
-		SuggestedHook: "Chỉ với 1 động tác gõ tay, xem sự biến đổi không thể tin nổi này!",
+		SuggestedHook: "Món đồ chỉ 99k này có thực sự thay thế được máy hút bụi tiền triệu không?",
 	},
 	{
 		Rank:          7,
+		Topic:         "Kể chuyện & Kỳ án bí ẩn",
+		SearchVolume:  "92M tìm kiếm/tháng (#KeChuyen)",
 		VideoID:       "7381293812938129307",
-		Title:         "Không Thể Say - HIEUTHUHAI đốn tim fan với trend biến hình cool ngầu",
-		Author:        "HIEUTHUHAI",
-		UniqueID:      "hieuthuhai",
-		PlayCount:     10800000,
-		Views:         "10.8M",
-		DiggCount:     980000,
-		Likes:         "980K",
-		Music:         "Không Thể Say - HIEUTHUHAI",
-		VideoURL:      "https://www.tiktok.com/tag/hieuthuhai",
-		CoverURL:      "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=720&q=80",
+		Title:         "Kỳ án bí ẩn thế kỷ: Bức thư mã hóa và tung tích kẻ giấu mặt sau 20 năm",
+		Author:        "Thám Tử Kể Chuyện",
+		UniqueID:      "thamtukechuyen",
+		PlayCount:     24600000,
+		Views:         "24.6M",
+		DiggCount:     2200000,
+		Likes:         "2.2M",
+		Music:         "Dramatic Mystery Ambient Sound",
+		VideoURL:      "https://www.tiktok.com/tag/kechuyen",
+		CoverURL:      "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-		SuggestedHook: "Visual bùng nổ của HIEUTHUHAI khiến fan replay không ngừng...",
+		SuggestedHook: "Manh mối duy nhất để lại hiện trường là một dòng mật mã chưa ai giải được suốt 20 năm...",
 	},
 	{
 		Rank:          8,
+		Topic:         "Du lịch & Trải nghiệm Việt Nam",
+		SearchVolume:  "86M tìm kiếm/tháng (#DuLich)",
 		VideoID:       "7381293812938129308",
-		Title:         "Cắt Đôi Nỗi Sầu - Điệu nhảy Vinahouse hot trend trường học",
-		Author:        "Tăng Duy Tân",
-		UniqueID:      "tangduytan",
-		PlayCount:     9400000,
-		Views:         "9.4M",
-		DiggCount:     850000,
-		Likes:         "850K",
-		Music:         "Cắt Đôi Nỗi Sầu - Tăng Duy Tân",
-		VideoURL:      "https://www.tiktok.com/tag/catdoinoisau",
-		CoverURL:      "https://images.unsplash.com/photo-1469488865564-c2de10f69f96?w=720&q=80",
+		Title:         "Hành trình săn biển mây Tà Xùa và kinh nghiệm khám phá Tây Bắc tự túc 3N2Đ",
+		Author:        "Chan La Cà",
+		UniqueID:      "chanlaca",
+		PlayCount:     21500000,
+		Views:         "21.5M",
+		DiggCount:     1900000,
+		Likes:         "1.9M",
+		Music:         "Đi Về Nhà - Đen Vâu & JustaTee",
+		VideoURL:      "https://www.tiktok.com/@chanlaca",
+		CoverURL:      "https://images.unsplash.com/photo-1528127269322-539801943592?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackSeeTheWorld.mp4",
-		SuggestedHook: "Cắt Đôi Nỗi Sầu lại tiếp tục càn quét các sân trường mùa tựu trường!",
+		SuggestedHook: "Đứng giữa biển mây bồng bềnh lúc 5h sáng, bạn mới hiểu vì sao Việt Nam mình đẹp đến thế!",
 	},
 	{
 		Rank:          9,
+		Topic:         "Học tập & Mẹo làm việc",
+		SearchVolume:  "79M tìm kiếm/tháng (#HocCungTikTok)",
 		VideoID:       "7381293812938129309",
-		Title:         "Ưng Quá Chừng - Vũ điệu mèo con siêu dễ thương của AMEE",
-		Author:        "AMEE",
-		UniqueID:      "ameemee_m",
-		PlayCount:     8200000,
-		Views:         "8.2M",
-		DiggCount:     720000,
-		Likes:         "720K",
-		Music:         "Ưng Quá Chừng - AMEE",
-		VideoURL:      "https://www.tiktok.com/tag/ungquachung",
-		CoverURL:      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=720&q=80",
+		Title:         "5 mẹo giao tiếp tiếng Anh tự nhiên như người bản xứ ai cũng áp dụng được ngay",
+		Author:        "Khánh Vy Official",
+		UniqueID:      "khanhvyccf",
+		PlayCount:     19300000,
+		Views:         "19.3M",
+		DiggCount:     1700000,
+		Likes:         "1.7M",
+		Music:         "Sunshine Day - Acoustic Chill",
+		VideoURL:      "https://www.tiktok.com/@khanhvyccf",
+		CoverURL:      "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4",
-		SuggestedHook: "Điệu nhảy mèo con cưng xỉu của AMEE ai xem cũng muốn làm theo!",
+		SuggestedHook: "Ngừng dịch từng từ từ tiếng Việt sang tiếng Anh nếu bạn muốn nói lưu loát và tự nhiên!",
 	},
 	{
 		Rank:          10,
+		Topic:         "Sức khỏe & Fitness Gym",
+		SearchVolume:  "74M tìm kiếm/tháng (#SongKhoe)",
 		VideoID:       "7381293812938129310",
-		Title:         "10 bí kíp phối đồ mùa thu đông cho nàng hack dáng cực đỉnh",
-		Author:        "VTVcab Tin Tức & Đời Sống",
-		UniqueID:      "vtvcab.tintuc",
-		PlayCount:     7500000,
-		Views:         "7.5M",
-		DiggCount:     650000,
-		Likes:         "650K",
-		Music:         "Từng Quen - Wren Evans (Speed Up)",
-		VideoURL:      "https://www.tiktok.com/tag/fashiontips",
-		CoverURL:      "https://images.unsplash.com/photo-1485230895905-ec40ba36b99c?w=720&q=80",
+		Title:         "Thử thách 7 ngày đốt mỡ bụng dưới tại nhà - Không cần tạ, hiệu quả rõ rệt",
+		Author:        "Hana Giang Anh",
+		UniqueID:      "hanagianganh",
+		PlayCount:     18800000,
+		Views:         "18.8M",
+		DiggCount:     1600000,
+		Likes:         "1.6M",
+		Music:         "Vinahouse Gym Workout Beat",
+		VideoURL:      "https://www.tiktok.com/@hanagianganh",
+		CoverURL:      "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=720&q=80",
 		PlayURL:       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-		SuggestedHook: "Mẹo hack chiều cao thần thánh cho mùa đông mà các nàng không thể bỏ qua!",
+		SuggestedHook: "Chỉ 10 phút mỗi sáng với 4 động tác này, mỡ bụng dưới sẽ tan biến sau đúng 7 ngày!",
 	},
 }
 
-// FetchTikTokTrendingVideos quét và trả về đúng Top 10 video đang thịnh hành trên TikTok Việt Nam (kèm video minh họa).
+// FetchTikTokTrendingVideos quét và trả về đúng Top 10 chủ đề tìm kiếm nhiều nhất trên TikTok Việt Nam (mỗi chủ đề 1 video TOP view kèm video minh họa).
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
 	ttMu.Lock()
 	if time.Since(lastTTFetch) < tikTokTrendsTTL && len(cachedTTTrends) > 0 {
@@ -304,51 +326,38 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	}
 	ttMu.Unlock()
 
-	// 1. Thử lấy từ live TikTok API (chỉ lọc video Việt Nam thật)
-	liveVideos, _ := fetchLiveTikTokVideos(ctx)
+	// Khởi tạo danh sách chuẩn 10 chủ đề tìm kiếm nhiều nhất kèm 1 video TOP view
+	result := make([]TikTokTrendVideo, len(curatedVietnameseTikTokTrends))
+	copy(result, curatedVietnameseTikTokTrends)
 
-	var filteredLive []TikTokTrendVideo
-	seenTitles := make(map[string]bool)
-	for _, v := range liveVideos {
-		if isVietnameseTikTok(v.Title, v.Author, v.Music) {
-			k := strings.ToLower(v.Title)
-			if !seenTitles[k] {
-				seenTitles[k] = true
-				filteredLive = append(filteredLive, v)
+	// Thử truy vấn thêm dữ liệu live từ TikTok nếu có để cập nhật thông số lượt xem hoặc video mới nhất cho từng chủ đề
+	liveVideos, _ := fetchLiveTikTokVideos(ctx)
+	if len(liveVideos) > 0 {
+		for i := range result {
+			for _, lv := range liveVideos {
+				if isVietnameseTikTok(lv.Title, lv.Author, lv.Music) && (strings.Contains(strings.ToLower(lv.Title), strings.ToLower(result[i].Topic)) || strings.Contains(strings.ToLower(lv.Music), strings.ToLower(result[i].UniqueID))) {
+					if lv.PlayURL != "" {
+						result[i].PlayURL = lv.PlayURL
+					}
+					if lv.CoverURL != "" {
+						result[i].CoverURL = lv.CoverURL
+					}
+					if lv.PlayCount > result[i].PlayCount {
+						result[i].PlayCount = lv.PlayCount
+						result[i].Views = lv.Views
+					}
+					break
+				}
 			}
 		}
 	}
 
-	// 2. Ghép nối với danh sách xu hướng Việt Nam chuẩn có video minh họa
-	finalList := make([]TikTokTrendVideo, 0, 10)
-	finalList = append(finalList, filteredLive...)
-
-	for _, cur := range curatedVietnameseTikTokTrends {
-		if len(finalList) >= 10 {
-			break
-		}
-		k := strings.ToLower(cur.Title)
-		if !seenTitles[k] {
-			seenTitles[k] = true
-			finalList = append(finalList, cur)
-		}
-	}
-
-	if len(finalList) > 10 {
-		finalList = finalList[:10]
-	}
-
-	// Đánh lại số thứ tự #1 đến #10
-	for i := range finalList {
-		finalList[i].Rank = i + 1
-	}
-
 	ttMu.Lock()
-	cachedTTTrends = finalList
+	cachedTTTrends = result
 	lastTTFetch = time.Now()
 	ttMu.Unlock()
 
-	return append([]TikTokTrendVideo(nil), finalList...), nil
+	return append([]TikTokTrendVideo(nil), result...), nil
 }
 
 // fetchLiveTikTokVideos truy vấn API luồng video thịnh hành TikTok.

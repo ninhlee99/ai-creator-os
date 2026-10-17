@@ -60,10 +60,10 @@
       </div>
     </button>
     <button type="button" id="mode-btn-story" class="mode-select-btn" onclick="switchProductionMode('story')">
-      <span class="mode-icon">📖</span>
+      <span class="mode-icon">📻</span>
       <div class="mode-text">
-        <strong>3. Kể Chuyện Dài &amp; Cắt Shorts</strong>
-        <small>Video dài 16:9 + Tự trích xuất clip ngắn 3–5 phút đa kênh</small>
+        <strong>3. Truyện Audio YouTube &amp; Cắt Shorts</strong>
+        <small>AI tự nghĩ cốt truyện audio 16:9 + Tự cắt clip ngắn 3–5 phút</small>
       </div>
     </button>
   </div>
@@ -523,7 +523,7 @@
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button type="button" id="tab-btn-tt-trends" class="btn btn-sm btn-primary" onclick="switchRadarTab('tiktok')">🔥 Top 10 Trending TikTok Việt</button>
+        <button type="button" id="tab-btn-tt-trends" class="btn btn-sm btn-primary" onclick="switchRadarTab('tiktok')">🔥 Top 10 Chủ Đề TikTok Tìm Kiếm</button>
         <button type="button" id="tab-btn-drama-vn" class="btn btn-sm btn-secondary" onclick="switchRadarTab('drama_vn')">🇻🇳 Top 10 Drama Việt</button>
         <button type="button" id="tab-btn-drama-cn" class="btn btn-sm btn-secondary" onclick="switchRadarTab('drama_cn')">🇨🇳 Top 10 Drama Trung</button>
         <button type="button" id="btn-radar-refresh" class="btn btn-sm btn-secondary" onclick="refreshRadarRealtime()" style="font-weight:700">🔄 Cập Nhật Realtime</button>
@@ -557,6 +557,15 @@
                 🔥 {{.Views}}
               </div>
             </div>
+
+            {{if .Topic}}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">
+              <span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                🏷️ {{.Topic}}
+              </span>
+              <span style="font-size:9.5px;color:var(--muted);white-space:nowrap" title="{{.SearchVolume}}">{{.SearchVolume}}</span>
+            </div>
+            {{end}}
 
             <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
               {{.Title}}
@@ -815,35 +824,86 @@
 </div>
 
 <!-- =========================================================================
-     TAB 3: Video Dài / Kể Chuyện YouTube & Cắt Short Clips Đa Nền Tảng
+     TAB 3: Truyện Audio YouTube & Cắt Short Clips Đa Nền Tảng (AI Tự Nghĩ Cốt Truyện)
      ========================================================================= -->
 <div id="panel-story" style="display:none">
   <form method="post" action="/studio/story" id="story-form">
     <div class="studio-workbench-split">
       <!-- LEFT COLUMN (60%) -->
       <div class="studio-controls-col">
-        <!-- Section 1: Kịch bản truyện & Đề tài -->
+        <!-- Section 1: Cốt Truyện Audio YouTube (Hệ Thống Tự Nghĩ 100%) -->
         <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">📖</span> 1. Chủ Đề Kịch Bản &amp; Truyện Dài YouTube
-          </h3>
-
-          <div class="field" style="margin-bottom:14px">
-            <label>Chủ đề câu chuyện / Kịch bản dài <span class="req">*</span></label>
-            <input type="text" name="topic" id="st-topic" required placeholder="Ví dụ: Hành trình khởi nghiệp từ 0 đồng, Ký ức đêm mưa định mệnh, Bí ẩn tam giác quỷ..." oninput="updateMockupPreview('st')">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <div>
+              <h3 style="margin:0;display:flex;align-items:center;gap:8px">
+                <span style="font-size:20px">📻</span> 1. Cốt Truyện Audio YouTube (AI Tự Nghĩ)
+              </h3>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn btn-primary btn-sm" onclick="rollRandomStoryPlot()" style="font-weight:700">
+                🎲 Đổi Cốt Truyện Khác (AI Nghĩ Mới)
+              </button>
+            </div>
           </div>
 
-          <div class="grid3">
-            <div class="field">
-              <label>Thể loại câu chuyện</label>
-              <select name="genre" id="st-genre" onchange="updateMockupPreview('st')">
-                <option value="tâm lý" selected>Tâm lý &amp; Cảm xúc đời sống</option>
-                <option value="trinh thám">Trinh thám &amp; Hồi hộp</option>
-                <option value="lịch sử">Lịch sử &amp; Bí ẩn nhân loại</option>
-                <option value="kinh doanh">Bài học kinh doanh &amp; Khởi nghiệp</option>
-                <option value="triết lý">Triết lý sống &amp; Nhân sinh</option>
-              </select>
+          <!-- Thể loại Audio YouTube (Buttons 1-chạm chọn nhanh) -->
+          <div style="margin-bottom:14px">
+            <label style="font-size:12.5px;font-weight:700;color:var(--text);display:block;margin-bottom:6px">Chọn thể loại truyện audio:</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap" id="audio-genre-chips">
+              <button type="button" class="btn btn-sm btn-primary" onclick="selectStoryGenre('tâm lý', this)">📻 Đêm Khuya</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('kinh dị', this)">👻 Truyện Ma Làng Quê</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('triết lý', this)">🌿 Bài Học Nhân Sinh</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('trinh thám', this)">🔍 Kỳ Án Trinh Thám</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('kinh doanh', this)">💼 Thương Trường</button>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('lịch sử', this)">⚔️ Dã Sử Cổ Trang</button>
             </div>
+            <input type="hidden" name="genre" id="st-genre" value="tâm lý">
+          </div>
+
+          <!-- Cốt truyện 3 Hồi AI Tự Động Soạn Thảo (Interactive Plot Card) -->
+          <div id="audio-story-plot-card" style="background:var(--bg3);border:1.5px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+              <div>
+                <span class="badge badge-ok" id="plot-genre-badge" style="font-size:10.5px;font-weight:700">Radio Kể Chuyện Đêm Khuya</span>
+                <strong id="plot-title-display" style="font-size:15px;display:block;color:var(--text);margin-top:4px">Đêm Mưa Bên Quán Trọ Cũ</strong>
+              </div>
+              <span style="font-size:11px;color:var(--accent);font-weight:700">✓ AI Đã Lên Kịch Bản 3 Hồi</span>
+            </div>
+            <p id="plot-logline-display" style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.4">
+              Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.
+            </p>
+
+            <!-- 3 Hồi cốt truyện YouTube -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:8px;margin-bottom:12px;font-size:11.5px">
+              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
+                <b style="color:var(--accent);display:block;margin-bottom:3px">📖 Hồi 1: Mở Đầu</b>
+                <span id="plot-act1-display">Người đàn ông ướt sũng bước vào quán trọ ven sông giữa đêm bão táp...</span>
+              </div>
+              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
+                <b style="color:#f59e0b;display:block;margin-bottom:3px">⚡ Hồi 2: Biến Cố</b>
+                <span id="plot-act2-display">Bà cụ chủ quán kể về chiếc hộp gỗ 10 năm trước của người khách bí ẩn...</span>
+              </div>
+              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
+                <b style="color:#10b981;display:block;margin-bottom:3px">✨ Hồi 3: Đỉnh Điểm &amp; Kết</b>
+                <span id="plot-act3-display">Bí mật tình cha con được hé lộ trong nước mắt và thông điệp ân nghĩa...</span>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px">
+              <div>💡 <b>Thông điệp:</b> <span id="plot-message-display">Ở đời, ân nghĩa và tình thân lớn hơn mọi sóng gió thời gian.</span></div>
+              <div>🎵 <b>Âm hưởng:</b> <span id="plot-soundscape-display">Tiếng mưa rơi nhẹ + Piano lofi acoustic</span></div>
+            </div>
+          </div>
+
+          <!-- Hidden / Editable Topic Field -->
+          <div class="field" style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <label style="margin:0">Chủ đề câu chuyện (Hệ thống tự điền, bạn có thể sửa nếu muốn):</label>
+            </div>
+            <input type="text" name="topic" id="st-topic" value="Đêm Mưa Bên Quán Trọ Cũ" placeholder="Để trống nếu muốn AI tự nghĩ cốt truyện mới hoàn toàn..." oninput="updateMockupPreview('st')">
+          </div>
+
+          <div class="grid2">
             <div class="field">
               <label>Độ dài mục tiêu</label>
               <select name="words" id="st-words" onchange="updateMockupPreview('st')">
@@ -853,7 +913,7 @@
               </select>
             </div>
             <div class="field">
-              <label>Số phân cảnh tranh vẽ</label>
+              <label>Số phân cảnh tranh vẽ minh họa 16:9</label>
               <select name="scenes">
                 <option value="4">4 cảnh minh họa</option>
                 <option value="6" selected>6 cảnh minh họa</option>
@@ -864,25 +924,25 @@
           </div>
         </div>
 
-        <!-- Section 2: Giọng đọc & Âm thanh -->
+        <!-- Section 2: Giọng đọc & Âm thanh Radio -->
         <div class="form-card" style="margin-bottom: 20px;">
           <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎙️</span> 2. Giọng Đọc Truyền Cảm &amp; Nhạc Nền
+            <span style="font-size:20px">🎙️</span> 2. Giọng Đọc Truyền Cảm &amp; Nhạc Nền Radio
           </h3>
           <div class="grid2">
             <div class="field">
-              <label>Giọng đọc AI (Kể chuyện truyền cảm)</label>
-              <select name="voice">
-                <option value="default" selected>Giọng kể truyền cảm (Nam trầm ấm)</option>
-                <option value="female">Giọng kể sâu lắng (Nữ nhẹ nhàng)</option>
+              <label>Giọng đọc Audio Book</label>
+              <select name="voice" id="st-voice">
+                <option value="default" selected>Giọng kể truyền cảm (Nam trầm ấm - Chuẩn Radio)</option>
+                <option value="female">Giọng kể sâu lắng (Nữ nhẹ nhàng - Radio Tâm Sự)</option>
               </select>
             </div>
             <div class="field">
-              <label>Nhạc nền acoustic / lo-fi</label>
+              <label>Nhạc nền acoustic / Tiếng mưa</label>
               <div style="margin-top:8px">
                 <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
                   <input type="checkbox" name="music_on" value="1" checked style="width:16px;height:16px">
-                  <span>Lồng nhạc nền nhẹ nhàng</span>
+                  <span>Lồng nhạc nền ambient &amp; hiệu ứng âm thanh thư giãn</span>
                 </label>
               </div>
             </div>
@@ -927,18 +987,18 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · STORY RESEARCH</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu Đề Tài</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tuyển chọn tư liệu câu chuyện và thông điệp sâu sắc</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu &amp; Cốt Truyện</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">AI tự nghĩ đề tài, cốt truyện 3 hồi và thông điệp sâu sắc</div>
             </div>
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · SCREENWRITER</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chấp Bút &amp; Chia Cảnh</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết văn phong ngôi thứ nhất &amp; chia 6-12 cảnh</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chấp Bút Audio Book</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết văn phong kể chuyện truyền cảm + lời dẫn radio</div>
             </div>
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · ILLUSTRATOR</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Tranh Vẽ &amp; Giọng Đọc</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ tranh minh họa + thu âm giọng kể</div>
+              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Bìa Cinematic 16:9</strong>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ tranh minh họa 16:9 + thu âm giọng đọc</div>
             </div>
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · AUTO-CLIPPER</div>
@@ -948,7 +1008,7 @@
             <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
               <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · YOUTUBE DIST</div>
               <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Xuất Bản &amp; SEO Video</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tối ưu tiêu đề, mô tả và lịch đăng YouTube</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tối ưu tiêu đề, thumbnail và lịch đăng YouTube</div>
             </div>
           </div>
         </div>
@@ -958,15 +1018,23 @@
       <div class="studio-preview-col">
         <!-- YouTube 16:9 Player Frame Mockup -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,0.15)">
-          <div style="position:relative;width:100%;padding-top:56.25%;background:linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('/static/preview.png') center/cover">
+          <div style="position:relative;width:100%;padding-top:56.25%;background:linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.9)), url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&q=80') center/cover">
             <div style="position:absolute;top:12px;left:14px;display:flex;gap:6px">
-              <span class="badge badge-info" style="font-size:10px">🖥️ 16:9 FULL HD (1920x1080)</span>
-              <span class="badge badge-ok" style="font-size:10px">YOUTUBE READY</span>
+              <span class="badge badge-info" style="font-size:10px">📻 TRUYỆN AUDIO YOUTUBE</span>
+              <span class="badge badge-ok" style="font-size:10px">16:9 FULL HD</span>
             </div>
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center">
-              <div style="font-size:28px;margin-bottom:6px">▶</div>
-              <div style="font-weight:800;font-size:15px;color:#fff;max-width:90%" id="st-mockup-title">Ký Ức Đêm Mưa</div>
-              <div style="font-size:12px;color:#cbd5e1;margin-top:4px" id="st-mockup-genre">Tâm lý &amp; Cảm xúc đời sống</div>
+              <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;margin-bottom:8px">▶</div>
+              <div style="font-weight:800;font-size:16px;color:#fff;max-width:90%;line-height:1.3" id="st-mockup-title">Đêm Mưa Bên Quán Trọ Cũ</div>
+              <div style="font-size:12px;color:#cbd5e1;margin-top:4px" id="st-mockup-genre">Radio Kể Chuyện Đêm Khuya</div>
+              <!-- Audio Waveform in Mockup -->
+              <div style="display:flex;align-items:center;gap:3px;margin-top:10px;height:18px">
+                <span style="display:inline-block;width:3px;height:12px;background:#38bdf8;border-radius:2px"></span>
+                <span style="display:inline-block;width:3px;height:18px;background:#38bdf8;border-radius:2px"></span>
+                <span style="display:inline-block;width:3px;height:8px;background:#38bdf8;border-radius:2px"></span>
+                <span style="display:inline-block;width:3px;height:15px;background:#38bdf8;border-radius:2px"></span>
+                <span style="display:inline-block;width:3px;height:10px;background:#38bdf8;border-radius:2px"></span>
+              </div>
             </div>
             <div style="position:absolute;bottom:10px;right:14px">
               <span class="badge badge-dim" style="font-size:11px" id="st-mockup-dur">⏱️ ~4 phút</span>
@@ -980,7 +1048,7 @@
 
         <div class="mockup-render-action-card" style="margin-top:16px">
           <button type="submit" class="btn-mega-render" style="background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)">
-            📖 Bắt Đầu Dàn Dựng Video Truyện &amp; Cắt Shorts
+            📻 Bắt Đầu Sản Xuất Truyện Audio YouTube
           </button>
         </div>
       </div>
@@ -1052,9 +1120,16 @@ function updateMockupPreview(prefix) {
       var stTitle = document.getElementById('st-mockup-title');
       if (stTitle) stTitle.textContent = sTopicEl.value;
     }
-    if (sGenreEl && sGenreEl.selectedOptions && sGenreEl.selectedOptions[0]) {
+    if (sGenreEl) {
       var stGenre = document.getElementById('st-mockup-genre');
-      if (stGenre) stGenre.textContent = sGenreEl.selectedOptions[0].text;
+      if (stGenre) {
+        if (sGenreEl.selectedOptions && sGenreEl.selectedOptions[0]) {
+          stGenre.textContent = sGenreEl.selectedOptions[0].text;
+        } else if (sGenreEl.value) {
+          var genreBadge = document.getElementById('plot-genre-badge');
+          stGenre.textContent = genreBadge ? genreBadge.textContent : sGenreEl.value;
+        }
+      }
     }
     if (sWordsEl) {
       var stDur = document.getElementById('st-mockup-dur');
@@ -1677,6 +1752,7 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     updateMockupPreview('cr');
+    displayCurrentStoryPlot();
   } catch (e) {}
 });
 
@@ -1756,6 +1832,13 @@ function renderTikTokGrid(items) {
     } else if (item.cover_url) {
       videoHtml = '<img src="' + item.cover_url + '" alt="' + (item.title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">';
     }
+    var topicHtml = '';
+    if (item.topic) {
+      topicHtml = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">' +
+        '<span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🏷️ ' + item.topic + '</span>' +
+        '<span style="font-size:9.5px;color:var(--muted);white-space:nowrap">' + (item.search_volume || '') + '</span>' +
+      '</div>';
+    }
     html += '<div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">' +
       '<div>' +
         '<div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">' +
@@ -1763,6 +1846,7 @@ function renderTikTokGrid(items) {
           '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">#' + item.rank + '</div>' +
           '<div style="position:absolute;top:6px;right:6px;background:rgba(239,68,68,0.9);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">🔥 ' + item.views + '</div>' +
         '</div>' +
+        topicHtml +
         '<strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="' + (item.title || '') + '">' + (item.title || '') + '</strong>' +
         '<div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">Kênh: <b>@' + (item.unique_id || '') + '</b> · ❤️ ' + (item.likes || '') + '</div>' +
         '<div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--muted);margin-bottom:10px;border-left:3px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (item.music || '') + '">🎵 ' + (item.music || '') + '</div>' +
@@ -1911,6 +1995,102 @@ function analyzePastedTikTok() {
     }
     alert('Đã nhận diện link video TikTok và điền vào ô Ý tưởng kịch bản!');
   });
+}
+
+// =========================================================================
+// Audio Story Engine (AI Tự Động Lên Cốt Truyện & Ý Tưởng YouTube Audio)
+// =========================================================================
+var rawStoryPlots = [
+  {{range .AudioStoryPlots}}
+  {
+    id: {{printf "%q" .ID}},
+    title: {{printf "%q" .Title}},
+    genre: {{printf "%q" .Genre}},
+    genre_label: {{printf "%q" .GenreLabel}},
+    logline: {{printf "%q" .Logline}},
+    act_1: {{printf "%q" .Act1}},
+    act_2: {{printf "%q" .Act2}},
+    act_3: {{printf "%q" .Act3}},
+    message: {{printf "%q" .Message}},
+    suggested_voice: {{printf "%q" .SuggestedVoice}},
+    soundscape: {{printf "%q" .Soundscape}}
+  },
+  {{end}}
+];
+
+var currentStoryPlots = (typeof rawStoryPlots !== 'undefined' && rawStoryPlots.length > 0) ? rawStoryPlots : [];
+var currentPlotIndex = 0;
+
+function selectStoryGenre(genre, btn) {
+  var chips = document.querySelectorAll('#audio-genre-chips button');
+  if (chips) {
+    chips.forEach(function(b) {
+      b.className = 'btn btn-sm btn-secondary';
+    });
+  }
+  if (btn) btn.className = 'btn btn-sm btn-primary';
+  
+  var genreInput = document.getElementById('st-genre');
+  if (genreInput) genreInput.value = genre;
+
+  var filtered = rawStoryPlots.filter(function(p) {
+    return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
+  });
+  currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
+  currentPlotIndex = 0;
+  displayCurrentStoryPlot();
+}
+
+function rollRandomStoryPlot() {
+  if (currentStoryPlots.length <= 1) {
+    currentStoryPlots = rawStoryPlots;
+  }
+  currentPlotIndex = (currentPlotIndex + 1) % currentStoryPlots.length;
+  displayCurrentStoryPlot();
+}
+
+function displayCurrentStoryPlot() {
+  if (!currentStoryPlots || currentStoryPlots.length === 0) return;
+  var p = currentStoryPlots[currentPlotIndex];
+  if (!p) return;
+
+  var titleEl = document.getElementById('plot-title-display');
+  if (titleEl) titleEl.textContent = p.title;
+
+  var genreBadge = document.getElementById('plot-genre-badge');
+  if (genreBadge) genreBadge.textContent = p.genre_label || p.genre;
+
+  var loglineEl = document.getElementById('plot-logline-display');
+  if (loglineEl) loglineEl.textContent = p.logline;
+
+  var act1El = document.getElementById('plot-act1-display');
+  if (act1El) act1El.textContent = p.act_1;
+
+  var act2El = document.getElementById('plot-act2-display');
+  if (act2El) act2El.textContent = p.act_2;
+
+  var act3El = document.getElementById('plot-act3-display');
+  if (act3El) act3El.textContent = p.act_3;
+
+  var msgEl = document.getElementById('plot-message-display');
+  if (msgEl) msgEl.textContent = p.message;
+
+  var soundEl = document.getElementById('plot-soundscape-display');
+  if (soundEl) soundEl.textContent = p.soundscape;
+
+  var topicInput = document.getElementById('st-topic');
+  if (topicInput) topicInput.value = p.title;
+
+  if (p.suggested_voice) {
+    var voiceSelect = document.getElementById('st-voice');
+    if (voiceSelect) voiceSelect.value = p.suggested_voice;
+  }
+
+  var stTitle = document.getElementById('st-mockup-title');
+  if (stTitle) stTitle.textContent = p.title;
+
+  var stGenre = document.getElementById('st-mockup-genre');
+  if (stGenre) stGenre.textContent = p.genre_label || p.genre;
 }
 </script>
 {{end}}

@@ -104,6 +104,156 @@ type storyDoc struct {
 	Text    string `json:"text"`
 }
 
+// AudioStoryPlot cấu trúc 1 cốt truyện audio YouTube chuẩn.
+type AudioStoryPlot struct {
+	ID             string `json:"id"`
+	Title          string `json:"title"`
+	Genre          string `json:"genre"`
+	GenreLabel     string `json:"genre_label"`
+	Logline        string `json:"logline"`
+	Act1           string `json:"act_1"`
+	Act2           string `json:"act_2"`
+	Act3           string `json:"act_3"`
+	Message        string `json:"message"`
+	SuggestedVoice string `json:"suggested_voice"`
+	Soundscape     string `json:"soundscape"`
+}
+
+// CuratedAudioStoryPlots chứa danh sách các cốt truyện audio YouTube kinh điển (hệ thống tự nghĩ sẵn 100%).
+var CuratedAudioStoryPlots = []AudioStoryPlot{
+	{
+		ID:             "plot-dem-khuya-01",
+		Title:          "Đêm Mưa Bên Quán Trọ Cũ",
+		Genre:          "tâm lý",
+		GenreLabel:     "Radio Kể Chuyện Đêm Khuya",
+		Logline:        "Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.",
+		Act1:           "Đêm mưa bão mù trời, người đàn ông ướt sũng bước vào quán trọ ven sông của bà cụ già và cô cháu gái ít nói.",
+		Act2:           "Bên tách trà gừng nghi ngút khói, bà cụ kể về người khách quen 10 năm trước đã gửi lại chiếc hộp gỗ bí ẩn chưa từng quay lại.",
+		Act3:           "Khi người đàn ông mở chiếc hộp, bí mật chấn động về tình cha con và lời hứa xưa được tháo gỡ trong nước mắt.",
+		Message:        "Ở đời, ân nghĩa và tình thân lớn hơn mọi sóng gió thời gian.",
+		SuggestedVoice: "default",
+		Soundscape:     "Tiếng mưa rơi nhẹ + Piano lofi acoustic",
+	},
+	{
+		ID:             "plot-dem-khuya-02",
+		Title:          "Chuyến Xe Buýt Cuối Cùng Trở Về Nhà",
+		Genre:          "tâm lý",
+		GenreLabel:     "Radio Kể Chuyện Đêm Khuya",
+		Logline:        "Những cuộc gặp gỡ định mệnh trên chuyến xe buýt đêm muộn đưa một chàng trai trẻ tìm lại ý nghĩa cuộc sống.",
+		Act1:           "Chàng trai trẻ thất nghiệp ngồi gục đầu trên chuyến xe buýt tuyến cuối lúc 23h30 trong ngày đông lạnh giá.",
+		Act2:           "Một ông lão bán vé số dạo bước lên xe, chia cho anh nửa củ khoai nướng nóng hổi và kể về thời thanh xuân vượt khó.",
+		Act3:           "Ánh mắt ấm áp và lời động viên giản dị đã thắp sáng lại hy vọng sống cho chàng trai trước khi bước xuống trạm dừng.",
+		Message:        "Đôi khi, một chút ấm áp từ người xa lạ lại đủ sức cứu rỗi cả một cuộc đời.",
+		SuggestedVoice: "default",
+		Soundscape:     "Tiếng còi xe xa xăm + Giai điệu mộc mạc",
+	},
+	{
+		ID:             "plot-truyen-ma-01",
+		Title:          "Tiếng Bước Chân Sau Bờ Tre Làng",
+		Genre:          "kinh dị",
+		GenreLabel:     "Truyện Ma Làng Quê",
+		Logline:        "Bí mật rùng rợn về ngôi mộ vô danh dưới gốc đa đầu làng và món nợ nhân quả của phú hộ xưa.",
+		Act1:           "Đêm rằm tháng bảy, chàng sinh viên về quê chịu tang ông nội thì nghe tiếng bước chân kỳ lạ dồn dập sau rặng tre làng.",
+		Act2:           "Người làng cảnh báo không ai được ra gốc đa sau nửa đêm, nhưng cuốn nhật ký cổ của ông nội để lại hé lộ một bí mật đáng sợ.",
+		Act3:           "Cuộc đối mặt rợn gáy trong đêm sương lạnh và sự thật về lời nguyền nhân quả ba đời được hóa giải khi ánh bình minh ló rạng.",
+		Message:        "Gieo nhân nào gặt quả nấy, sống ngay thẳng thì quỷ thần cũng phải kính nhường.",
+		SuggestedVoice: "default",
+		Soundscape:     "Tiếng gió rít đêm sương + Tiếng côn trùng vắng",
+	},
+	{
+		ID:             "plot-truyen-ma-02",
+		Title:          "Căn Nhà Bỏ Hoang Bên Bến Đò Cũ",
+		Genre:          "kinh dị",
+		GenreLabel:     "Truyện Ma Làng Quê",
+		Logline:        "Ngôi nhà gỗ mục nát ngã ba sông và bí ẩn về người lái đò không bao giờ nhận tiền của khách lỡ chuyến.",
+		Act1:           "Đêm mưa gió mù mịt, một vị khách lỡ độ đường ghé vào bến đò vắng và được một người đàn ông chèo thuyền chở qua sông.",
+		Act2:           "Người chèo đò kể về căn nhà bỏ hoang bên bờ sông từng là nơi ở của gia đình thầy lang cứu giúp dân làng trong nạn đói.",
+		Act3:           "Sáng hôm sau hỏi người dân địa phương mới biết bến đò ấy đã không còn ai chèo từ 30 năm trước...",
+		Message:        "Tấm lòng nhân ái thì dù qua bao kiếp luân hồi vẫn lưu lại phước báu nhân gian.",
+		SuggestedVoice: "default",
+		Soundscape:     "Tiếng nước róc rách + Tiếng chuông chùa vẳng xa",
+	},
+	{
+		ID:             "plot-trinh-tham-01",
+		Title:          "Bức Thư Bí Mật Trong Chiếc Đồng Hồ Cổ",
+		Genre:          "trinh thám",
+		GenreLabel:     "Kỳ Án Trinh Thám & Giải Mã",
+		Logline:        "Vụ mất tích bí ẩn của một giáo sư già và cuộc đấu trí nghẹt thở giữa viên thám tử và kẻ giấu mặt.",
+		Act1:           "Vị giáo sư qua đời để lại chiếc đồng hồ quả lắc đứng kim đúng 3 giờ 15 phút cùng bản di chúc kỳ lạ.",
+		Act2:           "Những mảnh ghép manh mối đứt đoạn dẫn thám tử lần ra những phi vụ ngầm được che giấu dưới vỏ bọc danh giá.",
+		Act3:           "Màn lật mặt thủ phạm nghẹt thở ngay trước khi chuyến tàu đêm khởi hành rời khỏi thành phố.",
+		Message:        "Lưới trời lồng lộng, không tội ác nào có thể che giấu mãi mãi.",
+		SuggestedVoice: "default",
+		Soundscape:     "Dramatic Suspense Ambient + Tiếng tích tắc đồng hồ",
+	},
+	{
+		ID:             "plot-nhan-sinh-01",
+		Title:          "Bát Cơm Nguội Của Người Mẹ Già",
+		Genre:          "triết lý",
+		GenreLabel:     "Bài Học Nhân Sinh & Đạo Lý",
+		Logline:        "Câu chuyện xúc động về sự hy sinh thầm lặng của người mẹ nghèo và bài học thức tỉnh người con thành đạt.",
+		Act1:           "Sau 15 năm bôn ba thành đạt chốn phồn hoa, người con trai lần đầu trở về căn nhà ngói cũ ven đê thăm mẹ già.",
+		Act2:           "Bữa cơm đạm bạc với bát cơm nguội mẹ nhường con hé mở cuốn sổ nợ mẹ đã âm thầm giấu kín suốt thời niên thiếu của anh.",
+		Act3:           "Giọt nước mắt muộn màng trong vòng tay gầy guộc của mẹ khiến thính giả không cầm được xúc động.",
+		Message:        "Đừng đợi đến khi cha mẹ khuất núi mới nhận ra điều quý giá nhất trên đời.",
+		SuggestedVoice: "female",
+		Soundscape:     "Acoustic Guitar mộc mạc + Tiếng sáo ru êm đềm",
+	},
+	{
+		ID:             "plot-thuong-truong-01",
+		Title:          "Cú Lật Kèo Phút 89",
+		Genre:          "kinh doanh",
+		GenreLabel:     "Thương Trường & Khởi Nghiệp",
+		Logline:        "Từ bờ vực phá sản với khoản nợ hàng chục tỷ, chàng trai 28 tuổi lội ngược dòng ngoạn mục nhờ một nguyên tắc kinh doanh bất biến.",
+		Act1:           "Công ty đứng trước nguy cơ phá sản vì đối tác lớn bất ngờ hủy hợp đồng ngay trước ngày thanh toán.",
+		Act2:           "Quyết định táo bạo từ bỏ lợi nhuận ngắn hạn để bảo vệ quyền lợi của các khách hàng nhỏ lẻ và đối tác phụ trợ.",
+		Act3:           "Hiệu ứng truyền miệng bùng nổ mang lại hợp đồng cứu cánh và bài học xương máu cho giới khởi nghiệp.",
+		Message:        "Trong kinh doanh, chữ TÍN chính là tài sản quý giá nhất.",
+		SuggestedVoice: "default",
+		Soundscape:     "Inspiring Ambient Beat + Nhịp điệu dồn dập",
+	},
+	{
+		ID:             "plot-da-su-01",
+		Title:          "Huyền Thoại Thanh Gươm Dưới Lòng Hồ",
+		Genre:          "lịch sử",
+		GenreLabel:     "Dã Sử Huyền Huyễn",
+		Logline:        "Câu chuyện dã sử hào hùng về người tráng sĩ vô danh đứng lên bảo vệ bờ cõi biên ải trước quân thù.",
+		Act1:           "Đêm mùa đông buốt giá nơi ải bắc, tiếng tù và báo động giặc ngoại xâm áp sát cửa ải.",
+		Act2:           "Hành trình tìm lại thanh thần kiếm cổ xưa và lời thề nguyền vì giang sơn xã tắc muôn đời.",
+		Act3:           "Trận chiến oanh liệt dưới ánh trăng sáng rực, lưu danh thiên cổ như biểu tượng bất khuất.",
+		Message:        "Tinh thần bảo vệ non sông ngàn đời là dòng máu chảy trong tim mỗi người con đất Việt.",
+		SuggestedVoice: "default",
+		Soundscape:     "Đàn tranh + Tiếng trống trận hào hùng vang dội",
+	},
+}
+
+// GetCuratedAudioStories trả về danh sách cốt truyện audio mẫu theo thể loại.
+func GetCuratedAudioStories(genre string) []AudioStoryPlot {
+	genre = strings.ToLower(strings.TrimSpace(genre))
+	if genre == "" || genre == "all" {
+		return append([]AudioStoryPlot(nil), CuratedAudioStoryPlots...)
+	}
+	var out []AudioStoryPlot
+	for _, p := range CuratedAudioStoryPlots {
+		if strings.EqualFold(p.Genre, genre) || strings.Contains(strings.ToLower(p.GenreLabel), genre) {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return append([]AudioStoryPlot(nil), CuratedAudioStoryPlots...)
+	}
+	return out
+}
+
+// DefaultAudioStoryTopic trả về 1 chủ đề cốt truyện audio hấp dẫn theo thể loại nếu người dùng để trống.
+func DefaultAudioStoryTopic(genre string) string {
+	plots := GetCuratedAudioStories(genre)
+	if len(plots) > 0 {
+		return plots[0].Title + " - " + plots[0].Logline
+	}
+	return "Đêm Mưa Bên Quán Trọ Cũ - Câu chuyện cảm động về ân nghĩa cuộc đời"
+}
+
 // CreateStoryJob kiểm tra tham số, xếp job kể chuyện và chạy nền.
 func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 	if strings.TrimSpace(p.Topic) == "" {
