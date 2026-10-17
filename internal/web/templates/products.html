@@ -13,23 +13,14 @@
 
 <!-- Affiliate Unified Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Tìm Kiếm &amp; Khám Phá Sản Phẩm</a>
+  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Săn Sản Phẩm &amp; Đối Soát Hoa Hồng</a>
   <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ Hàng Sản Xuất AI</a>
-  <a href="/studio">Xưởng Dàn Dựng Studio</a>
 </nav>
 
 <div class="hint" style="margin-bottom:14px">💡 <b>Quy trình tự động:</b> Lựa chọn sản phẩm → Đưa vào Kệ hàng → AI tự dựng video bán hàng &amp; ghim link tiếp thị liên kết.</div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
-
-{{if .SchedHours}}<p>
-  {{if .SchedEnabled}}<span class="badge badge-ok">Autopilot: BẬT</span>{{else}}<span class="badge badge-draft">Autopilot: TẮT</span>{{end}}
-  {{if .AutoPublish}}<span class="badge badge-info">Tự đăng: BẬT</span>{{else}}<span class="badge badge-draft">Tự đăng: TẮT</span>{{end}}
-  {{if .SchedLastRun}}<span class="badge badge-draft">Chạy gần nhất: {{.SchedLastRun}}</span>{{end}}
-  {{if .SchedNextRun}}<span class="badge badge-draft">Chạy tiếp: {{.SchedNextRun}}</span>{{end}}
-  <span class="badge badge-draft">Kho: {{.StockCount}} sản phẩm</span>
-</p>{{end}}
 
 {{if eq .Tab "ke"}}
 <div class="form-card">
@@ -430,51 +421,6 @@ function atOrderSync() {
 </div>
 {{end}}
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">⏰ Lịch autopilot tự động</h2>
-  <p class="subtitle">Tự chạy video cho tài khoản đã sẵn sàng (autopilot + chủ đề + ảnh mẫu).</p>
-  <form method="post" action="/products/schedule">
-    <div class="grid2">
-      <div class="field">
-        <label><input type="checkbox" name="enabled"{{if .SchedEnabled}} checked{{end}}> Bật chạy tự động</label>
-      </div>
-      <div class="field">
-        <label>Chạy mỗi (giờ)</label>
-        <input type="number" name="interval_hours" min="1" max="168" value="{{.SchedHours}}">
-      </div>
-    </div>
-    <div class="field" style="margin-top:8px">
-      <label><input type="checkbox" name="auto_publish"{{if .AutoPublish}} checked{{end}}> Tự đăng TikTok khi video xong</label>
-      <p class="hint">Đăng <strong>nháp</strong> qua TikTok API (cần OAuth). Gắn giỏ + nhạc trong app TikTok.</p>
-    </div>
-    <div class="field" style="margin-top:8px">
-      <label><input type="checkbox" name="youtube_enabled"{{if .YouTubeEnabled}} checked{{end}}> Tự đăng YouTube Shorts khi video xong</label>
-      <p class="hint">Đăng <strong>private</strong> (kèm link affiliate trong mô tả). Duyệt trong YouTube Studio.</p>
-    </div>
-    <div class="field" style="margin-top:8px">
-      <label><input type="checkbox" name="meta_enabled"{{if .MetaEnabled}} checked{{end}}> Đăng chéo Facebook · Instagram · Threads</label>
-      <p class="hint">Chỉ nền tảng đã kết nối API ở <a href="/settings/he-thong#tab-social">Cài đặt API MXH</a> hoặc <a href="/accounts">Quản lý Kênh</a>. Facebook chưa công khai, Instagram chỉ tải lên (trừ khi bật IG_AUTO_PUBLISH), Threads đăng bài kèm link mua.</p>
-    </div>
-    <button type="submit" class="btn">💾 Lưu lịch</button>
-  </form>
-</div>
-
-<details class="advanced" id="music"{{if not .MusicName}} open{{end}}>
-  <summary>🎵 Nhạc nền autopilot{{if .MusicName}} — {{.MusicName}}{{else}} — chưa có, video sẽ không tiếng{{end}}</summary>
-  <p class="subtitle">Nhạc sẽ lồng vào mọi video autopilot.{{if .MusicName}} Đang dùng: <strong>{{.MusicName}}</strong>{{else}} Chưa có nhạc — video sẽ không tiếng.{{end}}</p>
-  <form method="post" action="/products/music" enctype="multipart/form-data">
-    <div class="field">
-      <label>Tải file nhạc lên (mp3/m4a/wav/ogg/aac, tối đa 25MB)</label>
-      <div class="file-pick">
-        <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
-          <input type="file" name="music" accept="audio/*">
-        </label>
-        <span class="file-name">Chưa chọn file</span>
-      </div>
-    </div>
-    <button type="submit" class="btn">⬆️ Cập nhật nhạc nền</button>
-  </form>
-</details>
 
 {{if .Results}}
 <h2>Sản phẩm tốt nhất trong kho</h2>

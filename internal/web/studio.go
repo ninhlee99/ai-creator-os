@@ -612,6 +612,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		notice = "Tác vụ sản xuất video đã được đưa vào hàng đợi AI thành công!"
 	}
 
+	ttTrends, _ := studio.FetchTikTokTrendingVideos(r.Context())
+	dramas, _ := studio.FetchShowbizDrama(r.Context())
+
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
 		"JobCount", jobCount,
@@ -628,6 +631,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"MediaGenOK", mgOK,
 		"AccountNames", accountNames,
 		"ViralTrends", defaultViralTrends,
+		"TikTokTrends", ttTrends,
+		"ShowbizDramas", dramas,
 		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
 		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
 		"DefStoryScenes", s.atSettingInt(automation.KeyStoryScenes, 6),
@@ -1533,5 +1538,35 @@ func (s *Server) handleStudioStoryCreate(w http.ResponseWriter, r *http.Request)
 		clipNote = " và tự động cắt clip 3–5 phút cho TikTok/Reels"
 	}
 	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video truyện dài '%s' vào hàng đợi AI%s (Job: %s)!", topic, clipNote, id)))
+}
+
+// handleAPITikTokTrends trả về dữ liệu JSON của Top 10 Video Đu Trend TikTok & Drama Showbiz thật.
+func (s *Server) handleAPITikTokTrends(w http.ResponseWriter, r *http.Request) {
+	ttTrends, err := studio.FetchTikTokTrendingVideos(r.Context())
+	dramas, _ := studio.FetchShowbizDrama(r.Context())
+	s.writeJSON(w, map[string]any{
+		"ok":             err == nil,
+		"tiktok_trends":  ttTrends,
+		"showbiz_dramas": dramas,
+	})
+}
+
+// handleAPITikTokAnalyze phân tích một URL video TikTok cụ thể do người dùng cung cấp.
+func (s *Server) handleAPITikTokAnalyze(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Dữ liệu không hợp lệ"})
+		return
+	}
+	urlStr := r.FormValue("url")
+	if urlStr == "" {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Vui lòng nhập link video TikTok"})
+		return
+	}
+	video, err := studio.AnalyzeTikTokVideoURL(r.Context(), urlStr)
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	s.writeJSON(w, map[string]any{"ok": true, "video": video})
 }
 

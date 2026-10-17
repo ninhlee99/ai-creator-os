@@ -55,8 +55,8 @@
     <button type="button" id="mode-btn-viral" class="mode-select-btn" onclick="switchProductionMode('viral')">
       <span class="mode-icon">⚡</span>
       <div class="mode-text">
-        <strong>2. Video Đu Trend Shorts (9:16)</strong>
-        <small>Hook 3s giật tít, 4 phân cảnh AI &amp; nhạc thịnh hành</small>
+        <strong>2. Video Đu Trend &amp; Drama Showbiz (9:16)</strong>
+        <small>Top 10 TikTok Trending &amp; Biến căng Showbiz Việt/Trung</small>
       </div>
     </button>
     <button type="button" id="mode-btn-story" class="mode-select-btn" onclick="switchProductionMode('story')">
@@ -524,41 +524,89 @@
      TAB 2: Video Đu Trend & Viral Shorts 9:16 (Hot Trend & Ý Tưởng Nhanh)
      ========================================================================= -->
 <div id="panel-viral" style="display:none">
-  <!-- 1-Click Fast Launcher Từ Xu Hướng Triệu View Hôm Nay -->
-  <div class="card" style="border-radius:14px;padding:18px 20px;margin-bottom:24px;background:linear-gradient(135deg, rgba(239,68,68,0.05) 0%, rgba(245,158,11,0.05) 100%);border:1.5px solid var(--accent)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+  <!-- Real-Time TikTok Trending & Showbiz Drama Radar (100% Dữ Liệu Thật) -->
+  <div class="card" style="border-radius:14px;padding:18px 20px;margin-bottom:24px;background:var(--surface);border:1.5px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:24px">🔥</span>
         <div>
-          <b style="font-size:15px;color:var(--text)">Khởi Tạo 1-Chạm Từ Xu Hướng Hot Trend Hôm Nay</b>
-          <div class="hint" style="font-size:12px">Chỉ cần 1 click: AI tự lấy chủ đề bắt trend, kịch bản Hook 3s giật gân, vẽ phân cảnh 9:16 và lồng nhạc thịnh hành.</div>
+          <b style="font-size:15px;color:var(--text)">Radar Xu Hướng Thực Tế (100% Dữ Liệu Thật — Không Bịa Đặt)</b>
+          <div class="hint" style="font-size:12px">Quét trực tiếp video thịnh hành TikTok Việt Nam và các Drama, biến căng nóng nhất Showbiz Việt/Trung hôm nay.</div>
         </div>
       </div>
-      <span class="badge badge-ok" style="font-size:11px;font-weight:700"><span class="pulse-dot"></span> XU HƯỚNG MỚI NHẤT</span>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="tab-btn-tt-trends" class="btn btn-sm btn-primary" onclick="switchRadarTab('tiktok')">🔥 Top 10 TikTok Trending</button>
+        <button type="button" id="tab-btn-showbiz-drama" class="btn btn-sm btn-secondary" onclick="switchRadarTab('drama')">🎭 Drama Showbiz Việt / Trung</button>
+      </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px">
-      {{range .ViralTrends}}
-      <div class="card" style="border-radius:10px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
-        <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span class="badge badge-info" style="font-size:10px">{{.GenreVN}}</span>
-            <span style="font-size:10.5px;color:var(--accent);font-weight:700">🔥 {{.EstViews}}</span>
+    <!-- Quick Paste TikTok URL to analyze -->
+    <div style="background:var(--bg);padding:12px 16px;border-radius:10px;border:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700">Dán link TikTok bất kỳ:</span>
+      <input type="url" id="pasted-tiktok-url" placeholder="https://www.tiktok.com/@user/video/..." style="flex:1;min-width:260px;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2)">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="analyzePastedTikTok()" id="btn-analyze-tt" style="font-weight:700">🔍 Phân Tích &amp; Đu Trend</button>
+    </div>
+
+    <!-- SUB-PANEL 1: Top 10 Video Đu Trend TikTok -->
+    <div id="radar-panel-tiktok">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px">
+        {{range .TikTokTrends}}
+        <div class="card" style="border-radius:10px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span class="badge badge-info" style="font-size:11px;font-weight:800;font-family:monospace">#{{.Rank}} TRENDING</span>
+              <span style="font-size:11px;color:#ef4444;font-weight:800">🔥 {{.Views}} views</span>
+            </div>
+            <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+              Kênh: <b>@{{.UniqueID}}</b> ({{.Author}}) &bull; ❤️ {{.Likes}} likes
+            </div>
+            <div style="background:var(--bg);padding:6px 10px;border-radius:6px;font-size:11.5px;color:var(--muted);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4">
+              🎵 {{.Music}}
+            </div>
           </div>
-          <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
-          <div style="background:var(--bg3);padding:6px 8px;border-radius:6px;font-size:11.5px;color:var(--muted);margin-bottom:12px;border-left:3px solid var(--accent);line-height:1.4">
-            <i>"{{.Hook3s}}"</i>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:6px" onclick="applyTikTokTrend('{{.Title}}', '{{.Music}}', '{{.UniqueID}}')">
+              ⚡ Đu Trend Này
+            </button>
+            <a href="{{.VideoURL}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 10px;font-size:12px" title="Xem video gốc trên TikTok">
+              ↗
+            </a>
           </div>
         </div>
-        <form method="post" action="/studio/viral/quick" onsubmit="var b=this.querySelector('button');b.disabled=true;b.textContent='Đang khởi chạy AI...';">
-          <input type="hidden" name="topic" value="{{.Title}}">
-          <input type="hidden" name="genre" value="{{.Genre}}">
-          <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;font-size:12px;padding:6px">
-            ⚡ Tạo Video Này Ngay
-          </button>
-        </form>
+        {{end}}
       </div>
-      {{end}}
+    </div>
+
+    <!-- SUB-PANEL 2: Radar Drama Showbiz Việt / Trung -->
+    <div id="radar-panel-drama" style="display:none">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px">
+        {{range .ShowbizDramas}}
+        <div class="card" style="border-radius:10px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span class="badge {{if eq .Region "CN"}}badge-warn{{else}}badge-ok{{end}}" style="font-size:11px;font-weight:700">{{.Category}}</span>
+              <span style="font-size:11px;color:var(--muted)">Tin mới</span>
+            </div>
+            {{if .ImageURL}}
+            <div style="margin-bottom:8px;border-radius:6px;overflow:hidden;max-height:140px">
+              <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:140px;object-fit:cover;display:block">
+            </div>
+            {{end}}
+            <strong style="font-size:13.5px;display:block;color:var(--text);margin-bottom:6px;line-height:1.4">{{.Title}}</strong>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.45">{{.Summary}}</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:6px" onclick="applyShowbizDrama('{{.Title}}', '{{.Category}}')">
+              🎬 Làm Video Drama Này
+            </button>
+            <a href="{{.SourceURL}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 10px;font-size:12px" title="Đọc bài báo gốc">
+              ↗
+            </a>
+          </div>
+        </div>
+        {{end}}
+      </div>
     </div>
   </div>
 
@@ -1621,6 +1669,125 @@ function setDeptsPreset(prefix, type) {
     } else if (type === 'dist') {
       c.checked = (c.value === 'DEP-03' || c.value === 'DEP-04' || c.value === 'DEP-05');
     }
+  });
+}
+
+function switchRadarTab(tab) {
+  var ttPanel = document.getElementById('radar-panel-tiktok');
+  var drPanel = document.getElementById('radar-panel-drama');
+  var ttBtn = document.getElementById('tab-btn-tt-trends');
+  var drBtn = document.getElementById('tab-btn-showbiz-drama');
+  if (tab === 'tiktok') {
+    if (ttPanel) ttPanel.style.display = 'block';
+    if (drPanel) drPanel.style.display = 'none';
+    if (ttBtn) { ttBtn.className = 'btn btn-sm btn-primary'; }
+    if (drBtn) { drBtn.className = 'btn btn-sm btn-secondary'; }
+  } else {
+    if (ttPanel) ttPanel.style.display = 'none';
+    if (drPanel) drPanel.style.display = 'block';
+    if (ttBtn) { ttBtn.className = 'btn btn-sm btn-secondary'; }
+    if (drBtn) { drBtn.className = 'btn btn-sm btn-primary'; }
+  }
+}
+
+function applyTikTokTrend(title, music, author) {
+  var topicInput = document.getElementById('vr-topic');
+  if (topicInput) {
+    var cleanTitle = title || author || 'TikTok Trending';
+    topicInput.value = 'Đu trend TikTok: ' + cleanTitle;
+  }
+  var genreSelect = document.getElementById('vr-genre');
+  if (genreSelect) {
+    genreSelect.value = 'trendjack';
+  }
+  updateMockupPreview('vr');
+  var form = document.getElementById('viral-custom-form');
+  if (form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (topicInput) topicInput.focus();
+  }
+}
+
+function applyShowbizDrama(title, category) {
+  var topicInput = document.getElementById('vr-topic');
+  if (topicInput) {
+    topicInput.value = '[' + (category || 'Drama Showbiz') + '] ' + title;
+  }
+  var genreSelect = document.getElementById('vr-genre');
+  if (genreSelect) {
+    genreSelect.value = 'mystery';
+  }
+  var durSelect = document.getElementById('vr-duration');
+  if (durSelect) {
+    durSelect.value = '45';
+  }
+  updateMockupPreview('vr');
+  var form = document.getElementById('viral-custom-form');
+  if (form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (topicInput) topicInput.focus();
+  }
+}
+
+function analyzePastedTikTok() {
+  var urlInput = document.getElementById('pasted-tiktok-url');
+  var url = urlInput ? urlInput.value.trim() : '';
+  if (!url) {
+    alert('Vui lòng dán link video TikTok (ví dụ: https://www.tiktok.com/@user/video/...)');
+    if (urlInput) urlInput.focus();
+    return;
+  }
+  var btn = document.getElementById('btn-analyze-tt');
+  var oldHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang quét dữ liệu TikTok...';
+  }
+
+  fetch('/api/studio/tiktok-analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url })
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('Không thể phân tích video này');
+    return res.json();
+  })
+  .then(function(data) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHtml;
+    }
+    var topic = data.title || ('Đu trend video ' + (data.unique_id ? '@' + data.unique_id : 'TikTok'));
+    var topicInput = document.getElementById('vr-topic');
+    if (topicInput) {
+      topicInput.value = topic;
+    }
+    var genreSelect = document.getElementById('vr-genre');
+    if (genreSelect) {
+      genreSelect.value = 'trendjack';
+    }
+    updateMockupPreview('vr');
+    var form = document.getElementById('viral-custom-form');
+    if (form) {
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    alert('✓ Đã phân tích video TikTok thành công!\n- Kênh: @' + (data.unique_id || 'tiktok') + '\n- Views: ' + (data.views || 'N/A') + '\n- Âm nhạc: ' + (data.music || 'Gốc') + '\n\nAI đã điền ý tưởng vào kịch bản.');
+  })
+  .catch(function(err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldHtml;
+    }
+    var topicInput = document.getElementById('vr-topic');
+    if (topicInput) {
+      topicInput.value = 'Đu trend video TikTok: ' + url;
+    }
+    var form = document.getElementById('viral-custom-form');
+    if (form) {
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    alert('Đã nhận diện link video TikTok và điền vào ô Ý tưởng kịch bản!');
   });
 }
 </script>
