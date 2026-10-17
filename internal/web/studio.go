@@ -613,7 +613,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ttTrends, _ := studio.FetchTikTokTrendingVideos(r.Context())
-	dramas, _ := studio.FetchShowbizDrama(r.Context())
+	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
+	combinedDramas := append([]studio.ShowbizDrama(nil), dramasVN...)
+	combinedDramas = append(combinedDramas, dramasCN...)
 
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
@@ -632,7 +634,9 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"AccountNames", accountNames,
 		"ViralTrends", defaultViralTrends,
 		"TikTokTrends", ttTrends,
-		"ShowbizDramas", dramas,
+		"ShowbizDramasVN", dramasVN,
+		"ShowbizDramasCN", dramasCN,
+		"ShowbizDramas", combinedDramas,
 		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
 		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
 		"DefStoryScenes", s.atSettingInt(automation.KeyStoryScenes, 6),
@@ -1540,14 +1544,22 @@ func (s *Server) handleStudioStoryCreate(w http.ResponseWriter, r *http.Request)
 	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video truyện dài '%s' vào hàng đợi AI%s (Job: %s)!", topic, clipNote, id)))
 }
 
-// handleAPITikTokTrends trả về dữ liệu JSON của Top 10 Video Đu Trend TikTok & Drama Showbiz thật.
+// handleAPITikTokTrends trả về dữ liệu JSON của Top 10 Video Đu Trend TikTok Việt & Drama Showbiz (Việt/Trung).
 func (s *Server) handleAPITikTokTrends(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("refresh") == "1" {
+		studio.InvalidateTikTokRadarCache()
+	}
 	ttTrends, err := studio.FetchTikTokTrendingVideos(r.Context())
-	dramas, _ := studio.FetchShowbizDrama(r.Context())
+	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
+	combinedDramas := append([]studio.ShowbizDrama(nil), dramasVN...)
+	combinedDramas = append(combinedDramas, dramasCN...)
+
 	s.writeJSON(w, map[string]any{
 		"ok":             err == nil,
 		"tiktok_trends":  ttTrends,
-		"showbiz_dramas": dramas,
+		"dramas_vn":      dramasVN,
+		"dramas_cn":      dramasCN,
+		"showbiz_dramas": combinedDramas,
 	})
 }
 
