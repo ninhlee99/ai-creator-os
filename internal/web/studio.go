@@ -616,6 +616,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
 	combinedDramas := append([]studio.ShowbizDrama(nil), dramasVN...)
 	combinedDramas = append(combinedDramas, dramasCN...)
+	topicGroups := studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
+	presetTopicGroups := studio.GetAllPresetTopicGroups()
 
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
@@ -634,6 +636,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"AccountNames", accountNames,
 		"ViralTrends", defaultViralTrends,
 		"TikTokTrends", ttTrends,
+		"TopicGroups", topicGroups,
+		"PresetTopicGroups", presetTopicGroups,
 		"ShowbizDramasVN", dramasVN,
 		"ShowbizDramasCN", dramasCN,
 		"ShowbizDramas", combinedDramas,
@@ -1597,4 +1601,27 @@ func (s *Server) handleAPITikTokAnalyze(w http.ResponseWriter, r *http.Request) 
 	}
 	s.writeJSON(w, map[string]any{"ok": true, "video": video})
 }
+
+// handleAPITikTokTopics trả về danh sách các nhóm video TikTok theo chủ đề người dùng cài đặt (mỗi nhóm đúng 4 video/hàng).
+func (s *Server) handleAPITikTokTopics(w http.ResponseWriter, r *http.Request) {
+	topicsParam := strings.TrimSpace(r.URL.Query().Get("topics"))
+	var topicKeys []string
+	if topicsParam != "" {
+		for _, part := range strings.Split(topicsParam, ",") {
+			p := strings.TrimSpace(part)
+			if p != "" {
+				topicKeys = append(topicKeys, p)
+			}
+		}
+	}
+	groups := studio.GetConfiguredTopicGroups(topicKeys)
+	presets := studio.GetAllPresetTopicGroups()
+
+	s.writeJSON(w, map[string]any{
+		"ok":      true,
+		"groups":  groups,
+		"presets": presets,
+	})
+}
+
 

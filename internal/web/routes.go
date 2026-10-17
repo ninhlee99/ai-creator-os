@@ -76,6 +76,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
 	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
 	mux.HandleFunc("GET /api/studio/tiktok-trends", s.handleAPITikTokTrends)
+	mux.HandleFunc("GET /api/studio/tiktok-topics", s.handleAPITikTokTopics)
 	mux.HandleFunc("POST /api/studio/tiktok-analyze", s.handleAPITikTokAnalyze)
 
 	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
