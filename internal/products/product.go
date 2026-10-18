@@ -27,6 +27,7 @@ type Product struct {
 	// autopilot sees shelf-added products immediately.
 	ShelfStatus string
 	ShelfScore  float64
+	ClickCount  int64 // Total click-throughs from Bio Link storefront
 }
 
 // Query describes what the autopilot is hunting.

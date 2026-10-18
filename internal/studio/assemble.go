@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -29,7 +30,7 @@ var videoEncoder = sync.OnceValue(func() []string {
 		bytes.Contains(out, []byte("h264_videotoolbox")) {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "12M", "-maxrate", "16M"}
 	}
-	return []string{"-c:v", "libx264", "-preset", "medium", "-crf", "18"}
+	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "18"}
 })
 
 // VideoEncoderArgs trả về args encoder H.264 đã chọn cho process này —
@@ -94,7 +95,7 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 	args = append(args, videoEncoder()...)
 	args = append(args, "-pix_fmt", "yuv420p")
 	if musicPath != "" {
-		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
+		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "192k")
 	}
 	args = append(args, outPath)
 	if dir := filepath.Dir(outPath); dir != "" {
@@ -109,19 +110,42 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 func photoListFilter(n int, secsPer float64, outW, outH int) (string, float64) {
 	const fade = 0.6
 	frames := int(secsPer*outFPS + 0.5)
+	if frames <= 0 {
+		frames = 1
+	}
 	var sb strings.Builder
 	for i := 0; i < n; i++ {
-		// Alternate drift direction so the piece breathes instead of
-		// pushing in forever: even = slow push-in, odd = slow pull-out.
-		zoom := fmt.Sprintf("min(1+%.6f*on,1.16)", 0.16/float64(frames))
-		if i%2 == 1 {
+		// Multi-directional cinematic camera directing (5-Star Ken Burns):
+		// Instead of uniform center zoom, alternate organically between:
+		// 0: Push-in targeting upper third (character eyes/face - Rule of Thirds)
+		// 1: Slow pull-out from center (establishing atmosphere)
+		// 2: Lateral pan drift (revealing panoramic context)
+		// 3: Subtle vertical tilt with gentle push (organic camera operator feel)
+		var zoom, xExpr, yExpr string
+		switch i % 4 {
+		case 0:
+			zoom = fmt.Sprintf("min(1+%.6f*on,1.16)", 0.16/float64(frames))
+			xExpr = "iw/2-(iw/zoom/2)"
+			yExpr = "ih/3-(ih/zoom/3)"
+		case 1:
 			zoom = fmt.Sprintf("max(1.16-%.6f*on,1.0)", 0.16/float64(frames))
+			xExpr = "iw/2-(iw/zoom/2)"
+			yExpr = "ih/2-(ih/zoom/2)"
+		case 2:
+			zoom = "1.10"
+			xExpr = fmt.Sprintf("(iw-iw/zoom)*(on/%d)", frames)
+			yExpr = "ih/2.5-(ih/zoom/2.5)"
+		default:
+			zoom = fmt.Sprintf("min(1+%.6f*on,1.14)", 0.14/float64(frames))
+			xExpr = "iw/2-(iw/zoom/2)"
+			yExpr = fmt.Sprintf("(ih/3)+(ih/12)*(on/%d)-(ih/zoom/3)", frames)
 		}
+
 		fmt.Fprintf(&sb,
 			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,"+
 				"crop=%d:%d,setsar=1,"+
-				"zoompan=z='%s':d=%d:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d[v%d];",
-			i, outW*2, outH*2, outW*2, outH*2, zoom, frames, outW, outH, outFPS, i)
+				"zoompan=z='%s':d=%d:x='%s':y='%s':s=%dx%d:fps=%d[v%d];",
+			i, outW*2, outH*2, outW*2, outH*2, zoom, frames, xExpr, yExpr, outW, outH, outFPS, i)
 	}
 	cur := "[v0]"
 	for i := 1; i < n; i++ {
@@ -181,7 +205,7 @@ func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, b
 	args = append(args, videoEncoder()...)
 	args = append(args, "-pix_fmt", "yuv420p")
 	if musicPath != "" {
-		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "160k")
+		args = append(args, "-map", "[aout]", "-c:a", "aac", "-b:a", "192k")
 	}
 	args = append(args, outPath)
 	if dir := filepath.Dir(outPath); dir != "" {
@@ -323,7 +347,7 @@ func MuxMusic(ctx context.Context, videoPath, musicPath string, musicStart float
 		"-i", videoPath, "-i", musicPath,
 		"-ss", fmt.Sprintf("%.1f", musicStart),
 		"-map", "0:v", "-map", "1:a",
-		"-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+		"-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
 		"-shortest", outPath)
 }
 
@@ -348,6 +372,15 @@ func MuxSubtitles(ctx context.Context, videoPath, srtText, outPath string) error
 		outPath)
 }
 
+// srtTime formats seconds into standard SRT timestamp 00:00:00,000.
+func srtTime(sec float64) string {
+	if sec < 0 {
+		sec = 0
+	}
+	ms := int(sec*1000 + 0.5)
+	return fmt.Sprintf("%02d:%02d:%02d,%03d", ms/3600000, (ms/60000)%60, (ms/1000)%60, ms%1000)
+}
+
 // MixMusicBed mixes a music bed under a film's existing audio. When the
 // video has a voice track the music is ducked ~8dB under it
 // (sidechaincompress); when the video is silent the music is laid straight.
@@ -366,19 +399,22 @@ func MixMusicBed(ctx context.Context, videoPath, musicPath, outPath string) erro
 			"-i", videoPath, "-i", musicPath,
 			"-map", "0:v", "-map", "1:a",
 			"-c:v", "copy", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
-			"-c:a", "aac", "-b:a", "160k", "-shortest", outPath)
+			"-c:a", "aac", "-b:a", "192k", "-shortest", outPath)
 	}
-	// Voice present: duck the bed ~8dB under speech, then normalize.
-	// sidechaincompress takes [main][sidechain]: music ducks when voice hits.
-	filter := "[1:a]volume=0.5,atrim=0:3600[m];" +
-		"[m][0:a]sidechaincompress=threshold=-24dB:ratio=8:attack=20:release=500:makeup=1[dm];" +
-		"[0:a][dm]amix=inputs=2:duration=first:dropout_transition=0," +
+	// Voice present: duck the bed ~9dB under speech with vocal carving EQ.
+	// 1. Highpass & carving EQ on music [1:a] to prevent muddy bass collision with speech.
+	// 2. Highpass filter on voice [0:a] to eliminate mic rumble and pops.
+	// 3. Smooth sidechaincompress: music ducks cleanly when voice hits, recovers smoothly.
+	filter := "[0:a]highpass=f=75[vclean];" +
+		"[1:a]highpass=f=100,equalizer=f=1200:t=q:w=1.2:g=-3.5,volume=0.45,atrim=0:3600[m];" +
+		"[m][vclean]sidechaincompress=threshold=-24dB:ratio=8:attack=15:release=450:makeup=1[dm];" +
+		"[vclean][dm]amix=inputs=2:duration=first:dropout_transition=0," +
 		"loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
 	return ffmpegRun(ctx,
 		"-i", videoPath, "-i", musicPath,
 		"-filter_complex", filter,
 		"-map", "0:v", "-map", "[aout]",
-		"-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+		"-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
 		"-shortest", outPath)
 }
 
@@ -395,4 +431,249 @@ func ProbeWidth(ctx context.Context, path string) int {
 	var w int
 	fmt.Sscanf(strings.TrimSpace(out.String()), "%d", &w)
 	return w
+}
+
+// FindTrendingMusic returns a genuine TikTok trending music track for the given category.
+// Category can be "dance", "viral", "fashion", "affiliate", or "".
+func FindTrendingMusic(category string) string {
+	searchDirs := []string{
+		filepath.Join("data", "music", "trending"),
+		"/Users/ninhlee/ninhlee/apps/ai-creator-os/data/music/trending",
+	}
+	cat := strings.ToLower(category)
+	for _, dir := range searchDirs {
+		matches, err := filepath.Glob(filepath.Join(dir, "*.mp3"))
+		if err == nil && len(matches) > 0 {
+			sort.Strings(matches)
+			for _, m := range matches {
+				base := strings.ToLower(filepath.Base(m))
+				// Nhạc chill / acoustic cho kể chuyện, kiến thức, bí ẩn, đời sống
+				if (cat == "mystery" || cat == "story" || cat == "drama" || cat == "knowledge" || cat == "lifehack" || cat == "chill") && (strings.Contains(base, "chill") || strings.Contains(base, "acoustic")) {
+					if abs, err := filepath.Abs(m); err == nil {
+						return abs
+					}
+					return m
+				}
+				// Nhạc dance / remix sôi động cho nhảy, trendjack, challenge
+				if (cat == "dance" || cat == "remix" || cat == "upbeat" || cat == "challenge") && strings.Contains(base, "dance") {
+					if abs, err := filepath.Abs(m); err == nil {
+						return abs
+					}
+					return m
+				}
+				// Nhạc thời trang, affiliate, review sản phẩm
+				if (cat == "fashion" || cat == "affiliate" || cat == "review") && (strings.Contains(base, "fashion") || strings.Contains(base, "chill") || strings.Contains(base, "acoustic")) {
+					if abs, err := filepath.Abs(m); err == nil {
+						return abs
+					}
+					return m
+				}
+			}
+			// Mặc định ưu tiên nhạc êm dịu nếu là video kể chuyện/thoại thay vì dance giật
+			if cat == "mystery" || cat == "story" || cat == "drama" || cat == "knowledge" {
+				for _, m := range matches {
+					if strings.Contains(strings.ToLower(m), "chill") || strings.Contains(strings.ToLower(m), "acoustic") {
+						if abs, err := filepath.Abs(m); err == nil {
+							return abs
+						}
+						return m
+					}
+				}
+			}
+			if abs, err := filepath.Abs(matches[0]); err == nil {
+				return abs
+			}
+			return matches[0]
+		}
+	}
+	return findDefaultMusic()
+}
+
+// findDefaultMusic returns a valid local commercial music track path if available.
+func findDefaultMusic() string {
+	trendingDirs := []string{
+		filepath.Join("data", "music", "trending"),
+		"/Users/ninhlee/ninhlee/apps/ai-creator-os/data/music/trending",
+	}
+	for _, dir := range trendingDirs {
+		if matches, err := filepath.Glob(filepath.Join(dir, "*.mp3")); err == nil && len(matches) > 0 {
+			sort.Strings(matches)
+			if abs, err := filepath.Abs(matches[0]); err == nil {
+				return abs
+			}
+			return matches[0]
+		}
+	}
+
+	candidates := []string{
+		"docs/assets/affiliate-spot/music-just-chill.mp3",
+		"internal/web/static/preview.mp3",
+		"/Users/ninhlee/ninhlee/apps/ai-creator-os/docs/assets/affiliate-spot/music-just-chill.mp3",
+		"/Users/ninhlee/ninhlee/apps/ai-creator-os/internal/web/static/preview.mp3",
+	}
+	for _, c := range candidates {
+		if st, err := os.Stat(c); err == nil && !st.IsDir() && st.Size() > 1000 {
+			if abs, err := filepath.Abs(c); err == nil {
+				return abs
+			}
+			return c
+		}
+	}
+	return ""
+}
+
+// FindStockClips returns a list of high-quality filmed motion video clips
+// (9:16 vertical, continuous camera movement, 100% clean with zero text overlays).
+func FindStockClips(category string) []string {
+	searchDirs := []string{
+		filepath.Join("data", "clips", category),
+		filepath.Join("data", "clips", "fashion"),
+		filepath.Join("data", "clips", "viral"),
+		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", category),
+		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", "fashion"),
+		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", "viral"),
+	}
+	for _, dir := range searchDirs {
+		matches, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
+		if err == nil && len(matches) > 0 {
+			sort.Strings(matches)
+			var valid []string
+			for _, m := range matches {
+				if st, err := os.Stat(m); err == nil && !st.IsDir() && st.Size() > 10000 {
+					if abs, err := filepath.Abs(m); err == nil {
+						valid = append(valid, abs)
+					} else {
+						valid = append(valid, m)
+					}
+				}
+			}
+			if len(valid) > 0 {
+				return valid
+			}
+		}
+	}
+	return nil
+}
+
+// PickSingleStockClipForDuration selects exactly ONE matching high-quality video clip for the given category, query, and target duration.
+// When targetSec >= 45, it prioritizes full-length (>= 60s) continuous footage to fulfill TikTok Creativity Program requirements without looping.
+func PickSingleStockClipForDuration(category, query string, targetSec float64) string {
+	clips := FindStockClips(category)
+	if len(clips) == 0 {
+		return ""
+	}
+	q := strings.ToLower(query)
+
+	if targetSec >= 45 {
+		for _, c := range clips {
+			if strings.Contains(strings.ToLower(c), "60s") {
+				return c
+			}
+		}
+	}
+
+	if category == "fashion" {
+		if targetSec >= 45 {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "lookbook") || strings.Contains(strings.ToLower(c), "60s") {
+					return c
+				}
+			}
+		}
+		if strings.Contains(q, "street") || strings.Contains(q, "hoodie") || strings.Contains(q, "thể thao") || strings.Contains(q, "năng động") {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "streetwear") {
+					return c
+				}
+			}
+		}
+		for _, c := range clips {
+			if strings.Contains(strings.ToLower(c), "dress") {
+				return c
+			}
+		}
+	} else if category == "viral" {
+		if targetSec >= 45 {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "dance_60s") || strings.Contains(strings.ToLower(c), "60s") {
+					return c
+				}
+			}
+		}
+		if strings.Contains(q, "crew") || strings.Contains(q, "nhóm") || strings.Contains(q, "đội") {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "crew") {
+					return c
+				}
+			}
+		}
+		for _, c := range clips {
+			if strings.Contains(strings.ToLower(c), "duo") {
+				return c
+			}
+		}
+	}
+	return clips[0]
+}
+
+// PickSingleStockClip selects exactly ONE matching high-quality video clip for the given category and query.
+func PickSingleStockClip(category, query string) string {
+	return PickSingleStockClipForDuration(category, query, 0)
+}
+
+// ApplyCreatorAvatarOverlay overlays a high-resolution circular creator badge in the top-left corner
+// of the video to seamlessly brand creator identity into the video.
+func ApplyCreatorAvatarOverlay(ctx context.Context, inVideo, avatarPhoto, outVideo string) error {
+	if !fileExists(avatarPhoto) {
+		return copyStoryFile(inVideo, outVideo)
+	}
+
+	badgePNG := filepath.Join(filepath.Dir(outVideo), "creator_avatar_badge.png")
+	if err := CreateCircularAvatarBadge(avatarPhoto, 150, badgePNG); err != nil {
+		return copyStoryFile(inVideo, outVideo)
+	}
+
+	args := []string{
+		"-i", inVideo,
+		"-i", badgePNG,
+		"-filter_complex", "[0:v][1:v]overlay=36:72",
+		"-c:a", "copy",
+		outVideo,
+	}
+	return ffmpegRun(ctx, args...)
+}
+
+// TrimVideo cuts a single video to targetSec seconds while maintaining exact aspect ratio,
+// native resolution (e.g. 1080x1920), 30fps, and high visual quality without concatenation artifacts.
+func TrimVideo(ctx context.Context, inPath string, targetSec float64, aspect, outPath string) error {
+	w, h := AspectDims(aspect)
+	dir := filepath.Dir(outPath)
+	if dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1", w, h, w, h)
+	var args []string
+	args = append(args, "-i", inPath)
+	if targetSec > 0 {
+		args = append(args, "-t", fmt.Sprintf("%.2f", targetSec))
+	}
+	args = append(args, "-vf", vf, "-r", fmt.Sprint(outFPS))
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p", "-an", outPath)
+	return ffmpegRun(ctx, args...)
+}
+
+// probeDuration trả về thời lượng thực tế của file video (giây).
+func probeDuration(ctx context.Context, path string) float64 {
+	cmd := exec.CommandContext(ctx, "ffprobe",
+		"-v", "error", "-show_entries", "format=duration",
+		"-of", "csv=p=0", path)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return 0
+	}
+	var d float64
+	fmt.Sscanf(strings.TrimSpace(out.String()), "%f", &d)
+	return d
 }

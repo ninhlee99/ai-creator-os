@@ -31,7 +31,7 @@ const RestorePending = "RESTORE_PENDING"
 const stagingDir = "restore-staging"
 
 // snapshotDBs là các database được đưa vào ảnh chụp (kèm -wal/-shm nếu có).
-var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
+var snapshotDBs = []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "webai.db"}
 
 // snapshotFiles là các file đơn lẻ được đưa vào ảnh chụp.
 var snapshotFiles = []string{"content_jobs.json"}

@@ -76,6 +76,9 @@ func (s *Store) migrate() error {
 	if err := s.addColumn("products", "shelf_score", "REAL NOT NULL DEFAULT 0"); err != nil {
 		return err
 	}
+	if err := s.addColumn("products", "click_count", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
 	// Đợt Y: một sản phẩm chỉ được chọn một lần cho mỗi account — chống
 	// race khi 2 chu kỳ (chạy tay + tick) cùng chọn 1 sản phẩm trước khi
 	// RecordUse commit. Dedupe bản ghi cũ trước để tạo được UNIQUE index.
@@ -175,7 +178,7 @@ func scanProduct(row interface {
 	var imgs string
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price,
 		&p.Currency, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount,
-		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt, &p.ShelfStatus, &p.ShelfScore)
+		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt, &p.ShelfStatus, &p.ShelfScore, &p.ClickCount)
 	if err != nil {
 		return p, err
 	}
@@ -185,7 +188,14 @@ func scanProduct(row interface {
 
 const productCols = `id,source,source_id,title,image_urls,price,currency,` +
 	`commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at,` +
-	`shelf_status,shelf_score`
+	`shelf_status,shelf_score,click_count`
+
+// RecordClick increments the click counter for an affiliate product when
+// a customer clicks through from the Bio Link storefront.
+func (s *Store) RecordClick(id int64) error {
+	_, err := s.db.Exec(`UPDATE products SET click_count = click_count + 1 WHERE id = ?`, id)
+	return err
+}
 
 // TopByTheme returns the best unused-by-account products for a theme,
 // ordered by score. Products already promoted for accountID are excluded.
@@ -215,6 +225,69 @@ func (s *Store) TopByTheme(theme string, minCommission float64, accountID int64,
 		ranked = ranked[:limit]
 	}
 	return ranked, nil
+}
+
+// Search queries products matching a keyword and/or theme, with optional minCommission floor.
+func (s *Store) Search(keyword, theme string, minCommission float64, limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var where []string
+	var args []any
+	if keyword = strings.TrimSpace(keyword); keyword != "" {
+		like := "%" + strings.ToLower(keyword) + "%"
+		where = append(where, "(LOWER(title) LIKE ? OR LOWER(category) LIKE ? OR LOWER(shop_name) LIKE ?)")
+		args = append(args, like, like, like)
+	}
+	if theme = strings.TrimSpace(theme); theme != "" {
+		where = append(where, "theme = ?")
+		args = append(args, theme)
+	}
+	if minCommission > 0 {
+		where = append(where, "commission_rate >= ?")
+		args = append(args, minCommission)
+	}
+	clause := ""
+	if len(where) > 0 {
+		clause = "WHERE " + strings.Join(where, " AND ")
+	}
+	q := `SELECT ` + productCols + ` FROM products ` + clause + ` ORDER BY commission_rate DESC, rating DESC, sold_count DESC LIMIT ?`
+	args = append(args, limit)
+	rows, err := s.db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Product
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// TopHighCommission returns products with high commission rate (>= 15% or highest available).
+func (s *Store) TopHighCommission(limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	rows, err := s.db.Query(`SELECT `+productCols+` FROM products WHERE commission_rate >= 0.15 ORDER BY commission_rate DESC, rating DESC, sold_count DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Product
+	for rows.Next() {
+		p, err := scanProduct(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
 }
 
 // TopUnusedBySource trả về sản phẩm tốt nhất (chưa dùng cho accountID)
@@ -341,6 +414,13 @@ func (s *Store) GetBySource(source, sourceID string) (Product, error) {
 	p, err := scanProduct(s.db.QueryRow(
 		`SELECT `+productCols+` FROM products WHERE source=? AND source_id=?`,
 		source, sourceID))
+	return p, err
+}
+
+// GetByID fetches a single product by its primary key.
+func (s *Store) GetByID(id int64) (Product, error) {
+	p, err := scanProduct(s.db.QueryRow(
+		`SELECT `+productCols+` FROM products WHERE id=?`, id))
 	return p, err
 }
 

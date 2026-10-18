@@ -1,5 +1,9 @@
 {{define "title"}}Đa nền tảng — AI Creator OS{{end}}
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "publish"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Cổng Kết Nối Đa Nền Tảng (OAuth Matrix)</h1>
@@ -10,6 +14,23 @@
     <a href="/accounts" class="btn btn-secondary">Quản lý Kênh</a>
   </div>
 </div>
+
+{{if .PendingVideo}}
+<div class="card" style="border-radius:12px;padding:16px 20px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent)">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-size:28px">📤</span>
+      <div>
+        <strong style="font-size:15px;color:var(--text);display:block">Sẵn sàng xuất bản video: {{if .PendingTitle}}{{.PendingTitle}}{{else}}Video AI Hoàn Chỉnh{{end}}</strong>
+        <span style="font-size:12px;color:var(--muted)">Đường dẫn file: <code>{{.PendingVideo}}</code> · Chọn kênh có Token sẵn sàng bên dưới để đăng tải tức thì.</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a href="{{.PendingVideo}}" download class="btn btn-secondary btn-sm" style="font-weight:700">⬇ Tải MP4 về máy</a>
+    </div>
+  </div>
+</div>
+{{end}}
 
 <!-- Channel Unified Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
@@ -44,15 +65,19 @@
     <td><strong>{{.Username}}</strong></td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td>
-      {{if .TiktokToken}}
-        <span class="badge badge-ok">✓ Đã kết nối</span>
+      {{if .TiktokTokenDead}}
+        <span class="badge badge-err">Hết hạn — cần kết nối lại</span>
+      {{else if .TiktokToken}}
+        <span class="badge badge-ok">✓ Sẵn sàng</span>
       {{else}}
         <span class="badge badge-no">Chưa có</span>
       {{end}}
       {{if .TiktokClient}}
         <a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}" style="margin-left:4px">
-          {{if .TiktokToken}}Kết nối lại{{else}}Kết nối TikTok{{end}}
+          {{if or .TiktokToken .TiktokTokenDead}}Kết nối lại{{else}}Kết nối TikTok{{end}}
         </a>
+      {{else}}
+        <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
       {{end}}
     </td>
     <td>

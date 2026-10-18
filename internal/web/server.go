@@ -45,6 +45,9 @@ var staticJS []byte
 //go:embed static/preview.mp3
 var staticPreviewAudio []byte
 
+//go:embed static/sample_916.mp4
+var staticSampleVideo []byte
+
 // assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
 // trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
@@ -626,6 +629,7 @@ var pageFiles = map[string]string{
 	"dashboard":             "dashboard.html",
 	"accounts":              "accounts.html",
 	"account_new":           "account_new.html",
+	"account_edit":          "account_edit.html",
 	"account_detail":        "account_detail.html",
 	"studio":                "studio.html",
 	"studio_jobs":           "studio_jobs.html",
@@ -634,6 +638,7 @@ var pageFiles = map[string]string{
 	"products":              "products.html",
 	"viral":                 "viral.html",
 	"stories":               "stories.html",
+	"models":                "models.html",
 	"team":                  "team.html",
 	"growth":                "growth.html",
 	"harness":               "harness.html",
@@ -664,6 +669,14 @@ func (s *Server) parseTemplates() error {
 		return fmt.Errorf("parse template login.html: %w", err)
 	}
 	s.templates["login"] = t
+
+	// Bio Link Storefront standalone (không sidebar, mobile-first Linktree-style).
+	tbio, err := template.New("bio").Funcs(templateFuncs).ParseFS(
+		templateFS, "templates/bio.html")
+	if err != nil {
+		return fmt.Errorf("parse template bio.html: %w", err)
+	}
+	s.templates["bio"] = tbio
 	return nil
 }
 
@@ -727,8 +740,21 @@ func personaLabel(key string) string {
 }
 
 func (s *Server) wrapAccount(a *network.Account) *accountView {
+	ytTypes := a.YoutubeContentTypes
+	if len(ytTypes) == 0 && fileExists(publishers.YouTubeTokenPath(a.Username)) {
+		ytTypes = []string{"short_video", "short_film"}
+		if s.Mgr != nil {
+			ch := a.YoutubeChannel
+			if ch == "" {
+				ch = a.Username
+			}
+			go func(id int64, channel string) {
+				_, _ = s.Mgr.SetYoutube(id, channel, []string{"short_video", "short_film"})
+			}(a.ID, ch)
+		}
+	}
 	var plats []string
-	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, a.YoutubeContentTypes) {
+	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, ytTypes) {
 		plats = append(plats, p.Name())
 	}
 	av := &accountView{Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats}
@@ -856,6 +882,7 @@ type publisherRow struct {
 	Username         string
 	Status           string
 	TiktokToken      bool
+	TiktokTokenDead  bool // refresh token chết / hết hạn
 	TiktokClient     bool // client key + secret present in env
 	YoutubeToken     bool
 	YoutubeClient    bool // OAuth client ID + secret present in env (Đợt AA)

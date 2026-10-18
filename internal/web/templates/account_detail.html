@@ -1,13 +1,22 @@
 {{define "title"}}{{.Acct.Username}} — AI Creator OS{{end}}
 {{define "content"}}
 {{$id := .Acct.ID}}
-<h1>{{.Acct.Username}}</h1>
-<p class="subtitle"><span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
-{{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
-{{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:12px">
+  <div>
+    <h1 style="margin:0 0 4px">{{.Acct.Username}}</h1>
+    <p class="subtitle" style="margin:0"><span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
+    {{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
+    {{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounts/{{$id}}/edit" class="btn btn-primary btn-sm" style="font-weight:700">✏️ Chỉnh sửa kênh</a>
+    <a href="/accounts" class="btn btn-secondary btn-sm">← Danh sách kênh</a>
+  </div>
+</div>
 
 <nav class="tabs">
   <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
+  <a href="/accounts/{{$id}}?tab=nhan-vat"{{if eq .Tab "nhan-vat"}} class="active"{{end}}>👤 Nhân vật &amp; Khuôn mặt AI</a>
   <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
   <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Tự Động Rep Comment &amp; Chốt Đơn</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
@@ -18,7 +27,10 @@
 
 <div class="grid2">
 <div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Thông tin</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <h2 style="margin:0;border:none;padding:0">Thông tin</h2>
+    <a href="/accounts/{{$id}}/edit" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">✏️ Chỉnh sửa</a>
+  </div>
   <dl class="kv">
     <dt>Persona</dt><dd>{{.Acct.PersonaLabel}}</dd>
     <dt>Chủ đề</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
@@ -30,6 +42,33 @@
     {{if gt .Gifts 0.0}}<dt>Quà tặng nhận</dt><dd>{{fmtUSD .Gifts}}</dd>{{end}}
     <dt>Nền tảng đã nối</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
   </dl>
+</div>
+
+<div class="form-card" style="display:flex;flex-direction:column;justify-content:space-between">
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="margin:0;border:none;padding:0;font-size:16px">👤 Nhân vật đại diện &amp; Khuôn mặt AI</h2>
+      <a href="/accounts/{{$id}}?tab=nhan-vat" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">Quản lý &amp; Tải ảnh</a>
+    </div>
+    {{if .ModelPhotos}}
+    <div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">
+      {{range .ModelPhotos}}
+      <img src="{{.URL}}" alt="Khuôn mặt nhân vật" style="width:68px;height:68px;border-radius:12px;object-fit:cover;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.15)">
+      {{end}}
+      <div>
+        <span class="badge badge-ok" style="font-weight:700">✓ Đã khóa nhận diện khuôn mặt</span>
+        <div style="color:var(--muted);font-size:12px;margin-top:4px">Khuôn mặt này được giữ cố định 100% khi sinh video viral, video nhảy sexy và affiliate.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Tạo video trending với nhân vật này</a>
+      <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Tạo video affiliate</a>
+    </div>
+    {{else}}
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Kênh chưa có ảnh khuôn mặt nhân vật. Hãy tải lên ảnh chân dung/khuôn mặt để AI sử dụng làm nhân vật xuyên suốt cho mọi video clip.</p>
+    <a href="/accounts/{{$id}}?tab=nhan-vat" class="btn btn-primary btn-sm" style="align-self:flex-start">📁 Tải lên ảnh nhân vật ngay</a>
+    {{end}}
+  </div>
 </div>
 
 {{if .Persona}}
@@ -77,6 +116,78 @@
 {{else}}
 <p class="empty">Chưa có quyết định nào cho kênh này.</p>
 {{end}}
+
+{{else if eq .Tab "nhan-vat"}}
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+  <div>
+    <h2 style="margin:0 0 4px;font-size:18px">👤 Nhân Vật Đại Diện &amp; Khóa Khuôn Mặt AI</h2>
+    <p class="subtitle" style="margin:0;font-size:13px">Khuôn mặt chuẩn để AI giữ nguyên nhận diện nhân vật (Character Consistency) khi tạo video viral trending, sexy dance và affiliate cho kênh <strong>{{.Acct.Username}}</strong>.</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Tạo Video Trending</a>
+    <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Tạo Video Affiliate</a>
+  </div>
+</div>
+
+<div class="grid2">
+  <!-- Cột 1: Danh sách ảnh khuôn mặt đã lưu -->
+  <div class="form-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>📸</span> Khuôn Mặt Đã Lưu ({{len .ModelPhotos}})</h3>
+      {{if .ModelPhotos}}<span class="badge badge-ok">Đã Khóa Nhận Diện</span>{{else}}<span class="badge badge-warn">Chưa Có Ảnh</span>{{end}}
+    </div>
+
+    {{if .ModelPhotos}}
+    <div class="model-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:12px;margin-bottom:14px">
+      {{range .ModelPhotos}}
+      <div class="model-card" style="border:1.5px solid var(--border);border-radius:10px;padding:8px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;gap:8px">
+        <img src="{{.URL}}" alt="Khuôn mặt nhân vật" style="width:100%;height:140px;object-fit:cover;border-radius:8px">
+        <form method="post" action="/accounts/{{$id}}/models/{{.ID}}/delete" data-confirm="Xóa ảnh nhân vật này?">
+          <input type="hidden" name="tab" value="nhan-vat">
+          <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px;padding:2px 8px">Xóa ảnh</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+    <div class="hint" style="font-size:12px;color:var(--muted);background:var(--bg3);padding:8px 10px;border-radius:6px">
+      💡 <strong>Nguyên lý AI:</strong> Khi bấm tạo video ở trang Video Viral hoặc Studio Affiliate, AI MediaGen sẽ đọc trực tiếp các ảnh này làm ImageRef để vẽ mọi cảnh giữ nguyên gương mặt và đường nét nhân vật.
+    </div>
+    {{else}}
+    <p class="empty" style="padding:24px 12px;text-align:center;color:var(--muted)">
+      Chưa có ảnh nhân vật nào được lưu cho kênh này.<br>
+      Hãy tải lên ảnh chụp rõ chân dung nhân vật ở form bên phải.
+    </p>
+    {{end}}
+  </div>
+
+  <!-- Cột 2: Form tải lên ảnh nhân vật mới -->
+  <div class="form-card">
+    <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>⬆️</span> Tải Lên Ảnh Nhân Vật Mới (Chọn Nhiều Ảnh)</h3>
+    <form method="post" action="/accounts/{{$id}}/models/upload" enctype="multipart/form-data">
+      <input type="hidden" name="tab" value="nhan-vat">
+      <div class="field" style="margin-bottom:14px">
+        <label style="font-weight:700;font-size:13px">Chọn 1 hoặc nhiều ảnh khuôn mặt (JPG, PNG, WEBP — tối đa 15MB/ảnh)</label>
+        <div class="file-pick" style="margin-top:6px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">📁 Chọn nhiều ảnh từ máy…
+            <input type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple required onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
+          </label>
+          <span class="file-name" style="margin-left:8px;font-size:12px;color:var(--muted)">Chưa chọn ảnh</span>
+        </div>
+      </div>
+
+      <div style="background:var(--bg2);border-left:3px solid var(--accent);padding:10px 12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
+        <strong>Tiêu chuẩn để AI nhận diện chuẩn nhất:</strong><br>
+        • Tải lên cùng lúc nhiều ảnh ở các góc chụp khác nhau (chính diện, góc nghiêng 45°, nụ cười, toàn thân).<br>
+        • Ảnh chụp cận mặt hoặc nửa người trên, ánh sáng tự nhiên rõ nét.<br>
+        • Không bị che khuất mắt, mũi, miệng bởi khẩu trang hoặc tóc.<br>
+        • AI MediaGen sẽ dùng tất cả các ảnh này để khóa nét khuôn mặt chuẩn 100%.
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">Tải lên &amp; Khóa Khuôn Mặt Nhân Vật</button>
+    </form>
+  </div>
+</div>
 
 {{else if eq .Tab "brand-dna"}}
 
@@ -349,13 +460,13 @@
   <p class="empty">Chưa có ảnh mẫu nào. Hãy upload ảnh của mẫu — hệ thống dùng để giữ đúng khuôn mặt khi làm video.</p>
   {{end}}
   <div class="form-card">
-    <h2 style="margin-top:0;border:none;padding:0">Tải ảnh mẫu lên</h2>
+    <h2 style="margin-top:0;border:none;padding:0">Tải ảnh mẫu lên (Chọn Nhiều Ảnh)</h2>
     <form method="post" action="/accounts/{{$id}}/models/upload" enctype="multipart/form-data">
       <div class="field">
-        <label>Chọn ảnh (jpg/png/webp, tối đa 10MB)</label>
+        <label>Chọn 1 hoặc nhiều ảnh (jpg/png/webp, tối đa 15MB/ảnh)</label>
         <div class="file-pick">
-          <label class="btn btn-secondary btn-sm">📁 Chọn ảnh…
-            <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" required>
+          <label class="btn btn-secondary btn-sm">📁 Chọn nhiều ảnh…
+            <input type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple required onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
           </label>
           <span class="file-name">Chưa chọn ảnh</span>
         </div>

@@ -28,6 +28,10 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "recent decisions")
 		return
 	}
+	var recentJobs []studioJobView
+	if s.Studio != nil {
+		recentJobs = s.studioJobViews(s.Studio.ListJobs(6))
+	}
 	s.render(w, "dashboard", s.ctx(
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
@@ -40,6 +44,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"GrowthAlerts", s.recentGrowthAlerts(accounts),
 		"Today", today,
 		"NJobs", s.activeStudioJobs(),
+		"RecentJobs", recentJobs,
 		// Bắt đầu nhanh checklist state (trang chủ khi chưa có tài khoản).
 		"HasKeys", s.hasAnyAPIKey(),
 		"KeyWrong", s.geminiKeyWrong(),

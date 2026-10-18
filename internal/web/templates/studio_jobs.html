@@ -5,88 +5,39 @@
 {{end}}
 
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "jobs"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1 id="studio-top">Studio Dàn Dựng Video AI</h1>
-    <p class="subtitle">Theo dõi tiến độ sản xuất, lịch tự động và kho video hoàn chỉnh.</p>
+    <h1>Kho Video &amp; Tiến Độ Render</h1>
+    <p class="subtitle">Giám sát tiến độ dựng video AI thời gian thực và quản lý file thành phẩm.</p>
   </div>
   <div class="webai-header-actions">
-    {{if .RunningCount}}<span class="badge badge-info"><span class="pulse-dot"></span> {{.RunningCount}} video đang dựng</span>{{end}}
+    <a href="/" class="btn btn-primary btn-sm">+ Tạo video mới</a>
   </div>
 </div>
 
-<!-- Studio Unified Navigation Tabs -->
+<!-- Clean Single Tab Navigation -->
 <nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio">Tạo video</a>
   <a href="/studio/jobs?tab=running" class="{{if eq .Tab "running"}}active{{end}}">
-    Video đang dựng {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
+    Đang dựng {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
+  </a>
+  <a href="/studio/jobs?tab=done" class="{{if or (eq .Tab "done") (not .Tab)}}active{{end}}">
+    Đã tạo xong {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+  </a>
+  <a href="/studio/jobs?tab=all" class="{{if eq .Tab "all"}}active{{end}}">
+    Tất cả ({{.TotalCount}})
   </a>
   <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
-    Lên lịch tự động
+    Lịch tự động
   </a>
-  <a href="/studio/jobs" class="{{if eq .Tab "done"}}active{{end}}">
-    Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
-  </a>
-  <a href="/studio/trends">Nhạc thịnh hành</a>
 </nav>
 
 {{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
 {{if .Err}}<p class="err">{{.Err}}</p>{{end}}
 
-<!-- Dynamic Tab Header -->
-{{if eq .Tab "running"}}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-  <div>
-    <h2 style="margin:0;font-size:18px">⚡ Video đang dựng</h2>
-  </div>
-  <div style="display:flex;gap:8px">
-    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
-  </div>
-</div>
-{{else if eq .Tab "schedule"}}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-  <div>
-    <h2 style="margin:0;font-size:18px">📅 Lịch sản xuất tự động</h2>
-  </div>
-  <form method="post" action="/studio/schedule/run-now" style="margin:0">
-    <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">🚀 Chạy 1 Lượt Ngay</button>
-  </form>
-</div>
-{{else if eq .Tab "done"}}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-  <div>
-    <h2 style="margin:0;font-size:18px">📂 Video đã hoàn thành</h2>
-  </div>
-  <div style="display:flex;gap:8px">
-    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
-  </div>
-</div>
-{{else}}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-  <div>
-    <h2 style="margin:0;font-size:18px">📋 Danh sách video</h2>
-  </div>
-  <div style="display:flex;gap:8px">
-    <a href="/studio" class="btn btn-primary btn-sm">+ Tạo video mới</a>
-  </div>
-</div>
-{{end}}
-
-<!-- Quick Sub-Filter Pills -->
-<div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px">
-  <a href="/studio/jobs?tab=running" class="btn btn-sm {{if eq .Tab "running"}}btn-primary{{else}}btn-secondary{{end}}">
-    ⚡ Đang tạo {{if .RunningCount}}({{.RunningCount}}){{end}}
-  </a>
-  <a href="/studio/jobs?tab=schedule" class="btn btn-sm {{if eq .Tab "schedule"}}btn-primary{{else}}btn-secondary{{end}}">
-    📅 Lịch tự động
-  </a>
-  <a href="/studio/jobs?tab=done" class="btn btn-sm {{if eq .Tab "done"}}btn-primary{{else}}btn-secondary{{end}}">
-    ✓ Đã tạo xong {{if .DoneCount}}({{.DoneCount}}){{end}}
-  </a>
-  <a href="/studio/jobs?tab=all" class="btn btn-sm {{if eq .Tab "all"}}btn-primary{{else}}btn-secondary{{end}}">
-    📋 Tất cả ({{.TotalCount}})
-  </a>
-</div>
 
 {{if eq .Tab "schedule"}}
 <!-- =========================================================================
@@ -182,17 +133,50 @@
 <!-- Jobs List Section -->
 {{if .Jobs}}
 {{range .Jobs}}
-<div class="job" data-job="{{.ID}}">
-  <h3>{{.Title}} <span class="badge badge-draft">{{.KindLabel}}</span></h3>
-  <div class="meta">
-    <span class="badge badge-{{.Class}} job-status">{{.Label}}</span>
-    <span class="prog">{{.Progress}}%</span>
-    · tạo lúc {{fmtVN .CreatedAt}}{{if .FinishedAt}} · xong lúc {{fmtVN .FinishedAt}}{{end}}
+<div class="job studio-job-card" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative">
+  <!-- Top Header Bar -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">
+    <div>
+      <h3 style="margin:0 0 6px;font-size:16.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>{{.Title}}</span>
+        <span class="badge badge-info" style="font-size:11px;padding:2px 8px">{{.KindLabel}}</span>
+      </h3>
+      <div class="meta" style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);flex-wrap:wrap">
+        <span class="badge badge-{{.Class}} job-status" style="font-weight:700">{{.Label}}</span>
+        <span class="prog" style="font-weight:800;color:var(--accent)">{{.Progress}}%</span>
+        <span>📅 Tạo: {{fmtVN .CreatedAt}}</span>
+        {{if .FinishedAt}}<span>✓ Xong: {{fmtVN .FinishedAt}}</span>{{end}}
+      </div>
+    </div>
+
+    <!-- Quick Top Actions -->
+    <div style="display:flex;align-items:center;gap:8px">
+      {{if or (eq .Status "running") (eq .Status "queued")}}
+      <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
+        <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--warn);padding:4px 10px;font-size:12px;font-weight:700">⏸ Hủy</button>
+      </form>
+      {{end}}
+      {{if eq .Status "failed"}}
+      <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
+        <button class="btn btn-primary btn-sm" type="submit" style="padding:4px 10px;font-size:12px;font-weight:700">🔄 Thử lại</button>
+      </form>
+      {{end}}
+      <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
+        <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--err);padding:4px 8px;font-size:12px" title="Xóa video và file">🗑</button>
+      </form>
+    </div>
   </div>
+
+  <!-- Progress Bar for Running/Queued Jobs -->
+  {{if or (eq .Status "running") (eq .Status "queued")}}
+  <div style="background:var(--bg3);height:10px;border-radius:6px;overflow:hidden;margin:12px 0 16px;border:1px solid var(--border)">
+    <div style="background:linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);height:100%;width:{{.Progress}}%;transition:width 0.4s ease"></div>
+  </div>
+  {{end}}
 
   <!-- Inter-Department Groups & Realtime Agent Execution Workflow (Chỉ hiển thị cho jobs đang thực hiện) -->
   {{if and .DeptGroups (ne .Status "done")}}
-  <div class="job-dept-workflow-box">
+  <div class="job-dept-workflow-box" style="margin-bottom:16px">
     <div class="job-dept-workflow-header">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:16px">🏢</span>
@@ -268,81 +252,91 @@
   </div>
   {{end}}
 
+  <!-- Media Player & Completed Video Controls -->
   {{if .Output}}
-  <div class="media-preview-container" style="display:flex;gap:18px;margin:12px 0;flex-wrap:wrap;align-items:flex-start">
-    <div style="width:200px;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative;aspect-ratio:9/16;box-shadow:0 4px 16px rgba(0,0,0,0.15)">
+  <div class="media-preview-container" style="display:flex;gap:22px;margin:16px 0;flex-wrap:wrap;align-items:flex-start">
+    <div style="{{if eq .Kind "story"}}width:340px;aspect-ratio:16/9;{{else}}width:220px;aspect-ratio:9/16;{{end}}background:#000;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);position:relative;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
       <video class="player" controls preload="metadata" src="/media/{{.Output}}" style="width:100%;height:100%;object-fit:cover;display:block"></video>
     </div>
-    <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <span class="badge badge-ok">✓ Video hoàn chỉnh</span>
+    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
+      <!-- Format Specs Badges -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="badge badge-ok" style="font-weight:700">✓ Video hoàn chỉnh</span>
+        {{if eq .Kind "story"}}
+        <span class="badge badge-draft">📺 1920×1080 (16:9 YouTube Full HD)</span>
+        <span class="badge badge-draft">📱 Kèm bản cắt 9:16 Shorts</span>
+        {{else}}
         <span class="badge badge-draft">📱 1080×1920 (9:16 Shorts/TikTok)</span>
-        <span class="badge badge-draft">H.264 MP4</span>
+        {{end}}
+        <span class="badge badge-draft">🎬 H.264 MP4</span>
+        <span class="badge badge-info">⚡ Sẵn sàng đăng kênh</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        <button type="button" class="btn btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')">▶ Phóng to Player</button>
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download>⬇ Tải MP4</a>
-        <a class="btn btn-primary btn-sm" href="/accounts">📱 Đăng lên Kênh</a>
-        <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:inline">
-          <button class="btn btn-secondary btn-sm" type="submit" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở CapCut</button>
+
+      <!-- Action Buttons Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px">
+        <a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:800;padding:8px 12px;text-align:center">📱 Đăng Ngay Lên Kênh ➔</a>
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;padding:8px 12px;text-align:center">⬇ Tải Bản Chính (MP4)</a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" style="font-weight:700;padding:8px 12px">▶ Phóng to Player</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-weight:700;padding:8px 12px" title="Sao chép trọn gói Tiêu đề, Hook, Caption và Hashtags">📋 Copy Post Kit</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Kind}}')" style="font-weight:700;padding:8px 12px" title="Ghim sản phẩm/video này vào trang Bio Link Storefront">🔗 Ghim vào Kệ Bio</button>
+        <form method="post" action="/studio/jobs/{{.ID}}/capcut" style="display:contents">
+          <button class="btn btn-secondary btn-sm" type="submit" style="font-weight:700;padding:8px 12px" title="Gom video + ảnh từng cảnh + nhạc vào 1 thư mục và mở CapCut">✂️ Mở CapCut</button>
         </form>
-        <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard</button>
+        {{if eq .Kind "story"}}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/studio-{{.ID}}-clip1.mp4', '{{.Title}} (Shorts 9:16)')" style="font-weight:700;padding:8px 12px">📱 Xem Shorts (9:16)</button>
+        <a class="btn btn-secondary btn-sm" href="/media/studio-{{.ID}}-clip1.mp4" download style="font-weight:700;padding:8px 12px;text-align:center">⬇ Tải Shorts (9:16)</a>
+        {{end}}
+        {{if eq .Kind "viral"}}
+        <a class="btn btn-secondary btn-sm" href="/media/viral_{{.ID}}.srt" download style="font-weight:700;padding:8px 12px;text-align:center">💬 Tải Phụ Đề (.srt)</a>
+        {{end}}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-weight:700;padding:8px 12px">🎬 Storyboard Từng Cảnh</button>
       </div>
     </div>
   </div>
   {{else if eq .Status "done"}}
-    <p class="notice notice-warn">Job xong nhưng không có file video — kiểm tra nhật ký bên dưới hoặc <a href="/settings/nha-cung-cap">thêm Gemini key</a>.</p>
-    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+    <p class="notice notice-warn">Job hoàn thành nhưng không có file video — kiểm tra nhật ký bên dưới hoặc cấu hình API Key.</p>
+    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard Từng Cảnh</button>
   {{else}}
-    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">Xem chi tiết từng cảnh</button>
+    <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard Từng Cảnh</button>
   {{end}}
+
   <div class="board"></div>
-  <div class="job-actions">
-    {{if or (eq .Status "running") (eq .Status "queued")}}
-    <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
-      <button class="btn btn-secondary btn-sm" type="submit">Hủy</button>
-    </form>
-    {{end}}
-    {{if and .Output (eq .Kind "affiliate")}}
-    <details class="advanced remix">
-      <summary>✏️ Chỉnh sửa &amp; dựng lại</summary>
-      <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data">
-        <div class="remix-grid">
-          <label>Thời lượng (giây)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên"></label>
-          <label>Nhịp cắt (BPM)<input type="number" name="bpm" min="60" max="200" placeholder="giữ nguyên"></label>
-          <label>Bắt đầu nhạc từ giây<input type="number" name="music_start" min="0" step="1" placeholder="giữ nguyên"></label>
-          <label>Thứ tự ảnh
-            <select name="order">
-              <option value="">Giữ nguyên</option>
-              <option value="reverse">Đảo ngược</option>
-              <option value="rotate">Ảnh thứ 2 lên đầu</option>
-            </select>
-          </label>
-        </div>
-        <div class="file-pick">
-          <label class="btn btn-secondary btn-sm">🎵 Đổi file nhạc…
-            <input type="file" name="music_file" accept="audio/*">
-          </label>
-          <span class="file-name">Giữ nhạc cũ</span>
-        </div>
-        <label>Chú thích (để trống = giữ/viết lại tự động)
-          <textarea name="caption" rows="3" placeholder="Câu mở + lời kêu gọi + hashtag"></textarea>
+
+  {{if and .Output (eq .Kind "affiliate")}}
+  <details class="advanced remix" style="margin-top:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+    <summary style="font-size:13px;font-weight:700;cursor:pointer">✏️ Chỉnh sửa &amp; dựng lại (Remix)</summary>
+    <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data" style="margin-top:12px">
+      <div class="remix-grid">
+        <label>Thời lượng (giây)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên"></label>
+        <label>Nhịp cắt (BPM)<input type="number" name="bpm" min="60" max="200" placeholder="giữ nguyên"></label>
+        <label>Bắt đầu nhạc từ giây<input type="number" name="music_start" min="0" step="1" placeholder="giữ nguyên"></label>
+        <label>Thứ tự ảnh
+          <select name="order">
+            <option value="">Giữ nguyên</option>
+            <option value="reverse">Đảo ngược</option>
+            <option value="rotate">Ảnh thứ 2 lên đầu</option>
+          </select>
         </label>
-        <button class="btn btn-sm" type="submit">Dựng lại bản mới</button>
-        <span class="hint">Bản cũ được giữ nguyên để so sánh.</span>
-      </form>
-    </details>
-    {{end}}
-    {{if eq .Status "failed"}}
-    <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
-      <button class="btn btn-secondary btn-sm" type="submit">Thử lại</button>
+      </div>
+      <div class="file-pick" style="margin:10px 0">
+        <label class="btn btn-secondary btn-sm">🎵 Đổi file nhạc…
+          <input type="file" name="music_file" accept="audio/*">
+        </label>
+        <span class="file-name" style="font-size:12px;color:var(--muted);margin-left:8px">Giữ nhạc cũ</span>
+      </div>
+      <label style="display:block;margin-bottom:10px">Chú thích (để trống = giữ/viết lại tự động)
+        <textarea name="caption" rows="3" placeholder="Câu mở + lời kêu gọi + hashtag"></textarea>
+      </label>
+      <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700">Dựng lại bản mới</button>
+      <span class="hint" style="margin-left:8px;font-size:12px">Bản cũ được giữ nguyên để so sánh.</span>
     </form>
-    {{end}}
-    <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file?')">
-      <button class="btn btn-secondary btn-sm" type="submit">Xóa</button>
-    </form>
-  </div>
-  <pre class="log" id="log-{{.ID}}" hidden></pre>
+  </details>
+  {{end}}
+
+  <details style="margin-top:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+    <summary style="font-size:12px;cursor:pointer;color:var(--muted);font-weight:600">📜 Nhật ký render chi tiết (Log Console)</summary>
+    <pre class="log" id="log-{{.ID}}" style="margin-top:8px;font-family:monospace;font-size:11.5px;max-height:160px;overflow:auto;color:var(--text);background:var(--bg);padding:10px;border-radius:6px"></pre>
+  </details>
 </div>
 {{end}}
 {{else}}
@@ -373,6 +367,51 @@
 </div>
 {{end}}
 {{end}}
+
+<script>
+function copyPostKit(title, kind) {
+  var tagBase = '#xuhuong #fyp #trending #review #tiktokshop #shorts';
+  var kindTag = kind === 'viral' ? '#viralvideo #kienthuc #giaitri' : '#sanphamhot #dealhot #muasam';
+  var kit = title + '\n\n' +
+    '🔥 Xem ngay trải nghiệm thực tế siêu đỉnh trong video!\n' +
+    '👉 Chi tiết deal hời & link mua chính hãng ghim ngay đầu trang Bio Link nhé cả nhà!\n\n' +
+    '🔗 Link Storefront: ' + window.location.origin + '/bio\n\n' +
+    tagBase + ' ' + kindTag;
+
+  navigator.clipboard.writeText(kit).then(function() {
+    alert('✓ Đã sao chép Trọn Gói Đăng Kênh (Tiêu đề + Caption + Call to Bio + Hashtags)!\n\nBạn có thể dán ngay vào TikTok, Reels hoặc YouTube Shorts.');
+  }).catch(function() {
+    prompt('Sao chép nội dung đăng kênh:', kit);
+  });
+}
+
+function pinJobToBio(title, kind) {
+  var data = new URLSearchParams();
+  data.append('title', title);
+  data.append('category', kind === 'viral' ? 'Video Viral Thịnh Hành' : 'Sản Phẩm Chọn Lọc');
+  data.append('price', '199000');
+  data.append('product_url', window.location.origin + '/bio');
+
+  fetch('/bio/pin', {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.ok) {
+      if (confirm('✓ ' + res.message + '\n\nBạn có muốn mở trang Bio Link Storefront để xem ngay không?')) {
+        window.open('/bio', '_blank');
+      }
+    } else {
+      alert('Lỗi ghim vào Bio: ' + (res.error || 'Thử lại'));
+    }
+  })
+  .catch(function(err) {
+    alert('Lỗi kết nối: ' + err);
+  });
+}
+</script>
 
 {{end}}
 

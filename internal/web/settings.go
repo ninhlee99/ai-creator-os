@@ -47,6 +47,7 @@ var envLabels = map[string][2]string{
 	"MUSEAI_API_KEY":          {"Key Muse AI (Video Studio)", "OpenAI & Claude & AI Khác"},
 	"TIKTOK_CLIENT_KEY":       {"Client Key ứng dụng TikTok", "TikTok"},
 	"TIKTOK_CLIENT_SECRET":    {"Client Secret ứng dụng TikTok", "TikTok"},
+	"TIKTOK_REDIRECT_URI":     {"Redirect URI (Callback TikTok)", "TikTok"},
 	"YOUTUBE_CLIENT_ID":       {"Client ID Google (nối YouTube)", "YouTube"},
 	"YOUTUBE_CLIENT_SECRET":   {"Client Secret Google", "YouTube"},
 	"YOUTUBE_API_KEY":         {"Key đọc số liệu YouTube", "YouTube"},
@@ -237,7 +238,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"WebAIPlatforms": webAIViews,
 		"WebAIConnected": webAIConnected,
 		"EnvSaved":       r.URL.Query().Get("envsaved"),
-		"EnvErr":    r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
+		"EnvErr":         r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
 		"Ok":        r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
 		"Err":       r.URL.Query().Get("err"),
 		"DbPath":    s.Cfg.DatabasePath,
@@ -612,7 +613,7 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 var envNames = []string{
 	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL", "GEMINI_TTS_MODEL",
 	"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "MUSEAI_API_KEY",
-	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET",
+	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_REDIRECT_URI",
 	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY", "YOUTUBE_GOLDEN_HOUR",
 	"FB_PAGE_ID", "META_PAGE_TOKEN", "FB_DRAFT_ONLY", "IG_USER_ID", "IG_AUTO_PUBLISH",
@@ -628,6 +629,7 @@ var envHelp = map[string]string{
 	"MUSEAI_API_KEY":          "Key Muse AI từ muse.ai/account — Dùng cho video studio và chuyển động mượt mà.",
 	"TIKTOK_CLIENT_KEY":       "Client Key của app TikTok (tạo ở developers.tiktok.com) — để nối tài khoản TikTok.",
 	"TIKTOK_CLIENT_SECRET":    "Client Secret đi kèm Client Key TikTok.",
+	"TIKTOK_REDIRECT_URI":     "Mặc định http://127.0.0.1:8080/publishers/tiktok/callback. Phải khớp 100% với Redirect URI trên developers.tiktok.com.",
 	"YOUTUBE_CLIENT_ID":       "Client ID OAuth Google (loại “Desktop app”) — để bấm “Nối YouTube” ở trang Đa nền tảng.",
 	"YOUTUBE_CLIENT_SECRET":   "Client Secret đi kèm Client ID Google.",
 	"FB_PAGE_ID":              "ID Trang Facebook — để đăng bài lên Trang. Bỏ trống thì không đăng Facebook.",

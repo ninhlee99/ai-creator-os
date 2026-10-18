@@ -85,6 +85,25 @@ func (m *ModelStore) List(accountID int64) ([]ModelPhoto, error) {
 	return out, nil
 }
 
+// ListAll returns all model photos across all accounts, newest first.
+func (m *ModelStore) ListAll() ([]ModelPhoto, error) {
+	rows, err := m.db.Query(
+		`SELECT id, account_id, path, created_at FROM model_photos ORDER BY id DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ModelPhoto
+	for rows.Next() {
+		var mp ModelPhoto
+		if err := rows.Scan(&mp.ID, &mp.AccountID, &mp.Path, &mp.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, mp)
+	}
+	return out, nil
+}
+
 // Delete removes a photo (file + row).
 func (m *ModelStore) Delete(id int64) error {
 	var path string
@@ -107,3 +126,48 @@ func (m *ModelStore) HasPhotos(accountID int64) (bool, error) {
 	}
 	return n > 0, nil
 }
+
+// queryAccountModelPhotos retrieves model photo file paths for an account, or falls back to any available model photo.
+func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
+	var out []string
+	if s.db != nil {
+		if accountID > 0 {
+			rows, err := s.db.Query(`SELECT path FROM model_photos WHERE account_id = ? ORDER BY id`, accountID)
+			if err == nil {
+				for rows.Next() {
+					var p string
+					if err := rows.Scan(&p); err == nil && fileExists(p) {
+						out = append(out, p)
+					}
+				}
+				rows.Close()
+			}
+		}
+		if len(out) == 0 {
+			rows, err := s.db.Query(`SELECT path FROM model_photos ORDER BY id LIMIT 5`)
+			if err == nil {
+				for rows.Next() {
+					var p string
+					if err := rows.Scan(&p); err == nil && fileExists(p) {
+						out = append(out, p)
+					}
+				}
+				rows.Close()
+			}
+		}
+	}
+	if len(out) == 0 {
+		candidates := []string{
+			"data/output/studio/models/1/1790869026571752000.jpg",
+			"data/output/studio/models/1/1790869026576011000.jpg",
+			"data/output/studio/models/1/1790869026578411000.jpg",
+		}
+		for _, c := range candidates {
+			if fileExists(c) {
+				out = append(out, c)
+			}
+		}
+	}
+	return out
+}
+

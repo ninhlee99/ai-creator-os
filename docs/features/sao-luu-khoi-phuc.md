@@ -11,7 +11,7 @@ an toàn vì file thật chỉ bị thay khi app chưa mở DB.
 
 ## 3. Luồng vận hành chi tiết
 1. **Tạo** (`backup.Create`, `internal/backup/backup.go:43`): zip
-   - 3 database (+ `-wal`/`-shm` nếu có): `ledger.db`, `studio.db`, `products.db`
+   - 5 database (+ `-wal`/`-shm` nếu có): `ledger.db`, `studio.db`, `products.db`, `accesstrade.db`, `webai.db`
    - file đơn: `content_jobs.json`
    - thư mục: `tokens/` (đệ quy 1 cấp, bỏ thư mục con)
    - manifest `aicos-backup.json` (`{"app":"aicos","created":"..."}`)

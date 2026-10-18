@@ -1,13 +1,18 @@
 {{define "title"}}Sản phẩm Affiliate — AI Creator OS{{end}}
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "affiliate"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Sản Phẩm &amp; Kệ Hàng Affiliate</h1>
     <p class="subtitle">Tìm kiếm sản phẩm hoa hồng cao và quản lý kệ hàng sản xuất.</p>
   </div>
-  <div class="webai-header-actions">
-    <a href="/studio" class="btn btn-primary">Dựng video AI</a>
-    <a href="/settings/accesstrade" class="btn btn-secondary">Kết nối Accesstrade</a>
+  <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
+    <a href="/bio" target="_blank" class="btn btn-secondary btn-sm">🔗 Trang Bio</a>
+    <a href="/studio" class="btn btn-primary btn-sm">Dựng video AI</a>
+    <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Kết nối Accesstrade</a>
   </div>
 </div>
 
@@ -17,35 +22,64 @@
   <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ Hàng Sản Xuất AI</a>
 </nav>
 
+<!-- Storefront Bio Link Card -->
+<div class="card" style="border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(139,92,246,0.06) 100%), var(--bg2);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.03)">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;box-shadow:0 3px 10px rgba(37,99,235,0.3)">
+      🔗
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+        <strong style="font-size:14px;color:var(--text)">Trang Cửa Hàng Bio Link Bán Hàng</strong>
+        <span class="status-pill status-ready" style="font-size:10px">Mobile-First</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);max-width:560px;line-height:1.4">
+        Toàn bộ sản phẩm trên kệ tự động hiển thị trên Bio. Gắn link này vào tiểu sử TikTok / Reels / Shorts để khán giả bấm mua ngay.
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(location.origin + '/bio');if(window.showToast)window.showToast('Đã sao chép link Bio',true);">📋 Sao chép link Bio</button>
+    <a href="/bio" target="_blank" class="btn btn-primary btn-sm">Mở Bio ↗</a>
+  </div>
+</div>
+
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 
 {{if eq .Tab "ke"}}
-<div class="form-card">
-<h2 style="margin-top:0;border:none;padding:0">Thêm sản phẩm vào kệ</h2>
+<div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="margin:0;font-size:16px;border:none;padding:0;display:flex;align-items:center;gap:8px">
+      <span>➕</span> Thêm sản phẩm vào kệ
+    </h2>
+    <span class="badge badge-dim" style="font-size:11px">Gắn trực tiếp vào Bio Link & Video AI</span>
+  </div>
 <form method="post" action="/products/shelf/add">
-  <div class="field">
-    <label>Mã sản phẩm <span class="req">*</span></label>
-    <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
-  </div>
-  <div class="field">
-    <label>Tên sản phẩm <span class="req">*</span></label>
-    <input type="text" name="title" required placeholder="vd: Tai nghe bluetooth X10">
-  </div>
   <div class="grid2">
     <div class="field">
+      <label>Mã sản phẩm <span class="req">*</span></label>
+      <input type="text" name="platform_pid" required placeholder="vd: TT-123456">
+    </div>
+    <div class="field">
+      <label>Tên sản phẩm <span class="req">*</span></label>
+      <input type="text" name="title" required placeholder="vd: Tai nghe bluetooth X10">
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="field">
       <label>Giá (VND) <span class="req">*</span></label>
-      <input type="number" name="price" step="0.01" min="0" required>
+      <input type="number" name="price" step="0.01" min="0" required placeholder="299000">
     </div>
     <div class="field">
       <label>Hoa hồng (%) <span class="req">*</span></label>
       <input type="number" name="commission_pct" step="0.5" min="0" max="100" required
              placeholder="vd: 12">
     </div>
-  </div>
-  <div class="field">
-    <label>Danh mục</label>
-    <input type="text" name="category" placeholder="vd: điện tử">
+    <div class="field">
+      <label>Danh mục</label>
+      <input type="text" name="category" placeholder="vd: điện tử">
+    </div>
   </div>
   <div class="field">
     <label>Chủ đề</label>
@@ -56,28 +90,57 @@
       {{end}}
     </select>
   </div>
-  <button type="submit" class="btn">Thêm vào kệ</button>
+  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+    <button type="submit" class="btn btn-primary">Thêm vào kệ</button>
+  </div>
 </form>
 </div>
 
-<h2>Kệ hàng</h2>
-<p class="subtitle">Sản phẩm affiliate trên kệ — AI tự tìm, chấm điểm và gắn vào video/live.</p>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+  <div>
+    <h2 style="margin:0;font-size:18px">Kệ hàng sản xuất AI</h2>
+    <p class="subtitle" style="margin:2px 0 0">Sản phẩm affiliate trên kệ — AI tự tìm, chấm điểm và gắn vào video/live.</p>
+  </div>
+  {{if .Shelf}}<span class="badge badge-ok">{{len .Shelf}} sản phẩm</span>{{end}}
+</div>
 {{if .Shelf}}
 <div class="table-wrap">
 <table>
   <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
-      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
+      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Bio Clicks</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Shelf}}
   <tr>
-    <td><strong>{{.Title}}</strong><br><span style="color:var(--muted);font-size:12px">{{.PlatformPID}}</span></td>
+    <td>
+      <div style="display:flex;align-items:center;gap:10px">
+        {{if .ImageURL}}
+        <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0">
+        {{end}}
+        <div>
+          <strong>{{.Title}}</strong><br>
+          <span style="color:var(--muted);font-size:12px">{{.PlatformPID}}</span>
+        </div>
+      </div>
+    </td>
     <td>{{if .Category}}{{.Category}}{{else}}—{{end}}</td>
     <td>{{fmtVND .Price}}</td>
-    <td>{{fmtVND .CommissionValue}}
-      <span style="color:var(--muted)">({{printf "%.0f" (pct .CommissionRate)}}%)</span></td>
-    <td>{{printf "%.2f" .Score}}</td>
+    <td>{{fmtVND .CommissionValue}}<br>
+      {{if ge .CommissionRate 0.20}}
+      <span class="badge badge-ok" style="font-weight:700;font-size:10.5px">🔥 Hoa hồng cao {{printf "%.0f" (pct .CommissionRate)}}%</span>
+      {{else}}
+      <span style="color:var(--muted);font-size:11px">({{printf "%.0f" (pct .CommissionRate)}}%)</span>
+      {{end}}
+    </td>
+    <td><strong>{{printf "%.2f" .Score}}</strong></td>
+    <td>
+      {{if .ClickCount}}
+      <span class="badge badge-ok" style="font-weight:700">👆 {{.ClickCount}} clicks</span>
+      {{else}}
+      <span class="badge badge-dim">0 click</span>
+      {{end}}
+    </td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td style="text-align:right">
-      <a href="/studio?product_name={{.Title}}#tab-ad-creative" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;white-space:nowrap">🎬 Dựng video AI</a>
+      <a href="/studio?product_name={{urlquery .Title}}&product_price={{urlquery (fmtVND .Price)}}&niche={{urlquery .Category}}{{if .ProductURL}}&aff_link={{urlquery .ProductURL}}{{end}}{{if .ImageURL}}&photo_url={{urlquery .ImageURL}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video AI</a>
     </td>
   </tr>
   {{end}}
@@ -326,20 +389,42 @@ function atOrderSync() {
 </script>
 
 {{else}}
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade <span class="badge badge-draft">Chưa có key</span></h2>
-  <p class="subtitle">Nhập mã truy cập Accesstrade một lần — app tự săn sản phẩm, tạo link theo dõi và đối soát hoa hồng.</p>
-  <a class="btn btn-sm" href="/settings/accesstrade">Nhập mã truy cập</a>
+<div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="width:40px;height:40px;border-radius:10px;background:rgba(37,99,235,0.1);display:flex;align-items:center;justify-content:center;font-size:20px">
+      ⚡
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <strong style="font-size:14px">Chiến dịch Accesstrade</strong>
+        <span class="badge badge-draft">Chưa có key</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">
+        Nhập mã truy cập Accesstrade một lần — app tự săn sản phẩm, tạo link theo dõi và đối soát hoa hồng.
+      </div>
+    </div>
+  </div>
+  <a class="btn btn-primary btn-sm" href="/settings/accesstrade">Nhập mã truy cập ➔</a>
 </div>
 {{end}}
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Tìm sản phẩm</h2>
+<div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:8px">
+      <span>🔍</span> Săn Sản Phẩm Thật &amp; Hoa Hồng Cao (18% - 42%)
+    </h3>
+    <span class="badge badge-ok" style="font-size:11px">🔥 Đã đồng bộ 28+ Sản phẩm thật 4K</span>
+  </div>
   <form method="post" action="/products/search">
-    <div class="grid2">
+    <div class="field" style="margin-bottom:12px">
+      <label style="font-weight:700">Từ khóa tìm kiếm (Tên sản phẩm, thương hiệu, tính năng...):</label>
+      <input type="text" name="q" value="{{.SearchQuery}}" placeholder="vd: Nồi chiên không dầu, Son môi Black Rouge, Tai nghe Anker, Áo thun..." style="font-size:13.5px">
+    </div>
+    <div class="grid2" style="margin-bottom:12px">
       <div class="field">
-        <label>Chủ đề</label>
+        <label>Chủ đề ngành hàng</label>
         <select name="theme">
+          <option value="">— Tất cả chủ đề —</option>
           {{range .Themes}}
           <option value="{{.Slug}}"{{if eq $.Theme .Slug}} selected{{end}}>{{.Label}}</option>
           {{end}}
@@ -348,11 +433,14 @@ function atOrderSync() {
       <div class="field">
         <label>Hoa hồng tối thiểu (%)</label>
         <input type="number" name="min_commission" min="0" max="100" step="0.5"
-               value="{{if .Theme}}{{printf "%.1f" .MinPct}}{{end}}"
-               placeholder="để trống = ngưỡng gợi ý của chủ đề">
+               value="{{if .MinCommission}}{{printf "%.1f" .MinCommission}}{{else if .Theme}}{{printf "%.1f" .MinPct}}{{end}}"
+               placeholder="để trống = lọc sản phẩm hoa hồng tốt nhất">
       </div>
     </div>
-    <button type="submit" class="btn btn-secondary btn-sm">🔍 Tìm thủ công</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span style="font-size:12px;color:var(--muted)">💡 Mẹo: Hệ thống tự động ưu tiên các sản phẩm có ảnh thật 4K và tỷ lệ hoa hồng từ 20% trở lên.</span>
+      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;padding:7px 18px">🔍 Săn Sản Phẩm</button>
+    </div>
   </form>
 </div>
 
@@ -421,29 +509,74 @@ function atOrderSync() {
 
 
 {{if .Results}}
-<h2>Sản phẩm tốt nhất trong kho</h2>
+<div style="margin-top:24px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+  <div>
+    <h2 style="margin:0;font-size:18px">Sản phẩm hoa hồng cao trong kho</h2>
+    <p class="subtitle" style="margin:2px 0 0">Sản phẩm thật 100% kèm ảnh listing 4K — 1 chạm đưa vào Kệ hàng Bio hoặc sang Studio dựng video AI.</p>
+  </div>
+  <span class="badge badge-ok">{{len .Results}} sản phẩm</span>
+</div>
 <div class="table-wrap">
 <table>
-  <tr><th>Sản phẩm</th><th>Shop</th><th>Giá</th><th>Hoa hồng</th><th>Đã bán</th><th>Đánh giá</th><th>Nguồn</th><th>Ảnh</th><th style="text-align:right">Thao tác</th></tr>
+  <tr><th>Sản phẩm</th><th>Shop / Sàn</th><th>Giá niêm yết</th><th>Hoa hồng nhận được</th><th>Đã bán</th><th>Đánh giá</th><th>Kệ hàng Bio</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Results}}
   <tr>
-    <td><strong>{{.Title}}</strong>{{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener">xem sản phẩm ↗</a>{{end}}</td>
-    <td>{{if .ShopName}}{{.ShopName}}{{else}}—{{end}}</td>
-    <td>{{fmtVND .Price}}</td>
-    <td><strong>{{printf "%.1f" (pct .CommissionRate)}}%</strong></td>
-    <td>{{.SoldCount}}</td>
-    <td>{{if .Rating}}{{printf "%.1f" .Rating}}★{{else}}—{{end}}</td>
-    <td><span class="badge badge-draft">{{.Source}}</span></td>
-    <td>{{len .ImageURLs}}</td>
+    <td>
+      <div style="display:flex;align-items:center;gap:10px">
+        {{if .ImageURLs}}
+        <img src="{{index .ImageURLs 0}}" alt="{{.Title}}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0" loading="lazy">
+        {{end}}
+        <div>
+          <strong style="font-size:13px;display:block;color:var(--text)">{{.Title}}</strong>
+          <span style="font-size:11px;color:var(--muted)">Mã: {{.PlatformPID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Thời trang / Gia dụng{{end}}</span>
+          {{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở link mua sản phẩm ↗</a>{{end}}
+        </div>
+      </div>
+    </td>
+    <td>
+      <span style="font-size:12.5px;font-weight:600">{{if .ShopName}}{{.ShopName}}{{else}}Shopee Mall{{end}}</span>
+      <br><span class="badge badge-draft" style="font-size:10px">{{.Source}}</span>
+    </td>
+    <td><strong style="font-size:13px">{{fmtVND .Price}}</strong></td>
+    <td>
+      <span class="badge badge-ok" style="font-weight:800;font-size:11px">🔥 {{printf "%.0f" (pct .CommissionRate)}}%</span>
+      <div style="font-size:11.5px;font-weight:700;color:#10b981;margin-top:2px">+{{fmtVND (mul .Price .CommissionRate)}}/đơn</div>
+    </td>
+    <td><span style="font-size:12px;font-weight:600">{{.SoldCount}}</span></td>
+    <td>{{if .Rating}}<span style="color:#f59e0b">★</span> <b>{{printf "%.1f" .Rating}}</b>{{else}}—{{end}}</td>
+    <td>
+      <form method="post" action="/products/shelf/toggle" style="margin:0">
+        <input type="hidden" name="platform_pid" value="{{.PlatformPID}}">
+        <input type="hidden" name="title" value="{{.Title}}">
+        <input type="hidden" name="price" value="{{.Price}}">
+        <input type="hidden" name="commission_rate" value="{{.CommissionRate}}">
+        <input type="hidden" name="category" value="{{.Category}}">
+        {{if .ImageURLs}}<input type="hidden" name="image_url" value="{{index .ImageURLs 0}}">{{end}}
+        <input type="hidden" name="product_url" value="{{.ProductURL}}">
+        {{if .OnShelf}}
+        <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;color:#ef4444" title="Bấm để gỡ khỏi Kệ hàng Bio">
+          ✓ Trên kệ (Gỡ)
+        </button>
+        {{else}}
+        <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;font-weight:700" title="Đưa sản phẩm lên Kệ hàng & Bio link">
+          ➕ Lên kệ Bio
+        </button>
+        {{end}}
+      </form>
+    </td>
     <td style="text-align:right">
-      <a href="/studio?product_name={{.Title}}{{if .ProductURL}}&aff_link={{.ProductURL}}{{end}}#tab-ad-creative" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;white-space:nowrap">🎬 Dựng video AI</a>
+      <a href="/studio?product_name={{urlQuery .Title}}&product_price={{urlQuery (fmtVND .Price)}}&niche={{urlQuery .Category}}{{if .ProductURL}}&aff_link={{urlQuery .ProductURL}}{{end}}{{if .ImageURLs}}&photo_url={{urlQuery (index .ImageURLs 0)}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video AI</a>
     </td>
   </tr>
   {{end}}
 </table>
 </div>
 {{else if .Theme}}
-<p class="empty">Chưa có sản phẩm nào cho chủ đề này trong kho. Hãy bấm "Tìm sản phẩm" để quét các nguồn.</p>
+<div class="empty-state compact">
+  <div class="es-icon">📦</div>
+  <h3>Chưa có sản phẩm nào cho chủ đề này trong kho</h3>
+  <p>Hãy bấm "Tìm sản phẩm" để quét các nguồn thương mại điện tử.</p>
+</div>
 {{end}}
 {{end}}
 {{end}}

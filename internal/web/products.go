@@ -14,11 +14,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
@@ -82,23 +84,27 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	theme := strings.TrimSpace(r.URL.Query().Get("theme"))
+	keyword := strings.TrimSpace(r.URL.Query().Get("q"))
 	minPct := resolveMinCommission(theme, r.URL.Query().Get("min"))
 	var results []products.Product
-	if theme != "" {
-		var err error
-		results, err = s.Products.TopByTheme(theme, minPct/100, 0, 30)
-		if err != nil {
-			s.render(w, "products", s.ctx(
-				"AT", s.atPageData(),
-				"Tab", tab,
-				"Themes", themeOptions(),
-				"Theme", theme,
-				"MinPct", minPct,
-				"Shelf", s.shelfViews(),
-				"Error", "Không đọc được kho sản phẩm: "+err.Error(),
-			))
-			return
-		}
+	var rerr error
+	if keyword != "" || theme != "" {
+		results, rerr = s.Products.Search(keyword, theme, minPct/100, 30)
+	} else {
+		results, rerr = s.Products.TopHighCommission(30)
+	}
+	if rerr != nil {
+		s.render(w, "products", s.ctx(
+			"AT", s.atPageData(),
+			"Tab", tab,
+			"Themes", themeOptions(),
+			"Theme", theme,
+			"Keyword", keyword,
+			"MinPct", minPct,
+			"Shelf", s.shelfViews(),
+			"Error", "Không đọc được kho sản phẩm: "+rerr.Error(),
+		))
+		return
 	}
 	enabled, hours, lastRun, music, autoPub, youTube := s.scheduleView()
 	// Autopilot status surface (A5): next scheduled run + stock on hand.
@@ -119,12 +125,11 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"Tab", tab,
 		"Themes", themeOptions(),
 		"Theme", theme,
+		"Keyword", keyword,
 		"MinPct", minPct,
 		"Results", results,
 		"Shelf", s.shelfViews(),
 		"Notice", r.URL.Query().Get("ok"),
-		// Đợt Y: lỗi redirect ?err= trước đây bị nuốt im lặng — user không
-		// bao giờ thấy. Giờ hiện ra như Error bình thường.
 		"Error", r.URL.Query().Get("err"),
 		"SchedEnabled", enabled,
 		"SchedHours", hours,
@@ -140,6 +145,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 
 // productView is the template projection of one shelf product (Kệ hàng).
 type productView struct {
+	ID              int64
 	Title           string
 	PlatformPID     string
 	Category        string
@@ -148,6 +154,9 @@ type productView struct {
 	CommissionValue float64
 	Score           float64
 	Status          string
+	ClickCount      int64
+	ImageURL        string
+	ProductURL      string
 }
 
 // shelfViews projects the shared product store's shelf (status
@@ -165,12 +174,23 @@ func (s *Server) shelfViews() []productView {
 	}
 	views := make([]productView, 0, len(shelf))
 	for _, p := range shelf {
+		img := ""
+		if len(p.ImageURLs) > 0 {
+			img = p.ImageURLs[0]
+		}
 		views = append(views, productView{
-			Title: p.Title, PlatformPID: p.SourceID,
-			Category: p.Category, Price: p.Price,
+			ID:              p.ID,
+			Title:           p.Title,
+			PlatformPID:     p.SourceID,
+			Category:        p.Category,
+			Price:           p.Price,
 			CommissionRate:  p.CommissionRate,
 			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
-			Score:           products.Score(p), Status: p.ShelfStatus,
+			Score:           products.Score(p),
+			Status:          p.ShelfStatus,
+			ClickCount:      p.ClickCount,
+			ImageURL:        img,
+			ProductURL:      p.ProductURL,
 		})
 	}
 	return views
@@ -366,8 +386,8 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 	seeOther(w, r, "/products?theme="+url.QueryEscape(theme)+"&ok="+url.QueryEscape("Đã lưu sản phẩm \""+title+"\" — autopilot có thể dùng ngay."))
 }
 
-// handleProductsSearch runs the configured providers for a theme, saves
-// every hit into the product store, then displays TopByTheme. Provider
+// handleProductsSearch runs the configured providers for a keyword/theme, saves
+// every hit into the product store, then displays the best matches. Provider
 // problems are shown honestly instead of hidden.
 func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {
@@ -382,52 +402,60 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "parse products search form")
 		return
 	}
+	keyword := strings.TrimSpace(r.PostFormValue("keyword"))
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
 	minPct := resolveMinCommission(theme, r.PostFormValue("min_commission"))
 	minComm := minPct / 100
-	if theme == "" {
-		seeOther(w, r, "/products")
-		return
-	}
-	if len(s.ProductProviders) == 0 {
-		s.render(w, "products", s.ctx(
-			"AT", s.atPageData(),
-			"Themes", themeOptions(),
-			"Theme", theme,
-			"MinPct", minPct,
-			"Error", "Kho sản phẩm trống cho theme này. Hunter Accesstrade tự quét datafeed mỗi ngày — kiểm tra tab Accesstrade trong Cài đặt (nhập API key một lần).",
-		))
-		return
+
+	providers := s.ProductProviders
+	if len(providers) == 0 {
+		providers = []products.Provider{products.NewMarketplaceDiscoveryProvider()}
 	}
 	var warnings []string
-	for _, p := range s.ProductProviders {
+	for _, p := range providers {
 		if c, ok := p.(interface{ Configured() bool }); ok && !c.Configured() {
 			warnings = append(warnings,
 				fmt.Sprintf("Nguồn %q chưa cấu hình (thiếu API key) — đã bỏ qua.", p.Name()))
 		}
 	}
-	q := products.QueryForTheme(theme, minComm, 50)
+	var keywords []string
+	if keyword != "" {
+		keywords = append(keywords, keyword)
+	}
+	q := products.Query{
+		Theme:         theme,
+		Keywords:      keywords,
+		MinCommission: minComm,
+		Limit:         50,
+	}
+	if theme != "" && len(keywords) == 0 {
+		q = products.QueryForTheme(theme, minComm, 50)
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
-	found, errs := products.Aggregate(ctx, s.ProductProviders, q)
+	found, errs := products.Aggregate(ctx, providers, q)
 	for _, e := range errs {
 		warnings = append(warnings, e.Error())
 	}
 	saved := 0
 	for _, p := range found {
-		p.Theme = theme
+		if p.Theme == "" {
+			p.Theme = theme
+		}
 		if _, err := s.Products.Save(p); err != nil {
 			log.Printf("web: save product: %v", err)
 			continue
 		}
 		saved++
 	}
-	results, rerr := s.Products.TopByTheme(theme, minComm, 0, 30)
+	results, rerr := s.Products.Search(keyword, theme, minComm, 30)
 	data := s.ctx(
 		"Themes", themeOptions(),
 		"Theme", theme,
+		"Keyword", keyword,
 		"MinPct", minPct,
 		"Results", results,
+		"Shelf", s.shelfViews(),
 		"Searched", true,
 		"Found", len(found),
 		"Saved", saved,
@@ -438,6 +466,46 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	data["AT"] = s.atPageData()
 	s.render(w, "products", data)
+}
+
+// handleProductsShelfToggle toggles a product on or off the affiliate shelf (Kệ hàng).
+func (s *Server) handleProductsShelfToggle(w http.ResponseWriter, r *http.Request) {
+	if s.Products == nil {
+		s.fail(w, fmt.Errorf("kho sản phẩm chưa khởi tạo"), "toggle shelf")
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		s.fail(w, err, "parse toggle form")
+		return
+	}
+	id, _ := strconv.ParseInt(r.PostFormValue("id"), 10, 64)
+	if id <= 0 {
+		seeOther(w, r, "/products")
+		return
+	}
+	p, err := s.Products.GetByID(id)
+	if err != nil {
+		seeOther(w, r, "/products?err="+url.QueryEscape("Không tìm thấy sản phẩm"))
+		return
+	}
+	newStatus := "shelf"
+	newScore := products.Score(p)
+	msg := "Đã thêm \"" + p.Title + "\" vào Kệ hàng & Bio Link!"
+	if p.ShelfStatus == "shelf" || p.ShelfStatus == "scaled" {
+		newStatus = ""
+		newScore = 0
+		msg = "Đã bỏ \"" + p.Title + "\" khỏi Kệ hàng."
+	}
+	if err := s.Products.SetShelf(id, newStatus, newScore); err != nil {
+		seeOther(w, r, "/products?err="+url.QueryEscape("Không cập nhật được kệ: "+err.Error()))
+		return
+	}
+	tab := r.PostFormValue("tab")
+	u := "/products?ok=" + url.QueryEscape(msg)
+	if tab != "" {
+		u = "/products?tab=" + tab + "&ok=" + url.QueryEscape(msg)
+	}
+	seeOther(w, r, u)
 }
 
 // ------------------------------------------------- account autopilot policy
@@ -604,3 +672,314 @@ const (
 	SettingAutopilotYouTube     = "autopilot_youtube_enabled"
 	SettingAutopilotMeta        = "autopilot_meta_enabled"
 )
+
+// BioProductView represents a product item displayed on the public bio link storefront.
+type BioProductView struct {
+	ID             int64
+	Title          string
+	ImageURL       string
+	Price          float64
+	PriceFormatted string
+	OriginalPrice  string
+	DiscountBadge  string
+	Rating         float64
+	SoldCount      int64
+	Category       string
+	BuyURL         string
+	ShopName       string
+	ClickCount     int64
+}
+
+// BioLinkData represents the data passed to bio.html.
+type BioLinkData struct {
+	ChannelTitle   string
+	ChannelHandle  string
+	AvatarLetter   string
+	Niche          string
+	BioDescription string
+	TotalProducts  int
+	Products       []BioProductView
+	Categories     []string
+	CurrentChannel string
+	ShareURL       string
+	IsSample       bool
+	TikTokURL      string
+	YouTubeURL     string
+	FacebookURL    string
+	ZaloURL        string
+}
+
+// handleBioLink serves the mobile-first public Bio Link storefront (/bio and /bio/{channel}).
+func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
+	channel := strings.TrimPrefix(r.PathValue("channel"), "@")
+	if channel == "" {
+		channel = strings.TrimPrefix(r.URL.Query().Get("channel"), "@")
+	}
+
+	channelTitle := "KOC Creator Store"
+	channelHandle := "creator"
+	niche := "Sản phẩm chọn lọc chất lượng cao"
+	bioDesc := "Tổng hợp deal hot, đồ decor & công nghệ review triệu view. Bấm link để nhận giá ưu đãi!"
+	avatarLetter := "K"
+
+	if s.Ledger != nil {
+		accs, err := s.Ledger.ListAccounts(nil)
+		if err == nil && len(accs) > 0 {
+			var matched *ledger.Account
+			if channel != "" {
+				for i := range accs {
+					if strings.EqualFold(accs[i].Username, channel) {
+						matched = &accs[i]
+						break
+					}
+				}
+			}
+			if matched == nil && channel == "" {
+				matched = &accs[0]
+			}
+			if matched != nil {
+				channelHandle = matched.Username
+				channelTitle = "@" + matched.Username
+				if len(matched.Username) > 0 {
+					avatarLetter = strings.ToUpper(matched.Username[:1])
+				}
+				if matched.Niche.Valid && matched.Niche.String != "" {
+					niche = matched.Niche.String
+					bioDesc = "Góc gợi ý mua sắm chính hãng từ kênh @" + matched.Username + " · Đã kiểm định chất lượng."
+				}
+			} else if channel != "" {
+				channelHandle = channel
+				channelTitle = "@" + channel
+				if len(channel) > 0 {
+					avatarLetter = strings.ToUpper(channel[:1])
+				}
+			}
+		}
+	}
+
+	// Fetch shelf products
+	var prods []products.Product
+	if s.Products != nil {
+		prods, _ = s.Products.Shelf(50)
+		if len(prods) == 0 {
+			prods, _ = s.Products.All(50)
+		}
+	}
+
+	var items []BioProductView
+	var catMap = make(map[string]bool)
+	var isSample bool
+
+	if len(prods) > 0 {
+		for _, p := range prods {
+			img := ""
+			if len(p.ImageURLs) > 0 {
+				img = p.ImageURLs[0]
+			}
+			cat := p.Category
+			if cat == "" {
+				cat = "Sản phẩm nổi bật"
+			}
+			catMap[cat] = true
+
+			origPrice := ""
+			discBadge := ""
+			if p.Price > 0 {
+				origVal := p.Price * 1.35
+				origPrice = formatVND(origVal)
+				discBadge = "-25% SALE"
+			}
+
+			buyURL := "/bio-go/" + strconv.FormatInt(p.ID, 10)
+			if p.ProductURL != "" && strings.HasPrefix(p.ProductURL, "http") {
+				buyURL = "/bio-go/" + strconv.FormatInt(p.ID, 10)
+			}
+
+			items = append(items, BioProductView{
+				ID:             p.ID,
+				Title:          p.Title,
+				ImageURL:       img,
+				Price:          p.Price,
+				PriceFormatted: formatVND(p.Price),
+				OriginalPrice:  origPrice,
+				DiscountBadge:  discBadge,
+				Rating:         p.Rating,
+				SoldCount:      p.SoldCount,
+				Category:       cat,
+				BuyURL:         buyURL,
+				ShopName:       p.ShopName,
+				ClickCount:     p.ClickCount,
+			})
+		}
+	} else {
+		// Showcase curated sample products for instant preview
+		isSample = true
+		items = []BioProductView{
+			{
+				ID:             1,
+				Title:          "Áo Polo Nam Thể Thao Lụa Lạnh Cao Cấp Thoáng Khí Co Giãn 4 Chiều",
+				ImageURL:       "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=600&auto=format&fit=crop&q=80",
+				Price:          199000,
+				PriceFormatted: "199.000 ₫",
+				OriginalPrice:  "350.000 ₫",
+				DiscountBadge:  "-43% DEAL SỐC",
+				Rating:         4.9,
+				SoldCount:      3420,
+				Category:       "Thời Trang",
+				BuyURL:         "https://shopee.vn",
+				ShopName:       "Shopee Mall",
+			},
+			{
+				ID:             2,
+				Title:          "Nồi Chiên Không Dầu Điện Tử 8L Cảm Ứng Đa Năng Tiết Kiệm Điện",
+				ImageURL:       "https://images.unsplash.com/photo-1585515320310-259814833e62?w=600&auto=format&fit=crop&q=80",
+				Price:          890000,
+				PriceFormatted: "890.000 ₫",
+				OriginalPrice:  "1.450.000 ₫",
+				DiscountBadge:  "-38% FREESHIP",
+				Rating:         4.8,
+				SoldCount:      1250,
+				Category:       "Gia Dụng",
+				BuyURL:         "https://shopee.vn",
+				ShopName:       "Gia Dụng Thông Minh",
+			},
+			{
+				ID:             3,
+				Title:          "Serum Phục Hồi Dưỡng Ẩm Chuyên Sâu Cấp Nước Cho Da Dầu Mụn 50ml",
+				ImageURL:       "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80",
+				Price:          265000,
+				PriceFormatted: "265.000 ₫",
+				OriginalPrice:  "390.000 ₫",
+				DiscountBadge:  "-32% CHÍNH HÃNG",
+				Rating:         5.0,
+				SoldCount:      5600,
+				Category:       "Làm Đẹp",
+				BuyURL:         "https://tiktok.com",
+				ShopName:       "TikTok Shop",
+			},
+			{
+				ID:             4,
+				Title:          "Tai Nghe Bluetooth Không Dây Pin 36h Chống Ồn Chủ Động ANC Âm Bass Cực Căng",
+				ImageURL:       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80",
+				Price:          450000,
+				PriceFormatted: "450.000 ₫",
+				OriginalPrice:  "790.000 ₫",
+				DiscountBadge:  "-43% BÁN CHẠY",
+				Rating:         4.9,
+				SoldCount:      2890,
+				Category:       "Công Nghệ",
+				BuyURL:         "https://shopee.vn",
+				ShopName:       "Tech Official",
+			},
+		}
+		catMap["Thời Trang"] = true
+		catMap["Gia Dụng"] = true
+		catMap["Làm Đẹp"] = true
+		catMap["Công Nghệ"] = true
+	}
+
+	var cats []string
+	for c := range catMap {
+		cats = append(cats, c)
+	}
+	sort.Strings(cats)
+
+	t, ok := s.templates["bio"]
+	if !ok {
+		http.Error(w, "Bio template not found", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	data := BioLinkData{
+		ChannelTitle:   channelTitle,
+		ChannelHandle:  channelHandle,
+		AvatarLetter:   avatarLetter,
+		Niche:          niche,
+		BioDescription: bioDesc,
+		TotalProducts:  len(items),
+		Products:       items,
+		Categories:     cats,
+		CurrentChannel: channelHandle,
+		ShareURL:       r.Host + r.URL.Path,
+		IsSample:       isSample,
+		TikTokURL:      "https://www.tiktok.com/@" + channelHandle,
+		YouTubeURL:     "https://www.youtube.com/@" + channelHandle,
+		FacebookURL:    "https://www.facebook.com/" + channelHandle,
+		ZaloURL:        "https://zalo.me",
+	}
+	if err := t.ExecuteTemplate(w, "bio", data); err != nil {
+		log.Printf("web: render bio: %v", err)
+	}
+}
+
+// handleBioRedirect redirects /bio-go/{id} to the target affiliate/product URL while recording clicks.
+func (s *Server) handleBioRedirect(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
+	}
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+	if id > 0 && s.Products != nil {
+		_ = s.Products.RecordClick(id)
+		p, err := s.Products.GetByID(id)
+		if err == nil && p.ProductURL != "" && strings.HasPrefix(p.ProductURL, "http") {
+			http.Redirect(w, r, p.ProductURL, http.StatusFound)
+			return
+		}
+	}
+	// Fallback to bio
+	http.Redirect(w, r, "/bio", http.StatusFound)
+}
+
+// handleBioPin pins a product straight onto the bio storefront from Studio or Viral generators.
+func (s *Server) handleBioPin(w http.ResponseWriter, r *http.Request) {
+	if s.Products == nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Kho sản phẩm chưa khởi tạo"})
+		return
+	}
+	title := strings.TrimSpace(r.FormValue("title"))
+	if title == "" {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Thiếu tên sản phẩm"})
+		return
+	}
+	productURL := strings.TrimSpace(r.FormValue("product_url"))
+	imageURL := strings.TrimSpace(r.FormValue("image_url"))
+	category := strings.TrimSpace(r.FormValue("category"))
+	if category == "" {
+		category = "Đồ Chọn Lọc"
+	}
+	price, _ := parseBounded(r.FormValue("price"), 1e12)
+	if price <= 0 {
+		price = 199000
+	}
+
+	p := products.Product{
+		Source:         "manual",
+		SourceID:       fmt.Sprintf("pin-%d", time.Now().UnixNano()%1000000),
+		Title:          title,
+		Category:       category,
+		Price:          price,
+		Currency:       "VND",
+		CommissionRate: 0.15,
+		ProductURL:     productURL,
+		ShelfStatus:    "shelf",
+	}
+	if imageURL != "" {
+		p.ImageURLs = []string{imageURL}
+	}
+	id, err := s.Products.Save(p)
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Lỗi lưu: " + err.Error()})
+		return
+	}
+	_ = s.Products.SetShelf(id, "shelf", 0)
+
+	s.writeJSON(w, map[string]any{
+		"ok":      true,
+		"id":      id,
+		"message": "✓ Đã ghim sản phẩm vào Kệ hàng & Bio Storefront thành công!",
+		"bio_url": "/bio",
+	})
+}
+

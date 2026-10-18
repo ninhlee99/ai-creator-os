@@ -9,6 +9,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/notify"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
@@ -268,6 +269,14 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 	_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegDone, res.RemoteID)
 	if res.Draft {
 		s.JobStore.AppendLog(jobID, "Đã đăng lên TikTok dưới dạng NHÁP (draft id "+res.RemoteID+") — gắn giỏ hàng + sound trong app TikTok rồi hãy public.")
+		if s.Settings != nil && atOn(s.Settings, KeyNotifyTelegramOn, false) {
+			bot, _ := s.Settings.Get(KeyNotifyTelegramBot)
+			chat, _ := s.Settings.Get(KeyNotifyTelegramChat)
+			if bot != "" && chat != "" {
+				msg := fmt.Sprintf("📱 [TikTok Nháp] Video \"%s\" (Kênh @%s) đã tải lên nháp thành công!\n👉 Hãy mở app TikTok trên điện thoại để gắn giỏ hàng và duyệt đăng vào khung giờ vàng.", title, acct.Username)
+				_ = notify.SendTelegram(bot, chat, msg)
+			}
+		}
 	} else {
 		s.JobStore.AppendLog(jobID, "Đã đăng TikTok (id "+res.RemoteID+").")
 	}

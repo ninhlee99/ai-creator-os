@@ -238,6 +238,35 @@ func (m *AccountManager) SetYoutube(accountID int64, channel string, contentType
 	return m.Get(accountID)
 }
 
+// UpdateAccount updates the full profile of an account.
+func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHint, persona, status, youtubeChannel, theme string, autopilot bool, minComm float64, followers int64) (*Account, error) {
+	autoVal := 0
+	if autopilot {
+		autoVal = 1
+	}
+	_, err := m.db.Exec(`
+		UPDATE accounts 
+		SET username = ?, niche = ?, niche_hint = ?, persona = ?, status = ?, 
+		    youtube_channel = ?, theme = ?, autopilot = ?, min_commission = ?, 
+		    followers = ?, updated_at = datetime('now')
+		WHERE id = ?
+	`, username, niche, nicheHint, persona, status, youtubeChannel, theme, autoVal, minComm, followers, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("network: update account: %w", err)
+	}
+	return m.GetWithAutopilot(accountID)
+}
+
+// DeleteAccount removes an account and associated cascade records.
+func (m *AccountManager) DeleteAccount(accountID int64) error {
+	_, err := m.db.Exec(`DELETE FROM accounts WHERE id = ?`, accountID)
+	if err != nil {
+		return fmt.Errorf("network: delete account: %w", err)
+	}
+	return nil
+}
+
+
 // Transition moves an account to a new status, validating against
 // TRANSITIONS first, and records the governance decision. Extra fields
 // (e.g. persona) are written to the account row alongside the status.

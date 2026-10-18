@@ -1,7 +1,7 @@
 # Hướng dẫn sử dụng (dành cho Ninh)
 
-> Viết lại 2026-10-12 theo app thật (post-pivot: 3 trụ — Affiliate Accesstrade,
-> Reup Douyin, YouTube kể chuyện). Mọi quản trị đều qua **dashboard web** —
+> Cập nhật theo app thật (3 trụ: Affiliate Accesstrade,
+> Video Viral AI 100% Gốc, YouTube kể chuyện). Mọi quản trị đều qua **dashboard web** —
 > không cần chạm CLI.
 
 ## 1. Cài đặt
@@ -34,18 +34,51 @@ cài theo đúng hệ điều hành của máy):
 
 ## 2. Các trang trong dashboard
 
-| Trang | Làm gì |
-|---|---|
-| Trang chủ | Tổng quan + kill switch |
-| Kênh | Tài khoản TikTok/YouTube/Facebook đã kết nối |
-| Phát triển kênh | Kế hoạch 30 ngày, canary 7 ngày, luật kill/nhân đôi |
-| Đội ngũ | Pipeline Hunter → Director → Producer → Publisher → Analyst |
-| Studio AI | Tạo video tay: kịch bản → ảnh → dựng → caption |
-| Affiliate | Chiến dịch Accesstrade, tạo link, video affiliate tự đăng |
-| Reup | Nguồn Douyin, transform, lịch đăng, kill rule |
-| Kể chuyện | Truyện YouTube: hàng đợi chủ đề, job, tự thử lại khi lỗi |
-| Đa nền tảng | Kết nối OAuth TikTok/YouTube/Facebook |
-| Cài đặt | Nhà cung cấp AI, Reup, Accesstrade, An toàn, Hệ thống |
+| Trang | Route | Làm gì |
+|---|---|---|
+| Tổng quan | `/` | Bảng điều khiển, thẻ số liệu doanh thu thật, feed quyết định, kill switch |
+| Agent Harness 🧠 | `/harness` | Bộ não tự hành cấp cao: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory) |
+| Kênh | `/accounts` | Tài khoản TikTok/YouTube/Facebook, hồ sơ Brand DNA từng kênh |
+| Phát triển kênh | `/growth` | Kế hoạch 30 ngày, canary 7 ngày, luật kill/nhân đôi |
+| Đội ngũ | `/team` | Pipeline Affiliate / Video Viral AI / Kể chuyện từ dữ liệu thật |
+| Studio AI 🎬 | `/studio` | Dàn dựng video bán hàng, video đu trend showbiz 9:16, audio story 16:9 |
+| Affiliate | `/products` | Chiến dịch Accesstrade, săn deal, tạo link, kệ hàng bio |
+| Video Viral AI | `/viral` | Xưởng video ngắn 9:16 100% gốc: kịch bản 3s hook, phân cảnh MediaGen, nhạc trending |
+| Kể chuyện | `/stories` | Truyện audio YouTube: hàng đợi chủ đề, job, tự động đăng private |
+| Đa nền tảng | `/publishers` | Kết nối OAuth TikTok/YouTube/Meta Facebook & Instagram |
+| Cài đặt | `/settings` | 5 trang: Hệ thống (**Kho Tài Khoản Web AI**), Accesstrade, Nhà cung cấp, Model local, An toàn |
+
+### 2b. Kết nối tài khoản AI qua Trình duyệt Tự Động (CDP)
+Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn toàn tự động mà **không cần sao chép cookie bằng tay**:
+1. Vào **Cài đặt · Hệ thống** (`/settings/he-thong`) → bấm tab **🤖 Tài khoản AI**.
+2. Tại thẻ của nền tảng bạn muốn kết nối (ví dụ: Grok hoặc Claude), bấm **"🌐 Đăng Nhập Tự Động"**.
+3. Một cửa sổ trình duyệt sạch (profile cô lập hoàn toàn) sẽ tự mở lên. Bạn đăng nhập tài khoản bình thường.
+4. Ngay khi đăng nhập thành công, app sẽ tự động nhận diện email, lưu phiên làm việc an toàn và tự đóng trình duyệt.
+5. Hỗ trợ xoay vòng nhiều tài khoản (multi-account) cho từng nền tảng, tự động chuyển tài khoản khi gặp giới hạn (rate limit).
+
+### 2c. Khóa Nhận Diện Khuôn Mặt Nhân Vật (Character Identity Lock)
+Tạo nhân vật ảo / KOC ảo với khuôn mặt nhất quán 100% xuyên suốt mọi video clip:
+1. Vào **Kênh** (`/accounts`) → chọn kênh cần thiết lập → bấm tab **👤 Nhân vật & Khuôn mặt AI** (`/accounts/{id}?tab=nhan-vat`).
+2. Tải lên 1 hoặc nhiều ảnh chân dung góc chụp rõ nét của nhân vật.
+3. Khi tạo video tại **Video Viral AI** (`/viral`) hoặc **Studio Ad Creative** (`/studio`), hệ thống tự động nhận diện khuôn mặt nhân vật đã ghim của kênh và áp dụng kỹ thuật Character Reference Injection vào AI MediaGen để giữ nguyên thần thái, diện mạo nhân vật trong từng chuyển động, vũ đạo và biểu cảm.
+4. Bạn cũng có thể tải ảnh nhân vật tùy chỉnh trực tiếp ngay tại form tạo video `/viral/create`.
+
+### 2d. Sản Xuất Video Affiliate Hoa Hồng Cao (≥ 20%) & Đăng TikTok
+1. Vào **Sản phẩm & Kệ hàng** (`/products`) → tab **Kệ Hàng Sản Xuất AI** (`/products?tab=ke`). Các sản phẩm có hoa hồng $\ge 20\%$ được tự động gắn huy hiệu **🔥 Hoa hồng cao**.
+2. Bấm **🎬 Dựng video AI** bên cạnh sản phẩm để tạo video quảng bá với định dạng chuẩn dọc 9:16 (1080×1920).
+3. Sau khi video hoàn tất tại **Studio Jobs** (`/studio/jobs`), bấm **📋 Copy Post Kit** để lấy trọn bộ Tiêu đề, Hook 3s, Chú thích chốt sale và Hashtags thịnh hành (#thoitrangnu #phukienthoitrang #xuhuong #dealhot) kèm link Bio Storefront để đăng kênh TikTok ngay.
+4. Bấm **🔗 Ghim vào Kệ Bio** để sản phẩm tự động xuất hiện trên trang Bio Link (`/bio`) của kênh với cơ chế tracking lượt click tự động.
+
+### 2e. Tạo Truyện Kể YouTube 60 Phút & Tự Động Cắt Shorts (9:16)
+1. Tại **Studio AI** (`/studio`) hoặc qua API `/studio/story`, nhập kịch bản cốt truyện hấp dẫn, kịch tính (ví dụ: Hôn nhân hợp đồng, tổng tài, tình cảm nam nữ kịch tính).
+2. Hệ thống tự động phân tách kịch bản thành các hồi và phân cảnh điện ảnh, render video Full HD 1080p (1920×1080, tỉ lệ 16:9) kèm giọng đọc truyền cảm và nhạc nền du dương.
+3. **Bộ cắt tự động (Auto-Clipper)** tích hợp sẵn sẽ quét các phân cảnh cao trào nhất và tự động cắt trích đoạn 9:16 (1080×1920) kèm phụ đề để làm video ngắn Shorts / TikTok / Reels kéo view về video dài YouTube.
+4. Tại `/studio/jobs`, video dài 16:9 và bản cắt Shorts 9:16 đều có player phóng to và nút tải riêng biệt.
+
+### 2f. Quét & Tạo Video Xu Hướng Nhảy Sexy (Viral Dance)
+1. Truy cập **Xưởng Video Viral AI** (`/viral`), khu vực **Khởi Tạo Video 1-Chạm** có sẵn mẫu xu hướng **"Vũ Điệu Triệu View: Hot Dance Sexy Trend TikTok"**.
+2. Bấm **⚡ Tạo Video Này Ngay** hoặc tùy chỉnh chủ đề nhảy thịnh hành kết hợp khóa khuôn mặt nhân vật của bạn.
+3. AI kết hợp nhạc nền bắt tai, nhịp cắt khớp beat và phụ đề động nổi bật (SRT/hardsub) giúp video đạt tỉ lệ giữ chân (retention rate) cao nhất.
 
 ## 3. Vận hành hằng ngày (hands-off)
 
@@ -77,11 +110,11 @@ cài theo đúng hệ điều hành của máy):
 ## 6. Backup & khôi phục
 
 App **tự sao lưu mỗi ngày** vào `backups/` (giữ 7 bản mới nhất) — đủ 5 database
-(ledger, studio, products, accesstrade). Trước khi lưu, app kiểm tra
+(ledger, studio, products, accesstrade, webai). Trước khi lưu, app kiểm tra
 toàn vẹn từng database; bản hỏng bị loại, giữ bản cũ dùng được. Muốn có bản
 ở chỗ khác (phòng chết đĩa): nhập thư mục USB/ổ mạng ở Cài đặt · Hệ thống →
 "Sao lưu & khôi phục" → "Bản sao dự phòng (offsite)" — app tự copy bản mới
-nhất sang đó mỗi ngày. Khôi phục: dừng app, giải nén bản muốn về, chép đè 5
+nhất sang đó mỗi ngày. Khôi phục: dừng app, giải nén bản muốn về, chép đè các
 file `.db` vào `data/`, mở app lại. Chi tiết:
 `docs/features/sao-luu-khoi-phuc.md`.
 

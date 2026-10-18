@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Đăng nhập — AI Creator OS</title>
 <link rel="stylesheet" href="/static/style.css?v={{assetVer}}">
+<script>
+(function(){try{var t=localStorage.getItem('theme');if(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)t='dark';if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <style>
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.login-card{max-width:380px;width:100%}
-.login-card input[type=password]{width:100%;padding:10px;border:1px solid #d8d4cc;border-radius:8px;font-size:16px;margin:8px 0 12px}
-.login-err{color:#a33b2e;font-size:14px;margin-bottom:8px}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.login-card{max-width:380px;width:100%;border-radius:14px;box-shadow:var(--shadow-md)}
+.login-card input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);border-radius:8px;font-size:15px;margin:8px 0 16px;box-sizing:border-box}
+.login-err{color:var(--err);font-size:13px;margin-bottom:10px}
 </style>
 </head>
 <body>

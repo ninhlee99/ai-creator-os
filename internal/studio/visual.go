@@ -5,16 +5,246 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	_ "image/jpeg"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
+
+	xdraw "golang.org/x/image/draw"
 )
+
+// GenerateCinematicStoryScene creates a widescreen 16:9 (1920x1080) cinematic scene frame
+// for YouTube romance/story videos without any text/captions (pure visual).
+func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPath string) error {
+	w, h := 1920, 1080
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+
+	type palette struct {
+		top, mid, bottom color.RGBA
+		warmth           float64
+	}
+	moods := []palette{
+		// Scene 1: Rainy moody dusk / melancholic intro (deep slate blues & navy)
+		{color.RGBA{15, 23, 42, 255}, color.RGBA{30, 41, 59, 255}, color.RGBA{10, 15, 29, 255}, 0.2},
+		// Scene 2: Penthouse cold distance / secret twilight (deep indigo & muted charcoal)
+		{color.RGBA{23, 19, 38, 255}, color.RGBA{45, 36, 68, 255}, color.RGBA{15, 12, 28, 255}, 0.3},
+		// Scene 3: Warm tender kitchen / candlelit soft glow (warm espresso & golden amber)
+		{color.RGBA{44, 24, 16, 255}, color.RGBA{88, 47, 28, 255}, color.RGBA{24, 12, 8, 255}, 0.8},
+		// Scene 4: Secret attic mystery / old parchment (warm sepia & moody bronze)
+		{color.RGBA{38, 28, 20, 255}, color.RGBA{68, 50, 32, 255}, color.RGBA{20, 14, 10, 255}, 0.6},
+		// Scene 5: Intense rainstorm confrontation (dramatic stormy deep cyan & dark graphite)
+		{color.RGBA{12, 28, 36, 255}, color.RGBA{24, 52, 68, 255}, color.RGBA{8, 18, 24, 255}, 0.1},
+		// Scene 6: Heartfelt resolution & eternal romance (rich golden hour & rose twilight)
+		{color.RGBA{58, 24, 38, 255}, color.RGBA{110, 48, 62, 255}, color.RGBA{35, 14, 24, 255}, 0.9},
+	}
+	mIdx := sceneIdx % len(moods)
+	mood := moods[mIdx]
+
+	var photoPath string
+	candidates := []string{
+		"data/output/studio/models/1/1792293509522488000.jpeg",
+		"data/output/studio/models/1/1792293509525665000.jpg",
+		"data/output/studio/models/1/1792293509527521000.jpg",
+		"data/output/studio/models/1/1792293509529067000.jpg",
+	}
+	if len(candidates) > 0 {
+		idx := sceneIdx % len(candidates)
+		if fileExists(candidates[idx]) {
+			photoPath = candidates[idx]
+		}
+	}
+
+	for y := 0; y < h; y++ {
+		t := float64(y) / float64(h)
+		var c color.RGBA
+		if t < 0.5 {
+			s := t / 0.5
+			c = color.RGBA{
+				R: uint8(float64(mood.top.R)*(1-s) + float64(mood.mid.R)*s),
+				G: uint8(float64(mood.top.G)*(1-s) + float64(mood.mid.G)*s),
+				B: uint8(float64(mood.top.B)*(1-s) + float64(mood.mid.B)*s),
+				A: 255,
+			}
+		} else {
+			s := (t - 0.5) / 0.5
+			c = color.RGBA{
+				R: uint8(float64(mood.mid.R)*(1-s) + float64(mood.bottom.R)*s),
+				G: uint8(float64(mood.mid.G)*(1-s) + float64(mood.bottom.G)*s),
+				B: uint8(float64(mood.mid.B)*(1-s) + float64(mood.bottom.B)*s),
+				A: 255,
+			}
+		}
+		for x := 0; x < w; x++ {
+			dst.SetRGBA(x, y, c)
+		}
+	}
+
+	if photoPath != "" {
+		if f, err := os.Open(photoPath); err == nil {
+			if srcImg, _, err := image.Decode(f); err == nil {
+				sb := srcImg.Bounds()
+				sw, sh := sb.Dx(), sb.Dy()
+
+				targetH := h
+				targetW := int(float64(targetH) * float64(sw) / float64(sh))
+				if targetW > w {
+					targetW = w
+				}
+
+				var posX int
+				if sceneIdx%2 == 0 {
+					posX = w/2 - targetW/2
+				} else {
+					posX = (w * 2) / 3 - targetW / 2
+				}
+
+				scaledPhoto := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+				xdraw.BiLinear.Scale(scaledPhoto, scaledPhoto.Bounds(), srcImg, sb, xdraw.Over, nil)
+
+				for py := 0; py < targetH; py++ {
+					for px := 0; px < targetW; px++ {
+						origColor := scaledPhoto.RGBAAt(px, py)
+						edgeDist := float64(px)
+						if float64(targetW-px) < edgeDist {
+							edgeDist = float64(targetW - px)
+						}
+						featherWidth := 160.0
+						alpha := 1.0
+						if edgeDist < featherWidth {
+							alpha = edgeDist / featherWidth
+						}
+
+						dx := posX + px
+						if dx >= 0 && dx < w && py < h {
+							bgCol := dst.RGBAAt(dx, py)
+							tr := uint8(math.Min(255, float64(origColor.R)*(0.85+0.25*mood.warmth)))
+							tg := uint8(math.Min(255, float64(origColor.G)*0.95))
+							tb := uint8(math.Min(255, float64(origColor.B)*(1.05-0.15*mood.warmth)))
+							blended := color.RGBA{
+								R: uint8(float64(bgCol.R)*(1-alpha) + float64(tr)*alpha),
+								G: uint8(float64(bgCol.G)*(1-alpha) + float64(tg)*alpha),
+								B: uint8(float64(bgCol.B)*(1-alpha) + float64(tb)*alpha),
+								A: 255,
+							}
+							dst.SetRGBA(dx, py, blended)
+						}
+					}
+				}
+			}
+			f.Close()
+		}
+	}
+
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			cx, cy := float64(x-w/2)/(float64(w)/2), float64(y-h/2)/(float64(h)/2)
+			r2 := cx*cx + cy*cy
+			if r2 > 0.4 {
+				factor := 1.0 - math.Min(0.5, (r2-0.4)*0.45)
+				pix := dst.RGBAAt(x, y)
+				dst.SetRGBA(x, y, color.RGBA{
+					R: uint8(float64(pix.R) * factor),
+					G: uint8(float64(pix.G) * factor),
+					B: uint8(float64(pix.B) * factor),
+					A: 255,
+				})
+			}
+		}
+	}
+
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	outF, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+	return png.Encode(outF, dst)
+}
+
+// CreateCircularAvatarBadge creates a high-res circular avatar badge with a gradient ring
+// for branding creator videos on TikTok / Reels.
+func CreateCircularAvatarBadge(photoPath string, size int, outPath string) error {
+	if size <= 0 {
+		size = 140
+	}
+	f, err := os.Open(photoPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	src, _, err := image.Decode(f)
+	if err != nil {
+		return err
+	}
+
+	sb := src.Bounds()
+	sw, sh := sb.Dx(), sb.Dy()
+
+	// Square crop source from center
+	minDim := sw
+	if sh < minDim {
+		minDim = sh
+	}
+	cropRect := image.Rect(
+		sb.Min.X+(sw-minDim)/2,
+		sb.Min.Y+(sh-minDim)/2,
+		sb.Min.X+(sw-minDim)/2+minDim,
+		sb.Min.Y+(sh-minDim)/2+minDim,
+	)
+
+	scaled := image.NewRGBA(image.Rect(0, 0, size, size))
+	xdraw.BiLinear.Scale(scaled, scaled.Bounds(), src, cropRect, xdraw.Over, nil)
+
+	badge := image.NewRGBA(image.Rect(0, 0, size, size))
+	radius := float64(size) / 2.0
+	center := radius
+	borderWidth := 3.5
+
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			dx := float64(x) - center
+			dy := float64(y) - center
+			dist := math.Sqrt(dx*dx + dy*dy)
+
+			if dist <= radius-borderWidth {
+				badge.SetRGBA(x, y, scaled.RGBAAt(x, y))
+			} else if dist <= radius {
+				badge.SetRGBA(x, y, color.RGBA{R: 255, G: 215, B: 0, A: 255})
+			} else if dist <= radius+1.0 {
+				alpha := uint8(math.Max(0, (radius+1.0-dist)*255))
+				badge.SetRGBA(x, y, color.RGBA{R: 255, G: 215, B: 0, A: alpha})
+			} else {
+				badge.SetRGBA(x, y, color.RGBA{R: 0, G: 0, B: 0, A: 0})
+			}
+		}
+	}
+
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	outF, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	defer outF.Close()
+	return png.Encode(outF, badge)
+}
 
 // GenerateProductVisual creates a clean, high-resolution product showcase image
 // using pure Go image synthesis. It ensures that video rendering and ad mockups
 // always have high quality visual media even if external AI keys are unavailable.
 func GenerateProductVisual(productName, niche, subTitle string, width, height int, outPath string) error {
+	return GenerateProductVisualWithPhoto("", productName, niche, subTitle, width, height, outPath)
+}
+
+// GenerateProductVisualWithPhoto creates a commercial ad card compositing a background photo
+// (if available) with true TrueType typography, gold campaign badge, star ratings, and CTA button.
+func GenerateProductVisualWithPhoto(photoPath, productName, niche, subTitle string, width, height int, outPath string) error {
 	if width <= 0 {
 		width = 1080
 	}
@@ -22,179 +252,59 @@ func GenerateProductVisual(productName, niche, subTitle string, width, height in
 		height = 1920
 	}
 	if productName == "" {
-		productName = "Sản phẩm chất lượng cao"
+		productName = "Sản Phẩm Chất Lượng Cao"
 	}
 	if niche == "" {
-		niche = "Thương mại điện tử"
+		niche = "Thời trang & Phụ kiện"
 	}
 
-	// 1. Pick color theme based on niche
-	nicheLower := strings.ToLower(niche)
-	var (
-		bgTop    color.RGBA
-		bgMid    color.RGBA
-		bgBot    color.RGBA
-		accent   color.RGBA
-		badgeBg  color.RGBA
-	)
-
-	switch {
-	case strings.Contains(nicheLower, "công nghệ") || strings.Contains(nicheLower, "điện tử"):
-		bgTop = color.RGBA{11, 19, 43, 255}    // Deep Navy
-		bgMid = color.RGBA{28, 37, 65, 255}    // Indigo Blue
-		bgBot = color.RGBA{10, 14, 26, 255}    // Midnight Dark
-		accent = color.RGBA{56, 189, 248, 255} // Cyan
-		badgeBg = color.RGBA{14, 116, 144, 255}
-	case strings.Contains(nicheLower, "thời trang") || strings.Contains(nicheLower, "phụ kiện"):
-		bgTop = color.RGBA{38, 28, 24, 255}    // Deep Espresso
-		bgMid = color.RGBA{64, 46, 38, 255}    // Warm Bronze
-		bgBot = color.RGBA{18, 14, 12, 255}    // Charcoal Dark
-		accent = color.RGBA{251, 191, 36, 255} // Gold
-		badgeBg = color.RGBA{180, 83, 9, 255}
-	case strings.Contains(nicheLower, "mỹ phẩm") || strings.Contains(nicheLower, "làm đẹp"):
-		bgTop = color.RGBA{76, 5, 25, 255}     // Deep Rosewood
-		bgMid = color.RGBA{131, 24, 67, 255}   // Magenta Berry
-		bgBot = color.RGBA{28, 3, 10, 255}     // Dark Cherry
-		accent = color.RGBA{244, 114, 182, 255}// Soft Pink
-		badgeBg = color.RGBA{190, 24, 93, 255}
-	case strings.Contains(nicheLower, "gia dụng") || strings.Contains(nicheLower, "thông minh"):
-		bgTop = color.RGBA{6, 78, 59, 255}     // Deep Emerald
-		bgMid = color.RGBA{4, 120, 87, 255}    // Forest Green
-		bgBot = color.RGBA{2, 44, 34, 255}     // Dark Pine
-		accent = color.RGBA{52, 211, 153, 255} // Mint
-		badgeBg = color.RGBA{5, 150, 105, 255}
-	default:
-		bgTop = color.RGBA{15, 23, 42, 255}    // Slate Dark
-		bgMid = color.RGBA{30, 58, 138, 255}   // Royal Blue
-		bgBot = color.RGBA{2, 6, 23, 255}      // Void Black
-		accent = color.RGBA{96, 165, 250, 255} // Bright Blue
-		badgeBg = color.RGBA{37, 99, 235, 255}
-	}
-
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	// 2. Render Vertical Smooth Gradient
-	hFloat := float64(height)
-	for y := 0; y < height; y++ {
-		t := float64(y) / hFloat
-		var r, g, b uint8
-		if t < 0.5 {
-			s := t * 2.0
-			r = uint8(float64(bgTop.R)*(1-s) + float64(bgMid.R)*s)
-			g = uint8(float64(bgTop.G)*(1-s) + float64(bgMid.G)*s)
-			b = uint8(float64(bgTop.B)*(1-s) + float64(bgMid.B)*s)
-		} else {
-			s := (t - 0.5) * 2.0
-			r = uint8(float64(bgMid.R)*(1-s) + float64(bgBot.R)*s)
-			g = uint8(float64(bgMid.G)*(1-s) + float64(bgBot.G)*s)
-			b = uint8(float64(bgMid.B)*(1-s) + float64(bgBot.B)*s)
+	// If photoPath is empty, try discovering any available model/product photo
+	if photoPath == "" || !fileExists(photoPath) {
+		candidates := []string{
+			"data/output/studio/models/1/1790869026571752000.jpg",
+			"data/output/studio/models/1/1790869026576011000.jpg",
+			"/tmp/unsplash_dress.jpg",
+			"/tmp/unsplash_jewelry.jpg",
 		}
-		rowColor := color.RGBA{r, g, b, 255}
-		for x := 0; x < width; x++ {
-			img.SetRGBA(x, y, rowColor)
+		for _, c := range candidates {
+			if fileExists(c) {
+				photoPath = c
+				break
+			}
 		}
 	}
 
-	// 3. Decorative subtle background grid & ambient circular glow
-	gridStep := 80
-	gridCol := color.RGBA{255, 255, 255, 8}
-	for x := 0; x < width; x += gridStep {
-		for y := 0; y < height; y++ {
-			img.SetRGBA(x, y, blend(img.RGBAAt(x, y), gridCol))
-		}
-	}
-	for y := 0; y < height; y += gridStep {
-		for x := 0; x < width; x++ {
-			img.SetRGBA(x, y, blend(img.RGBAAt(x, y), gridCol))
-		}
+	badge := fmt.Sprintf("✦ %s · BST MỚI 2026 ✦", strings.ToUpper(niche))
+	if subTitle != "" && strings.HasPrefix(subTitle, "PHÂN CẢNH") {
+		badge = fmt.Sprintf("✦ %s ✦", subTitle)
 	}
 
-	// 4. Center Glassmorphic Product Showcase Card
-	cardMarginX := int(float64(width) * 0.08)
-	cardMarginY := int(float64(height) * 0.12)
-	cardW := width - 2*cardMarginX
-	cardH := height - 2*cardMarginY
-	cardBg := color.RGBA{15, 23, 42, 220}
-	borderCol := color.RGBA{accent.R, accent.G, accent.B, 180}
-
-	drawFilledRect(img, cardMarginX, cardMarginY, cardW, cardH, cardBg)
-	drawRectBorder(img, cardMarginX, cardMarginY, cardW, cardH, 4, borderCol)
-
-	// Top accent glow line
-	drawFilledRect(img, cardMarginX, cardMarginY, cardW, 8, accent)
-
-	// 5. Draw Header Badges
-	badgeY := cardMarginY + 50
-	badgeW := 480
-	badgeH := 48
-	badgeX := (width - badgeW) / 2
-	drawFilledRect(img, badgeX, badgeY, badgeW, badgeH, badgeBg)
-	drawSimpleText(img, "✦ AI CREATIVE COMMERCIAL ✦", badgeX+36, badgeY+14, 2, color.RGBA{255, 255, 255, 255})
-
-	// 6. Draw Product Showcase Frame (Inner Hero Box)
-	heroBoxMargin := 60
-	heroBoxX := cardMarginX + heroBoxMargin
-	heroBoxY := badgeY + badgeH + 40
-	heroBoxW := cardW - 2*heroBoxMargin
-	heroBoxH := int(float64(cardH) * 0.46)
-	heroBoxBg := color.RGBA{0, 0, 0, 160}
-	drawFilledRect(img, heroBoxX, heroBoxY, heroBoxW, heroBoxH, heroBoxBg)
-	drawRectBorder(img, heroBoxX, heroBoxY, heroBoxW, heroBoxH, 2, color.RGBA{255, 255, 255, 40})
-
-	// Stylized Product Icon / Emblem in center of hero box
-	iconSize := 160
-	iconX := heroBoxX + (heroBoxW-iconSize)/2
-	iconY := heroBoxY + (heroBoxH-iconSize)/2 - 30
-	drawFilledRect(img, iconX, iconY, iconSize, iconSize, color.RGBA{accent.R, accent.G, accent.B, 40})
-	drawRectBorder(img, iconX, iconY, iconSize, iconSize, 3, accent)
-	drawSimpleText(img, "PROD", iconX+32, iconY+68, 3, accent)
-
-	// Category tag under icon
-	catLabel := fmt.Sprintf("[%s]", strings.ToUpper(niche))
-	drawSimpleText(img, catLabel, heroBoxX+(heroBoxW-len(catLabel)*18)/2, iconY+iconSize+30, 2, color.RGBA{203, 213, 225, 255})
-
-	// 7. Product Title & Descriptions below hero box
-	textStartY := heroBoxY + heroBoxH + 40
-	lines := wrapText(productName, 26)
-	for i, l := range lines {
-		if i >= 3 {
-			break
-		}
-		textX := cardMarginX + heroBoxMargin
-		drawSimpleText(img, strings.ToUpper(l), textX, textStartY+i*52, 4, color.RGBA{255, 255, 255, 255})
+	features := []string{
+		"Chất liệu cao cấp, mềm mịn & thoáng mát",
+		"Thiết kế tôn dáng thanh lịch, thời thượng",
+		"Bảo hành chính hãng - Đổi trả 7 ngày",
 	}
 
-	// Subtitle / USP Highlight
-	uspY := textStartY + len(lines)*52 + 20
-	uspText := subTitle
-	if uspText == "" {
-		uspText = "CHAT LUONG CAO - CHINH HANG 100%"
-	}
-	drawSimpleText(img, uspText, cardMarginX+heroBoxMargin, uspY, 2, accent)
-
-	// 8. Bottom CTA Banner
-	ctaH := 70
-	ctaY := cardMarginY + cardH - ctaH - 40
-	ctaW := cardW - 2*heroBoxMargin
-	ctaX := cardMarginX + heroBoxMargin
-	drawFilledRect(img, ctaX, ctaY, ctaW, ctaH, accent)
-	drawSimpleText(img, "DAT MUA NGAY - UU DAI HOM NAY", ctaX+(ctaW-29*18)/2, ctaY+22, 2, color.RGBA{15, 23, 42, 255})
-
-	// Ensure destination directory exists
-	if dir := filepath.Dir(outPath); dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
+	opts := AdCardOptions{
+		BgPhotoPath:   photoPath,
+		Niche:         niche,
+		TopBadge:      badge,
+		Title:         strings.ToUpper(productName),
+		Subtitle:      subTitle,
+		Features:      features,
+		RatingText:    "★★★★★ 4.9/5 · 2.4k+ Đã Bán",
+		PriceText:     "890.000 ₫",
+		OriginalPrice: "1.490.000 ₫",
+		DiscountText:  "TIẾT KIỆM 40%",
+		CTAText:       "MUA NGAY · GIỎ HÀNG GÓC TRÁI ➔",
+		Width:         width,
+		Height:        height,
 	}
 
-	f, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return png.Encode(f, img)
+	return ComposeProductAdCard(opts, outPath)
 }
+
+
 
 func blend(c1, c2 color.RGBA) color.RGBA {
 	a2 := float64(c2.A) / 255.0

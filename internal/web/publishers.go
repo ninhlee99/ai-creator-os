@@ -10,6 +10,9 @@ import (
 )
 
 func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []string, status string) publisherRow {
+	if len(ytContentTypes) == 0 && fileExists(publishers.YouTubeTokenPath(username)) {
+		ytContentTypes = []string{"short_video", "short_film"}
+	}
 	var plats []string
 	for _, p := range publishers.BuildPublishers(username, ytChannel, ytContentTypes) {
 		plats = append(plats, p.Name())
@@ -20,11 +23,20 @@ func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []st
 			ytDead = true
 		}
 	}
+	ttPub := publishers.NewTikTokPublisher(username)
+	ttExists := fileExists(publishers.TikTokTokenPath(username))
+	ttDead := false
+	if s.Ledger != nil {
+		if _, ok, _ := s.Ledger.GetSetting(tiktokTokenDeadKey(username)); ok {
+			ttDead = true
+		}
+	}
 	return publisherRow{
 		Username:         username,
 		Status:           status,
-		TiktokToken:      fileExists(publishers.TikTokTokenPath(username)),
-		TiktokClient:     publishers.NewTikTokPublisher(username).HasClient(),
+		TiktokToken:      ttExists,
+		TiktokTokenDead:  ttDead,
+		TiktokClient:     ttPub.HasClient(),
 		YoutubeToken:     fileExists(publishers.YouTubeTokenPath(username)),
 		YoutubeClient:    publishers.NewYouTubePublisher(username, nil, "").HasClient(),
 		YoutubeTokenDead: ytDead,
@@ -51,6 +63,7 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTiktokClient", anyClient,
 		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
+		"PendingVideo", r.URL.Query().Get("video"), "PendingTitle", r.URL.Query().Get("title"),
 		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal(),
 		"AppBase", "http://"+r.Host))
 }

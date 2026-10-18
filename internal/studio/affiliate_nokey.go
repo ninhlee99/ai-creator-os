@@ -59,9 +59,9 @@ func ownSources(p AffiliateParams) []string {
 // HasOwnPhotos báo job có ảnh tải lên để dựng không cần key.
 func (p AffiliateParams) HasOwnPhotos() bool { return len(ownSources(p)) > 0 }
 
-// ownPhotoSet dựng bộ khung từ ảnh tải lên. Ít ảnh (1–2) thì mỗi ảnh cắt
-// 4 khung cho đủ nhịp; từ 3 ảnh trở lên chỉ lấy toàn cảnh + cận giữa mỗi
-// ảnh — video là nhiều ảnh thật khác nhau thay vì lặp 1 ảnh.
+// ownPhotoSet dựng bộ khung từ ảnh thật của sản phẩm. Ít ảnh (1–2) thì mỗi ảnh cắt
+// 4 khung cho đủ nhịp; từ 3 ảnh trở lên lấy 2 khung mỗi ảnh — video là nhiều góc
+// ảnh thật khác nhau.
 func ownPhotoSet(ctx context.Context, p AffiliateParams, work string) []string {
 	src := ownSources(p)
 	crops := 4

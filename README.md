@@ -1,6 +1,6 @@
 # AI Creator OS
 
-**Hệ điều hành tự vận hành cho 3 trụ kiếm tiền: Affiliate qua Accesstrade, Reup video Douyin, YouTube kể chuyện ngôi thứ nhất.** Bạn chỉ bật app và theo dõi — mọi quyết định vận hành do hệ thống tự quyết theo rule đã định.
+**Hệ điều hành tự vận hành cho 3 trụ kiếm tiền: Affiliate qua Accesstrade, Video Viral AI 100% Gốc (TikTok/Shorts/Reels), YouTube kể chuyện ngôi thứ nhất.** Bạn chỉ bật app và theo dõi — mọi quyết định vận hành do hệ thống tự quyết theo rule đã định.
 
 > **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar và bỏ làm phim điện ảnh.
 > Code live/phim đã **park bằng build tag `parked`** (không biên dịch vào
@@ -11,34 +11,39 @@
 
 ## 🎯 Ba trụ
 
-| Trụ | Trạng thái code (sau Đợt H3) |
+| Trụ | Trạng thái code |
 |---|---|
-| **1. Affiliate qua Accesstrade** | ✅ Đợt B/C xong: client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key — **chưa test bằng token thật**. Lưu ý: link chỉ ra tiền khi có người mua — cần traffic từ kênh; TikTok hiện chỉ đăng bản nháp (bấm Đăng tay từng video) |
+| **1. Affiliate qua Accesstrade** | ✅ Client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key |
 | **2. Video Viral AI 100% Gốc** | ✅ Xưởng sáng tạo video ngắn 9:16 (TikTok, Reels, Shorts) nguyên bản 100%. Kịch bản tâm lý học 3s Hook + Story + CTA, hình ảnh 9:16 MediaGen độc quyền, lồng tiếng truyền cảm, âm nhạc thịnh hành Kworb VN. Xóa bỏ hoàn toàn rủi ro vi phạm bản quyền và thuật toán phạt 0-view shadowban của việc reup |
-| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Đợt F xong: truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 (không chèn chữ/phụ đề) → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
+| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 (không chèn chữ/phụ đề) → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
 
-Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover — format Ninh chốt), **Video Viral AI 100% Gốc** (`/viral`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover), **Video Viral AI 100% Gốc** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 > 💡 **Chiến lược Nội dung Bền Vững (Zero-Reup):** Hệ thống nói KHÔNG với việc cào hoặc tải lại video của bên thứ ba (vốn chịu rủi ro bản quyền, anti-bot Douyin và bị thuật toán phạt 0-view). Toàn bộ nội dung viral được sản xuất từ tài sản gốc 100% (Original Assets) chuẩn cấu trúc giữ chân 3 giây đầu tiên.
 
 ---
 
-## 🖥️ Giao diện hiện tại (sidebar 10 mục)
+## 🖥️ Cấu trúc Giao diện & Điều hướng
 
-| Mục | Route | Vai trò hiện tại |
-|---|---|---|
-| Trang chủ | `/` | Thẻ số liệu, feed 8 quyết định, cảnh báo growth, trạng thái runtime local, chip MASTER_SWITCH |
-| Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: trạng thái, autopilot, kết nối OAuth, badge YouTube Analytics |
-| Phát triển kênh | `/growth` | Kế hoạch nội dung 30 ngày, ngưỡng kill/double-down, sản xuất tự động |
-| Đội ngũ | `/team` | Sức khỏe 3 pipeline (Affiliate/Video Viral/Story) từ dữ liệu thật |
-| Studio AI 🎬 | `/studio` | **Video affiliate** (ảnh + nhạc) · Video đã tạo · Nhạc trending. Phim điện ảnh và video chữ động đã gỡ |
-| Affiliate | `/products` | Kho sản phẩm + kệ hàng + lịch autopilot (Accesstrade-only từ đợt H1) |
-| Video Viral AI | `/viral` | Xưởng sản xuất video ngắn 9:16 100% gốc · Khởi tạo 1-chạm · Hook tâm lý học · Trình phát video |
-| Kể chuyện | `/stories` | Truyện ngôi thứ nhất → ảnh minh họa từng cảnh → TTS → dựng 16:9 → tự đăng YouTube private (mặc định bật) |
-| Đa nền tảng | `/publishers` | Trạng thái kết nối TikTok/YouTube/Facebook/RTMP từng kênh |
-| Cài đặt | `/settings` | 5 trang: Hệ thống · Accesstrade · Nhà cung cấp · Model local · An toàn. Tab Nhân vật AI đã park |
+Sidebar hệ thống phân nhóm trực quan thành 3 khối nghiệp vụ chính:
 
-`/schedule` (Lịch live) đã park → **404**.
+| Nhóm | Mục | Route | Vai trò hệ thống |
+|---|---|---|---|
+| **Điều Hành** | Tổng quan | `/` | Bảng điều khiển thời gian thực: thẻ doanh thu thật, feed quyết định, cảnh báo tăng trưởng, chip trạng thái & kill switch |
+| | Agent Harness 🧠 | `/harness` | **Bộ não tự hành cấp cao**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory), điều phối tự chủ toàn danh mục |
+| | Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: hồ sơ Brand DNA, autopilot, kết nối OAuth, badge YouTube Analytics |
+| | Đội ngũ Agent | `/team` | Giám sát sức khỏe 3 pipeline sản xuất (Affiliate, Video Viral, Kể chuyện) từ dữ liệu thật |
+| **Sản Xuất** | Studio AI 🎬 | `/studio` | Xưởng dàn dựng video: Video bán hàng & Affiliate · Video Đu Trend Showbiz 9:16 · Truyện audio 16:9 · Nhạc trending |
+| | Affiliate | `/products` | Săn deal Accesstrade, kho sản phẩm, kệ hàng thông minh, lịch autopilot |
+| **Quản Trị** | Cài đặt hệ thống | `/settings` | 5 phân hệ: Hệ thống (gồm **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp & Chuỗi Key · Model local (VieNeu) · An toàn |
+
+### 🔗 Các phân hệ chuyên sâu & Đường dẫn trực tiếp:
+- **Cửa Hàng Bio Link Kênh (Public Storefront)**: `/bio` hoặc `/bio/{channel}` — Trang web landing page mobile-first tối ưu cho TikTok/Reels/Shorts, tự động đồng bộ từ kệ hàng affiliate, hỗ trợ lọc danh mục tức thì, tìm kiếm nhanh và chuyển hướng tracking link Accesstrade.
+- **Video Viral AI 100% Gốc**: `/viral` — Khởi tạo 1-chạm video ngắn 9:16, hook tâm lý học, trình phát video modal HTML5 tích hợp trực tiếp trên web.
+- **Kể chuyện YouTube**: `/stories` — Hàng đợi kịch bản, ảnh minh họa 16:9, TTS lồng tiếng, tự động đăng private.
+- **Phát triển kênh**: `/growth` — Kế hoạch nội dung 30 ngày, canary testing 7 ngày, quy tắc kill / double-down.
+- **Đa nền tảng**: `/publishers` — Quản lý token OAuth TikTok, YouTube, Facebook Page & Instagram Reels.
+- **Kho Tài khoản Web AI**: `/settings/he-thong#tab-webai` — Trình duyệt tự động đăng nhập CDP, cô lập phiên sạch (`os.MkdirTemp`), tự xoay vòng đa tài khoản ChatGPT, Claude, Gemini, Grok, Muse AI.
 
 ---
 
@@ -97,10 +102,12 @@ vào app.
 | AI Mission Control — Giao mục tiêu chiến lược 1-chạm & tự động thực thi | ✅ 2026-10-16 — Phân tích mục tiêu, tự động phối hợp các khối, theo dõi tiến độ thời gian thực |
 | Brand DNA & Original TikTok Engine — Bản sắc thương hiệu & nội dung nguyên bản | ✅ 2026-10-16 — Hồ sơ Brand DNA từng kênh (Định vị, Chân dung, 4 Hook 3s, Ranh giới đỏ, QC 10 tiêu chí) |
 | Trend Intelligence — Bóc tách xu hướng & tính điểm cơ hội (Zero-Reup) | ✅ 2026-10-16 — Phân tích tín hiệu Kworb VN & radar Douyin, chấm điểm tương thích Brand DNA |
+| **Master Agent Harness (`/harness`)** — Não tự hành OODA & Ký ức kinh nghiệm | ✅ 2026-10-16 — Vòng lặp Quan sát-Định hướng-Quyết định-Hành động, lưu trữ sự kiện SQLite |
+| **Kho Tài Khoản Web AI (`/settings/he-thong#tab-webai`)** — CDP Login & Multi-Account | ✅ 2026-10-17 — Tự động mở trình duyệt CDP, bắt cookie/session ChatGPT, Claude, Gemini, Grok, Muse AI, cô lập profile tạm thời |
 | Bảng “Tự động hóa” trên Trang chủ | ✅ 2026-10-12 — 6 công tắc tự động gom 1 chỗ (vẫn ghi đúng khóa của trang gốc) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** 591 hàm test trong 100 file (không tính vùng parked). Build/vet/test
+**Test:** Toàn bộ test suites trong runtime chính đạt 100% PASS. Build/vet/test
 xanh cả 2 tag — kiểm chứng lại bằng lệnh ở trên.
 
 ---
@@ -114,7 +121,7 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 ```
 
 - **1 binary / 1 nền tảng** (Windows/macOS/Linux): `GOOS=windows GOARCH=amd64 go build ./cmd/aicos`…
-- **Dữ liệu nằm gọn trong 1 thư mục** (`-data`, mặc định `./data`): `ledger.db`, `studio.db`, `products.db`, `content_jobs.json`, `tokens/`, `output/`, `models/`.
+- **Dữ liệu nằm gọn trong 1 thư mục** (`-data`, mặc định `./data`): `ledger.db`, `studio.db`, `products.db`, `webai.db`, `content_jobs.json`, `tokens/`, `output/`, `models/`.
 - **Sao lưu/khôi phục** ở Cài đặt · Hệ thống: tải `.zip` ảnh chụp dữ liệu; khôi phục upload zip → kiểm chứng → khởi động lại app để áp dụng.
 - **API `/api/*` mặc định TẮT** (bật bằng công tắc ở Cài đặt · Hệ thống khi cần).
 
@@ -122,13 +129,14 @@ go build -ldflags "-X main.version=v1.0.0" -o aicos ./cmd/aicos
 
 | Ai đọc | File |
 |---|---|
-| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (18 file chuyên sâu, mô tả chính xác logic code thật) |
+| Từng tính năng — mô tả đúng logic code thật | [`docs/features/`](docs/features/) (19 file chuyên sâu, mô tả chính xác logic code thật) |
 | Thiết kế pivot 3 trụ (đích đến các đợt B→G) | [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md) |
 | Nghiên cứu Accesstrade + Douyin | [`docs/REUP_AFFILIATE_RESEARCH.md`](docs/REUP_AFFILIATE_RESEARCH.md) |
 | Chuẩn tuân thủ nghiêm ngặt (kiến trúc, docs, UI, quy trình, zero-touch) | [`docs/STANDARDS.md`](docs/STANDARDS.md) |
 | Kiến trúc kỹ thuật | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) |
 | Thiết kế UI/UX | [`docs/UI_UX_BLUEPRINT.md`](docs/UI_UX_BLUEPRINT.md) |
 | Người dùng: cài đặt, chạy trên Mac, vận hành hằng ngày | [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) |
+| Phân tích khoảng trống sản phẩm & Nhu cầu người dùng | [`docs/GAP_ANALYSIS_AND_USER_NEEDS.md`](docs/GAP_ANALYSIS_AND_USER_NEEDS.md) |
 | Dev / AI code assistant | [`docs/DEVELOPER.md`](docs/DEVELOPER.md) |
 | Chính sách & an toàn | [`docs/POLICY_AND_SAFETY.md`](docs/POLICY_AND_SAFETY.md) |
 

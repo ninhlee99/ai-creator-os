@@ -66,9 +66,14 @@
       {{if not .Platforms}}<span class="badge badge-no" style="font-size:11px">Chưa kết nối MXH</span>{{end}}
     </div>
 
-    <div class="channel-card-footer">
-      <span class="hint" style="font-size:12px">ID: {{.ID}}</span>
-      <a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}" style="font-size:13px;padding:6px 14px">Quản lý kênh ↗</a>
+    <div class="channel-card-footer" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
+      <span class="hint" style="font-size:11.5px;font-family:monospace">#{{.ID}}</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <a class="btn btn-secondary btn-sm" href="/viral?account={{.Username}}" title="Tạo video nhảy trending cho kênh này" style="font-size:11px;padding:4px 8px">💃 Vũ đạo</a>
+        <a class="btn btn-secondary btn-sm" href="/studio?account={{.Username}}" title="Tạo video affiliate cho kênh này" style="font-size:11px;padding:4px 8px">🛍️ Affiliate</a>
+        <a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}/edit" style="font-size:11px;padding:4px 8px">✏️ Sửa</a>
+        <a class="btn btn-primary btn-sm" href="/accounts/{{.ID}}" style="font-size:11px;padding:4px 10px;font-weight:700">Quản lý ➔</a>
+      </div>
     </div>
   </div>
   {{end}}

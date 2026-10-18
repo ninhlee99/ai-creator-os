@@ -220,19 +220,26 @@ func (s *Server) handleStoryCreate(w http.ResponseWriter, r *http.Request) {
 
 // storyParamsFromForm đọc form tạo truyện + clamp giá trị.
 func storyParamsFromForm(r *http.Request) studio.StoryParams {
+	durMin, _ := strconv.Atoi(r.FormValue("duration_minutes"))
+	if durMin <= 0 {
+		durMin = 30
+	}
 	words, _ := strconv.Atoi(r.FormValue("words"))
 	scenes, _ := strconv.Atoi(r.FormValue("scenes"))
 	genre := strings.TrimSpace(r.FormValue("genre"))
 	if genre == "" {
 		genre = "tâm lý"
 	}
+	autoClip := r.FormValue("auto_clip_shorts") != "0"
 	return studio.StoryParams{
-		Topic:   strings.TrimSpace(r.FormValue("topic")),
-		Genre:   genre,
-		Words:   words,
-		Scenes:  scenes,
-		MusicOn: r.FormValue("music_on") == "1",
-		Voice:   strings.TrimSpace(r.FormValue("voice")),
+		Topic:           strings.TrimSpace(r.FormValue("topic")),
+		Genre:           genre,
+		DurationMinutes: durMin,
+		Words:           words,
+		Scenes:          scenes,
+		MusicOn:         r.FormValue("music_on") == "1",
+		Voice:           strings.TrimSpace(r.FormValue("voice")),
+		AutoClipShorts:  autoClip,
 	}
 }
 

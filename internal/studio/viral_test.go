@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestViralScriptGeneration(t *testing.T) {
@@ -72,5 +73,7 @@ func TestEnqueueViralJob(t *testing.T) {
 	if jobs[0].Kind != KindViral {
 		t.Errorf("expected kind %q, got %q", KindViral, jobs[0].Kind)
 	}
+	s.CancelRunning(jobID)
+	time.Sleep(100 * time.Millisecond)
 	s.DeleteJob(jobID)
 }

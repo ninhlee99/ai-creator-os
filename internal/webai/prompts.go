@@ -13,14 +13,87 @@ type LLMCompleter interface {
 	Complete(ctx context.Context, system, prompt string) (string, error)
 }
 
-// GenerateAdScriptPackage generates a creative script & prompt package (fallback to domain-aware engine).
-func GenerateAdScriptPackage(productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
-	return GenerateAdScriptPackageWithLLM(context.Background(), nil, productName, niche, framework, targetAudience, keyBenefits, cta)
+// AI Engine persona constants for creative copywriting and storyboard generation.
+const (
+	EngineAuto    = "auto"
+	EngineClaude  = "claude"
+	EngineGrok    = "grok"
+	EngineChatGPT = "chatgpt"
+	EngineGemini  = "gemini"
+)
+
+// EngineInfo holds metadata for display and persona styling.
+type EngineInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Badge       string `json:"badge"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
 }
 
-// GenerateAdScriptPackageWithLLM generates an intelligent creative script & prompt package using real LLM
-// if available, combined with rigorous automated Quality Control (QC) scoring across hook, niche, and production.
+// SupportedEngines returns metadata for all available AI engine personas.
+func SupportedEngines() []EngineInfo {
+	return []EngineInfo{
+		{
+			ID:          EngineAuto,
+			Name:        "Tự Động (Auto-Balance)",
+			Badge:       "⚡ Tự Động (Smart Auto-Balance)",
+			Icon:        "⚡",
+			Description: "Tự động phân tích ngành hàng để chọn AI phù hợp nhất",
+		},
+		{
+			ID:          EngineClaude,
+			Name:        "Claude 3.7 Sonnet",
+			Badge:       "🧠 Claude 3.7 Sonnet (Storytelling & Điện Ảnh)",
+			Icon:        "🟣",
+			Description: "Văn phong chiều sâu cảm xúc, review chân thực, nghệ thuật",
+		},
+		{
+			ID:          EngineGrok,
+			Name:        "Grok 3 (xAI)",
+			Badge:       "🚀 Grok 3 (Hook Sốc & Viral Trend)",
+			Icon:        "🚀",
+			Description: "Bắt trend drama sốc, hook phản biện đanh thép, bùng nổ tranh luận",
+		},
+		{
+			ID:          EngineChatGPT,
+			Name:        "ChatGPT 4o",
+			Badge:       "🎯 ChatGPT 4o (PAS & Chốt Đơn Chuyển Đổi)",
+			Icon:        "💬",
+			Description: "Tâm lý học hành vi, chuyển đổi PAS, chốt đơn cấp tốc",
+		},
+		{
+			ID:          EngineGemini,
+			Name:        "Gemini 2.0 Flash",
+			Badge:       "✨ Gemini 2.0 Flash (Thị Giác 4K & Đa Giác Quan)",
+			Icon:        "✨",
+			Description: "Đa giác quan, hình ảnh 4K sắc nét, chi tiết kỹ thuật",
+		},
+	}
+}
+
+func getEngineBadge(engine string) string {
+	for _, e := range SupportedEngines() {
+		if e.ID == engine {
+			return e.Badge
+		}
+	}
+	return "⚡ Tự Động (Smart Auto-Balance)"
+}
+
+// GenerateAdScriptPackage generates a creative script & prompt package (fallback to domain-aware engine).
+func GenerateAdScriptPackage(productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
+	return GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineAuto, productName, niche, framework, targetAudience, keyBenefits, cta)
+}
+
+// GenerateAdScriptPackageWithLLM maintains backwards compatibility.
 func GenerateAdScriptPackageWithLLM(ctx context.Context, llm LLMCompleter, productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
+	return GenerateAdScriptPackageWithEngine(ctx, llm, EngineAuto, productName, niche, framework, targetAudience, keyBenefits, cta)
+}
+
+// GenerateAdScriptPackageWithEngine generates an intelligent creative script & prompt package customized
+// for the selected AI engine persona (Claude 3.7, Grok 3, ChatGPT 4o, Gemini 2.0, or Smart Auto-Balance).
+func GenerateAdScriptPackageWithEngine(ctx context.Context, llm LLMCompleter, engine, productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
 	productName = strings.TrimSpace(productName)
 	if productName == "" {
 		productName = "Sản phẩm xu hướng"
@@ -42,19 +115,70 @@ func GenerateAdScriptPackageWithLLM(ctx context.Context, llm LLMCompleter, produ
 		cta = "Bấm ngay vào giỏ hàng hoặc link bên dưới để nhận ưu đãi hôm nay!"
 	}
 
-	// 1. Try real LLM generation if client is available
+	engine = strings.ToLower(strings.TrimSpace(engine))
+	if engine == "" {
+		engine = EngineAuto
+	}
+
+	effectiveEngine := engine
+	badge := getEngineBadge(engine)
+
+	if engine == EngineAuto {
+		nicheLower := strings.ToLower(niche)
+		if strings.Contains(nicheLower, "mỹ phẩm") || strings.Contains(nicheLower, "làm đẹp") || strings.Contains(nicheLower, "da") || strings.Contains(nicheLower, "thời trang") {
+			effectiveEngine = EngineClaude
+			badge = "⚡ Tự Động → 🟣 Claude 3.7 (Storytelling)"
+		} else if strings.Contains(nicheLower, "công nghệ") || strings.Contains(nicheLower, "điện tử") || strings.Contains(nicheLower, "trend") || strings.Contains(nicheLower, "drama") {
+			effectiveEngine = EngineGrok
+			badge = "⚡ Tự Động → 🚀 Grok 3 (Hook Sốc Viral)"
+		} else if strings.Contains(nicheLower, "gia dụng") || strings.Contains(nicheLower, "deal") || strings.Contains(nicheLower, "bán lẻ") {
+			effectiveEngine = EngineChatGPT
+			badge = "⚡ Tự Động → 💬 ChatGPT 4o (PAS Chốt Sale)"
+		} else {
+			effectiveEngine = EngineGemini
+			badge = "⚡ Tự Động → ✨ Gemini 2.0 (Thị Giác 4K)"
+		}
+	}
+
+	// 1. Try real LLM generation if client is available (bounded to 12s so interactive UI never hangs)
 	if llm != nil {
-		if pkg, err := generateViaLLM(ctx, llm, productName, niche, framework, targetAudience, keyBenefits, cta); err == nil && len(pkg.Scenes) > 0 {
+		llmCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+		pkg, err := generateViaLLM(llmCtx, llm, effectiveEngine, badge, productName, niche, framework, targetAudience, keyBenefits, cta)
+		cancel()
+		if err == nil && len(pkg.Scenes) > 0 {
+			pkg.AIEngine = effectiveEngine
+			pkg.AIEngineBadge = badge
 			return pkg
 		}
 	}
 
-	// 2. High-quality Domain-Aware Fallback Engine with Niche Knowledge & QC
-	return generateDomainAwarePackage(productName, niche, framework, targetAudience, keyBenefits, cta)
+	// 2. High-quality Domain-Aware Fallback Engine with Niche & Persona Knowledge & QC
+	pkg := generateDomainAwarePackage(effectiveEngine, badge, productName, niche, framework, targetAudience, keyBenefits, cta)
+	pkg.AIEngine = effectiveEngine
+	pkg.AIEngineBadge = badge
+	return pkg
 }
 
-func generateViaLLM(ctx context.Context, llm LLMCompleter, productName, niche, framework, targetAudience, keyBenefits, cta string) (AdScriptPackage, error) {
-	systemPrompt := `Bạn là Giám đốc Sáng tạo (Creative Director) & Chuyên gia Kịch bản Bán hàng Triệu View hàng đầu trên TikTok / Reels / Shorts tại Việt Nam.
+func generateViaLLM(ctx context.Context, llm LLMCompleter, engine, badge, productName, niche, framework, targetAudience, keyBenefits, cta string) (AdScriptPackage, error) {
+	var personaIntro string
+	switch engine {
+	case EngineClaude:
+		personaIntro = `Bạn là Chuyên gia Kể chuyện & Đạo diễn Nghệ thuật hàng đầu theo phong cách Claude 3.7 Sonnet.
+Thế mạnh của bạn: Văn phong có chiều sâu cảm xúc, câu chữ tinh tế, review tự nhiên như một người bạn thân tín đang tâm sự. Phân cảnh và prompt mang đậm chất điện ảnh nghệ thuật (Cinematic 4K).`
+	case EngineGrok:
+		personaIntro = `Bạn là Chiến thần Giật Tít & Phản biện Bắt Trend Triệu View theo phong cách Grok 3 (xAI).
+Thế mạnh của bạn: Hook 3 giây đầu phải cực kỳ giật gân, lật ngược vấn đề (contrarian), đanh thép, không ngại nói thẳng vào sự thật mất lòng để người xem phải dừng lại tranh cãi và chia sẻ bùng nổ.`
+	case EngineChatGPT:
+		personaIntro = `Bạn là Bậc thầy Chốt Đơn & Tâm lý học Bán hàng Chuyển đổi Cao theo phong cách ChatGPT 4o.
+Thế mạnh của bạn: Cấu trúc bán hàng PAS (Problem - Agitate - Solve) và AIDA đỉnh cao. Nhấn mạnh nỗi đau, tạo cảm giác khan hiếm và sợ bỏ lỡ ưu đãi (FOMO), nêu bật lý do không thể từ chối để chốt đơn ngay lập tức.`
+	case EngineGemini:
+		personaIntro = `Bạn là Đạo diễn Thị giác & Đa phương tiện theo phong cách Gemini 2.0 Flash.
+Thế mạnh của bạn: Tốc độ cao, ngôn ngữ giàu tính mô tả trực quan, đa giác quan (thị giác 4K, xúc giác, âm thanh sống động), tối ưu tuyệt đối cho công nghệ sinh ảnh và video mượt mà.`
+	default:
+		personaIntro = `Bạn là Giám đốc Sáng tạo (Creative Director) & Chuyên gia Kịch bản Bán hàng Triệu View hàng đầu trên TikTok / Reels / Shorts tại Việt Nam.`
+	}
+
+	systemPrompt := personaIntro + `
 Nhiệm vụ của bạn là phân tích sâu sản phẩm và ngành hàng mà người dùng cung cấp, sau đó sáng tạo một Gói Kịch Bản Bán Hàng & Phân Cảnh Điện Ảnh hoàn chỉnh, đậm chất thực chiến Việt Nam, tuyệt đối không dùng văn mẫu chung chung, sáo rỗng hay dịch máy.
 
 Yêu cầu ngôn ngữ & phong cách:
@@ -136,7 +260,8 @@ Ngành hàng: "%s"
 Khung kịch bản: "%s"
 Đối tượng mục tiêu: "%s"
 Ưu điểm nổi bật: "%s"
-Kêu gọi hành động: "%s"`, productName, niche, framework, targetAudience, keyBenefits, cta)
+Kêu gọi hành động: "%s"
+Định hướng Persona AI: "%s"`, productName, niche, framework, targetAudience, keyBenefits, cta, badge)
 
 	resp, err := llm.Complete(ctx, systemPrompt, userPrompt)
 	if err != nil {
@@ -183,7 +308,7 @@ Kêu gọi hành động: "%s"`, productName, niche, framework, targetAudience, 
 
 // generateDomainAwarePackage produces highly targeted, realistic Vietnamese creator scripts
 // customized for each specific product niche, avoiding generic corporate templates.
-func generateDomainAwarePackage(productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
+func generateDomainAwarePackage(engine, badge, productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
 	nicheLower := strings.ToLower(niche)
 	isBeauty := strings.Contains(nicheLower, "mỹ phẩm") || strings.Contains(nicheLower, "làm đẹp") || strings.Contains(nicheLower, "da")
 	isFashion := strings.Contains(nicheLower, "thời trang") || strings.Contains(nicheLower, "áo") || strings.Contains(nicheLower, "quần")
@@ -500,6 +625,71 @@ func generateDomainAwarePackage(productName, niche, framework, targetAudience, k
 		}
 	}
 
+	// Persona-specific hook tuning for Grok, Claude, ChatGPT, and Gemini
+	if engine == EngineGrok {
+		pkg.HookText = fmt.Sprintf("Cảnh báo: 90%% người dùng %s đang lãng phí tiền vì một sai lầm mà nhãn hàng không muốn bạn biết!", productName)
+		grokHooks := []HookVariant{
+			{
+				Type:  "warning",
+				Title: "Grok 3: Hook Phản Biện Đanh Thép",
+				Text:  fmt.Sprintf("DỪNG LẠI! Đừng bao giờ mua %s nếu bạn chưa nghe sự thật mất lòng này...", productName),
+				Angle: "Lật ngược định kiến, đánh thẳng vào tâm lý tò mò hoài nghi của người xem.",
+			},
+			{
+				Type:  "curiosity",
+				Title: "Grok 3: Bóc Phốt Thực Tế",
+				Text:  fmt.Sprintf("Tại sao các reviewer nhận tiền không bao giờ dám nói thật về nhược điểm của %s?", productName),
+				Angle: "Khai thác chủ đề tranh cãi drama cực kỳ hút comment tranh luận trên TikTok.",
+			},
+		}
+		pkg.HookVariants = append(grokHooks, pkg.HookVariants...)
+		if len(pkg.HookVariants) > 4 {
+			pkg.HookVariants = pkg.HookVariants[:4]
+		}
+	} else if engine == EngineClaude {
+		pkg.HookText = fmt.Sprintf("Có một điều kỳ lạ là từ ngày mình dùng %s, thói quen mỗi ngày đã thay đổi hoàn toàn...", productName)
+		claudeHooks := []HookVariant{
+			{
+				Type:  "social_proof",
+				Title: "Claude 3.7: Câu Chuyện Chân Thực",
+				Text:  fmt.Sprintf("Một câu chuyện nhỏ về lý do tại sao %s là món đồ gắn bó nhất với mình suốt thời gian qua...", productName),
+				Angle: "Chạm đến cảm xúc và sự đồng cảm sâu sắc của người xem.",
+			},
+			{
+				Type:  "curiosity",
+				Title: "Claude 3.7: Chiêm Nghiệm Nghệ Thuật",
+				Text:  fmt.Sprintf("Không ồn ào quảng cáo, nhưng đây là chi tiết khiến mình trân trọng %s nhất...", productName),
+				Angle: "Định vị sản phẩm bằng chiều sâu thẩm mỹ và phong cách sống.",
+			},
+		}
+		pkg.HookVariants = append(claudeHooks, pkg.HookVariants...)
+		if len(pkg.HookVariants) > 4 {
+			pkg.HookVariants = pkg.HookVariants[:4]
+		}
+	} else if engine == EngineChatGPT {
+		pkg.HookText = fmt.Sprintf("Nếu bạn đang chật vật với vấn đề này mỗi ngày, đây là giải pháp dứt điểm chỉ với %s!", productName)
+		chatgptHooks := []HookVariant{
+			{
+				Type:  "pain_point",
+				Title: "ChatGPT 4o: Đánh Trúng Nỗi Đau (PAS)",
+				Text:  fmt.Sprintf("Dừng lãng phí thời gian và tiền bạc! Đây là cách %s giải quyết dứt điểm nỗi lo của bạn.", productName),
+				Angle: "Khung PAS kinh điển, kích thích hành động mua ngay không do dự.",
+			},
+			{
+				Type:  "warning",
+				Title: "ChatGPT 4o: Báo Động FOMO Ưu Đãi",
+				Text:  fmt.Sprintf("Duy nhất hôm nay: Tiết kiệm ngay khi săn %s trước khi hết suất ưu đãi!", productName),
+				Angle: "Tạo cảm giác khan hiếm và thúc đẩy chốt đơn lập tức.",
+			},
+		}
+		pkg.HookVariants = append(chatgptHooks, pkg.HookVariants...)
+		if len(pkg.HookVariants) > 4 {
+			pkg.HookVariants = pkg.HookVariants[:4]
+		}
+	}
+
+	pkg.AIEngine = engine
+	pkg.AIEngineBadge = badge
 	pkg.QC = evaluateQC(pkg.HookText, pkg.Scenes, niche)
 	pkg.QC.CheckedAt = time.Now().Format("15:04 02/01/2006")
 	fillComplementaryPackageFields(&pkg, keyBenefits)

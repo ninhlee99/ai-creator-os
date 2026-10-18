@@ -619,8 +619,18 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	topicGroups := studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
 	presetTopicGroups := studio.GetAllPresetTopicGroups()
 
+	var selectedModelID int64
+	if midStr := r.URL.Query().Get("model_id"); midStr != "" {
+		selectedModelID, _ = strconv.ParseInt(midStr, 10, 64)
+	}
+	availableModels := s.listModelPhotoCards()
+	if selectedModelID == 0 && len(availableModels) > 0 {
+		selectedModelID = availableModels[0].ID
+	}
+
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
+		"Shelf", s.shelfViews(),
 		"JobCount", jobCount,
 		"ActiveJobs", activeJobs,
 		"RunningCount", activeJobs,
@@ -634,6 +644,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"AccountNames", accountNames,
+		"AvailableModels", availableModels,
+		"SelectedModelID", selectedModelID,
 		"ViralTrends", defaultViralTrends,
 		"TikTokTrends", ttTrends,
 		"TopicGroups", topicGroups,
@@ -755,11 +767,100 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	upDir := s.Studio.UploadDir()
-	modelPhoto, err := saveUpload(r, "model_photo", upDir)
-	if err != nil {
-		studioErr("Ảnh mẫu lỗi: " + err.Error())
-		return
+	var modelPhotos []string
+	for _, key := range []string{"model_photos", "character_photos", "model_photo", "character_photo"} {
+		if photos, _ := saveUploads(r, key, upDir, 10); len(photos) > 0 {
+			modelPhotos = append(modelPhotos, photos...)
+		}
 	}
+	if len(modelPhotos) == 0 {
+		if p1, _ := saveUpload(r, "model_photo", upDir); p1 != "" {
+			modelPhotos = append(modelPhotos, p1)
+		} else if p2, _ := saveUpload(r, "character_photo", upDir); p2 != "" {
+			modelPhotos = append(modelPhotos, p2)
+		}
+	}
+
+	acctName := strings.TrimSpace(r.FormValue("account"))
+	var acctID int64
+	if rawID := strings.TrimSpace(r.FormValue("account_id")); rawID != "" {
+		acctID, _ = strconv.ParseInt(rawID, 10, 64)
+	}
+	if acctID == 0 && acctName != "" && s.Mgr != nil {
+		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			for _, a := range accounts {
+				if a != nil && a.Username == acctName {
+					acctID = a.ID
+					break
+				}
+			}
+		}
+	}
+	if len(modelPhotos) > 0 && acctID > 0 && s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil {
+			for _, pth := range modelPhotos {
+				_, _ = ms.Add(acctID, pth)
+			}
+		}
+	}
+	if len(modelPhotos) == 0 && acctID > 0 && s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil {
+			if photos, err := ms.List(acctID); err == nil && len(photos) > 0 {
+				for _, ph := range photos {
+					modelPhotos = append(modelPhotos, ph.Path)
+				}
+			}
+		}
+	}
+	if len(modelPhotos) == 0 {
+		if midStr := strings.TrimSpace(r.FormValue("model_id")); midStr != "" {
+			if mid, err := strconv.ParseInt(midStr, 10, 64); err == nil && mid > 0 {
+				if photoPath, perr := s.findModelPhotoByID(mid); perr == nil && photoPath != "" {
+					modelPhotos = append(modelPhotos, photoPath)
+				}
+			}
+		}
+	}
+	var modelPhoto string
+	if len(modelPhotos) > 0 {
+		modelPhoto = modelPhotos[0]
+	}
+	prodName := strings.TrimSpace(r.FormValue("product_name"))
+	niche := strings.TrimSpace(r.FormValue("niche"))
+	priceVal := strings.TrimSpace(r.FormValue("product_price"))
+	affLinkVal := strings.TrimSpace(r.FormValue("aff_link"))
+
+	var remotePhotoURLs []string
+	if pidStr := strings.TrimSpace(r.FormValue("product_id")); pidStr != "" && s.Products != nil {
+		if pid, err := strconv.ParseInt(pidStr, 10, 64); err == nil && pid > 0 {
+			if prod, perr := s.Products.GetByID(pid); perr == nil {
+				if prodName == "" {
+					prodName = prod.Title
+				}
+				if priceVal == "" && prod.Price > 0 {
+					priceVal = fmt.Sprintf("%.0f ₫", prod.Price)
+				}
+				if niche == "" && prod.Category != "" {
+					niche = prod.Category
+				}
+				if affLinkVal == "" && prod.ProductURL != "" {
+					affLinkVal = prod.ProductURL
+				}
+				remotePhotoURLs = append(remotePhotoURLs, prod.ImageURLs...)
+			}
+		}
+	}
+	rawUrls := strings.TrimSpace(r.FormValue("photo_urls"))
+	if rawUrls == "" {
+		rawUrls = strings.TrimSpace(r.FormValue("photo_url"))
+	}
+	for _, u := range strings.Split(rawUrls, "\n") {
+		u = strings.TrimSpace(u)
+		if u != "" {
+			remotePhotoURLs = append(remotePhotoURLs, u)
+		}
+	}
+
 	productPhoto, err := saveUpload(r, "product_photo", upDir)
 	if err != nil {
 		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
@@ -772,13 +873,39 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
+
+	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
+	if err != nil {
+		studioErr("Ảnh thêm lỗi: " + err.Error())
+		return
+	}
+
+	// Tải ảnh sản phẩm thật từ URL (nếu người dùng nhập URL hoặc chọn từ kệ)
+	for i, u := range remotePhotoURLs {
+		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+			continue
+		}
+		if productPhoto != "" && len(extraPhotos) >= 5 {
+			break
+		}
+		dlDst := filepath.Join(upDir, fmt.Sprintf("%d-dl-prod-%d.jpg", time.Now().UnixNano(), i))
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		derr := studio.DownloadImage(ctx, u, dlDst)
+		cancel()
+		if derr == nil && fileExists(dlDst) {
+			if productPhoto == "" {
+				productPhoto = dlDst
+			} else {
+				extraPhotos = append(extraPhotos, dlDst)
+			}
+		}
+	}
+
 	if productPhoto == "" {
 		genPath := filepath.Join(upDir, fmt.Sprintf("%d-autogen-prod.png", time.Now().UnixNano()))
-		prodName := strings.TrimSpace(r.FormValue("product_name"))
 		if prodName == "" {
 			prodName = "Sản phẩm AI Creator"
 		}
-		niche := strings.TrimSpace(r.FormValue("niche"))
 		if s.Studio != nil && s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
 			prompt := fmt.Sprintf("Ultra-detailed professional commercial advertising photograph of %s, %s, 4K quality, tack-sharp focus, photorealistic, cinematic lighting, 9:16 vertical, no text, no watermark", prodName, niche)
 			if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), prompt, nil, genPath); gerr == nil {
@@ -791,11 +918,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 			}
 		}
 	}
-	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
-	if err != nil {
-		studioErr("Ảnh thêm lỗi: " + err.Error())
-		return
-	}
+
 	musicPath, err := saveUpload(r, "music_file", upDir)
 	if err != nil {
 		studioErr("File nhạc lỗi: " + err.Error())
@@ -817,8 +940,6 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
 	bpm, _ := strconv.Atoi(r.FormValue("bpm"))
 	musicStart, _ := strconv.ParseFloat(r.FormValue("music_start"), 64)
-	// Đợt AC: clamp biên server-side (template có min/max nhưng POST tay
-	// bypass được; nhập chữ → Atoi trả 0).
 	seconds = clampInt(seconds, 10, 120)
 	bpm = clampInt(bpm, 60, 200)
 	if musicStart < 0 {
@@ -835,11 +956,25 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		assignedDepts = []string{"DEP-01", "DEP-02", "DEP-03", "DEP-04", "DEP-05"}
 	}
 
+	voText := strings.TrimSpace(r.FormValue("voiceover_text"))
+	if voText == "" && prodName != "" {
+		priceStr := ""
+		if priceVal != "" {
+			priceStr = ", giá ưu đãi chỉ " + priceVal
+		}
+		voText = fmt.Sprintf("Khám phá %s chính hãng. Thiết kế sang trọng, chất lượng cao cấp%s. Bấm vào giỏ hàng góc trái săn ưu đãi ngay hôm nay!", prodName, priceStr)
+	}
+
 	p := studio.AffiliateParams{
 		Mode:          r.FormValue("mode"),
-		Niche:         strings.TrimSpace(r.FormValue("niche")),
-		ProductName:   strings.TrimSpace(r.FormValue("product_name")),
+		Niche:         niche,
+		ProductName:   prodName,
+		ProductPrice:  priceVal,
+		AffLink:       affLinkVal,
+		FixedCaption:  strings.TrimSpace(r.FormValue("caption")),
+		VoiceoverText: voText,
 		ModelPhoto:    modelPhoto,
+		ModelPhotos:   modelPhotos,
 		ProductPhoto:  productPhoto,
 		ExtraPhotos:   extraPhotos,
 		Seconds:       seconds,
@@ -853,11 +988,30 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	if p.ProductName == "" {
 		p.ProductName = "Sản phẩm"
 	}
-	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
+
+	sampleClip := strings.TrimSpace(r.FormValue("sample_clip"))
+	if sampleClip != "" {
+		candidates := []string{
+			filepath.Join(s.DataDir, "clips", "fashion", sampleClip),
+			filepath.Join(s.DataDir, "clips", "fashion", sampleClip+".mp4"),
+			filepath.Join("data", "clips", "fashion", sampleClip),
+			filepath.Join("data", "clips", "fashion", sampleClip+".mp4"),
+		}
+		for _, cand := range candidates {
+			if fileExists(cand) {
+				p.Clips = []string{cand}
+				break
+			}
+		}
+	}
+	// Chỉ sử dụng clips nếu người dùng chọn rõ ràng sampleClip
+
+	jobID, err := s.Studio.CreateAffiliateJob(p)
+	if err != nil {
 		studioErr("Không tạo được job: " + err.Error())
 		return
 	}
-	seeOther(w, r, "/studio/jobs")
+	seeOther(w, r, "/studio/jobs?tab=running&msg=created&job_id="+jobID)
 }
 
 // (R2-W3), JSON for polling when Accept: application/json.
@@ -1268,17 +1422,32 @@ func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.mp4$`)
+var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.(mp4|srt|vtt|mp3|wav|jpg|jpeg|png|webp)$`)
 
 func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	// Strict allowlist: a single path segment, .mp4 only. Anything else
+	// Strict allowlist: a single path segment, valid media extensions only. Anything else
 	// (including "..") is a 404.
 	if !mediaNameRe.MatchString(name) {
 		http.NotFound(w, r)
 		return
 	}
 	serveMediaFile(w, r, filepath.Join(s.OutDir, name))
+}
+
+// handleClipMedia serves sample motion/lookbook video clips from data/clips/.
+func (s *Server) handleClipMedia(w http.ResponseWriter, r *http.Request) {
+	cat := r.PathValue("category")
+	name := r.PathValue("name")
+	if cat != "viral" && cat != "fashion" {
+		http.NotFound(w, r)
+		return
+	}
+	if !mediaNameRe.MatchString(name) {
+		http.NotFound(w, r)
+		return
+	}
+	serveMediaFile(w, r, filepath.Join("data", "clips", cat, name))
 }
 
 // --------------------------------------------------------------- publishers
@@ -1425,12 +1594,41 @@ func (s *Server) handleStudioViralCreate(w http.ResponseWriter, r *http.Request)
 	}
 	musicURL := r.PostFormValue("music_url")
 
+	var accountID int64
+	var uploadedPhotos []string
+	if account != "" && s.Mgr != nil {
+		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			for _, a := range accounts {
+				if a != nil && a.Username == account {
+					accountID = a.ID
+					break
+				}
+			}
+		}
+	}
+	if accountID > 0 && s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil {
+			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
+				for _, ph := range photos {
+					uploadedPhotos = append(uploadedPhotos, ph.Path)
+				}
+			}
+		}
+	}
+	var modelPhoto string
+	if len(uploadedPhotos) > 0 {
+		modelPhoto = uploadedPhotos[0]
+	}
+
 	p := studio.ViralParams{
 		Topic:          topic,
 		Genre:          genre,
 		VisualMood:     visualMood,
 		Voice:          voice,
 		Account:        account,
+		AccountID:      accountID,
+		ModelPhoto:     modelPhoto,
+		ModelPhotos:    uploadedPhotos,
 		TargetDuration: duration,
 		MusicURL:       musicURL,
 	}
@@ -1490,6 +1688,7 @@ func (s *Server) handleStudioStoryCreate(w http.ResponseWriter, r *http.Request)
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
 		return
 	}
+	_ = r.ParseMultipartForm(10 << 20)
 	_ = r.ParseForm()
 	genre := strings.TrimSpace(r.PostFormValue("genre"))
 	if genre == "" {
@@ -1639,5 +1838,115 @@ func (s *Server) handleAPITikTokTopics(w http.ResponseWriter, r *http.Request) {
 		"presets": presets,
 	})
 }
+
+// handleStudioMuseImport tải video đã tạo từ Muse AI, lồng nhạc trending TikTok và lưu vào Studio.
+func (s *Server) handleStudioMuseImport(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Studio chưa sẵn sàng"))
+		return
+	}
+	_ = r.ParseForm()
+	videoURL := strings.TrimSpace(r.FormValue("video_url"))
+	if videoURL == "" {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Vui lòng nhập link video từ Muse AI"))
+		return
+	}
+	topic := strings.TrimSpace(r.FormValue("topic"))
+	if topic == "" {
+		topic = "Video Chuyển Động Muse AI"
+	}
+	genre := strings.TrimSpace(r.FormValue("genre"))
+	if genre == "" {
+		genre = "dance"
+	}
+	account := strings.TrimSpace(r.FormValue("account"))
+	musicStyle := strings.TrimSpace(r.FormValue("music_style"))
+	if musicStyle == "" {
+		musicStyle = "trending"
+	}
+
+	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
+	_ = os.MkdirAll(workDir, 0o755)
+
+	rawVideo := filepath.Join(workDir, "muse_raw.mp4")
+
+	client := &http.Client{Timeout: 90 * time.Second}
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, videoURL, nil)
+	if err != nil {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Link video không hợp lệ: "+err.Error()))
+		return
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
+	resp, err := client.Do(req)
+	if err != nil {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể tải video từ Muse AI: "+err.Error()))
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape(fmt.Sprintf("Muse AI trả về mã HTTP %d", resp.StatusCode)))
+		return
+	}
+	f, err := os.Create(rawVideo)
+	if err != nil {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể lưu video: "+err.Error()))
+		return
+	}
+	_, _ = io.Copy(f, resp.Body)
+	f.Close()
+
+	finalVideoName := fmt.Sprintf("muse_%s.mp4", jobID)
+	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
+
+	nowStr := time.Now().Format("15:04:05")
+	logMsg := fmt.Sprintf("%s ✓ Nhập video từ Muse AI thành công: %s\n", nowStr, filepath.Base(rawVideo))
+
+	if musicStyle != "keep_original" {
+		trendMusic := studio.FindTrendingMusic(genre)
+		if trendMusic != "" {
+			logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc TikTok Trending: %s\n", nowStr, filepath.Base(trendMusic))
+			if merr := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); merr != nil {
+				_ = os.Rename(rawVideo, finalVideoPath)
+			}
+		} else {
+			_ = os.Rename(rawVideo, finalVideoPath)
+		}
+	} else {
+		_ = os.Rename(rawVideo, finalVideoPath)
+	}
+
+	caption := studio.TemplateCaption(topic, genre)
+	paramsJSON, _ := json.Marshal(map[string]any{
+		"topic":       topic,
+		"genre":       genre,
+		"account":     account,
+		"source":      "muse_ai",
+		"video_url":   videoURL,
+		"music_style": musicStyle,
+	})
+	nowDB := time.Now().Format("2006-01-02 15:04:05")
+	if s.db != nil {
+		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
+			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
+			jobID, "Muse AI: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Nhập video từ Muse AI job=%s: %s", jobID, topic), nil)
+	}
+
+	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã nhập thành công video từ Muse AI và ghép nhạc trending (Job: %s)!", jobID)))
+}
+
+// handleAPIFaceSwapStatus trả về thông tin trạng thái hoạt động của Face Swap engine cục bộ.
+func (s *Server) handleAPIFaceSwapStatus(w http.ResponseWriter, r *http.Request) {
+	st := studio.CheckFaceSwapEngine(r.Context())
+	s.writeJSON(w, map[string]any{
+		"ok":     true,
+		"status": st,
+	})
+}
+
 
 

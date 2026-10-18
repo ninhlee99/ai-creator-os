@@ -184,3 +184,45 @@ func TestShelfLifecycle(t *testing.T) {
 		t.Fatalf("shelf = %d after migration, want 1", len(shelf))
 	}
 }
+
+func TestRecordClick(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "click_test.db")
+	store, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	defer store.Close()
+
+	id, err := store.Save(Product{
+		Source:   "manual",
+		SourceID: "CLK1",
+		Title:    "Bàn chải điện",
+	})
+	if err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	p, err := store.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if p.ClickCount != 0 {
+		t.Errorf("initial ClickCount = %d, want 0", p.ClickCount)
+	}
+
+	if err := store.RecordClick(id); err != nil {
+		t.Fatalf("RecordClick 1: %v", err)
+	}
+	if err := store.RecordClick(id); err != nil {
+		t.Fatalf("RecordClick 2: %v", err)
+	}
+
+	pAfter, err := store.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID after clicks: %v", err)
+	}
+	if pAfter.ClickCount != 2 {
+		t.Errorf("ClickCount = %d, want 2", pAfter.ClickCount)
+	}
+}
+

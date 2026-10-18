@@ -1,129 +1,32 @@
-{{define "title"}}Studio AI — AI Creator OS{{end}}
+{{define "title"}}Studio AI — Affiliate Bán Hàng & Lookbook — AI Creator OS{{end}}
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "affiliate"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1 id="studio-top">Studio Dàn Dựng Video AI</h1>
-    <p class="subtitle">Sản xuất video chất lượng cao chuẩn dọc 9:16 hoặc ngang 16:9 với chuyển động điện ảnh và tự động cân bằng âm thanh.</p>
+    <h1>Affiliate Lookbook</h1>
+    <p class="subtitle">Sản xuất video giới thiệu sản phẩm 9:16 tối ưu cho TikTok Shop &amp; Shopee.</p>
   </div>
   <div class="webai-header-actions">
-    {{if .ActiveJobs}}<span class="badge badge-info"><span class="pulse-dot"></span> {{.ActiveJobs}} video đang dựng</span>{{end}}
+    <a href="/products" class="btn btn-secondary btn-sm">📦 Kệ Hàng</a>
+    <a href="/models" class="btn btn-secondary btn-sm">🎭 Nhân Vật</a>
+    <a href="/studio/trends" class="btn btn-secondary btn-sm">🎵 Nhạc thịnh hành</a>
+    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video ↗</a>
   </div>
 </div>
+
+<!-- Unified Studio Suite Navigation -->
+<nav class="tabs" style="margin-bottom: 20px;">
+  <a href="/studio" class="active">🛍️ Xưởng Video Affiliate Lookbook (9:16)</a>
+  <a href="/viral">🔥 Xưởng Video Đu Trend Viral (9:16)</a>
+  <a href="/stories">📖 Xưởng Kể Chuyện Audio (16:9)</a>
+</nav>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 
-<!-- Primary Studio Navigation Tabs -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio" class="active">Tạo video</a>
-  <a href="/studio/jobs?tab=running">
-    Video đang dựng {{if .ActiveJobs}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.ActiveJobs}}</span>{{end}}
-  </a>
-  <a href="/studio/jobs?tab=schedule">Lên lịch tự động</a>
-  <a href="/studio/jobs">
-    Video đã tạo {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
-  </a>
-  <a href="/studio/trends">Nhạc thịnh hành</a>
-</nav>
-
-{{if .ActiveJobs}}
-<!-- Live AI Factory Production In-Progress Banner -->
-<div class="card" style="border-radius:12px;padding:12px 18px;margin-bottom:18px;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-  <div style="display:flex;align-items:center;gap:10px">
-    <span class="pulse-dot"></span>
-    <div>
-      <b style="color:var(--text);font-size:13.5px">⚡ Dây chuyền AI đang sản xuất {{.ActiveJobs}} video</b>
-      <div style="font-size:12px;color:var(--muted)">Các phòng ban AI đang phối hợp viết kịch bản, vẽ hình ảnh và thu âm voiceover.</div>
-    </div>
-  </div>
-  <a href="/studio/jobs?tab=running" class="btn btn-primary btn-sm" style="font-weight:700">Xem sơ đồ &amp; tiến độ trực tiếp ➔</a>
-</div>
-{{end}}
-
-<!-- Bộ Chọn 3 Chế Độ Sản Xuất Video AI -->
-<div class="production-mode-bar" style="background:var(--bg2);padding:10px 14px;border-radius:14px;margin-bottom:24px;border:1px solid var(--border)">
-  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
-    CHỌN KỊCH BẢN &amp; CHẾ ĐỘ SẢN XUẤT VIDEO:
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:10px">
-    <button type="button" id="mode-btn-affiliate" class="mode-select-btn active" onclick="switchProductionMode('affiliate')">
-      <span class="mode-icon">🛍️</span>
-      <div class="mode-text">
-        <strong>1. Video Bán Hàng &amp; Affiliate</strong>
-        <small>Sản phẩm rõ ràng, giá ưu đãi &amp; ghim link giỏ hàng</small>
-      </div>
-    </button>
-    <button type="button" id="mode-btn-viral" class="mode-select-btn" onclick="switchProductionMode('viral')">
-      <span class="mode-icon">⚡</span>
-      <div class="mode-text">
-        <strong>2. Video Đu Trend &amp; Drama Showbiz (9:16)</strong>
-        <small>Top 10 TikTok Trending &amp; Biến căng Showbiz Việt/Trung</small>
-      </div>
-    </button>
-    <button type="button" id="mode-btn-story" class="mode-select-btn" onclick="switchProductionMode('story')">
-      <span class="mode-icon">📻</span>
-      <div class="mode-text">
-        <strong>3. Truyện Audio YouTube &amp; Cắt Shorts</strong>
-        <small>AI tự nghĩ cốt truyện audio 16:9 + Tự cắt clip ngắn 3–5 phút</small>
-      </div>
-    </button>
-  </div>
-</div>
-
-<!-- =========================================================================
-     TAB 1: High Quality Web AI Product Ad Creative (2-Column Split Workbench)
-     ========================================================================= -->
 <div id="panel-creative">
-  <!-- 1-Click Executive Fast Launcher (Tạo Video 1-Chạm Chuẩn QC) -->
-  <div class="card" style="border-radius:14px;padding:16px 18px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.05) 0%, rgba(16,185,129,0.05) 100%);border:1.5px solid var(--accent)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:22px">⚡</span>
-        <div>
-          <b style="font-size:14.5px;color:var(--text)">Khởi Tạo Nhanh Từ Xu Hướng Hôm Nay</b>
-        </div>
-      </div>
-      <span class="badge badge-ok" style="font-size:10.5px;font-weight:700"><span class="pulse-dot"></span> TOP 4 VIRAL DEALS</span>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">
-      <div class="preset-launch-card" onclick="loadStudioSample('serum')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:all 0.15s ease">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:18px">✨</span>
-          <span class="badge badge-ok" style="font-size:9.5px">HH 22% · QC 96đ</span>
-        </div>
-        <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:3px">Serum Mờ Nám 7 Ngày</strong>
-        <div style="font-size:11px;color:var(--muted)">Hook cảnh báo da dầu · Mỹ phẩm</div>
-      </div>
-
-      <div class="preset-launch-card" onclick="loadStudioSample('headphone')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:all 0.15s ease">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:18px">🎧</span>
-          <span class="badge badge-info" style="font-size:9.5px">Douyin Trend · QC 94đ</span>
-        </div>
-        <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:3px">Tai Nghe Chống Ồn Sony</strong>
-        <div style="font-size:11px;color:var(--muted)">Hook so sánh độ trễ · Công nghệ</div>
-      </div>
-
-      <div class="preset-launch-card" onclick="loadStudioSample('fryer')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:all 0.15s ease">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:18px">🍳</span>
-          <span class="badge badge-ok" style="font-size:9.5px">HH 18% · QC 92đ</span>
-        </div>
-        <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:3px">Nồi Chiên Không Dầu 8L</strong>
-        <div style="font-size:11px;color:var(--muted)">Hook món chiên giòn · Gia dụng</div>
-      </div>
-
-      <div class="preset-launch-card" onclick="loadStudioSample('polo')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;transition:all 0.15s ease">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:18px">👔</span>
-          <span class="badge badge-draft" style="font-size:9.5px">Top 1 Sales · QC 95đ</span>
-        </div>
-        <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:3px">Áo Polo Nam Lụa Lạnh</strong>
-        <div style="font-size:11px;color:var(--muted)">Hook test co giãn &amp; chống nhăn</div>
-      </div>
-    </div>
-  </div>
-
   <form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
     <div class="studio-workbench-split">
       <!-- LEFT COLUMN: Form Controls & Media Workbench (60%) -->
@@ -134,6 +37,25 @@
           <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
             <span style="font-size:20px">📦</span> 1. Thông tin sản phẩm &amp; Kịch bản
           </h3>
+
+          {{if .Shelf}}
+          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label style="margin:0;font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+                <span>📦</span> Chọn nhanh từ Kệ hàng Affiliate có sẵn:
+              </label>
+              <a href="/products?tab=ke" target="_blank" style="font-size:11.5px;color:var(--accent);font-weight:700">Quản lý kệ hàng ↗</a>
+            </div>
+            <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:13px;font-weight:600;width:100%">
+              <option value="">— Chọn một sản phẩm thật trên kệ để tự động nạp thông số &amp; ảnh —</option>
+              {{range .Shelf}}
+              <option value="{{.Title}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}" data-comm="{{printf "%.0f" (pct .CommissionRate)}}%">
+                {{.Title}} · {{fmtVND .Price}} (Hoa hồng {{printf "%.0f" (pct .CommissionRate)}}%)
+              </option>
+              {{end}}
+            </select>
+          </div>
+          {{end}}
           <div class="grid3">
             <div class="field">
               <label>Tên sản phẩm <span class="req">*</span></label>
@@ -160,8 +82,62 @@
             <input type="url" name="aff_link" placeholder="https://go.isclix.com/deep_link/... hoặc link shopee/tiktok shop">
           </div>
 
+          <!-- AI Engine & Model Selector with Live Pool Status -->
+          <div style="background:var(--bg3);padding:14px 16px;border-radius:12px;margin-top:16px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <label style="font-weight:700;font-size:13px;margin:0;display:flex;align-items:center;gap:6px">
+                <span>🤖</span> Chọn Model AI Viết Kịch Bản:
+              </label>
+              <!-- Live AI Fleet Status Badges -->
+              <div id="st-ai-pool-status" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px">
+                <span class="badge badge-ok">🟣 Claude: 1 On</span>
+                <span class="badge badge-ok">💬 ChatGPT: 2 On</span>
+                <span class="badge badge-ok">✨ Gemini: 2 On</span>
+                <span class="badge badge-ok">🚀 Grok: 2 On</span>
+                <span class="badge badge-ok">🎬 Muse AI: 1 On</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px">
+              <label class="st-engine-card" id="st-eng-auto" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1.5px solid var(--accent);padding:10px 12px;border-radius:8px;transition:all 0.2s">
+                <input type="radio" name="cr_ai_engine" value="auto" checked onchange="updateEngineHighlight(this)" style="margin-top:2px">
+                <div style="font-size:12px;line-height:1.3">
+                  <strong style="color:var(--accent);display:block">⚡ Tự Động (Auto-Balance)</strong>
+                  <span class="hint" style="font-size:11px">Phân tích ngành hàng chọn AI tối ưu</span>
+                </div>
+              </label>
+              <label class="st-engine-card" id="st-eng-claude" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
+                <input type="radio" name="cr_ai_engine" value="claude" onchange="updateEngineHighlight(this)" style="margin-top:2px">
+                <div style="font-size:12px;line-height:1.3">
+                  <strong style="color:#d97706;display:block">🧠 Claude 3.7 Sonnet</strong>
+                  <span class="hint" style="font-size:11px">Storytelling, chiều sâu & review cảm xúc</span>
+                </div>
+              </label>
+              <label class="st-engine-card" id="st-eng-grok" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
+                <input type="radio" name="cr_ai_engine" value="grok" onchange="updateEngineHighlight(this)" style="margin-top:2px">
+                <div style="font-size:12px;line-height:1.3">
+                  <strong style="color:#38bdf8;display:block">🚀 Grok 3 (xAI)</strong>
+                  <span class="hint" style="font-size:11px">Hook sốc, phản biện & bùng nổ tranh cãi</span>
+                </div>
+              </label>
+              <label class="st-engine-card" id="st-eng-chatgpt" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
+                <input type="radio" name="cr_ai_engine" value="chatgpt" onchange="updateEngineHighlight(this)" style="margin-top:2px">
+                <div style="font-size:12px;line-height:1.3">
+                  <strong style="color:#10b981;display:block">🎯 ChatGPT 4o</strong>
+                  <span class="hint" style="font-size:11px">Khung PAS, kích thích FOMO & chốt sale</span>
+                </div>
+              </label>
+              <label class="st-engine-card" id="st-eng-gemini" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
+                <input type="radio" name="cr_ai_engine" value="gemini" onchange="updateEngineHighlight(this)" style="margin-top:2px">
+                <div style="font-size:12px;line-height:1.3">
+                  <strong style="color:#60a5fa;display:block">✨ Gemini 2.0 Flash</strong>
+                  <span class="hint" style="font-size:11px">Đa giác quan & prompt ảnh 4K sắc nét</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <!-- Integrated AI Script & QC Studio Cockpit (Quy trình 1 màn hình duy nhất) -->
-          <div style="background:var(--bg3);padding:16px;border-radius:12px;margin-top:16px;border:1px solid var(--border)">
+          <div style="background:var(--bg3);padding:16px;border-radius:12px;margin-top:14px;border:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
               <div>
                 <b style="font-size:14px;color:var(--text)">✍️ Khởi tạo Kịch bản &amp; QC</b>
@@ -183,11 +159,12 @@
               <!-- QC Scorecard Banner -->
               <div style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:14px">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-                  <div style="display:flex;align-items:center;gap:8px">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                     <span style="font-size:22px">🛡️</span>
                     <div>
                       <strong style="font-size:14px">Đánh Giá QC Kịch Bản:</strong>
                       <span class="badge badge-ok" id="st-qc-verdict" style="margin-left:6px;font-weight:700">Đạt Chuẩn Triệu View</span>
+                      <span class="badge badge-info" id="st-ai-engine-badge" style="margin-left:6px;font-weight:700">⚡ Tự Động</span>
                     </div>
                   </div>
                   <div style="font-size:18px;font-weight:800;color:var(--accent)">
@@ -278,6 +255,7 @@
                 <span class="file-name" id="prod-photo-label-cr">Chưa chọn ảnh</span>
               </div>
               <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
+              <input type="hidden" name="photo_urls" id="cr-photo-urls">
               <div id="cr-ai-photo-preview" style="display:none;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
                 <img id="cr-ai-photo-img" src="" alt="Ảnh sản phẩm AI" style="width:100%;max-height:180px;object-fit:cover;display:block">
                 <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px">
@@ -286,12 +264,45 @@
               </div>
             </div>
             <div class="field">
-              <label>Ảnh người mẫu (Đồng nhất khuôn mặt)</label>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <label style="margin:0;font-weight:700">Khuôn mặt người mẫu (Face Lock)</label>
+                <a href="/models" style="font-size:11.5px;color:var(--accent);font-weight:700">🎭 Thư Viện Nhân Vật ➔</a>
+              </div>
+              <input type="hidden" name="model_id" id="cr-model-id" value="{{.SelectedModelID}}">
+              {{if .AvailableModels}}
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                {{range .AvailableModels}}
+                <div class="character-face-pill cr-face-item {{if eq .ID $.SelectedModelID}}selected{{end}}" onclick="document.getElementById('cr-model-id').value='{{.ID}}';document.querySelectorAll('.cr-face-item').forEach(function(p){p.style.borderColor='var(--border)'});this.style.borderColor='var(--accent)';" style="cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg2);padding:4px 8px;border-radius:8px;border:1.5px solid {{if eq .ID $.SelectedModelID}}var(--accent){{else}}var(--border){{end}}">
+                  <img src="{{.URL}}" alt="{{.Filename}}" style="width:26px;height:26px;border-radius:50%;object-fit:cover">
+                  <span style="font-size:11px;font-weight:700">{{.AccountName}}</span>
+                </div>
+                {{end}}
+              </div>
+              {{end}}
               <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Chọn ảnh mẫu…
-                  <input type="file" name="model_photo" accept="image/*">
+                <label class="btn btn-secondary btn-sm">📁 Tải thêm ảnh mẫu…
+                  <input type="file" name="model_photos" accept="image/*" multiple onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
                 </label>
                 <span class="file-name">Chưa chọn ảnh</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Video Mẫu Lookbook Chuyển Động Chân Thực 60s -->
+          <div class="field" style="margin-bottom:14px;background:var(--bg2);padding:14px;border-radius:10px;border:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="margin:0;font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:6px">
+                <span>👗</span> Video Mẫu Lookbook 60 Giây (AI Video Re-Renderer)
+              </label>
+              <span class="badge badge-live" style="font-size:10px">1080x1920 Chuẩn 60s TikTok Shop</span>
+            </div>
+            <div style="display:flex;gap:14px;align-items:center">
+              <div style="flex:1;font-size:12px;color:var(--muted);line-height:1.4">
+                Video lookbook thời trang thử đồ 60s chuyển động chân thực 100%. AI sẽ đưa video mẫu và khuôn mặt nhân vật để render lại video đó với khuôn mặt của kênh bạn (không logo, không cắt dán).
+                <input type="hidden" name="sample_clip" value="clip_03_fashion_lookbook_60s">
+              </div>
+              <div style="width:90px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                <video src="/clips/fashion/clip_03_fashion_lookbook_60s.mp4" controls autoplay muted loop style="width:100%;aspect-ratio:9/16;display:block"></video>
               </div>
             </div>
           </div>
@@ -393,8 +404,13 @@
                 </select>
               </div>
               <div class="field">
-                <label>Thời lượng mong muốn (giây)</label>
-                <input type="number" name="seconds" id="cr-seconds" value="30" min="10" max="120" oninput="updateMockupPreview('cr')">
+                <label>Thời lượng video</label>
+                <select name="seconds" id="cr-seconds" onchange="updateMockupPreview('cr')">
+                  <option value="60" selected>🎯 60s (Chuẩn Quỹ Nhà Sáng Tạo TikTok 1 phút+ / Bật Kiếm Tiền)</option>
+                  <option value="90">📖 90s (Video Review Chi Tiết & Chuyển Đổi Cao)</option>
+                  <option value="30">⚡ 30s (Ngắn Bắt Trend)</option>
+                  <option value="15">⏱ 15s (Siêu Ngắn)</option>
+                </select>
               </div>
             </div>
             <div class="grid2">
@@ -417,847 +433,141 @@
           </details>
         </div>
 
-        <!-- Section 4: Đội Ngũ Nhân Sự AI Tự Động Điều Phối -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            <div>
-              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
-                <span style="font-size:20px">👥</span> 4. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
-              </h3>
-            </div>
-            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI</span>
-          </div>
-
-          <!-- Hidden inputs to supply all required department IDs -->
-          <input type="hidden" name="assigned_depts" value="DEP-01">
-          <input type="hidden" name="assigned_depts" value="DEP-02">
-          <input type="hidden" name="assigned_depts" value="DEP-03">
-          <input type="hidden" name="assigned_depts" value="DEP-04">
-          <input type="hidden" name="assigned_depts" value="DEP-05">
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · SĂN DEAL</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu &amp; Sàn TMĐT</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Agent Hunter đối soát hoa hồng &amp; link sản phẩm</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · KỊCH BẢN</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Biên Kịch Bán Hàng</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Agent Copywriter viết Hook 3s kích thích mua</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · MEDIA 4K</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chụp Ảnh &amp; Dựng Bối Cảnh</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen tái tạo ảnh sản phẩm 4K sắc nét</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · DỰNG PHIM</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Lồng Tiếng &amp; Cắt Cúp</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">TTS Voiceover lồng tiếng truyền cảm &amp; khớp nhạc</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · PHÂN PHỐI</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">QC &amp; Quản Trị Kênh</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Kiểm tra Safe Zone &amp; ghim link giỏ hàng</div>
-            </div>
-          </div>
-        </div>
+        <!-- Section 4: AI Pipeline Defaults -->
+        <input type="hidden" name="assigned_depts" value="DEP-01">
+        <input type="hidden" name="assigned_depts" value="DEP-02">
+        <input type="hidden" name="assigned_depts" value="DEP-03">
+        <input type="hidden" name="assigned_depts" value="DEP-04">
+        <input type="hidden" name="assigned_depts" value="DEP-05">
       </div>
 
-      <!-- RIGHT COLUMN: Interactive Smartphone Mockup & Action Bar (40%) -->
-      <div class="studio-preview-col">
-        <div class="phone-mockup-frame">
-          <div class="phone-dynamic-island"></div>
-          <div class="phone-screen-inner" id="cr-mockup-screen-bg">
-            <div class="phone-badge-top">
-              <span id="cr-mockup-aspect-pill">📱 9:16 (1080x1920)</span>
-              <span>60 FPS</span>
+      <!-- RIGHT COLUMN: Studio 9:16 Pro Viewport (Loại bỏ khung viền điện thoại giả lập) -->
+      <div class="studio-preview-col" style="position: sticky; top: 20px;">
+        <div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12)">
+          <!-- Viewport Header Bar -->
+          <div style="background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444"></span>
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b"></span>
+              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981"></span>
+              <strong style="font-size:12px;margin-left:6px;color:var(--text)">Khung Dựng 9:16 Full HD</strong>
+            </div>
+            <span class="badge badge-ok" id="cr-mockup-aspect-pill" style="font-size:10.5px">1080×1920 · TikTok Shop</span>
+          </div>
+
+          <!-- Video Viewport Body (9:16 aspect ratio) -->
+          <div id="cr-mockup-screen-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80') center/cover;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
+            
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="badge badge-live" style="font-size:10px;font-weight:700">● LIVE PREVIEW</span>
+              <span id="cr-mockup-duration" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 30s</span>
             </div>
 
-            <div class="phone-preview-center">
-              <div class="phone-hook-tag" id="cr-mockup-hook-tag">🔥 ĐỪNG BỎ LỠ DEAL HỜI</div>
-              <div class="phone-product-name-preview" id="cr-mockup-product-name">Video Quảng Cáo Sản Phẩm</div>
-              <div class="hint" style="color:#cbd5e1;font-size:12px" id="cr-mockup-niche-tag">Thời trang / Phụ kiện</div>
+            <div style="text-align:center;margin:auto 0">
+              <div class="phone-hook-tag" id="cr-mockup-hook-tag" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;display:inline-block;margin-bottom:10px">🔥 ĐỪNG BỎ LỠ DEAL HỜI</div>
+              <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:6px" id="cr-mockup-product-name">Video Quảng Cáo Sản Phẩm</div>
+              <div style="color:#e2e8f0;font-size:12px;text-shadow:0 1px 4px rgba(0,0,0,0.8)" id="cr-mockup-niche-tag">Thời trang / Phụ kiện</div>
+              <div id="cr-mockup-price-tag" style="background:#10b981;color:#fff;font-weight:800;font-size:12.5px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px;box-shadow:0 3px 8px rgba(0,0,0,0.4)">
+                💰 Giá ưu đãi hôm nay
+              </div>
               
               <!-- Beat Waveform Visualizer -->
-              <div class="phone-waveform-box">
+              <div class="phone-waveform-box" style="margin-top:14px">
                 <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
               </div>
             </div>
 
-            <div class="phone-bottom-overlay">
-              <div style="font-weight:700;margin-bottom:2px" id="cr-mockup-caption-preview">🔥 Ưu đãi số lượng có hạn</div>
-              <div style="font-size:11px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="cr-mockup-vo-snippet">AI Voiceover: Tự động lồng tiếng tiếng Việt truyền cảm...</div>
-              <div class="phone-specs-pill">
-                <span id="cr-mockup-duration">⏱️ 30s</span>
+            <div style="background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;color:#fff">
+              <div style="font-size:12px;font-weight:700;margin-bottom:2px" id="cr-mockup-caption-preview">🔥 Ưu đãi số lượng có hạn</div>
+              <div style="font-size:11px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="cr-mockup-vo-snippet">🎙️ Lời bình voiceover bán hàng truyền cảm...</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);font-size:10.5px;color:#94a3b8">
                 <span>⚡ GPU VideoToolbox</span>
+                <span>🛍️ Gắn Giỏ Hàng TikTok Shop</span>
               </div>
             </div>
-          </div>
-        </div>
-
-        <div class="mockup-render-action-card">
-          <button type="submit" class="btn-mega-render" id="btn-submit-render-cr">
-            🚀 Bắt Đầu Dựng Video Chất Lượng Cao
-          </button>
-        </div>
-      </div>
-    </div>
-  </form>
-</div>
-<!-- =========================================================================
-     TAB 2: Video Đu Trend & Viral Shorts 9:16 (Hot Trend & Ý Tưởng Nhanh)
-     ========================================================================= -->
-<div id="panel-viral" style="display:none">
-  <!-- Real-Time TikTok Trending & Showbiz Drama Radar (100% Dữ Liệu Thật) -->
-  <div class="card" style="border-radius:14px;padding:18px 20px;margin-bottom:24px;background:var(--surface);border:1.5px solid var(--border)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:24px">🔥</span>
-        <div>
-          <b style="font-size:15px;color:var(--text)">Radar Xu Hướng TikTok &amp; Showbiz Drama</b>
-          <span id="radar-live-indicator" style="font-size:11.5px;color:var(--muted);margin-left:8px">
-            <span class="pulse-dot"></span> Realtime 24/7
-          </span>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button type="button" id="tab-btn-tt-trends" class="btn btn-sm btn-primary" onclick="switchRadarTab('tiktok')">🔥 TikTok Theo Chủ Đề (4 Video/Hàng)</button>
-        <button type="button" id="tab-btn-drama-vn" class="btn btn-sm btn-secondary" onclick="switchRadarTab('drama_vn')">🇻🇳 Top 10 Drama Việt</button>
-        <button type="button" id="tab-btn-drama-cn" class="btn btn-sm btn-secondary" onclick="switchRadarTab('drama_cn')">🇨🇳 Top 10 Drama Trung</button>
-        <button type="button" id="btn-radar-refresh" class="btn btn-sm btn-secondary" onclick="refreshRadarRealtime()" style="font-weight:700">🔄 Cập Nhật Realtime</button>
-      </div>
-    </div>
-
-    <!-- Quick Paste TikTok URL to analyze -->
-    <div style="background:var(--bg);padding:12px 16px;border-radius:10px;border:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:700">Dán link TikTok:</span>
-      <input type="url" id="pasted-tiktok-url" placeholder="https://www.tiktok.com/@user/video/..." style="flex:1;min-width:260px;font-size:13px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg2)">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="analyzePastedTikTok()" id="btn-analyze-tt" style="font-weight:700">🔍 Phân Tích &amp; Đu Trend</button>
-    </div>
-
-    <style>
-      @media (max-width: 1024px) {
-        .topic-videos-grid {
-          grid-template-columns: repeat(2, 1fr) !important;
-        }
-      }
-      @media (max-width: 600px) {
-        .topic-videos-grid {
-          grid-template-columns: 1fr !important;
-        }
-      }
-      .btn-topic-chip.active {
-        background: var(--accent) !important;
-        color: #fff !important;
-        border-color: var(--accent) !important;
-      }
-    </style>
-
-    <!-- SUB-PANEL 1: TikTok Theo Chủ Đề Tùy Chỉnh (Mỗi Chủ Đề Đúng 4 Video / 1 Hàng Ngang) -->
-    <div id="radar-panel-tiktok">
-      <!-- CÀI ĐẶT CHỦ ĐỀ (SETTING TOPICS) -->
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <div style="font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-            <span>⚙️ Cài Đặt Chủ Đề (4 video / 1 hàng)</span>
-          </div>
-          <button type="button" class="btn btn-sm btn-secondary" onclick="resetDefaultTopics()" style="font-size:11px;padding:3px 8px">
-            ↺ Mặc định
-          </button>
-        </div>
-
-        <!-- Ô nhập chủ đề tùy ý -->
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <input type="text" id="custom-topic-input" placeholder="Nhập chủ đề bất kỳ (vd: Nhảy K-Pop, Sự kiện bão lũ, Review xe, Bóng đá VN...)"
-                 style="flex:1;min-width:240px;font-size:12.5px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg)"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomTopic();}">
-          <button type="button" class="btn btn-primary btn-sm" onclick="addCustomTopic()" style="font-weight:700;white-space:nowrap;padding:7px 14px">
-            + Thêm Chủ Đề
-          </button>
-        </div>
-
-        <!-- Preset Chips -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="topic-chips-container">
-          <span style="font-size:11.5px;color:var(--muted);margin-right:2px">Chủ đề:</span>
-          {{range .PresetTopicGroups}}
-          <button type="button" class="btn btn-sm btn-topic-chip" id="chip-topic-{{.TopicID}}" onclick="toggleTopic('{{.TopicID}}')" style="font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600">
-            {{.TopicName}}
-          </button>
-          {{end}}
-          <span id="custom-topic-chips" style="display:inline-flex;gap:6px;flex-wrap:wrap"></span>
-        </div>
-      </div>
-
-      <!-- DANH SÁCH HÀNG CHỦ ĐỀ (MỖI CHỦ ĐỀ ĐÚNG 4 VIDEO TRÊN 1 HÀNG) -->
-      <div id="radar-topic-groups-container">
-        {{range .TopicGroups}}
-        <div class="topic-row-container" id="row-topic-{{.TopicID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:20px">
-          <!-- Row Header -->
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:15px;font-weight:800;color:var(--text)">{{.TopicName}}</span>
-              <span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">
-                {{.Tag}}
-              </span>
-              <span style="font-size:11.5px;color:var(--muted)">{{.Description}}</span>
-            </div>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="removeTopic('{{.TopicID}}')" style="font-size:11px;padding:3px 8px;color:#ef4444" title="Bỏ chủ đề này">
-              ✕ Bỏ hàng này
-            </button>
-          </div>
-
-          <!-- 4 Videos in 1 Row (repeat(4, 1fr)) -->
-          <div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px">
-            {{range .Videos}}
-            <div class="card" style="border-radius:10px;padding:10px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
-              <div>
-                <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:6px;overflow:hidden;margin-bottom:8px">
-                  {{if .PlayURL}}
-                  <video src="{{.PlayURL}}" poster="{{.CoverURL}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
-                  {{else if .CoverURL}}
-                  <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-                  {{end}}
-                  <div style="position:absolute;top:5px;left:5px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">
-                    #{{.Rank}}
-                  </div>
-                  <div style="position:absolute;top:5px;right:5px;background:rgba(239,68,68,0.9);backdrop-filter:blur(4px);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;color:#fff;pointer-events:none">
-                    🔥 {{.Views}}
-                  </div>
-                </div>
-
-                <strong style="font-size:12px;display:block;color:var(--text);margin-bottom:4px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
-                  {{.Title}}
-                </strong>
-                <div style="font-size:11px;color:var(--muted);margin-bottom:5px">
-                  Kênh: <b>@{{.UniqueID}}</b> · ❤️ {{.Likes}}
-                </div>
-                <div style="background:var(--bg2);padding:4px 6px;border-radius:4px;font-size:10.5px;color:var(--muted);margin-bottom:8px;border-left:2px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{{.Music}}">
-                  🎵 {{.Music}}
-                </div>
-              </div>
-              <div style="display:flex;gap:5px">
-                <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11px;padding:5px 6px" onclick="applyTikTokTrend('{{.Title}}', '{{.Music}}', '{{.UniqueID}}')">
-                  ⚡ Đu Trend
-                </button>
-                <a href="{{.VideoURL}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:5px 8px;font-size:11px" title="Mở TikTok">
-                  ↗
-                </a>
-              </div>
-            </div>
-            {{end}}
-          </div>
-        </div>
-        {{end}}
-      </div>
-    </div>
-
-    <!-- SUB-PANEL 2: Top 10 Drama Showbiz Việt (TikTok) -->
-    <div id="radar-panel-drama-vn" style="display:none">
-      <div id="radar-grid-drama-vn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px">
-        {{range .ShowbizDramasVN}}
-        <div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-          <div>
-            <!-- Video Dọc 9:16 TikTok VN -->
-            <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">
-              {{if .PlayURL}}
-              <video src="{{.PlayURL}}" poster="{{if .CoverURL}}{{.CoverURL}}{{else}}{{.ImageURL}}{{end}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
-              {{else if .CoverURL}}
-              <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              {{else if .ImageURL}}
-              <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              {{end}}
-              <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">
-                #{{.Rank}}
-              </div>
-              <div style="position:absolute;top:6px;right:6px;background:rgba(239,68,68,0.9);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">
-                🔥 {{if .Views}}{{.Views}}{{else}}HOT{{end}}
-              </div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">
-              <span style="background:rgba(16,185,129,0.12);color:#10b981;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(16,185,129,0.25)">
-                🇻🇳 TikTok VN
-              </span>
-              <span style="font-size:10.5px;color:var(--muted)">{{if .UniqueID}}@{{.UniqueID}}{{else}}{{.Author}}{{end}}</span>
-            </div>
-
-            <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
-              {{.Title}}
-            </strong>
-            <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Summary}}</p>
-            <div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid var(--accent);line-height:1.35">
-              <i>"{{.Hook3s}}"</i>
-            </div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Việt')">
-              ⚡ Đu Drama Này
-            </button>
-            <a href="{{if .VideoURL}}{{.VideoURL}}{{else}}{{.SourceURL}}{{end}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video TikTok">
-              ↗
-            </a>
-          </div>
-        </div>
-        {{end}}
-      </div>
-    </div>
-
-    <!-- SUB-PANEL 3: Top 10 Drama Showbiz Trung (Douyin) -->
-    <div id="radar-panel-drama-cn" style="display:none">
-      <div id="radar-grid-drama-cn" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:14px">
-        {{range .ShowbizDramasCN}}
-        <div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-          <div>
-            <!-- Video Dọc 9:16 Douyin CN -->
-            <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">
-              {{if .PlayURL}}
-              <video src="{{.PlayURL}}" poster="{{if .CoverURL}}{{.CoverURL}}{{else}}{{.ImageURL}}{{end}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
-              {{else if .CoverURL}}
-              <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              {{else if .ImageURL}}
-              <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-              {{end}}
-              <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">
-                #{{.Rank}}
-              </div>
-              <div style="position:absolute;top:6px;right:6px;background:rgba(217,119,6,0.92);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">
-                🔥 {{if .Views}}{{.Views}}{{else}}DOUYIN{{end}}
-              </div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">
-              <span style="background:rgba(217,119,6,0.12);color:#d97706;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(217,119,6,0.25)">
-                🇨🇳 Douyin CN
-              </span>
-              <span style="font-size:10.5px;color:var(--muted)">{{if .UniqueID}}@{{.UniqueID}}{{else}}{{.Author}}{{end}}</span>
-            </div>
-
-            <strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="{{.Title}}">
-              {{.Title}}
-            </strong>
-            <p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Summary}}</p>
-            <div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid #d97706;line-height:1.35">
-              <i>"{{.Hook3s}}"</i>
-            </div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama('{{.Title}}', 'Showbiz Trung')">
-              ⚡ Đu Drama Này
-            </button>
-            <a href="{{if .VideoURL}}{{.VideoURL}}{{else}}{{.SourceURL}}{{end}}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video Douyin">
-              ↗
-            </a>
-          </div>
-        </div>
-        {{end}}
-      </div>
-    </div>
-  </div>
-
-  <!-- Custom Viral Form (2 Cột Đồng Bộ Studio) -->
-  <form method="post" action="/studio/viral" id="viral-custom-form">
-    <div class="studio-workbench-split">
-      <!-- LEFT COLUMN (60%) -->
-      <div class="studio-controls-col">
-        <!-- Section 1: Chủ đề & Ý tưởng -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">💡</span> 1. Ý Tưởng &amp; Chủ Đề Video Đu Trend
-          </h3>
-
-          <div class="field" style="margin-bottom:14px">
-            <label>Chủ đề / Ý tưởng video <span class="req">*</span></label>
-            <input type="text" name="topic" id="vr-topic" required placeholder="Ví dụ: 3 thói quen buổi sáng giúp x2 hiệu suất, Bí mật tài chính ít ai biết..." oninput="updateMockupPreview('vr')">
-          </div>
-
-          <div class="grid3">
-            <div class="field">
-              <label>Thể loại &amp; Góc nhìn</label>
-              <select name="genre" id="vr-genre" onchange="updateMockupPreview('vr')">
-                <option value="trendjack" selected>🔥 Bắt trend &amp; Giật tít</option>
-                <option value="mystery">🕵️ Bí ẩn &amp; Sự thật</option>
-                <option value="lifehack">💡 Mẹo đời sống &amp; Tài chính</option>
-                <option value="tech_fact">⚡ Công nghệ &amp; Tri thức mới</option>
-                <option value="koc_review">⭐ Review trải nghiệm</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Phong cách hình ảnh AI</label>
-              <select name="visual_mood">
-                <option value="cinematic" selected>🎬 Điện ảnh 9:16 (8K)</option>
-                <option value="vibrant_3d">🎨 3D Pixar nghệ thuật</option>
-                <option value="realistic">📸 Chân thực đời thường</option>
-                <option value="cyber_neon">🌃 Cyberpunk tương lai</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Thời lượng mục tiêu</label>
-              <select name="duration" id="vr-duration" onchange="updateMockupPreview('vr')">
-                <option value="30" selected>⚡ 30s (Chuẩn viral giữ chân)</option>
-                <option value="15">⏱ 15s (Cực nhanh, lặp vòng)</option>
-                <option value="45">📖 45s (Giải thích chi tiết)</option>
-                <option value="60">🎯 60s (Phân tích sâu)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Âm thanh & Kênh -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎵</span> 2. Âm Thanh Xu Hướng &amp; Kênh Phát Sóng
-          </h3>
-          <div class="grid2">
-            <div class="field">
-              <label>Kênh phát sóng (Brand DNA)</label>
-              <select name="account">
-                <option value="">-- Dùng phong cách chuẩn chung --</option>
-                {{range .AccountNames}}
-                <option value="{{.}}">Kênh: @{{.}}</option>
-                {{end}}
-              </select>
-            </div>
-            <div class="field">
-              <label>Giọng đọc AI (TTS)</label>
-              <select name="voice">
-                <option value="default" selected>Giọng tự nhiên miền Nam</option>
-                <option value="north_female">Giọng nữ truyền cảm miền Bắc</option>
-                <option value="north_male">Giọng nam trầm ấm miền Bắc</option>
-                <option value="south_male">Giọng nam cuốn hút miền Nam</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label>Nhạc nền thịnh hành</label>
-            <select name="music_url" class="form-select">
-              <option value="">🔥 Tự động ghép bài hát Hot Trend #1 hôm nay ({{.TopSound}})</option>
-              {{range .Sounds}}
-              <option value="{{.Title}}|{{.Artist}}">🎵 #{{.Rank}} {{.Title}} — {{.Artist}}</option>
-              {{end}}
-            </select>
-          </div>
-        </div>
-
-        <!-- Section 3: Đội ngũ AI tự động gán -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:12px">
-            <div>
-              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
-                <span style="font-size:20px">👥</span> 3. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
-              </h3>
-            </div>
-            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI</span>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · TREND ANALYST</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Quét Trend &amp; Âm Nhạc</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Quét TikTok Creative Center &amp; YouTube Shorts</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · VIRAL ARCHITECT</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Hook 3s &amp; Tâm Lý Học</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết kịch bản 4 phân đoạn giữ chân &gt;60%</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · AI ARTIST</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Vẽ Bối Cảnh 9:16</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ từng phân cảnh điện ảnh sắc nét</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · MOTION EDITOR</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Ghép Nhạc &amp; Dựng Video</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Dựng cúp nhịp nhanh theo âm thanh thịnh hành</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · STRATEGIST</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Đánh Giá QC &amp; Đăng Kênh</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tự động gắn Hashtags và lên lịch xuất bản</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT COLUMN: Smartphone Mockup (40%) -->
-      <div class="studio-preview-col">
-        <div class="phone-mockup-frame">
-          <div class="phone-dynamic-island"></div>
-          <div class="phone-screen-inner" style="background:linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.85)), url('/static/preview.png') center/cover">
-            <div class="phone-badge-top">
-              <span>📱 9:16 (1080x1920)</span>
-              <span>VIRAL SHORTS</span>
-            </div>
-
-            <div class="phone-preview-center">
-              <div class="phone-hook-tag">⚡ HOOK 3S GIẬT GÂN</div>
-              <div class="phone-product-name-preview" id="vr-mockup-title">3 Thói Quen x2 Hiệu Suất</div>
-              <div class="hint" style="color:#cbd5e1;font-size:12px" id="vr-mockup-genre">Bắt trend &amp; Giật tít</div>
-              
-              <div class="phone-waveform-box">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              </div>
-            </div>
-
-            <div class="phone-bottom-overlay">
-              <div style="font-weight:700;margin-bottom:2px">🔥 Video Viral Triệu View 100% Gốc</div>
-              <div style="font-size:11px;color:#e2e8f0">Không lo bản quyền hay shadowban</div>
-              <div class="phone-specs-pill">
-                <span id="vr-mockup-duration">⏱️ 30s</span>
-                <span>⚡ GPU VideoToolbox</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mockup-render-action-card">
-          <button type="submit" class="btn-mega-render" style="background:linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)">
-            ⚡ Bắt Đầu Sản Xuất Video Đu Trend AI 9:16
-          </button>
-        </div>
-      </div>
-    </div>
-  </form>
-</div>
-
-<!-- =========================================================================
-     TAB 3: Truyện Audio YouTube & Cắt Short Clips Đa Nền Tảng (AI Tự Nghĩ Cốt Truyện)
-     ========================================================================= -->
-<div id="panel-story" style="display:none">
-  <form method="post" action="/studio/story" id="story-form">
-    <div class="studio-workbench-split">
-      <!-- LEFT COLUMN (60%) -->
-      <div class="studio-controls-col">
-        <!-- Section 1: Cốt Truyện Audio YouTube (Hệ Thống Tự Nghĩ 100%) -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-            <div>
-              <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-                <span style="font-size:20px">📻</span> 1. Cốt Truyện Audio YouTube Trường Thiên (30 – 60 Phút)
-              </h3>
-            </div>
-            <div style="display:flex;gap:6px">
-              <button type="button" class="btn btn-primary btn-sm" onclick="rollRandomStoryPlot()" style="font-weight:700">
-                🎲 Đổi Cốt Truyện Mới (Độc Bản)
-              </button>
-            </div>
-          </div>
-
-          <!-- Thể loại Audio YouTube (Buttons 1-chạm chọn nhanh) -->
-          <div style="margin-bottom:14px">
-            <label style="font-size:12.5px;font-weight:700;color:var(--text);display:block;margin-bottom:6px">Chọn thể loại truyện audio:</label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap" id="audio-genre-chips">
-              <button type="button" class="btn btn-sm btn-primary" onclick="selectStoryGenre('tâm lý', this)">📻 Đêm Khuya</button>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('kinh dị', this)">👻 Truyện Ma Làng Quê</button>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('triết lý', this)">🌿 Bài Học Nhân Sinh</button>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('trinh thám', this)">🔍 Kỳ Án Trinh Thám</button>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('kinh doanh', this)">💼 Thương Trường</button>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="selectStoryGenre('lịch sử', this)">⚔️ Dã Sử Cổ Trang</button>
-            </div>
-            <input type="hidden" name="genre" id="st-genre" value="tâm lý">
-          </div>
-
-          <!-- Cốt truyện 5 Hồi AI Tự Động Soạn Thảo (Interactive 5-Act Plot Card) -->
-          <div id="audio-story-plot-card" style="background:var(--bg3);border:1.5px solid var(--accent);border-radius:12px;padding:14px 16px;margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-              <div>
-                <span class="badge badge-ok" id="plot-genre-badge" style="font-size:10.5px;font-weight:700">Radio Kể Chuyện Đêm Khuya</span>
-                <strong id="plot-title-display" style="font-size:15px;display:block;color:var(--text);margin-top:4px">Đêm Mưa Bên Quán Trọ Cũ</strong>
-              </div>
-              <span id="plot-duration-badge" style="background:rgba(37,99,235,0.12);color:var(--accent);font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1px solid rgba(37,99,235,0.25)">⏱️ 30 Phút (~4.500 từ)</span>
-            </div>
-
-            <!-- Hook 3 giây mở màn -->
-            <div style="background:var(--bg);padding:7px 10px;border-radius:8px;font-size:12px;color:var(--text);margin-bottom:10px;border-left:3px solid #ef4444;line-height:1.4">
-              <b style="color:#ef4444">🎣 Hook 3s Mở Màn:</b> <i id="plot-hook-display">"Nửa đêm hôm ấy, khi tiếng sấm vừa rạch ngang bầu trời, một tiếng gõ cửa dồn dập vang lên..."</i>
-            </div>
-
-            <p id="plot-logline-display" style="font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.4">
-              Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.
-            </p>
-
-            <!-- 5 Hồi cốt truyện YouTube trường thiên -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;margin-bottom:12px;font-size:11px">
-              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:var(--accent);display:block;margin-bottom:3px">📖 Hồi 1: Mở Đầu</b>
-                <span id="plot-act1-display">Người đàn ông ướt sũng bước vào quán trọ ven sông giữa đêm bão táp...</span>
-              </div>
-              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#3b82f6;display:block;margin-bottom:3px">⚡ Hồi 2: Thắt Nút</b>
-                <span id="plot-act2-display">Bà cụ chủ quán kể về chiếc hộp gỗ 10 năm trước của người khách bí ẩn...</span>
-              </div>
-              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#f59e0b;display:block;margin-bottom:3px">🔥 Hồi 3: Cao Trào</b>
-                <span id="plot-act3-display">Mọi sự nghi ngờ và tổn thương dồn nén nhiều năm bùng nổ nghẹt thở...</span>
-              </div>
-              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#ec4899;display:block;margin-bottom:3px">🌪️ Hồi 4: Cú Twist</b>
-                <span id="plot-act4-display">Bước ngoặt bất ngờ xoay chuyển hoàn toàn sự thật người nghe không lường trước...</span>
-              </div>
-              <div style="background:var(--bg2);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-                <b style="color:#10b981;display:block;margin-bottom:3px">✨ Hồi 5: Dư Âm</b>
-                <span id="plot-act5-display">Bí mật tình cha con được hé lộ trong nước mắt và bài học nhân nghĩa...</span>
-              </div>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted);border-top:1px dashed var(--border);padding-top:8px">
-              <div>💡 <b>Thông điệp:</b> <span id="plot-message-display">Ở đời, ân nghĩa và tình thân lớn hơn mọi sóng gió thời gian.</span></div>
-              <div>🎵 <b>Âm hưởng:</b> <span id="plot-soundscape-display">Tiếng mưa rơi nhẹ + Piano lofi acoustic</span></div>
-            </div>
-          </div>
-
-          <!-- Setting Chủ Đề Tuỳ Ý -->
-          <div class="field" style="margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <label style="margin:0;font-weight:700">⚙️ Cài đặt chủ đề truyện (Tùy ý nhập hoặc để AI tự nghĩ):</label>
-              <button type="button" class="btn btn-sm btn-secondary" onclick="generatePlotForCustomTopic()" style="font-size:11px;padding:3px 8px">
-                ✨ Lên Kịch Bản Theo Chủ Đề Này
-              </button>
-            </div>
-            <input type="text" name="topic" id="st-topic" value="Đêm Mưa Bên Quán Trọ Cũ" placeholder="Nhập chủ đề tùy ý (vd: Người thợ may cổ phố Hội An, Căn biệt thự bỏ hoang Đà Lạt, Chuyến xe đêm Tây Bắc...)" oninput="updateMockupPreview('st')">
-          </div>
-
-          <!-- Setting Thời Lượng 30 - 60 Phút -->
-          <div class="grid2">
-            <div class="field">
-              <label style="font-weight:700">⏱️ Thời lượng truyện audio (YouTube)</label>
-              <select name="duration_minutes" id="st-duration-minutes" onchange="onStoryDurationChange(this.value)">
-                <option value="30" selected>30 phút (~4.500 từ — Tiêu chuẩn Radio YouTube)</option>
-                <option value="45">45 phút (~6.750 từ — Truyện trường thiên cảm xúc)</option>
-                <option value="60">60 phút (~9.000 từ — Thính phòng đêm khuya trọn vẹn)</option>
-              </select>
-              <input type="hidden" name="words" id="st-words" value="4500">
-            </div>
-            <div class="field">
-              <label style="font-weight:700">🖼️ Phân cảnh tranh minh họa 16:9 (Ken Burns)</label>
-              <select name="scenes" id="st-scenes">
-                <option value="10">10 cảnh minh họa (Mỗi cảnh 3-4 phút)</option>
-                <option value="15" selected>15 cảnh minh họa (Mỗi cảnh 2-3 phút)</option>
-                <option value="20">20 cảnh minh họa (Chuyển cảnh sinh động)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Giọng đọc & Âm thanh Radio -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎙️</span> 2. Giọng Đọc Truyền Cảm &amp; Nhạc Nền Radio
-          </h3>
-          <div class="grid2">
-            <div class="field">
-              <label>Giọng đọc Audio Book</label>
-              <select name="voice" id="st-voice">
-                <option value="default" selected>Giọng kể truyền cảm (Nam trầm ấm - Chuẩn Radio)</option>
-                <option value="female">Giọng kể sâu lắng (Nữ nhẹ nhàng - Radio Tâm Sự)</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Nhạc nền acoustic / Tiếng mưa</label>
-              <div style="margin-top:8px">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" name="music_on" value="1" checked style="width:16px;height:16px">
-                  <span>Lồng nhạc nền ambient &amp; hiệu ứng âm thanh thư giãn</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 3: Hộp Auto-Clipper Cắt Shorts 3-5 Phút Đa Kênh -->
-        <div class="form-card" style="margin-bottom: 20px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(16,185,129,0.06) 100%);border:1.5px solid var(--accent)">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:10px">
-            <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text)">
-              <span>✂️</span> Tự Động Cắt Clip Ngắn 3–5 Phút Cho TikTok &amp; Reels
-            </h3>
-            <span class="badge badge-ok" style="font-size:10.5px;font-weight:700">TÁI SỬ DỤNG ĐA KÊNH</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-            <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;cursor:pointer">
-              <input type="checkbox" name="auto_clip_shorts" value="1" checked style="width:18px;height:18px">
-              <span>Bật tự động trích xuất clip ngắn 9:16</span>
-            </label>
-            <div style="display:flex;align-items:center;gap:8px">
-              <label style="font-size:12.5px;color:var(--muted)">Độ dài mỗi clip:</label>
-              <select name="clip_duration_sec" style="padding:4px 8px;font-size:12.5px;border-radius:6px">
-                <option value="180" selected>3 phút (180 giây)</option>
-                <option value="240">4 phút (240 giây)</option>
-                <option value="300">5 phút (300 giây)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 4: Đội ngũ AI tự động gán -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:gap:8px;margin-bottom:12px">
-            <div>
-              <h3 style="margin:0;display:flex;align-items:center;gap:8px;font-size:15px">
-                <span style="font-size:20px">👥</span> 4. Đội Ngũ Nhân Sự AI Tự Động Điều Phối
-              </h3>
-            </div>
-            <span class="badge badge-ok" style="font-size:11px;font-weight:700">✓ TỰ ĐỘNG ĐIỀU PHỐI</span>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:10px">
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-01 · STORY RESEARCH</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Nghiên Cứu &amp; Cốt Truyện</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">AI tự nghĩ đề tài, cốt truyện 3 hồi và thông điệp sâu sắc</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-02 · SCREENWRITER</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Chấp Bút Audio Book</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Viết văn phong kể chuyện truyền cảm + lời dẫn radio</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-03 · ILLUSTRATOR</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Bìa Cinematic 16:9</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">MediaGen vẽ tranh minh họa 16:9 + thu âm giọng đọc</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-04 · AUTO-CLIPPER</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Dựng 16:9 &amp; Cắt Shorts</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Dựng Ken Burns Full HD + tự trích xuất clip 9:16</div>
-            </div>
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-              <div style="font-size:10.5px;color:var(--accent);font-weight:700">DEP-05 · YOUTUBE DIST</div>
-              <strong style="font-size:13px;color:var(--text);display:block;margin-top:2px">Xuất Bản &amp; SEO Video</strong>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Tối ưu tiêu đề, thumbnail và lịch đăng YouTube</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT COLUMN: YouTube Mockup (40%) -->
-      <div class="studio-preview-col">
-        <!-- YouTube 16:9 Player Frame Mockup -->
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,0.15)">
-          <div style="position:relative;width:100%;padding-top:56.25%;background:linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.9)), url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1280&q=80') center/cover">
-            <div style="position:absolute;top:12px;left:14px;display:flex;gap:6px">
-              <span class="badge badge-info" style="font-size:10px">📻 TRUYỆN AUDIO YOUTUBE</span>
-              <span class="badge badge-ok" style="font-size:10px">16:9 FULL HD</span>
-            </div>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center">
-              <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.15);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;margin-bottom:8px">▶</div>
-              <div style="font-weight:800;font-size:16px;color:#fff;max-width:90%;line-height:1.3" id="st-mockup-title">Đêm Mưa Bên Quán Trọ Cũ</div>
-              <div style="font-size:12px;color:#cbd5e1;margin-top:4px" id="st-mockup-genre">Radio Kể Chuyện Đêm Khuya</div>
-              <!-- Audio Waveform in Mockup -->
-              <div style="display:flex;align-items:center;gap:3px;margin-top:10px;height:18px">
-                <span style="display:inline-block;width:3px;height:12px;background:#38bdf8;border-radius:2px"></span>
-                <span style="display:inline-block;width:3px;height:18px;background:#38bdf8;border-radius:2px"></span>
-                <span style="display:inline-block;width:3px;height:8px;background:#38bdf8;border-radius:2px"></span>
-                <span style="display:inline-block;width:3px;height:15px;background:#38bdf8;border-radius:2px"></span>
-                <span style="display:inline-block;width:3px;height:10px;background:#38bdf8;border-radius:2px"></span>
-              </div>
-            </div>
-            <div style="position:absolute;bottom:10px;right:14px">
-              <span class="badge badge-dim" style="font-size:11px" id="st-mockup-dur">⏱️ ~4 phút</span>
-            </div>
-          </div>
-          <div style="padding:14px 16px;background:var(--surface)">
-            <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:4px">Kèm Gói Tự Động Cắt Shorts 3-5 Phút (9:16)</div>
-            <div style="font-size:11.5px;color:var(--muted);line-height:1.4">Tối ưu đăng đồng thời lên YouTube Long-form, TikTok, Facebook Reels và Shorts.</div>
           </div>
         </div>
 
         <div class="mockup-render-action-card" style="margin-top:16px">
-          <button type="submit" class="btn-mega-render" style="background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)">
-            📻 Bắt Đầu Sản Xuất Truyện Audio YouTube
+          <button type="submit" class="btn-mega-render" id="btn-submit-render-cr" style="background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);color:#fff;padding:14px;border:none;border-radius:10px;width:100%;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,0.3)">
+            🚀 Bắt Đầu Dựng Video Bán Hàng 9:16
           </button>
         </div>
       </div>
     </div>
-  </form>
+</div>
+
+<!-- TikTok Trending & Cài Đặt Chủ Đề Radar -->
+<div class="card" style="margin-top: 30px; border-radius: 14px; padding: 20px;">
+  <!-- CÀI ĐẶT CHỦ ĐỀ (SETTING TOPICS) -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>⚙️ Cài Đặt Chủ Đề (4 video / 1 hàng)</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="resetDefaultTopics()" style="font-size:11px;padding:3px 8px">
+        ↺ Mặc định
+      </button>
+    </div>
+
+    <!-- Ô nhập chủ đề tùy ý -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <input type="text" id="custom-topic-input" placeholder="Nhập chủ đề bất kỳ (vd: Nhảy K-Pop, Sự kiện bão lũ, Review xe, Bóng đá VN...)"
+             style="flex:1;min-width:240px;font-size:12.5px;padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg)">
+      <button type="button" class="btn btn-primary btn-sm" onclick="addCustomTopic()" style="font-weight:700;white-space:nowrap;padding:7px 14px">
+        + Thêm Chủ Đề
+      </button>
+    </div>
+
+    <!-- Preset Chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" id="topic-chips-container">
+      <span style="font-size:11.5px;color:var(--muted);margin-right:2px">Chủ đề:</span>
+      {{range .PresetTopicGroups}}
+      <button type="button" class="btn btn-sm btn-topic-chip" id="chip-topic-{{.TopicID}}" style="font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600">
+        {{.TopicName}}
+      </button>
+      {{end}}
+      <span id="custom-topic-chips" style="display:inline-flex;gap:6px;flex-wrap:wrap"></span>
+    </div>
+  </div>
+
+  <!-- DANH SÁCH HÀNG CHỦ ĐỀ (MỖI CHỦ ĐỀ ĐÚNG 4 VIDEO TRÊN 1 HÀNG) -->
+  <div id="radar-topic-groups-container">
+    {{range .TopicGroups}}
+    <div class="topic-row-container" id="row-topic-{{.TopicID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px;font-weight:800;color:var(--text)">{{.TopicName}}</span>
+          <span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">
+            {{.Tag}}
+          </span>
+          <span style="font-size:11.5px;color:var(--muted)">{{.Description}}</span>
+        </div>
+      </div>
+      <div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px">
+        {{range .Videos}}
+        <div class="card" style="border-radius:10px;padding:10px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
+          <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:6px;overflow:hidden;margin-bottom:8px">
+            {{if .PlayURL}}
+            <video src="{{.PlayURL}}" poster="{{.CoverURL}}" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            {{else if .CoverURL}}
+            <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+            {{end}}
+          </div>
+          <strong style="font-size:12px;display:block;color:var(--text);margin-bottom:4px">{{.Title}}</strong>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
 </div>
 
 <!-- Global Audio Element for Audio Previews -->
 <audio id="global-preview-player" preload="none" style="display:none"></audio>
 
 <script>
-function switchProductionMode(mode) {
-  var pAff = document.getElementById('panel-creative');
-  var pVir = document.getElementById('panel-viral');
-  var pSto = document.getElementById('panel-story');
-
-  var bAff = document.getElementById('mode-btn-affiliate');
-  var bVir = document.getElementById('mode-btn-viral');
-  var bSto = document.getElementById('mode-btn-story');
-
-  if (pAff) pAff.style.display = 'none';
-  if (pVir) pVir.style.display = 'none';
-  if (pSto) pSto.style.display = 'none';
-
-  if (bAff) bAff.classList.remove('active');
-  if (bVir) bVir.classList.remove('active');
-  if (bSto) bSto.classList.remove('active');
-
-  if (mode === 'viral' || mode === 'quick') {
-    if (pVir) pVir.style.display = 'block';
-    if (bVir) bVir.classList.add('active');
-  } else if (mode === 'story' || mode === 'stories') {
-    if (pSto) pSto.style.display = 'block';
-    if (bSto) bSto.classList.add('active');
-  } else {
-    if (pAff) pAff.style.display = 'block';
-    if (bAff) bAff.classList.add('active');
-  }
-}
-
-function switchStudioTab(tab) {
-  switchProductionMode(tab);
-}
-
 function updateMockupPreview(prefix) {
-  if (prefix === 'vr') {
-    var topicEl = document.getElementById('vr-topic');
-    var genreEl = document.getElementById('vr-genre');
-    var durEl = document.getElementById('vr-duration');
-    if (topicEl && topicEl.value.trim()) {
-      var tEl = document.getElementById('vr-mockup-title');
-      if (tEl) tEl.textContent = topicEl.value;
-    }
-    if (genreEl && genreEl.selectedOptions && genreEl.selectedOptions[0]) {
-      var gEl = document.getElementById('vr-mockup-genre');
-      if (gEl) gEl.textContent = genreEl.selectedOptions[0].text;
-    }
-    if (durEl) {
-      var dEl = document.getElementById('vr-mockup-duration');
-      if (dEl) dEl.textContent = '⏱️ ' + durEl.value + 's';
-    }
-    return;
-  }
-  if (prefix === 'st') {
-    var sTopicEl = document.getElementById('st-topic');
-    var sGenreEl = document.getElementById('st-genre');
-    var sWordsEl = document.getElementById('st-words');
-    if (sTopicEl && sTopicEl.value.trim()) {
-      var stTitle = document.getElementById('st-mockup-title');
-      if (stTitle) stTitle.textContent = sTopicEl.value;
-    }
-    if (sGenreEl) {
-      var stGenre = document.getElementById('st-mockup-genre');
-      if (stGenre) {
-        if (sGenreEl.selectedOptions && sGenreEl.selectedOptions[0]) {
-          stGenre.textContent = sGenreEl.selectedOptions[0].text;
-        } else if (sGenreEl.value) {
-          var genreBadge = document.getElementById('plot-genre-badge');
-          stGenre.textContent = genreBadge ? genreBadge.textContent : sGenreEl.value;
-        }
-      }
-    }
-    if (sWordsEl) {
-      var stDur = document.getElementById('st-mockup-dur');
-      if (stDur) {
-        var w = sWordsEl.value;
-        var mins = w === '1200' ? '~10 phút' : (w === '750' ? '~6 phút' : '~4 phút');
-        stDur.textContent = '⏱️ ' + mins;
-      }
-    }
-    return;
-  }
 
   var nameEl = document.getElementById(prefix + '-product-name');
   if (!nameEl) return;
@@ -1294,6 +604,12 @@ function updateMockupPreview(prefix) {
     if (vo.trim()) {
       var voSnip = document.getElementById('cr-mockup-vo-snippet');
       if (voSnip) voSnip.textContent = '🎙️ ' + vo.substring(0, 45) + '...';
+    }
+    var priceInput = document.querySelector('input[name="product_price"]');
+    var priceTag = document.getElementById('cr-mockup-price-tag');
+    if (priceInput && priceInput.value.trim() && priceTag) {
+      priceTag.textContent = '💰 ' + priceInput.value.trim();
+      priceTag.style.display = 'inline-block';
     }
   }
 }
@@ -1590,6 +906,8 @@ function generateStudioScriptAndQC() {
   data.append('product_name', name);
   data.append('niche', document.getElementById('cr-niche').value);
   data.append('framework', 'problem_solution');
+  var engRadio = document.querySelector('input[name="cr_ai_engine"]:checked');
+  if (engRadio) data.append('engine', engRadio.value);
 
   fetch('/web-ai/prompt-generate', {
     method: 'POST',
@@ -1604,6 +922,11 @@ function generateStudioScriptAndQC() {
     }
     lastGeneratedPkg = pkg;
     document.getElementById('studio-script-qc-result').style.display = 'block';
+
+    // 0. Update AI Engine Badge
+    if (pkg.ai_engine_badge && document.getElementById('st-ai-engine-badge')) {
+      document.getElementById('st-ai-engine-badge').textContent = pkg.ai_engine_badge;
+    }
 
     // 1. Populate QC Scorecard
     var qc = pkg.qc || pkg.qc_scorecard;
@@ -1788,28 +1111,108 @@ function copyGenPrompt(type) {
   });
 }
 
+function updateEngineHighlight(radio) {
+  document.querySelectorAll('.st-engine-card').forEach(function(card) {
+    card.style.border = '1px solid var(--border)';
+  });
+  if (radio && radio.closest('.st-engine-card')) {
+    radio.closest('.st-engine-card').style.border = '1.5px solid var(--accent)';
+  }
+}
+
+function refreshAIPoolStatus() {
+  fetch('/web-ai/pool-status')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (!res.ok || !res.accounts) return;
+      var el = document.getElementById('st-ai-pool-status');
+      if (!el) return;
+      var html = '';
+      var accs = res.accounts;
+      for (var k in accs) {
+        var a = accs[k];
+        var badgeClass = a.ready > 0 ? 'badge-ok' : (a.cooling > 0 ? 'badge-warn' : 'badge-dim');
+        html += '<span class="badge ' + badgeClass + '" style="font-size:10.5px">' + a.icon + ' ' + a.name + ': ' + a.ready + ' On</span>';
+      }
+      el.innerHTML = html;
+    }).catch(function(){});
+}
+
+function pickShelfProduct(select) {
+  var opt = select.options[select.selectedIndex];
+  if (!opt || !opt.value) return;
+  var title = opt.value;
+  var price = opt.getAttribute('data-price') || '';
+  var niche = opt.getAttribute('data-niche') || '';
+  var photo = opt.getAttribute('data-photo') || '';
+  var aff = opt.getAttribute('data-aff') || '';
+  var comm = opt.getAttribute('data-comm') || '';
+
+  if (document.getElementById('cr-product-name')) {
+    document.getElementById('cr-product-name').value = title;
+  }
+  if (document.querySelector('input[name="product_price"]')) {
+    document.querySelector('input[name="product_price"]').value = price;
+  }
+  if (niche && document.getElementById('cr-niche')) {
+    document.getElementById('cr-niche').value = niche;
+  }
+  if (aff && document.querySelector('input[name="aff_link"]')) {
+    document.querySelector('input[name="aff_link"]').value = aff;
+  }
+  if (photo && document.getElementById('cr-photo-urls')) {
+    document.getElementById('cr-photo-urls').value = photo;
+    var bgCanvas = document.getElementById('cr-mockup-screen-bg');
+    if (bgCanvas) {
+      bgCanvas.style.background = "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('" + photo + "') center/cover";
+    }
+  }
+  updateMockupPreview('cr');
+  if (window.showToast) {
+    window.showToast('✓ Đã nạp sản phẩm thật từ kệ hàng: ' + title, true);
+  }
+}
+
 // Auto-fill from URL params or Web AI transfer
 window.addEventListener('DOMContentLoaded', function() {
+  refreshAIPoolStatus();
   try {
     var urlParams = new URLSearchParams(window.location.search);
     var initialMode = "{{.InitialMode}}";
     var modeParam = urlParams.get('mode');
     if (modeParam) initialMode = modeParam;
-    if (initialMode) switchProductionMode(initialMode);
+    if (initialMode === 'viral') { window.location.href = '/viral'; return; }
+    if (initialMode === 'story' || initialMode === 'stories') { window.location.href = '/stories'; return; }
 
     var pName = urlParams.get('product_name');
+    var pPrice = urlParams.get('product_price');
+    var pNiche = urlParams.get('niche');
+    var pPhoto = urlParams.get('photo_url');
     var affLink = urlParams.get('aff_link');
     var mTitle = urlParams.get('music_title');
     var mArtist = urlParams.get('music_artist');
 
     if (pName && document.getElementById('cr-product-name')) {
       document.getElementById('cr-product-name').value = pName;
-      if (document.getElementById('qb-product-name')) document.getElementById('qb-product-name').value = pName;
+    }
+    if (pPrice && document.querySelector('input[name="product_price"]')) {
+      document.querySelector('input[name="product_price"]').value = pPrice;
+    }
+    if (pNiche && document.getElementById('cr-niche')) {
+      document.getElementById('cr-niche').value = pNiche;
+    }
+    if (pPhoto && document.getElementById('cr-photo-urls')) {
+      document.getElementById('cr-photo-urls').value = pPhoto;
+      var bgCanvas = document.getElementById('cr-mockup-screen-bg');
+      if (bgCanvas) {
+        bgCanvas.style.background = "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('" + pPhoto + "') center/cover";
+      }
     }
     if (affLink) {
       var affInput = document.querySelector('input[name="aff_link"]');
       if (affInput) affInput.value = affLink;
     }
+    updateMockupPreview('cr');
     if (mTitle) {
       var crPick = document.getElementById('creative-trend-pick');
       if (crPick) {
@@ -1869,593 +1272,9 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     updateMockupPreview('cr');
-    displayCurrentStoryPlot();
-    initTopicsState();
+    
   } catch (e) {}
 });
 
-function setDeptsPreset(prefix, type) {
-  var chks = document.querySelectorAll('.' + prefix + '-dept-chk');
-  chks.forEach(function(c) {
-    if (type === 'all') {
-      c.checked = true;
-    } else if (type === 'prod') {
-      c.checked = (c.value === 'DEP-03' || c.value === 'DEP-04');
-    } else if (type === 'content') {
-      c.checked = (c.value === 'DEP-02' || c.value === 'DEP-03' || c.value === 'DEP-04');
-    } else if (type === 'dist') {
-      c.checked = (c.value === 'DEP-03' || c.value === 'DEP-04' || c.value === 'DEP-05');
-    }
-  });
-}
-
-function switchRadarTab(tab) {
-  var ttPanel = document.getElementById('radar-panel-tiktok');
-  var vnPanel = document.getElementById('radar-panel-drama-vn');
-  var cnPanel = document.getElementById('radar-panel-drama-cn');
-  var ttBtn = document.getElementById('tab-btn-tt-trends');
-  var vnBtn = document.getElementById('tab-btn-drama-vn');
-  var cnBtn = document.getElementById('tab-btn-drama-cn');
-
-  if (ttPanel) ttPanel.style.display = (tab === 'tiktok') ? 'block' : 'none';
-  if (vnPanel) vnPanel.style.display = (tab === 'drama_vn') ? 'block' : 'none';
-  if (cnPanel) cnPanel.style.display = (tab === 'drama_cn') ? 'block' : 'none';
-
-  if (ttBtn) ttBtn.className = (tab === 'tiktok') ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
-  if (vnBtn) vnBtn.className = (tab === 'drama_vn') ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
-  if (cnBtn) cnBtn.className = (tab === 'drama_cn') ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
-}
-
-var DEFAULT_TOPIC_KEYS = ['nhay', 'su_kien_vn', 'bien_hinh', 'hai_huoc'];
-var activeTopicKeys = [];
-
-function getSavedTopics() {
-  try {
-    var raw = localStorage.getItem('aicos_tiktok_topics');
-    if (raw) {
-      var arr = JSON.parse(raw);
-      if (Array.isArray(arr) && arr.length > 0) return arr;
-    }
-  } catch (e) {}
-  return DEFAULT_TOPIC_KEYS.slice();
-}
-
-function saveTopics(topics) {
-  activeTopicKeys = topics.slice();
-  try {
-    localStorage.setItem('aicos_tiktok_topics', JSON.stringify(activeTopicKeys));
-  } catch (e) {}
-}
-
-function initTopicsState() {
-  activeTopicKeys = getSavedTopics();
-  updateTopicChipsUI();
-  var storedRaw = localStorage.getItem('aicos_tiktok_topics');
-  if (storedRaw) {
-    loadTikTokTopics(activeTopicKeys);
-  }
-}
-
-function loadTikTokTopics(topics, onComplete) {
-  var list = (topics && topics.length > 0) ? topics : DEFAULT_TOPIC_KEYS;
-  var topicsParam = list.join(',');
-  fetch('/api/studio/tiktok-topics?topics=' + encodeURIComponent(topicsParam))
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data && data.ok) {
-        if (data.groups) renderTopicGroups(data.groups);
-        updateTopicChipsUI();
-      }
-    })
-    .catch(function(err) {
-      console.error('Lỗi tải topics TikTok:', err);
-    })
-    .finally(function() {
-      if (typeof onComplete === 'function') onComplete();
-    });
-}
-
-function renderTopicGroups(groups) {
-  var container = document.getElementById('radar-topic-groups-container');
-  if (!container) return;
-  if (!groups || groups.length === 0) {
-    container.innerHTML = '<div style="text-align:center;padding:36px;color:var(--muted);background:var(--bg2);border-radius:12px;border:1px dashed var(--border)">Chưa có chủ đề nào được chọn. Hãy chọn chủ đề gợi ý ở trên hoặc nhập chủ đề tùy ý!</div>';
-    return;
-  }
-
-  var html = '';
-  groups.forEach(function(grp) {
-    var descHtml = grp.description ? '<span style="font-size:11.5px;color:var(--muted)">' + grp.description + '</span>' : '';
-    html += '<div class="topic-row-container" id="row-topic-' + grp.topic_id + '" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:15px;font-weight:800;color:var(--text)">' + grp.topic_name + '</span>' +
-          '<span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">' + grp.tag + '</span>' +
-          descHtml +
-        '</div>' +
-        '<button type="button" class="btn btn-sm btn-secondary" onclick="removeTopic(\'' + escapeJs(grp.topic_id) + '\')" style="font-size:11px;padding:3px 8px;color:#ef4444" title="Bỏ chủ đề này">✕ Bỏ hàng này</button>' +
-      '</div>' +
-      '<div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px">';
-
-    if (grp.videos && grp.videos.length > 0) {
-      grp.videos.forEach(function(v) {
-        var videoEl = '';
-        if (v.play_url) {
-          videoEl = '<video src="' + v.play_url + '" poster="' + (v.cover_url || '') + '" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>';
-        } else if (v.cover_url) {
-          videoEl = '<img src="' + v.cover_url + '" alt="' + (v.title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">';
-        }
-
-        html += '<div class="card" style="border-radius:10px;padding:10px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">' +
-          '<div>' +
-            '<div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:6px;overflow:hidden;margin-bottom:8px">' +
-              videoEl +
-              '<div style="position:absolute;top:5px;left:5px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">#' + v.rank + '</div>' +
-              '<div style="position:absolute;top:5px;right:5px;background:rgba(239,68,68,0.9);backdrop-filter:blur(4px);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:800;color:#fff;pointer-events:none">🔥 ' + v.views + '</div>' +
-            '</div>' +
-            '<strong style="font-size:12px;display:block;color:var(--text);margin-bottom:4px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="' + (v.title || '') + '">' + (v.title || '') + '</strong>' +
-            '<div style="font-size:11px;color:var(--muted);margin-bottom:5px">Kênh: <b>@' + (v.unique_id || '') + '</b> · ❤️ ' + (v.likes || '') + '</div>' +
-            '<div style="background:var(--bg2);padding:4px 6px;border-radius:4px;font-size:10.5px;color:var(--muted);margin-bottom:8px;border-left:2px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (v.music || '') + '">🎵 ' + (v.music || '') + '</div>' +
-          '</div>' +
-          '<div style="display:flex;gap:5px">' +
-            '<button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11px;padding:5px 6px" onclick="applyTikTokTrend(\'' + escapeJs(v.title) + '\', \'' + escapeJs(v.music) + '\', \'' + escapeJs(v.unique_id) + '\')">⚡ Đu Trend</button>' +
-            '<a href="' + (v.video_url || '#') + '" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:5px 8px;font-size:11px" title="Mở TikTok">↗</a>' +
-          '</div>' +
-        '</div>';
-      });
-    }
-
-    html += '</div></div>';
-  });
-
-  container.innerHTML = html;
-}
-
-function updateTopicChipsUI() {
-  var presetKeys = ['nhay', 'su_kien_vn', 'bien_hinh', 'hai_huoc', 'am_thuc'];
-  presetKeys.forEach(function(k) {
-    var btn = document.getElementById('chip-topic-' + k);
-    if (btn) {
-      if (activeTopicKeys.indexOf(k) !== -1) {
-        btn.className = 'btn btn-sm btn-primary btn-topic-chip active';
-      } else {
-        btn.className = 'btn btn-sm btn-secondary btn-topic-chip';
-      }
-    }
-  });
-
-  var customChipsCont = document.getElementById('custom-topic-chips');
-  if (customChipsCont) {
-    var customKeys = activeTopicKeys.filter(function(k) { return presetKeys.indexOf(k) === -1; });
-    var html = '';
-    customKeys.forEach(function(k) {
-      html += '<button type="button" class="btn btn-sm btn-primary btn-topic-chip active" onclick="removeTopic(\'' + escapeJs(k) + '\')" style="font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600">' +
-        k + ' ✕</button>';
-    });
-    customChipsCont.innerHTML = html;
-  }
-}
-
-function addCustomTopic() {
-  var input = document.getElementById('custom-topic-input');
-  var val = input ? input.value.trim() : '';
-  if (!val) {
-    if (input) input.focus();
-    return;
-  }
-  if (activeTopicKeys.indexOf(val) === -1) {
-    activeTopicKeys.push(val);
-    saveTopics(activeTopicKeys);
-    loadTikTokTopics(activeTopicKeys);
-  }
-  if (input) input.value = '';
-}
-
-function toggleTopic(topicId) {
-  var idx = activeTopicKeys.indexOf(topicId);
-  if (idx !== -1) {
-    activeTopicKeys.splice(idx, 1);
-  } else {
-    activeTopicKeys.push(topicId);
-  }
-  saveTopics(activeTopicKeys);
-  loadTikTokTopics(activeTopicKeys);
-}
-
-function removeTopic(topicId) {
-  var idx = activeTopicKeys.indexOf(topicId);
-  if (idx !== -1) {
-    activeTopicKeys.splice(idx, 1);
-    saveTopics(activeTopicKeys);
-    loadTikTokTopics(activeTopicKeys);
-  }
-}
-
-function resetDefaultTopics() {
-  saveTopics(DEFAULT_TOPIC_KEYS.slice());
-  loadTikTokTopics(activeTopicKeys);
-}
-
-function refreshRadarRealtime() {
-  var btn = document.getElementById('btn-radar-refresh');
-  var origText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '🔄 Đang cập nhật...';
-  }
-  var p1 = new Promise(function(resolve) {
-    loadTikTokTopics(activeTopicKeys, resolve);
-  });
-  var p2 = fetch('/api/studio/tiktok-trends?refresh=1')
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (data && data.ok) {
-        if (data.dramas_vn) renderDramaGrid('radar-grid-drama-vn', data.dramas_vn, 'Showbiz Việt');
-        if (data.dramas_cn) renderDramaGrid('radar-grid-drama-cn', data.dramas_cn, 'Showbiz Trung');
-      }
-    })
-    .catch(function(err) {
-      console.error('Lỗi refresh dramas:', err);
-    });
-
-  Promise.all([p1, p2]).then(function() {
-    var ind = document.getElementById('radar-live-indicator');
-    if (ind) {
-      var now = new Date();
-      ind.innerHTML = '<span class="pulse-dot"></span> Cập nhật lúc ' + now.toLocaleTimeString('vi-VN');
-    }
-  }).finally(function() {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origText || '🔄 Cập Nhật Realtime';
-    }
-  });
-}
-
-function renderDramaGrid(containerId, items, category) {
-  var container = document.getElementById(containerId);
-  if (!container || !items) return;
-  var isCN = (category === 'Showbiz Trung');
-  var badgeText = isCN ? '🇨🇳 Douyin CN' : '🇻🇳 TikTok VN';
-  var badgeStyle = isCN ? 'background:rgba(217,119,6,0.12);color:#d97706;border:1px solid rgba(217,119,6,0.25)' : 'background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.25)';
-  var rankBadgeBg = isCN ? 'rgba(217,119,6,0.92)' : 'rgba(239,68,68,0.9)';
-  var html = '';
-  items.forEach(function(item) {
-    var videoHtml = '';
-    var cover = item.cover_url || item.image_url || '';
-    if (item.play_url) {
-      videoHtml = '<video src="' + item.play_url + '" poster="' + cover + '" preload="metadata" controls playsinline muted loop style="width:100%;height:100%;object-fit:cover;display:block"></video>';
-    } else if (cover) {
-      videoHtml = '<img src="' + cover + '" alt="' + (item.title || '') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">';
-    }
-    var handle = item.unique_id ? ('@' + item.unique_id) : (item.author || '');
-    var viewsText = item.views ? ('🔥 ' + item.views) : (isCN ? '🔥 DOUYIN' : '🔥 TIKTOK');
-    var targetUrl = item.video_url || item.source_url || '#';
-
-    html += '<div class="card" style="border-radius:12px;padding:12px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">' +
-      '<div>' +
-        '<div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 12px rgba(0,0,0,0.18)">' +
-          videoHtml +
-          '<div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;font-family:monospace;pointer-events:none">#' + item.rank + '</div>' +
-          '<div style="position:absolute;top:6px;right:6px;background:' + rankBadgeBg + ';backdrop-filter:blur(4px);padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800;color:#fff;pointer-events:none">' + viewsText + '</div>' +
-        '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px">' +
-          '<span style="' + badgeStyle + ';font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px">' + badgeText + '</span>' +
-          '<span style="font-size:10.5px;color:var(--muted)">' + handle + '</span>' +
-        '</div>' +
-        '<strong style="font-size:13px;display:block;color:var(--text);margin-bottom:5px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="' + (item.title || '') + '">' + (item.title || '') + '</strong>' +
-        '<p style="font-size:11.5px;color:var(--muted);margin-bottom:8px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + (item.summary || '') + '</p>' +
-        '<div style="background:var(--bg);padding:5px 8px;border-radius:6px;font-size:11px;color:var(--text);margin-bottom:10px;border-left:3px solid var(--accent);line-height:1.35"><i>"' + (item.hook_3s || '') + '"</i></div>' +
-      '</div>' +
-      '<div style="display:flex;gap:6px">' +
-        '<button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:11.5px;padding:6px 8px" onclick="applyShowbizDrama(\'' + escapeJs(item.title) + '\', \'' + category + '\')">⚡ Đu Drama Này</button>' +
-        '<a href="' + targetUrl + '" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="padding:6px 9px;font-size:11.5px" title="Mở video">↗</a>' +
-      '</div>' +
-    '</div>';
-  });
-  container.innerHTML = html;
-}
-
-function escapeJs(str) {
-  if (!str) return '';
-  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
-}
-
-function applyTikTokTrend(title, music, author) {
-  var topicInput = document.getElementById('vr-topic');
-  if (topicInput) {
-    var cleanTitle = title || author || 'TikTok Trending';
-    topicInput.value = 'Đu trend TikTok: ' + cleanTitle;
-  }
-  var genreSelect = document.getElementById('vr-genre');
-  if (genreSelect) {
-    genreSelect.value = 'trendjack';
-  }
-  updateMockupPreview('vr');
-  var form = document.getElementById('viral-custom-form');
-  if (form) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (topicInput) topicInput.focus();
-  }
-}
-
-function applyShowbizDrama(title, category) {
-  var topicInput = document.getElementById('vr-topic');
-  if (topicInput) {
-    topicInput.value = '[' + (category || 'Drama Showbiz') + '] ' + title;
-  }
-  var genreSelect = document.getElementById('vr-genre');
-  if (genreSelect) {
-    genreSelect.value = 'mystery';
-  }
-  var durSelect = document.getElementById('vr-duration');
-  if (durSelect) {
-    durSelect.value = '45';
-  }
-  updateMockupPreview('vr');
-  var form = document.getElementById('viral-custom-form');
-  if (form) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (topicInput) topicInput.focus();
-  }
-}
-
-function analyzePastedTikTok() {
-  var urlInput = document.getElementById('pasted-tiktok-url');
-  var url = urlInput ? urlInput.value.trim() : '';
-  if (!url) {
-    alert('Vui lòng dán link video TikTok (ví dụ: https://www.tiktok.com/@user/video/...)');
-    if (urlInput) urlInput.focus();
-    return;
-  }
-  var btn = document.getElementById('btn-analyze-tt');
-  var oldHtml = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Đang quét dữ liệu TikTok...';
-  }
-
-  fetch('/api/studio/tiktok-analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: url })
-  })
-  .then(function(res) {
-    if (!res.ok) throw new Error('Không thể phân tích video này');
-    return res.json();
-  })
-  .then(function(data) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldHtml;
-    }
-    var topic = data.title || ('Đu trend video ' + (data.unique_id ? '@' + data.unique_id : 'TikTok'));
-    var topicInput = document.getElementById('vr-topic');
-    if (topicInput) {
-      topicInput.value = topic;
-    }
-    var genreSelect = document.getElementById('vr-genre');
-    if (genreSelect) {
-      genreSelect.value = 'trendjack';
-    }
-    updateMockupPreview('vr');
-    var form = document.getElementById('viral-custom-form');
-    if (form) {
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    alert('✓ Đã phân tích video TikTok thành công!\n- Kênh: @' + (data.unique_id || 'tiktok') + '\n- Views: ' + (data.views || 'N/A') + '\n- Âm nhạc: ' + (data.music || 'Gốc') + '\n\nAI đã điền ý tưởng vào kịch bản.');
-  })
-  .catch(function(err) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldHtml;
-    }
-    var topicInput = document.getElementById('vr-topic');
-    if (topicInput) {
-      topicInput.value = 'Đu trend video TikTok: ' + url;
-    }
-    var form = document.getElementById('viral-custom-form');
-    if (form) {
-      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    alert('Đã nhận diện link video TikTok và điền vào ô Ý tưởng kịch bản!');
-  });
-}
-
-// =========================================================================
-// Audio Story Engine (AI Tự Động Lên Cốt Truyện & Ý Tưởng YouTube Audio)
-// =========================================================================
-var rawStoryPlots = [
-  {{range .AudioStoryPlots}}
-  {
-    id: {{printf "%q" .ID}},
-    title: {{printf "%q" .Title}},
-    genre: {{printf "%q" .Genre}},
-    genre_label: {{printf "%q" .GenreLabel}},
-    duration_minutes: {{.DurationMinutes}},
-    words_count: {{.WordsCount}},
-    hook_3s: {{printf "%q" .Hook3s}},
-    logline: {{printf "%q" .Logline}},
-    act_1: {{printf "%q" .Act1}},
-    act_2: {{printf "%q" .Act2}},
-    act_3: {{printf "%q" .Act3}},
-    act_4: {{printf "%q" .Act4}},
-    act_5: {{printf "%q" .Act5}},
-    message: {{printf "%q" .Message}},
-    suggested_voice: {{printf "%q" .SuggestedVoice}},
-    soundscape: {{printf "%q" .Soundscape}}
-  },
-  {{end}}
-];
-
-var currentStoryPlots = (typeof rawStoryPlots !== 'undefined' && rawStoryPlots.length > 0) ? rawStoryPlots : [];
-var currentPlotIndex = 0;
-
-function selectStoryGenre(genre, btn) {
-  var chips = document.querySelectorAll('#audio-genre-chips button');
-  if (chips) {
-    chips.forEach(function(b) {
-      b.className = 'btn btn-sm btn-secondary';
-    });
-  }
-  if (btn) btn.className = 'btn btn-sm btn-primary';
-  
-  var genreInput = document.getElementById('st-genre');
-  if (genreInput) genreInput.value = genre;
-
-  var durInput = document.getElementById('st-duration-minutes');
-  var dur = durInput ? durInput.value : '30';
-
-  fetch('/api/studio/story-plots?refresh=1&genre=' + encodeURIComponent(genre) + '&duration=' + encodeURIComponent(dur))
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data && data.plots && data.plots.length > 0) {
-        currentStoryPlots = data.plots;
-      } else {
-        var filtered = rawStoryPlots.filter(function(p) {
-          return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
-        });
-        currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
-      }
-      currentPlotIndex = 0;
-      displayCurrentStoryPlot();
-    })
-    .catch(function() {
-      var filtered = rawStoryPlots.filter(function(p) {
-        return p.genre === genre || (p.genre_label && p.genre_label.toLowerCase().indexOf(genre) !== -1);
-      });
-      currentStoryPlots = filtered.length > 0 ? filtered : rawStoryPlots;
-      currentPlotIndex = 0;
-      displayCurrentStoryPlot();
-    });
-}
-
-function rollRandomStoryPlot() {
-  if (currentStoryPlots.length <= 1) {
-    currentStoryPlots = rawStoryPlots;
-  }
-  currentPlotIndex = (currentPlotIndex + 1) % currentStoryPlots.length;
-  displayCurrentStoryPlot();
-}
-
-function displayCurrentStoryPlot() {
-  if (!currentStoryPlots || currentStoryPlots.length === 0) return;
-  var p = currentStoryPlots[currentPlotIndex];
-  if (!p) return;
-
-  var titleEl = document.getElementById('plot-title-display');
-  if (titleEl) titleEl.textContent = p.title;
-
-  var genreBadge = document.getElementById('plot-genre-badge');
-  if (genreBadge) genreBadge.textContent = p.genre_label || p.genre;
-
-  var durBadge = document.getElementById('plot-duration-badge');
-  var dur = p.duration_minutes || 30;
-  var words = p.words_count || (dur * 150);
-  if (durBadge) durBadge.textContent = '⏱️ ' + dur + ' Phút (~' + words.toLocaleString() + ' từ)';
-
-  var hookEl = document.getElementById('plot-hook-display');
-  if (hookEl) hookEl.textContent = '"' + (p.hook_3s || '') + '"';
-
-  var loglineEl = document.getElementById('plot-logline-display');
-  if (loglineEl) loglineEl.textContent = p.logline;
-
-  var act1El = document.getElementById('plot-act1-display');
-  if (act1El) act1El.textContent = p.act_1 || '';
-
-  var act2El = document.getElementById('plot-act2-display');
-  if (act2El) act2El.textContent = p.act_2 || '';
-
-  var act3El = document.getElementById('plot-act3-display');
-  if (act3El) act3El.textContent = p.act_3 || '';
-
-  var act4El = document.getElementById('plot-act4-display');
-  if (act4El) act4El.textContent = p.act_4 || '';
-
-  var act5El = document.getElementById('plot-act5-display');
-  if (act5El) act5El.textContent = p.act_5 || '';
-
-  var msgEl = document.getElementById('plot-message-display');
-  if (msgEl) msgEl.textContent = p.message || '';
-
-  var soundEl = document.getElementById('plot-soundscape-display');
-  if (soundEl) soundEl.textContent = p.soundscape || '';
-
-  var topicInput = document.getElementById('st-topic');
-  if (topicInput && (!topicInput.value || topicInput.dataset.autoFilled === '1' || topicInput.value === p.title)) {
-    topicInput.value = p.title;
-    topicInput.dataset.autoFilled = '1';
-  }
-
-  if (p.suggested_voice) {
-    var voiceSelect = document.getElementById('st-voice');
-    if (voiceSelect) voiceSelect.value = p.suggested_voice;
-  }
-
-  var stTitle = document.getElementById('st-mockup-title');
-  if (stTitle) stTitle.textContent = p.title;
-
-  var stGenre = document.getElementById('st-mockup-genre');
-  if (stGenre) stGenre.textContent = p.genre_label || p.genre;
-}
-
-function onStoryDurationChange(dur) {
-  dur = parseInt(dur, 10) || 30;
-  var words = dur * 150;
-  var wordsInput = document.getElementById('st-words');
-  if (wordsInput) wordsInput.value = words;
-
-  var durBadge = document.getElementById('plot-duration-badge');
-  if (durBadge) durBadge.textContent = '⏱️ ' + dur + ' Phút (~' + words.toLocaleString() + ' từ)';
-
-  var scenesSelect = document.getElementById('st-scenes');
-  if (scenesSelect) {
-    if (dur === 30) scenesSelect.value = '10';
-    else if (dur === 45) scenesSelect.value = '15';
-    else if (dur === 60) scenesSelect.value = '20';
-  }
-}
-
-function generatePlotForCustomTopic() {
-  var topicInput = document.getElementById('st-topic');
-  var topic = topicInput ? topicInput.value.trim() : '';
-  var genreInput = document.getElementById('st-genre');
-  var genre = genreInput ? genreInput.value : 'tâm lý';
-  var durInput = document.getElementById('st-duration-minutes');
-  var dur = durInput ? durInput.value : '30';
-
-  var btn = event ? event.target : null;
-  var oldText = btn ? btn.textContent : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Đang sáng tác kịch bản...';
-  }
-
-  var url = '/api/studio/story-plots?refresh=1&duration=' + encodeURIComponent(dur) + '&genre=' + encodeURIComponent(genre);
-  if (topic) {
-    url += '&topic=' + encodeURIComponent(topic);
-  }
-
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = oldText;
-      }
-      if (data && data.plots && data.plots.length > 0) {
-        currentStoryPlots = data.plots;
-        currentPlotIndex = 0;
-        displayCurrentStoryPlot();
-      }
-    })
-    .catch(function(err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = oldText;
-      }
-      console.error('Lỗi sinh cốt truyện:', err);
-    });
-}
 </script>
 {{end}}

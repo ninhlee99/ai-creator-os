@@ -41,9 +41,10 @@ const (
 // Mặc định cập nhật 12/10/2026. Lỗi thời thì Rediscover tự thay.
 var defaults = map[Kind]string{
 	Text:  "gemini-3.8-flash",
-	Image: "gemini-nano-banana-2.1",
-	TTS:   "gemini-3.8-flash-tts",
+	Image: "gemini-3.1-flash-image",
+	TTS:   "gemini-2.5-flash-preview-tts",
 }
+
 
 // EnvName là biến môi trường ghi đè model cho kind.
 func EnvName(k Kind) string {
@@ -176,12 +177,13 @@ func Rediscover(ctx context.Context, httpc *http.Client, baseURL, key string, k 
 	if err != nil {
 		return "", err
 	}
+	var filtered []string
 	for _, n := range names {
-		if n == cur {
-			return "", fmt.Errorf("model %s vẫn còn — lỗi không do model", cur)
+		if n != cur {
+			filtered = append(filtered, n)
 		}
 	}
-	best := Pick(names, k)
+	best := Pick(filtered, k)
 	if best == "" {
 		return "", fmt.Errorf("không tìm thấy model %s nào còn hoạt động", kindLabel(k))
 	}
@@ -189,6 +191,7 @@ func Rediscover(ctx context.Context, httpc *http.Client, baseURL, key string, k 
 	discovered[k] = best
 	mu.Unlock()
 	return best, nil
+
 }
 
 func kindLabel(k Kind) string {

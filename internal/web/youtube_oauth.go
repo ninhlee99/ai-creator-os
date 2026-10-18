@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
@@ -38,6 +39,7 @@ const (
 	youtubeOAuthAuthURL  = "https://accounts.google.com/o/oauth2/v2/auth"
 	youtubeOAuthTokenURL = "https://oauth2.googleapis.com/token"
 	youtubeOAuthScope    = "https://www.googleapis.com/auth/youtube.upload " +
+		"https://www.googleapis.com/auth/youtube.readonly " +
 		"https://www.googleapis.com/auth/yt-analytics.readonly"
 )
 
@@ -153,6 +155,9 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		}
 		targetUsername = candidateName
 		targetAccountID = acct.ID
+		if s.Mgr != nil {
+			_, _ = s.Mgr.SetYoutube(acct.ID, chInfo.ID, []string{"short_video", "short_film"})
+		}
 		if s.Ledger != nil {
 			_ = s.Ledger.SetAccountStatus(acct.ID, acct.Status, map[string]any{"youtube_channel": chInfo.ID})
 			if chInfo.Subs > 0 {
@@ -162,9 +167,37 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		s.advanceOnboarding(acct.ID)
 		s.autoGeneratePlan(acct, "Tự sinh cho kênh YouTube thật: "+chInfo.Title)
 	} else {
-		if !s.accountExists(targetUsername) {
+		accounts, err := s.Mgr.List()
+		if err != nil {
+			publishersMsg(w, r, "err", "Không lấy được danh sách kênh: "+err.Error())
+			return
+		}
+		var found *network.Account
+		for _, a := range accounts {
+			if a.Username == targetUsername {
+				found = a
+				break
+			}
+		}
+		if found == nil {
 			publishersMsg(w, r, "err", "Kênh "+targetUsername+" không còn tồn tại — thêm lại kênh rồi nối.")
 			return
+		}
+		targetAccountID = found.ID
+		chInfo, _ := fetchGoogleChannelInfo(accessToken)
+		channelID := targetUsername
+		if chInfo != nil && chInfo.ID != "" {
+			channelID = chInfo.ID
+			if chInfo.Subs > 0 && s.Ledger != nil {
+				_ = s.Ledger.SetFollowers(found.ID, chInfo.Subs)
+			}
+		}
+		contentTypes := found.YoutubeContentTypes
+		if len(contentTypes) == 0 {
+			contentTypes = []string{"short_video", "short_film"}
+		}
+		if s.Mgr != nil {
+			_, _ = s.Mgr.SetYoutube(found.ID, channelID, contentTypes)
 		}
 	}
 

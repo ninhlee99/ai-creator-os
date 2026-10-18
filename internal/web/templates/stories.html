@@ -1,70 +1,173 @@
-{{define "title"}}Kể chuyện — AI Creator OS{{end}}
+{{define "title"}}Kể Chuyện YouTube & Shorts — AI Creator OS{{end}}
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "story"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Kể chuyện YouTube 📖</h1>
-    <p class="subtitle">Sản xuất video kể chuyện tự động cho YouTube.</p>
+    <h1>Kể chuyện YouTube &amp; Phim Ngắn AI (16:9)</h1>
+    <p class="subtitle">Sáng tạo câu chuyện tự động với hình ảnh phân cảnh, giọng đọc truyền cảm và phụ đề.</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/stories" class="btn btn-secondary">📖 Kể chuyện</a>
-    <a href="/studio" class="btn btn-secondary">🎬 Studio AI</a>
-    <a href="/accounts" class="btn btn-secondary">📱 Kênh YouTube</a>
+    <a href="/accounts" class="btn btn-secondary btn-sm">📱 Kênh YouTube</a>
+    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video ↗</a>
   </div>
 </div>
+
+<!-- Unified Studio Suite Navigation -->
+<nav class="tabs" style="margin-bottom: 20px;">
+  <a href="/studio">🛍️ Xưởng Video Affiliate Lookbook (9:16)</a>
+  <a href="/viral">🔥 Xưởng Video Đu Trend Viral (9:16)</a>
+  <a href="/stories" class="active">📖 Xưởng Kể Chuyện Audio (16:9)</a>
+</nav>
 
 {{if .Stories.Error}}<p class="err">{{.Stories.Error}}</p>{{end}}
 
 {{if .Stories.StudioOK}}
-<p>
-  {{if .Stories.TickOn}}<span class="badge badge-ok">Tự tạo: BẬT ({{.Stories.TickHours}}h/lần)</span>{{else}}<span class="badge badge-draft">Tự tạo: TẮT</span>{{end}}
-  {{if .Stories.AutoOn}}<span class="badge badge-warn">Tự đăng (riêng tư): BẬT</span>{{else}}<span class="badge badge-info">Chờ duyệt mới đăng</span>{{end}}
-  {{if .Stories.MusicOK}}<span class="badge badge-ok">Nhạc nền: có</span>{{else}}<span class="badge badge-draft">Nhạc nền: chưa có</span>{{end}}
-</p>
+<!-- Top 4 Status & Capability Metric Cards -->
+<div class="grid4" style="margin-bottom: 24px;">
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Tự Động Tạo Truyện</div>
+    <div>
+      {{if .Stories.TickOn}}
+      <span class="chip chip-live" style="font-size:11.5px"><span class="pulse-dot"></span> BẬT ({{.Stories.TickHours}}h/lần)</span>
+      {{else}}
+      <span class="chip chip-dry" style="font-size:11.5px">TẮT</span>
+      {{end}}
+    </div>
+  </div>
 
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Kể chuyện mới</h2>
-  <form method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang tạo…';}">
-    <div class="field">
-      <label>Chủ đề <span class="req">*</span></label>
-      <input type="text" name="topic" required placeholder="vd: đêm mưa ở Đà Lạt khiến tôi đổi nghề">
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Xuất Bản YouTube</div>
+    <div>
+      {{if .Stories.AutoOn}}
+      <span class="badge badge-warn" style="font-size:11px">Tự đăng (riêng tư): BẬT</span>
+      {{else}}
+      <span class="badge badge-info" style="font-size:11px">Chờ duyệt mới đăng</span>
+      {{end}}
     </div>
-    <details class="advanced">
-      <summary>Tùy chọn (thể loại, giọng, số cảnh, độ dài, nhạc)</summary>
-    <div class="grid2">
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Nhạc Nền &amp; Voiceover</div>
+    <div>
+      {{if .Stories.MusicOK}}
+      <span class="badge badge-ok" style="font-size:11px">✓ Đã nạp nhạc cảm xúc</span>
+      {{else}}
+      <span class="badge badge-draft" style="font-size:11px">Chưa có nhạc</span>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="card" style="padding:14px 18px;border-radius:12px">
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Định Dạng Đầu Ra</div>
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">
+      16:9 YouTube + 9:16 Shorts
+    </div>
+  </div>
+</div>
+
+<!-- 1-Click Story Idea Presets -->
+<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border)">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+      <span>💡</span> Gợi Ý Chủ Đề Kể Chuyện Triệu View:
+    </div>
+    <span class="badge badge-dim" style="font-size:10px">Click để điền nhanh</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Đêm mưa ở Đà Lạt và cuộc gặp gỡ khiến tôi từ bỏ công việc văn phòng')">🌧️ Đêm mưa Đà Lạt</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Bí ẩn căn biệt thự bỏ hoang trên đỉnh đèo Hải Vân 30 năm trước')">🏚️ Bí ẩn đèo Hải Vân</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Bài học kinh doanh đầu đời: Tôi đã mất trắng 500 triệu năm 22 tuổi như thế nào?')">📉 Bài học kinh doanh</button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Chuyến tàu đêm định mệnh và người lạ để lại bức thư không người gửi')">🚂 Chuyến tàu đêm</button>
+  </div>
+</div>
+
+<div class="card form-card" style="border-radius:14px;padding:22px 24px;margin-bottom: 24px;border:1.5px solid var(--border)">
+  <h2 style="margin:0 0 14px;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px">
+    <span>✍️</span> Kể chuyện mới — Sáng Tác &amp; Dựng Phim AI
+  </h2>
+  <form method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang viết kịch bản & dựng phim…';}">
+    <div class="field" style="margin-bottom:16px">
+      <label style="font-weight:700;font-size:13px">Chủ đề câu chuyện <span class="req">*</span></label>
+      <input type="text" name="topic" id="story-topic-input" required placeholder="Ví dụ: Đêm mưa ở Đà Lạt khiến tôi đổi nghề, Bí mật căn nhà cổ..." style="font-size:14px;padding:10px 14px">
+    </div>
+
+    <div class="grid3" style="gap:16px;margin-bottom:16px">
       <div class="field">
-        <label>Thể loại</label>
-        <input type="text" name="genre" value="{{.Stories.DefGenre}}" placeholder="tâm lý">
-      </div>
-      <div class="field">
-        <label>Giọng đọc</label>
-        <select name="voice">
-          <option value="">Mặc định</option>
-          <option value="female">Nữ</option>
-          <option value="male">Nam</option>
+        <label style="font-weight:700;font-size:13px">Thể loại câu chuyện</label>
+        <select name="genre" style="padding:9px 12px">
+          <option value="tâm lý" selected>🎭 Tâm lý &amp; Cuộc sống (Cảm động, chiêm nghiệm)</option>
+          <option value="ly kỳ">🕵️ Ly kỳ &amp; Bí ẩn (Gay cấn, hồi hộp)</option>
+          <option value="kinh dị">👻 Kinh dị &amp; Truyện ma đêm khuya (U ám, rùng rợn)</option>
+          <option value="lịch sử">📜 Lịch sử &amp; Huyền sử Việt Nam (Hào hùng, bi tráng)</option>
+          <option value="khởi nghiệp">💼 Bài học kinh doanh &amp; Thành công (Thực tế, sâu sắc)</option>
         </select>
       </div>
+
       <div class="field">
-        <label>Số cảnh (3–12)</label>
-        <input type="number" name="scenes" value="{{.Stories.DefScenes}}" min="3" max="12">
+        <label style="font-weight:700;font-size:13px">Thời lượng câu chuyện</label>
+        <select name="duration_minutes" style="padding:9px 12px;font-weight:600">
+          <option value="30" selected>⏱️ 30 phút (YouTube Podcast - Khuyên dùng)</option>
+          <option value="45">⏱️ 45 phút (Kể chuyện đêm khuya sâu sắc)</option>
+          <option value="60">⏱️ 60 phút (Trường thiên 1 giờ đỉnh cao)</option>
+          <option value="15">⏱️ 15 phút (Bản tóm lược nhanh)</option>
+        </select>
       </div>
-    </div>
-    <div class="grid2">
+
       <div class="field">
-        <label>Độ dài truyện (từ, 200–1200)</label>
-        <input type="number" name="words" value="{{.Stories.DefWords}}" min="200" max="1200" step="50">
-      </div>
-      <div class="field">
-        <label>Nhạc nền</label>
-        <select name="music_on">
-          <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Có (dùng nhạc chung của app)</option>
-          <option value="0"{{if not .Stories.MusicOn}} selected{{end}}>Không</option>
+        <label style="font-weight:700;font-size:13px">Giọng đọc kể chuyện (Voiceover)</label>
+        <select name="voice" style="padding:9px 12px">
+          <option value="" selected>Mặc định (Giọng truyền cảm chuẩn)</option>
+          <option value="female">Giọng Nữ (Dịu dàng, sâu lắng, cảm xúc)</option>
+          <option value="male">Giọng Nam (Trầm ấm, uy quyền, bí ẩn)</option>
         </select>
       </div>
     </div>
+    <input type="hidden" name="auto_clip_shorts" value="1">
+
+    <details class="advanced" style="margin-bottom:18px">
+      <summary style="font-weight:600;font-size:13px">⚙️ Tùy chọn chi tiết (Số phân cảnh, Độ dài kịch bản, Nhạc nền)</summary>
+      <div class="grid3" style="gap:14px;margin-top:12px">
+        <div class="field">
+          <label style="font-size:12px;font-weight:600">Số cảnh vẽ tranh (3–12 cảnh)</label>
+          <input type="number" name="scenes" value="{{.Stories.DefScenes}}" min="3" max="12">
+        </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:600">Độ dài truyện (từ, 200–1200)</label>
+          <input type="number" name="words" value="{{.Stories.DefWords}}" min="200" max="1200" step="50">
+        </div>
+        <div class="field">
+          <label style="font-size:12px;font-weight:600">Lồng nhạc nền</label>
+          <select name="music_on">
+            <option value="1"{{if .Stories.MusicOn}} selected{{end}}>Có nhạc nền cảm xúc</option>
+            <option value="0"{{if not .Stories.MusicOn}} selected{{end}}>Không dùng nhạc</option>
+          </select>
+        </div>
+      </div>
     </details>
-    <button type="submit" class="btn btn-primary">Viết &amp; dựng</button>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--muted)">
+        💡 AI sẽ tự động sinh hình ảnh minh họa cho từng cảnh và xuất bản cả 2 định dạng: <b>16:9 YouTube Full HD</b> và <b>9:16 Shorts</b>.
+      </div>
+      <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:800;font-size:14px">
+        🚀 Viết Kịch Bản &amp; Dựng Phim Kể Chuyện ➔
+      </button>
+    </div>
   </form>
 </div>
+
+<script>
+function setStoryTopic(t) {
+  var inp = document.getElementById('story-topic-input');
+  if (inp) {
+    inp.value = t;
+    inp.focus();
+  }
+}
+</script>
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Truyện đã tạo</h2>
@@ -78,13 +181,14 @@
       <td><span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "failed"}}badge-err{{else}}badge-info{{end}}">{{.StatusVN}}</span>{{if .Published}} <span class="badge badge-ok">đã đăng</span>{{end}}{{if or (eq .Status "running") (eq .Status "queued")}}<br><div class="progress" style="max-width:8em"><div class="progress-bar" style="width:{{.Progress}}%"></div></div><span class="hint">{{.Progress}}%</span>{{end}}<br><span class="hint">{{.LogTail}}</span></td>
       <td>{{.Scenes}}</td>
       <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
+      <td style="text-align:right;white-space:nowrap">
         {{if .MediaURL}}
           <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')">▶ Xem</button>
           <a class="btn btn-secondary btn-sm" href="{{.MediaURL}}" download title="Tải file video">⬇ Tải</a>
         {{end}}
         {{if and (eq .Status "done") (not .Published)}}
         <form method="post" action="/stories/{{.ID}}/publish" style="display:inline">
-          <select name="account" required>
+          <select name="account" required style="font-size:12px;padding:3px 6px">
             <option value="">— kênh —</option>
             {{range $.Stories.AccountNames}}<option value="{{.}}"{{if eq . $.Stories.PostAccount}} selected{{end}}>{{.}}</option>{{end}}
           </select>
@@ -98,7 +202,7 @@
         {{end}}
         <a class="btn btn-secondary btn-sm" href="/stories/{{.ID}}/log" target="_blank">Nhật ký</a>
         <form method="post" action="/stories/{{.ID}}/delete" style="display:inline" data-confirm="Xoá truyện này khỏi danh sách? File video sẽ bị xoá.">
-          <button type="submit" class="btn btn-secondary btn-sm">Xoá</button>
+          <button type="submit" class="btn btn-danger btn-sm" style="padding:3px 8px">Xoá</button>
         </form>
       </td>
     </tr>

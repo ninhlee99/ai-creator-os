@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -23,7 +24,14 @@ import (
 func (s *Server) accountRedirect(w http.ResponseWriter, r *http.Request, id int64, notice, errMsg string) {
 	loc := "/accounts/" + strconv.FormatInt(id, 10)
 	q := url.Values{}
-	q.Set("tab", "autopilot")
+	tab := r.FormValue("tab")
+	if tab == "" {
+		tab = r.URL.Query().Get("tab")
+	}
+	if tab == "" {
+		tab = "nhan-vat"
+	}
+	q.Set("tab", tab)
 	if notice != "" {
 		q.Set("ok", notice)
 	}
@@ -152,8 +160,9 @@ func (s *Server) modelPhotoViews(accountID int64) []modelPhotoView {
 	return out
 }
 
-// handleAccountModelUpload stores one uploaded model photo into the
-// account's library (identity-lock ground truth). Images only, max 10MB.
+// handleAccountModelUpload stores uploaded model photos into the
+// account's library (identity-lock ground truth). Supports uploading multiple
+// photos at once. Images only (jpg/png/webp), max 15MB each.
 func (s *Server) handleAccountModelUpload(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.accountID(w, r)
 	if !ok {
@@ -163,48 +172,67 @@ func (s *Server) handleAccountModelUpload(w http.ResponseWriter, r *http.Request
 		s.accountRedirect(w, r, id, "", "Studio chưa được khởi tạo nên chưa upload được ảnh mẫu.")
 		return
 	}
-	if err := r.ParseMultipartForm(12 << 20); err != nil {
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		s.accountRedirect(w, r, id, "", "Không đọc được file upload: "+err.Error())
 		return
 	}
-	f, hdr, err := r.FormFile("photo")
-	if err != nil {
+
+	var fileHeaders []*multipart.FileHeader
+	if r.MultipartForm != nil {
+		for _, key := range []string{"photos", "photo", "character_photos", "model_photos"} {
+			if fhs, ok := r.MultipartForm.File[key]; ok && len(fhs) > 0 {
+				fileHeaders = append(fileHeaders, fhs...)
+			}
+		}
+	}
+	if len(fileHeaders) == 0 {
 		s.accountRedirect(w, r, id, "", "Chưa chọn file ảnh nào.")
 		return
 	}
-	defer f.Close()
-	ext := strings.ToLower(filepath.Ext(hdr.Filename))
-	if !modelUploadExts[ext] {
-		s.accountRedirect(w, r, id, "", "Chỉ nhận file ảnh jpg/png/webp.")
-		return
-	}
-	tmp, err := os.CreateTemp("", "model-upload-*"+ext)
-	if err != nil {
-		s.accountRedirect(w, r, id, "", "Không lưu được file tạm: "+err.Error())
-		return
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // the store copies the file into the library
-	n, err := io.Copy(tmp, io.LimitReader(f, 10<<20+1))
-	tmp.Close()
-	if err != nil {
-		s.accountRedirect(w, r, id, "", "Không đọc được file ảnh: "+err.Error())
-		return
-	}
-	if n > 10<<20 {
-		s.accountRedirect(w, r, id, "", "File quá lớn — tối đa 10MB.")
-		return
-	}
+
 	ms, err := s.Studio.ModelLibrary()
 	if err != nil {
 		s.accountRedirect(w, r, id, "", "Không mở được thư viện ảnh: "+err.Error())
 		return
 	}
-	if _, err := ms.Add(id, tmpName); err != nil {
-		s.accountRedirect(w, r, id, "", "Không thêm được ảnh mẫu: "+err.Error())
+
+	addedCount := 0
+	for _, hdr := range fileHeaders {
+		if hdr == nil {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(hdr.Filename))
+		if !modelUploadExts[ext] {
+			continue
+		}
+		f, err := hdr.Open()
+		if err != nil {
+			continue
+		}
+		tmp, err := os.CreateTemp("", "model-upload-*"+ext)
+		if err != nil {
+			f.Close()
+			continue
+		}
+		tmpName := tmp.Name()
+		n, err := io.Copy(tmp, io.LimitReader(f, 15<<20+1))
+		f.Close()
+		tmp.Close()
+		if err != nil || n == 0 || n > 15<<20 {
+			_ = os.Remove(tmpName)
+			continue
+		}
+		if _, err := ms.Add(id, tmpName); err == nil {
+			addedCount++
+		}
+		_ = os.Remove(tmpName)
+	}
+
+	if addedCount == 0 {
+		s.accountRedirect(w, r, id, "", "Không có ảnh hợp lệ nào được tải lên (chỉ nhận file jpg/png/webp dưới 15MB).")
 		return
 	}
-	s.accountRedirect(w, r, id, "Đã thêm ảnh mẫu vào thư viện.", "")
+	s.accountRedirect(w, r, id, fmt.Sprintf("Đã tải lên & khóa %d ảnh nhân vật vào thư viện.", addedCount), "")
 }
 
 // handleAccountModelDelete removes one model photo from the library.
@@ -244,6 +272,10 @@ func (s *Server) handleModelPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 	account := r.PathValue("account")
 	file := r.PathValue("file")
+	if account == "" || file == "" {
+		http.NotFound(w, r)
+		return
+	}
 	for _, c := range account {
 		if c < '0' || c > '9' {
 			http.NotFound(w, r)
@@ -260,18 +292,20 @@ func (s *Server) handleModelPhoto(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if !fileExists(path) {
+		cand := filepath.Join("data/output/studio/models", account, file)
+		if fileExists(cand) {
+			path = cand
+		} else {
+			http.NotFound(w, r)
+			return
+		}
+	}
 	serveMediaFile(w, r, path)
 }
 
 var modelFileRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(jpg|jpeg|png|webp)$`)
 
-// handleModelPhoto serves a model library photo. The account segment must
-// be numeric and the file name must match the image allowlist; the
-// resolved path is verified to stay under the models dir (no traversal).
-
 var modelUploadExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
 }
-
-// handleAccountModelUpload stores one uploaded model photo into the
-// account's library (identity-lock ground truth). Images only, max 10MB.

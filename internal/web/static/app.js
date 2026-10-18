@@ -128,10 +128,23 @@
   // ------------------------------------------------------ sidebar active & drawer
   (function () {
     var p = location.pathname;
+    var bestMatch = null;
+    var bestLen = -1;
     document.querySelectorAll('.sidebar nav a').forEach(function (a) {
       var h = a.getAttribute('href');
-      if (h === p || (h !== '/' && p.indexOf(h) === 0)) a.classList.add('active');
+      if (!h) return;
+      var clean = h.split('?')[0];
+      if (clean === p) {
+        bestMatch = a;
+        bestLen = 9999;
+      } else if (clean !== '/' && p.indexOf(clean) === 0 && clean.length > bestLen) {
+        bestMatch = a;
+        bestLen = clean.length;
+      }
     });
+    if (bestMatch) {
+      bestMatch.classList.add('active');
+    }
 
     // Mobile drawer toggle
     var toggleBtn = document.getElementById('nav-toggle');

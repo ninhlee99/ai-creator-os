@@ -20,15 +20,16 @@ const (
 
 // PlatformInfo describes a supported web AI service.
 type PlatformInfo struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	URL         string `json:"url"`
-	Icon        string `json:"icon"`
-	Color       string `json:"color"`
-	Badge       string `json:"badge"`
-	Description string `json:"description"`
-	AuthGuide   string `json:"auth_guide"`
-	Placeholder string `json:"placeholder"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	URL         string   `json:"url"`
+	LoginURL    string   `json:"login_url"`
+	Icon        string   `json:"icon"`
+	Color       string   `json:"color"`
+	Badge       string   `json:"badge"`
+	Description string   `json:"description"`
+	AuthGuide   string   `json:"auth_guide"`
+	Placeholder string   `json:"placeholder"`
 	Features    []string `json:"features"`
 }
 
@@ -37,62 +38,67 @@ func SupportedPlatforms() []PlatformInfo {
 	return []PlatformInfo{
 		{
 			ID:          PlatformChatGPT,
-			Name:        "ChatGPT",
+			Name:        "ChatGPT (GPT-4o / o3-mini)",
 			URL:         "https://chatgpt.com",
+			LoginURL:    "https://chatgpt.com/auth/login",
 			Icon:        "💬",
 			Color:       "#10a37f",
 			Badge:       "OpenAI",
-			Description: "Kịch bản viral & Hook bán hàng",
-			AuthGuide:   "Khóa API (sk-...) hoặc Session Token",
-			Placeholder: "Dán API Key hoặc Session Token...",
+			Description: "Kịch bản viral, Hook bán hàng & FOMO (GPT-4o, o3-mini)",
+			AuthGuide:   "Khóa API từ OpenAI (sk-...)",
+			Placeholder: "Dán mã API Key (sk-...) vào đây...",
 			Features:    []string{"Kịch bản bán hàng", "Hook 3 giây", "Lời thoại voiceover", "Phân tích khách hàng"},
 		},
 		{
 			ID:          PlatformClaude,
-			Name:        "Claude",
+			Name:        "Claude 3.7 Sonnet",
 			URL:         "https://claude.ai",
+			LoginURL:    "https://claude.ai/login",
 			Icon:        "🟣",
 			Color:       "#d97706",
 			Badge:       "Anthropic",
-			Description: "Phân cảnh & Chỉ đạo nghệ thuật",
-			AuthGuide:   "Khóa API (sk-ant-...) hoặc Session Key",
-			Placeholder: "Dán API Key hoặc Session Key...",
+			Description: "Phân cảnh điện ảnh & Kể chuyện cảm xúc (Claude 3.7 Sonnet)",
+			AuthGuide:   "Khóa API từ Anthropic (sk-ant-...)",
+			Placeholder: "Dán mã API Key (sk-ant-...) vào đây...",
 			Features:    []string{"Phân cảnh điện ảnh", "Prompt Gemini & Muse", "Tối ưu câu từ", "Caption & hashtag"},
 		},
 		{
 			ID:          PlatformGemini,
-			Name:        "Gemini",
+			Name:        "Gemini 2.0 Flash / Pro",
 			URL:         "https://gemini.google.com",
+			LoginURL:    "https://aistudio.google.com/app/apikey",
 			Icon:        "✨",
 			Color:       "#4285f4",
 			Badge:       "Google",
-			Description: "Tạo ảnh sản phẩm 4K",
-			AuthGuide:   "API Key Google AI Studio (miễn phí) hoặc Cookie",
-			Placeholder: "Dán API Key (AIzaSy...) hoặc Cookie...",
-			Features:    []string{"Ảnh sản phẩm 4K", "Đồng nhất người mẫu", "Bối cảnh quảng cáo", "Miễn phí"},
+			Description: "Tạo ảnh sản phẩm 4K & Kịch bản đa giác quan (Gemini 2.0 Flash)",
+			AuthGuide:   "Khóa API Google AI Studio (Miễn phí 100%, AIzaSy...)",
+			Placeholder: "Dán mã API Key (AIzaSy...) vào đây...",
+			Features:    []string{"Ảnh sản phẩm 4K", "Đồng nhất người mẫu", "Bối cảnh quảng cáo", "Miễn phí 100%"},
 		},
 		{
 			ID:          PlatformGrok,
-			Name:        "Grok (xAI)",
+			Name:        "Grok 3 (xAI)",
 			URL:         "https://grok.com",
+			LoginURL:    "https://grok.com",
 			Icon:        "🚀",
 			Color:       "#111827",
 			Badge:       "xAI",
-			Description: "Ý tưởng viral & Logic phản biện sâu sắc",
-			AuthGuide:   "Khóa API xAI hoặc Session Token / Cookie sso",
-			Placeholder: "Dán API Key (xai-...) hoặc Token...",
+			Description: "Ý tưởng viral & Bùng nổ tranh luận (Grok 3)",
+			AuthGuide:   "Khóa API xAI Console (xai-...)",
+			Placeholder: "Dán mã API Key (xai-...) vào đây...",
 			Features:    []string{"Bắt trend realtime X/Twitter", "Phản biện đa chiều", "Kịch bản tranh luận", "Tư duy sắc sảo"},
 		},
 		{
 			ID:          PlatformMuseAI,
 			Name:        "Muse AI",
 			URL:         "https://muse.ai",
+			LoginURL:    "https://muse.ai/signin",
 			Icon:        "🎬",
 			Color:       "#ec4899",
 			Badge:       "Video Studio",
 			Description: "Tạo video chuyển động",
-			AuthGuide:   "Khóa API hoặc Session Token",
-			Placeholder: "Dán API Key hoặc Auth Token...",
+			AuthGuide:   "Khóa API từ Muse.ai",
+			Placeholder: "Dán mã API Key vào đây...",
 			Features:    []string{"Video chuyển động", "Lưu trữ 1080p/4K", "Vòng lặp sản phẩm", "Không watermark"},
 		},
 	}
@@ -185,6 +191,8 @@ type AdScriptPackage struct {
 	ClaudePrompt          string                  `json:"claude_prompt"`
 	ChatGPTPrompt         string                  `json:"chatgpt_prompt"`
 	QC                    QCScorecard             `json:"qc"`
+	AIEngine              string                  `json:"ai_engine"`
+	AIEngineBadge         string                  `json:"ai_engine_badge"`
 }
 
 

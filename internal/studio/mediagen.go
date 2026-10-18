@@ -267,14 +267,20 @@ func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs 
 			return nil
 		}
 		lastErr = err
-		// Invalid key: try the next one. Anything else: stop, the error
-		// is about the request, not the key.
-		if tts.ClassifyKeyError(err) != tts.KeyErrInvalidKey {
+		// Rotate to next key on invalid key or quota/rate limit error.
+		// Only stop early on non-key errors (e.g. malformed prompt).
+		if tts.ClassifyKeyError(err) == tts.KeyErrOther {
 			break
 		}
 	}
 	if lastErr == nil {
-		lastErr = fmt.Errorf("no usable Gemini API key")
+		lastErr = fmt.Errorf("no usable Gemini API key (cooling down)")
+	}
+	if len(g.keys) > 0 {
+		log.Printf("mediagen: Gemini image API keys unavailable (%v) — falling back to synthesized visual", lastErr)
+		if gerr := GenerateCinematicStoryScene(0, 1, prompt, outPath); gerr == nil {
+			return nil
+		}
 	}
 	return fmt.Errorf("generate image: %w", lastErr)
 }
@@ -433,7 +439,7 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 			return nil
 		}
 		lastErr = err
-		if tts.ClassifyKeyError(err) != tts.KeyErrInvalidKey {
+		if tts.ClassifyKeyError(err) == tts.KeyErrOther {
 			break
 		}
 	}

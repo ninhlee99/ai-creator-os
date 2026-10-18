@@ -122,6 +122,14 @@ func (p *TikTokPublisher) IsConfigured() bool {
 	return err == nil
 }
 
+// AccessToken returns an active access token, refreshing if necessary.
+func (p *TikTokPublisher) AccessToken() (string, error) {
+	if !p.HasClient() {
+		return "", fmt.Errorf("thiếu client credentials")
+	}
+	return p.client().AccessToken()
+}
+
 // Handles reports whether kind is one of short_video, short_film.
 func (p *TikTokPublisher) Handles(kind string) bool { return handlesKind(kind, tiktokKinds) }
 

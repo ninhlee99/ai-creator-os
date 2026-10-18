@@ -5,10 +5,12 @@ package web
 // the embedded static CSS handler.
 
 import (
+	"bytes"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Routes wires every dashboard route. POST redirects use 303 See Other,
@@ -19,16 +21,22 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
+	mux.HandleFunc("GET /static/sample_916.mp4", s.handleStaticSampleVideo)
 
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
 	mux.HandleFunc("GET /", s.handleDashboard)
+	mux.HandleFunc("POST /create-one-command", s.handleOneCommandCreate)
+	mux.HandleFunc("POST /api/create-one-command", s.handleOneCommandCreate)
 	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
 	mux.HandleFunc("GET /accounts/new", s.handleAccountNew)
 	mux.HandleFunc("POST /accounts", s.handleAccountCreate)
 	mux.HandleFunc("GET /accounts/{id}", s.handleAccountDetail)
+	mux.HandleFunc("GET /accounts/{id}/edit", s.handleAccountEdit)
+	mux.HandleFunc("POST /accounts/{id}/edit", s.handleAccountUpdate)
+	mux.HandleFunc("POST /accounts/{id}/delete", s.handleAccountDelete)
 	mux.HandleFunc("POST /accounts/{id}/transition", s.handleAccountTransition)
 	mux.HandleFunc("POST /accounts/{id}/youtube", s.handleAccountYoutube)
 	mux.HandleFunc("POST /accounts/{id}/onboard", s.handleAccountOnboard)
@@ -40,6 +48,17 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/autopilot/run", s.handleAccountAutopilotRun)
 	mux.HandleFunc("POST /accounts/{id}/models/upload", s.handleAccountModelUpload)
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
+	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
+
+	// Màn hình chuyên biệt: Thư Viện Nhân Vật & Face Lock AI
+	mux.HandleFunc("GET /models", s.handleModels)
+	mux.HandleFunc("POST /models/upload", s.handleModelUploadGlobal)
+	mux.HandleFunc("POST /models/{id}/delete", s.handleModelDeleteGlobal)
+
+	// Đường dẫn tắt chuyên biệt cho Affiliate
+	mux.HandleFunc("GET /affiliate", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/studio", http.StatusSeeOther)
+	})
 	// Brand DNA (Bản sắc thương hiệu cho kênh — Organic growth)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna", s.handleAccountBrandDNASave)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna/reset", s.handleAccountBrandDNAReset)
@@ -51,6 +70,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/missions/{id}", s.handleMissionDetailJSON)
 
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
+	mux.HandleFunc("GET /clips/{category}/{name}", s.handleClipMedia)
 
 	// Studio: AI video creation (affiliate / short film) + VN trends.
 	mux.HandleFunc("GET /studio", s.handleStudio)
@@ -73,7 +93,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
 	mux.HandleFunc("POST /studio/viral", s.handleStudioViralCreate)
 	mux.HandleFunc("POST /studio/viral/quick", s.handleStudioViralQuick)
+	mux.HandleFunc("POST /studio/muse-import", s.handleStudioMuseImport)
 	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
+	mux.HandleFunc("GET /api/studio/faceswap-status", s.handleAPIFaceSwapStatus)
 	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
 	mux.HandleFunc("GET /api/studio/tiktok-trends", s.handleAPITikTokTrends)
 	mux.HandleFunc("GET /api/studio/tiktok-topics", s.handleAPITikTokTopics)
@@ -88,9 +110,14 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /web-ai/accounts/test", s.handleWebAIAccountTest)
 	mux.HandleFunc("POST /web-ai/accounts/reset-cooldown", s.handleWebAIAccountResetCooldown)
 	mux.HandleFunc("POST /web-ai/prompt-generate", s.handleWebAIPromptGenerate)
+	mux.HandleFunc("GET /web-ai/pool-status", s.handleWebAIPoolStatus)
 	mux.HandleFunc("GET /web-ai/proxy/", s.handleWebAIProxy)
 	mux.HandleFunc("GET /api/web-ai/capture-session", s.handleWebAICaptureSession)
 	mux.HandleFunc("POST /api/web-ai/capture-session", s.handleWebAICaptureSession)
+	// Web AI Browser CDP Automated Login (Chrome DevTools Protocol)
+	mux.HandleFunc("POST /web-ai/browser-login/start", s.handleWebAIBrowserLoginStart)
+	mux.HandleFunc("GET /web-ai/browser-login/status", s.handleWebAIBrowserLoginStatus)
+	mux.HandleFunc("POST /web-ai/browser-login/cancel", s.handleWebAIBrowserLoginCancel)
 
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
@@ -107,8 +134,16 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /products/search", s.handleProductsSearch)
 	mux.HandleFunc("POST /products/add", s.handleProductsAdd)
 	mux.HandleFunc("POST /products/shelf/add", s.handleProductsShelfAdd)
+	mux.HandleFunc("POST /products/shelf/toggle", s.handleProductsShelfToggle)
 	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
 	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
+
+	// Bio Link Storefront (Public mobile-first storefront for creator channels)
+	mux.HandleFunc("GET /bio", s.handleBioLink)
+	mux.HandleFunc("GET /bio/{channel}", s.handleBioLink)
+	mux.HandleFunc("GET /bio-go/{id}", s.handleBioRedirect)
+	mux.HandleFunc("GET /bio-go", s.handleBioRedirect)
+	mux.HandleFunc("POST /bio/pin", s.handleBioPin)
 
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
@@ -332,6 +367,13 @@ func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "audio/mpeg")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	_, _ = w.Write(staticPreviewAudio)
+}
+
+// handleStaticSampleVideo serves the bundled sample 9:16 vertical video.
+func (s *Server) handleStaticSampleVideo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	http.ServeContent(w, r, "sample_916.mp4", time.Time{}, bytes.NewReader(staticSampleVideo))
 }
 
 // --------------------------------------------------------------- dashboard

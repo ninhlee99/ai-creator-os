@@ -29,9 +29,23 @@
      TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Muse AI)
      ========================================================================= -->
 <div id="panel-webai" class="settings-tab-panel" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
     <h3 style="margin:0">Tài Khoản AI (ChatGPT, Claude, Gemini, Grok, Muse)</h3>
-    <span class="badge badge-ok">{{.WebAIConnected}} sẵn sàng</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()" style="font-weight:700">
+        ⚡ Kiểm Tra Tất Cả Phiên
+      </button>
+      <span class="badge badge-ok" id="badge-webai-connected">{{.WebAIConnected}} sẵn sàng</span>
+    </div>
+  </div>
+
+
+
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+    <span style="font-size:24px">💡</span>
+    <div style="font-size:13px;line-height:1.5;color:var(--text)">
+      <strong>Dành cho nhà sáng tạo nội dung:</strong> Bấm <b>🌐 Đăng Nhập Tự Động</b> để hệ thống mở trình duyệt riêng biệt. Bạn chỉ cần đăng nhập bình thường, hệ thống sẽ tự động lưu phiên làm việc — <u>hoàn toàn không cần sao chép cookie thủ công</u>!
+    </div>
   </div>
 
   <div class="webai-grid">
@@ -78,7 +92,8 @@
               {{end}}
               <span class="hint" style="margin-left:4px">{{.Requests}} req</span>
             </div>
-            <div style="display:flex;gap:4px">
+            <div style="display:flex;gap:4px;align-items:center">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="testWebAIAccount('{{.ID}}', this)" title="Kiểm tra phiên sống ngay" style="font-size:11px;padding:2px 7px">⚡ Test</button>
               {{if eq .Status "cooldown"}}
               <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
                 <input type="hidden" name="id" value="{{.ID}}">
@@ -101,10 +116,12 @@
       </div>
 
       <div class="webai-card-actions" style="display:flex;gap:8px">
-        <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:600;font-size:12px;padding:7px 10px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}')">
-          + Kết Nối Tài Khoản
+        <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
+          <span>🌐</span> Đăng Nhập Tự Động
         </button>
-        <a href="{{.Platform.URL}}" target="_blank" rel="noreferrer" class="btn btn-secondary btn-sm" style="padding:7px 12px;font-size:12px" title="Mở trang {{.Platform.Name}}">↗ Mở web</a>
+        <button type="button" class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 12px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}', '{{.Platform.LoginURL}}')" title="Nhập Khóa API hoặc kết nối thủ công">
+          🔑 Nhập Key
+        </button>
       </div>
     </div>
     {{end}}
@@ -148,6 +165,7 @@
       {{$curGroup := ""}}
       {{range .EnvStatus}}
       {{if or (eq .Group "Google Gemini") (eq .Group "OpenAI & Claude & AI Khác")}}
+      {{if not (or (eq .Name "GEMINI_TEXT_MODEL") (eq .Name "GEMINI_IMAGE_MODEL") (eq .Name "GEMINI_TTS_MODEL"))}}
         {{if ne $curGroup .Group}}
           {{$curGroup = .Group}}
           <tr class="env-group-header">
@@ -186,6 +204,7 @@
         </tr>
       {{end}}
       {{end}}
+      {{end}}
       </tbody>
     </table>
   </div>
@@ -195,66 +214,185 @@
      TAB 3: SOCIAL CHANNELS (YouTube, TikTok, Facebook, Instagram, Threads)
      ========================================================================= -->
 <div id="panel-social" class="settings-tab-panel" style="display:none">
-  <div style="margin-bottom: 16px;">
-    <h3 style="margin:0">Cấu Hình Kết Nối Kênh Mạng Xã Hội</h3>
-    <p class="subtitle" style="margin:4px 0 0">Thông số OAuth và API credentials cho YouTube, TikTok, Facebook Reels, Instagram và Threads để tự động phân phối video đa nền tảng.</p>
+  <div style="margin-bottom: 20px;">
+    <h3 style="margin:0;font-size:18px">Cấu Hình Kết Nối Kênh Mạng Xã Hội</h3>
+    <p class="subtitle" style="margin:4px 0 0">Chỉ cần cấu hình Client ID &amp; Client Secret để liên kết tài khoản và tự động đăng video lên YouTube &amp; TikTok.</p>
   </div>
 
-  <div class="table-wrap" style="border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
-    <table style="margin:0">
-      <thead>
-        <tr>
-          <th style="width:38%">Kênh &amp; Khóa Kết Nối</th>
-          <th style="width:14%">Trạng Thái</th>
-          <th style="width:18%">Giá Trị (Đã Ẩn)</th>
-          <th style="width:30%">Cập Nhật Giá Trị Mới</th>
-        </tr>
-      </thead>
-      <tbody>
-      {{$curGroup2 := ""}}
-      {{range .EnvStatus}}
-      {{if or (eq .Group "TikTok") (eq .Group "YouTube") (eq .Group "Facebook · Instagram · Threads")}}
-        {{if ne $curGroup2 .Group}}
-          {{$curGroup2 = .Group}}
-          <tr class="env-group-header">
-            <th colspan="4" style="background:var(--bg3);padding:10px 16px;font-size:13px;letter-spacing:0.5px">
-              🌐 {{.Group}}
-            </th>
-          </tr>
+  <div class="grid2" style="gap:20px;margin-bottom:24px">
+    
+    <!-- 1. KÊNH YOUTUBE -->
+    <div class="card" style="border-radius:14px;padding:20px;border:1px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+          </div>
+          <div>
+            <h4 style="margin:0;font-size:16px">▶️ YouTube Studio</h4>
+            <span class="hint" style="font-size:12px">Google OAuth 2.0 Client (Desktop App)</span>
+          </div>
+        </div>
+        {{$ytCidOk := false}}
+        {{$ytSecOk := false}}
+        {{$ytCidMask := ""}}
+        {{$ytSecMask := ""}}
+        {{range .EnvStatus}}
+          {{if eq .Name "YOUTUBE_CLIENT_ID"}}{{$ytCidOk = .Ok}}{{$ytCidMask = .Masked}}{{end}}
+          {{if eq .Name "YOUTUBE_CLIENT_SECRET"}}{{$ytSecOk = .Ok}}{{$ytSecMask = .Masked}}{{end}}
         {{end}}
-        <tr class="env-row-item">
-          <td>
-            <div style="font-weight:700;font-size:13px;color:var(--text)">{{.Label}}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Help}}</div>
-            <code class="env-name" style="font-size:11px;opacity:0.8">{{.Name}}</code>
-          </td>
-          <td>
-            {{if .Ok}}
-              <span class="badge badge-ok">✓ Đã thiết lập</span>
-            {{else}}
-              <span class="badge badge-no">Chưa đặt</span>
-            {{end}}
-          </td>
-          <td>
-            {{if .Ok}}
-              <code class="key-masked" style="background:rgba(0,0,0,0.04);padding:3px 8px;border-radius:4px;font-size:12px">{{.Masked}}</code>
-            {{else}}
-              <span class="hint">—</span>
-            {{end}}
-          </td>
-          <td>
-            <form method="post" action="/settings/env" class="env-form" style="display:flex;gap:6px">
-              <input type="hidden" name="name" value="{{.Name}}">
-              <input type="password" name="value" placeholder="Nhập giá trị mới…" autocomplete="off" spellcheck="false" style="font-size:12px;padding:6px 10px;flex:1">
-              <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px">Lưu</button>
-            </form>
-          </td>
-        </tr>
-      {{end}}
-      {{end}}
-      </tbody>
-    </table>
+        {{if and $ytCidOk $ytSecOk}}
+          <span class="badge badge-ok">✓ Đã sẵn sàng</span>
+        {{else}}
+          <span class="badge badge-warn">Chưa đủ thông tin</span>
+        {{end}}
+      </div>
+
+      <p class="hint" style="margin:0 0 16px 0;font-size:12.5px;line-height:1.5">
+        Lấy thông số tại <b>Google Cloud Console</b> &rarr; <i>APIs &amp; Services &rarr; Credentials &rarr; OAuth 2.0 Client IDs</i> (loại Desktop application).
+      </p>
+
+      <!-- Field: YOUTUBE_CLIENT_ID -->
+      <div style="margin-bottom:14px;padding:12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Client ID</label>
+          {{if $ytCidOk}}
+            <span class="badge badge-ok" style="font-size:10.5px">✓ Đã đặt (<code>{{$ytCidMask}}</code>)</span>
+          {{else}}
+            <span class="badge badge-no" style="font-size:10.5px">Chưa đặt</span>
+          {{end}}
+        </div>
+        <form method="post" action="/settings/env" style="display:flex;gap:6px">
+          <input type="hidden" name="name" value="YOUTUBE_CLIENT_ID">
+          <input type="password" name="value" placeholder="Nhập Client ID (vd: ...apps.googleusercontent.com)" autocomplete="off" spellcheck="false" style="font-size:12px;padding:7px 10px;flex:1">
+          <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:7px 14px">Lưu</button>
+        </form>
+      </div>
+
+      <!-- Field: YOUTUBE_CLIENT_SECRET -->
+      <div style="padding:12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Client Secret</label>
+          {{if $ytSecOk}}
+            <span class="badge badge-ok" style="font-size:10.5px">✓ Đã đặt (<code>{{$ytSecMask}}</code>)</span>
+          {{else}}
+            <span class="badge badge-no" style="font-size:10.5px">Chưa đặt</span>
+          {{end}}
+        </div>
+        <form method="post" action="/settings/env" style="display:flex;gap:6px">
+          <input type="hidden" name="name" value="YOUTUBE_CLIENT_SECRET">
+          <input type="password" name="value" placeholder="Nhập Client Secret..." autocomplete="off" spellcheck="false" style="font-size:12px;padding:7px 10px;flex:1">
+          <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:7px 14px">Lưu</button>
+        </form>
+      </div>
+
+      <div style="margin-top:14px;text-align:right">
+        <a href="/publishers" class="btn btn-secondary btn-sm">Mở trang kết nối kênh YouTube ↗</a>
+      </div>
+    </div>
+
+    <!-- 2. KÊNH TIKTOK -->
+    <div class="card" style="border-radius:14px;padding:20px;border:1px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:8px;background:#000;display:flex;align-items:center;justify-content:center;box-shadow:1.5px 1.5px 0 #fe2c55,-1.5px -1.5px 0 #00f2fe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>
+          </div>
+          <div>
+            <h4 style="margin:0;font-size:16px">🎵 TikTok Creator</h4>
+            <span class="hint" style="font-size:12px">TikTok for Developers (Login Kit &amp; Content Posting)</span>
+          </div>
+        </div>
+        {{$ttKeyOk := false}}
+        {{$ttSecOk := false}}
+        {{$ttKeyMask := ""}}
+        {{$ttSecMask := ""}}
+        {{range .EnvStatus}}
+          {{if eq .Name "TIKTOK_CLIENT_KEY"}}{{$ttKeyOk = .Ok}}{{$ttKeyMask = .Masked}}{{end}}
+          {{if eq .Name "TIKTOK_CLIENT_SECRET"}}{{$ttSecOk = .Ok}}{{$ttSecMask = .Masked}}{{end}}
+        {{end}}
+        {{if and $ttKeyOk $ttSecOk}}
+          <span class="badge badge-ok">✓ Đã sẵn sàng</span>
+        {{else}}
+          <span class="badge badge-warn">Chưa đủ thông tin</span>
+        {{end}}
+      </div>
+
+      <p class="hint" style="margin:0 0 16px 0;font-size:12.5px;line-height:1.5">
+        Lấy thông số tại <b>developers.tiktok.com</b> &rarr; <i>App Details &rarr; Client Key &amp; Client Secret</i>.
+      </p>
+
+      <!-- Field: TIKTOK_CLIENT_KEY -->
+      <div style="margin-bottom:14px;padding:12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Client Key</label>
+          {{if $ttKeyOk}}
+            <span class="badge badge-ok" style="font-size:10.5px">✓ Đã đặt (<code>{{$ttKeyMask}}</code>)</span>
+          {{else}}
+            <span class="badge badge-no" style="font-size:10.5px">Chưa đặt</span>
+          {{end}}
+        </div>
+        <form method="post" action="/settings/env" style="display:flex;gap:6px">
+          <input type="hidden" name="name" value="TIKTOK_CLIENT_KEY">
+          <input type="password" name="value" placeholder="Nhập Client Key TikTok..." autocomplete="off" spellcheck="false" style="font-size:12px;padding:7px 10px;flex:1">
+          <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:7px 14px">Lưu</button>
+        </form>
+      </div>
+
+      <!-- Field: TIKTOK_CLIENT_SECRET -->
+      <div style="padding:12px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Client Secret</label>
+          {{if $ttSecOk}}
+            <span class="badge badge-ok" style="font-size:10.5px">✓ Đã đặt (<code>{{$ttSecMask}}</code>)</span>
+          {{else}}
+            <span class="badge badge-no" style="font-size:10.5px">Chưa đặt</span>
+          {{end}}
+        </div>
+        <form method="post" action="/settings/env" style="display:flex;gap:6px">
+          <input type="hidden" name="name" value="TIKTOK_CLIENT_SECRET">
+          <input type="password" name="value" placeholder="Nhập Client Secret TikTok..." autocomplete="off" spellcheck="false" style="font-size:12px;padding:7px 10px;flex:1">
+          <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:7px 14px">Lưu</button>
+        </form>
+      </div>
+
+      <div style="margin-top:14px;text-align:right">
+        <a href="/publishers" class="btn btn-secondary btn-sm">Mở trang kết nối kênh TikTok ↗</a>
+      </div>
+    </div>
+
   </div>
+
+  <!-- 3. TÙY CHỌN MỞ RỘNG (Meta Facebook / Instagram) -->
+  <details class="card" style="border-radius:12px;padding:16px 20px;border:1px solid var(--border);background:var(--bg2)">
+    <summary style="font-weight:700;font-size:14px;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:8px">
+      <span>📘</span> Cấu hình bổ sung: Meta (Facebook Page, Instagram Reels, Threads)
+    </summary>
+    <div style="margin-top:14px">
+      <p class="hint" style="font-size:12.5px;margin-bottom:14px">
+        Dành cho những kênh muốn xuất bản đồng thời lên Fanpage Facebook và Instagram Reels qua Meta Graph API.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        {{range .EnvStatus}}
+        {{if eq .Group "Facebook · Instagram · Threads"}}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);flex-wrap:wrap;gap:8px">
+          <div style="min-width:220px">
+            <div style="font-weight:700;font-size:13px">{{.Label}}</div>
+            <code style="font-size:11px;color:var(--muted)">{{.Name}}</code>
+          </div>
+          <div style="flex:1;min-width:240px">
+            <form method="post" action="/settings/env" style="display:flex;gap:6px">
+              <input type="hidden" name="name" value="{{.Name}}">
+              <input type="password" name="value" placeholder="{{if .Ok}}Đã đặt ({{.Masked}}) — nhập để đổi{{else}}Nhập giá trị...{{end}}" style="font-size:12px;padding:6px 10px;flex:1">
+              <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+            </form>
+          </div>
+        </div>
+        {{end}}
+        {{end}}
+      </div>
+    </div>
+  </details>
 </div>
 
 <!-- =========================================================================
@@ -461,42 +599,113 @@
   </details>
 </div>
 
+<!-- Automated CDP Browser Login Modal -->
+<div id="browser-login-modal" class="webai-modal-backdrop" hidden>
+  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);max-width:520px;padding:24px">
+    <div class="modal-head" style="margin-bottom:16px;padding:0 0 12px 0;border-bottom:1px solid var(--border)">
+      <h3 id="bl-modal-title" style="margin:0;font-size:18px;display:flex;align-items:center;gap:8px">
+        <span>🌐</span> Đang Đăng Nhập Tự Động
+      </h3>
+      <button type="button" class="modal-close-btn" onclick="cancelBrowserLogin()">✕</button>
+    </div>
+
+    <div class="modal-body" style="padding:0">
+      <div id="bl-status-card" style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px">
+        <!-- Live Spinner / Status Icon -->
+        <div id="bl-status-icon" style="font-size:44px;margin-bottom:12px;animation:pulse 1.8s infinite ease-in-out">
+          ⏳
+        </div>
+        <div id="bl-status-text" style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">
+          Đang khởi động trình duyệt...
+        </div>
+        <div id="bl-status-subtext" style="font-size:12.5px;color:var(--muted);line-height:1.5">
+          Một cửa sổ trình duyệt (Edge/Chrome) đang được mở. Bạn chỉ cần thực hiện đăng nhập bình thường trên cửa sổ đó.
+        </div>
+      </div>
+
+      <!-- Step List -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;display:flex;flex-direction:column;gap:10px">
+        <div id="bl-step-1" style="display:flex;align-items:center;gap:10px;color:var(--text);font-weight:700">
+          <span style="font-size:16px">1️⃣</span>
+          <span>Mở cửa sổ trình duyệt an toàn tới trang dịch vụ</span>
+        </div>
+        <div id="bl-step-2" style="display:flex;align-items:center;gap:10px;color:var(--muted)">
+          <span style="font-size:16px">2️⃣</span>
+          <span>Đăng nhập bình thường (Google, Apple, Email, mật khẩu)</span>
+        </div>
+        <div id="bl-step-3" style="display:flex;align-items:center;gap:10px;color:var(--muted)">
+          <span style="font-size:16px">3️⃣</span>
+          <span>Tự động nhận diện phiên &amp; lưu tài khoản (Zero-Copy Cookie)</span>
+        </div>
+      </div>
+
+      <div style="font-size:11.5px;color:var(--muted);text-align:center;line-height:1.4">
+        🔒 Công nghệ kết nối Chrome DevTools Protocol (CDP) tự động — Tuyệt đối không cần sao chép cookie thủ công.
+      </div>
+    </div>
+
+    <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
+      <button type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy bỏ / Đóng</button>
+    </div>
+  </div>
+</div>
+
 <!-- Connect Session Modal -->
 <div id="connect-modal" class="webai-modal-backdrop" hidden>
-  <div class="webai-modal-box" style="border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:500px">
-    <div class="modal-head">
-      <h3 id="modal-title">Kết nối tài khoản</h3>
+  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);max-width:520px;padding:24px">
+    <div class="modal-head" style="margin-bottom:16px">
+      <h3 id="modal-title" style="margin:0;font-size:18px">Kết nối tài khoản</h3>
       <button type="button" class="modal-close-btn" onclick="closeConnectModal()">✕</button>
     </div>
+
+    <!-- Quick Direct CDP Browser Login -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:var(--text)">
+        Cách 1: Đăng nhập tự động qua trình duyệt (Khuyên dùng)
+      </div>
+      <p class="hint" style="margin:0 0 12px 0;font-size:12px">
+        Hệ thống tự mở trình duyệt riêng biệt, tự động nhận diện và lưu phiên đăng nhập (CDP Token). Không cần copy cookie thủ công!
+      </p>
+      <button type="button" class="btn btn-primary" onclick="triggerBrowserLoginFromModal()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 16px;font-size:13.5px;font-weight:700;border-radius:8px;box-sizing:border-box">
+        🌐 Mở Cửa Sổ Đăng Nhập Tự Động
+      </button>
+      <div style="margin-top:8px">
+        <a href="#" id="connect-platform-link" target="_blank" rel="noreferrer" style="font-size:11.5px;color:var(--muted);text-decoration:underline">
+          Hoặc mở trang đăng nhập chính thức trong tab mới ↗
+        </a>
+      </div>
+      <div id="connect-helper-note" style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4"></div>
+    </div>
+
     <form method="post" action="/web-ai/accounts/add">
       <input type="hidden" name="platform" id="connect-platform-id">
       <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
-      <div class="modal-body">
+      <div class="modal-body" style="padding:0">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text)">
+          Cách 2: Nhập Khóa API (API Key) để hệ thống tự vận hành 24/7
+        </div>
         <div class="field" style="margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label style="margin:0;font-weight:700">Khóa API hoặc Session Token <span class="req">*</span></label>
-            <a href="#" id="connect-platform-link" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px">↗ Mở web</a>
-          </div>
-          <textarea name="session_key" id="connect-session-key" rows="3" required placeholder="Dán API Key hoặc Session Token..."></textarea>
+          <label style="margin:0 0 6px 0;font-weight:600;font-size:12.5px">Khóa API (API Key) <span class="req">*</span></label>
+          <textarea name="session_key" id="connect-session-key" rows="2" required placeholder="Dán mã API Key vào đây..." style="width:100%;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box"></textarea>
           <div class="hint" id="connect-auth-guide" style="font-size:11.5px;margin-top:4px"></div>
         </div>
         <div class="grid2">
           <div class="field">
-            <label>Tên gợi nhớ (tùy chọn)</label>
-            <input type="text" name="email" id="connect-email" placeholder="Ví dụ: Tài khoản chính">
+            <label style="font-size:12px">Tên gợi nhớ (tùy chọn)</label>
+            <input type="text" name="email" id="connect-email" placeholder="Ví dụ: Tài khoản chính" style="padding:8px 10px;font-size:12.5px;border-radius:6px;border:1px solid var(--border)">
           </div>
           <div class="field">
-            <label>Gói dịch vụ</label>
-            <select name="tier" id="connect-tier">
+            <label style="font-size:12px">Gói dịch vụ</label>
+            <select name="tier" id="connect-tier" style="padding:8px 10px;font-size:12.5px;border-radius:6px;border:1px solid var(--border)">
               <option value="free">Miễn phí (Free)</option>
               <option value="plus">Plus / Pro</option>
             </select>
           </div>
         </div>
       </div>
-      <div class="modal-foot">
+      <div class="modal-foot" style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px">
         <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">Hủy</button>
-        <button type="submit" class="btn btn-primary">Lưu kết nối</button>
+        <button type="submit" class="btn btn-primary" style="font-weight:700">Lưu kết nối</button>
       </div>
     </form>
   </div>
@@ -570,7 +779,7 @@ function switchSettingsTab(tab) {
   }
 }
 
-function openConnectModal(p, name, ph, guide) {
+function openConnectModal(p, name, ph, guide, loginUrl) {
   document.getElementById('connect-platform-id').value = p;
   document.getElementById('modal-title').textContent = 'Kết nối ' + name;
   var ta = document.getElementById('connect-session-key');
@@ -582,22 +791,36 @@ function openConnectModal(p, name, ph, guide) {
   if (gd) gd.textContent = guide;
 
   var link = document.getElementById('connect-platform-link');
+  var note = document.getElementById('connect-helper-note');
   if (link) {
-    if (p === 'chatgpt') {
-      link.href = 'https://platform.openai.com/api-keys';
-      link.textContent = '🔑 Lấy mã OpenAI ↗';
+    if (loginUrl) {
+      link.href = loginUrl;
+    } else if (p === 'chatgpt') {
+      link.href = 'https://chatgpt.com/auth/login';
     } else if (p === 'claude') {
-      link.href = 'https://console.anthropic.com/settings/keys';
-      link.textContent = '🔑 Lấy mã Claude ↗';
+      link.href = 'https://claude.ai/login';
     } else if (p === 'gemini') {
       link.href = 'https://aistudio.google.com/app/apikey';
-      link.textContent = '✨ Lấy mã Miễn Phí ↗';
     } else if (p === 'grok') {
-      link.href = 'https://console.x.ai';
-      link.textContent = '🔑 Lấy mã Grok ↗';
+      link.href = 'https://grok.com';
     } else if (p === 'muse' || p === 'museai') {
-      link.href = 'https://muse.ai';
-      link.textContent = '↗ Mở Muse AI';
+      link.href = 'https://muse.ai/signin';
+    }
+    link.textContent = '🚀 Mở Màn Hình Đăng Nhập ' + name + ' ↗';
+  }
+  if (note) {
+    if (p === 'chatgpt') {
+      note.textContent = 'Mở trang đăng nhập ChatGPT chính thức trong tab mới, hoặc vào platform.openai.com để lấy API Key.';
+    } else if (p === 'claude') {
+      note.textContent = 'Mở trang đăng nhập Claude chính thức trong tab mới, hoặc vào console.anthropic.com để lấy API Key.';
+    } else if (p === 'gemini') {
+      note.textContent = 'Đăng nhập bằng Gmail tại Google AI Studio để nhận API Key miễn phí vĩnh viễn!';
+    } else if (p === 'grok') {
+      note.textContent = 'Mở trang đăng nhập Grok (xAI) chính thức trong tab mới.';
+    } else if (p === 'muse' || p === 'museai') {
+      note.textContent = 'Mở trang đăng nhập Muse AI chính thức trong tab mới.';
+    } else {
+      note.textContent = 'Mở trang đăng nhập dịch vụ chính thức trong tab mới.';
     }
   }
   document.getElementById('connect-modal').hidden = false;
@@ -609,6 +832,199 @@ function openConnectModal(p, name, ph, guide) {
 function closeConnectModal() {
   document.getElementById('connect-modal').hidden = true;
 }
+
+var currentLoginSessionId = null;
+var currentLoginPlatform = null;
+var currentLoginPlatformName = null;
+var browserLoginPollTimer = null;
+
+function startBrowserLogin(platform, platformName) {
+  currentLoginPlatform = platform;
+  currentLoginPlatformName = platformName || platform;
+  currentLoginSessionId = null;
+
+  var modal = document.getElementById('browser-login-modal');
+  var title = document.getElementById('bl-modal-title');
+  var icon = document.getElementById('bl-status-icon');
+  var statusText = document.getElementById('bl-status-text');
+  var subText = document.getElementById('bl-status-subtext');
+  var step1 = document.getElementById('bl-step-1');
+  var step2 = document.getElementById('bl-step-2');
+  var step3 = document.getElementById('bl-step-3');
+
+  if (title) title.innerHTML = '<span>🌐</span> Đang Đăng Nhập: ' + currentLoginPlatformName;
+  if (icon) { icon.textContent = '⏳'; icon.style.animation = 'pulse 1.8s infinite ease-in-out'; }
+  if (statusText) statusText.textContent = 'Đang khởi động trình duyệt bảo mật...';
+  if (subText) subText.textContent = 'Đang mở cửa sổ trình duyệt tới trang đăng nhập của ' + currentLoginPlatformName + '...';
+  if (step1) { step1.style.color = 'var(--text)'; step1.style.fontWeight = '700'; }
+  if (step2) { step2.style.color = 'var(--muted)'; step2.style.fontWeight = 'normal'; }
+  if (step3) { step3.style.color = 'var(--muted)'; step3.style.fontWeight = 'normal'; }
+
+  if (modal) modal.hidden = false;
+
+  fetch('/web-ai/browser-login/start?platform=' + encodeURIComponent(platform), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ platform: platform })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (!res.ok) {
+      if (icon) { icon.textContent = '❌'; icon.style.animation = 'none'; }
+      if (statusText) statusText.textContent = 'Không thể mở trình duyệt';
+      if (subText) subText.textContent = res.error || 'Vui lòng kiểm tra lại trình duyệt Edge/Chrome trên máy.';
+      return;
+    }
+    currentLoginSessionId = res.session_id;
+    if (statusText) statusText.textContent = 'Đang đợi bạn đăng nhập trên trình duyệt...';
+    if (subText) subText.textContent = 'Vui lòng hoàn tất đăng nhập tài khoản ' + currentLoginPlatformName + ' trên cửa sổ vừa hiện. Hệ thống sẽ tự nhận diện ngay khi xong!';
+    if (step2) { step2.style.color = 'var(--text)'; step2.style.fontWeight = '700'; }
+
+    if (browserLoginPollTimer) clearInterval(browserLoginPollTimer);
+    browserLoginPollTimer = setInterval(pollBrowserLoginStatus, 1000);
+  })
+  .catch(function(err) {
+    if (icon) { icon.textContent = '❌'; icon.style.animation = 'none'; }
+    if (statusText) statusText.textContent = 'Lỗi kết nối';
+    if (subText) subText.textContent = err.message;
+  });
+}
+
+function pollBrowserLoginStatus() {
+  if (!currentLoginSessionId) return;
+
+  fetch('/web-ai/browser-login/status?session_id=' + encodeURIComponent(currentLoginSessionId))
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    var icon = document.getElementById('bl-status-icon');
+    var statusText = document.getElementById('bl-status-text');
+    var subText = document.getElementById('bl-status-subtext');
+    var step2 = document.getElementById('bl-step-2');
+    var step3 = document.getElementById('bl-step-3');
+
+    if (res.status === 'waiting_for_user' && res.message) {
+      if (subText) subText.textContent = res.message;
+    }
+
+    if (res.status === 'success') {
+      if (browserLoginPollTimer) {
+        clearInterval(browserLoginPollTimer);
+        browserLoginPollTimer = null;
+      }
+      if (icon) { icon.textContent = '🎉'; icon.style.animation = 'none'; }
+      if (statusText) statusText.textContent = 'Đăng nhập thành công!';
+      var accInfo = res.email ? ('Tài khoản: ' + res.email) : 'Đã kết nối phiên làm việc thành công.';
+      if (subText) subText.textContent = accInfo + ' Đang tải lại danh sách...';
+      if (step3) { step3.style.color = '#16a34a'; step3.style.fontWeight = '700'; }
+
+      setTimeout(function() {
+        window.location.reload();
+      }, 1200);
+    } else if (res.status === 'error' || res.status === 'cancelled') {
+      if (browserLoginPollTimer) {
+        clearInterval(browserLoginPollTimer);
+        browserLoginPollTimer = null;
+      }
+      if (icon) { icon.textContent = '⚠️'; icon.style.animation = 'none'; }
+      if (statusText) statusText.textContent = res.status === 'cancelled' ? 'Đã hủy đăng nhập' : 'Đăng nhập không thành công';
+      if (subText) subText.textContent = res.error || 'Phiên đăng nhập đã kết thúc.';
+    }
+  })
+  .catch(function(err) {
+    console.error('Lỗi kiểm tra trạng thái login:', err);
+  });
+}
+
+function cancelBrowserLogin() {
+  if (browserLoginPollTimer) {
+    clearInterval(browserLoginPollTimer);
+    browserLoginPollTimer = null;
+  }
+  if (currentLoginSessionId) {
+    fetch('/web-ai/browser-login/cancel?session_id=' + encodeURIComponent(currentLoginSessionId), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: currentLoginSessionId })
+    }).catch(function() {});
+    currentLoginSessionId = null;
+  }
+  var modal = document.getElementById('browser-login-modal');
+  if (modal) modal.hidden = true;
+}
+
+function triggerBrowserLoginFromModal() {
+  var p = document.getElementById('connect-platform-id').value;
+  var name = document.getElementById('modal-title').textContent.replace('Kết nối ', '');
+  closeConnectModal();
+  startBrowserLogin(p, name);
+}
+
+function testWebAIAccount(id, btn) {
+  var origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳...';
+  }
+  var fd = new FormData();
+  fd.append('id', id);
+
+  fetch('/web-ai/accounts/test', {
+    method: 'POST',
+    body: fd
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      alert('✓ ' + (data.message || 'Phiên làm việc còn sống và hoạt động tốt!'));
+      location.reload();
+    } else {
+      alert('⚠ ' + (data.error || data.message || 'Phiên làm việc đã hết hạn hoặc không kết nối được'));
+      location.reload();
+    }
+  })
+  .catch(function(err) {
+    alert('Lỗi kiểm tra phiên: ' + err.message);
+  })
+  .finally(function() {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText || '⚡ Test';
+    }
+  });
+}
+
+function testAllWebAIAccounts() {
+  var btn = document.getElementById('btn-test-all-webai');
+  var origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '🔄 Đang kiểm tra tất cả phiên...';
+  }
+
+  fetch('/web-ai/accounts/test', {
+    method: 'POST'
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      alert('Kết quả kiểm tra toàn diện:\n' + (data.message || 'Hoàn tất!'));
+      location.reload();
+    } else {
+      alert('Lỗi kiểm tra: ' + (data.error || 'Thao tác không thành công'));
+    }
+  })
+  .catch(function(err) {
+    alert('Lỗi kết nối kiểm tra: ' + err.message);
+  })
+  .finally(function() {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText || '⚡ Kiểm Tra Tất Cả Phiên';
+    }
+  });
+}
+
+
 
 // Auto open tab from URL hash if present; default to official API keys
 window.addEventListener('DOMContentLoaded', function() {

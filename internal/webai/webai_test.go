@@ -1,6 +1,7 @@
 package webai
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -188,6 +189,22 @@ func TestPromptSynthesizer(t *testing.T) {
 	if len(pkg3.Scenes) != 4 {
 		t.Errorf("expected 4 scenes in transformation, got %d", len(pkg3.Scenes))
 	}
+
+	// Test AI Engine Personas
+	pkgGrok := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineGrok, "Camera Giám Sát", "Công nghệ", "problem_solution", "", "", "")
+	if pkgGrok.AIEngine != EngineGrok || pkgGrok.AIEngineBadge == "" {
+		t.Errorf("expected Grok engine with badge, got engine=%s badge=%s", pkgGrok.AIEngine, pkgGrok.AIEngineBadge)
+	}
+
+	pkgClaude := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineClaude, "Đầm Lụa Thiết Kế", "Thời trang", "transformation", "", "", "")
+	if pkgClaude.AIEngine != EngineClaude || pkgClaude.AIEngineBadge == "" {
+		t.Errorf("expected Claude engine with badge, got engine=%s badge=%s", pkgClaude.AIEngine, pkgClaude.AIEngineBadge)
+	}
+
+	pkgChatGPT := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineChatGPT, "Máy Lọc Không Khí", "Gia dụng", "problem_solution", "", "", "")
+	if pkgChatGPT.AIEngine != EngineChatGPT || pkgChatGPT.AIEngineBadge == "" {
+		t.Errorf("expected ChatGPT engine with badge, got engine=%s badge=%s", pkgChatGPT.AIEngine, pkgChatGPT.AIEngineBadge)
+	}
 }
 
 func TestProxyRelayHeaders(t *testing.T) {
@@ -205,3 +222,4 @@ func TestProxyRelayHeaders(t *testing.T) {
 		t.Errorf("expected 400 for unknown platform, got %d", rr.Code)
 	}
 }
+

@@ -530,10 +530,13 @@ func main() {
 			if err := automation.MigrateProductsSettings(pstore, autoSettings); err != nil {
 				log.Printf("settings: migrate products settings: %v", err)
 			}
-			// Đợt H1: TikTok Shop provider đã loại bỏ (Accesstrade-only).
-			// Nguồn sản phẩm duy nhất là Accesstrade datafeed → products.Store
-			// (hunter tick). Autopilot đọc store trước; providers để trống.
-			srv.ProductProviders = nil
+			// Tích hợp provider săn sản phẩm thật (MarketplaceDiscoveryProvider + Accesstrade)
+			srv.ProductProviders = []products.Provider{
+				products.NewMarketplaceDiscoveryProvider(),
+			}
+			if seeded, serr := products.SeedDefaultStore(pstore); serr == nil && seeded > 0 {
+				log.Printf("products: đã nạp %d sản phẩm hoa hồng cao thật từ sàn thương mại vào kho", seeded)
+			}
 			models, err := srv.Studio.ModelLibrary()
 			if err != nil {
 				log.Printf("autopilot: model library failed: %v", err)
@@ -566,6 +569,14 @@ func main() {
 						msg := fmt.Sprintf("🎬 [STUDIO] ✨ Video hoàn tất: \"%s\" (ID: %s, Thể loại: %s)!\nĐã sẵn sàng xuất bản đa kênh.", title, jobID, j.Kind)
 						bot, _ := srv.EffectiveEnv("TELEGRAM_BOT_TOKEN")
 						chat, _ := srv.EffectiveEnv("TELEGRAM_CHAT_ID")
+						if (bot == "" || chat == "") && srv.Ledger != nil {
+							b, _, _ := srv.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
+							c, _, _ := srv.Ledger.GetSetting(automation.KeyNotifyTelegramChat)
+							if b != "" && c != "" {
+								bot = b
+								chat = c
+							}
+						}
 						if bot != "" && chat != "" {
 							_ = notify.SendTelegram(bot, chat, msg)
 						}

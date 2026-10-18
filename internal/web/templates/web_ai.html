@@ -1,28 +1,24 @@
-{{define "title"}}Phòng Biên Kịch &amp; Prompt AI — AI Hub{{end}}
+{{define "title"}}Tiếp Sức Web AI Hub — AI Creator OS{{end}}
 {{define "content"}}
+
+<!-- Pipeline Navigation Stepper -->
+{{template "creation-stepper" dict "Step" "webai"}}
+
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Phòng Biên Kịch &amp; Prompt AI ✍️</h1>
-    <p class="subtitle">Biên soạn kịch bản và prompt tự động cho các mô hình AI.</p>
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-0.4px">🌐 Web AI Hub &amp; Trình Duyệt</h1>
+    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13px">
+      Điều khiển các phiên trình duyệt Web AI (ChatGPT, Claude, Gemini, Grok, Muse AI) và tự động hóa prompt.
+    </p>
   </div>
-  <div class="webai-header-actions">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary">⚙️ Tài khoản AI</a>
-    <a href="/studio" class="btn btn-secondary">🎬 Studio AI</a>
+  <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
+    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm">⚙️ Cấu hình AI</a>
+    <a href="/studio" class="btn btn-primary btn-sm">Dựng Video Studio ↗</a>
   </div>
 </div>
 
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
-
-<div class="card" style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
-  <div>
-    <h3 style="margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:8px">
-      <span>🎬</span> Đã hợp nhất vào Studio AI — Sản xuất trên 1 Màn Hình Duy Nhất
-    </h3>
-    <p class="hint" style="margin:0;font-size:13px">Kịch bản, chấm điểm QC, chọn Hook 3s, tạo ảnh 4K nhất quán và dựng video MP4 hiện đã liên hoàn ngay trong Studio.</p>
-  </div>
-  <a href="/studio#tab-ad-creative" class="btn btn-primary" style="font-size:13px;padding:8px 20px">🚀 Sang Studio Dựng Video ↗</a>
-</div>
 
 <!-- Streamlined AI Status Pill Bar -->
 <div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
@@ -226,10 +222,54 @@
       <pre class="prompt-box" id="txt-gemini-prompts" style="display:none"></pre>
     </div>
 
-    <!-- Section 6: Muse AI Motion Prompts -->
+    <!-- Section 6: Muse AI Motion Prompts & Direct Studio Bridge -->
     <div id="sec-museai" class="prompt-sec-content" style="display:none">
+      <!-- Direct Muse Import Box -->
+      <div style="background:linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:24px">🎬</span>
+          Muse AI Studio Bridge — Đưa Video Vào Studio 1 Chạm
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
+          Sau khi tạo video chuyển động hoặc video nhảy trên Muse AI, dán link video (URL chia sẻ hoặc link MP4) vào đây. Hệ thống sẽ tự động tải về, lồng nhạc TikTok trending và chuẩn bị xuất bản!
+        </p>
+        <form method="POST" action="/studio/muse-import" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;align-items:end">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🔗 Link Video Từ Muse AI</label>
+            <input type="url" name="video_url" class="form-control" placeholder="https://muse.ai/v/... hoặc link .mp4" required style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
+            <input type="text" name="topic" class="form-control" placeholder="VD: Vũ Đạo Sexy Trend TikTok" value="Vũ Đạo Sexy Trend TikTok" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🎵 Nhạc nền TikTok</label>
+            <select name="music_style" class="form-control" style="width:100%;margin-top:4px">
+              <option value="trending">🔥 Tự động ghép nhạc TikTok Trending</option>
+              <option value="keep_original">Giữ nguyên âm thanh gốc Muse AI</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🎭 Thể loại</label>
+            <select name="genre" class="form-control" style="width:100%;margin-top:4px">
+              <option value="dance">💃 Vũ đạo / Bắt trend</option>
+              <option value="fashion">👗 Thời trang lookbook</option>
+              <option value="trendjack">⚡ Video viral 9:16</option>
+            </select>
+          </div>
+          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+            <a href="https://muse.ai" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">
+              🌐 Mở Muse AI Studio ↗
+            </a>
+            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">
+              🚀 Nhập Vào Studio & Lên Lịch Đăng ↗
+            </button>
+          </div>
+        </form>
+      </div>
+
       <div class="sec-actions">
-        <b>🎬 Prompt Video (Muse AI)</b>
+        <b>🎬 Prompt Video Tối Ưu Cho Muse AI</b>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-museai-prompts')">📋 Copy tất cả</button>
       </div>
       <div id="txt-museai-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>

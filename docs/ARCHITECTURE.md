@@ -1,9 +1,9 @@
 # ai-creator-os — Architecture
 
 > **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar + bỏ phim điện ảnh, tập trung
-> 3 trụ — Affiliate qua Accesstrade · Reup video Douyin · YouTube kể chuyện
+> 3 trụ — Affiliate qua Accesstrade · Video Viral AI 100% Gốc (TikTok/Shorts/Reels) · YouTube kể chuyện
 > ngôi thứ nhất. Thiết kế đích: `docs/PIVOT_REDESIGN.md`.
-> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại** (sau Đợt H3).
+> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại**.
 > Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
 
 ## 1. Design principles
@@ -22,43 +22,45 @@
 3. **Free API first, local second, paid never.** Mọi khả năng ngoài (LLM, TTS,
    vẽ ảnh) là provider interface với chuỗi ưu tiên. Free thử trước, local
    fallback; **paid tắt** (luật cứng của Ninh: key free-only, không billing,
-   không Veo).
+   không Veo). Hỗ trợ thêm Web AI Multi-Account Hub (ChatGPT, Claude, Gemini,
+   Grok, Muse AI) tự động bắt session qua Chrome DevTools Protocol (CDP).
 4. **Deterministic governance over money.** LLM đề xuất; rules engine (Go)
    quyết định. Ngưỡng kill/double-down, quota, kill switch là code, không
    phải prompt.
 5. **Provider evidence only.** Doanh thu, đơn hàng, hoa hồng chỉ ghi từ dữ
    liệu thật của provider. Hệ thống không bao giờ bịa số.
-6. **Zero-touch.** Ninh không can thiệp vận hành: mọi quyết định (provider,
-   fallback, lịch, kill/double-down) do hệ thống tự quyết theo rule đã định.
+6. **Zero-touch & Autonomous Intelligence.** Ninh không can thiệp vận hành:
+   Master Harness Agent (`internal/harness`) chạy vòng lặp OODA và ký ức kinh
+   nghiệm (Episodic Memory) tự điều phối danh mục; mọi fallback, lịch,
+   kill/double-down do hệ thống tự quyết theo rule đã định.
 
 ## 2. Component map (hiện tại)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ DASHBOARD (10 mục sidebar) + MASTER SWITCH + KILL SWITCH    │
-│  Trang chủ · Kênh · Phát triển kênh · Đội ngũ · Studio AI  │
-│  🎬 · Affiliate · Reup · Kể chuyện · Đa nền tảng · Cài đặt  │
+│ DASHBOARD + MASTER SWITCH + KILL SWITCH                     │
+│  Điều hành: Tổng quan · Harness Agent 🧠 · Kênh · Đội ngũ   │
+│  Sản xuất: Studio AI 🎬 · Affiliate · Viral 9:16 · Stories  │
+│  Quản trị: Cài đặt Hệ thống (Kho Web AI) · Đa nền tảng      │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌───────────────────────▼─────────────────────────────────────┐
 │ internal/web — HTTP layer (routes.go, handler theo miền)     │
-│  Template: templates/<page>.html ({{define "title"}} +       │
-│  {{define "content"}}); static/app.js + style.css chung      │
+│  Template: templates/<page>.html; static/app.js + style.css │
 └──────┬──────────────┬──────────────┬──────────────┬──────────┘
        │              │              │              │
 ┌──────▼──────┐ ┌─────▼───────┐ ┌────▼────────┐ ┌───▼──────────┐
-│ automation  │ │ studio      │ │ growth      │ │ publishers   │
-│ daemon ticks│ │ video jobs  │ │ plan 30d,   │ │ TikTok/YT/   │
-│ (1'/5'/60') │ │ (affiliate, │ │ ngưỡng,     │ │ FB/RTMP      │
-│ autopilot,  │ │ kinetic,    │ │ quota,      │ │ OAuth        │
-│ reconcile,  │ │ trends,     │ │ YT Analytics│ │              │
-│ team view   │ │ story 16:9) │ │ (views 30d) │ │              │
-└──────┬──────┘ └─────────────┘ └─────────────┘ └──────────────┘
-       │
-┌──────▼──────────────────────────────────────────────────────┐
+│ harness     │ │ studio      │ │ growth      │ │ webai        │
+│ OODA loop,  │ │ video jobs  │ │ plan 30d,   │ │ CDP Browser  │
+│ episodic    │ │ (affiliate, │ │ ngưỡng,     │ │ login, cookie│
+│ memory,     │ │ viral 9:16, │ │ quota,      │ │ capture,     │
+│ portfolio   │ │ story 16:9) │ │ YT Analytics│ │ rotation     │
+└──────┬──────┘ └─────┬───────┘ └─────────────┘ └───┬──────────┘
+       │              │                             │
+┌──────▼──────────────▼─────────────────────────────▼─────────┐
 │ engines: LLM chain (Gemini→llama→paid tắt) · TTS chain      │
-│ (Gemini→VieNeu→Edge) · keyring xoay vòng, cooldown          │
-│ 60s→5m→15m khi 429                                         │
+│ (Gemini→VieNeu→Edge) · Web AI pool (ChatGPT/Claude/Grok...) │
+│ keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -83,9 +85,9 @@ chờ Ninh duyệt).
   nhánh đối soát legacy, config `TIKTOK_SHOP_*` (kể cả vùng parked).
 - **H2**: Agent Team định nghĩa lại quanh 3 pipeline — `/team` mới
   (`internal/web/team_pipeline.go`, không còn park): Affiliate
-  (Hunter→Producer→Publisher→Analyst), Reup (Hunter→Director→Producer→
-  QC→Publisher→Analyst), Story (Writer→Illustrator→Voice→Producer→
-  Publisher). Trạng thái suy ra từ dữ liệu thật.
+  (Hunter→Producer→Publisher→Analyst), Video Viral AI
+  (Hunter→Director→Producer→QC→Publisher→Analyst), Story
+  (Writer→Illustrator→Voice→Producer→Publisher). Trạng thái suy ra từ dữ liệu thật.
 - **H3**: YouTube Analytics API (`internal/growth/youtube_analytics.go`,
   free) điền Views30d + watch hours 30 ngày cho growth thresholds;
   badge trạng thái trên trang Kênh; scope `yt-analytics.readonly`
@@ -95,16 +97,18 @@ chờ Ninh duyệt).
 
 | Route | Handler | Ghi chú |
 |---|---|---|
-| `GET /` | `handleDashboard` | Trang chủ |
-| `/accounts*` | `handleAccounts*` | Kênh (sidebar "Kênh") |
-| `/growth*` | `handleGrowth*` | Phát triển kênh |
-| `/studio*` | `handleStudio*` | Studio AI (affiliate/kinetic/jobs/trends) |
+| `GET /` | `handleDashboard` | Trang chủ điều hành & số liệu thời gian thực |
+| `/harness*` | `handleHarness*` | **Master Agent Harness**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory) |
+| `/accounts*` | `handleAccounts*` | Kênh & Brand DNA (sidebar "Kênh") |
+| `/growth*` | `handleGrowth*` | Phát triển kênh & ngưỡng tự động |
+| `/studio*` | `handleStudio*` | Studio AI (affiliate/viral 9:16/audio story 16:9/jobs/trends) |
 | `/products*` | `handleProducts*` | Affiliate (Accesstrade: chiến dịch/link/đối soát, đợt B/C) |
 | `/viral*` | `handleViral*` | Video Viral AI: kịch bản 3s hook, hình ảnh 9:16, lồng tiếng 100% gốc |
 | `/stories*` | `handleStory*` | Kể chuyện: tạo truyện, jobs, đăng YouTube (đợt F) |
-| `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline (đợt H2, định nghĩa lại — không còn park) |
-| `/publishers*` | `handlePublishers*` | Đa nền tảng |
-| `/settings*` | `handleSettings*` | 5 trang con: Hệ thống · Accesstrade · Nhà cung cấp · Model local · An toàn |
+| `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline từ dữ liệu thật |
+| `/publishers*` | `handlePublishers*` | Đa nền tảng (OAuth TikTok, YouTube, Meta Facebook/Instagram) |
+| `/settings*` | `handleSettings*` | 5 trang con: Hệ thống (gồm **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp · Model local · An toàn |
+| `/web-ai*` | `handleWebAI*` | Quản lý kho tài khoản Web AI & Trình duyệt tự động đăng nhập CDP |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
 | `/onboard` | `handleOnboard` | Wizard lần đầu |
 | `/kill`, `/unkill` | `handleKill` | Kill switch |
@@ -116,6 +120,7 @@ chờ Ninh duyệt).
 `internal/engines/chains.go` — chỉ còn 2 chuỗi:
 - **LLM**: Gemini (free API) → llama-server local (`127.0.0.1:8081`) → paid (placeholder, tắt).
 - **TTS**: Gemini → VieNeu-TTS v3 local (sidecar `127.0.0.1:8000`) → Edge.
+- **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse AI tự động bắt session CDP.
 - Chuỗi Avatar đã gỡ theo live (Đợt A).
 
 Keyring mỗi engine độc lập: round-robin, bỏ key invalid, cooldown 429/quota
@@ -149,13 +154,13 @@ interval ≤ 0 → default. Trạng thái thật hiển thị ở `/viral`,
 `/settings/accesstrade`, `/stories` — chỗ nào "chờ số liệu"/"chờ key" phải
 nói rõ, không giả vờ đang chạy.
 
-## 6. Ledger (SQLite, WAL mode)
+## 6. Ledger & Data Stores (SQLite, WAL mode)
 
-- `ledger.db`: accounts, decisions, settings, orders, live_slots (legacy),
-  growth_*, api_usage…
+- `ledger.db`: accounts, decisions, settings, orders, growth_*, api_usage, harness_cycles, harness_memories…
 - `studio.db`: studio_jobs, studio_assets, capabilities.
 - `products.db`: products, shelf.
 - `accesstrade.db`: campaigns, links, orders (đợt B/C).
+- `webai.db`: accounts (kho tài khoản Web AI, session tokens, cooldown state, metrics).
 - Migration qua `PRAGMA user_version`, có test round-trip.
 
 ## 7. Strict operational rules (encoded, not suggested)

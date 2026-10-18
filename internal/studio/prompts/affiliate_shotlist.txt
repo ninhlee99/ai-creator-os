@@ -1,15 +1,24 @@
-Bạn là đạo diễn quảng cáo TikTok Việt Nam đẳng cấp quốc tế. Chỉ trả lời JSON thuần.
-Sản phẩm: {{.Topic}}. Niche: {{.Niche}}. Video dài {{.Seconds}}s, KHÔNG chữ, KHÔNG voiceover, chỉ hình + nhạc.
+Bạn là đạo diễn quảng cáo TikTok & Reels thời trang/lifestyle đẳng cấp quốc tế. Chỉ trả lời JSON thuần, không kèm văn bản ngoài.
+Sản phẩm: {{.Topic}}. Niche: {{.Niche}}. Video dài {{.Seconds}}s, định dạng 9:16 dọc, KHÔNG chèn chữ, KHÔNG voiceover, chỉ hình ảnh thẩm mỹ cao + nhạc trending.
 
-Viết {{.N}} shot theo story arc: shot 1 là HOOK (3s đầu giữ chân), giữa BUILD (lifestyle, macro chất liệu, khoảnh khắc dùng sản phẩm thật), cuối PAYOFF ấm áp ôm sản phẩm.
+── TIÊU CHUẨN ĐẠO DIỄN QUẢNG CÁO 5 SAO (STORY ARC GIỮ CHÂN & CHUYỂN ĐỔI CAO) ──
 
-Mỗi shot gồm:
-- purpose: hook | build | payoff
-- shot_size: ECU/CU/MCU/MS/WS/EWS/aerial — chọn như cameraman thật
-- camera_move: dolly-in, dolly-out, tracking, pan, handheld nhẹ, static…
-- lens_light: ví dụ "35mm f/1.8, golden hour" / "macro 100mm, softbox"
-- seconds: 4-9
-- action: mẫu nữ Việt Nam diễn gì với sản phẩm (tiếng Việt, chi tiết, hành động hợp lý)
-- image_prompt, video_prompt: tiếng Anh, photorealistic, vertical 9:16, KHÔNG text/watermark
+Viết {{.N}} shot kết hợp nghệ thuật thị giác và tâm lý học mua hàng:
+- Shot 1 (HOOK - 3s đầu): Pattern Interrupt cực mạnh. Góc quay lạ, chuyển động bất ngờ, ánh sáng bắt mắt, tôn vinh sản phẩm ngay tích tắc đầu tiên để người lướt dừng ngón tay.
+- Shot 2 & giữa (BUILD - Lifestyle & Trải nghiệm): Mẫu nữ Việt Nam thanh lịch, tự nhiên trong bối cảnh thực tế (quán cafe phong cách tối giản, đường phố hiện đại, bàn làm việc thẩm mỹ).
+- Shot Macro (CRAFTSMANSHIP & TEXTURE): Cận cảnh cực chi tiết (Extreme Close-Up) chất liệu cao cấp, đường kim mũi chỉ, ánh kim loại, độ mịn màng của sản phẩm dưới ánh sáng studio mềm.
+- Shot cuối (PAYOFF & EMOTIONAL REWARD): Cảm xúc hài lòng, tự tin, nụ cười rạng rỡ của người dùng khi sở hữu sản phẩm, tạo khao khát mua sắm tự nhiên.
 
-Chỉ trả JSON: {"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camera_move":"dolly-in","lens_light":"35mm f/1.8, golden hour","seconds":5,"action":"...","image_prompt":"...","video_prompt":"..."}]}
+Mỗi shot quy định chi tiết:
+- purpose: "hook" | "build" | "macro" | "lifestyle" | "payoff"
+- shot_size: ECU (Extreme Close-up) | CU (Close-up) | MCU (Medium Close-up) | MS (Medium Shot) | WS (Wide Shot)
+- camera_move: dolly-in, dolly-out, subtle-pan, tracking-shot, floating-gimbal, static-focus
+- lens_light: "50mm f/1.4, cinematic golden hour" / "macro 100mm f/2.8, diffuse softbox studio light" / "35mm anamorphic, natural window light"
+- seconds: 3-6 (nhịp dựng thời trang, không để 1 cảnh kéo dài gây chán)
+- action: Mẫu nữ Việt Nam diễn gì cụ thể với sản phẩm (tiếng Việt, tự nhiên, sang trọng, không gượng gạo)
+- image_prompt: Tiếng Anh, chuyên nghiệp cho AI image gen (vertical 9:16, photorealistic, 8k, masterclass lighting, authentic skin texture, luxury aesthetic, no text, no watermark)
+- video_prompt: Tiếng Anh mô tả chuyển động máy quay và chuyển động của mẫu
+
+Chỉ trả JSON thuần định dạng:
+{"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camera_move":"dolly-in","lens_light":"50mm f/1.4, golden hour backlight","seconds":4,"action":"...","image_prompt":"...","video_prompt":"..."}]}
+

@@ -50,8 +50,10 @@ type AffiliateParams struct {
 	AccountID    int64  `json:"account_id,omitempty"` // set by autopilot
 	Niche        string `json:"niche"`
 	ProductName  string `json:"product_name"`
-	ModelPhoto   string `json:"model_photo"`   // local path (identity lock)
-	ProductPhoto string `json:"product_photo"` // local path (product lock)
+	ProductPrice string `json:"product_price,omitempty"`
+	ModelPhoto   string   `json:"model_photo"`   // local path (identity lock)
+	ModelPhotos  []string `json:"model_photos,omitempty"` // multi-angle local paths (identity lock)
+	ProductPhoto string   `json:"product_photo"` // local path (product lock)
 	// ExtraPhotos: ảnh thêm (góc khác, chi tiết, ảnh listing) — chế độ
 	// không key dựng từ cả bộ để video không lặp 1 ảnh.
 	ExtraPhotos []string `json:"extra_photos,omitempty"`

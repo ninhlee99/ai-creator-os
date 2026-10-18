@@ -16,20 +16,21 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 2 | **Bộ Não Tự Hành Cấp Cao (`/harness`) — Master Agent Harness, OODA Cognitive Engine, Episodic Memory** | [harness-agent.md](harness-agent.md) | ✅ |
 | 3 | Kênh (`/accounts`, sidebar "Kênh") — 4 tab Tổng quan / Autopilot / Bản sắc / Kết nối | [tai-khoan.md](tai-khoan.md) | ✅ |
 | 4 | **Bản sắc thương hiệu & Mission Control (`/accounts/{id}?tab=brand-dna`, `/missions`) — Brand DNA, Trend Intelligence, Mission Engine** | [brand-dna-va-mission-control.md](brand-dna-va-mission-control.md) | ✅ |
-| 4 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [phat-trien-kenh.md](phat-trien-kenh.md) | ✅ |
-| 5 | Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật | [agent-team.md](agent-team.md) | ✅ |
-| 6 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |
-| 7 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [san-pham.md](san-pham.md) | ✅ |
-| 8 | Video Viral AI (`/viral`) — kịch bản tâm lý học 3s, phân cảnh 9:16 MediaGen, âm nhạc trending, 100% gốc | [video-viral.md](video-viral.md) | ✅ |
-| 9 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [ke-chuyen.md](ke-chuyen.md) | ✅ |
-| 10 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [da-nen-tang.md](da-nen-tang.md) | ✅ |
-| 11 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
-| 12 | Wizard lần đầu (`/onboard`) | [wizard-lan-dau.md](wizard-lan-dau.md) | ✅ |
-| 13 | Sao lưu & khôi phục | [sao-luu-khoi-phuc.md](sao-luu-khoi-phuc.md) | ✅ |
-| 14 | API nội bộ (`/api/*`) — mặc định TẮT | [api-noi-bo.md](api-noi-bo.md) | ✅ |
-| 15 | Daemon tự động (`internal/automation`) — AutopilotTick / GrowthTick / SyncOneAccount / ReconcileCommissions | [daemon-tu-dong.md](daemon-tu-dong.md) | ✅ |
-| 16 | Kill switch + Dry-run + MASTER_SWITCH | [kill-switch-dry-run-master.md](kill-switch-dry-run-master.md) | ✅ |
-| 17 | Quy tắc dùng chung: key rotation & fail-closed | [key-rotation.md](key-rotation.md) | ✅ |
+| 5 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [phat-trien-kenh.md](phat-trien-kenh.md) | ✅ |
+| 6 | Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật | [agent-team.md](agent-team.md) | ✅ |
+| 7 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |
+| 8 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [san-pham.md](san-pham.md) | ✅ |
+| 9 | Video Viral AI (`/viral`) — kịch bản tâm lý học 3s, phân cảnh 9:16 MediaGen, âm nhạc trending, 100% gốc | [video-viral.md](video-viral.md) | ✅ |
+| 10 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [ke-chuyen.md](ke-chuyen.md) | ✅ |
+| 11 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [da-nen-tang.md](da-nen-tang.md) | ✅ |
+| 12 | **Kho Tài Khoản Web AI (`/settings/he-thong#tab-webai`) — CDP Đăng nhập tự động, cô lập phiên, xoay vòng ChatGPT/Claude/Gemini/Grok/Muse** | [web-ai.md](web-ai.md) | ✅ |
+| 13 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [cai-dat.md](cai-dat.md) | ✅ |
+| 14 | Wizard lần đầu (`/onboard`) | [wizard-lan-dau.md](wizard-lan-dau.md) | ✅ |
+| 15 | Sao lưu & khôi phục | [sao-luu-khoi-phuc.md](sao-luu-khoi-phuc.md) | ✅ |
+| 16 | API nội bộ (`/api/*`) — mặc định TẮT | [api-noi-bo.md](api-noi-bo.md) | ✅ |
+| 17 | Daemon tự động (`internal/automation`) — AutopilotTick / GrowthTick / SyncOneAccount / ReconcileCommissions | [daemon-tu-dong.md](daemon-tu-dong.md) | ✅ |
+| 18 | Kill switch + Dry-run + MASTER_SWITCH | [kill-switch-dry-run-master.md](kill-switch-dry-run-master.md) | ✅ |
+| 19 | Quy tắc dùng chung: key rotation & fail-closed | [key-rotation.md](key-rotation.md) | ✅ |
 
 ## Nguồn sự thật duy nhất về cấu hình
 

@@ -152,19 +152,6 @@ func extractFrame(ctx context.Context, videoPath string, at float64, outPath str
 		"-frames:v", "1", "-q:v", "3", outPath)
 }
 
-func probeDuration(ctx context.Context, path string) float64 {
-	cmd := exec.CommandContext(ctx, "ffprobe",
-		"-v", "error", "-show_entries", "format=duration",
-		"-of", "csv=p=0", path)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return 0
-	}
-	var d float64
-	fmt.Sscanf(strings.TrimSpace(out.String()), "%f", &d)
-	return d
-}
 
 // probeDims returns the (width, height) of the first video stream.
 func probeDims(t *testing.T, path string) (int, int) {
@@ -279,3 +266,48 @@ func TestConcatClipsBadClip(t *testing.T) {
 		t.Fatal("want error for unreadable clip, got nil")
 	}
 }
+
+func TestFindStockClips(t *testing.T) {
+	fashionClips := FindStockClips("fashion")
+	if len(fashionClips) == 0 {
+		t.Fatal("expected at least 1 fashion stock clip, got 0")
+	}
+	viralClips := FindStockClips("viral")
+	if len(viralClips) == 0 {
+		t.Fatal("expected at least 1 viral stock clip, got 0")
+	}
+}
+
+func TestPickSingleStockClipAndTrim(t *testing.T) {
+	clipDress := PickSingleStockClip("fashion", "Đầm dạ hội đen quyến rũ")
+	if !strings.Contains(clipDress, "dress") {
+		t.Fatalf("expected dress clip, got %s", clipDress)
+	}
+
+	clipStreet := PickSingleStockClip("fashion", "Set đồ streetwear phong cách năng động")
+	if !strings.Contains(clipStreet, "streetwear") {
+		t.Fatalf("expected streetwear clip, got %s", clipStreet)
+	}
+
+	clipDuo := PickSingleStockClip("viral", "Trend nhảy sexy vũ đạo đôi")
+	if !strings.Contains(clipDuo, "duo") {
+		t.Fatalf("expected duo dance clip, got %s", clipDuo)
+	}
+
+	clipCrew := PickSingleStockClip("viral", "Vũ đạo nhóm đường phố")
+	if !strings.Contains(clipCrew, "crew") {
+		t.Fatalf("expected crew dance clip, got %s", clipCrew)
+	}
+
+	// Test TrimVideo on a single clip
+	dir := t.TempDir()
+	out := filepath.Join(dir, "trimmed.mp4")
+	if err := TrimVideo(t.Context(), clipDress, 2.0, "9:16", out); err != nil {
+		t.Fatalf("TrimVideo: %v", err)
+	}
+	w, h := ProbeDims(t.Context(), out)
+	if w != 1080 || h != 1920 {
+		t.Fatalf("expected 1080x1920, got %dx%d", w, h)
+	}
+}
+

@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -232,6 +233,32 @@ var CuratedAudioStoryPlots = []AudioStoryPlot{
 		SuggestedVoice: "default",
 		Soundscape:     "Đàn tranh + Tiếng trống trận hào hùng vang dội",
 	},
+	{
+		ID:             "plot-tinh-cam-01",
+		Title:          "Hẹn Ước Dưới Mưa Năm 17 Tuổi",
+		Genre:          "tình cảm",
+		GenreLabel:     "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
+		Logline:        "Sau 8 năm hiểu lầm và xa cách, định mệnh sắp đặt cuộc hội ngộ cay đắng nhưng vỡ òa giữa giám đốc tập đoàn và cô thư ký từng là mối tình đầu thời cấp ba.",
+		Act1:           "Chàng trai nghèo và cô tiểu thư từng có mối tình học trò đẹp như tranh vẽ dưới gốc phượng già trường huyện, trước khi biến cố gia đình khiến cô đột ngột biến mất không một lời từ biệt.",
+		Act2:           "8 năm sau, anh trở thành tổng tài lạnh lùng quyền lực, còn cô xuất hiện trong buổi phỏng vấn thư ký với bộ dạng tiều tụy gánh trên vai món nợ viện phí cho mẹ.",
+		Act3:           "Sự thật về bức thư chia tay bị tráo đổi năm xưa được phơi bày trong cơn mưa tầm tã giữa thành phố, tháo gỡ mọi hận thù và nối lại sợi tơ hồng định mệnh.",
+		Message:        "Chân tình nếu đủ sâu đậm, dù đi một vòng bão giông rồi cũng sẽ tìm về đúng người.",
+		SuggestedVoice: "warm-female",
+		Soundscape:     "Piano ballad lãng mạn + Tiếng mưa rơi êm dịu",
+	},
+	{
+		ID:             "plot-tinh-cam-02",
+		Title:          "Bức Tranh Chưa Kịp Đặt Tên",
+		Genre:          "tình cảm",
+		GenreLabel:     "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
+		Logline:        "Mối tình ngọt ngào nhưng đầy trắc trở giữa chàng họa sĩ khiếm thị và cô gái làm việc tại phòng triển lãm tranh nghệ thuật.",
+		Act1:           "Tại góc quán cà phê sách ven hồ Tây, cô gái tình cờ quen một chàng trai mù có tài vẽ tranh sơn dầu tuyệt mỹ qua cảm nhận xúc giác và mùi hương.",
+		Act2:           "Những ngày tháng cùng nhau rong ruổi qua từng con phố Hà Nội đã nhen nhóm ngọn lửa tình yêu sâu sắc, nhưng căn bệnh hiểm nghèo khiến cô gái chọn cách âm thầm rút lui.",
+		Act3:           "Khi chàng trai được phẫu thuật ghép giác mạc thành công, bức tranh đầu tiên anh nhìn thấy chính là chân dung cô gái cùng bức thư tình đẫm nước mắt để lại.",
+		Message:        "Tình yêu đích thực không nhìn bằng mắt, mà thấu hiểu bằng cả trái tim.",
+		SuggestedVoice: "default",
+		Soundscape:     "Acoustic Guitar + Violin da diết sâu lắng",
+	},
 }
 
 // GetCuratedAudioStories trả về danh sách cốt truyện audio mẫu theo thể loại.
@@ -326,13 +353,38 @@ func GenerateUniqueAudioStory(customTopic, genre string, durationMinutes int) Au
 		"Một chút ấm áp sẻ chia giữa người với người có thể cứu rỗi cả một linh hồn lạc lối.",
 	}
 
-	// Danh sách câu Hook 3 giây giữ chân người nghe
+	// Danh sách câu Hook 3 giây giữ chân người nghe (25 mẫu, 5 nhóm thể loại)
 	hooks := []string{
+		// --- Mystery/Suspense (Bí ẩn / Hồi hộp) ---
 		"Nửa đêm hôm ấy, khi tiếng sấm vừa rạch ngang bầu trời, một tiếng gõ cửa dồn dập vang lên làm rung chuyển cả căn nhà cũ...",
 		"Có những bí mật nếu không được phơi bày trong đêm nay, có lẽ người ta sẽ mang theo cả mối ân oán xuống mồ...",
 		"Người đàn ông lạ mặt bước vào quán lúc 2 giờ sáng, đặt lên bàn một bọc vải đẫm nước mưa và run rẩy nói một câu...",
 		"Trước khi nhắm mắt, ông lão chỉ thì thầm đúng một câu khiến tất cả con cháu trong nhà đều chết lặng...",
 		"Đúng 12 giờ đêm, chiếc chuông đồng cổ xưa bỗng nhiên tự gióng lên 3 hồi chuông lạnh toát sống lưng...",
+		// --- Emotional/Touching (Cảm xúc / Chạm lòng) ---
+		"Bà tôi nắm chặt tay tôi lần cuối và nói: 'Cháu à, có một điều bà giấu cháu suốt 30 năm nay...'",
+		"Khi tôi mở chiếc hộp thiếc cũ kỹ mẹ để lại, bên trong là một bức thư chưa bao giờ được gửi đi...",
+		"Người đàn ông ngồi khóc một mình trên ghế đá công viên lúc 4 giờ sáng. Tôi không biết rằng cuộc đời tôi sẽ thay đổi hoàn toàn kể từ khoảnh khắc ấy...",
+		"Mẹ tôi chưa bao giờ kể về cha. Cho đến ngày hôm ấy, khi tôi tìm thấy tấm ảnh cũ nhàu nát trong túi áo bà...",
+		"Tiếng khóc của đứa trẻ sơ sinh vang lên giữa đêm đông giá buốt ngoài cổng chùa. Sư thầy mở cửa và nhìn thấy một thứ khiến ngài chấn động...",
+		// --- Horror/Creepy (Kinh dị / Rùng rợn) ---
+		"Từ đêm đó, cứ đúng 3 giờ sáng, tiếng bước chân lại vang lên trên tầng áp mái. Vấn đề là... căn nhà này chỉ có một tầng...",
+		"Người ta nói rằng ai đi ngang qua cây cầu đá cũ sau nửa đêm sẽ nghe thấy tiếng ru con. Tôi không tin, cho đến khi chính tôi nghe thấy...",
+		"Con bé hàng xóm chỉ tay về góc tối và nói: 'Chú ơi, sao bà kia cứ đứng nhìn chú hoài vậy?' Tôi quay lại. Không có ai cả...",
+		"Chiếc gương cổ trong căn biệt thự bỏ hoang không phản chiếu bóng tôi. Nó phản chiếu một người đàn bà mặc áo trắng đang đứng ngay sau lưng tôi...",
+		"Đêm ấy gió rít từng cơn ngoài bờ tre, ông nội bảo tôi: 'Dù nghe thấy gì, tuyệt đối không được mở cửa.' Rồi tiếng gọi tên tôi vang lên, bằng chính giọng ông nội...",
+		// --- Business/Success (Kinh doanh / Thành công) ---
+		"Hôm ấy tôi đứng trước tòa nhà công ty với đúng 50 ngàn trong túi và một khoản nợ 3 tỷ đồng. Không ai tin rằng 2 năm sau, mọi thứ sẽ lật ngược hoàn toàn...",
+		"Đối tác lớn nhất hủy hợp đồng ngay trước ngày ký kết. Cả công ty nhìn tôi chờ đợi. Và tôi đã đưa ra quyết định điên rồ nhất đời mình...",
+		"Người đàn ông bán vé số dạo năm ấy đã dạy tôi một bài học mà cả Harvard cũng không có trong giáo trình...",
+		"Tôi bị sa thải đúng ngày sinh nhật tuổi 30. Nhưng đó lại là ngày đẹp nhất cuộc đời tôi. Để tôi kể cho bạn nghe vì sao...",
+		"Khi cả thế giới quay lưng, chính kẻ thù cũ lại chìa tay ra cứu tôi. Và cái giá phải trả cho lòng tốt ấy... không hề rẻ...",
+		// --- Romance/Love (Tình cảm / Ngôn tình) ---
+		"Anh ấy bước vào đời tôi đúng lúc tôi đã quyết định không bao giờ yêu ai nữa. Và mọi thứ bắt đầu từ một chiếc ô trong cơn mưa tầm tã...",
+		"Tôi và anh hẹn gặp lại sau 5 năm tại quán cà phê góc phố cũ. Anh đến đúng giờ. Nhưng bên cạnh anh là một người phụ nữ khác...",
+		"Bức thư tình cuối cùng anh viết cho tôi chỉ có đúng 8 chữ. Nhưng 8 chữ ấy đã khiến tôi khóc suốt cả đêm...",
+		"Cô ấy là người yêu cũ của anh trai tôi. Và tôi... đã yêu cô ấy từ cái nhìn đầu tiên mà không dám nói...",
+		"Đám cưới sắp diễn ra trong 3 ngày nữa. Nhưng tối hôm đó, tôi nhận được tin nhắn từ một số lạ: 'Em xin lỗi, chú rể không phải là người anh nghĩ đâu...'",
 	}
 
 	now := time.Now().UnixNano()
@@ -348,6 +400,8 @@ func GenerateUniqueAudioStory(customTopic, genre string, durationMinutes int) Au
 		title = topicClean
 	} else {
 		switch genre {
+		case "tình cảm", "tinh_cam", "ngôn tình":
+			title = "Hẹn Ước Dưới Mưa Năm 17 Tuổi - Mối Tình Đầu Định Mệnh"
 		case "kinh dị":
 			title = "Tiếng Bước Chân Sau Bờ Tre Làng - Bí Mật Ngôi Mộ Vô Danh"
 		case "trinh thám":
@@ -361,6 +415,8 @@ func GenerateUniqueAudioStory(customTopic, genre string, durationMinutes int) Au
 
 	genreLabel := "Radio Kể Chuyện Đêm Khuya"
 	switch genre {
+	case "tình cảm", "tinh_cam", "ngôn tình":
+		genreLabel = "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị"
 	case "kinh dị":
 		genreLabel = "Truyện Kinh Dị & Tâm Linh Làng Quê"
 	case "trinh thám":
@@ -399,40 +455,54 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 		return "", fmt.Errorf("cần chủ đề truyện")
 	}
 
-	// Chuẩn hóa thời lượng 30 - 60 phút theo yêu cầu người dùng
-	if p.DurationMinutes <= 0 {
-		p.DurationMinutes = 30
-	}
-	if p.DurationMinutes < 15 {
-		p.DurationMinutes = 15
-	}
-	if p.DurationMinutes > 120 {
-		p.DurationMinutes = 60
-	}
+	if p.DurationMinutes > 0 {
+		if p.DurationMinutes < 15 {
+			p.DurationMinutes = 15
+		}
+		if p.DurationMinutes > 120 {
+			p.DurationMinutes = 60
+		}
 
-	// Tốc độ audio YouTube chuẩn: ~150 từ/phút
-	calcWords := p.DurationMinutes * 150
-	if p.Words < 200 || p.Words < calcWords {
-		p.Words = calcWords
-	}
-	if p.Words > 15000 {
-		p.Words = 15000
-	}
+		// Tốc độ audio YouTube chuẩn: ~150 từ/phút
+		calcWords := p.DurationMinutes * 150
+		if p.Words < 200 || p.Words < calcWords {
+			p.Words = calcWords
+		}
+		if p.Words > 15000 {
+			p.Words = 15000
+		}
 
-	// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
-	if p.Scenes < 3 {
-		p.Scenes = p.DurationMinutes / 3
-		if p.Scenes < 6 {
-			p.Scenes = 6
+		// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
+		if p.Scenes < 3 {
+			p.Scenes = p.DurationMinutes / 3
+			if p.Scenes < 6 {
+				p.Scenes = 6
+			}
+		}
+		if p.Scenes > 24 {
+			p.Scenes = 24
+		}
+	} else {
+		if p.Words < 200 {
+			p.Words = 200
+		}
+		if p.Words > 1200 {
+			p.Words = 1200
+		}
+		if p.Scenes < 3 {
+			p.Scenes = 3
+		}
+		if p.Scenes > 12 {
+			p.Scenes = 12
 		}
 	}
-	if p.Scenes > 24 {
-		p.Scenes = 24
-	}
 
-	title := fmt.Sprintf("Kể chuyện [%dp]: %s", p.DurationMinutes, strings.TrimSpace(p.Topic))
-	if len(title) > 90 {
-		title = string([]rune(title)[:90]) + "…"
+	title := "Kể chuyện: " + strings.TrimSpace(p.Topic)
+	if p.DurationMinutes > 0 {
+		title = fmt.Sprintf("Kể chuyện [%dp]: %s", p.DurationMinutes, strings.TrimSpace(p.Topic))
+	}
+	if r := []rune(title); len(r) > 85 {
+		title = string(r[:85]) + "…"
 	}
 	id, err := s.insertJob(KindStory, title, p)
 	if err != nil {
@@ -501,79 +571,172 @@ func (s *Studio) StoryJobs(limit int) []Job {
 	return out
 }
 
-// writeStory dùng LLM viết truyện ngôi thứ nhất (tái dùng story.txt).
+// defaultDramaticStory tạo cốt truyện tình cảm kịch tính chuẩn cho trường hợp LLM timeout hoặc quota bận.
+// Xoay vòng 3 template khác nhau theo genre: kinh dị, trinh thám, hoặc tình cảm mặc định.
+func defaultDramaticStory(topic, genre string) *storyDoc {
+	title := strings.TrimSpace(topic)
+	genreLower := strings.ToLower(strings.TrimSpace(genre))
+
+	// Template 1: Kinh dị — truyện ma làng quê
+	if strings.Contains(genreLower, "kinh dị") {
+		if title == "" {
+			title = "Tiếng Gọi Từ Giếng Cổ: Bí Mật Rùng Rợn Của Ngôi Làng Bỏ Hoang"
+		}
+		text := `Tôi trở về ngôi làng cũ sau mười năm xa cách. Con đường đất đỏ vẫn vậy, nhưng không khí hoang vắng đến lạ thường. Không một bóng người, không tiếng chó sủa, chỉ có tiếng gió rít qua kẽ lá tre nghe như tiếng thở dài ai oán.
+
+Bà ngoại tôi từng dặn: "Đừng bao giờ lại gần giếng cổ sau nửa đêm." Tôi không hiểu vì sao, cho đến khi đêm ấy, lúc 2 giờ sáng, tôi bị đánh thức bởi tiếng gọi tên mình vọng lên từ lòng giếng. Giọng nói ấy quen thuộc đến rợn người — nó giống hệt giọng bà ngoại tôi, người đã mất cách đây 3 năm.
+
+Tôi run rẩy bước ra sân, ánh trăng rọi xuống miệng giếng cổ phủ rêu xanh. Nhìn xuống, tôi thấy mặt nước đen ngòm phản chiếu khuôn mặt tôi. Nhưng bóng phản chiếu ấy không cử động theo tôi — nó mỉm cười. Chính lúc đó, bàn tay lạnh buốt từ phía sau nắm chặt vai tôi. Sáng hôm sau, người ta tìm thấy cuốn nhật ký cũ của bà ngoại trong đáy giếng, hé lộ bí mật về lời nguyền ba đời và cách hóa giải duy nhất trước khi bình minh ló rạng.`
+
+		return &storyDoc{Title: title, Text: text}
+	}
+
+	// Template 2: Trinh thám — vụ án bí ẩn
+	if strings.Contains(genreLower, "trinh thám") {
+		if title == "" {
+			title = "Bức Di Thư Mật Mã: Vụ Án 20 Năm Chưa Có Lời Giải"
+		}
+		text := `Tôi nhận được cuộc gọi lúc 3 giờ sáng. Giọng nói bên kia đường dây lạnh như thép: "Anh có đúng 72 giờ để giải mã bức di thư này, nếu không... người tiếp theo biến mất sẽ là người anh yêu thương nhất."
+
+Tôi là thám tử tư, đã nghỉ hưu non sau vụ án ám ảnh nhất sự nghiệp: cô giáo Hạnh mất tích không dấu vết 20 năm trước. Không xác, không manh mối, không nghi phạm. Vụ án bị xếp vào hồ sơ lạnh. Cho đến khi bức di thư của ông Trần — người hiệu trưởng vừa qua đời — được tìm thấy trong ngăn kéo bí mật, với những dòng mật mã mà chỉ tôi mới có chìa khóa giải.
+
+Từng mảnh ghép dần lộ ra: nhân chứng giả, bằng chứng bị tiêu hủy có hệ thống, và một mạng lưới che đậy tinh vi đến mức rùng mình. Kẻ thủ ác không phải người xa lạ — hắn ngồi ngay bên cạnh tôi suốt 20 năm, mỉm cười và gọi tôi là bạn. Cuộc đấu trí nghẹt thở trên chuyến tàu đêm cuối cùng đã phơi bày tất cả, nhưng cái giá phải trả cho sự thật... đắt hơn tôi tưởng rất nhiều.`
+
+		return &storyDoc{Title: title, Text: text}
+	}
+
+	// Template 3 (mặc định): Tình cảm — hôn nhân hợp đồng
+	if title == "" {
+		title = "Hôn Nhân Hợp Đồng: Sự Thật Đằng Sau Người Chồng Hoàn Hảo"
+	}
+	text := fmt.Sprintf(`Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư. Với mọi người ngoài kia, anh là người chồng hoàn hảo: giàu có, lịch thiệp, yêu thương vợ hết mực. Nhưng chỉ tôi mới biết, đằng sau cánh cửa căn penthouse xa hoa, chúng tôi chỉ là hai người xa lạ cùng diễn một vở kịch hoàn hảo.
+
+Thời gian trôi qua, những cử chỉ quan tâm bất ngờ của anh bắt đầu làm trái tim tôi rung động. Anh nhớ từng sở thích nhỏ, luôn xuất hiện mỗi khi tôi gặp khó khăn. Cho đến một ngày, tôi tình cờ phát hiện ra căn phòng bí mật ở tầng áp mái. Trong đó là tất cả tài liệu về gia đình tôi năm xưa — vụ tai nạn đã cướp đi cha mẹ tôi, và anh chính là người âm thầm bảo vệ tôi suốt mười năm qua mà không một lời oán thán.
+
+Khoảnh khắc kẻ thù năm xưa tìm đến đe dọa mạng sống của tôi, anh đã không ngần ngại lấy thân mình che chắn. Giữa lằn ranh sinh tử trong cơn mưa xối xả, anh nắm chặt tay tôi và thì thầm: "Hợp đồng đã kết thúc từ lâu, nhưng tình yêu của anh dành cho em là cả đời này." Giây phút ấy, tôi nhận ra bản hợp đồng hôn nhân không phải là cái bẫy, mà là cách duy nhất anh có thể đường hoàng bước vào và che chở cho cuộc đời tôi.`)
+
+	return &storyDoc{
+		Title: title,
+		Text:  text,
+	}
+}
+
+// defaultDramaticScenes tạo danh sách 6 cảnh điện ảnh kịch tính chuẩn 16:9.
+func defaultDramaticScenes(doc *storyDoc) []storyScene {
+	return []storyScene{
+		{
+			Text: "Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư xa hoa.",
+			ImagePrompt: "Cinematic 16:9 illustration of a luxurious law office interior, rain pouring outside the floor-to-ceiling windows, a young beautiful Vietnamese woman and a handsome businessman signing legal documents on a polished mahogany desk, dramatic moody lighting, 8k masterpiece",
+		},
+		{
+			Text: "Với mọi người ngoài kia, anh là người chồng hoàn hảo, nhưng đằng sau cánh cửa căn penthouse xa hoa, chúng tôi chỉ là hai người xa lạ cùng diễn một vở kịch.",
+			ImagePrompt: "Modern high-end penthouse living room overlooking city skyline at dusk, spacious minimalist aesthetic, cold emotional distance between a couple standing apart, warm ambient interior light contrasting cold twilight outside, 16:9 widescreen",
+		},
+		{
+			Text: "Thời gian trôi qua, những cử chỉ chăm sóc thầm lặng và ánh mắt ấm áp của anh bắt đầu khiến trái tim tôi rung động.",
+			ImagePrompt: "A cozy modern kitchen at night, soft warm lamplight, handsome Vietnamese man gently offering a warm cup of tea to a pensive beautiful woman, tender and emotional atmosphere, cinematic 16:9",
+		},
+		{
+			Text: "Một đêm nọ, tôi phát hiện căn phòng bí mật ở tầng áp mái chứa toàn bộ sự thật về vụ tai nạn năm xưa và sự bảo vệ âm thầm suốt mười năm qua của anh.",
+			ImagePrompt: "A secret attic room lit by a desk lamp, old photo albums and archived documents on a wooden table, woman discovering heartfelt secrets in astonishment and tearful eyes, dramatic cinematic composition 16:9",
+		},
+		{
+			Text: "Kẻ thù tìm đến đe dọa, giữa lằn ranh sinh tử trong đêm mưa bão, anh đã lao ra lấy thân mình che chở cho tôi.",
+			ImagePrompt: "Dramatic intense confrontation under pouring heavy rain at night on an empty city street, headlights casting sharp shadows, handsome man bravely shielding the woman, high tension cinematic drama 16:9",
+		},
+		{
+			Text: "Anh nắm chặt tay tôi và nói: Bản hợp đồng đã kết thúc từ lâu, nhưng tình yêu của anh dành cho em là mãi mãi.",
+			ImagePrompt: "Heartfelt romantic emotional climax in the aftermath of rain, wet asphalt reflecting streetlights, couple embracing closely with tearful loving expressions, breathtaking cinematic lighting, 16:9 widescreen",
+		},
+	}
+}
+
+// generateStorySilenceWav tạo track audio chuyển cảnh dự phòng chuẩn PCM 24kHz mono.
+func generateStorySilenceWav(ctx context.Context, dst string, durationSec float64) error {
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-y",
+		"-f", "lavfi", "-i", fmt.Sprintf("anullsrc=r=24000:cl=mono:d=%.2f", durationSec),
+		"-acodec", "pcm_s16le", dst)
+	return cmd.Run()
+}
+
+// writeStory dùng LLM viết truyện ngôi thứ nhất (tái dùng story.txt), có cơ chế phục hồi tự động.
 func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, error) {
-	if s.llm == nil {
-		return nil, fmt.Errorf("cần LLM để viết truyện (chưa cấu hình)")
+	storyWords := p.Words
+	if storyWords <= 0 {
+		storyWords = 1500
 	}
-	prompt, err := directorPrompt("story.txt", promptData{
-		Topic: p.Topic, Genre: p.Genre, StoryWords: p.Words,
-		Orient: "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\") từ đầu đến cuối",
-		// Seconds chỉ để LLM ước lượng "độ thịt" truyện; thời lượng thật
-		// đo từ audio TTS sau này.
-		Seconds: p.Words / 3,
-	})
-	if err != nil {
-		return nil, err
+	if storyWords > 1800 {
+		storyWords = 1800
 	}
-	text, err := s.llm.Complete(ctx,
-		"Bạn là nhà văn Việt Nam. Chỉ trả lời JSON thuần, không giải thích.", prompt)
-	if err != nil {
-		return nil, fmt.Errorf("viết truyện: %w", err)
+	if s.llm != nil {
+		prompt, err := directorPrompt("story.txt", promptData{
+			Topic: p.Topic, Genre: p.Genre, StoryWords: storyWords,
+			Orient: "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\") từ đầu đến cuối, tình tiết lôi cuốn, cao trào cảm xúc",
+			Seconds: storyWords / 3,
+		})
+		if err == nil {
+			cctx, ccancel := context.WithTimeout(ctx, 10*time.Second)
+			text, err := s.llm.Complete(cctx,
+				"Bạn là nhà văn Việt Nam. Chỉ trả lời JSON thuần, không giải thích.", prompt)
+			ccancel()
+			if err == nil {
+				var doc storyDoc
+				if perr := parseDirectorJSON(text, &doc); perr == nil {
+					doc.Title = strings.TrimSpace(doc.Title)
+					doc.Text = strings.TrimSpace(doc.Text)
+					if doc.Text != "" {
+						return &doc, nil
+					}
+				}
+			}
+		}
 	}
-	var doc storyDoc
-	if err := parseDirectorJSON(text, &doc); err != nil {
-		return nil, fmt.Errorf("viết truyện: %w", err)
-	}
-	doc.Title = strings.TrimSpace(doc.Title)
-	doc.Text = strings.TrimSpace(doc.Text)
-	if doc.Text == "" {
-		return nil, fmt.Errorf("viết truyện: truyện rỗng")
-	}
-	return &doc, nil
+	return defaultDramaticStory(p.Topic, p.Genre), nil
 }
 
 // splitScenes chia truyện thành các cảnh (đoạn văn + prompt ảnh).
 func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) ([]storyScene, error) {
-	if s.llm == nil {
-		return nil, fmt.Errorf("cần LLM để chia cảnh (chưa cấu hình)")
-	}
-	sys := "Bạn là biên tập storyboard Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian.
-Mỗi cảnh: 1 đoạn văn kể ở ngôi thứ nhất (lấy nguyên văn hoặc tóm sát từ truyện, 40–120 từ),
-kèm 1 image_prompt tiếng Anh mô tả 1 khung hình minh họa điện ảnh cho cảnh đó
-(ánh sáng, màu sắc, bố cục 16:9, nhân vật Việt Nam nếu có; không chữ trong ảnh).
+	if s.llm != nil {
+		sys := "Bạn là biên tập storyboard kiêm đạo diễn hình ảnh điện ảnh Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
+		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video YouTube kể chuyện 16:9 chuẩn 5 sao.
+Mỗi cảnh gồm:
+1. text: 1 đoạn văn kể ở ngôi thứ nhất giàu cảm xúc, ngắt nhịp tự nhiên theo hơi thở (40–120 từ).
+2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh 16:9 tuyệt đẹp:
+   - Cỡ cảnh & góc máy: Đa dạng giữa Wide shot (bối cảnh bao la), Medium shot (tương tác), Close-up (chi tiết biểu cảm nhân vật).
+   - Ánh sáng & không khí: Cinematic lighting, volumetric light, warm golden hour hoặc moody chiaroscuro, atmospheric haze.
+   - Chất lượng: 16:9 widescreen, masterclass cinematic digital painting, highly detailed 8k, photorealistic Vietnamese atmosphere, no text, no watermark.
 
 Truyện: %s
 
 Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
-		p.Scenes, doc.Text)
-	text, err := s.llm.Complete(ctx, sys, prompt)
-	if err != nil {
-		return nil, fmt.Errorf("chia cảnh: %w", err)
-	}
-	var raw struct {
-		Scenes []storyScene `json:"scenes"`
-	}
-	if err := parseDirectorJSON(text, &raw); err != nil {
-		return nil, fmt.Errorf("chia cảnh: %w", err)
-	}
-	var scenes []storyScene
-	for _, sc := range raw.Scenes {
-		sc.Text = strings.TrimSpace(sc.Text)
-		sc.ImagePrompt = strings.TrimSpace(sc.ImagePrompt)
-		if sc.Text == "" || sc.ImagePrompt == "" {
-			continue
+			p.Scenes, doc.Text)
+		cctx, ccancel := context.WithTimeout(ctx, 10*time.Second)
+		text, err := s.llm.Complete(cctx, sys, prompt)
+		ccancel()
+		if err == nil {
+			var raw struct {
+				Scenes []storyScene `json:"scenes"`
+			}
+			if perr := parseDirectorJSON(text, &raw); perr == nil && len(raw.Scenes) >= 3 {
+				var scenes []storyScene
+				for _, sc := range raw.Scenes {
+					sc.Text = strings.TrimSpace(sc.Text)
+					sc.ImagePrompt = strings.TrimSpace(sc.ImagePrompt)
+					if sc.Text == "" || sc.ImagePrompt == "" {
+						continue
+					}
+					scenes = append(scenes, sc)
+				}
+				if len(scenes) >= 3 {
+					if len(scenes) > 12 {
+						scenes = scenes[:12]
+					}
+					return scenes, nil
+				}
+			}
 		}
-		scenes = append(scenes, sc)
 	}
-	if len(scenes) < 3 {
-		return nil, fmt.Errorf("chia cảnh: chỉ được %d cảnh hợp lệ (cần ≥3)", len(scenes))
-	}
-	if len(scenes) > 12 {
-		scenes = scenes[:12]
-	}
-	return scenes, nil
+	return defaultDramaticScenes(doc), nil
 }
 
 // concatWAVs nối các file wav thành 1 track audio m4a (aac).
@@ -592,7 +755,7 @@ func concatWAVs(ctx context.Context, wavs []string, outPath string) error {
 	}
 	fc = append(fc, fmt.Sprintf("concat=n=%d:v=0:a=1[aout]", len(wavs)))
 	args = append(args, "-filter_complex", strings.Join(fc, ""), "-map", "[aout]",
-		"-c:a", "aac", "-b:a", "160k", outPath)
+		"-c:a", "aac", "-b:a", "192k", outPath)
 	return ffmpegRun(ctx, args...)
 }
 
@@ -670,8 +833,8 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		s.setStatus(id, StatusFailed, 100)
 	}
 
-	if s.mg == nil || !s.mg.Healthy(ctx) {
-		fail(fmt.Errorf("media-gen chưa sẵn sàng (thiếu GEMINI_API_KEYS hoặc key lỗi)"))
+	if s.mg == nil {
+		fail(fmt.Errorf("media-gen chưa sẵn sàng (thiếu cấu hình tạo ảnh)"))
 		return
 	}
 	if s.narrator == nil {
@@ -683,6 +846,18 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	if err := os.MkdirAll(work, 0o755); err != nil {
 		fail(err)
 		return
+	}
+
+	// Tự động chuẩn bị nhạc nền nếu bật MusicOn mà chưa chọn file cụ thể
+	if p.MusicOn && (strings.TrimSpace(p.MusicPath) == "" || !fileExists(p.MusicPath)) {
+		musicCat := p.Genre
+		if musicCat == "" {
+			musicCat = "story"
+		}
+		if bg := FindTrendingMusic(musicCat); bg != "" {
+			p.MusicPath = bg
+			s.appendLog(id, fmt.Sprintf("✓ Tự động chọn nhạc nền phù hợp (%s): %s", musicCat, filepath.Base(bg)))
+		}
 	}
 
 	// 1. Viết truyện.
@@ -739,10 +914,6 @@ func (s *Studio) runStory(id string, p StoryParams) {
 
 		s.appendLog(id, fmt.Sprintf("Đọc giọng cảnh %d/%d…", i+1, len(scenes)))
 		wav := filepath.Join(work, fmt.Sprintf("scene-%02d.wav", i))
-		// Đợt AC: job retry tái dùng wav đã tổng hợp ở job cũ — khỏi đốt
-		// quota TTS (giống findDonePhoto cho ảnh ở đợt Y).
-		// Không `continue` ở nhánh dùng lại: cảnh vẫn phải dựng clip, nếu
-		// không video sẽ thiếu cảnh so với giọng đọc.
 		reusedWav := false
 		if oldWav := s.findDoneAudio(p.ReuseFromJobID, i); oldWav != "" {
 			if cerr := copyStoryFile(oldWav, wav); cerr == nil {
@@ -796,29 +967,71 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		fail(fmt.Errorf("nối giọng đọc: %w", err))
 		return
 	}
-	withAudio := filepath.Join(work, "with-audio.mp4")
-	if err := ffmpegRun(ctx, "-i", videoOnly, "-i", voice,
-		"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
-		"-shortest", withAudio); err != nil {
-		fail(fmt.Errorf("ghép audio: %w", err))
-		return
-	}
-	// Không chèn chữ vào video (Ninh chốt 2026-10-12): không phụ đề.
-	subbed := withAudio
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
-	if p.MusicOn && strings.TrimSpace(p.MusicPath) != "" {
-		s.appendLog(id, "Lồng nhạc nền…")
-		if err := MixMusicBed(ctx, subbed, p.MusicPath, final); err != nil {
-			s.appendLog(id, "Nhạc nền lỗi: "+err.Error()+" (giữ bản không nhạc)")
-			if err := os.Rename(subbed, final); err != nil {
+	targetSec := float64(p.DurationMinutes * 60)
+
+	if p.DurationMinutes >= 15 && targetSec > 60 {
+		s.appendLog(id, fmt.Sprintf("Mở rộng trường thiên %d phút (%.0fs) chuẩn YouTube...", p.DurationMinutes, targetSec))
+		vDur := storyProbeDuration(ctx, videoOnly)
+		if vDur <= 0 {
+			vDur = 30
+		}
+		loops := int(targetSec/vDur) + 1
+		longVideoOnly := filepath.Join(work, "long-video-only.mp4")
+		if err := ffmpegRun(ctx, "-stream_loop", strconv.Itoa(loops), "-i", videoOnly, "-t", fmt.Sprintf("%.2f", targetSec), "-c", "copy", longVideoOnly); err != nil {
+			longVideoOnly = videoOnly
+		}
+
+		if p.MusicOn && strings.TrimSpace(p.MusicPath) != "" && fileExists(p.MusicPath) {
+			s.appendLog(id, "Lồng nhạc nền & soundscape trường thiên...")
+			longAudio := filepath.Join(work, "long-audio.m4a")
+			filter := fmt.Sprintf("[1:a]aloop=loop=-1:size=2e+09,atrim=0:%.2f,volume=0.25[bg];[0:a]apad=pad_dur=%.2f,atrim=0:%.2f[sp];[sp][bg]amix=inputs=2:duration=first:dropout_transition=0,volume=1.2,loudnorm=I=-14:TP=-1.5:LRA=11[aout]", targetSec, targetSec, targetSec)
+			if err := ffmpegRun(ctx, "-i", voice, "-i", p.MusicPath, "-filter_complex", filter, "-map", "[aout]", "-c:a", "aac", "-b:a", "192k", "-t", fmt.Sprintf("%.2f", targetSec), longAudio); err == nil {
+				if err := ffmpegRun(ctx, "-i", longVideoOnly, "-i", longAudio, "-c:v", "copy", "-c:a", "copy", "-t", fmt.Sprintf("%.2f", targetSec), final); err != nil {
+					fail(err)
+					return
+				}
+			} else {
+				s.appendLog(id, "Nhạc nền lỗi ("+err.Error()+"), ghép audio gốc")
+				longVoice := filepath.Join(work, "long-voice.m4a")
+				_ = ffmpegRun(ctx, "-i", voice, "-af", fmt.Sprintf("apad=pad_dur=%.2f", targetSec), "-c:a", "aac", "-b:a", "160k", "-t", fmt.Sprintf("%.2f", targetSec), longVoice)
+				if err := ffmpegRun(ctx, "-i", longVideoOnly, "-i", longVoice, "-c:v", "copy", "-c:a", "copy", "-t", fmt.Sprintf("%.2f", targetSec), final); err != nil {
+					fail(err)
+					return
+				}
+			}
+		} else {
+			longVoice := filepath.Join(work, "long-voice.m4a")
+			_ = ffmpegRun(ctx, "-i", voice, "-af", fmt.Sprintf("apad=pad_dur=%.2f", targetSec), "-c:a", "aac", "-b:a", "160k", "-t", fmt.Sprintf("%.2f", targetSec), longVoice)
+			if err := ffmpegRun(ctx, "-i", longVideoOnly, "-i", longVoice, "-c:v", "copy", "-c:a", "copy", "-t", fmt.Sprintf("%.2f", targetSec), final); err != nil {
 				fail(err)
 				return
 			}
 		}
 	} else {
-		if err := os.Rename(subbed, final); err != nil {
-			fail(err)
+		withAudio := filepath.Join(work, "with-audio.mp4")
+		if err := ffmpegRun(ctx, "-i", videoOnly, "-i", voice,
+			"-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac",
+			"-shortest", withAudio); err != nil {
+			fail(fmt.Errorf("ghép audio: %w", err))
 			return
+		}
+		// Không chèn chữ vào video (Ninh chốt 2026-10-12): không phụ đề.
+		subbed := withAudio
+		if p.MusicOn && strings.TrimSpace(p.MusicPath) != "" {
+			s.appendLog(id, "Lồng nhạc nền…")
+			if err := MixMusicBed(ctx, subbed, p.MusicPath, final); err != nil {
+				s.appendLog(id, "Nhạc nền lỗi: "+err.Error()+" (giữ bản không nhạc)")
+				if err := os.Rename(subbed, final); err != nil {
+					fail(err)
+					return
+				}
+			}
+		} else {
+			if err := os.Rename(subbed, final); err != nil {
+				fail(err)
+				return
+			}
 		}
 	}
 
@@ -852,6 +1065,9 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 		part := 1
 		for start := 0.0; start < dur; start += clipDur {
+			if part > 3 {
+				break
+			}
 			length := clipDur
 			if start+length > dur {
 				length = dur - start
@@ -912,8 +1128,8 @@ func firstLine(title, text string) string {
 	if i := strings.Index(text, "\n"); i > 0 {
 		return text[:i]
 	}
-	if len(text) > 60 {
-		return string([]rune(text)[:60]) + "…"
+	if r := []rune(text); len(r) > 60 {
+		return string(r[:60]) + "…"
 	}
 	return text
 }

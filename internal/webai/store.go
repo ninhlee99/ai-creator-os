@@ -160,7 +160,7 @@ func (s *Store) UpdateAccount(acc Account) error {
 	return err
 }
 
-// UpsertAccountSession cập nhật phiên làm việc nếu đã có tài khoản cho nền tảng hoặc thêm mới.
+// UpsertAccountSession cập nhật phiên làm việc nếu đã có tài khoản tương ứng hoặc thêm tài khoản mới vào nhóm.
 func (s *Store) UpsertAccountSession(platform, sessionKey, cookie, accountName, email, tier string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -169,34 +169,64 @@ func (s *Store) UpsertAccountSession(platform, sessionKey, cookie, accountName, 
 	if tier == "" {
 		tier = "free"
 	}
+	email = strings.TrimSpace(email)
 	if accountName == "" {
-		accountName = fmt.Sprintf("Auto Session (%s)", time.Now().Format("02/01 15:04"))
+		if email != "" {
+			accountName = fmt.Sprintf("%s (%s)", strings.ToUpper(platform), email)
+		} else {
+			accountName = fmt.Sprintf("Auto Session (%s)", time.Now().Format("02/01 15:04"))
+		}
 	}
 
 	var existingID, existingCookie, existingKey string
-	err := s.db.QueryRow(`
-		SELECT id, cookie, session_key FROM webai_accounts
-		WHERE platform = ?
-		ORDER BY is_active DESC, updated_at DESC LIMIT 1
-	`, platform).Scan(&existingID, &existingCookie, &existingKey)
 
-	if err == nil && existingID != "" {
-		newKey := sessionKey
-		if newKey == "" {
-			newKey = existingKey
+	// 1. Nếu có email: tìm chính xác tài khoản cùng platform và email để cập nhật
+	if email != "" {
+		err := s.db.QueryRow(`
+			SELECT id, cookie, session_key FROM webai_accounts
+			WHERE platform = ? AND email = ?
+			ORDER BY is_active DESC, updated_at DESC LIMIT 1
+		`, platform, email).Scan(&existingID, &existingCookie, &existingKey)
+		if err == nil && existingID != "" {
+			newKey := sessionKey
+			if newKey == "" {
+				newKey = existingKey
+			}
+			newCookie := cookie
+			if newCookie == "" {
+				newCookie = existingCookie
+			}
+			_, uerr := s.db.Exec(`
+				UPDATE webai_accounts
+				SET session_key = ?, cookie = ?, account_name = ?, status = 'ok', tier = ?, is_active = 1, updated_at = ?, last_checked = ?
+				WHERE id = ?
+			`, newKey, newCookie, accountName, tier, now, now, existingID)
+			return existingID, uerr
 		}
-		newCookie := cookie
-		if newCookie == "" {
-			newCookie = existingCookie
-		}
-		_, uerr := s.db.Exec(`
-			UPDATE webai_accounts
-			SET session_key = ?, cookie = ?, status = 'ok', tier = ?, is_active = 1, updated_at = ?, last_checked = ?
-			WHERE id = ?
-		`, newKey, newCookie, tier, now, now, existingID)
-		return existingID, uerr
 	}
 
+	// 2. Nếu có sessionKey (và không phải URL gateway chung): tìm tài khoản có cùng session_key
+	if sessionKey != "" && !strings.HasPrefix(sessionKey, "http://127.0.0.1") && !strings.HasPrefix(sessionKey, "http://localhost") {
+		err := s.db.QueryRow(`
+			SELECT id, cookie, session_key FROM webai_accounts
+			WHERE platform = ? AND session_key = ?
+			ORDER BY is_active DESC, updated_at DESC LIMIT 1
+		`, platform, sessionKey).Scan(&existingID, &existingCookie, &existingKey)
+		if err == nil && existingID != "" {
+			newCookie := cookie
+			if newCookie == "" {
+				newCookie = existingCookie
+			}
+			_, uerr := s.db.Exec(`
+				UPDATE webai_accounts
+				SET cookie = ?, account_name = ?, email = COALESCE(NULLIF(?, ''), email), status = 'ok', tier = ?, is_active = 1, updated_at = ?, last_checked = ?
+				WHERE id = ?
+			`, newCookie, accountName, email, tier, now, now, existingID)
+			return existingID, uerr
+		}
+	}
+
+	// 3. Không trùng với tài khoản nào -> THÊM MỚI một tài khoản riêng biệt vào pool
 	newID := fmt.Sprintf("acc_%s_%d", platform, time.Now().UnixNano())
 	_, ierr := s.db.Exec(`
 		INSERT INTO webai_accounts (id, platform, account_name, email, session_key, cookie, status, tier, cooldown_until, requests, rate_limit_hits, is_active, last_used, last_checked, created_at, updated_at)

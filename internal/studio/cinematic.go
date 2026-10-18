@@ -342,14 +342,6 @@ func cinematicCues(texts []string, durs []float64) []subCue {
 	return out
 }
 
-func srtTime(sec float64) string {
-	if sec < 0 {
-		sec = 0
-	}
-	ms := int(sec*1000 + 0.5)
-	return fmt.Sprintf("%02d:%02d:%02d,%03d", ms/3600000, (ms/60000)%60, (ms/1000)%60, ms%1000)
-}
-
 func formatSRT(cues []subCue) string {
 	var sb strings.Builder
 	for i, c := range cues {

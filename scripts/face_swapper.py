@@ -1,0 +1,417 @@
+#!/usr/bin/env python3
+"""
+scripts/face_swapper.py — AI Face Swap Engine for AI Creator OS
+Hoán đổi khuôn mặt nhân vật AI vào video chuyển động (vũ đạo, affiliate lookbook, shorts).
+Hỗ trợ cả InsightFace/ONNXRuntime và fallback OpenCV Seamless Cloning.
+"""
+
+import sys
+import os
+import argparse
+import json
+import time
+import subprocess
+import shutil
+
+try:
+    import cv2
+    import numpy as np
+except ImportError as e:
+    cv2 = None
+    np = None
+
+def log(msg):
+    print(f"LOG: {msg}", flush=True)
+
+def progress(percent):
+    print(f"PROGRESS: {int(percent)}", flush=True)
+
+def check_env():
+    status = {
+        "python": sys.version,
+        "cv2": cv2.__version__ if cv2 else None,
+        "numpy": np.__version__ if np else None,
+        "insightface": False,
+        "onnxruntime": False,
+        "model_dir": os.path.expanduser("~/.insightface/models"),
+        "ready": False
+    }
+    try:
+        import onnxruntime
+        status["onnxruntime"] = onnxruntime.__version__
+    except ImportError:
+        pass
+
+    try:
+        import insightface
+        status["insightface"] = insightface.__version__
+        status["ready"] = True
+    except ImportError:
+        pass
+
+    # Ready if we at least have cv2 and numpy
+    if cv2 and np:
+        status["can_run"] = True
+
+    return status
+
+def get_face_detector(w=320, h=320):
+    candidates = [
+        'data/models/faceswap/face_detection_yunet.onnx',
+        os.path.join(os.path.dirname(__file__), '..', 'data', 'models', 'faceswap', 'face_detection_yunet.onnx'),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                return cv2.FaceDetectorYN.create(c, "", (int(w), int(h)), score_threshold=0.55, nms_threshold=0.3)
+            except Exception as e:
+                log(f"Lỗi khởi tạo YuNet ({e})")
+    return None
+
+def detect_faces_yunet(detector, img):
+    if detector is None or img is None:
+        return []
+    h, w = img.shape[:2]
+    detector.setInputSize((w, h))
+    _, faces = detector.detect(img)
+    if faces is None or len(faces) == 0:
+        return []
+    out = []
+    for f in faces:
+        x, y, fw, fh = int(f[0]), int(f[1]), int(f[2]), int(f[3])
+        # Clamp to image boundaries
+        x = max(0, x)
+        y = max(0, y)
+        fw = min(w - x, fw)
+        fh = min(h - y, fh)
+        if fw > 20 and fh > 20:
+            score = float(f[-1])
+            out.append((x, y, fw, fh, score))
+    return sorted(out, key=lambda item: item[2] * item[3], reverse=True)
+
+def align_and_blend_landmarks(src_bgr, src_pts, target_frame, detector, prev_M=None):
+    """
+    High-fidelity 5-point facial landmark alignment with:
+    - 2D similarity transform matching head tilt, roll, and scale
+    - Exponential Moving Average (EMA) temporal smoothing across frames
+    - Reinhard LAB color space skin-tone harmonization to match room lighting
+    - Convex-hull organic alpha feathering
+    """
+    if detector is None or target_frame is None or src_pts is None:
+        return target_frame, prev_M
+
+    h_t, w_t = target_frame.shape[:2]
+    detector.setInputSize((w_t, h_t))
+    _, dst_faces = detector.detect(target_frame)
+    if dst_faces is None or len(dst_faces) == 0:
+        return target_frame, prev_M
+
+    # Get primary face sorted by area
+    df = sorted(dst_faces, key=lambda item: item[2] * item[3], reverse=True)[0]
+    fw, fh = df[2], df[3]
+    score = df[-1]
+
+    # Skip if face is too small or confidence too low (e.g. dancer turned around)
+    if fw < 28 or fh < 28 or score < 0.50:
+        return target_frame, prev_M
+
+    dst_pts = np.float32([
+        df[4:6],   # right eye
+        df[6:8],   # left eye
+        df[8:10],  # nose tip
+        df[10:12], # right mouth corner
+        df[12:14]  # left mouth corner
+    ])
+
+    M, _ = cv2.estimateAffinePartial2D(src_pts, dst_pts)
+    if M is None:
+        return target_frame, prev_M
+
+    # Temporal smoothing to prevent jitter
+    if prev_M is not None:
+        M = 0.82 * M + 0.18 * prev_M
+
+    # Warp source image onto target frame dimensions
+    warped_src = cv2.warpAffine(src_bgr, M, (w_t, h_t), flags=cv2.INTER_LANCZOS4)
+
+    # Compute organic convex hull of transformed landmarks
+    center = np.mean(dst_pts, axis=0).astype(np.float32)
+    hull = cv2.convexHull(dst_pts.astype(np.int32))
+    
+    # Expand hull naturally to cover facial features (eyes, nose, mouth, cheeks)
+    hull_expanded = (hull - center) * 1.35 + center
+    hull_expanded = hull_expanded.astype(np.int32)
+
+    mask = np.zeros((h_t, w_t), dtype=np.uint8)
+    cv2.fillConvexPoly(mask, hull_expanded, 255)
+    
+    # Soft Gaussian falloff
+    blur_k = max(15, (int(fw * 0.15) // 2) * 2 + 1)
+    mask = cv2.GaussianBlur(mask, (blur_k, blur_k), blur_k // 2)
+
+    # Reinhard color space harmonization (match skin lighting)
+    mask_bool = mask > 15
+    if np.any(mask_bool):
+        try:
+            src_lab = cv2.cvtColor(warped_src, cv2.COLOR_BGR2LAB).astype(np.float32)
+            tgt_lab = cv2.cvtColor(target_frame, cv2.COLOR_BGR2LAB).astype(np.float32)
+
+            src_p = src_lab[mask_bool]
+            tgt_p = tgt_lab[mask_bool]
+
+            src_m, src_s = np.mean(src_p, axis=0), np.std(src_p, axis=0) + 1e-5
+            tgt_m, tgt_s = np.mean(tgt_p, axis=0), np.std(tgt_p, axis=0) + 1e-5
+
+            norm = (src_p - src_m) / src_s
+            trans = np.clip(norm * tgt_s + tgt_m, 0, 255)
+
+            src_lab[mask_bool] = trans
+            color_matched = cv2.cvtColor(src_lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
+        except Exception:
+            color_matched = warped_src
+    else:
+        color_matched = warped_src
+
+    # Smooth alpha blend
+    alpha = (mask.astype(np.float32) / 255.0)[:, :, np.newaxis]
+    blended = (color_matched.astype(np.float32) * alpha + target_frame.astype(np.float32) * (1.0 - alpha)).astype(np.uint8)
+
+    return blended, M
+
+def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
+    log("Khởi động InsightFace AI Face Swap Engine...")
+    import insightface
+    from insightface.app import FaceAnalysis
+
+    app = FaceAnalysis(name='buffalo_l')
+    app.prepare(ctx_id=0, det_size=(640, 640))
+
+    model_path = os.path.expanduser("~/.insightface/models/inswapper_128.onnx")
+    if not os.path.exists(model_path):
+        log("Đang tải mô hình inswapper_128.onnx (lần đầu sử dụng)...")
+        swapper = insightface.model_zoo.get_model('inswapper_128.onnx', download=True)
+    else:
+        swapper = insightface.model_zoo.get_model(model_path)
+
+    src_bgr = cv2.imread(source_path)
+    if src_bgr is None:
+        raise ValueError(f"Không đọc được ảnh nhân vật nguồn: {source_path}")
+
+    src_faces = app.get(src_bgr)
+    if len(src_faces) == 0:
+        raise ValueError(f"Không phát hiện được khuôn mặt trong ảnh nguồn: {source_path}")
+    source_face = sorted(src_faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]), reverse=True)[0]
+    log(f"✓ Đã nhận diện khuôn mặt nguồn thành công (độ tin cậy: {source_face.det_score:.2f})")
+
+    cap = cv2.VideoCapture(target_video)
+    if not cap.isOpened():
+        raise ValueError(f"Không mở được video đích: {target_video}")
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    if max_frames > 0:
+        total_frames = min(total_frames, max_frames)
+
+    log(f"Video đầu vào: {width}x{height} @ {fps:.1f}fps ({total_frames} khung hình)")
+
+    temp_raw_video = output_video + ".raw.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(temp_raw_video, fourcc, fps, (width, height))
+
+    frame_idx = 0
+    start_time = time.time()
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret or (max_frames > 0 and frame_idx >= max_frames):
+                break
+
+            target_faces = app.get(frame)
+            if len(target_faces) > 0:
+                # Swap main face
+                main_face = sorted(target_faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]), reverse=True)[0]
+                frame = swapper.get(frame, main_face, source_face, paste_back=True)
+
+            out.write(frame)
+            frame_idx += 1
+
+            if frame_idx % 15 == 0 or frame_idx == total_frames:
+                pct = (frame_idx / max(total_frames, 1)) * 90.0
+                progress(pct)
+                elapsed = time.time() - start_time
+                fps_proc = frame_idx / max(elapsed, 0.001)
+                log(f"Đã hoán đổi khuôn mặt AI: {frame_idx}/{total_frames} khung hình ({fps_proc:.1f} fps)...")
+    finally:
+        cap.release()
+        out.release()
+
+    # Recombine audio with ffmpeg
+    progress(95)
+    log("Hòa âm và xuất video cuối cùng...")
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", temp_raw_video,
+        "-i", target_video,
+        "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+        "-c:a", "aac", "-b:a", "192k",
+        "-map", "0:v:0",
+        "-map", "1:a:0?",
+        "-shortest",
+        output_video
+    ]
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    if os.path.exists(temp_raw_video):
+        os.remove(temp_raw_video)
+
+    progress(100)
+    log(f"✓ Hoàn tất AI Face Swap thành công: {output_video}")
+
+def run_fallback_swap(source_path, target_video, output_video, max_frames=0):
+    log("Sử dụng bộ xử lý Face Alignment & Seamless Cloning...")
+    src_bgr = cv2.imread(source_path)
+    cap = cv2.VideoCapture(target_video)
+    if not cap.isOpened():
+        raise ValueError(f"Không mở được video đích: {target_video}")
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    if max_frames > 0:
+        total_frames = min(total_frames, max_frames)
+
+    log(f"Video đầu vào: {width}x{height} @ {fps:.1f}fps ({total_frames} khung hình)")
+
+    detector = get_face_detector(width, height)
+    if detector is None:
+        raise ValueError("Không tìm thấy mô hình nhận diện khuôn mặt YuNet")
+
+    # Detect face and landmarks in source image
+    src_h, src_w = src_bgr.shape[:2]
+    detector.setInputSize((src_w, src_h))
+    _, src_faces = detector.detect(src_bgr)
+    src_pts = None
+    if src_faces is not None and len(src_faces) > 0:
+        sf = src_faces[0]
+        src_pts = np.float32([sf[4:6], sf[6:8], sf[8:10], sf[10:12], sf[12:14]])
+        log(f"✓ Đã nhận diện 5 điểm mốc khuôn mặt nhân vật nguồn (độ tin cậy: {sf[-1]:.2f})")
+    else:
+        log("Cảnh báo: Không phát hiện được điểm mốc khuôn mặt nhân vật, giữ nguyên video gốc")
+
+    temp_raw_video = output_video + ".raw.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(temp_raw_video, fourcc, fps, (width, height))
+
+    frame_idx = 0
+    start_time = time.time()
+    prev_M = None
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret or (max_frames > 0 and frame_idx >= max_frames):
+                break
+
+            if src_pts is not None:
+                swapped, prev_M = align_and_blend_landmarks(src_bgr, src_pts, frame, detector, prev_M)
+            else:
+                swapped = frame
+
+            out.write(swapped)
+            frame_idx += 1
+
+            if frame_idx % 25 == 0 or frame_idx == total_frames:
+                pct = (frame_idx / max(total_frames, 1)) * 90.0
+                progress(pct)
+                elapsed = time.time() - start_time
+                fps_proc = frame_idx / max(elapsed, 0.001)
+                log(f"Đã xử lý: {frame_idx}/{total_frames} khung hình ({fps_proc:.1f} fps)...")
+    finally:
+        cap.release()
+        out.release()
+
+    progress(95)
+    log("Hòa âm và đóng gói MP4...")
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", temp_raw_video,
+        "-i", target_video,
+        "-c:v", "libx264", "-preset", "fast", "-crf", "19",
+        "-c:a", "aac", "-b:a", "192k",
+        "-map", "0:v:0",
+        "-map", "1:a:0?",
+        "-shortest",
+        output_video
+    ]
+    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    if os.path.exists(temp_raw_video):
+        os.remove(temp_raw_video)
+
+    progress(100)
+    log(f"✓ Hoàn tất xử lý khuôn mặt nhân vật: {output_video}")
+
+def main():
+    parser = argparse.ArgumentParser(description="AI Face Swap Engine for AI Creator OS")
+    parser.add_argument("--source", type=str, help="Đường dẫn ảnh nhân vật khuôn mặt nguồn")
+    parser.add_argument("--target", type=str, help="Đường dẫn video chuyển động đích")
+    parser.add_argument("--output", type=str, help="Đường dẫn file video kết quả đầu ra")
+    parser.add_argument("--max-frames", type=int, default=0, help="Giới hạn số frame xử lý (0 = toàn bộ)")
+    parser.add_argument("--mode", type=str, default="auto", choices=["auto", "insightface", "fast"], help="Chế độ xử lý khuôn mặt")
+    parser.add_argument("--check", action="store_true", help="Kiểm tra trạng thái môi trường AI")
+    args = parser.parse_args()
+
+    if args.check:
+        status = check_env()
+        print(json.dumps(status, indent=2))
+        return
+
+    if not args.source or not args.target or not args.output:
+        parser.print_help()
+        sys.exit(1)
+
+    if not os.path.exists(args.source):
+        log(f"LỖI: Tệp ảnh nguồn không tồn tại: {args.source}")
+        sys.exit(2)
+
+    if not os.path.exists(args.target):
+        log(f"LỖI: Tệp video đích không tồn tại: {args.target}")
+        sys.exit(3)
+
+    os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
+
+    # Check if InsightFace model files are fully downloaded
+    buffalo_dir = os.path.expanduser("~/.insightface/models/buffalo_l")
+    has_buffalo = os.path.exists(buffalo_dir) and len(os.listdir(buffalo_dir)) >= 3
+    inswapper_file = os.path.expanduser("~/.insightface/models/inswapper_128.onnx")
+    has_inswapper = os.path.exists(inswapper_file) and os.path.getsize(inswapper_file) > 500_000_000
+
+    use_insightface = False
+    if args.mode == "insightface":
+        use_insightface = True
+    elif args.mode == "auto":
+        try:
+            import insightface
+            use_insightface = has_buffalo and has_inswapper
+        except ImportError:
+            use_insightface = False
+    else: # fast
+        use_insightface = False
+
+    try:
+        if use_insightface:
+            try:
+                run_insightface_swap(args.source, args.target, args.output, args.max_frames)
+            except Exception as e:
+                log(f"Cảnh báo: InsightFace lỗi ({e}), chuyển sang chế độ Face Alignment dự phòng...")
+                run_fallback_swap(args.source, args.target, args.output, args.max_frames)
+        else:
+            run_fallback_swap(args.source, args.target, args.output, args.max_frames)
+    except Exception as e:
+        log(f"LỖI NGHIÊM TRỌNG: {e}")
+        sys.exit(4)
+
+if __name__ == "__main__":
+    main()

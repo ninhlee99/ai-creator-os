@@ -1,0 +1,221 @@
+{{define "title"}}Thư Viện Nhân Vật & Face Lock — AI Creator OS{{end}}
+{{define "content"}}
+
+<!-- Unified AI Creative Workflow Stepper -->
+{{template "creation-stepper" dict "Step" "model"}}
+
+<div class="webai-header" style="margin-bottom: 20px;">
+  <div class="webai-header-left">
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-0.4px">🎭 Thư Viện Nhân Vật &amp; Face Lock AI</h1>
+    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13px">
+      Quản lý diện mạo nhân vật ảo. Tái tạo video người thật tự nhiên cho Vũ Đạo TikTok &amp; Affiliate Lookbook.
+    </p>
+  </div>
+  <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
+    <a href="/viral" class="btn btn-secondary btn-sm">💃 Xưởng Vũ Đạo</a>
+    <a href="/studio" class="btn btn-secondary btn-sm">🛍️ Xưởng Affiliate</a>
+  </div>
+</div>
+
+{{if .Models.Notice}}
+<div class="notice" style="margin-bottom:16px">{{.Models.Notice}}</div>
+{{end}}
+
+{{if .Models.Error}}
+<div class="err" style="margin-bottom:16px">{{.Models.Error}}</div>
+{{end}}
+
+<!-- Bảng Trạng Thái & Thống Kê AI Engine -->
+<div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+  <div class="stat-card">
+    <div class="stat-label">Face Swap Engine</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+      {{if .Models.FaceSwapReady}}
+      <span class="status-pill status-ready"><span class="pulse-dot"></span> Sẵn sàng</span>
+      {{else}}
+      <span class="status-pill status-draft">Khởi động</span>
+      {{end}}
+      <span style="font-size:11px;color:var(--muted)">Python 3.11</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Ảnh Nhân Vật Đã Khóa</div>
+    <div class="stat-val" style="color:var(--accent)">{{.Models.TotalPhotos}}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Mô hình nhận diện</div>
+    <div style="font-weight:600;font-size:13px;margin-top:8px;color:var(--text)">InsightFace + Inswapper</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Độ phân giải xuất bản</div>
+    <div style="font-weight:600;font-size:13px;margin-top:8px;color:var(--text)">1080×1920 (HD 9:16)</div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     KHU VỰC 1: TẢI LÊN ẢNH KHUÔN MẶT NHÂN VẬT MỚI
+     ========================================================================= -->
+<div class="card form-card" style="border-radius:14px;padding:22px 24px;margin-bottom: 30px;border:1.5px solid var(--border)">
+  <div style="margin-bottom:16px">
+    <h2 style="margin:0 0 6px;font-size:17px;font-weight:800">📸 Tải Lên &amp; Khóa Khuôn Mặt Nhân Vật Mới</h2>
+    <p style="margin:0;font-size:13px;color:var(--muted)">
+      Tải lên ảnh chân dung rõ mặt (chính diện hoặc hơi nghiêng, đủ sáng). AI sẽ phân tích các điểm mốc (mắt, mũi, miệng) và khóa làm diện mạo chuẩn.
+    </p>
+  </div>
+
+  <form method="post" action="/models/upload" enctype="multipart/form-data" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang phân tích & tải lên...';}">
+    <div class="grid2" style="gap:16px;margin-bottom:16px">
+      <div class="field">
+        <label style="font-weight:700;font-size:13px">Kênh sáng tạo sở hữu nhân vật <span class="req">*</span></label>
+        <select name="account_id" style="padding:9px 12px">
+          {{range .Models.Accounts}}
+          <option value="{{.ID}}" {{if eq .ID $.Models.ActiveAccountID}}selected{{end}}>
+            {{.Username}} (Kênh #{{.ID}})
+          </option>
+          {{end}}
+        </select>
+      </div>
+
+      <div class="field">
+        <label style="font-weight:700;font-size:13px">Chọn ảnh chân dung nhân vật <span class="req">*</span></label>
+        <div class="file-pick" style="margin-top:2px">
+          <label class="btn btn-secondary" style="cursor:pointer;width:100%;text-align:center;box-sizing:border-box">
+            📁 Bấm để chọn 1 hoặc nhiều file ảnh (JPG, PNG, WEBP)…
+            <input type="file" name="character_photos" accept=".jpg,.jpeg,.png,.webp" multiple required onchange="var cnt=this.files.length;document.getElementById('upload-preview-txt').textContent=cnt>1?(cnt+' ảnh đã được chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
+          </label>
+        </div>
+        <div id="upload-preview-txt" style="font-size:12px;color:var(--muted);margin-top:6px">Chưa chọn ảnh</div>
+      </div>
+    </div>
+
+    <div style="background:var(--bg2);padding:12px 16px;border-radius:10px;border-left:3px solid var(--accent);margin-bottom:18px;font-size:12.5px;color:var(--muted);line-height:1.5">
+      💡 <b>Tiêu chuẩn ảnh tối ưu:</b> Ảnh chụp một người duy nhất, khuôn mặt chiếm ít nhất 30% khung hình, không bị che khuất bởi kính râm hoặc khẩu trang. Định dạng JPG, PNG hoặc WEBP, dung lượng dưới 15MB/ảnh.
+    </div>
+
+    <div style="display:flex;justify-content:flex-end">
+      <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700;font-size:14px">
+        🚀 Tải Lên &amp; Khóa Khuôn Mặt Nhân Vật
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- =========================================================================
+     KHU VỰC 2: KHO ẢNH NHÂN VẬT HIỆN TẠI
+     ========================================================================= -->
+<div style="margin-bottom: 28px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px">
+    <div>
+      <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px">🎭 Danh Sách Khuôn Mặt Đã Khóa Trong Hệ Thống</h2>
+      <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Các ảnh này sẽ tự động được sử dụng trong dây chuyền sản xuất video Vũ Đạo &amp; Bán Hàng.</p>
+    </div>
+    <span class="badge badge-dim" style="font-size:11px">{{.Models.TotalPhotos}} ảnh khả dụng</span>
+  </div>
+
+  {{if .Models.Photos}}
+  <div class="grid4" style="gap:16px">
+    {{range .Models.Photos}}
+    <div class="card" style="border-radius:14px;overflow:hidden;border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;padding:0">
+      <div style="position:relative;background:#000;display:flex;align-items:center;justify-content:center;height:220px;overflow:hidden">
+        <img src="{{.URL}}" alt="{{.Filename}}" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.src='/static/placeholder.png';">
+        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);padding:3px 8px;border-radius:6px;font-size:10.5px;font-weight:700;color:#fff">
+          {{.AccountName}}
+        </div>
+        <div style="position:absolute;bottom:8px;left:8px;background:rgba(16,185,129,0.9);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;color:#fff">
+          ✓ Face Lock Ready
+        </div>
+      </div>
+
+      <div style="padding:14px;flex:1;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
+            ID: #{{.ID}} · {{.FileSize}}
+          </div>
+          <div style="font-weight:700;font-size:13px;color:var(--text);word-break:break-all;line-height:1.3;margin-bottom:6px">
+            {{.Filename}}
+          </div>
+          <div style="font-size:11px;color:#10b981;display:flex;align-items:center;gap:4px">
+            <span>●</span> {{.FaceStatus}}
+          </div>
+        </div>
+
+        <!-- Fast Creation Action Links directly with this Character -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <a href="{{.ViralURL}}" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-size:11px;padding:5px 4px">
+            💃 Vũ Đạo
+          </a>
+          <a href="{{.StudioURL}}" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-size:11px;padding:5px 4px">
+            🛍️ Bán Hàng
+          </a>
+          <a href="{{.WebAIURL}}" class="btn btn-ghost btn-sm" style="font-size:11px;padding:5px 6px" title="Render Với Web AI">
+            🌐
+          </a>
+        </div>
+
+        <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:10px">
+          <a href="{{.URL}}" target="_blank" class="btn btn-ghost btn-sm" style="flex:1;text-align:center;font-size:11.5px;padding:4px 8px">
+            🔍 Xem gốc
+          </a>
+          <form method="post" action="/models/{{.ID}}/delete" data-confirm="Bạn có chắc chắn muốn xóa ảnh nhân vật này khỏi thư viện?" style="margin:0">
+            <button type="submit" class="btn btn-danger btn-sm" style="font-size:11.5px;padding:4px 8px" title="Xóa ảnh nhân vật">
+              🗑️ Xóa
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">
+    <div class="es-icon">🎭</div>
+    <h3>Chưa có ảnh khuôn mặt nhân vật nào</h3>
+    <p>Hãy tải lên ảnh chân dung để AI khóa diện mạo và sản xuất video Vũ Đạo &amp; Bán Hàng.</p>
+  </div>
+  {{end}}
+</div>
+
+<!-- =========================================================================
+     KHU VỰC 3: DÂY CHUYỀN HOẠT ĐỘNG FACE SWAP AI CỤC BỘ
+     ========================================================================= -->
+<details class="tech-ops-drawer" style="margin-top: 24px;">
+  <summary style="font-size:13px;font-weight:600;cursor:pointer;padding:12px 16px;color:var(--muted)">
+    ⚙️ Nguyên Lý Hoạt Động Của Dây Chuyền Face Swap Cục Bộ
+  </summary>
+  <div style="padding:16px;border-top:1px solid var(--border)">
+    <div class="grid4" style="gap:14px">
+      <div style="background:var(--bg);padding:14px;border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:6px">1️⃣</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Khuôn Mặt Gốc</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.4">
+          Ảnh chân dung nhân vật được tải lên tại trang này đóng vai trò diện mạo chuẩn (Ground Truth).
+        </div>
+      </div>
+      <div style="background:var(--bg);padding:14px;border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:6px">2️⃣</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Video Người Thật</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.4">
+          Video vũ đạo tự quay phòng ngủ hoặc video lookbook thời trang 60s sắc nét 1080x1920 không logo.
+        </div>
+      </div>
+      <div style="background:var(--bg);padding:14px;border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:6px">3️⃣</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">InsightFace 512D Embedding</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.4">
+          Mạng nơ-ron Buffalo_L trích xuất vector nhận diện 512 chiều và căn chỉnh tư thế đầu 3D trên từng khung hình video.
+        </div>
+      </div>
+      <div style="background:var(--bg);padding:14px;border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:20px;margin-bottom:6px">4️⃣</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Neural Inswapper 128</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.4">
+          Tái tạo khuôn mặt tự nhiên vào không gian đặc trưng ẩn (latent space), giữ nguyên ánh sáng da và biểu cảm, 0% biến dạng, 0 logo.
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+{{end}}
