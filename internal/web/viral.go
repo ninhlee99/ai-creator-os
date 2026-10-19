@@ -691,6 +691,7 @@ func (s *Server) handleViralQuick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = r.ParseMultipartForm(32 << 20)
 	_ = r.ParseForm()
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	genre := r.PostFormValue("genre")
