@@ -81,6 +81,15 @@ func SupportedWebLoginTargets() map[string]WebLoginTarget {
 			Profile:     "muse",
 			LandingHost: "muse.ai",
 		},
+		PlatformGoogleFlow: {
+			Platform:    PlatformGoogleFlow,
+			Name:        "Google Flow",
+			StartURL:    "https://labs.google/flow",
+			CookieHost:  "google.com",
+			CookieName:  "__Secure-1PSID",
+			Profile:     "googleflow",
+			LandingHost: "labs.google",
+		},
 	}
 }
 
@@ -260,6 +269,7 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 	}
 
 	var musePendingEmail string
+	var landingSeenCount int
 
 	for {
 		select {
@@ -342,34 +352,35 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 					}
 				}
 
-				if confirmedEmail != "" && strings.Contains(confirmedEmail, "@") && !isSystemOrStaticEmail(confirmedEmail) {
-					if sessionCookieVal == "" && gerr == nil {
-						sessionCookieVal, _ = pickSessionCookieAndEmail(cookies, target)
-					}
-					if sessionCookieVal == "" && gerr == nil {
-						for _, c := range cookies {
-							d := strings.TrimPrefix(c.Domain, ".")
-							if (strings.Contains(d, "muse.ai") || strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) && c.Value != "" {
-								if c.Value == "0" || c.Value == "1" || c.Name == "datr" || c.Name == "wd" || c.Name == "dpr" {
-									continue
-								}
-								sessionCookieVal = c.Value
-								break
+				if sessionCookieVal == "" && gerr == nil {
+					sessionCookieVal, _ = pickSessionCookieAndEmail(cookies, target)
+				}
+				if sessionCookieVal == "" && gerr == nil {
+					for _, c := range cookies {
+						d := strings.TrimPrefix(c.Domain, ".")
+						if (strings.Contains(d, "muse.ai") || strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) && c.Value != "" {
+							if c.Value == "0" || c.Value == "1" || c.Name == "datr" || c.Name == "wd" || c.Name == "dpr" {
+								continue
 							}
+							sessionCookieVal = c.Value
+							break
 						}
 					}
-					if sessionCookieVal != "" && sessionCookieVal != "0" && sessionCookieVal != "1" {
-						hdr := cookieHeaderForHost(cookies, target.CookieHost)
-						auth := &CapturedWebAuth{
-							Platform:     target.Platform,
-							SessionValue: sessionCookieVal,
-							CookieHeader: hdr,
-							Email:        confirmedEmail,
-							BrowserUsed:  filepath.Base(bin),
-						}
-						enrichAccountProfile(target, auth)
-						return auth, nil
+				}
+				if sessionCookieVal != "" && sessionCookieVal != "0" && sessionCookieVal != "1" {
+					if confirmedEmail == "" || isSystemOrStaticEmail(confirmedEmail) {
+						confirmedEmail = fmt.Sprintf("muse_user_%d@web.ai", time.Now().Unix()%100000)
 					}
+					hdr := cookieHeaderForHost(cookies, target.CookieHost)
+					auth := &CapturedWebAuth{
+						Platform:     target.Platform,
+						SessionValue: sessionCookieVal,
+						CookieHeader: hdr,
+						Email:        confirmedEmail,
+						BrowserUsed:  filepath.Base(bin),
+					}
+					enrichAccountProfile(target, auth)
+					return auth, nil
 				}
 			}
 
@@ -385,6 +396,7 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 		if gerr == nil && len(cookies) > 0 {
 			if val, email := pickSessionCookieAndEmail(cookies, target); val != "" {
 				if cdpHasLandingHost(port, target.LandingHost) {
+					landingSeenCount++
 					if liveEmail := cdpExtractPageIdentity(port, target); liveEmail != "" {
 						email = liveEmail
 					}
@@ -402,11 +414,14 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 							auth.Email = liveEmail
 						}
 					}
-					if auth.Email != "" && auth.SessionValue != "" {
+					if auth.SessionValue != "" && (auth.Email != "" || landingSeenCount >= 2) {
+						if auth.Email == "" {
+							auth.Email = fmt.Sprintf("%s_user_%d@web.ai", target.Platform, time.Now().Unix()%100000)
+						}
 						return auth, nil
 					}
 					if updateStatus != nil {
-						updateStatus("waiting_for_user", fmt.Sprintf("Đã có phiên kết nối. Vui lòng hoàn tất đăng nhập/chọn tài khoản %s để xác nhận email...", target.Name))
+						updateStatus("waiting_for_user", fmt.Sprintf("Đã có phiên kết nối. Vui lòng hoàn tất đăng nhập/chọn tài khoản %s...", target.Name))
 					}
 				}
 			}
@@ -437,6 +452,9 @@ func cdpHasLandingHost(port int, host string) bool {
 		if t.Type == "page" && strings.Contains(t.URL, host) {
 			// Đang ở màn hình chọn tài khoản Google hoặc trang login thì CHƯA được coi là xong!
 			if host == "gemini.google.com" && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser")) {
+				continue
+			}
+			if host == "labs.google" && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser") || strings.Contains(t.URL, "signin")) {
 				continue
 			}
 			if host == "chatgpt.com" && (strings.Contains(t.URL, "auth/login") || strings.Contains(t.URL, "auth0") || strings.Contains(t.URL, "accounts.google.com")) {
@@ -577,7 +595,7 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 
 	var script string
 	switch target.Platform {
-	case PlatformGemini:
+	case PlatformGemini, PlatformGoogleFlow:
 		script = `(() => {
 			try {
 				if (window.WIZ_global_data && typeof window.WIZ_global_data.oPEP7c === 'string') {
@@ -1055,12 +1073,16 @@ func enrichAccountProfile(target WebLoginTarget, auth *CapturedWebAuth) {
 			}
 		}
 
-	case PlatformGemini:
+	case PlatformGemini, PlatformGoogleFlow:
 		cookie := auth.CookieHeader
 		if !strings.Contains(cookie, "__Secure-1PSID=") && auth.SessionValue != "" {
 			cookie = "__Secure-1PSID=" + auth.SessionValue + "; " + cookie
 		}
-		req, err := http.NewRequest(http.MethodGet, "https://gemini.google.com/app", nil)
+		targetURL := "https://gemini.google.com/app"
+		if target.Platform == PlatformGoogleFlow {
+			targetURL = "https://labs.google/flow"
+		}
+		req, err := http.NewRequest(http.MethodGet, targetURL, nil)
 		if err == nil {
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 			req.Header.Set("Cookie", cookie)
@@ -1318,6 +1340,13 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 		// Grok fallback cookies
 		if target.Platform == PlatformGrok && sessionVal == "" {
 			if (c.Name == "sso" || c.Name == "sso-rw" || c.Name == "auth_token") && c.Value != "" {
+				sessionVal = c.Value
+			}
+		}
+
+		// Google Flow fallback cookies
+		if target.Platform == PlatformGoogleFlow && sessionVal == "" {
+			if (c.Name == "__Secure-1PSID" || c.Name == "__Secure-3PSID" || c.Name == "SID" || c.Name == "SSID") && c.Value != "" {
 				sessionVal = c.Value
 			}
 		}

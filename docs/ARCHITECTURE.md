@@ -79,19 +79,28 @@ tách từ studio, kind `story` trên `studio_jobs`; automation
 `internal/automation/story_tick.go` 24h/lần, đăng private-first, mặc định
 chờ Ninh duyệt).
 
-**Đợt H (2026-10-04):**
+**Đợt H (2026-10-04) & Đợt I (2026-10-19 — Chuẩn Video Có Hồn & Quay Phim Tự Nhiên):**
+- **I1: Open-Spec Chuẩn Video Có Hồn (`docs/OPEN_SPEC.md`)**: Ban hành đặc tả kỹ thuật Open-Spec v1.0 định nghĩa 7 luật video có hồn, chống méo hình học, loại bỏ hoàn toàn video dán ảnh tĩnh và giật lắc cơ học.
+- **I2: Radar Vũ Đạo Triệu View TikTok Việt Nam & Douyin Trung Quốc**: Tích hợp danh mục clip mẫu 9:16 chọn lọc từ Đào Lê Phương Hoa, C.A.C Dance Crew, Douyin Hot Beat Dance. Bổ sung endpoint `POST /viral/clips/import` tự động tải từ URL TikTok/Douyin bằng `yt-dlp` và chuẩn hóa 1080x1920 không méo hình.
+- **I3: InsightFace Deep Latent Identity Engine (`scripts/face_swapper.py`)**: Hoán đổi khuôn mặt AI với vector đặc trưng 512 chiều, căn chỉnh 5 điểm mốc nhân trắc học và hòa trộn Poisson Seamless Blending để ghép khuôn mặt creator vào thân hình vũ công hoặc người mẫu lookbook trong video chuyển động thực tế.
+- **I4: Phim Lookbook Thời Trang Chuyển Động Người Thật (`internal/studio/affiliate.go`)**: Video affiliate thời trang/phụ kiện sử dụng 100% video quay người mẫu thật trong không gian thực tế (boutique, phố, dạo chơi), loại bỏ slide ảnh tĩnh thô kệch và thẻ chữ `AdCard` che khuất hình ảnh.
+- **I5: Bộ Cắt Chuyển Cảnh CapCut Pro (`internal/studio/assemble.go`)**: Cắt nhịp dứt khoát theo âm nhạc thịnh hành với chớp sáng trắng (`0.12s white flash`) và Ken Burns nhẹ nhàng $< 8\%$.
+- **I6: Rạp Chiếu Truyện Audio Điện Ảnh 30 – 60 Phút (`internal/studio/story.go`)**: Xóa bỏ hoàn toàn hiện tượng màn hình đen; mỗi 8-15 giây là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (VieNeu Neural TTS + Foley môi trường + Nhạc nền cinematic lót -18dB).
+
+**Đợt J (2026-10-19 — Nâng Cấp Generative AI Video Engine: Google Veo 3 & Muse AI):**
+- **J1: Google Veo 3 Engine (`internal/studio/veo.go`)**: Tích hợp trực tiếp Google Veo 3 qua REST API (`generativelanguage.googleapis.com/v1beta`) với cơ chế fallback tự động theo danh sách ưu tiên: `veo-3.1-generate-preview`, `veo-3.0-generate-preview`, `veo-2.0-generate-001`, `veo-3.0-generate-001`, `veo-2.0-generate-preview`. Hỗ trợ cả Text-to-Video và Image-to-Video (`firstFrame`), xử lý long-running operation polling bất đồng bộ và tải video MP4 trực tiếp.
+- **J2: Muse AI Studio Engine (`internal/studio/museai.go`)**: Tích hợp Muse AI API (`https://muse.ai/api`), tự động nhận diện `MUSE_AI_API_KEY` hoặc session cookie `MUSE_AI_SESSION` qua Web AI Pool, tải ảnh keyframe lên storage và sinh video chuyển động độ nét cao.
+- **J3: Unified AI Video Engine & Intelligent Cascade (`internal/studio/aivideo.go`)**: Xây dựng hàm chuẩn `GenerateMotionVideoClip` điều phối luồng sinh video: `veo3` ➔ `museai` ➔ `auto` ➔ Neural / Lookbook footage ➔ Fallback Ken Burns nhẹ nhàng. Toàn bộ video clip sinh ra bắt buộc đi qua bộ lọc FFmpeg Lanczos 3-lobe chuẩn hóa $1080 \times 1920$ (9:16) hoặc $1920 \times 1080$ (16:9), chống méo tỉ lệ pixel.
+- **J4: Nâng Cấp Pipeline Sản Xuất Viral & Affiliate**:
+  - `internal/studio/viral.go`: Xóa bỏ hoàn toàn mô hình slideshow 5 ảnh tĩnh; từng phân cảnh kịch bản được sinh thành video chuyển động thực tế qua Veo 3 / Muse AI và ghép nối mượt mà (`ConcatClips`).
+  - `internal/studio/affiliate.go`: Tích hợp chế độ sinh cảnh người mẫu tương tác và trải nghiệm sản phẩm thật bằng Veo 3 / Muse AI thay vì chỉ zoom ảnh tĩnh.
+  - Giao diện người dùng (`templates/viral.html`, `templates/studio.html`): Bổ sung lựa chọn AI Video Engine trực quan (Google Veo 3, Muse AI, Auto Cascade, Lookbook).
 - **H1**: loại bỏ TikTok Shop hoàn toàn (Accesstrade-only) — xóa
-  `internal/tiktok/shop.go`, `TikTokShopProvider`, wiring trong main.go,
-  nhánh đối soát legacy, config `TIKTOK_SHOP_*` (kể cả vùng parked).
+  `internal/tiktok/shop.go`, `TikTokShopProvider`, wiring trong main.go.
 - **H2**: Agent Team định nghĩa lại quanh 3 pipeline — `/team` mới
-  (`internal/web/team_pipeline.go`, không còn park): Affiliate
-  (Hunter→Producer→Publisher→Analyst), Video Viral AI
-  (Hunter→Director→Producer→QC→Publisher→Analyst), Story
-  (Writer→Illustrator→Voice→Producer→Publisher). Trạng thái suy ra từ dữ liệu thật.
+  (`internal/web/team_pipeline.go`, không còn park): Affiliate, Video Viral AI, Story.
 - **H3**: YouTube Analytics API (`internal/growth/youtube_analytics.go`,
-  free) điền Views30d + watch hours 30 ngày cho growth thresholds;
-  badge trạng thái trên trang Kênh; scope `yt-analytics.readonly`
-  (script `get-youtube-token.py`).
+  free) điền Views30d + watch hours 30 ngày cho growth thresholds.
 
 ## 3. Routes hiện tại (internal/web/routes.go)
 

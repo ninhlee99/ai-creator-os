@@ -628,20 +628,22 @@ func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 		Status  string `json:"status"`
 	}
 
-	platforms := []string{webai.PlatformClaude, webai.PlatformChatGPT, webai.PlatformGemini, webai.PlatformGrok, webai.PlatformMuseAI}
+	platforms := []string{webai.PlatformClaude, webai.PlatformChatGPT, webai.PlatformGemini, webai.PlatformGrok, webai.PlatformMuseAI, webai.PlatformGoogleFlow}
 	names := map[string]string{
-		webai.PlatformClaude:  "Claude 3.7",
-		webai.PlatformChatGPT: "ChatGPT 4o",
-		webai.PlatformGemini:  "Gemini 2.0",
-		webai.PlatformGrok:    "Grok 3 (xAI)",
-		webai.PlatformMuseAI:  "Muse AI",
+		webai.PlatformClaude:     "Claude 3.7",
+		webai.PlatformChatGPT:    "ChatGPT 4o",
+		webai.PlatformGemini:     "Gemini 2.0",
+		webai.PlatformGrok:       "Grok 3 (xAI)",
+		webai.PlatformMuseAI:     "Muse AI",
+		webai.PlatformGoogleFlow: "Google Flow (1.000 Credits Free)",
 	}
 	icons := map[string]string{
-		webai.PlatformClaude:  "🟣",
-		webai.PlatformChatGPT: "💬",
-		webai.PlatformGemini:  "✨",
-		webai.PlatformGrok:    "🚀",
-		webai.PlatformMuseAI:  "🎬",
+		webai.PlatformClaude:     "🟣",
+		webai.PlatformChatGPT:    "💬",
+		webai.PlatformGemini:     "✨",
+		webai.PlatformGrok:       "🚀",
+		webai.PlatformMuseAI:     "🎬",
+		webai.PlatformGoogleFlow: "🌊",
 	}
 
 	summaries := make(map[string]platformSummary)
@@ -823,8 +825,9 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Look for sample_clip if user selected lookbook template
-	if len(clips) == 0 {
+	// Look for sample_clip if user selected lookbook template (and not Veo 3 / Muse AI generative mode)
+	videoEngine := strings.TrimSpace(r.FormValue("video_engine"))
+	if len(clips) == 0 && (videoEngine == "lookbook" || videoEngine == "") {
 		if sClip := strings.TrimSpace(r.FormValue("sample_clip")); sClip != "" {
 			var cand string
 			if strings.HasSuffix(sClip, ".mp4") {
@@ -860,9 +863,10 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Save Voiceover audio or synthesize from voiceover_text
+	tiktokMusicOnly := r.FormValue("tiktok_music_only") == "1"
 	voiceoverText := strings.TrimSpace(r.FormValue("voiceover_text"))
 	voiceoverPath, _ := saveUpload(r, "voiceover_file", upDir)
-	if voiceoverPath == "" && voiceoverText != "" && s.TTS != nil {
+	if !tiktokMusicOnly && voiceoverPath == "" && voiceoverText != "" && s.TTS != nil {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 		if audioBytes, err := s.TTS.Synthesize(ctx, voiceoverText, "default"); err == nil && len(audioBytes) > 0 {
 			dst := filepath.Join(upDir, fmt.Sprintf("%d-voiceover.mp3", time.Now().UnixNano()))
@@ -871,6 +875,10 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		cancel()
+	}
+	if tiktokMusicOnly {
+		voiceoverPath = ""
+		voiceoverText = ""
 	}
 
 	// Save Music
@@ -884,6 +892,9 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 				musicPath = dst
 			}
 		}
+	}
+	if musicPath == "" {
+		musicPath = studio.FindDefaultMusic()
 	}
 
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
@@ -1105,10 +1116,7 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 		if auth != nil && auth.SessionValue != "" {
 			email := strings.TrimSpace(auth.Email)
 			if email == "" {
-				sess.Status = "failed"
-				sess.Error = "Không nhận diện được email tài khoản sau khi đăng nhập. Vui lòng thử lại."
-				sess.Message = sess.Error
-				return
+				email = fmt.Sprintf("%s_user_%d@web.ai", tgt.Platform, time.Now().Unix()%100000)
 			}
 			accountName := fmt.Sprintf("%s (%s)", tgt.Name, email)
 			id, err := s.WebAI.UpsertAccountSession(tgt.Platform, auth.SessionValue, auth.CookieHeader, accountName, email, "free")

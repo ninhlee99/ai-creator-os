@@ -6,9 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -231,58 +233,110 @@ func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs 
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
 	}
-	// Đợt S: mạch quota đang mở (hết quota ngày) → không đốt API call.
-	if tts.GeminiQuotaCircuit().Open() {
-		return fmt.Errorf("generate image: quota circuit open (hết quota ngày) — thử lại sau 0h")
-	}
-	parts := []geminiPart{{Text: prompt}}
-	for _, r := range refs {
-		p, err := loadRef(r.Path)
-		if err != nil {
-			return err
-		}
-		parts = append(parts, p)
-	}
-	req := geminiGenRequest{
-		Contents: []geminiContent{{Parts: parts}},
-		GenerationConfig: map[string]any{
-			"responseModalities": []string{"TEXT", "IMAGE"},
-		},
+	if len(g.keys) == 0 {
+		return fmt.Errorf("gemini: no keys configured")
 	}
 	var lastErr error
-	for attempt := 0; attempt < len(g.keys)+1; attempt++ {
-		idx, key, ok := g.pickKey()
-		if !ok {
-			break
-		}
-		img, err := g.generateImageWithKey(ctx, key, req)
-		g.noteResult(idx, err)
-		if err == nil {
-			if dir := filepath.Dir(outPath); dir != "" {
-				_ = os.MkdirAll(dir, 0o755)
+	if !tts.GeminiQuotaCircuit().Open() {
+		parts := []geminiPart{{Text: prompt}}
+		for _, r := range refs {
+			p, err := loadRef(r.Path)
+			if err != nil {
+				return err
 			}
-			if err := os.WriteFile(outPath, img, 0o644); err != nil {
-				return fmt.Errorf("write image: %w", err)
+			parts = append(parts, p)
+		}
+		req := geminiGenRequest{
+			Contents: []geminiContent{{Parts: parts}},
+			GenerationConfig: map[string]any{
+				"responseModalities": []string{"TEXT", "IMAGE"},
+			},
+		}
+		for attempt := 0; attempt < len(g.keys)+1; attempt++ {
+			idx, key, ok := g.pickKey()
+			if !ok {
+				break
 			}
-			return nil
+			img, err := g.generateImageWithKey(ctx, key, req)
+			g.noteResult(idx, err)
+			if err == nil {
+				if dir := filepath.Dir(outPath); dir != "" {
+					_ = os.MkdirAll(dir, 0o755)
+				}
+				if err := os.WriteFile(outPath, img, 0o644); err != nil {
+					return fmt.Errorf("write image: %w", err)
+				}
+				return nil
+			}
+			lastErr = err
+			// Rotate to next key on invalid key or quota/rate limit error.
+			// Only stop early on non-key errors (e.g. malformed prompt).
+			if tts.ClassifyKeyError(err) == tts.KeyErrOther {
+				break
+			}
 		}
-		lastErr = err
-		// Rotate to next key on invalid key or quota/rate limit error.
-		// Only stop early on non-key errors (e.g. malformed prompt).
-		if tts.ClassifyKeyError(err) == tts.KeyErrOther {
-			break
-		}
+	} else {
+		lastErr = fmt.Errorf("quota circuit open (hết quota ngày)")
 	}
-	if lastErr == nil {
-		lastErr = fmt.Errorf("no usable Gemini API key (cooling down)")
+	// Tier-2 Image Generation: Pollinations AI (free photorealistic 9:16 vertical engine)
+	log.Printf("mediagen: Gemini image API keys unavailable (%v) — attempting Pollinations AI visual generation", lastErr)
+	pctx, pcancel := context.WithTimeout(ctx, 35*time.Second)
+	perr := generatePollinationsImage(pctx, prompt, outPath)
+	pcancel()
+	if perr == nil {
+		log.Printf("mediagen: ✓ Generated AI visual via Pollinations: %s", filepath.Base(outPath))
+		return nil
 	}
-	if len(g.keys) > 0 {
-		log.Printf("mediagen: Gemini image API keys unavailable (%v) — falling back to synthesized visual", lastErr)
-		if gerr := GenerateCinematicStoryScene(0, 1, prompt, outPath); gerr == nil {
-			return nil
-		}
+	log.Printf("mediagen: Pollinations fallback failed (%v) — falling back to synthesized cinematic scene", perr)
+
+	// Tier-3: Synthesized cinematic scene visual with local model/scenery photo compositing
+	hashIdx := int(crc32.ChecksumIEEE([]byte(prompt)))
+	if hashIdx < 0 {
+		hashIdx = -hashIdx
+	}
+	if gerr := GenerateCinematicStoryScene(hashIdx, 100, prompt, outPath); gerr == nil {
+		log.Printf("mediagen: ✓ Generated synthesized cinematic visual (sceneIdx %d): %s", hashIdx, filepath.Base(outPath))
+		return nil
 	}
 	return fmt.Errorf("generate image: %w", lastErr)
+}
+
+func generatePollinationsImage(ctx context.Context, prompt string, outPath string) error {
+	cleanPrompt := strings.TrimSpace(prompt)
+	if cleanPrompt == "" {
+		return fmt.Errorf("empty prompt")
+	}
+	if len(cleanPrompt) > 1200 {
+		cleanPrompt = cleanPrompt[:1200]
+	}
+	hashIdx := int(crc32.ChecksumIEEE([]byte(cleanPrompt))) & 0x7FFFFFFF
+	encoded := url.QueryEscape(cleanPrompt)
+	reqURL := fmt.Sprintf("https://image.pollinations.ai/prompt/%s?width=1080&height=1920&nologo=true&seed=%d&model=flux", encoded, hashIdx)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36")
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
+	if err != nil {
+		return err
+	}
+	if len(data) < 2000 || bytes.HasPrefix(data, []byte("{")) {
+		return fmt.Errorf("invalid image data (len %d)", len(data))
+	}
+	if dir := filepath.Dir(outPath); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	return os.WriteFile(outPath, data, 0o644)
 }
 
 func (g *GeminiMediaGen) generateImageWithKey(ctx context.Context, key string, req geminiGenRequest) ([]byte, error) {
@@ -450,71 +504,21 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 }
 
 func (g *GeminiMediaGen) generateVideoWithKey(ctx context.Context, key string, req veoPredictRequest, outPath string) error {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return err
+	vc := NewVeoClient(g.baseURL)
+	prompt := ""
+	firstFrame := ""
+	if len(req.Instances) > 0 {
+		prompt = req.Instances[0].Prompt
 	}
-	url := g.baseURL + "/v1beta/models/" + geminiVeoModel + ":predictLongRunning?key=" + key
-	opName, err := g.postJSON(ctx, url, body, "operation")
-	if err != nil {
-		return err
+	seconds := 8
+	aspect := "9:16"
+	if p, ok := req.Parameters["durationSeconds"].(int); ok && p > 0 {
+		seconds = p
 	}
-	// Poll the long-running operation (Veo clips take minutes).
-	pollClient := &http.Client{Timeout: 60 * time.Second}
-	deadline := time.Now().Add(15 * time.Minute)
-	for {
-		if time.Now().After(deadline) {
-			return fmt.Errorf("veo: timed out waiting for render")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(12 * time.Second):
-		}
-		opURL := g.baseURL + "/v1beta/" + opName + "?key=" + key
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, opURL, nil)
-		if err != nil {
-			return err
-		}
-		resp, err := pollClient.Do(httpReq)
-		if err != nil {
-			continue // transient; keep polling
-		}
-		data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-		resp.Body.Close()
-		if err != nil || resp.StatusCode != http.StatusOK {
-			continue
-		}
-		var op struct {
-			Done  bool `json:"done"`
-			Error *struct {
-				Message string `json:"message"`
-			} `json:"error,omitempty"`
-			Response *struct {
-				GenerateVideoResponse *struct {
-					GeneratedSamples []struct {
-						Video struct {
-							URI string `json:"uri"`
-						} `json:"video"`
-					} `json:"generatedSamples"`
-				} `json:"generateVideoResponse"`
-			} `json:"response,omitempty"`
-		}
-		if err := json.Unmarshal(data, &op); err != nil {
-			continue
-		}
-		if op.Error != nil {
-			return fmt.Errorf("veo: %s", op.Error.Message)
-		}
-		if !op.Done || op.Response == nil || op.Response.GenerateVideoResponse == nil {
-			continue
-		}
-		samples := op.Response.GenerateVideoResponse.GeneratedSamples
-		if len(samples) == 0 || samples[0].Video.URI == "" {
-			return fmt.Errorf("veo: no video in response")
-		}
-		return g.downloadFile(ctx, key, samples[0].Video.URI, outPath)
+	if a, ok := req.Parameters["aspectRatio"].(string); ok && a != "" {
+		aspect = a
 	}
+	return vc.RenderVeoVideo(ctx, key, prompt, firstFrame, seconds, aspect, outPath, nil)
 }
 
 // postJSON posts body and extracts the "name" field of the response.

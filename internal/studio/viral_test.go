@@ -77,3 +77,35 @@ func TestEnqueueViralJob(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	s.DeleteJob(jobID)
 }
+
+func TestAnalyzeViralOriginal(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	// Test case 1: Douyin hot dance clip
+	clipDouyin := "data/clips/viral/clip_cn_douyin_hot.mp4"
+	if fileExists(clipDouyin) {
+		prof := AnalyzeViralOriginal(ctx, clipDouyin, dir)
+		if prof.MotionVibe != "energetic_beat" {
+			t.Errorf("expected energetic_beat, got %s", prof.MotionVibe)
+		}
+		if prof.VisualMood != "neon_aesthetic" {
+			t.Errorf("expected neon_aesthetic, got %s", prof.VisualMood)
+		}
+		if prof.Duration <= 0 {
+			t.Errorf("expected positive duration, got %f", prof.Duration)
+		}
+	}
+
+	// Test case 2: Bedroom dance clip
+	clipBedroom := "data/clips/viral/clip_03_sexy_dance_60s.mp4"
+	if fileExists(clipBedroom) {
+		prof := AnalyzeViralOriginal(ctx, clipBedroom, dir)
+		if prof.MotionVibe != "smooth_sensual" {
+			t.Errorf("expected smooth_sensual, got %s", prof.MotionVibe)
+		}
+		if prof.VisualMood != "warm_studio" {
+			t.Errorf("expected warm_studio, got %s", prof.VisualMood)
+		}
+	}
+}

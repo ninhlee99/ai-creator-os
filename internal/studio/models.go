@@ -157,14 +157,26 @@ func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
 		}
 	}
 	if len(out) == 0 {
-		candidates := []string{
-			"data/output/studio/models/1/1790869026571752000.jpg",
-			"data/output/studio/models/1/1790869026576011000.jpg",
-			"data/output/studio/models/1/1790869026578411000.jpg",
+		matches, _ := filepath.Glob("data/models/*.jpg")
+		for _, m := range matches {
+			if fileExists(m) {
+				out = append(out, m)
+			}
 		}
-		for _, c := range candidates {
-			if fileExists(c) {
-				out = append(out, c)
+		if len(out) == 0 {
+			matches, _ = filepath.Glob("docs/assets/affiliate-*/*.jpg")
+			for _, m := range matches {
+				if fileExists(m) {
+					out = append(out, m)
+				}
+			}
+		}
+		if len(out) == 0 {
+			matches, _ = filepath.Glob("docs/assets/affiliate-*/.thumbnails/*.jpg")
+			for _, m := range matches {
+				if fileExists(m) {
+					out = append(out, m)
+				}
 			}
 		}
 	}

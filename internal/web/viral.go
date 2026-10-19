@@ -1,16 +1,20 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -51,6 +55,8 @@ type sampleClipView struct {
 	URL         string `json:"url"`
 	Duration    string `json:"duration"`
 	Category    string `json:"category"`
+	Platform    string `json:"platform"` // "TikTok VN" hoặc "Douyin CN"
+	Region      string `json:"region"`   // "VN" hoặc "CN"
 	Description string `json:"description"`
 }
 
@@ -79,6 +85,8 @@ type viralView struct {
 	DoneCount          int
 	TotalCount         int
 	Trends             []viralTrend
+	DramasVN           []studio.ShowbizDrama
+	DramasCN           []studio.ShowbizDrama
 	Error              string
 	Notice             string
 	AvailableModels    []modelPhotoCardView
@@ -87,36 +95,66 @@ type viralView struct {
 	SampleClips        []sampleClipView
 	SelectedClip       string
 	TopChannels        []viralCreatorChannel
+	TopicGroups        []studio.TopicVideoGroup
+	PresetTopicGroups  []studio.TopicVideoGroup
 }
 
-// defaultViralClips danh sách các video vũ đạo mẫu chân thực có sẵn trong hệ thống.
+// defaultViralClips danh sách các video vũ đạo triệu view chuẩn 9:16 từ TikTok Việt Nam và Douyin Trung Quốc.
 var defaultViralClips = []sampleClipView{
 	{
+		ID:          "clip_vn_phuonghoa",
+		Title:       "🇻🇳 TikTok VN: Đào Lê Phương Hoa - Sexy Dance Bắt Trend",
+		Filename:    "clip_vn_phuonghoa.mp4",
+		URL:         "/clips/viral/clip_vn_phuonghoa.mp4",
+		Duration:    "30s (1080x1920 HD)",
+		Category:    "dance",
+		Platform:    "TikTok VN",
+		Region:      "VN",
+		Description: "Vũ đạo nóng bỏng triệu view từ Nữ hoàng vũ đạo TikTok Việt Nam (@hoaa.hanassii), thần thái quyến rũ, chuyển động 9:16 sắc nét.",
+	},
+	{
+		ID:          "clip_vn_cac_dance",
+		Title:       "🇻🇳 TikTok VN: C.A.C Dance Crew - Vũ Đạo Bắt Trend",
+		Filename:    "clip_vn_cac_dance.mp4",
+		URL:         "/clips/viral/clip_vn_cac_dance.mp4",
+		Duration:    "15s (1080x1920 HD)",
+		Category:    "dance",
+		Platform:    "TikTok VN",
+		Region:      "VN",
+		Description: "Vũ đạo nhóm sôi động bắt trend TikTok Việt Nam, nhịp điệu cuốn hút, góc quay hiện đại chuẩn 9:16.",
+	},
+	{
+		ID:          "clip_cn_douyin_hot",
+		Title:       "🇨🇳 Douyin Trung Quốc: 抖音卡点热舞 (Douyin Hot Dance)",
+		Filename:    "clip_cn_douyin_hot.mp4",
+		URL:         "/clips/viral/clip_cn_douyin_hot.mp4",
+		Duration:    "20s (1080x1920 HD)",
+		Category:    "dance",
+		Platform:    "Douyin CN",
+		Region:      "CN",
+		Description: "Điệu nhảy bắt beat cực chuẩn sốt xình xịch Douyin Trung Quốc, visual đỉnh cao, chuyển động toàn thân cuốn hút.",
+	},
+	{
+		ID:          "clip_cn_douyin_kpop",
+		Title:       "🇨🇳 Douyin Trung Quốc: 抖音女团元气齐舞 (Douyin Idol Dance)",
+		Filename:    "clip_cn_douyin_kpop.mp4",
+		URL:         "/clips/viral/clip_cn_douyin_kpop.mp4",
+		Duration:    "15s (1080x1920 HD)",
+		Category:    "dance",
+		Platform:    "Douyin CN",
+		Region:      "CN",
+		Description: "Vũ đạo phong cách thần tượng Douyin năng lượng bùng nổ, màu sắc rực rỡ, trang phục bắt mắt.",
+	},
+	{
 		ID:          "clip_03_sexy_dance_60s",
-		Title:       "Vũ đạo phòng ngủ 60s (Chuẩn TikTok 1 phút+)",
+		Title:       "🇻🇳 TikTok VN: Vũ Đạo Phòng Ngủ 30s Chân Thực",
 		Filename:    "clip_03_sexy_dance_60s.mp4",
 		URL:         "/clips/viral/clip_03_sexy_dance_60s.mp4",
-		Duration:    "60 giây (1080x1920)",
-		Category:    "viral",
-		Description: "Video tự quay phòng ngủ chân thực 100%, không sân khấu, không logo, chuyển động toàn thân sắc nét.",
-	},
-	{
-		ID:          "clip_01_dance_duo",
-		Title:       "Vũ đạo đường phố đôi năng động 45s",
-		Filename:    "clip_01_dance_duo.mp4",
-		URL:         "/clips/viral/clip_01_dance_duo.mp4",
-		Duration:    "45 giây (1080x1920)",
-		Category:    "viral",
-		Description: "Nhịp điệu đường phố bắt trend, góc quay chuyên nghiệp, chuyển động mượt mà.",
-	},
-	{
-		ID:          "clip_02_dance_crew",
-		Title:       "Nhảy vũ đoàn hiện đại K-Pop 60s",
-		Filename:    "clip_02_dance_crew.mp4",
-		URL:         "/clips/viral/clip_02_dance_crew.mp4",
-		Duration:    "60 giây (1080x1920)",
-		Category:    "viral",
-		Description: "Vũ đạo nhóm đồng đều, sôi động, phong cách idol năng lượng cao.",
+		Duration:    "30s (1080x1920 HD)",
+		Category:    "dance",
+		Platform:    "TikTok VN",
+		Region:      "VN",
+		Description: "Video tự quay phòng ngủ chân thực 100%, không sân khấu, không logo, chuyển động toàn thân mượt mà.",
 	},
 }
 
@@ -286,13 +324,21 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		StudioOK:        s.Studio != nil,
 		Trends:          defaultViralTrends,
 		Error:           q.Get("err"),
-		SampleClips:     defaultViralClips,
+		SampleClips:     s.listViralDanceClips(),
 		AvailableModels: s.listModelPhotoCards(),
 		TopChannels:     defaultViralChannels,
 	}
 
+	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
+	v.DramasVN = dramasVN
+	v.DramasCN = dramasCN
+	v.TopicGroups = studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
+	v.PresetTopicGroups = studio.GetAllPresetTopicGroups()
+
 	if msg := q.Get("msg"); msg == "created" {
 		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
+	} else if msg == "imported" {
+		v.Notice = "✓ Đã tải và chuẩn hóa video vũ đạo 9:16 vào xưởng thành công! Bạn có thể xem trước và ghép mặt ngay bên dưới."
 	}
 
 	// Chọn nhân vật được chỉ định từ query param hoặc mặc định ảnh đầu tiên
@@ -394,6 +440,89 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "viral", s.ctx("Viral", v))
 }
 
+// ValidateAndEnforceViralChannel checks whether the requested channel matches the topic / region.
+// If there is a mismatch (e.g., C-Biz drama assigned to Vietnamese kechuyen_ai, or V-Biz drama assigned to douyin_reup),
+// it automatically enforces the correct channel to preserve strict channel isolation and brand integrity.
+func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accounts []*network.Account) (string, int64, string) {
+	topicLower := strings.ToLower(topic)
+	cbizKeywords := []string{
+		"trung quốc", "c-biz", "cbiz", "hoa ngữ", "bắc kinh", "thượng hải",
+		"từ nghệ dương", "hoàng tử thao", "tiêu chiến", "vương nhất bác",
+		"dương tử", "bạch lộc", "triệu lộ tư", "triệu lệ dĩnh", "lưu diệc phi",
+		"phạm băng băng", "huỳnh hiểu minh", "angelababy", "weibo", "douyin",
+		"xiao zhan", "wang yibo", "zhao lusi", "dilraba", "nhiệt ba",
+	}
+
+	isCBiz := false
+	for _, kw := range cbizKeywords {
+		if strings.Contains(topicLower, kw) {
+			isCBiz = true
+			break
+		}
+	}
+	if genre == "douyin" || strings.Contains(topicLower, "douyin") {
+		isCBiz = true
+	}
+
+	vbizKeywords := []string{
+		"v-biz", "vbiz", "việt nam", "sơn tùng", "trấn thành", "hồ ngọc hà",
+		"mỹ tâm", "đàm vĩnh hưng", "hoài linh", "ninh dương lan ngọc",
+		"phương hoa", "lê ngọc phương anh", "vtv", "tiktok việt nam", "showbiz việt",
+		"kể chuyện", "tâm sự", "truyện ma", "vụ án",
+	}
+	isVBiz := false
+	for _, kw := range vbizKeywords {
+		if strings.Contains(topicLower, kw) {
+			isVBiz = true
+			break
+		}
+	}
+
+	targetAccount := requestedAccount
+	var targetID int64
+	var note string
+
+	if isCBiz {
+		// Strictly C-Biz / Douyin -> target douyin_reup
+		targetAccount = "douyin_reup"
+		for _, a := range accounts {
+			if a != nil && (a.Username == "douyin_reup" || strings.Contains(strings.ToLower(a.Niche), "douyin") || strings.Contains(strings.ToLower(a.Niche), "trung")) {
+				targetAccount = a.Username
+				targetID = a.ID
+				break
+			}
+		}
+		if requestedAccount != "" && requestedAccount != targetAccount {
+			note = fmt.Sprintf("Nội dung C-Biz / Douyin tự động định tuyến chuẩn xác về kênh @%s (không để nhầm vào kênh @%s)", targetAccount, requestedAccount)
+		}
+	} else if isVBiz || requestedAccount == "" {
+		// Strictly V-Biz / Kể chuyện Việt -> target kechuyen_ai
+		targetAccount = "kechuyen_ai"
+		for _, a := range accounts {
+			if a != nil && (a.Username == "kechuyen_ai" || strings.Contains(strings.ToLower(a.Niche), "kể chuyện") || strings.Contains(strings.ToLower(a.Niche), "việt")) {
+				targetAccount = a.Username
+				targetID = a.ID
+				break
+			}
+		}
+		if requestedAccount != "" && requestedAccount != targetAccount && requestedAccount == "douyin_reup" {
+			note = fmt.Sprintf("Nội dung Showbiz V-Biz tự động định tuyến chuẩn xác về kênh @%s (không để nhầm vào kênh @%s)", targetAccount, requestedAccount)
+		}
+	}
+
+	// Fallback lookup if targetID is still 0
+	if targetID == 0 {
+		for _, a := range accounts {
+			if a != nil && a.Username == targetAccount {
+				targetID = a.ID
+				break
+			}
+		}
+	}
+
+	return targetAccount, targetID, note
+}
+
 // handleViralCreate tiếp nhận form khởi tạo video viral mới.
 func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
@@ -444,16 +573,15 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var accountID int64
-	if account != "" && s.Mgr != nil {
-		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
-			for _, a := range accounts {
-				if a != nil && a.Username == account {
-					accountID = a.ID
-					break
-				}
-			}
-		}
+	var accounts []*network.Account
+	if s.Mgr != nil {
+		accounts, _ = s.Mgr.ListWithAutopilot()
+	}
+	enforcedAccount, targetID, channelNote := ValidateAndEnforceViralChannel(topic, genre, account, accounts)
+	account = enforcedAccount
+	var accountID int64 = targetID
+	if channelNote != "" {
+		log.Printf("web: viral channel enforcement: %s", channelNote)
 	}
 
 	// If user uploaded new photos and selected an account, persist into the account's model library
@@ -594,18 +722,18 @@ func (s *Server) handleViralQuick(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var accountID int64
-	var modelPhoto string
-	if account != "" && s.Mgr != nil {
-		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
-			for _, a := range accounts {
-				if a != nil && a.Username == account {
-					accountID = a.ID
-					break
-				}
-			}
-		}
+	var accounts []*network.Account
+	if s.Mgr != nil {
+		accounts, _ = s.Mgr.ListWithAutopilot()
 	}
+	enforcedAccount, targetID, channelNote := ValidateAndEnforceViralChannel(topic, genre, account, accounts)
+	account = enforcedAccount
+	var accountID int64 = targetID
+	if channelNote != "" {
+		log.Printf("web: viral quick channel enforcement: %s", channelNote)
+	}
+
+	var modelPhoto string
 	if accountID > 0 && s.Studio != nil {
 		if ms, err := s.Studio.ModelLibrary(); err == nil {
 			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
@@ -645,3 +773,138 @@ func studioUnmarshalJSON(data string, v any) error {
 	}
 	return json.Unmarshal([]byte(data), v)
 }
+
+// listViralDanceClips trả về danh sách các clip vũ đạo mẫu từ TikTok VN và Douyin CN,
+// bao gồm các video mặc định và các video do người dùng import vào data/clips/viral/.
+func (s *Server) listViralDanceClips() []sampleClipView {
+	clipsDir := filepath.Join(s.DataDir, "clips", "viral")
+	_ = os.MkdirAll(clipsDir, 0o755)
+
+	out := append([]sampleClipView(nil), defaultViralClips...)
+	seen := make(map[string]bool)
+	for _, c := range out {
+		seen[c.Filename] = true
+	}
+
+	entries, err := os.ReadDir(clipsDir)
+	if err != nil {
+		return out
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ".mp4") {
+			continue
+		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		stem := strings.TrimSuffix(name, filepath.Ext(name))
+
+		platform := "TikTok VN"
+		region := "VN"
+		title := "🇻🇳 TikTok: " + stem
+		if strings.Contains(strings.ToLower(stem), "douyin") || strings.Contains(strings.ToLower(stem), "cn") {
+			platform = "Douyin CN"
+			region = "CN"
+			title = "🇨🇳 Douyin: " + stem
+		}
+
+		out = append(out, sampleClipView{
+			ID:          stem,
+			Title:       title,
+			Filename:    name,
+			URL:         "/clips/viral/" + name,
+			Duration:    "Tùy chỉnh (1080x1920 HD)",
+			Category:    "dance",
+			Platform:    platform,
+			Region:      region,
+			Description: fmt.Sprintf("Video vũ đạo chuyển động %s chất lượng cao 9:16 được nhập vào hệ thống.", platform),
+		})
+	}
+	return out
+}
+
+// handleViralClipImport tiếp nhận link TikTok hoặc Douyin, dùng yt-dlp tải video,
+// chuẩn hóa về 1080x1920 (9:16 vertical) và lưu vào data/clips/viral/.
+func (s *Server) handleViralClipImport(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Studio chưa sẵn sàng"), http.StatusSeeOther)
+		return
+	}
+	_ = r.ParseForm()
+	rawURL := strings.TrimSpace(r.PostFormValue("url"))
+	if rawURL == "" {
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Vui lòng dán link video TikTok hoặc Douyin"), http.StatusSeeOther)
+		return
+	}
+	customTitle := strings.TrimSpace(r.PostFormValue("title"))
+	platform := strings.TrimSpace(r.PostFormValue("platform"))
+	if platform == "" {
+		if strings.Contains(rawURL, "douyin.com") {
+			platform = "Douyin CN"
+		} else {
+			platform = "TikTok VN"
+		}
+	}
+	region := "VN"
+	if strings.Contains(platform, "Douyin") || strings.Contains(platform, "CN") {
+		region = "CN"
+	}
+
+	clipsDir := filepath.Join(s.DataDir, "clips", "viral")
+	_ = os.MkdirAll(clipsDir, 0o755)
+
+	clipID := fmt.Sprintf("imported_%s_%d", strings.ToLower(region), time.Now().Unix())
+	tempFile := filepath.Join(clipsDir, clipID+"_raw.mp4")
+	finalFile := filepath.Join(clipsDir, clipID+".mp4")
+
+	// 1. Tìm đường dẫn yt-dlp
+	ytdlp := "yt-dlp"
+	candidates := []string{
+		"/Users/ninh.le/.local/bin/yt-dlp",
+		"/usr/local/bin/yt-dlp",
+		"yt-dlp",
+	}
+	for _, cand := range candidates {
+		if fileExists(cand) {
+			ytdlp = cand
+			break
+		}
+	}
+
+	// Chạy yt-dlp tải video với timeout 3 phút
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, ytdlp, "-o", tempFile, "--no-playlist", "--no-warnings", rawURL)
+	outBytes, err := cmd.CombinedOutput()
+	if err != nil || !fileExists(tempFile) {
+		log.Printf("viral import: yt-dlp error (%v): %s", err, string(outBytes))
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Không thể tải video từ link này — vui lòng kiểm tra lại link TikTok/Douyin hoặc thử link khác."), http.StatusSeeOther)
+		return
+	}
+	defer os.Remove(tempFile)
+
+	// 2. Chuyển đổi và chuẩn hóa nghiêm ngặt về 1080x1920 (9:16 vertical HD) không méo hình
+	ffCmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", tempFile,
+		"-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1",
+		"-c:v", "libx264", "-preset", "fast", "-crf", "20",
+		"-c:a", "aac", "-b:a", "192k", finalFile)
+	if ffErr := ffCmd.Run(); ffErr != nil || !fileExists(finalFile) {
+		log.Printf("viral import: ffmpeg error: %v", ffErr)
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Lỗi chuẩn hóa video sang chuẩn 9:16"), http.StatusSeeOther)
+		return
+	}
+
+	if customTitle == "" {
+		customTitle = clipID
+	}
+	log.Printf("viral: ✓ Đã nhập thành công video vũ đạo (%s): %s", platform, finalFile)
+
+	http.Redirect(w, r, fmt.Sprintf("/viral?clip=%s&msg=imported", clipID), http.StatusSeeOther)
+}
+

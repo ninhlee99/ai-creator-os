@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -34,4 +35,20 @@ func TestGenerateProductVisual(t *testing.T) {
 	if img.Bounds().Dx() != 1080 || img.Bounds().Dy() != 1920 {
 		t.Fatalf("bounds wrong: %v", img.Bounds())
 	}
+}
+
+func TestDebugWebpPixels(t *testing.T) {
+	path := "../../docs/assets/affiliate-spot/media-generation-shot-3-macro-0-81455621-54ab-4966-9915-e959ad6d4c83.webp"
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer f.Close()
+	img, format, err := image.Decode(f)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	t.Logf("format: %s, bounds: %v, color model: %T", format, img.Bounds(), img.ColorModel())
+	r, g, b, a := img.At(100, 100).RGBA()
+	t.Logf("pixel(100,100) RGBA: %d, %d, %d, %d", r>>8, g>>8, b>>8, a>>8)
 }

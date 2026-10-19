@@ -414,7 +414,7 @@ func UpscaleVideo(ctx context.Context, src, dst string, w, h int) error {
 		return fmt.Errorf("upscale: kích thước %dx%d không hợp lệ", w, h)
 	}
 	args := []string{"-i", src,
-		"-vf", fmt.Sprintf("scale=%d:%d:flags=lanczos", w, h),
+		"-vf", fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d,setsar=1", w, h, w, h),
 	}
 	args = append(args, videoEncoder()...)
 	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "copy", dst)

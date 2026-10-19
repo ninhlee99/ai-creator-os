@@ -181,38 +181,47 @@
   // Chrome/macOS vẽ khoảng trắng ngay sau emoji bằng font emoji (gần như
   // rộng 0) → "📖Kể chuyện". Bọc emoji vào span.ico có lề phải, bỏ khoảng
   // trắng thừa. Bỏ qua ô nhập/code để không đổi dữ liệu người dùng.
+  var isMutatingEmoji = false;
   function spaceEmoji(root) {
+    if (isMutatingEmoji || !root) return;
     var re = /(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?)[ \u00A0]+(?=\S)/u;
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
-        if (!p || /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION)$/.test(p.nodeName) ||
+        if (!p || /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION|INPUT|VIDEO|AUDIO)$/.test(p.nodeName) ||
             (p.classList && p.classList.contains('ico'))) return NodeFilter.FILTER_REJECT;
         return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
       }
     });
     var nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(function (n) {
-      var m, rest = n.nodeValue, frag = document.createDocumentFragment();
-      while ((m = re.exec(rest))) {
-        if (m.index) frag.appendChild(document.createTextNode(rest.slice(0, m.index)));
-        var sp = document.createElement('span');
-        sp.className = 'ico';
-        sp.textContent = m[1];
-        frag.appendChild(sp);
-        rest = rest.slice(m.index + m[0].length);
-      }
-      frag.appendChild(document.createTextNode(rest));
-      n.parentNode.replaceChild(frag, n);
-    });
+    if (!nodes.length) return;
+    isMutatingEmoji = true;
+    try {
+      nodes.forEach(function (n) {
+        var m, rest = n.nodeValue, frag = document.createDocumentFragment();
+        while ((m = re.exec(rest))) {
+          if (m.index) frag.appendChild(document.createTextNode(rest.slice(0, m.index)));
+          var sp = document.createElement('span');
+          sp.className = 'ico';
+          sp.textContent = m[1];
+          frag.appendChild(sp);
+          rest = rest.slice(m.index + m[0].length);
+        }
+        frag.appendChild(document.createTextNode(rest));
+        if (n.parentNode) n.parentNode.replaceChild(frag, n);
+      });
+    } finally {
+      isMutatingEmoji = false;
+    }
   }
   spaceEmoji(document.body);
   if (window.MutationObserver) {
     new MutationObserver(function (muts) {
+      if (isMutatingEmoji) return;
       muts.forEach(function (mu) {
         mu.addedNodes.forEach(function (n) {
-          if (n.nodeType === 1) spaceEmoji(n);
+          if (n.nodeType === 1 && !isMutatingEmoji) spaceEmoji(n);
         });
       });
     }).observe(document.body, { childList: true, subtree: true });
@@ -296,15 +305,33 @@
           else name = a.kind + ' ' + (a.idx + 1);
           var pid = 'prompt-' + id + '-' + a.id;
           (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
-          h += '<div class="shot"><div class="shot-head">' + name +
-            ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
+          h += '<div class="shot" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + name +
+            '</b> <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
             '</div>';
-          if (a.preview) {
-            if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + esc(a.preview) + '" style="max-width:220px">'; }
-            else { h += '<video controls preload="metadata" src="' + esc(a.preview) + '" style="max-width:220px"></video>'; }
+
+          var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
+          var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
+          var imgSrc = a.image_url || (hasImg ? a.preview : '');
+          var vidSrc = a.video_url || (hasVid ? a.preview : '');
+
+          if (imgSrc) {
+            h += '<div style="margin:8px 0">' +
+                 '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">🖼️ Keyframe Ảnh 4K:</div>' +
+                 '<img src="' + esc(imgSrc) + '" style="max-width:240px;border-radius:8px;border:1px solid var(--border);display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
+                 '</div>';
           }
-          h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
-          h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
+          if (vidSrc) {
+            h += '<div style="margin:8px 0">' +
+                 '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">🎬 Video Chuyển Động AI:</div>' +
+                 '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="max-width:240px;border-radius:8px;border:1px solid var(--border);display:block"></video>' +
+                 '</div>';
+          }
+          if (!imgSrc && !vidSrc && a.preview) {
+            h += '<div style="margin:8px 0"><a href="' + esc(a.preview) + '" target="_blank" class="btn btn-secondary btn-sm">Xem file ' + esc(a.preview) + '</a></div>';
+          }
+
+          h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto;margin:8px 0;background:var(--bg);padding:8px;border-radius:6px"></div>';
+          h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
           h += '</div></div>';
         });
         box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';

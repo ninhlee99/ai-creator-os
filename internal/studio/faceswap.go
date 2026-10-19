@@ -33,6 +33,10 @@ var (
 // findPython311 tìm đường dẫn binary Python 3.11 hoặc Python có hỗ trợ InsightFace/OpenCV.
 func findPython311() string {
 	candidates := []string{
+		".venv/bin/python3",
+		"data/venv/bin/python3",
+		filepath.Join(os.Getenv("HOME"), ".local/bin/python3.11"),
+		"/Users/ninh.le/.local/bin/python3.11",
 		"/opt/homebrew/bin/python3.11",
 		"/usr/local/bin/python3.11",
 		"/opt/homebrew/bin/python3",

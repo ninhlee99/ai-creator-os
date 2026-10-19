@@ -90,9 +90,26 @@ func (p AffiliateParams) HasClips() bool {
 	return false
 }
 
+// IsMasterQuality4K checks whether 4K mastering is globally enabled or requested.
+func IsMasterQuality4K() bool {
+	return os.Getenv("MASTER_QUALITY_4K") == "1"
+}
+
+// AspectDims4K maps a job aspect to full 4K UHD output dimensions (2160x3840 for 9:16, 3840x2160 for 16:9).
+func AspectDims4K(aspect string) (w, h int) {
+	if aspect == "16:9" {
+		return 3840, 2160
+	}
+	return 2160, 3840
+}
+
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or
 // empty aspects fall back to 9:16 so old jobs/params keep rendering.
+// When MASTER_QUALITY_4K=1, delivery renders output full 4K UHD (2160x3840 / 3840x2160).
 func AspectDims(aspect string) (w, h int) {
+	if os.Getenv("MASTER_QUALITY_4K") == "1" {
+		return AspectDims4K(aspect)
+	}
 	if aspect == "16:9" {
 		return 1920, 1080
 	}

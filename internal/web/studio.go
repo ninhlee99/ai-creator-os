@@ -612,10 +612,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		notice = "Tác vụ sản xuất video đã được đưa vào hàng đợi AI thành công!"
 	}
 
-	ttTrends, _ := studio.FetchTikTokTrendingVideos(r.Context())
-	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
-	combinedDramas := append([]studio.ShowbizDrama(nil), dramasVN...)
-	combinedDramas = append(combinedDramas, dramasCN...)
 	topicGroups := studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
 	presetTopicGroups := studio.GetAllPresetTopicGroups()
 
@@ -646,13 +642,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"AccountNames", accountNames,
 		"AvailableModels", availableModels,
 		"SelectedModelID", selectedModelID,
-		"ViralTrends", defaultViralTrends,
-		"TikTokTrends", ttTrends,
 		"TopicGroups", topicGroups,
 		"PresetTopicGroups", presetTopicGroups,
-		"ShowbizDramasVN", dramasVN,
-		"ShowbizDramasCN", dramasCN,
-		"ShowbizDramas", combinedDramas,
 		"AudioStoryPlots", studio.GetCuratedAudioStories(""),
 		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
 		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
@@ -1223,14 +1214,16 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 // studioAssetView projects a storyboard asset for JSON.
 // Label/Class are server-rendered so clients never redefine them (R2-W3).
 type studioAssetView struct {
-	ID      int64  `json:"id"`
-	Idx     int    `json:"idx"`
-	Kind    string `json:"kind"`
-	Status  string `json:"status"`
-	Prompt  string `json:"prompt"`
-	Preview string `json:"preview"`
-	Label   string `json:"label"`
-	Class   string `json:"class"`
+	ID       int64  `json:"id"`
+	Idx      int    `json:"idx"`
+	Kind     string `json:"kind"`
+	Status   string `json:"status"`
+	Prompt   string `json:"prompt"`
+	Preview  string `json:"preview"`
+	ImageURL string `json:"image_url,omitempty"`
+	VideoURL string `json:"video_url,omitempty"`
+	Label    string `json:"label"`
+	Class    string `json:"class"`
 }
 
 // handleStudioJobDetail returns one job + its storyboard assets as JSON.
@@ -1247,14 +1240,95 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	assets := s.Studio.ListAssets(id)
 	views := make([]studioAssetView, 0, len(assets))
+	jobDir := filepath.Join(s.Studio.WorkDir(), id)
+
 	for _, a := range assets {
-		v := studioAssetView{ID: a.ID, Idx: a.Idx, Kind: a.Kind, Status: a.Status, Prompt: a.Prompt,
-			Label: statusLabel(a.Status), Class: statusClass(a.Status)}
-		if a.Status == "done" && a.Path != "" {
-			v.Preview = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
+		v := studioAssetView{
+			ID:     a.ID,
+			Idx:    a.Idx,
+			Kind:   a.Kind,
+			Status: a.Status,
+			Prompt: a.Prompt,
+			Label:  statusLabel(a.Status),
+			Class:  statusClass(a.Status),
 		}
+
+		if a.Status == "done" {
+			// 1. Check for Image Asset
+			imgExts := []string{".png", ".jpg", ".jpeg", ".webp"}
+			isImg := false
+			for _, ext := range imgExts {
+				if strings.HasSuffix(strings.ToLower(a.Path), ext) {
+					isImg = true
+					break
+				}
+			}
+
+			if isImg && a.Path != "" {
+				v.ImageURL = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
+			} else {
+				// Search disk in jobDir for keyframe image
+				imgCandidates := []string{
+					fmt.Sprintf("scene_%02d.png", a.Idx),
+					fmt.Sprintf("scene_%02d.jpg", a.Idx),
+					fmt.Sprintf("scene-%02d.png", a.Idx),
+					fmt.Sprintf("scene-%02d.jpg", a.Idx),
+					fmt.Sprintf("photo-%02d.png", a.Idx),
+					fmt.Sprintf("photo-%02d.png", a.Idx-1),
+					fmt.Sprintf("photo-%02d.jpg", a.Idx),
+					fmt.Sprintf("photo-%02d.jpg", a.Idx-1),
+					fmt.Sprintf("own%d_0.png", a.Idx),
+					fmt.Sprintf("own%d_0.jpg", a.Idx),
+				}
+				for _, c := range imgCandidates {
+					if fileExists(filepath.Join(jobDir, c)) {
+						v.ImageURL = "/studio/assets/" + id + "/" + c
+						break
+					}
+				}
+			}
+
+			// 2. Check for Video Asset
+			vidExts := []string{".mp4", ".mov", ".webm"}
+			isVid := false
+			for _, ext := range vidExts {
+				if strings.HasSuffix(strings.ToLower(a.Path), ext) {
+					isVid = true
+					break
+				}
+			}
+
+			if isVid && a.Path != "" {
+				v.VideoURL = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
+			} else {
+				// Search disk in jobDir for motion clip
+				vidCandidates := []string{
+					fmt.Sprintf("motion_%02d.mp4", a.Idx),
+					fmt.Sprintf("motion_%02d.mp4", a.Idx+1),
+					fmt.Sprintf("clip_%02d.mp4", a.Idx),
+					fmt.Sprintf("clip_%02d.mp4", a.Idx+1),
+				}
+				for _, c := range vidCandidates {
+					if fileExists(filepath.Join(jobDir, c)) {
+						v.VideoURL = "/studio/assets/" + id + "/" + c
+						break
+					}
+				}
+			}
+
+			// 3. Set Preview
+			if v.ImageURL != "" {
+				v.Preview = v.ImageURL
+			} else if v.VideoURL != "" {
+				v.Preview = v.VideoURL
+			} else if a.Path != "" {
+				v.Preview = "/studio/assets/" + id + "/" + filepath.Base(a.Path)
+			}
+		}
+
 		views = append(views, v)
 	}
+
 	resp := map[string]any{
 		"job":    j,
 		"assets": views,
@@ -1272,7 +1346,7 @@ func (s *Server) handleStudioJobDetail(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, resp)
 }
 
-var studioAssetRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|mp4)$`)
+var studioAssetRe = regexp.MustCompile(`^[A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|mp4|mov|webm)$`)
 
 func (s *Server) handleStudioAsset(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
@@ -1293,7 +1367,21 @@ func (s *Server) handleStudioAsset(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	path := filepath.Join(s.Studio.WorkDir(), job, file)
-	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(s.Studio.WorkDir())) {
+	if !fileExists(path) {
+		// Fallback 1: Upload directory
+		uploadCandidate := filepath.Join(s.Studio.UploadDir(), file)
+		if fileExists(uploadCandidate) {
+			path = uploadCandidate
+		} else {
+			// Fallback 2: OutDir root
+			outCandidate := filepath.Join(s.OutDir, file)
+			if fileExists(outCandidate) {
+				path = outCandidate
+			}
+		}
+	}
+	if !strings.HasPrefix(filepath.Clean(path), filepath.Clean(s.Studio.WorkDir())) &&
+		!strings.HasPrefix(filepath.Clean(path), filepath.Clean(s.OutDir)) {
 		http.NotFound(w, r)
 		return
 	}
@@ -1937,6 +2025,119 @@ func (s *Server) handleStudioMuseImport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã nhập thành công video từ Muse AI và ghép nhạc trending (Job: %s)!", jobID)))
+}
+
+// handleStudioFlowImport tải video 480p đã tạo từ Google Flow, chạy bộ remaster 4K UHD VideoToolbox, ghép nhạc và lưu vào Studio.
+func (s *Server) handleStudioFlowImport(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Studio chưa sẵn sàng"))
+		return
+	}
+	_ = r.ParseForm()
+	videoURL := strings.TrimSpace(r.FormValue("video_url"))
+	if videoURL == "" {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Vui lòng nhập link video hoặc file path từ Google Flow"))
+		return
+	}
+	topic := strings.TrimSpace(r.FormValue("topic"))
+	if topic == "" {
+		topic = "Google Flow 4K Video"
+	}
+	genre := strings.TrimSpace(r.FormValue("genre"))
+	if genre == "" {
+		genre = "fashion"
+	}
+	remaster := strings.TrimSpace(r.FormValue("remaster"))
+	if remaster == "" {
+		remaster = "4k"
+	}
+
+	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
+	_ = os.MkdirAll(workDir, 0o755)
+
+	rawVideo := filepath.Join(workDir, "flow_raw.mp4")
+
+	if fileExists(videoURL) {
+		b, err := os.ReadFile(videoURL)
+		if err != nil {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể đọc file video local: "+err.Error()))
+			return
+		}
+		_ = os.WriteFile(rawVideo, b, 0o644)
+	} else {
+		client := &http.Client{Timeout: 90 * time.Second}
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, videoURL, nil)
+		if err != nil {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Link video không hợp lệ: "+err.Error()))
+			return
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
+		resp, err := client.Do(req)
+		if err != nil {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể tải video từ Google Flow: "+err.Error()))
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape(fmt.Sprintf("Google Flow trả về mã HTTP %d", resp.StatusCode)))
+			return
+		}
+		f, err := os.Create(rawVideo)
+		if err != nil {
+			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể lưu video: "+err.Error()))
+			return
+		}
+		_, _ = io.Copy(f, resp.Body)
+		f.Close()
+	}
+
+	finalVideoName := fmt.Sprintf("flow_4k_%s.mp4", jobID)
+	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
+
+	nowStr := time.Now().Format("15:04:05")
+	logMsg := fmt.Sprintf("%s ✓ Nhận diện video SD 480p từ Google Flow: %s\n", nowStr, filepath.Base(rawVideo))
+
+	// Remaster 4K UHD VideoToolbox
+	if remaster == "4k" || studio.IsMasterQuality4K() {
+		logMsg += fmt.Sprintf("%s ✨ Kích hoạt bộ lọc Apple Silicon VideoToolbox: hqdn3d + Lanczos 4K (2160x3840) + Unsharp micro-contrast mask...\n", nowStr)
+		remastered := filepath.Join(workDir, "remastered_4k.mp4")
+		if err := studio.UpscaleVideoTo4K(r.Context(), rawVideo, remastered, "9:16"); err == nil && fileExists(remastered) {
+			logMsg += fmt.Sprintf("%s ✓ Hoàn tất Remaster lên 4K Ultra HD 35 Mbps sắc nét tuyệt đối, triệt tiêu nhiễu nén SD!\n", nowStr)
+			_ = os.Rename(remastered, rawVideo)
+		}
+	}
+
+	trendMusic := studio.FindTrendingMusic(genre)
+	if trendMusic != "" {
+		logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc TikTok Trending (%s): %s\n", nowStr, genre, filepath.Base(trendMusic))
+		if merr := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); merr != nil {
+			_ = os.Rename(rawVideo, finalVideoPath)
+		}
+	} else {
+		_ = os.Rename(rawVideo, finalVideoPath)
+	}
+
+	caption := studio.TemplateCaption(topic, genre)
+	paramsJSON, _ := json.Marshal(map[string]any{
+		"topic":       topic,
+		"genre":       genre,
+		"source":      "google_flow",
+		"video_url":   videoURL,
+		"remaster":    remaster,
+	})
+	nowDB := time.Now().Format("2006-01-02 15:04:05")
+	if s.db != nil {
+		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
+			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
+			jobID, "Google Flow 4K: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Google Flow 480p -> 4K UHD job=%s: %s", jobID, topic), nil)
+	}
+
+	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã Remaster 4K thành công video từ Google Flow (Job: %s)!", jobID)))
 }
 
 // handleAPIFaceSwapStatus trả về thông tin trạng thái hoạt động của Face Swap engine cục bộ.

@@ -7,8 +7,9 @@ const (
 	PlatformChatGPT = "chatgpt"
 	PlatformClaude  = "claude"
 	PlatformGemini  = "gemini"
-	PlatformGrok    = "grok"
-	PlatformMuseAI  = "museai"
+	PlatformGrok       = "grok"
+	PlatformMuseAI     = "museai"
+	PlatformGoogleFlow = "googleflow"
 )
 
 // Status constants for session connections.
@@ -101,6 +102,19 @@ func SupportedPlatforms() []PlatformInfo {
 			Placeholder: "Dán mã API Key vào đây...",
 			Features:    []string{"Video chuyển động", "Lưu trữ 1080p/4K", "Vòng lặp sản phẩm", "Không watermark"},
 		},
+		{
+			ID:          PlatformGoogleFlow,
+			Name:        "Google Flow (Veo SD 480p)",
+			URL:         "https://labs.google/fx/tools/flow",
+			LoginURL:    "https://labs.google/fx/tools/flow",
+			Icon:        "🌊",
+			Color:       "#2563eb",
+			Badge:       "1.000 Credits Free/tháng",
+			Description: "Tạo video chuyển động Veo SD (480p) miễn phí 1.000 credits/tháng, tự động nâng cấp 4K UHD",
+			AuthGuide:   "Đăng nhập Google Labs Flow hoặc dán Session Cookie / Chrome Profile",
+			Placeholder: "Dán Session Cookie hoặc token Google Labs...",
+			Features:    []string{"1.000 credits/tháng miễn phí", "Veo Video SD 480p", "Tự động Remaster 4K UHD", "Khóa nhân vật Image-to-Video"},
+		},
 	}
 }
 
@@ -114,6 +128,8 @@ type Account struct {
 	Cookie               string    `json:"cookie"`
 	Status               string    `json:"status"` // ok | cooldown | rate_limited | invalid | disconnected
 	Tier                 string    `json:"tier"`   // free | plus | pro
+	CreditsRemaining     int       `json:"credits_remaining"`
+	CreditsTotal         int       `json:"credits_total"`
 	CooldownUntil        time.Time `json:"cooldown_until"`
 	CooldownRemainingSec int64     `json:"cooldown_remaining_sec"`
 	CooldownLabel        string    `json:"cooldown_label"`

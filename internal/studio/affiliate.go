@@ -163,16 +163,32 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		return
 	}
 
-	// Nếu có ảnh sản phẩm thật: Ưu tiên dựng 100% bằng ảnh thật của listing kèm AdCard thương mại,
-	// tránh AI hallucination vẽ sai mẫu mã, logo và quy cách sản phẩm.
+	// Nếu có ảnh sản phẩm thật: Dựng từ ảnh có sẵn kết hợp nhạc theo nhịp
 	ownPhotos := false
-	if p.HasOwnPhotos() {
-		s.appendLog(id, fmt.Sprintf("✓ Đã nhận diện %d ảnh listing thật của sản phẩm (ảnh có sẵn) — kích hoạt dựng bằng ảnh sản phẩm thật 100%% (kèm AdCard thương mại & giá niêm yết).", len(ownSources(p))))
+	if p.HasOwnPhotos() && !p.HasClips() {
+		s.appendLog(id, fmt.Sprintf("Dựng từ %d ảnh có sẵn (ghép nhạc theo nhịp)…", len(ownSources(p))))
 		p.Mode = AffiliateModePhoto
 		ownPhotos = true
 	} else if !p.HasClips() && (s.mg == nil || !s.mg.Healthy(ctx)) {
-		fail(fmt.Errorf("chưa có Gemini key — thêm key ở Cài đặt · Nhà cung cấp, hoặc tải lên ít nhất 1 ảnh/clip sản phẩm để dựng"))
-		return
+		// Tự động kích hoạt video Lookbook thời trang chuyển động người thật 9:16 nếu không có ảnh và không có key
+		lookbookCandidates := []string{
+			"data/clips/fashion/clip_03_fashion_lookbook_60s.mp4",
+			"data/clips/fashion/clip_01_fashion_dress.mp4",
+			"data/clips/fashion/clip_02_fashion_streetwear.mp4",
+		}
+		foundLookbook := false
+		for _, lc := range lookbookCandidates {
+			if fileExists(lc) {
+				p.Clips = []string{lc}
+				s.appendLog(id, fmt.Sprintf("✓ Tự động kích hoạt video Lookbook thời trang chuyển động người thật 9:16: %s", filepath.Base(lc)))
+				foundLookbook = true
+				break
+			}
+		}
+		if !foundLookbook {
+			fail(fmt.Errorf("chưa có Gemini key — thêm key ở Cài đặt · Nhà cung cấp, hoặc tải lên ít nhất 1 ảnh/clip sản phẩm để dựng"))
+			return
+		}
 	}
 
 	targetSec := float64(p.Seconds)
@@ -189,6 +205,9 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	modelPhotos := s.queryAccountModelPhotos(p.AccountID)
 	if p.ModelPhoto != "" && fileExists(p.ModelPhoto) {
 		modelPhotos = append([]string{p.ModelPhoto}, modelPhotos...)
+	}
+	if len(modelPhotos) == 0 {
+		modelPhotos = findAvailableVisualAssets()
 	}
 
 	if p.ProductPhoto == "" || !fileExists(p.ProductPhoto) {
@@ -286,6 +305,25 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		}
 
+		// Kích hoạt InsightFace AI Face Swap vào video người mẫu nếu có ảnh khuôn mặt nhân vật
+		if p.ModelPhoto != "" && fileExists(p.ModelPhoto) {
+			s.appendLog(id, fmt.Sprintf("Kích hoạt InsightFace AI Face Swap: Ghép khuôn mặt '%s' vào video người mẫu lookbook...", filepath.Base(p.ModelPhoto)))
+			swappedOut := filepath.Join(work, "faceswapped_916.mp4")
+			if err := RunFaceSwap(ctx, p.ModelPhoto, silent, swappedOut, func(pct int, logMsg string) {
+				if logMsg != "" {
+					s.appendLog(id, logMsg)
+				}
+				if pct >= 0 {
+					s.setStatus(id, StatusRunning, 35+int(float64(pct)*0.45))
+				}
+			}); err == nil && fileExists(swappedOut) {
+				s.appendLog(id, "✓ Hoán đổi khuôn mặt AI vào video người mẫu thành công 100%!")
+				silent = swappedOut
+			} else {
+				s.appendLog(id, fmt.Sprintf("Face Swap: giữ nguyên chuyển động gốc của người mẫu (%v)", err))
+			}
+		}
+
 
 		if p.VoiceoverPath != "" && p.MusicPath != "" {
 			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
@@ -375,98 +413,65 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			s.setAsset(aid, StatusRunning, "")
 			if err := s.mg.GenerateImage(ctx, pr, refs, out); err != nil {
 				s.appendLog(id, fmt.Sprintf("Ảnh %d AI: %v (tự động tạo ảnh đồ họa thương mại)", i+1, err))
+				if len(modelPhotos) == 0 {
+					modelPhotos = s.queryAccountModelPhotos(p.AccountID)
+				}
+				if len(modelPhotos) == 0 {
+					modelPhotos = findAvailableVisualAssets()
+				}
+
 				bgPhoto := ""
-				if p.ProductPhoto != "" && (i == 0 || len(modelPhotos) == 0) {
-					bgPhoto = p.ProductPhoto
-				} else if len(modelPhotos) > 0 {
-					bgPhoto = modelPhotos[i%len(modelPhotos)]
-				} else if p.ProductPhoto != "" {
-					bgPhoto = p.ProductPhoto
-				}
-
-				displayPrice := p.ProductPrice
-				if displayPrice == "" {
-					displayPrice = "890.000 ₫"
-				}
-
-				subtitle := "Cam kết chính hãng · Chất lượng cao cấp"
-				f1 := "Sản phẩm chính hãng 100% fullbox"
-				f2 := "Thiết kế hiện đại, độ hoàn thiện cao"
-				f3 := "Đổi trả miễn phí 7 ngày tận nhà"
-				nicheLower := strings.ToLower(p.Niche)
-				if strings.Contains(nicheLower, "thời trang") || strings.Contains(nicheLower, "áo") || strings.Contains(nicheLower, "váy") {
-					subtitle = "Form dáng sang trọng · Vải cao cấp"
-					f1 = "Chất liệu mềm mịn, thoáng mát"
-					f2 = "Tôn dáng quyến rũ, chuẩn form thiết kế"
-					f3 = "Không nhăn, giữ form dáng bền đẹp"
-				} else if strings.Contains(nicheLower, "mỹ phẩm") || strings.Contains(nicheLower, "da") || strings.Contains(nicheLower, "serum") {
-					subtitle = "Dưỡng chất chuyên sâu · An toàn lành tính"
-					f1 = "Chiết xuất thiên nhiên, kiểm nghiệm da liễu"
-					f2 = "Thẩm thấu nhanh, không bết rít"
-					f3 = "Phục hồi sáng khỏe sau 14 ngày"
-				} else if strings.Contains(nicheLower, "công nghệ") || strings.Contains(nicheLower, "điện tử") || strings.Contains(nicheLower, "tai nghe") {
-					subtitle = "Công nghệ tiên tiến · Hiệu năng vượt trội"
-					f1 = "Chip xử lý thế hệ mới tốc độ cao"
-					f2 = "Pin trâu, kết nối đa nền tảng tức thì"
-					f3 = "Bảo hành chính hãng 12 tháng 1 đổi 1"
-				} else if strings.Contains(nicheLower, "gia dụng") || strings.Contains(nicheLower, "nồi") {
-					subtitle = "Tiện ích gia đình · Tiết kiệm thời gian"
-					f1 = "Chất liệu cao cấp an toàn sức khỏe"
-					f2 = "Công nghệ tiết kiệm điện tối ưu"
-					f3 = "Dễ dàng vệ sinh, bảo hành 24 tháng"
-				}
-
-				var sceneOpts AdCardOptions
 				switch i {
 				case 0:
-					sceneOpts = AdCardOptions{
-						BgPhotoPath:   bgPhoto,
-						Niche:         p.Niche,
-						TopBadge:      fmt.Sprintf("✦ %s · BST MỚI 2026 ✦", strings.ToUpper(p.Niche)),
-						Title:         strings.ToUpper(p.ProductName),
-						Subtitle:      subtitle,
-						Features:      []string{f1, f2, f3},
-						PriceText:     displayPrice,
-						OriginalPrice: "",
-						DiscountText:  "GIẢM GIÁ ĐẶC BIỆT",
-						RatingText:    "★★★★★ 4.9/5 · 2.4k+ Đã Bán",
-						CTAText:       "MUA NGAY · GIỎ HÀNG GÓC TRÁI ➔",
+					// Scene 0 (Hook): Human model wearing & showcasing the outfit
+					if len(modelPhotos) > 0 {
+						bgPhoto = modelPhotos[0]
+					} else if p.ProductPhoto != "" {
+						bgPhoto = p.ProductPhoto
 					}
 				case 1:
-					sceneOpts = AdCardOptions{
-						BgPhotoPath:   bgPhoto,
-						Niche:         p.Niche,
-						TopBadge:      "✦ ĐẶC ĐIỂM NỔI BẬT & CHẤT LIỆU ✦",
-						Title:         "TỪNG CHI TIẾT TINH TẾ",
-						Subtitle:      "Gia công tỉ mỉ · Tiêu chuẩn xuất khẩu",
-						Features:      []string{f1, f2, f3},
-						PriceText:     "CAM KẾT CHÍNH HÃNG",
-						OriginalPrice: "",
-						DiscountText:  "ĐỔI TRẢ 7 NGÀY",
-						RatingText:    "★★★★★ 100% HÀI LÒNG",
-						CTAText:       "XEM CHI TIẾT SẢN PHẨM ➔",
+					// Scene 1 (Try-on walk / Styling): Human model movement
+					if len(modelPhotos) > 1 {
+						bgPhoto = modelPhotos[1]
+					} else if len(modelPhotos) > 0 {
+						bgPhoto = modelPhotos[0]
+					} else if p.ProductPhoto != "" {
+						bgPhoto = p.ProductPhoto
+					}
+				case 2:
+					// Scene 2 (Product detail & material close-up)
+					if p.ProductPhoto != "" && fileExists(p.ProductPhoto) {
+						bgPhoto = p.ProductPhoto
+					} else if len(modelPhotos) > 2 {
+						bgPhoto = modelPhotos[2]
+					} else if len(modelPhotos) > 0 {
+						bgPhoto = modelPhotos[0]
+					}
+				case 3:
+					// Scene 3 (Lifestyle & wearing in action)
+					if len(modelPhotos) > 3 {
+						bgPhoto = modelPhotos[3]
+					} else if len(modelPhotos) > 0 {
+						bgPhoto = modelPhotos[i%len(modelPhotos)]
+					} else if p.ProductPhoto != "" {
+						bgPhoto = p.ProductPhoto
 					}
 				default:
-					sceneOpts = AdCardOptions{
-						BgPhotoPath:   bgPhoto,
-						Niche:         p.Niche,
-						TopBadge:      "✦ ƯU ĐÃI ĐỘC QUYỀN HÔM NAY ✦",
-						Title:         "SỐ LƯỢNG CÒN LẠI CÓ HẠN",
-						Subtitle:      "Freeship toàn quốc · Voucher hấp dẫn",
-						Features:      []string{"Freeship toàn quốc đơn từ 300k", "Tặng kèm voucher ưu đãi đặc biệt", "Giao hàng hỏa tốc trong 2h"},
-						PriceText:     "CHỈ CÒN 19 SUẤT",
-						OriginalPrice: "",
-						DiscountText:  "ƯU ĐÃI DEAL HỜI",
-						RatingText:    "✦ HOT DEAL · BÁN CHẠY NHẤT ✦",
-						CTAText:       "BẤM MUA NGAY TRÊN TIKTOK SHOP ➔",
+					// Scene 4+ (CTA / Final Look)
+					if len(modelPhotos) > 0 {
+						bgPhoto = modelPhotos[(i+1)%len(modelPhotos)]
+					} else if p.ProductPhoto != "" {
+						bgPhoto = p.ProductPhoto
 					}
-
 				}
 
-				if verr := ComposeProductAdCard(sceneOpts, out); verr != nil {
-					s.appendLog(id, fmt.Sprintf("Tạo ảnh đồ họa lỗi: %v", verr))
-					s.setAsset(aid, StatusFailed, "")
-					continue
+				// Chuẩn Natural Video Spec: Video sạch 100%, loại bỏ hoàn toàn chữ, phụ đề và thẻ quảng cáo đè lên hình ảnh
+				if bgPhoto != "" && fileExists(bgPhoto) {
+					if err := copyViralFile(bgPhoto, out); err != nil {
+						_ = s.createSolidColorPhoto(out, 1080, 1920, "")
+					}
+				} else {
+					_ = s.createSolidColorPhoto(out, 1080, 1920, "")
 				}
 			}
 			master := filepath.Join(work, fmt.Sprintf("photo-%02d-4k.png", i))
@@ -560,7 +565,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			vprompt := fmt.Sprintf("%s. Camera: %s. Lens/lighting: %s. "+
 				"Vertical 9:16 cinematic product video, smooth professional motion, no text, no watermark.",
 				sh.VideoPrompt, sh.CameraMove, sh.LensLight)
-			if err := s.mg.GenerateVideo(ctx, vprompt, key, sh.Seconds, "9:16", out); err != nil {
+			if err := s.GenerateMotionVideoClip(ctx, MotionVideoOptions{
+				Prompt:      vprompt,
+				FirstFrame:  key,
+				Seconds:     sh.Seconds,
+				AspectRatio: "9:16",
+				Engine:      "auto",
+				OutputPath:  out,
+				LogFn:       func(msg string) { s.appendLog(id, msg) },
+			}); err != nil {
 				s.appendLog(id, fmt.Sprintf("Shot %d lỗi video: %v (giữ keyframe Ken Burns)", i+1, err))
 				still := filepath.Join(work, fmt.Sprintf("shot-%02d-still.mp4", i))
 				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still, "9:16"); kerr == nil {

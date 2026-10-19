@@ -274,7 +274,7 @@ func AssembleCinematic(ctx context.Context, clips []CinematicClip, outPath strin
 	// shot Veo (24fps) có thể trộn với shot cinematic fallback (30fps),
 	// audio TTS/silence khác sample rate.
 	for i := range clips {
-		fmt.Fprintf(&sb, "[%d:v]scale=1920:1080,fps=30,format=yuv420p,settb=AVTB[nv%d];", i, i)
+		fmt.Fprintf(&sb, "[%d:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,fps=30,format=yuv420p,settb=AVTB[nv%d];", i, i)
 		fmt.Fprintf(&sb, "[%d:a]aformat=sample_fmts=fltp:channel_layouts=stereo,aresample=48000[na%d];", i, i)
 	}
 	cum := durs[0]

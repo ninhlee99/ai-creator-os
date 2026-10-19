@@ -65,6 +65,8 @@ type storiesView struct {
 	RetryMax      int
 	RetryCooldown int
 	Error         string
+	// CuratedPlots: danh sách cốt truyện audio chuẩn điện ảnh (đợt AF)
+	CuratedPlots []studio.AudioStoryPlot
 }
 
 func storyStatusVN(st string) string {
@@ -99,6 +101,7 @@ func (s *Server) storiesPageData() storiesView {
 		RetryMax:      s.atSettingInt(automation.KeyStoryRetryMax, 3),
 		RetryCooldown: s.atSettingInt(automation.KeyStoryRetryCooldown, 6),
 		PostAccount:   s.atSettingStr(automation.KeyStoryAccount, ""),
+		CuratedPlots:  studio.CuratedAudioStoryPlots,
 	}
 	if s.Ledger != nil {
 		if t, ok, _ := s.Ledger.GetSetting(automation.KeyStoryTopics); ok {
@@ -108,8 +111,10 @@ func (s *Server) storiesPageData() storiesView {
 	if s.Studio == nil {
 		return v
 	}
-	// Nhạc nền: cùng file autopilot Ninh upload (tái dùng cho kể chuyện).
+	// Nhạc nền: cùng file autopilot Ninh upload (tái dùng cho kể chuyện) hoặc mặc định hệ thống.
 	if mp := filepath.Join(s.DataDir, "autopilot-music.m4a"); fileExists(mp) {
+		v.MusicOK = true
+	} else if defM := studio.FindDefaultMusic(); defM != "" {
 		v.MusicOK = true
 	}
 	if s.Mgr != nil {
@@ -201,10 +206,12 @@ func (s *Server) handleStoryCreate(w http.ResponseWriter, r *http.Request) {
 		storiesRedirect(w, r, "", "Nhập chủ đề truyện.")
 		return
 	}
-	// Nhạc nền: cùng file autopilot (không bắt Ninh upload riêng).
+	// Nhạc nền: cùng file autopilot (không bắt Ninh upload riêng) hoặc nhạc mặc định.
 	if p.MusicOn {
 		if mp := filepath.Join(s.DataDir, "autopilot-music.m4a"); fileExists(mp) {
 			p.MusicPath = mp
+		} else if defM := studio.FindDefaultMusic(); defM != "" {
+			p.MusicPath = defM
 		} else {
 			p.MusicOn = false
 		}
@@ -281,10 +288,12 @@ func (s *Server) handleStoryRetry(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Attempt = 0
 	p.ReuseFromJobID = id
-	// Nhạc nền: cùng file chung như lúc tạo.
+	// Nhạc nền: cùng file chung như lúc tạo hoặc nhạc mặc định.
 	if p.MusicOn {
 		if mp := filepath.Join(s.DataDir, "autopilot-music.m4a"); fileExists(mp) {
 			p.MusicPath = mp
+		} else if defM := studio.FindDefaultMusic(); defM != "" {
+			p.MusicPath = defM
 		} else {
 			p.MusicOn = false
 		}

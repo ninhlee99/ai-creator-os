@@ -15,12 +15,6 @@
   </div>
 </div>
 
-<!-- Unified Studio Suite Navigation -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio">🛍️ Xưởng Video Affiliate Lookbook (9:16)</a>
-  <a href="/viral" class="active">🔥 Xưởng Video Đu Trend Viral (9:16)</a>
-  <a href="/stories">📖 Xưởng Kể Chuyện Audio (16:9)</a>
-</nav>
 
 {{if .Viral.Notice}}
 <div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
@@ -101,57 +95,213 @@
     </div>
   </div>
 
-  <!-- Lưới hiển thị các Creator Kênh Nữ Hàng Chục Triệu Follow (Chuẩn 9:16 to rõ) -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px">
+  <!-- Lưới hiển thị các Creator Kênh Nữ Hàng Chục Triệu Follow (Chuẩn 4-5 video / 1 hàng nhỏ gọn) -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px">
     {{range .Viral.TopChannels}}
-    <div class="card" style="border-radius:14px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--border);background:var(--bg2);box-shadow:0 4px 16px rgba(0,0,0,0.06);transition:transform 0.2s ease">
+    <div class="card" style="border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--border);background:var(--bg2);box-shadow:0 4px 16px rgba(0,0,0,0.06);transition:transform 0.2s ease">
       <div>
         <!-- Video 9:16 Frame Preview to rõ nét -->
-        <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.25)">
+        <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)">
           <video src="{{.VideoURL}}" preload="metadata" muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0;"></video>
           
-          <div style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:3px 8px;border-radius:6px">
-            <img src="{{.AvatarURL}}" style="width:18px;height:18px;border-radius:50%;object-fit:cover" alt="{{.Handle}}">
-            <span style="font-size:11px;color:#fff;font-weight:700">{{.Handle}}</span>
+          <div style="position:absolute;top:6px;left:6px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:2px 6px;border-radius:4px">
+            <img src="{{.AvatarURL}}" style="width:16px;height:16px;border-radius:50%;object-fit:cover" alt="{{.Handle}}">
+            <span style="font-size:10px;color:#fff;font-weight:700">{{.Handle}}</span>
           </div>
 
-          <div style="position:absolute;top:8px;right:8px;background:rgba(239,68,68,0.9);backdrop-filter:blur(6px);color:#fff;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:6px">
+          <div style="position:absolute;top:6px;right:6px;background:rgba(239,68,68,0.9);backdrop-filter:blur(6px);color:#fff;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:4px">
             🔥 {{.Followers}}
           </div>
 
-          <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;justify-content:space-between;align-items:center">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="openViralLightbox('{{.VideoURL}}', '{{.Name}} - {{.HotTrend}}')" style="padding:3px 8px;font-size:11px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:none">
+          <div style="position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:center">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="openViralLightbox('{{.VideoURL}}', '{{.Name}} - {{.HotTrend}}')" style="padding:2px 6px;font-size:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:none">
               ▶ Phóng to
             </button>
-            <span style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:#38bdf8;font-size:10.5px;padding:2px 7px;border-radius:4px;font-weight:700">
+            <span style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:#38bdf8;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">
               👀 {{.Views}}
             </span>
           </div>
         </div>
 
         <!-- Creator Meta Info -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <strong style="font-size:14px;color:var(--text)">{{.Name}}</strong>
-          <span class="badge badge-info" style="font-size:10px">{{.Category}}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <strong style="font-size:12.5px;color:var(--text)">{{.Name}}</strong>
+          <span class="badge badge-info" style="font-size:9px">{{.Category}}</span>
         </div>
 
-        <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.35">
+        <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.3">
           {{.HotTrend}}
         </div>
 
-        <div style="background:var(--bg);padding:6px 8px;border-radius:6px;font-size:11px;color:var(--muted);margin-bottom:8px;border-left:2px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        <div style="background:var(--bg);padding:4px 6px;border-radius:4px;font-size:10px;color:var(--muted);margin-bottom:6px;border-left:2px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
           🎵 {{.Music}}
-        </div>
-
-        <div style="font-size:11.5px;color:var(--text);font-style:italic;line-height:1.3;margin-bottom:12px;opacity:0.85">
-          "{{.Hook}}"
         </div>
       </div>
 
       <!-- Action Button: Đu Trend Kênh Này -->
-      <button type="button" class="btn btn-primary btn-sm" onclick="applyCreatorTrend('{{.Handle}}', '{{.HotTrend}}', '{{.SampleClip}}', '{{.Music}}')" style="width:100%;font-weight:800;padding:8px;font-size:12.5px">
-        ⚡ Bắt Chước Trend Kênh Này (Ghép Mặt Tôi)
+      <button type="button" class="btn btn-primary btn-sm" onclick="applyCreatorTrend('{{.Handle}}', '{{.HotTrend}}', '{{.SampleClip}}', '{{.Music}}')" style="width:100%;font-weight:800;padding:6px 8px;font-size:11px">
+        ⚡ Bắt Chước Trend Kênh Này
       </button>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<!-- =========================================================================
+     KHU VỰC: CÀI ĐẶT CHỦ ĐỀ & RADAR TIKTOK (4-5 VIDEO / 1 HÀNG)
+     ========================================================================= -->
+<div style="margin-bottom: 32px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:26px">📊</span>
+      <div>
+        <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">
+          Cài Đặt Chủ Đề (4 video / 1 hàng)
+        </h2>
+        <span style="font-size:12px;color:var(--muted)">
+          Xu hướng TikTok &amp; Douyin phân loại theo từng chủ đề — Tối ưu 4-5 video trên mỗi hàng
+        </span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="custom-topic-input" placeholder="Thêm chủ đề..." style="font-size:12px;padding:5px 10px;width:150px;border-radius:6px;border:1px solid var(--border)">
+        <button type="button" class="btn btn-primary btn-sm" onclick="addCustomTopic()" style="font-size:11.5px;padding:5px 12px;font-weight:700">+ Thêm Chủ Đề</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="radar-topic-groups-container">
+    {{range .Viral.TopicGroups}}
+    <div class="topic-row-container" id="row-topic-{{.TopicID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:14px;font-weight:800;color:var(--text)">{{.TopicName}}</span>
+          <span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">{{.Tag}}</span>
+          <span style="font-size:11px;color:var(--muted)">{{.Description}}</span>
+        </div>
+      </div>
+      <div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
+        {{range .Videos}}
+        <div class="card" style="border-radius:10px;padding:8px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
+          <div style="position:relative;width:100%;aspect-ratio:9/16;background:#111;border-radius:6px;overflow:hidden;margin-bottom:8px;cursor:pointer" onclick="playVideoModal('{{.PlayURL}}', '{{.Title}}')">
+            {{if .CoverURL}}
+            <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+            {{end}}
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25)">
+              <span style="width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px">▶</span>
+            </div>
+            <div style="position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:center">
+              <span style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);color:#38bdf8;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">👀 {{.Views}}</span>
+              <span style="background:rgba(239,68,68,0.85);backdrop-filter:blur(4px);color:#fff;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">❤️ {{.Likes}}</span>
+            </div>
+          </div>
+          <div>
+            <strong style="font-size:11.5px;display:block;color:var(--text);margin-bottom:4px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Title}}</strong>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+              <span style="font-size:10.5px;color:var(--muted)">@{{.UniqueID}}</span>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();playVideoModal('{{.PlayURL}}', '{{.Title}}')" style="font-size:10px;padding:2px 6px">▶ Xem</button>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<!-- =========================================================================
+     KHU VỰC: RADAR BIẾN CĂNG & DRAMA SHOWBIZ (PHÂN ĐỊNH RÕ RÀNG V-BIZ VS C-BIZ)
+     ========================================================================= -->
+<div style="margin-bottom: 32px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:26px">🎭</span>
+      <div>
+        <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">
+          Radar Biến Căng &amp; Drama Showbiz (Phân Định Kênh Tuyệt Đối)
+        </h2>
+        <span style="font-size:12px;color:var(--muted)">
+          🔒 Nguyên tắc bất di bất dịch: Video Showbiz Việt chỉ đăng kênh <b>@kechuyen_ai</b> · Video Showbiz Trung/Douyin chỉ đăng kênh <b>@douyin_reup</b>
+        </span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button type="button" class="btn btn-sm btn-primary drama-filter-btn" onclick="filterDramaRegion('all', this)" style="font-size:11.5px;padding:3px 10px">Tất cả</button>
+      <button type="button" class="btn btn-sm btn-secondary drama-filter-btn" onclick="filterDramaRegion('VN', this)" style="font-size:11.5px;padding:3px 10px">🇻🇳 Showbiz Việt (V-Biz)</button>
+      <button type="button" class="btn btn-sm btn-secondary drama-filter-btn" onclick="filterDramaRegion('CN', this)" style="font-size:11.5px;padding:3px 10px">🇨🇳 Showbiz Hoa Ngữ (C-Biz)</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:12px" id="dramas-container">
+    <!-- 1. Danh sách Drama V-Biz (Gán kênh @kechuyen_ai) -->
+    {{range .Viral.DramasVN}}
+    <div class="card drama-card drama-vn" data-region="VN" style="border-radius:14px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+      <div>
+        <div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:8px;overflow:hidden;margin-bottom:10px">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+          {{else}}
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px">🇻🇳</div>
+          {{end}}
+          <span class="badge badge-ok" style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700">🇻🇳 V-Biz</span>
+          <span class="badge badge-info" style="position:absolute;bottom:8px;left:8px;font-size:9.5px;font-weight:700">🔒 Kênh: @kechuyen_ai</span>
+        </div>
+        <strong style="font-size:13px;line-height:1.4;display:block;margin-bottom:6px;color:var(--text)">{{.Title}}</strong>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.4;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">
+          {{.Summary}}
+        </p>
+      </div>
+
+      <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyDramaTrend('{{.Title}}', '{{.Summary}}', 'VN', 'kechuyen_ai')" style="font-size:11px;padding:4px 8px;font-weight:700">
+          ✏️ Nạp vào Form
+        </button>
+        <form method="post" action="/viral/quick" style="margin:0">
+          <input type="hidden" name="topic" value="Biến Căng Showbiz Việt: {{.Title}}">
+          <input type="hidden" name="genre" value="trendjack">
+          <input type="hidden" name="account" value="kechuyen_ai">
+          <button type="submit" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;font-weight:800">
+            ⚡ 1-Chạm Kênh @kechuyen_ai
+          </button>
+        </form>
+      </div>
+    </div>
+    {{end}}
+
+    <!-- 2. Danh sách Drama C-Biz (Gán kênh @douyin_reup) -->
+    {{range .Viral.DramasCN}}
+    <div class="card drama-card drama-cn" data-region="CN" style="border-radius:14px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
+      <div>
+        <div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:8px;overflow:hidden;margin-bottom:10px">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
+          {{else}}
+          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px">🇨🇳</div>
+          {{end}}
+          <span class="badge" style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;background:#fee2e2;color:#ef4444;border:1px solid #fca5a5">🇨🇳 C-Biz / Douyin</span>
+          <span class="badge badge-info" style="position:absolute;bottom:8px;left:8px;font-size:9.5px;font-weight:700">🔒 Kênh: @douyin_reup</span>
+        </div>
+        <strong style="font-size:13px;line-height:1.4;display:block;margin-bottom:6px;color:var(--text)">{{.Title}}</strong>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.4;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">
+          {{.Summary}}
+        </p>
+      </div>
+
+      <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="applyDramaTrend('{{.Title}}', '{{.Summary}}', 'CN', 'douyin_reup')" style="font-size:11px;padding:4px 8px;font-weight:700">
+          ✏️ Nạp vào Form
+        </button>
+        <form method="post" action="/viral/quick" style="margin:0">
+          <input type="hidden" name="topic" value="Bóc Phốt Showbiz Hoa Ngữ: {{.Title}}">
+          <input type="hidden" name="genre" value="trendjack">
+          <input type="hidden" name="account" value="douyin_reup">
+          <button type="submit" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;font-weight:800">
+            ⚡ 1-Chạm Kênh @douyin_reup
+          </button>
+        </form>
+      </div>
     </div>
     {{end}}
   </div>
@@ -210,20 +360,60 @@
     <div style="background:var(--bg2);padding:16px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
         <label style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;margin:0">
-          <span>🎬</span> Bước 2: Chọn Video Mẫu Chuyển Động (AI Sẽ Render Lại Video Này Với Mặt Kênh) <span class="req">*</span>
+          <span>🎬</span> Bước 2: Chọn Video Vũ Đạo Mẫu (TikTok Việt Nam hoặc Douyin Trung Quốc) <span class="req">*</span>
         </label>
-        <span class="badge badge-live" style="font-size:10.5px">Video Chân Thực 100% Không Sân Khấu</span>
+        <span class="badge badge-live" style="font-size:10.5px">Chuẩn 1080x1920 (9:16) Không Méo Hình</span>
+      </div>
+
+      <!-- Quick Platform Filter Tabs: Tất Cả | TikTok VN | Douyin CN -->
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:var(--bg3);padding:8px 12px;border-radius:10px;border:1px solid var(--border)">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:var(--text);margin-right:4px">Nguồn vũ đạo:</span>
+          <button type="button" class="btn btn-sm btn-primary filter-clip-btn" onclick="filterClipRegion('all', this)" style="font-size:11.5px;padding:3px 10px">Tất cả ({{len .Viral.SampleClips}})</button>
+          <button type="button" class="btn btn-sm btn-secondary filter-clip-btn" onclick="filterClipRegion('VN', this)" style="font-size:11.5px;padding:3px 10px">🇻🇳 TikTok Việt Nam</button>
+          <button type="button" class="btn btn-sm btn-secondary filter-clip-btn" onclick="filterClipRegion('CN', this)" style="font-size:11.5px;padding:3px 10px">🇨🇳 Douyin Trung Quốc (抖音)</button>
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="var b=document.getElementById('import-clip-box');b.style.display=b.style.display==='none'?'block':'none'" style="font-size:11.5px;font-weight:700">
+          📥 Nhập Link Video Mới ▾
+        </button>
+      </div>
+
+      <!-- Import Link Box (TikTok VN / Douyin URL via yt-dlp) -->
+      <div id="import-clip-box" style="display:none;background:var(--bg);border:1.5px dashed var(--accent);border-radius:10px;padding:14px;margin-bottom:14px">
+        <form method="post" action="/viral/clips/import" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang tải & chuẩn hóa 9:16...';}">
+          <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span>⚡</span> Tải &amp; Đồng Bộ Video Vũ Đạo Mới Từ TikTok Việt Nam hoặc Douyin Trung Quốc
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.4">
+            Dán đường link bất kỳ từ TikTok (Việt Nam) hoặc Douyin (Trung Quốc 抖音, link v.douyin.com hoặc douyin.com). Hệ thống tự động dùng yt-dlp tải video chất lượng cao nhất, xóa watermark và căn chỉnh chuẩn tỷ lệ 9:16 (1080x1920) không méo hình!
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="url" name="url" required placeholder="Dán link TikTok (https://www.tiktok.com/@...) hoặc Douyin (https://v.douyin.com/...)" style="flex:1;min-width:260px;font-size:12.5px;padding:8px 12px">
+            <select name="platform" style="width:180px;font-size:12.5px;padding:8px 10px">
+              <option value="TikTok VN">🇻🇳 TikTok Việt Nam</option>
+              <option value="Douyin CN">🇨🇳 Douyin Trung Quốc (抖音)</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm" style="font-weight:800;font-size:12px;padding:8px 16px">
+              🚀 Tải &amp; Chuẩn Hóa 9:16
+            </button>
+          </div>
+        </form>
       </div>
 
       <div style="display:grid;grid-template-columns: 1fr 220px;gap:16px;align-items:start">
         <!-- Danh sách clip mẫu -->
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;flex-direction:column;gap:8px" id="sample-clips-list">
           {{range .Viral.SampleClips}}
-          <div class="sample-clip-card {{if eq .ID $.Viral.SelectedClip}}selected{{end}}" onclick="selectSampleClip('{{.ID}}', '{{.URL}}', '{{.Title}}', this)" style="cursor:pointer;padding:10px 14px;border-radius:10px;background:var(--card-bg);border:2px solid {{if eq .ID $.Viral.SelectedClip}}var(--accent){{else}}var(--border){{end}};display:flex;justify-content:space-between;align-items:center;transition:all 0.15s ease">
+          <div class="sample-clip-card {{if eq .ID $.Viral.SelectedClip}}selected{{end}}" data-region="{{if .Region}}{{.Region}}{{else}}VN{{end}}" onclick="selectSampleClip('{{.ID}}', '{{.URL}}', '{{.Title}}', this)" style="cursor:pointer;padding:10px 14px;border-radius:10px;background:var(--card-bg);border:2px solid {{if eq .ID $.Viral.SelectedClip}}var(--accent){{else}}var(--border){{end}};display:flex;justify-content:space-between;align-items:center;transition:all 0.15s ease">
             <div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
                 <span style="font-size:14px">💃</span>
                 <strong style="font-size:13px;color:var(--text)">{{.Title}}</strong>
+                {{if eq .Region "CN"}}
+                <span class="badge" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;font-size:10px;font-weight:700">🇨🇳 Douyin CN</span>
+                {{else}}
+                <span class="badge badge-ok" style="font-size:10px;font-weight:700">🇻🇳 TikTok VN</span>
+                {{end}}
                 <span class="badge badge-dim" style="font-size:10px">{{.Duration}}</span>
               </div>
               <div style="font-size:11.5px;color:var(--muted);line-height:1.3">{{.Description}}</div>
@@ -237,12 +427,12 @@
 
         <!-- Trình phát xem trước video mẫu -->
         <div style="background:#000;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);position:relative">
-          <video id="sample-video-preview-player" src="/clips/viral/clip_03_sexy_dance_60s.mp4" controls autoplay muted loop style="width:100%;aspect-ratio:9/16;display:block;object-fit:cover"></video>
+          <video id="sample-video-preview-player" src="/clips/viral/clip_vn_phuonghoa.mp4" controls autoplay muted loop style="width:100%;aspect-ratio:9/16;display:block;object-fit:cover"></video>
           <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);padding:2px 8px;border-radius:6px;font-size:10px;color:#fff;font-weight:700">
             👁️ Xem trước mẫu
           </div>
           <div id="sample-preview-title" style="padding:6px 8px;font-size:10.5px;color:#fff;background:#111;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;border-top:1px solid #333">
-            Vũ đạo phòng ngủ 60s
+            🇻🇳 TikTok VN: Đào Lê Phương Hoa - Hot Beat Sexy Dance
           </div>
         </div>
       </div>
@@ -292,9 +482,11 @@
       <div class="field">
         <label style="font-weight:700;font-size:13px">Công nghệ Xử lý Video AI</label>
         <select name="ai_mode" style="padding:9px 12px;font-weight:600">
-          <option value="faceswap" selected>🤖 AI Neural Re-Renderer (Deep Latent Identity Lock — 100% Chân Thực, Không Cắt Dán, Không Logo)</option>
-          <option value="webai">🌐 Web AI Studio Bridge (Kling / Runway / Muse AI / Gemini)</option>
-          <option value="generative">🎨 Sinh Video AI Mới 100% Theo Kịch Bản 9:16</option>
+          <option value="googleflow" selected>🌊 Google Flow (1.000 Credits Free/tháng ➔ Tự động Remaster 4K UHD)</option>
+          <option value="veo3">🎬 Google Veo 3 / 3.1 (Generative AI Video — Điện Ảnh Siêu Thực 4K/1080p 9:16)</option>
+          <option value="museai">🎥 Muse AI Video Studio (Chuyển Động Tự Nhiên, Không Watermark)</option>
+          <option value="faceswap">💃 AI Neural Dance Re-Renderer (Vũ Đạo Triệu View TikTok VN & Douyin CN)</option>
+          <option value="generative">⚡ Tự Động Tối Ưu (Google Flow ➔ Veo 3 ➔ Muse AI ➔ Neural Motion)</option>
         </select>
       </div>
 
@@ -358,6 +550,35 @@ function selectSampleClip(clipId, url, title, el) {
     titleEl.textContent = title;
   }
 }
+
+function filterClipRegion(region, btn) {
+  document.querySelectorAll('.filter-clip-btn').forEach(function(b) {
+    b.classList.remove('btn-primary');
+    b.classList.add('btn-secondary');
+  });
+  if (btn) {
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  }
+  var cards = document.querySelectorAll('.sample-clip-card');
+  var firstVisible = null;
+  cards.forEach(function(c) {
+    var r = c.getAttribute('data-region') || 'VN';
+    if (region === 'all' || r === region) {
+      c.style.display = 'flex';
+      if (!firstVisible) firstVisible = c;
+    } else {
+      c.style.display = 'none';
+    }
+  });
+  // If current selection is hidden, select first visible
+  var currentSelected = document.querySelector('.sample-clip-card.selected');
+  if (!currentSelected || currentSelected.style.display === 'none') {
+    if (firstVisible) {
+      firstVisible.click();
+    }
+  }
+}
 </script>
 
 <!-- =========================================================================
@@ -411,9 +632,6 @@ function selectSampleClip(clipId, url, title, el) {
           {{if .MediaURL}}
           <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')" style="font-weight:700">▶ Xem trước</button>
           <a href="{{.MediaURL}}" download class="btn btn-secondary btn-sm" style="font-weight:700">⬇ Tải video .mp4</a>
-          {{if .SRTURL}}
-          <a href="{{.SRTURL}}" download class="btn btn-secondary btn-sm" style="font-weight:700">💬 Tải file .srt</a>
-          {{end}}
           <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Genre}}')" style="font-weight:700" title="Sao chép trọn gói Tiêu đề, Hook, Caption và Hashtags để đăng kênh">📋 Copy Post Kit</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Genre}}')" style="font-weight:700" title="Ghim video này vào trang Bio Link Storefront">🔗 Ghim vào Kệ Bio</button>
           <a href="/publishers" class="btn btn-primary btn-sm" style="font-weight:700">📤 Đăng Lên Kênh</a>
@@ -439,21 +657,17 @@ function selectSampleClip(clipId, url, title, el) {
       {{if .MediaURL}}
       <div style="margin-top:14px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
         <div style="width:200px;border-radius:10px;overflow:hidden;background:#000;box-shadow:0 4px 12px rgba(0,0,0,0.15)">
-          <video src="{{.MediaURL}}" controls preload="metadata" style="width:100%;display:block;aspect-ratio:9/16">
-            {{if .SRTURL}}<track label="Tiếng Việt" kind="subtitles" srclang="vi" src="{{.SRTURL}}" default>{{end}}
-          </video>
+          <video src="{{.MediaURL}}" controls preload="metadata" style="width:100%;display:block;aspect-ratio:9/16"></video>
         </div>
         <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span class="badge badge-ok">✓ Video hoàn chỉnh</span>
+            <span class="badge badge-ok">✓ Video hoàn chỉnh (Sạch 100%)</span>
             <span class="badge badge-draft">📱 1080×1920 (9:16)</span>
             <span class="badge badge-draft">H.264 MP4</span>
-            {{if .SRTURL}}<span class="badge badge-ok">💬 Đã có phụ đề .srt</span>{{end}}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')">▶ Phóng to Player</button>
             <a href="{{.MediaURL}}" download class="btn btn-secondary btn-sm">⬇ Tải MP4</a>
-            {{if .SRTURL}}<a href="{{.SRTURL}}" download class="btn btn-secondary btn-sm">💬 Tải .srt</a>{{end}}
             <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Genre}}')" style="font-weight:700">📋 Copy Post Kit</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Genre}}')" style="font-weight:700">🔗 Ghim vào Kệ Bio</button>
             <a href="/publishers" class="btn btn-primary btn-sm">📤 Đăng Lên Kênh</a>
@@ -560,6 +774,51 @@ function refreshViralRadar(btn) {
         btn.innerHTML = origText || '🔄 Cập Nhật Realtime';
       }
     });
+}
+
+function filterDramaRegion(region, btn) {
+  document.querySelectorAll('.drama-filter-btn').forEach(function(b) {
+    b.classList.remove('btn-primary');
+    b.classList.add('btn-secondary');
+  });
+  if (btn) {
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-primary');
+  }
+  var cards = document.querySelectorAll('.drama-card');
+  cards.forEach(function(c) {
+    var r = c.getAttribute('data-region') || 'VN';
+    if (region === 'all' || r === region) {
+      c.style.display = 'flex';
+    } else {
+      c.style.display = 'none';
+    }
+  });
+}
+
+function applyDramaTrend(title, summary, region, account) {
+  var topicInput = document.querySelector('input[name="topic"]');
+  if (topicInput) {
+    topicInput.value = (region === 'VN' ? 'Biến Căng Showbiz Việt: ' : 'Bóc Phốt Showbiz Hoa Ngữ: ') + title;
+  }
+  var accSelect = document.querySelector('select[name="account"]');
+  if (accSelect && account) {
+    accSelect.value = account;
+  }
+  var genreSelect = document.querySelector('select[name="genre"]');
+  if (genreSelect) {
+    genreSelect.value = 'trendjack';
+  }
+  var form = document.getElementById('viral-form');
+  if (form) {
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  var chName = region === 'VN' ? '@kechuyen_ai (Kênh Showbiz Việt)' : '@douyin_reup (Kênh Douyin / C-Biz)';
+  if (window.showToast) {
+    window.showToast('✓ Đã nạp Drama ' + (region === 'VN' ? 'V-Biz' : 'C-Biz') + ' chuẩn xác vào kênh ' + chName + '! Tuyệt đối đúng kênh.', true);
+  } else {
+    alert('✓ Đã nạp Drama ' + (region === 'VN' ? 'V-Biz' : 'C-Biz') + ' vào kênh ' + chName + '!');
+  }
 }
 
 function openViralLightbox(url, title) {

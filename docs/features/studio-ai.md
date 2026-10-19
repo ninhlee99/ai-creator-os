@@ -29,19 +29,19 @@ nhạc trending Việt Nam.
 - Khởi động app: `MarkInterruptedJobs()` — job nào còn `running` → `failed` +
   log "Gián đoạn khi khởi động lại".
 
-### 3.2. Video affiliate — `runAffiliate` (`internal/studio/studio.go:473`)
-Phong cách Ninh chốt: **không chữ, không voiceover, chỉ video + nhạc bản quyền**.
-1. `mg.Healthy(ctx)` false (thiếu `GEMINI_API_KEYS` hoặc key lỗi) → job failed
-   ngay "media-gen chưa sẵn sàng", không render bừa.
-2. `directorPhotoPlan(ctx, p)` — LLM viết shot list + **khóa 1 địa điểm** cho cả video.
-3. Chụp từng ảnh: `GenerateImage(pr, refs=[model_photo, product_photo], out)` —
-   identity/product lock bằng ảnh tham chiếu; mỗi ảnh upscale 4K
-   (`UpscalePhoto(..., PhotoWidth4K, ...)`; lỗi upscale → dùng bản gốc, không fail job).
-   Ít hơn 3 ảnh → job failed ("kiểm tra API key").
-4. Dựng: `AssemblePhotoList` (Ken Burns, khổ 9:16) hoặc `AssembleBeatBounce`
-   (kiểu giật-giật theo nhịp) → `MuxMusic` (nhạc upload hoặc URL, `loudnorm` −14 LUFS).
-5. `caption.go` — LLM viết caption/hashtag tiếng Việt → cột `caption`, nút Copy trên UI.
-6. Xong → `fireOnDone` → tự đăng TikTok **nháp** nếu bật (xem `daemon-tu-dong.md`).
+### 3.2. Video affiliate Lookbook Chuyển Động Người Thật — `runAffiliate` (`internal/studio/affiliate.go`)
+Tuân thủ chuẩn **Open-Spec v1.0 (`docs/OPEN_SPEC.md`)**:
+1. **Ưu tiên Lookbook Chuyển Động Thật (9:16 1080x1920)**:
+   - Thay vì dựng ảnh tĩnh với thẻ chữ `AdCard` che khuất khung hình, hệ thống tự động kích hoạt kho video Lookbook thời trang người thật (`data/clips/fashion/*.mp4`).
+   - Nếu có ảnh nhân vật kênh (`ModelPhoto`), kích hoạt InsightFace Deep Latent Face Swap hoán đổi khuôn mặt vào người mẫu lookbook đang bước đi/thử đồ.
+2. **Dựng từ ảnh sản phẩm listing (`AffiliateModePhoto`)**:
+   - Nếu người dùng cung cấp ảnh chụp sản phẩm, hệ thống áp dụng chuyển động Ken Burns tinh tế ($< 8\%$) và chuyển cảnh CapCut Flash Cut đồng bộ với nhịp trống (*beat drop*).
+   - Tự động chuẩn hóa tỷ lệ 9:16 với Lanczos interpolation chống méo hình (`scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,setsar=1`).
+3. **Âm nhạc thương mại thịnh hành**:
+   - Tự động chọn bài nhạc TikTok trending bắt tai từ kho nhạc thương mại (`FindTrendingMusic`), tạo năng lượng cho video ngắn.
+4. **Caption & Hashtag**:
+   - LLM viết caption/hashtag tiếng Việt chuẩn SEO TikTok Shop → cột `caption`, nút Copy Post Kit và Ghim vào Kệ Bio trên UI.
+5. **Xong** → `fireOnDone` → tự đăng TikTok **nháp** nếu bật.
 
 ### 3.3. Video chữ động (tab `?tab=chu`)
 `handleStudioKineticCreate` → job lưu ở `s.Jobs` (file `content_jobs.json` của web

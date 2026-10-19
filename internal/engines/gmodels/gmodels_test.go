@@ -9,7 +9,7 @@ import (
 )
 
 func TestPickPrefersStableNewest(t *testing.T) {
-	names := []string{"gemini-2.5-flash", "gemini-3.5-flash-preview", "gemini-3.5-flash",
+	names := []string{"gemini-2.0-flash", "gemini-3.5-flash-preview", "gemini-3.5-flash",
 		"gemini-3.5-flash-lite", "gemini-3.5-flash-tts", "gemini-3.5-flash-image", "text-embedding-004"}
 	if got := Pick(names, Text); got != "gemini-3.5-flash" {
 		t.Fatalf("text = %q", got)

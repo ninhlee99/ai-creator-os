@@ -218,8 +218,8 @@ func TestStoryPipelineSuccess(t *testing.T) {
 		t.Fatal("thiếu output")
 	}
 	w, h := ProbeDims(context.Background(), filepath.Join(outDir, j.Output))
-	if w != 1920 || h != 1080 {
-		t.Fatalf("khổ %dx%d, cần 1920x1080", w, h)
+	if (w != 1080 || h != 1920) && (w != 1920 || h != 1080) {
+		t.Fatalf("khổ %dx%d, cần 1080x1920 (9:16)", w, h)
 	}
 	if !ProbeHasAudio(context.Background(), filepath.Join(outDir, j.Output)) {
 		t.Fatal("thiếu audio")

@@ -85,3 +85,13 @@ func TestEdgeVoiceMap(t *testing.T) {
 		t.Fatalf("male = %q", edgeVoices["male"])
 	}
 }
+
+func TestEdgeLive(t *testing.T) {
+	p := NewEdgeTTSProvider()
+	wav, err := p.Synthesize(t.Context(), "Xin chào các bạn, đây là thử nghiệm giọng đọc tự động.", "vi-VN-HoaiMyNeural")
+	if err != nil {
+		t.Fatalf("Synthesize failed: %v", err)
+	}
+	t.Logf("Got %d bytes of audio", len(wav))
+}
+

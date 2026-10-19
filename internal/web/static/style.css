@@ -442,7 +442,7 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 10px;
-  aspect-ratio: 16/9;
+  aspect-ratio: 9/16;
   cursor: pointer;
   display: flex;
   align-items: center;

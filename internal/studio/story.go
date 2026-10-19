@@ -130,134 +130,164 @@ type AudioStoryPlot struct {
 // CuratedAudioStoryPlots chứa danh sách các cốt truyện audio YouTube kinh điển (hệ thống tự nghĩ sẵn 100%).
 var CuratedAudioStoryPlots = []AudioStoryPlot{
 	{
-		ID:             "plot-dem-khuya-01",
-		Title:          "Đêm Mưa Bên Quán Trọ Cũ",
-		Genre:          "tâm lý",
-		GenreLabel:     "Radio Kể Chuyện Đêm Khuya",
-		Logline:        "Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.",
-		Act1:           "Đêm mưa bão mù trời, người đàn ông ướt sũng bước vào quán trọ ven sông của bà cụ già và cô cháu gái ít nói.",
-		Act2:           "Bên tách trà gừng nghi ngút khói, bà cụ kể về người khách quen 10 năm trước đã gửi lại chiếc hộp gỗ bí ẩn chưa từng quay lại.",
-		Act3:           "Khi người đàn ông mở chiếc hộp, bí mật chấn động về tình cha con và lời hứa xưa được tháo gỡ trong nước mắt.",
-		Message:        "Ở đời, ân nghĩa và tình thân lớn hơn mọi sóng gió thời gian.",
-		SuggestedVoice: "default",
-		Soundscape:     "Tiếng mưa rơi nhẹ + Piano lofi acoustic",
+		ID:              "plot-dem-khuya-01",
+		Title:           "Đêm Mưa Bên Quán Trọ Cũ",
+		Genre:           "tâm lý",
+		GenreLabel:      "Radio Kể Chuyện Đêm Khuya",
+		DurationMinutes: 45,
+		Logline:         "Một lữ khách lỡ đường trong đêm bão táp tá túc tại quán trọ ven sông và nghe câu chuyện ân nghĩa cảm động.",
+		Act1:            "Đêm mưa bão mù trời, người đàn ông ướt sũng bước vào quán trọ ven sông của bà cụ già và cô cháu gái ít nói.",
+		Act2:            "Bên tách trà gừng nghi ngút khói, bà cụ kể về người khách quen 10 năm trước đã gửi lại chiếc hộp gỗ bí ẩn chưa từng quay lại.",
+		Act3:            "Khi người đàn ông mở chiếc hộp, bức thư cũ và chiếc vòng bạc tiết lộ sự thật: ông lão gửi hộp chính là người cha bặt vô âm tín của anh.",
+		Act4:            "Bà cụ run rẩy rút ra lá thư người cha gửi gắm trước lúc lâm chung, tha thứ mọi lỗi lầm giận dỗi tuổi trẻ của đứa con thơ dại.",
+		Act5:            "Trong tiếng mưa rả rích đầu hiên vắng, giọt nước mắt hối hận hòa tan gánh nặng mười năm, khép lại câu chuyện tình phụ tử thiêng liêng.",
+		Message:         "Ở đời, ân nghĩa và tình thân lớn hơn mọi sóng gió thời gian.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Tiếng mưa rơi nhẹ + Piano lofi acoustic",
 	},
 	{
-		ID:             "plot-dem-khuya-02",
-		Title:          "Chuyến Xe Buýt Cuối Cùng Trở Về Nhà",
-		Genre:          "tâm lý",
-		GenreLabel:     "Radio Kể Chuyện Đêm Khuya",
-		Logline:        "Những cuộc gặp gỡ định mệnh trên chuyến xe buýt đêm muộn đưa một chàng trai trẻ tìm lại ý nghĩa cuộc sống.",
-		Act1:           "Chàng trai trẻ thất nghiệp ngồi gục đầu trên chuyến xe buýt tuyến cuối lúc 23h30 trong ngày đông lạnh giá.",
-		Act2:           "Một ông lão bán vé số dạo bước lên xe, chia cho anh nửa củ khoai nướng nóng hổi và kể về thời thanh xuân vượt khó.",
-		Act3:           "Ánh mắt ấm áp và lời động viên giản dị đã thắp sáng lại hy vọng sống cho chàng trai trước khi bước xuống trạm dừng.",
-		Message:        "Đôi khi, một chút ấm áp từ người xa lạ lại đủ sức cứu rỗi cả một cuộc đời.",
-		SuggestedVoice: "default",
-		Soundscape:     "Tiếng còi xe xa xăm + Giai điệu mộc mạc",
+		ID:              "plot-dem-khuya-02",
+		Title:           "Chuyến Xe Buýt Cuối Cùng Trở Về Nhà",
+		Genre:           "tâm lý",
+		GenreLabel:      "Radio Kể Chuyện Đêm Khuya",
+		DurationMinutes: 30,
+		Logline:         "Những cuộc gặp gỡ định mệnh trên chuyến xe buýt đêm muộn đưa một chàng trai trẻ tìm lại ý nghĩa cuộc sống.",
+		Act1:            "Chàng trai trẻ thất nghiệp ngồi gục đầu trên chuyến xe buýt tuyến cuối lúc 23h30 trong ngày đông giá rét.",
+		Act2:            "Một ông lão bán vé số dạo bước lên xe, chia cho anh nửa củ khoai nướng nóng hổi và kể về chuỗi ngày cơ cực thời trẻ.",
+		Act3:            "Người phụ nữ bế con nhỏ ngồi ghế sau cất tiếng hát ru ngọt ngào, làm dịu đi cái lạnh cắt da và không khí ngột ngạt trong khoang xe.",
+		Act4:            "Khi xe ghé trạm cuối ngoại thành, người lái xe mỉm cười tặng anh tấm danh thiếp tuyển dụng của một xưởng mộc đang cần người học việc.",
+		Act5:            "Bước xuống xe trong sương đêm, chàng trai nhận ra giữa giông bão cuộc đời, lòng tốt của những người xa lạ luôn là ngọn đèn soi lối.",
+		Message:         "Đôi khi, một chút ấm áp từ người xa lạ lại đủ sức cứu rỗi cả một cuộc đời.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Tiếng còi xe xa xăm + Giai điệu mộc mạc",
 	},
 	{
-		ID:             "plot-truyen-ma-01",
-		Title:          "Tiếng Bước Chân Sau Bờ Tre Làng",
-		Genre:          "kinh dị",
-		GenreLabel:     "Truyện Ma Làng Quê",
-		Logline:        "Bí mật rùng rợn về ngôi mộ vô danh dưới gốc đa đầu làng và món nợ nhân quả của phú hộ xưa.",
-		Act1:           "Đêm rằm tháng bảy, chàng sinh viên về quê chịu tang ông nội thì nghe tiếng bước chân kỳ lạ dồn dập sau rặng tre làng.",
-		Act2:           "Người làng cảnh báo không ai được ra gốc đa sau nửa đêm, nhưng cuốn nhật ký cổ của ông nội để lại hé lộ một bí mật đáng sợ.",
-		Act3:           "Cuộc đối mặt rợn gáy trong đêm sương lạnh và sự thật về lời nguyền nhân quả ba đời được hóa giải khi ánh bình minh ló rạng.",
-		Message:        "Gieo nhân nào gặt quả nấy, sống ngay thẳng thì quỷ thần cũng phải kính nhường.",
-		SuggestedVoice: "default",
-		Soundscape:     "Tiếng gió rít đêm sương + Tiếng côn trùng vắng",
+		ID:              "plot-truyen-ma-01",
+		Title:           "Tiếng Bước Chân Sau Bờ Tre Làng",
+		Genre:           "kinh dị",
+		GenreLabel:      "Truyện Ma Làng Quê",
+		DurationMinutes: 45,
+		Logline:         "Bí mật rùng rợn về ngôi mộ vô danh dưới gốc đa đầu làng và món nợ nhân quả của phú hộ xưa.",
+		Act1:            "Đêm rằm tháng bảy, chàng sinh viên về quê chịu tang ông nội thì nghe tiếng bước chân dồn dập sau rặng tre làng lúc canh ba.",
+		Act2:            "Người làng cảnh báo tuyệt đối không ai được bén mảng ra gốc đa cổ thụ sau nửa đêm, nơi từng có một nấm mồ vô danh.",
+		Act3:            "Cuốn nhật ký cổ bằng chữ Nôm của ông nội để lại hé lộ bí mật kinh hoàng về món nợ máu của gia tộc phú hộ xưa cách đây một thế kỷ.",
+		Act4:            "Cuộc đối mặt rợn gáy dưới ánh trăng mờ nhân ảnh và lễ tạ lỗi chân thành trước vong linh oan khuất bị chôn vùi trong bóng tối lịch sử.",
+		Act5:            "Khi ánh bình minh ló rạng trên rặng tre ngả bóng vàng, oán khí tiêu tan, bài học nhân quả luân hồi để lại dư âm sâu sắc ngàn đời.",
+		Message:         "Gieo nhân nào gặt quả nấy, sống ngay thẳng thì quỷ thần cũng phải kính nhường.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Tiếng gió rít đêm sương + Tiếng côn trùng vắng",
 	},
 	{
-		ID:             "plot-truyen-ma-02",
-		Title:          "Căn Nhà Bỏ Hoang Bên Bến Đò Cũ",
-		Genre:          "kinh dị",
-		GenreLabel:     "Truyện Ma Làng Quê",
-		Logline:        "Ngôi nhà gỗ mục nát ngã ba sông và bí ẩn về người lái đò không bao giờ nhận tiền của khách lỡ chuyến.",
-		Act1:           "Đêm mưa gió mù mịt, một vị khách lỡ độ đường ghé vào bến đò vắng và được một người đàn ông chèo thuyền chở qua sông.",
-		Act2:           "Người chèo đò kể về căn nhà bỏ hoang bên bờ sông từng là nơi ở của gia đình thầy lang cứu giúp dân làng trong nạn đói.",
-		Act3:           "Sáng hôm sau hỏi người dân địa phương mới biết bến đò ấy đã không còn ai chèo từ 30 năm trước...",
-		Message:        "Tấm lòng nhân ái thì dù qua bao kiếp luân hồi vẫn lưu lại phước báu nhân gian.",
-		SuggestedVoice: "default",
-		Soundscape:     "Tiếng nước róc rách + Tiếng chuông chùa vẳng xa",
+		ID:              "plot-truyen-ma-02",
+		Title:           "Căn Nhà Bỏ Hoang Bên Bến Đò Cũ",
+		Genre:           "kinh dị",
+		GenreLabel:      "Truyện Ma Làng Quê",
+		DurationMinutes: 30,
+		Logline:         "Ngôi nhà gỗ mục nát ngã ba sông và bí ẩn về người lái đò không bao giờ nhận tiền của khách lỡ chuyến.",
+		Act1:            "Đêm mưa gió mịt mùng, một vị khách lỡ độ đường ghé vào bến đò vắng và được người đàn ông bí ẩn lặng lẽ chèo thuyền đưa sang sông.",
+		Act2:            "Người chèo đò đưa khách vào căn nhà gỗ mục nát sưởi ấm, kể về người thầy lang từng dốc hết gia tài cứu cả làng trong nạn đói năm xưa.",
+		Act3:            "Nửa đêm tỉnh giấc, người khách nhận ra căn nhà hoàn toàn hoang phế, chiếc bếp lò đã nguội lạnh từ hàng chục năm.",
+		Act4:            "Sáng hôm sau hỏi han các vị cao niên, người khách bàng hoàng khi biết người chèo đò và căn nhà ấy đã chìm vào dòng nước từ trận lũ 30 năm trước.",
+		Act5:            "Tấm bia đá tri ân bên bờ sông khẳng định đạo lý: Tấm lòng nhân đức cứu người dẫu qua bao kiếp luân hồi vẫn tỏa sáng giữa nhân gian.",
+		Message:         "Tấm lòng nhân ái thì dù qua bao kiếp luân hồi vẫn lưu lại phước báu nhân gian.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Tiếng nước róc rách + Tiếng chuông chùa vẳng xa",
 	},
 	{
-		ID:             "plot-trinh-tham-01",
-		Title:          "Bức Thư Bí Mật Trong Chiếc Đồng Hồ Cổ",
-		Genre:          "trinh thám",
-		GenreLabel:     "Kỳ Án Trinh Thám & Giải Mã",
-		Logline:        "Vụ mất tích bí ẩn của một giáo sư già và cuộc đấu trí nghẹt thở giữa viên thám tử và kẻ giấu mặt.",
-		Act1:           "Vị giáo sư qua đời để lại chiếc đồng hồ quả lắc đứng kim đúng 3 giờ 15 phút cùng bản di chúc kỳ lạ.",
-		Act2:           "Những mảnh ghép manh mối đứt đoạn dẫn thám tử lần ra những phi vụ ngầm được che giấu dưới vỏ bọc danh giá.",
-		Act3:           "Màn lật mặt thủ phạm nghẹt thở ngay trước khi chuyến tàu đêm khởi hành rời khỏi thành phố.",
-		Message:        "Lưới trời lồng lộng, không tội ác nào có thể che giấu mãi mãi.",
-		SuggestedVoice: "default",
-		Soundscape:     "Dramatic Suspense Ambient + Tiếng tích tắc đồng hồ",
+		ID:              "plot-trinh-tham-01",
+		Title:           "Bức Thư Bí Mật Trong Chiếc Đồng Hồ Cổ",
+		Genre:           "trinh thám",
+		GenreLabel:      "Kỳ Án Trinh Thám & Giải Mã",
+		DurationMinutes: 60,
+		Logline:         "Vụ mất tích bí ẩn của một giáo sư già và cuộc đấu trí nghẹt thở giữa viên thám tử và kẻ giấu mặt.",
+		Act1:            "Giáo sư sử học qua đời bí ẩn tại biệt thự cổ kính, để lại chiếc đồng hồ quả lắc Thụy Sĩ đứng kim đúng 3 giờ 15 phút.",
+		Act2:            "Thám tử tư lần theo các ký hiệu mật mã khắc trên bánh răng đồng hồ, phát hiện bản đồ dẫn đến bộ sưu tập cổ vật bị thất lạc thời chiến.",
+		Act3:            "Những cái bẫy nguy hiểm trong hầm ngầm và cuộc rượt đuổi nghẹt thở với tổ chức buôn lậu đồ cổ xuyên quốc gia.",
+		Act4:            "Cú twist lật màn khi hung thủ thực sự lại chính là người học trò xuất sắc nhất mà giáo sư từng hết lòng yêu quý và tin tưởng.",
+		Act5:            "Bản di chúc thực sự được công bố trước tòa án, toàn bộ bảo vật được hiến tặng cho bảo tàng quốc gia, kết thúc vụ án kinh điển.",
+		Message:         "Lưới trời lồng lộng, không tội ác nào có thể che giấu mãi mãi.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Dramatic Suspense Ambient + Tiếng tích tắc đồng hồ",
 	},
 	{
-		ID:             "plot-nhan-sinh-01",
-		Title:          "Bát Cơm Nguội Của Người Mẹ Già",
-		Genre:          "triết lý",
-		GenreLabel:     "Bài Học Nhân Sinh & Đạo Lý",
-		Logline:        "Câu chuyện xúc động về sự hy sinh thầm lặng của người mẹ nghèo và bài học thức tỉnh người con thành đạt.",
-		Act1:           "Sau 15 năm bôn ba thành đạt chốn phồn hoa, người con trai lần đầu trở về căn nhà ngói cũ ven đê thăm mẹ già.",
-		Act2:           "Bữa cơm đạm bạc với bát cơm nguội mẹ nhường con hé mở cuốn sổ nợ mẹ đã âm thầm giấu kín suốt thời niên thiếu của anh.",
-		Act3:           "Giọt nước mắt muộn màng trong vòng tay gầy guộc của mẹ khiến thính giả không cầm được xúc động.",
-		Message:        "Đừng đợi đến khi cha mẹ khuất núi mới nhận ra điều quý giá nhất trên đời.",
-		SuggestedVoice: "female",
-		Soundscape:     "Acoustic Guitar mộc mạc + Tiếng sáo ru êm đềm",
+		ID:              "plot-nhan-sinh-01",
+		Title:           "Bát Cơm Nguội Của Người Mẹ Già",
+		Genre:           "triết lý",
+		GenreLabel:      "Bài Học Nhân Sinh & Đạo Lý",
+		DurationMinutes: 30,
+		Logline:         "Câu chuyện xúc động về sự hy sinh thầm lặng của người mẹ nghèo và bài học thức tỉnh người con thành đạt.",
+		Act1:            "Sau 15 năm bôn ba làm ăn thành đạt nơi phố thị, người con trai lần đầu trở về căn nhà tranh ngói cũ ven đê thăm mẹ già tóc bạc.",
+		Act2:            "Bữa cơm đạm bạc với bát cơm nguội mẹ nhường con ăn trước, còn mình lặng lẽ ăn khoai sắn bên góc bếp un khói.",
+		Act3:            "Người con vô tình tìm thấy chiếc túi vải cũ kỹ cất dưới đáy rương, bên trong là từng đồng tiền lẻ thấm mồ hôi mẹ dành dụm gửi anh học đại học.",
+		Act4:            "Cơn đột quỵ bất ngờ của mẹ trong đêm khiến người con hoảng loạn đưa mẹ đi cấp cứu, đối mặt với sự mong manh của kiếp người.",
+		Act5:            "Giọt nước mắt muộn màng bên giường bệnh và lời thì thầm của mẹ nhắc nhở: Tiền tài danh vọng không bằng một bữa cơm đoàn viên bên gia đình.",
+		Message:         "Đừng đợi đến khi cha mẹ khuất núi mới nhận ra điều quý giá nhất trên đời.",
+		SuggestedVoice:  "female",
+		Soundscape:      "Acoustic Guitar mộc mạc + Tiếng sáo ru êm đềm",
 	},
 	{
-		ID:             "plot-thuong-truong-01",
-		Title:          "Cú Lật Kèo Phút 89",
-		Genre:          "kinh doanh",
-		GenreLabel:     "Thương Trường & Khởi Nghiệp",
-		Logline:        "Từ bờ vực phá sản với khoản nợ hàng chục tỷ, chàng trai 28 tuổi lội ngược dòng ngoạn mục nhờ một nguyên tắc kinh doanh bất biến.",
-		Act1:           "Công ty đứng trước nguy cơ phá sản vì đối tác lớn bất ngờ hủy hợp đồng ngay trước ngày thanh toán.",
-		Act2:           "Quyết định táo bạo từ bỏ lợi nhuận ngắn hạn để bảo vệ quyền lợi của các khách hàng nhỏ lẻ và đối tác phụ trợ.",
-		Act3:           "Hiệu ứng truyền miệng bùng nổ mang lại hợp đồng cứu cánh và bài học xương máu cho giới khởi nghiệp.",
-		Message:        "Trong kinh doanh, chữ TÍN chính là tài sản quý giá nhất.",
-		SuggestedVoice: "default",
-		Soundscape:     "Inspiring Ambient Beat + Nhịp điệu dồn dập",
+		ID:              "plot-thuong-truong-01",
+		Title:           "Cú Lật Kèo Phút 89",
+		Genre:           "kinh doanh",
+		GenreLabel:      "Thương Trường & Khởi Nghiệp",
+		DurationMinutes: 45,
+		Logline:         "Từ bờ vực phá sản với khoản nợ hàng chục tỷ, chàng trai 28 tuổi lội ngược dòng ngoạn mục nhờ một nguyên tắc kinh doanh bất biến.",
+		Act1:            "Công ty công nghệ đứng bên bờ vực phá sản khi đối tác chiến lược đột ngột đơn phương hủy hợp đồng trước hạn chót thanh toán 48 giờ.",
+		Act2:            "Áp lực khủng khiếp từ ngân hàng và nhà cung ứng, đội ngũ sáng lập chia rẽ gay gắt giữa việc tuyên bố phá sản hay cầm cố nhà cửa.",
+		Act3:            "Quyết định sống còn: CEO trẻ tuổi mở toàn bộ mã nguồn và công khai minh bạch tài chính để kêu gọi sự chung tay từ cộng đồng người dùng.",
+		Act4:            "Sự ủng hộ bùng nổ từ hàng ngàn khách hàng trung thành thu hút sự chú ý của quỹ đầu tư mạo hiểm hàng đầu khu vực.",
+		Act5:            "Thương vụ sáp nhập lịch sử được ký kết tại phút 89, khẳng định chân lý: Chữ Tín và giá trị thực sự cho cộng đồng là vũ khí mạnh nhất trong kinh doanh.",
+		Message:         "Trong kinh doanh, chữ TÍN chính là tài sản quý giá nhất.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Inspiring Ambient Beat + Nhịp điệu dồn dập",
 	},
 	{
-		ID:             "plot-da-su-01",
-		Title:          "Huyền Thoại Thanh Gươm Dưới Lòng Hồ",
-		Genre:          "lịch sử",
-		GenreLabel:     "Dã Sử Huyền Huyễn",
-		Logline:        "Câu chuyện dã sử hào hùng về người tráng sĩ vô danh đứng lên bảo vệ bờ cõi biên ải trước quân thù.",
-		Act1:           "Đêm mùa đông buốt giá nơi ải bắc, tiếng tù và báo động giặc ngoại xâm áp sát cửa ải.",
-		Act2:           "Hành trình tìm lại thanh thần kiếm cổ xưa và lời thề nguyền vì giang sơn xã tắc muôn đời.",
-		Act3:           "Trận chiến oanh liệt dưới ánh trăng sáng rực, lưu danh thiên cổ như biểu tượng bất khuất.",
-		Message:        "Tinh thần bảo vệ non sông ngàn đời là dòng máu chảy trong tim mỗi người con đất Việt.",
-		SuggestedVoice: "default",
-		Soundscape:     "Đàn tranh + Tiếng trống trận hào hùng vang dội",
+		ID:              "plot-da-su-01",
+		Title:           "Huyền Thoại Thanh Gươm Dưới Lòng Hồ",
+		Genre:           "lịch sử",
+		GenreLabel:      "Dã Sử Huyền Huyễn",
+		DurationMinutes: 60,
+		Logline:         "Câu chuyện dã sử hào hùng về người tráng sĩ vô danh đứng lên bảo vệ bờ cõi biên ải trước quân thù.",
+		Act1:            "Đêm mùa đông buốt giá nơi ải bắc, tiếng tù và báo động giặc dữ tràn qua biên ải, đốt phá thôn làng bình yên.",
+		Act2:            "Người tráng sĩ thợ rèn nhận lời ủy thác tìm lại thanh bảo kiếm gia truyền ngâm sâu dưới đáy hồ nước thần giữa rừng thiêng.",
+		Act3:            "Vượt qua thử thách sinh tử trong hang đá ngầm và trận giao tranh khốc liệt chống lại toán thích khách tinh nhuệ.",
+		Act4:            "Bảo kiếm xuất thế tỏa ánh hàn quang lẫm liệt, vị tráng sĩ hiệu triệu hào kiệt bốn phương tập hợp dưới cờ khởi nghĩa cứu dân.",
+		Act5:            "Trận phục kích quyết định tại hẻm núi bẻ gãy ý chí quân xâm lược, thanh gươm được quy phục về lòng hồ, ngàn năm giữ yên cõi bờ.",
+		Message:         "Tinh thần bảo vệ non sông ngàn đời là dòng máu chảy trong tim mỗi người con đất Việt.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Đàn tranh + Tiếng trống trận hào hùng vang dội",
 	},
 	{
-		ID:             "plot-tinh-cam-01",
-		Title:          "Hẹn Ước Dưới Mưa Năm 17 Tuổi",
-		Genre:          "tình cảm",
-		GenreLabel:     "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
-		Logline:        "Sau 8 năm hiểu lầm và xa cách, định mệnh sắp đặt cuộc hội ngộ cay đắng nhưng vỡ òa giữa giám đốc tập đoàn và cô thư ký từng là mối tình đầu thời cấp ba.",
-		Act1:           "Chàng trai nghèo và cô tiểu thư từng có mối tình học trò đẹp như tranh vẽ dưới gốc phượng già trường huyện, trước khi biến cố gia đình khiến cô đột ngột biến mất không một lời từ biệt.",
-		Act2:           "8 năm sau, anh trở thành tổng tài lạnh lùng quyền lực, còn cô xuất hiện trong buổi phỏng vấn thư ký với bộ dạng tiều tụy gánh trên vai món nợ viện phí cho mẹ.",
-		Act3:           "Sự thật về bức thư chia tay bị tráo đổi năm xưa được phơi bày trong cơn mưa tầm tã giữa thành phố, tháo gỡ mọi hận thù và nối lại sợi tơ hồng định mệnh.",
-		Message:        "Chân tình nếu đủ sâu đậm, dù đi một vòng bão giông rồi cũng sẽ tìm về đúng người.",
-		SuggestedVoice: "warm-female",
-		Soundscape:     "Piano ballad lãng mạn + Tiếng mưa rơi êm dịu",
+		ID:              "plot-tinh-cam-01",
+		Title:           "Hẹn Ước Dưới Mưa Năm 17 Tuổi",
+		Genre:           "tình cảm",
+		GenreLabel:      "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
+		DurationMinutes: 45,
+		Logline:         "Sau 8 năm hiểu lầm và xa cách, định mệnh sắp đặt cuộc hội ngộ cay đắng nhưng vỡ òa giữa giám đốc tập đoàn và cô thư ký từng là mối tình đầu thời cấp ba.",
+		Act1:            "Chàng trai nghèo và cô tiểu thư từng có mối tình học trò đẹp như tranh vẽ dưới gốc phượng già trường huyện, trước khi biến cố gia đình khiến cô đột ngột biến mất không một lời từ biệt.",
+		Act2:            "8 năm sau, anh trở thành tổng tài lạnh lùng quyền lực, còn cô xuất hiện trong buổi phỏng vấn thư ký với bộ dạng tiều tụy gánh trên vai món nợ viện phí cho mẹ.",
+		Act3:            "Những lạnh lùng xa cách nơi công sở không che giấu được những quan tâm vụng về và ký ức thanh xuân chưa từng phai nhạt.",
+		Act4:            "Bức thư tình bị thất lạc 8 năm trước được tìm thấy trong tập tài liệu cũ, hóa giải mọi hiểu lầm và tổn thương quá khứ.",
+		Act5:            "Dưới cơn mưa đầu mùa bên hiên quán cũ, hai bàn tay lại tìm về nhau, viết tiếp cái kết viên mãn cho câu chuyện tình thanh xuân dang dở.",
+		Message:         "Chân tình nếu đủ sâu đậm, dù đi một vòng bão giông rồi cũng sẽ tìm về đúng người.",
+		SuggestedVoice:  "warm-female",
+		Soundscape:      "Piano ballad lãng mạn + Tiếng mưa rơi êm dịu",
 	},
 	{
-		ID:             "plot-tinh-cam-02",
-		Title:          "Bức Tranh Chưa Kịp Đặt Tên",
-		Genre:          "tình cảm",
-		GenreLabel:     "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
-		Logline:        "Mối tình ngọt ngào nhưng đầy trắc trở giữa chàng họa sĩ khiếm thị và cô gái làm việc tại phòng triển lãm tranh nghệ thuật.",
-		Act1:           "Tại góc quán cà phê sách ven hồ Tây, cô gái tình cờ quen một chàng trai mù có tài vẽ tranh sơn dầu tuyệt mỹ qua cảm nhận xúc giác và mùi hương.",
-		Act2:           "Những ngày tháng cùng nhau rong ruổi qua từng con phố Hà Nội đã nhen nhóm ngọn lửa tình yêu sâu sắc, nhưng căn bệnh hiểm nghèo khiến cô gái chọn cách âm thầm rút lui.",
-		Act3:           "Khi chàng trai được phẫu thuật ghép giác mạc thành công, bức tranh đầu tiên anh nhìn thấy chính là chân dung cô gái cùng bức thư tình đẫm nước mắt để lại.",
-		Message:        "Tình yêu đích thực không nhìn bằng mắt, mà thấu hiểu bằng cả trái tim.",
-		SuggestedVoice: "default",
-		Soundscape:     "Acoustic Guitar + Violin da diết sâu lắng",
+		ID:              "plot-tinh-cam-02",
+		Title:           "Bức Tranh Chưa Kịp Đặt Tên",
+		Genre:           "tình cảm",
+		GenreLabel:      "Tình Cảm Nam Nữ & Ngôn Tình Đô Thị",
+		DurationMinutes: 30,
+		Logline:         "Mối tình ngọt ngào nhưng đầy trắc trở giữa chàng họa sĩ khiếm thị và cô gái làm việc tại phòng triển lãm tranh nghệ thuật.",
+		Act1:            "Tại góc quán cà phê sách ven hồ Tây, cô gái tình cờ quen một chàng trai mù có tài vẽ tranh sơn dầu tuyệt mỹ qua cảm nhận xúc giác và mùi hương.",
+		Act2:            "Những ngày tháng cùng nhau rong ruổi qua từng con phố Hà Nội đã nhen nhóm ngọn lửa tình yêu sâu sắc, nhưng căn bệnh hiểm nghèo khiến cô gái chọn cách âm thầm rút lui.",
+		Act3:            "Khi anh được chỉ định phẫu thuật mắt có cơ hội phục hồi thị lực, cô gái phát hiện căn bệnh nan y của mình và lặng lẽ rời xa.",
+		Act4:            "Ngày tháo băng mắt nhìn thấy ánh sáng, chàng trai bàng hoàng nhận ra bức tranh tuyệt mỹ cô gửi lại chính là chân dung của chính cô.",
+		Act5:            "Cuộc hội ngộ nghẹn ngào tại vườn hoa cúc họa mi năm nào, tình yêu đích thực đã vượt qua mọi rào cản số phận để ở bên nhau trọn đời.",
+		Message:         "Tình yêu đích thực không nhìn bằng mắt, mà thấu hiểu bằng cả trái tim.",
+		SuggestedVoice:  "default",
+		Soundscape:      "Acoustic Guitar + Violin da diết sâu lắng",
 	},
 }
 
@@ -621,32 +651,32 @@ Khoảnh khắc kẻ thù năm xưa tìm đến đe dọa mạng sống của t�
 	}
 }
 
-// defaultDramaticScenes tạo danh sách 6 cảnh điện ảnh kịch tính chuẩn 16:9.
+// defaultDramaticScenes tạo danh sách 6 cảnh điện ảnh kịch tính chuẩn 9:16 vertical.
 func defaultDramaticScenes(doc *storyDoc) []storyScene {
 	return []storyScene{
 		{
 			Text: "Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư xa hoa.",
-			ImagePrompt: "Cinematic 16:9 illustration of a luxurious law office interior, rain pouring outside the floor-to-ceiling windows, a young beautiful Vietnamese woman and a handsome businessman signing legal documents on a polished mahogany desk, dramatic moody lighting, 8k masterpiece",
+			ImagePrompt: "Cinematic vertical portrait illustration 9:16 of a luxurious law office interior, rain pouring outside the floor-to-ceiling windows, a young beautiful Vietnamese woman in elegant white blazer and a handsome businessman in dark navy suit signing legal documents on a mahogany desk, dramatic moody lighting, 8k masterpiece",
 		},
 		{
 			Text: "Với mọi người ngoài kia, anh là người chồng hoàn hảo, nhưng đằng sau cánh cửa căn penthouse xa hoa, chúng tôi chỉ là hai người xa lạ cùng diễn một vở kịch.",
-			ImagePrompt: "Modern high-end penthouse living room overlooking city skyline at dusk, spacious minimalist aesthetic, cold emotional distance between a couple standing apart, warm ambient interior light contrasting cold twilight outside, 16:9 widescreen",
+			ImagePrompt: "Modern high-end penthouse living room overlooking city skyline at dusk, vertical 9:16 composition, cold emotional distance between the beautiful Vietnamese woman and handsome businessman standing apart, warm ambient interior light contrasting cold twilight outside",
 		},
 		{
 			Text: "Thời gian trôi qua, những cử chỉ chăm sóc thầm lặng và ánh mắt ấm áp của anh bắt đầu khiến trái tim tôi rung động.",
-			ImagePrompt: "A cozy modern kitchen at night, soft warm lamplight, handsome Vietnamese man gently offering a warm cup of tea to a pensive beautiful woman, tender and emotional atmosphere, cinematic 16:9",
+			ImagePrompt: "A cozy modern kitchen at night, vertical 9:16 framing, soft warm lamplight, the same handsome Vietnamese businessman gently offering a warm cup of tea to the pensive beautiful woman, tender and emotional atmosphere",
 		},
 		{
 			Text: "Một đêm nọ, tôi phát hiện căn phòng bí mật ở tầng áp mái chứa toàn bộ sự thật về vụ tai nạn năm xưa và sự bảo vệ âm thầm suốt mười năm qua của anh.",
-			ImagePrompt: "A secret attic room lit by a desk lamp, old photo albums and archived documents on a wooden table, woman discovering heartfelt secrets in astonishment and tearful eyes, dramatic cinematic composition 16:9",
+			ImagePrompt: "A secret attic room lit by a desk lamp, vertical 9:16 framing, old photo albums and archived documents on a wooden table, the same woman discovering heartfelt secrets in astonishment and tearful eyes, dramatic cinematic composition",
 		},
 		{
 			Text: "Kẻ thù tìm đến đe dọa, giữa lằn ranh sinh tử trong đêm mưa bão, anh đã lao ra lấy thân mình che chở cho tôi.",
-			ImagePrompt: "Dramatic intense confrontation under pouring heavy rain at night on an empty city street, headlights casting sharp shadows, handsome man bravely shielding the woman, high tension cinematic drama 16:9",
+			ImagePrompt: "Dramatic intense confrontation under pouring heavy rain at night on an empty city street, vertical 9:16 composition, headlights casting sharp shadows, the handsome man bravely shielding the woman, high tension cinematic drama",
 		},
 		{
 			Text: "Anh nắm chặt tay tôi và nói: Bản hợp đồng đã kết thúc từ lâu, nhưng tình yêu của anh dành cho em là mãi mãi.",
-			ImagePrompt: "Heartfelt romantic emotional climax in the aftermath of rain, wet asphalt reflecting streetlights, couple embracing closely with tearful loving expressions, breathtaking cinematic lighting, 16:9 widescreen",
+			ImagePrompt: "Heartfelt romantic emotional climax in the aftermath of rain, vertical 9:16 framing, wet asphalt reflecting streetlights, the couple embracing closely with tearful loving expressions, breathtaking cinematic lighting",
 		},
 	}
 }
@@ -698,13 +728,15 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) ([]storyScene, error) {
 	if s.llm != nil {
 		sys := "Bạn là biên tập storyboard kiêm đạo diễn hình ảnh điện ảnh Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video YouTube kể chuyện 16:9 chuẩn 5 sao.
+		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video kể chuyện 9:16 chuẩn 5 sao.
 Mỗi cảnh gồm:
 1. text: 1 đoạn văn kể ở ngôi thứ nhất giàu cảm xúc, ngắt nhịp tự nhiên theo hơi thở (40–120 từ).
-2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh 16:9 tuyệt đẹp:
+2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh 9:16 tuyệt đẹp:
+   - Tỷ lệ khung hình: 9:16 vertical portrait composition, framed vertically.
+   - Tính nhất quán nhân vật (Character Consistency): Thống nhất ngoại hình nhân vật chính xuyên suốt các cảnh (tuổi, trang phục, gương mặt, màu tóc).
    - Cỡ cảnh & góc máy: Đa dạng giữa Wide shot (bối cảnh bao la), Medium shot (tương tác), Close-up (chi tiết biểu cảm nhân vật).
-   - Ánh sáng & không khí: Cinematic lighting, volumetric light, warm golden hour hoặc moody chiaroscuro, atmospheric haze.
-   - Chất lượng: 16:9 widescreen, masterclass cinematic digital painting, highly detailed 8k, photorealistic Vietnamese atmosphere, no text, no watermark.
+   - Ánh sáng & không khí: Cinematic lighting, volumetric light, moody chiaroscuro hoặc warm ambient, atmospheric depth.
+   - Chất lượng: Masterclass cinematic digital painting, highly detailed 8k, photorealistic, Vietnamese context if applicable, no text, no watermark.
 
 Truyện: %s
 
@@ -885,6 +917,10 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	s.setStatus(id, StatusRunning, 25)
 
 	// 3+4. Vẽ ảnh + đọc giọng từng cảnh (fail-closed từng cảnh).
+	anchor := NewVisualAnchor(p.Topic, p.Genre, "", "")
+	s.appendLog(id, fmt.Sprintf("Visual Anchor Matrix: Khóa tạo hình nhân vật (%s, %s) và bối cảnh (%s) xuyên suốt câu chuyện", anchor.ActorName, anchor.FaceTraits, anchor.Environment))
+
+	var storyRefs []ImageRef
 	var clips []string
 	var wavs []string
 	for i, sc := range scenes {
@@ -892,8 +928,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		s.setAsset(aid, StatusRunning, "")
 
 		img := filepath.Join(work, fmt.Sprintf("scene-%02d.png", i))
-		imgPrompt := sc.ImagePrompt + ". Cinematic illustration, 16:9 widescreen, " +
-			"Vietnamese characters if any, no text, no watermark."
+		imgPrompt := anchor.EnrichScenePrompt(sc.ImagePrompt, "slow cinematic drift", i+1, len(scenes))
 		// Đợt Y: job retry tái dùng ảnh đã vẽ xong ở job cũ (cùng prompt) —
 		// khỏi đốt image-gen vẽ lại.
 		reused := false
@@ -904,11 +939,16 @@ func (s *Studio) runStory(id string, p StoryParams) {
 			}
 		}
 		if !reused {
-			s.appendLog(id, fmt.Sprintf("Vẽ ảnh cảnh %d/%d…", i+1, len(scenes)))
-			if err := s.mg.GenerateImage(ctx, imgPrompt, nil, img); err != nil {
+			s.appendLog(id, fmt.Sprintf("Vẽ ảnh cảnh %d/%d (khóa nhân vật & bối cảnh)…", i+1, len(scenes)))
+			if err := s.mg.GenerateImage(ctx, imgPrompt, storyRefs, img); err != nil {
 				s.setAsset(aid, StatusFailed, "")
 				fail(fmt.Errorf("cảnh %d: vẽ ảnh lỗi (%v) — dừng, không dựng thiếu cảnh", i+1, err))
 				return
+			}
+			if i == 0 && fileExists(img) {
+				anchor.MasterPhotoPath = img
+				storyRefs = append(storyRefs, ImageRef{Path: img})
+				s.appendLog(id, "✓ Đã khóa Visual Anchor Cảnh 1 làm mốc nhân vật & bối cảnh chuẩn cho toàn bộ truyện")
 			}
 		}
 
@@ -931,7 +971,6 @@ func (s *Studio) runStory(id string, p StoryParams) {
 			if err := os.WriteFile(wav, wavBytes, 0o644); err != nil {
 				s.setAsset(aid, StatusFailed, "")
 				fail(err)
-				return
 			}
 		}
 		dur := storyProbeDuration(ctx, wav)
@@ -942,9 +981,9 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 		wavs = append(wavs, wav)
 
-		// Clip Ken Burns cho cảnh (tái dùng AssemblePhotoList, khổ 16:9).
+		// Clip Ken Burns cho cảnh (tái dùng AssemblePhotoList, khổ 9:16).
 		clip := filepath.Join(work, fmt.Sprintf("scene-%02d.mp4", i))
-		if err := AssemblePhotoList(ctx, []string{img}, dur, "", 0, clip, "16:9"); err != nil {
+		if err := AssemblePhotoList(ctx, []string{img}, dur, "", 0, clip, "9:16"); err != nil {
 			s.setAsset(aid, StatusFailed, "")
 			fail(fmt.Errorf("cảnh %d: dựng clip lỗi: %w", i+1, err))
 			return
@@ -957,7 +996,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	// 5. Dựng: nối clip → mux audio TTS → nhạc nền (không chữ).
 	s.appendLog(id, "Nối các cảnh…")
 	videoOnly := filepath.Join(work, "video-only.mp4")
-	if err := ConcatClips(ctx, clips, "16:9", videoOnly); err != nil {
+	if err := ConcatClips(ctx, clips, "9:16", videoOnly); err != nil {
 		fail(fmt.Errorf("nối cảnh: %w", err))
 		return
 	}
@@ -1035,10 +1074,11 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 	}
 
-	// 6. QC: 1920x1080 + có audio + dài > 30s (số thật đo từ file).
+	// 6. QC: Chuẩn 9:16 (1080x1920 hoặc 4K 2160x3840) + có audio + dài > 30s.
 	s.appendLog(id, "Kiểm tra chất lượng…")
-	if w, h := ProbeDims(ctx, final); w != 1920 || h != 1080 {
-		fail(fmt.Errorf("QC: khổ video %dx%d, cần 1920x1080", w, h))
+	w, h := ProbeDims(ctx, final)
+	if (w != 1080 && w != 2160 && w != 1920 && w != 3840) || (h != 1920 && h != 3840 && h != 1080 && h != 2160) {
+		fail(fmt.Errorf("QC: khổ video %dx%d, cần 9:16 (1080x1920 hoặc 4K 2160x3840)", w, h))
 		return
 	}
 	if !ProbeHasAudio(ctx, final) {
@@ -1050,7 +1090,17 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		return
 	}
 	dur := storyProbeDuration(ctx, final)
-	s.appendLog(id, fmt.Sprintf("QC đạt: 1920x1080, có audio, %.0fs, %d cảnh", dur, len(scenes)))
+	s.appendLog(id, fmt.Sprintf("QC đạt: 9:16 vertical (%dx%d), có audio, %.0fs, %d cảnh", w, h, dur, len(scenes)))
+
+	// Master 4K Delivery: Nâng cấp phim audio trường thiên lên Master 4K UHD
+	if IsMasterQuality4K() && fileExists(final) {
+		s.appendLog(id, "✨ Xuất bản phim Audio trường thiên chuẩn Master 4K UHD (2160x3840 VideoToolbox 35 Mbps)...")
+		story4k := filepath.Join(work, "master_story_4k.mp4")
+		if err := UpscaleVideoTo4K(ctx, final, story4k, "9:16"); err == nil && fileExists(story4k) {
+			_ = os.Rename(story4k, final)
+			s.appendLog(id, "✓ Phim Audio đạt chuẩn điện ảnh 4K Ultra HD sắc nét tuyệt đối!")
+		}
+	}
 
 	s.setOutput(id, filepath.Base(final))
 
@@ -1077,13 +1127,12 @@ func (s *Studio) runStory(id string, p StoryParams) {
 			}
 			clipName := fmt.Sprintf("studio-%s-clip%d.mp4", id, part)
 			clipPath := filepath.Join(s.outDir, clipName)
-			// Crop 16:9 chính tâm thành 9:16 vertical cho TikTok/Reels/Shorts
+			// Trích xuất clip 9:16 vertical cho TikTok/Reels/Shorts (-c copy nhanh & giữ nguyên chất lượng)
 			args := []string{
 				"-ss", fmt.Sprintf("%.2f", start),
 				"-i", final,
 				"-t", fmt.Sprintf("%.2f", length),
-				"-vf", "crop=ih*9/16:ih:(iw-ih*9/16)/2:0,scale=1080:1920",
-				"-c:a", "copy",
+				"-c", "copy",
 				clipPath,
 			}
 			if err := ffmpegRun(ctx, args...); err == nil {

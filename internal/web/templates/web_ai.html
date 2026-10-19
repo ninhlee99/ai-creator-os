@@ -174,6 +174,7 @@
       <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản (ChatGPT)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn (Claude)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Ảnh 4K (Gemini)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('googleflow')">🌊 Google Flow (1.000 Credits ➔ 4K)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
     </div>
@@ -222,7 +223,53 @@
       <pre class="prompt-box" id="txt-gemini-prompts" style="display:none"></pre>
     </div>
 
-    <!-- Section 6: Muse AI Motion Prompts & Direct Studio Bridge -->
+    <!-- Section 6: Google Flow (Veo SD 480p - 1.000 Credits Free) & 4K Remastering Bridge -->
+    <div id="sec-googleflow" class="prompt-sec-content" style="display:none">
+      <!-- Direct Google Flow Import Box -->
+      <div style="background:linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:24px">🌊</span>
+          Google Flow Studio Bridge — Tận Dụng 1.000 Credits Miễn Phí Mỗi Tháng
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
+          Tạo clip Veo SD 480p trên Google Flow (chỉ ~10 credit/clip) để không mất phí. Sau đó dán link clip hoặc chọn file 480p đã tải — hệ thống sẽ tự động kích hoạt bộ lọc Apple Silicon VideoToolbox: <b>hqdn3d + Lanczos 4K + Unsharp Contrast Mask</b> để xuất bản video 4K Ultra HD sắc nét và khóa khuôn mặt!
+        </p>
+        <form method="POST" action="/studio/flow-import" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;align-items:end">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🔗 Link Video Hoặc File Path (.mp4 480p)</label>
+            <input type="text" name="video_url" class="form-control" placeholder="Link tải hoặc đường dẫn clip 480p..." required style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
+            <input type="text" name="topic" class="form-control" placeholder="VD: Review Mỹ Phẩm Triệu View" value="Review Mỹ Phẩm Triệu View" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">✨ Nâng Cấp Chất Lượng</label>
+            <select name="remaster" class="form-control" style="width:100%;margin-top:4px">
+              <option value="4k" selected>⚡ Remaster 4K UHD VideoToolbox (35 Mbps)</option>
+              <option value="1080p">Chuẩn HD 1080p</option>
+            </select>
+          </div>
+          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+            <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">
+              🌐 Mở Google Labs Flow ↗
+            </a>
+            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">
+              🚀 Remaster 4K & Nhập Vào Studio ↗
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="sec-actions">
+        <b>🌊 Prompt Video Tối Ưu Cho Google Flow (SD 480p)</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-googleflow-prompts')">📋 Copy tất cả</button>
+      </div>
+      <div id="txt-googleflow-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
+      <pre class="prompt-box" id="txt-googleflow-prompts" style="display:none"></pre>
+    </div>
+
+    <!-- Section 7: Muse AI Motion Prompts & Direct Studio Bridge -->
     <div id="sec-museai" class="prompt-sec-content" style="display:none">
       <!-- Direct Muse Import Box -->
       <div style="background:linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
@@ -346,7 +393,7 @@ function loadSamplePreset(preset) {
 
 function showPromptSection(sec) {
   document.querySelectorAll('.result-tabs .res-tab').forEach(function(t) { t.classList.remove('active'); });
-  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'museai', 'guide'].forEach(function(s) {
+  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'googleflow', 'museai', 'guide'].forEach(function(s) {
     var el = document.getElementById('sec-' + s);
     if (el) el.style.display = (s === sec) ? 'block' : 'none';
   });
@@ -502,6 +549,9 @@ function generateMultiAIPrompts() {
     var gList = document.getElementById('txt-gemini-prompts-list');
     gList.innerHTML = '';
     var gAll = '';
+    var fList = document.getElementById('txt-googleflow-prompts-list');
+    if (fList) fList.innerHTML = '';
+    var fAll = '';
     var mList = document.getElementById('txt-museai-prompts-list');
     mList.innerHTML = '';
     var mAll = '';
@@ -526,15 +576,31 @@ function generateMultiAIPrompts() {
         '</div>' +
       '</div>';
 
+      // Google Flow prompt: clean, direct, 480p friendly with camera motion keywords
+      var flowPrompt = (sc.visual_concept || sc.scene_name) + ', smooth camera motion, photorealistic 35mm film still, vertical 9:16, completely clean frame, no text, no watermark';
+      fAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + ' - 10 Credits):\n' + flowPrompt + '\nFirst Frame: scene_' + (i+1) + '.png (hoặc master photo)\n\n';
+      if (fList) {
+        fList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">' +
+          '<div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+            '<div><b>Cảnh ' + (i+1) + ': ' + sc.scene_name + '</b> <span class="badge badge-ok" style="font-size:11px">~10 Credits SD 480p</span></div>' +
+            '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + flowPrompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt Google Flow cảnh ' + (i+1) + '\', true)">📋 Copy</button>' +
+          '</div>' +
+          '<p class="sc-body" style="font-size:12px;color:var(--text);margin:0 0 6px;line-height:1.4">' + flowPrompt + '</p>' +
+          '<div style="font-size:11px;color:var(--muted);background:var(--bg3);padding:4px 8px;border-radius:6px">🖼️ <b>First Frame mồi:</b> Kéo thả ảnh Cảnh ' + (i+1) + ' vào ô First Frame trên Flow để khóa nhân vật 100%!</div>' +
+        '</div>';
+      }
+
       mAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.muse_ai_prompt + '\n\n';
       mList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.muse_ai_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt video cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.muse_ai_prompt + '</p></div>';
     });
 
     document.getElementById('txt-gemini-prompts').textContent = gAll;
+    var elFlowAll = document.getElementById('txt-googleflow-prompts');
+    if (elFlowAll) elFlowAll.textContent = fAll;
     document.getElementById('txt-museai-prompts').textContent = mAll;
 
     document.getElementById('prompts-result-area').style.display = 'block';
-    window.showToast('Đã kích hoạt cả 4 AI: Kịch bản, 4 Biến thể Hook & Bài đăng đa kênh sẵn sàng!', true);
+    window.showToast('Đã kích hoạt cả 5 AI: Google Flow 480p, Gemini, Claude, ChatGPT & Muse AI sẵn sàng!', true);
     document.getElementById('prompts-result-area').scrollIntoView({ behavior: 'smooth' });
   })
   .catch(function(err) {

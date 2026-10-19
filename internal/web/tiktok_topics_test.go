@@ -65,7 +65,7 @@ func TestAPITikTokTopics(t *testing.T) {
 	}
 }
 
-func TestStudioPageTopicRendering(t *testing.T) {
+func TestViralPageTopicRendering(t *testing.T) {
 	s := newTestServer(t)
 	st, err := studio.New(filepath.Join(t.TempDir(), "studio.db"), nil, nil, nil, t.TempDir())
 	if err != nil {
@@ -74,9 +74,9 @@ func TestStudioPageTopicRendering(t *testing.T) {
 	t.Cleanup(func() { st.Close() })
 	s.Studio = st
 
-	rec := get(t, s, "/studio")
+	rec := get(t, s, "/viral")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /studio = %d, want 200", rec.Code)
+		t.Fatalf("GET /viral = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 
@@ -89,7 +89,7 @@ func TestStudioPageTopicRendering(t *testing.T) {
 		"topic-videos-grid",
 	} {
 		if !strings.Contains(body, want) {
-			t.Errorf("studio page thiếu chuỗi UI: %q", want)
+			t.Errorf("viral page thiếu chuỗi UI: %q", want)
 		}
 	}
 }

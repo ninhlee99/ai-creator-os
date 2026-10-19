@@ -94,6 +94,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/viral", s.handleStudioViralCreate)
 	mux.HandleFunc("POST /studio/viral/quick", s.handleStudioViralQuick)
 	mux.HandleFunc("POST /studio/muse-import", s.handleStudioMuseImport)
+	mux.HandleFunc("POST /studio/flow-import", s.handleStudioFlowImport)
 	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
 	mux.HandleFunc("GET /api/studio/faceswap-status", s.handleAPIFaceSwapStatus)
 	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
@@ -200,6 +201,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
 	mux.HandleFunc("POST /viral/quick", s.handleViralQuick)
+	mux.HandleFunc("POST /viral/clips/import", s.handleViralClipImport)
 
 	// Master Autonomous Harness Agent (OODA loop, experiential memory, portfolio control).
 	mux.HandleFunc("GET /harness", s.handleHarness)

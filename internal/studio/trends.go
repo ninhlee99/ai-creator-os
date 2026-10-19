@@ -46,28 +46,37 @@ func FetchVNTrending(ctx context.Context) ([]TrendingSound, error) {
 		defer trendsMu.Unlock()
 		return append([]TrendingSound(nil), trendsCache...), trendsErr
 	}
-	trendsMu.Unlock()
-
-	sounds, err := fetchKworbVN(ctx)
-
-	trendsMu.Lock()
-	trendsCache = sounds
-	trendsCached = time.Now()
-	trendsErr = err
-	trendsMu.Unlock()
-
-	if err != nil {
-		return nil, err
+	// If we have existing cached sounds (even if stale), return immediately and refresh in background
+	if len(trendsCache) > 0 {
+		defer trendsMu.Unlock()
+		go RefreshVNTrendingAsync()
+		return append([]TrendingSound(nil), trendsCache...), trendsErr
 	}
-	return append([]TrendingSound(nil), sounds...), nil
+	trendsMu.Unlock()
+
+	// Cold start: return curated Vietnamese trending hits instantly without blocking on 25s HTTP request
+	RefreshVNTrendingAsync()
+	return append([]TrendingSound(nil), curatedVietnameseHits...), nil
 }
 
 // RefreshVNTrending forces a fresh fetch (dashboard "làm mới" button).
 func RefreshVNTrending(ctx context.Context) ([]TrendingSound, error) {
+	sounds, err := fetchKworbVN(ctx)
 	trendsMu.Lock()
-	trendsCached = time.Time{}
-	trendsMu.Unlock()
-	return FetchVNTrending(ctx)
+	if err == nil && len(sounds) > 0 {
+		trendsCache = sounds
+		trendsCached = time.Now()
+		trendsErr = nil
+	} else if err != nil {
+		trendsErr = err
+	}
+	defer trendsMu.Unlock()
+	if err != nil && len(trendsCache) > 0 {
+		return append([]TrendingSound(nil), trendsCache...), err
+	} else if err != nil {
+		return append([]TrendingSound(nil), curatedVietnameseHits...), err
+	}
+	return append([]TrendingSound(nil), sounds...), nil
 }
 
 // TrendsStale reports whether the cached chart is older than the TTL (or

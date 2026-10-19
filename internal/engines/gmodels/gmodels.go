@@ -38,10 +38,11 @@ const (
 	TTS
 )
 
-// Mặc định cập nhật 12/10/2026. Lỗi thời thì Rediscover tự thay.
+// Mặc định cập nhật theo các model chính thức mới nhất của Google Gemini.
+// Khi Google cập nhật model mới hơn trên API, Rediscover sẽ tự động phát hiện và chuyển đổi.
 var defaults = map[Kind]string{
-	Text:  "gemini-3.8-flash",
-	Image: "gemini-3.1-flash-image",
+	Text:  "gemini-2.5-flash",
+	Image: "gemini-2.0-flash-preview-image-generation",
 	TTS:   "gemini-2.5-flash-preview-tts",
 }
 

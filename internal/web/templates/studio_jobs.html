@@ -255,19 +255,14 @@
   <!-- Media Player & Completed Video Controls -->
   {{if .Output}}
   <div class="media-preview-container" style="display:flex;gap:22px;margin:16px 0;flex-wrap:wrap;align-items:flex-start">
-    <div style="{{if eq .Kind "story"}}width:340px;aspect-ratio:16/9;{{else}}width:220px;aspect-ratio:9/16;{{end}}background:#000;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);position:relative;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
-      <video class="player" controls preload="metadata" src="/media/{{.Output}}" style="width:100%;height:100%;object-fit:cover;display:block"></video>
+    <div style="width:220px;aspect-ratio:9/16;background:#000;border-radius:14px;overflow:hidden;border:1.5px solid var(--border);position:relative;box-shadow:0 8px 24px rgba(0,0,0,0.18)">
+      <video class="player" controls preload="metadata" src="/media/{{.Output}}" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:cover;display:block"></video>
     </div>
     <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
       <!-- Format Specs Badges -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span class="badge badge-ok" style="font-weight:700">✓ Video hoàn chỉnh</span>
-        {{if eq .Kind "story"}}
-        <span class="badge badge-draft">📺 1920×1080 (16:9 YouTube Full HD)</span>
-        <span class="badge badge-draft">📱 Kèm bản cắt 9:16 Shorts</span>
-        {{else}}
-        <span class="badge badge-draft">📱 1080×1920 (9:16 Shorts/TikTok)</span>
-        {{end}}
+        <span class="badge badge-ok" style="font-weight:700">✓ Video hoàn chỉnh (9:16)</span>
+        <span class="badge badge-draft">📱 1080×1920 (9:16 Chuẩn TikTok / Shorts)</span>
         <span class="badge badge-draft">🎬 H.264 MP4</span>
         <span class="badge badge-info">⚡ Sẵn sàng đăng kênh</span>
       </div>
@@ -285,9 +280,6 @@
         {{if eq .Kind "story"}}
         <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/studio-{{.ID}}-clip1.mp4', '{{.Title}} (Shorts 9:16)')" style="font-weight:700;padding:8px 12px">📱 Xem Shorts (9:16)</button>
         <a class="btn btn-secondary btn-sm" href="/media/studio-{{.ID}}-clip1.mp4" download style="font-weight:700;padding:8px 12px;text-align:center">⬇ Tải Shorts (9:16)</a>
-        {{end}}
-        {{if eq .Kind "viral"}}
-        <a class="btn btn-secondary btn-sm" href="/media/viral_{{.ID}}.srt" download style="font-weight:700;padding:8px 12px;text-align:center">💬 Tải Phụ Đề (.srt)</a>
         {{end}}
         <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-weight:700;padding:8px 12px">🎬 Storyboard Từng Cảnh</button>
       </div>

@@ -805,6 +805,8 @@ function openConnectModal(p, name, ph, guide, loginUrl) {
       link.href = 'https://grok.com';
     } else if (p === 'muse' || p === 'museai') {
       link.href = 'https://muse.ai/signin';
+    } else if (p === 'googleflow') {
+      link.href = 'https://labs.google/flow';
     }
     link.textContent = '🚀 Mở Màn Hình Đăng Nhập ' + name + ' ↗';
   }
@@ -819,6 +821,8 @@ function openConnectModal(p, name, ph, guide, loginUrl) {
       note.textContent = 'Mở trang đăng nhập Grok (xAI) chính thức trong tab mới.';
     } else if (p === 'muse' || p === 'museai') {
       note.textContent = 'Mở trang đăng nhập Muse AI chính thức trong tab mới.';
+    } else if (p === 'googleflow') {
+      note.textContent = 'Mở Google Flow (labs.google/flow) — Tận dụng 1.000 credit video miễn phí hàng tháng!';
     } else {
       note.textContent = 'Mở trang đăng nhập dịch vụ chính thức trong tab mới.';
     }

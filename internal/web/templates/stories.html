@@ -6,7 +6,7 @@
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Kể chuyện YouTube &amp; Phim Ngắn AI (16:9)</h1>
+    <h1>Kể chuyện YouTube Shorts &amp; Phim Ngắn AI (9:16)</h1>
     <p class="subtitle">Sáng tạo câu chuyện tự động với hình ảnh phân cảnh, giọng đọc truyền cảm và phụ đề.</p>
   </div>
   <div class="webai-header-actions">
@@ -15,12 +15,6 @@
   </div>
 </div>
 
-<!-- Unified Studio Suite Navigation -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio">🛍️ Xưởng Video Affiliate Lookbook (9:16)</a>
-  <a href="/viral">🔥 Xưởng Video Đu Trend Viral (9:16)</a>
-  <a href="/stories" class="active">📖 Xưởng Kể Chuyện Audio (16:9)</a>
-</nav>
 
 {{if .Stories.Error}}<p class="err">{{.Stories.Error}}</p>{{end}}
 
@@ -63,52 +57,91 @@
   <div class="card" style="padding:14px 18px;border-radius:12px">
     <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Định Dạng Đầu Ra</div>
     <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">
-      16:9 YouTube + 9:16 Shorts
+      📱 9:16 Full HD (TikTok, Reels, Shorts)
     </div>
   </div>
 </div>
 
-<!-- 1-Click Story Idea Presets -->
-<div class="card" style="border-radius:12px;padding:14px 18px;margin-bottom:20px;background:var(--bg2);border:1px solid var(--border)">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
-      <span>💡</span> Gợi Ý Chủ Đề Kể Chuyện Triệu View:
+<!-- 1-Click Curated Cinematic Story Showcase (Ultra-Lazy Production) -->
+<div class="card" style="border-radius:14px;padding:20px;margin-bottom:24px;background:linear-gradient(135deg, rgba(20,24,38,0.95), rgba(12,14,24,0.98));border:1.5px solid rgba(99,102,241,0.3);box-shadow:0 8px 24px rgba(0,0,0,0.3)">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+    <div>
+      <div style="font-size:16px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px">
+        <span>🎬</span> Chế Độ 1-Chạm: Kể Chuyện Audio Điện Ảnh Chuẩn 9:16 (30 - 60 Phút)
+        <span class="badge badge-ok" style="font-size:10.5px">5-Sao Cinematic</span>
+      </div>
+      <p style="margin:4px 0 0;font-size:12.5px;color:var(--muted);line-height:1.5">
+        Dành cho người bận rộn: Chọn cốt truyện kinh điển dưới đây, bấm <b>"⚡ Chạy Ngay 1-Chạm"</b> — Hệ thống tự tạo kịch bản 5 hồi kịch tính, tranh minh họa 9:16 điện ảnh tuyệt đẹp và không gian âm thanh đa lớp cuốn hút thính giả.
+      </p>
     </div>
-    <span class="badge badge-dim" style="font-size:10px">Click để điền nhanh</span>
+    <span class="chip chip-live" style="font-size:11px">✨ 10 Cốt Truyện Tuyển Chọn Sẵn Sàng</span>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Đêm mưa ở Đà Lạt và cuộc gặp gỡ khiến tôi từ bỏ công việc văn phòng')">🌧️ Đêm mưa Đà Lạt</button>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Bí ẩn căn biệt thự bỏ hoang trên đỉnh đèo Hải Vân 30 năm trước')">🏚️ Bí ẩn đèo Hải Vân</button>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Bài học kinh doanh đầu đời: Tôi đã mất trắng 500 triệu năm 22 tuổi như thế nào?')">📉 Bài học kinh doanh</button>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="setStoryTopic('Chuyến tàu đêm định mệnh và người lạ để lại bức thư không người gửi')">🚂 Chuyến tàu đêm</button>
+
+  <div class="grid2" style="gap:16px">
+    {{range .Stories.CuratedPlots}}
+    <div class="card" style="border-radius:12px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <span class="badge badge-info" style="font-size:11px;font-weight:700">{{.GenreLabel}}</span>
+          <span class="chip" style="font-size:11px;font-weight:700;color:var(--primary)">⏱️ {{.DurationMinutes}} phút</span>
+        </div>
+        <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:6px">{{.Title}}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px">{{.Logline}}</div>
+        
+        <details style="font-size:11.5px;color:var(--muted);background:var(--bg);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <summary style="font-weight:700;cursor:pointer;color:var(--text)">📖 Cấu trúc 5 hồi kịch tính &amp; Dàn cảnh</summary>
+          <div style="margin-top:8px;line-height:1.5;display:flex;flex-direction:column;gap:4px">
+            <div><b>Hồi 1 (Khởi nguồn):</b> {{.Act1}}</div>
+            <div><b>Hồi 2 (Dấn thân):</b> {{.Act2}}</div>
+            <div><b>Hồi 3 (Cao trào):</b> {{.Act3}}</div>
+            {{if .Act4}}<div><b>Hồi 4 (Bước ngoặt):</b> {{.Act4}}</div>{{end}}
+            {{if .Act5}}<div><b>Hồi 5 (Lời giải):</b> {{.Act5}}</div>{{end}}
+            <div style="margin-top:4px;color:var(--primary)"><b>💡 Thông điệp:</b> {{.Message}}</div>
+          </div>
+        </details>
+
+        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <span>🎧 <b>Âm thanh:</b></span> <span>{{.Soundscape}}</span>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillStoryForm('{{.Title}}', '{{.Genre}}', {{.DurationMinutes}}, '{{.SuggestedVoice}}')">✏️ Nạp vào Form</button>
+        <button type="button" class="btn btn-primary btn-sm" style="font-weight:700" onclick="launchCuratedPlot('{{.Title}}', '{{.Genre}}', {{.DurationMinutes}}, '{{.SuggestedVoice}}')">⚡ Chạy Ngay 1-Chạm</button>
+      </div>
+    </div>
+    {{end}}
   </div>
 </div>
 
 <div class="card form-card" style="border-radius:14px;padding:22px 24px;margin-bottom: 24px;border:1.5px solid var(--border)">
   <h2 style="margin:0 0 14px;font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px">
-    <span>✍️</span> Kể chuyện mới — Sáng Tác &amp; Dựng Phim AI
+    <span>✍️</span> Kể chuyện mới — Sáng Tác &amp; Dựng Phim Chuẩn Điện Ảnh (9:16)
   </h2>
-  <form method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang viết kịch bản & dựng phim…';}">
+  <form id="story-form" method="post" action="/stories" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang viết kịch bản & dựng phim 5 sao…';}">
     <div class="field" style="margin-bottom:16px">
       <label style="font-weight:700;font-size:13px">Chủ đề câu chuyện <span class="req">*</span></label>
-      <input type="text" name="topic" id="story-topic-input" required placeholder="Ví dụ: Đêm mưa ở Đà Lạt khiến tôi đổi nghề, Bí mật căn nhà cổ..." style="font-size:14px;padding:10px 14px">
+      <input type="text" name="topic" id="story-topic-input" required placeholder="Ví dụ: Đêm mưa ở Đà Lạt khiến tôi đổi nghề, Bí mật căn nhà cổ ven sông..." style="font-size:14px;padding:10px 14px">
     </div>
 
     <div class="grid3" style="gap:16px;margin-bottom:16px">
       <div class="field">
         <label style="font-weight:700;font-size:13px">Thể loại câu chuyện</label>
-        <select name="genre" style="padding:9px 12px">
-          <option value="tâm lý" selected>🎭 Tâm lý &amp; Cuộc sống (Cảm động, chiêm nghiệm)</option>
-          <option value="ly kỳ">🕵️ Ly kỳ &amp; Bí ẩn (Gay cấn, hồi hộp)</option>
-          <option value="kinh dị">👻 Kinh dị &amp; Truyện ma đêm khuya (U ám, rùng rợn)</option>
-          <option value="lịch sử">📜 Lịch sử &amp; Huyền sử Việt Nam (Hào hùng, bi tráng)</option>
-          <option value="khởi nghiệp">💼 Bài học kinh doanh &amp; Thành công (Thực tế, sâu sắc)</option>
+        <select name="genre" id="story-genre-select" style="padding:9px 12px">
+          <option value="tâm lý" selected>🎭 Tâm lý &amp; Cuộc sống (Radio Đêm Khuya)</option>
+          <option value="kinh dị">👻 Kinh dị &amp; Truyện ma làng quê (Rùng rợn)</option>
+          <option value="trinh thám">🕵️ Kỳ án trinh thám &amp; Giải mã (Hồi hộp)</option>
+          <option value="triết lý">🌾 Bài học nhân sinh &amp; Đạo lý (Sâu lắng)</option>
+          <option value="kinh doanh">💼 Thương trường &amp; Khởi nghiệp (Thực tế)</option>
+          <option value="lịch sử">📜 Dã sử huyền huyễn (Bi tráng)</option>
+          <option value="tình cảm">❤️ Tình cảm &amp; Ngôn tình đô thị (Lãng mạn)</option>
+          <option value="ly kỳ">🔍 Ly kỳ &amp; Bí ẩn siêu nhiên</option>
         </select>
       </div>
 
       <div class="field">
         <label style="font-weight:700;font-size:13px">Thời lượng câu chuyện</label>
-        <select name="duration_minutes" style="padding:9px 12px;font-weight:600">
+        <select name="duration_minutes" id="story-duration-select" style="padding:9px 12px;font-weight:600">
           <option value="30" selected>⏱️ 30 phút (YouTube Podcast - Khuyên dùng)</option>
           <option value="45">⏱️ 45 phút (Kể chuyện đêm khuya sâu sắc)</option>
           <option value="60">⏱️ 60 phút (Trường thiên 1 giờ đỉnh cao)</option>
@@ -118,7 +151,7 @@
 
       <div class="field">
         <label style="font-weight:700;font-size:13px">Giọng đọc kể chuyện (Voiceover)</label>
-        <select name="voice" style="padding:9px 12px">
+        <select name="voice" id="story-voice-select" style="padding:9px 12px">
           <option value="" selected>Mặc định (Giọng truyền cảm chuẩn)</option>
           <option value="female">Giọng Nữ (Dịu dàng, sâu lắng, cảm xúc)</option>
           <option value="male">Giọng Nam (Trầm ấm, uy quyền, bí ẩn)</option>
@@ -150,7 +183,7 @@
 
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div style="font-size:12px;color:var(--muted)">
-        💡 AI sẽ tự động sinh hình ảnh minh họa cho từng cảnh và xuất bản cả 2 định dạng: <b>16:9 YouTube Full HD</b> và <b>9:16 Shorts</b>.
+        💡 AI sẽ tự động sinh hình ảnh minh họa cho từng cảnh và xuất bản định dạng: <b>9:16 Chuẩn Dọc Điện Ảnh Full HD</b> (tối ưu TikTok, YouTube Shorts, Reels).
       </div>
       <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:800;font-size:14px">
         🚀 Viết Kịch Bản &amp; Dựng Phim Kể Chuyện ➔
@@ -160,12 +193,36 @@
 </div>
 
 <script>
-function setStoryTopic(t) {
-  var inp = document.getElementById('story-topic-input');
-  if (inp) {
-    inp.value = t;
-    inp.focus();
+function fillStoryForm(topic, genre, dur, voice) {
+  var topicInp = document.getElementById('story-topic-input');
+  var genreSel = document.getElementById('story-genre-select');
+  var durSel = document.getElementById('story-duration-select');
+  var voiceSel = document.getElementById('story-voice-select');
+  if (topicInp) topicInp.value = topic;
+  if (genreSel && genre) genreSel.value = genre;
+  if (durSel && dur) durSel.value = dur;
+  if (voiceSel && voice) voiceSel.value = voice;
+  if (topicInp) {
+    topicInp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    topicInp.focus();
   }
+}
+
+function launchCuratedPlot(topic, genre, dur, voice) {
+  fillStoryForm(topic, genre, dur, voice);
+  var form = document.getElementById('story-form');
+  if (form) {
+    var btn = form.querySelector('button[type=submit]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Đang kích hoạt dựng phim kể chuyện 1-chạm...';
+    }
+    form.submit();
+  }
+}
+
+function setStoryTopic(t) {
+  fillStoryForm(t, '', 30, '');
 }
 </script>
 

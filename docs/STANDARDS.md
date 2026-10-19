@@ -77,3 +77,13 @@ này. Vi phạm = làm lại. (Ninh chốt 2026-10-02.)
 Mỗi đợt (wave) kết thúc bằng audit theo checklist `~/AGENTS.md` + tài liệu này.
 Đợt G có audit toàn dự án: kiến trúc, README, docs, UI, cấu trúc — chấm điểm,
 <85/100 làm lại.
+
+## 8. Chuẩn Video Có Hồn & Quay Phim Tự Nhiên (Natural Cinematic Standard)
+
+Tuân thủ nghiêm ngặt theo tài liệu Open-Spec: `docs/OPEN_SPEC.md`.
+- **Chống méo hình học (Anti-Distortion)**: 100% video xuất ra phải đạt chuẩn 9:16 (`1080x1920`) hoặc 16:9 (`1920x1080`) qua thuật toán Scale & Crop Lanczos (`force_original_aspect_ratio=increase,crop=W:H,setsar=1`). Tuyệt đối cấm co dãn méo mặt/vật thể.
+- **Chuyển động người thật (Living Subject)**: Affiliate video ưu tiên video lookbook chuyển động thật và ghép mặt InsightFace. Tuyệt đối không dán ảnh tĩnh sản phẩm với thẻ chữ to dày rồi zoompan lắc máy thô thiển.
+- **Chuyển cảnh CapCut Pro**: Sử dụng hiệu ứng chớp sáng trắng (`fade=white`) đồng bộ theo nhịp beat, chuyển động trôi nhẹ Ken Burns < 8%. Cấm dùng thuật toán rung lắc cơ học nhức mắt (`sin/cos oscillation`).
+- **Nguồn vũ đạo triệu view**: Video nhảy viral lấy trực tiếp từ TikTok Việt Nam và Douyin Trung Quốc (抖音), bắt đúng nhạc hot trend.
+- **Truyện Audio điện ảnh**: Truyện dài 30-60 phút phải có visual canvas đa cảnh liên tục (8-15s/cảnh), hòa âm 3 lớp (Giọng đọc VieNeu + Foley môi trường + Nhạc nền). Tuyệt đối cấm để video nền đen.
+

@@ -29,33 +29,33 @@ Mỗi video viral 9:16 được thiết kế chặt chẽ theo 4 phân đoạn v
 4. **Phân cảnh 4: Kêu Gọi Hành Động Tự Nhiên (CTA & Follow - 24 đến 30s)**
    - Đúc kết cảm xúc tích cực, kêu gọi lưu video và follow kênh để đón xem tập tiếp theo.
 
-## 3. Giao diện điều hành (`/viral`)
+## 3. Giao diện điều hành & Nguồn Vũ Đạo Triệu View (`/viral`)
 
-Trang `/viral` bao gồm 3 khu vực chính:
+Trang `/viral` bao gồm các khu vực hiện đại:
 
-1. **Bảng chỉ số & Tự động hóa**:
-   - Công tắc `viral.auto_produce_enabled`: Bật/tắt chế độ tự động sáng tạo mỗi ngày.
-   - Số lượng video đang render AI (kèm thanh tiến độ và log thời gian thực).
-   - Kho lưu trữ video đã hoàn thành sẵn sàng xuất bản.
-2. **Khởi tạo 1-Chạm (1-Click Fast Launcher)**:
-   - Các thẻ gợi ý theo xu hướng thực tế: Bí ẩn & Giật gân, Kinh nghiệm & Đời sống, Công nghệ mới, Đánh giá KOC.
-   - Thể hiện tiềm năng lượt xem và câu Hook mở đầu mẫu.
-3. **Tùy chỉnh kịch bản theo yêu cầu**:
-   - Nhập chủ đề bất kỳ.
-   - Lựa chọn thể loại, phong cách hình ảnh (Điện ảnh, 3D nghệ thuật, Thực tế đời sống, Cyber neon).
-   - Chọn kênh đại diện để đồng bộ phong cách Brand DNA.
-   - Chọn thời lượng mục tiêu (15s, 30s, 45s, 60s).
-4. **Trình phát video xem trước & Tải về**:
-   - Trình phát video dọc 9:16 HTML5 tích hợp trực tiếp trên dashboard.
-   - Nút tải file `.mp4` hoặc đẩy sang Cổng Xuất Bản (`/publishers`).
+1. **Radar Kênh Nữ Triệu View (TikTok VN & Douyin Trung Quốc)**:
+   - Quét realtime video từ các nhà sáng tạo hàng chục triệu người theo dõi: Đào Lê Phương Hoa (`@hoadancer`), C.A.C Dance Crew, Douyin Hot Beat Dance.
+   - Nút **"Bắt Chước Trend Kênh Này (Ghép Mặt Tôi)"**: 1-chạm nạp ngay video mẫu và nhạc nền hot vào form xử lý.
+2. **Bộ Lọc Nguồn Vũ Đạo & Nhập Link Mới**:
+   - Tab chuyển nhanh: `Tất cả` | `🇻🇳 TikTok Việt Nam` | `🇨🇳 Douyin Trung Quốc (抖音)`.
+   - Hộp nhập link `📥 Nhập Link Video Mới`: Hỗ trợ link bất kỳ từ TikTok (`tiktok.com/@...`) hoặc Douyin (`v.douyin.com/...`). Sử dụng `yt-dlp` tách watermark và FFmpeg chuẩn hóa 1080x1920 30fps.
+3. **Quy Trình Khóa Mặt Nhân Vật (Face Lock via InsightFace)**:
+   - **Bước 1**: Chọn khuôn mặt nhân vật của kênh từ Thư viện Nhân vật (`/models`) hoặc tải lên ảnh mới.
+   - **Bước 2**: Chọn video vũ đạo mẫu chuyển động trong trình xem trước 9:16.
+   - **Bước 3**: Nhấn "Giao Cho AI Render Lại Video Mẫu Với Khuôn Mặt Này" — InsightFace tự động hoán đổi khuôn mặt vào từng frame của video nhảy với 5 điểm mốc nhân trắc học và hòa trộn viền da tự nhiên.
+4. **Hàng đợi & Kho Video Hoàn Chỉnh**:
+   - Trình phát video dọc 9:16 HTML5 với thanh tiến độ real-time, **khung hình sạch 100% không dán chữ, không phụ đề** theo chuẩn Natural Spec v2.
+   - Trọn gói đăng kênh: Nút tải `.mp4`, nút **Copy Post Kit** (Tiêu đề + Caption + Hashtags + Link Bio) và **Ghim vào Kệ Bio**.
+   - **Cơ chế Phản Chiếu Video Viral Gốc (Original Mirroring)**: Kế thừa 100% âm thanh gốc, nhịp điệu và thời lượng tự nhiên của clip triệu view mẫu.
 
 ## 4. Kiến trúc kỹ thuật & Lưu trữ
 
 - **Job Kind**: `KindViral = "viral"` trong cơ sở dữ liệu `studio.db` (bảng `studio_jobs` và `studio_assets`).
-- **Engine**: Đóng gói trong package `internal/studio` (`viral.go`).
-- **Render Engine**:
-  - Biên dịch chuyển động Ken Burns chuẩn tỉ lệ dọc 9:16 (1080x1920) qua FFmpeg.
-  - Hòa âm giọng đọc voiceover và nhạc nền trending tự động cân bằng âm lượng (Audio Normalization).
+- **Engine**: Đóng gói trong package `internal/studio` (`viral.go`) và `internal/web` (`viral.go`).
+- **Identity & Conforming Engine**:
+  - `scripts/face_swapper.py`: Script Python InsightFace (chạy độc lập, không ép buộc môi trường máy chủ) nhận diện và hoán đổi khuôn mặt qua ResNet/Antelopev2.
+  - Chuẩn hóa FFmpeg: `scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,setsar=1`.
 - **Phục hồi & Fail-closed**:
-  - Toàn bộ pipeline chạy nền được bảo vệ bằng `recover()` bắt panic, timeout tối đa 20 phút.
-  - Không block luồng web; dashboard liên tục cập nhật tiến độ qua API poll.
+  - Toàn bộ pipeline chạy nền được bảo vệ bằng `runtimeguard`, timeout tối đa 20 phút.
+  - Cập nhật tiến độ realtime cho người dùng qua UI.
+

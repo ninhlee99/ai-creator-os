@@ -13,12 +13,34 @@ import (
 	"strings"
 
 	xdraw "golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
-// GenerateCinematicStoryScene creates a widescreen 16:9 (1920x1080) cinematic scene frame
+// findAvailableVisualAssets scans all local high-resolution visual model and scenery assets.
+func findAvailableVisualAssets() []string {
+	var out []string
+	patterns := []string{
+		"data/models/*.jpg",
+		"data/models/*.png",
+		"docs/assets/*/*.jpg",
+		"docs/assets/*/*.png",
+		"docs/assets/*/*.webp",
+	}
+	for _, p := range patterns {
+		matches, _ := filepath.Glob(p)
+		for _, m := range matches {
+			if s, err := os.Stat(m); err == nil && s.Size() > 20000 {
+				out = append(out, m)
+			}
+		}
+	}
+	return out
+}
+
+// GenerateCinematicStoryScene creates a vertical 9:16 (1080x1920) cinematic scene frame
 // for YouTube romance/story videos without any text/captions (pure visual).
 func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPath string) error {
-	w, h := 1920, 1080
+	w, h := 1080, 1920
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 
 	type palette struct {
@@ -27,28 +49,23 @@ func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPa
 	}
 	moods := []palette{
 		// Scene 1: Rainy moody dusk / melancholic intro (deep slate blues & navy)
-		{color.RGBA{15, 23, 42, 255}, color.RGBA{30, 41, 59, 255}, color.RGBA{10, 15, 29, 255}, 0.2},
+		{color.RGBA{30, 41, 59, 255}, color.RGBA{51, 65, 85, 255}, color.RGBA{15, 23, 42, 255}, 0.2},
 		// Scene 2: Penthouse cold distance / secret twilight (deep indigo & muted charcoal)
-		{color.RGBA{23, 19, 38, 255}, color.RGBA{45, 36, 68, 255}, color.RGBA{15, 12, 28, 255}, 0.3},
+		{color.RGBA{45, 36, 68, 255}, color.RGBA{74, 58, 110, 255}, color.RGBA{23, 19, 38, 255}, 0.3},
 		// Scene 3: Warm tender kitchen / candlelit soft glow (warm espresso & golden amber)
-		{color.RGBA{44, 24, 16, 255}, color.RGBA{88, 47, 28, 255}, color.RGBA{24, 12, 8, 255}, 0.8},
+		{color.RGBA{88, 47, 28, 255}, color.RGBA{146, 64, 14, 255}, color.RGBA{44, 24, 16, 255}, 0.8},
 		// Scene 4: Secret attic mystery / old parchment (warm sepia & moody bronze)
-		{color.RGBA{38, 28, 20, 255}, color.RGBA{68, 50, 32, 255}, color.RGBA{20, 14, 10, 255}, 0.6},
+		{color.RGBA{68, 50, 32, 255}, color.RGBA{115, 85, 52, 255}, color.RGBA{38, 28, 20, 255}, 0.6},
 		// Scene 5: Intense rainstorm confrontation (dramatic stormy deep cyan & dark graphite)
-		{color.RGBA{12, 28, 36, 255}, color.RGBA{24, 52, 68, 255}, color.RGBA{8, 18, 24, 255}, 0.1},
+		{color.RGBA{24, 52, 68, 255}, color.RGBA{30, 80, 100, 255}, color.RGBA{12, 28, 36, 255}, 0.1},
 		// Scene 6: Heartfelt resolution & eternal romance (rich golden hour & rose twilight)
-		{color.RGBA{58, 24, 38, 255}, color.RGBA{110, 48, 62, 255}, color.RGBA{35, 14, 24, 255}, 0.9},
+		{color.RGBA{110, 48, 62, 255}, color.RGBA{168, 68, 92, 255}, color.RGBA{58, 24, 38, 255}, 0.9},
 	}
 	mIdx := sceneIdx % len(moods)
 	mood := moods[mIdx]
 
+	candidates := findAvailableVisualAssets()
 	var photoPath string
-	candidates := []string{
-		"data/output/studio/models/1/1792293509522488000.jpeg",
-		"data/output/studio/models/1/1792293509525665000.jpg",
-		"data/output/studio/models/1/1792293509527521000.jpg",
-		"data/output/studio/models/1/1792293509529067000.jpg",
-	}
 	if len(candidates) > 0 {
 		idx := sceneIdx % len(candidates)
 		if fileExists(candidates[idx]) {
@@ -86,49 +103,30 @@ func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPa
 			if srcImg, _, err := image.Decode(f); err == nil {
 				sb := srcImg.Bounds()
 				sw, sh := sb.Dx(), sb.Dy()
+				if sw > 0 && sh > 0 {
+					scaleX := float64(w) / float64(sw)
+					scaleY := float64(h) / float64(sh)
+					scale := scaleX
+					if scaleY > scale {
+						scale = scaleY
+					}
+					targetW := int(float64(sw) * scale)
+					targetH := int(float64(sh) * scale)
 
-				targetH := h
-				targetW := int(float64(targetH) * float64(sw) / float64(sh))
-				if targetW > w {
-					targetW = w
-				}
+					scaledPhoto := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
+					xdraw.BiLinear.Scale(scaledPhoto, scaledPhoto.Bounds(), srcImg, sb, xdraw.Over, nil)
 
-				var posX int
-				if sceneIdx%2 == 0 {
-					posX = w/2 - targetW/2
-				} else {
-					posX = (w * 2) / 3 - targetW / 2
-				}
+					offsetX := (targetW - w) / 2
+					offsetY := (targetH - h) / 2
 
-				scaledPhoto := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
-				xdraw.BiLinear.Scale(scaledPhoto, scaledPhoto.Bounds(), srcImg, sb, xdraw.Over, nil)
-
-				for py := 0; py < targetH; py++ {
-					for px := 0; px < targetW; px++ {
-						origColor := scaledPhoto.RGBAAt(px, py)
-						edgeDist := float64(px)
-						if float64(targetW-px) < edgeDist {
-							edgeDist = float64(targetW - px)
-						}
-						featherWidth := 160.0
-						alpha := 1.0
-						if edgeDist < featherWidth {
-							alpha = edgeDist / featherWidth
-						}
-
-						dx := posX + px
-						if dx >= 0 && dx < w && py < h {
-							bgCol := dst.RGBAAt(dx, py)
-							tr := uint8(math.Min(255, float64(origColor.R)*(0.85+0.25*mood.warmth)))
-							tg := uint8(math.Min(255, float64(origColor.G)*0.95))
-							tb := uint8(math.Min(255, float64(origColor.B)*(1.05-0.15*mood.warmth)))
-							blended := color.RGBA{
-								R: uint8(float64(bgCol.R)*(1-alpha) + float64(tr)*alpha),
-								G: uint8(float64(bgCol.G)*(1-alpha) + float64(tg)*alpha),
-								B: uint8(float64(bgCol.B)*(1-alpha) + float64(tb)*alpha),
-								A: 255,
-							}
-							dst.SetRGBA(dx, py, blended)
+					for py := 0; py < h; py++ {
+						for px := 0; px < w; px++ {
+							origColor := scaledPhoto.RGBAAt(px+offsetX, py+offsetY)
+							// Subtle cinematic color grading
+							tr := uint8(math.Min(255, float64(origColor.R)*(0.92+0.15*mood.warmth)))
+							tg := uint8(math.Min(255, float64(origColor.G)*0.98))
+							tb := uint8(math.Min(255, float64(origColor.B)*(1.04-0.10*mood.warmth)))
+							dst.SetRGBA(px, py, color.RGBA{R: tr, G: tg, B: tb, A: 255})
 						}
 					}
 				}
@@ -137,12 +135,13 @@ func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPa
 		}
 	}
 
+	// Gentle cinematic vignette around outer corners for subtle focus
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			cx, cy := float64(x-w/2)/(float64(w)/2), float64(y-h/2)/(float64(h)/2)
 			r2 := cx*cx + cy*cy
-			if r2 > 0.4 {
-				factor := 1.0 - math.Min(0.5, (r2-0.4)*0.45)
+			if r2 > 0.6 {
+				factor := 1.0 - math.Min(0.25, (r2-0.6)*0.25)
 				pix := dst.RGBAAt(x, y)
 				dst.SetRGBA(x, y, color.RGBA{
 					R: uint8(float64(pix.R) * factor),
@@ -260,12 +259,7 @@ func GenerateProductVisualWithPhoto(photoPath, productName, niche, subTitle stri
 
 	// If photoPath is empty, try discovering any available model/product photo
 	if photoPath == "" || !fileExists(photoPath) {
-		candidates := []string{
-			"data/output/studio/models/1/1790869026571752000.jpg",
-			"data/output/studio/models/1/1790869026576011000.jpg",
-			"/tmp/unsplash_dress.jpg",
-			"/tmp/unsplash_jewelry.jpg",
-		}
+		candidates := findAvailableVisualAssets()
 		for _, c := range candidates {
 			if fileExists(c) {
 				photoPath = c

@@ -37,6 +37,41 @@ var videoEncoder = sync.OnceValue(func() []string {
 // dùng chung cho reup transform (Đợt E) để không copy logic chọn encoder.
 func VideoEncoderArgs() []string { return videoEncoder() }
 
+var videoEncoder4K = sync.OnceValue(func() []string {
+	if out, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output(); err == nil &&
+		bytes.Contains(out, []byte("h264_videotoolbox")) {
+		return []string{"-c:v", "h264_videotoolbox", "-b:v", "35M", "-maxrate", "45M"}
+	}
+	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "16", "-b:v", "35M"}
+})
+
+// VideoEncoderArgs4K trả về args encoder H.264 chất lượng Master 4K UHD với bitrate 35M.
+func VideoEncoderArgs4K() []string { return videoEncoder4K() }
+
+// Master4KFilter trả về chuỗi bộ lọc FFmpeg 2 tầng chống vỡ hình và chống nhòe khi nâng lên 4K:
+// Khử nhiễu nén (hqdn3d) + Phóng to đa thùy Lanczos 3-lobe chuẩn xác + Tái tạo tương phản vi mô (unsharp).
+func Master4KFilter(outW, outH int) string {
+	return fmt.Sprintf("hqdn3d=1.5:1.5:4:4,scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos+accurate_rnd,crop=%d:%d,unsharp=5:5:0.8:5:5:0.2,setsar=1", outW, outH, outW, outH)
+}
+
+// UpscaleVideoTo4K nâng cấp bất kỳ video nào (480p, 720p, 1080p, kể cả video dài 30-60 phút)
+// lên chuẩn Master 4K UHD sắc nét, không vỡ hạt, không nhòe, tối ưu hóa phần cứng Apple Silicon.
+func UpscaleVideoTo4K(ctx context.Context, srcVideo, dstVideo, aspect string) error {
+	w, h := AspectDims4K(aspect)
+	filter := Master4KFilter(w, h)
+	args := []string{
+		"-i", srcVideo,
+		"-vf", filter,
+		"-r", fmt.Sprint(outFPS),
+	}
+	args = append(args, VideoEncoderArgs4K()...)
+	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "copy", dstVideo)
+	if dir := filepath.Dir(dstVideo); dir != "" {
+		_ = os.MkdirAll(dir, 0o755)
+	}
+	return ffmpegRun(ctx, args...)
+}
+
 // FFmpegRun chạy ffmpeg -y với args cho trước; lỗi kèm 500 ký tự cuối
 // stderr để debug. Export cho reup transform (Đợt E) dùng chung.
 func FFmpegRun(ctx context.Context, args ...string) error {
@@ -122,27 +157,19 @@ func photoListFilter(n int, secsPer float64, outW, outH int) (string, float64) {
 		// 2: Lateral pan drift (revealing panoramic context)
 		// 3: Subtle vertical tilt with gentle push (organic camera operator feel)
 		var zoom, xExpr, yExpr string
-		switch i % 4 {
+		switch i % 2 {
 		case 0:
-			zoom = fmt.Sprintf("min(1+%.6f*on,1.16)", 0.16/float64(frames))
-			xExpr = "iw/2-(iw/zoom/2)"
-			yExpr = "ih/3-(ih/zoom/3)"
-		case 1:
-			zoom = fmt.Sprintf("max(1.16-%.6f*on,1.0)", 0.16/float64(frames))
-			xExpr = "iw/2-(iw/zoom/2)"
-			yExpr = "ih/2-(ih/zoom/2)"
-		case 2:
-			zoom = "1.10"
-			xExpr = fmt.Sprintf("(iw-iw/zoom)*(on/%d)", frames)
-			yExpr = "ih/2.5-(ih/zoom/2.5)"
+			zoom = fmt.Sprintf("min(1+%.6f*on,1.04)", 0.04/float64(frames))
+			xExpr = "trunc(iw/2-(iw/zoom/2))"
+			yExpr = "trunc(ih/2.5-(ih/zoom/2.5))"
 		default:
-			zoom = fmt.Sprintf("min(1+%.6f*on,1.14)", 0.14/float64(frames))
-			xExpr = "iw/2-(iw/zoom/2)"
-			yExpr = fmt.Sprintf("(ih/3)+(ih/12)*(on/%d)-(ih/zoom/3)", frames)
+			zoom = fmt.Sprintf("max(1.04-%.6f*on,1.0)", 0.04/float64(frames))
+			xExpr = "trunc(iw/2-(iw/zoom/2))"
+			yExpr = "trunc(ih/2-(ih/zoom/2))"
 		}
 
 		fmt.Fprintf(&sb,
-			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase,"+
+			"[%d:v]scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,"+
 				"crop=%d:%d,setsar=1,"+
 				"zoompan=z='%s':d=%d:x='%s':y='%s':s=%dx%d:fps=%d[v%d];",
 			i, outW*2, outH*2, outW*2, outH*2, zoom, frames, xExpr, yExpr, outW, outH, outFPS, i)
@@ -222,9 +249,6 @@ func AssembleBeatBounce(ctx context.Context, photos []string, secsPer float64, b
 func beatBounceFilter(n int, secsPer float64, bpm int, aspect string) (string, float64) {
 	frames := int(secsPer*outFPS + 0.5)
 	beat := float64(outFPS) * 60 / float64(bpm) // frames per beat
-	// Output frame + overscan headroom: zoompan renders slightly larger
-	// than the output so the shake crop never reveals edges (overscan is
-	// ~11% per axis, the old 1200x2133 constants generalized).
 	outW, outH := AspectDims(aspect)
 	overW, overH := outW*10/9, outH*10/9
 	var sb strings.Builder
@@ -489,11 +513,12 @@ func FindTrendingMusic(category string) string {
 	return findDefaultMusic()
 }
 
-// findDefaultMusic returns a valid local commercial music track path if available.
-func findDefaultMusic() string {
+// FindDefaultMusic returns a valid local commercial music track path if available.
+func FindDefaultMusic() string {
 	trendingDirs := []string{
 		filepath.Join("data", "music", "trending"),
-		"/Users/ninhlee/ninhlee/apps/ai-creator-os/data/music/trending",
+		filepath.Join("..", "..", "data", "music", "trending"),
+		filepath.Join("..", "data", "music", "trending"),
 	}
 	for _, dir := range trendingDirs {
 		if matches, err := filepath.Glob(filepath.Join(dir, "*.mp3")); err == nil && len(matches) > 0 {
@@ -506,10 +531,13 @@ func findDefaultMusic() string {
 	}
 
 	candidates := []string{
-		"docs/assets/affiliate-spot/music-just-chill.mp3",
+		filepath.Join("data", "autopilot-music.m4a"),
+		filepath.Join("data", "trending-audio.m4a"),
 		"internal/web/static/preview.mp3",
-		"/Users/ninhlee/ninhlee/apps/ai-creator-os/docs/assets/affiliate-spot/music-just-chill.mp3",
-		"/Users/ninhlee/ninhlee/apps/ai-creator-os/internal/web/static/preview.mp3",
+		"docs/assets/affiliate-spot/music-just-chill.mp3",
+		"../../internal/web/static/preview.mp3",
+		"../../docs/assets/affiliate-spot/music-just-chill.mp3",
+		"../web/static/preview.mp3",
 	}
 	for _, c := range candidates {
 		if st, err := os.Stat(c); err == nil && !st.IsDir() && st.Size() > 1000 {
@@ -522,6 +550,10 @@ func findDefaultMusic() string {
 	return ""
 }
 
+func findDefaultMusic() string {
+	return FindDefaultMusic()
+}
+
 // FindStockClips returns a list of high-quality filmed motion video clips
 // (9:16 vertical, continuous camera movement, 100% clean with zero text overlays).
 func FindStockClips(category string) []string {
@@ -529,9 +561,12 @@ func FindStockClips(category string) []string {
 		filepath.Join("data", "clips", category),
 		filepath.Join("data", "clips", "fashion"),
 		filepath.Join("data", "clips", "viral"),
-		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", category),
-		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", "fashion"),
-		filepath.Join("/Users/ninhlee/ninhlee/apps/ai-creator-os/data/clips", "viral"),
+		filepath.Join("..", "..", "data", "clips", category),
+		filepath.Join("..", "..", "data", "clips", "fashion"),
+		filepath.Join("..", "..", "data", "clips", "viral"),
+		filepath.Join("..", "data", "clips", category),
+		filepath.Join("..", "data", "clips", "fashion"),
+		filepath.Join("..", "data", "clips", "viral"),
 	}
 	for _, dir := range searchDirs {
 		matches, err := filepath.Glob(filepath.Join(dir, "*.mp4"))
@@ -593,6 +628,15 @@ func PickSingleStockClipForDuration(category, query string, targetSec float64) s
 			}
 		}
 	} else if category == "viral" {
+		isCN := strings.Contains(q, "cn") || strings.Contains(q, "douyin") || strings.Contains(q, "trung quốc") || strings.Contains(q, "c-biz") || strings.Contains(q, "hoa ngữ")
+		if isCN {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "douyin_hot") || strings.Contains(strings.ToLower(c), "douyin") {
+					return c
+				}
+			}
+		}
+
 		if targetSec >= 45 {
 			for _, c := range clips {
 				if strings.Contains(strings.ToLower(c), "dance_60s") || strings.Contains(strings.ToLower(c), "60s") {
@@ -600,15 +644,34 @@ func PickSingleStockClipForDuration(category, query string, targetSec float64) s
 				}
 			}
 		}
-		if strings.Contains(q, "crew") || strings.Contains(q, "nhóm") || strings.Contains(q, "đội") {
+
+		if strings.Contains(q, "duo") || strings.Contains(q, "đôi") {
 			for _, c := range clips {
-				if strings.Contains(strings.ToLower(c), "crew") {
+				if strings.Contains(strings.ToLower(c), "duo") {
 					return c
 				}
 			}
 		}
+
+		if strings.Contains(q, "crew") || strings.Contains(q, "nhóm") || strings.Contains(q, "đội") {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "crew") || strings.Contains(strings.ToLower(c), "cac_dance") {
+					return c
+				}
+			}
+		}
+
+		// Vietnamese creator priority
+		if strings.Contains(q, "phuonghoa") || strings.Contains(q, "vn") || strings.Contains(q, "việt") || strings.Contains(q, "v-biz") {
+			for _, c := range clips {
+				if strings.Contains(strings.ToLower(c), "phuonghoa") {
+					return c
+				}
+			}
+		}
+
 		for _, c := range clips {
-			if strings.Contains(strings.ToLower(c), "duo") {
+			if strings.Contains(strings.ToLower(c), "phuonghoa") {
 				return c
 			}
 		}

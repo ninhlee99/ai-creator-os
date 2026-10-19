@@ -2,10 +2,8 @@
 
 **Hệ điều hành tự vận hành cho 3 trụ kiếm tiền: Affiliate qua Accesstrade, Video Viral AI 100% Gốc (TikTok/Shorts/Reels), YouTube kể chuyện ngôi thứ nhất.** Bạn chỉ bật app và theo dõi — mọi quyết định vận hành do hệ thống tự quyết theo rule đã định.
 
-> **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar và bỏ làm phim điện ảnh.
-> Code live/phim đã **park bằng build tag `parked`** (không biên dịch vào
-> binary, vẫn nằm trong git để lôi lại khi cần). Thiết kế đầy đủ:
-> [`docs/PIVOT_REDESIGN.md`](docs/PIVOT_REDESIGN.md).
+> 🌟 **CHUẨN MỚI 2026-10-19: OPEN-SPEC CHUẨN VIDEO CÓ HỒN & QUAY PHIM TỰ NHIÊN ([`docs/OPEN_SPEC.md`](docs/OPEN_SPEC.md))**  
+> Xóa bỏ triệt để video dán ảnh tĩnh, thẻ chữ che khung hình và giật lắc cơ học. Toàn bộ video xuất ra đều là chuyển động người thật tự nhiên (Lookbook thời trang & Vũ đạo triệu view TikTok VN / Douyin CN), tỷ lệ chuẩn 9:16 (1080x1920) chống méo hình học, hòa âm đa tầng và ứng dụng InsightFace AI Face Swap khóa mặt creator.
 
 ---
 
@@ -13,13 +11,11 @@
 
 | Trụ | Trạng thái code |
 |---|---|
-| **1. Affiliate qua Accesstrade** | ✅ Client API official (`Authorization: Token`) + tab key trong Cài đặt + trang Affiliate (tải chiến dịch, tạo tracking link, săn sản phẩm từ datafeed, đối soát pending/approved/rejected) + tick hunter/order-sync/campaign-check. Fail-closed khi chưa có key |
-| **2. Video Viral AI 100% Gốc** | ✅ Xưởng sáng tạo video ngắn 9:16 (TikTok, Reels, Shorts) nguyên bản 100%. Kịch bản tâm lý học 3s Hook + Story + CTA, hình ảnh 9:16 MediaGen độc quyền, lồng tiếng truyền cảm, âm nhạc thịnh hành Kworb VN. Xóa bỏ hoàn toàn rủi ro vi phạm bản quyền và thuật toán phạt 0-view shadowban của việc reup |
-| **3. YouTube kể chuyện ngôi thứ nhất** | ✅ Truyện → chia cảnh → ảnh minh họa 16:9 → TTS từng cảnh → dựng 16:9 (không chèn chữ/phụ đề) → QC → đăng private-first, **mặc định tự đăng private** (tắt được ở trang Kể chuyện) + tick 24h; hàng đợi chủ đề **tự refill bằng LLM** khi trống |
+| **1. Affiliate qua Accesstrade** | ✅ Client API official (`Authorization: Token`) + Lookbook người mẫu chuyển động thật 9:16 + Ghép mặt nhân vật InsightFace + Cắt nhịp CapCut Pro đồng bộ nhạc TikTok trending + Bio Link Storefront di động (`/bio`). Loại bỏ hoàn toàn slide ảnh tĩnh dán chữ |
+| **2. Video Vũ Đạo Viral & Trendjack** | ✅ Radar vũ đạo triệu view từ **TikTok Việt Nam** (Đào Lê Phương Hoa, C.A.C Dance Crew) và **Douyin Trung Quốc (抖音)**. Hỗ trợ dán link bất kỳ qua `yt-dlp` chuẩn hóa 9:16 không logo. Khóa mặt nhân vật kênh bằng InsightFace Deep Latent Identity |
+| **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Xóa bỏ hoàn toàn màn hình đen; mỗi 8-15s là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (VieNeu Neural TTS + Foley môi trường + Nhạc nền cinematic lót -18dB) |
 
-Phần đã chạy thật hôm nay: **Studio AI** (video affiliate: ảnh sản phẩm + nhạc, không chữ không voiceover), **Video Viral AI 100% Gốc** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
-
-> 💡 **Chiến lược Nội dung Bền Vững (Zero-Reup):** Hệ thống nói KHÔNG với việc cào hoặc tải lại video của bên thứ ba (vốn chịu rủi ro bản quyền, anti-bot Douyin và bị thuật toán phạt 0-view). Toàn bộ nội dung viral được sản xuất từ tài sản gốc 100% (Original Assets) chuẩn cấu trúc giữ chân 3 giây đầu tiên.
+Phần đã chạy thật hôm nay: **Studio AI Lookbook**, **Video Viral Vũ Đạo TikTok VN & Douyin CN** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 ---
 

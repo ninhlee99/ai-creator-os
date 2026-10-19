@@ -26,10 +26,10 @@ import (
 )
 
 const (
-	edgeHost   = "speech.platform.bing.com"
-	edgePath   = "/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4"
-	edgeUA     = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0"
-	edgeOrigin = "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfoldn"
+	edgeHost     = "speech.platform.bing.com"
+	edgeBasePath = "/consumer/speech/synthesize/readaloud/edge/v1"
+	edgeUA       = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"
+	edgeOrigin   = "chrome-extension://jdiccldimpdaibmpdkjnbmckianbfoldn"
 )
 
 // persona voice style -> Edge neural voice (port of VI_VOICES).
@@ -72,7 +72,22 @@ func (e *EdgeTTSProvider) Synthesize(ctx context.Context, text, voice string) ([
 	if _, err := ffmpegBin(); err != nil {
 		return nil, fmt.Errorf("edge: %w", err)
 	}
-	mp3, err := edgeSynthesize(ctx, text, voice, e.Rate, e.Pitch)
+	var mp3 []byte
+	var err error
+	for attempt := 0; attempt < 3; attempt++ {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		mp3, err = edgeSynthesize(ctx, text, voice, e.Rate, e.Pitch)
+		if err == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * 400 * time.Millisecond):
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("edge: %w", err)
 	}
@@ -200,7 +215,11 @@ func (w *edgeWS) connect(ctx context.Context) error {
 		w.conn.Close()
 		return err
 	}
-	req := "GET " + edgePath + " HTTP/1.1\r\n" +
+	connID := strings.ToUpper(strings.ReplaceAll(newUUID(), "-", ""))
+	secGec := CurrentSecMsGecToken()
+	edgeURI := fmt.Sprintf("%s?TrustedClientToken=%s&Sec-MS-GEC=%s&Sec-MS-GEC-Version=%s&ConnectionId=%s",
+		edgeBasePath, trustedClientToken, secGec, secMsGecVersion, connID)
+	req := "GET " + edgeURI + " HTTP/1.1\r\n" +
 		"Host: " + edgeHost + "\r\n" +
 		"Upgrade: websocket\r\n" +
 		"Connection: Upgrade\r\n" +
@@ -360,14 +379,24 @@ func (w *edgeWS) forceClose() {
 
 // extractEdgeAudio strips the "Path:audio" header from a binary Edge message.
 func extractEdgeAudio(frame []byte) []byte {
-	if !bytes.HasPrefix(frame, []byte("Path:audio")) {
+	if len(frame) < 2 {
 		return nil
 	}
-	if idx := bytes.Index(frame, []byte("\r\n\r\n")); idx >= 0 {
-		return frame[idx+4:]
+	headerLen := int(binary.BigEndian.Uint16(frame[:2]))
+	if headerLen > 0 && len(frame) >= 2+headerLen {
+		header := frame[2 : 2+headerLen]
+		if bytes.Contains(header, []byte("Path:audio")) {
+			return frame[2+headerLen:]
+		}
 	}
-	if idx := bytes.Index(frame, []byte("\r\n")); idx >= 0 {
-		return frame[idx+2:]
+	// Fallback for raw text-prefixed frames
+	if idx := bytes.Index(frame, []byte("Path:audio")); idx >= 0 {
+		if crlf := bytes.Index(frame[idx:], []byte("\r\n\r\n")); crlf >= 0 {
+			return frame[idx+crlf+4:]
+		}
+		if crlf := bytes.Index(frame[idx:], []byte("\r\n")); crlf >= 0 {
+			return frame[idx+crlf+2:]
+		}
 	}
 	return nil
 }

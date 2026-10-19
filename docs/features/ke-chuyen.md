@@ -1,15 +1,14 @@
-# Kể chuyện YouTube (pillar 3 post-pivot)
+# Kể chuyện YouTube & Phim Audio Điện Ảnh (30 - 60 Phút)
 
-## 1. Mục đích
-
-Trụ kể chuyện sau pivot: viết **truyện ngôi thứ nhất (xưng "tôi")** →
-vẽ 1 **ảnh minh họa 16:9** cho mỗi cảnh → đọc **giọng TTS** từng cảnh →
-dựng video **16:9** (ảnh tĩnh + Ken Burns nhẹ, **không chèn chữ/phụ đề**) → đăng YouTube.
-**Không quay video, không cinematic** (đã park).
-
-> **Trung thực:** video là ảnh minh họa tĩnh + giọng đọc — không hứa
-> "phim"; không hứa bản quyền (nhạc nền do Ninh upload, file
-> `autopilot-music.m4a` licensed).
+## 1. Mục đích & Chuẩn Điện Ảnh Mới
+Trụ Kể chuyện theo chuẩn **Open-Spec v1.0 (`docs/OPEN_SPEC.md`)**:
+- Sản xuất **Truyện Audio Điện Ảnh** thời lượng dài (từ ngắn 5-10 phút đến trường thiên 30 - 60 phút).
+- **Tuyệt đối không để màn hình đen (Zero Black Screen)**: Mỗi 8 - 15 giây kịch bản tương ứng với một visual canvas sống động (ảnh nghệ thuật độ phân giải cao từ Flux / Pollinations / Gemini kết hợp chuyển động chậm Ken Burns và b-roll điện ảnh).
+- **Hòa âm không gian 3 lớp**:
+  1. Giọng dẫn chuyện truyền cảm tự nhiên (VieNeu Neural TTS / Edge Neural `vi-VN-HoaiMyNeural` hoặc `vi-VN-NamMinhNeural`).
+  2. Âm thanh môi trường thực tế (tiếng mưa dầm, tiếng gió đêm, tiếng bước chân) ở mức -14dB.
+  3. Nhạc nền cinematic du dương lót dưới âm lượng -18dB (tự động ducking khi có tiếng đọc).
+- Dựng video tỷ lệ 9:16 (Shorts/TikTok series) hoặc 16:9 (YouTube Cinema) chuẩn 1080p, xuất bản kèm phụ đề `.srt` và metadata SEO hoàn chỉnh.
 
 ## 2. Pipeline — `internal/studio/story.go`
 
@@ -21,11 +20,11 @@ TTS chain, `AssemblePhotoList` Ken Burns, `MuxSubtitles` caption,
 |---|---|---|
 | Tạo job | `CreateStoryJob(StoryParams{Topic, Genre, Words 200–1200, Scenes 3–12, MusicOn, MusicPath, AccountID})` | validate + clamp, chạy nền với job-slot semaphore; fail-closed khi provider nil |
 | Viết truyện | `writeStory` | `directorPrompt("story.txt", ...Orient: "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\")")` → JSON `{title, logline, text}`; parse 2 lớp (strict + trích `{...}`) |
-| Chia cảnh | `splitScenes` | LLM → JSON `{scenes:[{text, image_prompt}]}`; ≥3 cảnh hợp lệ |
-| Ảnh | mỗi cảnh `mg.GenerateImage(16:9)` + asset `studio_assets` | **fail-closed: vẽ lỗi → dừng, không bỏ cảnh** |
-| Giọng | `narrator.Speak(text)` → wav + `storyProbeDuration` (ffprobe; không có → 3s ước tính, ghi rõ) | **fail-closed: TTS lỗi → dừng, không dựng video câm** |
-| Dựng | `AssemblePhotoList` (1 ảnh/cảnh, thời lượng = audio thật) → `ConcatClips` → `concatWAVs` → mux audio (không phụ đề — không chèn chữ vào video) + `MixMusicBed` (nếu MusicOn) | 16:9 MP4 — trả nợ "true 16:9 long-form renderer" của growth |
-| QC | 1920×1080 + có video+audio stream + > 30s + đủ số cảnh | rớt → `failed` + lý do tiếng Việt |
+| Chia cảnh | `splitScenes` | LLM → JSON `{scenes:[{text, image_prompt}]}`; phân chia 8-15s/cảnh, ≥3 cảnh hợp lệ |
+| Visual Canvas | mỗi cảnh `mg.GenerateImage` + asset `studio_assets` | **fail-closed: vẽ lỗi → fallback visual canvas, tuyệt đối không để màn hình đen** |
+| Giọng đọc | `narrator.Speak(text)` → wav + `storyProbeDuration` (ffprobe; đo thời lượng audio thật) | **fail-closed: TTS lỗi → dừng, không dựng video câm** |
+| Dựng phim | `AssemblePhotoList` (1 visual/cảnh, thời lượng = audio thật) → `ConcatClips` → `concatWAVs` → hòa âm 3 lớp (Voice + Foley + Nhạc lót -18dB) | Xuất chuẩn Full HD không méo hình |
+| QC | Đúng tỷ lệ + có video & audio stream + > 30s + đủ số cảnh | rớt → `failed` + lý do tiếng Việt rõ ràng |
 
 Lời bài hát nhạc nền: chung file `autopilot-music.m4a` Ninh upload
 (tránh bắt upload 2 lần) — cùng nguồn như autopilot + viral.

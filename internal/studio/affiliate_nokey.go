@@ -8,6 +8,7 @@ package studio
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -42,10 +43,17 @@ func derivePhotoVariants(ctx context.Context, src, work, prefix string, crops in
 	return out
 }
 
+func isValidImage(path string) bool {
+	if s, err := os.Stat(path); err == nil && s.Size() > 50 {
+		return true
+	}
+	return false
+}
+
 // maxOwnPhotos giới hạn số ảnh gốc dùng cho 1 video (đủ đa dạng, dựng nhanh).
 const maxOwnPhotos = 8
 
-// ownSources: ảnh người dùng/listing theo thứ tự ưu tiên (sản phẩm trước).
+// ownSources: ảnh người dùng/listing theo thứ tự ưu tiên (sản phẩm trước, mẫu sau).
 func ownSources(p AffiliateParams) []string {
 	var src []string
 	for _, s := range append([]string{p.ProductPhoto, p.ModelPhoto}, p.ExtraPhotos...) {
