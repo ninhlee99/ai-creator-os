@@ -635,7 +635,20 @@ Từng mảnh ghép dần lộ ra: nhân chứng giả, bằng chứng bị tiê
 		return &storyDoc{Title: title, Text: text}
 	}
 
-	// Template 3 (mặc định): Tình cảm — hôn nhân hợp đồng
+	// Template 3: Tình yêu / Thanh xuân / Ngôn tình (Anime thẩm mỹ cao)
+	if strings.Contains(genreLower, "tình yêu") || strings.Contains(genreLower, "ngôn tình") || strings.Contains(genreLower, "thanh xuân") || strings.Contains(strings.ToLower(title), "tình yêu") || strings.Contains(strings.ToLower(title), "hẹn ước") {
+		if title == "" {
+			title = "Hẹn Ước Dưới Mưa: Mối Tình Thanh Xuân Vườn Trường Không Thể Quên"
+		}
+		text := `Cơn mưa rào đầu hạ bất chợt đổ xuống sân trường cấp ba rực rỡ hoa phượng đỏ. Tôi và cậu ấy cùng đứng trú mưa dưới mái hiên dãy hành lang quen thuộc. Cậu ấy khẽ nghiêng chiếc ô về phía tôi, bờ vai ướt đẫm nước mưa nhưng nụ cười vẫn ấm áp như ánh mặt trời ban mai.
+
+Những năm tháng thanh xuân cùng nhau học bài, cùng đạp xe qua từng con phố rợp bóng cây xanh đã khắc sâu vào ký ức không thể nào quên. Cậu ấy luôn âm thầm ghi nhớ từng thói quen nhỏ của tôi, lặng lẽ đi bên cạnh bảo vệ tôi qua những ngày giông bão tuổi trẻ.
+
+Ngày bế giảng chia tay, dưới tán bằng lăng tím ngát trong ánh hoàng hôn rực rỡ, cậu ấy trao cho tôi lá thư hẹn ước và thì thầm lời tỏ tình ngọt ngào nhất cuộc đời: "Dù mai này trưởng thành đi xa đến đâu, vị trí bên cạnh cậu mãi mãi chỉ dành cho tớ." Khoảnh khắc ấy, tôi biết rằng thanh xuân này đã trọn vẹn vì có cậu.`
+		return &storyDoc{Title: title, Text: text}
+	}
+
+	// Template 4 (mặc định): Tình cảm — hôn nhân hợp đồng
 	if title == "" {
 		title = "Hôn Nhân Hợp Đồng: Sự Thật Đằng Sau Người Chồng Hoàn Hảo"
 	}
@@ -651,8 +664,29 @@ Khoảnh khắc kẻ thù năm xưa tìm đến đe dọa mạng sống của t�
 	}
 }
 
-// defaultDramaticScenes tạo danh sách 6 cảnh điện ảnh kịch tính chuẩn 9:16 vertical.
+// defaultDramaticScenes tạo danh sách cảnh điện ảnh kịch tính chuẩn 9:16 vertical theo thể loại.
 func defaultDramaticScenes(doc *storyDoc) []storyScene {
+	titleLower := strings.ToLower(doc.Title)
+	if strings.Contains(titleLower, "tình yêu") || strings.Contains(titleLower, "hẹn ước") || strings.Contains(titleLower, "thanh xuân") || strings.Contains(titleLower, "ngôn tình") || strings.Contains(titleLower, "học đường") {
+		return []storyScene{
+			{
+				Text: "Cơn mưa rào đầu hạ bất chợt đổ xuống sân trường cấp ba rực rỡ hoa phượng đỏ. Tôi và cậu ấy cùng đứng trú mưa dưới mái hiên dãy hành lang quen thuộc.",
+				ImagePrompt: "Breathtaking Makoto Shinkai anime style vertical illustration 9:16, vibrant high school campus hallway in summer rain, a handsome anime boy with dark hair in crisp white school uniform holding a clear umbrella, standing next to a beautiful cute anime girl with long silky hair blushing softly, sparkling rain droplets falling, lush green trees and pink blossoms in background, emotional nostalgic anime masterpiece, vibrant colors, 8k",
+			},
+			{
+				Text: "Cậu ấy khẽ nghiêng chiếc ô về phía tôi, bờ vai ướt đẫm nước mưa nhưng nụ cười vẫn ấm áp như ánh mặt trời ban mai.",
+				ImagePrompt: "Makoto Shinkai anime style vertical 9:16, cinematic close-up of the handsome anime boy gently tilting his umbrella over the cute anime girl, gentle affectionate smile on his face, rain mist glowing in golden ambient light, high school romance aesthetic, hyper-detailed anime art",
+			},
+			{
+				Text: "Những năm tháng thanh xuân cùng nhau học bài, cùng đạp xe qua từng con phố rợp bóng cây xanh đã khắc sâu vào ký ức không thể nào quên.",
+				ImagePrompt: "Stunning anime style vertical 9:16, late afternoon golden hour sunset, the anime boy riding a bicycle with the cute anime girl sitting in the back holding his waist, joyful smiles, wind blowing through hair, scenic riverside road lined with blossoming trees, beautiful anime aesthetic",
+			},
+			{
+				Text: "Ngày bế giảng chia tay, dưới tán bằng lăng tím ngát, cậu ấy trao cho tôi lá thư hẹn ước và lời tỏ tình ngọt ngào nhất cuộc đời.",
+				ImagePrompt: "Emotional Makoto Shinkai anime climax scene vertical 9:16, graduation day under blooming purple royal poinciana trees, sunset sky with pastel clouds, the anime boy confessing his love to the anime girl, tears of joy, holding hands, romantic anime masterpiece, 8k",
+			},
+		}
+	}
 	return []storyScene{
 		{
 			Text: "Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư xa hoa.",
@@ -727,6 +761,11 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 // splitScenes chia truyện thành các cảnh (đoạn văn + prompt ảnh).
 func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) ([]storyScene, error) {
 	if s.llm != nil {
+		visualStyle := "Masterclass cinematic digital painting, highly detailed 8k, photorealistic, Vietnamese context if applicable, no text, no watermark."
+		if strings.Contains(strings.ToLower(p.Genre), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "ngôn tình") || strings.Contains(strings.ToLower(p.Topic), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "anime") {
+			visualStyle = "Makoto Shinkai & CoMix Wave anime aesthetic, stunning detailed romantic anime art, beautiful anime couple with consistent appearance, emotional cinematic lighting, vibrant atmospheric depth, 8k resolution, no text, no watermark."
+		}
+
 		sys := "Bạn là biên tập storyboard kiêm đạo diễn hình ảnh điện ảnh Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
 		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video kể chuyện 9:16 chuẩn 5 sao.
 Mỗi cảnh gồm:
@@ -736,12 +775,12 @@ Mỗi cảnh gồm:
    - Tính nhất quán nhân vật (Character Consistency): Thống nhất ngoại hình nhân vật chính xuyên suốt các cảnh (tuổi, trang phục, gương mặt, màu tóc).
    - Cỡ cảnh & góc máy: Đa dạng giữa Wide shot (bối cảnh bao la), Medium shot (tương tác), Close-up (chi tiết biểu cảm nhân vật).
    - Ánh sáng & không khí: Cinematic lighting, volumetric light, moody chiaroscuro hoặc warm ambient, atmospheric depth.
-   - Chất lượng: Masterclass cinematic digital painting, highly detailed 8k, photorealistic, Vietnamese context if applicable, no text, no watermark.
+   - Phong cách thị giác: %s
 
 Truyện: %s
 
 Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
-			p.Scenes, doc.Text)
+			p.Scenes, visualStyle, doc.Text)
 		cctx, ccancel := context.WithTimeout(ctx, 10*time.Second)
 		text, err := s.llm.Complete(cctx, sys, prompt)
 		ccancel()

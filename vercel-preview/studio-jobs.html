@@ -69,50 +69,70 @@
 
 
 
-<div class="job" data-job="film-demo01">
-  <h3>Sài Gòn 3 giờ sáng <span class="badge badge-draft">Phim ngắn</span></h3>
-  <div class="meta">
-    <span class="badge badge-running job-status">Đang chạy</span>
-    <span class="prog">62%</span>
-    · tạo lúc 2026-10-02 09:02
+<div class="studio-videos-grid">
+  <div class="video-item-card" data-job="film-demo01">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="badge badge-draft">Phim ngắn</span>
+        <span class="badge badge-running job-status">Đang chạy (62%)</span>
+      </div>
+      <div class="video-item-title">Sài Gòn 3 giờ sáng</div>
+      <div class="video-render-box" style="margin-bottom:10px">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" style="width:62%"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">📅 2026-10-02 09:02</div>
+    </div>
+    <div>
+      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo01')" style="width:100%">🎬 Storyboard từng cảnh</button>
+      <div class="board" style="margin-top:6px"></div>
+      <pre class="log" id="log-film-demo01" hidden></pre>
+    </div>
   </div>
-  <div class="board"></div>
-  
-  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo01')">Xem chi tiết từng cảnh</button>
-  
-  <pre class="log" id="log-film-demo01" hidden></pre>
-</div>
 
-<div class="job" data-job="aff-demo01">
-  <h3>Túi kem quilted — cafe Yên <span class="badge badge-draft">Affiliate</span></h3>
-  <div class="meta">
-    <span class="badge badge-ok job-status">Hoàn thành</span>
-    <span class="prog">100%</span>
-    · tạo lúc 2026-10-02 09:02 · xong lúc 2026-10-02 09:02
+  <div class="video-item-card" data-job="aff-demo01">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="badge badge-draft">Affiliate</span>
+        <span class="badge badge-ok job-status">✓ Hoàn thành</span>
+      </div>
+      <div class="video-item-title">Túi kem quilted — cafe Yên</div>
+      <div class="video-thumb-preview">
+        <video class="player" controls src="#"></video>
+        <span class="video-badge-spec">📱 1080×1920 (9:16)</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">📅 2026-10-02 09:02</div>
+    </div>
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <a class="btn btn-primary btn-sm" href="#" style="text-align:center;font-weight:700">📱 Đăng</a>
+        <a class="btn btn-secondary btn-sm" href="#" style="text-align:center;font-weight:700">⬇ Tải</a>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('aff-demo01')" style="width:100%">🎬 Storyboard từng cảnh</button>
+      <div class="board" style="margin-top:6px"></div>
+      <pre class="log" id="log-aff-demo01"></pre>
+    </div>
   </div>
-  <div class="board"></div>
-  <video class="player" controls src="#"></video>
-  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('aff-demo01')">Xem chi tiết từng cảnh</button>
-  
-  <pre class="log" id="log-aff-demo01" ></pre>
-</div>
 
-<div class="job" data-job="film-demo02">
-  <h3>Phở đêm <span class="badge badge-draft">Phim ngắn</span></h3>
-  <div class="meta">
-    <span class="badge badge-err job-status">Thất bại</span>
-    <span class="prog">25%</span>
-    · tạo lúc 2026-10-02 09:02 · xong lúc 2026-10-02 09:02
+  <div class="video-item-card" data-job="film-demo02">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="badge badge-draft">Phim ngắn</span>
+        <span class="badge badge-err job-status">Thất bại (25%)</span>
+      </div>
+      <div class="video-item-title">Phở đêm</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">📅 2026-10-02 09:02</div>
+    </div>
+    <div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button class="btn btn-primary btn-sm" style="flex:1">▶ Chạy tiếp</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo02')" style="width:100%">🎬 Storyboard từng cảnh</button>
+      <div class="board" style="margin-top:6px"></div>
+      <pre class="log" id="log-film-demo02" hidden></pre>
+    </div>
   </div>
-  <div class="board"></div>
-  
-  <button class="btn btn-secondary btn-sm" onclick="toggleBoard('film-demo02')">Xem chi tiết từng cảnh</button>
-  
-  <form method="post" action="studio-jobs.html" style="display:inline">
-    <button class="btn btn-sm">▶ Chạy tiếp</button>
-  </form>
-  
-  <pre class="log" id="log-film-demo02" hidden></pre>
 </div>
 
 

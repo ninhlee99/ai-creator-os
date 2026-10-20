@@ -399,8 +399,16 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		}
 	}
 
+	isVideoFile := func(path string) bool {
+		if path == "" || !fileExists(path) {
+			return false
+		}
+		ext := strings.ToLower(filepath.Ext(path))
+		return ext == ".mp4" || ext == ".mov" || ext == ".webm" || ext == ".mkv" || ext == ".avi"
+	}
+
 	// Phân tích và bóc tách thuộc tính từ video viral gốc để phản chiếu sang video AI
-	if p.SampleVideo != "" && fileExists(p.SampleVideo) {
+	if isVideoFile(p.SampleVideo) {
 		origProfile = AnalyzeViralOriginal(ctx, p.SampleVideo, jobDir)
 		if origProfile.Duration > 0 {
 			// Kế thừa chính xác thời lượng của video viral gốc để không cắt cụt nhịp nhạc
@@ -415,13 +423,26 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 	}
 
 	// 0. Nếu người dùng chọn video mẫu chuyển động (vũ đạo, dance, shorts) và có ảnh khuôn mặt nhân vật:
-	// Kích hoạt InsightFace AI Face Swap 100% người thật chuyển động!
-	if p.SampleVideo != "" && fileExists(p.SampleVideo) && modelPhoto != "" && fileExists(modelPhoto) {
+	// Kích hoạt InsightFace AI Face Swap 100% người thật chuyển động với hỗ trợ đa góc mặt!
+	faceSwapSource := modelPhoto
+	if len(p.ModelPhotos) > 0 {
+		var valid []string
+		for _, ph := range p.ModelPhotos {
+			if fileExists(ph) {
+				valid = append(valid, ph)
+			}
+		}
+		if len(valid) > 0 {
+			faceSwapSource = strings.Join(valid, ",")
+		}
+	}
+
+	if isVideoFile(p.SampleVideo) && faceSwapSource != "" {
 		s.setStatus(jobID, StatusRunning, 25)
-		s.appendLog(jobID, fmt.Sprintf("Kích hoạt InsightFace AI Face Swap: Ghép khuôn mặt '%s' vào video mẫu chuyển động '%s' (kế thừa 100%% vũ đạo & góc quay gốc)...", filepath.Base(modelPhoto), filepath.Base(p.SampleVideo)))
+		s.appendLog(jobID, fmt.Sprintf("Kích hoạt InsightFace AI Face Swap: Ghép khuôn mặt nhân vật (%d ảnh mẫu) vào video chuyển động '%s'...", len(strings.Split(faceSwapSource, ",")), filepath.Base(p.SampleVideo)))
 
 		swappedOut := filepath.Join(jobDir, "faceswapped_916.mp4")
-		err := RunFaceSwap(ctx, modelPhoto, p.SampleVideo, swappedOut, func(pct int, logMsg string) {
+		err := RunFaceSwap(ctx, faceSwapSource, p.SampleVideo, swappedOut, func(pct int, logMsg string) {
 			if logMsg != "" {
 				s.appendLog(jobID, logMsg)
 			}
@@ -430,16 +451,16 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 			}
 		})
 		if err == nil && fileExists(swappedOut) {
-			s.appendLog(jobID, "✓ Hoán đổi khuôn mặt AI vào video chuyển động thành công 100%!")
+			s.appendLog(jobID, "✓ Hoán đổi khuôn mặt AI nhân vật vào video chuyển động thành công 100%!")
 			silentVideo = swappedOut
 			performedFaceSwap = true
 		} else {
-			s.appendLog(jobID, fmt.Sprintf("Face Swap: giữ nguyên chuyển động vũ đạo của video gốc (%v)...", err))
+			s.appendLog(jobID, fmt.Sprintf("Face Swap: cảnh báo (%v), chuyển sang phương án dựng chuyển động trực tiếp...", err))
 		}
 	}
 
 	// Đối với video vũ đạo chuyển động: dùng trực tiếp video mẫu 9:16 chất lượng cao
-	if !performedFaceSwap && p.SampleVideo != "" && fileExists(p.SampleVideo) {
+	if !performedFaceSwap && isVideoFile(p.SampleVideo) {
 		s.appendLog(jobID, fmt.Sprintf("✓ Kế thừa toàn bộ hiệu ứng chuyển động của video viral gốc 9:16: %s", filepath.Base(p.SampleVideo)))
 		targetSec := float64(p.TargetDuration)
 		if targetSec <= 0 {
@@ -456,6 +477,36 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		} else {
 			silentVideo = p.SampleVideo
 			performedFaceSwap = true
+		}
+	}
+
+	// 0B. Nếu không có video vũ đạo sẵn có nhưng có người mẫu và là chủ đề dance:
+	// Tự động dựng video CapCut Beat Bounce "giật giật" theo beat nhạc TikTok 9:16 với người mẫu!
+	if !performedFaceSwap && isDanceOrPerformance(p.Topic, p.Genre) && modelPhoto != "" && fileExists(modelPhoto) {
+		dancePhotos := p.ModelPhotos
+		if len(dancePhotos) == 0 {
+			dancePhotos = []string{modelPhoto}
+		}
+		for len(dancePhotos) < 6 {
+			dancePhotos = append(dancePhotos, dancePhotos...)
+		}
+		if len(dancePhotos) > 8 {
+			dancePhotos = dancePhotos[:8]
+		}
+		danceMusic := p.MusicFile
+		if danceMusic == "" || !fileExists(danceMusic) {
+			danceMusic = FindTrendingMusic("nhay")
+		}
+		if danceMusic == "" || !fileExists(danceMusic) {
+			danceMusic = FindDefaultMusic()
+		}
+
+		danceOut := filepath.Join(jobDir, "dance_beatbounce_916.mp4")
+		s.appendLog(jobID, "Khởi tạo video Sexy Dance Beat Bounce 9:16 (CapCut giật giật theo nhịp nhạc trending TikTok)...")
+		if err := AssembleBeatBounce(ctx, dancePhotos, 2.5, 126, danceMusic, 0.0, danceOut, "9:16"); err == nil && fileExists(danceOut) {
+			silentVideo = danceOut
+			performedFaceSwap = true
+			s.appendLog(jobID, "✓ Hoàn thành dựng video Sexy Dance Beat Bounce 9:16 chuẩn TikTok!")
 		}
 	}
 

@@ -528,7 +528,7 @@ function atOrderSync() {
         {{end}}
         <div>
           <strong style="font-size:13px;display:block;color:var(--text)">{{.Title}}</strong>
-          <span style="font-size:11px;color:var(--muted)">Mã: {{.PlatformPID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Thời trang / Gia dụng{{end}}</span>
+          <span style="font-size:11px;color:var(--muted)">Mã: {{.SourceID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Thời trang / Gia dụng{{end}}</span>
           {{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở link mua sản phẩm ↗</a>{{end}}
         </div>
       </div>
@@ -546,14 +546,14 @@ function atOrderSync() {
     <td>{{if .Rating}}<span style="color:#f59e0b">★</span> <b>{{printf "%.1f" .Rating}}</b>{{else}}—{{end}}</td>
     <td>
       <form method="post" action="/products/shelf/toggle" style="margin:0">
-        <input type="hidden" name="platform_pid" value="{{.PlatformPID}}">
+        <input type="hidden" name="platform_pid" value="{{.SourceID}}">
         <input type="hidden" name="title" value="{{.Title}}">
         <input type="hidden" name="price" value="{{.Price}}">
         <input type="hidden" name="commission_rate" value="{{.CommissionRate}}">
         <input type="hidden" name="category" value="{{.Category}}">
         {{if .ImageURLs}}<input type="hidden" name="image_url" value="{{index .ImageURLs 0}}">{{end}}
         <input type="hidden" name="product_url" value="{{.ProductURL}}">
-        {{if .OnShelf}}
+        {{if eq .ShelfStatus "shelf"}}
         <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;color:#ef4444" title="Bấm để gỡ khỏi Kệ hàng Bio">
           ✓ Trên kệ (Gỡ)
         </button>

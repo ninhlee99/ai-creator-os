@@ -148,8 +148,35 @@ func (s *Server) handleWebAIAccountAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sessionKey == "" && cookie == "" {
-		redirectBack("err", "Vui lòng nhập Mã kết nối (API Key).")
+		redirectBack("err", "Vui lòng nhập Mã kết nối (API Key hoặc Cookie header).")
 		return
+	}
+
+	// Auto-extract cookie header if user pasted cookie string in session_key or cookie field
+	if cookie == "" && (strings.Contains(sessionKey, "=") || strings.Contains(sessionKey, ";")) {
+		cookie = sessionKey
+		for _, part := range strings.Split(cookie, ";") {
+			part = strings.TrimSpace(part)
+			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "ps_l=", "sso="} {
+				if strings.HasPrefix(part, prefix) {
+					sessionKey = strings.TrimPrefix(part, prefix)
+					break
+				}
+			}
+		}
+	} else if cookie != "" && sessionKey == "" {
+		for _, part := range strings.Split(cookie, ";") {
+			part = strings.TrimSpace(part)
+			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "ps_l=", "sso="} {
+				if strings.HasPrefix(part, prefix) {
+					sessionKey = strings.TrimPrefix(part, prefix)
+					break
+				}
+			}
+		}
+		if sessionKey == "" {
+			sessionKey = cookie
+		}
 	}
 
 	if accountName == "" {
@@ -453,6 +480,33 @@ func probeAccountSession(ctx context.Context, acc *webai.Account) (bool, string)
 		}
 		return true, "Phiên Gemini đã ghi nhận"
 
+	case "googleflow":
+		cookie := acc.Cookie
+		if cookie == "" {
+			cookie = acc.SessionKey
+		}
+		if cookie != "" {
+			req, err := http.NewRequestWithContext(ctx, "GET", "https://flow.google.com/", nil)
+			if err != nil {
+				return false, err.Error()
+			}
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+			req.Header.Set("Cookie", cookie)
+			req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+			resp, err := client.Do(req)
+			if err != nil {
+				return false, "Lỗi kết nối Google Flow: " + err.Error()
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode < 400 {
+				return true, fmt.Sprintf("Phiên Google Flow đang hoạt động tốt (HTTP %d)", resp.StatusCode)
+			}
+			if resp.StatusCode == 401 || resp.StatusCode == 403 {
+				return false, fmt.Sprintf("Phiên Google Flow đã hết hạn (HTTP %d)", resp.StatusCode)
+			}
+		}
+		return true, "Phiên Google Flow đã ghi nhận"
+
 	default:
 		return true, "Phiên làm việc hợp lệ"
 	}
@@ -630,9 +684,9 @@ func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 
 	platforms := []string{webai.PlatformClaude, webai.PlatformChatGPT, webai.PlatformGemini, webai.PlatformGrok, webai.PlatformMuseAI, webai.PlatformGoogleFlow}
 	names := map[string]string{
-		webai.PlatformClaude:     "Claude 3.7",
-		webai.PlatformChatGPT:    "ChatGPT 4o",
-		webai.PlatformGemini:     "Gemini 2.0",
+		webai.PlatformClaude:     "Claude 5.5 Sonnet",
+		webai.PlatformChatGPT:    "ChatGPT (GPT-6 Luna)",
+		webai.PlatformGemini:     "Gemini 3.8 Flash",
 		webai.PlatformGrok:       "Grok 3 (xAI)",
 		webai.PlatformMuseAI:     "Muse AI",
 		webai.PlatformGoogleFlow: "Google Flow (1.000 Credits Free)",
@@ -724,11 +778,36 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		studioErr("Ảnh người mẫu lỗi: " + err.Error())
 		return
 	}
+	var modelPhotos []string
+	var modelIDStrs []string
+	if r.MultipartForm != nil {
+		modelIDStrs = r.MultipartForm.Value["model_photo_ids"]
+	}
+	if len(modelIDStrs) == 0 {
+		modelIDStrs = r.Form["model_photo_ids"]
+	}
+	if len(modelIDStrs) > 0 {
+		var ids []int64
+		for _, ms := range modelIDStrs {
+			if id, err := strconv.ParseInt(strings.TrimSpace(ms), 10, 64); err == nil && id > 0 {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) > 0 {
+			modelPhotos = s.findModelPhotosByIDs(ids)
+		}
+	}
+	if modelPhoto != "" {
+		modelPhotos = append([]string{modelPhoto}, modelPhotos...)
+	} else if len(modelPhotos) > 0 {
+		modelPhoto = modelPhotos[0]
+	}
 	if modelPhoto == "" {
 		if midStr := strings.TrimSpace(r.FormValue("model_id")); midStr != "" {
 			if mid, err := strconv.ParseInt(midStr, 10, 64); err == nil && mid > 0 {
 				if photoPath, perr := s.findModelPhotoByID(mid); perr == nil && photoPath != "" {
 					modelPhoto = photoPath
+					modelPhotos = append(modelPhotos, photoPath)
 				}
 			}
 		}
@@ -740,12 +819,27 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 					if acc != nil && acc.Username == acctName {
 						if ms, merr := s.Studio.ModelLibrary(); merr == nil {
 							if photos, perr := ms.List(acc.ID); perr == nil && len(photos) > 0 {
+								for _, ph := range photos {
+									modelPhotos = append(modelPhotos, ph.Path)
+								}
 								modelPhoto = photos[0].Path
 							}
 						}
 						break
 					}
 				}
+			}
+		}
+	}
+	if modelPhoto == "" {
+		if cards := s.listModelPhotoCards(); len(cards) > 0 {
+			for _, c := range cards {
+				if photoPath, perr := s.findModelPhotoByID(c.ID); perr == nil && photoPath != "" {
+					modelPhotos = append(modelPhotos, photoPath)
+				}
+			}
+			if len(modelPhotos) > 0 {
+				modelPhoto = modelPhotos[0]
 			}
 		}
 	}
@@ -841,8 +935,8 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Auto-fallback: if user provided no photo and no clip, generate a 4K product visual
-	if productPhoto == "" && len(clips) == 0 {
+	// Auto-fallback: if user provided no photo, no model, and no clip, generate a 4K product visual
+	if productPhoto == "" && len(clips) == 0 && modelPhoto == "" && len(modelPhotos) == 0 {
 		genPath := filepath.Join(upDir, fmt.Sprintf("%d-autogen-prod.png", time.Now().UnixNano()))
 		prodName := strings.TrimSpace(r.FormValue("product_name"))
 		if prodName == "" {
@@ -894,6 +988,9 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if musicPath == "" {
+		musicPath = studio.FindTrendingMusic("fashion")
+	}
+	if musicPath == "" {
 		musicPath = studio.FindDefaultMusic()
 	}
 
@@ -932,10 +1029,11 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		ProductPrice:  strings.TrimSpace(r.FormValue("product_price")),
 		ProductPhoto:  productPhoto,
 		ModelPhoto:    modelPhoto,
+		ModelPhotos:   modelPhotos,
 		ExtraPhotos:   extraPhotos,
 		Clips:         clips,
 		VoiceoverPath: voiceoverPath,
-		VoiceoverText: strings.TrimSpace(r.FormValue("voiceover_text")),
+		VoiceoverText: voiceoverText,
 		AspectRatio:   aspectRatio,
 		Seconds:       seconds,
 		BPM:           bpm,
@@ -1194,6 +1292,58 @@ func (s *Server) handleWebAIBrowserLoginCancel(w http.ResponseWriter, r *http.Re
 }
 
 
+
+// handleWebAISyncGoogleAccount copies/syncs credentials from an existing Gemini Google account to Google Flow.
+func (s *Server) handleWebAISyncGoogleAccount(w http.ResponseWriter, r *http.Request) {
+	if s.WebAI == nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Kho Web AI chưa được khởi tạo"})
+		return
+	}
+
+	geminiAcc, err := s.WebAI.PickActiveAccount(webai.PlatformGemini)
+	if err != nil {
+		list, _ := s.WebAI.GetAccounts(webai.PlatformGemini)
+		if len(list) > 0 {
+			geminiAcc = &list[0]
+		} else {
+			s.writeJSON(w, map[string]any{"ok": false, "error": "Chưa có tài khoản Google (Gemini) nào được kết nối trong hệ thống"})
+			return
+		}
+	}
+
+	cookieHdr := geminiAcc.Cookie
+	sessionKey := geminiAcc.SessionKey
+	if cookieHdr == "" {
+		cookieHdr = sessionKey
+	}
+	if cookieHdr == "" {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Tài khoản Gemini chưa có thông tin phiên Cookie Google"})
+		return
+	}
+
+	email := strings.TrimSpace(geminiAcc.Email)
+	if email == "" {
+		email = "googleflow_user@gmail.com"
+	}
+	accountName := fmt.Sprintf("Google Flow (%s)", email)
+
+	id, err := s.WebAI.UpsertAccountSession(webai.PlatformGoogleFlow, sessionKey, cookieHdr, accountName, email, "free")
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Lỗi lưu tài khoản Google Flow: " + err.Error()})
+		return
+	}
+
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("web_ai", "sync_google_flow", nil, fmt.Sprintf("Đồng bộ tài khoản Google Flow từ Gemini id=%s email=%s", id, email), nil)
+	}
+
+	s.writeJSON(w, map[string]any{
+		"ok":      true,
+		"id":      id,
+		"email":   email,
+		"message": fmt.Sprintf("Đã đồng bộ phiên Google thành công cho %s!", email),
+	})
+}
 
 func logErr(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)

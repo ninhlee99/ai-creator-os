@@ -210,7 +210,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		modelPhotos = findAvailableVisualAssets()
 	}
 
-	if p.ProductPhoto == "" || !fileExists(p.ProductPhoto) {
+	if (p.ProductPhoto == "" || !fileExists(p.ProductPhoto)) && len(modelPhotos) == 0 && len(p.ModelPhotos) == 0 {
 		prodCandidates := []string{
 			"/tmp/unsplash_dress.jpg",
 			"/tmp/unsplash_jewelry.jpg",
@@ -306,10 +306,23 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		}
 
 		// Kích hoạt InsightFace AI Face Swap vào video người mẫu nếu có ảnh khuôn mặt nhân vật
-		if p.ModelPhoto != "" && fileExists(p.ModelPhoto) {
-			s.appendLog(id, fmt.Sprintf("Kích hoạt InsightFace AI Face Swap: Ghép khuôn mặt '%s' vào video người mẫu lookbook...", filepath.Base(p.ModelPhoto)))
+		faceSwapSource := p.ModelPhoto
+		if len(p.ModelPhotos) > 0 {
+			var valid []string
+			for _, ph := range p.ModelPhotos {
+				if fileExists(ph) {
+					valid = append(valid, ph)
+				}
+			}
+			if len(valid) > 0 {
+				faceSwapSource = strings.Join(valid, ",")
+			}
+		}
+
+		if faceSwapSource != "" {
+			s.appendLog(id, fmt.Sprintf("Kích hoạt InsightFace AI Face Swap: Ghép khuôn mặt nhân vật (%d ảnh mẫu) vào video người mẫu lookbook...", len(strings.Split(faceSwapSource, ","))))
 			swappedOut := filepath.Join(work, "faceswapped_916.mp4")
-			if err := RunFaceSwap(ctx, p.ModelPhoto, silent, swappedOut, func(pct int, logMsg string) {
+			if err := RunFaceSwap(ctx, faceSwapSource, silent, swappedOut, func(pct int, logMsg string) {
 				if logMsg != "" {
 					s.appendLog(id, logMsg)
 				}

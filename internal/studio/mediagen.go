@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -335,6 +336,18 @@ func generatePollinationsImage(ctx context.Context, prompt string, outPath strin
 	}
 	if dir := filepath.Dir(outPath); dir != "" {
 		_ = os.MkdirAll(dir, 0o755)
+	}
+	tmpRaw := outPath + ".raw.png"
+	if err := os.WriteFile(tmpRaw, data, 0o644); err != nil {
+		return err
+	}
+	defer os.Remove(tmpRaw)
+
+	// Tự động cắt sạch 100% logo chân trang (36px watermark) và tối ưu độ phân giải 1080x1920
+	vf := "crop=in_w:in_h-36:0:0,scale=1080:1920"
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", tmpRaw, "-vf", vf, outPath)
+	if err := cmd.Run(); err == nil && fileExists(outPath) {
+		return nil
 	}
 	return os.WriteFile(outPath, data, 0o644)
 }

@@ -31,6 +31,7 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 17 | Daemon tự động (`internal/automation`) — AutopilotTick / GrowthTick / SyncOneAccount / ReconcileCommissions | [daemon-tu-dong.md](daemon-tu-dong.md) | ✅ |
 | 18 | Kill switch + Dry-run + MASTER_SWITCH | [kill-switch-dry-run-master.md](kill-switch-dry-run-master.md) | ✅ |
 | 19 | Quy tắc dùng chung: key rotation & fail-closed | [key-rotation.md](key-rotation.md) | ✅ |
+| 20 | **Comfy Flow Studio (`/flow`) — Kiến trúc đồ thị Node-Graph (DAG) giống ComfyUI, Web Adapters (Tạo ảnh, Đổi đồ, Veo Video, Viggle Dance, Khóa mặt, VieNeu-TTS)** | [comfy-flow.md](comfy-flow.md) | ✅ |
 
 ## Nguồn sự thật duy nhất về cấu hình
 

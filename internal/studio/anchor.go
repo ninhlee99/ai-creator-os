@@ -92,6 +92,17 @@ func NewVisualAnchor(topic, genre, niche, userModelPhoto string) *VisualAnchor {
 		anchor.Wardrobe = "structured ivory cream tailored blazer over a silk minimalist camisole, minimalist fine silver earrings"
 		anchor.Environment = "contemporary luxury boutique loft in Da Nang with floor-to-ceiling panoramic glass windows overlooking tropical greenery, architectural concrete and warm wood"
 		anchor.Lighting = "gentle morning diffused daylight, soft golden-hour bounce light, 5400K natural neutral white"
+	} else if strings.Contains(genreLow, "tình yêu") || strings.Contains(genreLow, "ngôn tình") || strings.Contains(genreLow, "anime") || strings.Contains(topicLow, "tình yêu") || strings.Contains(topicLow, "thanh xuân") || strings.Contains(topicLow, "học đường") {
+		anchor.ActorName = "Minh & An"
+		anchor.Gender = "couple"
+		anchor.Age = 18
+		anchor.Ethnicity = "Anime"
+		anchor.FaceTraits = "breathtaking Makoto Shinkai style romantic anime aesthetics, gorgeous anime boy with expressive warm eyes and cute blushing anime girl with long silky hair"
+		anchor.Hairstyle = "detailed anime styled dark hair with glowing soft highlights"
+		anchor.Wardrobe = "charming high school uniforms with crisp white shirts and navy accents"
+		anchor.Environment = "stunning nostalgic high school campus, sparkling rain drops, lush green trees and blossoming flowers"
+		anchor.Lighting = "dreamy atmospheric anime lighting with glowing lens flares, vibrant sunset and soft pastel sky"
+		anchor.FilmStock = "Makoto Shinkai & CoMix Wave 4K anime cinematic masterpiece, rich hand-painted background art, vibrant anime aesthetic"
 	} else if strings.Contains(genreLow, "kinh doanh") || strings.Contains(topicLow, "tài chính") || strings.Contains(topicLow, "business") {
 		anchor.ActorName = "Minh"
 		anchor.Gender = "male"
@@ -152,7 +163,12 @@ func (a *VisualAnchor) EnrichScenePrompt(actionDescription, cameraMotion string,
 		refLock = " Strictly locked to the reference character photo with 100% identical facial features and appearance."
 	}
 
-	return fmt.Sprintf("Cinematic sequence scene %d of %d featuring %s, the exact same %d-year-old %s %s with identical facial features (%s), same %s, and wearing the same %s.%s Action: %s. Setting: the exact same %s. Lighting: consistent %s. Camera movement: %s. Captured on %s, f/1.8 lens, perfect character and environmental continuity, no visual drift, photorealistic, 8k resolution, authentic skin texture, strictly clean frame, no text, no subtitles, no watermark.",
+	if a.Ethnicity == "Anime" {
+		return fmt.Sprintf("Single vertical full-frame composition (scene %d of %d), breathtaking romantic anime illustration: %s. %s with %s, wearing %s. Setting: %s. Atmosphere: %s. Art style: %s, 8k resolution, Makoto Shinkai anime aesthetic, vibrant vivid colors, clean single shot, no split screen, no collage, no panels, strictly no text, no subtitles, no watermark.",
+			sceneIndex, totalScenes, actionDescription, a.FaceTraits, a.Hairstyle, a.Wardrobe, a.Environment, a.Lighting, a.FilmStock)
+	}
+
+	return fmt.Sprintf("Single vertical full-frame cinematic shot (scene %d of %d) featuring %s, the exact same %d-year-old %s %s with identical facial features (%s), same %s, and wearing the same %s.%s Action: %s. Setting: %s. Lighting: consistent %s. Camera movement: %s. Captured on %s, f/1.8 lens, perfect character and environmental continuity, no visual drift, photorealistic, 8k resolution, authentic skin texture, strictly clean single frame, no split screen, no collage, no text, no subtitles, no watermark.",
 		sceneIndex, totalScenes, a.ActorName, a.Age, a.Ethnicity, a.Gender,
 		a.FaceTraits, a.Hairstyle, a.Wardrobe, refLock,
 		actionDescription, a.Environment, a.Lighting, cameraMotion, a.FilmStock)

@@ -99,9 +99,19 @@ func CheckFaceSwapEngine(ctx context.Context) FaceSwapEngineStatus {
 
 // RunFaceSwap thực thi hoán đổi khuôn mặt nhân vật từ sourceFacePhoto vào targetVideo,
 // xuất ra outVideo và cập nhật tiến trình qua callback.
+// sourceFacePhoto có thể là 1 đường dẫn hoặc danh sách nhiều đường dẫn (phân tách bởi dấu phẩy)
+// để engine tự động phân tích và chọn góc mặt chính diện / sắc nét nhất.
 func RunFaceSwap(ctx context.Context, sourceFacePhoto, targetVideo, outVideo string, onProgress func(pct int, logMsg string)) error {
-	if !fileExists(sourceFacePhoto) {
-		return fmt.Errorf("ảnh khuôn mặt nhân vật không tồn tại: %s", sourceFacePhoto)
+	subPaths := strings.Split(sourceFacePhoto, ",")
+	var validPaths []string
+	for _, sp := range subPaths {
+		sp = strings.TrimSpace(sp)
+		if fileExists(sp) {
+			validPaths = append(validPaths, sp)
+		}
+	}
+	if len(validPaths) == 0 {
+		return fmt.Errorf("không tìm thấy bất kỳ ảnh khuôn mặt nhân vật hợp lệ nào: %s", sourceFacePhoto)
 	}
 	if !fileExists(targetVideo) {
 		return fmt.Errorf("video chuyển động đích không tồn tại: %s", targetVideo)
@@ -112,7 +122,8 @@ func RunFaceSwap(ctx context.Context, sourceFacePhoto, targetVideo, outVideo str
 
 	_ = os.MkdirAll(filepath.Dir(outVideo), 0o755)
 
-	cmd := exec.CommandContext(ctx, py, script, "--source", sourceFacePhoto, "--target", targetVideo, "--output", outVideo)
+	sourceArg := strings.Join(validPaths, ",")
+	cmd := exec.CommandContext(ctx, py, script, "--source", sourceArg, "--target", targetVideo, "--output", outVideo)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

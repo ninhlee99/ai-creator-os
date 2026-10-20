@@ -80,13 +80,12 @@ func TestViralPageTopicRendering(t *testing.T) {
 	}
 	body := rec.Body.String()
 
-	// Kiểm tra các thành phần UI chủ đề theo yêu cầu người dùng
+	// Kiểm tra các thành phần UI viral sexy dance tinh gọn
 	for _, want := range []string{
-		"Cài Đặt Chủ Đề (4 video / 1 hàng)",
-		"Vũ Điệu &amp; Nhảy Hot Trend",
-		"Sự Kiện &amp; Xu Hướng Hot Việt Nam",
-		"+ Thêm Chủ Đề",
-		"topic-videos-grid",
+		"Sexy Dance Realtime",
+		"Chọn Điệu Nhảy Hoặc Dán Link TikTok Realtime",
+		"Chọn Các Góc Mặt Nhân Vật Nữ Thực Hiện Điệu Nhảy",
+		"BẮT ĐẦU TẠO VIDEO SEXY DANCE TRENDING",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("viral page thiếu chuỗi UI: %q", want)

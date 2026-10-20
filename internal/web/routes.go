@@ -88,6 +88,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
 	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
 	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)
+	mux.HandleFunc("GET /studio/models/{account}/{file}", s.handleStudioModelPhoto)
 	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
 	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
@@ -101,6 +102,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/studio/tiktok-trends", s.handleAPITikTokTrends)
 	mux.HandleFunc("GET /api/studio/tiktok-topics", s.handleAPITikTokTopics)
 	mux.HandleFunc("POST /api/studio/tiktok-analyze", s.handleAPITikTokAnalyze)
+
+	// ComfyUI-like Flow Studio (Dynamic Node Graph Execution)
+	mux.HandleFunc("GET /flow", s.handleFlow)
+	mux.HandleFunc("GET /api/flow/recipes", s.handleAPIFlowRecipes)
+	mux.HandleFunc("POST /api/flow/compile", s.handleAPIFlowCompile)
+	mux.HandleFunc("POST /api/flow/run", s.handleAPIFlowRun)
+	mux.HandleFunc("GET /api/flow/status", s.handleAPIFlowStatus)
 
 	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
 	mux.HandleFunc("GET /web-ai", s.handleWebAI)
@@ -119,6 +127,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /web-ai/browser-login/start", s.handleWebAIBrowserLoginStart)
 	mux.HandleFunc("GET /web-ai/browser-login/status", s.handleWebAIBrowserLoginStatus)
 	mux.HandleFunc("POST /web-ai/browser-login/cancel", s.handleWebAIBrowserLoginCancel)
+	mux.HandleFunc("POST /web-ai/accounts/sync-google", s.handleWebAISyncGoogleAccount)
 
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)

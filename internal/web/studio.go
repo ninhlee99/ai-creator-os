@@ -33,16 +33,161 @@ type studioJobView struct {
 	Status     string         `json:"status"`
 	Progress   int            `json:"progress"`
 	Output     string         `json:"output"`
+	Caption    string         `json:"caption"`
 	CreatedAt  string         `json:"created_at"`
 	FinishedAt string         `json:"finished_at"`
 	KindLabel  string         `json:"kind_label"`
 	Label      string         `json:"label"`
-	Class      string         `json:"class"`
-	DeptStages []JobDeptStage `json:"dept_stages"`
-	DeptGroups []JobDeptGroup `json:"dept_groups"`
+	Class          string             `json:"class"`
+	PipelineStages []JobPipelineStage `json:"pipeline_stages"`
+	DeptStages     []JobDeptStage     `json:"dept_stages,omitempty"`
+	DeptGroups     []JobDeptGroup     `json:"dept_groups,omitempty"`
 }
 
-// JobDeptGroup represents a specialized department group participating in a job.
+// JobPipelineStage biểu diễn từng khâu xử lý trong quy trình chuyên biệt của từng loại video (Viral / Affiliate / Story).
+type JobPipelineStage struct {
+	Step        int    `json:"step"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
+	Status      string `json:"status"` // "done", "active", "waiting", "failed"
+	StatusLabel string `json:"status_label"`
+}
+
+func buildJobPipeline(j studio.Job) []JobPipelineStage {
+	var stages []JobPipelineStage
+	switch j.Kind {
+	case studio.KindViral:
+		stages = []JobPipelineStage{
+			{
+				Step:        1,
+				Name:        "Radar Bắt Trend TikTok Realtime",
+				Icon:        "🔥",
+				Description: "Quét vũ đạo đang viral & nhạc hot trend TikTok thời gian thực",
+			},
+			{
+				Step:        2,
+				Name:        "Trích Xuất Chuyển Động Vũ Đạo",
+				Icon:        "💃",
+				Description: "Bóc tách nhịp nhảy 9:16 giữ trọn năng lượng & góc máy mượt mà",
+			},
+			{
+				Step:        3,
+				Name:        "Ghép Mặt Nhân Vật (InsightFace Multi-Angle)",
+				Icon:        "✨",
+				Description: "Phân tích đa góc mặt người mẫu đã tải lên và khóa nhận diện sắc nét",
+			},
+			{
+				Step:        4,
+				Name:        "Render Video Beat Dance 9:16",
+				Icon:        "🎵",
+				Description: "Hòa âm beat nhạc TikTok giật giật, 0% voiceover, sẵn sàng lên xu hướng",
+			},
+		}
+
+	case studio.KindStory:
+		stages = []JobPipelineStage{
+			{
+				Step:        1,
+				Name:        "Kịch Bản Tình Yêu Nam Nữ",
+				Icon:        "📖",
+				Description: "Biên soạn cốt truyện tình cảm kịch tính, nhịp 3 hồi lôi cuốn",
+			},
+			{
+				Step:        2,
+				Name:        "Tạo Hình Nhân Vật Animate",
+				Icon:        "🎨",
+				Description: "Sinh hình ảnh phong cách anime đẹp, nhất quán nhân vật qua từng cảnh",
+			},
+			{
+				Step:        3,
+				Name:        "Lồng Tiếng Đa Cảm Xúc",
+				Icon:        "🎙️",
+				Description: "Giọng đọc nam ấm áp & nữ ngọt ngào biểu cảm cao theo tình tiết truyện",
+			},
+			{
+				Step:        4,
+				Name:        "Dựng Video Audio Book Hoàn Chỉnh",
+				Icon:        "🎬",
+				Description: "Hòa âm tiếng mưa/nhạc nền, khớp phụ đề chuẩn YouTube & TikTok",
+			},
+		}
+
+	default: // affiliate
+		stages = []JobPipelineStage{
+			{
+				Step:        1,
+				Name:        "Phân Tích Sản Phẩm & USP Thời Trang",
+				Icon:        "📦",
+				Description: "Trích xuất chất liệu, dáng váy và ưu điểm nổi bật cho tệp khách nữ",
+			},
+			{
+				Step:        2,
+				Name:        "Kịch Bản Bán Hàng PAS Chốt Sale",
+				Icon:        "✍️",
+				Description: "Hook 3 giây gián đoạn thị giác, kịch bản thúc đẩy thêm vào giỏ hàng",
+			},
+			{
+				Step:        3,
+				Name:        "Phối Đồ & Render Người Mẫu Đã Tải Lên",
+				Icon:        "👗",
+				Description: "Khuôn mặt nhân vật đã tải lên mặc trang phục thực tế chuẩn 9:16",
+			},
+			{
+				Step:        4,
+				Name:        "Dựng Video Giỏ Hàng TikTok Shop",
+				Icon:        "🛒",
+				Description: "Hòa âm nhạc trending nhẹ nhàng, sẵn sàng gắn link tiếp thị liên kết",
+			},
+		}
+	}
+
+	n := len(stages)
+	if n == 0 {
+		return nil
+	}
+
+	if j.Status == "failed" {
+		stages[0].Status = "failed"
+		stages[0].StatusLabel = "⚠️ Lỗi xử lý"
+		for i := 1; i < n; i++ {
+			stages[i].Status = "waiting"
+			stages[i].StatusLabel = "Tạm dừng"
+		}
+		return stages
+	}
+
+	if j.Status == "done" || j.Progress >= 100 {
+		for i := range stages {
+			stages[i].Status = "done"
+			stages[i].StatusLabel = "✓ Hoàn thành"
+		}
+		return stages
+	}
+
+	// running / queued
+	stageSpan := 100.0 / float64(n)
+	activeIdx := int(float64(j.Progress) / stageSpan)
+	if activeIdx >= n {
+		activeIdx = n - 1
+	}
+
+	for i := 0; i < n; i++ {
+		if i < activeIdx {
+			stages[i].Status = "done"
+			stages[i].StatusLabel = "✓ Đã xong"
+		} else if i == activeIdx {
+			stages[i].Status = "active"
+			stages[i].StatusLabel = "⚡ Đang xử lý"
+		} else {
+			stages[i].Status = "waiting"
+			stages[i].StatusLabel = "⏳ Chờ lượt"
+		}
+	}
+	return stages
+}
+
+// JobDeptGroup represents a specialized department group participating in a job (deprecated / cleaned up).
 type JobDeptGroup struct {
 	Step        int            `json:"step"`
 	DeptCode    string         `json:"dept_code"`
@@ -546,12 +691,14 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		out = append(out, studioJobView{
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
 			Progress: j.Progress, Output: mediaName(j.Output),
-			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
-			KindLabel:  kindLabel(j.Kind),
-			Label:      statusLabel(j.Status),
-			Class:      statusClass(j.Status),
-			DeptStages: buildJobDeptStages(j),
-			DeptGroups: buildJobDeptGroups(j),
+			Caption:    j.Caption,
+			CreatedAt:  j.CreatedAt, FinishedAt: j.FinishedAt,
+			KindLabel:      kindLabel(j.Kind),
+			Label:          statusLabel(j.Status),
+			Class:          statusClass(j.Status),
+			PipelineStages: buildJobPipeline(j),
+			DeptStages:     nil,
+			DeptGroups:     nil,
 		})
 	}
 	return out
@@ -1536,6 +1683,17 @@ func (s *Server) handleClipMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serveMediaFile(w, r, filepath.Join("data", "clips", cat, name))
+}
+
+// handleStudioModelPhoto serves uploaded user model photos from data/output/studio/models/{account}/{file}.
+func (s *Server) handleStudioModelPhoto(w http.ResponseWriter, r *http.Request) {
+	account := r.PathValue("account")
+	file := r.PathValue("file")
+	if !mediaNameRe.MatchString(file) {
+		http.NotFound(w, r)
+		return
+	}
+	serveMediaFile(w, r, filepath.Join(s.OutDir, "studio", "models", account, file))
 }
 
 // --------------------------------------------------------------- publishers

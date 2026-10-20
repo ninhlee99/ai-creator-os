@@ -1,1499 +1,394 @@
-{{define "title"}}Studio AI — Affiliate Bán Hàng & Lookbook — AI Creator OS{{end}}
+{{define "title"}}Studio Affiliate Thời Trang Nữ — AI Creator OS{{end}}
 {{define "content"}}
-
-<!-- Pipeline Navigation Stepper -->
-{{template "creation-stepper" dict "Step" "affiliate"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Affiliate Lookbook</h1>
-    <p class="subtitle">Sản xuất video giới thiệu sản phẩm 9:16 tối ưu cho TikTok Shop &amp; Shopee.</p>
+    <h1 style="display:flex;align-items:center;gap:10px">
+      <span>👗</span> Studio AI — Affiliate Thời Trang Nữ (9:16)
+    </h1>
+    <p class="subtitle">Ghép người mẫu thật của bạn mặc sản phẩm, tự sinh kịch bản review bán hàng, lồng tiếng Gemini TTS và xuất video dọc 9:16 TikTok Shop / Shopee.</p>
   </div>
   <div class="webai-header-actions">
+    <a href="/studio/trends" class="btn btn-secondary btn-sm">🎵 Nhạc Thịnh Hành</a>
     <a href="/products" class="btn btn-secondary btn-sm">📦 Kệ Hàng</a>
-    <a href="/models" class="btn btn-secondary btn-sm">🎭 Nhân Vật</a>
-    <a href="/studio/trends" class="btn btn-secondary btn-sm">🎵 Nhạc thịnh hành</a>
-    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video ↗</a>
+    <a href="/models" class="btn btn-secondary btn-sm">🎭 Quản Lý Người Mẫu</a>
+    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video Render ↗</a>
   </div>
 </div>
 
+{{if .Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
 
-{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+<form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
+  <div class="studio-workbench-split" style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+    
+    <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN (DƯỚI 3 BƯỚC) -->
+    <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
+      
+      <!-- BƯỚC 1: SẢN PHẨM THỜI TRANG & DEAL -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">1</span>
+            Sản Phẩm Thời Trang Nữ &amp; Giá Bán
+          </h3>
+          <span class="badge badge-ok" style="font-size:11px">TikTok Shop &amp; Shopee</span>
+        </div>
 
-<div id="panel-creative">
-  <!-- ⚡ CHẾ ĐỘ 1-CHẠM DÀNH CHO NGƯỜI DÙNG BẬN RỘN / LƯỜI BIẾNG -->
-  <div class="card" style="border-radius:14px;padding:16px 20px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:2px solid var(--accent);box-shadow:0 4px 18px rgba(37,99,235,0.12)">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:26px">⚡</span>
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <strong style="font-size:15.5px;color:var(--text)">Chế Độ 1-Chạm: Tự Động Dựng Video Bán Hàng 5 Sao</strong>
-            <span class="badge badge-ok" style="font-weight:700">⭐⭐⭐⭐⭐ Điện Ảnh 5★</span>
+        {{if .Shelf}}
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+          <label style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span>📦 Chọn nhanh từ kệ hàng đã lưu:</span>
+            <a href="/products?tab=ke" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600">Mở kệ hàng ↗</a>
+          </label>
+          <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:12.5px;font-weight:600;width:100%;padding:8px">
+            <option value="">— Bấm để chọn sản phẩm có sẵn trên kệ —</option>
+            {{range .Shelf}}
+            <option value="{{.Title}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}">
+              {{.Title}} · {{fmtVND .Price}}
+            </option>
+            {{end}}
+          </select>
+        </div>
+        {{end}}
+
+        <div class="grid2" style="gap:12px;margin-bottom:12px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Tên sản phẩm thời trang <span class="req">*</span></label>
+            <input type="text" name="product_name" id="cr-product-name" required placeholder="Ví dụ: Đầm hoa nhí vintage tay bồng, Áo croptop tiểu thư..." oninput="updateMockupPreview('cr')" style="padding:10px">
           </div>
-          <p style="margin:2px 0 0;font-size:12px;color:var(--muted);line-height:1.4">
-            Dành cho người dùng lười: Hệ thống tự động chọn Deal ngon nhất, khớp nhạc TikTok #1 trending (không cần lồng tiếng), gắn prompt điện ảnh 4K &amp; bấm máy ngay!
-          </p>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Giá bán &amp; Khuyến mãi <span class="req">*</span></label>
+            <input type="text" name="product_price" placeholder="Ví dụ: 199.000₫ (Deal giảm 40%)" oninput="updateMockupPreview('cr')" style="padding:10px">
+          </div>
+        </div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:14px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Nhóm thời trang</label>
+            <select name="niche" id="cr-niche" onchange="updateMockupPreview('cr')" style="padding:10px">
+              <option value="Thời trang nữ dễ thương" selected>Thời trang nữ dễ thương / Xinh xắn</option>
+              <option value="Đầm & Váy tiểu thư">Đầm &amp; Váy tiểu thư / Tiệc</option>
+              <option value="Áo croptop & Chân váy">Áo croptop &amp; Chân váy năng động</option>
+              <option value="Đồ ngủ & Pijama lụa">Đồ ngủ &amp; Pijama lụa dễ thương</option>
+              <option value="Túi xách & Phụ kiện">Túi xách &amp; Phụ kiện thời trang</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Link Affiliate / Giỏ hàng</label>
+            <input type="url" name="aff_link" placeholder="Link Shopee, TikTok Shop hoặc Accesstrade..." style="padding:10px">
+          </div>
+        </div>
+
+        <!-- Ảnh sản phẩm -->
+        <div class="field" style="margin-bottom:14px">
+          <label style="font-weight:700;font-size:12.5px;display:flex;justify-content:space-between">
+            <span>📷 Ảnh sản phẩm (Đầm / Áo / Váy) <span class="req">*</span></span>
+            <span class="hint" style="font-size:11px">AI sẽ ghép người mẫu mặc sản phẩm này</span>
+          </label>
+          <div class="file-pick">
+            <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Tải ảnh sản phẩm từ máy…
+              <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
+            </label>
+            <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">Chưa chọn ảnh</span>
+          </div>
+          <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
+          <input type="hidden" name="photo_urls" id="cr-photo-urls">
+        </div>
+
+        <!-- Âm thanh chuẩn TikTok Shop Affiliate -->
+        <input type="hidden" name="tiktok_music_only" value="1">
+        <input type="hidden" name="voiceover_text" id="cr-voiceover-text" value="">
+        <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:12px 14px;margin-top:6px">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:4px">
+            <span>🎵</span> Âm thanh: Nhạc Nền TikTok Trending Tự Động
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.4">
+            Chuẩn video thời trang TikTok Shop: Sử dụng 100% nhạc nền thịnh hành bắt tai, không lồng tiếng AI máy móc và không chèn phụ đề che khuất sản phẩm/người mẫu.
+          </div>
         </div>
       </div>
-      <button type="button" class="btn btn-primary" onclick="oneClickLazyProduce()" style="font-weight:800;font-size:13.5px;padding:10px 20px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);border:none;box-shadow:0 4px 14px rgba(16,185,129,0.35);cursor:pointer">
-        🚀 Tự Động Tạo Video 1-Chạm Ngay ➔
-      </button>
-    </div>
 
-    <!-- Quick 1-Click Preset Deals -->
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px dashed var(--border)">
-      <span style="font-size:11.5px;font-weight:700;color:var(--text)">Gói tạo nhanh 1-Click:</span>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillLazyDeal('polo')" style="font-size:11.5px;font-weight:600">👔 Áo Polo Lụa Lạnh (299k · Deal 40%)</button>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillLazyDeal('serum')" style="font-size:11.5px;font-weight:600">✨ Serum Mờ Thâm 7 Ngày (189k · Deal 50%)</button>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillLazyDeal('fryer')" style="font-size:11.5px;font-weight:600">🍳 Nồi Chiên Không Dầu 8L (890k · Deal 35%)</button>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="quickFillLazyDeal('headphone')" style="font-size:11.5px;font-weight:600">🎧 Tai Nghe Chống Ồn (1.250k · Deal 30%)</button>
-    </div>
-  </div>
-
-  <form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
-    <div class="studio-workbench-split">
-      <!-- LEFT COLUMN: Form Controls & Media Workbench (60%) -->
-      <div class="studio-controls-col">
-        
-        <!-- Section 1: Product Info -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">📦</span> 1. Thông tin sản phẩm &amp; Kịch bản
+      <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT VÀ DÁNG NGƯỜI CỦA MẪU NỮ -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span>
+            Chọn Các Góc Mặt &amp; Dáng Người Của Mẫu Nữ
           </h3>
+          <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">Đã chọn {{len .AvailableModels}} góc mặt</span>
+        </div>
 
-          {{if .Shelf}}
-          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <label style="margin:0;font-size:12.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
-                <span>📦</span> Chọn nhanh từ Kệ hàng Affiliate có sẵn:
-              </label>
-              <a href="/products?tab=ke" target="_blank" style="font-size:11.5px;color:var(--accent);font-weight:700">Quản lý kệ hàng ↗</a>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Chọn các góc khuôn mặt &amp; dáng chụp của mẫu nữ:</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
+          </div>
+        </div>
+
+        <input type="hidden" name="model_id" id="cr-model-id" value="{{.SelectedModelID}}">
+
+        {{if .AvailableModels}}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:14px" id="cr-model-grid">
+          {{range $idx, $m := .AvailableModels}}
+          <label class="character-model-card cr-model-card" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid #2563eb;background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
+            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" checked class="cr-model-checkbox" onchange="onStudioModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
+            <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
+              <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
             </div>
-            <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:13px;font-weight:600;width:100%">
-              <option value="">— Chọn một sản phẩm thật trên kệ để tự động nạp thông số &amp; ảnh —</option>
-              {{range .Shelf}}
-              <option value="{{.Title}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}" data-comm="{{printf "%.0f" (pct .CommissionRate)}}%">
-                {{.Title}} · {{fmtVND .Price}} (Hoa hồng {{printf "%.0f" (pct .CommissionRate)}}%)
-              </option>
-              {{end}}
+            <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              Góc chụp #{{add $idx 1}}
+            </div>
+            <span class="cr-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
+              ✓ Đã chọn
+            </span>
+          </label>
+          {{end}}
+        </div>
+        {{else}}
+        <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px">
+          Chưa tìm thấy ảnh người mẫu. Vui lòng tải ảnh người mẫu của bạn lên bên dưới:
+        </div>
+        {{end}}
+
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px">Nhạc nền thịnh hành TikTok (Fashion / Chill / Acoustic)</label>
+          <select id="creative-trend-pick" onchange="pickStudioTrend('cr', this)" style="padding:10px">
+            <option value="" selected>🔥 Tự động chọn nhạc TikTok Trending (Fashion Chill 120-128 BPM)</option>
+            {{range .Sounds}}
+            <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
+            {{end}}
+          </select>
+          <input type="hidden" name="music_title" id="cr_music_title">
+          <input type="hidden" name="music_artist" id="cr_music_artist">
+        </div>
+      </div>
+
+      <!-- BƯỚC 3: CÔNG NGHỆ RENDER & XUẤT BẢN -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">3</span>
+            Công Nghệ Video &amp; Bấm Máy
+          </h3>
+          <span class="badge badge-live" style="font-size:11px">Định Dạng Dọc 9:16 (1080x1920)</span>
+        </div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:16px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Công nghệ sinh video AI (100% Free Cloud)</label>
+            <select name="video_engine" style="padding:10px;font-weight:700">
+              <option value="googleflow" selected>🌊 Google Flow (1.000 Credits Free ➔ Auto Remaster 4K UHD)</option>
+              <option value="veo3">🎬 Google Veo (Điện ảnh chân thực từ ảnh người mẫu)</option>
+              <option value="museai">🎥 Muse AI Video Studio (Chuyển động mượt mà)</option>
             </select>
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
+            <select name="seconds" id="cr-seconds" onchange="updateMockupPreview('cr')" style="padding:10px;font-weight:600">
+              <option value="60" selected>🎯 60 giây (Chuẩn Quỹ Nhà Sáng Tạo TikTok 1 phút+)</option>
+              <option value="30">⚡ 30 giây (Ngắn bắt trend nhanh)</option>
+              <option value="45">⏱️ 45 giây (Review cận cảnh)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer">
+          🚀 TẠO VIDEO AFFILIATE BÁN HÀNG NGAY (9:16)
+        </button>
+      </div>
+
+    </div>
+
+    <!-- CỘT PHẢI: LIVE PREVIEW & VIDEO VỪA RENDER -->
+    <div class="studio-sidebar-col" style="position:sticky;top:20px">
+      
+      <!-- Khung Mô Phỏng 9:16 TikTok Phone -->
+      <div class="card" style="border-radius:18px;overflow:hidden;padding:0;border:2px solid var(--border);box-shadow:0 12px 36px rgba(0,0,0,0.25);background:#000">
+        <div style="background:var(--bg3);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span>📱</span> Live Preview (TikTok 9:16)
+          </strong>
+          <span class="badge badge-live" style="font-size:10px">1080×1920</span>
+        </div>
+
+        <div id="cr-mockup-screen-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:#111;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="badge badge-ok" style="font-size:9.5px;font-weight:700">● MẪU THẬT</span>
+            <span id="cr-mockup-duration" style="background:rgba(0,0,0,0.6);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 60s</span>
+          </div>
+
+          <!-- Character & Product Tag Visual -->
+          <div style="text-align:center;margin:auto 0">
+            <div id="cr-mockup-hook-tag" style="background:#ef4444;color:#fff;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:800;display:inline-block;margin-bottom:8px">🔥 XEM NGAY OUTFIT XINH NÀY</div>
+            <div id="cr-mockup-product-name" style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:4px">Đầm Hoa Nhí Vintage</div>
+            <div id="cr-mockup-niche-tag" style="color:#e2e8f0;font-size:11.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8)">Thời trang nữ dễ thương</div>
+            <div id="cr-mockup-price-tag" style="background:#10b981;color:#fff;font-weight:800;font-size:12px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:6px">
+              💰 199.000₫ (Giảm 40%)
+            </div>
+          </div>
+
+          <!-- Bottom TikTok Caption & Cart -->
+          <div style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);border-radius:10px;padding:10px 12px;color:#fff;border:1px solid rgba(255,255,255,0.15)">
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.4" id="cr-mockup-vo-snippet">
+              🎙️ "Mọi người ơi xem ngay mẫu váy cực xinh này nha! Bấm vào giỏ hàng bên dưới săn deal..."
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);font-size:10.5px;color:#fde047;font-weight:700">
+              <span>🛍️ Giỏ hàng TikTok Shop</span>
+              <span>⚡ Mua ngay ➔</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Recent Jobs Preview -->
+      <div style="margin-top:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:13px;color:var(--text)">🎬 Video Vừa Render</strong>
+          <a href="/studio/jobs" style="font-size:11.5px;color:var(--accent);font-weight:700">Xem tất cả ↗</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          {{range $i, $j := .Jobs}}
+          {{if lt $i 3}}
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:8px 10px;border-radius:8px;font-size:12px">
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">
+              <strong>{{$j.Title}}</strong>
+            </div>
+            <span class="badge {{if eq $j.Status "done"}}badge-ok{{else if eq $j.Status "running"}}badge-warn{{else}}badge-err{{end}}" style="font-size:10px">
+              {{if eq $j.Status "done"}}✓ Xong{{else if eq $j.Status "running"}}Đang dựng{{else}}{{$j.Status}}{{end}}
+            </span>
           </div>
           {{end}}
-          <div class="grid3">
-            <div class="field">
-              <label>Tên sản phẩm <span class="req">*</span></label>
-              <input type="text" name="product_name" id="cr-product-name" required placeholder="Ví dụ: Nồi chiên không dầu 8L, Áo polo lụa lạnh..." oninput="updateMockupPreview('cr')">
-            </div>
-            <div class="field">
-              <label>Nhóm ngành hàng</label>
-              <select name="niche" id="cr-niche" onchange="updateMockupPreview('cr')">
-                <option value="thời trang/phụ kiện">Thời trang / Phụ kiện</option>
-                <option value="mỹ phẩm">Mỹ phẩm &amp; Làm đẹp</option>
-                <option value="gia dụng">Gia dụng thông minh</option>
-                <option value="công nghệ">Công nghệ &amp; Điện tử</option>
-                <option value="khác">Khác</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Giá bán &amp; Ưu đãi</label>
-              <input type="text" name="product_price" placeholder="Ví dụ: 299.000đ (Giảm 45%)">
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Link Affiliate / Giỏ hàng</label>
-            <input type="url" name="aff_link" placeholder="https://go.isclix.com/deep_link/... hoặc link shopee/tiktok shop">
-          </div>
-
-          <!-- AI Engine & Model Selector with Live Pool Status -->
-          <div style="background:var(--bg3);padding:14px 16px;border-radius:12px;margin-top:16px;border:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-              <label style="font-weight:700;font-size:13px;margin:0;display:flex;align-items:center;gap:6px">
-                <span>🤖</span> Chọn Model AI Viết Kịch Bản:
-              </label>
-              <!-- Live AI Fleet Status Badges -->
-              <div id="st-ai-pool-status" style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px">
-                <span class="badge badge-ok">🟣 Claude: 1 On</span>
-                <span class="badge badge-ok">💬 ChatGPT: 2 On</span>
-                <span class="badge badge-ok">✨ Gemini: 2 On</span>
-                <span class="badge badge-ok">🚀 Grok: 2 On</span>
-                <span class="badge badge-ok">🎬 Muse AI: 1 On</span>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px">
-              <label class="st-engine-card" id="st-eng-auto" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1.5px solid var(--accent);padding:10px 12px;border-radius:8px;transition:all 0.2s">
-                <input type="radio" name="cr_ai_engine" value="auto" checked onchange="updateEngineHighlight(this)" style="margin-top:2px">
-                <div style="font-size:12px;line-height:1.3">
-                  <strong style="color:var(--accent);display:block">⚡ Tự Động (Auto-Balance)</strong>
-                  <span class="hint" style="font-size:11px">Phân tích ngành hàng chọn AI tối ưu</span>
-                </div>
-              </label>
-              <label class="st-engine-card" id="st-eng-claude" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
-                <input type="radio" name="cr_ai_engine" value="claude" onchange="updateEngineHighlight(this)" style="margin-top:2px">
-                <div style="font-size:12px;line-height:1.3">
-                  <strong style="color:#d97706;display:block">🧠 Claude 3.7 Sonnet</strong>
-                  <span class="hint" style="font-size:11px">Storytelling, chiều sâu & review cảm xúc</span>
-                </div>
-              </label>
-              <label class="st-engine-card" id="st-eng-grok" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
-                <input type="radio" name="cr_ai_engine" value="grok" onchange="updateEngineHighlight(this)" style="margin-top:2px">
-                <div style="font-size:12px;line-height:1.3">
-                  <strong style="color:#38bdf8;display:block">🚀 Grok 3 (xAI)</strong>
-                  <span class="hint" style="font-size:11px">Hook sốc, phản biện & bùng nổ tranh cãi</span>
-                </div>
-              </label>
-              <label class="st-engine-card" id="st-eng-chatgpt" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
-                <input type="radio" name="cr_ai_engine" value="chatgpt" onchange="updateEngineHighlight(this)" style="margin-top:2px">
-                <div style="font-size:12px;line-height:1.3">
-                  <strong style="color:#10b981;display:block">🎯 ChatGPT 4o</strong>
-                  <span class="hint" style="font-size:11px">Khung PAS, kích thích FOMO & chốt sale</span>
-                </div>
-              </label>
-              <label class="st-engine-card" id="st-eng-gemini" style="cursor:pointer;display:flex;align-items:flex-start;gap:8px;background:var(--bg2);border:1px solid var(--border);padding:10px 12px;border-radius:8px;transition:all 0.2s">
-                <input type="radio" name="cr_ai_engine" value="gemini" onchange="updateEngineHighlight(this)" style="margin-top:2px">
-                <div style="font-size:12px;line-height:1.3">
-                  <strong style="color:#60a5fa;display:block">✨ Gemini 2.0 Flash</strong>
-                  <span class="hint" style="font-size:11px">Đa giác quan & prompt ảnh 4K sắc nét</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- Integrated AI Script & QC Studio Cockpit (Quy trình 1 màn hình duy nhất) -->
-          <div style="background:var(--bg3);padding:16px;border-radius:12px;margin-top:14px;border:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-              <div>
-                <b style="font-size:14px;color:var(--text)">✍️ Khởi tạo Kịch bản &amp; QC</b>
-              </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('polo')">👔 Áo Polo</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('serum')">✨ Serum Da</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('fryer')">🍳 Nồi Chiên</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="loadStudioSample('headphone')">🎧 Tai Nghe</button>
-                <button type="button" class="btn btn-primary btn-sm" id="btn-studio-gen-script" onclick="generateStudioScriptAndQC()">
-                  ✨ Sinh Kịch Bản &amp; QC
-                </button>
-              </div>
-            </div>
-
-            <!-- QC & Script Workspace (Appears after generating) -->
-            <div id="studio-script-qc-result" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-              
-              <!-- QC Scorecard Banner -->
-              <div style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent);border-radius:10px;padding:12px 16px;margin-bottom:14px">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                    <span style="font-size:22px">🛡️</span>
-                    <div>
-                      <strong style="font-size:14px">Đánh Giá QC Kịch Bản:</strong>
-                      <span class="badge badge-ok" id="st-qc-verdict" style="margin-left:6px;font-weight:700">Đạt Chuẩn Triệu View</span>
-                      <span class="badge badge-info" id="st-ai-engine-badge" style="margin-left:6px;font-weight:700">⚡ Tự Động</span>
-                    </div>
-                  </div>
-                  <div style="font-size:18px;font-weight:800;color:var(--accent)">
-                    <span id="st-qc-score">--</span><span style="font-size:12px;color:var(--muted)">/100 QC</span>
-                  </div>
-                </div>
-                <!-- 4 Metrics Gauges -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;font-size:11px">
-                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
-                    <div style="display:flex;justify-content:space-between"><span>🎯 Hook 3s:</span><b id="st-qc-hook" style="color:var(--accent)">--%</b></div>
-                  </div>
-                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
-                    <div style="display:flex;justify-content:space-between"><span>🛍️ Ngành hàng:</span><b id="st-qc-niche" style="color:#10b981">--%</b></div>
-                  </div>
-                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
-                    <div style="display:flex;justify-content:space-between"><span>💰 Thuyết phục:</span><b id="st-qc-per" style="color:#f59e0b">--%</b></div>
-                  </div>
-                  <div style="background:var(--bg2);padding:6px 10px;border-radius:6px;border:1px solid var(--border)">
-                    <div style="display:flex;justify-content:space-between"><span>🎬 Dựng hình:</span><b id="st-qc-av" style="color:#8b5cf6">--%</b></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 4 Hook 3s Selector -->
-              <div style="margin-bottom:14px">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                  <label style="font-size:13px;font-weight:700;margin:0">🎯 Chọn 1 trong 4 Hook 3 Giây:</label>
-                </div>
-                <div id="st-hooks-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:8px"></div>
-              </div>
-
-              <!-- Storyboard Scenes & Visual Consistency Section -->
-              <div style="margin-bottom:12px">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                  <label style="font-size:13px;font-weight:700;margin:0">🎬 Storyboard 4 Phân Cảnh:</label>
-                  <span class="badge badge-dim" style="font-size:11px">🔒 Đồng bộ nhân vật &amp; sản phẩm</span>
-                </div>
-                <div id="st-scenes-container" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));gap:10px"></div>
-              </div>
-
-              <!-- Quick Copy & Management Toolstrip -->
-              <div style="display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;border-top:1px dashed var(--border)">
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('chatgpt')">📋 Copy ChatGPT</button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('claude')">📋 Copy Claude</button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('gemini')">📋 Copy Prompt Ảnh</button>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="copyGenPrompt('museai')">📋 Copy Prompt Video</button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Media Assets -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎬</span> 2. Tài sản Media (Video Clips &amp; Ảnh 4K)
-          </h3>
-
-          <div class="field">
-            <label>Video Clips (Tối đa 8 clips MP4)</label>
-            <div class="file-pick">
-              <label class="btn btn-secondary btn-sm">📁 Chọn nhiều video clip…
-                <input type="file" name="clip_files" accept="video/mp4,video/quicktime,video/webm" multiple onchange="onClipsPicked(this)">
-              </label>
-              <span class="file-name" id="clip-file-count">Chưa chọn clip</span>
-            </div>
-          </div>
-
-          <div class="field" style="margin-top:8px">
-            <label>Hoặc dán URL Video</label>
-            <textarea name="clip_urls" id="cr-clip-urls" rows="2" placeholder="https://cdn.muse.ai/.../video.mp4&#10;https://..."></textarea>
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <label style="margin:0">Ảnh sản phẩm chính</label>
-                <button type="button" class="btn btn-sm btn-primary" id="btn-cr-gen-image" onclick="generateProductImageAI('cr')" style="font-size:12px;padding:3px 10px">
-                  🎨 Tạo ảnh AI
-                </button>
-              </div>
-              <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Tải ảnh từ máy…
-                  <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
-                </label>
-                <span class="file-name" id="prod-photo-label-cr">Chưa chọn ảnh</span>
-              </div>
-              <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
-              <input type="hidden" name="photo_urls" id="cr-photo-urls">
-              <div id="cr-ai-photo-preview" style="display:none;margin-top:10px;position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
-                <img id="cr-ai-photo-img" src="" alt="Ảnh sản phẩm AI" style="width:100%;max-height:180px;object-fit:cover;display:block">
-                <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px">
-                  <span class="badge badge-ok" id="cr-ai-photo-badge">✨ Đã tạo ảnh AI</span>
-                </div>
-              </div>
-            </div>
-            <div class="field">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <label style="margin:0;font-weight:700">Khuôn mặt người mẫu (Face Lock)</label>
-                <a href="/models" style="font-size:11.5px;color:var(--accent);font-weight:700">🎭 Thư Viện Nhân Vật ➔</a>
-              </div>
-              <input type="hidden" name="model_id" id="cr-model-id" value="{{.SelectedModelID}}">
-              {{if .AvailableModels}}
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-                {{range .AvailableModels}}
-                <div class="character-face-pill cr-face-item {{if eq .ID $.SelectedModelID}}selected{{end}}" onclick="document.getElementById('cr-model-id').value='{{.ID}}';document.querySelectorAll('.cr-face-item').forEach(function(p){p.style.borderColor='var(--border)'});this.style.borderColor='var(--accent)';" style="cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--bg2);padding:4px 8px;border-radius:8px;border:1.5px solid {{if eq .ID $.SelectedModelID}}var(--accent){{else}}var(--border){{end}}">
-                  <img src="{{.URL}}" alt="{{.Filename}}" style="width:26px;height:26px;border-radius:50%;object-fit:cover">
-                  <span style="font-size:11px;font-weight:700">{{.AccountName}}</span>
-                </div>
-                {{end}}
-              </div>
-              {{end}}
-              <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Tải thêm ảnh mẫu…
-                  <input type="file" name="model_photos" accept="image/*" multiple onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
-                </label>
-                <span class="file-name">Chưa chọn ảnh</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chọn Công Nghệ Sinh Video AI: Veo 3 / Muse AI / Lookbook Chuyển Động -->
-          <div class="field" style="margin-bottom:14px;background:var(--bg3);padding:12px 14px;border-radius:10px;border:1px solid var(--border)">
-            <label style="font-weight:700;font-size:12.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-              <span>🎬</span> Công nghệ Sinh Video Chuyển Động AI:
-            </label>
-            <select name="video_engine" style="width:100%;padding:8px 12px;font-size:13px;font-weight:600">
-              <option value="googleflow" selected>🌊 Google Flow (1.000 Credits Free/tháng ➔ Tự động Remaster 4K UHD)</option>
-              <option value="veo3">🎬 Google Veo 3 / 3.1 (Tạo video điện ảnh từ mô tả sản phẩm &amp; ảnh 4K/1080p 9:16)</option>
-              <option value="museai">🎥 Muse AI Video Studio (Chuyển động mượt mà không watermark)</option>
-              <option value="lookbook">👗 Lookbook người thật (Thử đồ &amp; Trải nghiệm thực tế)</option>
-              <option value="auto">⚡ Tự Động Tối Ưu (Google Flow ➔ Veo 3 ➔ Muse AI ➔ Lookbook)</option>
-            </select>
-          </div>
-
-          <!-- Video Mẫu Lookbook Chuyển Động Chân Thực 60s -->
-          <div class="field" style="margin-bottom:14px;background:var(--bg2);padding:14px;border-radius:10px;border:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <label style="margin:0;font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:6px">
-                <span>👗</span> Video Mẫu Lookbook 60 Giây (AI Video Re-Renderer)
-              </label>
-              <span class="badge badge-live" style="font-size:10px">1080x1920 Chuẩn 60s TikTok Shop</span>
-            </div>
-            <div style="display:flex;gap:14px;align-items:center">
-              <div style="flex:1;font-size:12px;color:var(--muted);line-height:1.4">
-                Video lookbook thời trang thử đồ 60s chuyển động chân thực 100%. AI sẽ đưa video mẫu và khuôn mặt nhân vật để render lại video đó với khuôn mặt của kênh bạn (không logo, không cắt dán).
-                <input type="hidden" name="sample_clip" value="clip_03_fashion_lookbook_60s">
-              </div>
-              <div style="width:90px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
-                <video src="/clips/fashion/clip_03_fashion_lookbook_60s.mp4" controls preload="none" muted loop style="width:100%;aspect-ratio:9/16;display:block"></video>
-              </div>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Ảnh phụ / Cận cảnh chi tiết (Tối đa 8 ảnh Ken Burns)</label>
-            <div class="file-pick">
-              <label class="btn btn-secondary btn-sm">📁 Chọn ảnh phụ…
-                <input type="file" name="extra_photos" accept="image/*" multiple>
-              </label>
-              <span class="file-name">Chưa chọn ảnh</span>
-            </div>
-          </div>
-
-          <div class="field" style="margin-top:8px">
-            <label>Hoặc dán URL Ảnh Sản Phẩm</label>
-            <textarea name="photo_urls" id="cr-photo-urls" rows="2" placeholder="https://lh3.googleusercontent.com/...&#10;https://..."></textarea>
-          </div>
-        </div>
-
-        <!-- Section 3: Voiceover & Audio Engine -->
-        <div class="form-card" style="margin-bottom: 20px;">
-          <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-            <span style="font-size:20px">🎙️</span> 3. Âm Nhạc Xu Hướng &amp; Lồng Tiếng
-          </h3>
-
-          <!-- CHUẨN TIKTOK: CHỈ DÙNG NHẠC TRENDING, KHÔNG CẦN LỒNG TIẾNG -->
-          <div style="background:linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(56,189,248,0.06) 100%);border:1.5px solid #38bdf8;border-radius:10px;padding:12px 16px;margin-bottom:14px">
-            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin:0">
-              <input type="checkbox" name="tiktok_music_only" id="cr-tiktok-music-only" value="1" checked onchange="toggleTikTokMusicOnly(this)" style="width:18px;height:18px;margin-top:2px;accent-color:var(--accent)">
-              <div>
-                <strong style="color:var(--text);font-size:13.5px">🎵 Đăng TikTok: Nhạc Nền Thịnh Hành (Không Cần Lồng Tiếng)</strong>
-                <div style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.35">
-                  Đúng chuẩn video triệu view: Tự chọn bài nhạc đang sốt trên TikTok VN, hình ảnh sản phẩm chuyển động điện ảnh hút mắt (bỏ qua giọng đọc để tránh cảm giác quảng cáo nhàm chán).
-                </div>
-              </div>
-            </label>
-          </div>
-
-          <div id="voiceover-input-container" style="display:none">
-            <div class="field">
-              <label>Kịch bản lời đọc Voiceover</label>
-              <textarea name="voiceover_text" id="cr-voiceover-text" rows="3" placeholder="Nhập lời bình bán hàng (AI TTS sẽ tự động lồng tiếng đọc đoạn này nếu không tải file thu âm)" oninput="updateMockupPreview('cr')"></textarea>
-            </div>
-
-            <div class="field">
-              <label>Hoặc tải lên file âm thanh giọng đọc có sẵn (mp3/m4a/wav)</label>
-              <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Chọn file voiceover…
-                  <input type="file" name="voiceover_file" accept="audio/*">
-                </label>
-                <span class="file-name">Chưa chọn file</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Music Selection -->
-          <div class="field">
-            <label>Chọn bài nhạc nền thịnh hành</label>
-            <select id="creative-trend-pick" onchange="pickStudioTrend('cr', this)">
-              <option value="">— Không chọn nhạc nền —</option>
-              {{range .Sounds}}
-              <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
-              {{end}}
-            </select>
-            <input type="hidden" name="music_title" id="cr_music_title">
-            <input type="hidden" name="music_artist" id="cr_music_artist">
-          </div>
-
-          <div class="grid2">
-            <div class="field">
-              <label>Hoặc tải lên file nhạc riêng (mp3/m4a)</label>
-              <div class="file-pick">
-                <label class="btn btn-secondary btn-sm">📁 Chọn file nhạc…
-                  <input type="file" name="music_file" accept="audio/*" onchange="onStudioMusicFilePicked('cr', this)">
-                </label>
-                <span class="file-name" id="cr-music-file-label">Chưa chọn file</span>
-              </div>
-            </div>
-            <div class="field">
-              <label>Bắt đầu nhạc từ giây thứ</label>
-              <input type="number" name="music_start" value="0" min="0" step="1">
-            </div>
-          </div>
-
-          <!-- Audio Preview Player Widget -->
-          <div class="audio-preview-card" id="cr-audio-preview" data-url="/static/preview.mp3">
-            <div class="audio-preview-header">
-              <div class="audio-preview-left">
-                <button type="button" class="btn-audio-play" id="cr-audio-play-btn" onclick="toggleAudioPreview('cr')" title="Nghe thử bài nhạc">
-                  <span id="cr-audio-icon">▶</span>
-                </button>
-                <div class="audio-preview-meta">
-                  <div class="audio-preview-title" id="cr-audio-title">Chưa chọn nhạc nền</div>
-                  <div class="audio-preview-sub" id="cr-audio-sub">Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp</div>
-                </div>
-              </div>
-              <div class="audio-waveform-bars" id="cr-audio-bars">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              </div>
-            </div>
-            <div class="audio-preview-timeline">
-              <div class="audio-preview-progress" id="cr-audio-progress"></div>
-            </div>
-          </div>
-
-          <details class="advanced" style="margin-top:14px">
-            <summary>⚙️ Tùy chọn nâng cao (Tỉ lệ khung hình, thời lượng, chú thích)</summary>
-            <div class="grid2" style="margin-top:10px">
-              <div class="field">
-                <label>Tỉ lệ khung hình</label>
-                <select name="aspect_ratio" id="cr-aspect-ratio" onchange="updateMockupPreview('cr')">
-                  <option value="9:16" selected>📱 Dọc 9:16 (TikTok, Reels, Shorts) — Chuẩn</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Thời lượng video</label>
-                <select name="seconds" id="cr-seconds" onchange="updateMockupPreview('cr')">
-                  <option value="60" selected>🎯 60s (Chuẩn Quỹ Nhà Sáng Tạo TikTok 1 phút+ / Bật Kiếm Tiền)</option>
-                  <option value="90">📖 90s (Video Review Chi Tiết & Chuyển Đổi Cao)</option>
-                  <option value="30">⚡ 30s (Ngắn Bắt Trend)</option>
-                  <option value="15">⏱ 15s (Siêu Ngắn)</option>
-                </select>
-              </div>
-            </div>
-            <div class="grid2">
-              <div class="field">
-                <label>Nhịp điệu dựng (BPM)</label>
-                <input type="number" name="bpm" value="120" min="60" max="200">
-              </div>
-              <div class="field">
-                <label>Chế độ dựng</label>
-                <select name="mode">
-                  <option value="story">Kể chuyện cảm xúc + Giới thiệu</option>
-                  <option value="direct">Giới thiệu sản phẩm trực diện</option>
-                </select>
-              </div>
-            </div>
-            <div class="field">
-              <label>Tiêu đề / Chú thích cố định trên video (Fixed Caption)</label>
-              <input type="text" name="fixed_caption" id="cr-caption" placeholder="Ví dụ: SALE 50% DUY NHẤT HÔM NAY" oninput="updateMockupPreview('cr')">
-            </div>
-          </details>
+          {{end}}
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Studio 9:16 Pro Viewport (Loại bỏ khung viền điện thoại giả lập) -->
-      <div class="studio-preview-col" style="position: sticky; top: 20px;">
-        <div style="background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.12)">
-          <!-- Viewport Header Bar -->
-          <div style="background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444"></span>
-              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b"></span>
-              <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981"></span>
-              <strong style="font-size:12px;margin-left:6px;color:var(--text)">Khung Dựng 9:16 Full HD</strong>
-            </div>
-            <span class="badge badge-ok" id="cr-mockup-aspect-pill" style="font-size:10.5px">1080×1920 · TikTok Shop</span>
-          </div>
-
-          <!-- Video Viewport Body (9:16 aspect ratio) -->
-          <div id="cr-mockup-screen-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80') center/cover;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
-            
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="badge badge-live" style="font-size:10px;font-weight:700">● LIVE PREVIEW</span>
-              <span id="cr-mockup-duration" style="background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 30s</span>
-            </div>
-
-            <div style="text-align:center;margin:auto 0">
-              <div class="phone-hook-tag" id="cr-mockup-hook-tag" style="background:#ef4444;color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:800;display:inline-block;margin-bottom:10px">🔥 ĐỪNG BỎ LỠ DEAL HỜI</div>
-              <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:6px" id="cr-mockup-product-name">Video Quảng Cáo Sản Phẩm</div>
-              <div style="color:#e2e8f0;font-size:12px;text-shadow:0 1px 4px rgba(0,0,0,0.8)" id="cr-mockup-niche-tag">Thời trang / Phụ kiện</div>
-              <div id="cr-mockup-price-tag" style="background:#10b981;color:#fff;font-weight:800;font-size:12.5px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px;box-shadow:0 3px 8px rgba(0,0,0,0.4)">
-                💰 Giá ưu đãi hôm nay
-              </div>
-              
-              <!-- Beat Waveform Visualizer -->
-              <div class="phone-waveform-box" style="margin-top:14px">
-                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-              </div>
-            </div>
-
-            <div style="background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;color:#fff">
-              <div style="font-size:12px;font-weight:700;margin-bottom:2px" id="cr-mockup-caption-preview">🔥 Ưu đãi số lượng có hạn</div>
-              <div style="font-size:11px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="cr-mockup-vo-snippet">🎙️ Lời bình voiceover bán hàng truyền cảm...</div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);font-size:10.5px;color:#94a3b8">
-                <span>⚡ GPU VideoToolbox</span>
-                <span>🛍️ Gắn Giỏ Hàng TikTok Shop</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mockup-render-action-card" style="margin-top:16px">
-          <button type="submit" class="btn-mega-render" id="btn-submit-render-cr" style="background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);color:#fff;padding:14px;border:none;border-radius:10px;width:100%;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,0.3)">
-            🚀 Bắt Đầu Dựng Video Bán Hàng 9:16
-          </button>
-        </div>
-      </div>
     </div>
-</div>
 
-
-
-<!-- Global Audio Element for Audio Previews -->
-<audio id="global-preview-player" preload="none" style="display:none"></audio>
+  </div>
+</form>
 
 <script>
-function updateMockupPreview(prefix) {
-
-  var nameEl = document.getElementById(prefix + '-product-name');
-  if (!nameEl) return;
-  var name = nameEl.value;
-  var nicheEl = document.getElementById(prefix + '-niche');
-  var niche = nicheEl ? nicheEl.value : '';
-  var aspectEl = document.getElementById(prefix + '-aspect-ratio');
-  var aspect = aspectEl ? aspectEl.value : '9:16';
-  var secsEl = document.getElementById(prefix + '-seconds');
-  var secs = secsEl ? secsEl.value : '30';
-
-  if (name.trim()) {
-    var pName = document.getElementById(prefix + '-mockup-product-name');
-    if (pName) pName.textContent = name;
+function onStudioModelToggle(cb) {
+  var card = cb.closest('.cr-model-card');
+  var badge = card.querySelector('.cr-model-badge');
+  if (cb.checked) {
+    card.style.borderColor = '#2563eb';
+    if (badge) { badge.textContent = '✓ Đã chọn'; badge.style.color = '#2563eb'; }
+  } else {
+    card.style.borderColor = 'var(--border)';
+    if (badge) { badge.textContent = 'Bấm để chọn'; badge.style.color = 'var(--muted)'; }
   }
-  var nTag = document.getElementById(prefix + '-mockup-niche-tag');
-  if (nTag) nTag.textContent = niche;
-  var aPill = document.getElementById(prefix + '-mockup-aspect-pill');
-  if (aPill) aPill.textContent = '📱 9:16 (1080x1920) · TikTok Shop';
-  var dPill = document.getElementById(prefix + '-mockup-duration');
-  if (dPill) dPill.textContent = '⏱️ ' + secs + 's';
+  updateStudioModelCount();
+}
 
-  if (prefix === 'cr') {
-    var voEl = document.getElementById('cr-voiceover-text');
-    var vo = voEl ? voEl.value : '';
-    var capEl = document.getElementById('cr-caption');
-    var caption = capEl ? capEl.value : '';
-    if (caption.trim()) {
-      var capPrev = document.getElementById('cr-mockup-caption-preview');
-      if (capPrev) capPrev.textContent = caption;
-      var hookTag = document.getElementById('cr-mockup-hook-tag');
-      if (hookTag) hookTag.textContent = '🔥 ' + caption;
+function toggleAllStudioModels(state) {
+  document.querySelectorAll('.cr-model-checkbox').forEach(function(cb) {
+    cb.checked = state;
+    var card = cb.closest('.cr-model-card');
+    var badge = card.querySelector('.cr-model-badge');
+    if (state) {
+      card.style.borderColor = '#2563eb';
+      if (badge) { badge.textContent = '✓ Đã chọn'; badge.style.color = '#2563eb'; }
+    } else {
+      card.style.borderColor = 'var(--border)';
+      if (badge) { badge.textContent = 'Bấm để chọn'; badge.style.color = 'var(--muted)'; }
     }
-    if (vo.trim()) {
-      var voSnip = document.getElementById('cr-mockup-vo-snippet');
-      if (voSnip) voSnip.textContent = '🎙️ ' + vo.substring(0, 45) + '...';
-    }
-    var priceInput = document.querySelector('input[name="product_price"]');
-    var priceTag = document.getElementById('cr-mockup-price-tag');
-    if (priceInput && priceInput.value.trim() && priceTag) {
-      priceTag.textContent = '💰 ' + priceInput.value.trim();
-      priceTag.style.display = 'inline-block';
-    }
+  });
+  updateStudioModelCount();
+}
+
+function updateStudioModelCount() {
+  var checked = document.querySelectorAll('.cr-model-checkbox:checked').length;
+  var total = document.querySelectorAll('.cr-model-checkbox').length;
+  var el = document.getElementById('cr-model-selected-count');
+  if (el) el.textContent = 'Đã chọn ' + checked + '/' + total + ' góc mặt';
+}
+
+function autoGenerateFashionScript() {
+  var name = document.getElementById('cr-product-name').value.trim() || 'váy xinh xắn';
+  var priceInput = document.querySelector('input[name="product_price"]');
+  var price = priceInput ? priceInput.value.trim() : 'giá ưu đãi';
+  var script = 'Mọi người ơi, xem ngay mẫu ' + name + ' cực xinh này nha! Thiết kế trẻ trung, chất vải mềm mại thoáng mát, tôn dáng siêu đỉnh luôn. Giá hôm nay đang trợ giá chỉ ' + price + '. Bấm ngay vào giỏ hàng góc trái bên dưới để săn deal kẻo hết nha!';
+  var ta = document.getElementById('cr-voiceover-text');
+  if (ta) {
+    ta.value = script;
+    updateMockupPreview('cr');
   }
 }
 
-function onClipsPicked(input) {
-  var count = input.files.length;
-  var el = document.getElementById('clip-file-count');
-  if (el) el.textContent = count > 0 ? (count + ' video clip đã chọn') : 'Chưa chọn clip';
+function updateMockupPreview(prefix) {
+  var nameEl = document.getElementById('cr-product-name');
+  if (nameEl && nameEl.value.trim()) {
+    var pName = document.getElementById('cr-mockup-product-name');
+    if (pName) pName.textContent = nameEl.value.trim();
+  }
+  var nicheEl = document.getElementById('cr-niche');
+  if (nicheEl) {
+    var nTag = document.getElementById('cr-mockup-niche-tag');
+    if (nTag) nTag.textContent = nicheEl.value;
+  }
+  var priceInput = document.querySelector('input[name="product_price"]');
+  var priceTag = document.getElementById('cr-mockup-price-tag');
+  if (priceInput && priceInput.value.trim() && priceTag) {
+    priceTag.textContent = '💰 ' + priceInput.value.trim();
+  }
+  var voEl = document.getElementById('cr-voiceover-text');
+  var voSnippet = document.getElementById('cr-mockup-vo-snippet');
+  if (voEl && voEl.value.trim() && voSnippet) {
+    voSnippet.textContent = '🎙️ "' + voEl.value.trim().substring(0, 50) + '..."';
+  }
+}
+
+function pickShelfProduct(sel) {
+  if (!sel || !sel.value) return;
+  var opt = sel.options[sel.selectedIndex];
+  var name = opt.value;
+  var price = opt.getAttribute('data-price') || '';
+  var niche = opt.getAttribute('data-niche') || '';
+  var aff = opt.getAttribute('data-aff') || '';
+  
+  if (name) document.getElementById('cr-product-name').value = name;
+  if (price) {
+    var pEl = document.querySelector('input[name="product_price"]');
+    if (pEl) pEl.value = price;
+  }
+  if (aff) {
+    var aEl = document.querySelector('input[name="aff_link"]');
+    if (aEl) aEl.value = aff;
+  }
+  updateMockupPreview('cr');
+  autoGenerateFashionScript();
 }
 
 function onProductPhotoPicked(input, prefix) {
-  var el = document.getElementById('prod-photo-label-' + prefix);
-  if (input.files.length > 0 && el) {
-    el.textContent = input.files[0].name;
-    var preview = document.getElementById(prefix + '-ai-photo-preview');
-    if (preview) preview.style.display = 'none';
-  }
-}
-
-function generateProductImageAI(prefix) {
-  var nameEl = document.getElementById(prefix + '-product-name');
-  var name = nameEl ? nameEl.value.trim() : '';
-  if (!name) {
-    alert('Vui lòng nhập tên sản phẩm trước khi tạo ảnh.');
-    if (nameEl) nameEl.focus();
-    return;
-  }
-  var nicheEl = document.getElementById(prefix + '-niche');
-  var niche = nicheEl ? nicheEl.value : '';
-  var aspectEl = document.getElementById(prefix + '-aspect-ratio');
-  var aspect = aspectEl ? aspectEl.value : '9:16';
-
-  var btn = document.getElementById('btn-' + prefix + '-gen-image');
-  var oldText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Đang tạo...';
-  }
-
-  var data = new URLSearchParams();
-  data.append('product_name', name);
-  data.append('niche', niche);
-  data.append('aspect_ratio', aspect);
-
-  fetch('/studio/generate-image', {
-    method: 'POST',
-    body: data,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldText;
-    }
-    if (!res.ok) {
-      alert('Lỗi tạo ảnh: ' + (res.error || 'Thử lại'));
-      return;
-    }
-    var hidden = document.getElementById(prefix + '-generated-photo-path');
-    if (hidden) hidden.value = res.path;
-
-    var prevCard = document.getElementById(prefix + '-ai-photo-preview');
-    var prevImg = document.getElementById(prefix + '-ai-photo-img');
-    var badge = document.getElementById(prefix + '-ai-photo-badge');
-    if (prevCard && prevImg) {
-      prevImg.src = res.url;
-      prevCard.style.display = 'block';
-      if (badge) {
-        badge.textContent = res.source === 'gemini' ? '✨ Ảnh Gemini 4K' : '🎨 Ảnh Đồ Họa 4K';
+  var label = document.getElementById('prod-photo-label-' + prefix);
+  if (input.files && input.files[0]) {
+    if (label) label.textContent = input.files[0].name;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var bg = document.getElementById('cr-mockup-screen-bg');
+      if (bg) {
+        bg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.85)), url(' + e.target.result + ')';
+        bg.style.backgroundSize = 'cover';
+        bg.style.backgroundPosition = 'center';
       }
-    }
-
-    var mockupBg = document.getElementById(prefix + '-mockup-screen-bg');
-    if (mockupBg) {
-      mockupBg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(' + res.url + ')';
-      mockupBg.style.backgroundSize = 'cover';
-      mockupBg.style.backgroundPosition = 'center';
-    }
-
-    var label = document.getElementById('prod-photo-label-' + prefix);
-    if (label) label.textContent = '✓ ' + res.filename;
-
-    window.showToast('✓ Đã tạo xong ảnh sản phẩm 4K!', true);
-  })
-  .catch(function(err) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldText;
-    }
-    alert('Lỗi: ' + err);
-  });
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
 }
-
-// ---------------------------------------------------------------------------
-// AUDIO PREVIEW ENGINE (Hỗ trợ cả bài thịnh hành, file tải lên & synth beat)
-// ---------------------------------------------------------------------------
-var globalAudio = document.getElementById('global-preview-player');
-var audioPlayingSource = null;
-var webAudioCtx = null;
-var synthInterval = null;
 
 function pickStudioTrend(prefix, sel) {
-  var v = sel.value.split('|');
-  var title = v[0] || '';
-  var artist = v[1] || '';
-  
-  document.getElementById(prefix + '_music_title').value = title;
-  document.getElementById(prefix + '_music_artist').value = artist;
-  
-  var titleEl = document.getElementById(prefix + '-audio-title');
-  var subEl = document.getElementById(prefix + '-audio-sub');
-  var card = document.getElementById(prefix + '-audio-preview');
-  
-  if (title) {
-    if (titleEl) titleEl.textContent = title;
-    if (subEl) subEl.textContent = 'Nghệ sĩ: ' + artist + ' (Bấm ▶ để nghe thử)';
-    if (card) {
-      card.setAttribute('data-url', '/static/preview.mp3');
-      card.setAttribute('data-title', title);
-    }
-  } else {
-    if (titleEl) titleEl.textContent = 'Chưa chọn nhạc nền';
-    if (subEl) subEl.textContent = 'Chọn bài thịnh hành hoặc tải file mp3 lên để nghe thử trực tiếp';
+  if (!sel || !sel.value) return;
+  var parts = sel.value.split('|');
+  if (parts.length >= 2) {
+    var tEl = document.getElementById(prefix + '_music_title');
+    var aEl = document.getElementById(prefix + '_music_artist');
+    if (tEl) tEl.value = parts[0];
+    if (aEl) aEl.value = parts[1];
   }
 }
-
-function onStudioMusicFilePicked(prefix, input) {
-  if (input.files && input.files[0]) {
-    var f = input.files[0];
-    var url = URL.createObjectURL(f);
-    var label = document.getElementById(prefix + '-music-file-label');
-    if (label) label.textContent = f.name;
-    
-    var titleEl = document.getElementById(prefix + '-audio-title');
-    var subEl = document.getElementById(prefix + '-audio-sub');
-    var card = document.getElementById(prefix + '-audio-preview');
-    
-    if (titleEl) titleEl.textContent = f.name;
-    if (subEl) subEl.textContent = 'File âm thanh đã tải lên (Bấm ▶ để nghe thử)';
-    if (card) {
-      card.setAttribute('data-url', url);
-      card.setAttribute('data-title', f.name);
-    }
-  }
-}
-
-function toggleAudioPreview(prefix) {
-  var card = document.getElementById(prefix + '-audio-preview');
-  if (!card) return;
-  var targetUrl = card.getAttribute('data-url') || '/static/preview.mp3';
-
-  if (audioPlayingSource === prefix && !globalAudio.paused) {
-    stopAllAudio();
-    return;
-  }
-
-  stopAllAudio();
-
-  globalAudio.src = targetUrl;
-  globalAudio.currentTime = 0;
-  var p = globalAudio.play();
-  if (p !== undefined) {
-    p.then(function() {
-      audioPlayingSource = prefix;
-      setAudioUIState(prefix, true);
-    }).catch(function(e) {
-      // Fallback: Web Audio Synth Beat
-      startSynthBeat();
-      audioPlayingSource = prefix;
-      setAudioUIState(prefix, true);
-    });
-  }
-}
-
-function stopAllAudio() {
-  if (globalAudio) {
-    globalAudio.pause();
-  }
-  if (synthInterval) {
-    clearInterval(synthInterval);
-    synthInterval = null;
-  }
-  if (audioPlayingSource) {
-    setAudioUIState(audioPlayingSource, false);
-    audioPlayingSource = null;
-  }
-}
-
-function setAudioUIState(prefix, isPlaying) {
-  var icon = document.getElementById(prefix + '-audio-icon');
-  var bars = document.getElementById(prefix + '-audio-bars');
-  var card = document.getElementById(prefix + '-audio-preview');
-  if (icon) icon.textContent = isPlaying ? '⏸' : '▶';
-  if (bars) {
-    if (isPlaying) bars.classList.add('playing');
-    else bars.classList.remove('playing');
-  }
-  if (card) {
-    if (isPlaying) card.classList.add('active-playing');
-    else card.classList.remove('active-playing');
-  }
-}
-
-globalAudio.addEventListener('ended', function() {
-  stopAllAudio();
-});
-
-globalAudio.addEventListener('timeupdate', function() {
-  if (audioPlayingSource && globalAudio.duration) {
-    var pct = (globalAudio.currentTime / globalAudio.duration) * 100;
-    var prog = document.getElementById(audioPlayingSource + '-audio-progress');
-    if (prog) prog.style.width = pct + '%';
-  }
-});
-
-function startSynthBeat() {
-  try {
-    if (!webAudioCtx) {
-      webAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (webAudioCtx.state === 'suspended') {
-      webAudioCtx.resume();
-    }
-    var step = 0;
-    synthInterval = setInterval(function() {
-      var t = webAudioCtx.currentTime;
-      var osc = webAudioCtx.createOscillator();
-      var gain = webAudioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(webAudioCtx.destination);
-      if (step % 2 === 0) {
-        osc.frequency.setValueAtTime(140, t);
-        osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.2);
-        gain.gain.setValueAtTime(0.4, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-      } else {
-        osc.frequency.setValueAtTime(260, t);
-        osc.frequency.exponentialRampToValueAtTime(0.01, t + 0.1);
-        gain.gain.setValueAtTime(0.2, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-      }
-      osc.start(t);
-      osc.stop(t + 0.2);
-      step = (step + 1) % 8;
-    }, 250);
-  } catch (err) {}
-}
-
-var lastGeneratedPkg = null;
-var currentBaseVo = '';
-
-function loadStudioSample(preset) {
-  var samples = {
-    polo: {
-      name: 'Áo Polo Nam Lụa Lạnh Cao Cấp',
-      niche: 'thời trang/phụ kiện'
-    },
-    serum: {
-      name: 'Serum Dưỡng Trắng & Mờ Thâm Nám 7 Ngày',
-      niche: 'mỹ phẩm'
-    },
-    fryer: {
-      name: 'Nồi Chiên Không Dầu Điện Tử 8L',
-      niche: 'gia dụng'
-    },
-    headphone: {
-      name: 'Tai Nghe Chống Ồn Sony WH-1000XM5',
-      niche: 'công nghệ'
-    }
-  };
-  var s = samples[preset];
-  if (!s) return;
-  if (document.getElementById('cr-product-name')) document.getElementById('cr-product-name').value = s.name;
-  if (document.getElementById('cr-niche')) document.getElementById('cr-niche').value = s.niche;
-  generateStudioScriptAndQC();
-}
-
-function generateStudioScriptAndQC() {
-  var name = document.getElementById('cr-product-name').value;
-  if (!name.trim()) {
-    alert('Vui lòng nhập Tên sản phẩm trước khi tạo kịch bản.');
-    document.getElementById('cr-product-name').focus();
-    return;
-  }
-  var btn = document.getElementById('btn-studio-gen-script');
-  var oldBtnText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Đang phân tích & tạo QC...';
-  }
-
-  var data = new URLSearchParams();
-  data.append('product_name', name);
-  data.append('niche', document.getElementById('cr-niche').value);
-  data.append('framework', 'problem_solution');
-  var engRadio = document.querySelector('input[name="cr_ai_engine"]:checked');
-  if (engRadio) data.append('engine', engRadio.value);
-
-  fetch('/web-ai/prompt-generate', {
-    method: 'POST',
-    body: data,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(pkg) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldBtnText;
-    }
-    lastGeneratedPkg = pkg;
-    document.getElementById('studio-script-qc-result').style.display = 'block';
-
-    // 0. Update AI Engine Badge
-    if (pkg.ai_engine_badge && document.getElementById('st-ai-engine-badge')) {
-      document.getElementById('st-ai-engine-badge').textContent = pkg.ai_engine_badge;
-    }
-
-    // 1. Populate QC Scorecard
-    var qc = pkg.qc || pkg.qc_scorecard;
-    if (qc) {
-      if (document.getElementById('st-qc-verdict')) document.getElementById('st-qc-verdict').textContent = qc.verdict || 'Đạt Chuẩn Triệu View';
-      if (document.getElementById('st-qc-score')) document.getElementById('st-qc-score').textContent = qc.overall_score || 95;
-      if (document.getElementById('st-qc-hook')) document.getElementById('st-qc-hook').textContent = (qc.hook_score || 95) + '%';
-      if (document.getElementById('st-qc-niche')) document.getElementById('st-qc-niche').textContent = (qc.niche_match_score || 95) + '%';
-      if (document.getElementById('st-qc-per')) document.getElementById('st-qc-per').textContent = (qc.persuasion_score || 95) + '%';
-      if (document.getElementById('st-qc-av')) document.getElementById('st-qc-av').textContent = (qc.audio_visual_score || 95) + '%';
-    }
-
-    // 2. Populate 4 Hook 3s Cards
-    var hBox = document.getElementById('st-hooks-container');
-    if (hBox) {
-      hBox.innerHTML = '';
-      (pkg.hook_variants || []).forEach(function(h, idx) {
-        var cardId = 'st-hook-card-' + idx;
-        var safeText = h.text.replace(/'/g, "\\'");
-        var activeBorder = idx === 0 ? 'border:1.5px solid var(--accent)' : 'border:1px solid var(--border)';
-        hBox.innerHTML += '<div id="' + cardId + '" class="st-hook-card" style="' + activeBorder + ';background:var(--bg2);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;transition:all 0.2s ease" onclick="selectStudioHook(\'' + safeText + '\', ' + idx + ')">' +
-          '<div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-              '<span class="badge badge-ok" style="font-size:11px">#' + (idx+1) + ' ' + h.title + '</span>' +
-              '<span id="st-hook-check-' + idx + '" style="font-size:12px;color:var(--accent);font-weight:700">' + (idx===0 ? '✓ Đang chọn' : '') + '</span>' +
-            '</div>' +
-            '<div style="font-size:13px;font-weight:700;line-height:1.4;color:var(--text);margin-bottom:6px">“' + h.text + '”</div>' +
-          '</div>' +
-          '<div class="hint" style="font-size:11px;margin-top:4px">🎯 ' + h.angle + '</div>' +
-        '</div>';
-      });
-    }
-
-    // 3. Assemble Voiceover Text
-    var bodyVo = '';
-    (pkg.scenes || []).forEach(function(sc, i) {
-      if (i > 0 && sc.voiceover_text) {
-        bodyVo += (bodyVo ? ' ' : '') + sc.voiceover_text;
-      }
-    });
-    currentBaseVo = bodyVo;
-    var initialHook = (pkg.hook_variants && pkg.hook_variants.length > 0) ? pkg.hook_variants[0].text : (pkg.hook_text || '');
-    var fullVo = (initialHook ? initialHook + ' ' : '') + currentBaseVo;
-    if (document.getElementById('cr-voiceover-text')) {
-      document.getElementById('cr-voiceover-text').value = fullVo.trim();
-    }
-
-    // 4. Populate Caption
-    if (pkg.caption && document.getElementById('cr-caption')) {
-      document.getElementById('cr-caption').value = pkg.caption;
-    }
-
-    // 5. Populate Storyboard Scenes with Consistency Anchor
-    var scBox = document.getElementById('st-scenes-container');
-    if (scBox) {
-      scBox.innerHTML = '';
-      (pkg.scenes || []).forEach(function(sc, i) {
-        var safePrompt = sc.gemini_prompt.replace(/'/g, "\\'");
-        scBox.innerHTML += '<div class="st-scene-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:space-between">' +
-          '<div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-              '<b style="font-size:13px">' + sc.scene_name + ' (' + sc.duration_sec + 's)</b>' +
-              '<span class="badge badge-dim" style="font-size:10px">Cảnh ' + (i+1) + '</span>' +
-            '</div>' +
-            '<div class="hint" style="font-size:12px;margin-bottom:8px;line-height:1.4;color:var(--text)">' + sc.visual_concept + '</div>' +
-          '</div>' +
-          '<div>' +
-            '<div id="st-scene-preview-' + i + '" style="display:none;margin-bottom:8px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">' +
-              '<img id="st-scene-img-' + i + '" src="" style="width:100%;max-height:140px;object-fit:cover;display:block">' +
-            '</div>' +
-            '<div style="display:flex;gap:6px">' +
-              '<button type="button" class="btn btn-secondary btn-sm" id="btn-st-sc-gen-' + i + '" style="font-size:11px;padding:4px 8px;flex:1" onclick="generateSceneImageInStudio(' + i + ', \'' + safePrompt + '\')">🎨 Tạo ảnh 4K</button>' +
-              '<button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px" onclick="navigator.clipboard.writeText(\'' + safePrompt + '\');window.showToast(\'Đã chép prompt cảnh ' + (i+1) + '\', true)">Copy</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      });
-    }
-
-    updateMockupPreview('cr');
-    window.showToast('✓ Kịch bản thực chiến, 4 Hook & Báo cáo QC đã sẵn sàng ngay trong Studio!', true);
-    document.getElementById('studio-script-qc-result').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  })
-  .catch(function(err) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldBtnText;
-    }
-    alert('Lỗi tạo kịch bản: ' + err);
-  });
-}
-
-var quickGeneratePrompts = generateStudioScriptAndQC;
-
-function selectStudioHook(hookText, idx) {
-  document.querySelectorAll('.st-hook-card').forEach(function(card, i) {
-    card.style.border = (i === idx) ? '1.5px solid var(--accent)' : '1px solid var(--border)';
-    var check = document.getElementById('st-hook-check-' + i);
-    if (check) check.textContent = (i === idx) ? '✓ Đang chọn' : '';
-  });
-  var fullVo = (hookText ? hookText + ' ' : '') + currentBaseVo;
-  if (document.getElementById('cr-voiceover-text')) {
-    document.getElementById('cr-voiceover-text').value = fullVo.trim();
-  }
-  updateMockupPreview('cr');
-  window.showToast('Đã áp dụng Hook #' + (idx+1) + ' vào đầu lời thoại video!', true);
-}
-
-function generateSceneImageInStudio(idx, prompt) {
-  var name = document.getElementById('cr-product-name').value;
-  var niche = document.getElementById('cr-niche').value;
-  var btn = document.getElementById('btn-st-sc-gen-' + idx);
-  var oldText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Đang tạo...';
-  }
-
-  var data = new URLSearchParams();
-  data.append('product_name', name);
-  data.append('niche', niche);
-  data.append('prompt', prompt);
-  data.append('aspect_ratio', '9:16');
-
-  fetch('/studio/generate-image', {
-    method: 'POST',
-    body: data,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldText;
-    }
-    if (!res.ok) {
-      alert('Lỗi tạo ảnh: ' + (res.error || 'Thử lại'));
-      return;
-    }
-    var preview = document.getElementById('st-scene-preview-' + idx);
-    var img = document.getElementById('st-scene-img-' + idx);
-    if (preview && img) {
-      img.src = res.url;
-      preview.style.display = 'block';
-    }
-    // Automatically add to photo URLs if not present
-    var curUrls = document.getElementById('cr-photo-urls');
-    if (curUrls) {
-      var lines = curUrls.value.trim().split('\n').filter(function(l){ return l.trim(); });
-      if (lines.indexOf(res.url) === -1) {
-        lines.push(res.url);
-        curUrls.value = lines.join('\n');
-      }
-    }
-    window.showToast('✓ Đã tạo xong ảnh 4K cho Cảnh ' + (idx+1) + ' và gán vào danh sách dựng!', true);
-  })
-  .catch(function(err) {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = oldText;
-    }
-    alert('Lỗi: ' + err);
-  });
-}
-
-function copyGenPrompt(type) {
-  if (!lastGeneratedPkg) return;
-  var txt = '';
-  if (type === 'chatgpt') txt = lastGeneratedPkg.chatgpt_prompt;
-  else if (type === 'claude') txt = lastGeneratedPkg.claude_prompt;
-  else if (type === 'gemini') {
-    (lastGeneratedPkg.scenes || []).forEach(function(sc, i) {
-      txt += 'Scene ' + (i+1) + ': ' + sc.gemini_prompt + '\n\n';
-    });
-  } else if (type === 'museai') {
-    (lastGeneratedPkg.scenes || []).forEach(function(sc, i) {
-      txt += 'Scene ' + (i+1) + ': ' + sc.muse_ai_prompt + '\n\n';
-    });
-  }
-  navigator.clipboard.writeText(txt).then(function() {
-    window.showToast('Đã sao chép prompt cho ' + type.toUpperCase() + '!', true);
-  });
-}
-
-function updateEngineHighlight(radio) {
-  document.querySelectorAll('.st-engine-card').forEach(function(card) {
-    card.style.border = '1px solid var(--border)';
-  });
-  if (radio && radio.closest('.st-engine-card')) {
-    radio.closest('.st-engine-card').style.border = '1.5px solid var(--accent)';
-  }
-}
-
-function refreshAIPoolStatus() {
-  fetch('/web-ai/pool-status')
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (!res.ok || !res.accounts) return;
-      var el = document.getElementById('st-ai-pool-status');
-      if (!el) return;
-      var html = '';
-      var accs = res.accounts;
-      for (var k in accs) {
-        var a = accs[k];
-        var badgeClass = a.ready > 0 ? 'badge-ok' : (a.cooling > 0 ? 'badge-warn' : 'badge-dim');
-        html += '<span class="badge ' + badgeClass + '" style="font-size:10.5px">' + a.icon + ' ' + a.name + ': ' + a.ready + ' On</span>';
-      }
-      el.innerHTML = html;
-    }).catch(function(){});
-}
-
-function pickShelfProduct(select) {
-  var opt = select.options[select.selectedIndex];
-  if (!opt || !opt.value) return;
-  var title = opt.value;
-  var price = opt.getAttribute('data-price') || '';
-  var niche = opt.getAttribute('data-niche') || '';
-  var photo = opt.getAttribute('data-photo') || '';
-  var aff = opt.getAttribute('data-aff') || '';
-  var comm = opt.getAttribute('data-comm') || '';
-
-  if (document.getElementById('cr-product-name')) {
-    document.getElementById('cr-product-name').value = title;
-  }
-  if (document.querySelector('input[name="product_price"]')) {
-    document.querySelector('input[name="product_price"]').value = price;
-  }
-  if (niche && document.getElementById('cr-niche')) {
-    document.getElementById('cr-niche').value = niche;
-  }
-  if (aff && document.querySelector('input[name="aff_link"]')) {
-    document.querySelector('input[name="aff_link"]').value = aff;
-  }
-  if (photo && document.getElementById('cr-photo-urls')) {
-    document.getElementById('cr-photo-urls').value = photo;
-    var bgCanvas = document.getElementById('cr-mockup-screen-bg');
-    if (bgCanvas) {
-      bgCanvas.style.background = "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('" + photo + "') center/cover";
-    }
-  }
-  updateMockupPreview('cr');
-  if (window.showToast) {
-    window.showToast('✓ Đã nạp sản phẩm thật từ kệ hàng: ' + title, true);
-  }
-}
-
-function toggleTikTokMusicOnly(cb) {
-  var voBox = document.getElementById('voiceover-input-container');
-  if (voBox) {
-    voBox.style.display = cb.checked ? 'none' : 'block';
-  }
-  if (cb.checked) {
-    var sel = document.getElementById('creative-trend-pick');
-    if (sel && sel.selectedIndex <= 0 && sel.options.length > 1) {
-      sel.selectedIndex = 1;
-      pickStudioTrend('cr', sel);
-    }
-    if (window.showToast) {
-      window.showToast('🎵 Chế độ TikTok: Tự khớp nhạc thịnh hành (không lồng tiếng)', true);
-    }
-  }
-}
-
-function quickFillLazyDeal(preset) {
-  var presets = {
-    polo: {
-      name: 'Áo Polo Nam Lụa Lạnh Cao Cấp Co Giãn 4 Chiều',
-      price: '299.000đ (Giảm 40%)',
-      niche: 'thời trang/phụ kiện',
-      caption: '🔥 Áo Polo Lụa Lạnh Chống Nhăn Giảm 40% Duy Nhất Hôm Nay',
-      photo: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&q=80',
-      aff: 'https://shopee.vn/search?keyword=ao+polo+nam+lua+lanh'
-    },
-    serum: {
-      name: 'Serum Dưỡng Trắng & Mờ Thâm Nám Chuyên Sâu 7 Ngày',
-      price: '189.000đ (Giảm 50%)',
-      niche: 'mỹ phẩm',
-      caption: '✨ Serum Mờ Thâm Sáng Da Sau 7 Ngày Sale 50%',
-      photo: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800&q=80',
-      aff: 'https://shopee.vn/search?keyword=serum+mo+tham'
-    },
-    fryer: {
-      name: 'Nồi Chiên Không Dầu Điện Tử Dung Tích Lớn 8L',
-      price: '890.000đ (Giảm 35%)',
-      niche: 'gia dụng',
-      caption: '🍳 Nồi Chiên Không Dầu 8L Dung Tích Khủng Bảo Hành 2 Năm',
-      photo: 'https://images.unsplash.com/photo-1585515320310-259814833e62?w=800&q=80',
-      aff: 'https://shopee.vn/search?keyword=noi+chien+khong+dau'
-    },
-    headphone: {
-      name: 'Tai Nghe Bluetooth Chống Ồn Chủ Động Pin 40 Giờ',
-      price: '1.250.000đ (Giảm 30%)',
-      niche: 'công nghệ',
-      caption: '🎧 Tai Nghe Chống Ồn Âm Bass Cực Đỉnh Pin Trâu 40H',
-      photo: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80',
-      aff: 'https://shopee.vn/search?keyword=tai+nghe+chong+on'
-    }
-  };
-  var item = presets[preset];
-  if (!item) return;
-  if (document.getElementById('cr-product-name')) document.getElementById('cr-product-name').value = item.name;
-  if (document.querySelector('input[name="product_price"]')) document.querySelector('input[name="product_price"]').value = item.price;
-  if (document.getElementById('cr-niche')) document.getElementById('cr-niche').value = item.niche;
-  if (document.getElementById('cr-caption')) document.getElementById('cr-caption').value = item.caption;
-  if (document.querySelector('input[name="aff_link"]')) document.querySelector('input[name="aff_link"]').value = item.aff;
-  if (document.getElementById('cr-photo-urls')) {
-    document.getElementById('cr-photo-urls').value = item.photo;
-    var bg = document.getElementById('cr-mockup-screen-bg');
-    if (bg) {
-      bg.style.background = "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('" + item.photo + "') center/cover";
-    }
-  }
-  var trendSel = document.getElementById('creative-trend-pick');
-  if (trendSel && trendSel.options.length > 1) {
-    trendSel.selectedIndex = 1;
-    pickStudioTrend('cr', trendSel);
-  }
-  var chk = document.getElementById('cr-tiktok-music-only');
-  if (chk) {
-    chk.checked = true;
-    toggleTikTokMusicOnly(chk);
-  }
-  updateMockupPreview('cr');
-  if (window.showToast) {
-    window.showToast('✓ Đã nạp gói Deal 5 sao: ' + item.name, true);
-  }
-}
-
-function oneClickLazyProduce() {
-  var pName = document.getElementById('cr-product-name');
-  if (!pName || !pName.value.trim()) {
-    var shelfSel = document.getElementById('quick-shelf-select');
-    if (shelfSel && shelfSel.options.length > 1) {
-      shelfSel.selectedIndex = 1;
-      pickShelfProduct(shelfSel);
-    } else {
-      quickFillLazyDeal('polo');
-    }
-  }
-  var trendSel = document.getElementById('creative-trend-pick');
-  if (trendSel && trendSel.selectedIndex <= 0 && trendSel.options.length > 1) {
-    trendSel.selectedIndex = 1;
-    pickStudioTrend('cr', trendSel);
-  }
-  var chk = document.getElementById('cr-tiktok-music-only');
-  if (chk) {
-    chk.checked = true;
-    toggleTikTokMusicOnly(chk);
-  }
-  updateMockupPreview('cr');
-
-  var btn = document.getElementById('btn-submit-render-cr');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Đang khởi chạy dây chuyền AI 1-chạm...';
-  }
-  if (window.showToast) {
-    window.showToast('🚀 Đang đưa video vào dây chuyền AI sản xuất...', true);
-  }
-  setTimeout(function() {
-    var form = document.getElementById('creative-ad-form');
-    if (form) form.submit();
-  }, 400);
-}
-
-// ---------------------------------------------------------------------------
-// TIKTOK TOPIC RADAR CLIENT CONTROLLER (Mỗi nhóm đúng 4 video / 1 hàng)
-// ---------------------------------------------------------------------------
-var DEFAULT_TOPIC_KEYS = ['nhay', 'su_kien_vn', 'bien_hinh', 'hai_huoc'];
-var activeTopicKeys = DEFAULT_TOPIC_KEYS.slice();
-
-function loadTikTokTopics(keys) {
-  var url = '/api/studio/tiktok-topics?topics=' + encodeURIComponent(keys.join(','));
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(res) {
-      if (!res.ok || !res.groups) return;
-      renderTopicGroups(res.groups);
-      updateTopicChipsUI();
-    })
-    .catch(function(err) { console.error('Lỗi nạp chủ đề:', err); });
-}
-
-function renderTopicGroups(groups) {
-  var cont = document.getElementById('radar-topic-groups-container');
-  if (!cont) return;
-  var html = '';
-  groups.forEach(function(grp) {
-    html += '<div class="topic-row-container" id="row-topic-' + grp.topic_id + '" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:20px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
-        '<div style="display:flex;align-items:center;gap:8px">' +
-          '<span style="font-size:15px;font-weight:800;color:var(--text)">' + grp.topic_name + '</span>' +
-          '<span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">' + grp.tag + '</span>' +
-          '<span style="font-size:11.5px;color:var(--muted)">' + grp.description + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px">';
-    (grp.videos || []).forEach(function(v) {
-      var coverHtml = v.cover_url ? '<img src="' + v.cover_url + '" alt="' + (v.title||'') + '" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" decoding="async">' : '';
-      var playBtnHtml = v.play_url ? '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25);transition:background 0.2s"><span style="width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,0.4)">▶</span></div><div style="position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:center"><span style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);color:#38bdf8;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">👀 ' + (v.views||'') + '</span><span style="background:rgba(239,68,68,0.85);backdrop-filter:blur(4px);color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700">❤️ ' + (v.likes||'') + '</span></div>' : '';
-      var safeTitle = (v.title || '').replace(/'/g, "\\'");
-      var safeUrl = (v.play_url || '').replace(/'/g, "\\'");
-      html += '<div class="card" style="border-radius:10px;padding:10px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04);transition:transform 0.15s ease">' +
-        '<div style="position:relative;width:100%;aspect-ratio:9/16;background:#111;border-radius:6px;overflow:hidden;margin-bottom:8px;cursor:pointer" onclick="playVideoModal(\'' + safeUrl + '\', \'' + safeTitle + '\')" title="Bấm để xem video 9:16">' +
-          coverHtml + playBtnHtml +
-        '</div>' +
-        '<div>' +
-          '<strong style="font-size:12px;display:block;color:var(--text);margin-bottom:4px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical" title="' + (v.title||'') + '">' + (v.title||'') + '</strong>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
-            '<span style="font-size:11px;color:var(--muted)">@' + (v.unique_id||'') + '</span>' +
-            '<button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();playVideoModal(\'' + safeUrl + '\', \'' + safeTitle + '\')" style="font-size:10.5px;padding:2px 8px">▶ Xem</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    });
-    html += '</div></div>';
-  });
-  cont.innerHTML = html;
-}
-
-function updateTopicChipsUI() {
-  var presetKeys = ['nhay', 'su_kien_vn', 'bien_hinh', 'hai_huoc', 'am_thuc'];
-  presetKeys.forEach(function(k) {
-    var btn = document.getElementById('chip-topic-' + k);
-    if (btn) {
-      if (activeTopicKeys.indexOf(k) !== -1) {
-        btn.className = 'btn btn-sm btn-primary btn-topic-chip active';
-      } else {
-        btn.className = 'btn btn-sm btn-secondary btn-topic-chip';
-      }
-    }
-  });
-
-  var customChipsCont = document.getElementById('custom-topic-chips');
-  if (customChipsCont) {
-    var customKeys = activeTopicKeys.filter(function(k) { return presetKeys.indexOf(k) === -1; });
-    var html = '';
-    customKeys.forEach(function(k) {
-      var safeK = k.replace(/'/g, "\\'");
-      html += '<button type="button" class="btn btn-sm btn-primary btn-topic-chip active" onclick="removeTopic(\'' + safeK + '\')" style="font-size:11.5px;padding:4px 10px;border-radius:20px;font-weight:600">' +
-        k + ' ✕</button>';
-    });
-    customChipsCont.innerHTML = html;
-  }
-}
-
-function addCustomTopic() {
-  var input = document.getElementById('custom-topic-input');
-  var val = input ? input.value.trim() : '';
-  if (!val) {
-    if (input) input.focus();
-    return;
-  }
-  if (activeTopicKeys.indexOf(val) === -1) {
-    activeTopicKeys.push(val);
-    loadTikTokTopics(activeTopicKeys);
-  }
-  if (input) input.value = '';
-}
-
-function toggleTopic(topicId) {
-  var idx = activeTopicKeys.indexOf(topicId);
-  if (idx !== -1) {
-    activeTopicKeys.splice(idx, 1);
-  } else {
-    activeTopicKeys.push(topicId);
-  }
-  loadTikTokTopics(activeTopicKeys);
-}
-
-function removeTopic(topicId) {
-  var idx = activeTopicKeys.indexOf(topicId);
-  if (idx !== -1) {
-    activeTopicKeys.splice(idx, 1);
-    loadTikTokTopics(activeTopicKeys);
-  }
-}
-
-function resetDefaultTopics() {
-  activeTopicKeys = DEFAULT_TOPIC_KEYS.slice();
-  loadTikTokTopics(activeTopicKeys);
-}
-
-// Auto-fill from URL params or Web AI transfer
-window.addEventListener('DOMContentLoaded', function() {
-  refreshAIPoolStatus();
-  try {
-    var urlParams = new URLSearchParams(window.location.search);
-    var initialMode = "{{.InitialMode}}";
-    var modeParam = urlParams.get('mode');
-    if (modeParam) initialMode = modeParam;
-    if (initialMode === 'viral') { window.location.href = '/viral'; return; }
-    if (initialMode === 'story' || initialMode === 'stories') { window.location.href = '/stories'; return; }
-
-    var pName = urlParams.get('product_name');
-    var pPrice = urlParams.get('product_price');
-    var pNiche = urlParams.get('niche');
-    var pPhoto = urlParams.get('photo_url');
-    var affLink = urlParams.get('aff_link');
-    var mTitle = urlParams.get('music_title');
-    var mArtist = urlParams.get('music_artist');
-
-    if (pName && document.getElementById('cr-product-name')) {
-      document.getElementById('cr-product-name').value = pName;
-    }
-    if (pPrice && document.querySelector('input[name="product_price"]')) {
-      document.querySelector('input[name="product_price"]').value = pPrice;
-    }
-    if (pNiche && document.getElementById('cr-niche')) {
-      document.getElementById('cr-niche').value = pNiche;
-    }
-    if (pPhoto && document.getElementById('cr-photo-urls')) {
-      document.getElementById('cr-photo-urls').value = pPhoto;
-      var bgCanvas = document.getElementById('cr-mockup-screen-bg');
-      if (bgCanvas) {
-        bgCanvas.style.background = "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.85)), url('" + pPhoto + "') center/cover";
-      }
-    }
-    if (affLink) {
-      var affInput = document.querySelector('input[name="aff_link"]');
-      if (affInput) affInput.value = affLink;
-    }
-    updateMockupPreview('cr');
-    if (mTitle) {
-      var crPick = document.getElementById('creative-trend-pick');
-      if (crPick) {
-        for (var i = 0; i < crPick.options.length; i++) {
-          if (crPick.options[i].value.indexOf(mTitle) !== -1) {
-            crPick.selectedIndex = i;
-            pickStudioTrend('cr', crPick);
-            break;
-          }
-        }
-      }
-    }
-
-    var raw = sessionStorage.getItem('webai_to_studio');
-    if (raw) {
-      var d = JSON.parse(raw);
-      if (d.product_name && document.getElementById('cr-product-name')) {
-        document.getElementById('cr-product-name').value = d.product_name;
-      }
-      if (d.niche && document.getElementById('cr-niche')) {
-        document.getElementById('cr-niche').value = d.niche;
-      }
-      if (d.voiceover_text && document.getElementById('cr-voiceover-text')) {
-        document.getElementById('cr-voiceover-text').value = d.voiceover_text;
-      }
-      if (d.caption && document.getElementById('cr-caption')) {
-        document.getElementById('cr-caption').value = d.caption;
-      }
-      sessionStorage.removeItem('webai_to_studio');
-    }
-
-    var rawPhoto = sessionStorage.getItem('webai_scene_photo');
-    if (rawPhoto) {
-      var dp = JSON.parse(rawPhoto);
-      if (dp.product_name && document.getElementById('cr-product-name')) {
-        document.getElementById('cr-product-name').value = dp.product_name;
-      }
-      if (dp.niche && document.getElementById('cr-niche')) {
-        document.getElementById('cr-niche').value = dp.niche;
-      }
-      if (dp.photo_path && document.getElementById('cr-generated-photo-path')) {
-        document.getElementById('cr-generated-photo-path').value = dp.photo_path;
-      }
-      var prevCard = document.getElementById('cr-ai-photo-preview');
-      var prevImg = document.getElementById('cr-ai-photo-img');
-      if (prevCard && prevImg && dp.photo_url) {
-        prevImg.src = dp.photo_url;
-        prevCard.style.display = 'block';
-      }
-      var mockupBg = document.getElementById('cr-mockup-screen-bg');
-      if (mockupBg && dp.photo_url) {
-        mockupBg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(' + dp.photo_url + ')';
-        mockupBg.style.backgroundSize = 'cover';
-        mockupBg.style.backgroundPosition = 'center';
-      }
-      sessionStorage.removeItem('webai_scene_photo');
-    }
-
-    updateMockupPreview('cr');
-    
-  } catch (e) {}
-});
-
 </script>
+
 {{end}}

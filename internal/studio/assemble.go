@@ -479,7 +479,7 @@ func FindTrendingMusic(category string) string {
 					return m
 				}
 				// Nhạc dance / remix sôi động cho nhảy, trendjack, challenge
-				if (cat == "dance" || cat == "remix" || cat == "upbeat" || cat == "challenge") && strings.Contains(base, "dance") {
+				if (cat == "dance" || cat == "nhay" || cat == "sexy" || cat == "remix" || cat == "upbeat" || cat == "challenge") && strings.Contains(base, "dance") {
 					if abs, err := filepath.Abs(m); err == nil {
 						return abs
 					}

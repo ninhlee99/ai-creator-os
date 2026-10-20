@@ -43,8 +43,8 @@ func SupportedEngines() []EngineInfo {
 		},
 		{
 			ID:          EngineClaude,
-			Name:        "Claude 3.7 Sonnet",
-			Badge:       "🧠 Claude 3.7 Sonnet (Storytelling & Điện Ảnh)",
+			Name:        "Claude 5.5 Sonnet",
+			Badge:       "🧠 Claude 5.5 Sonnet (Storytelling & Điện Ảnh)",
 			Icon:        "🟣",
 			Description: "Văn phong chiều sâu cảm xúc, review chân thực, nghệ thuật",
 		},
@@ -57,15 +57,15 @@ func SupportedEngines() []EngineInfo {
 		},
 		{
 			ID:          EngineChatGPT,
-			Name:        "ChatGPT 4o",
-			Badge:       "🎯 ChatGPT 4o (PAS & Chốt Đơn Chuyển Đổi)",
+			Name:        "ChatGPT (GPT-6 Luna)",
+			Badge:       "🎯 ChatGPT (GPT-6 Luna - PAS & Chốt Đơn Chuyển Đổi)",
 			Icon:        "💬",
 			Description: "Tâm lý học hành vi, chuyển đổi PAS, chốt đơn cấp tốc",
 		},
 		{
 			ID:          EngineGemini,
-			Name:        "Gemini 2.0 Flash",
-			Badge:       "✨ Gemini 2.0 Flash (Thị Giác 4K & Đa Giác Quan)",
+			Name:        "Gemini 3.8 Flash",
+			Badge:       "✨ Gemini 3.8 Flash (Thị Giác 4K & Đa Giác Quan)",
 			Icon:        "✨",
 			Description: "Đa giác quan, hình ảnh 4K sắc nét, chi tiết kỹ thuật",
 		},
@@ -92,7 +92,7 @@ func GenerateAdScriptPackageWithLLM(ctx context.Context, llm LLMCompleter, produ
 }
 
 // GenerateAdScriptPackageWithEngine generates an intelligent creative script & prompt package customized
-// for the selected AI engine persona (Claude 3.7, Grok 3, ChatGPT 4o, Gemini 2.0, or Smart Auto-Balance).
+// for the selected AI engine persona (Claude 5.5 Sonnet, Grok 3, ChatGPT (GPT-6 Luna), Gemini 3.8 Flash, or Smart Auto-Balance).
 func GenerateAdScriptPackageWithEngine(ctx context.Context, llm LLMCompleter, engine, productName, niche, framework, targetAudience, keyBenefits, cta string) AdScriptPackage {
 	productName = strings.TrimSpace(productName)
 	if productName == "" {
@@ -127,16 +127,16 @@ func GenerateAdScriptPackageWithEngine(ctx context.Context, llm LLMCompleter, en
 		nicheLower := strings.ToLower(niche)
 		if strings.Contains(nicheLower, "mỹ phẩm") || strings.Contains(nicheLower, "làm đẹp") || strings.Contains(nicheLower, "da") || strings.Contains(nicheLower, "thời trang") {
 			effectiveEngine = EngineClaude
-			badge = "⚡ Tự Động → 🟣 Claude 3.7 (Storytelling)"
+			badge = "⚡ Tự Động → 🟣 Claude 5.5 Sonnet (Storytelling)"
 		} else if strings.Contains(nicheLower, "công nghệ") || strings.Contains(nicheLower, "điện tử") || strings.Contains(nicheLower, "trend") || strings.Contains(nicheLower, "drama") {
 			effectiveEngine = EngineGrok
 			badge = "⚡ Tự Động → 🚀 Grok 3 (Hook Sốc Viral)"
 		} else if strings.Contains(nicheLower, "gia dụng") || strings.Contains(nicheLower, "deal") || strings.Contains(nicheLower, "bán lẻ") {
 			effectiveEngine = EngineChatGPT
-			badge = "⚡ Tự Động → 💬 ChatGPT 4o (PAS Chốt Sale)"
+			badge = "⚡ Tự Động → 💬 ChatGPT (GPT-6 Luna - PAS Chốt Sale)"
 		} else {
 			effectiveEngine = EngineGemini
-			badge = "⚡ Tự Động → ✨ Gemini 2.0 (Thị Giác 4K)"
+			badge = "⚡ Tự Động → ✨ Gemini 3.8 Flash (Thị Giác 4K)"
 		}
 	}
 
@@ -163,16 +163,16 @@ func generateViaLLM(ctx context.Context, llm LLMCompleter, engine, badge, produc
 	var personaIntro string
 	switch engine {
 	case EngineClaude:
-		personaIntro = `Bạn là Chuyên gia Kể chuyện & Đạo diễn Nghệ thuật hàng đầu theo phong cách Claude 3.7 Sonnet.
+		personaIntro = `Bạn là Chuyên gia Kể chuyện & Đạo diễn Nghệ thuật hàng đầu theo phong cách Claude 5.5 Sonnet.
 Thế mạnh của bạn: Văn phong có chiều sâu cảm xúc, câu chữ tinh tế, review tự nhiên như một người bạn thân tín đang tâm sự. Phân cảnh và prompt mang đậm chất điện ảnh nghệ thuật (Cinematic 4K).`
 	case EngineGrok:
 		personaIntro = `Bạn là Chiến thần Giật Tít & Phản biện Bắt Trend Triệu View theo phong cách Grok 3 (xAI).
 Thế mạnh của bạn: Hook 3 giây đầu phải cực kỳ giật gân, lật ngược vấn đề (contrarian), đanh thép, không ngại nói thẳng vào sự thật mất lòng để người xem phải dừng lại tranh cãi và chia sẻ bùng nổ.`
 	case EngineChatGPT:
-		personaIntro = `Bạn là Bậc thầy Chốt Đơn & Tâm lý học Bán hàng Chuyển đổi Cao theo phong cách ChatGPT 4o.
+		personaIntro = `Bạn là Bậc thầy Chốt Đơn & Tâm lý học Bán hàng Chuyển đổi Cao theo phong cách ChatGPT (GPT-6 Luna).
 Thế mạnh của bạn: Cấu trúc bán hàng PAS (Problem - Agitate - Solve) và AIDA đỉnh cao. Nhấn mạnh nỗi đau, tạo cảm giác khan hiếm và sợ bỏ lỡ ưu đãi (FOMO), nêu bật lý do không thể từ chối để chốt đơn ngay lập tức.`
 	case EngineGemini:
-		personaIntro = `Bạn là Đạo diễn Thị giác & Đa phương tiện theo phong cách Gemini 2.0 Flash.
+		personaIntro = `Bạn là Đạo diễn Thị giác & Đa phương tiện theo phong cách Gemini 3.8 Flash.
 Thế mạnh của bạn: Tốc độ cao, ngôn ngữ giàu tính mô tả trực quan, đa giác quan (thị giác 4K, xúc giác, âm thanh sống động), tối ưu tuyệt đối cho công nghệ sinh ảnh và video mượt mà.`
 	default:
 		personaIntro = `Bạn là Giám đốc Sáng tạo (Creative Director) & Chuyên gia Kịch bản Bán hàng Triệu View hàng đầu trên TikTok / Reels / Shorts tại Việt Nam.`
@@ -651,13 +651,13 @@ func generateDomainAwarePackage(engine, badge, productName, niche, framework, ta
 		claudeHooks := []HookVariant{
 			{
 				Type:  "social_proof",
-				Title: "Claude 3.7: Câu Chuyện Chân Thực",
+				Title: "Claude 5.5: Câu Chuyện Chân Thực",
 				Text:  fmt.Sprintf("Một câu chuyện nhỏ về lý do tại sao %s là món đồ gắn bó nhất với mình suốt thời gian qua...", productName),
 				Angle: "Chạm đến cảm xúc và sự đồng cảm sâu sắc của người xem.",
 			},
 			{
 				Type:  "curiosity",
-				Title: "Claude 3.7: Chiêm Nghiệm Nghệ Thuật",
+				Title: "Claude 5.5: Chiêm Nghiệm Nghệ Thuật",
 				Text:  fmt.Sprintf("Không ồn ào quảng cáo, nhưng đây là chi tiết khiến mình trân trọng %s nhất...", productName),
 				Angle: "Định vị sản phẩm bằng chiều sâu thẩm mỹ và phong cách sống.",
 			},
@@ -671,13 +671,13 @@ func generateDomainAwarePackage(engine, badge, productName, niche, framework, ta
 		chatgptHooks := []HookVariant{
 			{
 				Type:  "pain_point",
-				Title: "ChatGPT 4o: Đánh Trúng Nỗi Đau (PAS)",
+				Title: "ChatGPT (GPT-6 Luna): Đánh Trúng Nỗi Đau (PAS)",
 				Text:  fmt.Sprintf("Dừng lãng phí thời gian và tiền bạc! Đây là cách %s giải quyết dứt điểm nỗi lo của bạn.", productName),
 				Angle: "Khung PAS kinh điển, kích thích hành động mua ngay không do dự.",
 			},
 			{
 				Type:  "warning",
-				Title: "ChatGPT 4o: Báo Động FOMO Ưu Đãi",
+				Title: "ChatGPT (GPT-6 Luna): Báo Động FOMO Ưu Đãi",
 				Text:  fmt.Sprintf("Duy nhất hôm nay: Tiết kiệm ngay khi săn %s trước khi hết suất ưu đãi!", productName),
 				Angle: "Tạo cảm giác khan hiếm và thúc đẩy chốt đơn lập tức.",
 			},
@@ -810,20 +810,20 @@ func fillComplementaryPackageFields(pkg *AdScriptPackage, keyBenefits string) {
 
 	pkg.MediaRetrievalGuides = map[string]string{
 		"museai":  "Khi Muse AI sinh xong clip, chọn 'Copy Video Link' hoặc tải về để đưa vào Studio dựng video.",
-		"gemini":  "Trên Gemini (Imagen 3), click chuột phải chọn 'Sao chép địa chỉ hình ảnh' hoặc tải về để đưa vào Studio.",
-		"chatgpt": "Sao chép prompt bên dưới và dán vào ChatGPT để nhận thêm ý tưởng kịch bản biến thể.",
-		"claude":  "Sao chép prompt bên dưới và dán vào Claude để nhận phân cảnh và góc máy điện ảnh.",
+		"gemini":  "Trên Gemini 3.8 Flash, click chuột phải chọn 'Sao chép địa chỉ hình ảnh' hoặc tải về để đưa vào Studio.",
+		"chatgpt": "Sao chép prompt bên dưới và dán vào ChatGPT (GPT-6 Luna) để nhận thêm ý tưởng kịch bản biến thể.",
+		"claude":  "Sao chép prompt bên dưới và dán vào Claude 5.5 Sonnet để nhận phân cảnh và góc máy điện ảnh.",
 	}
 
-	pkg.ChatGPTPrompt = fmt.Sprintf(`Bạn là chuyên gia kịch bản video bán hàng triệu view trên TikTok & Reels Việt Nam.
+	pkg.ChatGPTPrompt = fmt.Sprintf(`Bạn là chuyên gia kịch bản video bán hàng triệu view trên TikTok & Reels Việt Nam (Mô hình ChatGPT GPT-6 Luna).
 Hãy viết kịch bản chi tiết cho sản phẩm: "%s" (Ngành hàng: %s).
 Ưu điểm chính: %s.
 Khung kịch bản: %s.
 Yêu cầu: Lời thoại tự nhiên, có hook 3 giây giật gân, kêu gọi hành động quyết liệt.`, pkg.ProductName, pkg.Niche, keyBenefits, pkg.Framework)
 
-	pkg.ClaudePrompt = fmt.Sprintf(`Bạn là Đạo diễn Sáng tạo Nghệ thuật (Creative Director) cho video quảng cáo sản phẩm: "%s" (Ngành hàng: %s).
+	pkg.ClaudePrompt = fmt.Sprintf(`Bạn là Đạo diễn Sáng tạo Nghệ thuật (Creative Director theo phong cách Claude 5.5 Sonnet) cho video quảng cáo sản phẩm: "%s" (Ngành hàng: %s).
 Ưu điểm: %s.
-Hãy thiết kế Storyboard 4 cảnh chi tiết (góc quay, ánh sáng, chuyển động camera) và prompt tiếng Anh chi tiết cho Imagen 3 & Muse AI.`, pkg.ProductName, pkg.Niche, keyBenefits)
+Hãy thiết kế Storyboard 4 cảnh chi tiết (góc quay, ánh sáng, chuyển động camera) và prompt tiếng Anh chi tiết cho Gemini 3.8 Flash & Muse AI.`, pkg.ProductName, pkg.Niche, keyBenefits)
 }
 
 func sanitizeTag(s string) string {

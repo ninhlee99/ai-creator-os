@@ -593,7 +593,29 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 1. Resolve model photo from model_id if provided (highest priority from user selection)
+	// 1. Resolve model photos from model_photo_ids if provided (multi-angle support)
+	if len(uploadedPhotos) == 0 {
+		var modelIDStrs []string
+		if r.MultipartForm != nil {
+			modelIDStrs = r.MultipartForm.Value["model_photo_ids"]
+		}
+		if len(modelIDStrs) == 0 {
+			modelIDStrs = r.PostForm["model_photo_ids"]
+		}
+		if len(modelIDStrs) > 0 {
+			var ids []int64
+			for _, ms := range modelIDStrs {
+				if mid, err := strconv.ParseInt(strings.TrimSpace(ms), 10, 64); err == nil && mid > 0 {
+					ids = append(ids, mid)
+				}
+			}
+			if len(ids) > 0 {
+				uploadedPhotos = append(uploadedPhotos, s.findModelPhotosByIDs(ids)...)
+			}
+		}
+	}
+
+	// 2. Resolve model photo from model_id if provided (fallback single ID)
 	if len(uploadedPhotos) == 0 {
 		if modelIDStr := r.PostFormValue("model_id"); modelIDStr != "" {
 			if mid, err := strconv.ParseInt(modelIDStr, 10, 64); err == nil && mid > 0 {
@@ -604,7 +626,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. If no explicit model_id and no upload, fallback to stored photos from the account's model library
+	// 3. Fallback to stored photos from the account's model library
 	if len(uploadedPhotos) == 0 && accountID > 0 && s.Studio != nil {
 		if ms, err := s.Studio.ModelLibrary(); err == nil {
 			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
@@ -614,11 +636,34 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if len(uploadedPhotos) == 0 {
+		if cards := s.listModelPhotoCards(); len(cards) > 0 {
+			for _, c := range cards {
+				if photoPath, perr := s.findModelPhotoByID(c.ID); perr == nil && photoPath != "" {
+					uploadedPhotos = append(uploadedPhotos, photoPath)
+				}
+			}
+		}
+	}
 
-	// 2. Resolve sample motion video (video mẫu chuyển động)
-	sampleClip := strings.TrimSpace(r.PostFormValue("sample_clip"))
+	// 4. Resolve sample motion video or TikTok link
+	tiktokLink := strings.TrimSpace(r.PostFormValue("tiktok_link"))
+	if tiktokLink == "" {
+		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
+	}
 	var sampleVideoPath string
-	if sampleClip != "" {
+	if tiktokLink != "" && (strings.HasPrefix(tiktokLink, "http://") || strings.HasPrefix(tiktokLink, "https://")) {
+		dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
+		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+		cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "-o", dlDst, tiktokLink)
+		if err := cmd.Run(); err == nil && fileExists(dlDst) {
+			sampleVideoPath = dlDst
+		}
+		cancel()
+	}
+
+	sampleClip := strings.TrimSpace(r.PostFormValue("sample_clip"))
+	if sampleVideoPath == "" && sampleClip != "" {
 		candidates := []string{
 			filepath.Join(s.DataDir, "clips", "viral", sampleClip),
 			filepath.Join(s.DataDir, "clips", "viral", sampleClip+".mp4"),
@@ -629,18 +674,6 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			if fileExists(cand) {
 				sampleVideoPath = cand
 				break
-			}
-		}
-	}
-	if sampleVideoPath == "" {
-		// Mặc định video vũ đạo phòng ngủ 60s
-		defClip := filepath.Join(s.DataDir, "clips", "viral", "clip_03_sexy_dance_60s.mp4")
-		if fileExists(defClip) {
-			sampleVideoPath = defClip
-		} else {
-			defClip = filepath.Join("data", "clips", "viral", "clip_03_sexy_dance_60s.mp4")
-			if fileExists(defClip) {
-				sampleVideoPath = defClip
 			}
 		}
 	}
@@ -655,6 +688,12 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		modelPhoto = uploadedPhotos[0]
 	}
 
+	isDance := strings.Contains(strings.ToLower(topic), "dance") || strings.Contains(strings.ToLower(topic), "nhảy") || strings.Contains(strings.ToLower(topic), "sexy") || genre == "dance"
+	if isDance {
+		voice = ""
+	}
+	musicFile := studio.FindTrendingMusic("nhay")
+
 	p := studio.ViralParams{
 		Topic:          topic,
 		Genre:          genre,
@@ -668,6 +707,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		AIMode:         aiMode,
 		TargetDuration: duration,
 		MusicURL:       musicURL,
+		MusicFile:      musicFile,
 	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)

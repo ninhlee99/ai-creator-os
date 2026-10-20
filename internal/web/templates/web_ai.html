@@ -8,7 +8,7 @@
   <div class="webai-header-left">
     <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-0.4px">🌐 Web AI Hub &amp; Trình Duyệt</h1>
     <p class="subtitle" style="margin:0;color:var(--muted);font-size:13px">
-      Điều khiển các phiên trình duyệt Web AI (ChatGPT, Claude, Gemini, Grok, Muse AI) và tự động hóa prompt.
+      Điều khiển các phiên trình duyệt Web AI (ChatGPT GPT-6 Luna, Claude 5.5 Sonnet, Gemini 3.8 Flash, Grok, Muse AI) và tự động hóa prompt.
     </p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
@@ -26,7 +26,7 @@
     <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
       {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}} AI Sẵn Sàng
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok (xAI) · Muse AI</span>
+    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT (GPT-6 Luna) · Claude 5.5 Sonnet · Gemini 3.8 Flash · Grok (xAI) · Muse AI</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/settings/he-thong#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
@@ -40,7 +40,7 @@
   <div class="cockpit-header">
     <div class="cockpit-title">
       <h2>⚡ Điều Phối Kịch Bản &amp; Prompt Đa AI</h2>
-      <p>Biên soạn kịch bản và phân cảnh cho các mô hình AI (ChatGPT, Claude, Gemini, Grok, Muse).</p>
+      <p>Biên soạn kịch bản và phân cảnh cho các mô hình AI (ChatGPT GPT-6 Luna, Claude 5.5 Sonnet, Gemini 3.8 Flash, Grok, Muse).</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
@@ -171,9 +171,9 @@
     <div class="result-tabs" style="margin-bottom:16px">
       <button type="button" class="res-tab active" onclick="showPromptSection('hooks')">🎯 4 Hook 3s</button>
       <button type="button" class="res-tab" onclick="showPromptSection('social')">📱 Bài Đăng</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản (ChatGPT)</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn (Claude)</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Ảnh 4K (Gemini)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản (ChatGPT GPT-6 Luna)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn (Claude 5.5)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Ảnh 4K (Gemini 3.8)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('googleflow')">🌊 Google Flow (1.000 Credits ➔ 4K)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
@@ -198,7 +198,7 @@
     <!-- Section 3: ChatGPT Script -->
     <div id="sec-chatgpt" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>💬 Kịch Bản Bán Hàng (ChatGPT)</b>
+        <b>💬 Kịch Bản Bán Hàng (ChatGPT GPT-6 Luna)</b>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-chatgpt-prompt')">📋 Copy</button>
       </div>
       <pre class="prompt-box" id="txt-chatgpt-prompt" style="max-height:280px"></pre>
@@ -207,7 +207,7 @@
     <!-- Section 4: Claude Director -->
     <div id="sec-claude" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>🟣 Phân Cảnh &amp; Đạo Diễn (Claude)</b>
+        <b>🟣 Phân Cảnh &amp; Đạo Diễn (Claude 5.5 Sonnet)</b>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-claude-prompt')">📋 Copy</button>
       </div>
       <pre class="prompt-box" id="txt-claude-prompt" style="max-height:280px"></pre>
@@ -216,7 +216,7 @@
     <!-- Section 5: Gemini 4K Prompts -->
     <div id="sec-gemini" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
-        <b>✨ Prompt Ảnh 4K (Gemini)</b>
+        <b>✨ Prompt Ảnh 4K (Gemini 3.8 Flash)</b>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-gemini-prompts')">📋 Copy tất cả</button>
       </div>
       <div id="txt-gemini-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
@@ -600,7 +600,7 @@ function generateMultiAIPrompts() {
     document.getElementById('txt-museai-prompts').textContent = mAll;
 
     document.getElementById('prompts-result-area').style.display = 'block';
-    window.showToast('Đã kích hoạt cả 5 AI: Google Flow 480p, Gemini, Claude, ChatGPT & Muse AI sẵn sàng!', true);
+    window.showToast('Đã kích hoạt cả 5 AI: Google Flow 480p, Gemini 3.8 Flash, Claude 5.5, ChatGPT Luna & Muse AI sẵn sàng!', true);
     document.getElementById('prompts-result-area').scrollIntoView({ behavior: 'smooth' });
   })
   .catch(function(err) {
@@ -646,7 +646,7 @@ function generateSceneImage(i, prompt) {
     if (box && img) {
       img.src = res.url;
       box.style.display = 'block';
-      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini 4K' : '🎨 Đồ Họa 4K';
+      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini 3.8 Flash' : '🎨 Đồ Họa 4K';
       if (useBtn) {
         useBtn.onclick = function() {
           var d = { product_name: name, niche: niche, photo_url: res.url, photo_path: res.path };

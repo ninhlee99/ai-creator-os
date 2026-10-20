@@ -84,11 +84,11 @@ func SupportedWebLoginTargets() map[string]WebLoginTarget {
 		PlatformGoogleFlow: {
 			Platform:    PlatformGoogleFlow,
 			Name:        "Google Flow",
-			StartURL:    "https://labs.google/flow",
+			StartURL:    "https://flow.google.com/",
 			CookieHost:  "google.com",
 			CookieName:  "__Secure-1PSID",
 			Profile:     "googleflow",
-			LandingHost: "labs.google",
+			LandingHost: "flow.google.com",
 		},
 	}
 }
@@ -449,32 +449,41 @@ func cdpHasLandingHost(port int, host string) bool {
 		return false
 	}
 	for _, t := range tabs {
-		if t.Type == "page" && strings.Contains(t.URL, host) {
-			// Đang ở màn hình chọn tài khoản Google hoặc trang login thì CHƯA được coi là xong!
-			if host == "gemini.google.com" && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser")) {
-				continue
+		if t.Type != "page" {
+			continue
+		}
+
+		isMatch := strings.Contains(t.URL, host)
+		if !isMatch && (host == "flow.google.com" || host == "labs.google" || host == "flow.google") {
+			if strings.Contains(t.URL, "flow.google") || strings.Contains(t.URL, "labs.google") || strings.Contains(t.URL, "aitestkitchen.withgoogle.com") {
+				isMatch = true
 			}
-			if host == "labs.google" && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser") || strings.Contains(t.URL, "signin")) {
+		}
+		if !isMatch {
+			continue
+		}
+
+		// Đang ở màn hình chọn tài khoản Google hoặc trang login thì CHƯA được coi là xong!
+		if (host == "gemini.google.com" || host == "flow.google.com" || host == "labs.google" || host == "flow.google") && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser")) {
+			continue
+		}
+		if host == "chatgpt.com" && (strings.Contains(t.URL, "auth/login") || strings.Contains(t.URL, "auth0") || strings.Contains(t.URL, "accounts.google.com")) {
+			continue
+		}
+		if host == "claude.ai" && (strings.Contains(t.URL, "claude.ai/login") || strings.Contains(t.URL, "accounts.google.com")) {
+			continue
+		}
+		if host == "grok.com" && (strings.Contains(t.URL, "accounts.x.ai") || strings.Contains(t.URL, "twitter.com") || strings.Contains(t.URL, "x.com") || strings.Contains(t.URL, "accounts.google.com")) {
+			continue
+		}
+		if host == "muse.ai" {
+			u := strings.ToLower(t.URL)
+			if strings.Contains(u, "/signin") || strings.Contains(u, "/signup") || strings.Contains(u, "/login") || strings.Contains(u, "/aymh") || strings.Contains(u, "auth.muse.ai") || strings.Contains(u, "accounts.google.com") || strings.Contains(u, "two_factor") || strings.Contains(u, "two-factor") || strings.Contains(u, "checkpoint") || strings.Contains(u, "challenge") || strings.Contains(u, "2fa") || strings.Contains(u, "mfa") {
 				continue
-			}
-			if host == "chatgpt.com" && (strings.Contains(t.URL, "auth/login") || strings.Contains(t.URL, "auth0") || strings.Contains(t.URL, "accounts.google.com")) {
-				continue
-			}
-			if host == "claude.ai" && (strings.Contains(t.URL, "claude.ai/login") || strings.Contains(t.URL, "accounts.google.com")) {
-				continue
-			}
-			if host == "grok.com" && (strings.Contains(t.URL, "accounts.x.ai") || strings.Contains(t.URL, "twitter.com") || strings.Contains(t.URL, "x.com") || strings.Contains(t.URL, "accounts.google.com")) {
-				continue
-			}
-			if host == "muse.ai" {
-				u := strings.ToLower(t.URL)
-				if strings.Contains(u, "/signin") || strings.Contains(u, "/signup") || strings.Contains(u, "/login") || strings.Contains(u, "/aymh") || strings.Contains(u, "auth.muse.ai") || strings.Contains(u, "accounts.google.com") || strings.Contains(u, "two_factor") || strings.Contains(u, "two-factor") || strings.Contains(u, "checkpoint") || strings.Contains(u, "challenge") || strings.Contains(u, "2fa") || strings.Contains(u, "mfa") {
-					continue
-				}
-				return true
 			}
 			return true
 		}
+		return true
 	}
 	return false
 }
@@ -562,22 +571,32 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 
 	var targetWS string
 	for _, t := range tabs {
-		if t.Type == "page" && strings.Contains(t.URL, target.LandingHost) && t.WebSocketDebuggerURL != "" {
-			if target.Platform == PlatformGemini && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser")) {
-				continue
-			}
-			if target.Platform == PlatformChatGPT && strings.Contains(t.URL, "auth/login") {
-				continue
-			}
-			if target.Platform == PlatformClaude && strings.Contains(t.URL, "claude.ai/login") {
-				continue
-			}
-			if target.Platform == PlatformMuseAI && strings.Contains(t.URL, "accounts.google.com") {
-				continue
-			}
-			targetWS = t.WebSocketDebuggerURL
-			break
+		if t.Type != "page" || t.WebSocketDebuggerURL == "" {
+			continue
 		}
+		isMatch := strings.Contains(t.URL, target.LandingHost)
+		if !isMatch && (target.Platform == PlatformGoogleFlow || target.LandingHost == "flow.google.com" || target.LandingHost == "labs.google") {
+			if strings.Contains(t.URL, "flow.google") || strings.Contains(t.URL, "labs.google") || strings.Contains(t.URL, "aitestkitchen.withgoogle.com") {
+				isMatch = true
+			}
+		}
+		if !isMatch {
+			continue
+		}
+		if (target.Platform == PlatformGemini || target.Platform == PlatformGoogleFlow) && (strings.Contains(t.URL, "accounts.google.com") || strings.Contains(t.URL, "AccountChooser")) {
+			continue
+		}
+		if target.Platform == PlatformChatGPT && strings.Contains(t.URL, "auth/login") {
+			continue
+		}
+		if target.Platform == PlatformClaude && strings.Contains(t.URL, "claude.ai/login") {
+			continue
+		}
+		if target.Platform == PlatformMuseAI && strings.Contains(t.URL, "accounts.google.com") {
+			continue
+		}
+		targetWS = t.WebSocketDebuggerURL
+		break
 	}
 	if targetWS == "" {
 		return ""
@@ -604,9 +623,17 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 				}
 			} catch(e) {}
 			try {
-				const els = document.querySelectorAll('[aria-label*="@"]');
+				const els = document.querySelectorAll('[aria-label*="@"], [alt*="@"], [data-email]');
 				for (const el of els) {
-					const m = el.getAttribute('aria-label').match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+					const txt = el.getAttribute('aria-label') || el.getAttribute('alt') || el.getAttribute('data-email') || '';
+					const m = txt.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+					if (m && !m[1].endsWith('@google.com')) return m[1];
+				}
+			} catch(e) {}
+			try {
+				for (let i = 0; i < localStorage.length; i++) {
+					const v = localStorage.getItem(localStorage.key(i)) || '';
+					const m = v.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
 					if (m && !m[1].endsWith('@google.com')) return m[1];
 				}
 			} catch(e) {}
@@ -1078,22 +1105,29 @@ func enrichAccountProfile(target WebLoginTarget, auth *CapturedWebAuth) {
 		if !strings.Contains(cookie, "__Secure-1PSID=") && auth.SessionValue != "" {
 			cookie = "__Secure-1PSID=" + auth.SessionValue + "; " + cookie
 		}
-		targetURL := "https://gemini.google.com/app"
+		probeURLs := []string{"https://gemini.google.com/app", "https://myaccount.google.com/"}
 		if target.Platform == PlatformGoogleFlow {
-			targetURL = "https://labs.google/flow"
+			probeURLs = append([]string{"https://flow.google.com/", "https://labs.google/flow"}, probeURLs...)
 		}
-		req, err := http.NewRequest(http.MethodGet, targetURL, nil)
-		if err == nil {
+		for _, targetURL := range probeURLs {
+			if auth.Email != "" && !isSystemOrStaticEmail(auth.Email) {
+				break
+			}
+			req, err := http.NewRequest(http.MethodGet, targetURL, nil)
+			if err != nil {
+				continue
+			}
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 			req.Header.Set("Cookie", cookie)
 			req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 			if resp, err := client.Do(req); err == nil {
-				defer resp.Body.Close()
+				body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+				resp.Body.Close()
 				if resp.StatusCode == http.StatusOK {
-					body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 					html := string(body)
 					if email := parseGeminiAccountEmail(html); email != "" {
 						auth.Email = email
+						break
 					}
 				}
 			}
@@ -1302,6 +1336,9 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 		if !matched && target.Platform == PlatformMuseAI && (strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) {
 			matched = true
 		}
+		if !matched && (target.Platform == PlatformGoogleFlow || target.CookieHost == "google.com") && (strings.Contains(d, "google.com") || strings.Contains(d, "google") || strings.Contains(d, "withgoogle.com")) {
+			matched = true
+		}
 		return matched
 	}
 
@@ -1346,7 +1383,7 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 
 		// Google Flow fallback cookies
 		if target.Platform == PlatformGoogleFlow && sessionVal == "" {
-			if (c.Name == "__Secure-1PSID" || c.Name == "__Secure-3PSID" || c.Name == "SID" || c.Name == "SSID") && c.Value != "" {
+			if (c.Name == "__Secure-1PSID" || c.Name == "__Secure-3PSID" || c.Name == "SID" || c.Name == "SSID" || c.Name == "SAPISID" || c.Name == "__Secure-1PAPISID" || c.Name == "__Secure-1PSIDTS" || c.Name == "__Secure-3PSIDTS" || c.Name == "__session" || c.Name == "authToken" || c.Name == "auth_token" || c.Name == "NID") && c.Value != "" {
 				sessionVal = c.Value
 			}
 		}
@@ -1416,6 +1453,11 @@ func cookieHeaderForHost(cookies []cdpCookie, hostSubstr string) string {
 			matched := strings.Contains(d, hostSubstr) || strings.Contains(hostSubstr, d)
 			if !matched && hostSubstr == "muse.ai" && (strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) {
 				matched = true
+			}
+			if !matched && (hostSubstr == "google.com" || hostSubstr == "labs.google" || hostSubstr == "flow.google.com") {
+				if strings.Contains(d, "google.com") || strings.Contains(d, "google") || strings.Contains(d, "withgoogle.com") {
+					matched = true
+				}
 			}
 			if !matched {
 				continue

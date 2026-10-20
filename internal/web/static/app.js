@@ -299,41 +299,47 @@
             'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
             '<div class="hint" id="cap-' + id + '">' + esc(d.job.caption).replace(/\n/g, '<br>') + '</div></div>';
         }
-        (d.assets || []).forEach(function (a) {
-          var name;
-          if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
-          else name = a.kind + ' ' + (a.idx + 1);
-          var pid = 'prompt-' + id + '-' + a.id;
-          (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
-          h += '<div class="shot" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + name +
-            '</b> <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
-            '</div>';
+        if (d.assets && d.assets.length > 0) {
+          h += '<div class="board-shots-grid" style="margin-top:12px">';
+          d.assets.forEach(function (a) {
+            var name;
+            if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
+            else name = a.kind + ' ' + (a.idx + 1);
+            var pid = 'prompt-' + id + '-' + a.id;
+            (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+            h += '<div class="shot board-shot-card" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;justify-content:space-between"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:12px">' + name +
+              '</b> <span class="badge badge-' + a.class + '" style="font-size:9.5px">' + a.label + '</span>' +
+              '</div>';
 
-          var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
-          var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
-          var imgSrc = a.image_url || (hasImg ? a.preview : '');
-          var vidSrc = a.video_url || (hasVid ? a.preview : '');
+            var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
+            var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
+            var imgSrc = a.image_url || (hasImg ? a.preview : '');
+            var vidSrc = a.video_url || (hasVid ? a.preview : '');
 
-          if (imgSrc) {
-            h += '<div style="margin:8px 0">' +
-                 '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">🖼️ Keyframe Ảnh 4K:</div>' +
-                 '<img src="' + esc(imgSrc) + '" style="max-width:240px;border-radius:8px;border:1px solid var(--border);display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
-                 '</div>';
-          }
-          if (vidSrc) {
-            h += '<div style="margin:8px 0">' +
-                 '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px">🎬 Video Chuyển Động AI:</div>' +
-                 '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="max-width:240px;border-radius:8px;border:1px solid var(--border);display:block"></video>' +
-                 '</div>';
-          }
-          if (!imgSrc && !vidSrc && a.preview) {
-            h += '<div style="margin:8px 0"><a href="' + esc(a.preview) + '" target="_blank" class="btn btn-secondary btn-sm">Xem file ' + esc(a.preview) + '</a></div>';
-          }
+            if (imgSrc) {
+              h += '<div style="margin:4px 0">' +
+                   '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🖼️ Keyframe:</div>' +
+                   '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
+                   '<img src="' + esc(imgSrc) + '" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
+                   '</div></div>';
+            }
+            if (vidSrc) {
+              h += '<div style="margin:4px 0">' +
+                   '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🎬 Video AI:</div>' +
+                   '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
+                   '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:cover;display:block"></video>' +
+                   '</div></div>';
+            }
+            if (!imgSrc && !vidSrc && a.preview) {
+              h += '<div style="margin:6px 0"><a href="' + esc(a.preview) + '" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">Xem file ' + esc(a.preview) + '</a></div>';
+            }
 
-          h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto;margin:8px 0;background:var(--bg);padding:8px;border-radius:6px"></div>';
-          h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
-          h += '</div></div>';
-        });
+            h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:160px;overflow:auto;margin:6px 0;background:var(--bg);padding:6px;border-radius:6px;font-size:11px"></div>';
+            h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')" style="font-size:10.5px;padding:3px 8px">Xem prompt</button>';
+            h += '</div></div>';
+          });
+          h += '</div>';
+        }
         box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
       });
   };
@@ -355,6 +361,12 @@
             if (b) { b.className = 'badge job-status badge-' + j.class; b.textContent = j.label; }
             var p = card.querySelector('.prog');
             if (p) p.textContent = j.progress + '%';
+            var progBar = card.querySelector('div[style*="linear-gradient"]');
+            if (progBar) progBar.style.width = j.progress + '%';
+            if (j.status === 'done' && !card.dataset.reloaded) {
+              card.dataset.reloaded = '1';
+              setTimeout(function() { window.location.reload(); }, 1500);
+            }
             if (j.output && !card.querySelector('video.player')) {
               var v = document.createElement('video');
               v.className = 'player'; v.controls = true; v.src = '/media/' + j.output;

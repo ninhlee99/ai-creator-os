@@ -115,12 +115,17 @@
         {{end}}
       </div>
 
-      <div class="webai-card-actions" style="display:flex;gap:8px">
+      <div class="webai-card-actions" style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
           <span>🌐</span> Đăng Nhập Tự Động
         </button>
-        <button type="button" class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 12px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}', '{{.Platform.LoginURL}}')" title="Nhập Khóa API hoặc kết nối thủ công">
-          🔑 Nhập Key
+        {{if eq .Platform.ID "googleflow"}}
+        <button type="button" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:8px 10px;background:rgba(37,99,235,0.08);color:#2563eb;font-weight:700;border:1px solid rgba(37,99,235,0.25)" onclick="syncGoogleFlowAccount(this)" title="Đồng bộ phiên Google đã đăng nhập từ Gemini">
+          ⚡ Đồng bộ Google
+        </button>
+        {{end}}
+        <button type="button" class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 12px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}', '{{.Platform.LoginURL}}')" title="Nhập Khóa API hoặc Cookie thủ công">
+          🔑 Nhập Key / Cookie
         </button>
       </div>
     </div>
@@ -669,6 +674,12 @@
       <button type="button" class="btn btn-primary" onclick="triggerBrowserLoginFromModal()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 16px;font-size:13.5px;font-weight:700;border-radius:8px;box-sizing:border-box">
         🌐 Mở Cửa Sổ Đăng Nhập Tự Động
       </button>
+      <!-- Quick Sync Google Session for Google Flow -->
+      <div id="connect-sync-google-box" style="margin-top:10px;display:none">
+        <button type="button" class="btn btn-secondary" onclick="syncGoogleFlowFromModal(this)" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px 14px;font-size:13px;font-weight:700;background:rgba(37,99,235,0.08);color:#2563eb;border:1px solid rgba(37,99,235,0.25);border-radius:8px">
+          ⚡ Đồng Bộ Nhanh Từ Phiên Google (Gemini) Đã Có
+        </button>
+      </div>
       <div style="margin-top:8px">
         <a href="#" id="connect-platform-link" target="_blank" rel="noreferrer" style="font-size:11.5px;color:var(--muted);text-decoration:underline">
           Hoặc mở trang đăng nhập chính thức trong tab mới ↗
@@ -682,11 +693,11 @@
       <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
       <div class="modal-body" style="padding:0">
         <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text)">
-          Cách 2: Nhập Khóa API (API Key) để hệ thống tự vận hành 24/7
+          Cách 2: Nhập Khóa API hoặc Dán Cookie Header thủ công
         </div>
         <div class="field" style="margin-bottom:14px">
-          <label style="margin:0 0 6px 0;font-weight:600;font-size:12.5px">Khóa API (API Key) <span class="req">*</span></label>
-          <textarea name="session_key" id="connect-session-key" rows="2" required placeholder="Dán mã API Key vào đây..." style="width:100%;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box"></textarea>
+          <label style="margin:0 0 6px 0;font-weight:600;font-size:12.5px">Khóa API hoặc Cookie Header <span class="req">*</span></label>
+          <textarea name="session_key" id="connect-session-key" rows="2" required placeholder="Dán mã API Key hoặc Cookie Header (__Secure-1PSID=...)..." style="width:100%;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box"></textarea>
           <div class="hint" id="connect-auth-guide" style="font-size:11.5px;margin-top:4px"></div>
         </div>
         <div class="grid2">
@@ -806,9 +817,13 @@ function openConnectModal(p, name, ph, guide, loginUrl) {
     } else if (p === 'muse' || p === 'museai') {
       link.href = 'https://muse.ai/signin';
     } else if (p === 'googleflow') {
-      link.href = 'https://labs.google/flow';
+      link.href = 'https://flow.google.com/';
     }
     link.textContent = '🚀 Mở Màn Hình Đăng Nhập ' + name + ' ↗';
+  }
+  var syncBox = document.getElementById('connect-sync-google-box');
+  if (syncBox) {
+    syncBox.style.display = (p === 'googleflow') ? 'block' : 'none';
   }
   if (note) {
     if (p === 'chatgpt') {
@@ -822,7 +837,7 @@ function openConnectModal(p, name, ph, guide, loginUrl) {
     } else if (p === 'muse' || p === 'museai') {
       note.textContent = 'Mở trang đăng nhập Muse AI chính thức trong tab mới.';
     } else if (p === 'googleflow') {
-      note.textContent = 'Mở Google Flow (labs.google/flow) — Tận dụng 1.000 credit video miễn phí hàng tháng!';
+      note.textContent = 'Mở Google Flow (flow.google.com) — Tận dụng 1.000 credit video miễn phí hàng tháng!';
     } else {
       note.textContent = 'Mở trang đăng nhập dịch vụ chính thức trong tab mới.';
     }
@@ -961,6 +976,41 @@ function triggerBrowserLoginFromModal() {
   var name = document.getElementById('modal-title').textContent.replace('Kết nối ', '');
   closeConnectModal();
   startBrowserLogin(p, name);
+}
+
+function syncGoogleFlowAccount(btn) {
+  var origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Đang đồng bộ...';
+  }
+  fetch('/web-ai/accounts/sync-google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      alert('✓ ' + (data.message || 'Đã đồng bộ phiên Google thành công sang Google Flow!'));
+      window.location.reload();
+    } else {
+      alert('⚠ ' + (data.error || 'Chưa thể đồng bộ phiên Google. Bạn có thể bấm Đăng Nhập Tự Động để đăng nhập trực tiếp.'));
+    }
+  })
+  .catch(function(err) {
+    alert('Lỗi kết nối đồng bộ: ' + err.message);
+  })
+  .finally(function() {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  });
+}
+
+function syncGoogleFlowFromModal(btn) {
+  closeConnectModal();
+  syncGoogleFlowAccount(btn);
 }
 
 function testWebAIAccount(id, btn) {

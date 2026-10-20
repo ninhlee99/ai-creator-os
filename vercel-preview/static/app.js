@@ -159,32 +159,36 @@
             'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
             '<div class="hint" id="cap-' + id + '">' + d.job.caption.replace(/\n/g, '<br>') + '</div></div>';
         }
-        (d.assets || []).forEach(function (a) {
-          var name;
-          if (a.kind === 'shot') name = 'Shot ' + (a.seq + 1);
-          else if (a.kind === 'trailer') name = '📱 Trailer ' + (a.idx - 1999);
-          else if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
-          else if (a.kind === 'portrait') name = 'Chân dung';
-          else name = a.kind + ' ' + (a.idx + 1);
-          var pid = 'prompt-' + id + '-' + a.id;
-          (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
-          h += '<div class="shot"><div class="shot-head">' + name +
-            ' <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
-            (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') +
-            (a.trailer ? ' <span class="badge" title="Shot đắt giá — đã dùng cắt trailer">📱 trailer</span>' : '') +
-            '</div>';
-          if (a.preview) {
-            if (a.kind === 'portrait' || a.kind === 'photo') { h += '<img src="' + a.preview + '" style="max-width:220px">'; }
-            else { h += '<video controls preload="metadata" src="' + a.preview + '" style="max-width:220px"></video>'; }
-          }
-          h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:220px;overflow:auto"></div>';
-          h += '<div><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')">Xem prompt</button>';
-          if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
-            h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại (tốn chi phí Veo) rồi dựng lại phim.">' +
-              '<button class="btn btn-sm">🎬 Quay lại shot này</button></form>';
-          }
-          h += '</div></div>';
-        });
+        if (d.assets && d.assets.length > 0) {
+          h += '<div class="board-shots-grid" style="margin-top:12px">';
+          d.assets.forEach(function (a) {
+            var name;
+            if (a.kind === 'shot') name = 'Shot ' + (a.seq + 1);
+            else if (a.kind === 'trailer') name = '📱 Trailer ' + (a.idx - 1999);
+            else if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
+            else if (a.kind === 'portrait') name = 'Chân dung';
+            else name = a.kind + ' ' + (a.idx + 1);
+            var pid = 'prompt-' + id + '-' + a.id;
+            (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+            h += '<div class="shot board-shot-card" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;justify-content:space-between"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:12px">' + name +
+              '</b> <span class="badge badge-' + a.class + '">' + a.label + '</span>' +
+              (a.method_label ? ' <span class="badge">' + a.method_label + '</span>' : '') +
+              (a.trailer ? ' <span class="badge" title="Shot đắt giá — đã dùng cắt trailer">📱 trailer</span>' : '') +
+              '</div>';
+            if (a.preview) {
+              if (a.kind === 'portrait' || a.kind === 'photo') { h += '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin:6px 0"><img src="' + a.preview + '" style="width:100%;height:100%;object-fit:cover;display:block"></div>'; }
+              else { h += '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin:6px 0"><video controls preload="metadata" src="' + a.preview + '" style="width:100%;height:100%;object-fit:cover;display:block"></video></div>'; }
+            }
+            h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:160px;overflow:auto;font-size:11px"></div>';
+            h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')" style="font-size:11px;padding:3px 8px">Xem prompt</button>';
+            if (a.kind === 'shot' && (a.status === 'done' || a.status === 'failed')) {
+              h += ' <form method="post" action="/studio/jobs/' + id + '/shots/' + a.seq + '/rerender" style="display:inline" data-confirm="Quay lại shot ' + (a.seq + 1) + '? Shot này sẽ render lại (tốn chi phí Veo) rồi dựng lại phim.">' +
+                '<button class="btn btn-sm" style="font-size:11px;padding:3px 8px">🎬 Quay lại shot</button></form>';
+            }
+            h += '</div></div>';
+          });
+          h += '</div>';
+        }
         box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
       });
   };

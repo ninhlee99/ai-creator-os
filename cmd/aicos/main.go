@@ -140,6 +140,28 @@ func getenvInt(name string, def int) int {
 	return n
 }
 
+func loadDotEnv(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+			if os.Getenv(k) == "" {
+				_ = os.Setenv(k, v)
+			}
+		}
+	}
+}
+
 func fileExists(path string) bool {
 	fi, err := os.Stat(path)
 	return err == nil && !fi.IsDir()
@@ -147,6 +169,7 @@ func fileExists(path string) bool {
 
 // ---------------------------------------------------------------------------
 func main() {
+	loadDotEnv(".env")
 	addr := flag.String("addr", "127.0.0.1:8080", "listen address for the web dashboard (default localhost-only; pass :8080 to expose on LAN)")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -283,7 +306,8 @@ func main() {
 	// llama-server runs on 127.0.0.1:8081 (see engines.NewLlamaServerProcess)
 	// so it never collides with the dashboard's default -addr :8080.
 	llamaProc := engines.NewLlamaServerProcess(reg)
-	if reg.Has(llamaModel) {
+	skipLocalModels := os.Getenv("DISABLE_LOCAL_MODELS") == "1" || os.Getenv("DISABLE_LOCAL_AI") == "1"
+	if !skipLocalModels && reg.Has(llamaModel) {
 		guard.Go(ctx, "sidecar:llama-server", func(c context.Context) {
 			log.Printf("sidecar: llama-server starting (model %s)", llamaModel)
 			if err := llamaProc.Start(c); err != nil {
@@ -293,7 +317,7 @@ func main() {
 			}
 		})
 	} else {
-		log.Printf("sidecar: llama-server not started — model %s chưa được tải (dashboard settings để tải)", llamaModel)
+		log.Printf("sidecar: llama-server disabled — chế độ 100%% Cloud / Web Adapters")
 	}
 
 	// VieNeu TTS sidecar: controlled through the provider inside the chain.
@@ -302,7 +326,7 @@ func main() {
 	if p, ok := ttsChain.Provider("vieneu"); ok {
 		if vn, ok := p.(*tts.VieNeuProvider); ok {
 			vieNeu = vn
-			if reg.VieNeuPresent() {
+			if !skipLocalModels && reg.VieNeuPresent() {
 				guard.Go(ctx, "sidecar:vieneu", func(c context.Context) {
 					log.Printf("sidecar: vieneu starting (first run can take a while)")
 					if err := vieNeu.Start(c); err != nil {
@@ -312,7 +336,7 @@ func main() {
 					}
 				})
 			} else {
-				log.Printf("sidecar: vieneu not started — repo chưa có tại data dir (dashboard settings để tải/cài đặt)")
+				log.Printf("sidecar: vieneu disabled — chế độ 100%% Cloud / Web Adapters (Edge/Gemini TTS)")
 			}
 		}
 	}
@@ -389,6 +413,10 @@ func main() {
 		log.Fatalf("web: out dir: %v", err)
 	}
 	srv.OutDir = outDir
+	if srv.FlowBridge != nil {
+		srv.FlowBridge.SetTTSSynthesizer(ttsChain.Synthesize)
+		srv.FlowBridge.SetOutDir(outDir)
+	}
 	srv.Health = health
 	// Đợt R: một supervisor duy nhất giám sát mọi automation tick (timeout +
 	// recover + heartbeat). Service build lazy để luôn thấy đủ các store đã
@@ -417,7 +445,7 @@ func main() {
 		}
 		return true, qc.OpenUntil().Format("02/01 15:04")
 	}
-	if vieNeu != nil {
+	if !skipLocalModels && vieNeu != nil {
 		srv.VieNeu = vieNeuAdapter{v: vieNeu}
 	}
 	// Đợt AK: /healthz báo tick kẹt (needs_restart) + sức khỏe sidecar để
@@ -426,6 +454,9 @@ func main() {
 	srv.StaleTicks = func() []string { return tickSup.Stale(time.Now()) }
 	srv.Sidecars = func() map[string]web.SidecarBeat {
 		out := map[string]web.SidecarBeat{}
+		if skipLocalModels {
+			return out
+		}
 		add := func(name string, p *local.Process) {
 			if p == nil {
 				return
@@ -448,7 +479,11 @@ func main() {
 	// Đợt 3 (A7): enabled local tiers ensure their own models at startup;
 	// progress shows in Settings + the homepage runtime block.
 	guard.Go(ctx, "local-models:ensure", func(c context.Context) {
-		srv.EnsureLocalModels(c)
+		if !skipLocalModels {
+			srv.EnsureLocalModels(c)
+		} else {
+			log.Printf("local-models: disabled (100%% Cloud / Web Adapters mode)")
+		}
 	})
 
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------

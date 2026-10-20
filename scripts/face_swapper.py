@@ -178,6 +178,59 @@ def align_and_blend_landmarks(src_bgr, src_pts, target_frame, detector, prev_M=N
 
     return blended, M
 
+def load_and_rank_source_faces(app, source_input):
+    """
+    Evaluates all provided source images, scores face frontality, landmark clarity,
+    and area, and returns a prioritized list of source faces with the best frontal face first.
+    """
+    if isinstance(source_input, str):
+        paths = [p.strip() for p in source_input.split(",") if p.strip()]
+    else:
+        paths = list(source_input)
+
+    candidates = []
+    for pth in paths:
+        if not os.path.exists(pth):
+            continue
+        img = cv2.imread(pth)
+        if img is None:
+            continue
+        faces = app.get(img)
+        if not faces:
+            continue
+        f = sorted(faces, key=lambda x: (x.bbox[2]-x.bbox[0])*(x.bbox[3]-x.bbox[1]), reverse=True)[0]
+        w = f.bbox[2] - f.bbox[0]
+        h = f.bbox[3] - f.bbox[1]
+        area = w * h
+        score = float(f.det_score)
+
+        # Evaluate face frontality using landmark symmetry (right eye, left eye, nose tip)
+        front_score = score
+        pts = getattr(f, "kps", None)
+        if pts is not None and len(pts) >= 3:
+            d_right = float(np.linalg.norm(pts[0] - pts[2]))
+            d_left = float(np.linalg.norm(pts[1] - pts[2]))
+            symmetry = min(d_right, d_left) / max(d_right, d_left, 1e-4)
+            # Frontal faces with high symmetry score highest
+            front_score = score * 0.5 + symmetry * 0.5
+
+        candidates.append({
+            "face": f,
+            "path": pth,
+            "area": area,
+            "det_score": score,
+            "front_score": front_score,
+        })
+
+    if not candidates:
+        raise ValueError(f"Không phát hiện được khuôn mặt hợp lệ trong các ảnh mẫu: {source_input}")
+
+    # Sort candidates by frontal quality score then area
+    candidates.sort(key=lambda c: (c["front_score"], c["area"]), reverse=True)
+    best = candidates[0]
+    log(f"✓ Đã phân tích {len(candidates)} góc ảnh mẫu — Chọn góc mặt tối ưu nhất: '{os.path.basename(best['path'])}' (độ nét: {best['det_score']:.2f}, tỷ lệ chính diện: {best['front_score']:.2f})")
+    return [c["face"] for c in candidates], best["face"]
+
 def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
     log("Khởi động InsightFace AI Face Swap Engine...")
     import insightface
@@ -193,15 +246,7 @@ def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
     else:
         swapper = insightface.model_zoo.get_model(model_path)
 
-    src_bgr = cv2.imread(source_path)
-    if src_bgr is None:
-        raise ValueError(f"Không đọc được ảnh nhân vật nguồn: {source_path}")
-
-    src_faces = app.get(src_bgr)
-    if len(src_faces) == 0:
-        raise ValueError(f"Không phát hiện được khuôn mặt trong ảnh nguồn: {source_path}")
-    source_face = sorted(src_faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]), reverse=True)[0]
-    log(f"✓ Đã nhận diện khuôn mặt nguồn thành công (độ tin cậy: {source_face.det_score:.2f})")
+    all_source_faces, source_face = load_and_rank_source_faces(app, source_path)
 
     cap = cv2.VideoCapture(target_video)
     if not cap.isOpened():
@@ -234,6 +279,19 @@ def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
                 # Swap main face
                 main_face = sorted(target_faces, key=lambda f: (f.bbox[2]-f.bbox[0])*(f.bbox[3]-f.bbox[1]), reverse=True)[0]
                 frame = swapper.get(frame, main_face, source_face, paste_back=True)
+
+                # Subtle unsharp masking on face bounding box to restore crisp eyes, nose, lips and skin texture
+                try:
+                    bx1, by1, bx2, by2 = [int(v) for v in main_face.bbox]
+                    bx1, by1 = max(0, bx1), max(0, by1)
+                    bx2, by2 = min(width, bx2), min(height, by2)
+                    if bx2 > bx1 + 10 and by2 > by1 + 10:
+                        roi = frame[by1:by2, bx1:bx2]
+                        blur = cv2.GaussianBlur(roi, (0, 0), 2.0)
+                        sharpened = cv2.addWeighted(roi, 1.30, blur, -0.30, 0)
+                        frame[by1:by2, bx1:bx2] = sharpened
+                except Exception:
+                    pass
 
             out.write(frame)
             frame_idx += 1
@@ -271,7 +329,6 @@ def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
 
 def run_fallback_swap(source_path, target_video, output_video, max_frames=0):
     log("Sử dụng bộ xử lý Face Alignment & Seamless Cloning...")
-    src_bgr = cv2.imread(source_path)
     cap = cv2.VideoCapture(target_video)
     if not cap.isOpened():
         raise ValueError(f"Không mở được video đích: {target_video}")
@@ -290,16 +347,31 @@ def run_fallback_swap(source_path, target_video, output_video, max_frames=0):
     if detector is None:
         raise ValueError("Không tìm thấy mô hình nhận diện khuôn mặt YuNet")
 
-    # Detect face and landmarks in source image
-    src_h, src_w = src_bgr.shape[:2]
-    detector.setInputSize((src_w, src_h))
-    _, src_faces = detector.detect(src_bgr)
+    # Detect face and landmarks in source images (evaluate best angle)
+    paths = [p.strip() for p in source_path.split(",") if p.strip()]
+    src_bgr = None
     src_pts = None
-    if src_faces is not None and len(src_faces) > 0:
-        sf = src_faces[0]
-        src_pts = np.float32([sf[4:6], sf[6:8], sf[8:10], sf[10:12], sf[12:14]])
-        log(f"✓ Đã nhận diện 5 điểm mốc khuôn mặt nhân vật nguồn (độ tin cậy: {sf[-1]:.2f})")
-    else:
+    best_score = -1.0
+    for pth in paths:
+        if not os.path.exists(pth):
+            continue
+        im = cv2.imread(pth)
+        if im is None:
+            continue
+        im_h, im_w = im.shape[:2]
+        detector.setInputSize((im_w, im_h))
+        _, faces = detector.detect(im)
+        if faces is not None and len(faces) > 0:
+            sf = sorted(faces, key=lambda x: x[2]*x[3], reverse=True)[0]
+            score = float(sf[-1])
+            if score > best_score:
+                best_score = score
+                src_bgr = im
+                src_pts = np.float32([sf[4:6], sf[6:8], sf[8:10], sf[10:12], sf[12:14]])
+                log(f"✓ Đã chọn góc mặt '{os.path.basename(pth)}' (độ tin cậy: {score:.2f})")
+
+    if src_bgr is None:
+        raise ValueError(f"Không đọc được ảnh nhân vật nguồn từ: {source_path}")
         log("Cảnh báo: Không phát hiện được điểm mốc khuôn mặt nhân vật, giữ nguyên video gốc")
 
     temp_raw_video = output_video + ".raw.mp4"
@@ -372,8 +444,10 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    if not os.path.exists(args.source):
-        log(f"LỖI: Tệp ảnh nguồn không tồn tại: {args.source}")
+    source_list = [p.strip() for p in args.source.split(",") if p.strip()]
+    valid_sources = [p for p in source_list if os.path.exists(p)]
+    if not valid_sources:
+        log(f"LỖI: Không tìm thấy bất kỳ tệp ảnh nguồn nào tồn tại: {args.source}")
         sys.exit(2)
 
     if not os.path.exists(args.target):

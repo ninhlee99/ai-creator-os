@@ -1,853 +1,319 @@
-{{define "title"}}Vũ Đạo & Nhảy Trend TikTok — AI Creator OS{{end}}
+{{define "title"}}Sexy Dance Trending Realtime — AI Creator OS{{end}}
 {{define "content"}}
-
-<!-- Pipeline Navigation Stepper -->
-{{template "creation-stepper" dict "Step" "viral"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Video Viral &amp; Bắt Trend</h1>
-    <p class="subtitle">Xưởng Video Viral AI 100% Gốc — Sản xuất video ngắn 9:16 bắt nhịp xu hướng TikTok &amp; Shorts.</p>
+    <h1 style="display:flex;align-items:center;gap:10px">
+      <span>💃</span> Xưởng Video Viral AI 100% Gốc — Sexy Dance Realtime
+    </h1>
+    <p class="subtitle">Khởi Tạo Video 1-Chạm · Bắt nhịp vũ đạo hot trend thời gian thực từ TikTok &amp; Douyin · Tùy Chỉnh Kịch Bản &amp; chuyển động theo người mẫu nữ của bạn · Xuất chuẩn 1080x1920 (9:16).</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/models" class="btn btn-secondary btn-sm">🎭 Nhân Vật ({{len .Viral.AvailableModels}})</a>
-    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video ↗</a>
+    <a href="/models" class="btn btn-secondary btn-sm">🎭 Quản Lý Người Mẫu ({{len .Viral.AvailableModels}})</a>
+    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video Render ↗</a>
   </div>
 </div>
 
+{{if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Viral.Notice}}</p>{{end}}
+{{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
-{{if .Viral.Notice}}
-<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
-  <span style="color:#10b981;font-size:18px">✓</span>
-  <div style="font-size:13.5px">{{.Viral.Notice}}</div>
-</div>
-{{end}}
+<form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form">
+  <div class="studio-workbench-split" style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
+    
+    <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN -->
+    <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
+      
+      <!-- BƯỚC 1: ĐIỆU NHẢY & BÀI HÁT TRENDING REALTIME -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">1</span>
+            Chọn Điệu Nhảy Hoặc Dán Link TikTok Realtime
+          </h3>
+          <span class="badge badge-live" style="font-size:11px">🔥 Cập nhật Realtime</span>
+        </div>
 
-{{if .Viral.Error}}
-<div class="card" style="border-radius:10px;padding:12px 16px;margin-bottom:20px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.4);color:var(--text);display:flex;align-items:center;gap:10px">
-  <span style="color:#ef4444;font-size:18px">⚠</span>
-  <div style="font-size:13.5px">{{.Viral.Error}}</div>
-</div>
-{{end}}
+        <!-- Cách 1: Dán link TikTok / Douyin trực tiếp -->
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
+          <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span>🔗</span> Cách 1: Dán Link Video TikTok / Douyin đang Hot bạn thấy trên mạng:
+          </label>
+          <div style="display:flex;gap:8px">
+            <input type="url" name="tiktok_link" id="viral-tiktok-link" placeholder="https://www.tiktok.com/@user/video/... hoặc link Douyin" style="flex:1;padding:10px;font-size:13px">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard('viral-tiktok-link')" style="font-weight:700">📋 Dán</button>
+          </div>
+          <div class="hint" style="font-size:11.5px;margin-top:4px">
+            Hệ thống tự động tải nhạc và vũ đạo từ link này để ghép với nhân vật của bạn.
+          </div>
+        </div>
 
-<!-- Bảng trạng thái & Tự động hóa -->
-<div class="grid4" style="margin-bottom: 24px;">
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Dây Chuyền Tự Động</div>
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      {{if .Viral.AutoOn}}
-      <span class="chip chip-live" style="font-size:12px"><span class="pulse-dot"></span> ĐANG BẬT</span>
-      {{else}}
-      <span class="chip chip-dry" style="font-size:12px">ĐANG TẮT</span>
-      {{end}}
-      <form method="post" action="/automation/switch" style="margin:0">
-        <input type="hidden" name="key" value="viral.auto_produce_enabled">
-        <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">
-          {{if .Viral.AutoOn}}Tắt tự động{{else}}Bật tự động{{end}}
-        </button>
-      </form>
-    </div>
-  </div>
+        <!-- Cách 2: Chọn từ Radar Hot Dance Trending Douyin & VN -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label style="font-weight:700;font-size:12.5px;margin:0">
+              ⚡ Cách 2: Hoặc chọn nhanh vũ đạo Sexy Dance đang thịnh hành hôm nay:
+            </label>
+          </div>
+          <input type="hidden" name="sample_clip" id="viral-sample-clip" value="dance_trending_01">
+          <input type="hidden" name="topic" id="viral-topic" value="Sexy Dance Trending Hot">
+          <input type="hidden" name="music_url" id="viral-music-url">
 
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Đang Render AI</div>
-    <div style="font-size:22px;font-weight:800;color:var(--accent)">
-      {{.Viral.ActiveCount}} <span style="font-size:13px;font-weight:500;color:var(--muted)">video</span>
-    </div>
-  </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
+            
+            <div class="dance-trend-pill active" onclick="pickDanceTrend(this, 'dance_trending_01', 'Vũ Điệu Lắc Hông Bốc Lửa (Meow Meow Remix)', 'https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid #2563eb;transition:all 0.2s">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span class="badge badge-live" style="font-size:9.5px">🔥 Top 1 Douyin</span>
+                <span style="font-size:10.5px;color:var(--muted)">12.5M Views</span>
+              </div>
+              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Vũ Điệu Lắc Hông Bốc Lửa</strong>
+              <div style="font-size:11px;color:var(--muted)">🎵 Meow Meow Douyin Remix</div>
+            </div>
 
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Đã Hoàn Thành</div>
-    <div style="font-size:22px;font-weight:800;color:#10b981">
-      {{.Viral.DoneCount}} <span style="font-size:13px;font-weight:500;color:var(--muted)">video</span>
-    </div>
-  </div>
+            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_02', 'See Tình Remix Sexy Dance (Vũ Đạo Triệu View)', 'https://assets.mixkit.co/music/preview/mixkit-dance-with-me-3.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span class="badge badge-ok" style="font-size:9.5px">🔥 Top 2 TikTok VN</span>
+                <span style="font-size:10.5px;color:var(--muted)">9.8M Views</span>
+              </div>
+              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">See Tình Remix Sexy Dance</strong>
+              <div style="font-size:11px;color:var(--muted)">🎵 Hoàng Thùy Linh Speed Up</div>
+            </div>
 
-  <div class="card" style="padding:14px 18px;border-radius:12px">
-    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:6px">Chuẩn Video</div>
-    <div style="font-size:16px;font-weight:700;color:var(--text);margin-top:3px">
-      1080x1920 (9:16)
-    </div>
-  </div>
-</div>
+            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_03', 'Flower Jisoo Sexy Dance (Chuyển Động Hoa)', 'https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span class="badge badge-info" style="font-size:9.5px">🔥 Top 3 Kpop Trend</span>
+                <span style="font-size:10.5px;color:var(--muted)">8.2M Views</span>
+              </div>
+              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Flower Jisoo Sexy Dance</strong>
+              <div style="font-size:11px;color:var(--muted)">🎵 Flower Remix TikTok</div>
+            </div>
 
-<!-- =========================================================================
-     KHU VỰC 1: RADAR CÁC KÊNH NỮ HÀNG CHỤC TRIỆU FOLLOW & HOT TREND MỚI NHẤT
-     ========================================================================= -->
-<div style="margin-bottom: 32px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:26px">🔥</span>
-      <div>
-        <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">
-          Radar Kênh Nữ Triệu View &amp; Khởi Tạo Video 1-Chạm Bắt Trend Hot Nhất
-        </h2>
-        <span style="font-size:12px;color:var(--muted)">
-          <span class="pulse-dot"></span> Quét liên tục từ TikTok VN &amp; Douyin (Hàng chục triệu followers)
-        </span>
+            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_04', 'Night Club Douyin Sexy Dance (Vũ Đạo Quán Bar)', 'https://assets.mixkit.co/music/preview/mixkit-club-dance-party-441.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span class="badge badge-dim" style="font-size:9.5px">🔥 Hot Viral Douyin</span>
+                <span style="font-size:10.5px;color:var(--muted)">15.1M Views</span>
+              </div>
+              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Night Club Douyin Sexy Dance</strong>
+              <div style="font-size:11px;color:var(--muted)">🎵 Night Club Bass Booster</div>
+            </div>
+
+          </div>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <span id="viral-live-clock" class="badge badge-dim" style="font-size:11px">Vừa cập nhật</span>
-      <button type="button" class="btn btn-secondary btn-sm" onclick="refreshViralRadar(this)" style="font-weight:700">
-        🔄 Cập Nhật Realtime
-      </button>
-    </div>
-  </div>
 
-  <!-- Lưới hiển thị các Creator Kênh Nữ Hàng Chục Triệu Follow (Chuẩn 4-5 video / 1 hàng nhỏ gọn) -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));gap:12px">
-    {{range .Viral.TopChannels}}
-    <div class="card" style="border-radius:12px;padding:10px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--border);background:var(--bg2);box-shadow:0 4px 16px rgba(0,0,0,0.06);transition:transform 0.2s ease">
-      <div>
-        <!-- Video 9:16 Frame Preview to rõ nét -->
-        <div style="position:relative;width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.25)">
-          <video src="{{.VideoURL}}" preload="metadata" muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block" onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0;"></video>
-          
-          <div style="position:absolute;top:6px;left:6px;display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);padding:2px 6px;border-radius:4px">
-            <img src="{{.AvatarURL}}" style="width:16px;height:16px;border-radius:50%;object-fit:cover" alt="{{.Handle}}">
-            <span style="font-size:10px;color:#fff;font-weight:700">{{.Handle}}</span>
+      <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT NHÂN VẬT NỮ -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span>
+            Chọn Các Góc Mặt Nhân Vật Nữ Thực Hiện Điệu Nhảy
+          </h3>
+          <span class="badge badge-ok" style="font-size:11px" id="viral-selected-count">Đã chọn {{len .Viral.AvailableModels}} góc mặt</span>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label style="font-weight:700;font-size:12.5px;margin:0">Chọn nhiều góc khuôn mặt / dáng người của nhân vật để nhảy sinh động:</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
+          </div>
+        </div>
+
+        <input type="hidden" name="model_id" id="viral-model-id" value="{{.Viral.SelectedModelID}}">
+
+        {{if .Viral.AvailableModels}}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:12px">
+          {{range $idx, $m := .Viral.AvailableModels}}
+          <label class="character-model-card viral-model-card" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid #2563eb;background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
+            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" checked class="viral-model-checkbox" onchange="onViralModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
+            <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
+              <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
+            </div>
+            <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              Góc mặt #{{add $idx 1}}
+            </div>
+            <span class="viral-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
+              ✓ Đã chọn
+            </span>
+          </label>
+          {{end}}
+        </div>
+        {{else}}
+        <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:10px;font-size:12.5px">
+          Chưa tìm thấy ảnh người mẫu. Bạn có thể tải thêm ảnh người mẫu nữ bên dưới:
+        </div>
+        {{end}}
+
+        <div class="file-pick">
+          <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px">📁 Tải thêm ảnh nhân vật nữ từ máy…
+            <input type="file" name="model_photos" accept="image/*" multiple>
+          </label>
+          <span class="file-name" style="font-size:12px">Chưa chọn ảnh</span>
+        </div>
+      </div>
+
+      <!-- BƯỚC 3: CÔNG NGHỆ RENDER & BẤM MÁY -->
+      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
+            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">3</span>
+            Cấu Hình Render &amp; Bấm Máy
+          </h3>
+          <span class="badge badge-live" style="font-size:11px">Chuẩn TikTok / Shorts 9:16</span>
+        </div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:16px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Công nghệ render AI (100% Free Cloud)</label>
+            <select name="ai_mode" style="padding:10px;font-weight:700">
+              <option value="googleflow" selected>🌊 Google Flow (Veo SD ➔ Auto Remaster 4K UHD)</option>
+              <option value="veo">🎬 Google Veo AI Motion (Chuyển động chân thực)</option>
+              <option value="museai">🎥 Muse AI Studio (Vũ đạo mượt mà không watermark)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Thời lượng video nhảy</label>
+            <select name="duration" style="padding:10px;font-weight:600">
+              <option value="60" selected>⏱️ 60 giây (Chuẩn 1 phút+ TikTok bật kiếm tiền)</option>
+              <option value="30">⚡ 30 giây (Ngắn bắt trend nhanh)</option>
+              <option value="45">🔥 45 giây (Điệp khúc cao trào)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #ef4444 0%, #ec4899 100%);box-shadow:0 4px 14px rgba(236,72,153,0.35);border:none;cursor:pointer">
+          ⚡ BẮT ĐẦU TẠO VIDEO SEXY DANCE TRENDING (9:16)
+        </button>
+      </div>
+
+    </div>
+
+    <!-- CỘT PHẢI: LIVE PREVIEW & VIDEO VỪA TẠO -->
+    <div class="studio-sidebar-col" style="position:sticky;top:20px">
+      
+      <!-- Khung Mô Phỏng Phone TikTok 9:16 -->
+      <div class="card" style="border-radius:18px;overflow:hidden;padding:0;border:2px solid var(--border);box-shadow:0 12px 36px rgba(0,0,0,0.25);background:#000">
+        <div style="background:var(--bg3);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <strong style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px">
+            <span>📱</span> Live Preview (TikTok 9:16)
+          </strong>
+          <span class="badge badge-live" style="font-size:10px">1080×1920</span>
+        </div>
+
+        <div id="viral-mockup-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:#111;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="badge badge-live" style="font-size:9.5px;font-weight:700">● SEXY DANCE TREND</span>
+            <span style="background:rgba(0,0,0,0.6);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 60s</span>
           </div>
 
-          <div style="position:absolute;top:6px;right:6px;background:rgba(239,68,68,0.9);backdrop-filter:blur(6px);color:#fff;font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:4px">
-            🔥 {{.Followers}}
+          <div style="text-align:center;margin:auto 0">
+            <div style="font-size:38px;margin-bottom:8px">💃</div>
+            <div id="viral-mockup-trend-name" style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:6px">
+              Vũ Điệu Lắc Hông Bốc Lửa
+            </div>
+            <div id="viral-mockup-music-name" style="color:#e2e8f0;font-size:11.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8)">
+              🎵 Meow Meow Douyin Remix
+            </div>
+            <div style="background:rgba(236,72,153,0.85);color:#fff;font-weight:800;font-size:11.5px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:10px">
+              🔥 Viral Trend TikTok 9:16
+            </div>
           </div>
 
-          <div style="position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:center">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="openViralLightbox('{{.VideoURL}}', '{{.Name}} - {{.HotTrend}}')" style="padding:2px 6px;font-size:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#fff;border:none">
-              ▶ Phóng to
-            </button>
-            <span style="background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);color:#38bdf8;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">
-              👀 {{.Views}}
+          <div style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);border-radius:10px;padding:10px 12px;color:#fff;border:1px solid rgba(255,255,255,0.15)">
+            <div style="font-size:11.5px;font-weight:700;color:#fff;margin-bottom:2px">@kênh_nhan_vat_ai</div>
+            <div style="font-size:10.5px;color:#cbd5e1">Bắt trend vũ đạo cực cuốn cùng nhân vật nữ xinh đẹp #sexydance #trendingtiktok #douyin</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Jobs List -->
+      <div style="margin-top:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong style="font-size:13px;color:var(--text)">🎬 Video Đã Render</strong>
+          <a href="/studio/jobs" style="font-size:11.5px;color:var(--accent);font-weight:700">Xem tất cả ↗</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          {{range $i, $j := .Viral.Jobs}}
+          {{if lt $i 3}}
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:8px 10px;border-radius:8px;font-size:12px">
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">
+              <strong>{{$j.Title}}</strong>
+            </div>
+            <span class="badge {{if eq $j.Status "done"}}badge-ok{{else if eq $j.Status "running"}}badge-warn{{else}}badge-err{{end}}" style="font-size:10px">
+              {{if eq $j.Status "done"}}✓ Xong{{else if eq $j.Status "running"}}Đang dựng{{else}}{{$j.Status}}{{end}}
             </span>
           </div>
-        </div>
-
-        <!-- Creator Meta Info -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <strong style="font-size:12.5px;color:var(--text)">{{.Name}}</strong>
-          <span class="badge badge-info" style="font-size:9px">{{.Category}}</span>
-        </div>
-
-        <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.3">
-          {{.HotTrend}}
-        </div>
-
-        <div style="background:var(--bg);padding:4px 6px;border-radius:4px;font-size:10px;color:var(--muted);margin-bottom:6px;border-left:2px solid var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-          🎵 {{.Music}}
-        </div>
-      </div>
-
-      <!-- Action Button: Đu Trend Kênh Này -->
-      <button type="button" class="btn btn-primary btn-sm" onclick="applyCreatorTrend('{{.Handle}}', '{{.HotTrend}}', '{{.SampleClip}}', '{{.Music}}')" style="width:100%;font-weight:800;padding:6px 8px;font-size:11px">
-        ⚡ Bắt Chước Trend Kênh Này
-      </button>
-    </div>
-    {{end}}
-  </div>
-</div>
-
-<!-- =========================================================================
-     KHU VỰC: CÀI ĐẶT CHỦ ĐỀ & RADAR TIKTOK (4-5 VIDEO / 1 HÀNG)
-     ========================================================================= -->
-<div style="margin-bottom: 32px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:26px">📊</span>
-      <div>
-        <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">
-          Cài Đặt Chủ Đề (4 video / 1 hàng)
-        </h2>
-        <span style="font-size:12px;color:var(--muted)">
-          Xu hướng TikTok &amp; Douyin phân loại theo từng chủ đề — Tối ưu 4-5 video trên mỗi hàng
-        </span>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div style="display:flex;gap:6px;align-items:center">
-        <input type="text" id="custom-topic-input" placeholder="Thêm chủ đề..." style="font-size:12px;padding:5px 10px;width:150px;border-radius:6px;border:1px solid var(--border)">
-        <button type="button" class="btn btn-primary btn-sm" onclick="addCustomTopic()" style="font-size:11.5px;padding:5px 12px;font-weight:700">+ Thêm Chủ Đề</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="radar-topic-groups-container">
-    {{range .Viral.TopicGroups}}
-    <div class="topic-row-container" id="row-topic-{{.TopicID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:14px;font-weight:800;color:var(--text)">{{.TopicName}}</span>
-          <span style="background:rgba(37,99,235,0.1);color:var(--accent);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;border:1px solid rgba(37,99,235,0.2)">{{.Tag}}</span>
-          <span style="font-size:11px;color:var(--muted)">{{.Description}}</span>
-        </div>
-      </div>
-      <div class="topic-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px">
-        {{range .Videos}}
-        <div class="card" style="border-radius:10px;padding:8px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.04)">
-          <div style="position:relative;width:100%;aspect-ratio:9/16;background:#111;border-radius:6px;overflow:hidden;margin-bottom:8px;cursor:pointer" onclick="playVideoModal('{{.PlayURL}}', '{{.Title}}')">
-            {{if .CoverURL}}
-            <img src="{{.CoverURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-            {{end}}
-            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25)">
-              <span style="width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px">▶</span>
-            </div>
-            <div style="position:absolute;bottom:6px;left:6px;right:6px;display:flex;justify-content:space-between;align-items:center">
-              <span style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);color:#38bdf8;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">👀 {{.Views}}</span>
-              <span style="background:rgba(239,68,68,0.85);backdrop-filter:blur(4px);color:#fff;font-size:9.5px;padding:2px 5px;border-radius:4px;font-weight:700">❤️ {{.Likes}}</span>
-            </div>
-          </div>
-          <div>
-            <strong style="font-size:11.5px;display:block;color:var(--text);margin-bottom:4px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">{{.Title}}</strong>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-              <span style="font-size:10.5px;color:var(--muted)">@{{.UniqueID}}</span>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation();playVideoModal('{{.PlayURL}}', '{{.Title}}')" style="font-size:10px;padding:2px 6px">▶ Xem</button>
-            </div>
-          </div>
-        </div>
-        {{end}}
-      </div>
-    </div>
-    {{end}}
-  </div>
-</div>
-
-<!-- =========================================================================
-     KHU VỰC: RADAR BIẾN CĂNG & DRAMA SHOWBIZ (PHÂN ĐỊNH RÕ RÀNG V-BIZ VS C-BIZ)
-     ========================================================================= -->
-<div style="margin-bottom: 32px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="font-size:26px">🎭</span>
-      <div>
-        <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:var(--text)">
-          Radar Biến Căng &amp; Drama Showbiz (Phân Định Kênh Tuyệt Đối)
-        </h2>
-        <span style="font-size:12px;color:var(--muted)">
-          🔒 Nguyên tắc bất di bất dịch: Video Showbiz Việt chỉ đăng kênh <b>@kechuyen_ai</b> · Video Showbiz Trung/Douyin chỉ đăng kênh <b>@douyin_reup</b>
-        </span>
-      </div>
-    </div>
-    <div style="display:flex;gap:6px">
-      <button type="button" class="btn btn-sm btn-primary drama-filter-btn" onclick="filterDramaRegion('all', this)" style="font-size:11.5px;padding:3px 10px">Tất cả</button>
-      <button type="button" class="btn btn-sm btn-secondary drama-filter-btn" onclick="filterDramaRegion('VN', this)" style="font-size:11.5px;padding:3px 10px">🇻🇳 Showbiz Việt (V-Biz)</button>
-      <button type="button" class="btn btn-sm btn-secondary drama-filter-btn" onclick="filterDramaRegion('CN', this)" style="font-size:11.5px;padding:3px 10px">🇨🇳 Showbiz Hoa Ngữ (C-Biz)</button>
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:12px" id="dramas-container">
-    <!-- 1. Danh sách Drama V-Biz (Gán kênh @kechuyen_ai) -->
-    {{range .Viral.DramasVN}}
-    <div class="card drama-card drama-vn" data-region="VN" style="border-radius:14px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
-      <div>
-        <div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:8px;overflow:hidden;margin-bottom:10px">
-          {{if .ImageURL}}
-          <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-          {{else}}
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px">🇻🇳</div>
           {{end}}
-          <span class="badge badge-ok" style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700">🇻🇳 V-Biz</span>
-          <span class="badge badge-info" style="position:absolute;bottom:8px;left:8px;font-size:9.5px;font-weight:700">🔒 Kênh: @kechuyen_ai</span>
-        </div>
-        <strong style="font-size:13px;line-height:1.4;display:block;margin-bottom:6px;color:var(--text)">{{.Title}}</strong>
-        <p style="font-size:11.5px;color:var(--muted);line-height:1.4;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">
-          {{.Summary}}
-        </p>
-      </div>
-
-      <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="applyDramaTrend('{{.Title}}', '{{.Summary}}', 'VN', 'kechuyen_ai')" style="font-size:11px;padding:4px 8px;font-weight:700">
-          ✏️ Nạp vào Form
-        </button>
-        <form method="post" action="/viral/quick" style="margin:0">
-          <input type="hidden" name="topic" value="Biến Căng Showbiz Việt: {{.Title}}">
-          <input type="hidden" name="genre" value="trendjack">
-          <input type="hidden" name="account" value="kechuyen_ai">
-          <button type="submit" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;font-weight:800">
-            ⚡ 1-Chạm Kênh @kechuyen_ai
-          </button>
-        </form>
-      </div>
-    </div>
-    {{end}}
-
-    <!-- 2. Danh sách Drama C-Biz (Gán kênh @douyin_reup) -->
-    {{range .Viral.DramasCN}}
-    <div class="card drama-card drama-cn" data-region="CN" style="border-radius:14px;padding:14px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,0.05)">
-      <div>
-        <div style="position:relative;width:100%;aspect-ratio:16/9;background:#111;border-radius:8px;overflow:hidden;margin-bottom:10px">
-          {{if .ImageURL}}
-          <img src="{{.ImageURL}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy">
-          {{else}}
-          <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:28px">🇨🇳</div>
-          {{end}}
-          <span class="badge" style="position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;background:#fee2e2;color:#ef4444;border:1px solid #fca5a5">🇨🇳 C-Biz / Douyin</span>
-          <span class="badge badge-info" style="position:absolute;bottom:8px;left:8px;font-size:9.5px;font-weight:700">🔒 Kênh: @douyin_reup</span>
-        </div>
-        <strong style="font-size:13px;line-height:1.4;display:block;margin-bottom:6px;color:var(--text)">{{.Title}}</strong>
-        <p style="font-size:11.5px;color:var(--muted);line-height:1.4;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">
-          {{.Summary}}
-        </p>
-      </div>
-
-      <div style="display:flex;gap:6px;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:10px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="applyDramaTrend('{{.Title}}', '{{.Summary}}', 'CN', 'douyin_reup')" style="font-size:11px;padding:4px 8px;font-weight:700">
-          ✏️ Nạp vào Form
-        </button>
-        <form method="post" action="/viral/quick" style="margin:0">
-          <input type="hidden" name="topic" value="Bóc Phốt Showbiz Hoa Ngữ: {{.Title}}">
-          <input type="hidden" name="genre" value="trendjack">
-          <input type="hidden" name="account" value="douyin_reup">
-          <button type="submit" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 10px;font-weight:800">
-            ⚡ 1-Chạm Kênh @douyin_reup
-          </button>
-        </form>
-      </div>
-    </div>
-    {{end}}
-  </div>
-</div>
-
-<!-- =========================================================================
-     KHU VỰC 2: TÙY CHỈNH NỘI DUNG VIRAL THEO Ý BẠN (QUY TRÌNH LIÊN KẾT)
-     ========================================================================= -->
-<div class="card form-card" style="border-radius:14px;padding:22px 24px;margin-bottom: 30px;border:1.5px solid var(--border)">
-  <div style="margin-bottom:18px">
-    <h2 style="margin:0 0 6px;font-size:17px;font-weight:800">Tùy Chỉnh Kịch Bản &amp; Dựng Video Viral Mới</h2>
-    <p style="margin:0;color:var(--muted);font-size:12.5px">Quy trình liên kết: 1. Khóa mặt nhân vật kênh ➔ 2. Chọn video mẫu chuyển động ➔ 3. AI render lại video tự nhiên 100%.</p>
-  </div>
-
-  <form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-form" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang chuyển cho AI render video...';}">
-    <input type="hidden" name="model_id" id="form-model-id" value="{{.Viral.SelectedModelID}}">
-    <input type="hidden" name="sample_clip" id="form-sample-clip" value="{{.Viral.SelectedClip}}">
-
-    <!-- BƯỚC 1: CHỌN KHUÔN MẶT NHÂN VẬT KÊNH -->
-    <div style="background:var(--bg2);padding:16px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <label style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;margin:0">
-          <span>👤</span> Bước 1: Chọn Khuôn Mặt Nhân Vật Của Kênh (Face Lock) <span class="req">*</span>
-        </label>
-        <a href="/models" class="btn btn-secondary btn-sm" style="font-size:11.5px">🎭 Mở Thư Viện Nhân Vật ➔</a>
-      </div>
-
-      {{if .Viral.AvailableModels}}
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        {{range .Viral.AvailableModels}}
-        <div class="character-face-pill {{if eq .ID $.Viral.SelectedModelID}}selected{{end}}" onclick="selectModelFace('{{.ID}}', this)" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:var(--card-bg);padding:6px 10px;border-radius:10px;border:2px solid {{if eq .ID $.Viral.SelectedModelID}}var(--accent){{else}}var(--border){{end}};transition:all 0.15s ease">
-          <img src="{{.URL}}" alt="{{.Filename}}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border)">
-          <div style="line-height:1.2">
-            <strong style="font-size:12px;display:block;color:var(--text)">{{.AccountName}}</strong>
-            <span style="font-size:10.5px;color:var(--muted)">ID #{{.ID}}</span>
-          </div>
-          {{if eq .ID $.Viral.SelectedModelID}}<span style="color:var(--accent);font-size:14px;font-weight:800;margin-left:4px">✓</span>{{end}}
-        </div>
-        {{end}}
-      </div>
-      {{else}}
-      <div style="padding:10px;background:rgba(239,68,68,0.06);border-radius:8px;margin-bottom:10px;font-size:12px;color:var(--muted)">
-        Chưa có ảnh nhân vật nào trong thư viện. Bạn có thể chọn tải lên trực tiếp bên dưới hoặc <a href="/models" style="color:var(--accent);font-weight:700">tải ảnh vào Thư Viện Nhân Vật</a>.
-      </div>
-      {{end}}
-
-      <div class="file-pick" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <label class="btn btn-secondary btn-sm" style="cursor:pointer;font-size:12px">📁 Hoặc tải lên ảnh nhân vật mới…
-          <input type="file" name="character_photos" accept=".jpg,.jpeg,.png,.webp" multiple onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
-        </label>
-        <span class="file-name" style="font-size:12px;color:var(--muted)">Chưa chọn file tải lên</span>
-      </div>
-    </div>
-
-    <!-- BƯỚC 2: CHỌN VIDEO MẪU CHUYỂN ĐỘNG & XEM TRƯỚC -->
-    <div style="background:var(--bg2);padding:16px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
-        <label style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;margin:0">
-          <span>🎬</span> Bước 2: Chọn Video Vũ Đạo Mẫu (TikTok Việt Nam hoặc Douyin Trung Quốc) <span class="req">*</span>
-        </label>
-        <span class="badge badge-live" style="font-size:10.5px">Chuẩn 1080x1920 (9:16) Không Méo Hình</span>
-      </div>
-
-      <!-- Quick Platform Filter Tabs: Tất Cả | TikTok VN | Douyin CN -->
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:var(--bg3);padding:8px 12px;border-radius:10px;border:1px solid var(--border)">
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:700;color:var(--text);margin-right:4px">Nguồn vũ đạo:</span>
-          <button type="button" class="btn btn-sm btn-primary filter-clip-btn" onclick="filterClipRegion('all', this)" style="font-size:11.5px;padding:3px 10px">Tất cả ({{len .Viral.SampleClips}})</button>
-          <button type="button" class="btn btn-sm btn-secondary filter-clip-btn" onclick="filterClipRegion('VN', this)" style="font-size:11.5px;padding:3px 10px">🇻🇳 TikTok Việt Nam</button>
-          <button type="button" class="btn btn-sm btn-secondary filter-clip-btn" onclick="filterClipRegion('CN', this)" style="font-size:11.5px;padding:3px 10px">🇨🇳 Douyin Trung Quốc (抖音)</button>
-        </div>
-        <button type="button" class="btn btn-sm btn-secondary" onclick="var b=document.getElementById('import-clip-box');b.style.display=b.style.display==='none'?'block':'none'" style="font-size:11.5px;font-weight:700">
-          📥 Nhập Link Video Mới ▾
-        </button>
-      </div>
-
-      <!-- Import Link Box (TikTok VN / Douyin URL via yt-dlp) -->
-      <div id="import-clip-box" style="display:none;background:var(--bg);border:1.5px dashed var(--accent);border-radius:10px;padding:14px;margin-bottom:14px">
-        <form method="post" action="/viral/clips/import" onsubmit="var b=this.querySelector('button[type=submit]');if(b){b.disabled=true;b.textContent='Đang tải & chuẩn hóa 9:16...';}">
-          <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--text);display:flex;align-items:center;gap:6px">
-            <span>⚡</span> Tải &amp; Đồng Bộ Video Vũ Đạo Mới Từ TikTok Việt Nam hoặc Douyin Trung Quốc
-          </div>
-          <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px;line-height:1.4">
-            Dán đường link bất kỳ từ TikTok (Việt Nam) hoặc Douyin (Trung Quốc 抖音, link v.douyin.com hoặc douyin.com). Hệ thống tự động dùng yt-dlp tải video chất lượng cao nhất, xóa watermark và căn chỉnh chuẩn tỷ lệ 9:16 (1080x1920) không méo hình!
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <input type="url" name="url" required placeholder="Dán link TikTok (https://www.tiktok.com/@...) hoặc Douyin (https://v.douyin.com/...)" style="flex:1;min-width:260px;font-size:12.5px;padding:8px 12px">
-            <select name="platform" style="width:180px;font-size:12.5px;padding:8px 10px">
-              <option value="TikTok VN">🇻🇳 TikTok Việt Nam</option>
-              <option value="Douyin CN">🇨🇳 Douyin Trung Quốc (抖音)</option>
-            </select>
-            <button type="submit" class="btn btn-primary btn-sm" style="font-weight:800;font-size:12px;padding:8px 16px">
-              🚀 Tải &amp; Chuẩn Hóa 9:16
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div style="display:grid;grid-template-columns: 1fr 220px;gap:16px;align-items:start">
-        <!-- Danh sách clip mẫu -->
-        <div style="display:flex;flex-direction:column;gap:8px" id="sample-clips-list">
-          {{range .Viral.SampleClips}}
-          <div class="sample-clip-card {{if eq .ID $.Viral.SelectedClip}}selected{{end}}" data-region="{{if .Region}}{{.Region}}{{else}}VN{{end}}" onclick="selectSampleClip('{{.ID}}', '{{.URL}}', '{{.Title}}', this)" style="cursor:pointer;padding:10px 14px;border-radius:10px;background:var(--card-bg);border:2px solid {{if eq .ID $.Viral.SelectedClip}}var(--accent){{else}}var(--border){{end}};display:flex;justify-content:space-between;align-items:center;transition:all 0.15s ease">
-            <div>
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex-wrap:wrap">
-                <span style="font-size:14px">💃</span>
-                <strong style="font-size:13px;color:var(--text)">{{.Title}}</strong>
-                {{if eq .Region "CN"}}
-                <span class="badge" style="background:#fee2e2;color:#ef4444;border:1px solid #fca5a5;font-size:10px;font-weight:700">🇨🇳 Douyin CN</span>
-                {{else}}
-                <span class="badge badge-ok" style="font-size:10px;font-weight:700">🇻🇳 TikTok VN</span>
-                {{end}}
-                <span class="badge badge-dim" style="font-size:10px">{{.Duration}}</span>
-              </div>
-              <div style="font-size:11.5px;color:var(--muted);line-height:1.3">{{.Description}}</div>
-            </div>
-            <div class="sample-clip-check" style="color:var(--accent);font-size:16px;font-weight:800;margin-left:8px">
-              {{if eq .ID $.Viral.SelectedClip}}✓{{end}}
-            </div>
-          </div>
           {{end}}
         </div>
-
-        <!-- Trình phát xem trước video mẫu -->
-        <div style="background:#000;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.25);position:relative">
-          <video id="sample-video-preview-player" src="/clips/viral/clip_vn_phuonghoa.mp4" controls autoplay muted loop style="width:100%;aspect-ratio:9/16;display:block;object-fit:cover"></video>
-          <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.7);padding:2px 8px;border-radius:6px;font-size:10px;color:#fff;font-weight:700">
-            👁️ Xem trước mẫu
-          </div>
-          <div id="sample-preview-title" style="padding:6px 8px;font-size:10.5px;color:#fff;background:#111;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;border-top:1px solid #333">
-            🇻🇳 TikTok VN: Đào Lê Phương Hoa - Hot Beat Sexy Dance
-          </div>
-        </div>
       </div>
+
     </div>
 
-    <!-- BƯỚC 3: CÔNG NGHỆ RENDER VÀ THÔNG TIN VIDEO -->
-    <div class="field" style="margin-bottom:16px">
-      <label style="font-weight:700;font-size:13px">Chủ đề hoặc Ý tưởng chính <span class="req">*</span></label>
-      <input type="text" name="topic" required placeholder="Ví dụ: Vũ Điệu Triệu View: Hot Dance Sexy Trend TikTok" value="Vũ Điệu Triệu View: Hot Dance Sexy Trend TikTok 60s" style="font-size:14px;padding:10px 14px">
-    </div>
-
-    <div class="grid3" style="gap:16px;margin-bottom:16px">
-      <div class="field">
-        <label style="font-weight:700;font-size:13px">Thể loại &amp; Cảm xúc</label>
-        <select name="genre" style="padding:9px 12px">
-          <option value="dance" selected>💃 Vũ đạo &amp; Bắt trend (Sexy Dance TikTok 100% Nhạc Trending)</option>
-          <option value="fashion">👗 Thời trang &amp; Lookbook (Thời Trang Nữ &amp; Phụ Kiện)</option>
-          <option value="trendjack">🔥 Bắt trend &amp; Giật tít (Trendjack)</option>
-          <option value="mystery">🕵️ Bí ẩn &amp; Sự thật ít ai biết (Mystery)</option>
-          <option value="lifehack">💡 Mẹo đời sống &amp; Tài chính (Lifehack)</option>
-          <option value="tech_fact">⚡ Công nghệ &amp; Tri thức mới (Tech Fact)</option>
-          <option value="koc_review">⭐ Trải nghiệm &amp; Đánh giá (KOC Review)</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label style="font-weight:700;font-size:13px">Kênh phân phối (Brand DNA)</label>
-        <select name="account" style="padding:9px 12px">
-          <option value="">-- Dùng phong cách chuẩn chung --</option>
-          {{range .Viral.AccountNames}}
-          <option value="{{.}}">Kênh: {{.}}</option>
-          {{end}}
-        </select>
-      </div>
-
-      <div class="field">
-        <label style="font-weight:700;font-size:13px">Thời lượng mục tiêu</label>
-        <select name="duration" style="padding:9px 12px">
-          <option value="60" selected>🎯 60 giây (Chuẩn Quỹ Nhà Sáng Tạo TikTok 1 phút+ / Bật Kiếm Tiền)</option>
-          <option value="45">⚡ 45 giây (Giải thích chi tiết hơn)</option>
-          <option value="30">⏱ 30 giây (Tối ưu giữ chân xem hết)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="grid2" style="gap:16px;margin-bottom:20px">
-      <div class="field">
-        <label style="font-weight:700;font-size:13px">Công nghệ Xử lý Video AI</label>
-        <select name="ai_mode" style="padding:9px 12px;font-weight:600">
-          <option value="googleflow" selected>🌊 Google Flow (1.000 Credits Free/tháng ➔ Tự động Remaster 4K UHD)</option>
-          <option value="veo3">🎬 Google Veo 3 / 3.1 (Generative AI Video — Điện Ảnh Siêu Thực 4K/1080p 9:16)</option>
-          <option value="museai">🎥 Muse AI Video Studio (Chuyển Động Tự Nhiên, Không Watermark)</option>
-          <option value="faceswap">💃 AI Neural Dance Re-Renderer (Vũ Đạo Triệu View TikTok VN & Douyin CN)</option>
-          <option value="generative">⚡ Tự Động Tối Ưu (Google Flow ➔ Veo 3 ➔ Muse AI ➔ Neural Motion)</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label style="font-weight:700;font-size:13px">Âm nhạc &amp; Giọng đọc</label>
-        <select name="voice" style="padding:9px 12px">
-          <option value="" selected>🎵 100% Nhạc Trending TikTok Mới Nhất (Khuyên dùng cho video nhảy)</option>
-          <option value="female_energetic">Giọng Nữ (Hào hứng, cuốn hút)</option>
-          <option value="male_authoritative">Giọng Nam (Trầm ấm, uy tín, tri thức)</option>
-          <option value="female_storyteller">Giọng Nữ Kể chuyện (Truyền cảm, bí ẩn)</option>
-        </select>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-top:10px;border-top:1px solid var(--border)">
-      <div style="font-size:12px;color:var(--muted)">
-        💡 Nhấn khởi chạy sẽ tự động chuyển sang màn hình <b>Hàng Đợi Render</b> để theo dõi tiến độ từng giây.
-      </div>
-      <button type="submit" class="btn btn-primary" style="padding:11px 28px;font-weight:800;font-size:14.5px">
-        🚀 Giao Cho AI Render Lại Video Mẫu Với Khuôn Mặt Này ➔
-      </button>
-    </div>
-  </form>
-</div>
+  </div>
+</form>
 
 <script>
-function selectModelFace(id, el) {
-  var input = document.getElementById('form-model-id');
-  if (input) input.value = id;
-  document.querySelectorAll('.character-face-pill').forEach(function(c) {
-    c.style.borderColor = 'var(--border)';
-    var check = c.querySelector('span[style*="font-weight:800"]');
-    if (check) check.remove();
-  });
-  el.style.borderColor = 'var(--accent)';
-  var check = document.createElement('span');
-  check.style.cssText = 'color:var(--accent);font-size:14px;font-weight:800;margin-left:4px';
-  check.textContent = '✓';
-  el.appendChild(check);
-}
-
-function selectSampleClip(clipId, url, title, el) {
-  var input = document.getElementById('form-sample-clip');
-  if (input) input.value = clipId;
-  document.querySelectorAll('.sample-clip-card').forEach(function(c) {
-    c.style.borderColor = 'var(--border)';
-    var check = c.querySelector('.sample-clip-check');
-    if (check) check.textContent = '';
-  });
-  el.style.borderColor = 'var(--accent)';
-  var check = el.querySelector('.sample-clip-check');
-  if (check) check.textContent = '✓';
-  
-  var player = document.getElementById('sample-video-preview-player');
-  if (player && url) {
-    player.src = url;
-    player.play().catch(function(){});
-  }
-  var titleEl = document.getElementById('sample-preview-title');
-  if (titleEl && title) {
-    titleEl.textContent = title;
-  }
-}
-
-function filterClipRegion(region, btn) {
-  document.querySelectorAll('.filter-clip-btn').forEach(function(b) {
-    b.classList.remove('btn-primary');
-    b.classList.add('btn-secondary');
-  });
-  if (btn) {
-    btn.classList.remove('btn-secondary');
-    btn.classList.add('btn-primary');
-  }
-  var cards = document.querySelectorAll('.sample-clip-card');
-  var firstVisible = null;
-  cards.forEach(function(c) {
-    var r = c.getAttribute('data-region') || 'VN';
-    if (region === 'all' || r === region) {
-      c.style.display = 'flex';
-      if (!firstVisible) firstVisible = c;
-    } else {
-      c.style.display = 'none';
-    }
-  });
-  // If current selection is hidden, select first visible
-  var currentSelected = document.querySelector('.sample-clip-card.selected');
-  if (!currentSelected || currentSelected.style.display === 'none') {
-    if (firstVisible) {
-      firstVisible.click();
-    }
-  }
-}
-</script>
-
-<!-- =========================================================================
-     KHU VỰC 3: TIẾN ĐỘ VÀ KHO VIDEO ĐÃ HOÀN THÀNH
-     ========================================================================= -->
-<div style="margin-bottom: 24px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h2 style="margin:0;font-size:18px;font-weight:800;letter-spacing:-0.3px">
-      📂 Hàng Đợi &amp; Video Đã Dựng ({{len .Viral.Jobs}})
-    </h2>
-    <div style="display:flex;gap:8px">
-      <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()">🔄 Làm mới tiến độ</button>
-    </div>
-  </div>
-
-  {{if not .Viral.Jobs}}
-  <div class="card" style="border-radius:12px;padding:36px;text-align:center;background:var(--bg2)">
-    <div style="font-size:36px;margin-bottom:10px">🎬</div>
-    <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:6px">Chưa có video viral nào trong hàng đợi</div>
-    <div style="font-size:13px;color:var(--muted);max-width:480px;margin:0 auto 16px">
-      Chọn chủ đề phía trên để bắt đầu tạo video viral.
-    </div>
-  </div>
-  {{else}}
-  <div style="display:flex;flex-direction:column;gap:14px">
-    {{range .Viral.Jobs}}
-    <div class="card" style="border-radius:12px;padding:16px 20px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:10px">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span class="badge badge-info" style="font-size:11px">{{.GenreVN}}</span>
-            {{if eq .Status "done"}}
-            <span class="chip chip-live" style="font-size:11px"><span class="pulse-dot"></span> {{.StatusVN}}</span>
-            {{else if eq .Status "running"}}
-            <span class="chip chip-dry" style="font-size:11px"><span class="pulse-dot"></span> {{.StatusVN}} ({{.Progress}}%)</span>
-            {{else if eq .Status "failed"}}
-            <span class="badge badge-warn" style="font-size:11px">⚠ {{.StatusVN}}</span>
-            {{else}}
-            <span class="badge badge-dim" style="font-size:11px">⏱ {{.StatusVN}}</span>
-            {{end}}
-          </div>
-          <div style="font-weight:800;font-size:15.5px;color:var(--text)">
-            {{.Title}}
-          </div>
-          <div class="hint" style="font-size:12px;margin-top:2px">
-            Khởi tạo: {{fmtVN .CreatedAt}} {{if .FinishedAt}}· Hoàn thành: {{fmtVN .FinishedAt}}{{end}}
-          </div>
-        </div>
-
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          {{if .MediaURL}}
-          <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')" style="font-weight:700">▶ Xem trước</button>
-          <a href="{{.MediaURL}}" download class="btn btn-secondary btn-sm" style="font-weight:700">⬇ Tải video .mp4</a>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Genre}}')" style="font-weight:700" title="Sao chép trọn gói Tiêu đề, Hook, Caption và Hashtags để đăng kênh">📋 Copy Post Kit</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Genre}}')" style="font-weight:700" title="Ghim video này vào trang Bio Link Storefront">🔗 Ghim vào Kệ Bio</button>
-          <a href="/publishers" class="btn btn-primary btn-sm" style="font-weight:700">📤 Đăng Lên Kênh</a>
-          {{end}}
-          <a href="/studio/jobs/{{.ID}}" class="btn btn-secondary btn-sm">Chi tiết job</a>
-        </div>
-      </div>
-
-      {{if eq .Status "running"}}
-      <div style="margin-top:10px;margin-bottom:8px">
-        <div style="background:var(--bg2);height:8px;border-radius:4px;overflow:hidden">
-          <div style="background:var(--accent);height:100%;width:{{.Progress}}%;transition:width 0.4s ease"></div>
-        </div>
-      </div>
-      {{end}}
-
-      {{if .LogTail}}
-      <div style="font-family:monospace;font-size:11.5px;background:var(--bg2);padding:6px 10px;border-radius:6px;color:var(--muted);margin-top:8px">
-        > {{.LogTail}}
-      </div>
-      {{end}}
-
-      {{if .MediaURL}}
-      <div style="margin-top:14px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-        <div style="width:200px;border-radius:10px;overflow:hidden;background:#000;box-shadow:0 4px 12px rgba(0,0,0,0.15)">
-          <video src="{{.MediaURL}}" controls preload="metadata" style="width:100%;display:block;aspect-ratio:9/16"></video>
-        </div>
-        <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span class="badge badge-ok">✓ Video hoàn chỉnh (Sạch 100%)</span>
-            <span class="badge badge-draft">📱 1080×1920 (9:16)</span>
-            <span class="badge badge-draft">H.264 MP4</span>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('{{.MediaURL}}', '{{.Title}}')">▶ Phóng to Player</button>
-            <a href="{{.MediaURL}}" download class="btn btn-secondary btn-sm">⬇ Tải MP4</a>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Genre}}')" style="font-weight:700">📋 Copy Post Kit</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Genre}}')" style="font-weight:700">🔗 Ghim vào Kệ Bio</button>
-            <a href="/publishers" class="btn btn-primary btn-sm">📤 Đăng Lên Kênh</a>
-          </div>
-        </div>
-      </div>
-      {{end}}
-    </div>
-    {{end}}
-  </div>
-  {{end}}
-</div>
-
-<script>
-function copyPostKit(title, genre) {
-  var tagBase = '#xuhuong #fyp #trending #viralvideo #review #shorts';
-  var genreTag = genre ? ('#' + genre.replace(/[^a-zA-Z0-9]/g, '')) : '#kienthuc';
-  var kit = title + '\n\n' +
-    '🔥 Xem trọn vẹn góc nhìn mới nhất trong video này!\n' +
-    '👉 Mọi người ghé qua link Bio ở đầu kênh để xem thêm các nội dung và deal hot nhé!\n\n' +
-    '🔗 Link Storefront: ' + window.location.origin + '/bio\n\n' +
-    tagBase + ' ' + genreTag;
-
-  navigator.clipboard.writeText(kit).then(function() {
-    alert('✓ Đã sao chép Trọn Gói Đăng Kênh (Tiêu đề + Caption + Call to Bio + Hashtags)!\n\nBạn có thể dán ngay vào TikTok, Reels hoặc YouTube Shorts.');
-  }).catch(function() {
-    prompt('Sao chép nội dung đăng kênh:', kit);
-  });
-}
-
-function pinJobToBio(title, genre) {
-  var data = new URLSearchParams();
-  data.append('title', title);
-  data.append('category', 'Video Viral Thịnh Hành');
-  data.append('price', '199000');
-  data.append('product_url', window.location.origin + '/bio');
-
-  fetch('/bio/pin', {
-    method: 'POST',
-    body: data,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    if (res.ok) {
-      if (confirm('✓ ' + res.message + '\n\nBạn có muốn mở trang Bio Link Storefront để xem ngay không?')) {
-        window.open('/bio', '_blank');
-      }
-    } else {
-      alert('Lỗi ghim vào Bio: ' + (res.error || 'Thử lại'));
-    }
-  })
-  .catch(function(err) {
-    alert('Lỗi kết nối: ' + err);
-  });
-}
-
-function applyCreatorTrend(handle, trend, clip, music) {
-  var topicInput = document.querySelector('input[name="topic"]');
-  if (topicInput) {
-    topicInput.value = 'Đu trend ' + trend + ' (' + handle + ' triệu view)';
-  }
-  if (clip) {
-    var clipCard = document.querySelector('.sample-clip-card[onclick*="' + clip + '"]');
-    if (clipCard) {
-      clipCard.click();
-    }
-  }
-  var form = document.getElementById('viral-form');
-  if (form) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-  if (window.showToast) {
-    window.showToast('✓ Đã nạp trend từ ' + handle + '! Hãy kiểm tra khuôn mặt ở Bước 1 và nhấn Dựng Video.', true);
+function onViralModelToggle(cb) {
+  var card = cb.closest('.viral-model-card');
+  var badge = card.querySelector('.viral-model-badge');
+  if (cb.checked) {
+    card.style.borderColor = '#2563eb';
+    if (badge) { badge.textContent = '✓ Đã chọn'; badge.style.color = '#2563eb'; }
   } else {
-    alert('✓ Đã nạp trend từ ' + handle + '!\nHãy chọn khuôn mặt ở Bước 1 và nhấn "Giao Cho AI Render Lại Video Mẫu Với Khuôn Mặt Này".');
+    card.style.borderColor = 'var(--border)';
+    if (badge) { badge.textContent = 'Bấm để chọn'; badge.style.color = 'var(--muted)'; }
   }
+  updateViralModelCount();
 }
 
-function refreshViralRadar(btn) {
-  var origText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '🔄 Đang quét...';
-  }
-  fetch('/api/studio/tiktok-trends?refresh=1')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var clock = document.getElementById('viral-live-clock');
-      if (clock) {
-        var now = new Date();
-        clock.textContent = 'Cập nhật lúc ' + now.toLocaleTimeString('vi-VN');
-      }
-      if (window.showToast) {
-        window.showToast('✓ Đã cập nhật xu hướng triệu view mới nhất từ TikTok & Douyin!', true);
-      }
-    })
-    .catch(function(err) {
-      console.error(err);
-    })
-    .finally(function() {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = origText || '🔄 Cập Nhật Realtime';
-      }
+function toggleAllViralModels(state) {
+  document.querySelectorAll('.viral-model-checkbox').forEach(function(cb) {
+    cb.checked = state;
+    var card = cb.closest('.viral-model-card');
+    var badge = card.querySelector('.viral-model-badge');
+    if (state) {
+      card.style.borderColor = '#2563eb';
+      if (badge) { badge.textContent = '✓ Đã chọn'; badge.style.color = '#2563eb'; }
+    } else {
+      card.style.borderColor = 'var(--border)';
+      if (badge) { badge.textContent = 'Bấm để chọn'; badge.style.color = 'var(--muted)'; }
+    }
+  });
+  updateViralModelCount();
+}
+
+function updateViralModelCount() {
+  var checked = document.querySelectorAll('.viral-model-checkbox:checked').length;
+  var total = document.querySelectorAll('.viral-model-checkbox').length;
+  var el = document.getElementById('viral-selected-count');
+  if (el) el.textContent = 'Đã chọn ' + checked + '/' + total + ' góc mặt';
+}
+
+function pickDanceTrend(el, clipID, title, musicURL) {
+  document.querySelectorAll('.dance-trend-pill').forEach(function(p) {
+    p.style.borderColor = 'var(--border)';
+  });
+  el.style.borderColor = '#2563eb';
+  document.getElementById('viral-sample-clip').value = clipID;
+  document.getElementById('viral-topic').value = title;
+  document.getElementById('viral-music-url').value = musicURL;
+
+  var tEl = document.getElementById('viral-mockup-trend-name');
+  if (tEl) tEl.textContent = title;
+  var mEl = document.getElementById('viral-mockup-music-name');
+  if (mEl) mEl.textContent = '🎵 ' + title;
+}
+
+function pasteFromClipboard(targetId) {
+  if (navigator.clipboard) {
+    navigator.clipboard.readText().then(function(text) {
+      var el = document.getElementById(targetId);
+      if (el) el.value = text;
+    }).catch(function() {
+      alert('Vui lòng dán trực tiếp bằng phím Ctrl+V hoặc Cmd+V.');
     });
-}
-
-function filterDramaRegion(region, btn) {
-  document.querySelectorAll('.drama-filter-btn').forEach(function(b) {
-    b.classList.remove('btn-primary');
-    b.classList.add('btn-secondary');
-  });
-  if (btn) {
-    btn.classList.remove('btn-secondary');
-    btn.classList.add('btn-primary');
   }
-  var cards = document.querySelectorAll('.drama-card');
-  cards.forEach(function(c) {
-    var r = c.getAttribute('data-region') || 'VN';
-    if (region === 'all' || r === region) {
-      c.style.display = 'flex';
-    } else {
-      c.style.display = 'none';
-    }
-  });
-}
-
-function applyDramaTrend(title, summary, region, account) {
-  var topicInput = document.querySelector('input[name="topic"]');
-  if (topicInput) {
-    topicInput.value = (region === 'VN' ? 'Biến Căng Showbiz Việt: ' : 'Bóc Phốt Showbiz Hoa Ngữ: ') + title;
-  }
-  var accSelect = document.querySelector('select[name="account"]');
-  if (accSelect && account) {
-    accSelect.value = account;
-  }
-  var genreSelect = document.querySelector('select[name="genre"]');
-  if (genreSelect) {
-    genreSelect.value = 'trendjack';
-  }
-  var form = document.getElementById('viral-form');
-  if (form) {
-    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-  var chName = region === 'VN' ? '@kechuyen_ai (Kênh Showbiz Việt)' : '@douyin_reup (Kênh Douyin / C-Biz)';
-  if (window.showToast) {
-    window.showToast('✓ Đã nạp Drama ' + (region === 'VN' ? 'V-Biz' : 'C-Biz') + ' chuẩn xác vào kênh ' + chName + '! Tuyệt đối đúng kênh.', true);
-  } else {
-    alert('✓ Đã nạp Drama ' + (region === 'VN' ? 'V-Biz' : 'C-Biz') + ' vào kênh ' + chName + '!');
-  }
-}
-
-function openViralLightbox(url, title) {
-  var modal = document.getElementById('viral-video-lightbox');
-  var video = document.getElementById('viral-lightbox-video');
-  var titleEl = document.getElementById('viral-lightbox-title');
-  if (!modal || !video) return;
-  video.src = url;
-  if (titleEl) titleEl.textContent = title || 'Xem trước Video Viral';
-  modal.style.display = 'flex';
-  video.play().catch(function(){});
-}
-
-function closeViralLightbox() {
-  var modal = document.getElementById('viral-video-lightbox');
-  var video = document.getElementById('viral-lightbox-video');
-  if (!modal || !video) return;
-  video.pause();
-  video.src = '';
-  modal.style.display = 'none';
 }
 </script>
 
-<!-- Viral Video Full Lightbox Modal -->
-<div id="viral-video-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);z-index:99999;align-items:center;justify-content:center;padding:20px" onclick="closeViralLightbox()">
-  <div style="position:relative;max-width:380px;width:100%;aspect-ratio:9/16;background:#000;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.8)" onclick="event.stopPropagation()">
-    <button type="button" onclick="closeViralLightbox()" style="position:absolute;top:12px;right:12px;z-index:10;width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.65);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-    <video id="viral-lightbox-video" src="" controls autoplay loop playsinline style="width:100%;height:100%;object-fit:cover;display:block"></video>
-    <div id="viral-lightbox-title" style="position:absolute;bottom:0;inset-x:0;padding:16px;background:linear-gradient(transparent, rgba(0,0,0,0.92));color:#fff;font-size:13px;font-weight:700;pointer-events:none"></div>
-  </div>
-</div>
 {{end}}

@@ -41,8 +41,8 @@ var envLabels = map[string][2]string{
 	"GEMINI_TEXT_MODEL":       {"Model viết chữ (tùy chọn)", "Google Gemini"},
 	"GEMINI_IMAGE_MODEL":      {"Model tạo ảnh (tùy chọn)", "Google Gemini"},
 	"GEMINI_TTS_MODEL":        {"Model giọng đọc (tùy chọn)", "Google Gemini"},
-	"OPENAI_API_KEY":          {"Key OpenAI (ChatGPT / GPT-4o)", "OpenAI & Claude & AI Khác"},
-	"ANTHROPIC_API_KEY":       {"Key Anthropic (Claude 3.5 Sonnet)", "OpenAI & Claude & AI Khác"},
+	"OPENAI_API_KEY":          {"Key OpenAI (ChatGPT / GPT-6 Luna)", "OpenAI & Claude & AI Khác"},
+	"ANTHROPIC_API_KEY":       {"Key Anthropic (Claude 5.5 Sonnet)", "OpenAI & Claude & AI Khác"},
 	"ELEVENLABS_API_KEY":      {"Key ElevenLabs (Giọng đọc siêu thực)", "OpenAI & Claude & AI Khác"},
 	"MUSEAI_API_KEY":          {"Key Muse AI (Video Studio)", "OpenAI & Claude & AI Khác"},
 	"TIKTOK_CLIENT_KEY":       {"Client Key ứng dụng TikTok", "TikTok"},
@@ -623,8 +623,8 @@ var envNames = []string{
 // finding C3) — hiện dưới tên biến ở trang Cài đặt · Hệ thống.
 var envHelp = map[string]string{
 	"TTS_API_KEY":             "Key Gemini dùng cho giọng đọc (Text-to-Speech). Chưa có thì app dùng giọng đọc miễn phí của máy.",
-	"OPENAI_API_KEY":          "Key OpenAI từ platform.openai.com — Dùng cho kịch bản ChatGPT GPT-4o và sinh ảnh DALL-E.",
-	"ANTHROPIC_API_KEY":       "Key Anthropic từ console.anthropic.com — Dùng cho đạo diễn phân cảnh điện ảnh Claude 3.5 Sonnet.",
+	"OPENAI_API_KEY":          "Key OpenAI từ platform.openai.com — Dùng cho kịch bản ChatGPT GPT-6 Luna và sinh nội dung bán hàng.",
+	"ANTHROPIC_API_KEY":       "Key Anthropic từ console.anthropic.com — Dùng cho đạo diễn phân cảnh điện ảnh Claude 5.5 Sonnet.",
 	"ELEVENLABS_API_KEY":      "Key ElevenLabs từ elevenlabs.io — Lồng tiếng voiceover siêu thực đa cảm xúc.",
 	"MUSEAI_API_KEY":          "Key Muse AI từ muse.ai/account — Dùng cho video studio và chuyển động mượt mà.",
 	"TIKTOK_CLIENT_KEY":       "Client Key của app TikTok (tạo ở developers.tiktok.com) — để nối tài khoản TikTok.",

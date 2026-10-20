@@ -21,6 +21,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/flow"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
@@ -110,6 +111,13 @@ type Server struct {
 	// Harness là Master Autonomous Agent điều phối nhận thức OODA và tự học.
 	Harness *harness.Harness
 
+	// Flow Engine: ComfyUI-like node graph execution for viral, try-on, motion and audio stories
+	FlowBridge   *flow.AdaptersBridge
+	FlowExecutor *flow.Executor
+	FlowCompiler *flow.Compiler
+	flowMu       sync.RWMutex
+	activeFlows  map[string]*flow.Graph
+
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
 	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
@@ -197,6 +205,11 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		StartedAt: time.Now(), // Đợt S: /healthz
 		db:        db,
 	}
+	s.activeFlows = make(map[string]*flow.Graph)
+	s.FlowBridge = flow.NewAdaptersBridge(s.WebAI, nil)
+	s.FlowExecutor = flow.NewExecutor(s.FlowBridge)
+	s.FlowCompiler = flow.NewCompiler(nil)
+
 	s.applyPersistedEnv()
 	if gs, err := growth.NewStore(db); err != nil {
 		log.Printf("web: growth store: %v", err)
@@ -273,6 +286,7 @@ var templateFuncs = template.FuncMap{
 	// statusClass maps a raw status slug to a semantic badge class suffix.
 	"statusClass": statusClass,
 	"mul":         func(a, b float64) float64 { return a * b },
+	"add":         func(a, b int) int { return a + b },
 	"pct":         func(f float64) float64 { return f * 100 },
 	"join": func(sep string, xs []string) string {
 		return strings.Join(xs, sep)
@@ -638,6 +652,7 @@ var pageFiles = map[string]string{
 	"products":              "products.html",
 	"viral":                 "viral.html",
 	"stories":               "stories.html",
+	"flow":                  "flow.html",
 	"models":                "models.html",
 	"team":                  "team.html",
 	"growth":                "growth.html",

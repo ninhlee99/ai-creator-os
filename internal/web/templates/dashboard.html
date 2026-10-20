@@ -107,7 +107,7 @@
     <div class="video-item-card">
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="badge {{.Class}}" style="font-size:10.5px">{{.Label}}</span>
+          <span class="badge {{.Class}}" style="font-size:10.5px;font-weight:700">{{.Label}}</span>
           <span style="font-size:11px;color:var(--muted)">{{.CreatedAt}}</span>
         </div>
 
@@ -116,17 +116,20 @@
         </div>
 
         {{if and (eq .Status "done") .Output}}
-        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')">
-          <video src="/media/{{.Output}}" preload="metadata" style="width:100%;height:100%;object-fit:cover"></video>
+        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để phóng to xem video">
+          <video src="/media/{{.Output}}" preload="metadata" muted loop playsinline></video>
           <div class="video-play-overlay">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
           </div>
+          <span class="video-badge-spec">📱 9:16 · 1080p</span>
         </div>
         {{else if or (eq .Status "running") (eq .Status "queued")}}
         <div class="video-render-box">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="color:var(--accent);font-weight:600">Đang render AI...</span>
-            <span style="font-family:monospace;font-weight:700">{{.Progress}}%</span>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
+            <span style="color:var(--accent);font-weight:700;display:flex;align-items:center;gap:6px">
+              <span class="pulse-dot"></span> Đang render AI...
+            </span>
+            <span style="font-family:monospace;font-weight:800;color:var(--text)">{{.Progress}}%</span>
           </div>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill" style="width:{{.Progress}}%"></div>
@@ -137,11 +140,11 @@
 
       <div class="video-item-actions">
         {{if and (eq .Status "done") .Output}}
-        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')">▶ Xem</button>
-        <a href="/media/{{.Output}}" download class="btn btn-ghost btn-sm">⬇ Tải về</a>
-        <a href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" class="btn btn-ghost btn-sm">📱 Đăng</a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" style="flex:1;font-weight:700;font-size:11.5px;padding:5px 8px">▶ Xem</button>
+        <a href="/media/{{.Output}}" download class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:5px 8px" title="Tải file video MP4">⬇ Tải</a>
+        <a href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" class="btn btn-primary btn-sm" style="font-weight:700;font-size:11.5px;padding:5px 10px" title="Đăng lên kênh mạng xã hội">📱 Đăng</a>
         {{else}}
-        <a href="/studio/jobs?id={{.ID}}" class="btn btn-secondary btn-sm" style="width:100%">Chi tiết render ↗</a>
+        <a href="/studio/jobs?id={{.ID}}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;font-weight:700">Chi tiết render ↗</a>
         {{end}}
       </div>
     </div>
@@ -227,15 +230,15 @@
       <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Tài Khoản AI Hoạt Động</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:8px">
         <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">Claude 3.7</span>
+          <span style="font-size:12px;font-weight:600">Claude 5.5 Sonnet</span>
           <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
         </div>
         <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">ChatGPT 4o</span>
+          <span style="font-size:12px;font-weight:600">ChatGPT GPT-6 Luna</span>
           <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
         </div>
         <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">Gemini 2.0</span>
+          <span style="font-size:12px;font-weight:600">Gemini 3.8 Flash</span>
           <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
         </div>
         <div class="tech-model-card">

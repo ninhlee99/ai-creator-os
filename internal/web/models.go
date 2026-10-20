@@ -151,6 +151,34 @@ func (s *Server) findModelPhotoByID(id int64) (string, error) {
 	return "", fmt.Errorf("không tìm thấy ảnh")
 }
 
+// findModelPhotosByIDs tìm danh sách đường dẫn file của ảnh nhân vật theo danh sách ID.
+func (s *Server) findModelPhotosByIDs(ids []int64) []string {
+	if s.Studio == nil || len(ids) == 0 {
+		return nil
+	}
+	ms, err := s.Studio.ModelLibrary()
+	if err != nil {
+		return nil
+	}
+	photos, err := ms.ListAll()
+	if err != nil {
+		return nil
+	}
+	idMap := make(map[int64]string)
+	for _, p := range photos {
+		idMap[p.ID] = p.Path
+	}
+	var res []string
+	for _, id := range ids {
+		if path, ok := idMap[id]; ok && path != "" {
+			if _, serr := os.Stat(path); serr == nil {
+				res = append(res, path)
+			}
+		}
+	}
+	return res
+}
+
 // handleModelUploadGlobal tiếp nhận tải lên ảnh khuôn mặt nhân vật từ màn hình Thư Viện Nhân Vật.
 func (s *Server) handleModelUploadGlobal(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {

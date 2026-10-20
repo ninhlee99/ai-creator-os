@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // photoVariantCrops: biểu thức crop ffmpeg (w:h:x:y) cho từng khung.
@@ -56,9 +57,21 @@ const maxOwnPhotos = 8
 // ownSources: ảnh người dùng/listing theo thứ tự ưu tiên (sản phẩm trước, mẫu sau).
 func ownSources(p AffiliateParams) []string {
 	var src []string
-	for _, s := range append([]string{p.ProductPhoto, p.ModelPhoto}, p.ExtraPhotos...) {
+	all := append([]string{p.ProductPhoto, p.ModelPhoto}, p.ModelPhotos...)
+	all = append(all, p.ExtraPhotos...)
+	for _, s := range all {
+		s = strings.TrimSpace(s)
 		if s != "" && len(src) < maxOwnPhotos {
-			src = append(src, s)
+			dup := false
+			for _, existing := range src {
+				if existing == s {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				src = append(src, s)
+			}
 		}
 	}
 	return src
@@ -67,18 +80,47 @@ func ownSources(p AffiliateParams) []string {
 // HasOwnPhotos báo job có ảnh tải lên để dựng không cần key.
 func (p AffiliateParams) HasOwnPhotos() bool { return len(ownSources(p)) > 0 }
 
-// ownPhotoSet dựng bộ khung từ ảnh thật của sản phẩm. Ít ảnh (1–2) thì mỗi ảnh cắt
-// 4 khung cho đủ nhịp; từ 3 ảnh trở lên lấy 2 khung mỗi ảnh — video là nhiều góc
-// ảnh thật khác nhau.
+// ownPhotoSet dựng bộ khung từ ảnh thật của người mẫu và sản phẩm.
+// Khi có từ 3 ảnh trở lên (nhiều góc mặt/dáng người thật), hệ thống giữ nguyên
+// độ sắc nét từng ảnh chuyển thành khung dọc 1080x1920 chuẩn 9:16, không cắt xén thô bạo.
 func ownPhotoSet(ctx context.Context, p AffiliateParams, work string) []string {
 	src := ownSources(p)
-	crops := 4
-	if len(src) >= 3 {
-		crops = 2
+	if len(src) == 0 {
+		return nil
 	}
 	var photos []string
-	for i, s := range src {
-		photos = append(photos, derivePhotoVariants(ctx, s, work, fmt.Sprintf("own%d", i), crops)...)
+	if len(src) >= 3 {
+		for i, s := range src {
+			dst := filepath.Join(work, fmt.Sprintf("own_%02d.png", i))
+			filter := "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2[bg];" +
+				"[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];" +
+				"[bg][fg]overlay=(W-w)/2:(H-h)/2"
+			if err := ffmpegRun(ctx, "-i", s, "-filter_complex", filter, "-frames:v", "1", dst); err == nil && isValidImage(dst) {
+				photos = append(photos, dst)
+			} else {
+				photos = append(photos, s)
+			}
+		}
+		// Vòng lặp các góc để video đạt 6–8 phân cảnh bắt mắt cho video 30-60 giây
+		if len(photos) > 0 && len(photos) < 6 {
+			orig := make([]string, len(photos))
+			copy(orig, photos)
+			for len(photos) < 6 {
+				photos = append(photos, orig...)
+			}
+			if len(photos) > 8 {
+				photos = photos[:8]
+			}
+		}
+	} else {
+		// Ít ảnh (1–2 ảnh): chia thành các góc cận / toàn
+		crops := 4
+		if len(src) == 2 {
+			crops = 2
+		}
+		for i, s := range src {
+			photos = append(photos, derivePhotoVariants(ctx, s, work, fmt.Sprintf("own%d", i), crops)...)
+		}
 	}
 	return photos
 }
