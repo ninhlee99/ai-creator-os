@@ -27,17 +27,17 @@ import (
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
-	ID         string         `json:"id"`
-	Kind       string         `json:"kind"`
-	Title      string         `json:"title"`
-	Status     string         `json:"status"`
-	Progress   int            `json:"progress"`
-	Output     string         `json:"output"`
-	Caption    string         `json:"caption"`
-	CreatedAt  string         `json:"created_at"`
-	FinishedAt string         `json:"finished_at"`
-	KindLabel  string         `json:"kind_label"`
-	Label      string         `json:"label"`
+	ID             string             `json:"id"`
+	Kind           string             `json:"kind"`
+	Title          string             `json:"title"`
+	Status         string             `json:"status"`
+	Progress       int                `json:"progress"`
+	Output         string             `json:"output"`
+	Caption        string             `json:"caption"`
+	CreatedAt      string             `json:"created_at"`
+	FinishedAt     string             `json:"finished_at"`
+	KindLabel      string             `json:"kind_label"`
+	Label          string             `json:"label"`
 	Class          string             `json:"class"`
 	PipelineStages []JobPipelineStage `json:"pipeline_stages"`
 	DeptStages     []JobDeptStage     `json:"dept_stages,omitempty"`
@@ -691,8 +691,8 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		out = append(out, studioJobView{
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
 			Progress: j.Progress, Output: mediaName(j.Output),
-			Caption:    j.Caption,
-			CreatedAt:  j.CreatedAt, FinishedAt: j.FinishedAt,
+			Caption:   j.Caption,
+			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
 			KindLabel:      kindLabel(j.Kind),
 			Label:          statusLabel(j.Status),
 			Class:          statusClass(j.Status),
@@ -770,6 +770,32 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	if selectedModelID == 0 && len(availableModels) > 0 {
 		selectedModelID = availableModels[0].ID
 	}
+	prefill := map[string]string{
+		"ProductName":  r.URL.Query().Get("product_name"),
+		"ProductPrice": r.URL.Query().Get("product_price"),
+		"Niche":        r.URL.Query().Get("niche"),
+		"AffLink":      r.URL.Query().Get("aff_link"),
+		"PhotoURL":     r.URL.Query().Get("photo_url"),
+	}
+	if pid, err := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64); err == nil && pid > 0 && s.Products != nil {
+		if p, err := s.Products.GetByID(pid); err == nil {
+			if prefill["ProductName"] == "" {
+				prefill["ProductName"] = p.Title
+			}
+			if prefill["ProductPrice"] == "" && p.Price > 0 {
+				prefill["ProductPrice"] = fmt.Sprintf("%.0f ₫", p.Price)
+			}
+			if prefill["Niche"] == "" {
+				prefill["Niche"] = p.Category
+			}
+			if prefill["AffLink"] == "" {
+				prefill["AffLink"] = p.ProductURL
+			}
+			if prefill["PhotoURL"] == "" && len(p.ImageURLs) > 0 {
+				prefill["PhotoURL"] = p.ImageURLs[0]
+			}
+		}
+	}
 
 	s.render(w, "studio", s.ctx(
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
@@ -788,6 +814,7 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"MediaGenOK", mgOK,
 		"AccountNames", accountNames,
 		"AvailableModels", availableModels,
+		"Prefill", prefill,
 		"SelectedModelID", selectedModelID,
 		"TopicGroups", topicGroups,
 		"PresetTopicGroups", presetTopicGroups,
@@ -1040,21 +1067,8 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	}
 
 	if productPhoto == "" {
-		genPath := filepath.Join(upDir, fmt.Sprintf("%d-autogen-prod.png", time.Now().UnixNano()))
-		if prodName == "" {
-			prodName = "Sản phẩm AI Creator"
-		}
-		if s.Studio != nil && s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
-			prompt := fmt.Sprintf("Ultra-detailed professional commercial advertising photograph of %s, %s, 4K quality, tack-sharp focus, photorealistic, cinematic lighting, 9:16 vertical, no text, no watermark", prodName, niche)
-			if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), prompt, nil, genPath); gerr == nil {
-				productPhoto = genPath
-			}
-		}
-		if productPhoto == "" {
-			if verr := studio.GenerateProductVisual(prodName, niche, "SAN PHAM CHINH HANG - DAT MUA NGAY", 1080, 1920, genPath); verr == nil {
-				productPhoto = genPath
-			}
-		}
+		studioErr("Thiếu ảnh sản phẩm. Tải ảnh lên hoặc chọn sản phẩm có ảnh từ kho trước khi dựng.")
+		return
 	}
 
 	musicPath, err := saveUpload(r, "music_file", upDir)
@@ -1073,6 +1087,16 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 				return
 			}
 			musicPath = dst
+		}
+	}
+	if musicPath == "" {
+		category := strings.TrimSpace(r.FormValue("music_category"))
+		if category != "" {
+			musicPath = studio.FindTrendingMusic(category)
+			if musicPath == "" {
+				studioErr("Không tìm thấy nhạc cục bộ cho lựa chọn này. Hãy tải tệp nhạc lên hoặc chọn Không thêm nhạc.")
+				return
+			}
 		}
 	}
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
@@ -1121,6 +1145,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		MusicStart:    musicStart,
 		MusicTitle:    strings.TrimSpace(r.FormValue("music_title")),
 		MusicArtist:   strings.TrimSpace(r.FormValue("music_artist")),
+		VideoEngine:   strings.TrimSpace(r.FormValue("video_engine")),
 		AssignedDepts: assignedDepts,
 	}
 	if p.ProductName == "" {
@@ -2278,11 +2303,11 @@ func (s *Server) handleStudioFlowImport(w http.ResponseWriter, r *http.Request) 
 
 	caption := studio.TemplateCaption(topic, genre)
 	paramsJSON, _ := json.Marshal(map[string]any{
-		"topic":       topic,
-		"genre":       genre,
-		"source":      "google_flow",
-		"video_url":   videoURL,
-		"remaster":    remaster,
+		"topic":     topic,
+		"genre":     genre,
+		"source":    "google_flow",
+		"video_url": videoURL,
+		"remaster":  remaster,
 	})
 	nowDB := time.Now().Format("2006-01-02 15:04:05")
 	if s.db != nil {
@@ -2306,6 +2331,3 @@ func (s *Server) handleAPIFaceSwapStatus(w http.ResponseWriter, r *http.Request)
 		"status": st,
 	})
 }
-
-
-

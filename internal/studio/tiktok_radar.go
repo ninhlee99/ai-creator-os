@@ -39,9 +39,9 @@ type TikTokTrendVideo struct {
 type ShowbizDrama struct {
 	Rank        int    `json:"rank"`
 	Title       string `json:"title"`
-	Category    string `json:"category"`  // "Showbiz Việt" hoặc "Showbiz Trung"
-	Region      string `json:"region"`    // "VN" hoặc "CN"
-	Platform    string `json:"platform"`  // "TikTok VN" hoặc "Douyin CN"
+	Category    string `json:"category"` // "Showbiz Việt" hoặc "Showbiz Trung"
+	Region      string `json:"region"`   // "VN" hoặc "CN"
+	Platform    string `json:"platform"` // "TikTok VN" hoặc "Douyin CN"
 	Summary     string `json:"summary"`
 	ImageURL    string `json:"image_url"`
 	CoverURL    string `json:"cover_url"`
@@ -68,13 +68,13 @@ var (
 	cachedTTTrends []TikTokTrendVideo
 	lastTTFetch    time.Time
 
-	dramaMu          sync.Mutex
-	cachedDramasVN   []ShowbizDrama
-	cachedDramasCN   []ShowbizDrama
-	cachedDramas     []ShowbizDrama
-	lastDramaFetch   time.Time
-	imgRegex         = regexp.MustCompile(`src=["']([^"']+)["']`)
-	htmlTagRegex     = regexp.MustCompile(`<[^>]+>`)
+	dramaMu        sync.Mutex
+	cachedDramasVN []ShowbizDrama
+	cachedDramasCN []ShowbizDrama
+	cachedDramas   []ShowbizDrama
+	lastDramaFetch time.Time
+	imgRegex       = regexp.MustCompile(`src=["']([^"']+)["']`)
+	htmlTagRegex   = regexp.MustCompile(`<[^>]+>`)
 )
 
 // FormatCount định dạng số lượt xem / like thành chuỗi K/M dễ đọc (vd: 14.5M, 850K).
@@ -101,7 +101,7 @@ func isVietnameseTikTok(title, author, music string) bool {
 			unicode.Is(unicode.Cyrillic, r) ||
 			unicode.Is(unicode.Arabic, r) ||
 			(r >= 0x1000 && r <= 0x109F) || // Burmese
-			(r >= 0x0900 && r <= 0x097F) {  // Devanagari / Hindi
+			(r >= 0x0900 && r <= 0x097F) { // Devanagari / Hindi
 			return false
 		}
 	}
@@ -326,7 +326,7 @@ var curatedVietnameseTikTokTrends = []TikTokTrendVideo{
 	},
 }
 
-// FetchTikTokTrendingVideos quét và trả về đúng Top 10 chủ đề tìm kiếm nhiều nhất trên TikTok Việt Nam (mỗi chủ đề 1 video TOP view kèm video minh họa).
+// FetchTikTokTrendingVideos returns only records received from the live TikTok feed.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
 	ttMu.Lock()
 	if time.Since(lastTTFetch) < tikTokTrendsTTL && len(cachedTTTrends) > 0 {
@@ -335,38 +335,30 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	}
 	ttMu.Unlock()
 
-	// Khởi tạo danh sách chuẩn 10 chủ đề tìm kiếm nhiều nhất kèm 1 video TOP view
-	result := make([]TikTokTrendVideo, len(curatedVietnameseTikTokTrends))
-	copy(result, curatedVietnameseTikTokTrends)
-
-	// Thử truy vấn thêm dữ liệu live từ TikTok nếu có để cập nhật thông số lượt xem hoặc video mới nhất cho từng chủ đề
-	liveVideos, _ := fetchLiveTikTokVideos(ctx)
-	if len(liveVideos) > 0 {
-		for i := range result {
-			for _, lv := range liveVideos {
-				if isVietnameseTikTok(lv.Title, lv.Author, lv.Music) && (strings.Contains(strings.ToLower(lv.Title), strings.ToLower(result[i].Topic)) || strings.Contains(strings.ToLower(lv.Music), strings.ToLower(result[i].UniqueID))) {
-					if lv.PlayURL != "" {
-						result[i].PlayURL = lv.PlayURL
-					}
-					if lv.CoverURL != "" {
-						result[i].CoverURL = lv.CoverURL
-					}
-					if lv.PlayCount > result[i].PlayCount {
-						result[i].PlayCount = lv.PlayCount
-						result[i].Views = lv.Views
-					}
-					break
-				}
-			}
+	result, err := fetchLiveTikTokVideos(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var live []TikTokTrendVideo
+	for _, item := range result {
+		if !isVietnameseTikTok(item.Title, item.Author, item.Music) {
+			continue
 		}
+		item.Rank = len(live) + 1
+		live = append(live, item)
+		if len(live) == 10 {
+			break
+		}
+	}
+	if len(live) == 0 {
+		return nil, fmt.Errorf("nguồn TikTok không trả về dữ liệu hiện tại")
 	}
 
 	ttMu.Lock()
-	cachedTTTrends = result
+	cachedTTTrends = append([]TikTokTrendVideo(nil), live...)
 	lastTTFetch = time.Now()
 	ttMu.Unlock()
-
-	return append([]TikTokTrendVideo(nil), result...), nil
+	return live, nil
 }
 
 // fetchLiveTikTokVideos truy vấn API luồng video thịnh hành TikTok.
@@ -842,110 +834,20 @@ var PresetTopicGroups = map[string]TopicVideoGroup{
 }
 
 // GetVideosForCustomTopic sinh ra 4 video thịnh hành mẫu chuẩn cho bất kỳ chủ đề tùy ý nào do người dùng cấu hình.
+// GetVideosForCustomTopic does not synthesize creator identities or engagement counts.
+// Topic-specific videos appear only after a live source provides them.
 func GetVideosForCustomTopic(topic string) []TikTokTrendVideo {
-	clean := strings.TrimSpace(topic)
-	if clean == "" {
-		clean = "Thịnh Hành"
-	}
-	titles := []string{
-		fmt.Sprintf("Top khoảnh khắc đắt giá và bùng nổ nhất về %s", clean),
-		fmt.Sprintf("Pha xử lý mãn nhãn khiến triệu người xem trầm trồ trong chủ đề %s", clean),
-		fmt.Sprintf("Bí mật đằng sau hiện tượng triệu view làm dậy sóng cộng đồng %s", clean),
-		fmt.Sprintf("Tổng hợp những tình huống bất ngờ chưa từng thấy về %s", clean),
-	}
-	creators := []struct{ name, handle string }{
-		{"Trending Star VN", "trending.star"},
-		{"Kênh Sáng Tạo Việt", "sangtao.vn"},
-		{"Media Hot Feed", "media.feed"},
-		{"Tiêu Điểm Mạng Xã Hội", "tieudiem.vn"},
-	}
-	views := []string{"18.5M", "14.2M", "11.8M", "9.6M"}
-	likes := []string{"1.6M", "1.2M", "980K", "820K"}
-	musics := []string{
-		"Nhạc Nền Thịnh Hành TikTok",
-		"Vinahouse Remix Sôi Động",
-		"V-Pop Acoustic Chill",
-		"Bass Boosted High Energy",
-	}
-	playURLs := []string{
-		"/static/sample_916.mp4",
-		"/static/sample_916.mp4",
-		"/static/sample_916.mp4",
-		"/static/sample_916.mp4",
-	}
-	covers := []string{
-		"https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=720&q=80",
-		"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=720&q=80",
-		"https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=720&q=80",
-		"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=720&q=80",
-	}
-
-	var res []TikTokTrendVideo
-	for i := 0; i < 4; i++ {
-		res = append(res, TikTokTrendVideo{
-			Rank:          i + 1,
-			VideoID:       fmt.Sprintf("custom_%s_%d", strings.ToLower(clean), i+1),
-			Title:         titles[i],
-			Author:        creators[i].name,
-			UniqueID:      creators[i].handle,
-			Views:         views[i],
-			Likes:         likes[i],
-			Music:         musics[i],
-			VideoURL:      "https://www.tiktok.com/tag/" + strings.ToLower(strings.ReplaceAll(clean, " ", "")),
-			CoverURL:      covers[i],
-			PlayURL:       playURLs[i],
-			SuggestedHook: fmt.Sprintf("Khám phá ngay video đang viral triệu view về %s!", clean),
-			Topic:         clean,
-		})
-	}
-	return res
+	return nil
 }
 
-// GetConfiguredTopicGroups nhận danh sách topic ID hoặc từ khóa tùy ý và trả về các nhóm video (mỗi nhóm đúng 4 video).
+// GetConfiguredTopicGroups returns no groups until live video data is available.
 func GetConfiguredTopicGroups(topicKeys []string) []TopicVideoGroup {
-	if len(topicKeys) == 0 {
-		topicKeys = []string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"}
-	}
-	var out []TopicVideoGroup
-	seen := make(map[string]bool)
-	for _, key := range topicKeys {
-		k := strings.TrimSpace(key)
-		if k == "" || seen[k] {
-			continue
-		}
-		seen[k] = true
-		if grp, ok := PresetTopicGroups[k]; ok {
-			out = append(out, grp)
-		} else {
-			cleanName := k
-			if !strings.HasPrefix(cleanName, "🔥") && !strings.HasPrefix(cleanName, "💃") && !strings.HasPrefix(cleanName, "🇻🇳") {
-				cleanName = "🔥 " + cleanName
-			}
-			out = append(out, TopicVideoGroup{
-				TopicID:     k,
-				TopicName:   cleanName,
-				Tag:         "#" + strings.ReplaceAll(k, " ", ""),
-				Description: fmt.Sprintf("Video thịnh hành về chủ đề %s do bạn tùy chỉnh", k),
-				Videos:      GetVideosForCustomTopic(k),
-			})
-		}
-	}
-	if len(out) == 0 {
-		out = append(out, PresetTopicGroups["nhay"], PresetTopicGroups["su_kien_vn"])
-	}
-	return out
+	return nil
 }
 
-// GetAllPresetTopicGroups trả về tất cả nhóm chủ đề mẫu được định nghĩa sẵn.
+// GetAllPresetTopicGroups is retained for API compatibility; there are no preset trend records.
 func GetAllPresetTopicGroups() []TopicVideoGroup {
-	keys := []string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc", "am_thuc"}
-	var out []TopicVideoGroup
-	for _, k := range keys {
-		if grp, ok := PresetTopicGroups[k]; ok {
-			out = append(out, grp)
-		}
-	}
-	return out
+	return nil
 }
 
 // curatedShowbizDramasVN danh sách TOP 10 Video Drama / Biến căng Showbiz Việt Nam trên TikTok.
@@ -1339,73 +1241,53 @@ var curatedShowbizDramasCN = []ShowbizDrama{
 // FetchSplitShowbizDrama quét và phân tích Drama thành 2 danh sách riêng biệt: Top 10 Showbiz Việt và Top 10 Showbiz Trung.
 func FetchSplitShowbizDrama(ctx context.Context) ([]ShowbizDrama, []ShowbizDrama, error) {
 	dramaMu.Lock()
-	if time.Since(lastDramaFetch) < showbizDramaTTL && len(cachedDramasVN) > 0 && len(cachedDramasCN) > 0 {
-		defer dramaMu.Unlock()
-		return append([]ShowbizDrama(nil), cachedDramasVN...), append([]ShowbizDrama(nil), cachedDramasCN...), nil
+	if time.Since(lastDramaFetch) < showbizDramaTTL && (len(cachedDramasVN) > 0 || len(cachedDramasCN) > 0) {
+		vn := append([]ShowbizDrama(nil), cachedDramasVN...)
+		cn := append([]ShowbizDrama(nil), cachedDramasCN...)
+		dramaMu.Unlock()
+		return vn, cn, nil
 	}
 	dramaMu.Unlock()
 
-	// Quét RSS tin tức nóng hổi từ Kenh14 Star và VnExpress Giải trí
-	var rawItems []ShowbizDrama
-	kItems, err1 := fetchKenh14Showbiz(ctx)
-	if err1 == nil {
-		rawItems = append(rawItems, kItems...)
+	kItems, kErr := fetchKenh14Showbiz(ctx)
+	vItems, vErr := fetchVnExpressShowbiz(ctx)
+	if kErr != nil && vErr != nil {
+		return nil, nil, fmt.Errorf("nguồn tin showbiz hiện không khả dụng")
 	}
-	vItems, err2 := fetchVnExpressShowbiz(ctx)
-	if err2 == nil {
-		rawItems = append(rawItems, vItems...)
-	}
-
-	var liveVN []ShowbizDrama
-	var liveCN []ShowbizDrama
-	seenTitles := make(map[string]bool)
-
-	for _, item := range rawItems {
-		k := strings.ToLower(item.Title)
-		if seenTitles[k] {
+	var vn, cn []ShowbizDrama
+	seen := make(map[string]bool)
+	for _, item := range append(kItems, vItems...) {
+		key := strings.ToLower(strings.TrimSpace(item.Title))
+		if key == "" || seen[key] {
 			continue
 		}
-		seenTitles[k] = true
-
+		seen[key] = true
 		if item.Region == "CN" {
-			liveCN = append(liveCN, item)
+			cn = append(cn, item)
+			if len(cn) == 10 {
+				continue
+			}
 		} else {
-			liveVN = append(liveVN, item)
+			vn = append(vn, item)
+			if len(vn) == 10 {
+				continue
+			}
 		}
 	}
-
-	// Ưu tiên video drama từ TikTok (VN) và Douyin (Trung Quốc) để luôn đảm bảo có video dọc 9:16 chất lượng cao
-	finalVN := make([]ShowbizDrama, 0, 10)
-	for _, cur := range curatedShowbizDramasVN {
-		if len(finalVN) >= 10 {
-			break
-		}
-		finalVN = append(finalVN, cur)
+	for i := range vn {
+		vn[i].Rank = i + 1
 	}
-	for i := range finalVN {
-		finalVN[i].Rank = i + 1
-	}
-
-	finalCN := make([]ShowbizDrama, 0, 10)
-	for _, cur := range curatedShowbizDramasCN {
-		if len(finalCN) >= 10 {
-			break
-		}
-		finalCN = append(finalCN, cur)
-	}
-	for i := range finalCN {
-		finalCN[i].Rank = i + 1
+	for i := range cn {
+		cn[i].Rank = i + 1
 	}
 
 	dramaMu.Lock()
-	cachedDramasVN = finalVN
-	cachedDramasCN = finalCN
-	cachedDramas = append([]ShowbizDrama(nil), finalVN...)
-	cachedDramas = append(cachedDramas, finalCN...)
+	cachedDramasVN = append([]ShowbizDrama(nil), vn...)
+	cachedDramasCN = append([]ShowbizDrama(nil), cn...)
+	cachedDramas = append(append([]ShowbizDrama(nil), vn...), cn...)
 	lastDramaFetch = time.Now()
 	dramaMu.Unlock()
-
-	return append([]ShowbizDrama(nil), finalVN...), append([]ShowbizDrama(nil), finalCN...), nil
+	return vn, cn, nil
 }
 
 // FetchShowbizDrama trả về danh sách tổng hợp (hỗ trợ tương thích ngược).
@@ -1433,7 +1315,7 @@ func InvalidateTikTokRadarCache() {
 }
 
 type rssFeed struct {
-	XMLName xml.Name  `xml:"rss"`
+	XMLName xml.Name   `xml:"rss"`
 	Channel rssChannel `xml:"channel"`
 }
 

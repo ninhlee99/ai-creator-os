@@ -1,7 +1,6 @@
-{{define "title"}}Cài đặt · Accesstrade — AI Creator OS{{end}}
+{{define "title"}}Cài đặt · Accesstrade{{end}}
 {{define "content"}}
 <h1>Cài đặt · Accesstrade</h1>
-<p class="subtitle">Nối tài khoản publisher Accesstrade để lấy chiến dịch và tạo link affiliate.</p>
 {{template "settings-nav" .}}
 
 <div class="cards">
@@ -21,7 +20,6 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Mã truy cập</h2>
-  <p class="subtitle">Lấy trong trang publisher Accesstrade (mục thông tin API). Key chỉ lưu trên máy này, không hiện lại sau khi lưu.</p>
   <form method="post" action="/settings/accesstrade/key">
     <div class="field">
       <label>Mã truy cập{{if .ATKeySet}} <span class="hint">— đang dùng <code>{{.ATMasked}}</code>, nhập key mới để thay</span>{{end}}</label>
@@ -36,7 +34,6 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Tự động</h2>
-  <p class="subtitle">Dừng khẩn cấp và chế độ chạy thử vẫn chặn mọi tác vụ tự động.</p>
   <form method="post" action="/settings/accesstrade/automation">
     <input type="hidden" name="toggles" value="1">
     <div class="grid2">

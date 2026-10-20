@@ -1,4 +1,4 @@
-{{define "title"}}Chỉnh sửa kênh @{{.Acct.Username}} — AI Creator OS{{end}}
+{{define "title"}}Chỉnh sửa kênh @{{.Acct.Username}}{{end}}
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 24px;">
   <div class="webai-header-left">
@@ -6,7 +6,6 @@
       <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Chỉnh Sửa Kênh: @{{.Acct.Username}}</h1>
       <span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
     </div>
-    <p class="subtitle" style="margin:0">Cập nhật thông tin nhận diện, tính cách AI, chủ đề nội dung và thiết lập tự động hóa cho kênh.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px">
     <a href="/accounts/{{.Acct.ID}}" class="btn btn-secondary">← Chi tiết kênh</a>
@@ -19,7 +18,7 @@
 
 <form method="post" action="/accounts/{{.Acct.ID}}/edit">
   <div class="grid2" style="margin-bottom:24px">
-    
+
     <!-- Cột trái: Nhận diện & Định vị -->
     <div class="form-card">
       <h3 style="margin-top:0;font-size:16px;display:flex;align-items:center;gap:8px">
@@ -29,7 +28,7 @@
       <div class="field">
         <label>Tên tài khoản / Username <span class="req">*</span></label>
         <input type="text" name="username" value="{{.Acct.Username}}" required placeholder="vd: ninhle.io.vn">
-        <div class="hint">Định danh duy nhất của kênh trên mạng xã hội (không kèm ký tự @).</div>
+
       </div>
 
       <div class="field">
@@ -52,7 +51,7 @@
           <option value="{{.Key}}"{{if eq $currPersona .Key}} selected{{end}}>{{.Label}} ({{.Style}})</option>
           {{end}}
         </select>
-        <div class="hint">Quy định giọng điệu, văn phong viết kịch bản và cách phản hồi comment của AI.</div>
+
       </div>
 
       <div class="field">
@@ -63,7 +62,7 @@
           <option value="{{.}}"{{if eq $currStatus .}} selected{{end}}>{{statusLabel .}} ({{.}})</option>
           {{end}}
         </select>
-        <div class="hint">Trạng thái vòng đời của kênh trong chu kỳ sản xuất &amp; phân phối.</div>
+
       </div>
     </div>
 
@@ -76,13 +75,13 @@
       <div class="field">
         <label>Kênh YouTube liên kết</label>
         <input type="text" name="youtube_channel" value="{{.Acct.YoutubeChannel}}" placeholder="vd: @KenhChuyenDemKhuya hoặc Channel ID">
-        <div class="hint">Kênh YouTube chính thức để tự động xuất bản video hoặc đồng bộ số liệu Analytics.</div>
+
       </div>
 
       <div class="field">
         <label>Số người theo dõi (Followers)</label>
         <input type="number" name="followers" value="{{.Acct.Followers}}" min="0">
-        <div class="hint">Số lượng người theo dõi thực tế hoặc điều chỉnh theo mốc tăng trưởng.</div>
+
       </div>
 
       <div class="field">
@@ -94,21 +93,21 @@
           <option value="{{.Slug}}"{{if eq $currTheme .Slug}} selected{{end}}>{{.Label}}</option>
           {{end}}
         </select>
-        <div class="hint">Dòng sản phẩm ưu tiên khi hệ thống tự động tìm deal hoa hồng cao trên sàn Accesstrade.</div>
+
       </div>
 
       <div class="field">
         <label>Ngưỡng hoa hồng tối thiểu (%)</label>
         <input type="number" name="min_commission" step="0.5" min="0" max="100" value="{{printf "%.0f" (pct .RawAcct.MinCommission)}}" placeholder="10">
-        <div class="hint">Chỉ tự động làm video cho các sản phẩm có mức hoa hồng từ ngưỡng này trở lên.</div>
+
       </div>
 
       <div class="field" style="margin-top:16px">
         <label class="check" style="font-weight:700;display:flex;align-items:center;gap:8px">
           <input type="checkbox" name="autopilot" value="1"{{if .RawAcct.Autopilot}} checked{{end}}>
-          Bật chế độ Autopilot (Tự động tìm sản phẩm &amp; tạo video 24/7)
+          Bật Autopilot (tìm sản phẩm và tạo video theo lịch)
         </label>
-        <div class="hint" style="margin-left:24px">Hệ thống sẽ tự động quét sản phẩm theo theme và sản xuất video theo lịch đăng giờ vàng.</div>
+
       </div>
     </div>
 
@@ -125,9 +124,7 @@
   <h3 style="margin-top:0;color:var(--err);font-size:15px;display:flex;align-items:center;gap:8px">
     <span>⚠️</span> Vùng Nguy Hiểm: Xóa Kênh Khỏi Hệ Thống
   </h3>
-  <p class="hint" style="margin:4px 0 14px 0">
-    Khi xóa kênh, toàn bộ liên kết cấu hình và lịch đăng nội dung của kênh này sẽ bị gỡ bỏ. Hành động này không thể hoàn tác.
-  </p>
+
   <form method="post" action="/accounts/{{.Acct.ID}}/delete" data-confirm="Bạn có chắc chắn muốn XÓA VĨNH VIỄN kênh @{{.Acct.Username}}? Thao tác này không thể hoàn tác!">
     <button type="submit" class="btn" style="background:var(--err);color:#fff;border:none;padding:8px 18px;font-weight:600;font-size:13px;border-radius:6px">
       🗑️ Xóa Vĩnh Viễn Kênh @{{.Acct.Username}}

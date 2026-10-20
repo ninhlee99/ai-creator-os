@@ -1,56 +1,44 @@
-{{define "title"}}AI Creator OS — Xưởng Tạo Video AI{{end}}
+{{define "title"}}Xưởng tạo video AI{{end}}
 {{define "content"}}
 
 {{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Notice}}</div>{{end}}
 {{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
-
-<!-- Header -->
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1>Tổng quan</h1>
-    <p class="subtitle">Xưởng sáng tạo video tự động 24/7 bằng 1 câu lệnh.</p>
-  </div>
-</div>
 
 <!-- HERO CREATOR STUDIO: Tạo Video 1 Lệnh -->
 <div class="card hero-creator" style="margin-bottom:24px">
   <div class="hero-creator-header">
     <div>
       <h2 class="hero-creator-title" style="margin:0 0 4px;font-size:18px;border:none;padding:0">Tạo Video Nhanh</h2>
-      <p class="hero-creator-sub">Nhập bất kỳ ý tưởng nào — AI sẽ tự động viết kịch bản, tạo ảnh minh họa, phối nhạc và xuất bản video.</p>
     </div>
   </div>
 
-  <form method="post" action="/create-one-command" id="one-command-form" style="margin:0">
+  <form method="post" action="/create-one-command" enctype="multipart/form-data" id="one-command-form" style="margin:0">
     <input type="hidden" name="back" value="/">
     <div class="magic-search-box">
       <span class="magic-icon">✨</span>
-      <input type="text" name="command" id="one-command-input" 
-        placeholder="Gõ ý tưởng: Review serum B5 phục hồi da, Kể chuyện đêm khuya Tây Bắc, Top 5 mẹo công nghệ..." 
+      <input type="text" name="command" id="one-command-input"
+        placeholder="Mô tả nội dung bạn muốn tạo từ sản phẩm hoặc chủ đề đã cấu hình"
         required autofocus>
       <button type="submit" id="one-command-btn" class="btn btn-primary magic-btn">
         <span>Tạo video</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
       </button>
     </div>
+    <label class="hint" style="display:block;margin-top:8px">Ảnh sản phẩm (nếu có): <input type="file" name="product_photo" accept="image/*"></label>
 
-    <!-- Quick Inspiration Chips -->
-    <div class="prompt-chips-wrap">
-      <span class="chips-label">Gợi ý:</span>
-      <button type="button" class="prompt-chip" onclick="setMagicCommand('Kể chuyện đêm khuya về ngôi làng bí ẩn vùng Tây Bắc')">🎙️ Kể chuyện Tây Bắc (9:16)</button>
-      <button type="button" class="prompt-chip" onclick="setMagicCommand('Review serum dưỡng ẩm B5 phục hồi da căng bóng')">💄 Review Serum B5 (9:16)</button>
-      <button type="button" class="prompt-chip" onclick="setMagicCommand('Làm video review nồi chiên không dầu 8L giá sinh viên')">🍳 Nồi Chiên 8L (9:16)</button>
-      <button type="button" class="prompt-chip" onclick="setMagicCommand('Top 3 tai nghe bluetooth chống ồn dưới 1 triệu')">🎧 Tai Nghe Chống Ồn</button>
-      <button type="button" class="prompt-chip" onclick="setMagicCommand('5 sự thật thú vị về vũ trụ khiến bạn ngạc nhiên')">🔥 5 Sự Thật Vũ Trụ</button>
-    </div>
+    <nav class="tabs" aria-label="Loại nội dung" style="margin:14px 0 0">
+      <a href="/studio">Affiliate</a>
+      <a href="/viral">Video dọc</a>
+      <a href="/stories">Kể chuyện</a>
+    </nav>
   </form>
 </div>
 
 <!-- KEY METRICS STRIP -->
 <div class="stat-grid" style="margin-bottom:24px">
-  
+
   <div class="stat-card">
-    <div class="stat-label">Video Sản Xuất</div>
+    <div class="stat-label">Video đang xử lý</div>
     <div class="stat-num">{{if .NJobs}}{{.NJobs}}{{else}}0{{end}}</div>
     <div class="stat-sub"><a href="/studio/jobs">Xem danh sách video ↗</a></div>
   </div>
@@ -69,26 +57,6 @@
     <div class="stat-sub"><a href="/products">Sản phẩm &amp; Kệ hàng ↗</a></div>
   </div>
 
-  <div class="stat-card" style="display:flex;flex-direction:column;justify-content:space-between">
-    <div>
-      <div class="stat-label">Hệ Thống 24/7</div>
-      <div class="stat-status">
-        {{if .MasterOn}}
-          <span class="status-pill status-pill-ok"><span class="pulse-dot pulse-ok"></span> Đang chạy</span>
-        {{else}}
-          <span class="status-pill status-pill-muted">Tạm dừng</span>
-        {{end}}
-      </div>
-    </div>
-    <form method="post" action="/settings/master" style="margin-top:6px">
-      <input type="hidden" name="on" value="{{if .MasterOn}}0{{else}}1{{end}}">
-      <input type="hidden" name="back" value="/">
-      <button type="submit" class="btn btn-secondary btn-sm" style="width:100%;font-size:12px;padding:4px 8px">
-        {{if .MasterOn}}Tạm dừng{{else}}Kích hoạt 24/7{{end}}
-      </button>
-    </form>
-  </div>
-
 </div>
 
 <!-- RECENT VIDEOS & PROGRESS -->
@@ -96,7 +64,6 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <div style="display:flex;align-items:center;gap:8px">
       <h2 style="margin:0;font-size:16px;font-weight:700">Video Vừa Tạo &amp; Tiến Độ</h2>
-      {{if .NJobs}}<span class="status-pill status-pill-ok" style="font-size:11px">{{.NJobs}} tác vụ</span>{{end}}
     </div>
     <a href="/studio/jobs" class="btn btn-ghost btn-sm">Xem tất cả ↗</a>
   </div>
@@ -127,7 +94,7 @@
         <div class="video-render-box">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
             <span style="color:var(--accent);font-weight:700;display:flex;align-items:center;gap:6px">
-              <span class="pulse-dot"></span> Đang render AI...
+              <span class="pulse-dot"></span> Đang xử lý
             </span>
             <span style="font-family:monospace;font-weight:800;color:var(--text)">{{.Progress}}%</span>
           </div>
@@ -151,131 +118,11 @@
     {{end}}
   </div>
   {{else}}
-  <div class="empty-hero">
-    <div style="font-size:28px;margin-bottom:8px">🎬</div>
-    <div style="font-weight:600;font-size:14px;color:var(--text);margin-bottom:4px">Chưa có video nào</div>
-    <p style="font-size:13px;color:var(--muted);margin:0 auto 14px auto;max-width:440px">
-      Nhập ý tưởng vào ô bên trên để AI bắt đầu viết kịch bản và sản xuất video tự động.
-    </p>
-    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('one-command-input').focus()">
-      Bắt đầu tạo ngay
-    </button>
-  </div>
+  <p class="empty">Chưa có video.</p>
   {{end}}
 </div>
 
-<!-- Sẵn sàng kiếm tiền & Tự động hóa -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;margin-bottom:24px">
-  
-  <!-- Bảng Kiếm Tiền -->
-  <div class="card" style="padding:18px 20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="margin:0;font-size:14px;font-weight:700">💰 Sẵn sàng kiếm tiền</h3>
-      <span class="badge badge-dim" style="font-size:10.5px">Khai thác</span>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      {{range .Money}}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <span style="font-weight:600;font-size:13px">{{.Name}}</span>
-          <span style="color:var(--muted);font-size:11.5px;margin-left:6px">{{.State}}</span>
-        </div>
-        <div>
-          {{if eq .Level "ok"}}<span class="badge badge-ok" style="font-size:10px">Sẵn sàng</span>{{else if eq .Level "warn"}}<span class="badge badge-warn" style="font-size:10px">Một phần</span>{{else}}<span class="badge badge-no" style="font-size:10px">Chưa</span>{{end}}
-        </div>
-      </div>
-      {{end}}
-    </div>
-  </div>
-
-  <!-- Bảng Tự động hóa -->
-  <div class="card" style="padding:18px 20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="margin:0;font-size:14px;font-weight:700">⚡ Tự động hóa</h3>
-      <span class="badge badge-dim" style="font-size:10.5px">24/7 Engine</span>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      {{range .AutoSwitches}}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
-        <div>
-          <span style="font-weight:600;font-size:13px">{{.Label}}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          {{if .On}}<span class="badge badge-ok" style="font-size:10px">BẬT</span>{{else}}<span class="badge badge-no" style="font-size:10px">TẮT</span>{{end}}
-          <form method="post" action="/automation/switch" class="inline-form" style="margin:0">
-            <input type="hidden" name="key" value="{{.Key}}">
-            <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
-            <button type="submit" class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
-          </form>
-        </div>
-      </div>
-      {{end}}
-    </div>
-  </div>
-
-</div>
-
-<!-- TECHNICAL INFO & LOGS (Clean Collapsible Accordion at bottom) -->
-<details class="tech-ops-drawer">
-  <summary class="tech-ops-summary">
-    <div style="display:flex;align-items:center;gap:8px">
-      <span>⚙️</span>
-      <span style="font-weight:600;font-size:13px">Trạng thái hệ thống &amp; Mô hình AI</span>
-    </div>
-    <span class="badge badge-dim" style="font-size:10px">Chi tiết ▾</span>
-  </summary>
-
-  <div class="tech-ops-content">
-    <div style="margin-bottom:14px">
-      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Tài Khoản AI Hoạt Động</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:8px">
-        <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">Claude 5.5 Sonnet</span>
-          <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
-        </div>
-        <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">ChatGPT GPT-6 Luna</span>
-          <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
-        </div>
-        <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">Gemini 3.8 Flash</span>
-          <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
-        </div>
-        <div class="tech-model-card">
-          <span style="font-size:12px;font-weight:600">Grok 3</span>
-          <span class="badge badge-ok" style="font-size:9.5px">Sẵn sàng</span>
-        </div>
-      </div>
-    </div>
-
-    {{if .Decisions}}
-    <div>
-      <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Nhật Ký Tác Vụ Gần Nhất</div>
-      <div style="background:var(--bg3);border-radius:8px;padding:10px 14px;border:1px solid var(--border)">
-        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px">
-          {{range .Decisions}}
-          <li style="font-size:12px;padding-bottom:4px;border-bottom:1px solid var(--border);color:var(--text)">
-            {{with agentLabel .Agent}}{{.Icon}} <strong>{{.Label}}</strong>{{end}} · <span class="badge badge-draft" style="font-size:9.5px">{{statusLabel .Action}}</span>
-            {{if .Target}} ➔ <span>{{.Target}}</span>{{end}}
-            {{if .Reason}}<span style="color:var(--muted);margin-left:6px">({{reasonLabel .Reason}})</span>{{end}}
-          </li>
-          {{end}}
-        </ul>
-      </div>
-    </div>
-    {{end}}
-  </div>
-</details>
-
 <script>
-function setMagicCommand(txt) {
-  var inp = document.getElementById('one-command-input');
-  if (inp) {
-    inp.value = txt;
-    inp.focus();
-  }
-}
-
 document.addEventListener('DOMContentLoaded', function() {
   var form = document.getElementById('one-command-form');
   if (form) {

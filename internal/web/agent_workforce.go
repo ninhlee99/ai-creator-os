@@ -53,10 +53,10 @@ type AgentDeptTask struct {
 	AgentID      string `json:"agent_id"`
 	DeptID       string `json:"dept_id"`
 	RoleInDept   string `json:"role_in_dept"`
-	Rank         string `json:"rank"`         // "lead", "senior", "specialist", "qc"
-	StepOrder    int    `json:"step_order"`   // 1, 2, 3, 4 (thứ tự trong dây chuyền)
-	ReceivesFrom string `json:"receives_from"`// Nhận đầu vào từ ai
-	HandsOffTo   string `json:"hands_off_to"` // Bàn giao thành phẩm cho ai
+	Rank         string `json:"rank"`          // "lead", "senior", "specialist", "qc"
+	StepOrder    int    `json:"step_order"`    // 1, 2, 3, 4 (thứ tự trong dây chuyền)
+	ReceivesFrom string `json:"receives_from"` // Nhận đầu vào từ ai
+	HandsOffTo   string `json:"hands_off_to"`  // Bàn giao thành phẩm cho ai
 	CurrentTask  string `json:"current_task"`
 	TaskStatus   string `json:"task_status"` // "working", "completed", "review", "idle"
 	Progress     int    `json:"progress"`    // 0-100%
@@ -103,9 +103,9 @@ type NetworkLink struct {
 // AIDepartment represents an automated business unit / workflow department.
 type AIDepartment struct {
 	ID          string         `json:"id"`
-	Code        string         `json:"code"`        // Mã phòng ban: DEP-01, DEP-02...
-	Tier        int            `json:"tier"`        // Cấp bậc phòng ban: 1..8
-	TierName    string         `json:"tier_name"`   // "Cấp 1 · Ban Điều Hành & Quản Trị Rủi Ro", v.v.
+	Code        string         `json:"code"`      // Mã phòng ban: DEP-01, DEP-02...
+	Tier        int            `json:"tier"`      // Cấp bậc phòng ban: 1..8
+	TierName    string         `json:"tier_name"` // "Cấp 1 · Ban Điều Hành & Quản Trị Rủi Ro", v.v.
 	Name        string         `json:"name"`
 	LeaderName  string         `json:"leader_name"` // Tên trưởng phòng
 	Icon        string         `json:"icon"`
@@ -400,22 +400,6 @@ func (s *Server) ensureAgentTable() error {
 	_, _ = s.db.Exec(`ALTER TABLE ai_agents ADD COLUMN sla TEXT NOT NULL DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE ai_agents ADD COLUMN kpi TEXT NOT NULL DEFAULT ''`)
 
-	// Seed enterprise default agents only if table is empty (preserving runtime state)
-	var count int
-	_ = s.db.QueryRow(`SELECT COUNT(*) FROM ai_agents`).Scan(&count)
-	if count == 0 {
-		for _, ag := range defaultEliteAgents() {
-			bpBytes, _ := json.Marshal(ag.BestPractices)
-			apVal := 0
-			if ag.Autopilot {
-				apVal = 1
-			}
-			_, _ = s.db.Exec(`
-				INSERT INTO ai_agents (id, name, avatar, role, niche, tone, voice, level, videos_produced, total_views, status, current_task, best_practices_json, autopilot, is_custom, created_at, code, sla, kpi)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
-			`, ag.ID, ag.Name, ag.Avatar, ag.Role, ag.Niche, ag.Tone, ag.Voice, ag.Level, ag.VideosProduced, ag.TotalViews, ag.Status, ag.CurrentTask, string(bpBytes), apVal, ag.CreatedAt, ag.Code, ag.SLA, ag.KPI)
-		}
-	}
 	return nil
 }
 
@@ -425,6 +409,7 @@ func (s *Server) listAgents() []AIAgent {
 		rows, err := s.db.Query(`
 			SELECT id, name, avatar, role, niche, tone, voice, level, videos_produced, total_views, status, current_task, best_practices_json, autopilot, is_custom, created_at, code, sla, kpi
 			FROM ai_agents
+			WHERE is_custom = 1
 			ORDER BY level DESC, videos_produced DESC
 		`)
 		if err == nil {
@@ -445,18 +430,13 @@ func (s *Server) listAgents() []AIAgent {
 					list = append(list, ag)
 				}
 			}
-			if len(list) > 0 {
-				return list
-			}
+			return list
 		}
 	}
 
 	agentMu.RLock()
 	defer agentMu.RUnlock()
-	if len(fallbackAgents) == 0 {
-		return defaultEliteAgents()
-	}
-	return fallbackAgents
+	return append([]AIAgent(nil), fallbackAgents...)
 }
 
 // handleAgentCreate handles user creation of a new custom AI agent.
@@ -503,9 +483,6 @@ func (s *Server) handleAgentCreate(w http.ResponseWriter, r *http.Request) {
 		`, agentID, name, avatar, role, niche, tone, voice, string(bpBytes), now)
 	} else {
 		agentMu.Lock()
-		if len(fallbackAgents) == 0 {
-			fallbackAgents = defaultEliteAgents()
-		}
 		fallbackAgents = append(fallbackAgents, AIAgent{
 			ID:             agentID,
 			Name:           name,
@@ -596,32 +573,17 @@ func (s *Server) handleTeamDispatchGoal(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	goalLower := strings.ToLower(goal)
-	matchedNiche := "mỹ phẩm"
-	productSample := "Serum Trắng Da Mờ Thâm Nám"
-
-	if strings.Contains(goalLower, "công nghệ") || strings.Contains(goalLower, "tai nghe") || strings.Contains(goalLower, "điện tử") || strings.Contains(goalLower, "sạc") {
-		matchedNiche = "công nghệ"
-		productSample = "Tai Nghe Chống Ồn Sony WH-1000XM5"
-	} else if strings.Contains(goalLower, "gia dụng") || strings.Contains(goalLower, "nồi") || strings.Contains(goalLower, "bếp") || strings.Contains(goalLower, "nhà") {
-		matchedNiche = "gia dụng"
-		productSample = "Nồi Chiên Không Dầu Điện Tử 8L"
-	} else if strings.Contains(goalLower, "kể chuyện") || strings.Contains(goalLower, "lịch sử") || strings.Contains(goalLower, "truyện") {
-		seeOther(w, r, "/stories?ok="+url.QueryEscape("Đã khởi tạo kịch bản kể chuyện: "+mission.ResultSummary))
+	if mission.Intent == "story_campaign" {
+		seeOther(w, r, "/stories?ok="+url.QueryEscape("Đã tạo chiến dịch từ yêu cầu: "+mission.ResultSummary))
 		return
 	}
 
+	msg := "Đã tạo chiến dịch từ yêu cầu: " + mission.ResultSummary
 	if r.FormValue("back") == "/" {
-		seeOther(w, r, "/?ok="+url.QueryEscape("Đã kích hoạt chiến dịch AI: "+mission.ResultSummary))
+		seeOther(w, r, "/?ok="+url.QueryEscape(msg))
 		return
 	}
-
-	targetURL := fmt.Sprintf("/studio?product_name=%s&niche=%s&msg=%s",
-		url.QueryEscape(productSample),
-		url.QueryEscape(matchedNiche),
-		url.QueryEscape("Đã kích hoạt chiến dịch AI thành công: "+mission.ResultSummary),
-	)
-	seeOther(w, r, targetURL)
+	seeOther(w, r, "/studio?msg="+url.QueryEscape(msg))
 }
 
 func defaultDeptTasks() []AgentDeptTask {
@@ -1016,22 +978,16 @@ func (s *Server) ensureDeptTasksTable() error {
 	_, _ = s.db.Exec(`ALTER TABLE ai_dept_tasks ADD COLUMN receives_from TEXT NOT NULL DEFAULT ''`)
 	_, _ = s.db.Exec(`ALTER TABLE ai_dept_tasks ADD COLUMN hands_off_to TEXT NOT NULL DEFAULT ''`)
 
-	// Seed or update tasks for all departments
-	for _, dt := range defaultDeptTasks() {
-		_, _ = s.db.Exec(`
-			INSERT OR REPLACE INTO ai_dept_tasks (agent_id, dept_id, role_in_dept, rank, step_order, receives_from, hands_off_to, current_task, task_status, progress, deliverable, last_updated)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, dt.AgentID, dt.DeptID, dt.RoleInDept, dt.Rank, dt.StepOrder, dt.ReceivesFrom, dt.HandsOffTo, dt.CurrentTask, dt.TaskStatus, dt.Progress, dt.Deliverable, dt.LastUpdated)
-	}
 	return nil
 }
 
 func (s *Server) listDeptTasks() []AgentDeptTask {
 	if err := s.ensureDeptTasksTable(); err == nil && s.db != nil {
 		rows, err := s.db.Query(`
-			SELECT agent_id, dept_id, role_in_dept, rank, step_order, receives_from, hands_off_to, current_task, task_status, progress, deliverable, last_updated
-			FROM ai_dept_tasks
-			ORDER BY dept_id ASC, step_order ASC
+			SELECT t.agent_id, t.dept_id, t.role_in_dept, t.rank, t.step_order, t.receives_from, t.hands_off_to, t.current_task, t.task_status, t.progress, t.deliverable, t.last_updated
+			FROM ai_dept_tasks t
+			JOIN ai_agents a ON a.id = t.agent_id AND a.is_custom = 1
+			ORDER BY t.dept_id ASC, t.step_order ASC
 		`)
 		if err == nil {
 			defer rows.Close()
@@ -1042,18 +998,13 @@ func (s *Server) listDeptTasks() []AgentDeptTask {
 					list = append(list, dt)
 				}
 			}
-			if len(list) > 0 {
-				return list
-			}
+			return list
 		}
 	}
 
 	agentMu.RLock()
 	defer agentMu.RUnlock()
-	if len(fallbackDeptTasks) == 0 {
-		return defaultDeptTasks()
-	}
-	return fallbackDeptTasks
+	return append([]AgentDeptTask(nil), fallbackDeptTasks...)
 }
 
 // listLiveOperations returns real-time activities across corporate departments,
@@ -1066,7 +1017,7 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 	for _, m := range missions {
 		deptCode := "DEP-01"
 		deptName := "Ban Điều Hành"
-		agentName := "Alex Vũ"
+		agentName := "AI tự động hóa"
 		avatar := "🎯"
 		tag := "CHIẾN DỊCH AI"
 		badge := "badge-ok"
@@ -1080,25 +1031,25 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 		case "affiliate_campaign":
 			deptCode = "DEP-03"
 			deptName = "Thẩm Định Deal"
-			agentName = "Elena Bùi"
+			agentName = "AI tự động hóa"
 			avatar = "⚖️"
 			tag = "AFFILIATE DEAL"
 		case "story_campaign":
 			deptCode = "DEP-04"
 			deptName = "Kể Chuyện"
-			agentName = "Lâm Phong"
+			agentName = "AI tự động hóa"
 			avatar = "📖"
 			tag = "KHO TRUYỆN"
 		case "trend_campaign":
 			deptCode = "DEP-02"
 			deptName = "Săn Xu Hướng"
-			agentName = "Radar Kai"
+			agentName = "AI tự động hóa"
 			avatar = "📡"
 			tag = "XU HƯỚNG NÓNG"
 		case "growth_campaign":
 			deptCode = "DEP-09"
 			deptName = "Phân Tích & Tăng Trưởng"
-			agentName = "Dr. Hoàng Nam"
+			agentName = "AI tự động hóa"
 			avatar = "📊"
 			tag = "MA TRẬN 30 NGÀY"
 		}
@@ -1145,7 +1096,7 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 				Time:        tStr,
 				DeptCode:    "DEP-06",
 				DeptName:    "Studio Sản Xuất Video",
-				AgentName:   "Đức Huy",
+				AgentName:   "Studio",
 				AgentAvatar: "🎬",
 				Action:      fmt.Sprintf("%s: %s", actionText, j.Title),
 				Detail:      fmt.Sprintf("Tiến độ: %d%% · %s", j.Progress, captionPreview),
@@ -1179,64 +1130,14 @@ func (s *Server) listLiveOperations() []LiveOperationEvent {
 		}
 	}
 
+	if len(events) > 8 {
+		events = events[:8]
+	}
 	if len(events) > 0 {
-		if len(events) > 8 {
-			events = events[:8]
-		}
 		return events
 	}
 
-	return baselineOperationEvents()
-}
-
-func baselineOperationEvents() []LiveOperationEvent {
-	now := time.Now().Format("15:04")
-	return []LiveOperationEvent{
-		{
-			Time:        now,
-			DeptCode:    "DEP-01",
-			DeptName:    "Ban Điều Hành & An Toàn",
-			AgentName:   "Alex Vũ",
-			AgentAvatar: "🏛️",
-			Action:      "Hệ Thống Trực Tuyến 24/7",
-			Detail:      "Giám sát an toàn hệ thống, quota API và sẵn sàng điều phối các phòng ban",
-			Tag:         "TRỰC TUYẾN",
-			BadgeClass:  "badge-ok",
-		},
-		{
-			Time:        now,
-			DeptCode:    "DEP-02",
-			DeptName:    "Săn Xu Hướng Viral",
-			AgentName:   "Radar Kai",
-			AgentAvatar: "📡",
-			Action:      "Radar Xu Hướng Sẵn Sàng",
-			Detail:      "Sẵn sàng quét tín hiệu âm thanh và nội dung thịnh hành trên TikTok & Douyin",
-			Tag:         "SẴN SÀNG",
-			BadgeClass:  "badge-ok",
-		},
-		{
-			Time:        now,
-			DeptCode:    "DEP-03",
-			DeptName:    "Thẩm Định Deal",
-			AgentName:   "Elena Bùi",
-			AgentAvatar: "⚖️",
-			Action:      "Kệ Hàng Săn Deal Sẵn Sàng",
-			Detail:      "Sẵn sàng thẩm định deal hoa hồng cao và tỷ lệ chuyển đổi sản phẩm",
-			Tag:         "SẴN SÀNG",
-			BadgeClass:  "badge-ok",
-		},
-		{
-			Time:        now,
-			DeptCode:    "DEP-06",
-			DeptName:    "Studio Sản Xuất Video",
-			AgentName:   "Đức Huy",
-			AgentAvatar: "🎬",
-			Action:      "Dây Chuyền Render Sẵn Sàng",
-			Detail:      "Dây chuyền sản xuất video 9:16 và âm thanh AI sẵn sàng nhận lệnh",
-			Tag:         "SẴN SÀNG",
-			BadgeClass:  "badge-ok",
-		},
-	}
+	return nil
 }
 
 func rankMeta(rank string) (int, string) {
@@ -1717,9 +1618,6 @@ func (s *Server) handleDeptAssign(w http.ResponseWriter, r *http.Request) {
 		`, agentID, deptID, role, rank, receivesFrom, handsOffTo, task, deliverable, "Vừa cập nhật")
 	} else {
 		agentMu.Lock()
-		if len(fallbackDeptTasks) == 0 {
-			fallbackDeptTasks = defaultDeptTasks()
-		}
 		found := false
 		for i := range fallbackDeptTasks {
 			if fallbackDeptTasks[i].AgentID == agentID && fallbackDeptTasks[i].DeptID == deptID {

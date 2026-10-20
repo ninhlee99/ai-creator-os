@@ -1,18 +1,14 @@
-{{define "title"}}Studio Affiliate Thời Trang Nữ — AI Creator OS{{end}}
+{{define "title"}}Affiliate{{end}}
 {{define "content"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1 style="display:flex;align-items:center;gap:10px">
-      <span>👗</span> Studio AI — Affiliate Thời Trang Nữ (9:16)
+      <span>👗</span> Affiliate
     </h1>
-    <p class="subtitle">Ghép người mẫu thật của bạn mặc sản phẩm, tự sinh kịch bản review bán hàng, lồng tiếng Gemini TTS và xuất video dọc 9:16 TikTok Shop / Shopee.</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/studio/trends" class="btn btn-secondary btn-sm">🎵 Nhạc Thịnh Hành</a>
-    <a href="/products" class="btn btn-secondary btn-sm">📦 Kệ Hàng</a>
-    <a href="/accounts" class="btn btn-secondary btn-sm">📱 Quản Lý Kênh &amp; Nhân Vật</a>
-    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video Render ↗</a>
+    <a href="/studio/jobs" class="btn btn-secondary btn-sm">Video</a>
   </div>
 </div>
 
@@ -20,19 +16,18 @@
 {{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
 
 <form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
-  <div class="studio-workbench-split" style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
-    
+  <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
+
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN (DƯỚI 3 BƯỚC) -->
     <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
-      
+
       <!-- BƯỚC 1: SẢN PHẨM THỜI TRANG & DEAL -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">1</span>
-            Sản Phẩm Thời Trang Nữ &amp; Giá Bán
+            Sản phẩm
           </h3>
-          <span class="badge badge-ok" style="font-size:11px">TikTok Shop &amp; Shopee</span>
+          <span class="badge badge-ok" style="font-size:11px">Affiliate</span>
         </div>
 
         {{if .Shelf}}
@@ -54,37 +49,30 @@
 
         <div class="grid2" style="gap:12px;margin-bottom:12px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Tên sản phẩm thời trang <span class="req">*</span></label>
-            <input type="text" name="product_name" id="cr-product-name" required placeholder="Ví dụ: Đầm hoa nhí vintage tay bồng, Áo croptop tiểu thư..." oninput="updateMockupPreview('cr')" style="padding:10px">
+            <label style="font-weight:700;font-size:12.5px">Tên sản phẩm <span class="req">*</span></label>
+            <input type="text" name="product_name" id="cr-product-name" value="{{.Prefill.ProductName}}" required placeholder="Tên sản phẩm" style="padding:10px">
           </div>
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Giá bán &amp; Khuyến mãi <span class="req">*</span></label>
-            <input type="text" name="product_price" placeholder="Ví dụ: 199.000₫ (Deal giảm 40%)" oninput="updateMockupPreview('cr')" style="padding:10px">
+            <label style="font-weight:700;font-size:12.5px">Giá bán theo thông tin sản phẩm</label>
+            <input type="text" name="product_price" value="{{.Prefill.ProductPrice}}" placeholder="Giá sản phẩm" style="padding:10px">
           </div>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:14px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Nhóm thời trang</label>
-            <select name="niche" id="cr-niche" onchange="updateMockupPreview('cr')" style="padding:10px">
-              <option value="Thời trang nữ dễ thương" selected>Thời trang nữ dễ thương / Xinh xắn</option>
-              <option value="Đầm & Váy tiểu thư">Đầm &amp; Váy tiểu thư / Tiệc</option>
-              <option value="Áo croptop & Chân váy">Áo croptop &amp; Chân váy năng động</option>
-              <option value="Đồ ngủ & Pijama lụa">Đồ ngủ &amp; Pijama lụa dễ thương</option>
-              <option value="Túi xách & Phụ kiện">Túi xách &amp; Phụ kiện thời trang</option>
-            </select>
+            <label style="font-weight:700;font-size:12.5px">Danh mục</label>
+            <input type="text" name="niche" id="cr-niche" value="{{.Prefill.Niche}}" placeholder="Thời trang, mỹ phẩm, gia dụng..." style="padding:10px">
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Link Affiliate / Giỏ hàng</label>
-            <input type="url" name="aff_link" placeholder="Link Shopee, TikTok Shop hoặc Accesstrade..." style="padding:10px">
+            <input type="url" name="aff_link" value="{{.Prefill.AffLink}}" placeholder="https://..." style="padding:10px">
           </div>
         </div>
 
         <!-- Ảnh sản phẩm -->
         <div class="field" style="margin-bottom:14px">
           <label style="font-weight:700;font-size:12.5px;display:flex;justify-content:space-between">
-            <span>📷 Ảnh sản phẩm (Đầm / Áo / Váy) <span class="req">*</span></span>
-            <span class="hint" style="font-size:11px">AI sẽ ghép người mẫu mặc sản phẩm này</span>
+            <span>Ảnh sản phẩm <span class="req">*</span></span>
           </label>
           <div class="file-pick">
             <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Tải ảnh sản phẩm từ máy…
@@ -93,28 +81,19 @@
             <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">Chưa chọn ảnh</span>
           </div>
           <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
-          <input type="hidden" name="photo_urls" id="cr-photo-urls">
+          <input type="hidden" name="photo_urls" id="cr-photo-urls" value="{{.Prefill.PhotoURL}}">
         </div>
 
-        <!-- Âm thanh chuẩn TikTok Shop Affiliate -->
+        <!-- Âm thanh video affiliate -->
         <input type="hidden" name="tiktok_music_only" value="1">
         <input type="hidden" name="voiceover_text" id="cr-voiceover-text" value="">
-        <div style="background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:12px 14px;margin-top:6px">
-          <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:4px">
-            <span>🎵</span> Âm thanh: Nhạc Nền TikTok Trending Tự Động
-          </div>
-          <div style="font-size:11.5px;color:var(--muted);line-height:1.4">
-            Chuẩn video thời trang TikTok Shop: Sử dụng 100% nhạc nền thịnh hành bắt tai, không lồng tiếng AI máy móc và không chèn phụ đề che khuất sản phẩm/người mẫu.
-          </div>
-        </div>
       </div>
 
       <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT VÀ DÁNG NGƯỜI CỦA MẪU NỮ -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span>
-            Chọn Các Góc Mặt &amp; Dáng Người Của Mẫu Nữ
+            Ảnh người mẫu
           </h3>
           <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">{{if .AvailableModels}}Đã chọn {{len .AvailableModels}} góc mặt{{else}}Chưa có góc mặt nào{{end}}</span>
         </div>
@@ -148,20 +127,28 @@
         </div>
         {{else}}
         <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px">
-          Chưa tìm thấy ảnh người mẫu. Vui lòng tải ảnh người mẫu của bạn lên bên dưới:
+          Chưa có ảnh người mẫu.
         </div>
         {{end}}
 
+        <div class="field" style="margin-bottom:12px">
+          <label style="font-weight:700;font-size:12.5px">Ảnh người mẫu</label>
+          <input type="file" name="model_photos" accept="image/*" multiple>
+        </div>
+
+        <div class="field" style="margin-bottom:12px">
+          <label style="font-weight:700;font-size:12.5px">Tệp nhạc</label>
+          <input type="file" name="music_file" accept="audio/*">
+        </div>
+
         <div class="field">
-          <label style="font-weight:700;font-size:12.5px">Nhạc nền thịnh hành TikTok (Fashion / Chill / Acoustic)</label>
-          <select id="creative-trend-pick" onchange="pickStudioTrend('cr', this)" style="padding:10px">
-            <option value="" selected>🔥 Tự động chọn nhạc TikTok Trending (Fashion Chill 120-128 BPM)</option>
-            {{range .Sounds}}
-            <option value="{{.Title}}|{{.Artist}}">🔥 #{{.Rank}} {{.Artist}} – {{.Title}}</option>
-            {{end}}
+          <label style="font-weight:700;font-size:12.5px">Nhạc nền có sẵn trên máy</label>
+          <select name="music_category" style="padding:10px">
+            <option value="">Không thêm nhạc</option>
+            <option value="fashion">Nhẹ, phù hợp thời trang</option>
+            <option value="dance">Sôi động</option>
+            <option value="chill">Nhẹ nhàng</option>
           </select>
-          <input type="hidden" name="music_title" id="cr_music_title">
-          <input type="hidden" name="music_artist" id="cr_music_artist">
         </div>
       </div>
 
@@ -169,99 +156,41 @@
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">3</span>
-            Công Nghệ Video &amp; Bấm Máy
+            Video
           </h3>
           <span class="badge badge-live" style="font-size:11px">Định Dạng Dọc 9:16 (1080x1920)</span>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Công nghệ sinh video AI (100% Free Cloud)</label>
+            <label style="font-weight:700;font-size:12.5px">Cách dựng</label>
+            <select name="mode" style="padding:10px;font-weight:700">
+              <option value="photo" selected>Dựng từ ảnh sản phẩm</option>
+              <option value="shots">Tạo từng cảnh bằng engine video</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Engine</label>
             <select name="video_engine" style="padding:10px;font-weight:700">
-              <option value="googleflow" selected>🌊 Google Flow (1.000 Credits Free ➔ Auto Remaster 4K UHD)</option>
-              <option value="veo3">🎬 Google Veo (Điện ảnh chân thực từ ảnh người mẫu)</option>
-              <option value="museai">🎥 Muse AI Video Studio (Chuyển động mượt mà)</option>
+              <option value="auto" selected>Tự chọn engine khả dụng</option>
+              <option value="googleflow">Google Flow</option>
+              <option value="veo3">Veo</option>
+              <option value="museai">Muse AI</option>
             </select>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
-            <select name="seconds" id="cr-seconds" onchange="updateMockupPreview('cr')" style="padding:10px;font-weight:600">
-              <option value="60" selected>🎯 60 giây (Chuẩn Quỹ Nhà Sáng Tạo TikTok 1 phút+)</option>
-              <option value="30">⚡ 30 giây (Ngắn bắt trend nhanh)</option>
-              <option value="45">⏱️ 45 giây (Review cận cảnh)</option>
+            <select name="seconds" id="cr-seconds" style="padding:10px;font-weight:600">
+              <option value="60" selected>🎯 60 giây</option>
+              <option value="30">⚡ 30 giây</option>
+              <option value="45">⏱️ 45 giây</option>
             </select>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer">
-          🚀 TẠO VIDEO AFFILIATE BÁN HÀNG NGAY (9:16)
+          Tạo video affiliate
         </button>
-      </div>
-
-    </div>
-
-    <!-- CỘT PHẢI: LIVE PREVIEW & VIDEO VỪA RENDER -->
-    <div class="studio-sidebar-col" style="position:sticky;top:20px">
-      
-      <!-- Khung Mô Phỏng 9:16 TikTok Phone -->
-      <div class="card" style="border-radius:18px;overflow:hidden;padding:0;border:2px solid var(--border);box-shadow:0 12px 36px rgba(0,0,0,0.25);background:#000">
-        <div style="background:var(--bg3);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <strong style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px">
-            <span>📱</span> Live Preview (TikTok 9:16)
-          </strong>
-          <span class="badge badge-live" style="font-size:10px">1080×1920</span>
-        </div>
-
-        <div id="cr-mockup-screen-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:#111;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="badge badge-ok" style="font-size:9.5px;font-weight:700">● MẪU THẬT</span>
-            <span id="cr-mockup-duration" style="background:rgba(0,0,0,0.6);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 60s</span>
-          </div>
-
-          <!-- Character & Product Tag Visual -->
-          <div style="text-align:center;margin:auto 0">
-            <div id="cr-mockup-hook-tag" style="background:#ef4444;color:#fff;padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:800;display:inline-block;margin-bottom:8px">🔥 XEM NGAY OUTFIT XINH NÀY</div>
-            <div id="cr-mockup-product-name" style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:4px">Đầm Hoa Nhí Vintage</div>
-            <div id="cr-mockup-niche-tag" style="color:#e2e8f0;font-size:11.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8)">Thời trang nữ dễ thương</div>
-            <div id="cr-mockup-price-tag" style="background:#10b981;color:#fff;font-weight:800;font-size:12px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:6px">
-              💰 199.000₫ (Giảm 40%)
-            </div>
-          </div>
-
-          <!-- Bottom TikTok Caption & Cart -->
-          <div style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);border-radius:10px;padding:10px 12px;color:#fff;border:1px solid rgba(255,255,255,0.15)">
-            <div style="font-size:11px;color:#cbd5e1;line-height:1.4" id="cr-mockup-vo-snippet">
-              🎙️ "Mọi người ơi xem ngay mẫu váy cực xinh này nha! Bấm vào giỏ hàng bên dưới săn deal..."
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.1);font-size:10.5px;color:#fde047;font-weight:700">
-              <span>🛍️ Giỏ hàng TikTok Shop</span>
-              <span>⚡ Mua ngay ➔</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Recent Jobs Preview -->
-      <div style="margin-top:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <strong style="font-size:13px;color:var(--text)">🎬 Video Vừa Render</strong>
-          <a href="/studio/jobs" style="font-size:11.5px;color:var(--accent);font-weight:700">Xem tất cả ↗</a>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          {{range $i, $j := .Jobs}}
-          {{if lt $i 3}}
-          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:8px 10px;border-radius:8px;font-size:12px">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">
-              <strong>{{$j.Title}}</strong>
-            </div>
-            <span class="badge {{if eq $j.Status "done"}}badge-ok{{else if eq $j.Status "running"}}badge-warn{{else}}badge-err{{end}}" style="font-size:10px">
-              {{if eq $j.Status "done"}}✓ Xong{{else if eq $j.Status "running"}}Đang dựng{{else}}{{$j.Status}}{{end}}
-            </span>
-          </div>
-          {{end}}
-          {{end}}
-        </div>
       </div>
 
     </div>
@@ -307,38 +236,13 @@ function updateStudioModelCount() {
 }
 
 function autoGenerateFashionScript() {
-  var name = document.getElementById('cr-product-name').value.trim() || 'váy xinh xắn';
+  var name = document.getElementById('cr-product-name').value.trim();
+  if (!name) return;
   var priceInput = document.querySelector('input[name="product_price"]');
-  var price = priceInput ? priceInput.value.trim() : 'giá ưu đãi';
-  var script = 'Mọi người ơi, xem ngay mẫu ' + name + ' cực xinh này nha! Thiết kế trẻ trung, chất vải mềm mại thoáng mát, tôn dáng siêu đỉnh luôn. Giá hôm nay đang trợ giá chỉ ' + price + '. Bấm ngay vào giỏ hàng góc trái bên dưới để săn deal kẻo hết nha!';
+  var price = priceInput ? priceInput.value.trim() : '';
+  var script = 'Thông tin sản phẩm: ' + name + (price ? '. Giá được cung cấp: ' + price : '') + '. Xem chi tiết tại liên kết sản phẩm.';
   var ta = document.getElementById('cr-voiceover-text');
-  if (ta) {
-    ta.value = script;
-    updateMockupPreview('cr');
-  }
-}
-
-function updateMockupPreview(prefix) {
-  var nameEl = document.getElementById('cr-product-name');
-  if (nameEl && nameEl.value.trim()) {
-    var pName = document.getElementById('cr-mockup-product-name');
-    if (pName) pName.textContent = nameEl.value.trim();
-  }
-  var nicheEl = document.getElementById('cr-niche');
-  if (nicheEl) {
-    var nTag = document.getElementById('cr-mockup-niche-tag');
-    if (nTag) nTag.textContent = nicheEl.value;
-  }
-  var priceInput = document.querySelector('input[name="product_price"]');
-  var priceTag = document.getElementById('cr-mockup-price-tag');
-  if (priceInput && priceInput.value.trim() && priceTag) {
-    priceTag.textContent = '💰 ' + priceInput.value.trim();
-  }
-  var voEl = document.getElementById('cr-voiceover-text');
-  var voSnippet = document.getElementById('cr-mockup-vo-snippet');
-  if (voEl && voEl.value.trim() && voSnippet) {
-    voSnippet.textContent = '🎙️ "' + voEl.value.trim().substring(0, 50) + '..."';
-  }
+  if (ta) ta.value = script;
 }
 
 function pickShelfProduct(sel) {
@@ -348,7 +252,7 @@ function pickShelfProduct(sel) {
   var price = opt.getAttribute('data-price') || '';
   var niche = opt.getAttribute('data-niche') || '';
   var aff = opt.getAttribute('data-aff') || '';
-  
+
   if (name) document.getElementById('cr-product-name').value = name;
   if (price) {
     var pEl = document.querySelector('input[name="product_price"]');
@@ -358,37 +262,14 @@ function pickShelfProduct(sel) {
     var aEl = document.querySelector('input[name="aff_link"]');
     if (aEl) aEl.value = aff;
   }
-  updateMockupPreview('cr');
   autoGenerateFashionScript();
 }
 
 function onProductPhotoPicked(input, prefix) {
   var label = document.getElementById('prod-photo-label-' + prefix);
-  if (input.files && input.files[0]) {
-    if (label) label.textContent = input.files[0].name;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var bg = document.getElementById('cr-mockup-screen-bg');
-      if (bg) {
-        bg.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.85)), url(' + e.target.result + ')';
-        bg.style.backgroundSize = 'cover';
-        bg.style.backgroundPosition = 'center';
-      }
-    };
-    reader.readAsDataURL(input.files[0]);
-  }
+  if (label && input.files && input.files[0]) label.textContent = input.files[0].name;
 }
 
-function pickStudioTrend(prefix, sel) {
-  if (!sel || !sel.value) return;
-  var parts = sel.value.split('|');
-  if (parts.length >= 2) {
-    var tEl = document.getElementById(prefix + '_music_title');
-    var aEl = document.getElementById(prefix + '_music_artist');
-    if (tEl) tEl.value = parts[0];
-    if (aEl) aEl.value = parts[1];
-  }
-}
 </script>
 
 {{end}}

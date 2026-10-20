@@ -28,7 +28,7 @@ import (
 // Không bao giờ tự public.
 //
 // Cùng cổng an toàn như các tick khác: kill switch + DRY-RUN chặn;
-// công tắc riêng mặc định BẬT (unset = bật — tiền lệ Đợt 3).
+// công tắc riêng mặc định TẮT; chỉ chạy sau khi chủ kênh bật cấu hình.
 // ---------------------------------------------------------------------------
 
 // Setting keys cho story automation (ledger settings).
@@ -50,7 +50,7 @@ const (
 	// thì biết lần trước đăng dở (có thể đã lên 1 bản private) thay vì im
 	// lặng đăng trùng.
 	KeyStoryPublishingPrefix = "story.publishing."
-	KeyStoryTopicsAutofill   = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định bật)
+	KeyStoryTopicsAutofill   = "story.topics_autofill"   // tự nghĩ chủ đề khi hàng đợi trống (mặc định tắt)
 	KeyStoryTopicsAutofillN  = "story.topics_autofill_n" // số chủ đề mỗi lần refill (mặc định 10)
 	// KeyStoryPublicAfterHours: số giờ private trước khi tự chuyển public
 	// (đợt N). 0 = tắt (mặc định: giữ private để Ninh duyệt tay).
@@ -100,7 +100,7 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	if s.killed() || s.dryRun() {
 		return nil
 	}
-	if !atOn(s.Settings, KeyStoryEnabled, true) {
+	if !atOn(s.Settings, KeyStoryEnabled, false) {
 		return nil
 	}
 	if s.Story == nil {
@@ -131,10 +131,10 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	}
 	p := studio.StoryParams{
 		Topic:   topic,
-		Genre:   atStr(s.Settings, KeyStoryGenre, "tâm lý"),
+		Genre:   atStr(s.Settings, KeyStoryGenre, ""),
 		Words:   atInt(s.Settings, KeyStoryWords, 600),
 		Scenes:  atInt(s.Settings, KeyStoryScenes, 6),
-		MusicOn: atOn(s.Settings, KeyStoryMusicOn, true),
+		MusicOn: atOn(s.Settings, KeyStoryMusicOn, false),
 	}
 	if p.MusicOn && s.StoryMusicPath != "" {
 		p.MusicPath = s.StoryMusicPath
@@ -160,7 +160,7 @@ type topicGenerator interface {
 // khi refill xong (caller pop lại), hoặc note trung thực khi không làm
 // được (tắt autofill / thiếu LLM / LLM lỗi).
 func (s *Service) refillStoryTopics(ctx context.Context) string {
-	if !atOn(s.Settings, KeyStoryTopicsAutofill, true) {
+	if !atOn(s.Settings, KeyStoryTopicsAutofill, false) {
 		return "story: hàng đợi chủ đề trống (tự refill đang tắt) — thêm chủ đề ở trang Kể chuyện"
 	}
 	gen, ok := s.Story.(topicGenerator)
@@ -168,7 +168,7 @@ func (s *Service) refillStoryTopics(ctx context.Context) string {
 		return "story: hàng đợi chủ đề trống — thêm chủ đề ở trang Kể chuyện"
 	}
 	n := atInt(s.Settings, KeyStoryTopicsAutofillN, 10)
-	genre := atStr(s.Settings, KeyStoryGenre, "tâm lý")
+	genre := atStr(s.Settings, KeyStoryGenre, "")
 	topics, err := gen.GenerateTopics(ctx, genre, n)
 	if err != nil {
 		return fmt.Sprintf("story: hàng đợi chủ đề trống — tự refill lỗi (%v)", err)
@@ -184,10 +184,10 @@ func (s *Service) refillStoryTopics(ctx context.Context) string {
 }
 
 // storyAutoPublish tự đăng private các job đã xong khi bật auto_publish.
-// (Đợt K: mặc định BẬT — private-first nên an toàn, Ninh xem lại trên
+// (Đợt K: mặc định TẮT — private-first nên an toàn, Ninh xem lại trên
 // YouTube Studio; tắt ở trang Kể chuyện nếu muốn duyệt tay.)
 func (s *Service) storyAutoPublish(ctx context.Context) []string {
-	if !atOn(s.Settings, KeyStoryAutoPublish, true) {
+	if !atOn(s.Settings, KeyStoryAutoPublish, false) {
 		return nil
 	}
 	account := atStr(s.Settings, KeyStoryAccount, "")

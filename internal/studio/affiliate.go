@@ -162,6 +162,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		fail(err)
 		return
 	}
+	if p.AutoGenerateProductPhoto && !p.HasOwnPhotos() && s.mg != nil && s.mg.Healthy(ctx) {
+		generated := filepath.Join(work, "product-reference.png")
+		prompt := fmt.Sprintf("Photorealistic product reference image of %s, category %s, accurate visible product details, neutral background, no text, no watermark", p.ProductName, p.Niche)
+		if err := s.mg.GenerateImage(ctx, prompt, nil, generated); err != nil {
+			fail(fmt.Errorf("không tạo được ảnh sản phẩm: %w", err))
+			return
+		}
+		p.ProductPhoto = generated
+	}
 
 	// Nếu có ảnh sản phẩm thật: Dựng từ ảnh có sẵn kết hợp nhạc theo nhịp
 	ownPhotos := false
@@ -199,7 +208,6 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		targetSec = 180.0
 	}
 	p.Seconds = int(targetSec)
-
 
 	// Chuẩn bị ảnh mẫu (model photos) và ảnh sản phẩm (product photos)
 	modelPhotos := s.queryAccountModelPhotos(p.AccountID)
@@ -337,7 +345,6 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		}
 
-
 		if p.VoiceoverPath != "" && p.MusicPath != "" {
 			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
 			voiceVideo := filepath.Join(work, "voice.mp4")
@@ -366,7 +373,6 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			fail(err)
 			return
 		}
-
 
 		s.setOutput(id, filepath.Base(final))
 		caption := strings.TrimSpace(p.FixedCaption)
@@ -575,18 +581,23 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 				continue
 			}
 			out := filepath.Join(work, fmt.Sprintf("shot-%02d.mp4", i))
+			fallbackUsed := false
 			vprompt := fmt.Sprintf("%s. Camera: %s. Lens/lighting: %s. "+
 				"Vertical 9:16 cinematic product video, smooth professional motion, no text, no watermark.",
 				sh.VideoPrompt, sh.CameraMove, sh.LensLight)
 			if err := s.GenerateMotionVideoClip(ctx, MotionVideoOptions{
-				Prompt:      vprompt,
-				FirstFrame:  key,
-				Seconds:     sh.Seconds,
-				AspectRatio: "9:16",
-				Engine:      "auto",
-				OutputPath:  out,
-				LogFn:       func(msg string) { s.appendLog(id, msg) },
-			}); err != nil {
+				Prompt:       vprompt,
+				FirstFrame:   key,
+				Seconds:      sh.Seconds,
+				AspectRatio:  "9:16",
+				Engine:       p.VideoEngine,
+				FallbackUsed: &fallbackUsed,
+				OutputPath:   out,
+				LogFn:        func(msg string) { s.appendLog(id, msg) },
+			}); err != nil || fallbackUsed {
+				if err == nil {
+					err = fmt.Errorf("engine không tạo được chuyển động; dùng ảnh tĩnh")
+				}
 				s.appendLog(id, fmt.Sprintf("Shot %d lỗi video: %v (giữ keyframe Ken Burns)", i+1, err))
 				still := filepath.Join(work, fmt.Sprintf("shot-%02d-still.mp4", i))
 				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still, "9:16"); kerr == nil {

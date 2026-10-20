@@ -5,12 +5,10 @@ package web
 // the embedded static CSS handler.
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // Routes wires every dashboard route. POST redirects use 303 See Other,
@@ -21,7 +19,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
-	mux.HandleFunc("GET /static/sample_916.mp4", s.handleStaticSampleVideo)
 	mux.HandleFunc("GET /static/presets/{file}", s.handleStaticPresetImage)
 
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
@@ -128,7 +125,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /web-ai/browser-login/cancel", s.handleWebAIBrowserLoginCancel)
 	mux.HandleFunc("POST /web-ai/accounts/sync-google", s.handleWebAISyncGoogleAccount)
 
-
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
 	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
@@ -202,6 +198,7 @@ func (s *Server) Routes() http.Handler {
 	// Đợt F: Kể chuyện YouTube (truyện ngôi thứ nhất + ảnh 16:9 + TTS).
 	mux.HandleFunc("GET /stories", s.handleStories)
 	mux.HandleFunc("POST /stories", s.handleStoryCreate)
+	mux.HandleFunc("POST /stories/upload-text", s.handleStoryUploadText)
 	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
 	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
 	mux.HandleFunc("POST /stories/{id}/retry", s.handleStoryRetry) // đợt Y: thử lại tay
@@ -380,13 +377,6 @@ func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "audio/mpeg")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	_, _ = w.Write(staticPreviewAudio)
-}
-
-// handleStaticSampleVideo serves the bundled sample 9:16 vertical video.
-func (s *Server) handleStaticSampleVideo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "video/mp4")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	http.ServeContent(w, r, "sample_916.mp4", time.Time{}, bytes.NewReader(staticSampleVideo))
 }
 
 // --------------------------------------------------------------- dashboard

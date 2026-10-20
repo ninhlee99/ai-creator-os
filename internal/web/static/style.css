@@ -1978,8 +1978,9 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 
 @media (max-width: 1024px) {
   .studio-workbench-split {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
+  .studio-workbench-split > .studio-sidebar-col { position: static !important; }
 }
 
 .studio-preview-col {

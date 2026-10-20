@@ -17,25 +17,27 @@ import (
 // Harness là Bộ điều phối trung tâm (Master Agent Harness), chịu trách nhiệm
 // vận hành toàn bộ hệ sinh thái tự chủ của AI Creator OS.
 type Harness struct {
-	mu            sync.RWMutex
-	db            *sql.DB
-	memory        *MemoryStore
-	ooda          *OODAEngine
-	studio        *studio.Studio
-	mgr           *network.AccountManager
-	growth        *growth.Store
-	llm           studio.LLM
-	autonomyLevel AutonomyLevel
-	interval      time.Duration
-	latestCycle   *OODACycleResult
-	recentCycles  []*OODACycleResult
-	cancel        context.CancelFunc
+	mu               sync.RWMutex
+	db               *sql.DB
+	memory           *MemoryStore
+	ooda             *OODAEngine
+	studio           *studio.Studio
+	mgr              *network.AccountManager
+	growth           *growth.Store
+	llm              studio.LLM
+	autonomyLevel    AutonomyLevel
+	interval         time.Duration
+	executionAllowed func() bool
+	latestCycle      *OODACycleResult
+	recentCycles     []*OODACycleResult
+	cancel           context.CancelFunc
 }
 
 // Config cấu hình cho Harness Agent.
 type Config struct {
-	AutonomyLevel AutonomyLevel
-	Interval      time.Duration
+	AutonomyLevel    AutonomyLevel
+	Interval         time.Duration
+	ExecutionAllowed func() bool
 }
 
 // New khởi tạo Master Agent Harness.
@@ -53,7 +55,7 @@ func New(
 	}
 
 	if cfg.AutonomyLevel == 0 {
-		cfg.AutonomyLevel = AutonomyFullyAutonomous
+		cfg.AutonomyLevel = AutonomyAssisted
 	}
 	if cfg.Interval <= 0 {
 		cfg.Interval = 6 * time.Hour
@@ -62,15 +64,16 @@ func New(
 	ooda := NewOODAEngine(memStore, llm)
 
 	h := &Harness{
-		db:            db,
-		memory:        memStore,
-		ooda:          ooda,
-		studio:        studioInst,
-		mgr:           mgr,
-		growth:        growthStore,
-		llm:           llm,
-		autonomyLevel: cfg.AutonomyLevel,
-		interval:      cfg.Interval,
+		db:               db,
+		memory:           memStore,
+		ooda:             ooda,
+		studio:           studioInst,
+		mgr:              mgr,
+		growth:           growthStore,
+		llm:              llm,
+		autonomyLevel:    cfg.AutonomyLevel,
+		interval:         cfg.Interval,
+		executionAllowed: cfg.ExecutionAllowed,
 	}
 
 	_ = h.ensureHarnessTable()
@@ -131,7 +134,11 @@ func (h *Harness) RunCycle(ctx context.Context) (*OODACycleResult, error) {
 	mgr := h.mgr
 	studioInst := h.studio
 	ooda := h.ooda
+	allowed := h.executionAllowed
 	h.mu.Unlock()
+	if allowed != nil && !allowed() {
+		level = AutonomyAssisted
+	}
 
 	var accounts []*network.Account
 	if mgr != nil {

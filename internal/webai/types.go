@@ -4,9 +4,9 @@ import "time"
 
 // Platform constants for supported web AI services.
 const (
-	PlatformChatGPT = "chatgpt"
-	PlatformClaude  = "claude"
-	PlatformGemini  = "gemini"
+	PlatformChatGPT    = "chatgpt"
+	PlatformClaude     = "claude"
+	PlatformGemini     = "gemini"
 	PlatformGrok       = "grok"
 	PlatformMuseAI     = "museai"
 	PlatformGoogleFlow = "googleflow"
@@ -39,55 +39,55 @@ func SupportedPlatforms() []PlatformInfo {
 	return []PlatformInfo{
 		{
 			ID:          PlatformChatGPT,
-			Name:        "ChatGPT (GPT-6 Luna)",
+			Name:        "ChatGPT",
 			URL:         "https://chatgpt.com",
 			LoginURL:    "https://chatgpt.com/auth/login",
 			Icon:        "💬",
 			Color:       "#10a37f",
 			Badge:       "OpenAI",
-			Description: "Kịch bản viral, Hook bán hàng & FOMO (GPT-6 Luna)",
+			Description: "Kết nối OpenAI đã cấu hình",
 			AuthGuide:   "Khóa API từ OpenAI (sk-...)",
 			Placeholder: "Dán mã API Key (sk-...) vào đây...",
-			Features:    []string{"Kịch bản bán hàng", "Hook 3 giây", "Lời thoại voiceover", "Phân tích khách hàng"},
+			Features:    nil,
 		},
 		{
 			ID:          PlatformClaude,
-			Name:        "Claude 5.5 Sonnet",
+			Name:        "Claude",
 			URL:         "https://claude.ai",
 			LoginURL:    "https://claude.ai/login",
 			Icon:        "🟣",
 			Color:       "#d97706",
 			Badge:       "Anthropic",
-			Description: "Phân cảnh điện ảnh & Kể chuyện cảm xúc (Claude 5.5 Sonnet)",
+			Description: "Phân cảnh điện ảnh & Kể chuyện cảm xúc (Claude)",
 			AuthGuide:   "Khóa API từ Anthropic (sk-ant-...)",
 			Placeholder: "Dán mã API Key (sk-ant-...) vào đây...",
-			Features:    []string{"Phân cảnh điện ảnh", "Prompt Gemini & Muse", "Tối ưu câu từ", "Caption & hashtag"},
+			Features:    nil,
 		},
 		{
 			ID:          PlatformGemini,
-			Name:        "Gemini 3.8 Flash / Pro",
+			Name:        "Gemini",
 			URL:         "https://gemini.google.com",
 			LoginURL:    "https://aistudio.google.com/app/apikey",
 			Icon:        "✨",
 			Color:       "#4285f4",
 			Badge:       "Google",
-			Description: "Tạo ảnh sản phẩm 4K & Kịch bản đa giác quan (Gemini 3.8 Flash)",
-			AuthGuide:   "Khóa API Google AI Studio (Miễn phí 100%, AIzaSy...)",
+			Description: "Kết nối Google AI đã cấu hình",
+			AuthGuide:   "Khóa API Google AI Studio (AIzaSy...)",
 			Placeholder: "Dán mã API Key (AIzaSy...) vào đây...",
-			Features:    []string{"Ảnh sản phẩm 4K", "Đồng nhất người mẫu", "Bối cảnh quảng cáo", "Miễn phí 100%"},
+			Features:    nil,
 		},
 		{
 			ID:          PlatformGrok,
-			Name:        "Grok 3 (xAI)",
+			Name:        "Grok",
 			URL:         "https://grok.com",
 			LoginURL:    "https://grok.com",
 			Icon:        "🚀",
 			Color:       "#111827",
 			Badge:       "xAI",
-			Description: "Ý tưởng viral & Bùng nổ tranh luận (Grok 3)",
+			Description: "Kết nối xAI đã cấu hình",
 			AuthGuide:   "Khóa API xAI Console (xai-...)",
 			Placeholder: "Dán mã API Key (xai-...) vào đây...",
-			Features:    []string{"Bắt trend realtime X/Twitter", "Phản biện đa chiều", "Kịch bản tranh luận", "Tư duy sắc sảo"},
+			Features:    nil,
 		},
 		{
 			ID:          PlatformMuseAI,
@@ -100,20 +100,20 @@ func SupportedPlatforms() []PlatformInfo {
 			Description: "Tạo video chuyển động",
 			AuthGuide:   "Khóa API từ Muse.ai",
 			Placeholder: "Dán mã API Key vào đây...",
-			Features:    []string{"Video chuyển động", "Lưu trữ 1080p/4K", "Vòng lặp sản phẩm", "Không watermark"},
+			Features:    nil,
 		},
 		{
 			ID:          PlatformGoogleFlow,
-			Name:        "Google Flow (Veo SD 480p)",
+			Name:        "Google Flow",
 			URL:         "https://labs.google/fx/tools/flow",
 			LoginURL:    "https://labs.google/fx/tools/flow",
 			Icon:        "🌊",
 			Color:       "#2563eb",
-			Badge:       "1.000 Credits Free/tháng",
-			Description: "Tạo video chuyển động Veo SD (480p) miễn phí 1.000 credits/tháng, tự động nâng cấp 4K UHD",
+			Badge:       "Đăng nhập Google",
+			Description: "Tạo video theo quyền truy cập Google Flow đã cấu hình",
 			AuthGuide:   "Đăng nhập Google Labs Flow hoặc dán Session Cookie / Chrome Profile",
 			Placeholder: "Dán Session Cookie hoặc token Google Labs...",
-			Features:    []string{"1.000 credits/tháng miễn phí", "Veo Video SD 480p", "Tự động Remaster 4K UHD", "Khóa nhân vật Image-to-Video"},
+			Features:    nil,
 		},
 	}
 }
@@ -143,18 +143,17 @@ type Account struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
-
 // AdScene represents a single scene in a product ad storyboard.
 type AdScene struct {
-	Index          int    `json:"index"`
-	DurationSec    int    `json:"duration_sec"`
-	SceneName      string `json:"scene_name"`
-	VisualConcept  string `json:"visual_concept"`
-	GeminiPrompt   string `json:"gemini_prompt"`
-	MuseAIPrompt   string `json:"muse_ai_prompt"`
-	VoiceoverText  string `json:"voiceover_text"`
-	OnScreenText   string `json:"on_screen_text"`
-	CameraMotion   string `json:"camera_motion"`
+	Index         int    `json:"index"`
+	DurationSec   int    `json:"duration_sec"`
+	SceneName     string `json:"scene_name"`
+	VisualConcept string `json:"visual_concept"`
+	GeminiPrompt  string `json:"gemini_prompt"`
+	MuseAIPrompt  string `json:"muse_ai_prompt"`
+	VoiceoverText string `json:"voiceover_text"`
+	OnScreenText  string `json:"on_screen_text"`
+	CameraMotion  string `json:"camera_motion"`
 }
 
 // HookVariant represents a targeted psychological hook variation for A/B testing.
@@ -179,9 +178,9 @@ type PlatformPost struct {
 type QCScorecard struct {
 	OverallScore     int      `json:"overall_score"`      // 0 - 100
 	HookScore        int      `json:"hook_score"`         // 0 - 100
-	NicheMatchScore  int      `json:"niche_match_score"`   // 0 - 100
+	NicheMatchScore  int      `json:"niche_match_score"`  // 0 - 100
 	PersuasionScore  int      `json:"persuasion_score"`   // 0 - 100
-	AudioVisualScore int      `json:"audio_visual_score"`  // 0 - 100
+	AudioVisualScore int      `json:"audio_visual_score"` // 0 - 100
 	Verdict          string   `json:"verdict"`            // "ĐẠT CHUẨN XUẤT BẢN (A+)", "CHẤT LƯỢNG CAO (A)", etc.
 	Summary          string   `json:"summary"`            // Detailed analysis summary
 	Strengths        []string `json:"strengths"`          // Highlights
@@ -210,5 +209,3 @@ type AdScriptPackage struct {
 	AIEngine              string                  `json:"ai_engine"`
 	AIEngineBadge         string                  `json:"ai_engine_badge"`
 }
-
-

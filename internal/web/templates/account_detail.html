@@ -1,12 +1,9 @@
-{{define "title"}}{{.Acct.Username}} — AI Creator OS{{end}}
+{{define "title"}}{{.Acct.Username}}{{end}}
 {{define "content"}}
 {{$id := .Acct.ID}}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:12px">
   <div>
     <h1 style="margin:0 0 4px">{{.Acct.Username}}</h1>
-    <p class="subtitle" style="margin:0"><span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
-    {{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
-    {{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
   </div>
   <div style="display:flex;gap:8px;align-items:center">
     <a href="/accounts/{{$id}}/edit" class="btn btn-primary btn-sm" style="font-weight:700">✏️ Chỉnh sửa kênh</a>
@@ -21,7 +18,7 @@
   <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
   <a href="/accounts/{{$id}}?tab=nhan-vat"{{if eq .Tab "nhan-vat"}} class="active"{{end}}>👤 Nhân vật &amp; Khuôn mặt AI</a>
   <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
-  <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Tự Động Rep Comment &amp; Chốt Đơn</a>
+  <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Mô phỏng trả lời</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
   <a href="/accounts/{{$id}}?tab=ket-noi"{{if eq .Tab "ket-noi"}} class="active"{{end}}>Kết nối</a>
 </nav>
@@ -105,7 +102,7 @@
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
   <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — xem &amp; điều chỉnh tại tab Autopilot.</span>
 </p>
-{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức.</p>{{end}}
+{{if not .GrowthHasSnapshot}}{{end}}
 {{end}}
 
 <h2>Lịch sử quyết định</h2>
@@ -125,7 +122,6 @@
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
     <h2 style="margin:0 0 4px;font-size:18px">👤 Nhân Vật Đại Diện &amp; Khóa Khuôn Mặt AI</h2>
-    <p class="subtitle" style="margin:0;font-size:13px">Khuôn mặt chuẩn để AI giữ nguyên nhận diện nhân vật (Character Consistency) khi tạo video viral trending, sexy dance và affiliate cho kênh <strong>{{.Acct.Username}}</strong>.</p>
   </div>
   <div style="display:flex;gap:8px">
     <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Tạo Video Trending</a>
@@ -153,9 +149,7 @@
       </div>
       {{end}}
     </div>
-    <div class="hint" style="font-size:12px;color:var(--muted);background:var(--bg3);padding:8px 10px;border-radius:6px">
-      💡 <strong>Nguyên lý AI:</strong> Khi bấm tạo video ở trang Video Viral hoặc Studio Affiliate, AI MediaGen sẽ đọc trực tiếp các ảnh này làm ImageRef để vẽ mọi cảnh giữ nguyên gương mặt và đường nét nhân vật.
-    </div>
+
     {{else}}
     <p class="empty" style="padding:24px 12px;text-align:center;color:var(--muted)">
       Chưa có ảnh nhân vật nào được lưu cho kênh này.<br>
@@ -197,7 +191,6 @@
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
     <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu (Brand DNA)</h2>
-    <p class="subtitle" style="margin:0;font-size:13px">Bản sắc thương hiệu và phong cách nội dung của kênh <strong>{{.Acct.Username}}</strong>.</p>
   </div>
   <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Khôi phục Brand DNA chuẩn AI theo ngành hàng? Mọi tùy chỉnh hiện tại sẽ được thay bằng mẫu tối ưu.">
     <button type="submit" class="btn btn-secondary btn-sm">🔄 Khôi phục mẫu AI chuẩn</button>
@@ -206,21 +199,21 @@
 
 <form method="post" action="/accounts/{{$id}}/brand-dna">
   <div class="grid2" style="margin-bottom:20px">
-    
+
     <!-- Cột Trái: Định vị & Khán giả -->
     <div class="form-card">
       <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🎯</span> 1. Định Vị &amp; Khán Giả Mục Tiêu</h3>
-      
+
       <div class="field">
         <label>Định vị cốt lõi của kênh (Positioning)</label>
         <textarea name="positioning" rows="2" placeholder="Ví dụ: Chuyên gia phân tích thành phần mỹ phẩm & hướng dẫn skincare khoa học" required style="font-size:13px">{{if .BrandDNA}}{{.BrandDNA.Positioning}}{{end}}</textarea>
-        <div class="hint">Kênh đại diện cho điều gì? Tại sao người xem nên theo dõi bạn thay vì hàng trăm kênh khác?</div>
+
       </div>
 
       <div class="field">
         <label>Chân dung khán giả mục tiêu (Audience Persona)</label>
         <textarea name="audience_persona" rows="2" placeholder="Ví dụ: Nữ 18-35 tuổi, dân văn phòng, lo lắng về mụn/thâm, sợ mua nhầm hàng giả" required style="font-size:13px">{{if .BrandDNA}}{{.BrandDNA.AudiencePersona}}{{end}}</textarea>
-        <div class="hint">Độ tuổi, giới tính, nỗi đau thầm kín và khao khát lớn nhất của người xem.</div>
+
       </div>
 
       <div class="field">
@@ -252,21 +245,21 @@
       <div class="field">
         <label>Ranh giới đỏ &amp; Từ cấm (Red Lines — Mỗi dòng 1 ranh giới)</label>
         <textarea name="red_lines" rows="4" placeholder="Cấm cam kết trắng da sau 1 đêm&#10;Không nói quá công dụng y khoa&#10;Không dìm thương hiệu đối thủ vô căn cứ" style="font-size:13px;font-family:monospace">{{if .BrandDNA}}{{join "\n" .BrandDNA.RedLines}}{{end}}</textarea>
-        <div class="hint">Hệ thống AI sẽ tự động chặn các kịch bản vi phạm các dòng này trước khi sản xuất.</div>
+
       </div>
     </div>
 
   </div>
 
   <div class="grid2" style="margin-bottom:20px">
-    
+
     <!-- Cột Trái 2: Công thức Hook 3s -->
     <div class="form-card">
       <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🪝</span> 3. Công Thức Mở Đầu 3 Giây (Hook Rules)</h3>
       <div class="field">
         <label>Nguyên tắc viết Hook giữ chân (Mỗi dòng 1 công thức)</label>
         <textarea name="hook_rules" rows="5" placeholder="Câu hỏi ngược đời: 'Tại sao càng dưỡng da mụn càng bùng phát?'&#10;Đập vỡ ảo tưởng: 'Đừng phí tiền mua món này nếu chưa biết...'&#10;Con số gây sốc: '90% người dùng sai cách dẫn đến...'&#10;Tình huống đồng cảm: 'Có ai từng bị...?'" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.HookRules}}{{end}}</textarea>
-        <div class="hint">AI biên kịch sẽ xoay vòng các cấu trúc Hook này để giữ chân khán giả trong 3 giây vàng đầu tiên.</div>
+
       </div>
     </div>
 
@@ -276,7 +269,7 @@
       <div class="field">
         <label>3–5 Trụ cột xuyên suốt (Mỗi dòng 1 trụ cột)</label>
         <textarea name="content_pillars" rows="5" placeholder="Giải mã bảng thành phần hoạt chất&#10;So sánh trực diện 2 sản phẩm hot cùng tầm giá&#10;Thử nghiệm thực tế trước và sau 14 ngày&#10;Cảnh báo sai lầm kinh điển khi sử dụng&#10;Gợi ý chu trình tối giản cho người bận rộn" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.ContentPillars}}{{end}}</textarea>
-        <div class="hint">Định hình ma trận nội dung 30 ngày, phân bổ tỷ lệ 60% viral kéo phễu - 30% chia sẻ giá trị - 10% chuyển đổi.</div>
+
       </div>
     </div>
 
@@ -293,7 +286,7 @@
 
   <div style="display:flex;gap:12px;align-items:center">
     <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;font-weight:700">💾 Lưu Bản Sắc Thương Hiệu (Brand DNA)</button>
-    <span class="hint">Lưu xong có hiệu lực ngay cho toàn bộ các lượt tạo video và kịch bản tự động.</span>
+
   </div>
 </form>
 
@@ -305,7 +298,7 @@
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
   <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hệ thống tự quyết nhịp đăng, giết/nhân đôi format; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
 </p>
-{{if not .GrowthHasSnapshot}}<p class="hint">Chưa có số liệu thật — bấm “Đồng bộ số liệu” ở trang Phát triển kênh để lấy từ API chính thức (cần YOUTUBE_API_KEY trong Cài đặt + gắn kênh YouTube ở tab Kết nối; view 30 ngày cần thêm token YouTube Analytics).</p>{{end}}
+{{if not .GrowthHasSnapshot}}{{end}}
 
 <div class="grid2">
 <div class="form-card">
@@ -363,7 +356,7 @@
 </div>
   {{end}}
   {{else}}
-  <p class="hint">Chưa có kế hoạch. Hệ thống sinh tự động khi cần; bấm nút bên trái để sinh ngay.</p>
+
   {{end}}
 </div>
 </div>
@@ -422,7 +415,7 @@
   <form method="post" action="/accounts/{{$id}}/autopilot">
     <div class="field">
       <label><input type="checkbox" name="enabled" value="on"{{if .Acct.Autopilot}} checked{{end}}> Bật autopilot</label>
-      <div class="hint">Khi bật: hệ thống tự tìm sản phẩm → làm video → xếp lịch. Bạn chỉ theo dõi.</div>
+
     </div>
     <div class="field">
       <label>Hoa hồng tối thiểu (%)</label>
@@ -439,7 +432,7 @@
       <button type="submit" class="btn btn-sm">▶ Chạy autopilot ngay</button>
     </form>
   {{else}}
-    <p class="hint">Cần bật autopilot, chọn chủ đề và upload ít nhất 1 ảnh mẫu để chạy tự động.</p>
+
   {{end}}
   </div>
 </div>
@@ -485,7 +478,6 @@
 
 <div style="margin-bottom:16px">
   <h2 style="margin:0 0 4px;font-size:18px">Kết nối mạng xã hội &amp; Phân phối video 🚀</h2>
-  <p class="subtitle" style="margin:0">Trạng thái kết nối và phân phối video tự động của kênh <strong>{{.Acct.Username}}</strong> lên các mạng xã hội.</p>
 </div>
 
 <div class="grid2" style="margin-bottom:24px">
@@ -619,10 +611,10 @@
     <span style="font-size:26px">💬</span>
     <div>
       <h2 style="margin:0;font-size:18px;color:var(--text)">Tự Động Trả Lời Bình Luận &amp; Chốt Đơn</h2>
-      <div style="font-size:12.5px;color:var(--muted)">Phân loại ý định mua hàng và trả lời tự động cho kênh @{{.Acct.Username}}.</div>
+      <div style="font-size:12.5px;color:var(--muted)">Thử cách phân loại và gợi ý câu trả lời. Chức năng này không gửi bình luận lên nền tảng.</div>
     </div>
   </div>
-  <span class="badge badge-ok" style="font-weight:700"><span class="pulse-dot"></span> BẬT 24/7</span>
+  <span class="badge badge-dim" style="font-weight:700">Mô phỏng · không gửi thật</span>
 </div>
 
 <div class="grid2" style="margin-bottom:20px">
@@ -635,12 +627,10 @@
       <dt>Kênh phát sóng</dt><dd><b>@{{.Acct.Username}}</b></dd>
       <dt>Tính cách AI (Persona)</dt><dd><span class="badge badge-info">{{.Acct.PersonaLabel}}</span></dd>
       <dt>Ngành hàng / Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}Đa năng{{end}}</dd>
-      <dt>Link Affiliate Mặc Định</dt><dd><code style="font-size:11px;word-break:break-all">{{if .Acct.AffiliateLink}}{{.Acct.AffiliateLink}}{{else}}https://go.isclix.com/deal-hot{{end}}</code></dd>
+      <dt>Link Affiliate Mặc Định</dt><dd><code style="font-size:11px;word-break:break-all">{{if .Acct.AffiliateLink}}{{.Acct.AffiliateLink}}{{else}}Chưa cấu hình{{end}}</code></dd>
       <dt>Thuật toán Anti-Spam</dt><dd><span class="badge badge-ok">✓ Bật Anti-Bot Jitter (Trễ ngẫu nhiên 45s – 120s)</span></dd>
     </dl>
-    <div class="hint" style="margin-top:12px;line-height:1.4">
-      💡 <b>Mẹo thực chiến:</b> Thuật toán TikTok và YouTube ưu tiên cao nhất cho các video có chủ kênh phản hồi bình luận trong 15 phút đầu sau khi đăng. Tự động trả lời giúp kênh tăng gấp 3 lần tỷ lệ giữ chân và doanh số giỏ hàng.
-    </div>
+
   </div>
 
   <!-- Trình giả lập phản hồi AI trực tiếp -->
@@ -648,7 +638,7 @@
     <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
       <span>⚡</span> Trình Giả Lập Phản Hồi Bình Luận AI
     </h3>
-    <p class="hint" style="margin-top:-4px;margin-bottom:12px">Chọn một mẫu comment hoặc gõ câu hỏi bất kỳ của người xem để kiểm tra xem AI sẽ nhận diện ý định và trả lời ra sao:</p>
+
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Áo này bao nhiêu tiền shop, có freeship không ạ?')">🛍️ Hỏi giá áo polo</button>
@@ -659,7 +649,7 @@
 
     <div class="field" style="margin-bottom:12px">
       <label>Nội dung bình luận của khán giả:</label>
-      <input type="text" id="sim-input-comment" placeholder="Ví dụ: Áo này giá bao nhiêu, cho em xin link mua với shop..." value="Áo này giá bao nhiêu, cho em xin link mua với shop...">
+      <input type="text" id="sim-input-comment" placeholder="Dán bình luận thật để xem phản hồi dự kiến">
     </div>
 
     <button type="button" id="btn-sim-run" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px" onclick="runCommentSimulation({{$id}})">
@@ -669,14 +659,14 @@
     <!-- Kết quả mô phỏng -->
     <div id="sim-result-box" style="display:none;margin-top:14px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span class="badge badge-ok" id="sim-intent-tag" style="font-size:11px">Ý định: Hỏi mua hàng</span>
-        <span class="badge badge-dim" id="sim-delay-tag" style="font-size:10.5px">⏱️ Trễ ngẫu nhiên: 65s</span>
+        <span class="badge badge-ok" id="sim-intent-tag" style="font-size:11px"></span>
+        <span class="badge badge-dim" id="sim-delay-tag" style="font-size:10.5px"></span>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Hành động AI tự động:</div>
       <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px" id="sim-action-text">Tự động phản hồi kèm Deep-link &amp; Ghim bình luận</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Nội dung phản hồi tự động gửi cho khách:</div>
       <div style="background:var(--bg2);padding:10px 12px;border-radius:8px;border-left:3px solid var(--accent);font-size:13px;line-height:1.5;color:var(--text)" id="sim-reply-text">
-        Dạ em gửi mình link săn ưu đãi giảm 45%...
+
       </div>
     </div>
   </div>

@@ -46,26 +46,28 @@ const (
 
 // AffiliateParams describes one affiliate-video job.
 type AffiliateParams struct {
-	Mode         string `json:"mode"`                 // photo | shots
-	AccountID    int64  `json:"account_id,omitempty"` // set by autopilot
-	Niche        string `json:"niche"`
-	ProductName  string `json:"product_name"`
-	ProductPrice string `json:"product_price,omitempty"`
-	ModelPhoto   string   `json:"model_photo"`   // local path (identity lock)
+	Mode         string   `json:"mode"`                 // photo | shots
+	AccountID    int64    `json:"account_id,omitempty"` // set by autopilot
+	Niche        string   `json:"niche"`
+	ProductName  string   `json:"product_name"`
+	ProductPrice string   `json:"product_price,omitempty"`
+	ModelPhoto   string   `json:"model_photo"`            // local path (identity lock)
 	ModelPhotos  []string `json:"model_photos,omitempty"` // multi-angle local paths (identity lock)
-	ProductPhoto string   `json:"product_photo"` // local path (product lock)
+	ProductPhoto string   `json:"product_photo"`          // local path (product lock)
 	// ExtraPhotos: ảnh thêm (góc khác, chi tiết, ảnh listing) — chế độ
 	// không key dựng từ cả bộ để video không lặp 1 ảnh.
 	ExtraPhotos []string `json:"extra_photos,omitempty"`
 	// FixedCaption: chú thích người dùng tự viết (Chỉnh sửa & dựng lại) —
 	// có thì dùng nguyên văn, không gọi AI/mẫu.
-	FixedCaption string  `json:"fixed_caption,omitempty"`
-	Seconds      int     `json:"seconds"`
-	BPM          int     `json:"bpm"`         // beat tempo for the giật-giật cut; 0 = 120
-	MusicPath    string  `json:"music_path"`  // local audio file, "" = silent
-	MusicStart   float64 `json:"music_start"` // seconds into the track
-	MusicTitle   string  `json:"music_title"`
-	MusicArtist  string  `json:"music_artist"`
+	FixedCaption             string  `json:"fixed_caption,omitempty"`
+	Seconds                  int     `json:"seconds"`
+	BPM                      int     `json:"bpm"`         // beat tempo for the giật-giật cut; 0 = 120
+	MusicPath                string  `json:"music_path"`  // local audio file, "" = silent
+	MusicStart               float64 `json:"music_start"` // seconds into the track
+	MusicTitle               string  `json:"music_title"`
+	MusicArtist              string  `json:"music_artist"`
+	VideoEngine              string  `json:"video_engine,omitempty"`
+	AutoGenerateProductPhoto bool    `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
 	AffLink string `json:"aff_link,omitempty"`

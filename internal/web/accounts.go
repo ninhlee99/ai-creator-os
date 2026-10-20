@@ -55,7 +55,6 @@ func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
 		"Error", r.URL.Query().Get("err"),
 		"HasYouTubeClient", publishers.NewYouTubePublisher("", nil, "").HasClient(),
 		"HasTikTokClient", publishers.NewTikTokPublisher("").HasClient(),
-		"PresetCharacters", DefaultPresetCharacters,
 	))
 }
 
@@ -92,7 +91,6 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Gán nhân vật đại diện cho kênh:
-	assigned := false
 	if r.MultipartForm != nil {
 		for _, key := range []string{"photo", "model_photo", "character_photo"} {
 			if fhs, ok := r.MultipartForm.File[key]; ok && len(fhs) > 0 && fhs[0] != nil {
@@ -107,35 +105,12 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 							tmp.Close()
 							_ = s.AssignCharacterToAccount(acct.ID, tmp.Name())
 							_ = os.Remove(tmp.Name())
-							assigned = true
 						}
 						f.Close()
 					}
 				}
 				break
 			}
-		}
-	}
-
-	// Nếu không upload file, kiểm tra nếu người dùng chọn 1 nhân vật trong 10 mẫu có sẵn
-	if !assigned {
-		chosenPreset := strings.TrimSpace(r.PostFormValue("preset_model"))
-		if chosenPreset != "" {
-			presetPath := s.ResolvePresetPath(chosenPreset)
-			if presetPath != "" {
-				_ = s.AssignCharacterToAccount(acct.ID, presetPath)
-				assigned = true
-			}
-		}
-	}
-
-	// Nếu để trống, tự động random ngẫu nhiên 1 trong 10 nhân vật mẫu có sẵn
-	if !assigned {
-		rnd := RandomPresetCharacter()
-		presetPath := s.ResolvePresetPath(rnd.File)
-		if presetPath != "" {
-			_ = s.AssignCharacterToAccount(acct.ID, presetPath)
-			log.Printf("[accounts] Kênh @%s chưa chọn nhân vật -> Tự động random nhân vật mẫu: %s (%s)", acct.Username, rnd.Title, rnd.File)
 		}
 	}
 
@@ -433,11 +408,12 @@ func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Req
 	low := strings.ToLower(userComment)
 	intent := "Tương tác cộng đồng"
 	intentCode := "engagement"
-	action := "Thả tim + Trả lời tự nhiên"
+	action := "Mô phỏng: gợi ý phản hồi tự nhiên"
 	delaySec := 45 + (len(userComment)*7)%75
 
 	var reply string
-	affLink := "https://go.isclix.com/deal-hot"
+	// Simulation never invents a marketplace deep link or performs an action.
+	affLink := ""
 
 	isPurchase := strings.Contains(low, "giá") || strings.Contains(low, "bao nhiêu") ||
 		strings.Contains(low, "mua") || strings.Contains(low, "link") ||
@@ -453,9 +429,12 @@ func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Req
 		strings.Contains(low, "xấu") || strings.Contains(low, "nhảm")
 
 	if isPurchase {
-		intent = "Hỏi mua hàng / Chốt đơn Affiliate (80% GMV)"
+		intent = "Câu hỏi về sản phẩm"
 		intentCode = "purchase"
-		action = "Tự động phản hồi kèm Deep-link & Ghim bình luận"
+		action = "Mô phỏng: gợi ý phản hồi về sản phẩm"
+		if affLink == "" {
+			affLink = "Chưa cấu hình link liên kết."
+		}
 		switch acct.Persona {
 		case "genz", "playful":
 			reply = fmt.Sprintf("Dạ sốp gửi mình link săn sale giảm tới 45%% kèm mã freeship ở giỏ hàng góc trái video hoặc bấm vào đây nha: %s ✨ Tranh thủ kẻo hết deal nè bác ơi!", affLink)
@@ -465,19 +444,19 @@ func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Req
 			reply = fmt.Sprintf("Dạ em gửi mình link săn ưu đãi chính hãng kèm freeship ở giỏ hàng góc trái video hoặc bấm vào đây xem nhé: %s 💖 Cần tư vấn thêm bạn cứ nhắn em nha!", affLink)
 		}
 	} else if isPraise {
-		intent = "Khen ngợi / Đồng tình (Tăng điểm thuật toán FYP)"
+		intent = "Khen ngợi / Đồng tình"
 		intentCode = "praise"
-		action = "Thả tim + Cảm ơn & Kêu gọi Follow"
+		action = "Mô phỏng: cảm ơn và gợi ý theo dõi"
 		reply = "Cảm ơn bạn nhiều nha! Follow kênh để đón xem video hữu ích tiếp theo vào 19h tối mai nhé! 🔥"
 	} else if isToxic {
 		intent = "Tiêu cực / Cần kiểm duyệt (Bảo vệ thương hiệu)"
 		intentCode = "toxic"
-		action = "Gắn cờ kiểm duyệt / Tự động ẩn comment"
-		reply = "(Hệ thống tự động ẩn hoặc báo cáo để bảo vệ uy tín kênh)"
+		action = "Mô phỏng: đề xuất kiểm duyệt"
+		reply = "Bình luận cần được người vận hành xem xét."
 	} else {
 		intent = "Thắc mắc & Tranh luận (Kích thích Watch Time)"
 		intentCode = "inquiry"
-		action = "Trả lời gợi mở tăng thảo luận"
+		action = "Mô phỏng: gợi ý câu trả lời mở"
 		reply = "Theo bạn thì yếu tố nào quan trọng nhất? Cùng để lại bình luận để mình bàn luận thêm ở video sau nha! 👇"
 	}
 
@@ -628,4 +607,3 @@ func (s *Server) handleAccountDelete(w http.ResponseWriter, r *http.Request) {
 
 	seeOther(w, r, "/accounts?ok="+url.QueryEscape("Đã xóa kênh thành công."))
 }
-

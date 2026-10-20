@@ -1,9 +1,8 @@
-{{define "title"}}Thêm Kênh Mới — AI Creator OS{{end}}
+{{define "title"}}Thêm Kênh Mới{{end}}
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 24px;">
   <div class="webai-header-left">
     <h1>Thêm kênh mới 🚀</h1>
-    <p class="subtitle">Tạo kênh sáng tạo nội dung và gán nhân vật đại diện (Face Lock) cho từng kênh.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/accounts" class="btn btn-secondary">← Quay lại danh sách kênh</a>
@@ -16,9 +15,6 @@
 <div class="card" style="border-radius:14px;padding:24px;margin-bottom:28px;border:1.5px solid var(--border);background:var(--bg2)">
   <div style="margin-bottom:18px">
     <h2 style="margin:0 0 4px;font-size:18px;font-weight:700">✨ Tạo Kênh Sáng Tạo &amp; Gán Nhân Vật Đại Diện</h2>
-    <p class="subtitle" style="margin:0;font-size:13px;color:var(--muted)">
-      Mỗi kênh sẽ có một nhân vật độc quyền để khóa khuôn mặt (Face Lock) trong mọi video. Bạn có thể chọn 1 trong 10 nhân vật mẫu hoặc để trống để hệ thống tự động random.
-    </p>
   </div>
 
   <form method="post" action="/accounts" enctype="multipart/form-data">
@@ -33,42 +29,15 @@
       </div>
     </div>
 
-    <!-- Chọn nhân vật đại diện -->
-    <div style="margin-bottom:18px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-        <label style="font-weight:700;font-size:13px;margin:0">
-          🎭 Chọn Nhân Vật Đại Diện Cho Kênh
-        </label>
-        <span class="hint" style="font-size:12px;color:var(--accent)">
-          🎲 Để trống = Tự động chọn ngẫu nhiên 1 trong 10 nhân vật có sẵn
-        </span>
-      </div>
-
-      <!-- Lưới 10 nhân vật mẫu có sẵn -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(135px, 1fr));gap:10px;margin-bottom:14px">
-        {{range .PresetCharacters}}
-        <label class="preset-char-card" style="display:flex;flex-direction:column;align-items:center;padding:10px;border:1.5px solid var(--border);border-radius:12px;cursor:pointer;background:var(--bg3);transition:all 0.2s ease;text-align:center">
-          <input type="radio" name="preset_model" value="{{.File}}" style="margin-bottom:6px">
-          <img src="{{.URL}}" alt="{{.Title}}" style="width:68px;height:68px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);margin-bottom:6px">
-          <div style="font-weight:700;font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%" title="{{.Title}}">{{.Title}}</div>
-          <div style="font-size:10px;color:var(--muted);line-height:1.2;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="{{.Description}}">{{.Description}}</div>
-        </label>
-        {{end}}
-      </div>
-
-      <!-- Tùy chọn tải ảnh riêng -->
-      <div class="field" style="background:var(--bg3);padding:12px 14px;border-radius:10px;border:1px dashed var(--border)">
-        <label style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px">
-          <span>📁 Hoặc tải lên ảnh chân dung nhân vật riêng của bạn (Tùy chọn):</span>
-        </label>
-        <input type="file" name="model_photo" accept="image/jpeg,image/png,image/webp" style="margin-top:6px;font-size:12px">
-        <span class="hint" style="font-size:11px;display:block;margin-top:4px;color:var(--muted)">Định dạng hỗ trợ: JPG, PNG, WEBP (rõ khuôn mặt góc thẳng, tỷ lệ 1:1 hoặc 9:16).</span>
-      </div>
+    <div class="field" style="margin-bottom:18px">
+      <label style="font-size:12.5px;font-weight:600">Ảnh nhân vật (tùy chọn)</label>
+      <input type="file" name="model_photo" accept="image/jpeg,image/png,image/webp" style="margin-top:6px;font-size:12px">
+      <p class="hint">Chỉ lưu ảnh bạn tải lên. Có thể bổ sung sau.</p>
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:10px">
       <button type="submit" class="btn btn-primary" style="font-weight:700;padding:10px 24px">
-        🚀 Tạo Kênh &amp; Khóa Nhân Vật
+        🚀 Tạo Kênh
       </button>
     </div>
   </form>
@@ -77,7 +46,6 @@
 <!-- KHU VỰC 2: KẾT NỐI MẠNG XÃ HỘI (OAUTH / API) -->
 <div style="margin-bottom:14px">
   <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">🌐 Hoặc Kết Nối Trực Tiếp Kênh Mạng Xã Hội Đã Có</h3>
-  <p class="subtitle" style="margin:0;font-size:12.5px;color:var(--muted)">Liên kết OAuth API với tài khoản YouTube, TikTok, Facebook hoặc Instagram có sẵn của bạn.</p>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">

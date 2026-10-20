@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>{{.ChannelTitle}} · Cửa Hàng &amp; Deal Hot</title>
+  <title>{{.ChannelTitle}} · Sản phẩm</title>
   <meta name="description" content="{{.BioDescription}}">
-  <meta property="og:title" content="{{.ChannelTitle}} · Cửa Hàng &amp; Deal Hot">
+  <meta property="og:title" content="{{.ChannelTitle}} · Sản phẩm">
   <meta property="og:description" content="{{.BioDescription}}">
   <meta property="og:type" content="website">
   <style>
@@ -397,24 +397,19 @@
 <body>
 
   <div class="container">
-    
+
     <!-- Profile Card -->
     <div class="profile-card">
       <div class="avatar-wrapper">
         <div class="avatar-circle">{{.AvatarLetter}}</div>
-        <div class="verified-badge">✓</div>
       </div>
       <h1 class="channel-name">{{.ChannelTitle}}</h1>
       <div class="niche-badge">🎯 {{.Niche}}</div>
       <p class="bio-desc">{{.BioDescription}}</p>
-      
-      <div class="stats-bar">
+
+      {{if .TotalProducts}}<div class="stats-bar">
         <span>🛍️ <b>{{.TotalProducts}}</b> món đồ</span>
-        <span>·</span>
-        <span>⭐ <b>4.9</b> đánh giá</span>
-        <span>·</span>
-        <span>⚡ <b>Deal Hot</b></span>
-      </div>
+      </div>{{end}}
 
       <!-- Social Channels -->
       <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:6px;flex-wrap:wrap">
@@ -439,13 +434,8 @@
       </div>
     </div>
 
-    {{if .IsSample}}
-    <div class="sample-banner">
-      💡 <b>Chế độ xem trước Kệ hàng Bio Link</b><br>
-      Sản phẩm mẫu đang hiển thị. Hãy vào trang quản trị để thêm deal thật của bạn!
-    </div>
-    {{end}}
 
+    {{if .Products}}
     <!-- Search Input -->
     <div>
       <input type="text" id="bio-search" class="search-input" placeholder="🔍 Tìm kiếm món đồ cần mua..." oninput="filterBioProducts()">
@@ -497,6 +487,9 @@
     <div id="bio-no-results" style="display:none;text-align:center;padding:40px 16px;color:var(--text-muted);font-size:13.5px">
       Không tìm thấy sản phẩm phù hợp với từ khóa!
     </div>
+    {{else}}
+    <div class="empty" style="text-align:center;padding:36px 20px">Chưa có sản phẩm trong kệ hàng.</div>
+    {{end}}
 
     <!-- Footer Actions -->
     <div class="footer-actions">
@@ -530,7 +523,7 @@
       cards.forEach(function(card) {
         var title = (card.getAttribute('data-title') || '').toLowerCase();
         var category = card.getAttribute('data-category') || '';
-        
+
         var matchQuery = !query || title.indexOf(query) !== -1;
         var matchCat = !currentCat || category === currentCat;
 

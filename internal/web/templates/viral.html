@@ -1,16 +1,14 @@
-{{define "title"}}Sexy Dance Trending Realtime — AI Creator OS{{end}}
+{{define "title"}}Tạo video dọc{{end}}
 {{define "content"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1 style="display:flex;align-items:center;gap:10px">
-      <span>💃</span> Xưởng Video Viral AI 100% Gốc — Sexy Dance Realtime
+      <span>🎬</span> Tạo video dọc
     </h1>
-    <p class="subtitle">Khởi Tạo Video 1-Chạm · Bắt nhịp vũ đạo hot trend thời gian thực · Tùy Chỉnh Kịch Bản theo người mẫu của bạn · Xuất chuẩn 1080x1920 (9:16).</p>
   </div>
   <div class="webai-header-actions">
-    <a href="/accounts" class="btn btn-secondary btn-sm">📱 Quản Lý Kênh &amp; Nhân Vật</a>
-    <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video Render ↗</a>
+    <a href="/studio/jobs" class="btn btn-secondary btn-sm">Video</a>
   </div>
 </div>
 
@@ -18,85 +16,39 @@
 {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
 <form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form">
-  <div class="studio-workbench-split" style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start">
-    
+  <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
+
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN -->
     <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
-      
+
       <!-- BƯỚC 1: ĐIỆU NHẢY & BÀI HÁT TRENDING REALTIME -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">1</span>
-            Chọn Điệu Nhảy Hoặc Dán Link TikTok Realtime
+            Video tham chiếu tùy chọn
           </h3>
-          <span class="badge badge-live" style="font-size:11px">🔥 Cập nhật Realtime</span>
+          <span class="badge badge-dim" style="font-size:11px">Không phải dữ liệu xu hướng trực tiếp</span>
         </div>
 
         <!-- Cách 1: Dán link TikTok / Douyin trực tiếp -->
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
           <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span>🔗</span> Cách 1: Dán Link Video TikTok / Douyin đang Hot bạn thấy trên mạng:
+            <span>🔗</span> Link video tham chiếu (nếu có)
           </label>
           <div style="display:flex;gap:8px">
             <input type="url" name="tiktok_link" id="viral-tiktok-link" placeholder="https://www.tiktok.com/@user/video/... hoặc link Douyin" style="flex:1;padding:10px;font-size:13px">
             <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard('viral-tiktok-link')" style="font-weight:700">📋 Dán</button>
           </div>
-          <div class="hint" style="font-size:11.5px;margin-top:4px">
-            Hệ thống tự động tải nhạc và vũ đạo từ link này để ghép với nhân vật của bạn.
-          </div>
+
         </div>
 
-        <!-- Cách 2: Chọn từ Radar Hot Dance Trending Douyin & VN -->
+        <!-- No fabricated real-time trend cards -->
         <div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <label style="font-weight:700;font-size:12.5px;margin:0">
-              ⚡ Cách 2: Hoặc chọn nhanh vũ đạo Sexy Dance đang thịnh hành hôm nay:
-            </label>
-          </div>
-          <input type="hidden" name="sample_clip" id="viral-sample-clip" value="dance_trending_01">
-          <input type="hidden" name="topic" id="viral-topic" value="Sexy Dance Trending Hot">
+          <label for="viral-topic" style="font-weight:700;font-size:12.5px;margin-bottom:6px;display:block">Chủ đề video</label>
+          <input type="text" name="topic" id="viral-topic" required placeholder="Ví dụ: 3 mẹo chăm cây trong căn hộ">
+          <input type="hidden" name="sample_clip" id="viral-sample-clip" value="">
           <input type="hidden" name="music_url" id="viral-music-url">
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px">
-            
-            <div class="dance-trend-pill active" onclick="pickDanceTrend(this, 'dance_trending_01', 'Vũ Điệu Lắc Hông Bốc Lửa (Meow Meow Remix)', 'https://assets.mixkit.co/music/preview/mixkit-tech-house-vibes-130.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid #2563eb;transition:all 0.2s">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span class="badge badge-live" style="font-size:9.5px">🔥 Top 1 Douyin</span>
-                <span style="font-size:10.5px;color:var(--muted)">12.5M Views</span>
-              </div>
-              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Vũ Điệu Lắc Hông Bốc Lửa</strong>
-              <div style="font-size:11px;color:var(--muted)">🎵 Meow Meow Douyin Remix</div>
-            </div>
-
-            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_02', 'See Tình Remix Sexy Dance (Vũ Đạo Triệu View)', 'https://assets.mixkit.co/music/preview/mixkit-dance-with-me-3.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span class="badge badge-ok" style="font-size:9.5px">🔥 Top 2 TikTok VN</span>
-                <span style="font-size:10.5px;color:var(--muted)">9.8M Views</span>
-              </div>
-              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">See Tình Remix Sexy Dance</strong>
-              <div style="font-size:11px;color:var(--muted)">🎵 Hoàng Thùy Linh Speed Up</div>
-            </div>
-
-            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_03', 'Flower Jisoo Sexy Dance (Chuyển Động Hoa)', 'https://assets.mixkit.co/music/preview/mixkit-game-level-music-689.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span class="badge badge-info" style="font-size:9.5px">🔥 Top 3 Kpop Trend</span>
-                <span style="font-size:10.5px;color:var(--muted)">8.2M Views</span>
-              </div>
-              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Flower Jisoo Sexy Dance</strong>
-              <div style="font-size:11px;color:var(--muted)">🎵 Flower Remix TikTok</div>
-            </div>
-
-            <div class="dance-trend-pill" onclick="pickDanceTrend(this, 'dance_trending_04', 'Night Club Douyin Sexy Dance (Vũ Đạo Quán Bar)', 'https://assets.mixkit.co/music/preview/mixkit-club-dance-party-441.mp3')" style="cursor:pointer;border-radius:10px;padding:10px 12px;background:var(--bg3);border:2px solid var(--border);transition:all 0.2s">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                <span class="badge badge-dim" style="font-size:9.5px">🔥 Hot Viral Douyin</span>
-                <span style="font-size:10.5px;color:var(--muted)">15.1M Views</span>
-              </div>
-              <strong style="font-size:12.5px;display:block;color:var(--text);margin-bottom:4px">Night Club Douyin Sexy Dance</strong>
-              <div style="font-size:11px;color:var(--muted)">🎵 Night Club Bass Booster</div>
-            </div>
-
-          </div>
+          <p class="hint">Chưa có nguồn xu hướng realtime được kết nối.</p>
         </div>
       </div>
 
@@ -104,7 +56,6 @@
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span>
             Chọn Các Góc Mặt Nhân Vật Nữ Thực Hiện Điệu Nhảy
           </h3>
           <span class="badge badge-ok" style="font-size:11px" id="viral-selected-count">Đã chọn {{len .Viral.AvailableModels}} góc mặt</span>
@@ -155,96 +106,34 @@
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">3</span>
-            Cấu Hình Render &amp; Bấm Máy
+            Render
           </h3>
           <span class="badge badge-live" style="font-size:11px">Chuẩn TikTok / Shorts 9:16</span>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Công nghệ render AI (100% Free Cloud)</label>
+      <label style="font-weight:700;font-size:12.5px">Engine render (nếu đã kết nối)</label>
             <select name="ai_mode" style="padding:10px;font-weight:700">
-              <option value="googleflow" selected>🌊 Google Flow (Veo SD ➔ Auto Remaster 4K UHD)</option>
-              <option value="veo">🎬 Google Veo AI Motion (Chuyển động chân thực)</option>
-              <option value="museai">🎥 Muse AI Studio (Vũ đạo mượt mà không watermark)</option>
+              <option value="auto" selected>Tự chọn engine khả dụng</option>
+              <option value="googleflow">Google Flow</option>
+              <option value="veo3">Veo</option>
+              <option value="museai">Muse AI</option>
             </select>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video (Tối thiểu 60s)</label>
             <select name="duration" style="padding:10px;font-weight:600">
-              <option value="60" selected>⏱️ 60 giây (Chuẩn 1 phút+ Bật kiếm tiền TikTok)</option>
-              <option value="90">⏱️ 90 giây (TikTok &amp; Reels 1.5 phút)</option>
-              <option value="120">⏱️ 120 giây (Bản đầy đủ 2 phút)</option>
+              <option value="60" selected>⏱️ 60 giây</option>
+              <option value="90">⏱️ 90 giây</option>
+              <option value="120">⏱️ 120 giây</option>
             </select>
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #ef4444 0%, #ec4899 100%);box-shadow:0 4px 14px rgba(236,72,153,0.35);border:none;cursor:pointer">
-          ⚡ BẮT ĐẦU TẠO VIDEO SEXY DANCE TRENDING (9:16)
+          Tạo video (9:16)
         </button>
-      </div>
-
-    </div>
-
-    <!-- CỘT PHẢI: LIVE PREVIEW & VIDEO VỪA TẠO -->
-    <div class="studio-sidebar-col" style="position:sticky;top:20px">
-      
-      <!-- Khung Mô Phỏng Phone TikTok 9:16 -->
-      <div class="card" style="border-radius:18px;overflow:hidden;padding:0;border:2px solid var(--border);box-shadow:0 12px 36px rgba(0,0,0,0.25);background:#000">
-        <div style="background:var(--bg3);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <strong style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:6px">
-            <span>📱</span> Live Preview (TikTok 9:16)
-          </strong>
-          <span class="badge badge-live" style="font-size:10px">1080×1920</span>
-        </div>
-
-        <div id="viral-mockup-bg" style="position:relative;width:100%;aspect-ratio:9/16;background:#111;display:flex;flex-direction:column;justify-content:space-between;padding:16px;box-sizing:border-box">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="badge badge-live" style="font-size:9.5px;font-weight:700">● SEXY DANCE TREND</span>
-            <span style="background:rgba(0,0,0,0.6);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:6px;font-weight:700">⏱️ 60s</span>
-          </div>
-
-          <div style="text-align:center;margin:auto 0">
-            <div style="font-size:38px;margin-bottom:8px">💃</div>
-            <div id="viral-mockup-trend-name" style="font-size:16px;font-weight:800;color:#fff;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,0.8);margin-bottom:6px">
-              Vũ Điệu Lắc Hông Bốc Lửa
-            </div>
-            <div id="viral-mockup-music-name" style="color:#e2e8f0;font-size:11.5px;text-shadow:0 1px 4px rgba(0,0,0,0.8)">
-              🎵 Meow Meow Douyin Remix
-            </div>
-            <div style="background:rgba(236,72,153,0.85);color:#fff;font-weight:800;font-size:11.5px;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:10px">
-              🔥 Viral Trend TikTok 9:16
-            </div>
-          </div>
-
-          <div style="background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);border-radius:10px;padding:10px 12px;color:#fff;border:1px solid rgba(255,255,255,0.15)">
-            <div style="font-size:11.5px;font-weight:700;color:#fff;margin-bottom:2px">@kênh_nhan_vat_ai</div>
-            <div style="font-size:10.5px;color:#cbd5e1">Bắt trend vũ đạo cực cuốn cùng nhân vật nữ xinh đẹp #sexydance #trendingtiktok #douyin</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Jobs List -->
-      <div style="margin-top:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <strong style="font-size:13px;color:var(--text)">🎬 Video Đã Render</strong>
-          <a href="/studio/jobs" style="font-size:11.5px;color:var(--accent);font-weight:700">Xem tất cả ↗</a>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          {{range $i, $j := .Viral.Jobs}}
-          {{if lt $i 3}}
-          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:8px 10px;border-radius:8px;font-size:12px">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:65%">
-              <strong>{{$j.Title}}</strong>
-            </div>
-            <span class="badge {{if eq $j.Status "done"}}badge-ok{{else if eq $j.Status "running"}}badge-warn{{else}}badge-err{{end}}" style="font-size:10px">
-              {{if eq $j.Status "done"}}✓ Xong{{else if eq $j.Status "running"}}Đang dựng{{else}}{{$j.Status}}{{end}}
-            </span>
-          </div>
-          {{end}}
-          {{end}}
-        </div>
       </div>
 
     </div>
@@ -289,20 +178,6 @@ function updateViralModelCount() {
   if (el) el.textContent = 'Đã chọn ' + checked + '/' + total + ' góc mặt';
 }
 
-function pickDanceTrend(el, clipID, title, musicURL) {
-  document.querySelectorAll('.dance-trend-pill').forEach(function(p) {
-    p.style.borderColor = 'var(--border)';
-  });
-  el.style.borderColor = '#2563eb';
-  document.getElementById('viral-sample-clip').value = clipID;
-  document.getElementById('viral-topic').value = title;
-  document.getElementById('viral-music-url').value = musicURL;
-
-  var tEl = document.getElementById('viral-mockup-trend-name');
-  if (tEl) tEl.textContent = title;
-  var mEl = document.getElementById('viral-mockup-music-name');
-  if (mEl) mEl.textContent = '🎵 ' + title;
-}
 
 function pasteFromClipboard(targetId) {
   if (navigator.clipboard) {

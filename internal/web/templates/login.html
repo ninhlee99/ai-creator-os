@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Đăng nhập — AI Creator OS</title>
+<title>Đăng nhập</title>
 <link rel="stylesheet" href="/static/style.css?v={{assetVer}}">
 <script>
 (function(){try{var t=localStorage.getItem('theme');if(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)t='dark';if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
@@ -19,7 +19,6 @@
 <div class="login-wrap">
   <div class="form-card login-card">
     <h1 style="margin-top:0">AI Creator OS</h1>
-    <p class="subtitle">Khu vực riêng tư — nhập mật khẩu để tiếp tục.</p>
     {{if .Err}}<p class="login-err">{{.Err}}</p>{{end}}
     <form method="post" action="/login">
       <input type="hidden" name="next" value="{{.Next}}">
@@ -27,7 +26,7 @@
       <input type="password" id="pw" name="password" autocomplete="current-password" autofocus>
       <button type="submit" class="btn btn-primary" style="width:100%">Đăng nhập →</button>
     </form>
-    <p class="hint" style="margin-top:12px">Quên mật khẩu? Dừng app, chạy lại với <code>AICOS_RESET_AUTH=1</code> (hoặc xóa key <code>auth.password_hash</code> bằng sqlite3 trên Mac/Linux), mở app lại rồi đặt mật khẩu mới ở Cài đặt · Hệ thống.</p>
+
   </div>
 </div>
 </body>

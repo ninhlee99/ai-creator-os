@@ -72,12 +72,13 @@ const KindStory = "story"
 // StoryParams mô tả 1 job kể chuyện.
 type StoryParams struct {
 	Topic           string `json:"topic"`
+	CustomText      string `json:"custom_text,omitempty"`
 	Genre           string `json:"genre"`
 	DurationMinutes int    `json:"duration_minutes,omitempty"` // 30, 45, 60 phút
-	Words           int    `json:"words"`                       // độ dài truyện mục tiêu (từ)
-	Scenes          int    `json:"scenes"`                      // số cảnh mục tiêu (3–24)
-	MusicOn         bool   `json:"music_on"`                    // lồng nhạc nền
-	MusicPath       string `json:"music_path"`                  // file nhạc local ("" = không nhạc)
+	Words           int    `json:"words"`                      // độ dài truyện mục tiêu (từ)
+	Scenes          int    `json:"scenes"`                     // số cảnh mục tiêu (3–24)
+	MusicOn         bool   `json:"music_on"`                   // lồng nhạc nền
+	MusicPath       string `json:"music_path"`                 // file nhạc local ("" = không nhạc)
 	AccountID       int64  `json:"account_id,omitempty"`
 	// Voice: giọng đọc ("default", "male", "female"...). Đợt AC: user chọn ở
 	// form tạo truyện thay vì hardcode.
@@ -115,13 +116,13 @@ type AudioStoryPlot struct {
 	GenreLabel      string `json:"genre_label"`
 	DurationMinutes int    `json:"duration_minutes"` // 30, 45, 60 phút
 	WordsCount      int    `json:"words_count"`      // 4.500 - 9.000 từ
-	Hook3s          string `json:"hook_3s"`           // Mở màn giật gân trong 3 giây
+	Hook3s          string `json:"hook_3s"`          // Mở màn giật gân trong 3 giây
 	Logline         string `json:"logline"`
-	Act1            string `json:"act_1"`             // Hồi 1: Khởi nguồn & Bí mật
-	Act2            string `json:"act_2"`             // Hồi 2: Dấn thân & Xung đột
-	Act3            string `json:"act_3"`             // Hồi 3: Cao trào kịch tính
-	Act4            string `json:"act_4"`             // Hồi 4: Bước ngoặt & Cú twist
-	Act5            string `json:"act_5"`             // Hồi 5: Lời giải & Dư âm sâu sắc
+	Act1            string `json:"act_1"` // Hồi 1: Khởi nguồn & Bí mật
+	Act2            string `json:"act_2"` // Hồi 2: Dấn thân & Xung đột
+	Act3            string `json:"act_3"` // Hồi 3: Cao trào kịch tính
+	Act4            string `json:"act_4"` // Hồi 4: Bước ngoặt & Cú twist
+	Act5            string `json:"act_5"` // Hồi 5: Lời giải & Dư âm sâu sắc
 	Message         string `json:"message"`
 	SuggestedVoice  string `json:"suggested_voice"`
 	Soundscape      string `json:"soundscape"`
@@ -658,46 +659,46 @@ func defaultDramaticScenes(doc *storyDoc) []storyScene {
 	if strings.Contains(titleLower, "tình yêu") || strings.Contains(titleLower, "hẹn ước") || strings.Contains(titleLower, "thanh xuân") || strings.Contains(titleLower, "ngôn tình") || strings.Contains(titleLower, "học đường") {
 		return []storyScene{
 			{
-				Text: "Cơn mưa rào đầu hạ bất chợt đổ xuống sân trường cấp ba rực rỡ hoa phượng đỏ. Tôi và cậu ấy cùng đứng trú mưa dưới mái hiên dãy hành lang quen thuộc.",
+				Text:        "Cơn mưa rào đầu hạ bất chợt đổ xuống sân trường cấp ba rực rỡ hoa phượng đỏ. Tôi và cậu ấy cùng đứng trú mưa dưới mái hiên dãy hành lang quen thuộc.",
 				ImagePrompt: "Breathtaking Makoto Shinkai anime style vertical illustration 9:16, vibrant high school campus hallway in summer rain, a handsome anime boy with dark hair in crisp white school uniform holding a clear umbrella, standing next to a beautiful cute anime girl with long silky hair blushing softly, sparkling rain droplets falling, lush green trees and pink blossoms in background, emotional nostalgic anime masterpiece, vibrant colors, 8k",
 			},
 			{
-				Text: "Cậu ấy khẽ nghiêng chiếc ô về phía tôi, bờ vai ướt đẫm nước mưa nhưng nụ cười vẫn ấm áp như ánh mặt trời ban mai.",
+				Text:        "Cậu ấy khẽ nghiêng chiếc ô về phía tôi, bờ vai ướt đẫm nước mưa nhưng nụ cười vẫn ấm áp như ánh mặt trời ban mai.",
 				ImagePrompt: "Makoto Shinkai anime style vertical 9:16, cinematic close-up of the handsome anime boy gently tilting his umbrella over the cute anime girl, gentle affectionate smile on his face, rain mist glowing in golden ambient light, high school romance aesthetic, hyper-detailed anime art",
 			},
 			{
-				Text: "Những năm tháng thanh xuân cùng nhau học bài, cùng đạp xe qua từng con phố rợp bóng cây xanh đã khắc sâu vào ký ức không thể nào quên.",
+				Text:        "Những năm tháng thanh xuân cùng nhau học bài, cùng đạp xe qua từng con phố rợp bóng cây xanh đã khắc sâu vào ký ức không thể nào quên.",
 				ImagePrompt: "Stunning anime style vertical 9:16, late afternoon golden hour sunset, the anime boy riding a bicycle with the cute anime girl sitting in the back holding his waist, joyful smiles, wind blowing through hair, scenic riverside road lined with blossoming trees, beautiful anime aesthetic",
 			},
 			{
-				Text: "Ngày bế giảng chia tay, dưới tán bằng lăng tím ngát, cậu ấy trao cho tôi lá thư hẹn ước và lời tỏ tình ngọt ngào nhất cuộc đời.",
+				Text:        "Ngày bế giảng chia tay, dưới tán bằng lăng tím ngát, cậu ấy trao cho tôi lá thư hẹn ước và lời tỏ tình ngọt ngào nhất cuộc đời.",
 				ImagePrompt: "Emotional Makoto Shinkai anime climax scene vertical 9:16, graduation day under blooming purple royal poinciana trees, sunset sky with pastel clouds, the anime boy confessing his love to the anime girl, tears of joy, holding hands, romantic anime masterpiece, 8k",
 			},
 		}
 	}
 	return []storyScene{
 		{
-			Text: "Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư xa hoa.",
+			Text:        "Tôi và anh ký vào bản hợp đồng hôn nhân thời hạn hai năm trong một buổi chiều mưa tầm tã tại văn phòng luật sư xa hoa.",
 			ImagePrompt: "Cinematic vertical portrait illustration 9:16 of a luxurious law office interior, rain pouring outside the floor-to-ceiling windows, a young beautiful Vietnamese woman in elegant white blazer and a handsome businessman in dark navy suit signing legal documents on a mahogany desk, dramatic moody lighting, 8k masterpiece",
 		},
 		{
-			Text: "Với mọi người ngoài kia, anh là người chồng hoàn hảo, nhưng đằng sau cánh cửa căn penthouse xa hoa, chúng tôi chỉ là hai người xa lạ cùng diễn một vở kịch.",
+			Text:        "Với mọi người ngoài kia, anh là người chồng hoàn hảo, nhưng đằng sau cánh cửa căn penthouse xa hoa, chúng tôi chỉ là hai người xa lạ cùng diễn một vở kịch.",
 			ImagePrompt: "Modern high-end penthouse living room overlooking city skyline at dusk, vertical 9:16 composition, cold emotional distance between the beautiful Vietnamese woman and handsome businessman standing apart, warm ambient interior light contrasting cold twilight outside",
 		},
 		{
-			Text: "Thời gian trôi qua, những cử chỉ chăm sóc thầm lặng và ánh mắt ấm áp của anh bắt đầu khiến trái tim tôi rung động.",
+			Text:        "Thời gian trôi qua, những cử chỉ chăm sóc thầm lặng và ánh mắt ấm áp của anh bắt đầu khiến trái tim tôi rung động.",
 			ImagePrompt: "A cozy modern kitchen at night, vertical 9:16 framing, soft warm lamplight, the same handsome Vietnamese businessman gently offering a warm cup of tea to the pensive beautiful woman, tender and emotional atmosphere",
 		},
 		{
-			Text: "Một đêm nọ, tôi phát hiện căn phòng bí mật ở tầng áp mái chứa toàn bộ sự thật về vụ tai nạn năm xưa và sự bảo vệ âm thầm suốt mười năm qua của anh.",
+			Text:        "Một đêm nọ, tôi phát hiện căn phòng bí mật ở tầng áp mái chứa toàn bộ sự thật về vụ tai nạn năm xưa và sự bảo vệ âm thầm suốt mười năm qua của anh.",
 			ImagePrompt: "A secret attic room lit by a desk lamp, vertical 9:16 framing, old photo albums and archived documents on a wooden table, the same woman discovering heartfelt secrets in astonishment and tearful eyes, dramatic cinematic composition",
 		},
 		{
-			Text: "Kẻ thù tìm đến đe dọa, giữa lằn ranh sinh tử trong đêm mưa bão, anh đã lao ra lấy thân mình che chở cho tôi.",
+			Text:        "Kẻ thù tìm đến đe dọa, giữa lằn ranh sinh tử trong đêm mưa bão, anh đã lao ra lấy thân mình che chở cho tôi.",
 			ImagePrompt: "Dramatic intense confrontation under pouring heavy rain at night on an empty city street, vertical 9:16 composition, headlights casting sharp shadows, the handsome man bravely shielding the woman, high tension cinematic drama",
 		},
 		{
-			Text: "Anh nắm chặt tay tôi và nói: Bản hợp đồng đã kết thúc từ lâu, nhưng tình yêu của anh dành cho em là mãi mãi.",
+			Text:        "Anh nắm chặt tay tôi và nói: Bản hợp đồng đã kết thúc từ lâu, nhưng tình yêu của anh dành cho em là mãi mãi.",
 			ImagePrompt: "Heartfelt romantic emotional climax in the aftermath of rain, vertical 9:16 framing, wet asphalt reflecting streetlights, the couple embracing closely with tearful loving expressions, breathtaking cinematic lighting",
 		},
 	}
@@ -713,6 +714,17 @@ func generateStorySilenceWav(ctx context.Context, dst string, durationSec float6
 
 // writeStory dùng LLM viết truyện ngôi thứ nhất (tái dùng story.txt), có cơ chế phục hồi tự động.
 func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, error) {
+	custom := strings.TrimSpace(p.CustomText)
+	if custom != "" {
+		if len([]rune(custom)) > 1_000_000 {
+			return nil, fmt.Errorf("nội dung truyện vượt giới hạn 1 MB")
+		}
+		title := strings.TrimSpace(p.Topic)
+		if title == "" {
+			title = "Truyện tự viết"
+		}
+		return &storyDoc{Title: title, Text: custom}, nil
+	}
 	storyWords := p.Words
 	if storyWords <= 0 {
 		storyWords = 1500
@@ -723,7 +735,7 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 	if s.llm != nil {
 		prompt, err := directorPrompt("story.txt", promptData{
 			Topic: p.Topic, Genre: p.Genre, StoryWords: storyWords,
-			Orient: "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\") từ đầu đến cuối, tình tiết lôi cuốn, cao trào cảm xúc",
+			Orient:  "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\") từ đầu đến cuối, tình tiết lôi cuốn, cao trào cảm xúc",
 			Seconds: storyWords / 3,
 		})
 		if err == nil {
@@ -748,6 +760,9 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 
 // splitScenes chia truyện thành các cảnh (đoạn văn + prompt ảnh).
 func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) ([]storyScene, error) {
+	if strings.TrimSpace(p.CustomText) != "" {
+		return splitCustomStoryScenes(doc.Text, p.Scenes), nil
+	}
 	if s.llm != nil {
 		visualStyle := "Masterclass cinematic digital painting, highly detailed 8k, photorealistic, Vietnamese context if applicable, no text, no watermark."
 		if strings.Contains(strings.ToLower(p.Genre), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "ngôn tình") || strings.Contains(strings.ToLower(p.Topic), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "anime") {
@@ -797,6 +812,41 @@ Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
 		}
 	}
 	return defaultDramaticScenes(doc), nil
+}
+
+func splitCustomStoryScenes(text string, requested int) []storyScene {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return nil
+	}
+	count := requested
+	if count < 3 {
+		count = 6
+	}
+	if count > 12 {
+		count = 12
+	}
+	if count > len(words) {
+		count = len(words)
+	}
+	if count < 1 {
+		count = 1
+	}
+	scenes := make([]storyScene, 0, count)
+	for i := 0; i < count; i++ {
+		start := i * len(words) / count
+		end := (i + 1) * len(words) / count
+		part := strings.Join(words[start:end], " ")
+		promptText := part
+		if len([]rune(promptText)) > 500 {
+			promptText = string([]rune(promptText)[:500])
+		}
+		scenes = append(scenes, storyScene{
+			Text:        part,
+			ImagePrompt: fmt.Sprintf("Create one cinematic illustration that literally depicts this story passage: %s. Keep characters consistent, Vietnamese context where relevant, no text, no watermark.", promptText),
+		})
+	}
+	return scenes
 }
 
 // concatWAVs nối các file wav thành 1 track audio m4a (aac).
@@ -920,8 +970,12 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 	}
 
-	// 1. Viết truyện.
-	s.appendLog(id, "Nhà văn đang viết truyện…")
+	// 1. Use supplied manuscript or ask the writer model for one.
+	if strings.TrimSpace(p.CustomText) != "" {
+		s.appendLog(id, "Dùng nội dung truyện đã cung cấp…")
+	} else {
+		s.appendLog(id, "Nhà văn đang viết truyện…")
+	}
 	doc, err := s.writeStory(ctx, p)
 	if err != nil {
 		fail(err)

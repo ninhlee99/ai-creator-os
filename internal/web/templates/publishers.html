@@ -1,13 +1,11 @@
-{{define "title"}}Đa nền tảng — AI Creator OS{{end}}
+{{define "title"}}Đa nền tảng{{end}}
 {{define "content"}}
 
 <!-- Pipeline Navigation Stepper -->
-{{template "creation-stepper" dict "Step" "publish"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Cổng Kết Nối Đa Nền Tảng (OAuth Matrix)</h1>
-    <p class="subtitle">Bảng tổng hợp trạng thái Token &amp; Xác thực OAuth cho toàn bộ mạng lưới kênh.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh mới</a>
@@ -21,8 +19,8 @@
     <div style="display:flex;align-items:center;gap:12px">
       <span style="font-size:28px">📤</span>
       <div>
-        <strong style="font-size:15px;color:var(--text);display:block">Sẵn sàng xuất bản video: {{if .PendingTitle}}{{.PendingTitle}}{{else}}Video AI Hoàn Chỉnh{{end}}</strong>
-        <span style="font-size:12px;color:var(--muted)">Đường dẫn file: <code>{{.PendingVideo}}</code> · Chọn kênh có Token sẵn sàng bên dưới để đăng tải tức thì.</span>
+        <strong style="font-size:15px;color:var(--text);display:block">Video đã chọn: {{if .PendingTitle}}{{.PendingTitle}}{{else}}Video{{end}}</strong>
+        <span style="font-size:12px;color:var(--muted)">Đường dẫn file: <code>{{.PendingVideo}}</code> · Kiểm tra quyền và trạng thái kênh trước khi gửi.</span>
       </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -109,7 +107,7 @@
 <div class="empty-state" style="padding: 32px; text-align: center; background: var(--bg2); border-radius: 12px; border: 1px dashed var(--border); margin-top: 12px;">
   <div class="es-icon" style="font-size: 32px; margin-bottom: 8px;">📱</div>
   <h3 style="margin: 0 0 6px; font-size: 16px;">Chưa có kênh nào trong hệ thống</h3>
-  <p class="hint" style="margin: 0 0 16px; font-size: 13px;">Hãy tạo tài khoản Creator đầu tiên để kết nối và tự động xuất bản video lên các nền tảng mạng xã hội.</p>
+
   <a href="/accounts/new" class="btn btn-primary">+ Tạo kênh mới ngay</a>
 </div>
 {{end}}
@@ -117,7 +115,7 @@
 {{if .AnyTiktokClient}}
 <div class="form-card" style="margin-top:24px">
   <h3 style="margin-top:0;font-size:15px">🔧 Chuyển tiếp URL Callback thủ công (TikTok Relay)</h3>
-  <p class="hint">Dành cho trường hợp máy chủ/VPS dùng callback chuyển tiếp hoặc môi trường mạng tùy biến:</p>
+
   <form method="post" action="/publishers/tiktok/connect" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
     <select name="username" style="width:160px">
       {{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}

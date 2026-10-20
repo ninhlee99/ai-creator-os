@@ -122,7 +122,7 @@ ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
       <div class="field field-span">
         <label>Chương trình chạy trên máy</label>
         <input type="hidden" name="apikey" value="">
-        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem trang Model local. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
+
       </div>
       {{else}}
       <div class="field">
@@ -151,6 +151,3 @@ ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
 </form>
 </div>
 {{end}}
-
-{{/* Unified Creation Pipeline Stepper (Hidden to keep UI clean and uncluttered) */}}
-{{define "creation-stepper"}}{{end}}

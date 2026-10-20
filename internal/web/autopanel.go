@@ -28,8 +28,8 @@ var autoSwitchDefs = []struct {
 	{"autopilot_enabled", "Video affiliate tự động", "Tự dựng video từ sản phẩm trong kho theo lịch", "/products", true},
 	{automation.KeyATHunterEnabled, "Săn sản phẩm Accesstrade", "Mỗi ngày tìm sản phẩm hoa hồng tốt (cần mã Accesstrade)", "/products", true},
 	{"viral.auto_produce_enabled", "Video Viral Xu Hướng 100% Gốc", "Tự động bắt trend và sản xuất video viral ngắn 9:16 mỗi ngày", "/viral", true},
-	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Mỗi ngày 1 truyện từ hàng đợi chủ đề", "/stories", true},
-	{automation.KeyStoryAutoPublish, "Tự đăng truyện lên YouTube (riêng tư)", "Đăng private để bạn duyệt trước khi công khai", "/stories", true},
+	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Chỉ chạy khi đã bật và có chủ đề cấu hình", "/stories", false},
+	{automation.KeyStoryAutoPublish, "Tự đăng truyện lên YouTube (riêng tư)", "Đăng private để bạn duyệt trước khi công khai", "/stories", false},
 }
 
 func (s *Server) autoSwitches() []autoSwitch {

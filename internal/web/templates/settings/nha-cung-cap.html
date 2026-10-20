@@ -1,7 +1,6 @@
-{{define "title"}}Cài đặt · Nhà cung cấp — AI Creator OS{{end}}
+{{define "title"}}Cài đặt · Nhà cung cấp{{end}}
 {{define "content"}}
 <h1>Cài đặt · Nhà cung cấp</h1>
-<p class="subtitle">AI dùng nhà cung cấp nào trước, mã nào còn dùng được.</p>
 {{template "settings-nav" .}}
 
 <nav class="tabs">
@@ -10,11 +9,9 @@
 </nav>
 
 <h2 id="provider-tts">Thứ tự nhà cung cấp giọng đọc (TTS)</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 {{template "chain-card" (dict "Chain" .TTSChain "Keys" .TTSKeys "ChainName" "tts" "SaveLabel" "Lưu cấu hình TTS")}}
 
 <h2 id="provider-llm">Thứ tự nhà cung cấp viết nội dung (LLM)</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. Cấu hình lưu vào database và áp dụng <strong>ngay lập tức</strong>, không cần restart.</p>
 {{template "chain-card" (dict "Chain" .LLMChain "Keys" .LLMKeys "ChainName" "llm" "SaveLabel" "Lưu cấu hình LLM")}}
 
 

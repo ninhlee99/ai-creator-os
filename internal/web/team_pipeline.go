@@ -114,7 +114,7 @@ func (s *Server) affiliateTeam() pipeTeam {
 		}
 		stages = append(stages, pipeStage{Key: "hunter", Label: "Hunter", Icon: "🔎", Status: st,
 			Detail: formatCount("sản phẩm", n) + " · " + formatCount("chiến dịch", int64(len(camps))),
-			Link: "/products", RoleDesc: "Cào & săn deal sản phẩm hoa hồng cao từ sàn"})
+			Link:   "/products", RoleDesc: "Cào & săn deal sản phẩm hoa hồng cao từ sàn"})
 	}
 	// Producer: render video affiliate.
 	stages = append(stages, jobStage("Producer", "🎬", s.latestJobByKind("affiliate"), "/studio#tab-ad-creative", "AI viết kịch bản, 4 Hook 3s & dựng video quảng cáo"))
@@ -136,13 +136,13 @@ func (s *Server) affiliateTeam() pipeTeam {
 		}
 		stages = append(stages, pipeStage{Key: "analyst", Label: "Analyst", Icon: "📊", Status: st,
 			Detail: formatCount("đơn duyệt", os_.ApprovedCount) + " · " + formatCount("đơn chờ", os_.PendingCount),
-			Link: "/products?tab=orders", RoleDesc: "Đối soát đơn hàng, hoa hồng và doanh thu"})
+			Link:   "/products?tab=orders", RoleDesc: "Đối soát đơn hàng, hoa hồng và doanh thu"})
 	}
 	return pipeTeam{
 		Key:         "affiliate",
 		Name:        "Affiliate",
 		Icon:        "🛒",
-		Description: "Tự động săn sản phẩm hot, tạo video bán hàng 9:16 và đăng kênh TikTok Shop / YouTube Shorts.",
+		Description: "Theo dõi quy trình affiliate dựa trên sản phẩm, kênh và dịch vụ đã cấu hình.",
 		ActionLink:  "/studio",
 		ActionLabel: "🎬 Dựng video mới",
 		Stages:      stages,
@@ -152,18 +152,18 @@ func (s *Server) affiliateTeam() pipeTeam {
 func (s *Server) viralTeam() pipeTeam {
 	latest := s.latestJobByKind("viral")
 	stages := []pipeStage{
-		{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/viral", RoleDesc: "Săn xu hướng nóng & chủ đề viral (Kworb VN, Douyin Concepts)"},
+		{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/viral", RoleDesc: "Nhận chủ đề và video tham chiếu do người dùng cung cấp"},
 		{Key: "director", Label: "Director", Icon: "🎬", Link: "/viral", RoleDesc: "Lên kịch bản đạo diễn Hook 3s + Story + CTA"},
-		{Key: "designer", Label: "Visual AI", Icon: "🎨", Link: "/viral", RoleDesc: "Sinh chuỗi hình ảnh 9:16 bản quyền 100% bằng Gemini Imagen"},
+		{Key: "designer", Label: "Visual AI", Icon: "🎨", Link: "/viral", RoleDesc: "Tạo hình ảnh theo engine đã cấu hình"},
 		{Key: "voice", Label: "Voice AI", Icon: "🎙️", Link: "/viral", RoleDesc: "Lồng tiếng cảm xúc khớp kịch bản (VieNeu / Gemini TTS)"},
 		{Key: "qc", Label: "QC", Icon: "🛡️", Link: "/viral", RoleDesc: "Kiểm duyệt Red-lines, âm lượng và chuẩn dọc 9:16"},
-		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng tải video 9:16 lên TikTok, Shorts và Reels"},
+		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng video lên kênh đã kết nối"},
 	}
 	cur := viralStageFor(latest)
 	for i := range stages {
 		if latest == nil {
-			stages[i].Status = tmWaiting
-			stages[i].Detail = "sẵn sàng"
+			stages[i].Status = tmIdle
+			stages[i].Detail = "chưa có tác vụ"
 			continue
 		}
 		switch {
@@ -190,7 +190,7 @@ func (s *Server) viralTeam() pipeTeam {
 		Key:         "viral",
 		Name:        "Video Viral 100% Gốc",
 		Icon:        "🔥",
-		Description: "Săn xu hướng nóng, tự động sáng tạo video ngắn 9:16 độc quyền, không copy — Zero platform risk.",
+		Description: "Theo dõi tác vụ tạo video dọc dựa trên chủ đề và tài nguyên đã cung cấp.",
 		ActionLink:  "/viral",
 		ActionLabel: "🔥 Xưởng Video Viral",
 		Stages:      stages,
@@ -306,23 +306,8 @@ func (s *Server) handleTeamPipelines(w http.ResponseWriter, r *http.Request) {
 		s.viralTeam(),
 		s.storyTeam(),
 	}
-	agents := s.listAgents()
-	departments := s.listDepartments(agents)
-	activeDept := r.URL.Query().Get("dept")
-	if activeDept == "" && len(departments) > 0 {
-		activeDept = departments[0].ID
-	}
-	viewMode := r.URL.Query().Get("view")
-	if viewMode == "" {
-		viewMode = "departments"
-	}
-
 	s.render(w, "team", s.ctx(
 		"Pipelines", pipelines,
-		"Agents", agents,
-		"Departments", departments,
-		"ActiveDept", activeDept,
-		"ViewMode", viewMode,
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
 	))

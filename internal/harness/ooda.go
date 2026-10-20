@@ -15,8 +15,8 @@ import (
 type AutonomyLevel int
 
 const (
-	AutonomyAssisted       AutonomyLevel = 1 // Cấp 1: Phân tích & Đề xuất, chờ con người duyệt (Human Approval Required)
-	AutonomySemiAutonomous AutonomyLevel = 2 // Cấp 2: Tự động sản xuất nháp, duyệt trước khi xuất bản (Draft-first)
+	AutonomyAssisted        AutonomyLevel = 1 // Cấp 1: Phân tích & Đề xuất, chờ con người duyệt (Human Approval Required)
+	AutonomySemiAutonomous  AutonomyLevel = 2 // Cấp 2: Tự động sản xuất nháp, duyệt trước khi xuất bản (Draft-first)
 	AutonomyFullyAutonomous AutonomyLevel = 3 // Cấp 3: Tự hành 100% (Fully Autonomous - Tự nghiên cứu, sản xuất, đăng tải, tối ưu)
 )
 
@@ -47,15 +47,15 @@ type OODAPerception struct {
 
 // OODADecisionTask là một hành động cụ thể do Agent quyết định thực thi.
 type OODADecisionTask struct {
-	ID          string `json:"id"`
-	ActionType  string `json:"action_type"` // "produce_viral", "produce_affiliate", "replan_channel", "advance_stage"
-	TargetUser  string `json:"target_user"`
-	Niche       string `json:"niche"`
-	Topic       string `json:"topic"`
-	Reasoning   string `json:"reasoning"` // Lý do AI đưa ra quyết định này
-	Priority    int    `json:"priority"`  // 1 (cao nhất) -> 5
-	Status      string `json:"status"`    // "pending", "executing", "completed", "failed"
-	ResultID    string `json:"result_id,omitempty"`
+	ID         string `json:"id"`
+	ActionType string `json:"action_type"` // "produce_viral", "produce_affiliate", "replan_channel", "advance_stage"
+	TargetUser string `json:"target_user"`
+	Niche      string `json:"niche"`
+	Topic      string `json:"topic"`
+	Reasoning  string `json:"reasoning"` // Lý do AI đưa ra quyết định này
+	Priority   int    `json:"priority"`  // 1 (cao nhất) -> 5
+	Status     string `json:"status"`    // "pending", "executing", "completed", "failed"
+	ResultID   string `json:"result_id,omitempty"`
 }
 
 // OODACycleResult gói gọn kết quả của 1 chu kỳ nhận thức và hành động tự chủ.
@@ -92,9 +92,7 @@ func (e *OODAEngine) Observe(ctx context.Context, accounts []*network.Account, a
 		TotalChannels:   len(accounts),
 		ActiveJobsCount: activeJobs,
 		DoneJobsCount:   doneJobs,
-		TopTrendingSong: "Trending Beat Kworb VN #1",
-		HighROIProduct:  "Serum / Nồi chiên không dầu (Hoa hồng 18-22%)",
-		SystemHealth:    "optimal",
+		SystemHealth:    "unknown",
 	}
 
 	if activeJobs > 5 {
@@ -105,10 +103,8 @@ func (e *OODAEngine) Observe(ctx context.Context, accounts []*network.Account, a
 		if a == nil {
 			continue
 		}
-		status := "normal"
-		if a.Followers > 10000 {
-			status = "thriving"
-		} else if a.Status == "paused" || a.Status == "stalled" {
+		status := "unknown"
+		if a.Status == "paused" || a.Status == "stalled" || a.Status == "penalized" {
 			status = "stalled"
 		}
 
@@ -120,12 +116,12 @@ func (e *OODAEngine) Observe(ctx context.Context, accounts []*network.Account, a
 		p.Channels = append(p.Channels, ChannelState{
 			AccountID:    a.ID,
 			Username:     a.Username,
-			Platform:     "tiktok/youtube",
+			Platform:     "unknown",
 			Followers:    a.Followers,
 			Stage:        a.Status,
 			BrandNiche:   niche,
-			VideosLast7D: 4,
-			AvgViews:     1500,
+			VideosLast7D: 0,
+			AvgViews:     0,
 			HealthStatus: status,
 		})
 	}
@@ -157,7 +153,7 @@ func (e *OODAEngine) OrientAndDecide(ctx context.Context, obs OODAPerception, le
 		}
 
 		// Kênh cần mở rộng hoặc khởi động
-		if ch.HealthStatus == "normal" || ch.HealthStatus == "thriving" {
+		if (ch.HealthStatus == "normal" || ch.HealthStatus == "thriving") && ch.VideosLast7D > 0 && ch.AvgViews > 0 {
 			tasks = append(tasks, OODADecisionTask{
 				ID:         taskID,
 				ActionType: "produce_viral",
@@ -267,9 +263,8 @@ func (e *OODAEngine) ExecuteCycle(
 					t.Status = "failed"
 				}
 			case "produce_affiliate":
-				// Đánh dấu nhiệm vụ chiến lược
-				t.Status = "executing"
-				executedCount++
+				t.Status = "failed"
+				t.Reasoning = "Luồng tạo job Affiliate chưa được nối; không ghi nhận là đã thực thi."
 			}
 		}
 	}

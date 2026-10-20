@@ -99,234 +99,48 @@ type viralView struct {
 	PresetTopicGroups  []studio.TopicVideoGroup
 }
 
-// defaultViralClips danh sách các video vũ đạo triệu view chuẩn 9:16 từ TikTok Việt Nam và Douyin Trung Quốc.
-var defaultViralClips = []sampleClipView{
-	{
-		ID:          "clip_vn_phuonghoa",
-		Title:       "🇻🇳 TikTok VN: Đào Lê Phương Hoa - Sexy Dance Bắt Trend",
-		Filename:    "clip_vn_phuonghoa.mp4",
-		URL:         "/clips/viral/clip_vn_phuonghoa.mp4",
-		Duration:    "30s (1080x1920 HD)",
-		Category:    "dance",
-		Platform:    "TikTok VN",
-		Region:      "VN",
-		Description: "Vũ đạo nóng bỏng triệu view từ Nữ hoàng vũ đạo TikTok Việt Nam (@hoaa.hanassii), thần thái quyến rũ, chuyển động 9:16 sắc nét.",
-	},
-	{
-		ID:          "clip_vn_cac_dance",
-		Title:       "🇻🇳 TikTok VN: C.A.C Dance Crew - Vũ Đạo Bắt Trend",
-		Filename:    "clip_vn_cac_dance.mp4",
-		URL:         "/clips/viral/clip_vn_cac_dance.mp4",
-		Duration:    "15s (1080x1920 HD)",
-		Category:    "dance",
-		Platform:    "TikTok VN",
-		Region:      "VN",
-		Description: "Vũ đạo nhóm sôi động bắt trend TikTok Việt Nam, nhịp điệu cuốn hút, góc quay hiện đại chuẩn 9:16.",
-	},
-	{
-		ID:          "clip_cn_douyin_hot",
-		Title:       "🇨🇳 Douyin Trung Quốc: 抖音卡点热舞 (Douyin Hot Dance)",
-		Filename:    "clip_cn_douyin_hot.mp4",
-		URL:         "/clips/viral/clip_cn_douyin_hot.mp4",
-		Duration:    "20s (1080x1920 HD)",
-		Category:    "dance",
-		Platform:    "Douyin CN",
-		Region:      "CN",
-		Description: "Điệu nhảy bắt beat cực chuẩn sốt xình xịch Douyin Trung Quốc, visual đỉnh cao, chuyển động toàn thân cuốn hút.",
-	},
-	{
-		ID:          "clip_cn_douyin_kpop",
-		Title:       "🇨🇳 Douyin Trung Quốc: 抖音女团元气齐舞 (Douyin Idol Dance)",
-		Filename:    "clip_cn_douyin_kpop.mp4",
-		URL:         "/clips/viral/clip_cn_douyin_kpop.mp4",
-		Duration:    "15s (1080x1920 HD)",
-		Category:    "dance",
-		Platform:    "Douyin CN",
-		Region:      "CN",
-		Description: "Vũ đạo phong cách thần tượng Douyin năng lượng bùng nổ, màu sắc rực rỡ, trang phục bắt mắt.",
-	},
-	{
-		ID:          "clip_03_sexy_dance_60s",
-		Title:       "🇻🇳 TikTok VN: Vũ Đạo Phòng Ngủ 30s Chân Thực",
-		Filename:    "clip_03_sexy_dance_60s.mp4",
-		URL:         "/clips/viral/clip_03_sexy_dance_60s.mp4",
-		Duration:    "30s (1080x1920 HD)",
-		Category:    "dance",
-		Platform:    "TikTok VN",
-		Region:      "VN",
-		Description: "Video tự quay phòng ngủ chân thực 100%, không sân khấu, không logo, chuyển động toàn thân mượt mà.",
-	},
-}
-
-// Các mẫu xu hướng và hook tâm lý học có tỷ lệ giữ chân cao (Curiosity & Shock hooks).
-var defaultViralTrends = []viralTrend{
-	{
-		Title:          "Vũ Điệu Triệu View: Hot Dance Sexy Trend TikTok",
-		Genre:          "dance",
-		GenreVN:        "Vũ đạo & Bắt Trend",
-		Hook3s:         "Điệu nhảy đang gây sốt toàn cõi mạng 24h qua bạn đã thử chưa?",
-		FormatTag:      "Dance Trend Triệu View",
-		SampleClip:     "clip_03_sexy_dance_60s",
-		SampleVideoURL: "/clips/viral/clip_03_sexy_dance_60s.mp4",
-		SampleThumbURL: "/clips/viral/test_thumb.jpg",
-	},
-	{
-		Title:          "Vũ đạo đường phố đôi năng động 45s",
-		Genre:          "dance",
-		GenreVN:        "Vũ đạo đường phố",
-		Hook3s:         "Nhịp điệu đường phố bắt trend, chuyển động toàn thân mượt mà...",
-		FormatTag:      "Street Dance Duo",
-		SampleClip:     "clip_01_dance_duo",
-		SampleVideoURL: "/clips/viral/clip_01_dance_duo.mp4",
-		SampleThumbURL: "/clips/viral/test_ny_thumb.jpg",
-	},
-	{
-		Title:          "Nhảy vũ đoàn hiện đại K-Pop 60s",
-		Genre:          "dance",
-		GenreVN:        "Nhảy K-Pop thần tượng",
-		Hook3s:         "Vũ đạo nhóm đồng đều, sôi động, phong cách idol năng lượng cao...",
-		FormatTag:      "K-Pop Idol Dance",
-		SampleClip:     "clip_02_dance_crew",
-		SampleVideoURL: "/clips/viral/clip_02_dance_crew.mp4",
-		SampleThumbURL: "/clips/viral/test_thumb.jpg",
-	},
-	{
-		Title:          "Sự thật rúng động về AI mà 99% mọi người chưa từng nghe",
-		Genre:          "mystery",
-		GenreVN:        "Bí ẩn & Giật gân",
-		Hook3s:         "Dừng lại 3 giây! Nếu bạn nghĩ AI chỉ là chatbot, bạn đang bỏ lỡ điều này...",
-		FormatTag:      "Hook gây tò mò cao",
-		SampleClip:     "clip_01_dance_duo",
-		SampleVideoURL: "/clips/viral/clip_01_dance_duo.mp4",
-		SampleThumbURL: "/clips/viral/test_ny_thumb.jpg",
-	},
-	{
-		Title:     "Top 3 sai lầm khiến người mới cháy sạch tiền khi kinh doanh số",
-		Genre:     "lifehack",
-		GenreVN:   "Kinh nghiệm & Đời sống",
-		Hook3s:    "Tại sao 90% người khởi nghiệp thất bại trong tháng đầu tiên?",
-		FormatTag: "Hook cảnh báo sai lầm",
-	},
-	{
-		Title:     "Bí quyết xây dựng thói quen siêu năng suất của các tỷ phú công nghệ",
-		Genre:     "trendjack",
-		GenreVN:   "Xu hướng nóng",
-		Hook3s:    "Quy tắc 5 giây này đã thay đổi hoàn toàn sự nghiệp của Elon Musk...",
-		FormatTag: "Hook thói quen tỷ phú",
-	},
-	{
-		Title:     "Đột phá công nghệ 2026: Những công cụ thay đổi hoàn toàn tương lai",
-		Genre:     "tech_fact",
-		GenreVN:   "Công nghệ & Tri thức",
-		Hook3s:    "Năm 2026, những ai không biết 3 công cụ này sẽ bị bỏ lại phía sau...",
-		FormatTag: "Hook dự đoán tương lai",
-	},
-	{
-		Title:     "Đánh giá chi tiết thiết bị sáng tạo nội dung đáng tiền nhất năm nay",
-		Genre:     "koc_review",
-		GenreVN:   "Đánh giá & Review",
-		Hook3s:    "Đừng vội mua thiết bị này trước khi xem hết video 30 giây này!",
-		FormatTag: "Hook review trải nghiệm",
-	},
-}
-
+// handleViral renders the video creation form and actual job history.
 func viralGenreVN(genre string) string {
 	switch genre {
-	case "mystery":
-		return "Bí ẩn & Giật gân"
+	case "dance":
+		return "Vũ đạo"
 	case "lifehack":
-		return "Kinh nghiệm & Đời sống"
-	case "trendjack":
-		return "Xu hướng nóng"
+		return "Mẹo đời sống"
+	case "mystery":
+		return "Bí ẩn"
 	case "tech_fact":
-		return "Công nghệ & Tri thức"
-	case "koc_review":
-		return "Đánh giá & Review"
+		return "Công nghệ"
+	case "trendjack":
+		return "Chủ đề phổ thông"
 	default:
-		return "Đa dạng"
+		return genre
 	}
 }
 
 func viralStatusVN(st string) string {
 	switch st {
 	case studio.StatusQueued:
-		return "Chờ render"
+		return "Đang chờ"
 	case studio.StatusRunning:
-		return "Đang sản xuất AI"
+		return "Đang dựng"
 	case studio.StatusDone:
-		return "Hoàn thành 100%"
+		return "Hoàn tất"
 	case studio.StatusFailed:
-		return "Gặp lỗi"
+		return "Cần xử lý"
 	default:
 		return st
 	}
 }
 
-var defaultViralChannels = []viralCreatorChannel{
-	{
-		Handle:     "@hoaa.hanassii",
-		Name:       "Đào Lê Phương Hoa",
-		Followers:  "21.2M Followers",
-		Category:   "Nữ Hoàng Vũ Đạo TikTok VN",
-		AvatarURL:  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80",
-		HotTrend:   "Vũ đạo Sexy Dance Beat Remix giật giật",
-		Music:      "Cắt Đôi Nỗi Sầu (Speed Up Remix)",
-		Views:      "24.5M Views",
-		SampleClip: "clip_03_sexy_dance_60s",
-		VideoURL:   "/clips/viral/clip_03_sexy_dance_60s.mp4",
-		Hook:       "Điệu nhảy đang chiếm lĩnh tab thịnh hành 24h qua!",
-	},
-	{
-		Handle:     "@linhbarbie",
-		Name:       "Linh Barbie",
-		Followers:  "39.1M Followers",
-		Category:   "Top 1 Creator Nữ TikTok VN",
-		AvatarURL:  "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&q=80",
-		HotTrend:   "Biến hình Makeover từ mộc mạc sang thần thái Idol",
-		Music:      "See Tình (Dance Remix Hot TikTok)",
-		Views:      "38.2M Views",
-		SampleClip: "clip_01_dance_duo",
-		VideoURL:   "/clips/viral/clip_01_dance_duo.mp4",
-		Hook:       "Biến hình 1 giây khiến cả mạng xã hội phải xem lại 3 lần!",
-	},
-	{
-		Handle:     "@lengoc_phuonganh",
-		Name:       "Phương Anh Lê",
-		Followers:  "6.4M Followers",
-		Category:   "Hot Girl Vũ Đạo & Thần Thái",
-		AvatarURL:  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&q=80",
-		HotTrend:   "Vũ đạo phòng ngủ ngọt ngào bắt trend Douyin",
-		Music:      "Bật Tình Yêu Lên (Remix TikTok)",
-		Views:      "15.8M Views",
-		SampleClip: "clip_03_sexy_dance_60s",
-		VideoURL:   "/clips/viral/clip_03_sexy_dance_60s.mp4",
-		Hook:       "Trend vũ đạo ngọt ngào đang làm chao đảo mạng xã hội!",
-	},
-	{
-		Handle:     "@douyin_girls_dance",
-		Name:       "Douyin Dance Trends",
-		Followers:  "18.5M Followers",
-		Category:   "Vũ Đạo Triệu View Douyin / TikTok",
-		AvatarURL:  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
-		HotTrend:   "Nhảy K-Pop thần tượng năng lượng cao 60s",
-		Music:      "Super Shy (Douyin Fast Remix)",
-		Views:      "42.0M Views",
-		SampleClip: "clip_02_dance_crew",
-		VideoURL:   "/clips/viral/clip_02_dance_crew.mp4",
-		Hook:       "Vũ đạo đồng đội cực cháy chuẩn idol âm nhạc quốc tế!",
-	},
-}
-
-// handleViral hiển thị trang tổng quan Xưởng Sáng Tạo Video Viral AI 100% Gốc.
 func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	v := viralView{
 		StudioOK:        s.Studio != nil,
-		Trends:          defaultViralTrends,
+		Trends:          nil,
 		Error:           q.Get("err"),
 		SampleClips:     s.listViralDanceClips(),
 		AvailableModels: s.listModelPhotoCards(),
-		TopChannels:     defaultViralChannels,
+		TopChannels:     nil,
 	}
 
 	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
@@ -358,19 +172,15 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		v.SelectedModelPhoto = v.AvailableModels[0].URL
 	}
 
-	// Chọn video mẫu chuyển động
-	if clipID := q.Get("clip"); clipID != "" {
-		v.SelectedClip = clipID
-	} else if len(v.SampleClips) > 0 {
-		v.SelectedClip = v.SampleClips[0].ID
-	}
+	// Video tham chiếu chỉ được chọn rõ ràng từ file đã nhập.
+	v.SelectedClip = q.Get("clip")
 
 	// Đọc công tắc tự động hóa viral
 	st := s.settings()
 	if val, ok := st.Get("viral.auto_produce_enabled"); ok {
 		v.AutoOn = val == "1" || val == "true"
 	} else {
-		v.AutoOn = true
+		v.AutoOn = false
 	}
 
 	// Lấy danh sách kênh
@@ -680,7 +490,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 
 	aiMode := strings.TrimSpace(r.PostFormValue("ai_mode"))
 	if aiMode == "" {
-		aiMode = "faceswap"
+		aiMode = "auto"
 	}
 
 	var modelPhoto string
@@ -737,16 +547,14 @@ func (s *Server) handleViralQuick(w http.ResponseWriter, r *http.Request) {
 	genre := r.PostFormValue("genre")
 	account := r.PostFormValue("account")
 	if topic == "" {
-		topic = "Bí quyết phát triển bản thân và tư duy tài chính thông minh"
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Vui lòng nhập chủ đề video"), http.StatusSeeOther)
+		return
 	}
 	if genre == "" {
 		genre = "trendjack"
 	}
 
 	sampleClip := strings.TrimSpace(r.PostFormValue("sample_clip"))
-	if sampleClip == "" && (genre == "dance" || strings.Contains(topic, "Dance") || strings.Contains(topic, "Vũ Điệu")) {
-		sampleClip = "clip_03_sexy_dance_60s"
-	}
 	var sampleVideoPath string
 	if sampleClip != "" {
 		candidates := []string{
@@ -815,22 +623,14 @@ func studioUnmarshalJSON(data string, v any) error {
 	return json.Unmarshal([]byte(data), v)
 }
 
-// listViralDanceClips trả về danh sách các clip vũ đạo mẫu từ TikTok VN và Douyin CN,
-// bao gồm các video mặc định và các video do người dùng import vào data/clips/viral/.
+// listViralDanceClips liệt kê các tệp tham chiếu người dùng đã lưu.
 func (s *Server) listViralDanceClips() []sampleClipView {
 	clipsDir := filepath.Join(s.DataDir, "clips", "viral")
-	_ = os.MkdirAll(clipsDir, 0o755)
-
-	out := append([]sampleClipView(nil), defaultViralClips...)
-	seen := make(map[string]bool)
-	for _, c := range out {
-		seen[c.Filename] = true
-	}
-
 	entries, err := os.ReadDir(clipsDir)
 	if err != nil {
-		return out
+		return nil
 	}
+	var out []sampleClipView
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
@@ -839,31 +639,11 @@ func (s *Server) listViralDanceClips() []sampleClipView {
 		if !strings.HasSuffix(strings.ToLower(name), ".mp4") {
 			continue
 		}
-		if seen[name] {
-			continue
-		}
-		seen[name] = true
 		stem := strings.TrimSuffix(name, filepath.Ext(name))
-
-		platform := "TikTok VN"
-		region := "VN"
-		title := "🇻🇳 TikTok: " + stem
-		if strings.Contains(strings.ToLower(stem), "douyin") || strings.Contains(strings.ToLower(stem), "cn") {
-			platform = "Douyin CN"
-			region = "CN"
-			title = "🇨🇳 Douyin: " + stem
-		}
-
 		out = append(out, sampleClipView{
-			ID:          stem,
-			Title:       title,
-			Filename:    name,
+			ID: stem, Title: stem, Filename: name,
 			URL:         "/clips/viral/" + name,
-			Duration:    "Tùy chỉnh (1080x1920 HD)",
-			Category:    "dance",
-			Platform:    platform,
-			Region:      region,
-			Description: fmt.Sprintf("Video vũ đạo chuyển động %s chất lượng cao 9:16 được nhập vào hệ thống.", platform),
+			Description: "Tệp tham chiếu đã lưu trong hệ thống.",
 		})
 	}
 	return out
@@ -948,4 +728,3 @@ func (s *Server) handleViralClipImport(w http.ResponseWriter, r *http.Request) {
 
 	http.Redirect(w, r, fmt.Sprintf("/viral?clip=%s&msg=imported", clipID), http.StatusSeeOther)
 }
-

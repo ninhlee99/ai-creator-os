@@ -1,12 +1,11 @@
-{{define "title"}}Kênh — AI Creator OS{{end}}
+{{define "title"}}Kênh{{end}}
 {{define "content"}}
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Mạng Lưới Kênh &amp; Tài Khoản</h1>
-    <p class="subtitle">Quản lý kênh phân phối tự động cho Affiliate, Video Viral và Kể chuyện.</p>
+    <h1>Kênh</h1>
   </div>
   <div class="webai-header-actions">
-    <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh mới</a>
+    <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh</a>
   </div>
 </div>
 
@@ -78,14 +77,11 @@
     <div class="channel-card-footer" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
       <span class="hint" style="font-size:11.5px;font-family:monospace">#{{.ID}}</span>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}?tab=nhan-vat" title="Xem & tải ảnh nhân vật riêng của kênh" style="font-size:11px;padding:4px 8px">👤 Nhân vật</a>
-        <a class="btn btn-secondary btn-sm" href="/viral?account={{.Username}}" title="Tạo video nhảy trending cho kênh này" style="font-size:11px;padding:4px 8px">💃 Vũ đạo</a>
-        <a class="btn btn-secondary btn-sm" href="/studio?account={{.Username}}" title="Tạo video affiliate cho kênh này" style="font-size:11px;padding:4px 8px">🛍️ Affiliate</a>
         <a class="btn btn-secondary btn-sm" href="/accounts/{{.ID}}/edit" style="font-size:11px;padding:4px 8px">✏️ Sửa</a>
         <form method="post" action="/accounts/{{.ID}}/delete" data-confirm="Bạn có chắc chắn muốn XÓA VĨNH VIỄN kênh @{{.Username}}? Thao tác này không thể hoàn tác!" style="display:inline;margin:0">
           <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px;color:var(--err)" title="Xóa kênh vĩnh viễn">🗑️ Xóa</button>
         </form>
-        <a class="btn btn-primary btn-sm" href="/accounts/{{.ID}}" style="font-size:11px;padding:4px 10px;font-weight:700">Quản lý ➔</a>
+        <a class="btn btn-primary btn-sm" href="/accounts/{{.ID}}" style="font-size:11px;padding:4px 10px;font-weight:700">Mở</a>
       </div>
     </div>
   </div>

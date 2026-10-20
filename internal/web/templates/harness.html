@@ -1,4 +1,4 @@
-{{define "title"}}Agent Harness — Tổng Chỉ Huy Tự Động Hóa 24/7 — AI Creator OS{{end}}
+{{define "title"}}Agent Harness{{end}}
 {{define "content"}}
 <!-- Harness Modal Custom CSS (Fixed Center, Anti-Overflow, Responsive) -->
 <style>
@@ -86,9 +86,6 @@
         {{.Harness.AutonomyLevelName}}
       </span>
     </div>
-    <p class="subtitle" style="margin:0;color:var(--muted);font-size:13.5px;max-width:920px;line-height:1.55">
-      Điều phối tự động các tác vụ sản xuất video, giám sát kênh và chu kỳ tăng trưởng.
-    </p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:10px;align-items:center">
     <form method="post" action="/harness/cycle" style="margin:0">
@@ -415,8 +412,10 @@
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <select id="simNiche" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
-          {{range .Harness.SimulatedNiches}}
+          {{range .Harness.ConfiguredNiches}}
           <option value="{{.}}">{{.}}</option>
+          {{else}}
+          <option value="">Chưa cấu hình ngách nội dung</option>
           {{end}}
         </select>
         <select id="simChannel" class="form-select" style="padding:6px 10px;font-size:12.5px;border-radius:8px" onchange="refreshPromptPreview()">
@@ -556,7 +555,7 @@ function refreshPromptPreview() {
       if (data.prompt_context && data.prompt_context.trim().length > 0) {
         box.textContent = data.prompt_context;
       } else {
-        box.textContent = "Không có bài học nào khớp với ngách [" + niche + "] và kênh [" + (channel || 'tất cả') + "].\nAgent sẽ sử dụng cấu trúc viral chuẩn mặc định.";
+        box.textContent = "Chưa có bài học khớp với ngách và kênh đã chọn.";
       }
     })
     .catch(err => {

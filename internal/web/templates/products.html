@@ -1,48 +1,24 @@
-{{define "title"}}Sản phẩm Affiliate — AI Creator OS{{end}}
+{{define "title"}}Sản phẩm Affiliate{{end}}
 {{define "content"}}
 
 <!-- Pipeline Navigation Stepper -->
-{{template "creation-stepper" dict "Step" "affiliate"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Sản Phẩm &amp; Kệ Hàng Affiliate</h1>
-    <p class="subtitle">Tìm kiếm sản phẩm hoa hồng cao và quản lý kệ hàng sản xuất.</p>
+    <h1>Sản phẩm</h1>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
-    <a href="/bio" target="_blank" class="btn btn-secondary btn-sm">🔗 Trang Bio</a>
-    <a href="/studio" class="btn btn-primary btn-sm">Dựng video AI</a>
-    <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Kết nối Accesstrade</a>
+    <a href="/bio" target="_blank" class="btn btn-secondary btn-sm">Bio</a>
+    <a href="/studio" class="btn btn-primary btn-sm">Dựng video</a>
+    <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>
   </div>
 </div>
 
 <!-- Affiliate Unified Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Săn Sản Phẩm &amp; Đối Soát Hoa Hồng</a>
-  <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ Hàng Sản Xuất AI</a>
+  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Khám phá</a>
+  <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ hàng</a>
 </nav>
-
-<!-- Storefront Bio Link Card -->
-<div class="card" style="border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;background:linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(139,92,246,0.06) 100%), var(--bg2);border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.03)">
-  <div style="display:flex;align-items:center;gap:12px">
-    <div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;box-shadow:0 3px 10px rgba(37,99,235,0.3)">
-      🔗
-    </div>
-    <div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-        <strong style="font-size:14px;color:var(--text)">Trang Cửa Hàng Bio Link Bán Hàng</strong>
-        <span class="status-pill status-ready" style="font-size:10px">Mobile-First</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted);max-width:560px;line-height:1.4">
-        Toàn bộ sản phẩm trên kệ tự động hiển thị trên Bio. Gắn link này vào tiểu sử TikTok / Reels / Shorts để khán giả bấm mua ngay.
-      </div>
-    </div>
-  </div>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button type="button" class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(location.origin + '/bio');if(window.showToast)window.showToast('Đã sao chép link Bio',true);">📋 Sao chép link Bio</button>
-    <a href="/bio" target="_blank" class="btn btn-primary btn-sm">Mở Bio ↗</a>
-  </div>
-</div>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
@@ -51,7 +27,7 @@
 <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
     <h2 style="margin:0;font-size:16px;border:none;padding:0;display:flex;align-items:center;gap:8px">
-      <span>➕</span> Thêm sản phẩm vào kệ
+      <span>➕</span> Thêm sản phẩm
     </h2>
     <span class="badge badge-dim" style="font-size:11px">Gắn trực tiếp vào Bio Link & Video AI</span>
   </div>
@@ -99,7 +75,6 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <div>
     <h2 style="margin:0;font-size:18px">Kệ hàng sản xuất AI</h2>
-    <p class="subtitle" style="margin:2px 0 0">Sản phẩm affiliate trên kệ — AI tự tìm, chấm điểm và gắn vào video/live.</p>
   </div>
   {{if .Shelf}}<span class="badge badge-ok">{{len .Shelf}} sản phẩm</span>{{end}}
 </div>
@@ -140,7 +115,7 @@
     </td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td style="text-align:right">
-      <a href="/studio?product_name={{urlquery .Title}}&product_price={{urlquery (fmtVND .Price)}}&niche={{urlquery .Category}}{{if .ProductURL}}&aff_link={{urlquery .ProductURL}}{{end}}{{if .ImageURL}}&photo_url={{urlquery .ImageURL}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video AI</a>
+      <a href="/studio?product_id={{.ID}}&product_name={{urlquery .Title}}&product_price={{urlquery (fmtVND .Price)}}&niche={{urlquery .Category}}{{if .ProductURL}}&aff_link={{urlquery .ProductURL}}{{end}}{{if .ImageURL}}&photo_url={{urlquery .ImageURL}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video</a>
     </td>
   </tr>
   {{end}}
@@ -150,7 +125,7 @@
 <div class="empty-state compact">
   <div class="es-icon">🛍️</div>
   <h3>Kệ hàng trống</h3>
-  <p>Thêm sản phẩm đầu tiên ở mẫu phía trên — AI sẽ gắn chúng vào video.</p>
+  <p>Thêm sản phẩm thật từ nguồn đã kết nối để dùng trong video.</p>
 </div>
 {{end}}
 {{else}}
@@ -161,11 +136,9 @@
     {{if .AT.KeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
   </h2>
   {{if not .AT.KeySet}}
-  <p class="subtitle">Nhập mã truy cập ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để tải chiến dịch và tạo link.</p>
   {{else}}
   <form method="post" action="/at/campaigns/sync" style="margin-bottom:0.75rem">
     <button type="submit" class="btn btn-secondary btn-sm">Tải chiến dịch</button>
-    <span class="hint">đồng bộ từ Accesstrade API vào cache</span>
   </form>
   {{if .AT.Campaigns}}
   <div class="table-wrap">
@@ -213,10 +186,8 @@
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-primary btn-sm" id="at-hunt-btn" onclick="atHunt()">Săn ngay</button>
-    <span class="hint">quét nguồn hàng → kho sản phẩm → tạo video cho top mới</span>
   </p>
   {{else}}
-  <p class="subtitle">Nhập mã truy cập ở <a href="/settings/accesstrade">Cài đặt · Accesstrade</a> để săn sản phẩm.</p>
   {{end}}
   {{if .AT.Hunted}}
   <div class="table-wrap">
@@ -246,11 +217,9 @@
     <span class="badge badge-warn">Chờ duyệt: {{.AT.OrderStats.PendingCount}} đơn · {{fmtVND .AT.OrderStats.PendingTotal}}</span>
     <span class="badge badge-draft">Từ chối: {{.AT.OrderStats.RejectedCount}} đơn</span>
   </p>
-  <p class="hint">Đơn chờ duyệt hiện riêng — không cộng vào “đã duyệt”.</p>
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-secondary btn-sm" id="at-sync-btn" onclick="atOrderSync()">Đồng bộ đơn</button>
-    <span class="hint">quét 7 ngày gần nhất, đơn chờ duyệt được cập nhật tại chỗ</span>
   </p>
   {{end}}
   {{if .AT.Orders}}
@@ -307,7 +276,6 @@ function atOrderSync() {
 <div class="modal-backdrop" id="at-link-modal" hidden>
   <div class="modal" role="dialog" aria-modal="true" style="max-width:26rem">
     <h3 style="margin-top:0">Tạo link theo dõi</h3>
-    <p class="subtitle" id="at-link-campaign"></p>
     <div class="field">
       <label>URL sản phẩm *</label>
       <input type="url" id="at-link-url" placeholder="https://shopee.vn/..." required>
@@ -483,7 +451,7 @@ function atOrderSync() {
       <div class="field">
         <label>Link affiliate (link kiếm tiền)</label>
         <input type="url" name="product_url" placeholder="https://s.shopee.vn/... · https://c.lazada.vn/... · link Accesstrade">
-        <p class="hint">Dán link tiếp thị của bất kỳ sàn nào (Shopee, Lazada, TikTok Shop, Accesstrade…) — app gắn vào mô tả YouTube/Facebook và bài Threads.</p>
+
       </div>
     </div>
     <div class="field">
@@ -512,7 +480,6 @@ function atOrderSync() {
 <div style="margin-top:24px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
   <div>
     <h2 style="margin:0;font-size:18px">Sản phẩm hoa hồng cao trong kho</h2>
-    <p class="subtitle" style="margin:2px 0 0">Sản phẩm thật 100% kèm ảnh listing 4K — 1 chạm đưa vào Kệ hàng Bio hoặc sang Studio dựng video AI.</p>
   </div>
   <span class="badge badge-ok">{{len .Results}} sản phẩm</span>
 </div>
@@ -565,7 +532,7 @@ function atOrderSync() {
       </form>
     </td>
     <td style="text-align:right">
-      <a href="/studio?product_name={{urlQuery .Title}}&product_price={{urlQuery (fmtVND .Price)}}&niche={{urlQuery .Category}}{{if .ProductURL}}&aff_link={{urlQuery .ProductURL}}{{end}}{{if .ImageURLs}}&photo_url={{urlQuery (index .ImageURLs 0)}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video AI</a>
+      <a href="/studio?product_id={{.ID}}&product_name={{urlQuery .Title}}&product_price={{urlQuery (fmtVND .Price)}}&niche={{urlQuery .Category}}{{if .ProductURL}}&aff_link={{urlQuery .ProductURL}}{{end}}{{if .ImageURLs}}&photo_url={{urlQuery (index .ImageURLs 0)}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video</a>
     </td>
   </tr>
   {{end}}

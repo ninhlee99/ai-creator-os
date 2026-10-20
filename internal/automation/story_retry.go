@@ -9,7 +9,7 @@ package automation
 // làm lịch sử). Hết 3 lần → dừng + alert để Ninh xem tay.
 //
 // Cổng an toàn như mọi tick: kill switch + dry-run chặn; công tắc riêng
-// story.retry_enabled mặc định BẬT (unset = bật — tiền lệ Đợt 3).
+// story.retry_enabled mặc định TẮT; chỉ chạy khi chủ kênh bật.
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	KeyStoryRetryEnabled  = "story.retry_enabled"    // "1"/"0", mặc định bật
+	KeyStoryRetryEnabled  = "story.retry_enabled"    // "1"/"0", mặc định tắt
 	KeyStoryRetryMax      = "story.retry_max"        // số lần thử lại tối đa, mặc định 3
 	KeyStoryRetryCooldown = "story.retry_cooldown_h" // giờ nghỉ giữa các lần, mặc định 6
 	KeyStoryRetriedPrefix = "story.retried."         // story.retried.<jobID> = "1" (đã thử lại)
@@ -67,7 +67,7 @@ func (s *Service) StoryRetryTick(ctx context.Context) []string {
 	if s.killed() || s.dryRun() {
 		return nil
 	}
-	if !atOn(s.Settings, KeyStoryRetryEnabled, true) {
+	if !atOn(s.Settings, KeyStoryRetryEnabled, false) {
 		return nil
 	}
 	st, ok := s.Story.(storyJobLister)

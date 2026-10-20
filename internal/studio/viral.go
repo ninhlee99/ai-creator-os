@@ -19,16 +19,16 @@ const KindViral = "viral"
 
 // ViralParams chứa cấu hình đầu vào để tạo 1 video viral.
 type ViralParams struct {
-	Topic          string `json:"topic"`
-	Genre          string `json:"genre"`           // mystery, lifehack, trendjack, tech_fact, koc_review
-	VisualMood     string `json:"visual_mood"`     // cinematic, vibrant_3d, realistic, cyber_neon
-	Voice          string `json:"voice"`           // VieNeu / Gemini voice identifier
-	Account        string `json:"account"`         // username kênh để đọc Brand DNA
-	AccountID      int64  `json:"account_id,omitempty"`
-	ModelPhoto     string   `json:"model_photo,omitempty"` // local file path to character face reference image
+	Topic          string   `json:"topic"`
+	Genre          string   `json:"genre"`       // mystery, lifehack, trendjack, tech_fact, koc_review
+	VisualMood     string   `json:"visual_mood"` // cinematic, vibrant_3d, realistic, cyber_neon
+	Voice          string   `json:"voice"`       // VieNeu / Gemini voice identifier
+	Account        string   `json:"account"`     // username kênh để đọc Brand DNA
+	AccountID      int64    `json:"account_id,omitempty"`
+	ModelPhoto     string   `json:"model_photo,omitempty"`  // local file path to character face reference image
 	ModelPhotos    []string `json:"model_photos,omitempty"` // multi-angle face reference images for character locking
-	TargetDuration int      `json:"target_duration"` // 15 - 60s
-	MusicURL       string   `json:"music_url"`       // Nhạc nền trending (tùy chọn)
+	TargetDuration int      `json:"target_duration"`        // 15 - 60s
+	MusicURL       string   `json:"music_url"`              // Nhạc nền trending (tùy chọn)
 	MusicFile      string   `json:"music_file"`
 	SampleVideo    string   `json:"sample_video,omitempty"` // local file path to sample motion video
 	AIMode         string   `json:"ai_mode,omitempty"`      // "ai_recreate", "webai_bridge", "generative_cinematic"
@@ -313,6 +313,13 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
+	requiredDuration := p.TargetDuration
+	if requiredDuration < 60 {
+		requiredDuration = 60
+	}
+	if requiredDuration > 180 {
+		requiredDuration = 180
+	}
 
 	s.mu.Lock()
 	s.running[jobID] = cancel
@@ -566,6 +573,7 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 				clipSec = 5
 			}
 			sceneVideo := filepath.Join(jobDir, fmt.Sprintf("motion_%02d.mp4", i+1))
+			fallbackUsed := false
 			vErr := s.GenerateMotionVideoClip(ctx, MotionVideoOptions{
 				Prompt:       imgPrompt,
 				FirstFrame:   outImg,
@@ -575,6 +583,7 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 				Anchor:       anchor,
 				AutoFaceLock: true,
 				SceneIndex:   i,
+				FallbackUsed: &fallbackUsed,
 				OutputPath:   sceneVideo,
 				LogFn:        func(msg string) { s.appendLog(jobID, msg) },
 			})
@@ -582,11 +591,13 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 			if fileExists(outImg) {
 				s.setAsset(aid, StatusDone, outImg)
 			}
-			if vErr == nil && fileExists(sceneVideo) {
+			if vErr == nil && fileExists(sceneVideo) && !fallbackUsed {
 				motionClips = append(motionClips, sceneVideo)
 				clipAid := s.addAsset(jobID, 100+i+1, "clip", fmt.Sprintf("Cảnh chuyển động AI %d (%ds)", i+1, clipSec))
 				s.setAsset(clipAid, StatusDone, sceneVideo)
 				s.appendLog(jobID, fmt.Sprintf("✓ Cảnh %d/%d: Sinh video chuyển động AI thành công (%ds, 9:16)!", i+1, len(script.Scenes), clipSec))
+			} else if vErr == nil && fallbackUsed {
+				s.appendLog(jobID, fmt.Sprintf("Cảnh %d/%d: engine chưa tạo clip; dùng ảnh tĩnh làm video pan/zoom.", i+1, len(script.Scenes)))
 			} else if !fileExists(outImg) {
 				s.setAsset(aid, StatusFailed, "")
 			}
@@ -606,13 +617,7 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		s.setStatus(jobID, StatusRunning, 65)
 		silentVideo = filepath.Join(jobDir, "silent_916.mp4")
 
-		targetSec := float64(p.TargetDuration)
-		if targetSec < 60 {
-			targetSec = 60.0 // Mặc định từ 60 giây trở lên (chuẩn TikTok Creativity Program 1 phút+)
-		}
-		if targetSec > 180 {
-			targetSec = 180.0
-		}
+		targetSec := float64(requiredDuration)
 
 		// Nếu đã sinh được các video clip chuyển động AI (Google Veo 3 / Muse AI): Ghép nối thành chuỗi phim hoàn chỉnh!
 		if len(motionClips) > 0 {
@@ -647,6 +652,11 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 			if err := ffmpegRun(ctx, "-stream_loop", strconv.Itoa(loops), "-i", silentVideo, "-t", fmt.Sprintf("%.2f", targetSec), "-c", "copy", longSilent); err == nil {
 				_ = os.Rename(longSilent, silentVideo)
 			}
+		}
+		vDur = probeDuration(ctx, silentVideo)
+		if vDur <= 0 || vDur < targetSec-1.5 {
+			fail(fmt.Errorf("video chỉ dài %.1fs; yêu cầu tối thiểu %.0fs", vDur, targetSec))
+			return
 		}
 	}
 
@@ -723,9 +733,18 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		}
 	}
 
+	if !fileExists(finalVideo) {
+		fail(fmt.Errorf("không tạo được file video đầu ra"))
+		return
+	}
+	finalDuration := probeDuration(ctx, finalVideo)
+	if finalDuration < float64(requiredDuration)-1.5 {
+		fail(fmt.Errorf("video đầu ra chỉ dài %.1fs; yêu cầu %.0fs", finalDuration, requiredDuration))
+		return
+	}
 	s.setOutput(jobID, finalVideo)
 	s.setStatus(jobID, StatusDone, 100)
-	s.appendLog(jobID, fmt.Sprintf("✓ Hoàn thành video viral 100%% gốc: %s", script.Title))
+	s.appendLog(jobID, fmt.Sprintf("Hoàn thành video: %s (%0.1fs)", script.Title, finalDuration))
 	s.fireOnDone(jobID)
 }
 

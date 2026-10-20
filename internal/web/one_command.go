@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -99,6 +100,19 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		}, http.StatusServiceUnavailable)
 		return
 	}
+	var uploadedProductPhoto string
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		if err := r.ParseMultipartForm(20 << 20); err != nil {
+			s.respondOneCommand(w, r, OneCommandResult{Message: "Ảnh vượt giới hạn 20 MB hoặc form không hợp lệ"}, http.StatusBadRequest)
+			return
+		}
+		var err error
+		uploadedProductPhoto, err = saveUpload(r, "product_photo", s.Studio.UploadDir())
+		if err != nil {
+			s.respondOneCommand(w, r, OneCommandResult{Message: "Không đọc được ảnh sản phẩm: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+	}
 
 	command := strings.TrimSpace(r.FormValue("command"))
 	if command == "" {
@@ -129,9 +143,9 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		p := studio.StoryParams{
 			Topic:           topic,
 			Genre:           nicheOrGenre,
-			Words:           1200,
-			Scenes:          6,
-			MusicOn:         true,
+			Words:           s.atSettingInt(automation.KeyStoryWords, 600),
+			Scenes:          s.atSettingInt(automation.KeyStoryScenes, 6),
+			MusicOn:         s.atSettingOn(automation.KeyStoryMusicOn, false),
 			DurationMinutes: 0,
 		}
 		jobID, err = s.Studio.CreateStoryJob(p)
@@ -141,13 +155,27 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		}
 
 	case "affiliate":
+		mediaReady := false
+		if mg := s.Studio.MediaGen(); mg != nil {
+			mediaReady = mg.Healthy(r.Context())
+		}
+		if uploadedProductPhoto == "" && !mediaReady {
+			studioURL := "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
+			s.respondOneCommand(w, r, OneCommandResult{
+				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
+				Message: "Cần ảnh sản phẩm hoặc kết nối ImageGen trước khi dựng video Affiliate. Đã điền sẵn thông tin trong Studio.",
+			}, http.StatusUnprocessableEntity)
+			return
+		}
 		// Khởi tạo Video Affiliate Lookbook 9:16 chuẩn 5 sao
 		p := studio.AffiliateParams{
-			Mode:        studio.AffiliateModePhoto,
-			Niche:       nicheOrGenre,
-			ProductName: topic,
-			Seconds:     30,
-			BPM:         120,
+			Mode:                     studio.AffiliateModePhoto,
+			Niche:                    nicheOrGenre,
+			ProductName:              topic,
+			Seconds:                  30,
+			BPM:                      120,
+			ProductPhoto:             uploadedProductPhoto,
+			AutoGenerateProductPhoto: uploadedProductPhoto == "",
 		}
 		jobID, err = s.Studio.CreateAffiliateJob(p)
 		if err == nil {
@@ -198,6 +226,10 @@ func (s *Server) respondOneCommand(w http.ResponseWriter, r *http.Request, res O
 	}
 
 	// Nếu submit form thông thường
+	if !res.OK && res.RedirectURL != "" {
+		http.Redirect(w, r, res.RedirectURL+"&err="+url.QueryEscape(res.Message), http.StatusSeeOther)
+		return
+	}
 	if !res.OK {
 		http.Redirect(w, r, "/?err="+url.QueryEscape(res.Message), http.StatusSeeOther)
 		return

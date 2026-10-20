@@ -1,7 +1,6 @@
-{{define "title"}}Thiết lập lần đầu — AI Creator OS{{end}}
+{{define "title"}}Thiết lập lần đầu{{end}}
 {{define "content"}}
 <h1>Chào mừng đến AI Creator OS 🎬</h1>
-<p class="subtitle">Thiết lập một lần — xong nhớ tắt Chế độ thử ở Cài đặt · An toàn để app chạy thật.</p>
 
 <div class="form-card" style="max-width:640px">
   <dl class="kv">
@@ -11,7 +10,7 @@
   <form method="post" action="/onboard" style="margin-top:16px">
     <label class="check"><input type="checkbox" name="dryrun" value="1" checked id="dryrunBox">
       Chế độ thử — an toàn, không thao tác thật</label>
-    <p class="hint">Tắt khi bạn đã sẵn sàng cho app chạy thật. Có thể đổi lại bất cứ lúc nào ở Cài đặt · An toàn.</p>
+
     <button type="submit" class="btn btn-primary" style="margin-top:12px">Bắt đầu →</button>
     <p class="warn" id="dryrunWarn" style="margin-top:10px">⚠️ Đang bật Chế độ thử: app sẽ không đăng bài hay dùng quota thật cho tới khi bạn tắt ở Cài đặt · An toàn.</p>
   </form>

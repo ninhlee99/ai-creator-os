@@ -11,13 +11,14 @@ import (
 // MotionVideoOptions specifies the requirements for generating an AI motion video clip.
 type MotionVideoOptions struct {
 	Prompt       string
-	FirstFrame   string // optional reference keyframe for Image-to-Video
-	Seconds      int    // duration hint (default 4-8s)
-	AspectRatio  string // "9:16" or "16:9"
-	Engine       string // "veo3", "googleflow", "museai", "auto", "generative"
+	FirstFrame   string        // optional reference keyframe for Image-to-Video
+	Seconds      int           // duration hint (default 4-8s)
+	AspectRatio  string        // "9:16" or "16:9"
+	Engine       string        // "veo3", "googleflow", "museai", "auto", "generative"
 	Anchor       *VisualAnchor // persistent character/scene anchor for cross-adapter continuity
 	AutoFaceLock bool          // automatically run InsightFace lock pass with master photo
 	SceneIndex   int           // scene position index for angle/clip variation
+	FallbackUsed *bool
 	OutputPath   string
 	LogFn        func(string)
 }
@@ -142,7 +143,7 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 
 	// 3. Fallback: Nếu cả Veo 3 và Muse AI chưa sẵn sàng, áp dụng chuyển động người thật quay phim chuẩn 9:16
 	if !generated {
-		log("⚡ Kích hoạt chế độ Phim chuyển động tự nhiên chuẩn 9:16 (Quay phim thật 100%)...")
+		log("Không có engine AI khả dụng; thử dùng video mẫu cục bộ nếu có...")
 		promptLow := strings.ToLower(opts.Prompt)
 		isFashion := strings.Contains(promptLow, "fashion") || strings.Contains(promptLow, "thời trang") || strings.Contains(promptLow, "lookbook")
 		isCN := strings.Contains(promptLow, "douyin") || strings.Contains(promptLow, "trung quốc") || strings.Contains(promptLow, "cn") || strings.Contains(promptLow, "c-biz") || (opts.Anchor != nil && opts.Anchor.Ethnicity == "Chinese")
@@ -173,6 +174,9 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 			log(fmt.Sprintf("✓ Tận dụng video chuyển động người thật HD 9:16 [Góc máy %d/%d: %s]...", clipIdx+1, len(stockCandidates), filepath.Base(srcClip)))
 			if err := TrimVideo(ctx, srcClip, float64(opts.Seconds), opts.AspectRatio, tempClip); err == nil && fileExists(tempClip) {
 				generated = true
+				if opts.FallbackUsed != nil {
+					*opts.FallbackUsed = true
+				}
 			}
 		}
 	}
@@ -180,9 +184,12 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 	// 4. Fallback cuối cùng nếu không có clip: Dựng chuyển động Ken Burns êm ái từ keyframe
 	if !generated {
 		if opts.FirstFrame != "" && fileExists(opts.FirstFrame) {
-			log("ℹ️ Tạo chuyển động trôi êm ái CapCut từ khung hình phân cảnh...")
+			log("Không có clip chuyển động; tạo video pan/zoom từ ảnh tĩnh.")
 			if err := AssemblePhotoList(ctx, []string{opts.FirstFrame}, float64(opts.Seconds), "", 0, tempClip, opts.AspectRatio); err == nil && fileExists(tempClip) {
 				generated = true
+				if opts.FallbackUsed != nil {
+					*opts.FallbackUsed = true
+				}
 			}
 		}
 	}

@@ -289,7 +289,7 @@ func pillarsFor(a *network.Account) []string {
 	if a.Niche != "" {
 		return []string{a.Niche}
 	}
-	return []string{"video ngắn mỗi ngày"}
+	return nil
 }
 
 // killedFormats trả về danh sách format_id đã bị kill (VerdictKilled) của
@@ -314,6 +314,10 @@ func (s *Server) killedFormats(accountID int64) []string {
 // generatePlanFor creates (or replaces) the account's active 30-day plan
 // from its current growth stage. Returns the number of scheduled items.
 func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, error) {
+	pillars := pillarsFor(a)
+	if len(pillars) == 0 {
+		return 0, fmt.Errorf("kênh chưa có ngách nội dung hoặc trụ cột do người dùng cấu hình")
+	}
 	prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a))
 	if err != nil {
 		return 0, err
@@ -321,7 +325,7 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 	drafts := growth.GeneratePlan(growth.PlanRequest{
 		Stage:         prof.Stage,
 		HasYouTube:    hasYouTube(a),
-		Pillars:       pillarsFor(a),
+		Pillars:       pillars,
 		Start:         time.Now(),
 		Days:          30,
 		KilledFormats: s.killedFormats(a.ID),

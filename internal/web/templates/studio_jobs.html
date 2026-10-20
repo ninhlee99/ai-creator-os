@@ -1,18 +1,14 @@
 {{define "title"}}
-{{if eq .Tab "running"}}Video đang dựng — AI Creator OS
-{{else if eq .Tab "schedule"}}Lịch tự động — AI Creator OS
-{{else}}Video đã tạo — AI Creator OS{{end}}
+{{if eq .Tab "running"}}Video đang dựng
+{{else if eq .Tab "schedule"}}Lịch tự động
+{{else}}Video đã tạo{{end}}
 {{end}}
 
 {{define "content"}}
 
-<!-- Pipeline Navigation Stepper -->
-{{template "creation-stepper" dict "Step" "jobs"}}
-
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Kho Video &amp; Tiến Độ Render</h1>
-    <p class="subtitle">Giám sát tiến độ dựng video AI thời gian thực và quản lý file thành phẩm.</p>
+    <h1>Video</h1>
   </div>
   <div class="webai-header-actions">
     <a href="/" class="btn btn-primary btn-sm">+ Tạo video mới</a>
@@ -22,13 +18,10 @@
 <!-- Clean Single Tab Navigation -->
 <nav class="tabs" style="margin-bottom: 20px;">
   <a href="/studio/jobs?tab=running" class="{{if eq .Tab "running"}}active{{end}}">
-    Đang dựng {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
+    Đang xử lý {{if .RunningCount}}<span class="badge badge-info" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.RunningCount}}</span>{{end}}
   </a>
   <a href="/studio/jobs?tab=done" class="{{if or (eq .Tab "done") (not .Tab)}}active{{end}}">
-    Đã tạo xong {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
-  </a>
-  <a href="/studio/jobs?tab=all" class="{{if eq .Tab "all"}}active{{end}}">
-    Tất cả ({{.TotalCount}})
+    Hoàn tất {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
   </a>
   <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
     Lịch tự động
@@ -48,7 +41,7 @@
     <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TRẠNG THÁI TỰ HÀNH</div>
     <div>
       {{if .SchedEnabled}}
-      <span class="badge badge-ok" style="font-size:12px;font-weight:700">⚡ ĐANG BẬT 24/7</span>
+      <span class="badge badge-dim" style="font-size:12px;font-weight:700">TỰ ĐỘNG HÓA</span>
       {{else}}
       <span class="badge badge-dim" style="font-size:12px;font-weight:700">⏸️ ĐANG TẮT</span>
       {{end}}
@@ -88,7 +81,7 @@
     <div style="margin-bottom:16px">
       <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer">
         <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}}>
-        <span>Kích hoạt Dây chuyền AI tự động tạo video định kỳ (Autopilot 24/7)</span>
+        <span>Kích hoạt tạo video tự động theo lịch</span>
       </label>
     </div>
 
@@ -109,7 +102,7 @@
         <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
             <input type="checkbox" name="auto_publish" {{if .SchedAutoPub}}checked{{end}}>
-            <span>Đăng lên TikTok Shop (dưới dạng nháp)</span>
+            <span>Gửi video TikTok dưới dạng bản nháp</span>
           </label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
             <input type="checkbox" name="youtube_enabled" {{if .SchedYouTube}}checked{{end}}>
@@ -398,7 +391,7 @@
   <div style="font-size:46px;margin-bottom:14px">⚡</div>
   <h3 style="margin:0 0 8px;font-size:18px">Hiện tại không có video nào đang trong dây chuyền dựng</h3>
   <p style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.6">
-    Tất cả các phòng ban AI đang ở trạng thái sẵn sàng. Bạn có thể tự bấm tạo video mới ngay bây giờ hoặc thiết lập lịch tự động 24/7 để hệ thống tự sản xuất video đều đặn.
+    Bạn có thể tạo video mới hoặc thiết lập lịch tự động. Tác vụ chỉ chạy khi các cổng an toàn và dịch vụ cần thiết cho phép.
   </p>
   <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
     <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video mới ngay</a>

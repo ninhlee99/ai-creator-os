@@ -45,9 +45,6 @@ var staticJS []byte
 //go:embed static/preview.mp3
 var staticPreviewAudio []byte
 
-//go:embed static/sample_916.mp4
-var staticSampleVideo []byte
-
 // assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
 // trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
@@ -485,11 +482,11 @@ var statusLabels = map[string]string{
 	"onboard":                 "Thiết lập ban đầu",
 	"production_toggle":       "Bật/tắt sản xuất",
 	"publish_youtube":         "Đăng YouTube",
-	"viral_produce":          "Sản xuất video viral",
-	"viral_auto_toggle":      "Bật/tắt tự động viral",
-	"harness_cycle":          "Chu kỳ nhận thức OODA",
-	"harness_autonomy":       "Đổi cấp độ tự hành",
-	"harness_memory":         "Ghi nhớ kinh nghiệm",
+	"viral_produce":           "Sản xuất video viral",
+	"viral_auto_toggle":       "Bật/tắt tự động viral",
+	"harness_cycle":           "Chu kỳ nhận thức OODA",
+	"harness_autonomy":        "Đổi cấp độ tự hành",
+	"harness_memory":          "Ghi nhớ kinh nghiệm",
 	"scale_product":           "Mở rộng sản phẩm",
 	"seed":                    "Khởi tạo",
 	"session_topic":           "Chủ đề phiên",
@@ -703,10 +700,11 @@ func (s *Server) parseTemplates() error {
 // ctx builds the template context: base flags (Kill/DryRun) plus page data.
 func (s *Server) ctx(kv ...any) map[string]any {
 	m := map[string]any{
-		"Kill":    s.Cfg.KillSwitch(),
-		"DryRun":  s.Cfg.DryRun(),
-		"AuthOn":  s.authEnabled(),
-		"LocalDL": s.localDownloadChip(),
+		"Kill":     s.Cfg.KillSwitch(),
+		"DryRun":   s.Cfg.DryRun(),
+		"MasterOn": automation.MasterOn(s.settings()),
+		"AuthOn":   s.authEnabled(),
+		"LocalDL":  s.localDownloadChip(),
 	}
 	if s.WebAI != nil {
 		m["WebAICount"] = s.WebAI.CountConnected()
@@ -738,14 +736,14 @@ func (s *Server) render(w http.ResponseWriter, page string, data map[string]any)
 // accountView is a network account plus its rendered persona label and growth metrics.
 type accountView struct {
 	*network.Account
-	PersonaLabel string
-	Platforms    []string
-	GrowthStage  string
-	Views30d     int64
-	FollowersCnt int64
-	NextTarget   string
-	NextPct      float64
-	HasNext      bool
+	PersonaLabel  string
+	Platforms     []string
+	GrowthStage   string
+	Views30d      int64
+	FollowersCnt  int64
+	NextTarget    string
+	NextPct       float64
+	HasNext       bool
 	AffiliateLink string
 	ModelPhotoURL string
 	HasModel      bool
@@ -820,7 +818,6 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 	if av.GrowthStage == "" {
 		av.GrowthStage = "Đang vận hành"
 	}
-	av.AffiliateLink = "https://go.isclix.com/deal-hot"
 	if s.Studio != nil {
 		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
 			if photos, err := ms.List(a.ID); err == nil && len(photos) > 0 {

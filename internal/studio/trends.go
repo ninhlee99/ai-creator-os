@@ -54,9 +54,10 @@ func FetchVNTrending(ctx context.Context) ([]TrendingSound, error) {
 	}
 	trendsMu.Unlock()
 
-	// Cold start: return curated Vietnamese trending hits instantly without blocking on 25s HTTP request
+	// Cold start: fetch current chart asynchronously; never present the old
+	// curated sample list as live trending data.
 	RefreshVNTrendingAsync()
-	return append([]TrendingSound(nil), curatedVietnameseHits...), nil
+	return nil, fmt.Errorf("đang tải bảng xếp hạng hiện tại; thử làm mới sau ít phút")
 }
 
 // RefreshVNTrending forces a fresh fetch (dashboard "làm mới" button).
@@ -73,8 +74,6 @@ func RefreshVNTrending(ctx context.Context) ([]TrendingSound, error) {
 	defer trendsMu.Unlock()
 	if err != nil && len(trendsCache) > 0 {
 		return append([]TrendingSound(nil), trendsCache...), err
-	} else if err != nil {
-		return append([]TrendingSound(nil), curatedVietnameseHits...), err
 	}
 	return append([]TrendingSound(nil), sounds...), nil
 }
@@ -130,7 +129,7 @@ func fetchKworbVN(ctx context.Context) ([]TrendingSound, error) {
 	sounds := parseKworbVN(string(html))
 	sounds = enrichVietnameseSounds(sounds)
 	if len(sounds) == 0 {
-		return append([]TrendingSound(nil), curatedVietnameseHits...), nil
+		return nil, fmt.Errorf("nguồn không trả về bài hát hiện tại")
 	}
 	return sounds, nil
 }
@@ -181,64 +180,17 @@ func parseKworbVN(html string) []TrendingSound {
 // the chart always has at least 15-20 top trending Vietnamese TikTok sounds.
 func enrichVietnameseSounds(sounds []TrendingSound) []TrendingSound {
 	seen := make(map[string]bool)
-	out := make([]TrendingSound, 0, 25)
-
-	for _, s := range sounds {
-		key := strings.ToLower(s.Artist + "|" + s.Title)
-		if !seen[key] {
-			seen[key] = true
-			out = append(out, s)
+	out := make([]TrendingSound, 0, len(sounds))
+	for _, sound := range sounds {
+		key := strings.ToLower(sound.Artist + "|" + sound.Title)
+		if key == "|" || seen[key] {
+			continue
 		}
-	}
-
-	if len(out) < 15 {
-		for _, hit := range curatedVietnameseHits {
-			key := strings.ToLower(hit.Artist + "|" + hit.Title)
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			out = append(out, TrendingSound{
-				Rank:     len(out) + 1,
-				Movement: "+",
-				Artist:   hit.Artist,
-				Title:    hit.Title,
-			})
-			if len(out) >= 20 {
-				break
-			}
-		}
-	}
-
-	// Re-rank 1..N
-	for i := range out {
-		out[i].Rank = i + 1
+		seen[key] = true
+		sound.Rank = len(out) + 1
+		out = append(out, sound)
 	}
 	return out
-}
-
-// curatedVietnameseHits provides reliable, high-energy 100% Vietnamese TikTok hits.
-var curatedVietnameseHits = []TrendingSound{
-	{Artist: "Dunghoangpham", Title: "Mật Ngọt - Nam Con Remix"},
-	{Artist: "Sơn Tùng M-TP", Title: "Đừng Làm Trái Tim Anh Đau"},
-	{Artist: "Vũ.", Title: "Vì Anh Đâu Có Biết (Lofi Ver)"},
-	{Artist: "Tăng Duy Tân", Title: "Cắt Đôi Nỗi Sầu (Vinahouse Remix)"},
-	{Artist: "HIEUTHUHAI", Title: "Không Thể Say"},
-	{Artist: "Wren Evans", Title: "Từng Quen (Speed Up)"},
-	{Artist: "Quang Hùng MasterD", Title: "Thủy Triều (Remix)"},
-	{Artist: "Hoàng Thùy Linh", Title: "See Tình (Cucak Remix)"},
-	{Artist: "Pháo & KAIZ", Title: "2 Phút Hơn (Remix)"},
-	{Artist: "Đen", Title: "Nấu Ăn Cho Em (ft. PiaLinh)"},
-	{Artist: "Amee & GREY D", Title: "Ưng Quá Chừng"},
-	{Artist: "MONO", Title: "Waiting For You (Remix)"},
-	{Artist: "Hòa Minzy", Title: "Thị Mầu (Remix)"},
-	{Artist: "Văn Mai Hương", Title: "Đại Minh Tinh"},
-	{Artist: "Low G", Title: "Có Em (Remix)"},
-	{Artist: "B Ray & Han Sara", Title: "Xin Đừng Nhấc Máy (Remix)"},
-	{Artist: "Đức Phúc", Title: "Ngày Đầu Tiên"},
-	{Artist: "Jack & J97", Title: "Hoa Hải Đường (Remix)"},
-	{Artist: "Anh Tú", Title: "Duyên Do Trời Phận Tại Ta"},
-	{Artist: "Đại Mèo", Title: "Lạc Vào Trong Mơ (Remix)"},
 }
 
 // isVietnameseSound verifies if a sound is genuine Vietnamese.

@@ -67,7 +67,7 @@ type harnessView struct {
 	TotalMemories        int
 	TotalCycles          int
 	AccountNames         []string
-	SimulatedNiches      []string
+	ConfiguredNiches     []string
 	DefaultPromptContext string
 	Notice               string
 	Error                string
@@ -82,21 +82,21 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 	hv := &harnessView{
 		Notice: notice,
 		Error:  errMsg,
-		SimulatedNiches: []string{
-			"công nghệ & AI",
-			"tài chính cá nhân & kinh doanh",
-			"đời sống & mẹo vặt",
-			"sức khỏe & làm đẹp",
-			"giải trí & bí ẩn",
-		},
 	}
 
-	// Lấy danh sách kênh cho dropdown
+	// Lấy kênh và ngách đã cấu hình.
+	var promptChannel, promptNiche string
 	if s.Mgr != nil {
 		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
 			for _, a := range accounts {
 				if a != nil && a.Username != "" {
 					hv.AccountNames = append(hv.AccountNames, a.Username)
+					if niche := strings.TrimSpace(a.Niche); niche != "" {
+						hv.ConfiguredNiches = append(hv.ConfiguredNiches, niche)
+						if promptNiche == "" {
+							promptChannel, promptNiche = a.Username, niche
+						}
+					}
 				}
 			}
 		}
@@ -156,13 +156,10 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Tạo prompt context mẫu cho kênh/niche đầu tiên
-		firstNiche := "công nghệ & AI"
-		firstChan := ""
-		if len(hv.AccountNames) > 0 {
-			firstChan = hv.AccountNames[0]
+		// Chỉ dựng prompt context khi có ngách do người dùng cấu hình.
+		if promptNiche != "" {
+			hv.DefaultPromptContext = memStore.GeneratePromptContext(r.Context(), promptNiche, promptChannel)
 		}
-		hv.DefaultPromptContext = memStore.GeneratePromptContext(r.Context(), firstNiche, firstChan)
 	}
 
 	s.render(w, "harness", s.ctx("Harness", hv))
@@ -216,9 +213,13 @@ func (s *Server) handleHarnessAutonomy(w http.ResponseWriter, r *http.Request) {
 	case "3", "fully_autonomous":
 		lvl = harness.AutonomyFullyAutonomous
 	default:
-		lvl = harness.AutonomyFullyAutonomous
+		lvl = harness.AutonomyAssisted
 	}
 
+	if err := s.settings().Set("harness.autonomy_level", strconv.Itoa(int(lvl))); err != nil {
+		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Không lưu được mức tự chủ: "+err.Error()), http.StatusSeeOther)
+		return
+	}
 	s.Harness.SetAutonomyLevel(lvl)
 	if s.Ledger != nil {
 		target := "autonomy_level"

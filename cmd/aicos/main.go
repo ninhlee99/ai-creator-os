@@ -567,12 +567,11 @@ func main() {
 			if err := automation.MigrateProductsSettings(pstore, autoSettings); err != nil {
 				log.Printf("settings: migrate products settings: %v", err)
 			}
-			// Tích hợp provider săn sản phẩm thật (MarketplaceDiscoveryProvider + Accesstrade)
-			srv.ProductProviders = []products.Provider{
-				products.NewMarketplaceDiscoveryProvider(),
-			}
-			if seeded, serr := products.SeedDefaultStore(pstore); serr == nil && seeded > 0 {
-				log.Printf("products: đã nạp %d sản phẩm hoa hồng cao thật từ sàn thương mại vào kho", seeded)
+			// Xóa catalog hardcode cũ; các deal này chưa từng được xác minh.
+			if removed, rerr := pstore.RemoveSource("market_verified"); rerr != nil {
+				log.Printf("products: remove unverified catalog failed: %v", rerr)
+			} else if removed > 0 {
+				log.Printf("products: removed %d unverified catalog rows", removed)
 			}
 			models, err := srv.Studio.ModelLibrary()
 			if err != nil {
@@ -723,6 +722,12 @@ func main() {
 	})
 
 	// -- 7f. master autonomous harness agent (OODA cognitive engine) ---------
+	autonomyLevel := harness.AutonomyAssisted
+	if stored, ok := autoSettings.Get("harness.autonomy_level"); ok {
+		if n, err := strconv.Atoi(stored); err == nil && n >= int(harness.AutonomyAssisted) && n <= int(harness.AutonomyFullyAutonomous) {
+			autonomyLevel = harness.AutonomyLevel(n)
+		}
+	}
 	harnessInst, err := harness.New(
 		srv.DB(),
 		srv.Studio,
@@ -730,8 +735,11 @@ func main() {
 		srv.Growth,
 		studioLLMAdapter{c: llmChain},
 		harness.Config{
-			AutonomyLevel: harness.AutonomyFullyAutonomous,
+			AutonomyLevel: autonomyLevel,
 			Interval:      6 * time.Hour,
+			ExecutionAllowed: func() bool {
+				return automation.MasterSwitchGate{Settings: autoSettings}.MasterEnabled() && webCfg.LiveEnabled()
+			},
 		},
 	)
 	if err != nil {

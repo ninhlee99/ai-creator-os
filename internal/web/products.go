@@ -19,10 +19,52 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
+
+type accesstradeSearchProvider struct {
+	client *accesstrade.Client
+	store  *products.Store
+}
+
+func (p accesstradeSearchProvider) Name() string { return accesstrade.HunterSource }
+
+func (p accesstradeSearchProvider) Search(ctx context.Context, q products.Query) ([]products.Product, error) {
+	if _, err := p.client.Hunt(ctx, p.store, accesstrade.HunterFilter{
+		Limit: 200, MinCommissionRate: q.MinCommission, ThemeFallback: q.Theme,
+		ApprovedOnly: true, MaxAgeDays: 30,
+	}); err != nil {
+		return nil, err
+	}
+	items, err := p.store.Search("", q.Theme, q.MinCommission, 500)
+	if err != nil {
+		return nil, err
+	}
+	var out []products.Product
+	for _, item := range items {
+		if len(q.Keywords) > 0 {
+			hay := strings.ToLower(item.Title + " " + item.Category + " " + item.ShopName)
+			matched := false
+			for _, term := range q.Keywords {
+				if strings.Contains(hay, strings.ToLower(term)) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		out = append(out, item)
+		if q.Limit > 0 && len(out) >= q.Limit {
+			break
+		}
+	}
+	return out, nil
+}
 
 // themeOption is one entry of the theme dropdown.
 type themeOption struct {
@@ -93,6 +135,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	} else {
 		results, rerr = s.Products.TopHighCommission(30)
 	}
+	results = excludeSource(results, "market_verified")
 	if rerr != nil {
 		s.render(w, "products", s.ctx(
 			"AT", s.atPageData(),
@@ -174,6 +217,9 @@ func (s *Server) shelfViews() []productView {
 	}
 	views := make([]productView, 0, len(shelf))
 	for _, p := range shelf {
+		if p.Source == "market_verified" {
+			continue
+		}
 		img := ""
 		if len(p.ImageURLs) > 0 {
 			img = p.ImageURLs[0]
@@ -194,6 +240,16 @@ func (s *Server) shelfViews() []productView {
 		})
 	}
 	return views
+}
+
+func excludeSource(items []products.Product, source string) []products.Product {
+	out := items[:0]
+	for _, p := range items {
+		if p.Source != source {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // ledgerShelfMigrationKey marks the one-time import of the legacy ledger
@@ -409,7 +465,16 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 
 	providers := s.ProductProviders
 	if len(providers) == 0 {
-		providers = []products.Provider{products.NewMarketplaceDiscoveryProvider()}
+		client, err := s.atClient()
+		if err != nil {
+			s.render(w, "products", s.ctx(
+				"AT", s.atPageData(), "Tab", "tim", "Themes", themeOptions(),
+				"Theme", theme, "Keyword", keyword, "MinPct", minPct, "Shelf", s.shelfViews(),
+				"Error", "Kết nối Accesstrade để tìm deal thật; hoặc thêm sản phẩm thủ công.",
+			))
+			return
+		}
+		providers = []products.Provider{accesstradeSearchProvider{client: client, store: s.Products}}
 	}
 	var warnings []string
 	for _, p := range providers {
@@ -702,7 +767,6 @@ type BioLinkData struct {
 	Categories     []string
 	CurrentChannel string
 	ShareURL       string
-	IsSample       bool
 	TikTokURL      string
 	YouTubeURL     string
 	FacebookURL    string
@@ -716,11 +780,13 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 		channel = strings.TrimPrefix(r.URL.Query().Get("channel"), "@")
 	}
 
-	channelTitle := "KOC Creator Store"
-	channelHandle := "creator"
-	niche := "Sản phẩm chọn lọc chất lượng cao"
-	bioDesc := "Tổng hợp deal hot, đồ decor & công nghệ review triệu view. Bấm link để nhận giá ưu đãi!"
-	avatarLetter := "K"
+	channelTitle := "Kênh"
+	channelHandle := ""
+	niche := ""
+	bioDesc := ""
+	avatarLetter := "?"
+	youtubeURL := ""
+	accountFound := false
 
 	if s.Ledger != nil {
 		accs, err := s.Ledger.ListAccounts(nil)
@@ -738,6 +804,7 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 				matched = &accs[0]
 			}
 			if matched != nil {
+				accountFound = true
 				channelHandle = matched.Username
 				channelTitle = "@" + matched.Username
 				if len(matched.Username) > 0 {
@@ -745,30 +812,39 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 				}
 				if matched.Niche.Valid && matched.Niche.String != "" {
 					niche = matched.Niche.String
-					bioDesc = "Góc gợi ý mua sắm chính hãng từ kênh @" + matched.Username + " · Đã kiểm định chất lượng."
+				}
+				if matched.YoutubeChannel.Valid && matched.YoutubeChannel.String != "" {
+					youtubeURL = matched.YoutubeChannel.String
+					if !strings.HasPrefix(strings.ToLower(youtubeURL), "http://") && !strings.HasPrefix(strings.ToLower(youtubeURL), "https://") {
+						youtubeURL = "https://www.youtube.com/channel/" + url.PathEscape(youtubeURL)
+					}
 				}
 			} else if channel != "" {
-				channelHandle = channel
-				channelTitle = "@" + channel
-				if len(channel) > 0 {
-					avatarLetter = strings.ToUpper(channel[:1])
-				}
+				http.NotFound(w, r)
+				return
 			}
 		}
+	} else if channel != "" {
+		http.NotFound(w, r)
+		return
+	}
+	if channel != "" && !accountFound {
+		http.NotFound(w, r)
+		return
 	}
 
-	// Fetch shelf products
+	// Fetch shelf products for a configured channel only.
 	var prods []products.Product
-	if s.Products != nil {
+	if accountFound && s.Products != nil {
 		prods, _ = s.Products.Shelf(50)
 		if len(prods) == 0 {
 			prods, _ = s.Products.All(50)
 		}
+		prods = excludeSource(prods, "market_verified")
 	}
 
 	var items []BioProductView
 	var catMap = make(map[string]bool)
-	var isSample bool
 
 	if len(prods) > 0 {
 		for _, p := range prods {
@@ -782,14 +858,6 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 			}
 			catMap[cat] = true
 
-			origPrice := ""
-			discBadge := ""
-			if p.Price > 0 {
-				origVal := p.Price * 1.35
-				origPrice = formatVND(origVal)
-				discBadge = "-25% SALE"
-			}
-
 			buyURL := "/bio-go/" + strconv.FormatInt(p.ID, 10)
 			if p.ProductURL != "" && strings.HasPrefix(p.ProductURL, "http") {
 				buyURL = "/bio-go/" + strconv.FormatInt(p.ID, 10)
@@ -801,8 +869,6 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 				ImageURL:       img,
 				Price:          p.Price,
 				PriceFormatted: formatVND(p.Price),
-				OriginalPrice:  origPrice,
-				DiscountBadge:  discBadge,
 				Rating:         p.Rating,
 				SoldCount:      p.SoldCount,
 				Category:       cat,
@@ -811,71 +877,6 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 				ClickCount:     p.ClickCount,
 			})
 		}
-	} else {
-		// Showcase curated sample products for instant preview
-		isSample = true
-		items = []BioProductView{
-			{
-				ID:             1,
-				Title:          "Áo Polo Nam Thể Thao Lụa Lạnh Cao Cấp Thoáng Khí Co Giãn 4 Chiều",
-				ImageURL:       "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=600&auto=format&fit=crop&q=80",
-				Price:          199000,
-				PriceFormatted: "199.000 ₫",
-				OriginalPrice:  "350.000 ₫",
-				DiscountBadge:  "-43% DEAL SỐC",
-				Rating:         4.9,
-				SoldCount:      3420,
-				Category:       "Thời Trang",
-				BuyURL:         "https://shopee.vn",
-				ShopName:       "Shopee Mall",
-			},
-			{
-				ID:             2,
-				Title:          "Nồi Chiên Không Dầu Điện Tử 8L Cảm Ứng Đa Năng Tiết Kiệm Điện",
-				ImageURL:       "https://images.unsplash.com/photo-1585515320310-259814833e62?w=600&auto=format&fit=crop&q=80",
-				Price:          890000,
-				PriceFormatted: "890.000 ₫",
-				OriginalPrice:  "1.450.000 ₫",
-				DiscountBadge:  "-38% FREESHIP",
-				Rating:         4.8,
-				SoldCount:      1250,
-				Category:       "Gia Dụng",
-				BuyURL:         "https://shopee.vn",
-				ShopName:       "Gia Dụng Thông Minh",
-			},
-			{
-				ID:             3,
-				Title:          "Serum Phục Hồi Dưỡng Ẩm Chuyên Sâu Cấp Nước Cho Da Dầu Mụn 50ml",
-				ImageURL:       "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&auto=format&fit=crop&q=80",
-				Price:          265000,
-				PriceFormatted: "265.000 ₫",
-				OriginalPrice:  "390.000 ₫",
-				DiscountBadge:  "-32% CHÍNH HÃNG",
-				Rating:         5.0,
-				SoldCount:      5600,
-				Category:       "Làm Đẹp",
-				BuyURL:         "https://tiktok.com",
-				ShopName:       "TikTok Shop",
-			},
-			{
-				ID:             4,
-				Title:          "Tai Nghe Bluetooth Không Dây Pin 36h Chống Ồn Chủ Động ANC Âm Bass Cực Căng",
-				ImageURL:       "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80",
-				Price:          450000,
-				PriceFormatted: "450.000 ₫",
-				OriginalPrice:  "790.000 ₫",
-				DiscountBadge:  "-43% BÁN CHẠY",
-				Rating:         4.9,
-				SoldCount:      2890,
-				Category:       "Công Nghệ",
-				BuyURL:         "https://shopee.vn",
-				ShopName:       "Tech Official",
-			},
-		}
-		catMap["Thời Trang"] = true
-		catMap["Gia Dụng"] = true
-		catMap["Làm Đẹp"] = true
-		catMap["Công Nghệ"] = true
 	}
 
 	var cats []string
@@ -902,11 +903,7 @@ func (s *Server) handleBioLink(w http.ResponseWriter, r *http.Request) {
 		Categories:     cats,
 		CurrentChannel: channelHandle,
 		ShareURL:       r.Host + r.URL.Path,
-		IsSample:       isSample,
-		TikTokURL:      "https://www.tiktok.com/@" + channelHandle,
-		YouTubeURL:     "https://www.youtube.com/@" + channelHandle,
-		FacebookURL:    "https://www.facebook.com/" + channelHandle,
-		ZaloURL:        "https://zalo.me",
+		YouTubeURL:     youtubeURL,
 	}
 	if err := t.ExecuteTemplate(w, "bio", data); err != nil {
 		log.Printf("web: render bio: %v", err)
@@ -982,4 +979,3 @@ func (s *Server) handleBioPin(w http.ResponseWriter, r *http.Request) {
 		"bio_url": "/bio",
 	})
 }
-

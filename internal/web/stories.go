@@ -8,9 +8,13 @@ package web
 // private-first qua automation (kill switch / dry-run chặn).
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -65,8 +69,6 @@ type storiesView struct {
 	RetryMax      int
 	RetryCooldown int
 	Error         string
-	// CuratedPlots: danh sách cốt truyện audio chuẩn điện ảnh (đợt AF)
-	CuratedPlots []studio.AudioStoryPlot
 }
 
 func storyStatusVN(st string) string {
@@ -88,20 +90,19 @@ func storyStatusVN(st string) string {
 func (s *Server) storiesPageData() storiesView {
 	v := storiesView{
 		StudioOK:      s.Studio != nil,
-		DefGenre:      s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
+		DefGenre:      s.atSettingStr(automation.KeyStoryGenre, ""),
 		DefWords:      s.atSettingInt(automation.KeyStoryWords, 600),
 		DefScenes:     s.atSettingInt(automation.KeyStoryScenes, 6),
-		MusicOn:       s.atSettingOn(automation.KeyStoryMusicOn, true),
-		AutoOn:        s.atSettingOn(automation.KeyStoryAutoPublish, true),
-		AutofillOn:    s.atSettingOn(automation.KeyStoryTopicsAutofill, true),
+		MusicOn:       s.atSettingOn(automation.KeyStoryMusicOn, false),
+		AutoOn:        s.atSettingOn(automation.KeyStoryAutoPublish, false),
+		AutofillOn:    s.atSettingOn(automation.KeyStoryTopicsAutofill, false),
 		PublicAfterH:  s.atSettingInt(automation.KeyStoryPublicAfterHours, 0),
-		TickOn:        s.atSettingOn(automation.KeyStoryEnabled, true),
+		TickOn:        s.atSettingOn(automation.KeyStoryEnabled, false),
 		TickHours:     s.atSettingInt(automation.KeyStoryIntervalH, 24),
-		RetryOn:       s.atSettingOn(automation.KeyStoryRetryEnabled, true),
+		RetryOn:       s.atSettingOn(automation.KeyStoryRetryEnabled, false),
 		RetryMax:      s.atSettingInt(automation.KeyStoryRetryMax, 3),
 		RetryCooldown: s.atSettingInt(automation.KeyStoryRetryCooldown, 6),
 		PostAccount:   s.atSettingStr(automation.KeyStoryAccount, ""),
-		CuratedPlots:  studio.CuratedAudioStoryPlots,
 	}
 	if s.Ledger != nil {
 		if t, ok, _ := s.Ledger.GetSetting(automation.KeyStoryTopics); ok {
@@ -202,6 +203,15 @@ func (s *Server) handleStoryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := storyParamsFromForm(r)
+	if p.Topic == "" && p.CustomText != "" {
+		for _, line := range strings.Split(p.CustomText, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				p.Topic = strings.TrimPrefix(strings.TrimPrefix(line, "#"), "Chương 1:")
+				p.Topic = strings.TrimSpace(p.Topic)
+				break
+			}
+		}
+	}
 	if strings.TrimSpace(p.Topic) == "" {
 		storiesRedirect(w, r, "", "Nhập chủ đề truyện.")
 		return
@@ -234,12 +244,10 @@ func storyParamsFromForm(r *http.Request) studio.StoryParams {
 	words, _ := strconv.Atoi(r.FormValue("words"))
 	scenes, _ := strconv.Atoi(r.FormValue("scenes"))
 	genre := strings.TrimSpace(r.FormValue("genre"))
-	if genre == "" {
-		genre = "tâm lý"
-	}
 	autoClip := r.FormValue("auto_clip_shorts") != "0"
 	return studio.StoryParams{
 		Topic:           strings.TrimSpace(r.FormValue("topic")),
+		CustomText:      strings.TrimSpace(r.FormValue("custom_story_text")),
 		Genre:           genre,
 		DurationMinutes: durMin,
 		Words:           words,
@@ -248,6 +256,104 @@ func storyParamsFromForm(r *http.Request) studio.StoryParams {
 		Voice:           strings.TrimSpace(r.FormValue("voice")),
 		AutoClipShorts:  autoClip,
 	}
+}
+
+// handleStoryUploadText extracts readable text from .txt or .docx uploads.
+func (s *Server) handleStoryUploadText(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		http.Error(w, "Tệp vượt giới hạn 5 MB hoặc không hợp lệ", http.StatusBadRequest)
+		return
+	}
+	f, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Thiếu tệp truyện", http.StatusBadRequest)
+		return
+	}
+	defer f.Close()
+	var text string
+	switch strings.ToLower(filepath.Ext(header.Filename)) {
+	case ".txt":
+		b, err := io.ReadAll(io.LimitReader(f, 5<<20))
+		if err != nil {
+			http.Error(w, "Không đọc được tệp", http.StatusBadRequest)
+			return
+		}
+		text = string(b)
+	case ".docx":
+		b, err := io.ReadAll(io.LimitReader(f, 5<<20))
+		if err != nil {
+			http.Error(w, "Không đọc được tệp", http.StatusBadRequest)
+			return
+		}
+		zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+		if err != nil {
+			http.Error(w, "Tệp DOCX không hợp lệ", http.StatusBadRequest)
+			return
+		}
+		for _, item := range zr.File {
+			if item.Name != "word/document.xml" {
+				continue
+			}
+			if item.UncompressedSize64 > 8<<20 {
+				http.Error(w, "Văn bản DOCX vượt giới hạn 8 MB", http.StatusRequestEntityTooLarge)
+				return
+			}
+			rc, err := item.Open()
+			if err != nil {
+				break
+			}
+			dec := xml.NewDecoder(rc)
+			var out strings.Builder
+			inText := false
+			for {
+				tok, err := dec.Token()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					rc.Close()
+					http.Error(w, "Không đọc được nội dung DOCX", http.StatusBadRequest)
+					return
+				}
+				switch tok := tok.(type) {
+				case xml.StartElement:
+					if tok.Name.Local == "t" {
+						inText = true
+					}
+					if tok.Name.Local == "p" && out.Len() > 0 {
+						out.WriteByte('\n')
+					}
+				case xml.EndElement:
+					if tok.Name.Local == "t" {
+						inText = false
+					}
+				case xml.CharData:
+					if inText {
+						out.Write([]byte(tok))
+						if out.Len() > 4<<20 {
+							rc.Close()
+							http.Error(w, "Văn bản DOCX vượt giới hạn 4 MB", http.StatusRequestEntityTooLarge)
+							return
+						}
+					}
+				}
+			}
+			rc.Close()
+			text = out.String()
+			break
+		}
+	default:
+		http.Error(w, "Chỉ hỗ trợ tệp .txt hoặc .docx", http.StatusUnsupportedMediaType)
+		return
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		http.Error(w, "Tệp không có văn bản đọc được", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]string{"text": text})
 }
 
 // handleStoryPublish đăng 1 truyện đã dựng lên YouTube (private-first).

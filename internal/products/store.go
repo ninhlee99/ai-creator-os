@@ -135,6 +135,18 @@ func (s *Store) SetSetting(key, val string) error {
 // Close releases the database handle.
 func (s *Store) Close() error { return s.db.Close() }
 
+// RemoveSource deletes stale products from a source that is no longer trusted.
+func (s *Store) RemoveSource(source string) (int64, error) {
+	if strings.TrimSpace(source) == "" {
+		return 0, fmt.Errorf("products: source is required")
+	}
+	res, err := s.db.Exec(`DELETE FROM products WHERE source=?`, source)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // Count returns the total number of products in the store (autopilot
 // status surface on /products).
 func (s *Store) Count() (int64, error) {
