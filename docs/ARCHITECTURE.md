@@ -58,9 +58,11 @@
 └──────┬──────┘ └─────┬───────┘ └─────────────┘ └───┬──────────┘
        │              │                             │
 ┌──────▼──────────────▼─────────────────────────────▼─────────┐
-│ engines: LLM chain (Gemini→llama→paid tắt) · TTS chain      │
-│ (Gemini→VieNeu→Edge) · Web AI pool (ChatGPT/Claude/Grok...) │
-│ keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
+│ engines: LLM chain (Gemini 3.8 Flash→llama→paid tắt)         │
+│ TTS chain: Độc quyền Gemini TTS (gemini-3.8-flash-tts)       │
+│ Web AI pool (ChatGPT/Claude/Grok...)                         │
+│ Keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
+│ Daily Model Auto-Updater (quét 24h & hot-swap model mới)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,7 +87,16 @@ chờ Ninh duyệt).
 - **I3: InsightFace Deep Latent Identity Engine (`scripts/face_swapper.py`)**: Hoán đổi khuôn mặt AI với vector đặc trưng 512 chiều, căn chỉnh 5 điểm mốc nhân trắc học và hòa trộn Poisson Seamless Blending để ghép khuôn mặt creator vào thân hình vũ công hoặc người mẫu lookbook trong video chuyển động thực tế.
 - **I4: Phim Lookbook Thời Trang Chuyển Động Người Thật (`internal/studio/affiliate.go`)**: Video affiliate thời trang/phụ kiện sử dụng 100% video quay người mẫu thật trong không gian thực tế (boutique, phố, dạo chơi), loại bỏ slide ảnh tĩnh thô kệch và thẻ chữ `AdCard` che khuất hình ảnh.
 - **I5: Bộ Cắt Chuyển Cảnh CapCut Pro (`internal/studio/assemble.go`)**: Cắt nhịp dứt khoát theo âm nhạc thịnh hành với chớp sáng trắng (`0.12s white flash`) và Ken Burns nhẹ nhàng $< 8\%$.
-- **I6: Rạp Chiếu Truyện Audio Điện Ảnh 30 – 60 Phút (`internal/studio/story.go`)**: Xóa bỏ hoàn toàn hiện tượng màn hình đen; mỗi 8-15 giây là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (VieNeu Neural TTS + Foley môi trường + Nhạc nền cinematic lót -18dB).
+- **I6: Rạp Chiếu Truyện Audio Điện Ảnh 30 – 60 Phút (`internal/studio/story.go`)**: Xóa bỏ hoàn toàn hiện tượng màn hình đen; mỗi 8-15 giây là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (Gemini TTS đa cảm xúc + Foley môi trường + Nhạc nền cinematic lót -18dB).
+
+**Đợt K (2026-10-20 — Google Gemini On-Demand Model Updater Cho Toàn Bộ Adapter & Full Cloud Optimization):**
+- **K1: On-Demand Model Updater (`internal/engines/gmodels/updater.go`)**: Cập nhật theo yêu cầu người dùng bằng nút bấm trên giao diện web Cài đặt · Hệ thống (loại bỏ tiến trình định kỳ 24h ngầm để tiết kiệm tài nguyên). Thuật toán `PickLatest` phân tích ngữ nghĩa phiên bản (`major.minor`), ưu tiên bản chính thức (GA) so với Preview/Exp, nâng cấp đồng loạt 4 adapter: Text (`gemini-3.8-flash`), Image (`gemini-nano-banana-2.1`), TTS (`gemini-3.8-flash-tts`), Video (`veo-3.1-generate-preview`).
+- **K2: Hot-Swap Không Downtime & Cache Bền Vững**: Model mới phát hiện được cập nhật trực tiếp vào bộ nhớ luồng an toàn mà không cần khởi động lại máy chủ. Lưu vào `data/discovered_models.json` và tự nạp lại khi boot.
+- **K3: Giao Diện Quản Trị Tinh Gọn (`internal/web/templates/settings/he-thong.html`)**: Thẻ điều khiển Gemini Model hiển thị trạng thái quét, danh sách model kích hoạt cho 4 tác vụ, nút `⚡ Cập Nhật Tất Cả Model Gemini` (`POST /settings/models/update`), loại bỏ hoàn toàn các hướng dẫn dài dòng gây rối mắt.
+- **K4: Chuẩn Hóa Thời Lượng & Bỏ Màn Hình Đen 5s**:
+  * Video Affiliate: Tối thiểu 30s – 60s, giữ nhất quán nhân vật và sản phẩm.
+  * Video Viral: Tối thiểu 60s+ (chuẩn TikTok Creativity Program), 0.0s instant start không có ảnh đen 5s đầu, visual "Thần tiên tỉ tỉ".
+  * Video Truyện Audio: 30 - 60 phút, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS `gemini-3.8-flash-tts` kèm emotion tags (loại bỏ hoàn toàn VieNeu-TTS).
 
 **Đợt J (2026-10-19 — Nâng Cấp Generative AI Video Engine: Google Veo 3 & Muse AI):**
 - **J1: Google Veo 3 Engine (`internal/studio/veo.go`)**: Tích hợp trực tiếp Google Veo 3 qua REST API (`generativelanguage.googleapis.com/v1beta`) với cơ chế fallback tự động theo danh sách ưu tiên: `veo-3.1-generate-preview`, `veo-3.0-generate-preview`, `veo-2.0-generate-001`, `veo-3.0-generate-001`, `veo-2.0-generate-preview`. Hỗ trợ cả Text-to-Video và Image-to-Video (`firstFrame`), xử lý long-running operation polling bất đồng bộ và tải video MP4 trực tiếp.

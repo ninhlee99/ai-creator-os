@@ -94,19 +94,12 @@ func TestSettingsHeThongR2W7(t *testing.T) {
 	}
 }
 
-// TestSettingsModelLocalRuntimeTools — trang Model local có bảng công cụ
-// hệ thống từ probe thật (không tuyên bố "sẵn sàng" khi thiếu).
-func TestSettingsModelLocalRuntimeTools(t *testing.T) {
+// TestSettingsModelLocalRedirect — trang Model local đã loại bỏ và redirect sang /settings/he-thong.
+func TestSettingsModelLocalRedirect(t *testing.T) {
 	s := newTestServer(t)
 	rec := get(t, s, "/settings/model-local")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /settings/model-local = %d, want 200", rec.Code)
-	}
-	body := rec.Body.String()
-	for _, want := range []string{"Công cụ hệ thống", "FFmpeg", "llama-server", "uv"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("trang Model local thiếu %q", want)
-		}
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("GET /settings/model-local = %d, want 303", rec.Code)
 	}
 }
 

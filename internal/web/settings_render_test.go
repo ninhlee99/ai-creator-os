@@ -1,6 +1,7 @@
 package web
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ func TestSettingsTemplateRenders(t *testing.T) {
 	s := newTestServer(t)
 	for _, path := range []string{
 		"/settings/he-thong", "/settings/nha-cung-cap",
-		"/settings/model-local", "/settings/an-toan",
+		"/settings/an-toan",
 	} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
@@ -22,6 +23,11 @@ func TestSettingsTemplateRenders(t *testing.T) {
 		if rec.Code != 200 {
 			t.Fatalf("GET %s = %d", path, rec.Code)
 		}
+	}
+	// /settings/model-local đã được loại bỏ và chuyển hướng sang /settings/he-thong
+	recLocal := get(t, s, "/settings/model-local")
+	if recLocal.Code != http.StatusSeeOther {
+		t.Fatalf("GET /settings/model-local = %d, want 303", recLocal.Code)
 	}
 	// Parked routes must 404, not 500. Đợt H2: /team đã định nghĩa lại
 	// quanh 3 pipeline (không còn park) nên ra khỏi danh sách này.
@@ -42,15 +48,6 @@ func TestSettingsTemplateRenders(t *testing.T) {
 	for _, gone := range []string{"Chuỗi provider Avatar", "provider-avatar"} {
 		if strings.Contains(body, gone) {
 			t.Errorf("nha-cung-cap page still has avatar remnant %q", gone)
-		}
-	}
-	body = get(t, s, "/settings/model-local").Body.String()
-	if !strings.Contains(body, "Khả năng AI") {
-		t.Error("model-local page missing Khả năng AI table")
-	}
-	for _, gone := range []string{"avatar-sidecar-badge", "Hình đại diện chạy trên máy"} {
-		if strings.Contains(body, gone) {
-			t.Errorf("model-local page still has avatar remnant %q", gone)
 		}
 	}
 	// Sidebar: no live schedule; /team đã định nghĩa lại ở Đợt H2

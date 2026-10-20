@@ -141,6 +141,7 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 ```
 
 #### Quy chuẩn đầu vào & Chế độ dựng:
+0. **Thời lượng chuẩn**: Tối thiểu **30s – 60s**. Nếu video ngắn hơn (dưới 5s), hệ thống tự động yêu cầu sinh liên tiếp nhiều video nối liền để giữ trọn vẹn chi tiết khung hình, nhân vật và trang phục (váy, áo, túi xách) nhất quán theo phong cách điện ảnh thực thụ.
 1. **Chế độ Lookbook Video Tự Nhiên (Khuyên Dùng - Mặc Định)**:
    - Hệ thống tự động kích hoạt kho footage Lookbook thời trang HD 9:16 (`data/clips/fashion/*.mp4`):
      * `clip_01_fashion_dress.mp4`: Người mẫu nữ sải bước trong không gian boutique sang trọng, đầm thanh lịch, chuyển động tự nhiên 360 độ.
@@ -184,9 +185,11 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 
 #### Nguyên Tắc Phản Chiếu Video Viral Gốc (Original Viral Mirroring Law):
 *Tùy vào video viral gốc như thế nào thì video được tạo bởi AI sẽ có hiệu ứng và phong cách tương tự 1:1:*
-1. **Kế thừa 100% âm thanh & bài nhạc gốc**: Tách và lồng lại bản nhạc gốc của video viral (nếu không chỉ định nhạc riêng). Từng nhịp beat drop, tiếng bass/snare và điểm rơi cao trào đều khớp hoàn hảo với động tác vũ đạo của nhân vật.
-2. **Kế thừa 100% thời lượng tự nhiên**: Thời lượng video AI kết thúc chính xác cùng lúc với clip mẫu, không cắt cụt bài nhảy và không lặp loop gượng gạo.
-3. **Phản chiếu chuyển động & visual mood**: Toàn bộ góc máy, chuyển động cơ thể, động tác nhảy và ánh sáng của clip triệu view được giữ nguyên vẹn qua công nghệ AI Face Swap, biến video thành tác phẩm độc quyền của Creator mà vẫn mang trọn vẹn năng lượng của video viral gốc.
+1. **Thời lượng chuẩn Quỹ Nhà Sáng Tạo (≥ 60s)**: Toàn bộ video viral xuất bản có thời lượng từ **60 giây trở lên** (chuẩn bật kiếm tiền TikTok Creativity Program).
+2. **Khởi động tức thì tại 0.0s (Không màn hình đen)**: Trích xuất frame và audio ngay từ mốc 0.0s của clip gốc, triệt tiêu hoàn toàn hiện tượng ảnh đen 5s đầu video.
+3. **Hình tượng nhân vật "Thần tiên tỉ tỉ"**: Profile visual chân dung người con gái Việt Nam xinh đẹp thuần khiết 21 tuổi (làn da trắng sứ phát sáng, đôi mắt hạnh trong veo có hồn, suối tóc dài đen bồng bềnh nhẹ bay).
+4. **Kế thừa 100% âm thanh & bài nhạc gốc**: Tách và lồng lại bản nhạc gốc của video viral (nếu không chỉ định nhạc riêng). Từng nhịp beat drop, tiếng bass/snare và điểm rơi cao trào đều khớp hoàn hảo với động tác vũ đạo của nhân vật.
+5. **Phản chiếu chuyển động & visual mood**: Toàn bộ góc máy, chuyển động cơ thể, động tác nhảy và ánh sáng của clip triệu view được giữ nguyên vẹn qua công nghệ AI Face Swap, biến video thành tác phẩm độc quyền của Creator mà vẫn mang trọn vẹn năng lượng của video viral gốc.
 
 ---
 
@@ -195,27 +198,30 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 ```
              QUY TRÌNH DỰNG PHIM TRUYỆN AUDIO ĐIỆN ẢNH
   ┌────────────────────┐     ┌──────────────────────┐     ┌──────────────────────┐
-  │ Kịch Bản Truyện Dài│ ──> │ Phân Đoạn 15s/Cảnh   │ ──> │ Sinh Visual 9:16 HD  │
+  │ Kịch Bản Truyện Dài│ ──> │ Phân Đoạn 15s/Cảnh   │ ──> │ Sinh Visual 16:9 HD  │
   │ (30 - 60 Phút)     │     │ (LLM Scene Director) │     │ Flux AI / B-Roll Cine│
   └────────────────────┘     └──────────────────────┘     └──────────┬───────────┘
                                                                      │
   ┌────────────────────┐     ┌──────────────────────┐                │
-  │ Master Video 9:16  │ <── │ Hòa Âm Không Gian    │ <──────────────┘
-  │ Full HD + Phụ Đề   │     │ Voice + Foley + Pad  │
+  │ Master Video 16:9  │ <── │ Hòa Âm Không Gian    │ <──────────────┘
+  │ Full HD + Phụ Đề   │     │ Gemini TTS + Foley   │
   └────────────────────┘     └──────────────────────┘
 ```
 
 #### Quy chuẩn điện ảnh chống màn hình đen:
-1. **Mật độ phân cảnh (Scene Density)**:
-   - Thời lượng mỗi cảnh: 8 đến 15 giây.
-   - Một tập truyện dài 30 phút chứa khoảng $120 \to 180$ phân cảnh thị giác liên tục; tập truyện 60 phút chứa $240 \to 360$ phân cảnh.
-2. **Chất lượng hình ảnh thị giác (Cinematic Visual Canvas)**:
-   - Từng phân cảnh được sinh bởi mô hình AI đồ họa cao cấp (Pollinations Flux / Gemini 2.0 Flash Image Generation) bám sát mô tả cảm xúc của cốt truyện (ví dụ: *"đêm mưa phố cổ, ánh đèn vàng hắt hiu trên mặt đường ướt, tông màu điện ảnh ấm áp"*).
-   - Tích hợp video b-roll phong cảnh chuyển động thực tế (mưa rơi ngoài cửa sổ, khói cà phê nghi ngút, lá vàng rơi) để tạo chiều sâu không gian.
-3. **Cấu trúc âm thanh 3 lớp (Triple-Layer Spatial Soundscape)**:
-   - **Lớp 1 (Narrative Lead)**: Giọng đọc truyền cảm tự nhiên (VieNeu Neural TTS / Edge Neural `vi-VN-HoaiMyNeural` hoặc `vi-VN-NamMinhNeural`).
-   - **Lớp 2 (Ambient Foley)**: Tiếng môi trường thực tế (tiếng mưa dầm, tiếng gió đêm xào xạc, tiếng chuông chùa xa xa) đặt ở mức âm lượng -14dB.
-   - **Lớp 3 (Emotional Soundtrack)**: Nhạc đệm piano/orchestra cinematic nhẹ nhàng, tự động giảm âm lượng (*audio ducking*) -8dB mỗi khi người dẫn chuyện cất tiếng.
+1. **Mật độ phân cảnh (Scene Density) & Thời lượng**:
+   - Thời lượng mỗi tập truyện: **30 phút đến 60 phút** (chuẩn nghe radio đêm khuya, chữa lành và thư giãn).
+   - Thời lượng mỗi cảnh: 8 đến 15 giây. Một tập truyện 30 phút chứa 120 - 180 phân cảnh thị giác liên tục; 60 phút chứa 240 - 360 phân cảnh, kết nối nhất quán với nhân vật và diễn biến truyện.
+2. **Kịch bản chân thật, đa cảm xúc**:
+   - Cốt truyện cuốn hút, lôi cuốn có đủ các cung bậc kịch tính: cao trào, trầm lặng, sôi nổi, hào hứng, tức giận, buồn bã, lặng lẽ.
+   - Gắn tag cảm xúc ngữ cảnh: `[trầm lặng]`, `[cao trào]`, `[sôi nổi]`, `[tức giận]`, `[buồn bã]`, `[vui vẻ]`, `[thì thầm]` để chỉ đạo giọng đọc AI.
+3. **Lồng tiếng Gemini TTS (Đã bỏ VieNeu-TTS)**:
+   - Sử dụng độc quyền model **`gemini-3.8-flash-tts`** mới nhất của Google Gemini.
+   - Trực tiếp chuyển hóa các thẻ cảm xúc thành ngữ điệu, nhịp thở và sắc thái biểu cảm chân thực.
+4. **Cấu trúc âm thanh 3 lớp (Triple-Layer Spatial Soundscape)**:
+   - **Lớp 1 (Narrative Lead)**: Giọng đọc truyền cảm tự nhiên của Gemini TTS.
+   - **Lớp 2 (Ambient Foley)**: Tiếng môi trường thực tế (tiếng mưa dầm, tiếng gió đêm xào xạc, tiếng chuông xa) đặt ở mức âm lượng -14dB.
+   - **Lớp 3 (Emotional Soundtrack)**: Nhạc đệm piano/lo-fi/orchestra cinematic nhẹ nhàng, tự động ducking -8dB khi có giọng đọc.
 
 ---
 
@@ -266,6 +272,44 @@ Nhằm triệt tiêu dứt điểm tình trạng video dán ảnh tĩnh và phó
 3. **Thác Nước Thông Minh (Intelligent Cascade & Fallback)**:
    - Khi chọn `video_engine = "auto"`, hệ thống thử nghiệm Veo 3 trước; nếu gặp quota limit (429) hoặc timeout, tự động chuyển tiếp sang Muse AI.
    - Nếu cả 2 AI engine chưa có cấu hình API key, hệ thống tự động fallback về kho footage người thật chuyển động (Lookbook / Viral Dance) đã chuẩn hóa trước khi áp dụng chuyển động Ken Burns vi sai ($< 1.08x$).
+
+---
+
+### 4.5. Động Cơ Tự Động Cập Nhật Model Gemini Mỗi Ngày (24H Daily Model Auto-Updater)
+
+Nhằm đảm bảo hệ thống luôn tận dụng được những đột phá công nghệ mới nhất từ Google mà không cần sửa code hay can thiệp thủ công:
+
+```
+          TIẾN TRÌNH CẬP NHẬT MODEL GEMINI THEO YÊU CẦU (ON-DEMAND)
+  ┌───────────────────────┐         ┌─────────────────────────┐
+  │ Nút "Cập Nhật Model"  │ ──────> │ Quét Google API         │
+  │ Web UI: POST /update  │         │ GET /v1beta/models      │
+  └───────────────────────┘         └────────────┬────────────┘
+                                                 │
+  ┌───────────────────────┐         ┌────────────▼────────────┐
+  │ Hot-Swap Tức Thì      │ <────── │ Thuật Toán So Sánh Bản  │
+  │ Zero-Downtime         │         │ Mới Nhất (PickLatest)   │
+  └──────────┬────────────┘         └─────────────────────────┘
+             │
+  ┌──────────▼────────────┐
+  │ Lưu Cache Bền Vững    │
+  │ discovered_models.json│
+  └───────────────────────┘
+```
+
+1. **Cập Nhật Model Thủ Công Trên Toàn Bộ Adapter**:
+   - Người dùng chủ động kích hoạt cập nhật bằng nút `⚡ Cập Nhật Tất Cả Model Gemini` trên giao diện web Cài đặt · Hệ thống (`POST /settings/models/update`). Không chạy tiến trình định kỳ 24h ngầm để tối ưu hóa tài nguyên.
+2. **Thuật Toán Tuyển Chọn `PickLatest`**:
+   - Phân giải phiên bản ngữ nghĩa (`major.minor` như 3.8, 3.9, 4.0).
+   - Tuyển chọn theo độ ưu tiên: `Phiên bản mới hơn > Bản chính thức (GA) > Bản thử nghiệm (Preview/Exp) > Bản đầy đủ > Bản Lite`.
+   - Phân loại tự động cho 4 nhóm tác vụ (adapter):
+     * **Text**: `gemini-*-flash` (mặc định: `gemini-3.8-flash`).
+     * **TTS**: `gemini-*-flash-tts` (mặc định: `gemini-3.8-flash-tts`).
+     * **Image**: Dòng tạo ảnh chất lượng cao Nano Banana (mặc định: `gemini-nano-banana-2.1`).
+     * **Video**: Dòng tạo video chuyển động Google Veo (mặc định: `veo-3.1-generate-preview`).
+3. **Hot-Swap & Bộ Nhớ Cache Bền Vững**:
+   - Áp dụng ngay cho các tiến trình render mà không cần restart máy chủ.
+   - Tự động lưu vào `data/discovered_models.json` và nạp lại ngay khi máy chủ khởi động lại.
 
 ---
 

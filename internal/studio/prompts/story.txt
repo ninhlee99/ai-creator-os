@@ -23,6 +23,9 @@ Chủ đề: {{.Topic}}. Thể loại: {{.Genre}}. {{.Orient}}.
    - Nhân vật có tên tuổi thuần Việt, xưng hô gần gũi, đời thực.
 
 4. BẢN ĐỒ CẢM XÚC & GIỮ CHÂN THÍNH GIẢ:
+   - Nội dung cốt truyện phải chân thật, cuốn hút đời thường.
+   - Luôn đan xen các cung bậc cảm xúc đối lập: có đoạn cao trào nghẹt thở, có khúc trầm lặng sâu lắng suy tư, có giây phút sôi nổi hào hứng, có lúc buồn bã, lặng lẽ rơi nước mắt.
+   - Thêm các thẻ cảm xúc dẫn xuất [trầm lặng], [cao trào], [sôi nổi], [buồn bã], [tức giận], [vui vẻ] ở đầu các câu thoại/đoạn kể then chốt để điều khiển giọng đọc AI diễn xuất tròn vẹn cảm xúc.
    - Cứ mỗi 3-4 câu phải có một chi tiết kịch tính mới hoặc câu hỏi tu từ khiến người nghe không thể tắt video.
    - Thời lượng truyện khoảng {{.Seconds}}s — nhịp truyện chặt chẽ, không lan man, không sáo rỗng.
 

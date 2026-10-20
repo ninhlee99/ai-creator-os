@@ -16,10 +16,11 @@ import (
 
 // MuseAIClient handles integration with Muse AI video creation and hosting services.
 type MuseAIClient struct {
-	baseURL string
-	apiKey  string
-	session string
-	client  *http.Client
+	baseURL      string
+	apiKey       string
+	session      string
+	cookieHeader string
+	client       *http.Client
 }
 
 // NewMuseAIClient creates a new Muse AI client instance with optional custom API key.
@@ -38,9 +39,14 @@ func NewMuseAIClient(apiKey, session string) *MuseAIClient {
 	}
 }
 
+// SetCookieHeader thiết lập chuỗi Cookie xác thực từ phiên Web AI.
+func (mc *MuseAIClient) SetCookieHeader(cookie string) {
+	mc.cookieHeader = strings.TrimSpace(cookie)
+}
+
 // Healthy checks whether Muse AI credentials are configured.
 func (mc *MuseAIClient) Healthy() bool {
-	return mc.apiKey != "" || mc.session != ""
+	return mc.apiKey != "" || mc.session != "" || mc.cookieHeader != ""
 }
 
 // RenderMuseAIVideo generates or processes a motion video clip through Muse AI.
@@ -187,8 +193,15 @@ func (mc *MuseAIClient) setAuthHeaders(req *http.Request) {
 		req.Header.Set("Key", mc.apiKey)
 		req.Header.Set("Authorization", "Bearer "+mc.apiKey)
 	}
-	if mc.session != "" {
-		req.Header.Set("Cookie", mc.session)
+	if mc.cookieHeader != "" {
+		req.Header.Set("Cookie", mc.cookieHeader)
+	} else if mc.session != "" {
+		if strings.Contains(mc.session, "=") {
+			req.Header.Set("Cookie", mc.session)
+		} else {
+			req.Header.Set("Cookie", "ps_l="+mc.session)
+			req.Header.Set("Authorization", "Bearer "+mc.session)
+		}
 	}
 	req.Header.Set("User-Agent", "AICreatorOS/2.0")
 }

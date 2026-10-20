@@ -36,6 +36,12 @@ func TestMuseAIClientHealth(t *testing.T) {
 	if !clientWithKey.Healthy() {
 		t.Error("expected client with key to be healthy")
 	}
+
+	clientWithCookie := NewMuseAIClient("", "")
+	clientWithCookie.SetCookieHeader("ps_l=session123")
+	if !clientWithCookie.Healthy() {
+		t.Error("expected client with cookie header to be healthy")
+	}
 }
 
 func TestAvailableVideoEngines(t *testing.T) {
@@ -98,5 +104,33 @@ func TestGenerateMotionVideoClipFallback(t *testing.T) {
 	w, h := ProbeDims(ctx, outMP4)
 	if w != 1080 || h != 1920 {
 		t.Errorf("expected dims 1080x1920, got %dx%d", w, h)
+	}
+}
+
+func TestStudioWebAIResolver(t *testing.T) {
+	st := &Studio{}
+	_, err := st.GetWebAISession("googleflow")
+	if err == nil {
+		t.Fatal("expected error when no resolver set")
+	}
+
+	st.SetWebAIResolver(func(platform string) (*WebAISession, error) {
+		if platform == "googleflow" {
+			return &WebAISession{
+				Platform:     "googleflow",
+				SessionToken: "test-token",
+				CookieHeader: "__Secure-1PSID=test-sid",
+				Email:        "creator@gmail.com",
+			}, nil
+		}
+		return nil, os.ErrNotExist
+	})
+
+	sess, err := st.GetWebAISession("googleflow")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sess.Email != "creator@gmail.com" || sess.SessionToken != "test-token" {
+		t.Fatalf("unexpected session: %+v", sess)
 	}
 }

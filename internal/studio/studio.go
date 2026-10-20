@@ -174,6 +174,37 @@ type Studio struct {
 	MaxDiskPct int
 	// PromptEnhancer tiêm các kinh nghiệm thực chiến từ Agent Harness vào prompt sinh kịch bản.
 	PromptEnhancer func(ctx context.Context, niche, channel string) string
+	// webAI hỗ trợ kết nối tới tài khoản Web AI (Google Flow, Muse AI) qua web adapter session.
+	webAI WebAIResolver
+}
+
+// WebAISession chứa thông tin phiên đăng nhập web (cookie, session token, email).
+type WebAISession struct {
+	Platform     string
+	SessionToken string
+	CookieHeader string
+	Email        string
+}
+
+// WebAIResolver là hàm truy vấn tài khoản Web AI đang kết nối theo nền tảng.
+type WebAIResolver func(platform string) (*WebAISession, error)
+
+// SetWebAIResolver cấu hình hàm truy vấn tài khoản Web AI cho Studio.
+func (s *Studio) SetWebAIResolver(r WebAIResolver) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.webAI = r
+}
+
+// GetWebAISession lấy thông tin phiên Web AI đang hoạt động cho một nền tảng.
+func (s *Studio) GetWebAISession(platform string) (*WebAISession, error) {
+	s.mu.Lock()
+	r := s.webAI
+	s.mu.Unlock()
+	if r == nil {
+		return nil, fmt.Errorf("studio: web ai resolver chưa được thiết lập")
+	}
+	return r(platform)
 }
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job

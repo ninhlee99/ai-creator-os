@@ -25,6 +25,6 @@ func (s *Server) handleProbeVideo(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		_ = s.Studio.ProbeVideoGen(ctx)
 	}()
-	seeOther(w, r, "/settings/model-local?ok="+url.QueryEscape(
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(
 		"Đang kiểm tra quay video (~8s Veo, tốn phí thật) — quay lại sau ít phút để xem kết quả."))
 }

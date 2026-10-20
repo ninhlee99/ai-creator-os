@@ -22,6 +22,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
 	mux.HandleFunc("GET /static/sample_916.mp4", s.handleStaticSampleVideo)
+	mux.HandleFunc("GET /static/presets/{file}", s.handleStaticPresetImage)
 
 	// Đợt S: health endpoint cho watchdog ngoài — không qua onboardGate.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
@@ -50,10 +51,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/models/{photoID}/delete", s.handleAccountModelDelete)
 	mux.HandleFunc("GET /models/{account}/{file}", s.handleModelPhoto)
 
-	// Màn hình chuyên biệt: Thư Viện Nhân Vật & Face Lock AI
-	mux.HandleFunc("GET /models", s.handleModels)
-	mux.HandleFunc("POST /models/upload", s.handleModelUploadGlobal)
-	mux.HandleFunc("POST /models/{id}/delete", s.handleModelDeleteGlobal)
+	// Điều hướng Thư Viện Nhân Vật -> Quản lý trực tiếp theo Kênh (/accounts)
+	mux.HandleFunc("GET /models", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/accounts", http.StatusSeeOther)
+	})
 
 	// Đường dẫn tắt chuyên biệt cho Affiliate
 	mux.HandleFunc("GET /affiliate", func(w http.ResponseWriter, r *http.Request) {
@@ -103,12 +104,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/studio/tiktok-topics", s.handleAPITikTokTopics)
 	mux.HandleFunc("POST /api/studio/tiktok-analyze", s.handleAPITikTokAnalyze)
 
-	// ComfyUI-like Flow Studio (Dynamic Node Graph Execution)
-	mux.HandleFunc("GET /flow", s.handleFlow)
-	mux.HandleFunc("GET /api/flow/recipes", s.handleAPIFlowRecipes)
-	mux.HandleFunc("POST /api/flow/compile", s.handleAPIFlowCompile)
-	mux.HandleFunc("POST /api/flow/run", s.handleAPIFlowRun)
-	mux.HandleFunc("GET /api/flow/status", s.handleAPIFlowStatus)
+	// Điều hướng /flow cũ về Studio
+	mux.HandleFunc("GET /flow", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/studio", http.StatusSeeOther)
+	})
 
 	// Web AI Hub (Claude Web, ChatGPT Web, Gemini Web, Muse AI login & workspace)
 	mux.HandleFunc("GET /web-ai", s.handleWebAI)
@@ -167,9 +166,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings", s.handleSettingsIndex)
 	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
 	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
-	mux.HandleFunc("GET /settings/model-local", s.handleSettingsModelLocal)
+	mux.HandleFunc("GET /settings/model-local", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/settings/he-thong", http.StatusSeeOther)
+	})
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
+	mux.HandleFunc("POST /settings/models/update", s.handleModelsUpdate)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
 	mux.HandleFunc("GET /settings/env/export", s.handleEnvExport)
 	mux.HandleFunc("GET /settings/env/export-json", s.handleEnvExportJSON)

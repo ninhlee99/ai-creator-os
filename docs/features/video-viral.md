@@ -40,7 +40,7 @@ Trang `/viral` bao gồm các khu vực hiện đại:
    - Tab chuyển nhanh: `Tất cả` | `🇻🇳 TikTok Việt Nam` | `🇨🇳 Douyin Trung Quốc (抖音)`.
    - Hộp nhập link `📥 Nhập Link Video Mới`: Hỗ trợ link bất kỳ từ TikTok (`tiktok.com/@...`) hoặc Douyin (`v.douyin.com/...`). Sử dụng `yt-dlp` tách watermark và FFmpeg chuẩn hóa 1080x1920 30fps.
 3. **Quy Trình Khóa Mặt Nhân Vật (Face Lock via InsightFace)**:
-   - **Bước 1**: Chọn khuôn mặt nhân vật của kênh từ Thư viện Nhân vật (`/models`) hoặc tải lên ảnh mới.
+   - **Bước 1**: Chọn khuôn mặt nhân vật của kênh (được quản lý theo từng kênh tại `/accounts/{id}?tab=nhan-vat`) hoặc tải lên ảnh mới.
    - **Bước 2**: Chọn video vũ đạo mẫu chuyển động trong trình xem trước 9:16.
    - **Bước 3**: Nhấn "Giao Cho AI Render Lại Video Mẫu Với Khuôn Mặt Này" — InsightFace tự động hoán đổi khuôn mặt vào từng frame của video nhảy với 5 điểm mốc nhân trắc học và hòa trộn viền da tự nhiên.
 4. **Hàng đợi & Kho Video Hoàn Chỉnh**:

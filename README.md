@@ -11,11 +11,11 @@
 
 | Trụ | Trạng thái code |
 |---|---|
-| **1. Affiliate qua Accesstrade** | ✅ Client API official (`Authorization: Token`) + Lookbook người mẫu chuyển động thật 9:16 + Ghép mặt nhân vật InsightFace + Cắt nhịp CapCut Pro đồng bộ nhạc TikTok trending + Bio Link Storefront di động (`/bio`). Loại bỏ hoàn toàn slide ảnh tĩnh dán chữ |
-| **2. Video Vũ Đạo Viral & Trendjack** | ✅ Radar vũ đạo triệu view từ **TikTok Việt Nam** (Đào Lê Phương Hoa, C.A.C Dance Crew) và **Douyin Trung Quốc (抖音)**. Hỗ trợ dán link bất kỳ qua `yt-dlp` chuẩn hóa 9:16 không logo. Khóa mặt nhân vật kênh bằng InsightFace Deep Latent Identity |
-| **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Xóa bỏ hoàn toàn màn hình đen; mỗi 8-15s là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (VieNeu Neural TTS + Foley môi trường + Nhạc nền cinematic lót -18dB) |
+| **1. Affiliate qua Accesstrade** | ✅ Thời lượng tối thiểu **30s – 60s** + Lookbook người mẫu chuyển động thật 9:16 + Ghép mặt nhân vật InsightFace + Cắt nhịp CapCut Pro đồng bộ nhạc TikTok trending + Bio Link Storefront di động (`/bio`). Đảm bảo nhân vật và sản phẩm nhất quán theo phong cách điện ảnh chân thực |
+| **2. Video Vũ Đạo Viral & Trendjack** | ✅ Thời lượng từ **60s trở lên** (chuẩn bật kiếm tiền TikTok Creativity Program) + Khởi động tức thì tại 0.0s (triệt tiêu 100% màn hình đen 5s đầu) + Visual nhân vật "Thần tiên tỉ tỉ" xinh đẹp thuần khiết + Radar vũ đạo triệu view từ **TikTok Việt Nam & Douyin Trung Quốc (抖音)** |
+| **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Thời lượng **30 – 60 Phút** + Xóa bỏ hoàn toàn màn hình đen; mỗi 8-15s là một visual canvas chuyển động + Kịch bản đa cảm xúc (cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ) + Độc quyền **Google Gemini TTS (`gemini-3.8-flash-tts`)** (đã loại bỏ hoàn toàn VieNeu-TTS) |
 
-Phần đã chạy thật hôm nay: **Studio AI Lookbook**, **Video Viral Vũ Đạo TikTok VN & Douyin CN** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **Video Viral Vũ Đạo TikTok VN & Douyin CN** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 ---
 
@@ -29,9 +29,9 @@ Sidebar hệ thống phân nhóm trực quan thành 3 khối nghiệp vụ chín
 | | Agent Harness 🧠 | `/harness` | **Bộ não tự hành cấp cao**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory), điều phối tự chủ toàn danh mục |
 | | Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: hồ sơ Brand DNA, autopilot, kết nối OAuth, badge YouTube Analytics |
 | | Đội ngũ Agent | `/team` | Giám sát sức khỏe 3 pipeline sản xuất (Affiliate, Video Viral, Kể chuyện) từ dữ liệu thật |
-| **Sản Xuất** | Studio AI 🎬 | `/studio` | Xưởng dàn dựng video: Video bán hàng & Affiliate · Video Đu Trend Showbiz 9:16 · Truyện audio 16:9 · Nhạc trending |
+| **Sản Xuất** | Studio AI 🎬 | `/studio` | Xưởng dàn dựng video: Video bán hàng & Affiliate (30s-60s) · Video Đu Trend Showbiz 9:16 (≥60s) · Truyện audio 16:9 (30-60p) · Nhạc trending |
 | | Affiliate | `/products` | Săn deal Accesstrade, kho sản phẩm, kệ hàng thông minh, lịch autopilot |
-| **Quản Trị** | Cài đặt hệ thống | `/settings` | 5 phân hệ: Hệ thống (gồm **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp & Chuỗi Key · Model local (VieNeu) · An toàn |
+| **Quản Trị** | Cài đặt hệ thống | `/settings` | 4 phân hệ tinh gọn: Hệ thống (gồm **Quản lý & Cập nhật Gemini Model trên toàn bộ adapter** & **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp & Chuỗi Key · An toàn |
 
 ### 🔗 Các phân hệ chuyên sâu & Đường dẫn trực tiếp:
 - **Cửa Hàng Bio Link Kênh (Public Storefront)**: `/bio` hoặc `/bio/{channel}` — Trang web landing page mobile-first tối ưu cho TikTok/Reels/Shorts, tự động đồng bộ từ kệ hàng affiliate, hỗ trợ lọc danh mục tức thì, tìm kiếm nhanh và chuyển hướng tracking link Accesstrade.
@@ -93,7 +93,7 @@ vào app.
 | Tiến độ YPP (500/1.000 sub · 3.000/4.000 giờ · 3M/10M view Shorts) | ✅ 2026-10-12 — cần OAuth Analytics |
 | “Mở bằng CapCut” — xuất gói video + ảnh cảnh + nhạc, mở Finder + CapCut | ✅ 2026-10-12 — CapCut không có API nên kéo thả tay |
 | TikTok đăng trực tiếp | ❌ Cần app audit (Ninh từ chối) — chỉ chế độ nháp |
-| Model Gemini tự dò (viết chữ / tạo ảnh / giọng đọc) | ✅ 2026-10-12 — Google tắt model cũ (2.0-flash, 2.0-flash-preview-image-generation) thì app tự dò model còn sống qua ListModels; ghi đè bằng `GEMINI_TEXT_MODEL` / `GEMINI_IMAGE_MODEL` / `GEMINI_TTS_MODEL` ở Cài đặt · Hệ thống. **Chưa thử bằng key thật** |
+| Cập nhật model Gemini on-demand (`PickLatest`) trên toàn bộ adapter | ✅ 2026-10-20 — Quét Google API theo yêu cầu, tự động phát hiện và nâng cấp toàn bộ model: Text (`gemini-3.8-flash`), TTS (`gemini-3.8-flash-tts`), Image (`gemini-nano-banana-2.1`), Video (`veo-3.1-generate-preview`), hot-swap tức thì, lưu cache bền vững tại `data/discovered_models.json` |
 | Video không cần key — nhiều ảnh | ✅ 2026-10-12 — tải tối đa 7 ảnh (Studio) / 6 ảnh listing (săn Accesstrade); ≥3 ảnh thì mỗi ảnh 2 khung, video không lặp 1 ảnh |
 | AI Mission Control — Giao mục tiêu chiến lược 1-chạm & tự động thực thi | ✅ 2026-10-16 — Phân tích mục tiêu, tự động phối hợp các khối, theo dõi tiến độ thời gian thực |
 | Brand DNA & Original TikTok Engine — Bản sắc thương hiệu & nội dung nguyên bản | ✅ 2026-10-16 — Hồ sơ Brand DNA từng kênh (Định vị, Chân dung, 4 Hook 3s, Ranh giới đỏ, QC 10 tiêu chí) |

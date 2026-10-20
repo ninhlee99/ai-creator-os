@@ -11,7 +11,7 @@
   <div class="webai-header-actions">
     <a href="/studio/trends" class="btn btn-secondary btn-sm">🎵 Nhạc Thịnh Hành</a>
     <a href="/products" class="btn btn-secondary btn-sm">📦 Kệ Hàng</a>
-    <a href="/models" class="btn btn-secondary btn-sm">🎭 Quản Lý Người Mẫu</a>
+    <a href="/accounts" class="btn btn-secondary btn-sm">📱 Quản Lý Kênh &amp; Nhân Vật</a>
     <a href="/studio/jobs" class="btn btn-primary btn-sm">Kho Video Render ↗</a>
   </div>
 </div>
@@ -116,7 +116,7 @@
             <span style="background:var(--accent);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span>
             Chọn Các Góc Mặt &amp; Dáng Người Của Mẫu Nữ
           </h3>
-          <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">Đã chọn {{len .AvailableModels}} góc mặt</span>
+          <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">{{if .AvailableModels}}Đã chọn {{len .AvailableModels}} góc mặt{{else}}Chưa có góc mặt nào{{end}}</span>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">

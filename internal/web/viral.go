@@ -549,8 +549,8 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	account := r.PostFormValue("account")
 
 	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
-	if duration < 15 || duration > 60 {
-		duration = 30
+	if duration < 60 {
+		duration = 60 // Video viral tối thiểu từ 60s trở lên (chuẩn TikTok Creativity Program)
 	}
 
 	musicURL := r.PostFormValue("music_url")
@@ -791,7 +791,7 @@ func (s *Server) handleViralQuick(w http.ResponseWriter, r *http.Request) {
 		AccountID:      accountID,
 		ModelPhoto:     modelPhoto,
 		SampleVideo:    sampleVideoPath,
-		TargetDuration: 30,
+		TargetDuration: 60,
 	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)

@@ -485,46 +485,34 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 		return "", fmt.Errorf("cần chủ đề truyện")
 	}
 
-	if p.DurationMinutes > 0 {
-		if p.DurationMinutes < 15 {
-			p.DurationMinutes = 15
-		}
-		if p.DurationMinutes > 120 {
-			p.DurationMinutes = 60
-		}
+	if p.DurationMinutes <= 0 {
+		p.DurationMinutes = 30 // Mặc định 30 phút
+	}
+	if p.DurationMinutes < 30 {
+		p.DurationMinutes = 30 // Thời lượng tối thiểu từ 30 phút đến 60 phút
+	}
+	if p.DurationMinutes > 60 {
+		p.DurationMinutes = 60 // Tối đa 60 phút
+	}
 
-		// Tốc độ audio YouTube chuẩn: ~150 từ/phút
-		calcWords := p.DurationMinutes * 150
-		if p.Words < 200 || p.Words < calcWords {
-			p.Words = calcWords
-		}
-		if p.Words > 15000 {
-			p.Words = 15000
-		}
+	// Tốc độ audio YouTube chuẩn: ~150 từ/phút
+	calcWords := p.DurationMinutes * 150
+	if p.Words < 200 || p.Words < calcWords {
+		p.Words = calcWords
+	}
+	if p.Words > 15000 {
+		p.Words = 15000
+	}
 
-		// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
-		if p.Scenes < 3 {
-			p.Scenes = p.DurationMinutes / 3
-			if p.Scenes < 6 {
-				p.Scenes = 6
-			}
+	// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
+	if p.Scenes < 3 {
+		p.Scenes = p.DurationMinutes / 3
+		if p.Scenes < 6 {
+			p.Scenes = 6
 		}
-		if p.Scenes > 24 {
-			p.Scenes = 24
-		}
-	} else {
-		if p.Words < 200 {
-			p.Words = 200
-		}
-		if p.Words > 1200 {
-			p.Words = 1200
-		}
-		if p.Scenes < 3 {
-			p.Scenes = 3
-		}
-		if p.Scenes > 12 {
-			p.Scenes = 12
-		}
+	}
+	if p.Scenes > 24 {
+		p.Scenes = 24
 	}
 
 	title := "Kể chuyện: " + strings.TrimSpace(p.Topic)
@@ -739,7 +727,7 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 			Seconds: storyWords / 3,
 		})
 		if err == nil {
-			cctx, ccancel := context.WithTimeout(ctx, 10*time.Second)
+			cctx, ccancel := context.WithTimeout(ctx, 90*time.Second)
 			text, err := s.llm.Complete(cctx,
 				"Bạn là nhà văn Việt Nam. Chỉ trả lời JSON thuần, không giải thích.", prompt)
 			ccancel()
@@ -770,6 +758,7 @@ func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) 
 		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video kể chuyện 9:16 chuẩn 5 sao.
 Mỗi cảnh gồm:
 1. text: 1 đoạn văn kể ở ngôi thứ nhất giàu cảm xúc, ngắt nhịp tự nhiên theo hơi thở (40–120 từ).
+   - Hãy chèn các thẻ cảm xúc dẫn xuất ở đầu câu thoại phù hợp: [trầm lặng], [cao trào], [sôi nổi], [buồn bã], [tức giận], [vui vẻ], [thì thầm] để giọng đọc AI biến chuyển cảm xúc chân thật.
 2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh 9:16 tuyệt đẹp:
    - Tỷ lệ khung hình: 9:16 vertical portrait composition, framed vertically.
    - Tính nhất quán nhân vật (Character Consistency): Thống nhất ngoại hình nhân vật chính xuyên suốt các cảnh (tuổi, trang phục, gương mặt, màu tóc).
@@ -781,7 +770,7 @@ Truyện: %s
 
 Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
 			p.Scenes, visualStyle, doc.Text)
-		cctx, ccancel := context.WithTimeout(ctx, 10*time.Second)
+		cctx, ccancel := context.WithTimeout(ctx, 60*time.Second)
 		text, err := s.llm.Complete(cctx, sys, prompt)
 		ccancel()
 		if err == nil {
@@ -1043,6 +1032,10 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	voice := filepath.Join(work, "voice.m4a")
 	if err := concatWAVs(ctx, wavs, voice); err != nil {
 		fail(fmt.Errorf("nối giọng đọc: %w", err))
+		return
+	}
+	if vDur := storyProbeDuration(ctx, voice); vDur < 30 {
+		fail(fmt.Errorf("QC: video chỉ dài %.0fs (cần > 30s)", vDur))
 		return
 	}
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")

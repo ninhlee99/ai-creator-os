@@ -7,10 +7,12 @@ package web
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -53,14 +55,12 @@ func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
 		"Error", r.URL.Query().Get("err"),
 		"HasYouTubeClient", publishers.NewYouTubePublisher("", nil, "").HasClient(),
 		"HasTikTokClient", publishers.NewTikTokPublisher("").HasClient(),
+		"PresetCharacters", DefaultPresetCharacters,
 	))
 }
 
 func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		s.fail(w, err, "parse account form")
-		return
-	}
+	_ = r.ParseMultipartForm(32 << 20)
 	username := strings.TrimSpace(r.PostFormValue("username"))
 	username = strings.TrimLeft(username, "@")
 	if username == "" {
@@ -90,6 +90,55 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// Gán nhân vật đại diện cho kênh:
+	assigned := false
+	if r.MultipartForm != nil {
+		for _, key := range []string{"photo", "model_photo", "character_photo"} {
+			if fhs, ok := r.MultipartForm.File[key]; ok && len(fhs) > 0 && fhs[0] != nil {
+				fh := fhs[0]
+				ext := strings.ToLower(filepath.Ext(fh.Filename))
+				if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
+					f, err := fh.Open()
+					if err == nil {
+						tmp, err := os.CreateTemp("", "account-model-*"+ext)
+						if err == nil {
+							_, _ = io.Copy(tmp, f)
+							tmp.Close()
+							_ = s.AssignCharacterToAccount(acct.ID, tmp.Name())
+							_ = os.Remove(tmp.Name())
+							assigned = true
+						}
+						f.Close()
+					}
+				}
+				break
+			}
+		}
+	}
+
+	// Nếu không upload file, kiểm tra nếu người dùng chọn 1 nhân vật trong 10 mẫu có sẵn
+	if !assigned {
+		chosenPreset := strings.TrimSpace(r.PostFormValue("preset_model"))
+		if chosenPreset != "" {
+			presetPath := s.ResolvePresetPath(chosenPreset)
+			if presetPath != "" {
+				_ = s.AssignCharacterToAccount(acct.ID, presetPath)
+				assigned = true
+			}
+		}
+	}
+
+	// Nếu để trống, tự động random ngẫu nhiên 1 trong 10 nhân vật mẫu có sẵn
+	if !assigned {
+		rnd := RandomPresetCharacter()
+		presetPath := s.ResolvePresetPath(rnd.File)
+		if presetPath != "" {
+			_ = s.AssignCharacterToAccount(acct.ID, presetPath)
+			log.Printf("[accounts] Kênh @%s chưa chọn nhân vật -> Tự động random nhân vật mẫu: %s (%s)", acct.Username, rnd.Title, rnd.File)
+		}
+	}
+
 	s.advanceOnboarding(acct.ID)
 	// Zero-touch (Đợt 3): the first 30-day growth plan writes itself.
 	s.autoGeneratePlan(acct, "Tự sinh khi tạo tài khoản")

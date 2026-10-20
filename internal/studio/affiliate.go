@@ -10,8 +10,8 @@ import (
 )
 
 func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
-	if p.Seconds <= 0 {
-		p.Seconds = 30
+	if p.Seconds < 30 {
+		p.Seconds = 30 // Video affiliate thời lượng tối thiểu 30s - 60s
 	}
 	if p.Mode == "" {
 		p.Mode = AffiliateModePhoto
@@ -267,8 +267,8 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			aspect = "9:16"
 		}
 		targetSec := float64(p.Seconds)
-		if targetSec <= 0 {
-			targetSec = 60.0 // Mặc định 60 giây (chuẩn TikTok Creativity Program 1 phút+)
+		if targetSec < 30 {
+			targetSec = 30.0 // Thời lượng tối thiểu 30s
 		}
 		if targetSec > 180 {
 			targetSec = 180.0

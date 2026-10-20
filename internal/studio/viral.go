@@ -65,6 +65,9 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if p.VisualMood == "" {
 		p.VisualMood = "cinematic"
 	}
+	if p.TargetDuration < 60 {
+		p.TargetDuration = 60 // Video viral tối thiểu từ 60s trở lên (chuẩn TikTok Creativity Program)
+	}
 
 	// Đảm bảo video của ai, kênh nào phải đúng kênh đó (không lấy C-Biz bỏ sang kênh VN hay ngược lại)
 	topicLower := strings.ToLower(p.Topic)
@@ -459,19 +462,20 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		}
 	}
 
-	// Đối với video vũ đạo chuyển động: dùng trực tiếp video mẫu 9:16 chất lượng cao
+	// Đối với video chuyển động: dùng trực tiếp video mẫu 9:16 chất lượng cao từ frame 0.0s,
+	// TUYỆT ĐỐI KHÔNG ghép thêm cảnh đệm hay màn đen 5s ở đầu video
 	if !performedFaceSwap && isVideoFile(p.SampleVideo) {
-		s.appendLog(jobID, fmt.Sprintf("✓ Kế thừa toàn bộ hiệu ứng chuyển động của video viral gốc 9:16: %s", filepath.Base(p.SampleVideo)))
+		s.appendLog(jobID, fmt.Sprintf("✓ Kế thừa toàn bộ hiệu ứng chuyển động của video viral gốc 9:16 (từ 0.0s, không chèn màn đen): %s", filepath.Base(p.SampleVideo)))
 		targetSec := float64(p.TargetDuration)
-		if targetSec <= 0 {
-			targetSec = 30.0
+		if targetSec < 60 {
+			targetSec = 60.0 // Mặc định từ 60 giây trở lên (chuẩn TikTok Creativity Program)
 		}
-		if origProfile != nil && origProfile.Duration > 0 {
+		if origProfile != nil && origProfile.Duration > 0 && origProfile.Duration > targetSec {
 			targetSec = origProfile.Duration
 		}
 		rawDance := filepath.Join(jobDir, "dance_motion_916.mp4")
 		vf := "scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,setsar=1"
-		if err := ffmpegRun(ctx, "-i", p.SampleVideo, "-t", fmt.Sprintf("%.2f", targetSec), "-vf", vf, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", rawDance); err == nil && fileExists(rawDance) {
+		if err := ffmpegRun(ctx, "-ss", "0", "-i", p.SampleVideo, "-t", fmt.Sprintf("%.2f", targetSec), "-vf", vf, "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", rawDance); err == nil && fileExists(rawDance) {
 			silentVideo = rawDance
 			performedFaceSwap = true
 		} else {
@@ -603,8 +607,8 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		silentVideo = filepath.Join(jobDir, "silent_916.mp4")
 
 		targetSec := float64(p.TargetDuration)
-		if targetSec <= 0 {
-			targetSec = 60.0 // Mặc định 60 giây (chuẩn TikTok Creativity Program 1 phút+)
+		if targetSec < 60 {
+			targetSec = 60.0 // Mặc định từ 60 giây trở lên (chuẩn TikTok Creativity Program 1 phút+)
 		}
 		if targetSec > 180 {
 			targetSec = 180.0

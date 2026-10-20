@@ -1,17 +1,21 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
->
+# MODEL.md — Mô Hình Vận Hành AI Creator OS (Cập nhật 2026-10-20)
 
-# MODEL.md — Mô hình chốt: AI Creator Network
+> **Mô hình kiến trúc chính thức:** Hệ điều hành tự vận hành 3 trụ kiếm tiền: **Affiliate qua Accesstrade**, **Video Viral AI 100% Gốc (TikTok/Shorts/Reels)**, và **YouTube Phim Kể Chuyện Audio Điện Ảnh**. Tự động hóa hoàn toàn với cơ chế **Google Gemini Daily Model Auto-Updater 24h**.
 
-> Quyết định cuối ngày 2026-10-01. Đây là tài liệu định hướng mọi code và
-> mọi quyết định vận hành tiếp theo. Khi có mâu thuẫn, file này thắng.
+## 1. Mô hình vận hành cốt lõi
 
-## 1. Mô hình kinh doanh (một câu)
+Một hệ thống duy nhất điều hành danh mục đa kênh:
+1. **Affiliate qua Accesstrade**: Thời lượng tối thiểu 30s – 60s, video người mẫu lookbook chuyển động thật, gắn kết sản phẩm và nhân vật nhất quán theo phong cách điện ảnh chân thực.
+2. **Video Vũ Đạo Viral & Trendjack**: Thời lượng từ 60s trở lên (chuẩn bật kiếm tiền TikTok Creativity Program), bắt đầu tức thì 0.0s (không có ảnh đen 5s đầu), visual nhân vật "Thần tiên tỉ tỉ" xinh đẹp thuần khiết.
+3. **YouTube Phim Kể Chuyện Audio Điện Ảnh**: Thời lượng 30 đến 60 phút, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS (`gemini-3.8-flash-tts`) đa cảm xúc (đã loại bỏ VieNeu-TTS).
 
-**Một hệ thống, N tài khoản TikTok — mỗi tài khoản là một "AI creator" với
-persona riêng, tự live giải trí theo giờ được phân bổ, thu quà tặng LIVE,
-bán affiliate qua video ngắn, và nhạc AI tự sáng tác thì phát hành lấy
-royalty.** Người vận hành chỉ bật ON và theo dõi.
+## 2. Hệ Thống Model & Cập Nhật Thủ Công Theo Yêu Cầu
+
+- **Văn bản & Kịch bản (`Text`)**: `gemini-*-flash` (mặc định: `gemini-3.8-flash`).
+- **Tạo ảnh & Phân cảnh (`Image`)**: Dòng tạo ảnh chất lượng cao Nano Banana (mặc định: `gemini-nano-banana-2.1`).
+- **Giọng đọc truyện audio (`TTS`)**: `gemini-*-flash-tts` (mặc định: `gemini-3.8-flash-tts`).
+- **Tạo video chuyển động (`Video`)**: Google Veo (mặc định: `veo-3.1-generate-preview`).
+- **Cơ chế cập nhật trên toàn bộ adapter**: Cập nhật theo yêu cầu người dùng bằng nút bấm `⚡ Cập Nhật Tất Cả Model Gemini` trên giao diện Cài đặt · Hệ thống. Khi bấm, hệ thống quét Google API ListModels, tự động chọn phiên bản mới nhất cho từng adapter qua `PickLatest` và lưu cache bền vững vào `data/discovered_models.json`. Không chạy tiến trình ngầm định kỳ 24h gây lãng phí tài nguyên.
 
 ## 2. Vai trò của con người (tối thiểu, đúng yêu cầu)
 

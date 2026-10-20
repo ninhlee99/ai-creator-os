@@ -41,7 +41,7 @@ func TestStudioRemixCreatesEditedJob(t *testing.T) {
 	}
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
-	_ = mw.WriteField("seconds", "15")
+	_ = mw.WriteField("seconds", "45")
 	_ = mw.WriteField("order", "reverse")
 	_ = mw.WriteField("caption", "Chú thích mới #tui")
 	mw.Close()
@@ -65,7 +65,7 @@ func TestStudioRemixCreatesEditedJob(t *testing.T) {
 	full, _ := st.GetJob(newJob.ID)
 	var p studio.AffiliateParams
 	_ = json.Unmarshal([]byte(full.Params), &p)
-	if p.Seconds != 15 || p.ProductPhoto != "b.jpg" || p.FixedCaption != "Chú thích mới #tui" {
+	if p.Seconds != 45 || p.ProductPhoto != "b.jpg" || p.FixedCaption != "Chú thích mới #tui" {
 		t.Fatalf("params bản sửa sai: %+v", p)
 	}
 }

@@ -314,7 +314,6 @@ func TestAllPagesRender(t *testing.T) {
 		"/publishers":               "Đa nền tảng",
 		"/settings/he-thong":        "Cài đặt · Hệ thống",
 		"/settings/nha-cung-cap":    "Thứ tự nhà cung cấp giọng đọc (TTS)",
-		"/settings/model-local":     "Giọng đọc chạy trên máy (VieNeu)",
 		"/settings/an-toan":         "Kill switch",
 		"/settings/chain?name=tts":  `"name":"gemini"`,
 	}

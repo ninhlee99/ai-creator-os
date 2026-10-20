@@ -46,7 +46,7 @@ cài theo đúng hệ điều hành của máy):
 | Video Viral AI | `/viral` | Xưởng video ngắn 9:16 100% gốc: kịch bản 3s hook, phân cảnh MediaGen, nhạc trending |
 | Kể chuyện | `/stories` | Truyện audio YouTube: hàng đợi chủ đề, job, tự động đăng private |
 | Đa nền tảng | `/publishers` | Kết nối OAuth TikTok/YouTube/Meta Facebook & Instagram |
-| Cài đặt | `/settings` | 5 trang: Hệ thống (**Kho Tài Khoản Web AI**), Accesstrade, Nhà cung cấp, Model local, An toàn |
+| Cài đặt | `/settings` | 4 trang tinh gọn: Hệ thống (Quản lý Model Gemini Auto-Update 24h & **Kho Tài Khoản Web AI**), Accesstrade, Thứ tự AI, An toàn |
 
 ### 2b. Kết nối tài khoản AI qua Trình duyệt Tự Động (CDP)
 Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn toàn tự động mà **không cần sao chép cookie bằng tay**:
@@ -56,8 +56,24 @@ Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn 
 4. Ngay khi đăng nhập thành công, app sẽ tự động nhận diện email, lưu phiên làm việc an toàn và tự đóng trình duyệt.
 5. Hỗ trợ xoay vòng nhiều tài khoản (multi-account) cho từng nền tảng, tự động chuyển tài khoản khi gặp giới hạn (rate limit).
 
-### 2c. Khóa Nhận Diện Khuôn Mặt Nhân Vật (Character Identity Lock)
+### 2c. Khóa Nhận Diện Khuôn Mặt Nhân Vật Theo Kênh (Character Identity Lock)
 Tạo nhân vật ảo / KOC ảo với khuôn mặt nhất quán 100% xuyên suốt mọi video clip:
+1. Vào **Kênh Sáng Tạo** (`/accounts`) hoặc tạo kênh mới (`/accounts/new`).
+2. Chọn ngay 1 trong 10 nhân vật mẫu có sẵn (Thần Tiên Tỉ Tỉ, KOC Công Nghệ, Beauty Blogger...) hoặc tải lên ảnh đại diện riêng. Nếu để trống, hệ thống sẽ tự động gán ngẫu nhiên 1 nhân vật mẫu.
+3. Quản lý và bổ sung ảnh góc mặt của nhân vật tại tab **👤 Nhân vật & Khuôn mặt AI** trong trang chi tiết kênh (`/accounts/{id}?tab=nhan-vat`). Hệ thống lưu diện mạo chuẩn và tự động map vào mọi video Affiliate Lookbook hoặc Vũ Đạo Viral.
+
+### 2d. Cập Nhật Model Gemini Trên Toàn Bộ Adapter (On-demand Updater)
+Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ thống** (`/settings/he-thong`):
+- **Văn bản & Kịch bản**: `gemini-3.8-flash` (tự động nâng cấp khi Google phát hành bản mới hơn).
+- **Tạo ảnh & Phân cảnh**: `gemini-nano-banana-2.1` (dòng Nano Banana chất lượng cao chuyên tạo nhân vật Thần tiên tỉ tỉ, sản phẩm affiliate).
+- **Giọng đọc kể chuyện**: `gemini-3.8-flash-tts` (đa cảm xúc với các tag `[trầm lặng]`, `[cao trào]`, `[sôi nổi]`, `[tức giận]`, `[buồn bã]`, `[vui vẻ]`, `[thì thầm]`).
+- **Tạo video chuyển động**: `veo-3.1-generate-preview` (Google Veo 3.1).
+- Bấm nút **"⚡ Cập Nhật Tất Cả Model Gemini"** để quét Google API và nâng cấp tức thì mà không cần restart máy chủ. Không chạy tiến trình định kỳ ngầm 24h.
+
+### 2e. Tiêu Chuẩn Thời Lượng Video Xuất Bản
+- **Video Affiliate Lookbook**: Thời lượng **30s – 60s**, giữ nhất quán chi tiết trang phục và người mẫu theo phong cách điện ảnh chân thực.
+- **Video Vũ Đạo Viral**: Thời lượng **từ 60s trở lên** (chuẩn 1 phút+ TikTok bật kiếm tiền), bắt đầu tức thì tại 0.0s (triệt tiêu hoàn toàn màn hình đen 5s đầu), visual nhân vật "Thần tiên tỉ tỉ".
+- **Video Truyện Audio**: Thời lượng **30 đến 60 phút**, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS.
 1. Vào **Kênh** (`/accounts`) → chọn kênh cần thiết lập → bấm tab **👤 Nhân vật & Khuôn mặt AI** (`/accounts/{id}?tab=nhan-vat`).
 2. Tải lên 1 hoặc nhiều ảnh chân dung góc chụp rõ nét của nhân vật.
 3. Khi tạo video tại **Video Viral AI** (`/viral`) hoặc **Studio Ad Creative** (`/studio`), hệ thống tự động nhận diện khuôn mặt nhân vật đã ghim của kênh và áp dụng kỹ thuật Character Reference Injection vào AI MediaGen để giữ nguyên thần thái, diện mạo nhân vật trong từng chuyển động, vũ đạo và biểu cảm.

@@ -50,7 +50,27 @@ func NewVisualAnchor(topic, genre, niche, userModelPhoto string) *VisualAnchor {
 		strings.Contains(genreLow, "douyin") ||
 		strings.Contains(strings.ToLower(niche), "cn")
 
-	if isChinese {
+	isFairyBeauty := strings.Contains(topicLow, "thần tiên tỉ tỉ") ||
+		strings.Contains(topicLow, "than tien ti ti") ||
+		strings.Contains(topicLow, "tiên tỉ tỉ") ||
+		strings.Contains(topicLow, "tiên nữ") ||
+		strings.Contains(topicLow, "xinh đẹp") ||
+		strings.Contains(topicLow, "mỹ nhân") ||
+		strings.Contains(genreLow, "fairy") ||
+		strings.Contains(genreLow, "beauty") ||
+		strings.Contains(strings.ToLower(niche), "fairy")
+
+	if isFairyBeauty {
+		anchor.ActorName = "Ngọc Tiên"
+		anchor.Gender = "female"
+		anchor.Age = 21
+		anchor.Ethnicity = "Vietnamese"
+		anchor.FaceTraits = "extraordinarily gorgeous, breathtakingly beautiful young Vietnamese woman with radiant luminous porcelain skin, captivating bright hazel almond eyes, delicate charming jawline, sweet mesmerizing smile, ethereal heavenly facial beauty"
+		anchor.Hairstyle = "silky waist-length dark hair styled in soft graceful waves, fluttering gently"
+		anchor.Wardrobe = "chic modern aesthetic pastel silk outfit with flowing elegant lines"
+		anchor.Environment = "aesthetic sunlit luxury studio with soft sheer curtains and subtle pastel floral accents"
+		anchor.Lighting = "dreamy soft beauty key light with warm golden rim light highlighting hair and silhouette"
+	} else if isChinese {
 		if strings.Contains(genreLow, "dance") || strings.Contains(topicLow, "dance") || strings.Contains(genreLow, "vũ đạo") {
 			anchor.ActorName = "Mei Ling"
 			anchor.Gender = "female"

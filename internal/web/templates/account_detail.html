@@ -8,8 +8,11 @@
     {{if .Acct.Theme}} <span class="badge badge-draft">{{themeLabel .Acct.Theme}}</span>{{end}}
     {{if .Acct.Autopilot}} <span class="badge badge-ok">autopilot</span>{{end}}</p>
   </div>
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px;align-items:center">
     <a href="/accounts/{{$id}}/edit" class="btn btn-primary btn-sm" style="font-weight:700">✏️ Chỉnh sửa kênh</a>
+    <form method="post" action="/accounts/{{$id}}/delete" data-confirm="Bạn có chắc chắn muốn XÓA VĨNH VIỄN kênh @{{.Acct.Username}}? Thao tác này không thể hoàn tác!" style="display:inline;margin:0">
+      <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--err)" title="Xóa kênh vĩnh viễn">🗑️ Xóa kênh</button>
+    </form>
     <a href="/accounts" class="btn btn-secondary btn-sm">← Danh sách kênh</a>
   </div>
 </div>

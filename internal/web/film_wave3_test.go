@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -48,18 +47,7 @@ func TestModelLocalCapabilityTable(t *testing.T) {
 	s := newTestServer(t)
 	s.Studio = newWave3Studio(t)
 	rec := get(t, s, "/settings/model-local")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("model-local → 200, got %d", rec.Code)
-	}
-	body := rec.Body.String()
-	for _, want := range []string{"Khả năng AI", "Vẽ ảnh"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("trang model-local thiếu %q", want)
-		}
-	}
-	for _, gone := range []string{"probe-video", "Quay video"} {
-		if strings.Contains(body, gone) {
-			t.Errorf("trang model-local còn tàn dư video %q", gone)
-		}
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("model-local → 303, got %d", rec.Code)
 	}
 }

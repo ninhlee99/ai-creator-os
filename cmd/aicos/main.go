@@ -40,6 +40,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/local"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
@@ -242,6 +243,11 @@ func main() {
 		}
 	}
 
+	// Nạp cache các model Gemini mới nhất đã tự dò được ở lần chạy trước (nếu có).
+	if err := gmodels.LoadPersisted(*dataDir); err != nil {
+		log.Printf("gmodels: nạp cache model thất bại: %v", err)
+	}
+
 	// -- 2. decision logger ------------------------------------------------
 	decider := decideAdapter{l: l}
 
@@ -413,10 +419,6 @@ func main() {
 		log.Fatalf("web: out dir: %v", err)
 	}
 	srv.OutDir = outDir
-	if srv.FlowBridge != nil {
-		srv.FlowBridge.SetTTSSynthesizer(ttsChain.Synthesize)
-		srv.FlowBridge.SetOutDir(outDir)
-	}
 	srv.Health = health
 	// Đợt R: một supervisor duy nhất giám sát mọi automation tick (timeout +
 	// recover + heartbeat). Service build lazy để luôn thấy đủ các store đã
@@ -658,6 +660,7 @@ func main() {
 		}()
 		srv.WebAI = webAIStore
 		srv.WebAIRelay = webai.NewProxyRelay(webAIStore)
+		srv.WireStudioWebAI()
 		log.Printf("webai: ready (%d accounts connected)", webAIStore.CountConnected())
 	}
 

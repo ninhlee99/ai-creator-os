@@ -21,7 +21,6 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
-	"github.com/ninhlee99/ai-creator-os/internal/flow"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
@@ -111,13 +110,6 @@ type Server struct {
 	// Harness là Master Autonomous Agent điều phối nhận thức OODA và tự học.
 	Harness *harness.Harness
 
-	// Flow Engine: ComfyUI-like node graph execution for viral, try-on, motion and audio stories
-	FlowBridge   *flow.AdaptersBridge
-	FlowExecutor *flow.Executor
-	FlowCompiler *flow.Compiler
-	flowMu       sync.RWMutex
-	activeFlows  map[string]*flow.Graph
-
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
 	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
@@ -205,10 +197,6 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		StartedAt: time.Now(), // Đợt S: /healthz
 		db:        db,
 	}
-	s.activeFlows = make(map[string]*flow.Graph)
-	s.FlowBridge = flow.NewAdaptersBridge(s.WebAI, nil)
-	s.FlowExecutor = flow.NewExecutor(s.FlowBridge)
-	s.FlowCompiler = flow.NewCompiler(nil)
 
 	s.applyPersistedEnv()
 	if gs, err := growth.NewStore(db); err != nil {
@@ -224,7 +212,27 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		db.Close()
 		return nil, err
 	}
+	s.WireStudioWebAI()
 	return s, nil
+}
+
+// WireStudioWebAI kết nối kho tài khoản Web AI (Google Flow, Muse AI) với Studio AI video engine.
+func (s *Server) WireStudioWebAI() {
+	if s.Studio == nil || s.WebAI == nil {
+		return
+	}
+	s.Studio.SetWebAIResolver(func(platform string) (*studio.WebAISession, error) {
+		acc, err := s.WebAI.PickActiveAccount(platform)
+		if err != nil {
+			return nil, err
+		}
+		return &studio.WebAISession{
+			Platform:     acc.Platform,
+			SessionToken: acc.SessionKey,
+			CookieHeader: acc.Cookie,
+			Email:        acc.Email,
+		}, nil
+	})
 }
 
 // Close releases the dashboard's read handle (ledger/manager are owned by
@@ -652,14 +660,11 @@ var pageFiles = map[string]string{
 	"products":              "products.html",
 	"viral":                 "viral.html",
 	"stories":               "stories.html",
-	"flow":                  "flow.html",
-	"models":                "models.html",
 	"team":                  "team.html",
 	"growth":                "growth.html",
 	"harness":               "harness.html",
 	"settings_he_thong":     "settings/he-thong.html",
 	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
-	"settings_model_local":  "settings/model-local.html",
 	"settings_an_toan":      "settings/an-toan.html",
 	"settings_accesstrade":  "settings/accesstrade.html",
 	"web_ai":                "web_ai.html",
@@ -742,6 +747,8 @@ type accountView struct {
 	NextPct      float64
 	HasNext      bool
 	AffiliateLink string
+	ModelPhotoURL string
+	HasModel      bool
 }
 
 func personaLabel(key string) string {
@@ -814,6 +821,14 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 		av.GrowthStage = "Đang vận hành"
 	}
 	av.AffiliateLink = "https://go.isclix.com/deal-hot"
+	if s.Studio != nil {
+		if ms, err := s.Studio.ModelLibrary(); err == nil && ms != nil {
+			if photos, err := ms.List(a.ID); err == nil && len(photos) > 0 {
+				av.HasModel = true
+				av.ModelPhotoURL = fmt.Sprintf("/models/%d/%s", a.ID, filepath.Base(photos[0].Path))
+			}
+		}
+	}
 	return av
 }
 

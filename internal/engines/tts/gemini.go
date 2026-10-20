@@ -27,11 +27,46 @@ var geminiTTSVoices = map[string]string{
 
 // style keyword -> prompt prefix (Gemini TTS supports style prompting).
 var geminiStylePrefix = map[string]string{
-	"cheerful":  "Nói một cách vui vẻ, rạng rỡ: ",
-	"warm":      "Nói một cách ấm áp, gần gũi: ",
-	"suspense":  "Kể một cách hồi hộp, lôi cuốn: ",
-	"calm":      "Nói một cách chậm rãi, rõ ràng: ",
-	"energetic": "Nói một cách đầy năng lượng, hào hứng: ",
+	"cheerful":   "Nói một cách vui vẻ, rạng rỡ, phấn khởi: ",
+	"warm":       "Nói một cách ấm áp, gần gũi, truyền cảm: ",
+	"suspense":   "Kể một cách hồi hộp, lôi cuốn, kịch tính: ",
+	"calm":       "Nói một cách chậm rãi, rõ ràng, sâu lắng: ",
+	"energetic":  "Nói một cách đầy năng lượng, sôi nổi, hào hứng: ",
+	"sad":        "Nói với giọng nghẹn ngào, buồn bã, xót xa, lặng lẽ: ",
+	"angry":      "Nói với giọng tức giận, đanh thép, gay gắt: ",
+	"dramatic":   "Nói với giọng kịch tính, dồn dập, cao trào mãnh liệt: ",
+	"whisper":    "Nói với giọng thì thầm, nhẹ nhàng, bí ẩn: ",
+	"reflective": "Nói với giọng trầm lặng, sâu lắng, suy tư hoài niệm: ",
+}
+
+// extractEmotionStyle bóc tách thẻ cảm xúc dạng [cảm xúc] ở đầu câu thoại để điều khiển giọng đọc Gemini TTS chân thật.
+func extractEmotionStyle(text string) (string, string) {
+	t := strings.TrimSpace(text)
+	lower := strings.ToLower(t)
+	switch {
+	case strings.HasPrefix(lower, "[trầm lặng]") || strings.HasPrefix(lower, "[lắng đọng]") || strings.HasPrefix(lower, "[suy tư]") || strings.HasPrefix(lower, "[lặng lẽ]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng trầm lặng, sâu lắng, suy tư, hoài niệm: "
+	case strings.HasPrefix(lower, "[cao trào]") || strings.HasPrefix(lower, "[kịch tính]") || strings.HasPrefix(lower, "[dồn dập]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng kịch tính, dồn dập, cao trào mãnh liệt: "
+	case strings.HasPrefix(lower, "[sôi nổi]") || strings.HasPrefix(lower, "[hào hứng]") || strings.HasPrefix(lower, "[nhiệt huyết]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng sôi nổi, hào hứng, tràn đầy năng lượng: "
+	case strings.HasPrefix(lower, "[tức giận]") || strings.HasPrefix(lower, "[gay gắt]") || strings.HasPrefix(lower, "[phẫn nộ]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng tức giận, đanh thép, gay gắt: "
+	case strings.HasPrefix(lower, "[buồn bã]") || strings.HasPrefix(lower, "[nghẹn ngào]") || strings.HasPrefix(lower, "[xót xa]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng nghẹn ngào, buồn bã, xót xa: "
+	case strings.HasPrefix(lower, "[vui vẻ]") || strings.HasPrefix(lower, "[hân hoan]") || strings.HasPrefix(lower, "[phấn khởi]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng vui tươi, rạng rỡ, phấn khởi: "
+	case strings.HasPrefix(lower, "[thì thầm]") || strings.HasPrefix(lower, "[bí ẩn]"):
+		tagEnd := strings.Index(t, "]")
+		return strings.TrimSpace(t[tagEnd+1:]), "Nói với giọng thì thầm, nhẹ nhàng, bí ẩn: "
+	}
+	return t, ""
 }
 
 // GeminiTTSProvider is the tier-1 TTS provider: Gemini TTS via AI Studio
@@ -218,7 +253,12 @@ func (g *GeminiTTSProvider) synthesizeModel(ctx context.Context, httpc *http.Cli
 	if voiceName == "" {
 		voiceName = geminiTTSVoices["default"]
 	}
-	prompt := geminiStylePrefix[style] + strings.TrimSpace(text)
+	cleanText, dynPrefix := extractEmotionStyle(text)
+	prefix := geminiStylePrefix[style]
+	if dynPrefix != "" {
+		prefix = dynPrefix
+	}
+	prompt := prefix + cleanText
 	url := baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	body := map[string]any{
 		"contents": []any{map[string]any{"parts": []any{map[string]any{"text": prompt}}}},

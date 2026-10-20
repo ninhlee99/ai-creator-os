@@ -36,16 +36,17 @@ const (
 	Text Kind = iota
 	Image
 	TTS
+	Video
 )
 
 // Mặc định cập nhật theo các model chính thức mới nhất của Google Gemini.
-// Khi Google cập nhật model mới hơn trên API, Rediscover sẽ tự động phát hiện và chuyển đổi.
+// Khi Google cập nhật model mới hơn trên API, bấm nút Cập nhật ở Cài đặt · Hệ thống để quét và nâng cấp.
 var defaults = map[Kind]string{
 	Text:  "gemini-3.8-flash",
-	Image: "gemini-2.0-flash-preview-image-generation",
-	TTS:   "gemini-2.5-flash-preview-tts",
+	Image: "gemini-nano-banana-2.1",
+	TTS:   "gemini-3.8-flash-tts",
+	Video: "veo-3.1-generate-preview",
 }
-
 
 // EnvName là biến môi trường ghi đè model cho kind.
 func EnvName(k Kind) string {
@@ -54,6 +55,8 @@ func EnvName(k Kind) string {
 		return "GEMINI_IMAGE_MODEL"
 	case TTS:
 		return "GEMINI_TTS_MODEL"
+	case Video:
+		return "GEMINI_VIDEO_MODEL"
 	default:
 		return "GEMINI_TEXT_MODEL"
 	}
@@ -184,7 +187,10 @@ func Rediscover(ctx context.Context, httpc *http.Client, baseURL, key string, k 
 			filtered = append(filtered, n)
 		}
 	}
-	best := Pick(filtered, k)
+	best := PickLatest(filtered, k)
+	if best == "" {
+		best = Pick(filtered, k)
+	}
 	if best == "" {
 		return "", fmt.Errorf("không tìm thấy model %s nào còn hoạt động", kindLabel(k))
 	}
@@ -201,6 +207,8 @@ func kindLabel(k Kind) string {
 		return "tạo ảnh"
 	case TTS:
 		return "giọng đọc"
+	case Video:
+		return "tạo video (Veo)"
 	default:
 		return "viết chữ"
 	}
@@ -233,11 +241,13 @@ func Pick(names []string, k Kind) string {
 		switch k {
 		case Text:
 			ok = strings.HasPrefix(n, "gemini-") && strings.Contains(n, "flash") &&
-				!has(n, "image", "tts", "audio", "live", "embedding", "banana", "vision")
+				!has(n, "image", "tts", "audio", "live", "embedding", "banana", "vision", "veo")
 		case Image:
-			ok = has(n, "banana", "image") && !has(n, "imagen", "tts", "embedding")
+			ok = has(n, "banana", "image") && !has(n, "imagen", "tts", "audio", "live", "embedding", "veo")
 		case TTS:
 			ok = strings.Contains(n, "tts")
+		case Video:
+			ok = strings.Contains(n, "veo") || strings.Contains(n, "video")
 		}
 		if ok {
 			cands = append(cands, raw)

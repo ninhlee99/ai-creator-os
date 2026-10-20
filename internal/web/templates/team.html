@@ -611,12 +611,11 @@
           </select>
         </div>
         <div class="field">
-          <label>Giọng đọc VieNeu-TTS</label>
+          <label>Giọng đọc Gemini TTS</label>
           <select name="voice">
-            <option value="Nữ miền Nam ngọt ngào">Nữ miền Nam ngọt ngào</option>
-            <option value="Nam miền Bắc trầm ấm">Nam miền Bắc trầm ấm</option>
-            <option value="Nữ miền Bắc truyền cảm">Nữ miền Bắc truyền cảm</option>
-            <option value="Nam phát thanh viên kể chuyện">Nam phát thanh viên kể chuyện</option>
+            <option value="female">Nữ truyền cảm, diễn cảm đa sắc thái</option>
+            <option value="male">Nam trầm ấm, tự nhiên, lôi cuốn</option>
+            <option value="default">Mặc định hệ thống</option>
           </select>
         </div>
       </div>
@@ -813,7 +812,7 @@ function showAgentProfile(el) {
   var role = el.getAttribute('data-role') || '';
   var niche = el.getAttribute('data-niche') || el.getAttribute('data-agent-niche') || 'tổng hợp';
   var tone = el.getAttribute('data-tone') || 'Tự nhiên, chân thành, cuốn hút';
-  var voice = el.getAttribute('data-voice') || 'VieNeu-TTS Chuẩn';
+  var voice = el.getAttribute('data-voice') || 'Gemini TTS (Đa cảm xúc)';
   var level = el.getAttribute('data-level') || el.getAttribute('data-agent-level') || '1';
   var produced = el.getAttribute('data-produced') || '0';
   var views = el.getAttribute('data-views') || '0';

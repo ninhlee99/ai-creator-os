@@ -1,17 +1,16 @@
-# Cài đặt — 5 trang con
+# Cài đặt — 4 trang con tinh gọn
 
 ## 1. Mục đích
-Mọi cấu hình vận hành của app, chia 5 trang — mỗi trang trả lời đúng một câu hỏi.
+Mọi cấu hình vận hành của app, chia 4 trang tinh gọn — mỗi trang trả lời đúng một câu hỏi.
 `/settings` redirect 303 về `/settings/he-thong`.
 ## 2. Kích hoạt
 - `GET /settings/he-thong` → `handleSettingsHeThong`
 - `GET /settings/accesstrade` → Accesstrade key UI (nhập key 1 lần, nút test kết nối, badge trạng thái)
 - `GET /settings/nha-cung-cap` → `handleSettingsNhaCungCap`
-- `GET /settings/model-local` → `handleSettingsModelLocal`
 - `GET /settings/an-toan` → `handleSettingsAnToan`
 - (tất cả trong `internal/web/settings.go`; template trong
   `internal/web/templates/settings/`; thanh chuyển trang là dải **tab** —
-  tab đang mở tô màu accent).
+  tab đang mở tô màu accent). Các truy cập vào `/settings/model-local` cũ được tự động redirect 303 về `/settings/he-thong`).
 
 ## 3. Luồng vận hành chi tiết
 
@@ -46,19 +45,6 @@ Mọi cấu hình vận hành của app, chia 5 trang — mỗi trang trả lờ
 - **Tab Accesstrade** (Đợt B): nhập `access_key` 1 lần → `POST` lưu ledger,
   nút **Test kết nối** (gọi API thật, không log key), badge trạng thái +
   số campaign đã duyệt. Chưa có key → tick bỏ qua im lặng (không spam alert).
-
-### Model local (`model-local.html`)
-- **VieNeu TTS**: `GET /settings/vieneu/status`, `POST /settings/vieneu/ensure|restart`,
-  `GET /settings/vieneu/progress`, `POST /settings/vieneu/voice` — Go quản lý
-  tiến trình sidecar (start/stop/health check) như FFmpeg.
-- **Khả năng AI** (`internal/studio/capabilities.go`, bảng `capabilities` trong
-  studio.db): app tự biết mình vẽ ảnh được không trước khi hứa —
-  `ProbeImageGen` vẽ thử 1 ảnh đơn giản lúc khởi động (goroutine, timeout 3 phút)
-  → badge ok/fail + thời điểm + chi tiết lỗi.
-- **Công cụ hệ thống** (`internal/web/runtime.go`): probe thật `exec.LookPath`
-  FFmpeg, llama-server, uv, docker — badge "Đã tìm thấy + đường dẫn" hoặc
-  "Chưa có + câu lệnh cài (≤1 dòng, vd `brew install ffmpeg`)". Không tuyên bố
-  sẵn sàng khi chưa tìm thấy.
 
 ### An toàn (`an-toan.html`)
 - **Dry-run**: `POST /settings/dryrun` → `s.Cfg.SetDryRun(value=="on")` + decision log.

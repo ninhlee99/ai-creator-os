@@ -39,15 +39,6 @@
     </div>
   </div>
 
-
-
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
-    <span style="font-size:24px">💡</span>
-    <div style="font-size:13px;line-height:1.5;color:var(--text)">
-      <strong>Dành cho nhà sáng tạo nội dung:</strong> Bấm <b>🌐 Đăng Nhập Tự Động</b> để hệ thống mở trình duyệt riêng biệt. Bạn chỉ cần đăng nhập bình thường, hệ thống sẽ tự động lưu phiên làm việc — <u>hoàn toàn không cần sao chép cookie thủ công</u>!
-    </div>
-  </div>
-
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
     <div class="webai-card {{if .IsConnected}}connected{{end}}" style="--platform-color: {{.Platform.Color}}">
@@ -140,14 +131,85 @@
       <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
         <span>📦</span> Di Chuyển Cấu Hình (Export / Import ENV)
       </div>
-      <div class="hint" style="margin-top:4px;font-size:13px">
-        Xuất toàn bộ API Key và cài đặt ra file <code>.env</code> hoặc <code>JSON</code> để sao lưu hoặc chuyển sang máy khác chỉ trong 1 giây.
-      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a href="/settings/env/export" class="btn btn-secondary btn-sm" title="Tải file aicos.env để đặt vào thư mục app hoặc import trên máy khác">⬇️ Xuất file .env</a>
-      <a href="/settings/env/export-json" class="btn btn-secondary btn-sm" title="Tải file JSON sao lưu đầy đủ kèm tài khoản WebAI">⬇️ Xuất JSON đầy đủ</a>
-      <button type="button" class="btn btn-primary btn-sm" onclick="openEnvImportModal()">⬆️ Nhập cấu hình vào máy này</button>
+      <a href="/settings/env/export" class="btn btn-secondary btn-sm" title="Tải file aicos.env">⬇️ Xuất .env</a>
+      <a href="/settings/env/export-json" class="btn btn-secondary btn-sm" title="Tải file JSON">⬇️ Xuất JSON</a>
+      <button type="button" class="btn btn-primary btn-sm" onclick="openEnvImportModal()">⬆️ Nhập cấu hình</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       GOOGLE GEMINI MODELS (TỰ ĐỘNG CẬP NHẬT MỖI NGÀY)
+       ========================================================================= -->
+  <div class="card" style="border-radius:14px;padding:20px 24px;margin-bottom:24px;border:1.5px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">🤖</span>
+          <h3 style="margin:0;font-size:16px;font-weight:700">Google Gemini AI Models — Cập Nhật Model Mới Nhất Cho Toàn Bộ Adapter</h3>
+          <span class="badge badge-ok" style="font-size:11px">On-demand Update</span>
+        </div>
+        <p class="subtitle" style="margin:4px 0 0;font-size:12.5px;color:var(--muted)">
+          Bấm nút bên phải để quét Google API và tự động nâng cấp toàn bộ model (Text, Image, TTS, Video Veo) lên phiên bản mới nhất mà không gián đoạn hệ thống.
+        </p>
+      </div>
+      <form method="post" action="/settings/models/update">
+        <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;display:flex;align-items:center;gap:6px">
+          ⚡ Cập Nhật Tất Cả Model Gemini
+        </button>
+      </form>
+    </div>
+
+    <!-- Trạng thái quét gần nhất -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="pulse-dot"></span>
+        <span style="color:var(--text);font-weight:600">{{.GeminiModels.Status}}</span>
+      </div>
+      <div style="color:var(--muted)">
+        Lần kiểm tra gần nhất: <strong>{{.GeminiModels.LastCheck}}</strong>
+      </div>
+    </div>
+
+    <!-- Bảng Model Hiện Tại -->
+    <div class="table-wrap" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:0">
+      <table style="margin:0;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--bg3)">
+            <th style="width:28%">Loại Tác Vụ</th>
+            <th style="width:34%">Model Đang Sử Dụng</th>
+            <th style="width:20%">Nguồn / Trạng Thái</th>
+            <th style="width:18%">Ghi Đè Thủ Công</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .GeminiModels.Items}}
+          <tr>
+            <td>
+              <div style="font-weight:700;color:var(--text)">{{.Kind}}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Desc}}</div>
+            </td>
+            <td>
+              <code style="font-weight:700;font-size:13px;color:var(--accent);background:var(--bg3);padding:3px 8px;border-radius:6px">{{.Model}}</code>
+              {{if ne .Model .Default}}
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">Mặc định gốc: {{.Default}}</div>
+              {{end}}
+            </td>
+            <td>
+              <span class="badge {{.Badge}}">{{.Source}}</span>
+            </td>
+            <td>
+              <form method="post" action="/settings/env" style="display:flex;gap:4px">
+                <input type="hidden" name="name" value="{{.EnvVar}}">
+                <input type="text" name="value" placeholder="Để trống = Auto" style="font-size:11px;padding:4px 8px;width:110px">
+                <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px" title="Lưu ghi đè">Lưu</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -219,9 +281,8 @@
      TAB 3: SOCIAL CHANNELS (YouTube, TikTok, Facebook, Instagram, Threads)
      ========================================================================= -->
 <div id="panel-social" class="settings-tab-panel" style="display:none">
-  <div style="margin-bottom: 20px;">
-    <h3 style="margin:0;font-size:18px">Cấu Hình Kết Nối Kênh Mạng Xã Hội</h3>
-    <p class="subtitle" style="margin:4px 0 0">Chỉ cần cấu hình Client ID &amp; Client Secret để liên kết tài khoản và tự động đăng video lên YouTube &amp; TikTok.</p>
+  <div style="margin-bottom: 16px;">
+    <h3 style="margin:0;font-size:18px">Kết Nối Kênh Mạng Xã Hội</h3>
   </div>
 
   <div class="grid2" style="gap:20px;margin-bottom:24px">

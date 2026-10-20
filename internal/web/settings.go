@@ -4,6 +4,7 @@ package web
 // kill switch, provider chain configuration storage and the VieNeu view.
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
@@ -41,6 +43,7 @@ var envLabels = map[string][2]string{
 	"GEMINI_TEXT_MODEL":       {"Model viết chữ (tùy chọn)", "Google Gemini"},
 	"GEMINI_IMAGE_MODEL":      {"Model tạo ảnh (tùy chọn)", "Google Gemini"},
 	"GEMINI_TTS_MODEL":        {"Model giọng đọc (tùy chọn)", "Google Gemini"},
+	"GEMINI_VIDEO_MODEL":      {"Model tạo video Veo (tùy chọn)", "Google Gemini"},
 	"OPENAI_API_KEY":          {"Key OpenAI (ChatGPT / GPT-6 Luna)", "OpenAI & Claude & AI Khác"},
 	"ANTHROPIC_API_KEY":       {"Key Anthropic (Claude 5.5 Sonnet)", "OpenAI & Claude & AI Khác"},
 	"ELEVENLABS_API_KEY":      {"Key ElevenLabs (Giọng đọc siêu thực)", "OpenAI & Claude & AI Khác"},
@@ -296,6 +299,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 			v, ok, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
 			return ok && strings.TrimSpace(v) != ""
 		}(),
+		"GeminiModels": s.geminiModelsView(),
 	}
 }
 
@@ -329,6 +333,111 @@ func (s *Server) apiBudgetFrom() string {
 		return "ui"
 	}
 	return "env"
+}
+
+// GeminiKeys tập hợp tất cả các API key của Google Gemini từ cấu hình, DB và biến môi trường.
+func (s *Server) GeminiKeys() []string {
+	var keys []string
+	seen := make(map[string]bool)
+	add := func(list []string) {
+		for _, k := range list {
+			k = strings.TrimSpace(k)
+			if k != "" && !seen[k] {
+				seen[k] = true
+				keys = append(keys, k)
+			}
+		}
+	}
+	add(s.storedKeys("llm", "gemini"))
+	add(s.storedKeys("tts", "gemini"))
+	add(s.Cfg.GeminiAPIKeys)
+	if env, ok := s.effectiveEnv("GEMINI_API_KEYS"); ok {
+		add(strings.Split(env, ","))
+	}
+	if env, ok := s.effectiveEnv("GEMINI_API_KEY"); ok {
+		add([]string{env})
+	}
+	if env, ok := s.effectiveEnv("TTS_API_KEY"); ok {
+		add([]string{env})
+	}
+	return keys
+}
+
+// geminiModelsView chuẩn bị dữ liệu hiển thị khối cập nhật model Gemini ở Cài đặt · Hệ thống.
+func (s *Server) geminiModelsView() map[string]any {
+	report := gmodels.LastReport()
+	lastCheckStr := "Chưa quét. Bấm nút bên phải để kiểm tra & cập nhật model mới nhất."
+	if report != nil {
+		if report.Success {
+			lastCheckStr = fmt.Sprintf("Lúc %s (Thành công, %d models khả dụng)",
+				report.CheckedAt.Format("15:04 02/01/2006"), report.TotalModels)
+		} else {
+			lastCheckStr = fmt.Sprintf("Lúc %s (Lỗi: %s)",
+				report.CheckedAt.Format("15:04 02/01/2006"), report.Error)
+		}
+	}
+
+	modelItem := func(k gmodels.Kind, label, desc string) map[string]any {
+		cur := gmodels.Resolve(k)
+		def := gmodels.Default(k)
+		envVal, hasEnv := s.effectiveEnv(gmodels.EnvName(k))
+		source := "Mặc định hệ thống"
+		badge := "badge-info"
+		if hasEnv && envVal != "" {
+			source = "Ghi đè thủ công (" + gmodels.EnvName(k) + ")"
+			badge = "badge-warn"
+		} else if cur != def {
+			source = "Đã cập nhật từ Google API"
+			badge = "badge-ok"
+		}
+		return map[string]any{
+			"Kind":    label,
+			"Desc":    desc,
+			"Model":   cur,
+			"Default": def,
+			"Source":  source,
+			"Badge":   badge,
+			"EnvVar":  gmodels.EnvName(k),
+		}
+	}
+
+	return map[string]any{
+		"LastCheck": lastCheckStr,
+		"Status":    "🛠️ Cập nhật thủ công theo yêu cầu (Bấm nút để quét & nâng cấp toàn bộ model)",
+		"Report":    report,
+		"Items": []map[string]any{
+			modelItem(gmodels.Text, "Văn bản & Kịch bản (LLM)", "Sáng tạo kịch bản video viral, hook, cốt truyện audio"),
+			modelItem(gmodels.Image, "Tạo ảnh & Phân cảnh (Image)", "Nano Banana 2.1 — Tạo nhân vật Thần tiên tỉ tỉ, sản phẩm affiliate, cảnh truyện"),
+			modelItem(gmodels.TTS, "Giọng đọc truyền cảm (TTS)", "Giọng đọc truyện audio đa cảm xúc (gemini-3.8-flash-tts)"),
+			modelItem(gmodels.Video, "Tạo video chuyển động (Veo)", "Google Veo 3.1 tạo video chuyển động điện ảnh chân thực"),
+		},
+	}
+}
+
+// handleModelsUpdate kích hoạt kiểm tra và nâng cấp model Gemini tức thì từ giao diện web.
+func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
+	keys := s.GeminiKeys()
+	if len(keys) == 0 {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Chưa có API key Gemini để kiểm tra cập nhật model."))
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	rep, err := gmodels.CheckAndUpdate(ctx, nil, "", keys, s.DataDir)
+	if err != nil {
+		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Kiểm tra model thất bại: "+err.Error()))
+		return
+	}
+	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Text: %s | Image: %s | TTS: %s | Video: %s",
+		rep.TotalModels, gmodels.Resolve(gmodels.Text), gmodels.Resolve(gmodels.Image), gmodels.Resolve(gmodels.TTS), gmodels.Resolve(gmodels.Video))
+	if rep.Updated && len(rep.Changes) > 0 {
+		msg = "🚀 Phát hiện & nâng cấp lên model mới: "
+		for k, chg := range rep.Changes {
+			msg += fmt.Sprintf("[%s: %s] ", k, chg)
+		}
+	}
+	_ = s.Ledger.Decide("human", "model_update_check", nil, msg, map[string]any{"updated": rep.Updated, "total": rep.TotalModels})
+	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
 }
 
 // settingsPage renders one settings sub-page with its nav key and the
@@ -401,7 +510,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
-		"TickBeats", "QuotaCircuit", "Sidecars", "WebAIPlatforms", "WebAIConnected")
+		"TickBeats", "QuotaCircuit", "Sidecars", "WebAIPlatforms", "WebAIConnected", "GeminiModels")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
@@ -428,12 +537,6 @@ func (s *Server) handleSettingsAPIToggle(w http.ResponseWriter, r *http.Request)
 	}
 	_ = s.Ledger.Decide("human", "api_switch", nil, msg, map[string]any{"on": on})
 	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
-}
-
-// handleSettingsModelLocal: "Model local đã sẵn sàng chưa?"
-func (s *Server) handleSettingsModelLocal(w http.ResponseWriter, r *http.Request) {
-	s.settingsPage(w, r, "model-local", "settings_model_local",
-		"VieNeu", "RuntimeTools", "AICapabilities")
 }
 
 // aiCapabilityView là một dòng trong bảng "Khả năng AI".

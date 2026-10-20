@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 )
 
 // VeoCandidateModels lists official Google Veo generative video model identifiers in priority order.
@@ -25,8 +27,15 @@ var VeoCandidateModels = []string{
 // GetVeoModels returns the prioritized list of Veo models to attempt, respecting user overrides.
 func GetVeoModels() []string {
 	custom := strings.TrimSpace(os.Getenv("GEMINI_VEO_MODEL"))
+	if custom == "" {
+		custom = strings.TrimSpace(os.Getenv("GEMINI_VIDEO_MODEL"))
+	}
 	if custom != "" {
 		return append([]string{custom}, VeoCandidateModels...)
+	}
+	resolved := gmodels.Resolve(gmodels.Video)
+	if resolved != "" && resolved != VeoCandidateModels[0] {
+		return append([]string{resolved}, VeoCandidateModels...)
 	}
 	return VeoCandidateModels
 }
@@ -37,7 +46,7 @@ func ActiveVeoModel() string {
 	if len(models) > 0 {
 		return models[0]
 	}
-	return "veo-3.1-generate-preview"
+	return gmodels.Resolve(gmodels.Video)
 }
 
 // VeoClient handles deep integration with Google Veo 3 / Veo 3.1 video generation API.
