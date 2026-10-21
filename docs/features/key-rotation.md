@@ -23,10 +23,8 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
 | LLM | `internal/engines/llm` (qua `LLMChain`) | cùng chính sách keyring như TTS |
 ### Chuỗi provider (failover theo tier)
 `internal/engines/chains.go`:
-- **LLM**: Gemini (free API) → llama-server local (`127.0.0.1:8081`, model
-  `qwen2.5-7b-instruct-q4_k_m.gguf`, `-ngl 99`) → paid (placeholder, tắt).
-- **TTS**: Gemini → VieNeu-TTS v3 local (sidecar `127.0.0.1:8000`, Go quản lý
-  tiến trình) → Edge (phương án cuối).
+- **LLM**: Gemini API.
+- **TTS**: Gemini → Edge.
 - Thứ tự chuỗi chỉnh được ở Cài đặt · Nhà cung cấp (`ChainConfig`).
 
 ### Ràng buộc free tier
@@ -37,8 +35,8 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
   image gen free khoảng ~10 request/phút và ~50 ảnh/ngày/key; text gen khoảng
   15 request/phút, ~1500 request/ngày/key. Hết quota ngày giữa chừng: job chờ
   cooldown, hôm sau bấm **Chạy tiếp** (resume không render lại phần đã xong).
-- TTS/LLM có tier local dự phòng (VieNeu, llama-server) nên app vẫn chạy được
-  khi key free hết quota — chỉ phần vẽ ảnh là bắt buộc chờ key.
+- TTS có Edge dự phòng khi Gemini lỗi. LLM cần Gemini API key; hết quota thì
+  yêu cầu LLM báo lỗi thay vì chuyển sang model local.
 
 ## 3. Fail-closed toàn app
 - **Tiền**: `ReconcileCommissions` — không nguồn → giữ 0 + decision `no_source`;

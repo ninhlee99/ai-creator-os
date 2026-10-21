@@ -8,7 +8,7 @@ Cung cấp giải pháp kết nối tài khoản Web AI (ChatGPT, Claude, Gemini
 - **Trình duyệt tự động đăng nhập (CDP Browser Login)**:
   - Bấm nút **"🌐 Đăng Nhập Tự Động"** tại thẻ của từng nền tảng (ChatGPT, Claude, Gemini, Grok, Muse AI).
   - Modal hướng dẫn xuất hiện, hiển thị trạng thái chờ và nút mở Chrome/Brave/Edge riêng biệt.
-  - Khi người dùng đăng nhập xong, hệ thống tự động phát hiện cookie phiên, trích xuất email thật và lưu vào cơ sở dữ liệu `data/webai.db`.
+  - Khi người dùng đăng nhập xong, hệ thống tự động phát hiện cookie phiên và lưu vào `data/webai.db`; email chỉ ghi khi dịch vụ hiển thị danh tính đáng tin cậy.
 - **Bàn làm việc tạo Prompt & Kịch bản**:
   - Tích hợp tại Studio AI (`/studio`) với bộ prompt chuyên biệt cho từng nền tảng:
     - **ChatGPT**: Kịch bản bán hàng, Hook 3 giây, Lời thoại voiceover, Phân tích tâm lý khách hàng.
@@ -38,9 +38,9 @@ Cung cấp giải pháp kết nối tài khoản Web AI (ChatGPT, Claude, Gemini
 ┌──────────────────────▼──────────────────────────────────────┐
 │ Vòng lặp kiểm tra phiên đăng nhập (CDP Extraction Loop)     │
 │  - Network.getAllCookies: lọc domain cookies                │
-│  - Runtime.evaluate: trích xuất email thật qua DOM / Storage:│
+│  - Runtime.evaluate: trích xuất danh tính qua DOM / Storage khi có:│
 │    * Grok: regex email chặt chẽ ([a-zA-Z0-9._%+-]+@...)     │
-│    * Muse AI: localStorage parse '$email' hoặc Meta cookie  │
+│    * Muse AI: hatch_sess + cookie Muse cùng domain          │
 │    * ChatGPT: __Secure-next-auth.session-token              │
 │    * Claude: sessionKey                                     │
 │  - Thỏa mãn điều kiện auth -> Tự động đóng browser          │
@@ -54,7 +54,7 @@ Cung cấp giải pháp kết nối tài khoản Web AI (ChatGPT, Claude, Gemini
 2. **Claude** (`claude`): Bắt cookie `sessionKey` từ domain `claude.ai`.
 3. **Gemini** (`gemini`): Bắt cookie xác thực Google `__Secure-1PSID`, `__Secure-3PSID` hoặc `SID`.
 4. **Grok** (`grok`): Bắt cookie `sso`, `sso-rw` hoặc `x-anon-token`; trích xuất danh tính bằng biểu thức chính quy (Regex) loại trừ chuỗi dính liền trong DOM.
-5. **Muse AI** (`museai`): Bắt cookie `hatch_native_auth_device`, `ps_n`, `ps_l` hoặc token phiên; trích xuất email tài khoản từ `localStorage.getItem('muse_user')`.
+5. **Muse AI** (`museai`): Bắt cookie phiên `hatch_sess` cùng các cookie Muse cùng domain; `ps_l` chỉ là cookie phụ, không dùng thay phiên đăng nhập. Trích xuất danh tính từ DOM/storage khi trang cung cấp.
 
 ### 3.2. Cơ chế Đa Tài Khoản & Xoay Vòng (Multi-Account & Rotation)
 - Mỗi nền tảng có thể kết nối không giới hạn số lượng tài khoản (ví dụ: 5 tài khoản Grok, 3 tài khoản Claude).

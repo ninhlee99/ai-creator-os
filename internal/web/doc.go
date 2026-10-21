@@ -7,7 +7,7 @@
 //
 // Only the standard library plus modernc.org/sqlite (for a small read
 // handle used for decision/analytics queries the ledger API does not
-// expose) are used. The engines (LLM/TTS chains), the VieNeu sidecar and
+// expose) are used. The engines (LLM/TTS chains), optional sidecars and
 // per-provider health checkers are behind small local interfaces; the
 // wiring worker injects the real implementations later. Until then the
 // dashboard degrades gracefully (nil interfaces render "not connected").

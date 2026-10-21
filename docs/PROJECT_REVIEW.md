@@ -86,15 +86,10 @@ trạng thái trống/lỗi trung thực · nhất quán UI/tiếng Việt · gi
 | `GET /analytics` | 5,5 | Doanh thu/quà/chi phí API — chồng lấn Trang chủ (doanh thu) và Phát triển kênh (views/followers). Bảng chi phí API quá kỹ thuật cho người dùng cuối. **Ứng viên gộp số 3.** |
 | `GET /growth` (+ sync/plan) | 7,5 | Trang đúng triết lý nhất: giai đoạn, KPI, đếm ngược hạn YPP, luật tự quyết hiển thị rõ. Sau bc1a247 đã có tick tự động 5 phút + sync nền mỗi giờ, nhưng **toggle tự động mặc định TẮT** và nút "Đồng bộ + chạy vòng quyết định" vẫn là thao tác chính trên UI — thông điệp zero-touch bị loãng. Views-30d/giờ-xem vẫn trống chờ Analytics API. |
 | `GET /publishers` (+ TikTok OAuth) | 6 | Bootstrap OAuth là việc con người làm một lần — chấp nhận được và đã fail-closed đúng. Thiếu chỉ dẫn từng bước cho người không rành (hiện phải đọc USER_GUIDE). |
-| `GET /settings` (+ ~20 route con) | **4,5** | 739 dòng template, 8 mục: trạng thái hệ thống, biến môi trường, RTMP, nhân vật AI, 3 chuỗi provider, VieNeu, avatar sidecar, vùng an toàn. Đây là trang cho kỹ sư, không phải cho chủ kênh. Thuật ngữ env phơi thẳng; 3 khối chuỗi provider gần như copy-paste. Người mua phổ thông sẽ sợ trang này. |
+| `GET /settings` (+ ~20 route con) | **4,5** | Ảnh chụp lịch sử: template 739 dòng, 8 mục, gồm provider local và avatar controls đã được gỡ sau review. Nhận xét giao diện phản ánh thời điểm đánh giá. |
 | `GET /api/stats`, `/api/products`, `/api/decisions` | — | **Route mồ côi**: đã đăng ký (`handlers.go:129-131`) nhưng không có bất kỳ UI nào gọi tới (grep `fetch('/api` trong templates/static: rỗng). Hoặc tài liệu hoá thành API bán kèm (có token), hoặc xoá. Để lửng là bề mặt tấn công + dead weight. |
 
-**Hành động người dùng đang phải làm mà máy nên tự làm** (chi tiết ở mục 4): bấm xây lịch,
-bấm đồng bộ growth, bấm sinh plan, gõ followers, bấm tìm sản phẩm, bấm refresh trending
-(chart đã có cache 6h — nên tự refresh khi quá hạn lúc mở Studio), bấm test/tải model ở
-Settings (VieNeu/avatar sidecar đã có ensure/progress — nên tự ensure lúc khởi động khi
-provider local được bật).
-
+**Hành động người dùng đang phải làm mà máy nên tự làm** (chi tiết ở mục 4): bấm xây lịch, đồng bộ growth, sinh plan, cập nhật followers, tìm sản phẩm và refresh nhạc trending. Các thao tác tải model đã được gỡ khỏi Settings.
 
 ---
 
@@ -115,7 +110,7 @@ internal/web (hub — import network×6, ledger×5, studio×4, publishers×4, gr
         ├── internal/products ──► ledger (store riêng qua settings/db)
         └── internal/ledger (976 dòng — tầng DB dùng chung, nút thắt trung tâm)
 
-internal/engines (tts/llm/avatar/local) ──► sidecar ngoài qua HTTP (llama-server, VieNeu, MuseTalk)
+internal/engines (tts/llm/avatar/local) ──► provider API; avatar sidecar tùy chọn đang parked
 internal/agents/* (hunter/director/... qua orchestrator + team view)
 internal/stream, internal/affiliatehunter (ADB), internal/tiktok (posting/shop)
 ```
@@ -143,7 +138,7 @@ thứ** (kèm settings table bị dùng làm cả kho env `env:` — xem 2.5).
 | File | Dòng | Vấn đề |
 |---|---|---|
 | `internal/web/handlers.go` | 1.638 | Chứa routes + dashboard + accounts + schedule + content + publishers + shop + analytics + settings-env + chains API. Phải là 5–6 file theo miền (đã có sẵn autopilot.go/studio.go/growth.go làm mẫu). |
-| `internal/web/templates/settings.html` | 739 | 8 mối quan tâm trong 1 trang cuộn; JS fetch/poll viết tay lặp lại (vieneu, sidecar, chains dùng cùng mẫu ensure→progress mà không share helper). |
+| `internal/web/templates/settings.html` | 739 | Ảnh chụp lịch sử: 8 mục trong một trang cuộn; điều khiển ensure/poll provider local đã được gỡ. |
 | `internal/growth/store.go` | 985 | 8 bảng + toàn bộ truy vấn trong một file; nên tách theo thực thể khi growth lớn thêm. |
 | `internal/ledger/ledger.go` | 976 | DB dùng chung + decisions + slots + settings — chấp nhận được ở quy mô này, nhưng là nơi mọi thay đổi schema đều chạm. |
 | `cmd/aicos/main.go` | 777 | ~10 adapter types (ttsChainAdapter, llmChainAdapter, avatarChainAdapter...) — đây là seam DI đúng đắn, nhưng file đã phình; nên tách `adapters.go`. |
@@ -177,7 +172,7 @@ không dừng được daemon live. Đợt 1 (mục 6) bắt buộc kiểm chứ
 
 Nhất quán ở mức khá: handlers dùng chung `s.fail` + `log.Printf` có prefix (`web:`, `growth:`,
 `autopilot:`), có recoverer chống panic sập server (`handlers.go:136`). Các endpoint JSON
-(chain/keys/vieneu) trả lỗi theo kiểu riêng từng chỗ — nên chuẩn hoá một định dạng lỗi JSON.
+(chain/key health) trả lỗi theo kiểu riêng từng chỗ — nên chuẩn hoá một định dạng lỗi JSON.
 
 ### 2.7 Test
 
@@ -222,7 +217,7 @@ Nguyên tắc đối chiếu: Ninh chỉ (a) mở máy + mạng + pin, (b) start
 | A4 | Bấm đồng bộ + sinh plan ở /growth | Sync nền mỗi giờ + plan engine đã có | Plan tự sinh khi tài khoản được tạo/đổi theme; sync tự chạy; nút chỉ còn "làm ngay" phụ trợ | Cao |
 | A5 | Bấm tìm sản phẩm ở /products | Autopilot đã có chu kỳ tự chạy qua Products UI settings (`main.go:602-703`) | Trang sản phẩm thành màn hình trạng thái autopilot (lần chạy tới, kho còn bao nhiêu); tìm kiếm tự theo cadence | Trung bình |
 | A6 | Bấm refresh nhạc trending | Chart cache 6h (`internal/studio/trends.go`) | Mở Studio thấy cache quá hạn → tự refresh nền, không bắt bấm | Thấp (1 click) nhưng đúng nguyên tắc |
-| A7 | Vào Settings bấm ensure/tải model (VieNeu, avatar sidecar, llama) | Đã có ensure/progress API (`handlers.go:111-126`) | Khởi động app: provider local nào đang bật mà thiếu model → tự ensure nền, báo tiến độ ở Trang chủ | Trung bình (lần đầu dùng local rất dễ kẹt ở đây) |
+| A7 | Model-download controls | Đã gỡ khỏi Settings | Không còn là yêu cầu hiện tại |
 | A8 | Tự nhớ backup dữ liệu | Chưa có backup/restore trong app (convention Drive nằm ngoài app) | Nút + lịch tự backup DB (zip theo ngày) trong Settings, restore 1 click, giữ N bản | Trung bình — sống còn khi bán (mất DB = mất kênh) |
 | A9 | Kiểm tra key chết/quota bằng tay | Có keyring test từng key (`/settings/keys/test`) | Health nền định kỳ: key 429/chết tự vào cooldown (đã có một phần ở tts keyring) + cảnh báo ở Trang chủ khi pool sắp cạn | Trung bình |
 | A10 | Quyết định "kênh nào đáng đẩy tiếp" | Growth đã có kill/double-down/penalty/stalled + alert ghi lại | Đã đạt — chỉ cần đảm bảo alert hiện ở Trang chủ (hiện nằm ở /growth) để Ninh không phải đi tìm | Thấp (đã gần xong) |
@@ -247,7 +242,7 @@ Những gì người mua gặp trong **giờ đầu tiên**:
 | S6 | First-run chưa thành wizard | Checklist 3 bước ở Trang chủ là khởi đầu tốt nhưng dừng ở mức nhắc | Cần luồng: tạo tài khoản → chọn theme (có gợi ý) → dán key (test ngay tại chỗ) → chạy dry-run 1 video → bật tự động. Mỗi bước tự kiểm tra và báo xanh/đỏ |
 | S7 | Không đăng nhập, nhưng có cờ phơi LAN | `main.go:363` (`-addr`, mặc định 127.0.0.1 — tốt) | Bán cho khách chạy LAN/nhiều người sẽ bị hỏi bảo mật ngay; tối thiểu thêm token/mật khẩu đơn giản khi bind ngoài localhost |
 | S8 | Không backup/restore trong UI | Grep `backup|restore` ở handlers: không có | Khách mất máy/mất DB là mất toàn bộ kênh; không có câu trả lời = không bán được cho người nghiêm túc |
-| S9 | Tài liệu người mua còn thiếu lệnh cài trên Mac | USER_GUIDE thiếu `brew install llama.cpp` và `uv` (nợ đã ghi từ MAC_M1_CORE_AUDIT) | Local tier chết lặng lẽ; khách tưởng app lỗi |
+| S9 | Tài liệu cài đặt | USER_GUIDE hiện chỉ yêu cầu FFmpeg cho dựng video; LLM gọi Gemini API | Không cần hướng dẫn cài model runtime local |
 | S10 | README kể câu chuyện lớn hơn sản phẩm hiện tại | README hứa live/persona đầy đủ; live avatar đã hạ ưu tiên theo nghiên cứu M1 Pro | Người mua đối chiếu sẽ thấy lệch; cần trang "trạng thái thật" (đã có kỷ luật này trong docs — đưa lên README) |
 | S11 | Bản dài YouTube chưa render 16:9 thật | Ghi chú bc1a247 + renderer Studio chỉ 9:16 | Một trong 4 trụ doanh thu (video dài) chưa có sản phẩm thật; phải làm ở Đợt 6 hoặc bỏ khỏi lời hứa bán hàng |
 | S12 | 1 project OAuth YouTube cho mọi kênh | Ghi chú bc1a247 (quota 10.000 units/project/ngày ≈ 6 upload) | Scale lên nhiều kênh sẽ nghẽn quota; người mua có 5+ kênh sẽ chạm trần ngay tuần đầu |
@@ -362,7 +357,7 @@ untracked giữ nguyên; không chạm `vercel-preview/**` trừ đợt tái xu�
      có cảnh báo rõ), nhập lại 1 click, tự backup theo ngày giữ 7 bản (A8).
   4. Chế độ xem thử dữ liệu mẫu có nhãn (S5), tách hẳn khỏi dữ liệu thật, tắt mặc định.
   5. Bảo vệ khi bind ngoài localhost: yêu cầu đặt mật khẩu/token ở lần đầu (S7).
-  6. USER_GUIDE bổ sung `brew install llama.cpp`, `uv`; README thêm mục "trạng thái thật"
+  6. USER_GUIDE ghi rõ FFmpeg là công cụ ngoài cần cho dựng video; README mô tả provider hiện hành
      (S9, S10).
 - **Nghiệm thu:** máy sạch (hoặc data dir mới): từ tải binary → wizard → ra video dry-run
   đầu tiên < 10 phút không cần đọc docs; CI xanh trên GitHub; backup→xoá→restore khôi phục

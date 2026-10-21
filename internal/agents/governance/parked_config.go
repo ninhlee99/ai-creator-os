@@ -25,10 +25,8 @@ type Config struct {
 	DatabasePath string
 	Timezone     string
 
-	// LLM chain
-	GeminiAPIKey  string
-	OllamaBaseURL string
-	OllamaModel   string
+	// LLM
+	GeminiAPIKey string
 
 	// TTS / avatar
 	TTSAPIKey      string
@@ -102,9 +100,7 @@ func Load() Config {
 		DatabasePath: get("DATABASE_PATH", "./data/ledger.db"),
 		Timezone:     get("TIMEZONE", "Asia/Ho_Chi_Minh"),
 
-		GeminiAPIKey:  get("GEMINI_API_KEY", ""),
-		OllamaBaseURL: get("OLLAMA_BASE_URL", "http://localhost:11434"),
-		OllamaModel:   get("OLLAMA_MODEL", "qwen3:4b"),
+		GeminiAPIKey: get("GEMINI_API_KEY", ""),
 
 		TTSAPIKey:      get("TTS_API_KEY", ""),
 		AvatarProvider: get("AVATAR_PROVIDER", "local-stylized"),

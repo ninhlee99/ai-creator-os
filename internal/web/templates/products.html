@@ -412,8 +412,15 @@ function atOrderSync() {
   </form>
 </div>
 
-<details class="advanced">
-  <summary>➕ Thêm sản phẩm thủ công</summary>
+<details class="advanced product-manual">
+  <summary>
+    <span class="product-manual-icon" aria-hidden="true"></span>
+    <span class="product-manual-copy">
+      <strong>Thêm sản phẩm thủ công</strong>
+      <small>Nhập thông tin sản phẩm và link affiliate</small>
+    </span>
+    <span class="product-manual-chevron" aria-hidden="true">⌄</span>
+  </summary>
   <form method="post" action="/products/add">
     <div class="grid2">
       <div class="field">
@@ -458,7 +465,7 @@ function atOrderSync() {
       <label>Link ảnh sản phẩm (mỗi dòng 1 link — ảnh thật của listing)</label>
       <textarea name="image_url" rows="3" placeholder="https://.../anh1.jpg"></textarea>
     </div>
-    <button type="submit" class="btn">💾 Lưu sản phẩm</button>
+    <button type="submit" class="btn btn-primary">💾 Lưu sản phẩm</button>
   </form>
 </details>
 

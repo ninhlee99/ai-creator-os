@@ -41,20 +41,20 @@ func testTTSConfig(names ...string) ChainConfig {
 }
 
 func TestTTSChainFailover(t *testing.T) {
-	vieneu := &stubTTS{name: "vieneu", errs: []error{errors.New("quota exhausted")}}
-	gemini := &stubTTS{name: "gemini"}
+	first := &stubTTS{name: "first", errs: []error{errors.New("quota exhausted")}}
+	fallback := &stubTTS{name: "fallback"}
 	var switched [][3]string
-	c := NewTTSChain([]TTSProvider{vieneu, gemini}, func(from, to, reason string) {
+	c := NewTTSChain([]TTSProvider{first, fallback}, func(from, to, reason string) {
 		switched = append(switched, [3]string{from, to, reason})
 	})
 	wav, err := c.Synthesize(context.Background(), "xin chào", "default")
 	if err != nil {
 		t.Fatalf("Synthesize: %v", err)
 	}
-	if string(wav) != "WAV:gemini" {
+	if string(wav) != "WAV:fallback" {
 		t.Fatalf("got %q", wav)
 	}
-	if len(switched) != 1 || switched[0][0] != "vieneu" || switched[0][1] != "gemini" {
+	if len(switched) != 1 || switched[0][0] != "first" || switched[0][1] != "fallback" {
 		t.Fatalf("onSwitch = %v", switched)
 	}
 	if switched[0][2] != "quota/rate-limit" {

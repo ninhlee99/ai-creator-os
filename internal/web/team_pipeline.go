@@ -155,7 +155,7 @@ func (s *Server) viralTeam() pipeTeam {
 		{Key: "hunter", Label: "Hunter", Icon: "🔎", Link: "/viral", RoleDesc: "Nhận chủ đề và video tham chiếu do người dùng cung cấp"},
 		{Key: "director", Label: "Director", Icon: "🎬", Link: "/viral", RoleDesc: "Lên kịch bản đạo diễn Hook 3s + Story + CTA"},
 		{Key: "designer", Label: "Visual AI", Icon: "🎨", Link: "/viral", RoleDesc: "Tạo hình ảnh theo engine đã cấu hình"},
-		{Key: "voice", Label: "Voice AI", Icon: "🎙️", Link: "/viral", RoleDesc: "Lồng tiếng cảm xúc khớp kịch bản (VieNeu / Gemini TTS)"},
+		{Key: "voice", Label: "Voice AI", Icon: "🎙️", Link: "/viral", RoleDesc: "Lồng tiếng khớp kịch bản (Gemini TTS / Edge)"},
 		{Key: "qc", Label: "QC", Icon: "🛡️", Link: "/viral", RoleDesc: "Kiểm duyệt Red-lines, âm lượng và chuẩn dọc 9:16"},
 		{Key: "publisher", Label: "Publisher", Icon: "📤", Link: "/accounts", RoleDesc: "Đăng video lên kênh đã kết nối"},
 	}

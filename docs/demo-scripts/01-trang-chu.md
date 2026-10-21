@@ -25,9 +25,9 @@
 [Thao tác: chỉ vào khối cảnh báo (nếu có; nếu không có thì nói).]
 "Chỗ này hiện cảnh báo tăng trưởng chưa đọc — ví dụ kênh chững lại, video 0 view liên tiếp. Không có cảnh báo thì nó trống, cũng là tin tốt."
 
-**Bước 5 — Trạng thái runtime local.**
-[Thao tác: chỉ vào khối trạng thái FFmpeg / llama-server / VieNeu.]
-"App tự kiểm tra máy bạn có FFmpeg, llama-server, VieNeu không — bằng cách tìm thật trên máy, không đoán. Thiếu cái nào thì hiện câu lệnh cài đúng một dòng."
+**Bước 5 — Runtime tools.**
+[Thao tác: chỉ vào trạng thái FFmpeg.]
+"App kiểm tra FFmpeg để dựng video và hướng dẫn cài nếu máy chưa có."
 
 **Bước 6 — Chip công tắc chính (MASTER_SWITCH).**
 [Thao tác: chỉ vào chip MASTER_SWITCH, không bấm tắt.]

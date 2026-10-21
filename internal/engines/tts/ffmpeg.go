@@ -10,7 +10,7 @@ import (
 )
 
 // ffmpegBin locates ffmpeg, which the chain needs for audio conversion
-// (Edge MP3 -> WAV, VieNeu resample fallback).
+// (Edge MP3 -> WAV).
 func ffmpegBin() (string, error) {
 	p, err := exec.LookPath("ffmpeg")
 	if err != nil {
@@ -73,7 +73,7 @@ func mp3ToWav24kMono(ctx context.Context, mp3 []byte) ([]byte, error) {
 
 // wavTo24kMono resamples any WAV to PCM s16le 24kHz mono.
 func wavTo24kMono(ctx context.Context, wav []byte) ([]byte, error) {
-	return withTempIO(ctx, "vieneu", ".wav", ".wav", wav,
+	return withTempIO(ctx, "aicos-tts", ".wav", ".wav", wav,
 		func(ctx context.Context, inPath, outPath string) error {
 			return runFFmpeg(ctx, "-v", "error", "-y", "-i", inPath,
 				"-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", outPath)

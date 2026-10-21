@@ -166,11 +166,6 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(allowed)
 
-	var persona *network.Persona
-	if p, ok := network.PERSONAS[acct.Persona]; ok {
-		cp := p
-		persona = &cp
-	}
 	decisions, err := s.queryDecisions(
 		"SELECT id, agent, action, target, reason, created_at FROM decisions WHERE target=? ORDER BY id DESC LIMIT 20",
 		acct.Username)
@@ -199,7 +194,6 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"Acct", s.wrapAccount(acct),
 		"Tab", s.accountTab(r),
 		"Allowed", allowed,
-		"Persona", persona,
 		"BrandDNA", brandDNA,
 		"Decisions", decisions,
 		"Publishers", pubNames,

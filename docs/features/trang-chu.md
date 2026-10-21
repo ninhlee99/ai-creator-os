@@ -20,8 +20,7 @@ local, và chip công tắc chính (MASTER_SWITCH).
 4. 8 quyết định mới nhất: `SELECT ... FROM decisions ORDER BY id DESC LIMIT 8`
    (bảng `decisions` — nhật ký mọi quyết định của hệ thống + con người).
 5. `s.recentGrowthAlerts(accounts)` → cảnh báo growth chưa đọc.
-6. `s.localRuntimeViews()` → trạng thái FFmpeg / llama-server / VieNeu
-   (probe thật bằng `exec.LookPath`).
+6. Runtime tools hiển thị trạng thái FFmpeg (probe thật bằng `exec.LookPath`).
 7. `s.Jobs.Count()` → số job video chữ động; `HasStudioJobs` → đã có job
    Studio nào chưa (checklist "bắt đầu nhanh").
 8. Chip công tắc chính: `automation.MasterOn(s.settings())` — đọc key

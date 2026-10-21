@@ -2,10 +2,25 @@ package studio
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+type countingVideoGen struct{ calls int }
+
+func (*countingVideoGen) GenerateImage(context.Context, string, []ImageRef, string) error {
+	return errors.New("test provider: image generation disabled")
+}
+
+func (g *countingVideoGen) GenerateVideo(context.Context, string, string, int, string, string) error {
+	g.calls++
+	return errors.New("test provider: video generation disabled")
+}
+
+func (*countingVideoGen) Name() string                 { return "test" }
+func (*countingVideoGen) Healthy(context.Context) bool { return true }
 
 func TestVeoModelsPriority(t *testing.T) {
 	models := GetVeoModels()
@@ -29,18 +44,21 @@ func TestVeoModelsPriority(t *testing.T) {
 func TestMuseAIClientHealth(t *testing.T) {
 	clientNoKey := NewMuseAIClient("", "")
 	if clientNoKey.Healthy() {
-		t.Error("expected client without key to be unhealthy")
+		t.Error("expected client without a verified API to be unhealthy")
 	}
 
 	clientWithKey := NewMuseAIClient("test-key-123", "")
-	if !clientWithKey.Healthy() {
-		t.Error("expected client with key to be healthy")
+	if clientWithKey.Healthy() {
+		t.Error("credentials must not imply an undocumented video API is healthy")
 	}
 
 	clientWithCookie := NewMuseAIClient("", "")
 	clientWithCookie.SetCookieHeader("ps_l=session123")
-	if !clientWithCookie.Healthy() {
-		t.Error("expected client with cookie header to be healthy")
+	if clientWithCookie.Healthy() {
+		t.Error("session cookie must not enable an undocumented video API")
+	}
+	if err := clientWithKey.RenderMuseAIVideo(context.Background(), "prompt", "", 5, "9:16", filepath.Join(t.TempDir(), "out.mp4"), nil); !errors.Is(err, ErrMuseVideoAPIUnavailable) {
+		t.Fatalf("RenderMuseAIVideo error = %v, want ErrMuseVideoAPIUnavailable", err)
 	}
 }
 
@@ -70,8 +88,9 @@ func TestGenerateMotionVideoClipFallback(t *testing.T) {
 	dir := t.TempDir()
 	outMP4 := filepath.Join(dir, "test_clip.mp4")
 	keyframe := makeTestPNG(t, dir, "frame.png", "testsrc")
+	videoGen := &countingVideoGen{}
 
-	st, err := New(filepath.Join(dir, "test_studio.db"), nil, nil, nil, dir)
+	st, err := New(filepath.Join(dir, "test_studio.db"), nil, videoGen, nil, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +115,9 @@ func TestGenerateMotionVideoClipFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateMotionVideoClip error: %v", err)
 	}
+	if videoGen.calls != 1 {
+		t.Fatalf("auto mode called video provider %d times, want 1", videoGen.calls)
+	}
 
 	if !fileExists(outMP4) {
 		t.Fatalf("expected output video file to exist at %s", outMP4)
@@ -104,6 +126,28 @@ func TestGenerateMotionVideoClipFallback(t *testing.T) {
 	w, h := ProbeDims(ctx, outMP4)
 	if w != 1080 || h != 1920 {
 		t.Errorf("expected dims 1080x1920, got %dx%d", w, h)
+	}
+}
+
+func TestGoogleFlowRequiresExportedClipAndDoesNotCallVideoAPI(t *testing.T) {
+	dir := t.TempDir()
+	videoGen := &countingVideoGen{}
+	st, err := New(filepath.Join(dir, "test_studio.db"), nil, videoGen, nil, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	err = st.GenerateMotionVideoClip(context.Background(), MotionVideoOptions{
+		Prompt:     "A creator presents a product",
+		Engine:     "googleflow",
+		OutputPath: filepath.Join(dir, "clip.mp4"),
+	})
+	if err == nil {
+		t.Fatal("expected a clear error when Google Flow clip has not been exported")
+	}
+	if videoGen.calls != 0 {
+		t.Fatalf("Google Flow selection called direct video API %d times, want 0", videoGen.calls)
 	}
 }
 

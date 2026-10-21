@@ -35,7 +35,8 @@ Tuân thủ chuẩn **Open-Spec v1.0 (`docs/OPEN_SPEC.md`)**:
    - Thay vì dựng ảnh tĩnh với thẻ chữ `AdCard` che khuất khung hình, hệ thống tự động kích hoạt kho video Lookbook thời trang người thật (`data/clips/fashion/*.mp4`).
    - Nếu có ảnh nhân vật kênh (`ModelPhoto`), kích hoạt InsightFace Deep Latent Face Swap hoán đổi khuôn mặt vào người mẫu lookbook đang bước đi/thử đồ.
 2. **Dựng từ ảnh sản phẩm listing (`AffiliateModePhoto`)**:
-   - Nếu người dùng cung cấp ảnh chụp sản phẩm, hệ thống áp dụng chuyển động Ken Burns tinh tế ($< 8\%$) và chuyển cảnh CapCut Flash Cut đồng bộ với nhịp trống (*beat drop*).
+   - Nếu người dùng chọn ảnh tĩnh, giữ khung ổn định và dùng dissolve nhẹ. Không zoom, rung, flash hoặc flicker.
+   - Mặc định dùng engine video để tạo footage chuyển động thật. Nếu engine không tạo được clip, job báo lỗi thay vì dựng chuyển động giả từ ảnh.
    - Tự động chuẩn hóa tỷ lệ 9:16 với Lanczos interpolation chống méo hình (`scale=1080:1920:force_original_aspect_ratio=increase:flags=lanczos,crop=1080:1920,setsar=1`).
 3. **Âm nhạc thương mại thịnh hành**:
    - Tự động chọn bài nhạc TikTok trending bắt tai từ kho nhạc thương mại (`FindTrendingMusic`), tạo năng lượng cho video ngắn.

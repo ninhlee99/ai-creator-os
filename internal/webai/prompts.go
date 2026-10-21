@@ -727,7 +727,7 @@ func evaluateQC(hook string, scenes []AdScene, niche string) QCScorecard {
 	strengths := []string{
 		"Hook 3s có tính năng pattern interrupt cao, giữ chân người xem ngay lập tức",
 		fmt.Sprintf("Ngôn ngữ thuần văn hóa Creator Việt Nam, đúng thuật ngữ ngành %s", niche),
-		"Lời thoại voiceover ngắn gọn (dưới 35 từ/cảnh), khớp hoàn hảo cho VieNeu-TTS đọc theo nhạc",
+		"Lời thoại voiceover ngắn gọn (dưới 35 từ/cảnh), phù hợp để tổng hợp giọng đọc theo nhạc",
 		"Prompt ảnh Gemini và video Muse AI đặc tả chi tiết camera, ánh sáng studio chuẩn thương mại",
 	}
 

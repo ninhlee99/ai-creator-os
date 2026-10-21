@@ -29,7 +29,7 @@ func TestViralPageNoStudio(t *testing.T) {
 		t.Fatalf("GET /viral = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Xưởng Video Viral AI") {
+	if !strings.Contains(body, "Tạo video dọc") {
 		t.Errorf("trang /viral thiếu tiêu đề: %s", body)
 	}
 }
@@ -42,10 +42,10 @@ func TestViralPageRenders(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Xưởng Video Viral AI 100% Gốc",
-		"Khởi Tạo Video 1-Chạm",
-		"Tùy Chỉnh Kịch Bản",
-		"1080x1920 (9:16)",
+		"Video tham chiếu tùy chọn",
+		"Chủ đề video",
+		"Không phải dữ liệu xu hướng trực tiếp",
+		"Tạo video (9:16)",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /viral thiếu nội dung %q", want)
@@ -53,7 +53,7 @@ func TestViralPageRenders(t *testing.T) {
 	}
 }
 
-func TestViralCreateAndQuick(t *testing.T) {
+func TestViralCreate(t *testing.T) {
 	s := newViralServer(t)
 
 	// Test form create
@@ -69,15 +69,6 @@ func TestViralCreateAndQuick(t *testing.T) {
 	loc := rec.Header().Get("Location")
 	if !strings.Contains(loc, "msg=created") {
 		t.Errorf("Location = %q, want msg=created", loc)
-	}
-
-	// Test quick launcher
-	recQuick := postForm(t, s, "/viral/quick", url.Values{
-		"topic": {"Bí Quyết Năng Suất"},
-		"genre": {"trendjack"},
-	})
-	if recQuick.Code != http.StatusSeeOther {
-		t.Fatalf("POST /viral/quick = %d, want 303", recQuick.Code)
 	}
 
 	// Dọn dẹp job để tránh goroutine ghi vào TempDir sau khi test hoàn tất

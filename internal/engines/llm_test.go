@@ -231,14 +231,6 @@ func TestParseGeminiText(t *testing.T) {
 	}
 }
 
-func TestParseChatCompletion(t *testing.T) {
-	sample := `{"choices":[{"message":{"role":"assistant","content":"Chào bạn"}}]}`
-	text, err := parseChatCompletion([]byte(sample))
-	if err != nil || text != "Chào bạn" {
-		t.Fatalf("text=%q err=%v", text, err)
-	}
-}
-
 func TestGeminiMissingKey(t *testing.T) {
 	g := NewGeminiProviderKeys([]string{""})
 	if g.Healthy(context.Background()) {
@@ -254,33 +246,16 @@ func TestGeminiMissingKey(t *testing.T) {
 	}
 }
 
-func TestPaidProvider(t *testing.T) {
-	p := NewPaidLLMProvider()
-	if p.Name() != "paid" {
-		t.Fatalf("name = %q", p.Name())
-	}
-	if p.Healthy(context.Background()) {
-		t.Fatal("paid should be unhealthy by default")
-	}
-	_, err := p.Complete(context.Background(), "", "hi")
-	if err == nil || !strings.Contains(err.Error(), "paid tier disabled") {
-		t.Fatalf("err = %v, want 'paid tier disabled'", err)
-	}
-}
-
 func TestDefaultLLMConfig(t *testing.T) {
 	cfg := DefaultLLMConfig([]string{"key"})
-	if len(cfg.Order) != 3 {
+	if len(cfg.Order) != 1 {
 		t.Fatalf("order len = %d", len(cfg.Order))
 	}
-	if cfg.Order[0].Name != "gemini" || cfg.Order[1].Name != "llama-server" || cfg.Order[2].Name != "paid" {
+	if cfg.Order[0].Name != "gemini" {
 		t.Fatalf("order = %v", cfg.Order)
 	}
-	if !cfg.Order[0].Enabled || !cfg.Order[1].Enabled {
-		t.Fatal("gemini and llama-server should be enabled")
-	}
-	if cfg.Order[2].Enabled {
-		t.Fatal("paid should be disabled")
+	if !cfg.Order[0].Enabled {
+		t.Fatal("gemini should be enabled")
 	}
 	if len(cfg.Order[0].APIKeys) != 1 || cfg.Order[0].APIKeys[0] != "key" {
 		t.Fatalf("gemini keys = %q", cfg.Order[0].APIKeys)

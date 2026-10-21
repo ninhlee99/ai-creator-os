@@ -230,7 +230,7 @@ func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (stri
 		niche = p.Theme
 	}
 	return s.StudioRunner.CreateAffiliateJob(studio.AffiliateParams{
-		Mode:         studio.AffiliateModePhoto,
+		Mode:         studio.AffiliateModeShots,
 		Niche:        niche,
 		ProductName:  p.Title,
 		ProductPhoto: dst,

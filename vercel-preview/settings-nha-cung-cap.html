@@ -28,7 +28,6 @@
       <div class="nav-group">Vận hành</div>
       <a href="index.html">Trang chủ</a>
       <a href="accounts.html">Tài khoản</a>
-      <a href="schedule.html">Lịch live</a>
       <a href="growth.html">Phát triển kênh</a>
       <div class="nav-group">Sản xuất</div>
       <a href="studio.html">Studio AI 🎬</a>
@@ -64,8 +63,6 @@
 <nav class="tabs" role="tablist" aria-label="Cài đặt">
   <a href="settings-he-thong.html">Hệ thống</a>
   <a href="settings-nha-cung-cap.html" class="active">Nhà cung cấp</a>
-  <a href="settings-model-local.html">Model local</a>
-  <a href="settings-nhan-vat.html">Nhân vật AI</a>
   <a href="settings-an-toan.html">⚠️ An toàn</a>
 </nav>
 
@@ -73,7 +70,6 @@
 <nav class="tabs">
   <a href="#provider-tts">TTS</a>
   <a href="#provider-llm">LLM</a>
-  <a href="#provider-avatar">Avatar</a>
 </nav>
 
 <h2 id="provider-tts">Chuỗi provider TTS</h2>
@@ -134,44 +130,13 @@
     </div>
   </div>
   
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>vieneu</strong>
-      <span class="provider-order">#1</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" checked> Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="vieneu">
-    <div class="provider-grid">
-      
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="0" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="180" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="tts" data-provider="vieneu">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
   
   <div class="provider-card">
     <div class="provider-head">
       <strong>edge</strong>
-      <span class="provider-order">#2</span>
+      <span class="provider-order">#1</span>
       
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" checked> Bật</label>
+      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" checked> Bật</label>
     </div>
     <input type="hidden" name="pname" value="edge">
     <div class="provider-grid">
@@ -261,187 +226,9 @@
     </div>
   </div>
   
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>llama-server</strong>
-      <span class="provider-order">#1</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" checked> Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="llama-server">
-    <div class="provider-grid">
-      
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="0" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="120" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="llama-server">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
   
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>paid</strong>
-      <span class="provider-order">#2</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" > Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="paid">
-    <div class="provider-grid">
-      
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="0" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="0" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="llm" data-provider="paid">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
   
   <button type="submit" class="btn">Lưu cấu hình LLM</button>
-</form>
-</div>
-
-
-<h2 id="provider-avatar">Chuỗi provider Avatar</h2>
-<p class="subtitle">Thứ tự ưu tiên từ trên xuống dưới. <strong>Cam kết chất lượng:</strong> mọi khung hình đều được render theo audio từng frame — cấm dùng ảnh tĩnh + hiệu ứng chuyển cảnh. <span class="badge badge-no">Trực tiếp (realtime): chưa có — avatar chạy trên máy chỉ dựng offline</span></p>
-
-
-
-<div class="form-card" style="max-width:none">
-<form method="post" action="settings.html">
-  
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>local</strong>
-      <span class="provider-order">#0</span>
-      
-        <span class="badge badge-ok">miễn phí</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="0" checked> Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="local">
-    <div class="provider-grid">
-      
-      <div class="field field-span">
-        <label>Chương trình chạy trên máy</label>
-        <input type="hidden" name="apikey" value="">
-        <div class="hint">Chạy mô hình trên máy của bạn (mặc định: MuseTalk v1.5 bản Apple Silicon), do aicos tự quản lý — xem trang Model local. <strong>Dựng offline (không trực tiếp/realtime):</strong> một clip 60 giây mất khoảng 6–10 phút trên Mac M1. Muốn phát trực tiếp realtime, hãy bật nhà cung cấp đám mây (HeyGen) ở dưới.</div>
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="0" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="1800" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="local">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
-  
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>heygen</strong>
-      <span class="provider-order">#1</span>
-      
-        <span class="badge badge-no">trả phí · tắt mặc định</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="1" > Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="heygen">
-    <div class="provider-grid">
-      
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="1" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="600" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="heygen">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
-  
-  <div class="provider-card">
-    <div class="provider-head">
-      <strong>did</strong>
-      <span class="provider-order">#2</span>
-      
-        <span class="badge badge-no">trả phí · tắt mặc định</span>
-      
-      <label class="provider-enabled"><input type="checkbox" name="enabled" value="2" > Bật</label>
-    </div>
-    <input type="hidden" name="pname" value="did">
-    <div class="provider-grid">
-      
-      <div class="field">
-        <label>API key</label>
-        <input type="password" name="apikey" value="" placeholder="nếu cần" autocomplete="off">
-      </div>
-      
-      <div class="field">
-        <label>Số lần thử lại</label>
-        <input type="number" name="retries" value="1" min="0">
-      </div>
-      <div class="field">
-        <label>Timeout (giây)</label>
-        <input type="number" name="timeout" value="600" min="1">
-      </div>
-    </div>
-    <div class="provider-actions">
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↑ Lên</button>
-      <button type="submit" class="btn btn-secondary btn-sm" formmethod="post" formaction="settings.html">↓ Xuống</button>
-      <button type="button" class="btn btn-secondary btn-sm health-btn" data-chain="avatar" data-provider="did">Kiểm tra kết nối</button>
-      <span class="health-result" aria-live="polite"></span>
-    </div>
-  </div>
-  
-  <button type="submit" class="btn">Lưu cấu hình Avatar</button>
 </form>
 </div>
 

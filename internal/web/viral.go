@@ -18,18 +18,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
-// viralTrend gợi ý góc tiếp cận và hook mở đầu cho video viral.
-type viralTrend struct {
-	Title          string
-	Genre          string
-	GenreVN        string
-	Hook3s         string
-	FormatTag      string
-	SampleClip     string
-	SampleVideoURL string
-	SampleThumbURL string
-}
-
 // viralJobView là dữ liệu hiển thị của một tác vụ dựng video viral 9:16.
 type viralJobView struct {
 	ID         string
@@ -47,34 +35,6 @@ type viralJobView struct {
 	FinishedAt string
 }
 
-// sampleClipView là mô hình hiển thị một video mẫu chuyển động (vũ đạo / lookbook).
-type sampleClipView struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Filename    string `json:"filename"`
-	URL         string `json:"url"`
-	Duration    string `json:"duration"`
-	Category    string `json:"category"`
-	Platform    string `json:"platform"` // "TikTok VN" hoặc "Douyin CN"
-	Region      string `json:"region"`   // "VN" hoặc "CN"
-	Description string `json:"description"`
-}
-
-// viralCreatorChannel là dữ liệu của các kênh nữ hàng chục triệu follow đang tạo trend hot nhất.
-type viralCreatorChannel struct {
-	Handle     string `json:"handle"`
-	Name       string `json:"name"`
-	Followers  string `json:"followers"`
-	Category   string `json:"category"`
-	AvatarURL  string `json:"avatar_url"`
-	HotTrend   string `json:"hot_trend"`
-	Music      string `json:"music"`
-	Views      string `json:"views"`
-	SampleClip string `json:"sample_clip"`
-	VideoURL   string `json:"video_url"`
-	Hook       string `json:"hook"`
-}
-
 // viralView là mô hình dữ liệu chính cho trang /viral.
 type viralView struct {
 	StudioOK           bool
@@ -84,19 +44,11 @@ type viralView struct {
 	ActiveCount        int
 	DoneCount          int
 	TotalCount         int
-	Trends             []viralTrend
-	DramasVN           []studio.ShowbizDrama
-	DramasCN           []studio.ShowbizDrama
 	Error              string
 	Notice             string
 	AvailableModels    []modelPhotoCardView
 	SelectedModelID    int64
 	SelectedModelPhoto string
-	SampleClips        []sampleClipView
-	SelectedClip       string
-	TopChannels        []viralCreatorChannel
-	TopicGroups        []studio.TopicVideoGroup
-	PresetTopicGroups  []studio.TopicVideoGroup
 }
 
 // handleViral renders the video creation form and actual job history.
@@ -136,23 +88,12 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	v := viralView{
 		StudioOK:        s.Studio != nil,
-		Trends:          nil,
 		Error:           q.Get("err"),
-		SampleClips:     s.listViralDanceClips(),
 		AvailableModels: s.listModelPhotoCards(),
-		TopChannels:     nil,
 	}
-
-	dramasVN, dramasCN, _ := studio.FetchSplitShowbizDrama(r.Context())
-	v.DramasVN = dramasVN
-	v.DramasCN = dramasCN
-	v.TopicGroups = studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
-	v.PresetTopicGroups = studio.GetAllPresetTopicGroups()
 
 	if msg := q.Get("msg"); msg == "created" {
 		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
-	} else if msg == "imported" {
-		v.Notice = "✓ Đã tải và chuẩn hóa video vũ đạo 9:16 vào xưởng thành công! Bạn có thể xem trước và ghép mặt ngay bên dưới."
 	}
 
 	// Chọn nhân vật được chỉ định từ query param hoặc mặc định ảnh đầu tiên
@@ -173,7 +114,6 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Video tham chiếu chỉ được chọn rõ ràng từ file đã nhập.
-	v.SelectedClip = q.Get("clip")
 
 	// Đọc công tắc tự động hóa viral
 	st := s.settings()
@@ -472,22 +412,6 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		cancel()
 	}
 
-	sampleClip := strings.TrimSpace(r.PostFormValue("sample_clip"))
-	if sampleVideoPath == "" && sampleClip != "" {
-		candidates := []string{
-			filepath.Join(s.DataDir, "clips", "viral", sampleClip),
-			filepath.Join(s.DataDir, "clips", "viral", sampleClip+".mp4"),
-			filepath.Join("data", "clips", "viral", sampleClip),
-			filepath.Join("data", "clips", "viral", sampleClip+".mp4"),
-		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				sampleVideoPath = cand
-				break
-			}
-		}
-	}
-
 	aiMode := strings.TrimSpace(r.PostFormValue("ai_mode"))
 	if aiMode == "" {
 		aiMode = "auto"
@@ -534,197 +458,9 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/studio/jobs?tab=running&msg=created&job_id=%s", jobID), http.StatusSeeOther)
 }
 
-// handleViralQuick khởi tạo tức thì từ mẫu xu hướng 1-chạm.
-func (s *Server) handleViralQuick(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Studio AI chưa sẵn sàng"), http.StatusSeeOther)
-		return
-	}
-
-	_ = r.ParseMultipartForm(32 << 20)
-	_ = r.ParseForm()
-	topic := strings.TrimSpace(r.PostFormValue("topic"))
-	genre := r.PostFormValue("genre")
-	account := r.PostFormValue("account")
-	if topic == "" {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Vui lòng nhập chủ đề video"), http.StatusSeeOther)
-		return
-	}
-	if genre == "" {
-		genre = "trendjack"
-	}
-
-	sampleClip := strings.TrimSpace(r.PostFormValue("sample_clip"))
-	var sampleVideoPath string
-	if sampleClip != "" {
-		candidates := []string{
-			filepath.Join(s.DataDir, "clips", "viral", sampleClip),
-			filepath.Join(s.DataDir, "clips", "viral", sampleClip+".mp4"),
-			filepath.Join("data", "clips", "viral", sampleClip),
-			filepath.Join("data", "clips", "viral", sampleClip+".mp4"),
-		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				sampleVideoPath = cand
-				break
-			}
-		}
-	}
-
-	var accounts []*network.Account
-	if s.Mgr != nil {
-		accounts, _ = s.Mgr.ListWithAutopilot()
-	}
-	enforcedAccount, targetID, channelNote := ValidateAndEnforceViralChannel(topic, genre, account, accounts)
-	account = enforcedAccount
-	var accountID int64 = targetID
-	if channelNote != "" {
-		log.Printf("web: viral quick channel enforcement: %s", channelNote)
-	}
-
-	var modelPhoto string
-	if accountID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
-				modelPhoto = photos[len(photos)-1].Path // use latest model face
-			}
-		}
-	}
-
-	p := studio.ViralParams{
-		Topic:          topic,
-		Genre:          genre,
-		VisualMood:     "cinematic",
-		Account:        account,
-		AccountID:      accountID,
-		ModelPhoto:     modelPhoto,
-		SampleVideo:    sampleVideoPath,
-		TargetDuration: 60,
-	}
-
-	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
-	if err != nil {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape(err.Error()), http.StatusSeeOther)
-		return
-	}
-
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("human", "viral_produce", nil, fmt.Sprintf("1-Chạm tạo video viral job=%s: %s", jobID, topic), nil)
-	}
-
-	http.Redirect(w, r, fmt.Sprintf("/studio/jobs?tab=running&msg=created&job_id=%s", jobID), http.StatusSeeOther)
-}
-
-// studioUnmarshalJSON giải mã json chuỗi an toàn.
 func studioUnmarshalJSON(data string, v any) error {
 	if data == "" {
 		return nil
 	}
 	return json.Unmarshal([]byte(data), v)
-}
-
-// listViralDanceClips liệt kê các tệp tham chiếu người dùng đã lưu.
-func (s *Server) listViralDanceClips() []sampleClipView {
-	clipsDir := filepath.Join(s.DataDir, "clips", "viral")
-	entries, err := os.ReadDir(clipsDir)
-	if err != nil {
-		return nil
-	}
-	var out []sampleClipView
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if !strings.HasSuffix(strings.ToLower(name), ".mp4") {
-			continue
-		}
-		stem := strings.TrimSuffix(name, filepath.Ext(name))
-		out = append(out, sampleClipView{
-			ID: stem, Title: stem, Filename: name,
-			URL:         "/clips/viral/" + name,
-			Description: "Tệp tham chiếu đã lưu trong hệ thống.",
-		})
-	}
-	return out
-}
-
-// handleViralClipImport tiếp nhận link TikTok hoặc Douyin, dùng yt-dlp tải video,
-// chuẩn hóa về 1080x1920 (9:16 vertical) và lưu vào data/clips/viral/.
-func (s *Server) handleViralClipImport(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Studio chưa sẵn sàng"), http.StatusSeeOther)
-		return
-	}
-	_ = r.ParseForm()
-	rawURL := strings.TrimSpace(r.PostFormValue("url"))
-	if rawURL == "" {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Vui lòng dán link video TikTok hoặc Douyin"), http.StatusSeeOther)
-		return
-	}
-	customTitle := strings.TrimSpace(r.PostFormValue("title"))
-	platform := strings.TrimSpace(r.PostFormValue("platform"))
-	if platform == "" {
-		if strings.Contains(rawURL, "douyin.com") {
-			platform = "Douyin CN"
-		} else {
-			platform = "TikTok VN"
-		}
-	}
-	region := "VN"
-	if strings.Contains(platform, "Douyin") || strings.Contains(platform, "CN") {
-		region = "CN"
-	}
-
-	clipsDir := filepath.Join(s.DataDir, "clips", "viral")
-	_ = os.MkdirAll(clipsDir, 0o755)
-
-	clipID := fmt.Sprintf("imported_%s_%d", strings.ToLower(region), time.Now().Unix())
-	tempFile := filepath.Join(clipsDir, clipID+"_raw.mp4")
-	finalFile := filepath.Join(clipsDir, clipID+".mp4")
-
-	// 1. Tìm đường dẫn yt-dlp
-	ytdlp := "yt-dlp"
-	candidates := []string{
-		"/Users/ninh.le/.local/bin/yt-dlp",
-		"/usr/local/bin/yt-dlp",
-		"yt-dlp",
-	}
-	for _, cand := range candidates {
-		if fileExists(cand) {
-			ytdlp = cand
-			break
-		}
-	}
-
-	// Chạy yt-dlp tải video với timeout 3 phút
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, ytdlp, "-o", tempFile, "--no-playlist", "--no-warnings", rawURL)
-	outBytes, err := cmd.CombinedOutput()
-	if err != nil || !fileExists(tempFile) {
-		log.Printf("viral import: yt-dlp error (%v): %s", err, string(outBytes))
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Không thể tải video từ link này — vui lòng kiểm tra lại link TikTok/Douyin hoặc thử link khác."), http.StatusSeeOther)
-		return
-	}
-	defer os.Remove(tempFile)
-
-	// 2. Chuyển đổi và chuẩn hóa nghiêm ngặt về 1080x1920 (9:16 vertical HD) không méo hình
-	ffCmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", tempFile,
-		"-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1",
-		"-c:v", "libx264", "-preset", "fast", "-crf", "20",
-		"-c:a", "aac", "-b:a", "192k", finalFile)
-	if ffErr := ffCmd.Run(); ffErr != nil || !fileExists(finalFile) {
-		log.Printf("viral import: ffmpeg error: %v", ffErr)
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Lỗi chuẩn hóa video sang chuẩn 9:16"), http.StatusSeeOther)
-		return
-	}
-
-	if customTitle == "" {
-		customTitle = clipID
-	}
-	log.Printf("viral: ✓ Đã nhập thành công video vũ đạo (%s): %s", platform, finalFile)
-
-	http.Redirect(w, r, fmt.Sprintf("/viral?clip=%s&msg=imported", clipID), http.StatusSeeOther)
 }

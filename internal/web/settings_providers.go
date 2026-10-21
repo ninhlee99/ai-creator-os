@@ -1,7 +1,7 @@
 package web
 
 // Settings sub-domain for provider chains and secrets: chain CRUD and
-// health, per-key keyring management, and the VieNeu/avatar sidecar panels.
+// health and per-key keyring management.
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 func (s *Server) handleChainGet(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if _, ok := s.chainKey(name); !ok {
-		http.Error(w, "unknown chain (name=tts|llm|avatar)", http.StatusBadRequest)
+		http.Error(w, "unknown chain (name=tts|llm)", http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -53,7 +53,7 @@ func maskChainKeys(cfg ChainConfig) ChainConfig {
 func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 	if _, ok := s.chainKey(name); !ok {
-		http.Error(w, "unknown chain (name=tts|llm|avatar)", http.StatusBadRequest)
+		http.Error(w, "unknown chain (name=tts|llm)", http.StatusBadRequest)
 		return
 	}
 	if err := r.ParseForm(); err != nil {
@@ -75,6 +75,9 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 	for i, pname := range names {
 		e := ProviderEntry{Name: strings.TrimSpace(pname), Enabled: enabled[i]}
 		if e.Name == "" {
+			continue
+		}
+		if len(withoutRetiredProviders(name, []ProviderEntry{e})) == 0 {
 			continue
 		}
 		if e.Name == "gemini" {
@@ -111,17 +114,6 @@ func (s *Server) handleChainSave(w http.ResponseWriter, r *http.Request) {
 	if err := s.saveChain(name, cfg); err != nil {
 		s.fail(w, err, "save chain")
 		return
-	}
-	// Đợt AC: bật VieNeu trong chain TTS sau khi app đã boot → tự khởi động
-	// sidecar (trước đây EnsureLocalModels chỉ chạy 1 lần lúc boot nên tier
-	// local "chết lâm sàng", UI vẫn hiện đã bật).
-	if name == "tts" {
-		for _, e := range cfg.Order {
-			if e.Enabled && (e.Name == "vieneu" || e.Name == "vieneu-tts") {
-				s.kickVieneuEnsure()
-				break
-			}
-		}
 	}
 	seeOther(w, r, "/settings/nha-cung-cap?ok="+url.QueryEscape("Đã lưu cấu hình nhà cung cấp."))
 }
@@ -528,81 +520,6 @@ func (s *Server) handleKeyTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-}
-
-// ------------------------------------------------------------- VieNeu panel
-
-func (s *Server) vieneuRequired(w http.ResponseWriter, r *http.Request) bool {
-	if s.VieNeu == nil {
-		http.Error(w, "VieNeu sidecar chưa được kết nối", http.StatusServiceUnavailable)
-		return false
-	}
-	return true
-}
-
-func (s *Server) handleVieneuStatus(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if s.VieNeu == nil {
-		_ = json.NewEncoder(w).Encode(map[string]any{"connected": false})
-		return
-	}
-	state, detail := s.VieNeu.Status()
-	voices := s.VieNeu.Voices()
-	if len(voices) == 0 {
-		voices = VieNeuVoiceFallback
-	}
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"connected": true, "state": state, "detail": detail, "voices": voices,
-	})
-}
-
-// handleVieneuEnsure starts the model download in the background; progress
-// is polled via /settings/vieneu/progress.
-func (s *Server) handleVieneuEnsure(w http.ResponseWriter, r *http.Request) {
-	if !s.vieneuRequired(w, r) {
-		return
-	}
-	s.kickVieneuEnsure()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"started": true})
-}
-
-func (s *Server) handleVieneuProgress(w http.ResponseWriter, r *http.Request) {
-	s.vieneuMu.Lock()
-	defer s.vieneuMu.Unlock()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"connected":  s.VieNeu != nil,
-		"downloaded": s.vieneuDownloaded,
-		"total":      s.vieneuTotal,
-		"done":       s.vieneuDone,
-		"error":      s.vieneuErr,
-	})
-}
-
-func (s *Server) handleVieneuRestart(w http.ResponseWriter, r *http.Request) {
-	if !s.vieneuRequired(w, r) {
-		return
-	}
-	if err := s.VieNeu.Restart(r.Context()); err != nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Khởi động lại VieNeu thất bại: "+err.Error()))
-		return
-	}
-	seeOther(w, r, "/settings/he-thong")
-}
-
-func (s *Server) handleVieneuVoice(w http.ResponseWriter, r *http.Request) {
-	if !s.vieneuRequired(w, r) {
-		return
-	}
-	_ = r.ParseForm()
-	if preset := strings.TrimSpace(r.PostFormValue("preset")); preset != "" {
-		if err := s.VieNeu.SetVoice(preset); err != nil {
-			seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Đổi giọng VieNeu thất bại: "+err.Error()))
-			return
-		}
-	}
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã đổi giọng VieNeu."))
 }
 
 // ----------------------------------------------------------- legacy JSON API

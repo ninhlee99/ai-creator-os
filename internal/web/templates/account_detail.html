@@ -71,20 +71,6 @@
   </div>
 </div>
 
-{{if .Persona}}
-<div class="form-card">
-  <h2 style="margin-top:0;border:none;padding:0">Persona: {{.Persona.Label}}</h2>
-  <p><strong>Phong cách nội dung:</strong> {{.Persona.LiveStyle}}</p>
-  {{if .Persona.AffiliateNiches}}
-  <p><strong>Chủ đề affiliate phù hợp:</strong></p>
-  <ul class="clean">{{range .Persona.AffiliateNiches}}<li>{{.}}</li>{{end}}</ul>
-  {{end}}
-  {{if .Persona.RedLines}}
-  <p><strong>Giới hạn:</strong></p>
-  <ul class="clean">{{range .Persona.RedLines}}<li>{{.}}</li>{{end}}</ul>
-  {{end}}
-</div>
-{{end}}
 </div>
 
 

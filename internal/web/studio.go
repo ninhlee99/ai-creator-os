@@ -27,653 +27,18 @@ import (
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
-	ID             string             `json:"id"`
-	Kind           string             `json:"kind"`
-	Title          string             `json:"title"`
-	Status         string             `json:"status"`
-	Progress       int                `json:"progress"`
-	Output         string             `json:"output"`
-	Caption        string             `json:"caption"`
-	CreatedAt      string             `json:"created_at"`
-	FinishedAt     string             `json:"finished_at"`
-	KindLabel      string             `json:"kind_label"`
-	Label          string             `json:"label"`
-	Class          string             `json:"class"`
-	PipelineStages []JobPipelineStage `json:"pipeline_stages"`
-	DeptStages     []JobDeptStage     `json:"dept_stages,omitempty"`
-	DeptGroups     []JobDeptGroup     `json:"dept_groups,omitempty"`
-}
-
-// JobPipelineStage biểu diễn từng khâu xử lý trong quy trình chuyên biệt của từng loại video (Viral / Affiliate / Story).
-type JobPipelineStage struct {
-	Step        int    `json:"step"`
-	Name        string `json:"name"`
-	Icon        string `json:"icon"`
-	Description string `json:"description"`
-	Status      string `json:"status"` // "done", "active", "waiting", "failed"
-	StatusLabel string `json:"status_label"`
-}
-
-func buildJobPipeline(j studio.Job) []JobPipelineStage {
-	var stages []JobPipelineStage
-	switch j.Kind {
-	case studio.KindViral:
-		stages = []JobPipelineStage{
-			{
-				Step:        1,
-				Name:        "Radar Bắt Trend TikTok Realtime",
-				Icon:        "🔥",
-				Description: "Quét vũ đạo đang viral & nhạc hot trend TikTok thời gian thực",
-			},
-			{
-				Step:        2,
-				Name:        "Trích Xuất Chuyển Động Vũ Đạo",
-				Icon:        "💃",
-				Description: "Bóc tách nhịp nhảy 9:16 giữ trọn năng lượng & góc máy mượt mà",
-			},
-			{
-				Step:        3,
-				Name:        "Ghép Mặt Nhân Vật (InsightFace Multi-Angle)",
-				Icon:        "✨",
-				Description: "Phân tích đa góc mặt người mẫu đã tải lên và khóa nhận diện sắc nét",
-			},
-			{
-				Step:        4,
-				Name:        "Render Video Beat Dance 9:16",
-				Icon:        "🎵",
-				Description: "Hòa âm beat nhạc TikTok giật giật, 0% voiceover, sẵn sàng lên xu hướng",
-			},
-		}
-
-	case studio.KindStory:
-		stages = []JobPipelineStage{
-			{
-				Step:        1,
-				Name:        "Kịch Bản Tình Yêu Nam Nữ",
-				Icon:        "📖",
-				Description: "Biên soạn cốt truyện tình cảm kịch tính, nhịp 3 hồi lôi cuốn",
-			},
-			{
-				Step:        2,
-				Name:        "Tạo Hình Nhân Vật Animate",
-				Icon:        "🎨",
-				Description: "Sinh hình ảnh phong cách anime đẹp, nhất quán nhân vật qua từng cảnh",
-			},
-			{
-				Step:        3,
-				Name:        "Lồng Tiếng Đa Cảm Xúc",
-				Icon:        "🎙️",
-				Description: "Giọng đọc nam ấm áp & nữ ngọt ngào biểu cảm cao theo tình tiết truyện",
-			},
-			{
-				Step:        4,
-				Name:        "Dựng Video Audio Book Hoàn Chỉnh",
-				Icon:        "🎬",
-				Description: "Hòa âm tiếng mưa/nhạc nền, khớp phụ đề chuẩn YouTube & TikTok",
-			},
-		}
-
-	default: // affiliate
-		stages = []JobPipelineStage{
-			{
-				Step:        1,
-				Name:        "Phân Tích Sản Phẩm & USP Thời Trang",
-				Icon:        "📦",
-				Description: "Trích xuất chất liệu, dáng váy và ưu điểm nổi bật cho tệp khách nữ",
-			},
-			{
-				Step:        2,
-				Name:        "Kịch Bản Bán Hàng PAS Chốt Sale",
-				Icon:        "✍️",
-				Description: "Hook 3 giây gián đoạn thị giác, kịch bản thúc đẩy thêm vào giỏ hàng",
-			},
-			{
-				Step:        3,
-				Name:        "Phối Đồ & Render Người Mẫu Đã Tải Lên",
-				Icon:        "👗",
-				Description: "Khuôn mặt nhân vật đã tải lên mặc trang phục thực tế chuẩn 9:16",
-			},
-			{
-				Step:        4,
-				Name:        "Dựng Video Giỏ Hàng TikTok Shop",
-				Icon:        "🛒",
-				Description: "Hòa âm nhạc trending nhẹ nhàng, sẵn sàng gắn link tiếp thị liên kết",
-			},
-		}
-	}
-
-	n := len(stages)
-	if n == 0 {
-		return nil
-	}
-
-	if j.Status == "failed" {
-		stages[0].Status = "failed"
-		stages[0].StatusLabel = "⚠️ Lỗi xử lý"
-		for i := 1; i < n; i++ {
-			stages[i].Status = "waiting"
-			stages[i].StatusLabel = "Tạm dừng"
-		}
-		return stages
-	}
-
-	if j.Status == "done" || j.Progress >= 100 {
-		for i := range stages {
-			stages[i].Status = "done"
-			stages[i].StatusLabel = "✓ Hoàn thành"
-		}
-		return stages
-	}
-
-	// running / queued
-	stageSpan := 100.0 / float64(n)
-	activeIdx := int(float64(j.Progress) / stageSpan)
-	if activeIdx >= n {
-		activeIdx = n - 1
-	}
-
-	for i := 0; i < n; i++ {
-		if i < activeIdx {
-			stages[i].Status = "done"
-			stages[i].StatusLabel = "✓ Đã xong"
-		} else if i == activeIdx {
-			stages[i].Status = "active"
-			stages[i].StatusLabel = "⚡ Đang xử lý"
-		} else {
-			stages[i].Status = "waiting"
-			stages[i].StatusLabel = "⏳ Chờ lượt"
-		}
-	}
-	return stages
-}
-
-// JobDeptGroup represents a specialized department group participating in a job (deprecated / cleaned up).
-type JobDeptGroup struct {
-	Step        int            `json:"step"`
-	DeptCode    string         `json:"dept_code"`
-	DeptName    string         `json:"dept_name"`
-	Icon        string         `json:"icon"`
-	Status      string         `json:"status"` // "done", "active", "waiting", "failed"
-	StatusLabel string         `json:"status_label"`
-	HandoffNote string         `json:"handoff_note"`
-	FlowType    string         `json:"flow_type"` // "two_way", "one_way"
-	Agents      []JobAgentNode `json:"agents"`
-}
-
-// JobAgentNode represents an individual agent participating in a job within a department.
-type JobAgentNode struct {
 	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Avatar     string `json:"avatar"`
-	Role       string `json:"role"`
-	Task       string `json:"task"`
-	IsActive   bool   `json:"is_active"`
-	IsDone     bool   `json:"is_done"`
-	StateText  string `json:"state_text"`
-	ActionType string `json:"action_type"`
-}
-
-func buildJobDeptGroups(j studio.Job) []JobDeptGroup {
-	// Job đã hoàn thành -> Không hiển thị sơ đồ nhân sự, chỉ hiển thị cho job đang làm
-	if j.Status == "done" {
-		return nil
-	}
-
-	allMasterGroups := []JobDeptGroup{
-		{
-			Step:        1,
-			DeptCode:    "DEP-01",
-			DeptName:    "Khối Tình Báo & Thẩm Định Deal",
-			Icon:        "⚖️",
-			FlowType:    "one_way",
-			HandoffNote: "Bàn giao brief insight & thông số ➔ Khối Biên Kịch",
-			Agents: []JobAgentNode{
-				{
-					ID:     "agent-bep-me-bi",
-					Name:   "Elena Bùi",
-					Avatar: "⚖️",
-					Role:   "Trưởng Khối Thương Mại & Deal Hunter",
-					Task:   "Săn deal hoa hồng cao >20% & đối soát thị trường",
-				},
-				{
-					ID:     "agent-duc-huy",
-					Name:   "Đức Huy",
-					Avatar: "👨‍💻",
-					Role:   "Chuyên Viên Thông Số",
-					Task:   "Lập bảng thông số kỹ thuật & USP",
-				},
-			},
-		},
-		{
-			Step:        2,
-			DeptCode:    "DEP-02",
-			DeptName:    "Khối Sáng Tạo & Biên Kịch",
-			Icon:        "✍️",
-			FlowType:    "two_way",
-			HandoffNote: "Bàn giao kịch bản 5 cảnh & Prompts 4K ➔ Studio Sản Xuất",
-			Agents: []JobAgentNode{
-				{
-					ID:     "agent-minh-thu",
-					Name:   "Minh Thư",
-					Avatar: "✍️",
-					Role:   "Giám Đốc Sáng Tạo Kịch Bản",
-					Task:   "Soạn 4 Hook 3s giữ chân 86%+ & 5 phân cảnh",
-				},
-				{
-					ID:     "agent-son-bach",
-					Name:   "Sơn Bách",
-					Avatar: "📖",
-					Role:   "Chuyên Gia Cốt Truyện",
-					Task:   "Tối ưu hóa nhịp 3 hồi và chuyển hóa cảm xúc",
-				},
-			},
-		},
-		{
-			Step:        3,
-			DeptCode:    "DEP-03",
-			DeptName:    "Studio Sản Xuất Video AI",
-			Icon:        "🎬",
-			FlowType:    "one_way",
-			HandoffNote: "Bàn giao bản dựng video 4K ➔ Kiểm Soát Chất Lượng (QC)",
-			Agents: []JobAgentNode{
-				{
-					ID:     "agent-duc-huy",
-					Name:   "Đức Huy",
-					Avatar: "🎬",
-					Role:   "Đạo Diễn Visual & VFX 4K",
-					Task:   "Render 5 ảnh 4K Imagen 3 đồng nhất nhân vật",
-				},
-				{
-					ID:     "agent-minh-thu",
-					Name:   "Minh Thư",
-					Avatar: "👩‍💼",
-					Role:   "Chuyên Viên Phối Màu",
-					Task:   "Duyệt bảng màu pastel & storyboard",
-				},
-			},
-		},
-		{
-			Step:        4,
-			DeptCode:    "DEP-04",
-			DeptName:    "Hội Đồng Kiểm Định Chất Lượng Độc Lập",
-			Icon:        "🛡️",
-			FlowType:    "one_way",
-			HandoffNote: "Cấp chứng nhận QC 96/100 ➔ Khối Phân Phối Kênh",
-			Agents: []JobAgentNode{
-				{
-					ID:     "agent-son-bach",
-					Name:   "Sơn Bách",
-					Avatar: "🛡️",
-					Role:   "Thanh Tra Trưởng Kiểm Định Chất Lượng",
-					Task:   "Đo lường tỷ lệ giữ chân 3s & vùng an toàn hiển thị TikTok/Reels",
-				},
-				{
-					ID:     "agent-duc-huy",
-					Name:   "Đức Huy",
-					Avatar: "👨‍💻",
-					Role:   "Kỹ Sư Kiểm Soát Video",
-					Task:   "Kiểm tra tỷ lệ 9:16 & âm lượng chuẩn -14 LUFS",
-				},
-			},
-		},
-		{
-			Step:        5,
-			DeptCode:    "DEP-05",
-			DeptName:    "Khối Phân Phối Đa Nền Tảng",
-			Icon:        "📱",
-			FlowType:    "one_way",
-			HandoffNote: "Lên lịch phát hành đa nền tảng TikTok/Reels/Shorts giờ vàng",
-			Agents: []JobAgentNode{
-				{
-					ID:     "agent-minh-thu",
-					Name:   "Minh Thư",
-					Avatar: "📱",
-					Role:   "Điều Phối Phân Phối Kênh",
-					Task:   "Lên lịch phát hành đa nền tảng giờ vàng",
-				},
-				{
-					ID:     "agent-son-bach",
-					Name:   "Sơn Bách",
-					Avatar: "📖",
-					Role:   "Chuyên Viên Tương Tác & Chuyển Đổi",
-					Task:   "Quét ContentID bản quyền & tối ưu view",
-				},
-			},
-		},
-	}
-
-	// Dynamic filtering based on assigned departments for this job
-	var p studio.AffiliateParams
-	_ = json.Unmarshal([]byte(j.Params), &p)
-
-	groups := allMasterGroups
-	if len(p.AssignedDepts) > 0 {
-		assignedMap := make(map[string]bool)
-		for _, d := range p.AssignedDepts {
-			assignedMap[strings.ToUpper(strings.TrimSpace(d))] = true
-			assignedMap[strings.ToLower(strings.TrimSpace(d))] = true
-		}
-		var filtered []JobDeptGroup
-		for _, g := range allMasterGroups {
-			match := assignedMap[strings.ToUpper(g.DeptCode)]
-			switch g.DeptCode {
-			case "DEP-01":
-				if assignedMap["dept-affiliate"] || assignedMap["affiliate"] || assignedMap["marketing"] {
-					match = true
-				}
-			case "DEP-02":
-				if assignedMap["dept-story"] || assignedMap["story"] || assignedMap["script"] {
-					match = true
-				}
-			case "DEP-03":
-				if assignedMap["dept-studio"] || assignedMap["studio"] || assignedMap["production"] {
-					match = true
-				}
-			case "DEP-04":
-				if assignedMap["dept-audio"] || assignedMap["audio"] || assignedMap["qc"] {
-					match = true
-				}
-			case "DEP-05":
-				if assignedMap["dept-reup"] || assignedMap["reup"] || assignedMap["social"] {
-					match = true
-				}
-			}
-			if match {
-				filtered = append(filtered, g)
-			}
-		}
-		if len(filtered) > 0 {
-			groups = filtered
-		}
-	}
-
-	for i := range groups {
-		groups[i].Step = i + 1
-	}
-
-	numGroups := len(groups)
-	if numGroups == 0 {
-		return nil
-	}
-
-	switch j.Status {
-	case "running":
-		stageSpan := 100.0 / float64(numGroups)
-		activeIdx := int(float64(j.Progress) / stageSpan)
-		if activeIdx >= numGroups {
-			activeIdx = numGroups - 1
-		}
-
-		for i := 0; i < numGroups; i++ {
-			if i < activeIdx {
-				groups[i].Status = "done"
-				groups[i].StatusLabel = "✓ Đã xong & Bàn giao"
-				for a := range groups[i].Agents {
-					groups[i].Agents[a].IsDone = true
-					groups[i].Agents[a].IsActive = false
-					groups[i].Agents[a].StateText = "Đã hoàn thành và bàn giao"
-					groups[i].Agents[a].ActionType = "done"
-				}
-			} else if i == activeIdx {
-				groups[i].Status = "active"
-				groups[i].StatusLabel = "⚡ Đang xử lý khâu"
-				if groups[i].FlowType == "two_way" && len(groups[i].Agents) >= 2 {
-					groups[i].Agents[0].IsActive = true
-					groups[i].Agents[0].StateText = "Đang soạn thảo kịch bản & Hook 3s"
-					groups[i].Agents[0].ActionType = "exchanging"
-					groups[i].Agents[1].IsActive = true
-					groups[i].Agents[1].StateText = "Đang phản hồi cốt truyện & cấu trúc"
-					groups[i].Agents[1].ActionType = "exchanging"
-				} else {
-					for a := range groups[i].Agents {
-						if a == 0 {
-							groups[i].Agents[a].IsActive = true
-							groups[i].Agents[a].StateText = "Đang trực tiếp thực hiện nhiệm vụ"
-							groups[i].Agents[a].ActionType = "working"
-						} else {
-							groups[i].Agents[a].IsActive = false
-							groups[i].Agents[a].StateText = "Hỗ trợ và phối hợp nghiệp vụ"
-							groups[i].Agents[a].ActionType = "working"
-						}
-					}
-				}
-			} else {
-				groups[i].Status = "waiting"
-				groups[i].StatusLabel = "⏳ Chờ bàn giao"
-				for a := range groups[i].Agents {
-					groups[i].Agents[a].IsDone = false
-					groups[i].Agents[a].IsActive = false
-					groups[i].Agents[a].StateText = "Chờ khâu trước hoàn tất"
-					groups[i].Agents[a].ActionType = "waiting"
-				}
-			}
-		}
-
-	case "failed":
-		for i := range groups {
-			if i == 0 {
-				groups[i].Status = "failed"
-				groups[i].StatusLabel = "⚠️ Tạm dừng xử lý"
-				for a := range groups[i].Agents {
-					groups[i].Agents[a].IsDone = false
-					groups[i].Agents[a].IsActive = false
-					groups[i].Agents[a].StateText = "Tạm dừng xử lý"
-					groups[i].Agents[a].ActionType = "failed"
-				}
-			} else {
-				groups[i].Status = "waiting"
-				groups[i].StatusLabel = "Tạm dừng"
-				for a := range groups[i].Agents {
-					groups[i].Agents[a].IsDone = false
-					groups[i].Agents[a].IsActive = false
-					groups[i].Agents[a].StateText = "Chờ xử lý"
-					groups[i].Agents[a].ActionType = "waiting"
-				}
-			}
-		}
-
-	default: // queued
-		groups[0].Status = "active"
-		groups[0].StatusLabel = "⚡ Đang tiếp nhận đề bài"
-		groups[0].Agents[0].IsActive = true
-		groups[0].Agents[0].StateText = "Đang nhận đề bài từ Studio"
-		groups[0].Agents[0].ActionType = "working"
-		for i := 1; i < len(groups); i++ {
-			groups[i].Status = "waiting"
-			groups[i].StatusLabel = "⏳ Đang chờ lượt"
-			for a := range groups[i].Agents {
-				groups[i].Agents[a].IsDone = false
-				groups[i].Agents[a].IsActive = false
-				groups[i].Agents[a].StateText = "Chờ phân công"
-				groups[i].Agents[a].ActionType = "waiting"
-			}
-		}
-	}
-
-	return groups
-}
-
-// JobDeptStage represents one specialized department participating in a studio job.
-type JobDeptStage struct {
-	Step        int    `json:"step"`
-	DeptCode    string `json:"dept_code"`
-	DeptName    string `json:"dept_name"`
-	Icon        string `json:"icon"`
-	AgentName   string `json:"agent_name"`
-	AgentAvatar string `json:"agent_avatar"`
-	AgentRole   string `json:"agent_role"`
-	TaskName    string `json:"task_name"`
-	Deliverable string `json:"deliverable"`
-	Status      string `json:"status"` // "done", "running", "waiting", "failed"
-	StatusLabel string `json:"status_label"`
-	Progress    int    `json:"progress"`
-}
-
-func buildJobDeptStages(j studio.Job) []JobDeptStage {
-	stages := []JobDeptStage{
-		{
-			Step:        1,
-			DeptCode:    "DEP-01",
-			DeptName:    "P. Nghiên Cứu",
-			Icon:        "🔍",
-			AgentName:   "Bếp Mẹ Bi",
-			AgentAvatar: "🍳",
-			AgentRole:   "Trưởng Phòng Nghiên Cứu",
-			TaskName:    "Phân tích USP sản phẩm & insight đối thủ",
-			Deliverable: "Bản brief sản phẩm & thông số bán chạy",
-		},
-		{
-			Step:        2,
-			DeptCode:    "DEP-02",
-			DeptName:    "P. Biên Kịch",
-			Icon:        "✍️",
-			AgentName:   "Minh Thư",
-			AgentAvatar: "👩‍💼",
-			AgentRole:   "Trưởng Phòng Biên Kịch",
-			TaskName:    "Biên soạn kịch bản 5 cảnh & 4 Hook 3s giữ chân 84%+",
-			Deliverable: "Kịch bản phân cảnh hoàn chỉnh & prompts 4K",
-		},
-		{
-			Step:        3,
-			DeptCode:    "DEP-03",
-			DeptName:    "P. Mỹ Thuật AI",
-			Icon:        "🎨",
-			AgentName:   "Đức Huy",
-			AgentAvatar: "👨‍💻",
-			AgentRole:   "Đạo Diễn Hình Ảnh",
-			TaskName:    "Render 5 ảnh phân cảnh 4K chuẩn 9:16 đồng nhất",
-			Deliverable: "Bộ 5 ảnh bối cảnh 4K độ nét cao",
-		},
-		{
-			Step:        4,
-			DeptCode:    "DEP-04",
-			DeptName:    "P. Âm Thanh",
-			Icon:        "🎙️",
-			AgentName:   "Bếp Mẹ Bi",
-			AgentAvatar: "🍳",
-			AgentRole:   "Chuyên Viên Lồng Tiếng",
-			TaskName:    "Lồng tiếng VieNeu-TTS & tự động cân bằng âm lượng",
-			Deliverable: "File master audio đồng bộ nhịp nhạc",
-		},
-		{
-			Step:        5,
-			DeptCode:    "DEP-05",
-			DeptName:    "P. Thẩm Định QC",
-			Icon:        "🛡️",
-			AgentName:   "Sơn Bách",
-			AgentAvatar: "📖",
-			AgentRole:   "Giám Đốc Thẩm Định QC",
-			TaskName:    "Chấm điểm QC Hook/Text/Audio & quét ContentID",
-			Deliverable: "Điểm QC 96/100 — Đạt chuẩn phát hành",
-		},
-		{
-			Step:        6,
-			DeptCode:    "DEP-06",
-			DeptName:    "P. Phân Phối",
-			Icon:        "🚀",
-			AgentName:   "Tự hành 24/7",
-			AgentAvatar: "🤖",
-			AgentRole:   "Hệ Thống Đăng Kênh",
-			TaskName:    "Xuất bản TikTok, Reels, YouTube Shorts",
-			Deliverable: "Link video trực tuyến & báo cáo view",
-		},
-	}
-
-	switch j.Status {
-	case "done":
-		for i := range stages {
-			stages[i].Status = "done"
-			stages[i].Progress = 100
-			if i == 5 {
-				stages[i].StatusLabel = "Sẵn sàng đăng"
-			} else {
-				stages[i].StatusLabel = "✓ Hoàn tất"
-			}
-		}
-	case "running":
-		p := j.Progress
-		switch {
-		case p < 20:
-			stages[0].Status = "done"
-			stages[0].Progress = 100
-			stages[0].StatusLabel = "✓ Hoàn tất"
-			stages[1].Status = "running"
-			stages[1].Progress = p * 5
-			stages[1].StatusLabel = "⚡ Đang viết kịch bản"
-			for i := 2; i < len(stages); i++ {
-				stages[i].Status = "waiting"
-				stages[i].Progress = 0
-				stages[i].StatusLabel = "⏳ Chờ bàn giao"
-			}
-		case p < 50:
-			stages[0].Status = "done"
-			stages[0].Progress = 100
-			stages[0].StatusLabel = "✓ Hoàn tất"
-			stages[1].Status = "done"
-			stages[1].Progress = 100
-			stages[1].StatusLabel = "✓ Hoàn tất"
-			stages[2].Status = "running"
-			stages[2].Progress = (p - 20) * 100 / 30
-			stages[2].StatusLabel = "⚡ Đang render ảnh 4K"
-			for i := 3; i < len(stages); i++ {
-				stages[i].Status = "waiting"
-				stages[i].Progress = 0
-				stages[i].StatusLabel = "⏳ Chờ nhận ảnh"
-			}
-		case p < 80:
-			for i := 0; i < 3; i++ {
-				stages[i].Status = "done"
-				stages[i].Progress = 100
-				stages[i].StatusLabel = "✓ Hoàn tất"
-			}
-			stages[3].Status = "running"
-			stages[3].Progress = (p - 50) * 100 / 30
-			stages[3].StatusLabel = "⚡ Đang thu voice & mix"
-			for i := 4; i < len(stages); i++ {
-				stages[i].Status = "waiting"
-				stages[i].Progress = 0
-				stages[i].StatusLabel = "⏳ Chờ âm thanh"
-			}
-		default: // 80 <= p < 100
-			for i := 0; i < 4; i++ {
-				stages[i].Status = "done"
-				stages[i].Progress = 100
-				stages[i].StatusLabel = "✓ Hoàn tất"
-			}
-			stages[4].Status = "running"
-			stages[4].Progress = (p - 80) * 100 / 20
-			stages[4].StatusLabel = "⚡ Đang thẩm định QC"
-			stages[5].Status = "waiting"
-			stages[5].Progress = 0
-			stages[5].StatusLabel = "⏳ Chờ duyệt QC"
-		}
-	case "failed":
-		for i := range stages {
-			if i <= 2 {
-				stages[i].Status = "done"
-				stages[i].Progress = 100
-				stages[i].StatusLabel = "✓ Hoàn tất"
-			} else if i == 3 {
-				stages[i].Status = "failed"
-				stages[i].Progress = 50
-				stages[i].StatusLabel = "⚠️ Lỗi xử lý"
-			} else {
-				stages[i].Status = "waiting"
-				stages[i].Progress = 0
-				stages[i].StatusLabel = "Tạm dừng"
-			}
-		}
-	default: // queued
-		stages[0].Status = "running"
-		stages[0].Progress = 30
-		stages[0].StatusLabel = "⚡ Đang tiếp nhận"
-		for i := 1; i < len(stages); i++ {
-			stages[i].Status = "waiting"
-			stages[i].Progress = 0
-			stages[i].StatusLabel = "⏳ Đang chờ lượt"
-		}
-	}
-	return stages
+	Kind       string `json:"kind"`
+	Title      string `json:"title"`
+	Status     string `json:"status"`
+	Progress   int    `json:"progress"`
+	Output     string `json:"output"`
+	Caption    string `json:"caption"`
+	CreatedAt  string `json:"created_at"`
+	FinishedAt string `json:"finished_at"`
+	KindLabel  string `json:"kind_label"`
+	Label      string `json:"label"`
+	Class      string `json:"class"`
 }
 
 func kindLabel(kind string) string {
@@ -693,12 +58,9 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			Progress: j.Progress, Output: mediaName(j.Output),
 			Caption:   j.Caption,
 			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
-			KindLabel:      kindLabel(j.Kind),
-			Label:          statusLabel(j.Status),
-			Class:          statusClass(j.Status),
-			PipelineStages: buildJobPipeline(j),
-			DeptStages:     nil,
-			DeptGroups:     nil,
+			KindLabel: kindLabel(j.Kind),
+			Label:     statusLabel(j.Status),
+			Class:     statusClass(j.Status),
 		})
 	}
 	return out
@@ -759,9 +121,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		notice = "Tác vụ sản xuất video đã được đưa vào hàng đợi AI thành công!"
 	}
 
-	topicGroups := studio.GetConfiguredTopicGroups([]string{"nhay", "su_kien_vn", "bien_hinh", "hai_huoc"})
-	presetTopicGroups := studio.GetAllPresetTopicGroups()
-
 	var selectedModelID int64
 	if midStr := r.URL.Query().Get("model_id"); midStr != "" {
 		selectedModelID, _ = strconv.ParseInt(midStr, 10, 64)
@@ -816,8 +175,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"AvailableModels", availableModels,
 		"Prefill", prefill,
 		"SelectedModelID", selectedModelID,
-		"TopicGroups", topicGroups,
-		"PresetTopicGroups", presetTopicGroups,
 		"AudioStoryPlots", studio.GetCuratedAudioStories(""),
 		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
 		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
@@ -1695,21 +1052,6 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 	serveMediaFile(w, r, filepath.Join(s.OutDir, name))
 }
 
-// handleClipMedia serves sample motion/lookbook video clips from data/clips/.
-func (s *Server) handleClipMedia(w http.ResponseWriter, r *http.Request) {
-	cat := r.PathValue("category")
-	name := r.PathValue("name")
-	if cat != "viral" && cat != "fashion" {
-		http.NotFound(w, r)
-		return
-	}
-	if !mediaNameRe.MatchString(name) {
-		http.NotFound(w, r)
-		return
-	}
-	serveMediaFile(w, r, filepath.Join("data", "clips", cat, name))
-}
-
 // handleStudioModelPhoto serves uploaded user model photos from data/output/studio/models/{account}/{file}.
 func (s *Server) handleStudioModelPhoto(w http.ResponseWriter, r *http.Request) {
 	account := r.PathValue("account")
@@ -1834,123 +1176,6 @@ func reorderPhotos(p studio.AffiliateParams, order string) studio.AffiliateParam
 	}
 	p.ProductPhoto, p.ExtraPhotos = all[0], append([]string(nil), all[1:]...)
 	return p
-}
-
-// handleStudioViralCreate nhận yêu cầu tạo video đu trend / viral shorts 9:16 từ Studio.
-func (s *Server) handleStudioViralCreate(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
-		return
-	}
-	_ = r.ParseForm()
-	topic := strings.TrimSpace(r.PostFormValue("topic"))
-	if topic == "" {
-		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Vui lòng nhập chủ đề hoặc ý tưởng video"))
-		return
-	}
-	genre := r.PostFormValue("genre")
-	if genre == "" {
-		genre = "trendjack"
-	}
-	visualMood := r.PostFormValue("visual_mood")
-	if visualMood == "" {
-		visualMood = "cinematic"
-	}
-	voice := r.PostFormValue("voice")
-	account := r.PostFormValue("account")
-
-	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
-	if duration < 15 || duration > 60 {
-		duration = 30
-	}
-	musicURL := r.PostFormValue("music_url")
-
-	var accountID int64
-	var uploadedPhotos []string
-	if account != "" && s.Mgr != nil {
-		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
-			for _, a := range accounts {
-				if a != nil && a.Username == account {
-					accountID = a.ID
-					break
-				}
-			}
-		}
-	}
-	if accountID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
-				for _, ph := range photos {
-					uploadedPhotos = append(uploadedPhotos, ph.Path)
-				}
-			}
-		}
-	}
-	var modelPhoto string
-	if len(uploadedPhotos) > 0 {
-		modelPhoto = uploadedPhotos[0]
-	}
-
-	p := studio.ViralParams{
-		Topic:          topic,
-		Genre:          genre,
-		VisualMood:     visualMood,
-		Voice:          voice,
-		Account:        account,
-		AccountID:      accountID,
-		ModelPhoto:     modelPhoto,
-		ModelPhotos:    uploadedPhotos,
-		TargetDuration: duration,
-		MusicURL:       musicURL,
-	}
-
-	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
-	if err != nil {
-		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Lỗi tạo job: "+err.Error()))
-		return
-	}
-
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Studio điều phối video viral 9:16 job=%s genre=%s: %s", jobID, genre, topic), nil)
-	}
-
-	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video đu trend '%s' vào dây chuyền sản xuất AI (Job: %s)!", topic, jobID)))
-}
-
-// handleStudioViralQuick khởi tạo tức thì từ mẫu xu hướng 1-chạm trong Studio.
-func (s *Server) handleStudioViralQuick(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		seeOther(w, r, "/studio?err="+url.QueryEscape("Studio chưa sẵn sàng — thử tải lại trang."))
-		return
-	}
-	_ = r.ParseForm()
-	topic := strings.TrimSpace(r.PostFormValue("topic"))
-	genre := r.PostFormValue("genre")
-	if topic == "" {
-		topic = "Bí quyết phát triển bản thân và tư duy tài chính thông minh"
-	}
-	if genre == "" {
-		genre = "trendjack"
-	}
-
-	p := studio.ViralParams{
-		Topic:          topic,
-		Genre:          genre,
-		VisualMood:     "cinematic",
-		TargetDuration: 30,
-	}
-
-	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
-	if err != nil {
-		seeOther(w, r, "/studio?mode=viral&err="+url.QueryEscape("Lỗi tạo job: "+err.Error()))
-		return
-	}
-
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("ai_orchestrator", "viral_quick_produce", nil, fmt.Sprintf("1-Chạm tạo video viral 9:16 job=%s: %s", jobID, topic), nil)
-	}
-
-	seeOther(w, r, "/studio/jobs?tab=running&notice="+url.QueryEscape(fmt.Sprintf("Đã đưa video đu trend '%s' vào dây chuyền sản xuất AI (Job: %s)!", topic, jobID)))
 }
 
 // handleStudioStoryCreate nhận yêu cầu tạo video dài / kể chuyện YouTube & cắt Shorts từ Studio.
@@ -2086,28 +1311,6 @@ func (s *Server) handleAPITikTokAnalyze(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s.writeJSON(w, map[string]any{"ok": true, "video": video})
-}
-
-// handleAPITikTokTopics trả về danh sách các nhóm video TikTok theo chủ đề người dùng cài đặt (mỗi nhóm đúng 4 video/hàng).
-func (s *Server) handleAPITikTokTopics(w http.ResponseWriter, r *http.Request) {
-	topicsParam := strings.TrimSpace(r.URL.Query().Get("topics"))
-	var topicKeys []string
-	if topicsParam != "" {
-		for _, part := range strings.Split(topicsParam, ",") {
-			p := strings.TrimSpace(part)
-			if p != "" {
-				topicKeys = append(topicKeys, p)
-			}
-		}
-	}
-	groups := studio.GetConfiguredTopicGroups(topicKeys)
-	presets := studio.GetAllPresetTopicGroups()
-
-	s.writeJSON(w, map[string]any{
-		"ok":      true,
-		"groups":  groups,
-		"presets": presets,
-	})
 }
 
 // handleStudioMuseImport tải video đã tạo từ Muse AI, lồng nhạc trending TikTok và lưu vào Studio.
@@ -2321,6 +1524,125 @@ func (s *Server) handleStudioFlowImport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã Remaster 4K thành công video từ Google Flow (Job: %s)!", jobID)))
+}
+
+// handleStudioLeonardoImport imports an MP4 exported manually from Leonardo.Ai.
+func (s *Server) handleStudioLeonardoImport(w http.ResponseWriter, r *http.Request) {
+	redirectError := func(message string) {
+		seeOther(w, r, "/web-ai?err="+url.QueryEscape(message))
+	}
+	if s.Studio == nil {
+		redirectError("Studio chưa sẵn sàng")
+		return
+	}
+
+	const maxVideoBytes = 200 << 20
+	r.Body = http.MaxBytesReader(w, r.Body, maxVideoBytes)
+	if err := r.ParseMultipartForm(16 << 20); err != nil {
+		redirectError("Không đọc được tệp MP4 (giới hạn 200 MB)")
+		return
+	}
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+
+	video, header, err := r.FormFile("video_file")
+	if err != nil {
+		redirectError("Chọn video MP4 đã tải từ Leonardo.Ai")
+		return
+	}
+	defer video.Close()
+	if header.Size <= 0 || header.Size > maxVideoBytes || strings.ToLower(filepath.Ext(header.Filename)) != ".mp4" {
+		redirectError("Chỉ nhận tệp MP4 tối đa 200 MB")
+		return
+	}
+	headerBytes := make([]byte, 12)
+	if _, err := io.ReadFull(video, headerBytes); err != nil || string(headerBytes[4:8]) != "ftyp" {
+		redirectError("Tệp không có định dạng MP4 hợp lệ")
+		return
+	}
+	if _, err := video.Seek(0, io.SeekStart); err != nil {
+		redirectError("Không thể đọc tệp video")
+		return
+	}
+
+	topic := strings.TrimSpace(r.FormValue("topic"))
+	if topic == "" {
+		topic = "Video Leonardo AI"
+	}
+	genre := strings.TrimSpace(r.FormValue("genre"))
+	if genre == "" {
+		genre = "fashion"
+	}
+	account := strings.TrimSpace(r.FormValue("account"))
+	musicStyle := strings.TrimSpace(r.FormValue("music_style"))
+	if musicStyle == "" {
+		musicStyle = "keep_original"
+	}
+
+	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
+	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		redirectError("Không thể tạo thư mục nhận video")
+		return
+	}
+	rawVideo := filepath.Join(workDir, "leonardo_raw.mp4")
+	dst, err := os.Create(rawVideo)
+	if err != nil {
+		redirectError("Không thể lưu video")
+		return
+	}
+	written, copyErr := io.Copy(dst, io.LimitReader(video, maxVideoBytes+1))
+	closeErr := dst.Close()
+	if copyErr != nil || closeErr != nil || written != header.Size || written > maxVideoBytes {
+		_ = os.Remove(rawVideo)
+		redirectError("Không thể lưu đầy đủ tệp video")
+		return
+	}
+	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
+		redirectError("Không thể mở thư mục video Studio")
+		return
+	}
+
+	finalVideoName := fmt.Sprintf("leonardo_%s.mp4", jobID)
+	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
+	nowStr := time.Now().Format("15:04:05")
+	logMsg := fmt.Sprintf("%s ✓ Nhập MP4 từ Leonardo.Ai thành công: %s\n", nowStr, filepath.Base(header.Filename))
+	if account != "" {
+		logMsg += fmt.Sprintf("%s ✓ Tài khoản Leonardo: %s\n", nowStr, account)
+	}
+	if musicStyle == "trending" {
+		trendMusic := studio.FindTrendingMusic(genre)
+		if trendMusic != "" {
+			logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc nền: %s\n", nowStr, filepath.Base(trendMusic))
+			if err := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); err == nil {
+				rawVideo = ""
+			}
+		}
+	}
+	if rawVideo != "" {
+		if err := os.Rename(rawVideo, finalVideoPath); err != nil {
+			redirectError("Không thể hoàn tất lưu video vào Studio")
+			return
+		}
+	}
+
+	caption := studio.TemplateCaption(topic, genre)
+	paramsJSON, _ := json.Marshal(map[string]any{
+		"topic": topic, "genre": genre, "account": account,
+		"source": "leonardo_ai", "source_filename": filepath.Base(header.Filename),
+		"music_style": musicStyle,
+	})
+	nowDB := time.Now().Format("2006-01-02 15:04:05")
+	if s.db != nil {
+		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
+			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
+			jobID, "Leonardo AI: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
+	}
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Nhập video Leonardo AI job=%s: %s", jobID, topic), nil)
+	}
+	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã nhập video Leonardo AI vào Studio (Job: %s)", jobID)))
 }
 
 // handleAPIFaceSwapStatus trả về thông tin trạng thái hoạt động của Face Swap engine cục bộ.

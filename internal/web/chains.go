@@ -58,22 +58,73 @@ type ChainConfig struct {
 	Order []ProviderEntry `json:"order"`
 }
 
-// DefaultTTSConfig mirrors the engines default: gemini -> vieneu -> edge.
+// DefaultTTSConfig mirrors the engines default: gemini -> edge.
 func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
 		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 60, Retries: 1},
-		{Name: "vieneu", Enabled: true, TimeoutSec: 180, Retries: 0},
 		{Name: "edge", Enabled: true, TimeoutSec: 60, Retries: 1},
 	}}
 }
 
-// DefaultLLMConfig mirrors the engines default:
-// gemini -> llama-server -> paid (disabled placeholder).
+// withoutRetiredProviders protects saved settings and stale browser forms
+// from provider IDs no longer supported by each chain.
+func withoutRetiredProviders(chain string, order []ProviderEntry) []ProviderEntry {
+	filtered := make([]ProviderEntry, 0, len(order))
+	for _, entry := range order {
+		if !supportedChainProvider(chain, entry.Name) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
+func supportedChainProvider(chain, provider string) bool {
+	switch chain {
+	case "tts":
+		return provider == "gemini" || provider == "edge"
+	case "llm":
+		return provider == "gemini"
+	default:
+		return true
+	}
+}
+
+func hasEnabledProvider(order []ProviderEntry) bool {
+	for _, entry := range order {
+		if entry.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultChainWithSavedGeminiKeys(def ChainConfig, saved []ProviderEntry) ChainConfig {
+	for i := range def.Order {
+		if def.Order[i].Name != "gemini" {
+			continue
+		}
+		for _, entry := range saved {
+			if entry.Name != "gemini" {
+				continue
+			}
+			if len(entry.APIKeys) > 0 {
+				def.Order[i].APIKeys = append([]string(nil), entry.APIKeys...)
+				def.Order[i].APIKey = entry.APIKey
+			} else if entry.APIKey != "" {
+				def.Order[i].APIKey = entry.APIKey
+			}
+			break
+		}
+		break
+	}
+	return def
+}
+
+// DefaultLLMConfig mirrors the engines default: Gemini.
 func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
 		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 30, Retries: 1},
-		{Name: "llama-server", Enabled: true, TimeoutSec: 120, Retries: 0},
-		{Name: "paid", Enabled: false},
 	}}
 }
 
@@ -142,8 +193,7 @@ type AvatarChainAPI interface {
 	SupportsRealtime() bool
 }
 
-// AvatarSidecarCtl controls the avatar sidecar from the settings page
-// (same shape as VieNeuCtl).
+// AvatarSidecarCtl controls the parked avatar sidecar.
 type AvatarSidecarCtl interface {
 	Status() (state, detail string)
 	Start(ctx context.Context) error
@@ -270,18 +320,3 @@ type KeyStatusProvider interface {
 type KeyTester interface {
 	ValidateKey(ctx context.Context, provider string, idx int) error
 }
-
-// VieNeuCtl controls the VieNeu TTS sidecar from the settings page.
-type VieNeuCtl interface {
-	Status() (state, detail string)
-	Start(ctx context.Context) error
-	Stop() error
-	Restart(ctx context.Context) error
-	SetVoice(preset string) error
-	EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error
-	Voices() []string
-}
-
-// VieNeuVoiceFallback is shown when the sidecar is not wired yet or
-// reports no voices: Bắc / Trung / Nam presets.
-var VieNeuVoiceFallback = []string{"bac", "trung", "nam"}

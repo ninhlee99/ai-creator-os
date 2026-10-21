@@ -146,7 +146,7 @@ team chuyên trách hiển thị dạng cây:
 - `internal/publishers` — TikTok draft-first, YouTube private-first (giữ).
 - `internal/growth` — kill/breakout rules (mở rộng cho reup).
 - `internal/ledger` — đối soát hoa hồng AT (mở rộng từ reconcile hiện có).
-- `internal/engines/tts` — VieNeu local cho voiceover reup + giọng kể chuyện.
+- `internal/engines/tts` — Gemini → Edge cho voiceover và giọng kể chuyện.
 - `internal/studio` — affiliate render, assemble/concat/xfade, trends.
 
 ### 3.4. Bảng DB mới (SQLite)
@@ -200,5 +200,5 @@ Tất cả sau kill switch + dry-run + master switch như hiện tại.
 - Reup không bao giờ an toàn 100% (đã nói với Ninh 2026-10-02).
 - yt-dlp gãy định kỳ → auto-update + TikWM fallback (không SLA).
 - AT không sandbox, order-list 10 req/phút, campaign cần duyệt tay.
-- Key free quota: reup voiceover dùng VieNeu local (không tốn key);
-  kể chuyện tốn image gen + TTS theo quota free (đã có keyring + resume).
+- Key free quota: voiceover TTS ưu tiên Gemini và có Edge dự phòng;
+  kể chuyện dùng image generation + TTS theo quota free (đã có keyring + resume).

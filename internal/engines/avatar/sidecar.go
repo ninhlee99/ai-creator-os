@@ -15,8 +15,7 @@ import (
 )
 
 // sidecarLifecycle manages the avatar sidecar process: model download,
-// start/stop/restart and health. It mirrors the VieNeu sidecar pattern
-// with two deliberate differences:
+// start/stop/restart and health, with two deliberate constraints:
 //
 //   - NO Docker: the sidecar is a plain native binary launched directly
 //     (the owner starts aicos itself; the app never depends on Docker).

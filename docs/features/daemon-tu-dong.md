@@ -50,7 +50,7 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
      Lấy ứng viên đầu (`cands[0]`).
    - b. Tải ≤3 ảnh thật của sản phẩm (`downloadImage`) — ground truth.
    - c. Ảnh mẫu người mẫu của tài khoản (upload tay trong UI — identity lock).
-   - d. `CreateAffiliateJob(AffiliateParams{Mode: photo, Seconds: 30, ...})`
+   - d. `CreateAffiliateJob(AffiliateParams{Mode: shots, Seconds: 30, ...})`
      → job affiliate 30s (xem `studio-ai.md` §3.2).
    - e. `RecordUse(prod.ID, accountID, jobID)` — không dùng lại sản phẩm cho
      cùng tài khoản.

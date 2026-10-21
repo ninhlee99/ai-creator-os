@@ -179,7 +179,7 @@ func TestATHunterTick(t *testing.T) {
 		t.Fatalf("muốn 1 job, được %d", len(sr.jobs))
 	}
 	j := sr.jobs[0]
-	if j.ProductName != "Tai nghe Pro" || j.Mode != studio.AffiliateModePhoto {
+	if j.ProductName != "Tai nghe Pro" || j.Mode != studio.AffiliateModeShots {
 		t.Errorf("job sai: %+v", j)
 	}
 	if j.ProductPhoto == "" {

@@ -16,7 +16,7 @@
 [Thao tác: tab Video affiliate, upload ảnh sản phẩm + ảnh người mẫu, upload/chọn nhạc, bấm tạo.]
 "Tôi tạo video affiliate: tải ảnh sản phẩm thật, ảnh người mẫu để khóa mặt, chọn nhạc bản quyền. Format đã chốt: không chữ, không thuyết minh — chỉ video và nhạc."
 [Thao tác: sang trang Jobs, xem tiến trình.]
-"Máy viết shot list, chụp từng ảnh cùng một địa điểm, dựng Ken Burns rồi lồng nhạc. Tối đa 2 job render cùng lúc, job thừa xếp hàng 'queued' trung thực."
+"Máy viết shot list, tạo footage từng cảnh bằng engine video rồi nối cảnh và lồng nhạc. Không zoom/flash/rung giả; nếu engine không tạo được video thật thì job báo lỗi. Tối đa 2 job render cùng lúc, job thừa xếp hàng 'queued' trung thực."
 
 **Bước 3 — Xem kết quả.**
 [Thao tác: job xong → bấm xem video, bấm nút Copy caption.]

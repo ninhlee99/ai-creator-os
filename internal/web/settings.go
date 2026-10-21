@@ -1,7 +1,7 @@
 package web
 
 // Settings page core: persisted environment variables, dry-run toggle,
-// kill switch, provider chain configuration storage and the VieNeu view.
+// kill switch and provider chain configuration storage.
 
 import (
 	"context"
@@ -138,7 +138,18 @@ func (s *Server) loadChain(name string) ChainConfig {
 	raw, found, err := s.Ledger.GetSetting(key)
 	if err == nil && found && raw != "" {
 		if c := UnmarshalChain(raw); len(c.Order) > 0 {
-			return c
+			previous := c.Order
+			c.Order = withoutRetiredProviders(name, previous)
+			retiredRemoved := len(c.Order) != len(previous)
+			if retiredRemoved && !hasEnabledProvider(c.Order) {
+				if name == "tts" {
+					return defaultChainWithSavedGeminiKeys(DefaultTTSConfig(s.Cfg.GeminiAPIKeys), c.Order)
+				}
+				return defaultChainWithSavedGeminiKeys(DefaultLLMConfig(s.Cfg.GeminiAPIKeys), c.Order)
+			}
+			if len(c.Order) > 0 {
+				return c
+			}
 		}
 	}
 	if name == "tts" {
@@ -178,27 +189,6 @@ func (s *Server) applyChain(name string, raw ChainConfigJSON) {
 			sc.SetConfig(raw)
 		}
 	}
-}
-
-type vieneuView struct {
-	Connected bool
-	State     string
-	Detail    string
-	Voices    []string
-}
-
-func (s *Server) vieneuView() vieneuView {
-	v := vieneuView{}
-	if s.VieNeu == nil {
-		return v
-	}
-	v.Connected = true
-	v.State, v.Detail = s.VieNeu.Status()
-	v.Voices = s.VieNeu.Voices()
-	if len(v.Voices) == 0 {
-		v.Voices = VieNeuVoiceFallback
-	}
-	return v
 }
 
 // settingsData builds the full settings context once; each sub-page picks
@@ -242,16 +232,15 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"WebAIConnected": webAIConnected,
 		"EnvSaved":       r.URL.Query().Get("envsaved"),
 		"EnvErr":         r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
-		"Ok":        r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
-		"Err":       r.URL.Query().Get("err"),
-		"DbPath":    s.Cfg.DatabasePath,
-		"Usage":     usage,
-		"Spend":     spend,
-		"TTSChain":  s.loadChain("tts"),
-		"LLMChain":  s.loadChain("llm"),
-		"TTSKeys":   s.keyRingStatuses("tts", "gemini"),
-		"LLMKeys":   s.keyRingStatuses("llm", "gemini"),
-		"VieNeu":    s.vieneuView(),
+		"Ok":             r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
+		"Err":            r.URL.Query().Get("err"),
+		"DbPath":         s.Cfg.DatabasePath,
+		"Usage":          usage,
+		"Spend":          spend,
+		"TTSChain":       s.loadChain("tts"),
+		"LLMChain":       s.loadChain("llm"),
+		"TTSKeys":        s.keyRingStatuses("tts", "gemini"),
+		"LLMKeys":        s.keyRingStatuses("llm", "gemini"),
 		// R2-W4: persisted master switch + daily API budget, editable in
 		// Settings · Hệ thống.
 		"MasterOn":   automation.MasterOn(s.settings()),
@@ -284,7 +273,6 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		// Đợt R+S: heartbeat các tick + trạng thái ngắt mạch quota.
 		"TickBeats":    s.tickBeatViews(),
 		"QuotaCircuit": s.quotaCircuitView(),
-		"Sidecars":     s.sidecarViews(),
 		// Đợt L: % đĩa đã dùng cho thẻ Hệ thống (disk guard tự dọn khi đầy).
 		"DiskUsage": s.diskUsageView(),
 		// Đợt M2: lần sao lưu tự động gần nhất.
@@ -510,7 +498,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
-		"TickBeats", "QuotaCircuit", "Sidecars", "WebAIPlatforms", "WebAIConnected", "GeminiModels")
+		"TickBeats", "QuotaCircuit", "WebAIPlatforms", "WebAIConnected", "GeminiModels")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"

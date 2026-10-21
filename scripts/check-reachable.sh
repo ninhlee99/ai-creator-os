@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 MODULE="github.com/ninhlee99/ai-creator-os"
 
 # Parked có chủ đích — xem docs/ARCHITECTURE.md §12 (mục 3), docs/REVIEW_ROUND2.md R2-W6.
-PARKED_ALLOWLIST="internal/affiliatehunter internal/agents/analyst internal/agents/content internal/agents/governance internal/agents/hunter internal/agents/streamer internal/stream"
+PARKED_ALLOWLIST="internal/affiliatehunter internal/agents/analyst internal/agents/content internal/agents/governance internal/agents/hunter internal/agents/streamer internal/engines/local internal/stream"
 
 deps=$(go list -deps ./cmd/aicos)
 fail=0

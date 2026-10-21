@@ -93,8 +93,7 @@ by app.js and only submit after the user confirms here. */}}
 </div>
 {{end}}
 
-{{/* Provider chain card. Args (dict): Chain, Keys (nil for avatar),
-ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
+{{/* Provider chain card for active TTS and LLM chains. */}}
 {{define "chain-card"}}
 {{$d := .}}
 {{$chain := .ChainName}}
@@ -105,9 +104,6 @@ ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
     <div class="provider-head">
       <strong>{{$p.Name}}</strong>
       <span class="provider-order">#{{$i}}</span>
-      {{if eq $chain "avatar"}}
-        {{if eq $p.Name "local"}}<span class="badge badge-ok">miễn phí</span>{{else}}<span class="badge badge-no">trả phí · tắt mặc định</span>{{end}}
-      {{end}}
       <label class="provider-enabled"><input type="checkbox" name="enabled" value="{{$i}}" {{if $p.Enabled}}checked{{end}}> Bật</label>
     </div>
     <input type="hidden" name="pname" value="{{$p.Name}}">
@@ -117,12 +113,6 @@ ChainName ("tts"|"llm"|"avatar"), SaveLabel, RealtimeBadge (avatar only). */}}
         <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
         <input type="hidden" name="apikey" value="">
         {{template "keyring" (dict "Keys" $d.Keys "Chain" $chain)}}
-      </div>
-      {{else if and (eq $chain "avatar") (eq $p.Name "local")}}
-      <div class="field field-span">
-        <label>Chương trình chạy trên máy</label>
-        <input type="hidden" name="apikey" value="">
-
       </div>
       {{else}}
       <div class="field">

@@ -27,8 +27,6 @@ cài theo đúng hệ điều hành của máy):
 | Công cụ | Để làm gì | Cài |
 |---|---|---|
 | FFmpeg | dựng video (bắt buộc) | Mac: `brew install ffmpeg` · Win: `winget install Gyan.FFmpeg` · Linux: `sudo apt install ffmpeg` |
-| llama.cpp | LLM chạy trên máy (không bắt buộc — có Gemini free) | Mac: `brew install llama.cpp` · Win/Linux: tải bản build tại `github.com/ggerganov/llama.cpp/releases` |
-| uv | giọng đọc VieNeu local (không bắt buộc) | Mac: `brew install uv` · Win: `winget install astral-sh.uv` · Linux: `curl -LsSf astral.sh/uv/install.sh \| sh` |
 
 **Build từ source** (nếu cần): cài Go 1.26 rồi `go build -o aicos ./cmd/aicos`.
 
@@ -43,7 +41,7 @@ cài theo đúng hệ điều hành của máy):
 | Đội ngũ | `/team` | Pipeline Affiliate / Video Viral AI / Kể chuyện từ dữ liệu thật |
 | Studio AI 🎬 | `/studio` | Dàn dựng video bán hàng, video đu trend showbiz 9:16, audio story 16:9 |
 | Affiliate | `/products` | Chiến dịch Accesstrade, săn deal, tạo link, kệ hàng bio |
-| Video Viral AI | `/viral` | Xưởng video ngắn 9:16 100% gốc: kịch bản 3s hook, phân cảnh MediaGen, nhạc trending |
+| Tạo video dọc | `/viral` | Nhập chủ đề, chọn ảnh nhân vật, thêm link tham chiếu tùy chọn; theo dõi job ở `/studio/jobs` |
 | Kể chuyện | `/stories` | Truyện audio YouTube: hàng đợi chủ đề, job, tự động đăng private |
 | Đa nền tảng | `/publishers` | Kết nối OAuth TikTok/YouTube/Meta Facebook & Instagram |
 | Cài đặt | `/settings` | 4 trang tinh gọn: Hệ thống (Quản lý Model Gemini Auto-Update 24h & **Kho Tài Khoản Web AI**), Accesstrade, Thứ tự AI, An toàn |
@@ -91,10 +89,12 @@ Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ th�
 3. **Bộ cắt tự động (Auto-Clipper)** tích hợp sẵn sẽ quét các phân cảnh cao trào nhất và tự động cắt trích đoạn 9:16 (1080×1920) kèm phụ đề để làm video ngắn Shorts / TikTok / Reels kéo view về video dài YouTube.
 4. Tại `/studio/jobs`, video dài 16:9 và bản cắt Shorts 9:16 đều có player phóng to và nút tải riêng biệt.
 
-### 2f. Quét & Tạo Video Xu Hướng Nhảy Sexy (Viral Dance)
-1. Truy cập **Xưởng Video Viral AI** (`/viral`), khu vực **Khởi Tạo Video 1-Chạm** có sẵn mẫu xu hướng **"Vũ Điệu Triệu View: Hot Dance Sexy Trend TikTok"**.
-2. Bấm **⚡ Tạo Video Này Ngay** hoặc tùy chỉnh chủ đề nhảy thịnh hành kết hợp khóa khuôn mặt nhân vật của bạn.
-3. AI kết hợp nhạc nền bắt tai, nhịp cắt khớp beat và phụ đề động nổi bật (SRT/hardsub) giúp video đạt tỉ lệ giữ chân (retention rate) cao nhất.
+### 2f. Tạo video dọc
+1. Mở `/viral` và nhập chủ đề video.
+2. Chọn ảnh nhân vật từ thư viện kênh hoặc tải ảnh mới. Có thể dán link TikTok/Douyin làm video tham chiếu.
+3. Chọn engine và thời lượng rồi bấm **Tạo video**. Theo dõi trạng thái và tải kết quả tại `/studio/jobs`.
+
+Trang này hiện không cung cấp radar video realtime hay chủ đề mẫu tự động.
 
 ## 3. Vận hành hằng ngày (hands-off)
 

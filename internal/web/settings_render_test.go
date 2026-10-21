@@ -24,10 +24,10 @@ func TestSettingsTemplateRenders(t *testing.T) {
 			t.Fatalf("GET %s = %d", path, rec.Code)
 		}
 	}
-	// /settings/model-local đã được loại bỏ và chuyển hướng sang /settings/he-thong
+	// Retired local-model settings route must not resolve.
 	recLocal := get(t, s, "/settings/model-local")
-	if recLocal.Code != http.StatusSeeOther {
-		t.Fatalf("GET /settings/model-local = %d, want 303", recLocal.Code)
+	if recLocal.Code != http.StatusNotFound {
+		t.Fatalf("GET /settings/model-local = %d, want 404", recLocal.Code)
 	}
 	// Parked routes must 404, not 500. Đợt H2: /team đã định nghĩa lại
 	// quanh 3 pipeline (không còn park) nên ra khỏi danh sách này.

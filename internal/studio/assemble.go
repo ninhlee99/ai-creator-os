@@ -102,6 +102,16 @@ func ffmpegRun(ctx context.Context, args ...string) error {
 //
 // When musicPath == "" the output is a silent video (no bogus audio input).
 func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath, aspect string) error {
+	return assemblePhotoSequence(ctx, photos, secsPer, musicPath, musicStart, outPath, aspect, photoListFilter)
+}
+
+// AssembleStillPhotoList builds a stable photo montage with soft dissolves.
+// It applies no zoom, pan, shake, or beat-synced motion.
+func AssembleStillPhotoList(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath, aspect string) error {
+	return assemblePhotoSequence(ctx, photos, secsPer, musicPath, musicStart, outPath, aspect, stillPhotoListFilter)
+}
+
+func assemblePhotoSequence(ctx context.Context, photos []string, secsPer float64, musicPath string, musicStart float64, outPath, aspect string, filterBuilder func(int, float64, int, int) (string, float64)) error {
 	if len(photos) == 0 {
 		return fmt.Errorf("no photos")
 	}
@@ -110,10 +120,10 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 	}
 	var args []string
 	for _, p := range photos {
-		args = append(args, "-i", p) // single image each; zoompan multiplies frames
+		args = append(args, "-i", p)
 	}
 	w, h := AspectDims(aspect)
-	filter, total := photoListFilter(len(photos), secsPer, w, h)
+	filter, total := filterBuilder(len(photos), secsPer, w, h)
 
 	if musicPath != "" {
 		args = append(args, "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath)
@@ -137,6 +147,34 @@ func AssemblePhotoList(ctx context.Context, photos []string, secsPer float64, mu
 		_ = os.MkdirAll(dir, 0o755)
 	}
 	return ffmpegRun(ctx, args...)
+}
+
+// stillPhotoListFilter holds each photo steady and dissolves between them.
+func stillPhotoListFilter(n int, secsPer float64, outW, outH int) (string, float64) {
+	const fade = 0.6
+	var sb strings.Builder
+	for i := 0; i < n; i++ {
+		fmt.Fprintf(&sb,
+			"[%d:v]loop=loop=-1:size=1:start=0,scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,"+
+				"crop=%d:%d,setsar=1,fps=%d,trim=duration=%.3f,setpts=PTS-STARTPTS[v%d];",
+			i, outW, outH, outW, outH, outFPS, secsPer, i)
+	}
+	cur := "[v0]"
+	for i := 1; i < n; i++ {
+		offset := float64(i)*secsPer - float64(i)*fade
+		out := fmt.Sprintf("[x%d]", i)
+		if i == n-1 {
+			out = "[vout]"
+		}
+		fmt.Fprintf(&sb, "%s[v%d]xfade=transition=fade:duration=%.1f:offset=%.2f%s;",
+			cur, i, fade, offset, out)
+		cur = out
+	}
+	if n == 1 {
+		sb.WriteString("[v0]null[vout];")
+	}
+	total := float64(n)*secsPer - float64(n-1)*fade
+	return strings.TrimSuffix(sb.String(), ";"), total
 }
 
 // photoListFilter builds the Ken Burns + xfade graph for n photos at the
@@ -192,11 +230,8 @@ func photoListFilter(n int, secsPer float64, outW, outH int) (string, float64) {
 	return strings.TrimSuffix(sb.String(), ";"), total
 }
 
-// AssembleBeatBounce builds the CapCut-style "giật giật" affiliate spot
-// Ninh asked for (2026-10-01): a handful of photos of the model using the
-// product, each photo bouncing (zoom pulse) on every beat with a slight
-// positional shake, hard cuts between photos — no crossfades. Music is
-// loudness-matched to -14 LUFS with fades. No text, no voiceover.
+// AssembleBeatBounce builds a beat-synced photo edit. Affiliate videos should
+// use AssembleStillPhotoList or actual motion clips instead.
 //
 // aspect is "9:16" (1080x1920) or "16:9" (1920x1080).
 //

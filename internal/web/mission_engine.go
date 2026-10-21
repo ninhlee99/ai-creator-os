@@ -212,6 +212,33 @@ func (s *Server) dispatchAIMission(ctx context.Context, goal string) (*AIMission
 	return mission, nil
 }
 
+// handleTeamDispatchGoal accepts a natural-language mission from callers and
+// forwards it to the active mission engine. Agent-management routes are retired.
+func (s *Server) handleTeamDispatchGoal(w http.ResponseWriter, r *http.Request) {
+	goal := strings.TrimSpace(r.FormValue("goal"))
+	if goal == "" {
+		seeOther(w, r, "/studio")
+		return
+	}
+
+	mission, err := s.dispatchAIMission(r.Context(), goal)
+	if err != nil {
+		seeOther(w, r, "/?err="+url.QueryEscape("Không thể thực thi mục tiêu: "+err.Error()))
+		return
+	}
+	if mission.Intent == "story_campaign" {
+		seeOther(w, r, "/stories?ok="+url.QueryEscape("Đã tạo chiến dịch từ yêu cầu: "+mission.ResultSummary))
+		return
+	}
+
+	msg := "Đã tạo chiến dịch từ yêu cầu: " + mission.ResultSummary
+	if r.FormValue("back") == "/" {
+		seeOther(w, r, "/?ok="+url.QueryEscape(msg))
+		return
+	}
+	seeOther(w, r, "/studio?msg="+url.QueryEscape(msg))
+}
+
 func (s *Server) executeAffiliateMission(ctx context.Context, m *AIMission) {
 	now := time.Now().Format("15:04:05")
 	m.Progress = 40
@@ -269,13 +296,13 @@ func (s *Server) executeAffiliateMission(ctx context.Context, m *AIMission) {
 	var studioJobID string
 	if s.Studio != nil {
 		params := studio.AffiliateParams{
-			Mode:        studio.AffiliateModePhoto,
-			AccountID:   m.AccountID,
-			Niche:       niche,
-			ProductName: productName,
-			Seconds:     25,
-			BPM:         120,
-			AspectRatio: "9:16",
+			Mode:         studio.AffiliateModeShots,
+			AccountID:    m.AccountID,
+			Niche:        niche,
+			ProductName:  productName,
+			Seconds:      25,
+			BPM:          120,
+			AspectRatio:  "9:16",
 			FixedCaption: fmt.Sprintf("🔥 Bí quyết chọn %s chuẩn khoa học! Đừng bỏ lỡ deal hời hôm nay #affiliate #review #chamsocda", productName),
 		}
 		jID, err := s.Studio.CreateAffiliateJob(params)

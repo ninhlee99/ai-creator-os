@@ -16,13 +16,11 @@
    binary tĩnh (`aicos`). Không Python runtime, không venv, không pip.
    SQLite WAL cho state. Không Kubernetes, không Java, không Node, không
    frontend build nặng. Chạy tốt trên Mac M1 Pro 32GB.
-   Model server bên thứ ba (VieNeu-TTS v3, llama-server) chạy như sidecar
-   subprocess do binary Go quản lý — công cụ ngoài như FFmpeg, không phải
-   code của dự án.
-3. **Free API first, local second, paid never.** Mọi khả năng ngoài (LLM, TTS,
-   vẽ ảnh) là provider interface với chuỗi ưu tiên. Free thử trước, local
-   fallback; **paid tắt** (luật cứng của Ninh: key free-only, không billing,
-   không Veo). Hỗ trợ thêm Web AI Multi-Account Hub (ChatGPT, Claude, Gemini,
+   Media rendering uses FFmpeg as an external tool. No local LLM/TTS model
+   server runs as part of the app.
+3. **Cloud API first, paid never.** LLM/TTS and image generation use configured
+   provider APIs; **paid billing is off** (luật cứng của Ninh: key free-only,
+   không billing, không Veo). Hỗ trợ thêm Web AI Multi-Account Hub (ChatGPT, Claude, Gemini,
    Grok, Muse AI) tự động bắt session qua Chrome DevTools Protocol (CDP).
 4. **Deterministic governance over money.** LLM đề xuất; rules engine (Go)
    quyết định. Ngưỡng kill/double-down, quota, kill switch là code, không
@@ -58,8 +56,8 @@
 └──────┬──────┘ └─────┬───────┘ └─────────────┘ └───┬──────────┘
        │              │                             │
 ┌──────▼──────────────▼─────────────────────────────▼─────────┐
-│ engines: LLM chain (Gemini 3.8 Flash→llama→paid tắt)         │
-│ TTS chain: Độc quyền Gemini TTS (gemini-3.8-flash-tts)       │
+│ engines: LLM Gemini                                          │
+│ TTS chain: Gemini TTS → Edge                                 │
 │ Web AI pool (ChatGPT/Claude/Grok...)                         │
 │ Keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
 │ Daily Model Auto-Updater (quét 24h & hot-swap model mới)    │
@@ -83,10 +81,10 @@ chờ Ninh duyệt).
 
 **Đợt H (2026-10-04) & Đợt I (2026-10-19 — Chuẩn Video Có Hồn & Quay Phim Tự Nhiên):**
 - **I1: Open-Spec Chuẩn Video Có Hồn (`docs/OPEN_SPEC.md`)**: Ban hành đặc tả kỹ thuật Open-Spec v1.0 định nghĩa 7 luật video có hồn, chống méo hình học, loại bỏ hoàn toàn video dán ảnh tĩnh và giật lắc cơ học.
-- **I2: Radar Vũ Đạo Triệu View TikTok Việt Nam & Douyin Trung Quốc**: Tích hợp danh mục clip mẫu 9:16 chọn lọc từ Đào Lê Phương Hoa, C.A.C Dance Crew, Douyin Hot Beat Dance. Bổ sung endpoint `POST /viral/clips/import` tự động tải từ URL TikTok/Douyin bằng `yt-dlp` và chuẩn hóa 1080x1920 không méo hình.
+- **I2: Video tham chiếu tùy chọn**: `/viral/create` nhận link TikTok/Douyin trực tiếp làm tham chiếu chuyển động. Danh sách video preset và endpoint import clip riêng đã gỡ; trang không hiển thị radar video realtime.
 - **I3: InsightFace Deep Latent Identity Engine (`scripts/face_swapper.py`)**: Hoán đổi khuôn mặt AI với vector đặc trưng 512 chiều, căn chỉnh 5 điểm mốc nhân trắc học và hòa trộn Poisson Seamless Blending để ghép khuôn mặt creator vào thân hình vũ công hoặc người mẫu lookbook trong video chuyển động thực tế.
 - **I4: Phim Lookbook Thời Trang Chuyển Động Người Thật (`internal/studio/affiliate.go`)**: Video affiliate thời trang/phụ kiện sử dụng 100% video quay người mẫu thật trong không gian thực tế (boutique, phố, dạo chơi), loại bỏ slide ảnh tĩnh thô kệch và thẻ chữ `AdCard` che khuất hình ảnh.
-- **I5: Bộ Cắt Chuyển Cảnh CapCut Pro (`internal/studio/assemble.go`)**: Cắt nhịp dứt khoát theo âm nhạc thịnh hành với chớp sáng trắng (`0.12s white flash`) và Ken Burns nhẹ nhàng $< 8\%$.
+- **I5: Dựng affiliate ổn định (`internal/studio/assemble.go`)**: Mặc định nối footage chuyển động thật; ảnh tĩnh chỉ dùng dissolve. Không flash, zoom giả hoặc rung.
 - **I6: Rạp Chiếu Truyện Audio Điện Ảnh 30 – 60 Phút (`internal/studio/story.go`)**: Xóa bỏ hoàn toàn hiện tượng màn hình đen; mỗi 8-15 giây là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (Gemini TTS đa cảm xúc + Foley môi trường + Nhạc nền cinematic lót -18dB).
 
 **Đợt K (2026-10-20 — Google Gemini On-Demand Model Updater Cho Toàn Bộ Adapter & Full Cloud Optimization):**
@@ -96,12 +94,12 @@ chờ Ninh duyệt).
 - **K4: Chuẩn Hóa Thời Lượng & Bỏ Màn Hình Đen 5s**:
   * Video Affiliate: Tối thiểu 30s – 60s, giữ nhất quán nhân vật và sản phẩm.
   * Video Viral: Tối thiểu 60s+ (chuẩn TikTok Creativity Program), 0.0s instant start không có ảnh đen 5s đầu, visual "Thần tiên tỉ tỉ".
-  * Video Truyện Audio: 30 - 60 phút, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS `gemini-3.8-flash-tts` kèm emotion tags (loại bỏ hoàn toàn VieNeu-TTS).
+  * Video Truyện Audio: 30 - 60 phút, kịch bản chân thật, đa cảm xúc với Gemini TTS.
 
 **Đợt J (2026-10-19 — Nâng Cấp Generative AI Video Engine: Google Veo 3 & Muse AI):**
 - **J1: Google Veo 3 Engine (`internal/studio/veo.go`)**: Tích hợp trực tiếp Google Veo 3 qua REST API (`generativelanguage.googleapis.com/v1beta`) với cơ chế fallback tự động theo danh sách ưu tiên: `veo-3.1-generate-preview`, `veo-3.0-generate-preview`, `veo-2.0-generate-001`, `veo-3.0-generate-001`, `veo-2.0-generate-preview`. Hỗ trợ cả Text-to-Video và Image-to-Video (`firstFrame`), xử lý long-running operation polling bất đồng bộ và tải video MP4 trực tiếp.
 - **J2: Muse AI Studio Engine (`internal/studio/museai.go`)**: Tích hợp Muse AI API (`https://muse.ai/api`), tự động nhận diện `MUSE_AI_API_KEY` hoặc session cookie `MUSE_AI_SESSION` qua Web AI Pool, tải ảnh keyframe lên storage và sinh video chuyển động độ nét cao.
-- **J3: Unified AI Video Engine & Intelligent Cascade (`internal/studio/aivideo.go`)**: Xây dựng hàm chuẩn `GenerateMotionVideoClip` điều phối luồng sinh video: `veo3` ➔ `museai` ➔ `auto` ➔ Neural / Lookbook footage ➔ Fallback Ken Burns nhẹ nhàng. Toàn bộ video clip sinh ra bắt buộc đi qua bộ lọc FFmpeg Lanczos 3-lobe chuẩn hóa $1080 \times 1920$ (9:16) hoặc $1920 \times 1080$ (16:9), chống méo tỉ lệ pixel.
+- **J3: Unified AI Video Engine & Intelligent Cascade (`internal/studio/aivideo.go`)**: `GenerateMotionVideoClip` điều phối Veo/Muse và chuẩn hóa clip. Pipeline affiliate loại bỏ fallback Ken Burns; nếu không có footage chuyển động thật, job dừng có lỗi.
 - **J4: Nâng Cấp Pipeline Sản Xuất Viral & Affiliate**:
   - `internal/studio/viral.go`: Xóa bỏ hoàn toàn mô hình slideshow 5 ảnh tĩnh; từng phân cảnh kịch bản được sinh thành video chuyển động thực tế qua Veo 3 / Muse AI và ghép nối mượt mà (`ConcatClips`).
   - `internal/studio/affiliate.go`: Tích hợp chế độ sinh cảnh người mẫu tương tác và trải nghiệm sản phẩm thật bằng Veo 3 / Muse AI thay vì chỉ zoom ảnh tĩnh.
@@ -137,9 +135,9 @@ chờ Ninh duyệt).
 
 ## 4. Engines: the provider chains
 
-`internal/engines/chains.go` — chỉ còn 2 chuỗi:
-- **LLM**: Gemini (free API) → llama-server local (`127.0.0.1:8081`) → paid (placeholder, tắt).
-- **TTS**: Gemini → VieNeu-TTS v3 local (sidecar `127.0.0.1:8000`) → Edge.
+`internal/engines/chains.go` — provider mặc định:
+- **LLM**: Gemini API.
+- **TTS**: Gemini → Edge.
 - **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse AI tự động bắt session CDP.
 - Chuỗi Avatar đã gỡ theo live (Đợt A).
 
@@ -156,7 +154,7 @@ decision log (`engines/tier_failover`).
 - Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
 - Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
 - Giới hạn tần suất và Zero-Reup: Toàn bộ nội dung viral được sản xuất từ
-  tài sản gốc 100% (Gemini MediaGen + VieNeu TTS + Kworb VN music).
+  tài sản gốc 100% (Gemini MediaGen + Gemini/Edge TTS + Kworb VN music).
   Không bao giờ tự xoá video đã đăng.
 
 ## 5b. Ticks automation (zero-touch, Ninh không chạm)
@@ -195,7 +193,7 @@ nói rõ, không giả vờ đang chạy.
 ## 8. Language decision record (2026-10-01, executed as v0.5-go)
 
 Go được chọn (Ninh giao cho Milo quyết): 1 binary, pure Go, cấm cgo mới,
-cấm runtime Python/Node đi kèm. Sidecar chỉ theo mẫu uv-managed đã có.
+cấm runtime Python/Node đi kèm.
 
 ## 9. What this version does NOT do
 
@@ -207,8 +205,9 @@ cấm runtime Python/Node đi kèm. Sidecar chỉ theo mẫu uv-managed đã có
 
 ## 10. Affiliate video pipeline (đang chạy)
 
-`internal/studio/studio.go` `runAffiliate`: director LLM viết shot list +
-khóa 1 địa điểm → Gemini vẽ 3–5 ảnh (identity/product lock bằng ảnh tham
-chiếu, upscale 4K) → `AssemblePhotoList`/`AssembleBeatBounce` (Ken Burns 9:16)
-→ `MuxMusic` (nhạc bản quyền, loudnorm −14 LUFS) → caption tiếng Việt →
-`fireOnDone` → tự đăng TikTok **nháp** nếu bật. Không chữ, không voiceover.
+`internal/studio/studio.go` `runAffiliate`: mặc định director viết shot list +
+keyframe → engine video tạo footage chuyển động thật (identity/product lock
+bằng ảnh tham chiếu) → nối shot → `MuxMusic` → caption tiếng Việt →
+`fireOnDone` → tự đăng TikTok **nháp** nếu bật. Prompt cấm zoom, flash,
+flicker và rung; nếu engine không tạo được footage, job dừng có lỗi. Chế độ
+ảnh tĩnh riêng dùng dissolve ổn định. Không chữ, không voiceover.

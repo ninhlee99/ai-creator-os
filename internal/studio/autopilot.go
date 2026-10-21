@@ -150,13 +150,13 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 		return r, fmt.Errorf("autopilot: mất ảnh mẫu của account %s", acct.Username)
 	}
 
-	// 4. Studio job (photo-list mode — Ninh's chosen fashion format).
+	// 4. Studio job: generate real motion footage for the affiliate spot.
 	themeLabel := acct.Theme
 	if t, ok := products.DescribeTheme(acct.Theme); ok {
 		themeLabel = t.Label
 	}
 	jobID, err := a.studio.CreateAffiliateJob(AffiliateParams{
-		Mode:         AffiliateModePhoto,
+		Mode:         AffiliateModeShots,
 		AccountID:    accountID,
 		Niche:        themeLabel,
 		ProductName:  prod.Title,

@@ -44,10 +44,7 @@
       <div class="webai-card-top">
         <div class="webai-brand">
           <span class="webai-icon">{{.Platform.Icon}}</span>
-          <div>
-            <div class="webai-name">{{.Platform.Name}}</div>
-            <span class="webai-tag">{{.Platform.Badge}}</span>
-          </div>
+          <div class="webai-name">{{.Platform.Name}}</div>
         </div>
         <div class="webai-status">
           {{if gt .ReadyCount 0}}
@@ -55,34 +52,48 @@
           {{else if gt .CooldownCount 0}}
           <span class="status-pill status-pill-warn">⏳ {{.CooldownCount}} cooldown</span>
           {{else}}
+          {{if eq .Platform.ID "googleflow"}}
+          <span class="status-pill status-pill-off">Chưa đồng bộ</span>
+          {{else}}
           <span class="status-pill status-pill-off">Chưa kết nối</span>
+          {{end}}
           {{end}}
         </div>
       </div>
+      <span class="webai-tag">{{.Platform.Badge}}</span>
 
       <div class="webai-desc">{{.Platform.Description}}</div>
 
-      <!-- Account Keyring Pool List -->
-      <div class="webai-keyring-list" style="margin:12px 0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <b>Tài khoản ({{.TotalCount}})</b>
-        </div>
+      <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
+        <span class="webai-account-count">{{.TotalCount}}</span>
+        <span class="webai-account-summary-copy"><strong>Tài khoản</strong><small>Xem danh sách chi tiết</small></span>
+        <span class="webai-account-summary-arrow" aria-hidden="true">›</span>
+      </button>
+      <template id="webai-account-template-{{.Platform.ID}}">
         {{if .Accounts}}
-          <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="webai-account-list">
           {{range .Accounts}}
-          <div class="keyring-item" style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(125,125,125,0.1)">
-            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68%">
+          <div class="webai-account-row">
+            <div class="webai-account-info">
               <strong>{{if .Email}}{{.Email}}{{else}}{{.AccountName}}{{end}}</strong>
+              <div class="webai-account-meta-line">
               {{if eq .Status "cooldown"}}
               <span class="badge badge-warn">{{.CooldownLabel}}</span>
-              {{else if eq .Status "invalid"}}
+              {{else if or (eq .Status "invalid") (eq .Status "expired")}}
               <span class="badge badge-err">Hết hạn</span>
-              {{else}}
+              {{else if eq .Status "disconnected"}}
+              <span class="badge badge-err">Đã ngắt kết nối</span>
+              {{else if eq .Status "rate_limited"}}
+              <span class="badge badge-warn">Đang giới hạn</span>
+              {{else if or (eq .Status "ok") (eq .Status "connected")}}
               <span class="badge badge-ok">Sẵn sàng</span>
+              {{else}}
+              <span class="badge badge-warn">Chưa xác minh</span>
               {{end}}
-              <span class="hint" style="margin-left:4px">{{.Requests}} req</span>
+              <span class="hint">{{.Requests}} req</span>
+              </div>
             </div>
-            <div style="display:flex;gap:4px;align-items:center">
+            <div class="webai-account-actions">
               <button type="button" class="btn btn-secondary btn-sm" onclick="testWebAIAccount('{{.ID}}', this)" title="Kiểm tra phiên sống ngay" style="font-size:11px;padding:2px 7px">⚡ Test</button>
               {{if eq .Status "cooldown"}}
               <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
@@ -101,25 +112,39 @@
           {{end}}
           </div>
         {{else}}
-          <div class="hint" style="padding:4px 0">Chưa kết nối tài khoản.</div>
+          <div class="webai-account-empty">
+            <strong>Chưa có tài khoản</strong>
+            <span>{{if eq .Platform.ID "googleflow"}}Đồng bộ phiên Google từ Gemini để kết nối.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
+          </div>
         {{end}}
-      </div>
+      </template>
 
-      <div class="webai-card-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn btn-primary btn-sm" style="flex:1;font-weight:700;font-size:12px;padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
+      <div class="webai-card-actions">
+        {{if eq .Platform.ID "googleflow"}}
+        <button type="button" class="btn btn-primary btn-sm webai-google-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="syncGoogleFlowAccount(this)" title="Đồng bộ phiên Google đang kết nối trong Gemini">
+          🔄 Đồng bộ Google từ Gemini
+        </button>
+        {{else}}
+        <button type="button" class="btn btn-primary btn-sm webai-login-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
           <span>🌐</span> Đăng Nhập Tự Động
         </button>
-        {{if eq .Platform.ID "googleflow"}}
-        <button type="button" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:8px 10px;background:rgba(37,99,235,0.08);color:#2563eb;font-weight:700;border:1px solid rgba(37,99,235,0.25)" onclick="syncGoogleFlowAccount(this)" title="Đồng bộ phiên Google đã đăng nhập từ Gemini">
-          ⚡ Đồng bộ Google
-        </button>
         {{end}}
-        <button type="button" class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 12px" onclick="openConnectModal('{{.Platform.ID}}', '{{.Platform.Name}}', '{{.Platform.Placeholder}}', '{{.Platform.AuthGuide}}', '{{.Platform.LoginURL}}')" title="Nhập Khóa API hoặc Cookie thủ công">
-          🔑 Nhập Key / Cookie
-        </button>
       </div>
     </div>
     {{end}}
+  </div>
+</div>
+
+<div id="webai-accounts-modal" class="webai-modal-backdrop" hidden>
+  <div class="webai-modal-box webai-accounts-modal-box" role="dialog" aria-modal="true" aria-labelledby="webai-accounts-modal-title">
+    <div class="modal-head">
+      <div>
+        <h3 id="webai-accounts-modal-title">Tài khoản</h3>
+        <p id="webai-accounts-modal-subtitle" class="webai-accounts-modal-subtitle"></p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeWebAIAccountsModal()" aria-label="Đóng">✕</button>
+    </div>
+    <div id="webai-accounts-modal-content" class="modal-body"></div>
   </div>
 </div>
 
@@ -700,7 +725,7 @@
     </div>
 
     <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
-      <button type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy bỏ / Đóng</button>
+      <button id="bl-close-after-login" type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy bỏ / Đóng</button>
     </div>
   </div>
 </div>
@@ -836,6 +861,48 @@ function switchSettingsTab(tab) {
   }
 }
 
+var webAIAccountsPreviousFocus = null;
+function openWebAIAccountsModal(trigger) {
+  if (!trigger) return;
+  var platform = trigger.dataset.platform;
+  var template = document.getElementById('webai-account-template-' + platform);
+  var modal = document.getElementById('webai-accounts-modal');
+  var content = document.getElementById('webai-accounts-modal-content');
+  var title = document.getElementById('webai-accounts-modal-title');
+  var subtitle = document.getElementById('webai-accounts-modal-subtitle');
+  if (!template || !modal || !content || !title || !subtitle) return;
+
+  webAIAccountsPreviousFocus = trigger;
+  title.textContent = 'Tài khoản · ' + trigger.dataset.platformName;
+  subtitle.textContent = trigger.querySelector('.webai-account-count').textContent.trim() + ' tài khoản';
+  content.replaceChildren(template.content.cloneNode(true));
+  modal.hidden = false;
+  var closeButton = modal.querySelector('.modal-close-btn');
+  if (closeButton) closeButton.focus();
+}
+
+function closeWebAIAccountsModal() {
+  var modal = document.getElementById('webai-accounts-modal');
+  var content = document.getElementById('webai-accounts-modal-content');
+  if (!modal) return;
+  modal.hidden = true;
+  if (content) content.replaceChildren();
+  if (webAIAccountsPreviousFocus) {
+    webAIAccountsPreviousFocus.focus();
+    webAIAccountsPreviousFocus = null;
+  }
+}
+
+var webAIAccountsModal = document.getElementById('webai-accounts-modal');
+if (webAIAccountsModal) {
+  webAIAccountsModal.addEventListener('click', function(event) {
+    if (event.target === webAIAccountsModal) closeWebAIAccountsModal();
+  });
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && !webAIAccountsModal.hidden) closeWebAIAccountsModal();
+  });
+}
+
 function openConnectModal(p, name, ph, guide, loginUrl) {
   document.getElementById('connect-platform-id').value = p;
   document.getElementById('modal-title').textContent = 'Kết nối ' + name;
@@ -883,7 +950,7 @@ function openConnectModal(p, name, ph, guide, loginUrl) {
     } else if (p === 'muse' || p === 'museai') {
       note.textContent = 'Mở trang đăng nhập Muse AI chính thức trong tab mới.';
     } else if (p === 'googleflow') {
-      note.textContent = 'Mở Google Flow (flow.google.com) — Tận dụng 1.000 credit video miễn phí hàng tháng!';
+      note.textContent = 'Mở Flow bằng profile của tài khoản cần dùng. Tạo clip trong Flow rồi nhập MP4 vào Studio; quyền truy cập và credit hiển thị theo tài khoản.';
     } else {
       note.textContent = 'Mở trang đăng nhập dịch vụ chính thức trong tab mới.';
     }
@@ -902,11 +969,15 @@ var currentLoginSessionId = null;
 var currentLoginPlatform = null;
 var currentLoginPlatformName = null;
 var browserLoginPollTimer = null;
+var browserLoginSucceeded = false;
 
 function startBrowserLogin(platform, platformName) {
   currentLoginPlatform = platform;
   currentLoginPlatformName = platformName || platform;
   currentLoginSessionId = null;
+  browserLoginSucceeded = false;
+  var closeButton = document.getElementById('bl-close-after-login');
+  if (closeButton) closeButton.textContent = 'Hủy bỏ / Đóng';
 
   var modal = document.getElementById('browser-login-modal');
   var title = document.getElementById('bl-modal-title');
@@ -976,22 +1047,30 @@ function pollBrowserLoginStatus() {
         clearInterval(browserLoginPollTimer);
         browserLoginPollTimer = null;
       }
+      browserLoginSucceeded = true;
+      currentLoginSessionId = null;
       if (icon) { icon.textContent = '🎉'; icon.style.animation = 'none'; }
-      if (statusText) statusText.textContent = 'Đăng nhập thành công!';
-      var accInfo = res.email ? ('Tài khoản: ' + res.email) : 'Đã kết nối phiên làm việc thành công.';
-      if (subText) subText.textContent = accInfo + ' Đang tải lại danh sách...';
+      if (statusText) statusText.textContent = 'Đăng nhập và lưu phiên thành công!';
+      var accInfo = res.email ? ('Tài khoản: ' + res.email + '. ') : '';
+      if (currentLoginPlatform === 'museai' || currentLoginPlatform === 'muse') {
+        accInfo += 'Cookie phiên Muse đã được lưu an toàn; giá trị cookie được ẩn.';
+      } else {
+        accInfo += 'Phiên làm việc đã được lưu vào kho tài khoản.';
+      }
+      if (subText) subText.textContent = accInfo + ' Đang đóng cửa sổ và cập nhật danh sách...';
       if (step3) { step3.style.color = '#16a34a'; step3.style.fontWeight = '700'; }
-
-      setTimeout(function() {
-        window.location.reload();
+      var closeButton = document.getElementById('bl-close-after-login');
+      if (closeButton) closeButton.textContent = 'Đóng ngay';
+      window.setTimeout(function() {
+        if (browserLoginSucceeded) cancelBrowserLogin();
       }, 1200);
-    } else if (res.status === 'error' || res.status === 'cancelled') {
+    } else if (res.status === 'error' || res.status === 'failed' || res.status === 'cancelled' || res.status === 'canceled') {
       if (browserLoginPollTimer) {
         clearInterval(browserLoginPollTimer);
         browserLoginPollTimer = null;
       }
       if (icon) { icon.textContent = '⚠️'; icon.style.animation = 'none'; }
-      if (statusText) statusText.textContent = res.status === 'cancelled' ? 'Đã hủy đăng nhập' : 'Đăng nhập không thành công';
+      if (statusText) statusText.textContent = (res.status === 'cancelled' || res.status === 'canceled') ? 'Đã hủy đăng nhập' : 'Đăng nhập không thành công';
       if (subText) subText.textContent = res.error || 'Phiên đăng nhập đã kết thúc.';
     }
   })
@@ -1015,6 +1094,10 @@ function cancelBrowserLogin() {
   }
   var modal = document.getElementById('browser-login-modal');
   if (modal) modal.hidden = true;
+  if (browserLoginSucceeded) {
+    browserLoginSucceeded = false;
+    window.location.reload();
+  }
 }
 
 function triggerBrowserLoginFromModal() {

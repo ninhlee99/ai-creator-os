@@ -71,7 +71,7 @@ func extractEmotionStyle(text string) (string, string) {
 
 // GeminiTTSProvider is the tier-1 TTS provider: Gemini TTS via AI Studio
 // generateContent with responseModalities AUDIO. The most expressive option —
-// the user chose it as the default, with VieNeu as the offline fallback.
+// the user chose it as the default, with Edge as the fallback.
 //
 // It holds a KeyRing of API keys and rotates round-robin: every request uses
 // the next usable key, so N keys multiply the free-tier quota. A key that
@@ -171,7 +171,7 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 		return nil, fmt.Errorf("gemini: empty text")
 	}
 	// Đợt S: mạch quota đang mở (hết quota ngày) → fail-fast, không chạm
-	// keyring, để chain chuyển sang tier local (VieNeu/edge) ngay.
+	// keyring, để chain chuyển sang Edge ngay.
 	if GeminiQuotaCircuit().Open() {
 		return nil, fmt.Errorf("gemini: quota circuit open (hết quota ngày) — failing over")
 	}
@@ -188,7 +188,7 @@ func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) 
 				return nil, fmt.Errorf("gemini: missing API key")
 			case allCooling:
 				// Every key is cooling down: fail over to the next tier
-				// NOW (VieNeu/edge) instead of spamming retries.
+				// NOW (Edge) instead of spamming retries.
 				// "quota" in the message lets the chain log the reason.
 				// Đợt S: đếm lần cạn kiệt liên tiếp cho ngắt mạch quota ngày.
 				GeminiQuotaCircuit().ObserveExhausted()

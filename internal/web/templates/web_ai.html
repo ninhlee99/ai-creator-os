@@ -22,7 +22,7 @@
     <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
       {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}} AI Sẵn Sàng
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Muse AI</span>
+    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Google Flow · Muse AI · Leonardo</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/settings/he-thong#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
@@ -36,7 +36,7 @@
   <div class="cockpit-header">
     <div class="cockpit-title">
       <h2>⚡ Điều Phối Kịch Bản &amp; Prompt Đa AI</h2>
-      <p>Biên soạn kịch bản và phân cảnh cho các mô hình AI (ChatGPT, Claude, Gemini, Grok, Muse).</p>
+      <p>Biên soạn kịch bản và phân cảnh cho ChatGPT, Claude, Gemini, Google Flow, Muse AI và Leonardo.</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
@@ -168,6 +168,7 @@
       <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt ảnh (Gemini)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('googleflow')">🌊 Google Flow</button>
       <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('leonardo')">🎞️ Video (Leonardo)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
     </div>
 
@@ -215,7 +216,7 @@
       <pre class="prompt-box" id="txt-gemini-prompts" style="display:none"></pre>
     </div>
 
-    <!-- Section 6: Google Flow (Veo SD 480p - 1.000 Credits Free) & 4K Remastering Bridge -->
+    <!-- Section 6: Google Flow prompt handoff and exported clip import -->
     <div id="sec-googleflow" class="prompt-sec-content" style="display:none">
       <!-- Direct Google Flow Import Box -->
       <div style="background:linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
@@ -315,7 +316,58 @@
       <pre class="prompt-box" id="txt-museai-prompts" style="display:none"></pre>
     </div>
 
-    <!-- Section 7: Media Guides -->
+    <!-- Section 8: Leonardo.Ai manual video handoff and MP4 import -->
+    <div id="sec-leonardo" class="prompt-sec-content" style="display:none">
+      <div style="background:linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <span style="font-size:24px">🎞️</span>Leonardo.Ai Video Bridge
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
+          Mở Leonardo, chọn đúng tài khoản, dùng prompt theo từng cảnh bên dưới để tạo text-to-video hoặc image-to-video. Xem token hiển thị trước khi tạo; tải MP4 về rồi nhập vào Studio. Gói miễn phí có 150 token/ngày, nhưng số video tùy model và thiết lập.
+        </p>
+        <form method="POST" action="/studio/leonardo-import" enctype="multipart/form-data" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;align-items:end">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">📁 MP4 tải từ Leonardo (tối đa 200 MB)</label>
+            <input type="file" name="video_file" class="form-control" accept="video/mp4,.mp4" required style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
+            <input type="text" name="topic" class="form-control" placeholder="Chủ đề video" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">👤 Nhãn tài khoản Leonardo</label>
+            <input type="text" name="account" class="form-control" placeholder="VD: leonardo-01 (không nhập mật khẩu)" style="width:100%;margin-top:4px">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🎭 Thể loại</label>
+            <select name="genre" class="form-control" style="width:100%;margin-top:4px">
+              <option value="fashion">👗 Thời trang / lookbook</option>
+              <option value="trendjack">⚡ Video dọc / social</option>
+              <option value="dance">💃 Vũ đạo</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text)">🎵 Âm thanh</label>
+            <select name="music_style" class="form-control" style="width:100%;margin-top:4px">
+              <option value="keep_original">Giữ âm thanh gốc</option>
+              <option value="trending">Ghép nhạc nền có sẵn</option>
+            </select>
+          </div>
+          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+            <a href="https://leonardo.ai/text-to-video" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">🌐 Mở Leonardo Text to Video ↗</a>
+            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">📥 Nhập MP4 vào Studio</button>
+          </div>
+        </form>
+      </div>
+      <div class="sec-actions">
+        <b>🎞️ Prompt Video Theo Cảnh Cho Leonardo</b>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-leonardo-prompts')">📋 Copy tất cả</button>
+      </div>
+      <div id="txt-leonardo-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
+      <pre class="prompt-box" id="txt-leonardo-prompts" style="display:none"></pre>
+    </div>
+
+    <!-- Section 9: Media Guides -->
     <div id="sec-guide" class="prompt-sec-content" style="display:none">
       <div class="sec-actions">
         <b>📥 Hướng Dẫn Trích Xuất Media</b>
@@ -344,7 +396,7 @@ var lastGeneratedPkg = null;
 
 function showPromptSection(sec) {
   document.querySelectorAll('.result-tabs .res-tab').forEach(function(t) { t.classList.remove('active'); });
-  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'googleflow', 'museai', 'guide'].forEach(function(s) {
+  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'googleflow', 'museai', 'leonardo', 'guide'].forEach(function(s) {
     var el = document.getElementById('sec-' + s);
     if (el) el.style.display = (s === sec) ? 'block' : 'none';
   });
@@ -506,6 +558,9 @@ function generateMultiAIPrompts() {
     var mList = document.getElementById('txt-museai-prompts-list');
     mList.innerHTML = '';
     var mAll = '';
+    var lList = document.getElementById('txt-leonardo-prompts-list');
+    if (lList) lList.innerHTML = '';
+    var lAll = '';
 
     (pkg.scenes || []).forEach(function(sc, i) {
       gAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.gemini_prompt + '\n\n';
@@ -529,7 +584,7 @@ function generateMultiAIPrompts() {
 
       // Google Flow prompt: clean, direct, 480p friendly with camera motion keywords
       var flowPrompt = (sc.visual_concept || sc.scene_name) + ', smooth camera motion, photorealistic 35mm film still, vertical 9:16, completely clean frame, no text, no watermark';
-      fAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + ' - 10 Credits):\n' + flowPrompt + '\nFirst Frame: scene_' + (i+1) + '.png (hoặc master photo)\n\n';
+      fAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + flowPrompt + '\nFirst Frame: scene_' + (i+1) + '.png (hoặc master photo)\n\n';
       if (fList) {
         fList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">' +
           '<div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
@@ -537,18 +592,52 @@ function generateMultiAIPrompts() {
             '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + flowPrompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt Google Flow cảnh ' + (i+1) + '\', true)">📋 Copy</button>' +
           '</div>' +
           '<p class="sc-body" style="font-size:12px;color:var(--text);margin:0 0 6px;line-height:1.4">' + flowPrompt + '</p>' +
-          '<div style="font-size:11px;color:var(--muted);background:var(--bg3);padding:4px 8px;border-radius:6px">🖼️ <b>First Frame mồi:</b> Kéo thả ảnh Cảnh ' + (i+1) + ' vào ô First Frame trên Flow để khóa nhân vật 100%!</div>' +
+          '<div style="font-size:11px;color:var(--muted);background:var(--bg3);padding:4px 8px;border-radius:6px">🖼️ <b>First Frame gợi ý:</b> Ảnh cảnh hoặc ảnh sản phẩm giúp định hướng bố cục; độ nhất quán còn tùy model.</div>' +
         '</div>';
       }
 
       mAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.muse_ai_prompt + '\n\n';
       mList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.muse_ai_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt video cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.muse_ai_prompt + '</p></div>';
+
+      var leonardoPrompt = (sc.muse_ai_prompt || sc.visual_concept || sc.scene_name) + ', vertical 9:16, natural motion, cinematic camera movement, realistic lighting';
+      lAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + leonardoPrompt + '\n\n';
+      if (lList) {
+        var leonardoCard = document.createElement('div');
+        leonardoCard.className = 'scene-prompt-card';
+        leonardoCard.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px';
+        var leonardoHeader = document.createElement('div');
+        leonardoHeader.className = 'sc-title';
+        leonardoHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px';
+        var leonardoTitle = document.createElement('b');
+        leonardoTitle.textContent = 'Cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)';
+        var leonardoCopy = document.createElement('button');
+        leonardoCopy.type = 'button';
+        leonardoCopy.className = 'btn btn-secondary btn-sm';
+        leonardoCopy.textContent = '📋 Copy';
+        leonardoCopy.onclick = (function(prompt, sceneNo) {
+          return function() {
+            navigator.clipboard.writeText(prompt);
+            window.showToast('Đã sao chép prompt Leonardo cảnh ' + sceneNo, true);
+          };
+        })(leonardoPrompt, i+1);
+        leonardoHeader.appendChild(leonardoTitle);
+        leonardoHeader.appendChild(leonardoCopy);
+        var leonardoBody = document.createElement('p');
+        leonardoBody.className = 'sc-body';
+        leonardoBody.style.cssText = 'font-size:12px;color:var(--muted);margin:0;line-height:1.4';
+        leonardoBody.textContent = leonardoPrompt;
+        leonardoCard.appendChild(leonardoHeader);
+        leonardoCard.appendChild(leonardoBody);
+        lList.appendChild(leonardoCard);
+      }
     });
 
     document.getElementById('txt-gemini-prompts').textContent = gAll;
     var elFlowAll = document.getElementById('txt-googleflow-prompts');
     if (elFlowAll) elFlowAll.textContent = fAll;
     document.getElementById('txt-museai-prompts').textContent = mAll;
+    var elLeonardoAll = document.getElementById('txt-leonardo-prompts');
+    if (elLeonardoAll) elLeonardoAll.textContent = lAll;
 
     document.getElementById('prompts-result-area').style.display = 'block';
     window.showToast('Đã tạo nội dung từ các dịch vụ khả dụng.', true);

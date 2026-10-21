@@ -4,66 +4,36 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/engines/local"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 )
 
 // DecisionLogger is the local logging interface for failover decisions.
-//
-// It intentionally mirrors the ledger's Decide method without importing
-// internal/ledger (which is built by another worker): the ledger package
-// will satisfy this interface structurally. Every tier switch is logged so
-// the user always knows which tier is serving — e.g. when Gemini runs out
-// of quota mid-live and the chain jumps to VieNeu, the decision records
-// from=gemini, to=vieneu, reason=quota/rate-limit.
 type DecisionLogger interface {
 	Decide(agent, action string, target *string, reason string, inputs map[string]any)
 }
 
-// DefaultLLMConfig returns the default LLM chain order:
-// gemini (free API) -> llama-server (local) -> paid (disabled placeholder).
+// DefaultLLMConfig configures Gemini as the LLM provider.
 func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
 		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 30 * time.Second, Retries: 1},
-		{Name: "llama-server", Enabled: true, Timeout: 120 * time.Second, Retries: 0},
-		{Name: "paid", Enabled: false},
 	}}
 }
 
-// DefaultTTSConfig returns the default TTS chain order:
-// gemini (free API, default) -> vieneu (local fallback) -> edge (last resort).
+// DefaultTTSConfig returns the default TTS chain: Gemini followed by Edge.
 func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
 		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 60 * time.Second, Retries: 1},
-		{Name: "vieneu", Enabled: true, Timeout: 180 * time.Second, Retries: 0},
 		{Name: "edge", Enabled: true, Timeout: 60 * time.Second, Retries: 1},
 	}}
 }
 
-// ConfigSource loads the saved chain configs (e.g. from the DB settings
-// table). It returns the LLM and TTS configs; an empty Order means "no saved
-// settings yet" and the defaults are kept.
+// ConfigSource loads saved chain configs. An empty Order means no saved
+// settings, so defaults remain active.
 type ConfigSource func() (llmCfg ChainConfig, ttsCfg ChainConfig)
 
-// DefaultChains wires the default provider chains:
-//
-//	LLM: gemini -> llama-server -> paid(disabled)
-//	TTS: gemini -> vieneu -> edge
-//
-// If cfgSrc != nil it is consulted once at startup and any non-empty config
-// replaces the defaults. Afterwards the web layer pushes settings changes
-// with chain.SetConfig (applies immediately, no restart).
-//
-// decide may be nil (failovers then stay silent). Otherwise every tier
-// switch is logged via Decide("engines", "tier_failover", nil, reason,
-// {"from","to","reason"}).
-//
-// Note: sidecars are NOT started here. The caller starts what it needs:
-// vieNeu.Start(ctx) for the TTS sidecar, and the *local.Process returned by
-// NewLlamaServerProcess for the LLM tier-2.
-func DefaultChains(dataDir string, geminiKeys []string, decide DecisionLogger, cfgSrc ConfigSource) (*LLMChain, *TTSChain) {
-	reg := local.NewRegistry(dataDir)
-
+// DefaultChains wires Gemini for LLM and Gemini → Edge for TTS. Saved
+// non-empty configs replace defaults; settings changes apply immediately.
+func DefaultChains(geminiKeys []string, decide DecisionLogger, cfgSrc ConfigSource) (*LLMChain, *TTSChain) {
 	onSwitch := func(from, to, reason string) {
 		if decide == nil {
 			return
@@ -73,14 +43,9 @@ func DefaultChains(dataDir string, geminiKeys []string, decide DecisionLogger, c
 			map[string]any{"from": from, "to": to, "reason": reason})
 	}
 
-	llmChain := NewLLMChain([]LLMProvider{
-		NewGeminiProviderKeys(geminiKeys),
-		NewLlamaServerProvider("http://127.0.0.1:8081", "qwen2.5-7b-instruct-q4_k_m"),
-		NewPaidLLMProvider(),
-	}, onSwitch)
+	llmChain := NewLLMChain([]LLMProvider{NewGeminiProviderKeys(geminiKeys)}, onSwitch)
 	ttsChain := tts.NewTTSChain([]tts.TTSProvider{
 		tts.NewGeminiTTSProviderKeys(geminiKeys),
-		tts.NewVieNeuProvider(dataDir, reg),
 		tts.NewEdgeTTSProvider(),
 	}, onSwitch)
 
@@ -98,32 +63,4 @@ func DefaultChains(dataDir string, geminiKeys []string, decide DecisionLogger, c
 	llmChain.SetConfig(llmCfg)
 	ttsChain.SetConfig(ttsCfg)
 	return llmChain, ttsChain
-}
-
-// DefaultRegistry returns the model registry for dataDir.
-func DefaultRegistry(dataDir string) *local.Registry {
-	return local.NewRegistry(dataDir)
-}
-
-// NewLlamaServerProcess builds the supervised llama-server process for the
-// default GGUF model:
-//
-//	llama-server -m <data>/models/qwen2.5-7b-instruct-q4_k_m.gguf --port 8081 -c 4096 -ngl 99
-//
-// Port 8081 is used instead of llama-server's default 8080 so it never
-// collides with the dashboard's default -addr :8080 in the same binary.
-//
-// -ngl 99 is REQUIRED for GPU speed on Apple Silicon: llama.cpp defaults
-// n-gpu-layers to 0 (CPU-only) even in Metal builds, so without this flag
-// the M1 GPU sits idle. 99 offloads every layer; a CPU-only llama.cpp
-// build ignores the flag (warning only), so it is safe everywhere. The
-// model file must exist (Registry.Download) before starting.
-func NewLlamaServerProcess(reg *local.Registry) *local.Process {
-	model := reg.ModelPath("qwen2.5-7b-instruct-q4_k_m.gguf")
-	return &local.Process{
-		Name:      "llama-server",
-		Bin:       "llama-server",
-		Args:      []string{"-m", model, "--port", "8081", "-c", "4096", "-ngl", "99"},
-		HealthURL: "http://127.0.0.1:8081/health",
-	}
 }

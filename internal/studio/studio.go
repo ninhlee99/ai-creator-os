@@ -61,7 +61,7 @@ type AffiliateParams struct {
 	// có thì dùng nguyên văn, không gọi AI/mẫu.
 	FixedCaption             string  `json:"fixed_caption,omitempty"`
 	Seconds                  int     `json:"seconds"`
-	BPM                      int     `json:"bpm"`         // beat tempo for the giật-giật cut; 0 = 120
+	BPM                      int     `json:"bpm"`         // retained for old jobs; ignored by affiliate rendering
 	MusicPath                string  `json:"music_path"`  // local audio file, "" = silent
 	MusicStart               float64 `json:"music_start"` // seconds into the track
 	MusicTitle               string  `json:"music_title"`
@@ -73,7 +73,7 @@ type AffiliateParams struct {
 	AffLink string `json:"aff_link,omitempty"`
 	// Clips: danh sách video clip (tạo từ Muse AI, Gemini video, tải lên)
 	Clips []string `json:"clips,omitempty"`
-	// VoiceoverPath: file âm thanh lồng tiếng (từ VieNeu-TTS hoặc tải lên)
+	// VoiceoverPath: file âm thanh lồng tiếng (được tạo hoặc tải lên)
 	VoiceoverPath string `json:"voiceover_path,omitempty"`
 	VoiceoverText string `json:"voiceover_text,omitempty"`
 	// AspectRatio: tỉ lệ khung hình ("9:16" hoặc "16:9")
@@ -211,9 +211,8 @@ func (s *Studio) GetWebAISession(platform string) (*WebAISession, error) {
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job
 // runs heavy local ffmpeg work (1080x1920 zoompan graphs plus a lanczos
-// 4K upscale per photo) on the same machine as the llama-server and
-// VieNeu sidecars; on the target Mac (M1, 32 GB unified memory) more
-// than 2 parallel renders thrash CPU and memory for no wall-clock win.
+// 4K upscale per photo); more than 2 parallel renders thrash CPU and memory
+// for no wall-clock win.
 // Extra jobs wait with status "queued" (their DB state until they start).
 const maxConcurrentStudioJobs = 2
 

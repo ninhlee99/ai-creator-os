@@ -55,7 +55,7 @@ func shortLock(lock string) string {
 	return lock
 }
 
-// avatarSidecarView mirrors vieneuView for the avatar sidecar panel.
+// avatarSidecarView holds the optional avatar sidecar panel state.
 type avatarSidecarView struct {
 	Connected       bool
 	State           string
@@ -287,7 +287,7 @@ func (s *Server) handleAvatarSidecarStatus(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// avatarDownloadProgress mirrors the VieNeu download-progress pattern.
+// avatarDownloadProgress serves model download progress to the avatar panel.
 func (s *Server) handleAvatarSidecarEnsure(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if s.AvatarSidecar == nil {

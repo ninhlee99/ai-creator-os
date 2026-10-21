@@ -21,12 +21,10 @@ type Config struct {
 	// mặc định "dev". Hiện ở Cài đặt · Hệ thống (R2-W7).
 	Version string
 
-	// LLM chain
+	// LLM
 	GeminiAPIKey  string   // legacy single key / first key (backward compat)
 	GeminiAPIKeys []string // key rotation: GEMINI_API_KEYS (comma-separated) wins,
 	// legacy GEMINI_API_KEY is the single-key fallback
-	OllamaBaseURL string
-	OllamaModel   string
 
 	// TTS (avatar đã park — PIVOT 2026-10-02)
 	TTSAPIKey string
@@ -121,8 +119,6 @@ func LoadConfig() *Config {
 
 		GeminiAPIKey:  getenv("GEMINI_API_KEY", ""),
 		GeminiAPIKeys: getenvList("GEMINI_API_KEYS", "GEMINI_API_KEY"),
-		OllamaBaseURL: getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-		OllamaModel:   getenv("OLLAMA_MODEL", "qwen3:4b"),
 
 		TTSAPIKey: getenv("TTS_API_KEY", ""),
 

@@ -2,16 +2,14 @@ package web
 
 // Đợt 3 — "Zero-touch là mặc định": automation switches default ON when
 // unset, a stored OFF always wins, DRY-RUN/kill stay the safety gates,
-// the live schedule builds itself, and the homepage carries the two
-// aggregate stats orphaned by the /analytics dissolution.
+// the homepage carries the two aggregate stats orphaned by the /analytics
+// dissolution.
 
 import (
 	"context"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 )
@@ -122,52 +120,5 @@ func TestDashboardRestoredStats(t *testing.T) {
 		if strings.Contains(body, gone) {
 			t.Errorf("dashboard still shows live remnant %q", gone)
 		}
-	}
-}
-
-// ------------------------------------------------------ local model ensure
-
-type fakeVieNeuCtl struct {
-	state string
-	calls atomic.Int32
-}
-
-func (f *fakeVieNeuCtl) Status() (string, string) { return f.state, "fake" }
-func (f *fakeVieNeuCtl) Start(context.Context) error {
-	return nil
-}
-func (f *fakeVieNeuCtl) Stop() error { return nil }
-func (f *fakeVieNeuCtl) Restart(context.Context) error {
-	return nil
-}
-func (f *fakeVieNeuCtl) SetVoice(string) error { return nil }
-func (f *fakeVieNeuCtl) EnsureModel(context.Context, func(int64, int64)) error {
-	f.calls.Add(1)
-	return nil
-}
-func (f *fakeVieNeuCtl) Voices() []string { return nil }
-
-func TestEnsureLocalModels(t *testing.T) {
-	s := newTestServer(t)
-	vn := &fakeVieNeuCtl{state: "stopped"}
-	s.VieNeu = vn
-
-	s.EnsureLocalModels(context.Background())
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) && vn.calls.Load() == 0 {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if vn.calls.Load() == 0 {
-		t.Error("vieneu ensure not kicked at startup (sidecar stopped)")
-	}
-
-	// Already-ready runtimes must not be kicked.
-	s2 := newTestServer(t)
-	vn2 := &fakeVieNeuCtl{state: "running"}
-	s2.VieNeu = vn2
-	s2.EnsureLocalModels(context.Background())
-	time.Sleep(150 * time.Millisecond)
-	if vn2.calls.Load() != 0 {
-		t.Errorf("ready runtime kicked: vieneu=%d, want 0", vn2.calls.Load())
 	}
 }

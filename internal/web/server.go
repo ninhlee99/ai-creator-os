@@ -91,8 +91,7 @@ type Server struct {
 	// AT is the Accesstrade cache store (campaigns + created links).
 	// Injected by cmd wiring; nil when its DB could not be opened —
 	// handlers then fail closed with an honest message.
-	AT     *accesstrade.Store
-	VieNeu VieNeuCtl
+	AT *accesstrade.Store
 	// OnGeminiKeys nhận bộ key Gemini dùng chung mỗi khi đổi (main nối vào
 	// phần tạo ảnh của Studio).
 	OnGeminiKeys func(keys []string)
@@ -130,8 +129,6 @@ type Server struct {
 	// StaleTicks trả về tên các tick quá hạn chưa chạy (kẹt) — Đợt AK:
 	// /healthz báo needs_restart để watchdog ngoài tự khởi động lại app.
 	StaleTicks func() []string
-	// Sidecars trả về sức khỏe các tiến trình phụ (llama-server, VieNeu).
-	Sidecars func() map[string]SidecarBeat
 
 	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
 	// thời điểm hết hạn; restart là đăng nhập lại.
@@ -142,25 +139,12 @@ type Server struct {
 	oauth     oauthStates
 	templates map[string]*template.Template
 
-	// VieNeu model-download progress (polled by the settings page).
-	vieneuMu         sync.Mutex
-	vieneuDownloaded int64
-	vieneuTotal      int64
-	vieneuDone       bool
-	vieneuErr        string
-	vieneuActive     bool // đang tải nền — hiện chip trên thanh trên cùng
-
 	// Avatar model-download progress — parked-build support (như trên).
 	avatarDlMu         sync.Mutex
 	avatarDlDownloaded int64
 	avatarDlTotal      int64
 	avatarDlDone       bool
 	avatarDlErr        string
-
-	// Live-schedule auto-build guard — parked-build support (như trên;
-	// handler /schedule đã park).
-	schedMu    sync.Mutex
-	schedBuilt string
 }
 
 // NewServer wires a dashboard against an existing ledger + account manager.
@@ -358,7 +342,7 @@ func reasonLabel(r string) string {
 		return "đã chốt chủ đề (nguồn: " + sourceLabel(src) + ")"
 	}
 	if a, b, ok := strings.Cut(r, " -> "); ok {
-		// Đổi nhà cung cấp AI: "gemini -> llama-server (thiếu key)".
+		// Đổi nhà cung cấp AI sau lỗi quota/key.
 		if pa, ok1 := providerLabels[a]; ok1 {
 			bName, why, _ := strings.Cut(b, " ")
 			if pb, ok2 := providerLabels[bName]; ok2 {
@@ -383,11 +367,8 @@ var (
 
 // providerLabels: tên nhà cung cấp AI dễ hiểu cho feed hoạt động.
 var providerLabels = map[string]string{
-	"gemini":       "Gemini (Google)",
-	"llama-server": "AI chạy trên máy",
-	"vieneu":       "giọng VieNeu trên máy",
-	"edge":         "giọng Edge miễn phí",
-	"paid":         "nhà cung cấp trả phí",
+	"gemini": "Gemini (Google)",
+	"edge":   "giọng Edge miễn phí",
 }
 
 func sourceLabel(s string) string {
@@ -704,7 +685,6 @@ func (s *Server) ctx(kv ...any) map[string]any {
 		"DryRun":   s.Cfg.DryRun(),
 		"MasterOn": automation.MasterOn(s.settings()),
 		"AuthOn":   s.authEnabled(),
-		"LocalDL":  s.localDownloadChip(),
 	}
 	if s.WebAI != nil {
 		m["WebAICount"] = s.WebAI.CountConnected()

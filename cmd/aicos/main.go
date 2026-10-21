@@ -1,9 +1,8 @@
 // Command aicos is the single binary for AI Creator OS.
 //
 // One binary, zero runtime dependencies: it serves the web dashboard,
-// runs the network daemon (accounts, onboarding, scheduler, topics),
-// wires the LLM/TTS provider chains and supervises the local sidecars
-// (llama-server, VieNeu TTS).
+// runs the network daemon (accounts, onboarding, scheduler, topics) and
+// wires the LLM/TTS provider chains.
 //
 // Usage:
 //
@@ -41,7 +40,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
-	"github.com/ninhlee99/ai-creator-os/internal/engines/local"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
@@ -75,46 +73,6 @@ func getenvList(name string) []string {
 		}
 	}
 	return out
-}
-
-// vieNeuAdapter adapts *tts.VieNeuProvider to web.VieNeuCtl so the settings
-// page can control the sidecar.
-type vieNeuAdapter struct{ v *tts.VieNeuProvider }
-
-func (a vieNeuAdapter) Status() (string, string) {
-	s := a.v.Status()
-	return s.State, s.Detail
-}
-
-func (a vieNeuAdapter) Start(ctx context.Context) error { return a.v.Start(ctx) }
-
-func (a vieNeuAdapter) Stop() error { return a.v.Stop() }
-
-func (a vieNeuAdapter) Restart(ctx context.Context) error { return a.v.Restart(ctx) }
-
-func (a vieNeuAdapter) SetVoice(preset string) error {
-	a.v.SetVoice(preset)
-	return nil
-}
-
-func (a vieNeuAdapter) EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error {
-	return a.v.EnsureModel(ctx, onProgress)
-}
-
-func (a vieNeuAdapter) Voices() []string {
-	vv, err := a.v.Voices(context.Background())
-	if err != nil || len(vv) == 0 {
-		return web.VieNeuVoiceFallback
-	}
-	names := make([]string, 0, len(vv))
-	for _, v := range vv {
-		if v.Name != "" {
-			names = append(names, v.Name)
-		} else {
-			names = append(names, v.ID)
-		}
-	}
-	return names
 }
 
 func getenvBool(name string, def bool) bool {
@@ -272,6 +230,32 @@ func main() {
 			log.Printf("settings %s: invalid JSON, using default", key)
 			return def, false
 		}
+		if key == ledger.SettingTTSChain || key == ledger.SettingLLMChain {
+			filtered := cfg.Order[:0]
+			removed := false
+			for _, entry := range cfg.Order {
+				supported := key == ledger.SettingTTSChain && (entry.Name == "gemini" || entry.Name == "edge")
+				supported = supported || key == ledger.SettingLLMChain && entry.Name == "gemini"
+				if !supported {
+					removed = true
+					continue
+				}
+				filtered = append(filtered, entry)
+			}
+			cfg.Order = filtered
+			if removed {
+				saved := len(cfg.Order) > 0 && hasEnabledChainEntry(cfg.Order)
+				if !saved {
+					cfg = defaultChainWithSavedGeminiKeys(def, cfg.Order)
+				}
+				if clean, marshalErr := json.Marshal(cfg); marshalErr == nil {
+					if saveErr := l.SetSetting(key, string(clean)); saveErr != nil {
+						log.Printf("settings %s: remove retired provider: %v", key, saveErr)
+					}
+				}
+				return cfg, saved
+			}
+		}
 		return cfg, true
 	}
 	cfgSrc := func() (engines.ChainConfig, engines.ChainConfig) {
@@ -291,11 +275,11 @@ func main() {
 	}
 
 	// -- 4. provider chains -------------------------------------------------
-	llmChain, ttsChain := engines.DefaultChains(*dataDir, geminiKeys, decider, cfgSrc)
+	llmChain, ttsChain := engines.DefaultChains(geminiKeys, decider, cfgSrc)
 	log.Printf("llm: active providers: %v", llmChain.ActiveProviders())
 	log.Printf("tts: active providers: %v", ttsChain.ActiveProviders())
 	if len(geminiKeys) == 0 {
-		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — gemini tiers will fail over to local/edge tiers")
+		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — LLM calls need a Gemini key; TTS can fall back to Edge")
 	} else {
 		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
 	}
@@ -305,47 +289,7 @@ func main() {
 
 	guard := runtimeguard.New()
 
-	// -- 5. sidecars --------------------------------------------------------
-	reg := engines.DefaultRegistry(*dataDir)
-
-	const llamaModel = "qwen2.5-7b-instruct-q4_k_m.gguf"
-	// llama-server runs on 127.0.0.1:8081 (see engines.NewLlamaServerProcess)
-	// so it never collides with the dashboard's default -addr :8080.
-	llamaProc := engines.NewLlamaServerProcess(reg)
-	skipLocalModels := os.Getenv("DISABLE_LOCAL_MODELS") == "1" || os.Getenv("DISABLE_LOCAL_AI") == "1"
-	if !skipLocalModels && reg.Has(llamaModel) {
-		guard.Go(ctx, "sidecar:llama-server", func(c context.Context) {
-			log.Printf("sidecar: llama-server starting (model %s)", llamaModel)
-			if err := llamaProc.Start(c); err != nil {
-				log.Printf("sidecar: llama-server failed to start: %v", err)
-			} else {
-				log.Printf("sidecar: llama-server running")
-			}
-		})
-	} else {
-		log.Printf("sidecar: llama-server disabled — chế độ 100%% Cloud / Web Adapters")
-	}
-
-	// VieNeu TTS sidecar: controlled through the provider inside the chain.
-	var vieNeu *tts.VieNeuProvider
 	var studioInst *studio.Studio
-	if p, ok := ttsChain.Provider("vieneu"); ok {
-		if vn, ok := p.(*tts.VieNeuProvider); ok {
-			vieNeu = vn
-			if !skipLocalModels && reg.VieNeuPresent() {
-				guard.Go(ctx, "sidecar:vieneu", func(c context.Context) {
-					log.Printf("sidecar: vieneu starting (first run can take a while)")
-					if err := vieNeu.Start(c); err != nil {
-						log.Printf("sidecar: vieneu failed to start: %v", err)
-					} else {
-						log.Printf("sidecar: vieneu running")
-					}
-				})
-			} else {
-				log.Printf("sidecar: vieneu disabled — chế độ 100%% Cloud / Web Adapters (Edge/Gemini TTS)")
-			}
-		}
-	}
 
 	// health probes for the dashboard "Kiểm tra kết nối" buttons
 	health := map[string]web.HealthChecker{}
@@ -447,47 +391,9 @@ func main() {
 		}
 		return true, qc.OpenUntil().Format("02/01 15:04")
 	}
-	if !skipLocalModels && vieNeu != nil {
-		srv.VieNeu = vieNeuAdapter{v: vieNeu}
-	}
-	// Đợt AK: /healthz báo tick kẹt (needs_restart) + sức khỏe sidecar để
-	// watchdog ngoài tự khởi động lại app thay vì chỉ ghi log.
+	// /healthz báo tick kẹt (needs_restart) để watchdog ngoài tự khởi động lại app.
 	srv.RemoteNeedsPassword = true
 	srv.StaleTicks = func() []string { return tickSup.Stale(time.Now()) }
-	srv.Sidecars = func() map[string]web.SidecarBeat {
-		out := map[string]web.SidecarBeat{}
-		if skipLocalModels {
-			return out
-		}
-		add := func(name string, p *local.Process) {
-			if p == nil {
-				return
-			}
-			herr, at, fails := p.HealthStatus()
-			b := web.SidecarBeat{State: p.State(), Restarts: p.RestartCount(), HealthFails: fails, CheckedAt: at}
-			if herr != nil {
-				b.HealthErr = herr.Error()
-			}
-			out[name] = b
-		}
-		if reg.Has(llamaModel) {
-			add("llama-server", llamaProc)
-		}
-		if vieNeu != nil {
-			add("vieneu", vieNeu.Process())
-		}
-		return out
-	}
-	// Đợt 3 (A7): enabled local tiers ensure their own models at startup;
-	// progress shows in Settings + the homepage runtime block.
-	guard.Go(ctx, "local-models:ensure", func(c context.Context) {
-		if !skipLocalModels {
-			srv.EnsureLocalModels(c)
-		} else {
-			log.Printf("local-models: disabled (100%% Cloud / Web Adapters mode)")
-		}
-	})
-
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------
 	// The studio reuses the LLM chain (director), the TTS chain (narration)
 	// and the Gemini keys (image generation). (Film pipeline parked —
@@ -782,21 +688,43 @@ func main() {
 		log.Printf("http shutdown: %v", err)
 	}
 
-	if vieNeu != nil {
-		if err := vieNeu.Stop(); err != nil {
-			log.Printf("sidecar: vieneu stop: %v", err)
-		}
-	}
 	// Đợt AM: chờ job studio đang render xong (tối đa 30s) trước khi thoát.
 	if studioInst != nil {
 		log.Printf("shutdown: chờ job studio đang chạy...")
 		studioInst.Shutdown(30 * time.Second)
 	}
-	if err := llamaProc.Stop(); err != nil {
-		log.Printf("sidecar: llama-server stop: %v", err)
-	}
-
 	log.Printf("shutdown: complete")
+}
+
+func hasEnabledChainEntry(order []engines.ProviderEntry) bool {
+	for _, entry := range order {
+		if entry.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+func defaultChainWithSavedGeminiKeys(def engines.ChainConfig, saved []engines.ProviderEntry) engines.ChainConfig {
+	for i := range def.Order {
+		if def.Order[i].Name != "gemini" {
+			continue
+		}
+		for _, entry := range saved {
+			if entry.Name != "gemini" {
+				continue
+			}
+			if len(entry.APIKeys) > 0 {
+				def.Order[i].APIKeys = append([]string(nil), entry.APIKeys...)
+				def.Order[i].APIKey = entry.APIKey
+			} else if entry.APIKey != "" {
+				def.Order[i].APIKey = entry.APIKey
+			}
+			break
+		}
+		break
+	}
+	return def
 }
 
 // checkDBIntegrity kiểm tra PRAGMA integrity_check cho 4 DB chính.

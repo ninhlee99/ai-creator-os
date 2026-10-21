@@ -3,7 +3,7 @@ package studio
 // Chế độ "ảnh có sẵn" (không cần Gemini key): khi media-gen chưa sẵn sàng
 // mà người dùng đã tải ảnh sản phẩm/người mẫu, Studio tự cắt mỗi ảnh
 // thành vài khung (toàn cảnh, cận giữa, nửa trên, nửa dưới) rồi dựng
-// giật-giật theo nhịp như bản AI — không chèn chữ.
+// montage dissolve ổn định — không thêm zoom, rung hay flash.
 
 import (
 	"context"

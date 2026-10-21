@@ -3,9 +3,13 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -100,17 +104,14 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		}, http.StatusServiceUnavailable)
 		return
 	}
-	var uploadedProductPhoto string
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-		if err := r.ParseMultipartForm(20 << 20); err != nil {
-			s.respondOneCommand(w, r, OneCommandResult{Message: "Ảnh vượt giới hạn 20 MB hoặc form không hợp lệ"}, http.StatusBadRequest)
+		r.Body = http.MaxBytesReader(w, r.Body, oneCommandMaxUploadBytes+(1<<20))
+		if err := r.ParseMultipartForm(16 << 20); err != nil {
+			s.respondOneCommand(w, r, OneCommandResult{Message: "Tổng dung lượng media vượt 200 MB hoặc form không hợp lệ"}, http.StatusBadRequest)
 			return
 		}
-		var err error
-		uploadedProductPhoto, err = saveUpload(r, "product_photo", s.Studio.UploadDir())
-		if err != nil {
-			s.respondOneCommand(w, r, OneCommandResult{Message: "Không đọc được ảnh sản phẩm: " + err.Error()}, http.StatusBadRequest)
-			return
+		if r.MultipartForm != nil {
+			defer r.MultipartForm.RemoveAll()
 		}
 	}
 
@@ -131,6 +132,23 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	mode, topic, nicheOrGenre := detectCommandIntent(command)
+
+	var media productMediaUploads
+	if hasOneCommandProductMedia(r) {
+		if mode != "affiliate" {
+			s.respondOneCommand(w, r, OneCommandResult{
+				Type: mode, Title: topic,
+				Message: "Ảnh/video sản phẩm chỉ dùng cho yêu cầu Affiliate. Hãy thêm tên sản phẩm vào câu lệnh.",
+			}, http.StatusUnprocessableEntity)
+			return
+		}
+		var err error
+		media, err = saveOneCommandProductMedia(r, s.Studio.UploadDir())
+		if err != nil {
+			s.respondOneCommand(w, r, OneCommandResult{Message: "Không đọc được media sản phẩm: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+	}
 
 	var jobID string
 	var err error
@@ -159,7 +177,7 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		if mg := s.Studio.MediaGen(); mg != nil {
 			mediaReady = mg.Healthy(r.Context())
 		}
-		if uploadedProductPhoto == "" && !mediaReady {
+		if len(media.photos) == 0 && len(media.clips) == 0 && !mediaReady {
 			studioURL := "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
 			s.respondOneCommand(w, r, OneCommandResult{
 				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
@@ -167,15 +185,23 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 			}, http.StatusUnprocessableEntity)
 			return
 		}
-		// Khởi tạo Video Affiliate Lookbook 9:16 chuẩn 5 sao
+		mode := studio.AffiliateModeShots
+		if len(media.photos) > 0 {
+			mode = studio.AffiliateModePhoto
+		}
+		// Photos become a multi-image montage; video files become source clips.
 		p := studio.AffiliateParams{
-			Mode:                     studio.AffiliateModePhoto,
+			Mode:                     mode,
 			Niche:                    nicheOrGenre,
 			ProductName:              topic,
 			Seconds:                  30,
 			BPM:                      120,
-			ProductPhoto:             uploadedProductPhoto,
-			AutoGenerateProductPhoto: uploadedProductPhoto == "",
+			AutoGenerateProductPhoto: len(media.photos) == 0 && len(media.clips) == 0,
+			Clips:                    media.clips,
+		}
+		if len(media.photos) > 0 {
+			p.ProductPhoto = media.photos[0]
+			p.ExtraPhotos = append([]string(nil), media.photos[1:]...)
 		}
 		jobID, err = s.Studio.CreateAffiliateJob(p)
 		if err == nil {
@@ -214,6 +240,136 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		RedirectURL: redirectURL,
 		Message:     msg,
 	}, http.StatusOK)
+}
+
+const (
+	oneCommandMaxUploadBytes = 200 << 20
+	oneCommandMaxMediaFiles  = 8
+)
+
+type productMediaUploads struct {
+	photos []string
+	clips  []string
+}
+
+func hasOneCommandProductMedia(r *http.Request) bool {
+	if r.MultipartForm == nil {
+		return false
+	}
+	return len(r.MultipartForm.File["product_media"]) > 0 || len(r.MultipartForm.File["product_photo"]) > 0
+}
+
+func saveOneCommandProductMedia(r *http.Request, dir string) (productMediaUploads, error) {
+	var result productMediaUploads
+	if r.MultipartForm == nil {
+		return result, nil
+	}
+	files := r.MultipartForm.File["product_media"]
+	legacy := r.MultipartForm.File["product_photo"]
+	if len(files) > 0 && len(legacy) > 0 {
+		return result, fmt.Errorf("chỉ dùng một ô chọn media")
+	}
+	if len(files) == 0 {
+		photo, err := saveUpload(r, "product_photo", dir)
+		if err != nil {
+			return result, err
+		}
+		if photo != "" {
+			result.photos = []string{photo}
+		}
+		return result, nil
+	}
+	if len(files) > oneCommandMaxMediaFiles {
+		return result, fmt.Errorf("chọn tối đa %d tệp", oneCommandMaxMediaFiles)
+	}
+
+	kind := ""
+	var total int64
+	for _, header := range files {
+		if header.Size <= 0 {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		fileKind := oneCommandMediaKind(ext)
+		if fileKind == "" {
+			return result, fmt.Errorf("định dạng %s không hỗ trợ", ext)
+		}
+		if kind != "" && fileKind != kind {
+			return result, fmt.Errorf("chọn nhiều ảnh hoặc nhiều video, không trộn hai loại")
+		}
+		kind = fileKind
+		limit := int64(50 << 20)
+		if fileKind == "video" {
+			limit = oneCommandMaxUploadBytes
+		}
+		if header.Size > limit {
+			return result, fmt.Errorf("%s vượt giới hạn %d MB", header.Filename, limit>>20)
+		}
+		total += header.Size
+		if total > oneCommandMaxUploadBytes {
+			return result, fmt.Errorf("tổng dung lượng vượt 200 MB")
+		}
+	}
+	if kind == "" {
+		return result, nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return result, err
+	}
+	var saved []string
+	cleanup := func(err error) (productMediaUploads, error) {
+		for _, path := range saved {
+			_ = os.Remove(path)
+		}
+		return productMediaUploads{}, err
+	}
+	for i, header := range files {
+		if header.Size <= 0 {
+			continue
+		}
+		file, err := header.Open()
+		if err != nil {
+			return cleanup(err)
+		}
+		ext := strings.ToLower(filepath.Ext(header.Filename))
+		dst := filepath.Join(dir, fmt.Sprintf("%d-product-media-%d%s", time.Now().UnixNano(), i, ext))
+		out, err := os.Create(dst)
+		if err != nil {
+			_ = file.Close()
+			return cleanup(err)
+		}
+		written, copyErr := io.Copy(out, io.LimitReader(file, oneCommandMaxUploadBytes+1))
+		closeErr := out.Close()
+		_ = file.Close()
+		if copyErr != nil {
+			return cleanup(copyErr)
+		}
+		if closeErr != nil {
+			return cleanup(closeErr)
+		}
+		if written != header.Size || written > oneCommandMaxUploadBytes {
+			_ = os.Remove(dst)
+			return cleanup(fmt.Errorf("tệp %s tải lên không đầy đủ", header.Filename))
+		}
+		saved = append(saved, dst)
+		if kind == "image" {
+			result.photos = append(result.photos, dst)
+		} else {
+			result.clips = append(result.clips, dst)
+		}
+	}
+	return result, nil
+}
+
+func oneCommandMediaKind(ext string) string {
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp":
+		return "image"
+	case ".mp4", ".mov", ".m4v", ".webm":
+		return "video"
+	default:
+		return ""
+	}
 }
 
 func (s *Server) respondOneCommand(w http.ResponseWriter, r *http.Request, res OneCommandResult, statusCode int) {

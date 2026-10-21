@@ -4,7 +4,7 @@
 Xây dựng hệ thống tự hành cho phép người chủ doanh nghiệp giao mục tiêu bằng ngôn ngữ tự nhiên (AI Mission Control) và sản xuất nội dung nguyên bản chất lượng cao theo từng hồ sơ thương hiệu (Brand DNA), triệt tiêu sự phụ thuộc vào việc reup video của bên thứ ba.
 
 ## 2. Kích hoạt & Route
-- `POST /team/dispatch` → `handleTeamDispatchGoal` (`internal/web/agent_workforce.go`): Giao mục tiêu chiến lược 1-chạm từ Trang chủ hoặc Tổng hành dinh AI.
+- `POST /team/dispatch` → `handleTeamDispatchGoal` (`internal/web/mission_engine.go`): Giao mục tiêu ngôn ngữ tự nhiên cho Mission Engine.
 - `GET /accounts/{id}?tab=brand-dna` → `handleAccountDetail` (`internal/web/accounts.go`): Xem và tùy biến hồ sơ Brand DNA cho kênh.
 - `POST /accounts/{id}/brand-dna` → `handleAccountBrandDNASave` (`internal/web/accounts.go`): Lưu hồ sơ Brand DNA.
 - `POST /accounts/{id}/brand-dna/reset` → `handleAccountBrandDNAReset` (`internal/web/accounts.go`): Khôi phục Brand DNA chuẩn AI theo ngành hàng.

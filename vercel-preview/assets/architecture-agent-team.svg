@@ -124,7 +124,7 @@
   <!-- Services -->
   <rect x="48" y="782" width="1504" height="118" class="box" fill="url(#svc)" opacity="0.95"/>
   <text x="72" y="818" class="h">TẦNG DỊCH VỤ DÙNG CHUNG — là CÔNG CỤ, không phải agent (gọi qua interface, có giới hạn tài nguyên tập trung)</text>
-  <text x="72" y="848" class="t">LLM: Gemini → llama-server local   ·   TTS: Gemini → VieNeu-TTS v3 local → Edge   ·   Avatar: MuseTalk sidecar → HeyGen → D-ID (paid, tắt mặc định)   ·   MediaGen: Gemini image / Veo   ·   FFmpeg</text>
+  <text x="72" y="848" class="t">LLM: Gemini   ·   TTS: Gemini → Edge   ·   Avatar: MuseTalk sidecar → HeyGen → D-ID (paid, tắt mặc định)   ·   MediaGen: Gemini image / Veo   ·   FFmpeg</text>
   <text x="72" y="874" class="s">Keyring xoay nhiều Gemini key (cooldown khi 429) · Mọi lần gọi đều ghi api_usage vào Ledger · Provider là hạng mục cấu hình riêng trong Settings</text>
 
   <!-- Data -->

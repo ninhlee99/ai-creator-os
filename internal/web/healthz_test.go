@@ -12,9 +12,8 @@ import (
 	"time"
 )
 
-// Đợt AK: tick kẹt → needs_restart=true để watchdog ngoài tự khởi động lại;
-// sidecar xuất hiện trong JSON.
-func TestHealthzStaleTicksAndSidecars(t *testing.T) {
+// Tick kẹt → needs_restart=true để watchdog ngoài tự khởi động lại.
+func TestHealthzStaleTicks(t *testing.T) {
 	s := newTestServer(t)
 	get := func() map[string]any {
 		rec := httptest.NewRecorder()
@@ -34,16 +33,9 @@ func TestHealthzStaleTicksAndSidecars(t *testing.T) {
 	}
 
 	s.StaleTicks = func() []string { return []string{"story"} }
-	s.Sidecars = func() map[string]SidecarBeat {
-		return map[string]SidecarBeat{"vieneu": {State: "running", HealthFails: 2, HealthErr: "timeout", CheckedAt: time.Now()}}
-	}
 	b := get()
 	if b["needs_restart"] != true {
 		t.Fatalf("needs_restart = %v, want true with a stale tick", b["needs_restart"])
-	}
-	sc, _ := b["sidecars"].(map[string]any)
-	if v, _ := sc["vieneu"].(map[string]any); v["health_err"] != "timeout" {
-		t.Fatalf("sidecars = %v", b["sidecars"])
 	}
 }
 

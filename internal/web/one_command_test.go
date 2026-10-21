@@ -1,10 +1,15 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 )
@@ -113,5 +118,137 @@ func TestOneCommandCreateEndpoint(t *testing.T) {
 	}
 	if !res.OK || res.JobID == "" || res.Type != "affiliate" {
 		t.Errorf("unexpected JSON result: %+v", res)
+	}
+}
+
+func TestDashboardProductMediaPicker(t *testing.T) {
+	s := newViralServer(t)
+	page := get(t, s, "/")
+	if page.Code != http.StatusOK {
+		t.Fatalf("GET / = %d, want 200", page.Code)
+	}
+	for _, want := range []string{
+		`name="product_media"`,
+		`multiple`,
+		`image/jpeg`,
+		`video/mp4`,
+		"Kéo thả ảnh hoặc video vào đây",
+	} {
+		if !strings.Contains(page.Body.String(), want) {
+			t.Errorf("quick creator media picker missing %q", want)
+		}
+	}
+
+	settings := get(t, s, "/settings/he-thong")
+	if settings.Code != http.StatusOK {
+		t.Fatalf("GET /settings/he-thong = %d, want 200", settings.Code)
+	}
+	for _, want := range []string{"webai-login-action", "webai-key-action"} {
+		if !strings.Contains(settings.Body.String(), want) {
+			t.Errorf("Web AI action layout missing %q", want)
+		}
+	}
+	styles := get(t, s, "/static/style.css")
+	if styles.Code != http.StatusOK {
+		t.Fatalf("GET /static/style.css = %d, want 200", styles.Code)
+	}
+	for _, want := range []string{".product-media-dropzone", ".webai-card-actions .webai-login-action", "white-space: nowrap"} {
+		if !strings.Contains(styles.Body.String(), want) {
+			t.Errorf("stylesheet missing layout rule %q", want)
+		}
+	}
+}
+
+func TestSaveOneCommandProductMedia(t *testing.T) {
+	t.Run("multiple images", func(t *testing.T) {
+		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
+			{name: "front.jpg", content: "image-one"},
+			{name: "side.png", content: "image-two"},
+		})
+		media, err := saveOneCommandProductMedia(r, t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(media.photos) != 2 || len(media.clips) != 0 {
+			t.Fatalf("media = %+v, want two photos and no clips", media)
+		}
+		for i, want := range []string{"image-one", "image-two"} {
+			got, err := os.ReadFile(media.photos[i])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != want {
+				t.Errorf("photo %d content = %q, want %q", i, got, want)
+			}
+		}
+	})
+
+	t.Run("multiple videos", func(t *testing.T) {
+		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
+			{name: "first.mp4", content: "clip-one"},
+			{name: "second.mov", content: "clip-two"},
+		})
+		media, err := saveOneCommandProductMedia(r, t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(media.clips) != 2 || len(media.photos) != 0 {
+			t.Fatalf("media = %+v, want two clips and no photos", media)
+		}
+	})
+
+	t.Run("mixed types rejected", func(t *testing.T) {
+		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
+			{name: "front.jpg", content: "image-one"},
+			{name: "clip.mp4", content: "clip-one"},
+		})
+		if _, err := saveOneCommandProductMedia(r, t.TempDir()); err == nil || !strings.Contains(err.Error(), "không trộn") {
+			t.Fatalf("mixed media error = %v, want mixed-type rejection", err)
+		}
+	})
+}
+
+type oneCommandTestFile struct {
+	name    string
+	content string
+}
+
+func oneCommandMultipartRequest(t *testing.T, files []oneCommandTestFile) *http.Request {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for _, file := range files {
+		part, err := writer.CreateFormFile("product_media", file.name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.WriteString(part, file.content); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r := httptest.NewRequest(http.MethodPost, "/create-one-command", &body)
+	r.Header.Set("Content-Type", writer.FormDataContentType())
+	if err := r.ParseMultipartForm(1 << 20); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if r.MultipartForm != nil {
+			_ = r.MultipartForm.RemoveAll()
+		}
+	})
+	return r
+}
+
+func TestSaveOneCommandProductMediaRejectsTooManyFiles(t *testing.T) {
+	files := make([]oneCommandTestFile, 0, 9)
+	for i := 0; i < 9; i++ {
+		files = append(files, oneCommandTestFile{name: fmt.Sprintf("%d.jpg", i), content: "image"})
+	}
+	r := oneCommandMultipartRequest(t, files)
+	if _, err := saveOneCommandProductMedia(r, t.TempDir()); err == nil || !strings.Contains(err.Error(), "tối đa 8") {
+		t.Fatalf("too many files error = %v, want max-count rejection", err)
 	}
 }

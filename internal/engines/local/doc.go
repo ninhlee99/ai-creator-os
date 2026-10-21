@@ -1,12 +1,8 @@
-// Package local manages on-machine model assets and the sidecar processes
-// that serve them.
+// Package local manages downloaded assets and supervised child processes for
+// parked optional engines. The default app does not link this package.
 //
-//   - Registry: model files live under <data>/models (e.g. the llama.cpp GGUF)
-//     and third-party repos under <data>/third_party (e.g. vieneu-tts). It
-//     downloads from HuggingFace/GitHub with resume support and progress
-//     callbacks. Models are NEVER bundled into the Go binary.
-//   - Process: a supervised long-running child process (llama-server, the
-//     VieNeu TTS sidecar, whisper.cpp later): Start/Stop/Restart, automatic
-//     restart on crash with increasing backoff (up to MaxRestarts, default 5,
-//     then it reports error state), and a health check every 30s.
+// Registry stores assets under <data>/models and third-party repos under
+// <data>/third_party, with resumable downloads and progress callbacks.
+// Process provides Start/Stop/Restart, crash backoff, and periodic health
+// checks for optional child processes.
 package local

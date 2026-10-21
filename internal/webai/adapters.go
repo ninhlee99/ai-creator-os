@@ -68,41 +68,29 @@ func (e *Engine) GenerateVisualFrame(ctx context.Context, prompt string) (string
 	return "", nil
 }
 
-// FlowScenePrompt describes an optimized generation prompt for Google Flow (Veo SD 480p).
+// FlowScenePrompt describes an optimized prompt for manual use in Google Flow.
 type FlowScenePrompt struct {
-	SceneIndex       int    `json:"scene_index"`
-	Prompt           string `json:"prompt"`
-	NegativePrompt   string `json:"negative_prompt"`
-	KeyframeFile     string `json:"keyframe_file,omitempty"`
-	DurationSec      int    `json:"duration_sec"`
-	EstimatedCredits int    `json:"estimated_credits"`
+	SceneIndex     int    `json:"scene_index"`
+	Prompt         string `json:"prompt"`
+	NegativePrompt string `json:"negative_prompt"`
+	KeyframeFile   string `json:"keyframe_file,omitempty"`
+	DurationSec    int    `json:"duration_sec"`
 }
 
-// FlowPromptBundle contains a 1-click batch bundle ready to export to Google Flow.
+// FlowPromptBundle contains prompts and keyframe references for manual use in Google Flow.
 type FlowPromptBundle struct {
-	Title           string            `json:"title"`
-	TotalScenes     int               `json:"total_scenes"`
-	TotalCreditsEst int               `json:"total_credits_est"`
-	Aspect          string            `json:"aspect"`
-	MasterKeyframe  string            `json:"master_keyframe,omitempty"`
-	Scenes          []FlowScenePrompt `json:"scenes"`
-	WorkflowGuide   string            `json:"workflow_guide"`
+	Title          string            `json:"title"`
+	TotalScenes    int               `json:"total_scenes"`
+	Aspect         string            `json:"aspect"`
+	MasterKeyframe string            `json:"master_keyframe,omitempty"`
+	Scenes         []FlowScenePrompt `json:"scenes"`
+	WorkflowGuide  string            `json:"workflow_guide"`
 }
 
-// GenerateFlowVideoClip uses rotating Google Flow accounts (1.000 credits/mo) to produce Veo SD clips.
+// GenerateFlowVideoClip is intentionally unsupported until Google provides a
+// documented generation API. Use BuildFlowPromptBundle for manual handoff.
 func (e *Engine) GenerateFlowVideoClip(ctx context.Context, prompt, keyframeURL string, durationSec int) (string, error) {
-	if e.store == nil {
-		return "", fmt.Errorf("webai: store not available")
-	}
-
-	acc, err := e.store.PickActiveAccount(PlatformGoogleFlow)
-	if err != nil {
-		return "", fmt.Errorf("không có tài khoản Google Flow khả dụng: %w", err)
-	}
-
-	// In headless mode: communicates with Google Labs Flow session to render 480p clip
-	_ = acc
-	return "", nil
+	return "", fmt.Errorf("google flow: generation is manual; use BuildFlowPromptBundle and render in the Flow web app")
 }
 
 // BuildFlowPromptBundle constructs an optimized storyboard prompt bundle for Google Flow.
@@ -116,43 +104,29 @@ func (e *Engine) BuildFlowPromptBundle(title, topic, genre string, scenePrompts 
 	}
 
 	scenes := make([]FlowScenePrompt, len(scenePrompts))
-	creditsPerScene := 10
-	totalCredits := len(scenePrompts) * creditsPerScene
 
 	for i, sp := range scenePrompts {
 		scenes[i] = FlowScenePrompt{
-			SceneIndex:       i + 1,
-			Prompt:           sp + ", cinematic 35mm film still, photorealistic, natural motion, authentic skin textures",
-			NegativePrompt:   "subtitles, text, watermark, logo, cartoon, 3d render, distorted anatomy, morphing, jitter",
-			KeyframeFile:     fmt.Sprintf("scene_%02d.png", i+1),
-			DurationSec:      5,
-			EstimatedCredits: creditsPerScene,
+			SceneIndex:     i + 1,
+			Prompt:         sp + ", cinematic 35mm film still, photorealistic, natural motion, authentic skin textures",
+			NegativePrompt: "subtitles, text, watermark, logo, cartoon, 3d render, distorted anatomy, morphing, jitter",
+			KeyframeFile:   fmt.Sprintf("scene_%02d.png", i+1),
+			DurationSec:    5,
 		}
 	}
 
 	return FlowPromptBundle{
-		Title:           title,
-		TotalScenes:     len(scenes),
-		TotalCreditsEst: totalCredits,
-		Aspect:          "9:16 vertical",
-		Scenes:          scenes,
-		WorkflowGuide:   "1. Mở labs.google/fx/tools/flow | 2. Dán Prompt & kéo thả Keyframe tương ứng vào First Frame | 3. Tải clip 480p về — AI Creator OS tự động bắt file và Remaster 4K UHD!",
+		Title:         title,
+		TotalScenes:   len(scenes),
+		Aspect:        "9:16 vertical",
+		Scenes:        scenes,
+		WorkflowGuide: "Mở Google Flow, tạo từng cảnh bằng prompt và keyframe tương ứng, rồi tải MP4 về. AICOS chưa tự điều khiển Flow hoặc nhập clip tự động.",
 	}
 }
 
 // GenerateVideoClip uses Muse AI accounts to produce motion video clips.
 func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL string) (string, error) {
-	if e.store == nil {
-		return "", fmt.Errorf("webai: store not available")
-	}
-
-	acc, err := e.store.PickActiveAccount(PlatformMuseAI)
-	if err != nil {
-		return "", err
-	}
-
-	_ = acc
-	return "", nil
+	return "", fmt.Errorf("muse ai: video generation adapter is not implemented; use manual handoff")
 }
 
 // MaskToken masks session keys/cookies for safe display.

@@ -14,7 +14,11 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 		p.Seconds = 30 // Video affiliate thời lượng tối thiểu 30s - 60s
 	}
 	if p.Mode == "" {
-		p.Mode = AffiliateModePhoto
+		if s.llm != nil && s.mg != nil {
+			p.Mode = AffiliateModeShots
+		} else {
+			p.Mode = AffiliateModePhoto
+		}
 	}
 	if p.BPM < 60 || p.BPM > 200 {
 		p.BPM = 120
@@ -29,6 +33,20 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	}
 	go s.runAffiliate(id, p)
 	return id, nil
+}
+
+func safeAffiliateCameraMove(move string) string {
+	move = strings.TrimSpace(move)
+	lower := strings.ToLower(move)
+	for _, forbidden := range []string{"zoom", "dolly", "push", "pull", "whip", "handheld", "shake"} {
+		if strings.Contains(lower, forbidden) {
+			return "locked-off tripod or smooth gimbal tracking, constant camera distance"
+		}
+	}
+	if move == "" {
+		return "smooth gimbal tracking, constant camera distance"
+	}
+	return move
 }
 
 // photoPlan is the director's locked shoot plan: ONE location shared by
@@ -65,11 +83,7 @@ func fallbackPhotoPlan(p AffiliateParams) *photoPlan {
 	}
 }
 
-// directorPhotoPlan asks the LLM for the photo list (the storyboard).
-// Style Ninh chốt 2026-10-01: CapCut "giật giật" — chỉ 3–5 ảnh mẫu dùng
-// sản phẩm thật, dựng beat-bounce cắt cứng theo nhịp; 30s ≈ 5 ảnh × 6s.
-// Địa điểm KHÓA NHẤT QUÁN cho cả video: mọi ảnh cùng một nơi, chỉ khác
-// góc máy / vị trí / setup bên trong nơi đó.
+// directorPhotoPlan asks the LLM for a consistent-location photo storyboard.
 func (s *Studio) directorPhotoPlan(ctx context.Context, p AffiliateParams) (*photoPlan, error) {
 	n := p.Seconds / 6
 	if n < 3 {
@@ -85,7 +99,7 @@ Nhiệm vụ 2 bước:
 1. Chọn MỘT địa điểm duy nhất cho cả video (ví dụ: một quán café cụ thể — mô tả chi tiết bằng tiếng Anh: phong cách nội thất, màu sắc, ánh sáng, chi tiết nhận diện; đủ cụ thể để 5 ảnh khác nhau vẫn nhận ra là CÙNG MỘT NƠI).
 2. Viết %d prompt ảnh (tiếng Anh), MỖI prompt mô tả: góc máy + vị trí của mẫu TRONG địa điểm đó + setup khác nhau + hành động dùng sản phẩm thật. Các ảnh phải đa dạng góc (cận cảnh, toàn cảnh, macro, low-angle, qua vai…) nhưng TUYỆT ĐỐI cùng một địa điểm.
 
-Video dựng kiểu CapCut "giật giật": cắt cứng theo nhịp, mỗi ảnh chỉ hiện vài giây nên MỖI ẢNH phải là một khoảnh khắc đắt giá.
+Ảnh dùng làm montage tĩnh với chuyển cảnh dissolve nhẹ; không thêm zoom, rung, nháy hoặc cắt chớp theo nhịp. MỖI ẢNH phải là một khoảnh khắc đắt giá.
 Ảnh 1 là hook (mẫu giơ/cầm sản phẩm cười với camera), các ảnh giữa là lifestyle trong địa điểm + macro chất liệu + khoảnh khắc dùng sản phẩm thật, ảnh cuối ấm áp ôm sản phẩm.
 KHÔNG chữ, KHÔNG watermark trong ảnh.
 
@@ -172,12 +186,14 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		p.ProductPhoto = generated
 	}
 
-	// Nếu có ảnh sản phẩm thật: Dựng từ ảnh có sẵn kết hợp nhạc theo nhịp
+	// Keep uploaded photos as visual references. Photo montage is only used
+	// when the user explicitly selects photo mode.
 	ownPhotos := false
 	if p.HasOwnPhotos() && !p.HasClips() {
-		s.appendLog(id, fmt.Sprintf("Dựng từ %d ảnh có sẵn (ghép nhạc theo nhịp)…", len(ownSources(p))))
-		p.Mode = AffiliateModePhoto
 		ownPhotos = true
+		if p.Mode == AffiliateModeShots {
+			s.appendLog(id, fmt.Sprintf("Dùng %d ảnh làm mẫu tham chiếu cho footage chuyển động…", len(ownSources(p))))
+		}
 	} else if !p.HasClips() && (s.mg == nil || !s.mg.Healthy(ctx)) {
 		// Tự động kích hoạt video Lookbook thời trang chuyển động người thật 9:16 nếu không có ảnh và không có key
 		lookbookCandidates := []string{
@@ -396,12 +412,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		return
 	}
 
-	// Photo mode: shoot the 3–5 photo list (scene-locked, 4K masters).
-	// Shots mode has its own cinematic shot list below (no photo shoot
-	// here — saves quota).
+	// Photo mode prepares stills for a stable dissolve montage. Shots mode
+	// uses uploaded images only as references for generated motion footage.
 	var photos []string
 	var secsPer float64
-	if ownPhotos {
+	if ownPhotos && p.Mode == AffiliateModeShots {
+		// Photos already contribute to refs above; the shot engine will create
+		// matching live-action footage from those references.
+		s.setStatus(id, StatusRunning, 10)
+	} else if ownPhotos {
 		photos = ownPhotoSet(ctx, p, work)
 		for i, ph := range photos {
 			aid := s.addAsset(id, i, "photo", "ảnh có sẵn")
@@ -560,6 +579,14 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			return
 		}
 	} else if p.Mode == AffiliateModeShots {
+		if s.llm == nil {
+			fail(fmt.Errorf("thiếu engine ngôn ngữ để viết shot list"))
+			return
+		}
+		if s.mg == nil {
+			fail(fmt.Errorf("thiếu engine media để tạo footage chuyển động"))
+			return
+		}
 		s.appendLog(id, "Director điện ảnh đang viết shot list…")
 		shots, err := WriteProShotList(ctx, s.llm, p.ProductName, p.Niche, p.Seconds)
 		if err != nil {
@@ -576,15 +603,16 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			kprompt := sh.ImagePrompt + ". Photorealistic, vertical 9:16, no text, no watermark."
 			s.setAsset(aid, StatusRunning, "")
 			if err := s.mg.GenerateImage(ctx, kprompt, refs, key); err != nil {
-				s.appendLog(id, fmt.Sprintf("Shot %d lỗi keyframe: %v", i+1, err))
+				fail(fmt.Errorf("shot %d: không tạo được keyframe: %w", i+1, err))
 				s.setAsset(aid, StatusFailed, "")
-				continue
+				return
 			}
 			out := filepath.Join(work, fmt.Sprintf("shot-%02d.mp4", i))
 			fallbackUsed := false
 			vprompt := fmt.Sprintf("%s. Camera: %s. Lens/lighting: %s. "+
-				"Vertical 9:16 cinematic product video, smooth professional motion, no text, no watermark.",
-				sh.VideoPrompt, sh.CameraMove, sh.LensLight)
+				"Vertical 9:16 live-action product footage, natural subject movement, stable professional camera, constant focal length and camera distance. "+
+				"No zoom in or out, no dolly push or pull, no flash, no strobe, no flicker, no shake, no jitter, no rapid reframing, no text, no watermark.",
+				sh.VideoPrompt, safeAffiliateCameraMove(sh.CameraMove), sh.LensLight)
 			if err := s.GenerateMotionVideoClip(ctx, MotionVideoOptions{
 				Prompt:       vprompt,
 				FirstFrame:   key,
@@ -596,17 +624,11 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 				LogFn:        func(msg string) { s.appendLog(id, msg) },
 			}); err != nil || fallbackUsed {
 				if err == nil {
-					err = fmt.Errorf("engine không tạo được chuyển động; dùng ảnh tĩnh")
+					err = fmt.Errorf("engine không tạo được video chuyển động thật")
 				}
-				s.appendLog(id, fmt.Sprintf("Shot %d lỗi video: %v (giữ keyframe Ken Burns)", i+1, err))
-				still := filepath.Join(work, fmt.Sprintf("shot-%02d-still.mp4", i))
-				if kerr := AssemblePhotoList(ctx, []string{key}, float64(sh.Seconds), "", 0, still, "9:16"); kerr == nil {
-					s.setAsset(aid, StatusDone, still)
-					clips = append(clips, still)
-				} else {
-					s.setAsset(aid, StatusFailed, "")
-				}
-				continue
+				s.setAsset(aid, StatusFailed, "")
+				fail(fmt.Errorf("shot %d: %w", i+1, err))
+				return
 			}
 			s.setAsset(aid, StatusDone, out)
 			clips = append(clips, out)
@@ -620,11 +642,8 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 				return
 			}
 		} else {
-			s.appendLog(id, "Veo không khả dụng — dùng bản list ảnh.")
-			if err := AssemblePhotoList(ctx, photos, secsPer, "", 0, silent, "9:16"); err != nil {
-				fail(err)
-				return
-			}
+			fail(fmt.Errorf("không tạo được video chuyển động thật cho shot nào"))
+			return
 		}
 		if p.MusicPath != "" {
 			s.appendLog(id, "Ghép nhạc trending…")
@@ -637,9 +656,9 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			return
 		}
 	} else {
-		s.appendLog(id, "Dựng giật-giật theo nhịp nhạc…")
-		silentVideo := filepath.Join(work, "beat_silent.mp4")
-		if err := AssembleBeatBounce(ctx, photos, secsPer, p.BPM, "", 0, silentVideo, "9:16"); err != nil {
+		s.appendLog(id, "Dựng montage ảnh ổn định với chuyển cảnh dissolve…")
+		silentVideo := filepath.Join(work, "photo_silent.mp4")
+		if err := AssembleStillPhotoList(ctx, photos, secsPer, "", 0, silentVideo, "9:16"); err != nil {
 			fail(err)
 			return
 		}

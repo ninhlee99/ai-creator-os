@@ -97,9 +97,10 @@ Mọi tài nguyên đầu vào (ảnh, clip ngang 16:9, ảnh vuông 1:1) khi đ
 - Tuyệt đối không thay thế người mẫu bằng việc chụp một bức ảnh áo/quần treo trên móc rồi phóng to thu nhỏ.
 
 ### Điều 3: Luật Ngôn Ngữ Ống Kính CapCut (Cinematographic Editing Standard)
-> *Nói không với hiệu ứng rung lắc méo hình rẻ tiền; áp dụng chuẩn chuyển cảnh CapCut Pro.*  
-- Khi chuyển giữa các phân cảnh ảnh/clip: Sử dụng hiệu ứng chớp sáng trắng siêu ngắn (`fade=t=in:st=0:d=0.12:color=white`) đồng bộ theo nhịp trống (*beat drop*).
-- Hiệu ứng ống kính chậm (Ken Burns): Độ phóng đại cực đại chỉ dao động trong khoảng $1.00 \to 1.08$ (tối đa 8%), giữ nguyên đỉnh đầu và bàn tay người mẫu trong khung hình an toàn (*safe area*).
+> *Ưu tiên footage ổn định như quay bằng tripod hoặc gimbal; chuyển cảnh phải êm và không gây giật mắt.*
+- Affiliate mặc định dùng footage chuyển động thật, camera ổn định và tiêu cự/khoảng cách nhất quán.
+- Cấm zoom in/out giả, dolly push/pull, flash, strobe, flicker, rung, lắc và whip-pan.
+- Dựng từ ảnh tĩnh chỉ dùng dissolve nhẹ, không áp hiệu ứng camera giả.
 
 ### Điều 4: Luật Bản Sắc Kênh (Identity Lock via Deep Latent Embedding)
 > *Nhân vật trong video phải đồng nhất với thương hiệu của chủ kênh.*  
@@ -113,7 +114,7 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 ### Điều 6: Luật Cảnh Quan Kể Chuyện Tuyệt Đối Không Nền Đen (Zero-Black-Frame Storytelling)
 > *Truyện audio dài 30 - 60 phút là một tác phẩm điện ảnh thu nhỏ.*  
 - Mỗi 8 - 15 giây kịch bản phải tương ứng với một phân cảnh visual sống động: phong cảnh thiên nhiên, phòng trà đêm mưa, góc phố cổ, nội thất điện ảnh hoặc hoạt cảnh minh họa tạo bởi AI tạo sinh phân giải cao (Flux / Pollinations / Gemini).
-- 100% video truyện audio phải có 3 tầng âm thanh: Giọng đọc truyền cảm (VieNeu Neural TTS) + Âm thanh môi trường chân thực (tiếng mưa rơi, tiếng gió rít, tiếng bước chân) + Nhạc nền cinematic du dương lót dưới âm lượng -18dB.
+- 100% video truyện audio phải có 3 tầng âm thanh: Giọng đọc Gemini/Edge TTS + âm thanh môi trường chân thực + nhạc nền cinematic du dương lót dưới âm lượng -18dB.
 
 ### Điều 7: Luật Điểm Nhấn 3 Giây Đầu & Khung Hình Sạch 100% (The 3-Second Clean Hook Rule)
 > *3 giây đầu quyết định 90% thành công của một video ngắn — Giữ khung hình sạch sẽ 100% như camera điện thoại quay tự nhiên.*  
@@ -149,7 +150,8 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
      * `clip_03_fashion_lookbook_60s.mp4`: Phim thời trang lookbook 60 giây hoàn chỉnh (chuẩn TikTok Creator Rewards 1 phút+).
    - **Kích hoạt Face Swap**: Nếu người dùng chọn ảnh người mẫu của kênh (`ModelPhoto`), hệ thống kích hoạt InsightFace hoán đổi khuôn mặt vào người mẫu lookbook trong video chuyển động.
 2. **Chế độ Ảnh Sản Phẩm Listing (`AffiliateModePhoto`)**:
-   - Khi người dùng tải lên ảnh chụp sản phẩm thật: Hệ thống áp dụng hiệu ứng chuyển động Ken Burns cao cấp (tối đa 1.08x) và chuyển cảnh Flash Cut theo nhịp nhạc beat.
+   - Khi người dùng chọn dựng từ ảnh: Giữ khung hình ổn định, chỉ dissolve nhẹ giữa ảnh; không Ken Burns, zoom, rung hoặc flash cut.
+   - Chế độ mặc định tạo footage chuyển động bằng engine video. Nếu engine không tạo được clip thật, job dừng và báo lỗi thay vì giả chuyển động từ ảnh.
    - Tuyệt đối loại bỏ các khối viền đồ họa to dày che mất ảnh sản phẩm; chuyển toàn bộ thông tin khuyến mãi sang phần Text Caption chuẩn SEO và TikTok Bio Link.
 3. **Âm nhạc**:
    - Tự động lấy nhạc nền thương mại TikTok Shop thịnh hành (`internal/studio/assemble.go:FindTrendingMusic`).
@@ -171,17 +173,8 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
   └───────────────────────┘         └─────────────────────────┘
 ```
 
-#### Danh mục Vũ đạo Radar Triệu View tích hợp sẵn:
-- **TikTok Việt Nam**:
-  * Đào Lê Phương Hoa (`@hoadancer`): Vũ đạo sexy dance nhịp điệu cực mạnh, biểu cảm hút hồn.
-  * C.A.C Dance Crew (`@cacdance`): Vũ đạo đường phố hiện đại, biên đạo đồng đều, năng động.
-  * Hot Beat Bedroom Dance: Vũ đạo gợi cảm trong phòng, ánh sáng neon ấm áp.
-- **Douyin Trung Quốc (抖音)**:
-  * 抖音卡点热舞 (Douyin Beat Sync Hot Dance): Vũ đạo chuẩn từng nhịp trống, trang phục thời thượng, visual lung linh.
-  * 抖音女团元气齐舞 (Douyin K-Pop Girlgroup Dance): Vũ đạo nhóm nữ năng lượng cao, tươi vui.
-- **Công cụ Nhập Link Bất Kỳ (URL Importer)**:
-  * Endpoint `POST /viral/clips/import` nhận bất kỳ link TikTok VN (`tiktok.com/@...`) hoặc Douyin Trung Quốc (`v.douyin.com/...`).
-  * Tự động xóa logo/watermark, chuẩn hóa về 1080x1920 30fps và đưa ngay vào danh mục chọn lựa.
+#### Video tham chiếu
+Trang `/viral` nhận link TikTok/Douyin tùy chọn ngay trong form tạo job. App không cung cấp radar video realtime, danh sách clip tuyển sẵn hoặc endpoint nhập clip riêng.
 
 #### Nguyên Tắc Phản Chiếu Video Viral Gốc (Original Viral Mirroring Law):
 *Tùy vào video viral gốc như thế nào thì video được tạo bởi AI sẽ có hiệu ứng và phong cách tương tự 1:1:*
@@ -215,7 +208,7 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 2. **Kịch bản chân thật, đa cảm xúc**:
    - Cốt truyện cuốn hút, lôi cuốn có đủ các cung bậc kịch tính: cao trào, trầm lặng, sôi nổi, hào hứng, tức giận, buồn bã, lặng lẽ.
    - Gắn tag cảm xúc ngữ cảnh: `[trầm lặng]`, `[cao trào]`, `[sôi nổi]`, `[tức giận]`, `[buồn bã]`, `[vui vẻ]`, `[thì thầm]` để chỉ đạo giọng đọc AI.
-3. **Lồng tiếng Gemini TTS (Đã bỏ VieNeu-TTS)**:
+3. **Lồng tiếng Gemini TTS**:
    - Sử dụng độc quyền model **`gemini-3.8-flash-tts`** mới nhất của Google Gemini.
    - Trực tiếp chuyển hóa các thẻ cảm xúc thành ngữ điệu, nhịp thở và sắc thái biểu cảm chân thực.
 4. **Cấu trúc âm thanh 3 lớp (Triple-Layer Spatial Soundscape)**:
@@ -338,7 +331,7 @@ Trong đó:
 |---|---|---|---|---|
 | **Vũ Đạo Triệu View** | 100% Nhạc Viral TikTok/Douyin | Không (giữ nguyên tiếng hát gốc) | Không | Nhạc 100% (0 dB) |
 | **Affiliate Lookbook** | Commercial Beat Trending TikTok | Tùy chọn (chỉ khi có kịch bản) | Không | Nhạc 85% + Voice (ducking -8dB) |
-| **Truyện Audio 30-60p** | Cinematic Ambient Piano/Strings | VieNeu/Edge Neural truyền cảm | Mưa / Gió / Đêm phố cổ | Voice 0dB + Nhạc -18dB + Foley -14dB |
+| **Truyện Audio 30-60p** | Cinematic Ambient Piano/Strings | Gemini / Edge | Mưa / Gió / Đêm phố cổ | Voice 0dB + Nhạc -18dB + Foley -14dB |
 
 ---
 
@@ -378,7 +371,7 @@ Trong đó:
       "type": "object",
       "properties": {
         "music_source": { "type": "string", "enum": ["tiktok_vn_trending", "douyin_beat_hot", "cinematic_ambient", "custom"] },
-        "voiceover_engine": { "type": "string", "enum": ["vieneu_neural_vn", "edge_hoaimy_neural", "none"] },
+        "voiceover_engine": { "type": "string", "enum": ["gemini_tts", "edge_hoaimy_neural", "none"] },
         "enable_foley_ambience": { "type": "boolean", "default": false },
         "ducking_db": { "type": "number", "default": -8.0 }
       }
@@ -398,7 +391,7 @@ Mọi video sau khi render bắt buộc phải vượt qua bài kiểm tra chấ
 | **1. Tính Chân Thực & Con Người** | 30% | Người thật chuyển động tự nhiên (Lookbook / Vũ đạo), khuôn mặt đồng nhất 100%, không bị dị dạng. | Đánh rớt nếu dùng ảnh tĩnh dán chữ `AdCard`. |
 | **2. Hình Học & Khung Hình 9:16** | 25% | Đúng $1080 \times 1920$, tỷ lệ khung hình nguyên bản, không co kéo méo mặt, không viền đen lỗi. | Đánh rớt nếu pixel bị bóp méo. |
 | **3. Âm Nhạc & Nhịp Điệu Hồn Video** | 20% | Nhạc thịnh hành TikTok/Douyin, khớp nhịp beat drop, không bị rè hoặc ngắt quãng cụt lủn. | Trừ 2.0 sao nếu nhạc tắt ngúm hoặc tẻ nhạt. |
-| **4. Kỹ Thuật Dựng & Chuyển Cảnh** | 15% | Cắt nhịp CapCut mượt mà, chớp sáng trắng tinh tế, Ken Burns nhẹ nhàng $< 8\%$, không giật lắc nhức mắt. | Đánh rớt nếu dùng thuật toán rung lắc cơ học. |
+| **4. Kỹ Thuật Dựng & Chuyển Cảnh** | 15% | Footage ổn định, dissolve hoặc hard cut tự nhiên; không flash, zoom giả, flicker hay rung lắc. | Đánh rớt nếu có flash, zoompan, flicker hoặc rung cơ học. |
 | **5. Dòng Chảy & Giữ Chân Người Xem** | 10% | 3 giây đầu bắt mắt, 0 giây màn hình đen trong toàn bộ thời lượng video. | Đánh rớt nếu có khung hình đen chết. |
 
 ---

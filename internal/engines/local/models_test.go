@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -89,36 +88,5 @@ func TestRegistryDownloadMinSize(t *testing.T) {
 	err := reg.Download(context.Background(), "m.gguf", srv.URL+"/m.gguf", 1000, nil)
 	if err == nil || !strings.Contains(err.Error(), "need at least") {
 		t.Fatalf("err = %v, want min-size error", err)
-	}
-}
-
-func TestEnsureVieNeuRepoPresent(t *testing.T) {
-	dataDir := t.TempDir()
-	p := filepath.Join(dataDir, "third_party", "vieneu-tts", "apps")
-	if err := os.MkdirAll(p, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(p, "openai_speech.py"), []byte("#"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	reg := NewRegistry(dataDir)
-	if !reg.VieNeuPresent() {
-		t.Fatal("VieNeuPresent should be true")
-	}
-	// No network needed when already present.
-	if err := reg.EnsureVieNeuRepo(context.Background(), nil); err != nil {
-		t.Fatalf("EnsureVieNeuRepo: %v", err)
-	}
-}
-
-func TestDefaultModels(t *testing.T) {
-	if len(DefaultModels) == 0 {
-		t.Fatal("empty catalog")
-	}
-	if !strings.HasSuffix(DefaultModels[0].Name, ".gguf") {
-		t.Fatalf("model = %+v", DefaultModels[0])
-	}
-	if !strings.HasPrefix(DefaultModels[0].URL, "https://huggingface.co/") {
-		t.Fatalf("url = %q", DefaultModels[0].URL)
 	}
 }

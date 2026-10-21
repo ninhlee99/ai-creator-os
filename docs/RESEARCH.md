@@ -90,19 +90,9 @@ tạp". Đường thay thế đã chọn trong app: ADB quét Product Marketplac
 Android của Ninh; đăng TikTok dạng draft. Mục này giữ lại chỉ để sau này khỏi
 nghiên cứu lại: nếu đổi ý, chi phí thật là thời gian duyệt, không phải tiền.
 
-## 5. TTS tiếng Việt + lựa chọn giọng đọc (10/2026)
+## 5. TTS tiếng Việt
 
-1. Thứ hạng đề xuất: **Gemini TTS** (cảm xúc tốt nhất, style prompt được) →
-   **VieNeu-TTS v3 local** (tiếng Việt native, emotion cues `[cười]`,
-   `[thở dài]`, offline, không tốn quota) → Edge TTS (dự phòng cuối, endpoint
-   không chính thức có thể bị chặn). Đây chính là chain app đang dùng.
-   **[đánh giá từ tài liệu + repo upstream]**
-2. VieNeu-TTS v3: RTF fp32 ~0.55–0.61, int8 ~0.35 (đo trên desktop 6 nhân,
-   **không phải M1 Pro**); streaming cho audio đầu sau ~140–400ms. Model
-   334MB. Số đo trên M1 Pro của Ninh **chưa có** — việc benchmark đang nợ
-   (xem DEVELOPER.md §9). **[upstream]**
-3. Piper vi_VN: robotic, chỉ nên làm fallback. FPT.AI/Vbee: free tier/quota
-   không công bố đủ để dựa vào vận hành. **[chưa verify quota]**
+App hiện dùng Gemini TTS với Edge làm phương án dự phòng. Các so sánh model local cũ đã bỏ khỏi hướng dẫn vận hành.
 
 ## 6. Avatar realtime — kết luận cuối cùng (2 vòng research 2026-10-02)
 

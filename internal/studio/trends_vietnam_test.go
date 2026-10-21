@@ -57,7 +57,7 @@ func TestVietnameseSoundFilter(t *testing.T) {
 	}
 }
 
-func TestParseKworbVNFallbackAndReRank(t *testing.T) {
+func TestParseKworbVNFiltersAndRanks(t *testing.T) {
 	// Mixed HTML with Thai and Chinese songs mixed with Vietnamese
 	html := `<table>
 <tr><td>1</td><td>=</td><td class="mp text"><div>FLI:P - มองนานๆ</div></td></tr>
@@ -78,13 +78,13 @@ func TestParseKworbVNFallbackAndReRank(t *testing.T) {
 		t.Errorf("expected sound #2 Vũ. rank 2, got %+v", sounds[1])
 	}
 
-	enriched := enrichVietnameseSounds(sounds)
-	if len(enriched) < 15 {
-		t.Fatalf("expected at least 15 songs with enrichment, got %d", len(enriched))
+	ranked := dedupeVietnameseSounds(sounds)
+	if len(ranked) != 2 {
+		t.Fatalf("expected only 2 songs returned by source, got %d", len(ranked))
 	}
 
-	// Verify all returned sounds are strictly Vietnamese
-	for i, s := range enriched {
+	// Verify rank order and that no sample rows were fabricated.
+	for i, s := range ranked {
 		if s.Rank != i+1 {
 			t.Errorf("expected sound %d to have rank %d, got %d", i, i+1, s.Rank)
 		}

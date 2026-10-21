@@ -5,7 +5,7 @@ import (
 	"runtime"
 )
 
-// runtimeTool là một công cụ ngoài mà app phụ thuộc (ffmpeg, runtime local).
+// runtimeTool là một công cụ ngoài mà app phụ thuộc.
 type runtimeTool struct {
 	Name  string // tên hiển thị
 	Found bool   // có tìm thấy trong PATH không
@@ -41,14 +41,5 @@ func probeRuntimeTools() []runtimeTool {
 			"brew install ffmpeg",
 			"winget install Gyan.FFmpeg",
 			"sudo apt install ffmpeg")),
-		probeBin("llama-server (LLM local)", "llama-server", "Cần cho LLM chạy trên máy. "+installHint(
-			"brew install llama.cpp",
-			"tải bản build tại github.com/ggerganov/llama.cpp/releases",
-			"xem hướng dẫn build tại github.com/ggerganov/llama.cpp")),
-		probeBin("uv (giọng đọc VieNeu)", "uv", "Cần cho giọng đọc VieNeu local. "+installHint(
-			"brew install uv",
-			"winget install astral-sh.uv",
-			"curl -LsSf astral.sh/uv/install.sh | sh")),
-		probeBin("Docker (VieNeu dự phòng)", "docker", "Không bắt buộc — VieNeu ưu tiên chạy bằng uv."),
 	}
 }

@@ -157,7 +157,7 @@ func (s *Server) handleWebAIAccountAdd(w http.ResponseWriter, r *http.Request) {
 		cookie = sessionKey
 		for _, part := range strings.Split(cookie, ";") {
 			part = strings.TrimSpace(part)
-			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "ps_l=", "sso="} {
+			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "hatch_sess=", "ps_l=", "sso="} {
 				if strings.HasPrefix(part, prefix) {
 					sessionKey = strings.TrimPrefix(part, prefix)
 					break
@@ -167,7 +167,7 @@ func (s *Server) handleWebAIAccountAdd(w http.ResponseWriter, r *http.Request) {
 	} else if cookie != "" && sessionKey == "" {
 		for _, part := range strings.Split(cookie, ";") {
 			part = strings.TrimSpace(part)
-			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "ps_l=", "sso="} {
+			for _, prefix := range []string{"__Secure-1PSID=", "__Secure-3PSID=", "SID=", "__session=", "sessionKey=", "hatch_sess=", "ps_l=", "sso="} {
 				if strings.HasPrefix(part, prefix) {
 					sessionKey = strings.TrimPrefix(part, prefix)
 					break
@@ -287,6 +287,171 @@ func (s *Server) handleWebAIAccountResetCooldown(w http.ResponseWriter, r *http.
 	redirectBack("ok", "Đã đặt lại trạng thái — tài khoản đã sẵn sàng hoạt động trở lại!")
 }
 
+type accountProbeOutcome string
+
+const (
+	accountProbeAlive   accountProbeOutcome = "alive"
+	accountProbeExpired accountProbeOutcome = "expired"
+	accountProbeUnknown accountProbeOutcome = "unknown"
+)
+
+func probeAccountSessionOutcome(ctx context.Context, acc *webai.Account) (accountProbeOutcome, string) {
+	if acc == nil {
+		return accountProbeExpired, "Tài khoản không tồn tại"
+	}
+	switch strings.ToLower(acc.Platform) {
+	case "museai", "muse_ai", "muse":
+		return probeMuseAccountSession(ctx, acc)
+	default:
+		alive, message := probeAccountSession(ctx, acc)
+		if alive {
+			return accountProbeAlive, message
+		}
+		return accountProbeExpired, message
+	}
+}
+
+func isMuseAccountEmail(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if !strings.Contains(value, "@") {
+		return false
+	}
+	for _, marker := range []string{"example.com", "w3.org", "schema.org", "sentry", "mixpanel", "cloudflare"} {
+		if strings.Contains(value, marker) {
+			return false
+		}
+	}
+	return true
+}
+
+func probeMuseAccountSession(ctx context.Context, acc *webai.Account) (accountProbeOutcome, string) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	token := strings.TrimSpace(acc.SessionKey)
+	if token == "" {
+		return accountProbeUnknown, "Chưa có cookie phiên Muse để xác minh"
+	}
+	if token == "0" || token == "1" {
+		return accountProbeExpired, "Phiên Muse AI chưa hoàn tất đăng nhập 2FA (token không hợp lệ)"
+	}
+
+	cookieHeader := strings.TrimSpace(acc.Cookie)
+	if cookieHeader == "" {
+		cookieHeader = "hatch_sess=" + token
+	} else {
+		hasTokenPair := false
+		hatchValue := ""
+		for _, part := range strings.Split(cookieHeader, ";") {
+			name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
+			if !ok {
+				continue
+			}
+			if value == token {
+				hasTokenPair = true
+			}
+			if name == "hatch_sess" {
+				hatchValue = value
+			}
+		}
+		if hatchValue != "" && hatchValue != token {
+			return accountProbeUnknown, "SessionKey không khớp cookie hatch_sess đã lưu; không gửi phiên sai đi xác minh"
+		}
+		if hatchValue == "" && !hasTokenPair {
+			cookieHeader = "hatch_sess=" + token + "; " + cookieHeader
+		}
+	}
+
+	client := &http.Client{
+		Timeout: 8 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://muse.ai/api/account", nil)
+	if err != nil {
+		return accountProbeUnknown, "Không tạo được yêu cầu xác minh Muse"
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+	req.Header.Set("Cookie", cookieHeader)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Referer", "https://muse.ai/")
+	req.Header.Set("Origin", "https://muse.ai")
+	resp, err := client.Do(req)
+	if err != nil {
+		return accountProbeUnknown, "Muse không cho xác minh phiên qua HTTP; cookie vẫn được lưu nhưng trạng thái sống chưa xác nhận"
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusUnauthorized:
+		return accountProbeExpired, "Muse từ chối cookie phiên (HTTP 401)"
+	case http.StatusOK:
+		contentType := strings.ToLower(resp.Header.Get("Content-Type"))
+		if strings.Contains(contentType, "text/html") {
+			// Muse accepts authenticated sessions at /api/account but currently
+			// responds with its app HTML instead of identity JSON. A valid saved
+			// cookie gets HTTP 200; missing/invalid cookies get HTTP 401.
+			return accountProbeAlive, "Muse chấp nhận cookie phiên (HTTP 200; endpoint trả HTML, không có JSON danh tính)"
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil || !museAccountResponseAuthenticated(payload) {
+			return accountProbeUnknown, "Muse trả HTTP 200 nhưng dữ liệu không có danh tính JSON; phiên chưa được xác minh"
+		}
+		return accountProbeAlive, "Muse xác nhận tài khoản bằng phản hồi JSON có danh tính"
+	default:
+		return accountProbeUnknown, fmt.Sprintf("Muse trả HTTP %d; trạng thái cookie chưa xác minh", resp.StatusCode)
+	}
+}
+
+func museAccountResponseAuthenticated(payload map[string]any) bool {
+	if payload == nil {
+		return false
+	}
+	for _, key := range []string{"authenticated", "is_authenticated", "isAuthenticated"} {
+		if value, ok := payload[key].(bool); ok && value {
+			return true
+		}
+	}
+	for _, key := range []string{"email", "user_id", "userId", "account_id"} {
+		if value, ok := payload[key].(string); ok && isMuseAccountEmail(value) {
+			return true
+		}
+		if value, ok := payload[key]; ok && value != nil {
+			if _, isString := value.(string); !isString {
+				return true
+			}
+		}
+	}
+	objects := make([]map[string]any, 0, 7)
+	for _, key := range []string{"user", "account", "profile", "data"} {
+		if nested, ok := payload[key].(map[string]any); ok {
+			objects = append(objects, nested)
+			for _, nestedKey := range []string{"user", "account", "profile"} {
+				if child, ok := nested[nestedKey].(map[string]any); ok {
+					objects = append(objects, child)
+				}
+			}
+		}
+	}
+	for _, object := range objects {
+		for _, key := range []string{"email", "user_id", "userId", "id", "_id"} {
+			value, ok := object[key]
+			if !ok || value == nil {
+				continue
+			}
+			if text, ok := value.(string); ok {
+				if isMuseAccountEmail(text) {
+					return true
+				}
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
 // probeAccountSession sends a live HTTP probe to verify if the account session is alive.
 func probeAccountSession(ctx context.Context, acc *webai.Account) (bool, string) {
 	if acc == nil {
@@ -297,40 +462,8 @@ func probeAccountSession(ctx context.Context, acc *webai.Account) (bool, string)
 
 	switch platform {
 	case "museai", "muse_ai", "muse":
-		token := acc.SessionKey
-		cookieHdr := acc.Cookie
-		if token == "0" || token == "1" {
-			return false, "Phiên Muse AI chưa hoàn tất đăng nhập 2FA (token không hợp lệ)"
-		}
-		if cookieHdr == "" && token != "" {
-			cookieHdr = "ps_l=" + token
-		} else if cookieHdr != "" && token != "" && !strings.Contains(cookieHdr, token) {
-			cookieHdr = "ps_l=" + token + "; " + cookieHdr
-		}
-		if cookieHdr == "" {
-			return false, "Chưa có session token Muse AI"
-		}
-		req, err := http.NewRequestWithContext(ctx, "GET", "https://muse.ai/api/account", nil)
-		if err == nil {
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-			req.Header.Set("Cookie", cookieHdr)
-			req.Header.Set("Accept", "application/json, text/plain, */*")
-			req.Header.Set("Referer", "https://muse.ai/")
-			req.Header.Set("Origin", "https://muse.ai")
-			if resp, err := client.Do(req); err == nil {
-				defer resp.Body.Close()
-				if resp.StatusCode == 200 || resp.StatusCode == 304 {
-					return true, "Phiên Muse AI hoạt động tốt (HTTP 200)"
-				}
-				if resp.StatusCode == 401 {
-					return false, "Phiên Muse AI hết hạn (HTTP 401 Unauthorized)"
-				}
-				if resp.StatusCode == 403 {
-					return true, "Phiên Muse AI hợp lệ (Đang hoạt động trên trình duyệt)"
-				}
-			}
-		}
-		return true, "Phiên Muse AI hợp lệ (Đã lưu token phiên)"
+		outcome, message := probeMuseAccountSession(ctx, acc)
+		return outcome == accountProbeAlive, message
 
 	case "chatgpt":
 		cookie := acc.Cookie
@@ -526,15 +659,17 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 			s.writeJSON(w, map[string]any{"ok": false, "error": "Không tìm thấy tài khoản"})
 			return
 		}
-		alive, msg := probeAccountSession(r.Context(), acc)
-		if alive {
+		outcome, msg := probeAccountSessionOutcome(r.Context(), acc)
+		if outcome == accountProbeAlive {
 			acc.Status = "ok"
-		} else {
+			_ = s.WebAI.UpdateAccount(*acc)
+		} else if outcome == accountProbeExpired {
 			acc.Status = "expired"
+			_ = s.WebAI.UpdateAccount(*acc)
 		}
-		_ = s.WebAI.UpdateAccount(*acc)
 		s.writeJSON(w, map[string]any{
-			"ok":      alive,
+			"ok":      outcome == accountProbeAlive,
+			"outcome": outcome,
 			"status":  acc.Status,
 			"message": msg,
 			"id":      acc.ID,
@@ -566,6 +701,7 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 		Status   string `json:"status"`
 		Message  string `json:"message"`
 		Alive    bool   `json:"alive"`
+		Outcome  string `json:"outcome"`
 	}
 
 	var results []testResult
@@ -576,13 +712,14 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 		wg.Add(1)
 		go func(acc webai.Account) {
 			defer wg.Done()
-			alive, msg := probeAccountSession(r.Context(), &acc)
-			if alive {
+			outcome, msg := probeAccountSessionOutcome(r.Context(), &acc)
+			if outcome == accountProbeAlive {
 				acc.Status = "ok"
-			} else {
+				_ = s.WebAI.UpdateAccount(acc)
+			} else if outcome == accountProbeExpired {
 				acc.Status = "expired"
+				_ = s.WebAI.UpdateAccount(acc)
 			}
-			_ = s.WebAI.UpdateAccount(acc)
 
 			mu.Lock()
 			results = append(results, testResult{
@@ -591,7 +728,8 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 				Platform: acc.Platform,
 				Status:   acc.Status,
 				Message:  msg,
-				Alive:    alive,
+				Alive:    outcome == accountProbeAlive,
+				Outcome:  string(outcome),
 			})
 			mu.Unlock()
 		}(a)
@@ -599,9 +737,15 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 
 	wg.Wait()
 	aliveCount := 0
+	expiredCount := 0
+	unknownCount := 0
 	for _, res := range results {
 		if res.Alive {
 			aliveCount++
+		} else if res.Outcome == string(accountProbeExpired) {
+			expiredCount++
+		} else {
+			unknownCount++
 		}
 	}
 
@@ -610,7 +754,7 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 		"tested_count": len(results),
 		"alive_count":  aliveCount,
 		"results":      results,
-		"message":      fmt.Sprintf("Đã kiểm tra %d tài khoản: %d còn sống ✓, %d hết hạn ⚠", len(results), aliveCount, len(results)-aliveCount),
+		"message":      fmt.Sprintf("Đã kiểm tra %d tài khoản: %d còn sống ✓, %d hết hạn ⚠, %d chưa xác minh", len(results), aliveCount, expiredCount, unknownCount),
 	})
 }
 
@@ -646,7 +790,6 @@ func (s *Server) handleWebAIDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 	redirectBack("ok", "Đã ngắt kết nối "+platform)
 }
-
 
 // handleWebAIPromptGenerate returns synthesized prompts for Claude, ChatGPT, Gemini, and Muse AI.
 func (s *Server) handleWebAIPromptGenerate(w http.ResponseWriter, r *http.Request) {
@@ -688,8 +831,8 @@ func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 		webai.PlatformChatGPT:    "ChatGPT (GPT-6 Luna)",
 		webai.PlatformGemini:     "Gemini 3.8 Flash",
 		webai.PlatformGrok:       "Grok 3 (xAI)",
-		webai.PlatformMuseAI:     "Muse AI",
-		webai.PlatformGoogleFlow: "Google Flow (1.000 Credits Free)",
+		webai.PlatformMuseAI:     "Muse AI (manual video)",
+		webai.PlatformGoogleFlow: "Google Flow (manual video)",
 	}
 	icons := map[string]string{
 		webai.PlatformClaude:     "🟣",
@@ -1186,7 +1329,8 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 	}
 
 	mgr := webai.GetLoginManager()
-	session, err := mgr.StartSession(platform, 5*time.Minute)
+	const loginTimeout = 10 * time.Minute
+	session, err := mgr.StartSession(platform, loginTimeout)
 	if err != nil {
 		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
 		return
@@ -1194,52 +1338,66 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 
 	// Launch CDP capture in background goroutine
 	go func(sess *webai.ActiveLoginSession, tgt webai.WebLoginTarget) {
-		auth, captureErr := webai.RunCaptureViaCDP(sess.Context(), tgt, 5*time.Minute, func(status, msg string) {
-			sess.Status = status
-			sess.Message = msg
+		auth, captureErr := webai.RunCaptureViaCDP(sess.Context(), tgt, loginTimeout, func(status, msg string) {
+			mgr.UpdateSession(sess.ID, status, msg, "", "")
 		})
 
 		if captureErr != nil {
-			if sess.Status != "canceled" && !errors.Is(captureErr, context.Canceled) {
-				sess.Status = "failed"
-				sess.Error = captureErr.Error()
-				sess.Message = "Đăng nhập thất bại: " + captureErr.Error()
+			current, _ := mgr.GetSession(sess.ID)
+			if (current == nil || current.Status != "canceled") && !errors.Is(captureErr, context.Canceled) {
+				mgr.UpdateSession(sess.ID, "failed", "Đăng nhập thất bại: "+captureErr.Error(), "", captureErr.Error())
 			} else {
-				sess.Status = "canceled"
-				sess.Message = "Đã hủy phiên đăng nhập."
+				mgr.UpdateSession(sess.ID, "canceled", "Đã hủy phiên đăng nhập.", "", "")
 			}
 			return
 		}
 
 		if auth != nil && auth.SessionValue != "" {
+			if tgt.Platform == webai.PlatformMuseAI && strings.TrimSpace(auth.CookieHeader) == "" {
+				msg := "Muse đã đăng nhập nhưng trình duyệt không trả cookie phiên để lưu. Hãy tải lại Muse rồi thử lại."
+				mgr.UpdateSession(sess.ID, "failed", msg, "", msg)
+				return
+			}
 			email := strings.TrimSpace(auth.Email)
-			if email == "" {
+			if email == "" && tgt.Platform != webai.PlatformMuseAI {
 				email = fmt.Sprintf("%s_user_%d@web.ai", tgt.Platform, time.Now().Unix()%100000)
 			}
-			accountName := fmt.Sprintf("%s (%s)", tgt.Name, email)
+			accountName := tgt.Name
+			if email != "" {
+				accountName = fmt.Sprintf("%s (%s)", tgt.Name, email)
+			} else if tgt.Platform == webai.PlatformMuseAI {
+				accountName = fmt.Sprintf("%s (phiên %s)", tgt.Name, time.Now().Format("02/01 15:04:05"))
+			}
 			id, err := s.WebAI.UpsertAccountSession(tgt.Platform, auth.SessionValue, auth.CookieHeader, accountName, email, "free")
 			if err != nil {
-				sess.Status = "failed"
-				sess.Error = "Lưu tài khoản thất bại: " + err.Error()
-				sess.Message = sess.Error
+				msg := "Lưu tài khoản thất bại: " + err.Error()
+				mgr.UpdateSession(sess.ID, "failed", msg, "", msg)
+				return
+			}
+			saved, verifyErr := s.WebAI.GetAccount(id)
+			if verifyErr != nil || saved == nil || saved.SessionKey != auth.SessionValue || (auth.CookieHeader != "" && saved.Cookie != auth.CookieHeader) {
+				msg := "Phiên đã gửi vào kho nhưng xác nhận đọc lại không khớp; chưa báo thành công."
+				if verifyErr != nil {
+					msg += " " + verifyErr.Error()
+				}
+				mgr.UpdateSession(sess.ID, "failed", msg, "", msg)
 				return
 			}
 
-			sess.Status = "success"
-			sess.Email = email
-			sess.Message = fmt.Sprintf("✓ Đã kết nối thành công tài khoản %s!", email)
+			mgr.UpdateSession(sess.ID, "success", fmt.Sprintf("✓ Đã lưu và xác nhận phiên tài khoản %s!", email), email, "")
 			if s.Ledger != nil {
 				_ = s.Ledger.Decide("web_ai", "cdp_login_success", nil, fmt.Sprintf("Đăng nhập CDP thành công %s id=%s email=%s", tgt.Platform, id, email), nil)
 			}
 		}
 	}(session, target)
 
+	initial, _ := mgr.GetSession(session.ID)
 	s.writeJSON(w, map[string]any{
 		"ok":         true,
 		"session_id": session.ID,
 		"platform":   platform,
-		"status":     session.Status,
-		"message":    session.Message,
+		"status":     initial.Status,
+		"message":    initial.Message,
 	})
 }
 
@@ -1290,8 +1448,6 @@ func (s *Server) handleWebAIBrowserLoginCancel(w http.ResponseWriter, r *http.Re
 	}
 	s.writeJSON(w, map[string]any{"ok": true, "message": "Đã hủy"})
 }
-
-
 
 // handleWebAISyncGoogleAccount copies/syncs credentials from an existing Gemini Google account to Google Flow.
 func (s *Server) handleWebAISyncGoogleAccount(w http.ResponseWriter, r *http.Request) {
@@ -1348,4 +1504,3 @@ func (s *Server) handleWebAISyncGoogleAccount(w http.ResponseWriter, r *http.Req
 func logErr(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)
 }
-

@@ -14,7 +14,6 @@ package web
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -27,15 +26,6 @@ type TickBeat struct {
 	LastOK    time.Time `json:"last_ok"`
 	LastErr   string    `json:"last_err"`
 	Runs      int64     `json:"runs"`
-}
-
-// SidecarBeat là sức khỏe một tiến trình phụ local (Đợt AK).
-type SidecarBeat struct {
-	State       string    `json:"state"` // stopped | running | error
-	Restarts    int       `json:"restarts"`
-	HealthErr   string    `json:"health_err,omitempty"`
-	HealthFails int       `json:"health_fails"`
-	CheckedAt   time.Time `json:"checked_at"`
 }
 
 // handleHealthz: GET /healthz → JSON trạng thái sống của app.
@@ -60,10 +50,6 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 			stale = st
 		}
 	}
-	sidecars := map[string]SidecarBeat{}
-	if s.Sidecars != nil {
-		sidecars = s.Sidecars()
-	}
 	var uptime int64
 	if !s.StartedAt.IsZero() {
 		uptime = int64(time.Since(s.StartedAt).Seconds())
@@ -78,7 +64,6 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		"quota_circuit_open":  qOpen,
 		"quota_circuit_until": qUntil,
 		"stale_ticks":         stale,
-		"sidecars":            sidecars,
 		// needs_restart: app còn trả lời nhưng có tác vụ nền kẹt — chỉ
 		// khởi động lại mới gỡ được. Watchdog ngoài dựa vào cờ này.
 		"needs_restart": len(stale) > 0,
@@ -137,17 +122,17 @@ func (s *Server) tickBeatViews() []TickBeatView {
 // tickLabels dịch tên kỹ thuật của tick sang tiếng người (Đợt AK): Ninh đọc
 // "Đăng video reup" thay vì `reup_post`.
 var tickLabels = map[string]string{
-	"autopilot":      "Tự động đăng (autopilot)",
-	"growth":         "Phát triển kênh",
-	"accesstrade":    "Affiliate Accesstrade",
-	"viral":          "Video Viral: sản xuất video",
-	"story":          "Kể chuyện: dựng video",
-	"story_public":   "Kể chuyện: công khai video",
-	"story_retry":    "Kể chuyện: thử lại video lỗi",
-	"selfheal":       "Tự hồi phục",
-	"backup":         "Sao lưu tự động",
-	"notify":         "Gửi thông báo",
-	"draft_digest":   "Nhắc bản nháp chờ đăng",
+	"autopilot":    "Tự động đăng (autopilot)",
+	"growth":       "Phát triển kênh",
+	"accesstrade":  "Affiliate Accesstrade",
+	"viral":        "Video Viral: sản xuất video",
+	"story":        "Kể chuyện: dựng video",
+	"story_public": "Kể chuyện: công khai video",
+	"story_retry":  "Kể chuyện: thử lại video lỗi",
+	"selfheal":     "Tự hồi phục",
+	"backup":       "Sao lưu tự động",
+	"notify":       "Gửi thông báo",
+	"draft_digest": "Nhắc bản nháp chờ đăng",
 }
 
 func tickLabel(name string) string {
@@ -155,47 +140,6 @@ func tickLabel(name string) string {
 		return l
 	}
 	return name
-}
-
-// SidecarView là một dòng tiến trình phụ cho trang Cài đặt · Hệ thống.
-type SidecarView struct {
-	Label    string
-	State    string // ok | warn | err | off
-	Note     string
-	Restarts int
-}
-
-var sidecarLabels = map[string]string{
-	"llama-server": "LLM local (llama-server)",
-	"vieneu":       "Giọng đọc VieNeu",
-}
-
-// sidecarViews dịch SidecarBeat sang dòng dễ đọc: đang chạy + kiểm tra gần
-// nhất ổn → "ổn"; kiểm tra lỗi → "chập chờn" kèm lỗi; dừng/lỗi → nêu rõ.
-func (s *Server) sidecarViews() []SidecarView {
-	if s.Sidecars == nil {
-		return nil
-	}
-	var out []SidecarView
-	for name, b := range s.Sidecars() {
-		v := SidecarView{Label: sidecarLabels[name], Restarts: b.Restarts}
-		if v.Label == "" {
-			v.Label = name
-		}
-		switch {
-		case b.State == "error":
-			v.State, v.Note = "err", "đã dừng sau nhiều lần lỗi — khởi động lại app"
-		case b.State != "running":
-			v.State, v.Note = "off", "chưa chạy"
-		case b.HealthErr != "":
-			v.State, v.Note = "warn", fmt.Sprintf("kiểm tra lỗi %d lần liên tiếp: %s", b.HealthFails, b.HealthErr)
-		default:
-			v.State, v.Note = "ok", "đang chạy"
-		}
-		out = append(out, v)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Label < out[j].Label })
-	return out
 }
 
 // quotaCircuitView trả về trạng thái ngắt mạch quota cho template.

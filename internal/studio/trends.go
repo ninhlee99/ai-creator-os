@@ -127,7 +127,7 @@ func fetchKworbVN(ctx context.Context) ([]TrendingSound, error) {
 		return nil, err
 	}
 	sounds := parseKworbVN(string(html))
-	sounds = enrichVietnameseSounds(sounds)
+	sounds = dedupeVietnameseSounds(sounds)
 	if len(sounds) == 0 {
 		return nil, fmt.Errorf("nguồn không trả về bài hát hiện tại")
 	}
@@ -176,9 +176,9 @@ func parseKworbVN(html string) []TrendingSound {
 	return out
 }
 
-// enrichVietnameseSounds ensures that even if external scraping is limited,
-// the chart always has at least 15-20 top trending Vietnamese TikTok sounds.
-func enrichVietnameseSounds(sounds []TrendingSound) []TrendingSound {
+// dedupeVietnameseSounds removes duplicate and empty chart rows, then ranks
+// only songs returned by the live source. It never fills gaps with samples.
+func dedupeVietnameseSounds(sounds []TrendingSound) []TrendingSound {
 	seen := make(map[string]bool)
 	out := make([]TrendingSound, 0, len(sounds))
 	for _, sound := range sounds {

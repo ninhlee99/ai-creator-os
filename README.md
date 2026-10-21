@@ -12,10 +12,10 @@
 | Trụ | Trạng thái code |
 |---|---|
 | **1. Affiliate qua Accesstrade** | ✅ Thời lượng tối thiểu **30s – 60s** + Lookbook người mẫu chuyển động thật 9:16 + Ghép mặt nhân vật InsightFace + Cắt nhịp CapCut Pro đồng bộ nhạc TikTok trending + Bio Link Storefront di động (`/bio`). Đảm bảo nhân vật và sản phẩm nhất quán theo phong cách điện ảnh chân thực |
-| **2. Video Vũ Đạo Viral & Trendjack** | ✅ Thời lượng từ **60s trở lên** (chuẩn bật kiếm tiền TikTok Creativity Program) + Khởi động tức thì tại 0.0s (triệt tiêu 100% màn hình đen 5s đầu) + Visual nhân vật "Thần tiên tỉ tỉ" xinh đẹp thuần khiết + Radar vũ đạo triệu view từ **TikTok Việt Nam & Douyin Trung Quốc (抖音)** |
-| **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Thời lượng **30 – 60 Phút** + Xóa bỏ hoàn toàn màn hình đen; mỗi 8-15s là một visual canvas chuyển động + Kịch bản đa cảm xúc (cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ) + Độc quyền **Google Gemini TTS (`gemini-3.8-flash-tts`)** (đã loại bỏ hoàn toàn VieNeu-TTS) |
+| **2. Tạo video dọc** | ✅ Nhập chủ đề, chọn ảnh tham chiếu, tùy chọn link video làm tham chiếu chuyển động; theo dõi job tại `/studio/jobs`. Không có radar xu hướng video realtime. |
+| **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Thời lượng **30 – 60 Phút** + mỗi 8-15s là một visual canvas chuyển động + Kịch bản đa cảm xúc + Google Gemini TTS |
 
-Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **Video Viral Vũ Đạo TikTok VN & Douyin CN** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **tạo video dọc từ chủ đề và link tham chiếu tùy chọn** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 ---
 
@@ -35,7 +35,7 @@ Sidebar hệ thống phân nhóm trực quan thành 3 khối nghiệp vụ chín
 
 ### 🔗 Các phân hệ chuyên sâu & Đường dẫn trực tiếp:
 - **Cửa Hàng Bio Link Kênh (Public Storefront)**: `/bio` hoặc `/bio/{channel}` — Trang web landing page mobile-first tối ưu cho TikTok/Reels/Shorts, tự động đồng bộ từ kệ hàng affiliate, hỗ trợ lọc danh mục tức thì, tìm kiếm nhanh và chuyển hướng tracking link Accesstrade.
-- **Video Viral AI 100% Gốc**: `/viral` — Khởi tạo 1-chạm video ngắn 9:16, hook tâm lý học, trình phát video modal HTML5 tích hợp trực tiếp trên web.
+- **Tạo video dọc**: `/viral` — Nhập chủ đề, chọn ảnh nhân vật và tùy chọn video tham chiếu; xem job tại `/studio/jobs`.
 - **Kể chuyện YouTube**: `/stories` — Hàng đợi kịch bản, ảnh minh họa 16:9, TTS lồng tiếng, tự động đăng private.
 - **Phát triển kênh**: `/growth` — Kế hoạch nội dung 30 ngày, canary testing 7 ngày, quy tắc kill / double-down.
 - **Đa nền tảng**: `/publishers` — Quản lý token OAuth TikTok, YouTube, Facebook Page & Instagram Reels.
@@ -52,8 +52,8 @@ go build -o aicos ./cmd/aicos
 ```
 
 100% Go trong 1 binary (~21–22MB, không Python/venv/pip — "ước tính chưa kiểm
-chứng" cho từng bản build cụ thể). SQLite WAL. Model local (VieNeu-TTS v3,
-llama-server) tải bằng một nút trong Cài đặt · Model local.
+chứng" cho từng bản build cụ thể). SQLite WAL. FFmpeg là công cụ ngoài cần
+cài để dựng video; LLM dùng Gemini, TTS dùng Gemini rồi Edge.
 
 ```bash
 go test ./...                  # runtime chính (không gồm vùng parked)
@@ -70,7 +70,7 @@ vào app.
 
 | Phần | Trạng thái |
 |---|---|
-| Sidebar 10 mục, 6 tab Cài đặt, không link chết | ✅ Code chạy thật |
+| Sidebar: Tổng quan, Studio Jobs, Sản phẩm, Kênh, Cài đặt | ✅ Code chạy thật |
 | Đội ngũ (`/team`): sức khỏe 3 pipeline từ dữ liệu thật | ✅ Đợt H2 |
 | Studio AI — video affiliate + trends | ✅ Code chạy thật |
 | Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |

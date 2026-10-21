@@ -194,10 +194,10 @@ func (a *VisualAnchor) EnrichScenePrompt(actionDescription, cameraMotion string,
 		actionDescription, a.Environment, a.Lighting, cameraMotion, a.FilmStock)
 }
 
-// FlowPrompt formats a prompt optimized specifically for Google Flow (Veo SD 480p) text-to-video / image-to-video engine.
+// FlowPrompt formats a prompt for manual text-to-video or image-to-video use in Google Flow.
 func (a *VisualAnchor) FlowPrompt(actionDescription, cameraMotion string) string {
 	if a == nil {
-		return actionDescription + ", photorealistic cinematic, 480p smooth motion"
+		return actionDescription + ", photorealistic cinematic, smooth motion"
 	}
 	if cameraMotion == "" {
 		cameraMotion = "smooth slow cinematic push-in"

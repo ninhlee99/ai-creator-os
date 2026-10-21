@@ -77,7 +77,7 @@ func SupportedWebLoginTargets() map[string]WebLoginTarget {
 			Name:        "Muse AI",
 			StartURL:    "https://muse.ai/signin",
 			CookieHost:  "muse.ai",
-			CookieName:  "ps_l",
+			CookieName:  "hatch_sess",
 			Profile:     "muse",
 			LandingHost: "muse.ai",
 		},
@@ -176,7 +176,33 @@ func (m *BrowserLoginManager) GetSession(id string) (*ActiveLoginSession, bool) 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.sessions[id]
-	return s, ok
+	if !ok {
+		return nil, false
+	}
+	snapshot := *s
+	return &snapshot, true
+}
+
+// UpdateSession changes public session state while holding the manager lock.
+func (m *BrowserLoginManager) UpdateSession(id, status, message, email, errorText string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[id]
+	if !ok || s.Status == "canceled" || s.Status == "success" {
+		return
+	}
+	if status != "" {
+		s.Status = status
+	}
+	if message != "" {
+		s.Message = message
+	}
+	if email != "" {
+		s.Email = email
+	}
+	if errorText != "" {
+		s.Error = errorText
+	}
 }
 
 // CancelSession terminates an active login attempt.
@@ -308,36 +334,51 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 
 			// Check session cookies directly via CDP
 			cookies, gerr := cdpListCookies(wsURL)
-			hasAuthCookie := false
-			var sessionCookieVal string
+			hasMuseSessionCookie := false
+			hasHatchSessionCookie := false
+			var sessionCookieVal, sessionCookieName string
+			museSessionCookieRank := 0
 			if gerr == nil && len(cookies) > 0 {
 				for _, c := range cookies {
 					d := strings.TrimPrefix(c.Domain, ".")
-					if (strings.Contains(d, "muse.ai") || strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) {
+					isMuseCookie := d == "muse.ai" || strings.HasSuffix(d, ".muse.ai")
+					if isMuseCookie {
 						// STRICT: ps_l=0 and ps_n=0 are placeholders for unauthenticated / challenge state!
 						if c.Value == "0" || c.Value == "1" || len(c.Value) < 3 {
 							continue
 						}
-						if (c.Name == "hatch_native_auth_token" || c.Name == "c_user" || c.Name == "session" || c.Name == "auth_token" || c.Name == "token" || c.Name == "connect.sid") && len(c.Value) > 4 {
-							hasAuthCookie = true
-							if sessionCookieVal == "" || c.Name == "hatch_native_auth_token" {
+						if (c.Name == "hatch_sess" || c.Name == "hatch_native_auth_token" || c.Name == "c_user" || c.Name == "session" || c.Name == "auth_token" || c.Name == "token" || c.Name == "connect.sid") && len(c.Value) > 4 {
+							hasMuseSessionCookie = true
+							if c.Name == "hatch_sess" {
+								hasHatchSessionCookie = true
+							}
+							rank := 3
+							if c.Name == "hatch_sess" {
+								rank = 6
+							} else if c.Name == "hatch_native_auth_token" {
+								rank = 4
+							}
+							if rank > museSessionCookieRank {
 								sessionCookieVal = c.Value
+								sessionCookieName = c.Name
+								museSessionCookieRank = rank
 							}
 						} else if c.Name == "ps_l" && len(c.Value) > 5 {
-							hasAuthCookie = true
-							if sessionCookieVal == "" {
+							hasMuseSessionCookie = true
+							if museSessionCookieRank < 5 {
 								sessionCookieVal = c.Value
+								sessionCookieName = c.Name
+								museSessionCookieRank = 5
 							}
 						}
 					}
 				}
 			}
 
-			// User is confirmed logged in ONLY when:
-			// 1. Not in OTP step AND not in 2FA step
-			// 2. AND cdpHasLandingHost is true (not on any auth, 2fa, or checkpoint URL)
-			// 3. AND (cdpProbeMuseAI confirms logged in OR valid auth cookie exists)
-			if !isWaitingOTP && !isWaiting2FA && cdpHasLandingHost(port, "muse.ai") && (isLoggedIn || hasAuthCookie) {
+			museLandingPage := cdpHasMuseLandingPage(port)
+
+			// Capture only after Muse app state and a first-party session cookie both confirm login.
+			if !isWaitingOTP && !isWaiting2FA && (isLoggedIn || hasHatchSessionCookie) && hasMuseSessionCookie && museLandingPage {
 				confirmedEmail := detEmail
 				if confirmedEmail == "" {
 					confirmedEmail = musePendingEmail
@@ -347,31 +388,38 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 					confirmedEmail = emailFromCookies
 				}
 				if confirmedEmail == "" {
-					if liveEmail := cdpExtractPageIdentity(port, target); liveEmail != "" {
-						confirmedEmail = liveEmail
+					for attempt := 0; attempt < 5 && ctx.Err() == nil; attempt++ {
+						if liveEmail := cdpExtractPageIdentity(port, target); liveEmail != "" {
+							confirmedEmail = liveEmail
+							break
+						}
+						if attempt < 4 {
+							time.Sleep(500 * time.Millisecond)
+						}
 					}
+				}
+				confirmedEmail = cleanExtractedEmail(confirmedEmail)
+				if confirmedEmail == "" {
+					if updateStatus != nil {
+						updateStatus("waiting_for_user", "Muse đã đăng nhập. Đang tự trích xuất email tài khoản; giữ cửa sổ Muse mở để hoàn tất.")
+					}
+					time.Sleep(time.Second)
+					continue
 				}
 
 				if sessionCookieVal == "" && gerr == nil {
 					sessionCookieVal, _ = pickSessionCookieAndEmail(cookies, target)
 				}
-				if sessionCookieVal == "" && gerr == nil {
-					for _, c := range cookies {
-						d := strings.TrimPrefix(c.Domain, ".")
-						if (strings.Contains(d, "muse.ai") || strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) && c.Value != "" {
-							if c.Value == "0" || c.Value == "1" || c.Name == "datr" || c.Name == "wd" || c.Name == "dpr" {
-								continue
-							}
-							sessionCookieVal = c.Value
-							break
-						}
-					}
-				}
 				if sessionCookieVal != "" && sessionCookieVal != "0" && sessionCookieVal != "1" {
-					if confirmedEmail == "" || isSystemOrStaticEmail(confirmedEmail) {
-						confirmedEmail = fmt.Sprintf("muse_user_%d@web.ai", time.Now().Unix()%100000)
-					}
 					hdr := cookieHeaderForHost(cookies, target.CookieHost)
+					hdr = replaceCookiePair(hdr, sessionCookieName, sessionCookieVal)
+					if !cookieHeaderHasPair(hdr, sessionCookieName, sessionCookieVal) {
+						if updateStatus != nil {
+							updateStatus("waiting_for_user", "Đã nhận diện đăng nhập Muse nhưng chưa ghép được cookie phiên; giữ cửa sổ mở và tải lại trang Muse.")
+						}
+						time.Sleep(time.Second)
+						continue
+					}
 					auth := &CapturedWebAuth{
 						Platform:     target.Platform,
 						SessionValue: sessionCookieVal,
@@ -386,7 +434,17 @@ func RunCaptureViaCDP(ctx context.Context, target WebLoginTarget, timeout time.D
 
 			// For Muse AI: always sleep and continue until genuinely logged in.
 			if updateStatus != nil {
-				updateStatus("waiting_for_user", fmt.Sprintf("Trình duyệt đã mở. Vui lòng đăng nhập %s trên cửa sổ vừa xuất hiện...", target.Name))
+				msg := fmt.Sprintf("Trình duyệt đã mở. Vui lòng đăng nhập %s trên cửa sổ vừa xuất hiện...", target.Name)
+				if gerr != nil {
+					msg = "Chưa đọc được cookie từ cửa sổ Muse. Giữ cửa sổ mở và tải lại trang sau khi đăng nhập."
+				} else if isLoggedIn && !hasMuseSessionCookie {
+					msg = "Muse đã nhận diện tài khoản; chưa thấy cookie phiên trên domain muse.ai. Đang chờ trang hoàn tất đăng nhập..."
+				} else if hasMuseSessionCookie && !museLandingPage {
+					msg = "Đã thấy cookie phiên Muse; đang chờ quay về trang Muse..."
+				} else if hasMuseSessionCookie && !isLoggedIn && !hasHatchSessionCookie {
+					msg = "Đã thấy cookie Muse; đang chờ trang xác nhận đăng nhập hoàn tất..."
+				}
+				updateStatus("waiting_for_user", msg)
 			}
 			time.Sleep(1000 * time.Millisecond)
 			continue
@@ -488,6 +546,55 @@ func cdpHasLandingHost(port int, host string) bool {
 	return false
 }
 
+// cdpHasMuseLandingPage only accepts a first-party Muse app page. The
+// generic landing-host check is intentionally substring-based for legacy
+// providers; for Muse that also matches auth subdomains and redirect URLs.
+func cdpHasMuseLandingPage(port int) bool {
+	client := &http.Client{Timeout: 1 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json", port))
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	var tabs []struct {
+		Type string `json:"type"`
+		URL  string `json:"url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tabs); err != nil {
+		return false
+	}
+	for _, tab := range tabs {
+		if tab.Type != "page" {
+			continue
+		}
+		u, err := url.Parse(tab.URL)
+		if err != nil || u.Scheme != "https" {
+			continue
+		}
+		host := strings.ToLower(u.Hostname())
+		if host != "muse.ai" && host != "www.muse.ai" {
+			continue
+		}
+		path := strings.ToLower(strings.TrimRight(u.EscapedPath(), "/"))
+		isAuthPath := false
+		for _, prefix := range []string{
+			"/signin", "/sign-in", "/signup", "/sign-up", "/login", "/logout",
+			"/auth", "/aymh", "/checkpoint", "/challenge", "/two_factor",
+			"/two-factor", "/2fa", "/mfa",
+		} {
+			if path == prefix || strings.HasPrefix(path, prefix+"/") {
+				isAuthPath = true
+				break
+			}
+		}
+		if !isAuthPath {
+			return true
+		}
+	}
+	return false
+}
+
 var (
 	wizEmailRe       = regexp.MustCompile(`"oPEP7c"\s*:\s*"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"`)
 	ariaLabelEmailRe = regexp.MustCompile(`aria-label="[^"]*?\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)"`)
@@ -567,6 +674,26 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tabs); err != nil {
 		return ""
+	}
+	if target.Platform == PlatformMuseAI {
+		var museTargets []string
+		var identityProviderTargets []string
+		for _, t := range tabs {
+			if t.Type != "page" || t.WebSocketDebuggerURL == "" {
+				continue
+			}
+			u, err := url.Parse(t.URL)
+			if err != nil {
+				continue
+			}
+			host := strings.ToLower(u.Hostname())
+			if host == "muse.ai" || host == "www.muse.ai" || strings.HasSuffix(host, ".muse.ai") {
+				museTargets = append(museTargets, t.WebSocketDebuggerURL)
+			} else if isMuseIdentityProviderHost(host) {
+				identityProviderTargets = append(identityProviderTargets, t.WebSocketDebuggerURL)
+			}
+		}
+		return cdpExtractMuseEmailFromTargets(append(museTargets, identityProviderTargets...))
 	}
 
 	var targetWS string
@@ -720,43 +847,6 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 			return "";
 		})()`
 
-	case PlatformMuseAI:
-		script = `(async () => {
-			try {
-				const res = await fetch('/api/account');
-				if (res.ok) {
-					const d = await res.json();
-					if (d.email) return d.email;
-				}
-			} catch(e) {}
-			try {
-				if (window.user && window.user.email) return window.user.email;
-			} catch(e) {}
-			try {
-				for (let i = 0; i < localStorage.length; i++) {
-					const val = localStorage.getItem(localStorage.key(i));
-					if (val && val.includes('@')) {
-						const m = val.match(/"\$?email"\s*:\s*"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})"/);
-						if (m) return m[1];
-						const m2 = val.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-						if (m2 && !m2[1].includes('sentry') && !m2[1].includes('example') && !m2[1].includes('w3.org')) return m2[1];
-					}
-				}
-			} catch(e) {}
-			// Không dùng document.body.innerText vì trang nhập mã OTP chứa chuỗi "We sent a code to email@..."
-			try {
-				const els = document.querySelectorAll('a[href*="account"], [class*="profile"], [class*="avatar"], button[aria-label*="user"], [data-testid*="user"]');
-				for (const el of els) {
-					const txt = el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent;
-					const m = txt.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-					if (m) return m[1];
-					if (txt && txt.trim().length > 1 && txt.trim().length < 30 && !txt.toLowerCase().includes('sign in') && !txt.toLowerCase().includes('log in')) {
-						return txt.trim();
-					}
-				}
-			} catch(e) {}
-			return "";
-		})()`
 	}
 
 	if script == "" {
@@ -802,12 +892,170 @@ func cdpExtractPageIdentity(port int, target WebLoginTarget) string {
 				if strings.Contains(cand, "@") {
 					return cand
 				}
+				if target.Platform == PlatformMuseAI {
+					return ""
+				}
 				return cand + "@" + target.Platform
 			}
 		}
 		break
 	}
 	return ""
+}
+
+func cdpExtractMuseEmailFromTargets(targets []string) string {
+	script := `(async () => {
+		const emailFromText = value => {
+			if (typeof value !== 'string') return '';
+			const matches = value.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+			for (const candidate of matches) {
+				const email = candidate.trim();
+				const low = email.toLowerCase();
+				if (low.includes('sentry') || low.includes('example.') || low.includes('w3.org') || low.includes('schema.org') || low.includes('facebook.com') || low.includes('meta.com') || low.includes('support@')) continue;
+				return email;
+			}
+			return '';
+		};
+		const emailFromObject = (value, depth = 0) => {
+			if (!value || typeof value !== 'object' || depth > 6) return '';
+			for (const [key, child] of Object.entries(value)) {
+				if (/^email(address)?$/i.test(key)) {
+					const email = emailFromText(child);
+					if (email) return email;
+				}
+				if (child && typeof child === 'object') {
+					const email = emailFromObject(child, depth + 1);
+					if (email) return email;
+				}
+			}
+			return '';
+		};
+		try {
+			if ((location.hostname === 'muse.ai' || location.hostname.endsWith('.muse.ai')) &&
+				(!window.__aicosMuseAccountLookupAt || Date.now() - window.__aicosMuseAccountLookupAt > 10000)) {
+				window.__aicosMuseAccountLookupAt = Date.now();
+				const response = await fetch('/api/account', { credentials: 'include' });
+				if (response.ok) {
+					const payload = await response.json();
+					const email = emailFromObject(payload);
+					if (email) return email;
+				}
+			}
+		} catch(e) {}
+		try {
+			for (const key of ['user', '__INITIAL_STATE__', '__NEXT_DATA__', '__NUXT__', '__APOLLO_STATE__']) {
+				const email = emailFromObject(window[key]);
+				if (email) return email;
+			}
+		} catch(e) {}
+		try {
+			for (const storage of [localStorage, sessionStorage]) {
+				for (let i = 0; i < storage.length; i++) {
+					const value = storage.getItem(storage.key(i));
+					if (!value || !value.includes('@')) continue;
+					try {
+						const email = emailFromObject(JSON.parse(value));
+						if (email) return email;
+					} catch(e) {}
+					const keyed = value.match(/"(?:\$?email|emailAddress)"\s*:\s*"([^"]+)"/i);
+					if (keyed) {
+						const email = emailFromText(keyed[1]);
+						if (email) return email;
+					}
+				}
+			}
+		} catch(e) {}
+		try {
+			const selectors = '[data-email], [aria-label*="@"], [title*="@"], a[href^="mailto:"], a[href*="account"], [class*="profile"], [class*="avatar"], button[aria-label*="user" i], [data-testid*="user"], [data-testid*="account"]';
+			for (const el of document.querySelectorAll(selectors)) {
+				for (const value of [el.getAttribute('data-email'), el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('href'), el.textContent]) {
+					const email = emailFromText(value || '');
+					if (email) return email;
+				}
+			}
+		} catch(e) {}
+		try {
+			for (const input of document.querySelectorAll('input[type="email"], input[name*="email" i], input[autocomplete="email"]')) {
+				const email = emailFromText(input.value || '');
+				if (email) return email;
+			}
+		} catch(e) {}
+		try {
+			const email = emailFromText(document.body ? document.body.innerText : '');
+			if (email) return email;
+		} catch(e) {}
+		try {
+			if (!window.__aicosMuseProfileOpened) {
+				const trigger = document.querySelector('button[aria-label*="account" i], button[aria-label*="profile" i], button[aria-label*="user" i], button[class*="avatar" i], [data-testid*="user-menu"], [data-testid*="account-menu"]');
+				if (trigger) {
+					window.__aicosMuseProfileOpened = true;
+					trigger.click();
+					await new Promise(resolve => setTimeout(resolve, 300));
+					for (const el of document.querySelectorAll('[role="menu"], [role="dialog"], [data-radix-popper-content-wrapper], [class*="profile"], [class*="account"], [data-testid*="user"], [data-testid*="account"]')) {
+						const email = emailFromText(el.innerText || el.textContent || '');
+						if (email) return email;
+					}
+					const email = emailFromText(document.body ? document.body.innerText : '');
+					if (email) return email;
+				}
+			}
+		} catch(e) {}
+		return '';
+	})()`
+	for _, targetWS := range targets {
+		dialer := websocket.Dialer{HandshakeTimeout: 2 * time.Second}
+		conn, _, err := dialer.Dial(targetWS, nil)
+		if err != nil {
+			continue
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_ = conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
+		reqID := cdpReqID.Add(1)
+		req := map[string]any{
+			"id":     reqID,
+			"method": "Runtime.evaluate",
+			"params": map[string]any{"expression": script, "returnByValue": true, "awaitPromise": true},
+		}
+		if err := conn.WriteJSON(req); err != nil {
+			_ = conn.Close()
+			continue
+		}
+		for {
+			var msg struct {
+				ID     int64 `json:"id"`
+				Result struct {
+					Result struct {
+						Value any `json:"value"`
+					} `json:"result"`
+				} `json:"result"`
+			}
+			if err := conn.ReadJSON(&msg); err != nil {
+				break
+			}
+			if msg.ID != reqID {
+				continue
+			}
+			if value, ok := msg.Result.Result.Value.(string); ok {
+				if email := cleanExtractedEmail(value); email != "" {
+					_ = conn.Close()
+					return email
+				}
+			}
+			break
+		}
+		_ = conn.Close()
+	}
+	return ""
+}
+
+func isMuseIdentityProviderHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	for _, root := range []string{"meta.com", "meta.ai", "facebook.com", "instagram.com", "google.com"} {
+		if host == root || strings.HasSuffix(host, "."+root) {
+			return true
+		}
+	}
+	return false
 }
 
 // cdpProbeMuseAI evaluates the Muse AI page state via CDP to distinguish between OTP step, 2FA step, and logged-in state.
@@ -828,12 +1076,26 @@ func cdpProbeMuseAI(port int) (isLoggedIn bool, isWaitingOTP bool, isWaiting2FA 
 		return false, false, false, "", err
 	}
 
-	var targetWS string
+	var targetWS, providerWS string
 	for _, t := range tabs {
-		if t.Type == "page" && (strings.Contains(t.URL, "muse.ai") || strings.Contains(t.URL, "meta.com") || strings.Contains(t.URL, "facebook.com")) && t.WebSocketDebuggerURL != "" {
+		if t.Type != "page" || t.WebSocketDebuggerURL == "" {
+			continue
+		}
+		u, err := url.Parse(t.URL)
+		if err != nil {
+			continue
+		}
+		host := strings.ToLower(u.Hostname())
+		if host == "muse.ai" || host == "www.muse.ai" || strings.HasSuffix(host, ".muse.ai") {
 			targetWS = t.WebSocketDebuggerURL
 			break
 		}
+		if providerWS == "" && isMuseIdentityProviderHost(host) {
+			providerWS = t.WebSocketDebuggerURL
+		}
+	}
+	if targetWS == "" {
+		targetWS = providerWS
 	}
 	if targetWS == "" {
 		return false, false, false, "", fmt.Errorf("không tìm thấy tab muse.ai")
@@ -925,47 +1187,28 @@ func cdpProbeMuseAI(port int) (isLoggedIn bool, isWaitingOTP bool, isWaiting2FA 
 				return JSON.stringify({ state: "waiting_otp", email: candEmail });
 			}
 
-			// 3. Test /api/account directly inside the browser
-			let apiOk = false;
-			let apiEmail = '';
-			try {
-				const res = await fetch('/api/account', { credentials: 'include' });
-				if (res.ok) {
-					apiOk = true;
-					const data = await res.json();
-					const em = data.email || (data.user && data.user.email) || (data.account && data.account.email) || (data.data && data.data.email);
-					if (em && typeof em === 'string' && em.includes('@') && !em.includes('example') && !em.includes('sentry')) {
-						apiEmail = em.trim();
-					}
-				}
-			} catch(e) {}
-
-			// If /api/account responded with 200, authentication is 100% complete!
-			if (apiOk) {
-				return JSON.stringify({ state: "logged_in", email: apiEmail || candEmail });
-			}
-
-			// If /api/account is NOT ok, and we are still on an auth/checkpoint page, definitely not logged in!
-			if (isAuthPage || path.includes('/checkpoint') || path.includes('/two-factor') || path.includes('/2fa')) {
-				if (has2FAKeyword || twoFAInput) {
-					return JSON.stringify({ state: "waiting_2fa", email: candEmail });
-				}
-				if (hasCodeKeyword || otpInput) {
-					return JSON.stringify({ state: "waiting_otp", email: candEmail });
-				}
+			// Auth/checkpoint URLs are never successful landing pages, even if a
+			// SPA fallback or public endpoint responds with HTTP 200.
+				if (isAuthPage || path.includes('/checkpoint') || path.includes('/two-factor') || path.includes('/2fa')) {
 				return JSON.stringify({ state: "not_logged_in", email: candEmail });
 			}
 
-			// 4. Check for explicit sign-out / log-out links
+			// Muse serves its public SPA HTML at /api/account, so HTTP 200 there
+			// cannot establish identity. Use authenticated app UI markers instead.
+			// 3. Check for explicit sign-out / log-out links
 			const signoutLink = document.querySelector('a[href*="/signout"], a[href*="/logout"], button[data-testid*="logout"], [data-action*="logout"], button[aria-label*="log out" i], button[aria-label*="sign out" i]');
 			if (signoutLink && !otpInput && !twoFAInput && !has2FAKeyword) {
 				return JSON.stringify({ state: "logged_in", email: candEmail });
 			}
 
-			// 5. Check user avatar/profile or dashboard navigation outside auth pages
-			const userProfileElement = document.querySelector('[class*="avatar"], [class*="profile"], [class*="user-menu"], a[href*="/account"], button[aria-label*="account" i], button[aria-label*="profile" i]');
+			// 4. Check user avatar/profile or dashboard navigation outside auth pages
+			const userProfileElement = document.querySelector('[class*="user-menu"], [class*="account-menu"], [data-testid*="user-menu"], [data-testid*="profile"], [data-testid*="account"], a[href*="/account"], a[href*="/profile"], button[aria-label*="account" i], button[aria-label*="profile" i], [role="button"][aria-label*="user" i], button[class*="avatar"], a[class*="avatar"], [role="button"][class*="avatar"]');
 			const appNavigation = document.querySelector('a[href*="/videos"], a[href*="/upload"], [data-testid*="upload"], button[class*="upload"]');
-			if (!isAuthPage && !otpInput && !twoFAInput && !has2FAKeyword && (userProfileElement || appNavigation || path === '/' || path === '' || path.includes('/videos') || path.includes('/dashboard'))) {
+			const loginControl = Array.from(document.querySelectorAll('button, a')).some(el => /^(log in|sign in)$/i.test((el.innerText || '').trim()));
+			if (loginControl && !signoutLink) {
+				return JSON.stringify({ state: "not_logged_in", email: candEmail });
+			}
+			if (!otpInput && !twoFAInput && !has2FAKeyword && (userProfileElement || appNavigation || path.includes('/dashboard'))) {
 				return JSON.stringify({ state: "logged_in", email: candEmail });
 			}
 
@@ -1157,44 +1400,6 @@ func enrichAccountProfile(target WebLoginTarget, auth *CapturedWebAuth) {
 			}
 		}
 
-	case PlatformMuseAI:
-		req, err := http.NewRequest(http.MethodGet, "https://muse.ai/api/account", nil)
-		if err == nil {
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-			req.Header.Set("Cookie", auth.CookieHeader)
-			req.Header.Set("Accept", "application/json, text/plain, */*")
-			req.Header.Set("Referer", "https://muse.ai/")
-			req.Header.Set("Origin", "https://muse.ai")
-			req.Header.Set("Sec-Fetch-Site", "same-origin")
-			req.Header.Set("Sec-Fetch-Mode", "cors")
-			req.Header.Set("Sec-Fetch-Dest", "empty")
-			if resp, err := client.Do(req); err == nil {
-				defer resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					var data struct {
-						Email string `json:"email"`
-						User  struct {
-							Email string `json:"email"`
-						} `json:"user"`
-						Account struct {
-							Email string `json:"email"`
-						} `json:"account"`
-					}
-					if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
-						em := data.Email
-						if em == "" {
-							em = data.User.Email
-						}
-						if em == "" {
-							em = data.Account.Email
-						}
-						if em != "" && !isSystemOrStaticEmail(em) {
-							auth.Email = strings.TrimSpace(em)
-						}
-					}
-				}
-			}
-		}
 	}
 }
 
@@ -1332,10 +1537,10 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 			return true
 		}
 		d := strings.TrimPrefix(domain, ".")
-		matched := strings.Contains(d, target.CookieHost) || strings.Contains(target.CookieHost, d)
-		if !matched && target.Platform == PlatformMuseAI && (strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) {
-			matched = true
+		if target.Platform == PlatformMuseAI {
+			return d == "muse.ai" || strings.HasSuffix(d, ".muse.ai")
 		}
+		matched := strings.Contains(d, target.CookieHost) || strings.Contains(target.CookieHost, d)
 		if !matched && (target.Platform == PlatformGoogleFlow || target.CookieHost == "google.com") && (strings.Contains(d, "google.com") || strings.Contains(d, "google") || strings.Contains(d, "withgoogle.com")) {
 			matched = true
 		}
@@ -1344,26 +1549,40 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 
 	var sessionVal string
 	var email string
+	var providerEmail string
 
 	// Look for exact cookie
 	for _, c := range cookies {
-		if !hostOK(c.Domain) {
+		inTargetDomain := hostOK(c.Domain)
+		isMuseProviderCookie := target.Platform == PlatformMuseAI && isMuseIdentityProviderHost(strings.TrimPrefix(c.Domain, "."))
+		if !inTargetDomain && !isMuseProviderCookie {
 			continue
 		}
 
-		// Extract email hints from known auth cookies (unescaping url encoding like %40)
+		// Read identity hints from Muse and its login providers. Provider cookies
+		// are inspected only for an email; cookie persistence remains first-party.
 		valUnesc, _ := url.QueryUnescape(c.Value)
-		if strings.Contains(c.Name, "email") || strings.Contains(c.Name, "user") {
-			if m := generalEmailRe.FindString(valUnesc); m != "" && !isSystemOrStaticEmail(m) && email == "" {
-				email = m
+		var cookieEmail string
+		if strings.Contains(strings.ToLower(c.Name), "email") || strings.Contains(strings.ToLower(c.Name), "user") || isMuseProviderCookie {
+			for _, value := range []string{c.Value, valUnesc} {
+				if m := generalEmailRe.FindString(value); m != "" && !isSystemOrStaticEmail(m) {
+					cookieEmail = m
+					break
+				}
 			}
 		}
-
-		// Extract email from any JWT session cookies
-		if email == "" && strings.Count(c.Value, ".") == 2 {
-			if jwtEmail := extractEmailFromJWT(c.Value); jwtEmail != "" {
-				email = jwtEmail
+		if cookieEmail == "" && strings.Count(c.Value, ".") == 2 {
+			cookieEmail = extractEmailFromJWT(c.Value)
+		}
+		if cookieEmail != "" {
+			if inTargetDomain && email == "" {
+				email = cookieEmail
+			} else if isMuseProviderCookie && providerEmail == "" {
+				providerEmail = cookieEmail
 			}
+		}
+		if !inTargetDomain {
+			continue
 		}
 
 		if c.Name == target.CookieName && c.Value != "" {
@@ -1388,20 +1607,23 @@ func pickSessionCookieAndEmail(cookies []cdpCookie, target WebLoginTarget) (stri
 			}
 		}
 
-		// Muse AI session cookies (supports muse.ai, meta.com, and facebook.com)
+		// Muse AI session cookies stay scoped to first-party Muse domains.
 		if target.Platform == PlatformMuseAI && sessionVal == "" {
 			d := strings.TrimPrefix(c.Domain, ".")
-			if strings.Contains(d, "muse.ai") || strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com") {
+			if d == "muse.ai" || strings.HasSuffix(d, ".muse.ai") {
 				if c.Value == "0" || c.Value == "1" || len(c.Value) < 3 {
 					continue
 				}
-				if (c.Name == "hatch_native_auth_token" || c.Name == "c_user" || c.Name == "session" || c.Name == "auth_token" || c.Name == "token" || c.Name == "connect.sid") && len(c.Value) > 4 {
+				if (c.Name == "hatch_sess" || c.Name == "hatch_native_auth_token" || c.Name == "c_user" || c.Name == "session" || c.Name == "auth_token" || c.Name == "token" || c.Name == "connect.sid") && len(c.Value) > 4 {
 					sessionVal = c.Value
 				} else if c.Name == "ps_l" && len(c.Value) > 5 {
 					sessionVal = c.Value
 				}
 			}
 		}
+	}
+	if target.Platform == PlatformMuseAI && email == "" {
+		email = providerEmail
 	}
 
 	// For Grok: anonymous users do not have x-userid or htjs_user_id
@@ -1450,9 +1672,11 @@ func cookieHeaderForHost(cookies []cdpCookie, hostSubstr string) string {
 		}
 		if hostSubstr != "" {
 			d := strings.TrimPrefix(c.Domain, ".")
-			matched := strings.Contains(d, hostSubstr) || strings.Contains(hostSubstr, d)
-			if !matched && hostSubstr == "muse.ai" && (strings.Contains(d, "meta.com") || strings.Contains(d, "facebook.com")) {
-				matched = true
+			matched := false
+			if hostSubstr == "muse.ai" {
+				matched = d == "muse.ai" || strings.HasSuffix(d, ".muse.ai")
+			} else {
+				matched = strings.Contains(d, hostSubstr) || strings.Contains(hostSubstr, d)
 			}
 			if !matched && (hostSubstr == "google.com" || hostSubstr == "labs.google" || hostSubstr == "flow.google.com") {
 				if strings.Contains(d, "google.com") || strings.Contains(d, "google") || strings.Contains(d, "withgoogle.com") {
@@ -1470,6 +1694,32 @@ func cookieHeaderForHost(cookies []cdpCookie, hostSubstr string) string {
 		parts = append(parts, c.Name+"="+c.Value)
 	}
 	return strings.Join(parts, "; ")
+}
+
+func replaceCookiePair(header, name, value string) string {
+	if name == "" || value == "" {
+		return header
+	}
+	parts := make([]string, 0, strings.Count(header, ";")+1)
+	for _, part := range strings.Split(header, ";") {
+		part = strings.TrimSpace(part)
+		cookieName, _, ok := strings.Cut(part, "=")
+		if ok && cookieName != name {
+			parts = append(parts, part)
+		}
+	}
+	parts = append(parts, name+"="+value)
+	return strings.Join(parts, "; ")
+}
+
+func cookieHeaderHasPair(header, name, value string) bool {
+	for _, part := range strings.Split(header, ";") {
+		cookieName, cookieValue, ok := strings.Cut(strings.TrimSpace(part), "=")
+		if ok && cookieName == name && cookieValue == value {
+			return true
+		}
+	}
+	return false
 }
 
 func clearChromiumSingletonLocks(dir string) {

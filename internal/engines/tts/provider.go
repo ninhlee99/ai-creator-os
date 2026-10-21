@@ -20,7 +20,7 @@ import (
 // are SECONDS in JSON — decode with ParseChainJSON, not json.Unmarshal,
 // so the seconds->time.Duration conversion happens in one place.
 type ProviderEntry struct {
-	Name    string        `json:"name"`               // "gemini", "vieneu", "edge", "llama-server", "paid"
+	Name    string        `json:"name"`               // "gemini" or "edge"
 	Enabled bool          `json:"enabled"`            // false = skipped entirely
 	APIKey  string        `json:"api_key,omitempty"`  // legacy single key; used only when APIKeys is empty
 	APIKeys []string      `json:"api_keys,omitempty"` // multi-key rotation (round-robin + per-key cooldown)
@@ -69,9 +69,8 @@ func NewTTSChain(providers []TTSProvider, onSwitch func(from, to, reason string)
 	return c
 }
 
-// Provider returns the provider registered under name (e.g. "vieneu") for
-// sidecar control from the caller. It reports false when the name is
-// unknown. Read-only: safe for concurrent use.
+// Provider returns a registered provider by name for control from the caller.
+// It reports false when the name is unknown. Read-only: safe for concurrent use.
 func (c *TTSChain) Provider(name string) (TTSProvider, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -338,4 +337,11 @@ func postJSON(ctx context.Context, client *http.Client, url string, body any) ([
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(data), 300))
 	}
 	return data, nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }

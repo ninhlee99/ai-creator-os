@@ -165,9 +165,10 @@
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Cách dựng</label>
             <select name="mode" style="padding:10px;font-weight:700">
-              <option value="photo" selected>Dựng từ ảnh sản phẩm</option>
-              <option value="shots">Tạo từng cảnh bằng engine video</option>
+              <option value="shots" selected>Quay từng cảnh bằng engine video</option>
+              <option value="photo">Dựng ảnh tĩnh với chuyển cảnh dissolve</option>
             </select>
+            <div class="hint">Chế độ quay cần engine video khả dụng. Nếu engine không tạo được footage thật, job sẽ báo lỗi thay vì giả chuyển động bằng zoom/nháy.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Engine</label>

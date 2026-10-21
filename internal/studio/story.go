@@ -7,7 +7,7 @@ package studio
 //   - Viết truyện: LLM (tái dùng prompts/story.txt) → JSON {title, logline, text}.
 //   - Chia cảnh: LLM → JSON {scenes:[{text, image_prompt}]} (3–12 cảnh).
 //   - Ảnh minh họa: MediaGen (Gemini, xoay key) — 1 ảnh 16:9 / cảnh.
-//   - Giọng đọc: Narrator (chuỗi TTS Gemini→VieNeu→Edge) — 1 wav / cảnh.
+//   - Giọng đọc: Narrator (chuỗi TTS Gemini→Edge) — 1 wav / cảnh.
 //   - Dựng: tái dùng AssemblePhotoList (Ken Burns) từng cảnh → ConcatClips →
 //     mux audio TTS → MixMusicBed (tùy chọn) → 16:9 MP4. KHÔNG chèn
 //     chữ/phụ đề vào video (Ninh chốt 2026-10-12).

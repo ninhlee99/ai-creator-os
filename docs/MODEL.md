@@ -7,7 +7,7 @@
 Một hệ thống duy nhất điều hành danh mục đa kênh:
 1. **Affiliate qua Accesstrade**: Thời lượng tối thiểu 30s – 60s, video người mẫu lookbook chuyển động thật, gắn kết sản phẩm và nhân vật nhất quán theo phong cách điện ảnh chân thực.
 2. **Video Vũ Đạo Viral & Trendjack**: Thời lượng từ 60s trở lên (chuẩn bật kiếm tiền TikTok Creativity Program), bắt đầu tức thì 0.0s (không có ảnh đen 5s đầu), visual nhân vật "Thần tiên tỉ tỉ" xinh đẹp thuần khiết.
-3. **YouTube Phim Kể Chuyện Audio Điện Ảnh**: Thời lượng 30 đến 60 phút, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS (`gemini-3.8-flash-tts`) đa cảm xúc (đã loại bỏ VieNeu-TTS).
+3. **YouTube Phim Kể Chuyện Audio Điện Ảnh**: Thời lượng 30 đến 60 phút, kịch bản chân thật, đa cảm xúc, dùng Gemini TTS.
 
 ## 2. Hệ Thống Model & Cập Nhật Thủ Công Theo Yêu Cầu
 
@@ -161,8 +161,6 @@ Nguyên tắc: **nhẹ + nhanh + dễ** — RAM/CPU là tài nguyên khan nhất
 | Orchestrator, scheduler, account manager, control-plane API, dashboard | **Go** | 1 binary `aicos` ~15MB, RAM vài chục MB, khởi động tức thì, goroutine chạy N account song song, build 1 lệnh. |
 | Stream supervisor | **Go** | Cùng binary, watchdog + auto-reconnect. |
 | Game-playing agent (phase 2) | **Go** | Chỉ chơi game có bot/API chính thức hoặc offline (xem §8b) — Go gọi API/input automation, không cần Python. |
-| Local TTS (VieNeu-TTS v3) | Sidecar độc lập | Server tương thích OpenAI do binary Go quản lý (start/stop/health check) — như FFmpeg, không phải code dự án. |
-| Local LLM (llama-server) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình. |
 | Local avatar (MuseTalk v1.5) | Sidecar độc lập | Tương tự — binary Go quản lý tiến trình; render offline, không realtime trên M1 Pro. Căn cứ: `docs/RESEARCH.md` §6. |
 | Music pipeline (phase 3) | **Go + API** | Ưu tiên API; local chỉ khi có model đủ tốt. |
 | Ledger | **SQLite WAL** | 0 ops, nhẹ SSD, đủ cho quy mô này. |

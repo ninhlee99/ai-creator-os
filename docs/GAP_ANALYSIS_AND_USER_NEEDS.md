@@ -12,7 +12,7 @@
 **AI Creator OS** là hệ điều hành tự trị (autonomous OS) 1-binary duy nhất viết bằng Go, phục vụ 3 trụ cột doanh thu bền vững:
 1. **Tiếp thị liên kết (Affiliate qua Accesstrade)**: Săn deal, tạo tracking link, đối soát hoa hồng.
 2. **Video Viral AI 100% Gốc (TikTok/Shorts/Reels)**: Xưởng sáng tạo 9:16 nguyên bản với hook 3 giây tâm lý học, hình ảnh MediaGen, âm nhạc Kworb VN trending, loại bỏ triệt để rủi ro bản quyền và thuật toán phạt 0-view do reup.
-3. **YouTube Kể Chuyện Ngôi Thứ Nhất**: Kịch bản tự sinh bằng LLM, chia phân cảnh, vẽ ảnh 16:9, lồng tiếng TTS (VieNeu v3/Gemini), dựng video và tự động đăng private.
+3. **YouTube Kể Chuyện Ngôi Thứ Nhất**: Kịch bản tự sinh bằng LLM, chia phân cảnh, vẽ ảnh 16:9, lồng tiếng Gemini/Edge TTS, dựng video và tự động đăng private.
 
 ### Điểm mạnh cốt lõi hiện có:
 - **Zero-Dependency Runtime**: 1 file nhị phân tĩnh duy nhất (~22MB), không cần cài Python, Node.js, venv hay Docker.
@@ -59,9 +59,9 @@ Dưới góc nhìn một người dùng thực chiến, sau khi sử dụng toà
 ---
 
 ### 3.3. Kho Tài Khoản Web AI (`/settings/he-thong#tab-webai`)
-* **Hiện trạng**: Trình duyệt CDP tự mở với hồ sơ cô lập (`os.MkdirTemp`), tự động bắt cookie và email thật của ChatGPT, Claude, Gemini, Grok, Muse AI. Quản lý trạng thái OK / Cooldown.
+* **Hiện trạng**: Trình duyệt CDP tự mở với hồ sơ cô lập (`os.MkdirTemp`), tự động bắt cookie; lưu email khi dịch vụ cung cấp danh tính đáng tin cậy. Quản lý trạng thái OK / Cooldown.
 * **Khoảng trống (Gaps)**:
-  - **Chưa có nút Kiểm Tra Sức Khỏe Từng Tài Khoản (Test Session Alive)**: Người dùng chỉ biết cookie bị hết hạn (expired) khi gọi AI sinh nội dung và bị lỗi. Cần một nút "Kiểm tra phiên" để probe nhẹ một request xác thực xem cookie còn sống hay đã bị logout.
+  - Muse hiện chưa có endpoint JSON xác thực được xác nhận; phép probe giữ nguyên trạng thái và báo "chưa xác minh" khi nhận HTML/403/lỗi mạng, tránh gán nhầm sống hoặc hết hạn.
   - **Chưa có cảnh báo thời hạn cookie (TTL Estimator)**: Một số nền tảng (như ChatGPT hoặc Google) có chu kỳ làm mới cookie sau 14-30 ngày. Cần ghi nhận ngày đăng nhập và cảnh báo khi phiên làm việc quá 20 ngày.
   - **Thiếu thống kê Quota & Số Yêu Cầu Đã Dùng**: Chưa có bộ đếm hiển thị hôm nay tài khoản này đã sinh bao nhiêu kịch bản, còn bao nhiêu lượt trước khi chạm ngưỡng rate limit.
 * **Nhu cầu người dùng (User Needs)**:
@@ -93,7 +93,7 @@ Dưới góc nhìn một người dùng thực chiến, sau khi sử dụng toà
 ---
 
 ### 3.6. Kể Chuyện YouTube Ngôi Thứ Nhất (`/stories`)
-* **Hiện trạng**: Tự động sinh cốt truyện, phân đoạn cảnh, vẽ ảnh minh họa 16:9, lồng tiếng TTS từng cảnh bằng VieNeu v3 hoặc Gemini, ghép video 16:9 và tự động đăng YouTube ở chế độ riêng tư (Private).
+* **Hiện trạng**: Tự động sinh cốt truyện, phân đoạn cảnh, vẽ ảnh minh họa 16:9, lồng tiếng Gemini/Edge TTS từng cảnh, ghép video 16:9 và tự động đăng YouTube ở chế độ riêng tư (Private).
 * **Khoảng trống (Gaps)**:
   - **Thiếu Âm Thanh Môi Trường & Hiệu Ứng Nền (Ambient SFX / Background Soundscape)**: Video kể chuyện hiện chỉ có giọng đọc TTS, thiếu lớp âm thanh nền phù hợp với thể loại truyện (tiếng mưa rơi, tiếng bước chân, tiếng gió rít, nhạc nền du dương huyền bí).
   - **Thiếu cơ chế gom tập dài (Long-Form Compilation)**: Người nghe truyện YouTube thường thích nghe chuỗi tập 30–60 phút khi làm việc hoặc đi ngủ. Hệ thống hiện chỉ sản xuất từng mẩu truyện ngắn 3–5 phút độc lập.
@@ -142,9 +142,9 @@ Toàn bộ các tính năng cốt lõi phục vụ nhà sáng tạo nội dung �
    - Nút ▶️ Xem trước được tích hợp xuyên suốt `/studio`, `/studio/jobs` và `/viral`.
 
 3. **Cơ chế Đăng nhập & Bắt phiên Muse AI hoàn thiện**:
-   - Tích hợp hàm `cdpProbeMuseAI` phân biệt chính xác trạng thái đang chờ người dùng nhập mã OTP/2FA vs trạng thái đã đăng nhập thành công.
-   - Bắt toàn bộ cookie phiên chính thức từ `muse.ai` và `meta.com` mà không bị khóa nhầm.
-   - Kiểm tra phiên hoạt động trực tiếp qua `https://muse.ai/api/account` với đầy đủ headers trình duyệt.
+   - `cdpProbeMuseAI` nhận diện màn OTP/2FA và dấu hiệu tài khoản trong giao diện Muse.
+   - Bắt cookie phiên first-party từ `muse.ai`; không gửi cookie đăng nhập Meta/Facebook tới Muse.
+   - Bắt cookie phiên first-party `hatch_sess` qua CDP; không dùng `https://muse.ai/api/account` để kết luận phiên còn sống vì route này hiện trả HTML SPA với HTTP 200. Phép kiểm tra chỉ xác nhận sống khi API trả JSON có danh tính; 401 mới đánh dấu hết hạn, còn HTML/403/lỗi mạng giữ trạng thái chưa xác minh.
 
 4. **Tự động sinh phụ đề `.srt` cho Video Ngắn**:
    - Tự động sinh file SubRip `.srt` theo từng phân cảnh và mốc thời gian TTS.
@@ -156,4 +156,4 @@ Toàn bộ các tính năng cốt lõi phục vụ nhà sáng tạo nội dung �
 
 6. **Kiểm tra phiên Web AI thời gian thực**:
    - Nút "⚡ Kiểm Tra Tất Cả Phiên" và nút kiểm tra từng tài khoản trong Cài đặt Hệ thống.
-   - Thử nghiệm HTTP probe thật tới API ChatGPT, Claude, Gemini, Grok và Muse AI.
+   - Kiểm tra phiên qua HTTP cho ChatGPT, Claude, Gemini và Grok. Muse chỉ báo còn sống khi nhận JSON có danh tính; phản hồi HTML/403/lỗi mạng được ghi là chưa xác minh, không đổi trạng thái tài khoản.

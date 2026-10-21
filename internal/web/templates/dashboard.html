@@ -24,7 +24,29 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
       </button>
     </div>
-    <label class="hint" style="display:block;margin-top:8px">Ảnh sản phẩm (nếu có): <input type="file" name="product_photo" accept="image/*"></label>
+    <section class="product-media-picker" aria-labelledby="product-media-title">
+      <div class="product-media-heading">
+        <div>
+          <h3 id="product-media-title">Ảnh hoặc video sản phẩm <span>(tuỳ chọn)</span></h3>
+          <p>Dùng cho video Affiliate. Chọn nhiều ảnh hoặc nhiều video, không trộn hai loại.</p>
+        </div>
+        <span class="product-media-count" id="product-media-count">Chưa chọn tệp</span>
+      </div>
+      <input class="product-media-input" type="file" id="product-media-input" name="product_media"
+        accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v" multiple
+        aria-describedby="product-media-help product-media-error">
+      <label class="product-media-dropzone" id="product-media-dropzone" for="product-media-input">
+        <span class="product-media-upload-icon" aria-hidden="true">↥</span>
+        <span class="product-media-drop-copy">
+          <strong>Kéo thả ảnh hoặc video vào đây</strong>
+          <small>JPG, PNG, WebP, MP4, MOV, WebM · tối đa 8 tệp / 200 MB</small>
+        </span>
+        <span class="product-media-browse">Chọn tệp</span>
+      </label>
+      <p class="product-media-help" id="product-media-help">Ảnh sẽ ghép thành montage; video sẽ nối thành clip. Câu lệnh cần nêu rõ sản phẩm, ví dụ “Review túi xách đi làm”.</p>
+      <p class="product-media-error" id="product-media-error" role="status" aria-live="polite" hidden></p>
+      <div class="product-media-preview" id="product-media-preview" hidden></div>
+    </section>
 
     <nav class="tabs" aria-label="Loại nội dung" style="margin:14px 0 0">
       <a href="/studio">Affiliate</a>
@@ -125,8 +147,140 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   var form = document.getElementById('one-command-form');
+  var mediaInput = document.getElementById('product-media-input');
+  var dropzone = document.getElementById('product-media-dropzone');
+  var mediaFiles = [];
+  var previewURLs = [];
+
+  function mediaType(file) {
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'webp'].indexOf(ext) >= 0) return 'image';
+    if (['mp4', 'mov', 'm4v', 'webm'].indexOf(ext) >= 0) return 'video';
+    return '';
+  }
+
+  function showMediaError(message) {
+    var error = document.getElementById('product-media-error');
+    error.textContent = message;
+    error.hidden = !message;
+  }
+
+  function syncInputFiles() {
+    var transfer = new DataTransfer();
+    mediaFiles.forEach(function(file) { transfer.items.add(file); });
+    mediaInput.files = transfer.files;
+  }
+
+  function renderMediaPreview() {
+    var preview = document.getElementById('product-media-preview');
+    var count = document.getElementById('product-media-count');
+    previewURLs.forEach(function(url) { URL.revokeObjectURL(url); });
+    previewURLs = [];
+    preview.replaceChildren();
+    preview.hidden = mediaFiles.length === 0;
+    if (!mediaFiles.length) {
+      count.textContent = 'Chưa chọn tệp';
+      return;
+    }
+    var kind = mediaType(mediaFiles[0]);
+    count.textContent = mediaFiles.length + (kind === 'image' ? ' ảnh đã chọn' : ' video đã chọn');
+
+    mediaFiles.forEach(function(file, index) {
+      var card = document.createElement('div');
+      card.className = 'product-media-item';
+      var url = URL.createObjectURL(file);
+      previewURLs.push(url);
+      var media = document.createElement(kind === 'image' ? 'img' : 'video');
+      media.className = 'product-media-thumb';
+      media.src = url;
+      media.alt = kind === 'image' ? file.name : '';
+      if (kind === 'video') {
+        media.controls = true;
+        media.muted = true;
+        media.playsInline = true;
+        media.preload = 'metadata';
+      }
+      var info = document.createElement('div');
+      info.className = 'product-media-info';
+      var name = document.createElement('span');
+      name.className = 'product-media-name';
+      name.textContent = file.name;
+      name.title = file.name;
+      var size = document.createElement('small');
+      size.textContent = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      info.append(name, size);
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'product-media-remove';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', 'Bỏ ' + file.name);
+      remove.addEventListener('click', function() {
+        mediaFiles.splice(index, 1);
+        syncInputFiles();
+        renderMediaPreview();
+        showMediaError('');
+      });
+      card.append(media, info, remove);
+      preview.append(card);
+    });
+  }
+
+  function addMedia(files) {
+    var incoming = Array.from(files || []);
+    if (!incoming.length) return;
+    var next = mediaFiles.slice();
+    incoming.forEach(function(file) {
+      var duplicate = next.some(function(current) {
+        return current.name === file.name && current.size === file.size && current.lastModified === file.lastModified;
+      });
+      if (!duplicate) next.push(file);
+    });
+    if (next.length > 8) return showMediaError('Chọn tối đa 8 tệp mỗi lần.');
+    var kind = mediaType(next[0]);
+    if (!kind || next.some(function(file) { return mediaType(file) !== kind; })) {
+      return showMediaError('Hãy chọn nhiều ảnh hoặc nhiều video trong cùng một lượt.');
+    }
+    var total = 0;
+    for (var i = 0; i < next.length; i++) {
+      total += next[i].size;
+      if (next[i].size > (kind === 'image' ? 50 : 200) * 1024 * 1024) {
+        return showMediaError(next[i].name + ' vượt giới hạn dung lượng.');
+      }
+    }
+    if (total > 200 * 1024 * 1024) return showMediaError('Tổng dung lượng tối đa 200 MB.');
+    mediaFiles = next;
+    syncInputFiles();
+    renderMediaPreview();
+    showMediaError('');
+  }
+
+  if (mediaInput) {
+    mediaInput.addEventListener('change', function() {
+      var selected = Array.from(mediaInput.files);
+      syncInputFiles();
+      addMedia(selected);
+    });
+  }
+  if (dropzone) {
+    dropzone.addEventListener('dragover', function(event) {
+      event.preventDefault();
+      dropzone.classList.add('is-dragging');
+    });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('is-dragging'); });
+    dropzone.addEventListener('drop', function(event) {
+      event.preventDefault();
+      dropzone.classList.remove('is-dragging');
+      addMedia(event.dataTransfer.files);
+    });
+  }
+
   if (form) {
-    form.addEventListener('submit', function() {
+    form.addEventListener('submit', function(event) {
+      if (mediaInput && mediaInput.files.length && !mediaFiles.length) {
+        event.preventDefault();
+        showMediaError('Tệp đã chọn không hợp lệ. Hãy chọn lại media sản phẩm.');
+        return;
+      }
       var btn = document.getElementById('one-command-btn');
       if (btn) {
         btn.disabled = true;

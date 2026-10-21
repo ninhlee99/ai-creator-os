@@ -24,7 +24,7 @@ type MotionVideoOptions struct {
 }
 
 // GenerateMotionVideoClip renders a single motion video clip using the requested AI video engine
-// (Google Veo 3, Muse AI, or intelligent cascade), conforming the output strictly to 9:16 or 16:9.
+// (Veo, Muse AI, or an intelligent cascade), conforming the output strictly to 9:16 or 16:9.
 func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOptions) error {
 	if strings.TrimSpace(opts.Prompt) == "" {
 		return fmt.Errorf("prompt video không được để trống")
@@ -52,39 +52,20 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 	var generated bool
 	var lastErr error
 
-	// 0. Chế độ Google Flow (Veo SD 480p - 1.000 Credits Free/tháng qua Web Adapter)
-	if engine == "googleflow" || ((engine == "auto" || engine == "generative" || engine == "webai") && !generated) {
-		sess, sessErr := s.GetWebAISession("googleflow")
-		hasFlowWebSession := (sessErr == nil && sess != nil && (sess.SessionToken != "" || sess.CookieHeader != ""))
-
-		if hasFlowWebSession {
-			log(fmt.Sprintf("🌊 Đã kích hoạt Google Flow Web Adapter (%s) — Tận dụng 1.000 credits miễn phí/tháng...", sess.Email))
-		} else if engine == "googleflow" {
-			log("🌊 Khởi động Google Flow (Veo SD 480p): Tận dụng 1.000 credits miễn phí...")
-		}
-
-		// Kiểm tra nếu người dùng đã tải sẵn clip từ Google Flow vào thư mục hoặc qua web adapter
+	// Google Flow is currently a user-operated web app. It has no supported
+	// generation API in this adapter, so only consume an explicitly exported
+	// clip here; never mislabel a Gemini API call as Flow or retry paid video
+	// generation through two cascade branches.
+	if engine == "googleflow" {
 		flowClip := filepath.Join(filepath.Dir(opts.OutputPath), "flow_input.mp4")
-		if fileExists(flowClip) {
-			log(fmt.Sprintf("✓ Google Flow Web: Đã nhận diện clip Veo SD 480p (%s) — đưa vào pipeline Remaster 4K UHD...", filepath.Base(flowClip)))
-			if err := copyViralFile(flowClip, tempClip); err == nil {
-				generated = true
-			}
-		} else if hasFlowWebSession || s.mg != nil {
-			if s.mg != nil {
-				// Sinh video Veo miễn phí qua Gemini API / Google Flow
-				veoErr := s.mg.GenerateVideo(ctx, opts.Prompt, opts.FirstFrame, opts.Seconds, opts.AspectRatio, tempClip)
-				if veoErr == nil && fileExists(tempClip) {
-					log("✓ Google Flow (Veo Free Tier): Đã kết xuất video chuyển động thành công 100%!")
-					generated = true
-				} else {
-					lastErr = veoErr
-					if engine == "googleflow" {
-						log(fmt.Sprintf("Google Flow lưu ý (%v) — chuyển tiếp sang Muse AI / Veo 3...", veoErr))
-					}
-				}
-			}
+		if !fileExists(flowClip) {
+			return fmt.Errorf("google flow: export video from Flow and place it at %s", flowClip)
 		}
+		log(fmt.Sprintf("Google Flow: importing exported clip %s", filepath.Base(flowClip)))
+		if err := copyViralFile(flowClip, tempClip); err != nil {
+			return fmt.Errorf("google flow: import exported clip: %w", err)
+		}
+		generated = true
 	}
 
 	// 1. Chế độ Veo 3 (hoặc Auto ưu tiên Veo 3 Free Preview)
@@ -104,41 +85,18 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 		}
 	}
 
-	// 2. Chế độ Muse AI (hoặc Auto fallback khi kết nối Web AI / API)
-	if !generated && (engine == "museai" || engine == "auto" || engine == "generative" || engine == "webai") {
-		log("🎥 Khởi động công nghệ Muse AI Video Studio (Web & API)...")
-		apiKey := os.Getenv("MUSE_AI_API_KEY")
-		sessionKey := os.Getenv("MUSE_AI_SESSION")
-		cookieHdr := ""
-
-		// Ưu tiên nạp phiên đăng nhập từ Kho Tài Khoản Web AI (/settings/he-thong#tab-webai)
-		if sess, err := s.GetWebAISession("museai"); err == nil && sess != nil {
-			if sess.SessionToken != "" {
-				sessionKey = sess.SessionToken
-			}
-			cookieHdr = sess.CookieHeader
-			log(fmt.Sprintf("✓ Muse AI Web: Đã nhận diện phiên tài khoản Web AI (%s)...", sess.Email))
+	// Muse AI has no verified video-generation adapter yet. Accept an
+	// explicitly exported clip, but never send account cookies to a guessed API.
+	if engine == "museai" {
+		museClip := filepath.Join(filepath.Dir(opts.OutputPath), "museai_input.mp4")
+		if !fileExists(museClip) {
+			return fmt.Errorf("muse ai: API adapter is not verified; export a clip and place it at %s", museClip)
 		}
-
-		museClient := NewMuseAIClient(apiKey, sessionKey)
-		if cookieHdr != "" {
-			museClient.SetCookieHeader(cookieHdr)
+		log(fmt.Sprintf("Muse AI: importing exported clip %s", filepath.Base(museClip)))
+		if err := copyViralFile(museClip, tempClip); err != nil {
+			return fmt.Errorf("muse ai: import exported clip: %w", err)
 		}
-
-		if museClient.Healthy() {
-			museErr := museClient.RenderMuseAIVideo(ctx, opts.Prompt, opts.FirstFrame, opts.Seconds, opts.AspectRatio, tempClip, log)
-			if museErr == nil && fileExists(tempClip) {
-				log("✓ Muse AI: Đã tạo video chuyển động mượt mà thành công 100%!")
-				generated = true
-			} else {
-				lastErr = museErr
-				log(fmt.Sprintf("Muse AI lưu ý (%v) — chuyển tiếp sang pipeline chuyển động thực tế...", museErr))
-			}
-		} else {
-			if engine == "museai" {
-				return fmt.Errorf("muse.ai: chưa cấu hình tài khoản Muse AI trong Cài đặt · Tài khoản AI hoặc MUSE_AI_API_KEY")
-			}
-		}
+		generated = true
 	}
 
 	// 3. Fallback: Nếu cả Veo 3 và Muse AI chưa sẵn sàng, áp dụng chuyển động người thật quay phim chuẩn 9:16

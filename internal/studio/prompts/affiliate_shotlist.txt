@@ -4,7 +4,7 @@ Sản phẩm: {{.Topic}}. Niche: {{.Niche}}. Video dài {{.Seconds}}s, định d
 ── TIÊU CHUẨN ĐẠO DIỄN QUẢNG CÁO 5 SAO (STORY ARC GIỮ CHÂN & CHUYỂN ĐỔI CAO) ──
 
 Viết {{.N}} shot kết hợp nghệ thuật thị giác và tâm lý học mua hàng:
-- Shot 1 (HOOK - 3s đầu): Pattern Interrupt cực mạnh. Góc quay lạ, chuyển động bất ngờ, ánh sáng bắt mắt, tôn vinh sản phẩm ngay tích tắc đầu tiên để người lướt dừng ngón tay.
+- Shot 1 (HOOK - 3s đầu): Mở bằng hành động tự nhiên, khung hình cuốn hút và sản phẩm hiện rõ ngay từ đầu. Không dùng chuyển động đột ngột hay hiệu ứng chớp.
 - Shot 2 & giữa (BUILD - Lifestyle & Trải nghiệm): Mẫu nữ Việt Nam thanh lịch, tự nhiên trong bối cảnh thực tế (quán cafe phong cách tối giản, đường phố hiện đại, bàn làm việc thẩm mỹ).
 - Shot Macro (CRAFTSMANSHIP & TEXTURE): Cận cảnh cực chi tiết (Extreme Close-Up) chất liệu cao cấp, đường kim mũi chỉ, ánh kim loại, độ mịn màng của sản phẩm dưới ánh sáng studio mềm.
 - Shot cuối (PAYOFF & EMOTIONAL REWARD): Cảm xúc hài lòng, tự tin, nụ cười rạng rỡ của người dùng khi sở hữu sản phẩm, tạo khao khát mua sắm tự nhiên.
@@ -12,13 +12,13 @@ Viết {{.N}} shot kết hợp nghệ thuật thị giác và tâm lý học mua
 Mỗi shot quy định chi tiết:
 - purpose: "hook" | "build" | "macro" | "lifestyle" | "payoff"
 - shot_size: ECU (Extreme Close-up) | CU (Close-up) | MCU (Medium Close-up) | MS (Medium Shot) | WS (Wide Shot)
-- camera_move: dolly-in, dolly-out, subtle-pan, tracking-shot, floating-gimbal, static-focus
+- camera_move: locked-off tripod, gentle pan, smooth gimbal tracking, static-focus
 - lens_light: "50mm f/1.4, cinematic golden hour" / "macro 100mm f/2.8, diffuse softbox studio light" / "35mm anamorphic, natural window light"
 - seconds: 3-6 (nhịp dựng thời trang, không để 1 cảnh kéo dài gây chán)
 - action: Mẫu nữ Việt Nam diễn gì cụ thể với sản phẩm (tiếng Việt, tự nhiên, sang trọng, không gượng gạo)
 - image_prompt: Tiếng Anh, chuyên nghiệp cho AI image gen (vertical 9:16, photorealistic, 8k, masterclass lighting, authentic skin texture, luxury aesthetic, no text, no watermark)
-- video_prompt: Tiếng Anh mô tả chuyển động máy quay và chuyển động của mẫu
+- video_prompt: Tiếng Anh mô tả chuyển động tự nhiên của mẫu và camera ổn định. Cấm zoom, dolly push/pull, flash, strobe, flicker, rung, lắc, whip-pan, hoặc cắt chớp.
 
 Chỉ trả JSON thuần định dạng:
-{"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camera_move":"dolly-in","lens_light":"50mm f/1.4, golden hour backlight","seconds":4,"action":"...","image_prompt":"...","video_prompt":"..."}]}
+{"shots": [{"index":1,"purpose":"hook","shot_size":"CU","camera_move":"smooth gimbal tracking","lens_light":"50mm f/1.4, golden hour backlight","seconds":4,"action":"...","image_prompt":"...","video_prompt":"..."}]}
 

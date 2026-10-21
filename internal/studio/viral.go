@@ -22,7 +22,7 @@ type ViralParams struct {
 	Topic          string   `json:"topic"`
 	Genre          string   `json:"genre"`       // mystery, lifehack, trendjack, tech_fact, koc_review
 	VisualMood     string   `json:"visual_mood"` // cinematic, vibrant_3d, realistic, cyber_neon
-	Voice          string   `json:"voice"`       // VieNeu / Gemini voice identifier
+	Voice          string   `json:"voice"`       // TTS provider voice identifier
 	Account        string   `json:"account"`     // username kênh để đọc Brand DNA
 	AccountID      int64    `json:"account_id,omitempty"`
 	ModelPhoto     string   `json:"model_photo,omitempty"`  // local file path to character face reference image
@@ -739,7 +739,7 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 	}
 	finalDuration := probeDuration(ctx, finalVideo)
 	if finalDuration < float64(requiredDuration)-1.5 {
-		fail(fmt.Errorf("video đầu ra chỉ dài %.1fs; yêu cầu %.0fs", finalDuration, requiredDuration))
+		fail(fmt.Errorf("video đầu ra chỉ dài %.1fs; yêu cầu %ds", finalDuration, requiredDuration))
 		return
 	}
 	s.setOutput(jobID, finalVideo)

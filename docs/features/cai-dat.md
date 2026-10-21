@@ -10,7 +10,7 @@ Mọi cấu hình vận hành của app, chia 4 trang tinh gọn — mỗi trang
 - `GET /settings/an-toan` → `handleSettingsAnToan`
 - (tất cả trong `internal/web/settings.go`; template trong
   `internal/web/templates/settings/`; thanh chuyển trang là dải **tab** —
-  tab đang mở tô màu accent). Các truy cập vào `/settings/model-local` cũ được tự động redirect 303 về `/settings/he-thong`).
+  tab đang mở tô màu accent). Route `/settings/model-local` đã gỡ và trả 404.
 
 ## 3. Luồng vận hành chi tiết
 
@@ -38,8 +38,8 @@ Mọi cấu hình vận hành của app, chia 4 trang tinh gọn — mỗi trang
   `POST /settings/chain` → `handleChainSave`; `POST /settings/chain/move` đổi
   thứ tự; `POST /settings/chain/health` probe từng provider. Cấu trúc
   `ChainConfig{Order[]}` lưu trong settings.
-  - TTS: Gemini → VieNeu local → Edge (`internal/engines/chains.go`).
-  - LLM: Gemini → llama-server local → paid (placeholder tắt).
+  - TTS: Gemini → Edge (`internal/engines/chains.go`).
+  - LLM: Gemini.
 - **Keyring từng engine**: `POST /settings/keys/add|delete`, `GET /settings/keys/status`,
   `POST /settings/keys/test` — key hiện dạng `••••abcd`, không bao giờ render raw.
 - **Tab Accesstrade** (Đợt B): nhập `access_key` 1 lần → `POST` lưu ledger,

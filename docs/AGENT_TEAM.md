@@ -62,9 +62,9 @@ Hình minh họa:
 
 ### 2.3 Tầng dịch vụ dùng chung — là CÔNG CỤ, không phải agent
 
-LLM chain (Gemini → llama-server local), TTS chain (Gemini → VieNeu-TTS v3
-local → Edge), Avatar chain (MuseTalk sidecar → HeyGen → D-ID, paid tắt mặc
-định), MediaGen (Gemini image/Veo), FFmpeg.
+LLM provider (Gemini), TTS chain (Gemini → Edge), Avatar chain (MuseTalk
+sidecar → HeyGen → D-ID, paid tắt mặc định), MediaGen (Gemini image/Veo),
+FFmpeg.
 
 Chúng không có "ý chí": agent gọi qua interface, mọi lần gọi ghi `api_usage`
 vào Ledger, và tài nguyên khan hiếm (FFmpeg, GPU, key Gemini) đi qua

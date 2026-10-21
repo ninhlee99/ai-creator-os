@@ -157,7 +157,7 @@
             {{if eq .Status "done"}}
             <a href="/studio/jobs/{{.ID}}" class="btn btn-primary btn-sm">Xem video</a>
             {{else if eq .Status "failed"}}
-            <form method="post" action="/stories/retry/{{.ID}}" style="display:inline">
+            <form method="post" action="/stories/{{.ID}}/retry" style="display:inline">
               <button type="submit" class="btn btn-secondary btn-sm">Thử lại</button>
             </form>
             {{else}}

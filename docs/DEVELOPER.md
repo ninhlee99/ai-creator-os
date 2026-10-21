@@ -35,7 +35,7 @@ internal/accesstrade/ Hunter quét chiến dịch & datafeed, tạo link trackin
 internal/studio/      Studio AI: jobs (SQLite), video affiliate, video viral AI 9:16, story video 16:9
 internal/automation/  Vòng lặp daemon: Autopilot, Growth, Reconcile, Sync, Story
 internal/ledger/      Sổ cái SQLite WAL per-account & cài đặt hệ thống
-internal/engines/     LLM chain (Gemini/llama), TTS chain (Gemini/VieNeu/Edge)
+internal/engines/     LLM (Gemini), TTS chain (Gemini/Edge)
 internal/publishers/  TikTok Posting API, YouTube OAuth/upload, Facebook Page
 docs/                 Tài liệu hệ thống và 18 tài liệu tính năng chi tiết
 scripts/              Watchdog healthz, check-reachable, launchd service
@@ -55,9 +55,9 @@ Avatar agent: file JPEG 160px trong `internal/web/static/agents/`, serve qua `GE
 ## Bản đồ kiến trúc (tóm tắt)
 
 - **Orchestrator** điều phối; **AccountManager** vòng đời account; **PersonaEngine** gán persona; **Scheduler** xếp giờ live (max 2 live cùng lúc).
-- **Agent Team:** mỗi trụ = 1 team (Affiliate / Reup / Story), trạng thái suy ra từ dữ liệu thật, xem tại `/team`. Chi tiết: [`AGENT_TEAM.md`](AGENT_TEAM.md).
-- **Provider chains:** TTS Gemini → VieNeu-TTS v3 local → Edge; LLM Gemini → llama-server local. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
-- **Affiliate:** nguồn duy nhất Accesstrade datafeed (hunter tick → kho; TikTok Shop đã loại bỏ Đợt H1). Video 30s = 3–5 ảnh 4K cùng 1 địa điểm, zoom nảy theo BPM, không chữ không voiceover.
+- **Đội ngũ (`/team`):** bảng sức khỏe của ba pipeline Affiliate / Video dọc / Story; trạng thái suy ra từ dữ liệu thật, không phải agent chạy riêng. Chi tiết: [`features/agent-team.md`](features/agent-team.md).
+- **Provider chains:** TTS Gemini → Edge; LLM Gemini. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
+- **Affiliate:** nguồn duy nhất Accesstrade datafeed (hunter tick → kho; TikTok Shop đã loại bỏ Đợt H1). Mặc định tạo từng shot bằng engine video; prompt cấm zoom, flash, flicker và rung. Nếu dùng ảnh tĩnh, dựng dissolve ổn định, không tạo chuyển động giả.
 
 Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affiliate: `ARCHITECTURE.md` §13
 
@@ -66,16 +66,10 @@ Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affili
 Trích từ audit lõi AI của chính dự án (2026-10-02, file audit điểm-thời đã
 gộp vào đây và `docs/RESEARCH.md` §5–§6):
 
-- **Cài đặt phía Mac (guide người dùng chưa liệt kê đủ trước đây):** ngoài
-  `brew install ffmpeg`, tầng local cần `brew install llama.cpp` (bản
-  Metal) cho llama-server và `uv` cho VieNeu-TTS. Thiếu cái nào thì tầng
-  đó **tắt lặng** — chỉ ghi log, không báo UI. Đừng để giới thiệu sai cho
-  người dùng rằng local "có sẵn".
-- **Lệnh khởi chạy llama-server phải có `-ngl 99`** để offload lên GPU
-  Metal; thiếu là chạy CPU 100% (ước 8–15 tok/s thay vì 25–45 tok/s, chưa
-  đo thật trên máy Ninh). Đã sửa, đừng hồi quy.
+- **Cài đặt phía Mac:** `brew install ffmpeg` cho dựng video. LLM dùng Gemini;
+  không cần cài model server local.
 - **Mọi con số hiệu năng hiện tại là ƯỚC TÍNH, chưa phải số đo trên máy
-  Ninh:** llama tok/s, RTF VieNeu fp32/int8 (chờ A/B nghe thử), fps
+  Ninh:** fps
   MuseTalk thật (ước 2.5–4 fps → render 60s ≈ 6–10 phút, ngoại suy từ M2
   Pro đo thật 1,6 fps — xem `docs/RESEARCH.md` §6), thời gian upscale 4K.
   Benchmark these đúng máy của chủ sở hữu là việc đang nợ; không được lấy

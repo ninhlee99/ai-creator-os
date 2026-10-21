@@ -18,7 +18,7 @@ func WriteCaption(ctx context.Context, llm LLM, productName, niche string) (stri
 		productName = "sản phẩm"
 	}
 	sys := "Bạn là copywriter TikTok Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Viết caption tiếng Việt cho video affiliate TikTok 30 giây, phong cách giật-giật.
+	prompt := fmt.Sprintf(`Viết caption tiếng Việt cho video affiliate TikTok 30 giây, phong cách tự nhiên, chuyên nghiệp.
 Sản phẩm: %s. Ngành hàng: %s.
 Yêu cầu:
 - Dòng 1: hook ngắn gây tò mò (dưới 60 ký tự).

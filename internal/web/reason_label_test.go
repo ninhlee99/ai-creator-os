@@ -6,7 +6,6 @@ func TestReasonLabelVietnamese(t *testing.T) {
 	cases := map[string]string{
 		"topic resolved (source=fallback)":                                  "đã chốt chủ đề (nguồn: mặc định theo tính cách, vì chưa có AI)",
 		"assigned 📖 Storyteller for researched niche 'kể chuyện đêm khuya'": "gán tính cách 📖 Storyteller cho chủ đề “kể chuyện đêm khuya”",
-		"gemini -> llama-server (missing-key)":                              "Gemini (Google) → AI chạy trên máy (lý do: thiếu key)",
 		"persona_assigned -> growing":                                       "Đã gán persona → Đang tăng trưởng",
 		"đã chốt chủ đề (nguồn: hint)":                                      "đã chốt chủ đề (nguồn: gợi ý của bạn)",
 	}

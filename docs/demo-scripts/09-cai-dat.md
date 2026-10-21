@@ -22,13 +22,9 @@
 
 **Tab 4 — Nhà cung cấp.**
 [Thao tác: chuyển tab Nhà cung cấp, chỉ vào chuỗi TTS và keyring.]
-"Tab Nhà cung cấp: thứ tự ưu tiên giọng đọc — Gemini trước, VieNeu local sau, Edge cuối. Key thì quản lý theo vòng: hiện 4 số cuối, key nào lỗi thì tự bỏ qua, key nào bị giới hạn thì nghỉ theo thang 1 phút → 5 phút → 15 phút rồi thử lại. Bạn có 10 key thì nó xoay cả 10."
+"Tab Nhà cung cấp: LLM dùng Gemini; TTS ưu tiên Gemini rồi chuyển sang Edge nếu cần. Key Gemini được xoay vòng, key lỗi tự bỏ qua và key chạm quota sẽ nghỉ theo thang 1 phút → 5 phút → 15 phút."
 
-**Tab 5 — Model local.**
-[Thao tác: chuyển tab Model local.]
-"Chạy AI trên máy bạn: VieNeu TTS và llama-server — mỗi cái một nút bấm để tải và bật, app tự kiểm tra. Dưới này là kiểm tra công cụ: FFmpeg có chưa, chưa thì hiện đúng một dòng lệnh cài."
-
-**Tab 6 — An toàn.**
+**Tab 5 — An toàn.**
 [Thao tác: chuyển tab An toàn.]
 "Tab quan trọng nhất: dry-run — bật thì mọi thao tác thật đều thành mô phỏng. Và kill switch — nút đỏ dừng toàn bộ daemon ngay lập tức. Mọi lần bấm đều ghi vào nhật ký."
 

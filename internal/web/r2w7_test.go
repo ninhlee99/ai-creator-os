@@ -94,12 +94,12 @@ func TestSettingsHeThongR2W7(t *testing.T) {
 	}
 }
 
-// TestSettingsModelLocalRedirect — trang Model local đã loại bỏ và redirect sang /settings/he-thong.
-func TestSettingsModelLocalRedirect(t *testing.T) {
+// TestSettingsModelLocalRemoved — retired local-model route returns 404.
+func TestSettingsModelLocalRemoved(t *testing.T) {
 	s := newTestServer(t)
 	rec := get(t, s, "/settings/model-local")
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("GET /settings/model-local = %d, want 303", rec.Code)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("GET /settings/model-local = %d, want 404", rec.Code)
 	}
 }
 

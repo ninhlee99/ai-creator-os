@@ -68,7 +68,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/missions/{id}", s.handleMissionDetailJSON)
 
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
-	mux.HandleFunc("GET /clips/{category}/{name}", s.handleClipMedia)
 
 	// Studio: AI video creation (affiliate / short film) + VN trends.
 	mux.HandleFunc("GET /studio", s.handleStudio)
@@ -90,15 +89,13 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
 	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
-	mux.HandleFunc("POST /studio/viral", s.handleStudioViralCreate)
-	mux.HandleFunc("POST /studio/viral/quick", s.handleStudioViralQuick)
 	mux.HandleFunc("POST /studio/muse-import", s.handleStudioMuseImport)
 	mux.HandleFunc("POST /studio/flow-import", s.handleStudioFlowImport)
+	mux.HandleFunc("POST /studio/leonardo-import", s.handleStudioLeonardoImport)
 	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
 	mux.HandleFunc("GET /api/studio/faceswap-status", s.handleAPIFaceSwapStatus)
 	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
 	mux.HandleFunc("GET /api/studio/tiktok-trends", s.handleAPITikTokTrends)
-	mux.HandleFunc("GET /api/studio/tiktok-topics", s.handleAPITikTokTopics)
 	mux.HandleFunc("POST /api/studio/tiktok-analyze", s.handleAPITikTokAnalyze)
 
 	// Điều hướng /flow cũ về Studio
@@ -162,9 +159,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /settings", s.handleSettingsIndex)
 	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
 	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
-	mux.HandleFunc("GET /settings/model-local", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/settings/he-thong", http.StatusSeeOther)
-	})
 	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/models/update", s.handleModelsUpdate)
@@ -208,8 +202,6 @@ func (s *Server) Routes() http.Handler {
 	// Video Viral AI 100% Gốc (Trendjack Spotlight Shorts 9:16).
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
-	mux.HandleFunc("POST /viral/quick", s.handleViralQuick)
-	mux.HandleFunc("POST /viral/clips/import", s.handleViralClipImport)
 
 	// Master Autonomous Harness Agent (OODA loop, experiential memory, portfolio control).
 	mux.HandleFunc("GET /harness", s.handleHarness)
@@ -219,12 +211,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /harness/memory/delete", s.handleHarnessMemoryDelete)
 	mux.HandleFunc("GET /api/harness/cycles/{id}", s.handleHarnessCycleDetailJSON)
 	mux.HandleFunc("GET /api/harness/prompt-context", s.handleHarnessPromptPreview)
-	// Đợt H2: Agent Team định nghĩa lại quanh 3 pipeline (thay team live đã park).
+	// Đội ngũ: sức khỏe 3 pipeline từ dữ liệu thật.
 	mux.HandleFunc("GET /team", s.handleTeamPipelines)
-	mux.HandleFunc("POST /team/agents/create", s.handleAgentCreate)
-	mux.HandleFunc("POST /team/agents/toggle", s.handleAgentToggleAutopilot)
-	mux.HandleFunc("POST /team/agents/delete", s.handleAgentDelete)
-	mux.HandleFunc("POST /team/departments/assign", s.handleDeptAssign)
 	mux.HandleFunc("POST /team/dispatch", s.handleTeamDispatchGoal)
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
@@ -238,13 +226,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/keys/delete", s.handleKeyDelete)
 	mux.HandleFunc("GET /settings/keys/status", s.handleKeyStatus)
 	mux.HandleFunc("POST /settings/keys/test", s.handleKeyTest)
-
-	// VieNeu sidecar panel
-	mux.HandleFunc("GET /settings/vieneu/status", s.handleVieneuStatus)
-	mux.HandleFunc("POST /settings/vieneu/ensure", s.handleVieneuEnsure)
-	mux.HandleFunc("GET /settings/vieneu/progress", s.handleVieneuProgress)
-	mux.HandleFunc("POST /settings/vieneu/restart", s.handleVieneuRestart)
-	mux.HandleFunc("POST /settings/vieneu/voice", s.handleVieneuVoice)
 
 	// legacy JSON API — mặc định TẮT (R2-W7, R2-09): không có UI nào gọi,
 	// mở ra chỉ khi người vận hành bật công tắc ở Cài đặt · Hệ thống.

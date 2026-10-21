@@ -23,8 +23,7 @@ const (
 
 const maxOutLines = 200
 
-// Process is a supervised long-running child process: llama-server, the
-// VieNeu TTS sidecar, whisper.cpp later.
+// Process is a supervised long-running child process.
 //
 //   - Start launches it (idempotent while running).
 //   - Stop terminates it gracefully (SIGTERM, then SIGKILL after 5s).

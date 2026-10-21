@@ -36,8 +36,7 @@ type apiKeySetter interface {
 // enabledSetter is implemented by providers that mirror the config flag.
 type enabledSetter interface{ SetEnabled(bool) }
 
-// LLMProvider is one text-generation backend: free API, local model, or the
-// (reserved) paid tier.
+// LLMProvider is a text-generation backend.
 type LLMProvider interface {
 	// Complete returns the model's text reply.
 	Complete(ctx context.Context, system, prompt string) (string, error)
@@ -72,9 +71,8 @@ func NewLLMChain(providers []LLMProvider, onSwitch func(from, to, reason string)
 	return c
 }
 
-// Provider returns the provider registered under name (e.g.
-// "llama-server") for sidecar control from the caller. It reports false
-// when the name is unknown. Read-only: safe for concurrent use.
+// Provider returns a registered provider by name. It reports false when
+// the name is unknown. Read-only: safe for concurrent use.
 func (c *LLMChain) Provider(name string) (LLMProvider, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -424,7 +422,7 @@ func (g *GeminiProvider) Complete(ctx context.Context, system, prompt string) (s
 				return "", fmt.Errorf("gemini: missing API key")
 			case allCooling:
 				// Every key is cooling down: fail over to the next tier
-				// NOW (llama-server) instead of spamming retries.
+				// immediately instead of spamming retries.
 				// "quota" in the message lets the chain log the reason.
 				// Đợt S: đếm lần cạn kiệt liên tiếp cho ngắt mạch quota ngày.
 				tts.GeminiQuotaCircuit().ObserveExhausted()
@@ -525,126 +523,4 @@ func parseGeminiText(data []byte) (string, error) {
 		return "", fmt.Errorf("no candidates in response")
 	}
 	return v.Candidates[0].Content.Parts[0].Text, nil
-}
-
-// ---------------------------------------------------------------------------
-// Tier 2: llama-server local ("llama-server")
-
-// LlamaServerProvider talks to a local llama-server (llama.cpp) over its
-// OpenAI-compatible /v1/chat/completions endpoint.
-type LlamaServerProvider struct {
-	baseURL string
-	model   string
-	http    *http.Client // long timeout: local inference is slow
-	probe   *http.Client // short timeout for Healthy()
-}
-
-// NewLlamaServerProvider builds the tier-2 LLM provider.
-func NewLlamaServerProvider(baseURL, model string) *LlamaServerProvider {
-	return &LlamaServerProvider{
-		baseURL: strings.TrimSuffix(baseURL, "/"),
-		model:   model,
-		http:    &http.Client{Timeout: 120 * time.Second},
-		probe:   &http.Client{Timeout: 5 * time.Second},
-	}
-}
-
-func (l *LlamaServerProvider) Name() string { return "llama-server" }
-
-// Healthy is true when GET {baseURL}/health returns 200.
-func (l *LlamaServerProvider) Healthy(ctx context.Context) bool {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, l.baseURL+"/health", nil)
-	if err != nil {
-		return false
-	}
-	resp, err := l.probe.Do(req)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
-}
-
-func (l *LlamaServerProvider) Complete(ctx context.Context, system, prompt string) (string, error) {
-	messages := []any{}
-	if system != "" {
-		messages = append(messages, map[string]any{"role": "system", "content": system})
-	}
-	messages = append(messages, map[string]any{"role": "user", "content": prompt})
-	body := map[string]any{
-		"model":    l.model,
-		"messages": messages,
-		"stream":   false,
-	}
-	data, err := postJSON(ctx, l.http, l.baseURL+"/v1/chat/completions", body)
-	if err != nil {
-		return "", fmt.Errorf("llama-server: %w", err)
-	}
-	text, err := parseChatCompletion(data)
-	if err != nil {
-		return "", fmt.Errorf("llama-server: %w", err)
-	}
-	return text, nil
-}
-
-// parseChatCompletion extracts choices[0].message.content.
-func parseChatCompletion(data []byte) (string, error) {
-	var v struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(data, &v); err != nil {
-		return "", fmt.Errorf("bad JSON: %w", err)
-	}
-	if v.Error != nil {
-		return "", fmt.Errorf("api error: %s", v.Error.Message)
-	}
-	if len(v.Choices) == 0 {
-		return "", fmt.Errorf("no choices in response")
-	}
-	return v.Choices[0].Message.Content, nil
-}
-
-// ---------------------------------------------------------------------------
-// Tier 3: paid API ("paid") — placeholder only
-
-// PaidLLMProvider reserves the paid tier in the chain order. It implements
-// LLMProvider but never makes a real call: Enabled=false by default and
-// Complete always fails with "paid tier disabled".
-type PaidLLMProvider struct {
-	mu      sync.RWMutex
-	Enabled bool
-}
-
-// NewPaidLLMProvider builds the disabled-by-default paid placeholder.
-func NewPaidLLMProvider() *PaidLLMProvider { return &PaidLLMProvider{} }
-
-func (p *PaidLLMProvider) Name() string { return "paid" }
-
-// SetEnabled mirrors the chain config flag (called by LLMChain.SetConfig).
-func (p *PaidLLMProvider) SetEnabled(v bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.Enabled = v
-}
-
-func (p *PaidLLMProvider) Healthy(ctx context.Context) bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.Enabled
-}
-
-func (p *PaidLLMProvider) Complete(ctx context.Context, system, prompt string) (string, error) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	if !p.Enabled {
-		return "", fmt.Errorf("paid tier disabled")
-	}
-	return "", fmt.Errorf("paid tier not implemented (placeholder)")
 }

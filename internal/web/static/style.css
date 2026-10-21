@@ -1081,6 +1081,32 @@ details.advanced summary { cursor: pointer; font-weight: 600;
 details.advanced summary:hover { color: var(--text); }
 details.advanced .field:last-child { margin-bottom: 4px; }
 
+/* ---- Manual product form disclosure ---- */
+details.product-manual {
+  max-width: none; margin: 14px 0 20px; padding: 0; overflow: hidden;
+  background: var(--bg2); box-shadow: var(--shadow-sm);
+}
+details.product-manual > summary {
+  display: flex; align-items: center; gap: 12px; list-style: none;
+  padding: 14px 16px; color: var(--text); font-size: var(--fs-md);
+}
+details.product-manual > summary::-webkit-details-marker { display: none; }
+details.product-manual > summary::marker { content: ""; }
+details.product-manual > summary:hover { color: var(--text); background: var(--bg3); }
+.product-manual-icon {
+  display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px;
+  border-radius: 10px; background: var(--accent-subtle); color: var(--accent);
+}
+.product-manual-icon::before { content: "+"; font-size: 22px; font-weight: 500; line-height: 1; }
+.product-manual[open] .product-manual-icon::before { content: "−"; }
+.product-manual-copy { display: grid; gap: 1px; min-width: 0; }
+.product-manual-copy strong { font-size: var(--fs-md); line-height: 1.35; }
+.product-manual-copy small { color: var(--muted); font-size: var(--fs-sm); font-weight: 400; }
+.product-manual-chevron { margin-left: auto; color: var(--muted); font-size: 21px; line-height: 1; transition: transform .16s ease; }
+.product-manual[open] .product-manual-chevron { transform: rotate(180deg); }
+details.product-manual > form { margin: 0; padding: 18px 16px 16px; border-top: 1px solid var(--border); }
+details.product-manual > form > .btn { margin-top: 2px; }
+
 /* ---- Trending sounds table: symbol-font fallback for exotic glyphs ---- */
 .trends-table td { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
   Roboto, "Segoe UI Symbol", "Noto Sans Symbols 2", Arial, sans-serif; }
@@ -1276,6 +1302,7 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .webai-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-auto-rows: 1fr;
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -1287,6 +1314,8 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
   position: relative;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
@@ -1302,23 +1331,31 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 0;
 }
 .webai-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
+.webai-brand > div { min-width: 0; }
 .webai-icon {
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
+  flex: 0 0 auto;
 }
 .webai-name {
   font-weight: 700;
-  font-size: 16px;
+  font-size: 15px;
+  line-height: 1.25;
   color: var(--text);
 }
 .webai-tag {
+  display: block;
+  margin: 0 0 0 32px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1326,9 +1363,9 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   color: var(--muted);
 }
 .status-pill {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 3px 9px;
+  padding: 3px 7px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
@@ -1343,7 +1380,9 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   background: var(--bg3);
   color: var(--muted);
   border: 1px solid var(--border);
+  white-space: nowrap;
 }
+.webai-status { flex: 0 0 auto; max-width: 100%; }
 .pulse-dot {
   width: 7px;
   height: 7px;
@@ -1361,8 +1400,7 @@ details.advanced .field:last-child { margin-bottom: 4px; }
   font-size: 13px;
   color: var(--muted);
   line-height: 1.45;
-  margin: 0 0 12px;
-  flex: 1;
+  margin: 0;
 }
 .webai-features {
   display: flex;
@@ -1389,10 +1427,240 @@ details.advanced .field:last-child { margin-bottom: 4px; }
 .meta-val { font-weight: 600; }
 .meta-val.muted { font-weight: normal; color: var(--muted); }
 .webai-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+.webai-card-actions > .btn {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+.webai-account-summary {
+  display: flex;
   align-items: center;
+  width: 100%;
+  gap: 11px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg3);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.webai-account-summary:hover,
+.webai-account-summary:focus-visible {
+  border-color: var(--accent);
+  background: var(--hover-bg);
+}
+.webai-account-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.webai-account-count {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--bg2);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 800;
+}
+.webai-account-summary-copy { display: grid; gap: 2px; min-width: 0; }
+.webai-account-summary-copy strong { font-size: 12px; }
+.webai-account-summary-copy small { color: var(--muted); font-size: 11px; }
+.webai-account-summary-arrow { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; }
+.webai-accounts-modal-box { max-width: 620px; }
+.webai-accounts-modal-subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.webai-account-list { display: grid; gap: 8px; }
+.webai-account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg3);
+}
+.webai-account-info { display: grid; gap: 5px; min-width: 0; }
+.webai-account-info > strong { overflow-wrap: anywhere; font-size: 13px; }
+.webai-account-meta-line { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.webai-account-actions { display: flex; align-items: center; flex: 0 0 auto; gap: 6px; }
+.webai-account-actions form { display: inline-flex; margin: 0; }
+.webai-account-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 24px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg3);
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+.webai-account-empty strong { color: var(--text); font-size: 14px; }
+@media (max-width: 600px) {
+  .webai-account-row { align-items: flex-start; flex-direction: column; }
+  .webai-account-actions { align-self: flex-end; }
+}
+
+/* Multi-file product media picker on the quick creator. */
+.product-media-picker { margin-top: 16px; }
+.product-media-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.product-media-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.product-media-heading h3 span { color: var(--muted); font-weight: 500; }
+.product-media-heading p,
+.product-media-help {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.product-media-count {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg3);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.product-media-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+.product-media-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  background: var(--bg3);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.product-media-dropzone:hover,
+.product-media-dropzone.is-dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg2));
+}
+.product-media-input:focus-visible + .product-media-dropzone {
+  outline: 3px solid var(--accent-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+.product-media-upload-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg2);
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 700;
+}
+.product-media-drop-copy { display: grid; gap: 3px; min-width: 0; }
+.product-media-drop-copy strong { color: var(--text); font-size: 12px; }
+.product-media-drop-copy small { color: var(--muted); font-size: 11px; }
+.product-media-browse {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.product-media-help { margin-top: 7px; }
+.product-media-error {
+  margin: 8px 0 0;
+  color: var(--err-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.product-media-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.product-media-item {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+}
+.product-media-thumb {
+  display: block;
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  background: #111827;
+}
+.product-media-info { display: grid; gap: 2px; padding: 7px 9px; padding-right: 32px; }
+.product-media-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-media-info small { color: var(--muted); font-size: 10px; }
+.product-media-remove {
+  position: absolute;
+  right: 6px;
+  bottom: 7px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg2);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+.product-media-remove:hover { border-color: var(--err); color: var(--err-text); }
+@media (max-width: 600px) {
+  .product-media-heading { align-items: flex-start; }
+  .product-media-count { font-size: 10px; }
+  .product-media-dropzone { align-items: flex-start; padding: 12px; }
+  .product-media-upload-icon { flex-basis: 32px; width: 32px; height: 32px; }
+  .product-media-drop-copy small { max-width: 190px; }
+  .product-media-browse { align-self: center; padding: 7px 9px; font-size: 11px; }
 }
 
 /* Embedded Workspace */

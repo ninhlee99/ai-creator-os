@@ -11,8 +11,8 @@
 //
 // Architecture: provider chain (local free sidecar -> HeyGen -> D-ID),
 // swappable like the TTS/LLM chains. Heavy models run as third-party
-// sidecar subprocesses managed by the Go binary (same pattern as the
-// VieNeu-TTS sidecar) — no Docker, no Python in this repo.
+// sidecar subprocesses managed by the Go binary — no Docker, no Python in
+// this repo.
 //
 // Sidecar HTTP contract (v1) — the sidecar MUST implement:
 //
