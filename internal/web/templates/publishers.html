@@ -94,7 +94,16 @@
         <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
       {{end}}
     </td>
-    <td>{{if .FbPage}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
+    <td>
+      {{if .FbPage}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">Chưa nối</span>{{end}}
+      {{if .FacebookClient}}
+        <a class="btn btn-secondary btn-sm" href="/publishers/facebook/authorize?username={{.Username}}" style="margin-left:4px">
+          {{if .FbPage}}Nối lại{{else}}Kết nối Facebook{{end}}
+        </a>
+      {{else}}
+        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
+      {{end}}
+    </td>
     <td>{{if .Instagram}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
     <td>{{if .Threads}}<span class="badge badge-ok">✓ Có</span>{{else}}<span class="badge badge-no">—</span>{{end}}</td>
     <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
@@ -112,7 +121,7 @@
 </div>
 {{end}}
 
-{{if .AnyTiktokClient}}
+{{if .AnySocialClient}}
 <div class="form-card" style="margin-top:24px">
   <h3 style="margin-top:0;font-size:15px">🔧 Chuyển tiếp URL Callback thủ công (TikTok Relay)</h3>
 

@@ -1,38 +1,31 @@
-# Đa nền tảng (`/publishers`)
+# Kết nối mạng xã hội (`/publishers`)
 
-## 1. Mục đích
-Bảng trạng thái kết nối từng nền tảng của từng kênh: TikTok, YouTube,
-Facebook Page, RTMP — biết cái nào đã nối, cái nào còn thiếu để đăng được.
+## Mục đích
 
-## 2. Kích hoạt
-- `GET /publishers` → `handlePublishers` (`internal/web/publishers.go:13`).
-- TikTok OAuth: `GET /publishers/tiktok/authorize` → `POST /publishers/tiktok/connect`
-  → `GET /publishers/tiktok/callback` (`internal/web/tiktok_oauth.go`).
+Hiển thị trạng thái và nút kết nối YouTube, TikTok, Facebook Page theo từng kênh. Nút OAuth mở khi client credentials tương ứng đã có trong Cài đặt. Facebook cho phép chọn một Page do tài khoản đang đăng nhập quản lý.
 
-## 3. Luồng vận hành chi tiết
-1. Mỗi dòng = một tài khoản; `publishers.BuildPublishers(username, youtubeChannel,
-   youtubeContentTypes)` dựng publisher cho từng nền tảng.
-2. Badge trung thực từng ô (đọc thật, không đoán):
-   - TikTok: `TiktokToken` = file token tồn tại (`publishers.TikTokTokenPath`),
-     `TiktokClient` = đã nhập client key/secret (`HasClient()`).
-   - YouTube: `YoutubeToken` = file `youtube_token_<user>.json` trong `<data>/tokens`;
-     client = `YOUTUBE_CLIENT_ID`/`YOUTUBE_CLIENT_SECRET`.
-   - Facebook: `FB_PAGE_ID_<USERNAME>` (hoặc `FB_PAGE_ID` chung) có giá trị — đăng
-     qua `facebook-cli` bằng tài khoản đã liên kết, không cần Facebook App.
-   - RTMP: `a.RtmpKey() != ""` (legacy từ thời live — giữ lại cho tương lai).
-3. TikTok OAuth (`tiktok_oauth.go`): `authorize` phát `state` CSRF
-   (`oauthStates.issue`, TTL **15 phút**) → redirect sang TikTok → `callback`
-   đổi code lấy token → lưu file token. Hết TTL hoặc sai state → từ chối.
-4. Trang cũng hiện `RedirectURI` (và có phải localhost không) để cấu hình đúng
-   trong TikTok Developer Portal.
+## Kết nối
 
-## 4. Fail-closed & an toàn
-- Thiếu token/client → badge "thiếu", các luồng đăng bỏ qua nền tảng đó
-  (xem `autonomous-daemon.md`: `waiting_connect`).
-- State CSRF hết hạn → callback bị từ chối, không đổi token bừa.
-- Token nằm trong `<data>/tokens` (không commit), quyền file 0600.
+- YouTube: `GET /publishers/youtube/authorize` → Google consent → `GET /publishers/youtube/callback`. Client ID/Secret lấy từ Settings; refresh token lưu trong `<data>/tokens/youtube_token_<username>.json`.
+- TikTok: `GET /publishers/tiktok/authorize` → TikTok consent → `GET /publishers/tiktok/callback`. Client Key/Secret lấy từ Settings; token lưu trong `<data>/tokens/tiktok_token_<username>.json`.
+- Facebook: `GET /publishers/facebook/authorize` → Meta consent → `GET /publishers/facebook/callback`. Người dùng chọn Page trong danh sách trả về; Page ID và Page access token lưu dạng per-channel settings `FB_PAGE_ID_<USERNAME>` và `META_PAGE_TOKEN_<USERNAME>`.
 
-## 5. API key rotation
-- TikTok: OAuth token từng tài khoản (refresh khi hết hạn qua endpoint token).
-- YouTube: OAuth client + refresh token từng tài khoản (`oauth2.googleapis.com/token`).
-- Không dùng key xoay vòng chung ở đây.
+OAuth state dùng kho state trong `internal/web/tiktok_oauth.go`, một lần và hết hạn sau 15 phút. Callback Facebook yêu cầu `META_APP_ID`, `META_APP_SECRET`; `META_REDIRECT_URI` tùy chọn khi callback khác loopback mặc định. Cần cấu hình callback trùng Meta App.
+
+## Trạng thái hiển thị
+
+- YouTube: token file tồn tại / hết hạn; nút kết nối dựa trên `YOUTUBE_CLIENT_ID` + `YOUTUBE_CLIENT_SECRET`.
+- TikTok: token file tồn tại; nút kết nối dựa trên `TIKTOK_CLIENT_KEY` + `TIKTOK_CLIENT_SECRET`.
+- Facebook: sẵn sàng khi cả Page ID và Page token tồn tại; nút OAuth dựa trên `META_APP_ID` + `META_APP_SECRET`.
+- Instagram/Threads status dựa trên token và account ID đã cấu hình. RTMP là trạng thái legacy.
+
+## Fail-closed & an toàn
+
+- State sai, dùng lại, hoặc quá hạn bị từ chối trước khi đổi token.
+- Facebook Page token không đi qua URL hay HTML; khi có nhiều Page, selection state giữ token trong RAM và form chỉ gửi Page ID.
+- OAuth credentials và Page token không render ra HTML. Page token lưu theo đúng kênh để không dùng nhầm Page.
+- Thiếu credentials thì UI hiện đường dẫn cấu hình, không hiện nút login OAuth.
+
+## Key rotation
+
+OAuth token từng nền tảng lưu riêng theo tài khoản; đây không phải pool API key.

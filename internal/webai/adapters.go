@@ -2,6 +2,7 @@ package webai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -68,7 +69,7 @@ func (e *Engine) GenerateVisualFrame(ctx context.Context, prompt string) (string
 	return "", nil
 }
 
-// FlowScenePrompt describes an optimized prompt for manual use in Google Flow.
+// FlowScenePrompt describes an optimized prompt for Google Flow.
 type FlowScenePrompt struct {
 	SceneIndex     int    `json:"scene_index"`
 	Prompt         string `json:"prompt"`
@@ -77,7 +78,7 @@ type FlowScenePrompt struct {
 	DurationSec    int    `json:"duration_sec"`
 }
 
-// FlowPromptBundle contains prompts and keyframe references for manual use in Google Flow.
+// FlowPromptBundle contains prompts and keyframe references for Google Flow.
 type FlowPromptBundle struct {
 	Title          string            `json:"title"`
 	TotalScenes    int               `json:"total_scenes"`
@@ -87,10 +88,30 @@ type FlowPromptBundle struct {
 	WorkflowGuide  string            `json:"workflow_guide"`
 }
 
-// GenerateFlowVideoClip is intentionally unsupported until Google provides a
-// documented generation API. Use BuildFlowPromptBundle for manual handoff.
+// GenerateFlowVideoClip calls the authenticated Flow web endpoints using a
+// saved Google session. No AI Studio developer key is required.
 func (e *Engine) GenerateFlowVideoClip(ctx context.Context, prompt, keyframeURL string, durationSec int) (string, error) {
-	return "", fmt.Errorf("google flow: generation is manual; use BuildFlowPromptBundle and render in the Flow web app")
+	if e.store == nil {
+		return "", fmt.Errorf("google flow: account store is unavailable")
+	}
+	acc, err := e.store.PickActiveAccount(PlatformGoogleFlow)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(acc.Cookie) == "" {
+		return "", fmt.Errorf("google flow: saved account has no Google session cookie")
+	}
+	if keyframeURL != "" {
+		prompt = prompt + " Reference image: " + keyframeURL
+	}
+	result, err := GoogleFlowVideo(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", nil)
+	if CanFallbackToGoogleFlowHeadless(err) && (ctx == nil || ctx.Err() == nil) {
+		result, err = GoogleFlowVideoHeadless(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", result.ProjectID, nil)
+	}
+	if err != nil {
+		return "", err
+	}
+	return result.MediaURL, nil
 }
 
 // BuildFlowPromptBundle constructs an optimized storyboard prompt bundle for Google Flow.
@@ -120,13 +141,37 @@ func (e *Engine) BuildFlowPromptBundle(title, topic, genre string, scenePrompts 
 		TotalScenes:   len(scenes),
 		Aspect:        "9:16 vertical",
 		Scenes:        scenes,
-		WorkflowGuide: "Mở Google Flow, tạo từng cảnh bằng prompt và keyframe tương ứng, rồi tải MP4 về. AICOS chưa tự điều khiển Flow hoặc nhập clip tự động.",
+		WorkflowGuide: "Tạo video trong Studio bằng phiên Google Flow đã kết nối; job theo dõi tiến độ và tự tải MP4 vào kho media.",
 	}
 }
 
-// GenerateVideoClip uses Muse AI accounts to produce motion video clips.
+// GenerateVideoClip asks Muse Chat to create a clip and returns its share URL.
 func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL string) (string, error) {
-	return "", fmt.Errorf("muse ai: video generation adapter is not implemented; use manual handoff")
+	if e.store == nil {
+		return "", fmt.Errorf("muse ai: account store is unavailable")
+	}
+	acc, err := e.store.PickActiveAccount(PlatformMuseAI)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(acc.Cookie) == "" {
+		return "", fmt.Errorf("muse ai: saved account has no Muse session cookie")
+	}
+	if keyframeURL != "" {
+		prompt = prompt + " Reference image: " + keyframeURL
+	}
+	result, err := MuseChat(ctx, acc.Cookie, acc.ID, prompt, nil)
+	var gatewayUnavailable *MuseGatewayUnavailableError
+	if errors.As(err, &gatewayUnavailable) {
+		result, err = MuseChatHeadless(ctx, acc.Cookie, prompt, nil)
+	}
+	if err != nil {
+		return "", err
+	}
+	if len(result.MediaURLs) == 0 {
+		return "", fmt.Errorf("muse ai: reply did not contain a downloadable media link")
+	}
+	return result.MediaURLs[0], nil
 }
 
 // MaskToken masks session keys/cookies for safe display.

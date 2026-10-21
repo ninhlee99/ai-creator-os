@@ -279,6 +279,12 @@ func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs 
 	} else {
 		lastErr = fmt.Errorf("quota circuit open (hết quota ngày)")
 	}
+	if len(refs) > 0 {
+		if lastErr == nil {
+			lastErr = fmt.Errorf("no usable Gemini API key")
+		}
+		return fmt.Errorf("generate image with references: Gemini could not preserve the supplied identity/product references: %w", lastErr)
+	}
 	// Tier-2 Image Generation: Pollinations AI (free photorealistic 9:16 vertical engine)
 	log.Printf("mediagen: Gemini image API keys unavailable (%v) — attempting Pollinations AI visual generation", lastErr)
 	pctx, pcancel := context.WithTimeout(ctx, 35*time.Second)
@@ -300,6 +306,109 @@ func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs 
 		return nil
 	}
 	return fmt.Errorf("generate image: %w", lastErr)
+}
+
+// AnalyzeImages asks Gemini's text model to inspect ordered image references.
+// Used for viral source breakdown; image order is preserved in the request.
+func (g *GeminiMediaGen) AnalyzeImages(ctx context.Context, prompt string, refs []ImageRef) (string, error) {
+	if strings.TrimSpace(prompt) == "" {
+		return "", fmt.Errorf("empty analysis prompt")
+	}
+	if len(refs) == 0 {
+		return "", fmt.Errorf("no reference images supplied")
+	}
+	if len(g.keys) == 0 {
+		return "", fmt.Errorf("gemini: no keys configured")
+	}
+	if tts.GeminiQuotaCircuit().Open() {
+		return "", fmt.Errorf("analyze images: quota circuit open")
+	}
+	parts := []geminiPart{{Text: prompt}}
+	for _, ref := range refs {
+		part, err := loadRef(ref.Path)
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, part)
+	}
+	body, err := json.Marshal(geminiGenRequest{Contents: []geminiContent{{Parts: parts}}})
+	if err != nil {
+		return "", fmt.Errorf("marshal image analysis: %w", err)
+	}
+	var lastErr error
+	for attempt := 0; attempt < len(g.keys)+1; attempt++ {
+		idx, key, ok := g.pickKey()
+		if !ok {
+			break
+		}
+		text, err := g.analyzeImagesWithKey(ctx, key, body)
+		g.noteResult(idx, err)
+		if err == nil {
+			return text, nil
+		}
+		lastErr = err
+		if tts.ClassifyKeyError(err) == tts.KeyErrOther {
+			break
+		}
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no usable Gemini API key")
+	}
+	return "", fmt.Errorf("analyze reference images: %w", lastErr)
+}
+
+func (g *GeminiMediaGen) analyzeImagesWithKey(ctx context.Context, key string, body []byte) (string, error) {
+	model := gmodels.Resolve(gmodels.Text)
+	text, err := g.generateTextModel(ctx, model, key, body)
+	if err != nil && gmodels.IsModelGone(err) {
+		if next, discoverErr := gmodels.Rediscover(ctx, g.client, g.baseURL, key, gmodels.Text); discoverErr == nil {
+			return g.generateTextModel(ctx, next, key, body)
+		}
+	}
+	return text, err
+}
+
+func (g *GeminiMediaGen) generateTextModel(ctx context.Context, model, key string, body []byte) (string, error) {
+	apiURL := g.baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, trunc(string(data), 300))
+	}
+	var result geminiGenResponse
+	if err := json.Unmarshal(data, &result); err != nil {
+		return "", fmt.Errorf("bad Gemini analysis response: %w", err)
+	}
+	if result.Error != nil {
+		return "", fmt.Errorf("%s: %s", result.Error.Status, result.Error.Message)
+	}
+	var text strings.Builder
+	for _, candidate := range result.Candidates {
+		for _, part := range candidate.Content.Parts {
+			if strings.TrimSpace(part.Text) != "" {
+				if text.Len() > 0 {
+					text.WriteByte('\n')
+				}
+				text.WriteString(part.Text)
+			}
+		}
+	}
+	if strings.TrimSpace(text.String()) == "" {
+		return "", fmt.Errorf("Gemini analysis response had no text")
+	}
+	return text.String(), nil
 }
 
 func generatePollinationsImage(ctx context.Context, prompt string, outPath string) error {
@@ -464,9 +573,8 @@ func veoAspect(aspect string) string {
 }
 
 // GenerateVideo renders a clip with Veo 3 (image-to-video when firstFrame is
-// set). Veo requires a billing-enabled Google Cloud project; without it the
-// API returns 400/403 and the caller should fall back to the photo-list
-// format (GenerateImage only).
+// set). Veo requires a billing-enabled Google Cloud project; provider errors
+// are returned so motion-required jobs can fail clearly.
 func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame string, seconds int, aspect, outPath string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
@@ -476,19 +584,13 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 		return fmt.Errorf("generate video: quota circuit open (hết quota ngày) — thử lại sau 0h")
 	}
 	seconds = clampVeoSeconds(seconds)
-	inst := veoInstance{Prompt: prompt}
 	if firstFrame != "" {
-		b, err := os.ReadFile(firstFrame)
-		if err != nil {
+		if _, err := os.Stat(firstFrame); err != nil {
 			return fmt.Errorf("read first frame: %w", err)
 		}
-		inst.Image = &struct {
-			BytesBase64Encoded string `json:"bytesBase64Encoded"`
-			MimeType           string `json:"mimeType"`
-		}{BytesBase64Encoded: base64.StdEncoding.EncodeToString(b), MimeType: mimeOf(firstFrame)}
 	}
 	req := veoPredictRequest{
-		Instances: []veoInstance{inst},
+		Instances: []veoInstance{{Prompt: prompt}},
 		Parameters: map[string]any{
 			"aspectRatio":     veoAspect(aspect),
 			"durationSeconds": seconds,
@@ -500,7 +602,7 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 		if !ok {
 			break
 		}
-		err := g.generateVideoWithKey(ctx, key, req, outPath)
+		err := g.generateVideoWithKey(ctx, key, req, firstFrame, outPath)
 		g.noteResult(idx, err)
 		if err == nil {
 			return nil
@@ -516,10 +618,9 @@ func (g *GeminiMediaGen) GenerateVideo(ctx context.Context, prompt, firstFrame s
 	return fmt.Errorf("generate video: %w", lastErr)
 }
 
-func (g *GeminiMediaGen) generateVideoWithKey(ctx context.Context, key string, req veoPredictRequest, outPath string) error {
+func (g *GeminiMediaGen) generateVideoWithKey(ctx context.Context, key string, req veoPredictRequest, firstFrame, outPath string) error {
 	vc := NewVeoClient(g.baseURL)
 	prompt := ""
-	firstFrame := ""
 	if len(req.Instances) > 0 {
 		prompt = req.Instances[0].Prompt
 	}

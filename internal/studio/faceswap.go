@@ -11,22 +11,25 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // FaceSwapEngineStatus lưu trữ trạng thái của engine Face Swap cục bộ.
 type FaceSwapEngineStatus struct {
-	Ready        bool   `json:"ready"`
-	CanRun       bool   `json:"can_run"`
-	Python       string `json:"python"`
-	OpenCV       string `json:"cv2"`
-	ONNXRuntime  string `json:"onnxruntime"`
-	InsightFace  string `json:"insightface"`
-	ModelDir     string `json:"model_dir"`
-	LastError    string `json:"last_error,omitempty"`
+	Ready       bool   `json:"ready"`
+	CanRun      bool   `json:"can_run"`
+	ModelsReady bool   `json:"models_ready"`
+	Python      string `json:"python"`
+	OpenCV      string `json:"cv2"`
+	ONNXRuntime string `json:"onnxruntime"`
+	InsightFace string `json:"insightface"`
+	ModelDir    string `json:"model_dir"`
+	LastError   string `json:"last_error,omitempty"`
 }
 
 var (
 	cachedFSStatus *FaceSwapEngineStatus
+	cachedFSAt     time.Time
 	fsStatusMu     sync.RWMutex
 )
 
@@ -57,7 +60,7 @@ func findPython311() string {
 // CheckFaceSwapEngine kiểm tra trạng thái hoạt động của engine Face Swap.
 func CheckFaceSwapEngine(ctx context.Context) FaceSwapEngineStatus {
 	fsStatusMu.RLock()
-	if cachedFSStatus != nil {
+	if cachedFSStatus != nil && time.Since(cachedFSAt) < 30*time.Second {
 		st := *cachedFSStatus
 		fsStatusMu.RUnlock()
 		return st
@@ -93,6 +96,7 @@ func CheckFaceSwapEngine(ctx context.Context) FaceSwapEngineStatus {
 
 	fsStatusMu.Lock()
 	cachedFSStatus = &st
+	cachedFSAt = time.Now()
 	fsStatusMu.Unlock()
 	return st
 }
@@ -102,6 +106,23 @@ func CheckFaceSwapEngine(ctx context.Context) FaceSwapEngineStatus {
 // sourceFacePhoto có thể là 1 đường dẫn hoặc danh sách nhiều đường dẫn (phân tách bởi dấu phẩy)
 // để engine tự động phân tích và chọn góc mặt chính diện / sắc nét nhất.
 func RunFaceSwap(ctx context.Context, sourceFacePhoto, targetVideo, outVideo string, onProgress func(pct int, logMsg string)) error {
+	return runFaceSwap(ctx, sourceFacePhoto, targetVideo, outVideo, false, onProgress)
+}
+
+// RunFaceSwapStrict requires the complete InsightFace model stack and never
+// falls back to OpenCV face alignment. Use for production identity replacement.
+func RunFaceSwapStrict(ctx context.Context, sourceFacePhoto, targetVideo, outVideo string, onProgress func(pct int, logMsg string)) error {
+	status := CheckFaceSwapEngine(ctx)
+	if !status.Ready || !status.ModelsReady {
+		if status.LastError != "" {
+			return fmt.Errorf("InsightFace production engine chưa sẵn sàng: %s", status.LastError)
+		}
+		return fmt.Errorf("InsightFace production engine hoặc model chưa sẵn sàng")
+	}
+	return runFaceSwap(ctx, sourceFacePhoto, targetVideo, outVideo, true, onProgress)
+}
+
+func runFaceSwap(ctx context.Context, sourceFacePhoto, targetVideo, outVideo string, strict bool, onProgress func(pct int, logMsg string)) error {
 	subPaths := strings.Split(sourceFacePhoto, ",")
 	var validPaths []string
 	for _, sp := range subPaths {
@@ -123,7 +144,11 @@ func RunFaceSwap(ctx context.Context, sourceFacePhoto, targetVideo, outVideo str
 	_ = os.MkdirAll(filepath.Dir(outVideo), 0o755)
 
 	sourceArg := strings.Join(validPaths, ",")
-	cmd := exec.CommandContext(ctx, py, script, "--source", sourceArg, "--target", targetVideo, "--output", outVideo)
+	args := []string{script, "--source", sourceArg, "--target", targetVideo, "--output", outVideo}
+	if strict {
+		args = append(args, "--mode", "insightface", "--strict")
+	}
+	cmd := exec.CommandContext(ctx, py, args...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

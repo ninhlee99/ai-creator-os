@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,11 +13,8 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 )
 
-// Autopilot is the hands-off affiliate loop Ninh asked for (2026-10-01):
-// theme (per account) -> find high-commission product -> real listing photos
-// as product-lock ground truth -> model photo (uploaded by Ninh) as
-// identity lock -> studio affiliate job -> QC. Ninh only uploads model
-// photos, picks the theme, and watches.
+// Autopilot holds affiliate automation wiring. Production stays paused while
+// the free-only Studio workflow requires operator-supplied motion clips.
 type Autopilot struct {
 	studio    *Studio
 	accounts  *network.AccountManager
@@ -52,7 +48,8 @@ type Result struct {
 	Product     products.Product
 }
 
-// Run executes one hands-off cycle for an account.
+// Run exits before product discovery while free-only video production lacks
+// operator-supplied clips.
 func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 	var r Result
 	if a.studio == nil || a.accounts == nil || a.store == nil || a.models == nil {
@@ -68,117 +65,7 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 		return r, fmt.Errorf("autopilot: account %s chưa sẵn sàng (bật autopilot + chọn theme trong UI)",
 			acct.Username)
 	}
-	ok, err := a.models.HasPhotos(accountID)
-	if err != nil {
-		return r, err
-	}
-	if !ok {
-		return r, fmt.Errorf("autopilot: account %s chưa có ảnh mẫu — Ninh upload ảnh mẫu trong UI rồi chạy lại",
-			acct.Username)
-	}
-
-	// 1. Product: cached winners first, else live discovery.
-	cands, err := a.store.TopByTheme(acct.Theme, acct.MinCommission, accountID, 5)
-	if err != nil {
-		return r, err
-	}
-	if len(cands) == 0 {
-		q := products.QueryForTheme(acct.Theme, acct.MinCommission, 20)
-		found, errs := products.Aggregate(ctx, a.providers, q)
-		for _, p := range found {
-			if id, serr := a.store.Save(p); serr == nil {
-				p.ID = id
-			}
-		}
-		cands, _ = a.store.TopByTheme(acct.Theme, acct.MinCommission, accountID, 5)
-		if len(cands) == 0 {
-			msg := "autopilot: không tìm được sản phẩm đủ hoa hồng cho theme " + acct.Theme
-			if len(errs) > 0 {
-				msg += fmt.Sprintf(" (nguồn lỗi: %v)", errs[0])
-			}
-			return r, fmt.Errorf("%s", msg)
-		}
-	}
-	prod := cands[0]
-	// Đợt Y: claim nguyên tử TRƯỚC khi dựng job — 2 chu kỳ chồng nhau
-	// (chạy tay từ UI + tick định kỳ) không bao giờ dựng 2 video cho cùng
-	// 1 sản phẩm. UNIQUE(product_id, account_id) + ON CONFLICT DO NOTHING
-	// ở RecordUse là chốt chặn ở tầng DB.
-	claimed := false
-	for _, c := range cands {
-		if c.ID == 0 {
-			continue
-		}
-		ok, err := a.store.RecordUse(c.ID, accountID, "")
-		if err != nil {
-			return r, err
-		}
-		if ok {
-			prod = c
-			claimed = true
-			break
-		}
-	}
-	if !claimed {
-		return r, fmt.Errorf("autopilot: sản phẩm vừa bị chu kỳ khác chọn mất — thử lại ở vòng sau")
-	}
-	r.Product = prod
-
-	// 2. Product photos: download real listing images (ground truth).
-	work := filepath.Join(a.studio.workRoot, "autopilot", fmt.Sprint(accountID))
-	if err := os.MkdirAll(work, 0o755); err != nil {
-		return r, err
-	}
-	var prodPhotos []string
-	for i, u := range prod.ImageURLs {
-		if i >= 3 {
-			break
-		}
-		dst := filepath.Join(work, fmt.Sprintf("prod-%d.jpg", i))
-		if derr := a.downloadImage(ctx, u, dst); derr != nil {
-			continue
-		}
-		prodPhotos = append(prodPhotos, dst)
-	}
-	if len(prodPhotos) == 0 {
-		return r, fmt.Errorf("autopilot: không tải được ảnh sản phẩm %q", prod.Title)
-	}
-
-	// 3. Model photo: Ninh's upload = identity lock.
-	mps, err := a.models.List(accountID)
-	if err != nil || len(mps) == 0 {
-		return r, fmt.Errorf("autopilot: mất ảnh mẫu của account %s", acct.Username)
-	}
-
-	// 4. Studio job: generate real motion footage for the affiliate spot.
-	themeLabel := acct.Theme
-	if t, ok := products.DescribeTheme(acct.Theme); ok {
-		themeLabel = t.Label
-	}
-	jobID, err := a.studio.CreateAffiliateJob(AffiliateParams{
-		Mode:         AffiliateModeShots,
-		AccountID:    accountID,
-		Niche:        themeLabel,
-		ProductName:  prod.Title,
-		ProductPhoto: prodPhotos[0],
-		// Đợt Y: trước đây thiếu AffLink → video YouTube Shorts đăng lên
-		// không có link mua trong mô tả (mất doanh thu).
-		AffLink:    prod.ProductURL,
-		ModelPhoto: mps[0].Path,
-		Seconds:    30,
-		MusicPath:  a.MusicPath,
-		MusicTitle: "trending",
-	})
-	if err != nil {
-		return r, err
-	}
-	r.JobID = jobID
-
-	// Ghi job id vào dòng usage đã claim ở trên (bookkeeping).
-	if prod.ID != 0 {
-		_ = a.store.SetUsageJobID(prod.ID, accountID, jobID)
-	}
-	return r, nil
+	return r, fmt.Errorf("autopilot: tạm dừng theo chính sách free-only; Studio cần clip chuyển động do người vận hành tải lên")
 }
 
 // RunAll runs every account that is autopilot-ready. One account's failure

@@ -54,15 +54,25 @@ func directorPrompt(name string, data any) (string, error) {
 
 // promptData carries the fields every film/affiliate prompt template needs.
 type promptData struct {
-	Topic        string
-	Niche        string
-	Genre        string
-	Seconds      int
-	TotalSeconds int
-	ActSeconds   int
-	N            int
-	Orient       string
-	Characters   string
+	Topic            string
+	Niche            string
+	ChannelProfile   string
+	ChannelLearning  string
+	ProductCategory  string
+	ProductUse       string
+	ProductUseNotes  string
+	ProductFocus     string
+	ProductEvidence  string
+	ReferenceSummary string
+	ReferenceBeats   string
+	Genre            string
+	Seconds          int
+	Duration         string
+	TotalSeconds     int
+	ActSeconds       int
+	N                int
+	Orient           string
+	Characters       string
 	// Cast là dàn nhân vật pha 1 đã chốt (tên — trích xác định từ thoại các
 	// hồi trước), truyền cho các hồi sau để giữ tên nhất quán.
 	Cast string

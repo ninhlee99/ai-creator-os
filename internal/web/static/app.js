@@ -346,16 +346,22 @@
 
   // Cập nhật trạng thái + tiến độ job tại chỗ (không tải lại trang).
   (function () {
-    var cards = document.querySelectorAll('[data-job]');
+    // Chỉ poll card trong khu vực đang xử lý. Tab hoàn tất không có live cards.
+    var cards = document.querySelectorAll('.studio-live-job[data-job]');
     if (!cards.length) return;
+    var pending = Object.create(null);
+    Array.prototype.forEach.call(cards, function (card) {
+      pending[card.getAttribute('data-job')] = card;
+    });
     var timer = setInterval(function () {
-      fetch('/studio/jobs', {headers: {'Accept': 'application/json'}})
+      var query = Object.keys(pending).map(function (id) {
+        return 'id=' + encodeURIComponent(id);
+      }).join('&');
+      fetch('/studio/jobs?' + query, {headers: {'Accept': 'application/json'}})
         .then(function (r) { return r.json(); })
         .then(function (d) {
-          var anyActive = false;
           (d.jobs || []).forEach(function (j) {
-            if (j.status === 'running' || j.status === 'queued') anyActive = true;
-            var card = document.querySelector('[data-job="' + j.id + '"]');
+            var card = pending[j.id];
             if (!card) return;
             var b = card.querySelector('.job-status');
             if (b) { b.className = 'badge job-status badge-' + j.class; b.textContent = j.label; }
@@ -363,19 +369,20 @@
             if (p) p.textContent = j.progress + '%';
             var progBar = card.querySelector('div[style*="linear-gradient"]');
             if (progBar) progBar.style.width = j.progress + '%';
-            if (j.status === 'done' && !card.dataset.reloaded) {
-              card.dataset.reloaded = '1';
-              setTimeout(function() { window.location.reload(); }, 1500);
-            }
             if (j.output && !card.querySelector('video.player')) {
               var v = document.createElement('video');
               v.className = 'player'; v.controls = true; v.src = '/media/' + j.output;
               var btn = card.querySelector('button');
               card.insertBefore(v, btn);
             }
+            if (j.status === 'done' || j.status === 'failed') {
+              var cancelForm = card.querySelector('form[action$="/cancel"]');
+              if (cancelForm) cancelForm.remove();
+              delete pending[j.id];
+            }
             if (boards[j.id]) { boards[j.id] = false; toggleBoard(j.id); }
           });
-          if (!anyActive) clearInterval(timer);
+          if (Object.keys(pending).length === 0) clearInterval(timer);
         })
         .catch(function () { /* mạng chập chờn: giữ nguyên trạng thái hiện tại */ });
     }, 5000);

@@ -1,0 +1,108 @@
+{{define "title"}}Tạo nội dung AI{{end}}
+{{define "content"}}
+<main class="studio-ai-page" style="max-width:1180px;margin:0 auto;padding:10px 0 32px">
+  <header style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px">
+    <div>
+      <p class="hint" style="margin:0 0 5px">STUDIO AI · SÁNG TẠO</p>
+      <h1 style="margin:0;font-size:28px;letter-spacing:-.5px">Tạo nội dung</h1>
+      <p class="hint" style="margin:7px 0 0">Viết kịch bản, tạo ảnh hoặc tạo video. File hoàn tất tự lưu vào kho Studio.</p>
+    </div>
+    <a class="btn btn-secondary" href="/studio/jobs?tab=running">Theo dõi tác vụ</a>
+  </header>
+
+  {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+  {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:20px">
+    <article class="card" style="padding:18px;border-radius:14px;border-top:3px solid #d946ef">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+        <h2 style="font-size:17px;margin:0">🎬 Muse Chat</h2>
+        {{if .MuseReady}}<span class="badge badge-ok">Phiên sẵn sàng</span>{{else}}<span class="badge badge-warn">Cần kết nối</span>{{end}}
+      </div>
+      <p class="hint" style="margin:9px 0 0">Kịch bản · hình ảnh · video. Gửi prompt qua phiên Muse đã lưu.</p>
+      {{if not .MuseReady}}<a href="/settings/system#tab-webai" class="btn btn-secondary btn-sm" style="margin-top:12px">Kết nối Muse</a>{{end}}
+    </article>
+    <article class="card" style="padding:18px;border-radius:14px;border-top:3px solid #2563eb">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+        <h2 style="font-size:17px;margin:0">🌊 Google Flow</h2>
+        {{if .FlowReady}}<span class="badge badge-ok">Phiên sẵn sàng</span>{{else}}<span class="badge badge-warn">Cần kết nối</span>{{end}}
+      </div>
+      <p class="hint" style="margin:9px 0 0">Tạo video từ prompt bằng phiên Google Flow; credit tùy tài khoản.</p>
+      {{if not .FlowReady}}<a href="/settings/system#tab-webai" class="btn btn-secondary btn-sm" style="margin-top:12px">Kết nối Flow</a>{{end}}
+    </article>
+  </section>
+
+  <section class="card" style="padding:22px;border-radius:16px">
+    <form method="post" action="/studio/generate" id="studio-ai-form">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+        <div class="field">
+          <label for="provider">Công cụ</label>
+          <select id="provider" name="provider" class="form-control">
+            <option value="museai">Muse Chat</option>
+            <option value="googleflow">Google Flow</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="kind">Nội dung cần tạo</label>
+          <select id="kind" name="kind" class="form-control">
+            <option value="video">Video</option>
+            <option value="script">Kịch bản</option>
+            <option value="image">Hình ảnh</option>
+          </select>
+        </div>
+        <div class="field" id="aspect-field">
+          <label for="aspect">Tỷ lệ video</label>
+          <select id="aspect" name="aspect" class="form-control">
+            <option value="VIDEO_ASPECT_RATIO_PORTRAIT">Dọc 9:16 · Reels / Shorts</option>
+            <option value="VIDEO_ASPECT_RATIO_LANDSCAPE">Ngang 16:9</option>
+            <option value="VIDEO_ASPECT_RATIO_SQUARE">Vuông 1:1</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="title">Tên tác vụ <span class="hint">(không bắt buộc)</span></label>
+          <input id="title" name="title" class="form-control" maxlength="120" placeholder="Ví dụ: Lookbook cardigan mùa thu">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:8px">
+        <label for="prompt">Mô tả nội dung</label>
+        <textarea id="prompt" name="prompt" class="form-control" required maxlength="5000" rows="8" placeholder="Mô tả chủ đề, nhân vật, hành động, bối cảnh, phong cách hình ảnh và thông điệp cần truyền tải…"></textarea>
+        <div class="hint" style="display:flex;justify-content:space-between;gap:10px;margin-top:6px">
+          <span>Prompt được gửi tới tài khoản đang kết nối. Không nhập thông tin nhạy cảm.</span>
+          <span id="prompt-count">0 / 5000</span>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:16px;margin-top:18px">
+        <span class="hint" id="provider-note">Muse trả lời và file media sẽ được lưu trong kho Studio.</span>
+        <button type="submit" class="btn btn-primary" style="font-weight:700;padding:11px 18px">Tạo nội dung</button>
+      </div>
+    </form>
+  </section>
+
+  <aside style="margin-top:14px;padding:12px 15px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.5">
+    Tác vụ chạy nền. Mở “Theo dõi tác vụ” để xem tiến độ; video và ảnh có nút tải trong kho Studio.
+  </aside>
+</main>
+<script>
+(function(){
+  var provider=document.getElementById('provider');
+  var kind=document.getElementById('kind');
+  var aspect=document.getElementById('aspect-field');
+  var note=document.getElementById('provider-note');
+  var count=document.getElementById('prompt-count');
+  var prompt=document.getElementById('prompt');
+  function update(){
+    var flow=provider.value==='googleflow';
+    Array.prototype.forEach.call(kind.options,function(option){option.disabled=flow&&option.value!=='video';});
+    if(flow&&kind.value!=='video')kind.value='video';
+    aspect.style.display=kind.value==='video'?'':'none';
+    note.textContent=flow?'Google Flow tạo MP4 từ phiên Google đã lưu. Credit tùy tài khoản.':'Muse Chat trả lời; file media được tải vào kho Studio.';
+  }
+  prompt.addEventListener('input',function(){count.textContent=prompt.value.length+' / 5000';});
+  provider.addEventListener('change',update);
+  kind.addEventListener('change',update);
+  update();
+})();
+</script>
+{{end}}

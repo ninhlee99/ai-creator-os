@@ -5,14 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
-// Không có media-gen + có ảnh sản phẩm → vẫn ra video 1080x1920, không chữ.
-func TestAffiliateOwnPhotosWithoutKey(t *testing.T) {
-	if _, err := exec.LookPath("ffmpeg"); err != nil {
-		t.Skip("ffmpeg not available")
-	}
+// Free-only affiliate must not silently call a paid video API or queue a
+// job that can only fail after startup.
+func TestAffiliateRequiresUserMotionClipsBeforeQueue(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
@@ -20,72 +17,28 @@ func TestAffiliateOwnPhotosWithoutKey(t *testing.T) {
 	}
 	defer st.Close()
 	photo := makeTestPNG(t, dir, "p.png", "testsrc")
-	id, err := st.CreateAffiliateJob(AffiliateParams{
-		ProductName: "Túi da", Niche: "thời trang/phụ kiện", ProductPhoto: photo, Seconds: 8,
+	_, err = st.CreateAffiliateJob(AffiliateParams{
+		ProductName: "Túi da", Niche: "thời trang/phụ kiện", ProductPhoto: photo, Seconds: 30,
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || !strings.Contains(err.Error(), "free-only") {
+		t.Fatalf("CreateAffiliateJob error = %v, want free-only motion clip requirement", err)
 	}
-	var j Job
-	for i := 0; i < 240; i++ {
-		j, _ = st.GetJob(id)
-		if j.Status == StatusDone || j.Status == StatusFailed {
-			break
-		}
-		time.Sleep(250 * time.Millisecond)
-	}
-	if j.Status != StatusDone {
-		t.Fatalf("status=%s log=%s", j.Status, j.Log)
-	}
-	if w, h := ProbeDims(t.Context(), filepath.Join(dir, "out", j.Output)); w != 1080 || h != 1920 {
-		t.Fatalf("khổ %dx%d", w, h)
-	}
-	if !strings.Contains(j.Log, "ảnh có sẵn") || !strings.Contains(j.Caption, "#thoitrang") {
-		t.Fatalf("log/caption sai: %q / %q", j.Log, j.Caption)
-	}
-	// Xuất gói CapCut: video hoàn chỉnh + ảnh từng cảnh + caption.
-	dst, err := st.ExportForEditing(id, filepath.Join(dir, "export"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, _ := filepath.Glob(filepath.Join(dst, "*"))
-	var hasVideo, hasCaption bool
-	photos := 0
-	for _, f := range files {
-		b := filepath.Base(f)
-		switch {
-		case strings.HasPrefix(b, "00-video-hoan-chinh"):
-			hasVideo = true
-		case b == "caption.txt":
-			hasCaption = true
-		case strings.HasSuffix(b, "-photo.png"):
-			photos++
-		}
-	}
-	if !hasVideo || !hasCaption || photos < 3 {
-		t.Fatalf("gói CapCut thiếu file: %v", files)
+	if got := st.ListJobs(10); len(got) != 0 {
+		t.Fatalf("queued %d jobs without motion footage", len(got))
 	}
 }
 
-// Không key + không ảnh → thất bại với hướng dẫn rõ ràng.
-func TestAffiliateNoKeyNoPhotoExplains(t *testing.T) {
+// Missing motion clips are rejected synchronously with a clear instruction.
+func TestAffiliateMissingMotionClipsExplains(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer st.Close()
-	id, _ := st.CreateAffiliateJob(AffiliateParams{ProductName: "X"})
-	var j Job
-	for i := 0; i < 40; i++ {
-		j, _ = st.GetJob(id)
-		if j.Status == StatusFailed {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	if j.Status != StatusFailed || !strings.Contains(j.Log, "tải lên ít nhất 1 ảnh") {
-		t.Fatalf("status=%s log=%s", j.Status, j.Log)
+	_, err = st.CreateAffiliateJob(AffiliateParams{ProductName: "X"})
+	if err == nil || !strings.Contains(err.Error(), "clip chuyển động") {
+		t.Fatalf("error = %v, want motion clip instruction", err)
 	}
 }
 

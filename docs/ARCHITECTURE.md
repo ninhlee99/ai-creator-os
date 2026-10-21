@@ -5,6 +5,7 @@
 > ngôi thứ nhất. Thiết kế đích: `docs/PIVOT_REDESIGN.md`.
 > Tài liệu này mô tả **trạng thái kỹ thuật hiện tại**.
 > Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
+> **Runtime hiện tại:** viral character replacement bị tắt theo free-only; `/viral` chỉ discovery và từ chối enqueue. Affiliate cần clip do người vận hành cung cấp cho từng shot. Các đoạn lịch sử bên dưới về Veo/Muse/face swap không phải capability đang bật.
 
 ## 1. Design principles
 
@@ -58,7 +59,7 @@
 ┌──────▼──────────────▼─────────────────────────────▼─────────┐
 │ engines: LLM Gemini                                          │
 │ TTS chain: local macOS speech → Edge → Gemini                │
-│ Web AI pool (ChatGPT/Claude/Grok...)                         │
+│ Web AI pool (ChatGPT/Claude/Grok/Muse/Flow)                   │
 │ Keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
 │ Daily Model Auto-Updater (quét 24h & hot-swap model mới)    │
 └─────────────────────────────────────────────────────────────┘
@@ -73,8 +74,8 @@
 Test vùng parked chạy bằng `go test -tags parked ./...`.
 
 **Đã code xong (đợt B→F):** Accesstrade client + datafeed hunter + đối soát
-(`internal/accesstrade`), xưởng Video Viral AI 100% gốc 9:16
-(`internal/studio/viral.go`), pipeline kể chuyện (`internal/studio/story.go` —
+(`internal/accesstrade`), Viral Radar (full character replacement production
+currently paused; `internal/studio/viral.go` rejects enqueue), pipeline kể chuyện (`internal/studio/story.go` —
 tách từ studio, kind `story` trên `studio_jobs`; automation
 `internal/automation/story_tick.go` 24h/lần, đăng private-first, mặc định
 chờ Ninh duyệt).
@@ -82,13 +83,13 @@ chờ Ninh duyệt).
 **Đợt H (2026-10-04) & Đợt I (2026-10-19 — Chuẩn Video Có Hồn & Quay Phim Tự Nhiên):**
 - **I1: Open-Spec Chuẩn Video Có Hồn (`docs/OPEN_SPEC.md`)**: Ban hành đặc tả kỹ thuật Open-Spec v1.0 định nghĩa 7 luật video có hồn, chống méo hình học, loại bỏ hoàn toàn video dán ảnh tĩnh và giật lắc cơ học.
 - **I2: YouTube Viral Radar**: `/viral` quét video 7 ngày gần nhất từ kênh có từ 100,000 subscribers; dùng title và duration làm metadata. Job gốc không tải hoặc tái dùng footage/audio nguồn.
-- **I3: InsightFace Deep Latent Identity Engine (`scripts/face_swapper.py`)**: Hoán đổi khuôn mặt AI với vector đặc trưng 512 chiều, căn chỉnh 5 điểm mốc nhân trắc học và hòa trộn Poisson Seamless Blending để ghép khuôn mặt creator vào thân hình vũ công hoặc người mẫu lookbook trong video chuyển động thực tế.
-- **I4: Phim Lookbook Thời Trang Chuyển Động Người Thật (`internal/studio/affiliate.go`)**: Video affiliate thời trang/phụ kiện sử dụng 100% video quay người mẫu thật trong không gian thực tế (boutique, phố, dạo chơi), loại bỏ slide ảnh tĩnh thô kệch và thẻ chữ `AdCard` che khuất hình ảnh.
+- **I3: Legacy InsightFace face-swap utility (`scripts/face_swapper.py`)**: chỉ đổi khuôn mặt; không phải full-character replacement và không được dùng để chứng nhận viral QC.
+- **I4: Affiliate Lookbook (`internal/studio/affiliate.go`)**: Shot plan khóa sản phẩm, nhân vật, cảm xúc và bối cảnh; mỗi shot cần clip chuyển động do người vận hành cung cấp. Studio chuẩn hóa timeline và chặn xuất bản nếu visual QC không đạt. Không gọi video API tính phí; autopilot affiliate tạm dừng vì không thể tự cung cấp clip.
 - **I5: Dựng affiliate ổn định (`internal/studio/assemble.go`)**: Mặc định nối footage chuyển động thật; ảnh tĩnh chỉ dùng dissolve. Không flash, zoom giả hoặc rung.
 - **I6: Rạp Chiếu Truyện Audio Điện Ảnh 30 – 60 Phút (`internal/studio/story.go`)**: Xóa bỏ hoàn toàn hiện tượng màn hình đen; mỗi 8-15 giây là một visual canvas chuyển động giàu cảm xúc kết hợp hòa âm 3 lớp (Gemini TTS đa cảm xúc + Foley môi trường + Nhạc nền cinematic lót -18dB).
 
-**Đợt K (2026-10-20 — Google Gemini On-Demand Model Updater Cho Toàn Bộ Adapter & Full Cloud Optimization):**
-- **K1: On-Demand Model Updater (`internal/engines/gmodels/updater.go`)**: Cập nhật theo yêu cầu người dùng bằng nút bấm trên giao diện web Cài đặt · Hệ thống (loại bỏ tiến trình định kỳ 24h ngầm để tiết kiệm tài nguyên). Thuật toán `PickLatest` phân tích ngữ nghĩa phiên bản (`major.minor`), ưu tiên bản chính thức (GA) so với Preview/Exp, nâng cấp đồng loạt 4 adapter: Text (`gemini-3.8-flash`), Image (`gemini-nano-banana-2.1`), TTS (`gemini-3.8-flash-tts`), Video (`veo-3.1-generate-preview`).
+**Đợt K (2026-10-20 — Google Gemini On-Demand Model Updater):**
+- **K1: On-Demand Model Updater (`internal/engines/gmodels/updater.go`)**: Cập nhật theo yêu cầu người dùng. `PickLatest` chọn model cho các vai trò được cấu hình. Việc có tên model video trong danh sách không bật video API; billing và Veo vẫn bị cấm theo free-only.
 - **K2: Hot-Swap Không Downtime & Cache Bền Vững**: Model mới phát hiện được cập nhật trực tiếp vào bộ nhớ luồng an toàn mà không cần khởi động lại máy chủ. Lưu vào `data/discovered_models.json` và tự nạp lại khi boot.
 - **K3: Giao Diện Quản Trị Tinh Gọn (`internal/web/templates/settings/system.html`)**: Thẻ điều khiển Gemini Model hiển thị trạng thái quét, danh sách model kích hoạt cho 4 tác vụ, nút `⚡ Cập Nhật Tất Cả Model Gemini` (`POST /settings/models/update`), loại bỏ hoàn toàn các hướng dẫn dài dòng gây rối mắt.
 - **K4: Chuẩn Hóa Thời Lượng & Bỏ Màn Hình Đen 5s**:
@@ -96,7 +97,7 @@ chờ Ninh duyệt).
   * Video Viral: Tối thiểu 60s+ (chuẩn TikTok Creativity Program), 0.0s instant start không có ảnh đen 5s đầu, visual "Thần tiên tỉ tỉ".
   * Video Truyện Audio: 30 - 60 phút, kịch bản chân thật, đa cảm xúc với Gemini TTS.
 
-**Đợt J (2026-10-19 — Nâng Cấp Generative AI Video Engine: Google Veo 3 & Muse AI):**
+**Đợt J (2026-10-19 — historical, not active; superseded by free-only policy):**
 - **J1: Google Veo 3 Engine (`internal/studio/veo.go`)**: Tích hợp trực tiếp Google Veo 3 qua REST API (`generativelanguage.googleapis.com/v1beta`) với cơ chế fallback tự động theo danh sách ưu tiên: `veo-3.1-generate-preview`, `veo-3.0-generate-preview`, `veo-2.0-generate-001`, `veo-3.0-generate-001`, `veo-2.0-generate-preview`. Hỗ trợ cả Text-to-Video và Image-to-Video (`firstFrame`), xử lý long-running operation polling bất đồng bộ và tải video MP4 trực tiếp.
 - **J2: Muse AI Studio Engine (`internal/studio/museai.go`)**: Tích hợp Muse AI API (`https://muse.ai/api`), tự động nhận diện `MUSE_AI_API_KEY` hoặc session cookie `MUSE_AI_SESSION` qua Web AI Pool, tải ảnh keyframe lên storage và sinh video chuyển động độ nét cao.
 - **J3: Unified AI Video Engine & Intelligent Cascade (`internal/studio/aivideo.go`)**: `GenerateMotionVideoClip` điều phối Veo/Muse và chuẩn hóa clip. Pipeline affiliate loại bỏ fallback Ken Burns; nếu không có footage chuyển động thật, job dừng có lỗi.
@@ -119,12 +120,12 @@ chờ Ninh duyệt).
 | `/harness*` | `handleHarness*` | **Master Agent Harness**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory) |
 | `/accounts*` | `handleAccounts*` | Kênh & Brand DNA (sidebar "Kênh") |
 | `/growth*` | `handleGrowth*` | Phát triển kênh & ngưỡng tự động |
-| `/studio*` | `handleStudio*` | Studio AI (affiliate/viral 9:16/audio story 16:9/jobs/trends) |
+| `/studio*` | `handleStudio*` | Affiliate, Muse/Flow creation, jobs, media and trends |
 | `/products*` | `handleProducts*` | Affiliate (Accesstrade: chiến dịch/link/đối soát, đợt B/C) |
-| `/viral*` | `handleViral*` | Video Viral AI: kịch bản 3s hook, hình ảnh 9:16, lồng tiếng 100% gốc |
+| `/viral*` | `handleViral*` | Viral Radar; character-replacement enqueue bị chặn theo free-only |
 | `/stories*` | `handleStory*` | Kể chuyện: tạo truyện, jobs, đăng YouTube (đợt F) |
 | `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline từ dữ liệu thật |
-| `/publishers*` | `handlePublishers*` | Đa nền tảng (OAuth TikTok, YouTube, Meta Facebook/Instagram) |
+| `/publishers*` | `handlePublishers*` | Đa nền tảng (OAuth TikTok, YouTube, Facebook Page) |
 | `/settings*` | `handleSettings*` | 5 trang con: Hệ thống (gồm **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp · Model local · An toàn |
 | `/web-ai*` | `handleWebAI*` | Quản lý kho tài khoản Web AI & Trình duyệt tự động đăng nhập CDP |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
@@ -138,7 +139,7 @@ chờ Ninh duyệt).
 `internal/engines/chains.go` — provider mặc định:
 - **LLM**: Gemini API.
 - **TTS**: local macOS speech → Edge → Gemini.
-- **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse AI tự động bắt session CDP.
+- **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse Chat, Google Flow. Muse/Flow use saved web sessions; Muse prefers direct Noise gateway and has hidden CDP fallback before prompt submission; Flow uses observed web-client calls.
 - Chuỗi Avatar đã gỡ theo live (Đợt A).
 
 Keyring mỗi engine độc lập: round-robin, bỏ key invalid, cooldown 429/quota
@@ -153,8 +154,9 @@ decision log (`engines/tier_failover`).
   → fallback default (`internal/growth`).
 - Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
 - Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
-- Giới hạn tần suất và Zero-Reup: Toàn bộ nội dung viral được sản xuất từ
-  tài sản gốc 100% (Gemini MediaGen + Gemini/Edge TTS + Kworb VN music).
+- Zero-Reup: Viral Radar chỉ lưu metadata nguồn; runtime không tạo video thay
+  nhân vật và không tải lại footage/audio nguồn. Nếu pipeline sản xuất được bật
+  trong tương lai, chỉ xuất bản nội dung đã qua QC và dùng tài sản có quyền sử dụng.
   Không bao giờ tự xoá video đã đăng.
 
 ## 5b. Ticks automation (zero-touch, Ninh không chạm)
@@ -164,7 +166,7 @@ decision log (`engines/tier_failover`).
 | AutopilotTick | 1′ | master/dry-run/kill | — |
 | GrowthTick | 5′ | `growth.production_enabled` | `Growth == nil` → im lặng |
 | ATTick (hunter/order/campaign) | 5′ | `at.hunter_enabled` / `at.ordersync_enabled` / `at.campaigncheck_enabled` | thiếu key → log + im lặng |
-| ViralAutoTick | 5′/đến hạn 24h | `viral.auto_produce_enabled` | `Studio == nil` → im lặng |
+| ViralRadarTick | 5′/đến hạn 24h | `viral.auto_produce_enabled` | chỉ tìm và lưu nguồn; không tạo job video |
 | StoryTick | 5′/đến hạn 24h | `story.enabled` | `Story == nil` → im lặng |
 
 Mọi tick: kill switch + dry-run chặn đầu; watermark last-run trong settings;
@@ -201,13 +203,13 @@ cấm runtime Python/Node đi kèm.
 - ❌ Phim điện ảnh 30–60 phút, Veo, realism upgrades (parked).
 - ❌ TikTok Shop API — đã loại bỏ hoàn toàn ở đợt H1 (Accesstrade-only).
 - ❌ TikTok đăng trực tiếp (cần app audit — Ninh từ chối) → chỉ nháp.
-- ❌ Key trả phí / billing / Veo (luật cứng free-only).
+- ❌ Gemini API billing / direct Veo key. Google Flow is a separate web-account integration; check account access and credits before submitting a job.
 
 ## 10. Affiliate video pipeline (đang chạy)
 
-`internal/studio/studio.go` `runAffiliate`: mặc định director viết shot list +
-keyframe → engine video tạo footage chuyển động thật (identity/product lock
-bằng ảnh tham chiếu) → nối shot → `MuxMusic` → caption tiếng Việt →
-`fireOnDone` → tự đăng TikTok **nháp** nếu bật. Prompt cấm zoom, flash,
-flicker và rung; nếu engine không tạo được footage, job dừng có lỗi. Chế độ
-ảnh tĩnh riêng dùng dissolve ổn định. Không chữ, không voiceover.
+`POST /studio/affiliate/plan` chạy Product Analyst và Director trước khi operator
+quay/tạo clip. Plan lưu brief + shot list để form hiển thị đúng prompt và số clip;
+`POST /studio/affiliate` tiêu thụ plan, nhận một clip mỗi shot, rồi `runAffiliate`
+chuẩn hóa footage, nối shot, thêm audio do operator cung cấp và chạy temporal +
+visual QC. App không tự tạo affiliate footage qua video API. `fireOnDone` chỉ chạy
+hook publish đã cấu hình; hoàn tất render không chứng minh hiệu quả tăng trưởng.

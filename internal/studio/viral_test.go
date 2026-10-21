@@ -3,11 +3,11 @@ package studio
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 )
 
-func TestViralScriptGeneration(t *testing.T) {
+func TestViralScriptGenerationRequiresObservedSource(t *testing.T) {
 	dir := t.TempDir()
 	s, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
@@ -21,27 +21,9 @@ func TestViralScriptGeneration(t *testing.T) {
 		VisualMood: "cinematic",
 	}
 
-	script, err := s.GenerateViralScript(context.Background(), p)
-	if err != nil {
-		t.Fatalf("GenerateViralScript: %v", err)
-	}
-
-	if script.Title == "" {
-		t.Errorf("expected non-empty Title")
-	}
-	if script.Hook3s == "" {
-		t.Errorf("expected non-empty Hook3s")
-	}
-	if len(script.Scenes) < 3 {
-		t.Errorf("expected at least 3 scenes, got %d", len(script.Scenes))
-	}
-	for i, sc := range script.Scenes {
-		if sc.VoiceText == "" {
-			t.Errorf("scene %d missing VoiceText", i+1)
-		}
-		if sc.ImagePrompt == "" {
-			t.Errorf("scene %d missing ImagePrompt", i+1)
-		}
+	_, err = s.GenerateViralScript(context.Background(), p)
+	if err == nil || !strings.Contains(err.Error(), "thời lượng video nguồn") {
+		t.Fatalf("GenerateViralScript error = %v, want missing source duration", err)
 	}
 }
 
@@ -59,23 +41,20 @@ func TestEnqueueViralJob(t *testing.T) {
 	}
 
 	jobID, err := s.EnqueueViral(context.Background(), p)
-	if err != nil {
-		t.Fatalf("EnqueueViral: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "free-only") {
+		t.Fatalf("EnqueueViral error = %v, want free-only policy error", err)
 	}
-	if jobID == "" {
-		t.Fatalf("expected non-empty jobID")
+	if jobID != "" || len(s.ListViralJobs(10)) != 0 {
+		t.Fatalf("paid video edit must not enqueue a job: id=%q jobs=%d", jobID, len(s.ListViralJobs(10)))
 	}
+}
 
-	jobs := s.ListViralJobs(10)
-	if len(jobs) == 0 {
-		t.Fatalf("expected at least 1 viral job")
+func TestGeminiOmniVideoEditorIsDisabledBeforeFileAccess(t *testing.T) {
+	mg := &GeminiMediaGen{keys: []string{"not-used"}}
+	err := mg.EditCharacterVideoSegment(context.Background(), "/missing/source.mp4", nil, "/tmp/output.mp4")
+	if err == nil || !strings.Contains(err.Error(), "free-only") {
+		t.Fatalf("editor error = %v, want free-only policy error", err)
 	}
-	if jobs[0].Kind != KindViral {
-		t.Errorf("expected kind %q, got %q", KindViral, jobs[0].Kind)
-	}
-	s.CancelRunning(jobID)
-	time.Sleep(100 * time.Millisecond)
-	s.DeleteJob(jobID)
 }
 
 func TestAnalyzeViralOriginal(t *testing.T) {

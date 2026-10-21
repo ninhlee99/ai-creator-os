@@ -79,11 +79,20 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 				generated = true
 			} else {
 				lastErr = veoErr
-				log(fmt.Sprintf("Google Veo lưu ý (%v) — tự động chuyển sang Muse AI...", veoErr))
+				if lastErr == nil {
+					lastErr = fmt.Errorf("veo không tạo được file video đầu ra")
+				}
+				log(fmt.Sprintf("Google Veo không tạo được footage: %v", lastErr))
 			}
 		} else {
 			lastErr = fmt.Errorf("veo: mediagen chưa khởi tạo")
 		}
+	}
+	if !generated && (engine == "veo3" || engine == "generative") {
+		if lastErr == nil {
+			lastErr = fmt.Errorf("Veo không tạo được footage")
+		}
+		return fmt.Errorf("không thể tạo footage chuyển động bằng engine đã chọn: %w", lastErr)
 	}
 
 	// Muse AI has no verified video-generation adapter yet. Accept an
@@ -170,17 +179,22 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 
 	if opts.AutoFaceLock && masterFacePhoto != "" {
 		faceSwappedClip := tempClip + ".faceswapped.mp4"
-		log(fmt.Sprintf("👤 Kích hoạt Face Lock: Khóa khuôn mặt đồng nhất 100%% theo Master Photo (%s)...", filepath.Base(masterFacePhoto)))
-		if fsErr := RunFaceSwap(ctx, masterFacePhoto, tempClip, faceSwappedClip, func(pct int, msg string) {
+		log(fmt.Sprintf("👤 Kích hoạt face lock theo ảnh tham chiếu (%s)...", filepath.Base(masterFacePhoto)))
+		if fsErr := RunFaceSwapStrict(ctx, masterFacePhoto, tempClip, faceSwappedClip, func(pct int, msg string) {
 			if msg != "" && pct%25 == 0 {
 				log(msg)
 			}
-		}); fsErr == nil && fileExists(faceSwappedClip) {
-			log("✓ Khóa khuôn mặt thành công: Đảm bảo nhân vật hoàn toàn đồng nhất không bị trôi lệch!")
-			_ = os.Rename(faceSwappedClip, tempClip)
-		} else {
+		}); fsErr != nil || !fileExists(faceSwappedClip) {
 			_ = os.Remove(faceSwappedClip)
+			if fsErr != nil {
+				return fmt.Errorf("face lock thất bại: %w", fsErr)
+			}
+			return fmt.Errorf("face lock không tạo được video đầu ra")
 		}
+		if err := os.Rename(faceSwappedClip, tempClip); err != nil {
+			return fmt.Errorf("lưu video face lock: %w", err)
+		}
+		log("Face lock hoàn tất.")
 	}
 
 	// CHUẨN HOÁ HÌNH HỌC VÀ REMASTER 4K UHD (Lanczos + Micro-Contrast Unsharp Mask + Denoise)

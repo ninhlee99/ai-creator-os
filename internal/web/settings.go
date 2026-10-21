@@ -47,7 +47,6 @@ var envLabels = map[string][2]string{
 	"OPENAI_API_KEY":          {"Key OpenAI (ChatGPT / GPT-6 Luna)", "OpenAI & Claude & AI Khác"},
 	"ANTHROPIC_API_KEY":       {"Key Anthropic (Claude 5.5 Sonnet)", "OpenAI & Claude & AI Khác"},
 	"ELEVENLABS_API_KEY":      {"Key ElevenLabs (Giọng đọc siêu thực)", "OpenAI & Claude & AI Khác"},
-	"MUSEAI_API_KEY":          {"Key Muse AI (Video Studio)", "OpenAI & Claude & AI Khác"},
 	"TIKTOK_CLIENT_KEY":       {"Client Key ứng dụng TikTok", "TikTok"},
 	"TIKTOK_CLIENT_SECRET":    {"Client Secret ứng dụng TikTok", "TikTok"},
 	"TIKTOK_REDIRECT_URI":     {"Redirect URI (Callback TikTok)", "TikTok"},
@@ -56,6 +55,9 @@ var envLabels = map[string][2]string{
 	"YOUTUBE_API_KEY":         {"Key đọc số liệu YouTube", "YouTube"},
 	"YOUTUBE_DEFAULT_PRIVACY": {"Chế độ hiển thị khi đăng", "YouTube"},
 	"YOUTUBE_GOLDEN_HOUR":     {"Hẹn giờ vàng công khai", "YouTube"},
+	"META_APP_ID":             {"App ID Meta (nối Facebook)", "Facebook · Instagram · Threads"},
+	"META_APP_SECRET":         {"App Secret Meta", "Facebook · Instagram · Threads"},
+	"META_REDIRECT_URI":       {"Redirect URI (Callback Facebook)", "Facebook · Instagram · Threads"},
 	"FB_PAGE_ID":              {"ID Trang Facebook", "Facebook · Instagram · Threads"},
 	"META_PAGE_TOKEN":         {"Mã truy cập Trang (Meta)", "Facebook · Instagram · Threads"},
 	"FB_DRAFT_ONLY":           {"Facebook: chỉ tải lên chưa công khai", "Facebook · Instagram · Threads"},
@@ -449,6 +451,20 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 // requested data keys.
 func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, page, key string, keys ...string) {
 	data := s.settingsData(r)
+	if page == "accesstrade" {
+		var accounts any
+		if s.Mgr != nil {
+			accounts, _ = s.Mgr.List()
+		}
+		var accountID int64
+		if s.Ledger != nil {
+			if raw, ok, _ := s.Ledger.GetSetting(automation.KeyATHunterAccountID); ok {
+				accountID, _ = strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+			}
+		}
+		data["ATHunterAccounts"] = accounts
+		data["ATHunterAccountID"] = accountID
+	}
 	ctx := s.ctx("SettingsPage", page)
 	for _, k := range keys {
 		ctx[k] = data[k]
@@ -728,10 +744,11 @@ func (s *Server) handleUnkill(w http.ResponseWriter, r *http.Request) {
 // settings table (applied at startup), so they survive restarts.
 var envNames = []string{
 	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL", "GEMINI_TTS_MODEL",
-	"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY", "MUSEAI_API_KEY",
+	"OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_REDIRECT_URI",
 	"YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_API_KEY",
 	"YOUTUBE_DEFAULT_PRIVACY", "YOUTUBE_GOLDEN_HOUR",
+	"META_APP_ID", "META_APP_SECRET", "META_REDIRECT_URI",
 	"FB_PAGE_ID", "META_PAGE_TOKEN", "FB_DRAFT_ONLY", "IG_USER_ID", "IG_AUTO_PUBLISH",
 	"THREADS_USER_ID", "THREADS_TOKEN"}
 
@@ -742,12 +759,14 @@ var envHelp = map[string]string{
 	"OPENAI_API_KEY":          "Key OpenAI từ platform.openai.com — Dùng cho kịch bản ChatGPT GPT-6 Luna và sinh nội dung bán hàng.",
 	"ANTHROPIC_API_KEY":       "Key Anthropic từ console.anthropic.com — Dùng cho đạo diễn phân cảnh điện ảnh Claude 5.5 Sonnet.",
 	"ELEVENLABS_API_KEY":      "Key ElevenLabs từ elevenlabs.io — Lồng tiếng voiceover siêu thực đa cảm xúc.",
-	"MUSEAI_API_KEY":          "Key Muse AI từ muse.ai/account — Dùng cho video studio và chuyển động mượt mà.",
 	"TIKTOK_CLIENT_KEY":       "Client Key của app TikTok (tạo ở developers.tiktok.com) — để nối tài khoản TikTok.",
 	"TIKTOK_CLIENT_SECRET":    "Client Secret đi kèm Client Key TikTok.",
 	"TIKTOK_REDIRECT_URI":     "Mặc định http://127.0.0.1:8080/publishers/tiktok/callback. Phải khớp 100% với Redirect URI trên developers.tiktok.com.",
 	"YOUTUBE_CLIENT_ID":       "Client ID OAuth Google (loại “Desktop app”) — để bấm “Nối YouTube” ở trang Đa nền tảng.",
 	"YOUTUBE_CLIENT_SECRET":   "Client Secret đi kèm Client ID Google.",
+	"META_APP_ID":             "App ID trong Meta for Developers — bật Facebook Login và pages_show_list, pages_manage_posts, pages_read_engagement.",
+	"META_APP_SECRET":         "App Secret Meta; lưu kín. Facebook OAuth dùng để chọn Trang và lưu Page access token cho kênh.",
+	"META_REDIRECT_URI":       "Tùy chọn. Phải khớp Valid OAuth Redirect URI trong Meta App; mặc định callback loopback của AICOS.",
 	"FB_PAGE_ID":              "ID Trang Facebook — để đăng bài lên Trang. Bỏ trống thì không đăng Facebook.",
 	"YOUTUBE_API_KEY":         "Key YouTube Data API (riêng với OAuth) — để đọc số liệu Analytics. Không bắt buộc.",
 	"YOUTUBE_DEFAULT_PRIVACY": "Chế độ riêng tư mặc định khi đăng video. Chỉ nhận: private, unlisted, public.",

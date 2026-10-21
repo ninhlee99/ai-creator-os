@@ -9,40 +9,59 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// KindViral là loại job sản xuất video ngắn viral 9:16 (TikTok, Reels, Shorts) 100% gốc.
+// KindViral là job thay nhận diện nhân vật trên video nguồn đã chọn.
 const KindViral = "viral"
 
 // ViralParams chứa cấu hình đầu vào để tạo 1 video viral.
 type ViralParams struct {
-	Topic          string   `json:"topic"`
-	Genre          string   `json:"genre"`       // mystery, lifehack, trendjack, tech_fact, koc_review
-	VisualMood     string   `json:"visual_mood"` // cinematic, vibrant_3d, realistic, cyber_neon
-	Voice          string   `json:"voice"`       // TTS provider voice identifier
-	Account        string   `json:"account"`     // username kênh để đọc Brand DNA
-	AccountID      int64    `json:"account_id,omitempty"`
-	ModelPhoto     string   `json:"model_photo,omitempty"`  // local file path to character face reference image
-	ModelPhotos    []string `json:"model_photos,omitempty"` // multi-angle face reference images for character locking
-	TargetDuration int      `json:"target_duration"`        // minimum duration; raised to source duration when longer
-	MusicURL       string   `json:"music_url"`              // Nhạc nền trending (tùy chọn)
-	MusicFile      string   `json:"music_file"`
-	SourceVideoURL string   `json:"source_video_url,omitempty"`
-	SampleVideo    string   `json:"sample_video,omitempty"` // local file path to sample motion video
-	AIMode         string   `json:"ai_mode,omitempty"`      // local or an explicitly selected video API such as veo3
+	Topic            string               `json:"topic"`
+	Genre            string               `json:"genre"`       // mystery, lifehack, trendjack, tech_fact, koc_review
+	VisualMood       string               `json:"visual_mood"` // cinematic, vibrant_3d, realistic, cyber_neon
+	Voice            string               `json:"voice"`       // TTS provider voice identifier
+	Account          string               `json:"account"`     // username kênh để đọc Brand DNA
+	AccountID        int64                `json:"account_id,omitempty"`
+	ModelPhoto       string               `json:"model_photo,omitempty"`  // local file path to character face reference image
+	ModelPhotos      []string             `json:"model_photos,omitempty"` // multi-angle face reference images for character locking
+	TargetDuration   float64              `json:"target_duration"`        // exact source duration in seconds
+	MusicURL         string               `json:"music_url"`              // Nhạc nền trending (tùy chọn)
+	MusicFile        string               `json:"music_file"`
+	SourceVideoURL   string               `json:"source_video_url,omitempty"`
+	SampleVideo      string               `json:"sample_video,omitempty"` // local file path to sample motion video
+	AIMode           string               `json:"ai_mode,omitempty"`      // full_character_edit replaces the complete person in source footage
+	ReferenceSummary string               `json:"reference_summary,omitempty"`
+	ReferenceBeats   []ViralReferenceBeat `json:"reference_beats,omitempty"`
+}
+
+// ViralReferenceBeat is one observed beat from sampled source frames.
+type ViralReferenceBeat struct {
+	TimeSec        float64 `json:"time_sec"`
+	Framing        string  `json:"framing"`
+	SubjectAction  string  `json:"subject_action"`
+	BodyMovement   string  `json:"body_movement"`
+	CameraMovement string  `json:"camera_movement"`
+	EditTransition string  `json:"edit_transition"`
+	Energy         string  `json:"energy"`
+	Uncertainty    string  `json:"uncertainty,omitempty"`
 }
 
 // ViralScene mô tả 1 phân cảnh trong kịch bản video viral.
 type ViralScene struct {
-	Index       int     `json:"index"`
-	Phase       string  `json:"phase"`        // hook, problem, insight, solution, cta
-	VoiceText   string  `json:"voice_text"`   // Lời thoại lôi cuốn (tiếng Việt)
-	ImagePrompt string  `json:"image_prompt"` // Prompt tiếng Anh cho AI MediaGen vẽ ảnh 9:16
-	VisualHook  string  `json:"visual_hook"`  // Text giật tít hiển thị trên màn hình
-	DurationSec float64 `json:"duration_sec"`
+	Index          int     `json:"index"`
+	Phase          string  `json:"phase"`        // source_beat
+	VoiceText      string  `json:"voice_text"`   // Lời thoại lôi cuốn (tiếng Việt)
+	ImagePrompt    string  `json:"image_prompt"` // Prompt tiếng Anh cho AI MediaGen vẽ ảnh 9:16
+	VideoPrompt    string  `json:"video_prompt"` // Chuyển động tái hiện hành động/camera của nguồn
+	VisualHook     string  `json:"visual_hook"`  // Text giật tít hiển thị trên màn hình
+	DurationSec    float64 `json:"duration_sec"`
+	SourceStartSec float64 `json:"source_start_sec"`
+	SourceEndSec   float64 `json:"source_end_sec"`
 }
 
 // ViralScript là kịch bản hoàn chỉnh của một video viral.
@@ -57,52 +76,7 @@ type ViralScript struct {
 
 // EnqueueViral đưa một tác vụ tạo video viral vào hàng đợi render của Studio.
 func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error) {
-	if strings.TrimSpace(p.Topic) == "" {
-		return "", fmt.Errorf("chủ đề video không được để trống")
-	}
-	if p.Genre == "" {
-		p.Genre = "trendjack"
-	}
-	if p.VisualMood == "" {
-		p.VisualMood = "cinematic"
-	}
-	if p.TargetDuration < 60 {
-		p.TargetDuration = 60 // Video viral tối thiểu từ 60s trở lên (chuẩn TikTok Creativity Program)
-	}
-	if strings.TrimSpace(p.AIMode) == "" {
-		p.AIMode = "local"
-	}
-	if fileExists(p.SampleVideo) {
-		if sourceDuration := probeDuration(ctx, p.SampleVideo); sourceDuration > 0 {
-			if sourceTarget := int(math.Ceil(sourceDuration)); sourceTarget > p.TargetDuration {
-				p.TargetDuration = sourceTarget
-			}
-		}
-	}
-
-	// Đảm bảo video của ai, kênh nào phải đúng kênh đó (không lấy C-Biz bỏ sang kênh VN hay ngược lại)
-	topicLower := strings.ToLower(p.Topic)
-	isCBiz := strings.Contains(topicLower, "c-biz") || strings.Contains(topicLower, "cbiz") ||
-		strings.Contains(topicLower, "trung quốc") || strings.Contains(topicLower, "hoa ngữ") ||
-		strings.Contains(topicLower, "douyin") || strings.Contains(topicLower, "weibo")
-	if isCBiz && (p.Account == "kechuyen_ai" || p.Account == "") {
-		p.Account = "douyin_reup"
-	} else if !isCBiz && p.Account == "douyin_reup" {
-		p.Account = "kechuyen_ai"
-	}
-
-	title := "Video Viral: " + p.Topic
-	if len([]rune(title)) > 80 {
-		title = string([]rune(title)[:77]) + "..."
-	}
-
-	jobID, err := s.insertJob(KindViral, title, p)
-	if err != nil {
-		return "", err
-	}
-
-	go s.runViral(jobID, p)
-	return jobID, nil
+	return "", fmt.Errorf("%s", viralPaidVideoDisabledMessage)
 }
 
 // ListViralJobs trả về danh sách các job viral đã và đang sản xuất.
@@ -120,200 +94,203 @@ func (s *Studio) ListViralJobs(limit int) []Job {
 	return out
 }
 
-func defaultViralScript(p ViralParams) *ViralScript {
-	if p.Genre == "dance" {
-		return &ViralScript{
-			Title:        p.Topic,
-			Hook3s:       "Trending Dance Challenge TikTok",
-			CoreAngle:    "Vũ đạo sexy cuốn hút",
-			Hashtags:     []string{"#dance", "#trend", "#tiktokdance", "#xuhuong"},
-			CallToAction: "Thả tim và follow để xem thêm vũ đạo mới!",
-			Scenes: []ViralScene{
-				{
-					Index:       1,
-					Phase:       "intro",
-					VoiceText:   "",
-					ImagePrompt: "A stunning beautiful Vietnamese female dancer striking an alluring opening pose in a modern aesthetic studio, warm dramatic cinematic lighting, 9:16 vertical, photorealistic, no text",
-					VisualHook:  "HOT TREND DANCE",
-					DurationSec: 15.0,
-				},
-				{
-					Index:       2,
-					Phase:       "dance",
-					VoiceText:   "",
-					ImagePrompt: "A stunning beautiful Vietnamese female dancer performing an energetic sexy dance choreography, fluid motion blur, glowing neon accents, 9:16 vertical, photorealistic, no text",
-					VisualHook:  "VIRAL CHOREOGRAPHY",
-					DurationSec: 15.0,
-				},
-				{
-					Index:       3,
-					Phase:       "rhythm",
-					VoiceText:   "",
-					ImagePrompt: "A stunning beautiful Vietnamese female dancer in the middle of a captivating dance motion, stylish trendy outfit, expressive dynamic movement, cinematic vertical 9:16, no text",
-					VisualHook:  "RHYTHM DROP",
-					DurationSec: 15.0,
-				},
-				{
-					Index:       4,
-					Phase:       "ending",
-					VoiceText:   "",
-					ImagePrompt: "A stunning beautiful Vietnamese female dancer striking an elegant closing dance pose with a radiant confident smile to camera, aesthetic stage background, 9:16 vertical, no text",
-					VisualHook:  "FOLLOW FOR MORE",
-					DurationSec: 15.0,
-				},
-			},
-		}
-	}
-	// Rotate between 4 diverse fallback scripts for variety (5-Star Retention Architecture)
-	variant := int(time.Now().UnixNano() % 4)
-	switch variant {
-	case 0:
-		// Question & Curiosity Gap Hook Style
-		return &ViralScript{
-			Title:        "Bí Mật Triệu View: " + p.Topic,
-			Hook3s:       "Dừng lại 3 giây! Bạn có dám tin rằng " + p.Topic + " đang âm thầm thay đổi mọi thứ?",
-			CoreAngle:    "Góc nhìn tâm lý học hành vi và đòn bẩy đột phá",
-			Hashtags:     []string{"#viral", "#xuhuong", "#shorts", "#kienthuc", "#bimat"},
-			CallToAction: "Lưu lại video này kẻo trôi mất và follow kênh để nhận thêm bí mật mỗi ngày!",
-			Scenes: []ViralScene{
-				{Index: 1, Phase: "hook", VoiceText: "Dừng lại 3 giây! Bạn có dám tin rằng " + p.Topic + " đang âm thầm thay đổi cuộc sống của bạn mà bạn không hề hay biết?", ImagePrompt: "Cinematic close-up portrait of a person reacting with intense curiosity and amazement, dramatic rim lighting, moody dark background with warm accent glow, shot on 35mm lens, vertical 9:16, photorealistic, authentic skin texture", VisualHook: "DỪNG LẠI 3 GIÂY!", DurationSec: 3.5},
-				{Index: 2, Phase: "setup", VoiceText: "Hãy nghe mình nói điều này... 90% mọi người ngoài kia đang hiểu sai hoàn toàn về bản chất của nó.", ImagePrompt: "Medium shot of an aesthetic modern workspace, floating holographic data nodes glowing softly, cinematic depth of field, warm golden ambient lights, vertical 9:16, 8k resolution", VisualHook: "90% ĐANG HIỂU SAI", DurationSec: 4.0},
-				{Index: 3, Phase: "problem", VoiceText: "Sai lầm chí mạng là họ chỉ nhìn vào bề nổi — mà bỏ qua quy luật vận hành ngầm bên dưới.", ImagePrompt: "Moody atmospheric shot of an iceberg metaphor or intricate clockwork mechanism turning in dramatic shadows, volumetric light beams, cinematic 9:16", VisualHook: "SAI LẦM CHÍ MẠNG", DurationSec: 4.0},
-				{Index: 4, Phase: "insight", VoiceText: "Nhưng khi bạn đổi góc nhìn sang hướng này... mọi nút thắt sẽ tự động được gỡ bỏ hoàn toàn.", ImagePrompt: "Extreme close-up of a sharp focused eye reflecting a golden revelation spark, macro photography, pristine iris details, dramatic chiaroscuro, vertical 9:16", VisualHook: "BƯỚC NGOẶT ĐỘT PHÁ!", DurationSec: 4.5},
-				{Index: 5, Phase: "transformation", VoiceText: "Những người nắm bắt được chìa khóa này đã bứt phá ngoạn mục chỉ sau một thời gian rất ngắn.", ImagePrompt: "Wide cinematic low-angle hero shot of a confident figure standing at the precipice of a modern skyscraper at twilight, city lights bokeh, inspirational golden hour, vertical 9:16", VisualHook: "BỨT PHÁ NGOẠN MỤC", DurationSec: 4.0},
-				{Index: 6, Phase: "cta", VoiceText: "Lưu ngay video này trước khi bị trôi và follow kênh — ngày mai mình sẽ tiết lộ phần tiếp theo!", ImagePrompt: "Modern aesthetic graphic of a hand tapping a luminous bookmark button, soft pastel particle bursts, clean luxury studio background, vertical 9:16", VisualHook: "LƯU LẠI KẺO MẤT!", DurationSec: 3.5},
-			},
-		}
-	case 1:
-		// Shocking Statistic Hook Style
-		return &ViralScript{
-			Title:        "97% Người Hiểu Sai Về " + p.Topic,
-			Hook3s:       "97% người ngoài kia đang làm sai điều này về " + p.Topic + "!",
-			CoreAngle:    "Dữ liệu phản trực giác phá vỡ tư duy cũ",
-			Hashtags:     []string{"#viral", "#facts", "#trending", "#suthat", "#tiktok"},
-			CallToAction: "Chia sẻ cho người thân cùng biết và follow kênh để không bỏ lỡ phần 2!",
-			Scenes: []ViralScene{
-				{Index: 1, Phase: "hook", VoiceText: "97% người ngoài kia đang làm sai điều này về " + p.Topic + "... và cái giá phải trả cực kỳ đắt!", ImagePrompt: "Extreme close-up expressive shot of eyes widening in dramatic realization, sharp cinematic lighting, high contrast shadows, shot on 85mm portrait lens, vertical 9:16, photorealistic", VisualHook: "97% LÀM SAI ĐIỀU NÀY!", DurationSec: 3.2},
-				{Index: 2, Phase: "setup", VoiceText: "Một nghiên cứu thực tế vừa công bố số liệu khiến cả giới chuyên môn phải giật mình.", ImagePrompt: "Cinematic wide shot of a futuristic research library with glowing data panels, deep blue and amber dual lighting, vertical 9:16, architectural depth", VisualHook: "SỐ LIỆU GÂY SỐC", DurationSec: 4.0},
-				{Index: 3, Phase: "problem", VoiceText: "Vấn đề là chúng ta vẫn đang áp dụng những thói quen cũ kỹ từ 10 năm trước — mà không hề hay biết.", ImagePrompt: "Overhead top-down geometric shot of a complex maze with solitary figure finding a way out, dramatic moody lighting, vertical 9:16", VisualHook: "CÁCH CŨ = BẾ TẮC", DurationSec: 4.0},
-				{Index: 4, Phase: "insight", VoiceText: "Chỉ cần thay đổi đúng một chi tiết cốt lõi này, hiệu quả sẽ nhảy vọt gấp nhiều lần.", ImagePrompt: "Macro close-up shot of a golden key turning inside an intricate mechanical lock, volumetric light rays beaming through, cinematic vertical 9:16", VisualHook: "MỘT THAY ĐỔI CỐT LÕI", DurationSec: 4.5},
-				{Index: 5, Phase: "transformation", VoiceText: "Và đây là kết quả không thể chối cãi khi bạn làm chủ được phương pháp này.", ImagePrompt: "Split comparison visual showing dramatic before-and-after transformation, cinematic lighting balance, modern aesthetic, vertical 9:16", VisualHook: "KẾT QUẢ ĐỈNH CAO", DurationSec: 4.0},
-				{Index: 6, Phase: "cta", VoiceText: "Đừng quên lưu lại và bấm follow — phần tiếp theo sẽ giải thích chi tiết từng bước!", ImagePrompt: "Clean aesthetic minimalist composition of a phone screen glowing with a red notification heart and follow button, subtle neon lighting, vertical 9:16", VisualHook: "FOLLOW XEM PHẦN 2!", DurationSec: 3.5},
-			},
-		}
-	case 2:
-		// High-Stakes Challenge Hook Style
-		return &ViralScript{
-			Title:        "Thử Thách: Làm Chủ " + p.Topic + " Trong 30 Giây",
-			Hook3s:       "Thử thách bản thân: Bạn có thể hiểu trọn vẹn " + p.Topic + " chỉ trong 30 giây?",
-			CoreAngle:    "Đúc kết tinh hoa tốc độ cao dành cho người bận rộn",
-			Hashtags:     []string{"#challenge", "#viral", "#30giay", "#trending", "#hocnhanh"},
-			CallToAction: "Bạn có làm được không? Comment ngay bên dưới và bấm follow nhé!",
-			Scenes: []ViralScene{
-				{Index: 1, Phase: "hook", VoiceText: "Thử thách cho bạn: Hiểu trọn vẹn " + p.Topic + " chỉ trong đúng 30 giây. Bắt đầu đếm ngược!", ImagePrompt: "Dynamic close-up shot of a glowing analog stopwatch timer freezing at zero, sparks and volumetric smoke, high adrenaline cinematic lighting, vertical 9:16", VisualHook: "THỬ THÁCH 30 GIÂY!", DurationSec: 3.0},
-				{Index: 2, Phase: "setup", VoiceText: "Bước 1: Hãy gạt bỏ ngay lập tức những định kiến rườm rà không cần thiết.", ImagePrompt: "Cinematic shot of hands sweeping away dusty vintage blueprints to reveal a pristine glowing tablet, soft golden window light, vertical 9:16", VisualHook: "BƯỚC 1: BỎ RƯỜM RÀ", DurationSec: 3.8},
-				{Index: 3, Phase: "problem", VoiceText: "Cái bẫy lớn nhất là bị ngợp trong ma trận thông tin mà không có lộ trình rõ ràng.", ImagePrompt: "Dramatic shot of a labyrinth made of towering glowing bookshelves, dark moody atmospheric fog, vertical 9:16 cinematic", VisualHook: "BẪY QUÁ TẢI", DurationSec: 4.0},
-				{Index: 4, Phase: "insight", VoiceText: "Quy tắc 80/20 ở đây rất đơn giản: 20% hành động đúng này sẽ mang lại 80% kết quả.", ImagePrompt: "Artistic conceptual shot of a shining golden ratio spiral illuminating the darkness, elegant aesthetic, vertical 9:16", VisualHook: "QUY TẮC 80/20", DurationSec: 4.5},
-				{Index: 5, Phase: "transformation", VoiceText: "Bây giờ bạn đã nắm trong tay công thức then chốt — hãy áp dụng ngay hôm nay.", ImagePrompt: "Hero perspective shot of a determined person walking forward into a bright futuristic doorway, confident stride, lens flare, vertical 9:16", VisualHook: "ÁP DỤNG NGAY!", DurationSec: 4.0},
-				{Index: 6, Phase: "cta", VoiceText: "Bạn đã vượt qua thử thách chưa? Hãy comment góc nhìn của bạn và follow kênh ngay!", ImagePrompt: "Close-up cinematic shot of an elegant trophy reflecting warm stage lights, sparkling confetti, vertical 9:16", VisualHook: "COMMENT GÓC NHÌN!", DurationSec: 3.5},
-			},
-		}
-	default:
-		// Industry Revelation & Insider Secret Style
-		return &ViralScript{
-			Title:        "Sự Thật Không Ai Nói Về " + p.Topic,
-			Hook3s:       "Đây là điều mà những người thành công về " + p.Topic + " không bao giờ muốn bạn biết!",
-			CoreAngle:    "Bóc tách sự thật ngầm và chiến lược thực chiến",
-			Hashtags:     []string{"#bimat", "#viral", "#suthat", "#chuyendoi", "#xuhuong"},
-			CallToAction: "Follow kênh ngay hôm nay để trở thành người đi trước đón đầu!",
-			Scenes: []ViralScene{
-				{Index: 1, Phase: "hook", VoiceText: "Đây là điều mà những người đứng đầu về " + p.Topic + " không bao giờ muốn bạn biết!", ImagePrompt: "Cinematic close-up of a silhouette whispering in shadows, warm tungsten backlight cutting through dark room, intense mystery mood, 35mm lens, vertical 9:16", VisualHook: "ĐIỀU HỌ GIẤU BẠN!", DurationSec: 3.5},
-				{Index: 2, Phase: "setup", VoiceText: "Sau nhiều năm quan sát và đúc kết, mình nhận ra một mô thức chung mà ai cũng che giấu.", ImagePrompt: "Wide atmospheric shot of a master strategist desk with maps, compass, and chess board, warm desk lamp, film noir style, vertical 9:16", VisualHook: "MÔ THỨC BÍ MẬT", DurationSec: 4.0},
-				{Index: 3, Phase: "problem", VoiceText: "Họ luôn kể cho bạn nghe phần kết quả rực rỡ, nhưng cố tình giấu đi cái giá phải trả phía sau.", ImagePrompt: "Dramatic shot of a fractured mirror reflecting two opposing emotional expressions, chiaroscuro lighting, deep shadows, vertical 9:16", VisualHook: "SỰ THẬT PHÍA SAU", DurationSec: 4.0},
-				{Index: 4, Phase: "insight", VoiceText: "Bí mật thực sự nằm ở việc kiểm soát biến số này trước khi quá muộn.", ImagePrompt: "Close-up shot of hands deftly manipulating an antique brass astrolabe pointing at a glowing celestial star, cinematic vertical 9:16", VisualHook: "BIẾN SỐ THEN CHỐT", DurationSec: 4.5},
-				{Index: 5, Phase: "transformation", VoiceText: "Một khi thấu suốt được chân lý này, bạn sẽ làm chủ hoàn toàn cuộc chơi.", ImagePrompt: "Inspiring medium shot of a person smiling with serene confidence, overlooking sunrise horizon from an observation deck, golden hour light, vertical 9:16", VisualHook: "LÀM CHỦ CUỘC CHƠI", DurationSec: 4.0},
-				{Index: 6, Phase: "cta", VoiceText: "Follow kênh ngay hôm nay để đón xem những phân tích chuyên sâu tiếp theo!", ImagePrompt: "Clean aesthetic shot of a smartphone held in hand with animated follow notification and sleek ambient lighting, vertical 9:16", VisualHook: "FOLLOW NGAY HÔM NAY!", DurationSec: 3.5},
-			},
-		}
-	}
-}
-
-// GenerateViralScript uses LLM or curated high-retention fallback templates.
+// GenerateViralScript writes a source-grounded storyboard. It refuses to create
+// content when the source video or channel character evidence is missing.
 func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*ViralScript, error) {
-	if s.llm == nil || !s.llm.Healthy(ctx) || p.Genre == "dance" {
-		return defaultViralScript(p), nil
+	duration := p.TargetDuration
+	if fileExists(p.SampleVideo) {
+		measured := probeDuration(ctx, p.SampleVideo)
+		if measured <= 0 {
+			return nil, fmt.Errorf("không đọc được thời lượng video nguồn")
+		}
+		duration = measured
 	}
-
-	prompt := fmt.Sprintf(`Bạn là Đạo diễn kiêm Nhà thiết kế kịch bản Viral ngắn (TikTok/Reels/Shorts 9:16) đẳng cấp hàng đầu thế giới.
-Nhiệm vụ: Tạo kịch bản video ngắn giữ chân người xem 100%% trong 3 giây đầu (Stop-the-Scroll) và duy trì tỷ lệ xem hết (Completion Rate) trên 70%%.
-
-CHỦ ĐỀ: "%s"
-THỂ LOẠI: %s
-MOOD HÌNH ẢNH: %s
-KÊNH ĐẠI DIỆN: %s
-
-── CÔNG THỨC GIỮ CHÂN 5 SAO BẮT BUỘC (RETENTION FORMULA) ──
-1. HOOK 3 GIÂY ĐẦU (Scene 1):
-   - Mở đầu bằng một câu hỏi phản trực giác, một con số giật mình hoặc câu khẳng định phá vỡ niềm tin cũ.
-   - VoiceText: Ngắn, đanh, năng lượng cao, từ ngữ gây kích thích trí tò mò cực độ (Curiosity Gap).
-   - VisualHook: Chữ in hoa to, giật tít 2-4 từ nổi bật nhất.
-2. VĂN PHONG VOICE-OVER:
-   - Viết bằng tiếng Việt văn nói tự nhiên, gần gũi, dứt khoát theo nhịp thở (dùng dấu chấm, phẩy, ba chấm... để tạo nhịp điệu).
-   - Tuyệt đối KHÔNG hành văn như dịch sách hay văn xuôi khô khan.
-3. CHỈ ĐẠO HÌNH ẢNH (image_prompt):
-   - Viết bằng tiếng Anh chi tiết cho AI Image Generation (MediaGen / Imagen 3).
-   - BẮT BUỘC có chi tiết máy quay & ánh sáng: "Cinematic vertical 9:16 portrait, shot on 35mm lens, f/1.8 shallow depth of field, dramatic cinematic lighting (golden hour / rim light / volumetric beams), authentic natural skin texture, realistic human eyes, masterclass composition, photorealistic 8k, no text, no watermark".
-4. THỜI LƯỢNG: Tối thiểu %d giây. Tạo đủ cảnh để tổng thời lượng phủ hết mức này, thường 4-6 giây/cảnh; không kéo dài một ảnh để bù thời lượng.
-
-Yêu cầu trả về DUY NHẤT một chuỗi JSON thuần, đúng định dạng sau:
-{
-  "title": "Tiêu đề video ngắn giật gân, cuốn hút",
-  "hook_3s": "Câu mở đầu gây tò mò cực độ trong 3 giây đầu",
-  "core_angle": "Góc nhìn độc đáo hoặc giá trị cốt lõi mang lại",
-  "hashtags": ["#tag1", "#tag2", "#tag3", "#xuhuong", "#viral"],
-  "call_to_action": "Kêu gọi lưu video hoặc follow tự nhiên",
-  "scenes": [
-    {
-      "index": 1,
-      "phase": "hook",
-      "voice_text": "Lời thoại ngắn gọn, súc tích (3-4 giây)",
-      "image_prompt": "Chi tiết prompt tiếng Anh 9:16 cinematic photorealistic",
-      "visual_hook": "CHỮ TO GIẬT TÍT 3S ĐẦU",
-      "duration_sec": 3.5
-    }
-  ]
-}`, p.Topic, p.Genre, p.VisualMood, p.Account, p.TargetDuration)
-
-	if p.ModelPhoto != "" {
-		prompt += "\n- KHÓA KHUÔN MẶT NHÂN VẬT: Video này có nhân vật đại diện. Hãy miêu tả nhân vật chính xuất hiện rõ nét."
+	if duration <= 0 {
+		return nil, fmt.Errorf("cần thời lượng video nguồn chính xác")
 	}
-	if s.PromptEnhancer != nil {
-		if enhancement := s.PromptEnhancer(ctx, p.Genre, p.Account); enhancement != "" {
-			prompt += "\n" + enhancement
+	p.TargetDuration = duration
+
+	if p.ModelPhoto == "" {
+		for _, photo := range p.ModelPhotos {
+			if fileExists(photo) {
+				p.ModelPhoto = photo
+				break
+			}
 		}
 	}
+	if !fileExists(p.ModelPhoto) {
+		return nil, fmt.Errorf("cần ảnh nhân vật đã chọn của kênh để lập storyboard tái hiện")
+	}
+	if len(p.ReferenceBeats) == 0 || strings.TrimSpace(p.ReferenceSummary) == "" {
+		summary, beats, err := s.analyzeViralReference(ctx, p.SampleVideo, duration)
+		if err != nil {
+			return nil, err
+		}
+		p.ReferenceSummary = summary
+		p.ReferenceBeats = beats
+	}
+	if err := validateViralReferenceBeats(p.ReferenceBeats, duration); err != nil {
+		return nil, err
+	}
+	if s.llm == nil || !s.llm.Healthy(ctx) {
+		return nil, fmt.Errorf("không có LLM khả dụng để chuyển phân tích video nguồn thành storyboard")
+	}
 
-	resp, err := s.llm.Complete(ctx, "Bạn là Viral Content Architect. Trả về duy nhất JSON hợp lệ, không bọc markdown.", prompt)
+	beats, err := json.MarshalIndent(p.ReferenceBeats, "", "  ")
 	if err != nil {
-		return defaultViralScript(p), nil
+		return nil, fmt.Errorf("không mã hóa được beat video nguồn: %w", err)
+	}
+	prompt, err := directorPrompt("viral_recreate.txt", promptData{
+		Topic:            p.Topic,
+		Niche:            p.Account,
+		Seconds:          int(math.Round(duration)),
+		Duration:         formatViralDuration(duration),
+		ReferenceSummary: strings.TrimSpace(p.ReferenceSummary),
+		ReferenceBeats:   string(beats),
+	})
+	if err != nil {
+		return nil, err
+	}
+	response, err := s.llm.Complete(ctx, "Bạn là đạo diễn tái hiện video theo nguồn đã phân tích. Chỉ trả JSON thuần, không thêm nội dung.", prompt)
+	if err != nil {
+		return nil, fmt.Errorf("viết storyboard tái hiện nguồn: %w", err)
 	}
 
 	var script ViralScript
-	cleaned := extractJSON(resp)
-	if err := json.Unmarshal([]byte(cleaned), &script); err != nil {
-		if err2 := json.Unmarshal([]byte(resp), &script); err2 != nil {
-			return defaultViralScript(p), nil
-		}
+	if err := json.Unmarshal([]byte(extractJSON(response)), &script); err != nil {
+		return nil, fmt.Errorf("storyboard trả JSON không hợp lệ: %w", err)
+	}
+	if strings.TrimSpace(script.Title) == "" {
+		return nil, fmt.Errorf("storyboard thiếu tiêu đề mô tả nguồn")
+	}
+	if err := validateViralReferenceScenes(script.Scenes, duration); err != nil {
+		return nil, err
 	}
 
-	if len(script.Scenes) == 0 {
-		return defaultViralScript(p), nil
+	// The available source evidence is visual-only. Never infer audio, text,
+	// marketing copy, or engagement assets from sampled frames.
+	script.Hook3s = ""
+	script.CallToAction = ""
+	script.Hashtags = nil
+	for i := range script.Scenes {
+		script.Scenes[i].VoiceText = ""
+		script.Scenes[i].VisualHook = ""
 	}
-
 	return &script, nil
 }
 
-// runViral là goroutine chạy nền sản xuất video viral hoàn chỉnh 100% gốc.
+func (s *Studio) analyzeViralReference(ctx context.Context, videoPath string, duration float64) (string, []ViralReferenceBeat, error) {
+	if !fileExists(videoPath) {
+		return "", nil, fmt.Errorf("cần video nguồn để quan sát thứ tự cảnh và chuyển động")
+	}
+	if s.mg == nil || !s.mg.Healthy(ctx) {
+		return "", nil, fmt.Errorf("media engine chưa sẵn sàng để phân tích video nguồn")
+	}
+	analyzer, ok := s.mg.(visualImageAnalyzer)
+	if !ok {
+		return "", nil, fmt.Errorf("media engine chưa hỗ trợ phân tích frame video nguồn")
+	}
+	workDir := filepath.Join(s.workRoot, "viral-reference-"+newID())
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		return "", nil, fmt.Errorf("tạo thư mục phân tích video nguồn: %w", err)
+	}
+	defer os.RemoveAll(workDir)
+
+	frames, err := sampleViralReferenceFrames(ctx, videoPath, workDir, duration)
+	if err != nil {
+		return "", nil, err
+	}
+	var prompt strings.Builder
+	prompt.WriteString("Analyze these ordered samples from one source video. Images are point samples, not continuous footage. Describe only visible evidence; do not infer unseen choreography, speech, sound, text, or intent. Group observations into chronological beats. Give each beat a source time_sec and concise framing, subject_action, body_movement, camera_movement, edit_transition, energy, and uncertainty. Mark motion between samples uncertain when frames do not prove it. Return JSON only: {summary:string, beats:[{time_sec:number, framing:string, subject_action:string, body_movement:string, camera_movement:string, edit_transition:string, energy:string, uncertainty:string}]}\n")
+	for i, frame := range frames {
+		fmt.Fprintf(&prompt, "Image %d shows source time %.3f seconds.\n", i+1, frame.TimeSec)
+	}
+	refs := make([]ImageRef, 0, len(frames))
+	for _, frame := range frames {
+		refs = append(refs, ImageRef{Path: frame.Path})
+	}
+	raw, err := analyzer.AnalyzeImages(ctx, prompt.String(), refs)
+	if err != nil {
+		return "", nil, fmt.Errorf("phân tích frame video nguồn: %w", err)
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(extractJSON(raw)), &result); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn trả JSON lỗi: %w", err)
+	}
+	var summary string
+	var beats []ViralReferenceBeat
+	if err := json.Unmarshal(result["summary"], &summary); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu summary hợp lệ: %w", err)
+	}
+	if err := json.Unmarshal(result["beats"], &beats); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu beats hợp lệ: %w", err)
+	}
+	if strings.TrimSpace(summary) == "" {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu tóm tắt quan sát")
+	}
+	if err := validateViralReferenceBeats(beats, duration); err != nil {
+		return "", nil, err
+	}
+	return strings.TrimSpace(summary), beats, nil
+}
+
+func validateViralReferenceBeats(beats []ViralReferenceBeat, duration float64) error {
+	if len(beats) == 0 {
+		return fmt.Errorf("thiếu beat quan sát từ video nguồn")
+	}
+	lastTime := -1.0
+	for i, beat := range beats {
+		if beat.TimeSec < 0 || beat.TimeSec > duration || beat.TimeSec <= lastTime {
+			return fmt.Errorf("beat nguồn %d có timestamp thiếu, ngoài video hoặc sai thứ tự", i+1)
+		}
+		if strings.TrimSpace(beat.Framing+beat.SubjectAction+beat.BodyMovement+beat.CameraMovement+beat.EditTransition+beat.Energy) == "" {
+			return fmt.Errorf("beat nguồn %d thiếu mô tả hình ảnh quan sát được", i+1)
+		}
+		lastTime = beat.TimeSec
+	}
+	return nil
+}
+
+func validateViralReferenceScenes(scenes []ViralScene, target float64) error {
+	if len(scenes) == 0 {
+		return fmt.Errorf("storyboard nguồn không có cảnh")
+	}
+	if target < 4 || target > float64(len(scenes))*8 {
+		return fmt.Errorf("%d cảnh không thể phủ đúng %.3f giây với clip 4-8 giây/cảnh", len(scenes), target)
+	}
+	cursor := 0.0
+	for i := range scenes {
+		scene := &scenes[i]
+		if strings.TrimSpace(scene.ImagePrompt) == "" || strings.TrimSpace(scene.VideoPrompt) == "" {
+			return fmt.Errorf("storyboard cảnh %d thiếu keyframe hoặc chuyển động theo nguồn", i+1)
+		}
+		if math.Abs(scene.SourceStartSec-cursor) > 0.01 {
+			return fmt.Errorf("storyboard cảnh %d tạo khoảng trống hoặc chồng lấn với timeline nguồn", i+1)
+		}
+		if scene.SourceEndSec <= scene.SourceStartSec {
+			return fmt.Errorf("storyboard cảnh %d có khoảng timestamp không hợp lệ", i+1)
+		}
+		sceneDuration := scene.SourceEndSec - scene.SourceStartSec
+		if sceneDuration < 4-0.01 || sceneDuration > 8+0.01 {
+			return fmt.Errorf("storyboard cảnh %d dài %.3f giây; giới hạn nguồn là 4-8 giây", i+1, sceneDuration)
+		}
+		scene.Index = i + 1
+		scene.Phase = "source_beat"
+		scene.DurationSec = sceneDuration
+		cursor = scene.SourceEndSec
+	}
+	if math.Abs(cursor-target) > 0.01 {
+		return fmt.Errorf("timeline storyboard kết thúc ở %.3f giây, nguồn dài %.3f giây", cursor, target)
+	}
+	return nil
+}
+
+func formatViralDuration(seconds float64) string {
+	formatted := strconv.FormatFloat(seconds, 'f', 3, 64)
+	return strings.TrimRight(strings.TrimRight(formatted, "0"), ".")
+}
+
+// runViral runs full-character source editing on the selected viral video.
 func (s *Studio) runViral(jobID string, p ViralParams) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -321,29 +298,40 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 			s.appendLog(jobID, fmt.Sprintf("LỖI panic (%v) — job dừng an toàn.", r))
 		}
 	}()
+	s.setStatus(jobID, StatusFailed, 100)
+	s.appendLog(jobID, "LỖI: "+viralPaidVideoDisabledMessage)
+}
 
-	localMode := strings.EqualFold(strings.TrimSpace(p.AIMode), "local") || strings.TrimSpace(p.AIMode) == ""
-	requiredDuration := p.TargetDuration
-	if requiredDuration < 60 {
-		requiredDuration = 60
+func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
+	s.appendLog(jobID, "SOURCE_VALIDATION_START: kiểm tra file nguồn, kênh và engine")
+	sourceDuration := probeDuration(context.Background(), p.SampleVideo)
+	if sourceDuration <= 0 {
+		s.setStatus(jobID, StatusFailed, 100)
+		s.appendLog(jobID, "LỖI: không đọc được thời lượng video nguồn")
+		return
 	}
-	p.TargetDuration = requiredDuration
-	renderTimeout := 20 * time.Minute
-	if requiredDuration > 0 {
-		const maxRenderTimeout = 24 * time.Hour
-		maxDurationSeconds := int64((maxRenderTimeout - 20*time.Minute) / (3 * time.Second))
-		if int64(requiredDuration) >= maxDurationSeconds {
-			renderTimeout = maxRenderTimeout
-		} else {
-			durationBudget := time.Duration(requiredDuration)*3*time.Second + 20*time.Minute
-			if durationBudget > renderTimeout {
-				renderTimeout = durationBudget
-			}
-		}
+	width, height, err := probeViralDimensions(context.Background(), p.SampleVideo)
+	if err != nil {
+		s.setStatus(jobID, StatusFailed, 100)
+		s.appendLog(jobID, "LỖI: "+err.Error())
+		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), renderTimeout)
+	if math.Abs(float64(width)/float64(height)-9.0/16.0) > 0.015 {
+		s.setStatus(jobID, StatusFailed, 100)
+		s.appendLog(jobID, fmt.Sprintf("LỖI: video nguồn %dx%d không phải khung dọc 9:16; dừng để giữ nguyên framing.", width, height))
+		return
+	}
+
+	timeout := 20 * time.Minute
+	durationBudget := time.Duration(sourceDuration*10)*time.Second + 20*time.Minute
+	if durationBudget > timeout {
+		timeout = durationBudget
+	}
+	if timeout > 6*time.Hour {
+		timeout = 6 * time.Hour
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
 	s.mu.Lock()
 	s.running[jobID] = cancel
 	s.mu.Unlock()
@@ -363,372 +351,159 @@ func (s *Studio) runViral(jobID string, p ViralParams) {
 		return
 	}
 
-	s.setStatus(jobID, StatusRunning, 5)
-	s.appendLog(jobID, "Khởi động xưởng dựng video viral...")
-
 	fail := func(err error) {
 		s.appendLog(jobID, "LỖI: "+err.Error())
 		s.setStatus(jobID, StatusFailed, 100)
 	}
-
-	var script *ViralScript
-	if localMode {
-		script = defaultViralScript(p)
-		s.appendLog(jobID, "Chế độ cục bộ: không gọi API LLM, tạo ảnh hoặc video.")
-	} else {
-		var err error
-		script, err = s.GenerateViralScript(ctx, p)
-		if err != nil {
-			fail(fmt.Errorf("soạn kịch bản thất bại: %w", err))
-			return
-		}
+	s.setStatus(jobID, StatusRunning, 5)
+	s.appendLog(jobID, fmt.Sprintf("Viral full-character edit: giữ nguồn %dx%d, %.2fs; thay toàn bộ nhân vật và giữ chuỗi cảnh/chuyển động/camera.", width, height, sourceDuration))
+	if !fileExists(p.SampleVideo) || !fileExists(p.ModelPhoto) {
+		fail(fmt.Errorf("thiếu video nguồn hoặc ảnh nhân vật của kênh"))
+		return
 	}
-
-	title := script.Title
-	if title != "" {
-		s.db.Exec(`UPDATE studio_jobs SET title=? WHERE id=?`, "Video Viral: "+title, jobID)
+	editor, editorReady := s.mg.(ViralCharacterVideoEditor)
+	if !editorReady || s.mg == nil || !s.mg.Healthy(ctx) {
+		fail(fmt.Errorf("Gemini Omni video-edit adapter chưa sẵn sàng"))
+		return
 	}
-	if localMode {
-		s.appendLog(jobID, fmt.Sprintf("Kịch bản '%s' sẵn sàng (%d cảnh); dựng từ ảnh mẫu đã tải lên.", script.Title, len(script.Scenes)))
-	} else {
-		s.appendLog(jobID, fmt.Sprintf("Kịch bản '%s' sẵn sàng (%d cảnh). Đang sinh hình ảnh 9:16...", script.Title, len(script.Scenes)))
+	if _, ok := s.mg.(visualImageAnalyzer); !ok || s.mg == nil || !s.mg.Healthy(ctx) {
+		fail(fmt.Errorf("media engine phân tích frame chưa sẵn sàng để kiểm tra nhận diện nhân vật"))
+		return
 	}
-	s.setStatus(jobID, StatusRunning, 20)
+	s.appendLog(jobID, "SOURCE_VALIDATION_PASS: video nguồn, ảnh kênh, Gemini Omni adapter và visual analyzer sẵn sàng")
 
 	jobDir := filepath.Join(s.workRoot, jobID)
 	if err := os.MkdirAll(jobDir, 0o755); err != nil {
 		fail(fmt.Errorf("tạo thư mục làm việc thất bại: %w", err))
 		return
 	}
+	if err := os.MkdirAll(s.outDir, 0o755); err != nil {
+		fail(fmt.Errorf("tạo thư mục đầu ra thất bại: %w", err))
+		return
+	}
+	finalVideo := filepath.Join(s.outDir, fmt.Sprintf("viral_%s.mp4", jobID))
+	_ = os.Remove(finalVideo)
+	complete := false
+	defer func() {
+		if !complete {
+			_ = os.Remove(finalVideo)
+		}
+	}()
 
-	// 1. Chuẩn bị ảnh nhân vật (Character Face Lock) nếu có
-	var refs []ImageRef
-	modelPhoto := p.ModelPhoto
-	if modelPhoto == "" || !fileExists(modelPhoto) {
-		mps := s.queryAccountModelPhotos(p.AccountID)
-		if len(mps) > 0 {
-			modelPhoto = mps[0]
-		}
+	modelPhotos := append([]string(nil), p.ModelPhotos...)
+	if len(modelPhotos) == 0 {
+		modelPhotos = []string{p.ModelPhoto}
 	}
-	anchor := NewVisualAnchor(p.Topic, p.Genre, "", modelPhoto)
-	if modelPhoto != "" && fileExists(modelPhoto) {
-		refs = append(refs, ImageRef{Path: modelPhoto})
-		s.appendLog(jobID, fmt.Sprintf("Khóa nhận diện nhân vật (Character Face Lock): sử dụng ảnh mẫu %s", filepath.Base(modelPhoto)))
-	} else {
-		s.appendLog(jobID, fmt.Sprintf("Kích hoạt Visual Anchor Matrix: Khóa đặc điểm nhân vật (%s, %s, %s) và bối cảnh (%s) xuyên suốt các phân cảnh", anchor.ActorName, anchor.FaceTraits, anchor.Wardrobe, anchor.Environment))
+	modelPhotos = validCharacterPhotos(modelPhotos, 4)
+	segments, err := splitViralSourceForEditing(ctx, p.SampleVideo, sourceDuration, jobDir)
+	if err != nil {
+		fail(err)
+		return
 	}
-
-	var silentVideo string
-	var preparedMotion bool
-	var photoPaths []string
-
-	isVideoFile := func(path string) bool {
-		if path == "" || !fileExists(path) {
-			return false
-		}
-		ext := strings.ToLower(filepath.Ext(path))
-		return ext == ".mp4" || ext == ".mov" || ext == ".webm" || ext == ".mkv" || ext == ".avi"
-	}
-
-	// Read reference duration; output uses newly generated visuals and audio.
-	if isVideoFile(p.SampleVideo) {
-		profile := AnalyzeViralOriginal(ctx, p.SampleVideo, "")
-		if profile.Duration > 0 {
-			s.appendLog(jobID, fmt.Sprintf("✓ Video tham chiếu: %.1fs. Dựng nội dung mới đủ thời lượng, không dùng lại footage/audio nguồn.", profile.Duration))
-		}
-	}
-	if p.SourceVideoURL != "" {
-		s.appendLog(jobID, fmt.Sprintf("✓ Source reference: %s. Create original visuals; source footage and audio are not reused.", p.SourceVideoURL))
-	}
-	if localMode {
-		modelPhotos := p.ModelPhotos
-		if len(modelPhotos) == 0 {
-			modelPhotos = s.uploadedModelPhotos(p.AccountID)
-		}
-		for _, path := range modelPhotos {
-			if !fileExists(path) {
-				continue
-			}
-			crops := 2
-			if len(modelPhotos) == 1 {
-				crops = 4
-			}
-			variants := derivePhotoVariants(ctx, path, jobDir, fmt.Sprintf("viral-model-%d", len(photoPaths)), crops)
-			if len(variants) == 0 {
-				variants = []string{path}
-			}
-			for _, variant := range variants {
-				if len(photoPaths) >= 8 {
-					break
-				}
-				photoPaths = append(photoPaths, variant)
-			}
-			if len(photoPaths) >= 8 {
-				break
-			}
-		}
-		if len(photoPaths) == 0 && p.ModelPhoto != "" && fileExists(p.ModelPhoto) {
-			photoPaths = derivePhotoVariants(ctx, p.ModelPhoto, jobDir, "viral-model-upload", 4)
-			if len(photoPaths) == 0 {
-				photoPaths = []string{p.ModelPhoto}
-			}
-		}
-		if len(photoPaths) == 0 {
-			fail(fmt.Errorf("chế độ cục bộ cần ảnh mẫu đã tải lên; thêm ảnh ở trang /viral rồi thử lại"))
+	s.appendLog(jobID, fmt.Sprintf("CHARACTER_REPLACEMENT_START: thay toàn bộ nhân vật qua %d đoạn, tối đa 10s mỗi lần edit", len(segments)))
+	var editedSegments []string
+	for i, segment := range segments {
+		edited := filepath.Join(jobDir, fmt.Sprintf("character-%02d.mp4", i+1))
+		if err := editor.EditCharacterVideoSegment(ctx, segment.Path, modelPhotos, edited); err != nil {
+			fail(fmt.Errorf("Gemini Omni edit đoạn %d/%d: %w", i+1, len(segments), err))
 			return
 		}
-		for i, path := range photoPaths {
-			aid := s.addAsset(jobID, i+1, "photo", fmt.Sprintf("Ảnh mẫu đã tải lên %d", i+1))
-			s.setAsset(aid, StatusDone, path)
+		got := probeDuration(ctx, edited)
+		if got <= 0 || math.Abs(got-segment.Duration) > 0.25 {
+			fail(fmt.Errorf("Gemini Omni đổi thời lượng đoạn %d: nguồn %.2fs, đầu ra %.2fs; dừng để không lệch nhịp choreography", i+1, segment.Duration, got))
+			return
 		}
-		s.appendLog(jobID, fmt.Sprintf("Dùng %d khung từ ảnh mẫu đã tải lên; render cục bộ đủ %.0fs.", len(photoPaths), float64(requiredDuration)))
+		withSourceAudio := filepath.Join(jobDir, fmt.Sprintf("character-audio-%02d.mp4", i+1))
+		if err := ffmpegRun(ctx, "-y", "-i", edited, "-i", segment.Path, "-map", "0:v:0", "-map", "1:a?", "-c:v", "copy", "-c:a", "aac", "-shortest", withSourceAudio); err != nil {
+			fail(fmt.Errorf("giữ audio nguồn đoạn %d: %w", i+1, err))
+			return
+		}
+		editedSegments = append(editedSegments, withSourceAudio)
+		s.setStatus(jobID, StatusRunning, 5+int(70*float64(i+1)/float64(len(segments))))
 	}
-
-	// 0B. Nếu không có video vũ đạo sẵn có nhưng có người mẫu và là chủ đề dance:
-	// Tự động dựng video CapCut Beat Bounce "giật giật" theo beat nhạc TikTok 9:16 với người mẫu!
-	if !preparedMotion && isDanceOrPerformance(p.Topic, p.Genre) && modelPhoto != "" && fileExists(modelPhoto) {
-		dancePhotos := p.ModelPhotos
-		if len(dancePhotos) == 0 {
-			dancePhotos = []string{modelPhoto}
-		}
-		for len(dancePhotos) < 6 {
-			dancePhotos = append(dancePhotos, dancePhotos...)
-		}
-		if len(dancePhotos) > 8 {
-			dancePhotos = dancePhotos[:8]
-		}
-		danceMusic := p.MusicFile
-		if danceMusic == "" || !fileExists(danceMusic) {
-			danceMusic = FindTrendingMusic("nhay")
-		}
-		if danceMusic == "" || !fileExists(danceMusic) {
-			danceMusic = FindDefaultMusic()
-		}
-
-		danceOut := filepath.Join(jobDir, "dance_beatbounce_916.mp4")
-		s.appendLog(jobID, "Khởi tạo video Sexy Dance Beat Bounce 9:16 (CapCut giật giật theo nhịp nhạc trending TikTok)...")
-		if err := AssembleBeatBounce(ctx, dancePhotos, 2.5, 126, danceMusic, 0.0, danceOut, "9:16"); err == nil && fileExists(danceOut) {
-			silentVideo = danceOut
-			preparedMotion = true
-			s.appendLog(jobID, "✓ Hoàn thành dựng video Sexy Dance Beat Bounce 9:16 chuẩn TikTok!")
-		}
-	}
-
-	var motionClips []string
-	var wavPaths []string
-	var secsPerPhoto float64 = 4.0
-
-	if !preparedMotion {
-		if !localMode {
-			for i, sc := range script.Scenes {
-				s.setStatus(jobID, StatusRunning, 20+int(float64(i)/float64(len(script.Scenes))*35))
-				s.appendLog(jobID, fmt.Sprintf("Xử lý cảnh %d/%d (%s)...", i+1, len(script.Scenes), sc.Phase))
-
-				aid := s.addAsset(jobID, i+1, "photo", sc.ImagePrompt)
-				s.setAsset(aid, StatusRunning, "")
-
-				outImg := filepath.Join(jobDir, fmt.Sprintf("scene_%02d.png", i+1))
-				imgPrompt := anchor.EnrichScenePrompt(sc.ImagePrompt, "cinematic smooth tracking", i+1, len(script.Scenes))
-				if len(refs) > 0 {
-					imgPrompt += ", featuring the consistent character from the reference image, exact same face, hair, and appearance"
-				}
-
-				if s.mg != nil && s.mg.Healthy(ctx) {
-					s.appendLog(jobID, fmt.Sprintf("Tạo keyframe AI cảnh %d/%d (khóa đặc tính nhân vật)...", i+1, len(script.Scenes)))
-					if err := s.mg.GenerateImage(ctx, imgPrompt, refs, outImg); err != nil {
-						s.appendLog(jobID, fmt.Sprintf("Cảnh %d: lỗi tạo ảnh MediaGen (%v), tạo ảnh mẫu dự phòng", i+1, err))
-						_ = os.Remove(outImg)
-					}
-				}
-
-				st, stErr := os.Stat(outImg)
-				if stErr != nil || st.Size() < 100 {
-					if modelPhoto != "" && fileExists(modelPhoto) {
-						_ = copyViralFile(modelPhoto, outImg)
-					} else {
-						_ = GenerateCinematicStoryScene(i, len(script.Scenes), sc.ImagePrompt, outImg)
-					}
-				}
-
-				if fileExists(outImg) {
-					photoPaths = append(photoPaths, outImg)
-					// Khóa ảnh đầu tiên làm Master Anchor Photo cho các cảnh tiếp theo nếu chưa có ảnh mẫu
-					if anchor.MasterPhotoPath == "" {
-						anchor.MasterPhotoPath = outImg
-						refs = append(refs, ImageRef{Path: outImg})
-						s.appendLog(jobID, fmt.Sprintf("✓ Đã khóa khung hình Cảnh 1 làm mốc nhân vật chuẩn (Master Keyframe) cho các cảnh sau"))
-					}
-				}
-
-				// KÍCH HOẠT GENERATIVE AI VIDEO (Google Flow / Veo 3 / Muse AI): Sinh video chuyển động thật cho từng phân cảnh
-				clipSec := int(sc.DurationSec)
-				if clipSec <= 0 {
-					clipSec = 5
-				}
-				sceneVideo := filepath.Join(jobDir, fmt.Sprintf("motion_%02d.mp4", i+1))
-				fallbackUsed := false
-				vErr := s.GenerateMotionVideoClip(ctx, MotionVideoOptions{
-					Prompt:       imgPrompt,
-					FirstFrame:   outImg,
-					Seconds:      clipSec,
-					AspectRatio:  "9:16",
-					Engine:       p.AIMode,
-					Anchor:       anchor,
-					AutoFaceLock: true,
-					SceneIndex:   i,
-					FallbackUsed: &fallbackUsed,
-					OutputPath:   sceneVideo,
-					LogFn:        func(msg string) { s.appendLog(jobID, msg) },
-				})
-
-				if fileExists(outImg) {
-					s.setAsset(aid, StatusDone, outImg)
-				}
-				if vErr == nil && fileExists(sceneVideo) && !fallbackUsed {
-					motionClips = append(motionClips, sceneVideo)
-					clipAid := s.addAsset(jobID, 100+i+1, "clip", fmt.Sprintf("Cảnh chuyển động AI %d (%ds)", i+1, clipSec))
-					s.setAsset(clipAid, StatusDone, sceneVideo)
-					s.appendLog(jobID, fmt.Sprintf("✓ Cảnh %d/%d: Sinh video chuyển động AI thành công (%ds, 9:16)!", i+1, len(script.Scenes), clipSec))
-				} else if vErr == nil && fallbackUsed {
-					s.appendLog(jobID, fmt.Sprintf("Cảnh %d/%d: engine chưa tạo clip; dùng ảnh tĩnh làm video pan/zoom.", i+1, len(script.Scenes)))
-				} else if !fileExists(outImg) {
-					s.setAsset(aid, StatusFailed, "")
-				}
-
-				// Tạo âm thanh giọng đọc nếu narrator có sẵn (và KHÔNG phải video vũ đạo/nhảy)
-				if !localMode && !isDanceOrPerformance(p.Topic, p.Genre) && s.narrator != nil && sc.VoiceText != "" {
-					wavFile := filepath.Join(jobDir, fmt.Sprintf("scene_%02d.wav", i+1))
-					wavBytes, err := s.narrator(ctx, sc.VoiceText, p.Voice)
-					if err == nil && len(wavBytes) > 0 {
-						if err := os.WriteFile(wavFile, wavBytes, 0o644); err == nil {
-							wavPaths = append(wavPaths, wavFile)
-						}
-					}
-				}
-			}
-		}
-
-		s.setStatus(jobID, StatusRunning, 65)
-		silentVideo = filepath.Join(jobDir, "silent_916.mp4")
-
-		targetSec := float64(requiredDuration)
-
-		// Nếu đã sinh được các video clip chuyển động AI (Google Veo 3 / Muse AI): Ghép nối thành chuỗi phim hoàn chỉnh!
-		if len(motionClips) > 0 {
-			s.appendLog(jobID, fmt.Sprintf("Nối %d phân cảnh video chuyển động AI (Google Veo 3 / Muse AI) thành phim 9:16...", len(motionClips)))
-			if err := ConcatClips(ctx, motionClips, "9:16", silentVideo); err != nil {
-				s.appendLog(jobID, fmt.Sprintf("Cảnh báo ghép clip (%v), chuyển sang ghép ảnh phân cảnh...", err))
-			}
-		}
-
-		// Nếu chưa có silentVideo (hoặc ConcatClips thất bại): Dùng chuỗi ảnh với CapCut Ken Burns
-		if !fileExists(silentVideo) {
-			if len(photoPaths) == 0 {
-				fail(fmt.Errorf("không tạo được hình ảnh hoặc video chuyển động nào cho các phân cảnh"))
-				return
-			}
-			secsPerPhoto = targetSec / float64(len(photoPaths))
-			if secsPerPhoto < 2.5 {
-				secsPerPhoto = 2.5
-			}
-			s.appendLog(jobID, fmt.Sprintf("AI đang kết xuất chuỗi phân cảnh điện ảnh 9:16 (%.1fs/cảnh, %d cảnh AI 100%% gốc)...", secsPerPhoto, len(photoPaths)))
-			if err := AssemblePhotoList(ctx, photoPaths, secsPerPhoto, "", 0, silentVideo, "9:16"); err != nil {
-				fail(fmt.Errorf("dựng video AI 9:16 thất bại: %w", err))
-				return
-			}
-		}
-
-	}
-	if err := ensureVideoDuration(ctx, silentVideo, float64(requiredDuration), "9:16"); err != nil {
-		fail(fmt.Errorf("video nền chưa đạt %.0fs: %w", float64(requiredDuration), err))
+	if err := ConcatClips(ctx, editedSegments, "9:16", finalVideo); err != nil {
+		fail(fmt.Errorf("nối các đoạn nhân vật đã thay: %w", err))
 		return
 	}
+	s.appendLog(jobID, "CHARACTER_REPLACEMENT_PASS: toàn bộ đoạn đã edit và audio nguồn đã ghép lại")
+	s.appendLog(jobID, "OUTPUT_VALIDATION_START: đối chiếu thời lượng và kích thước với nguồn")
+	if err := verifyVideoDuration(ctx, finalVideo, sourceDuration); err != nil {
+		fail(fmt.Errorf("video đầu ra không giữ đúng thời lượng nguồn: %w", err))
+		return
+	}
+	outWidth, outHeight, err := probeViralDimensions(ctx, finalVideo)
+	if err != nil || math.Abs(float64(outWidth)/float64(outHeight)-9.0/16.0) > 0.015 {
+		fail(fmt.Errorf("đầu ra không giữ khung dọc 9:16 (%dx%d)", outWidth, outHeight))
+		return
+	}
+	s.appendLog(jobID, fmt.Sprintf("OUTPUT_VALIDATION_PASS: thời lượng khớp nguồn; khung đầu ra %dx%d 9:16", outWidth, outHeight))
 
 	s.setStatus(jobID, StatusRunning, 85)
-	s.appendLog(jobID, "Đang hoàn tất đóng gói và tối ưu video...")
-
-	finalVideo := filepath.Join(s.outDir, fmt.Sprintf("viral_%s.mp4", jobID))
-
-	// 3. Mux voiceover & nhạc nền
-	musicPath := p.MusicFile
-	if musicPath == "" && p.MusicURL != "" && fileExists(p.MusicURL) {
-		musicPath = p.MusicURL
-	}
-	if musicPath == "" || !fileExists(musicPath) {
-		musicGenre := p.Genre
-		if musicGenre == "" {
-			musicGenre = "viral"
-		}
-		musicPath = FindTrendingMusic(musicGenre)
-		if musicPath != "" {
-			s.appendLog(jobID, fmt.Sprintf("✓ Tự động chọn nhạc TikTok Trending (%s): %s", musicGenre, filepath.Base(musicPath)))
-		}
-	}
-
-	var voiceFull string
-	if !localMode && !isDanceOrPerformance(p.Topic, p.Genre) && len(wavPaths) > 0 {
-		voiceFull = filepath.Join(jobDir, "voice_full.m4a")
-		if err := concatWAVs(ctx, wavPaths, voiceFull); err != nil {
-			s.appendLog(jobID, "Nối voiceover lỗi: "+err.Error())
-			voiceFull = ""
-		}
-	} else if isDanceOrPerformance(p.Topic, p.Genre) {
-		s.appendLog(jobID, "✓ Video vũ đạo/nhảy: Tắt hoàn toàn giọng đọc voiceover, chỉ phát nhạc nền trending sôi động theo chuẩn TikTok Dance.")
-	}
-
-	if voiceFull != "" && musicPath != "" {
-		s.appendLog(jobID, "Lồng tiếng voiceover và hòa âm nhạc nền (ducking -8dB)…")
-		voiceVideo := filepath.Join(jobDir, "voice_video.mp4")
-		if err := ffmpegRun(ctx, "-i", silentVideo, "-i", voiceFull, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
-			if err := MixMusicBed(ctx, voiceVideo, musicPath, finalVideo); err != nil {
-				s.appendLog(jobID, "Hòa âm lỗi, dùng bản voiceover: "+err.Error())
-				_ = os.Rename(voiceVideo, finalVideo)
-			}
-		} else {
-			_ = MuxMusic(ctx, silentVideo, musicPath, 0, finalVideo)
-		}
-	} else if voiceFull != "" {
-		s.appendLog(jobID, "Ghép voiceover vào video…")
-		_ = ffmpegRun(ctx, "-i", silentVideo, "-i", voiceFull, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", finalVideo)
-	} else if musicPath != "" {
-		s.appendLog(jobID, "Ghép nhạc nền trending sôi động…")
-		if err := MuxMusic(ctx, silentVideo, musicPath, 0, finalVideo); err != nil {
-			_ = copyViralFile(silentVideo, finalVideo)
-		}
-	} else {
-		_ = copyViralFile(silentVideo, finalVideo)
-	}
-
-	caption := fmt.Sprintf("%s\n\n%s\n\n%s", script.Title, script.CallToAction, strings.Join(script.Hashtags, " "))
-	s.setCaption(jobID, caption)
-
-	// Master 4K Delivery: Nâng cấp video cuối lên chuẩn 4K UHD nếu bật MASTER_QUALITY_4K hoặc render chất lượng cao
-	if IsMasterQuality4K() && fileExists(finalVideo) {
-		s.appendLog(jobID, "✨ Nâng cấp Master 4K UHD (2160x3840 VideoToolbox 35 Mbps)...")
-		video4k := filepath.Join(jobDir, "master_4k.mp4")
-		if err := UpscaleVideoTo4K(ctx, finalVideo, video4k, "9:16"); err == nil && fileExists(video4k) {
-			_ = os.Rename(video4k, finalVideo)
-			s.appendLog(jobID, "✓ Video hoàn thiện đạt chuẩn điện ảnh 4K Ultra HD sắc nét tuyệt đối!")
-		}
-	}
-
-	if !fileExists(finalVideo) {
-		fail(fmt.Errorf("không tạo được file video đầu ra"))
+	if err := s.runViralVisualGate(ctx, jobID, finalVideo, jobDir, p, modelPhotos); err != nil {
+		fail(err)
 		return
 	}
-	if err := ensureVideoDuration(ctx, finalVideo, float64(requiredDuration), "9:16"); err != nil {
-		fail(fmt.Errorf("video đầu ra chưa đạt %.0fs: %w", float64(requiredDuration), err))
-		return
-	}
-	finalDuration := probeDuration(ctx, finalVideo)
-	if finalDuration < float64(requiredDuration)-0.05 {
-		fail(fmt.Errorf("video đầu ra chỉ dài %.1fs; yêu cầu %ds", finalDuration, requiredDuration))
-		return
-	}
+	s.setCaption(jobID, strings.TrimSpace(p.Topic))
 	s.setOutput(jobID, finalVideo)
 	s.setStatus(jobID, StatusDone, 100)
-	s.appendLog(jobID, fmt.Sprintf("Hoàn thành video: %s (%0.1fs)", script.Title, finalDuration))
+	s.appendLog(jobID, fmt.Sprintf("Hoàn tất full-character edit: %.2fs; visual QC cảnh, choreography và danh tính đã đạt.", sourceDuration))
+	complete = true
 	s.fireOnDone(jobID)
+}
+
+type viralEditSegment struct {
+	Path     string
+	Duration float64
+}
+
+func splitViralSourceForEditing(ctx context.Context, source string, duration float64, workDir string) ([]viralEditSegment, error) {
+	if duration < 3 {
+		return nil, fmt.Errorf("video nguồn phải dài ít nhất 3s để dùng Gemini Omni edit")
+	}
+	const maxEditSeconds = 10.0
+	count := int(math.Ceil(duration / maxEditSeconds))
+	if count < 1 {
+		count = 1
+	}
+	segmentSeconds := duration / float64(count)
+	if segmentSeconds < 3 || segmentSeconds > maxEditSeconds {
+		return nil, fmt.Errorf("không chia được video %.2fs thành đoạn edit 3-10s", duration)
+	}
+	segments := make([]viralEditSegment, 0, count)
+	for i := 0; i < count; i++ {
+		start := float64(i) * segmentSeconds
+		segmentDuration := segmentSeconds
+		if i == count-1 {
+			segmentDuration = duration - start
+		}
+		path := filepath.Join(workDir, fmt.Sprintf("source-segment-%02d.mp4", i+1))
+		if err := ffmpegRun(ctx, "-y", "-ss", fmt.Sprintf("%.3f", start), "-i", source,
+			"-t", fmt.Sprintf("%.3f", segmentDuration), "-map", "0:v:0", "-map", "0:a?",
+			"-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+			"-c:a", "aac", "-b:a", "160k", "-avoid_negative_ts", "make_zero", path); err != nil {
+			return nil, fmt.Errorf("tách đoạn nguồn %d/%d: %w", i+1, count, err)
+		}
+		segments = append(segments, viralEditSegment{Path: path, Duration: segmentDuration})
+	}
+	return segments, nil
+}
+
+func probeViralDimensions(ctx context.Context, videoPath string) (int, int, error) {
+	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", videoPath)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, fmt.Errorf("đọc kích thước video thất bại: %w", err)
+	}
+	parts := strings.Split(strings.TrimSpace(string(out)), "x")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("ffprobe trả kích thước video không hợp lệ")
+	}
+	width, wErr := strconv.Atoi(parts[0])
+	height, hErr := strconv.Atoi(parts[1])
+	if wErr != nil || hErr != nil || width <= 0 || height <= 0 {
+		return 0, 0, fmt.Errorf("ffprobe trả kích thước video không hợp lệ")
+	}
+	return width, height, nil
 }
 
 // isDanceOrPerformance kiểm tra chủ đề hoặc thể loại có phải là vũ đạo/nhảy/dance không.
@@ -813,15 +588,56 @@ type ViralOriginalProfile struct {
 	PacingSec      float64 `json:"pacing_sec"`
 }
 
-// AnalyzeViralOriginal bóc tách các thuộc tính của video viral gốc (thời lượng, âm thanh, nhịp điệu, visual mood).
+type viralSampleFrame struct {
+	Path    string
+	TimeSec float64
+}
+
+func isViralVideoFile(path string) bool {
+	if path == "" || !fileExists(path) {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp4", ".mov", ".webm", ".mkv", ".avi":
+		return true
+	default:
+		return false
+	}
+}
+
+func sampleViralReferenceFrames(ctx context.Context, videoPath, outDir string, duration float64) ([]viralSampleFrame, error) {
+	if duration <= 0 {
+		return nil, fmt.Errorf("không đọc được thời lượng video")
+	}
+	count := int(math.Ceil(duration * 2)) // two ordered source samples per second
+	if count < 8 {
+		count = 8
+	}
+	if count > 120 {
+		count = 120
+	}
+	frames := make([]viralSampleFrame, 0, count)
+	for i := 0; i < count; i++ {
+		at := duration * (float64(i) + 0.5) / float64(count)
+		path := filepath.Join(outDir, fmt.Sprintf("viral-reference-%02d.jpg", i+1))
+		if err := ffmpegRun(ctx, "-ss", fmt.Sprintf("%.3f", at), "-i", videoPath, "-vf", "scale=640:-2", "-frames:v", "1", "-q:v", "7", path); err != nil || !fileExists(path) {
+			continue
+		}
+		frames = append(frames, viralSampleFrame{Path: path, TimeSec: at})
+	}
+	if len(frames) < 4 {
+		return nil, fmt.Errorf("chỉ trích được %d frame; cần ít nhất 4", len(frames))
+	}
+	return frames, nil
+}
+
+// AnalyzeViralOriginal reads technical metadata. Motion, mood, and pacing
+// remain unknown until an image/video analyzer measures them.
 func AnalyzeViralOriginal(ctx context.Context, samplePath, outDir string) *ViralOriginalProfile {
 	prof := &ViralOriginalProfile{
-		Path:       samplePath,
-		Duration:   probeDuration(ctx, samplePath),
-		HasAudio:   ProbeHasAudio(ctx, samplePath),
-		MotionVibe: "energetic_beat",
-		VisualMood: "neon_aesthetic",
-		PacingSec:  3.0,
+		Path:     samplePath,
+		Duration: probeDuration(ctx, samplePath),
+		HasAudio: ProbeHasAudio(ctx, samplePath),
 	}
 
 	w, h := ProbeDims(ctx, samplePath)
@@ -834,31 +650,6 @@ func AnalyzeViralOriginal(ctx context.Context, samplePath, outDir string) *Viral
 		if err := ffmpegRun(ctx, "-i", samplePath, "-vn", "-c:a", "aac", "-b:a", "192k", audioFile); err == nil && fileExists(audioFile) {
 			prof.AudioExtracted = audioFile
 		}
-	}
-
-	// Nhận diện phong cách chuyển động & visual mood từ tên file hoặc ngữ cảnh clip
-	base := strings.ToLower(filepath.Base(samplePath))
-	switch {
-	case strings.Contains(base, "douyin") || strings.Contains(base, "hot") || strings.Contains(base, "beat") || strings.Contains(base, "cac"):
-		prof.MotionVibe = "energetic_beat"
-		prof.VisualMood = "neon_aesthetic"
-		prof.PacingSec = 2.0
-	case strings.Contains(base, "sexy") || strings.Contains(base, "bedroom") || strings.Contains(base, "phuonghoa"):
-		prof.MotionVibe = "smooth_sensual"
-		prof.VisualMood = "warm_studio"
-		prof.PacingSec = 3.5
-	case strings.Contains(base, "street") || strings.Contains(base, "duo"):
-		prof.MotionVibe = "dynamic_street"
-		prof.VisualMood = "natural_daylight"
-		prof.PacingSec = 3.0
-	case strings.Contains(base, "lookbook") || strings.Contains(base, "fashion") || strings.Contains(base, "dress"):
-		prof.MotionVibe = "natural_lookbook"
-		prof.VisualMood = "luxury_boutique"
-		prof.PacingSec = 4.0
-	default:
-		prof.MotionVibe = "natural_cinematic"
-		prof.VisualMood = "cinematic_dramatic"
-		prof.PacingSec = 3.5
 	}
 
 	return prof

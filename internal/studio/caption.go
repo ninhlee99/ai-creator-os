@@ -6,10 +6,8 @@ import (
 	"strings"
 )
 
-// WriteCaption asks the LLM for a Vietnamese TikTok caption + hashtags for
-// an affiliate video. Style: short hook line, one honest benefit line, soft
-// CTA, then 5-8 relevant hashtags. No false claims (no "rẻ nhất", no fake
-// discounts), no emoji spam.
+// WriteCaption asks the LLM for a factual product caption. With no supplied
+// benefit facts or product link, it must omit both instead of inventing them.
 func WriteCaption(ctx context.Context, llm LLM, productName, niche string) (string, error) {
 	if llm == nil {
 		return "", fmt.Errorf("caption: no LLM")
@@ -18,13 +16,12 @@ func WriteCaption(ctx context.Context, llm LLM, productName, niche string) (stri
 		productName = "sản phẩm"
 	}
 	sys := "Bạn là copywriter TikTok Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-	prompt := fmt.Sprintf(`Viết caption tiếng Việt cho video affiliate TikTok 30 giây, phong cách tự nhiên, chuyên nghiệp.
+	prompt := fmt.Sprintf(`Viết caption tiếng Việt cho video sản phẩm, phong cách tự nhiên, chuyên nghiệp.
 Sản phẩm: %s. Ngành hàng: %s.
 Yêu cầu:
-- Dòng 1: hook ngắn gây tò mò (dưới 60 ký tự).
-- Dòng 2: 1 lợi ích thật của sản phẩm (không bịa đặt, không "rẻ nhất thị trường").
-- Dòng 3: CTA nhẹ nhàng trỏ tới link ở bio/mô tả ("Link mua ở bio/mô tả nha"). KHÔNG nhắc giỏ hàng/TikTok Shop (video không gắn giỏ).
-- Cuối: 5-8 hashtag: 1-2 hashtag tên/loại sản phẩm cụ thể, 2-3 hashtag ngành hàng, #xuhuong. Không dùng #tiktokshop.
+- Chỉ nêu tên sản phẩm và ngành hàng đã cung cấp; không suy ra lợi ích, giá, ưu đãi, trải nghiệm, review hoặc độ phổ biến.
+- Không bịa link, giỏ hàng, voucher, tính năng hay CTA mua hàng.
+- Cuối: tối đa 5 hashtag theo tên sản phẩm/ngành hàng; không gắn #xuhuong nếu chưa có dữ liệu xu hướng.
 - Tổng dưới 300 ký tự. Không emoji quá 3 cái.
 Chỉ trả JSON: {"caption": "<caption đầy đủ, xuống dòng bằng \\n>"}`, productName, niche)
 	text, err := llm.Complete(ctx, sys, prompt)
@@ -55,11 +52,11 @@ var nicheTags = map[string]string{
 // captionHooks: câu mở xoay vòng theo sản phẩm (không lặp 1 mẫu cho mọi
 // video). %s = tên sản phẩm. Không bịa thông số/giá.
 var captionHooks = []string{
-	"%s — xem tới cuối để thấy lý do ai cũng hỏi link 👀",
-	"Mình đã thử %s và đây là cảm nhận thật",
-	"%s: đáng tiền hay không? Xem nhanh 15 giây",
-	"Ai đang tìm %s thì xem cái này trước khi mua",
-	"%s — chi tiết nhỏ mà ít ai để ý",
+	"Cùng xem chi tiết %s",
+	"Thông tin về %s",
+	"%s — đối chiếu theo ảnh sản phẩm",
+	"Giới thiệu %s",
+	"Các chi tiết của %s",
 }
 
 var vnFold = strings.NewReplacer(
@@ -116,5 +113,5 @@ func TemplateCaption(productName, niche string) string {
 	if pt := productTag(name); pt != "" {
 		tags = pt + " " + tags
 	}
-	return hook + "\nLink mua ở bio/mô tả nhé!\n" + tags + " #xuhuong"
+	return hook + "\nThông tin sản phẩm ở bio/mô tả nếu người đăng đã thêm link.\n" + tags
 }

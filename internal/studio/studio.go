@@ -37,23 +37,37 @@ const (
 	StatusFailed  = "failed"
 )
 
-// AffiliateModePhoto = list ảnh + nhạc (format Ninh đã chốt cho thời
-// trang/phụ kiện). AffiliateModeShots = nhiều cảnh video nối nhau.
+// AffiliateModePhoto = legacy image montage; AffiliateModeShots = live
+// motion clips. ViralModeFullCharacterEdit requires full-person video editing.
 const (
-	AffiliateModePhoto = "photo"
-	AffiliateModeShots = "shots"
+	AffiliateModePhoto         = "photo"
+	AffiliateModeShots         = "shots"
+	ViralModeFullCharacterEdit = "full_character_edit"
 )
 
 // AffiliateParams describes one affiliate-video job.
+type ChannelCreativeProfile struct {
+	Model       string   `json:"model,omitempty"`
+	Positioning string   `json:"positioning,omitempty"`
+	Audience    string   `json:"audience,omitempty"`
+	Tone        string   `json:"tone,omitempty"`
+	VisualStyle string   `json:"visual_style,omitempty"`
+	RedLines    []string `json:"red_lines,omitempty"`
+}
+
 type AffiliateParams struct {
-	Mode         string   `json:"mode"`                 // photo | shots
-	AccountID    int64    `json:"account_id,omitempty"` // set by autopilot
-	Niche        string   `json:"niche"`
-	ProductName  string   `json:"product_name"`
-	ProductPrice string   `json:"product_price,omitempty"`
-	ModelPhoto   string   `json:"model_photo"`            // local path (identity lock)
-	ModelPhotos  []string `json:"model_photos,omitempty"` // multi-angle local paths (identity lock)
-	ProductPhoto string   `json:"product_photo"`          // local path (product lock)
+	Mode             string   `json:"mode"`                 // photo | shots
+	AccountID        int64    `json:"account_id,omitempty"` // set by autopilot
+	ChannelMemoryKey string   `json:"channel_memory_key,omitempty"`
+	Niche            string   `json:"niche"`
+	ProductName      string   `json:"product_name"`
+	ProductPrice     string   `json:"product_price,omitempty"`
+	ProductCategory  string   `json:"product_category,omitempty"` // apparel | footwear | bag | jewelry | cosmetics | home | tech | food | other
+	ProductUsage     string   `json:"product_usage,omitempty"`    // optional exact use action supplied by the operator
+	ProductFocus     string   `json:"product_focus,omitempty"`    // optional visible detail to emphasize; never a claim
+	ModelPhoto       string   `json:"model_photo"`                // local path (identity lock)
+	ModelPhotos      []string `json:"model_photos,omitempty"`     // multi-angle local paths (identity lock)
+	ProductPhoto     string   `json:"product_photo"`              // local path (product lock)
 	// ExtraPhotos: ảnh thêm (góc khác, chi tiết, ảnh listing) — chế độ
 	// không key dựng từ cả bộ để video không lặp 1 ảnh.
 	ExtraPhotos []string `json:"extra_photos,omitempty"`
@@ -66,13 +80,20 @@ type AffiliateParams struct {
 	MusicStart               float64 `json:"music_start"` // seconds into the track
 	MusicTitle               string  `json:"music_title"`
 	MusicArtist              string  `json:"music_artist"`
-	VideoEngine              string  `json:"video_engine,omitempty"`
+	VideoEngine              string  `json:"video_engine,omitempty"` // legacy; current affiliate input uses manual motion clips
 	AutoGenerateProductPhoto bool    `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
 	AffLink string `json:"aff_link,omitempty"`
-	// Clips: danh sách video clip (tạo từ Muse AI, Gemini video, tải lên)
+	// Clips are user-supplied motion clips generated outside this app. Video API
+	// generation stays disabled by the project's free-only policy.
 	Clips []string `json:"clips,omitempty"`
+	// PreparedPlanID binds a web-created shot plan to the exact job inputs.
+	// The worker receives the saved profile and shots after the plan is consumed.
+	PreparedPlanID       string                   `json:"prepared_plan_id,omitempty"`
+	PreparedProductBrief *AffiliateProductProfile `json:"prepared_product_brief,omitempty"`
+	PreparedShots        []ProShot                `json:"prepared_shots,omitempty"`
+	ChannelProfile       ChannelCreativeProfile   `json:"channel_profile,omitempty"`
 	// VoiceoverPath: file âm thanh lồng tiếng (được tạo hoặc tải lên)
 	VoiceoverPath string `json:"voiceover_path,omitempty"`
 	VoiceoverText string `json:"voiceover_text,omitempty"`
@@ -174,7 +195,7 @@ type Studio struct {
 	// insertJob từ chối job mới khi vượt MaxDiskPct (mặc định 95).
 	DiskGuard  func() (int, error)
 	MaxDiskPct int
-	// PromptEnhancer tiêm các kinh nghiệm thực chiến từ Agent Harness vào prompt sinh kịch bản.
+	// PromptEnhancer supplies channel-scoped lessons to compatible creative prompts.
 	PromptEnhancer func(ctx context.Context, niche, channel string) string
 	// webAI hỗ trợ kết nối tới tài khoản Web AI (Google Flow, Muse AI) qua web adapter session.
 	webAI WebAIResolver
@@ -285,6 +306,9 @@ func (s *Studio) migrate() error {
 		idx INTEGER NOT NULL, kind TEXT NOT NULL,
 		path TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '',
 		status TEXT NOT NULL DEFAULT 'queued');
+	CREATE TABLE IF NOT EXISTS studio_affiliate_plans(
+		id TEXT PRIMARY KEY, payload TEXT NOT NULL,
+		created_at TEXT NOT NULL);
 	CREATE INDEX IF NOT EXISTS idx_studio_assets_job ON studio_assets(job_id);`)
 	if err != nil {
 		return err
@@ -345,6 +369,12 @@ func (s *Studio) WorkDir() string { return s.workRoot }
 
 // MediaGen exposes the provider (dashboard health card).
 func (s *Studio) MediaGen() MediaGen { return s.mg }
+
+// ViralCharacterEditorStatus reports whether automatic character editing is
+// available under the current free-only provider policy.
+func (s *Studio) ViralCharacterEditorStatus(ctx context.Context) (bool, string) {
+	return false, viralPaidVideoDisabledMessage
+}
 
 // OutputPath resolves a job's output filename to its full filesystem path.
 func (s *Studio) OutputPath(name string) string {

@@ -4,8 +4,9 @@ Mỗi file mô tả **chính xác theo logic thật trong code** (đọc từ so
 mục đích → cách kích hoạt (bấm gì / tự động khi nào) → luồng vận hành từng bước
 (file, hàm, bảng SQLite, engine/API) → fail-closed & an toàn → key rotation (nếu dùng key cloud).
 
-> **Trọng tâm sản phẩm:** Hệ điều hành tăng trưởng tự động (AI Creator OS) với 3 pipeline
-> sản xuất chính (Affiliate Accesstrade, Video Viral AI 100% Gốc, YouTube Kể Chuyện), tích hợp Bản sắc thương hiệu (Brand DNA),
+> **Trọng tâm sản phẩm:** Hệ điều hành tăng trưởng (AI Creator OS) với Affiliate Accesstrade,
+> viral source discovery, YouTube Kể Chuyện và governance; tự động sản xuất video
+> affiliate/viral đang giới hạn theo chính sách free-only, tích hợp Bản sắc thương hiệu (Brand DNA),
 > Quản trị cơ hội xu hướng (Trend Intelligence) và Bộ điều phối nhiệm vụ tự chủ (AI Mission Control).
 
 ## Mục lục tính năng (18 tài liệu)
@@ -18,12 +19,12 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 4 | **Bản sắc thương hiệu & Mission Control (`/accounts/{id}?tab=brand-dna`, `/missions`) — Brand DNA, Trend Intelligence, Mission Engine** | [brand-dna-mission-control.md](brand-dna-mission-control.md) | ✅ |
 | 5 | Phát triển kênh (`/growth`) — plan 30 ngày, ngưỡng, sản xuất | [channel-growth.md](channel-growth.md) | ✅ |
 | 6 | Đội ngũ (`/team`) — sức khỏe 3 pipeline từ dữ liệu thật | [agent-team.md](agent-team.md) | ✅ |
-| 7 | Studio AI (`/studio`) — Video affiliate / Video chữ động / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |
+| 7 | Studio AI (`/studio`) — affiliate / Muse-Flow creation / Jobs / Trends | [studio-ai.md](studio-ai.md) | ✅ |
 | 8 | Affiliate (`/products`) — kho sản phẩm, kệ hàng, lịch autopilot | [products.md](products.md) | ✅ |
-| 9 | Video Viral AI (`/viral`) — kịch bản tâm lý học 3s, phân cảnh 9:16 MediaGen, âm nhạc trending, 100% gốc | [video-viral.md](video-viral.md) | ✅ |
+| 9 | Viral (`/viral`) — radar nguồn hoạt động; thay nhân vật tạm dừng vì editor video cần billing | [video-viral.md](video-viral.md) | ⚠ |
 | 10 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [storytelling.md](storytelling.md) | ✅ |
 | 11 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [multi-platform.md](multi-platform.md) | ✅ |
-| 12 | **Kho Tài Khoản Web AI (`/settings/system#tab-webai`) — CDP Đăng nhập tự động, cô lập phiên, xoay vòng ChatGPT/Claude/Gemini/Grok/Muse** | [web-ai.md](web-ai.md) | ✅ |
+| 12 | **Kho Tài Khoản Web AI (`/settings/system#tab-webai`) — CDP login, Muse/Flow web generation, account pool** | [web-ai.md](web-ai.md) | ✅ |
 | 13 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [settings.md](settings.md) | ✅ |
 | 14 | Wizard lần đầu (`/onboard`) | [onboarding-wizard.md](onboarding-wizard.md) | ✅ |
 | 15 | Sao lưu & khôi phục | [backup-restore.md](backup-restore.md) | ✅ |

@@ -71,8 +71,11 @@ func (s *Server) Routes() http.Handler {
 
 	// Studio: AI video creation (affiliate / short film) + VN trends.
 	mux.HandleFunc("GET /studio", s.handleStudio)
+	mux.HandleFunc("POST /studio/affiliate/plan", s.handleStudioAffiliatePlan)
 	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
 	mux.HandleFunc("GET /studio/jobs", s.handleStudioJobs)
+	mux.HandleFunc("GET /studio/create", s.handleStudioAICreate)
+	mux.HandleFunc("POST /studio/generate", s.handleStudioAIGenerate)
 	mux.HandleFunc("GET /studio/jobs/{id}", s.handleStudioJobDetail)
 	mux.HandleFunc("POST /studio/jobs/{id}/cancel", s.handleStudioJobCancel)
 	mux.HandleFunc("POST /studio/jobs/{id}/delete", s.handleStudioJobDelete)
@@ -89,9 +92,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
 	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
-	mux.HandleFunc("POST /studio/muse-import", s.handleStudioMuseImport)
-	mux.HandleFunc("POST /studio/flow-import", s.handleStudioFlowImport)
-	mux.HandleFunc("POST /studio/leonardo-import", s.handleStudioLeonardoImport)
 	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
 	mux.HandleFunc("GET /api/studio/faceswap-status", s.handleAPIFaceSwapStatus)
 	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
@@ -126,6 +126,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
 	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
 	mux.HandleFunc("GET /publishers/tiktok/callback", s.handleTikTokCallback)
+	mux.HandleFunc("GET /publishers/facebook/authorize", s.handleFacebookAuthorize)
+	mux.HandleFunc("GET /publishers/facebook/callback", s.handleFacebookCallback)
+	mux.HandleFunc("POST /publishers/facebook/select", s.handleFacebookPageSelect)
 	// Đợt AA: YouTube OAuth trong app (trước đây chỉ có script Python).
 	mux.HandleFunc("GET /publishers/youtube/authorize", s.handleYouTubeAuthorize)
 	mux.HandleFunc("GET /publishers/youtube/callback", s.handleYouTubeCallback)

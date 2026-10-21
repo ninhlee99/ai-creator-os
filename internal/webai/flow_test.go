@@ -2,6 +2,8 @@ package webai
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -14,8 +16,8 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 	for _, p := range platforms {
 		if p.ID == PlatformMuseAI {
 			foundMuse = true
-			if p.Badge != "Video · handoff" {
-				t.Errorf("expected manual video handoff badge for Muse AI, got %s", p.Badge)
+			if p.Badge != "Tạo nội dung" {
+				t.Errorf("expected Muse content-generation badge, got %s", p.Badge)
 			}
 			if p.URL != "https://muse.ai" {
 				t.Errorf("expected Muse URL https://muse.ai, got %s", p.URL)
@@ -26,8 +28,8 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 			if p.URL != "https://labs.google/fx/tools/flow" {
 				t.Errorf("expected Flow URL labs.google/fx/tools/flow, got %s", p.URL)
 			}
-			if p.Badge != "Video · handoff" {
-				t.Errorf("expected manual video handoff badge, got %s", p.Badge)
+			if p.Badge != "Video · web API" {
+				t.Errorf("expected Flow web API badge, got %s", p.Badge)
 			}
 		}
 	}
@@ -83,9 +85,56 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 		t.Errorf("invalid scene keyframe: %+v", bundle.Scenes)
 	}
 
-	// 4. Flow generation must fail explicitly until a supported API exists.
+	// 4. Engine must reject incomplete saved sessions without issuing a network call.
 	if _, err := engine.GenerateFlowVideoClip(context.Background(), "test prompt", "scene_01.png", 5); err == nil {
-		t.Fatal("expected manual generation handoff error")
+		t.Fatal("expected missing Flow cookie error")
+	}
+}
+
+func TestMuseMediaURLsAllowQueryAndRequireTrustedHost(t *testing.T) {
+	got := extractMuseMediaURLs(map[string]any{}, "https://muse.ai/files/a/clip.mp4?download=1 https://muse.ai.evil.test/files/b.mp4")
+	if len(got) != 1 || got[0] != "https://muse.ai/files/a/clip.mp4?download=1" {
+		t.Fatalf("media links = %#v", got)
+	}
+}
+
+func TestFlowHeadlessFallbackIsRestrictedToPreSubmitErrors(t *testing.T) {
+	preSubmit := &FlowAPIUnavailableError{cause: errors.New("Flow denied API access")}
+	if !CanFallbackToGoogleFlowHeadless(fmt.Errorf("preflight: %w", preSubmit)) {
+		t.Fatal("pre-submit Flow API failure should allow headless fallback")
+	}
+	if CanFallbackToGoogleFlowHeadless(errors.New("generation accepted, then history timed out")) {
+		t.Fatal("post-submit Flow failure must not retry and risk duplicate generation")
+	}
+}
+
+func TestFlowMediaURLsAllowSignedFlowCDNOnly(t *testing.T) {
+	for _, target := range []struct {
+		url  string
+		want bool
+	}{
+		{"https://flow-content.google/video/abc?Signature=secret", true},
+		{"https://storage.googleapis.com/video/abc.mp4", true},
+		{"https://flow-content.google.evil.test/video/abc", false},
+		{"http://flow-content.google/video/abc", false},
+	} {
+		if got := isGoogleMediaURL(target.url); got != target.want {
+			t.Errorf("isGoogleMediaURL(%q) = %t, want %t", target.url, got, target.want)
+		}
+	}
+}
+
+func TestExpiredAccountIsNotSelected(t *testing.T) {
+	store, err := NewStore(filepath.Join(t.TempDir(), "webai_expired_test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.SaveAccount(Account{Platform: PlatformGoogleFlow, SessionKey: "stale", Cookie: "SID=x", Status: StatusExpired}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PickActiveAccount(PlatformGoogleFlow); err == nil {
+		t.Fatal("expected expired Flow account to be skipped")
 	}
 }
 

@@ -17,6 +17,7 @@ const (
 	StatusConnected    = "connected"
 	StatusDisconnected = "disconnected"
 	StatusExpired      = "expired"
+	StatusUnverified   = "unknown"
 )
 
 // PlatformInfo describes a supported web AI service.
@@ -91,15 +92,15 @@ func SupportedPlatforms() []PlatformInfo {
 		},
 		{
 			ID:          PlatformMuseAI,
-			Name:        "Muse AI (Meta)",
+			Name:        "Muse Chat (Meta)",
 			URL:         "https://muse.ai",
-			LoginURL:    "https://muse.ai",
+			LoginURL:    "https://muse.ai/signin",
 			Icon:        "🎬",
 			Color:       "#ec4899",
-			Badge:       "Video · handoff",
-			Description: "Tạo clip trong Muse; nhập MP4 vào Studio",
-			AuthGuide:   "Kết nối từng tài khoản Muse; AICOS chưa dùng session để tạo clip",
-			Placeholder: "Kết nối account để quản lý pool; render thủ công trong Muse",
+			Badge:       "Tạo nội dung",
+			Description: "Viết kịch bản, tạo ảnh và video trong Muse Chat",
+			AuthGuide:   "Đăng nhập tài khoản Meta có quyền truy cập Muse Chat",
+			Placeholder: "Dùng phiên Muse đã lưu; gọi gateway trực tiếp",
 			Features:    nil,
 		},
 		{
@@ -109,10 +110,10 @@ func SupportedPlatforms() []PlatformInfo {
 			LoginURL:    "https://labs.google/fx/tools/flow",
 			Icon:        "🌊",
 			Color:       "#2563eb",
-			Badge:       "Video · handoff",
-			Description: "Tạo clip trong Flow; nhập MP4 vào Studio",
-			AuthGuide:   "Kết nối từng tài khoản Flow; AICOS chưa dùng session để tạo clip",
-			Placeholder: "Kết nối account để quản lý pool; render thủ công trong Flow",
+			Badge:       "Video · web API",
+			Description: "Tạo và tải MP4 từ phiên Google Flow đã lưu",
+			AuthGuide:   "Dùng cookie phiên Google Flow; quyền truy cập và credit tùy tài khoản",
+			Placeholder: "Kết nối tài khoản Flow để gọi web API",
 			Features:    nil,
 		},
 	}
@@ -174,8 +175,9 @@ type PlatformPost struct {
 	Tip          string   `json:"tip"`
 }
 
-// QCScorecard holds rigorous quality evaluation metrics for the script and video package.
+// QCScorecard reports deterministic script-field checks, not rendered-video quality.
 type QCScorecard struct {
+	Scope            string   `json:"scope"`
 	OverallScore     int      `json:"overall_score"`      // 0 - 100
 	HookScore        int      `json:"hook_score"`         // 0 - 100
 	NicheMatchScore  int      `json:"niche_match_score"`  // 0 - 100

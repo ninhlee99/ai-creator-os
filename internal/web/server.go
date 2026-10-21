@@ -135,9 +135,11 @@ type Server struct {
 	authMu       sync.Mutex
 	authSessions map[string]time.Time
 
-	db        *sql.DB // read handle for decision/analytics queries
-	oauth     oauthStates
-	templates map[string]*template.Template
+	db                *sql.DB // read handle for decision/analytics queries
+	oauth             oauthStates
+	facebookPendingMu sync.Mutex
+	facebookPending   map[string]facebookPendingAccount
+	templates         map[string]*template.Template
 
 	// Avatar model-download progress — parked-build support (như trên).
 	avatarDlMu         sync.Mutex
@@ -633,9 +635,11 @@ var pageFiles = map[string]string{
 	"account_edit":         "account_edit.html",
 	"account_detail":       "account_detail.html",
 	"studio":               "studio.html",
+	"studio_ai_create":     "studio_ai_create.html",
 	"studio_jobs":          "studio_jobs.html",
 	"studio_trends":        "studio_trends.html",
 	"publishers":           "publishers.html",
+	"facebook_pages":       "facebook_pages.html",
 	"products":             "products.html",
 	"viral":                "viral.html",
 	"stories":              "stories.html",
@@ -896,6 +900,7 @@ type publisherRow struct {
 	YoutubeClient    bool // OAuth client ID + secret present in env (Đợt AA)
 	YoutubeTokenDead bool // refresh token chết (invalid_grant) — Đợt AA
 	FbPage           bool
+	FacebookClient   bool // Meta App ID + Secret present in settings
 	Instagram        bool // IG_USER_ID + META_PAGE_TOKEN
 	Threads          bool // THREADS_USER_ID + THREADS_TOKEN
 	Platforms        []string

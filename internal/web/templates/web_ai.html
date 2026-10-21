@@ -9,7 +9,7 @@
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
     <a href="/settings/system#tab-webai" class="btn btn-secondary btn-sm">⚙️ Cấu hình AI</a>
-    <a href="/studio" class="btn btn-primary btn-sm">Dựng Video Studio ↗</a>
+    <a href="/studio/create" class="btn btn-primary btn-sm">Tạo bằng Muse / Flow ↗</a>
   </div>
 </div>
 
@@ -22,7 +22,7 @@
     <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
       {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}} AI Sẵn Sàng
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Google Flow · Muse AI · Leonardo</span>
+    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Google Flow · Muse Chat</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/settings/system#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
@@ -36,7 +36,7 @@
   <div class="cockpit-header">
     <div class="cockpit-title">
       <h2>⚡ Điều Phối Kịch Bản &amp; Prompt Đa AI</h2>
-      <p>Biên soạn kịch bản và phân cảnh cho ChatGPT, Claude, Gemini, Google Flow, Muse AI và Leonardo.</p>
+      <p>Biên soạn kịch bản và phân cảnh cho ChatGPT, Claude, Gemini, Google Flow và Muse Chat.</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
@@ -92,23 +92,24 @@
           <div style="font-size:32px">🛡️</div>
           <div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:16px;font-weight:700;color:var(--text)">Báo Cáo Đánh Giá QC Kịch Bản (Quality Control)</span>
-              <span class="badge badge-ok" id="qc-verdict" style="font-weight:700">Chưa có kết luận</span>
+              <span style="font-size:16px;font-weight:700;color:var(--text)">Checklist trường kịch bản</span>
+              <span class="badge" id="qc-verdict" style="font-weight:700">Chưa có kết luận</span>
             </div>
 
           </div>
         </div>
         <div style="display:flex;align-items:baseline;gap:4px;background:var(--bg2);padding:6px 16px;border-radius:10px;border:1px solid var(--border)">
           <span style="font-size:24px;font-weight:800;color:var(--accent)" id="qc-score-total">--</span>
-          <span style="font-size:13px;color:var(--muted)">/ 100 Điểm QC</span>
+          <span style="font-size:13px;color:var(--muted)">/ 100 mục cấu trúc</span>
         </div>
       </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Đo độ đầy đủ của văn bản kịch bản. Không chấm video render, độ đúng sản phẩm/nhân vật, retention hay doanh thu.</p>
 
       <!-- 4 QC Metric Gauges -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:14px">
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="font-weight:600">🎯 Hook 3s Giữ Chân</span>
+            <span style="font-weight:600">🎯 Hook: độ dài + sản phẩm</span>
             <span id="qc-score-hook" style="font-weight:700;color:var(--accent)">--%</span>
           </div>
           <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
@@ -118,7 +119,7 @@
 
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="font-weight:600">🛍️ Khớp Insight Ngành Hàng</span>
+            <span style="font-weight:600">🛍️ Từ khóa ngành trong cảnh</span>
             <span id="qc-score-niche" style="font-weight:700;color:#10b981">--%</span>
           </div>
           <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
@@ -128,7 +129,7 @@
 
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="font-weight:600">💰 Thuyết Phục Chốt Sale</span>
+            <span style="font-weight:600">💬 CTA + lời thoại</span>
             <span id="qc-score-persuasion" style="font-weight:700;color:#f59e0b">--%</span>
           </div>
           <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
@@ -138,7 +139,7 @@
 
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
           <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
-            <span style="font-weight:600">🎬 Khả Thi Dựng Studio AI</span>
+            <span style="font-weight:600">🎬 Prompt hình + camera đủ trường</span>
             <span id="qc-score-av" style="font-weight:700;color:#8b5cf6">--%</span>
           </div>
           <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
@@ -168,7 +169,6 @@
       <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt ảnh (Gemini)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('googleflow')">🌊 Google Flow</button>
       <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('leonardo')">🎞️ Video (Leonardo)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
     </div>
 
@@ -218,40 +218,9 @@
 
     <!-- Section 6: Google Flow prompt handoff and exported clip import -->
     <div id="sec-googleflow" class="prompt-sec-content" style="display:none">
-      <!-- Direct Google Flow Import Box -->
-      <div style="background:linear-gradient(135deg, rgba(37,99,235,0.1), rgba(16,185,129,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
-        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span style="font-size:24px">🌊</span>
-          Google Flow Bridge
-        </div>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
-          Flow có 50 credit miễn phí mỗi ngày trên gói free (tùy khu vực/model). Đăng nhập Google tại Flow, tạo clip trong giao diện web, tải MP4 rồi nhập ở đây. App chưa tự gọi Flow để dùng quota này.
-        </p>
-        <form method="POST" action="/studio/flow-import" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;align-items:end">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🔗 Liên kết hoặc đường dẫn tệp video</label>
-            <input type="text" name="video_url" class="form-control" placeholder="Dán liên kết hoặc chọn tệp video" required style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
-            <input type="text" name="topic" class="form-control" placeholder="VD: Review Mỹ Phẩm Triệu View" value="Review Mỹ Phẩm Triệu View" style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">✨ Nâng Cấp Chất Lượng</label>
-            <select name="remaster" class="form-control" style="width:100%;margin-top:4px">
-              <option value="4k" selected>⚡ Remaster 4K UHD VideoToolbox (35 Mbps)</option>
-              <option value="1080p">Chuẩn HD 1080p</option>
-            </select>
-          </div>
-          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-            <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">
-              🌐 Mở Google Labs Flow ↗
-            </a>
-            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">
-              🚀 Remaster 4K & Nhập Vào Studio ↗
-            </button>
-          </div>
-        </form>
+      <div style="padding:14px 16px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span>Gửi prompt và tạo MP4 trực tiếp bằng phiên Google Flow đã kết nối.</span>
+        <a href="/studio/create" class="btn btn-primary btn-sm">Tạo video trong Studio ↗</a>
       </div>
 
       <div class="sec-actions">
@@ -264,48 +233,9 @@
 
     <!-- Section 7: Muse AI Motion Prompts & Direct Studio Bridge -->
     <div id="sec-museai" class="prompt-sec-content" style="display:none">
-      <!-- Direct Muse Import Box -->
-      <div style="background:linear-gradient(135deg, rgba(236,72,153,0.1), rgba(139,92,246,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
-        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span style="font-size:24px">🎬</span>
-          Muse AI Studio Bridge — Đưa Video Vào Studio 1 Chạm
-        </div>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
-          Sau khi tạo video chuyển động hoặc video nhảy trên Muse AI, dán link video (URL chia sẻ hoặc link MP4) vào đây. Hệ thống sẽ tự động tải về, lồng nhạc TikTok trending và chuẩn bị xuất bản!
-        </p>
-        <form method="POST" action="/studio/muse-import" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;align-items:end">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🔗 Link Video Từ Muse AI</label>
-            <input type="url" name="video_url" class="form-control" placeholder="https://muse.ai/v/... hoặc link .mp4" required style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
-            <input type="text" name="topic" class="form-control" placeholder="VD: Vũ Đạo Sexy Trend TikTok" value="Vũ Đạo Sexy Trend TikTok" style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🎵 Nhạc nền TikTok</label>
-            <select name="music_style" class="form-control" style="width:100%;margin-top:4px">
-              <option value="trending">🔥 Tự động ghép nhạc TikTok Trending</option>
-              <option value="keep_original">Giữ nguyên âm thanh gốc Muse AI</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🎭 Thể loại</label>
-            <select name="genre" class="form-control" style="width:100%;margin-top:4px">
-              <option value="dance">💃 Vũ đạo / Bắt trend</option>
-              <option value="fashion">👗 Thời trang lookbook</option>
-              <option value="trendjack">⚡ Video viral 9:16</option>
-            </select>
-          </div>
-          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-            <a href="https://muse.ai" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">
-              🌐 Mở Muse AI Studio ↗
-            </a>
-            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">
-              🚀 Nhập Vào Studio & Lên Lịch Đăng ↗
-            </button>
-          </div>
-        </form>
+      <div style="padding:14px 16px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <span>Viết kịch bản, tạo ảnh hoặc video bằng Muse Chat; file được lưu vào Studio.</span>
+        <a href="/studio/create" class="btn btn-primary btn-sm">Tạo nội dung trong Studio ↗</a>
       </div>
 
       <div class="sec-actions">
@@ -314,57 +244,6 @@
       </div>
       <div id="txt-museai-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
       <pre class="prompt-box" id="txt-museai-prompts" style="display:none"></pre>
-    </div>
-
-    <!-- Section 8: Leonardo.Ai manual video handoff and MP4 import -->
-    <div id="sec-leonardo" class="prompt-sec-content" style="display:none">
-      <div style="background:linear-gradient(135deg, rgba(124,58,237,0.1), rgba(59,130,246,0.1));border:2px solid var(--accent);border-radius:14px;padding:20px;margin-bottom:20px">
-        <div style="font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <span style="font-size:24px">🎞️</span>Leonardo.Ai Video Bridge
-        </div>
-        <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
-          Đăng nhập trên Leonardo website; gói free cấp 150 Fast Tokens mỗi ngày. Dùng prompt theo cảnh bên dưới để tạo text-to-video hoặc image-to-video, tải MP4 rồi nhập vào Studio. Quota web không dùng qua API; Leonardo API tính phí pay-as-you-go. App hiện chỉ hỗ trợ prompt handoff và MP4 import.
-        </p>
-        <form method="POST" action="/studio/leonardo-import" enctype="multipart/form-data" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;align-items:end">
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">📁 MP4 tải từ Leonardo (tối đa 200 MB)</label>
-            <input type="file" name="video_file" class="form-control" accept="video/mp4,.mp4" required style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🏷️ Tiêu đề / Chủ đề</label>
-            <input type="text" name="topic" class="form-control" placeholder="Chủ đề video" style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">👤 Nhãn tài khoản Leonardo</label>
-            <input type="text" name="account" class="form-control" placeholder="VD: leonardo-01 (không nhập mật khẩu)" style="width:100%;margin-top:4px">
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🎭 Thể loại</label>
-            <select name="genre" class="form-control" style="width:100%;margin-top:4px">
-              <option value="fashion">👗 Thời trang / lookbook</option>
-              <option value="trendjack">⚡ Video dọc / social</option>
-              <option value="dance">💃 Vũ đạo</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:12px;font-weight:600;color:var(--text)">🎵 Âm thanh</label>
-            <select name="music_style" class="form-control" style="width:100%;margin-top:4px">
-              <option value="keep_original">Giữ âm thanh gốc</option>
-              <option value="trending">Ghép nhạc nền có sẵn</option>
-            </select>
-          </div>
-          <div style="grid-column:1 / -1;display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-            <a href="https://leonardo.ai/text-to-video" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:6px">🌐 Mở Leonardo Text to Video ↗</a>
-            <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-weight:700">📥 Nhập MP4 vào Studio</button>
-          </div>
-        </form>
-      </div>
-      <div class="sec-actions">
-        <b>🎞️ Prompt Video Theo Cảnh Cho Leonardo</b>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="copyText('txt-leonardo-prompts')">📋 Copy tất cả</button>
-      </div>
-      <div id="txt-leonardo-prompts-list" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;margin-top:10px"></div>
-      <pre class="prompt-box" id="txt-leonardo-prompts" style="display:none"></pre>
     </div>
 
     <!-- Section 9: Media Guides -->
@@ -396,7 +275,7 @@ var lastGeneratedPkg = null;
 
 function showPromptSection(sec) {
   document.querySelectorAll('.result-tabs .res-tab').forEach(function(t) { t.classList.remove('active'); });
-  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'googleflow', 'museai', 'leonardo', 'guide'].forEach(function(s) {
+  ['hooks', 'social', 'chatgpt', 'claude', 'gemini', 'googleflow', 'museai', 'guide'].forEach(function(s) {
     var el = document.getElementById('sec-' + s);
     if (el) el.style.display = (s === sec) ? 'block' : 'none';
   });
@@ -457,29 +336,29 @@ function generateMultiAIPrompts() {
     var qc = pkg.qc || pkg.qc_scorecard;
     if (qc) {
       var elTotal = document.getElementById('qc-score-total');
-      if (elTotal) elTotal.textContent = qc.overall_score || 92;
+      if (elTotal) elTotal.textContent = Number.isFinite(qc.overall_score) ? qc.overall_score : '—';
       var elVerdict = document.getElementById('qc-verdict');
       if (elVerdict) elVerdict.textContent = qc.verdict || 'Chưa có kết luận';
 
       var elHook = document.getElementById('qc-score-hook');
-      if (elHook) elHook.textContent = (qc.hook_score || 90) + '%';
+      if (elHook) elHook.textContent = (Number.isFinite(qc.hook_score) ? qc.hook_score : 0) + '%';
       var elBarHook = document.getElementById('qc-bar-hook');
-      if (elBarHook) elBarHook.style.width = (qc.hook_score || 90) + '%';
+      if (elBarHook) elBarHook.style.width = (Number.isFinite(qc.hook_score) ? qc.hook_score : 0) + '%';
 
       var elNiche = document.getElementById('qc-score-niche');
-      if (elNiche) elNiche.textContent = (qc.niche_match_score || 90) + '%';
+      if (elNiche) elNiche.textContent = (Number.isFinite(qc.niche_match_score) ? qc.niche_match_score : 0) + '%';
       var elBarNiche = document.getElementById('qc-bar-niche');
-      if (elBarNiche) elBarNiche.style.width = (qc.niche_match_score || 90) + '%';
+      if (elBarNiche) elBarNiche.style.width = (Number.isFinite(qc.niche_match_score) ? qc.niche_match_score : 0) + '%';
 
       var elPer = document.getElementById('qc-score-persuasion');
-      if (elPer) elPer.textContent = (qc.persuasion_score || 90) + '%';
+      if (elPer) elPer.textContent = (Number.isFinite(qc.persuasion_score) ? qc.persuasion_score : 0) + '%';
       var elBarPer = document.getElementById('qc-bar-persuasion');
-      if (elBarPer) elBarPer.style.width = (qc.persuasion_score || 90) + '%';
+      if (elBarPer) elBarPer.style.width = (Number.isFinite(qc.persuasion_score) ? qc.persuasion_score : 0) + '%';
 
       var elAV = document.getElementById('qc-score-av');
-      if (elAV) elAV.textContent = (qc.audio_visual_score || 90) + '%';
+      if (elAV) elAV.textContent = (Number.isFinite(qc.audio_visual_score) ? qc.audio_visual_score : 0) + '%';
       var elBarAV = document.getElementById('qc-bar-av');
-      if (elBarAV) elBarAV.style.width = (qc.audio_visual_score || 90) + '%';
+      if (elBarAV) elBarAV.style.width = (Number.isFinite(qc.audio_visual_score) ? qc.audio_visual_score : 0) + '%';
 
       var strUl = document.getElementById('qc-strengths');
       if (strUl) {
@@ -558,9 +437,6 @@ function generateMultiAIPrompts() {
     var mList = document.getElementById('txt-museai-prompts-list');
     mList.innerHTML = '';
     var mAll = '';
-    var lList = document.getElementById('txt-leonardo-prompts-list');
-    if (lList) lList.innerHTML = '';
-    var lAll = '';
 
     (pkg.scenes || []).forEach(function(sc, i) {
       gAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.gemini_prompt + '\n\n';
@@ -582,7 +458,7 @@ function generateMultiAIPrompts() {
         '</div>' +
       '</div>';
 
-      // Google Flow prompt: clean, direct, 480p friendly with camera motion keywords
+      // Google Flow prompt: concise scene description with camera motion
       var flowPrompt = (sc.visual_concept || sc.scene_name) + ', smooth camera motion, photorealistic 35mm film still, vertical 9:16, completely clean frame, no text, no watermark';
       fAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + flowPrompt + '\nFirst Frame: scene_' + (i+1) + '.png (hoặc master photo)\n\n';
       if (fList) {
@@ -599,45 +475,13 @@ function generateMultiAIPrompts() {
       mAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + sc.muse_ai_prompt + '\n\n';
       mList.innerHTML += '<div class="scene-prompt-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px"><div class="sc-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b>Phân cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)</b> <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + sc.muse_ai_prompt.replace(/'/g, "\\'") + '\');window.showToast(\'Đã sao chép prompt video cảnh ' + (i+1) + '\', true)">Copy</button></div><p class="sc-body" style="font-size:12px;color:var(--muted);margin:0;line-height:1.4">' + sc.muse_ai_prompt + '</p></div>';
 
-      var leonardoPrompt = (sc.muse_ai_prompt || sc.visual_concept || sc.scene_name) + ', vertical 9:16, natural motion, cinematic camera movement, realistic lighting';
-      lAll += 'Scene ' + (i+1) + ' (' + sc.scene_name + '):\n' + leonardoPrompt + '\n\n';
-      if (lList) {
-        var leonardoCard = document.createElement('div');
-        leonardoCard.className = 'scene-prompt-card';
-        leonardoCard.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px';
-        var leonardoHeader = document.createElement('div');
-        leonardoHeader.className = 'sc-title';
-        leonardoHeader.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px';
-        var leonardoTitle = document.createElement('b');
-        leonardoTitle.textContent = 'Cảnh ' + (i+1) + ': ' + sc.scene_name + ' (' + sc.duration_sec + 's)';
-        var leonardoCopy = document.createElement('button');
-        leonardoCopy.type = 'button';
-        leonardoCopy.className = 'btn btn-secondary btn-sm';
-        leonardoCopy.textContent = '📋 Copy';
-        leonardoCopy.onclick = (function(prompt, sceneNo) {
-          return function() {
-            navigator.clipboard.writeText(prompt);
-            window.showToast('Đã sao chép prompt Leonardo cảnh ' + sceneNo, true);
-          };
-        })(leonardoPrompt, i+1);
-        leonardoHeader.appendChild(leonardoTitle);
-        leonardoHeader.appendChild(leonardoCopy);
-        var leonardoBody = document.createElement('p');
-        leonardoBody.className = 'sc-body';
-        leonardoBody.style.cssText = 'font-size:12px;color:var(--muted);margin:0;line-height:1.4';
-        leonardoBody.textContent = leonardoPrompt;
-        leonardoCard.appendChild(leonardoHeader);
-        leonardoCard.appendChild(leonardoBody);
-        lList.appendChild(leonardoCard);
-      }
+
     });
 
     document.getElementById('txt-gemini-prompts').textContent = gAll;
     var elFlowAll = document.getElementById('txt-googleflow-prompts');
     if (elFlowAll) elFlowAll.textContent = fAll;
     document.getElementById('txt-museai-prompts').textContent = mAll;
-    var elLeonardoAll = document.getElementById('txt-leonardo-prompts');
-    if (elLeonardoAll) elLeonardoAll.textContent = lAll;
 
     document.getElementById('prompts-result-area').style.display = 'block';
     window.showToast('Đã tạo nội dung từ các dịch vụ khả dụng.', true);

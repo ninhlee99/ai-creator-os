@@ -8,6 +8,7 @@
     </h1>
   </div>
   <div class="webai-header-actions">
+    <a href="/studio/create" class="btn btn-primary btn-sm">✨ Tạo bằng Muse / Flow</a>
     <a href="/studio/jobs" class="btn btn-secondary btn-sm">Video</a>
   </div>
 </div>
@@ -15,7 +16,7 @@
 {{if .Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
 
-<form method="post" action="/studio/ad-creative" enctype="multipart/form-data" id="creative-ad-form">
+<form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="creative-ad-form">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
 
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN (DƯỚI 3 BƯỚC) -->
@@ -30,6 +31,15 @@
           <span class="badge badge-ok" style="font-size:11px">Affiliate</span>
         </div>
 
+        <div class="field" style="margin-bottom:14px">
+          <label style="font-weight:700;font-size:12.5px">Kênh nhận diện nhân vật <span class="req">*</span></label>
+          <select name="account_id" id="cr-account-id" onchange="filterStudioModels()" required style="width:100%;padding:10px">
+            {{range .AccountOptions}}
+            <option value="{{.ID}}" {{if eq .ID $.SelectedAccountID}}selected{{end}}>{{.Username}}</option>
+            {{end}}
+          </select>
+        </div>
+
         {{if .Shelf}}
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px">
           <label style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -39,7 +49,7 @@
           <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:12.5px;font-weight:600;width:100%;padding:8px">
             <option value="">— Bấm để chọn sản phẩm có sẵn trên kệ —</option>
             {{range .Shelf}}
-            <option value="{{.Title}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}">
+            <option value="{{.Title}}" data-id="{{.ID}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}">
               {{.Title}} · {{fmtVND .Price}}
             </option>
             {{end}}
@@ -69,10 +79,37 @@
           </div>
         </div>
 
+        <div class="grid2" style="gap:12px;margin-bottom:14px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Nhóm sản phẩm để quay</label>
+            <select name="product_category" style="padding:10px">
+              <option value="">Tự nhận diện từ ảnh listing</option>
+              <option value="apparel">Quần áo</option>
+              <option value="footwear">Giày dép</option>
+              <option value="bag">Túi xách</option>
+              <option value="jewelry">Trang sức</option>
+              <option value="cosmetics">Mỹ phẩm</option>
+              <option value="home">Đồ gia dụng</option>
+              <option value="tech">Thiết bị công nghệ</option>
+              <option value="food">Thực phẩm</option>
+              <option value="other">Khác</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Ghi chú cách dùng thêm <span class="hint">(không thay cách dùng bắt buộc theo nhóm hàng)</span></label>
+            <input type="text" name="product_usage" placeholder="Ví dụ: khi mặc cardigan, cài hàng khuy trước khi bước đi" style="padding:10px">
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label style="font-weight:700;font-size:12.5px">Điểm nhìn thấy cần focus <span class="hint">(không nhập claim)</span></label>
+          <input type="text" name="product_focus" placeholder="Ví dụ: phom áo, hàng khuy, độ dài tay áo" style="padding:10px">
+        </div>
+
         <!-- Ảnh sản phẩm -->
         <div class="field" style="margin-bottom:14px">
           <label style="font-weight:700;font-size:12.5px;display:flex;justify-content:space-between">
-            <span>Ảnh sản phẩm <span class="req">*</span></span>
+            <span>Ảnh listing sản phẩm <span class="req">*</span></span>
           </label>
           <div class="file-pick">
             <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Tải ảnh sản phẩm từ máy…
@@ -80,7 +117,10 @@
             </label>
             <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">Chưa chọn ảnh</span>
           </div>
-          <input type="hidden" name="generated_photo_path" id="cr-generated-photo-path">
+          <label style="font-weight:700;font-size:12px;display:block;margin-top:10px">Ảnh góc khác / chi tiết sản phẩm</label>
+          <input type="file" name="extra_photos" accept="image/*" multiple>
+          <div class="hint">Product Analyst dùng tối đa 6 ảnh listing để khóa đúng sản phẩm và chi tiết. Ảnh không rõ hoặc sai món sẽ chặn job.</div>
+          <input type="hidden" name="product_id" id="cr-product-id">
           <input type="hidden" name="photo_urls" id="cr-photo-urls" value="{{.Prefill.PhotoURL}}">
         </div>
 
@@ -111,13 +151,13 @@
         {{if .AvailableModels}}
         <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:14px" id="cr-model-grid">
           {{range $idx, $m := .AvailableModels}}
-          <label class="character-model-card cr-model-card" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid #2563eb;background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
-            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" checked class="cr-model-checkbox" onchange="onStudioModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
+          <label class="character-model-card cr-model-card" data-account-id="{{$m.AccountID}}" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid var(--border);background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
+            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" {{if eq $m.AccountID $.SelectedAccountID}}checked{{end}} class="cr-model-checkbox" onchange="onStudioModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
             <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
               <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
             </div>
             <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              Góc chụp #{{add $idx 1}}
+              {{$m.AccountName}} · #{{add $idx 1}}
             </div>
             <span class="cr-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
               ✓ Đã chọn
@@ -161,35 +201,41 @@
           <span class="badge badge-live" style="font-size:11px">Định Dạng Dọc 9:16 (1080x1920)</span>
         </div>
 
+        <input type="hidden" name="prepared_plan_id" id="cr-prepared-plan-id">
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--bg3)">
+          <div style="font-weight:800;margin-bottom:6px">Bước 1 · Phân tích sản phẩm và lập shot list</div>
+          <div class="hint" style="margin-bottom:10px">Lập plan trước khi quay hoặc tạo clip. Mỗi shot có hành động dùng sản phẩm, camera, cảm xúc, điểm focus và prompt riêng.</div>
+          <button type="button" class="btn btn-secondary" id="cr-plan-button" onclick="prepareAffiliatePlan()">📝 Lập shot list và prompt</button>
+          <span id="cr-plan-status" class="hint" style="margin-left:8px"></span>
+          <div id="cr-plan-result" style="display:none;margin-top:14px"></div>
+          <div class="hint" style="margin-top:10px"><a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a> tạo clip thủ công; quyền tạo, tín dụng và watermark tùy tài khoản/khu vực. Kiểm tra <a href="https://support.google.com/flow/answer/16526234?hl=en" target="_blank" rel="noopener">tín dụng</a> và <a href="https://support.google.com/flow/answer/16353333?hl=en" target="_blank" rel="noopener">điều kiện truy cập</a>. Trước khi tải ảnh người mẫu lên Flow, xem <a href="https://support.google.com/flow/answer/17025472?hl=en" target="_blank" rel="noopener">cài đặt dữ liệu</a>.</div>
+        </div>
+
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Cách dựng</label>
             <select name="mode" style="padding:10px;font-weight:700">
-              <option value="shots" selected>Quay từng cảnh bằng engine video</option>
-              <option value="photo">Dựng ảnh tĩnh với chuyển cảnh dissolve</option>
+              <option value="shots" selected>Ghép clip chuyển động theo shot list</option>
             </select>
-            <div class="hint">Chế độ quay cần engine video khả dụng. Nếu engine không tạo được footage thật, job sẽ báo lỗi thay vì giả chuyển động bằng zoom/nháy.</div>
+            <div class="hint">App không gọi API video tính phí. Mỗi shot cần clip chuyển động do bạn cung cấp; clip ngắn sẽ bị từ chối, không lặp ảnh hoặc footage.</div>
           </div>
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Engine</label>
-            <select name="video_engine" style="padding:10px;font-weight:700">
-              <option value="auto" selected>Tự chọn engine khả dụng</option>
-              <option value="googleflow">Google Flow</option>
-              <option value="veo3">Veo</option>
-              <option value="museai">Muse AI</option>
-            </select>
+            <label style="font-weight:700;font-size:12.5px">Clip chuyển động <span class="req">*</span></label>
+            <input type="file" name="motion_clips" id="cr-motion-clips" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" multiple disabled>
+            <div class="hint">Sau khi có plan, tạo clip theo đúng thứ tự shot. Mỗi clip phải dài ít nhất bằng thời lượng ghi trong shot; hệ thống chuẩn hóa 9:16 rồi QC.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
-            <select name="seconds" id="cr-seconds" style="padding:10px;font-weight:600">
+            <select name="seconds" id="cr-seconds" style="padding:10px;font-weight:600" onchange="updateAffiliateClipCount()">
               <option value="60" selected>🎯 60 giây</option>
               <option value="30">⚡ 30 giây</option>
               <option value="45">⏱️ 45 giây</option>
             </select>
+            <div class="hint" id="cr-clip-count-hint">60 giây cần 10 clip, mỗi clip khớp một shot.</div>
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer">
+        <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
           Tạo video affiliate
         </button>
       </div>
@@ -200,6 +246,20 @@
 </form>
 
 <script>
+var affiliatePlanShotCount = 0;
+var studioVisibleAccountId = (function() {
+  var account = document.getElementById('cr-account-id');
+  return account ? account.value : '';
+})();
+
+function updateAffiliateClipCount() {
+  var seconds = parseInt(document.getElementById('cr-seconds').value, 10) || 60;
+  var count = Math.min(30, Math.max(5, Math.ceil(seconds / 6)));
+  var hint = document.getElementById('cr-clip-count-hint');
+  if (hint) hint.textContent = seconds + ' giây cần đúng ' + count + ' clip, theo thứ tự shot.';
+}
+updateAffiliateClipCount();
+
 function onStudioModelToggle(cb) {
   var card = cb.closest('.cr-model-card');
   var badge = card.querySelector('.cr-model-badge');
@@ -214,9 +274,11 @@ function onStudioModelToggle(cb) {
 }
 
 function toggleAllStudioModels(state) {
-  document.querySelectorAll('.cr-model-checkbox').forEach(function(cb) {
+  invalidateAffiliatePlan();
+  document.querySelectorAll('.cr-model-card').forEach(function(card) {
+    if (card.style.display === 'none') return;
+    var cb = card.querySelector('.cr-model-checkbox');
     cb.checked = state;
-    var card = cb.closest('.cr-model-card');
     var badge = card.querySelector('.cr-model-badge');
     if (state) {
       card.style.borderColor = '#2563eb';
@@ -230,10 +292,27 @@ function toggleAllStudioModels(state) {
 }
 
 function updateStudioModelCount() {
-  var checked = document.querySelectorAll('.cr-model-checkbox:checked').length;
-  var total = document.querySelectorAll('.cr-model-checkbox').length;
+  var visible = Array.prototype.filter.call(document.querySelectorAll('.cr-model-card'), function(card) { return card.style.display !== 'none'; });
+  var checked = visible.filter(function(card) { return card.querySelector('.cr-model-checkbox').checked; }).length;
+  var total = visible.length;
   var el = document.getElementById('cr-model-selected-count');
   if (el) el.textContent = 'Đã chọn ' + checked + '/' + total + ' góc mặt';
+  var selected = visible.map(function(card) { return card.querySelector('.cr-model-checkbox'); }).find(function(cb) { return cb.checked; });
+  var hidden = document.getElementById('cr-model-id');
+  if (hidden) hidden.value = selected ? selected.value : '';
+}
+
+function filterStudioModels() {
+  var account = document.getElementById('cr-account-id');
+  var selected = account ? account.value : '';
+  if (selected !== studioVisibleAccountId) {
+    document.querySelectorAll('.cr-model-checkbox').forEach(function(cb) { cb.checked = false; });
+    studioVisibleAccountId = selected;
+  }
+  document.querySelectorAll('.cr-model-card').forEach(function(card) {
+    card.style.display = card.dataset.accountId === selected ? 'block' : 'none';
+  });
+  updateStudioModelCount();
 }
 
 function autoGenerateFashionScript() {
@@ -241,24 +320,34 @@ function autoGenerateFashionScript() {
   if (!name) return;
   var priceInput = document.querySelector('input[name="product_price"]');
   var price = priceInput ? priceInput.value.trim() : '';
-  var script = 'Thông tin sản phẩm: ' + name + (price ? '. Giá được cung cấp: ' + price : '') + '. Xem chi tiết tại liên kết sản phẩm.';
+  var linkInput = document.querySelector('input[name="aff_link"]');
+  var script = 'Sản phẩm theo listing: ' + name + (price ? '. Giá theo listing: ' + price : '');
+  if (linkInput && linkInput.value.trim()) script += '. Xem thông tin tại liên kết sản phẩm đã cung cấp.';
   var ta = document.getElementById('cr-voiceover-text');
   if (ta) ta.value = script;
 }
 
 function pickShelfProduct(sel) {
   if (!sel || !sel.value) return;
+  invalidateAffiliatePlan('Sản phẩm đổi; cần lập lại shot plan.');
   var opt = sel.options[sel.selectedIndex];
   var name = opt.value;
   var price = opt.getAttribute('data-price') || '';
   var niche = opt.getAttribute('data-niche') || '';
+  var photo = opt.getAttribute('data-photo') || '';
   var aff = opt.getAttribute('data-aff') || '';
 
   if (name) document.getElementById('cr-product-name').value = name;
+  var productId = document.getElementById('cr-product-id');
+  if (productId) productId.value = opt.getAttribute('data-id') || '';
   if (price) {
     var pEl = document.querySelector('input[name="product_price"]');
     if (pEl) pEl.value = price;
   }
+  var nicheEl = document.getElementById('cr-niche');
+  if (niche && nicheEl) nicheEl.value = niche;
+  var photoURLs = document.getElementById('cr-photo-urls');
+  if (photoURLs) photoURLs.value = photo;
   if (aff) {
     var aEl = document.querySelector('input[name="aff_link"]');
     if (aEl) aEl.value = aff;
@@ -266,10 +355,134 @@ function pickShelfProduct(sel) {
   autoGenerateFashionScript();
 }
 
+function invalidateAffiliatePlan(message) {
+  var planID = document.getElementById('cr-prepared-plan-id');
+  var clipInput = document.getElementById('cr-motion-clips');
+  var submit = document.getElementById('btn-submit-render-cr');
+  var result = document.getElementById('cr-plan-result');
+  var status = document.getElementById('cr-plan-status');
+  if (!planID || !planID.value) return;
+  planID.value = '';
+  affiliatePlanShotCount = 0;
+  if (clipInput) { clipInput.disabled = true; clipInput.required = false; clipInput.value = ''; }
+  if (submit) { submit.disabled = true; submit.style.opacity = '.55'; }
+  if (result) { result.style.display = 'none'; result.replaceChildren(); }
+  if (status) status.textContent = message || 'Thông tin đổi; hãy lập lại shot plan.';
+}
+
+function affiliatePrepField(field) {
+  return field && field.name && !['motion_clips','music_file','music_category','music_url','music_start','music_title','music_artist','bpm','prepared_plan_id'].includes(field.name);
+}
+
+var affiliateForm = document.getElementById('creative-ad-form');
+affiliateForm.addEventListener('input', function(event) {
+  if (affiliatePrepField(event.target)) invalidateAffiliatePlan();
+});
+affiliateForm.addEventListener('change', function(event) {
+  if (affiliatePrepField(event.target)) invalidateAffiliatePlan();
+});
+
+function affiliatePlanNode(tag, text, style) {
+  var node = document.createElement(tag);
+  node.textContent = text || '';
+  if (style) node.style.cssText = style;
+  return node;
+}
+
+function renderAffiliatePlan(data) {
+  var root = document.getElementById('cr-plan-result');
+  root.replaceChildren();
+  var brief = data.product_brief || {};
+  root.appendChild(affiliatePlanNode('div', 'Product Analyst · ' + (brief.item || brief.category || 'Sản phẩm') + ' · Cách dùng: ' + (brief.use_action || '') + ' · Focus: ' + (brief.focus || ''), 'font-size:12px;margin-bottom:10px'));
+  (brief.evidence || []).forEach(function(line) {
+    root.appendChild(affiliatePlanNode('div', 'Bằng chứng listing: ' + line, 'font-size:11px;color:var(--muted);margin-bottom:4px'));
+  });
+  (data.shots || []).forEach(function(shot) {
+    var card = affiliatePlanNode('article', '', 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:8px;background:var(--bg2)');
+    card.appendChild(affiliatePlanNode('div', 'Shot ' + shot.index + ' · ' + shot.purpose + ' · ' + shot.seconds + ' giây · ' + shot.shot_size, 'font-weight:800'));
+    card.appendChild(affiliatePlanNode('div', 'Cách dùng: ' + shot.product_use_mode + ' · Hành động: ' + shot.product_interaction + ' · Focus: ' + shot.product_focus, 'font-size:12px;margin-top:5px'));
+    card.appendChild(affiliatePlanNode('div', 'Camera: ' + shot.camera_move + ' · ' + shot.lens_light + ' · Cảm xúc: ' + shot.emotion_beat, 'font-size:12px;margin-top:4px'));
+    card.appendChild(affiliatePlanNode('div', 'Action: ' + shot.action, 'font-size:12px;margin-top:4px'));
+    card.appendChild(affiliatePlanNode('pre', shot.manual_prompt, 'white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.45;background:var(--bg3);padding:9px;border-radius:8px;margin:8px 0'));
+    var copy = affiliatePlanNode('button', '📋 Copy prompt');
+    copy.type = 'button';
+    copy.className = 'btn btn-secondary btn-sm';
+    copy.addEventListener('click', function() {
+      navigator.clipboard.writeText(shot.manual_prompt).then(function() {
+        if (window.showToast) window.showToast('Đã sao chép prompt shot ' + shot.index, true);
+      });
+    });
+    card.appendChild(copy);
+    root.appendChild(card);
+  });
+  root.style.display = 'block';
+}
+
+async function prepareAffiliatePlan() {
+  var button = document.getElementById('cr-plan-button');
+  var status = document.getElementById('cr-plan-status');
+  var planID = document.getElementById('cr-prepared-plan-id');
+  var clipInput = document.getElementById('cr-motion-clips');
+  var submit = document.getElementById('btn-submit-render-cr');
+  if (!document.getElementById('cr-product-name').value.trim()) {
+    status.textContent = 'Nhập tên sản phẩm trước.';
+    return;
+  }
+  button.disabled = true;
+  status.textContent = 'Đang phân tích listing và viết shot plan…';
+  planID.value = '';
+  clipInput.disabled = true;
+  clipInput.required = false;
+  clipInput.value = '';
+  submit.disabled = true;
+  submit.style.opacity = '.55';
+  var body = new FormData(affiliateForm);
+  body.delete('motion_clips');
+  body.delete('music_file');
+  try {
+    var response = await fetch('/studio/affiliate/plan', {method:'POST', body:body, headers:{'Accept':'application/json'}});
+    var data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || 'Không lập được shot plan');
+    planID.value = data.plan_id;
+    affiliatePlanShotCount = (data.shots || []).length;
+    renderAffiliatePlan(data);
+    status.textContent = 'Plan đã khóa · ' + affiliatePlanShotCount + ' shot · tạo clip theo thứ tự bên dưới.';
+    document.getElementById('cr-clip-count-hint').textContent = data.seconds + ' giây cần đúng ' + affiliatePlanShotCount + ' clip theo plan đã duyệt.';
+    clipInput.disabled = false;
+    clipInput.required = true;
+    submit.disabled = false;
+    submit.style.opacity = '1';
+  } catch (err) {
+    status.textContent = err.message || 'Không lập được shot plan';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+affiliateForm.addEventListener('submit', function(event) {
+  var planID = document.getElementById('cr-prepared-plan-id').value;
+  var clips = document.getElementById('cr-motion-clips').files;
+  if (!planID) {
+    event.preventDefault();
+    document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';
+    return;
+  }
+  if (clips.length !== affiliatePlanShotCount) {
+    event.preventDefault();
+    document.getElementById('cr-plan-status').textContent = 'Cần đúng ' + affiliatePlanShotCount + ' clip theo shot list.';
+    return;
+  }
+  Array.prototype.forEach.call(affiliateForm.elements, function(field) {
+    if (affiliatePrepField(field)) field.disabled = true;
+  });
+});
+
 function onProductPhotoPicked(input, prefix) {
   var label = document.getElementById('prod-photo-label-' + prefix);
   if (label && input.files && input.files[0]) label.textContent = input.files[0].name;
 }
+
+filterStudioModels();
 
 </script>
 

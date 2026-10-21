@@ -162,81 +162,41 @@ func (m *ModelStore) HasPhotos(accountID int64) (bool, error) {
 	return n > 0, nil
 }
 
-// queryAccountModelPhotos retrieves model photo file paths for an account, or falls back to any available model photo.
+// queryAccountModelPhotos retrieves only model photos owned by the selected account.
 func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
-	var out []string
-	if s.db != nil {
-		if accountID > 0 {
-			rows, err := s.db.Query(`SELECT path FROM model_photos WHERE account_id = ? ORDER BY id`, accountID)
-			if err == nil {
-				for rows.Next() {
-					var p string
-					if err := rows.Scan(&p); err == nil {
-						p = s.resolveModelPhotoPath(p)
-						if fileExists(p) {
-							out = append(out, p)
-						}
-					}
-				}
-				rows.Close()
-			}
-		}
-		if len(out) == 0 {
-			rows, err := s.db.Query(`SELECT path FROM model_photos ORDER BY id LIMIT 5`)
-			if err == nil {
-				for rows.Next() {
-					var p string
-					if err := rows.Scan(&p); err == nil {
-						p = s.resolveModelPhotoPath(p)
-						if fileExists(p) {
-							out = append(out, p)
-						}
-					}
-				}
-				rows.Close()
-			}
-		}
+	if s.db == nil || accountID <= 0 {
+		return nil
 	}
-	if len(out) == 0 {
-		matches, _ := filepath.Glob("data/models/*.jpg")
-		for _, m := range matches {
-			if fileExists(m) {
-				out = append(out, m)
-			}
-		}
-		if len(out) == 0 {
-			matches, _ = filepath.Glob("docs/assets/affiliate-*/*.jpg")
-			for _, m := range matches {
-				if fileExists(m) {
-					out = append(out, m)
-				}
-			}
-		}
-		if len(out) == 0 {
-			matches, _ = filepath.Glob("docs/assets/affiliate-*/.thumbnails/*.jpg")
-			for _, m := range matches {
-				if fileExists(m) {
-					out = append(out, m)
-				}
+	rows, err := s.db.Query(`SELECT path FROM model_photos WHERE account_id = ? ORDER BY id`, accountID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err == nil {
+			p = s.resolveModelPhotoPath(p)
+			if fileExists(p) {
+				out = append(out, p)
 			}
 		}
 	}
 	return out
 }
 
+// ModelPhotosForAccount returns only identity references owned by that channel.
+func (s *Studio) ModelPhotosForAccount(accountID int64) []string {
+	return s.queryAccountModelPhotos(accountID)
+}
+
 // uploadedModelPhotos reads only user-uploaded library images. Automation that
 // promises to use a user's model must not fall back to bundled sample assets.
 func (s *Studio) uploadedModelPhotos(accountID int64) []string {
-	if s.db == nil {
+	if s.db == nil || accountID <= 0 {
 		return nil
 	}
-	query := `SELECT path FROM model_photos ORDER BY id LIMIT 8`
-	args := []any{}
-	if accountID > 0 {
-		query = `SELECT path FROM model_photos WHERE account_id = ? ORDER BY id LIMIT 8`
-		args = append(args, accountID)
-	}
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.Query(`SELECT path FROM model_photos WHERE account_id = ? ORDER BY id LIMIT 8`, accountID)
 	if err != nil {
 		return nil
 	}

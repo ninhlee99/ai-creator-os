@@ -347,7 +347,7 @@ func (s *Store) PickActiveAccount(platform string) (*Account, error) {
 
 	for i := range accs {
 		acc := &accs[i]
-		if acc.Status == "invalid" || acc.Status == "disconnected" {
+		if !acc.IsActive || acc.Status == "invalid" || acc.Status == "expired" || acc.Status == "disconnected" {
 			continue
 		}
 		if acc.Status == "cooldown" && !acc.CooldownUntil.IsZero() && acc.CooldownUntil.After(now) {

@@ -138,57 +138,37 @@ func TestAutopilotRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// no model photo yet -> clear error asking Ninh to upload
+	// Autopilot must stop before product lookup or claim while motion clips
+	// require operator upload under the free-only video policy.
 	pstore, err := products.NewStore(filepath.Join(dir, "products.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pstore.Close()
 	ap := NewAutopilot(st, mgr, pstore, []products.Provider{&stubProvider{}}, models)
-	if _, err := ap.Run(context.Background(), acct.ID); err == nil ||
-		!strings.Contains(err.Error(), "ảnh mẫu") {
-		t.Fatalf("want model-photo error, got %v", err)
-	}
-
-	// add model photo
-	src := filepath.Join(dir, "model.png")
-	_ = os.WriteFile(src, []byte("png"), 0o644)
-	if _, err := models.Add(acct.ID, src); err != nil {
-		t.Fatal(err)
-	}
-
-	// seed a high-commission product in the store
-	imgURL := testPNGServer(t)
 	pid, err := pstore.Save(products.Product{
 		Source: "stub", SourceID: "p1", Title: "Túi kem",
-		ImageURLs: []string{imgURL}, CommissionRate: 0.25,
-		Theme: "thoi-trang-nu",
+		CommissionRate: 0.25,
+		Theme:          "thoi-trang-nu",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	res, err := ap.Run(context.Background(), acct.ID)
-	if err != nil {
-		t.Fatalf("autopilot run: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "free-only") {
+		t.Fatalf("want free-only pause error, got %v", err)
 	}
-	if res.JobID == "" || res.Product.Title != "Túi kem" {
-		t.Fatalf("bad result: %+v", res)
+	if res.JobID != "" {
+		t.Fatalf("autopilot queued job despite missing operator clips: %+v", res)
 	}
-	// job was queued (it will fail async without media-gen — that's fine)
-	j, ok := st.GetJob(res.JobID)
-	if !ok || j.Kind != KindAffiliate {
-		t.Fatalf("job missing: %+v", j)
-	}
-	// product marked used for this account
+	// Product remains available because the paused run must not claim it.
 	top, err := pstore.TopByTheme("thoi-trang-nu", 0.10, acct.ID, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range top {
-		if p.ID == pid {
-			t.Fatal("used product should be excluded for this account")
-		}
+	if len(top) != 1 || top[0].ID != pid {
+		t.Fatalf("paused autopilot claimed product: %+v", top)
 	}
 }
 

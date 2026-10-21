@@ -21,7 +21,7 @@
       <h2 style="margin:0 0 5px;font-size:16px">YouTube Viral Radar</h2>
       <div class="hint">Video mới trong 7 ngày, xếp theo lượt xem, chỉ nhận kênh có ít nhất 100,000 subscribers.</div>
     </div>
-    <span class="badge {{if .Viral.AutoOn}}badge-ok{{else}}badge-dim{{end}}">Auto production {{if .Viral.AutoOn}}ON{{else}}OFF{{end}}</span>
+    <span class="badge {{if .Viral.AutoOn}}badge-ok{{else}}badge-dim{{end}}">Auto discovery {{if .Viral.AutoOn}}ON{{else}}OFF{{end}}</span>
   </div>
   {{if .Viral.RadarKeyReady}}
     <p class="hint" style="margin:10px 0">YouTube API connected. One search call per refresh; daily automation runs once every 24 hours. <a href="/settings/system">API settings</a>.</p>
@@ -54,31 +54,41 @@
 </section>
 {{end}}
 
-<form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form">
+<form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form" onsubmit="return validateViralProduction()">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
 
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN -->
     <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
 
-      <!-- BƯỚC 1: ĐIỆU NHẢY & BÀI HÁT TRENDING REALTIME -->
+      <!-- BƯỚC 1: KÊNH VÀ VIDEO NGUỒN -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Video tham chiếu tùy chọn
+            Video tham chiếu bắt buộc
           </h3>
-          <span class="badge badge-dim" style="font-size:11px">Không phải dữ liệu xu hướng trực tiếp</span>
+          <span class="badge badge-dim" style="font-size:11px">Cần video nguồn</span>
         </div>
+
+        <label class="field" style="display:block;margin-bottom:14px">Kênh nhận diện nhân vật
+          <select name="account" id="viral-account" onchange="filterViralModels()" required style="width:100%;padding:10px">
+            {{range .Viral.AccountOptions}}
+            <option value="{{.Username}}" data-account-id="{{.ID}}" {{if eq .ID $.Viral.SelectedAccountID}}selected{{end}}>{{.Username}}</option>
+            {{end}}
+          </select>
+        </label>
 
         <!-- Cách 1: Dán link TikTok / Douyin trực tiếp -->
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
           <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span>🔗</span> Link video tham chiếu (nếu có)
+            <span>🔗</span> Link TikTok / Douyin
           </label>
           <div style="display:flex;gap:8px">
             <input type="url" name="tiktok_link" id="viral-tiktok-link" placeholder="https://www.tiktok.com/@user/video/... hoặc link Douyin" style="flex:1;padding:10px;font-size:13px">
             <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard('viral-tiktok-link')" style="font-weight:700">📋 Dán</button>
           </div>
-
+          <div class="hint" style="margin-top:8px">Nếu link không tải được, tải file video nguồn bên dưới. Đầu ra giữ nguyên cảnh, chuyển động, camera và âm thanh nguồn.</div>
+          <label style="display:block;font-weight:700;font-size:12.5px;margin-top:12px;margin-bottom:6px">Hoặc tải video nguồn</label>
+          <input type="file" name="sample_video" id="viral-source-video" accept="video/*">
         </div>
 
         <!-- No fabricated real-time trend cards -->
@@ -90,17 +100,17 @@
         </div>
       </div>
 
-      <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT NHÂN VẬT NỮ -->
+      <!-- BƯỚC 2: CHỌN ĐÚNG NHÂN VẬT CỦA KÊNH -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Chọn Các Góc Mặt Nhân Vật Nữ Thực Hiện Điệu Nhảy
+            Ảnh nhân vật thuộc kênh đã chọn
           </h3>
           <span class="badge badge-ok" style="font-size:11px" id="viral-selected-count">Đã chọn {{len .Viral.AvailableModels}} góc mặt</span>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label style="font-weight:700;font-size:12.5px;margin:0">Chọn nhiều góc khuôn mặt / dáng người của nhân vật để nhảy sinh động:</label>
+          <label style="font-weight:700;font-size:12.5px;margin:0">Chọn ảnh tham chiếu của cùng nhân vật:</label>
           <div style="display:flex;gap:6px">
             <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllViralModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
@@ -112,13 +122,13 @@
         {{if .Viral.AvailableModels}}
         <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:12px">
           {{range $idx, $m := .Viral.AvailableModels}}
-          <label class="character-model-card viral-model-card" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid #2563eb;background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
-            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" checked class="viral-model-checkbox" onchange="onViralModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
+          <label class="character-model-card viral-model-card" data-account-id="{{$m.AccountID}}" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid var(--border);background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
+            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" {{if eq $m.AccountID $.Viral.SelectedAccountID}}checked{{end}} class="viral-model-checkbox" onchange="onViralModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
             <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
               <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
             </div>
             <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              Góc mặt #{{add $idx 1}}
+              {{$m.AccountName}} · #{{add $idx 1}}
             </div>
             <span class="viral-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
               ✓ Đã chọn
@@ -128,12 +138,12 @@
         </div>
         {{else}}
         <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:10px;font-size:12.5px">
-          Chưa tìm thấy ảnh người mẫu. Bạn có thể tải thêm ảnh người mẫu nữ bên dưới:
+          Kênh này chưa có ảnh nhân vật. Tải ảnh lên để lưu vào đúng thư viện kênh:
         </div>
         {{end}}
 
         <div class="file-pick">
-          <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px">📁 Tải thêm ảnh nhân vật nữ từ máy…
+          <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px">📁 Tải ảnh nhân vật từ máy…
             <input type="file" name="model_photos" accept="image/*" multiple>
           </label>
           <span class="file-name" style="font-size:12px">Chưa chọn ảnh</span>
@@ -153,23 +163,26 @@
           <div class="field">
       <label style="font-weight:700;font-size:12.5px">Engine render (nếu đã kết nối)</label>
             <select name="ai_mode" style="padding:10px;font-weight:700">
-              <option value="local" selected>Dựng cục bộ từ ảnh đã tải (không gọi API)</option>
-              <option value="veo3">Veo API (có thể tính phí)</option>
+            <option value="full_character_edit" selected>Thay toàn bộ nhân vật · đang tạm dừng</option>
             </select>
-            <p class="hint">Google Flow và Muse AI hiện render thủ công; chưa có API video tự động trong app.</p>
+            <p class="hint">{{.Viral.CharacterEditorStatus}}. Studio không gửi request tính phí. Có thể nhập video đã làm thủ công tại Studio, nhưng video nhập tay không được xác nhận đã thay nhân vật hay đạt viral QC.</p>
           </div>
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Thời lượng video (Tối thiểu 60s)</label>
-            <select name="duration" style="padding:10px;font-weight:600">
-              <option value="60" selected>⏱️ 60 giây</option>
-              <option value="90">⏱️ 90 giây</option>
-              <option value="120">⏱️ 120 giây</option>
-            </select>
+            <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
+            <div class="hint" style="padding:10px;border:1px solid var(--border);border-radius:8px">Khớp thời lượng video nguồn. Không lặp footage để kéo dài.</div>
           </div>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #ef4444 0%, #ec4899 100%);box-shadow:0 4px 14px rgba(236,72,153,0.35);border:none;cursor:pointer">
-          Tạo video (9:16)
+        <div style="padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
+          <button type="button" id="viral-analyze-button" class="btn btn-secondary" onclick="analyzeViralSource()" style="width:100%;font-weight:800">
+            🔍 Phân tích video nguồn · xem storyboard
+          </button>
+          <p class="hint" style="margin:8px 0 0">Phân tích frame lấy mẫu và dựng timeline tham khảo. Không tạo video, không thay nhân vật.</p>
+          <div id="viral-analysis-result" role="status" aria-live="polite" style="margin-top:12px"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled aria-disabled="true" title="{{.Viral.CharacterEditorStatus}}" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #ef4444 0%, #ec4899 100%);box-shadow:0 4px 14px rgba(236,72,153,0.35);border:none;cursor:not-allowed;opacity:.55">
+          Thay nhân vật đang tạm dừng · free-only
         </button>
       </div>
 
@@ -179,7 +192,19 @@
 </form>
 
 <script>
+var viralVisibleAccountId = (function() {
+  var account = document.getElementById('viral-account');
+  return account && account.selectedOptions.length ? account.selectedOptions[0].dataset.accountId : '';
+})();
+var viralCharacterEditorReady = {{.Viral.CharacterEditorReady}};
+
 function onViralModelToggle(cb) {
+  var account = document.getElementById('viral-account');
+  var selected = account && account.selectedOptions.length ? account.selectedOptions[0].dataset.accountId : '';
+  if (cb.closest('.viral-model-card').dataset.accountId !== selected) {
+    cb.checked = false;
+    return;
+  }
   var card = cb.closest('.viral-model-card');
   var badge = card.querySelector('.viral-model-badge');
   if (cb.checked) {
@@ -193,9 +218,10 @@ function onViralModelToggle(cb) {
 }
 
 function toggleAllViralModels(state) {
-  document.querySelectorAll('.viral-model-checkbox').forEach(function(cb) {
+  document.querySelectorAll('.viral-model-card').forEach(function(card) {
+    if (card.style.display === 'none') return;
+    var cb = card.querySelector('.viral-model-checkbox');
     cb.checked = state;
-    var card = cb.closest('.viral-model-card');
     var badge = card.querySelector('.viral-model-badge');
     if (state) {
       card.style.borderColor = '#2563eb';
@@ -209,12 +235,135 @@ function toggleAllViralModels(state) {
 }
 
 function updateViralModelCount() {
-  var checked = document.querySelectorAll('.viral-model-checkbox:checked').length;
-  var total = document.querySelectorAll('.viral-model-checkbox').length;
+  var visible = Array.prototype.filter.call(document.querySelectorAll('.viral-model-card'), function(card) { return card.style.display !== 'none'; });
+  var checked = visible.filter(function(card) { return card.querySelector('.viral-model-checkbox').checked; }).length;
+  var total = visible.length;
   var el = document.getElementById('viral-selected-count');
   if (el) el.textContent = 'Đã chọn ' + checked + '/' + total + ' góc mặt';
+  var hidden = document.getElementById('viral-model-id');
+  var first = visible.map(function(card) { return card.querySelector('.viral-model-checkbox'); }).find(function(cb) { return cb.checked; });
+  if (hidden) hidden.value = first ? first.value : '';
 }
 
+function filterViralModels() {
+  var account = document.getElementById('viral-account');
+  var selected = account && account.selectedOptions.length ? account.selectedOptions[0].dataset.accountId : '';
+  if (selected !== viralVisibleAccountId) {
+    document.querySelectorAll('.viral-model-checkbox').forEach(function(cb) { cb.checked = false; });
+    viralVisibleAccountId = selected;
+  }
+  document.querySelectorAll('.viral-model-card').forEach(function(card) {
+    var visible = card.dataset.accountId === selected;
+    card.style.display = visible ? 'block' : 'none';
+  });
+  updateViralModelCount();
+}
+
+function validateViralProduction() {
+  if (!viralCharacterEditorReady) {
+    alert('Gemini Omni video-edit adapter chưa sẵn sàng: {{.Viral.CharacterEditorStatus}}');
+    return false;
+  }
+  var account = document.getElementById('viral-account');
+  if (!account || !account.value) {
+    alert('Chọn kênh đích trước khi tạo video.');
+    return false;
+  }
+  var url = document.getElementById('viral-tiktok-link');
+  var file = document.getElementById('viral-source-video');
+  if ((!url || !/^https?:\/\//i.test(url.value.trim())) && (!file || !file.files || !file.files.length)) {
+    alert('Chọn file video nguồn hoặc dán link TikTok/Douyin hợp lệ.');
+    return false;
+  }
+  var model = Array.prototype.some.call(document.querySelectorAll('.viral-model-card'), function(card) {
+    return card.style.display !== 'none' && card.querySelector('.viral-model-checkbox').checked;
+  });
+  var upload = document.querySelector('input[name="model_photos"]');
+  if (!model && (!upload || !upload.files || !upload.files.length)) {
+    alert('Chọn hoặc tải ảnh nhân vật của kênh đã chọn.');
+    return false;
+  }
+  return true;
+}
+
+function analyzeViralSource() {
+  var form = document.getElementById('viral-dance-form');
+  var result = document.getElementById('viral-analysis-result');
+  var button = document.getElementById('viral-analyze-button');
+  var account = document.getElementById('viral-account');
+  var topic = document.getElementById('viral-topic');
+  var url = document.getElementById('viral-tiktok-link');
+  var file = document.getElementById('viral-source-video');
+  var model = Array.prototype.some.call(document.querySelectorAll('.viral-model-card'), function(card) {
+    return card.style.display !== 'none' && card.querySelector('.viral-model-checkbox').checked;
+  });
+  var upload = document.querySelector('input[name="model_photos"]');
+  if (!topic || !topic.value.trim()) return showViralAnalysisError('Nhập chủ đề video trước.');
+  if (!account || !account.value) return showViralAnalysisError('Chọn kênh đích trước.');
+  if ((!url || !/^https?:\/\//i.test(url.value.trim())) && (!file || !file.files || !file.files.length)) {
+    return showViralAnalysisError('Chọn file video nguồn hoặc dán link TikTok/Douyin hợp lệ.');
+  }
+  if (!model && (!upload || !upload.files || !upload.files.length)) {
+    return showViralAnalysisError('Chọn hoặc tải ảnh nhân vật của kênh đã chọn.');
+  }
+
+  result.replaceChildren();
+  var loading = document.createElement('p');
+  loading.className = 'hint';
+  loading.textContent = 'Đang đọc video nguồn và dựng storyboard…';
+  result.appendChild(loading);
+  button.disabled = true;
+  button.textContent = 'Đang phân tích…';
+  fetch('/viral/create?action=analyze', {method: 'POST', body: new FormData(form)})
+    .then(function(response) {
+      return response.json().then(function(data) {
+        if (!response.ok) throw new Error(data.error || 'Không phân tích được video nguồn.');
+        return data;
+      });
+    })
+    .then(renderViralStoryboard)
+    .catch(function(error) { showViralAnalysisError(error.message || 'Không phân tích được video nguồn.'); })
+    .finally(function() {
+      button.disabled = false;
+      button.textContent = '🔍 Phân tích video nguồn · xem storyboard';
+    });
+}
+
+function showViralAnalysisError(message) {
+  var result = document.getElementById('viral-analysis-result');
+  result.replaceChildren();
+  var error = document.createElement('p');
+  error.className = 'err';
+  error.style.cssText = 'padding:10px;border-radius:8px;color:#ef4444;background:rgba(239,68,68,.08)';
+  error.textContent = message;
+  result.appendChild(error);
+}
+
+function renderViralStoryboard(storyboard) {
+  var result = document.getElementById('viral-analysis-result');
+  result.replaceChildren();
+  var heading = document.createElement('h3');
+  heading.style.margin = '0 0 8px';
+  heading.textContent = storyboard.title || 'Storyboard video nguồn';
+  result.appendChild(heading);
+  (storyboard.scenes || []).forEach(function(scene) {
+    var card = document.createElement('article');
+    card.style.cssText = 'padding:10px;margin:8px 0;border:1px solid var(--border);border-radius:8px';
+    var title = document.createElement('strong');
+    title.textContent = 'Cảnh ' + scene.index + ' · ' + Number(scene.source_start_sec).toFixed(2) + 's–' + Number(scene.source_end_sec).toFixed(2) + 's';
+    card.appendChild(title);
+    [['Hình ảnh', scene.image_prompt], ['Chuyển động / camera', scene.video_prompt]].forEach(function(item) {
+      var line = document.createElement('p');
+      line.style.margin = '6px 0 0';
+      line.textContent = item[0] + ': ' + (item[1] || '');
+      card.appendChild(line);
+    });
+    result.appendChild(card);
+  });
+  if (!storyboard.scenes || !storyboard.scenes.length) showViralAnalysisError('Storyboard không có cảnh để hiển thị.');
+}
+
+filterViralModels();
 
 function pasteFromClipboard(targetId) {
   if (navigator.clipboard) {

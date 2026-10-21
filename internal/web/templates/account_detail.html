@@ -547,9 +547,18 @@
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b>📘 Facebook Page</b>
-        {{if .PubStatus.FbPage}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+        {{if .PubStatus.FbPage}}<span class="badge badge-ok">✓ Đã kết nối</span>{{else}}<span class="badge badge-no">Chưa kết nối</span>{{end}}
       </div>
       <p class="hint" style="margin:6px 0 0;font-size:12px">Đăng Reels &amp; bài viết bán hàng</p>
+      <div style="margin-top:10px">
+        {{if .PubStatus.FacebookClient}}
+          <a class="btn btn-sm" href="/publishers/facebook/authorize?username={{.Acct.Username}}">
+            {{if .PubStatus.FbPage}}🔄 Kết nối lại Facebook{{else}}📘 Đăng nhập Facebook{{end}}
+          </a>
+        {{else}}
+          <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình Meta App ID / Secret</a>
+        {{end}}
+      </div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">

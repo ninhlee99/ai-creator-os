@@ -1,10 +1,12 @@
 # OPEN-SPEC: CHUẨN VIDEO CÓ HỒN & QUAY PHIM TỰ NHIÊN
 ## (Natural Cinematic & Soulful Video Specification — SoulVideo Spec v1.0)
 
-> **Trạng thái**: Official Specification (Chính Thức)  
+> **Trạng thái**: Đặc tả mục tiêu — không phải bằng chứng tính năng đã triển khai
 > **Phiên bản**: 1.0.0  
 > **Phạm vi áp dụng**: Toàn bộ hệ sinh thái `ai-creator-os` (`internal/studio`, `internal/web`, `internal/engines`, `automation`)  
 > **Nguyên tắc nền tảng**: *"Một video chỉ có giá trị khi chạm đến cảm xúc người xem, mang sinh khí tự nhiên của con người và chuyển động điện ảnh chân thực — Tuyệt đối loại bỏ video dán ảnh, giật lắc cơ học và nền đen vô cảm."*
+
+> **Trạng thái runtime (2026-10-21):** Chính sách free-only hiện tắt tạo/chỉnh sửa video viral tự động; `/viral` từ chối enqueue vì adapter thay nhân vật cần billing. Affiliate chỉ nhận clip chuyển động do người vận hành cung cấp cho từng shot. QC kiểm thay đổi frame ở 2 fps và phân tích ba frame mỗi shot, nên chưa chứng minh chuyển động người thật liên tục hoặc sản phẩm được mặc/dùng ở mọi thời điểm. Các mô tả Veo/Muse, “1:1”, “100%” và các mục tiêu tương tự bên dưới là yêu cầu đích, không phải cam kết năng lực đang chạy.
 
 ---
 
@@ -45,7 +47,7 @@ Trước khi chuẩn hóa Open-Spec, hệ thống AI sinh video tự động th�
    - Lồng tiếng tự động bằng giọng máy vô cảm, không nhấn nhá nhịp điệu, âm lượng giọng át cả nhạc hoặc chọn các bản nhạc ambient tẻ nhạt thay vì nhạc đang thịnh hành trên TikTok/Douyin.
 
 ### 1.2. Mục Tiêu Tái Thiết Hệ Thống (The Redesign Mandate)
-Hệ thống `ai-creator-os` được nâng cấp toàn diện lên kiến trúc **Cinematic Natural Engine**, đảm bảo:
+Đích thiết kế **Cinematic Natural Engine** yêu cầu:
 - 100% video xuất xưởng đạt chuẩn **Full HD 9:16 (1080x1920)** với thuật toán Scale & Crop thông minh chống méo hình.
 - 100% video thời trang & affiliate dùng **chuyển động người mẫu thật trong không gian thực tế** (Lookbook Video), ứng dụng hoán đổi khuôn mặt AI (Face Swap) để giữ thương hiệu cá nhân của creator.
 - 100% video nhảy viral được khai thác từ **các kênh triệu view TikTok Việt Nam & Douyin Trung Quốc**, bắt đúng giai điệu hot trend.

@@ -797,6 +797,52 @@ func ensureVideoDuration(ctx context.Context, path string, targetSec float64, as
 	return nil
 }
 
+// fitSilentVideoDuration conforms generated footage to the requested runtime
+// without looping a short result. Short output means missing scenes and must
+// fail instead of repeating frames or footage.
+func fitSilentVideoDuration(ctx context.Context, path string, targetSec float64, aspect string) error {
+	if targetSec <= 0 {
+		return fmt.Errorf("invalid target duration %.2fs", targetSec)
+	}
+	duration := probeDuration(ctx, path)
+	if duration <= 0 {
+		return fmt.Errorf("cannot read video duration: %s", filepath.Base(path))
+	}
+	if duration < targetSec-0.15 {
+		return fmt.Errorf("rendered footage %.2fs is shorter than required %.2fs; repeating footage is disabled", duration, targetSec)
+	}
+	if duration <= targetSec+0.05 {
+		return nil
+	}
+	tmp := path + ".trimmed.mp4"
+	defer os.Remove(tmp)
+	if err := TrimVideo(ctx, path, targetSec, aspect, tmp); err != nil {
+		return fmt.Errorf("trim footage to %.2fs: %w", targetSec, err)
+	}
+	if got := probeDuration(ctx, tmp); got < targetSec-0.15 {
+		return fmt.Errorf("trimmed footage is only %.2fs; required %.2fs", got, targetSec)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("replace trimmed footage: %w", err)
+	}
+	return nil
+}
+
+// verifyVideoDuration checks final muxed output without silently extending it.
+func verifyVideoDuration(ctx context.Context, path string, targetSec float64) error {
+	if targetSec <= 0 {
+		return fmt.Errorf("invalid target duration %.2fs", targetSec)
+	}
+	duration := probeDuration(ctx, path)
+	if duration <= 0 {
+		return fmt.Errorf("cannot read video duration: %s", filepath.Base(path))
+	}
+	if duration < targetSec-0.25 || duration > targetSec+0.25 {
+		return fmt.Errorf("final video is %.2fs; expected %.2fs ±0.25s", duration, targetSec)
+	}
+	return nil
+}
+
 // probeDuration trả về thời lượng thực tế của file video (giây).
 func probeDuration(ctx context.Context, path string) float64 {
 	cmd := exec.CommandContext(ctx, "ffprobe",

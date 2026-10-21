@@ -55,6 +55,7 @@ func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
 		"Error", r.URL.Query().Get("err"),
 		"HasYouTubeClient", publishers.NewYouTubePublisher("", nil, "").HasClient(),
 		"HasTikTokClient", publishers.NewTikTokPublisher("").HasClient(),
+		"HasMetaClient", s.facebookOAuthConfigured(),
 	))
 }
 

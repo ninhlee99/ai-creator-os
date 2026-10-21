@@ -27,23 +27,23 @@
     <section class="product-media-picker" aria-labelledby="product-media-title">
       <div class="product-media-heading">
         <div>
-          <h3 id="product-media-title">Ảnh hoặc video sản phẩm <span>(tuỳ chọn)</span></h3>
-          <p>Dùng cho video Affiliate. Chọn nhiều ảnh hoặc nhiều video, không trộn hai loại.</p>
+          <h3 id="product-media-title">Ảnh listing sản phẩm <span>(tuỳ chọn)</span></h3>
+          <p>Dùng làm tham chiếu để nhân vật kênh mặc hoặc sử dụng đúng sản phẩm.</p>
         </div>
         <span class="product-media-count" id="product-media-count">Chưa chọn tệp</span>
       </div>
       <input class="product-media-input" type="file" id="product-media-input" name="product_media"
-        accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,video/x-m4v" multiple
+        accept="image/jpeg,image/png,image/webp" multiple
         aria-describedby="product-media-help product-media-error">
       <label class="product-media-dropzone" id="product-media-dropzone" for="product-media-input">
         <span class="product-media-upload-icon" aria-hidden="true">↥</span>
         <span class="product-media-drop-copy">
-          <strong>Kéo thả ảnh hoặc video vào đây</strong>
-          <small>JPG, PNG, WebP, MP4, MOV, WebM · tối đa 8 tệp / 200 MB</small>
+          <strong>Kéo thả ảnh listing sản phẩm vào đây</strong>
+          <small>JPG, PNG, WebP · tối đa 8 ảnh / 200 MB</small>
         </span>
         <span class="product-media-browse">Chọn tệp</span>
       </label>
-      <p class="product-media-help" id="product-media-help">Ảnh sẽ ghép thành montage; video sẽ nối thành clip. Câu lệnh cần nêu rõ sản phẩm, ví dụ “Review túi xách đi làm”.</p>
+      <p class="product-media-help" id="product-media-help">Ảnh listing khóa đúng mặt hàng. Hệ thống tạo footage chuyển động mới; không ghép ảnh hoặc video tải lên thành quảng cáo.</p>
       <p class="product-media-error" id="product-media-error" role="status" aria-live="polite" hidden></p>
       <div class="product-media-preview" id="product-media-preview" hidden></div>
     </section>
@@ -133,7 +133,15 @@
         <a href="/media/{{.Output}}" download class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:5px 8px" title="Tải file video MP4">⬇ Tải</a>
         <a href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" class="btn btn-primary btn-sm" style="font-weight:700;font-size:11.5px;padding:5px 10px" title="Đăng lên kênh mạng xã hội">📱 Đăng</a>
         {{else}}
+        {{if eq .Status "failed"}}
+        <a href="/studio/jobs?id={{.ID}}" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-weight:700">Chi tiết render ↗</a>
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+          <input type="hidden" name="return_to" value="/">
+          <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--err);font-weight:700" title="Xóa tác vụ thất bại" aria-label="Xóa tác vụ thất bại">🗑</button>
+        </form>
+        {{else}}
         <a href="/studio/jobs?id={{.ID}}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;font-weight:700">Chi tiết render ↗</a>
+        {{end}}
         {{end}}
       </div>
     </div>
@@ -155,7 +163,6 @@ document.addEventListener('DOMContentLoaded', function() {
   function mediaType(file) {
     var ext = (file.name.split('.').pop() || '').toLowerCase();
     if (['jpg', 'jpeg', 'png', 'webp'].indexOf(ext) >= 0) return 'image';
-    if (['mp4', 'mov', 'm4v', 'webm'].indexOf(ext) >= 0) return 'video';
     return '';
   }
 
@@ -238,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (next.length > 8) return showMediaError('Chọn tối đa 8 tệp mỗi lần.');
     var kind = mediaType(next[0]);
     if (!kind || next.some(function(file) { return mediaType(file) !== kind; })) {
-      return showMediaError('Hãy chọn nhiều ảnh hoặc nhiều video trong cùng một lượt.');
+      return showMediaError('Affiliate chỉ nhận ảnh listing JPG, PNG hoặc WebP; video mẫu không được nối thành quảng cáo.');
     }
     var total = 0;
     for (var i = 0; i < next.length; i++) {

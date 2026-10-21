@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -33,18 +34,22 @@ type studioJobView struct {
 	Status     string `json:"status"`
 	Progress   int    `json:"progress"`
 	Output     string `json:"output"`
+	OutputKind string `json:"output_kind"`
 	Caption    string `json:"caption"`
 	CreatedAt  string `json:"created_at"`
 	FinishedAt string `json:"finished_at"`
 	KindLabel  string `json:"kind_label"`
 	Label      string `json:"label"`
 	Class      string `json:"class"`
+	QCVerified bool   `json:"qc_verified"`
 }
 
 func kindLabel(kind string) string {
 	switch kind {
 	case studio.KindAffiliate:
 		return "Affiliate"
+	case "ai_content":
+		return "Muse · Flow"
 	default:
 		return kind
 	}
@@ -55,15 +60,73 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 	for _, j := range jobs {
 		out = append(out, studioJobView{
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
-			Progress: j.Progress, Output: mediaName(j.Output),
+			Progress: j.Progress, Output: mediaName(j.Output), OutputKind: studioOutputKind(j.Output),
 			Caption:   j.Caption,
 			CreatedAt: j.CreatedAt, FinishedAt: j.FinishedAt,
-			KindLabel: kindLabel(j.Kind),
-			Label:     statusLabel(j.Status),
-			Class:     statusClass(j.Status),
+			KindLabel:  kindLabel(j.Kind),
+			Label:      statusLabel(j.Status),
+			Class:      statusClass(j.Status),
+			QCVerified: studioOutputQCVerified(j),
 		})
 	}
 	return out
+}
+
+func studioOutputKind(output string) string {
+	switch strings.ToLower(filepath.Ext(output)) {
+	case ".mp4", ".mov", ".webm":
+		return "video"
+	case ".png", ".jpg", ".jpeg", ".webp":
+		return "image"
+	case ".md", ".txt":
+		return "text"
+	default:
+		return "file"
+	}
+}
+
+// Old affiliate/viral jobs can be technically complete without current quality evidence.
+// Keep render status separate from production QC so legacy output is not shown as approved.
+func studioOutputQCVerified(j studio.Job) bool {
+	if j.Kind == "ai_content" {
+		return false
+	}
+	if j.Kind != studio.KindAffiliate && j.Kind != studio.KindViral {
+		return true
+	}
+	if j.Status != studio.StatusDone || strings.TrimSpace(j.Output) == "" {
+		return false
+	}
+	qc, qcAt := pipelineMarkerState(j.Log, "VISUAL_QC_START:", "VISUAL_QC_PASS:", "VISUAL_QC_FAIL:")
+	if qc != "pass" {
+		return false
+	}
+	if j.Kind == studio.KindAffiliate {
+		analysis, analysisAt := pipelineMarkerState(j.Log, "PRODUCT_ANALYSIS_START:", "PRODUCT_ANALYSIS_PASS:", "PRODUCT_ANALYSIS_FAIL:")
+		director, directorAt := pipelineMarkerState(j.Log, "DIRECTOR_START:", "DIRECTOR_PASS:", "DIRECTOR_FAIL:")
+		production, productionAt := pipelineMarkerState(j.Log, "PRODUCTION_START:", "PRODUCTION_PASS:", "PRODUCTION_FAIL:")
+		return analysis == "pass" && director == "pass" && production == "pass" && analysisAt < directorAt && directorAt < productionAt && productionAt < qcAt
+	} else {
+		replacement, replacementAt := pipelineMarkerState(j.Log, "CHARACTER_REPLACEMENT_START:", "CHARACTER_REPLACEMENT_PASS:", "CHARACTER_REPLACEMENT_FAIL:")
+		validation, validationAt := pipelineMarkerState(j.Log, "OUTPUT_VALIDATION_START:", "OUTPUT_VALIDATION_PASS:", "OUTPUT_VALIDATION_FAIL:")
+		return replacement == "pass" && validation == "pass" && replacementAt < validationAt && validationAt < qcAt
+	}
+}
+
+func pipelineMarkerState(log, startMarker, passMarker, failMarker string) (string, int) {
+	startAt := strings.LastIndex(log, startMarker)
+	passAt := strings.LastIndex(log, passMarker)
+	failAt := strings.LastIndex(log, failMarker)
+	if passAt >= 0 && passAt > failAt && passAt > startAt {
+		return "pass", passAt
+	}
+	if failAt >= 0 && failAt > passAt && failAt > startAt {
+		return "fail", failAt
+	}
+	if startAt >= 0 && startAt > passAt && startAt > failAt {
+		return "running", startAt
+	}
+	return "unknown", -1
 }
 
 func (s *Server) writeJSON(w http.ResponseWriter, v any) {
@@ -102,8 +165,10 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var accountNames []string
+	var accountOptions []*network.Account
 	if s.Mgr != nil {
 		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			accountOptions = accounts
 			for _, a := range accounts {
 				if a != nil && a.Username != "" {
 					accountNames = append(accountNames, a.Username)
@@ -125,9 +190,37 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	if midStr := r.URL.Query().Get("model_id"); midStr != "" {
 		selectedModelID, _ = strconv.ParseInt(midStr, 10, 64)
 	}
+	var selectedAccountID int64
+	if raw := r.URL.Query().Get("account_id"); raw != "" {
+		selectedAccountID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+	if selectedAccountID == 0 && strings.TrimSpace(r.URL.Query().Get("account")) != "" {
+		for _, account := range accountOptions {
+			if account != nil && account.Username == strings.TrimSpace(r.URL.Query().Get("account")) {
+				selectedAccountID = account.ID
+				break
+			}
+		}
+	}
 	availableModels := s.listModelPhotoCards()
-	if selectedModelID == 0 && len(availableModels) > 0 {
-		selectedModelID = availableModels[0].ID
+	if selectedAccountID == 0 && selectedModelID > 0 {
+		for _, model := range availableModels {
+			if model.ID == selectedModelID {
+				selectedAccountID = model.AccountID
+				break
+			}
+		}
+	}
+	if selectedAccountID == 0 && len(accountOptions) > 0 && accountOptions[0] != nil {
+		selectedAccountID = accountOptions[0].ID
+	}
+	if selectedModelID == 0 {
+		for _, model := range availableModels {
+			if model.AccountID == selectedAccountID {
+				selectedModelID = model.ID
+				break
+			}
+		}
 	}
 	prefill := map[string]string{
 		"ProductName":  r.URL.Query().Get("product_name"),
@@ -172,6 +265,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"AccountNames", accountNames,
+		"AccountOptions", accountOptions,
+		"SelectedAccountID", selectedAccountID,
 		"AvailableModels", availableModels,
 		"Prefill", prefill,
 		"SelectedModelID", selectedModelID,
@@ -275,6 +370,340 @@ func saveUploads(r *http.Request, field, dir string, max int) ([]string, error) 
 	return out, nil
 }
 
+// saveMotionClips stores generated motion footage supplied by the operator.
+// Affiliate video APIs stay disabled under the project's free-only policy.
+func saveMotionClips(r *http.Request, field, dir string, max int) ([]string, error) {
+	if r.MultipartForm == nil {
+		return nil, nil
+	}
+	headers := r.MultipartForm.File[field]
+	if len(headers) > max {
+		return nil, fmt.Errorf("tối đa %d clip chuyển động mỗi video", max)
+	}
+	const maxClipBytes = 100 << 20
+	const maxTotalBytes = 600 << 20
+	var total int64
+	paths := make([]string, 0, len(headers))
+	for i, hdr := range headers {
+		if hdr.Size == 0 {
+			continue
+		}
+		if hdr.Size > maxClipBytes {
+			return nil, fmt.Errorf("clip %s quá lớn (tối đa 100MB)", hdr.Filename)
+		}
+		total += hdr.Size
+		if total > maxTotalBytes {
+			return nil, fmt.Errorf("tổng dung lượng clip vượt 600MB")
+		}
+		ext := strings.ToLower(filepath.Ext(hdr.Filename))
+		switch ext {
+		case ".mp4", ".mov", ".webm", ".mkv":
+		default:
+			return nil, fmt.Errorf("clip %s: định dạng %s không hỗ trợ", hdr.Filename, ext)
+		}
+		in, err := hdr.Open()
+		if err != nil {
+			return nil, err
+		}
+		path := filepath.Join(dir, fmt.Sprintf("%d-motion-%02d%s", time.Now().UnixNano(), i, ext))
+		out, err := os.Create(path)
+		if err != nil {
+			in.Close()
+			return nil, err
+		}
+		written, copyErr := io.Copy(out, io.LimitReader(in, maxClipBytes+1))
+		closeInErr := in.Close()
+		closeOutErr := out.Close()
+		if copyErr != nil || closeInErr != nil || closeOutErr != nil {
+			_ = os.Remove(path)
+			if copyErr != nil {
+				return nil, copyErr
+			}
+			if closeInErr != nil {
+				return nil, closeInErr
+			}
+			return nil, closeOutErr
+		}
+		if written > maxClipBytes || written != hdr.Size {
+			_ = os.Remove(path)
+			return nil, fmt.Errorf("clip %s bị cắt hoặc vượt giới hạn tải lên", hdr.Filename)
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
+}
+
+type affiliatePlanShotResponse struct {
+	studio.ProShot
+	ManualPrompt string `json:"manual_prompt"`
+}
+
+// handleStudioAffiliatePlan performs product analysis and director work before
+// the operator creates or uploads any motion clips.
+func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Request) {
+	if s.Studio == nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Studio chưa sẵn sàng"})
+		return
+	}
+	if err := r.ParseMultipartForm(60 << 20); err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": "Không đọc được form"})
+		return
+	}
+	p, err := s.affiliatePlanParamsFromRequest(r)
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	if s.Mgr != nil {
+		account, err := s.Mgr.Get(p.AccountID)
+		if err != nil {
+			s.writeJSON(w, map[string]any{"ok": false, "error": "Không đọc được hồ sơ kênh: " + err.Error()})
+			return
+		}
+		p.ChannelProfile.Model = strings.TrimSpace(account.Persona)
+		p.ChannelMemoryKey = strings.TrimSpace(account.Username)
+		if p.ChannelProfile.Model == "" {
+			p.ChannelProfile.Model = strings.TrimSpace(account.Niche)
+		}
+	}
+	if s.Growth != nil {
+		brand, err := s.Growth.GetBrandDNA(p.AccountID)
+		if err != nil {
+			s.writeJSON(w, map[string]any{"ok": false, "error": "Không đọc được Brand DNA của kênh: " + err.Error()})
+			return
+		}
+		if brand != nil {
+			p.ChannelProfile.Positioning = brand.Positioning
+			p.ChannelProfile.Audience = brand.AudiencePersona
+			p.ChannelProfile.Tone = brand.ToneOfVoice
+			p.ChannelProfile.VisualStyle = brand.VisualStyle
+			p.ChannelProfile.RedLines = append([]string(nil), brand.RedLines...)
+		}
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
+	defer cancel()
+	prep, err := s.Studio.PrepareAffiliatePlan(ctx, p)
+	if err != nil {
+		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	shots := make([]affiliatePlanShotResponse, 0, len(prep.Shots))
+	for _, shot := range prep.Shots {
+		shots = append(shots, affiliatePlanShotResponse{
+			ProShot: shot, ManualPrompt: studio.AffiliateManualVideoPrompt(prep.Params.ProductName, shot),
+		})
+	}
+	s.writeJSON(w, map[string]any{
+		"ok": true, "plan_id": prep.ID, "seconds": prep.Params.Seconds,
+		"product_brief": prep.ProductBrief, "shots": shots,
+	})
+}
+
+func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.AffiliateParams, error) {
+	var p studio.AffiliateParams
+	upDir := s.Studio.UploadDir()
+	if err := os.MkdirAll(upDir, 0o755); err != nil {
+		return p, fmt.Errorf("không tạo được thư mục upload: %w", err)
+	}
+	accountID, _ := strconv.ParseInt(strings.TrimSpace(r.FormValue("account_id")), 10, 64)
+	if accountID <= 0 {
+		return p, fmt.Errorf("chọn kênh nhận diện nhân vật")
+	}
+
+	var modelPhotos []string
+	for _, key := range []string{"model_photos", "character_photos", "model_photo", "character_photo"} {
+		photos, err := saveUploads(r, key, upDir, 10)
+		if err != nil {
+			return p, fmt.Errorf("ảnh nhân vật lỗi: %w", err)
+		}
+		modelPhotos = append(modelPhotos, photos...)
+	}
+	if len(modelPhotos) > 0 {
+		library, err := s.Studio.ModelLibrary()
+		if err != nil {
+			return p, fmt.Errorf("không đọc được thư viện nhân vật: %w", err)
+		}
+		var saved []string
+		for _, path := range modelPhotos {
+			photo, err := library.Add(accountID, path)
+			if err != nil {
+				return p, fmt.Errorf("không lưu được ảnh nhân vật vào kênh: %w", err)
+			}
+			saved = append(saved, photo.Path)
+		}
+		modelPhotos = saved
+	}
+	if len(modelPhotos) == 0 {
+		var ids []int64
+		for _, raw := range r.MultipartForm.Value["model_photo_ids"] {
+			if id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64); err == nil && id > 0 {
+				ids = append(ids, id)
+			}
+		}
+		if len(ids) > 0 {
+			modelPhotos = s.findModelPhotosByIDsForAccount(accountID, ids)
+			if len(modelPhotos) != len(ids) {
+				return p, fmt.Errorf("ảnh đã chọn không thuộc thư viện của kênh đích")
+			}
+		}
+	}
+	if len(modelPhotos) == 0 {
+		if id, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("model_id")), 10, 64); err == nil && id > 0 {
+			modelPhotos = s.findModelPhotosByIDsForAccount(accountID, []int64{id})
+		}
+	}
+	if len(modelPhotos) == 0 || !fileExists(modelPhotos[0]) {
+		return p, fmt.Errorf("chọn hoặc tải ảnh nhân vật từ thư viện của kênh đã chọn")
+	}
+
+	productName := strings.TrimSpace(r.FormValue("product_name"))
+	niche := strings.TrimSpace(r.FormValue("niche"))
+	price := strings.TrimSpace(r.FormValue("product_price"))
+	affLink := strings.TrimSpace(r.FormValue("aff_link"))
+	var remotePhotoURLs []string
+	if raw := strings.TrimSpace(r.FormValue("product_id")); raw != "" && s.Products != nil {
+		if id, err := strconv.ParseInt(raw, 10, 64); err == nil && id > 0 {
+			if product, err := s.Products.GetByID(id); err == nil {
+				if productName == "" {
+					productName = product.Title
+				}
+				if niche == "" {
+					niche = product.Category
+				}
+				if price == "" && product.Price > 0 {
+					price = fmt.Sprintf("%.0f ₫", product.Price)
+				}
+				if affLink == "" {
+					affLink = product.ProductURL
+				}
+				remotePhotoURLs = append(remotePhotoURLs, product.ImageURLs...)
+			}
+		}
+	}
+	for _, raw := range strings.Split(strings.TrimSpace(r.FormValue("photo_urls")), "\n") {
+		if raw = strings.TrimSpace(raw); strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+			remotePhotoURLs = append(remotePhotoURLs, raw)
+		}
+	}
+	productPhoto, err := saveUpload(r, "product_photo", upDir)
+	if err != nil {
+		return p, fmt.Errorf("ảnh sản phẩm lỗi: %w", err)
+	}
+	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
+	if err != nil {
+		return p, fmt.Errorf("ảnh góc khác lỗi: %w", err)
+	}
+	for i, raw := range remotePhotoURLs {
+		if productPhoto != "" && len(extraPhotos) >= 5 {
+			break
+		}
+		dst := filepath.Join(upDir, fmt.Sprintf("%d-plan-product-%d.jpg", time.Now().UnixNano(), i))
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		err := studio.DownloadImage(ctx, raw, dst)
+		cancel()
+		if err == nil && fileExists(dst) {
+			if productPhoto == "" {
+				productPhoto = dst
+			} else {
+				extraPhotos = append(extraPhotos, dst)
+			}
+		}
+	}
+	if productPhoto == "" {
+		return p, fmt.Errorf("thiếu ảnh listing sản phẩm thật")
+	}
+	seconds, _ := strconv.Atoi(strings.TrimSpace(r.FormValue("seconds")))
+	if seconds <= 0 {
+		seconds = 60
+	}
+	p = studio.AffiliateParams{
+		Mode: studio.AffiliateModeShots, VideoEngine: "manual",
+		AccountID: accountID, ProductName: productName, ProductPrice: price,
+		Niche: niche, ProductCategory: strings.TrimSpace(r.FormValue("product_category")),
+		ProductUsage: strings.TrimSpace(r.FormValue("product_usage")),
+		ProductFocus: strings.TrimSpace(r.FormValue("product_focus")),
+		AffLink:      affLink, ModelPhoto: modelPhotos[0], ModelPhotos: modelPhotos,
+		ProductPhoto: productPhoto, ExtraPhotos: extraPhotos, Seconds: seconds,
+	}
+	if p.ProductName == "" {
+		return p, fmt.Errorf("nhập tên sản phẩm theo listing")
+	}
+	return p, nil
+}
+
+func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *http.Request, planID string) {
+	prep, err := s.Studio.GetAffiliatePreparation(planID)
+	if err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(err.Error()))
+		return
+	}
+	p := prep.Params
+	if raw := strings.TrimSpace(r.FormValue("account_id")); raw != "" {
+		id, _ := strconv.ParseInt(raw, 10, 64)
+		if id != p.AccountID {
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Kênh đã đổi sau khi lập shot plan; hãy lập lại plan."))
+			return
+		}
+	}
+	if name := strings.TrimSpace(r.FormValue("product_name")); name != "" && name != p.ProductName {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Tên sản phẩm đã đổi sau khi lập shot plan; hãy lập lại plan."))
+		return
+	}
+	if raw := strings.TrimSpace(r.FormValue("seconds")); raw != "" {
+		seconds, _ := strconv.Atoi(raw)
+		if seconds > 0 && seconds != p.Seconds {
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Thời lượng đã đổi sau khi lập shot plan; hãy lập lại plan."))
+			return
+		}
+	}
+	clips, err := saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
+	if err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Clip chuyển động lỗi: "+err.Error()))
+		return
+	}
+	if len(clips) != len(prep.Shots) {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(fmt.Sprintf("Shot plan cần đúng %d clip theo đúng thứ tự; đã nhận %d.", len(prep.Shots), len(clips))))
+		return
+	}
+	p.Clips = clips
+	p.PreparedPlanID = prep.ID
+	p.BPM, _ = strconv.Atoi(r.FormValue("bpm"))
+	p.MusicStart, _ = strconv.ParseFloat(r.FormValue("music_start"), 64)
+	p.MusicTitle = strings.TrimSpace(r.FormValue("music_title"))
+	p.MusicArtist = strings.TrimSpace(r.FormValue("music_artist"))
+	p.FixedCaption = strings.TrimSpace(r.FormValue("fixed_caption"))
+	p.MusicPath, err = saveUpload(r, "music_file", s.Studio.UploadDir())
+	if err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("File nhạc lỗi: "+err.Error()))
+		return
+	}
+	if p.MusicPath == "" {
+		if u := strings.TrimSpace(r.FormValue("music_url")); u != "" {
+			dst := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("%d-affiliate-music.m4a", time.Now().UnixNano()))
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
+			err = studio.DownloadAudio(ctx, u, dst)
+			cancel()
+			if err != nil {
+				seeOther(w, r, "/studio?err="+url.QueryEscape("Không tải được nhạc: "+err.Error()))
+				return
+			}
+			p.MusicPath = dst
+		}
+	}
+	if p.MusicPath == "" && strings.TrimSpace(r.FormValue("music_category")) != "" {
+		p.MusicPath = studio.FindTrendingMusic(strings.TrimSpace(r.FormValue("music_category")))
+		if p.MusicPath == "" {
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Không tìm thấy nhạc cục bộ cho lựa chọn này."))
+			return
+		}
+	}
+	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job: "+err.Error()))
+		return
+	}
+	seeOther(w, r, "/studio/jobs?tab=running&msg=created")
+}
+
 // handleStudioAffiliateCreate queues an affiliate video job.
 func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Request) {
 	studioErr := func(msg string) {
@@ -288,261 +717,44 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		studioErr("Không đọc được form — thử lại.")
 		return
 	}
-	upDir := s.Studio.UploadDir()
-	var modelPhotos []string
-	for _, key := range []string{"model_photos", "character_photos", "model_photo", "character_photo"} {
-		if photos, _ := saveUploads(r, key, upDir, 10); len(photos) > 0 {
-			modelPhotos = append(modelPhotos, photos...)
-		}
-	}
-	if len(modelPhotos) == 0 {
-		if p1, _ := saveUpload(r, "model_photo", upDir); p1 != "" {
-			modelPhotos = append(modelPhotos, p1)
-		} else if p2, _ := saveUpload(r, "character_photo", upDir); p2 != "" {
-			modelPhotos = append(modelPhotos, p2)
-		}
-	}
-
-	acctName := strings.TrimSpace(r.FormValue("account"))
-	var acctID int64
-	if rawID := strings.TrimSpace(r.FormValue("account_id")); rawID != "" {
-		acctID, _ = strconv.ParseInt(rawID, 10, 64)
-	}
-	if acctID == 0 && acctName != "" && s.Mgr != nil {
-		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
-			for _, a := range accounts {
-				if a != nil && a.Username == acctName {
-					acctID = a.ID
-					break
-				}
-			}
-		}
-	}
-	if len(modelPhotos) > 0 && acctID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			for _, pth := range modelPhotos {
-				_, _ = ms.Add(acctID, pth)
-			}
-		}
-	}
-	if len(modelPhotos) == 0 && acctID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			if photos, err := ms.List(acctID); err == nil && len(photos) > 0 {
-				for _, ph := range photos {
-					modelPhotos = append(modelPhotos, ph.Path)
-				}
-			}
-		}
-	}
-	if len(modelPhotos) == 0 {
-		if midStr := strings.TrimSpace(r.FormValue("model_id")); midStr != "" {
-			if mid, err := strconv.ParseInt(midStr, 10, 64); err == nil && mid > 0 {
-				if photoPath, perr := s.findModelPhotoByID(mid); perr == nil && photoPath != "" {
-					modelPhotos = append(modelPhotos, photoPath)
-				}
-			}
-		}
-	}
-	var modelPhoto string
-	if len(modelPhotos) > 0 {
-		modelPhoto = modelPhotos[0]
-	}
-	prodName := strings.TrimSpace(r.FormValue("product_name"))
-	niche := strings.TrimSpace(r.FormValue("niche"))
-	priceVal := strings.TrimSpace(r.FormValue("product_price"))
-	affLinkVal := strings.TrimSpace(r.FormValue("aff_link"))
-
-	var remotePhotoURLs []string
-	if pidStr := strings.TrimSpace(r.FormValue("product_id")); pidStr != "" && s.Products != nil {
-		if pid, err := strconv.ParseInt(pidStr, 10, 64); err == nil && pid > 0 {
-			if prod, perr := s.Products.GetByID(pid); perr == nil {
-				if prodName == "" {
-					prodName = prod.Title
-				}
-				if priceVal == "" && prod.Price > 0 {
-					priceVal = fmt.Sprintf("%.0f ₫", prod.Price)
-				}
-				if niche == "" && prod.Category != "" {
-					niche = prod.Category
-				}
-				if affLinkVal == "" && prod.ProductURL != "" {
-					affLinkVal = prod.ProductURL
-				}
-				remotePhotoURLs = append(remotePhotoURLs, prod.ImageURLs...)
-			}
-		}
-	}
-	rawUrls := strings.TrimSpace(r.FormValue("photo_urls"))
-	if rawUrls == "" {
-		rawUrls = strings.TrimSpace(r.FormValue("photo_url"))
-	}
-	for _, u := range strings.Split(rawUrls, "\n") {
-		u = strings.TrimSpace(u)
-		if u != "" {
-			remotePhotoURLs = append(remotePhotoURLs, u)
-		}
-	}
-
-	productPhoto, err := saveUpload(r, "product_photo", upDir)
-	if err != nil {
-		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
+	planID := strings.TrimSpace(r.FormValue("prepared_plan_id"))
+	if planID == "" {
+		studioErr("Lập shot plan trước khi tải clip chuyển động.")
 		return
 	}
-	if productPhoto == "" {
-		if gen := strings.TrimSpace(r.FormValue("generated_photo_path")); gen != "" {
-			if _, serr := os.Stat(gen); serr == nil {
-				productPhoto = gen
-			}
-		}
-	}
-
-	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
-	if err != nil {
-		studioErr("Ảnh thêm lỗi: " + err.Error())
-		return
-	}
-
-	// Tải ảnh sản phẩm thật từ URL (nếu người dùng nhập URL hoặc chọn từ kệ)
-	for i, u := range remotePhotoURLs {
-		if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
-			continue
-		}
-		if productPhoto != "" && len(extraPhotos) >= 5 {
-			break
-		}
-		dlDst := filepath.Join(upDir, fmt.Sprintf("%d-dl-prod-%d.jpg", time.Now().UnixNano(), i))
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		derr := studio.DownloadImage(ctx, u, dlDst)
-		cancel()
-		if derr == nil && fileExists(dlDst) {
-			if productPhoto == "" {
-				productPhoto = dlDst
-			} else {
-				extraPhotos = append(extraPhotos, dlDst)
-			}
-		}
-	}
-
-	if productPhoto == "" {
-		studioErr("Thiếu ảnh sản phẩm. Tải ảnh lên hoặc chọn sản phẩm có ảnh từ kho trước khi dựng.")
-		return
-	}
-
-	musicPath, err := saveUpload(r, "music_file", upDir)
-	if err != nil {
-		studioErr("File nhạc lỗi: " + err.Error())
-		return
-	}
-	// Optional: direct audio URL for the trending sound.
-	if musicPath == "" {
-		if u := strings.TrimSpace(r.FormValue("music_url")); u != "" {
-			dst := filepath.Join(upDir, fmt.Sprintf("%d-music.m4a", time.Now().UnixNano()))
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
-			defer cancel()
-			if derr := studio.DownloadAudio(ctx, u, dst); derr != nil {
-				studioErr("Không tải được nhạc từ link: " + derr.Error())
-				return
-			}
-			musicPath = dst
-		}
-	}
-	if musicPath == "" {
-		category := strings.TrimSpace(r.FormValue("music_category"))
-		if category != "" {
-			musicPath = studio.FindTrendingMusic(category)
-			if musicPath == "" {
-				studioErr("Không tìm thấy nhạc cục bộ cho lựa chọn này. Hãy tải tệp nhạc lên hoặc chọn Không thêm nhạc.")
-				return
-			}
-		}
-	}
-	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
-	bpm, _ := strconv.Atoi(r.FormValue("bpm"))
-	musicStart, _ := strconv.ParseFloat(r.FormValue("music_start"), 64)
-	seconds = clampInt(seconds, 10, 120)
-	bpm = clampInt(bpm, 60, 200)
-	if musicStart < 0 {
-		musicStart = 0
-	}
-	var assignedDepts []string
-	if r.MultipartForm != nil {
-		assignedDepts = r.MultipartForm.Value["assigned_depts"]
-	}
-	if len(assignedDepts) == 0 {
-		assignedDepts = r.Form["assigned_depts"]
-	}
-	if len(assignedDepts) == 0 {
-		assignedDepts = []string{"DEP-01", "DEP-02", "DEP-03", "DEP-04", "DEP-05"}
-	}
-
-	voText := strings.TrimSpace(r.FormValue("voiceover_text"))
-	if voText == "" && prodName != "" {
-		priceStr := ""
-		if priceVal != "" {
-			priceStr = ", giá ưu đãi chỉ " + priceVal
-		}
-		voText = fmt.Sprintf("Khám phá %s chính hãng. Thiết kế sang trọng, chất lượng cao cấp%s. Bấm vào giỏ hàng góc trái săn ưu đãi ngay hôm nay!", prodName, priceStr)
-	}
-
-	p := studio.AffiliateParams{
-		Mode:          r.FormValue("mode"),
-		Niche:         niche,
-		ProductName:   prodName,
-		ProductPrice:  priceVal,
-		AffLink:       affLinkVal,
-		FixedCaption:  strings.TrimSpace(r.FormValue("caption")),
-		VoiceoverText: voText,
-		ModelPhoto:    modelPhoto,
-		ModelPhotos:   modelPhotos,
-		ProductPhoto:  productPhoto,
-		ExtraPhotos:   extraPhotos,
-		Seconds:       seconds,
-		BPM:           bpm,
-		MusicPath:     musicPath,
-		MusicStart:    musicStart,
-		MusicTitle:    strings.TrimSpace(r.FormValue("music_title")),
-		MusicArtist:   strings.TrimSpace(r.FormValue("music_artist")),
-		VideoEngine:   strings.TrimSpace(r.FormValue("video_engine")),
-		AssignedDepts: assignedDepts,
-	}
-	if p.ProductName == "" {
-		p.ProductName = "Sản phẩm"
-	}
-
-	sampleClip := strings.TrimSpace(r.FormValue("sample_clip"))
-	if sampleClip != "" {
-		candidates := []string{
-			filepath.Join(s.DataDir, "clips", "fashion", sampleClip),
-			filepath.Join(s.DataDir, "clips", "fashion", sampleClip+".mp4"),
-			filepath.Join("data", "clips", "fashion", sampleClip),
-			filepath.Join("data", "clips", "fashion", sampleClip+".mp4"),
-		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				p.Clips = []string{cand}
-				break
-			}
-		}
-	}
-	// Chỉ sử dụng clips nếu người dùng chọn rõ ràng sampleClip
-
-	jobID, err := s.Studio.CreateAffiliateJob(p)
-	if err != nil {
-		studioErr("Không tạo được job: " + err.Error())
-		return
-	}
-	seeOther(w, r, "/studio/jobs?tab=running&msg=created&job_id="+jobID)
+	s.handleStudioAffiliateCreatePrepared(w, r, planID)
 }
 
 // (R2-W3), JSON for polling when Accept: application/json.
 func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		var jobs []studioJobView
+		if ids := r.URL.Query()["id"]; len(ids) > 0 {
+			jobs = make([]studioJobView, 0, len(ids))
+			seen := make(map[string]struct{}, len(ids))
+			for _, id := range ids {
+				if _, ok := seen[id]; ok {
+					continue
+				}
+				seen[id] = struct{}{}
+				if s.Studio == nil {
+					continue
+				}
+				j, ok := s.Studio.GetJob(id)
+				if ok {
+					jobs = append(jobs, s.studioJobViews([]studio.Job{j})[0])
+				}
+			}
+		} else if s.Studio != nil {
+			jobs = s.studioJobViews(activeStudioJobs(s.Studio.ListJobs(50)))
+		}
+		s.writeJSON(w, map[string]any{"jobs": jobs})
+		return
+	}
+
 	var allJobs []studioJobView
 	if s.Studio != nil {
 		allJobs = s.studioJobViews(s.Studio.ListJobs(50))
-	}
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
-		s.writeJSON(w, map[string]any{"jobs": allJobs})
-		return
 	}
 
 	var runningJobs, doneJobs, failedJobs []studioJobView
@@ -630,6 +842,17 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 	))
 }
 
+// activeStudioJobs keeps status-only polling focused on work still in progress.
+func activeStudioJobs(jobs []studio.Job) []studio.Job {
+	active := make([]studio.Job, 0, len(jobs))
+	for _, job := range jobs {
+		if job.Status == studio.StatusQueued || job.Status == studio.StatusRunning {
+			active = append(active, job)
+		}
+	}
+	return active
+}
+
 // handleStudioScheduleSave saves the autopilot schedule settings directly from Studio.
 func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request) {
 	if s.Ledger == nil {
@@ -701,15 +924,23 @@ func (s *Server) handleStudioJobCancel(w http.ResponseWriter, r *http.Request) {
 // handleStudioJobDelete removes a job and all its files.
 func (s *Server) handleStudioJobDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	returnTo := "/studio/jobs"
+	if r.FormValue("return_to") == "/" {
+		returnTo = "/"
+	}
 	if s.Studio == nil {
-		seeOther(w, r, "/studio/jobs")
+		seeOther(w, r, returnTo)
 		return
 	}
 	if err := s.Studio.DeleteJob(id); err != nil {
-		seeOther(w, r, "/studio?err="+url.QueryEscape("Không xoá được job: "+err.Error()))
+		seeOther(w, r, returnTo+"?err="+url.QueryEscape("Không xoá được job: "+err.Error()))
 		return
 	}
-	seeOther(w, r, "/studio/jobs")
+	if returnTo == "/" {
+		seeOther(w, r, "/?ok="+url.QueryEscape("Đã xóa tác vụ thất bại."))
+		return
+	}
+	seeOther(w, r, "/studio/jobs?msg="+url.QueryEscape("Đã xóa job."))
 }
 
 // handleStudioJobRetry creates a new affiliate job from an old job's params.
@@ -733,6 +964,12 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không đọc được tham số job cũ"))
 		return
 	}
+	planID, err := s.Studio.ReissueAffiliatePreparation(p)
+	if err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
+		return
+	}
+	p.PreparedPlanID = planID
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job mới: "+err.Error()))
 		return
@@ -1039,7 +1276,7 @@ func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.(mp4|srt|vtt|mp3|wav|jpg|jpeg|png|webp)$`)
+var mediaNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+\.(mp4|srt|vtt|mp3|wav|jpg|jpeg|png|webp|md|txt)$`)
 
 func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
@@ -1146,6 +1383,12 @@ func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 	}
 	p = reorderPhotos(p, r.FormValue("order"))
 	p.FixedCaption = strings.TrimSpace(r.FormValue("caption"))
+	planID, err := s.Studio.ReissueAffiliatePreparation(p)
+	if err != nil {
+		back("err=" + url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
+		return
+	}
+	p.PreparedPlanID = planID
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
 		back("err=" + url.QueryEscape("Không dựng lại được: "+err.Error()))
 		return
@@ -1311,338 +1554,6 @@ func (s *Server) handleAPITikTokAnalyze(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s.writeJSON(w, map[string]any{"ok": true, "video": video})
-}
-
-// handleStudioMuseImport tải video đã tạo từ Muse AI, lồng nhạc trending TikTok và lưu vào Studio.
-func (s *Server) handleStudioMuseImport(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Studio chưa sẵn sàng"))
-		return
-	}
-	_ = r.ParseForm()
-	videoURL := strings.TrimSpace(r.FormValue("video_url"))
-	if videoURL == "" {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Vui lòng nhập link video từ Muse AI"))
-		return
-	}
-	topic := strings.TrimSpace(r.FormValue("topic"))
-	if topic == "" {
-		topic = "Video Chuyển Động Muse AI"
-	}
-	genre := strings.TrimSpace(r.FormValue("genre"))
-	if genre == "" {
-		genre = "dance"
-	}
-	account := strings.TrimSpace(r.FormValue("account"))
-	musicStyle := strings.TrimSpace(r.FormValue("music_style"))
-	if musicStyle == "" {
-		musicStyle = "trending"
-	}
-
-	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
-	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
-	_ = os.MkdirAll(workDir, 0o755)
-
-	rawVideo := filepath.Join(workDir, "muse_raw.mp4")
-
-	client := &http.Client{Timeout: 90 * time.Second}
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, videoURL, nil)
-	if err != nil {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Link video không hợp lệ: "+err.Error()))
-		return
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
-	resp, err := client.Do(req)
-	if err != nil {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể tải video từ Muse AI: "+err.Error()))
-		return
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape(fmt.Sprintf("Muse AI trả về mã HTTP %d", resp.StatusCode)))
-		return
-	}
-	f, err := os.Create(rawVideo)
-	if err != nil {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể lưu video: "+err.Error()))
-		return
-	}
-	_, _ = io.Copy(f, resp.Body)
-	f.Close()
-
-	finalVideoName := fmt.Sprintf("muse_%s.mp4", jobID)
-	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
-
-	nowStr := time.Now().Format("15:04:05")
-	logMsg := fmt.Sprintf("%s ✓ Nhập video từ Muse AI thành công: %s\n", nowStr, filepath.Base(rawVideo))
-
-	if musicStyle != "keep_original" {
-		trendMusic := studio.FindTrendingMusic(genre)
-		if trendMusic != "" {
-			logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc TikTok Trending: %s\n", nowStr, filepath.Base(trendMusic))
-			if merr := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); merr != nil {
-				_ = os.Rename(rawVideo, finalVideoPath)
-			}
-		} else {
-			_ = os.Rename(rawVideo, finalVideoPath)
-		}
-	} else {
-		_ = os.Rename(rawVideo, finalVideoPath)
-	}
-
-	caption := studio.TemplateCaption(topic, genre)
-	paramsJSON, _ := json.Marshal(map[string]any{
-		"topic":       topic,
-		"genre":       genre,
-		"account":     account,
-		"source":      "muse_ai",
-		"video_url":   videoURL,
-		"music_style": musicStyle,
-	})
-	nowDB := time.Now().Format("2006-01-02 15:04:05")
-	if s.db != nil {
-		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
-			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
-			jobID, "Muse AI: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
-	}
-
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Nhập video từ Muse AI job=%s: %s", jobID, topic), nil)
-	}
-
-	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã nhập thành công video từ Muse AI và ghép nhạc trending (Job: %s)!", jobID)))
-}
-
-// handleStudioFlowImport tải video 480p đã tạo từ Google Flow, chạy bộ remaster 4K UHD VideoToolbox, ghép nhạc và lưu vào Studio.
-func (s *Server) handleStudioFlowImport(w http.ResponseWriter, r *http.Request) {
-	if s.Studio == nil {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Studio chưa sẵn sàng"))
-		return
-	}
-	_ = r.ParseForm()
-	videoURL := strings.TrimSpace(r.FormValue("video_url"))
-	if videoURL == "" {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape("Vui lòng nhập link video hoặc file path từ Google Flow"))
-		return
-	}
-	topic := strings.TrimSpace(r.FormValue("topic"))
-	if topic == "" {
-		topic = "Google Flow 4K Video"
-	}
-	genre := strings.TrimSpace(r.FormValue("genre"))
-	if genre == "" {
-		genre = "fashion"
-	}
-	remaster := strings.TrimSpace(r.FormValue("remaster"))
-	if remaster == "" {
-		remaster = "4k"
-	}
-
-	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
-	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
-	_ = os.MkdirAll(workDir, 0o755)
-
-	rawVideo := filepath.Join(workDir, "flow_raw.mp4")
-
-	if fileExists(videoURL) {
-		b, err := os.ReadFile(videoURL)
-		if err != nil {
-			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể đọc file video local: "+err.Error()))
-			return
-		}
-		_ = os.WriteFile(rawVideo, b, 0o644)
-	} else {
-		client := &http.Client{Timeout: 90 * time.Second}
-		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, videoURL, nil)
-		if err != nil {
-			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Link video không hợp lệ: "+err.Error()))
-			return
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")
-		resp, err := client.Do(req)
-		if err != nil {
-			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể tải video từ Google Flow: "+err.Error()))
-			return
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			seeOther(w, r, "/web-ai?err="+url.QueryEscape(fmt.Sprintf("Google Flow trả về mã HTTP %d", resp.StatusCode)))
-			return
-		}
-		f, err := os.Create(rawVideo)
-		if err != nil {
-			seeOther(w, r, "/web-ai?err="+url.QueryEscape("Không thể lưu video: "+err.Error()))
-			return
-		}
-		_, _ = io.Copy(f, resp.Body)
-		f.Close()
-	}
-
-	finalVideoName := fmt.Sprintf("flow_4k_%s.mp4", jobID)
-	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
-
-	nowStr := time.Now().Format("15:04:05")
-	logMsg := fmt.Sprintf("%s ✓ Nhận diện video SD 480p từ Google Flow: %s\n", nowStr, filepath.Base(rawVideo))
-
-	// Remaster 4K UHD VideoToolbox
-	if remaster == "4k" || studio.IsMasterQuality4K() {
-		logMsg += fmt.Sprintf("%s ✨ Kích hoạt bộ lọc Apple Silicon VideoToolbox: hqdn3d + Lanczos 4K (2160x3840) + Unsharp micro-contrast mask...\n", nowStr)
-		remastered := filepath.Join(workDir, "remastered_4k.mp4")
-		if err := studio.UpscaleVideoTo4K(r.Context(), rawVideo, remastered, "9:16"); err == nil && fileExists(remastered) {
-			logMsg += fmt.Sprintf("%s ✓ Hoàn tất Remaster lên 4K Ultra HD 35 Mbps sắc nét tuyệt đối, triệt tiêu nhiễu nén SD!\n", nowStr)
-			_ = os.Rename(remastered, rawVideo)
-		}
-	}
-
-	trendMusic := studio.FindTrendingMusic(genre)
-	if trendMusic != "" {
-		logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc TikTok Trending (%s): %s\n", nowStr, genre, filepath.Base(trendMusic))
-		if merr := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); merr != nil {
-			_ = os.Rename(rawVideo, finalVideoPath)
-		}
-	} else {
-		_ = os.Rename(rawVideo, finalVideoPath)
-	}
-
-	caption := studio.TemplateCaption(topic, genre)
-	paramsJSON, _ := json.Marshal(map[string]any{
-		"topic":     topic,
-		"genre":     genre,
-		"source":    "google_flow",
-		"video_url": videoURL,
-		"remaster":  remaster,
-	})
-	nowDB := time.Now().Format("2006-01-02 15:04:05")
-	if s.db != nil {
-		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
-			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
-			jobID, "Google Flow 4K: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
-	}
-
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Google Flow 480p -> 4K UHD job=%s: %s", jobID, topic), nil)
-	}
-
-	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã Remaster 4K thành công video từ Google Flow (Job: %s)!", jobID)))
-}
-
-// handleStudioLeonardoImport imports an MP4 exported manually from Leonardo.Ai.
-func (s *Server) handleStudioLeonardoImport(w http.ResponseWriter, r *http.Request) {
-	redirectError := func(message string) {
-		seeOther(w, r, "/web-ai?err="+url.QueryEscape(message))
-	}
-	if s.Studio == nil {
-		redirectError("Studio chưa sẵn sàng")
-		return
-	}
-
-	const maxVideoBytes = 200 << 20
-	r.Body = http.MaxBytesReader(w, r.Body, maxVideoBytes)
-	if err := r.ParseMultipartForm(16 << 20); err != nil {
-		redirectError("Không đọc được tệp MP4 (giới hạn 200 MB)")
-		return
-	}
-	if r.MultipartForm != nil {
-		defer r.MultipartForm.RemoveAll()
-	}
-
-	video, header, err := r.FormFile("video_file")
-	if err != nil {
-		redirectError("Chọn video MP4 đã tải từ Leonardo.Ai")
-		return
-	}
-	defer video.Close()
-	if header.Size <= 0 || header.Size > maxVideoBytes || strings.ToLower(filepath.Ext(header.Filename)) != ".mp4" {
-		redirectError("Chỉ nhận tệp MP4 tối đa 200 MB")
-		return
-	}
-	headerBytes := make([]byte, 12)
-	if _, err := io.ReadFull(video, headerBytes); err != nil || string(headerBytes[4:8]) != "ftyp" {
-		redirectError("Tệp không có định dạng MP4 hợp lệ")
-		return
-	}
-	if _, err := video.Seek(0, io.SeekStart); err != nil {
-		redirectError("Không thể đọc tệp video")
-		return
-	}
-
-	topic := strings.TrimSpace(r.FormValue("topic"))
-	if topic == "" {
-		topic = "Video Leonardo AI"
-	}
-	genre := strings.TrimSpace(r.FormValue("genre"))
-	if genre == "" {
-		genre = "fashion"
-	}
-	account := strings.TrimSpace(r.FormValue("account"))
-	musicStyle := strings.TrimSpace(r.FormValue("music_style"))
-	if musicStyle == "" {
-		musicStyle = "keep_original"
-	}
-
-	jobID := fmt.Sprintf("%d", time.Now().UnixNano())
-	workDir := filepath.Join(s.DataDir, "output", "studio", jobID)
-	if err := os.MkdirAll(workDir, 0o755); err != nil {
-		redirectError("Không thể tạo thư mục nhận video")
-		return
-	}
-	rawVideo := filepath.Join(workDir, "leonardo_raw.mp4")
-	dst, err := os.Create(rawVideo)
-	if err != nil {
-		redirectError("Không thể lưu video")
-		return
-	}
-	written, copyErr := io.Copy(dst, io.LimitReader(video, maxVideoBytes+1))
-	closeErr := dst.Close()
-	if copyErr != nil || closeErr != nil || written != header.Size || written > maxVideoBytes {
-		_ = os.Remove(rawVideo)
-		redirectError("Không thể lưu đầy đủ tệp video")
-		return
-	}
-	if err := os.MkdirAll(s.OutDir, 0o755); err != nil {
-		redirectError("Không thể mở thư mục video Studio")
-		return
-	}
-
-	finalVideoName := fmt.Sprintf("leonardo_%s.mp4", jobID)
-	finalVideoPath := filepath.Join(s.OutDir, finalVideoName)
-	nowStr := time.Now().Format("15:04:05")
-	logMsg := fmt.Sprintf("%s ✓ Nhập MP4 từ Leonardo.Ai thành công: %s\n", nowStr, filepath.Base(header.Filename))
-	if account != "" {
-		logMsg += fmt.Sprintf("%s ✓ Tài khoản Leonardo: %s\n", nowStr, account)
-	}
-	if musicStyle == "trending" {
-		trendMusic := studio.FindTrendingMusic(genre)
-		if trendMusic != "" {
-			logMsg += fmt.Sprintf("%s ✓ Hòa âm nhạc nền: %s\n", nowStr, filepath.Base(trendMusic))
-			if err := studio.MuxMusic(r.Context(), rawVideo, trendMusic, 0, finalVideoPath); err == nil {
-				rawVideo = ""
-			}
-		}
-	}
-	if rawVideo != "" {
-		if err := os.Rename(rawVideo, finalVideoPath); err != nil {
-			redirectError("Không thể hoàn tất lưu video vào Studio")
-			return
-		}
-	}
-
-	caption := studio.TemplateCaption(topic, genre)
-	paramsJSON, _ := json.Marshal(map[string]any{
-		"topic": topic, "genre": genre, "account": account,
-		"source": "leonardo_ai", "source_filename": filepath.Base(header.Filename),
-		"music_style": musicStyle,
-	})
-	nowDB := time.Now().Format("2006-01-02 15:04:05")
-	if s.db != nil {
-		_, _ = s.db.Exec(`INSERT INTO studio_jobs(id, kind, title, status, progress, log, output, params, created_at, finished_at, caption)
-			VALUES(?, 'viral', ?, 'done', 100, ?, ?, ?, ?, ?, ?)`,
-			jobID, "Leonardo AI: "+topic, logMsg, finalVideoName, string(paramsJSON), nowDB, nowDB, caption)
-	}
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("ai_orchestrator", "viral_produce", nil, fmt.Sprintf("Nhập video Leonardo AI job=%s: %s", jobID, topic), nil)
-	}
-	seeOther(w, r, "/studio/jobs?tab=done&notice="+url.QueryEscape(fmt.Sprintf("Đã nhập video Leonardo AI vào Studio (Job: %s)", jobID)))
 }
 
 // handleAPIFaceSwapStatus trả về thông tin trạng thái hoạt động của Face Swap engine cục bộ.

@@ -25,11 +25,11 @@
 </nav>
 
 <!-- =========================================================================
-     TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Muse AI)
+     TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Grok, Muse AI, Google Flow)
      ========================================================================= -->
 <div id="panel-webai" class="settings-tab-panel" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <h3 style="margin:0">Tài Khoản AI (ChatGPT, Claude, Gemini, Grok, Muse)</h3>
+    <h3 style="margin:0">Tài khoản AI (ChatGPT, Claude, Gemini, Grok, Muse, Google Flow)</h3>
     <div style="display:flex;gap:8px;align-items:center">
       <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()" style="font-weight:700">
         ⚡ Kiểm Tra Tất Cả Phiên
@@ -39,17 +39,17 @@
   </div>
 
   <section class="card" style="margin-bottom:16px;padding:16px">
-    <h3 style="margin:0 0 8px">Video tools with daily free credits</h3>
+    <h3 style="margin:0 0 8px">Công cụ tạo video</h3>
     <div class="grid2" style="gap:12px">
       <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
-        <strong>Google Flow · 50 daily credits</strong>
-        <p class="hint" style="margin:7px 0">No API key. Sign in with Google at <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>. Connect the Google session above with “Sync Google from Gemini”. Create in Flow, download MP4, then import in <a href="/web-ai">Web AI Hub</a>. Free credits and models vary by region.</p>
-        <span class="badge badge-dim">Manual generation · no automatic Flow API adapter</span>
+        <strong>Google Flow · tạo video</strong>
+        <p class="hint" style="margin:7px 0">Tạo job từ Studio bằng phiên Google Flow đã kết nối. MP4 được tải thẳng vào thư viện Studio.</p>
+        <span class="badge badge-dim">Phiên web · không cần API key</span>
       </article>
       <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
-        <strong>Leonardo.Ai · 150 daily Fast Tokens</strong>
-        <p class="hint" style="margin:7px 0">Sign in at <a href="https://leonardo.ai/text-to-video" target="_blank" rel="noopener">Leonardo Text to Video</a>, generate there, then import MP4 in <a href="/web-ai">Web AI Hub</a>. Website tokens do not apply to Leonardo’s API; API uses separate <a href="https://docs.leonardo.ai/me/docs/pricing-and-plans-faq" target="_blank" rel="noopener">pay-as-you-go billing</a>.</p>
-        <span class="badge badge-dim">Manual prompt handoff + MP4 import · no API key configured</span>
+        <strong>Muse Chat · kịch bản, ảnh, video</strong>
+        <p class="hint" style="margin:7px 0">Studio gửi yêu cầu qua gateway của phiên Muse đã lưu; job chạy nền và tự tải media về.</p>
+        <span class="badge badge-dim">Gateway trực tiếp · tạo nội dung không mở cửa sổ trình duyệt</span>
       </article>
     </div>
   </section>
@@ -69,7 +69,13 @@
           <span class="status-pill status-pill-warn">⏳ {{.CooldownCount}} cooldown</span>
           {{else}}
           {{if eq .Platform.ID "googleflow"}}
-          <span class="status-pill status-pill-off">Chưa đồng bộ</span>
+          {{if gt .TotalCount 0}}
+          <span class="status-pill status-pill-warn">⚠ {{.TotalCount}} tài khoản cần kiểm tra</span>
+          {{else}}
+          <span class="status-pill status-pill-off">Chưa kết nối</span>
+          {{end}}
+          {{else if gt .TotalCount 0}}
+          <span class="status-pill status-pill-warn">⚠ {{.TotalCount}} tài khoản cần kiểm tra</span>
           {{else}}
           <span class="status-pill status-pill-off">Chưa kết nối</span>
           {{end}}
@@ -130,19 +136,19 @@
         {{else}}
           <div class="webai-account-empty">
             <strong>Chưa có tài khoản</strong>
-            <span>{{if eq .Platform.ID "googleflow"}}Đồng bộ phiên Google từ Gemini để kết nối.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
+            <span>{{if eq .Platform.ID "googleflow"}}Đăng nhập Flow hoặc đồng bộ phiên Google từ Gemini.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
           </div>
         {{end}}
       </template>
 
       <div class="webai-card-actions">
+        <button type="button" class="btn btn-primary btn-sm webai-login-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
+          <span>🌐</span> Kết nối phiên
+        </button>
+        {{if eq .Platform.ID "museai"}}<span class="hint">Cửa sổ chỉ dùng để đăng nhập; tạo nội dung từ Studio chạy nền.</span>{{end}}
         {{if eq .Platform.ID "googleflow"}}
         <button type="button" class="btn btn-primary btn-sm webai-google-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="syncGoogleFlowAccount(this)" title="Đồng bộ phiên Google đang kết nối trong Gemini">
           🔄 Đồng bộ Google từ Gemini
-        </button>
-        {{else}}
-        <button type="button" class="btn btn-primary btn-sm webai-login-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
-          <span>🌐</span> Đăng Nhập Tự Động
         </button>
         {{end}}
       </div>

@@ -8,10 +8,10 @@
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1>Video</h1>
+    <h1>Video &amp; nội dung</h1>
   </div>
   <div class="webai-header-actions">
-    <a href="/" class="btn btn-primary btn-sm">+ Tạo video mới</a>
+    <a href="/studio/create" class="btn btn-primary btn-sm">+ Tạo nội dung mới</a>
   </div>
 </div>
 
@@ -130,7 +130,7 @@
 <!-- RUNNING JOBS VIEW: Full workflow & real-time progress -->
 <div style="display:flex;flex-direction:column;gap:16px">
   {{range .Jobs}}
-  <div class="job studio-job-card" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative">
+  <div class="job studio-job-card studio-live-job" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">
       <div>
         <h3 style="margin:0 0 6px;font-size:16.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -180,6 +180,7 @@
         <div style="display:flex;align-items:center;gap:5px">
           <span class="badge badge-info" style="font-size:10px;font-weight:700">{{.KindLabel}}</span>
           <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
+          {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
         </div>
         <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
           <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
@@ -190,7 +191,7 @@
         {{.Title}}
       </div>
 
-      {{if .Output}}
+      {{if eq .OutputKind "video"}}
       <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video 9:16">
         <video class="player" preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
         <div class="video-play-overlay">
@@ -198,6 +199,12 @@
         </div>
         <span class="video-badge-spec">📱 1080×1920 (9:16)</span>
       </div>
+      {{else if eq .OutputKind "image"}}
+      <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
+        <img src="/media/{{.Output}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:contain">
+      </div>
+      {{else if eq .OutputKind "text"}}
+      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="display:block;padding:24px 10px;text-align:center;margin-bottom:10px">📄 Mở kịch bản</a>
       {{else}}
       <div style="padding:24px 10px;text-align:center;background:var(--bg3);border-radius:10px;border:1px dashed var(--border);margin-bottom:10px">
         <span style="font-size:24px;display:block;margin-bottom:4px">⚠️</span>
@@ -212,9 +219,9 @@
     </div>
 
     <div>
-      {{if .Output}}
+      {{if eq .OutputKind "video"}}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        <a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>
+        {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa đăng</span>{{end}}
         <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải MP4</a>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
@@ -235,6 +242,13 @@
         </form>
       </details>
       {{end}}
+      {{else if eq .OutputKind "image"}}
+      <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="display:block;text-align:center">⬇ Tải ảnh</a>
+      {{else if eq .OutputKind "text"}}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <a class="btn btn-primary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="text-align:center">Mở kịch bản</a>
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="text-align:center">Tải .md</a>
+      </div>
       {{else}}
       <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="width:100%;font-size:11.5px">🎬 Storyboard Từng Cảnh</button>
       {{end}}
@@ -246,29 +260,7 @@
 </div>
 
 {{else}}
-<!-- ALL JOBS VIEW: Sectioned with Running on top and Completed 4-Video Grid below -->
-{{if .RunningJobs}}
-<div style="margin-bottom:24px">
-  <h3 style="margin:0 0 12px;font-size:16px;display:flex;align-items:center;gap:8px">
-    <span class="pulse-dot"></span> Đang render ({{len .RunningJobs}})
-  </h3>
-  <div style="display:flex;flex-direction:column;gap:14px">
-    {{range .RunningJobs}}
-    <div class="job studio-job-card" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h4 style="margin:0;font-size:15px;color:var(--text)">{{.Title}} <span class="badge badge-info" style="font-size:10px">{{.KindLabel}}</span></h4>
-        <span class="badge badge-{{.Class}}">{{.Label}} ({{.Progress}}%)</span>
-      </div>
-      <div style="background:var(--bg3);height:8px;border-radius:4px;overflow:hidden;margin-bottom:10px">
-        <div style="background:linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);height:100%;width:{{.Progress}}%"></div>
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11.5px">🎬 Storyboard Từng Cảnh</button>
-      <div class="board" style="margin-top:8px"></div>
-    </div>
-    {{end}}
-  </div>
-</div>
-{{end}}
+<!-- COMPLETED JOBS VIEW: active jobs live on the processing tab only -->
 
 {{if .DoneJobs}}
 <div style="margin-bottom:24px">
@@ -283,6 +275,7 @@
           <div style="display:flex;align-items:center;gap:5px">
             <span class="badge badge-info" style="font-size:10px;font-weight:700">{{.KindLabel}}</span>
             <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
+            {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
           </div>
           <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
             <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
@@ -293,7 +286,7 @@
           {{.Title}}
         </div>
 
-        {{if .Output}}
+        {{if eq .OutputKind "video"}}
         <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video 9:16">
           <video class="player" preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
           <div class="video-play-overlay">
@@ -301,6 +294,12 @@
           </div>
           <span class="video-badge-spec">📱 1080×1920 (9:16)</span>
         </div>
+        {{else if eq .OutputKind "image"}}
+        <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
+          <img src="/media/{{.Output}}" alt="{{.Title}}" style="width:100%;height:100%;object-fit:contain">
+        </div>
+        {{else if eq .OutputKind "text"}}
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="display:block;padding:24px 10px;text-align:center;margin-bottom:10px">📄 Mở kịch bản</a>
         {{end}}
 
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:10px">
@@ -310,9 +309,9 @@
       </div>
 
       <div>
-        {{if .Output}}
+        {{if eq .OutputKind "video"}}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          <a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>
+          {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa đăng</span>{{end}}
           <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải MP4</a>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
@@ -320,6 +319,13 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Ghim Kệ Bio">🔗 Bio</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Storyboard từng cảnh">🎬 Cảnh</button>
+        </div>
+        {{else if eq .OutputKind "image"}}
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="display:block;text-align:center">⬇ Tải ảnh</a>
+        {{else if eq .OutputKind "text"}}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <a class="btn btn-primary btn-sm" href="/media/{{.Output}}" target="_blank" rel="noopener" style="text-align:center">Mở kịch bản</a>
+          <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="text-align:center">Tải .md</a>
         </div>
         {{end}}
         <div class="board" style="margin-top:6px"></div>
@@ -344,8 +350,8 @@
         <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
           <button class="btn btn-primary btn-sm" type="submit">🔄 Thử lại</button>
         </form>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline">
-          <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)">🗑</button>
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+          <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
         </form>
       </div>
     </div>

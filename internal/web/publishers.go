@@ -40,7 +40,8 @@ func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []st
 		YoutubeToken:     fileExists(publishers.YouTubeTokenPath(username)),
 		YoutubeClient:    publishers.NewYouTubePublisher(username, nil, "").HasClient(),
 		YoutubeTokenDead: ytDead,
-		FbPage:           publishers.FacebookPageID(username) != "",
+		FbPage:           publishers.FacebookPageConfigured(username),
+		FacebookClient:   s.facebookOAuthConfigured(),
 		Instagram:        publishers.NewInstagramPublisher(username).IsConfigured(),
 		Threads:          publishers.NewThreadsPublisher(username).IsConfigured(),
 		Platforms:        plats,
@@ -59,9 +60,9 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	}
 	anyClient := false
 	for _, row := range rows {
-		anyClient = anyClient || row.TiktokClient
+		anyClient = anyClient || row.TiktokClient || row.YoutubeClient || row.FacebookClient
 	}
-	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTiktokClient", anyClient,
+	s.render(w, "publishers", s.ctx("Rows", rows, "AnySocialClient", anyClient,
 		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
 		"PendingVideo", r.URL.Query().Get("video"), "PendingTitle", r.URL.Query().Get("title"),
 		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal(),

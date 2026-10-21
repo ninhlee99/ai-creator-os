@@ -135,7 +135,7 @@ func TestEnvExportAndImportJSON(t *testing.T) {
 		Version:       "1.0",
 		GeminiAPIKeys: []string{"AIzaSyImportedKeyJSON99999999999999999999"},
 		EnvVars: map[string]string{
-			"MUSEAI_API_KEY": "muse-api-imported-777",
+			"FB_PAGE_ID": "meta-page-imported-777",
 		},
 	}
 	jsonData, _ := json.Marshal(newJSON)
@@ -155,8 +155,8 @@ func TestEnvExportAndImportJSON(t *testing.T) {
 		t.Fatalf("import json returned status %d, expected 303", uploadRec.Code)
 	}
 
-	museVal, ok := s.EffectiveEnv("MUSEAI_API_KEY")
-	if !ok || museVal != "muse-api-imported-777" {
-		t.Errorf("expected MUSEAI_API_KEY='muse-api-imported-777', got %q", museVal)
+	pageID, ok := s.EffectiveEnv("FB_PAGE_ID")
+	if !ok || pageID != "meta-page-imported-777" {
+		t.Errorf("expected FB_PAGE_ID='meta-page-imported-777', got %q", pageID)
 	}
 }

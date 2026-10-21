@@ -39,22 +39,26 @@ type viralJobView struct {
 
 // viralView là mô hình dữ liệu chính cho trang /viral.
 type viralView struct {
-	StudioOK           bool
-	Jobs               []viralJobView
-	AccountNames       []string
-	AutoOn             bool
-	ActiveCount        int
-	DoneCount          int
-	TotalCount         int
-	Error              string
-	Notice             string
-	AvailableModels    []modelPhotoCardView
-	SelectedModelID    int64
-	SelectedModelPhoto string
-	RadarSources       []viralradar.Source
-	RadarQuery         string
-	RadarLastRun       string
-	RadarKeyReady      bool
+	StudioOK              bool
+	Jobs                  []viralJobView
+	AccountNames          []string
+	AccountOptions        []*network.Account
+	SelectedAccountID     int64
+	CharacterEditorReady  bool
+	CharacterEditorStatus string
+	AutoOn                bool
+	ActiveCount           int
+	DoneCount             int
+	TotalCount            int
+	Error                 string
+	Notice                string
+	AvailableModels       []modelPhotoCardView
+	SelectedModelID       int64
+	SelectedModelPhoto    string
+	RadarSources          []viralradar.Source
+	RadarQuery            string
+	RadarLastRun          string
+	RadarKeyReady         bool
 }
 
 // handleViral renders the video creation form and actual job history.
@@ -99,6 +103,9 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		AvailableModels: s.listModelPhotoCards(),
 		RadarQuery:      s.defaultViralRadarQuery(),
 	}
+	if s.Studio != nil {
+		v.CharacterEditorReady, v.CharacterEditorStatus = s.Studio.ViralCharacterEditorStatus(r.Context())
+	}
 	if key, ok := s.effectiveEnv("YOUTUBE_API_KEY"); ok && strings.TrimSpace(key) != "" {
 		v.RadarKeyReady = true
 	}
@@ -120,21 +127,56 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
 	}
 
-	// Chọn nhân vật được chỉ định từ query param hoặc mặc định ảnh đầu tiên
+	// Channel selection scopes every identity photo shown and accepted below.
+	if s.Mgr != nil {
+		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			v.AccountOptions = accounts
+			for _, a := range accounts {
+				if a != nil && a.Username != "" {
+					v.AccountNames = append(v.AccountNames, a.Username)
+				}
+			}
+		}
+	}
+	if raw := q.Get("account_id"); raw != "" {
+		v.SelectedAccountID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+	if v.SelectedAccountID == 0 && strings.TrimSpace(q.Get("account")) != "" {
+		for _, account := range v.AccountOptions {
+			if account != nil && account.Username == strings.TrimSpace(q.Get("account")) {
+				v.SelectedAccountID = account.ID
+				break
+			}
+		}
+	}
+	// A deep link to a saved character photo also selects its owning channel.
 	if modelIDStr := q.Get("model_id"); modelIDStr != "" {
 		if id, err := strconv.ParseInt(modelIDStr, 10, 64); err == nil && id > 0 {
-			v.SelectedModelID = id
 			for _, m := range v.AvailableModels {
 				if m.ID == id {
-					v.SelectedModelPhoto = m.URL
+					if v.SelectedAccountID == 0 {
+						v.SelectedAccountID = m.AccountID
+					}
+					if m.AccountID == v.SelectedAccountID {
+						v.SelectedModelID = id
+						v.SelectedModelPhoto = m.URL
+					}
 					break
 				}
 			}
 		}
 	}
-	if v.SelectedModelID == 0 && len(v.AvailableModels) > 0 {
-		v.SelectedModelID = v.AvailableModels[0].ID
-		v.SelectedModelPhoto = v.AvailableModels[0].URL
+	if v.SelectedAccountID == 0 && len(v.AccountOptions) > 0 && v.AccountOptions[0] != nil {
+		v.SelectedAccountID = v.AccountOptions[0].ID
+	}
+	if v.SelectedModelID == 0 {
+		for _, m := range v.AvailableModels {
+			if m.AccountID == v.SelectedAccountID {
+				v.SelectedModelID = m.ID
+				v.SelectedModelPhoto = m.URL
+				break
+			}
+		}
 	}
 
 	// Video tham chiếu chỉ được chọn rõ ràng từ file đã nhập.
@@ -144,17 +186,6 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	v.AutoOn = true
 	if val, ok := st.Get(automation.KeyViralAutoProduce); ok {
 		v.AutoOn = val == "1" || val == "true"
-	}
-
-	// Lấy danh sách kênh
-	if s.Mgr != nil {
-		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
-			for _, a := range accounts {
-				if a != nil && a.Username != "" {
-					v.AccountNames = append(v.AccountNames, a.Username)
-				}
-			}
-		}
 	}
 
 	if s.Studio != nil {
@@ -249,100 +280,43 @@ func (s *Server) handleViralRadarRefresh(w http.ResponseWriter, r *http.Request)
 	http.Redirect(w, r, "/viral?notice="+url.QueryEscape(message), http.StatusSeeOther)
 }
 
-// ValidateAndEnforceViralChannel checks whether the requested channel matches the topic / region.
-// If there is a mismatch (e.g., C-Biz drama assigned to Vietnamese kechuyen_ai, or V-Biz drama assigned to douyin_reup),
-// it automatically enforces the correct channel to preserve strict channel isolation and brand integrity.
+// ValidateAndEnforceViralChannel resolves only the channel explicitly selected by the operator.
 func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accounts []*network.Account) (string, int64, string) {
-	topicLower := strings.ToLower(topic)
-	cbizKeywords := []string{
-		"trung quốc", "c-biz", "cbiz", "hoa ngữ", "bắc kinh", "thượng hải",
-		"từ nghệ dương", "hoàng tử thao", "tiêu chiến", "vương nhất bác",
-		"dương tử", "bạch lộc", "triệu lộ tư", "triệu lệ dĩnh", "lưu diệc phi",
-		"phạm băng băng", "huỳnh hiểu minh", "angelababy", "weibo", "douyin",
-		"xiao zhan", "wang yibo", "zhao lusi", "dilraba", "nhiệt ba",
+	_ = topic
+	_ = genre
+	requestedAccount = strings.TrimSpace(requestedAccount)
+	if requestedAccount == "" {
+		return "", 0, "Chọn kênh đích trước khi tạo video."
 	}
-
-	isCBiz := false
-	for _, kw := range cbizKeywords {
-		if strings.Contains(topicLower, kw) {
-			isCBiz = true
-			break
+	for _, account := range accounts {
+		if account != nil && account.Username == requestedAccount {
+			return account.Username, account.ID, ""
 		}
 	}
-	if genre == "douyin" || strings.Contains(topicLower, "douyin") {
-		isCBiz = true
-	}
-
-	vbizKeywords := []string{
-		"v-biz", "vbiz", "việt nam", "sơn tùng", "trấn thành", "hồ ngọc hà",
-		"mỹ tâm", "đàm vĩnh hưng", "hoài linh", "ninh dương lan ngọc",
-		"phương hoa", "lê ngọc phương anh", "vtv", "tiktok việt nam", "showbiz việt",
-		"kể chuyện", "tâm sự", "truyện ma", "vụ án",
-	}
-	isVBiz := false
-	for _, kw := range vbizKeywords {
-		if strings.Contains(topicLower, kw) {
-			isVBiz = true
-			break
-		}
-	}
-
-	targetAccount := requestedAccount
-	var targetID int64
-	var note string
-
-	if isCBiz {
-		// Strictly C-Biz / Douyin -> target douyin_reup
-		targetAccount = "douyin_reup"
-		for _, a := range accounts {
-			if a != nil && (a.Username == "douyin_reup" || strings.Contains(strings.ToLower(a.Niche), "douyin") || strings.Contains(strings.ToLower(a.Niche), "trung")) {
-				targetAccount = a.Username
-				targetID = a.ID
-				break
-			}
-		}
-		if requestedAccount != "" && requestedAccount != targetAccount {
-			note = fmt.Sprintf("Nội dung C-Biz / Douyin tự động định tuyến chuẩn xác về kênh @%s (không để nhầm vào kênh @%s)", targetAccount, requestedAccount)
-		}
-	} else if isVBiz || requestedAccount == "" {
-		// Strictly V-Biz / Kể chuyện Việt -> target kechuyen_ai
-		targetAccount = "kechuyen_ai"
-		for _, a := range accounts {
-			if a != nil && (a.Username == "kechuyen_ai" || strings.Contains(strings.ToLower(a.Niche), "kể chuyện") || strings.Contains(strings.ToLower(a.Niche), "việt")) {
-				targetAccount = a.Username
-				targetID = a.ID
-				break
-			}
-		}
-		if requestedAccount != "" && requestedAccount != targetAccount && requestedAccount == "douyin_reup" {
-			note = fmt.Sprintf("Nội dung Showbiz V-Biz tự động định tuyến chuẩn xác về kênh @%s (không để nhầm vào kênh @%s)", targetAccount, requestedAccount)
-		}
-	}
-
-	// Fallback lookup if targetID is still 0
-	if targetID == 0 {
-		for _, a := range accounts {
-			if a != nil && a.Username == targetAccount {
-				targetID = a.ID
-				break
-			}
-		}
-	}
-
-	return targetAccount, targetID, note
+	return requestedAccount, 0, "Kênh đã chọn không tồn tại; chọn lại kênh đích."
 }
 
 // handleViralCreate tiếp nhận form khởi tạo video viral mới.
 func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
+	analysisOnly := r.URL.Query().Get("action") == "analyze"
 	if s.Studio == nil {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Studio AI chưa sẵn sàng"), http.StatusSeeOther)
+		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio AI chưa sẵn sàng")
 		return
 	}
+	if !analysisOnly {
+		if ready, message := s.Studio.ViralCharacterEditorStatus(r.Context()); !ready {
+			writeViralCreateError(w, r, false, http.StatusServiceUnavailable, message)
+			return
+		}
+	}
 
-	_ = r.ParseMultipartForm(50 << 20)
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn file nhỏ hơn hoặc dán link nguồn.")
+		return
+	}
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Vui lòng nhập chủ đề video"), http.StatusSeeOther)
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Vui lòng nhập chủ đề video")
 		return
 	}
 
@@ -358,9 +332,6 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	account := r.PostFormValue("account")
 
 	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
-	if duration < 60 {
-		duration = 60 // Video viral tối thiểu từ 60s trở lên (chuẩn TikTok Creativity Program)
-	}
 
 	musicURL := r.PostFormValue("music_url")
 
@@ -369,16 +340,32 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	_ = os.MkdirAll(upDir, 0o755)
 
 	var uploadedPhotos []string
+	var previewCleanup []string
+	defer func() {
+		if analysisOnly {
+			for _, path := range previewCleanup {
+				_ = os.Remove(path)
+			}
+		}
+	}()
 	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo"} {
-		if photos, _ := saveUploads(r, key, upDir, 10); len(photos) > 0 {
+		photos, uploadErr := saveUploads(r, key, upDir, 10)
+		if uploadErr != nil {
+			writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Ảnh nhân vật lỗi: "+uploadErr.Error())
+			return
+		}
+		if len(photos) > 0 {
 			uploadedPhotos = append(uploadedPhotos, photos...)
+			previewCleanup = append(previewCleanup, photos...)
 		}
 	}
 	if len(uploadedPhotos) == 0 {
 		if p1, _ := saveUpload(r, "character_photo", upDir); p1 != "" {
 			uploadedPhotos = append(uploadedPhotos, p1)
+			previewCleanup = append(previewCleanup, p1)
 		} else if p2, _ := saveUpload(r, "model_photo", upDir); p2 != "" {
 			uploadedPhotos = append(uploadedPhotos, p2)
+			previewCleanup = append(previewCleanup, p2)
 		}
 	}
 
@@ -394,12 +381,22 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If user uploaded new photos and selected an account, persist into the account's model library
-	if len(uploadedPhotos) > 0 && accountID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			for _, pth := range uploadedPhotos {
-				_, _ = ms.Add(accountID, pth)
-			}
+	if len(uploadedPhotos) > 0 && accountID > 0 && s.Studio != nil && !analysisOnly {
+		ms, err := s.Studio.ModelLibrary()
+		if err != nil {
+			writeViralCreateError(w, r, false, http.StatusInternalServerError, "Không đọc được thư viện nhân vật: "+err.Error())
+			return
 		}
+		var stored []string
+		for _, pth := range uploadedPhotos {
+			photo, addErr := ms.Add(accountID, pth)
+			if addErr != nil {
+				writeViralCreateError(w, r, false, http.StatusInternalServerError, "Không lưu được ảnh vào đúng kênh: "+addErr.Error())
+				return
+			}
+			stored = append(stored, photo.Path)
+		}
+		uploadedPhotos = stored
 	}
 
 	// 1. Resolve model photos from model_photo_ids if provided (multi-angle support)
@@ -419,7 +416,12 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if len(ids) > 0 {
-				uploadedPhotos = append(uploadedPhotos, s.findModelPhotosByIDs(ids)...)
+				photos := s.findModelPhotosByIDsForAccount(accountID, ids)
+				if len(photos) != len(ids) {
+					writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Ảnh đã chọn không thuộc thư viện của kênh đích.")
+					return
+				}
+				uploadedPhotos = append(uploadedPhotos, photos...)
 			}
 		}
 	}
@@ -428,64 +430,65 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	if len(uploadedPhotos) == 0 {
 		if modelIDStr := r.PostFormValue("model_id"); modelIDStr != "" {
 			if mid, err := strconv.ParseInt(modelIDStr, 10, 64); err == nil && mid > 0 {
-				if photoPath, perr := s.findModelPhotoByID(mid); perr == nil && photoPath != "" {
-					uploadedPhotos = append(uploadedPhotos, photoPath)
+				if photoPaths := s.findModelPhotosByIDsForAccount(accountID, []int64{mid}); len(photoPaths) > 0 {
+					uploadedPhotos = append(uploadedPhotos, photoPaths[0])
 				}
 			}
 		}
 	}
 
-	// 3. Fallback to stored photos from the account's model library
-	if len(uploadedPhotos) == 0 && accountID > 0 && s.Studio != nil {
-		if ms, err := s.Studio.ModelLibrary(); err == nil {
-			if photos, err := ms.List(accountID); err == nil && len(photos) > 0 {
-				for _, ph := range photos {
-					uploadedPhotos = append(uploadedPhotos, ph.Path)
-				}
-			}
-		}
-	}
-	if len(uploadedPhotos) == 0 {
-		if cards := s.listModelPhotoCards(); len(cards) > 0 {
-			for _, c := range cards {
-				if photoPath, perr := s.findModelPhotoByID(c.ID); perr == nil && photoPath != "" {
-					uploadedPhotos = append(uploadedPhotos, photoPath)
-				}
-			}
-		}
-	}
-
-	// 4. Resolve sample motion video or TikTok link
+	// 4. Resolve the required source video from upload or supported download.
 	tiktokLink := strings.TrimSpace(r.PostFormValue("tiktok_link"))
 	if tiktokLink == "" {
 		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
 	}
-	var sampleVideoPath string
-	if tiktokLink != "" && (strings.HasPrefix(tiktokLink, "http://") || strings.HasPrefix(tiktokLink, "https://")) {
+	sampleVideoPath, uploadErr := saveUpload(r, "sample_video", upDir)
+	if uploadErr != nil {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video nguồn lỗi: "+uploadErr.Error())
+		return
+	}
+	if sampleVideoPath != "" {
+		previewCleanup = append(previewCleanup, sampleVideoPath)
+	}
+	if sampleVideoPath == "" && tiktokLink != "" && (strings.HasPrefix(tiktokLink, "http://") || strings.HasPrefix(tiktokLink, "https://")) {
 		dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
 		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 		cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "-o", dlDst, tiktokLink)
 		if err := cmd.Run(); err == nil && fileExists(dlDst) {
 			sampleVideoPath = dlDst
+		} else {
+			cancel()
+			writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video nguồn. Tải file video trực tiếp hoặc kiểm tra lại link.")
+			return
 		}
 		cancel()
+		previewCleanup = append(previewCleanup, sampleVideoPath)
 	}
 
 	aiMode := strings.TrimSpace(r.PostFormValue("ai_mode"))
 	if aiMode == "" {
-		aiMode = "local"
+		aiMode = studio.ViralModeFullCharacterEdit
 	}
-
+	if aiMode != studio.ViralModeFullCharacterEdit {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chỉ hỗ trợ thay toàn bộ nhân vật trực tiếp trên video nguồn.")
+		return
+	}
+	if sampleVideoPath == "" {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Cần video nguồn để giữ nguyên cảnh, chuyển động và camera.")
+		return
+	}
+	if accountID <= 0 {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn kênh đích trước khi tạo video.")
+		return
+	}
+	if len(uploadedPhotos) == 0 || !fileExists(uploadedPhotos[0]) {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video viral production cần ảnh nhân vật của kênh.")
+		return
+	}
 	var modelPhoto string
 	if len(uploadedPhotos) > 0 {
 		modelPhoto = uploadedPhotos[0]
 	}
-
-	isDance := strings.Contains(strings.ToLower(topic), "dance") || strings.Contains(strings.ToLower(topic), "nhảy") || strings.Contains(strings.ToLower(topic), "sexy") || genre == "dance"
-	if isDance {
-		voice = ""
-	}
-	musicFile := studio.FindTrendingMusic("nhay")
 
 	p := studio.ViralParams{
 		Topic:          topic,
@@ -497,24 +500,48 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		ModelPhoto:     modelPhoto,
 		ModelPhotos:    uploadedPhotos,
 		SampleVideo:    sampleVideoPath,
+		SourceVideoURL: tiktokLink,
 		AIMode:         aiMode,
-		TargetDuration: duration,
+		TargetDuration: float64(duration),
 		MusicURL:       musicURL,
-		MusicFile:      musicFile,
+	}
+	if analysisOnly {
+		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
+		defer cancel()
+		storyboard, err := s.Studio.GenerateViralScript(ctx, p)
+		if err != nil {
+			writeViralCreateError(w, r, true, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if err := json.NewEncoder(w).Encode(storyboard); err != nil {
+			log.Printf("web: encode viral storyboard: %v", err)
+		}
+		return
 	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
 	if err != nil {
 		log.Printf("web: viral create error: %v", err)
-		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Lỗi tạo job: "+err.Error()), http.StatusSeeOther)
+		writeViralCreateError(w, r, false, http.StatusInternalServerError, "Lỗi tạo job: "+err.Error())
 		return
 	}
 
 	if s.Ledger != nil {
-		_ = s.Ledger.Decide("human", "viral_produce", nil, fmt.Sprintf("Khởi tạo video viral 100%% gốc job=%s genre=%s: %s", jobID, genre, topic), nil)
+		_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video thay nhân vật trên nguồn đã chọn job=%s genre=%s: %s", jobID, genre, topic), nil)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/studio/jobs?tab=running&msg=created&job_id=%s", jobID), http.StatusSeeOther)
+}
+
+func writeViralCreateError(w http.ResponseWriter, r *http.Request, analysisOnly bool, status int, message string) {
+	if analysisOnly {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+		return
+	}
+	http.Redirect(w, r, "/viral?err="+url.QueryEscape(message), http.StatusSeeOther)
 }
 
 func studioUnmarshalJSON(data string, v any) error {

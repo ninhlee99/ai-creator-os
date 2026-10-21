@@ -67,7 +67,7 @@ này. Vi phạm = làm lại. (Ninh chốt 2026-10-02.)
 - **Free tuyệt đối**: key Gemini free-only, không billing, không thử Veo.
   Quota: xoay key, cooldown 60s→5m→15m, resume khi hết quota ngày.
 - Không dùng Claude/Codex/Agy subscription của Ninh trong app hay thay app
-  điều khiển máy. Không reverse-engineer backend web/muse.ai.
+  điều khiển máy.
 - Trung thực với Ninh: báo kết quả đã verify; không hứa điều không chắc
   (VD: "đảm bảo 100% không bị đánh bản quyền" là cấm).
 

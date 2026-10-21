@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -302,6 +301,8 @@ func probeAccountSessionOutcome(ctx context.Context, acc *webai.Account) (accoun
 	switch strings.ToLower(acc.Platform) {
 	case "museai", "muse_ai", "muse":
 		return probeMuseAccountSession(ctx, acc)
+	case "googleflow":
+		return probeGoogleFlowSession(ctx, acc)
 	default:
 		alive, message := probeAccountSession(ctx, acc)
 		if alive {
@@ -311,145 +312,20 @@ func probeAccountSessionOutcome(ctx context.Context, acc *webai.Account) (accoun
 	}
 }
 
-func isMuseAccountEmail(value string) bool {
-	value = strings.ToLower(strings.TrimSpace(value))
-	if !strings.Contains(value, "@") {
-		return false
-	}
-	for _, marker := range []string{"example.com", "w3.org", "schema.org", "sentry", "mixpanel", "cloudflare"} {
-		if strings.Contains(value, marker) {
-			return false
-		}
-	}
-	return true
-}
-
 func probeMuseAccountSession(ctx context.Context, acc *webai.Account) (accountProbeOutcome, string) {
+	if acc == nil || strings.TrimSpace(acc.Cookie) == "" {
+		return accountProbeUnknown, "Muse Chat chưa có cookie phiên"
+	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	token := strings.TrimSpace(acc.SessionKey)
-	if token == "" {
-		return accountProbeUnknown, "Chưa có cookie phiên Muse để xác minh"
-	}
-	if token == "0" || token == "1" {
-		return accountProbeExpired, "Phiên Muse AI chưa hoàn tất đăng nhập 2FA (token không hợp lệ)"
-	}
-
-	cookieHeader := strings.TrimSpace(acc.Cookie)
-	if cookieHeader == "" {
-		cookieHeader = "hatch_sess=" + token
-	} else {
-		hasTokenPair := false
-		hatchValue := ""
-		for _, part := range strings.Split(cookieHeader, ";") {
-			name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-			if !ok {
-				continue
-			}
-			if value == token {
-				hasTokenPair = true
-			}
-			if name == "hatch_sess" {
-				hatchValue = value
-			}
+	if err := webai.ProbeMuseSession(ctx, acc.Cookie); err != nil {
+		if strings.Contains(err.Error(), "HTTP 401") || strings.Contains(err.Error(), "HTTP 403") && strings.Contains(err.Error(), "auth/check") {
+			return accountProbeExpired, "Muse từ chối phiên đăng nhập"
 		}
-		if hatchValue != "" && hatchValue != token {
-			return accountProbeUnknown, "SessionKey không khớp cookie hatch_sess đã lưu; không gửi phiên sai đi xác minh"
-		}
-		if hatchValue == "" && !hasTokenPair {
-			cookieHeader = "hatch_sess=" + token + "; " + cookieHeader
-		}
+		return accountProbeUnknown, "Chưa xác minh được Muse: " + err.Error()
 	}
-
-	client := &http.Client{
-		Timeout: 8 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://muse.ai/api/account", nil)
-	if err != nil {
-		return accountProbeUnknown, "Không tạo được yêu cầu xác minh Muse"
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-	req.Header.Set("Cookie", cookieHeader)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Referer", "https://muse.ai/")
-	req.Header.Set("Origin", "https://muse.ai")
-	resp, err := client.Do(req)
-	if err != nil {
-		return accountProbeUnknown, "Muse không cho xác minh phiên qua HTTP; cookie vẫn được lưu nhưng trạng thái sống chưa xác nhận"
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusUnauthorized:
-		return accountProbeExpired, "Muse từ chối cookie phiên (HTTP 401)"
-	case http.StatusOK:
-		contentType := strings.ToLower(resp.Header.Get("Content-Type"))
-		if strings.Contains(contentType, "text/html") {
-			// Muse accepts authenticated sessions at /api/account but currently
-			// responds with its app HTML instead of identity JSON. A valid saved
-			// cookie gets HTTP 200; missing/invalid cookies get HTTP 401.
-			return accountProbeAlive, "Muse chấp nhận cookie phiên (HTTP 200; endpoint trả HTML, không có JSON danh tính)"
-		}
-		var payload map[string]any
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil || !museAccountResponseAuthenticated(payload) {
-			return accountProbeUnknown, "Muse trả HTTP 200 nhưng dữ liệu không có danh tính JSON; phiên chưa được xác minh"
-		}
-		return accountProbeAlive, "Muse xác nhận tài khoản bằng phản hồi JSON có danh tính"
-	default:
-		return accountProbeUnknown, fmt.Sprintf("Muse trả HTTP %d; trạng thái cookie chưa xác minh", resp.StatusCode)
-	}
-}
-
-func museAccountResponseAuthenticated(payload map[string]any) bool {
-	if payload == nil {
-		return false
-	}
-	for _, key := range []string{"authenticated", "is_authenticated", "isAuthenticated"} {
-		if value, ok := payload[key].(bool); ok && value {
-			return true
-		}
-	}
-	for _, key := range []string{"email", "user_id", "userId", "account_id"} {
-		if value, ok := payload[key].(string); ok && isMuseAccountEmail(value) {
-			return true
-		}
-		if value, ok := payload[key]; ok && value != nil {
-			if _, isString := value.(string); !isString {
-				return true
-			}
-		}
-	}
-	objects := make([]map[string]any, 0, 7)
-	for _, key := range []string{"user", "account", "profile", "data"} {
-		if nested, ok := payload[key].(map[string]any); ok {
-			objects = append(objects, nested)
-			for _, nestedKey := range []string{"user", "account", "profile"} {
-				if child, ok := nested[nestedKey].(map[string]any); ok {
-					objects = append(objects, child)
-				}
-			}
-		}
-	}
-	for _, object := range objects {
-		for _, key := range []string{"email", "user_id", "userId", "id", "_id"} {
-			value, ok := object[key]
-			if !ok || value == nil {
-				continue
-			}
-			if text, ok := value.(string); ok {
-				if isMuseAccountEmail(text) {
-					return true
-				}
-				continue
-			}
-			return true
-		}
-	}
-	return false
+	return accountProbeAlive, "Phiên Muse Chat hợp lệ; gateway đã phản hồi"
 }
 
 // probeAccountSession sends a live HTTP probe to verify if the account session is alive.
@@ -462,8 +338,8 @@ func probeAccountSession(ctx context.Context, acc *webai.Account) (bool, string)
 
 	switch platform {
 	case "museai", "muse_ai", "muse":
-		outcome, message := probeMuseAccountSession(ctx, acc)
-		return outcome == accountProbeAlive, message
+		_, message := probeMuseAccountSession(ctx, acc)
+		return false, message
 
 	case "chatgpt":
 		cookie := acc.Cookie
@@ -614,35 +490,40 @@ func probeAccountSession(ctx context.Context, acc *webai.Account) (bool, string)
 		return true, "Phiên Gemini đã ghi nhận"
 
 	case "googleflow":
-		cookie := acc.Cookie
-		if cookie == "" {
-			cookie = acc.SessionKey
-		}
-		if cookie != "" {
-			req, err := http.NewRequestWithContext(ctx, "GET", "https://flow.google.com/", nil)
-			if err != nil {
-				return false, err.Error()
-			}
-			req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-			req.Header.Set("Cookie", cookie)
-			req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-			resp, err := client.Do(req)
-			if err != nil {
-				return false, "Lỗi kết nối Google Flow: " + err.Error()
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode < 400 {
-				return true, fmt.Sprintf("Phiên Google Flow đang hoạt động tốt (HTTP %d)", resp.StatusCode)
-			}
-			if resp.StatusCode == 401 || resp.StatusCode == 403 {
-				return false, fmt.Sprintf("Phiên Google Flow đã hết hạn (HTTP %d)", resp.StatusCode)
-			}
-		}
-		return true, "Phiên Google Flow đã ghi nhận"
+		outcome, message := probeGoogleFlowSession(ctx, acc)
+		return outcome == accountProbeAlive, message
 
 	default:
 		return true, "Phiên làm việc hợp lệ"
 	}
+}
+
+func probeGoogleFlowSession(ctx context.Context, acc *webai.Account) (accountProbeOutcome, string) {
+	if acc == nil {
+		return accountProbeExpired, "Tài khoản không tồn tại"
+	}
+	cookie := strings.TrimSpace(acc.Cookie)
+	if cookie == "" {
+		cookie = strings.TrimSpace(acc.SessionKey)
+	}
+	if cookie == "" {
+		return accountProbeUnknown, "Tài khoản Google Flow chưa có cookie phiên để xác minh"
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if err := webai.ProbeGoogleFlowSession(ctx, cookie); err != nil {
+		if strings.Contains(err.Error(), "Flow HTTP 401") {
+			return accountProbeExpired, "Google Flow từ chối phiên đăng nhập"
+		}
+		if strings.Contains(err.Error(), "Flow HTTP 403") {
+			return accountProbeUnknown, "Google Flow từ chối truy cập; kiểm tra quyền tài khoản và khu vực"
+		}
+		return accountProbeUnknown, "Chưa xác minh được Flow: " + err.Error()
+	}
+	return accountProbeAlive, "Phiên Google Flow hợp lệ; lịch sử đã phản hồi"
 }
 
 // handleWebAIAccountTest validates account session credentials with a live probe request.
@@ -662,11 +543,12 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 		outcome, msg := probeAccountSessionOutcome(r.Context(), acc)
 		if outcome == accountProbeAlive {
 			acc.Status = "ok"
-			_ = s.WebAI.UpdateAccount(*acc)
 		} else if outcome == accountProbeExpired {
 			acc.Status = "expired"
-			_ = s.WebAI.UpdateAccount(*acc)
+		} else {
+			acc.Status = webai.StatusUnverified
 		}
+		_ = s.WebAI.UpdateAccount(*acc)
 		s.writeJSON(w, map[string]any{
 			"ok":      outcome == accountProbeAlive,
 			"outcome": outcome,
@@ -715,11 +597,12 @@ func (s *Server) handleWebAIAccountTest(w http.ResponseWriter, r *http.Request) 
 			outcome, msg := probeAccountSessionOutcome(r.Context(), &acc)
 			if outcome == accountProbeAlive {
 				acc.Status = "ok"
-				_ = s.WebAI.UpdateAccount(acc)
 			} else if outcome == accountProbeExpired {
 				acc.Status = "expired"
-				_ = s.WebAI.UpdateAccount(acc)
+			} else {
+				acc.Status = webai.StatusUnverified
 			}
+			_ = s.WebAI.UpdateAccount(acc)
 
 			mu.Lock()
 			results = append(results, testResult{
@@ -831,8 +714,8 @@ func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 		webai.PlatformChatGPT:    "ChatGPT (GPT-6 Luna)",
 		webai.PlatformGemini:     "Gemini 3.8 Flash",
 		webai.PlatformGrok:       "Grok 3 (xAI)",
-		webai.PlatformMuseAI:     "Muse AI (manual video)",
-		webai.PlatformGoogleFlow: "Google Flow (manual video)",
+		webai.PlatformMuseAI:     "Muse Chat (Meta)",
+		webai.PlatformGoogleFlow: "Google Flow (video)",
 	}
 	icons := map[string]string{
 		webai.PlatformClaude:     "🟣",
@@ -902,26 +785,70 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
+	if (r.MultipartForm != nil && len(r.MultipartForm.File["clip_files"]) > 0) ||
+		strings.TrimSpace(r.FormValue("clip_urls")) != "" || strings.TrimSpace(r.FormValue("sample_clip")) != "" {
+		studioErr("Clip render sẵn không được nối thành affiliate. Hãy dùng ảnh listing để tạo footage mới, nhân vật kênh phải mặc hoặc dùng đúng sản phẩm.")
+		return
+	}
 
 	upDir := s.Studio.UploadDir()
+	var accountID int64
+	if raw := strings.TrimSpace(r.FormValue("account_id")); raw != "" {
+		accountID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+	if accountID == 0 && strings.TrimSpace(r.FormValue("account")) != "" && s.Mgr != nil {
+		if accounts, err := s.Mgr.ListWithAutopilot(); err == nil {
+			for _, account := range accounts {
+				if account != nil && account.Username == strings.TrimSpace(r.FormValue("account")) {
+					accountID = account.ID
+					break
+				}
+			}
+		}
+	}
+	if accountID <= 0 {
+		studioErr("Chọn kênh đích để dùng đúng ảnh nhân vật.")
+		return
+	}
 	productPhoto, err := saveUpload(r, "product_photo", upDir)
 	if err != nil {
 		studioErr("Ảnh sản phẩm lỗi: " + err.Error())
 		return
 	}
-	if productPhoto == "" {
-		if gen := strings.TrimSpace(r.FormValue("generated_photo_path")); gen != "" {
-			if _, serr := os.Stat(gen); serr == nil {
-				productPhoto = gen
-			}
+	var modelPhotos []string
+	for _, key := range []string{"model_photos", "model_photo"} {
+		photos, uploadErr := saveUploads(r, key, upDir, 10)
+		if uploadErr != nil {
+			studioErr("Ảnh người mẫu lỗi: " + uploadErr.Error())
+			return
+		}
+		modelPhotos = append(modelPhotos, photos...)
+	}
+	if len(modelPhotos) == 0 {
+		if photo, uploadErr := saveUpload(r, "model_photo", upDir); uploadErr != nil {
+			studioErr("Ảnh người mẫu lỗi: " + uploadErr.Error())
+			return
+		} else if photo != "" {
+			modelPhotos = append(modelPhotos, photo)
 		}
 	}
-	modelPhoto, err := saveUpload(r, "model_photo", upDir)
-	if err != nil {
-		studioErr("Ảnh người mẫu lỗi: " + err.Error())
-		return
+	if len(modelPhotos) > 0 {
+		library, libErr := s.Studio.ModelLibrary()
+		if libErr != nil {
+			studioErr("Không đọc được thư viện nhân vật: " + libErr.Error())
+			return
+		}
+		var stored []string
+		for _, photoPath := range modelPhotos {
+			photo, addErr := library.Add(accountID, photoPath)
+			if addErr != nil {
+				studioErr("Không lưu được ảnh nhân vật vào đúng kênh: " + addErr.Error())
+				return
+			}
+			stored = append(stored, photo.Path)
+		}
+		modelPhotos = stored
 	}
-	var modelPhotos []string
 	var modelIDStrs []string
 	if r.MultipartForm != nil {
 		modelIDStrs = r.MultipartForm.Value["model_photo_ids"]
@@ -929,7 +856,7 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 	if len(modelIDStrs) == 0 {
 		modelIDStrs = r.Form["model_photo_ids"]
 	}
-	if len(modelIDStrs) > 0 {
+	if len(modelPhotos) == 0 && len(modelIDStrs) > 0 {
 		var ids []int64
 		for _, ms := range modelIDStrs {
 			if id, err := strconv.ParseInt(strings.TrimSpace(ms), 10, 64); err == nil && id > 0 {
@@ -937,55 +864,23 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		if len(ids) > 0 {
-			modelPhotos = s.findModelPhotosByIDs(ids)
-		}
-	}
-	if modelPhoto != "" {
-		modelPhotos = append([]string{modelPhoto}, modelPhotos...)
-	} else if len(modelPhotos) > 0 {
-		modelPhoto = modelPhotos[0]
-	}
-	if modelPhoto == "" {
-		if midStr := strings.TrimSpace(r.FormValue("model_id")); midStr != "" {
-			if mid, err := strconv.ParseInt(midStr, 10, 64); err == nil && mid > 0 {
-				if photoPath, perr := s.findModelPhotoByID(mid); perr == nil && photoPath != "" {
-					modelPhoto = photoPath
-					modelPhotos = append(modelPhotos, photoPath)
-				}
+			modelPhotos = s.findModelPhotosByIDsForAccount(accountID, ids)
+			if len(modelPhotos) != len(ids) {
+				studioErr("Ảnh đã chọn không thuộc thư viện của kênh đích.")
+				return
 			}
 		}
 	}
-	if modelPhoto == "" {
-		if acctName := strings.TrimSpace(r.FormValue("account")); acctName != "" && s.Mgr != nil {
-			if accts, aerr := s.Mgr.List(); aerr == nil && s.Studio != nil {
-				for _, acc := range accts {
-					if acc != nil && acc.Username == acctName {
-						if ms, merr := s.Studio.ModelLibrary(); merr == nil {
-							if photos, perr := ms.List(acc.ID); perr == nil && len(photos) > 0 {
-								for _, ph := range photos {
-									modelPhotos = append(modelPhotos, ph.Path)
-								}
-								modelPhoto = photos[0].Path
-							}
-						}
-						break
-					}
-				}
-			}
+	if len(modelPhotos) == 0 && strings.TrimSpace(r.FormValue("model_id")) != "" {
+		if mid, err := strconv.ParseInt(strings.TrimSpace(r.FormValue("model_id")), 10, 64); err == nil && mid > 0 {
+			modelPhotos = s.findModelPhotosByIDsForAccount(accountID, []int64{mid})
 		}
 	}
-	if modelPhoto == "" {
-		if cards := s.listModelPhotoCards(); len(cards) > 0 {
-			for _, c := range cards {
-				if photoPath, perr := s.findModelPhotoByID(c.ID); perr == nil && photoPath != "" {
-					modelPhotos = append(modelPhotos, photoPath)
-				}
-			}
-			if len(modelPhotos) > 0 {
-				modelPhoto = modelPhotos[0]
-			}
-		}
+	if len(modelPhotos) == 0 {
+		studioErr("Chọn hoặc tải ảnh nhân vật từ thư viện của kênh đã chọn.")
+		return
 	}
+	modelPhoto := modelPhotos[0]
 	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 8)
 	if err != nil {
 		studioErr("Ảnh phụ lỗi: " + err.Error())
@@ -1015,88 +910,9 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 			cancel()
 		}
 	}
-
-	// Save video clips (from Muse AI or uploaded)
-	var clips []string
-	if r.MultipartForm != nil {
-		for i, hdr := range r.MultipartForm.File["clip_files"] {
-			if i >= 8 || hdr.Size == 0 {
-				continue
-			}
-			ext := strings.ToLower(filepath.Ext(hdr.Filename))
-			if ext != ".mp4" && ext != ".mov" && ext != ".webm" {
-				continue
-			}
-			f, err := hdr.Open()
-			if err != nil {
-				continue
-			}
-			dst := filepath.Join(upDir, fmt.Sprintf("%d-clip-%d%s", time.Now().UnixNano(), i, ext))
-			out, err := os.Create(dst)
-			if err == nil {
-				_, _ = io.Copy(out, f)
-				out.Close()
-				clips = append(clips, dst)
-			}
-			f.Close()
-		}
-	}
-
-	// Download video clips from URLs (from Muse AI or CDN)
-	rawClipURLs := strings.TrimSpace(r.FormValue("clip_urls"))
-	if rawClipURLs != "" {
-		for i, line := range strings.Split(rawClipURLs, "\n") {
-			u := strings.TrimSpace(line)
-			if u == "" || !strings.HasPrefix(u, "http") {
-				continue
-			}
-			if len(clips) >= 8 {
-				break
-			}
-			dst := filepath.Join(upDir, fmt.Sprintf("%d-urlclip-%d.mp4", time.Now().UnixNano(), i))
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
-			if err := studio.DownloadVideo(ctx, u, dst); err == nil {
-				clips = append(clips, dst)
-			}
-			cancel()
-		}
-	}
-
-	// Look for sample_clip if user selected lookbook template (and not Veo 3 / Muse AI generative mode)
-	videoEngine := strings.TrimSpace(r.FormValue("video_engine"))
-	if len(clips) == 0 && (videoEngine == "lookbook" || videoEngine == "") {
-		if sClip := strings.TrimSpace(r.FormValue("sample_clip")); sClip != "" {
-			var cand string
-			if strings.HasSuffix(sClip, ".mp4") {
-				cand = filepath.Join("data", "clips", "fashion", sClip)
-			} else {
-				cand = filepath.Join("data", "clips", "fashion", sClip+".mp4")
-			}
-			if _, serr := os.Stat(cand); serr == nil {
-				clips = append(clips, cand)
-			}
-		}
-	}
-
-	// Auto-fallback: if user provided no photo, no model, and no clip, generate a 4K product visual
-	if productPhoto == "" && len(clips) == 0 && modelPhoto == "" && len(modelPhotos) == 0 {
-		genPath := filepath.Join(upDir, fmt.Sprintf("%d-autogen-prod.png", time.Now().UnixNano()))
-		prodName := strings.TrimSpace(r.FormValue("product_name"))
-		if prodName == "" {
-			prodName = "Sản phẩm AI Creator"
-		}
-		niche := strings.TrimSpace(r.FormValue("niche"))
-		if s.Studio != nil && s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
-			prompt := fmt.Sprintf("Ultra-detailed professional commercial advertising photograph of %s, %s, 4K quality, tack-sharp focus, photorealistic, cinematic lighting, 9:16 vertical, no text, no watermark", prodName, niche)
-			if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), prompt, nil, genPath); gerr == nil {
-				productPhoto = genPath
-			}
-		}
-		if productPhoto == "" {
-			if verr := studio.GenerateProductVisual(prodName, niche, "SAN PHAM CHINH HANG - DAT MUA NGAY", 1080, 1920, genPath); verr == nil {
-				productPhoto = genPath
-			}
-		}
+	if productPhoto == "" {
+		studioErr("Thiếu ảnh listing sản phẩm thật. Tải ảnh lên hoặc chọn sản phẩm có ảnh trong kệ hàng.")
+		return
 	}
 
 	// Save Voiceover audio or synthesize from voiceover_text
@@ -1130,13 +946,6 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 	}
-	if musicPath == "" {
-		musicPath = studio.FindTrendingMusic("fashion")
-	}
-	if musicPath == "" {
-		musicPath = studio.FindDefaultMusic()
-	}
-
 	seconds, _ := strconv.Atoi(r.FormValue("seconds"))
 	seconds = clampInt(seconds, 10, 120)
 	bpm, _ := strconv.Atoi(r.FormValue("bpm"))
@@ -1146,7 +955,8 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 
 	productName := strings.TrimSpace(r.FormValue("product_name"))
 	if productName == "" {
-		productName = "Video quảng cáo sản phẩm"
+		studioErr("Nhập tên sản phẩm theo listing trước khi dựng.")
+		return
 	}
 
 	aspectRatio := strings.TrimSpace(r.FormValue("aspect_ratio"))
@@ -1167,6 +977,7 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 
 	p := studio.AffiliateParams{
 		Mode:          r.FormValue("mode"),
+		AccountID:     accountID,
 		Niche:         strings.TrimSpace(r.FormValue("niche")),
 		ProductName:   productName,
 		ProductPrice:  strings.TrimSpace(r.FormValue("product_price")),
@@ -1174,7 +985,6 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		ModelPhoto:    modelPhoto,
 		ModelPhotos:   modelPhotos,
 		ExtraPhotos:   extraPhotos,
-		Clips:         clips,
 		VoiceoverPath: voiceoverPath,
 		VoiceoverText: voiceoverText,
 		AspectRatio:   aspectRatio,

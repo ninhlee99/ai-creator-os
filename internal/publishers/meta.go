@@ -51,6 +51,11 @@ func metaPageToken(username string) string { return envFor(username, "META_PAGE_
 // FacebookPageID trả ID Trang của account (FB_PAGE_ID_<USER> rồi FB_PAGE_ID).
 func FacebookPageID(username string) string { return envFor(username, "FB_PAGE_ID") }
 
+// FacebookPageConfigured requires both page identity and a usable page token.
+func FacebookPageConfigured(username string) bool {
+	return FacebookPageID(username) != "" && metaPageToken(username) != ""
+}
+
 // metaDo gửi request và giải mã JSON; lỗi Graph ({"error":{...}}) → error.
 func metaDo(req *http.Request) (map[string]any, error) {
 	resp, err := metaHTTP.Do(req)

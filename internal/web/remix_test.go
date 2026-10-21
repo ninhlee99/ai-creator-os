@@ -2,14 +2,17 @@ package web
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	_ "modernc.org/sqlite"
 )
 
 func TestReorderPhotos(t *testing.T) {
@@ -25,18 +28,33 @@ func TestReorderPhotos(t *testing.T) {
 	}
 }
 
-// Dựng lại tạo job MỚI với tham số đã sửa, job cũ giữ nguyên.
-func TestStudioRemixCreatesEditedJob(t *testing.T) {
+// Legacy remix without user-supplied motion clips must not queue another
+// job that would call a paid video API or fail asynchronously.
+func TestStudioRemixRequiresMotionClips(t *testing.T) {
 	s := newTestServer(t)
-	st, err := studio.New(filepath.Join(t.TempDir(), "studio.db"), nil, nil, nil, t.TempDir())
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "studio.db")
+	st, err := studio.New(dbPath, nil, nil, nil, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
 	s.Studio = st
-	oldID, err := st.CreateAffiliateJob(studio.AffiliateParams{ProductName: "Túi", Seconds: 30,
-		ProductPhoto: "a.jpg", ExtraPhotos: []string{"b.jpg"}})
+	params, err := json.Marshal(studio.AffiliateParams{Mode: studio.AffiliateModeShots, ProductName: "Túi", Seconds: 30})
 	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
+		"legacy-affiliate", studio.KindAffiliate, "Túi", studio.StatusDone, string(params), time.Now().Format("2006-01-02T15:04:05"))
+	if err != nil {
+		db.Close()
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
 	var body bytes.Buffer
@@ -45,7 +63,7 @@ func TestStudioRemixCreatesEditedJob(t *testing.T) {
 	_ = mw.WriteField("order", "reverse")
 	_ = mw.WriteField("caption", "Chú thích mới #tui")
 	mw.Close()
-	req := httptest.NewRequest(http.MethodPost, "/studio/jobs/"+oldID+"/remix", &body)
+	req := httptest.NewRequest(http.MethodPost, "/studio/jobs/legacy-affiliate/remix", &body)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()
 	s.Routes().ServeHTTP(rec, req)
@@ -53,19 +71,7 @@ func TestStudioRemixCreatesEditedJob(t *testing.T) {
 		t.Fatalf("remix = %d", rec.Code)
 	}
 	jobs := st.ListJobs(10)
-	if len(jobs) != 2 {
-		t.Fatalf("phải có 2 job (cũ + bản sửa), got %d", len(jobs))
-	}
-	var newJob studio.Job
-	for _, j := range jobs {
-		if j.ID != oldID {
-			newJob = j
-		}
-	}
-	full, _ := st.GetJob(newJob.ID)
-	var p studio.AffiliateParams
-	_ = json.Unmarshal([]byte(full.Params), &p)
-	if p.Seconds != 45 || p.ProductPhoto != "b.jpg" || p.FixedCaption != "Chú thích mới #tui" {
-		t.Fatalf("params bản sửa sai: %+v", p)
+	if len(jobs) != 1 || jobs[0].ID != "legacy-affiliate" {
+		t.Fatalf("remix without clips queued a job: %+v", jobs)
 	}
 }

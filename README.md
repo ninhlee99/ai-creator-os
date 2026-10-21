@@ -1,9 +1,8 @@
 # AI Creator OS
 
-**Hệ điều hành tự vận hành cho 3 trụ kiếm tiền: Affiliate qua Accesstrade, Video Viral AI 100% Gốc (TikTok/Shorts/Reels), YouTube kể chuyện ngôi thứ nhất.** Bạn chỉ bật app và theo dõi — mọi quyết định vận hành do hệ thống tự quyết theo rule đã định.
+**Ứng dụng điều phối affiliate Accesstrade, khám phá xu hướng video, và sản xuất truyện YouTube.** Tự động hóa chỉ chạy ở những pipeline đang được bật; viral character replacement hiện tạm dừng theo chính sách free-only.
 
-> 🌟 **CHUẨN MỚI 2026-10-19: OPEN-SPEC CHUẨN VIDEO CÓ HỒN & QUAY PHIM TỰ NHIÊN ([`docs/OPEN_SPEC.md`](docs/OPEN_SPEC.md))**  
-> Xóa bỏ triệt để video dán ảnh tĩnh, thẻ chữ che khung hình và giật lắc cơ học. Toàn bộ video xuất ra đều là chuyển động người thật tự nhiên (Lookbook thời trang & Vũ đạo triệu view TikTok VN / Douyin CN), tỷ lệ chuẩn 9:16 (1080x1920) chống méo hình học, hòa âm đa tầng và ứng dụng InsightFace AI Face Swap khóa mặt creator.
+> [`docs/OPEN_SPEC.md`](docs/OPEN_SPEC.md) là đặc tả mục tiêu, không phải mô tả toàn bộ runtime. Affiliate hiện dùng clip chuyển động do người vận hành tải lên; viral character replacement bị tắt vì adapter duy nhất cần billing. QC affiliate chặn clip gần như đứng hình và đối chiếu ba frame mỗi shot, nhưng không chứng minh chuyển động người thật hay việc dùng sản phẩm xuyên suốt.
 
 ---
 
@@ -11,11 +10,11 @@
 
 | Trụ | Trạng thái code |
 |---|---|
-| **1. Affiliate qua Accesstrade** | ✅ Thời lượng tối thiểu **30s – 60s** + Lookbook người mẫu chuyển động thật 9:16 + Ghép mặt nhân vật InsightFace + Cắt nhịp CapCut Pro đồng bộ nhạc TikTok trending + Bio Link Storefront di động (`/bio`). Đảm bảo nhân vật và sản phẩm nhất quán theo phong cách điện ảnh chân thực |
-| **2. Tạo video dọc** | ✅ Nhập chủ đề, chọn ảnh tham chiếu, tùy chọn link video làm tham chiếu chuyển động; theo dõi job tại `/studio/jobs`. Không có radar xu hướng video realtime. |
+| **1. Affiliate qua Accesstrade** | 🟡 Shot plan, chuẩn hóa clip người vận hành tải lên, QC thị giác/chuyển động, và Bio Link (`/bio`). Chưa tự sinh clip mặc/thử sản phẩm; QC chỉ lấy mẫu. |
+| **2. Viral** | 🟡 Radar khám phá nguồn hoạt động. Tạo video thay toàn bộ nhân vật đang tắt theo free-only; enqueue bị từ chối, video nhập tay không được xác nhận QC viral. |
 | **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Thời lượng **30 – 60 Phút** + mỗi 8-15s là một visual canvas chuyển động + Kịch bản đa cảm xúc + Google Gemini TTS |
 
-Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **tạo video dọc từ chủ đề và link tham chiếu tùy chọn** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/system#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand (`PickLatest`)**, **Studio AI với clip affiliate do người vận hành cung cấp**, **Viral Radar** (sản xuất thay nhân vật tạm dừng), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/system#tab-webai`), dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 ---
 
@@ -29,17 +28,18 @@ Sidebar hệ thống phân nhóm trực quan thành 3 khối nghiệp vụ chín
 | | Agent Harness 🧠 | `/harness` | **Bộ não tự hành cấp cao**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory), điều phối tự chủ toàn danh mục |
 | | Kênh | `/accounts` | Quản lý kênh TikTok/YouTube/Facebook: hồ sơ Brand DNA, autopilot, kết nối OAuth, badge YouTube Analytics |
 | | Đội ngũ Agent | `/team` | Giám sát sức khỏe 3 pipeline sản xuất (Affiliate, Video Viral, Kể chuyện) từ dữ liệu thật |
-| **Sản Xuất** | Studio AI 🎬 | `/studio` | Xưởng dàn dựng video: Video bán hàng & Affiliate (30s-60s) · Video Đu Trend Showbiz 9:16 (≥60s) · Truyện audio 16:9 (30-60p) · Nhạc trending |
+| **Sản Xuất** | Studio AI 🎬 | `/studio` | Shot plan affiliate, nhập clip chuyển động do người vận hành cung cấp, QC và kho video |
 | | Affiliate | `/products` | Săn deal Accesstrade, kho sản phẩm, kệ hàng thông minh, lịch autopilot |
 | **Quản Trị** | Cài đặt hệ thống | `/settings` | 4 phân hệ tinh gọn: Hệ thống (gồm **Quản lý & Cập nhật Gemini Model trên toàn bộ adapter** & **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp & Chuỗi Key · An toàn |
 
 ### 🔗 Các phân hệ chuyên sâu & Đường dẫn trực tiếp:
 - **Cửa Hàng Bio Link Kênh (Public Storefront)**: `/bio` hoặc `/bio/{channel}` — Trang web landing page mobile-first tối ưu cho TikTok/Reels/Shorts, tự động đồng bộ từ kệ hàng affiliate, hỗ trợ lọc danh mục tức thì, tìm kiếm nhanh và chuyển hướng tracking link Accesstrade.
-- **Tạo video dọc**: `/viral` — Nhập chủ đề, chọn ảnh nhân vật và tùy chọn video tham chiếu; xem job tại `/studio/jobs`.
+- **Viral**: `/viral` — Radar tìm nguồn; thay nhân vật tạm dừng vì editor video duy nhất cần billing. Video nhập thủ công không được đánh dấu đã thay nhân vật.
 - **Kể chuyện YouTube**: `/stories` — Hàng đợi kịch bản, ảnh minh họa 16:9, TTS lồng tiếng, tự động đăng private.
+- **Tạo nội dung bằng Muse Chat / Google Flow**: `/studio/create` — Gửi prompt, theo dõi job và lưu MP4/ảnh/kịch bản trong Studio. Dùng phiên tài khoản web; Flow quyền truy cập và tín dụng tùy tài khoản.
 - **Phát triển kênh**: `/growth` — Kế hoạch nội dung 30 ngày, canary testing 7 ngày, quy tắc kill / double-down.
 - **Đa nền tảng**: `/publishers` — Quản lý token OAuth TikTok, YouTube, Facebook Page & Instagram Reels.
-- **Kho Tài khoản Web AI**: `/settings/system#tab-webai` — Trình duyệt tự động đăng nhập CDP, cô lập phiên sạch (`os.MkdirTemp`), tự xoay vòng đa tài khoản ChatGPT, Claude, Gemini, Grok, Muse AI.
+- **Kho Tài khoản Web AI**: `/settings/system#tab-webai` — Trình duyệt đăng nhập CDP, cô lập phiên sạch (`os.MkdirTemp`), quản lý ChatGPT, Claude, Gemini, Grok, Muse Chat và Google Flow. Muse/Flow tạo nội dung qua `/studio/create`.
 
 ---
 
@@ -72,15 +72,16 @@ vào app.
 |---|---|
 | Sidebar: Tổng quan, Studio Jobs, Sản phẩm, Kênh, Cài đặt | ✅ Code chạy thật |
 | Đội ngũ (`/team`): sức khỏe 3 pipeline từ dữ liệu thật | ✅ Đợt H2 |
-| Studio AI — video affiliate + trends | ✅ Code chạy thật |
+| Studio AI — affiliate shot plan + nhập clip chuyển động + QC + trends | ✅; không gọi video API trả phí |
+| Muse Chat / Google Flow tạo kịch bản, ảnh, video (`/studio/create`) | ✅; phiên web đã kết nối, Flow quyền truy cập/tín dụng tùy tài khoản; chưa live-test |
 | Key rotation Gemini (round-robin, cooldown 60s→5m→15m khi 429) | ✅ |
 | Sổ cái, kill switch, dry-run, MASTER_SWITCH | ✅ |
-| Growth: plan 30 ngày, ngưỡng, sản xuất affiliate tự động | ✅ |
+| Growth: plan 30 ngày, ngưỡng, sync số liệu | ✅; sản xuất affiliate tự động tạm dừng vì cần clip do người vận hành tải lên |
 | Live (stream engine, avatar, lịch live, tab Nhân vật AI) | 🅿️ **Parked** — build tag `parked`, không vào binary |
 | Phim điện ảnh (film mode, cinematic, Veo) | 🅿️ **Parked** — build tag `parked` |
 | Agent Team (`/team`) | ✅ 3 pipeline, trạng thái từ dữ liệu thật |
 | Accesstrade API (token, campaign, datafeed, đối soát) | ✅ Đợt B/C — chưa test bằng token thật |
-| Video Viral AI (kịch bản 3s hook, ảnh 9:16, lồng tiếng, 100% gốc) | ✅ 2026-10-16 — Thay thế Reup, loại bỏ 0-view shadowban |
+| Viral source radar | ✅; tự động thay nhân vật tạm dừng theo chính sách free-only |
 | YouTube kể chuyện (truyện → ảnh → TTS → dựng → đăng private) | ✅ Đợt F — pipeline test bằng provider fake; cần key thật trên máy Ninh |
 | YouTube Analytics (views/watch hours 30 ngày) | ✅ Đợt H3 — cần token OAuth scope yt-analytics.readonly |
 | TikTok Shop | ❌ Đã loại bỏ hoàn toàn ở Đợt H1 (Accesstrade-only) |
@@ -103,8 +104,7 @@ vào app.
 | Bảng “Tự động hóa” trên Trang chủ | ✅ 2026-10-12 — 6 công tắc tự động gom 1 chỗ (vẫn ghi đúng khóa của trang gốc) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 
-**Test:** Toàn bộ test suites trong runtime chính đạt 100% PASS. Build/vet/test
-xanh cả 2 tag — kiểm chứng lại bằng lệnh ở trên.
+**Verification (2026-10-21):** focused Studio temporal-QC and job-polling tests pass; `go build` succeeds. Full Studio/Web package suites are not green in this environment (VideoToolbox fixture failures, unavailable TikWM DNS, and stale behavior assertions).
 
 ---
 
