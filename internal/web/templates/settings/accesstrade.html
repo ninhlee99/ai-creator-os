@@ -41,6 +41,12 @@
         <label class="check"><input type="checkbox" name="hunter_on" value="1"{{if .ATAuto.HunterOn}} checked{{end}}> Tự săn sản phẩm</label>
         <label>Chu kỳ (giờ)</label>
         <input type="number" name="hunter_hours" min="1" max="168" value="{{.ATHunterHours}}">
+        <label>Kênh đích cho video hunter</label>
+        <select name="hunter_account_id">
+          <option value="">Chưa chọn kênh</option>
+          {{range .ATHunterAccounts}}<option value="{{.ID}}" {{if eq .ID $.ATHunterAccountID}}selected{{end}}>{{.Username}} · {{.Theme}}</option>{{end}}
+        </select>
+        <small>Chỉ tạo video khi kênh có ảnh nhân vật riêng. Hệ thống dùng ảnh listing và dựng footage mới; không ghép clip có sẵn.</small>
         <label>Số video mỗi lần săn</label>
         <input type="number" name="hunter_videos" min="0" max="10" value="{{.ATAuto.HunterVideos}}">
       </div>

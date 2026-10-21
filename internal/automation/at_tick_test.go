@@ -12,6 +12,7 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
@@ -23,6 +24,21 @@ func (m mapSettings) Get(k string) (string, bool) { v, ok := m[k]; return v, ok 
 func (m mapSettings) Set(k, v string) error       { m[k] = v; return nil }
 func (m mapSettings) Delete(k string) error       { delete(m, k); return nil }
 
+type fakeHunterAccounts struct{}
+
+func (fakeHunterAccounts) List(...string) ([]*network.Account, error) {
+	return []*network.Account{{ID: 7, Username: "hunter-test"}}, nil
+}
+func (fakeHunterAccounts) Get(id int64) (*network.Account, error) {
+	if id != 7 {
+		return nil, fmt.Errorf("unknown account %d", id)
+	}
+	return &network.Account{ID: id, Username: "hunter-test"}, nil
+}
+func (fakeHunterAccounts) Transition(id int64, status string, extra map[string]any) (*network.Account, error) {
+	return &network.Account{ID: id, Status: status}, nil
+}
+
 // fakeStudioRunner ghi nhận job affiliate được tạo.
 type fakeStudioRunner struct {
 	jobs []studio.AffiliateParams
@@ -31,6 +47,12 @@ type fakeStudioRunner struct {
 func (f *fakeStudioRunner) CreateAffiliateJob(p studio.AffiliateParams) (string, error) {
 	f.jobs = append(f.jobs, p)
 	return fmt.Sprintf("job-%d", len(f.jobs)), nil
+}
+func (f *fakeStudioRunner) ModelPhotosForAccount(accountID int64) []string {
+	if accountID != 7 {
+		return nil
+	}
+	return []string{"channel-model.png"}
 }
 
 // tinyPNG là ảnh PNG 1x1 hợp lệ cho test tải ảnh.
@@ -109,6 +131,7 @@ func newATService(t *testing.T, st mapSettings, srv *httptest.Server) (*Service,
 	svc := NewService()
 	svc.Gate = &fakeGate{}
 	svc.Settings = st
+	svc.Accounts = fakeHunterAccounts{}
 	svc.Ledger = l
 	svc.AT = atStore
 	svc.Products = ps
@@ -163,6 +186,7 @@ func TestATHunterTick(t *testing.T) {
 	svc, sr := newATService(t, mapSettings{
 		accesstrade.KeySetting: "k",
 		KeyATHunterVideos:      "1", // chỉ tạo 1 video
+		KeyATHunterAccountID:   "7",
 		KeyATOrderSyncEnabled:  "0",
 		KeyATCampaignCheckOn:   "0",
 	}, srv)
@@ -186,7 +210,7 @@ func TestATHunterTick(t *testing.T) {
 		t.Errorf("job thiếu ảnh sản phẩm đã tải")
 	}
 	// Dedupe: sản phẩm đã dùng không được tạo video lại.
-	top, err := svc.Products.TopUnusedBySource("accesstrade", 0, hunterDirectAccountID, 10)
+	top, err := svc.Products.TopUnusedBySource("accesstrade", 0, 7, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

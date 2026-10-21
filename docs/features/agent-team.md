@@ -7,7 +7,7 @@ Mỗi trụ có một team chuyên trách, hiển thị dạng cây trạng thá
 ít chữ). Trạng thái **suy ra từ dữ liệu thật** (studio jobs, kho AT/viral,
 tick) — trang ghi rõ đây không phải agent đang chạy:
 - **Affiliate team**: Hunter (quét AT datafeed → kho) → Producer (render video) → Publisher (video xong) → Analyst (đối soát hoa hồng)
-- **Video Viral team**: Hunter (săn xu hướng) → Director (lên kịch bản Hook 3s) → Visual AI (vẽ ảnh 9:16) → Voice AI (lồng tiếng) → QC (kiểm duyệt & hòa âm) → Publisher (đăng tải)
+- **Viral team**: trạng thái radar và job lịch sử; thay nhân vật/video generation tạm dừng theo free-only. Video nhập tay không được coi là đã qua viral character QC.
 - **Story team**: Writer → Illustrator → Voice → Producer → Publisher (ánh xạ từ tiến độ job, ghi rõ ước lượng)
 
 ## Code ở đâu

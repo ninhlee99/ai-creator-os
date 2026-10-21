@@ -334,9 +334,11 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 		return 0, err
 	}
 	target := a.Username
-	_ = s.Ledger.Decide("growth_director", "generate_plan", &target,
-		fmt.Sprintf("Sinh kế hoạch 30 ngày (giai đoạn %s, %d vị trí)", prof.Stage, len(drafts)),
-		map[string]any{"stage": prof.Stage, "items": len(drafts)})
+	if s.Ledger != nil {
+		_ = s.Ledger.Decide("growth_director", "generate_plan", &target,
+			fmt.Sprintf("Sinh kế hoạch 30 ngày (giai đoạn %s, %d vị trí)", prof.Stage, len(drafts)),
+			map[string]any{"stage": prof.Stage, "items": len(drafts)})
+	}
 	return len(drafts), nil
 }
 

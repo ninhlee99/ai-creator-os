@@ -657,7 +657,7 @@ func main() {
 			srv.Studio.PromptEnhancer = harnessInst.Memory().GeneratePromptContext
 		}
 		harnessInst.StartBackgroundLoop(ctx)
-		log.Printf("harness: autonomous master agent loop started (level 3: fully autonomous)")
+		log.Printf("harness: OODA background loop started (configured level %d; production actions still require supported inputs)", harnessInst.AutonomyLevel())
 	}
 
 	// -- 8. http server + graceful shutdown ----------------------------------

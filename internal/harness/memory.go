@@ -123,10 +123,11 @@ func (ms *MemoryStore) QueryRelevantMemories(ctx context.Context, niche string, 
 		       created_at, updated_at
 		FROM harness_memories
 		WHERE (niche = ? OR niche = 'chung' OR ? = '' OR channel_id = ?)
-		ORDER BY ABS(impact_score) DESC, updated_at DESC
+		ORDER BY CASE WHEN channel_id = ? AND channel_id != '' THEN 0 ELSE 1 END,
+		         ABS(impact_score) DESC, updated_at DESC
 		LIMIT ?
 	`
-	rows, err := ms.db.QueryContext(ctx, query, niche, niche, channelID, limit)
+	rows, err := ms.db.QueryContext(ctx, query, niche, niche, channelID, channelID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -190,31 +191,53 @@ func (ms *MemoryStore) GetMemory(ctx context.Context, id string) (*AgentMemory, 
 
 // GeneratePromptContext tổng hợp các bài học thành ngữ cảnh ngắn gọn để tiêm vào prompt của LLM.
 func (ms *MemoryStore) GeneratePromptContext(ctx context.Context, niche, channelID string) string {
-	mems, err := ms.QueryRelevantMemories(ctx, niche, channelID, 5)
+	mems, err := ms.QueryRelevantMemories(ctx, niche, channelID, 50)
 	if err != nil || len(mems) == 0 {
+		return ""
+	}
+	// Do not feed one channel's private lessons into another channel's prompt.
+	// Shared lessons belong to channel_id=""; same-niche channel records are
+	// useful in the UI but remain isolated during generation.
+	scoped := make([]AgentMemory, 0, 5)
+	for _, mem := range mems {
+		if mem.ChannelID != "" && mem.ChannelID != channelID {
+			continue
+		}
+		scoped = append(scoped, mem)
+		if len(scoped) == 5 {
+			break
+		}
+	}
+	if len(scoped) == 0 {
 		return ""
 	}
 
 	var dos []string
 	var donts []string
 
-	for _, m := range mems {
+	for _, m := range scoped {
+		scope := "toàn kênh/ngách"
+		if m.ChannelID != "" {
+			scope = "kênh " + m.ChannelID
+		}
+		lesson := fmt.Sprintf("- [%s | %s | n=%d | confidence=%.2f] %s (format=%s)",
+			m.Title, scope, m.SampleSize, m.ConfidenceScore, m.Insight, m.FormatID)
 		if m.ImpactScore > 0.2 {
-			dos = append(dos, fmt.Sprintf("- [%s] %s (Bài học: %s)", m.Title, m.Insight, m.FormatID))
+			dos = append(dos, lesson)
 		} else if m.ImpactScore < -0.2 {
-			donts = append(donts, fmt.Sprintf("- [TRÁNH] %s (Lý do: %s)", m.Title, m.Insight))
+			donts = append(donts, "- [TRÁNH] "+strings.TrimPrefix(lesson, "- "))
 		}
 	}
 
 	var sb strings.Builder
 	sb.WriteString("\n### BÀI HỌC THỰC CHIẾN TỪ CÁC VIDEO TRƯỚC (AGENT EPISODIC MEMORY):\n")
 	if len(dos) > 0 {
-		sb.WriteString("Phát huy các yếu tố đã chứng minh thành công:\n")
+		sb.WriteString("Tín hiệu tích cực cần tiếp tục thử nghiệm; không bảo đảm kết quả:\n")
 		sb.WriteString(strings.Join(dos, "\n"))
 		sb.WriteString("\n")
 	}
 	if len(donts) > 0 {
-		sb.WriteString("Tuyệt đối tránh các lỗi đã gây giảm tương tác:\n")
+		sb.WriteString("Tín hiệu tiêu cực cần xem xét lại; không kết luận nhân quả:\n")
 		sb.WriteString(strings.Join(donts, "\n"))
 		sb.WriteString("\n")
 	}

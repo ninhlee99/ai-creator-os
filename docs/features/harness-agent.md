@@ -1,70 +1,56 @@
-# Agent Harness — Autonomous Control Plane
+# Harness và vòng học chất lượng video
 
-AI Creator OS triển khai kiến trúc **Agent Harness (Autonomous Control Plane)** đạt chuẩn các hệ thống tự hành tiên tiến nhất trên thế giới.
+## Trạng thái hiện tại
 
----
+Harness hiện là vòng quan sát/ghi chú có giới hạn, chưa phải bộ điều khiển zero-touch.
 
-## 1. Vị trí của Agent Harness trong Quy trình Tự động 24/7
+- `Harness.RunCycle` gọi `OODAEngine.ExecuteCycle`, ghi quan sát, diagnosis và decisions vào `harness_cycles`.
+- `OODAEngine.Observe` đọc số người theo dõi từ account và thống kê views theo video từ `growth.video_metric_snapshots`. Mỗi channel snapshot ghi số video có view reading mới trong 7 ngày, trung bình views/video và thời điểm đo gần nhất. Đây là số video được đồng bộ metrics, không phải số video mới đăng.
+- OODA đọc thêm các verdict format đã lưu (`testing`/`winner`/`killed`), cỡ mẫu, views, lý do và `updated_at`. Đây là projection read-only; không tự tính lại verdict và không coi verdict cũ là mới.
+- Không có reading mới thì `metrics_status` là `missing`; store/query lỗi thành `error`; chưa nối Growth store thành `unavailable`. Không thay thiếu dữ liệu bằng 0 để kết luận hiệu quả. Hiện nguồn metrics theo video là YouTube Analytics; TikTok chưa nối.
+- OODA lưu readiness thật do Studio báo: affiliate tự động và thay toàn thân viral. Hiện cả hai đều `false`; trạng thái kèm lý do được lưu vào snapshot và hiện trong cycle inspector.
+- LLM chỉ tóm tắt metrics và capability evidence; OODA không biến views trung bình thành task tạo video. Viral cần video nguồn cụ thể, affiliate cần sản phẩm đã xác minh và footage khả dụng. Hai nguồn candidate này chưa được nối nên hiện không sinh production task.
+- OODA chưa chạy job video hoặc đăng bài. Growth automation riêng chạy `Evaluate` khi nhận snapshot thật; OODA chỉ báo verdict đã lưu để người vận hành đọc.
+- Level 2 và 3 không render video hoặc đăng bài. OODA không dispatch production action khi thiếu capability hoặc input gắn nguồn; `ActionCount` hiện bằng 0.
+- Memory lưu bài học nhập qua UI. OODA chưa tự ghi bài học hiệu quả video vì không có action nào được thực thi.
+- `Studio.PromptEnhancer` lấy memory theo niche và channel. Affiliate Director dùng nội dung đó như gợi ý yếu cho nhịp kể/cảm xúc; prompt cấm memory ghi đè bằng chứng sản phẩm, cách mặc/dùng, red lines hoặc claim. Viral recreation không nhận gợi ý phong cách vì phải giữ nguyên hành động và nhịp của nguồn.
+- Prompt chỉ nhận memory của đúng channel hoặc memory dùng chung; memory riêng của channel khác không bị trộn vào dù cùng niche. Context hiển thị channel, số mẫu và confidence. Mẫu ít là giả thuyết, không phải kết quả đã chứng minh.
 
-Nhiều người dùng thắc mắc: *Harness Agent nằm ở khâu nào trong quy trình 24/7? Nó là một tính năng độc lập hay gắn liền với toàn hệ thống?*
+## Luồng affiliate hiện có
 
-**Câu trả lời chuẩn kiến trúc phần mềm:**
-Hệ thống AI Creator OS được chia làm 2 tầng rõ rệt:
+1. `POST /studio/affiliate/plan` khóa kênh, ảnh listing, ảnh nhân vật, Product Analyst brief và Director shot list.
+2. Director đọc Brand DNA, channel learning, Product Analyst brief và ảnh listing. Cách dùng thật và bằng chứng sản phẩm luôn ưu tiên.
+3. Producer nhận một clip chuyển động do người vận hành cung cấp cho mỗi shot; app chuẩn hóa và ghép clip.
+4. Temporal QC chặn footage gần đứng yên. Visual QC kiểm tra mẫu frame theo từng shot. QC trên frame mẫu không chứng minh mọi thời điểm trong video.
+5. Autopilot affiliate đang dừng vì chưa có provider tạo footage chuyển động khả dụng theo chính sách free-only.
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│              COGNITIVE CONTROL PLANE (LỚP ĐIỀU KHIỂN NHẬN THỨC)        │
-│                         ★ AGENT HARNESS (OODA) ★                       │
-│  - Phân tích danh mục kênh (Portfolio State: views, followers, stages) │
-│  - Kho Ký ức thực chiến (Episodic Memory Bank: Hook 3s, Conversion)    │
-│  - Sinh Prompt Context tiêm vào các kịch bản của Studio                │
-│  - Ra quyết định điều phối ưu tiên (Decision Stream: P1, P2...)        │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Directs & Enhances
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                 EXECUTION PLANE (LỚP THỰC THI 24/7 NỀN)                │
-│                         ★ AUTOMATION TICKS ★                           │
-│  - Hunter Tick (Accesstrade / Products Store)                          │
-│  - Studio Engine (AI MediaGen 9:16 + Voiceover + FFMPEG Renderer)      │
-│  - Autopilot Tick (Sản xuất video định kỳ 6h)                          │
-│  - Publishers Gateway (Đăng tải lên TikTok, YouTube Shorts)            │
-│  - Watchdog & Self-Healing (Tự phục hồi, dọn ổ đĩa, alert Telegram)   │
-└────────────────────────────────────────────────────────────────────────┘
-```
+## Luồng viral hiện có
 
-1. **Không phải tính năng rời rạc:** Harness Agent đóng vai trò **Bộ Não Chỉ Huy Cấp Cao (Strategic Commander)**, còn các Tick tự động (`AutopilotTick`, `GrowthTick`, `HunterTick`, `Studio`) là **Cánh Tay Thực Thi (Execution Plane)**.
-2. **Khâu Tham Gia Cụ Thể:**
-   - **Khâu Lập Kịch Bản (Script Generation):** Thông qua hook `srv.Studio.PromptEnhancer`, mỗi khi Studio tạo kịch bản video viral hoặc affiliate, nó tự động gọi `harness.Memory().GeneratePromptContext()` để tiêm các bài học giữ chân 3s và lỗi cần tránh vào LLM prompt.
-   - **Khâu Kích Hoạt Đợt Sản Xuất (Job Dispatch):** Trong giai đoạn **Act** của chu kỳ OODA, Harness Agent trực tiếp gọi `studioInst.EnqueueViral(...)` để sinh các lượt dựng video mới cho kênh cần đẩy mạnh mà không cần người dùng tự bấm tạo từng video.
-   - **Khâu Tối Ưu Hóa (Continuous Reflection):** Đọc lại dữ liệu chuyển đổi và hiệu quả video để lưu bài học mới vào `harness_memories`.
+- Viral Radar chỉ lưu nguồn tham khảo.
+- Phân tích nguồn có thể tạo storyboard từ frame mẫu, nhưng không tạo footage.
+- `EnqueueViral` từ chối mọi job; adapter thay toàn thân hiện chưa triển khai. Face swap không đạt yêu cầu thay toàn nhân vật.
+- Vì vậy hiện không có video viral đầu ra để QC hoặc đăng.
 
----
+## Thiết kế đích cho agent dùng được
 
-## 2. Kiểm Tra Dữ Liệu Lưu Trữ (Data Storage Inspection)
+1. **Observer** đọc metrics thật theo channel và video ID, kèm nguồn, thời điểm, mẫu số và khoảng dữ liệu. Thiếu dữ liệu thì không suy luận.
+2. **Growth Analyst** so sánh format theo cỡ mẫu tối thiểu; tách views, retention, share/save, follower gain và affiliate orders. Không kết luận chuyển đổi khi chưa nối attribution.
+3. **Creative Director** dùng bài học channel-scoped làm giả thuyết về hook, cảm xúc và nhịp dựng. Product truth và viral source fidelity là ràng buộc cao hơn memory.
+4. **Producer/Editor** chỉ nhận việc khi provider thật hỗ trợ đúng capability: affiliate tạo footage nhân vật mặc/dùng sản phẩm; viral giữ cảnh, choreography, camera và audio nguồn trong khi thay toàn thân.
+5. **QC** đối chiếu sản phẩm/nhân vật, hành động, framing, continuity và chất lượng ở toàn timeline. Chỉ worker đã chạy mới được ghi stage pass; QC model là screening, không phải chứng minh tuyệt đối.
+6. **Learning loop** ghi kết quả có nguồn và cỡ mẫu, cập nhật memory theo channel/format, rồi cấp lesson phù hợp vào prompt kế tiếp. Không tự học từ dự đoán, job chưa đăng hoặc số liệu không gắn video.
 
-Harness Agent minh bạch 100% mọi dữ liệu được lưu trong SQLite:
+## Điều kiện mở sản xuất tự động
 
-1. **Bảng Chu Kỳ Nhận Thức (`harness_cycles`):**
-   - Lưu trữ: `id`, `started_at`, `finished_at`, `diagnosis`, `observations_json`, `decisions_json`, `action_count`, `status`.
-   - **Cycle Inspector Modal:** Nhấp vào bất kỳ chu kỳ nào để xem toàn bộ ảnh chụp môi trường (Perception Matrix: số lượng follower, stage kênh, tải hệ thống, âm thanh hot, sản phẩm hot) và danh sách quyết định hành động.
-   - **Raw JSON Viewer:** Cho phép copy trực tiếp toàn bộ chuỗi JSON lưu trong cơ sở dữ liệu với nút `[ 📋 Copy Stored JSON ]`.
-   - **API nội bộ:** `GET /api/harness/cycles/{id}` trả về JSON đầy đủ của chu kỳ.
+- Có quyết định policy rõ cho provider tạo/chỉnh video. `docs/STANDARDS.md` hiện cấm billing, Veo và model runtime cục bộ; chính sách này chặn cả hai capability video thật.
+- Provider phải báo capability, readiness và giới hạn chi phí trước khi cho phép enqueue. Không gửi request video trả phí khi policy chưa được đổi.
+- Affiliate phải tạo được chuyển động mặc/dùng sản phẩm thật; viral phải thay toàn thân và giữ timeline nguồn. Nếu không có provider đáp ứng, UI tiếp tục báo chưa hỗ trợ.
 
-2. **Bảng Ký Ức Thực Chiến (`harness_memories`):**
-   - Lưu trữ: `id`, `memory_type`, `channel_id`, `niche`, `format_id`, `title`, `insight`, `confidence_score`, `impact_score`, `sample_size`, `source_ref`, `created_at`, `updated_at`.
-   - Mỗi bản ghi có nút `[ { } JSON ]` để soi dữ liệu thô và nút `[ ✕ ]` để xóa nếu người dùng muốn loại bỏ bài học không phù hợp.
+## Mã chính
 
-3. **Prompt Context Simulator (Trình Mô Phỏng Tiêm Ngữ Cảnh):**
-   - Cho phép chọn ngách nội dung (Niche) và kênh (Channel).
-   - Tức thì gọi API `GET /api/harness/prompt-context` để hiển thị chính xác đoạn prompt markdown mà LLM nhận được khi viết kịch bản.
+- `internal/harness/ooda.go`, `internal/harness/harness.go`, `internal/harness/memory.go`
+- `internal/studio/affiliate_plan.go`, `internal/studio/director.go`, `internal/studio/prompts/affiliate_shotlist.txt`
+- `internal/studio/affiliate.go`, `internal/studio/viral.go`, `internal/studio/gemini_video_edit.go`
+- `internal/growth/metrics.go`, `internal/growth/youtube_analytics.go`, `internal/growth/formats.go`
 
----
-
-## 3. 3 Cấp Độ Tự Trị (Autonomy Policy)
-
-| Cấp độ | Tên gọi chuẩn | Mô tả hành vi |
-|---|---|---|
-| **Level 1** | **Assisted (Advisory)** | Agent chẩn đoán và đề xuất. Yêu cầu phê duyệt thủ công từng khâu sản xuất và xuất bản. |
-| **Level 2** | **Semi-Autonomous (Draft-First)** | Tự động tạo kịch bản và render video nháp. Người dùng bấm duyệt trước khi xuất bản lên kênh thật. |
-| **Level 3** | **Fully Autonomous (Zero-Touch)** | Tự vận hành 100%: Quản lý danh mục kênh, săn deal, sản xuất, đăng tải và tự sửa sai theo dữ liệu. |
+Cycle inspector escape dữ liệu động trước khi đưa vào HTML; nội dung diagnosis từ LLM và các trường account/product không được diễn giải như markup.

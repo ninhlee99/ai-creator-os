@@ -119,18 +119,19 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 	case harness.AutonomyAssisted:
 		hv.AutonomyLevelName = "Cấp độ 1: Trợ lý đề xuất (Assisted)"
 		hv.AutonomyLevelBadge = "info"
-		hv.AutonomyDesc = "Agent quan sát, chẩn đoán và đề xuất kế hoạch hành động. Yêu cầu chủ doanh nghiệp duyệt từng bước trước khi dựng hoặc xuất bản."
+		hv.AutonomyDesc = "OODA hiện ghi số kênh và job; chưa nối metrics từng video nên chưa thể đề xuất dựa trên hiệu quả. Sản xuất và đăng vẫn thủ công."
 	case harness.AutonomySemiAutonomous:
-		hv.AutonomyLevelName = "Cấp độ 2: Bán tự động (Semi-Autonomous)"
-		hv.AutonomyLevelBadge = "running"
-		hv.AutonomyDesc = "Agent tự động phát hiện xu hướng và dựng video nháp. Chủ doanh nghiệp kiểm tra và duyệt trước khi đăng bài thật."
+		hv.AutonomyLevelName = "Cấp độ 2: Bán tự động (chưa hỗ trợ)"
+		hv.AutonomyLevelBadge = "warn"
+		hv.AutonomyDesc = "Mức này chưa tạo video nháp. Mọi đề xuất sản xuất hiện vẫn chờ đủ đầu vào và phê duyệt."
 	case harness.AutonomyFullyAutonomous:
-		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (Fully Autonomous)"
-		hv.AutonomyLevelBadge = "ok"
-		hv.AutonomyDesc = "Agent tự vận hành 24/7 khép kín: săn deal affiliate, sản xuất video viral, đăng bài giờ vàng và tự học hỏi sửa sai."
+		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (chưa hỗ trợ)"
+		hv.AutonomyLevelBadge = "warn"
+		hv.AutonomyDesc = "Mức này chưa tự săn sản phẩm, sản xuất video hoặc đăng bài. Các action vẫn chờ đầu vào thủ công."
 	default:
-		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (Fully Autonomous)"
-		hv.AutonomyLevelBadge = "ok"
+		hv.AutonomyLevelName = "Cấp độ 1: Trợ lý đề xuất (Assisted)"
+		hv.AutonomyLevelBadge = "info"
+		hv.AutonomyDesc = "Agent chỉ ghi nhận dữ liệu hiện có và đề xuất action; chưa tự tạo hoặc đăng video."
 	}
 
 	// Chu kỳ gần nhất

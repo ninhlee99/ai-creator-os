@@ -37,6 +37,7 @@ const (
 	KeyATHunterEnabled      = "at.hunter_enabled"
 	KeyATHunterIntervalHrs  = "at.hunter_interval_hours"
 	KeyATHunterVideos       = "at.hunter_videos"
+	KeyATHunterAccountID    = "at.hunter_account_id"
 	KeyATOrderSyncEnabled   = "at.ordersync_enabled"
 	KeyATOrderSyncIntervalM = "at.ordersync_interval_minutes"
 	KeyATCampaignCheckOn    = "at.campaigncheck_enabled"
@@ -49,7 +50,6 @@ const (
 	defaultATOrderSyncMins  = 30
 	defaultATCampaignHours  = 24
 	orderSyncWindowDays     = 7 // cửa sổ quét rolling: bắt kịp đơn pending→approved
-	hunterDirectAccountID   = 0 // usage account 0 = video trực tiếp từ hunter
 )
 
 // StudioRunner là biên render affiliate mà tick AT cần.
@@ -107,6 +107,30 @@ func atInt(st Settings, key string, def int) int {
 		}
 	}
 	return def
+}
+
+// HunterAccountID requires an explicit channel target; a global/default face
+// photo cannot safely stand in for a channel identity.
+func (s *Service) HunterAccountID() (int64, error) {
+	if s.Settings == nil {
+		return 0, fmt.Errorf("chưa cấu hình kênh đích cho video hunter")
+	}
+	raw, ok := s.Settings.Get(KeyATHunterAccountID)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return 0, fmt.Errorf("chưa chọn kênh đích cho video hunter")
+	}
+	accountID, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || accountID <= 0 {
+		return 0, fmt.Errorf("kênh đích hunter không hợp lệ")
+	}
+	if s.Accounts == nil {
+		return 0, fmt.Errorf("không thể xác minh kênh đích hunter")
+	}
+	account, err := s.Accounts.Get(accountID)
+	if err != nil || account == nil {
+		return 0, fmt.Errorf("không tìm thấy kênh đích hunter")
+	}
+	return accountID, nil
 }
 
 // dueSince kiểm tra watermark lastRun đã quá interval chưa.
@@ -168,30 +192,49 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 		return []string{"săn sản phẩm: " + res.Note}
 	}
 	videos := 0
-	if s.StudioRunner != nil {
-		want := atInt(s.Settings, KeyATHunterVideos, defaultATHunterVideos)
+	want := atInt(s.Settings, KeyATHunterVideos, defaultATHunterVideos)
+	if s.StudioRunner != nil && want > 0 {
+		if readiness, ok := s.StudioRunner.(interface{ AutoAffiliateProductionReady() (bool, string) }); ok {
+			ready, reason := readiness.AutoAffiliateProductionReady()
+			if !ready {
+				stampRun(s.Settings, keyATHunterLastRun)
+				return []string{fmt.Sprintf("săn sản phẩm: %d mới, %d cập nhật, %d bỏ qua → 0 video; %s", res.New, res.Updated, res.Skipped, reason)}
+			}
+		}
+	}
+	var accountID int64
+	var accountErr error
+	if s.StudioRunner != nil && want > 0 {
+		accountID, accountErr = s.HunterAccountID()
+	}
+	if s.StudioRunner != nil && want > 0 && accountErr == nil {
 		for _, p := range res.Products {
 			if videos >= want {
 				break
 			}
 			// Đợt Y: claim trước khi dựng video (như Autopilot.Run) —
 			// nút "Săn ngay" bấm tay có thể đua với tick định kỳ.
-			claimed, cerr := s.Products.RecordUse(p.ID, hunterDirectAccountID, "")
+			claimed, cerr := s.Products.RecordUse(p.ID, accountID, "")
 			if cerr != nil || !claimed {
 				continue
 			}
-			jobID, jerr := s.MakeHunterVideo(ctx, p)
+			jobID, jerr := s.MakeHunterVideoForAccount(ctx, p, accountID)
 			if jerr != nil {
+				_ = s.Products.ReleaseUseClaim(p.ID, accountID)
 				log.Printf("accesstrade hunter: tạo video cho %q thất bại: %v", p.Title, jerr)
 				continue
 			}
-			_ = s.Products.SetUsageJobID(p.ID, hunterDirectAccountID, jobID)
+			_ = s.Products.SetUsageJobID(p.ID, accountID, jobID)
 			videos++
 		}
 	}
 	stampRun(s.Settings, keyATHunterLastRun)
-	return []string{fmt.Sprintf("săn sản phẩm: %d mới, %d cập nhật, %d bỏ qua → %d video",
-		res.New, res.Updated, res.Skipped, videos)}
+	note := fmt.Sprintf("săn sản phẩm: %d mới, %d cập nhật, %d bỏ qua → %d video",
+		res.New, res.Updated, res.Skipped, videos)
+	if accountErr != nil && s.StudioRunner != nil && want > 0 {
+		note += "; chưa tạo video: " + accountErr.Error()
+	}
+	return []string{note}
 }
 
 // MakeHunterVideo tạo 1 studio job affiliate từ sản phẩm hunter:
@@ -199,6 +242,35 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 // (đúng format Ninh chốt). Không viết lại renderer — gọi CreateAffiliateJob.
 // Export để web handler "Săn sản phẩm" dùng chung logic với tick.
 func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (string, error) {
+	accountID, err := s.HunterAccountID()
+	if err != nil {
+		return "", err
+	}
+	return s.MakeHunterVideoForAccount(ctx, p, accountID)
+}
+
+// MakeHunterVideoForAccount renders with identity photos owned by accountID.
+func (s *Service) MakeHunterVideoForAccount(ctx context.Context, p products.Product, accountID int64) (string, error) {
+	if accountID <= 0 {
+		return "", fmt.Errorf("cần chọn kênh đích cho video hunter")
+	}
+	if s.StudioRunner == nil {
+		return "", fmt.Errorf("Studio chưa sẵn sàng")
+	}
+	if readiness, ok := s.StudioRunner.(interface{ AutoAffiliateProductionReady() (bool, string) }); ok {
+		ready, reason := readiness.AutoAffiliateProductionReady()
+		if !ready {
+			return "", fmt.Errorf("%s", reason)
+		}
+	}
+	modelSource, ok := s.StudioRunner.(interface{ ModelPhotosForAccount(int64) []string })
+	if !ok {
+		return "", fmt.Errorf("Studio chưa hỗ trợ thư viện nhân vật theo kênh")
+	}
+	modelPhotos := modelSource.ModelPhotosForAccount(accountID)
+	if len(modelPhotos) == 0 {
+		return "", fmt.Errorf("kênh %d chưa có ảnh nhân vật riêng", accountID)
+	}
 	if len(p.ImageURLs) == 0 {
 		return "", fmt.Errorf("sản phẩm %q không có ảnh", p.Title)
 	}
@@ -229,15 +301,13 @@ func (s *Service) MakeHunterVideo(ctx context.Context, p products.Product) (stri
 	if niche == "" {
 		niche = p.Theme
 	}
-	modelPhoto := ""
-	if source, ok := s.StudioRunner.(interface{ DefaultModelPhoto() string }); ok {
-		modelPhoto = source.DefaultModelPhoto()
-	}
 	return s.StudioRunner.CreateAffiliateJob(studio.AffiliateParams{
-		Mode:         studio.AffiliateModePhoto,
+		Mode:         studio.AffiliateModeShots,
+		AccountID:    accountID,
 		Niche:        niche,
 		ProductName:  p.Title,
-		ModelPhoto:   modelPhoto,
+		ModelPhoto:   modelPhotos[0],
+		ModelPhotos:  modelPhotos,
 		ProductPhoto: dst,
 		ExtraPhotos:  extra,
 		Seconds:      30,

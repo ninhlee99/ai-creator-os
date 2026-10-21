@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 const (
@@ -19,8 +17,8 @@ const (
 
 const viralRadarInterval = 24 * time.Hour
 
-// ViralRadarTick discovers recent videos from channels above 100k subscribers
-// and queues at most one local, unpublished original video per daily run.
+// ViralRadarTick discovers and stores recent source candidates. Production
+// waits for a user to pair a source with the correct channel model photo.
 func (s *Service) ViralRadarTick(ctx context.Context, force bool) []string {
 	if s.Settings == nil {
 		return nil
@@ -81,38 +79,9 @@ func (s *Service) ViralRadarTick(ctx context.Context, force bool) []string {
 		return []string{fmt.Sprintf("Found %d high-subscriber source videos; automatic production is off.", len(sources))}
 	}
 	if s.dryRun() {
-		return []string{fmt.Sprintf("Found %d high-subscriber source videos; dry-run blocks video production.", len(sources))}
+		return []string{fmt.Sprintf("Found %d source candidates; dry-run stored results without creating a video job.", len(sources))}
 	}
-	if s.ViralRunner == nil {
-		return []string{"Source videos saved; Studio is not ready to create a video."}
-	}
-	photo := s.ViralRunner.DefaultModelPhoto()
-	if strings.TrimSpace(photo) == "" {
-		return []string{"Source videos saved; upload a model photo before automatic video production."}
-	}
-	source := sources[0]
-	duration := source.DurationSeconds
-	if duration < 60 {
-		duration = 60
-	}
-	jobID, err := s.ViralRunner.EnqueueViral(ctx, studio.ViralParams{
-		Topic:          source.Title,
-		Genre:          "trendjack",
-		VisualMood:     "cinematic",
-		ModelPhoto:     photo,
-		ModelPhotos:    []string{photo},
-		TargetDuration: duration,
-		SourceVideoURL: source.URL,
-		AIMode:         "local",
-	})
-	if err != nil {
-		return []string{"Source videos saved; original video job failed to start: " + err.Error()}
-	}
-	if s.Ledger != nil {
-		_ = s.Ledger.Decide("automation", "viral_source_video", nil,
-			fmt.Sprintf("Queued original local video job=%s from source=%s channel=%s subscribers=%d duration=%ds; no source footage/audio reused.", jobID, source.URL, source.ChannelTitle, source.Subscribers, source.DurationSeconds), nil)
-	}
-	return []string{fmt.Sprintf("Queued local original video job %s from %q (%d subscribers, source duration %ds).", jobID, source.ChannelTitle, source.Subscribers, source.DurationSeconds)}
+	return []string{fmt.Sprintf("Found and stored %d source candidates. Choose source video and matching channel model photo at /viral before production.", len(sources))}
 }
 
 // RefreshViralRadarSetting stores a user-selected source query.

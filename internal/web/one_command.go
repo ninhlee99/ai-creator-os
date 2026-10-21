@@ -157,7 +157,7 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 
 	switch mode {
 	case "story":
-		// Khởi tạo Kể chuyện YouTube 16:9 chuẩn 5 sao
+		// Queue a story job using the requested topic.
 		p := studio.StoryParams{
 			Topic:           topic,
 			Genre:           nicheOrGenre,
@@ -173,55 +173,33 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		}
 
 	case "affiliate":
-		mediaReady := false
-		if mg := s.Studio.MediaGen(); mg != nil {
-			mediaReady = mg.Healthy(r.Context())
-		}
-		if len(media.photos) == 0 && len(media.clips) == 0 && !mediaReady {
-			studioURL := "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
+		studioURL := "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
+		if len(media.clips) > 0 {
 			s.respondOneCommand(w, r, OneCommandResult{
 				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
-				Message: "Cần ảnh sản phẩm hoặc kết nối ImageGen trước khi dựng video Affiliate. Đã điền sẵn thông tin trong Studio.",
+				Message: "Video tải lên không được nối thành affiliate. Hãy tải ảnh listing; hệ thống sẽ tạo cảnh chuyển động mới với nhân vật kênh mặc hoặc dùng sản phẩm.",
 			}, http.StatusUnprocessableEntity)
 			return
 		}
-		mode := studio.AffiliateModeShots
-		if len(media.photos) > 0 {
-			mode = studio.AffiliateModePhoto
+		if len(media.photos) == 0 {
+			s.respondOneCommand(w, r, OneCommandResult{
+				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
+				Message: "Affiliate cần ảnh sản phẩm thật để khóa đúng mặt hàng. Mở Studio, chọn hoặc tải ảnh sản phẩm.",
+			}, http.StatusUnprocessableEntity)
+			return
 		}
-		// Photos become a multi-image montage; video files become source clips.
-		p := studio.AffiliateParams{
-			Mode:                     mode,
-			Niche:                    nicheOrGenre,
-			ProductName:              topic,
-			Seconds:                  30,
-			BPM:                      120,
-			AutoGenerateProductPhoto: len(media.photos) == 0 && len(media.clips) == 0,
-			Clips:                    media.clips,
-		}
-		if len(media.photos) > 0 {
-			p.ProductPhoto = media.photos[0]
-			p.ExtraPhotos = append([]string(nil), media.photos[1:]...)
-		}
-		jobID, err = s.Studio.CreateAffiliateJob(p)
-		if err == nil {
-			redirectURL = "/studio/jobs?ok=" + url.QueryEscape(fmt.Sprintf("✓ Đang sản xuất video affiliate: %s", topic))
-			msg = fmt.Sprintf("Đã bắt đầu dựng video affiliate 9:16: %s", topic)
-		}
+		s.respondOneCommand(w, r, OneCommandResult{
+			OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
+			Message: "One-command chưa thể bỏ qua Product Analyst + Director shot plan. Mở Studio để lập plan, rồi tải clip chuyển động theo từng shot; chưa tạo job.",
+		}, http.StatusUnprocessableEntity)
+		return
 
 	default: // "viral"
-		// Khởi tạo Video Viral AI 9:16 chuẩn 5 sao
-		p := studio.ViralParams{
-			Topic:          topic,
-			Genre:          nicheOrGenre,
-			VisualMood:     "cinematic",
-			TargetDuration: 60,
-		}
-		jobID, err = s.Studio.EnqueueViral(r.Context(), p)
-		if err == nil {
-			redirectURL = "/viral?ok=" + url.QueryEscape(fmt.Sprintf("✓ Đang sản xuất video viral 9:16: %s", topic))
-			msg = fmt.Sprintf("Đã bắt đầu sản xuất video viral 9:16: %s", topic)
-		}
+		s.respondOneCommand(w, r, OneCommandResult{
+			OK: false, Type: mode, Title: topic, RedirectURL: "/viral?topic=" + url.QueryEscape(topic),
+			Message: "Video Viral cần video nguồn và ảnh nhân vật kênh để tái hiện cảnh/chuyển động. Mở Xưởng Viral để cung cấp hai đầu vào.",
+		}, http.StatusUnprocessableEntity)
+		return
 	}
 
 	if err != nil {

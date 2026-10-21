@@ -129,6 +129,33 @@ func (s *Server) findModelPhotosByIDs(ids []int64) []string {
 	return res
 }
 
+// findModelPhotosByIDsForAccount rejects IDs outside the selected channel's
+// model library so identity references cannot bleed between accounts.
+func (s *Server) findModelPhotosByIDsForAccount(accountID int64, ids []int64) []string {
+	if s.Studio == nil || accountID <= 0 || len(ids) == 0 {
+		return nil
+	}
+	ms, err := s.Studio.ModelLibrary()
+	if err != nil {
+		return nil
+	}
+	photos, err := ms.List(accountID)
+	if err != nil {
+		return nil
+	}
+	wanted := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		wanted[id] = true
+	}
+	var out []string
+	for _, photo := range photos {
+		if wanted[photo.ID] && photo.AccountID == accountID && fileExists(photo.Path) {
+			out = append(out, photo.Path)
+		}
+	}
+	return out
+}
+
 // formatBytes định dạng dung lượng byte thành KB hoặc MB thân thiện người dùng.
 func formatBytes(b int64) string {
 	const unit = 1024

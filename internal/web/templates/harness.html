@@ -155,8 +155,8 @@
     <form method="post" action="/harness/autonomy" style="display:flex;gap:10px;align-items:center;margin:0">
       <select name="level" class="form-select" style="padding:6px 12px;font-size:13px;font-weight:600;border-radius:8px">
         <option value="1" {{if eq .Harness.AutonomyLevel 1}}selected{{end}}>Cấp độ 1: Trợ lý đề xuất (Assisted)</option>
-        <option value="2" {{if eq .Harness.AutonomyLevel 2}}selected{{end}}>Cấp độ 2: Bán tự động (Semi-Autonomous)</option>
-        <option value="3" {{if eq .Harness.AutonomyLevel 3}}selected{{end}}>Cấp độ 3: Tự hành 100% (Fully Autonomous)</option>
+        <option value="2" {{if eq .Harness.AutonomyLevel 2}}selected{{end}}>Cấp độ 2: Bán tự động (chưa hỗ trợ)</option>
+        <option value="3" {{if eq .Harness.AutonomyLevel 3}}selected{{end}}>Cấp độ 3: Tự hành (chưa hỗ trợ)</option>
       </select>
       <button type="submit" class="btn btn-secondary btn-sm" style="font-weight:600;font-size:12.5px;padding:6px 14px">Áp dụng chính sách</button>
     </form>
@@ -168,23 +168,23 @@
         Cấp độ 1: Trợ lý đề xuất
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5">
-        Agent chẩn đoán và đề xuất. Yêu cầu chủ kênh phê duyệt thủ công từng khâu sản xuất và xuất bản.
+        OODA đọc metrics video và verdict format đã lưu; hiện chỉ báo cáo vì chưa nối nguồn viral, sản phẩm xác thực và provider tạo video. Sản xuất và đăng vẫn thủ công.
       </div>
     </div>
     <div style="padding:16px 18px;border-radius:10px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--border){{end}}">
       <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 2}}var(--accent){{else}}var(--text){{end}}">
-        Cấp độ 2: Bán tự động
+        Cấp độ 2: Bán tự động (chưa hỗ trợ)
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5">
-        Tự động tạo kịch bản và render video nháp. Người dùng bấm duyệt trước khi đăng bài thật lên mạng xã hội.
+        Hiện chưa tự tạo kịch bản hoặc video nháp. Action vẫn chờ đầu vào và phê duyệt.
       </div>
     </div>
     <div style="padding:16px 18px;border-radius:10px;background:var(--bg);border:1px solid {{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--border){{end}}">
       <div style="font-weight:700;font-size:13px;color:{{if eq .Harness.AutonomyLevel 3}}var(--accent){{else}}var(--text){{end}}">
-        Cấp độ 3: Tự hành 100% (Khuyên dùng)
+        Cấp độ 3: Tự hành (chưa hỗ trợ)
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5">
-        Tự vận hành 100%: Quản lý danh mục kênh, săn deal, sản xuất, đăng tải đúng giờ vàng và tự sửa sai theo dữ liệu.
+        Hiện chưa tự săn sản phẩm, tạo video hoặc đăng bài. Chưa có pipeline zero-touch đủ điều kiện.
       </div>
     </div>
   </div>
@@ -563,6 +563,12 @@ function refreshPromptPreview() {
     });
 }
 
+function escapeCycleHTML(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+  });
+}
+
 function openCycleModal(cycleID) {
   const modal = document.getElementById('cycleInspectModal');
   const title = document.getElementById('cycleModalTitle');
@@ -580,17 +586,63 @@ function openCycleModal(cycleID) {
     .then(data => {
       currentCycleData = data;
       sub.textContent = "Bắt đầu: " + (data.started_at || '') + " • Hoàn tất: " + (data.finished_at || '') + " • Trạng thái: " + (data.status || 'hoàn thành');
+      const observations = data.observations || {};
+      const videoProduction = observations.video_production || {};
+      const affiliateObserved = typeof videoProduction.affiliate_automatic_ready === 'boolean';
+      const viralObserved = typeof videoProduction.viral_character_edit_ready === 'boolean';
+      const affiliateReady = videoProduction.affiliate_automatic_ready === true;
+      const viralReady = videoProduction.viral_character_edit_ready === true;
+      const productionHtml = `
+        <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Affiliate tự động</div>
+          <div style="font-weight:700;font-size:12.5px;margin-top:2px">${!affiliateObserved ? 'Chưa ghi nhận' : affiliateReady ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${escapeCycleHTML(videoProduction.affiliate_status || 'Chưa có trạng thái')}</div>
+        </div>
+        <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Thay toàn thân viral</div>
+          <div style="font-weight:700;font-size:12.5px;margin-top:2px">${!viralObserved ? 'Chưa ghi nhận' : viralReady ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${escapeCycleHTML(videoProduction.viral_status || 'Chưa có trạng thái')}</div>
+        </div>`;
 
       let channelsHtml = '';
       if (data.observations && data.observations.channels && data.observations.channels.length > 0) {
-        channelsHtml = data.observations.channels.map(c => `
+        channelsHtml = data.observations.channels.map(c => {
+          const metricStatusLabel = c.metrics_status === 'missing' ? 'chưa có dữ liệu'
+            : c.metrics_status === 'error' ? 'lỗi đọc dữ liệu'
+            : c.metrics_status === 'unavailable' ? 'chưa kết nối'
+            : 'chưa ghi nhận trong chu kỳ này';
+          const metricsText = c.metrics_status === 'available'
+            ? `Video có metrics 7 ngày: ${escapeCycleHTML(c.recent_metric_videos)} • Trung bình: ${Math.round(Number(c.avg_views) || 0).toLocaleString('vi-VN')} views/video • Cập nhật: ${escapeCycleHTML(c.metrics_updated_at || 'không rõ')}`
+            : `Metrics video 7 ngày: ${escapeCycleHTML(metricStatusLabel)}`;
+          let formatsText = 'Format: chưa ghi nhận trong chu kỳ này';
+          if (c.format_stats_status === 'missing') {
+            formatsText = 'Format: chưa có verdict lưu';
+          }
+          if (c.format_stats_status === 'error') {
+            formatsText = 'Format: lỗi đọc dữ liệu';
+          } else if (c.format_stats_status === 'unavailable') {
+            formatsText = 'Format: Growth store chưa kết nối';
+          } else if (c.format_stats_status === 'available' && Array.isArray(c.format_stats) && c.format_stats.length > 0) {
+            formatsText = c.format_stats.slice(0, 4).map(format => {
+              const completion = typeof format.median_completion === 'number'
+                ? ` • APV ${Math.round(format.median_completion * 100)}%`
+                : '';
+              const reason = format.verdict_reason ? ` • ${escapeCycleHTML(format.verdict_reason)}` : '';
+              return `${escapeCycleHTML(format.format_id)}: ${escapeCycleHTML(format.verdict)} · ${escapeCycleHTML(format.videos)} video · median ${Math.round(Number(format.median_views) || 0).toLocaleString('vi-VN')} views${completion} · cập nhật ${escapeCycleHTML(format.updated_at || 'không rõ')}${reason}`;
+            }).join('<br>');
+            if (Number(c.format_stats_omitted) > 0) {
+              formatsText += `<br>Còn ${escapeCycleHTML(c.format_stats_omitted)} format khác chưa hiển thị`;
+            }
+          }
+          return `
           <div style="background:var(--surface);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
-            <div style="font-weight:700">@${c.username} (${c.brand_niche || 'Tổng hợp'})</div>
+            <div style="font-weight:700">@${escapeCycleHTML(c.username)} (${escapeCycleHTML(c.brand_niche || 'Tổng hợp')})</div>
             <div style="font-size:12px;color:var(--muted);margin-top:3px">
-              Người theo dõi: <b>${c.followers || 0}</b> &bull; Trạng thái: <span class="badge badge-dim" style="font-size:10px">${c.health_status || 'bình thường'}</span>
+              Người theo dõi: <b>${escapeCycleHTML(c.followers || 0)}</b> &bull; Trạng thái: <span class="badge badge-dim" style="font-size:10px">${escapeCycleHTML(c.health_status || 'chưa rõ')}</span><br>${metricsText}<br>${formatsText}
             </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
       } else {
         channelsHtml = '<div style="color:var(--muted);font-size:12.5px;padding:8px 0">Không có dữ liệu kênh trong chu kỳ này.</div>';
       }
@@ -599,12 +651,12 @@ function openCycleModal(cycleID) {
       if (data.decisions && data.decisions.length > 0) {
         decisionsHtml = data.decisions.map(d => `
           <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:8px 10px;font-weight:700">@${d.target_user || 'Tất cả'}</td>
-            <td style="padding:8px 10px"><span class="badge badge-info" style="font-size:10.5px">${d.action_type}</span></td>
-            <td style="padding:8px 10px;font-weight:600">${d.topic}</td>
-            <td style="padding:8px 10px;font-size:12px;color:var(--text);line-height:1.4">${d.reasoning}</td>
-            <td style="padding:8px 10px"><span class="badge badge-ok" style="font-size:10.5px">${d.status}</span></td>
-            <td style="padding:8px 10px;font-family:monospace;font-size:11px;color:var(--muted)">${d.result_id || '—'}</td>
+            <td style="padding:8px 10px;font-weight:700">@${escapeCycleHTML(d.target_user || 'Tất cả')}</td>
+            <td style="padding:8px 10px"><span class="badge badge-info" style="font-size:10.5px">${escapeCycleHTML(d.action_type)}</span></td>
+            <td style="padding:8px 10px;font-weight:600">${escapeCycleHTML(d.topic)}</td>
+            <td style="padding:8px 10px;font-size:12px;color:var(--text);line-height:1.4">${escapeCycleHTML(d.reasoning)}</td>
+            <td style="padding:8px 10px"><span class="badge badge-ok" style="font-size:10.5px">${escapeCycleHTML(d.status)}</span></td>
+            <td style="padding:8px 10px;font-family:monospace;font-size:11px;color:var(--muted)">${escapeCycleHTML(d.result_id || '—')}</td>
           </tr>
         `).join('');
       } else {
@@ -615,24 +667,25 @@ function openCycleModal(cycleID) {
         <div>
           <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">1. Chẩn Đoán Chiến Lược (Strategic Diagnosis)</div>
           <div style="background:var(--bg);padding:14px 16px;border-radius:10px;border:1px solid var(--border);line-height:1.6">
-            ${data.diagnosis || 'Không có nội dung chẩn đoán'}
+            ${escapeCycleHTML(data.diagnosis || 'Không có nội dung chẩn đoán')}
           </div>
         </div>
 
         <div>
           <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">2. Ma Trận Nhận Thức (Perception Snapshot)</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px">
+            ${productionHtml}
             <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
               <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Sức khỏe hệ thống</div>
-              <div style="font-weight:700;color:#10b981;font-size:13.5px;margin-top:2px">${(data.observations && data.observations.system_health) || 'hoạt động tốt'}</div>
+              <div style="font-weight:700;color:var(--muted);font-size:13.5px;margin-top:2px">${escapeCycleHTML(observations.system_health || 'chưa có dữ liệu')}</div>
             </div>
             <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
               <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Deal Affiliate đề xuất</div>
-              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${(data.observations && data.observations.high_roi_product) || 'Chưa chọn'}</div>
+              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.high_roi_product || 'Chưa có nguồn sản phẩm')}</div>
             </div>
             <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
               <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Âm thanh thịnh hành</div>
-              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${(data.observations && data.observations.top_trending_song) || 'Mặc định'}</div>
+              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.top_trending_song || 'Chưa có nguồn âm thanh')}</div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">
@@ -641,7 +694,7 @@ function openCycleModal(cycleID) {
         </div>
 
         <div>
-          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">3. Tác Vụ Hành Động Đã Điều Phối (${data.action_count || 0})</div>
+          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">3. Tác Vụ Hành Động Đã Điều Phối (${escapeCycleHTML(data.action_count || 0)})</div>
           <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
             <table class="table" style="font-size:12px;margin:0">
               <thead style="background:var(--surface)">
@@ -663,7 +716,7 @@ function openCycleModal(cycleID) {
       `;
     })
     .catch(err => {
-      body.innerHTML = "<div style='color:#ef4444;padding:24px;text-align:center'>Lỗi tải chi tiết chu kỳ: " + err + "</div>";
+      body.innerHTML = "<div style='color:#ef4444;padding:24px;text-align:center'>Lỗi tải chi tiết chu kỳ: " + escapeCycleHTML(err) + "</div>";
     });
 }
 

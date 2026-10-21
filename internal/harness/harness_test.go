@@ -123,8 +123,8 @@ func TestOODACycleAndHarness(t *testing.T) {
 	if diag == "" {
 		t.Errorf("expected non-empty diagnosis")
 	}
-	if len(tasks) == 0 {
-		t.Errorf("expected decision tasks generated")
+	if len(tasks) != 0 {
+		t.Errorf("expected no production tasks without linked metrics or source inputs, got %d", len(tasks))
 	}
 
 	res, err := h.ooda.ExecuteCycle(ctx, fakeAccounts, nil, AutonomyFullyAutonomous)

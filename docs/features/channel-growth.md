@@ -1,9 +1,9 @@
 # Phát triển kênh (`/growth`)
 
 ## 1. Mục đích
-Máy tăng trưởng kênh tự động: sinh kế hoạch nội dung 30 ngày theo giai đoạn,
-đánh giá số liệu theo ngưỡng, tự sản xuất video + đăng YouTube trong quota,
-tự tạm dừng tài khoản khi chạm luật kill.
+Máy tăng trưởng kênh: sinh kế hoạch nội dung 30 ngày, đánh giá số liệu theo
+ngưỡng, và tự tạm dừng tài khoản khi chạm luật kill. Tự sản xuất affiliate
+đang chờ clip chuyển động do người vận hành cung cấp theo chính sách free-only.
 
 ## 2. Kích hoạt
 - `GET /growth` → `handleGrowth` (`internal/web/growth.go:238`): tổng quan
@@ -14,9 +14,14 @@ tự tạm dừng tài khoản khi chạm luật kill.
   `tiktok_api`. Thiếu kết nối → fail-closed, báo rõ trong notes.
 - `POST /growth/sync` → `handleGrowthSync`: đồng bộ số liệu + vòng quyết định ngay
   cho mọi tài khoản (gọi `syncOneAccount` — xem `autonomous-daemon.md`).
+- `Harness.RunCycle` đọc latest per-video view readings vừa đồng bộ trong 7 ngày từ
+  `growth.video_metric_snapshots`: số video có reading, average views và giờ đo.
+  Đây là số video có metrics mới, không phải số video đăng. Không có data/error
+  được ghi trạng thái riêng; OODA không suy luận views khi thiếu reading.
 - `POST /growth/accounts/{id}/plan` → `handleGrowthPlan`: sinh lại kế hoạch 30 ngày.
 - `POST /growth/production` → `handleGrowthProductionToggle`: bật/tắt sản xuất tự động
-  (key `growth.production_enabled`; unset = ON, `"0"` = tắt).
+  (key `growth.production_enabled`; unset = ON, `"0"` = tắt). Bật công tắc không
+  bỏ qua yêu cầu clip chuyển động của Studio.
 - `POST /growth/production/run` → `handleGrowthProductionRun`: chạy ngay
   `GrowthTick(ctx, force=true)` (vẫn bị kill switch + dry-run chặn).
 - `POST /growth/thresholds` → `handleGrowthThresholds` (`growth_produce.go:217`):
@@ -60,18 +65,23 @@ stalled khi 14 ngày tăng trưởng <2%. Vượt luật → `Evaluate` đề xu
 > **Chiến lược Zero-Reup**: Toàn bộ video sản xuất tuân thủ nguyên tắc 100% tài sản gốc, tránh thuật toán phạt 0-view shadowban.
 
 ### Sản xuất & đăng (trong tick)
-Xem `autonomous-daemon.md` — tóm tắt: item quá hạn 14 ngày → `dropped`; tối đa
+Video affiliate tự động hiện fail-closed đến khi có luồng cung cấp clip cho tick;
+không tạo job, không đăng và không đánh dấu mục đã sản xuất. Phần governance và
+đồng bộ số liệu vẫn chạy. Xem `autonomous-daemon.md` — item quá hạn 14 ngày → `dropped`; tối đa
 **3 job/tài khoản/tick**; TikTok chỉ tới `produced` (draft-only trước audit Direct Post);
 YouTube đăng khi đủ OAuth + còn quota (**1600 units/lượt**, trần **10000 units/ngày** —
 `internal/growth/quota.go`); thiếu gì thì item ở `waiting_connect`/`waiting_quota`
 với ghi chú tiếng Việt trung thực. Mọi lượt đăng gắn cờ AI-generated
 (`containsSyntheticMedia`, `Synthetic=true` — bắt buộc).
 
+> Sản xuất affiliate tự động hiện dừng fail-closed vì Growth chưa nhận clip
+> chuyển động do người vận hành tải lên. Mục kế hoạch không được đánh dấu
+> hoàn thành hoặc đăng khi thiếu video/QC.
+>
 > Tài khoản **persona** (không có theme): pipeline phim đã park nên
 > `studioGrowthProducer.Enqueue` hiện **fail-closed** với lỗi trung thực
 > "tài khoản persona: pipeline kể chuyện YouTube chưa có (đang phát triển ở
-> đợt F) — item được bỏ qua" (`internal/web/growth_produce.go:55`). Tài khoản
-> có **theme** vẫn chạy affiliate 30s bình thường.
+> đợt F) — item được bỏ qua" (`internal/web/growth_produce.go:55`).
 
 ## 4. Fail-closed & an toàn
 - Không backend sản xuất → item giữ `planned` + alert "backend chưa được nối", tick sau thử lại.
@@ -81,6 +91,6 @@ với ghi chú tiếng Việt trung thực. Mọi lượt đăng gắn cờ AI-g
 
 ## 5. API key rotation
 - Sync metrics YouTube: `YOUTUBE_API_KEY` (Data API v3, key đơn — không xoay vòng).
-- Sản xuất video qua Studio → `GEMINI_API_KEYS` keyring xoay vòng (xem `key-rotation.md`).
+- Các bước phân tích/shot plan qua Studio → `GEMINI_API_KEYS` keyring xoay vòng (xem `key-rotation.md`); video API trả phí bị tắt.
 - Đăng YouTube: OAuth refresh token từng tài khoản (`<data>/tokens/youtube_token_<user>.json`),
   tự refresh qua `oauth2.googleapis.com/token` khi hết hạn.

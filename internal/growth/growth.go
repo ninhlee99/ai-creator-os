@@ -156,7 +156,7 @@ type FormatStat struct {
 	AccountID        int64
 	FormatID         string
 	Videos           int
-	MedianCompletion *float64 // nil when the platform does not expose it
+	MedianCompletion *float64 // legacy field name; normalized average view percentage, nil if absent
 	MedianProxyRate  *float64 // median (shares+saves)/views fallback signal
 	MedianViews      float64
 	AvgViews         float64
@@ -195,6 +195,6 @@ type VideoStat struct {
 	VideoID     string
 	FormatID    string
 	Views       int64
-	Completion  *float64
+	Completion  *float64 // legacy field name; normalized average view percentage, not full-watch completion
 	PublishedAt time.Time
 }

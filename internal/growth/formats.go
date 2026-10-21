@@ -2,23 +2,25 @@ package growth
 
 import (
 	"database/sql"
+	"encoding/json"
 	"sort"
 	"time"
 )
 
 type videoRow struct {
-	VideoID    string
-	FormatID   string
-	Views      int64
-	Shares     int64
-	Saves      int64
-	Completion *float64
-	TakenAt    time.Time
+	VideoID           string
+	FormatID          string
+	Views             int64
+	Shares            *int64
+	Saves             *int64
+	Completion        *float64
+	SubscribersGained *int64
+	TakenAt           time.Time
 }
 
 func (s *Store) latestVideoRows(accountID int64) ([]videoRow, error) {
 	rows, err := s.db.Query(
-		`SELECT v.platform_video_id, COALESCE(i.format_id,''), v.views, v.shares, v.saves, v.completion, v.taken_at
+		`SELECT v.platform_video_id, COALESCE(i.format_id,''), v.views, v.shares, v.saves, v.completion, v.taken_at, COALESCE(v.extra_json,'')
 		 FROM video_metric_snapshots v
 		 LEFT JOIN content_plan_items i
 		   ON i.account_id = v.account_id AND i.published_ref = v.platform_video_id
@@ -33,17 +35,33 @@ func (s *Store) latestVideoRows(accountID int64) ([]videoRow, error) {
 		var r videoRow
 		var views, shares, saves sql.NullInt64
 		var completion sql.NullFloat64
-		var taken string
-		if err := rows.Scan(&r.VideoID, &r.FormatID, &views, &shares, &saves, &completion, &taken); err != nil {
+		var taken, extraJSON string
+		if err := rows.Scan(&r.VideoID, &r.FormatID, &views, &shares, &saves, &completion, &taken, &extraJSON); err != nil {
 			return nil, err
 		}
+		if !views.Valid {
+			continue
+		}
 		r.Views = views.Int64
-		r.Shares = shares.Int64
-		r.Saves = saves.Int64
+		if shares.Valid {
+			v := shares.Int64
+			r.Shares = &v
+		}
+		if saves.Valid {
+			v := saves.Int64
+			r.Saves = &v
+		}
 		if completion.Valid {
 			v := completion.Float64
 			r.Completion = &v
 		}
+		var extra struct {
+			SubscribersGained *int64 `json:"subscribers_gained"`
+		}
+		if extraJSON != "" {
+			_ = json.Unmarshal([]byte(extraJSON), &extra)
+		}
+		r.SubscribersGained = extra.SubscribersGained
 		if t, err := time.Parse("2006-01-02 15:04:05", taken); err == nil {
 			r.TakenAt = t
 		}
@@ -142,7 +160,7 @@ func (s *Store) RecomputeFormatStats(accountID int64) ([]FormatStat, error) {
 	}
 	var out []FormatStat
 	for fid, vids := range byFormat {
-		var completions, proxies, views []float64
+		var completions, proxies, views, followsPer1k []float64
 		var sum float64
 		for _, v := range vids {
 			views = append(views, float64(v.Views))
@@ -150,8 +168,13 @@ func (s *Store) RecomputeFormatStats(accountID int64) ([]FormatStat, error) {
 			if v.Completion != nil {
 				completions = append(completions, *v.Completion)
 			}
+			if v.Views > 0 && v.Shares != nil && v.Saves != nil {
+				proxies = append(proxies, float64(*v.Shares+*v.Saves)/float64(v.Views))
+			}
 			if v.Views > 0 {
-				proxies = append(proxies, float64(v.Shares+v.Saves)/float64(v.Views))
+				if v.SubscribersGained != nil {
+					followsPer1k = append(followsPer1k, float64(*v.SubscribersGained)/float64(v.Views)*1000)
+				}
 			}
 		}
 		existing, _ := s.formatStat(accountID, fid)
@@ -172,10 +195,13 @@ func (s *Store) RecomputeFormatStats(accountID int64) ([]FormatStat, error) {
 			m := Median(proxies)
 			stat.MedianProxyRate = &m
 		}
+		if len(followsPer1k) > 0 {
+			m := Median(followsPer1k)
+			stat.FollowsPer1k = &m
+		}
 		if existing != nil {
 			stat.Verdict = existing.Verdict
 			stat.VerdictReason = existing.VerdictReason
-			stat.FollowsPer1k = existing.FollowsPer1k
 		}
 		if stat.Verdict == "" {
 			stat.Verdict = VerdictTesting

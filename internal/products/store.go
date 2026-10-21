@@ -348,6 +348,14 @@ func (s *Store) RecordUse(productID, accountID int64, jobID string) (bool, error
 	return n > 0, nil
 }
 
+// ReleaseUseClaim releases a reservation only when no render job was linked.
+// Failed preflight must not permanently hide a product from later channel runs.
+func (s *Store) ReleaseUseClaim(productID, accountID int64) error {
+	_, err := s.db.Exec(`DELETE FROM product_usage
+		WHERE product_id=? AND account_id=? AND COALESCE(job_id,'')=''`, productID, accountID)
+	return err
+}
+
 // SetUsageJobID updates the job id on an existing usage claim (used when
 // the product was claimed before its studio job existed).
 func (s *Store) SetUsageJobID(productID, accountID int64, jobID string) error {

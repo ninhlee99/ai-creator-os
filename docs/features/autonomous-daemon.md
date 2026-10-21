@@ -1,17 +1,17 @@
 # Daemon tự động (`internal/automation`)
 
 ## 1. Mục đích
-Lớp vận hành hands-off: growth (kế hoạch → sản xuất → đăng), autopilot affiliate,
-đối soát hoa hồng — chạy nền theo tick, không cần bấm gì.
+Lớp vận hành nền: growth, đối soát hoa hồng và các tick lịch. Affiliate autopilot
+tạm dừng ở bước tạo video vì chính sách free-only yêu cầu clip do người vận hành tải lên.
 
 ## 2. Kích hoạt (cadence thật trong `cmd/aicos/main.go`)
 | Tick | Chu kỳ | Hàm |
 |---|---|---|
-| Autopilot affiliate | kiểm tra **mỗi phút**, chạy khi đủ `autopilot_interval_hours` (mặc định **6h**) | `Service.AutopilotTick` (`autopilot.go`) |
+| Autopilot affiliate | tick kiểm tra **mỗi phút**; production fail-closed theo free-only trước khi tìm hoặc claim sản phẩm | `Service.AutopilotTick` (`autopilot.go`) |
 | Growth (sản xuất + đăng) | **mỗi 5 phút** | `Service.GrowthTick(ctx, false)` (`growth_tick.go`) |
 | Đồng bộ số liệu + đối soát tiền | **mỗi giờ** (nằm trong GrowthTick khi `growthSyncDue()`) | `SyncOneAccount`, `ReconcileCommissions` (`sync_reconcile.go`) |
 | Accesstrade (hunter/order/campaign) | **mỗi 5 phút** (hunter daily, order sync 30′, campaign check daily) | `Service.ATTick` (`at_tick.go`; đợt C) |
-| Video Viral AI tự động | **mỗi 5 phút**, đến hạn **24 giờ** | `viral.auto_produce_enabled` (Studio Studio Viral Engine) |
+| Viral radar | **mỗi 5 phút**, đến hạn **24 giờ**; chỉ tìm và lưu ứng viên, không tạo video | `viral.auto_produce_enabled` (`Service.ViralRadarTick`) |
 | Kể chuyện | **mỗi 5 phút**, đến hạn **24 giờ** (tự đăng private-first; tắt `story.auto_publish` để duyệt tay) | `Service.StoryTick` (`story_tick.go`; đợt F, K) |
 | SEO + thumbnail khi đăng truyện | trong lúc đăng | LLM viết title/desc/tags tiếng Việt (thiếu LLM → template), ảnh cảnh đầu làm thumbnail (`story_tick.go`, `publishers.VideoMeta`; đợt M1) |
 | Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
@@ -43,19 +43,10 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
 1. Chặn đầu: kill switch hoặc dry-run → return (không làm gì).
 2. `AutopilotEnabled(settings)` — unset = ON (zero-touch), `"0"` = tắt.
 3. Chưa đủ `autopilot_interval_hours` từ `autopilot_last_run` → return.
-4. `Autopilot.RunAll(ctx)` → với mỗi tài khoản `AutopilotReady`:
-   `studio.Autopilot.Run` (`internal/studio/autopilot.go:58`):
-   - a. Sản phẩm: `store.TopByTheme(theme, minCommission, accountID, 5)` — có sẵn
-     thì dùng; không có → `products.Aggregate` tìm live (tối đa 20), lưu lại.
-     Lấy ứng viên đầu (`cands[0]`).
-   - b. Tải ≤3 ảnh thật của sản phẩm (`downloadImage`) — ground truth.
-   - c. Ảnh mẫu người mẫu của tài khoản (upload tay trong UI — identity lock).
-   - d. `CreateAffiliateJob(AffiliateParams{Mode: shots, Seconds: 30, ...})`
-     → job affiliate 30s (xem `studio-ai.md` §3.2).
-   - e. `RecordUse(prod.ID, accountID, jobID)` — không dùng lại sản phẩm cho
-     cùng tài khoản.
-   - Thiếu theme/ảnh mẫu/sản phẩm → lỗi tiếng Việt rõ lý do, không tạo job rỗng.
-5. Ghi `autopilot_last_run` (RFC3339). Lỗi một tài khoản không chặn tài khoản khác.
+4. `Autopilot.RunAll(ctx)` dừng từng account đã bật autopilot với lỗi free-only
+   vì tick không có đầu vào clip chuyển động.
+5. Dừng trước khi tìm sản phẩm, claim usage hoặc tạo job; lỗi một account không
+   chặn account khác. Dùng Studio thủ công để chọn sản phẩm và tải clip.
 
 ### 3.2. `GrowthTick` — sản xuất + đăng (`growth_tick.go`)
 1. `s.killed()` → return ["Kill switch đang bật — vòng growth đứng yên."];

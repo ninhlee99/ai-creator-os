@@ -15,7 +15,7 @@ Xây dựng hệ thống tự hành cho phép người chủ doanh nghiệp giao
 
 ### A. AI Mission Control Engine (`internal/web/mission_engine.go`)
 1. **Tiếp nhận & Phân loại mục tiêu**:
-   - `affiliate_campaign`: Tự động tìm sản phẩm hoa hồng cao, soạn 4 Hook 3s theo Brand DNA, tạo job video 9:16 trong Studio và gắn tracking link Accesstrade.
+   - `affiliate_campaign`: Tìm sản phẩm hoa hồng cao, soạn 4 Hook 3s theo Brand DNA và gắn tracking link Accesstrade. Studio chỉ xếp job khi đủ clip chuyển động do người vận hành tải lên; thiếu clip thì mission dừng fail-closed.
    - `story_campaign`: Lập đề cương truyện ngôi thứ nhất, phân 5 cảnh kịch tính, tạo job kể chuyện Studio (hình ảnh 16:9 + giọng đọc TTS).
    - `trend_campaign`: Thu thập âm thanh thịnh hành từ Kworb TikTok VN, phân tích cơ hội qua Trend Intelligence, đề xuất 3 góc khai thác nguyên bản.
    - `growth_campaign`: Đánh giá số liệu 14 ngày, loại bỏ format kém, tự động lập lại ma trận nội dung 30 ngày cho kênh.

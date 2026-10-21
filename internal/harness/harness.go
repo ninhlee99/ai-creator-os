@@ -61,7 +61,7 @@ func New(
 		cfg.Interval = 6 * time.Hour
 	}
 
-	ooda := NewOODAEngine(memStore, llm)
+	ooda := NewOODAEngine(memStore, llm, growthStore)
 
 	h := &Harness{
 		db:               db,

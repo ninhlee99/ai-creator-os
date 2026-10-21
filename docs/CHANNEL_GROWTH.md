@@ -298,17 +298,25 @@ Bám vào `accounts` hiện có, thêm hồ sơ growth (bảng `growth_profiles`
   (quota guard: đếm units/ngày/project trong `api_usage`, tự dời lịch khi
   chạm trần thay vì lỗi). TikTok: Direct Post sau audit; trước audit dùng
   draft (§6.3).
-- **Analyst (mở rộng):** đồng bộ snapshots (§8) theo lịch (YouTube: Data API
-  + Analytics API; TikTok: Display API — view/like/comment/share/follower;
-  completion TikTok không có qua Display API → dùng proxy-metrics: tốc độ
-  view 24h đầu, tỉ lệ share+save/view; completion đầy đủ để v3 qua Business
-  API hoặc import). Từ snapshots tính `format_stats` và **đề xuất hành động
+- **Analyst:** đồng bộ snapshots (§8) theo lịch. YouTube Analytics lấy metrics
+  từng video trong 30 ngày (`views`, `shares`, `averageViewPercentage`,
+  `subscribersGained`) và chỉ gắn format khi `published_ref` khớp video ID.
+  `averageViewPercentage` là phần trăm xem trung bình, không phải tỉ lệ xem hết.
+  YouTube Analytics không cấp `saves` trong adapter hiện tại; `median_proxy_rate`
+  cần cả `shares` và `saves`, nên giữ NULL thay vì coi saves thiếu là 0. OODA
+  đọc latest view readings được đồng bộ trong 7 ngày; count là video có metrics
+  mới, không phải số video đăng. OODA cũng đọc verdict format đã lưu cùng cỡ
+  mẫu, lý do và `updated_at`; đây là báo cáo read-only, còn `Evaluate` mới
+  tính và ghi verdict.
+  TikTok hiện chỉ có snapshot cấp kênh; chưa có ingest metrics từng video nên
+  không đưa kết luận format từ TikTok. Dữ liệu thiếu vẫn là NULL, không thành 0.
+  Từ snapshots tính `format_stats` và **đề xuất hành động
   qua Governance**:
   - **Kill format:** ≥ 8 video + ≥ 14 ngày mà median completion (hoặc proxy)
     dưới ngưỡng config (mặc định 35%) → format `killed`, Director ngừng lên
     plan, alert info kèm lý do.
   - **Nhân đôi (double-down):** 1 video ≥ 5× median views 30 ngày của chính
-    account → tự sinh series 3 tập tiếp theo trong 7 ngày, cadence +1
+  account → tự sinh series 3 tập tiếp theo trong 7 ngày, cadence +1
     slot/ngày trong trần.
   - **Breakout:** video ≥ 10× median trong 48h → replan nhanh trong 24h
     (Director ưu tiên format đó), alert.

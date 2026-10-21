@@ -19,9 +19,10 @@ var ErrNotConnected = errors.New("chưa kết nối")
 
 // SourceAccount is the account view a metric source needs.
 type SourceAccount struct {
-	ID             int64
-	Username       string
-	YoutubeChannel string // channel id (UC...) or @handle; "" = not mapped
+	ID                int64
+	Username          string
+	YoutubeChannel    string // channel id (UC...) or @handle; "" = not mapped
+	PublishedVideoIDs []string
 }
 
 // MetricsSource reads REAL metrics from one provider API.
@@ -31,6 +32,26 @@ type MetricsSource interface {
 	// Fetch reads the account's current metrics. Implementations must be
 	// fail-closed: not configured => ErrNotConnected and zero network use.
 	Fetch(ctx context.Context, acct SourceAccount) (*Snapshot, error)
+}
+
+// VideoMetricsSource reads real metrics for individual published videos.
+// Sources without a provider endpoint for this data must not implement it.
+type VideoMetricsSource interface {
+	FetchVideoMetrics(ctx context.Context, acct SourceAccount) ([]VideoMetric, error)
+}
+
+// VideoMetric is one provider's latest reading for a published video.
+// Nil means provider did not return that metric; it is never converted to 0.
+type VideoMetric struct {
+	PlatformVideoID       string
+	TakenAt               time.Time
+	Views                 *int64
+	Likes                 *int64
+	Comments              *int64
+	Shares                *int64
+	Saves                 *int64
+	AverageViewPercentage *float64 // provider's average percentage watched, 0–100+.
+	SubscribersGained     *int64
 }
 
 // RecordSnapshot fetches from src and appends the reading. It returns the
@@ -49,6 +70,19 @@ func RecordSnapshot(ctx context.Context, store *Store, src MetricsSource, acct S
 		return nil, err
 	}
 	return snap, nil
+}
+
+// RecordVideoMetrics fetches and appends real per-video readings. No rows are
+// written if the provider fetch fails.
+func RecordVideoMetrics(ctx context.Context, store *Store, src VideoMetricsSource, acct SourceAccount) (int, error) {
+	metrics, err := src.FetchVideoMetrics(ctx, acct)
+	if err != nil {
+		return 0, err
+	}
+	if err := store.InsertVideoMetricSnapshots(acct.ID, metrics); err != nil {
+		return 0, err
+	}
+	return len(metrics), nil
 }
 
 // ------------------------------------------------------------- YouTube

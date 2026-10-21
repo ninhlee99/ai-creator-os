@@ -30,12 +30,22 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 		return append(notes, a.Username+": "+err.Error())
 	}
 	srcAcct := growth.SourceAccount{ID: a.ID, Username: a.Username, YoutubeChannel: a.YoutubeChannel}
+	if items, err := s.Growth.ItemsByStatus(a.ID, []string{growth.ItemPublished}, 500); err != nil {
+		notes = append(notes, a.Username+": không đọc được danh sách video đã đăng để đối chiếu metrics — "+err.Error())
+	} else {
+		for _, item := range items {
+			if item.PublishedRef != "" {
+				srcAcct.PublishedVideoIDs = append(srcAcct.PublishedVideoIDs, item.PublishedRef)
+			}
+		}
+	}
+	youtubeAnalytics := growth.NewYouTubeAnalyticsSource(publishers.YouTubeAccessToken)
 	ytKeyVal := s.env("YOUTUBE_API_KEY")
 	sources := []growth.MetricsSource{
 		growth.NewYouTubeSource(ytKeyVal),
 		// Đợt H3: Analytics điền Views30d + watch hours (OAuth, free).
 		// Chưa có token/scope → fail-closed, báo rõ trong notes.
-		growth.NewYouTubeAnalyticsSource(publishers.YouTubeAccessToken),
+		youtubeAnalytics,
 		growth.TikTokSource{},
 	}
 	gotSnapshot := false
@@ -47,6 +57,20 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 		}
 		gotSnapshot = true
 		notes = append(notes, fmt.Sprintf("%s: đã đồng bộ số liệu từ %s", a.Username, src.Name()))
+		if videoSource, ok := src.(growth.VideoMetricsSource); ok {
+			if len(srcAcct.PublishedVideoIDs) == 0 {
+				notes = append(notes, a.Username+": chưa có video YouTube đăng qua kế hoạch; bỏ qua metrics theo video")
+			} else {
+				count, err := growth.RecordVideoMetrics(ctx, s.Growth, videoSource, srcAcct)
+				if err != nil {
+					notes = append(notes, a.Username+": không đồng bộ được analytics theo video — "+err.Error())
+				} else if count > 0 {
+					notes = append(notes, fmt.Sprintf("%s: đã lưu metrics thật cho %d video (views, shares, average view %%, subscriber gain)", a.Username, count))
+				} else {
+					notes = append(notes, a.Username+": nguồn không trả metrics theo video trong 30 ngày; không có kết luận format mới")
+				}
+			}
+		}
 		if snap.Followers != nil {
 			_ = s.Ledger.SetFollowers(a.ID, *snap.Followers)
 			cur := map[string]float64{"followers": float64(*snap.Followers), "subs": float64(*snap.Followers)}

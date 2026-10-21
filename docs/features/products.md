@@ -10,6 +10,10 @@ chạy autopilot + nhạc nền + tự đăng.
 > kho). TikTok Shop đã loại bỏ hoàn toàn ở Đợt H1 (2026-10-04) — không còn
 > code, config hay document nào trỏ vào nó như nguồn đang hoạt động.
 
+> Sản xuất autopilot đang tạm dừng theo free-only: Studio cần clip chuyển động
+> do người vận hành tải lên. Tick dừng trước khi claim sản phẩm; kho, tìm kiếm,
+> tracking link và lịch vẫn có thể được quản lý.
+
 ## 2. Kích hoạt
 - `GET /products` → `handleProducts` (`internal/web/products.go:69`): 2 tab
   (`?tab=shelf` Kệ hàng; tab tìm kiếm).

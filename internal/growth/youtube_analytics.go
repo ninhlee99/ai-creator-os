@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -62,6 +64,10 @@ func (y *YouTubeAnalyticsSource) Fetch(ctx context.Context, acct SourceAccount) 
 	if acct.YoutubeChannel == "" {
 		return nil, fmt.Errorf("%w: chưa gắn kênh YouTube cho tài khoản %s",
 			ErrNotConnected, acct.Username)
+	}
+	if !strings.HasPrefix(strings.TrimSpace(acct.YoutubeChannel), "UC") {
+		return nil, fmt.Errorf("%w: YouTube Analytics cần Channel ID bắt đầu bằng UC; @handle hiện chỉ dùng được với YouTube Data API",
+			ErrNotConnected)
 	}
 	if y.TokenFor == nil {
 		return nil, fmt.Errorf("%w: YouTube Analytics chưa cấu hình (thiếu token OAuth)",
@@ -142,6 +148,148 @@ func (y *YouTubeAnalyticsSource) Fetch(ctx context.Context, acct SourceAccount) 
 		snap.Extra["shorts_views_90d"] = m["SHORTS"]
 	}
 	return snap, nil
+}
+
+// FetchVideoMetrics reads provider-reported metrics for each video that had
+// activity in the last 30 days. averageViewPercentage is average percentage
+// watched, not a full-watch completion rate.
+func (y *YouTubeAnalyticsSource) FetchVideoMetrics(ctx context.Context, acct SourceAccount) ([]VideoMetric, error) {
+	if acct.YoutubeChannel == "" {
+		return nil, fmt.Errorf("%w: chưa gắn kênh YouTube cho tài khoản %s", ErrNotConnected, acct.Username)
+	}
+	if !strings.HasPrefix(strings.TrimSpace(acct.YoutubeChannel), "UC") {
+		return nil, fmt.Errorf("%w: YouTube Analytics cần Channel ID bắt đầu bằng UC; @handle hiện chỉ dùng được với YouTube Data API", ErrNotConnected)
+	}
+	if len(acct.PublishedVideoIDs) == 0 {
+		return nil, nil
+	}
+	if y.TokenFor == nil {
+		return nil, fmt.Errorf("%w: YouTube Analytics chưa cấu hình (thiếu token OAuth)", ErrNotConnected)
+	}
+	token, err := y.TokenFor(acct.Username)
+	if err != nil || token == "" {
+		return nil, fmt.Errorf("%w: không lấy được access token YouTube cho %s: %v", ErrNotConnected, acct.Username, err)
+	}
+	end := time.Now().UTC()
+	q := url.Values{}
+	q.Set("ids", "channel=="+acct.YoutubeChannel)
+	q.Set("startDate", end.AddDate(0, 0, -29).Format("2006-01-02"))
+	q.Set("endDate", end.Format("2006-01-02"))
+	q.Set("dimensions", "video")
+	q.Set("metrics", "views,likes,comments,shares,averageViewPercentage,subscribersGained")
+	q.Set("maxResults", "200")
+	videoIDs := uniqueYouTubeVideoIDs(acct.PublishedVideoIDs)
+	if len(videoIDs) == 0 {
+		return nil, nil
+	}
+	// `video` is accepted as a grouping dimension when the request also filters
+	// to explicit video IDs. A bare `dimensions=video` query is unsupported.
+	const maxVideoFilterIDs = 500
+	var out []VideoMetric
+	for offset := 0; offset < len(videoIDs); offset += maxVideoFilterIDs {
+		end := min(offset+maxVideoFilterIDs, len(videoIDs))
+		q.Set("filters", "video=="+strings.Join(videoIDs[offset:end], ","))
+		for start := 1; ; {
+			q.Set("startIndex", strconv.Itoa(start))
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, y.base()+"/v2/reports?"+q.Encode(), nil)
+			if err != nil {
+				return nil, err
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+			resp, err := y.httpClient().Do(req)
+			if err != nil {
+				return nil, fmt.Errorf("youtube analytics video report: lỗi mạng: %w", err)
+			}
+			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+			resp.Body.Close()
+			if readErr != nil {
+				return nil, readErr
+			}
+			if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+				return nil, fmt.Errorf("youtube analytics video report: token hết hạn hoặc thiếu quyền yt-analytics.readonly")
+			}
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("youtube analytics video report: HTTP %d: %.200s", resp.StatusCode, body)
+			}
+			var report struct {
+				ColumnHeaders []struct {
+					Name string `json:"name"`
+				} `json:"columnHeaders"`
+				Rows [][]any `json:"rows"`
+			}
+			if err := json.Unmarshal(body, &report); err != nil {
+				return nil, fmt.Errorf("youtube analytics video report: parse lỗi: %w", err)
+			}
+			columns := make(map[string]int, len(report.ColumnHeaders))
+			for i, header := range report.ColumnHeaders {
+				columns[header.Name] = i
+			}
+			for _, row := range report.Rows {
+				idAt, ok := columns["video"]
+				if !ok || idAt >= len(row) {
+					continue
+				}
+				videoID, _ := row[idAt].(string)
+				if videoID == "" {
+					continue
+				}
+				metric := VideoMetric{PlatformVideoID: videoID, TakenAt: time.Now()}
+				metric.Views = reportInt(row, columns, "views")
+				metric.Likes = reportInt(row, columns, "likes")
+				metric.Comments = reportInt(row, columns, "comments")
+				metric.Shares = reportInt(row, columns, "shares")
+				metric.SubscribersGained = reportInt(row, columns, "subscribersGained")
+				metric.AverageViewPercentage = reportFloat(row, columns, "averageViewPercentage")
+				out = append(out, metric)
+			}
+			if len(report.Rows) < 200 {
+				break
+			}
+			start += len(report.Rows)
+		}
+	}
+	return out, nil
+}
+
+func uniqueYouTubeVideoIDs(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	ids := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if len(value) != 11 || seen[value] {
+			continue
+		}
+		valid := true
+		for _, c := range value {
+			if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-') {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			seen[value] = true
+			ids = append(ids, value)
+		}
+	}
+	return ids
+}
+
+func reportFloat(row []any, columns map[string]int, name string) *float64 {
+	i, ok := columns[name]
+	if !ok || i >= len(row) || row[i] == nil {
+		return nil
+	}
+	v := numOf(row[i])
+	return &v
+}
+
+func reportInt(row []any, columns map[string]int, name string) *int64 {
+	v := reportFloat(row, columns, name)
+	if v == nil {
+		return nil
+	}
+	n := int64(*v)
+	return &n
 }
 
 // report chạy 1 truy vấn Analytics `days` ngày gần nhất. dimension == ""

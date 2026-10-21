@@ -3,46 +3,82 @@ package harness
 import (
 	"context"
 	"fmt"
-	"log"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
+
+const maxFormatEvidencePerChannel = 5
+const maxLLMEvidenceRunes = 6000
 
 // AutonomyLevel quy định mức độ tự chủ của Harness Agent.
 type AutonomyLevel int
 
 const (
-	AutonomyAssisted        AutonomyLevel = 1 // Cấp 1: Phân tích & Đề xuất, chờ con người duyệt (Human Approval Required)
-	AutonomySemiAutonomous  AutonomyLevel = 2 // Cấp 2: Tự động sản xuất nháp, duyệt trước khi xuất bản (Draft-first)
-	AutonomyFullyAutonomous AutonomyLevel = 3 // Cấp 3: Tự hành 100% (Fully Autonomous - Tự nghiên cứu, sản xuất, đăng tải, tối ưu)
+	AutonomyAssisted        AutonomyLevel = 1 // Đề xuất; cần người vận hành duyệt.
+	AutonomySemiAutonomous  AutonomyLevel = 2 // Legacy policy value; current pipelines still require job-specific inputs.
+	AutonomyFullyAutonomous AutonomyLevel = 3 // Legacy policy value; current pipelines do not publish autonomously.
 )
 
 // ChannelState là ảnh chụp trạng thái vận hành của một kênh trong danh mục.
 type ChannelState struct {
-	AccountID    int64  `json:"account_id"`
-	Username     string `json:"username"`
-	Platform     string `json:"platform"`
-	Followers    int64  `json:"followers"`
-	Stage        string `json:"stage"` // cold_start, format_testing, scaling, monetized, stalled
-	BrandNiche   string `json:"brand_niche"`
-	VideosLast7D int    `json:"videos_last_7d"`
-	AvgViews     int64  `json:"avg_views"`
-	HealthStatus string `json:"health_status"` // "thriving", "normal", "needs_attention", "stalled"
+	AccountID          int64                   `json:"account_id"`
+	Username           string                  `json:"username"`
+	Platform           string                  `json:"platform"`
+	Followers          int64                   `json:"followers"`
+	Stage              string                  `json:"stage"` // cold_start, format_testing, scaling, monetized, stalled
+	BrandNiche         string                  `json:"brand_niche"`
+	RecentMetricVideos int                     `json:"recent_metric_videos"`
+	AvgViews           float64                 `json:"avg_views"`
+	MetricsUpdatedAt   string                  `json:"metrics_updated_at,omitempty"`
+	MetricsStatus      string                  `json:"metrics_status"`      // available, missing, unavailable, error
+	FormatStatsStatus  string                  `json:"format_stats_status"` // available, missing, unavailable, error
+	FormatStats        []ChannelFormatEvidence `json:"format_stats,omitempty"`
+	FormatStatsOmitted int                     `json:"format_stats_omitted,omitempty"`
+	HealthStatus       string                  `json:"health_status"` // "thriving", "normal", "needs_attention", "stalled"
+}
+
+// ChannelFormatEvidence is a read-only projection of stored Growth verdicts.
+// UpdatedAt is exposed so consumers can assess staleness instead of treating
+// every stored winner/kill decision as current.
+type ChannelFormatEvidence struct {
+	FormatID         string   `json:"format_id"`
+	Videos           int      `json:"videos"`
+	Verdict          string   `json:"verdict"`
+	VerdictReason    string   `json:"verdict_reason,omitempty"`
+	MedianViews      float64  `json:"median_views"`
+	AvgViews         float64  `json:"avg_views"`
+	MedianCompletion *float64 `json:"median_completion,omitempty"`
+	MedianProxyRate  *float64 `json:"median_proxy_rate,omitempty"`
+	FollowsPer1k     *float64 `json:"follows_per_1k,omitempty"`
+	UpdatedAt        string   `json:"updated_at,omitempty"`
 }
 
 // OODAPerception là toàn bộ dữ liệu quan sát môi trường mà Agent Harness thu thập được.
 type OODAPerception struct {
-	Timestamp       string         `json:"timestamp"`
-	TotalChannels   int            `json:"total_channels"`
-	Channels        []ChannelState `json:"channels"`
-	ActiveJobsCount int            `json:"active_jobs_count"`
-	DoneJobsCount   int            `json:"done_jobs_count"`
-	TopTrendingSong string         `json:"top_trending_song"`
-	HighROIProduct  string         `json:"high_roi_product"`
-	SystemHealth    string         `json:"system_health"` // "optimal", "busy", "degraded"
+	Timestamp       string                   `json:"timestamp"`
+	TotalChannels   int                      `json:"total_channels"`
+	Channels        []ChannelState           `json:"channels"`
+	ActiveJobsCount int                      `json:"active_jobs_count"`
+	DoneJobsCount   int                      `json:"done_jobs_count"`
+	TopTrendingSong string                   `json:"top_trending_song"`
+	HighROIProduct  string                   `json:"high_roi_product"`
+	VideoProduction VideoProductionReadiness `json:"video_production"`
+	SystemHealth    string                   `json:"system_health"` // "optimal", "busy", "degraded"
+}
+
+// VideoProductionReadiness records capabilities reported by the running
+// Studio. A storyboard or manual clip workflow does not count as automatic
+// production readiness.
+type VideoProductionReadiness struct {
+	AffiliateAutomaticReady bool   `json:"affiliate_automatic_ready"`
+	AffiliateStatus         string `json:"affiliate_status"`
+	ViralCharacterEditReady bool   `json:"viral_character_edit_ready"`
+	ViralStatus             string `json:"viral_status"`
 }
 
 // OODADecisionTask là một hành động cụ thể do Agent quyết định thực thi.
@@ -73,15 +109,20 @@ type OODACycleResult struct {
 // OODAEngine thực hiện chu trình Nhận thức - Định hướng - Quyết định - Hành động.
 type OODAEngine struct {
 	memory *MemoryStore
+	growth *growth.Store
 	llm    studio.LLM
 }
 
 // NewOODAEngine khởi tạo bộ máy OODA.
-func NewOODAEngine(memory *MemoryStore, llm studio.LLM) *OODAEngine {
-	return &OODAEngine{
+func NewOODAEngine(memory *MemoryStore, llm studio.LLM, stores ...*growth.Store) *OODAEngine {
+	e := &OODAEngine{
 		memory: memory,
 		llm:    llm,
 	}
+	if len(stores) > 0 {
+		e.growth = stores[0]
+	}
+	return e
 }
 
 // Observe thu thập dữ liệu 360 độ từ các kênh và hệ thống.
@@ -109,99 +150,194 @@ func (e *OODAEngine) Observe(ctx context.Context, accounts []*network.Account, a
 		}
 
 		niche := a.Niche
-		if niche == "" {
-			niche = "công nghệ & đời sống"
-		}
 
-		p.Channels = append(p.Channels, ChannelState{
-			AccountID:    a.ID,
-			Username:     a.Username,
-			Platform:     "unknown",
-			Followers:    a.Followers,
-			Stage:        a.Status,
-			BrandNiche:   niche,
-			VideosLast7D: 0,
-			AvgViews:     0,
-			HealthStatus: status,
-		})
+		channel := ChannelState{
+			AccountID:         a.ID,
+			Username:          a.Username,
+			Platform:          "unknown",
+			Followers:         a.Followers,
+			Stage:             a.Status,
+			BrandNiche:        niche,
+			MetricsStatus:     "unavailable",
+			FormatStatsStatus: "unavailable",
+			HealthStatus:      status,
+		}
+		if e.growth != nil {
+			metrics, err := e.growth.RecentVideoMetrics(ctx, a.ID, time.Now().Add(-7*24*time.Hour))
+			if err != nil {
+				channel.MetricsStatus = "error"
+			} else if metrics.VideoCount > 0 {
+				channel.MetricsStatus = "available"
+				channel.RecentMetricVideos = metrics.VideoCount
+				if metrics.AverageViews != nil {
+					channel.AvgViews = *metrics.AverageViews
+				}
+				if !metrics.LatestAt.IsZero() {
+					channel.MetricsUpdatedAt = metrics.LatestAt.Local().Format("2006-01-02 15:04:05")
+				}
+			} else {
+				channel.MetricsStatus = "missing"
+			}
+			formatStats, err := e.growth.ListFormatStats(a.ID)
+			if err != nil {
+				channel.FormatStatsStatus = "error"
+			} else if len(formatStats) == 0 {
+				channel.FormatStatsStatus = "missing"
+			} else {
+				channel.FormatStatsStatus = "available"
+				sort.SliceStable(formatStats, func(i, j int) bool {
+					pi, pj := formatEvidencePriority(formatStats[i].Verdict), formatEvidencePriority(formatStats[j].Verdict)
+					if pi != pj {
+						return pi < pj
+					}
+					if formatStats[i].Videos != formatStats[j].Videos {
+						return formatStats[i].Videos > formatStats[j].Videos
+					}
+					return formatStats[i].FormatID < formatStats[j].FormatID
+				})
+				if len(formatStats) > maxFormatEvidencePerChannel {
+					channel.FormatStatsOmitted = len(formatStats) - maxFormatEvidencePerChannel
+					formatStats = formatStats[:maxFormatEvidencePerChannel]
+				}
+				for _, stat := range formatStats {
+					channel.FormatStats = append(channel.FormatStats, ChannelFormatEvidence{
+						FormatID:         stat.FormatID,
+						Videos:           stat.Videos,
+						Verdict:          stat.Verdict,
+						VerdictReason:    stat.VerdictReason,
+						MedianViews:      stat.MedianViews,
+						AvgViews:         stat.AvgViews,
+						MedianCompletion: stat.MedianCompletion,
+						MedianProxyRate:  stat.MedianProxyRate,
+						FollowsPer1k:     stat.FollowsPer1k,
+						UpdatedAt:        stat.UpdatedAt,
+					})
+				}
+			}
+		}
+		p.Channels = append(p.Channels, channel)
 	}
 
 	return p
 }
 
-// OrientAndDecide dùng trí tuệ LLM (hoặc heuristic dự phòng) để chẩn đoán và đưa ra quyết định hành động.
-func (e *OODAEngine) OrientAndDecide(ctx context.Context, obs OODAPerception, level AutonomyLevel) (string, []OODADecisionTask) {
+func formatEvidencePriority(verdict string) int {
+	switch verdict {
+	case growth.VerdictWinner:
+		return 0
+	case growth.VerdictKilled:
+		return 1
+	case growth.VerdictTesting:
+		return 2
+	default:
+		return 3
+	}
+}
+
+// OrientAndDecide writes an evidence-bound diagnosis. Autonomy is retained in
+// the signature for API compatibility; production actions stay empty until
+// source-grounded viral candidates and verified affiliate inputs are wired.
+func (e *OODAEngine) OrientAndDecide(ctx context.Context, obs OODAPerception, _ AutonomyLevel) (string, []OODADecisionTask) {
 	var tasks []OODADecisionTask
 
 	// Tạo phân tích tình huống
 	var diag strings.Builder
 	diag.WriteString(fmt.Sprintf("Hệ thống đang quan sát %d kênh. Sức khỏe dây chuyền: %s. ", obs.TotalChannels, obs.SystemHealth))
+	videoEvidence := describeVideoProductionReadiness(obs.VideoProduction)
+	diag.WriteString(videoEvidence)
+	var channelEvidence strings.Builder
+	var formatEvidence strings.Builder
+	for _, ch := range obs.Channels {
+		if ch.MetricsStatus == "available" {
+			fmt.Fprintf(&channelEvidence, "@%s: metrics mới cho %d video trong 7 ngày, trung bình %.0f views/video, cập nhật %s. ",
+				ch.Username, ch.RecentMetricVideos, ch.AvgViews, ch.MetricsUpdatedAt)
+			diag.WriteString(fmt.Sprintf("@%s có metrics mới cho %d video trong 7 ngày; trung bình %.0f views/video. ",
+				ch.Username, ch.RecentMetricVideos, ch.AvgViews))
+		} else {
+			status := ch.MetricsStatus
+			if status == "" {
+				status = "unknown"
+			}
+			fmt.Fprintf(&channelEvidence, "@%s: chưa có metrics video dùng được trong 7 ngày (trạng thái %s). ", ch.Username, status)
+			diag.WriteString(fmt.Sprintf("@%s chưa có metrics video dùng được trong 7 ngày. ", ch.Username))
+		}
+		formatSummary := describeChannelFormatEvidence(ch)
+		formatEvidence.WriteString(formatSummary)
+		diag.WriteString(formatSummary)
+	}
 
 	if len(obs.Channels) == 0 {
 		diag.WriteString("Chưa có kênh nào được cấu hình trong hệ thống.")
 		return diag.String(), nil
 	}
 
-	// 1. Quét từng kênh để phát hiện cơ hội & lỗ hổng
-	for i, ch := range obs.Channels {
-		taskID := fmt.Sprintf("task-%d-%d", time.Now().Unix(), i+1)
-
-		// Thêm kiến thức từ Memory
-		memContext := ""
-		if e.memory != nil {
-			memContext = e.memory.GeneratePromptContext(ctx, ch.BrandNiche, ch.Username)
-		}
-
-		// Kênh cần mở rộng hoặc khởi động
-		if (ch.HealthStatus == "normal" || ch.HealthStatus == "thriving") && ch.VideosLast7D > 0 && ch.AvgViews > 0 {
-			tasks = append(tasks, OODADecisionTask{
-				ID:         taskID,
-				ActionType: "produce_viral",
-				TargetUser: ch.Username,
-				Niche:      ch.BrandNiche,
-				Topic:      fmt.Sprintf("3 Bí Quyết Tối Ưu Hiệu Suất Ngành %s", strings.Title(ch.BrandNiche)),
-				Reasoning:  fmt.Sprintf("Kênh %s đang có đà tốt; cần duy trì nhịp đăng 9:16 giữ chân khán giả.", ch.Username),
-				Priority:   1,
-				Status:     "pending",
-			})
-			diag.WriteString(fmt.Sprintf("Đề xuất video viral 9:16 cho kênh %s. ", ch.Username))
-		}
-
-		// Kênh có cơ hội affiliate
-		if i == 0 && obs.HighROIProduct != "" {
-			affTaskID := fmt.Sprintf("task-aff-%d", time.Now().Unix())
-			tasks = append(tasks, OODADecisionTask{
-				ID:         affTaskID,
-				ActionType: "produce_affiliate",
-				TargetUser: ch.Username,
-				Niche:      ch.BrandNiche,
-				Topic:      obs.HighROIProduct,
-				Reasoning:  "Sản phẩm đạt tỷ lệ hoa hồng cao >18% trên sàn Accesstrade, phù hợp đẩy doanh thu.",
-				Priority:   2,
-				Status:     "pending",
-			})
-			diag.WriteString(fmt.Sprintf("Kích hoạt video affiliate chiến dịch sản phẩm cho kênh %s. ", ch.Username))
-		}
-
-		_ = memContext
+	// Do not turn aggregate channel metrics into a production task. A viral
+	// decision needs a concrete source video; an affiliate decision needs a
+	// verified product and an available motion-production path. Neither input
+	// is part of this observation yet.
+	if obs.HighROIProduct != "" && !obs.VideoProduction.AffiliateAutomaticReady {
+		diag.WriteString("Có tên sản phẩm nhưng chưa đủ bằng chứng listing và footage để tạo job affiliate. ")
 	}
 
 	// Nếu LLM sẵn sàng, cho LLM trau chuốt và làm sắc nét chiến lược
 	if e.llm != nil && e.llm.Healthy(ctx) {
-		prompt := fmt.Sprintf(`Bạn là Giám Đốc Điều Hành AI (Master Harness Agent).
-Hãy thẩm định các quyết định tác chiến sau đây cho hệ sinh thái creator:
-Dữ liệu quan sát: %d kênh, tải render %d/%d, Sản phẩm hot: %s.
-Danh sách nhiệm vụ sơ bộ: %d nhiệm vụ.
-Hãy đưa ra chẩn đoán chiến lược ngắn gọn (tối đa 3 câu tiếng Việt) khẳng định định hướng tối ưu doanh thu và an toàn kênh.`,
-			obs.TotalChannels, obs.ActiveJobsCount, obs.DoneJobsCount, obs.HighROIProduct, len(tasks))
+		evidence := diag.String()
+		metricsPromptEvidence := boundLLMEvidence(channelEvidence.String())
+		formatPromptEvidence := boundLLMEvidence(formatEvidence.String())
+		prompt := fmt.Sprintf(`Bạn là điều phối viên vận hành nội dung.
+Chỉ tóm tắt dữ kiện và task đã có trong danh sách; không tự tạo task hoặc gợi ý hành động ngoài danh sách. Nêu rõ trường nào đang thiếu; không suy luận doanh thu, độ an toàn kênh, hiệu quả hay xu hướng nếu dữ liệu không chứng minh. Verdict format là bản lưu; chỉ tường thuật verdict hiện có, không tự tính lại. Nếu updated_at quá 7 ngày, ghi là dữ liệu cũ. Evidence có thể đã bị cắt theo giới hạn; không khái quát phần bị lược.
+Khả năng production: %s
+Dữ liệu: %d kênh, job hoạt động %d, job hoàn tất %d, sản phẩm được truyền vào: %s.
+Metrics theo kênh: %s
+Verdict format đã lưu theo kênh: %s
+Nhiệm vụ sơ bộ: %d. Tối đa 3 câu tiếng Việt.`,
+			videoEvidence, obs.TotalChannels, obs.ActiveJobsCount, obs.DoneJobsCount, obs.HighROIProduct, metricsPromptEvidence, formatPromptEvidence, len(tasks))
 
-		if resp, err := e.llm.Complete(ctx, "Bạn là Master Harness Agent cấp cao.", prompt); err == nil && len(resp) > 20 {
+		if resp, err := e.llm.Complete(ctx, "Báo cáo điều phối dữ kiện; không phóng đại năng lực.", prompt); err == nil && len(resp) > 20 {
 			diag.Reset()
+			diag.WriteString(evidence)
+			diag.WriteString("Tóm tắt LLM: ")
 			diag.WriteString(strings.TrimSpace(resp))
 		}
 	}
 
 	return diag.String(), tasks
+}
+
+func boundLLMEvidence(value string) string {
+	runes := []rune(value)
+	if len(runes) <= maxLLMEvidenceRunes {
+		return value
+	}
+	return string(runes[:maxLLMEvidenceRunes]) + "… [đã cắt theo giới hạn context]"
+}
+
+func describeChannelFormatEvidence(channel ChannelState) string {
+	switch channel.FormatStatsStatus {
+	case "available":
+		if len(channel.FormatStats) == 0 {
+			return fmt.Sprintf("@%s: trạng thái format available nhưng không có hàng dữ liệu. ", channel.Username)
+		}
+	case "missing":
+		return fmt.Sprintf("@%s: chưa có verdict format lưu trong Growth. ", channel.Username)
+	case "error":
+		return fmt.Sprintf("@%s: lỗi đọc verdict format. ", channel.Username)
+	default:
+		return fmt.Sprintf("@%s: Growth store chưa được nối để đọc verdict format. ", channel.Username)
+	}
+	var summary strings.Builder
+	for _, format := range channel.FormatStats {
+		fmt.Fprintf(&summary, "@%s format=%q verdict=%s videos=%d median_views=%.0f avg_views=%.0f updated=%s",
+			channel.Username, format.FormatID, format.Verdict, format.Videos, format.MedianViews, format.AvgViews, format.UpdatedAt)
+		if format.VerdictReason != "" {
+			fmt.Fprintf(&summary, " reason=%q", format.VerdictReason)
+		}
+		summary.WriteString(". ")
+	}
+	if channel.FormatStatsOmitted > 0 {
+		fmt.Fprintf(&summary, "@%s còn %d format khác không đưa vào evidence rút gọn. ", channel.Username, channel.FormatStatsOmitted)
+	}
+	return summary.String()
 }
 
 // ExecuteCycle thực thi trọn vẹn 1 chu kỳ OODA tự chủ.
@@ -228,11 +364,12 @@ func (e *OODAEngine) ExecuteCycle(
 
 	// 1. OBSERVE (Quan sát)
 	obs := e.Observe(ctx, accounts, activeCount, doneCount)
+	obs.VideoProduction = observeVideoProductionReadiness(ctx, studioInst)
 
 	// 2. ORIENT & DECIDE (Định hướng & Quyết định)
 	diag, tasks := e.OrientAndDecide(ctx, obs, level)
 
-	// 3. ACT (Thực thi)
+	// 3. ACT (Only supported actions may run; currently these require operator input.)
 	executedCount := 0
 	for i := range tasks {
 		t := &tasks[i]
@@ -242,29 +379,16 @@ func (e *OODAEngine) ExecuteCycle(
 			continue
 		}
 
-		// Cấp 2 và Cấp 3: Tự động khởi chạy dây chuyền
-		if studioInst != nil {
-			switch t.ActionType {
-			case "produce_viral":
-				p := studio.ViralParams{
-					Topic:          t.Topic,
-					Genre:          "trendjack",
-					VisualMood:     "cinematic",
-					Account:        t.TargetUser,
-					TargetDuration: 30,
-				}
-				jobID, err := studioInst.EnqueueViral(ctx, p)
-				if err == nil {
-					t.Status = "executing"
-					t.ResultID = jobID
-					executedCount++
-					log.Printf("harness: [OODA] Tự động khởi chạy job viral %s cho kênh %s: %s", jobID, t.TargetUser, t.Topic)
-				} else {
-					t.Status = "failed"
-				}
-			case "produce_affiliate":
-				t.Status = "failed"
-				t.Reasoning = "Luồng tạo job Affiliate chưa được nối; không ghi nhận là đã thực thi."
+		switch t.ActionType {
+		case "produce_viral":
+			t.Status = "waiting_approval"
+			t.Reasoning = "Cần người vận hành chọn video nguồn, kênh và ảnh nhân vật trước khi thay nhận diện."
+		case "produce_affiliate":
+			t.Status = "waiting_approval"
+			if studioInst == nil {
+				t.Reasoning = "Studio chưa sẵn sàng; chưa tạo job."
+			} else {
+				t.Reasoning = "Cần người vận hành xác nhận sản phẩm có ảnh listing thật, kênh và ảnh nhân vật đúng kênh."
 			}
 		}
 	}
@@ -281,6 +405,16 @@ func (e *OODAEngine) ExecuteCycle(
 		})
 	}
 
+	cycleStatus := "completed"
+	for _, task := range tasks {
+		if task.Status == "waiting_approval" {
+			cycleStatus = "waiting_approval"
+			break
+		}
+		if task.Status == "failed" {
+			cycleStatus = "completed_with_blockers"
+		}
+	}
 	res := &OODACycleResult{
 		CycleID:      cycleID,
 		StartedAt:    start,
@@ -289,8 +423,38 @@ func (e *OODAEngine) ExecuteCycle(
 		Diagnosis:    diag,
 		Decisions:    tasks,
 		ActionCount:  executedCount,
-		Status:       "completed",
+		Status:       cycleStatus,
 	}
 
 	return res, nil
+}
+
+func observeVideoProductionReadiness(ctx context.Context, studioInst *studio.Studio) VideoProductionReadiness {
+	if studioInst == nil {
+		return VideoProductionReadiness{
+			AffiliateStatus: "Studio chưa khởi tạo; không thể kiểm tra khả năng tạo video.",
+			ViralStatus:     "Studio chưa khởi tạo; không thể kiểm tra khả năng thay toàn thân.",
+		}
+	}
+	affiliateReady, affiliateStatus := studioInst.AutoAffiliateProductionReady()
+	viralReady, viralStatus := studioInst.ViralCharacterEditorStatus(ctx)
+	return VideoProductionReadiness{
+		AffiliateAutomaticReady: affiliateReady,
+		AffiliateStatus:         affiliateStatus,
+		ViralCharacterEditReady: viralReady,
+		ViralStatus:             viralStatus,
+	}
+}
+
+func describeVideoProductionReadiness(readiness VideoProductionReadiness) string {
+	affiliate := strings.TrimSpace(readiness.AffiliateStatus)
+	if affiliate == "" {
+		affiliate = "chưa được kiểm tra"
+	}
+	viral := strings.TrimSpace(readiness.ViralStatus)
+	if viral == "" {
+		viral = "chưa được kiểm tra"
+	}
+	return fmt.Sprintf("Khả năng video: affiliate tự động=%t (%s); thay toàn thân viral=%t (%s). ",
+		readiness.AffiliateAutomaticReady, affiliate, readiness.ViralCharacterEditReady, viral)
 }

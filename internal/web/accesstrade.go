@@ -189,7 +189,7 @@ func (s *Server) atCachedCount() int {
 func (s *Server) handleSettingsAccesstrade(w http.ResponseWriter, r *http.Request) {
 	s.settingsPage(w, r, "accesstrade", "settings_accesstrade",
 		"ATKeySet", "ATMasked", "ATCampaigns", "ATStoreOK",
-		"ATHunterHours", "ATOrderSyncMins", "ATAuto")
+		"ATHunterHours", "ATOrderSyncMins", "ATAuto", "ATHunterAccounts", "ATHunterAccountID")
 }
 
 // handleATAutomationSave lưu interval tick AT từ form (POST, redirect 303).
@@ -224,11 +224,42 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 	// khi có cờ toggles để form/gọi cũ chỉ gửi chu kỳ không vô tình tắt hết.
 	if r.PostFormValue("toggles") == "1" {
 		on := func(k string) string { return boolStr(r.PostFormValue(k) == "1") }
+		n, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_videos")))
+		n = clampInt(n, 0, 10)
+		hunterOn := r.PostFormValue("hunter_on") == "1"
+		rawAccountID := strings.TrimSpace(r.PostFormValue("hunter_account_id"))
+		if hunterOn && n > 0 && rawAccountID == "" {
+			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Chọn kênh đích có ảnh nhân vật, hoặc đặt số video hunter về 0."))
+			return
+		}
+		if rawAccountID != "" {
+			accountID, parseErr := strconv.ParseInt(rawAccountID, 10, 64)
+			if parseErr != nil || accountID <= 0 || s.Mgr == nil {
+				seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kênh đích hunter không hợp lệ."))
+				return
+			}
+			account, getErr := s.Mgr.Get(accountID)
+			if getErr != nil || account == nil || s.Studio == nil {
+				seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Không xác minh được kênh đích hoặc Studio."))
+				return
+			}
+			library, libErr := s.Studio.ModelLibrary()
+			hasPhotos := false
+			if libErr == nil {
+				hasPhotos, libErr = library.HasPhotos(accountID)
+			}
+			if libErr != nil || !hasPhotos {
+				seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kênh đích chưa có ảnh nhân vật trong thư viện riêng."))
+				return
+			}
+			_ = s.Ledger.SetSetting(automation.KeyATHunterAccountID, strconv.FormatInt(accountID, 10))
+		} else {
+			_ = s.Ledger.DeleteSetting(automation.KeyATHunterAccountID)
+		}
 		_ = s.Ledger.SetSetting(automation.KeyATHunterEnabled, on("hunter_on"))
 		_ = s.Ledger.SetSetting(automation.KeyATOrderSyncEnabled, on("ordersync_on"))
 		_ = s.Ledger.SetSetting(automation.KeyATCampaignCheckOn, on("campaign_on"))
-		n, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_videos")))
-		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(clampInt(n, 0, 10)))
+		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(n))
 	}
 	_ = s.Ledger.Decide("human", "at_automation_save", nil, "Lưu cài đặt tự động Accesstrade.", nil)
 	seeOther(w, r, "/settings/accesstrade?ok="+url.QueryEscape("Đã lưu cài đặt tự động Accesstrade."))
@@ -414,23 +445,34 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	// Tạo video cho top N sản phẩm mới (nối hunter → studio, như tick).
 	videos := 0
 	want := s.atSettingInt(automation.KeyATHunterVideos, 3)
+	auto := s.automation()
+	auto.StudioRunner = s.Studio
+	accountID, accountErr := auto.HunterAccountID()
+	productionNote := ""
 	if s.Studio != nil && want > 0 {
-		for _, p := range res.Products {
-			if videos >= want {
-				break
+		ready, reason := s.Studio.AutoAffiliateProductionReady()
+		if !ready {
+			productionNote = reason
+		} else if accountErr != nil {
+			productionNote = "Chưa tạo video: " + accountErr.Error()
+		} else {
+			for _, p := range res.Products {
+				if videos >= want {
+					break
+				}
+				claimed, cerr := s.Products.RecordUse(p.ID, accountID, "")
+				if cerr != nil || !claimed {
+					continue
+				}
+				jobID, jerr := s.makeHunterVideo(ctx, p, accountID)
+				if jerr != nil {
+					_ = s.Products.ReleaseUseClaim(p.ID, accountID)
+					log.Printf("web: at hunt video %q: %v", p.Title, jerr)
+					continue
+				}
+				_ = s.Products.SetUsageJobID(p.ID, accountID, jobID)
+				videos++
 			}
-			// Đợt Y: claim trước khi dựng video — chống đua với tick hunter.
-			claimed, cerr := s.Products.RecordUse(p.ID, 0, "")
-			if cerr != nil || !claimed {
-				continue
-			}
-			jobID, jerr := s.makeHunterVideo(ctx, p)
-			if jerr != nil {
-				log.Printf("web: at hunt video %q: %v", p.Title, jerr)
-				continue
-			}
-			_ = s.Products.SetUsageJobID(p.ID, 0, jobID)
-			videos++
 		}
 	}
 	if s.Ledger != nil {
@@ -438,16 +480,16 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]any{
 		"ok": true, "new": res.New, "updated": res.Updated,
-		"skipped": res.Skipped, "videos": videos, "note": res.Note,
+		"skipped": res.Skipped, "videos": videos, "note": res.Note, "production_note": productionNote,
 	})
 }
 
 // makeHunterVideo tạo 1 studio job affiliate từ sản phẩm hunter (bản web
 // của automation tick — tải ảnh listing + gọi CreateAffiliateJob).
-func (s *Server) makeHunterVideo(ctx context.Context, p products.Product) (string, error) {
+func (s *Server) makeHunterVideo(ctx context.Context, p products.Product, accountID int64) (string, error) {
 	auto := s.automation()
 	auto.StudioRunner = s.Studio
-	return auto.MakeHunterVideo(ctx, p)
+	return auto.MakeHunterVideoForAccount(ctx, p, accountID)
 }
 
 // handleATOrderSync đồng bộ đơn tay (AJAX): order-list → upsert → JSON

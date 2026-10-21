@@ -27,14 +27,22 @@ def progress(percent):
     print(f"PROGRESS: {int(percent)}", flush=True)
 
 def check_env():
+    model_dir = os.path.expanduser("~/.insightface/models")
+    buffalo_dir = os.path.join(model_dir, "buffalo_l")
+    required_buffalo = ("det_10g.onnx", "w600k_r50.onnx", "2d106det.onnx")
+    has_buffalo = all(os.path.isfile(os.path.join(buffalo_dir, name)) for name in required_buffalo)
+    inswapper_file = os.path.join(model_dir, "inswapper_128.onnx")
+    has_inswapper = os.path.isfile(inswapper_file) and os.path.getsize(inswapper_file) > 500_000_000
     status = {
         "python": sys.version,
         "cv2": cv2.__version__ if cv2 else None,
         "numpy": np.__version__ if np else None,
         "insightface": False,
         "onnxruntime": False,
-        "model_dir": os.path.expanduser("~/.insightface/models"),
-        "ready": False
+        "model_dir": model_dir,
+        "models_ready": has_buffalo and has_inswapper,
+        "can_run": bool(cv2 and np),
+        "ready": False,
     }
     try:
         import onnxruntime
@@ -45,13 +53,23 @@ def check_env():
     try:
         import insightface
         status["insightface"] = insightface.__version__
-        status["ready"] = True
     except ImportError:
         pass
 
-    # Ready if we at least have cv2 and numpy
-    if cv2 and np:
-        status["can_run"] = True
+    status["ready"] = bool(
+        cv2 and np and status["insightface"] and status["onnxruntime"] and status["models_ready"]
+    )
+    missing = []
+    if not cv2 or not np:
+        missing.append("OpenCV/numpy")
+    if not status["insightface"] or not status["onnxruntime"]:
+        missing.append("InsightFace/ONNX Runtime")
+    if not has_buffalo:
+        missing.append("buffalo_l model files")
+    if not has_inswapper:
+        missing.append("inswapper_128.onnx model")
+    if missing:
+        status["last_error"] = "Thiếu " + ", ".join(missing)
 
     return status
 
@@ -241,10 +259,8 @@ def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
 
     model_path = os.path.expanduser("~/.insightface/models/inswapper_128.onnx")
     if not os.path.exists(model_path):
-        log("Đang tải mô hình inswapper_128.onnx (lần đầu sử dụng)...")
-        swapper = insightface.model_zoo.get_model('inswapper_128.onnx', download=True)
-    else:
-        swapper = insightface.model_zoo.get_model(model_path)
+        raise ValueError("Thiếu mô hình inswapper_128.onnx; hãy cài đặt trước khi chạy production")
+    swapper = insightface.model_zoo.get_model(model_path)
 
     all_source_faces, source_face = load_and_rank_source_faces(app, source_path)
 
@@ -432,6 +448,7 @@ def main():
     parser.add_argument("--output", type=str, help="Đường dẫn file video kết quả đầu ra")
     parser.add_argument("--max-frames", type=int, default=0, help="Giới hạn số frame xử lý (0 = toàn bộ)")
     parser.add_argument("--mode", type=str, default="auto", choices=["auto", "insightface", "fast"], help="Chế độ xử lý khuôn mặt")
+    parser.add_argument("--strict", action="store_true", help="Production mode: require InsightFace models; never fall back")
     parser.add_argument("--check", action="store_true", help="Kiểm tra trạng thái môi trường AI")
     args = parser.parse_args()
 
@@ -456,31 +473,28 @@ def main():
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
 
+    status = check_env()
+    if args.strict:
+        if not status["ready"]:
+            raise RuntimeError(status.get("last_error", "InsightFace production engine chưa sẵn sàng"))
+        run_insightface_swap(args.source, args.target, args.output, args.max_frames)
+        return
+
     # Check if InsightFace model files are fully downloaded
-    buffalo_dir = os.path.expanduser("~/.insightface/models/buffalo_l")
-    has_buffalo = os.path.exists(buffalo_dir) and len(os.listdir(buffalo_dir)) >= 3
-    inswapper_file = os.path.expanduser("~/.insightface/models/inswapper_128.onnx")
-    has_inswapper = os.path.exists(inswapper_file) and os.path.getsize(inswapper_file) > 500_000_000
+    has_buffalo = status.get("models_ready", False)
+    has_insightface = bool(status.get("insightface") and status.get("onnxruntime"))
 
     use_insightface = False
     if args.mode == "insightface":
         use_insightface = True
     elif args.mode == "auto":
-        try:
-            import insightface
-            use_insightface = has_buffalo and has_inswapper
-        except ImportError:
-            use_insightface = False
+        use_insightface = has_buffalo and has_insightface
     else: # fast
         use_insightface = False
 
     try:
         if use_insightface:
-            try:
-                run_insightface_swap(args.source, args.target, args.output, args.max_frames)
-            except Exception as e:
-                log(f"Cảnh báo: InsightFace lỗi ({e}), chuyển sang chế độ Face Alignment dự phòng...")
-                run_fallback_swap(args.source, args.target, args.output, args.max_frames)
+            run_insightface_swap(args.source, args.target, args.output, args.max_frames)
         else:
             run_fallback_swap(args.source, args.target, args.output, args.max_frames)
     except Exception as e:
