@@ -15,7 +15,7 @@ local, và chip công tắc chính (MASTER_SWITCH).
    `sortedStatusCounts` đếm theo từng trạng thái.
 2. Doanh thu: `SELECT COALESCE(SUM(commission),0) FROM orders` (bảng `orders`
    trong ledger.db — chỉ có số khi đối soát ghi đơn thật, xem
-   `daemon-tu-dong.md`).
+   `autonomous-daemon.md`).
 3. `s.Ledger.TotalRevenue()` → hoa hồng đã ghi nhận (append-only).
 4. 8 quyết định mới nhất: `SELECT ... FROM decisions ORDER BY id DESC LIMIT 8`
    (bảng `decisions` — nhật ký mọi quyết định của hệ thống + con người).

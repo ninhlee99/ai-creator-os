@@ -58,11 +58,12 @@ type ChainConfig struct {
 	Order []ProviderEntry `json:"order"`
 }
 
-// DefaultTTSConfig mirrors the engines default: gemini -> edge.
+// DefaultTTSConfig mirrors the engines default: local macOS speech -> edge -> gemini.
 func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 60, Retries: 1},
-		{Name: "edge", Enabled: true, TimeoutSec: 60, Retries: 1},
+		{Name: "say", Enabled: true, TimeoutSec: 60, Retries: 0},
+		{Name: "edge", Enabled: true, TimeoutSec: 60, Retries: 0},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 60, Retries: 0},
 	}}
 }
 
@@ -82,7 +83,7 @@ func withoutRetiredProviders(chain string, order []ProviderEntry) []ProviderEntr
 func supportedChainProvider(chain, provider string) bool {
 	switch chain {
 	case "tts":
-		return provider == "gemini" || provider == "edge"
+		return provider == "say" || provider == "gemini" || provider == "edge"
 	case "llm":
 		return provider == "gemini"
 	default:
@@ -124,7 +125,7 @@ func defaultChainWithSavedGeminiKeys(def ChainConfig, saved []ProviderEntry) Cha
 // DefaultLLMConfig mirrors the engines default: Gemini.
 func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 30, Retries: 1},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, TimeoutSec: 30, Retries: 0},
 	}}
 }
 

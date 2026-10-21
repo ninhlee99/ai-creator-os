@@ -146,7 +146,7 @@ team chuyên trách hiển thị dạng cây:
 - `internal/publishers` — TikTok draft-first, YouTube private-first (giữ).
 - `internal/growth` — kill/breakout rules (mở rộng cho reup).
 - `internal/ledger` — đối soát hoa hồng AT (mở rộng từ reconcile hiện có).
-- `internal/engines/tts` — Gemini → Edge cho voiceover và giọng kể chuyện.
+- `internal/engines/tts` — local macOS speech → Edge → Gemini cho voiceover và giọng kể chuyện.
 - `internal/studio` — affiliate render, assemble/concat/xfade, trends.
 
 ### 3.4. Bảng DB mới (SQLite)

@@ -47,7 +47,7 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	failClosed := func(reason string) {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape(
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape(
 			"Khôi phục thất bại: "+reason+" — dữ liệu hiện tại không bị đụng tới."))
 	}
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
@@ -76,7 +76,7 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = s.Ledger.Decide("human", "backup_restore", nil,
 		"Đã nhận bản khôi phục — chờ restart app để áp dụng.", nil)
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(
 		"Đã nhận bản khôi phục. Khởi động lại app để áp dụng."))
 }
 
@@ -103,5 +103,5 @@ func (s *Server) handleBackupOffsite(w http.ResponseWriter, r *http.Request) {
 	if dir == "" {
 		msg = "Đã tắt copy offsite."
 	}
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
 }

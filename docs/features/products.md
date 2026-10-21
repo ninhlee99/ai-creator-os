@@ -12,7 +12,7 @@ chạy autopilot + nhạc nền + tự đăng.
 
 ## 2. Kích hoạt
 - `GET /products` → `handleProducts` (`internal/web/products.go:69`): 2 tab
-  (`?tab=ke` Kệ hàng; tab tìm kiếm).
+  (`?tab=shelf` Kệ hàng; tab tìm kiếm).
 - `POST /products/search`: tìm theo theme + % hoa hồng tối thiểu.
 - `POST /products/shelf/add`: đưa sản phẩm lên kệ (`shelf_status`, `shelf_score`).
 - `POST /products/add`: thêm sản phẩm thủ công.
@@ -34,7 +34,7 @@ chạy autopilot + nhạc nền + tự đăng.
    (1–168, mặc định 6), `autopilot_auto_publish` (unset = ON), `autopilot_music_name`
    (file `autopilot-music.m4a` cạnh DB). Lưu xong → scheduler nền (tick 1 phút)
    áp dụng ở chu kỳ kế tiếp, không cần restart.
-4. Chu kỳ chạy thật: `AutopilotTick` → `Autopilot.RunAll` (xem `daemon-tu-dong.md`).
+4. Chu kỳ chạy thật: `AutopilotTick` → `Autopilot.RunAll` (xem `autonomous-daemon.md`).
 
 ## 4. Fail-closed & an toàn
 - Không provider nào cấu hình → trang báo "Chưa cấu hình nguồn sản phẩm", không giả kết quả.

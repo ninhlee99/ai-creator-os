@@ -303,10 +303,12 @@ func truncate(s string, n int) string {
 
 // GeminiProvider calls the Gemini free tier (AI Studio keys).
 //
-// It holds a KeyRing of API keys and rotates round-robin: every request uses
-// the next usable key, so N keys multiply the free-tier quota. A key that
+// It holds a KeyRing of API keys and rotates round-robin. Keys belonging to
+// the same Google AI Studio project share quota; rotation does not increase
+// that project's free-tier limits. A key that
 // hits 429/quota cools down (60s -> 5m -> 15m); a rejected key is marked
-// invalid until the config changes; other errors just try the next key.
+// invalid until the config changes; transient errors stop after one request
+// rather than replaying the same prompt against another key.
 // When every key is cooling down the provider fails over to the next chain
 // tier immediately instead of spamming retries.
 type GeminiProvider struct {
@@ -386,7 +388,7 @@ func (g *GeminiProvider) ValidateKey(ctx context.Context, idx int) error {
 		g.ring.ReportInvalid(idx)
 		return fmt.Errorf("gemini: key ****%s is invalid: %w", last4(key), err)
 	case tts.KeyErrQuota:
-		g.ring.ReportRateLimit(idx)
+		g.ring.ReportSharedQuotaLimit(idx)
 		return fmt.Errorf("gemini: key ****%s hit quota/rate-limit: %w", last4(key), err)
 	default:
 		return fmt.Errorf("gemini: key ****%s test failed: %w", last4(key), err)
@@ -446,11 +448,14 @@ func (g *GeminiProvider) Complete(ctx context.Context, system, prompt string) (s
 		g.mu.Lock()
 		switch tts.ClassifyKeyError(err) {
 		case tts.KeyErrQuota:
-			g.ring.ReportRateLimit(idx)
+			g.ring.ReportSharedQuotaLimit(idx)
 		case tts.KeyErrInvalidKey:
 			g.ring.ReportInvalid(idx)
 		default:
-			// network / 5xx / parse: try the next key, no penalty.
+			// A transient failure may already have reached Gemini. Do not
+			// replay the same prompt through another key.
+			g.mu.Unlock()
+			return "", err
 		}
 		g.mu.Unlock()
 	}

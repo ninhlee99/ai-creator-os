@@ -14,8 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 )
 
 // viralJobView là dữ liệu hiển thị của một tác vụ dựng video viral 9:16.
@@ -49,6 +51,10 @@ type viralView struct {
 	AvailableModels    []modelPhotoCardView
 	SelectedModelID    int64
 	SelectedModelPhoto string
+	RadarSources       []viralradar.Source
+	RadarQuery         string
+	RadarLastRun       string
+	RadarKeyReady      bool
 }
 
 // handleViral renders the video creation form and actual job history.
@@ -89,7 +95,25 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	v := viralView{
 		StudioOK:        s.Studio != nil,
 		Error:           q.Get("err"),
+		Notice:          q.Get("notice"),
 		AvailableModels: s.listModelPhotoCards(),
+		RadarQuery:      s.defaultViralRadarQuery(),
+	}
+	if key, ok := s.effectiveEnv("YOUTUBE_API_KEY"); ok && strings.TrimSpace(key) != "" {
+		v.RadarKeyReady = true
+	}
+	settings := s.settings()
+	if raw, ok := settings.Get(automation.KeyViralRadarSources); ok {
+		_ = json.Unmarshal([]byte(raw), &v.RadarSources)
+		if len(v.RadarSources) > 10 {
+			v.RadarSources = v.RadarSources[:10]
+		}
+	}
+	if lastRun, ok := settings.Get("viral.radar.last_run"); ok {
+		v.RadarLastRun = lastRun
+	}
+	if query, ok := settings.Get(automation.KeyViralRadarQuery); ok && strings.TrimSpace(query) != "" {
+		v.RadarQuery = query
 	}
 
 	if msg := q.Get("msg"); msg == "created" {
@@ -117,10 +141,9 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 
 	// Đọc công tắc tự động hóa viral
 	st := s.settings()
-	if val, ok := st.Get("viral.auto_produce_enabled"); ok {
+	v.AutoOn = true
+	if val, ok := st.Get(automation.KeyViralAutoProduce); ok {
 		v.AutoOn = val == "1" || val == "true"
-	} else {
-		v.AutoOn = false
 	}
 
 	// Lấy danh sách kênh
@@ -188,6 +211,42 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, "viral", s.ctx("Viral", v))
+}
+
+func (s *Server) defaultViralRadarQuery() string {
+	if s.Mgr != nil {
+		if accounts, err := s.Mgr.List(); err == nil {
+			for _, account := range accounts {
+				if account != nil && strings.TrimSpace(account.Niche) != "" && account.Status != "paused" && account.Status != "retired" {
+					return strings.TrimSpace(account.Niche)
+				}
+			}
+		}
+	}
+	return "video viral Việt Nam"
+}
+
+func (s *Server) handleViralRadarRefresh(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape("Could not read radar form"), http.StatusSeeOther)
+		return
+	}
+	query := strings.TrimSpace(r.PostFormValue("query"))
+	if err := s.automation().RefreshViralRadarQuery(query); err != nil {
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	notes := s.AutomationService().ViralRadarTick(r.Context(), true)
+	message := "YouTube radar finished."
+	if len(notes) > 0 {
+		message = strings.Join(notes, " ")
+	}
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "missing") || strings.Contains(lower, "failed") || strings.Contains(lower, "could not") || strings.Contains(lower, "kill switch") {
+		http.Redirect(w, r, "/viral?err="+url.QueryEscape(message), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/viral?notice="+url.QueryEscape(message), http.StatusSeeOther)
 }
 
 // ValidateAndEnforceViralChannel checks whether the requested channel matches the topic / region.
@@ -414,7 +473,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 
 	aiMode := strings.TrimSpace(r.PostFormValue("ai_mode"))
 	if aiMode == "" {
-		aiMode = "auto"
+		aiMode = "local"
 	}
 
 	var modelPhoto string

@@ -15,6 +15,45 @@
 {{if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Viral.Notice}}</p>{{end}}
 {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
+<section class="card" style="margin-bottom:18px;padding:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2 style="margin:0 0 5px;font-size:16px">YouTube Viral Radar</h2>
+      <div class="hint">Video mới trong 7 ngày, xếp theo lượt xem, chỉ nhận kênh có ít nhất 100,000 subscribers.</div>
+    </div>
+    <span class="badge {{if .Viral.AutoOn}}badge-ok{{else}}badge-dim{{end}}">Auto production {{if .Viral.AutoOn}}ON{{else}}OFF{{end}}</span>
+  </div>
+  {{if .Viral.RadarKeyReady}}
+    <p class="hint" style="margin:10px 0">YouTube API connected. One search call per refresh; daily automation runs once every 24 hours. <a href="/settings/system">API settings</a>.</p>
+  {{else}}
+    <p class="hint" style="margin:10px 0;color:var(--warning,#f59e0b)">Add <code>YOUTUBE_API_KEY</code> in <a href="/settings/system">Settings · System</a> to enable real discovery.</p>
+  {{end}}
+  <form method="post" action="/viral/radar/refresh" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
+    <label class="field" style="flex:1;min-width:220px;margin:0">Search niche
+      <input type="text" name="query" value="{{.Viral.RadarQuery}}" maxlength="100" placeholder="creator niche or topic">
+    </label>
+    <button type="submit" class="btn btn-secondary" {{if not .Viral.RadarKeyReady}}title="Add YouTube API key first"{{end}}>Refresh radar</button>
+  </form>
+  {{if .Viral.RadarLastRun}}<p class="hint" style="margin:8px 0 0">Last run: {{.Viral.RadarLastRun}}</p>{{end}}
+</section>
+
+{{if .Viral.RadarSources}}
+<section class="card" style="margin-bottom:18px;padding:16px">
+  <h3 style="margin:0 0 10px;font-size:15px">High-subscriber source videos</h3>
+  <div style="display:grid;gap:10px">
+    {{range .Viral.RadarSources}}
+    <article style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;padding:8px;border-bottom:1px solid var(--border)">
+      {{if .ThumbnailURL}}<a href="{{.URL}}" target="_blank" rel="noopener"><img src="{{.ThumbnailURL}}" alt="" loading="lazy" style="width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:6px"></a>{{end}}
+      <div>
+        <a href="{{.URL}}" target="_blank" rel="noopener" style="font-weight:700">{{.Title}}</a>
+        <div class="hint">{{.ChannelTitle}} · {{.Subscribers}} subscribers · {{.Views}} views · {{.DurationSeconds}}s · {{.PublishedAt.Format "2006-01-02"}}</div>
+      </div>
+    </article>
+    {{end}}
+  </div>
+</section>
+{{end}}
+
 <form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
 
@@ -114,11 +153,10 @@
           <div class="field">
       <label style="font-weight:700;font-size:12.5px">Engine render (nếu đã kết nối)</label>
             <select name="ai_mode" style="padding:10px;font-weight:700">
-              <option value="auto" selected>Tự chọn engine khả dụng</option>
-              <option value="googleflow">Google Flow</option>
-              <option value="veo3">Veo</option>
-              <option value="museai">Muse AI</option>
+              <option value="local" selected>Dựng cục bộ từ ảnh đã tải (không gọi API)</option>
+              <option value="veo3">Veo API (có thể tính phí)</option>
             </select>
+            <p class="hint">Google Flow và Muse AI hiện render thủ công; chưa có API video tự động trong app.</p>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video (Tối thiểu 60s)</label>

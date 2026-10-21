@@ -15,7 +15,7 @@
 | **2. Tạo video dọc** | ✅ Nhập chủ đề, chọn ảnh tham chiếu, tùy chọn link video làm tham chiếu chuyển động; theo dõi job tại `/studio/jobs`. Không có radar xu hướng video realtime. |
 | **3. YouTube Phim Kể Chuyện Audio Điện Ảnh (30 - 60 Phút)** | ✅ Thời lượng **30 – 60 Phút** + mỗi 8-15s là một visual canvas chuyển động + Kịch bản đa cảm xúc + Google Gemini TTS |
 
-Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **tạo video dọc từ chủ đề và link tham chiếu tùy chọn** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/he-thong#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
+Phần đã chạy thật hôm nay: **Cập nhật model Gemini on-demand trên toàn bộ adapter (`PickLatest`)**, **Studio AI Lookbook**, **tạo video dọc từ chủ đề và link tham chiếu tùy chọn** (`/viral`), **Master Agent Harness** (`/harness`), **Kho tài khoản Web AI** (`/settings/system#tab-webai`), nhạc trending VN, dashboard, phát triển kênh, daemon tự động, kill switch + dry-run.
 
 ---
 
@@ -39,7 +39,7 @@ Sidebar hệ thống phân nhóm trực quan thành 3 khối nghiệp vụ chín
 - **Kể chuyện YouTube**: `/stories` — Hàng đợi kịch bản, ảnh minh họa 16:9, TTS lồng tiếng, tự động đăng private.
 - **Phát triển kênh**: `/growth` — Kế hoạch nội dung 30 ngày, canary testing 7 ngày, quy tắc kill / double-down.
 - **Đa nền tảng**: `/publishers` — Quản lý token OAuth TikTok, YouTube, Facebook Page & Instagram Reels.
-- **Kho Tài khoản Web AI**: `/settings/he-thong#tab-webai` — Trình duyệt tự động đăng nhập CDP, cô lập phiên sạch (`os.MkdirTemp`), tự xoay vòng đa tài khoản ChatGPT, Claude, Gemini, Grok, Muse AI.
+- **Kho Tài khoản Web AI**: `/settings/system#tab-webai` — Trình duyệt tự động đăng nhập CDP, cô lập phiên sạch (`os.MkdirTemp`), tự xoay vòng đa tài khoản ChatGPT, Claude, Gemini, Grok, Muse AI.
 
 ---
 
@@ -99,7 +99,7 @@ vào app.
 | Brand DNA & Original TikTok Engine — Bản sắc thương hiệu & nội dung nguyên bản | ✅ 2026-10-16 — Hồ sơ Brand DNA từng kênh (Định vị, Chân dung, 4 Hook 3s, Ranh giới đỏ, QC 10 tiêu chí) |
 | Trend Intelligence — Bóc tách xu hướng & tính điểm cơ hội (Zero-Reup) | ✅ 2026-10-16 — Phân tích tín hiệu Kworb VN & radar Douyin, chấm điểm tương thích Brand DNA |
 | **Master Agent Harness (`/harness`)** — Não tự hành OODA & Ký ức kinh nghiệm | ✅ 2026-10-16 — Vòng lặp Quan sát-Định hướng-Quyết định-Hành động, lưu trữ sự kiện SQLite |
-| **Kho Tài Khoản Web AI (`/settings/he-thong#tab-webai`)** — CDP Login & Multi-Account | ✅ 2026-10-17 — Tự động mở trình duyệt CDP, bắt cookie/session ChatGPT, Claude, Gemini, Grok, Muse AI, cô lập profile tạm thời |
+| **Kho Tài Khoản Web AI (`/settings/system#tab-webai`)** — CDP Login & Multi-Account | ✅ 2026-10-17 — Tự động mở trình duyệt CDP, bắt cookie/session ChatGPT, Claude, Gemini, Grok, Muse AI, cô lập profile tạm thời |
 | Bảng “Tự động hóa” trên Trang chủ | ✅ 2026-10-12 — 6 công tắc tự động gom 1 chỗ (vẫn ghi đúng khóa của trang gốc) |
 | Veo / key Gemini trả phí | ❌ Không bao giờ — free-only là luật cứng |
 

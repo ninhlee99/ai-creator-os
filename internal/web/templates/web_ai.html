@@ -8,7 +8,7 @@
     <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-0.4px">🌐 Web AI Hub &amp; Trình Duyệt</h1>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-secondary btn-sm">⚙️ Cấu hình AI</a>
+    <a href="/settings/system#tab-webai" class="btn btn-secondary btn-sm">⚙️ Cấu hình AI</a>
     <a href="/studio" class="btn btn-primary btn-sm">Dựng Video Studio ↗</a>
   </div>
 </div>
@@ -25,7 +25,7 @@
     <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Google Flow · Muse AI · Leonardo</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/settings/he-thong#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
+    <a href="/settings/system#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
   </div>
 </div>
 
@@ -225,7 +225,7 @@
           Google Flow Bridge
         </div>
         <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
-          Cung cấp liên kết hoặc tệp video đã tạo bằng dịch vụ bạn kết nối. Kết quả xử lý phụ thuộc vào cấu hình engine hiện tại.
+          Flow có 50 credit miễn phí mỗi ngày trên gói free (tùy khu vực/model). Đăng nhập Google tại Flow, tạo clip trong giao diện web, tải MP4 rồi nhập ở đây. App chưa tự gọi Flow để dùng quota này.
         </p>
         <form method="POST" action="/studio/flow-import" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;align-items:end">
           <div>
@@ -323,7 +323,7 @@
           <span style="font-size:24px">🎞️</span>Leonardo.Ai Video Bridge
         </div>
         <p style="font-size:13px;color:var(--muted);margin:0 0 16px">
-          Mở Leonardo, chọn đúng tài khoản, dùng prompt theo từng cảnh bên dưới để tạo text-to-video hoặc image-to-video. Xem token hiển thị trước khi tạo; tải MP4 về rồi nhập vào Studio. Gói miễn phí có 150 token/ngày, nhưng số video tùy model và thiết lập.
+          Đăng nhập trên Leonardo website; gói free cấp 150 Fast Tokens mỗi ngày. Dùng prompt theo cảnh bên dưới để tạo text-to-video hoặc image-to-video, tải MP4 rồi nhập vào Studio. Quota web không dùng qua API; Leonardo API tính phí pay-as-you-go. App hiện chỉ hỗ trợ prompt handoff và MP4 import.
         </p>
         <form method="POST" action="/studio/leonardo-import" enctype="multipart/form-data" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;align-items:end">
           <div>

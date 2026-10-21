@@ -180,6 +180,7 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 	}
 
 	s.applyPersistedEnv()
+	s.applyPersistedDryRun()
 	if gs, err := growth.NewStore(db); err != nil {
 		log.Printf("web: growth store: %v", err)
 	} else {
@@ -626,27 +627,27 @@ func agentLabel(slug string) agentMeta {
 
 // pageFiles maps a page key to the template file rendered inside base.
 var pageFiles = map[string]string{
-	"dashboard":             "dashboard.html",
-	"accounts":              "accounts.html",
-	"account_new":           "account_new.html",
-	"account_edit":          "account_edit.html",
-	"account_detail":        "account_detail.html",
-	"studio":                "studio.html",
-	"studio_jobs":           "studio_jobs.html",
-	"studio_trends":         "studio_trends.html",
-	"publishers":            "publishers.html",
-	"products":              "products.html",
-	"viral":                 "viral.html",
-	"stories":               "stories.html",
-	"team":                  "team.html",
-	"growth":                "growth.html",
-	"harness":               "harness.html",
-	"settings_he_thong":     "settings/he-thong.html",
-	"settings_nha_cung_cap": "settings/nha-cung-cap.html",
-	"settings_an_toan":      "settings/an-toan.html",
-	"settings_accesstrade":  "settings/accesstrade.html",
-	"web_ai":                "web_ai.html",
-	"onboard":               "onboard.html",
+	"dashboard":            "dashboard.html",
+	"accounts":             "accounts.html",
+	"account_new":          "account_new.html",
+	"account_edit":         "account_edit.html",
+	"account_detail":       "account_detail.html",
+	"studio":               "studio.html",
+	"studio_jobs":          "studio_jobs.html",
+	"studio_trends":        "studio_trends.html",
+	"publishers":           "publishers.html",
+	"products":             "products.html",
+	"viral":                "viral.html",
+	"stories":              "stories.html",
+	"team":                 "team.html",
+	"growth":               "growth.html",
+	"harness":              "harness.html",
+	"settings_system":      "settings/system.html",
+	"settings_providers":   "settings/providers.html",
+	"settings_safety":      "settings/safety.html",
+	"settings_accesstrade": "settings/accesstrade.html",
+	"web_ai":               "web_ai.html",
+	"onboard":              "onboard.html",
 }
 
 func (s *Server) parseTemplates() error {

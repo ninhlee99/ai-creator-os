@@ -92,7 +92,7 @@ func resolveWebAIRedirect(r *http.Request, defaultTarget string) string {
 	}
 	ref := r.Header.Get("Referer")
 	if strings.Contains(ref, "/settings") {
-		return "/settings/he-thong#tab-webai"
+		return "/settings/system#tab-webai"
 	}
 	return defaultTarget
 }

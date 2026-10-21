@@ -6,8 +6,7 @@ chữ không voiceover — format Ninh chốt), Video chữ động, quản lý 
 nhạc trending Việt Nam.
 
 ## 2. Kích hoạt
-- `GET /studio` → `handleStudio` (`internal/web/studio.go:73`): 2 tab —
-  `ai` (Video affiliate, mặc định) và `?tab=chu` (Video chữ động).
+- `GET /studio` → `handleStudio` (`internal/web/studio.go:73`): Video affiliate, mặc định.
 - `POST /studio/affiliate` → `handleStudioAffiliateCreate` — job affiliate.
 - `POST /studio/kinetic` → `handleStudioKineticCreate` — video chữ động.
 - `GET /studio/jobs`, `GET /studio/jobs/{id}` — danh sách + chi tiết job.
@@ -25,7 +24,7 @@ nhạc trending Việt Nam.
   (`maxConcurrentStudioJobs = 2`, `internal/studio/studio.go:135`) — job thừa giữ
   status `queued` trung thực.
 - `fireOnDone` gọi hook `SetOnDone` → autopilot tự đăng TikTok nháp
-  (xem `daemon-tu-dong.md`).
+  (xem `autonomous-daemon.md`).
 - Khởi động app: `MarkInterruptedJobs()` — job nào còn `running` → `failed` +
   log "Gián đoạn khi khởi động lại".
 
@@ -44,7 +43,7 @@ Tuân thủ chuẩn **Open-Spec v1.0 (`docs/OPEN_SPEC.md`)**:
    - LLM viết caption/hashtag tiếng Việt chuẩn SEO TikTok Shop → cột `caption`, nút Copy Post Kit và Ghim vào Kệ Bio trên UI.
 5. **Xong** → `fireOnDone` → tự đăng TikTok **nháp** nếu bật.
 
-### 3.3. Video chữ động (tab `?tab=chu`)
+### 3.3. Video chữ động (legacy tab `?tab=text-animation`)
 `handleStudioKineticCreate` → job lưu ở `s.Jobs` (file `content_jobs.json` của web
 server, **không** phải studio.db) → `go s.runJob(jobID)` render nền → trang Jobs
 poll tiến độ. Lỗi thiếu tiêu đề → `?err=` + toast.

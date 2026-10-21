@@ -205,11 +205,10 @@ func (s *Server) finishTikTokConnect(w http.ResponseWriter, r *http.Request, use
 		_ = s.Ledger.DeleteSetting(tiktokTokenDeadKey(targetUsername))
 	}
 	if targetAccountID > 0 {
-		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=ket-noi&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh TikTok "+targetUsername+"!")))
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=connections&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh TikTok "+targetUsername+"!")))
 		return
 	}
 	publishersMsg(w, r, "msg", "Đã kết nối TikTok cho "+targetUsername+" (scope: "+scope+"). Token lưu ở "+publishers.TikTokTokenPath(targetUsername)+".")
 }
 
 func tiktokTokenDeadKey(username string) string { return "tiktok_token_dead:" + username }
-

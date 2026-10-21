@@ -15,15 +15,18 @@ type DecisionLogger interface {
 // DefaultLLMConfig configures Gemini as the LLM provider.
 func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 30 * time.Second, Retries: 1},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 30 * time.Second, Retries: 0},
 	}}
 }
 
-// DefaultTTSConfig returns the default TTS chain: Gemini followed by Edge.
+// DefaultTTSConfig uses local macOS speech first, then Edge, then Gemini.
+// This keeps routine narration off API quotas while preserving network
+// fallbacks when the local speech engine is unavailable.
 func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 60 * time.Second, Retries: 1},
-		{Name: "edge", Enabled: true, Timeout: 60 * time.Second, Retries: 1},
+		{Name: "say", Enabled: true, Timeout: 60 * time.Second, Retries: 0},
+		{Name: "edge", Enabled: true, Timeout: 60 * time.Second, Retries: 0},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 60 * time.Second, Retries: 0},
 	}}
 }
 
@@ -31,7 +34,7 @@ func DefaultTTSConfig(geminiKeys []string) ChainConfig {
 // settings, so defaults remain active.
 type ConfigSource func() (llmCfg ChainConfig, ttsCfg ChainConfig)
 
-// DefaultChains wires Gemini for LLM and Gemini → Edge for TTS. Saved
+// DefaultChains wires Gemini for LLM and local speech → Edge → Gemini for TTS. Saved
 // non-empty configs replace defaults; settings changes apply immediately.
 func DefaultChains(geminiKeys []string, decide DecisionLogger, cfgSrc ConfigSource) (*LLMChain, *TTSChain) {
 	onSwitch := func(from, to, reason string) {
@@ -45,8 +48,9 @@ func DefaultChains(geminiKeys []string, decide DecisionLogger, cfgSrc ConfigSour
 
 	llmChain := NewLLMChain([]LLMProvider{NewGeminiProviderKeys(geminiKeys)}, onSwitch)
 	ttsChain := tts.NewTTSChain([]tts.TTSProvider{
-		tts.NewGeminiTTSProviderKeys(geminiKeys),
+		tts.NewSayTTSProvider(),
 		tts.NewEdgeTTSProvider(),
+		tts.NewGeminiTTSProviderKeys(geminiKeys),
 	}, onSwitch)
 
 	llmCfg, ttsCfg := DefaultLLMConfig(geminiKeys), DefaultTTSConfig(geminiKeys)

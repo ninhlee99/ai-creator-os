@@ -98,7 +98,7 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
 2. Followers mới → `Ledger.SetFollowers` + `MarkTargetsReached` → decision
    `growth_analyst/milestone_reached`.
 3. `Growth.Evaluate(accountID, username, LoadThresholds(settings), now)` —
-   ngưỡng UI (hỏng → fallback default, xem `phat-trien-kenh.md`) → các action
+   ngưỡng UI (hỏng → fallback default, xem `channel-growth.md`) → các action
    (kill/double-down/breakout/penalty/stalled); chạm kill → tự
    `Accounts.Transition(id, "paused")` + note "ĐÃ TỰ TẠM DỪNG".
 

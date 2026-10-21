@@ -175,7 +175,7 @@ func TestRemoteBlockedWithoutPassword(t *testing.T) {
 	if c := do("/healthz", "192.168.1.5:5000", nil); c != http.StatusOK {
 		t.Errorf("/healthz từ LAN = %d, want 200", c)
 	}
-	if c := do("/settings/he-thong", "[::1]:5000", nil); c == http.StatusForbidden {
+	if c := do("/settings/system", "[::1]:5000", nil); c == http.StatusForbidden {
 		t.Errorf("máy chủ (::1) không được bị chặn")
 	}
 	if err := s.setAuthPassword("mat-khau-dai-123"); err != nil {

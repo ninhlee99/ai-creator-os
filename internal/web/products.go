@@ -109,11 +109,17 @@ func resolveMinCommission(theme, raw string) float64 {
 
 // handleProducts renders the product discovery page: theme + commission
 // floor form, plus the best saved products for the selected theme. The
-// "ke" tab is the affiliate shelf (trang /shop cũ đã gộp vào đây — Đợt 2).
+// "shelf" tab is the affiliate shelf (legacy /shop route redirects here).
 func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
-	tab := r.URL.Query().Get("tab")
-	if tab != "ke" {
-		tab = "tim"
+	rawTab := r.URL.Query().Get("tab")
+	tab := productTabName(rawTab)
+	if rawTab != "" && rawTab != tab {
+		q := r.URL.Query()
+		q.Set("tab", tab)
+		u := *r.URL
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.RequestURI(), http.StatusSeeOther)
+		return
 	}
 	if s.Products == nil {
 		s.render(w, "products", s.ctx(
@@ -184,6 +190,17 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"YouTubeEnabled", youTube,
 		"MetaEnabled", automation.AutopilotMetaEnabled(s.settings()),
 	))
+}
+
+func productTabName(tab string) string {
+	switch tab {
+	case "shelf", "ke":
+		return "shelf"
+	case "", "discover", "tim":
+		return "discover"
+	default:
+		return "discover"
+	}
 }
 
 // productView is the template projection of one shelf product (Kệ hàng).
@@ -340,16 +357,16 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	title := strings.TrimSpace(r.PostFormValue("title"))
 	price, ok := parseBounded(r.PostFormValue("price"), 1e12)
 	if !ok {
-		productErr(w, r, "ke", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
+		productErr(w, r, "shelf", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
 		return
 	}
 	rate, ok := parseBounded(r.PostFormValue("commission_pct"), 100)
 	if !ok {
-		productErr(w, r, "ke", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
+		productErr(w, r, "shelf", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
 		return
 	}
 	if pid == "" || title == "" {
-		productErr(w, r, "ke", "Thiếu mã hoặc tên sản phẩm.")
+		productErr(w, r, "shelf", "Thiếu mã hoặc tên sản phẩm.")
 		return
 	}
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
@@ -366,14 +383,14 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {
-		seeOther(w, r, "/products?tab=ke&err="+url.QueryEscape("Không lưu được sản phẩm: "+err.Error()))
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không lưu được sản phẩm: "+err.Error()))
 		return
 	}
 	if err := s.Products.SetShelf(id, "shelf", 0); err != nil {
-		seeOther(w, r, "/products?tab=ke&err="+url.QueryEscape("Đã lưu sản phẩm nhưng không chuyển được vào kệ: "+err.Error()))
+		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Đã lưu sản phẩm nhưng không chuyển được vào kệ: "+err.Error()))
 		return
 	}
-	seeOther(w, r, "/products?tab=ke")
+	seeOther(w, r, "/products?tab=shelf")
 }
 
 // handleProductsAdd saves a manually-entered product into the store. This is
@@ -468,7 +485,7 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 		client, err := s.atClient()
 		if err != nil {
 			s.render(w, "products", s.ctx(
-				"AT", s.atPageData(), "Tab", "tim", "Themes", themeOptions(),
+				"AT", s.atPageData(), "Tab", "discover", "Themes", themeOptions(),
 				"Theme", theme, "Keyword", keyword, "MinPct", minPct, "Shelf", s.shelfViews(),
 				"Error", "Kết nối Accesstrade để tìm deal thật; hoặc thêm sản phẩm thủ công.",
 			))

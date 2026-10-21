@@ -44,6 +44,8 @@
   <!-- Xoay log: do app tự làm — xem deploy/README.md -->
   <key>EnvironmentVariables</key>
   <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>GEMINI_API_KEYS</key>
     <string>__GEMINI_KEYS__</string>
   </dict>

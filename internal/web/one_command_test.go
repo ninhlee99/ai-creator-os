@@ -139,9 +139,9 @@ func TestDashboardProductMediaPicker(t *testing.T) {
 		}
 	}
 
-	settings := get(t, s, "/settings/he-thong")
+	settings := get(t, s, "/settings/system")
 	if settings.Code != http.StatusOK {
-		t.Fatalf("GET /settings/he-thong = %d, want 200", settings.Code)
+		t.Fatalf("GET /settings/system = %d, want 200", settings.Code)
 	}
 	for _, want := range []string{"webai-login-action", "webai-key-action"} {
 		if !strings.Contains(settings.Body.String(), want) {

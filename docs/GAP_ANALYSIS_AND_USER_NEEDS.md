@@ -58,7 +58,7 @@ Dưới góc nhìn một người dùng thực chiến, sau khi sử dụng toà
 
 ---
 
-### 3.3. Kho Tài Khoản Web AI (`/settings/he-thong#tab-webai`)
+### 3.3. Kho Tài Khoản Web AI (`/settings/system#tab-webai`)
 * **Hiện trạng**: Trình duyệt CDP tự mở với hồ sơ cô lập (`os.MkdirTemp`), tự động bắt cookie; lưu email khi dịch vụ cung cấp danh tính đáng tin cậy. Quản lý trạng thái OK / Cooldown.
 * **Khoảng trống (Gaps)**:
   - Muse hiện chưa có endpoint JSON xác thực được xác nhận; phép probe giữ nguyên trạng thái và báo "chưa xác minh" khi nhận HTML/403/lỗi mạng, tránh gán nhầm sống hoặc hết hạn.

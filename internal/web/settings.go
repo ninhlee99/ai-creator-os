@@ -118,6 +118,23 @@ func (s *Server) applyPersistedEnv() {
 	}
 }
 
+// applyPersistedDryRun restores the dashboard's live/safe mode at startup.
+// Stored settings take precedence over DRY_RUN so an operator's choice
+// survives a process restart.
+func (s *Server) applyPersistedDryRun() {
+	if s.Ledger == nil || s.Cfg == nil {
+		return
+	}
+	v, ok, err := s.Ledger.GetSetting("ops.dry_run")
+	if err != nil {
+		log.Printf("web: load dry-run setting: %v", err)
+		return
+	}
+	if ok {
+		s.Cfg.SetDryRun(v != "0")
+	}
+}
+
 func (s *Server) chainKey(name string) (string, bool) {
 	switch name {
 	case "tts":
@@ -232,7 +249,7 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		"WebAIConnected": webAIConnected,
 		"EnvSaved":       r.URL.Query().Get("envsaved"),
 		"EnvErr":         r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
-		"Ok":             r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang he-thong
+		"Ok":             r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang system
 		"Err":            r.URL.Query().Get("err"),
 		"DbPath":         s.Cfg.DatabasePath,
 		"Usage":          usage,
@@ -406,14 +423,14 @@ func (s *Server) geminiModelsView() map[string]any {
 func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 	keys := s.GeminiKeys()
 	if len(keys) == 0 {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Chưa có API key Gemini để kiểm tra cập nhật model."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Chưa có API key Gemini để kiểm tra cập nhật model."))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 	rep, err := gmodels.CheckAndUpdate(ctx, nil, "", keys, s.DataDir)
 	if err != nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Kiểm tra model thất bại: "+err.Error()))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Kiểm tra model thất bại: "+err.Error()))
 		return
 	}
 	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Text: %s | Image: %s | TTS: %s | Video: %s",
@@ -425,7 +442,7 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	_ = s.Ledger.Decide("human", "model_update_check", nil, msg, map[string]any{"updated": rep.Updated, "total": rep.TotalModels})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
 }
 
 // settingsPage renders one settings sub-page with its nav key and the
@@ -442,7 +459,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request, page, key 
 // handleSettingsIndex keeps the old entry point working: it redirects to
 // the first sub-page.
 func (s *Server) handleSettingsIndex(w http.ResponseWriter, r *http.Request) {
-	seeOther(w, r, "/settings/he-thong")
+	seeOther(w, r, "/settings/system")
 }
 
 // handleAuthPasswordSet đặt/đổi mật khẩu dashboard (Đợt T).
@@ -457,17 +474,17 @@ func (s *Server) handleAuthPasswordSet(w http.ResponseWriter, r *http.Request) {
 		cur := r.PostFormValue("current_password")
 		stored, ok, _ := s.Ledger.GetSetting(KeyAuthPasswordHash)
 		if !ok || !checkAuthPassword(cur, stored) {
-			seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
+			seeOther(w, r, "/settings/system?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
 			return
 		}
 	}
 	pw := r.PostFormValue("password")
 	if err := s.setAuthPassword(pw); err != nil {
-		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
+		seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Lỗi: "+err.Error()))
 		return
 	}
 	_ = s.Ledger.Decide("human", "auth_password", nil, "Đặt/đổi mật khẩu truy cập dashboard.", nil)
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã đặt mật khẩu. Từ giờ truy cập dashboard cần đăng nhập."))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Đã đặt mật khẩu. Từ giờ truy cập dashboard cần đăng nhập."))
 }
 
 // handleAuthPasswordDisable tắt mật khẩu dashboard (Đợt T).
@@ -480,20 +497,20 @@ func (s *Server) handleAuthPasswordDisable(w http.ResponseWriter, r *http.Reques
 	cur := r.PostFormValue("current_password")
 	stored, ok, _ := s.Ledger.GetSetting(KeyAuthPasswordHash)
 	if !ok || !checkAuthPassword(cur, stored) {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Mật khẩu hiện tại không đúng."))
 		return
 	}
 	if err := s.clearAuthPassword(); err != nil {
-		seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Lỗi: "+err.Error()))
+		seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Lỗi: "+err.Error()))
 		return
 	}
 	_ = s.Ledger.Decide("human", "auth_password", nil, "Tắt mật khẩu truy cập dashboard.", map[string]any{"off": true})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã tắt mật khẩu."))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Đã tắt mật khẩu."))
 }
 
 // handleSettingsHeThong: "App đang chạy chế độ gì, còn thiếu biến nào?"
 func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
-	s.settingsPage(w, r, "he-thong", "settings_he_thong",
+	s.settingsPage(w, r, "system", "settings_system",
 		"EnvStatus", "EnvSaved", "EnvErr", "Ok", "Err", "DbPath", "Usage", "Spend",
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
@@ -503,7 +520,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"
 func (s *Server) handleSettingsNhaCungCap(w http.ResponseWriter, r *http.Request) {
-	s.settingsPage(w, r, "nha-cung-cap", "settings_nha_cung_cap",
+	s.settingsPage(w, r, "providers", "settings_providers",
 		"TTSChain", "TTSKeys", "LLMChain", "LLMKeys")
 }
 
@@ -524,7 +541,7 @@ func (s *Server) handleSettingsAPIToggle(w http.ResponseWriter, r *http.Request)
 		msg = "Đã BẬT API /api/* — chỉ dùng nội bộ; cân nhắc rủi ro khi mở app ra mạng LAN."
 	}
 	_ = s.Ledger.Decide("human", "api_switch", nil, msg, map[string]any{"on": on})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
 }
 
 // aiCapabilityView là một dòng trong bảng "Khả năng AI".
@@ -561,7 +578,7 @@ func (s *Server) aiCapabilityViews() []aiCapabilityView {
 
 // handleSettingsAnToan: "Dừng khẩn cấp bằng cách nào?"
 func (s *Server) handleSettingsAnToan(w http.ResponseWriter, r *http.Request) {
-	s.settingsPage(w, r, "an-toan", "settings_an_toan")
+	s.settingsPage(w, r, "safety", "settings_safety")
 }
 
 // handleSettingsEnvSave saves one environment variable from the Settings
@@ -593,7 +610,7 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 		case "private", "unlisted", "public":
 			value = strings.ToLower(value)
 		default:
-			seeOther(w, r, "/settings/he-thong?enverr="+url.QueryEscape("YOUTUBE_DEFAULT_PRIVACY chỉ nhận: private, unlisted hoặc public."))
+			seeOther(w, r, "/settings/system?enverr="+url.QueryEscape("YOUTUBE_DEFAULT_PRIVACY chỉ nhận: private, unlisted hoặc public."))
 			return
 		}
 	}
@@ -611,7 +628,7 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 	// R2-W4 (R2-05): the runtime Config was read once at startup — refresh
 	// it so the value just saved through the UI takes effect now.
 	s.Cfg.RefreshEnv()
-	http.Redirect(w, r, "/settings/he-thong?envsaved="+name, http.StatusSeeOther)
+	http.Redirect(w, r, "/settings/system?envsaved="+name, http.StatusSeeOther)
 }
 
 // handleSettingsMaster flips the persisted network-daemon master switch
@@ -632,10 +649,10 @@ func (s *Server) handleSettingsMaster(w http.ResponseWriter, r *http.Request) {
 		msg = "Đã BẬT chế độ tự động: hệ thống chạy theo lịch."
 	}
 	_ = s.Ledger.Decide("system", "master_switch", nil, msg, map[string]any{"on": on})
-	// Đợt AG: quay lại trang đã bấm nút (dashboard hoặc he-thong).
+	// Đợt AG: quay lại trang đã bấm nút (dashboard hoặc system).
 	back := r.PostFormValue("back")
 	if back == "" || !strings.HasPrefix(back, "/") || strings.HasPrefix(back, "//") {
-		back = "/settings/he-thong"
+		back = "/settings/system"
 	}
 	seeOther(w, r, back+"?ok="+url.QueryEscape(msg))
 }
@@ -650,7 +667,7 @@ func (s *Server) handleSettingsAPIBudget(w http.ResponseWriter, r *http.Request)
 	raw := strings.TrimSpace(r.PostFormValue("value"))
 	usd, err := strconv.ParseFloat(raw, 64)
 	if err != nil || usd < 0 || usd > 10000 {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Ngân sách API không hợp lệ (0–10000 USD)."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Ngân sách API không hợp lệ (0–10000 USD)."))
 		return
 	}
 	if err := automation.SetAPIBudgetUSD(s.settings(), usd); err != nil {
@@ -660,7 +677,7 @@ func (s *Server) handleSettingsAPIBudget(w http.ResponseWriter, r *http.Request)
 	_ = s.Ledger.Decide("system", "api_budget", nil,
 		fmt.Sprintf("ngân sách API/ngày đặt thành $%.2f qua UI", usd),
 		map[string]any{"usd": usd})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(fmt.Sprintf("Đã lưu ngân sách API: $%.2f/ngày.", usd)))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(fmt.Sprintf("Đã lưu ngân sách API: $%.2f/ngày.", usd)))
 }
 
 func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {
@@ -670,12 +687,20 @@ func (s *Server) handleSettingsDryRun(w http.ResponseWriter, r *http.Request) {
 	}
 	// NOTE: the required bugfix — dry_run is ON exactly when value == "on".
 	on := r.PostFormValue("value") == "on"
+	value := "0"
+	if on {
+		value = "1"
+	}
+	if err := s.Ledger.SetSetting("ops.dry_run", value); err != nil {
+		s.fail(w, err, "save dry-run setting")
+		return
+	}
 	s.Cfg.SetDryRun(on)
 	if err := s.Ledger.Decide("human", "dry_run", nil,
 		fmt.Sprintf("set dry_run=%v via dashboard", on), map[string]any{}); err != nil {
 		log.Printf("web: decide dry_run: %v", err)
 	}
-	seeOther(w, r, "/settings/an-toan")
+	seeOther(w, r, "/settings/safety")
 }
 
 func (s *Server) handleKill(w http.ResponseWriter, r *http.Request) {
@@ -758,7 +783,7 @@ func (s *Server) handleNotifySave(w http.ResponseWriter, r *http.Request) {
 	set(automation.KeyNotifyTelegramChat, strings.TrimSpace(r.PostFormValue("notify_chat")))
 	set(automation.KeyNotifyWebhookURL, strings.TrimSpace(r.PostFormValue("notify_webhook")))
 	_ = s.Ledger.Decide("human", "notify_save", nil, "Đã lưu cấu hình thông báo Telegram.", map[string]any{})
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã lưu cấu hình Telegram."))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Đã lưu cấu hình Telegram."))
 }
 
 // handleNotifyTest gửi tin nhắn thử qua Telegram với cấu hình hiện tại.
@@ -766,22 +791,22 @@ func (s *Server) handleNotifyTest(w http.ResponseWriter, r *http.Request) {
 	bot, _, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
 	chat, _, _ := s.Ledger.GetSetting(automation.KeyNotifyTelegramChat)
 	if err := notify.SendTelegram(bot, chat, "✅ AI Creator OS đã nối Telegram. Từ giờ cảnh báo sẽ gửi về đây."); err != nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Gửi thử thất bại: "+err.Error()))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Gửi thử thất bại: "+err.Error()))
 		return
 	}
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã gửi tin nhắn thử — kiểm tra Telegram."))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Đã gửi tin nhắn thử — kiểm tra Telegram."))
 }
 
 // handleNotifyDiscordTest gửi tin nhắn thử qua Discord Webhook.
 func (s *Server) handleNotifyDiscordTest(w http.ResponseWriter, r *http.Request) {
 	webhook, _, _ := s.Ledger.GetSetting(automation.KeyNotifyWebhookURL)
 	if strings.TrimSpace(webhook) == "" {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Chưa cấu hình Discord Webhook URL."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Chưa cấu hình Discord Webhook URL."))
 		return
 	}
 	if err := notify.SendDiscord(webhook, "🔔 Kiểm tra Discord Webhook", "✅ Kết nối thành công! AI Creator OS đã liên kết với kênh Discord này. Từ giờ các sự kiện render video, xuất bản và cảnh báo sẽ gửi về đây."); err != nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Gửi Discord thất bại: "+err.Error()))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Gửi Discord thất bại: "+err.Error()))
 		return
 	}
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape("Đã gửi tin nhắn thử thành công tới Discord!"))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape("Đã gửi tin nhắn thử thành công tới Discord!"))
 }

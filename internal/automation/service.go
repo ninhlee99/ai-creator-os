@@ -13,6 +13,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 )
 
 // ------------------------------------------------------------------ ports
@@ -95,6 +96,15 @@ type AutopilotRunner interface {
 	RunAll(ctx context.Context) []studio.Result
 }
 
+type ViralDiscovery interface {
+	Discover(ctx context.Context, query string) ([]viralradar.Source, error)
+}
+
+type ViralRunner interface {
+	EnqueueViral(ctx context.Context, p studio.ViralParams) (string, error)
+	DefaultModelPhoto() string
+}
+
 // OrdersSource is the affiliate-orders feed for money reconciliation.
 // Tests inject a fake; production removed its TikTok Shop default in
 // Đợt H1 (Accesstrade-only) — commission sync now rides ATOrderSyncTick.
@@ -117,9 +127,11 @@ type Service struct {
 	Env      EnvProvider
 	Settings Settings // the single config facade (ledger-backed)
 
-	Producer  Producer
-	Uploader  Uploader
-	Autopilot AutopilotRunner
+	Producer    Producer
+	Uploader    Uploader
+	Autopilot   AutopilotRunner
+	ViralRadar  ViralDiscovery
+	ViralRunner ViralRunner
 
 	// JobStore is the studio job backend for the auto-publish hook.
 	// Nil = the hook never fires (videos stay in Studio output).

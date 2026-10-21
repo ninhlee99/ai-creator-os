@@ -312,9 +312,9 @@ func TestAllPagesRender(t *testing.T) {
 		"/products":                 "Sản phẩm Affiliate",
 		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
 		"/publishers":               "Đa nền tảng",
-		"/settings/he-thong":        "Cài đặt · Hệ thống",
-		"/settings/nha-cung-cap":    "Thứ tự nhà cung cấp giọng đọc (TTS)",
-		"/settings/an-toan":         "Kill switch",
+		"/settings/system":        "Cài đặt · Hệ thống",
+		"/settings/providers":    "Thứ tự nhà cung cấp giọng đọc (TTS)",
+		"/settings/safety":         "Kill switch",
 		"/settings/chain?name=tts":  `"name":"gemini"`,
 	}
 	for path, marker := range pages {
@@ -328,23 +328,23 @@ func TestAllPagesRender(t *testing.T) {
 		}
 	}
 
-	// /settings redirects 303 to the first sub-page (he-thong).
+	// /settings redirects 303 to the first sub-page (system).
 	if rec := get(t, s, "/settings"); rec.Code != http.StatusSeeOther {
 		t.Errorf("GET /settings = %d, want 303", rec.Code)
 	}
 
 	// each settings sub-page renders inside base with the shared sub-nav
 	// and its own concern section (R2-W3)
-	body := get(t, s, "/settings/nha-cung-cap").Body.String()
+	body := get(t, s, "/settings/providers").Body.String()
 	for _, marker := range []string{"Thứ tự nhà cung cấp viết nội dung (LLM)", "Kiểm tra kết nối", "Hệ thống</a>"} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("nha-cung-cap page missing %q", marker)
+			t.Errorf("providers page missing %q", marker)
 		}
 	}
-	body = get(t, s, "/settings/he-thong").Body.String()
+	body = get(t, s, "/settings/system").Body.String()
 	for _, marker := range []string{"Chi phí API theo bộ máy/nhà cung cấp", "Mã &amp; biến cấu hình"} {
 		if !strings.Contains(body, marker) {
-			t.Errorf("he-thong page missing %q", marker)
+			t.Errorf("system page missing %q", marker)
 		}
 	}
 
@@ -651,9 +651,9 @@ func TestSettingsPageMasksKeys(t *testing.T) {
 		url.Values{"key": {key}}); rec.Code != http.StatusOK {
 		t.Fatalf("add = %d, want 200", rec.Code)
 	}
-	rec := get(t, s, "/settings/nha-cung-cap")
+	rec := get(t, s, "/settings/providers")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /settings/nha-cung-cap = %d, want 200", rec.Code)
+		t.Fatalf("GET /settings/providers = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	if strings.Contains(body, key) {

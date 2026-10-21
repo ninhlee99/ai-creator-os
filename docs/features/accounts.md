@@ -11,7 +11,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 ## 2. Kích hoạt
 - `GET /accounts` → `handleAccounts` (`internal/web/accounts.go:20`): danh sách.
 - `GET /accounts/new` → form tạo; `POST /accounts` → `handleAccountCreate`.
-- `GET /accounts/{id}?tab=tong-quan|autopilot|brand-dna|ket-noi` → `handleAccountDetail`
+- `GET /accounts/{id}?tab=overview|autopilot|brand-dna|connections` → `handleAccountDetail`
   (`internal/web/accounts.go:102`); tab mặc định/tên tab do `s.accountTab` đọc query.
 - Các nút POST trong từng tab (xem mục 3).
 
@@ -37,7 +37,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 - `POST /accounts/{id}/autopilot` (`handleAccountAutopilot`): bật/tắt autopilot
   (`autopilot_enabled` = `"1"`/`"0"` trong ledger settings; unset = ON).
 - `POST /accounts/{id}/autopilot/run` (`handleAccountAutopilotRun`): chạy ngay một
-  chu kỳ `Autopilot.Run(ctx, accountID)` (xem `daemon-tu-dong.md`).
+  chu kỳ `Autopilot.Run(ctx, accountID)` (xem `autonomous-daemon.md`).
 - `POST /accounts/{id}/models/upload` (`handleAccountModelUpload`): upload ảnh mẫu
   người mẫu → `ModelStore` (identity lock cho video affiliate); xem được ở
   `GET /models/{account}/{file}`; xoá bằng `POST .../models/{photoID}/delete`.

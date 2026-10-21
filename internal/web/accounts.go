@@ -151,6 +151,16 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if rawTab := r.URL.Query().Get("tab"); rawTab != "" {
+		if tab := accountTabName(rawTab); tab != rawTab {
+			q := r.URL.Query()
+			q.Set("tab", tab)
+			u := *r.URL
+			u.RawQuery = q.Encode()
+			http.Redirect(w, r, u.RequestURI(), http.StatusSeeOther)
+			return
+		}
+	}
 	acct, err := s.Mgr.GetWithAutopilot(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -223,13 +233,23 @@ func (s *Server) accountID(w http.ResponseWriter, r *http.Request) (int64, bool)
 }
 
 // accountTab returns the current account-detail tab from ?tab=, defaulting
-// to "tong-quan".
+// to "overview".
 func (s *Server) accountTab(r *http.Request) string {
-	switch r.URL.Query().Get("tab") {
-	case "autopilot", "ket-noi", "brand-dna", "comments", "nhan-vat":
-		return r.URL.Query().Get("tab")
+	return accountTabName(r.URL.Query().Get("tab"))
+}
+
+func accountTabName(tab string) string {
+	switch tab {
+	case "overview", "autopilot", "connections", "brand-dna", "comments", "model-photos":
+		return tab
+	case "tong-quan":
+		return "overview"
+	case "ket-noi":
+		return "connections"
+	case "nhan-vat":
+		return "model-photos"
 	default:
-		return "tong-quan"
+		return "overview"
 	}
 }
 
@@ -256,7 +276,7 @@ func (s *Server) handleAccountTransition(w http.ResponseWriter, r *http.Request)
 			log.Printf("web: transition: %v", err)
 		}
 	}
-	s.accountBack(w, r, id, "ket-noi", errMsg)
+	s.accountBack(w, r, id, "connections", errMsg)
 }
 
 func (s *Server) handleAccountYoutube(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +297,7 @@ func (s *Server) handleAccountYoutube(w http.ResponseWriter, r *http.Request) {
 		errMsg = err.Error()
 		log.Printf("web: set youtube: %v", err)
 	}
-	s.accountBack(w, r, id, "ket-noi", errMsg)
+	s.accountBack(w, r, id, "connections", errMsg)
 }
 
 func (s *Server) handleAccountOnboard(w http.ResponseWriter, r *http.Request) {
@@ -286,7 +306,7 @@ func (s *Server) handleAccountOnboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.advanceOnboarding(id)
-	s.accountBack(w, r, id, "ket-noi", "")
+	s.accountBack(w, r, id, "connections", "")
 }
 
 func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
@@ -305,7 +325,7 @@ func (s *Server) handleAccountReplan(w http.ResponseWriter, r *http.Request) {
 	} else {
 		errMsg = err.Error()
 	}
-	s.accountBack(w, r, id, "ket-noi", errMsg)
+	s.accountBack(w, r, id, "connections", errMsg)
 }
 
 func (s *Server) handleAccountBrandDNASave(w http.ResponseWriter, r *http.Request) {

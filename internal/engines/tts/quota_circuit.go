@@ -6,8 +6,8 @@
 // mới (vd: StoryRetryTick) vẫn được châm vào quota đã cạn.
 //
 // Circuit: đếm số lần liên tiếp "mọi key đang cooldown" (không có API call
-// nào thành công ở giữa). Đủ ngưỡng → mở mạch tới 0h đêm hôm sau (giờ
-// địa phương — gần đúng với chu kỳ reset quota ngày): các Gemini tier
+// nào thành công ở giữa). Đủ ngưỡng → mở mạch tới 0h đêm hôm sau theo giờ
+// Pacific, khớp với chu kỳ reset RPD Gemini: các Gemini tier
 // fail-fast NGAY, không chạm keyring, chain chuyển sang tier local như
 // bình thường. Một key thành công (kể cả nút "test" ở Cài đặt) → đóng mạch.
 //
@@ -66,7 +66,7 @@ func (c *Circuit) ObserveExhausted() bool {
 	c.lastObserved = time.Now()
 	c.consecutive++
 	if c.consecutive >= circuitTripThreshold {
-		c.openUntil = nextMidnight(time.Now())
+		c.openUntil = nextPacificMidnight(time.Now())
 		c.alerted = false
 		c.consecutive = 0
 		return true
@@ -117,8 +117,15 @@ func (c *Circuit) isOpenLocked() bool {
 	return !c.openUntil.IsZero() && time.Now().Before(c.openUntil)
 }
 
-// nextMidnight: 0h đêm nay theo giờ địa phương.
-func nextMidnight(now time.Time) time.Time {
-	y, m, d := now.Date()
-	return time.Date(y, m, d+1, 0, 0, 0, 0, now.Location())
+// nextPacificMidnight follows Gemini's documented RPD reset at midnight
+// Pacific. If timezone data is unavailable, wait a full 24 hours rather than
+// risk probing the project quota before its reset.
+func nextPacificMidnight(now time.Time) time.Time {
+	location, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		return now.Add(24 * time.Hour)
+	}
+	pacificNow := now.In(location)
+	y, m, d := pacificNow.Date()
+	return time.Date(y, m, d+1, 0, 0, 0, 0, location)
 }

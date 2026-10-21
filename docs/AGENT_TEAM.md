@@ -62,7 +62,7 @@ Hình minh họa:
 
 ### 2.3 Tầng dịch vụ dùng chung — là CÔNG CỤ, không phải agent
 
-LLM provider (Gemini), TTS chain (Gemini → Edge), Avatar chain (MuseTalk
+LLM provider (Gemini), TTS chain (local macOS speech → Edge → Gemini), Avatar chain (MuseTalk
 sidecar → HeyGen → D-ID, paid tắt mặc định), MediaGen (Gemini image/Veo),
 FFmpeg.
 

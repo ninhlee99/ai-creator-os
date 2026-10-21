@@ -20,12 +20,13 @@ DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
 WD_LABEL="$LABEL.watchdog"
 WD_DEST="$HOME/Library/LaunchAgents/$WD_LABEL.plist"
 WD_SCRIPT="$(cd "$(dirname "$0")" && pwd)/watch-health.sh"
+WD_SCRIPT_DEST="$HOME/Library/LaunchAgents/$WD_LABEL.sh"
 TEMPLATE="$(cd "$(dirname "$0")/../deploy" && pwd)/com.ninhlee.aicos.plist"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
   launchctl bootout "gui/$(id -u)" "$WD_DEST" 2>/dev/null || true
   launchctl bootout "gui/$(id -u)" "$DEST" 2>/dev/null || true
-  rm -f "$DEST" "$WD_DEST"
+  rm -f "$DEST" "$WD_DEST" "$WD_SCRIPT_DEST"
   echo "Đã gỡ watchdog $LABEL."
   exit 0
 fi
@@ -56,6 +57,10 @@ launchctl bootout "gui/$(id -u)" "$DEST" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$DEST"
 
 # Đợt AK: watchdog sức khỏe — app treo (không crash) vẫn được tự chạy lại.
+# launchd may lack Files & Folders permission for scripts kept under Documents.
+# Stage the helper beside its LaunchAgent plist so /bin/bash can read it.
+cp "$WD_SCRIPT" "$WD_SCRIPT_DEST"
+chmod 700 "$WD_SCRIPT_DEST"
 cat > "$WD_DEST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -63,7 +68,7 @@ cat > "$WD_DEST" <<PLIST
 <dict>
   <key>Label</key><string>$WD_LABEL</string>
   <key>ProgramArguments</key>
-  <array><string>/bin/bash</string><string>$WD_SCRIPT</string></array>
+  <array><string>/bin/bash</string><string>$WD_SCRIPT_DEST</string></array>
   <key>StartInterval</key><integer>300</integer>
   <key>StandardOutPath</key><string>$DATA/logs/watchdog.log</string>
   <key>StandardErrorPath</key><string>$DATA/logs/watchdog.log</string>

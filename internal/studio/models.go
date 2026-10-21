@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,37 @@ func NewModelStore(db *sql.DB, workRoot string) (*ModelStore, error) {
 		return nil, fmt.Errorf("model store migrate: %w", err)
 	}
 	return &ModelStore{db: db, root: filepath.Join(workRoot, "models")}, nil
+}
+
+// resolvePath repairs legacy relative model paths created when the app ran
+// from repository root. The launch agent runs from data/; current writes use
+// absolute paths, while older rows start with data/output/studio/models/.
+func (m *ModelStore) resolvePath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ""
+	}
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
+			return abs
+		}
+	}
+	normalized := filepath.ToSlash(filepath.Clean(path))
+	const legacyPrefix = "data/output/studio/models/"
+	if strings.HasPrefix(normalized, legacyPrefix) {
+		relative := strings.TrimPrefix(normalized, legacyPrefix)
+		candidate := filepath.Join(m.root, filepath.FromSlash(relative))
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		return abs
+	}
+	return path
 }
 
 // Add copies src into the account's library and records it.
@@ -80,6 +112,7 @@ func (m *ModelStore) List(accountID int64) ([]ModelPhoto, error) {
 		if err := rows.Scan(&mp.ID, &mp.AccountID, &mp.Path, &mp.CreatedAt); err != nil {
 			return nil, err
 		}
+		mp.Path = m.resolvePath(mp.Path)
 		out = append(out, mp)
 	}
 	return out, nil
@@ -99,6 +132,7 @@ func (m *ModelStore) ListAll() ([]ModelPhoto, error) {
 		if err := rows.Scan(&mp.ID, &mp.AccountID, &mp.Path, &mp.CreatedAt); err != nil {
 			return nil, err
 		}
+		mp.Path = m.resolvePath(mp.Path)
 		out = append(out, mp)
 	}
 	return out, nil
@@ -110,6 +144,7 @@ func (m *ModelStore) Delete(id int64) error {
 	if err := m.db.QueryRow(`SELECT path FROM model_photos WHERE id = ?`, id).Scan(&path); err != nil {
 		return err
 	}
+	path = m.resolvePath(path)
 	if _, err := m.db.Exec(`DELETE FROM model_photos WHERE id = ?`, id); err != nil {
 		return err
 	}
@@ -136,8 +171,11 @@ func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
 			if err == nil {
 				for rows.Next() {
 					var p string
-					if err := rows.Scan(&p); err == nil && fileExists(p) {
-						out = append(out, p)
+					if err := rows.Scan(&p); err == nil {
+						p = s.resolveModelPhotoPath(p)
+						if fileExists(p) {
+							out = append(out, p)
+						}
 					}
 				}
 				rows.Close()
@@ -148,8 +186,11 @@ func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
 			if err == nil {
 				for rows.Next() {
 					var p string
-					if err := rows.Scan(&p); err == nil && fileExists(p) {
-						out = append(out, p)
+					if err := rows.Scan(&p); err == nil {
+						p = s.resolveModelPhotoPath(p)
+						if fileExists(p) {
+							out = append(out, p)
+						}
 					}
 				}
 				rows.Close()
@@ -183,3 +224,65 @@ func (s *Studio) queryAccountModelPhotos(accountID int64) []string {
 	return out
 }
 
+// uploadedModelPhotos reads only user-uploaded library images. Automation that
+// promises to use a user's model must not fall back to bundled sample assets.
+func (s *Studio) uploadedModelPhotos(accountID int64) []string {
+	if s.db == nil {
+		return nil
+	}
+	query := `SELECT path FROM model_photos ORDER BY id LIMIT 8`
+	args := []any{}
+	if accountID > 0 {
+		query = `SELECT path FROM model_photos WHERE account_id = ? ORDER BY id LIMIT 8`
+		args = append(args, accountID)
+	}
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var photos []string
+	for rows.Next() {
+		var path string
+		if err := rows.Scan(&path); err == nil {
+			path = s.resolveModelPhotoPath(path)
+			if fileExists(path) {
+				photos = append(photos, path)
+			}
+		}
+	}
+	return photos
+}
+
+func (s *Studio) resolveModelPhotoPath(path string) string {
+	if s == nil || strings.TrimSpace(path) == "" {
+		return ""
+	}
+	path = strings.TrimSpace(path)
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if abs, err := filepath.Abs(path); err == nil {
+		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
+			return abs
+		}
+	}
+	normalized := filepath.ToSlash(filepath.Clean(path))
+	const legacyOutputPrefix = "data/output/"
+	if strings.HasPrefix(normalized, legacyOutputPrefix) {
+		relative := strings.TrimPrefix(normalized, legacyOutputPrefix)
+		candidate := filepath.Join(s.outDir, filepath.FromSlash(relative))
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
+	const legacyDataPrefix = "data/"
+	if strings.HasPrefix(normalized, legacyDataPrefix) {
+		relative := strings.TrimPrefix(normalized, legacyDataPrefix)
+		candidate := filepath.Join(filepath.Dir(s.outDir), filepath.FromSlash(relative))
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
+	return path
+}

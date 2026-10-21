@@ -223,7 +223,7 @@ const remoteBlockedHTML = `<!doctype html><html lang="vi"><meta charset="utf-8">
 <body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;line-height:1.5;color:#1F2328">
 <h1 style="font-size:22px">Cần đặt mật khẩu trước</h1>
 <p>App chưa có mật khẩu nên chỉ mở được trên chính máy đang chạy app.</p>
-<p>Trên máy đó, mở <b>http://127.0.0.1:8080/settings/he-thong</b> → mục <b>Mật khẩu truy cập</b> → đặt mật khẩu. Sau đó vào lại trang này.</p>
+<p>Trên máy đó, mở <b>http://127.0.0.1:8080/settings/system</b> → mục <b>Mật khẩu truy cập</b> → đặt mật khẩu. Sau đó vào lại trang này.</p>
 </body></html>`
 
 // handleLogin: GET → trang đăng nhập; POST → kiểm tra mật khẩu.

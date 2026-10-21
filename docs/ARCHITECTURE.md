@@ -57,7 +57,7 @@
        │              │                             │
 ┌──────▼──────────────▼─────────────────────────────▼─────────┐
 │ engines: LLM Gemini                                          │
-│ TTS chain: Gemini TTS → Edge                                 │
+│ TTS chain: local macOS speech → Edge → Gemini                │
 │ Web AI pool (ChatGPT/Claude/Grok...)                         │
 │ Keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
 │ Daily Model Auto-Updater (quét 24h & hot-swap model mới)    │
@@ -81,7 +81,7 @@ chờ Ninh duyệt).
 
 **Đợt H (2026-10-04) & Đợt I (2026-10-19 — Chuẩn Video Có Hồn & Quay Phim Tự Nhiên):**
 - **I1: Open-Spec Chuẩn Video Có Hồn (`docs/OPEN_SPEC.md`)**: Ban hành đặc tả kỹ thuật Open-Spec v1.0 định nghĩa 7 luật video có hồn, chống méo hình học, loại bỏ hoàn toàn video dán ảnh tĩnh và giật lắc cơ học.
-- **I2: Video tham chiếu tùy chọn**: `/viral/create` nhận link TikTok/Douyin trực tiếp làm tham chiếu chuyển động. Danh sách video preset và endpoint import clip riêng đã gỡ; trang không hiển thị radar video realtime.
+- **I2: YouTube Viral Radar**: `/viral` quét video 7 ngày gần nhất từ kênh có từ 100,000 subscribers; dùng title và duration làm metadata. Job gốc không tải hoặc tái dùng footage/audio nguồn.
 - **I3: InsightFace Deep Latent Identity Engine (`scripts/face_swapper.py`)**: Hoán đổi khuôn mặt AI với vector đặc trưng 512 chiều, căn chỉnh 5 điểm mốc nhân trắc học và hòa trộn Poisson Seamless Blending để ghép khuôn mặt creator vào thân hình vũ công hoặc người mẫu lookbook trong video chuyển động thực tế.
 - **I4: Phim Lookbook Thời Trang Chuyển Động Người Thật (`internal/studio/affiliate.go`)**: Video affiliate thời trang/phụ kiện sử dụng 100% video quay người mẫu thật trong không gian thực tế (boutique, phố, dạo chơi), loại bỏ slide ảnh tĩnh thô kệch và thẻ chữ `AdCard` che khuất hình ảnh.
 - **I5: Dựng affiliate ổn định (`internal/studio/assemble.go`)**: Mặc định nối footage chuyển động thật; ảnh tĩnh chỉ dùng dissolve. Không flash, zoom giả hoặc rung.
@@ -90,7 +90,7 @@ chờ Ninh duyệt).
 **Đợt K (2026-10-20 — Google Gemini On-Demand Model Updater Cho Toàn Bộ Adapter & Full Cloud Optimization):**
 - **K1: On-Demand Model Updater (`internal/engines/gmodels/updater.go`)**: Cập nhật theo yêu cầu người dùng bằng nút bấm trên giao diện web Cài đặt · Hệ thống (loại bỏ tiến trình định kỳ 24h ngầm để tiết kiệm tài nguyên). Thuật toán `PickLatest` phân tích ngữ nghĩa phiên bản (`major.minor`), ưu tiên bản chính thức (GA) so với Preview/Exp, nâng cấp đồng loạt 4 adapter: Text (`gemini-3.8-flash`), Image (`gemini-nano-banana-2.1`), TTS (`gemini-3.8-flash-tts`), Video (`veo-3.1-generate-preview`).
 - **K2: Hot-Swap Không Downtime & Cache Bền Vững**: Model mới phát hiện được cập nhật trực tiếp vào bộ nhớ luồng an toàn mà không cần khởi động lại máy chủ. Lưu vào `data/discovered_models.json` và tự nạp lại khi boot.
-- **K3: Giao Diện Quản Trị Tinh Gọn (`internal/web/templates/settings/he-thong.html`)**: Thẻ điều khiển Gemini Model hiển thị trạng thái quét, danh sách model kích hoạt cho 4 tác vụ, nút `⚡ Cập Nhật Tất Cả Model Gemini` (`POST /settings/models/update`), loại bỏ hoàn toàn các hướng dẫn dài dòng gây rối mắt.
+- **K3: Giao Diện Quản Trị Tinh Gọn (`internal/web/templates/settings/system.html`)**: Thẻ điều khiển Gemini Model hiển thị trạng thái quét, danh sách model kích hoạt cho 4 tác vụ, nút `⚡ Cập Nhật Tất Cả Model Gemini` (`POST /settings/models/update`), loại bỏ hoàn toàn các hướng dẫn dài dòng gây rối mắt.
 - **K4: Chuẩn Hóa Thời Lượng & Bỏ Màn Hình Đen 5s**:
   * Video Affiliate: Tối thiểu 30s – 60s, giữ nhất quán nhân vật và sản phẩm.
   * Video Viral: Tối thiểu 60s+ (chuẩn TikTok Creativity Program), 0.0s instant start không có ảnh đen 5s đầu, visual "Thần tiên tỉ tỉ".
@@ -137,7 +137,7 @@ chờ Ninh duyệt).
 
 `internal/engines/chains.go` — provider mặc định:
 - **LLM**: Gemini API.
-- **TTS**: Gemini → Edge.
+- **TTS**: local macOS speech → Edge → Gemini.
 - **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse AI tự động bắt session CDP.
 - Chuỗi Avatar đã gỡ theo live (Đợt A).
 

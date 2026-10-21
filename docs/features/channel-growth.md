@@ -13,7 +13,7 @@ tự tạm dừng tài khoản khi chạm luật kill.
   OAuth scope `yt-analytics.readonly`, badge trạng thái ở trang Kênh) +
   `tiktok_api`. Thiếu kết nối → fail-closed, báo rõ trong notes.
 - `POST /growth/sync` → `handleGrowthSync`: đồng bộ số liệu + vòng quyết định ngay
-  cho mọi tài khoản (gọi `syncOneAccount` — xem `daemon-tu-dong.md`).
+  cho mọi tài khoản (gọi `syncOneAccount` — xem `autonomous-daemon.md`).
 - `POST /growth/accounts/{id}/plan` → `handleGrowthPlan`: sinh lại kế hoạch 30 ngày.
 - `POST /growth/production` → `handleGrowthProductionToggle`: bật/tắt sản xuất tự động
   (key `growth.production_enabled`; unset = ON, `"0"` = tắt).
@@ -21,7 +21,7 @@ tự tạm dừng tài khoản khi chạm luật kill.
   `GrowthTick(ctx, force=true)` (vẫn bị kill switch + dry-run chặn).
 - `POST /growth/thresholds` → `handleGrowthThresholds` (`growth_produce.go:217`):
   lưu 7 ngưỡng + nút reset về mặc định.
-- Tự động: daemon tick **5 phút** gọi `GrowthTick(ctx, false)` (xem `daemon-tu-dong.md`).
+- Tự động: daemon tick **5 phút** gọi `GrowthTick(ctx, false)` (xem `autonomous-daemon.md`).
 
 ## 3. Luồng vận hành chi tiết
 
@@ -60,7 +60,7 @@ stalled khi 14 ngày tăng trưởng <2%. Vượt luật → `Evaluate` đề xu
 > **Chiến lược Zero-Reup**: Toàn bộ video sản xuất tuân thủ nguyên tắc 100% tài sản gốc, tránh thuật toán phạt 0-view shadowban.
 
 ### Sản xuất & đăng (trong tick)
-Xem `daemon-tu-dong.md` — tóm tắt: item quá hạn 14 ngày → `dropped`; tối đa
+Xem `autonomous-daemon.md` — tóm tắt: item quá hạn 14 ngày → `dropped`; tối đa
 **3 job/tài khoản/tick**; TikTok chỉ tới `produced` (draft-only trước audit Direct Post);
 YouTube đăng khi đủ OAuth + còn quota (**1600 units/lượt**, trần **10000 units/ngày** —
 `internal/growth/quota.go`); thiếu gì thì item ở `waiting_connect`/`waiting_quota`

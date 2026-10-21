@@ -22,6 +22,7 @@ type Deps struct {
 	Growth     bool
 	AT         bool
 	Story      bool // studio sẵn sàng
+	Viral      bool // studio sẵn sàng
 }
 
 // ArmLoops khởi động mọi vòng tick đã bật, mỗi tick đi qua Supervisor
@@ -79,6 +80,15 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 			sup.Dispatch(ctx, "draft_digest", 30*time.Minute, auto.DraftDigestTick)
 		})
 		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, tự đăng private-first, self-heal 1 giờ/lần)")
+	}
+	if d.Viral {
+		sup.Watch("viral_radar", 5*time.Minute, 5*time.Minute)
+		go loop(ctx, 5*time.Minute, func() {
+			auto := d.NewService()
+			sup.Dispatch(ctx, "viral_radar", 5*time.Minute,
+				func(c context.Context) []string { return auto.ViralRadarTick(c, false) })
+		})
+		log.Printf("viral: YouTube radar armed (daily, 100k+ subscriber filter; requires API key)")
 	}
 }
 

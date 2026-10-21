@@ -15,15 +15,15 @@
 </div>
 
 <nav class="tabs">
-  <a href="/accounts/{{$id}}?tab=tong-quan"{{if eq .Tab "tong-quan"}} class="active"{{end}}>Tổng quan</a>
-  <a href="/accounts/{{$id}}?tab=nhan-vat"{{if eq .Tab "nhan-vat"}} class="active"{{end}}>👤 Nhân vật &amp; Khuôn mặt AI</a>
+  <a href="/accounts/{{$id}}?tab=overview"{{if eq .Tab "overview"}} class="active"{{end}}>Tổng quan</a>
+  <a href="/accounts/{{$id}}?tab=model-photos"{{if eq .Tab "model-photos"}} class="active"{{end}}>👤 Nhân vật &amp; Khuôn mặt AI</a>
   <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
   <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Mô phỏng trả lời</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
-  <a href="/accounts/{{$id}}?tab=ket-noi"{{if eq .Tab "ket-noi"}} class="active"{{end}}>Kết nối</a>
+  <a href="/accounts/{{$id}}?tab=connections"{{if eq .Tab "connections"}} class="active"{{end}}>Kết nối</a>
 </nav>
 
-{{if eq .Tab "tong-quan"}}
+{{if eq .Tab "overview"}}
 
 <div class="grid2">
 <div class="form-card">
@@ -48,7 +48,7 @@
   <div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <h2 style="margin:0;border:none;padding:0;font-size:16px">👤 Nhân vật đại diện &amp; Khuôn mặt AI</h2>
-      <a href="/accounts/{{$id}}?tab=nhan-vat" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">Quản lý &amp; Tải ảnh</a>
+      <a href="/accounts/{{$id}}?tab=model-photos" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">Quản lý &amp; Tải ảnh</a>
     </div>
     {{if .ModelPhotos}}
     <div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">
@@ -66,7 +66,7 @@
     </div>
     {{else}}
     <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Kênh chưa có ảnh khuôn mặt nhân vật. Hãy tải lên ảnh chân dung/khuôn mặt để AI sử dụng làm nhân vật xuyên suốt cho mọi video clip.</p>
-    <a href="/accounts/{{$id}}?tab=nhan-vat" class="btn btn-primary btn-sm" style="align-self:flex-start">📁 Tải lên ảnh nhân vật ngay</a>
+    <a href="/accounts/{{$id}}?tab=model-photos" class="btn btn-primary btn-sm" style="align-self:flex-start">📁 Tải lên ảnh nhân vật ngay</a>
     {{end}}
   </div>
 </div>
@@ -103,7 +103,7 @@
 <p class="empty">Chưa có quyết định nào cho kênh này.</p>
 {{end}}
 
-{{else if eq .Tab "nhan-vat"}}
+{{else if eq .Tab "model-photos"}}
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
@@ -129,7 +129,7 @@
       <div class="model-card" style="border:1.5px solid var(--border);border-radius:10px;padding:8px;background:var(--bg2);display:flex;flex-direction:column;align-items:center;gap:8px">
         <img src="{{.URL}}" alt="Khuôn mặt nhân vật" style="width:100%;height:140px;object-fit:cover;border-radius:8px">
         <form method="post" action="/accounts/{{$id}}/models/{{.ID}}/delete" data-confirm="Xóa ảnh nhân vật này?">
-          <input type="hidden" name="tab" value="nhan-vat">
+          <input type="hidden" name="tab" value="model-photos">
           <button type="submit" class="btn btn-danger btn-sm" style="font-size:11px;padding:2px 8px">Xóa ảnh</button>
         </form>
       </div>
@@ -148,7 +148,7 @@
   <div class="form-card">
     <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>⬆️</span> Tải Lên Ảnh Nhân Vật Mới (Chọn Nhiều Ảnh)</h3>
     <form method="post" action="/accounts/{{$id}}/models/upload" enctype="multipart/form-data">
-      <input type="hidden" name="tab" value="nhan-vat">
+      <input type="hidden" name="tab" value="model-photos">
       <div class="field" style="margin-bottom:14px">
         <label style="font-weight:700;font-size:13px">Chọn 1 hoặc nhiều ảnh khuôn mặt (JPG, PNG, WEBP — tối đa 15MB/ảnh)</label>
         <div class="file-pick" style="margin-top:6px">
@@ -507,7 +507,7 @@
           {{if or .PubStatus.YoutubeToken .PubStatus.YoutubeTokenDead}}🔄 Cấp lại quyền YouTube OAuth{{else}}🔗 Nối YouTube OAuth ngay{{end}}
         </a>
       {{else}}
-        <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối YouTube</a>
+        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối YouTube</a>
       {{end}}
     </div>
   </div>
@@ -535,7 +535,7 @@
           {{if .PubStatus.TiktokToken}}🔄 Cấp lại quyền TikTok{{else}}🔗 Kết nối TikTok OAuth ngay{{end}}
         </a>
       {{else}}
-        <a href="/settings/he-thong#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối TikTok</a>
+        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối TikTok</a>
       {{end}}
     </div>
   </div>
@@ -567,7 +567,7 @@
     </div>
   </div>
   <div style="margin-top:14px">
-    <a href="/settings/he-thong" class="btn btn-secondary btn-sm">⚙️ Quản lý Token FB / IG / Threads trong Cài đặt</a>
+    <a href="/settings/system" class="btn btn-secondary btn-sm">⚙️ Quản lý Token FB / IG / Threads trong Cài đặt</a>
   </div>
 </div>
 

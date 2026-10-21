@@ -84,9 +84,9 @@ type keySlot struct {
 }
 
 // KeyRing holds several API keys for one provider and rotates through them
-// round-robin, skipping keys that are cooling down or marked invalid.
-// It is the mechanism behind "nhiều Gemini API key để nhân quota":
-// every request uses the next usable key, so N keys multiply the free tier.
+// round-robin, skipping keys that are cooling down or marked invalid. Rotation
+// can improve resilience across independent projects; keys in one Gemini
+// project share quota and do not multiply its rate limits.
 type KeyRing struct {
 	mu   sync.Mutex
 	keys []keySlot
@@ -235,6 +235,39 @@ func (r *KeyRing) ReportRateLimit(idx int) {
 	}
 	s.rateHits++
 	s.lastRateAt = time.Now()
+}
+
+// ReportSharedQuotaLimit applies one Gemini quota cooldown to the whole key
+// ring. The ring has no project mapping, and Gemini limits are project-level;
+// probing another key immediately may spend another request against the same
+// exhausted project. A separately-projected key remains available after the
+// short cooldown and can then succeed normally.
+func (r *KeyRing) ReportSharedQuotaLimit(idx int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if idx < 0 || idx >= len(r.keys) {
+		return
+	}
+	now := time.Now()
+	level := r.keys[idx].backoffIdx
+	if level >= len(keyBackoffs) {
+		level = len(keyBackoffs) - 1
+	}
+	cooldownUntil := now.Add(keyBackoffs[level])
+	nextLevel := level
+	if nextLevel < len(keyBackoffs)-1 {
+		nextLevel++
+	}
+	for i := range r.keys {
+		s := &r.keys[i]
+		if s.invalid {
+			continue
+		}
+		s.cooldownUntil = cooldownUntil
+		s.backoffIdx = nextLevel
+		s.rateHits++
+		s.lastRateAt = now
+	}
 }
 
 // ReportInvalid marks the key as permanently broken until the key set

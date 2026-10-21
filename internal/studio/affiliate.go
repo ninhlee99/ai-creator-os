@@ -303,8 +303,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			clipDur := probeDuration(ctx, p.Clips[0])
 			renderSec := targetSec
 			if clipDur > 0 && clipDur < targetSec {
-				renderSec = clipDur
-				s.appendLog(id, fmt.Sprintf("✓ Video quảng cáo từ 1 clip sản phẩm: %s (thời lượng gốc %.1fs, giữ chuyển động liền mạch tự nhiên, không lặp lại hình ảnh)", filepath.Base(p.Clips[0]), clipDur))
+				s.appendLog(id, fmt.Sprintf("Clip sản phẩm dài %.1fs; sẽ lặp clip để đạt tối thiểu %.0fs.", clipDur, targetSec))
 			} else {
 				s.appendLog(id, fmt.Sprintf("✓ Dựng video quảng cáo từ 1 clip sản phẩm đồng nhất: %s (thời lượng %.1fs, không lặp lại)…", filepath.Base(p.Clips[0]), renderSec))
 			}
@@ -360,11 +359,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 				s.appendLog(id, fmt.Sprintf("Face Swap: giữ nguyên chuyển động gốc của người mẫu (%v)", err))
 			}
 		}
+		if err := ensureVideoDuration(ctx, silent, targetSec, aspect); err != nil {
+			fail(fmt.Errorf("video affiliate phải dài tối thiểu %.0fs: %w", targetSec, err))
+			return
+		}
 
 		if p.VoiceoverPath != "" && p.MusicPath != "" {
 			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
 			voiceVideo := filepath.Join(work, "voice.mp4")
-			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
+			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
 				if err := MixMusicBed(ctx, voiceVideo, p.MusicPath, final); err != nil {
 					s.appendLog(id, "Hòa âm lỗi, dùng bản voiceover: "+err.Error())
 					_ = os.Rename(voiceVideo, final)
@@ -375,7 +378,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		} else if p.VoiceoverPath != "" {
 			s.appendLog(id, "Ghép voiceover vào video…")
-			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final); err != nil {
+			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final); err != nil {
 				fail(err)
 				return
 			}
@@ -387,6 +390,10 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		} else if err := os.Rename(silent, final); err != nil {
 			fail(err)
+			return
+		}
+		if err := ensureVideoDuration(ctx, final, targetSec, aspect); err != nil {
+			fail(fmt.Errorf("video affiliate đầu ra chưa đạt %.0fs: %w", targetSec, err))
 			return
 		}
 
@@ -553,7 +560,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		if p.VoiceoverPath != "" && p.MusicPath != "" {
 			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
 			voiceVideo := filepath.Join(work, "voice.mp4")
-			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
+			if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
 				if err := MixMusicBed(ctx, voiceVideo, p.MusicPath, final); err != nil {
 					s.appendLog(id, "Hòa âm lỗi, dùng bản voiceover: "+err.Error())
 					_ = os.Rename(voiceVideo, final)
@@ -662,11 +669,15 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			fail(err)
 			return
 		}
+		if err := ensureVideoDuration(ctx, silentVideo, float64(p.Seconds), "9:16"); err != nil {
+			fail(fmt.Errorf("video affiliate montage phải dài tối thiểu %ds: %w", p.Seconds, err))
+			return
+		}
 
 		if p.VoiceoverPath != "" && p.MusicPath != "" {
 			s.appendLog(id, "Lồng tiếng voiceover AI và hòa âm nhạc nền (ducking -8dB)…")
 			voiceVideo := filepath.Join(work, "beat_voice.mp4")
-			if err := ffmpegRun(ctx, "-i", silentVideo, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
+			if err := ffmpegRun(ctx, "-i", silentVideo, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err == nil {
 				if err := MixMusicBed(ctx, voiceVideo, p.MusicPath, final); err != nil {
 					s.appendLog(id, "Hòa âm lỗi, dùng bản voiceover: "+err.Error())
 					_ = os.Rename(voiceVideo, final)
@@ -677,7 +688,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 			}
 		} else if p.VoiceoverPath != "" {
 			s.appendLog(id, "Ghép voiceover vào video…")
-			if err := ffmpegRun(ctx, "-i", silentVideo, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final); err != nil {
+			if err := ffmpegRun(ctx, "-i", silentVideo, "-i", p.VoiceoverPath, "-map", "0:v", "-map", "1:a", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", final); err != nil {
 				fail(err)
 				return
 			}
@@ -690,6 +701,10 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		} else {
 			_ = os.Rename(silentVideo, final)
 		}
+	}
+	if err := ensureVideoDuration(ctx, filepath.Join(s.outDir, "studio-"+id+".mp4"), float64(p.Seconds), aspect); err != nil {
+		fail(fmt.Errorf("video affiliate đầu ra phải dài tối thiểu %ds: %w", p.Seconds, err))
+		return
 	}
 
 	s.setOutput(id, filepath.Base(final))

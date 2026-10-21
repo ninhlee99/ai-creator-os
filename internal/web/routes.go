@@ -157,9 +157,9 @@ func (s *Server) Routes() http.Handler {
 	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
 	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.
 	mux.HandleFunc("GET /settings", s.handleSettingsIndex)
-	mux.HandleFunc("GET /settings/he-thong", s.handleSettingsHeThong)
-	mux.HandleFunc("GET /settings/nha-cung-cap", s.handleSettingsNhaCungCap)
-	mux.HandleFunc("GET /settings/an-toan", s.handleSettingsAnToan)
+	mux.HandleFunc("GET /settings/system", s.handleSettingsHeThong)
+	mux.HandleFunc("GET /settings/providers", s.handleSettingsNhaCungCap)
+	mux.HandleFunc("GET /settings/safety", s.handleSettingsAnToan)
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/models/update", s.handleModelsUpdate)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
@@ -202,6 +202,7 @@ func (s *Server) Routes() http.Handler {
 	// Video Viral AI 100% Gốc (Trendjack Spotlight Shorts 9:16).
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
+	mux.HandleFunc("POST /viral/radar/refresh", s.handleViralRadarRefresh)
 
 	// Master Autonomous Harness Agent (OODA loop, experiential memory, portfolio control).
 	mux.HandleFunc("GET /harness", s.handleHarness)
@@ -251,8 +252,8 @@ func (s *Server) Routes() http.Handler {
 	for _, legacy := range []struct{ pattern, target string }{
 		{"GET /content", "/studio"},
 		{"POST /content", "/studio"},
-		{"GET /shop", "/products?tab=ke"},
-		{"POST /shop/add", "/products?tab=ke"},
+		{"GET /shop", "/products?tab=shelf"},
+		{"POST /shop/add", "/products?tab=shelf"},
 	} {
 		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
 	}

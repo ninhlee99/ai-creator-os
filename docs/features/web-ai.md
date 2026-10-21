@@ -3,8 +3,10 @@
 ## 1. Mục đích
 Cung cấp giải pháp kết nối tài khoản Web AI (ChatGPT, Claude, Gemini, Grok, Muse AI) hoàn toàn tự động thông qua giao thức Chrome DevTools Protocol (CDP). Cho phép nhà sáng tạo sử dụng sức mạnh của các mô hình AI hàng đầu mà không cần mua API trả phí đắt đỏ hoặc sao chép cookie thủ công. Hỗ trợ xoay vòng đa tài khoản (multi-account rotation), cách ly phiên đăng nhập bằng thư mục hồ sơ tạm thời (`os.MkdirTemp`), tự động nhận diện danh tính (email/tên tài khoản) và quản lý thời gian hồi phục (cooldown) khi chạm ngưỡng giới hạn (rate limit).
 
+Video provider handoff: Google Flow free plan currently advertises 50 daily credits; Leonardo free web accounts currently advertise 150 daily Fast Tokens. Both are manual web workflows in this app: sign in on the provider site, generate there, then import MP4 through `/studio/flow-import` or `/studio/leonardo-import`. The Flow account can sync from Gemini in `/settings/system#tab-webai`; Leonardo has no account/API connector here. Leonardo API uses separate pay-as-you-go billing, not the free web tokens. No automatic Flow or Leonardo video API call is configured.
+
 ## 2. Kích hoạt & Giao diện
-- **Giao diện quản lý**: `GET /settings/he-thong#tab-webai` (thẻ "🤖 Tài khoản AI" trên trang Cài đặt Hệ thống).
+- **Giao diện quản lý**: `GET /settings/system#tab-webai` (thẻ "🤖 Tài khoản AI" trên trang Cài đặt Hệ thống).
 - **Trình duyệt tự động đăng nhập (CDP Browser Login)**:
   - Bấm nút **"🌐 Đăng Nhập Tự Động"** tại thẻ của từng nền tảng (ChatGPT, Claude, Gemini, Grok, Muse AI).
   - Modal hướng dẫn xuất hiện, hiển thị trạng thái chờ và nút mở Chrome/Brave/Edge riêng biệt.

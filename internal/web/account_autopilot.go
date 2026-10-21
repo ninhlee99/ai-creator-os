@@ -29,8 +29,9 @@ func (s *Server) accountRedirect(w http.ResponseWriter, r *http.Request, id int6
 		tab = r.URL.Query().Get("tab")
 	}
 	if tab == "" {
-		tab = "nhan-vat"
+		tab = "model-photos"
 	}
+	tab = accountTabName(tab)
 	q.Set("tab", tab)
 	if notice != "" {
 		q.Set("ok", notice)

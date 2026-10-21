@@ -169,7 +169,7 @@ App tự ghi và xoay log tại `<data-dir>/logs/aicos.log`: mỗi file tối đ
 
 - Watchdog (launchd / Task Scheduler / systemd) chỉ trông **process app**.
   Tự chữa job treo / canh đĩa / sao lưu vẫn do các tick trong app đảm nhiệm (xem
-  `docs/features/daemon-tu-dong.md`).
+  `docs/features/autonomous-daemon.md`).
 - Chạy binary tay trong khi watchdog đang chạy: app phát hiện đã có instance
   (khóa `aicos.lock`) và thoát êm — không chạy đúp, không giành database.
 - Data dir nên ở ổ đĩa local của máy (không để trên ổ mạng/USB): file lock

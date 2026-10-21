@@ -68,9 +68,10 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 		generated = true
 	}
 
-	// 1. Chế độ Veo 3 (hoặc Auto ưu tiên Veo 3 Free Preview)
-	if !generated && (engine == "veo3" || engine == "auto" || engine == "generative") {
-		log("🎬 Khởi động công nghệ Google Veo 3.1 / 3.0 (Ưu tiên Free Preview): Đang kết nối AI sinh video...")
+	// Veo is billed through the Google API. Auto mode must not call a paid
+	// video provider without an explicit engine selection.
+	if !generated && (engine == "veo3" || engine == "generative") {
+		log("🎬 Gọi Google Veo API; lượt này có thể tính phí...")
 		if s.mg != nil {
 			veoErr := s.mg.GenerateVideo(ctx, opts.Prompt, opts.FirstFrame, opts.Seconds, opts.AspectRatio, tempClip)
 			if veoErr == nil && fileExists(tempClip) {

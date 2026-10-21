@@ -38,6 +38,22 @@
     </div>
   </div>
 
+  <section class="card" style="margin-bottom:16px;padding:16px">
+    <h3 style="margin:0 0 8px">Video tools with daily free credits</h3>
+    <div class="grid2" style="gap:12px">
+      <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
+        <strong>Google Flow · 50 daily credits</strong>
+        <p class="hint" style="margin:7px 0">No API key. Sign in with Google at <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>. Connect the Google session above with “Sync Google from Gemini”. Create in Flow, download MP4, then import in <a href="/web-ai">Web AI Hub</a>. Free credits and models vary by region.</p>
+        <span class="badge badge-dim">Manual generation · no automatic Flow API adapter</span>
+      </article>
+      <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
+        <strong>Leonardo.Ai · 150 daily Fast Tokens</strong>
+        <p class="hint" style="margin:7px 0">Sign in at <a href="https://leonardo.ai/text-to-video" target="_blank" rel="noopener">Leonardo Text to Video</a>, generate there, then import MP4 in <a href="/web-ai">Web AI Hub</a>. Website tokens do not apply to Leonardo’s API; API uses separate <a href="https://docs.leonardo.ai/me/docs/pricing-and-plans-faq" target="_blank" rel="noopener">pay-as-you-go billing</a>.</p>
+        <span class="badge badge-dim">Manual prompt handoff + MP4 import · no API key configured</span>
+      </article>
+    </div>
+  </section>
+
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
     <div class="webai-card {{if .IsConnected}}connected{{end}}" style="--platform-color: {{.Platform.Color}}">
@@ -98,13 +114,13 @@
               {{if eq .Status "cooldown"}}
               <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
                 <input type="hidden" name="id" value="{{.ID}}">
-                <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
+                <input type="hidden" name="back" value="/settings/system#tab-webai">
                 <button type="submit" class="btn btn-secondary btn-sm" title="Mở lại ngay" style="font-size:11px;padding:2px 6px">Mở lại</button>
               </form>
               {{end}}
               <form method="post" action="/web-ai/accounts/delete" style="display:inline">
                 <input type="hidden" name="id" value="{{.ID}}">
-                <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
+                <input type="hidden" name="back" value="/settings/system#tab-webai">
                 <button type="submit" class="btn btn-secondary btn-sm" title="Xóa tài khoản" style="font-size:11px;padding:2px 6px;color:var(--err)">🗑</button>
               </form>
             </div>
@@ -763,7 +779,7 @@
 
     <form method="post" action="/web-ai/accounts/add">
       <input type="hidden" name="platform" id="connect-platform-id">
-      <input type="hidden" name="back" value="/settings/he-thong#tab-webai">
+      <input type="hidden" name="back" value="/settings/system#tab-webai">
       <div class="modal-body" style="padding:0">
         <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text)">
           Cách 2: Nhập Khóa API hoặc Dán Cookie Header thủ công

@@ -181,14 +181,14 @@ func (s *Server) handleEnvExportJSON(w http.ResponseWriter, r *http.Request) {
 // handleEnvImport nhập cấu hình từ file tải lên hoặc nội dung dán vào form.
 func (s *Server) handleEnvImport(w http.ResponseWriter, r *http.Request) {
 	if s.Ledger == nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Kho dữ liệu chưa sẵn sàng."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Kho dữ liệu chưa sẵn sàng."))
 		return
 	}
 
 	// Hỗ trợ tối đa 10MB upload
 	if err := r.ParseMultipartForm(10 << 20); err != nil && err != http.ErrNotMultipart {
 		if err := r.ParseForm(); err != nil {
-			seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Không đọc được dữ liệu nhập: "+err.Error()))
+			seeOther(w, r, "/settings/system?err="+url.QueryEscape("Không đọc được dữ liệu nhập: "+err.Error()))
 			return
 		}
 	}
@@ -204,7 +204,7 @@ func (s *Server) handleEnvImport(w http.ResponseWriter, r *http.Request) {
 
 	rawBytes = bytes.TrimSpace(rawBytes)
 	if len(rawBytes) == 0 {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("Chưa có nội dung hoặc file cấu hình nào được chọn."))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Chưa có nội dung hoặc file cấu hình nào được chọn."))
 		return
 	}
 
@@ -283,13 +283,13 @@ func (s *Server) importFromEnv(w http.ResponseWriter, r *http.Request, raw []byt
 
 	msg := fmt.Sprintf("✓ Đã nhập thành công: %d biến môi trường, %d key Gemini, %d Accesstrade.", envCount, geminiCount, atCount)
 	log.Printf("web: %s", msg)
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
 }
 
 func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []byte) {
 	var exp EnvExportJSON
 	if err := json.Unmarshal(raw, &exp); err != nil {
-		seeOther(w, r, "/settings/he-thong?err="+url.QueryEscape("File JSON không hợp lệ: "+err.Error()))
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape("File JSON không hợp lệ: "+err.Error()))
 		return
 	}
 
@@ -345,7 +345,7 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 
 	msg := fmt.Sprintf("✓ Đã nhập thành công từ JSON: %d biến môi trường, %d key Gemini, %d tài khoản WebAI.", envCount, geminiCount, webaiCount)
 	log.Printf("web: %s", msg)
-	seeOther(w, r, "/settings/he-thong?ok="+url.QueryEscape(msg))
+	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))
 }
 
 // addGeminiKey thêm 1 API key vào cả hai chuỗi (llm và tts) và kích hoạt đồng bộ.

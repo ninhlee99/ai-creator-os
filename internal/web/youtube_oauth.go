@@ -216,7 +216,7 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if targetAccountID > 0 {
-		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=ket-noi&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh YouTube "+targetUsername+"!")))
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=connections&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh YouTube "+targetUsername+"!")))
 		return
 	}
 	publishersMsg(w, r, "msg", "Đã nối YouTube cho "+targetUsername+". Token lưu ở "+path+".")

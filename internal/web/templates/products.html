@@ -16,14 +16,14 @@
 
 <!-- Affiliate Unified Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/products"{{if ne .Tab "ke"}} class="active"{{end}}>Khám phá</a>
-  <a href="/products?tab=ke"{{if eq .Tab "ke"}} class="active"{{end}}>Kệ hàng</a>
+  <a href="/products"{{if ne .Tab "shelf"}} class="active"{{end}}>Khám phá</a>
+  <a href="/products?tab=shelf"{{if eq .Tab "shelf"}} class="active"{{end}}>Kệ hàng</a>
 </nav>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 
-{{if eq .Tab "ke"}}
+{{if eq .Tab "shelf"}}
 <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
     <h2 style="margin:0;font-size:16px;border:none;padding:0;display:flex;align-items:center;gap:8px">

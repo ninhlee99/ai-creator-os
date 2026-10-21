@@ -12,6 +12,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
+	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 )
 
 // ------------------------------------------------------------ settings
@@ -171,6 +172,12 @@ func (s *Server) automation() *automation.Service {
 	svc.Producer = s.producer()
 	svc.Uploader = s.yt()
 	svc.Autopilot = s.Autopilot
+	if s.Studio != nil {
+		svc.ViralRunner = s.Studio
+	}
+	if key, ok := s.effectiveEnv("YOUTUBE_API_KEY"); ok && strings.TrimSpace(key) != "" {
+		svc.ViralRadar = viralradar.NewYouTube(key)
+	}
 	// Đợt AA: chỉ gán JobStore khi Studio thật sự tồn tại — gán nil
 	// *studio.Studio vào interface tạo interface non-nil chứa nil pointer,
 	// gọi method sẽ panic.

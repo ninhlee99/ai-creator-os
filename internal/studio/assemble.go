@@ -403,8 +403,7 @@ func ConcatClips(ctx context.Context, clips []string, aspect, outPath string) er
 // MuxMusic replaces/adds the music bed on a silent edit.
 func MuxMusic(ctx context.Context, videoPath, musicPath string, musicStart float64, outPath string) error {
 	return ffmpegRun(ctx,
-		"-i", videoPath, "-i", musicPath,
-		"-ss", fmt.Sprintf("%.1f", musicStart),
+		"-i", videoPath, "-stream_loop", "-1", "-ss", fmt.Sprintf("%.1f", musicStart), "-i", musicPath,
 		"-map", "0:v", "-map", "1:a",
 		"-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
 		"-shortest", outPath)
@@ -455,7 +454,7 @@ func MixMusicBed(ctx context.Context, videoPath, musicPath, outPath string) erro
 	if !ProbeHasAudio(ctx, videoPath) {
 		// Silent film (pure Veo shots): music becomes the audio track.
 		return ffmpegRun(ctx,
-			"-i", videoPath, "-i", musicPath,
+			"-i", videoPath, "-stream_loop", "-1", "-i", musicPath,
 			"-map", "0:v", "-map", "1:a",
 			"-c:v", "copy", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11",
 			"-c:a", "aac", "-b:a", "192k", "-shortest", outPath)
@@ -470,7 +469,7 @@ func MixMusicBed(ctx context.Context, videoPath, musicPath, outPath string) erro
 		"[vclean][dm]amix=inputs=2:duration=first:dropout_transition=0," +
 		"loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
 	return ffmpegRun(ctx,
-		"-i", videoPath, "-i", musicPath,
+		"-i", videoPath, "-stream_loop", "-1", "-i", musicPath,
 		"-filter_complex", filter,
 		"-map", "0:v", "-map", "[aout]",
 		"-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
@@ -759,6 +758,43 @@ func TrimVideo(ctx context.Context, inPath string, targetSec float64, aspect, ou
 	args = append(args, videoEncoder()...)
 	args = append(args, "-pix_fmt", "yuv420p", "-an", outPath)
 	return ffmpegRun(ctx, args...)
+}
+
+// ensureVideoDuration loops a short render to the requested minimum. This
+// keeps short product/source clips from silently violating the delivery
+// duration after trimming or audio muxing.
+func ensureVideoDuration(ctx context.Context, path string, targetSec float64, aspect string) error {
+	if targetSec <= 0 {
+		return fmt.Errorf("invalid target duration %.2fs", targetSec)
+	}
+	duration := probeDuration(ctx, path)
+	if duration <= 0 {
+		return fmt.Errorf("cannot read video duration: %s", filepath.Base(path))
+	}
+	if duration >= targetSec-0.05 {
+		return nil
+	}
+	w, h := AspectDims(aspect)
+	filtered := path + ".extended.mp4"
+	defer os.Remove(filtered)
+	vf := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d,setsar=1", w, h, w, h)
+	args := []string{
+		"-stream_loop", "-1", "-i", path,
+		"-t", fmt.Sprintf("%.3f", targetSec),
+		"-vf", vf, "-r", fmt.Sprint(outFPS),
+	}
+	args = append(args, videoEncoder()...)
+	args = append(args, "-pix_fmt", "yuv420p", "-map", "0:v:0", "-map", "0:a?", "-c:a", "aac", "-b:a", "192k", filtered)
+	if err := ffmpegRun(ctx, args...); err != nil {
+		return fmt.Errorf("extend video to %.2fs: %w", targetSec, err)
+	}
+	if got := probeDuration(ctx, filtered); got < targetSec-0.05 {
+		return fmt.Errorf("extended video is only %.2fs; requires at least %.2fs", got, targetSec)
+	}
+	if err := os.Rename(filtered, path); err != nil {
+		return fmt.Errorf("replace short video: %w", err)
+	}
+	return nil
 }
 
 // probeDuration trả về thời lượng thực tế của file video (giây).

@@ -58,12 +58,12 @@ func TestSettingsModelsUpdateEndpoint(t *testing.T) {
 		t.Fatalf("Resolve(Video) = %q, want veo-3.1-generate-preview", got)
 	}
 
-	// GET /settings/he-thong should render the updated models and card
-	body := get(t, s, "/settings/he-thong").Body.String()
+	// GET /settings/system should render the updated models and card
+	body := get(t, s, "/settings/system").Body.String()
 	if !strings.Contains(body, "gemini-4.0-flash") {
-		t.Fatalf("GET /settings/he-thong missing updated model: %s", body)
+		t.Fatalf("GET /settings/system missing updated model: %s", body)
 	}
 	if !strings.Contains(body, "Google Gemini AI Models — Cập Nhật Model Mới Nhất Cho Toàn Bộ Adapter") {
-		t.Fatalf("GET /settings/he-thong missing update header: %s", body)
+		t.Fatalf("GET /settings/system missing update header: %s", body)
 	}
 }

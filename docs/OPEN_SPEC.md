@@ -174,14 +174,14 @@ Hệ thống sử dụng mô hình trí tuệ nhân tạo nhận diện đặc t
 ```
 
 #### Video tham chiếu
-Trang `/viral` nhận link TikTok/Douyin tùy chọn ngay trong form tạo job. App không cung cấp radar video realtime, danh sách clip tuyển sẵn hoặc endpoint nhập clip riêng.
+Trang `/viral` có YouTube Viral Radar qua YouTube Data API. Radar chọn video mới trong 7 ngày, xếp theo lượt xem và chỉ giữ kênh từ 100,000 subscribers. Khi tạo bản gốc, hệ thống dùng tiêu đề, URL và duration làm metadata tham chiếu; không tải hoặc tái dùng footage/audio nguồn. Đầu ra phải dài ít nhất bằng nguồn.
 
 #### Nguyên Tắc Phản Chiếu Video Viral Gốc (Original Viral Mirroring Law):
 *Tùy vào video viral gốc như thế nào thì video được tạo bởi AI sẽ có hiệu ứng và phong cách tương tự 1:1:*
 1. **Thời lượng chuẩn Quỹ Nhà Sáng Tạo (≥ 60s)**: Toàn bộ video viral xuất bản có thời lượng từ **60 giây trở lên** (chuẩn bật kiếm tiền TikTok Creativity Program).
-2. **Khởi động tức thì tại 0.0s (Không màn hình đen)**: Trích xuất frame và audio ngay từ mốc 0.0s của clip gốc, triệt tiêu hoàn toàn hiện tượng ảnh đen 5s đầu video.
+2. **Khởi động tức thì tại 0.0s (Không màn hình đen)**: Video đầu ra bắt đầu bằng ảnh người mẫu đã tải lên; không chèn frame hay audio từ video nguồn.
 3. **Hình tượng nhân vật "Thần tiên tỉ tỉ"**: Profile visual chân dung người con gái Việt Nam xinh đẹp thuần khiết 21 tuổi (làn da trắng sứ phát sáng, đôi mắt hạnh trong veo có hồn, suối tóc dài đen bồng bềnh nhẹ bay).
-4. **Kế thừa 100% âm thanh & bài nhạc gốc**: Tách và lồng lại bản nhạc gốc của video viral (nếu không chỉ định nhạc riêng). Từng nhịp beat drop, tiếng bass/snare và điểm rơi cao trào đều khớp hoàn hảo với động tác vũ đạo của nhân vật.
+4. **Âm thanh độc lập**: Video đầu ra dùng nhạc nền cục bộ đã cấu hình. Không trích xuất hay lồng lại audio từ video nguồn.
 5. **Phản chiếu chuyển động & visual mood**: Toàn bộ góc máy, chuyển động cơ thể, động tác nhảy và ánh sáng của clip triệu view được giữ nguyên vẹn qua công nghệ AI Face Swap, biến video thành tác phẩm độc quyền của Creator mà vẫn mang trọn vẹn năng lượng của video viral gốc.
 
 ---

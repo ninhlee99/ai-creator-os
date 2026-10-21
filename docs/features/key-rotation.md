@@ -24,7 +24,7 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
 ### Chuỗi provider (failover theo tier)
 `internal/engines/chains.go`:
 - **LLM**: Gemini API.
-- **TTS**: Gemini → Edge.
+- **TTS**: local macOS speech → Edge → Gemini.
 - Thứ tự chuỗi chỉnh được ở Cài đặt · Nhà cung cấp (`ChainConfig`).
 
 ### Ràng buộc free tier

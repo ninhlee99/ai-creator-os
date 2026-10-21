@@ -35,6 +35,14 @@ func (s *Server) handleOnboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		dry := r.PostFormValue("dryrun") == "1"
+		value := "0"
+		if dry {
+			value = "1"
+		}
+		if err := s.Ledger.SetSetting("ops.dry_run", value); err != nil {
+			s.fail(w, err, "save onboarding dry-run setting")
+			return
+		}
 		s.Cfg.SetDryRun(dry)
 		_ = s.Ledger.Decide("human", "onboard", nil,
 			"Hoàn tất thiết lập lần đầu.",

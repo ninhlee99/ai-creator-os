@@ -234,7 +234,7 @@ func main() {
 			filtered := cfg.Order[:0]
 			removed := false
 			for _, entry := range cfg.Order {
-				supported := key == ledger.SettingTTSChain && (entry.Name == "gemini" || entry.Name == "edge")
+				supported := key == ledger.SettingTTSChain && (entry.Name == "say" || entry.Name == "gemini" || entry.Name == "edge")
 				supported = supported || key == ledger.SettingLLMChain && entry.Name == "gemini"
 				if !supported {
 					removed = true
@@ -279,7 +279,7 @@ func main() {
 	log.Printf("llm: active providers: %v", llmChain.ActiveProviders())
 	log.Printf("tts: active providers: %v", ttsChain.ActiveProviders())
 	if len(geminiKeys) == 0 {
-		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — LLM calls need a Gemini key; TTS can fall back to Edge")
+		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — LLM calls need a Gemini key; TTS uses local speech, then Edge")
 	} else {
 		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
 	}
@@ -580,7 +580,7 @@ func main() {
 	netCfg := network.DefaultNetConfig()
 	netCfg.MasterSwitch = automation.MasterOn(autoSettings)
 	netCfg.MasterGate = automation.MasterSwitchGate{Settings: autoSettings}
-	netCfg.DryRun = getenvBool("DRY_RUN", true)
+	netCfg.DryRun = webCfg.DryRun()
 	netCfg.KillSwitch = getenvBool("KILL_SWITCH", false)
 	// ONE source of truth for kill/dry-run: the daemon reads the very
 	// *Config the dashboard toggles (webCfg) live on every tick, so the
@@ -625,6 +625,7 @@ func main() {
 		Growth:     srv.Growth != nil,
 		AT:         srv.AT != nil,
 		Story:      srv.Studio != nil,
+		Viral:      srv.Studio != nil,
 	})
 
 	// -- 7f. master autonomous harness agent (OODA cognitive engine) ---------

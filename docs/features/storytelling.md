@@ -5,7 +5,7 @@ Trụ Kể chuyện theo chuẩn **Open-Spec v1.0 (`docs/OPEN_SPEC.md`)**:
 - Sản xuất **Truyện Audio Điện Ảnh** thời lượng dài (từ ngắn 5-10 phút đến trường thiên 30 - 60 phút).
 - **Tuyệt đối không để màn hình đen (Zero Black Screen)**: Mỗi 8 - 15 giây kịch bản tương ứng với một visual canvas sống động (ảnh nghệ thuật độ phân giải cao từ Flux / Pollinations / Gemini kết hợp chuyển động chậm Ken Burns và b-roll điện ảnh).
 - **Hòa âm không gian 3 lớp**:
-  1. Giọng dẫn chuyện qua chuỗi Gemini TTS → Edge (`vi-VN-HoaiMyNeural` hoặc `vi-VN-NamMinhNeural`).
+  1. Giọng dẫn chuyện qua chuỗi local macOS speech → Edge (`vi-VN-HoaiMyNeural` hoặc `vi-VN-NamMinhNeural`) → Gemini.
   2. Âm thanh môi trường thực tế (tiếng mưa dầm, tiếng gió đêm, tiếng bước chân) ở mức -14dB.
   3. Nhạc nền cinematic du dương lót dưới âm lượng -18dB (tự động ducking khi có tiếng đọc).
 - Dựng video tỷ lệ 9:16 (Shorts/TikTok series) hoặc 16:9 (YouTube Cinema) chuẩn 1080p, xuất bản kèm phụ đề `.srt` và metadata SEO hoàn chỉnh.

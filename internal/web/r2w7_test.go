@@ -43,9 +43,9 @@ func TestOnboardGate(t *testing.T) {
 		t.Fatalf("GET / lúc onboarding = %d -> %q, want 303 -> /onboard",
 			rec.Code, rec.Header().Get("Location"))
 	}
-	rec = get(t, s, "/settings/he-thong")
+	rec = get(t, s, "/settings/system")
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("GET /settings/he-thong lúc onboarding = %d, want 303", rec.Code)
+		t.Fatalf("GET /settings/system lúc onboarding = %d, want 303", rec.Code)
 	}
 	rec = get(t, s, "/onboard")
 	if rec.Code != http.StatusOK {
@@ -76,9 +76,9 @@ func TestOnboardGate(t *testing.T) {
 func TestSettingsHeThongR2W7(t *testing.T) {
 	s := newTestServer(t)
 	s.Cfg.Version = "v9.9-test"
-	rec := get(t, s, "/settings/he-thong")
+	rec := get(t, s, "/settings/system")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /settings/he-thong = %d, want 200", rec.Code)
+		t.Fatalf("GET /settings/system = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{

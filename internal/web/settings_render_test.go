@@ -14,8 +14,8 @@ import (
 func TestSettingsTemplateRenders(t *testing.T) {
 	s := newTestServer(t)
 	for _, path := range []string{
-		"/settings/he-thong", "/settings/nha-cung-cap",
-		"/settings/an-toan",
+		"/settings/system", "/settings/providers",
+		"/settings/safety",
 	} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
@@ -39,15 +39,15 @@ func TestSettingsTemplateRenders(t *testing.T) {
 			t.Errorf("GET %s = 200, want non-200 (parked)", path)
 		}
 	}
-	body := get(t, s, "/settings/nha-cung-cap").Body.String()
+	body := get(t, s, "/settings/providers").Body.String()
 	for _, want := range []string{"Thứ tự nhà cung cấp giọng đọc (TTS)", "Thứ tự nhà cung cấp viết nội dung (LLM)"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("nha-cung-cap page missing %q", want)
+			t.Errorf("providers page missing %q", want)
 		}
 	}
 	for _, gone := range []string{"Chuỗi provider Avatar", "provider-avatar"} {
 		if strings.Contains(body, gone) {
-			t.Errorf("nha-cung-cap page still has avatar remnant %q", gone)
+			t.Errorf("providers page still has avatar remnant %q", gone)
 		}
 	}
 	// Sidebar: no live schedule; /team đã định nghĩa lại ở Đợt H2

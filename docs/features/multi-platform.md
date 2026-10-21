@@ -28,7 +28,7 @@ Facebook Page, RTMP — biết cái nào đã nối, cái nào còn thiếu đ�
 
 ## 4. Fail-closed & an toàn
 - Thiếu token/client → badge "thiếu", các luồng đăng bỏ qua nền tảng đó
-  (xem `daemon-tu-dong.md`: `waiting_connect`).
+  (xem `autonomous-daemon.md`: `waiting_connect`).
 - State CSRF hết hạn → callback bị từ chối, không đổi token bừa.
 - Token nằm trong `<data>/tokens` (không commit), quyền file 0600.
 

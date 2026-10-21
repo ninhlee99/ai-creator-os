@@ -48,7 +48,7 @@ cài theo đúng hệ điều hành của máy):
 
 ### 2b. Kết nối tài khoản AI qua Trình duyệt Tự Động (CDP)
 Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn toàn tự động mà **không cần sao chép cookie bằng tay**:
-1. Vào **Cài đặt · Hệ thống** (`/settings/he-thong`) → bấm tab **🤖 Tài khoản AI**.
+1. Vào **Cài đặt · Hệ thống** (`/settings/system`) → bấm tab **🤖 Tài khoản AI**.
 2. Tại thẻ của nền tảng bạn muốn kết nối (ví dụ: Grok hoặc Claude), bấm **"🌐 Đăng Nhập Tự Động"**.
 3. Một cửa sổ trình duyệt sạch (profile cô lập hoàn toàn) sẽ tự mở lên. Bạn đăng nhập tài khoản bình thường.
 4. Ngay khi đăng nhập thành công, app sẽ tự động nhận diện email, lưu phiên làm việc an toàn và tự đóng trình duyệt.
@@ -58,10 +58,10 @@ Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn 
 Tạo nhân vật ảo / KOC ảo với khuôn mặt nhất quán 100% xuyên suốt mọi video clip:
 1. Vào **Kênh Sáng Tạo** (`/accounts`) hoặc tạo kênh mới (`/accounts/new`).
 2. Chọn ngay 1 trong 10 nhân vật mẫu có sẵn (Thần Tiên Tỉ Tỉ, KOC Công Nghệ, Beauty Blogger...) hoặc tải lên ảnh đại diện riêng. Nếu để trống, hệ thống sẽ tự động gán ngẫu nhiên 1 nhân vật mẫu.
-3. Quản lý và bổ sung ảnh góc mặt của nhân vật tại tab **👤 Nhân vật & Khuôn mặt AI** trong trang chi tiết kênh (`/accounts/{id}?tab=nhan-vat`). Hệ thống lưu diện mạo chuẩn và tự động map vào mọi video Affiliate Lookbook hoặc Vũ Đạo Viral.
+3. Quản lý và bổ sung ảnh góc mặt của nhân vật tại tab **👤 Nhân vật & Khuôn mặt AI** trong trang chi tiết kênh (`/accounts/{id}?tab=model-photos`). Hệ thống lưu diện mạo chuẩn và tự động map vào mọi video Affiliate Lookbook hoặc Vũ Đạo Viral.
 
 ### 2d. Cập Nhật Model Gemini Trên Toàn Bộ Adapter (On-demand Updater)
-Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ thống** (`/settings/he-thong`):
+Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ thống** (`/settings/system`):
 - **Văn bản & Kịch bản**: `gemini-3.8-flash` (tự động nâng cấp khi Google phát hành bản mới hơn).
 - **Tạo ảnh & Phân cảnh**: `gemini-nano-banana-2.1` (dòng Nano Banana chất lượng cao chuyên tạo nhân vật Thần tiên tỉ tỉ, sản phẩm affiliate).
 - **Giọng đọc kể chuyện**: `gemini-3.8-flash-tts` (đa cảm xúc với các tag `[trầm lặng]`, `[cao trào]`, `[sôi nổi]`, `[tức giận]`, `[buồn bã]`, `[vui vẻ]`, `[thì thầm]`).
@@ -72,13 +72,13 @@ Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ th�
 - **Video Affiliate Lookbook**: Thời lượng **30s – 60s**, giữ nhất quán chi tiết trang phục và người mẫu theo phong cách điện ảnh chân thực.
 - **Video Vũ Đạo Viral**: Thời lượng **từ 60s trở lên** (chuẩn 1 phút+ TikTok bật kiếm tiền), bắt đầu tức thì tại 0.0s (triệt tiêu hoàn toàn màn hình đen 5s đầu), visual nhân vật "Thần tiên tỉ tỉ".
 - **Video Truyện Audio**: Thời lượng **30 đến 60 phút**, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS.
-1. Vào **Kênh** (`/accounts`) → chọn kênh cần thiết lập → bấm tab **👤 Nhân vật & Khuôn mặt AI** (`/accounts/{id}?tab=nhan-vat`).
+1. Vào **Kênh** (`/accounts`) → chọn kênh cần thiết lập → bấm tab **👤 Nhân vật & Khuôn mặt AI** (`/accounts/{id}?tab=model-photos`).
 2. Tải lên 1 hoặc nhiều ảnh chân dung góc chụp rõ nét của nhân vật.
 3. Khi tạo video tại **Video Viral AI** (`/viral`) hoặc **Studio Ad Creative** (`/studio`), hệ thống tự động nhận diện khuôn mặt nhân vật đã ghim của kênh và áp dụng kỹ thuật Character Reference Injection vào AI MediaGen để giữ nguyên thần thái, diện mạo nhân vật trong từng chuyển động, vũ đạo và biểu cảm.
 4. Bạn cũng có thể tải ảnh nhân vật tùy chỉnh trực tiếp ngay tại form tạo video `/viral/create`.
 
 ### 2d. Sản Xuất Video Affiliate Hoa Hồng Cao (≥ 20%) & Đăng TikTok
-1. Vào **Sản phẩm & Kệ hàng** (`/products`) → tab **Kệ Hàng Sản Xuất AI** (`/products?tab=ke`). Các sản phẩm có hoa hồng $\ge 20\%$ được tự động gắn huy hiệu **🔥 Hoa hồng cao**.
+1. Vào **Sản phẩm & Kệ hàng** (`/products`) → tab **Kệ Hàng Sản Xuất AI** (`/products?tab=shelf`). Các sản phẩm có hoa hồng $\ge 20\%$ được tự động gắn huy hiệu **🔥 Hoa hồng cao**.
 2. Bấm **🎬 Dựng video AI** bên cạnh sản phẩm để tạo video quảng bá với định dạng chuẩn dọc 9:16 (1080×1920).
 3. Sau khi video hoàn tất tại **Studio Jobs** (`/studio/jobs`), bấm **📋 Copy Post Kit** để lấy trọn bộ Tiêu đề, Hook 3s, Chú thích chốt sale và Hashtags thịnh hành (#thoitrangnu #phukienthoitrang #xuhuong #dealhot) kèm link Bio Storefront để đăng kênh TikTok ngay.
 4. Bấm **🔗 Ghim vào Kệ Bio** để sản phẩm tự động xuất hiện trên trang Bio Link (`/bio`) của kênh với cơ chế tracking lượt click tự động.
@@ -90,11 +90,10 @@ Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ th�
 4. Tại `/studio/jobs`, video dài 16:9 và bản cắt Shorts 9:16 đều có player phóng to và nút tải riêng biệt.
 
 ### 2f. Tạo video dọc
-1. Mở `/viral` và nhập chủ đề video.
-2. Chọn ảnh nhân vật từ thư viện kênh hoặc tải ảnh mới. Có thể dán link TikTok/Douyin làm video tham chiếu.
-3. Chọn engine và thời lượng rồi bấm **Tạo video**. Theo dõi trạng thái và tải kết quả tại `/studio/jobs`.
-
-Trang này hiện không cung cấp radar video realtime hay chủ đề mẫu tự động.
+1. Thêm `YOUTUBE_API_KEY` tại `/settings/system`, rồi mở `/viral`.
+2. `Refresh radar` tìm video YouTube 7 ngày gần nhất từ kênh có ít nhất 100,000 subscribers. Tự động quét chạy một lần mỗi ngày.
+3. Bật `Video Viral Xu Hướng 100% Gốc` trên dashboard để tự dựng tối đa một video mỗi lần quét. Cần có ảnh người mẫu do bạn tải lên. Video dựng cục bộ, không dùng lại hình hoặc âm thanh từ video nguồn.
+4. Theo dõi job và tải video tại `/studio/jobs`. Đầu ra dài ít nhất bằng video nguồn.
 
 ## 3. Vận hành hằng ngày (hands-off)
 
@@ -132,7 +131,7 @@ toàn vẹn từng database; bản hỏng bị loại, giữ bản cũ dùng đ�
 "Sao lưu & khôi phục" → "Bản sao dự phòng (offsite)" — app tự copy bản mới
 nhất sang đó mỗi ngày. Khôi phục: dừng app, giải nén bản muốn về, chép đè các
 file `.db` vào `data/`, mở app lại. Chi tiết:
-`docs/features/sao-luu-khoi-phuc.md`.
+`docs/features/backup-restore.md`.
 
 - **Kênh cảnh báo dự phòng:** ngoài Telegram, có thể nhập "Webhook dự phòng" ở
   Cài đặt · Hệ thống → "Thông báo Telegram" — khi Telegram gửi lỗi, cảnh báo

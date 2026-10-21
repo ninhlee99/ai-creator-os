@@ -15,10 +15,10 @@ each page includes only what it uses. */}}
 {{/* Sub-nav across the 5 settings sub-pages. .SettingsPage selects active. */}}
 {{define "settings-nav"}}
 <nav class="tabs" role="tablist" aria-label="Cài đặt">
-  <a href="/settings/he-thong"{{if eq .SettingsPage "he-thong"}} class="active"{{end}}>⚙️ Hệ thống</a>
+  <a href="/settings/system"{{if eq .SettingsPage "system"}} class="active"{{end}}>⚙️ Hệ thống</a>
   <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active"{{end}}>🛒 Accesstrade</a>
-  <a href="/settings/nha-cung-cap"{{if eq .SettingsPage "nha-cung-cap"}} class="active"{{end}}>🔀 Thứ tự AI</a>
-  <a href="/settings/an-toan"{{if eq .SettingsPage "an-toan"}} class="active"{{end}}>🛡️ An toàn</a>
+  <a href="/settings/providers"{{if eq .SettingsPage "providers"}} class="active"{{end}}>🔀 Thứ tự AI</a>
+  <a href="/settings/safety"{{if eq .SettingsPage "safety"}} class="active"{{end}}>🛡️ An toàn</a>
 </nav>
 {{end}}
 
@@ -81,7 +81,7 @@ by app.js and only submit after the user confirms here. */}}
     {{end}}
   </div>
   <div class="key-empty" data-empty {{if .Keys}}hidden{{end}}>
-    <p><strong>Chưa có API key nào.</strong> Thêm key để nhân quota miễn phí — hệ thống tự xoay vòng khi key hết quota.</p>
+    <p><strong>Chưa có API key nào.</strong> Thêm key để bật Gemini. Key cùng project dùng chung quota; xoay key không tăng giới hạn.</p>
     <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
   </div>
   <div class="key-add" hidden>
@@ -110,7 +110,7 @@ by app.js and only submit after the user confirms here. */}}
     <div class="provider-grid">
       {{if eq $p.Name "gemini"}}
       <div class="field field-span">
-        <label>API keys <span class="label-hint">— xoay vòng tự động khi hết quota</span></label>
+        <label>API keys <span class="label-hint">— cùng project dùng chung quota; thêm key không cộng quota</span></label>
         <input type="hidden" name="apikey" value="">
         {{template "keyring" (dict "Keys" $d.Keys "Chain" $chain)}}
       </div>

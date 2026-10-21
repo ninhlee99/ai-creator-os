@@ -56,7 +56,7 @@ Avatar agent: file JPEG 160px trong `internal/web/static/agents/`, serve qua `GE
 
 - **Orchestrator** điều phối; **AccountManager** vòng đời account; **PersonaEngine** gán persona; **Scheduler** xếp giờ live (max 2 live cùng lúc).
 - **Đội ngũ (`/team`):** bảng sức khỏe của ba pipeline Affiliate / Video dọc / Story; trạng thái suy ra từ dữ liệu thật, không phải agent chạy riêng. Chi tiết: [`features/agent-team.md`](features/agent-team.md).
-- **Provider chains:** TTS Gemini → Edge; LLM Gemini. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
+- **Provider chains:** TTS local macOS speech → Edge → Gemini; LLM Gemini. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
 - **Affiliate:** nguồn duy nhất Accesstrade datafeed (hunter tick → kho; TikTok Shop đã loại bỏ Đợt H1). Mặc định tạo từng shot bằng engine video; prompt cấm zoom, flash, flicker và rung. Nếu dùng ảnh tĩnh, dựng dissolve ổn định, không tạo chuyển động giả.
 
 Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affiliate: `ARCHITECTURE.md` §13

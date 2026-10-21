@@ -264,7 +264,7 @@ var curatedVietnameseTikTokTrends = []TikTokTrendVideo{
 		DiggCount:     2200000,
 		Likes:         "2.2M",
 		Music:         "Dramatic Mystery Ambient Sound",
-		VideoURL:      "https://www.tiktok.com/tag/kechuyen",
+		VideoURL:      "https://www.tiktok.com/tag/storytelling",
 		CoverURL:      "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=720&q=80",
 		PlayURL:       "/static/sample_916.mp4",
 		SuggestedHook: "Manh mối duy nhất để lại hiện trường là một dòng mật mã chưa ai giải được suốt 20 năm...",

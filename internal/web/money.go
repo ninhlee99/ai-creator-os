@@ -47,12 +47,12 @@ func (s *Server) moneyReadiness() []moneyRow {
 			"Chưa nối TikTok", "Nối TikTok ở trang Xuất bản MXH", "/publishers"),
 		row("Facebook Page", publishers.NewFacebookPublisher(user).IsConfigured(), false,
 			"Đã nối — video tải lên chưa công khai để bạn duyệt", "",
-			"Chưa nối Trang Facebook", "Nhập ID Trang + mã truy cập ở Cài đặt", "/settings/he-thong"),
+			"Chưa nối Trang Facebook", "Nhập ID Trang + mã truy cập ở Cài đặt", "/settings/system"),
 		row("Instagram Reels", false, publishers.NewInstagramPublisher(user).IsConfigured(),
 			"", "Đã nối — chỉ tải lên, chưa đăng (Instagram không có nháp; bật “Instagram: tự đăng công khai” nếu muốn)",
-			"Chưa nối Instagram", "Nhập ID Instagram + mã truy cập ở Cài đặt", "/settings/he-thong"),
+			"Chưa nối Instagram", "Nhập ID Instagram + mã truy cập ở Cài đặt", "/settings/system"),
 		row("Threads", publishers.NewThreadsPublisher(user).IsConfigured(), false,
 			"Đã nối — đăng bài kèm link sản phẩm/video", "",
-			"Chưa nối Threads", "Nhập ID + mã truy cập Threads ở Cài đặt", "/settings/he-thong"),
+			"Chưa nối Threads", "Nhập ID + mã truy cập Threads ở Cài đặt", "/settings/system"),
 	}
 }

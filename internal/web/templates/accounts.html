@@ -19,7 +19,7 @@
           {{if .HasModel}}
           <img src="{{.ModelPhotoURL}}" alt="Nhân vật @{{.Username}}" style="width:100%;height:100%;object-fit:cover" title="Nhân vật đại diện của kênh @{{.Username}}">
           {{else}}
-          <a href="/accounts/{{.ID}}?tab=nhan-vat" title="Chưa có nhân vật — Bấm để thêm nhân vật cho kênh" style="text-decoration:none;font-size:22px">👤</a>
+          <a href="/accounts/{{.ID}}?tab=model-photos" title="Chưa có nhân vật — Bấm để thêm nhân vật cho kênh" style="text-decoration:none;font-size:22px">👤</a>
           {{end}}
         </div>
         <div class="channel-info-meta">
@@ -28,9 +28,9 @@
             <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
             <span class="badge badge-info" style="font-size:10.5px">{{.GrowthStage}}</span>
             {{if .HasModel}}
-            <a href="/accounts/{{.ID}}?tab=nhan-vat" class="badge badge-ok" style="font-size:10.5px;text-decoration:none" title="Nhân vật đại diện của kênh">👤 Nhân vật riêng</a>
+            <a href="/accounts/{{.ID}}?tab=model-photos" class="badge badge-ok" style="font-size:10.5px;text-decoration:none" title="Nhân vật đại diện của kênh">👤 Nhân vật riêng</a>
             {{else}}
-            <a href="/accounts/{{.ID}}?tab=nhan-vat" class="badge badge-warn" style="font-size:10.5px;text-decoration:none" title="Chưa có nhân vật — Bấm để thêm">+ Thêm nhân vật</a>
+            <a href="/accounts/{{.ID}}?tab=model-photos" class="badge badge-warn" style="font-size:10.5px;text-decoration:none" title="Chưa có nhân vật — Bấm để thêm">+ Thêm nhân vật</a>
             {{end}}
             {{if .Autopilot}}<span class="badge badge-ok">Tự động</span>{{end}}
           </div>

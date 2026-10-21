@@ -92,7 +92,7 @@ nghiên cứu lại: nếu đổi ý, chi phí thật là thời gian duyệt, k
 
 ## 5. TTS tiếng Việt
 
-App hiện dùng Gemini TTS với Edge làm phương án dự phòng. Các so sánh model local cũ đã bỏ khỏi hướng dẫn vận hành.
+App ưu tiên giọng đọc macOS nội bộ, sau đó Edge và Gemini. Vì vậy giọng nói mặc định không tiêu thụ quota API.
 
 ## 6. Avatar realtime — kết luận cuối cùng (2 vòng research 2026-10-02)
 

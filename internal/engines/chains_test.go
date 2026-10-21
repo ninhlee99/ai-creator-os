@@ -7,12 +7,12 @@ import (
 func TestDefaultChainsTTSWiring(t *testing.T) {
 	_, ttsChain := DefaultChains(nil, nil, nil)
 
-	// Default TTS order must be gemini -> edge.
+	// Default TTS order must use local speech before network providers.
 	var names []string
 	for _, e := range ttsChain.Config().Order {
 		names = append(names, e.Name)
 	}
-	want := []string{"gemini", "edge"}
+	want := []string{"say", "edge", "gemini"}
 	if len(names) != len(want) {
 		t.Fatalf("order = %v, want %v", names, want)
 	}
@@ -34,7 +34,7 @@ func TestDefaultChainsConfigSource(t *testing.T) {
 		t.Fatalf("llm active = %v", got)
 	}
 	// TTS had no saved config -> default order kept.
-	if got := ttsChain.ActiveProviders(); len(got) != 2 || got[0] != "gemini" {
+	if got := ttsChain.ActiveProviders(); len(got) != 3 || got[0] != "say" {
 		t.Fatalf("tts active = %v", got)
 	}
 
@@ -47,10 +47,10 @@ func TestDefaultChainsConfigSource(t *testing.T) {
 
 func TestDefaultTTSConfig(t *testing.T) {
 	cfg := DefaultTTSConfig([]string{"key"})
-	if len(cfg.Order) != 2 {
+	if len(cfg.Order) != 3 {
 		t.Fatalf("order len = %d", len(cfg.Order))
 	}
-	if cfg.Order[0].Name != "gemini" || cfg.Order[1].Name != "edge" {
+	if cfg.Order[0].Name != "say" || cfg.Order[1].Name != "edge" || cfg.Order[2].Name != "gemini" {
 		t.Fatalf("order = %v", cfg.Order)
 	}
 	for _, e := range cfg.Order {

@@ -88,6 +88,7 @@ document.querySelectorAll('.keyring').forEach(function (root) {
       return;
     }
     if (ev.target.closest('.key-test-btn')) {
+      if (!window.confirm('Kiểm tra key sẽ gửi request thật tới Gemini và tiêu thụ quota. Tiếp tục?')) return;
       var btn = ev.target.closest('.key-test-btn');
       btn.disabled = true;
       msg.hidden = false; msg.textContent = 'Đang kiểm tra…'; msg.className = 'key-msg';

@@ -24,9 +24,9 @@ chuyên sâu như `/growth`, `/harness`, `/team` không chiếm vị trí điề
 
 | Trang | Câu hỏi duy nhất |
 |---|---|
-| Hệ thống (`he-thong`) | App đang chạy chế độ gì? (version, ngân sách, env, API, sao lưu, Web AI) |
-| Nhà cung cấp (`nha-cung-cap`) | AI dùng nhà cung cấp nào trước, key nào còn sống? |
-| An toàn (`an-toan`) | Có đang ở chế độ an toàn không? (dry-run, kill switch) |
+| Hệ thống (`system`) | App đang chạy chế độ gì? (version, ngân sách, env, API, sao lưu, Web AI) |
+| Nhà cung cấp (`providers`) | AI dùng nhà cung cấp nào trước, key nào còn sống? |
+| An toàn (`safety`) | Có đang ở chế độ an toàn không? (dry-run, kill switch) |
 | Accesstrade (`/settings/accesstrade`) | Kết nối và tự động hóa Accesstrade thế nào? |
 
 Tab Nhân vật AI và lịch live đã park; template cũ nằm ngoài `go:embed`.

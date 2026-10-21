@@ -33,7 +33,7 @@ này. Vi phạm = làm lại. (Ninh chốt 2026-10-02.)
 
 - **README.md chính**: mô tả đúng trạng thái hiện tại của app (tính năng,
   cách chạy, yêu cầu). Không được mô tả tính năng đã park như còn hoạt động.
-- **`docs/features/<tinh-nang>.md`**: mỗi tính năng một file — cách kích hoạt,
+- **`docs/features/<feature>.md`**: mỗi tính năng một file — cách kích hoạt,
   luồng code chính xác (tên file/hàm), tương tác SQLite/API, xử lý fail-closed,
   key rotation liên quan. Viết bằng cách **đọc code**, không bịa.
 - **Quy tắc "docs đi cùng code"**: wave nào sửa code thì wave đó cập nhật docs

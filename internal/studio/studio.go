@@ -330,6 +330,16 @@ func (s *Studio) ModelLibrary() (*ModelStore, error) {
 	return NewModelStore(s.db, s.workRoot)
 }
 
+// DefaultModelPhoto returns first available uploaded model image for automated
+// affiliate jobs that do not target a specific channel account.
+func (s *Studio) DefaultModelPhoto() string {
+	photos := s.uploadedModelPhotos(0)
+	if len(photos) == 0 {
+		return ""
+	}
+	return photos[0]
+}
+
 // WorkDir is the per-job work root (storyboard assets live under it).
 func (s *Studio) WorkDir() string { return s.workRoot }
 
