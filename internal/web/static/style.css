@@ -1,4 +1,4 @@
-/* AI Creator OS — bảng màu cơ bản (Đợt AK UI).
+/* MiuNova — bảng màu cơ bản (Đợt AK UI).
    Nền xám trung tính, chữ gần đen, MỘT màu nhấn xanh dương chuẩn; màu
    trạng thái theo quy ước ai cũng hiểu: xanh lá = ổn, cam = cần chú ý,
    đỏ = lỗi. Mọi cặp chữ/nền đạt WCAG AA (≥4.5:1). Light là mặc định; dark
@@ -165,11 +165,9 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   margin-bottom: 8px;
 }
 .brand-logo {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: linear-gradient(135deg, #2563eb, #3b82f6);
-  color: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 800;
-  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+  width: 38px; height: 38px; flex: 0 0 38px;
+  display: block; background: none; border-radius: 0;
+  box-shadow: none;
 }
 .brand-text { display: flex; flex-direction: column; }
 .brand-title {
@@ -1170,18 +1168,21 @@ details.product-manual > form > .btn { margin-top: 2px; }
 }
 .mobile-brand-title {
   display: none;
+  align-items: center;
+  gap: 6px;
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.2px;
 }
+.mobile-brand-mark { width: 25px; height: 25px; flex: 0 0 25px; }
 
 @media (max-width: 800px) {
   input[type=text], input[type=password], input[type=number],
   input[type=url], input[type=email], textarea, select { font-size: 16px; }
   .btn-sm { padding: 10px 16px; font-size: 14px; min-height: 44px; }
   .nav-toggle-btn { display: inline-flex; }
-  .mobile-brand-title { display: inline-block; }
+  .mobile-brand-title { display: inline-flex; }
   .layout { display: block; }
   .sidebar {
     position: fixed;
@@ -1298,103 +1299,94 @@ details.product-manual > form > .btn { margin-top: 2px; }
 .webai-header-left .subtitle { margin: 0; font-size: 13.5px; color: var(--muted); }
 .webai-header-actions { display: flex; gap: 8px; align-items: center; }
 
-/* Web AI Grid */
+/* Web AI account cards */
+.webai-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.webai-section-head h3 { margin: 0; font-size: 17px; }
+.webai-section-actions { display: flex; align-items: center; gap: 10px; }
+.webai-ready-total { color: var(--muted); font-size: 12px; font-weight: 600; }
 .webai-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
   margin-bottom: 24px;
 }
 .webai-card {
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 12px;
-  position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  justify-content: flex-start;
+  gap: 14px;
+  min-width: 0;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .webai-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-  border-color: var(--platform-color, var(--accent));
-}
-.webai-card.connected {
-  border-top: 3px solid var(--platform-color, var(--ok));
+  box-shadow: var(--shadow-md);
+  border-color: var(--border);
 }
 .webai-card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 0;
+  gap: 10px;
+  min-height: 32px;
 }
 .webai-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1 1 auto;
+  gap: 9px;
+  flex: 1 1 0;
   min-width: 0;
 }
 .webai-brand > div { min-width: 0; }
 .webai-icon {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
   flex: 0 0 auto;
+  filter: grayscale(1);
 }
 .webai-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.25;
   color: var(--text);
+  overflow-wrap: anywhere;
 }
-.webai-tag {
-  display: block;
-  margin: 0 0 0 32px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--muted);
-}
-.status-pill {
-  font-size: 11px;
+.webai-card .status-pill {
+  font-size: 10.5px;
   font-weight: 600;
   padding: 3px 7px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
-.status-pill-ok {
-  background: var(--ok-bg);
-  color: var(--ok-text);
-  border: 1px solid var(--ok);
-}
-.status-pill-off {
+.webai-card .status-pill-ok,
+.webai-card .status-pill-warn,
+.webai-card .status-pill-off {
   background: var(--bg3);
   color: var(--muted);
   border: 1px solid var(--border);
-  white-space: nowrap;
 }
 .webai-status { flex: 0 0 auto; max-width: 100%; }
-.pulse-dot {
-  width: 7px;
-  height: 7px;
+.webai-card .pulse-dot {
+  width: 6px;
+  height: 6px;
   background-color: var(--ok);
   border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7);
-  animation: pulse-green 1.8s infinite;
-}
-@keyframes pulse-green {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+  box-shadow: none;
+  animation: none;
 }
 .webai-desc {
   font-size: 13px;
@@ -1429,52 +1421,71 @@ details.product-manual > form > .btn { margin-top: 2px; }
 .webai-card-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
+  gap: 7px;
   align-items: stretch;
+  margin-top: auto;
 }
+.webai-card-actions-flow { grid-template-columns: minmax(0, 1fr) 42px; }
 .webai-card-actions > .btn {
   display: flex;
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
   white-space: nowrap;
+  justify-content: center;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+}
+.webai-card-actions-flow .webai-google-action {
+  min-width: 42px;
+  padding: 7px;
+}
+.webai-google-action svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .webai-account-summary {
   display: flex;
   align-items: center;
   width: 100%;
-  gap: 11px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 7px 9px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg3);
   color: var(--text);
   text-align: left;
   cursor: pointer;
-  transition: border-color .15s ease, background .15s ease;
+  transition: background .15s ease;
 }
-.webai-account-summary:hover,
-.webai-account-summary:focus-visible {
-  border-color: var(--accent);
+.webai-account-summary:hover {
   background: var(--hover-bg);
 }
 .webai-account-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .webai-account-count {
   display: grid;
   place-items: center;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   background: var(--bg2);
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 800;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
 }
 .webai-account-summary-copy { display: grid; gap: 2px; min-width: 0; }
-.webai-account-summary-copy strong { font-size: 12px; }
+.webai-account-summary-copy strong { font-size: 12px; font-weight: 600; }
 .webai-account-summary-copy small { color: var(--muted); font-size: 11px; }
-.webai-account-summary-arrow { margin-left: auto; color: var(--muted); font-size: 22px; line-height: 1; }
+.webai-account-summary-arrow { margin-left: auto; color: var(--muted); font-size: 18px; line-height: 1; }
 .webai-accounts-modal-box { max-width: 620px; }
 .webai-accounts-modal-subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
 .webai-account-list { display: grid; gap: 8px; }
@@ -1509,6 +1520,16 @@ details.product-manual > form > .btn { margin-top: 2px; }
 @media (max-width: 600px) {
   .webai-account-row { align-items: flex-start; flex-direction: column; }
   .webai-account-actions { align-self: flex-end; }
+}
+@media (max-width: 1050px) {
+  .webai-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .webai-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .webai-section-actions { width: 100%; justify-content: space-between; }
+  .webai-grid { grid-template-columns: 1fr; }
 }
 
 /* Multi-file product media picker on the quick creator. */

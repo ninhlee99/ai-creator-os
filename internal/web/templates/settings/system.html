@@ -27,135 +27,7 @@
 <!-- =========================================================================
      TAB 3: AI KEYRING POOL (ChatGPT, Claude, Gemini, Grok, Muse AI, Google Flow)
      ========================================================================= -->
-<div id="panel-webai" class="settings-tab-panel" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-    <h3 style="margin:0">Tài khoản AI (ChatGPT, Claude, Gemini, Grok, Muse, Google Flow)</h3>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()" style="font-weight:700">
-        ⚡ Kiểm Tra Tất Cả Phiên
-      </button>
-      <span class="badge badge-ok" id="badge-webai-connected">{{.WebAIConnected}} sẵn sàng</span>
-    </div>
-  </div>
-
-  <section class="card" style="margin-bottom:16px;padding:16px">
-    <h3 style="margin:0 0 8px">Công cụ tạo video</h3>
-    <div class="grid2" style="gap:12px">
-      <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
-        <strong>Google Flow · tạo video</strong>
-        <p class="hint" style="margin:7px 0">Tạo job từ Studio bằng phiên Google Flow đã kết nối. MP4 được tải thẳng vào thư viện Studio.</p>
-        <span class="badge badge-dim">Phiên web · không cần API key</span>
-      </article>
-      <article style="padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)">
-        <strong>Muse Chat · kịch bản, ảnh, video</strong>
-        <p class="hint" style="margin:7px 0">Studio gửi yêu cầu qua gateway của phiên Muse đã lưu; job chạy nền và tự tải media về.</p>
-        <span class="badge badge-dim">Gateway trực tiếp · tạo nội dung không mở cửa sổ trình duyệt</span>
-      </article>
-    </div>
-  </section>
-
-  <div class="webai-grid">
-    {{range .WebAIPlatforms}}
-    <div class="webai-card {{if .IsConnected}}connected{{end}}" style="--platform-color: {{.Platform.Color}}">
-      <div class="webai-card-top">
-        <div class="webai-brand">
-          <span class="webai-icon">{{.Platform.Icon}}</span>
-          <div class="webai-name">{{.Platform.Name}}</div>
-        </div>
-        <div class="webai-status">
-          {{if gt .ReadyCount 0}}
-          <span class="status-pill status-pill-ok"><span class="pulse-dot"></span> {{.ReadyCount}} sẵn sàng{{if gt .CooldownCount 0}} · {{.CooldownCount}} cooldown{{end}}</span>
-          {{else if gt .CooldownCount 0}}
-          <span class="status-pill status-pill-warn">⏳ {{.CooldownCount}} cooldown</span>
-          {{else}}
-          {{if eq .Platform.ID "googleflow"}}
-          {{if gt .TotalCount 0}}
-          <span class="status-pill status-pill-warn">⚠ {{.TotalCount}} tài khoản cần kiểm tra</span>
-          {{else}}
-          <span class="status-pill status-pill-off">Chưa kết nối</span>
-          {{end}}
-          {{else if gt .TotalCount 0}}
-          <span class="status-pill status-pill-warn">⚠ {{.TotalCount}} tài khoản cần kiểm tra</span>
-          {{else}}
-          <span class="status-pill status-pill-off">Chưa kết nối</span>
-          {{end}}
-          {{end}}
-        </div>
-      </div>
-      <span class="webai-tag">{{.Platform.Badge}}</span>
-
-      <div class="webai-desc">{{.Platform.Description}}</div>
-
-      <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
-        <span class="webai-account-count">{{.TotalCount}}</span>
-        <span class="webai-account-summary-copy"><strong>Tài khoản</strong><small>Xem danh sách chi tiết</small></span>
-        <span class="webai-account-summary-arrow" aria-hidden="true">›</span>
-      </button>
-      <template id="webai-account-template-{{.Platform.ID}}">
-        {{if .Accounts}}
-          <div class="webai-account-list">
-          {{range .Accounts}}
-          <div class="webai-account-row">
-            <div class="webai-account-info">
-              <strong>{{if .Email}}{{.Email}}{{else}}{{.AccountName}}{{end}}</strong>
-              <div class="webai-account-meta-line">
-              {{if eq .Status "cooldown"}}
-              <span class="badge badge-warn">{{.CooldownLabel}}</span>
-              {{else if or (eq .Status "invalid") (eq .Status "expired")}}
-              <span class="badge badge-err">Hết hạn</span>
-              {{else if eq .Status "disconnected"}}
-              <span class="badge badge-err">Đã ngắt kết nối</span>
-              {{else if eq .Status "rate_limited"}}
-              <span class="badge badge-warn">Đang giới hạn</span>
-              {{else if or (eq .Status "ok") (eq .Status "connected")}}
-              <span class="badge badge-ok">Sẵn sàng</span>
-              {{else}}
-              <span class="badge badge-warn">Chưa xác minh</span>
-              {{end}}
-              <span class="hint">{{.Requests}} req</span>
-              </div>
-            </div>
-            <div class="webai-account-actions">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="testWebAIAccount('{{.ID}}', this)" title="Kiểm tra phiên sống ngay" style="font-size:11px;padding:2px 7px">⚡ Test</button>
-              {{if eq .Status "cooldown"}}
-              <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
-                <input type="hidden" name="id" value="{{.ID}}">
-                <input type="hidden" name="back" value="/settings/system#tab-webai">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Mở lại ngay" style="font-size:11px;padding:2px 6px">Mở lại</button>
-              </form>
-              {{end}}
-              <form method="post" action="/web-ai/accounts/delete" style="display:inline">
-                <input type="hidden" name="id" value="{{.ID}}">
-                <input type="hidden" name="back" value="/settings/system#tab-webai">
-                <button type="submit" class="btn btn-secondary btn-sm" title="Xóa tài khoản" style="font-size:11px;padding:2px 6px;color:var(--err)">🗑</button>
-              </form>
-            </div>
-          </div>
-          {{end}}
-          </div>
-        {{else}}
-          <div class="webai-account-empty">
-            <strong>Chưa có tài khoản</strong>
-            <span>{{if eq .Platform.ID "googleflow"}}Đăng nhập Flow hoặc đồng bộ phiên Google từ Gemini.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
-          </div>
-        {{end}}
-      </template>
-
-      <div class="webai-card-actions">
-        <button type="button" class="btn btn-primary btn-sm webai-login-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
-          <span>🌐</span> Kết nối phiên
-        </button>
-        {{if eq .Platform.ID "museai"}}<span class="hint">Cửa sổ chỉ dùng để đăng nhập; tạo nội dung từ Studio chạy nền.</span>{{end}}
-        {{if eq .Platform.ID "googleflow"}}
-        <button type="button" class="btn btn-primary btn-sm webai-google-action" style="font-weight:700;font-size:12px;padding:8px 10px" onclick="syncGoogleFlowAccount(this)" title="Đồng bộ phiên Google đang kết nối trong Gemini">
-          🔄 Đồng bộ Google từ Gemini
-        </button>
-        {{end}}
-      </div>
-    </div>
-    {{end}}
-  </div>
-</div>
+{{template "settings-system-webai" .}}
 
 <div id="webai-accounts-modal" class="webai-modal-backdrop" hidden>
   <div class="webai-modal-box webai-accounts-modal-box" role="dialog" aria-modal="true" aria-labelledby="webai-accounts-modal-title">
@@ -703,10 +575,10 @@
 
 <!-- Automated CDP Browser Login Modal -->
 <div id="browser-login-modal" class="webai-modal-backdrop" hidden>
-  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);max-width:520px;padding:24px">
+  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);width:min(94vw,680px);max-width:680px;max-height:88vh;overflow-y:auto;padding:24px">
     <div class="modal-head" style="margin-bottom:16px;padding:0 0 12px 0;border-bottom:1px solid var(--border)">
       <h3 id="bl-modal-title" style="margin:0;font-size:18px;display:flex;align-items:center;gap:8px">
-        <span>🌐</span> Đang Đăng Nhập Tự Động
+        <span>🌐</span> Đăng nhập Web AI
       </h3>
       <button type="button" class="modal-close-btn" onclick="cancelBrowserLogin()">✕</button>
     </div>
@@ -718,102 +590,24 @@
           ⏳
         </div>
         <div id="bl-status-text" style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">
-          Đang khởi động trình duyệt...
+          Đang mở khung trình duyệt đăng nhập bảo mật...
         </div>
         <div id="bl-status-subtext" style="font-size:12.5px;color:var(--muted);line-height:1.5">
-          Một cửa sổ trình duyệt (Edge/Chrome) đang được mở. Bạn chỉ cần thực hiện đăng nhập bình thường trên cửa sổ đó.
+          Một cửa sổ trình duyệt (Edge/Chrome) sẽ mở. Hoàn tất đăng nhập trên cửa sổ đó.
         </div>
       </div>
-
-      <!-- Step List -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;display:flex;flex-direction:column;gap:10px">
-        <div id="bl-step-1" style="display:flex;align-items:center;gap:10px;color:var(--text);font-weight:700">
-          <span style="font-size:16px">1️⃣</span>
-          <span>Mở cửa sổ trình duyệt an toàn tới trang dịch vụ</span>
+      <div id="bl-browser-view">
+        <div style="background:#111;border-radius:12px;overflow:hidden;text-align:center;line-height:0">
+          <img id="bl-browser-screen" alt="Trang đăng nhập trên máy chủ" draggable="false" style="display:block;width:100%;max-height:54vh;object-fit:contain;touch-action:none;user-select:none;-webkit-user-select:none">
         </div>
-        <div id="bl-step-2" style="display:flex;align-items:center;gap:10px;color:var(--muted)">
-          <span style="font-size:16px">2️⃣</span>
-          <span>Đăng nhập bình thường (Google, Apple, Email, mật khẩu)</span>
-        </div>
-        <div id="bl-step-3" style="display:flex;align-items:center;gap:10px;color:var(--muted)">
-          <span style="font-size:16px">3️⃣</span>
-          <span>Tự động nhận diện phiên &amp; lưu tài khoản (Zero-Copy Cookie)</span>
-        </div>
-      </div>
-
-      <div style="font-size:11.5px;color:var(--muted);text-align:center;line-height:1.4">
-        🔒 Công nghệ kết nối Chrome DevTools Protocol (CDP) tự động — Tuyệt đối không cần sao chép cookie thủ công.
+        <label for="bl-browser-keyboard" style="display:block;margin:10px 0 5px;font-size:12px;color:var(--muted)">Chạm ô này để mở bàn phím điện thoại; chữ sẽ nhập vào vị trí đang chọn trên trang.</label>
+        <input id="bl-browser-keyboard" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Nhập văn bản vào trang đăng nhập…" style="box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)">
       </div>
     </div>
 
     <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
       <button id="bl-close-after-login" type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy bỏ / Đóng</button>
     </div>
-  </div>
-</div>
-
-<!-- Connect Session Modal -->
-<div id="connect-modal" class="webai-modal-backdrop" hidden>
-  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);max-width:520px;padding:24px">
-    <div class="modal-head" style="margin-bottom:16px">
-      <h3 id="modal-title" style="margin:0;font-size:18px">Kết nối tài khoản</h3>
-      <button type="button" class="modal-close-btn" onclick="closeConnectModal()">✕</button>
-    </div>
-
-    <!-- Quick Direct CDP Browser Login -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:6px;color:var(--text)">
-        Cách 1: Đăng nhập tự động qua trình duyệt (Khuyên dùng)
-      </div>
-
-      <button type="button" class="btn btn-primary" onclick="triggerBrowserLoginFromModal()" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 16px;font-size:13.5px;font-weight:700;border-radius:8px;box-sizing:border-box">
-        🌐 Mở Cửa Sổ Đăng Nhập Tự Động
-      </button>
-      <!-- Quick Sync Google Session for Google Flow -->
-      <div id="connect-sync-google-box" style="margin-top:10px;display:none">
-        <button type="button" class="btn btn-secondary" onclick="syncGoogleFlowFromModal(this)" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:10px 14px;font-size:13px;font-weight:700;background:rgba(37,99,235,0.08);color:#2563eb;border:1px solid rgba(37,99,235,0.25);border-radius:8px">
-          ⚡ Đồng Bộ Nhanh Từ Phiên Google (Gemini) Đã Có
-        </button>
-      </div>
-      <div style="margin-top:8px">
-        <a href="#" id="connect-platform-link" target="_blank" rel="noreferrer" style="font-size:11.5px;color:var(--muted);text-decoration:underline">
-          Hoặc mở trang đăng nhập chính thức trong tab mới ↗
-        </a>
-      </div>
-      <div id="connect-helper-note" style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4"></div>
-    </div>
-
-    <form method="post" action="/web-ai/accounts/add">
-      <input type="hidden" name="platform" id="connect-platform-id">
-      <input type="hidden" name="back" value="/settings/system#tab-webai">
-      <div class="modal-body" style="padding:0">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text)">
-          Cách 2: Nhập Khóa API hoặc Dán Cookie Header thủ công
-        </div>
-        <div class="field" style="margin-bottom:14px">
-          <label style="margin:0 0 6px 0;font-weight:600;font-size:12.5px">Khóa API hoặc Cookie Header <span class="req">*</span></label>
-          <textarea name="session_key" id="connect-session-key" rows="2" required placeholder="Dán mã API Key hoặc Cookie Header (__Secure-1PSID=...)..." style="width:100%;padding:10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box"></textarea>
-          <div class="hint" id="connect-auth-guide" style="font-size:11.5px;margin-top:4px"></div>
-        </div>
-        <div class="grid2">
-          <div class="field">
-            <label style="font-size:12px">Tên gợi nhớ (tùy chọn)</label>
-            <input type="text" name="email" id="connect-email" placeholder="Ví dụ: Tài khoản chính" style="padding:8px 10px;font-size:12.5px;border-radius:6px;border:1px solid var(--border)">
-          </div>
-          <div class="field">
-            <label style="font-size:12px">Gói dịch vụ</label>
-            <select name="tier" id="connect-tier" style="padding:8px 10px;font-size:12.5px;border-radius:6px;border:1px solid var(--border)">
-              <option value="free">Miễn phí (Free)</option>
-              <option value="plus">Plus / Pro</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="modal-foot" style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px">
-        <button type="button" class="btn btn-secondary" onclick="closeConnectModal()">Hủy</button>
-        <button type="submit" class="btn btn-primary" style="font-weight:700">Lưu kết nối</button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -987,13 +781,60 @@ function closeConnectModal() {
   document.getElementById('connect-modal').hidden = true;
 }
 
+var webAIAccountsPreviousFocus = null;
+function openWebAIAccountsModal(trigger) {
+  if (!trigger) return;
+  var platform = trigger.dataset.platform;
+  var template = document.getElementById('webai-account-template-' + platform);
+  var modal = document.getElementById('webai-accounts-modal');
+  var content = document.getElementById('webai-accounts-modal-content');
+  var title = document.getElementById('webai-accounts-modal-title');
+  var subtitle = document.getElementById('webai-accounts-modal-subtitle');
+  if (!template || !modal || !content || !title || !subtitle) return;
+
+  webAIAccountsPreviousFocus = trigger;
+  title.textContent = 'Tài khoản · ' + trigger.dataset.platformName;
+  subtitle.textContent = trigger.querySelector('.webai-account-count').textContent.trim() + ' tài khoản';
+  content.replaceChildren(template.content.cloneNode(true));
+  modal.hidden = false;
+  var closeButton = modal.querySelector('.modal-close-btn');
+  if (closeButton) closeButton.focus();
+}
+
+function closeWebAIAccountsModal() {
+  var modal = document.getElementById('webai-accounts-modal');
+  var content = document.getElementById('webai-accounts-modal-content');
+  if (!modal) return;
+  modal.hidden = true;
+  if (content) content.replaceChildren();
+  if (webAIAccountsPreviousFocus) {
+    webAIAccountsPreviousFocus.focus();
+    webAIAccountsPreviousFocus = null;
+  }
+}
+
+var webAIAccountsModal = document.getElementById('webai-accounts-modal');
+if (webAIAccountsModal) {
+  webAIAccountsModal.addEventListener('click', function(event) {
+    if (event.target === webAIAccountsModal) closeWebAIAccountsModal();
+  });
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && !webAIAccountsModal.hidden) closeWebAIAccountsModal();
+  });
+}
+
 var currentLoginSessionId = null;
 var currentLoginPlatform = null;
 var currentLoginPlatformName = null;
 var browserLoginPollTimer = null;
+var browserLoginScreenTimer = null;
+var browserLoginScreenURL = null;
+var browserLoginInputQueue = Promise.resolve();
+var browserLoginStartGeneration = 0;
 var browserLoginSucceeded = false;
 
 function startBrowserLogin(platform, platformName) {
+  var requestGeneration = ++browserLoginStartGeneration;
   currentLoginPlatform = platform;
   currentLoginPlatformName = platformName || platform;
   currentLoginSessionId = null;
@@ -1006,17 +847,12 @@ function startBrowserLogin(platform, platformName) {
   var icon = document.getElementById('bl-status-icon');
   var statusText = document.getElementById('bl-status-text');
   var subText = document.getElementById('bl-status-subtext');
-  var step1 = document.getElementById('bl-step-1');
-  var step2 = document.getElementById('bl-step-2');
-  var step3 = document.getElementById('bl-step-3');
-
-  if (title) title.innerHTML = '<span>🌐</span> Đang Đăng Nhập: ' + currentLoginPlatformName;
+  var browserView = document.getElementById('bl-browser-view');
+  if (browserView) browserView.hidden = true;
+  if (title) title.innerHTML = '<span>🌐</span> Đăng nhập Web AI';
   if (icon) { icon.textContent = '⏳'; icon.style.animation = 'pulse 1.8s infinite ease-in-out'; }
   if (statusText) statusText.textContent = 'Đang khởi động trình duyệt bảo mật...';
-  if (subText) subText.textContent = 'Đang mở cửa sổ trình duyệt tới trang đăng nhập của ' + currentLoginPlatformName + '...';
-  if (step1) { step1.style.color = 'var(--text)'; step1.style.fontWeight = '700'; }
-  if (step2) { step2.style.color = 'var(--muted)'; step2.style.fontWeight = 'normal'; }
-  if (step3) { step3.style.color = 'var(--muted)'; step3.style.fontWeight = 'normal'; }
+  if (subText) subText.textContent = 'Đang mở khung trình duyệt đăng nhập bảo mật...';
 
   if (modal) modal.hidden = false;
 
@@ -1027,6 +863,16 @@ function startBrowserLogin(platform, platformName) {
   })
   .then(function(r) { return r.json(); })
   .then(function(res) {
+    if (requestGeneration !== browserLoginStartGeneration) {
+      if (res.ok && res.session_id) {
+        fetch('/web-ai/browser-login/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Login-Session': res.session_id },
+          body: JSON.stringify({ session_id: res.session_id })
+        }).catch(function() {});
+      }
+      return;
+    }
     if (!res.ok) {
       if (icon) { icon.textContent = '❌'; icon.style.animation = 'none'; }
       if (statusText) statusText.textContent = 'Không thể mở trình duyệt';
@@ -1035,31 +881,147 @@ function startBrowserLogin(platform, platformName) {
     }
     currentLoginSessionId = res.session_id;
     if (statusText) statusText.textContent = 'Đang đợi bạn đăng nhập trên trình duyệt...';
-    if (subText) subText.textContent = 'Vui lòng hoàn tất đăng nhập tài khoản ' + currentLoginPlatformName + ' trên cửa sổ vừa hiện. Hệ thống sẽ tự nhận diện ngay khi xong!';
-    if (step2) { step2.style.color = 'var(--text)'; step2.style.fontWeight = '700'; }
+    if (subText) subText.textContent = 'Đăng nhập ngay trong khung bên dưới. MiuNova sẽ tự lưu phiên khi xong.';
+    if (browserView) browserView.hidden = false;
+    refreshBrowserLoginScreen();
+    if (browserLoginScreenTimer) clearInterval(browserLoginScreenTimer);
+    browserLoginScreenTimer = setInterval(refreshBrowserLoginScreen, 1400);
 
     if (browserLoginPollTimer) clearInterval(browserLoginPollTimer);
     browserLoginPollTimer = setInterval(pollBrowserLoginStatus, 1000);
   })
   .catch(function(err) {
+    if (requestGeneration !== browserLoginStartGeneration) return;
     if (icon) { icon.textContent = '❌'; icon.style.animation = 'none'; }
     if (statusText) statusText.textContent = 'Lỗi kết nối';
     if (subText) subText.textContent = err.message;
   });
 }
 
+function refreshBrowserLoginScreen() {
+  if (!currentLoginSessionId) return;
+  var sessionId = currentLoginSessionId;
+  fetch('/web-ai/browser-login/screen?_=' + Date.now(), { cache: 'no-store', headers: { 'X-Login-Session': sessionId } })
+    .then(function(response) { if (!response.ok) throw new Error('screen not ready'); return response.blob(); })
+    .then(function(blob) {
+      if (currentLoginSessionId !== sessionId) return;
+      var image = document.getElementById('bl-browser-screen');
+      if (!image) return;
+      var nextURL = URL.createObjectURL(blob);
+      var oldURL = browserLoginScreenURL;
+      browserLoginScreenURL = nextURL;
+      image.src = nextURL;
+      if (oldURL) URL.revokeObjectURL(oldURL);
+    })
+    .catch(function() {});
+}
+
+function stopBrowserLoginViewer() {
+  if (browserLoginScreenTimer) {
+    clearInterval(browserLoginScreenTimer);
+    browserLoginScreenTimer = null;
+  }
+  var image = document.getElementById('bl-browser-screen');
+  if (image) image.removeAttribute('src');
+  if (browserLoginScreenURL) {
+    URL.revokeObjectURL(browserLoginScreenURL);
+    browserLoginScreenURL = null;
+  }
+  var view = document.getElementById('bl-browser-view');
+  if (view) view.hidden = true;
+  var keyboard = document.getElementById('bl-browser-keyboard');
+  if (keyboard) keyboard.value = '';
+}
+
+function sendBrowserLoginInput(payload) {
+  if (!currentLoginSessionId) return;
+  var sessionId = currentLoginSessionId;
+  browserLoginInputQueue = browserLoginInputQueue.catch(function() {}).then(function() {
+    return fetch('/web-ai/browser-login/input', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Login-Session': sessionId },
+      body: JSON.stringify(payload)
+    });
+  }).catch(function() {});
+}
+
+(function bindBrowserLoginControls() {
+  var image = document.getElementById('bl-browser-screen');
+  if (image) {
+    var lastPointerMoveAt = 0;
+    function coords(event) {
+      var rect = image.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+        y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+      };
+    }
+    function pointerPayload(event, action) {
+      var point = coords(event);
+      return { type: 'pointer', action: action, pointer_type: event.pointerType === 'touch' ? 'touch' : 'mouse', button: 'left', click_count: Math.min(2, Math.max(1, event.detail || 1)), x: point.x, y: point.y };
+    }
+    image.addEventListener('pointerdown', function(event) {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      if (image.setPointerCapture) image.setPointerCapture(event.pointerId);
+      sendBrowserLoginInput(pointerPayload(event, 'down'));
+    });
+    image.addEventListener('pointermove', function(event) {
+      if (!event.buttons) return;
+      var now = Date.now();
+      if (now - lastPointerMoveAt < 45) return;
+      lastPointerMoveAt = now;
+      sendBrowserLoginInput(pointerPayload(event, 'move'));
+    });
+    image.addEventListener('pointerup', function(event) {
+      event.preventDefault();
+      sendBrowserLoginInput(pointerPayload(event, 'up'));
+    });
+    image.addEventListener('pointercancel', function(event) {
+      sendBrowserLoginInput(pointerPayload(event, 'up'));
+    });
+    image.addEventListener('wheel', function(event) {
+      event.preventDefault();
+      var point = coords(event);
+      sendBrowserLoginInput({ type: 'wheel', x: point.x, y: point.y, delta_x: event.deltaX, delta_y: event.deltaY });
+    }, { passive: false });
+    image.addEventListener('contextmenu', function(event) { event.preventDefault(); });
+  }
+
+  var keyboard = document.getElementById('bl-browser-keyboard');
+  if (!keyboard) return;
+  var composing = false;
+  keyboard.addEventListener('compositionstart', function() { composing = true; });
+  keyboard.addEventListener('compositionend', function() {
+    composing = false;
+    var text = keyboard.value;
+    keyboard.value = '';
+    if (text) sendBrowserLoginInput({ type: 'text', text: text });
+  });
+  keyboard.addEventListener('keydown', function(event) {
+    var supported = ['Backspace', 'Delete', 'Enter', 'Tab', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (supported.indexOf(event.key) !== -1) {
+      event.preventDefault();
+      sendBrowserLoginInput({ type: 'key', key: event.key });
+    }
+  });
+  keyboard.addEventListener('input', function() {
+    if (composing) return;
+    var text = keyboard.value;
+    keyboard.value = '';
+    if (text) sendBrowserLoginInput({ type: 'text', text: text });
+  });
+})();
+
 function pollBrowserLoginStatus() {
   if (!currentLoginSessionId) return;
 
-  fetch('/web-ai/browser-login/status?session_id=' + encodeURIComponent(currentLoginSessionId))
+  fetch('/web-ai/browser-login/status', { headers: { 'X-Login-Session': currentLoginSessionId } })
   .then(function(r) { return r.json(); })
   .then(function(res) {
     var icon = document.getElementById('bl-status-icon');
     var statusText = document.getElementById('bl-status-text');
     var subText = document.getElementById('bl-status-subtext');
-    var step2 = document.getElementById('bl-step-2');
-    var step3 = document.getElementById('bl-step-3');
-
     if (res.status === 'waiting_for_user' && res.message) {
       if (subText) subText.textContent = res.message;
     }
@@ -1070,27 +1032,22 @@ function pollBrowserLoginStatus() {
         browserLoginPollTimer = null;
       }
       browserLoginSucceeded = true;
+      stopBrowserLoginViewer();
       currentLoginSessionId = null;
       if (icon) { icon.textContent = '🎉'; icon.style.animation = 'none'; }
       if (statusText) statusText.textContent = 'Đăng nhập và lưu phiên thành công!';
-      var accInfo = res.email ? ('Tài khoản: ' + res.email + '. ') : '';
-      if (currentLoginPlatform === 'museai' || currentLoginPlatform === 'muse') {
-        accInfo += 'Cookie phiên Muse đã được lưu an toàn; giá trị cookie được ẩn.';
-      } else {
-        accInfo += 'Phiên làm việc đã được lưu vào kho tài khoản.';
-      }
-      if (subText) subText.textContent = accInfo + ' Đang đóng cửa sổ và cập nhật danh sách...';
-      if (step3) { step3.style.color = '#16a34a'; step3.style.fontWeight = '700'; }
+      if (subText) subText.textContent = (res.email ? res.email + ' · ' : '') + 'Đã lưu phiên hoạt động.';
       var closeButton = document.getElementById('bl-close-after-login');
       if (closeButton) closeButton.textContent = 'Đóng ngay';
       window.setTimeout(function() {
         if (browserLoginSucceeded) cancelBrowserLogin();
-      }, 1200);
+      }, 600);
     } else if (res.status === 'error' || res.status === 'failed' || res.status === 'cancelled' || res.status === 'canceled') {
       if (browserLoginPollTimer) {
         clearInterval(browserLoginPollTimer);
         browserLoginPollTimer = null;
       }
+      stopBrowserLoginViewer();
       if (icon) { icon.textContent = '⚠️'; icon.style.animation = 'none'; }
       if (statusText) statusText.textContent = (res.status === 'cancelled' || res.status === 'canceled') ? 'Đã hủy đăng nhập' : 'Đăng nhập không thành công';
       if (subText) subText.textContent = res.error || 'Phiên đăng nhập đã kết thúc.';
@@ -1102,14 +1059,16 @@ function pollBrowserLoginStatus() {
 }
 
 function cancelBrowserLogin() {
+  browserLoginStartGeneration++;
   if (browserLoginPollTimer) {
     clearInterval(browserLoginPollTimer);
     browserLoginPollTimer = null;
   }
+  stopBrowserLoginViewer();
   if (currentLoginSessionId) {
-    fetch('/web-ai/browser-login/cancel?session_id=' + encodeURIComponent(currentLoginSessionId), {
+    fetch('/web-ai/browser-login/cancel', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Login-Session': currentLoginSessionId },
       body: JSON.stringify({ session_id: currentLoginSessionId })
     }).catch(function() {});
     currentLoginSessionId = null;
@@ -1120,13 +1079,6 @@ function cancelBrowserLogin() {
     browserLoginSucceeded = false;
     window.location.reload();
   }
-}
-
-function triggerBrowserLoginFromModal() {
-  var p = document.getElementById('connect-platform-id').value;
-  var name = document.getElementById('modal-title').textContent.replace('Kết nối ', '');
-  closeConnectModal();
-  startBrowserLogin(p, name);
 }
 
 function syncGoogleFlowAccount(btn) {

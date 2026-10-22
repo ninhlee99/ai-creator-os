@@ -1,0 +1,115 @@
+{{define "settings-system-webai"}}
+<div id="panel-webai" class="settings-tab-panel" style="display:none">
+  <div class="webai-section-head">
+    <h3>Tài khoản AI</h3>
+    <div class="webai-section-actions">
+      <span class="webai-ready-total" id="badge-webai-connected">{{.WebAIConnected}} sẵn sàng</span>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()">
+        Kiểm tra tất cả phiên
+      </button>
+    </div>
+  </div>
+  <p class="hint">MiuNova chỉ dùng tài khoản gói miễn phí đã xác nhận. Gói tài khoản do bạn khai báo; hệ thống không thể tự kiểm chứng với nhà cung cấp.</p>
+
+  <div class="webai-grid">
+    {{range .WebAIPlatforms}}
+    <div class="webai-card {{if .IsConnected}}connected{{end}}">
+      <div class="webai-card-top">
+        <div class="webai-brand">
+          <span class="webai-icon">{{.Platform.Icon}}</span>
+          <div class="webai-name">{{.Platform.Name}}</div>
+        </div>
+        <div class="webai-status">
+          {{if gt .ReadyCount 0}}
+          <span class="status-pill status-pill-ok"><span class="pulse-dot"></span>{{.ReadyCount}} sẵn sàng</span>
+          {{else if gt .CooldownCount 0}}
+          <span class="status-pill status-pill-warn">{{.CooldownCount}} tạm nghỉ</span>
+          {{else}}
+          {{if gt .TotalCount 0}}
+          <span class="status-pill status-pill-warn">{{.TotalCount}} cần kiểm tra</span>
+          {{else}}
+          <span class="status-pill status-pill-off">Chưa kết nối</span>
+          {{end}}
+          {{end}}
+        </div>
+      </div>
+
+      <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
+        <span class="webai-account-count">{{.TotalCount}}</span>
+        <span class="webai-account-summary-copy"><strong>Tài khoản</strong></span>
+        <span class="webai-account-summary-arrow" aria-hidden="true">›</span>
+      </button>
+      <template id="webai-account-template-{{.Platform.ID}}">
+        {{if .Accounts}}
+          <div class="webai-account-list">
+          {{range .Accounts}}
+          <div class="webai-account-row">
+            <div class="webai-account-info">
+              <strong>{{if .Email}}{{.Email}}{{else}}{{.AccountName}}{{end}}</strong>
+              <div class="webai-account-meta-line">
+              {{if eq .Tier "paid"}}
+              <span class="badge badge-err">Gói trả phí · không dùng</span>
+              {{else if .IsConfirmedFree}}
+              <span class="badge badge-ok">Free · đã xác nhận</span>
+              {{else}}
+              <span class="badge badge-warn">Gói chưa xác nhận · không dùng</span>
+              {{end}}
+              {{if eq .Status "cooldown"}}
+              <span class="badge badge-warn">{{.CooldownLabel}}</span>
+              {{else if or (eq .Status "invalid") (eq .Status "expired")}}
+              <span class="badge badge-err">Hết hạn</span>
+              {{else if eq .Status "disconnected"}}
+              <span class="badge badge-err">Đã ngắt kết nối</span>
+              {{else if eq .Status "rate_limited"}}
+              <span class="badge badge-warn">Đang giới hạn</span>
+              {{else if or (eq .Status "ok") (eq .Status "connected")}}
+              <span class="badge badge-ok">Phiên hoạt động</span>
+              {{else}}
+              <span class="badge badge-warn">Chưa xác minh</span>
+              {{end}}
+              <span class="hint">{{.Requests}} req</span>
+              </div>
+            </div>
+            <div class="webai-account-actions">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="testWebAIAccount('{{.ID}}', this)" title="Kiểm tra phiên sống ngay" style="font-size:11px;padding:2px 7px">⚡ Test</button>
+              {{if eq .Status "cooldown"}}
+              <form method="post" action="/web-ai/accounts/reset-cooldown" style="display:inline">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <input type="hidden" name="back" value="/settings/system#tab-webai">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Mở lại ngay" style="font-size:11px;padding:2px 6px">Mở lại</button>
+              </form>
+              {{end}}
+              <form method="post" action="/web-ai/accounts/delete" style="display:inline">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <input type="hidden" name="back" value="/settings/system#tab-webai">
+                <button type="submit" class="btn btn-secondary btn-sm" title="Xóa tài khoản" style="font-size:11px;padding:2px 6px;color:var(--err)">🗑</button>
+              </form>
+            </div>
+          </div>
+          {{end}}
+          </div>
+        {{else}}
+          <div class="webai-account-empty">
+            <strong>Chưa có tài khoản</strong>
+            <span>{{if eq .Platform.ID "googleflow"}}Đăng nhập Flow hoặc đồng bộ phiên Google từ Gemini.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
+          </div>
+        {{end}}
+      </template>
+
+      <div class="webai-card-actions {{if eq .Platform.ID "googleflow"}}webai-card-actions-flow{{end}}">
+        <button type="button" class="btn btn-secondary btn-sm webai-login-action" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
+          Đăng nhập
+        </button>
+        {{if eq .Platform.ID "googleflow"}}
+        <button type="button" class="btn btn-secondary btn-sm webai-google-action" onclick="syncGoogleFlowAccount(this)" aria-label="Đồng bộ tất cả tài khoản Gemini sang Flow" title="Đồng bộ tất cả tài khoản Gemini sang Flow" {{if not .HasGoogleAccounts}}disabled{{end}}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4" />
+          </svg>
+        </button>
+        {{end}}
+      </div>
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
