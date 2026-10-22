@@ -1588,7 +1588,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
 @media (max-width: 760px) {
   .webai-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 760px) {
   .webai-login-action { display: none !important; }
   .webai-mobile-login-note { display: block; }
   #bl-browser-view { display: none !important; }

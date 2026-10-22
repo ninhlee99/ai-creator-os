@@ -115,7 +115,6 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("GET /web-ai/browser-login/screen", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginScreen)))
 	mux.Handle("POST /web-ai/browser-login/input", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginInput)))
 	mux.Handle("POST /web-ai/browser-login/cancel", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginCancel)))
-	mux.HandleFunc("POST /web-ai/accounts/sync-google", s.handleWebAISyncGoogleAccount)
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)

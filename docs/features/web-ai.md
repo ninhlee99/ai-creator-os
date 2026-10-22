@@ -8,7 +8,7 @@ Connect web sessions for ChatGPT, Claude, Gemini, Grok, Muse Chat, and Google Fl
 
 - Open `GET /settings/system#tab-webai` and start browser login for the provider.
 - `POST /web-ai/browser-login/start` opens an isolated Chrome/Edge profile. CDP saves the session only after the provider confirms an active account and its email; OTP/2FA screens never save credentials.
-- Flow can copy a saved Google session with `POST /web-ai/accounts/sync-google` only after Flow confirms access and the provider email matches the selected account.
+- Google Flow login captures and validates its own Google session, then reads the account email from Google Account. Cross-platform Google-to-Flow sync endpoint has been removed.
 - Rotated cookies are saved after authenticated requests and revalidated before saving after a failed job. Providers can still revoke or expire sessions; reconnect through browser login when that happens.
 - Account probes run from `POST /web-ai/accounts/test`. Muse checks its first-party session and Hatch history; Flow checks authenticated Flow history. Failed network checks stay unknown unless provider returns an explicit expired-session response.
 

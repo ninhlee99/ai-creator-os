@@ -99,6 +99,12 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		updateStatus("opening", fmt.Sprintf("Đang mở trình duyệt đăng nhập (%s)...", filepath.Base(bin)))
 	}
 
+	windowSize := "1280,900"
+	if target.Platform == PlatformGoogleFlow {
+		// Flow's project canvas is GPU-heavy. Keep login capture crisp enough for
+		// the 680px viewer while reducing the browser's render surface.
+		windowSize = "1024,768"
+	}
 	args := []string{
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--remote-debugging-address=127.0.0.1",
@@ -106,7 +112,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-sync",
-		"--window-size=1280,900",
+		"--window-size=" + windowSize,
 		"--force-device-scale-factor=1",
 		"--new-window",
 	}

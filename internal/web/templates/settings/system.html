@@ -298,7 +298,7 @@ function refreshBrowserLoginScreen() {
     .finally(function() {
       browserLoginScreenInFlight = false;
       if (browserLoginViewerActive && currentLoginSessionId && !document.hidden) {
-        var delay = browserLoginScreenRefreshRequested ? 250 : 5000;
+        var delay = browserLoginScreenRefreshRequested ? 250 : 8000;
         browserLoginScreenRefreshRequested = false;
         browserLoginScreenTimer = window.setTimeout(refreshBrowserLoginScreen, delay);
       }
@@ -357,7 +357,7 @@ function sendBrowserLoginInput(payload) {
       body: JSON.stringify(payload)
     }).then(function(response) {
       if (response.ok && currentLoginSessionId === sessionId) {
-        scheduleBrowserLoginScreenRefresh(350);
+        scheduleBrowserLoginScreenRefresh(600);
       }
       return response;
     });
@@ -388,7 +388,7 @@ function sendBrowserLoginInput(payload) {
     image.addEventListener('pointermove', function(event) {
       if (!event.buttons) return;
       var now = Date.now();
-      if (now - lastPointerMoveAt < 45) return;
+      if (now - lastPointerMoveAt < 90) return;
       lastPointerMoveAt = now;
       sendBrowserLoginInput(pointerPayload(event, 'move'));
     });
