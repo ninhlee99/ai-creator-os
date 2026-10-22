@@ -23,9 +23,9 @@ func NewProxyRelay(store *Store) *ProxyRelay {
 		httpClient: &http.Client{
 			Timeout: 45 * time.Second,
 			Transport: &http.Transport{
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: false},
-				MaxIdleConns:        50,
-				IdleConnTimeout:     90 * time.Second,
+				TLSClientConfig:    &tls.Config{InsecureSkipVerify: false},
+				MaxIdleConns:       50,
+				IdleConnTimeout:    90 * time.Second,
 				DisableCompression: false,
 			},
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -115,7 +115,7 @@ func (p *ProxyRelay) harvestCookies(platform string, setCookies []string) {
 		}
 	}
 	if sessionKey != "" || len(setCookies) >= 2 {
-		_, _ = p.store.UpsertAccountSession(platform, sessionKey, fullCookie, fmt.Sprintf("Web Login (%s)", time.Now().Format("15:04")), "", "free")
+		_, _ = p.store.UpsertAccountSession(platform, sessionKey, fullCookie, fmt.Sprintf("Web Login (%s)", time.Now().Format("15:04")), "", "unknown")
 	}
 }
 
@@ -153,7 +153,7 @@ p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 24px; }
   <h2>Kết Nối ` + name + `</h2>
   <p>Một số nền tảng kích hoạt chính sách bảo mật Cloudflare / Anti-bot trên mạng của bạn. Bạn có thể mở trực tiếp cửa sổ làm việc đồng bộ để sử dụng toàn bộ tính năng như trên web thật.</p>
   <a href="` + targetURL + `" target="_blank" class="btn" rel="noreferrer">🚀 Mở ` + name + ` Trong Cửa Sổ Đồng Bộ</a>
-  <div class="hint">Cửa sổ sẽ tự động đồng bộ kịch bản và prompt sản phẩm từ AI Creator OS.</div>
+  <div class="hint">Cửa sổ sẽ tự động đồng bộ kịch bản và prompt sản phẩm từ MiuNova.</div>
 </div>
 </body>
 </html>`

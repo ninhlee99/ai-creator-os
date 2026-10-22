@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -28,8 +26,7 @@ func (e *MuseGatewayUnavailableError) Unwrap() error { return e.cause }
 // MuseChatHeadless is a browser fallback for environments where Muse's
 // direct TLS/WebSocket gateway cannot be reached. It uses installed
 // Chrome/Edge in headless mode and never opens a visible window.
-func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(string)) (MuseReply, error) {
-	var out MuseReply
+func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(string)) (out MuseReply, retErr error) {
 	if strings.TrimSpace(cookie) == "" || strings.TrimSpace(prompt) == "" {
 		return out, errors.New("Muse headless fallback needs a session cookie and prompt")
 	}
@@ -80,7 +77,7 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 		return out, errors.New("cannot connect to Muse headless browser")
 	}
 	defer conn.Close()
-	client := &museCDP{conn: conn}
+	client := &browserCDPClient{conn: conn}
 	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
 	if err != nil {
 		return out, err
@@ -114,6 +111,13 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": cookies}, client.sessionID); err != nil {
 		return out, errors.New("Muse headless browser rejected saved session cookies")
 	}
+	defer func() {
+		refreshCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if refreshed := museUpdatedCookieHeader(refreshCtx, client); refreshed != "" {
+			out.CookieHeader = refreshed
+		}
+	}()
 	if _, err := client.call(ctx, "Page.navigate", map[string]any{"url": museHTTPBase + "/"}, client.sessionID); err != nil {
 		return out, errors.New("Muse headless page navigation failed")
 	}
@@ -176,6 +180,7 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 					if time.Since(stableAt) >= 1800*time.Millisecond {
 						out.Text = snapshot.Text
 						out.MediaURLs = extractMuseMediaURLs(map[string]any{"links": snapshot.Links}, snapshot.Text)
+						out.CookieHeader = museUpdatedCookieHeader(ctx, client)
 						return out, nil
 					}
 				} else {
@@ -193,87 +198,24 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 	return out, errors.New("Muse headless browser timed out waiting for reply")
 }
 
-type museCDP struct {
-	conn      *websocket.Conn
-	sessionID string
-	nextID    atomic.Int64
-}
-
-func (c *museCDP) call(ctx context.Context, method string, params any, sessionID string) (json.RawMessage, error) {
-	id := c.nextID.Add(1)
-	request := map[string]any{"id": id, "method": method, "params": params}
-	if sessionID != "" {
-		request["sessionId"] = sessionID
-	}
-	if err := c.conn.SetWriteDeadline(time.Now().Add(8 * time.Second)); err != nil {
-		return nil, err
-	}
-	if err := c.conn.WriteJSON(request); err != nil {
-		return nil, err
-	}
-	for {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		_ = c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-		_, data, err := c.conn.ReadMessage()
-		if err != nil {
-			return nil, errors.New("Muse headless CDP connection failed")
-		}
-		var response struct {
-			ID     int64           `json:"id"`
-			Result json.RawMessage `json:"result"`
-			Error  json.RawMessage `json:"error"`
-		}
-		if json.Unmarshal(data, &response) != nil || response.ID != id {
-			continue
-		}
-		if len(response.Error) > 0 {
-			return nil, fmt.Errorf("Muse headless CDP %s failed", method)
-		}
-		return response.Result, nil
-	}
-}
-
-func (c *museCDP) evaluate(ctx context.Context, expression string) (any, error) {
-	response, err := c.call(ctx, "Runtime.evaluate", map[string]any{"expression": expression, "returnByValue": true, "awaitPromise": true}, c.sessionID)
+func museUpdatedCookieHeader(ctx context.Context, client *browserCDPClient) string {
+	response, err := client.call(ctx, "Network.getAllCookies", map[string]any{}, client.sessionID)
 	if err != nil {
-		return nil, err
+		return ""
 	}
-	var result struct {
-		Result struct {
-			Value any `json:"value"`
-		} `json:"result"`
+	var cookies struct {
+		Cookies []cdpCookie `json:"cookies"`
 	}
-	if err := json.Unmarshal(response, &result); err != nil {
-		return nil, err
+	if json.Unmarshal(response, &cookies) != nil {
+		return ""
 	}
-	return result.Result.Value, nil
-}
-
-func waitDebuggerURL(ctx context.Context, port int) (string, error) {
-	client := &http.Client{Timeout: 2 * time.Second}
-	for {
-		if err := ctx.Err(); err != nil {
-			return "", errors.New("Muse headless browser did not start")
-		}
-		resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json/version", port))
-		if err == nil {
-			var meta struct {
-				WS string `json:"webSocketDebuggerUrl"`
-			}
-			decodeErr := json.NewDecoder(resp.Body).Decode(&meta)
-			_ = resp.Body.Close()
-			if decodeErr == nil && meta.WS != "" {
-				return meta.WS, nil
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return "", errors.New("Muse headless browser did not start")
-		case <-time.After(250 * time.Millisecond):
+	header := cookieHeaderForHost(cookies.Cookies, "muse.ai")
+	for _, name := range []string{"hatch_sess=", "session=", "auth_token="} {
+		if strings.Contains(header, name) {
+			return header
 		}
 	}
+	return ""
 }
 
 func museBrowserCookies(header string) []map[string]any {

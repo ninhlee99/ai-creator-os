@@ -17,9 +17,9 @@ Quota notes
 -----------
   - TikTok: ~15 posts/day per creator, shared across ALL API clients
     (Direct Post); 6 req/min per user token on publish endpoints.
-  - YouTube: videos.insert costs ~1600 units against the 10k/day default
-    quota — a handful of uploads per day per project is the free-tier
-    reality.
+  - YouTube: videos.insert has a separate default bucket of 100 calls/day,
+    at one quota unit per call. The bucket is project-wide and resets at
+    midnight Pacific Time; other methods share a separate 10k-unit/day bucket.
 
 TikTok audit gates (human steps, not code)
 ------------------------------------------

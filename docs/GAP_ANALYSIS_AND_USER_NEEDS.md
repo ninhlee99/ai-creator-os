@@ -1,7 +1,12 @@
 # Phân Tích Khoảng Trống Sản Phẩm & Nhu Cầu Người Dùng Thực Tế
+
+> ⚠️ Báo cáo lịch sử ngày 2026-10-17. Mục tiêu và nhu cầu đã được chuẩn hóa lại
+> trong [PRODUCT_SPEC](PRODUCT_SPEC.md); trạng thái code xem tại
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Không dùng báo cáo này làm
+> nguồn sự thật hiện hành.
 **Báo cáo Đánh giá Trải nghiệm Hệ thống Dưới Góc Nhìn Nhà Sáng Tạo & Người Vận Hành Tự Động**
 
-> **Tác giả:** Đội ngũ Kỹ thuật & Trải nghiệm Sản phẩm (AI Creator OS)  
+> **Tác giả:** Đội ngũ Kỹ thuật & Trải nghiệm Sản phẩm (MiuNova)
 > **Phiên bản hệ thống:** v0.7.0 (100% Go Pure Binary, SQLite WAL)  
 > **Ngày hoàn thành:** 17/10/2026
 
@@ -9,7 +14,7 @@
 
 ## 1. Tổng Quan & Định Vị Sản Phẩm
 
-**AI Creator OS** là hệ điều hành tự trị (autonomous OS) 1-binary duy nhất viết bằng Go, phục vụ 3 trụ cột doanh thu bền vững:
+**MiuNova** là hệ thống tự chủ, đóng gói trong một binary Go, phục vụ 3 trụ cột doanh thu bền vững:
 1. **Tiếp thị liên kết (Affiliate qua Accesstrade)**: Săn deal, tạo tracking link, đối soát hoa hồng.
 2. **Video Viral AI 100% Gốc (TikTok/Shorts/Reels)**: Xưởng sáng tạo 9:16 nguyên bản với hook 3 giây tâm lý học, hình ảnh MediaGen, âm nhạc Kworb VN trending, loại bỏ triệt để rủi ro bản quyền và thuật toán phạt 0-view do reup.
 3. **YouTube Kể Chuyện Ngôi Thứ Nhất**: Kịch bản tự sinh bằng LLM, chia phân cảnh, vẽ ảnh 16:9, lồng tiếng Gemini/Edge TTS, dựng video và tự động đăng private.

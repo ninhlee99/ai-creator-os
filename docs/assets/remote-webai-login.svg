@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 820" role="img" aria-labelledby="title desc">
+  <title id="title">MiuNova remote Web AI login</title>
+  <desc id="desc">Sơ đồ 2D luồng đăng nhập Web AI từ điện thoại qua dashboard HTTPS tới browser tạm trên VPS và provider.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7f4ff"/>
+      <stop offset="1" stop-color="#eef8f5"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b6cf6"/>
+      <stop offset="1" stop-color="#6a50ce"/>
+    </linearGradient>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#795ce5"/>
+    </marker>
+    <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#2c9a88"/>
+    </marker>
+    <marker id="arrow-amber" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#d59032"/>
+    </marker>
+    <style>
+      text{font-family:Arial,sans-serif;fill:#24233a}
+      .title{font-size:34px;font-weight:800;letter-spacing:0}
+      .subtitle{font-size:16px;fill:#69677e}
+      .panel-title{font-size:18px;font-weight:750}
+      .label{font-size:14px;font-weight:700}
+      .body{font-size:13px;fill:#5b5970}
+      .small{font-size:11px;fill:#6c6a7e}
+      .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;fill:#51468c}
+      .step{font-size:12px;font-weight:800;fill:white}
+    </style>
+  </defs>
+
+  <rect width="1440" height="820" rx="28" fill="#f7f4ff"/>
+  <circle cx="1310" cy="105" r="98" fill="#e5defe" opacity=".48"/>
+  <circle cx="92" cy="744" r="112" fill="#d9f1e9" opacity=".55"/>
+
+  <text x="64" y="72" class="title">MiuNova · Web AI login từ điện thoại</text>
+  <text x="66" y="104" class="subtitle">Phiên browser tạm trên VPS · dashboard đã xác thực · CDP chỉ mở trên loopback</text>
+  <rect x="1128" y="50" width="250" height="36" rx="18" fill="#fff" stroke="#e3def4"/>
+  <circle cx="1150" cy="68" r="6" fill="#36a889"/>
+  <text x="1165" y="73" class="small" style="font-weight:750;letter-spacing:.4px">REMOTE LOGIN BRIDGE</text>
+
+  <!-- Flow arrows sit behind nodes. -->
+  <path d="M344 292H386" fill="none" stroke="#795ce5" stroke-width="3"/>
+  <path d="M386 286L396 292L386 298Z" fill="#795ce5"/>
+  <path d="M396 358H354" fill="none" stroke="#2c9a88" stroke-width="3"/>
+  <path d="M354 352L344 358L354 364Z" fill="#2c9a88"/>
+  <path d="M918 292H982" fill="none" stroke="#d59032" stroke-width="3"/>
+  <path d="M982 286L992 292L982 298Z" fill="#d59032"/>
+  <path d="M992 358H928" fill="none" stroke="#795ce5" stroke-width="3"/>
+  <path d="M928 352L918 358L928 364Z" fill="#795ce5"/>
+  <path d="M918 544H982" fill="none" stroke="#2c9a88" stroke-width="3"/>
+  <path d="M982 538L992 544L982 550Z" fill="#2c9a88"/>
+  <path d="M992 605H928" fill="none" stroke="#2c9a88" stroke-width="3"/>
+  <path d="M928 599L918 605L928 611Z" fill="#2c9a88"/>
+
+  <!-- Phone -->
+  <rect x="54" y="168" width="284" height="478" rx="28" fill="#fff" stroke="#ded9ef" stroke-width="2"/>
+  <circle cx="82" cy="198" r="15" fill="#ede8ff"/>
+  <text x="77" y="203" class="step" style="fill:#6c52d4">1</text>
+  <text x="108" y="204" class="panel-title">Điện thoại</text>
+  <text x="80" y="238" class="body">Người dùng mở dashboard</text>
+  <rect x="80" y="260" width="232" height="214" rx="18" fill="#f5f2ff" stroke="#e7e0ff"/>
+  <rect x="96" y="278" width="200" height="26" rx="8" fill="url(#brand)"/>
+  <text x="108" y="296" class="small" style="fill:#fff;font-weight:700">MiuNova · Web AI</text>
+  <rect x="96" y="317" width="200" height="94" rx="10" fill="#fff" stroke="#e6e1f2"/>
+  <rect x="108" y="329" width="176" height="62" rx="6" fill="#27252e"/>
+  <rect x="147" y="347" width="97" height="25" rx="5" fill="#fff"/>
+  <circle cx="155" cy="359" r="3" fill="#a99ce8"/>
+  <rect x="163" y="356" width="70" height="6" rx="3" fill="#d9d5e4"/>
+  <text x="110" y="431" class="small">Ảnh browser đăng nhập</text>
+  <rect x="96" y="422" width="200" height="35" rx="9" fill="#fff" stroke="#ded9ef"/>
+  <text x="109" y="444" class="small">Bàn phím điện thoại · OTP</text>
+  <circle cx="91" cy="516" r="12" fill="#eee9ff"/>
+  <text x="87" y="520" class="step" style="fill:#6c52d4;font-size:10px">A</text>
+  <text x="112" y="521" class="label">Chạm trang đăng nhập</text>
+  <circle cx="91" cy="555" r="12" fill="#e1f5ef"/>
+  <text x="87" y="559" class="step" style="fill:#24816f;font-size:10px">B</text>
+  <text x="112" y="560" class="label">Gõ mật khẩu / mã xác minh</text>
+  <rect x="80" y="591" width="232" height="32" rx="16" fill="#f3f1f8"/>
+  <text x="99" y="612" class="small">HTTPS · cùng phiên đăng nhập</text>
+
+  <!-- MiuNova app -->
+  <rect x="402" y="144" width="508" height="522" rx="26" fill="#fff" stroke="#dcd5f2" stroke-width="2"/>
+  <circle cx="434" cy="177" r="15" fill="#ede8ff"/>
+  <text x="429" y="182" class="step" style="fill:#6c52d4">2</text>
+  <text x="460" y="183" class="panel-title">MiuNova trên VPS</text>
+  <text x="430" y="213" class="body">Auth gate · HTTPS gate · kiểm tra same-origin</text>
+
+  <rect x="430" y="237" width="452" height="104" rx="15" fill="#f6f3ff" stroke="#e5defe"/>
+  <text x="450" y="263" class="label">Phiên đăng nhập ngẫu nhiên · 256 bit</text>
+  <rect x="450" y="279" width="195" height="42" rx="10" fill="#fff" stroke="#ded9ef"/>
+  <text x="465" y="305" class="mono">/browser-login/screen</text>
+  <rect x="662" y="279" width="198" height="42" rx="10" fill="#fff" stroke="#ded9ef"/>
+  <text x="678" y="305" class="mono">/browser-login/input</text>
+
+  <rect x="430" y="365" width="452" height="112" rx="15" fill="#eef8f5" stroke="#d4eee5"/>
+  <text x="450" y="392" class="label">Viewer bridge</text>
+  <text x="450" y="417" class="body">Ảnh PNG no-store · chạm / chuột / cuộn / bàn phím</text>
+  <text x="450" y="444" class="small">Không ghi log nội dung gõ, cookie hoặc ảnh màn hình.</text>
+
+  <rect x="430" y="500" width="452" height="130" rx="15" fill="#fff8e9" stroke="#f0dfb8"/>
+  <text x="450" y="528" class="label">Adapter xác thực phiên</text>
+  <text x="450" y="553" class="body">Kiểm tra cookie/session của provider</text>
+  <rect x="450" y="572" width="195" height="37" rx="10" fill="#fff" stroke="#ecdcae"/>
+  <text x="466" y="596" class="mono">Web AI account store</text>
+  <text x="663" y="595" class="small">Chỉ lưu sau khi xác thực</text>
+
+  <!-- VPS browser -->
+  <rect x="1000" y="168" width="384" height="296" rx="26" fill="#fff" stroke="#eadfc8" stroke-width="2"/>
+  <circle cx="1032" cy="201" r="15" fill="#fff1d7"/>
+  <text x="1027" y="206" class="step" style="fill:#b7771e">3</text>
+  <text x="1058" y="207" class="panel-title">Browser tạm trên VPS</text>
+  <rect x="1028" y="232" width="328" height="104" rx="14" fill="#fff9ed" stroke="#f1e4c9"/>
+  <text x="1048" y="259" class="label">Chrome / Chromium</text>
+  <text x="1048" y="284" class="body">Profile riêng · tự xóa khi kết thúc</text>
+  <text x="1048" y="309" class="body">Headless nếu VPS không có display</text>
+  <rect x="1028" y="352" width="328" height="74" rx="13" fill="#fff" stroke="#efc981" stroke-dasharray="6 5"/>
+  <text x="1048" y="380" class="small">CDP chỉ nghe tại loopback</text>
+  <text x="1048" y="405" class="mono">127.0.0.1:port · không public</text>
+
+  <!-- Provider -->
+  <rect x="1000" y="500" width="384" height="166" rx="26" fill="#fff" stroke="#d9e9e3" stroke-width="2"/>
+  <circle cx="1032" cy="533" r="15" fill="#e2f5ee"/>
+  <text x="1027" y="538" class="step" style="fill:#24816f">4</text>
+  <text x="1058" y="539" class="panel-title">Web AI provider</text>
+  <text x="1030" y="574" class="body">ChatGPT · Claude · Gemini · Grok · Muse</text>
+  <text x="1030" y="599" class="body">Redirect bình thường · OTP / 2FA</text>
+  <rect x="1030" y="618" width="190" height="28" rx="14" fill="#e8f7f1"/>
+  <text x="1045" y="637" class="small" style="fill:#247c69;font-weight:700">Người dùng tự đăng nhập</text>
+
+  <rect x="64" y="704" width="360" height="38" rx="19" fill="#fff" stroke="#e5defe"/>
+  <path d="M84 723H111" stroke="#795ce5" stroke-width="3"/>
+  <path d="M111 717L121 723L111 729Z" fill="#795ce5"/>
+  <text x="137" y="728" class="small" style="fill:#674ec4;font-weight:700">Dashboard · ảnh · thao tác</text>
+  <rect x="444" y="704" width="300" height="38" rx="19" fill="#fff" stroke="#f0dfb8"/>
+  <path d="M464 723H491" stroke="#d59032" stroke-width="3"/>
+  <path d="M491 717L501 723L491 729Z" fill="#d59032"/>
+  <text x="517" y="728" class="small" style="fill:#a56c1a;font-weight:700">CDP loopback</text>
+  <rect x="764" y="704" width="548" height="38" rx="19" fill="#fff" stroke="#d4eee5"/>
+  <path d="M784 723H811" stroke="#2c9a88" stroke-width="3"/>
+  <path d="M811 717L821 723L811 729Z" fill="#2c9a88"/>
+  <text x="837" y="728" class="small" style="fill:#24816f;font-weight:700">Provider login · phiên đã xác thực</text>
+
+  <text x="64" y="780" class="small">Kết thúc: thành công · hủy · timeout · lỗi → đóng browser và xóa profile tạm.</text>
+  <text x="1375" y="780" text-anchor="end" class="small">MiuNova · sơ đồ luồng 2D</text>
+</svg>

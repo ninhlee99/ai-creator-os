@@ -69,8 +69,10 @@ Video affiliate tự động hiện fail-closed đến khi có luồng cung cấ
 không tạo job, không đăng và không đánh dấu mục đã sản xuất. Phần governance và
 đồng bộ số liệu vẫn chạy. Xem `autonomous-daemon.md` — item quá hạn 14 ngày → `dropped`; tối đa
 **3 job/tài khoản/tick**; TikTok chỉ tới `produced` (draft-only trước audit Direct Post);
-YouTube đăng khi đủ OAuth + còn quota (**1600 units/lượt**, trần **10000 units/ngày** —
-`internal/growth/quota.go`); thiếu gì thì item ở `waiting_connect`/`waiting_quota`
+YouTube đăng khi đủ OAuth + qua quota guard trong code (`1` unit/lượt, mặc
+định `100` lượt/ngày — `internal/growth/quota.go`), dùng reservation nguyên tử
+và ngày reset Pacific. Google Cloud Console vẫn là nguồn chính xác cho giới
+hạn project đã cấp. Thiếu gì thì item ở `waiting_connect`/`waiting_quota`
 với ghi chú tiếng Việt trung thực. Mọi lượt đăng gắn cờ AI-generated
 (`containsSyntheticMedia`, `Synthetic=true` — bắt buộc).
 

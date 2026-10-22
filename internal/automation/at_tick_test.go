@@ -48,6 +48,9 @@ func (f *fakeStudioRunner) CreateAffiliateJob(p studio.AffiliateParams) (string,
 	f.jobs = append(f.jobs, p)
 	return fmt.Sprintf("job-%d", len(f.jobs)), nil
 }
+func (f *fakeStudioRunner) PrepareAffiliatePlan(_ context.Context, _ studio.AffiliateParams) (studio.AffiliatePreparation, error) {
+	return studio.AffiliatePreparation{ID: "prepared-plan"}, nil
+}
 func (f *fakeStudioRunner) ModelPhotosForAccount(accountID int64) []string {
 	if accountID != 7 {
 		return nil
@@ -186,6 +189,7 @@ func TestATHunterTick(t *testing.T) {
 	svc, sr := newATService(t, mapSettings{
 		accesstrade.KeySetting: "k",
 		KeyATHunterVideos:      "1", // chỉ tạo 1 video
+		KeyATHunterFlowCredits: "1",
 		KeyATHunterAccountID:   "7",
 		KeyATOrderSyncEnabled:  "0",
 		KeyATCampaignCheckOn:   "0",
@@ -233,6 +237,25 @@ func TestATHunterTick(t *testing.T) {
 	}
 	if !strings.Contains(notes[0], "0 mới") || !strings.Contains(notes[0], "0 video") {
 		t.Errorf("quét lại phải 0 mới / 0 video: %q", notes[0])
+	}
+}
+
+func TestATHunterTickDoesNotRenderWithoutFlowCreditsOptIn(t *testing.T) {
+	srv := atTestServer()
+	defer srv.Close()
+	svc, runner := newATService(t, mapSettings{
+		accesstrade.KeySetting: "k",
+		KeyATHunterVideos:      "1",
+		KeyATHunterAccountID:   "7",
+		KeyATOrderSyncEnabled:  "0",
+		KeyATCampaignCheckOn:   "0",
+	}, srv)
+	notes := svc.ATHunterTick(context.Background())
+	if len(notes) != 1 || !strings.Contains(notes[0], "credits") {
+		t.Fatalf("hunter note = %v, want Flow credits opt-in reason", notes)
+	}
+	if len(runner.jobs) != 0 {
+		t.Fatalf("hunter rendered %d jobs without Flow credits opt-in", len(runner.jobs))
 	}
 }
 

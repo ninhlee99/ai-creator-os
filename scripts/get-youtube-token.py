@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lấy YouTube refresh token cho AI Creator OS (chạy 1 lần trên máy Mac của Ninh).
+Lấy YouTube refresh token cho MiuNova (chạy 1 lần trên máy Mac của Ninh).
 
 Cần trước: Google Cloud project đã bật "YouTube Data API v3",
 OAuth client loại "Desktop app" (lấy Client ID + Client Secret).

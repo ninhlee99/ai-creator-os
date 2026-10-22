@@ -215,6 +215,8 @@ func (s *Service) location() *time.Location {
 
 func (s *Service) today() string { return time.Now().In(s.location()).Format("2006-01-02") }
 
+func (s *Service) quotaDay() string { return growth.YouTubeQuotaDay(time.Now()) }
+
 func (s *Service) nowISO() string { return time.Now().In(s.location()).Format("2006-01-02T15:04:05") }
 
 // decide writes to the decision log; a broken ledger must never crash a

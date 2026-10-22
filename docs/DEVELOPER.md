@@ -1,92 +1,82 @@
-# Developer Guide
+# MiuNova — Hướng dẫn phát triển
 
-Dành cho dev và AI code assistant (Claude, Agy, Codex) làm việc trên repo này. Người dùng đọc [`USER_GUIDE.md`](USER_GUIDE.md).
+> Nguồn yêu cầu sản phẩm: [PRODUCT_SPEC](PRODUCT_SPEC.md). Chính sách hard
+> gate: [POLICY_AND_SAFETY](POLICY_AND_SAFETY.md). Trạng thái code đã đối chiếu:
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Mô tả as-built theo miền:
+> [features/README](features/README.md).
 
-## Luật cứng (không thương lượng)
+## 1. Khởi chạy từ source
 
-1. **App chỉ dùng API chính thức đã cấu hình trong Settings** (Gemini keys, v.v.). Tuyệt đối không dùng Claude/Codex/Agy subscription, không bóc tách API web muse.ai, không dùng Gemini/ChatGPT/Claude bản web làm backend trong app. Các công cụ đó chỉ để code/build app.
-2. **Không bao giờ `git add -A`.** Thư mục `docs/assets/` có file cố ý untracked chờ quyết định giữ/xóa. Stage từng đường dẫn cụ thể.
-3. **Mọi tính năng vận hành phải có UI.** Không quản lý hệ thống bằng CLI.
-4. **Code không dùng nữa thì xóa.** Giữ codebase gọn.
-5. **Fail-closed:** thiếu config/key → chặn và báo, không đoán, không tự bịa dữ liệu (doanh thu chỉ ghi từ API thật).
-
-## Build & test
+Yêu cầu phiên bản Go theo `go.mod` (hiện khai báo Go 1.26.0). Build và chạy:
 
 ```bash
-go build ./...              # build toàn repo
 go build -o aicos ./cmd/aicos
-go test -count=1 ./...      # toàn bộ test, dữ liệu giả, không chạm TikTok thật
-go test -count=1 -tags parked ./...   # test vùng parked (agents/stream/affiliatehunter)
-bash scripts/check-reachable.sh       # package mới không được "chết lặng"
+./aicos
 ```
 
-- Ngôn ngữ: **100% Go**, 1 binary `aicos`. SQLite (pure Go, modernc driver). Không Docker, không Python runtime.
-- Quy ước: `gofmt` trước khi commit. Binary release: `aicos-darwin-arm64` qua GitHub Release, đóng dấu version: `go build -ldflags "-X main.version=vX.Y.Z" ./cmd/aicos` (mặc định `dev`).
-- CI (`.github/workflows/ci.yml`): build + vet + test (2 chế độ tag) + reachability + cross-build 5 đích. Bật branch protection cho `main` trên GitHub (Require status checks → `ci`).
-- Test hiện tại: 576+ hàm pass 100% — cập nhật con số này mỗi khi thêm test mới.
+FFmpeg là công cụ ngoài cần cho tác vụ dựng video. Cấu hình môi trường/secret
+qua Settings hoặc cơ chế deploy được dự án hỗ trợ; không commit credential.
 
-## Cấu trúc repo
+## 2. Thứ tự đọc trước khi sửa
 
-```
-cmd/aicos/            điểm vào binary
-internal/web/         dashboard: routes.go, server.go, templates/*.html, static/style.css
-internal/growth/      Brand DNA, Trend Intelligence, Kế hoạch 30 ngày, YouTube Analytics
-internal/accesstrade/ Hunter quét chiến dịch & datafeed, tạo link tracking, đối soát hoa hồng
-internal/studio/      Studio AI: jobs (SQLite), video affiliate, video viral AI 9:16, story video 16:9
-internal/automation/  Vòng lặp daemon: Autopilot, Growth, Reconcile, Sync, Story
-internal/ledger/      Sổ cái SQLite WAL per-account & cài đặt hệ thống
-internal/engines/     LLM (Gemini), TTS chain (Gemini/Edge)
-internal/publishers/  TikTok Posting API, YouTube OAuth/upload, Facebook Page
-docs/                 Tài liệu hệ thống và 18 tài liệu tính năng chi tiết
-scripts/              Watchdog healthz, check-reachable, launchd service
-```
+1. Đọc `PRODUCT_SPEC.md` để biết hành vi đích.
+2. Đọc `PRODUCT_DECISIONS.md` để phân biệt quyết định người dùng với giả định.
+3. Đọc `IMPLEMENTATION_STATUS.md` và source liên quan để biết khả năng hiện tại.
+4. Đọc `POLICY_AND_SAFETY.md` trước khi thay đổi account, provider, nội dung,
+   xuất bản hoặc quota.
+5. Nếu hành vi hiện tại và mục tiêu khác nhau, cập nhật evidence trong
+   `IMPLEMENTATION_STATUS.md`; không ghi feature as-built như thể mục tiêu đã
+   hoàn tất.
 
-## Thêm một trang dashboard mới
+## 3. Ranh giới cứng
 
-1. Tạo `internal/web/templates/<page>.html` (dùng `{{define "title"}}` + `{{define "content"}}`).
-2. Thêm `"key": "<page>.html"` vào `pageFiles` trong `server.go`.
-3. Thêm route `GET /key` trong `handlers.go` + handler.
-4. Thêm link vào sidebar `templates/base.html` (đúng nav-group).
-5. Thêm CSS vào `static/style.css` (đã embed vào binary — sửa là có hiệu lực ngay khi rebuild).
-6. Thêm case vào `TestAllPagesRender` trong `web_test.go`.
+- Chỉ dùng nguồn miễn phí được phép; provider cần billing hoặc giá không rõ
+  không được gọi. Fallback giữa account chỉ khi account đã được ủy quyền và
+  provider cho phép; không né quota.
+- Xuất bản qua API/quyền hợp lệ. TikTok cần consent riêng cho từng bài theo
+  PRODUCT_SPEC; không bỏ consent để tiện tự động hóa.
+- Không bịa sales, rating, metrics, claim hoặc trạng thái publish. Giữ provenance
+  và freshness của dữ liệu; thiếu field phải biểu diễn là unknown ở sản phẩm đích.
+- OAuth/API credential không được render hoặc ghi log.
+- Web AI remote login dùng screenshot/input bridge qua app; CDP chỉ bind
+  loopback. VPS live login vẫn cần xác minh theo
+  `features/remote-webai-login.md`; không tuyên bố VPS đã xác nhận nếu chưa có
+  bằng chứng chạy thật.
 
-Avatar agent: file JPEG 160px trong `internal/web/static/agents/`, serve qua `GET /static/agents/{file}` (embed). Gốc PNG ở `docs/assets/agents/`.
+## 4. Bản đồ source
 
-## Bản đồ kiến trúc (tóm tắt)
+| Thư mục | Trách nhiệm chính |
+|---|---|
+| `cmd/aicos` | Entrypoint và wiring ứng dụng |
+| `internal/web` | HTTP routes, handlers, templates, static assets và dashboard |
+| `internal/automation`, `internal/ticksup` | Ticks, lịch và tác vụ nền |
+| `internal/harness`, `internal/growth` | Điều phối quan sát/quyết định và kế hoạch tăng trưởng |
+| `internal/products`, `internal/accesstrade`, `internal/affiliatehunter` | Catalog, offer discovery, affiliate links và đối soát |
+| `internal/studio`, `internal/viralradar` | Job media, shot plan, QC và radar |
+| `internal/publishers`, `internal/tiktok` | Adapter xuất bản theo nền tảng |
+| `internal/webai` | Account/session AI web, login capture và provider flows |
+| `internal/ledger`, `internal/backup` | Trạng thái bền vững, settings, backup/restore |
 
-- **Orchestrator** điều phối; **AccountManager** vòng đời account; **PersonaEngine** gán persona; **Scheduler** xếp giờ live (max 2 live cùng lúc).
-- **Đội ngũ (`/team`):** bảng sức khỏe của ba pipeline Affiliate / Video dọc / Story; trạng thái suy ra từ dữ liệu thật, không phải agent chạy riêng. Chi tiết: [`features/agent-team.md`](features/agent-team.md).
-- **Provider chains:** TTS local macOS speech → Edge → Gemini; LLM Gemini. Keyring xoay vòng, cooldown khi 429/quota, skip key hỏng. Chỉnh trong Settings.
-- **Affiliate:** nguồn duy nhất Accesstrade datafeed (hunter tick → kho; TikTok Shop đã loại bỏ Đợt H1). Mặc định tạo từng shot bằng engine video; prompt cấm zoom, flash, flicker và rung. Nếu dùng ảnh tĩnh, dựng dissolve ổn định, không tạo chuyển động giả.
+Các vai trò trong [SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md) là mô hình công việc
+mục tiêu. Không suy ra mỗi vai trò tương ứng với một process hoặc agent độc lập;
+xem harness/worker wiring thật trong source.
 
-Chi tiết đầy đủ: [`ARCHITECTURE.md`](ARCHITECTURE.md) · pipeline affiliate: `ARCHITECTURE.md` §13
+## 5. Quy trình thay đổi
 
-## 9. Ràng buộc & benchmark trên Mac của Ninh (MacBook Pro M1 Pro 32GB)
+- Giữ thay đổi ở đúng layer; ưu tiên dùng adapter/interface hiện có.
+- Cập nhật tài liệu tính năng nếu hành vi as-built đổi; cập nhật spec/decisions
+  nếu yêu cầu hoặc lựa chọn sản phẩm đổi.
+- Khi thêm route, provider, trạng thái job hoặc nguồn metrics, ghi quyền, lỗi,
+  quota, retry/idempotency và cách người vận hành nhìn thấy kết quả.
+- Dùng `gofmt` cho Go. Chạy kiểm tra liên quan theo yêu cầu của task; các lệnh
+  thông dụng là `go test ./...` và `go test -tags parked ./...`.
+- Kiểm tra `git diff --check`; không đưa credential, dữ liệu session, profile
+  browser hay artifact người dùng vào git.
 
-Trích từ audit lõi AI của chính dự án (2026-10-02, file audit điểm-thời đã
-gộp vào đây và `docs/RESEARCH.md` §5–§6):
+## 6. Tài liệu chuẩn
 
-- **Cài đặt phía Mac:** `brew install ffmpeg` cho dựng video. LLM dùng Gemini;
-  không cần cài model server local.
-- **Mọi con số hiệu năng hiện tại là ƯỚC TÍNH, chưa phải số đo trên máy
-  Ninh:** fps
-  MuseTalk thật (ước 2.5–4 fps → render 60s ≈ 6–10 phút, ngoại suy từ M2
-  Pro đo thật 1,6 fps — xem `docs/RESEARCH.md` §6), thời gian upscale 4K.
-  Benchmark these đúng máy của chủ sở hữu là việc đang nợ; không được lấy
-  số ước tính làm cam kết với người dùng.
-- **Avatar local không realtime** (chốt: `docs/RESEARCH.md` §6): MuseTalk
-  chạy offline qua sidecar; sidecar phải được cài riêng trên Mac (binary
-  `avatar-server` trong `data/third_party/avatar-sidecar`, contract
-  `/render`, `/stream/*` — xem `internal/engines/avatar/sidecar.go`).
-  Encoder video ưu tiên `h264_videotoolbox` trên Mac, fallback libx264;
-  upscale 4K là lanczos+unsharp, **không** phải chi tiết AI thật — tài
-  liệu/mô tả phải nói đúng như vậy.
-
-## Những gì đang treo (cần Mac/Ninh — xem `ARCHITECTURE.md` §12)
-
-- Nối daemon → live (cổng dry-run/cadence)
-- Stream engine phát avatar thật (đang phát test pattern)
-- Benchmark MuseTalk trên Mac M1 Pro 32GB
-- Cắm ADB hunter vào products/UI, chạy trên Android của Ninh
-- QC thành agent độc lập
-- E2E tài khoản thật + verdict mắt người về chất lượng mẫu
+- [SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md): kiến trúc mục tiêu, vai trò và job flow.
+- [README](../README.md): tóm tắt sản phẩm và cách chạy.
+- [USER_GUIDE](USER_GUIDE.md): vận hành theo khả năng hiện tại.
+- [ARCHITECTURE](ARCHITECTURE.md): ghi chú kiến trúc code kế thừa; đối chiếu
+  source và IMPLEMENTATION_STATUS trước khi dùng làm bằng chứng.

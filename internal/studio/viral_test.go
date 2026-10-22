@@ -41,8 +41,8 @@ func TestEnqueueViralJob(t *testing.T) {
 	}
 
 	jobID, err := s.EnqueueViral(context.Background(), p)
-	if err == nil || !strings.Contains(err.Error(), "free-only") {
-		t.Fatalf("EnqueueViral error = %v, want free-only policy error", err)
+	if err == nil || !strings.Contains(err.Error(), "credits") {
+		t.Fatalf("EnqueueViral error = %v, want explicit credits consent", err)
 	}
 	if jobID != "" || len(s.ListViralJobs(10)) != 0 {
 		t.Fatalf("paid video edit must not enqueue a job: id=%q jobs=%d", jobID, len(s.ListViralJobs(10)))

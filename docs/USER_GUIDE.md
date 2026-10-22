@@ -1,138 +1,131 @@
-# Hướng dẫn sử dụng (dành cho Ninh)
+# MiuNova — Hướng dẫn người vận hành
 
-> Cập nhật theo app thật (3 trụ: Affiliate Accesstrade,
-> Video Viral AI 100% Gốc, YouTube kể chuyện). Mọi quản trị đều qua **dashboard web** —
-> không cần chạm CLI.
+> Hướng dẫn này mô tả những phần có trong app hiện tại. Đích tự hành đầy đủ
+> nằm trong [PRODUCT_SPEC](PRODUCT_SPEC.md); khoảng cách code xem tại
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Tên kỹ thuật hiện tại là
+> `ai-creator-os` / `aicos`.
 
-## 1. Cài đặt
+## 1. Khởi chạy
 
-**Cách nhanh nhất:** tải binary đúng máy tại **GitHub Releases**
-(`github.com/ninhlee99/ai-creator-os` → Releases), chạy là dùng — không cài
-thêm gì (Go runtime không cần).
+Từ thư mục repository:
 
-| Máy | File | Chạy |
+```bash
+go build -o aicos ./cmd/aicos
+./aicos
+```
+
+Mở `http://127.0.0.1:8080`. Dựng video cần FFmpeg được cài trên máy chạy app.
+Các lựa chọn chạy/build đầy đủ nằm trong [README](../README.md) và
+[DEVELOPER](DEVELOPER.md).
+
+### Chạy trên VPS, mở bằng điện thoại
+
+- Đặt app sau HTTPS với hostname công khai; giữ callback đúng đường dẫn và
+  đăng ký URL trùng khớp trong trang developer của từng nền tảng.
+- TikTok VPS: đặt `TIKTOK_REDIRECT_URI=https://<host>/publishers/tiktok/callback`.
+  Callback quay thẳng về VPS; luồng Web không gửi PKCE. `TIKTOK_CLIENT_KEY` và
+  `TIKTOK_CLIENT_SECRET` phải thuộc app TikTok cấu hình Web Login Kit với URI
+  HTTPS đăng ký chính xác. `docs/tiktok-app-site/callback.html`
+  chỉ là relay thủ công: chép toàn bộ URL kết quả sang form TikTok Relay tại
+  `/publishers` ngay sau khi quay về. State hết hạn sau 15 phút; authorization
+  code có thể hết hạn sớm hơn.
+- Facebook VPS: đặt
+  `META_REDIRECT_URI=https://<host>/publishers/facebook/callback` và đăng ký
+  đúng URL này trong Meta App.
+- YouTube VPS: dùng Google OAuth client loại Web application, đặt
+  `YOUTUBE_REDIRECT_URI=https://<host>/publishers/youtube/callback`, rồi đăng ký
+  chính xác URI đó trong Google Cloud. Local giữ `YOUTUBE_REDIRECT_URI` trống và
+  dùng Desktop client/loopback. Google OAuth consent screen cũng cần cho phép
+  tài khoản đăng nhập.
+- Bật bảo vệ đăng nhập dashboard trước khi mở app ra internet. Không public
+  cổng CDP, VNC hoặc browser-debug.
+- TikTok, Facebook và YouTube đều có callback cấu hình cho VPS; cần xác minh
+  HTTPS, proxy, consent screen và credentials thật của deployment. Đăng nhập
+  Web AI là luồng khác, chưa có browser viewer để thao tác từ điện thoại.
+
+## 2. Kết nối tài khoản
+
+1. Tạo/chọn kênh tại `/accounts`.
+2. Kết nối TikTok, Facebook hoặc YouTube tại `/publishers` sau khi điền app
+   credentials và callback hợp lệ ở Settings.
+3. Instagram/Threads hiện phụ thuộc token và ID cấu hình; xem trạng thái từng
+   adapter tại [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md).
+4. Nếu dùng account AI web miễn phí làm nguồn tạo nội dung, có thể quản lý tại
+   `/web-ai`. Nút đăng nhập mở browser tạm trên máy chạy app và hiển thị trong
+   modal để thao tác từ điện thoại. VPS cần Chrome/Chromium, dashboard có mật
+   khẩu và HTTPS; kết quả live trên VPS vẫn cần xác minh.
+   [Luồng remote login](features/remote-webai-login.md).
+5. Affiliate hiện cần AccessTrade key, campaign được phép và publisher payout
+   profile. App yêu cầu key trong Settings; AccessTrade còn yêu cầu publisher
+   hoàn tất định danh, MST, hợp đồng điện tử và ngân hàng để nhận hoa hồng. Với
+   VPS self-hosted, việc này thường buộc chính người dùng làm thêm ngoài social
+   login. Vì vậy mục tiêu “chỉ kết nối social” chưa đạt cho tới khi O-01 chốt
+   mô hình provision/payout. Xem [PRODUCT_DECISIONS](PRODUCT_DECISIONS.md).
+
+## 3. Các màn hình hiện có
+
+| Màn hình | Route | Năng lực hiện có và giới hạn |
 |---|---|---|
-| Mac M1/M2/M3 | `aicos-darwin-arm64` | `chmod +x aicos-darwin-arm64 && ./aicos-darwin-arm64` |
-| Mac Intel | `aicos-darwin-amd64` | tương tự |
-| Windows | `aicos-windows-amd64.exe` | nhấp đúp |
-| Linux | `aicos-linux-amd64` | `chmod +x` rồi chạy |
-| Linux ARM64 | `aicos-linux-arm64` | `chmod +x` rồi chạy |
+| Tổng quan | `/` | Trạng thái app, quyết định và hoạt động đã ghi. Không phải bằng chứng mọi agent mục tiêu đang chạy. |
+| Kênh | `/accounts` | Hồ sơ kênh, trạng thái kết nối, brand DNA và một số điều khiển autopilot. |
+| Affiliate | `/products`, `/settings/accesstrade` | Tìm sản phẩm/campaign và tạo tracking link qua AccessTrade khi credential/campaign cho phép. Feed hiện chưa đủ sales/rating để khẳng định sản phẩm bán chạy hoặc đánh giá tốt. |
+| Studio | `/studio`, `/studio/jobs` | Lập shot plan, tạo một số loại job và xem artifact. Affiliate autopilot hiện vẫn cần clip chuyển động từ operator; chưa đạt tạo video affiliate end-to-end tự động. |
+| Viral | `/viral` | Radar tìm tín hiệu; pipeline video viral gốc đầy đủ chưa đạt đích và hiện bị chặn khi cần provider trả phí. |
+| Phát triển kênh | `/growth` | Growth planner và một phần YouTube metrics; chưa tối ưu đa nền tảng theo dữ liệu end-to-end. |
+| Xuất bản | `/publishers` | TikTok/Facebook/Instagram/Threads/YouTube có mức hỗ trợ khác nhau. Threads hiện chưa xuất bản video local; TikTok mặc định draft-only. |
+| Web AI | `/web-ai` | Quản lý account AI web; login browser tạm có viewer/chạm/bàn phím từ điện thoại qua dashboard đã xác thực. VPS cần Chrome/Chromium và HTTPS. |
+| Cài đặt | `/settings` | Provider, AccessTrade, dry-run, master switch, thông báo và vận hành. Chỉ dùng cấu hình miễn phí theo yêu cầu sản phẩm. |
+| Sức khỏe | `/healthz` | Endpoint trạng thái tiến trình để kiểm tra app còn phản hồi. |
 
-Mở trình duyệt: `http://127.0.0.1:8080`. Lần đầu app hỏi thiết lập 1 bước
-(dry-run bật sẵn cho an toàn).
+Chi tiết từng năng lực và cách kích hoạt nằm trong
+[features/README](features/README.md). Mục tiêu hoàn chỉnh nằm trong
+[SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md).
 
-**Công cụ ngoài** (trang Cài đặt · Hệ thống tự kiểm tra và báo thiếu, hướng dẫn
-cài theo đúng hệ điều hành của máy):
+## 4. Tài nguyên miễn phí và trạng thái job
 
-| Công cụ | Để làm gì | Cài |
-|---|---|---|
-| FFmpeg | dựng video (bắt buộc) | Mac: `brew install ffmpeg` · Win: `winget install Gyan.FFmpeg` · Linux: `sudo apt install ffmpeg` |
+- Chỉ dùng provider/account có mức phí bằng 0 và được phép cho tác vụ đó.
+- Khi đăng nhập Web AI, xác nhận account đang ở gói miễn phí. MiuNova không thể
+  tự kiểm chứng plan của provider; tài khoản cũ/import chưa xác nhận không được
+  dùng để tạo nội dung.
+- Khi Flow hoặc Muse báo HTTP 429 ở bước trước submit, MiuNova đưa account vào
+  cooldown và thử account miễn phí đã xác nhận khác. Không tạo/xoay account để
+  né giới hạn, không retry sau khi provider đã nhận job/prompt, và không
+  fallback sang trả phí.
+- Với Gemini API key, vào **Cài đặt → Nhà cung cấp** và xác nhận toàn bộ key
+  hiện tại chỉ dùng quota miễn phí. Thêm, xóa hoặc đổi key sẽ tự khóa API tới
+  khi xác nhận lại. Gemini Veo video bị chặn vì cần project bật billing.
+- Nếu hết tất cả nguồn phù hợp, job phải dừng, ghi stage/lý do và báo. Hiện
+  fallback miễn phí end-to-end cho toàn pipeline **chưa được chứng minh**.
+- Cài đặt AT Hunter có tùy chọn `Google Flow credits`. Để giữ đúng yêu cầu chỉ
+  miễn phí, hãy để tùy chọn này tắt: xác nhận credits không chứng minh lượt tạo
+  video có giá bằng 0. App hiện không tự xác minh phí trước khi gọi Flow.
+- Thiếu sales, rating, metrics hoặc trạng thái API phải hiện là thiếu/chờ xác
+  minh; không diễn giải thành dữ liệu tốt.
 
-**Build từ source** (nếu cần): cài Go 1.26 rồi `go build -o aicos ./cmd/aicos`.
+## 5. TikTok và các thao tác người dùng
 
-## 2. Các trang trong dashboard
+Yêu cầu sản phẩm là xác nhận từng bài TikTok. Direct Post còn buộc hiển thị
+preview, metadata, privacy/interactions và commercial disclosure cho từng bài
+trước consent; vì thế “một chạm tổng” chưa được chốt. Phương án khuyên dùng là
+một nút xác nhận cuối sau lựa chọn bắt buộc. Publisher hiện mặc định draft-only.
+Ngoài ra, điều khoản repo mô tả MiuNova là app cá nhân tự host; TikTok hiện
+hướng dẫn API client không được chỉ phục vụ account riêng của developer/team.
+Eligibility/audit vì vậy chưa xác minh. Không coi draft là bài đã đăng hoặc
+Direct Post public là năng lực chắc chắn. Xem
+[PRODUCT_DECISIONS O-04/O-07](PRODUCT_DECISIONS.md).
 
-| Trang | Route | Làm gì |
-|---|---|---|
-| Tổng quan | `/` | Bảng điều khiển, thẻ số liệu doanh thu thật, feed quyết định, kill switch |
-| Agent Harness 🧠 | `/harness` | Bộ não tự hành cấp cao: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory) |
-| Kênh | `/accounts` | Tài khoản TikTok/YouTube/Facebook, hồ sơ Brand DNA từng kênh |
-| Phát triển kênh | `/growth` | Kế hoạch 30 ngày, canary 7 ngày, luật kill/nhân đôi |
-| Đội ngũ | `/team` | Pipeline Affiliate / Video Viral AI / Kể chuyện từ dữ liệu thật |
-| Studio AI 🎬 | `/studio` | Dàn dựng video bán hàng, video đu trend showbiz 9:16, audio story 16:9 |
-| Affiliate | `/products` | Chiến dịch Accesstrade, săn deal, tạo link, kệ hàng bio |
-| Tạo video dọc | `/viral` | Nhập chủ đề, chọn ảnh nhân vật, thêm link tham chiếu tùy chọn; theo dõi job ở `/studio/jobs` |
-| Kể chuyện | `/stories` | Truyện audio YouTube: hàng đợi chủ đề, job, tự động đăng private |
-| Đa nền tảng | `/publishers` | Kết nối OAuth TikTok/YouTube/Meta Facebook & Instagram |
-| Cài đặt | `/settings` | 4 trang tinh gọn: Hệ thống (Quản lý Model Gemini Auto-Update 24h & **Kho Tài Khoản Web AI**), Accesstrade, Thứ tự AI, An toàn |
+Trong vận hành mục tiêu, người dùng chủ yếu kết nối account, theo dõi dashboard,
+xác nhận từng bài TikTok và xử lý cảnh báo không tự khắc phục được. Thực tế app
+chưa đạt toàn bộ tự động hóa này; không chọn sản phẩm, upload clip hay duyệt nội
+dung định kỳ là mục tiêu, không phải giới hạn đã giải quyết.
 
-### 2b. Kết nối tài khoản AI qua Trình duyệt Tự Động (CDP)
-Hệ thống cho phép bạn dùng ChatGPT, Claude, Gemini, Grok, Muse AI hoàn toàn tự động mà **không cần sao chép cookie bằng tay**:
-1. Vào **Cài đặt · Hệ thống** (`/settings/system`) → bấm tab **🤖 Tài khoản AI**.
-2. Tại thẻ của nền tảng bạn muốn kết nối (ví dụ: Grok hoặc Claude), bấm **"🌐 Đăng Nhập Tự Động"**.
-3. Một cửa sổ trình duyệt sạch (profile cô lập hoàn toàn) sẽ tự mở lên. Bạn đăng nhập tài khoản bình thường.
-4. Ngay khi đăng nhập thành công, app sẽ tự động nhận diện email, lưu phiên làm việc an toàn và tự đóng trình duyệt.
-5. Hỗ trợ xoay vòng nhiều tài khoản (multi-account) cho từng nền tảng, tự động chuyển tài khoản khi gặp giới hạn (rate limit).
+## 6. Dừng và hỗ trợ
 
-### 2c. Khóa Nhận Diện Khuôn Mặt Nhân Vật Theo Kênh (Character Identity Lock)
-Tạo nhân vật ảo / KOC ảo với khuôn mặt nhất quán 100% xuyên suốt mọi video clip:
-1. Vào **Kênh Sáng Tạo** (`/accounts`) hoặc tạo kênh mới (`/accounts/new`).
-2. Chọn ngay 1 trong 10 nhân vật mẫu có sẵn (Thần Tiên Tỉ Tỉ, KOC Công Nghệ, Beauty Blogger...) hoặc tải lên ảnh đại diện riêng. Nếu để trống, hệ thống sẽ tự động gán ngẫu nhiên 1 nhân vật mẫu.
-3. Quản lý và bổ sung ảnh góc mặt của nhân vật tại tab **👤 Nhân vật & Khuôn mặt AI** trong trang chi tiết kênh (`/accounts/{id}?tab=model-photos`). Hệ thống lưu diện mạo chuẩn và tự động map vào mọi video Affiliate Lookbook hoặc Vũ Đạo Viral.
-
-### 2d. Cập Nhật Model Gemini Trên Toàn Bộ Adapter (On-demand Updater)
-Cập nhật theo yêu cầu chỉ với 1 click tại **Cài đặt · Hệ thống** (`/settings/system`):
-- **Văn bản & Kịch bản**: `gemini-3.8-flash` (tự động nâng cấp khi Google phát hành bản mới hơn).
-- **Tạo ảnh & Phân cảnh**: `gemini-nano-banana-2.1` (dòng Nano Banana chất lượng cao chuyên tạo nhân vật Thần tiên tỉ tỉ, sản phẩm affiliate).
-- **Giọng đọc kể chuyện**: `gemini-3.8-flash-tts` (đa cảm xúc với các tag `[trầm lặng]`, `[cao trào]`, `[sôi nổi]`, `[tức giận]`, `[buồn bã]`, `[vui vẻ]`, `[thì thầm]`).
-- **Tạo video chuyển động**: `veo-3.1-generate-preview` (Google Veo 3.1).
-- Bấm nút **"⚡ Cập Nhật Tất Cả Model Gemini"** để quét Google API và nâng cấp tức thì mà không cần restart máy chủ. Không chạy tiến trình định kỳ ngầm 24h.
-
-### 2e. Tiêu Chuẩn Thời Lượng Video Xuất Bản
-- **Video Affiliate Lookbook**: Thời lượng **30s – 60s**, giữ nhất quán chi tiết trang phục và người mẫu theo phong cách điện ảnh chân thực.
-- **Video Vũ Đạo Viral**: Thời lượng **từ 60s trở lên** (chuẩn 1 phút+ TikTok bật kiếm tiền), bắt đầu tức thì tại 0.0s (triệt tiêu hoàn toàn màn hình đen 5s đầu), visual nhân vật "Thần tiên tỉ tỉ".
-- **Video Truyện Audio**: Thời lượng **30 đến 60 phút**, kịch bản chân thật, kịch tính, lôi cuốn có cao trào, trầm lặng, sôi nổi, hào hứng, buồn bã, lặng lẽ với Gemini TTS.
-1. Vào **Kênh** (`/accounts`) → chọn kênh cần thiết lập → bấm tab **👤 Nhân vật & Khuôn mặt AI** (`/accounts/{id}?tab=model-photos`).
-2. Tải lên 1 hoặc nhiều ảnh chân dung góc chụp rõ nét của nhân vật.
-3. Khi tạo video tại **Video Viral AI** (`/viral`) hoặc **Studio Ad Creative** (`/studio`), hệ thống tự động nhận diện khuôn mặt nhân vật đã ghim của kênh và áp dụng kỹ thuật Character Reference Injection vào AI MediaGen để giữ nguyên thần thái, diện mạo nhân vật trong từng chuyển động, vũ đạo và biểu cảm.
-4. Bạn cũng có thể tải ảnh nhân vật tùy chỉnh trực tiếp ngay tại form tạo video `/viral/create`.
-
-### 2d. Sản Xuất Video Affiliate Hoa Hồng Cao (≥ 20%) & Đăng TikTok
-1. Vào **Sản phẩm & Kệ hàng** (`/products`) → tab **Kệ Hàng Sản Xuất AI** (`/products?tab=shelf`). Các sản phẩm có hoa hồng $\ge 20\%$ được tự động gắn huy hiệu **🔥 Hoa hồng cao**.
-2. Bấm **🎬 Dựng video AI** bên cạnh sản phẩm để tạo video quảng bá với định dạng chuẩn dọc 9:16 (1080×1920).
-3. Sau khi video hoàn tất tại **Studio Jobs** (`/studio/jobs`), bấm **📋 Copy Post Kit** để lấy trọn bộ Tiêu đề, Hook 3s, Chú thích chốt sale và Hashtags thịnh hành (#thoitrangnu #phukienthoitrang #xuhuong #dealhot) kèm link Bio Storefront để đăng kênh TikTok ngay.
-4. Bấm **🔗 Ghim vào Kệ Bio** để sản phẩm tự động xuất hiện trên trang Bio Link (`/bio`) của kênh với cơ chế tracking lượt click tự động.
-
-### 2e. Tạo Truyện Kể YouTube 60 Phút & Tự Động Cắt Shorts (9:16)
-1. Tại **Studio AI** (`/studio`) hoặc qua API `/studio/story`, nhập kịch bản cốt truyện hấp dẫn, kịch tính (ví dụ: Hôn nhân hợp đồng, tổng tài, tình cảm nam nữ kịch tính).
-2. Hệ thống tự động phân tách kịch bản thành các hồi và phân cảnh điện ảnh, render video Full HD 1080p (1920×1080, tỉ lệ 16:9) kèm giọng đọc truyền cảm và nhạc nền du dương.
-3. **Bộ cắt tự động (Auto-Clipper)** tích hợp sẵn sẽ quét các phân cảnh cao trào nhất và tự động cắt trích đoạn 9:16 (1080×1920) kèm phụ đề để làm video ngắn Shorts / TikTok / Reels kéo view về video dài YouTube.
-4. Tại `/studio/jobs`, video dài 16:9 và bản cắt Shorts 9:16 đều có player phóng to và nút tải riêng biệt.
-
-### 2f. Tạo video dọc
-1. Thêm `YOUTUBE_API_KEY` tại `/settings/system`, rồi mở `/viral`.
-2. `Refresh radar` tìm video YouTube 7 ngày gần nhất từ kênh có ít nhất 100,000 subscribers. Tự động quét chạy một lần mỗi ngày.
-3. Bật `Video Viral Xu Hướng 100% Gốc` trên dashboard để tự dựng tối đa một video mỗi lần quét. Cần có ảnh người mẫu do bạn tải lên. Video dựng cục bộ, không dùng lại hình hoặc âm thanh từ video nguồn.
-4. Theo dõi job và tải video tại `/studio/jobs`. Đầu ra dài ít nhất bằng video nguồn.
-
-## 3. Vận hành hằng ngày (hands-off)
-
-1. **Mở máy + mạng + start app** — đó là toàn bộ việc của Ninh. Mọi quyết định
-   vận hành (chọn provider, fallback khi hết quota, lịch đăng) do app tự quyết
-   theo nguyên tắc "free trước".
-2. Telegram báo khi: lỗi/quota/có sự kiện kill (bật ở Cài đặt · Hệ thống).
-3. Muốn app tự chạy lại khi crash/restart máy (Mac): làm theo
-   `deploy/README.md` (watchdog launchd).
-4. Kiểm tra sức khỏe định kỳ: `scripts/watch-health.sh` (cron mỗi 5 phút) —
-   phát hiện app treo mà process chưa chết.
-
-## 4. Cập nhật app
-
-1. Tải binary mới từ GitHub Releases, thay file cũ.
-2. Restart app (watchdog launchd tự chạy lại bản mới).
-3. Xem version đang chạy ở Cài đặt · Hệ thống (thẻ "Phiên bản app").
-
-## 5. An toàn
-
-- **Kill switch:** nút trên thanh topbar — dừng mọi hoạt động tự động trong vài giây.
-- **Dry-run:** bật ở Cài đặt · An toàn để xem trước mọi hành động mà không tác động ra ngoài.
-- **Mật khẩu dashboard:** đặt ở Cài đặt · Hệ thống → "Mật khẩu truy cập".
-  Bắt buộc đặt trước khi mở app ra mạng LAN/VPS. Quên mật khẩu: dừng app,
-  chạy lại với `AICOS_RESET_AUTH=1` (hoặc xóa key `auth.password_hash` bằng
-  sqlite3 trên Mac/Linux), mở app lại và đặt mật khẩu mới.
-- Không đọc, in ra hay gửi đi API key/secret/token.
-
-## 6. Backup & khôi phục
-
-App **tự sao lưu mỗi ngày** vào `backups/` (giữ 7 bản mới nhất) — đủ 5 database
-(ledger, studio, products, accesstrade, webai). Trước khi lưu, app kiểm tra
-toàn vẹn từng database; bản hỏng bị loại, giữ bản cũ dùng được. Muốn có bản
-ở chỗ khác (phòng chết đĩa): nhập thư mục USB/ổ mạng ở Cài đặt · Hệ thống →
-"Sao lưu & khôi phục" → "Bản sao dự phòng (offsite)" — app tự copy bản mới
-nhất sang đó mỗi ngày. Khôi phục: dừng app, giải nén bản muốn về, chép đè các
-file `.db` vào `data/`, mở app lại. Chi tiết:
-`docs/features/backup-restore.md`.
-
-- **Kênh cảnh báo dự phòng:** ngoài Telegram, có thể nhập "Webhook dự phòng" ở
-  Cài đặt · Hệ thống → "Thông báo Telegram" — khi Telegram gửi lỗi, cảnh báo
-  tự gửi tới địa chỉ này.
+- Dùng Kill Switch trong dashboard để ngăn job mới và hoạt động tự động.
+- Khi OAuth hết hạn, quota cạn hoặc API thiếu quyền, giữ job ở trạng thái chờ/dừng
+  có lý do; không lặp lại thao tác vô hạn. YouTube video upload có bucket riêng,
+  mặc định 100 lượt/ngày theo giờ Pacific; giới hạn thực xem trong Google Cloud
+  Console.
+- Kiểm tra [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md) trước khi dựa vào
+  một luồng xuất bản, analytics hoặc login từ VPS.
+- Không chia sẻ password, OAuth token, API key hoặc cookie qua log/ticket.

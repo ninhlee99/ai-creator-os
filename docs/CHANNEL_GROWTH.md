@@ -1,4 +1,9 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+> ⚠️ **Tài liệu lịch sử.** Không dùng làm spec đang hiệu lực hoặc nguồn trạng
+> thái code. Mục tiêu hiện tại ở [PRODUCT_SPEC](PRODUCT_SPEC.md), quyết định ở
+> [PRODUCT_DECISIONS](PRODUCT_DECISIONS.md), hiện trạng code ở
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Các quota và chính sách
+> nền tảng trong file này có thể đã cũ; kiểm tra tài liệu API chính thức trước
+> khi dùng.
 >
 
 # CHANNEL_GROWTH.md — Thiết kế: Xây dựng & Phát triển kênh (zero-touch)
@@ -8,14 +13,9 @@
 > không hardcode số lượng, scale theo N account/nền tảng) và app tự phát
 > triển kênh: tăng follower/subscriber, tăng view.
 >
-> Khi mâu thuẫn: `docs/MODEL.md` thắng về mô hình kinh doanh,
-> `docs/ARCHITECTURE.md` thắng về kỹ thuật hiện tại, `docs/AGENT_TEAM.md`
-> thắng về tổ chức đội agent. File này thắng về tính năng growth.
->
-> **Trạng thái:** spec sống — MVP + giai đoạn 2 đã triển khai (xem §10–§11,
-> kèm giới hạn trung thực còn lại ở cuối §11). Phần triển khai đã bị
-> `docs/PROJECT_REVIEW.md` Đợt 1–3 phủ quyết/điều chỉnh (gộp trang, đổi
-> mặc định zero-touch, cắt dữ liệu giả) thì làm theo PROJECT_REVIEW.
+> Tài liệu này lưu lại kế hoạch và nhận định tại thời điểm 2026-10-02. Các
+> tuyên bố “đã triển khai”, quota, hoặc chính sách ở dưới không ghi đè tài liệu
+> chuẩn hiện hành và chưa được xác minh lại theo source/API hôm nay.
 
 ---
 
@@ -219,15 +219,13 @@ test → đo → kill/nhân đôi, không bằng hy vọng viral.
    TikTok, đối chiếu 2026-09]
    Nguồn: https://www.outstand.so/blog/tiktok-content-posting-api ·
    https://github.com/openonion/connectonion/issues/262
-5. **YouTube Data API v3 — quota là trần cứng theo project:** mặc định
-   10.000 units/ngày/project; 1 lần upload = 1.600 units → **~6 upload/ngày
-   cho cả project**, không phải mỗi kênh. Đọc số liệu thì rẻ (1 unit/lần).
-   Hệ quả scale: mỗi kênh nên có Google Cloud project riêng (hoặc xin tăng
-   quota) nếu muốn > 6 upload/ngày toàn mạng. Project chưa qua xác minh của
-   Google còn bị khóa video ở private. [chính thức — quota calculator
-   developers.google.com]
-   Nguồn: https://github.com/palolol/palolol/blob/HEAD/apigoogle.md ·
-   https://dev.to/siyabuilt/youtubes-api-quota-is-10000-unitsday-heres-how-i-track-100k-videos-without-hitting-it-5d8h
+5. **YouTube Data API v3 — quota theo project:** `videos.insert` hiện có bucket
+   riêng, mặc định 100 calls/ngày, 1 unit/call; `search.list` cũng có bucket
+   riêng 100 calls/ngày; các method còn lại dùng bucket 10.000 units/ngày.
+   Quota reset nửa đêm Pacific. Không tách project để né trần; nếu quota thực
+   không đủ, xin extension theo quy trình Google. Giới hạn được cấp xem trong
+   Cloud Console. [Quota Calculator](https://developers.google.com/youtube/data/determine_quota_cost)
+   · [Revision History](https://developers.google.com/youtube/data/revision_history)
 6. **AI disclosure:** TikTok yêu cầu gắn nhãn nội dung AI khi đăng; YouTube
    yêu cầu khai báo "altered/synthetic content" khi upload. Publisher phải
    tự set hai cờ này trong metadata — bỏ qua = rủi ro phạt + hạ reach.
@@ -295,9 +293,9 @@ Bám vào `accounts` hiện có, thêm hồ sơ growth (bảng `growth_profiles`
   nền tảng đích).
 - **Publisher:** đăng theo lịch (Scheduler mở rộng sang lịch đăng), set cờ
   AI-disclosure, idempotency key như hiện tại. YouTube qua Data API v3
-  (quota guard: đếm units/ngày/project trong `api_usage`, tự dời lịch khi
-  chạm trần thay vì lỗi). TikTok: Direct Post sau audit; trước audit dùng
-  draft (§6.3).
+  (`videos.insert` project bucket, mặc định 100 lượt/ngày, reservation trong
+  `growth_youtube_upload_quota`, reset Pacific; hết thì tự dời lịch). TikTok:
+  Direct Post sau audit; trước audit dùng draft (§6.3).
 - **Analyst:** đồng bộ snapshots (§8) theo lịch. YouTube Analytics lấy metrics
   từng video trong 30 ngày (`views`, `shares`, `averageViewPercentage`,
   `subscribersGained`) và chỉ gắn format khi `published_ref` khớp video ID.
@@ -403,7 +401,7 @@ watermark, không đăng cùng file hai nơi, không kêu gọi tương tác gi�
 | Tạo tài khoản TikTok/YouTube, xác minh SĐT/email, qua CAPTCHA/2FA | Nền tảng bắt người thật; tự động tạo account = vi phạm ToS |
 | Giao credentials/OAuth từng account một lần (app đã có flow OAuth + token file riêng từng account) | Quyền sở hữu tài khoản |
 | Nộp **TikTok Direct Post audit** (website đối ngoại + Privacy/Terms — dùng `docs/tiktok-app-site`; quay demo flow) | TikTok duyệt *doanh nghiệp/app*, không duyệt thay được; có rủi ro bị từ chối nếu bị coi là tool riêng tư — chấp nhận rủi ro này hoặc chấp nhận TikTok ở chế độ draft (xem §6.3) |
-| Tạo Google Cloud project + xác minh API + (khi scale) xin tăng quota YouTube; khuyến nghị 1 project/kênh để quota không nghẽn chung | Google yêu cầu chủ project xác minh |
+| Tạo Google Cloud project + xác minh API + (khi cần) xin tăng quota YouTube theo quy trình Google | Google yêu cầu chủ project xác minh; app dừng khi hết quota |
 | Lấy RTMP key, xin quyền LIVE trong app TikTok từng account | Quyền nằm trong app của chủ account |
 | Khai AdSense + thông tin thuế/thanh toán khi kênh đạt YPP; đăng ký TikTok Shop seller/affiliate nếu bán hàng | Pháp lý/tiền của Ninh |
 | Nạp Gemini key / API key vào Settings (app đã có sẵn mục này) | Secrets của Ninh |
@@ -424,10 +422,10 @@ tảng không cho cách khác).
 - **TikTok completion/retention** không lấy được qua Display API → vòng
   tối ưu TikTok dùng proxy-metrics (view velocity, share/save rate) ở
   MVP/v2; retention đầy đủ chỉ khi nối Business API (v3, tùy chọn).
-- **Quota YouTube** là trần theo project (§3.5): số account YouTube × nhịp
-  đăng phải khớp quota; hệ thống tự dời lịch khi chạm trần và alert khi
-  cần thêm project/quota — quyết định thêm project là bootstrap, không phải
-  vận hành.
+- **Quota YouTube upload** là bucket `videos.insert` dùng chung theo project
+  (§3.5), không nhân lên theo số kênh. App dùng một bộ đếm chung, tự dời lịch
+  khi chạm trần và báo; nếu cần thêm quota thì xin extension qua Google, không
+  tách project để né giới hạn.
 
 ### 6.4 Cấm tuyệt đối (không thiết kế, không ngoại lệ)
 
@@ -457,7 +455,8 @@ Không sửa code web trong đợt thiết kế này; đặc tả để đợt b
      số format winner/killed, cadence hiện hành, cảnh báo mở.
    - Bộ lọc theo platform/stage; sparkline follower 30 ngày (từ snapshots).
    - Khối "hạn chót": đếm ngược YPP 2027-02-01 cho các kênh YouTube chưa
-     qua cửa; tình trạng quota YouTube hôm nay (units đã dùng/trần).
+     qua cửa; tình trạng bucket upload YouTube theo ngày reset Pacific
+     (lượt đã dùng/trần).
 2. **Khối "Phát triển kênh" trong trang chi tiết account** (mở rộng trang
    account hiện có):
    - Growth profile: niche/persona (sửa được), KPI milestones dạng checklist
@@ -680,8 +679,8 @@ Package `internal/growth` + trang `/growth`. Mọi mục dưới đây đều c�
   `published_ref`). Plan engine chỉ lên lịch/mô tả.
 - **Đồng bộ nền theo lịch (daemon)**: vòng sync hiện chạy khi bấm nút ở
   /growth; chưa cắm vào daemon nền zero-touch.
-- **Quota YouTube theo project/kênh** (§6.3): chưa triển khai bộ đếm quota;
-  cần khi bắt đầu Analytics API.
+- **Quota YouTube upload** (§6.3): bộ đếm cho bucket `videos.insert` đã triển
+  khai; Analytics methods dùng bucket 10.000 units riêng và chưa được tính ở đây.
 
 ### Kiểm chứng (2026-10-02)
 
@@ -747,18 +746,21 @@ tra bằng tay.
    của item — script Studio vốn đã viết mới mỗi job, đây là lớp bảo vệ ở
    tầng kế hoạch.
 4. **Đăng YouTube fail-closed + quota** (`PublishVideo` của
-   `internal/publishers` — resumable upload Data API v3, quota 1.600
-   units/lượt): trạng thái kết nối đọc từ chính cơ chế `/settings/env`
+   `internal/publishers` — resumable upload Data API v3, bucket mặc định 100
+   `videos.insert` calls/ngày, 1 unit/lượt, reset theo giờ Pacific): trạng thái
+   kết nối đọc từ chính cơ chế `/settings/env`
    (`YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` + token OAuth theo từng
    tài khoản tại `data/youtube_token_<username>.json` + trường channel id,
    ẩn danh mặc định lấy từ `YOUTUBE_DEFAULT_PRIVACY` — đã thêm vào danh sách
    biến môi trường Cài đặt). Thiếu bất kỳ mảnh nào: item ở trạng thái
    `waiting_connect` ("Chờ kết nối YouTube") với ghi chú nêu đúng mảnh
    thiếu; không có đường nào giả vờ đã đăng. Bộ đếm quota theo ngày ở bảng
-   `growth_youtube_quota` (1 ngày = 10.000 units ≈ 6 lượt tải cho TOÀN BỘ
-   project OAuth): hết quota → `waiting_quota` + alert + quyết định, chờ
-   qua ngày. Chỉ trừ quota khi tải lên thành công (upload lỗi giữ quota,
-   tránh khoá oan). Video luôn đăng kèm cờ `containsSyntheticMedia` và
+   `growth_youtube_upload_quota` dùng reservation nguyên tử chung toàn app:
+   đủ 100 calls → `waiting_quota` + alert + quyết định tới ngày reset. Request
+   chưa được gửi (ví dụ lỗi OAuth/local) thì slot được trả; khi endpoint upload
+   đã được gọi, slot được giữ kể cả response lỗi vì provider có thể đã tính
+   request. Nếu Google báo bucket project cạn do dùng ngoài app, guard khóa
+   tới ngày reset. Video luôn đăng kèm cờ `containsSyntheticMedia` và
    dòng công khai "nội dung tạo/hỗ trợ bởi AI" trong mô tả. Khi cả Shorts
    và bản dài của cùng ý tưởng đã có link, hai item tự nối
    `related_item_id` hai chiều (metadata cho tính năng Related Video của

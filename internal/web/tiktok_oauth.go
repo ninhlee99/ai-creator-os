@@ -135,9 +135,12 @@ func (s *Server) handleTikTokAuthorize(w http.ResponseWriter, r *http.Request) {
 		publishersMsg(w, r, "err", msg)
 		return
 	}
-	// PKCE always: required by TikTok's Desktop platform, harmless on Web
-	// (the verifier always matches the challenge we sent).
-	verifier, challenge := tiktok.NewPKCE()
+	// TikTok requires PKCE for its Desktop loopback flow. The Web flow uses
+	// the server-side client secret and state; do not send PKCE parameters there.
+	var verifier, challenge string
+	if publishers.TikTokRedirectIsLocal() {
+		verifier, challenge = tiktok.NewPKCE()
+	}
 	http.Redirect(w, r, p.AuthorizeURL(s.oauth.issue(username, verifier), challenge), http.StatusFound)
 }
 

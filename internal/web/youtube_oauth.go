@@ -5,11 +5,11 @@ package web
 // Trước đây đường duy nhất lấy refresh token là script Python
 // scripts/get-youtube-token.py chạy ở terminal — vi phạm rule "mọi khả
 // năng đều có UI". Flow ở đây theo mẫu TikTok (authorize → callback),
-// dùng OAuth client loại "Desktop app" của Google:
+// dùng OAuth client loại "Desktop app" của Google ở local và loại "Web
+// application" khi YOUTUBE_REDIRECT_URI được cấu hình cho VPS:
 //
-//   - redirect_uri là loopback (http://127.0.0.1:<cổng>/publishers/youtube/callback):
-//     Google cho phép redirect loopback với Desktop-app client mà không
-//     cần khai báo trước.
+//   - Local: redirect_uri là loopback (http://127.0.0.1:<cổng>/publishers/youtube/callback).
+//   - VPS: YOUTUBE_REDIRECT_URI phải là HTTPS URL đã đăng ký trên Web client.
 //   - scope: youtube.upload + yt-analytics.readonly (giống script).
 //   - access_type=offline + prompt=consent để luôn nhận refresh_token.
 //   - token ghi vào youtube_token_<username>.json dạng {"refresh_token": "..."}
@@ -43,10 +43,19 @@ const (
 		"https://www.googleapis.com/auth/yt-analytics.readonly"
 )
 
-// youtubeRedirectURI dựng callback URL loopback từ request hiện tại.
-// App chạy local nên bắt buộc mở qua 127.0.0.1/localhost — nếu mở qua
-// hostname/IP khác, Google sẽ từ chối redirect nên báo rõ ngay.
+// youtubeRedirectURI returns the configured HTTPS callback for a Google Web
+// OAuth client, or a loopback callback for a Google Desktop client.
 func youtubeRedirectURI(r *http.Request) (string, error) {
+	if configured := strings.TrimSpace(os.Getenv("YOUTUBE_REDIRECT_URI")); configured != "" {
+		u, err := url.Parse(configured)
+		if err != nil || !u.IsAbs() || u.Scheme != "https" || u.Host == "" ||
+			u.User != nil || u.Opaque != "" || u.EscapedPath() != "/publishers/youtube/callback" ||
+			u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(configured, "#") {
+			return "", fmt.Errorf("YOUTUBE_REDIRECT_URI phải là URL HTTPS đã đăng ký và kết thúc bằng /publishers/youtube/callback")
+		}
+		return u.String(), nil
+	}
+
 	host := r.Host
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h

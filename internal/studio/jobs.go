@@ -78,7 +78,7 @@ func (s *Studio) GetJob(id string) (Job, bool) {
 
 // ListJobs returns jobs newest first.
 func (s *Studio) ListJobs(limit int) []Job {
-	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,output,created_at,finished_at FROM studio_jobs ORDER BY created_at DESC LIMIT ?`, limit)
+	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,CASE WHEN status = 'failed' THEN log ELSE '' END,output,created_at,finished_at FROM studio_jobs ORDER BY created_at DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (s *Studio) ListJobs(limit int) []Job {
 	var out []Job
 	for rows.Next() {
 		var j Job
-		if err := rows.Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Output, &j.CreatedAt, &j.FinishedAt); err == nil {
+		if err := rows.Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Log, &j.Output, &j.CreatedAt, &j.FinishedAt); err == nil {
 			out = append(out, j)
 		}
 	}

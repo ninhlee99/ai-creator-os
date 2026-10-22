@@ -1,6 +1,6 @@
 //go:build parked
 
-// Package stream is the in-process FFmpeg RTMP supervisor for AI Creator OS.
+// Package stream is the in-process FFmpeg RTMP supervisor for MiuNova.
 //
 // It replaces the standalone stream-engine binary: instead of a separate
 // process driven over HTTP (127.0.0.1:8090), the streamer agent calls

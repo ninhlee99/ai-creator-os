@@ -8,6 +8,11 @@
 
 > **Trạng thái runtime (2026-10-21):** Chính sách free-only hiện tắt tạo/chỉnh sửa video viral tự động; `/viral` từ chối enqueue vì adapter thay nhân vật cần billing. Affiliate chỉ nhận clip chuyển động do người vận hành cung cấp cho từng shot. QC kiểm thay đổi frame ở 2 fps và phân tích ba frame mỗi shot, nên chưa chứng minh chuyển động người thật liên tục hoặc sản phẩm được mặc/dùng ở mọi thời điểm. Các mô tả Veo/Muse, “1:1”, “100%” và các mục tiêu tương tự bên dưới là yêu cầu đích, không phải cam kết năng lực đang chạy.
 
+> **Phạm vi tài liệu:** đây là bộ tiêu chuẩn video chuyên ngành kế thừa. Mục tiêu
+> sản phẩm hiện hành nằm trong [PRODUCT_SPEC](PRODUCT_SPEC.md); năng lực code nằm
+> trong [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Các mục tiêu cũ ở file
+> này không mở rộng hoặc ghi đè phạm vi sản phẩm hiện hành.
+
 ---
 
 ## MỤC LỤC

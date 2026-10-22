@@ -138,8 +138,8 @@ func TestAutopilotRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Autopilot must stop before product lookup or claim while motion clips
-	// require operator upload under the free-only video policy.
+	// Autopilot must stop before product lookup or claim without account-level
+	// authorization for automatic Google Flow credit use.
 	pstore, err := products.NewStore(filepath.Join(dir, "products.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -156,8 +156,8 @@ func TestAutopilotRun(t *testing.T) {
 	}
 
 	res, err := ap.Run(context.Background(), acct.ID)
-	if err == nil || !strings.Contains(err.Error(), "free-only") {
-		t.Fatalf("want free-only pause error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "chưa có xác nhận dùng Google Flow credits tự động") {
+		t.Fatalf("want missing Flow credits authorization error, got %v", err)
 	}
 	if res.JobID != "" {
 		t.Fatalf("autopilot queued job despite missing operator clips: %+v", res)

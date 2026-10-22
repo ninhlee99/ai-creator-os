@@ -131,28 +131,33 @@ func TestDashboardProductMediaPicker(t *testing.T) {
 		`name="product_media"`,
 		`multiple`,
 		`image/jpeg`,
-		`video/mp4`,
-		"Kéo thả ảnh hoặc video vào đây",
+		"Kéo thả ảnh listing sản phẩm vào đây",
 	} {
 		if !strings.Contains(page.Body.String(), want) {
 			t.Errorf("quick creator media picker missing %q", want)
 		}
+	}
+	if strings.Contains(page.Body.String(), "video/mp4") {
+		t.Error("product listing picker must accept product images, not source videos")
 	}
 
 	settings := get(t, s, "/settings/system")
 	if settings.Code != http.StatusOK {
 		t.Fatalf("GET /settings/system = %d, want 200", settings.Code)
 	}
-	for _, want := range []string{"webai-login-action", "webai-key-action"} {
+	for _, want := range []string{"webai-login-action"} {
 		if !strings.Contains(settings.Body.String(), want) {
 			t.Errorf("Web AI action layout missing %q", want)
 		}
+	}
+	if strings.Contains(settings.Body.String(), "webai-key-action") {
+		t.Error("Web AI session UI must not expose manual credential entry")
 	}
 	styles := get(t, s, "/static/style.css")
 	if styles.Code != http.StatusOK {
 		t.Fatalf("GET /static/style.css = %d, want 200", styles.Code)
 	}
-	for _, want := range []string{".product-media-dropzone", ".webai-card-actions .webai-login-action", "white-space: nowrap"} {
+	for _, want := range []string{".product-media-dropzone", ".webai-card-actions > .btn", "white-space: nowrap"} {
 		if !strings.Contains(styles.Body.String(), want) {
 			t.Errorf("stylesheet missing layout rule %q", want)
 		}

@@ -1,0 +1,150 @@
+{{define "settings-system-apikeys"}}
+<div id="panel-apikeys" class="settings-tab-panel">
+  <!-- Export / Import ENV Card -->
+  <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.03);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+    <div style="flex:1;min-width:280px">
+      <div style="font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px">
+        <span>📦</span> Di Chuyển Cấu Hình (Export / Import ENV)
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/settings/env/export" class="btn btn-secondary btn-sm" title="Tải file aicos.env">⬇️ Xuất .env</a>
+      <a href="/settings/env/export-json" class="btn btn-secondary btn-sm" title="Tải file JSON">⬇️ Xuất JSON</a>
+      <button type="button" class="btn btn-primary btn-sm" onclick="openEnvImportModal()">⬆️ Nhập cấu hình</button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       GOOGLE GEMINI MODELS (TỰ ĐỘNG CẬP NHẬT MỖI NGÀY)
+       ========================================================================= -->
+  <div class="card" style="border-radius:14px;padding:20px 24px;margin-bottom:24px;border:1.5px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">🤖</span>
+          <h3 style="margin:0;font-size:16px;font-weight:700">Google Gemini AI Models — Cập Nhật Model Mới Nhất Cho Toàn Bộ Adapter</h3>
+          <span class="badge badge-ok" style="font-size:11px">On-demand Update</span>
+        </div>
+      </div>
+      <form method="post" action="/settings/models/update">
+        <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;display:flex;align-items:center;gap:6px">
+          ⚡ Cập Nhật Tất Cả Model Gemini
+        </button>
+      </form>
+    </div>
+
+    <!-- Trạng thái quét gần nhất -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:12.5px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="pulse-dot"></span>
+        <span style="color:var(--text);font-weight:600">{{.GeminiModels.Status}}</span>
+      </div>
+      <div style="color:var(--muted)">
+        Lần kiểm tra gần nhất: <strong>{{.GeminiModels.LastCheck}}</strong>
+      </div>
+    </div>
+
+    <!-- Bảng Model Hiện Tại -->
+    <div class="table-wrap" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:0">
+      <table style="margin:0;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--bg3)">
+            <th style="width:28%">Loại Tác Vụ</th>
+            <th style="width:34%">Model Đang Sử Dụng</th>
+            <th style="width:20%">Nguồn / Trạng Thái</th>
+            <th style="width:18%">Ghi Đè Thủ Công</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .GeminiModels.Items}}
+          <tr>
+            <td>
+              <div style="font-weight:700;color:var(--text)">{{.Kind}}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Desc}}</div>
+            </td>
+            <td>
+              <code style="font-weight:700;font-size:13px;color:var(--accent);background:var(--bg3);padding:3px 8px;border-radius:6px">{{.Model}}</code>
+              {{if ne .Model .Default}}
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">Mặc định gốc: {{.Default}}</div>
+              {{end}}
+            </td>
+            <td>
+              <span class="badge {{.Badge}}">{{.Source}}</span>
+            </td>
+            <td>
+              <form method="post" action="/settings/env" style="display:flex;gap:4px">
+                <input type="hidden" name="name" value="{{.EnvVar}}">
+                <input type="text" name="value" placeholder="Để trống = Auto" style="font-size:11px;padding:4px 8px;width:110px">
+                <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px" title="Lưu ghi đè">Lưu</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 16px;">
+    <h3 style="margin:0">Mã &amp; biến cấu hình (API Keys Nhà Cung Cấp)</h3>
+  </div>
+
+  <div class="table-wrap" style="border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
+    <table style="margin:0">
+      <thead>
+        <tr>
+          <th style="width:38%">Nhà Cung Cấp &amp; Biến</th>
+          <th style="width:14%">Trạng Thái</th>
+          <th style="width:18%">Giá Trị (Đã Ẩn)</th>
+          <th style="width:30%">Cập Nhật Giá Trị Mới</th>
+        </tr>
+      </thead>
+      <tbody>
+      {{$curGroup := ""}}
+      {{range .EnvStatus}}
+      {{if or (eq .Group "Google Gemini") (eq .Group "OpenAI & Claude & AI Khác")}}
+      {{if not (or (eq .Name "GEMINI_TEXT_MODEL") (eq .Name "GEMINI_IMAGE_MODEL") (eq .Name "GEMINI_TTS_MODEL"))}}
+        {{if ne $curGroup .Group}}
+          {{$curGroup = .Group}}
+          <tr class="env-group-header">
+            <th colspan="4" style="background:var(--bg3);padding:10px 16px;font-size:13px;letter-spacing:0.5px">
+              📂 {{.Group}}
+            </th>
+          </tr>
+        {{end}}
+        <tr class="env-row-item">
+          <td>
+            <div style="font-weight:700;font-size:13px;color:var(--text)">{{.Label}}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Help}}</div>
+            <code class="env-name" style="font-size:11px;opacity:0.8">{{.Name}}</code>
+          </td>
+          <td>
+            {{if .Ok}}
+              <span class="badge badge-ok">✓ Đã thiết lập</span>
+            {{else}}
+              <span class="badge badge-no">Chưa đặt</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .Ok}}
+              <code class="key-masked" style="background:rgba(0,0,0,0.04);padding:3px 8px;border-radius:4px;font-size:12px">{{.Masked}}</code>
+            {{else}}
+              <span class="hint">—</span>
+            {{end}}
+          </td>
+          <td>
+            <form method="post" action="/settings/env" class="env-form" style="display:flex;gap:6px">
+              <input type="hidden" name="name" value="{{.Name}}">
+              <input type="password" name="value" placeholder="Nhập key mới…" autocomplete="off" spellcheck="false" style="font-size:12px;padding:6px 10px;flex:1">
+              <button type="submit" class="btn btn-secondary btn-sm" style="font-size:12px;padding:6px 12px">Lưu</button>
+            </form>
+          </td>
+        </tr>
+      {{end}}
+      {{end}}
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

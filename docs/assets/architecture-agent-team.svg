@@ -27,7 +27,7 @@
     </style>
   </defs>
   <rect width="1600" height="1040" fill="url(#bg)"/>
-  <text x="48" y="58" class="title">AI Creator OS — Kiến trúc Agent Team (v2)</text>
+  <text x="48" y="58" class="title">MiuNova — Kiến trúc Agent Team (v2)</text>
   <text x="48" y="86" class="sub">1 binary Go · Orchestrator là quản đốc duy nhất · Mỗi nhiệm vụ = 1 bản sao team chạy song song, cô lập theo taskID</text>
 
   <!-- Human -->

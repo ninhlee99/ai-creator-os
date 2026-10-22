@@ -1,10 +1,9 @@
-# ai-creator-os — Architecture
+# MiuNova — Architecture
 
-> **PIVOT 2026-10-02 (Ninh chốt):** bỏ live avatar + bỏ phim điện ảnh, tập trung
-> 3 trụ — Affiliate qua Accesstrade · Video Viral AI 100% Gốc (TikTok/Shorts/Reels) · YouTube kể chuyện
-> ngôi thứ nhất. Thiết kế đích: `docs/PIVOT_REDESIGN.md`.
-> Tài liệu này mô tả **trạng thái kỹ thuật hiện tại**.
-> Khi mâu thuẫn với PIVOT_REDESIGN.md, file đó là đích đến.
+> Tài liệu kiến trúc code kế thừa; giữ chi tiết implementation và lịch sử.
+> Mục tiêu sản phẩm hiện hành: [PRODUCT_SPEC](PRODUCT_SPEC.md). Trạng thái code:
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Các đoạn dưới đây về mục
+> tiêu kinh doanh cũ không ghi đè hai tài liệu chuẩn này.
 > **Runtime hiện tại:** viral character replacement bị tắt theo free-only; `/viral` chỉ discovery và từ chối enqueue. Affiliate cần clip do người vận hành cung cấp cho từng shot. Các đoạn lịch sử bên dưới về Veo/Muse/face swap không phải capability đang bật.
 
 ## 1. Design principles
@@ -152,7 +151,8 @@ decision log (`engines/tier_failover`).
   mọi tick (`internal/automation/service.go`).
 - Ngưỡng growth chỉnh được trên UI (`/growth/thresholds`), hỏng từng trường
   → fallback default (`internal/growth`).
-- Quota YouTube: 1600 units/lượt, trần 10000 units/ngày (`internal/growth/quota.go`).
+- Quota YouTube: `videos.insert` bucket riêng, mặc định 100 lượt/ngày, 1 unit/lượt;
+  đếm request nguyên tử theo ngày reset Pacific (`internal/growth/quota.go`).
 - Đơn hàng idempotent theo `external_id` (`Ledger.RecordOrder`).
 - Zero-Reup: Viral Radar chỉ lưu metadata nguồn; runtime không tạo video thay
   nhân vật và không tải lại footage/audio nguồn. Nếu pipeline sản xuất được bật

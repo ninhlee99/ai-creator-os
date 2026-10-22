@@ -20,8 +20,8 @@ func TestAffiliateRequiresUserMotionClipsBeforeQueue(t *testing.T) {
 	_, err = st.CreateAffiliateJob(AffiliateParams{
 		ProductName: "Túi da", Niche: "thời trang/phụ kiện", ProductPhoto: photo, Seconds: 30,
 	})
-	if err == nil || !strings.Contains(err.Error(), "free-only") {
-		t.Fatalf("CreateAffiliateJob error = %v, want free-only motion clip requirement", err)
+	if err == nil || !strings.Contains(err.Error(), "shot plan") {
+		t.Fatalf("CreateAffiliateJob error = %v, want prepared shot plan requirement", err)
 	}
 	if got := st.ListJobs(10); len(got) != 0 {
 		t.Fatalf("queued %d jobs without motion footage", len(got))

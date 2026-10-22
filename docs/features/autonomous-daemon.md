@@ -1,8 +1,10 @@
 # Daemon tự động (`internal/automation`)
 
 ## 1. Mục đích
-Lớp vận hành nền: growth, đối soát hoa hồng và các tick lịch. Affiliate autopilot
-tạm dừng ở bước tạo video vì chính sách free-only yêu cầu clip do người vận hành tải lên.
+Lớp vận hành nền: growth, đối soát hoa hồng và các tick lịch. Autopilot affiliate
+chung dừng trước sản xuất vì đường clip thủ công cần operator. AT Hunter có nhánh
+Google Flow riêng khi bật xác nhận credits; nhánh đó không kiểm chứng chi phí bằng
+0, nên không đạt chính sách free-only và mặc định phải để tắt.
 
 ## 2. Kích hoạt (cadence thật trong `cmd/aicos/main.go`)
 | Tick | Chu kỳ | Hàm |
@@ -17,7 +19,7 @@ tạm dừng ở bước tạo video vì chính sách free-only yêu cầu clip 
 | Tự chữa lành (self-heal) | **mỗi giờ** (nằm trong story tick) | `Service.SelfHealTick` (`selfheal.go`; đợt L): quét job treo >12h → failed; đĩa >85% → dọn file tạm job lỗi + video đã đăng cũ |
 | Tự sao lưu | **mỗi ngày** (nằm trong story tick) | `Service.BackupTick` (`backup_tick.go`; đợt M2): zip data dir vào `backups/`, giữ 7 bản mới nhất |
 | Tự chuyển public | **mỗi 5 phút** (nằm trong story tick) | `Service.StoryPublicTick` (`story_tick.go`; đợt N): video private quá `story.public_after_hours` giờ → public qua `videos.update`. Mặc định 0 = tắt |
-| Watchdog Mac | ngoài app (launchd) | `deploy/com.ninhlee.aicos.plist` + `scripts/install-launchd.sh` (đợt O1): crash/restart → tự chạy lại |
+| Tự khởi động app | không cấu hình sẵn | App chỉ chạy khi người dùng mở thủ công; startup service do người dùng tự cấu hình |
 | Thông báo Telegram | **mỗi 5 phút** (nằm trong story tick) | `Service.NotifyTick` (`notify_tick.go`; đợt O2): quét alert warn+ mới → Telegram (watermark nên mỗi alert gửi đúng 1 lần). Cấu hình ở Cài đặt · Hệ thống |
 | Tự thử lại job lỗi | **mỗi 5 phút** (nằm trong story tick) | `Service.StoryRetryTick` (`story_retry.go`; đợt P): job story lỗi → job mới cùng params (cooldown 6h, tối đa 3 lần). Cấu hình ở trang Kể chuyện |
 | Daemon mạng (onboarding, topic research) | **mỗi 60 giây** | `network.Daemon.Tick` |
@@ -75,11 +77,14 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
      trước audit Direct Post) → `publishItem`:
      - `Uploader.State(a)` chưa đủ (thiếu `YOUTUBE_CLIENT_ID`/`SECRET` hoặc token)
        → `waiting_connect` + ghi chú thiếu gì.
-     - Quota: đã dùng `used`/`10000` units, 1 lượt = `1600` → hết → `waiting_quota`
-       + alert + decision `defer_quota`.
+     - Quota: reserve nguyên tử 1 slot trong bucket riêng `videos.insert`
+       (mặc định `100` calls/ngày, reset Pacific). Hết → `waiting_quota` +
+       alert + decision `defer_quota`; lỗi quota từ Google khóa phần còn lại
+       của ngày reset.
      - Dry-run → giữ `produced` + note "DRY-RUN: đã render xong — chưa tải lên".
      - Upload thật: `publishers.YouTubePublisher.Publish` (resumable upload,
-       `containsSyntheticMedia` bắt buộc) → `AddQuota` + `SetItemPublished(videoID)`
+       `containsSyntheticMedia` bắt buộc) → reservation giữ lại khi request đã
+       được gọi; lỗi trước request thì trả slot → `SetItemPublished(videoID)`
        + decision; Short ↔ bản dài nối hai chiều (`LinkRelatedItems`).
 
 ### 3.3. `SyncOneAccount` — đồng bộ + vòng quyết định (`sync_reconcile.go`)
@@ -117,6 +122,18 @@ toggle `autopilot_auto_publish` tắt / thiếu TikTok OAuth → bỏ qua + ghi 
 giỏ hàng + sound trong app TikTok rồi mới public (giới hạn API TikTok, không tự
 gắn giỏ được).
 
+### 3.6. `ATHunterTick` — săn hàng và nhánh Google Flow tùy chọn (`at_hunter_tick.go`)
+1. Hunter đọc AccessTrade datafeed, lọc campaign đã duyệt và link affiliate hợp
+   lệ, rồi lưu sản phẩm. Datafeed parser/mapper hiện không có rating/sold count;
+   không thể khẳng định “bán chạy/đánh giá tốt”.
+2. `at.hunter_flow_credits` mặc định tắt. Khi tắt, tick săn/lưu sản phẩm nhưng
+   đặt số video cần tạo bằng 0.
+3. Khi bật và health checks qua, Hunter tạo shot plan rồi sinh clip từng shot
+   bằng Google Flow. Code xác nhận credits, không kiểm tra chi phí/quota bằng 0.
+4. Theo yêu cầu chỉ miễn phí, không bật nhánh này cho tới khi provider xác nhận
+   rõ lượt dùng không phát sinh billing. Đây không phải fallback account miễn
+   phí; code không tự đo hoặc đổi account khi hết quota.
+
 ## 4. Fail-closed & an toàn
 - Kill switch thắng mọi tick, kiểm tra **đầu** mỗi hàm.
 - `Gate == nil` → dry-run (an toàn nhất).
@@ -142,8 +159,7 @@ Mỗi tick chạy trong goroutine riêng qua `Supervisor.Dispatch`:
 ### 6.2. Health endpoint (`GET /healthz`, `internal/web/healthz.go`)
 JSON: `ok`, `version`, `uptime_sec`, `db_ok` (ping SQLite), `ticks` (heartbeat), `quota_circuit_open/until`.
 Luôn trả 200 (kể cả db_ok=false) để phân biệt "app treo" (không kết nối được) với "app sống nhưng DB lỗi".
-Không qua cổng onboard — watchdog ngoài gọi được bất cứ lúc nào.
-Dùng với launchd: KeepAlive chỉ restart khi process exit; cron kiểm tra `/healthz` định kỳ phát hiện treo mà process chưa chết.
+Không qua cổng onboard. Endpoint chỉ hoạt động khi người dùng đã mở app.
 
 ### 6.3. Ngắt mạch quota ngày (`internal/engines/tts/quota_circuit.go`)
 KeyRing backoff tối đa 15′ và chỉ trong bộ nhớ — hết quota ngày thì máy vẫn xoay key đốt API call vô vọng.
@@ -155,14 +171,11 @@ Trạng thái hiện ở Cài đặt · Hệ thống ("Ngắt mạch quota Gemin
 
 ### 6.4. Single-instance (`internal/lockfile`, `cmd/aicos/main.go`)
 `flock` file `<dataDir>/aicos.lock` ngay đầu main, giữ suốt thời gian process sống.
-OS tự giải phóng khi crash nên không kẹt khóa "ma". Instance thứ hai (vd: Ninh bấm đúp binary trong khi
-launchd đang chạy) → thoát êm với log rõ ràng, không giành SQLite với instance đang chạy.
+OS tự giải phóng khi crash nên không kẹt khóa "ma". Instance thứ hai → thoát êm với log rõ ràng, không giành SQLite với instance đang chạy.
 
 ### 6.5. Xoay log trong app (`internal/logx`, `cmd/aicos/main.go`)
 App tự ghi `<dataDir>/logs/aicos.log` và xoay theo dung lượng (20MB, giữ 7 bản).
-Lý do: launchd mở `StandardOutPath` một lần và giữ fd — newsyslog rename file nhưng launchd vẫn ghi vào
-inode cũ, log phình vô hạn. Hướng dẫn newsyslog cũ trong `deploy/README.md` đã gỡ bỏ; plist mẫu không còn
-`StandardOutPath`/`StandardErrorPath` (tránh ghi đúp).
+App tự quản lý file log nên không cần cấu hình log riêng trong hệ điều hành.
 
 ### 6.6. Cứng rắn thêm (cùng đợt)
 - **Backup** (`internal/backup/backup.go`): checkpoint WAL trước khi copy (ảnh chụp nhất quán); đủ 4 DB

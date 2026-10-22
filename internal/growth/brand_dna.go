@@ -8,7 +8,7 @@ import (
 )
 
 // BrandDNA represents the authentic brand identity, audience persona,
-// and quality standards for an account/channel. AI Creator OS uses this profile
+// and quality standards for an account/channel. MiuNova uses this profile
 // to produce original content without relying on third-party reuploads.
 type BrandDNA struct {
 	AccountID       int64    `json:"account_id"`

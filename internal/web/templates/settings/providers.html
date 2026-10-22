@@ -8,6 +8,23 @@
   <a href="#provider-llm">LLM</a>
 </nav>
 
+<section class="form-card" style="max-width:none;margin:16px 0">
+  <h2>Gemini API · xác nhận gói miễn phí</h2>
+  <p>MiuNova không thể đọc trạng thái billing của Google. Khi bật, bạn xác nhận mọi Gemini API key hiện tại chỉ dùng quota miễn phí và project không bật thanh toán. Thêm, xóa hoặc đổi key sẽ tự khóa lại. Tạo video Google Veo luôn bị chặn vì cần project bật billing.</p>
+  <form method="post" action="/settings/gemini-free-tier">
+    <label style="display:flex;gap:10px;align-items:flex-start;margin:12px 0">
+      <input type="checkbox" name="confirm_free" value="1" {{if .GeminiFreeTierConfirmed}}checked{{end}}>
+      <span>Tôi đã kiểm tra và xác nhận toàn bộ Gemini API key đang cấu hình chỉ dùng gói/quota miễn phí.</span>
+    </label>
+    <button type="submit" class="btn">{{if .GeminiFreeTierConfirmed}}Lưu xác nhận{{else}}Xác nhận và mở Gemini API{{end}}</button>
+    {{if .GeminiFreeTierConfirmed}}
+    <span class="badge badge-ok" style="margin-left:8px">Đã xác nhận · bộ key hiện tại</span>
+    {{else}}
+    <span class="badge badge-warn" style="margin-left:8px">Gemini API đang bị khóa</span>
+    {{end}}
+  </form>
+</section>
+
 <h2 id="provider-tts">Thứ tự nhà cung cấp giọng đọc (TTS)</h2>
 {{template "chain-card" (dict "Chain" .TTSChain "Keys" .TTSKeys "ChainName" "tts" "SaveLabel" "Lưu cấu hình TTS")}}
 

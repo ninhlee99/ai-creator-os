@@ -1,15 +1,21 @@
-# Tài liệu tính năng — AI Creator OS
+# Tài liệu tính năng — MiuNova
 
-Mỗi file mô tả **chính xác theo logic thật trong code** (đọc từ source, không bịa):
+Các file có trạng thái ✅/⚠ mô tả **logic hiện có trong code** (đọc từ source,
+không bịa):
 mục đích → cách kích hoạt (bấm gì / tự động khi nào) → luồng vận hành từng bước
 (file, hàm, bảng SQLite, engine/API) → fail-closed & an toàn → key rotation (nếu dùng key cloud).
 
-> **Trọng tâm sản phẩm:** Hệ điều hành tăng trưởng (AI Creator OS) với Affiliate Accesstrade,
+> **Trọng tâm code hiện tại:** các năng lực của MiuNova gồm Affiliate Accesstrade,
 > viral source discovery, YouTube Kể Chuyện và governance; tự động sản xuất video
 > affiliate/viral đang giới hạn theo chính sách free-only, tích hợp Bản sắc thương hiệu (Brand DNA),
 > Quản trị cơ hội xu hướng (Trend Intelligence) và Bộ điều phối nhiệm vụ tự chủ (AI Mission Control).
 
-## Mục lục tính năng (18 tài liệu)
+`remote-webai-login.md` mô tả screenshot/input bridge đã nối trong source; live
+VPS login vẫn cần xác minh.
+Đọc [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md) trước khi dùng tài liệu
+này làm cam kết.
+
+## Mục lục tính năng (19 năng lực as-built)
 
 | # | Tính năng | File | Trạng thái |
 |---|---|---|---|
@@ -24,7 +30,7 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 9 | Viral (`/viral`) — radar nguồn hoạt động; thay nhân vật tạm dừng vì editor video cần billing | [video-viral.md](video-viral.md) | ⚠ |
 | 10 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [storytelling.md](storytelling.md) | ✅ |
 | 11 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [multi-platform.md](multi-platform.md) | ✅ |
-| 12 | **Kho Tài Khoản Web AI (`/settings/system#tab-webai`) — CDP login, Muse/Flow web generation, account pool** | [web-ai.md](web-ai.md) | ✅ |
+| 12 | **Kho Tài Khoản Web AI (`/web-ai`) — login capture, Muse/Flow, account pool** | [web-ai.md](web-ai.md) | ✅ |
 | 13 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [settings.md](settings.md) | ✅ |
 | 14 | Wizard lần đầu (`/onboard`) | [onboarding-wizard.md](onboarding-wizard.md) | ✅ |
 | 15 | Sao lưu & khôi phục | [backup-restore.md](backup-restore.md) | ✅ |
@@ -32,6 +38,12 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 | 17 | Daemon tự động (`internal/automation`) — AutopilotTick / GrowthTick / SyncOneAccount / ReconcileCommissions | [autonomous-daemon.md](autonomous-daemon.md) | ✅ |
 | 18 | Kill switch + Dry-run + MASTER_SWITCH | [kill-switch-dry-run-master.md](kill-switch-dry-run-master.md) | ✅ |
 | 19 | Quy tắc dùng chung: key rotation & fail-closed | [key-rotation.md](key-rotation.md) | ✅ |
+
+## Đề xuất chưa triển khai
+
+| Đề xuất | Tài liệu | Trạng thái |
+|---|---|---|
+| Login Web AI từ điện thoại khi app chạy trên VPS | [remote-webai-login.md](remote-webai-login.md) | Screenshot/input bridge đã nối; live VPS/provider cần xác minh |
 
 ## Nguồn sự thật duy nhất về cấu hình
 
@@ -41,6 +53,7 @@ Lưu env qua UI gọi `(*Config).RefreshEnv()` để có hiệu lực ngay khôn
 
 ## Quy ước fail-closed toàn app
 
-- Không có nguồn dữ liệu thật → giữ số 0 + ghi decision log lý do, **không bịa số**.
+- Một số luồng as-built có thể lưu giá trị số 0 kèm decision log khi thiếu nguồn;
+  đích sản phẩm phải phân biệt missing/unknown với zero theo PRODUCT_SPEC.
 - `Gate == nil` (chưa nối) → coi như dry-run (an toàn nhất).
 - Kill switch thắng mọi tick; dry-run chặn mọi thao tác thật.

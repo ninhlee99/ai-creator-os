@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -65,7 +63,7 @@ func (s *Server) facebookRedirectURI(r *http.Request) (string, error) {
 	}
 	host = strings.Trim(host, "[]")
 	if host != "127.0.0.1" && host != "localhost" && host != "::1" {
-		return "", fmt.Errorf("mở AICOS qua http://127.0.0.1 rồi nối Facebook, hoặc đặt META_REDIRECT_URI")
+		return "", fmt.Errorf("mở MiuNova qua http://127.0.0.1 rồi nối Facebook, hoặc đặt META_REDIRECT_URI")
 	}
 	return "http://" + r.Host + "/publishers/facebook/callback", nil
 }
@@ -75,7 +73,7 @@ func (s *Server) handleFacebookAuthorize(w http.ResponseWriter, r *http.Request)
 	if username == "" {
 		username = "__new_facebook__"
 	} else if !s.accountExists(username) {
-		publishersMsg(w, r, "err", "Chọn kênh AICOS hợp lệ trước khi nối Facebook.")
+		publishersMsg(w, r, "err", "Chọn kênh MiuNova hợp lệ trước khi nối Facebook.")
 		return
 	}
 	appID, secret := s.facebookOAuthCredentials()
@@ -140,7 +138,7 @@ func (s *Server) handleFacebookCallback(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if len(pages) == 0 {
-		s.facebookOAuthError(w, r, state.username, "Tài khoản Facebook không quản lý Page nào có quyền cấp cho AICOS.")
+		s.facebookOAuthError(w, r, state.username, "Tài khoản Facebook không quản lý Page nào có quyền cấp cho MiuNova.")
 		return
 	}
 	if len(pages) == 1 {
@@ -243,79 +241,6 @@ func (s *Server) connectFacebookPage(username string, page facebookOAuthPage) (s
 	s.advanceOnboarding(account.ID)
 	s.autoGeneratePlan(account, "Tự sinh cho Facebook Page: "+page.Name)
 	return username, account.ID, nil
-}
-
-func facebookExchangeCode(ctx context.Context, appID, secret, redirect, code string) (string, error) {
-	query := url.Values{"client_id": {appID}, "client_secret": {secret}, "redirect_uri": {redirect}, "code": {code}}
-	var result struct {
-		AccessToken string `json:"access_token"`
-	}
-	if err := facebookOAuthGet(ctx, facebookGraphBase+"/oauth/access_token?"+query.Encode(), &result); err != nil || result.AccessToken == "" {
-		return "", errors.New("Facebook authorization code exchange failed")
-	}
-	return result.AccessToken, nil
-}
-
-func facebookLongLivedToken(ctx context.Context, appID, secret, userToken string) (string, error) {
-	query := url.Values{
-		"grant_type":        {"fb_exchange_token"},
-		"client_id":         {appID},
-		"client_secret":     {secret},
-		"fb_exchange_token": {userToken},
-	}
-	var result struct {
-		AccessToken string `json:"access_token"`
-	}
-	if err := facebookOAuthGet(ctx, facebookGraphBase+"/oauth/access_token?"+query.Encode(), &result); err != nil || result.AccessToken == "" {
-		return "", errors.New("Facebook long-lived token exchange failed")
-	}
-	return result.AccessToken, nil
-}
-
-func facebookManagedPages(ctx context.Context, userToken string) ([]facebookOAuthPage, error) {
-	query := url.Values{
-		"fields":       {"id,name,access_token"},
-		"limit":        {"100"},
-		"access_token": {userToken},
-	}
-	var result struct {
-		Data []facebookOAuthPage `json:"data"`
-	}
-	if err := facebookOAuthGet(ctx, facebookGraphBase+"/me/accounts?"+query.Encode(), &result); err != nil {
-		return nil, err
-	}
-	pages := make([]facebookOAuthPage, 0, len(result.Data))
-	for _, page := range result.Data {
-		page.ID = strings.TrimSpace(page.ID)
-		page.Name = strings.TrimSpace(page.Name)
-		page.AccessToken = strings.TrimSpace(page.AccessToken)
-		if facebookPageIDRe.MatchString(page.ID) && page.AccessToken != "" {
-			if page.Name == "" {
-				page.Name = "Facebook Page " + page.ID
-			}
-			pages = append(pages, page)
-		}
-	}
-	return pages, nil
-}
-
-func facebookOAuthGet(ctx context.Context, target string, dst any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
-	if err != nil {
-		return errors.New("invalid Facebook OAuth request")
-	}
-	resp, err := facebookOAuthHTTP.Do(req)
-	if err != nil {
-		return errors.New("Facebook OAuth network request failed")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Facebook OAuth HTTP %d", resp.StatusCode)
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(dst); err != nil {
-		return errors.New("Facebook OAuth returned invalid JSON")
-	}
-	return nil
 }
 
 func randomFacebookState() (string, error) {

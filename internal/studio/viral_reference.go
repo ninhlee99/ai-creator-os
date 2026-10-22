@@ -1,0 +1,184 @@
+package studio
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func (s *Studio) analyzeViralReference(ctx context.Context, videoPath string, duration float64) (string, []ViralReferenceBeat, error) {
+	if !fileExists(videoPath) {
+		return "", nil, fmt.Errorf("cần video nguồn để quan sát thứ tự cảnh và chuyển động")
+	}
+	if s.mg == nil || !s.mg.Healthy(ctx) {
+		return "", nil, fmt.Errorf("media engine chưa sẵn sàng để phân tích video nguồn")
+	}
+	analyzer, ok := s.mg.(visualImageAnalyzer)
+	if !ok {
+		return "", nil, fmt.Errorf("media engine chưa hỗ trợ phân tích frame video nguồn")
+	}
+	workDir := filepath.Join(s.workRoot, "viral-reference-"+newID())
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		return "", nil, fmt.Errorf("tạo thư mục phân tích video nguồn: %w", err)
+	}
+	defer os.RemoveAll(workDir)
+
+	frames, err := sampleViralReferenceFrames(ctx, videoPath, workDir, duration)
+	if err != nil {
+		return "", nil, err
+	}
+	var prompt strings.Builder
+	prompt.WriteString("Analyze these ordered samples from one source video. Images are point samples, not continuous footage. Describe only visible evidence; do not infer unseen choreography, speech, sound, text, or intent. Group observations into chronological beats. Give each beat a source time_sec and concise framing, subject_action, body_movement, camera_movement, edit_transition, energy, and uncertainty. Mark motion between samples uncertain when frames do not prove it. Return JSON only: {summary:string, beats:[{time_sec:number, framing:string, subject_action:string, body_movement:string, camera_movement:string, edit_transition:string, energy:string, uncertainty:string}]}\n")
+	for i, frame := range frames {
+		fmt.Fprintf(&prompt, "Image %d shows source time %.3f seconds.\n", i+1, frame.TimeSec)
+	}
+	refs := make([]ImageRef, 0, len(frames))
+	for _, frame := range frames {
+		refs = append(refs, ImageRef{Path: frame.Path})
+	}
+	raw, err := analyzer.AnalyzeImages(ctx, prompt.String(), refs)
+	if err != nil {
+		return "", nil, fmt.Errorf("phân tích frame video nguồn: %w", err)
+	}
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(extractJSON(raw)), &result); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn trả JSON lỗi: %w", err)
+	}
+	var summary string
+	var beats []ViralReferenceBeat
+	if err := json.Unmarshal(result["summary"], &summary); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu summary hợp lệ: %w", err)
+	}
+	if err := json.Unmarshal(result["beats"], &beats); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu beats hợp lệ: %w", err)
+	}
+	if strings.TrimSpace(summary) == "" {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu tóm tắt quan sát")
+	}
+	if err := validateViralReferenceBeats(beats, duration); err != nil {
+		return "", nil, err
+	}
+	return strings.TrimSpace(summary), beats, nil
+}
+
+func validateViralReferenceBeats(beats []ViralReferenceBeat, duration float64) error {
+	if len(beats) == 0 {
+		return fmt.Errorf("thiếu beat quan sát từ video nguồn")
+	}
+	lastTime := -1.0
+	for i, beat := range beats {
+		if beat.TimeSec < 0 || beat.TimeSec > duration || beat.TimeSec <= lastTime {
+			return fmt.Errorf("beat nguồn %d có timestamp thiếu, ngoài video hoặc sai thứ tự", i+1)
+		}
+		if strings.TrimSpace(beat.Framing+beat.SubjectAction+beat.BodyMovement+beat.CameraMovement+beat.EditTransition+beat.Energy) == "" {
+			return fmt.Errorf("beat nguồn %d thiếu mô tả hình ảnh quan sát được", i+1)
+		}
+		lastTime = beat.TimeSec
+	}
+	return nil
+}
+
+func validateViralReferenceScenes(scenes []ViralScene, target float64) error {
+	if len(scenes) == 0 {
+		return fmt.Errorf("storyboard nguồn không có cảnh")
+	}
+	if target < 4 || target > float64(len(scenes))*8 {
+		return fmt.Errorf("%d cảnh không thể phủ đúng %.3f giây với clip 4-8 giây/cảnh", len(scenes), target)
+	}
+	cursor := 0.0
+	for i := range scenes {
+		scene := &scenes[i]
+		if strings.TrimSpace(scene.ImagePrompt) == "" || strings.TrimSpace(scene.VideoPrompt) == "" {
+			return fmt.Errorf("storyboard cảnh %d thiếu keyframe hoặc chuyển động theo nguồn", i+1)
+		}
+		if math.Abs(scene.SourceStartSec-cursor) > 0.01 {
+			return fmt.Errorf("storyboard cảnh %d tạo khoảng trống hoặc chồng lấn với timeline nguồn", i+1)
+		}
+		if scene.SourceEndSec <= scene.SourceStartSec {
+			return fmt.Errorf("storyboard cảnh %d có khoảng timestamp không hợp lệ", i+1)
+		}
+		sceneDuration := scene.SourceEndSec - scene.SourceStartSec
+		if sceneDuration < 4-0.01 || sceneDuration > 8+0.01 {
+			return fmt.Errorf("storyboard cảnh %d dài %.3f giây; giới hạn nguồn là 4-8 giây", i+1, sceneDuration)
+		}
+		scene.Index = i + 1
+		scene.Phase = "source_beat"
+		scene.DurationSec = sceneDuration
+		cursor = scene.SourceEndSec
+	}
+	if math.Abs(cursor-target) > 0.01 {
+		return fmt.Errorf("timeline storyboard kết thúc ở %.3f giây, nguồn dài %.3f giây", cursor, target)
+	}
+	return nil
+}
+
+type viralSampleFrame struct {
+	Path    string
+	TimeSec float64
+}
+
+func isViralVideoFile(path string) bool {
+	if path == "" || !fileExists(path) {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp4", ".mov", ".webm", ".mkv", ".avi":
+		return true
+	default:
+		return false
+	}
+}
+
+func sampleViralReferenceFrames(ctx context.Context, videoPath, outDir string, duration float64) ([]viralSampleFrame, error) {
+	if duration <= 0 {
+		return nil, fmt.Errorf("không đọc được thời lượng video")
+	}
+	count := int(math.Ceil(duration * 2)) // two ordered source samples per second
+	if count < 8 {
+		count = 8
+	}
+	if count > 120 {
+		count = 120
+	}
+	frames := make([]viralSampleFrame, 0, count)
+	for i := 0; i < count; i++ {
+		at := duration * (float64(i) + 0.5) / float64(count)
+		path := filepath.Join(outDir, fmt.Sprintf("viral-reference-%02d.jpg", i+1))
+		if err := ffmpegRun(ctx, "-ss", fmt.Sprintf("%.3f", at), "-i", videoPath, "-vf", "scale=640:-2", "-frames:v", "1", "-q:v", "7", path); err != nil || !fileExists(path) {
+			continue
+		}
+		frames = append(frames, viralSampleFrame{Path: path, TimeSec: at})
+	}
+	if len(frames) < 4 {
+		return nil, fmt.Errorf("chỉ trích được %d frame; cần ít nhất 4", len(frames))
+	}
+	return frames, nil
+}
+
+// AnalyzeViralOriginal reads technical metadata. Motion, mood, and pacing
+// remain unknown until an image/video analyzer measures them.
+func AnalyzeViralOriginal(ctx context.Context, samplePath, outDir string) *ViralOriginalProfile {
+	prof := &ViralOriginalProfile{
+		Path:     samplePath,
+		Duration: probeDuration(ctx, samplePath),
+		HasAudio: ProbeHasAudio(ctx, samplePath),
+	}
+
+	w, h := ProbeDims(ctx, samplePath)
+	prof.Width = w
+	prof.Height = h
+
+	// Trích xuất âm thanh gốc nếu video có audio stream
+	if prof.HasAudio && outDir != "" {
+		audioFile := filepath.Join(outDir, "viral_orig_audio.m4a")
+		if err := ffmpegRun(ctx, "-i", samplePath, "-vn", "-c:a", "aac", "-b:a", "192k", audioFile); err == nil && fileExists(audioFile) {
+			prof.AudioExtracted = audioFile
+		}
+	}
+
+	return prof
+}

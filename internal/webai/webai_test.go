@@ -2,6 +2,7 @@ package webai
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -152,6 +153,101 @@ func TestMultiAccountRotation(t *testing.T) {
 	}
 }
 
+func TestAccountIdentityUsesCanonicalEmail(t *testing.T) {
+	store, err := NewStore(filepath.Join(t.TempDir(), "webai_identity.db"))
+	if err != nil {
+		t.Fatalf("NewStore failed: %v", err)
+	}
+	defer store.Close()
+
+	id1, err := store.UpsertAccountSession(PlatformGemini, "session-one", "cookie-one", "Google", " Creator@Example.com ", "free")
+	if err != nil {
+		t.Fatalf("first upsert failed: %v", err)
+	}
+	id2, err := store.UpsertAccountSession(PlatformGemini, "session-two", "cookie-two", "Google creator", "creator@example.com", "free")
+	if err != nil {
+		t.Fatalf("second upsert failed: %v", err)
+	}
+	if id1 != id2 {
+		t.Fatalf("same platform email created two accounts: %q != %q", id1, id2)
+	}
+	accounts, err := store.GetAccounts(PlatformGemini)
+	if err != nil {
+		t.Fatalf("GetAccounts failed: %v", err)
+	}
+	if len(accounts) != 1 {
+		t.Fatalf("same email should map to one account, got %d", len(accounts))
+	}
+	if accounts[0].Email != "creator@example.com" || accounts[0].SessionKey != "session-two" || accounts[0].Cookie != "cookie-two" {
+		t.Fatalf("canonical account did not receive latest session: %+v", accounts[0])
+	}
+
+	addID, err := store.AddAccount(Account{
+		Platform: PlatformGemini, AccountName: "Updated", Email: "CREATOR@example.com",
+		SessionKey: "session-three", Cookie: "cookie-three", Status: StatusConnected,
+	})
+	if err != nil {
+		t.Fatalf("AddAccount duplicate email should update existing account: %v", err)
+	}
+	if addID != id1 {
+		t.Fatalf("AddAccount changed account ID for same email: got %q want %q", addID, id1)
+	}
+	accounts, err = store.GetAccounts(PlatformGemini)
+	if err != nil || len(accounts) != 1 || accounts[0].SessionKey != "session-three" {
+		t.Fatalf("AddAccount failed to update canonical identity: accounts=%+v err=%v", accounts, err)
+	}
+}
+
+func TestStoreMigrationCollapsesDuplicateEmails(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "webai_migrate.db")
+	store, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewStore failed: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close store: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if _, err := db.Exec(`DROP INDEX idx_webai_accounts_platform_email`); err != nil {
+		t.Fatalf("drop identity index: %v", err)
+	}
+	for _, row := range []struct {
+		id, email, session, cookie, updated string
+	}{
+		{"old", "Creator@Example.com", "old-session", "active-cookie", "2026-01-01 00:00:00"},
+		{"new", "creator@example.com", "new-session", "", "2026-01-02 00:00:00"},
+	} {
+		_, err = db.Exec(`
+			INSERT INTO webai_accounts (id, platform, account_name, email, session_key, cookie, status, tier, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, row.id, PlatformGemini, "Google", row.email, row.session, row.cookie, StatusConnected, "free", row.updated)
+		if err != nil {
+			_ = db.Close()
+			t.Fatalf("insert legacy duplicate %s: %v", row.id, err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close fixture db: %v", err)
+	}
+
+	store, err = NewStore(dbPath)
+	if err != nil {
+		t.Fatalf("reopen and migrate store: %v", err)
+	}
+	defer store.Close()
+	accounts, err := store.GetAccounts(PlatformGemini)
+	if err != nil {
+		t.Fatalf("GetAccounts failed: %v", err)
+	}
+	if len(accounts) != 1 || accounts[0].ID != "new" || accounts[0].Email != "creator@example.com" || accounts[0].Cookie != "active-cookie" {
+		t.Fatalf("migration did not retain newest canonical identity: %+v", accounts)
+	}
+}
+
 func TestPromptSynthesizer(t *testing.T) {
 	pkg := GenerateAdScriptPackage(
 		"Serum Dưỡng Trắng",
@@ -223,3 +319,62 @@ func TestProxyRelayHeaders(t *testing.T) {
 	}
 }
 
+func TestMarkSessionExpiredStopsAccountRotationAndReconnectRestoresIt(t *testing.T) {
+	store, err := NewStore(filepath.Join(t.TempDir(), "webai_session_state.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	id, err := store.UpsertAccountSession(PlatformMuseAI, "session-old", "hatch_sess=old", "Muse", "creator@example.com", "free")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkSessionExpired(PlatformMuseAI, "creator@example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.PickActiveAccount(PlatformMuseAI); err == nil {
+		t.Fatal("expired account remained eligible for rotation")
+	}
+	if _, err := store.UpsertAccountSession(PlatformMuseAI, "session-new", "hatch_sess=new", "Muse", "creator@example.com", "free"); err != nil {
+		t.Fatal(err)
+	}
+	account, err := store.GetAccount(id)
+	if err != nil || account.Status != "ok" || !account.IsActive || account.Cookie != "hatch_sess=new" {
+		t.Fatalf("reconnected account = %+v, err %v", account, err)
+	}
+}
+
+func TestLegacyAccountMigrationFailurePreservesCookies(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "webai_legacy_failure.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE webai_accounts (platform TEXT PRIMARY KEY, cookie TEXT); INSERT INTO webai_accounts VALUES ('museai', 'hatch_sess=keep-me')`); err != nil {
+		_ = db.Close()
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if store, err := NewStore(dbPath); err == nil {
+		_ = store.Close()
+		t.Fatal("migration unexpectedly accepted incomplete legacy schema")
+	}
+	db, err = sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var cookie string
+	if err := db.QueryRow(`SELECT cookie FROM webai_accounts WHERE platform='museai'`).Scan(&cookie); err != nil {
+		t.Fatalf("legacy account table lost after failed migration: %v", err)
+	}
+	if cookie != "hatch_sess=keep-me" {
+		t.Fatalf("legacy cookie = %q, want preserved cookie", cookie)
+	}
+	var staged int
+	if err := db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type='table' AND name='webai_accounts_v2'`).Scan(&staged); err != nil || staged != 0 {
+		t.Fatalf("failed migration left staged table: count=%d err=%v", staged, err)
+	}
+}

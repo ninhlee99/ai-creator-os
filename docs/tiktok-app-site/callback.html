@@ -1,19 +1,17 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Connecting — AICOS Creator Uploader</title><link rel="stylesheet" href="style.css"></head><body>
-<h1 id="h">Returning to the AICOS app…</h1>
+<title>TikTok authorization — MiuNova</title><link rel="stylesheet" href="style.css"></head><body>
+<h1 id="h">TikTok authorization</h1>
 <div class="box">
-<p id="msg">If nothing happens, make sure the app is running on this Mac, or copy this URL and paste it into the app (Đa nền tảng → Lưu token).</p>
-<input id="url" readonly><br><button id="copy" type="button">Copy URL</button>
+<p id="msg">If this page is configured as your redirect, copy the full URL below and paste it into MiuNova at Publishers → TikTok Relay. The authorization expires soon.</p>
+<input id="url" readonly autocomplete="off"><br><button id="copy" type="button">Copy callback URL</button>
 </div>
-<p>This page only forwards the authorization result to the app running on your own computer (127.0.0.1). It stores and sends nothing anywhere else.</p>
+<p>For VPS use, configure TikTok to return directly to the MiuNova HTTPS callback. This static page is a manual fallback; it does not forward the authorization result or store it.</p>
 <script>
 (function () {
-  // The AICOS dashboard runs locally; TikTok only accepts https redirects,
-  // so this static page hands code/state straight back to it.
-  var LOCAL = "http://127.0.0.1:8080/publishers/tiktok/callback";
   var q = new URLSearchParams(location.search);
   var url = document.getElementById("url");
+  var msg = document.getElementById("msg");
   url.value = location.href;
   document.getElementById("copy").onclick = function () {
     url.select();
@@ -21,12 +19,14 @@
     else document.execCommand("copy");
     this.textContent = "Copied";
   };
-  if (!q.get("code") && !q.get("error")) {
-    document.getElementById("h").textContent = "TikTok authorization";
-    document.getElementById("msg").textContent = "No authorization code in this URL. Start again from the AICOS app.";
+  if (q.get("error")) {
+    document.getElementById("h").textContent = "TikTok authorization was not granted";
+    msg.textContent = "TikTok returned an error. Restart the connection from MiuNova → Publishers.";
     return;
   }
-  location.replace(LOCAL + location.search);
+  if (!q.get("code") || !q.get("state")) {
+    msg.textContent = "No complete authorization result found. Start again from MiuNova → Publishers.";
+  }
 })();
 </script>
 </body></html>

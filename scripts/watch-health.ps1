@@ -1,5 +1,5 @@
-# Watchdog ngoài cho AI Creator OS (Đợt X, tự hồi phục từ Đợt AK) — chạy định
-# kỳ bằng Task Scheduler, vd: mỗi 5 phút.
+# Watchdog ngoài tùy chọn cho MiuNova. Không được cài hoặc lên lịch tự động;
+# người dùng tự chọn scheduler nếu muốn dùng.
 #
 # Vì sao cần: Task Scheduler "restart on failure" chỉ chạy lại app khi process
 # *thoát*. Process bị deadlock/treo mà chưa chết thì tưởng vẫn khỏe.
@@ -9,10 +9,6 @@
 # Lỗi 2 lần LIÊN TIẾP (tránh restart nhầm lúc app đang khởi động) → tự
 # khởi động lại scheduled task "aicos" (Stop + Start). Không có task đó →
 # chỉ ghi log + exit 1.
-#
-# Dùng với Task Scheduler (xem deploy/README.md):
-#   - Trigger: mỗi 5 phút, lặp vô thời hạn
-#   - Action: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\path\to\watch-health.ps1"
 #
 # Biến môi trường:
 #   AICOS_HEALTH_URL         URL health (mặc định http://127.0.0.1:8080/healthz)

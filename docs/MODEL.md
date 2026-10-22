@@ -1,4 +1,9 @@
-# MODEL.md — Mô Hình Vận Hành AI Creator OS (Cập nhật 2026-10-20)
+# MODEL.md — Mô hình vận hành cũ (MiuNova)
+
+> ⚠️ Tài liệu lịch sử, chưa phản ánh mục tiêu MiuNova ngày 2026-10-22.
+> Không dùng làm product spec hoặc acceptance criteria. Xem
+> [PRODUCT_SPEC](PRODUCT_SPEC.md), [PRODUCT_DECISIONS](PRODUCT_DECISIONS.md) và
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md).
 
 > **Mô hình kiến trúc chính thức:** Hệ điều hành tự vận hành 3 trụ kiếm tiền: **Affiliate qua Accesstrade**, **Video Viral AI 100% Gốc (TikTok/Shorts/Reels)**, và **YouTube Phim Kể Chuyện Audio Điện Ảnh**. Tự động hóa hoàn toàn với cơ chế **Google Gemini Daily Model Auto-Updater 24h**.
 

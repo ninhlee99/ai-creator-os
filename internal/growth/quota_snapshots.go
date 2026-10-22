@@ -30,23 +30,59 @@ func (s *Store) RecentNetworkItems(sinceDate string, limit int) ([]PlanItem, err
 
 // ------------------------------------------------------------- YT quota
 
-// QuotaUsed returns the YouTube Data API units charged on a day
-// (YYYY-MM-DD, ICT).
+// QuotaUsed returns videos.insert calls reserved or sent on a day
+// (YYYY-MM-DD, Google's Pacific Time reset day).
 func (s *Store) QuotaUsed(day string) (int, error) {
-	var units int
+	var uploads int
 	err := s.db.QueryRow(
-		`SELECT COALESCE(units,0) FROM growth_youtube_quota WHERE day = ?`, day).Scan(&units)
+		`SELECT COALESCE(uploads,0) FROM growth_youtube_upload_quota WHERE day = ?`, day).Scan(&uploads)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
-	return units, err
+	return uploads, err
 }
 
-// AddQuota charges units to a day's YouTube quota counter.
-func (s *Store) AddQuota(day string, units int) error {
+// AddQuota records videos.insert calls on a day's YouTube quota counter.
+func (s *Store) AddQuota(day string, uploads int) error {
 	_, err := s.db.Exec(
-		`INSERT INTO growth_youtube_quota (day, units) VALUES (?, ?)
-		 ON CONFLICT(day) DO UPDATE SET units = units + excluded.units`, day, units)
+		`INSERT INTO growth_youtube_upload_quota (day, uploads) VALUES (?, ?)
+		 ON CONFLICT(day) DO UPDATE SET uploads = uploads + excluded.uploads`, day, uploads)
+	return err
+}
+
+// ReserveUploadQuota atomically claims one videos.insert call before it is
+// sent. The returned used count includes the new reservation when allowed.
+func (s *Store) ReserveUploadQuota(day string) (used int, allowed bool, err error) {
+	res, err := s.db.Exec(`INSERT INTO growth_youtube_upload_quota (day, uploads) VALUES (?, 1)
+		ON CONFLICT(day) DO UPDATE SET uploads = uploads + 1
+		WHERE growth_youtube_upload_quota.uploads < ?`, day, DailyQuotaUnits)
+	if err != nil {
+		return 0, false, err
+	}
+	changed, err := res.RowsAffected()
+	if err != nil {
+		return 0, false, err
+	}
+	used, err = s.QuotaUsed(day)
+	if err != nil {
+		return 0, false, err
+	}
+	return used, changed == 1, nil
+}
+
+// ReleaseUploadQuota returns a reservation when validation/authentication
+// fails before the videos.insert request is attempted.
+func (s *Store) ReleaseUploadQuota(day string) error {
+	_, err := s.db.Exec(`UPDATE growth_youtube_upload_quota
+		SET uploads = uploads - 1 WHERE day = ? AND uploads > 0`, day)
+	return err
+}
+
+// ExhaustUploadQuota stops retries for the reset day after YouTube reports
+// that the project's upload bucket is already exhausted elsewhere.
+func (s *Store) ExhaustUploadQuota(day string) error {
+	_, err := s.db.Exec(`INSERT INTO growth_youtube_upload_quota (day, uploads) VALUES (?, ?)
+		ON CONFLICT(day) DO UPDATE SET uploads = MAX(uploads, excluded.uploads)`, day, DailyQuotaUnits)
 	return err
 }
 

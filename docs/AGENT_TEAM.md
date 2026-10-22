@@ -1,7 +1,10 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
+> ⚠️ Tài liệu lịch sử, có mô hình phê duyệt và phân công cũ. Mục tiêu hiện tại
+> nằm trong [PRODUCT_SPEC](PRODUCT_SPEC.md); trạng thái code xem ở
+> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Không dùng file này làm
+> product spec hoặc quy tắc vận hành hiện hành.
 >
 
-# AGENT_TEAM.md — Thiết kế Agent Team chuyên sâu cho AI Creator OS
+# AGENT_TEAM.md — Thiết kế Agent Team chuyên sâu cho MiuNova
 
 > Tài liệu thiết kế chốt ngày 2026-10-02, theo yêu cầu của Ninh: toàn bộ hệ
 > thống auto phải vận hành như **một đội agent chuyên sâu** — mỗi agent làm

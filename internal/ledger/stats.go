@@ -35,9 +35,10 @@ func (l *Ledger) GetUsage(day string, limit int) ([]UsageRow, error) {
 //	engine: the ordered provider chain used when the engine runs.
 //	Any other key is free-form configuration storage.
 const (
-	SettingTTSChain    = "tts.chain"
-	SettingLLMChain    = "llm.chain"
-	SettingAvatarChain = "avatar.chain"
+	SettingTTSChain                  = "tts.chain"
+	SettingLLMChain                  = "llm.chain"
+	SettingAvatarChain               = "avatar.chain"
+	SettingGeminiFreeTierFingerprint = "gemini.free_tier_fingerprint"
 )
 
 // GetSetting returns the value for key. The second return is false (not an

@@ -260,8 +260,11 @@ function atPost(url, body, btnId, okMsg) {
 }
 function atHunt() {
   atPost('/at/hunt', '{}', 'at-hunt-btn', function (d) {
-    if (d.note && !d.new) return d.note;
-    return 'Đã săn ' + d.new + ' sản phẩm mới, tạo ' + d.videos + ' video.' + (d.note ? ' ' + d.note : '');
+    if (d.note && !d.new && !d.videos) return d.note + (d.production_note ? ' ' + d.production_note : '');
+    var msg = 'Đã săn ' + d.new + ' sản phẩm mới; ' + (d.watchlist || 0) + ' chờ dữ liệu; tạo ' + d.videos + ' video.';
+    if (d.production_note) msg += ' ' + d.production_note;
+    if (d.note) msg += ' ' + d.note;
+    return msg;
   });
 }
 function atOrderSync() {

@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" font-family="Inter,Segoe UI,Arial,sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">MiuNova — mô hình phòng điều hành 2.5D</title>
+  <desc id="desc">Các nhân viên chibi làm việc tại trạm riêng, nối nhau theo luồng của một job video.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#171d3d"/><stop offset="1" stop-color="#2b3562"/></linearGradient>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#e8e4ff"/><stop offset="1" stop-color="#cbd8f3"/></linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef4ff"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="11" stdDeviation="9" flood-color="#090d25" flood-opacity=".27"/></filter>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10z" fill="#ffd66f"/></marker>
+    <symbol id="nubi-staff" viewBox="0 0 100 100">
+      <ellipse cx="50" cy="92" rx="29" ry="5" fill="#64749d" opacity=".2"/>
+      <path d="M22 72c-8-2-12-8-10-16 1-7 7-12 15-12 2-10 10-16 20-16 6-9 19-9 25 0 11-2 20 5 21 15 8 2 12 8 11 16-1 8-7 13-17 13H31c-9 0-15-3-17-7-2-4 1-9 8-13z" fill="#fffdfd" stroke="#aa9de7" stroke-width="3"/>
+      <circle cx="40" cy="62" r="4" fill="#293454"/><circle cx="62" cy="62" r="4" fill="#293454"/>
+      <path d="M44 72q7 6 14 0" fill="none" stroke="#293454" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="30" cy="70" rx="5" ry="3" fill="#f1a0ba"/><ellipse cx="73" cy="70" rx="5" ry="3" fill="#f1a0ba"/>
+      <path d="m75 31 3-7 3 7 7 3-7 3-3 7-3-7-7-3z" fill="#ffd16b"/>
+    </symbol>
+    <style>
+      .title{font-size:38px;font-weight:750;fill:#fff}.sub{font-size:17px;fill:#c8d1f0}.name{font-size:15px;font-weight:750;fill:#252c4b}.task{font-size:13px;fill:#56607c}.micro{font-size:12px;fill:#d2daf2}.flow{stroke:#ffd66f;stroke-width:4;fill:none;stroke-dasharray:7 7;marker-end:url(#arr)}.label{fill:#fff;fill-opacity:.97;stroke:#dce4f4;stroke-width:1.2;rx:8;filter:url(#shadow)}
+    </style>
+  </defs>
+  <rect width="1600" height="1080" fill="#171d3d"/>
+  <circle cx="1400" cy="90" r="100" fill="#7562cb" opacity=".13"/><circle cx="1400" cy="90" r="67" fill="none" stroke="#b9afff" stroke-width="1.3" opacity=".26"/>
+  <text x="54" y="58" class="title">MiuNova · Phòng tác nghiệp 2.5D</text>
+  <text x="54" y="88" class="sub">Một nhóm, một job; mỗi trạm nhận đúng phần việc và bàn giao artifact kế tiếp.</text>
+
+  <!-- Isometric room floor and depth faces -->
+  <polygon points="128,456 805,224 1472,474 795,714" fill="#8292c6" opacity=".65"/>
+  <polygon points="128,456 795,714 795,762 128,505" fill="#566794"/>
+  <polygon points="795,714 1472,474 1472,525 795,762" fill="#6578a8"/>
+  <polygon points="128,456 805,224 1472,474 795,714" fill="#d7e1f2" stroke="#aebbe1" stroke-width="2"/>
+  <path d="M217 464 805 264 1383 482M323 503 805 338 1279 518M433 544 805 416 1176 555" fill="none" stroke="#fff" stroke-width="1.5" opacity=".63"/>
+
+  <!-- Signal paths sit under stations so labels and staff stay clear. -->
+  <path d="M416 415Q490 347 692 356" class="flow"/><path d="M486 456Q490 485 520 500" class="flow"/><path d="M592 553Q720 600 877 520" class="flow"/><path d="M1087 550Q1165 560 1205 601" class="flow"/><path d="M1258 650Q1199 688 1147 690" class="flow"/><path d="M989 707Q822 773 736 708" class="flow"/><path d="M697 671Q744 440 789 405" class="flow"/>
+
+  <!-- Manager raised station -->
+  <g filter="url(#shadow)">
+    <polygon points="585,338 805,262 1025,344 805,425" fill="#9185e5"/>
+    <polygon points="585,338 805,425 805,447 585,359" fill="#6558b7"/>
+    <polygon points="805,425 1025,344 1025,366 805,447" fill="#7566ca"/>
+    <polygon points="618,335 805,270 992,339 805,407" fill="#f8f7ff" stroke="#d9d3ff" stroke-width="2"/>
+    <rect x="694" y="330" width="222" height="20" rx="8" fill="#d7def7"/>
+    <rect x="705" y="319" width="90" height="12" rx="4" fill="#b9c9ec"/><rect x="805" y="319" width="98" height="12" rx="4" fill="#b9c9ec"/>
+    <image href="agents/orchestrator.png" x="758" y="270" width="90" height="90"/>
+    <rect x="691" y="374" width="228" height="46" class="label"/>
+    <text x="805" y="393" text-anchor="middle" class="name">01 · Quản đốc · Orchestrator</text>
+    <text x="805" y="411" text-anchor="middle" class="task">Nhận job · chia việc · theo dõi bàn giao</text>
+  </g>
+
+  <!-- Scout station -->
+  <g filter="url(#shadow)">
+    <polygon points="206,408 350,358 494,412 350,464" fill="#70d0d2"/><polygon points="206,408 350,464 350,484 206,429" fill="#429eae"/><polygon points="350,464 494,412 494,432 350,484" fill="#4cafbb"/>
+    <polygon points="226,407 350,365 474,410 350,452" fill="#f7f8ff"/><rect x="288" y="379" width="50" height="35" rx="5" fill="#233153"/><rect x="346" y="375" width="54" height="38" rx="5" fill="#233153"/>
+    <image href="agents/hunter.png" x="283" y="334" width="82" height="82"/>
+    <rect x="264" y="430" width="172" height="46" class="label"/>
+    <text x="350" y="449" text-anchor="middle" class="name">02 · Hunter · Trinh sát</text><text x="350" y="467" text-anchor="middle" class="task">Sales + review gate</text>
+  </g>
+  <!-- Director station -->
+  <g filter="url(#shadow)">
+    <polygon points="384,531 534,477 684,534 534,589" fill="#9b91e8"/><polygon points="384,531 534,589 534,609 384,552" fill="#7167b9"/><polygon points="534,589 684,534 684,554 534,609" fill="#7a70c9"/>
+    <polygon points="403,529 534,484 665,532 534,578" fill="#f7f8ff"/><rect x="473" y="500" width="118" height="47" rx="6" fill="#29375e"/><path d="M485 511h32v23h-32zM522 511h29v23h-29zM556 511h25v23h-25z" fill="#dbb4fc"/>
+    <image href="agents/director.png" x="493" y="443" width="82" height="82"/>
+    <rect x="430" y="551" width="208" height="46" class="label"/>
+    <text x="534" y="570" text-anchor="middle" class="name">03 · Đạo diễn nội dung</text><text x="534" y="588" text-anchor="middle" class="task">Organic/affiliate · hook · script</text>
+  </g>
+  <!-- Producer station -->
+  <g filter="url(#shadow)">
+    <polygon points="835,515 1004,454 1173,518 1004,580" fill="#f1bf68"/><polygon points="835,515 1004,580 1004,601 835,536" fill="#c58f45"/><polygon points="1004,580 1173,518 1173,539 1004,601" fill="#d4a456"/>
+    <polygon points="856,513 1004,460 1152,516 1004,568" fill="#f7f8ff"/><rect x="918" y="478" width="75" height="51" rx="6" fill="#263556"/><rect x="999" y="472" width="75" height="51" rx="6" fill="#263556"/><path d="M926 517h59M1007 511h58" stroke="#70d0d2" stroke-width="3"/>
+    <image href="agents/producer.png" x="963" y="421" width="82" height="82"/>
+    <rect x="882" y="543" width="244" height="46" class="label"/>
+    <text x="1004" y="562" text-anchor="middle" class="name">04 · Nhà sản xuất</text><text x="1004" y="580" text-anchor="middle" class="task">Tạo media · dựng · ghi nguồn/quota</text>
+  </g>
+  <!-- QC station -->
+  <g filter="url(#shadow)">
+    <polygon points="1154,615 1282,570 1410,618 1282,665" fill="#fa9caa"/><polygon points="1154,615 1282,665 1282,685 1154,635" fill="#ca697f"/><polygon points="1282,665 1410,618 1410,638 1282,685" fill="#d97c8e"/>
+    <polygon points="1173,613 1282,576 1391,617 1282,656" fill="#f7f8ff"/><rect x="1230" y="590" width="104" height="46" rx="7" fill="#eff5ff" stroke="#c9d5ef"/><path d="m1242 604 5 5 9-11m5 6h60m-74 15 5 5 9-11m5 6h48" stroke="#54a49d" stroke-width="3" fill="none"/>
+    <image href="agents/qc.png" x="1241" y="535" width="82" height="82"/>
+    <rect x="1168" y="630" width="228" height="46" class="label"/>
+    <text x="1282" y="649" text-anchor="middle" class="name">05 · Kiểm định chất lượng</text><text x="1282" y="667" text-anchor="middle" class="task">Claim · quyền · disclosure · file</text>
+  </g>
+  <!-- Publisher station -->
+  <g filter="url(#shadow)">
+    <polygon points="914,678 1054,627 1194,680 1054,731" fill="#71c9b1"/><polygon points="914,678 1054,731 1054,751 914,698" fill="#429c87"/><polygon points="1054,731 1194,680 1194,700 1054,751" fill="#52ad98"/>
+    <polygon points="934,676 1054,634 1174,679 1054,720" fill="#f7f8ff"/><rect x="976" y="646" width="42" height="54" rx="8" fill="#303756"/><rect x="1025" y="642" width="42" height="54" rx="8" fill="#303756"/><rect x="1074" y="638" width="42" height="54" rx="8" fill="#303756"/><circle cx="997" cy="655" r="5" fill="#ff7487"/><circle cx="1046" cy="651" r="5" fill="#61d4c4"/><circle cx="1095" cy="647" r="5" fill="#75a8ff"/>
+    <image href="agents/publisher.png" x="1013" y="595" width="82" height="82"/>
+    <rect x="938" y="695" width="232" height="46" class="label"/>
+    <text x="1054" y="714" text-anchor="middle" class="name">06 · Nhà xuất bản</text><text x="1054" y="732" text-anchor="middle" class="task">API đã cấp · TikTok: gate/handoff</text>
+  </g>
+  <!-- Analyst station -->
+  <g filter="url(#shadow)">
+    <polygon points="515,682 664,628 813,684 664,739" fill="#81aedf"/><polygon points="515,682 664,739 664,759 515,702" fill="#5d81b2"/><polygon points="664,739 813,684 813,704 664,759" fill="#6c91c2"/>
+    <polygon points="535,680 664,635 793,683 664,728" fill="#f7f8ff"/><rect x="592" y="647" width="48" height="51" rx="6" fill="#263556"/><rect x="646" y="641" width="53" height="51" rx="6" fill="#263556"/><path d="m600 686 11-15 9 8 13-22m20 30 11-12 9 5 13-22" fill="none" stroke="#61d4c4" stroke-width="3"/>
+    <image href="agents/analyst.png" x="623" y="596" width="82" height="82"/>
+    <rect x="568" y="704" width="192" height="46" class="label"/>
+    <text x="664" y="723" text-anchor="middle" class="name">07 · Nhà phân tích</text><text x="664" y="741" text-anchor="middle" class="task">View · click · đơn · bài học</text>
+  </g>
+  <!-- Hard controls around the office -->
+  <g>
+    <rect x="80" y="806" width="462" height="118" rx="18" fill="#fff5e8" stroke="#e9c48a" stroke-width="1.5"/>
+    <text x="106" y="843" fill="#7b4a16" font-size="17" font-weight="750">Quota guard · luật xác định</text>
+    <text x="106" y="872" fill="#6d5c46" font-size="14">Thử account miễn phí hợp lệ khác nếu còn quota.</text>
+    <text x="106" y="897" fill="#6d5c46" font-size="14">Hết tất cả → dừng và báo. Không trả phí.</text>
+    <rect x="572" y="806" width="462" height="118" rx="18" fill="#f1efff" stroke="#cfc7f2" stroke-width="1.5"/>
+    <text x="598" y="843" fill="#4e4388" font-size="17" font-weight="750">TikTok · eligibility trước</text>
+    <text x="598" y="872" fill="#5f5a7b" font-size="14">Chưa xác minh: export + handoff sang app TikTok.</text>
+    <text x="598" y="897" fill="#5f5a7b" font-size="14">Có API: preview + lựa chọn + consent từng bài.</text>
+    <rect x="1064" y="806" width="456" height="118" rx="18" fill="#eaf8f5" stroke="#a8ddd1" stroke-width="1.5"/>
+    <text x="1090" y="843" fill="#286d60" font-size="17" font-weight="750">Người vận hành · mobile</text>
+    <text x="1090" y="872" fill="#52736d" font-size="14">Social OAuth · provider login tùy chọn.</text>
+    <text x="1090" y="897" fill="#52736d" font-size="14">Nhận cảnh báo khi hệ thống cần quyết định.</text>
+  </g>
+  <path d="M1004 601v158q0 27-27 27h-435" fill="none" stroke="#f5a35d" stroke-width="3" stroke-dasharray="8 7" marker-end="url(#arr)"/>
+  <text x="80" y="975" class="micro">Luồng 01→02→03→04→05→06→07→01. Scheduler, quota guard và permission gate là luật code, không phải AI tự quyết.</text>
+  <text x="80" y="1003" class="micro">TikTok: API eligibility chưa xác nhận; mặc định mô hình là xuất file/handoff. Nếu được cấp API, vẫn cần lựa chọn và consent theo bài.</text>
+  <text x="80" y="1031" class="micro">Avatar đại diện vai trò mục tiêu; một worker có thể kiêm nhiều vai. Dashboard chỉ phản ánh event/job state thật.</text>
+</svg>

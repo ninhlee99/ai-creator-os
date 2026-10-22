@@ -5,24 +5,94 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"io"
 	"net/url"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 const flowAppURL = "https://flow.google.com/"
 
+type flowHeadlessRequest struct {
+	Mode       string
+	Prompt     string
+	Aspect     string
+	ProjectID  string
+	ImagePaths []string
+	VideoPath  string
+	ModelLabel string
+}
+
 // GoogleFlowVideoHeadless uses the signed-in Flow web UI only after the direct
 // API has failed before accepting a generation request.
 func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projectID string, progress func(string)) (FlowVideoResult, error) {
-	var result FlowVideoResult
-	if strings.TrimSpace(cookie) == "" || strings.TrimSpace(prompt) == "" {
-		return result, errors.New("Google Flow headless fallback needs a session cookie and prompt")
+	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
+		Mode: "text", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
+	}, progress)
+}
+
+// GoogleFlowVideoIngredientsHeadless creates an 8-second clip from the exact
+// character/product reference images. The text-only reverse endpoint cannot
+// carry these inputs, so this path uses Flow's real Ingredients UI mode.
+func GoogleFlowVideoIngredientsHeadless(ctx context.Context, cookie, prompt, aspect string, imagePaths []string, projectID string, progress func(string)) (FlowVideoResult, error) {
+	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
+		Mode: "ingredients", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
+		ImagePaths: imagePaths, ModelLabel: "Veo 3.1 Fast",
+	}, progress)
+}
+
+// GoogleFlowVideoEditHeadless edits one source segment while using channel
+// character images as ingredients. Flow's video-edit model accepts at most
+// 10 seconds per edit.
+func GoogleFlowVideoEditHeadless(ctx context.Context, cookie, prompt, aspect, videoPath string, imagePaths []string, projectID string, progress func(string)) (FlowVideoResult, error) {
+	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
+		Mode: "video_edit", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
+		ImagePaths: imagePaths, VideoPath: videoPath, ModelLabel: "Gemini Omni Flash 1.1",
+	}, progress)
+}
+
+func validateFlowHeadlessRequest(request flowHeadlessRequest) error {
+	if strings.TrimSpace(request.Prompt) == "" {
+		return errors.New("Flow headless request needs a prompt")
+	}
+	if request.Mode != "text" && request.Mode != "ingredients" && request.Mode != "video_edit" {
+		return fmt.Errorf("unsupported Flow headless mode %q", request.Mode)
+	}
+	if request.Mode == "text" {
+		if len(request.ImagePaths) != 0 || request.VideoPath != "" {
+			return errors.New("text-to-video request cannot contain reference inputs")
+		}
+		return nil
+	}
+	if len(request.ImagePaths) < 1 || len(request.ImagePaths) > 3 {
+		return fmt.Errorf("Flow %s requires 1-3 channel/product reference images", request.Mode)
+	}
+	for _, path := range request.ImagePaths {
+		st, err := os.Stat(path)
+		if err != nil || st.IsDir() || st.Size() <= 0 || st.Size() > 50<<20 {
+			return fmt.Errorf("Flow reference image is missing, empty, or exceeds 50 MB: %s", path)
+		}
+	}
+	if request.Mode == "video_edit" {
+		st, err := os.Stat(request.VideoPath)
+		if err != nil || st.IsDir() || st.Size() <= 0 || st.Size() > 250<<20 {
+			return errors.New("Flow video edit source is missing, empty, or exceeds 250 MB")
+		}
+	} else if request.VideoPath != "" {
+		return errors.New("Ingredients-to-Video request cannot contain source video")
+	}
+	return nil
+}
+
+func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHeadlessRequest, progress func(string)) (result FlowVideoResult, retErr error) {
+	if strings.TrimSpace(cookie) == "" {
+		return result, errors.New("Google Flow headless fallback needs a session cookie")
+	}
+	if err := validateFlowHeadlessRequest(request); err != nil {
+		return result, err
 	}
 	if progress == nil {
 		progress = func(string) {}
@@ -70,7 +140,7 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 		return result, errors.New("cannot connect to Flow headless browser")
 	}
 	defer conn.Close()
-	client := &museCDP{conn: conn}
+	client := &browserCDPClient{conn: conn}
 	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
 	if err != nil {
 		return result, err
@@ -104,15 +174,22 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": cookies}, client.sessionID); err != nil {
 		return result, errors.New("Flow headless browser rejected saved session cookies")
 	}
+	defer func() {
+		refreshCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if refreshed := flowUpdatedCookieHeader(refreshCtx, client); refreshed != "" {
+			result.CookieHeader = refreshed
+		}
+	}()
 	startURL := flowAppURL
-	if strings.TrimSpace(projectID) != "" {
-		startURL = flowAppURL + "project/" + url.PathEscape(projectID)
+	if strings.TrimSpace(request.ProjectID) != "" {
+		startURL = flowAppURL + "project/" + url.PathEscape(request.ProjectID)
 	}
 	if _, err := client.call(ctx, "Page.navigate", map[string]any{"url": startURL}, client.sessionID); err != nil {
 		return result, errors.New("Flow headless page navigation failed")
 	}
 	progress("FLOW_HEADLESS: mở Chromium ẩn với phiên Google đã lưu")
-	if projectID == "" {
+	if request.ProjectID == "" {
 		created, err := flowWaitAndClick(ctx, client, `(() => {const xs=[...document.querySelectorAll('button.new-project-button,button[aria-label*="new project" i],button')];const e=xs.find(x=>{const r=x.getBoundingClientRect();return r.width>0&&r.height>0&&!x.disabled&&/new project|create project|tạo dự án|dự án mới/i.test((x.innerText||'')+' '+(x.getAttribute('aria-label')||''))});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`, 60*time.Second)
 		if err != nil {
 			return result, fmt.Errorf("Flow project controls did not load: %w", err)
@@ -120,12 +197,12 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 		if !created {
 			return result, errors.New("Flow new-project button was not found; check saved session and Flow access")
 		}
-		projectID, err = flowWaitForProjectID(ctx, client, 45*time.Second)
+		request.ProjectID, err = flowWaitForProjectID(ctx, client, 45*time.Second)
 		if err != nil {
 			return result, err
 		}
 	}
-	result.ProjectID = projectID
+	result.ProjectID = request.ProjectID
 	composerReady, err := flowWaitForValue(ctx, client, `!!document.querySelector('.ProseMirror,div[contenteditable="true"],textarea')`, 60*time.Second)
 	if err != nil || composerReady != true {
 		return result, errors.New("Flow prompt editor did not load; check saved Google session and access")
@@ -135,13 +212,21 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 		return result, errors.New("cannot read Flow project before generation")
 	}
 	baseline := stringSet(baselineValue)
-	if err := flowSetAspect(ctx, client, aspect); err != nil {
+	if request.Mode != "text" {
+		if err := flowSelectModelAndMode(ctx, client, request); err != nil {
+			return result, err
+		}
+		if err := flowAttachRequestFiles(ctx, client, request); err != nil {
+			return result, err
+		}
+	}
+	if err := flowSetAspect(ctx, client, request.Aspect); err != nil {
 		return result, fmt.Errorf("Flow cannot apply requested aspect ratio: %w", err)
 	}
 	if _, err := client.evaluate(ctx, `(() => {const e=document.querySelector('.ProseMirror,div[contenteditable="true"],textarea');if(!e)return false;e.focus();document.execCommand('selectAll',false,null);document.execCommand('delete',false,null);return true})()`); err != nil {
 		return result, errors.New("could not focus Flow prompt editor")
 	}
-	if _, err := client.call(ctx, "Input.insertText", map[string]any{"text": prompt}, client.sessionID); err != nil {
+	if _, err := client.call(ctx, "Input.insertText", map[string]any{"text": request.Prompt}, client.sessionID); err != nil {
 		return result, errors.New("could not enter prompt in Flow editor")
 	}
 	clicked, err := flowWaitAndClick(ctx, client, `(() => {const e=document.querySelector('button.generate-icon-button,button[aria-label="Start generation"]');if(!e||e.disabled||e.getAttribute('aria-disabled')==='true')return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`, 30*time.Second)
@@ -165,8 +250,12 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 				if _, path, ok := strings.Cut(strings.SplitN(raw, "?", 2)[0], "/video/"); ok {
 					result.MediaID = strings.TrimSuffix(path, "/")
 				}
+				result.CookieHeader = flowUpdatedCookieHeader(ctx, client)
 				return result, nil
 			}
+		}
+		if message := flowHeadlessRateLimitMessage(ctx, client); message != "" {
+			return result, &flowUIRateLimitError{message: message}
 		}
 		// Flow mounts video elements lazily when the newest result tile is hovered.
 		bounds, _ := client.evaluate(ctx, `(() => {const xs=[...document.querySelectorAll('flow-video-tile')];const e=xs[xs.length-1];if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`)
@@ -186,143 +275,38 @@ func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projec
 	return result, errors.New("Flow headless UI timed out waiting for a downloadable video")
 }
 
-func flowBrowserCookies(header string) []map[string]any {
-	var out []map[string]any
-	for _, part := range strings.Split(header, ";") {
-		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-		if !ok || name == "" {
-			continue
-		}
-		for _, cookieURL := range []string{flowAppURL, "https://labs.google/"} {
-			out = append(out, map[string]any{"name": name, "value": value, "url": cookieURL, "path": "/", "secure": true, "httpOnly": true})
-		}
-	}
-	return out
-}
-
-func flowWaitForValue(ctx context.Context, client *museCDP, expression string, timeout time.Duration) (any, error) {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		value, err := client.evaluate(ctx, expression)
-		if err == nil && value == true {
-			return value, nil
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-	return nil, errors.New("Flow page did not reach the expected state")
-}
-
-func flowWaitAndClick(ctx context.Context, client *museCDP, expression string, timeout time.Duration) (bool, error) {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if err := ctx.Err(); err != nil {
-			return false, err
-		}
-		value, err := client.evaluate(ctx, expression)
-		if err == nil {
-			if point, ok := value.(map[string]any); ok {
-				if _, err := client.call(ctx, "Input.dispatchMouseEvent", map[string]any{"type": "mouseMoved", "x": point["x"], "y": point["y"]}, client.sessionID); err != nil {
-					return false, err
-				}
-				if _, err := client.call(ctx, "Input.dispatchMouseEvent", map[string]any{"type": "mousePressed", "x": point["x"], "y": point["y"], "button": "left", "clickCount": 1}, client.sessionID); err != nil {
-					return false, err
-				}
-				if _, err := client.call(ctx, "Input.dispatchMouseEvent", map[string]any{"type": "mouseReleased", "x": point["x"], "y": point["y"], "button": "left", "clickCount": 1}, client.sessionID); err != nil {
-					return false, err
-				}
-				return true, nil
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return false, ctx.Err()
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-	return false, nil
-}
-
-func flowWaitForProjectID(ctx context.Context, client *museCDP, timeout time.Duration) (string, error) {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if err := ctx.Err(); err != nil {
-			return "", err
-		}
-		value, err := client.evaluate(ctx, `location.pathname.match(/\/project\/([^/?]+)/)?.[1]||''`)
-		if err == nil {
-			if id, ok := value.(string); ok && id != "" {
-				return id, nil
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-	return "", errors.New("Flow did not open a new project")
-}
-
-func flowSetAspect(ctx context.Context, client *museCDP, aspect string) error {
-	ratio := "9:16"
-	if aspect == "VIDEO_ASPECT_RATIO_LANDSCAPE" {
-		ratio = "16:9"
-	} else if aspect == "VIDEO_ASPECT_RATIO_SQUARE" {
-		ratio = "1:1"
-	}
-	settings := `(() => {const e=document.querySelector('button[aria-label="Settings trigger"],.settings-trigger-button');return e?(e.innerText||e.getAttribute('aria-label')||''):''})()`
-	if value, err := client.evaluate(ctx, settings); err == nil {
-		if text, ok := value.(string); ok && (strings.Contains(text, ratio) || strings.Contains(text, "crop_"+strings.ReplaceAll(ratio, ":", "_"))) {
-			return nil
-		}
-	}
-	opened, err := flowWaitAndClick(ctx, client, `(() => {const e=document.querySelector('button[aria-label="Settings trigger"],.settings-trigger-button');if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`, 5*time.Second)
-	if err != nil || !opened {
-		return errors.New("Flow settings control was not found")
-	}
-	videoScript := `(() => {const e=[...document.querySelectorAll('.cdk-overlay-pane mat-button-toggle')].find(x=>/video/i.test(x.innerText||''));if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`
-	_, _ = flowWaitAndClick(ctx, client, videoScript, 5*time.Second)
-	ratioJSON, _ := json.Marshal(ratio)
-	ratioScript := `(() => {const t=` + string(ratioJSON) + `;const e=[...document.querySelectorAll('.cdk-overlay-pane mat-button-toggle')].find(x=>(x.innerText||'').includes(t));if(!e)return null;const b=e.querySelector('button')||e;const r=b.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`
-	clicked, err := flowWaitAndClick(ctx, client, ratioScript, 5*time.Second)
-	if _, closeErr := client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyDown", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}, client.sessionID); closeErr != nil {
-		return closeErr
-	}
-	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}, client.sessionID)
+func flowHeadlessRateLimitMessage(ctx context.Context, client *browserCDPClient) string {
+	value, err := client.evaluate(ctx, `(() => {
+	  const visible = e => { const r=e.getBoundingClientRect(), s=getComputedStyle(e); return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none' };
+	  return [...document.querySelectorAll('[role="alert"],[role="status"],[aria-live="assertive"],[aria-live="polite"],[class*="toast"],[class*="snackbar"],[data-state="open"]')]
+	    .filter(visible).map(e=>(e.innerText||e.textContent||'').trim()).filter(Boolean).join('\n').slice(0,1200);
+	})()`)
 	if err != nil {
-		return err
+		return ""
 	}
-	if !clicked {
-		return errors.New("Flow aspect ratio toggle was not found")
-	}
-	return nil
-}
-
-func stringSet(value any) map[string]bool {
-	result := make(map[string]bool)
-	for _, item := range valueStrings(value) {
-		result[item] = true
-	}
-	return result
-}
-
-func valueStrings(value any) []string {
-	items, ok := value.([]any)
+	text, ok := value.(string)
 	if !ok {
-		return nil
+		return ""
 	}
-	result := make([]string, 0, len(items))
-	for _, item := range items {
-		if value, ok := item.(string); ok && value != "" {
-			result = append(result, value)
+	flat := strings.Join(strings.Fields(text), " ")
+	lower := strings.ToLower(flat)
+	phrases := []string{
+		"rate limit", "too many requests", "quota exceeded", "quota exhausted", "limit reached",
+		"reached your limit", "exceeded your limit", "limit has been reached", "hit your daily limit",
+		"reached your daily limit", "daily limit reached", "daily limit exceeded", "weekly limit reached",
+		"monthly limit reached", "generation limit reached", "generation limit exceeded", "out of generations",
+		"no more generations", "out of credits", "run out of credits", "ran out of credits",
+		"no credits remaining", "not enough credits", "insufficient credits", "try again tomorrow",
+		"đã hết lượt", "hết lượt", "đã đạt giới hạn", "vượt giới hạn", "đã sử dụng hết",
+		"không đủ tín dụng", "hết tín dụng",
+	}
+	for _, phrase := range phrases {
+		if strings.Contains(lower, phrase) {
+			if len(flat) > 300 {
+				flat = flat[:300]
+			}
+			return flat
 		}
 	}
-	return result
+	return ""
 }

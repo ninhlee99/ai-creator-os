@@ -49,6 +49,7 @@
         <small>Chỉ tạo video khi kênh có ảnh nhân vật riêng. Hệ thống dùng ảnh listing và dựng footage mới; không ghép clip có sẵn.</small>
         <label>Số video mỗi lần săn</label>
         <input type="number" name="hunter_videos" min="0" max="10" value="{{.ATAuto.HunterVideos}}">
+        <label class="check"><input type="checkbox" name="hunter_flow_credits" value="1"{{if .ATAuto.HunterFlowCredits}} checked{{end}}> Cho phép Google Flow dùng credits khi tạo video tự động</label>
       </div>
       <div class="field">
         <label class="check"><input type="checkbox" name="ordersync_on" value="1"{{if .ATAuto.OrderSyncOn}} checked{{end}}> Tự đồng bộ đơn hàng</label>

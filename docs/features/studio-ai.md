@@ -22,6 +22,7 @@ Studio manages video production jobs, assets, quality checks, and media. It supp
 - Flow accepts video prompts only. The Flow web API creates a project, submits one generation operation, polls project history, resolves the media URL, and downloads an MP4 into Studio.
 - `internal/studio/external_job.go` shares Studio's concurrency slots and persists queued/running/done/failed progress in the Studio database.
 - Generation uses the selected provider account's quota/credits. The UI must not describe account credit or access as guaranteed free.
+- A “credits acknowledged” checkbox confirms possible usage; it does not prove the provider will charge $0. Under MiuNova's free-only target, do not enable a Flow path until zero-cost access and quota are verified.
 
 The provider APIs are private web-client interfaces and are not live-tested by the test suite. Provider changes can fail jobs until the adapter is updated.
 

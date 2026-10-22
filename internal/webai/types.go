@@ -1,6 +1,21 @@
 package webai
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+// WebSessionAuthError marks a provider response that explicitly rejected the
+// saved session. Callers can rotate accounts and prompt for reconnect.
+type WebSessionAuthError struct {
+	Platform   string
+	StatusCode int
+}
+
+func (e *WebSessionAuthError) Error() string {
+	return fmt.Sprintf("%s session rejected (HTTP %d)", e.Platform, e.StatusCode)
+}
 
 // Platform constants for supported web AI services.
 const (
@@ -128,7 +143,8 @@ type Account struct {
 	SessionKey           string    `json:"session_key"`
 	Cookie               string    `json:"cookie"`
 	Status               string    `json:"status"` // ok | cooldown | rate_limited | invalid | disconnected
-	Tier                 string    `json:"tier"`   // free | plus | pro
+	Tier                 string    `json:"tier"`   // free | paid | unknown
+	TierConfirmed        bool      `json:"tier_confirmed"`
 	CreditsRemaining     int       `json:"credits_remaining"`
 	CreditsTotal         int       `json:"credits_total"`
 	CooldownUntil        time.Time `json:"cooldown_until"`
@@ -142,6 +158,11 @@ type Account struct {
 	LastChecked          time.Time `json:"last_checked"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+// IsConfirmedFree reports whether user explicitly classified this account as free.
+func (acc Account) IsConfirmedFree() bool {
+	return acc.TierConfirmed && strings.EqualFold(strings.TrimSpace(acc.Tier), "free")
 }
 
 // AdScene represents a single scene in a product ad storyboard.

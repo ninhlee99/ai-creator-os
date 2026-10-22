@@ -40,6 +40,12 @@ type Query struct {
 	Limit         int
 }
 
+// HasDemandSignals reports whether a product has both sales and rating data.
+// It is a minimum production gate; it does not prove freshness or provenance.
+func (p Product) HasDemandSignals() bool {
+	return p.SoldCount > 0 && p.Rating > 0
+}
+
 // Matches reports whether p satisfies the hard filters of q.
 func (p Product) Matches(q Query) bool {
 	if q.MinCommission > 0 && p.CommissionRate < q.MinCommission {

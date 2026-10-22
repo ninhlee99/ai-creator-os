@@ -2,16 +2,10 @@ package webai
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -25,9 +19,10 @@ const (
 )
 
 type FlowVideoResult struct {
-	MediaURL  string
-	ProjectID string
-	MediaID   string
+	MediaURL     string
+	ProjectID    string
+	MediaID      string
+	CookieHeader string
 }
 
 // FlowAPIUnavailableError marks a failed preflight or an explicit rejected
@@ -40,6 +35,14 @@ func (e *FlowAPIUnavailableError) Error() string {
 }
 func (e *FlowAPIUnavailableError) Unwrap() error { return e.cause }
 
+// flowUIRateLimitError marks an explicit quota rejection shown by Flow after
+// the UI submit action. The visible rejection confirms generation was not accepted.
+type flowUIRateLimitError struct{ message string }
+
+func (e *flowUIRateLimitError) Error() string {
+	return "Google Flow rejected generation before acceptance: " + e.message
+}
+
 // CanFallbackToGoogleFlowHeadless is true only for errors known to happen
 // before a generation was accepted; post-submit failures must never retry.
 func CanFallbackToGoogleFlowHeadless(err error) bool {
@@ -47,7 +50,37 @@ func CanFallbackToGoogleFlowHeadless(err error) bool {
 	return errors.As(err, &unavailable)
 }
 
-type flowHTTPError struct{ status int }
+// FlowPreSubmitRateLimitCooldown returns provider Retry-After for a rate limit
+// known to occur before Flow accepted a generation request.
+func FlowPreSubmitRateLimitCooldown(err error) (time.Duration, bool) {
+	var uiLimit *flowUIRateLimitError
+	if errors.As(err, &uiLimit) {
+		return 15 * time.Minute, true
+	}
+	var unavailable *FlowAPIUnavailableError
+	var responseErr *flowHTTPError
+	if !errors.As(err, &unavailable) || !errors.As(err, &responseErr) || responseErr.status != http.StatusTooManyRequests {
+		return 0, false
+	}
+	if responseErr.retryAfter > 0 {
+		return responseErr.retryAfter, true
+	}
+	return 15 * time.Minute, true
+}
+
+func IsWebSessionAuthError(err error) bool {
+	var sessionErr *WebSessionAuthError
+	if errors.As(err, &sessionErr) {
+		return true
+	}
+	var flowErr *flowHTTPError
+	return errors.As(err, &flowErr) && (flowErr.status == http.StatusUnauthorized || flowErr.status == http.StatusForbidden)
+}
+
+type flowHTTPError struct {
+	status     int
+	retryAfter time.Duration
+}
 
 func (e *flowHTTPError) Error() string { return fmt.Sprintf("Flow HTTP %d", e.status) }
 
@@ -72,8 +105,7 @@ func ProbeGoogleFlowSession(ctx context.Context, cookie string) error {
 
 // GoogleFlowVideo calls Flow's web-client endpoints with a saved Google
 // session, then correlates its generation against the authenticated history.
-func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progress func(string)) (FlowVideoResult, error) {
-	var result FlowVideoResult
+func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progress func(string)) (result FlowVideoResult, retErr error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -87,6 +119,11 @@ func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progres
 		progress = func(string) {}
 	}
 	client := newFlowClient(cookie)
+	defer func() {
+		if client.cookie != "" {
+			result.CookieHeader = client.cookie
+		}
+	}()
 	before, err := client.history(ctx, "PINHOLE", "", 25)
 	if err != nil {
 		return result, &FlowAPIUnavailableError{cause: fmt.Errorf("không đọc được lịch sử Flow: %w", err)}
@@ -157,7 +194,7 @@ func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progres
 				if !isGoogleMediaURL(mediaURL) {
 					continue
 				}
-				result = FlowVideoResult{MediaURL: mediaURL, ProjectID: projectID, MediaID: mediaID}
+				result = FlowVideoResult{MediaURL: mediaURL, ProjectID: projectID, MediaID: mediaID, CookieHeader: client.cookie}
 				return result, nil
 			}
 		}
@@ -169,258 +206,4 @@ func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progres
 		}
 	}
 	return result, errors.New("Google Flow chưa đưa video mới vào lịch sử sau 12 phút")
-}
-
-func DownloadFlowVideo(ctx context.Context, mediaURL, outPath string) error {
-	if !isGoogleMediaURL(mediaURL) {
-		return errors.New("Google Flow media URL không được cho phép")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, mediaURL, nil)
-	if err != nil {
-		return errors.New("invalid Google Flow media URL")
-	}
-	req.Header.Set("User-Agent", museUserAgent)
-	client := &http.Client{Timeout: 3 * time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		return errors.New("Google Flow media download failed")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Google Flow media HTTP %d", resp.StatusCode)
-	}
-	dir := filepath.Dir(outPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(dir, ".aicos-flow-*.mp4")
-	if err != nil {
-		return err
-	}
-	tmpPath := f.Name()
-	defer os.Remove(tmpPath)
-	written, err := io.Copy(f, io.LimitReader(resp.Body, 250<<20+1))
-	if err != nil {
-		_ = f.Close()
-		return err
-	}
-	if written < 12 || written > 250<<20 {
-		_ = f.Close()
-		return errors.New("Google Flow video size is invalid or exceeds 250 MB")
-	}
-	if _, err := f.Seek(4, io.SeekStart); err != nil {
-		_ = f.Close()
-		return err
-	}
-	var signature [4]byte
-	if _, err := io.ReadFull(f, signature[:]); err != nil || string(signature[:]) != "ftyp" {
-		_ = f.Close()
-		return errors.New("Google Flow media is not an MP4 file")
-	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Chmod(0o644); err != nil {
-		_ = f.Close()
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpPath, outPath); err != nil {
-		return err
-	}
-	return nil
-}
-
-func newFlowClient(cookie string) *flowClient {
-	csrf := ""
-	for _, part := range strings.Split(cookie, ";") {
-		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-		if !ok {
-			continue
-		}
-		if strings.Contains(strings.ToLower(name), "csrf-token") {
-			csrf = strings.SplitN(value, "|", 2)[0]
-			break
-		}
-	}
-	return &flowClient{
-		http:      &http.Client{Timeout: 45 * time.Second},
-		cookie:    cookie,
-		csrf:      csrf,
-		sessionID: ";" + fmt.Sprint(time.Now().UnixMilli()),
-	}
-}
-
-func (c *flowClient) createProject(ctx context.Context, title string) (string, error) {
-	body := map[string]any{"json": map[string]any{"projectTitle": title, "toolName": "PINHOLE"}}
-	var response map[string]any
-	if err := c.requestJSON(ctx, http.MethodPost, flowLabsBase+"/project.createProject", body, &response); err != nil {
-		return "", err
-	}
-	project := findJSONKey(response, "projectId")
-	if project == "" {
-		return "", errors.New("Flow project response omitted project ID")
-	}
-	return project, nil
-}
-
-func (c *flowClient) history(ctx context.Context, kind, projectID string, limit int) ([]map[string]any, error) {
-	input := map[string]any{"json": map[string]any{
-		"type":          kind,
-		"pageSize":      limit,
-		"responseScope": "RESPONSE_SCOPE_UNSPECIFIED",
-		"cursor":        nil,
-	}, "meta": map[string]any{"values": map[string]any{"cursor": []string{"undefined"}}}}
-	if projectID != "" {
-		input["json"].(map[string]any)["projectId"] = projectID
-	}
-	encoded, _ := json.Marshal(input)
-	target := flowLabsBase + "/media.fetchUserHistoryDirectly?input=" + url.QueryEscape(string(encoded))
-	var response map[string]any
-	if err := c.requestJSON(ctx, http.MethodGet, target, nil, &response); err != nil {
-		return nil, err
-	}
-	workflows := findJSONArray(response, "userWorkflows")
-	result := make([]map[string]any, 0, len(workflows))
-	for _, item := range workflows {
-		if row, ok := item.(map[string]any); ok {
-			result = append(result, row)
-		}
-	}
-	return result, nil
-}
-
-func (c *flowClient) mediaURL(ctx context.Context, mediaID string) (string, error) {
-	target := flowVideoAPI + "/media/" + url.PathEscape(mediaID) + "?key=" + url.QueryEscape(flowWebClientKey) + "&clientContext.tool=PINHOLE&returnUriOnly=true"
-	var response map[string]any
-	if err := c.requestJSON(ctx, http.MethodGet, target, nil, &response); err != nil {
-		return "", err
-	}
-	for _, key := range []string{"fifeUrl", "uri", "url", "videoUrl"} {
-		if link := findJSONKey(response, key); link != "" && strings.HasPrefix(link, "https://") {
-			return link, nil
-		}
-	}
-	return "", errors.New("Flow media response omitted download URL")
-}
-
-func (c *flowClient) requestJSON(ctx context.Context, method, target string, body any, dst any) error {
-	var reader io.Reader
-	if body != nil {
-		encoded, err := json.Marshal(body)
-		if err != nil {
-			return err
-		}
-		reader = strings.NewReader(string(encoded))
-	}
-	req, err := http.NewRequestWithContext(ctx, method, target, reader)
-	if err != nil {
-		return errors.New("invalid Flow request")
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "https://labs.google")
-	req.Header.Set("Referer", "https://labs.google/fx/tools/flow")
-	req.Header.Set("User-Agent", museUserAgent)
-	req.Header.Set("Cookie", c.cookie)
-	req.Header.Set("x-goog-authuser", "0")
-	if c.csrf != "" {
-		req.Header.Set("x-csrf-token", c.csrf)
-		req.Header.Set("x-next-auth-csrf-token", c.csrf)
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return errors.New("Flow network request failed")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return &flowHTTPError{status: resp.StatusCode}
-	}
-	if dst == nil {
-		return nil
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(dst); err != nil {
-		return errors.New("Flow returned invalid JSON")
-	}
-	return nil
-}
-
-func flowMediaID(workflow map[string]any) string {
-	if value, ok := workflow["name"].(string); ok {
-		return value
-	}
-	return findJSONKey(workflow, "mediaGenerationId")
-}
-
-func flowProjectID(workflow map[string]any) string { return findJSONKey(workflow, "projectId") }
-
-func findJSONKey(value any, wanted string) string {
-	switch item := value.(type) {
-	case map[string]any:
-		for key, child := range item {
-			if key == wanted {
-				if text, ok := child.(string); ok {
-					return text
-				}
-			}
-			if found := findJSONKey(child, wanted); found != "" {
-				return found
-			}
-		}
-	case []any:
-		for _, child := range item {
-			if found := findJSONKey(child, wanted); found != "" {
-				return found
-			}
-		}
-	}
-	return ""
-}
-
-func findJSONArray(value any, wanted string) []any {
-	switch item := value.(type) {
-	case map[string]any:
-		for key, child := range item {
-			if key == wanted {
-				if rows, ok := child.([]any); ok {
-					return rows
-				}
-			}
-			if rows := findJSONArray(child, wanted); rows != nil {
-				return rows
-			}
-		}
-	case []any:
-		for _, child := range item {
-			if rows := findJSONArray(child, wanted); rows != nil {
-				return rows
-			}
-		}
-	}
-	return nil
-}
-
-func isGoogleMediaURL(raw string) bool {
-	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.User != nil {
-		return false
-	}
-	host := strings.ToLower(u.Hostname())
-	for _, suffix := range []string{".googleusercontent.com", ".googleapis.com", ".google.com", ".usercontent.goog", ".gvt1.com"} {
-		if strings.HasSuffix(host, suffix) {
-			return true
-		}
-	}
-	return host == "googleusercontent.com" || host == "googleapis.com" || host == "flow-content.google"
-}
-
-func flowUUID() string {
-	var raw [16]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return fmt.Sprintf("flow-%d", time.Now().UnixNano())
-	}
-	return hex.EncodeToString(raw[:])
 }

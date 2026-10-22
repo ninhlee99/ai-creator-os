@@ -146,6 +146,20 @@ func NewStore(db *sql.DB) (*Store, error) {
 	)`); err != nil {
 		return nil, fmt.Errorf("growth schema: %w", err)
 	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS growth_youtube_upload_quota (
+		day TEXT PRIMARY KEY,
+		uploads INTEGER NOT NULL DEFAULT 0
+	)`); err != nil {
+		return nil, fmt.Errorf("growth YouTube upload quota schema: %w", err)
+	}
+	// Preserve old per-day usage when moving from the former shared 10,000-unit
+	// bucket to videos.insert's separate 100-call bucket. INSERT OR IGNORE makes
+	// this migration idempotent; subsequent quota writes use the new table.
+	if _, err := db.Exec(`INSERT OR IGNORE INTO growth_youtube_upload_quota (day, uploads)
+		SELECT day, CASE WHEN units <= 0 THEN 0 ELSE (units + ? - 1) / ? END
+		FROM growth_youtube_quota`, LegacyUploadCostUnits, LegacyUploadCostUnits); err != nil {
+		return nil, fmt.Errorf("growth YouTube upload quota migration: %w", err)
+	}
 	for _, ddl := range itemColumnDDL {
 		if _, err := db.Exec(ddl); err != nil &&
 			!strings.Contains(err.Error(), "duplicate column") {

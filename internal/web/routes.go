@@ -1,14 +1,7 @@
 package web
 
-// Routing table and server-level plumbing for the dashboard: every
-// route registration, the panic-recovery middleware, redirect helpers and
-// the embedded static CSS handler.
-
 import (
-	"log"
 	"net/http"
-	"net/url"
-	"strings"
 )
 
 // Routes wires every dashboard route. POST redirects use 303 See Other,
@@ -117,9 +110,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/web-ai/capture-session", s.handleWebAICaptureSession)
 	mux.HandleFunc("POST /api/web-ai/capture-session", s.handleWebAICaptureSession)
 	// Web AI Browser CDP Automated Login (Chrome DevTools Protocol)
-	mux.HandleFunc("POST /web-ai/browser-login/start", s.handleWebAIBrowserLoginStart)
-	mux.HandleFunc("GET /web-ai/browser-login/status", s.handleWebAIBrowserLoginStatus)
-	mux.HandleFunc("POST /web-ai/browser-login/cancel", s.handleWebAIBrowserLoginCancel)
+	mux.Handle("POST /web-ai/browser-login/start", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginStart)))
+	mux.Handle("GET /web-ai/browser-login/status", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginStatus)))
+	mux.Handle("GET /web-ai/browser-login/screen", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginScreen)))
+	mux.Handle("POST /web-ai/browser-login/input", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginInput)))
+	mux.Handle("POST /web-ai/browser-login/cancel", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginCancel)))
 	mux.HandleFunc("POST /web-ai/accounts/sync-google", s.handleWebAISyncGoogleAccount)
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
@@ -223,6 +218,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)
 	mux.HandleFunc("POST /settings/chain/move", s.handleChainMove)
 	mux.HandleFunc("POST /settings/chain/health", s.handleChainHealth)
+	mux.HandleFunc("POST /settings/gemini-free-tier", s.handleGeminiFreeTierSave)
 
 	// per-key keyring management (add / delete / status / test), all JSON
 	// except the redirect-free form posts; keys are never rendered raw.
@@ -268,100 +264,3 @@ func (s *Server) Routes() http.Handler {
 // với POST/PUT/PATCH/DELETE, nếu request mang header Origin (hoặc Referer)
 // mà host không khớp host của app → 403. Không có Origin/Referer (curl,
 // gọi nội bộ, healthcheck) thì cho qua như cũ — không cần sửa 24 template.
-func (s *Server) originGate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
-			if !sameOrigin(r) {
-				log.Printf("web: từ chối %s %s — origin không khớp (chống CSRF)", r.Method, r.URL.Path)
-				http.Error(w, "origin không khớp — từ chối để chống CSRF", http.StatusForbidden)
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func sameOrigin(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
-	if origin == "" {
-		if ref := r.Header.Get("Referer"); ref != "" {
-			origin = ref
-		} else {
-			return true // curl / gọi nội bộ: không có header để kiểm
-		}
-	}
-	u, err := url.Parse(origin)
-	if err != nil || u.Host == "" {
-		return false
-	}
-	if strings.EqualFold(u.Host, "null") {
-		return false
-	}
-	if strings.EqualFold(u.Host, r.Host) {
-		return true
-	}
-	// Đợt AK: sau tunnel/proxy (cloudflared, Tailscale serve) Host có thể bị
-	// ghi đè thành 127.0.0.1 — so thêm host gốc proxy chuyển tiếp. Form CSRF
-	// từ site lạ không tự đặt được header này.
-	fh := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Host"), ",")[0])
-	return fh != "" && strings.EqualFold(u.Host, fh)
-}
-
-// recoverer keeps a panicking handler from taking the server down.
-func (s *Server) recoverer(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if rec := recover(); rec != nil {
-				log.Printf("web: panic serving %s %s: %v", r.Method, r.URL.Path, rec)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-// redirectTo returns a handler that 303-redirects every request to loc.
-// Used for the legacy page URLs replaced by tabs in the Đợt 2 merge.
-func redirectTo(loc string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		seeOther(w, r, loc)
-	}
-}
-
-// ------------------------------------------------------------------ static
-
-// setAssetCache: URL có ?v=<hash> khớp bản hiện tại → cache lâu (nội dung
-// không bao giờ đổi dưới URL đó); không có/không khớp → bắt trình duyệt hỏi
-// lại mỗi lần, tránh giao diện cũ sau khi cập nhật app (Đợt AK).
-func setAssetCache(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Query().Get("v") == assetVersion {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		return
-	}
-	w.Header().Set("Cache-Control", "no-cache")
-}
-
-// handleStaticCSS serves the embedded dashboard stylesheet.
-func (s *Server) handleStaticCSS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	setAssetCache(w, r)
-	_, _ = w.Write(staticCSS)
-}
-
-// handleStaticJS serves the embedded shared client script (toast, confirm
-// modal, studio polling — R2-W3: một nguồn JS dùng chung toàn app).
-func (s *Server) handleStaticJS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	setAssetCache(w, r)
-	_, _ = w.Write(staticJS)
-}
-
-// handleStaticPreviewAudio serves the bundled sample preview music.
-func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "audio/mpeg")
-	w.Header().Set("Cache-Control", "public, max-age=86400")
-	_, _ = w.Write(staticPreviewAudio)
-}
-
-// --------------------------------------------------------------- dashboard

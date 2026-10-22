@@ -7,7 +7,7 @@
 // cấu hình thật duy nhất nằm ở ledger settings (xem docs/ARCHITECTURE.md §12).
 //
 // Central configuration: environment variables only, typed, read once.
-// Every operational capability of the AI Creator OS reads its settings
+// Every operational capability of the MiuNova reads its settings
 // from here; nothing hardcodes credentials or tuning knobs.
 package governance
 

@@ -32,7 +32,7 @@
 
 **Bước 5 — Quota YouTube.**
 [Thao tác: chỉ vào chỗ hiện quota đã dùng / trần ngày.]
-"YouTube cho 10.000 đơn vị quota một ngày, một lượt đăng tốn 1.600. Hết quota thì video xếp hàng 'chờ quota', mai đăng tiếp — không bao giờ đăng lố."
+"Lượt tải video có bucket riêng: mặc định 100 lượt mỗi ngày theo giờ Pacific. Hết quota thì video xếp hàng 'chờ quota' tới lần reset; app không gửi thêm request."
 
 **Bước 6 — Trạng thái item trung thực.**
 [Thao tác: chỉ vào các badge trạng thái: chờ sản xuất, đang sản xuất, chờ kết nối, chờ quota, đã đăng.]

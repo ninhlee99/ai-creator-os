@@ -15,8 +15,8 @@ func TestQuotaMath(t *testing.T) {
 	if QuotaCanUpload(DailyQuotaUnits) {
 		t.Error("exhausted day must block")
 	}
-	if got := QuotaUploadsLeft(0); got != 6 {
-		t.Errorf("QuotaUploadsLeft(0) = %d, want 6 (10000/1600)", got)
+	if got := QuotaUploadsLeft(0); got != 100 {
+		t.Errorf("QuotaUploadsLeft(0) = %d, want 100 (default videos.insert calls/day)", got)
 	}
 	if got := QuotaUploadsLeft(DailyQuotaUnits); got != 0 {
 		t.Errorf("QuotaUploadsLeft(exhausted) = %d, want 0", got)

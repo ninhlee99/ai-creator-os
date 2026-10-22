@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-scripts/face_swapper.py — AI Face Swap Engine for AI Creator OS
+scripts/face_swapper.py — AI Face Swap Engine for MiuNova
 Hoán đổi khuôn mặt nhân vật AI vào video chuyển động (vũ đạo, affiliate lookbook, shorts).
 Hỗ trợ cả InsightFace/ONNXRuntime và fallback OpenCV Seamless Cloning.
 """
@@ -442,7 +442,7 @@ def run_fallback_swap(source_path, target_video, output_video, max_frames=0):
     log(f"✓ Hoàn tất xử lý khuôn mặt nhân vật: {output_video}")
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Face Swap Engine for AI Creator OS")
+    parser = argparse.ArgumentParser(description="AI Face Swap Engine for MiuNova")
     parser.add_argument("--source", type=str, help="Đường dẫn ảnh nhân vật khuôn mặt nguồn")
     parser.add_argument("--target", type=str, help="Đường dẫn video chuyển động đích")
     parser.add_argument("--output", type=str, help="Đường dẫn file video kết quả đầu ra")

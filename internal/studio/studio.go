@@ -3,14 +3,9 @@ package studio
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
-	_ "modernc.org/sqlite"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
 // LLM is the text-generation backend for the director. It matches
@@ -40,9 +35,13 @@ const (
 // AffiliateModePhoto = legacy image montage; AffiliateModeShots = live
 // motion clips. ViralModeFullCharacterEdit requires full-person video editing.
 const (
-	AffiliateModePhoto         = "photo"
-	AffiliateModeShots         = "shots"
-	ViralModeFullCharacterEdit = "full_character_edit"
+	AffiliateModePhoto             = "photo"
+	AffiliateModeShots             = "shots"
+	AffiliateVideoEngineGoogleFlow = "googleflow"
+	AffiliateVideoEngineManual     = "manual"
+	VideoOutput4K                  = "4k"
+	VideoOutput8K                  = "8k"
+	ViralModeFullCharacterEdit     = "full_character_edit"
 )
 
 // AffiliateParams describes one affiliate-video job.
@@ -80,13 +79,15 @@ type AffiliateParams struct {
 	MusicStart               float64 `json:"music_start"` // seconds into the track
 	MusicTitle               string  `json:"music_title"`
 	MusicArtist              string  `json:"music_artist"`
-	VideoEngine              string  `json:"video_engine,omitempty"` // legacy; current affiliate input uses manual motion clips
+	VideoEngine              string  `json:"video_engine,omitempty"` // googleflow | manual
+	FlowCreditsAcknowledged  bool    `json:"flow_credits_acknowledged,omitempty"`
+	OutputResolution         string  `json:"output_resolution,omitempty"` // 4k | 8k
 	AutoGenerateProductPhoto bool    `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
 	AffLink string `json:"aff_link,omitempty"`
-	// Clips are user-supplied motion clips generated outside this app. Video API
-	// generation stays disabled by the project's free-only policy.
+	// Clips are optional in Google Flow mode; manual mode needs one real clip
+	// for every approved shot.
 	Clips []string `json:"clips,omitempty"`
 	// PreparedPlanID binds a web-created shot plan to the exact job inputs.
 	// The worker receives the saved profile and shots after the plan is consumed.
@@ -123,7 +124,21 @@ func AspectDims4K(aspect string) (w, h int) {
 	if aspect == "16:9" {
 		return 3840, 2160
 	}
+	if aspect == "1:1" {
+		return 3840, 3840
+	}
 	return 2160, 3840
+}
+
+// AspectDims8K returns 8K masters for vertical and horizontal video.
+func AspectDims8K(aspect string) (w, h int) {
+	if aspect == "16:9" {
+		return 7680, 4320
+	}
+	if aspect == "1:1" {
+		return 7680, 7680
+	}
+	return 4320, 7680
 }
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or
@@ -197,12 +212,15 @@ type Studio struct {
 	MaxDiskPct int
 	// PromptEnhancer supplies channel-scoped lessons to compatible creative prompts.
 	PromptEnhancer func(ctx context.Context, niche, channel string) string
-	// webAI hỗ trợ kết nối tới tài khoản Web AI (Google Flow, Muse AI) qua web adapter session.
-	webAI WebAIResolver
+	// webAI connects channel production to selected, email-keyed provider accounts.
+	webAI             WebAIResolver
+	webAIVideo        WebAIVideoRenderer
+	webAIAvailability WebAIAvailability
 }
 
 // WebAISession chứa thông tin phiên đăng nhập web (cookie, session token, email).
 type WebAISession struct {
+	AccountID    string
 	Platform     string
 	SessionToken string
 	CookieHeader string
@@ -212,280 +230,21 @@ type WebAISession struct {
 // WebAIResolver là hàm truy vấn tài khoản Web AI đang kết nối theo nền tảng.
 type WebAIResolver func(platform string) (*WebAISession, error)
 
+// WebAIVideoRequest describes a reference-driven Flow operation. The adapter
+// must not silently drop image or source-video inputs.
+type WebAIVideoRequest struct {
+	Mode        string // ingredients | video_edit
+	Prompt      string
+	AspectRatio string
+	ImagePaths  []string
+	VideoPath   string
+	ProjectID   string
+}
+
+// WebAIVideoRenderer writes a verified downloaded MP4 to outputPath and
+// returns the provider project ID for reuse across shots in one job.
+type WebAIVideoRenderer func(context.Context, *WebAISession, WebAIVideoRequest, string, func(string)) (string, error)
+
+type WebAIAvailability func(platform string) (bool, string)
+
 // SetWebAIResolver cấu hình hàm truy vấn tài khoản Web AI cho Studio.
-func (s *Studio) SetWebAIResolver(r WebAIResolver) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.webAI = r
-}
-
-// GetWebAISession lấy thông tin phiên Web AI đang hoạt động cho một nền tảng.
-func (s *Studio) GetWebAISession(platform string) (*WebAISession, error) {
-	s.mu.Lock()
-	r := s.webAI
-	s.mu.Unlock()
-	if r == nil {
-		return nil, fmt.Errorf("studio: web ai resolver chưa được thiết lập")
-	}
-	return r(platform)
-}
-
-// maxConcurrentStudioJobs bounds how many jobs render at once. Each job
-// runs heavy local ffmpeg work (1080x1920 zoompan graphs plus a lanczos
-// 4K upscale per photo); more than 2 parallel renders thrash CPU and memory
-// for no wall-clock win.
-// Extra jobs wait with status "queued" (their DB state until they start).
-const maxConcurrentStudioJobs = 2
-
-// jobSlot returns the render semaphore, creating it on first use.
-func (s *Studio) jobSlot() chan struct{} {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.jobSem == nil {
-		s.jobSem = make(chan struct{}, maxConcurrentStudioJobs)
-	}
-	return s.jobSem
-}
-
-// New opens (or creates) the studio database and returns the orchestrator.
-// outDir is where final videos land (served at /media/).
-func New(dbPath string, llm LLM, mg MediaGen, narrator Narrator, outDir string) (*Studio, error) {
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("studio db: %w", err)
-	}
-	// One connection, like the ledger/products stores: busy_timeout is a
-	// per-connection pragma, so a pooled second connection would hit
-	// SQLITE_BUSY while a render goroutine is writing its log.
-	db.SetMaxOpenConns(1)
-	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000"} {
-		if _, err := db.Exec(p); err != nil {
-			db.Close()
-			return nil, err
-		}
-	}
-	if err := stampUserVersion(db, 1); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("studio db: pragma user_version: %w", err)
-	}
-	s := &Studio{
-		db:       db,
-		llm:      llm,
-		mg:       mg,
-		narrator: narrator,
-		outDir:   outDir,
-		workRoot: filepath.Join(outDir, "studio"),
-		running:  map[string]context.CancelFunc{},
-		// QC defaults to the honest no-op (qc.go): no fake "AI approved"
-		// badges. The storyboard UI is the real QC loop for now.
-		QC: NoopQCChecker{},
-	}
-	if err := s.migrate(); err != nil {
-		db.Close()
-		return nil, err
-	}
-	for _, d := range []string{s.workRoot, filepath.Join(s.workRoot, "uploads")} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			db.Close()
-			return nil, err
-		}
-	}
-	return s, nil
-}
-
-func (s *Studio) migrate() error {
-	_, err := s.db.Exec(`
-	CREATE TABLE IF NOT EXISTS studio_jobs(
-		id TEXT PRIMARY KEY, kind TEXT NOT NULL, title TEXT NOT NULL,
-		status TEXT NOT NULL DEFAULT 'queued', progress INTEGER NOT NULL DEFAULT 0,
-		log TEXT NOT NULL DEFAULT '', output TEXT NOT NULL DEFAULT '',
-		params TEXT NOT NULL DEFAULT '{}',
-		created_at TEXT NOT NULL, finished_at TEXT NOT NULL DEFAULT '');
-	CREATE TABLE IF NOT EXISTS studio_assets(
-		id INTEGER PRIMARY KEY AUTOINCREMENT, job_id TEXT NOT NULL,
-		idx INTEGER NOT NULL, kind TEXT NOT NULL,
-		path TEXT NOT NULL DEFAULT '', prompt TEXT NOT NULL DEFAULT '',
-		status TEXT NOT NULL DEFAULT 'queued');
-	CREATE TABLE IF NOT EXISTS studio_affiliate_plans(
-		id TEXT PRIMARY KEY, payload TEXT NOT NULL,
-		created_at TEXT NOT NULL);
-	CREATE INDEX IF NOT EXISTS idx_studio_assets_job ON studio_assets(job_id);`)
-	if err != nil {
-		return err
-	}
-	// Additive migrations: tolerate "duplicate column" on re-run.
-	for _, q := range []string{
-		`ALTER TABLE studio_jobs ADD COLUMN caption TEXT NOT NULL DEFAULT ''`,
-		// Film Wave 1 (P0-7): per-scene render method ("veo" | "anh-tts" |
-		// ""), shown on the storyboard so the UI never overstates Veo usage.
-		`ALTER TABLE studio_assets ADD COLUMN method TEXT NOT NULL DEFAULT ''`,
-	} {
-		if _, err := s.db.Exec(q); err != nil &&
-			!strings.Contains(err.Error(), "duplicate column") {
-			return err
-		}
-	}
-	// Film Wave 3: bảng capabilities (khả năng AI: vẽ ảnh / quay video).
-	if err := s.ensureCapabilitiesTable(); err != nil {
-		return err
-	}
-	// Đợt Y: bảng chân đăng — idempotency cho auto-publish affiliate.
-	// Mỗi (job, platform) ghi trạng thái: "done" (kèm remote_id) hoặc
-	// "failed" (lỗi tạm thời, tick sau thử lại). Không có dòng = chưa đăng.
-	if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS studio_publish_legs(
-		job_id TEXT NOT NULL, platform TEXT NOT NULL,
-		remote_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
-		updated_at TEXT NOT NULL DEFAULT '',
-		PRIMARY KEY(job_id, platform))`); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Close releases the database handle.
-func (s *Studio) Close() error { return s.db.Close() }
-
-// UploadDir is where the web layer saves uploaded model/product photos and
-// music files.
-func (s *Studio) UploadDir() string { return filepath.Join(s.workRoot, "uploads") }
-
-// ModelLibrary returns the per-account model photo library (Ninh's uploads).
-func (s *Studio) ModelLibrary() (*ModelStore, error) {
-	return NewModelStore(s.db, s.workRoot)
-}
-
-// DefaultModelPhoto returns first available uploaded model image for automated
-// affiliate jobs that do not target a specific channel account.
-func (s *Studio) DefaultModelPhoto() string {
-	photos := s.uploadedModelPhotos(0)
-	if len(photos) == 0 {
-		return ""
-	}
-	return photos[0]
-}
-
-// WorkDir is the per-job work root (storyboard assets live under it).
-func (s *Studio) WorkDir() string { return s.workRoot }
-
-// MediaGen exposes the provider (dashboard health card).
-func (s *Studio) MediaGen() MediaGen { return s.mg }
-
-// ViralCharacterEditorStatus reports whether automatic character editing is
-// available under the current free-only provider policy.
-func (s *Studio) ViralCharacterEditorStatus(ctx context.Context) (bool, string) {
-	return false, viralPaidVideoDisabledMessage
-}
-
-// OutputPath resolves a job's output filename to its full filesystem path.
-func (s *Studio) OutputPath(name string) string {
-	if name == "" {
-		return ""
-	}
-	if filepath.IsAbs(name) {
-		return name
-	}
-	if s.outDir != "" {
-		cand := filepath.Join(s.outDir, name)
-		if _, err := os.Stat(cand); err == nil {
-			return cand
-		}
-	}
-	if _, err := os.Stat(name); err == nil {
-		return name
-	}
-	if s.outDir != "" {
-		return filepath.Join(s.outDir, name)
-	}
-	return name
-}
-
-// ---------------------------------------------------------------------------
-// job bookkeeping
-// ---------------------------------------------------------------------------
-
-func newID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
-}
-
-func (s *Studio) insertJob(kind, title string, params any) (string, error) {
-	// Đợt V: pre-flight đĩa — từ chối job mới khi đĩa gần đầy thay vì để
-	// job render dở rồi kẹt (video + backup zip có thể lấp đĩa rất nhanh).
-	if s.DiskGuard != nil {
-		limit := s.MaxDiskPct
-		if limit <= 0 {
-			limit = 95
-		}
-		if pct, err := s.DiskGuard(); err == nil && pct >= limit {
-			return "", fmt.Errorf("đĩa đã dùng %d%% (ngưỡng %d%%) — dọn đĩa rồi tạo job mới", pct, limit)
-		}
-	}
-	pj, _ := json.Marshal(params)
-	id := newID()
-	_, err := s.db.Exec(
-		`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
-		id, kind, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05"))
-	return id, err
-}
-
-func (s *Studio) setStatus(id, status string, progress int) {
-	fin := ""
-	if status == StatusDone || status == StatusFailed {
-		fin = time.Now().Format("2006-01-02T15:04:05")
-	}
-	s.db.Exec(`UPDATE studio_jobs SET status=?, progress=?, finished_at=CASE WHEN ? != '' THEN ? ELSE finished_at END WHERE id=?`,
-		status, progress, fin, fin, id)
-}
-
-func (s *Studio) setOutput(id, output string) {
-	s.db.Exec(`UPDATE studio_jobs SET output=? WHERE id=?`, output, id)
-}
-
-func (s *Studio) setCaption(id, caption string) {
-	s.db.Exec(`UPDATE studio_jobs SET caption=? WHERE id=?`, caption, id)
-}
-
-// AppendLog adds a line to a job's log from outside the studio package
-// (e.g. the auto-publish hook in cmd/aicos).
-func (s *Studio) AppendLog(id, line string) { s.appendLog(id, line) }
-
-// PendingJobCount đếm job đang chờ hoặc đang chạy (đợt AA — trang growth
-// hiện số này để user biết hàng đợi dài bao nhiêu).
-func (s *Studio) PendingJobCount() int {
-	var n int
-	_ = s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`,
-		StatusQueued, StatusRunning).Scan(&n)
-	return n
-}
-
-// OnDoneFunc runs after a studio job finishes successfully. It is called
-// from the job's goroutine; keep it quick or spawn its own goroutine.
-
-// Shutdown chờ các job đang chạy xong (tối đa timeout) trước khi app thoát.
-// Đợt AM: graceful drain — SIGTERM không giết job đang render giữa chừng.
-func (s *Studio) Shutdown(timeout time.Duration) {
-	deadline := time.Now().Add(timeout)
-	for {
-		s.mu.Lock()
-		n := len(s.running)
-		s.mu.Unlock()
-		if n == 0 || time.Now().After(deadline) {
-			if n > 0 {
-				// Hết timeout: hủy các job còn lại để không treo shutdown.
-				s.mu.Lock()
-				cancels := make([]func(), 0, len(s.running))
-				ids := make([]string, 0, len(s.running))
-				for id, cancel := range s.running {
-					cancels = append(cancels, cancel)
-					ids = append(ids, id)
-				}
-				s.mu.Unlock()
-				for i, cancel := range cancels {
-					cancel()
-					s.appendLog(ids[i], "App đang tắt — job bị hủy.")
-				}
-			}
-			return
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-}

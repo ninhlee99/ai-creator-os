@@ -1,18 +1,13 @@
 #!/bin/bash
-# Watchdog ngoài cho AI Creator OS (Đợt S, tự hồi phục từ Đợt AK).
+# Watchdog ngoài cho MiuNova (Đợt S, tự hồi phục từ Đợt AK).
 #
 # Vì sao cần: KeepAlive của launchd chỉ restart khi process *exit*. Process
 # bị deadlock/treo (tick kẹt) thì launchd tưởng vẫn khỏe. Script này gọi
 # GET /healthz và coi là LỖI khi: không kết nối được, db_ok=false, hoặc
 # needs_restart=true (có tác vụ nền kẹt).
 #
-# Lỗi 2 lần LIÊN TIẾP (tránh restart nhầm lúc app đang khởi động) → tự
-# khởi động lại app: Mac qua launchd (scripts/install-launchd.sh), Linux qua
-# systemd --user unit "aicos" (deploy/README.md). Không có cả hai → chỉ ghi
-# log + exit 1.
-#
-# scripts/install-launchd.sh đã tự cài script này chạy mỗi 5 phút — không
-# cần cron. Muốn dùng cron thay thế:
+# Script này không được cài hoặc chạy tự động. Nếu tự cấu hình watchdog,
+# người dùng tự chọn scheduler và chính sách restart. Ví dụ cron:
 #   */5 * * * * /path/to/ai-creator-os/scripts/watch-health.sh >> ~/aicos-data/logs/watchdog.log 2>&1
 #
 # Biến môi trường:

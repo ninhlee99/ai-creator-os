@@ -198,31 +198,36 @@
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
             Video
           </h3>
-          <span class="badge badge-live" style="font-size:11px">Định Dạng Dọc 9:16 (1080x1920)</span>
+          <span class="badge badge-live" style="font-size:11px">Khung dọc 9:16</span>
         </div>
 
         <input type="hidden" name="prepared_plan_id" id="cr-prepared-plan-id">
         <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--bg3)">
           <div style="font-weight:800;margin-bottom:6px">Bước 1 · Phân tích sản phẩm và lập shot list</div>
-          <div class="hint" style="margin-bottom:10px">Lập plan trước khi quay hoặc tạo clip. Mỗi shot có hành động dùng sản phẩm, camera, cảm xúc, điểm focus và prompt riêng.</div>
-          <button type="button" class="btn btn-secondary" id="cr-plan-button" onclick="prepareAffiliatePlan()">📝 Lập shot list và prompt</button>
+          <button type="button" class="btn btn-secondary" id="cr-plan-button" onclick="prepareAffiliatePlan()">📝 Lập shot list</button>
           <span id="cr-plan-status" class="hint" style="margin-left:8px"></span>
           <div id="cr-plan-result" style="display:none;margin-top:14px"></div>
-          <div class="hint" style="margin-top:10px"><a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a> tạo clip thủ công; quyền tạo, tín dụng và watermark tùy tài khoản/khu vực. Kiểm tra <a href="https://support.google.com/flow/answer/16526234?hl=en" target="_blank" rel="noopener">tín dụng</a> và <a href="https://support.google.com/flow/answer/16353333?hl=en" target="_blank" rel="noopener">điều kiện truy cập</a>. Trước khi tải ảnh người mẫu lên Flow, xem <a href="https://support.google.com/flow/answer/17025472?hl=en" target="_blank" rel="noopener">cài đặt dữ liệu</a>.</div>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Cách dựng</label>
+            <label style="font-weight:700;font-size:12.5px">Engine tạo footage</label>
+            <select name="video_engine" id="cr-video-engine" style="padding:10px;font-weight:700" onchange="onAffiliateEngineChange()">
+              <option value="googleflow" {{if .FlowReady}}selected{{end}} {{if not .FlowReady}}disabled{{end}}>Google Flow · nhân vật dùng sản phẩm</option>
+              <option value="manual" {{if not .FlowReady}}selected{{end}}>Tải clip chuyển động đã quay/tạo</option>
+            </select>
+            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint">Flow chưa kết nối · <a href="/settings/system#tab-webai">Kết nối</a></div>{{end}}
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Dạng video</label>
             <select name="mode" style="padding:10px;font-weight:700">
               <option value="shots" selected>Ghép clip chuyển động theo shot list</option>
             </select>
-            <div class="hint">App không gọi API video tính phí. Mỗi shot cần clip chuyển động do bạn cung cấp; clip ngắn sẽ bị từ chối, không lặp ảnh hoặc footage.</div>
           </div>
-          <div class="field">
+          <div class="field" id="cr-manual-clips-field">
             <label style="font-weight:700;font-size:12.5px">Clip chuyển động <span class="req">*</span></label>
             <input type="file" name="motion_clips" id="cr-motion-clips" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" multiple disabled>
-            <div class="hint">Sau khi có plan, tạo clip theo đúng thứ tự shot. Mỗi clip phải dài ít nhất bằng thời lượng ghi trong shot; hệ thống chuẩn hóa 9:16 rồi QC.</div>
+            <div class="hint">Theo thứ tự shot; nhân vật phải trực tiếp mặc hoặc dùng sản phẩm.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
@@ -233,7 +238,19 @@
             </select>
             <div class="hint" id="cr-clip-count-hint">60 giây cần 10 clip, mỗi clip khớp một shot.</div>
           </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Độ phân giải đầu ra</label>
+            <select name="output_resolution" style="padding:10px;font-weight:700">
+              <option value="4k" selected>4K</option>
+              <option value="8k">8K</option>
+            </select>
+          </div>
         </div>
+
+        <label id="cr-flow-consent-wrap" style="display:none;align-items:flex-start;gap:8px;margin:0 0 14px;padding:11px;border:1px solid var(--border);border-radius:9px">
+          <input type="checkbox" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1" style="margin-top:3px">
+          <span class="hint">Tôi xác nhận Google Flow sẽ tạo một clip 8 giây cho mỗi shot đã lập; lượt tạo có thể dùng credits theo account và không thể hoàn tác.</span>
+        </label>
 
         <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
           Tạo video affiliate
@@ -259,6 +276,20 @@ function updateAffiliateClipCount() {
   if (hint) hint.textContent = seconds + ' giây cần đúng ' + count + ' clip, theo thứ tự shot.';
 }
 updateAffiliateClipCount();
+
+function onAffiliateEngineChange() {
+  var flow = document.getElementById('cr-video-engine').value === 'googleflow';
+  var field = document.getElementById('cr-manual-clips-field');
+  var input = document.getElementById('cr-motion-clips');
+  var consent = document.getElementById('cr-flow-consent-wrap');
+  var hint = document.getElementById('cr-clip-count-hint');
+  if (field) field.style.display = flow ? 'none' : '';
+  if (input) { input.disabled = flow || !document.getElementById('cr-prepared-plan-id').value; input.required = !flow && !!document.getElementById('cr-prepared-plan-id').value; input.value = ''; }
+  if (consent) consent.style.display = flow ? 'flex' : 'none';
+  if (hint) hint.style.display = flow ? 'none' : '';
+  if (!flow && hint) hint.textContent = 'Mỗi shot cần một clip chuyển động theo đúng thứ tự.';
+}
+onAffiliateEngineChange();
 
 function onStudioModelToggle(cb) {
   var card = cb.closest('.cr-model-card');
@@ -371,7 +402,7 @@ function invalidateAffiliatePlan(message) {
 }
 
 function affiliatePrepField(field) {
-  return field && field.name && !['motion_clips','music_file','music_category','music_url','music_start','music_title','music_artist','bpm','prepared_plan_id'].includes(field.name);
+  return field && field.name && !['motion_clips','music_file','music_category','music_url','music_start','music_title','music_artist','bpm','prepared_plan_id','confirm_flow_credits','output_resolution'].includes(field.name);
 }
 
 var affiliateForm = document.getElementById('creative-ad-form');
@@ -446,10 +477,13 @@ async function prepareAffiliatePlan() {
     planID.value = data.plan_id;
     affiliatePlanShotCount = (data.shots || []).length;
     renderAffiliatePlan(data);
-    status.textContent = 'Plan đã khóa · ' + affiliatePlanShotCount + ' shot · tạo clip theo thứ tự bên dưới.';
-    document.getElementById('cr-clip-count-hint').textContent = data.seconds + ' giây cần đúng ' + affiliatePlanShotCount + ' clip theo plan đã duyệt.';
-    clipInput.disabled = false;
-    clipInput.required = true;
+    var flow = document.getElementById('cr-video-engine').value === 'googleflow';
+    status.textContent = flow ? ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · Flow sẽ quay từng cảnh từ ảnh tham chiếu.') : ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · tải clip theo thứ tự bên dưới.');
+    document.getElementById('cr-clip-count-hint').textContent = flow ? (affiliatePlanShotCount + ' clip Flow · mỗi shot tạo riêng, sau đó cắt theo nhịp đã duyệt.') : (data.seconds + ' giây cần đúng ' + affiliatePlanShotCount + ' clip theo plan đã duyệt.');
+    clipInput.disabled = flow;
+    clipInput.required = !flow;
+    document.getElementById('cr-manual-clips-field').style.display = flow ? 'none' : '';
+    document.getElementById('cr-flow-consent-wrap').style.display = flow ? 'flex' : 'none';
     submit.disabled = false;
     submit.style.opacity = '1';
   } catch (err) {
@@ -462,12 +496,18 @@ async function prepareAffiliatePlan() {
 affiliateForm.addEventListener('submit', function(event) {
   var planID = document.getElementById('cr-prepared-plan-id').value;
   var clips = document.getElementById('cr-motion-clips').files;
+  var flow = document.getElementById('cr-video-engine').value === 'googleflow';
   if (!planID) {
     event.preventDefault();
     document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';
     return;
   }
-  if (clips.length !== affiliatePlanShotCount) {
+  if (flow && !document.getElementById('cr-confirm-flow-credits').checked) {
+    event.preventDefault();
+    document.getElementById('cr-plan-status').textContent = 'Xác nhận credits Google Flow trước khi tạo.';
+    return;
+  }
+  if (!flow && clips.length !== affiliatePlanShotCount) {
     event.preventDefault();
     document.getElementById('cr-plan-status').textContent = 'Cần đúng ' + affiliatePlanShotCount + ' clip theo shot list.';
     return;

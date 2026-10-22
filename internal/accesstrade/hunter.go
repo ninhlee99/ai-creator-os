@@ -42,9 +42,13 @@ type HuntResult struct {
 	Updated int
 	// Skipped số bỏ qua (thiếu aff_link/giá).
 	Skipped int
-	// Products sản phẩm MỚI, sort theo hoa hồng kỳ vọng (giá × tỷ lệ)
-	// giảm dần — video được làm trước cho sản phẩm "ngon" nhất.
+	// Watchlist sản phẩm thiếu dữ liệu bán hoặc rating; được lưu để theo dõi,
+	// nhưng không đủ điều kiện tạo video affiliate.
+	Watchlist int
+	// Products là sản phẩm mới lưu vào catalog, sort theo hoa hồng kỳ vọng.
 	Products []products.Product
+	// ProductionCandidates là sản phẩm mới có ít nhất tín hiệu bán và rating.
+	ProductionCandidates []products.Product
 	// Note giải thích cho người dùng khi không săn được gì (vd chưa có
 	// chiến dịch sản phẩm nào được duyệt).
 	Note string
@@ -142,16 +146,31 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 		} else {
 			res.Updated++
 		}
+		if !p.HasDemandSignals() {
+			res.Watchlist++
+		} else if isNew {
+			res.ProductionCandidates = append(res.ProductionCandidates, p)
+		}
 	}
 	if stale > 0 && res.New == 0 && res.Updated == 0 {
 		res.Note = fmt.Sprintf("Bỏ %d sản phẩm datafeed quá cũ (>%d ngày, ảnh/link thường đã chết).", stale, f.MaxAgeDays)
 	}
-	// Sort thật theo hoa hồng kỳ vọng (giá × tỷ lệ) giảm dần — video
-	// affiliate được làm trước cho sản phẩm "ngon" nhất.
-	sort.Slice(res.Products, func(i, j int) bool {
-		return res.Products[i].Price*res.Products[i].CommissionRate >
-			res.Products[j].Price*res.Products[j].CommissionRate
-	})
+	if res.Watchlist > 0 {
+		note := fmt.Sprintf("%d sản phẩm thiếu dữ liệu lượt bán hoặc rating; đã lưu trong kho, chưa tạo video affiliate.", res.Watchlist)
+		if res.Note != "" {
+			res.Note += " " + note
+		} else {
+			res.Note = note
+		}
+	}
+	sortByExpectedCommission := func(items []products.Product) {
+		sort.SliceStable(items, func(i, j int) bool {
+			return items[i].Price*items[i].CommissionRate >
+				items[j].Price*items[j].CommissionRate
+		})
+	}
+	sortByExpectedCommission(res.Products)
+	sortByExpectedCommission(res.ProductionCandidates)
 	return res, nil
 }
 

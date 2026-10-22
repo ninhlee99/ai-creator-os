@@ -1,16 +1,169 @@
-> ⚠️ **Tài liệu pre-pivot (trước 2026-10-02):** mô tả app khi còn live + phim điện ảnh. Sau pivot (Ninh chốt 2026-10-02) app chỉ còn 3 trụ: Affiliate Accesstrade, Reup Douyin, YouTube kể chuyện. Tài liệu này giữ làm lịch sử, sẽ viết lại theo đợt.
->
+# RESEARCH.md — Nghiên cứu nền tảng và kho tư liệu
 
-# RESEARCH.md — Kiến thức nền đã kiểm chứng của dự án
+> PRODUCT_SPEC và PRODUCT_DECISIONS là nguồn quyết định sản phẩm. Mục “Current
+> findings” dưới đây được rà lại ngày 2026-10-22. Tư liệu cũ phía sau giữ để
+> tham khảo lịch sử; không dùng kế hoạch/policy cũ thay cho spec hiện hành.
 
-> Gộp ngày 2026-10-02 từ 6 file nghiên cứu rời trước đây + 2 vòng research
-> avatar realtime (đã xoá thư mục gốc sau khi trích kết luận).
-> Mỗi mục chỉ giữ **kết luận còn dùng được** kèm ngày + mức tin cậy. Muốn xem
-> toàn văn chi tiết, tra lịch sử git của repo.
->
-> Mức tin cậy: **[chính thức]** = nền tảng/tài liệu gốc công bố ·
-> **[đo thật]** = có benchmark/số đo trên phần cứng nêu rõ · **[nguồn thứ
-> cấp]** = blog/vendor, dùng thận trọng.
+## Current findings — 2026-10-22
+
+### TikTok Content Posting API
+
+- Content Sharing Guidelines cập nhật 2026-08-04: API client phải phục vụ
+  creator audience rộng, không chỉ nhóm nội bộ/riêng tư; TikTok nêu rõ utility
+  chỉ upload cho account developer/team quản lý là use case không chấp nhận.
+  Client chưa audit chỉ đăng private; Direct Post còn phải lấy creator info,
+  cho creator tự chọn privacy/interactions và consent rõ trước khi gửi.
+- Direct Post Reference cập nhật 2026-08-24 xác nhận endpoint cần creator info,
+  metadata và consent trước khi khởi tạo; app cần audit để bỏ giới hạn private.
+- **Suy luận cho MiuNova:** app cá nhân tự host có xung đột intended-use và
+  public Direct Post chưa thể hứa. Chỉ TikTok có thể quyết định eligibility;
+  nếu chưa được chấp thuận, handoff sang TikTok app.
+- Nguồn chính thức: [Content Sharing Guidelines](https://developers.tiktok.com/docs/en/content-sharing-guidelines),
+  [Direct Post API](https://developers.tiktok.com/docs/en/content-posting-api-reference-direct-post).
+
+### Meta video publishing
+
+- Bộ sưu tập Threads API trong workspace Postman chính thức của Meta mô tả tạo
+  video container qua `media_type=VIDEO` và `video_url` công khai, sau đó publish
+  bằng container ID. Điều này chứng minh endpoint video được tài liệu hóa;
+  không chứng minh MiuNova đã có scope/app review hoặc publish thành công.
+- Bộ sưu tập chính thức của Meta cũng mô tả Facebook Page Reels và Instagram
+  Reels publishing. Account type, app review, quyền, media hosting và phiên bản
+  API vẫn phải được kiểm tra trước khi bật từng adapter.
+- Trang canonical developers.facebook.com bị giới hạn fetch (HTTP 429) khi rà
+  lại. Vì vậy đối chiếu changelog/docs chính thức và credential thật trước khi
+  coi giới hạn/quyền là đã xác minh.
+- Nguồn: [Meta Threads API collection](https://www.postman.com/meta/threads/collection/dht3nzz/threads-api),
+  [video container request](https://www.postman.com/meta/threads/documentation/dht3nzz/threads-api?entity=request-34203612-b3b2c12a-7ce6-4d86-a3c6-6d31e3b66ea1),
+  [Meta Instagram API workspace](https://www.postman.com/meta/instagram/collection/6yqw8pt/instagram-api),
+  [Meta Facebook API collection](https://www.postman.com/meta/facebook/documentation/r56bjfd/facebook-api).
+
+### AccessTrade product evidence
+
+- API `/v1/datafeeds` documents price, discount, product, campaign, affiliate
+  link and update time; it does not document sales or rating/review fields.
+- `/v1/top_products` accepts date filters, but docs define outer `total` as
+  “số lượng sản phẩm” and do not define it as units/orders sold per offer or
+  state a per-offer sales window. Do not use it as sales evidence.
+- Separate TikTok Shop product-feed docs describe `units_sold`, commission,
+  inventory and sort by best sellers/high commission. `units_sold` is total units
+  per SKU, can be omitted when seller has not allowed precise data sharing, and
+  docs do not give a recent-sales period. The user previously removed TikTok
+  Shop API from scope; no current decision reopens it. Even if reopened, this
+  source does not supply ratings/reviews or prove 30-day sales.
+- The current MiuNova adapter uses `/v1/datafeeds`; it does not call
+  `/v1/top_products` or TikTok Shop product feeds. No AccessTrade review/rating
+  source is verified. The current connected AccessTrade source cannot pass both
+  recent-sales and review gates in PRODUCT_SPEC; affiliate production must hold
+  until an allowed evidence source is connected.
+- Sources: [Datafeeds API](https://developers.accesstrade.vn/api-publisher-vietnamese/lay-thong-tin-datafeeds),
+  [Top-selling products API](https://developers.accesstrade.vn/api-publisher-vietnamese/top-cac-san-pham-ban-chay-nhat),
+  [TikTok Shop product search v2](https://developers.accesstrade.vn/api-publisher-vietnamese/tich-hop-api-publisher-at-cho-chien-dich-tiktok-shop/version-2-updated-version/tiktok-product-search-v2),
+  [current source scope](features/products.md),
+  [historical explicit exclusion](REVIEW_ROUND2.md).
+
+### Nguồn affiliate thay thế đã rà
+
+- **Shopee Affiliate:** Help Center chính thức nói API có danh sách shop/brand/
+  product offers, short link và conversion/validated reports. Trang Open API
+  của Shopee Việt Nam là ứng dụng JavaScript; schema trường không đọc được từ
+  trang công khai đã kiểm tra. Chưa xác nhận product-level sales theo 30 ngày,
+  rating/review, điều kiện publisher hoặc chi phí API. Chỉ là ứng viên cần
+  kiểm chứng, chưa đủ làm evidence source.
+- **Rentracks Vietnam:** Publisher docs có data feed/coupon feed và API. Hướng
+  dẫn 2025 nói field trong datafeed thay đổi theo campaign/nhà cung cấp; API
+  được mô tả cho publisher dạng sub-network cần liên hệ team Rentracks. Tài
+  liệu công khai chưa chứng minh trường sales theo kỳ hay rating/review và
+  quyền truy cập miễn phí cho publisher cá nhân.
+- **ADPIA:** tài liệu thương hiệu nói API hỗ trợ tạo trang sản phẩm top-sale,
+  nhưng không công bố schema, cửa sổ sales, freshness, review/rating hay điều
+  kiện/chi phí truy cập. Không suy ra trang “top-sale” là số bán 30 ngày.
+- **Awin:** tài liệu product-feed list có timestamp cập nhật; ví dụ cột feed
+  gồm `average_rating`, `reviews` và `number_stars`. Ví dụ hiện trên docs là
+  advertiser GB; schema này không chứng minh sales per-product theo kỳ hay độ
+  sẵn có tại Việt Nam. Có thể khảo sát cho trường review, chưa thay được cổng
+  sales.
+- Kết luận ngày 2026-10-22: chưa xác minh được provider thay thế nào đồng thời
+  có commission/link hợp lệ, sales 30 ngày theo product, rating/review có mẫu,
+  freshness/provenance rõ, quyền API hợp lệ và mức phí bằng 0. O-02 còn mở;
+  không bật affiliate production khi chưa đạt evidence gate.
+- Nguồn chính thức: [Shopee API Access](https://help.shopee.sg/portal/10/article/191702-API-Access),
+  [Shopee Vietnam Open API](https://affiliate.shopee.vn/open_api/list),
+  [Rentracks Publisher](https://rentracks.com.vn/publisher/),
+  [Rentracks dashboard guide 2025](https://rentracks.com.vn/huong-dan-cach-su-dung-dashboard-rentracks-2025/),
+  [ADPIA brand guideline](https://adpia.vn/assets/pdf/branding-adpia-new.pdf),
+  [Awin product-feed list](https://help.awin.com/developers/docs/product-feed-list-download).
+
+### AccessTrade publisher identity and payout
+
+- AccessTrade's current publisher FAQ says payout goes to the publisher's
+  registered default bank account. Payout requires approved commission of at
+  least VND 200,000, bank details, citizen ID, tax ID and completed e-contract
+  verification. Publisher identity and payout setup therefore need a real
+  account owner; they are not replaced by social OAuth.
+- The same FAQ says a bank account may be shared across multiple Publisher
+  accounts. It does not describe per-creator commission splitting or delegated
+  payout, so this is only a possibility to verify with AccessTrade, not proof
+  that an operator account can automatically settle revenue to each user.
+- The product-link API describes UTM and `sub1`–`sub4` as tracking parameters.
+  It does not document delegated publisher identity, split payout or settlement
+  to each creator. **Inference:** these tracking fields cannot be treated as a
+  payout-routing mechanism. If MiuNova/operator owns the publisher account,
+  separate permission and settlement arrangements would be needed to route
+  earnings to users; do not assume they exist.
+- Current connected AccessTrade setup therefore conflicts with the literal
+  “only login social” requirement unless the user does affiliate onboarding
+  once or a permitted managed-payout model is established. Neither path is
+  currently decided or implemented.
+- Rentracks Vietnam describes an API for publisher-owned sub-networks and says
+  the operator must contact its team for integration details. Its dashboard
+  guide also asks a publisher to complete identity, channel and bank details
+  before campaign registration. This makes a managed sub-network a candidate
+  for O-01, but public docs do not establish creator-level delegation, split
+  settlement, or whether downstream creators can avoid their own onboarding.
+  Do not treat it as a working payout solution without written provider terms.
+- Sources: [AccessTrade publisher FAQ](https://help.accesstrade.vn/faq-publisher/),
+  [AccessTrade product-link API](https://developers.accesstrade.vn/api-publisher-vietnamese/tao-tracking-link),
+  [Rentracks publisher API](https://rentracks.com.vn/publisher/),
+  [Rentracks dashboard guide 2025](https://rentracks.com.vn/huong-dan-cach-su-dung-dashboard-rentracks-2025/).
+
+### YouTube Data API quota
+
+- Google quota docs currently show separate default buckets: 100 `videos.insert`
+  calls/day and 100 `search.list` calls/day, each 1 unit/call; other methods
+  share a 10,000-unit/day bucket. `videos.insert` resets at midnight Pacific.
+  Limits are project-specific, visible in Cloud Console, and can change.
+- Source: [Quota Calculator](https://developers.google.com/youtube/data/determine_quota_cost),
+  [videos.insert reference](https://developers.google.com/youtube/data/reference/rest/v3/videos/insert),
+  [Revision History](https://developers.google.com/youtube/data/revision_history).
+
+### OAuth callback trên VPS
+
+- TikTok: code cho phép đặt `TIKTOK_REDIRECT_URI`; callback trực tiếp về VPS cần
+  URL HTTPS tĩnh đã đăng ký trong app TikTok. TikTok Web Login Kit yêu cầu
+  redirect HTTPS đã đăng ký; PKCE áp dụng cho Desktop, không cho Web. Code hiện
+  chỉ gửi PKCE với callback loopback và giữ state cho Web. Xem
+  [Login Kit Web](https://developers.tiktok.com/docs/en/login-kit-web/) và
+  [Login Kit overview](https://developers.tiktok.com/docs/en/login-kit-overview?enter_method=left_navigation).
+- Facebook: code cho phép `META_REDIRECT_URI` kết thúc bằng
+  `/publishers/facebook/callback`; cần đăng ký URI tương ứng trong Meta App.
+- YouTube: code giữ Desktop/loopback khi `YOUTUBE_REDIRECT_URI` trống; khi có
+  URI HTTPS hợp lệ tại `/publishers/youtube/callback`, dùng callback đã cấu
+  hình cho Google Web OAuth client. Google Web Server OAuth yêu cầu redirect
+  URI đã đăng ký. Xem [Google Web Server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server)
+  và [Google OAuth for installed apps](https://developers.google.com/identity/protocols/oauth2/native-app).
+- Kết luận: code có callback VPS cấu hình cho TikTok, Facebook và YouTube.
+  Chưa xác minh flow trên VPS với credentials thật. Web AI remote login đã có
+  screenshot/input bridge trong source; VPS/provider acceptance vẫn chưa chạy.
+
+## Historical archive — 2026-10-02
+
+> Các mục dưới đây phản ánh quyết định/pivot và research trước PRODUCT_SPEC hiện
+> tại; giữ để tra cứu thời điểm, không phải hướng sản phẩm đang chạy.
+
+Mức tin cậy trong archive: **[chính thức]** = nền tảng/tài liệu gốc công bố ·
+**[đo thật]** = có benchmark/số đo trên phần cứng nêu rõ · **[nguồn thứ cấp]**
+= blog/vendor, dùng thận trọng.
 
 ---
 

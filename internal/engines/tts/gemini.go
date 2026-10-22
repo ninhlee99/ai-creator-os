@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/freeonly"
+
 	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
 )
 
@@ -131,6 +133,9 @@ func (g *GeminiTTSProvider) KeyStatus() []KeyStatus {
 }
 
 func (g *GeminiTTSProvider) Healthy(ctx context.Context) bool {
+	if !freeonly.GeminiFreeTierConfirmed() {
+		return false
+	}
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.ring.HasUsable()
@@ -141,6 +146,9 @@ func (g *GeminiTTSProvider) Healthy(ctx context.Context) bool {
 // invalid in the ring; a healthy key resets its backoff. This burns a tiny
 // amount of that key's quota — it is only called on explicit user action.
 func (g *GeminiTTSProvider) ValidateKey(ctx context.Context, idx int) error {
+	if !freeonly.GeminiFreeTierConfirmed() {
+		return fmt.Errorf("gemini tts: free-tier key set is not confirmed in Settings → Providers")
+	}
 	g.mu.RLock()
 	key, ok := g.ring.Key(idx)
 	g.mu.RUnlock()
@@ -168,6 +176,9 @@ func (g *GeminiTTSProvider) ValidateKey(ctx context.Context, idx int) error {
 }
 
 func (g *GeminiTTSProvider) Synthesize(ctx context.Context, text, voice string) ([]byte, error) {
+	if !freeonly.GeminiFreeTierConfirmed() {
+		return nil, fmt.Errorf("gemini tts: free-tier key set is not confirmed in Settings → Providers")
+	}
 	if strings.TrimSpace(text) == "" {
 		return nil, fmt.Errorf("gemini: empty text")
 	}

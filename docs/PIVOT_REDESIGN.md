@@ -1,5 +1,9 @@
 # PIVOT REDESIGN — Thiết kế lại toàn app theo 3 trụ mới
 
+> ⚠️ Tài liệu lịch sử của lần pivot ngày 2026-10-02. Mục tiêu sản phẩm đã được
+> thay bằng [MiuNova](PRODUCT_SPEC.md) ngày 2026-10-22. Không dùng nội
+> dung dưới đây làm product spec hiện hành.
+
 Ngày: 2026-10-02 · Người chốt: Ninh · Trạng thái: **Đợt A xong (commit `efa218b`)** — live + phim đã park, sidebar 7 mục; các đợt B–G đang triển khai
 
 ## 0. Quyết định phạm vi

@@ -1,130 +1,27 @@
-// Command aicos is the single binary for AI Creator OS.
-//
-// One binary, zero runtime dependencies: it serves the web dashboard,
-// runs the network daemon (accounts, onboarding, scheduler, topics) and
-// wires the LLM/TTS provider chains.
-//
-// Usage:
-//
-//	aicos                 # serve dashboard on 127.0.0.1:8080, run workers
-//	aicos -addr :9000     # custom listen address
-//	aicos -data ./data    # custom data directory
-//
-// Environment:
-//
-//	GEMINI_API_KEY        free-tier key for the gemini LLM/TTS providers
-//	DRY_RUN               network daemon dry-run (default true)
-//	KILL_SWITCH           emergency stop for the network daemon (default false)
-//	MASTER_SWITCH         network daemon on/off (default false)
 package main
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 
-	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
-	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
-	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
-	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
 	"github.com/ninhlee99/ai-creator-os/internal/logx"
-	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/notify"
-	"github.com/ninhlee99/ai-creator-os/internal/products"
-	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/runtimeguard"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
-	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 // version mặc định khi build thường; build phát hành truyền
 // -ldflags "-X main.version=vX.Y.Z" để đóng dấu thật.
 var version = "dev"
-
-// getenvList reads a comma-separated env var into trimmed non-empty items.
-func getenvList(name string) []string {
-	v := os.Getenv(name)
-	if v == "" {
-		return nil
-	}
-	var out []string
-	for _, p := range strings.Split(v, ",") {
-		if p = strings.TrimSpace(p); p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-func getenvBool(name string, def bool) bool {
-	v := os.Getenv(name)
-	if v == "" {
-		return def
-	}
-	b, err := strconv.ParseBool(v)
-	if err != nil {
-		return def
-	}
-	return b
-}
-
-func getenvInt(name string, def int) int {
-	v := os.Getenv(name)
-	if v == "" {
-		return def
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil {
-		return def
-	}
-	return n
-}
-
-func loadDotEnv(path string) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			k := strings.TrimSpace(parts[0])
-			v := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
-			if os.Getenv(k) == "" {
-				_ = os.Setenv(k, v)
-			}
-		}
-	}
-}
-
-func fileExists(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && !fi.IsDir()
-}
 
 // ---------------------------------------------------------------------------
 func main() {
@@ -177,9 +74,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("ledger: %v", err)
 	}
-	// Đợt AM (fix nợ vòng 8): kiểm tra toàn vẹn DB lúc boot — DB corrupt +
-	// launchd KeepAlive = crash-loop vô hạn. Báo rõ cách khôi phục thay vì
-	// chết im lặng.
+	// Kiểm tra toàn vẹn DB lúc boot; báo rõ cách khôi phục nếu DB hỏng.
 	if err := checkDBIntegrity(*dataDir); err != nil {
 		log.Fatalf("DB hỏng: %v", err)
 	}
@@ -210,79 +105,12 @@ func main() {
 	decider := decideAdapter{l: l}
 
 	// -- 3. chain configs from the settings table --------------------------
-	// GEMINI_API_KEYS (comma-separated) wins; legacy GEMINI_API_KEY is the
-	// single-key fallback.
 	geminiKeys := getenvList("GEMINI_API_KEYS")
 	if len(geminiKeys) == 0 {
 		geminiKeys = getenvList("GEMINI_API_KEY")
 	}
-	loadChain := func(key string, def engines.ChainConfig) (engines.ChainConfig, bool) {
-		raw, ok, err := l.GetSetting(key)
-		if err != nil {
-			log.Printf("settings %s: read error, using default: %v", key, err)
-			return def, false
-		}
-		if !ok || raw == "" {
-			return def, false
-		}
-		cfg, err := tts.ParseChainJSON(json.RawMessage(raw))
-		if err != nil || len(cfg.Order) == 0 {
-			log.Printf("settings %s: invalid JSON, using default", key)
-			return def, false
-		}
-		if key == ledger.SettingTTSChain || key == ledger.SettingLLMChain {
-			filtered := cfg.Order[:0]
-			removed := false
-			for _, entry := range cfg.Order {
-				supported := key == ledger.SettingTTSChain && (entry.Name == "say" || entry.Name == "gemini" || entry.Name == "edge")
-				supported = supported || key == ledger.SettingLLMChain && entry.Name == "gemini"
-				if !supported {
-					removed = true
-					continue
-				}
-				filtered = append(filtered, entry)
-			}
-			cfg.Order = filtered
-			if removed {
-				saved := len(cfg.Order) > 0 && hasEnabledChainEntry(cfg.Order)
-				if !saved {
-					cfg = defaultChainWithSavedGeminiKeys(def, cfg.Order)
-				}
-				if clean, marshalErr := json.Marshal(cfg); marshalErr == nil {
-					if saveErr := l.SetSetting(key, string(clean)); saveErr != nil {
-						log.Printf("settings %s: remove retired provider: %v", key, saveErr)
-					}
-				}
-				return cfg, saved
-			}
-		}
-		return cfg, true
-	}
-	cfgSrc := func() (engines.ChainConfig, engines.ChainConfig) {
-		llmCfg, llmSaved := loadChain(ledger.SettingLLMChain, engines.DefaultLLMConfig(geminiKeys))
-		ttsCfg, ttsSaved := loadChain(ledger.SettingTTSChain, engines.DefaultTTSConfig(geminiKeys))
-		if llmSaved {
-			log.Printf("llm: using saved chain config (llm.chain)")
-		} else {
-			log.Printf("llm: using default chain config")
-		}
-		if ttsSaved {
-			log.Printf("tts: using saved chain config (tts.chain)")
-		} else {
-			log.Printf("tts: using default chain config")
-		}
-		return llmCfg, ttsCfg
-	}
-
 	// -- 4. provider chains -------------------------------------------------
-	llmChain, ttsChain := engines.DefaultChains(geminiKeys, decider, cfgSrc)
-	log.Printf("llm: active providers: %v", llmChain.ActiveProviders())
-	log.Printf("tts: active providers: %v", ttsChain.ActiveProviders())
-	if len(geminiKeys) == 0 {
-		log.Printf("note: GEMINI_API_KEYS / GEMINI_API_KEY not set — LLM calls need a Gemini key; TTS uses local speech, then Edge")
-	} else {
-		log.Printf("gemini: %d API key(s) configured (rotation enabled)", len(geminiKeys))
-	}
+	llmChain, ttsChain := loadEngineChains(l, geminiKeys, decider)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -291,463 +119,67 @@ func main() {
 
 	var studioInst *studio.Studio
 
-	// health probes for the dashboard "Kiểm tra kết nối" buttons
-	health := map[string]web.HealthChecker{}
-	for _, name := range llmChain.ActiveProviders() {
-		if p, ok := llmChain.Provider(name); ok {
-			if h, ok := any(p).(web.HealthChecker); ok {
-				health["llm:"+name] = h
-			}
-		}
-	}
-	for _, name := range ttsChain.ActiveProviders() {
-		if p, ok := ttsChain.Provider(name); ok {
-			if h, ok := any(p).(web.HealthChecker); ok {
-				health["tts:"+name] = h
-			}
-		}
-	}
-	log.Printf("health: %d probes wired", len(health))
-
 	// -- 6. accounts + web server -------------------------------------------
-	mgr, err := network.NewAccountManager(l, dbPath)
+	webRuntime, err := initializeWeb(ctx, l, *dataDir, dbPath, firstRun, llmChain, ttsChain)
 	if err != nil {
-		log.Fatalf("accounts: %v", err)
+		log.Fatal(err)
 	}
+	mgr := webRuntime.manager
+	srv := webRuntime.server
+	webCfg := webRuntime.config
+	autoSettings := webRuntime.settings
+	tickSup := webRuntime.tickSup
+	outDir := webRuntime.outDir
 	defer func() {
 		if err := mgr.Close(); err != nil {
 			log.Printf("accounts close: %v", err)
 		}
 	}()
-
-	webCfg := web.LoadConfig()
-	webCfg.DatabasePath = dbPath
-	webCfg.Version = version
-	srv, err := web.NewServer(webCfg, l, mgr, dbPath)
-	if err != nil {
-		log.Fatalf("web: %v", err)
-	}
-	// R2-W7: thư mục dữ liệu trống (chưa có ledger.db) → mở wizard /onboard.
-	srv.Onboarding = firstRun
-	// R2-W7: token OAuth nằm trong thư mục dữ liệu, không rải ở CWD.
-	publishers.SetTokenDir(filepath.Join(*dataDir, "tokens"))
-	publishers.MigrateTokensFromCWD()
-	publishers.StartTokenWorker(ctx, 30*time.Minute)
-	publishers.SetOnTokenAlert(func(rep publishers.TokenHealthReport) {
-		msg := fmt.Sprintf("⚠️ [Cảnh báo Token] Kênh %s (%s) bị gián đoạn: %s. Vui lòng kết nối lại trong Cài đặt.", rep.Username, rep.Platform, rep.Message)
-		bot, _, _ := l.GetSetting(automation.KeyNotifyTelegramBot)
-		chat, _, _ := l.GetSetting(automation.KeyNotifyTelegramChat)
-		if bot != "" && chat != "" {
-			_ = notify.SendTelegram(bot, chat, msg)
-		}
-		wh, _, _ := l.GetSetting(automation.KeyNotifyWebhookURL)
-		if wh != "" {
-			_ = notify.SendDiscord(wh, "⚠️ Cảnh Báo Kết Nối Kênh", msg)
-		}
-	})
 	defer func() {
 		if err := srv.Close(); err != nil {
 			log.Printf("web close: %v", err)
 		}
 	}()
-	srv.LLM = llmChainAdapter{c: llmChain} // satisfies web.LLMClient + chain-config interfaces
-	srv.TTS = ttsChainAdapter{c: ttsChain}
-	// R2-W4: the single configuration facade — ledger settings. All
-	// automation switches, the master switch, growth thresholds and the
-	// API budget live here.
-	autoSettings := automation.LedgerSettings{L: l}
-	// OutDir follows the -data flag (NewServer defaults to ./data/*
-	// relative to the working directory).
-	outDir := filepath.Join(*dataDir, "output")
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		log.Fatalf("web: out dir: %v", err)
-	}
-	srv.OutDir = outDir
-	srv.Health = health
-	// Đợt R: một supervisor duy nhất giám sát mọi automation tick (timeout +
-	// recover + heartbeat). Service build lazy để luôn thấy đủ các store đã
-	// wiring xong (Studio/AT/Reup được gán sau điểm này).
-	tickSup := ticksup.New(
-		func() ticksup.Alerter { return srv.AutomationService() },
-		tts.GeminiQuotaCircuit().TakeAlert,
-	)
-	// Đợt R+S: /healthz đọc heartbeat tick + trạng thái ngắt mạch quota.
-	srv.TickBeats = func() map[string]web.TickBeat {
-		out := make(map[string]web.TickBeat)
-		for k, v := range tickSup.Snapshot() {
-			out[k] = web.TickBeat{
-				LastStart: v.LastStart,
-				LastOK:    v.LastOK,
-				LastErr:   v.LastErr,
-				Runs:      v.Runs,
-			}
-		}
-		return out
-	}
-	srv.QuotaCircuit = func() (bool, string) {
-		qc := tts.GeminiQuotaCircuit()
-		if !qc.Open() {
-			return false, ""
-		}
-		return true, qc.OpenUntil().Format("02/01 15:04")
-	}
-	// /healthz báo tick kẹt (needs_restart) để watchdog ngoài tự khởi động lại app.
-	srv.RemoteNeedsPassword = true
-	srv.StaleTicks = func() []string { return tickSup.Stale(time.Now()) }
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------
 	// The studio reuses the LLM chain (director), the TTS chain (narration)
 	// and the Gemini keys (image generation). (Film pipeline parked —
 	// PIVOT 2026-10-02.)
-	studioMG := studio.NewGeminiMediaGen(geminiKeys)
-	studioNarrator := studio.Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
-		if voice == "" {
-			voice = "default"
-		}
-		return ttsChain.Synthesize(ctx, text, voice)
-	})
-	if st, err := studio.New(filepath.Join(*dataDir, "studio.db"), studioLLMAdapter{c: llmChain}, studioMG, studioNarrator, outDir); err != nil {
-		log.Printf("studio: init failed: %v (studio page disabled)", err)
-	} else {
-		srv.Studio = st
-		studioInst = st
-		// Key Gemini nhập ở Cài đặt dùng chung cho tạo ảnh (trước chỉ đọc
-		// GEMINI_API_KEYS lúc khởi động → key nhập qua UI không tới tạo ảnh).
-		srv.OnGeminiKeys = studioMG.SetKeys
-		if ks := srv.SyncGeminiKeys(); len(ks) > 0 {
-			log.Printf("gemini: %d key dùng chung cho viết chữ + giọng đọc + tạo ảnh", len(ks))
-		}
-		// Đợt V: pre-flight đĩa — từ chối job render mới khi đĩa gần đầy.
-		st.DiskGuard = func() (int, error) { return automation.DiskUsagePct(*dataDir) }
-		// Film Wave 1 (P0-3): jobs left "running" died with the previous
-		// process — mark them failed so the UI offers "Chạy tiếp".
-		if n := st.MarkInterruptedJobs(); n > 0 {
-			log.Printf("studio: %d job(s) interrupted by restart — marked failed (resume from Studio)", n)
-		}
+	studioInst = initializeStudio(srv, *dataDir, outDir, geminiKeys, llmChain, ttsChain)
+	if studioInst != nil {
 		defer func() {
-			if err := st.Close(); err != nil {
+			if err := studioInst.Close(); err != nil {
 				log.Printf("studio close: %v", err)
 			}
 		}()
-		log.Printf("studio: ready (mediagen=%s keys=%d)", studioMG.Name(), studioMG.KeyCount())
 	}
 
-	// -- 6b. Accesstrade (Đợt B): cache chiến dịch + link đã tạo.
-	// Fail-soft: mở DB lỗi thì srv.AT = nil, UI fail-closed trung thực.
-	if atStore, err := accesstrade.NewStore(filepath.Join(*dataDir, "accesstrade.db")); err != nil {
-		log.Printf("accesstrade: init failed: %v (Accesstrade disabled)", err)
-	} else {
+	atStore := initializeAccesstrade(srv, *dataDir)
+	if atStore != nil {
 		defer func() {
 			if err := atStore.Close(); err != nil {
 				log.Printf("accesstrade close: %v", err)
 			}
 		}()
-		srv.AT = atStore
-		log.Printf("accesstrade: ready")
 	}
 
-	// Đợt R: cờ arm vòng tick — khởi động tập trung ở cuối main qua ticksup.ArmLoops.
-	autopilotArmed := false
-
-	// -- 6d. affiliate autopilot: theme -> high-commission product -> video --
-	// Ninh uploads model photos per account (Studio UI) and picks a theme;
-	// the system hunts products and builds the videos hands-off.
-	if srv.Studio != nil {
-		pstore, err := products.NewStore(filepath.Join(*dataDir, "products.db"))
-		if err != nil {
-			log.Printf("products: init failed: %v (product discovery disabled)", err)
-		} else {
-			defer func() {
-				if err := pstore.Close(); err != nil {
-					log.Printf("products close: %v", err)
-				}
-			}()
-			srv.Products = pstore
-			if n, err := srv.MigrateLedgerShelf(); err != nil {
-				log.Printf("products: migrate legacy ledger shelf: %v", err)
-			} else if n > 0 {
-				log.Printf("products: moved %d legacy ledger products into the shared store", n)
+	// Ticks arm after every store and service has been wired.
+	pstore, autopilotArmed := initializeProducts(srv, mgr, autoSettings, *dataDir)
+	if pstore != nil {
+		defer func() {
+			if err := pstore.Close(); err != nil {
+				log.Printf("products close: %v", err)
 			}
-			// R2-W4: single settings facade (ledger settings). One-time
-			// copy of the legacy products.db control settings; after
-			// that the facade is the only control plane.
-			if err := automation.MigrateProductsSettings(pstore, autoSettings); err != nil {
-				log.Printf("settings: migrate products settings: %v", err)
-			}
-			// Xóa catalog hardcode cũ; các deal này chưa từng được xác minh.
-			if removed, rerr := pstore.RemoveSource("market_verified"); rerr != nil {
-				log.Printf("products: remove unverified catalog failed: %v", rerr)
-			} else if removed > 0 {
-				log.Printf("products: removed %d unverified catalog rows", removed)
-			}
-			models, err := srv.Studio.ModelLibrary()
-			if err != nil {
-				log.Printf("autopilot: model library failed: %v", err)
-			} else {
-				ap := studio.NewAutopilot(srv.Studio, mgr, pstore,
-					nil, models)
-				// Music bed: the UI upload (data/autopilot-music.m4a); the legacy
-				// data/trending-audio.m4a file is still honored as a fallback.
-				if mp := filepath.Join(*dataDir, "autopilot-music.m4a"); fileExists(mp) {
-					ap.MusicPath = mp
-				} else if mp := filepath.Join(*dataDir, "trending-audio.m4a"); fileExists(mp) {
-					ap.MusicPath = mp
-				}
-				srv.Autopilot = ap
-				log.Printf("autopilot: ready (nguồn sản phẩm: Accesstrade store)")
-				publishHook := srv.AutomationService().AutoPublishHook()
-				srv.Studio.SetOnDone(func(jobID string) {
-					if publishHook != nil {
-						publishHook(jobID)
-					}
-					go func() {
-						j, ok := srv.Studio.GetJob(jobID)
-						if !ok {
-							return
-						}
-						title := j.Title
-						if title == "" {
-							title = "Video AI Studio"
-						}
-						msg := fmt.Sprintf("🎬 [STUDIO] ✨ Video hoàn tất: \"%s\" (ID: %s, Thể loại: %s)!\nĐã sẵn sàng xuất bản đa kênh.", title, jobID, j.Kind)
-						bot, _ := srv.EffectiveEnv("TELEGRAM_BOT_TOKEN")
-						chat, _ := srv.EffectiveEnv("TELEGRAM_CHAT_ID")
-						if (bot == "" || chat == "") && srv.Ledger != nil {
-							b, _, _ := srv.Ledger.GetSetting(automation.KeyNotifyTelegramBot)
-							c, _, _ := srv.Ledger.GetSetting(automation.KeyNotifyTelegramChat)
-							if b != "" && c != "" {
-								bot = b
-								chat = c
-							}
-						}
-						if bot != "" && chat != "" {
-							_ = notify.SendTelegram(bot, chat, msg)
-						}
-						disc, _ := srv.EffectiveEnv("DISCORD_WEBHOOK_URL")
-						if disc != "" {
-							_ = notify.SendDiscord(disc, "✨ Video Studio Hoàn Tất", msg)
-						}
-					}()
-				})
-				// One-time seed from env so existing deployments keep working;
-				// after that the web UI (/products) is the only control plane.
-				// Đợt 3: automation defaults ON when unset and a stored "0"
-				// always wins, so the env seed only lands when AUTOPILOT_SCHEDULE
-				// is explicitly present — a fresh install writes nothing, and an
-				// existing stored choice is never overwritten. DRY-RUN stays
-				// the safety gate (see the scheduler loop below).
-				if _, ok := autoSettings.Get(web.SettingAutopilotEnabled); !ok {
-					if _, present := os.LookupEnv("AUTOPILOT_SCHEDULE"); present {
-						if getenvBool("AUTOPILOT_SCHEDULE", false) {
-							_ = autoSettings.Set(web.SettingAutopilotEnabled, "1")
-							_ = autoSettings.Set(web.SettingAutopilotInterval,
-								strconv.Itoa(getenvInt("AUTOPILOT_INTERVAL_HOURS", 6)))
-						} else {
-							_ = autoSettings.Set(web.SettingAutopilotEnabled, "0")
-						}
-					}
-				}
-				// Auto-publish also defaults ON when unset (Đợt 3) — the old
-				// forced "0" seed is gone; kill switch + DRY-RUN gate it.
-				// Vòng tick khởi động tập trung ở cuối main (ticksup.ArmLoops).
-				autopilotArmed = true
-			}
-		}
+		}()
 	}
 
-	// -- 6e. Web AI Hub (Claude, ChatGPT, Gemini, Muse AI).
-	if webAIStore, err := webai.NewStore(filepath.Join(*dataDir, "webai.db")); err != nil {
-		log.Printf("webai: init failed: %v", err)
-	} else {
+	webAIStore := initializeWebAI(srv, *dataDir)
+	if webAIStore != nil {
 		defer func() {
 			if err := webAIStore.Close(); err != nil {
 				log.Printf("webai close: %v", err)
 			}
 		}()
-		srv.WebAI = webAIStore
-		srv.WebAIRelay = webai.NewProxyRelay(webAIStore)
-		srv.WireStudioWebAI()
-		log.Printf("webai: ready (%d accounts connected)", webAIStore.CountConnected())
 	}
 
-	// -- 7. network daemon ---------------------------------------------------
-	// R2-W4 (R2-08): MASTER_SWITCH is a persisted setting now, default
-	// OFF. The env seeds it exactly once; afterwards the Settings UI is
-	// the only control plane, and the daemon reads the gate live every
-	// tick — no restart needed for the toggle to take effect.
-	if err := automation.SeedMasterSwitch(autoSettings, getenvBool("MASTER_SWITCH", false)); err != nil {
-		log.Printf("settings: seed master switch: %v", err)
-	}
-	netCfg := network.DefaultNetConfig()
-	netCfg.MasterSwitch = automation.MasterOn(autoSettings)
-	netCfg.MasterGate = automation.MasterSwitchGate{Settings: autoSettings}
-	netCfg.DryRun = webCfg.DryRun()
-	netCfg.KillSwitch = getenvBool("KILL_SWITCH", false)
-	// ONE source of truth for kill/dry-run: the daemon reads the very
-	// *Config the dashboard toggles (webCfg) live on every tick, so the
-	// UI Kill switch stops the daemon without a restart.
-	netCfg.Gate = webCfg
-	log.Printf("network: master=%v dry_run=%v kill_switch=%v", netCfg.MasterSwitch, netCfg.DryRun, netCfg.KillSwitch)
-	daemon := network.NewDaemon(l, mgr, llmChain, netCfg) // *engines.LLMChain satisfies network.LLMClient
-	// Đợt R: recover để daemon panic không giết cả process.
-	// Đợt AI 24/7: vòng lặp tự hồi phục — panic 1 lần không được giết daemon
-	// vĩnh viễn (trước đây goroutine chết luôn, network ngừng im lặng).
-	guard.Go(ctx, "network:daemon", func(c context.Context) {
-		for {
-			select {
-			case <-c.Done():
-				return
-			default:
-			}
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("daemon: PANIC recovered, khởi động lại vòng sau: %v", r)
-					}
-				}()
-				daemon.Run(c, 60*time.Second)
-			}()
-			// Run thoát bất thường (không phải do ctx) → chờ 5s rồi chạy lại.
-			select {
-			case <-c.Done():
-				return
-			case <-time.After(5 * time.Second):
-			}
-		}
-	})
-
-	// -- 7b→7e. automation ticks (Đợt R) -------------------------------------
-	// Mọi vòng tick khởi động tập trung qua ticksup.ArmLoops: cadence,
-	// timeout, recover, heartbeat nằm gọn trong internal/ticksup (loops.go),
-	// main chỉ quyết định tick nào được arm theo store đã wiring xong.
-	ticksup.ArmLoops(ctx, tickSup, ticksup.Deps{
-		NewService: srv.AutomationService,
-		Autopilot:  autopilotArmed,
-		Growth:     srv.Growth != nil,
-		AT:         srv.AT != nil,
-		Story:      srv.Studio != nil,
-		Viral:      srv.Studio != nil,
-	})
-
-	// -- 7f. master autonomous harness agent (OODA cognitive engine) ---------
-	autonomyLevel := harness.AutonomyAssisted
-	if stored, ok := autoSettings.Get("harness.autonomy_level"); ok {
-		if n, err := strconv.Atoi(stored); err == nil && n >= int(harness.AutonomyAssisted) && n <= int(harness.AutonomyFullyAutonomous) {
-			autonomyLevel = harness.AutonomyLevel(n)
-		}
-	}
-	harnessInst, err := harness.New(
-		srv.DB(),
-		srv.Studio,
-		mgr,
-		srv.Growth,
-		studioLLMAdapter{c: llmChain},
-		harness.Config{
-			AutonomyLevel: autonomyLevel,
-			Interval:      6 * time.Hour,
-			ExecutionAllowed: func() bool {
-				return automation.MasterSwitchGate{Settings: autoSettings}.MasterEnabled() && webCfg.LiveEnabled()
-			},
-		},
-	)
-	if err != nil {
-		log.Printf("harness: init failed: %v", err)
-	} else {
-		srv.Harness = harnessInst
-		if srv.Studio != nil && harnessInst.Memory() != nil {
-			srv.Studio.PromptEnhancer = harnessInst.Memory().GeneratePromptContext
-		}
-		harnessInst.StartBackgroundLoop(ctx)
-		log.Printf("harness: OODA background loop started (configured level %d; production actions still require supported inputs)", harnessInst.AutonomyLevel())
-	}
-
-	// -- 8. http server + graceful shutdown ----------------------------------
-	// Đợt S: timeout chống slowloris/treo kết nối trên máy 24/7.
-	httpSrv := &http.Server{
-		Addr:         *addr,
-		Handler:      srv.Routes(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-	go func() {
-		log.Printf("http: listening on %s", *addr)
-		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http: %v", err)
-		}
-	}()
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	log.Printf("shutdown: signal received, stopping...")
-
-	cancel() // stops the daemon loop and sidecar start contexts
-
-	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shCancel()
-	if err := httpSrv.Shutdown(shCtx); err != nil {
-		log.Printf("http shutdown: %v", err)
-	}
-
-	// Đợt AM: chờ job studio đang render xong (tối đa 30s) trước khi thoát.
-	if studioInst != nil {
-		log.Printf("shutdown: chờ job studio đang chạy...")
-		studioInst.Shutdown(30 * time.Second)
-	}
-	log.Printf("shutdown: complete")
-}
-
-func hasEnabledChainEntry(order []engines.ProviderEntry) bool {
-	for _, entry := range order {
-		if entry.Enabled {
-			return true
-		}
-	}
-	return false
-}
-
-func defaultChainWithSavedGeminiKeys(def engines.ChainConfig, saved []engines.ProviderEntry) engines.ChainConfig {
-	for i := range def.Order {
-		if def.Order[i].Name != "gemini" {
-			continue
-		}
-		for _, entry := range saved {
-			if entry.Name != "gemini" {
-				continue
-			}
-			if len(entry.APIKeys) > 0 {
-				def.Order[i].APIKeys = append([]string(nil), entry.APIKeys...)
-				def.Order[i].APIKey = entry.APIKey
-			} else if entry.APIKey != "" {
-				def.Order[i].APIKey = entry.APIKey
-			}
-			break
-		}
-		break
-	}
-	return def
-}
-
-// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 4 DB chính.
-// DB nào hỏng → trả lỗi kèm hướng dẫn khôi phục từ backup (tránh crash-loop).
-func checkDBIntegrity(dataDir string) error {
-	dbs := []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
-	for _, name := range dbs {
-		p := filepath.Join(dataDir, name)
-		if !fileExists(p) {
-			continue
-		}
-		db, err := sql.Open("sqlite", p+"?mode=ro")
-		if err != nil {
-			continue
-		}
-		var result string
-		err = db.QueryRow("PRAGMA integrity_check").Scan(&result)
-		db.Close()
-		if err != nil || result != "ok" {
-			backupDir := filepath.Join(dataDir, "backups")
-			return fmt.Errorf("%s hỏng (integrity_check: %s). Khôi phục: vào Cài đặt → Hệ thống → Khôi phục từ file, chọn bản mới nhất trong %s, rồi restart app", name, result, backupDir)
-		}
-	}
-	return nil
+	startWorkersAndServe(ctx, cancel, *addr, srv, l, mgr, llmChain, webCfg, autoSettings, tickSup, autopilotArmed, guard, studioInst)
 }

@@ -4,7 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -88,6 +92,24 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 	// 4. Engine must reject incomplete saved sessions without issuing a network call.
 	if _, err := engine.GenerateFlowVideoClip(context.Background(), "test prompt", "scene_01.png", 5); err == nil {
 		t.Fatal("expected missing Flow cookie error")
+	}
+}
+
+func TestMuseCookieJarReturnsRotatedSession(t *testing.T) {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	museURL, _ := url.Parse(museHTTPBase)
+	jar.SetCookies(museURL, parseCookieHeader("hatch_sess=old-session; theme=light"))
+	client := &http.Client{Jar: jar}
+	gw := &museGateway{client: client}
+	if got := gw.cookieHeader(); !strings.Contains(got, "hatch_sess=old-session") || !strings.Contains(got, "theme=light") {
+		t.Fatalf("initial Muse cookie header = %q", got)
+	}
+	jar.SetCookies(museURL, []*http.Cookie{{Name: "hatch_sess", Value: "rotated-session"}})
+	if got := gw.cookieHeader(); !strings.Contains(got, "hatch_sess=rotated-session") || strings.Contains(got, "old-session") {
+		t.Fatalf("rotated Muse cookie header = %q", got)
 	}
 }
 

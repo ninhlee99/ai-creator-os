@@ -109,64 +109,11 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 		generated = true
 	}
 
-	// 3. Fallback: Nếu cả Veo 3 và Muse AI chưa sẵn sàng, áp dụng chuyển động người thật quay phim chuẩn 9:16
-	if !generated {
-		log("Không có engine AI khả dụng; thử dùng video mẫu cục bộ nếu có...")
-		promptLow := strings.ToLower(opts.Prompt)
-		isFashion := strings.Contains(promptLow, "fashion") || strings.Contains(promptLow, "thời trang") || strings.Contains(promptLow, "lookbook")
-		isCN := strings.Contains(promptLow, "douyin") || strings.Contains(promptLow, "trung quốc") || strings.Contains(promptLow, "cn") || strings.Contains(promptLow, "c-biz") || (opts.Anchor != nil && opts.Anchor.Ethnicity == "Chinese")
-
-		cat := "viral"
-		if isFashion {
-			cat = "fashion"
-		}
-		stockCandidates := FindStockClips(cat)
-		if len(stockCandidates) > 0 {
-			var matched []string
-			for _, sc := range stockCandidates {
-				base := strings.ToLower(filepath.Base(sc))
-				if isCN && (strings.Contains(base, "cn") || strings.Contains(base, "douyin")) {
-					matched = append(matched, sc)
-				} else if !isCN && (strings.Contains(base, "vn") || strings.Contains(base, "phuonghoa") || strings.Contains(base, "cac") || strings.Contains(base, "sexy_dance")) {
-					matched = append(matched, sc)
-				}
-			}
-			if len(matched) > 0 {
-				stockCandidates = matched
-			}
-			clipIdx := opts.SceneIndex % len(stockCandidates)
-			if clipIdx < 0 {
-				clipIdx = -clipIdx
-			}
-			srcClip := stockCandidates[clipIdx]
-			log(fmt.Sprintf("✓ Tận dụng video chuyển động người thật HD 9:16 [Góc máy %d/%d: %s]...", clipIdx+1, len(stockCandidates), filepath.Base(srcClip)))
-			if err := TrimVideo(ctx, srcClip, float64(opts.Seconds), opts.AspectRatio, tempClip); err == nil && fileExists(tempClip) {
-				generated = true
-				if opts.FallbackUsed != nil {
-					*opts.FallbackUsed = true
-				}
-			}
-		}
-	}
-
-	// 4. Fallback cuối cùng nếu không có clip: Dựng chuyển động Ken Burns êm ái từ keyframe
-	if !generated {
-		if opts.FirstFrame != "" && fileExists(opts.FirstFrame) {
-			log("Không có clip chuyển động; tạo video pan/zoom từ ảnh tĩnh.")
-			if err := AssemblePhotoList(ctx, []string{opts.FirstFrame}, float64(opts.Seconds), "", 0, tempClip, opts.AspectRatio); err == nil && fileExists(tempClip) {
-				generated = true
-				if opts.FallbackUsed != nil {
-					*opts.FallbackUsed = true
-				}
-			}
-		}
-	}
-
 	if !generated {
 		if lastErr != nil {
 			return fmt.Errorf("không thể tạo video với Veo 3 / Muse AI / Google Flow: %w", lastErr)
 		}
-		return fmt.Errorf("không thể kết xuất video phân cảnh")
+		return fmt.Errorf("không có video footage từ engine đã chọn; không dùng stock clip hoặc ảnh tĩnh thay thế")
 	}
 
 	// KHOÁ KHUÔN MẶT ĐỒNG NHẤT (Face Continuity Pass): Dùng Master Photo để khóa khuôn mặt chuẩn
@@ -204,11 +151,11 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 
 	if targetW >= 2160 || targetH >= 2160 || IsMasterQuality4K() {
 		targetW, targetH = AspectDims4K(opts.AspectRatio)
-		vf = Master4KFilter(targetW, targetH)
+		vf = VideoMasterFilter(targetW, targetH)
 		encArgs = VideoEncoderArgs4K()
 		log(fmt.Sprintf("✨ Remaster 4K UHD VideoToolbox: Nâng cấp độ phân giải lên %dx%d (35 Mbps) khử nhòe & sắc nét vi mô...", targetW, targetH))
 	} else {
-		vf = fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d,setsar=1", targetW, targetH, targetW, targetH)
+		vf = fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease:flags=lanczos,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1", targetW, targetH, targetW, targetH)
 		encArgs = VideoEncoderArgs()
 	}
 
@@ -217,12 +164,16 @@ func (s *Studio) GenerateMotionVideoClip(ctx context.Context, opts MotionVideoOp
 	ffArgs = append(ffArgs, "-pix_fmt", "yuv420p", "-an", opts.OutputPath)
 
 	if err := ffmpegRun(ctx, ffArgs...); err != nil {
-		// If re-encoding fails, move raw clip
-		_ = os.Rename(tempClip, opts.OutputPath)
+		_ = os.Remove(opts.OutputPath)
+		return fmt.Errorf("không thể chuẩn hóa khung hình video: %w", err)
 	}
 
 	if !fileExists(opts.OutputPath) {
 		return fmt.Errorf("không tạo được file video hoàn chỉnh tại %s", opts.OutputPath)
+	}
+	if width, height := ProbeDims(ctx, opts.OutputPath); width != targetW || height != targetH {
+		_ = os.Remove(opts.OutputPath)
+		return fmt.Errorf("video đầu ra %dx%d, cần %dx%d", width, height, targetW, targetH)
 	}
 
 	return nil

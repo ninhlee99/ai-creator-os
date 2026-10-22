@@ -152,7 +152,7 @@ func TestAutoPublishYouTubeAffiliateOK(t *testing.T) {
 	if !strings.Contains(string(*initBody), "https://accesstrade.vn/xyz") {
 		t.Fatalf("mô tả thiếu link affiliate: %s", initBody)
 	}
-	used, _ := gs.QuotaUsed(svc.today())
+	used, _ := gs.QuotaUsed(svc.quotaDay())
 	if used < growth.UploadCostUnits {
 		t.Fatalf("quota chưa được ghi nhận, used=%d", used)
 	}
@@ -160,7 +160,7 @@ func TestAutoPublishYouTubeAffiliateOK(t *testing.T) {
 
 func TestAutoPublishYouTubeAffiliateQuotaGuard(t *testing.T) {
 	svc, js, gs, calls, _ := ytTestService(t)
-	_ = gs.AddQuota(svc.today(), growth.DailyQuotaUnits) // cạn quota
+	_ = gs.AddQuota(svc.quotaDay(), growth.DailyQuotaUnits) // cạn quota
 	j := ytTestJob(t)
 	js.jobs[j.ID] = j
 	svc.AutoPublishAffiliate(context.Background(), j.ID)
@@ -212,7 +212,7 @@ func TestAutoPublishYouTubeIdempotent(t *testing.T) {
 func TestAutoPublishYouTubeQuotaMarksLegFailed(t *testing.T) {
 	svc, js, gs, _, _ := ytTestService(t)
 	_ = svc.Settings.Set("autopilot_auto_publish", "0")
-	_ = gs.AddQuota(svc.today(), growth.DailyQuotaUnits) // cạn quota
+	_ = gs.AddQuota(svc.quotaDay(), growth.DailyQuotaUnits) // cạn quota
 	j := ytTestJob(t)
 	js.jobs[j.ID] = j
 	svc.AutoPublishAffiliate(context.Background(), j.ID)

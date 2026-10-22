@@ -35,6 +35,9 @@ type PublishResult struct {
 	URL      string
 	Error    string
 	Draft    bool
+	// UploadRequestAttempted marks that the provider's upload endpoint was
+	// called, even when its response failed or delivery was ambiguous.
+	UploadRequestAttempted bool
 	// ThumbnailSet/Error: kết quả đặt thumbnail tùy chỉnh (Đợt M1).
 	// Thumbnail là phần tăng thêm — video vẫn đăng thành công dù lỗi.
 	ThumbnailSet   bool

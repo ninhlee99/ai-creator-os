@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -124,5 +125,24 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	}
 	if media.analyzeCalls != 1 || llm.calls != 1 {
 		t.Fatalf("job should reuse plan; analyzer calls=%d director calls=%d", media.analyzeCalls, llm.calls)
+	}
+
+	st.SetWebAIVideoRenderer(func(context.Context, *WebAISession, WebAIVideoRequest, string, func(string)) (string, error) {
+		return "unused-project", nil
+	}, func(string) (bool, string) { return true, "ready" })
+	flowPrep, err := st.PrepareAffiliatePlan(context.Background(), AffiliateParams{
+		Mode: AffiliateModeShots, VideoEngine: AffiliateVideoEngineGoogleFlow, AccountID: 42,
+		ProductName: "Cardigan M5091", Niche: "thời trang", ProductCategory: "apparel",
+		ProductUsage: "nhân vật mặc cardigan và cài khuy", ProductFocus: "hàng khuy phía trước",
+		ProductPhoto: productPhoto, ModelPhoto: model.Path, ModelPhotos: []string{model.Path}, Seconds: 30,
+	})
+	if err != nil {
+		t.Fatalf("PrepareAffiliatePlan for Flow: %v", err)
+	}
+	if _, err := st.CreateAffiliateJob(AffiliateParams{PreparedPlanID: flowPrep.ID, AccountID: 42}); err == nil || !strings.Contains(err.Error(), "credits") {
+		t.Fatalf("Flow job without request consent error = %v, want credits consent requirement", err)
+	}
+	if _, err := st.GetAffiliatePreparation(flowPrep.ID); err != nil {
+		t.Fatalf("rejected Flow job consumed its prepared plan: %v", err)
 	}
 }

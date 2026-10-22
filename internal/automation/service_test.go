@@ -233,7 +233,7 @@ func TestServiceTickFullPublishFlow(t *testing.T) {
 			t.Errorf("shorts item status = %s, want published", it.Status)
 		}
 	}
-	used, err := h.svc.Growth.QuotaUsed(h.svc.today()) // cùng cơ sở ngày với tick (ICT), tránh flake 00:00–07:00
+	used, err := h.svc.Growth.QuotaUsed(h.svc.quotaDay()) // theo ngày reset của Google (Pacific)
 	if err != nil {
 		t.Fatal(err)
 	}

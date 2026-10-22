@@ -1,0 +1,202 @@
+{{define "settings-system-operations"}}
+<div id="panel-system" class="settings-tab-panel" style="display:none">
+  <h3>Trạng thái hệ thống</h3>
+  <div class="cards" style="margin-bottom:20px">
+    <div class="card">
+      <div class="num">{{if .DryRun}}<span class="badge badge-warn">Chế độ thử (dry-run)</span>{{else}}<span class="badge badge-ok">Đang chạy thật</span>{{end}}</div>
+      <div class="label">Chế độ chạy</div>
+    </div>
+    <div class="card">
+      <div class="num">{{if .Kill}}<span class="badge badge-err">ĐANG BẬT</span>{{else}}<span class="badge badge-ok">TẮT</span>{{end}}</div>
+      <div class="label">Nút dừng khẩn cấp (kill switch)</div>
+    </div>
+    <div class="card" title="{{.DbPath}}">
+      <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
+      <div class="label">Cơ sở dữ liệu</div>
+    </div>
+    <div class="card" title="{{.DataDir}}">
+      <div class="num num-text"><code>{{.Version}}</code></div>
+      <div class="label">Phiên bản app</div>
+    </div>
+    <div class="card" title="Đầy quá 85% hệ thống tự dọn file tạm job lỗi + video đã đăng cũ">
+      <div class="num">{{if ge .DiskUsage.Pct 0}}<span class="badge {{.DiskUsage.Badge}}">{{.DiskUsage.Pct}}%</span>{{else}}<span class="badge badge-draft">không rõ</span>{{end}}</div>
+      <div class="label">Đĩa dữ liệu đã dùng</div>
+    </div>
+    <div class="card">
+      <div class="num">{{fmtUSD .Spend}}</div>
+      <div class="label">Chi phí API hôm nay</div>
+    </div>
+  </div>
+
+  <div class="cards" style="margin-bottom:24px">
+    <div class="card">
+      <div class="label">Công tắc chính (Tự động hóa)</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .MasterOn}}Đang cho phép chạy theo lịch tự động{{else}}Hệ thống đang ở trạng thái đứng yên{{end}}</div>
+      <form method="post" action="/settings/master">
+        <input type="hidden" name="value" value="{{if .MasterOn}}0{{else}}1{{end}}">
+        <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc chính? Daemon mạng sẽ đứng yên."{{end}}>{{if .MasterOn}}Tắt tự động{{else}}Bật tự động{{end}}</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="label">Ngân sách API/ngày (USD)</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if eq .BudgetFrom "ui"}}Đã lưu trong Cài đặt{{else}}Từ biến môi trường{{end}}</div>
+      <form method="post" action="/settings/api-budget" class="env-form" style="display:flex;gap:8px">
+        <input type="number" name="value" step="0.5" min="0" max="10000" value="{{printf "%.2f" .APIBudget}}" style="width:7em">
+        <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
+      </form>
+    </div>
+    <div class="card">
+      <div class="label">Cổng dữ liệu ngoài /api/*</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .APIEnabled}}Đang MỞ cho công cụ ngoài{{else}}Đang TẮT (an toàn){{end}}</div>
+      <form method="post" action="/settings/api">
+        <input type="hidden" name="value" value="{{if .APIEnabled}}0{{else}}1{{end}}">
+        <button type="submit" class="btn {{if .APIEnabled}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .APIEnabled}} data-confirm="Tắt cổng dữ liệu? Các công cụ ngoài đang gọi sẽ mất kết nối."{{end}}>{{if .APIEnabled}}Tắt cổng API{{else}}Bật cổng API{{end}}</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:24px">
+    <!-- Mật khẩu truy cập -->
+    <div class="form-card">
+      <h4 style="margin-top:0">🔐 Mật khẩu truy cập</h4>
+      <p class="hint" style="margin-top:-4px">Bảo vệ bảng điều khiển khi mở app ra mạng LAN/VPS.</p>
+      {{if .AuthOn}}
+      <p><span class="badge badge-ok">Đã đặt mật khẩu bảo vệ</span></p>
+      <form method="post" action="/settings/auth/password">
+        <div class="field">
+          <label>Mật khẩu hiện tại</label>
+          <input type="password" name="current_password" required>
+        </div>
+        <div class="field">
+          <label>Mật khẩu mới</label>
+          <input type="password" name="password" minlength="4">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Đổi mật khẩu</button>
+      </form>
+      <form method="post" action="/settings/auth/password/disable" style="margin-top:8px">
+        <input type="hidden" name="current_password" id="pw-cur-dis">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="var p = prompt('Nhập mật khẩu hiện tại để tắt:'); if(p){document.getElementById('pw-cur-dis').value=p; this.form.submit();}">Tắt mật khẩu</button>
+      </form>
+      {{else}}
+      <p><span class="badge badge-dim">Chưa đặt mật khẩu</span></p>
+      <form method="post" action="/settings/auth/password">
+        <div class="field">
+          <label>Mật khẩu mới (tối thiểu 4 ký tự)</label>
+          <input type="password" name="password" minlength="4" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Đặt mật khẩu</button>
+      </form>
+      {{end}}
+    </div>
+
+    <!-- Thông báo Đa Kênh (Telegram & Discord Webhook) -->
+    <div class="form-card">
+      <h4 style="margin-top:0">📢 Thông báo Đa Kênh (Telegram &amp; Discord)</h4>
+
+      <form method="post" action="/settings/notify">
+        <div class="field">
+          <label><input type="checkbox" name="notify_on" value="1"{{if .NotifyOn}} checked{{end}}> Bật thông báo đẩy tự động</label>
+        </div>
+        <div style="font-weight:600;font-size:13px;margin:8px 0 4px;color:var(--text)">1. Kênh Telegram Bot</div>
+        <div class="grid2">
+          <div class="field">
+            <label>Bot token {{if .NotifyHasBot}}<span class="badge badge-ok">Đã lưu</span>{{end}}</label>
+            <input type="password" name="notify_bot" placeholder="{{if .NotifyHasBot}}đã lưu — nhập mới để thay{{else}}dán token BotFather{{end}}">
+          </div>
+          <div class="field">
+            <label>Chat ID</label>
+            <input type="text" name="notify_chat" value="{{.NotifyChat}}" placeholder="vd: 123456789">
+          </div>
+        </div>
+        <div style="font-weight:600;font-size:13px;margin:12px 0 4px;color:var(--text)">2. Kênh Discord Webhook</div>
+        <div class="field">
+          <label>Discord Webhook URL {{if .NotifyWebhook}}<span class="badge badge-ok">Đã cấu hình</span>{{end}}</label>
+          <input type="url" name="notify_webhook" value="{{.NotifyWebhook}}" placeholder="https://discord.com/api/webhooks/...">
+
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary btn-sm">Lưu cấu hình</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Telegram!');else alert('Lỗi gửi Telegram!');})">✈️ Test Telegram</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-discord-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Discord!');else alert('Lỗi gửi Discord!');})">🎮 Test Discord</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sao lưu & Khôi phục -->
+  <div class="form-card" style="margin-bottom:24px">
+    <h4 style="margin-top:0">💾 Sao lưu &amp; Khôi phục dữ liệu</h4>
+    <p class="hint">Ảnh chụp thư mục dữ liệu (database, files, tokens). Bản tự động gần nhất: {{if .BackupLastOK}}<code>{{fmtVN .BackupLastOK}}</code>{{else}}Chưa có bản tự động{{end}}</p>
+    <div class="cards">
+      <div class="card">
+        <div class="label">Tải bản sao lưu hiện tại</div>
+        <form method="post" action="/settings/backup" style="margin-top:8px">
+          <button type="submit" class="btn btn-primary btn-sm">Tải file sao lưu (.zip)</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="label">Khôi phục từ file (.zip)</div>
+        <form method="post" action="/settings/backup/restore" enctype="multipart/form-data" onsubmit="return this.hieu.checked" style="margin-top:8px">
+          <input type="file" name="file" accept=".zip" required style="font-size:12px;margin-bottom:6px">
+          <label class="check" style="font-size:12px"><input type="checkbox" name="hieu"> Tôi hiểu dữ liệu hiện tại sẽ bị thay thế sau restart</label>
+          <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:6px">Khôi phục</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="label">Thư mục sao lưu ngoại vi (USB/Drive)</div>
+        <form method="post" action="/settings/backup/offsite" style="margin-top:8px">
+          <input type="text" name="offsite_dir" value="{{.BackupOffsiteDir}}" placeholder="/Volumes/USB/backup" style="font-size:12px;margin-bottom:6px">
+          <button type="submit" class="btn btn-secondary btn-sm">Lưu đường dẫn</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chi phí API theo bộ máy/nhà cung cấp -->
+  <div class="form-card" style="margin-bottom:24px">
+    <h4 style="margin-top:0">Chi phí API theo bộ máy/nhà cung cấp</h4>
+    {{if .Usage}}
+    <div class="table-wrap">
+      <table>
+        <tr><th>Bộ máy</th><th>Nhà cung cấp</th><th>Số lần gọi</th><th>Chi phí (USD)</th></tr>
+        {{range .Usage}}
+        <tr>
+          <td>{{.Engine}}</td>
+          <td>{{.Provider}}</td>
+          <td>{{.N}}</td>
+          <td>{{fmtUSD .Cost}}</td>
+        </tr>
+        {{end}}
+      </table>
+    </div>
+    {{else}}
+    <p class="empty" style="margin:8px 0">Chưa có chi phí API nào được ghi nhận.</p>
+    {{end}}
+  </div>
+
+  <!-- Chi tiết kỹ thuật nâng cao (ẩn gọn gàng) -->
+  <details class="advanced" style="margin-top:16px">
+    <summary>⚙️ Chi tiết kỹ thuật nâng cao (Tác vụ nền &amp; Quota Circuit)</summary>
+    <div style="margin-top:14px">
+      <div style="margin-bottom:12px">
+        <b>Ngắt mạch quota Gemini:</b> {{if .QuotaCircuit.Open}}<span class="badge badge-warn">ĐANG MỞ tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">ĐÓNG (Bình thường)</span>{{end}}
+      </div>
+      {{if .TickBeats}}
+      <div class="table-wrap">
+        <table class="tbl">
+          <tr><th>Tác vụ</th><th>Lượt chạy</th><th>Xong lần cuối</th><th>Trạng thái</th></tr>
+          {{range .TickBeats}}
+          <tr>
+            <td title="{{.Name}}">{{.Label}}</td>
+            <td>{{.Runs}}</td>
+            <td>{{.LastOK}}</td>
+            <td>{{if .Stale}}<span class="badge badge-err">kẹt</span>{{else if .LastErr}}<span class="badge badge-err">lỗi</span>{{else if .Running}}<span class="badge badge-warn">đang chạy</span>{{else}}<span class="badge badge-ok">ổn</span>{{end}}</td>
+          </tr>
+          {{end}}
+        </table>
+      </div>
+      {{end}}
+    </div>
+  </details>
+</div>
+{{end}}

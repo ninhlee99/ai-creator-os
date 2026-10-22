@@ -15,7 +15,7 @@ import (
 )
 
 // Harness là Bộ điều phối trung tâm (Master Agent Harness), chịu trách nhiệm
-// vận hành toàn bộ hệ sinh thái tự chủ của AI Creator OS.
+// vận hành toàn bộ hệ sinh thái tự chủ của MiuNova.
 type Harness struct {
 	mu               sync.RWMutex
 	db               *sql.DB

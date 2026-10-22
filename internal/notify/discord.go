@@ -25,7 +25,7 @@ func SendDiscord(webhookURL, title, text string) error {
 	}
 
 	payload := map[string]any{
-		"username": "AI Creator OS",
+		"username": "MiuNova",
 	}
 
 	if title != "" {

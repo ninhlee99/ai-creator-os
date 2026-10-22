@@ -1,13 +1,14 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AICOS Creator Uploader</title><link rel="stylesheet" href="style.css"></head><body>
-<h1>AICOS Creator Uploader</h1>
-<p>AICOS Creator Uploader is a personal, self-hosted tool used by a single creator to send videos they produced themselves to their own TikTok account as <strong>drafts</strong>. The creator then opens each draft in the TikTok app, reviews it, adds product links and music, and publishes it manually.</p>
+<title>MiuNova — TikTok connector</title><link rel="stylesheet" href="style.css"></head><body>
+<h1>MiuNova</h1>
+<p>MiuNova is a personal, self-hosted application for its operator. It can run on the operator's computer or VPS and connect TikTok accounts the operator owns or is authorized to manage. It is not offered to the public.</p>
 <h2>How it works</h2>
 <ol>
 <li>The creator signs in with TikTok (Login Kit) and grants the <code>user.info.basic</code> and <code>video.upload</code> scopes.</li>
-<li>When a video is finished on the creator's own computer, the tool uploads it with the Content Posting API to the creator's TikTok inbox as a draft.</li>
-<li>Nothing is published automatically. The creator reviews and posts every video in the TikTok app.</li>
+<li>The operator authorizes MiuNova with TikTok. For VPS use, the registered redirect URI can point to the MiuNova HTTPS callback. The static relay page is a manual copy-and-paste fallback.</li>
+<li>Draft upload is the default. Direct Post requires the relevant TikTok product, scope and eligibility; it is not assumed to be available.</li>
+<li>Videos and required metadata are sent to TikTok when the operator starts an upload or publish action. Drafts are reviewed in TikTok before publication.</li>
 </ol>
 <p><a href="terms.html">Terms of Service</a> · <a href="privacy.html">Privacy Policy</a></p>
-<footer>AICOS Creator Uploader — personal creator tool.</footer>
+<footer>MiuNova — personal, self-hosted creator tool.</footer>
 </body></html>

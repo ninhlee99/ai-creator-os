@@ -416,8 +416,8 @@ sớm nếu cần gọn repo; Đợt 5 nên xong trước khi bán bất kỳ b�
   publisher fail-closed)? Giữ thì đưa vào Publishers tử tế; bỏ thì xoá khỏi lời hứa bán hàng.
 - **Q5 — Video dài YouTube:** giữ trong cam kết bán (→ Đợt 6 bắt buộc) hay tạm rút khỏi
   pitch tới khi 16:9 xong? Ảnh hưởng README/pitch ngay lập tức.
-- **Q6 — Tên/miền hiển thị:** giữ "AI Creator OS" cho bản bán, hay đổi tên thương mại?
-  Đổi tên là việc rẻ nhất khi làm sớm (docs, title, binary).
+- **Q6 — Tên/miền hiển thị (đã xử lý):** theo yêu cầu đổi tên, dùng tên sản phẩm
+  **MiuNova**; giữ repository/module/binary làm định danh kỹ thuật tương thích.
 
 ---
 

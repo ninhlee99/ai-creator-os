@@ -1,22 +1,24 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Privacy Policy — AICOS Creator Uploader</title><link rel="stylesheet" href="style.css"></head><body>
+<title>Privacy Policy — MiuNova TikTok Connector</title><link rel="stylesheet" href="style.css"></head><body>
 <h1>Privacy Policy</h1>
-<p>Last updated: 2026-10-01</p>
+<p>Last updated: 2026-10-22</p>
 <h2>What we access</h2>
 <ul>
 <li><strong>Basic profile</strong> (<code>user.info.basic</code>): your TikTok open ID and display name, used only to confirm which account is connected.</li>
-<li><strong>Video upload</strong> (<code>video.upload</code>): permission to send videos you created to your TikTok inbox as drafts.</li>
+<li><strong>Video upload</strong> (<code>video.upload</code>): permission to send videos to your TikTok inbox as drafts.</li>
+<li><strong>Direct Post</strong> (<code>video.publish</code>): requested only if the operator enables Direct Post and the deployment has TikTok approval for that scope.</li>
 </ul>
-<p>We do not access your followers, messages, analytics, other users' data, or any payment information.</p>
+<p>The TikTok connector does not request follower lists, messages, TikTok analytics, other users' data, or payment information.</p>
 <h2>How data is stored</h2>
-<p>OAuth access and refresh tokens are stored only in a local file on the creator's own computer, readable only by that user. They are never sent to any server other than TikTok's official API, never logged, and never shared.</p>
+<p>OAuth access and refresh tokens are stored as JSON files under <code>&lt;dataDir&gt;/tokens</code> on the host running MiuNova, including a VPS when used. New token files are written with operating-system mode <code>0600</code>. MiuNova does not encrypt these token files itself; the instance owner and anyone with sufficient access to the host or its backups may be able to read them. Tokens are sent to TikTok's official API for code exchange, refresh and authorized posting operations. MiuNova does not display token values in the browser UI.</p>
+<p>Videos and posting metadata are stored on the MiuNova host according to the instance's storage and backup configuration. They are sent to TikTok when the operator starts an upload or publish action.</p>
 <h2>Sharing</h2>
-<p>We do not sell, rent or share any data with third parties. Videos are sent only to TikTok, at the creator's request.</p>
+<p>MiuNova does not sell or rent TikTok account data. TikTok receives the data needed for authentication and the upload or publish action. Hosting providers may process infrastructure data according to the instance's hosting arrangement. Other AI providers may receive prompts or media when selected for content generation; their own terms apply.</p>
 <h2>Retention and deletion</h2>
-<p>Tokens are kept until you disconnect. To delete all data: revoke access in the TikTok app (Settings and privacy → Security → Manage app permissions) and delete the local token file. No other copy exists.</p>
+<p>Tokens remain on the MiuNova host until the instance owner deletes the token file or the host's data is removed. Revoke access in TikTok under Settings and privacy → Security → Manage app permissions; remove the token file and any retained backup copies. Generated media and metadata may also remain in the instance's output directory or backups until deleted by the operator.</p>
 <h2>Children</h2>
 <p>The tool is not intended for anyone under 18.</p>
 <h2>Contact</h2>
 <p>CONTACT_EMAIL</p>
-<footer><a href="index.html">AICOS Creator Uploader</a> · <a href="terms.html">Terms of Service</a></footer>
+<footer><a href="index.html">MiuNova</a> · <a href="terms.html">Terms of Service</a></footer>
 </body></html>

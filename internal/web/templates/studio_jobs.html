@@ -1,5 +1,6 @@
 {{define "title"}}
 {{if eq .Tab "running"}}Video đang dựng
+{{else if eq .Tab "failed"}}Tác vụ lỗi
 {{else if eq .Tab "schedule"}}Lịch tự động
 {{else}}Video đã tạo{{end}}
 {{end}}
@@ -22,6 +23,9 @@
   </a>
   <a href="/studio/jobs?tab=done" class="{{if or (eq .Tab "done") (not .Tab)}}active{{end}}">
     Hoàn tất {{if .DoneCount}}<span class="badge badge-draft" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.DoneCount}}</span>{{end}}
+  </a>
+  <a href="/studio/jobs?tab=failed" class="{{if eq .Tab "failed"}}active{{end}}">
+    Lỗi {{if .FailedCount}}<span class="badge badge-err" style="font-size:10px;padding:1px 6px;margin-left:4px">{{.FailedCount}}</span>{{end}}
   </a>
   <a href="/studio/jobs?tab=schedule" class="{{if eq .Tab "schedule"}}active{{end}}">
     Lịch tự động
@@ -121,6 +125,35 @@
     </div>
   </form>
 </div>
+{{else if eq .Tab "failed"}}
+{{if .FailedJobs}}
+<div style="display:flex;flex-direction:column;gap:10px">
+  {{range .FailedJobs}}
+  <div class="card" style="padding:14px;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+    <div style="min-width:220px;flex:1">
+      <strong>{{.Title}}</strong>
+      <span class="badge badge-err" style="margin-left:8px">{{.Label}}</span>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">{{.KindLabel}} · {{fmtVN .CreatedAt}}</div>
+      <p style="margin:9px 0 0;color:var(--err);font-size:12px;line-height:1.5;overflow-wrap:anywhere">{{.FailureReason}}</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
+        <label style="display:block;font-size:10px;margin-bottom:5px"><input type="checkbox" name="confirm_flow_credits" value="1"> Cho phép Flow dùng credits</label>
+        <button class="btn btn-primary btn-sm" type="submit">🔄 Thử lại</button>
+      </form>
+      <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+        <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
+      </form>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{else}}
+<div class="card" style="text-align:center;padding:40px 20px;border-radius:16px;background:var(--bg2)">
+  <h3 style="margin:0 0 8px;font-size:17px">Không có tác vụ lỗi</h3>
+  <p style="margin:0;color:var(--muted);font-size:13px">Nếu nguồn miễn phí hết quota, MiuNova sẽ dừng job và hiện lý do ở đây.</p>
+</div>
+{{end}}
 {{else}}
 
 <!-- Jobs List Section -->
@@ -238,6 +271,7 @@
             <label style="font-size:11px">Thời lượng (s)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên" style="padding:4px 6px;font-size:11px"></label>
             <label style="font-size:11px">BPM<input type="number" name="bpm" min="60" max="200" placeholder="giữ nguyên" style="padding:4px 6px;font-size:11px"></label>
           </div>
+          <label style="display:flex;align-items:flex-start;gap:6px;margin-top:7px;font-size:10px"><input type="checkbox" name="confirm_flow_credits" value="1"><span>Cho phép Google Flow dùng credits nếu cần dựng lại.</span></label>
           <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;font-size:11px;width:100%;margin-top:6px">Dựng lại</button>
         </form>
       </details>
@@ -329,30 +363,6 @@
         </div>
         {{end}}
         <div class="board" style="margin-top:6px"></div>
-      </div>
-    </div>
-    {{end}}
-  </div>
-</div>
-{{end}}
-
-{{if .FailedJobs}}
-<div style="margin-top:24px">
-  <h3 style="margin:0 0 12px;font-size:15px;color:var(--err)">⚠️ Tác vụ thất bại ({{len .FailedJobs}})</h3>
-  <div style="display:flex;flex-direction:column;gap:10px">
-    {{range .FailedJobs}}
-    <div class="card" style="padding:14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <strong>{{.Title}}</strong>
-        <span class="badge badge-err" style="margin-left:8px">{{.Label}}</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
-          <button class="btn btn-primary btn-sm" type="submit">🔄 Thử lại</button>
-        </form>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
-          <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
-        </form>
       </div>
     </div>
     {{end}}

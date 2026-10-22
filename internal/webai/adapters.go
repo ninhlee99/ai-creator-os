@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Engine is the headless Web-to-API engine for AI Creator OS.
+// Engine is the headless Web-to-API engine for MiuNova.
 // It wraps web adapters for ChatGPT, Claude, Gemini, and Muse AI with automatic multi-account rotation.
 type Engine struct {
 	store *Store
@@ -104,9 +104,26 @@ func (e *Engine) GenerateFlowVideoClip(ctx context.Context, prompt, keyframeURL 
 	if keyframeURL != "" {
 		prompt = prompt + " Reference image: " + keyframeURL
 	}
-	result, err := GoogleFlowVideo(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", nil)
-	if CanFallbackToGoogleFlowHeadless(err) && (ctx == nil || ctx.Err() == nil) {
-		result, err = GoogleFlowVideoHeadless(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", result.ProjectID, nil)
+	attempted := map[string]struct{}{acc.ID: {}}
+	var result FlowVideoResult
+	for {
+		result, err = GoogleFlowVideo(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", nil)
+		if cooldown, limited := FlowPreSubmitRateLimitCooldown(err); limited {
+			if markErr := e.store.MarkRateLimited(acc.ID, cooldown); markErr != nil {
+				return "", fmt.Errorf("google flow: rate-limit account cooldown failed: %w", markErr)
+			}
+			next, pickErr := e.store.PickActiveAccountExcluding(PlatformGoogleFlow, attempted)
+			if pickErr != nil {
+				return "", fmt.Errorf("google flow: free account quota exhausted; stop: %w", pickErr)
+			}
+			attempted[next.ID] = struct{}{}
+			acc = next
+			continue
+		}
+		if CanFallbackToGoogleFlowHeadless(err) && (ctx == nil || ctx.Err() == nil) {
+			result, err = GoogleFlowVideoHeadless(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", result.ProjectID, nil)
+		}
+		break
 	}
 	if err != nil {
 		return "", err
@@ -160,10 +177,27 @@ func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL stri
 	if keyframeURL != "" {
 		prompt = prompt + " Reference image: " + keyframeURL
 	}
-	result, err := MuseChat(ctx, acc.Cookie, acc.ID, prompt, nil)
-	var gatewayUnavailable *MuseGatewayUnavailableError
-	if errors.As(err, &gatewayUnavailable) {
-		result, err = MuseChatHeadless(ctx, acc.Cookie, prompt, nil)
+	attempted := map[string]struct{}{acc.ID: {}}
+	var result MuseReply
+	for {
+		result, err = MuseChat(ctx, acc.Cookie, acc.ID, prompt, nil)
+		if cooldown, limited := MusePreSubmitRateLimitCooldown(err); limited {
+			if markErr := e.store.MarkRateLimited(acc.ID, cooldown); markErr != nil {
+				return "", fmt.Errorf("muse ai: rate-limit account cooldown failed: %w", markErr)
+			}
+			next, pickErr := e.store.PickActiveAccountExcluding(PlatformMuseAI, attempted)
+			if pickErr != nil {
+				return "", fmt.Errorf("muse ai: free account quota exhausted; stop: %w", pickErr)
+			}
+			attempted[next.ID] = struct{}{}
+			acc = next
+			continue
+		}
+		var gatewayUnavailable *MuseGatewayUnavailableError
+		if errors.As(err, &gatewayUnavailable) {
+			result, err = MuseChatHeadless(ctx, acc.Cookie, prompt, nil)
+		}
+		break
 	}
 	if err != nil {
 		return "", err

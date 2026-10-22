@@ -52,10 +52,15 @@ func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (A
 		return empty, fmt.Errorf("thiếu ảnh listing sản phẩm thật")
 	}
 	if p.VideoEngine == "" {
-		p.VideoEngine = "manual"
+		p.VideoEngine = AffiliateVideoEngineGoogleFlow
 	}
-	if p.VideoEngine != "manual" {
-		return empty, fmt.Errorf("engine %q bị tắt theo chính sách free-only; dùng footage do bạn cung cấp", p.VideoEngine)
+	if p.VideoEngine != AffiliateVideoEngineGoogleFlow && p.VideoEngine != AffiliateVideoEngineManual {
+		return empty, fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
+	}
+	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
+		if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
+			return empty, fmt.Errorf("Google Flow chưa sẵn sàng: %s", reason)
+		}
 	}
 
 	accountPhotos := s.queryAccountModelPhotos(p.AccountID)

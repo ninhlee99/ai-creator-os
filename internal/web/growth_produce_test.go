@@ -172,6 +172,7 @@ func TestGrowthTickFullPublishFlowAndIdempotency(t *testing.T) {
 	enableProduction(t, s)
 	a := growthAccount(t, s, "full_flow")
 	today := s.today()
+	quotaDay := growth.YouTubeQuotaDay(time.Now())
 	seedPlan(t, s, a.ID,
 		draftOn(today, growth.VariantTikTok, "truyện ma — tập 1"),
 		draftOn(daysAgo(s, 1), growth.VariantShorts, "truyện ma — tập 1"),
@@ -198,7 +199,7 @@ func TestGrowthTickFullPublishFlowAndIdempotency(t *testing.T) {
 	if !strings.Contains(yt.uploads[0].desc, "synthetic") {
 		t.Errorf("description misses the AI disclosure: %q", yt.uploads[0].desc)
 	}
-	used, err := s.Growth.QuotaUsed(today)
+	used, err := s.Growth.QuotaUsed(quotaDay)
 	if err != nil || used != growth.UploadCostUnits {
 		t.Errorf("quota used = %d (%v), want %d", used, err, growth.UploadCostUnits)
 	}
@@ -216,7 +217,7 @@ func TestGrowthTickFullPublishFlowAndIdempotency(t *testing.T) {
 	if len(yt.uploads) != 1 {
 		t.Errorf("after tick 2: uploads = %d, want 1", len(yt.uploads))
 	}
-	if used, _ := s.Growth.QuotaUsed(today); used != growth.UploadCostUnits {
+	if used, _ := s.Growth.QuotaUsed(quotaDay); used != growth.UploadCostUnits {
 		t.Errorf("quota after tick 2 = %d, want %d", used, growth.UploadCostUnits)
 	}
 }
@@ -302,8 +303,8 @@ func TestGrowthTickWaitingConnectThenReady(t *testing.T) {
 func TestGrowthTickQuotaDeferred(t *testing.T) {
 	s, _, yt := newGrowthServer(t)
 	enableProduction(t, s)
-	today := s.today()
-	if err := s.Growth.AddQuota(today, growth.DailyQuotaUnits); err != nil {
+	quotaDay := growth.YouTubeQuotaDay(time.Now())
+	if err := s.Growth.AddQuota(quotaDay, growth.DailyQuotaUnits); err != nil {
 		t.Fatal(err)
 	}
 	a := growthAccount(t, s, "quota_case")

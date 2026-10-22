@@ -166,6 +166,7 @@ func (s *Server) destroyAuthSession(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   isHTTPSRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -219,7 +220,7 @@ func isRemoteRequest(r *http.Request) bool {
 
 const remoteBlockedHTML = `<!doctype html><html lang="vi"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cần đặt mật khẩu — AI Creator OS</title>
+<title>Cần đặt mật khẩu — MiuNova</title>
 <body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;line-height:1.5;color:#1F2328">
 <h1 style="font-size:22px">Cần đặt mật khẩu trước</h1>
 <p>App chưa có mật khẩu nên chỉ mở được trên chính máy đang chạy app.</p>
@@ -251,6 +252,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 			Path:     "/",
 			MaxAge:   int(authSessionTTL.Seconds()),
 			HttpOnly: true,
+			Secure:   isHTTPSRequest(r),
 			SameSite: http.SameSiteLaxMode,
 		})
 		next := r.PostFormValue("next")

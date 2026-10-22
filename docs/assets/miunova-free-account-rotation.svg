@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">MiuNova free account routing</title>
+  <desc id="desc">Account miễn phí cần operator xác nhận. Flow chọn account miễn phí sẵn sàng, retry account khác chỉ khi nhận 429 trước submit, và dừng nếu mọi account hết quota. Lỗi sau submit không retry.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4f5ff"/>
+      <stop offset="1" stop-color="#e9f7f3"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7069e8"/>
+      <stop offset="1" stop-color="#56b9aa"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#293258" flood-opacity=".11"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M1 1L10 6 1 11" fill="none" stroke="#777aa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <style>
+      text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; fill: #202544; }
+      .muted { fill: #656c89; }
+      .tiny { font-size: 15px; font-weight: 650; letter-spacing: 1.4px; }
+      .body { font-size: 19px; }
+      .card-title { font-size: 24px; font-weight: 760; }
+      .path { fill: none; stroke: #8586b0; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1600" height="900" rx="36" fill="url(#bg)"/>
+  <circle cx="1450" cy="90" r="180" fill="#b3afea" opacity=".16"/>
+  <circle cx="80" cy="820" r="190" fill="#95d4c5" opacity=".18"/>
+
+  <g transform="translate(84 64)">
+    <circle cx="28" cy="28" r="27" fill="url(#brand)"/>
+    <path d="M16 28c0-8 5-13 12-13s12 5 12 13-5 13-12 13-12-5-12-13Zm12-18v8m0 20v8m18-18h-8M10 28H2" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="72" y="24" class="tiny" fill="#6964c9">MIUNOVA · RESOURCE ROUTING</text>
+    <text x="72" y="58" font-size="35" font-weight="790">Chỉ dùng account miễn phí</text>
+    <text x="72" y="91" class="body muted">Xác nhận rõ · thử account khác khi bị giới hạn trước submit · dừng an toàn khi hết nguồn</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="82" y="230" width="280" height="196" rx="24" fill="#fff"/>
+    <rect x="410" y="230" width="340" height="196" rx="24" fill="#fff"/>
+    <rect x="800" y="230" width="285" height="196" rx="24" fill="#fff"/>
+    <rect x="1135" y="190" width="380" height="168" rx="24" fill="#fff"/>
+    <rect x="1135" y="400" width="380" height="168" rx="24" fill="#fff"/>
+    <rect x="1135" y="610" width="380" height="168" rx="24" fill="#fff"/>
+    <rect x="410" y="560" width="340" height="170" rx="24" fill="#fff7e9"/>
+  </g>
+
+  <path class="path" d="M362 328H399"/>
+  <path class="path" d="M750 328H789"/>
+  <path class="path" d="M1085 294H1124"/>
+  <path class="path" d="M1085 359C1110 359 1108 484 1124 484"/>
+  <path class="path" d="M1085 392C1110 392 1108 694 1124 694"/>
+  <path class="path" d="M1325 358V389"/>
+  <path class="path" d="M1135 484H760C760 484 720 466 720 426"/>
+  <path class="path" d="M580 426V548"/>
+
+  <g>
+    <circle cx="119" cy="275" r="20" fill="#eeecff"/><text x="113" y="282" font-size="19" font-weight="760" fill="#625bd0">1</text>
+    <text x="151" y="283" class="tiny" fill="#6d69cb">OPERATOR</text>
+    <text x="112" y="329" class="card-title">Đăng nhập</text>
+    <text x="112" y="363" class="body muted">Xác nhận account thuộc</text>
+    <text x="112" y="390" class="body muted">gói miễn phí.</text>
+
+    <circle cx="447" cy="275" r="20" fill="#e7f5f1"/><text x="441" y="282" font-size="19" font-weight="760" fill="#318d7e">2</text>
+    <text x="479" y="283" class="tiny" fill="#318d7e">FREE-ONLY GATE</text>
+    <text x="442" y="329" class="card-title">Account pool</text>
+    <text x="442" y="363" class="body muted">Active · Free đã xác nhận</text>
+    <text x="442" y="390" class="body muted">· phiên sẵn sàng</text>
+
+    <circle cx="837" cy="275" r="20" fill="#edf0ff"/><text x="831" y="282" font-size="19" font-weight="760" fill="#555cb5">3</text>
+    <text x="869" y="283" class="tiny" fill="#555cb5">GOOGLE FLOW</text>
+    <text x="832" y="329" class="card-title">Gửi generation</text>
+    <text x="832" y="363" class="body muted">Chỉ dùng account đã qua gate</text>
+    <text x="832" y="390" class="body muted">trước khi gọi provider.</text>
+
+    <circle cx="1172" cy="230" r="20" fill="#e6f5ef"/><text x="1166" y="237" font-size="19" font-weight="760" fill="#318d7e">✓</text>
+    <text x="1204" y="238" class="tiny" fill="#318d7e">THÀNH CÔNG</text>
+    <text x="1172" y="284" class="card-title">Lưu kết quả</text>
+    <text x="1172" y="318" class="body muted">Ghi nhận account đã dùng.</text>
+
+    <circle cx="1172" cy="440" r="20" fill="#fff1d6"/><text x="1166" y="447" font-size="18" font-weight="760" fill="#bf7b22">429</text>
+    <text x="1204" y="448" class="tiny" fill="#bf7b22">TRƯỚC SUBMIT</text>
+    <text x="1172" y="494" class="card-title">Cooldown · thử account kế</text>
+    <text x="1172" y="528" class="body muted">Tôn trọng Retry-After. Chỉ retry</text>
+    <text x="1172" y="553" class="body muted">khi Flow chưa nhận generation.</text>
+
+    <circle cx="1172" cy="650" r="20" fill="#ffe8e8"/><text x="1166" y="657" font-size="18" font-weight="760" fill="#c2535b">!</text>
+    <text x="1204" y="658" class="tiny" fill="#b54c57">SAU SUBMIT / HẾT NGUỒN</text>
+    <text x="1172" y="704" class="card-title">Dừng · báo lý do</text>
+    <text x="1172" y="738" class="body muted">Không retry job đã nhận; không</text>
+    <text x="1172" y="763" class="body muted">chuyển sang account trả phí.</text>
+
+    <circle cx="447" cy="607" r="20" fill="#ffe9dd"/><text x="441" y="614" font-size="18" font-weight="760" fill="#bf6942">0</text>
+    <text x="479" y="615" class="tiny" fill="#bf6942">KHÔNG CÓ NGUỒN FREE</text>
+    <text x="442" y="663" class="card-title">Dừng trước khi gọi</text>
+    <text x="442" y="697" class="body muted">Báo thiếu account miễn phí</text>
+    <text x="442" y="722" class="body muted">đã xác nhận và khả dụng.</text>
+  </g>
+
+  <text x="84" y="824" class="body muted">Giới hạn: gói Free do operator tự xác nhận; MiuNova không xác minh plan hoặc chi phí provider.</text>
+  <text x="84" y="853" class="body muted">Gemini API cần xác nhận riêng theo bộ key; Veo bị chặn vì cần billing.</text>
+  <text x="84" y="884" class="tiny" fill="#7d8199">MIUNOVA · 2D WORKFLOW DIAGRAM</text>
+</svg>

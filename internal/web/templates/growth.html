@@ -26,7 +26,7 @@
     {{if .ProdEnabled}}<span class="badge badge-ok">đang bật</span>{{else}}<span class="badge badge-no">đang tắt</span>{{end}}
     {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi chạy thử">CHẠY THỬ</span>{{end}}
     {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
-    <span class="badge badge-draft" title="Quota YouTube hôm nay (mỗi lượt đăng tốn {{.QuotaPerUpload}} điểm quota)">Quota {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>
+    {{if .QuotaReady}}<span class="badge badge-draft" title="YouTube videos.insert: {{.QuotaPerUpload}} điểm/lượt; bucket reset theo giờ Pacific">Quota YouTube {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>{{else}}<span class="badge badge-warn" title="Trang chưa đọc được quota; bộ đăng sẽ kiểm tra lại trước mỗi yêu cầu">Quota YouTube chưa đọc được · sẽ kiểm tra trước khi đăng</span>{{end}}
     <span class="badge badge-draft" title="Đổi ở Cài đặt · Kênh MXH; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
     {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>

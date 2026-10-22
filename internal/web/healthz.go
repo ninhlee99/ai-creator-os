@@ -1,16 +1,10 @@
 package web
 
-// Health endpoint cho máy chạy 24/7 không người trông (Đợt S).
-//
-// Vấn đề: KeepAlive của launchd chỉ restart khi process *exit*. Process bị
-// deadlock/treo (tick kẹt) thì launchd tưởng vẫn khỏe → không restart,
-// không alert. /healthz cho phép watchdog ngoài (vd: cron kiểm tra định kỳ
-// hoặc công cụ giám sát) phát hiện máy treo mà process chưa chết.
+// Health endpoint for local status and optional user-managed monitoring.
 //
 // Luôn trả 200 với JSON (kể cả khi db_ok=false) để phân biệt được "app treo"
 // (không kết nối được) với "app sống nhưng DB có vấn đề" (kết nối được,
-// db_ok=false). Không yêu cầu đăng nhập/onboard — cố ý để watchdog gọi được
-// bất cứ lúc nào.
+// db_ok=false). Không yêu cầu đăng nhập/onboard.
 
 import (
 	"encoding/json"
