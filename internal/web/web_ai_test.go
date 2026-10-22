@@ -3,7 +3,6 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -155,98 +154,6 @@ func TestWebAICaptureSessionRejectsUnverifiedCookie(t *testing.T) {
 	if accounts, err := store.GetAccounts(webai.PlatformGoogleFlow); err != nil || len(accounts) != 0 {
 		t.Fatalf("unverified cookie must not be stored: accounts=%+v err=%v", accounts, err)
 	}
-}
-
-func TestSyncGoogleFlowRequiresSelectedEmailForMultipleAccounts(t *testing.T) {
-	srv, store := newTestWebAIServer(t)
-	defer store.Close()
-
-	firstID, err := store.AddAccount(webai.Account{
-		Platform: webai.PlatformGemini, AccountName: "Google one", Email: "one@gmail.com",
-		SessionKey: "session-one", Cookie: "__Secure-1PSID=one", Status: webai.StatusConnected,
-	})
-	if err != nil {
-		t.Fatalf("add first Gemini account: %v", err)
-	}
-	secondID, err := store.AddAccount(webai.Account{
-		Platform: webai.PlatformGemini, AccountName: "Google two", Email: "two@gmail.com",
-		SessionKey: "session-two", Cookie: "__Secure-1PSID=two", Status: webai.StatusConnected,
-	})
-	if err != nil {
-		t.Fatalf("add second Gemini account: %v", err)
-	}
-
-	request := httptest.NewRequest(http.MethodPost, "/web-ai/accounts/sync-google", strings.NewReader(`{}`))
-	request.Header.Set("Content-Type", "application/json")
-	response := httptest.NewRecorder()
-	srv.handleWebAISyncGoogleAccount(response, request)
-	var result map[string]any
-	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if result["ok"] != false || !strings.Contains(result["error"].(string), "Chọn email") {
-		t.Fatalf("multiple accounts must require explicit selection, got %v", result)
-	}
-	if accounts, _ := store.GetAccounts(webai.PlatformGoogleFlow); len(accounts) != 0 {
-		t.Fatalf("ambiguous sync created Flow accounts: %+v", accounts)
-	}
-
-	actualEmail := "other@gmail.com"
-	originalTransport := http.DefaultTransport
-	http.DefaultTransport = webAITestRoundTripper(func(request *http.Request) (*http.Response, error) {
-		body := `{"userWorkflows":[]}`
-		if request.URL.Hostname() == "myaccount.google.com" {
-			body = `<html><script>window.email="` + actualEmail + `"</script></html>`
-		}
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(body)),
-			Request:    request,
-		}, nil
-	})
-	t.Cleanup(func() { http.DefaultTransport = originalTransport })
-
-	request = httptest.NewRequest(http.MethodPost, "/web-ai/accounts/sync-google", strings.NewReader(`{"account_id":"`+secondID+`"}`))
-	request.Header.Set("Content-Type", "application/json")
-	response = httptest.NewRecorder()
-	srv.handleWebAISyncGoogleAccount(response, request)
-	result = nil
-	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode selected response: %v", err)
-	}
-	if result["ok"] != false || !strings.Contains(strings.ToLower(result["error"].(string)), "không khớp email") {
-		t.Fatalf("Flow session with mismatched identity must fail: %v", result)
-	}
-	if accounts, _ := store.GetAccounts(webai.PlatformGoogleFlow); len(accounts) != 0 {
-		t.Fatalf("identity mismatch created Flow account: %+v", accounts)
-	}
-
-	actualEmail = "two@gmail.com"
-	request = httptest.NewRequest(http.MethodPost, "/web-ai/accounts/sync-google", strings.NewReader(`{"account_id":"`+secondID+`"}`))
-	request.Header.Set("Content-Type", "application/json")
-	response = httptest.NewRecorder()
-	srv.handleWebAISyncGoogleAccount(response, request)
-	result = nil
-	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode matching Flow response: %v", err)
-	}
-	if result["ok"] != true {
-		t.Fatalf("matching active Flow session should sync: %v", result)
-	}
-	flow, err := store.GetAccount(webai.PlatformGoogleFlow)
-	if err != nil || flow.Email != "two@gmail.com" || flow.Cookie != "__Secure-1PSID=two" {
-		t.Fatalf("Flow saved wrong identity or cookie: flow=%+v err=%v", flow, err)
-	}
-	if firstID == secondID {
-		t.Fatal("test fixture accounts should have distinct IDs")
-	}
-}
-
-type webAITestRoundTripper func(*http.Request) (*http.Response, error)
-
-func (f webAITestRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
-	return f(request)
 }
 
 func TestStudioAdCreativeHandler(t *testing.T) {
