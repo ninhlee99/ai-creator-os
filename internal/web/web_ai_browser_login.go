@@ -220,6 +220,9 @@ func (s *Server) handleWebAIBrowserLoginInput(w http.ResponseWriter, r *http.Req
 
 // handleWebAIBrowserLoginStatus checks the current state of a CDP login attempt.
 func (s *Server) handleWebAIBrowserLoginStatus(w http.ResponseWriter, r *http.Request) {
+	if rejectMobileBrowserLogin(w, r) {
+		return
+	}
 	sessionID := strings.TrimSpace(r.Header.Get("X-Login-Session"))
 	if sessionID == "" {
 		sessionID = strings.TrimSpace(r.URL.Query().Get("session_id"))
@@ -252,6 +255,9 @@ func (s *Server) handleWebAIBrowserLoginStatus(w http.ResponseWriter, r *http.Re
 
 // handleWebAIBrowserLoginCancel cancels an active login attempt.
 func (s *Server) handleWebAIBrowserLoginCancel(w http.ResponseWriter, r *http.Request) {
+	if rejectMobileBrowserLogin(w, r) {
+		return
+	}
 	sessionID := strings.TrimSpace(r.Header.Get("X-Login-Session"))
 	if sessionID == "" {
 		sessionID = strings.TrimSpace(r.URL.Query().Get("session_id"))

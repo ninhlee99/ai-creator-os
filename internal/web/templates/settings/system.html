@@ -208,6 +208,7 @@ var browserLoginScreenTimer = null;
 var browserLoginScreenURL = null;
 var browserLoginScreenInFlight = false;
 var browserLoginViewerActive = false;
+var browserLoginScreenRefreshRequested = false;
 var browserLoginInputQueue = Promise.resolve();
 var browserLoginStartGeneration = 0;
 var browserLoginSucceeded = false;
@@ -218,6 +219,7 @@ function startBrowserLogin(platform, platformName) {
   currentLoginPlatformName = platformName || platform;
   currentLoginSessionId = null;
   browserLoginSucceeded = false;
+  browserLoginScreenRefreshRequested = false;
   var closeButton = document.getElementById('bl-close-after-login');
   if (closeButton) closeButton.textContent = 'Hủy bỏ / Đóng';
 
@@ -296,13 +298,28 @@ function refreshBrowserLoginScreen() {
     .finally(function() {
       browserLoginScreenInFlight = false;
       if (browserLoginViewerActive && currentLoginSessionId && !document.hidden) {
-        browserLoginScreenTimer = window.setTimeout(refreshBrowserLoginScreen, 2600);
+        var delay = browserLoginScreenRefreshRequested ? 250 : 5000;
+        browserLoginScreenRefreshRequested = false;
+        browserLoginScreenTimer = window.setTimeout(refreshBrowserLoginScreen, delay);
       }
     });
 }
 
+function scheduleBrowserLoginScreenRefresh(delay) {
+  if (!browserLoginViewerActive || !currentLoginSessionId || document.hidden) return;
+  if (browserLoginScreenTimer) clearTimeout(browserLoginScreenTimer);
+  browserLoginScreenTimer = window.setTimeout(function() {
+    if (browserLoginScreenInFlight) {
+      browserLoginScreenRefreshRequested = true;
+      return;
+    }
+    refreshBrowserLoginScreen();
+  }, delay);
+}
+
 function stopBrowserLoginViewer() {
   browserLoginViewerActive = false;
+  browserLoginScreenRefreshRequested = false;
   if (browserLoginScreenTimer) {
     clearTimeout(browserLoginScreenTimer);
     browserLoginScreenTimer = null;
@@ -338,6 +355,11 @@ function sendBrowserLoginInput(payload) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Login-Session': sessionId },
       body: JSON.stringify(payload)
+    }).then(function(response) {
+      if (response.ok && currentLoginSessionId === sessionId) {
+        scheduleBrowserLoginScreenRefresh(350);
+      }
+      return response;
     });
   }).catch(function() {});
 }
