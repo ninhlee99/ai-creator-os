@@ -22,7 +22,8 @@ func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target
 		if err == nil && len(cookies) > 0 {
 			if session, email := pickSessionCookieAndEmail(cookies, target); session != "" && cdpHasLandingHost(browser.port, target.LandingHost) {
 				landingSeenCount++
-				if liveEmail := cdpExtractPageIdentity(browser.port, target); liveEmail != "" {
+				liveEmail := cdpExtractPageIdentity(browser.port, target)
+				if liveEmail != "" {
 					email = liveEmail
 					if target.Platform == PlatformGrok {
 						browserIdentityVerified = true
@@ -33,8 +34,12 @@ func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target
 					if updateStatus != nil {
 						updateStatus("waiting_for_user", "Đã đăng nhập Google Flow. Đang đọc email từ Google Account...")
 					}
-					if accountEmail := cdpLookupAccountEmail(ctx, browser.wsURL, browser.port, "https://myaccount.google.com/"); accountEmail != "" {
-						email = accountEmail
+					// The login tab already lives on Google Account; only open a
+					// background lookup tab if its identity is not visible there.
+					if liveEmail == "" {
+						if accountEmail := cdpLookupAccountEmail(ctx, browser.wsURL, browser.port, "https://myaccount.google.com/"); accountEmail != "" {
+							email = accountEmail
+						}
 					}
 				}
 				auth := &CapturedWebAuth{

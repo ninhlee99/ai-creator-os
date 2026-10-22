@@ -3,7 +3,7 @@
 > Trạng thái: đặc tả mục tiêu sản phẩm. Không phải bằng chứng các tính năng đã
 > chạy.
 > Phiên bản: 0.1
-> Cập nhật: 2026-10-22
+> Cập nhật: 2026-10-23
 > Trạng thái code thật: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)
 > Bản vẽ kiến trúc và từng job: [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md)
 
@@ -95,8 +95,9 @@ theo một con số cố định.
 
 Luồng chính vẫn là người dùng kết nối social rồi quan sát. Account AI web miễn
 phí là nguồn tùy chọn có điều kiện: nếu được chọn, login phải hoàn tất một lần
-trước khi job cần nguồn đó chạy; không gửi mật khẩu hoặc yêu cầu login lại theo
-từng job. Xem [đăng nhập Web AI từ điện thoại](features/remote-webai-login.md).
+trên desktop trước khi job cần nguồn đó chạy; không gửi mật khẩu hoặc yêu cầu
+login lại theo từng job. Login Web AI từ điện thoại không được hỗ trợ. Xem
+[đăng nhập Web AI](features/remote-webai-login.md).
 
 ### Điều kiện triển khai cấp hệ thống
 
@@ -375,9 +376,9 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
   TikTok dùng `/publishers/tiktok/callback`, Facebook dùng
   `/publishers/facebook/callback`; YouTube cần Google Web OAuth client và
   callback VPS. Static TikTok relay chỉ là phương án cứu hộ.
-- Nếu cần login account AI web khi app chạy trên VPS, trang login hiển thị và
-  điều khiển browser VPS từ điện thoại qua dashboard đã xác thực. Source hiện
-  có screenshot/input bridge; trạng thái live xem IMPLEMENTATION_STATUS.
+- Nếu cần login account AI web khi app chạy trên VPS, người dùng hoàn tất trên
+  desktop qua dashboard đã xác thực. Login từ điện thoại bị chặn; trạng thái
+  live xem IMPLEMENTATION_STATUS.
 - Trang chủ ưu tiên: sức khỏe hệ thống, việc agent đang làm, blocker, kết quả
   publish, doanh thu đã duyệt, hiệu quả nội dung, quota/nguồn miễn phí.
 - Mỗi quyết định quan trọng hiển thị lý do, dữ liệu dùng, thời gian đo và bước
@@ -406,7 +407,8 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
    approval và payout route phải được provision trước mà không buộc người dùng
    làm thêm bước affiliate; nếu mô hình đó chưa được xác định thì zero-touch
    onboarding chưa đạt. Nếu dùng Web AI provider miễn phí, cho phép login tương
-   tác một lần từ điện thoại theo U-06, không login lại theo từng job.
+   tác một lần trên desktop theo U-07, không login lại theo từng job; phone
+   login không hỗ trợ.
 2. Mỗi sản phẩm affiliate được chọn để sản xuất có bằng chứng sales gần đây và
    rating/review có nguồn, freshness, scope và sample count; agent giải thích
    lý do chọn/bỏ. Review đạt quality floor và sample confidence tối thiểu;
@@ -432,8 +434,7 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
 7. Người dùng xem được trên điện thoại qua VPS HTTPS và hoàn tất OAuth trên
    từng social provider được bật bằng callback HTTPS quay về VPS; không cần
    localhost hoặc chép URL thủ công. Nếu provider AI web được bật, người dùng
-   cũng hoàn tất được login tương tác từ điện thoại; login không đòi hỏi mở
-   desktop VPS.
+   hoàn tất login tương tác trên desktop; API từ điện thoại bị từ chối.
 8. Threads video chỉ được tính đã publish khi video qua URL HTTPS công khai
    tạm thời theo artifact, Meta xác nhận xử lý/xuất bản và app ghi status thật.
    URL không mở dashboard hay thư mục media; thiếu gateway thì video ở trạng
@@ -461,7 +462,8 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
 | U-03 — xác nhận từng bài TikTok | §3, §9 | AC3, AC10 | Số thao tác phụ thuộc UX bắt buộc; O-07. |
 | U-04 — chỉ miễn phí, hết mọi nguồn thì dừng và báo | §3, §8 | AC4, AC9 | Chỉ thử account/provider được phép; không né quota. |
 | U-05 — tên hiển thị MiuNova, không dùng OS làm tên sản phẩm | Tên tài liệu, logo và sơ đồ | — | `ai-creator-os`/`aicos` chỉ là định danh kỹ thuật tương thích. |
-| U-06 — login Web AI từ điện thoại khi app ở VPS | §4, §11, [thiết kế remote login](features/remote-webai-login.md) | AC1, AC7 | Yêu cầu mục tiêu; trạng thái code tại IMPLEMENTATION_STATUS. |
+| U-06 — login Web AI từ điện thoại khi app ở VPS | §4, §11, [thiết kế remote login](features/remote-webai-login.md) | — | Superseded by U-07 (2026-10-23). |
+| U-07 — login Web AI chỉ trên desktop; chặn login từ điện thoại | §4, §11, [thiết kế remote login](features/remote-webai-login.md) | AC1, AC7 | UI ẩn nút trên mobile; server từ chối request mobile. |
 
 ## 13. Ngoài phạm vi
 
@@ -487,7 +489,7 @@ Các mục dưới đây phải chốt hoặc được kiểm chứng trước k
 - Quyền analytics/publish chính thức của từng nền tảng, kể cả Threads video.
 - Hostname HTTPS và cơ chế cấp/thu hồi URL media tạm cho Threads video; VPS có
   public HTTPS nhưng route `/media` hiện không phải gateway publish.
-- Xác minh browser display/keyboard/touch từ xa khi chạy Web AI login thật trên
-  VPS/điện thoại/provider credentials.
+- Xác minh browser display/keyboard từ xa khi chạy Web AI login thật trên
+  VPS/desktop/provider credentials.
 - Niche/locale mặc định. Hiện trạng Accesstrade nghiêng về thị trường Việt Nam.
 - Ngưỡng dữ liệu tối thiểu trước khi agent tuyên bố một sản phẩm/format thắng.

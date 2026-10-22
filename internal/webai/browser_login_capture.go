@@ -101,8 +101,8 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 
 	windowSize := "1280,900"
 	if target.Platform == PlatformGoogleFlow {
-		// Flow's project canvas is GPU-heavy. Keep login capture crisp enough for
-		// the 680px viewer while reducing the browser's render surface.
+		// Keep the Google Account login surface modest while preserving a crisp
+		// screenshot in the 680px viewer.
 		windowSize = "1024,768"
 	}
 	args := []string{

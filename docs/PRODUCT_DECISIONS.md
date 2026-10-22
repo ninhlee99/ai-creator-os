@@ -1,6 +1,6 @@
 # PRODUCT_DECISIONS — Quyết định và giả định
 
-> Cập nhật: 2026-10-22. Tài liệu tách lựa chọn người dùng khỏi đề xuất/giả định
+> Cập nhật: 2026-10-23. Tài liệu tách lựa chọn người dùng khỏi đề xuất/giả định
 > của nhóm thiết kế.
 
 ## Đã được người dùng nói rõ
@@ -8,11 +8,12 @@
 | ID | Quyết định | Tác động lên spec |
 |---|---|---|
 | U-01 | Sản phẩm phải tự tìm cơ hội affiliate, tự tạo video affiliate và video viral để phát triển kênh trên TikTok, Facebook, Threads, Instagram, YouTube. | Cả hai lane nằm trong một vòng tự hành; không dừng ở product catalog hay radar. |
-| U-02 | Người dùng muốn quan sát hệ thống; agent tự phân tích, chọn sản phẩm và quyết định nội dung. Người dùng chỉ muốn đăng nhập các tài khoản social cần thiết; nếu chọn account AI web miễn phí, có thể login một lần từ điện thoại khi provision theo U-06. | Không yêu cầu chọn sản phẩm, tải clip hoặc duyệt nội dung định kỳ. Affiliate identity/payout cần thiết nhưng chưa có mô hình không buộc người dùng self-hosted nhập thêm credential; đây là blocker O-01, chưa được tính là đạt. |
+| U-02 | Người dùng muốn quan sát hệ thống; agent tự phân tích, chọn sản phẩm và quyết định nội dung. Người dùng chỉ muốn đăng nhập các tài khoản social cần thiết; nếu chọn account AI web miễn phí, login một lần trên desktop khi provision theo U-07. | Không yêu cầu chọn sản phẩm, tải clip hoặc duyệt nội dung định kỳ. Affiliate identity/payout cần thiết nhưng chưa có mô hình không buộc người dùng self-hosted nhập thêm credential; đây là blocker O-01, chưa được tính là đạt. |
 | U-03 | Chủ sản phẩm yêu cầu một chạm xác nhận cho từng bài TikTok. | Yêu cầu đã ghi nhận; phạm vi “một chạm” chưa thể chốt trước UX bắt buộc của TikTok Direct Post. Xem O-07. |
 | U-04 | Chỉ dùng tài nguyên miễn phí. Khi một tài khoản/provider hết quota, thử tài khoản miễn phí khác; khi mọi nguồn phù hợp đều hết, dừng và báo. | Cấm fallback trả phí; quota exhaustion là trạng thái chờ có giải thích. |
 | U-05 | Tên hiển thị hệ thống là **MiuNova**; gợi mèo dễ thương và không gian; không dùng “OS” làm tên sản phẩm. | Tên và mascot mèo đã được người dùng chốt. Giữ `ai-creator-os` và `aicos` làm định danh kỹ thuật tương thích. |
-| U-06 | Khi app chạy trên VPS, người dùng cần đăng nhập provider AI từ điện thoại; Playwright có thể thay CDP. | Cần remote browser display + touch/keyboard channel. Playwright/CDP chỉ điều khiển browser phía server; không tự tạo màn hình remote. Thiết kế hiện có trong [remote-webai-login](features/remote-webai-login.md), chưa chứng minh đã triển khai. |
+| U-06 | Khi app chạy trên VPS, người dùng cần đăng nhập provider AI từ điện thoại; Playwright có thể thay CDP. | Superseded by U-07 on 2026-10-23. |
+| U-07 | Web AI login chỉ hỗ trợ trên desktop; bỏ khả năng login từ điện thoại. | Ẩn login action trên thiết bị mobile và chặn mobile request ở server. Google Flow login mở Google Account page để tránh tải Flow canvas; login thật vẫn cần live verification. |
 
 ## Suy ra từ yêu cầu; chưa cần cấu hình người dùng hằng ngày
 
@@ -47,7 +48,7 @@
 | TikTok publish | O-04 app eligibility/scope **trước** O-07 UX xác nhận theo bài; OAuth và quyền creator hợp lệ. | Xuất file/handoff sang TikTok; không gọi API hay browser automation để lách eligibility. |
 | Threads video | O-05 app scope/live verification, HTTPS Media Delivery Gateway theo artifact, Meta fetch/process/publish status thật. | Video chờ/không hỗ trợ; không tính text post là video. |
 | YouTube long-form | O-06 xác nhận có lane storytelling riêng, cùng với quota và quyền publish/analytics đã xác minh. | Có thể hoãn; không chặn short-form organic hoặc affiliate lanes. |
-| Web AI từ điện thoại | Chỉ cần khi instance chọn Web AI provider; U-06 remote browser display/input qua VPS phải hoạt động. | Dùng provider API miễn phí khác nếu được phép; nếu không còn nguồn thì dừng job và báo. |
+| Web AI provider | Chỉ cần khi instance chọn Web AI provider; login một lần trên desktop. Login điện thoại không hỗ trợ. | Dùng provider API miễn phí khác nếu được phép; nếu không còn nguồn thì dừng job và báo. |
 
 Dependency chính: **O-03** mở sản xuất media cho lane cần AI; **O-01 và O-02**
 cùng mở affiliate; **O-04 phải có trước O-07** cho TikTok. Kiểm chứng O-05 riêng

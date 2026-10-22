@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -11,13 +12,16 @@ type googleFlowLoginAdapter struct{}
 
 func (googleFlowLoginAdapter) target() WebLoginTarget {
 	return WebLoginTarget{
-		Platform:    PlatformGoogleFlow,
-		Name:        "Google Flow",
-		StartURL:    "https://flow.google.com/",
+		Platform: PlatformGoogleFlow,
+		Name:     "Google Flow",
+		// Keep login on the lightweight Google Account page. Opening Flow's
+		// project canvas just to capture Google cookies makes the login browser
+		// needlessly GPU-heavy.
+		StartURL:    "https://myaccount.google.com/",
 		CookieHost:  "google.com",
 		CookieName:  "__Secure-1PSID",
 		Profile:     "googleflow",
-		LandingHost: "flow.google.com",
+		LandingHost: "myaccount.google.com",
 	}
 }
 
@@ -43,8 +47,16 @@ func (googleFlowLoginAdapter) validateSession(ctx context.Context, client *http.
 }
 
 func (googleFlowLoginAdapter) matchesIdentityURL(rawURL string) bool {
-	isFlowPage := strings.Contains(rawURL, "flow.google") || strings.Contains(rawURL, "labs.google") || strings.Contains(rawURL, "aitestkitchen.withgoogle.com")
-	return isFlowPage && !strings.Contains(rawURL, "accounts.google.com") && !strings.Contains(rawURL, "AccountChooser")
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme != "https" {
+		return false
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "myaccount.google.com", "flow.google.com", "labs.google", "aitestkitchen.withgoogle.com":
+		return true
+	default:
+		return false
+	}
 }
 
 func (googleFlowLoginAdapter) identityScript() string { return googleIdentityScript() }
