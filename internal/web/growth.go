@@ -13,21 +13,22 @@ import (
 
 // growthAccountRow is one account's growth state on the overview page.
 type growthAccountRow struct {
-	Account     network.Account
-	Stage       string
-	NextLabel   string
-	NextMetric  string
-	NextValue   float64
-	NextTarget  float64
-	NextPct     float64
-	HasNext     bool
-	HasSnapshot bool
-	Followers   int64
-	ViewsTotal  int64
-	YTConnected bool
-	YTUpload    string // YouTube upload readiness label (phase 2)
-	YTReady     bool
-	YPP         []growth.YPPTierProgress // chỉ kênh YouTube
+	Account        network.Account
+	Stage          string
+	NextLabel      string
+	NextMetric     string
+	NextValue      float64
+	NextTarget     float64
+	NextPct        float64
+	HasNext        bool
+	HasSnapshot    bool
+	Followers      int64
+	FollowersLabel string
+	ViewsTotal     int64
+	YTConnected    bool
+	YTUpload       string // YouTube upload readiness label (phase 2)
+	YTReady        bool
+	YPP            []growth.YPPTierProgress // chỉ kênh YouTube
 }
 
 type growthAlertRow struct {
@@ -122,6 +123,7 @@ func (s *Server) growthView() map[string]any {
 		}
 		if latest != nil {
 			row.HasSnapshot = true
+			row.FollowersLabel = growthFollowersLabel(latest.Source)
 			if latest.Followers != nil {
 				row.Followers = *latest.Followers
 				totalFollowers += *latest.Followers

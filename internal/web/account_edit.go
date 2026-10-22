@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"log"
 	"net/http"
 	"net/url"
@@ -88,28 +89,46 @@ func (s *Server) handleAccountUpdate(w http.ResponseWriter, r *http.Request) {
 	if status == "" {
 		status = "growing"
 	}
+	validStatus := map[string]bool{
+		"onboarding": true, "researching": true, "persona_assigned": true,
+		"growing": true, "live_ready": true, "live": true, "paused": true, "retired": true,
+	}
+	if !validStatus[status] {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Giai đoạn phát triển không hợp lệ.")))
+		return
+	}
+	if persona != "" {
+		if _, ok := network.PERSONAS[persona]; !ok {
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Tính cách AI không hợp lệ.")))
+			return
+		}
+	}
 	youtubeChannel := strings.TrimSpace(r.PostFormValue("youtube_channel"))
 	theme := strings.TrimSpace(r.PostFormValue("theme"))
+	if theme != "" {
+		if _, ok := products.DescribeTheme(theme); !ok {
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Chủ đề affiliate không hợp lệ.")))
+			return
+		}
+	}
 	autopilot := r.PostFormValue("autopilot") == "1" || r.PostFormValue("autopilot") == "on"
+	if autopilot && theme == "" {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Chọn chủ đề affiliate trước khi bật Autopilot.")))
+		return
+	}
 
 	minCommRaw := strings.TrimSpace(r.PostFormValue("min_commission"))
 	minComm := 0.10
 	if minCommRaw != "" {
-		if v, err := strconv.ParseFloat(minCommRaw, 64); err == nil && v >= 0 {
-			if v > 1.0 {
-				v = v / 100.0 // allow user entering 10 for 10%
-			}
-			minComm = v
+		v, err := strconv.ParseFloat(minCommRaw, 64)
+		if err != nil || v < 0 || v > 100 {
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Ngưỡng hoa hồng phải từ 0 đến 100%.")))
+			return
 		}
+		minComm = v / 100
 	}
 
-	followersRaw := strings.TrimSpace(r.PostFormValue("followers"))
-	var followers int64
-	if followersRaw != "" {
-		followers, _ = strconv.ParseInt(followersRaw, 10, 64)
-	}
-
-	_, err := s.Mgr.UpdateAccount(id, username, niche, nicheHint, persona, status, youtubeChannel, theme, autopilot, minComm, followers)
+	_, err := s.Mgr.UpdateAccount(id, username, niche, nicheHint, persona, status, youtubeChannel, theme, autopilot, minComm)
 	if err != nil {
 		log.Printf("web: update account: %v", err)
 		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Lỗi khi lưu thông tin: "+err.Error())))

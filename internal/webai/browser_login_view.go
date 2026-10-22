@@ -83,7 +83,8 @@ func captureLoginBrowserScreenshot(ctx context.Context, port int) ([]byte, int, 
 	}
 
 	screenshotRaw, err := callLoginPageCDP(conn, "Page.captureScreenshot", map[string]any{
-		"format":                "png",
+		"format":                "jpeg",
+		"quality":               55,
 		"fromSurface":           true,
 		"captureBeyondViewport": false,
 	})
@@ -96,11 +97,11 @@ func captureLoginBrowserScreenshot(ctx context.Context, port int) ([]byte, int, 
 	if err := json.Unmarshal(screenshotRaw, &screenshot); err != nil {
 		return nil, 0, 0, err
 	}
-	png, err := base64.StdEncoding.DecodeString(screenshot.Data)
+	imageData, err := base64.StdEncoding.DecodeString(screenshot.Data)
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	return png, int(width), int(height), nil
+	return imageData, int(width), int(height), nil
 }
 
 func dispatchLoginBrowserInput(ctx context.Context, port int, input LoginBrowserInput) error {

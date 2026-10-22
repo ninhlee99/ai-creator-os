@@ -40,8 +40,8 @@
 
     <div class="channel-stats-row">
       <div class="channel-stat-item" style="flex:1">
-        <span class="channel-stat-label">Người theo dõi</span>
-        <span class="channel-stat-val">{{if .FollowersCnt}}{{.FollowersCnt}}{{else}}{{.Followers}}{{end}}</span>
+        <span class="channel-stat-label">{{.FollowersLabel}}</span>
+        <span class="channel-stat-val">{{if .HasFollowers}}{{.FollowersCnt}}{{else}}—{{end}}</span>
       </div>
       <div class="channel-stat-item" style="flex:1">
         <span class="channel-stat-label">Lượt xem 30N</span>

@@ -79,7 +79,7 @@
 {{else}}
 
 <div class="cards">
-  <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng người theo dõi (số liệu mới nhất)</div></div>
+  <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng subscribers / followers (snapshot mới nhất)</div></div>
   <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
   <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
 </div>
@@ -87,14 +87,14 @@
 <h2>Trạng thái từng tài khoản</h2>
 <div class="table-wrap">
 <table>
-<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Theo dõi</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Subscribers / followers</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
 {{range .Rows}}
 <tr>
   <td><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
   <td><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
   <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mọi mốc thang{{else}}Chưa có số liệu thật{{end}}</td>
   <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}} ({{printf "%.0f" .NextPct}}%)</span>{{else}}—{{end}}</td>
-  <td>{{if .HasSnapshot}}{{.Followers}}{{else}}<span class="hint">chưa có số liệu</span>{{end}}</td>
+  <td>{{if .HasSnapshot}}<span class="hint">{{.FollowersLabel}}</span><br>{{.Followers}}{{else}}<span class="hint">chưa có số liệu</span>{{end}}</td>
   <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
   <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
   <td>{{if .YTReady}}<span class="badge badge-ok">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn">{{.YTUpload}}</span>{{end}}</td>

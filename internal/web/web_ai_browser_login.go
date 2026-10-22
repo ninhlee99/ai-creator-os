@@ -11,6 +11,26 @@ import (
 	"time"
 )
 
+func rejectMobileBrowserLogin(w http.ResponseWriter, r *http.Request) bool {
+	clientHint := strings.TrimSpace(r.Header.Get("Sec-CH-UA-Mobile"))
+	userAgent := strings.ToLower(r.UserAgent())
+	mobile := clientHint == "?1"
+	for _, marker := range []string{"android", "iphone", "ipad", "ipod", "mobile", "windows phone", "iemobile", "opera mini"} {
+		if strings.Contains(userAgent, marker) {
+			mobile = true
+			break
+		}
+	}
+	if !mobile {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusForbidden)
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": "Đăng nhập Web AI chỉ hỗ trợ trên máy tính."})
+	return true
+}
+
 // handleWebAICaptureSession is retained as a compatibility response only.
 func (s *Server) handleWebAICaptureSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -23,6 +43,9 @@ func (s *Server) handleWebAICaptureSession(w http.ResponseWriter, r *http.Reques
 
 // handleWebAIBrowserLoginStart starts an automated Chromium CDP login session for a platform.
 func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Request) {
+	if rejectMobileBrowserLogin(w, r) {
+		return
+	}
 	if s.WebAI == nil {
 		s.writeJSON(w, map[string]any{"ok": false, "error": "Kho Web AI chưa được khởi tạo"})
 		return
@@ -141,6 +164,9 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 // handleWebAIBrowserLoginScreen returns a no-store screenshot from the active
 // loopback browser. The route remains behind dashboard authentication.
 func (s *Server) handleWebAIBrowserLoginScreen(w http.ResponseWriter, r *http.Request) {
+	if rejectMobileBrowserLogin(w, r) {
+		return
+	}
 	sessionID := strings.TrimSpace(r.Header.Get("X-Login-Session"))
 	if sessionID == "" {
 		sessionID = strings.TrimSpace(r.URL.Query().Get("session_id"))
@@ -151,22 +177,25 @@ func (s *Server) handleWebAIBrowserLoginScreen(w http.ResponseWriter, r *http.Re
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	png, width, height, err := webai.GetLoginManager().BrowserScreenshot(ctx, sessionID)
+	imageData, width, height, err := webai.GetLoginManager().BrowserScreenshot(ctx, sessionID)
 	if err != nil {
 		http.Error(w, "trình duyệt đăng nhập chưa sẵn sàng", http.StatusConflict)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Type", "image/jpeg")
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Viewport-Width", fmt.Sprint(width))
 	w.Header().Set("X-Viewport-Height", fmt.Sprint(height))
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(png)
+	_, _ = w.Write(imageData)
 }
 
 // handleWebAIBrowserLoginInput forwards one bounded same-origin interaction.
 func (s *Server) handleWebAIBrowserLoginInput(w http.ResponseWriter, r *http.Request) {
+	if rejectMobileBrowserLogin(w, r) {
+		return
+	}
 	var input webai.LoginBrowserInput
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&input); err != nil {
 		s.writeJSON(w, map[string]any{"ok": false, "error": "Dữ liệu thao tác không hợp lệ"})

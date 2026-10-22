@@ -9,6 +9,8 @@ import (
 
 func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target WebLoginTarget, updateStatus func(status, msg string)) (*CapturedWebAuth, error) {
 	landingSeenCount := 0
+	accountLookupAttempted := false
+	browserIdentityVerified := false
 	for {
 		select {
 		case <-ctx.Done():
@@ -22,15 +24,31 @@ func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target
 				landingSeenCount++
 				if liveEmail := cdpExtractPageIdentity(browser.port, target); liveEmail != "" {
 					email = liveEmail
+					if target.Platform == PlatformGrok {
+						browserIdentityVerified = true
+					}
+				}
+				if target.Platform == PlatformGoogleFlow && !accountLookupAttempted {
+					accountLookupAttempted = true
+					if updateStatus != nil {
+						updateStatus("waiting_for_user", "Đã đăng nhập Google Flow. Đang đọc email từ Google Account...")
+					}
+					if accountEmail := cdpLookupAccountEmail(ctx, browser.wsURL, browser.port, "https://myaccount.google.com/"); accountEmail != "" {
+						email = accountEmail
+					}
 				}
 				auth := &CapturedWebAuth{
-					Platform:     target.Platform,
-					SessionValue: session,
-					CookieHeader: cookieHeaderForHost(cookies, target.CookieHost),
-					Email:        email,
-					BrowserUsed:  filepath.Base(browser.binary),
+					Platform:                target.Platform,
+					SessionValue:            session,
+					CookieHeader:            cookieHeaderForHost(cookies, target.CookieHost),
+					Email:                   email,
+					BrowserUsed:             filepath.Base(browser.binary),
+					BrowserIdentityVerified: browserIdentityVerified,
 				}
 				if err := validateCapturedWebAuth(ctx, target, auth); err == nil {
+					if ctx.Err() != nil {
+						return nil, ctx.Err()
+					}
 					return auth, nil
 				}
 				if updateStatus != nil {

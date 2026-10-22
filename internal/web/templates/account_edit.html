@@ -17,104 +17,114 @@
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
 
 <form method="post" action="/accounts/{{.Acct.ID}}/edit">
-  <div class="grid2" style="margin-bottom:24px">
-
-    <!-- Cột trái: Nhận diện & Định vị -->
-    <div class="form-card">
-      <h3 style="margin-top:0;font-size:16px;display:flex;align-items:center;gap:8px">
-        <span>📱</span> 1. Thông Tin Nhận Diện Kênh
-      </h3>
-
-      <div class="field">
-        <label>Tên tài khoản / Username <span class="req">*</span></label>
-        <input type="text" name="username" value="{{.Acct.Username}}" required placeholder="vd: ninhle.io.vn">
-
+  <div class="account-edit-grid">
+    <section class="form-card account-edit-panel">
+      <div class="account-edit-panel-head">
+        <span class="account-edit-step">01</span>
+        <div>
+          <h2>Nhận diện &amp; định hướng</h2>
+          <p>Thông tin AI dùng để nhận diện và xây dựng nội dung cho kênh.</p>
+        </div>
       </div>
 
       <div class="field">
-        <label>Chủ đề nội dung chính (Niche)</label>
-        <input type="text" name="niche" value="{{.Acct.Niche}}" placeholder="vd: kể chuyện đêm khuya, review đồ công nghệ, thời trang nữ...">
-        <div class="hint">Ngành hàng hoặc chủ đề kênh theo đuổi để AI tối ưu hóa kịch bản.</div>
+        <label for="account-username">Tên tài khoản / Username <span class="req">*</span></label>
+        <input id="account-username" type="text" name="username" value="{{.Acct.Username}}" required placeholder="vd: ninhle.io.vn">
       </div>
 
       <div class="field">
-        <label>Gợi ý định hướng ban đầu (Niche Hint)</label>
-        <input type="text" name="niche_hint" value="{{.Acct.NicheHint}}" placeholder="vd: truyện radio, audio trinh thám, deal gia dụng...">
+        <label for="account-niche">Chủ đề kênh đã xác định</label>
+        <input id="account-niche" type="text" name="niche" value="{{.Acct.Niche}}" placeholder="vd: kể chuyện đêm khuya, review đồ công nghệ">
+        <div class="hint">Chủ đề hiện tại dùng khi AI tạo kịch bản và kế hoạch nội dung.</div>
       </div>
 
       <div class="field">
-        <label>Tính cách AI (Persona)</label>
-        <select name="persona">
+        <label for="account-niche-hint">Gợi ý để AI nghiên cứu</label>
+        <input id="account-niche-hint" type="text" name="niche_hint" value="{{.Acct.NicheHint}}" placeholder="vd: truyện radio, audio trinh thám, deal gia dụng">
+        <div class="hint">Ý tưởng ban đầu; không thay thế chủ đề kênh đã xác nhận.</div>
+      </div>
+
+      <div class="field">
+        <label for="account-persona">Tính cách AI</label>
+        <select id="account-persona" name="persona">
           <option value="">— Mặc định theo hệ thống —</option>
           {{$currPersona := .Acct.Persona}}
           {{range .Personas}}
-          <option value="{{.Key}}"{{if eq $currPersona .Key}} selected{{end}}>{{.Label}} ({{.Style}})</option>
+          <option value="{{.Key}}"{{if eq $currPersona .Key}} selected{{end}}>{{.Label}} · {{.Style}}</option>
           {{end}}
         </select>
-
       </div>
 
-      <div class="field">
-        <label>Giai đoạn phát triển (Status)</label>
-        <select name="status">
+      <div class="field account-edit-last-field">
+        <label for="account-status">Giai đoạn phát triển</label>
+        <select id="account-status" name="status">
           {{$currStatus := .Acct.Status}}
           {{range .Statuses}}
-          <option value="{{.}}"{{if eq $currStatus .}} selected{{end}}>{{statusLabel .}} ({{.}})</option>
+          <option value="{{.}}"{{if eq $currStatus .}} selected{{end}}>{{statusLabel .}}</option>
           {{end}}
         </select>
-
       </div>
-    </div>
+    </section>
 
-    <!-- Cột phải: Kênh phân phối & Affiliate Autopilot -->
-    <div class="form-card">
-      <h3 style="margin-top:0;font-size:16px;display:flex;align-items:center;gap:8px">
-        <span>⚙️</span> 2. Phân Phối &amp; Tự Động Hóa
-      </h3>
+    <div class="account-edit-stack">
+      <section class="form-card account-edit-panel">
+        <div class="account-edit-panel-head">
+          <span class="account-edit-step">02</span>
+          <div>
+            <h2>Kênh xuất bản &amp; số liệu</h2>
+            <p>Liên kết YouTube và xem riêng số liệu dùng cho từng nền tảng.</p>
+          </div>
+        </div>
 
-      <div class="field">
-        <label>Kênh YouTube liên kết</label>
-        <input type="text" name="youtube_channel" value="{{.Acct.YoutubeChannel}}" placeholder="vd: @KenhChuyenDemKhuya hoặc Channel ID">
+        <div class="field">
+          <label for="account-youtube-channel">Kênh YouTube</label>
+          <input id="account-youtube-channel" type="text" name="youtube_channel" value="{{.Acct.YoutubeChannel}}" placeholder="@KenhChuyenDemKhuya hoặc UC…">
+          <div class="hint">Dùng để lấy subscribers và đăng video YouTube. OAuth được quản lý ở tab Kết nối.</div>
+        </div>
 
-      </div>
+        <div class="account-edit-metric">
+          <span>Follower count đang lưu · điều kiện livestream</span>
+          <strong>{{if gt .Acct.Followers 0}}{{.Acct.Followers}}{{else}}Chưa có dữ liệu{{end}}</strong>
+        </div>
+        <div class="hint">YouTube subscribers giờ được lưu riêng. Số cũ có thể đã bị ghi từ YouTube trước đây; đối chiếu với TikTok trước khi dùng để xét livestream.</div>
+      </section>
 
-      <div class="field">
-        <label>Số người theo dõi (Followers)</label>
-        <input type="number" name="followers" value="{{.Acct.Followers}}" min="0">
+      <section class="form-card account-edit-panel">
+        <div class="account-edit-panel-head">
+          <span class="account-edit-step">03</span>
+          <div>
+            <h2>Affiliate &amp; Autopilot</h2>
+            <p>Chọn nhóm sản phẩm và mức hoa hồng tối thiểu cho kênh.</p>
+          </div>
+        </div>
 
-      </div>
+        <div class="field">
+          <label for="account-theme">Chủ đề sản phẩm</label>
+          <select id="account-theme" name="theme">
+            <option value="">— Chưa gán chủ đề —</option>
+            {{$currTheme := .RawAcct.Theme}}
+            {{range .Themes}}
+            <option value="{{.Slug}}"{{if eq $currTheme .Slug}} selected{{end}}>{{.Label}}</option>
+            {{end}}
+          </select>
+        </div>
 
-      <div class="field">
-        <label>Chủ đề sản phẩm Affiliate (Theme)</label>
-        <select name="theme">
-          <option value="">— Chưa gán chủ đề —</option>
-          {{$currTheme := .RawAcct.Theme}}
-          {{range .Themes}}
-          <option value="{{.Slug}}"{{if eq $currTheme .Slug}} selected{{end}}>{{.Label}}</option>
-          {{end}}
-        </select>
+        <div class="field">
+          <label for="account-min-commission">Hoa hồng tối thiểu (%)</label>
+          <input id="account-min-commission" type="number" name="min_commission" step="0.5" min="0" max="100" value="{{printf "%.1f" (pct .RawAcct.MinCommission)}}" placeholder="10">
+        </div>
 
-      </div>
-
-      <div class="field">
-        <label>Ngưỡng hoa hồng tối thiểu (%)</label>
-        <input type="number" name="min_commission" step="0.5" min="0" max="100" value="{{printf "%.0f" (pct .RawAcct.MinCommission)}}" placeholder="10">
-
-      </div>
-
-      <div class="field" style="margin-top:16px">
-        <label class="check" style="font-weight:700;display:flex;align-items:center;gap:8px">
+        <label class="account-edit-autopilot">
           <input type="checkbox" name="autopilot" value="1"{{if .RawAcct.Autopilot}} checked{{end}}>
-          Bật Autopilot (tìm sản phẩm và tạo video theo lịch)
+          <span><strong>Cho phép Autopilot cho kênh này</strong><small>Cần chọn chủ đề sản phẩm trước khi bật.</small></span>
         </label>
-
-      </div>
+        <div class="account-edit-notice">Tạo video Autopilot hiện đang tạm dừng cho tới khi hệ thống có xác nhận dùng Google Flow credits.</div>
+      </section>
     </div>
-
   </div>
 
-  <div style="display:flex;gap:12px;align-items:center;margin-bottom:32px">
-    <button type="submit" class="btn btn-primary" style="padding:10px 24px;font-size:14px;font-weight:700">💾 Lưu Thay Đổi</button>
+  <div class="account-edit-actions">
+    <button type="submit" class="btn btn-primary">💾 Lưu thay đổi</button>
     <a href="/accounts/{{.Acct.ID}}" class="btn btn-secondary">Hủy bỏ</a>
   </div>
 </form>

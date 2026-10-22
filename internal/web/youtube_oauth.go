@@ -169,9 +169,6 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		}
 		if s.Ledger != nil {
 			_ = s.Ledger.SetAccountStatus(acct.ID, acct.Status, map[string]any{"youtube_channel": chInfo.ID})
-			if chInfo.Subs > 0 {
-				_ = s.Ledger.SetFollowers(acct.ID, chInfo.Subs)
-			}
 		}
 		s.advanceOnboarding(acct.ID)
 		s.autoGeneratePlan(acct, "Tự sinh cho kênh YouTube thật: "+chInfo.Title)
@@ -197,9 +194,6 @@ func (s *Server) handleYouTubeCallback(w http.ResponseWriter, r *http.Request) {
 		channelID := targetUsername
 		if chInfo != nil && chInfo.ID != "" {
 			channelID = chInfo.ID
-			if chInfo.Subs > 0 && s.Ledger != nil {
-				_ = s.Ledger.SetFollowers(found.ID, chInfo.Subs)
-			}
 		}
 		contentTypes := found.YoutubeContentTypes
 		if len(contentTypes) == 0 {

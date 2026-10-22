@@ -30,6 +30,12 @@ func (grokLoginAdapter) validateSession(ctx context.Context, client *http.Client
 	cookie := strings.TrimSpace(auth.CookieHeader)
 	body, err := webLoginProbe(ctx, client, "https://grok.com/rest/auth/user", "grok.com", cookie, "application/json", nil)
 	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if grokBrowserIdentityVerified(auth) {
+			return nil
+		}
 		return fmt.Errorf("Grok chưa xác thực cookie: %w", err)
 	}
 	var data struct {
@@ -45,17 +51,30 @@ func (grokLoginAdapter) validateSession(ctx context.Context, client *http.Client
 		} `json:"user"`
 	}
 	if json.Unmarshal(body, &data) != nil {
+		if grokBrowserIdentityVerified(auth) {
+			return nil
+		}
 		return fmt.Errorf("Grok chưa trả về danh tính tài khoản")
 	}
 	email := firstAccountEmail(data.Email, data.User.Email)
 	identity := firstNonEmpty(data.Username, data.ID, data.UserID, data.User.Username, data.User.ID, data.User.UserID)
 	if email == "" && identity == "" {
+		if grokBrowserIdentityVerified(auth) {
+			return nil
+		}
 		return fmt.Errorf("Grok chưa trả về người dùng đã xác thực")
 	}
 	if email != "" {
+		if capturedEmail := accountEmail(auth.Email); capturedEmail != "" && capturedEmail != email {
+			return fmt.Errorf("email Grok từ cookie không khớp danh tính đang mở trong trình duyệt")
+		}
 		auth.Email = email
 	}
 	return nil
+}
+
+func grokBrowserIdentityVerified(auth *CapturedWebAuth) bool {
+	return auth != nil && auth.BrowserIdentityVerified && accountEmail(auth.Email) != ""
 }
 
 func (grokLoginAdapter) matchesIdentityURL(rawURL string) bool {
@@ -65,48 +84,31 @@ func (grokLoginAdapter) matchesIdentityURL(rawURL string) bool {
 func (grokLoginAdapter) identityScript() string {
 	return `(async () => {
 			const re = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com\.vn|edu\.vn|gov\.vn|net\.vn|org\.vn|com|net|org|edu|gov|io|ai|vn|me|co|app|dev|xyz|info|[a-z]{2,4}))/i;
-			try {
-				const footerBtn = document.querySelector('[data-sidebar="footer"] button, button[aria-label*="user"], [class*="profile"]');
-				if (footerBtn) {
-					footerBtn.click();
-					await new Promise(r => setTimeout(r, 200));
+			const menuSelector = '[role="menu"], [data-radix-popper-content-wrapper]';
+			const findEmail = menu => {
+				if (!menu) return '';
+				const match = (menu.innerText || menu.textContent || '').match(re);
+				if (!match) return '';
+				const email = match[1].toLowerCase();
+				return email.includes('example') || email.includes('sentry') ? '' : email;
+			};
+			let menu = Array.from(document.querySelectorAll(menuSelector)).find(el => el.getClientRects().length);
+			let openedHere = false;
+			if (!menu) {
+				const trigger = document.querySelector('[data-sidebar="footer"] button, button[aria-label*="user" i], button[aria-label*="profile" i], [class*="profile"] button');
+				if (trigger) {
+					trigger.click();
+					openedHere = true;
+					await new Promise(resolve => setTimeout(resolve, 250));
+					menu = Array.from(document.querySelectorAll(menuSelector)).find(el => el.getClientRects().length);
 				}
-				const menu = document.querySelector('[role="menu"], [data-radix-popper-content-wrapper]');
-				if (menu) {
-					for (const el of menu.querySelectorAll('*')) {
-						const txt = el.textContent ? el.textContent.trim() : '';
-						const m = txt.match(re);
-						if (m && !m[1].includes('example') && !m[1].includes('sentry')) {
-							document.body.click();
-							return m[1];
-						}
-					}
-					const m2 = menu.textContent.match(re);
-					document.body.click();
-					if (m2 && !m2[1].includes('example') && !m2[1].includes('sentry')) return m2[1];
-				}
-				document.body.click();
-			} catch(e) {}
-			try {
-				const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-				let node;
-				while (node = walker.nextNode()) {
-					const val = node.nodeValue ? node.nodeValue.trim() : '';
-					const m = val.match(re);
-					if (m && !m[1].includes('example') && !m[1].includes('sentry') && !m[1].includes('w3.org') && !m[1].includes('schema.org')) {
-						return m[1];
-					}
-				}
-			} catch(e) {}
-			try {
-				for (let i = 0; i < localStorage.length; i++) {
-					const val = localStorage.getItem(localStorage.key(i));
-					if (val && val.includes('@')) {
-						const m = val.match(re);
-						if (m && !m[1].includes('example') && !m[1].includes('sentry') && !m[1].includes('w3.org')) return m[1];
-					}
-				}
-			} catch(e) {}
+			}
+			const email = findEmail(menu);
+			if (openedHere) {
+				const trigger = document.querySelector('[data-sidebar="footer"] button, button[aria-label*="user" i], button[aria-label*="profile" i], [class*="profile"] button');
+				if (trigger) trigger.click();
+			}
+			if (email) return email;
 			return "";
 		})()`
 }
@@ -118,17 +120,5 @@ func (adapter grokLoginAdapter) sessionFromCookies(cookies []cdpCookie) (string,
 	if session == "" {
 		session = firstLoginCookieValue(cookies, target, "sso", "sso-rw", "auth_token")
 	}
-	if email == "" && !hasGrokUserCookie(cookies) {
-		session = ""
-	}
 	return session, email
-}
-
-func hasGrokUserCookie(cookies []cdpCookie) bool {
-	for _, cookie := range cookies {
-		if (cookie.Name == "x-userid" || cookie.Name == "htjs_user_id") && cookie.Value != "" {
-			return true
-		}
-	}
-	return false
 }

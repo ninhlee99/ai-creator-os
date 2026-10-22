@@ -11,15 +11,14 @@ import (
 // webAIView holds template projection for Web AI Hub.
 // webAIView holds template projection for Web AI Hub with multi-account keyring.
 type webAIView struct {
-	Platform          webai.PlatformInfo
-	Accounts          []webai.Account
-	HasGoogleAccounts bool
-	Primary           webai.Account
-	ReadyCount        int
-	CooldownCount     int
-	TotalCount        int
-	HasAccounts       bool
-	IsConnected       bool
+	Platform      webai.PlatformInfo
+	Accounts      []webai.Account
+	Primary       webai.Account
+	ReadyCount    int
+	CooldownCount int
+	TotalCount    int
+	HasAccounts   bool
+	IsConnected   bool
 }
 
 // webAIPlatformViews computes template views for each platform and the total ready accounts count.
@@ -61,23 +60,15 @@ func (s *Server) webAIPlatformViews() ([]webAIView, int) {
 			}
 		}
 		totalConnected += ready
-		hasFreeGoogle := false
-		for _, account := range allAccounts[webai.PlatformGemini] {
-			if account.IsActive && account.IsConfirmedFree() && (account.Status == "ok" || account.Status == "connected") {
-				hasFreeGoogle = true
-				break
-			}
-		}
 		views = append(views, webAIView{
-			Platform:          p,
-			Accounts:          accs,
-			HasGoogleAccounts: hasFreeGoogle,
-			Primary:           primary,
-			ReadyCount:        ready,
-			CooldownCount:     cooldown,
-			TotalCount:        total,
-			HasAccounts:       total > 0,
-			IsConnected:       ready > 0,
+			Platform:      p,
+			Accounts:      accs,
+			Primary:       primary,
+			ReadyCount:    ready,
+			CooldownCount: cooldown,
+			TotalCount:    total,
+			HasAccounts:   total > 0,
+			IsConnected:   ready > 0,
 		})
 	}
 	return views, totalConnected

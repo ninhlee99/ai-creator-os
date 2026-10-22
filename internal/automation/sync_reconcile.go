@@ -72,7 +72,6 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 			}
 		}
 		if snap.Followers != nil {
-			_ = s.Ledger.SetFollowers(a.ID, *snap.Followers)
 			cur := map[string]float64{"followers": float64(*snap.Followers), "subs": float64(*snap.Followers)}
 			if reached, err := s.Growth.MarkTargetsReached(a.ID, cur); err == nil {
 				for _, label := range reached {

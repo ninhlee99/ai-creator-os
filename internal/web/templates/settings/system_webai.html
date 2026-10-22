@@ -10,6 +10,7 @@
     </div>
   </div>
   <p class="hint">MiuNova chỉ dùng tài khoản gói miễn phí đã xác nhận. Gói tài khoản do bạn khai báo; hệ thống không thể tự kiểm chứng với nhà cung cấp.</p>
+  <p class="webai-mobile-login-note">Đăng nhập Web AI chỉ hỗ trợ trên máy tính.</p>
 
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
@@ -91,22 +92,15 @@
         {{else}}
           <div class="webai-account-empty">
             <strong>Chưa có tài khoản</strong>
-            <span>{{if eq .Platform.ID "googleflow"}}Đăng nhập Flow hoặc đồng bộ phiên Google từ Gemini.{{else}}Kết nối tài khoản bằng nút phía dưới.{{end}}</span>
+            <span>Kết nối tài khoản bằng nút phía dưới.</span>
           </div>
         {{end}}
       </template>
 
-      <div class="webai-card-actions {{if eq .Platform.ID "googleflow"}}webai-card-actions-flow{{end}}">
+      <div class="webai-card-actions">
         <button type="button" class="btn btn-secondary btn-sm webai-login-action" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
           Đăng nhập
         </button>
-        {{if eq .Platform.ID "googleflow"}}
-        <button type="button" class="btn btn-secondary btn-sm webai-google-action" onclick="syncGoogleFlowAccount(this)" aria-label="Đồng bộ tất cả tài khoản Gemini sang Flow" title="Đồng bộ tất cả tài khoản Gemini sang Flow" {{if not .HasGoogleAccounts}}disabled{{end}}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4" />
-          </svg>
-        </button>
-        {{end}}
       </div>
     </div>
     {{end}}

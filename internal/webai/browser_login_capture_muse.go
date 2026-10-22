@@ -13,6 +13,8 @@ func captureMuseLogin(ctx context.Context, browser loginBrowserSession, target W
 	wsURL := browser.wsURL
 	bin := browser.binary
 	var musePendingEmail string
+	accountCenterLookupAttempted := false
+	accountCenterEmail := ""
 	for {
 		select {
 		case <-ctx.Done():
@@ -92,7 +94,17 @@ func captureMuseLogin(ctx context.Context, browser loginBrowserSession, target W
 
 		// Capture only after Muse app state and a first-party session cookie both confirm login.
 		if !isWaitingOTP && !isWaiting2FA && (isLoggedIn || hasHatchSessionCookie) && hasMuseSessionCookie && museLandingPage {
-			confirmedEmail := detEmail
+			if !accountCenterLookupAttempted {
+				accountCenterLookupAttempted = true
+				if updateStatus != nil {
+					updateStatus("waiting_for_user", "Muse đã đăng nhập. Đang đọc email từ Meta Accounts Center...")
+				}
+				accountCenterEmail = cdpLookupAccountEmail(ctx, wsURL, port, "https://accountscenter.meta.com/")
+			}
+			confirmedEmail := accountCenterEmail
+			if confirmedEmail == "" {
+				confirmedEmail = detEmail
+			}
 			if confirmedEmail == "" {
 				confirmedEmail = musePendingEmail
 			}
@@ -142,6 +154,9 @@ func captureMuseLogin(ctx context.Context, browser loginBrowserSession, target W
 					}
 					time.Sleep(time.Second)
 					continue
+				}
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
 				}
 				return auth, nil
 			}

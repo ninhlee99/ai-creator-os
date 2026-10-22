@@ -15,7 +15,7 @@ type growthTargetView struct {
 
 // accountGrowthView assembles the growth block for the account detail page.
 func (s *Server) accountGrowthView(a *network.Account) map[string]any {
-	out := map[string]any{}
+	out := map[string]any{"GrowthFollowersLabel": growthFollowersLabel("")}
 	if s.Growth == nil {
 		return out
 	}
@@ -26,12 +26,10 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 	out["GrowthProfile"] = prof
 	latest, _ := s.Growth.LatestSnapshot(a.ID)
 	out["GrowthHasSnapshot"] = latest != nil
-	// Followers on the detail page come from the latest synced snapshot
-	// only — there is no manual entry anymore (kills the fake-number
-	// door); no snapshot yet -> the page says "chưa kết nối".
 	if v, ok := metricValue(latest, "followers"); ok {
 		out["GrowthFollowers"] = int64(v)
 		out["GrowthHasFollowers"] = true
+		out["GrowthFollowersLabel"] = growthFollowersLabel(latest.Source)
 	}
 	if targets, err := s.Growth.ListTargets(a.ID); err == nil {
 		views := make([]growthTargetView, 0, len(targets))
@@ -82,4 +80,15 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 		out["GrowthAlerts"] = alerts
 	}
 	return out
+}
+
+func growthFollowersLabel(source string) string {
+	switch source {
+	case "youtube_api":
+		return "YouTube subscribers"
+	case "tiktok_api":
+		return "TikTok followers"
+	default:
+		return "Followers"
+	}
 }

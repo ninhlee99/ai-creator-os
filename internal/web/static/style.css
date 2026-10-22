@@ -731,6 +731,71 @@ tr:hover td { background: var(--hover-bg); }
   box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 .form-card.danger-zone { border: 2px solid var(--err);
   background: var(--danger-zone-bg); }
+.account-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: start;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.account-edit-stack { display: grid; gap: 18px; }
+.account-edit-panel { max-width: none; margin: 0; padding: 22px; }
+.account-edit-panel-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.account-edit-panel-head h2 { margin: 0; font-size: 17px; line-height: 1.3; }
+.account-edit-panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.account-edit-step {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+.account-edit-last-field { margin-bottom: 0; }
+.account-edit-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 8px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg3);
+  font-size: 12.5px;
+}
+.account-edit-metric strong { text-align: right; color: var(--text); }
+.account-edit-autopilot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 10px;
+  cursor: pointer;
+}
+.account-edit-autopilot input { margin-top: 3px; accent-color: var(--accent); }
+.account-edit-autopilot span { display: grid; gap: 3px; }
+.account-edit-autopilot small { color: var(--muted); font-size: 12px; }
+.account-edit-notice {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--warn) 7%, var(--bg2));
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.account-edit-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 30px; }
+@media (max-width: 900px) {
+  .account-edit-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .account-edit-panel { padding: 18px; }
+  .account-edit-actions { align-items: stretch; flex-direction: column; }
+  .account-edit-actions .btn { justify-content: center; }
+}
 .subnav { position: sticky; top: 0; z-index: 5; background: var(--bg);
   padding: 10px 0; display: flex; gap: 8px; flex-wrap: wrap;
   border-bottom: 1px solid var(--border); margin-bottom: 8px; }
@@ -1425,7 +1490,6 @@ details.product-manual > form > .btn { margin-top: 2px; }
   align-items: stretch;
   margin-top: auto;
 }
-.webai-card-actions-flow { grid-template-columns: minmax(0, 1fr) 42px; }
 .webai-card-actions > .btn {
   display: flex;
   box-sizing: border-box;
@@ -1438,20 +1502,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
   font-weight: 600;
   padding: 7px 10px;
 }
-.webai-card-actions-flow .webai-google-action {
-  min-width: 42px;
-  padding: 7px;
-}
-.webai-google-action svg {
-  display: block;
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
+.webai-mobile-login-note { display: none; }
 .webai-account-summary {
   display: flex;
   align-items: center;
@@ -1526,6 +1577,11 @@ details.product-manual > form > .btn { margin-top: 2px; }
 }
 @media (max-width: 760px) {
   .webai-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (pointer: coarse) {
+  .webai-login-action { display: none !important; }
+  .webai-mobile-login-note { display: block; }
+  #bl-browser-view { display: none !important; }
 }
 @media (max-width: 520px) {
   .webai-section-actions { width: 100%; justify-content: space-between; }

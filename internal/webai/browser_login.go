@@ -11,11 +11,12 @@ import (
 )
 
 type CapturedWebAuth struct {
-	Platform     string
-	SessionValue string
-	CookieHeader string
-	Email        string
-	BrowserUsed  string
+	Platform                string
+	SessionValue            string
+	CookieHeader            string
+	Email                   string
+	BrowserUsed             string
+	BrowserIdentityVerified bool
 }
 
 // ActiveLoginSession represents an ongoing browser login attempt.

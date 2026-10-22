@@ -11,17 +11,19 @@ import (
 // accountView is a network account plus its rendered persona label and growth metrics.
 type accountView struct {
 	*network.Account
-	PersonaLabel  string
-	Platforms     []string
-	GrowthStage   string
-	Views30d      int64
-	FollowersCnt  int64
-	NextTarget    string
-	NextPct       float64
-	HasNext       bool
-	AffiliateLink string
-	ModelPhotoURL string
-	HasModel      bool
+	PersonaLabel   string
+	Platforms      []string
+	GrowthStage    string
+	Views30d       int64
+	FollowersCnt   int64
+	FollowersLabel string
+	HasFollowers   bool
+	NextTarget     string
+	NextPct        float64
+	HasNext        bool
+	AffiliateLink  string
+	ModelPhotoURL  string
+	HasModel       bool
 }
 
 func personaLabel(key string) string {
@@ -52,7 +54,10 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, ytTypes) {
 		plats = append(plats, p.Name())
 	}
-	av := &accountView{Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats}
+	av := &accountView{
+		Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats,
+		FollowersLabel: "TikTok followers · legacy count",
+	}
 	if s.Growth != nil {
 		if prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err == nil && prof != nil {
 			switch prof.Stage {
@@ -69,6 +74,8 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 		if snap, err := s.Growth.LatestSnapshot(a.ID); err == nil && snap != nil {
 			if v, ok := metricValue(snap, "followers"); ok {
 				av.FollowersCnt = int64(v)
+				av.HasFollowers = true
+				av.FollowersLabel = growthFollowersLabel(snap.Source)
 			}
 			if v, ok := metricValue(snap, "views_30d"); ok {
 				av.Views30d = int64(v)
@@ -89,6 +96,10 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 				}
 			}
 		}
+	}
+	if !av.HasFollowers && a.Followers > 0 {
+		av.FollowersCnt = a.Followers
+		av.HasFollowers = true
 	}
 	if av.GrowthStage == "" {
 		av.GrowthStage = "Đang vận hành"

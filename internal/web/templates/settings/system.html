@@ -81,7 +81,7 @@
         <div style="background:#111;border-radius:12px;overflow:hidden;text-align:center;line-height:0">
           <img id="bl-browser-screen" alt="Trang đăng nhập trên máy chủ" draggable="false" style="display:block;width:100%;max-height:54vh;object-fit:contain;touch-action:none;user-select:none;-webkit-user-select:none">
         </div>
-        <label for="bl-browser-keyboard" style="display:block;margin:10px 0 5px;font-size:12px;color:var(--muted)">Chạm ô này để mở bàn phím điện thoại; chữ sẽ nhập vào vị trí đang chọn trên trang.</label>
+        <label for="bl-browser-keyboard" style="display:block;margin:10px 0 5px;font-size:12px;color:var(--muted)">Nhập văn bản để điền vào trang đăng nhập.</label>
         <input id="bl-browser-keyboard" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" placeholder="Nhập văn bản vào trang đăng nhập…" style="box-sizing:border-box;width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)">
       </div>
     </div>
@@ -206,6 +206,8 @@ var currentLoginPlatformName = null;
 var browserLoginPollTimer = null;
 var browserLoginScreenTimer = null;
 var browserLoginScreenURL = null;
+var browserLoginScreenInFlight = false;
+var browserLoginViewerActive = false;
 var browserLoginInputQueue = Promise.resolve();
 var browserLoginStartGeneration = 0;
 var browserLoginSucceeded = false;
@@ -260,12 +262,11 @@ function startBrowserLogin(platform, platformName) {
     if (statusText) statusText.textContent = 'Đang đợi bạn đăng nhập trên trình duyệt...';
     if (subText) subText.textContent = 'Đăng nhập ngay trong khung bên dưới. MiuNova sẽ tự lưu phiên khi xong.';
     if (browserView) browserView.hidden = false;
+    browserLoginViewerActive = true;
     refreshBrowserLoginScreen();
-    if (browserLoginScreenTimer) clearInterval(browserLoginScreenTimer);
-    browserLoginScreenTimer = setInterval(refreshBrowserLoginScreen, 1400);
 
     if (browserLoginPollTimer) clearInterval(browserLoginPollTimer);
-    browserLoginPollTimer = setInterval(pollBrowserLoginStatus, 1000);
+    browserLoginPollTimer = setInterval(pollBrowserLoginStatus, 1800);
   })
   .catch(function(err) {
     if (requestGeneration !== browserLoginStartGeneration) return;
@@ -276,8 +277,9 @@ function startBrowserLogin(platform, platformName) {
 }
 
 function refreshBrowserLoginScreen() {
-  if (!currentLoginSessionId) return;
+  if (!currentLoginSessionId || !browserLoginViewerActive || document.hidden || browserLoginScreenInFlight) return;
   var sessionId = currentLoginSessionId;
+  browserLoginScreenInFlight = true;
   fetch('/web-ai/browser-login/screen?_=' + Date.now(), { cache: 'no-store', headers: { 'X-Login-Session': sessionId } })
     .then(function(response) { if (!response.ok) throw new Error('screen not ready'); return response.blob(); })
     .then(function(blob) {
@@ -290,12 +292,19 @@ function refreshBrowserLoginScreen() {
       image.src = nextURL;
       if (oldURL) URL.revokeObjectURL(oldURL);
     })
-    .catch(function() {});
+    .catch(function() {})
+    .finally(function() {
+      browserLoginScreenInFlight = false;
+      if (browserLoginViewerActive && currentLoginSessionId && !document.hidden) {
+        browserLoginScreenTimer = window.setTimeout(refreshBrowserLoginScreen, 2600);
+      }
+    });
 }
 
 function stopBrowserLoginViewer() {
+  browserLoginViewerActive = false;
   if (browserLoginScreenTimer) {
-    clearInterval(browserLoginScreenTimer);
+    clearTimeout(browserLoginScreenTimer);
     browserLoginScreenTimer = null;
   }
   var image = document.getElementById('bl-browser-screen');
@@ -309,6 +318,17 @@ function stopBrowserLoginViewer() {
   var keyboard = document.getElementById('bl-browser-keyboard');
   if (keyboard) keyboard.value = '';
 }
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    if (browserLoginScreenTimer) {
+      clearTimeout(browserLoginScreenTimer);
+      browserLoginScreenTimer = null;
+    }
+  } else if (browserLoginViewerActive) {
+    refreshBrowserLoginScreen();
+  }
+});
 
 function sendBrowserLoginInput(payload) {
   if (!currentLoginSessionId) return;
@@ -456,38 +476,6 @@ function cancelBrowserLogin() {
     browserLoginSucceeded = false;
     window.location.reload();
   }
-}
-
-function syncGoogleFlowAccount(btn) {
-  if (!window.confirm('Chỉ đồng bộ tài khoản Gemini đã được xác nhận là miễn phí sang Flow. MiuNova không thể tự kiểm tra gói hoặc quota nhà cung cấp. Tiếp tục?')) return;
-  var origText = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = 'Đang đồng bộ…';
-  }
-  fetch('/web-ai/accounts/sync-google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sync_all: true, confirm_free: true })
-  })
-  .then(function(res) { return res.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      alert(data.message || 'Đã đồng bộ tài khoản Gemini sang Google Flow.');
-      window.location.reload();
-    } else {
-      alert(data.message || data.error || 'Chưa thể đồng bộ tài khoản Gemini.');
-    }
-  })
-  .catch(function(err) {
-    alert('Lỗi kết nối đồng bộ: ' + err.message);
-  })
-  .finally(function() {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origText;
-    }
-  });
 }
 
 function testWebAIAccount(id, btn) {
