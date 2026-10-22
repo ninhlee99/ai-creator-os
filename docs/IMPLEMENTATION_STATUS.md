@@ -1,6 +1,6 @@
 # IMPLEMENTATION_STATUS — MiuNova
 
-> Ảnh chụp source code: 2026-10-22.
+> Ảnh chụp source code: 2026-10-23.
 > Đây là rà soát mã nguồn và tài liệu hiện có; không chứng minh mọi endpoint đã
 > chạy thành công với credential thật.
 > Mục tiêu đích: [PRODUCT_SPEC.md](PRODUCT_SPEC.md).
@@ -37,7 +37,7 @@ credential/quota.
 | Tự điều chỉnh mix viral/affiliate | Chưa đạt | Growth planner/format decisions có; không có bằng chứng cross-platform optimizer dùng doanh thu affiliate cùng growth metrics để đổi mix. |
 | Dashboard cho người quan sát | Một phần | Có dashboard, harness, activity/decision logs; chưa hợp nhất toàn bộ trạng thái end-to-end và nguồn quota theo PRODUCT_SPEC. |
 | Mobile từ VPS: social OAuth | Đã có cấu hình, cần xác minh deployment | TikTok dùng PKCE cho loopback/Desktop và state cho HTTPS Web callback qua `TIKTOK_REDIRECT_URI`; Facebook dùng `META_REDIRECT_URI`; YouTube dùng Google Web OAuth khi có `YOUTUBE_REDIRECT_URI` HTTPS, vẫn giữ Desktop/loopback khi để trống. Chưa xác minh trên VPS bằng client credentials thật. TikTok static relay còn là fallback copy/paste thủ công. |
-| Web AI login tương tác từ điện thoại khi app chạy VPS | Đã nối trong source; live VPS chưa xác minh | Linux không DISPLAY chạy headless; modal lấy screenshot và gửi touch/mouse/keyboard qua route sau auth. CDP loopback-only, session ID ngẫu nhiên, HTTPS gate từ xa. `go build` đạt; chưa chạy login thật từ điện thoại/VPS/provider credentials. Xem [remote-webai-login](features/remote-webai-login.md). |
+| Web AI login khi app chạy VPS | Desktop-only trong source; mobile bị tắt; live VPS/provider chưa xác minh | UI ẩn nút login trên mobile/coarse pointer; server từ chối mobile request ở routes start/screen/input/status/cancel. Viewer chỉ gửi mouse/keyboard; Google Flow mở Google Account thay cho canvas nặng. CDP loopback-only, session ID ngẫu nhiên, HTTPS gate từ xa. Chưa chạy login thật với provider credentials. Xem [remote-webai-login](features/remote-webai-login.md). |
 
 Sơ đồ quy tắc chọn account miễn phí và retry Flow: [MiuNova free-account routing](assets/miunova-free-account-rotation.svg).
 

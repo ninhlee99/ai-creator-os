@@ -10,8 +10,8 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 > affiliate/viral đang giới hạn theo chính sách free-only, tích hợp Bản sắc thương hiệu (Brand DNA),
 > Quản trị cơ hội xu hướng (Trend Intelligence) và Bộ điều phối nhiệm vụ tự chủ (AI Mission Control).
 
-`remote-webai-login.md` mô tả screenshot/input bridge đã nối trong source; live
-VPS login vẫn cần xác minh.
+`remote-webai-login.md` mô tả Web AI login desktop-only; phone login bị tắt.
+Live VPS/provider login vẫn cần xác minh.
 Đọc [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md) trước khi dùng tài liệu
 này làm cam kết.
 
@@ -38,12 +38,6 @@ này làm cam kết.
 | 17 | Daemon tự động (`internal/automation`) — AutopilotTick / GrowthTick / SyncOneAccount / ReconcileCommissions | [autonomous-daemon.md](autonomous-daemon.md) | ✅ |
 | 18 | Kill switch + Dry-run + MASTER_SWITCH | [kill-switch-dry-run-master.md](kill-switch-dry-run-master.md) | ✅ |
 | 19 | Quy tắc dùng chung: key rotation & fail-closed | [key-rotation.md](key-rotation.md) | ✅ |
-
-## Đề xuất chưa triển khai
-
-| Đề xuất | Tài liệu | Trạng thái |
-|---|---|---|
-| Login Web AI từ điện thoại khi app chạy trên VPS | [remote-webai-login.md](remote-webai-login.md) | Screenshot/input bridge đã nối; live VPS/provider cần xác minh |
 
 ## Nguồn sự thật duy nhất về cấu hình
 

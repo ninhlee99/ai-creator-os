@@ -18,17 +18,16 @@ import (
 // LoginBrowserInput contains one bounded interaction from the remote viewer.
 // Pointer coordinates use normalized viewport fractions in the range [0, 1].
 type LoginBrowserInput struct {
-	Type        string  `json:"type"`
-	Action      string  `json:"action,omitempty"`
-	PointerType string  `json:"pointer_type,omitempty"`
-	X           float64 `json:"x,omitempty"`
-	Y           float64 `json:"y,omitempty"`
-	Button      string  `json:"button,omitempty"`
-	ClickCount  int     `json:"click_count,omitempty"`
-	DeltaX      float64 `json:"delta_x,omitempty"`
-	DeltaY      float64 `json:"delta_y,omitempty"`
-	Text        string  `json:"text,omitempty"`
-	Key         string  `json:"key,omitempty"`
+	Type       string  `json:"type"`
+	Action     string  `json:"action,omitempty"`
+	X          float64 `json:"x,omitempty"`
+	Y          float64 `json:"y,omitempty"`
+	Button     string  `json:"button,omitempty"`
+	ClickCount int     `json:"click_count,omitempty"`
+	DeltaX     float64 `json:"delta_x,omitempty"`
+	DeltaY     float64 `json:"delta_y,omitempty"`
+	Text       string  `json:"text,omitempty"`
+	Key        string  `json:"key,omitempty"`
 }
 
 type loginPageTarget struct {
@@ -152,30 +151,6 @@ func dispatchLoginBrowserInput(ctx context.Context, port int, input LoginBrowser
 			return err
 		}
 
-		if input.PointerType == "touch" {
-			if input.Action == "down" {
-				if _, err := callLoginPageCDP(conn, "Emulation.setTouchEmulationEnabled", map[string]any{
-					"enabled": true, "maxTouchPoints": 1,
-				}); err != nil {
-					return err
-				}
-			}
-			touchType := map[string]string{"down": "touchStart", "move": "touchMove", "up": "touchEnd"}[input.Action]
-			if touchType == "" {
-				return errors.New("thao tác chạm không hợp lệ")
-			}
-			touchPoints := []map[string]any{{"x": x, "y": y, "id": 1, "radiusX": 1, "radiusY": 1, "force": 1}}
-			if input.Action == "up" {
-				touchPoints = []map[string]any{}
-			}
-			_, err := callLoginPageCDP(conn, "Input.dispatchTouchEvent", map[string]any{
-				"type": touchType, "touchPoints": touchPoints,
-			})
-			return err
-		}
-		if input.PointerType != "" && input.PointerType != "mouse" {
-			return errors.New("loại con trỏ không hợp lệ")
-		}
 		button, err := loginMouseButton(input.Button)
 		if err != nil {
 			return err
