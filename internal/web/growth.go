@@ -106,7 +106,7 @@ func (s *Server) growthView() map[string]any {
 	var rows []growthAccountRow
 	var alerts []growthAlertRow
 	var upcoming []growthItemRow
-	var totalFollowers, totalViews int64
+	var totalYTSubscribers, totalTikTokFollowers, totalViews int64
 	for i := range accounts {
 		a := accounts[i]
 		prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a))
@@ -126,7 +126,12 @@ func (s *Server) growthView() map[string]any {
 			row.FollowersLabel = growthFollowersLabel(latest.Source)
 			if latest.Followers != nil {
 				row.Followers = *latest.Followers
-				totalFollowers += *latest.Followers
+				switch latest.Source {
+				case "youtube_api":
+					totalYTSubscribers += *latest.Followers
+				case "tiktok_api":
+					totalTikTokFollowers += *latest.Followers
+				}
 			}
 			if v, ok := metricValue(latest, "views_total"); ok {
 				row.ViewsTotal = int64(v)
@@ -189,7 +194,8 @@ func (s *Server) growthView() map[string]any {
 	ctx["Rows"] = rows
 	ctx["Alerts"] = alerts
 	ctx["Upcoming"] = upcoming
-	ctx["TotalFollowers"] = totalFollowers
+	ctx["TotalYTSubscribers"] = totalYTSubscribers
+	ctx["TotalTikTokFollowers"] = totalTikTokFollowers
 	ctx["TotalViews"] = totalViews
 	ctx["HasYTKey"] = ytKey
 	// Phase-2 production state: toggle, quota today, upload privacy.

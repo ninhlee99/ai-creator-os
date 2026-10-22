@@ -778,6 +778,16 @@ tr:hover td { background: var(--hover-bg); }
 .account-edit-autopilot input { margin-top: 3px; accent-color: var(--accent); }
 .account-edit-autopilot span { display: grid; gap: 3px; }
 .account-edit-autopilot small { color: var(--muted); font-size: 12px; }
+.account-edit-verify {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 10px;
+  cursor: pointer;
+}
+.account-edit-verify input { margin-top: 3px; accent-color: var(--accent); }
+.account-edit-verify span { display: grid; gap: 3px; }
+.account-edit-verify small { color: var(--muted); font-size: 12px; }
 .account-edit-notice {
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--border));

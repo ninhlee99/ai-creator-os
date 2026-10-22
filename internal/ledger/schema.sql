@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     -- subset of ["short_video","short_film","ai_music","ai_remix"].
     -- Empty = YouTube disabled for this account.
     followers     INTEGER NOT NULL DEFAULT 0,
+    followers_source TEXT NOT NULL DEFAULT 'legacy', -- legacy | tiktok_manual | tiktok_api
+    followers_verified_at TEXT NOT NULL DEFAULT '', -- last provider or human verification time
     rtmp_key_ref  TEXT,               -- env var NAME holding the RTMP key, never the key itself
     rest_weekday  INTEGER NOT NULL DEFAULT 0,  -- 0=Mon .. 6=Sun
     gift_usd      REAL NOT NULL DEFAULT 0,     -- cached lifetime gift revenue

@@ -89,6 +89,6 @@ func growthFollowersLabel(source string) string {
 	case "tiktok_api":
 		return "TikTok followers"
 	default:
-		return "Followers"
+		return "Followers · nguồn chưa rõ"
 	}
 }

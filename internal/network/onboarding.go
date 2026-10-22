@@ -5,11 +5,12 @@ import (
 	"fmt"
 )
 
-// Onboarding pipeline: new account -> live_ready, fully automatic.
+// Onboarding pipeline: new account -> growing automatically. Live eligibility
+// advances only after a verified TikTok follower count reaches the threshold.
 //
 //	onboarding -> researching -> persona_assigned -> growing -> live_ready
 //
-// The human only does step 0: Add(username, niche_hint, rtmp_key_ref).
+// The human adds the account and verifies its TikTok follower count when ready.
 // Everything after is the pipeline. The research step is injectable
 // (ResearchFunc) so tests and rehearsal can use a mock.
 
@@ -154,7 +155,7 @@ func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, ll
 		return next.Status, nil
 
 	case "growing":
-		if acct.Followers >= FollowersToLive {
+		if acct.TikTokLiveThresholdMet() {
 			target := acct.Username
 			if err := mgr.ledger.Decide("onboarding", "live_unlocked", &target,
 				fmt.Sprintf("%d followers >= %d", acct.Followers, FollowersToLive),

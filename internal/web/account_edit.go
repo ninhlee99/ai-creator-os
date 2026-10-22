@@ -34,6 +34,20 @@ func personaOptions() []personaChoice {
 	return out
 }
 
+func editableAccountStatuses(current string) []string {
+	order := []string{
+		"onboarding", "researching", "persona_assigned", "growing",
+		"live_ready", "live", "paused", "penalized", "retired",
+	}
+	out := []string{current}
+	for _, status := range order {
+		if status != current && network.TRANSITIONS[current][status] {
+			out = append(out, status)
+		}
+	}
+	return out
+}
+
 func (s *Server) handleAccountEdit(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.accountID(w, r)
 	if !ok {
@@ -49,16 +63,11 @@ func (s *Server) handleAccountEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	statuses := []string{
-		"onboarding", "researching", "persona_assigned", "growing",
-		"live_ready", "live", "paused", "retired",
-	}
-
 	s.render(w, "account_edit", s.ctx(
 		"Acct", s.wrapAccount(acct),
 		"RawAcct", acct,
 		"Personas", personaOptions(),
-		"Statuses", statuses,
+		"Statuses", editableAccountStatuses(acct.Status),
 		"Themes", themeOptions(),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
@@ -74,6 +83,15 @@ func (s *Server) handleAccountUpdate(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "parse account edit form")
 		return
 	}
+	current, err := s.Mgr.Get(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.NotFound(w, r)
+			return
+		}
+		s.fail(w, err, "get account for update")
+		return
+	}
 
 	username := strings.TrimSpace(r.PostFormValue("username"))
 	username = strings.TrimLeft(username, "@")
@@ -87,14 +105,10 @@ func (s *Server) handleAccountUpdate(w http.ResponseWriter, r *http.Request) {
 	persona := strings.TrimSpace(r.PostFormValue("persona"))
 	status := strings.TrimSpace(r.PostFormValue("status"))
 	if status == "" {
-		status = "growing"
+		status = current.Status
 	}
-	validStatus := map[string]bool{
-		"onboarding": true, "researching": true, "persona_assigned": true,
-		"growing": true, "live_ready": true, "live": true, "paused": true, "retired": true,
-	}
-	if !validStatus[status] {
-		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Giai đoạn phát triển không hợp lệ.")))
+	if status != current.Status && !network.TRANSITIONS[current.Status][status] {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Không thể chuyển tài khoản sang giai đoạn này theo quy trình hiện tại.")))
 		return
 	}
 	if persona != "" {
@@ -117,6 +131,33 @@ func (s *Server) handleAccountUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	verifyTikTokFollowers := r.PostFormValue("verify_tiktok_followers") == "1"
+	tiktokFollowersRaw := strings.TrimSpace(r.PostFormValue("tiktok_followers"))
+	var followers int64
+	if verifyTikTokFollowers {
+		value, err := strconv.ParseInt(tiktokFollowersRaw, 10, 64)
+		if tiktokFollowersRaw == "" || err != nil || value < 0 {
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Nhập số TikTok followers hợp lệ và không âm.")))
+			return
+		}
+		followers = value
+	} else if tiktokFollowersRaw != "" {
+		value, err := strconv.ParseInt(tiktokFollowersRaw, 10, 64)
+		if err != nil || value != current.Followers || current.FollowersSource != network.FollowersSourceTikTokManual {
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Tick xác nhận TikTok trước khi lưu thay đổi số followers.")))
+			return
+		}
+	}
+	candidate := *current
+	if verifyTikTokFollowers {
+		candidate.Followers = followers
+		candidate.FollowersSource = network.FollowersSourceTikTokManual
+	}
+	if status != current.Status && (status == "live_ready" || status == "live") && !candidate.TikTokLiveThresholdMet() {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Cần xác minh ít nhất 1.000 TikTok followers trước khi chuyển sang trạng thái livestream.")))
+		return
+	}
+
 	minCommRaw := strings.TrimSpace(r.PostFormValue("min_commission"))
 	minComm := 0.10
 	if minCommRaw != "" {
@@ -128,16 +169,36 @@ func (s *Server) handleAccountUpdate(w http.ResponseWriter, r *http.Request) {
 		minComm = v / 100
 	}
 
-	_, err := s.Mgr.UpdateAccount(id, username, niche, nicheHint, persona, status, youtubeChannel, theme, autopilot, minComm)
+	_, err = s.Mgr.UpdateAccount(id, username, niche, nicheHint, persona, youtubeChannel, theme, autopilot, minComm)
 	if err != nil {
 		log.Printf("web: update account: %v", err)
 		seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Lỗi khi lưu thông tin: "+err.Error())))
 		return
 	}
+	if verifyTikTokFollowers {
+		if err := s.Ledger.SetFollowers(id, followers); err != nil {
+			log.Printf("web: verify TikTok followers: %v", err)
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Không lưu được số TikTok followers: "+err.Error())))
+			return
+		}
+	}
+	if status != current.Status {
+		if _, err := s.Mgr.Transition(id, status, nil); err != nil {
+			log.Printf("web: account edit transition: %v", err)
+			seeOther(w, r, fmt.Sprintf("/accounts/%d/edit?err=%s", id, url.QueryEscape("Không chuyển được giai đoạn: "+err.Error())))
+			return
+		}
+	}
 
+	decision := map[string]any{
+		"id": id, "username": username, "status": status, "niche": niche,
+		"autopilot": autopilot, "tiktok_followers_verified": verifyTikTokFollowers,
+	}
+	if verifyTikTokFollowers {
+		decision["tiktok_followers"] = followers
+	}
 	_ = s.Ledger.Decide("human", "account_edit", &username,
-		fmt.Sprintf("Cập nhật thông tin kênh %s thành công", username),
-		map[string]any{"id": id, "username": username, "status": status, "niche": niche, "autopilot": autopilot})
+		fmt.Sprintf("Cập nhật thông tin kênh %s thành công", username), decision)
 
 	seeOther(w, r, fmt.Sprintf("/accounts/%d?ok=%s", id, url.QueryEscape("Đã cập nhật thông tin kênh thành công!")))
 }

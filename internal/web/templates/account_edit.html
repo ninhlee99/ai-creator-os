@@ -83,10 +83,24 @@
         </div>
 
         <div class="account-edit-metric">
-          <span>Follower count đang lưu · điều kiện livestream</span>
-          <strong>{{if gt .Acct.Followers 0}}{{.Acct.Followers}}{{else}}Chưa có dữ liệu{{end}}</strong>
+          <span>TikTok followers dùng xét livestream</span>
+          <strong>
+            {{if eq .Acct.FollowersSource "tiktok_manual"}}{{.Acct.Followers}} · đã xác minh thủ công
+            {{else if eq .Acct.FollowersSource "tiktok_api"}}{{.Acct.Followers}} · TikTok API
+            {{else if gt .Acct.Followers 0}}{{.Acct.Followers}} · dữ liệu cũ, chưa xác minh
+            {{else}}Chưa có số liệu đã xác minh{{end}}
+          </strong>
         </div>
-        <div class="hint">YouTube subscribers giờ được lưu riêng. Số cũ có thể đã bị ghi từ YouTube trước đây; đối chiếu với TikTok trước khi dùng để xét livestream.</div>
+        {{if .Acct.FollowersVerifiedAt}}<div class="hint">Xác minh lần cuối: {{.Acct.FollowersVerifiedAt}}</div>{{end}}
+        <div class="field">
+          <label for="account-tiktok-followers">TikTok followers hiện tại</label>
+          <input id="account-tiktok-followers" type="number" name="tiktok_followers" min="0" step="1" value="{{if eq .Acct.FollowersSource "tiktok_manual"}}{{.Acct.Followers}}{{end}}" placeholder="Nhập số trên hồ sơ TikTok">
+        </div>
+        <label class="account-edit-verify">
+          <input type="checkbox" name="verify_tiktok_followers" value="1">
+          <span><strong>Tôi đã đối chiếu số này với hồ sơ TikTok</strong><small>Chỉ lưu và dùng số này cho điều kiện livestream khi xác nhận.</small></span>
+        </label>
+        <div class="hint">Subscribers YouTube không thay thế TikTok followers. Số cũ chưa xác minh sẽ không mở khóa livestream.</div>
       </section>
 
       <section class="form-card account-edit-panel">

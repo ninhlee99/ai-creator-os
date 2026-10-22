@@ -32,6 +32,22 @@ var LiveEligibleStatuses = map[string]bool{"live_ready": true, "live": true}
 // FollowersToLive is the TikTok follower requirement for going live.
 const FollowersToLive = 1000
 
+const (
+	FollowersSourceLegacy       = "legacy"
+	FollowersSourceTikTokManual = "tiktok_manual"
+	FollowersSourceTikTokAPI    = "tiktok_api"
+)
+
+func verifiedTikTokFollowerSource(source string) bool {
+	return source == FollowersSourceTikTokManual || source == FollowersSourceTikTokAPI
+}
+
+func trustedTikTokFollowerSource(source string) bool {
+	// Empty source is accepted for in-memory callers predating provenance.
+	// Persisted rows always get an explicit source from the DB default.
+	return source == "" || verifiedTikTokFollowerSource(source)
+}
+
 // Account is the network-facing view of a ledger account: plain Go types
 // instead of sql.NullString, with the lifecycle helpers attached.
 type Account struct {
@@ -41,7 +57,9 @@ type Account struct {
 	Persona             string
 	Niche               string
 	NicheHint           string
-	Followers           int64 // TikTok followers used for livestream eligibility; never infer from YouTube subscribers.
+	Followers           int64
+	FollowersSource     string
+	FollowersVerifiedAt string
 	RtmpKeyRef          string
 	RestWeekday         int64
 	Topics              []string // episode topics from the topic engine
@@ -55,7 +73,13 @@ type Account struct {
 
 // LiveEligible reports whether the account may go live right now.
 func (a *Account) LiveEligible() bool {
-	return LiveEligibleStatuses[a.Status] && a.Followers >= FollowersToLive
+	return LiveEligibleStatuses[a.Status] && a.TikTokLiveThresholdMet()
+}
+
+// TikTokLiveThresholdMet requires a current TikTok-sourced count. YouTube
+// subscribers and legacy unlabelled values cannot unlock livestreaming.
+func (a *Account) TikTokLiveThresholdMet() bool {
+	return verifiedTikTokFollowerSource(a.FollowersSource) && a.Followers >= FollowersToLive
 }
 
 // RtmpKey resolves the actual stream key from the environment at runtime.
@@ -90,6 +114,8 @@ func wrapAccount(row *ledger.Account) *Account {
 		Niche:               row.Niche.String,
 		NicheHint:           row.NicheHint.String,
 		Followers:           row.Followers,
+		FollowersSource:     row.FollowersSource,
+		FollowersVerifiedAt: row.FollowersVerifiedAt,
 		RtmpKeyRef:          row.RtmpKeyRef.String,
 		RestWeekday:         row.RestWeekday,
 		Topics:              jsonStringList(row.TopicsJSON),
@@ -238,19 +264,20 @@ func (m *AccountManager) SetYoutube(accountID int64, channel string, contentType
 	return m.Get(accountID)
 }
 
-// UpdateAccount updates the full profile of an account.
-func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHint, persona, status, youtubeChannel, theme string, autopilot bool, minComm float64) (*Account, error) {
+// UpdateAccount changes profile fields. Lifecycle status changes must use
+// Transition so the allowed-stage rules and decision log stay in force.
+func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHint, persona, youtubeChannel, theme string, autopilot bool, minComm float64) (*Account, error) {
 	autoVal := 0
 	if autopilot {
 		autoVal = 1
 	}
 	_, err := m.db.Exec(`
 		UPDATE accounts 
-		SET username = ?, niche = ?, niche_hint = ?, persona = ?, status = ?, 
+		SET username = ?, niche = ?, niche_hint = ?, persona = ?,
 		    youtube_channel = ?, theme = ?, autopilot = ?, min_commission = ?, 
 		    updated_at = datetime('now')
 		WHERE id = ?
-	`, username, niche, nicheHint, persona, status, youtubeChannel, theme, autoVal, minComm, accountID)
+	`, username, niche, nicheHint, persona, youtubeChannel, theme, autoVal, minComm, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("network: update account: %w", err)
 	}

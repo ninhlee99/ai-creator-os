@@ -79,7 +79,8 @@
 {{else}}
 
 <div class="cards">
-  <div class="card"><div class="num">{{.TotalFollowers}}</div><div class="label">Tổng subscribers / followers (snapshot mới nhất)</div></div>
+  <div class="card"><div class="num">{{.TotalYTSubscribers}}</div><div class="label">YouTube subscribers · snapshot mới nhất</div></div>
+  <div class="card"><div class="num">{{.TotalTikTokFollowers}}</div><div class="label">TikTok followers · snapshot mới nhất</div></div>
   <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
   <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
 </div>

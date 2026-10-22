@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 )
 
@@ -37,7 +38,7 @@ func (l *Ledger) AddAccount(username, nicheHint, rtmpKeyRef string) (int64, erro
 func (l *Ledger) GetAccount(accountID int64) (*Account, error) {
 	return scanAccount(l.db.QueryRow(
 		"SELECT id, username, status, persona, niche, niche_hint, topics_json, "+
-			"youtube_channel, youtube_content_types, followers, rtmp_key_ref, "+
+			"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, "+
 			"rest_weekday, gift_usd, created_at, updated_at "+
 			"FROM accounts WHERE id = ?", accountID))
 }
@@ -55,14 +56,14 @@ func (l *Ledger) ListAccounts(statuses []string) ([]Account, error) {
 		}
 		rows, err = l.db.Query(
 			"SELECT id, username, status, persona, niche, niche_hint, topics_json, "+
-				"youtube_channel, youtube_content_types, followers, rtmp_key_ref, "+
+				"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, "+
 				"rest_weekday, gift_usd, created_at, updated_at "+
 				"FROM accounts WHERE status IN ("+strings.Join(ph, ",")+") ORDER BY id",
 			args...)
 	} else {
 		rows, err = l.db.Query(
 			"SELECT id, username, status, persona, niche, niche_hint, topics_json, " +
-				"youtube_channel, youtube_content_types, followers, rtmp_key_ref, " +
+				"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, " +
 				"rest_weekday, gift_usd, created_at, updated_at " +
 				"FROM accounts ORDER BY id")
 	}
@@ -75,7 +76,8 @@ func (l *Ledger) ListAccounts(statuses []string) ([]Account, error) {
 		var a Account
 		if err := rows.Scan(&a.ID, &a.Username, &a.Status, &a.Persona, &a.Niche,
 			&a.NicheHint, &a.TopicsJSON, &a.YoutubeChannel, &a.YoutubeContentTypes,
-			&a.Followers, &a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
+			&a.Followers, &a.FollowersSource, &a.FollowersVerifiedAt,
+			&a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
 			&a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -102,12 +104,17 @@ func (l *Ledger) SetAccountStatus(accountID int64, status string, fields map[str
 	return err
 }
 
-// SetFollowers updates an account's follower count.
+// SetFollowers records a TikTok follower count verified against the account's
+// TikTok profile. Legacy counts remain untrusted until a person verifies them.
 func (l *Ledger) SetFollowers(accountID int64, followers int64) error {
+	if followers < 0 {
+		return fmt.Errorf("TikTok followers cannot be negative")
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	_, err := l.db.Exec(
-		"UPDATE accounts SET followers = ?, updated_at = datetime('now') WHERE id = ?",
+		"UPDATE accounts SET followers = ?, followers_source = 'tiktok_manual', "+
+			"followers_verified_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
 		followers, accountID)
 	return err
 }

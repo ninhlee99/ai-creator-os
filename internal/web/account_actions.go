@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"log"
 	"net/http"
@@ -57,7 +58,14 @@ func (s *Server) handleAccountTransition(w http.ResponseWriter, r *http.Request)
 	_ = r.ParseForm()
 	errMsg := ""
 	if to := r.PostFormValue("to"); to != "" {
-		if _, err := s.Mgr.Transition(id, to, nil); err != nil {
+		acct, err := s.Mgr.Get(id)
+		if err == nil && (to == "live_ready" || to == "live") && !acct.TikTokLiveThresholdMet() {
+			err = fmt.Errorf("cần xác minh ít nhất 1.000 TikTok followers trước khi chuyển sang trạng thái livestream")
+		}
+		if err == nil {
+			_, err = s.Mgr.Transition(id, to, nil)
+		}
+		if err != nil {
 			errMsg = err.Error()
 			log.Printf("web: transition: %v", err)
 		}

@@ -95,13 +95,14 @@ func fits(start, duration int, window [2]int, placed []Slot, persona string, max
 
 // PlanSlots allocates one day's live slots. Pure function — test me hard.
 //
-// Eligible: status live_ready/live, >= 1000 followers, and weekday is not the
-// account's rest day. Accounts are ordered by score (desc), then username;
+// Eligible: status live_ready/live, >= 1000 verified TikTok followers, and
+// weekday is not the account's rest day. Accounts are ordered by score (desc), then username;
 // golden windows are filled first.
 func PlanSlots(accounts []ledger.Account, scores map[int64]float64, weekday, maxConcurrent, livesPerDay, durationMin int) []Slot {
 	var eligible []ledger.Account
 	for _, a := range accounts {
-		if schedEligible[a.Status] && a.Followers >= 1000 && a.RestWeekday != int64(weekday) {
+		if schedEligible[a.Status] && trustedTikTokFollowerSource(a.FollowersSource) &&
+			a.Followers >= FollowersToLive && a.RestWeekday != int64(weekday) {
 			eligible = append(eligible, a)
 		}
 	}

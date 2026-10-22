@@ -27,6 +27,8 @@ var migrations = []string{
 	"ALTER TABLE accounts ADD COLUMN topics_json TEXT NOT NULL DEFAULT '[]'",
 	"ALTER TABLE accounts ADD COLUMN youtube_channel TEXT",
 	"ALTER TABLE accounts ADD COLUMN youtube_content_types TEXT NOT NULL DEFAULT '[]'",
+	"ALTER TABLE accounts ADD COLUMN followers_source TEXT NOT NULL DEFAULT 'legacy'",
+	"ALTER TABLE accounts ADD COLUMN followers_verified_at TEXT NOT NULL DEFAULT ''",
 }
 
 // Ledger is a thread-safe SQLite-backed ledger. See package doc.
@@ -207,7 +209,8 @@ func scanAccount(row *sql.Row) (*Account, error) {
 	var a Account
 	err := row.Scan(&a.ID, &a.Username, &a.Status, &a.Persona, &a.Niche,
 		&a.NicheHint, &a.TopicsJSON, &a.YoutubeChannel, &a.YoutubeContentTypes,
-		&a.Followers, &a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
+		&a.Followers, &a.FollowersSource, &a.FollowersVerifiedAt,
+		&a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
 		&a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -229,6 +232,8 @@ type Account struct {
 	YoutubeChannel      sql.NullString
 	YoutubeContentTypes string
 	Followers           int64
+	FollowersSource     string
+	FollowersVerifiedAt string
 	RtmpKeyRef          sql.NullString
 	RestWeekday         int64
 	GiftUSD             float64

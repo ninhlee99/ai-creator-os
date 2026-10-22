@@ -54,9 +54,16 @@ func (s *Server) wrapAccount(a *network.Account) *accountView {
 	for _, p := range publishers.BuildPublishers(a.Username, a.YoutubeChannel, ytTypes) {
 		plats = append(plats, p.Name())
 	}
+	followersLabel := "TikTok followers · dữ liệu cũ, chưa xác minh"
+	switch a.FollowersSource {
+	case network.FollowersSourceTikTokManual:
+		followersLabel = "TikTok followers · xác minh thủ công"
+	case network.FollowersSourceTikTokAPI:
+		followersLabel = "TikTok followers · API"
+	}
 	av := &accountView{
 		Account: a, PersonaLabel: personaLabel(a.Persona), Platforms: plats,
-		FollowersLabel: "TikTok followers · legacy count",
+		FollowersLabel: followersLabel,
 	}
 	if s.Growth != nil {
 		if prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err == nil && prof != nil {
