@@ -93,7 +93,7 @@ func (s *Service) alertAccountOnce(accountID int64, accountName, msg, action str
 	s.alert("autopilot_account", "warn", msg, action)
 }
 
-// retryFailedPublishLegs thử lại các chân đăng (TikTok/YouTube) bị lỗi tạm
+// retryFailedPublishLegs thử lại các chân đăng (TikTok/YouTube/Meta) bị lỗi tạm
 // thời ở chu kỳ trước (Đợt Y). Job phải còn done + output còn nguyên.
 func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 	if s.JobStore == nil || s.Accounts == nil {
@@ -123,6 +123,11 @@ func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 			if AutopilotYouTubeEnabled(s.Settings) {
 				s.autoPublishYouTubeAffiliate(ctx, leg.JobID, j, p, acct)
 				notes = append(notes, "thử lại chân đăng YouTube cho job "+leg.JobID)
+			}
+		case "facebook", "instagram", "threads":
+			if AutopilotMetaEnabled(s.Settings) {
+				s.autoPublishMetaAffiliate(ctx, leg.JobID, j, p, acct)
+				notes = append(notes, "thử lại chân đăng Meta "+leg.Platform+" cho job "+leg.JobID)
 			}
 		}
 	}
