@@ -16,7 +16,7 @@ func (museLoginAdapter) target() WebLoginTarget {
 	return WebLoginTarget{
 		Platform:    PlatformMuseAI,
 		Name:        "Muse AI",
-		StartURL:    "https://muse.ai/signin",
+		StartURL:    "https://muse.ai/",
 		CookieHost:  "muse.ai",
 		CookieName:  "hatch_sess",
 		Profile:     "muse",

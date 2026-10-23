@@ -109,7 +109,7 @@ func SupportedPlatforms() []PlatformInfo {
 			ID:          PlatformMuseAI,
 			Name:        "Muse Chat (Meta)",
 			URL:         "https://muse.ai",
-			LoginURL:    "https://muse.ai/signin",
+			LoginURL:    "https://muse.ai/",
 			Icon:        "🎬",
 			Color:       "#ec4899",
 			Badge:       "Tạo nội dung",
