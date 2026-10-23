@@ -123,11 +123,12 @@ var statusLabels = map[string]string{
 	"started": "Đang diễn ra",
 	"skipped": "Đã bỏ qua",
 	// jobs & assets
-	"queued":  "Đang chờ",
-	"pending": "Đang chờ",
-	"running": "Đang chạy",
-	"done":    "Hoàn thành",
-	"failed":  "Thất bại",
+	"queued":     "Đang chờ",
+	"pending":    "Đang chờ",
+	"running":    "Đang chạy",
+	"done":       "Hoàn thành",
+	"publishing": "Đang gửi",
+	"failed":     "Thất bại",
 	// agent team node states
 	"working":  "Đang làm",
 	"exchange": "Đang nhận việc",
@@ -248,7 +249,7 @@ func statusClass(s string) string {
 	switch s {
 	case "live", "live_ready", "done", "started", "shelf", "scaled", "monetized", "winner", "published", "active":
 		return "ok"
-	case "running", "working", "producing":
+	case "running", "working", "producing", "publishing":
 		return "running"
 	case "queued", "pending":
 		return "queued"

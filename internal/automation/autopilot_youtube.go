@@ -19,13 +19,19 @@ var youtubeAffiliatePublisher = func(acct *network.Account) *publishers.YouTubeP
 // YOUTUBE_DEFAULT_PRIVACY (mặc định private). Quota-guarded: hết quota ngày
 // thì ghi log và bỏ qua (video vẫn nằm ở output).
 func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	unlock, locked := tryAffiliatePublishLock(jobID, "youtube")
+	if !locked {
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: đang có yêu cầu xử lý — bỏ qua lượt gọi trùng.")
+		return
+	}
+	defer unlock()
 	// Đợt Y: idempotency — chân này đã done thì bỏ qua.
 	legStatus := s.JobStore.PublishLegStatus(jobID, "youtube")
 	if legStatus == studio.LegDone {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: đã đăng rồi — bỏ qua.")
 		return
 	}
-	if legStatus == studio.LegNeedsReview {
+	if legStatus == studio.LegNeedsReview || legStatus == studio.LegPublishing {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: kết quả lần trước chưa rõ — kiểm tra YouTube Studio trước khi thử lại.")
 		return
 	}
@@ -61,7 +67,12 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 		desc += "\nLink mua: " + p.AffLink
 	}
 	desc += "\n\n" + growth.DisclosureLine
-	s.JobStore.AppendLog(jobID, "Tự đăng YouTube Shorts (private)…")
+	if err := s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegPublishing, ""); err != nil {
+		_ = s.Growth.ReleaseUploadQuota(quotaDay)
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: không lưu được trạng thái gửi; chưa gọi nền tảng.")
+		return
+	}
+	s.JobStore.AppendLog(jobID, "Tự đăng YouTube Shorts theo privacy cấu hình…")
 	videoPath := s.OutputPath(j.Output)
 	res := pub.Publish(ctx, videoPath, title, desc, "short_video")
 	if !res.Ok {
@@ -86,11 +97,14 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 		return
 	}
 	_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegDone, res.RemoteID)
-	note := "Đã đăng YouTube Shorts (private)"
+	note := "YouTube API đã nhận upload với privacy public theo cấu hình."
+	if res.Draft {
+		note = "YouTube API đã nhận upload ở chế độ chưa công khai theo cấu hình."
+	}
 	if res.URL != "" {
 		note += " (" + res.URL + ")"
 	}
-	note += " — xem lại trong YouTube Studio."
+	note += " Kiểm tra trạng thái xử lý trong YouTube Studio."
 	s.JobStore.AppendLog(jobID, note)
 }
 

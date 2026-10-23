@@ -26,8 +26,25 @@ type PublishLeg struct {
 const (
 	LegDone        = "done"
 	LegFailed      = "failed"
+	LegPublishing  = "publishing"
 	LegNeedsReview = "needs_review"
 )
+
+// RecoverInterruptedPublishLegs runs at app startup. A process may have
+// stopped after the platform accepted a request but before the result was
+// persisted; never retry those legs automatically.
+func (s *Studio) RecoverInterruptedPublishLegs() (int, error) {
+	res, err := s.db.Exec(`UPDATE studio_publish_legs SET status=?, updated_at=? WHERE status=?`,
+		LegNeedsReview, time.Now().Format("2006-01-02T15:04:05"), LegPublishing)
+	if err != nil {
+		return 0, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
 
 // PublishLegStatus trả về trạng thái chân đăng ("" khi chưa từng đăng).
 func (s *Studio) PublishLegStatus(jobID, platform string) string {
@@ -82,8 +99,8 @@ func (s *Studio) RecentPublishLegs(limit int) ([]PublishLeg, error) {
 		p.remote_id, p.status, p.updated_at
 		FROM studio_publish_legs p
 		LEFT JOIN studio_jobs j ON j.id = p.job_id
-		WHERE p.status IN (?, ?, ?)
-		ORDER BY p.updated_at DESC, p.job_id DESC LIMIT ?`, LegDone, LegFailed, LegNeedsReview, limit)
+		WHERE p.status IN (?, ?, ?, ?)
+		ORDER BY p.updated_at DESC, p.job_id DESC LIMIT ?`, LegDone, LegFailed, LegNeedsReview, LegPublishing, limit)
 	if err != nil {
 		return nil, err
 	}

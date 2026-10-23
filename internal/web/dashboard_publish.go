@@ -223,6 +223,9 @@ func decisionPublishTime(raw string) (time.Time, string) {
 }
 
 func publishOutcomeLabel(platform, status, privacy string, draft bool, remoteID string) string {
+	if status == studio.LegPublishing {
+		return "Đang gửi"
+	}
 	if status == studio.LegNeedsReview {
 		return "Cần đối chiếu"
 	}
@@ -252,6 +255,9 @@ func publishOutcomeLabel(platform, status, privacy string, draft bool, remoteID 
 }
 
 func publishLegNote(platform, status, remoteID string) string {
+	if status == studio.LegPublishing {
+		return "Yêu cầu gửi đang chạy; chờ trạng thái cập nhật trước khi thử lại."
+	}
 	if status == studio.LegNeedsReview {
 		if strings.EqualFold(platform, "threads") && strings.TrimSpace(remoteID) == "" {
 			return "Threads API báo thành công nhưng thiếu post ID; kiểm tra Threads trước khi xác nhận hoặc thử lại."

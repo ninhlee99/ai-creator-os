@@ -38,6 +38,11 @@ func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []stri
 	if n := st.MarkInterruptedJobs(); n > 0 {
 		log.Printf("studio: %d job(s) interrupted by restart — marked failed (resume from Studio)", n)
 	}
+	if n, err := st.RecoverInterruptedPublishLegs(); err != nil {
+		log.Printf("studio: could not recover interrupted publish legs: %v", err)
+	} else if n > 0 {
+		log.Printf("studio: %d interrupted publish leg(s) need platform review before retry", n)
+	}
 	log.Printf("studio: ready (mediagen=%s keys=%d)", mediaGen.Name(), mediaGen.KeyCount())
 	return st
 }

@@ -47,52 +47,89 @@ func (s *Service) autoPublishMetaAffiliatePlatforms(ctx context.Context, jobID s
 		if !ok {
 			continue
 		}
-		legStatus := s.JobStore.PublishLegStatus(jobID, name)
-		if legStatus == studio.LegDone {
-			continue
-		}
-		if legStatus == studio.LegNeedsReview {
-			s.JobStore.AppendLog(jobID, "Tự đăng "+name+": kết quả lần trước chưa rõ — kiểm tra nền tảng trước khi thử lại.")
-			continue
-		}
-		videoPath := s.OutputPath(j.Output)
-		res := pub.Publish(ctx, videoPath, title, desc, "short_video")
-		if !res.Ok {
-			if res.DeliveryUncertain {
-				note := "Kết quả publish chưa xác định; dừng retry để tránh đăng trùng. Kiểm tra " + name + " trước khi xử lý tiếp."
-				s.JobStore.AppendLog(jobID, note+" Lỗi: "+res.Error)
-				_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegNeedsReview, "")
-				_ = s.decide("autopilot", "autopublish_meta_uncertain", &jobID,
-					note, map[string]any{"platform": name, "error": res.Error, "delivery_uncertain": true})
-				continue
-			}
-			s.JobStore.AppendLog(jobID, "Tự đăng "+name+" thất bại: "+res.Error)
-			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegFailed, "")
-			_ = s.decide("autopilot", "autopublish_meta_failed", &jobID,
-				"tự đăng "+name+" thất bại: "+res.Error, nil)
-			continue
-		}
-		if name == "threads" && strings.TrimSpace(res.RemoteID) == "" {
-			note := "Threads API báo thành công nhưng thiếu post ID; kiểm tra bài trên Threads trước khi xác nhận hoặc thử lại."
-			s.JobStore.AppendLog(jobID, note)
+		s.publishMetaAffiliatePlatform(ctx, jobID, name, pub, j.Output, title, desc)
+	}
+}
+
+func (s *Service) publishMetaAffiliatePlatform(ctx context.Context, jobID, name string, pub publishers.Publisher, output, title, desc string) {
+	unlock, locked := tryAffiliatePublishLock(jobID, name)
+	if !locked {
+		s.JobStore.AppendLog(jobID, "Tự đăng "+name+": đang có yêu cầu xử lý — bỏ qua lượt gọi trùng.")
+		return
+	}
+	defer unlock()
+	legStatus := s.JobStore.PublishLegStatus(jobID, name)
+	if legStatus == studio.LegDone {
+		return
+	}
+	if legStatus == studio.LegNeedsReview || legStatus == studio.LegPublishing {
+		s.JobStore.AppendLog(jobID, "Tự đăng "+name+": kết quả lần trước chưa rõ hoặc đang gửi — kiểm tra trạng thái trước khi thử lại.")
+		return
+	}
+	if err := s.JobStore.SetPublishLeg(jobID, name, studio.LegPublishing, ""); err != nil {
+		s.JobStore.AppendLog(jobID, "Tự đăng "+name+": không lưu được trạng thái gửi; chưa gọi nền tảng.")
+		return
+	}
+	res := pub.Publish(ctx, s.OutputPath(output), title, desc, "short_video")
+	if !res.Ok {
+		if res.DeliveryUncertain {
+			note := "Kết quả publish chưa xác định; dừng retry để tránh đăng trùng. Kiểm tra " + name + " trước khi xử lý tiếp."
+			s.JobStore.AppendLog(jobID, note+" Lỗi: "+res.Error)
 			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegNeedsReview, "")
 			_ = s.decide("autopilot", "autopublish_meta_uncertain", &jobID,
-				"Threads API báo thành công nhưng thiếu post ID; cần đối chiếu trước khi thử lại.", map[string]any{
-					"platform": name, "delivery_uncertain": true,
-				})
-			continue
+				note, map[string]any{"platform": name, "error": res.Error, "delivery_uncertain": true})
+			return
 		}
-		_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegDone, res.RemoteID)
-		note := "Đã đăng " + name
-		if res.Draft {
-			note += " (nháp — duyệt rồi công khai)"
+		s.JobStore.AppendLog(jobID, "Tự đăng "+name+" thất bại: "+res.Error)
+		_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegFailed, "")
+		_ = s.decide("autopilot", "autopublish_meta_failed", &jobID,
+			"tự đăng "+name+" thất bại: "+res.Error, nil)
+		return
+	}
+	if name == "threads" && strings.TrimSpace(res.RemoteID) == "" {
+		note := "Threads API báo thành công nhưng thiếu post ID; kiểm tra bài trên Threads trước khi xác nhận hoặc thử lại."
+		s.JobStore.AppendLog(jobID, note)
+		_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegNeedsReview, "")
+		_ = s.decide("autopilot", "autopublish_meta_uncertain", &jobID,
+			"Threads API báo thành công nhưng thiếu post ID; cần đối chiếu trước khi thử lại.", map[string]any{
+				"platform": name, "delivery_uncertain": true,
+			})
+		return
+	}
+	_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegDone, res.RemoteID)
+	s.JobStore.AppendLog(jobID, metaPublishSuccessNote(name, res.Draft, res.RemoteID))
+}
+
+func metaPublishSuccessNote(platform string, draft bool, remoteID string) string {
+	switch platform {
+	case "facebook":
+		if draft {
+			return "Facebook: đã tạo Page draft chờ duyệt."
 		}
-		s.JobStore.AppendLog(jobID, note+".")
+		return "Đã đăng video lên Facebook."
+	case "instagram":
+		if draft {
+			return "Instagram: video đã tải lên và xử lý; chưa công khai vì IG_AUTO_PUBLISH chưa bật."
+		}
+		return "Đã đăng Instagram Reels."
+	case "threads":
+		if strings.TrimSpace(remoteID) == "" {
+			return "Threads API báo thành công nhưng thiếu post ID; kiểm tra bài trên Threads trước khi thử lại."
+		}
+		return "Đã đăng bài chữ kèm link lên Threads; không tải video."
+	default:
+		return "API đã nhận publish cho " + platform + "."
 	}
 }
 
 // autoPublishTikTokAffiliate đăng video affiliate lên TikTok (nháp).
 func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	unlock, locked := tryAffiliatePublishLock(jobID, "tiktok")
+	if !locked {
+		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: đang có yêu cầu xử lý — bỏ qua lượt gọi trùng.")
+		return
+	}
+	defer unlock()
 	// Đợt Y: idempotency — chân này đã done thì bỏ qua (chống hook fire
 	// 2 lần hoặc retry tick chạy lại sau khi đã đăng).
 	legStatus := s.JobStore.PublishLegStatus(jobID, "tiktok")
@@ -100,7 +137,7 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: đã đăng rồi — bỏ qua.")
 		return
 	}
-	if legStatus == studio.LegNeedsReview {
+	if legStatus == studio.LegNeedsReview || legStatus == studio.LegPublishing {
 		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: kết quả lần trước chưa rõ — kiểm tra TikTok trước khi thử lại.")
 		return
 	}
@@ -113,6 +150,10 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 	}
 	if pub == nil {
 		s.JobStore.AppendLog(jobID, "Tự đăng: TikTok chưa cấu hình OAuth — video nằm ở output, đăng tay hoặc bật sau khi OAuth xong.")
+		return
+	}
+	if err := s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegPublishing, ""); err != nil {
+		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: không lưu được trạng thái gửi; chưa gọi nền tảng.")
 		return
 	}
 	title := j.Title
