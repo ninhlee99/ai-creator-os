@@ -72,6 +72,16 @@ func (s *Service) autoPublishMetaAffiliatePlatforms(ctx context.Context, jobID s
 				"tự đăng "+name+" thất bại: "+res.Error, nil)
 			continue
 		}
+		if name == "threads" && strings.TrimSpace(res.RemoteID) == "" {
+			note := "Threads API báo thành công nhưng thiếu post ID; kiểm tra bài trên Threads trước khi xác nhận hoặc thử lại."
+			s.JobStore.AppendLog(jobID, note)
+			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegNeedsReview, "")
+			_ = s.decide("autopilot", "autopublish_meta_uncertain", &jobID,
+				"Threads API báo thành công nhưng thiếu post ID; cần đối chiếu trước khi thử lại.", map[string]any{
+					"platform": name, "delivery_uncertain": true,
+				})
+			continue
+		}
 		_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegDone, res.RemoteID)
 		note := "Đã đăng " + name
 		if res.Draft {

@@ -253,6 +253,9 @@ func publishOutcomeLabel(platform, status, privacy string, draft bool, remoteID 
 
 func publishLegNote(platform, status, remoteID string) string {
 	if status == studio.LegNeedsReview {
+		if strings.EqualFold(platform, "threads") && strings.TrimSpace(remoteID) == "" {
+			return "Threads API báo thành công nhưng thiếu post ID; kiểm tra Threads trước khi xác nhận hoặc thử lại."
+		}
 		return "Upload có thể đã tới nền tảng; kiểm tra trước khi thử lại."
 	}
 	if status == studio.LegFailed {
