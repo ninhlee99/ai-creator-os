@@ -1,16 +1,17 @@
 package web
 
-// Đợt 3 — "Zero-touch là mặc định": automation switches default ON when
-// unset, a stored OFF always wins, DRY-RUN/kill stay the safety gates,
-// the homepage carries the two aggregate stats orphaned by the /analytics
-// dissolution.
+// Đợt 3 — automation switches default ON when unset, a stored OFF always wins;
+// DRY-RUN/kill stay the workflow gates,
+// the homepage reads current Accesstrade totals only after a successful sync.
 
 import (
 	"context"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 )
 
@@ -101,19 +102,59 @@ func TestGrowthTickKillSwitchWins(t *testing.T) {
 
 // ------------------------------------------------------------- homepage
 
-func TestDashboardRestoredStats(t *testing.T) {
+func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
 	s := newTestServer(t)
-	if _, err := s.Ledger.RecordCommission("2026-10", 150000, "dot3-test"); err != nil {
-		t.Fatalf("record commission: %v", err)
+	atStore, err := accesstrade.NewStore(filepath.Join(t.TempDir(), "accesstrade.db"))
+	if err != nil {
+		t.Fatalf("open Accesstrade store: %v", err)
+	}
+	t.Cleanup(func() { _ = atStore.Close() })
+	s.AT = atStore
+	if err := s.Ledger.SetSetting(accesstrade.KeySetting, "test-access-key"); err != nil {
+		t.Fatalf("set Accesstrade test key: %v", err)
+	}
+	if _, err := s.Ledger.RecordCommission("2026-10", 999000, "legacy-source"); err != nil {
+		t.Fatalf("record legacy commission: %v", err)
+	}
+	beforeSync := get(t, s, "/")
+	if beforeSync.Code != http.StatusOK {
+		t.Fatalf("GET / before order sync = %d, want 200", beforeSync.Code)
+	}
+	if body := beforeSync.Body.String(); !strings.Contains(body, "Chưa có dữ liệu đơn") || strings.Contains(body, "999.000 ₫") {
+		t.Fatalf("dashboard treated legacy commission as current Accesstrade stats: %s", body)
+	}
+	productsBeforeSync := get(t, s, "/products")
+	if !strings.Contains(productsBeforeSync.Body.String(), "Chưa đồng bộ") {
+		t.Fatal("products page treated unsynced Accesstrade orders as known zero")
+	}
+
+	_, _, err = s.AT.UpsertOrders([]accesstrade.Order{
+		{OrderID: "approved-1", Status: accesstrade.OrderApproved, PubCommission: 150000},
+		{OrderID: "pending-1", Status: accesstrade.OrderPending, PubCommission: 25000},
+	})
+	if err != nil {
+		t.Fatalf("save Accesstrade orders: %v", err)
+	}
+	if err := s.AT.SetSyncState("orders.until", "2026-10-23T05:00:00Z"); err != nil {
+		t.Fatalf("save sync marker: %v", err)
 	}
 	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Hoa hồng Accesstrade", "150.000 ₫"} {
+	for _, want := range []string{"Hoa hồng Accesstrade đã duyệt", "150.000 ₫", "1 đơn đã duyệt · 1 chờ duyệt", "23/10/2026 05:00 UTC"} {
 		if !strings.Contains(body, want) {
-			t.Errorf("dashboard missing restored stat %q", want)
+			t.Errorf("dashboard missing synced Accesstrade stat %q", want)
+		}
+	}
+	if strings.Contains(body, "999.000 ₫") {
+		t.Error("dashboard rendered legacy commission as current Accesstrade revenue")
+	}
+	productsAfterSync := get(t, s, "/products")
+	for _, want := range []string{"Đã duyệt: 1 đơn · 150.000 ₫", "Chờ duyệt: 1 đơn · 25.000 ₫", "Cập nhật 23/10/2026 05:00 UTC"} {
+		if !strings.Contains(productsAfterSync.Body.String(), want) {
+			t.Errorf("products page missing synced order summary %q", want)
 		}
 	}
 	for _, gone := range []string{"Phiên live", "Lịch live", "Slot live"} {

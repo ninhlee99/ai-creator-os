@@ -73,7 +73,7 @@ func TestDashboard(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "<h1>Tổng quan</h1>") {
+	if body := rec.Body.String(); !strings.Contains(body, "Bắt đầu tạo nội dung") {
 		t.Fatalf("dashboard body missing title; got %d bytes", len(body))
 	}
 }
@@ -304,7 +304,7 @@ func TestAllPagesRender(t *testing.T) {
 	}
 
 	pages := map[string]string{
-		"/":                         "<h1>Tổng quan</h1>",
+		"/":                         "Bắt đầu tạo nội dung",
 		"/accounts":                 "Kênh",
 		"/accounts/new":             "Thêm kênh mới",
 		"/accounts/1":               "sample_acct",
@@ -317,9 +317,9 @@ func TestAllPagesRender(t *testing.T) {
 		"/products":                 "Sản phẩm Affiliate",
 		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
 		"/publishers":               "Đa nền tảng",
-		"/settings/system":        "Cài đặt · Hệ thống",
-		"/settings/providers":    "Thứ tự nhà cung cấp giọng đọc (TTS)",
-		"/settings/safety":         "Kill switch",
+		"/settings/system":          "Cài đặt · Hệ thống",
+		"/settings/providers":       "Thứ tự nhà cung cấp giọng đọc (TTS)",
+		"/settings/safety":          "Kill switch",
 		"/settings/chain?name=tts":  `"name":"gemini"`,
 	}
 	for path, marker := range pages {

@@ -1,7 +1,7 @@
 package automation
 
 // Đợt Q: autoPublishYouTubeAffiliate — video affiliate tự lên YouTube
-// Shorts (private-first), quota-guarded.
+// Shorts theo YOUTUBE_DEFAULT_PRIVACY, quota-guarded.
 
 import (
 	"context"
@@ -146,7 +146,7 @@ func TestAutoPublishYouTubeAffiliateOK(t *testing.T) {
 	if *calls == 0 {
 		t.Fatal("không gọi YouTube API")
 	}
-	if !js.has("Đã đăng YouTube Shorts (private)") {
+	if !js.has("YouTube API đã nhận upload ở chế độ chưa công khai theo cấu hình") {
 		t.Fatalf("thiếu log đăng thành công: %q", js.logs)
 	}
 	if !strings.Contains(string(*initBody), "https://accesstrade.vn/xyz") {

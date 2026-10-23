@@ -3,7 +3,6 @@ package web
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -100,7 +99,7 @@ func TestOneCommandCreateEndpoint(t *testing.T) {
 		t.Errorf("expected redirect back to /?ok=..., got %s", loc)
 	}
 
-	// 3. Tạo video Affiliate qua API JSON
+	// 3. Affiliate intent routes to Studio until automatic production exists.
 	jsonReq := httptest.NewRequest(http.MethodPost, "/api/create-one-command", strings.NewReader(url.Values{
 		"command": {"Review serum chống lão hóa phục hồi da"},
 	}.Encode()))
@@ -109,36 +108,37 @@ func TestOneCommandCreateEndpoint(t *testing.T) {
 	jsonRec := httptest.NewRecorder()
 	serveLocalTestRoute(s, jsonRec, jsonReq)
 
-	if jsonRec.Code != http.StatusOK {
-		t.Fatalf("API request expected 200, got %d, body: %s", jsonRec.Code, jsonRec.Body.String())
+	if jsonRec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("API request expected 422 until affiliate automation is available, got %d, body: %s", jsonRec.Code, jsonRec.Body.String())
 	}
 	var res OneCommandResult
 	if err := json.Unmarshal(jsonRec.Body.Bytes(), &res); err != nil {
 		t.Fatalf("failed to decode JSON response: %v", err)
 	}
-	if !res.OK || res.JobID == "" || res.Type != "affiliate" {
-		t.Errorf("unexpected JSON result: %+v", res)
+	if res.OK || res.Type != "affiliate" || !strings.Contains(res.RedirectURL, "/studio?") || !strings.Contains(res.Message, "chưa tạo video affiliate tự động") {
+		t.Errorf("unexpected honest affiliate result: %+v", res)
 	}
 }
 
-func TestDashboardProductMediaPicker(t *testing.T) {
+func TestDashboardQuickCreateCopy(t *testing.T) {
 	s := newViralServer(t)
 	page := get(t, s, "/")
 	if page.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", page.Code)
 	}
 	for _, want := range []string{
-		`name="product_media"`,
-		`multiple`,
-		`image/jpeg`,
-		"Kéo thả ảnh listing sản phẩm vào đây",
+		"Bắt đầu tạo nội dung",
+		"Kể chuyện tạo job ngay",
+		"chưa tự dựng từ câu lệnh",
+		"name=\"command\"",
+		"Tiếp tục",
 	} {
 		if !strings.Contains(page.Body.String(), want) {
-			t.Errorf("quick creator media picker missing %q", want)
+			t.Errorf("quick content router missing %q", want)
 		}
 	}
-	if strings.Contains(page.Body.String(), "video/mp4") {
-		t.Error("product listing picker must accept product images, not source videos")
+	if strings.Contains(page.Body.String(), `name="product_media"`) || strings.Contains(page.Body.String(), "tạo footage chuyển động mới") {
+		t.Error("quick content router promises or accepts media it cannot use")
 	}
 
 	settings := get(t, s, "/settings/system")
@@ -157,103 +157,69 @@ func TestDashboardProductMediaPicker(t *testing.T) {
 	if styles.Code != http.StatusOK {
 		t.Fatalf("GET /static/style.css = %d, want 200", styles.Code)
 	}
-	for _, want := range []string{".product-media-dropzone", ".webai-section-actions", "white-space: nowrap"} {
+	for _, want := range []string{".webai-section-actions", "white-space: nowrap"} {
 		if !strings.Contains(styles.Body.String(), want) {
 			t.Errorf("stylesheet missing layout rule %q", want)
 		}
 	}
 }
 
-func TestSaveOneCommandProductMedia(t *testing.T) {
-	t.Run("multiple images", func(t *testing.T) {
-		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
-			{name: "front.jpg", content: "image-one"},
-			{name: "side.png", content: "image-two"},
-		})
-		media, err := saveOneCommandProductMedia(r, t.TempDir())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(media.photos) != 2 || len(media.clips) != 0 {
-			t.Fatalf("media = %+v, want two photos and no clips", media)
-		}
-		for i, want := range []string{"image-one", "image-two"} {
-			got, err := os.ReadFile(media.photos[i])
-			if err != nil {
-				t.Fatal(err)
-			}
-			if string(got) != want {
-				t.Errorf("photo %d content = %q, want %q", i, got, want)
-			}
-		}
-	})
-
-	t.Run("multiple videos", func(t *testing.T) {
-		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
-			{name: "first.mp4", content: "clip-one"},
-			{name: "second.mov", content: "clip-two"},
-		})
-		media, err := saveOneCommandProductMedia(r, t.TempDir())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(media.clips) != 2 || len(media.photos) != 0 {
-			t.Fatalf("media = %+v, want two clips and no photos", media)
-		}
-	})
-
-	t.Run("mixed types rejected", func(t *testing.T) {
-		r := oneCommandMultipartRequest(t, []oneCommandTestFile{
-			{name: "front.jpg", content: "image-one"},
-			{name: "clip.mp4", content: "clip-one"},
-		})
-		if _, err := saveOneCommandProductMedia(r, t.TempDir()); err == nil || !strings.Contains(err.Error(), "không trộn") {
-			t.Fatalf("mixed media error = %v, want mixed-type rejection", err)
-		}
-	})
-}
-
-type oneCommandTestFile struct {
-	name    string
-	content string
-}
-
-func oneCommandMultipartRequest(t *testing.T, files []oneCommandTestFile) *http.Request {
-	t.Helper()
+func TestOneCommandUploadIsNotPersisted(t *testing.T) {
+	s := newViralServer(t)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-	for _, file := range files {
-		part, err := writer.CreateFormFile("product_media", file.name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := io.WriteString(part, file.content); err != nil {
-			t.Fatal(err)
-		}
+	if err := writer.WriteField("command", "Review serum B5"); err != nil {
+		t.Fatal(err)
+	}
+	part, err := writer.CreateFormFile("product_media", "listing.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(part, "image-bytes"); err != nil {
+		t.Fatal(err)
 	}
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	r := httptest.NewRequest(http.MethodPost, "/create-one-command", &body)
-	r.Header.Set("Content-Type", writer.FormDataContentType())
-	if err := r.ParseMultipartForm(1 << 20); err != nil {
+	req := httptest.NewRequest(http.MethodPost, "/api/create-one-command", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+	serveLocalTestRoute(s, rec, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("upload request = %d, want 422: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "media chưa được lưu") {
+		t.Fatalf("upload response omitted non-persistence notice: %s", rec.Body.String())
+	}
+	files, err := os.ReadDir(s.Studio.UploadDir())
+	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if r.MultipartForm != nil {
-			_ = r.MultipartForm.RemoveAll()
-		}
-	})
-	return r
+	if len(files) > 0 {
+		t.Errorf("quick create left unused upload files behind: %v", files)
+	}
+	if jobs := s.Studio.ListJobs(10); len(jobs) != 0 {
+		t.Errorf("unsupported quick create unexpectedly queued jobs: %+v", jobs)
+	}
 }
 
-func TestSaveOneCommandProductMediaRejectsTooManyFiles(t *testing.T) {
-	files := make([]oneCommandTestFile, 0, 9)
-	for i := 0; i < 9; i++ {
-		files = append(files, oneCommandTestFile{name: fmt.Sprintf("%d.jpg", i), content: "image"})
+func TestOneCommandRejectsLargeMultipart(t *testing.T) {
+	s := newViralServer(t)
+	large := strings.Repeat("x", oneCommandMaxRequestBytes+1)
+	req := httptest.NewRequest(http.MethodPost, "/api/create-one-command", strings.NewReader(large))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=not-a-real-form")
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+	serveLocalTestRoute(s, rec, req)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "Luồng nhanh chỉ nhận mô tả bằng chữ") {
+		t.Fatalf("oversize request = %d %s, want bounded 400 with text-only guidance", rec.Code, rec.Body.String())
 	}
-	r := oneCommandMultipartRequest(t, files)
-	if _, err := saveOneCommandProductMedia(r, t.TempDir()); err == nil || !strings.Contains(err.Error(), "tối đa 8") {
-		t.Fatalf("too many files error = %v, want max-count rejection", err)
+	entries, err := os.ReadDir(s.Studio.UploadDir())
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("oversize request left files behind: %v", entries)
 	}
 }

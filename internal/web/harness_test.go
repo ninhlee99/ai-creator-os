@@ -58,9 +58,9 @@ func TestHarnessPageWithHarness(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"Agent Harness",
-		"Cấp độ 3: Tự hành 100%",
+		"Cấp độ 3: Tự hành (chưa hỗ trợ)",
 		"Chạy chu kỳ OODA ngay",
-		"Kho Ký Ức Thực Chiến",
+		"Bài học do người vận hành lưu",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /harness thiếu nội dung %q", want)
@@ -120,11 +120,14 @@ func TestHarnessMemoryAdd(t *testing.T) {
 	s := newHarnessServer(t)
 
 	rec := postForm(t, s, "/harness/memory", url.Values{
-		"domain":  {"hook_performance"},
-		"channel": {"ai_tech_trends"},
-		"subject": {"3s Pattern Interrupt"},
-		"insight": {"Cắt khung hình bất ngờ kèm âm thanh sấm sét giúp tăng tỷ lệ xem tiếp thêm 42%"},
-		"score":   {"0.95"},
+		"domain":      {"hook_performance"},
+		"channel":     {"ai_tech_trends"},
+		"subject":     {"3s Pattern Interrupt"},
+		"insight":     {"Cắt khung hình bất ngờ để thử nghiệm tỷ lệ xem tiếp."},
+		"confidence":  {"0.5"},
+		"impact":      {"0.2"},
+		"sample_size": {"0"},
+		"source_ref":  {""},
 	})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("POST /harness/memory = %d, want 303", rec.Code)
@@ -231,4 +234,3 @@ func TestHarnessMemoryDelete(t *testing.T) {
 		}
 	}
 }
-

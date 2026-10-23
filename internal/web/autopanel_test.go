@@ -11,7 +11,7 @@ import (
 func TestAutoPanelToggle(t *testing.T) {
 	s := newTestServer(t)
 	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Video Viral Xu Hướng") {
+	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Radar video xu hướng") {
 		t.Fatal("Trang chủ thiếu bảng tự động hóa")
 	}
 	rec := postForm(t, s, "/automation/switch", url.Values{"key": {"viral.auto_produce_enabled"}, "on": {"0"}})

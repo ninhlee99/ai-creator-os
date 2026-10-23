@@ -162,9 +162,8 @@ func ordersPayload(pairs ...any) map[string]any {
 	return map[string]any{"orders": out}
 }
 
-// TestReconcileWritesRealMoney — payload giả lập ở biên client (test
-// double) → orders có dòng, commissions có dòng, Trang chủ đổi số; chạy
-// lại không ghi trùng.
+// TestReconcileWritesRealMoney — legacy ledger reconciliation remains
+// idempotent, but dashboard only reports current Accesstrade order-store data.
 func TestReconcileWritesRealMoney(t *testing.T) {
 	s := newTestServer(t)
 	s.CommissionSource = &fakeOrdersSource{data: ordersPayload(
@@ -185,13 +184,13 @@ func TestReconcileWritesRealMoney(t *testing.T) {
 		t.Errorf("TotalRevenue = %v, want 123456", rev)
 	}
 
-	// Dashboard money cards move from 0.
+	// Legacy ledger entries must not be shown as current Accesstrade revenue.
 	rec := get(t, s, "/")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "123.456 ₫") {
-		t.Error("dashboard does not show the reconciled 123.456 ₫")
+	if body := rec.Body.String(); !strings.Contains(body, "Chưa có dữ liệu đơn") || strings.Contains(body, "123.456 ₫") {
+		t.Error("dashboard treated legacy ledger commission as current Accesstrade order data")
 	}
 
 	// Idempotent: second run writes nothing twice.
