@@ -92,8 +92,9 @@ func captureMuseLogin(ctx context.Context, browser loginBrowserSession, target W
 
 		museLandingPage := cdpHasMuseLandingPage(port)
 
-		// Capture only after Muse app state and a first-party session cookie both confirm login.
-		if !isWaitingOTP && !isWaiting2FA && (isLoggedIn || hasHatchSessionCookie) && hasMuseSessionCookie && museLandingPage {
+		// Treat recognized first-party cookies as candidates; gateway validation
+		// below proves whether they authenticate, independent of Muse UI markers.
+		if !isWaitingOTP && !isWaiting2FA && hasMuseSessionCookie && museLandingPage {
 			if !accountCenterLookupAttempted {
 				accountCenterLookupAttempted = true
 				if updateStatus != nil {
