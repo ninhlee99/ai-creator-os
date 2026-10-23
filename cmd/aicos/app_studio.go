@@ -8,6 +8,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/engines"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
@@ -42,6 +43,33 @@ func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []stri
 		log.Printf("studio: could not recover interrupted publish legs: %v", err)
 	} else if n > 0 {
 		log.Printf("studio: %d interrupted publish leg(s) need platform review before retry", n)
+	}
+	if srv.Growth != nil {
+		items, err := srv.Growth.InterruptedEnqueueItems()
+		if err != nil {
+			log.Printf("growth: could not recover interrupted production claims: %v", err)
+		} else {
+			for _, item := range items {
+				jobID, found, err := st.GrowthStoryJob(item.AccountID, item.ID)
+				if err != nil {
+					log.Printf("growth: could not reconcile item %d: %v", item.ID, err)
+					continue
+				}
+				if found {
+					err = srv.Growth.SetItemProduction(item.ID, jobID,
+						growth.VariantTitle(item), growth.VariantCaption(item))
+				} else {
+					err = srv.Growth.SetItemStatus(item.ID, growth.ItemPlanned,
+						"Không tìm thấy Studio job đã tạo; Growth sẽ thử lại mục này.")
+				}
+				if err != nil {
+					log.Printf("growth: could not finish recovery for item %d: %v", item.ID, err)
+				}
+			}
+			if len(items) > 0 {
+				log.Printf("growth: reconciled %d interrupted production claim(s)", len(items))
+			}
+		}
 	}
 	log.Printf("studio: ready (mediagen=%s keys=%d)", mediaGen.Name(), mediaGen.KeyCount())
 	return st

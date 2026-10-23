@@ -32,6 +32,7 @@ const (
 const (
 	ItemPlanned        = "planned"
 	ItemProducing      = "producing"
+	ItemEnqueueing     = "enqueueing" // Studio job creation is in flight
 	ItemQC             = "qc"
 	ItemQueued         = "queued"
 	ItemProduced       = "produced"        // render finished, not (yet) published

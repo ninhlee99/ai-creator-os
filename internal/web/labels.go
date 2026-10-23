@@ -221,6 +221,7 @@ var statusLabels = map[string]string{
 	"winner":     "Format thắng",
 	"killed":     "Đã dừng format",
 	"producing":  "Đang sản xuất",
+	"enqueueing": "Đang xếp job",
 	"published":  "Đã đăng",
 	"dropped":    "Đã loại",
 	"active":     "Đang hiệu lực",
@@ -249,7 +250,7 @@ func statusClass(s string) string {
 	switch s {
 	case "live", "live_ready", "done", "started", "shelf", "scaled", "monetized", "winner", "published", "active":
 		return "ok"
-	case "running", "working", "producing", "publishing":
+	case "running", "working", "producing", "enqueueing", "publishing":
 		return "running"
 	case "queued", "pending":
 		return "queued"

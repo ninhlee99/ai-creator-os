@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -74,6 +75,29 @@ func (s *Studio) GetJob(id string) (Job, bool) {
 	err := s.db.QueryRow(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at FROM studio_jobs WHERE id=?`, id).
 		Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Log, &j.Output, &j.Caption, &j.Params, &j.CreatedAt, &j.FinishedAt)
 	return j, err == nil
+}
+
+// GrowthStoryJob finds a Story job created for a specific Growth plan item.
+func (s *Studio) GrowthStoryJob(accountID, itemID int64) (string, bool, error) {
+	rows, err := s.db.Query(`SELECT id, params FROM studio_jobs WHERE kind=? ORDER BY created_at DESC`, KindStory)
+	if err != nil {
+		return "", false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, raw string
+		if err := rows.Scan(&id, &raw); err != nil {
+			return "", false, err
+		}
+		var params StoryParams
+		if err := json.Unmarshal([]byte(raw), &params); err != nil {
+			continue
+		}
+		if params.AccountID == accountID && params.GrowthItemID == itemID {
+			return id, true, nil
+		}
+	}
+	return "", false, rows.Err()
 }
 
 // ListJobs returns jobs newest first.

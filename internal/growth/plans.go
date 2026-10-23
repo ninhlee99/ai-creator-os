@@ -157,6 +157,25 @@ func (s *Store) PlannedItemsDue(accountID int64, today string, limit int) ([]Pla
 	return out, rows.Err()
 }
 
+// InterruptedEnqueueItems returns item claims left in flight by a restart.
+func (s *Store) InterruptedEnqueueItems() ([]PlanItem, error) {
+	rows, err := s.db.Query(
+		`SELECT ` + planItemCols + ` FROM content_plan_items WHERE status = 'enqueueing' ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PlanItem
+	for rows.Next() {
+		it, err := scanPlanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
 // ItemsByStatus returns the account's items in any of the given statuses,
 // across all plans (production history included), newest activity last.
 func (s *Store) ItemsByStatus(accountID int64, statuses []string, limit int) ([]PlanItem, error) {
@@ -229,16 +248,30 @@ func (s *Store) SetItemDedup(id int64, topic, conceptText, conceptHash string) e
 func (s *Store) SetItemProduction(id int64, jobID, pubTitle, pubCaption string) error {
 	_, err := s.db.Exec(
 		`UPDATE content_plan_items SET status = 'producing', studio_job_id = ?,
-		   pub_title = ?, pub_caption = ? WHERE id = ?`,
+		   pub_title = ?, pub_caption = ?, pub_note = '' WHERE id = ?`,
 		jobID, pubTitle, pubCaption, id)
 	return err
+}
+
+// ClaimItemForProduction atomically reserves one planned item for job creation.
+func (s *Store) ClaimItemForProduction(id int64) (bool, error) {
+	res, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'enqueueing', pub_note = ?
+		 WHERE id = ? AND status = 'planned'`,
+		"Đang xếp job Studio.", id)
+	if err != nil {
+		return false, err
+	}
+	changed, err := res.RowsAffected()
+	return changed == 1, err
 }
 
 // NoteItemFailure records a failed enqueue attempt (item stays planned and
 // will be retried next tick). Returns the new attempt count.
 func (s *Store) NoteItemFailure(id int64, note string) (int, error) {
 	if _, err := s.db.Exec(
-		`UPDATE content_plan_items SET attempts = attempts + 1, pub_note = ? WHERE id = ?`,
+		`UPDATE content_plan_items SET status = CASE WHEN status = 'enqueueing' THEN 'planned' ELSE status END,
+		   attempts = attempts + 1, pub_note = ? WHERE id = ?`,
 		note, id); err != nil {
 		return 0, err
 	}

@@ -13,6 +13,7 @@ type StoryParams struct {
 	MusicOn         bool   `json:"music_on"`                   // lồng nhạc nền
 	MusicPath       string `json:"music_path"`                 // file nhạc local ("" = không nhạc)
 	AccountID       int64  `json:"account_id,omitempty"`
+	GrowthItemID    int64  `json:"growth_item_id,omitempty"`
 	// Voice: giọng đọc ("default", "male", "female"...). Đợt AC: user chọn ở
 	// form tạo truyện thay vì hardcode.
 	Voice string `json:"voice,omitempty"`

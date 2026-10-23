@@ -78,6 +78,7 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 		MusicOn:   mp != "",
 		MusicPath: mp,
 		AccountID: a.ID,
+		GrowthItemID: req.Item.ID,
 	})
 	if err != nil {
 		return "", fmt.Errorf("tạo job kể chuyện lỗi: %w", err)

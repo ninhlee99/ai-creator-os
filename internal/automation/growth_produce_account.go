@@ -63,6 +63,14 @@ func (s *Service) produceAccount(ctx context.Context, a *network.Account) []stri
 			notes = append(notes, a.Username+": chưa sản xuất được \""+it.Topic+"\" — backend sản xuất chưa được nối")
 			continue
 		}
+		claimed, err := s.Growth.ClaimItemForProduction(it.ID)
+		if err != nil {
+			notes = append(notes, a.Username+": lỗi khóa mục sản xuất \""+it.Topic+"\" — "+err.Error())
+			continue
+		}
+		if !claimed {
+			continue // another tick already owns or advanced this plan item
+		}
 		jobID, err := p.Enqueue(ctx, ProduceRequest{Account: a, Item: it})
 		if err != nil {
 			if errors.Is(err, studio.ErrStoryImageReferencesUnavailable) {
