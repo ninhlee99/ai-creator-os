@@ -8,6 +8,8 @@ type StoryParams struct {
 	CustomText      string `json:"custom_text,omitempty"`
 	Genre           string `json:"genre"`
 	DurationMinutes int    `json:"duration_minutes,omitempty"` // 30, 45, 60 phút
+	TargetSeconds   int    `json:"target_seconds,omitempty"`   // Single-pass target for short-form jobs
+	AspectRatio     string `json:"aspect_ratio,omitempty"`     // "9:16" or "16:9"
 	Words           int    `json:"words"`                      // độ dài truyện mục tiêu (từ)
 	Scenes          int    `json:"scenes"`                     // số cảnh mục tiêu (3–24)
 	MusicOn         bool   `json:"music_on"`                   // lồng nhạc nền

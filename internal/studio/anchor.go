@@ -170,6 +170,16 @@ func (a *VisualAnchor) MasterPortraitPrompt(aspectRatio string) string {
 
 // EnrichScenePrompt injects the complete physical continuity identity into any scene prompt.
 func (a *VisualAnchor) EnrichScenePrompt(actionDescription, cameraMotion string, sceneIndex, totalScenes int) string {
+	return a.EnrichScenePromptForAspect(actionDescription, cameraMotion, sceneIndex, totalScenes, "9:16")
+}
+
+// EnrichScenePromptForAspect injects identity and delivery framing into a scene prompt.
+func (a *VisualAnchor) EnrichScenePromptForAspect(actionDescription, cameraMotion string, sceneIndex, totalScenes int, aspect string) string {
+	actionDescription = storyPromptForAspect(actionDescription, aspect)
+	frameDescription := "vertical"
+	if aspect == "16:9" {
+		frameDescription = "horizontal 16:9 widescreen"
+	}
 	if a == nil {
 		return actionDescription + ", cinematic photorealistic 8k, no text, no watermark"
 	}
@@ -184,12 +194,12 @@ func (a *VisualAnchor) EnrichScenePrompt(actionDescription, cameraMotion string,
 	}
 
 	if a.Ethnicity == "Anime" {
-		return fmt.Sprintf("Single vertical full-frame composition (scene %d of %d), breathtaking romantic anime illustration: %s. %s with %s, wearing %s. Setting: %s. Atmosphere: %s. Art style: %s, 8k resolution, Makoto Shinkai anime aesthetic, vibrant vivid colors, clean single shot, no split screen, no collage, no panels, strictly no text, no subtitles, no watermark.",
-			sceneIndex, totalScenes, actionDescription, a.FaceTraits, a.Hairstyle, a.Wardrobe, a.Environment, a.Lighting, a.FilmStock)
+		return fmt.Sprintf("Single %s full-frame composition (scene %d of %d), breathtaking romantic anime illustration: %s. %s with %s, wearing %s. Setting: %s. Atmosphere: %s. Art style: %s, 8k resolution, Makoto Shinkai anime aesthetic, vibrant vivid colors, clean single shot, no split screen, no collage, no panels, strictly no text, no subtitles, no watermark.",
+			frameDescription, sceneIndex, totalScenes, actionDescription, a.FaceTraits, a.Hairstyle, a.Wardrobe, a.Environment, a.Lighting, a.FilmStock)
 	}
 
-	return fmt.Sprintf("Single vertical full-frame cinematic shot (scene %d of %d) featuring %s, the exact same %d-year-old %s %s with identical facial features (%s), same %s, and wearing the same %s.%s Action: %s. Setting: %s. Lighting: consistent %s. Camera movement: %s. Captured on %s, f/1.8 lens, perfect character and environmental continuity, no visual drift, photorealistic, 8k resolution, authentic skin texture, strictly clean single frame, no split screen, no collage, no text, no subtitles, no watermark.",
-		sceneIndex, totalScenes, a.ActorName, a.Age, a.Ethnicity, a.Gender,
+	return fmt.Sprintf("Single %s full-frame cinematic shot (scene %d of %d) featuring %s, the exact same %d-year-old %s %s with identical facial features (%s), same %s, and wearing the same %s.%s Action: %s. Setting: %s. Lighting: consistent %s. Camera movement: %s. Captured on %s, f/1.8 lens, perfect character and environmental continuity, no visual drift, photorealistic, 8k resolution, authentic skin texture, strictly clean single frame, no split screen, no collage, no text, no subtitles, no watermark.",
+		frameDescription, sceneIndex, totalScenes, a.ActorName, a.Age, a.Ethnicity, a.Gender,
 		a.FaceTraits, a.Hairstyle, a.Wardrobe, refLock,
 		actionDescription, a.Environment, a.Lighting, cameraMotion, a.FilmStock)
 }

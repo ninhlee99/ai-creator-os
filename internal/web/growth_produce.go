@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -64,6 +65,11 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 	if topic == "" {
 		return "", fmt.Errorf("plan item thiếu chủ đề — không tạo được truyện")
 	}
+	switch req.Item.Variant {
+	case growth.VariantTikTok, growth.VariantShorts, growth.VariantYouTube:
+	default:
+		return "", fmt.Errorf("Growth variant không hỗ trợ: %q", req.Item.Variant)
+	}
 	mp := ""
 	if p.s.Cfg != nil {
 		if m := filepath.Join(filepath.Dir(p.s.Cfg.DatabasePath), "autopilot-music.m4a"); fileExists(m) {
@@ -71,14 +77,14 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 		}
 	}
 	id, err := p.s.Studio.CreateStoryJob(studio.StoryParams{
-		Topic:     topic,
-		Genre:     "tâm lý",
-		Words:     600,
-		Scenes:    6,
-		MusicOn:   mp != "",
-		MusicPath: mp,
-		AccountID: a.ID,
-		GrowthItemID: req.Item.ID,
+		Topic:         topic,
+		Genre:         "tâm lý",
+		TargetSeconds: growth.VariantSeconds(req.Item.Variant),
+		AspectRatio:   growth.VariantAspect(req.Item.Variant),
+		MusicOn:       mp != "",
+		MusicPath:     mp,
+		AccountID:     a.ID,
+		GrowthItemID:  req.Item.ID,
 	})
 	if err != nil {
 		return "", fmt.Errorf("tạo job kể chuyện lỗi: %w", err)
@@ -273,9 +279,9 @@ func (s *Server) handleGrowthProductionToggle(w http.ResponseWriter, r *http.Req
 		return
 	}
 	on := r.FormValue("enabled") == "1"
-	msg := "Đã tắt sản xuất & đăng tự động theo kế hoạch."
+	msg := "Đã tắt lịch Growth; thao tác chạy một vòng thủ công vẫn có thể xử lý plan đến hạn."
 	if on {
-		msg = "Đã bật sản xuất & đăng tự động: hệ thống tự sản xuất theo plan, tự đăng YouTube trong quota (TikTok vẫn nháp trước audit). DRY-RUN/kill switch vẫn chặn như thường."
+		msg = "Đã bật lịch Growth. Tick có thể tạo Studio job và upload YouTube theo privacy setting khi item đến hạn và các gate, credential, quota đều qua. Trạng thái lưu không xác nhận worker đang chạy."
 	}
 	if err := s.automation().SetProductionEnabled(on); err != nil {
 		s.renderGrowth(w, []string{"Không lưu được cài đặt: " + err.Error()})

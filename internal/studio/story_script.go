@@ -70,7 +70,7 @@ Khoảnh khắc kẻ thù năm xưa tìm đến đe dọa mạng sống của t�
 	}
 }
 
-// defaultDramaticScenes tạo danh sách cảnh điện ảnh kịch tính chuẩn 9:16 vertical theo thể loại.
+// defaultDramaticScenes tạo storyboard dự phòng; caller chỉnh prompt theo aspect job.
 func defaultDramaticScenes(doc *storyDoc) []storyScene {
 	titleLower := strings.ToLower(doc.Title)
 	if strings.Contains(titleLower, "tình yêu") || strings.Contains(titleLower, "hẹn ước") || strings.Contains(titleLower, "thanh xuân") || strings.Contains(titleLower, "ngôn tình") || strings.Contains(titleLower, "học đường") {
@@ -121,6 +121,24 @@ func defaultDramaticScenes(doc *storyDoc) []storyScene {
 	}
 }
 
+func storyPromptForAspect(prompt, aspect string) string {
+	if aspect != "16:9" {
+		return prompt
+	}
+	return strings.NewReplacer(
+		"vertical portrait", "horizontal landscape",
+		"Vertical portrait", "Horizontal landscape",
+		"VERTICAL PORTRAIT", "HORIZONTAL LANDSCAPE",
+		"vertical", "horizontal",
+		"Vertical", "Horizontal",
+		"VERTICAL", "HORIZONTAL",
+		"portrait", "landscape",
+		"Portrait", "Landscape",
+		"PORTRAIT", "LANDSCAPE",
+		"9:16", "16:9",
+	).Replace(prompt)
+}
+
 // writeStory dùng LLM viết truyện ngôi thứ nhất (tái dùng story.txt), có cơ chế phục hồi tự động.
 func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, error) {
 	custom := strings.TrimSpace(p.CustomText)
@@ -141,11 +159,15 @@ func (s *Studio) writeStory(ctx context.Context, p StoryParams) (*storyDoc, erro
 	if storyWords > 1800 {
 		storyWords = 1800
 	}
+	storySeconds := storyWords / 3
+	if p.TargetSeconds > 0 {
+		storySeconds = p.TargetSeconds
+	}
 	if s.llm != nil {
 		prompt, err := directorPrompt("story.txt", promptData{
 			Topic: p.Topic, Genre: p.Genre, StoryWords: storyWords,
 			Orient:  "Viết ở NGÔI THỨ NHẤT (xưng \"tôi\") từ đầu đến cuối, tình tiết lôi cuốn, cao trào cảm xúc",
-			Seconds: storyWords / 3,
+			Seconds: storySeconds,
 		})
 		if err == nil {
 			cctx, ccancel := context.WithTimeout(ctx, 90*time.Second)
@@ -173,18 +195,39 @@ func (s *Studio) splitScenes(ctx context.Context, p StoryParams, doc *storyDoc) 
 		return splitCustomStoryScenes(doc.Text, p.Scenes), nil
 	}
 	if s.llm != nil {
+		aspect := p.AspectRatio
+		if aspect == "" {
+			aspect = "9:16"
+		}
+		frameDescription := "9:16 vertical portrait composition"
+		if aspect == "16:9" {
+			frameDescription = "16:9 horizontal landscape composition"
+		}
 		visualStyle := "Masterclass cinematic digital painting, highly detailed 8k, photorealistic, Vietnamese context if applicable, no text, no watermark."
 		if strings.Contains(strings.ToLower(p.Genre), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "ngôn tình") || strings.Contains(strings.ToLower(p.Topic), "tình yêu") || strings.Contains(strings.ToLower(p.Genre), "anime") {
 			visualStyle = "Makoto Shinkai & CoMix Wave anime aesthetic, stunning detailed romantic anime art, beautiful anime couple with consistent appearance, emotional cinematic lighting, vibrant atmospheric depth, 8k resolution, no text, no watermark."
 		}
+		sceneWordRange := "40–120"
+		if p.TargetSeconds > 0 && p.Scenes > 0 {
+			wordsPerScene := (p.Words + p.Scenes - 1) / p.Scenes
+			minWords := wordsPerScene * 8 / 10
+			maxWords := (wordsPerScene*12 + 9) / 10
+			if minWords < 1 {
+				minWords = 1
+			}
+			if maxWords < minWords {
+				maxWords = minWords
+			}
+			sceneWordRange = fmt.Sprintf("%d–%d", minWords, maxWords)
+		}
 
 		sys := "Bạn là biên tập storyboard kiêm đạo diễn hình ảnh điện ảnh Việt Nam. Chỉ trả lời JSON thuần, không giải thích."
-		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video kể chuyện 9:16 chuẩn 5 sao.
+		prompt := fmt.Sprintf(`Chia truyện sau thành đúng %d cảnh theo trình tự thời gian cho video kể chuyện %s chuẩn 5 sao.
 Mỗi cảnh gồm:
-1. text: 1 đoạn văn kể ở ngôi thứ nhất giàu cảm xúc, ngắt nhịp tự nhiên theo hơi thở (40–120 từ).
+1. text: 1 đoạn văn kể ở ngôi thứ nhất giàu cảm xúc, ngắt nhịp tự nhiên theo hơi thở (khoảng %s từ).
    - Hãy chèn các thẻ cảm xúc dẫn xuất ở đầu câu thoại phù hợp: [trầm lặng], [cao trào], [sôi nổi], [buồn bã], [tức giận], [vui vẻ], [thì thầm] để giọng đọc AI biến chuyển cảm xúc chân thật.
-2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh 9:16 tuyệt đẹp:
-   - Tỷ lệ khung hình: 9:16 vertical portrait composition, framed vertically.
+2. image_prompt: 1 prompt tiếng Anh chi tiết cho AI vẽ ảnh minh họa điện ảnh %s tuyệt đẹp:
+   - Tỷ lệ khung hình: %s, framed for this delivery ratio.
    - Tính nhất quán nhân vật (Character Consistency): Thống nhất ngoại hình nhân vật chính xuyên suốt các cảnh (tuổi, trang phục, gương mặt, màu tóc).
    - Cỡ cảnh & góc máy: Đa dạng giữa Wide shot (bối cảnh bao la), Medium shot (tương tác), Close-up (chi tiết biểu cảm nhân vật).
    - Ánh sáng & không khí: Cinematic lighting, volumetric light, moody chiaroscuro hoặc warm ambient, atmospheric depth.
@@ -193,7 +236,7 @@ Mỗi cảnh gồm:
 Truyện: %s
 
 Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
-			p.Scenes, visualStyle, doc.Text)
+			p.Scenes, frameDescription, sceneWordRange, frameDescription, frameDescription, visualStyle, doc.Text)
 		cctx, ccancel := context.WithTimeout(ctx, 60*time.Second)
 		text, err := s.llm.Complete(cctx, sys, prompt)
 		ccancel()
@@ -220,7 +263,11 @@ Chỉ trả JSON: {"scenes": [{"text": "...", "image_prompt": "..."}, ...]}`,
 			}
 		}
 	}
-	return defaultDramaticScenes(doc), nil
+	scenes := defaultDramaticScenes(doc)
+	for i := range scenes {
+		scenes[i].ImagePrompt = storyPromptForAspect(scenes[i].ImagePrompt, p.AspectRatio)
+	}
+	return scenes, nil
 }
 
 func splitCustomStoryScenes(text string, requested int) []storyScene {

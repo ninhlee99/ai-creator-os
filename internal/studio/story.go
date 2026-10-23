@@ -54,30 +54,59 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 		return "", ErrStoryImageReferencesUnavailable
 	}
 
-	if p.DurationMinutes <= 0 {
-		p.DurationMinutes = 30 // Mặc định 30 phút
+	if p.AspectRatio == "" {
+		p.AspectRatio = "9:16"
 	}
-	if p.DurationMinutes < 30 {
-		p.DurationMinutes = 30 // Thời lượng tối thiểu từ 30 phút đến 60 phút
+	if p.AspectRatio != "9:16" && p.AspectRatio != "16:9" {
+		return "", fmt.Errorf("khổ video kể chuyện không hỗ trợ: %q", p.AspectRatio)
 	}
-	if p.DurationMinutes > 60 {
-		p.DurationMinutes = 60 // Tối đa 60 phút
+	if p.TargetSeconds < 0 {
+		return "", fmt.Errorf("thời lượng mục tiêu không hợp lệ: %d giây", p.TargetSeconds)
 	}
-
-	// Tốc độ audio YouTube chuẩn: ~150 từ/phút
-	calcWords := p.DurationMinutes * 150
-	if p.Words < 200 || p.Words < calcWords {
+	var calcWords int
+	if p.TargetSeconds > 0 {
+		if p.TargetSeconds < 30 || p.TargetSeconds > 360 {
+			return "", fmt.Errorf("thời lượng mục tiêu phải từ 30 đến 360 giây")
+		}
+		// Explicit seconds take precedence over the legacy long-form duration.
+		p.DurationMinutes = 0
+		calcWords = (p.TargetSeconds*150 + 59) / 60
+	} else {
+		if p.DurationMinutes <= 0 {
+			p.DurationMinutes = 30 // Mặc định 30 phút
+		}
+		if p.DurationMinutes < 30 {
+			p.DurationMinutes = 30 // Thời lượng tối thiểu từ 30 phút đến 60 phút
+		}
+		if p.DurationMinutes > 60 {
+			p.DurationMinutes = 60 // Tối đa 60 phút
+		}
+		// Tốc độ audio YouTube chuẩn: ~150 từ/phút
+		calcWords = p.DurationMinutes * 150
+	}
+	if p.TargetSeconds > 0 {
+		if p.Words < calcWords {
+			p.Words = calcWords
+		}
+	} else if p.Words < 200 || p.Words < calcWords {
 		p.Words = calcWords
 	}
 	if p.Words > 15000 {
 		p.Words = 15000
 	}
 
-	// Số cảnh minh họa 16:9 với chuyển cảnh Ken Burns
+	// Số cảnh minh họa có chuyển cảnh Ken Burns.
 	if p.Scenes < 3 {
-		p.Scenes = p.DurationMinutes / 3
-		if p.Scenes < 6 {
-			p.Scenes = 6
+		if p.TargetSeconds > 0 {
+			p.Scenes = (p.TargetSeconds + 29) / 30
+			if p.Scenes < 3 {
+				p.Scenes = 3
+			}
+		} else {
+			p.Scenes = p.DurationMinutes / 3
+			if p.Scenes < 6 {
+				p.Scenes = 6
+			}
 		}
 	}
 	if p.Scenes > 24 {
@@ -85,7 +114,9 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 	}
 
 	title := "Kể chuyện: " + strings.TrimSpace(p.Topic)
-	if p.DurationMinutes > 0 {
+	if p.TargetSeconds > 0 {
+		title = fmt.Sprintf("Kể chuyện [%ds]: %s", p.TargetSeconds, strings.TrimSpace(p.Topic))
+	} else if p.DurationMinutes > 0 {
 		title = fmt.Sprintf("Kể chuyện [%dp]: %s", p.DurationMinutes, strings.TrimSpace(p.Topic))
 	}
 	if r := []rune(title); len(r) > 85 {

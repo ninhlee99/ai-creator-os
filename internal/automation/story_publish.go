@@ -93,6 +93,9 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if staleTitle != "" {
 		vmeta.Title = staleTitle
 	}
+	// Story's operator-facing contract is private-first even when the global
+	// YouTube default is public for another pipeline.
+	vmeta.Privacy = "private"
 	if s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishingPrefix+jobID,
 			vmeta.Title+"|"+time.Now().Format(time.RFC3339))
@@ -117,6 +120,10 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		// Đợt V: token chết (invalid_grant) thì retry vô ích — alert critical
 		// "cần nối lại YouTube" ngay thay vì đốt 3 lần retry cách nhau 6h.
 		if strings.Contains(res.Error, "cần nối lại YouTube") {
+			_ = s.decide("story_publisher", "publish_youtube_failed", &username,
+				"YouTube cần nối lại trước khi đăng truyện.", map[string]any{
+					"job_id": jobID, "title": vmeta.Title, "error": res.Error,
+				})
 			s.alert("youtube_oauth_revoked", "critical",
 				"YouTube: refresh token hết hạn hoặc bị thu hồi — video không đăng được.",
 				"Nối lại YouTube ở trang Đa nền tảng rồi chạy lại job.")
@@ -180,7 +187,16 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		// Đợt N: hẹn giờ chuyển public (nếu bật). Không có videoID thì bỏ qua.
 		s.enqueuePublic(jobID, res.RemoteID)
 	}
-	note := fmt.Sprintf("story %q: đã đăng YouTube (private)", j.Title)
+	reason := "đã đăng truyện lên YouTube theo cấu hình công khai."
+	if res.Draft {
+		reason = "đã đăng truyện lên YouTube ở chế độ riêng tư."
+	}
+	_ = s.decide("story_publisher", "publish_youtube", &username,
+		reason, map[string]any{
+			"job_id": jobID, "title": vmeta.Title, "video": res.RemoteID,
+			"draft": res.Draft, "privacy": vmeta.Privacy, "url": res.URL,
+		})
+	note := fmt.Sprintf("story %q: đã đăng YouTube (%s)", j.Title, privacyLabel)
 	if res.URL != "" {
 		note += " (" + res.URL + ")"
 	}

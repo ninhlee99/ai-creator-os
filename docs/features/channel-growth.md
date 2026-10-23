@@ -2,16 +2,18 @@
 
 ## 1. Mục đích
 Máy tăng trưởng kênh: sinh kế hoạch nội dung 30 ngày, đánh giá số liệu theo
-ngưỡng, và tự tạm dừng tài khoản khi chạm luật kill. Tự sản xuất affiliate
-đang chờ clip chuyển động do người vận hành cung cấp theo chính sách free-only.
+ngưỡng, và tự tạm dừng tài khoản khi chạm luật kill. Growth production áp dụng
+variant thời lượng/khổ cho Story job của kênh persona và QC đầu ra. Affiliate
+Autopilot vẫn dừng trước discovery vì chưa có xác nhận Flow credits tự động.
 
 ## 2. Kích hoạt
 - `GET /growth` → `handleGrowth` (`internal/web/growth.go:238`): tổng quan
   (profile, plan items, alerts, thresholds hiện tại).
 - Nguồn số liệu (`SyncOneAccount`): `youtube_api` (Data API — lifetime totals)
-  + `youtube_analytics` (Đợt H3 — views/watch hours/subs 30 ngày, cần token
-  OAuth scope `yt-analytics.readonly`, badge trạng thái ở trang Kênh) +
-  `tiktok_api`. Thiếu kết nối → fail-closed, báo rõ trong notes.
+  + `youtube_analytics` (views/watch hours/subs 30 ngày, cần token OAuth scope
+  `yt-analytics.readonly`) + `tiktok_api` stub. Thiếu kết nối → fail-closed,
+  báo rõ trong notes. Growth page phân biệt API key + Channel ID đã lưu với
+  API đã được kiểm tra.
 - `POST /growth/sync` → `handleGrowthSync`: đồng bộ số liệu + vòng quyết định ngay
   cho mọi tài khoản (gọi `syncOneAccount` — xem `autonomous-daemon.md`).
 - `Harness.RunCycle` đọc latest per-video view readings vừa đồng bộ trong 7 ngày từ
@@ -19,11 +21,12 @@ ngưỡng, và tự tạm dừng tài khoản khi chạm luật kill. Tự sản
   Đây là số video có metrics mới, không phải số video đăng. Không có data/error
   được ghi trạng thái riêng; OODA không suy luận views khi thiếu reading.
 - `POST /growth/accounts/{id}/plan` → `handleGrowthPlan`: sinh lại kế hoạch 30 ngày.
-- `POST /growth/production` → `handleGrowthProductionToggle`: bật/tắt sản xuất tự động
-  (key `growth.production_enabled`; unset = ON, `"0"` = tắt). Bật công tắc không
-  bỏ qua yêu cầu clip chuyển động của Studio.
+- `POST /growth/production` → `handleGrowthProductionToggle`: lưu trạng thái lịch
+  (key `growth.production_enabled`; unset = ON, `"0"` = tắt). Bật lịch không
+  chứng minh daemon đang chạy hoặc producer có thể tạo job.
 - `POST /growth/production/run` → `handleGrowthProductionRun`: chạy ngay
-  `GrowthTick(ctx, force=true)` (vẫn bị kill switch + dry-run chặn).
+  `GrowthTick(ctx, force=true)`; có thể tạo job/upload nếu item đến hạn và mọi
+  credential, quota, provider, kill switch, dry-run gate đều qua.
 - `POST /growth/thresholds` → `handleGrowthThresholds` (`growth_produce.go:217`):
   lưu 7 ngưỡng + nút reset về mặc định.
 - Tự động: daemon tick **5 phút** gọi `GrowthTick(ctx, false)` (xem `autonomous-daemon.md`).
@@ -40,18 +43,23 @@ ngưỡng, và tự tạm dừng tài khoản khi chạm luật kill. Tự sản
    Pillars lấy từ persona (`network.PERSONAS`) hoặc niche.
 3. `s.Growth.InsertPlan(accountID, "d30", rationale, drafts)` → bảng `plan_items`
    (status `planned`). Ghi decision `growth_director/generate_plan`.
-4. Tự sinh khi tạo tài khoản / đổi theme: `autoGeneratePlan` (best-effort, lỗi chỉ log).
+4. `autoGeneratePlan` tạo plan best-effort khi tạo account hoặc thêm social channel mới. Đổi affiliate theme chỉ đổi bộ lọc sản phẩm; không thay Growth plan. Plan generation failure chỉ được ghi log ở các luồng tự sinh.
 
 ### Biến thể đa nền tảng (một ý tưởng → 3 bản)
 `internal/growth/production.go`:
-| Variant | Thời lượng | Khổ | Độ trễ lịch |
+| Variant (persona Story target) | Thời lượng mục tiêu | Khổ mục tiêu | Độ trễ lịch |
 |---|---|---|---|
 | `tiktok` | 60s | 9:16 | +0 ngày |
 | `youtube_shorts` | 45s | 9:16 | +1 ngày (`VariantLagDays`) |
 | `youtube_long` | 150s | **16:9** (`VariantAspect`) | +3 ngày |
 
-Mỗi variant là một Studio job + file riêng. `ConceptHash` (sha256, gấp dấu tiếng Việt)
-+ Jaccard ≥ 0.8 → ép đổi góc kể (`dedupCheck` trong tick) để không trùng nội dung
+`studioGrowthProducer.Enqueue` truyền `VariantSeconds` và `VariantAspect` vào
+Story job. Renderer dựng ảnh/cảnh theo khổ đó, rồi QC kích thước và yêu cầu thời
+lượng trong khoảng 80–125% mục tiêu; sai khổ hoặc lệch thời lượng thì job fail,
+không được coi là output đạt. Các ngưỡng là kiểm tra render, không phải bảo đảm
+đúng thời lượng tuyệt đối. Tài khoản có theme vẫn đi qua Affiliate Autopilot,
+định dạng mục tiêu 30s 9:16 khi luồng đó hoạt động. `ConceptHash` (sha256, gấp dấu tiếng Việt)
+Jaccard ≥ 0.8 → ép đổi góc kể (`dedupCheck` trong tick) để không trùng nội dung
 giữa các tài khoản trong 45 ngày (`DedupWindowDays`).
 
 ### Ngưỡng governance (UI chỉnh được)
@@ -62,31 +70,40 @@ double-down khi gấp 5× median; breakout khi 10×; penalty khi views rơi >70%
 stalled khi 14 ngày tăng trưởng <2%. Vượt luật → `Evaluate` đề xuất hành động;
 `SyncOneAccount` tự `Transition(id, "paused")` khi chạm kill.
 
-> **Chiến lược Zero-Reup**: Toàn bộ video sản xuất tuân thủ nguyên tắc 100% tài sản gốc, tránh thuật toán phạt 0-view shadowban.
+> Mục tiêu Zero-Reup là tạo nội dung từ nguồn ảnh/video do người dùng hoặc app
+> cung cấp. Code không chứng minh quyền sở hữu mọi asset, cũng không bảo đảm
+> tránh giảm phân phối hay “0-view shadowban”.
 
 ### Sản xuất & đăng (trong tick)
-Video affiliate tự động hiện fail-closed đến khi có luồng cung cấp clip cho tick;
-không tạo job, không đăng và không đánh dấu mục đã sản xuất. Phần governance và
-đồng bộ số liệu vẫn chạy. Xem `autonomous-daemon.md` — item quá hạn 14 ngày → `dropped`; tối đa
-**3 job/tài khoản/tick**; TikTok chỉ tới `produced` (draft-only trước audit Direct Post);
-YouTube đăng khi đủ OAuth + qua quota guard trong code (`1` unit/lượt, mặc
+Trong `produceAccount`, tài khoản có theme gọi `Autopilot.Run`, hiện dừng với
+credit gate trước discovery/job creation. Kênh persona tạo Story job với thời
+lượng và khổ từ `PlanItem.Variant`; số từ ước tính theo 150 từ/phút, số cảnh
+được suy ra từ thời lượng. Story renderer hiện vẫn cần LLM, image-gen và TTS.
+Phần governance và đồng bộ số liệu vẫn chạy. Xem `autonomous-daemon.md` — item
+quá hạn 14 ngày → `dropped`; tối đa
+**3 job/tài khoản/tick**; TikTok Growth item chỉ tới `produced` (chưa tự tải lên
+draft; trang Growth cho tải MP4 để đăng thủ công);
+YouTube thử đăng khi OAuth app + token cục bộ có mặt và qua quota guard trong code (`1` unit/lượt, mặc
 định `100` lượt/ngày — `internal/growth/quota.go`), dùng reservation nguyên tử
 và ngày reset Pacific. Google Cloud Console vẫn là nguồn chính xác cho giới
 hạn project đã cấp. Thiếu gì thì item ở `waiting_connect`/`waiting_quota`
 với ghi chú tiếng Việt trung thực. Mọi lượt đăng gắn cờ AI-generated
 (`containsSyntheticMedia`, `Synthetic=true` — bắt buộc).
 
-> Sản xuất affiliate tự động hiện dừng fail-closed vì Growth chưa nhận clip
-> chuyển động do người vận hành tải lên. Mục kế hoạch không được đánh dấu
-> hoàn thành hoặc đăng khi thiếu video/QC.
+> `YTState.Ready()` chỉ kiểm tra OAuth app và token file cục bộ; không ping
+> YouTube trước khi upload. TikTok Growth item hiện chỉ được đánh dấu render xong;
+> Growth chưa tự tải lên draft. Trang Growth có link tải MP4 để operator đăng
+> thủ công trong app TikTok.
 >
-> Tài khoản **persona** (không có theme): pipeline phim đã park nên
-> `studioGrowthProducer.Enqueue` hiện **fail-closed** với lỗi trung thực
-> "tài khoản persona: pipeline kể chuyện YouTube chưa có (đang phát triển ở
-> đợt F) — item được bỏ qua" (`internal/web/growth_produce.go:55`).
+> Tài khoản **persona** áp dụng variant vào Story job; output chỉ được đánh dấu
+> đạt khi QC khổ và khoảng thời lượng qua. TikTok Growth item chưa tự tải lên
+> nháp, nhưng trang Growth có link tải MP4 để operator đăng thủ công trong app.
+> Kể chuyện dài 30–60 phút cũng chưa đạt; xem
+> [storytelling.md](storytelling.md).
 
 ## 4. Fail-closed & an toàn
-- Không backend sản xuất → item giữ `planned` + alert "backend chưa được nối", tick sau thử lại.
+- Job fail/gate fail → item giữ lý do hoặc lỗi thật; Affiliate Autopilot gate trước
+  khi claim sản phẩm, persona có thể tạo Story job qua pipeline hiện tại.
 - Không OAuth/quota → `waiting_connect`/`waiting_quota`, không giả đăng.
 - Nút "chạy ngay" (`force=true`) vẫn bị kill switch + dry-run chặn.
 - Số liệu nguồn lỗi → giữ snapshot cũ, decision ghi lý do, không bịa số.

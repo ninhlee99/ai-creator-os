@@ -11,9 +11,10 @@ package studio
 //     fail before rendering when no free reference-capable provider is available.
 //   - Giọng đọc: Narrator (chuỗi TTS Gemini→Edge) — 1 wav / cảnh.
 //   - Dựng: tái dùng AssemblePhotoList (Ken Burns) từng cảnh → ConcatClips →
-//     mux audio TTS → MixMusicBed (tùy chọn) → 16:9 MP4. KHÔNG chèn
+//     mux audio TTS → MixMusicBed (tùy chọn) → MP4 theo aspect job. KHÔNG chèn
 //     chữ/phụ đề vào video (Ninh chốt 2026-10-12).
-//   - QC: 1920x1080 + có audio + dài > 30s. Rớt → failed + lý do tiếng Việt.
+//   - QC: đúng aspect job + có audio + dài > 30s; target seconds thêm biên
+//     80–125%. Rớt → failed + lý do tiếng Việt.
 //
 // Fail-closed: thiếu LLM / thiếu ảnh / thiếu giọng đọc → không dựng video
 // câm hoặc video thiếu cảnh. Không đụng code cinematic/Veo (đã parked).
@@ -30,6 +31,9 @@ import (
 
 // runStory chạy pipeline kể chuyện trong goroutine nền.
 func (s *Studio) runStory(id string, p StoryParams) {
+	if p.AspectRatio == "" {
+		p.AspectRatio = "9:16"
+	}
 	// Đợt AI 24/7: recover panic — một panic không được giết cả app
 	// (pipeline chạy hàng chục phút, chạm nhiều dữ liệu ngoài).
 	defer func() {
@@ -116,6 +120,16 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		fail(err)
 		return
 	}
+	if p.TargetSeconds > 0 {
+		storyboardWords := 0
+		for _, scene := range scenes {
+			storyboardWords += len(strings.Fields(scene.Text))
+		}
+		if storyboardWords*3 < p.Words*2 {
+			fail(fmt.Errorf("QC: storyboard chỉ có %d từ, dưới ⅔ mục tiêu %d từ; dừng trước khi tạo ảnh", storyboardWords, p.Words))
+			return
+		}
+	}
 	s.appendLog(id, fmt.Sprintf("Storyboard: %d cảnh", len(scenes)))
 	if !supportsImageReferences(s.mg) {
 		for i, scene := range scenes {
@@ -139,7 +153,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		s.setAsset(aid, StatusRunning, "")
 
 		img := filepath.Join(work, fmt.Sprintf("scene-%02d.png", i))
-		imgPrompt := anchor.EnrichScenePrompt(sc.ImagePrompt, "slow cinematic drift", i+1, len(scenes))
+		imgPrompt := anchor.EnrichScenePromptForAspect(sc.ImagePrompt, "slow cinematic drift", i+1, len(scenes), p.AspectRatio)
 		// Đợt Y: job retry tái dùng ảnh đã vẽ xong ở job cũ (cùng prompt) —
 		// khỏi đốt image-gen vẽ lại.
 		reused := false
@@ -192,9 +206,9 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 		wavs = append(wavs, wav)
 
-		// Clip Ken Burns cho cảnh (tái dùng AssemblePhotoList, khổ 9:16).
+		// Clip Ken Burns cho cảnh theo khổ đầu ra của job.
 		clip := filepath.Join(work, fmt.Sprintf("scene-%02d.mp4", i))
-		if err := AssemblePhotoList(ctx, []string{img}, dur, "", 0, clip, "9:16"); err != nil {
+		if err := AssemblePhotoList(ctx, []string{img}, dur, "", 0, clip, p.AspectRatio); err != nil {
 			s.setAsset(aid, StatusFailed, "")
 			fail(fmt.Errorf("cảnh %d: dựng clip lỗi: %w", i+1, err))
 			return
@@ -207,7 +221,7 @@ func (s *Studio) runStory(id string, p StoryParams) {
 	// 5. Dựng: nối clip → mux audio TTS → nhạc nền (không chữ).
 	s.appendLog(id, "Nối các cảnh…")
 	videoOnly := filepath.Join(work, "video-only.mp4")
-	if err := ConcatClips(ctx, clips, "9:16", videoOnly); err != nil {
+	if err := ConcatClips(ctx, clips, p.AspectRatio, videoOnly); err != nil {
 		fail(fmt.Errorf("nối cảnh: %w", err))
 		return
 	}
@@ -217,14 +231,23 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		fail(fmt.Errorf("nối giọng đọc: %w", err))
 		return
 	}
-	if vDur := storyProbeDuration(ctx, voice); vDur < 30 {
-		fail(fmt.Errorf("QC: video chỉ dài %.0fs (cần > 30s)", vDur))
+	voiceDur := storyProbeDuration(ctx, voice)
+	if voiceDur < 30 {
+		fail(fmt.Errorf("QC: video chỉ dài %.0fs (cần > 30s)", voiceDur))
 		return
 	}
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
 	targetSec := float64(p.DurationMinutes * 60)
+	if p.TargetSeconds > 0 {
+		targetSec = float64(p.TargetSeconds)
+		minTargetSec, maxTargetSec := targetSec*0.8, targetSec*1.25
+		if voiceDur < minTargetSec || voiceDur > maxTargetSec {
+			fail(fmt.Errorf("QC: giọng đọc dài %.0fs, ngoài khoảng 80–125%% của mục tiêu %.0fs", voiceDur, targetSec))
+			return
+		}
+	}
 
-	if p.DurationMinutes >= 15 && targetSec > 60 {
+	if p.TargetSeconds == 0 && p.DurationMinutes >= 15 && targetSec > 60 {
 		s.appendLog(id, fmt.Sprintf("Mở rộng trường thiên %d phút (%.0fs) chuẩn YouTube...", p.DurationMinutes, targetSec))
 		vDur := storyProbeDuration(ctx, videoOnly)
 		if vDur <= 0 {
@@ -289,38 +312,50 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		}
 	}
 
-	// 6. QC: Chuẩn 9:16 (1080x1920 hoặc 4K 2160x3840) + có audio + dài > 30s.
+	// 6. QC: đúng khổ job, có audio, dài > 30s và gần mục tiêu nếu được đặt.
 	s.appendLog(id, "Kiểm tra chất lượng…")
 	w, h := ProbeDims(ctx, final)
-	if (w != 1080 && w != 2160 && w != 1920 && w != 3840) || (h != 1920 && h != 3840 && h != 1080 && h != 2160) {
-		fail(fmt.Errorf("QC: khổ video %dx%d, cần 9:16 (1080x1920 hoặc 4K 2160x3840)", w, h))
+	baseW, baseH := 1080, 1920
+	if p.AspectRatio == "16:9" {
+		baseW, baseH = 1920, 1080
+	}
+	masterW, masterH := AspectDims4K(p.AspectRatio)
+	if !((w == baseW && h == baseH) || (w == masterW && h == masterH)) {
+		fail(fmt.Errorf("QC: khổ video %dx%d, cần %s (%dx%d hoặc 4K %dx%d)", w, h, p.AspectRatio, baseW, baseH, masterW, masterH))
 		return
 	}
 	if !ProbeHasAudio(ctx, final) {
 		fail(fmt.Errorf("QC: video thiếu audio"))
 		return
 	}
-	if d := storyProbeDuration(ctx, final); d < 30 {
-		fail(fmt.Errorf("QC: video chỉ dài %.0fs (cần > 30s)", d))
+	dur := storyProbeDuration(ctx, final)
+	if dur < 30 {
+		fail(fmt.Errorf("QC: video chỉ dài %.0fs (cần > 30s)", dur))
 		return
 	}
-	dur := storyProbeDuration(ctx, final)
-	s.appendLog(id, fmt.Sprintf("QC đạt: 9:16 vertical (%dx%d), có audio, %.0fs, %d cảnh", w, h, dur, len(scenes)))
+	if p.TargetSeconds > 0 && (dur < targetSec*0.8 || dur > targetSec*1.25) {
+		fail(fmt.Errorf("QC: video dài %.0fs, ngoài khoảng 80–125%% của mục tiêu %.0fs", dur, targetSec))
+		return
+	}
+	s.appendLog(id, fmt.Sprintf("QC đạt: %s (%dx%d), có audio, %.0fs, %d cảnh", p.AspectRatio, w, h, dur, len(scenes)))
 
-	// Master 4K Delivery: Nâng cấp phim audio trường thiên lên Master 4K UHD
+	// Master 4K Delivery: nâng cấp story lên Master 4K UHD.
 	if IsMasterQuality4K() && fileExists(final) {
-		s.appendLog(id, "✨ Xuất bản phim Audio trường thiên chuẩn Master 4K UHD (2160x3840 VideoToolbox 35 Mbps)...")
+		s.appendLog(id, "✨ Xuất bản story chuẩn Master 4K UHD...")
 		story4k := filepath.Join(work, "master_story_4k.mp4")
-		if err := UpscaleVideoTo4K(ctx, final, story4k, "9:16"); err == nil && fileExists(story4k) {
+		if err := UpscaleVideoTo4K(ctx, final, story4k, p.AspectRatio); err == nil && fileExists(story4k) {
 			_ = os.Rename(story4k, final)
-			s.appendLog(id, "✓ Phim Audio đạt chuẩn điện ảnh 4K Ultra HD sắc nét tuyệt đối!")
+			s.appendLog(id, "✓ Story đã nâng lên kích thước khung 4K.")
 		}
 	}
 
 	s.setOutput(id, filepath.Base(final))
 
 	// 7. Auto-Clipper: Tự động trích xuất các clip ngắn 3-5 phút (9:16) cho TikTok/Reels nếu được bật
-	if p.AutoClipShorts && dur >= 30 {
+	if p.AutoClipShorts && p.AspectRatio == "16:9" {
+		s.appendLog(id, "Bỏ qua Auto-Clipper: chưa có bước crop từ 16:9 sang 9:16.")
+	}
+	if p.AutoClipShorts && p.AspectRatio == "9:16" && dur >= 30 {
 		s.appendLog(id, "Bắt đầu tự động trích xuất các clip ngắn 3–5 phút (9:16) cho TikTok & Reels…")
 		clipDur := 180.0 // 3 phút mặc định
 		if p.ClipDurationSec >= 30 && p.ClipDurationSec <= 300 {

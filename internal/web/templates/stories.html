@@ -22,13 +22,13 @@
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN -->
     <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
 
-      <!-- BƯỚC 1: CỐT TRUYỆN TÌNH YÊU NAM NỮ (30 - 60 PHÚT) -->
+      <!-- BƯỚC 1: KỊCH BẢN -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
             Kịch bản
           </h3>
-          <span class="badge badge-ok" style="font-size:11px">Thời lượng 30 - 60 Phút</span>
+          <span class="badge badge-warn" style="font-size:11px">Đích 30–60 phút · thoại có thể ngắn hơn</span>
         </div>
 
         <!-- Mode switcher: AI Sáng Tác vs Tự Dán Truyện -->
@@ -67,18 +67,18 @@
         <input type="hidden" name="genre" id="story-genre-val" value="{{.Stories.DefGenre}}">
       </div>
 
-      <!-- BƯỚC 2: GIỌNG ĐỌC GEMINI TTS & PHONG CÁCH ANIME -->
+      <!-- BƯỚC 2: GIỌNG ĐỌC VÀ HÌNH ẢNH -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
             Giọng đọc &amp; hình ảnh
           </h3>
-          <span class="badge badge-info" style="font-size:11px">Khớp Cảm Xúc Cốt Truyện</span>
+          <span class="badge badge-info" style="font-size:11px">Chọn giọng đọc</span>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:14px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Giọng đọc kể chuyện Gemini TTS</label>
+            <label style="font-weight:700;font-size:12.5px">Giọng đọc TTS</label>
             <select name="voice" id="story-voice-select" style="padding:10px;font-weight:600">
               <option value="" selected>Mặc định</option>
               <option value="female">Nữ</option>
@@ -86,7 +86,7 @@
             </select>
           </div>
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Thời lượng xuất bản trên YouTube</label>
+            <label style="font-weight:700;font-size:12.5px">Thời lượng timeline đích</label>
             <select name="duration_minutes" id="story-duration-select" style="padding:10px;font-weight:700">
               <option value="30" selected>30 phút</option>
               <option value="45">45 phút</option>
@@ -97,24 +97,24 @@
 
       </div>
 
-      <!-- BƯỚC 3: XUẤT BẢN YOUTUBE 16:9 DÀI 30 - 60 PHÚT -->
+      <!-- BƯỚC 3: ĐỊNH DẠNG VÀ XẾP JOB -->
       <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Định Dạng Video &amp; Bắt Đầu Xuất Bản
+            Định dạng video &amp; xếp job
           </h3>
-          <span class="badge badge-ok" style="font-size:11px">Chuẩn Ngang 16:9 Full HD</span>
+          <span class="badge badge-info" style="font-size:11px">Khung dọc 9:16 · Full HD</span>
         </div>
 
         <div style="background:var(--bg3);padding:12px 14px;border-radius:10px;margin-bottom:16px;border:1px solid var(--border);display:flex;align-items:center;gap:12px">
           <span style="font-size:24px">📺</span>
           <div style="font-size:12.5px;color:var(--text);line-height:1.4">
-            <b>Định dạng xuất bản:</b> Video ngang <b>16:9 Full HD (1920×1080)</b> dành riêng cho kênh YouTube Kể Chuyện Audio. Các phân cảnh tranh anime tự động phóng to nhẹ nhàng (Ken Burns) khớp với từng đoạn cảm xúc của câu chuyện.
+            Nút này <b>chỉ xếp job</b>; không đăng video lên YouTube. Đầu ra hiện là video dọc <b>9:16 Full HD</b>. Nếu thoại ngắn hơn thời lượng đích, timeline có thể lặp cảnh và đệm audio; kiểm tra thời lượng thực tế sau khi dựng.
           </div>
         </div>
 
         <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #6366f1 0%, #a855f7 100%);box-shadow:0 4px 14px rgba(99,102,241,0.35);border:none;cursor:pointer">
-          🎧 BẮT ĐẦU XUẤT BẢN VIDEO TRUYỆN AUDIO YOUTUBE (16:9 DÀI 30-60 PHÚT)
+          🎧 VIẾT TRUYỆN &amp; ĐƯA VÀO HÀNG ĐỢI
         </button>
       </div>
 
@@ -150,7 +150,7 @@
           <td><strong>{{.Title}}</strong></td>
           <td>{{if .Duration}}{{.Duration}}{{else}}—{{end}}</td>
           <td>
-            <span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "running"}}badge-warn{{else}}badge-err{{end}}">
+            <span class="badge {{if eq .Status "done"}}badge-ok{{else if or (eq .Status "queued") (eq .Status "running")}}badge-warn{{else}}badge-err{{end}}">
               {{.StatusVN}}
             </span>
             {{if .NeedsReview}}<br><span class="badge badge-warn" style="margin-top:4px">Cần đối chiếu upload YouTube</span>
@@ -198,6 +198,7 @@
 <!-- CÀI ĐẶT NÂNG CAO & HÀNG ĐỢI TỰ ĐỘNG -->
 <details class="advanced" style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px 18px">
   <summary style="font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)">⚙️ Mặc định &amp; Tự Động (Lịch sản xuất, Hàng đợi chủ đề, Tự đăng)</summary>
+  <p class="hint" style="margin:10px 0 0">Bật/tắt lịch tạo truyện ở bảng Tự động hóa trên Trang chủ. Tự đăng riêng tư chỉ chạy khi lịch truyện được bật.</p>
   <form method="post" action="/stories/settings" style="margin-top:14px">
     <div class="grid2" style="gap:12px;margin-bottom:12px">
       <div class="field">
@@ -246,15 +247,18 @@ function switchStoryInputMode(mode) {
   var customBox = document.getElementById('story-mode-custom-box');
   var btnAi = document.getElementById('btn-tab-plot-ai');
   var btnCustom = document.getElementById('btn-tab-plot-custom');
+  var topic = document.getElementById('story-topic-input');
 
   if (mode === 'ai') {
     if (aiBox) aiBox.style.display = 'block';
     if (customBox) customBox.style.display = 'none';
+    if (topic) topic.required = true;
     if (btnAi) { btnAi.className = 'btn btn-primary btn-sm'; }
     if (btnCustom) { btnCustom.className = 'btn btn-secondary btn-sm'; }
   } else {
     if (aiBox) aiBox.style.display = 'none';
     if (customBox) customBox.style.display = 'block';
+    if (topic) topic.required = false;
     if (btnAi) { btnAi.className = 'btn btn-secondary btn-sm'; }
     if (btnCustom) { btnCustom.className = 'btn btn-primary btn-sm'; }
   }
