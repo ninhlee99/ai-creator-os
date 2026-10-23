@@ -48,14 +48,18 @@ func (s *Server) handleStudioPublishReview(w http.ResponseWriter, r *http.Reques
 			fail("Không lưu được kết quả đối chiếu: " + err.Error())
 			return
 		}
-		s.resolveGrowthReviewForJob(jobID, true, remoteID)
+		if platform == "youtube" {
+			s.resolveGrowthReviewForJob(jobID, true, remoteID)
+		}
 		seeOther(w, r, "/?ok="+url.QueryEscape("Đã xác nhận nội dung tồn tại trên nền tảng."))
 	case "retry":
 		if err := s.Studio.SetPublishLeg(jobID, platform, studio.LegFailed, ""); err != nil {
 			fail("Không thể xếp lại publish leg: " + err.Error())
 			return
 		}
-		s.resolveGrowthReviewForJob(jobID, false, "")
+		if platform == "youtube" {
+			s.resolveGrowthReviewForJob(jobID, false, "")
+		}
 		seeOther(w, r, "/?ok="+url.QueryEscape("Đã xác nhận chưa có nội dung; Autopilot sẽ thử lại theo lịch."))
 	default:
 		fail("Chọn kết quả đối chiếu hợp lệ.")
