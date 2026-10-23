@@ -33,6 +33,14 @@ type MediaGen interface {
 	Healthy(ctx context.Context) bool
 }
 
+func supportsImageReferences(mg MediaGen) bool {
+	provider, ok := mg.(interface{ SupportsImageReferences() bool })
+	if !ok {
+		return true
+	}
+	return provider.SupportsImageReferences()
+}
+
 // ---------------------------------------------------------------------------
 // Gemini implementation
 // ---------------------------------------------------------------------------
@@ -74,6 +82,10 @@ func NewGeminiMediaGen(keys []string) *GeminiMediaGen {
 
 func (g *GeminiMediaGen) Name() string { return "gemini" }
 
+// SupportsImageReferences is false because every Gemini image model currently
+// requires paid billing and Pollinations Free API Classic accepts prompts only.
+func (*GeminiMediaGen) SupportsImageReferences() bool { return false }
+
 func (g *GeminiMediaGen) Healthy(_ context.Context) bool {
 	if !freeonly.GeminiFreeTierConfirmed() {
 		return false
@@ -98,9 +110,8 @@ func (g *GeminiMediaGen) KeyCount() int {
 	return len(g.keys)
 }
 
-// SetKeys thay bộ key lúc đang chạy (key nhập ở Cài đặt áp dụng ngay cho
-// tạo ảnh — trước chỉ đọc biến môi trường lúc khởi động). Cùng bộ key thì
-// giữ nguyên trạng thái cooldown.
+// SetKeys thay bộ Gemini key lúc đang chạy cho image analysis. Tạo ảnh không
+// dùng các key này; cùng bộ key thì giữ nguyên trạng thái cooldown.
 func (g *GeminiMediaGen) SetKeys(keys []string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()

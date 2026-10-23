@@ -6,7 +6,9 @@ package studio
 //
 //   - Viết truyện: LLM (tái dùng prompts/story.txt) → JSON {title, logline, text}.
 //   - Chia cảnh: LLM → JSON {scenes:[{text, image_prompt}]} (3–12 cảnh).
-//   - Ảnh minh họa: MediaGen (Gemini, xoay key) — 1 ảnh 16:9 / cảnh.
+//   - Ảnh minh họa: Pollinations Free API Classic — 1 ảnh / cảnh, theo aspect job.
+//     Fresh multi-scene jobs require reference-image support for continuity;
+//     fail before rendering when no free reference-capable provider is available.
 //   - Giọng đọc: Narrator (chuỗi TTS Gemini→Edge) — 1 wav / cảnh.
 //   - Dựng: tái dùng AssemblePhotoList (Ken Burns) từng cảnh → ConcatClips →
 //     mux audio TTS → MixMusicBed (tùy chọn) → 16:9 MP4. KHÔNG chèn
@@ -115,6 +117,14 @@ func (s *Studio) runStory(id string, p StoryParams) {
 		return
 	}
 	s.appendLog(id, fmt.Sprintf("Storyboard: %d cảnh", len(scenes)))
+	if !supportsImageReferences(s.mg) {
+		for i, scene := range scenes {
+			if i > 0 && s.findDonePhoto(p.ReuseFromJobID, scene.ImagePrompt) == "" {
+				fail(fmt.Errorf("kể chuyện cần ảnh tham chiếu từ cảnh đầu để giữ nhân vật đồng nhất; hiện không có provider miễn phí hỗ trợ. Dừng trước khi vẽ ảnh"))
+				return
+			}
+		}
+	}
 	s.setStatus(id, StatusRunning, 25)
 
 	// 3+4. Vẽ ảnh + đọc giọng từng cảnh (fail-closed từng cảnh).
@@ -146,11 +156,11 @@ func (s *Studio) runStory(id string, p StoryParams) {
 				fail(fmt.Errorf("cảnh %d: vẽ ảnh lỗi (%v) — dừng, không dựng thiếu cảnh", i+1, err))
 				return
 			}
-			if i == 0 && fileExists(img) {
-				anchor.MasterPhotoPath = img
-				storyRefs = append(storyRefs, ImageRef{Path: img})
-				s.appendLog(id, "✓ Đã khóa Visual Anchor Cảnh 1 làm mốc nhân vật & bối cảnh chuẩn cho toàn bộ truyện")
-			}
+		}
+		if i == 0 && fileExists(img) {
+			anchor.MasterPhotoPath = img
+			storyRefs = append(storyRefs, ImageRef{Path: img})
+			s.appendLog(id, "✓ Đã khóa Visual Anchor Cảnh 1 làm mốc nhân vật & bối cảnh chuẩn cho toàn bộ truyện")
 		}
 
 		s.appendLog(id, fmt.Sprintf("Đọc giọng cảnh %d/%d…", i+1, len(scenes)))

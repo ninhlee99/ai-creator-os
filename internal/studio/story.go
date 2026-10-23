@@ -50,6 +50,9 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 	if strings.TrimSpace(p.Topic) == "" {
 		return "", fmt.Errorf("cần chủ đề truyện")
 	}
+	if s.mg != nil && !supportsImageReferences(s.mg) && strings.TrimSpace(p.ReuseFromJobID) == "" {
+		return "", fmt.Errorf("kể chuyện nhiều cảnh cần ảnh tham chiếu để giữ nhân vật đồng nhất; hiện không có provider miễn phí hỗ trợ. Job chưa được tạo")
+	}
 
 	if p.DurationMinutes <= 0 {
 		p.DurationMinutes = 30 // Mặc định 30 phút

@@ -14,6 +14,7 @@
 
 {{if .Stories.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">{{.Stories.Error}}</p>{{end}}
 {{if .ok}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.ok}}</p>{{end}}
+<p class="notice" role="status" style="margin-bottom:16px">Tạo truyện mới đang tạm dừng theo U-04: pipeline nhiều cảnh cần bộ tạo ảnh tham chiếu miễn phí để giữ nhân vật đồng nhất; hiện chưa có provider phù hợp. Gemini image cần billing nên bị khóa.</p>
 
 <form id="story-form" method="post" action="/stories">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
