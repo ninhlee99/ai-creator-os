@@ -18,6 +18,11 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if s.killed() || s.dryRun() {
 		return "story: bị chặn bởi kill switch / dry-run", false
 	}
+	unlock, locked := tryStoryPublishLock(jobID)
+	if !locked {
+		return fmt.Sprintf("story %q: đang đăng rồi — bỏ qua để tránh trùng", jobID), true
+	}
+	defer unlock()
 	if s.Story == nil {
 		return "story: studio chưa sẵn sàng", false
 	}
