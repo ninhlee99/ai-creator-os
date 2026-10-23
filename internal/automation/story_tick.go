@@ -10,18 +10,13 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Story automation tick (Đợt F) — zero-touch, Ninh không chạm.
+// Story automation tick. Khi đến hạn (mặc định 24h), tick lấy một chủ đề
+// trong story.topics và tạo job nếu provider ảnh cùng các gate cho phép.
+// Story output mặc định dọc 9:16; job có thể mang aspect ratio riêng.
 //
-// StoryTick: đến hạn (mặc định 24h/lần) → lấy 1 chủ đề từ hàng đợi
-// (story.topics, mỗi dòng 1 chủ đề) → tạo job kể chuyện (truyện ngôi thứ
-// nhất → ảnh 16:9 → TTS → dựng 16:9 + phụ đề) → QC.
-//
-// Sau QC: mặc định TỰ ĐĂNG private-first (story.auto_publish=1, Đợt K) —
-// Ninh xem lại trên YouTube Studio; tắt ở trang Kể chuyện để duyệt tay.
-// Không bao giờ tự public.
-//
-// Cùng cổng an toàn như các tick khác: kill switch + DRY-RUN chặn;
-// công tắc riêng mặc định TẮT; chỉ chạy sau khi chủ kênh bật cấu hình.
+// Auto-publish job đã dựng xong mặc định TẮT. Khi bật, upload lên YouTube
+// private-first; story.public_after_hours > 0 cho phép chuyển public sau hạn.
+// StoryTick kiểm tra kill switch, dry-run và story.enabled theo workflow.
 // ---------------------------------------------------------------------------
 
 // Setting keys cho story automation (ledger settings).
@@ -122,8 +117,8 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	}
 	topic := s.popTopic()
 	if topic == "" {
-		// Hàng đợi trống → tự refill bằng LLM (zero-touch), thay vì chờ
-		// Ninh nhập tay. Refill lỗi (chưa cấu hình LLM) → note trung thực.
+		// Hàng đợi trống → thử refill bằng LLM nếu operator đã bật cấu hình.
+		// Refill lỗi (chưa cấu hình LLM) → note trung thực.
 		if refillNote := s.refillStoryTopics(ctx); refillNote != "" {
 			stampRun(s.Settings, KeyStoryLastRun)
 			return []string{refillNote}
@@ -188,9 +183,9 @@ func (s *Service) refillStoryTopics(ctx context.Context) string {
 	return ""
 }
 
-// storyAutoPublish tự đăng private các job đã xong khi bật auto_publish.
-// (Đợt K: mặc định TẮT — private-first nên an toàn, Ninh xem lại trên
-// YouTube Studio; tắt ở trang Kể chuyện nếu muốn duyệt tay.)
+// storyAutoPublish upload job đã xong khi operator bật auto_publish.
+// Cờ mặc định TẮT; upload private-first và có thể chuyển public theo
+// story.public_after_hours.
 func (s *Service) storyAutoPublish(ctx context.Context) []string {
 	if !atOn(s.Settings, KeyStoryAutoPublish, false) {
 		return nil

@@ -11,7 +11,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Accesstrade automation ticks (Đợt C) — zero-touch, Ninh không chạm.
+// Accesstrade background ticks (Đợt C).
 //
 // Ba tick, cùng một cổng an toàn như AutopilotTick: kill switch + DRY-RUN
 // chặn mọi tick; chưa có access_key → bỏ qua im lặng + log (không spam
@@ -26,8 +26,8 @@ import (
 //     decision log (alert).
 // ---------------------------------------------------------------------------
 
-// Setting keys cho Accesstrade automation (ledger settings; unset = mặc
-// định zero-touch BẬT — tiền lệ Đợt 3).
+// Setting keys cho Accesstrade automation (ledger settings). Mặc định bật
+// từng kiểm tra theo lịch; gate của workflow vẫn có thể dừng production.
 const (
 	KeyATHunterEnabled      = "at.hunter_enabled"
 	KeyATHunterIntervalHrs  = "at.hunter_interval_hours"
@@ -80,7 +80,7 @@ func (s *Service) atClient() (*accesstrade.Client, bool) {
 	return c, true
 }
 
-// atOn đọc công tắc UI; unset = def (zero-touch mặc định bật).
+// atOn đọc công tắc UI; unset dùng giá trị mặc định của workflow.
 func atOn(st Settings, key string, def bool) bool {
 	if st == nil {
 		return def

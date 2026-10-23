@@ -79,7 +79,7 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 			// không dùng Playwright tự đăng để tránh ban kênh).
 			sup.Dispatch(ctx, "draft_digest", 30*time.Minute, auto.DraftDigestTick)
 		})
-		log.Printf("story: automation tick armed (tạo truyện 24 giờ/lần, tự đăng private-first, self-heal 1 giờ/lần)")
+		log.Printf("story: lịch bật (job mới 24h/lần khi provider/gate cho phép; auto-publish mặc định tắt; private-first, chuyển public trễ nếu bật; self-heal mỗi giờ)")
 	}
 	if d.Viral {
 		sup.Watch("viral_radar", 5*time.Minute, 5*time.Minute)

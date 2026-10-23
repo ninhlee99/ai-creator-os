@@ -32,8 +32,9 @@ type JobStore interface {
 // authorization exists. Returns log notes; the Studio's SetOnDone hook
 // handles publishing separately. Cadence:
 // the UI-managed interval (default 6h); gates: kill switch, DRY-RUN,
-// the autopilot_enabled switch (default ON when unset — zero-touch,
-// a stored "0" opts out).
+// the autopilot_enabled switch (default ON when unset; a stored "0" opts
+// out). The current producer may still stop before discovery at its
+// per-account production authorization gate.
 func (s *Service) AutopilotTick(ctx context.Context) []string {
 	if s.Autopilot == nil {
 		return nil
@@ -143,7 +144,7 @@ func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 // Fail-closed at every step: kill switch / DRY-RUN, non-affiliate jobs,
 // manual jobs (no AccountID), disabled toggle, and missing TikTok OAuth
 // all skip quietly with a job-log line. TikTok posts as draft by default,
-// so Ninh/Claude attaches the product link in the TikTok app before going
+// so the operator attaches any product link in the TikTok app before going
 // public.
 func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	// Đợt 3: the shared kill switch and DRY-RUN gate every real publish.

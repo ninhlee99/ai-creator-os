@@ -39,7 +39,7 @@ func (s *Service) SetProductionEnabled(on bool) error {
 
 // ------------------------------------------------------------ the tick
 
-// GrowthTick runs one zero-touch production pass: due plan items ->
+// GrowthTick runs one scheduled production pass: due plan items ->
 // Studio renders -> YouTube uploads (quota-guarded), plus an hourly
 // metrics sync + decision loop through the existing engine. It runs by
 // default (a stored "0" opts out); the cmd daemon calls it on a timer.

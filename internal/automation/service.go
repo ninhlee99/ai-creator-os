@@ -157,7 +157,7 @@ type Service struct {
 	// fake). Nil = build the real one from the current env.
 	CommissionSource OrdersSource
 
-	// Story automation (Đợt F): kể chuyện ngôi thứ nhất + ảnh 16:9 + TTS.
+	// Story automation (Đợt F): Story jobs dùng khổ dọc 9:16 mặc định.
 	// Nil Story = tick bỏ qua im lặng (studio chưa khởi tạo).
 	Story StoryRunner
 	// StoryMusicPath là file nhạc nền licensed cho truyện ("" = không nhạc).
