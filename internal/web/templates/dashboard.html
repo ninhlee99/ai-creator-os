@@ -2,6 +2,7 @@
 {{define "content"}}
 
 {{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Notice}}</div>{{end}}
+{{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:20px">{{.Warning}}</div>{{end}}
 {{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
 
 <!-- QUICK CONTENT ROUTER -->

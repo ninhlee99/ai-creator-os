@@ -136,6 +136,7 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"CurrentTab", "create",
 		"InitialMode", mode,
 		"Notice", notice,
+		"Warning", r.URL.Query().Get("warn"),
 		"Sounds", sounds,
 		"TopSound", topSound(sounds),
 		"TrendsSource", studio.TrendsSource,

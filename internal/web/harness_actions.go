@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -34,7 +35,7 @@ func (s *Server) handleHarnessRunCycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := fmt.Sprintf("Chu kỳ %s hoàn tất thành công! Agent đã kích hoạt %d quyết định hành động.", cycle.CycleID, cycle.ActionCount)
+	msg := fmt.Sprintf("Đã ghi chu kỳ %s: %d đề xuất, %d action đã thực thi.", cycle.CycleID, len(cycle.Decisions), cycle.ActionCount)
 	http.Redirect(w, r, "/harness?notice="+url.QueryEscape(msg), http.StatusSeeOther)
 }
 
@@ -93,27 +94,53 @@ func (s *Server) handleHarnessMemoryAdd(w http.ResponseWriter, r *http.Request) 
 	niche := strings.TrimSpace(r.FormValue("niche"))
 	subject := strings.TrimSpace(r.FormValue("subject"))
 	insight := strings.TrimSpace(r.FormValue("insight"))
-	scoreStr := strings.TrimSpace(r.FormValue("score"))
+	confidenceStr := strings.TrimSpace(r.FormValue("confidence"))
+	impactStr := strings.TrimSpace(r.FormValue("impact"))
+	sampleStr := strings.TrimSpace(r.FormValue("sample_size"))
+	sourceRef := strings.TrimSpace(r.FormValue("source_ref"))
 
-	if domain == "" || insight == "" {
-		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Vui lòng điền lĩnh vực và nội dung bài học"), http.StatusSeeOther)
+	var memoryType harness.MemoryType
+	switch harness.MemoryType(domain) {
+	case harness.MemHookPerformance, harness.MemConversionInsight, harness.MemFormatReflection, harness.MemChannelLearning:
+		memoryType = harness.MemoryType(domain)
+	default:
+		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Lĩnh vực bài học không hợp lệ"), http.StatusSeeOther)
+		return
+	}
+	if subject == "" || insight == "" {
+		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Vui lòng điền chủ đề và nội dung bài học"), http.StatusSeeOther)
 		return
 	}
 
-	score, err := strconv.ParseFloat(scoreStr, 64)
-	if err != nil || score == 0 {
-		score = 0.8
+	confidence, err := strconv.ParseFloat(confidenceStr, 64)
+	if err != nil || math.IsNaN(confidence) || math.IsInf(confidence, 0) || confidence < 0 || confidence > 1 {
+		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Độ tin cậy tự đánh giá phải từ 0 đến 1"), http.StatusSeeOther)
+		return
+	}
+	impact, err := strconv.ParseFloat(impactStr, 64)
+	if err != nil || math.IsNaN(impact) || math.IsInf(impact, 0) || impact < -1 || impact > 1 {
+		http.Redirect(w, r, "/harness?err="+url.QueryEscape("Tác động tự đánh giá phải từ -1 đến 1"), http.StatusSeeOther)
+		return
+	}
+	sampleSize := 0
+	if sampleStr != "" {
+		sampleSize, err = strconv.Atoi(sampleStr)
+		if err != nil || sampleSize < 0 || sampleSize > 1000000 {
+			http.Redirect(w, r, "/harness?err="+url.QueryEscape("Số mẫu phải từ 0 đến 1.000.000"), http.StatusSeeOther)
+			return
+		}
 	}
 
 	item := harness.AgentMemory{
-		MemoryType:      harness.MemoryType(domain),
+		MemoryType:      memoryType,
 		ChannelID:       channel,
 		Niche:           niche,
 		Title:           subject,
 		Insight:         insight,
-		ConfidenceScore: score,
-		ImpactScore:     score,
-		SampleSize:      1,
+		ConfidenceScore: confidence,
+		ImpactScore:     impact,
+		SampleSize:      sampleSize,
+		SourceRef:       sourceRef,
 		CreatedAt:       time.Now().Format("2006-01-02 15:04:05"),
 		UpdatedAt:       time.Now().Format("2006-01-02 15:04:05"),
 	}
@@ -128,7 +155,7 @@ func (s *Server) handleHarnessMemoryAdd(w http.ResponseWriter, r *http.Request) 
 		_ = s.Ledger.Decide("harness", "harness_memory", &target, fmt.Sprintf("ghi nhận bài học: [%s] %s", domain, subject), nil)
 	}
 
-	http.Redirect(w, r, "/harness?notice="+url.QueryEscape("Đã nạp kiến thức mới vào bộ não Agent thành công!"), http.StatusSeeOther)
+	http.Redirect(w, r, "/harness?notice="+url.QueryEscape("Đã lưu bài học. Nó chỉ được đưa vào prompt ở luồng tương thích khi khớp kênh/ngách."), http.StatusSeeOther)
 }
 
 // handleHarnessMemoryDelete xóa một bài học khỏi kho ký ức.

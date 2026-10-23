@@ -44,6 +44,7 @@ type viralView struct {
 	TotalCount            int
 	Error                 string
 	Notice                string
+	Warning               string
 	AvailableModels       []modelPhotoCardView
 	SelectedModelID       int64
 	SelectedModelPhoto    string
@@ -92,6 +93,7 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		StudioOK:        s.Studio != nil,
 		Error:           q.Get("err"),
 		Notice:          q.Get("notice"),
+		Warning:         q.Get("warn"),
 		AvailableModels: s.listModelPhotoCards(),
 		RadarQuery:      s.defaultViralRadarQuery(),
 	}

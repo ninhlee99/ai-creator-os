@@ -19,7 +19,6 @@ type harnessCycleView struct {
 	ActionCount         int
 	Status              string
 	ChannelCount        int
-	ProductCount        int
 	QueueCount          int
 	Decisions           []harness.OODADecisionTask
 	Observations        *harness.OODAPerception
@@ -120,7 +119,7 @@ func (s *Server) handleHarness(w http.ResponseWriter, r *http.Request) {
 		hv.AutonomyLevelBadge = "warn"
 		hv.AutonomyDesc = "Mức này chưa tạo video nháp. Mọi đề xuất sản xuất hiện vẫn chờ đủ đầu vào và phê duyệt."
 	case harness.AutonomyFullyAutonomous:
-		hv.AutonomyLevelName = "Cấp độ 3: Tự hành 100% (chưa hỗ trợ)"
+		hv.AutonomyLevelName = "Cấp độ 3: Tự hành (chưa hỗ trợ)"
 		hv.AutonomyLevelBadge = "warn"
 		hv.AutonomyDesc = "Mức này chưa tự săn sản phẩm, sản xuất video hoặc đăng bài. Các action vẫn chờ đầu vào thủ công."
 	default:
@@ -170,17 +169,13 @@ func mapCycleToView(c *harness.OODACycleResult) *harnessCycleView {
 	var durStr string
 	tStart, err1 := time.Parse("2006-01-02 15:04:05", c.StartedAt)
 	tEnd, err2 := time.Parse("2006-01-02 15:04:05", c.FinishedAt)
-	if err1 == nil && err2 == nil {
+	if err1 == nil && err2 == nil && !tEnd.Before(tStart) {
 		durStr = fmt.Sprintf("%.2fs", tEnd.Sub(tStart).Seconds())
 	} else {
-		durStr = "1.2s"
+		durStr = "không rõ"
 	}
 
 	channelCount := len(c.Observations.Channels)
-	productCount := 0
-	if c.Observations.HighROIProduct != "" {
-		productCount = 1
-	}
 	queueCount := c.Observations.ActiveJobsCount
 
 	rawBytes, _ := json.MarshalIndent(c, "", "  ")
@@ -196,7 +191,6 @@ func mapCycleToView(c *harness.OODACycleResult) *harnessCycleView {
 		ActionCount:         c.ActionCount,
 		Status:              c.Status,
 		ChannelCount:        channelCount,
-		ProductCount:        productCount,
 		QueueCount:          queueCount,
 		Decisions:           c.Decisions,
 		Observations:        &c.Observations,

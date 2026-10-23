@@ -3,19 +3,14 @@ package web
 import (
 	"encoding/json"
 	"net/http"
-	"net/url"
 )
 
-// handleMissionCancel cancels an active mission.
+// handleMissionCancel reports the current synchronous mission engine limitation.
 func (s *Server) handleMissionCancel(w http.ResponseWriter, r *http.Request) {
-	id := r.FormValue("id")
-	if id != "" && s.db != nil {
-		_, _ = s.db.Exec(`UPDATE ai_missions SET status = 'failed', result_summary = 'Đã hủy bởi người điều hành' WHERE id = ?`, id)
-	}
-	seeOther(w, r, "/?ok="+url.QueryEscape("Đã dừng nhiệm vụ."))
+	http.Error(w, "Hủy mission chưa hỗ trợ; xử lý đang chạy đồng bộ và chỉ lưu kết quả sau khi hoàn tất.", http.StatusNotImplemented)
 }
 
-// handleMissionDetailJSON returns the mission status as JSON for polling.
+// handleMissionDetailJSON returns the persisted mission result; it is not live progress polling.
 func (s *Server) handleMissionDetailJSON(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" || s.db == nil {

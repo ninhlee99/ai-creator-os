@@ -74,7 +74,7 @@ type VideoProductionReadiness struct {
 	ViralStatus             string `json:"viral_status"`
 }
 
-// OODADecisionTask là một hành động cụ thể do Agent quyết định thực thi.
+// OODADecisionTask là đề xuất action hoặc action đã/đang thực thi.
 type OODADecisionTask struct {
 	ID         string `json:"id"`
 	ActionType string `json:"action_type"` // "produce_viral", "produce_affiliate", "replan_channel", "advance_stage"
@@ -83,7 +83,7 @@ type OODADecisionTask struct {
 	Topic      string `json:"topic"`
 	Reasoning  string `json:"reasoning"` // Lý do AI đưa ra quyết định này
 	Priority   int    `json:"priority"`  // 1 (cao nhất) -> 5
-	Status     string `json:"status"`    // "pending", "executing", "completed", "failed"
+	Status     string `json:"status"`    // "pending", "waiting_approval", "executing", "completed", "failed"
 	ResultID   string `json:"result_id,omitempty"`
 }
 

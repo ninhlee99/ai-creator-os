@@ -1,42 +1,56 @@
-# Brand DNA & AI Mission Control
+# Brand DNA, Trend Intelligence và Mission Engine
 
-## 1. Mục đích
-Xây dựng hệ thống tự hành cho phép người chủ doanh nghiệp giao mục tiêu bằng ngôn ngữ tự nhiên (AI Mission Control) và sản xuất nội dung nguyên bản chất lượng cao theo từng hồ sơ thương hiệu (Brand DNA), triệt tiêu sự phụ thuộc vào việc reup video của bên thứ ba.
+## Trạng thái hiện tại
 
-## 2. Kích hoạt & Route
-- `POST /team/dispatch` → `handleTeamDispatchGoal` (`internal/web/mission_engine.go`): Giao mục tiêu ngôn ngữ tự nhiên cho Mission Engine.
-- `GET /accounts/{id}?tab=brand-dna` → `handleAccountDetail` (`internal/web/accounts.go`): Xem và tùy biến hồ sơ Brand DNA cho kênh.
-- `POST /accounts/{id}/brand-dna` → `handleAccountBrandDNASave` (`internal/web/accounts.go`): Lưu hồ sơ Brand DNA.
-- `POST /accounts/{id}/brand-dna/reset` → `handleAccountBrandDNAReset` (`internal/web/accounts.go`): Khôi phục Brand DNA chuẩn AI theo ngành hàng.
-- `GET /api/missions/{id}` → `handleMissionDetailJSON` (`internal/web/mission_engine.go`): Truy xuất trạng thái và tiến độ từng bước của nhiệm vụ.
-- `POST /missions/{id}/cancel` → `handleMissionCancel` (`internal/web/mission_engine.go`): Hủy nhiệm vụ khẩn cấp.
+**Một phần.** Brand DNA lưu được theo kênh và được dùng ở một số luồng. Mission Engine có form tại `/team`, nhưng chỉ phân loại mục tiêu bằng từ khóa và chạy đồng bộ; không có tiến độ trực tiếp, lịch sử mission trong UI hoặc chức năng hủy.
 
-## 3. Luồng vận hành chi tiết
+## Brand DNA
 
-### A. AI Mission Control Engine (`internal/web/mission_engine.go`)
-1. **Tiếp nhận & Phân loại mục tiêu**:
-   - `affiliate_campaign`: Tìm sản phẩm hoa hồng cao, soạn 4 Hook 3s theo Brand DNA và gắn tracking link Accesstrade. Studio chỉ xếp job khi đủ clip chuyển động do người vận hành tải lên; thiếu clip thì mission dừng fail-closed.
-   - `story_campaign`: Lập đề cương truyện ngôi thứ nhất, phân 5 cảnh kịch tính, tạo job kể chuyện Studio (hình ảnh 16:9 + giọng đọc TTS).
-   - `trend_campaign`: Thu thập âm thanh thịnh hành từ Kworb TikTok VN, phân tích cơ hội qua Trend Intelligence, đề xuất 3 góc khai thác nguyên bản.
-   - `growth_campaign`: Đánh giá số liệu 14 ngày, loại bỏ format kém, tự động lập lại ma trận nội dung 30 ngày cho kênh.
-2. **Theo dõi tiến độ theo thời gian thực**:
-   - Lưu trữ trong bảng `ai_missions` (SQLite WAL).
-   - Tự động ghi nhận quyết định vào `decisions` audit ledger (`agent: "AI Mission Control"`).
-   - Hiển thị trực quan tại thẻ "Chiến Dịch AI Vận Hành Tự Động" trên Trang chủ.
+- Mở `/accounts/{id}?tab=brand-dna` để xem/sửa hồ sơ; `POST /accounts/{id}/brand-dna` lưu vào Growth SQLite.
+- Nếu chưa có bản ghi, form nạp mẫu gợi ý theo ngách nhưng chưa lưu; trạng thái đọc được hiển thị trên trang. Nút “Dùng lại mẫu theo ngách” ghi đè toàn bộ hồ sơ đang lưu; lỗi đọc/ghi được báo lại.
+- Affiliate Director nhận `positioning`, `audience_persona`, `tone_of_voice`, `visual_style` và `red_lines` làm ngữ cảnh shot plan.
+- Trend heuristic dùng `positioning`, `content_pillars` và `hook_rules` để tính tương thích/gợi ý góc nội dung.
+- `value_promise`, `audio_style` và `qc_checklist` được lưu nhưng hiện chưa được các job Studio áp dụng. Checklist QC không tự kiểm tra nội dung hoặc chặn đăng. Red lines đi vào prompt Affiliate Director, chưa phải deterministic gate.
+- `ValidateContentAgainstDNA` chỉ dò chuỗi cấm tổng quát và một dạng red line; không đánh giá checklist và chưa được gọi từ production flow.
 
-### B. Brand DNA & Tiêu Chuẩn Nguyên Bản (`internal/growth/brand_dna.go`)
-Mỗi kênh sở hữu một hồ sơ thương hiệu toàn diện:
-- **Định vị (Positioning)**: Đại diện cho giá trị cốt lõi nào của ngành hàng.
-- **Chân dung khán giả (Audience Persona)**: Nỗi đau, độ tuổi, tâm lý mua hàng.
-- **Lời hứa giá trị (Value Promise)**: Lợi ích nhận được sau mỗi video.
-- **Tông giọng (Tone of Voice)**: Phong cách phát ngôn đặc trưng.
-- **Nguyên tắc Hook 3s (Hook Rules)**: 4 công thức mở đầu giữ chân người xem.
-- **Trụ cột nội dung (Content Pillars)**: Ma trận 60-30-10 tránh trùng lặp.
-- **Thẩm mỹ (Visual & Audio Style)**: Ánh sáng, bảng màu, nhạc nền và tốc độ nói.
-- **Ranh giới đỏ (Red Lines)**: Danh sách từ cấm nền tảng và điều cấm kỵ của thương hiệu.
-- **Checklist QC nguyên bản (10 tiêu chí)**: Gác cổng trước khi xuất bản.
+## Mission Engine
 
-### C. Trend Intelligence Engine (`internal/growth/trend_intelligence.go`)
-- Bóc tách tín hiệu xu hướng từ Kworb TikTok VN và radar Douyin.
-- Tính toán điểm vận tốc (Velocity Score 0–100) và điểm tương thích Brand DNA (Brand-Fit Score 0–100).
-- Tổng hợp thành Điểm Cơ Hội (Opportunity Score) và đề xuất 3 góc quay nguyên bản thay vì reup copy nguyên trạng.
+### Mở và gửi mục tiêu
+
+- Vào `/team`, nhập mục tiêu và gửi form `POST /team/dispatch`.
+- Bộ phân loại dùng `strings.Contains` với nhóm từ khóa như “kể chuyện”, “trend”, “30 ngày”, “affiliate” hoặc “thay nhân vật”; đây không phải chatbot hiểu mục tiêu tổng quát.
+- Tên kênh được khớp nếu mục tiêu có username. Nếu chỉ có một kênh, engine tự chọn kênh đó; với nhiều kênh cần ghi đúng username.
+- Tùy chọn “xác nhận Google Flow credits” chỉ cho phép tiếp tục nhánh Affiliate có thể dùng credits. Engine không kiểm tra quota hoặc giá thực tế.
+- Dispatch chạy ngay trong request. `completed` nghĩa là bước mission xong hoặc job được xếp, không có nghĩa video đã render, qua QC hay đăng.
+
+### Hành vi theo loại mục tiêu
+
+| Nhóm | Hành vi hiện có | Giới hạn |
+|---|---|---|
+| Affiliate | Chờ xác nhận credits; tìm mục phù hợp trong kệ, cần demand evidence, ảnh listing, kênh và ảnh nhân vật; lập Product Analyst/Director plan rồi xếp Studio job nếu readiness cho phép. | Không tự đăng. Video chưa hoàn tất khi mission báo xếp job. Datafeed hiện chưa cung cấp đủ demand evidence. |
+| Kể chuyện | Xếp job truyện chuẩn vào Studio. | Mission kết thúc khi job được xếp; không chờ render xong. |
+| Trend | Đọc chart âm thanh TikTok Việt Nam của Kworb và lưu gợi ý heuristic từ tín hiệu hiện tại. | Không tạo job/video. Không có nguồn radar Douyin; điểm cơ hội không phải dự báo lượt xem. |
+| Tăng trưởng | Tạo lịch 30 ngày từ ngách/giai đoạn kênh và verdict format đã đánh dấu dừng. | Snapshot chỉ báo có hay chưa; chưa được dùng để tính lại lịch hoặc dự báo kết quả. |
+| Thay nhân vật viral | Chuyển người vận hành sang `/viral` để chọn video nguồn, kênh và ảnh nhân vật. | Chưa tạo job thay nhân vật. |
+| Không phân loại | Yêu cầu nêu rõ loại mục tiêu. | Chưa tạo job. |
+
+### Trạng thái, lưu trữ và hủy
+
+- Engine thử ghi kết quả vào bảng `ai_missions` sau khi nhánh xử lý trả về nếu SQLite khả dụng. Hiện lỗi tạo bảng/ghi dòng bị bỏ qua; API `GET /api/missions/{id}` chỉ đọc kết quả đã lưu và trả 404 nếu không có dòng, không phải polling tiến độ trực tiếp.
+- Audit ledger nhận sự kiện dispatch nếu ledger khả dụng.
+- `POST /missions/{id}/cancel` trả HTTP 501. Engine chưa hỗ trợ hủy; xử lý đồng bộ và chỉ lưu kết quả sau khi hoàn tất.
+- Form `/team` hiển thị tóm tắt theo trạng thái. Yêu cầu lỗi hiện bằng thông báo lỗi; yêu cầu chờ xác nhận/đầu vào không được gọi là chiến dịch đã tạo.
+
+## Trend heuristic
+
+- Nguồn đang dùng: `studio.FetchVNTrending` → Kworb TikTok Trending Songs Vietnam.
+- `AnalyzeTrendSignals` suy điểm từ movement/rank và so khớp từ khóa với Brand DNA. Một số câu về “nhu cầu khán giả” là mẫu heuristic tĩnh.
+- Mission chỉ lưu gợi ý góc đầu tiên ở bước 3; thông báo sau dispatch chỉ báo số tín hiệu. Chưa có đánh giá bằng views, retention, sales hay kết quả publish.
+
+## Mã chính
+
+- `internal/growth/brand_dna.go`
+- `internal/growth/trend_intelligence.go`
+- `internal/web/account_brand.go`
+- `internal/web/mission_engine.go`, `internal/web/mission_campaigns.go`, `internal/web/mission_affiliate.go`, `internal/web/mission_http.go`
+- `internal/web/templates/account_detail.html`, `internal/web/templates/team.html`

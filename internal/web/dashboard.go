@@ -119,6 +119,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "dashboard", s.ctx(
 		"Notice", r.URL.Query().Get("ok"),
+		"Warning", r.URL.Query().Get("warn"),
 		"Error", r.URL.Query().Get("err"),
 		"Accounts", accounts,
 		"ATOrders", atOrders,

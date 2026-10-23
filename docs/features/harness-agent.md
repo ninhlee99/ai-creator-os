@@ -12,9 +12,9 @@ Harness hiện là vòng quan sát/ghi chú có giới hạn, chưa phải bộ 
 - LLM chỉ tóm tắt metrics và capability evidence; OODA không biến views trung bình thành task tạo video. Viral cần video nguồn cụ thể, affiliate cần sản phẩm đã xác minh và footage khả dụng. Hai nguồn candidate này chưa được nối nên hiện không sinh production task.
 - OODA chưa chạy job video hoặc đăng bài. Growth automation riêng chạy `Evaluate` khi nhận snapshot thật; OODA chỉ báo verdict đã lưu để người vận hành đọc.
 - Level 2 và 3 không render video hoặc đăng bài. OODA không dispatch production action khi thiếu capability hoặc input gắn nguồn; `ActionCount` hiện bằng 0.
-- Memory lưu bài học nhập qua UI. OODA chưa tự ghi bài học hiệu quả video vì không có action nào được thực thi.
+- Memory lưu bài học nhập qua UI. Confidence, impact, cỡ mẫu và nguồn do người vận hành nhập; hệ thống chưa xác minh chúng. OODA chưa tự ghi bài học hiệu quả video vì không có action nào được thực thi.
 - `Studio.PromptEnhancer` lấy memory theo niche và channel. Affiliate Director dùng nội dung đó như gợi ý yếu cho nhịp kể/cảm xúc; prompt cấm memory ghi đè bằng chứng sản phẩm, cách mặc/dùng, red lines hoặc claim. Viral recreation không nhận gợi ý phong cách vì phải giữ nguyên hành động và nhịp của nguồn.
-- Prompt chỉ nhận memory của đúng channel hoặc memory dùng chung; memory riêng của channel khác không bị trộn vào dù cùng niche. Context hiển thị channel, số mẫu và confidence. Mẫu ít là giả thuyết, không phải kết quả đã chứng minh.
+- Prompt chỉ nhận memory của đúng channel hoặc memory dùng chung; memory riêng của channel khác không bị trộn vào dù cùng niche. Context hiển thị channel, số mẫu, confidence và source ref; số mẫu 0 nghĩa là chưa nhập. Mẫu ít là giả thuyết, không phải kết quả đã chứng minh.
 
 ## Luồng affiliate hiện có
 

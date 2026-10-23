@@ -220,8 +220,12 @@ func (ms *MemoryStore) GeneratePromptContext(ctx context.Context, niche, channel
 		if m.ChannelID != "" {
 			scope = "kênh " + m.ChannelID
 		}
-		lesson := fmt.Sprintf("- [%s | %s | n=%d | confidence=%.2f] %s (format=%s)",
-			m.Title, scope, m.SampleSize, m.ConfidenceScore, m.Insight, m.FormatID)
+		sourceRef := m.SourceRef
+		if sourceRef == "" {
+			sourceRef = "không nhập"
+		}
+		lesson := fmt.Sprintf("- [%s | %s | n=%d | confidence=%.2f | source=%s] %s (format=%s)",
+			m.Title, scope, m.SampleSize, m.ConfidenceScore, sourceRef, m.Insight, m.FormatID)
 		if m.ImpactScore > 0.2 {
 			dos = append(dos, lesson)
 		} else if m.ImpactScore < -0.2 {
@@ -230,14 +234,14 @@ func (ms *MemoryStore) GeneratePromptContext(ctx context.Context, niche, channel
 	}
 
 	var sb strings.Builder
-	sb.WriteString("\n### BÀI HỌC THỰC CHIẾN TỪ CÁC VIDEO TRƯỚC (AGENT EPISODIC MEMORY):\n")
+	sb.WriteString("\n### BÀI HỌC DO NGƯỜI VẬN HÀNH LƯU (OPERATOR-SAVED MEMORY):\n")
 	if len(dos) > 0 {
-		sb.WriteString("Tín hiệu tích cực cần tiếp tục thử nghiệm; không bảo đảm kết quả:\n")
+		sb.WriteString("Đánh giá tích cực do người vận hành nhập; chỉ dùng làm giả thuyết thử nghiệm, không bảo đảm kết quả:\n")
 		sb.WriteString(strings.Join(dos, "\n"))
 		sb.WriteString("\n")
 	}
 	if len(donts) > 0 {
-		sb.WriteString("Tín hiệu tiêu cực cần xem xét lại; không kết luận nhân quả:\n")
+		sb.WriteString("Đánh giá tiêu cực do người vận hành nhập; cân nhắc khi thử nghiệm, không kết luận nhân quả:\n")
 		sb.WriteString(strings.Join(donts, "\n"))
 		sb.WriteString("\n")
 	}

@@ -13,6 +13,7 @@
 </div>
 
 {{if .Viral.Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Viral.Notice}}</p>{{end}}
+{{if .Viral.Warning}}<p class="notice notice-warn" role="status">{{.Viral.Warning}}</p>{{end}}
 {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
 <section class="card" style="margin-bottom:18px;padding:16px">

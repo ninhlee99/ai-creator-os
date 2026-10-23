@@ -210,6 +210,7 @@ func (s *Server) handleTeamPipelines(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "team", s.ctx(
 		"Pipelines", pipelines,
 		"Notice", r.URL.Query().Get("ok"),
+		"Warning", r.URL.Query().Get("warn"),
 		"Error", r.URL.Query().Get("err"),
 	))
 }

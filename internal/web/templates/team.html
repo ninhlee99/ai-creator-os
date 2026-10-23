@@ -11,7 +11,22 @@
 </div>
 
 {{if .Notice}}<p class="notice">{{.Notice}}</p>{{end}}
+{{if .Warning}}<p class="notice notice-warn" role="status">{{.Warning}}</p>{{end}}
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+
+<div class="card" style="padding:16px 20px;margin-bottom:20px">
+  <h2 style="margin:0 0 6px">Giao mục tiêu theo từ khóa</h2>
+  <p class="hint" style="margin:0 0 12px">Bộ phân loại dùng từ khóa, không phải chatbot tự hiểu ngôn ngữ. Mỗi lần gửi chạy đồng bộ và tạo mission mới; nếu cần xác nhận hoặc đầu vào, bổ sung rồi gửi lại mục tiêu. Không có tiến độ trực tiếp và không tự đăng bài.</p>
+  <form method="post" action="/team/dispatch" style="margin:0" onsubmit="const button=this.querySelector('button[type=submit]'); if(button.disabled)return false; button.disabled=true; button.textContent='Đang xử lý…';">
+    <input type="hidden" name="back" value="/team">
+    <textarea name="goal" rows="3" required maxlength="1000" placeholder="Ví dụ: Kể chuyện về... · Bắt trend... · Lập kế hoạch tăng trưởng 30 ngày · Affiliate sản phẩm [tên] · Thay nhân vật video" style="width:100%;margin-bottom:10px"></textarea>
+    <label class="hint" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px">
+      <input type="checkbox" name="confirm_flow_credits" value="1" style="margin-top:2px">
+      Nếu yêu cầu được phân loại Affiliate, cho phép tiếp tục luồng có thể dùng credits Google Flow. Bỏ chọn sẽ dừng Affiliate trước khi tải ảnh hoặc xếp job.
+    </label>
+    <button type="submit" class="btn btn-primary btn-sm">Gửi mục tiêu</button>
+  </form>
+</div>
 
 <div class="card" style="padding:16px 20px">
   <h2 style="margin:0 0 14px">3 dây chuyền sản xuất</h2>

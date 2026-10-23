@@ -233,32 +233,61 @@ func (s *Server) dispatchAIMissionWithFlowConsent(ctx context.Context, goal stri
 func (s *Server) handleTeamDispatchGoal(w http.ResponseWriter, r *http.Request) {
 	goal := strings.TrimSpace(r.FormValue("goal"))
 	if goal == "" {
-		seeOther(w, r, "/studio")
+		if r.FormValue("back") == "/team" {
+			seeOther(w, r, "/team?err="+url.QueryEscape("Vui lòng nhập mục tiêu."))
+			return
+		}
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Vui lòng nhập mục tiêu."))
 		return
 	}
 
 	mission, err := s.dispatchAIMissionWithFlowConsent(r.Context(), goal, r.FormValue("confirm_flow_credits") == "1")
 	if err != nil {
-		seeOther(w, r, "/?err="+url.QueryEscape("Không thể thực thi mục tiêu: "+err.Error()))
+		destination := "/studio"
+		if r.FormValue("back") == "/" || r.FormValue("back") == "/team" {
+			destination = r.FormValue("back")
+		}
+		seeOther(w, r, destination+"?err="+url.QueryEscape("Không thể xử lý mục tiêu: "+err.Error()))
 		return
 	}
 	if mission.Intent == "story_campaign" {
-		statusKey := "ok"
-		if mission.Status == "failed" {
-			statusKey = "err"
-		}
+		statusKey := missionFeedbackKey(mission.Status)
 		seeOther(w, r, "/stories?"+statusKey+"="+url.QueryEscape(mission.ResultSummary))
 		return
 	}
 	if mission.Intent == "viral_source_replace" {
-		seeOther(w, r, "/viral?notice="+url.QueryEscape(mission.ResultSummary))
+		statusKey := missionFeedbackKey(mission.Status)
+		seeOther(w, r, "/viral?"+statusKey+"="+url.QueryEscape(mission.ResultSummary))
 		return
 	}
 
-	msg := "Đã tạo chiến dịch từ yêu cầu: " + mission.ResultSummary
-	if r.FormValue("back") == "/" {
-		seeOther(w, r, "/?ok="+url.QueryEscape(msg))
-		return
+	var msg string
+	switch mission.Status {
+	case "completed":
+		msg = "Đã xử lý mục tiêu: " + mission.ResultSummary
+	case "waiting_approval":
+		msg = "Cần xác nhận hoặc đầu vào: " + mission.ResultSummary
+	case "failed":
+		msg = "Mục tiêu chưa hoàn tất: " + mission.ResultSummary
+	default:
+		msg = "Trạng thái mục tiêu: " + mission.ResultSummary
 	}
-	seeOther(w, r, "/studio?msg="+url.QueryEscape(msg))
+
+	destination := "/studio"
+	if r.FormValue("back") == "/" || r.FormValue("back") == "/team" {
+		destination = r.FormValue("back")
+	}
+	statusKey := missionFeedbackKey(mission.Status)
+	seeOther(w, r, destination+"?"+statusKey+"="+url.QueryEscape(msg))
+}
+
+func missionFeedbackKey(status string) string {
+	switch status {
+	case "waiting_approval":
+		return "warn"
+	case "failed":
+		return "err"
+	default:
+		return "ok"
+	}
 }

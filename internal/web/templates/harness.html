@@ -81,7 +81,7 @@
   <div class="webai-header-left">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
       <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Agent Harness</h1>
-      <span class="badge badge-dim" style="font-family:monospace;font-size:11px;padding:3px 8px">BỘ NÃO TỰ HÀNH OODA</span>
+      <span class="badge badge-dim" style="font-family:monospace;font-size:11px;padding:3px 8px">OODA · QUAN SÁT &amp; CHỜ DUYỆT</span>
       <span class="badge badge-{{.Harness.AutonomyLevelBadge}}" style="font-size:11.5px;padding:4px 12px;font-weight:700">
         {{.Harness.AutonomyLevelName}}
       </span>
@@ -121,23 +121,22 @@
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
-    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Deal Hoa Hồng Cao</div>
+    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Offer feed vào OODA</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--text)">
-      {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ProductCount}}{{else}}0{{end}}
-      <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">sản phẩm</span>
+      {{if .Harness.LatestCycle}}{{if .Harness.LatestCycle.Observations.HighROIProduct}}Có candidate{{else}}Chưa nối{{end}}{{else}}Chưa chạy{{end}}
     </div>
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
-    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Tác Vụ Đã Điều Phối</div>
-    <div style="font-size:26px;font-weight:800;font-family:monospace;color:#10b981">
+    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Action đã thực thi</div>
+    <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--text)">
       {{if .Harness.LatestCycle}}{{.Harness.LatestCycle.ActionCount}}{{else}}0{{end}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">tác vụ</span>
     </div>
   </div>
 
   <div class="card" style="padding:20px 22px;border-radius:14px;background:var(--surface);border:1px solid var(--border)">
-    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Kho Ký Ức Thực Chiến</div>
+    <div style="font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px">Bài học do người vận hành lưu</div>
     <div style="font-size:26px;font-weight:800;font-family:monospace;color:var(--text)">
       {{.Harness.TotalMemories}}
       <span style="font-size:13px;font-weight:500;color:var(--muted);font-family:sans-serif">bài học</span>
@@ -198,10 +197,10 @@
       <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
         <span>Dòng Suy Nghĩ &amp; Chu Kỳ Nhận Thức Gần Nhất</span>
         <span style="font-family:monospace;font-size:12.5px;color:var(--accent);font-weight:700">Chu kỳ: {{.Harness.LatestCycle.CycleID}}</span>
-        <span class="badge badge-ok" style="font-size:10.5px;padding:3px 8px">{{.Harness.LatestCycle.Status}}</span>
+        <span class="badge {{if eq .Harness.LatestCycle.Status "completed"}}badge-ok{{else if eq .Harness.LatestCycle.Status "waiting_approval"}}badge-warn{{else if eq .Harness.LatestCycle.Status "completed_with_blockers"}}badge-err{{else}}badge-dim{{end}}" style="font-size:10.5px;padding:3px 8px">{{.Harness.LatestCycle.Status}}</span>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">
-        Thời điểm chạy: {{fmtVN .Harness.LatestCycle.StartedAt}} &bull; Thời lượng: {{.Harness.LatestCycle.Duration}} &bull; Số tác vụ: {{.Harness.LatestCycle.ActionCount}}
+        Thời điểm chạy: {{fmtVN .Harness.LatestCycle.StartedAt}} &bull; Thời lượng: {{.Harness.LatestCycle.Duration}} &bull; Action đã thực thi: {{.Harness.LatestCycle.ActionCount}}
       </div>
     </div>
     <div style="display:flex;gap:8px">
@@ -227,7 +226,7 @@
   <!-- Decisions Matrix -->
   {{if .Harness.LatestCycle.Decisions}}
   <div style="font-size:12px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">
-    Danh sách tác vụ hành động đã điều phối trong chu kỳ này:
+    Đề xuất và action trong chu kỳ này:
   </div>
   <div style="overflow-x:auto">
     <table class="table" style="font-size:12.5px;margin:0">
@@ -261,7 +260,7 @@
             {{end}}
           </td>
           <td>
-            <span class="badge badge-ok" style="font-size:10.5px">{{.Status}}</span>
+            <span class="badge {{if eq .Status "completed"}}badge-ok{{else if eq .Status "waiting_approval"}}badge-warn{{else if eq .Status "failed"}}badge-err{{else}}badge-dim{{end}}" style="font-size:10.5px">{{.Status}}</span>
           </td>
           <td style="font-family:monospace;font-size:11px;color:var(--muted)">
             {{if .ResultID}}{{.ResultID}}{{else}}&mdash;{{end}}
@@ -282,11 +281,11 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:15px;font-weight:800;display:flex;align-items:center;gap:10px">
-        <span>Kho Dữ Liệu &amp; Ký Ức Thực Chiến Đang Lưu Trữ</span>
+        <span>Bài học do người vận hành lưu</span>
         <span class="badge badge-ok" style="font-size:11px;font-weight:700">SQLITE PERSISTENCE</span>
       </div>
       <div style="font-size:12.5px;color:var(--muted);margin-top:3px">
-        Trực quan hóa toàn bộ dữ liệu Agent Harness đã đúc kết và ghi nhớ bền vững trong cơ sở dữ liệu SQLite để không bao giờ lặp lại lỗi sai.
+        OODA chưa tự học từ kết quả video. Confidence và impact bên dưới là tự đánh giá; nguồn/số mẫu chỉ có khi người vận hành nhập.
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -298,7 +297,7 @@
   <!-- Episodic Memory Bank (Storage Inspector) -->
   <div style="margin-bottom:20px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:10px">
-      <b style="font-size:13.5px;color:var(--text)">1. Danh Sách Bài Học Kinh Nghiệm &amp; Quy Tắc Tác Chiến (Episodic Memories)</b>
+      <b style="font-size:13.5px;color:var(--text)">1. Bài học và quy tắc đã lưu</b>
       <button type="button" class="btn btn-secondary btn-sm" onclick="toggleMemoryForm()" style="font-size:12px;font-weight:600;padding:5px 12px">
         + Thêm bài học kinh nghiệm mới
       </button>
@@ -313,9 +312,10 @@
             <th style="padding:10px 12px">Lĩnh vực</th>
             <th style="padding:10px 12px">Kênh</th>
             <th style="padding:10px 12px">Chủ đề</th>
-            <th style="padding:10px 12px">Quy tắc cốt lõi &amp; Bài học rút ra</th>
-            <th style="padding:10px 12px">Độ tin cậy</th>
-            <th style="padding:10px 12px">Tác động</th>
+            <th style="padding:10px 12px">Nội dung / giả thuyết</th>
+            <th style="padding:10px 12px">Độ tin cậy tự đánh giá</th>
+            <th style="padding:10px 12px">Tác động tự đánh giá</th>
+            <th style="padding:10px 12px">Mẫu / nguồn</th>
             <th style="padding:10px 12px">Ngày ghi nhận</th>
             <th style="padding:10px 12px">Thao tác</th>
           </tr>
@@ -338,6 +338,7 @@
             <td style="font-family:monospace;font-size:11.5px;font-weight:700;color:{{if .IsWarning}}#ef4444{{else}}#10b981{{end}};padding:10px 12px">
               {{.ImpactPercent}}
             </td>
+            <td style="padding:10px 12px"><span>n={{.SampleSize}}</span><br><span class="hint">{{if .SourceRef}}{{.SourceRef}}{{else}}Chưa gắn nguồn{{end}}</span></td>
             <td style="color:var(--muted);font-size:11.5px;padding:10px 12px">{{fmtVN .CreatedAt}}</td>
             <td style="padding:10px 12px">
               <div style="display:flex;gap:6px">
@@ -359,14 +360,14 @@
     </div>
     {{else}}
     <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px;background:var(--bg);border-radius:10px;border:1px dashed var(--border)">
-      Chưa có bài học thực chiến nào được lưu. Hãy kích hoạt một chu kỳ OODA hoặc bấm vào nút phía trên để thêm quy tắc kinh nghiệm.
+      Chưa có bài học nào được lưu. OODA không tự tạo bài học từ video; bạn có thể nhập quy tắc hoặc quan sát đã có nguồn.
     </div>
     {{end}}
 
     <!-- Collapsible Form: Add Custom Memory -->
     <div id="memoryAddForm" style="display:none;background:var(--bg);padding:18px 22px;border-radius:12px;border:1px solid var(--border);margin-top:16px">
       <div style="font-size:13.5px;font-weight:800;margin-bottom:12px">
-        Thêm Bài Học Chiến Lược / Quy Tắc Vận Hành Vào Bộ Não Agent
+        Thêm bài học / giả thuyết do người vận hành đánh giá
       </div>
       <form method="post" action="/harness/memory" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)) 120px;gap:12px;align-items:end;margin:0">
         <div>
@@ -387,12 +388,28 @@
           <input type="text" name="niche" placeholder="vd: cong_nghe" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
         </div>
         <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Độ tin cậy (0–1):</label>
+          <input type="number" name="confidence" min="0" max="1" step="0.05" placeholder="vd: 0.5" required class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Tác động (-1–1):</label>
+          <input type="number" name="impact" min="-1" max="1" step="0.1" placeholder="vd: 0" required class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Số mẫu (0 = chưa rõ):</label>
+          <input type="number" name="sample_size" min="0" max="1000000" step="1" value="0" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Nguồn tham chiếu (tùy chọn):</label>
+          <input type="text" name="source_ref" maxlength="200" placeholder="video ID / campaign ID" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px">
+        </div>
+        <div>
           <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Chủ đề / Kỹ thuật:</label>
           <input type="text" name="subject" placeholder="vd: Cắt nhịp bất ngờ" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
         </div>
         <div style="grid-column: span 2">
-          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Quy tắc vận hành / Bài học thực tế:</label>
-          <input type="text" name="insight" placeholder="vd: Cắt khung hình bất ngờ kèm âm thanh sấm sét giúp tăng tỷ lệ xem tiếp 42%" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
+          <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px">Quy tắc / quan sát (ghi rõ nếu chỉ là giả thuyết):</label>
+          <input type="text" name="insight" placeholder="vd: Thử mở đầu bằng cận cảnh sản phẩm; chưa có số liệu xác nhận" class="form-control" style="width:100%;padding:6px 10px;font-size:12.5px;border-radius:6px" required>
         </div>
         <div>
           <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px 12px;font-size:12.5px;border-radius:6px">Lưu bài học</button>
@@ -405,9 +422,9 @@
   <div style="background:var(--bg);padding:18px 20px;border-radius:12px;border:1px solid var(--border)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:12px">
       <div>
-        <b style="font-size:13.5px;color:var(--text)">2. Ngữ Cảnh Tri Thức Tiêm Vào LLM (Prompt Context Injection)</b>
+        <b style="font-size:13.5px;color:var(--text)">2. Preview bài học khớp ngách/kênh</b>
         <div style="font-size:12px;color:var(--muted);margin-top:2px">
-          Mô phỏng đoạn bài học mà Harness Agent tự động đưa vào System Prompt khi Studio AI dựng video:
+          Affiliate Director dùng context này khi lập shot plan. Các job Studio khác chưa dùng memory này.
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -427,7 +444,7 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="refreshPromptPreview()" style="font-size:12px;padding:6px 12px">Làm mới ngữ cảnh</button>
       </div>
     </div>
-    <pre id="promptPreviewBox" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px;font-family:monospace;line-height:1.6;color:var(--text);max-height:160px;overflow-y:auto;white-space:pre-wrap;margin:0">{{if .Harness.DefaultPromptContext}}{{.Harness.DefaultPromptContext}}{{else}}Chưa có bài học nào khớp với bộ lọc này. Hãy thêm bài học kinh nghiệm để huấn luyện Agent.{{end}}</pre>
+    <pre id="promptPreviewBox" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:12px;font-family:monospace;line-height:1.6;color:var(--text);max-height:160px;overflow-y:auto;white-space:pre-wrap;margin:0">{{if .Harness.DefaultPromptContext}}{{.Harness.DefaultPromptContext}}{{else}}Chưa có bài học nào khớp với bộ lọc này. Luồng tương thích có thể đưa bài học đã lưu vào prompt làm ngữ cảnh thử nghiệm.{{end}}</pre>
   </div>
 </div>
 
@@ -453,8 +470,8 @@
           <th style="padding:10px 12px">Mã chu kỳ</th>
           <th style="padding:10px 12px">Thời điểm</th>
           <th style="padding:10px 12px">Thời lượng</th>
-          <th style="padding:10px 12px">Danh mục quan sát</th>
-          <th style="padding:10px 12px">Tác vụ điều phối</th>
+          <th style="padding:10px 12px">Kênh và nguồn offer</th>
+          <th style="padding:10px 12px">Action đã thực thi</th>
           <th style="padding:10px 12px">Tóm tắt chẩn đoán</th>
           <th style="padding:10px 12px">Trạng thái</th>
           <th style="padding:10px 12px">Kiểm tra lưu trữ</th>
@@ -467,14 +484,14 @@
           <td style="padding:10px 12px">{{fmtVN .StartedAt}}</td>
           <td style="font-family:monospace;color:var(--muted);padding:10px 12px">{{.Duration}}</td>
           <td style="padding:10px 12px">
-            <b>{{.ChannelCount}}</b> kênh, <b>{{.ProductCount}}</b> deal
+            <b>{{.ChannelCount}}</b> kênh<br><span style="font-size:11px;color:var(--muted)">OODA chưa nhận offer feed</span>
           </td>
-          <td style="font-weight:700;color:#10b981;padding:10px 12px">{{.ActionCount}} tác vụ</td>
+          <td style="font-weight:700;color:var(--text);padding:10px 12px">{{.ActionCount}}</td>
           <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);padding:10px 12px">
             {{.Diagnosis}}
           </td>
           <td style="padding:10px 12px">
-            <span class="badge badge-ok" style="font-size:10.5px">{{.Status}}</span>
+            <span class="badge {{if eq .Status "completed"}}badge-ok{{else if eq .Status "waiting_approval"}}badge-warn{{else if eq .Status "completed_with_blockers"}}badge-err{{else}}badge-dim{{end}}" style="font-size:10.5px">{{.Status}}</span>
           </td>
           <td style="padding:10px 12px">
             <div style="display:flex;gap:6px">
@@ -547,7 +564,7 @@ function refreshPromptPreview() {
   const niche = document.getElementById('simNiche').value;
   const channel = document.getElementById('simChannel').value;
   const box = document.getElementById('promptPreviewBox');
-  box.textContent = "Đang tải ngữ cảnh bài học thực chiến...";
+  box.textContent = "Đang tải bài học đã lưu phù hợp...";
 
   fetch('/api/harness/prompt-context?niche=' + encodeURIComponent(niche) + '&channel=' + encodeURIComponent(channel))
     .then(r => r.json())
@@ -649,16 +666,21 @@ function openCycleModal(cycleID) {
 
       let decisionsHtml = '';
       if (data.decisions && data.decisions.length > 0) {
-        decisionsHtml = data.decisions.map(d => `
+        decisionsHtml = data.decisions.map(d => {
+          const statusClass = d.status === 'completed' ? 'badge-ok'
+            : d.status === 'waiting_approval' ? 'badge-warn'
+            : d.status === 'failed' ? 'badge-err' : 'badge-dim';
+          return `
           <tr style="border-bottom:1px solid var(--border)">
             <td style="padding:8px 10px;font-weight:700">@${escapeCycleHTML(d.target_user || 'Tất cả')}</td>
             <td style="padding:8px 10px"><span class="badge badge-info" style="font-size:10.5px">${escapeCycleHTML(d.action_type)}</span></td>
             <td style="padding:8px 10px;font-weight:600">${escapeCycleHTML(d.topic)}</td>
             <td style="padding:8px 10px;font-size:12px;color:var(--text);line-height:1.4">${escapeCycleHTML(d.reasoning)}</td>
-            <td style="padding:8px 10px"><span class="badge badge-ok" style="font-size:10.5px">${escapeCycleHTML(d.status)}</span></td>
+            <td style="padding:8px 10px"><span class="badge ${statusClass}" style="font-size:10.5px">${escapeCycleHTML(d.status)}</span></td>
             <td style="padding:8px 10px;font-family:monospace;font-size:11px;color:var(--muted)">${escapeCycleHTML(d.result_id || '—')}</td>
           </tr>
-        `).join('');
+          `;
+        }).join('');
       } else {
         decisionsHtml = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--muted)">Không có quyết định hành động trong chu kỳ này.</td></tr>';
       }
@@ -680,12 +702,12 @@ function openCycleModal(cycleID) {
               <div style="font-weight:700;color:var(--muted);font-size:13.5px;margin-top:2px">${escapeCycleHTML(observations.system_health || 'chưa có dữ liệu')}</div>
             </div>
             <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Deal Affiliate đề xuất</div>
-              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.high_roi_product || 'Chưa có nguồn sản phẩm')}</div>
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Offer Affiliate vào OODA</div>
+              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.high_roi_product || 'OODA chưa nhận offer feed')}</div>
             </div>
             <div style="background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border)">
-              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Âm thanh thịnh hành</div>
-              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.top_trending_song || 'Chưa có nguồn âm thanh')}</div>
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600">Âm thanh trend vào OODA</div>
+              <div style="font-weight:700;font-size:12.5px;margin-top:2px">${escapeCycleHTML(observations.top_trending_song || 'OODA chưa nhận trend feed')}</div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:10px">
@@ -694,7 +716,7 @@ function openCycleModal(cycleID) {
         </div>
 
         <div>
-          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">3. Tác Vụ Hành Động Đã Điều Phối (${escapeCycleHTML(data.action_count || 0)})</div>
+          <div style="font-weight:700;font-size:12px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">3. Action đã thực thi (${escapeCycleHTML(data.action_count || 0)})</div>
           <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
             <table class="table" style="font-size:12px;margin:0">
               <thead style="background:var(--surface)">

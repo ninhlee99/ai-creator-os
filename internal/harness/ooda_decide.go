@@ -14,6 +14,7 @@ func (e *OODAEngine) OrientAndDecide(ctx context.Context, obs OODAPerception, _ 
 	diag.WriteString(fmt.Sprintf("Hệ thống đang quan sát %d kênh. Sức khỏe dây chuyền: %s. ", obs.TotalChannels, obs.SystemHealth))
 	videoEvidence := describeVideoProductionReadiness(obs.VideoProduction)
 	diag.WriteString(videoEvidence)
+	diag.WriteString("OODA chưa nối offer feed hoặc nguồn xu hướng; không thể kết luận có hay không có candidate sản phẩm/âm thanh. ")
 	var channelEvidence strings.Builder
 	var formatEvidence strings.Builder
 	for _, ch := range obs.Channels {
@@ -54,9 +55,9 @@ func (e *OODAEngine) OrientAndDecide(ctx context.Context, obs OODAPerception, _ 
 		metricsPromptEvidence := boundLLMEvidence(channelEvidence.String())
 		formatPromptEvidence := boundLLMEvidence(formatEvidence.String())
 		prompt := fmt.Sprintf(`Bạn là điều phối viên vận hành nội dung.
-Chỉ tóm tắt dữ kiện và task đã có trong danh sách; không tự tạo task hoặc gợi ý hành động ngoài danh sách. Nêu rõ trường nào đang thiếu; không suy luận doanh thu, độ an toàn kênh, hiệu quả hay xu hướng nếu dữ liệu không chứng minh. Verdict format là bản lưu; chỉ tường thuật verdict hiện có, không tự tính lại. Nếu updated_at quá 7 ngày, ghi là dữ liệu cũ. Evidence có thể đã bị cắt theo giới hạn; không khái quát phần bị lược.
+Chỉ tóm tắt dữ kiện và task đã có trong danh sách; không tự tạo task hoặc gợi ý hành động ngoài danh sách. Nêu rõ trường nào đang thiếu; không suy luận doanh thu, độ an toàn kênh, hiệu quả hay xu hướng nếu dữ liệu không chứng minh. Offer feed và nguồn xu hướng chưa nối vào OODA; chuỗi trống không có nghĩa là đã xác nhận không có candidate. Verdict format là bản lưu; chỉ tường thuật verdict hiện có, không tự tính lại. Nếu updated_at quá 7 ngày, ghi là dữ liệu cũ. Evidence có thể đã bị cắt theo giới hạn; không khái quát phần bị lược.
 Khả năng production: %s
-Dữ liệu: %d kênh, job hoạt động %d, job hoàn tất %d, sản phẩm được truyền vào: %s.
+Dữ liệu: %d kênh, job hoạt động %d, job hoàn tất %d, candidate offer/trend được truyền vào OODA: %s.
 Metrics theo kênh: %s
 Verdict format đã lưu theo kênh: %s
 Nhiệm vụ sơ bộ: %d. Tối đa 3 câu tiếng Việt.`,
@@ -109,4 +110,4 @@ func describeChannelFormatEvidence(channel ChannelState) string {
 	return summary.String()
 }
 
-// ExecuteCycle thực thi trọn vẹn 1 chu kỳ OODA tự chủ.
+// ExecuteCycle chạy một chu kỳ OODA; production action vẫn cần đầu vào/phê duyệt.
