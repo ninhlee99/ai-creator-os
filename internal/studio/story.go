@@ -51,7 +51,7 @@ func (s *Studio) CreateStoryJob(p StoryParams) (string, error) {
 		return "", fmt.Errorf("cần chủ đề truyện")
 	}
 	if s.mg != nil && !supportsImageReferences(s.mg) && strings.TrimSpace(p.ReuseFromJobID) == "" {
-		return "", fmt.Errorf("kể chuyện nhiều cảnh cần ảnh tham chiếu để giữ nhân vật đồng nhất; hiện không có provider miễn phí hỗ trợ. Job chưa được tạo")
+		return "", ErrStoryImageReferencesUnavailable
 	}
 
 	if p.DurationMinutes <= 0 {

@@ -52,6 +52,7 @@ func isStoryConfigError(logTail string) bool {
 	for _, p := range []string{
 		"chưa sẵn sàng", "chưa cấu hình", "invalid",
 		"thiếu gemini_api_keys", "không có chuỗi giọng đọc",
+		"cần ảnh tham chiếu", "không có provider miễn phí hỗ trợ",
 	} {
 		if strings.Contains(l, p) {
 			return true

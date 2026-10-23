@@ -2,9 +2,11 @@ package automation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"time"
 )
 
@@ -63,6 +65,20 @@ func (s *Service) produceAccount(ctx context.Context, a *network.Account) []stri
 		}
 		jobID, err := p.Enqueue(ctx, ProduceRequest{Account: a, Item: it})
 		if err != nil {
+			if errors.Is(err, studio.ErrStoryImageReferencesUnavailable) {
+				note := "Chưa sản xuất được: " + err.Error()
+				if statusErr := s.Growth.SetItemStatus(it.ID, growth.ItemFailed, note); statusErr != nil {
+					notes = append(notes, a.Username+": không thể ghi trạng thái dừng sản xuất cho \""+it.Topic+"\" — "+statusErr.Error())
+					continue
+				}
+				_ = s.Growth.InsertAlert(growth.Alert{
+					AccountID: a.ID, Severity: "warn", Kind: "plan",
+					Message:     "Đã dừng mục \"" + it.Topic + "\": " + err.Error(),
+					ActionTaken: "Đánh dấu lỗi để không thử lại mỗi vòng; tạo plan mới khi có provider ảnh tham chiếu miễn phí.",
+				})
+				notes = append(notes, a.Username+": dừng sản xuất \""+it.Topic+"\" — "+err.Error())
+				continue
+			}
 			n, _ := s.Growth.NoteItemFailure(it.ID, "Chưa sản xuất được: "+err.Error())
 			if n == 1 {
 				_ = s.Growth.InsertAlert(growth.Alert{

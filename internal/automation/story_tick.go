@@ -61,6 +61,10 @@ type StoryRunner interface {
 	AppendLog(id, line string)
 }
 
+type freshStoryJobCapability interface {
+	CanCreateFreshStoryJobs() bool
+}
+
 // popTopic lấy chủ đề đầu tiên khỏi hàng đợi và ghi lại phần còn lại.
 func (s *Service) popTopic() string {
 	if s.Settings == nil {
@@ -108,6 +112,13 @@ func (s *Service) StoryTick(ctx context.Context) []string {
 	if !dueSince(s.Settings, KeyStoryLastRun, interval) {
 		// Chưa đến hạn tạo mới, nhưng vẫn kiểm tra auto-publish.
 		return s.storyAutoPublish(ctx)
+	}
+	if capability, ok := s.Story.(freshStoryJobCapability); ok && !capability.CanCreateFreshStoryJobs() {
+		// Keep the topic queue intact and avoid autofill LLM calls while the
+		// configured image provider cannot keep characters consistent.
+		stampRun(s.Settings, KeyStoryLastRun)
+		notes := []string{"story: tạm dừng vì chưa có provider ảnh tham chiếu miễn phí; giữ nguyên hàng đợi chủ đề"}
+		return append(notes, s.storyAutoPublish(ctx)...)
 	}
 	topic := s.popTopic()
 	if topic == "" {
