@@ -98,6 +98,7 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			s.Story.AppendLog(jobID, note)
 			if s.Settings != nil {
 				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, derr.Error())
+				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
 			}
 			_ = s.decide("story_publisher", "publish_youtube_failed", &username,
 				"không đăng lại vì chưa xác minh được lần upload trước.", map[string]any{
@@ -139,7 +140,7 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		}
 		note := "Đăng YouTube thất bại: " + res.Error
 		if res.DeliveryUncertain {
-			note = "Kết quả upload YouTube chưa xác định; dừng retry và giữ marker để đối chiếu trước: " + res.Error
+			note = "Kết quả upload YouTube chưa xác định; dừng retry và yêu cầu đối chiếu trước: " + res.Error
 		}
 		s.Story.AppendLog(jobID, note)
 		_ = s.decide("story_publisher", "publish_youtube_failed", &username,
@@ -148,13 +149,15 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 				"delivery_uncertain": res.DeliveryUncertain,
 			})
 		if s.Settings != nil {
-			if res.UploadRequestAttempted {
+			if res.DeliveryUncertain {
+				// needs_review blocks every retry until an operator resolves it;
+				// remove the active marker so the dashboard shows this blocker now.
+				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, res.Error)
+				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+			} else if res.UploadRequestAttempted {
 				s.Story.AppendLog(jobID, "Giữ marker đăng dở; lần sau sẽ kiểm tra video trùng trước khi thử lại.")
 			} else {
 				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
-			}
-			if res.DeliveryUncertain {
-				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, res.Error)
 			}
 		}
 		if res.DeliveryUncertain {
