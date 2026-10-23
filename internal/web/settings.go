@@ -226,7 +226,7 @@ var envHelp = map[string]string{
 	"THREADS_USER_ID":          "ID tài khoản Threads (developers.facebook.com → Threads API) — để đăng bài kèm link sản phẩm/video.",
 	"THREADS_TOKEN":            "Access token Threads (quyền threads_basic + threads_content_publish).",
 	"GEMINI_TEXT_MODEL":        "Không bắt buộc. Trống = app tự chọn model Gemini viết chữ (mặc định " + gmodels.Default(gmodels.Text) + "; Google tắt model thì app tự dò model mới).",
-	"GEMINI_IMAGE_MODEL":       "Không bắt buộc. Trống = app tự chọn model Gemini tạo ảnh (mặc định " + gmodels.Default(gmodels.Image) + "; tự dò model mới khi model cũ bị tắt).",
+	"GEMINI_IMAGE_MODEL":       "Đã tắt theo U-04 vì Gemini image không có free tier. Ảnh không tham chiếu dùng Pollinations Free API Classic; ảnh tham chiếu bị chặn.",
 	"GEMINI_TTS_MODEL":         "Không bắt buộc. Trống = app tự chọn model Gemini giọng đọc (mặc định " + gmodels.Default(gmodels.TTS) + "; tự dò model mới khi model cũ bị tắt).",
 }
 

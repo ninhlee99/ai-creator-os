@@ -9,16 +9,19 @@ import (
 	"time"
 )
 
-// Film Wave 3 — "Khả năng AI": key Gemini của Ninh KHÔNG tạo được video
-// (Veo trả lỗi), nên hệ thống phải BIẾT mình làm được gì trước khi hứa.
+// Film Wave 3 — "Khả năng AI": hệ thống phải BIẾT mình làm được gì trước
+// khi hứa. Video không tự probe vì Veo cần billing; ảnh dùng Pollinations
+// Free API Classic và không hỗ trợ ảnh tham chiếu.
 // Bảng capabilities lưu trong studio.db:
-//   - image_gen: probe thật lúc khởi động (1 lần vẽ thử, tốn tối thiểu).
+//   - image_gen: probe thật qua Pollinations khi người vận hành yêu cầu.
 //   - video_gen: KHÔNG tự probe (1 lần quay thử tốn ~8s Veo tiền thật) —
 //     lấy từ lần quay thật gần nhất (method từng shot đã log từ Wave 1),
 //     hoặc nút "Kiểm tra quay video" bấm tay (có cảnh báo chi phí).
 
 const (
-	CapImageGen = "image_gen"
+	// New key prevents a stale Gemini capability result from being shown as
+	// evidence that the Pollinations path is healthy.
+	CapImageGen = "image_gen_pollinations"
 	CapVideoGen = "video_gen"
 
 	CapOK      = "ok"
@@ -36,7 +39,7 @@ type AICapability struct {
 }
 
 var capabilityLabels = map[string]string{
-	CapImageGen: "Vẽ ảnh (Gemini)",
+	CapImageGen: "Vẽ ảnh (Pollinations, không ảnh tham chiếu)",
 	// CapVideoGen đã park cùng pipeline phim (film.go) — bảng "Khả năng AI"
 	// giờ chỉ còn vẽ ảnh (dùng cho ảnh minh họa kể chuyện, đợt F).
 }
@@ -90,11 +93,10 @@ func (s *Studio) GetCapabilities() []AICapability {
 	return out
 }
 
-// ProbeImageGen vẽ thử 1 ảnh siêu đơn giản lúc khởi động — tốn tối thiểu,
-// cho hệ thống biết image gen có sống không trước khi nhận job.
+// ProbeImageGen vẽ thử 1 ảnh siêu đơn giản để biết Pollinations còn hoạt động.
 func (s *Studio) ProbeImageGen(ctx context.Context) error {
-	if s.mg == nil || !s.mg.Healthy(ctx) {
-		_ = s.SetCapability(CapImageGen, CapFail, "thiếu GEMINI_API_KEYS hoặc key lỗi")
+	if s.mg == nil {
+		_ = s.SetCapability(CapImageGen, CapFail, "media-gen chưa sẵn sàng")
 		return fmt.Errorf("media-gen chưa sẵn sàng")
 	}
 	out := filepath.Join(os.TempDir(), "aicos-probe-image.png")
@@ -106,7 +108,7 @@ func (s *Studio) ProbeImageGen(ctx context.Context) error {
 		_ = s.SetCapability(CapImageGen, CapFail, "vẽ thử lỗi: "+truncErr(err, 120))
 		return err
 	}
-	_ = s.SetCapability(CapImageGen, CapOK, "vẽ thử thành công")
+	_ = s.SetCapability(CapImageGen, CapOK, "vẽ thử qua Pollinations Free API Classic thành công")
 	return nil
 }
 

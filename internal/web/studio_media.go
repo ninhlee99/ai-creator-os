@@ -48,7 +48,7 @@ func (s *Server) handleStudioUpload(w http.ResponseWriter, r *http.Request) {
 	serveMediaFile(w, r, path)
 }
 
-// handleStudioGenerateImage generates an image via Gemini or a neutral card fallback.
+// handleStudioGenerateImage uses Pollinations or a neutral local card fallback.
 func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		writeJSONErr(w, "Studio chưa sẵn sàng", http.StatusServiceUnavailable)
@@ -76,19 +76,19 @@ func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Reques
 	outPath := filepath.Join(s.Studio.UploadDir(), filename)
 	source := "studio_visual"
 
-	// Try Gemini Imagen if keys are healthy
-	if s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
+	// Pollinations Free API Classic needs no Gemini key or paid account.
+	if s.Studio.MediaGen() != nil {
 		geminiPrompt := prompt
 		if geminiPrompt == "" {
 			geminiPrompt = fmt.Sprintf("High-resolution photorealistic product scene of %s, %s, cinematic studio lighting, no text, no watermark", productName, niche)
 		}
 		if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), geminiPrompt, nil, outPath); gerr == nil {
-			source = "gemini"
+			source = "pollinations"
 		}
 	}
 
-	// If Gemini was not used or failed, generate high-quality visual card
-	if source != "gemini" {
+	// If free image generation failed or was unavailable, generate a local visual card.
+	if source != "pollinations" {
 		if err := studio.GenerateProductVisual(productName, niche, "", wPx, hPx, outPath); err != nil {
 			writeJSONErr(w, "Không tạo được ảnh: "+err.Error(), http.StatusInternalServerError)
 			return

@@ -79,86 +79,26 @@ func loadRef(path string) (geminiPart, error) {
 	}}, nil
 }
 
-// GenerateImage renders one image via the Gemini image-generation model.
-// Reference images (identity/product lock) are passed as inlineData parts.
-func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs []ImageRef, outPath string) error {
+// GenerateImage uses Pollinations Free API Classic for prompts without refs.
+// Gemini image models require paid billing; reference generation therefore
+// remains unavailable under the free-only policy.
+func (*GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs []ImageRef, outPath string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
 	}
-	if len(g.keys) == 0 {
-		return fmt.Errorf("gemini: no keys configured")
-	}
-	var lastErr error
-	if !freeonly.GeminiFreeTierConfirmed() {
-		lastErr = fmt.Errorf("Gemini API key set is not confirmed as free-tier in Settings → Providers")
-	} else if !tts.GeminiQuotaCircuit().Open() {
-		parts := []geminiPart{{Text: prompt}}
-		for _, r := range refs {
-			p, err := loadRef(r.Path)
-			if err != nil {
-				return err
-			}
-			parts = append(parts, p)
-		}
-		req := geminiGenRequest{
-			Contents: []geminiContent{{Parts: parts}},
-			GenerationConfig: map[string]any{
-				"responseModalities": []string{"TEXT", "IMAGE"},
-			},
-		}
-		for attempt := 0; attempt < len(g.keys)+1; attempt++ {
-			idx, key, ok := g.pickKey()
-			if !ok {
-				break
-			}
-			img, err := g.generateImageWithKey(ctx, key, req)
-			g.noteResult(idx, err)
-			if err == nil {
-				if dir := filepath.Dir(outPath); dir != "" {
-					_ = os.MkdirAll(dir, 0o755)
-				}
-				if err := os.WriteFile(outPath, img, 0o644); err != nil {
-					return fmt.Errorf("write image: %w", err)
-				}
-				return nil
-			}
-			lastErr = err
-			// Rotate to next key on invalid key or quota/rate limit error.
-			// Only stop early on non-key errors (e.g. malformed prompt).
-			if tts.ClassifyKeyError(err) == tts.KeyErrOther {
-				break
-			}
-		}
-	} else {
-		lastErr = fmt.Errorf("quota circuit open (hết quota ngày)")
-	}
 	if len(refs) > 0 {
-		if lastErr == nil {
-			lastErr = fmt.Errorf("no usable Gemini API key")
-		}
-		return fmt.Errorf("generate image with references: Gemini could not preserve the supplied identity/product references: %w", lastErr)
+		return fmt.Errorf("generate image with references: Gemini image models have no free tier; blocked by U-04")
 	}
-	// Tier-2 Image Generation: Pollinations AI (free photorealistic 9:16 vertical engine)
-	log.Printf("mediagen: Gemini image API keys unavailable (%v) — attempting Pollinations AI visual generation", lastErr)
+	// Free API Classic requires no account and cannot charge the Gemini project.
+	log.Printf("mediagen: generating image via Pollinations Free API Classic")
 	pctx, pcancel := context.WithTimeout(ctx, 35*time.Second)
 	perr := generatePollinationsImage(pctx, prompt, outPath)
 	pcancel()
 	if perr == nil {
-		log.Printf("mediagen: ✓ Generated AI visual via Pollinations: %s", filepath.Base(outPath))
+		log.Printf("mediagen: generated AI visual via Pollinations: %s", filepath.Base(outPath))
 		return nil
 	}
-	log.Printf("mediagen: Pollinations fallback failed (%v) — falling back to synthesized cinematic scene", perr)
-
-	// Tier-3: Synthesized cinematic scene visual with local model/scenery photo compositing
-	hashIdx := int(crc32.ChecksumIEEE([]byte(prompt)))
-	if hashIdx < 0 {
-		hashIdx = -hashIdx
-	}
-	if gerr := GenerateCinematicStoryScene(hashIdx, 100, prompt, outPath); gerr == nil {
-		log.Printf("mediagen: ✓ Generated synthesized cinematic visual (sceneIdx %d): %s", hashIdx, filepath.Base(outPath))
-		return nil
-	}
-	return fmt.Errorf("generate image: %w", lastErr)
+	return fmt.Errorf("generate image via Pollinations Free API Classic: %w", perr)
 }
 
 // AnalyzeImages asks Gemini's text model to inspect ordered image references.
@@ -315,47 +255,6 @@ func generatePollinationsImage(ctx context.Context, prompt string, outPath strin
 		return nil
 	}
 	return os.WriteFile(outPath, data, 0o644)
-}
-
-func (g *GeminiMediaGen) generateImageWithKey(ctx context.Context, key string, req geminiGenRequest) ([]byte, error) {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-	model := gmodels.Resolve(gmodels.Image)
-	img, err := g.generateImageModel(ctx, model, key, body)
-	if err != nil && gmodels.IsModelGone(err) {
-		// Model ảnh bị Google tắt/đổi tên: dò model còn sống, thử lại 1 lần.
-		if nm, derr := gmodels.Rediscover(ctx, g.client, g.baseURL, key, gmodels.Image); derr == nil {
-			log.Printf("gemini image: model %s không còn — chuyển sang %s", model, nm)
-			return g.generateImageModel(ctx, nm, key, body)
-		} else {
-			log.Printf("gemini image: model %s không còn nhưng dò model mới thất bại: %v", model, derr)
-		}
-	}
-	return img, err
-}
-
-func (g *GeminiMediaGen) generateImageModel(ctx context.Context, model, key string, body []byte) ([]byte, error) {
-	url := g.baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	resp, err := g.client.Do(httpReq)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, trunc(string(data), 300))
-	}
-	return parseImageResponse(data)
 }
 
 // parseImageResponse extracts the first inline image from a generateContent

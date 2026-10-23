@@ -222,7 +222,7 @@ func (s *Server) geminiModelsView() map[string]any {
 		"Report":    report,
 		"Items": []map[string]any{
 			modelItem(gmodels.Text, "Văn bản & Kịch bản (LLM)", "Sáng tạo kịch bản video viral, hook, cốt truyện audio"),
-			modelItem(gmodels.Image, "Tạo ảnh & Phân cảnh (Image)", "Nano Banana 2.1 — Tạo nhân vật Thần tiên tỉ tỉ, sản phẩm affiliate, cảnh truyện"),
+			modelItem(gmodels.Image, "Gemini image (đã tắt theo U-04)", "Không gọi vì Gemini image không có free tier. Ảnh không tham chiếu dùng Pollinations Free API Classic; ảnh tham chiếu bị chặn."),
 			modelItem(gmodels.TTS, "Giọng đọc truyền cảm (TTS)", "Giọng đọc truyện audio đa cảm xúc (gemini-3.8-flash-tts)"),
 			modelItem(gmodels.Video, "Tạo video chuyển động (Veo)", "Google Veo 3.1 tạo video chuyển động điện ảnh chân thực"),
 		},

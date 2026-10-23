@@ -530,7 +530,7 @@ function generateSceneImage(i, prompt) {
     if (box && img) {
       img.src = res.url;
       box.style.display = 'block';
-      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini' : '🎨 Đồ họa cơ bản';
+      if (badge) badge.textContent = res.source === 'pollinations' ? '✨ Pollinations' : res.source === 'gemini' ? '✨ Gemini' : '🎨 Đồ họa cơ bản';
       if (useBtn) {
         useBtn.onclick = function() {
           var d = { product_name: name, niche: niche, photo_url: res.url, photo_path: res.path };
