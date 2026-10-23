@@ -5,6 +5,8 @@ package web
 
 import (
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
@@ -58,15 +60,39 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	for _, a := range accounts {
 		rows = append(rows, s.publisherRowFor(a.Username, a.YoutubeChannel, a.YoutubeContentTypes, a.Status))
 	}
-	anyClient := false
+	anyTikTokClient := false
 	for _, row := range rows {
-		anyClient = anyClient || row.TiktokClient || row.YoutubeClient || row.FacebookClient
+		anyTikTokClient = anyTikTokClient || row.TiktokClient
 	}
-	s.render(w, "publishers", s.ctx("Rows", rows, "AnySocialClient", anyClient,
-		"Msg", r.URL.Query().Get("msg"), "Err", r.URL.Query().Get("err"),
-		"PendingVideo", r.URL.Query().Get("video"), "PendingTitle", r.URL.Query().Get("title"),
+	rawVideo := r.URL.Query().Get("video")
+	pendingVideo := s.pendingVideoURL(rawVideo)
+	errMsg := r.URL.Query().Get("err")
+	if rawVideo != "" && pendingVideo == "" && errMsg == "" {
+		errMsg = "Video không hợp lệ hoặc không còn trên máy."
+	}
+	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTikTokClient", anyTikTokClient,
+		"Msg", r.URL.Query().Get("msg"), "Err", errMsg,
+		"PendingVideo", pendingVideo, "PendingTitle", r.URL.Query().Get("title"),
 		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal(),
 		"AppBase", "http://"+r.Host))
+}
+
+// pendingVideoURL accepts only an existing local video served by /media/{name}.
+// The query parameter must never turn the download button into an external link.
+func (s *Server) pendingVideoURL(raw string) string {
+	const prefix = "/media/"
+	if strings.HasPrefix(raw, "media/") { // old in-app player links
+		raw = "/" + raw
+	}
+	if !strings.HasPrefix(raw, prefix) {
+		return ""
+	}
+	name := strings.TrimPrefix(raw, prefix)
+	ext := strings.ToLower(filepath.Ext(name))
+	if !mediaNameRe.MatchString(name) || (ext != ".mp4" && ext != ".mov" && ext != ".webm") || !fileExists(filepath.Join(s.OutDir, name)) {
+		return ""
+	}
+	return prefix + name
 }
 
 // --------------------------------------------------------------------- usage

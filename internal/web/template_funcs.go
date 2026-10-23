@@ -36,7 +36,9 @@ var templateFuncs = template.FuncMap{
 	// fmtUSD renders a USD amount with comma separators: "$1,234.50".
 	"fmtUSD": func(v float64) string { return formatUSD(v) },
 	// statusLabel renders a raw status slug as its Vietnamese label.
-	"statusLabel": statusLabel,
+	"statusLabel":            statusLabel,
+	"publisherPlatformLabel": publisherPlatformLabel,
+	"growthVariantLabel":     growthVariantLabel,
 	// reasonLabel dịch lý do dạng "slug_a -> slug_b" sang tiếng Việt.
 	"reasonLabel": reasonLabel,
 	// statusClass maps a raw status slug to a semantic badge class suffix.
@@ -62,10 +64,10 @@ var templateFuncs = template.FuncMap{
 	// agentLabel renders a raw agent slug as its Vietnamese label + icon
 	// for the decision feed (R2-11: no raw slugs in the UI).
 	"agentLabel": agentLabel,
-	// variantAspect renders a plan variant's delivery frame ("16:9" for the
-	// YouTube long-form cut, "9:16" otherwise) so /growth shows the true
-	// render shape of each variant.
-	"variantAspect": growth.VariantAspect,
+	// variantAspect and variantSeconds render the planned target. Persona Story
+	// jobs apply these values; the affiliate path has separate behavior.
+	"variantAspect":  growth.VariantAspect,
+	"variantSeconds": growth.VariantSeconds,
 	// dict builds a string-keyed map for passing named arguments to
 	// partial templates ({{template "x" (dict "A" .B)}}).
 	"dict": func(kv ...any) map[string]any {

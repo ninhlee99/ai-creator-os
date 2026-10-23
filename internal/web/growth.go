@@ -4,7 +4,9 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"time"
 )
@@ -13,22 +15,22 @@ import (
 
 // growthAccountRow is one account's growth state on the overview page.
 type growthAccountRow struct {
-	Account        network.Account
-	Stage          string
-	NextLabel      string
-	NextMetric     string
-	NextValue      float64
-	NextTarget     float64
-	NextPct        float64
-	HasNext        bool
-	HasSnapshot    bool
-	Followers      int64
-	FollowersLabel string
-	ViewsTotal     int64
-	YTConnected    bool
-	YTUpload       string // YouTube upload readiness label (phase 2)
-	YTReady        bool
-	YPP            []growth.YPPTierProgress // chỉ kênh YouTube
+	Account               network.Account
+	Stage                 string
+	NextLabel             string
+	NextMetric            string
+	NextValue             float64
+	NextTarget            float64
+	NextPct               float64
+	HasNext               bool
+	HasSnapshot           bool
+	Followers             int64
+	FollowersLabel        string
+	ViewsTotal            int64
+	YTAnalyticsConfigured bool
+	YTUpload              string // YouTube upload readiness label (phase 2)
+	YTReady               bool
+	YPP                   []growth.YPPTierProgress // chỉ kênh YouTube
 }
 
 type growthAlertRow struct {
@@ -38,7 +40,24 @@ type growthAlertRow struct {
 
 type growthItemRow struct {
 	growth.PlanItem
-	Username string
+	Username        string
+	OutputFile      string
+	DashboardStatus string
+}
+
+func (s *Server) growthMediaOutput(jobID string) string {
+	if s.Studio == nil || jobID == "" {
+		return ""
+	}
+	job, ok := s.Studio.GetJob(jobID)
+	if !ok || job.Status != studio.StatusDone || studioOutputKind(job.Output) != "video" {
+		return ""
+	}
+	name := mediaName(job.Output)
+	if !mediaNameRe.MatchString(name) || !fileExists(filepath.Join(s.OutDir, name)) {
+		return ""
+	}
+	return name
 }
 
 // primaryPlatform: accounts are TikTok-first; an account that carries
@@ -102,7 +121,7 @@ func (s *Server) growthView() map[string]any {
 	}
 	ytKeyVal, _ := s.effectiveEnv("YOUTUBE_API_KEY")
 	ytKey := ytKeyVal != ""
-	today := time.Now().Format("2006-01-02")
+	today := s.today()
 	var rows []growthAccountRow
 	var alerts []growthAlertRow
 	var upcoming []growthItemRow
@@ -113,7 +132,7 @@ func (s *Server) growthView() map[string]any {
 		if err != nil || prof == nil {
 			continue
 		}
-		row := growthAccountRow{Account: *a, Stage: prof.Stage, YTConnected: ytKey && a.YoutubeChannel != ""}
+		row := growthAccountRow{Account: *a, Stage: prof.Stage, YTAnalyticsConfigured: ytKey && a.YoutubeChannel != ""}
 		ytState := s.yt().State(a)
 		row.YTUpload = ytState.Label()
 		row.YTReady = ytState.Ready()
@@ -172,7 +191,10 @@ func (s *Server) growthView() map[string]any {
 				case growth.ItemPlanned, growth.ItemEnqueueing, growth.ItemProducing, growth.ItemProduced, growth.ItemPublishing,
 					growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview:
 					if it.Status != growth.ItemPlanned || it.PlannedFor >= today {
-						upcoming = append(upcoming, growthItemRow{PlanItem: it, Username: a.Username})
+						upcoming = append(upcoming, growthItemRow{
+							PlanItem: it, Username: a.Username,
+							OutputFile: s.growthMediaOutput(it.StudioJobID),
+						})
 					}
 				}
 			}
@@ -232,28 +254,87 @@ func (s *Server) growthView() map[string]any {
 	return ctx
 }
 
-// recentGrowthAlerts merges the newest growth alerts across accounts
-// for the homepage (Đợt 3 / A10): what the system already decided is
-// visible without hunting through /growth.
-func (s *Server) recentGrowthAlerts(accounts []*network.Account) []growthAlertRow {
+// recentGrowthAlerts returns the newest persisted growth alerts for the
+// homepage, retaining network-wide alerts and their account labels.
+func (s *Server) recentGrowthAlerts(accounts []*network.Account) ([]growthAlertRow, error) {
 	if s.Growth == nil {
-		return nil
+		return nil, nil
 	}
-	var out []growthAlertRow
+	alerts, err := s.Growth.ListAlerts(0, 6)
+	if err != nil {
+		return nil, err
+	}
+	usernames := make(map[int64]string, len(accounts))
 	for _, a := range accounts {
-		als, err := s.Growth.ListAlerts(a.ID, 3)
+		usernames[a.ID] = a.Username
+	}
+	out := make([]growthAlertRow, 0, len(alerts))
+	for _, alert := range alerts {
+		username := usernames[alert.AccountID]
+		if alert.AccountID == 0 {
+			username = "Toàn mạng"
+		} else if username == "" {
+			username = "Kênh không còn trong danh sách"
+		}
+		out = append(out, growthAlertRow{Alert: alert, Username: username})
+	}
+	return out, nil
+}
+
+// dashboardGrowthState returns the compact queue and every current Growth
+// item that needs a publish/configuration/recovery action. Future plans stay
+// on /growth's schedule and do not appear as blockers here.
+func (s *Server) dashboardGrowthState(accounts []*network.Account) ([]growthItemRow, []growthItemRow, error) {
+	if s.Growth == nil {
+		return nil, nil, nil
+	}
+	today := s.today()
+	var queue, attention []growthItemRow
+	for _, account := range accounts {
+		items, err := s.Growth.ActivePlanItems(account.ID)
 		if err != nil {
-			continue
+			return nil, nil, err
 		}
-		for _, al := range als {
-			out = append(out, growthAlertRow{Alert: al, Username: a.Username})
+		for _, item := range items {
+			displayStatus := statusLabel(item.Status)
+			isOverdue := false
+			switch item.Status {
+			case growth.ItemEnqueueing, growth.ItemProducing, growth.ItemQC, growth.ItemQueued, growth.ItemProduced, growth.ItemPublishing,
+				growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview, growth.ItemFailed:
+			case growth.ItemPlanned:
+				if item.PlannedFor == "" || item.PlannedFor >= today {
+					continue
+				}
+				displayStatus = "Quá lịch"
+				isOverdue = true
+			default:
+				continue
+			}
+			row := growthItemRow{PlanItem: item, Username: account.Username, DashboardStatus: displayStatus}
+			queue = append(queue, row)
+			if isOverdue || item.Status == growth.ItemProduced || item.Status == growth.ItemWaitingConnect ||
+				item.Status == growth.ItemWaitingQuota || item.Status == growth.ItemNeedsReview || item.Status == growth.ItemFailed {
+				attention = append(attention, row)
+			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ID > out[j].ID })
-	if len(out) > 5 {
-		out = out[:5]
+	sortRows := func(rows []growthItemRow) {
+		sort.SliceStable(rows, func(i, j int) bool {
+			if rows[i].PlannedFor != rows[j].PlannedFor {
+				return rows[i].PlannedFor < rows[j].PlannedFor
+			}
+			if rows[i].Username != rows[j].Username {
+				return rows[i].Username < rows[j].Username
+			}
+			return rows[i].ID < rows[j].ID
+		})
 	}
-	return out
+	sortRows(queue)
+	sortRows(attention)
+	if len(queue) > 6 {
+		queue = queue[:6]
+	}
+	return queue, attention, nil
 }
 
 func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {

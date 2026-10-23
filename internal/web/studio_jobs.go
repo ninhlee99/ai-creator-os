@@ -36,8 +36,27 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var allJobs []studioJobView
+	jobID := strings.TrimSpace(r.URL.Query().Get("id"))
+	if jobID == "" {
+		jobID = strings.TrimSpace(r.URL.Query().Get("job_id")) // legacy create redirect
+	}
 	if s.Studio != nil {
-		allJobs = s.studioJobViews(s.Studio.ListJobs(50))
+		jobs := s.Studio.ListJobs(50)
+		if jobID != "" {
+			found := false
+			for _, job := range jobs {
+				if job.ID == jobID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				if job, ok := s.Studio.GetJob(jobID); ok {
+					jobs = append(jobs, job)
+				}
+			}
+		}
+		allJobs = s.studioJobViews(jobs)
 	}
 
 	var runningJobs, doneJobs, failedJobs []studioJobView
@@ -53,6 +72,18 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tab := r.URL.Query().Get("tab")
+	if jobID != "" && s.Studio != nil {
+		if job, ok := s.Studio.GetJob(jobID); ok {
+			switch job.Status {
+			case studio.StatusQueued, studio.StatusRunning:
+				tab = "running"
+			case studio.StatusDone:
+				tab = "done"
+			case studio.StatusFailed:
+				tab = "failed"
+			}
+		}
+	}
 	if tab == "" {
 		if len(runningJobs) > 0 {
 			tab = "running"

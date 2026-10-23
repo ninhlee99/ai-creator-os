@@ -14,21 +14,23 @@ import (
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
-	ID            string `json:"id"`
-	Kind          string `json:"kind"`
-	Title         string `json:"title"`
-	Status        string `json:"status"`
-	Progress      int    `json:"progress"`
-	Output        string `json:"output"`
-	OutputKind    string `json:"output_kind"`
-	Caption       string `json:"caption"`
-	CreatedAt     string `json:"created_at"`
-	FinishedAt    string `json:"finished_at"`
-	KindLabel     string `json:"kind_label"`
-	Label         string `json:"label"`
-	Class         string `json:"class"`
-	QCVerified    bool   `json:"qc_verified"`
-	FailureReason string `json:"failure_reason,omitempty"`
+	ID                string `json:"id"`
+	Kind              string `json:"kind"`
+	Title             string `json:"title"`
+	Status            string `json:"status"`
+	Progress          int    `json:"progress"`
+	Output            string `json:"output"`
+	OutputKind        string `json:"output_kind"`
+	Caption           string `json:"caption"`
+	CreatedAt         string `json:"created_at"`
+	FinishedAt        string `json:"finished_at"`
+	KindLabel         string `json:"kind_label"`
+	Label             string `json:"label"`
+	Class             string `json:"class"`
+	QCVerified        bool   `json:"qc_verified"`
+	FailureReason     string `json:"failure_reason,omitempty"`
+	StoryPublishKnown bool   `json:"-"`
+	StoryPublished    bool   `json:"-"`
 }
 
 func kindLabel(kind string) string {
@@ -45,6 +47,12 @@ func kindLabel(kind string) string {
 func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 	out := make([]studioJobView, 0, len(jobs))
 	for _, j := range jobs {
+		if s.Studio != nil && j.Status == studio.StatusDone && j.Log == "" &&
+			(j.Kind == studio.KindStory || j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) {
+			if full, ok := s.Studio.GetJob(j.ID); ok {
+				j.Log = full.Log
+			}
+		}
 		failureReason := ""
 		if j.Status == studio.StatusFailed {
 			failureReason = studioFailureSummary(j.Log)
@@ -102,16 +110,19 @@ func studioOutputKind(output string) string {
 	}
 }
 
-// Old affiliate/viral jobs can be technically complete without current quality evidence.
-// Keep render status separate from production QC so legacy output is not shown as approved.
+// Keep render status separate from pipeline QC. Each supported producer needs
+// evidence from its own QC stage; unknown and legacy outputs fail closed.
 func studioOutputQCVerified(j studio.Job) bool {
-	if j.Kind == "ai_content" {
+	if j.Status != studio.StatusDone || strings.TrimSpace(j.Output) == "" {
 		return false
 	}
-	if j.Kind != studio.KindAffiliate && j.Kind != studio.KindViral {
-		return true
-	}
-	if j.Status != studio.StatusDone || strings.TrimSpace(j.Output) == "" {
+	switch j.Kind {
+	case "ai_content":
+		return false
+	case studio.KindStory:
+		return strings.Contains(j.Log, "QC đạt:")
+	case studio.KindAffiliate, studio.KindViral:
+	default:
 		return false
 	}
 	qc, qcAt := pipelineMarkerState(j.Log, "VISUAL_QC_START:", "VISUAL_QC_PASS:", "VISUAL_QC_FAIL:")

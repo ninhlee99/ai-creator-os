@@ -3,12 +3,15 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
+
+const oneCommandMaxRequestBytes = 1 << 20
 
 // OneCommandResult phản hồi kết quả tạo video bằng 1 câu lệnh.
 type OneCommandResult struct {
@@ -42,7 +45,7 @@ func detectCommandIntent(cmd string) (mode, topic, niche string) {
 		cleanTopic = raw
 	}
 
-	// 1. Kiểm tra ý định KỂ CHUYỆN AUDIO DRAMA 16:9 (YouTube)
+	// 1. Kiểm tra ý định KỂ CHUYỆN AUDIO DRAMA 9:16
 	storyKeywords := []string{
 		"kể chuyện", "truyện", "radio", "đêm khuya", "tâm sự",
 		"lịch sử", "kinh dị", "truyện ma", "bí ẩn", "podcast",
@@ -90,7 +93,8 @@ func detectCommandIntent(cmd string) (mode, topic, niche string) {
 	return "viral", cleanTopic, genre
 }
 
-// handleOneCommandCreate xử lý tạo video toàn diện chỉ từ 1 câu lệnh duy nhất của người dùng.
+// handleOneCommandCreate starts supported story jobs and routes other intents
+// to their dedicated preparation flow.
 func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		s.respondOneCommand(w, r, OneCommandResult{
@@ -99,15 +103,18 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		}, http.StatusServiceUnavailable)
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, oneCommandMaxRequestBytes)
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-		r.Body = http.MaxBytesReader(w, r.Body, oneCommandMaxUploadBytes+(1<<20))
-		if err := r.ParseMultipartForm(16 << 20); err != nil {
-			s.respondOneCommand(w, r, OneCommandResult{Message: "Tổng dung lượng media vượt 200 MB hoặc form không hợp lệ"}, http.StatusBadRequest)
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			s.respondOneCommand(w, r, OneCommandResult{Message: "Form quá lớn hoặc không hợp lệ. Luồng nhanh chỉ nhận mô tả bằng chữ; tải media trong Studio."}, http.StatusBadRequest)
 			return
 		}
 		if r.MultipartForm != nil {
 			defer r.MultipartForm.RemoveAll()
 		}
+	} else if err := r.ParseForm(); err != nil {
+		s.respondOneCommand(w, r, OneCommandResult{Message: "Form quá lớn hoặc không hợp lệ. Hãy nhập mô tả ngắn bằng chữ."}, http.StatusBadRequest)
+		return
 	}
 
 	command := strings.TrimSpace(r.FormValue("command"))
@@ -128,21 +135,18 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 
 	mode, topic, nicheOrGenre := detectCommandIntent(command)
 
-	var media productMediaUploads
 	if hasOneCommandProductMedia(r) {
-		if mode != "affiliate" {
-			s.respondOneCommand(w, r, OneCommandResult{
-				Type: mode, Title: topic,
-				Message: "Ảnh/video sản phẩm chỉ dùng cho yêu cầu Affiliate. Hãy thêm tên sản phẩm vào câu lệnh.",
-			}, http.StatusUnprocessableEntity)
-			return
+		redirectURL := "/stories"
+		if mode == "affiliate" {
+			redirectURL = "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
+		} else if mode == "viral" {
+			redirectURL = "/viral?topic=" + url.QueryEscape(topic)
 		}
-		var err error
-		media, err = saveOneCommandProductMedia(r, s.Studio.UploadDir())
-		if err != nil {
-			s.respondOneCommand(w, r, OneCommandResult{Message: "Không đọc được media sản phẩm: " + err.Error()}, http.StatusBadRequest)
-			return
-		}
+		s.respondOneCommand(w, r, OneCommandResult{
+			Type: mode, Title: topic, RedirectURL: redirectURL,
+			Message: "Luồng nhanh chỉ nhận mô tả bằng chữ; media chưa được lưu. Mở luồng chuyên biệt để thêm đầu vào.",
+		}, http.StatusUnprocessableEntity)
+		return
 	}
 
 	var jobID string
@@ -169,23 +173,9 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 
 	case "affiliate":
 		studioURL := "/studio?mode=affiliate&product_name=" + url.QueryEscape(topic) + "&niche=" + url.QueryEscape(nicheOrGenre)
-		if len(media.clips) > 0 {
-			s.respondOneCommand(w, r, OneCommandResult{
-				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
-				Message: "Video tải lên không được nối thành affiliate. Hãy tải ảnh listing; hệ thống sẽ tạo cảnh chuyển động mới với nhân vật kênh mặc hoặc dùng sản phẩm.",
-			}, http.StatusUnprocessableEntity)
-			return
-		}
-		if len(media.photos) == 0 {
-			s.respondOneCommand(w, r, OneCommandResult{
-				OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
-				Message: "Affiliate cần ảnh sản phẩm thật để khóa đúng mặt hàng. Mở Studio, chọn hoặc tải ảnh sản phẩm.",
-			}, http.StatusUnprocessableEntity)
-			return
-		}
 		s.respondOneCommand(w, r, OneCommandResult{
 			OK: false, Type: mode, Title: topic, RedirectURL: studioURL,
-			Message: "One-command chưa thể bỏ qua Product Analyst + Director shot plan. Mở Studio để lập plan, rồi tải clip chuyển động theo từng shot; chưa tạo job.",
+			Message: "Luồng nhanh chưa tạo video affiliate tự động. Mở Studio để lập shot plan và hoàn tất bằng footage khả dụng; chưa tạo job.",
 		}, http.StatusUnprocessableEntity)
 		return
 
@@ -213,6 +203,13 @@ func (s *Server) handleOneCommandCreate(w http.ResponseWriter, r *http.Request) 
 		RedirectURL: redirectURL,
 		Message:     msg,
 	}, http.StatusOK)
+}
+
+func hasOneCommandProductMedia(r *http.Request) bool {
+	if r.MultipartForm == nil {
+		return false
+	}
+	return len(r.MultipartForm.File["product_media"]) > 0 || len(r.MultipartForm.File["product_photo"]) > 0
 }
 
 func (s *Server) respondOneCommand(w http.ResponseWriter, r *http.Request, res OneCommandResult, statusCode int) {

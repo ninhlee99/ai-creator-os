@@ -21,21 +21,22 @@
 {{if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 
 <div class="form-card" style="margin:12px 0">
-  <h2 style="margin-top:0;border:none;padding:0">Sản xuất &amp; đăng tự động</h2>
+  <h2 style="margin-top:0;border:none;padding:0">Lịch sản xuất theo Growth plan</h2>
   <p>
-    {{if .ProdEnabled}}<span class="badge badge-ok">đang bật</span>{{else}}<span class="badge badge-no">đang tắt</span>{{end}}
+    {{if .ProdEnabled}}<span class="badge badge-ok" title="Công tắc lịch đang bật; không xác nhận worker hoặc khả năng tạo job">lịch đang bật</span>{{else}}<span class="badge badge-no">lịch đang tắt</span>{{end}}
     {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi chạy thử">CHẠY THỬ</span>{{end}}
     {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
     {{if .QuotaReady}}<span class="badge badge-draft" title="YouTube videos.insert: {{.QuotaPerUpload}} điểm/lượt; bucket reset theo giờ Pacific">Quota YouTube {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>{{else}}<span class="badge badge-warn" title="Trang chưa đọc được quota; bộ đăng sẽ kiểm tra lại trước mỗi yêu cầu">Quota YouTube chưa đọc được · sẽ kiểm tra trước khi đăng</span>{{end}}
     <span class="badge badge-draft" title="Đổi ở Cài đặt · Kênh MXH; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
     {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
+  <p class="hint">Công tắc này cho phép Growth tick xử lý plan đến hạn. Khi provider, credential, quota và safety gate cho phép, tick có thể tạo Studio job rồi upload YouTube theo privacy setting. Trạng thái bật không chứng minh worker đang chạy.</p>
   <form method="post" action="/growth/production" style="display:inline">
-    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt sản xuất tự động</button>
-    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật sản xuất tự động</button>{{end}}
+    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt lịch Growth</button>
+    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit" data-confirm="Cho phép Growth tick tự xử lý plan đến hạn. Khi các gate qua, hệ thống có thể tạo job và upload YouTube theo privacy setting.">Bật lịch Growth</button>{{end}}
   </form>
   <form method="post" action="/growth/production/run" style="display:inline">
-    <button class="btn btn-secondary" type="submit">▶ Chạy ngay</button>
+    <button class="btn btn-secondary" type="submit" data-confirm="Chạy một vòng Growth ngay. Có thể tạo Studio job và upload YouTube nếu item đến hạn, credential, quota và safety gate cho phép.">▶ Chạy một vòng ngay</button>
   </form>
 </div>
 
@@ -82,7 +83,7 @@
   <div class="card"><div class="num">{{.TotalYTSubscribers}}</div><div class="label">YouTube subscribers · snapshot mới nhất</div></div>
   <div class="card"><div class="num">{{.TotalTikTokFollowers}}</div><div class="label">TikTok followers · snapshot mới nhất</div></div>
   <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
-  <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}sẵn sàng đồng bộ{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
+  <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}đồng bộ sẽ kiểm tra API{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
 </div>
 
 <h2>Trạng thái từng tài khoản</h2>
@@ -97,8 +98,8 @@
   <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}} ({{printf "%.0f" .NextPct}}%)</span>{{else}}—{{end}}</td>
   <td>{{if .HasSnapshot}}<span class="hint">{{.FollowersLabel}}</span><br>{{.Followers}}{{else}}<span class="hint">chưa có số liệu</span>{{end}}</td>
   <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
-  <td>{{if .YTConnected}}<span class="badge badge-ok">đã kết nối</span>{{else}}<span class="badge badge-no">chưa kết nối</span>{{end}}</td>
-  <td>{{if .YTReady}}<span class="badge badge-ok">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn">{{.YTUpload}}</span>{{end}}</td>
+  <td><span class="badge {{if .YTAnalyticsConfigured}}badge-draft{{else}}badge-no{{end}}" title="Chỉ kiểm tra API key và Channel ID đã lưu; chưa gọi YouTube API">{{if .YTAnalyticsConfigured}}API key + Channel ID đã lưu{{else}}Thiếu API key hoặc Channel ID{{end}}</span></td>
+  <td>{{if .YTReady}}<span class="badge badge-draft" title="Chỉ kiểm tra OAuth app và token cục bộ; quyền API chưa được kiểm tra">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn" title="Thiếu cấu hình cục bộ để thử upload">{{.YTUpload}}</span>{{end}}</td>
   <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở Autopilot</a></td>
 </tr>
 {{end}}
@@ -146,10 +147,10 @@
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
     <span style="font-size:24px">🛡️</span>
     <div style="flex:1">
-      <b style="font-size:14px;color:var(--text)">Hệ thống hoạt động bình thường — Chưa ghi nhận bất kỳ cảnh báo nào</b>
+      <b style="font-size:14px;color:var(--text)">Chưa ghi nhận cảnh báo tăng trưởng nào</b>
 
     </div>
-    <span class="badge badge-ok" style="font-size:12px;padding:4px 10px">Tất cả kênh an toàn ✓</span>
+    <span class="badge badge-draft" style="font-size:12px;padding:4px 10px">Không có cảnh báo mới</span>
   </div>
   {{end}}
 </div>
@@ -178,7 +179,7 @@
       <td><span class="badge badge-dim" style="font-size:12px;font-weight:600">{{.PlannedFor}}</span></td>
       <td><strong>{{.Username}}</strong></td>
       <td>
-        <span class="badge badge-info">{{variantAspect .Variant}}</span>
+        <span class="badge badge-info" title="Persona Story job áp dụng khổ và thời lượng theo variant; QC kiểm tra đầu ra. Affiliate Autopilot hiện dừng trước khi tạo job.">Plan: {{variantAspect .Variant}} · {{variantSeconds .Variant}}s</span>
         <span style="font-size:13px;color:var(--text);margin-left:4px">{{.Variant}}</span>
         {{if .SeriesEp}}<span class="hint">· tập {{.SeriesEp}}</span>{{end}}
       </td>
@@ -190,6 +191,8 @@
       <td>
         <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
         {{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener" style="font-size:12px">Xem video ↗</a>{{end}}
+        {{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download style="font-size:12px">⬇ Tải MP4</a>{{end}}
+        {{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" style="font-size:12px">Mở job Studio ↗</a>{{end}}
         {{if eq .Status "needs_review"}}
         <form method="post" action="/growth/items/{{.ID}}/publish-review" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:8px">
           <label class="hint">YouTube video ID nếu đã thấy
@@ -216,7 +219,7 @@
   {{else}}
   <div class="empty-state compact">
     <div class="es-icon">📅</div>
-    <h3>Chưa có kế hoạch xuất bản</h3>
+    <h3>Chưa có kế hoạch nội dung</h3>
     <p>Kế hoạch sẽ tự động sinh khi bạn tạo kênh hoặc cấu hình lại chủ đề.</p>
   </div>
   {{end}}

@@ -41,17 +41,17 @@ by app.js and only submit after the user confirms here. */}}
 <div class="modal-backdrop" id="video-modal" hidden style="background:rgba(0,0,0,0.85);z-index:200;">
   <div class="modal" role="dialog" aria-modal="true" style="max-width:420px;width:95%;background:var(--bg2);border-radius:16px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,0.5)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-      <div style="font-weight:700;font-size:16px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85%" id="video-modal-title">Xem trước video (9:16)</div>
+      <div style="font-weight:700;font-size:16px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85%" id="video-modal-title">Xem trước video</div>
       <button type="button" class="btn btn-secondary btn-sm" id="video-modal-close" style="padding:4px 10px;font-size:16px;line-height:1">✕</button>
     </div>
-    <div style="display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin-bottom:14px;aspect-ratio:9/16;max-height:72vh;margin-left:auto;margin-right:auto;box-shadow:0 10px 30px rgba(0,0,0,0.6)">
-      <video id="video-modal-player" controls preload="auto" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:cover;display:block"></video>
+    <div id="video-modal-frame" style="display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden;margin:0 auto 14px;width:100%;max-width:100%;aspect-ratio:16/9;max-height:72vh;box-shadow:0 10px 30px rgba(0,0,0,0.6)">
+      <video id="video-modal-player" controls preload="auto" style="width:100%;height:100%;object-fit:contain;display:block"></video>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
-      <span class="badge badge-draft" id="video-modal-spec">📱 1080×1920 (9:16) · Chuẩn TikTok / Shorts</span>
+      <span class="badge badge-draft" id="video-modal-spec">Đang đọc thông số video…</span>
       <div style="display:flex;gap:8px">
-        <a id="video-modal-download" href="#" download class="btn btn-secondary btn-sm">⬇ Tải file MP4</a>
-        <a id="video-modal-publish" href="/accounts" class="btn btn-primary btn-sm">📱 Đăng lên Kênh</a>
+        <a id="video-modal-download" href="#" download class="btn btn-secondary btn-sm">⬇ Tải video</a>
+        <a id="video-modal-publish" href="/accounts" class="btn btn-primary btn-sm" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng">📤 Bàn giao</a>
       </div>
     </div>
   </div>
@@ -82,7 +82,7 @@ by app.js and only submit after the user confirms here. */}}
   </div>
   <div class="key-empty" data-empty {{if .Keys}}hidden{{end}}>
     <p><strong>Chưa có API key nào.</strong> Thêm key để bật Gemini. Key cùng project dùng chung quota; xoay key không tăng giới hạn.</p>
-    <p>Lấy key miễn phí tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”.</p>
+    <p>Tạo key tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”. Quota và chi phí phụ thuộc cấu hình project Google; kiểm tra billing trước khi dùng.</p>
   </div>
   <div class="key-add" hidden>
     <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">

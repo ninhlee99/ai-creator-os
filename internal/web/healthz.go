@@ -82,6 +82,7 @@ type TickBeatView struct {
 
 // QuotaCircuitView là trạng thái ngắt mạch quota cho template.
 type QuotaCircuitView struct {
+	Known bool
 	Open  bool
 	Until string
 }
@@ -142,5 +143,5 @@ func (s *Server) quotaCircuitView() QuotaCircuitView {
 		return QuotaCircuitView{}
 	}
 	open, until := s.QuotaCircuit()
-	return QuotaCircuitView{Open: open, Until: until}
+	return QuotaCircuitView{Known: true, Open: open, Until: until}
 }

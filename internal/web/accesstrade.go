@@ -61,6 +61,9 @@ type atView struct {
 	Hunted            []products.Product
 	Orders            []accesstrade.SavedOrder
 	OrderStats        accesstrade.OrderStats
+	OrderStatsSynced  bool
+	OrderStatsError   bool
+	OrderSyncedAt     string
 	HunterOn          bool
 	HunterFlowCredits bool
 	OrderSyncOn       bool
@@ -68,6 +71,32 @@ type atView struct {
 	HunterVideos      int
 	HunterLastRun     string
 	OrderLastRun      string
+}
+
+type atOrderSummary struct {
+	Stats     accesstrade.OrderStats
+	Synced    bool
+	SyncedAt  string
+	KeySet    bool
+	StoreOK   bool
+	LoadError string
+}
+
+// atOrderSummary reads current Accesstrade order stats. Sync marker lets the
+// UI distinguish a real zero from a store that has never synced.
+func (s *Server) atOrderSummary() (atOrderSummary, error) {
+	summary := atOrderSummary{KeySet: s.atKeySet(), StoreOK: s.AT != nil}
+	if s.AT == nil {
+		return summary, nil
+	}
+	stats, err := s.AT.GetOrderStats()
+	if err != nil {
+		summary.LoadError = err.Error()
+		return summary, err
+	}
+	syncedAt, synced := s.AT.GetSyncState("orders.until")
+	summary.Stats, summary.Synced, summary.SyncedAt = stats, synced, syncedAt
+	return summary, nil
 }
 
 // atPageData đọc cache campaign + link đã tạo; lỗi đọc chỉ log, UI hiện
@@ -110,10 +139,13 @@ func (s *Server) atPageData() atView {
 	} else {
 		v.Orders = os
 	}
-	if st, err := s.AT.GetOrderStats(); err != nil {
+	if summary, err := s.atOrderSummary(); err != nil {
 		log.Printf("web: at order stats: %v", err)
+		v.OrderStatsError = true
 	} else {
-		v.OrderStats = st
+		v.OrderStats = summary.Stats
+		v.OrderStatsSynced = summary.Synced
+		v.OrderSyncedAt = summary.SyncedAt
 	}
 	if s.Products != nil {
 		if hs, err := s.Products.TopUnusedBySource(

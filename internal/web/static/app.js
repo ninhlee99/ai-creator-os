@@ -95,7 +95,55 @@
   });
 
   // ------------------------------------------------------ video modal
-  window.playVideoModal = function (src, title) {
+  function videoSpec(video) {
+    var width = video.videoWidth, height = video.videoHeight;
+    if (!width || !height) return '';
+    var ratio = width / height, aspect = '';
+    if (Math.abs(ratio - 9 / 16) < 0.01) aspect = ' · 9:16';
+    else if (Math.abs(ratio - 16 / 9) < 0.02) aspect = ' · 16:9';
+    else if (Math.abs(ratio - 1) < 0.01) aspect = ' · 1:1';
+    return width + '×' + height + aspect;
+  }
+  document.querySelectorAll('video[data-video-spec]').forEach(function (video) {
+    var badge = video.parentElement && video.parentElement.querySelector('.video-badge-spec');
+    if (!badge) return;
+    function updateBadge() {
+      var spec = videoSpec(video);
+      if (spec) badge.textContent = '🎞 ' + spec;
+    }
+    video.addEventListener('error', function () { badge.textContent = 'Không đọc được khổ video'; });
+    video.addEventListener('loadedmetadata', updateBadge);
+    if (video.readyState >= 1) updateBadge();
+  });
+
+  var videoModalPlayer = document.getElementById('video-modal-player');
+  var videoModalFrame = document.getElementById('video-modal-frame');
+  var videoModalSpec = document.getElementById('video-modal-spec');
+  function fitVideoModal() {
+    var video = videoModalPlayer, frame = videoModalFrame;
+    if (!video || !frame || !video.videoWidth || !video.videoHeight) return;
+    var style = window.getComputedStyle(frame.parentElement);
+    var maxWidth = frame.parentElement.clientWidth -
+      parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0);
+    var maxHeight = window.innerHeight * 0.72;
+    var ratio = video.videoWidth / video.videoHeight;
+    var width = maxWidth, height = width / ratio;
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * ratio;
+    }
+    frame.style.width = Math.floor(width) + 'px';
+    frame.style.height = Math.floor(height) + 'px';
+    frame.style.aspectRatio = video.videoWidth + ' / ' + video.videoHeight;
+    if (videoModalSpec) videoModalSpec.textContent = '🎞 ' + videoSpec(video);
+  }
+  if (videoModalPlayer) videoModalPlayer.addEventListener('loadedmetadata', fitVideoModal);
+  if (videoModalPlayer) videoModalPlayer.addEventListener('error', function () {
+    if (videoModalSpec) videoModalSpec.textContent = 'Không đọc được thông số video';
+  });
+  window.addEventListener('resize', fitVideoModal);
+
+  window.playVideoModal = function (src, title, qcVerified) {
     var m = document.getElementById('video-modal');
     var p = document.getElementById('video-modal-player');
     var t = document.getElementById('video-modal-title');
@@ -103,9 +151,24 @@
     var pub = document.getElementById('video-modal-publish');
     if (!m || !p) return;
     if (t) t.textContent = title || 'Xem trước video';
+    if (videoModalSpec) videoModalSpec.textContent = 'Đang đọc thông số video…';
+    if (videoModalFrame) {
+      videoModalFrame.style.width = '';
+      videoModalFrame.style.height = '';
+      videoModalFrame.style.aspectRatio = '16 / 9';
+    }
     p.src = src;
     if (d) d.href = src;
-    if (pub) pub.href = '/publishers?video=' + encodeURIComponent(src.replace('/media/', ''));
+    if (pub) {
+      pub.hidden = qcVerified !== true;
+      pub.style.display = qcVerified === true ? '' : 'none';
+      if (qcVerified === true) {
+        var params = new URLSearchParams();
+        params.set('video', src);
+        if (title) params.set('title', title);
+        pub.href = '/publishers?' + params.toString();
+      }
+    }
     m.hidden = false;
     p.play().catch(function () {});
   };
@@ -320,14 +383,14 @@
               h += '<div style="margin:4px 0">' +
                    '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🖼️ Keyframe:</div>' +
                    '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
-                   '<img src="' + esc(imgSrc) + '" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
+                   '<img src="' + esc(imgSrc) + '" style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
                    '</div></div>';
             }
             if (vidSrc) {
               h += '<div style="margin:4px 0">' +
                    '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🎬 Video AI:</div>' +
                    '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
-                   '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:cover;display:block"></video>' +
+                   '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:contain;display:block"></video>' +
                    '</div></div>';
             }
             if (!imgSrc && !vidSrc && a.preview) {

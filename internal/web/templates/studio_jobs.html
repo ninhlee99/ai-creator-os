@@ -42,32 +42,32 @@
      ========================================================================= -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px;margin-bottom:20px">
   <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TRẠNG THÁI TỰ HÀNH</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TRẠNG THÁI LỊCH</div>
     <div>
       {{if .SchedEnabled}}
-      <span class="badge badge-dim" style="font-size:12px;font-weight:700">TỰ ĐỘNG HÓA</span>
+      <span class="badge badge-warn" style="font-size:12px;font-weight:700">LỊCH BẬT · PRODUCER TẠM DỪNG</span>
       {{else}}
-      <span class="badge badge-dim" style="font-size:12px;font-weight:700">⏸️ ĐANG TẮT</span>
+      <span class="badge badge-no" style="font-size:12px;font-weight:700">LỊCH ĐANG TẮT</span>
       {{end}}
     </div>
   </div>
 
   <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">CHU KỲ SẢN XUẤT</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">CHU KỲ ĐÃ LƯU</div>
     <div style="font-size:18px;font-weight:800;color:var(--text)">
       Mỗi {{.SchedHours}} giờ / lượt
     </div>
   </div>
 
   <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">DỰ KIẾN LƯỢT CHẠY TIẾP THEO</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">LẦN AUTOPILOT THỬ TIẾP THEO</div>
     <div style="font-size:13.5px;font-weight:700;color:var(--accent)">
       {{.SchedNextRun}}
     </div>
   </div>
 
   <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">KÊNH TỰ ĐỘNG XUẤT BẢN</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">KÊNH XUẤT BẢN ĐÃ LƯU</div>
     <div style="font-size:12px;font-weight:600;color:var(--text)">
       {{if .SchedAutoPub}}<span class="badge badge-ok" style="font-size:10px">TikTok</span>{{end}}
       {{if .SchedYouTube}}<span class="badge badge-ok" style="font-size:10px">YouTube</span>{{end}}
@@ -79,19 +79,20 @@
 
 <div class="card" style="border-radius:14px;padding:22px;background:var(--bg2);margin-bottom:24px">
   <h3 style="margin:0 0 16px;font-size:16px;display:flex;align-items:center;gap:8px">
-    <span>⚙️</span> Thiết Lập Lịch Sản Xuất Tự Động Định Kỳ
+    <span>⚙️</span> Cấu hình lịch Autopilot
   </h3>
+  <p class="hint" style="margin:-6px 0 16px">Lịch chỉ lưu chu kỳ. Producer chưa tạo video cho tới khi có xác nhận dùng Google Flow credits theo kênh.</p>
   <form method="post" action="/studio/schedule">
     <div style="margin-bottom:16px">
       <label style="display:flex;align-items:center;gap:8px;font-weight:700;cursor:pointer">
         <input type="checkbox" name="enabled" {{if .SchedEnabled}}checked{{end}}>
-        <span>Kích hoạt tạo video tự động theo lịch</span>
+        <span>Bật lịch Autopilot (hiện chưa tạo video)</span>
       </label>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-bottom:18px">
       <div>
-        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chu kỳ tự động tạo video</label>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chu kỳ đã lưu · giờ</label>
         <select name="interval_hours" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
           <option value="2" {{if eq .SchedHours 2}}selected{{end}}>Mỗi 2 giờ (Tối đa công suất)</option>
           <option value="4" {{if eq .SchedHours 4}}selected{{end}}>Mỗi 4 giờ (Khuyên dùng)</option>
@@ -129,7 +130,7 @@
 {{if .FailedJobs}}
 <div style="display:flex;flex-direction:column;gap:10px">
   {{range .FailedJobs}}
-  <div class="card" style="padding:14px;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+  <div id="job-{{.ID}}" class="card" style="padding:14px;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
     <div style="min-width:220px;flex:1">
       <strong>{{.Title}}</strong>
       <span class="badge badge-err" style="margin-left:8px">{{.Label}}</span>
@@ -163,7 +164,7 @@
 <!-- RUNNING JOBS VIEW: Full workflow & real-time progress -->
 <div style="display:flex;flex-direction:column;gap:16px">
   {{range .Jobs}}
-  <div class="job studio-job-card studio-live-job" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative">
+  <div id="job-{{.ID}}" class="job studio-job-card studio-live-job" data-job="{{.ID}}" style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.06);position:relative">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:12px">
       <div>
         <h3 style="margin:0 0 6px;font-size:16.5px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -207,7 +208,7 @@
 <!-- DONE JOBS VIEW: Unified 4-Videos-Per-Row Grid Gallery -->
 <div class="studio-videos-grid">
   {{range .Jobs}}
-  <div class="video-item-card" data-job="{{.ID}}">
+  <div id="job-{{.ID}}" class="video-item-card" data-job="{{.ID}}">
     <div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:5px">
@@ -225,12 +226,12 @@
       </div>
 
       {{if eq .OutputKind "video"}}
-      <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video 9:16">
-        <video class="player" preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
+      <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video">
+        <video class="player" data-video-spec preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
         <div class="video-play-overlay">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
         </div>
-        <span class="video-badge-spec">📱 1080×1920 (9:16)</span>
+        <span class="video-badge-spec">Đang đọc khổ…</span>
       </div>
       {{else if eq .OutputKind "image"}}
       <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
@@ -254,11 +255,11 @@
     <div>
       {{if eq .OutputKind "video"}}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa đăng</span>{{end}}
-        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải MP4</a>
+        {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📤 Bàn giao</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa xác minh QC</span>{{end}}
+        <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải video</a>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Ghim Kệ Bio">🔗 Bio</button>
         <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Storyboard từng cảnh">🎬 Cảnh</button>
@@ -303,7 +304,7 @@
   </h3>
   <div class="studio-videos-grid">
     {{range .DoneJobs}}
-    <div class="video-item-card" data-job="{{.ID}}">
+    <div id="job-{{.ID}}" class="video-item-card" data-job="{{.ID}}">
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:5px">
@@ -321,12 +322,12 @@
         </div>
 
         {{if eq .OutputKind "video"}}
-        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video 9:16">
-          <video class="player" preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
+        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để xem video">
+          <video class="player" data-video-spec preload="metadata" muted loop playsinline src="/media/{{.Output}}"></video>
           <div class="video-play-overlay">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
           </div>
-          <span class="video-badge-spec">📱 1080×1920 (9:16)</span>
+          <span class="video-badge-spec">Đang đọc khổ…</span>
         </div>
         {{else if eq .OutputKind "image"}}
         <div class="video-thumb-preview" style="display:flex;align-items:center;justify-content:center;background:var(--bg3);overflow:hidden">
@@ -345,11 +346,11 @@
       <div>
         {{if eq .OutputKind "video"}}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📱 Đăng kênh</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa đăng</span>{{end}}
-          <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải MP4</a>
+          {{if .QCVerified}}<a class="btn btn-primary btn-sm" href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">📤 Bàn giao</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" title="Hoàn tất render chưa chứng minh video đạt kiểm tra chất lượng" style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center;opacity:.65">⚠ Chưa xác minh QC</span>{{end}}
+          <a class="btn btn-secondary btn-sm" href="/media/{{.Output}}" download style="font-weight:700;font-size:11.5px;padding:6px 4px;text-align:center">⬇ Tải video</a>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="font-size:11px;padding:4px 0;text-align:center" title="Xem video phóng to">▶ Xem</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="copyPostKit('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Sao chép Post Kit">📋 Kit</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="pinJobToBio('{{.Title}}', '{{.Kind}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Ghim Kệ Bio">🔗 Bio</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')" style="font-size:11px;padding:4px 0;text-align:center" title="Storyboard từng cảnh">🎬 Cảnh</button>
@@ -378,11 +379,11 @@
   <div style="font-size:46px;margin-bottom:14px">⚡</div>
   <h3 style="margin:0 0 8px;font-size:18px">Hiện tại không có video nào đang trong dây chuyền dựng</h3>
   <p style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.6">
-    Bạn có thể tạo video mới hoặc thiết lập lịch tự động. Tác vụ chỉ chạy khi các cổng an toàn và dịch vụ cần thiết cho phép.
+    Tạo video thủ công trong Studio. Lịch Autopilot chỉ lưu cấu hình vì producer hiện đang tạm dừng.
   </p>
   <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
     <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video mới ngay</a>
-    <a href="/studio/jobs?tab=schedule" class="btn btn-secondary">📅 Cấu hình lịch tự động</a>
+    <a href="/studio/jobs?tab=schedule" class="btn btn-secondary">📅 Xem lịch (producer tạm dừng)</a>
     <a href="/studio/jobs?tab=done" class="btn btn-secondary">📂 Xem video đã hoàn thành ({{.DoneCount}})</a>
   </div>
 </div>
@@ -391,7 +392,7 @@
   <div style="font-size:46px;margin-bottom:14px">📂</div>
   <h3 style="margin:0 0 8px;font-size:18px">Chưa có video nào hoàn thành</h3>
   <p style="color:var(--muted);font-size:13px;max-width:500px;margin:0 auto 24px;line-height:1.6">
-    Hãy vào Studio tạo video đầu tiên của bạn hoặc kích hoạt chạy theo lịch tự động!
+    Hãy vào Studio để tạo video. Autopilot theo lịch đang tạm dừng.
   </p>
   <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
     <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video đầu tiên ngay</a>

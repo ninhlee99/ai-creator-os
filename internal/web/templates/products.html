@@ -10,7 +10,7 @@
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
     <a href="/bio-admin" class="btn btn-secondary btn-sm">Quản lý Bio</a>
     <a href="/bio" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Xem Bio ↗</a>
-    <a href="/studio" class="btn btn-primary btn-sm">Dựng video</a>
+    <a href="/studio" class="btn btn-primary btn-sm">Mở Studio</a>
     <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>
   </div>
 </div>
@@ -79,7 +79,8 @@
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <div>
-    <h2 style="margin:0;font-size:18px">Kệ hàng sản xuất AI</h2>
+      <h2 style="margin:0;font-size:18px">Kệ hàng Bio</h2>
+      <p class="hint" style="margin:5px 0 0">Đưa sản phẩm lên Bio không đồng nghĩa offer đủ điều kiện để tự động tạo video.</p>
   </div>
   {{if .Shelf}}<span class="badge badge-ok">{{len .Shelf}} sản phẩm</span>{{end}}
 </div>
@@ -87,7 +88,7 @@
 <div class="table-wrap">
 <table>
   <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
-      <th title="Điểm AI chấm độ phù hợp của sản phẩm — càng cao càng nên dùng">Điểm AI</th><th>Bio Clicks</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
+      <th title="Điểm tính từ hoa hồng và demand evidence có nguồn; không phải đánh giá AI">Điểm xếp hạng</th><th>Bio Clicks</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Shelf}}
   <tr>
     <td>
@@ -103,11 +104,11 @@
     </td>
     <td>{{if .Category}}{{.Category}}{{else}}—{{end}}</td>
     <td>{{fmtVND .Price}}</td>
-    <td>{{fmtVND .CommissionValue}}<br>
+    <td>Ước tính {{fmtVND .CommissionValue}}/đơn<br>
       {{if ge .CommissionRate 0.20}}
-      <span class="badge badge-ok" style="font-weight:700;font-size:10.5px">🔥 Hoa hồng cao {{printf "%.0f" (pct .CommissionRate)}}%</span>
+      <span class="badge badge-info" style="font-size:10.5px">Nguồn báo {{printf "%.0f" (pct .CommissionRate)}}%</span>
       {{else}}
-      <span style="color:var(--muted);font-size:11px">({{printf "%.0f" (pct .CommissionRate)}}%)</span>
+      <span style="color:var(--muted);font-size:11px">Nguồn báo {{printf "%.0f" (pct .CommissionRate)}}%</span>
       {{end}}
     </td>
     <td><strong>{{printf "%.2f" .Score}}</strong></td>
@@ -120,7 +121,7 @@
     </td>
     <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
     <td style="text-align:right">
-      <a href="/studio?product_id={{.ID}}&product_name={{urlquery .Title}}&product_price={{urlquery (fmtVND .Price)}}&niche={{urlquery .Category}}{{if .ProductURL}}&aff_link={{urlquery .ProductURL}}{{end}}{{if .ImageURL}}&photo_url={{urlquery .ImageURL}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video</a>
+      <a href="/studio?product_id={{.ID}}&product_name={{urlquery .Title}}&product_price={{urlquery (fmtVND .Price)}}&niche={{urlquery .Category}}{{if .ProductURL}}&aff_link={{urlquery .ProductURL}}{{end}}{{if .ImageURL}}&photo_url={{urlquery .ImageURL}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">Chuẩn bị trong Studio</a>
     </td>
   </tr>
   {{end}}
@@ -130,7 +131,7 @@
 <div class="empty-state compact">
   <div class="es-icon">🛍️</div>
   <h3>Kệ hàng trống</h3>
-  <p>Thêm sản phẩm thật từ nguồn đã kết nối để dùng trong video.</p>
+  <p>Thêm từ nguồn có sẵn hoặc nhập thủ công. Sản phẩm trong kệ chưa chắc đủ dữ liệu để tự động tạo video.</p>
 </div>
 {{end}}
 {{else}}
@@ -138,7 +139,7 @@
 {{if or .AT.KeySet .AT.Hunted .AT.Orders .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade
-    {{if .AT.KeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
+    {{if .AT.KeySet}}<span class="badge badge-info">Có API key · chưa xác minh API live</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}
   </h2>
   {{if not .AT.KeySet}}
   {{else}}
@@ -186,8 +187,9 @@
 
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">🎯 Săn sản phẩm
-    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.HunterOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}</a>
+    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.HunterOn}}<span class="badge badge-info">Lịch quét: BẬT</span>{{else}}<span class="badge badge-draft">Lịch quét: TẮT</span>{{end}}</a>
   </h2>
+  <p class="hint">Feed hiện có offer, giá và commission; chưa có sales/rating evidence đủ điều kiện tự tạo video.</p>
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-primary btn-sm" id="at-hunt-btn" onclick="atHunt()">Săn ngay</button>
@@ -213,15 +215,22 @@
   {{end}}
 </div>
 
-<div class="form-card">
+<div class="form-card" id="at-orders">
   <h2 style="margin-top:0;border:none;padding:0">💰 Đối soát hoa hồng
-    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.OrderSyncOn}}<span class="badge badge-ok">Tự động: BẬT</span>{{else}}<span class="badge badge-draft">Tự động: TẮT</span>{{end}}</a>
+    <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.OrderSyncOn}}<span class="badge badge-info">Lịch đồng bộ: BẬT</span>{{else}}<span class="badge badge-draft">Lịch đồng bộ: TẮT</span>{{end}}</a>
   </h2>
+  {{if .AT.OrderStatsError}}
+  <p class="err">Không đọc được số liệu đơn Accesstrade. Không xem số liệu này là 0.</p>
+  {{else if not .AT.OrderStatsSynced}}
+  <p class="empty">Chưa đồng bộ đơn Accesstrade; chưa có số liệu để kết luận doanh thu. Đã duyệt / Chờ duyệt / Từ chối chỉ hiện sau khi đồng bộ.</p>
+  {{else}}
   <p>
     <span class="badge badge-ok">Đã duyệt: {{.AT.OrderStats.ApprovedCount}} đơn · {{fmtVND .AT.OrderStats.ApprovedTotal}}</span>
     <span class="badge badge-warn">Chờ duyệt: {{.AT.OrderStats.PendingCount}} đơn · {{fmtVND .AT.OrderStats.PendingTotal}}</span>
     <span class="badge badge-draft">Từ chối: {{.AT.OrderStats.RejectedCount}} đơn</span>
   </p>
+  <p style="color:var(--muted)">Cập nhật {{fmtVN .AT.OrderSyncedAt}} UTC</p>
+  {{end}}
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-secondary btn-sm" id="at-sync-btn" onclick="atOrderSync()">Đồng bộ đơn</button>
@@ -376,7 +385,7 @@ function atOrderSync() {
         <span class="badge badge-draft">Chưa có key</span>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:2px">
-        Nhập mã truy cập Accesstrade một lần — app tự săn sản phẩm, tạo link theo dõi và đối soát hoa hồng.
+        API key cho phép tìm sản phẩm và đồng bộ đơn theo lịch. Link tracking theo chiến dịch được tạo riêng trong trang này; publisher approval và payout cần xác minh trên Accesstrade.
       </div>
     </div>
   </div>
@@ -387,14 +396,14 @@ function atOrderSync() {
 <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:8px">
-      <span>🔍</span> Săn Sản Phẩm Thật &amp; Hoa Hồng Cao (18% - 42%)
+      <span>🔍</span> Tìm sản phẩm từ nguồn đã cấu hình
     </h3>
-    <span class="badge badge-ok" style="font-size:11px">🔥 Đã đồng bộ 28+ Sản phẩm thật 4K</span>
+    <span class="badge badge-info" style="font-size:11px">Giá và hoa hồng theo dữ liệu nguồn; sales/rating có thể chưa được xác minh</span>
   </div>
   <form method="post" action="/products/search">
     <div class="field" style="margin-bottom:12px">
       <label style="font-weight:700">Từ khóa tìm kiếm (Tên sản phẩm, thương hiệu, tính năng...):</label>
-      <input type="text" name="q" value="{{.SearchQuery}}" placeholder="vd: Nồi chiên không dầu, Son môi Black Rouge, Tai nghe Anker, Áo thun..." style="font-size:13.5px">
+      <input type="text" name="keyword" value="{{.Keyword}}" placeholder="vd: nồi chiên không dầu, son môi, tai nghe..." style="font-size:13.5px">
     </div>
     <div class="grid2" style="margin-bottom:12px">
       <div class="field">
@@ -414,8 +423,8 @@ function atOrderSync() {
       </div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <span style="font-size:12px;color:var(--muted)">💡 Mẹo: Hệ thống tự động ưu tiên các sản phẩm có ảnh thật 4K và tỷ lệ hoa hồng từ 20% trở lên.</span>
-      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;padding:7px 18px">🔍 Săn Sản Phẩm</button>
+      <span style="font-size:12px;color:var(--muted)">Lọc theo chủ đề và mức hoa hồng từ nguồn; không thay thế dữ liệu bán hàng, đánh giá hay điều kiện nhận tiền.</span>
+      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;padding:7px 18px">🔍 Tìm sản phẩm</button>
     </div>
   </form>
 </div>
@@ -503,13 +512,13 @@ function atOrderSync() {
 {{if .Results}}
 <div style="margin-top:24px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
   <div>
-    <h2 style="margin:0;font-size:18px">Sản phẩm hoa hồng cao trong kho</h2>
+    <h2 style="margin:0;font-size:18px">Kết quả trong kho · xếp theo hoa hồng</h2>
   </div>
   <span class="badge badge-ok">{{len .Results}} sản phẩm</span>
 </div>
 <div class="table-wrap">
 <table>
-  <tr><th>Sản phẩm</th><th>Shop / Sàn</th><th>Giá niêm yết</th><th>Hoa hồng nhận được</th><th>Đã bán</th><th>Đánh giá</th><th>Kệ hàng Bio</th><th style="text-align:right">Thao tác</th></tr>
+  <tr><th>Sản phẩm</th><th>Shop / Nguồn</th><th>Giá theo nguồn</th><th>Tỷ lệ hoa hồng theo nguồn</th><th>Đã bán</th><th>Đánh giá</th><th>Kệ hàng Bio</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Results}}
   <tr>
     <td>
@@ -519,7 +528,7 @@ function atOrderSync() {
         {{end}}
         <div>
           <strong style="font-size:13px;display:block;color:var(--text)">{{.Title}}</strong>
-          <span style="font-size:11px;color:var(--muted)">Mã: {{.SourceID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Thời trang / Gia dụng{{end}}</span>
+          <span style="font-size:11px;color:var(--muted)">Mã: {{.SourceID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Chưa phân loại{{end}}</span>
           {{if eq .Source "manual"}}<br><span style="font-size:10.5px;color:var(--muted)">Số liệu nhập tay · chưa xác minh</span>{{else if .HasDemandSignals}}<br><span style="font-size:10.5px;color:#10b981">Nguồn demand còn hạn</span>{{else}}<br><span style="font-size:10.5px;color:var(--muted)">Demand thiếu nguồn hoặc đã cũ</span>{{end}}
           {{if .DemandEvidenceURL}}<br><a href="{{.DemandEvidenceURL}}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở nguồn số liệu ↗</a>{{end}}
           {{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở link mua sản phẩm ↗</a>{{end}}
@@ -527,13 +536,13 @@ function atOrderSync() {
       </div>
     </td>
     <td>
-      <span style="font-size:12.5px;font-weight:600">{{if .ShopName}}{{.ShopName}}{{else}}Shopee Mall{{end}}</span>
+      <span style="font-size:12.5px;font-weight:600">{{if .ShopName}}{{.ShopName}}{{else}}—{{end}}</span>
       <br><span class="badge badge-draft" style="font-size:10px">{{.Source}}</span>
     </td>
     <td><strong style="font-size:13px">{{fmtVND .Price}}</strong></td>
     <td>
-      <span class="badge badge-ok" style="font-weight:800;font-size:11px">🔥 {{printf "%.0f" (pct .CommissionRate)}}%</span>
-      <div style="font-size:11.5px;font-weight:700;color:#10b981;margin-top:2px">+{{fmtVND (mul .Price .CommissionRate)}}/đơn</div>
+      <span class="badge badge-info" title="Tỷ lệ lấy từ nguồn sản phẩm; không xác nhận hoa hồng được ghi nhận hoặc payout">{{printf "%.0f" (pct .CommissionRate)}}%</span>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ước tính {{fmtVND (mul .Price .CommissionRate)}}/đơn</div>
     </td>
     <td><span style="font-size:12px;font-weight:600">{{.SoldCount}}</span></td>
     <td>{{if .Rating}}<span style="color:#f59e0b">★</span> <b>{{printf "%.1f" .Rating}}</b>{{else}}—{{end}}</td>
@@ -552,7 +561,7 @@ function atOrderSync() {
       </form>
     </td>
     <td style="text-align:right">
-      <a href="/studio?product_id={{.ID}}&product_name={{urlQuery .Title}}&product_price={{urlQuery (fmtVND .Price)}}&niche={{urlQuery .Category}}{{if .ProductURL}}&aff_link={{urlQuery .ProductURL}}{{end}}{{if .ImageURLs}}&photo_url={{urlQuery (index .ImageURLs 0)}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">🎬 Dựng video</a>
+      <a href="/studio?product_id={{.ID}}&product_name={{urlQuery .Title}}&product_price={{urlQuery (fmtVND .Price)}}&niche={{urlQuery .Category}}{{if .ProductURL}}&aff_link={{urlQuery .ProductURL}}{{end}}{{if .ImageURLs}}&photo_url={{urlQuery (index .ImageURLs 0)}}{{end}}#tab-ad-creative" class="btn btn-primary btn-sm" style="font-size:12px;padding:6px 14px;white-space:nowrap;font-weight:700">Chuẩn bị trong Studio</a>
     </td>
   </tr>
   {{end}}
@@ -562,7 +571,7 @@ function atOrderSync() {
 <div class="empty-state compact">
   <div class="es-icon">📦</div>
   <h3>Chưa có sản phẩm nào cho chủ đề này trong kho</h3>
-  <p>Hãy bấm "Tìm sản phẩm" để quét các nguồn thương mại điện tử.</p>
+  <p>Kiểm tra API key và nguồn đã cấu hình, hoặc thêm offer thủ công.</p>
 </div>
 {{end}}
 {{end}}

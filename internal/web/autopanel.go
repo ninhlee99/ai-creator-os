@@ -1,8 +1,7 @@
 package web
 
-// Bảng tự động hóa trên Trang chủ: gom mọi công tắc tự động (trước nằm rải
-// ở 5 trang) về một chỗ. Mỗi công tắc vẫn đọc/ghi đúng khóa setting mà
-// trang gốc dùng, nên bật/tắt ở đây hay ở trang gốc đều như nhau.
+// Bảng nhanh các công tắc lịch chính trên Trang chủ. Mỗi công tắc vẫn
+// đọc/ghi đúng khóa setting mà trang chi tiết dùng.
 
 import (
 	"net/http"
@@ -17,6 +16,7 @@ type autoSwitch struct {
 	Hint  string
 	Page  string // trang chi tiết để chỉnh sâu hơn
 	On    bool
+	Known bool // false when settings could not be read
 }
 
 // autoSwitchDefs: khóa → mặc định khi chưa lưu (khớp trang gốc).
@@ -24,33 +24,44 @@ var autoSwitchDefs = []struct {
 	key, label, hint, page string
 	def                    bool
 }{
-	{"growth.production_enabled", "Sản xuất theo kế hoạch kênh", "Tự sản xuất + đăng theo plan 30 ngày", "/growth", true},
-	{"autopilot_enabled", "Video affiliate tự động", "Tự dựng video từ sản phẩm trong kho theo lịch", "/products", true},
-	{automation.KeyATHunterEnabled, "Săn sản phẩm Accesstrade", "Mỗi ngày tìm sản phẩm hoa hồng tốt (cần mã Accesstrade)", "/products", true},
-	{"viral.auto_produce_enabled", "Video Viral Xu Hướng 100% Gốc", "Tự động bắt trend và sản xuất video viral ngắn 9:16 mỗi ngày", "/viral", true},
-	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Chỉ chạy khi đã bật và có chủ đề cấu hình", "/stories", false},
-	{automation.KeyStoryAutoPublish, "Tự đăng truyện lên YouTube (riêng tư)", "Đăng private để bạn duyệt trước khi công khai", "/stories", false},
+	{"growth.production_enabled", "Lịch sản xuất theo Growth plan", "Cho phép xử lý plan đến hạn; có thể tạo job và upload YouTube nếu provider, credential, quota và safety gate đều qua.", "/growth", true},
+	{"autopilot_enabled", "Lịch autopilot affiliate", "Producer hiện dừng trước khi tạo video vì thiếu xác nhận dùng Google Flow credits; bật lịch không làm video chạy.", "/products", true},
+	{automation.KeyATHunterEnabled, "Quét sản phẩm Accesstrade", "Feed hiện thiếu sales/rating evidence nên chưa đủ điều kiện tự tạo video.", "/products", true},
+	{"viral.auto_produce_enabled", "Radar video xu hướng", "Tìm và lưu nguồn tham khảo; không tự dựng video viral.", "/viral", true},
+	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Cần bật lịch và có chủ đề; tự refill chủ đề là công tắc riêng.", "/stories", false},
+	{automation.KeyStoryAutoPublish, "Tải truyện lên YouTube ở chế độ riêng tư", "Không tự chuyển video sang công khai.", "/stories", false},
 }
 
 func (s *Server) autoSwitches() []autoSwitch {
-	st := s.settings()
 	out := make([]autoSwitch, 0, len(autoSwitchDefs))
 	for _, d := range autoSwitchDefs {
-		on := d.def
+		row := autoSwitch{Key: d.key, Label: d.label, Hint: d.hint, Page: d.page, On: d.def}
 		if s.Ledger != nil {
-			if v, ok := st.Get(d.key); ok {
-				on = v == "1" || v == "true"
+			v, ok, err := s.Ledger.GetSetting(d.key)
+			if err == nil {
+				row.Known = true
+				if ok {
+					row.On = v == "1" || v == "true"
+				}
 			}
 		}
-		out = append(out, autoSwitch{Key: d.key, Label: d.label, Hint: d.hint, Page: d.page, On: on})
+		out = append(out, row)
 	}
 	return out
 }
 
 // handleAutoSwitch bật/tắt một công tắc trong bảng (POST /automation/switch).
 func (s *Server) handleAutoSwitch(w http.ResponseWriter, r *http.Request) {
-	_ = r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "form không hợp lệ", http.StatusBadRequest)
+		return
+	}
 	key := r.PostFormValue("key")
+	onValue := r.PostFormValue("on")
+	if onValue != "0" && onValue != "1" {
+		http.Error(w, "trạng thái công tắc không hợp lệ", http.StatusBadRequest)
+		return
+	}
 	label := ""
 	for _, d := range autoSwitchDefs {
 		if d.key == key {
@@ -66,7 +77,7 @@ func (s *Server) handleAutoSwitch(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/?err="+url.QueryEscape("Kho cài đặt chưa sẵn sàng."))
 		return
 	}
-	on := r.PostFormValue("on") == "1"
+	on := onValue == "1"
 	v, msg := "0", "Đã tắt: "+label
 	if on {
 		v, msg = "1", "Đã bật: "+label

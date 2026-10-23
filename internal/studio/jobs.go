@@ -117,6 +117,38 @@ func (s *Studio) ListJobs(limit int) []Job {
 	return out
 }
 
+// RecentFailedJobs returns failed jobs newest first, independently of the
+// general recent-job window used by the dashboard's video cards.
+func (s *Studio) RecentFailedJobs(limit int) ([]Job, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at
+		FROM studio_jobs WHERE status=?
+		ORDER BY finished_at DESC, created_at DESC LIMIT ?`, StatusFailed, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Job
+	for rows.Next() {
+		var j Job
+		if err := rows.Scan(&j.ID, &j.Kind, &j.Title, &j.Status, &j.Progress, &j.Log, &j.Output,
+			&j.Caption, &j.Params, &j.CreatedAt, &j.FinishedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
+// CountActiveJobs returns an exact count without limiting it to recent jobs.
+func (s *Studio) CountActiveJobs() (int, error) {
+	var n int
+	err := s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?, ?)`, StatusQueued, StatusRunning).Scan(&n)
+	return n, err
+}
+
 // ListAssets returns a job's storyboard assets in order.
 func (s *Studio) ListAssets(jobID string) []Asset {
 	rows, err := s.db.Query(`SELECT id,job_id,idx,kind,path,prompt,status,method FROM studio_assets WHERE job_id=? ORDER BY idx`, jobID)
