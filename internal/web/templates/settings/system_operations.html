@@ -3,16 +3,16 @@
   <h3>Trạng thái hệ thống</h3>
   <div class="cards" style="margin-bottom:20px">
     <div class="card">
-      <div class="num">{{if .DryRun}}<span class="badge badge-warn">Chế độ thử (dry-run)</span>{{else}}<span class="badge badge-ok">Đang chạy thật</span>{{end}}</div>
-      <div class="label">Chế độ chạy</div>
+      <div class="num">{{if .DryRun}}<span class="badge badge-warn">Bật</span>{{else}}<span class="badge badge-ok">Tắt</span>{{end}}</div>
+      <div class="label">Dry-run · chặn tác vụ có áp dụng gate này</div>
     </div>
     <div class="card">
       <div class="num">{{if .Kill}}<span class="badge badge-err">ĐANG BẬT</span>{{else}}<span class="badge badge-ok">TẮT</span>{{end}}</div>
-      <div class="label">Nút dừng khẩn cấp (kill switch)</div>
+      <div class="label">Kill switch · chặn các luồng có áp dụng gate</div>
     </div>
     <div class="card" title="{{.DbPath}}">
-      <div class="num"><span class="badge badge-ok">Sẵn sàng</span></div>
-      <div class="label">Cơ sở dữ liệu</div>
+      <div class="num"><span class="badge badge-draft">Đã cấu hình</span></div>
+      <div class="label">Đường dẫn cơ sở dữ liệu chính</div>
     </div>
     <div class="card" title="{{.DataDir}}">
       <div class="num num-text"><code>{{.Version}}</code></div>
@@ -30,11 +30,11 @@
 
   <div class="cards" style="margin-bottom:24px">
     <div class="card">
-      <div class="label">Công tắc chính (Tự động hóa)</div>
-      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .MasterOn}}Đang cho phép chạy theo lịch tự động{{else}}Hệ thống đang ở trạng thái đứng yên{{end}}</div>
+      <div class="label">Công tắc daemon mạng</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">{{if .MasterOn}}Cho phép daemon mạng chạy qua các gate hiện hành{{else}}Daemon mạng tự động bị chặn; scheduler khác có gate riêng{{end}}</div>
       <form method="post" action="/settings/master">
         <input type="hidden" name="value" value="{{if .MasterOn}}0{{else}}1{{end}}">
-        <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc chính? Daemon mạng sẽ đứng yên."{{end}}>{{if .MasterOn}}Tắt tự động{{else}}Bật tự động{{end}}</button>
+        <button type="submit" class="btn {{if .MasterOn}}btn-secondary{{else}}btn-primary{{end}} btn-sm"{{if .MasterOn}} data-confirm="Tắt công tắc daemon mạng?"{{end}}>{{if .MasterOn}}Tắt daemon mạng{{else}}Bật daemon mạng{{end}}</button>
       </form>
     </div>
     <div class="card">
@@ -179,7 +179,7 @@
     <summary>⚙️ Chi tiết kỹ thuật nâng cao (Tác vụ nền &amp; Quota Circuit)</summary>
     <div style="margin-top:14px">
       <div style="margin-bottom:12px">
-        <b>Ngắt mạch quota Gemini:</b> {{if .QuotaCircuit.Open}}<span class="badge badge-warn">ĐANG MỞ tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">ĐÓNG (Bình thường)</span>{{end}}
+        <b>Ngắt mạch quota Gemini:</b> {{if not .QuotaCircuit.Known}}<span class="badge badge-no">Chưa có dữ liệu</span>{{else if .QuotaCircuit.Open}}<span class="badge badge-warn">ĐANG MỞ tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">ĐÓNG (Bình thường)</span>{{end}}
       </div>
       {{if .TickBeats}}
       <div class="table-wrap">

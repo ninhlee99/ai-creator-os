@@ -19,8 +19,8 @@
 <!-- Streamlined AI Status Pill Bar -->
 <div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span class="status-pill {{if gt .StudioReadyCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
-      {{if gt .StudioReadyCount 0}}<span class="pulse-dot"></span>{{end}} {{.StudioReadyCount}} phiên Muse / Flow dùng được cho Studio
+    <span class="status-pill {{if gt .StudioReadyCount 0}}status-pill-warn{{else}}status-pill-dim{{end}}" title="Chỉ trạng thái tài khoản đã lưu; chưa kiểm tra session, quyền provider hoặc credits">
+      {{.StudioReadyCount}} tài khoản Muse / Flow đang bật, trạng thái connected/ok
     </span>
     <span style="font-size:13px;color:var(--text)"><b>Luồng hiện tại:</b> Kịch bản dùng LLM cấu hình hoặc bộ sinh nội bộ · render video dùng Muse Chat / Google Flow</span>
   </div>
@@ -219,7 +219,7 @@
     <!-- Section 6: Google Flow prompt handoff and exported clip import -->
     <div id="sec-googleflow" class="prompt-sec-content" style="display:none">
       <div style="padding:14px 16px;margin-bottom:16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <span>Gửi prompt và tạo MP4 trực tiếp bằng phiên Google Flow đã kết nối.</span>
+        <span>Tạo MP4 trong Studio bằng account Google Flow đã lưu; quyền tạo và credits cần được xác nhận ở bước tạo.</span>
         <a href="/studio/create" class="btn btn-primary btn-sm">Tạo video trong Studio ↗</a>
       </div>
 

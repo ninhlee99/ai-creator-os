@@ -23,7 +23,7 @@
 {{if .Kill}}
 <div class="kill-banner">
   <strong>KILL SWITCH ĐANG BẬT</strong>
-  <span>Mọi hoạt động tự động đã dừng. Chỉ xem, không thao tác.</span>
+  <span>Các luồng có áp dụng cổng này bị chặn; thao tác thủ công và worker khác vẫn có thể chạy.</span>
 </div>
 {{end}}
 <div class="layout">
@@ -73,10 +73,10 @@
     </div>
     <div class="sidebar-footer">
       <div class="engine-status">
-        {{if .Kill}}<span class="pulse-dot pulse-err"></span><span>Đã dừng khẩn cấp</span>
+        {{if .Kill}}<span class="pulse-dot pulse-err"></span><span>Kill switch đang bật</span>
         {{else if .DryRun}}<span class="pulse-dot"></span><span>Chế độ chạy thử</span>
-        {{else if .MasterOn}}<span class="pulse-dot pulse-ok"></span><span>Tự động được cho phép</span>
-        {{else}}<span class="pulse-dot"></span><span>Tự động đang tắt</span>{{end}}
+        {{else if .MasterOn}}<span class="pulse-dot pulse-ok"></span><span>Daemon mạng được phép</span>
+        {{else}}<span class="pulse-dot"></span><span>Daemon mạng đang tắt</span>{{end}}
       </div>
     </div>
   </aside>
@@ -94,16 +94,16 @@
         </div>
         <div class="topbar-status">
           {{if .Kill}}
-            <span class="status-pill status-pill-err"><span class="pulse-dot pulse-err"></span> Tạm dừng khẩn cấp</span>
+            <span class="status-pill status-pill-err" title="Chặn các luồng có áp dụng kill switch; thao tác thủ công vẫn có thể chạy"><span class="pulse-dot pulse-err"></span> Kill switch bật</span>
           {{else if .DryRun}}
             <span class="status-pill status-pill-muted" title="Chế độ chạy thử nghiệm an toàn"><span class="pulse-dot"></span> Chạy thử</span>
           {{else if .MasterOn}}
-            <span class="status-pill status-pill-ok" title="Master switch cho phép tác vụ tự động"><span class="pulse-dot pulse-ok"></span> Tự động được cho phép</span>
+            <span class="status-pill status-pill-ok" title="Master switch cho phép daemon mạng chạy qua các gate hiện hành"><span class="pulse-dot pulse-ok"></span> Daemon mạng được phép</span>
           {{else}}
-            <span class="status-pill status-pill-muted" title="Master switch đang tắt"><span class="pulse-dot"></span> Tự động đang tắt</span>
+            <span class="status-pill status-pill-muted" title="Master switch đang chặn daemon mạng; scheduler khác có gate riêng"><span class="pulse-dot"></span> Daemon mạng đang tắt</span>
           {{end}}
           {{if .WebAICount}}
-            <a href="/settings/system#tab-webai" class="status-pill status-pill-link" title="Đã kết nối {{.WebAICount}} tài khoản AI">
+            <a href="/settings/system#tab-webai" class="status-pill status-pill-link" title="{{.WebAICount}} tài khoản có credential cục bộ và trạng thái connected/ok đã lưu; chưa gọi provider">
               <span>🤖 {{.WebAICount}} AI</span>
             </a>
           {{end}}

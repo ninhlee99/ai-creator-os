@@ -237,6 +237,11 @@ function testAllWebAIAccounts() {
 window.addEventListener('DOMContentLoaded', function() {
   var hash = window.location.hash;
   if (hash === '#tab-social') switchSettingsTab('social');
+  else if (hash === '#meta-social-settings') {
+    switchSettingsTab('social');
+    var metaSettings = document.getElementById('meta-social-settings');
+    if (metaSettings) metaSettings.open = true;
+  }
   else if (hash === '#tab-webai') switchSettingsTab('webai');
   else if (hash === '#tab-system') switchSettingsTab('system');
   else switchSettingsTab('apikeys');

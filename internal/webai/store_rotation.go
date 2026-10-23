@@ -111,7 +111,8 @@ func (s *Store) ResetCooldown(id string) error {
 	return err
 }
 
-// CountConnected returns the total number of ready/connected web accounts across all platforms.
+// CountConnected counts active accounts with saved provider credentials and a
+// connected/ok status. It does not probe provider access.
 func (s *Store) CountConnected() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -24,7 +24,7 @@
         </div>
         <div class="webai-status">
           {{if gt .ReadyCount 0}}
-          <span class="status-pill status-pill-ok"><span class="pulse-dot"></span>{{.ReadyCount}} phiên đang hoạt động</span>
+          <span class="status-pill status-pill-warn" title="Chỉ trạng thái tài khoản đã lưu; chưa kiểm tra session, quyền provider hoặc credits">{{.ReadyCount}} tài khoản đang bật, trạng thái connected/ok</span>
           {{else if gt .CooldownCount 0}}
           <span class="status-pill status-pill-warn">{{.CooldownCount}} tạm nghỉ</span>
           {{else if gt .ActiveCount 0}}
