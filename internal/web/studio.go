@@ -61,6 +61,8 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	notice := r.URL.Query().Get("notice")
 	if notice == "" && r.URL.Query().Get("msg") == "created" {
 		notice = "Tác vụ sản xuất video đã được đưa vào hàng đợi AI thành công!"
+	} else if notice == "" {
+		notice = r.URL.Query().Get("msg")
 	}
 
 	var selectedModelID int64

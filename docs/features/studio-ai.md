@@ -11,6 +11,7 @@ Studio manages video production jobs, assets, quality checks, and media. It supp
 - `POST /studio/generate` — validate request, select connected account, enqueue provider job.
 - `POST /studio/generate-image` — use Pollinations Free API Classic for prompts without references; otherwise render a neutral text card from supplied product name/category. Gemini image calls are blocked under U-04, and reference-based generation is unavailable. Fallback adds no rating, sales, price, discount, benefit, or unrelated local photo.
 - `GET /studio/jobs`, `GET /studio/jobs/{id}` — job list and detail.
+- `GET /studio/jobs?tab=schedule`, `POST /studio/schedule` — store Autopilot cadence and publish settings.
 - `POST /studio/jobs/{id}/delete` — remove failed jobs.
 - `GET /studio/assets/{job}/{file}` — job assets.
 - `GET /studio/trends` and `POST /studio/trends/refresh` — trending sounds.
@@ -29,7 +30,16 @@ The provider APIs are private web-client interfaces and are not live-tested by t
 
 ## Affiliate flow
 
-`POST /studio/affiliate/plan` creates a product-specific shot list. The operator supplies one moving clip per shot through `POST /studio/affiliate`; Studio normalizes, assembles, adds selected audio, and runs visual/motion checks. QC samples clips and does not prove product use or guarantee outcomes.
+`POST /studio/affiliate/plan` creates a product-specific shot list. The operator can supply one moving clip per shot through `POST /studio/affiliate`, or select Google Flow and acknowledge possible credit use. Studio assembles footage, adds selected audio, and runs visual/motion checks. QC samples clips and does not prove product use or guarantee outcomes.
+
+## Scheduled affiliate production
+
+The schedule page stores Autopilot cadence and publishing preferences. Current
+Autopilot producer exits before discovery or job creation until the app has
+account-level authorization for automatic Google Flow credit use. Enabling the
+schedule does not create videos; the page reports this paused state. Manual
+affiliate jobs still require a saved shot plan, and Flow jobs require a separate
+per-job credits acknowledgement.
 
 ## Job progress
 

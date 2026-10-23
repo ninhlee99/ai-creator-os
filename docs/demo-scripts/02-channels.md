@@ -18,23 +18,24 @@
 
 **Bước 3 — Tab Autopilot.**
 [Thao tác: chuyển tab Autopilot.]
-"Tab Autopilot là chế độ rảnh tay cho affiliate: bạn chọn theme sản phẩm và hoa hồng tối thiểu một lần, máy tự sinh kế hoạch 30 ngày và tự làm video."
-[Thao tác: bật autopilot, bấm "Chạy ngay một chu kỳ" (dry-run nên chỉ mô phỏng).]
-"Tôi bấm chạy ngay — vì đang bật dry-run nên máy chỉ mô phỏng, không tạo job thật."
+"Theme và mức hoa hồng tối thiểu được lưu làm bộ lọc. Producer đang tạm dừng trước bước tìm sản phẩm vì chưa có xác nhận dùng Google Flow credits theo kênh. Lưu cấu hình không tìm sản phẩm hay tạo video."
+[Thao tác: chọn theme nếu cần, bật autopilot và lưu; xem dòng trạng thái producer tạm dừng. Không có nút chạy ngay trong giao diện hiện tại.]
+"Nếu bật, cấu hình rảnh tay được lưu nhưng luồng sản xuất chưa chạy. Đổi theme cũng không thay Growth plan 30 ngày."
 
-**Bước 4 — Upload ảnh mẫu (identity lock).**
+**Bước 4 — Upload ảnh tham chiếu.**
 [Thao tác: tab Autopilot, upload 1 ảnh người mẫu demo.]
-"Ảnh mẫu này để khóa 'mặt người + sản phẩm' cho mọi video affiliate của kênh — video nào cũng cùng một người mẫu, không bị nhảy mặt."
+"Ảnh được lưu theo kênh cho những luồng Studio tương thích. Nó không bảo đảm giữ nguyên diện mạo ở mọi khung hình và không phải job nào cũng dùng ảnh này."
 
 **Bước 5 — Tab Kết nối.**
 [Thao tác: chuyển tab Kết nối.]
-"Tab Kết nối hiện trạng thái thật từng nền tảng: TikTok đã có token chưa, YouTube đã nối OAuth chưa, Facebook Page ID đã nhập chưa. Ô nào thiếu thì hiện 'thiếu' — các luồng đăng sẽ bỏ qua nền tảng đó chứ không đăng bừa."
+"Tab Kết nối hiển thị cấu hình và credential cục bộ. Badge không kiểm tra scope, quyền đăng hay publish thành công; luồng có gate sẽ dừng hoặc bỏ qua khi thiếu dữ liệu cần thiết."
 
-**Bước 6 — Kết nối YouTube (mô phỏng).**
-[Thao tác: chỉ vào form YouTube, nhập channel ID demo (không bấm lưu thật nếu chưa có OAuth).]
-"Muốn đăng YouTube thì nối OAuth ở đây. Chưa nối thì video kể chuyện vẫn làm xong, chỉ nằm chờ bạn duyệt — không mất."
+**Bước 6 — Kiểm tra trạng thái OAuth.**
+[Thao tác: mở `/publishers`; xem các credential indicator, không nhập credential demo.]
+"Các badge phản ánh cấu hình/token cục bộ; chưa chứng minh API, scope, quyền đăng hay publish thành công. Xác minh quyền thật cần OAuth và một lần gọi API phù hợp."
 
 ## Lưu ý trung thực
 
-- Nói rõ: upload ảnh mẫu là việc tay duy nhất (cùng với nhập key lần đầu) — đúng luật zero-touch của app.
-- Không demo đăng thật khi chưa có OAuth — dừng ở badge "thiếu".
+- Không gọi Autopilot là luồng rảnh tay đang hoạt động: producer hiện tạm dừng.
+- Ảnh tham chiếu chỉ áp dụng cho luồng tương thích; không gọi là khóa mặt.
+- Không demo đăng thật khi chưa xác minh OAuth/API — credential badge chưa đủ bằng chứng.

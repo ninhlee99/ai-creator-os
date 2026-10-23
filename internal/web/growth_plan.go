@@ -73,10 +73,8 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 	return len(drafts), nil
 }
 
-// autoGeneratePlan is the zero-touch wrapper (Đợt 3): plans appear on
-// their own when an account is created or its theme changes — no visit
-// to /growth needed. Best-effort: a failure only logs, never blocks the
-// operator action that triggered it.
+// autoGeneratePlan is a best-effort wrapper used when an account is created
+// or a social channel is linked. Affiliate theme changes do not affect Growth plans.
 func (s *Server) autoGeneratePlan(a *network.Account, why string) {
 	if s.Growth == nil || a == nil {
 		return

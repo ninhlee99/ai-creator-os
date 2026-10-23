@@ -300,7 +300,7 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 		back("err", "Không tạo được job: "+err.Error())
 		return
 	}
-	seeOther(w, r, "/studio/jobs?tab=running&job_id="+url.QueryEscape(id))
+	seeOther(w, r, "/studio/jobs?job_id="+url.QueryEscape(id)+"#job-"+url.QueryEscape(id))
 }
 
 func (s *Server) generateStudioFlowVideo(ctx context.Context, initial *webai.Account, prompt, aspect string, progress func(string)) (webai.FlowVideoResult, *webai.Account, error, error) {
