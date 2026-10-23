@@ -26,17 +26,18 @@ import (
 
 // Setting keys cho story automation (ledger settings).
 const (
-	KeyStoryEnabled         = "story.enabled"
-	KeyStoryIntervalH       = "story.interval_hours"
-	KeyStoryLastRun         = "story.last_run"
-	KeyStoryTopics          = "story.topics"
-	KeyStoryWords           = "story.words"
-	KeyStoryScenes          = "story.scenes"
-	KeyStoryGenre           = "story.genre"
-	KeyStoryMusicOn         = "story.music_on"
-	KeyStoryAutoPublish     = "story.auto_publish"
-	KeyStoryAccount         = "story.account"
-	KeyStoryPublishedPrefix = "story.published."
+	KeyStoryEnabled           = "story.enabled"
+	KeyStoryIntervalH         = "story.interval_hours"
+	KeyStoryLastRun           = "story.last_run"
+	KeyStoryTopics            = "story.topics"
+	KeyStoryWords             = "story.words"
+	KeyStoryScenes            = "story.scenes"
+	KeyStoryGenre             = "story.genre"
+	KeyStoryMusicOn           = "story.music_on"
+	KeyStoryAutoPublish       = "story.auto_publish"
+	KeyStoryAccount           = "story.account"
+	KeyStoryPublishedPrefix   = "story.published."
+	KeyStoryNeedsReviewPrefix = "story.needs_review."
 	// KeyStoryPublishingPrefix: marker "đang đăng" — đặt TRƯỚC khi upload,
 	// xóa khi xong/lỗi (Đợt S). Crash/mất điện giữa upload và marker
 	// published để lại dấu vết: vòng sau thấy publishing mà chưa published

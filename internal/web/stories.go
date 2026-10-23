@@ -13,18 +13,19 @@ import (
 
 // storyJobView là 1 job kể chuyện cho template.
 type storyJobView struct {
-	ID         string
-	Title      string
-	Status     string
-	StatusVN   string
-	Progress   int
-	MediaURL   string // /media/<file> khi done
-	Duration   string // "3:24" đo thật từ file, "" khi chưa có
-	Scenes     int    // số asset ảnh
-	LogTail    string
-	Published  bool
-	CreatedAt  string
-	FinishedAt string
+	ID          string
+	Title       string
+	Status      string
+	StatusVN    string
+	Progress    int
+	MediaURL    string // /media/<file> khi done
+	Duration    string // "3:24" đo thật từ file, "" khi chưa có
+	Scenes      int    // số asset ảnh
+	LogTail     string
+	Published   bool
+	NeedsReview bool
+	CreatedAt   string
+	FinishedAt  string
 }
 
 // storiesView gom dữ liệu cho template trang Kể chuyện.
@@ -130,6 +131,9 @@ func (s *Server) storiesPageData() storiesView {
 		if s.Ledger != nil {
 			if _, ok, _ := s.Ledger.GetSetting(automation.KeyStoryPublishedPrefix + j.ID); ok {
 				sv.Published = true
+			}
+			if _, ok, _ := s.Ledger.GetSetting(automation.KeyStoryNeedsReviewPrefix + j.ID); ok {
+				sv.NeedsReview = true
 			}
 		}
 		v.Jobs = append(v.Jobs, sv)

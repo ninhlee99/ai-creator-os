@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
@@ -110,6 +111,22 @@ func (s *Server) recentPublishOutcomes(legs []studio.PublishLeg, limit int) ([]d
 				}
 			}
 		}
+		if status == studio.LegNeedsReview && agent == "story_publisher" && input.JobID != "" && s.Ledger != nil {
+			if remoteID, published, stateErr := s.Ledger.GetSetting(automation.KeyStoryPublishedPrefix + input.JobID); stateErr == nil && published {
+				status = studio.LegDone
+				resolvedLabel = "Đã xác nhận có video"
+				if remoteID != "1" { // Legacy Story marker means published, not a platform ID.
+					input.Video = remoteID
+				}
+			} else {
+				_, needsReview, reviewErr := s.Ledger.GetSetting(automation.KeyStoryNeedsReviewPrefix + input.JobID)
+				_, publishing, markerErr := s.Ledger.GetSetting(automation.KeyStoryPublishingPrefix + input.JobID)
+				if reviewErr == nil && markerErr == nil && !needsReview && !publishing {
+					status = "produced"
+					resolvedLabel = "Đã xác nhận chưa có · đã cho phép thử lại"
+				}
+			}
+		}
 		source := "Growth"
 		if agent == "story_publisher" {
 			source = "Kể chuyện"
@@ -123,6 +140,9 @@ func (s *Server) recentPublishOutcomes(legs []studio.PublishLeg, limit int) ([]d
 		note := input.Error
 		if resolvedLabel != "" {
 			note = "Đã đối chiếu thủ công theo trạng thái hiện tại của mục Growth."
+			if agent == "story_publisher" {
+				note = "Đã đối chiếu thủ công theo trạng thái hiện tại của job Story."
+			}
 		}
 		if note == "" && status == studio.LegNeedsReview {
 			note = "Upload có thể đã được YouTube nhận; kiểm tra trong YouTube Studio trước khi thử lại."

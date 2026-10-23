@@ -60,6 +60,9 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		if _, done := s.Settings.Get(KeyStoryPublishedPrefix + jobID); done {
 			return fmt.Sprintf("story %q: đã đăng rồi — bỏ qua để tránh trùng", jobID), true
 		}
+		if _, needsReview := s.Settings.Get(KeyStoryNeedsReviewPrefix + jobID); needsReview {
+			return fmt.Sprintf("story %q: kết quả upload chưa rõ — cần đối chiếu trước khi thử lại", j.Title), false
+		}
 		if raw, uploading := s.Settings.Get(KeyStoryPublishingPrefix + jobID); uploading {
 			title, ts := parsePublishingMarker(raw)
 			if freshPublishingMarker(ts) {
@@ -93,6 +96,9 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		if dup, derr := s.checkDuplicateUpload(ctx, acct, vmeta.Title); derr != nil {
 			note := "Không đăng lại vì kiểm tra trùng thất bại: " + derr.Error()
 			s.Story.AppendLog(jobID, note)
+			if s.Settings != nil {
+				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, derr.Error())
+			}
 			_ = s.decide("story_publisher", "publish_youtube_failed", &username,
 				"không đăng lại vì chưa xác minh được lần upload trước.", map[string]any{
 					"job_id": jobID, "title": vmeta.Title, "error": note,
@@ -104,6 +110,7 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			if s.Settings != nil {
 				_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
 				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+				_ = s.Settings.Delete(KeyStoryNeedsReviewPrefix + jobID)
 			}
 			return fmt.Sprintf("story %q: đã có trên kênh (lần đăng dở trước đó) — bỏ qua để tránh trùng", j.Title), true
 		}
@@ -146,6 +153,9 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			} else {
 				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
 			}
+			if res.DeliveryUncertain {
+				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, res.Error)
+			}
 		}
 		if res.DeliveryUncertain {
 			return fmt.Sprintf("story %q: kết quả upload chưa rõ — kiểm tra YouTube trước khi thử lại", j.Title), false
@@ -170,6 +180,7 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	s.Story.AppendLog(jobID, logLine)
 	if s.Settings != nil {
 		_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
+		_ = s.Settings.Delete(KeyStoryNeedsReviewPrefix + jobID)
 		// Đợt S: đăng xong → xóa marker "đang đăng".
 		_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
 		// Đợt N: hẹn giờ chuyển public (nếu bật). Không có videoID thì bỏ qua.

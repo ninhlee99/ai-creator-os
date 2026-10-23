@@ -199,6 +199,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /stories", s.handleStoryCreate)
 	mux.HandleFunc("POST /stories/upload-text", s.handleStoryUploadText)
 	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
+	mux.HandleFunc("POST /stories/{id}/publish-review", s.handleStoryPublishReview)
 	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
 	mux.HandleFunc("POST /stories/{id}/retry", s.handleStoryRetry) // đợt Y: thử lại tay
 	mux.HandleFunc("GET /stories/{id}/log", s.handleStoryLog)      // đợt Y: nhật ký đầy đủ

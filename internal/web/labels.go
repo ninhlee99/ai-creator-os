@@ -153,6 +153,7 @@ var statusLabels = map[string]string{
 	"autopublish_meta_failed":      "Tự đăng Meta lỗi",
 	"autopublish_meta_uncertain":   "Kết quả đăng Meta cần đối chiếu",
 	"autopublish_yt_failed":        "Tự đăng YouTube lỗi",
+	"story_publish_reconcile":      "Đối chiếu đăng truyện",
 	"autopublish_yt_uncertain":     "Kết quả đăng YouTube cần đối chiếu",
 	"autopublish_tiktok_uncertain": "Kết quả đăng TikTok cần đối chiếu",
 	"avatar_character_add":         "Thêm nhân vật",

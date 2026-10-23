@@ -152,9 +152,27 @@
             <span class="badge {{if eq .Status "done"}}badge-ok{{else if eq .Status "running"}}badge-warn{{else}}badge-err{{end}}">
               {{.StatusVN}}
             </span>
+            {{if .NeedsReview}}<br><span class="badge badge-warn" style="margin-top:4px">Cần đối chiếu upload YouTube</span>
+            {{else if .Published}}<br><span class="badge badge-draft" style="margin-top:4px">Đã ghi nhận video trên YouTube</span>{{end}}
           </td>
           <td>
-            {{if eq .Status "done"}}
+            {{if .NeedsReview}}
+            <form method="post" action="/stories/{{.ID}}/publish-review" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+              <label class="hint">YouTube video ID nếu đã thấy
+                <input name="remote_id" placeholder="Video ID" style="display:block;max-width:200px">
+              </label>
+              <button type="submit" name="resolution" value="published" class="btn btn-sm">Đã kiểm tra: có video</button>
+              <label class="hint">Kênh để thử lại
+                <select name="account" style="display:block;max-width:200px">
+                  <option value="">Chọn kênh</option>
+                  {{range $.Stories.AccountNames}}
+                  <option value="{{.}}"{{if eq . $.Stories.PostAccount}} selected{{end}}>{{.}}</option>
+                  {{end}}
+                </select>
+              </label>
+              <button type="submit" name="resolution" value="retry" class="btn btn-secondary btn-sm" data-confirm="Chỉ tiếp tục nếu bạn đã kiểm tra YouTube và xác nhận video chưa tồn tại. Hệ thống sẽ tải lại video.">Đã kiểm tra: chưa có, thử lại</button>
+            </form>
+            {{else if eq .Status "done"}}
             <a href="/studio/jobs/{{.ID}}" class="btn btn-primary btn-sm">Xem video</a>
             {{else if eq .Status "failed"}}
             <form method="post" action="/stories/{{.ID}}/retry" style="display:inline">
