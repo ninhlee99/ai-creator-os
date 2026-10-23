@@ -139,8 +139,10 @@ gắn giỏ được).
    phí; code không tự đo hoặc đổi account khi hết quota.
 
 ## 4. Fail-closed & an toàn
-- Kill switch thắng mọi tick, kiểm tra **đầu** mỗi hàm.
-- `Gate == nil` → dry-run (an toàn nhất).
+- Tick kiểm tra kill switch/dry-run theo workflow; ViralRadar chỉ kiểm tra kill
+  vì chỉ đọc và lưu discovery.
+- `Gate == nil` trong `automation.Service` → production ticks fail-closed như
+  dry-run.
 - Mọi lỗi nguồn/metric/upload → giữ trạng thái cũ + note/alert/decision tiếng Việt,
   không giả thành công.
 - Tiền: không nguồn → giữ 0 + decision lý do; đơn idempotent theo external_id.
@@ -150,7 +152,7 @@ gắn giỏ được).
 - Metrics YouTube: `YOUTUBE_API_KEY` (key đơn).
 - Đăng YouTube: refresh token từng tài khoản, tự refresh qua `oauth2.googleapis.com/token`.
 
-## 6. Giám sát tick — chạy 24/7 không người trông (Đợt R+S)
+## 6. Tick supervisor và health endpoint
 
 ### 6.1. Tick supervisor (`internal/ticksup`, wiring ở `cmd/aicos/main.go`)
 Mỗi tick chạy trong goroutine riêng qua `Supervisor.Dispatch`:
