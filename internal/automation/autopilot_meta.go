@@ -18,8 +18,9 @@ var metaPublishersFor = func(acct *network.Account) []publishers.Publisher {
 // metaPlatforms là các chân đăng chéo Meta, theo thứ tự đăng.
 var metaPlatforms = []string{"facebook", "instagram", "threads"}
 
-// autoPublishMetaAffiliate đăng video affiliate lên các nền tảng Meta đã
-// cấu hình. Mỗi nền tảng là một chân riêng (idempotent theo leg).
+// autoPublishMetaAffiliate gửi nội dung affiliate qua các adapter Meta đã
+// cấu hình. Facebook/Instagram nhận video; Threads đăng bài chữ kèm link.
+// Mỗi nền tảng là một chân riêng (idempotent theo leg).
 func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
 	s.autoPublishMetaAffiliatePlatforms(ctx, jobID, j, p, acct, metaPlatforms)
 }

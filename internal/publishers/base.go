@@ -5,8 +5,11 @@
 // kinds its channel accepts (e.g. a music channel takes ai_music + ai_remix,
 // a story channel takes short_film).
 //
-// Draft-first everywhere it is supported: nothing goes public without the
-// platform's own review surface or an explicit env flip.
+// Publish visibility depends on platform and configuration: TikTok uploads a
+// creator-inbox draft, Facebook defaults to an unpublished Page video (the
+// CLI path uses a native draft), Instagram defaults to an unpublished
+// processed container, Threads publishes text immediately, and YouTube
+// follows its configured privacy.
 //
 // Publish results are surfaced as PublishResult values; the orchestration
 // layer records them with ledger.Decide(agent, action, target, reason,
@@ -35,8 +38,9 @@ type PublishResult struct {
 	URL      string
 	Error    string
 	// On successful results, Draft marks a provider-specific non-public outcome.
-	// It may mean native draft (TikTok/Facebook), processed unpublished
-	// container (Instagram), or non-public privacy status (YouTube).
+	// It may mean native draft (TikTok or Facebook CLI), unpublished Page
+	// video (Facebook Graph), processed container (Instagram), or non-public
+	// privacy status (YouTube).
 	Draft bool
 	// DeliveryUncertain means the provider may have accepted the publish
 	// request, but the app did not receive enough confirmation to retry safely.
@@ -58,8 +62,9 @@ type Publisher interface {
 	IsConfigured() bool
 	// Handles reports whether the publisher accepts a content kind.
 	Handles(kind string) bool
-	// Publish uploads the video and (draft-)publishes it. It never raises
-	// for expected API failures — those return PublishResult{Ok:false}.
+	// Publish sends provider-specific content from the supplied media and text.
+	// Some adapters publish text or an unpublished container instead of video.
+	// Expected API failures return PublishResult{Ok:false}.
 	Publish(ctx context.Context, videoPath, title, description, kind string) PublishResult
 }
 

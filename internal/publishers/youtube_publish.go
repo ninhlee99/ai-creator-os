@@ -20,10 +20,20 @@ type VideoMeta struct {
 	Description   string
 	Tags          []string
 	ThumbnailPath string // "" = không đặt thumbnail tùy chỉnh
+	Privacy       string // "" = dùng YOUTUBE_DEFAULT_PRIVACY; override riêng cho video nếu có
 }
 
 // PublishMeta đăng video kèm tags + thumbnail tùy chỉnh (nếu có).
 func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, meta VideoMeta, kind string) PublishResult {
+	privacy := p.privacy
+	if meta.Privacy != "" {
+		privacy = meta.Privacy
+	}
+	switch privacy {
+	case "private", "public", "unlisted":
+	default:
+		return PublishResult{Ok: false, Platform: p.Name(), Error: fmt.Sprintf("privacy %q không hợp lệ", privacy)}
+	}
 	if !p.IsConfigured() {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: "youtube not configured"}
 	}
@@ -49,14 +59,14 @@ func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, me
 		category = "22"
 	}
 	statusObj := map[string]any{
-		"privacyStatus":           p.privacy,
+		"privacyStatus":           privacy,
 		"selfDeclaredMadeForKids": false,
 	}
 	if p.Synthetic {
 		statusObj["containsSyntheticMedia"] = true
 	}
 	// Giờ vàng: chỉ áp cho private (YouTube yêu cầu) — tự công khai đúng lịch.
-	if p.privacy == "private" && goldenHourEnabled(p.Username) {
+	if privacy == "private" && goldenHourEnabled(p.Username) {
 		statusObj["publishAt"] = NextGoldenHour(time.Now()).UTC().Format(time.RFC3339)
 	}
 	snippet := map[string]any{
@@ -133,7 +143,7 @@ func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, me
 		videoURL = "https://youtu.be/" + vid
 	}
 	res := PublishResult{Ok: true, Platform: p.Name(), RemoteID: vid,
-		URL: videoURL, Draft: p.privacy != "public", UploadRequestAttempted: true}
+		URL: videoURL, Draft: privacy != "public", UploadRequestAttempted: true}
 	// Thumbnail là phần tăng thêm: thất bại thì video vẫn đã đăng,
 	// ghi rõ để automation log trung thực.
 	if vid != "" && meta.ThumbnailPath != "" {

@@ -1,17 +1,27 @@
 /*
 Package publishers — operator notes.
 
-Draft-first policy
-------------------
-Every platform defaults to leaving the content in a reviewable state:
+Publication behavior by platform
+--------------------------------
+The adapters do not share one draft model:
 
-  - TikTok: TIKTOK_DRAFT_ONLY=1 (default) uploads to the creator inbox
-    (/v2/post/publish/inbox/video/init/) instead of Direct Post.
-    TIKTOK_PRIVACY defaults to SELF_ONLY.
-  - Facebook: FB_DRAFT_ONLY=1 (default) creates a native Page draft and
-    skips the publish step, so a human reviews the draft in the Page first.
+  - TikTok: uploads to the creator inbox
+    (/v2/post/publish/inbox/video/init/). Direct Post stays blocked until
+    eligibility is verified and per-post consent controls exist. Setting
+    TIKTOK_DRAFT_ONLY=0 does not bypass this gate. Draft uploads do not send
+    TIKTOK_PRIVACY; TikTok's app handles final visibility.
+  - Facebook: FB_DRAFT_ONLY=1 (default) leaves the video unpublished. The
+    Graph API uses published=false; the CLI path creates a native Page draft.
+    Both skip live publishing for operator review.
+  - Instagram: there is no draft endpoint. By default the adapter uploads and
+    waits for processing, then stops before media_publish. IG_AUTO_PUBLISH=1
+    publishes the Reel directly.
+  - Threads: publishes a text post with a link immediately; it does not upload
+    the rendered video.
   - YouTube: YOUTUBE_DEFAULT_PRIVACY defaults to "private". Flip to
-    "unlisted" (or "public" after review) per channel.
+    "unlisted" (or "public" after review) per channel. A per-video
+    VideoMeta.Privacy override takes precedence when a pipeline requires a
+    stricter state; Story forces "private" regardless of this default.
 
 Quota notes
 -----------
@@ -26,7 +36,8 @@ TikTok audit gates (human steps, not code)
  1. Developer app with the Content Posting API product enabled.
  2. App audit (~1-2 wks) + Direct Post audit (~5-10 biz days) before PUBLIC
     posts are allowed. Until then: max 5 test users, SELF_ONLY visibility.
- 3. Request only the scopes you use: video.publish / video.upload.
+ 3. Current build requests video.upload only. Do not request video.publish
+    until eligibility and per-post consent gates are implemented.
 
 Token hygiene
 -------------

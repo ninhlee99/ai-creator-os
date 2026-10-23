@@ -17,9 +17,9 @@ var facebookKinds = []string{"short_video", "short_film"}
 // FacebookPublisher posts managed-Page videos via the `facebook-cli`
 // binary, which handles its own auth + approval flow.
 //
-// Draft-first: creates a native Page draft with the MP4 attached, then
-// publishes the same draft (skipped when FB_DRAFT_ONLY=1 so a human can
-// review the draft in the Page first).
+// FB_DRAFT_ONLY=1 leaves the Page video unpublished. The CLI path creates a
+// native Page draft; the Graph path uploads with published=false. Otherwise,
+// the adapter publishes the video.
 //
 // Per-account Page mapping: FB_PAGE_ID_<USERNAME>, else shared FB_PAGE_ID.
 //

@@ -6,8 +6,8 @@
 <ol>
 <li>The creator signs in with TikTok (Login Kit) and grants the <code>user.info.basic</code> and <code>video.upload</code> scopes.</li>
 <li>The operator authorizes MiuNova with TikTok. For VPS use, the registered redirect URI can point to the MiuNova HTTPS callback. The static relay page is a manual copy-and-paste fallback.</li>
-<li>Draft upload is the default. Direct Post requires the relevant TikTok product, scope and eligibility; it is not assumed to be available.</li>
-<li>Videos and required metadata are sent to TikTok when the operator starts an upload or publish action. Drafts are reviewed in TikTok before publication.</li>
+<li>This build uploads drafts only. Direct Post is disabled until eligibility is verified and per-post consent controls exist.</li>
+<li>Videos and required metadata are sent to TikTok when the operator starts a draft upload. Drafts are reviewed in TikTok before publication.</li>
 </ol>
 <p><a href="terms.html">Terms of Service</a> · <a href="privacy.html">Privacy Policy</a></p>
 <footer>MiuNova — personal, self-hosted creator tool.</footer>

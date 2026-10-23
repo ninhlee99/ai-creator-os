@@ -47,10 +47,14 @@ phút. Mỗi callback vẫn cần xác minh trên deployment với provider cred
 
 ## Trạng thái hiển thị
 
-- YouTube: token file tồn tại / hết hạn; nút kết nối dựa trên `YOUTUBE_CLIENT_ID` + `YOUTUBE_CLIENT_SECRET`.
-- TikTok: token file tồn tại; nút kết nối dựa trên `TIKTOK_CLIENT_KEY` + `TIKTOK_CLIENT_SECRET`.
-- Facebook: sẵn sàng khi cả Page ID và Page token tồn tại; nút OAuth dựa trên `META_APP_ID` + `META_APP_SECRET`.
-- Instagram/Threads status dựa trên token và account ID đã cấu hình. RTMP là trạng thái legacy.
+- YouTube/TikTok: UI cho biết token file có hay bị đánh dấu hết hạn; nút OAuth dựa trên cặp client credentials.
+- Facebook: UI cho biết Page ID + Page token có; nút OAuth dựa trên `META_APP_ID` + `META_APP_SECRET`.
+- Instagram/Threads: UI cho biết ID + token đã cấu hình và có link mở trực tiếp
+  nhóm cấu hình Meta. Threads adapter hiện chỉ hỗ trợ text + link.
+- CTA video trong Dashboard/Studio chỉ mở trang tải file để đăng thủ công; trang
+  `/publishers` không upload video qua API.
+- `Platforms` là danh sách adapter đủ cấu hình cục bộ (`IsConfigured`), không phải kết quả gọi API.
+- Trang không ping provider; có token/ID không chứng minh API permission hoặc publish live hoạt động. RTMP là trạng thái legacy.
 
 Threads adapter hiện đăng text kèm link, chưa đăng video từ file local. API video
 được Meta document nhưng cần URL public để Meta tải file; app chưa có Media
@@ -61,10 +65,10 @@ Delivery Gateway với URL HTTPS tạm theo artifact. Xem
 ## Cổng TikTok trong mô hình MiuNova
 
 Token OAuth tồn tại không đồng nghĩa app đủ điều kiện xuất bản. TikTok
-eligibility cho app cá nhân tự host chưa xác minh. Mô hình giữ Direct Post ở
-trạng thái tắt/chờ đến khi eligibility được xác nhận; khi chưa có quyền, Publisher
-xuất file và bàn giao để người vận hành đăng trong ứng dụng TikTok. Không dùng
-browser automation để né cổng API.
+eligibility cho app cá nhân tự host chưa xác minh. Direct Post bị khóa trong
+adapter; `TIKTOK_DRAFT_ONLY=0` không xin scope `video.publish` và không thể gọi
+đăng thẳng. Luồng Growth giữ MP4 cục bộ để người vận hành đăng trong ứng dụng
+TikTok. Không dùng browser automation để né cổng API.
 
 Nếu Direct Post được cấp, mỗi bài vẫn cần preview, lựa chọn bắt buộc và consent
 riêng. Hai câu hỏi còn mở trong [PRODUCT_DECISIONS](../PRODUCT_DECISIONS.md):

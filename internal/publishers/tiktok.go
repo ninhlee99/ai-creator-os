@@ -27,7 +27,8 @@ type TikTokPublisher struct {
 
 // NewTikTokPublisher wires credentials from the environment:
 // TIKTOK_CLIENT_KEY[_<USERNAME>], TIKTOK_CLIENT_SECRET[_<USERNAME>],
-// TIKTOK_DRAFT_ONLY (default "1"), TIKTOK_PRIVACY (default "SELF_ONLY").
+// TIKTOK_DRAFT_ONLY (default "1"; Direct Post remains gated),
+// TIKTOK_PRIVACY (default "SELF_ONLY"; used only by the gated Direct Post path).
 func NewTikTokPublisher(username string) *TikTokPublisher {
 	draftOnly := true
 	if v, ok := os.LookupEnv("TIKTOK_DRAFT_ONLY"); ok {
