@@ -126,7 +126,7 @@ func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 			}
 		case "facebook", "instagram", "threads":
 			if AutopilotMetaEnabled(s.Settings) {
-				s.autoPublishMetaAffiliate(ctx, leg.JobID, j, p, acct)
+				s.autoPublishMetaAffiliatePlatform(ctx, leg.JobID, j, p, acct, leg.Platform)
 				notes = append(notes, "thử lại chân đăng Meta "+leg.Platform+" cho job "+leg.JobID)
 			}
 		}

@@ -21,6 +21,14 @@ var metaPlatforms = []string{"facebook", "instagram", "threads"}
 // autoPublishMetaAffiliate đăng video affiliate lên các nền tảng Meta đã
 // cấu hình. Mỗi nền tảng là một chân riêng (idempotent theo leg).
 func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
+	s.autoPublishMetaAffiliatePlatforms(ctx, jobID, j, p, acct, metaPlatforms)
+}
+
+func (s *Service) autoPublishMetaAffiliatePlatform(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account, platform string) {
+	s.autoPublishMetaAffiliatePlatforms(ctx, jobID, j, p, acct, []string{platform})
+}
+
+func (s *Service) autoPublishMetaAffiliatePlatforms(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account, platforms []string) {
 	pubs := map[string]publishers.Publisher{}
 	for _, c := range metaPublishersFor(acct) {
 		pubs[c.Name()] = c
@@ -34,7 +42,7 @@ func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j 
 		desc += "\nLink mua: " + p.AffLink
 	}
 	desc = strings.TrimSpace(desc + "\n\n" + growth.DisclosureLine)
-	for _, name := range metaPlatforms {
+	for _, name := range platforms {
 		pub, ok := pubs[name]
 		if !ok {
 			continue
