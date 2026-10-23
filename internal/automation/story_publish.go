@@ -56,6 +56,11 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 	if s.Uploader == nil {
 		return "story: chưa nối YouTube uploader", false
 	}
+	if stalePublishing && staleTitle != "" {
+		if note, ok, handled := s.resolveStaleStoryPublish(ctx, jobID, username, acct, staleTitle); handled {
+			return note, ok
+		}
+	}
 	// Đợt Y: chống đăng trùng khi bấm 2 lần (double-click / đua với
 	// auto-publish). Marker "đang đăng": "title|RFC3339" — phân biệt "đang
 	// đăng thật" (mới < 30 phút → bỏ qua) và "đăng dở do crash" (cũ →
@@ -93,32 +98,13 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			vmeta.Title+"|"+time.Now().Format(time.RFC3339))
 	}
 	var res publishers.PublishResult
-	if stalePublishing {
+	if stalePublishing && staleTitle == "" {
 		// Đợt V: lần trước đăng dở (crash/kill giữa upload và marker) — trước
 		// khi đăng lại, hỏi YouTube xem video cùng tiêu đề đã có chưa để
 		// tránh bản trùng tích lũy im lặng (mất mạng sau khi YouTube đã nhận
 		// đủ bytes nhưng trước khi response về là kịch bản thật).
-		if dup, derr := s.checkDuplicateUpload(ctx, acct, vmeta.Title); derr != nil {
-			note := "Không đăng lại vì kiểm tra trùng thất bại: " + derr.Error()
-			s.Story.AppendLog(jobID, note)
-			if s.Settings != nil {
-				_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, derr.Error())
-				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
-			}
-			_ = s.decide("story_publisher", "publish_youtube_failed", &username,
-				"không đăng lại vì chưa xác minh được lần upload trước.", map[string]any{
-					"job_id": jobID, "title": vmeta.Title, "error": note,
-					"delivery_uncertain": true,
-				})
-			return fmt.Sprintf("story %q: cần kiểm tra YouTube trước khi thử lại", j.Title), false
-		} else if dup {
-			s.Story.AppendLog(jobID, "Phát hiện video cùng tiêu đề đã có trên kênh (lần đăng dở trước đó) — bỏ qua đăng lại để tránh trùng.")
-			if s.Settings != nil {
-				_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
-				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
-				_ = s.Settings.Delete(KeyStoryNeedsReviewPrefix + jobID)
-			}
-			return fmt.Sprintf("story %q: đã có trên kênh (lần đăng dở trước đó) — bỏ qua để tránh trùng", j.Title), true
+		if note, ok, handled := s.resolveStaleStoryPublish(ctx, jobID, username, acct, vmeta.Title); handled {
+			return note, ok
 		}
 	}
 	videoPath := s.OutputPath(j.Output)
@@ -202,6 +188,39 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		note += fmt.Sprintf(" — tự chuyển công khai sau %d giờ", h)
 	}
 	return note, true
+}
+
+func (s *Service) resolveStaleStoryPublish(
+	ctx context.Context, jobID, username string, acct *network.Account, title string,
+) (string, bool, bool) {
+	if title == "" {
+		return "", true, false
+	}
+	dup, err := s.checkDuplicateUpload(ctx, acct, title)
+	if err != nil {
+		note := "Không đăng lại vì kiểm tra trùng thất bại: " + err.Error()
+		s.Story.AppendLog(jobID, note)
+		if s.Settings != nil {
+			_ = s.Settings.Set(KeyStoryNeedsReviewPrefix+jobID, err.Error())
+			_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+		}
+		_ = s.decide("story_publisher", "publish_youtube_failed", &username,
+			"không đăng lại vì chưa xác minh được lần upload trước.", map[string]any{
+				"job_id": jobID, "title": title, "error": note,
+				"delivery_uncertain": true,
+			})
+		return fmt.Sprintf("story %q: cần kiểm tra YouTube trước khi thử lại", title), false, true
+	}
+	if !dup {
+		return "", true, false
+	}
+	s.Story.AppendLog(jobID, "Phát hiện video cùng tiêu đề đã có trên kênh (lần đăng dở trước đó) — bỏ qua đăng lại để tránh trùng.")
+	if s.Settings != nil {
+		_ = s.Settings.Set(KeyStoryPublishedPrefix+jobID, "1")
+		_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+		_ = s.Settings.Delete(KeyStoryNeedsReviewPrefix + jobID)
+	}
+	return fmt.Sprintf("story %q: đã có trên kênh (lần đăng dở trước đó) — bỏ qua để tránh trùng", title), true, true
 }
 
 // enqueuePublic thêm video vào hàng chờ chuyển public (đợt N).
