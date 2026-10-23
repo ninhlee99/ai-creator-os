@@ -274,7 +274,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video thay nhân vật trên nguồn đã chọn job=%s genre=%s: %s", jobID, genre, topic), nil)
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/studio/jobs?tab=running&msg=created&job_id=%s", jobID), http.StatusSeeOther)
+	http.Redirect(w, r, "/studio/jobs?msg=created&job_id="+url.QueryEscape(jobID)+"#job-"+url.QueryEscape(jobID), http.StatusSeeOther)
 }
 
 func writeViralCreateError(w http.ResponseWriter, r *http.Request, analysisOnly bool, status int, message string) {

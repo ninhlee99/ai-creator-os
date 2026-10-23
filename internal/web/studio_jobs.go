@@ -93,6 +93,10 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 			tab = "done"
 		}
 	}
+	msg := r.URL.Query().Get("msg")
+	if msg == "created" {
+		msg = "Job video đã được đưa vào hàng đợi Studio."
+	}
 
 	var displayedJobs []studioJobView
 	switch tab {
@@ -154,7 +158,7 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 		"SchedAutoPub", schedAutoPub,
 		"SchedYouTube", schedYouTube,
 		"SchedMeta", schedMeta,
-		"Msg", r.URL.Query().Get("msg"),
+		"Msg", msg,
 		"Err", r.URL.Query().Get("err"),
 	))
 }

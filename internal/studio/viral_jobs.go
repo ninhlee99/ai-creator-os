@@ -28,6 +28,13 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if duration < 3 {
 		return "", fmt.Errorf("video nguồn phải dài ít nhất 3 giây")
 	}
+	width, height, err := probeViralDimensions(ctx, p.SampleVideo)
+	if err != nil {
+		return "", fmt.Errorf("không đọc được kích thước video nguồn: %w", err)
+	}
+	if math.Abs(float64(width)/float64(height)-9.0/16.0) > 0.015 {
+		return "", fmt.Errorf("video nguồn %dx%d không phải khung dọc 9:16", width, height)
+	}
 	if p.TargetDuration > 0 && math.Abs(p.TargetDuration-duration) > 0.25 {
 		return "", fmt.Errorf("thời lượng gửi không khớp video nguồn")
 	}
