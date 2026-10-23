@@ -1,4 +1,4 @@
-# Video 9 — Cài đặt (`/settings`, 6 tab)
+# Video 9 — Cài đặt (`/settings`, 5 trang)
 
 **Mục tiêu:** đi nhanh 6 tab, nhấn mạnh: key rotation, model local 1 nút, công tắc an toàn.
 
@@ -16,9 +16,9 @@
 [Thao tác: chuyển tab Accesstrade.]
 "Tab này đã quay ở video Affiliate: nhập key, kiểm tra kết nối, chỉnh chu kỳ săn sản phẩm và đồng bộ đơn."
 
-**Tab 3 — Reup.**
-[Thao tác: chuyển tab Reup.]
-"Tab này đã quay ở video Reup: mức transform, voiceover, tự đăng, video mỗi ngày, kill rule, warm-up — và card Quét nguồn: bật/tắt, mấy giờ quét một lần, mấy video một nguồn."
+**Tab 3 — Model local.**
+[Thao tác: mở trang Model local.]
+"Trang này cấu hình model local. Các lựa chọn hiển thị là cấu hình; trang không chứng minh model đã chạy hay tạo được nội dung."
 
 **Tab 4 — Nhà cung cấp.**
 [Thao tác: chuyển tab Nhà cung cấp, chỉ vào chuỗi TTS và keyring.]
@@ -26,14 +26,15 @@
 
 **Tab 5 — An toàn.**
 [Thao tác: chuyển tab An toàn.]
-"Tab quan trọng nhất: dry-run — bật thì mọi thao tác thật đều thành mô phỏng. Và kill switch — nút đỏ dừng toàn bộ daemon ngay lập tức. Mọi lần bấm đều ghi vào nhật ký."
+"Trang An toàn có dry-run và kill switch. Mỗi gate chỉ chặn các workflow áp dụng gate đó; một số sync, discovery hoặc thao tác thủ công vẫn có thể chạy. Master switch riêng chỉ điều khiển network daemon. Các lần đổi được ghi vào nhật ký."
 
 **Kết.**
 [Thao tác: về Trang chủ.]
-"Chín video là toàn bộ app. Nguyên tắc của nó: bạn chỉ mở máy, giữ mạng, start app — còn lại máy tự lo."
+"Các trang cài đặt lưu cấu hình và credential cục bộ. Scheduler chỉ chạy qua gate riêng; affiliate Autopilot hiện dừng trước product discovery, còn video thủ công cần đầu vào và xác nhận dùng Flow credits nếu chọn Flow."
 
 ## Lưu ý trung thực
 
-- Nói rõ công tắc chính mặc định TẮT lúc mới cài (an toàn).
+- Nói rõ `MASTER_SWITCH` mặc định TẮT lúc mới cài và chỉ điều khiển network daemon.
+- Dry-run mặc định BẬT nếu chưa có giá trị lưu; thiết lập đã lưu trong UI được ưu tiên khi khởi động.
 - API nội bộ `/api/*` mặc định TẮT.
 - Không hứa key free "không bao giờ hết quota" — hết thì job chờ, tick hôm sau chạy tiếp.

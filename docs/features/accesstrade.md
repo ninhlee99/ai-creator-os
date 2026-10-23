@@ -66,8 +66,8 @@ bày thành 0.
 ## 5. Automation tick (Đợt C — `internal/automation/at_tick.go`)
 
 `ATTick` (gọi mỗi 5 phút từ `cmd/aicos/main.go` §7c) → 3 tick con, cùng cổng
-**kill switch + DRY-RUN** như `AutopilotTick`; công tắc + cadence chỉnh từ UI
-(card ⚙️, unset = BẬT — zero-touch):
+**kill switch + DRY-RUN**; công tắc + cadence chỉnh từ UI
+(card ⚙️; unset mặc định BẬT, nhưng Flow credits mặc định tắt):
 
 | Tick | Hạn | Việc |
 |---|---|---|

@@ -1,8 +1,8 @@
 # Kill switch + Dry-run + MASTER_SWITCH
 
 ## 1. Mục đích
-Ba lớp an toàn vận hành: kill switch (dừng khẩn cấp), dry-run (chế độ thử —
-không thao tác thật), MASTER_SWITCH (công tắc chính của daemon).
+Kill switch và dry-run là gate cho các workflow có áp dụng chúng; chúng không
+chặn toàn bộ mọi thao tác trong app. `MASTER_SWITCH` chỉ điều khiển network daemon.
 
 ## 2. Kích hoạt
 - Kill switch: nút đỏ trên Trang chủ / trang An toàn → `POST /kill`
@@ -14,26 +14,23 @@ không thao tác thật), MASTER_SWITCH (công tắc chính của daemon).
   gieo từ env `MASTER_SWITCH` đúng một lần (`SeedMasterSwitch`).
 
 ## 3. Luồng vận hành chi tiết
-1. **Một nguồn sự thật**: `web.Config` là `network.Gate` duy nhất
-   (`netCfg.Gate = webCfg` trong `main.go`). Mọi tick đọc `Gate.KillSwitch()` /
-   `Gate.DryRun()` **trực tiếp mỗi lần** — UI đổi là có hiệu lực ngay, không restart.
-2. **Daemon mạng** (`internal/network/daemon.go:158 Tick`, chạy mỗi 60s):
-   - `!masterOn() || kill` → **dừng các handle đang chạy** (`OnStopLive` từng
-     handle), tick đứng yên. `masterOn()` đọc `MasterGate` =
-     `automation.MasterSwitchGate{Settings}` → key `master.switch` live
-     (nil settings = TẮT — fail-closed).
-   - `dry` → slot tới giờ **không** được mở (`if d.OnStartLive != nil && !dry`).
-   - 🅿️ Live đã park: production không nối `OnStartLive` → không có gì để mở.
-3. **Automation** (`internal/automation/service.go`): `s.killed()` / `s.dryRun()`
-   chặn đầu `GrowthTick`, `AutopilotTick`, `AutoPublishAffiliate`;
-   `Gate == nil` → dry-run (an toàn nhất).
-4. Mọi lần bật/tắt đều ghi decision log (`human/kill_switch`, `human/dry_run`,
-   `system/master_switch`) — Trang chủ hiện chip trạng thái trung thực.
+1. `web.Config` cung cấp kill/dry-run state cho network daemon và automation
+   service; UI đổi state có hiệu lực ngay, không restart.
+2. **Network daemon** (`internal/network/daemon.go`, mỗi 60s): Master switch
+   hoặc kill switch dừng các handle; dry-run chặn mở live mới. Live đang park,
+   production không nối callback mở live.
+3. **Automation service** kiểm tra gate theo workflow. Autopilot/Story/AT ticks
+   có kill/dry-run checks; Growth có thể chạy sync trước khi dry-run chặn
+   production/publish. ViralRadar read-only discovery kiểm tra kill nhưng không
+   dừng theo dry-run. Một số thao tác thủ công từ UI cũng có thể gọi provider.
+4. `Gate == nil` trong `automation.Service` coi production như dry-run.
+   Master switch không gate các automation tick khác network daemon.
+5. Bật/tắt controls ghi decision log; dashboard/settings hiển thị state đã lưu.
 
 ## 4. Fail-closed & an toàn
-- Thứ tự thắng: **kill switch > MASTER_SWITCH > dry-run** — kill thắng tất cả,
-  kể cả khi master đang bật.
-- Tắt master một cách vô hình là lỗi: chip Trang chủ luôn hiện trạng thái.
+- Network daemon xử lý riêng master/kill/dry-run. Automation workflows áp dụng
+  kill/dry-run theo logic từng tick; không coi UI badge là xác nhận mọi worker dừng.
+- Tắt master chỉ dừng network daemon; scheduler khác vẫn theo gate riêng.
 
 ## 5. API key rotation
 Không dùng key cloud. (Kill/dry-run/master chỉ là cổng logic.)

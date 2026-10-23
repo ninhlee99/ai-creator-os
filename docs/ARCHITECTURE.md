@@ -4,7 +4,7 @@
 > Mục tiêu sản phẩm hiện hành: [PRODUCT_SPEC](PRODUCT_SPEC.md). Trạng thái code:
 > [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Các đoạn dưới đây về mục
 > tiêu kinh doanh cũ không ghi đè hai tài liệu chuẩn này.
-> **Runtime hiện tại:** viral character replacement bị tắt theo free-only; `/viral` chỉ discovery và từ chối enqueue. Affiliate cần clip do người vận hành cung cấp cho từng shot. Các đoạn lịch sử bên dưới về Veo/Muse/face swap không phải capability đang bật.
+> **Runtime hiện tại:** viral character replacement bị tắt theo free-only; `/viral` chỉ discovery và từ chối enqueue. Affiliate nhận clip do operator cung cấp hoặc Flow generation có xác nhận credits theo job; chi phí $0 chưa được xác minh. Các đoạn lịch sử bên dưới về Veo/Muse/face swap không phải capability đang bật.
 
 ## 1. Design principles
 
@@ -28,18 +28,18 @@
    phải prompt.
 5. **Provider evidence only.** Doanh thu, đơn hàng, hoa hồng chỉ ghi từ dữ
    liệu thật của provider. Hệ thống không bao giờ bịa số.
-6. **Zero-touch & Autonomous Intelligence.** Ninh không can thiệp vận hành:
-   Master Harness Agent (`internal/harness`) chạy vòng lặp OODA và ký ức kinh
-   nghiệm (Episodic Memory) tự điều phối danh mục; mọi fallback, lịch,
-   kill/double-down do hệ thống tự quyết theo rule đã định.
+6. **Human-gated automation.** Harness đọc metrics/verdict đã lưu; action
+   production chưa được hỗ trợ và memory do operator nhập. Autopilot affiliate
+   dừng trước product discovery/job creation. Operator vẫn cấu hình nguồn,
+   cung cấp media và xác nhận các luồng có thể dùng credits.
 
 ## 2. Component map (hiện tại)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ DASHBOARD + MASTER SWITCH + KILL SWITCH                     │
+│ DASHBOARD + WORKFLOW GATES                                   │
 │  Điều hành: Tổng quan · Harness Agent 🧠 · Kênh · Đội ngũ   │
-│  Sản xuất: Studio AI 🎬 · Affiliate · Viral 9:16 · Stories  │
+│  Sản xuất: Studio AI 🎬 · Affiliate · Viral discovery · Stories │
 │  Quản trị: Cài đặt Hệ thống (Kho Web AI) · Đa nền tảng      │
 └──────────────────────┬──────────────────────────────────────┘
                        │
@@ -50,10 +50,11 @@
        │              │              │              │
 ┌──────▼──────┐ ┌─────▼───────┐ ┌────▼────────┐ ┌───▼──────────┐
 │ harness     │ │ studio      │ │ growth      │ │ webai        │
-│ OODA loop,  │ │ video jobs  │ │ plan 30d,   │ │ JSON restore │
-│ episodic    │ │ (affiliate, │ │ ngưỡng,     │ │ session check│
-│ memory,     │ │ viral 9:16, │ │ quota,      │ │ cookie update│
-│ portfolio   │ │ story 16:9) │ │ YT Analytics│ │ rotation     │
+│ read-only   │ │ video jobs  │ │ plan 30d,   │ │ JSON restore │
+│ OODA;       │ │ affiliate   │ │ ngưỡng,     │ │ session check│
+│ operator    │ │ manual/Flow,│ │ quota,      │ │ cookie update│
+│ memory      │ │ viral radar,│ │ YT Analytics│ │ rotation     │
+│             │ │ Story 9:16  │ │             │ │              │
 └──────┬──────┘ └─────┬───────┘ └─────────────┘ └───┬──────────┘
        │              │                             │
 ┌──────▼──────────────▼─────────────────────────────▼─────────┐
@@ -61,7 +62,7 @@
 │ TTS chain: local macOS speech → Edge → Gemini                │
 │ Web AI pool (ChatGPT/Claude/Grok/Muse/Flow)                   │
 │ Keyring xoay vòng, cooldown 60s→5m→15m khi 429              │
-│ Daily Model Auto-Updater (quét 24h & hot-swap model mới)    │
+│ On-demand Gemini model refresh (không tự quét theo lịch)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -116,8 +117,8 @@ chờ Ninh duyệt).
 
 | Route | Handler | Ghi chú |
 |---|---|---|
-| `GET /` | `handleDashboard` | Trang chủ điều hành & số liệu thời gian thực |
-| `/harness*` | `handleHarness*` | **Master Agent Harness**: Vòng lặp nhận thức OODA, ký ức kinh nghiệm (Episodic Memory) |
+| `GET /` | `handleDashboard` | Trang điều hành với snapshot job, đơn đã sync, heartbeat và cấu hình |
+| `/harness*` | `handleHarness*` | OODA đọc metrics/verdict đã lưu; action chưa thực thi, memory do người vận hành nhập |
 | `/accounts*` | `handleAccounts*` | Kênh & Brand DNA (sidebar "Kênh") |
 | `/growth*` | `handleGrowth*` | Phát triển kênh & ngưỡng tự động |
 | `/studio*` | `handleStudio*` | Affiliate, Muse/Flow creation, jobs, media and trends |
@@ -148,8 +149,9 @@ decision log (`engines/tier_failover`).
 
 ## 5. Governance (deterministic, Go)
 
-- Kill switch > MASTER_SWITCH > dry-run — thứ tự thắng cứng, kiểm tra đầu
-  mọi tick (`internal/automation/service.go`).
+- `MASTER_SWITCH` chỉ gates `network.Daemon`. Automation ticks kiểm tra kill
+  switch/dry-run theo từng workflow; dry-run không chặn mọi thao tác thủ công,
+  sync hoặc discovery trên toàn app.
 - Ngưỡng growth chỉnh được trên UI (`/growth/thresholds`), hỏng từng trường
   → fallback default (`internal/growth`).
 - Quota YouTube: `videos.insert` bucket riêng, mặc định 100 lượt/ngày, 1 unit/lượt;
@@ -160,20 +162,20 @@ decision log (`engines/tier_failover`).
   trong tương lai, chỉ xuất bản nội dung đã qua QC và dùng tài sản có quyền sử dụng.
   Không bao giờ tự xoá video đã đăng.
 
-## 5b. Ticks automation (zero-touch, Ninh không chạm)
+## 5b. Background ticks and gates
 
 | Tick | Chu kỳ | Công tắc (unset = BẬT) | Fail-closed khi thiếu |
 |---|---|---|---|
-| AutopilotTick | 1′ | master/dry-run/kill | — |
-| GrowthTick | 5′ | `growth.production_enabled` | `Growth == nil` → im lặng |
-| ATTick (hunter/order/campaign) | 5′ | `at.hunter_enabled` / `at.ordersync_enabled` / `at.campaigncheck_enabled` | thiếu key → log + im lặng |
-| ViralRadarTick | 5′/đến hạn 24h | `viral.auto_produce_enabled` | chỉ tìm và lưu nguồn; không tạo job video |
-| StoryTick | 5′/đến hạn 24h | `story.enabled` | `Story == nil` → im lặng |
+| Network daemon | 60s | `master.switch`, kill switch, dry-run | Live đang park; không nối callback mở live |
+| AutopilotTick | 1′ | kill/dry-run, `autopilot_enabled`, cadence | Producer hiện dừng trước product discovery/job creation |
+| GrowthTick | 5′ | kill switch, `growth.production_enabled`; dry-run chặn production/publish | Hourly metrics/commission sync vẫn có thể chạy trong dry-run |
+| ATTick (hunter/order/campaign) | 5′ | kill/dry-run; từng `at.*_enabled` và cadence | Hunter có thể lưu offer; video cần Flow credits và các gate riêng |
+| ViralRadarTick | 5′/đến hạn 24h | kill switch, `viral.auto_produce_enabled` | Read-only discovery; dry-run không chặn bước này; không tạo job video |
+| StoryTick | 5′/đến hạn 24h | kill/dry-run, `story.enabled` | Tạo Story mới còn gate theo provider ảnh; có thể xử lý auto-publish job đã xong |
 
-Mọi tick: kill switch + dry-run chặn đầu; watermark last-run trong settings;
-interval ≤ 0 → default. Trạng thái thật hiển thị ở `/viral`,
-`/settings/accesstrade`, `/stories` — chỗ nào "chờ số liệu"/"chờ key" phải
-nói rõ, không giả vờ đang chạy.
+Gate khác nhau theo workflow; không phải mọi tick đều dừng chỉ vì dry-run bật.
+Master switch chỉ điều khiển network daemon. Các tick có watermark/cadence riêng;
+trạng thái thật hiển thị ở `/viral`, `/settings/accesstrade`, `/stories`.
 
 ## 6. Ledger & Data Stores (SQLite, WAL mode)
 
@@ -187,8 +189,8 @@ nói rõ, không giả vờ đang chạy.
 ## 7. Strict operational rules (encoded, not suggested)
 
 1. Không nguồn dữ liệu thật → giữ 0 + decision log lý do, không bịa số.
-2. `Gate == nil` → coi như dry-run.
-3. Kill switch thắng mọi tick.
+2. Trong `automation.Service`, `Gate == nil` → production ticks coi như dry-run.
+3. Kill switch chặn các workflow có áp dụng gate này; không phải middleware toàn app.
 4. TikTok draft-only (chưa audit Direct Post); YouTube private-first/fail-closed.
 5. Mọi lượt đăng YouTube gắn cờ AI-generated (`containsSyntheticMedia`) — bắt buộc.
 6. Không hứa "đảm bảo 100%" điều không chắc (thuật toán phân phối viral...).
@@ -203,14 +205,15 @@ cấm runtime Python/Node đi kèm.
 - ❌ Live / livestream / avatar (parked).
 - ❌ Phim điện ảnh 30–60 phút, Veo, realism upgrades (parked).
 - ❌ TikTok Shop API — đã loại bỏ hoàn toàn ở đợt H1 (Accesstrade-only).
-- ❌ TikTok đăng trực tiếp (cần app audit — Ninh từ chối) → chỉ nháp.
+- ❌ TikTok Direct Post (đang khóa đến khi eligibility và consent theo từng bài được giải quyết) → adapter chỉ tải draft.
 - ❌ Gemini API billing / direct Veo key. Google Flow is a separate web-account integration; check account access and credits before submitting a job.
 
 ## 10. Affiliate video pipeline (đang chạy)
 
 `POST /studio/affiliate/plan` chạy Product Analyst và Director trước khi operator
-quay/tạo clip. Plan lưu brief + shot list để form hiển thị đúng prompt và số clip;
-`POST /studio/affiliate` tiêu thụ plan, nhận một clip mỗi shot, rồi `runAffiliate`
-chuẩn hóa footage, nối shot, thêm audio do operator cung cấp và chạy temporal +
-visual QC. App không tự tạo affiliate footage qua video API. `fireOnDone` chỉ chạy
+hoàn thiện clip. Plan lưu brief + shot list để form hiển thị prompt và số clip;
+`POST /studio/affiliate` tiêu thụ plan, nhận một clip mỗi shot hoặc chọn Flow
+với xác nhận credits theo job, rồi `runAffiliate` chuẩn hóa footage, nối shot,
+thêm audio do operator cung cấp và chạy temporal + visual QC. Chi phí Flow $0
+chưa được xác minh. `fireOnDone` chỉ chạy
 hook publish đã cấu hình; hoàn tất render không chứng minh hiệu quả tăng trưởng.

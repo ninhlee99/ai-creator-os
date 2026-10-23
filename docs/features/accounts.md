@@ -30,7 +30,7 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 - `POST /accounts/{id}/transition` (`handleAccountTransition`): `s.Mgr.Transition(id, to, nil)`
   → 303 về tab `ket-noi`, lỗi thì `?err=` + toast (không redirect câm).
 
-### Tab Autopilot (affiliate hands-off)
+### Tab Autopilot (affiliate settings)
 - `POST /accounts/{id}/theme` (`handleAccountTheme`): lưu theme để lọc sản phẩm
   affiliate. Không thay Growth plan 30 ngày. Commission floor lưu riêng trong
   form Autopilot.
