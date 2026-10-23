@@ -32,9 +32,9 @@ type envRow struct {
 var envLabels = map[string][2]string{
 	"TTS_API_KEY":              {"Key Gemini cho giọng đọc", "Google Gemini"},
 	"GEMINI_TEXT_MODEL":        {"Model viết chữ (tùy chọn)", "Google Gemini"},
-	"GEMINI_IMAGE_MODEL":       {"Model tạo ảnh (tùy chọn)", "Google Gemini"},
+	"GEMINI_IMAGE_MODEL":       {"Model tạo ảnh Gemini (đã tắt theo free-only)", "Google Gemini"},
 	"GEMINI_TTS_MODEL":         {"Model giọng đọc (tùy chọn)", "Google Gemini"},
-	"GEMINI_VIDEO_MODEL":       {"Model tạo video Veo (tùy chọn)", "Google Gemini"},
+	"GEMINI_VIDEO_MODEL":       {"Model tạo video Veo (đã tắt theo free-only)", "Google Gemini"},
 	"OPENAI_API_KEY":           {"Key OpenAI (ChatGPT / GPT-6 Luna)", "OpenAI & Claude & AI Khác"},
 	"ANTHROPIC_API_KEY":        {"Key Anthropic (Claude 5.5 Sonnet)", "OpenAI & Claude & AI Khác"},
 	"ELEVENLABS_API_KEY":       {"Key ElevenLabs (Giọng đọc siêu thực)", "OpenAI & Claude & AI Khác"},
@@ -228,6 +228,7 @@ var envHelp = map[string]string{
 	"GEMINI_TEXT_MODEL":        "Không bắt buộc. Trống = app tự chọn model Gemini viết chữ (mặc định " + gmodels.Default(gmodels.Text) + "; Google tắt model thì app tự dò model mới).",
 	"GEMINI_IMAGE_MODEL":       "Đã tắt theo U-04 vì Gemini image không có free tier. Ảnh không tham chiếu dùng Pollinations Free API Classic; ảnh tham chiếu bị chặn.",
 	"GEMINI_TTS_MODEL":         "Không bắt buộc. Trống = app tự chọn model Gemini giọng đọc (mặc định " + gmodels.Default(gmodels.TTS) + "; tự dò model mới khi model cũ bị tắt).",
+	"GEMINI_VIDEO_MODEL":       "Đã tắt theo U-04 vì Veo cần project bật billing. Cập nhật model chỉ đổi danh mục, không mở quyền tạo video.",
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.

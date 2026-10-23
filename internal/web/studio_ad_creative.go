@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// handleStudioAdCreative queues a high quality ad creative video job leveraging Muse AI clips,
-// Gemini Imagen 3 photos, and AI voiceover.
+// handleStudioAdCreative queues an ad creative video job from supplied media
+// and AI voiceover. Gemini image generation is unavailable under free-only.
 func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) {
 	studioErr := func(msg string) {
 		seeOther(w, r, "/studio?err="+url.QueryEscape(msg))
@@ -131,7 +131,7 @@ func (s *Server) handleStudioAdCreative(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Download photos from URLs (e.g. Gemini Imagen 3, Web CDN)
+	// Download supplied photos from a trusted provider or web CDN.
 	rawPhotoURLs := strings.TrimSpace(r.FormValue("photo_urls"))
 	if rawPhotoURLs == "" {
 		rawPhotoURLs = strings.TrimSpace(r.FormValue("photo_url"))

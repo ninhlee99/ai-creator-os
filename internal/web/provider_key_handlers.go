@@ -57,7 +57,7 @@ func (s *Server) handleKeyAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	duplicate := false
 	if provider == "gemini" {
-		// 1 key Gemini dùng chung cho viết chữ + giọng đọc + tạo ảnh.
+		// 1 key Gemini dùng chung cho viết chữ + giọng đọc + phân tích ảnh.
 		defer s.SyncGeminiKeys()
 		for _, other := range []string{"llm", "tts"} {
 			if other == chainName {
@@ -126,7 +126,7 @@ func (s *Server) handleKeyDelete(w http.ResponseWriter, r *http.Request) {
 		return append(keys[:idx], keys[idx+1:]...)
 	})
 	if err == nil && provider == "gemini" {
-		// Key dùng chung → xóa ở mọi chuỗi + phần tạo ảnh.
+		// Key dùng chung → xóa ở mọi chuỗi + phần phân tích ảnh Gemini.
 		for _, other := range []string{"llm", "tts"} {
 			if other != chainName {
 				_, _ = s.mutateKeys(other, provider, func(keys []string) []string {

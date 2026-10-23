@@ -142,7 +142,8 @@ func main() {
 	}()
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------
 	// The studio reuses the LLM chain (director), the TTS chain (narration)
-	// and the Gemini keys (image generation). (Film pipeline parked —
+	// and Gemini keys for text/image analysis. Prompt-only image generation
+	// uses Pollinations Free API Classic. (Film pipeline parked —
 	// PIVOT 2026-10-02.)
 	studioInst = initializeStudio(srv, *dataDir, outDir, geminiKeys, llmChain, ttsChain)
 	if studioInst != nil {

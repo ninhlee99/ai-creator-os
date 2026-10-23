@@ -224,7 +224,7 @@ func (s *Server) geminiModelsView() map[string]any {
 			modelItem(gmodels.Text, "Văn bản & Kịch bản (LLM)", "Sáng tạo kịch bản video viral, hook, cốt truyện audio"),
 			modelItem(gmodels.Image, "Gemini image (đã tắt theo U-04)", "Không gọi vì Gemini image không có free tier. Ảnh không tham chiếu dùng Pollinations Free API Classic; ảnh tham chiếu bị chặn."),
 			modelItem(gmodels.TTS, "Giọng đọc truyền cảm (TTS)", "Giọng đọc truyện audio đa cảm xúc (gemini-3.8-flash-tts)"),
-			modelItem(gmodels.Video, "Tạo video chuyển động (Veo)", "Google Veo 3.1 tạo video chuyển động điện ảnh chân thực"),
+			modelItem(gmodels.Video, "Gemini Veo (đã tắt theo U-04)", "Không gọi vì Veo cần project bật billing; Google Flow cần xác nhận credits riêng."),
 		},
 	}
 }
@@ -243,12 +243,19 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Kiểm tra model thất bại: "+err.Error()))
 		return
 	}
-	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Text: %s | Image: %s | TTS: %s | Video: %s",
-		rep.TotalModels, gmodels.Resolve(gmodels.Text), gmodels.Resolve(gmodels.Image), gmodels.Resolve(gmodels.TTS), gmodels.Resolve(gmodels.Video))
+	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Text: %s | Image: bị khóa theo U-04 | TTS: %s | Veo: bị khóa theo U-04",
+		rep.TotalModels, gmodels.Resolve(gmodels.Text), gmodels.Resolve(gmodels.TTS))
 	if rep.Updated && len(rep.Changes) > 0 {
-		msg = "🚀 Phát hiện & nâng cấp lên model mới: "
-		for k, chg := range rep.Changes {
-			msg += fmt.Sprintf("[%s: %s] ", k, chg)
+		var activeChanges []string
+		for _, label := range []string{"viết chữ", "giọng đọc"} {
+			if change, ok := rep.Changes[label]; ok {
+				activeChanges = append(activeChanges, label+": "+change)
+			}
+		}
+		if len(activeChanges) > 0 {
+			msg = "🚀 Đã nâng cấp model Gemini đang bật: " + strings.Join(activeChanges, " · ") + ". Image và Veo vẫn bị khóa theo U-04."
+		} else {
+			msg = fmt.Sprintf("Đã đồng bộ danh mục Gemini (%d models). Image và Veo vẫn bị khóa theo U-04.", rep.TotalModels)
 		}
 	}
 	_ = s.Ledger.Decide("human", "model_update_check", nil, msg, map[string]any{"updated": rep.Updated, "total": rep.TotalModels})

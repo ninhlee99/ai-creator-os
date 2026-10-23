@@ -13,7 +13,8 @@ import (
 )
 
 func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []string, llmChain *engines.LLMChain, ttsChain *tts.TTSChain) *studio.Studio {
-	// Studio reuses the app's LLM, TTS and Gemini image providers.
+	// Studio reuses the app's LLM, TTS and Gemini image-analysis providers.
+	// Prompt-only image generation goes through Pollinations Free API Classic.
 	mediaGen := studio.NewGeminiMediaGen(geminiKeys)
 	narrator := studio.Narrator(func(ctx context.Context, text, voice string) ([]byte, error) {
 		if voice == "" {
@@ -28,10 +29,10 @@ func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []stri
 	}
 
 	srv.Studio = st
-	// Keys saved in Settings also update image generation after startup.
+	// Keys saved in Settings also update Gemini image analysis after startup.
 	srv.OnGeminiKeys = mediaGen.SetKeys
 	if keys := srv.SyncGeminiKeys(); len(keys) > 0 {
-		log.Printf("gemini: %d key dùng chung cho viết chữ + giọng đọc + tạo ảnh", len(keys))
+		log.Printf("gemini: %d key dùng chung cho viết chữ + giọng đọc + phân tích ảnh", len(keys))
 	}
 	st.DiskGuard = func() (int, error) { return automation.DiskUsagePct(dataDir) }
 	if n := st.MarkInterruptedJobs(); n > 0 {

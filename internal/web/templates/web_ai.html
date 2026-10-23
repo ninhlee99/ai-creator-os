@@ -166,7 +166,7 @@
       <button type="button" class="res-tab" onclick="showPromptSection('social')">📱 Bài Đăng</button>
       <button type="button" class="res-tab" onclick="showPromptSection('chatgpt')">💬 Kịch bản (ChatGPT)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('claude')">🟣 Đạo diễn (Claude)</button>
-      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt ảnh (Gemini)</button>
+      <button type="button" class="res-tab" onclick="showPromptSection('gemini')">✨ Prompt ảnh (Pollinations)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('googleflow')">🌊 Google Flow</button>
       <button type="button" class="res-tab" onclick="showPromptSection('museai')">🎬 Video (Muse AI)</button>
       <button type="button" class="res-tab" onclick="showPromptSection('guide')">📥 Hướng Dẫn Media</button>
@@ -530,7 +530,7 @@ function generateSceneImage(i, prompt) {
     if (box && img) {
       img.src = res.url;
       box.style.display = 'block';
-      if (badge) badge.textContent = res.source === 'pollinations' ? '✨ Pollinations' : res.source === 'gemini' ? '✨ Gemini' : '🎨 Đồ họa cơ bản';
+      if (badge) badge.textContent = res.source === 'pollinations' ? '✨ Pollinations' : '🎨 Đồ họa cơ bản';
       if (useBtn) {
         useBtn.onclick = function() {
           var d = { product_name: name, niche: niche, photo_url: res.url, photo_path: res.path };

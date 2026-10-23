@@ -164,7 +164,7 @@ Không qua cổng onboard. Endpoint chỉ hoạt động khi người dùng đã
 ### 6.3. Ngắt mạch quota ngày (`internal/engines/tts/quota_circuit.go`)
 KeyRing backoff tối đa 15′ và chỉ trong bộ nhớ — hết quota ngày thì máy vẫn xoay key đốt API call vô vọng.
 Circuit đếm 3 lần liên tiếp "mọi key cooldown" → mở mạch tới 0h đêm (giờ địa phương):
-- các Gemini tier (LLM/TTS/image) fail-fast ngay, chain chuyển sang tier local như bình thường;
+- các Gemini tier (LLM/TTS và phân tích ảnh) fail-fast ngay, chain chuyển sang tier local như bình thường; tạo ảnh prompt-only dùng Pollinations, không gọi Gemini image;
 - 1 API call thành công (kể cả nút "test" ở Cài đặt) → đóng mạch;
 - mở mạch → đúng 1 alert warn (`quota_circuit`) tới dashboard + Telegram.
 Trạng thái hiện ở Cài đặt · Hệ thống ("Ngắt mạch quota Gemini").
