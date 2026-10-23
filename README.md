@@ -29,11 +29,12 @@ dừng job và báo.
 
 ## Hiện trạng tóm tắt
 
-Code có AccessTrade product discovery, shot plan/QC affiliate, Viral Radar,
-growth planning, agent harness và publisher adapters. Affiliate autopilot vẫn
-cần clip chuyển động do người vận hành cung cấp; pipeline video viral đầy đủ,
-analytics đa nền tảng và UX xác nhận TikTok chưa đạt đích. Những giới hạn khác
-được ghi trong [IMPLEMENTATION_STATUS](docs/IMPLEMENTATION_STATUS.md).
+Code có AccessTrade datafeed/order sync, shot plan/QC affiliate, Viral Radar,
+growth planning, agent harness và publisher adapters. Manual Studio cần clip
+chuyển động do operator cung cấp; Affiliate Autopilot hiện dừng trước product
+discovery khi gate xác nhận Flow credits còn tắt. Pipeline video viral đầy đủ,
+analytics đa nền tảng và UX xác nhận TikTok chưa đạt đích. Xem giới hạn khác ở
+[IMPLEMENTATION_STATUS](docs/IMPLEMENTATION_STATUS.md).
 
 ## Chạy app
 
