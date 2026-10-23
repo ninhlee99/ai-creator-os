@@ -53,7 +53,7 @@ func validateCapturedWebAuth(ctx context.Context, target WebLoginTarget, auth *C
 		return err
 	}
 	email := accountEmail(auth.Email)
-	if email == "" {
+	if email == "" && target.Platform != PlatformMuseAI {
 		return fmt.Errorf("chưa xác định được email thật của tài khoản")
 	}
 	auth.Email = email

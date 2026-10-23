@@ -144,7 +144,11 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 				return
 			}
 
-			mgr.UpdateSession(sess.ID, "success", fmt.Sprintf("✓ Đã lưu phiên %s vào nhóm tài khoản miễn phí.", email), email, "")
+			successLabel := email
+			if successLabel == "" {
+				successLabel = tgt.Name
+			}
+			mgr.UpdateSession(sess.ID, "success", fmt.Sprintf("✓ Đã lưu phiên %s vào nhóm tài khoản miễn phí.", successLabel), email, "")
 			if s.Ledger != nil {
 				_ = s.Ledger.Decide("web_ai", "cdp_login_success", nil, fmt.Sprintf("Đăng nhập CDP thành công %s id=%s email=%s", tgt.Platform, id, email), nil)
 			}

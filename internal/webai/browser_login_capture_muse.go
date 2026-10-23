@@ -120,13 +120,6 @@ func captureMuseLogin(ctx context.Context, browser loginBrowserSession, target W
 				}
 			}
 			confirmedEmail = cleanExtractedEmail(confirmedEmail)
-			if confirmedEmail == "" {
-				if updateStatus != nil {
-					updateStatus("waiting_for_user", "Muse đã đăng nhập. Đang tự trích xuất email tài khoản; giữ cửa sổ Muse mở để hoàn tất.")
-				}
-				time.Sleep(time.Second)
-				continue
-			}
 
 			if sessionCookieVal == "" && gerr == nil {
 				sessionCookieVal, _ = pickSessionCookieAndEmail(cookies, target)
