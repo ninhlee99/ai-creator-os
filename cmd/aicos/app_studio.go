@@ -71,6 +71,6 @@ func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []stri
 			}
 		}
 	}
-	log.Printf("studio: ready (mediagen=%s keys=%d)", mediaGen.Name(), mediaGen.KeyCount())
+	log.Printf("studio: initialized (mediagen=%s; %d API key(s) configured)", mediaGen.Name(), mediaGen.KeyCount())
 	return st
 }

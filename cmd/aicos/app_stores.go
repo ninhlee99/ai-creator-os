@@ -16,7 +16,7 @@ func initializeAccesstrade(srv *web.Server, dataDir string) *accesstrade.Store {
 		return nil
 	}
 	srv.AT = store
-	log.Printf("accesstrade: ready")
+	log.Printf("accesstrade: store opened (API access not checked)")
 	return store
 }
 
@@ -28,6 +28,6 @@ func initializeWebAI(srv *web.Server, dataDir string) *webai.Store {
 	}
 	srv.WebAI = store
 	srv.WireStudioWebAI()
-	log.Printf("webai: ready (%d accounts connected)", store.CountConnected())
+	log.Printf("webai: store opened (%d accounts marked connected; provider access not checked)", store.CountConnected())
 	return store
 }

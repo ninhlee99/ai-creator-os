@@ -56,7 +56,7 @@ func configureAutopilot(srv *web.Server, mgr *network.AccountManager, store *pro
 		autopilot.MusicPath = path
 	}
 	srv.Autopilot = autopilot
-	log.Printf("autopilot: ready (nguồn sản phẩm: Accesstrade store)")
+	log.Printf("autopilot: wired (source=Accesstrade store; production still requires per-account Flow credits authorization)")
 	publishHook := srv.AutomationService().AutoPublishHook()
 	srv.Studio.SetOnDone(func(jobID string) {
 		if publishHook != nil {
@@ -76,7 +76,7 @@ func notifyCompletedStudioJob(srv *web.Server, jobID string) {
 	if title == "" {
 		title = "Video AI Studio"
 	}
-	msg := fmt.Sprintf("🎬 [STUDIO] ✨ Video hoàn tất: \"%s\" (ID: %s, Thể loại: %s)!\nĐã sẵn sàng xuất bản đa kênh.", title, jobID, job.Kind)
+	msg := fmt.Sprintf("🎬 [STUDIO] Video đã hoàn tất: \"%s\" (ID: %s, loại: %s).\nMở Studio để xem đầu ra và các thao tác đăng khả dụng.", title, jobID, job.Kind)
 	bot, _ := srv.EffectiveEnv("TELEGRAM_BOT_TOKEN")
 	chat, _ := srv.EffectiveEnv("TELEGRAM_CHAT_ID")
 	if (bot == "" || chat == "") && srv.Ledger != nil {
