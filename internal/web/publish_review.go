@@ -29,7 +29,9 @@ func (s *Server) handleStudioPublishReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	platform := strings.ToLower(strings.TrimSpace(r.PostFormValue("platform")))
-	if platform != "youtube" && platform != "tiktok" {
+	switch platform {
+	case "youtube", "tiktok", "facebook", "instagram", "threads":
+	default:
 		fail("Nền tảng này chưa có luồng đối chiếu tự động.")
 		return
 	}

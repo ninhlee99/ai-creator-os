@@ -168,14 +168,14 @@
       <p style="margin:5px 0;color:var(--text);font-size:12px">{{if .Title}}{{.Title}}{{else}}{{.JobID}}{{end}}</p>
       {{if .RemoteID}}<small style="display:block;color:var(--muted)">Mã nền tảng: <code>{{.RemoteID}}</code></small>{{end}}
       {{if .Note}}<small style="display:block;margin-top:4px;color:var(--muted)">{{.Note}}</small>{{end}}
-      {{if and (eq .Status "needs_review") (eq .Source "Affiliate Autopilot") (or (eq .Platform "youtube") (eq .Platform "tiktok"))}}
+      {{if and (eq .Status "needs_review") (eq .Source "Affiliate Autopilot") (or (eq .Platform "youtube") (eq .Platform "tiktok") (eq .Platform "facebook") (eq .Platform "instagram") (eq .Platform "threads"))}}
       <form method="post" action="/studio/jobs/{{.JobID}}/publish-review" style="display:flex;flex-wrap:wrap;align-items:end;gap:6px;margin-top:8px">
         <input type="hidden" name="platform" value="{{.Platform}}">
-        <label style="font-size:11px;color:var(--muted)">Mã video/post nếu đã thấy
-          <input name="remote_id" placeholder="YouTube video ID / TikTok post ID" style="display:block;max-width:260px">
+        <label style="font-size:11px;color:var(--muted)">Mã bài/video nếu đã thấy
+          <input name="remote_id" placeholder="ID video hoặc bài trên nền tảng" style="display:block;max-width:260px">
         </label>
-        <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có bài</button>
-        <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra nền tảng và không thấy bài. Autopilot sẽ được phép thử lại.">Đã kiểm tra: chưa có</button>
+        <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có nội dung</button>
+        <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra nền tảng và không thấy nội dung. Autopilot sẽ được phép thử lại.">Đã kiểm tra: chưa có</button>
       </form>
       {{end}}
       <small style="display:block;margin-top:4px;color:var(--muted)">{{fmtVN .UpdatedAt}}{{if .TimeKnown}} UTC{{end}}{{if .JobID}} · <a href="/studio/jobs?id={{.JobID}}#job-{{.JobID}}">Mở job ↗</a>{{end}}</small>
