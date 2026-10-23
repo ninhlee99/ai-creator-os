@@ -169,7 +169,7 @@ func (s *Server) growthView() map[string]any {
 		if items, err := s.Growth.ActivePlanItems(a.ID); err == nil {
 			for _, it := range items {
 				switch it.Status {
-				case growth.ItemPlanned, growth.ItemProducing, growth.ItemProduced,
+				case growth.ItemPlanned, growth.ItemProducing, growth.ItemProduced, growth.ItemPublishing,
 					growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview:
 					if it.Status != growth.ItemPlanned || it.PlannedFor >= today {
 						upcoming = append(upcoming, growthItemRow{PlanItem: it, Username: a.Username})

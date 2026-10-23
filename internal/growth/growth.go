@@ -37,6 +37,7 @@ const (
 	ItemProduced       = "produced"        // render finished, not (yet) published
 	ItemWaitingConnect = "waiting_connect" // rendered, blocked on missing platform credentials
 	ItemWaitingQuota   = "waiting_quota"   // rendered, blocked on the daily API quota
+	ItemPublishing     = "publishing"      // upload request in flight; restart requires reconciliation
 	ItemNeedsReview    = "needs_review"    // provider may have accepted upload; verify before retry
 	ItemPublished      = "published"
 	ItemDropped        = "dropped"

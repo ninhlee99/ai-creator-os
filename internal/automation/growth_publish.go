@@ -60,14 +60,6 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	if up == nil {
 		return nil // no upload backend wired; leave the item waiting
 	}
-	state := up.State(a)
-	if !state.Ready() {
-		note := "Chờ kết nối YouTube: " + strings.Join(state.Missing(), "; ")
-		if it.Status != growth.ItemWaitingConnect || it.PubNote != note {
-			_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingConnect, note)
-		}
-		return nil
-	}
 	p := s.producer()
 	status, output := "", ""
 	if p != nil {
@@ -108,6 +100,19 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	if s.Growth == nil {
 		return []string{a.Username + ": chưa đăng YouTube vì không đọc được bộ đếm quota; cần kiểm tra máy chủ."}
 	}
+	claimed, err := s.Growth.ClaimItemForPublishing(it.ID)
+	if err != nil {
+		return []string{a.Username + ": không khóa được lượt đăng YouTube: " + err.Error()}
+	}
+	if !claimed {
+		return nil // another tick owns this upload or item state already changed
+	}
+	state := up.State(a)
+	if !state.Ready() {
+		note := "Chờ kết nối YouTube: " + strings.Join(state.Missing(), "; ")
+		_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingConnect, note)
+		return nil
+	}
 	quotaDay := s.quotaDay()
 	used, reserved, err := s.Growth.ReserveUploadQuota(quotaDay)
 	if err != nil {
@@ -117,8 +122,8 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	}
 	if !reserved {
 		note := fmt.Sprintf("Chờ quota YouTube: đã dùng %d/%d lượt trong ngày reset Pacific.", used, growth.DailyQuotaUnits)
+		_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingQuota, note)
 		if it.Status != growth.ItemWaitingQuota || it.PubNote != note {
-			_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingQuota, note)
 			_ = s.Growth.InsertAlert(growth.Alert{
 				AccountID: a.ID, Severity: "warn", Kind: "quota",
 				Message:     note,

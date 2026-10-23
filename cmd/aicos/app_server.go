@@ -57,6 +57,13 @@ func initializeWeb(ctx context.Context, l *ledger.Ledger, dataDir, dbPath string
 	if err != nil {
 		return nil, fmt.Errorf("web: %w", err)
 	}
+	if server.Growth != nil {
+		if n, err := server.Growth.RecoverInterruptedPublishingItems(); err != nil {
+			log.Printf("growth: could not recover interrupted uploads: %v", err)
+		} else if n > 0 {
+			log.Printf("growth: %d interrupted upload(s) need YouTube review before retry", n)
+		}
+	}
 	server.Onboarding = firstRun
 	server.RefreshGeminiFreeTierGate()
 	server.LLM = llmChainAdapter{c: llmChain}

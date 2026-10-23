@@ -257,6 +257,32 @@ func (s *Store) SetItemStatus(id int64, status, note string) error {
 	return err
 }
 
+// ClaimItemForPublishing atomically reserves one rendered item for upload.
+// Only one Growth tick can move an eligible item into the in-flight state.
+func (s *Store) ClaimItemForPublishing(id int64) (bool, error) {
+	res, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'publishing', pub_note = ?
+		 WHERE id = ? AND status IN ('produced', 'waiting_connect', 'waiting_quota')`,
+		"Đang gửi video lên YouTube.", id)
+	if err != nil {
+		return false, err
+	}
+	changed, err := res.RowsAffected()
+	return changed == 1, err
+}
+
+// RecoverInterruptedPublishingItems moves uploads left in flight by a
+// process restart to review. Provider may have accepted the request.
+func (s *Store) RecoverInterruptedPublishingItems() (int64, error) {
+	res, err := s.db.Exec(
+		`UPDATE content_plan_items SET status = 'needs_review', pub_note = ? WHERE status = 'publishing'`,
+		"Growth upload bị gián đoạn khi ứng dụng dừng; kiểm tra YouTube Studio trước khi xử lý tiếp.")
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // SetItemProduced marks the render finished (produced_at stamped).
 func (s *Store) SetItemProduced(id int64, note string) error {
 	_, err := s.db.Exec(
