@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -19,7 +20,11 @@ const (
 )
 
 // orderRatePerMinute là giới hạn nội bộ cho /v1/order-list (spec: 10 req/phút).
-const orderRatePerMinute = 10
+const (
+	orderRatePerMinute = 10
+	orderPageLimit     = 300
+	maxOrderPages      = 10
+)
 
 // Order là một đơn hàng affiliate từ /v1/order-list.
 type Order struct {
@@ -131,24 +136,17 @@ func (l *rateLimiter) wait(ctx context.Context) error {
 // Trả về truncated=true khi vẫn còn trang sau trang thứ 10 — caller phải
 // cảnh báo (Đợt Y: trước đây phần còn lại bị bỏ im lặng).
 func (c *Client) ListOrders(ctx context.Context, since, until time.Time) ([]Order, bool, error) {
-	if c.orderLimit == nil {
-		c.orderLimit = newOrderLimiter()
+	if since.IsZero() || until.IsZero() || !until.After(since) {
+		return nil, false, fmt.Errorf("accesstrade: khoảng thời gian đồng bộ đơn không hợp lệ")
 	}
 	var out []Order
-	pageToken := ""
 	truncated := false
-	for page := 0; page < 10; page++ {
+	for page := 1; page <= maxOrderPages; page++ {
 		q := url.Values{}
-		if !since.IsZero() {
-			q.Set("since", since.UTC().Format(time.RFC3339))
-		}
-		if !until.IsZero() {
-			q.Set("until", until.UTC().Format(time.RFC3339))
-		}
-		q.Set("limit", "200")
-		if pageToken != "" {
-			q.Set("page_token", pageToken)
-		}
+		q.Set("since", since.UTC().Format(time.RFC3339))
+		q.Set("until", until.UTC().Format(time.RFC3339))
+		q.Set("limit", strconv.Itoa(orderPageLimit))
+		q.Set("page", strconv.Itoa(page))
 		if err := c.orderLimit.wait(ctx); err != nil {
 			return out, truncated, fmt.Errorf("accesstrade: rate limit bị hủy: %w", err)
 		}
@@ -156,30 +154,33 @@ func (c *Client) ListOrders(ctx context.Context, since, until time.Time) ([]Orde
 		if err != nil {
 			return out, truncated, err
 		}
-		orders, next, err := parseOrderPage(data)
+		orders, total, returned, err := parseOrderPage(data)
 		if err != nil {
 			return out, truncated, err
 		}
 		out = append(out, orders...)
-		if next == "" {
+		hasMore := returned >= orderPageLimit
+		if total > 0 {
+			hasMore = page*orderPageLimit < total
+		}
+		if !hasMore {
 			break
 		}
-		pageToken = next
-		if page == 9 {
+		if page == maxOrderPages {
 			// Hết 10 trang mà API vẫn báo còn — dừng để giữ rate limit,
 			// nhưng báo rõ thay vì im lặng.
 			truncated = true
-			log.Printf("accesstrade: CẢNH BÁO — order-list vượt quá 10 trang (2000 đơn), phần còn lại bị bỏ. Thu hẹp khoảng thời gian đồng bộ nếu cần.")
+			log.Printf("accesstrade: CẢNH BÁO — order-list vượt quá %d trang (%d đơn), phần còn lại bị bỏ. Thu hẹp khoảng thời gian đồng bộ nếu cần.", maxOrderPages, maxOrderPages*orderPageLimit)
 		}
 	}
 	return out, truncated, nil
 }
 
-// parseOrderPage tách danh sách đơn + token trang tiếp theo khỏi response.
-func parseOrderPage(data []byte) ([]Order, string, error) {
+// parseOrderPage tách danh sách đơn, total và số item thô khỏi response.
+func parseOrderPage(data []byte) ([]Order, int, int, error) {
 	raws, err := decodeList(data, "data", "orders", "order_list", "results", "items")
 	if err != nil {
-		return nil, "", err
+		return nil, 0, 0, err
 	}
 	out := make([]Order, 0, len(raws))
 	for _, raw := range raws {
@@ -187,11 +188,24 @@ func parseOrderPage(data []byte) ([]Order, string, error) {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			continue
 		}
+		status := firstString(m, "status")
+		if status == "" {
+			switch {
+			case firstString(m, "is_confirmed") == "1":
+				status = "1"
+			case firstFloat(m, "order_reject") > 0 &&
+				firstFloat(m, "order_pending") == 0 &&
+				firstFloat(m, "order_approved") == 0:
+				status = "2"
+			default:
+				status = "0"
+			}
+		}
 		o := Order{
 			OrderID:      firstString(m, "order_id", "orderId", "id", "transaction_id"),
 			CampaignID:   firstString(m, "campaign_id", "campaignId"),
-			CampaignName: firstString(m, "campaign_name", "campaignName", "advertiser"),
-			Status:       orderStatus(firstString(m, "status")),
+			CampaignName: firstString(m, "campaign_name", "campaignName", "advertiser", "merchant"),
+			Status:       orderStatus(status),
 			PubCommission: firstFloat(m, "pub_commission", "commission", "publisher_commission",
 				"amount", "payout"),
 			UTMSource: firstString(m, "utm_source"),
@@ -200,7 +214,7 @@ func parseOrderPage(data []byte) ([]Order, string, error) {
 			Sub2:      firstString(m, "sub2"),
 			Sub3:      firstString(m, "sub3"),
 			Sub4:      firstString(m, "sub4"),
-			OrderedAt: firstString(m, "ordered_at", "created_at", "date", "time"),
+			OrderedAt: firstString(m, "ordered_at", "sales_time", "transaction_time", "created_at", "date", "time"),
 			Raw:       raw,
 		}
 		if o.OrderID == "" {
@@ -209,18 +223,11 @@ func parseOrderPage(data []byte) ([]Order, string, error) {
 		out = append(out, o)
 	}
 	var env map[string]json.RawMessage
-	next := ""
+	total := 0
 	if err := json.Unmarshal(data, &env); err == nil {
-		next = firstString(env, "next_page_token", "page_token", "nextPageToken")
-		if next == "" {
-			if hm := firstString(env, "has_more", "hasMore"); hm == "true" || hm == "1" {
-				// API báo còn trang nhưng không đưa token → dừng để
-				// tránh lặp vô hạn (trung thực hơn đoán số trang).
-				next = ""
-			}
-		}
+		total = int(firstFloat(env, "total"))
 	}
-	return out, next, nil
+	return out, total, len(raws), nil
 }
 
 // orderStatus chuẩn hoá trạng thái về 0/1/2 (mặc định pending khi lạ).

@@ -16,27 +16,6 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-// findAvailableVisualAssets scans all local high-resolution visual model and scenery assets.
-func findAvailableVisualAssets() []string {
-	var out []string
-	patterns := []string{
-		"data/models/*.jpg",
-		"data/models/*.png",
-		"docs/assets/*/*.jpg",
-		"docs/assets/*/*.png",
-		"docs/assets/*/*.webp",
-	}
-	for _, p := range patterns {
-		matches, _ := filepath.Glob(p)
-		for _, m := range matches {
-			if s, err := os.Stat(m); err == nil && s.Size() > 20000 {
-				out = append(out, m)
-			}
-		}
-	}
-	return out
-}
-
 // GenerateCinematicStoryScene creates a vertical 9:16 (1080x1920) cinematic scene frame
 // for YouTube romance/story videos without any text/captions (pure visual).
 func GenerateCinematicStoryScene(sceneIdx, totalScenes int, prompt string, outPath string) error {
@@ -113,15 +92,14 @@ func CreateCircularAvatarBadge(photoPath string, size int, outPath string) error
 	return png.Encode(outF, badge)
 }
 
-// GenerateProductVisual creates a clean, high-resolution product showcase image
-// using pure Go image synthesis. It ensures that video rendering and ad mockups
-// always have high quality visual media even if external AI keys are unavailable.
+// GenerateProductVisual creates a neutral product card from supplied text and
+// an abstract background. It does not claim to depict the real product.
 func GenerateProductVisual(productName, niche, subTitle string, width, height int, outPath string) error {
 	return GenerateProductVisualWithPhoto("", productName, niche, subTitle, width, height, outPath)
 }
 
-// GenerateProductVisualWithPhoto creates a commercial ad card compositing a background photo
-// (if available) with true TrueType typography, gold campaign badge, star ratings, and CTA button.
+// GenerateProductVisualWithPhoto creates a neutral product card. It never
+// invents product claims or borrows an unrelated local photo.
 func GenerateProductVisualWithPhoto(photoPath, productName, niche, subTitle string, width, height int, outPath string) error {
 	if width <= 0 {
 		width = 1080
@@ -130,48 +108,25 @@ func GenerateProductVisualWithPhoto(photoPath, productName, niche, subTitle stri
 		height = 1920
 	}
 	if productName == "" {
-		productName = "Sản Phẩm Chất Lượng Cao"
+		productName = "Sản phẩm"
 	}
 	if niche == "" {
-		niche = "Thời trang & Phụ kiện"
+		niche = "Sản phẩm"
 	}
 
-	// If photoPath is empty, try discovering any available model/product photo
-	if photoPath == "" || !fileExists(photoPath) {
-		candidates := findAvailableVisualAssets()
-		for _, c := range candidates {
-			if fileExists(c) {
-				photoPath = c
-				break
-			}
-		}
-	}
-
-	badge := fmt.Sprintf("✦ %s · BST MỚI 2026 ✦", strings.ToUpper(niche))
+	badge := fmt.Sprintf("✦ %s ✦", strings.ToUpper(niche))
 	if subTitle != "" && strings.HasPrefix(subTitle, "PHÂN CẢNH") {
 		badge = fmt.Sprintf("✦ %s ✦", subTitle)
 	}
 
-	features := []string{
-		"Chất liệu cao cấp, mềm mịn & thoáng mát",
-		"Thiết kế tôn dáng thanh lịch, thời thượng",
-		"Bảo hành chính hãng - Đổi trả 7 ngày",
-	}
-
 	opts := AdCardOptions{
-		BgPhotoPath:   photoPath,
-		Niche:         niche,
-		TopBadge:      badge,
-		Title:         strings.ToUpper(productName),
-		Subtitle:      subTitle,
-		Features:      features,
-		RatingText:    "★★★★★ 4.9/5 · 2.4k+ Đã Bán",
-		PriceText:     "890.000 ₫",
-		OriginalPrice: "1.490.000 ₫",
-		DiscountText:  "TIẾT KIỆM 40%",
-		CTAText:       "MUA NGAY · GIỎ HÀNG GÓC TRÁI ➔",
-		Width:         width,
-		Height:        height,
+		BgPhotoPath: photoPath,
+		Niche:       niche,
+		TopBadge:    badge,
+		Title:       strings.ToUpper(productName),
+		Subtitle:    subTitle,
+		Width:       width,
+		Height:      height,
 	}
 
 	return ComposeProductAdCard(opts, outPath)

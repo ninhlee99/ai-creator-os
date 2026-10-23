@@ -33,7 +33,6 @@ func terminateBrowser(cmd *exec.Cmd) {
 	}
 }
 
-// terminateBrowserAfterWait shares the Wait call with the startup monitor.
 func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 	if cmd == nil || cmd.Process == nil {
 		return
@@ -54,15 +53,16 @@ func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 
 func findChromiumBinary() (string, error) {
 	if env := strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")); env != "" {
-		st, err := os.Stat(env)
-		if err == nil && !st.IsDir() {
-			return env, nil
+		if binary, err := exec.LookPath(env); err == nil {
+			return binary, nil
 		}
+		return "", fmt.Errorf("AICOS_BROWSER_BINARY không trỏ tới trình duyệt có thể chạy: %q", env)
 	}
 
 	var candidates []string
 	switch runtime.GOOS {
 	case "darwin":
+		home, _ := os.UserHomeDir()
 		candidates = append(candidates,
 			"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
 			"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -70,18 +70,35 @@ func findChromiumBinary() (string, error) {
 			"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
 			"/Applications/Chromium.app/Contents/MacOS/Chromium",
 		)
+		if home != "" {
+			candidates = append(candidates,
+				filepath.Join(home, "Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+				filepath.Join(home, "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+				filepath.Join(home, "Applications/Brave Browser.app/Contents/MacOS/Brave Browser"),
+				filepath.Join(home, "Applications/Chromium.app/Contents/MacOS/Chromium"),
+			)
+		}
 	case "windows":
-		candidates = append(candidates,
-			`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
-			`C:\Program Files\Google\Chrome\Application\chrome.exe`,
-			`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
-		)
+		for _, root := range []string{os.Getenv("ProgramFiles"), os.Getenv("ProgramFiles(x86)"), os.Getenv("LocalAppData")} {
+			if root == "" {
+				continue
+			}
+			candidates = append(candidates,
+				filepath.Join(root, "Microsoft/Edge/Application/msedge.exe"),
+				filepath.Join(root, "Google/Chrome/Application/chrome.exe"),
+				filepath.Join(root, "BraveSoftware/Brave-Browser/Application/brave.exe"),
+			)
+		}
 	default:
 		candidates = append(candidates,
 			"/usr/bin/google-chrome",
+			"/usr/bin/google-chrome-stable",
 			"/usr/bin/microsoft-edge",
+			"/usr/bin/microsoft-edge-stable",
+			"/usr/bin/brave-browser",
 			"/usr/bin/chromium",
 			"/usr/bin/chromium-browser",
+			"/snap/bin/chromium",
 		)
 	}
 
@@ -90,10 +107,14 @@ func findChromiumBinary() (string, error) {
 			return c, nil
 		}
 	}
-	for _, name := range []string{"msedge", "microsoft-edge", "google-chrome", "chromium", "chromium-browser", "brave"} {
+	for _, name := range []string{
+		"msedge", "microsoft-edge", "microsoft-edge-stable",
+		"google-chrome", "google-chrome-stable", "chrome",
+		"brave", "brave-browser", "chromium", "chromium-browser",
+	} {
 		if p, err := exec.LookPath(name); err == nil {
 			return p, nil
 		}
 	}
-	return "", fmt.Errorf("không tìm thấy trình duyệt Edge hoặc Chrome trên máy để mở giao diện đăng nhập")
+	return "", fmt.Errorf("không tìm thấy Chrome, Edge, Brave hoặc Chromium cho phiên Web AI; có thể đặt AICOS_BROWSER_BINARY")
 }

@@ -29,10 +29,9 @@ func newTestWebAIServer(t *testing.T) (*Server, *webai.Store) {
 	cfg.dryRun.Store(true)
 
 	srv := &Server{
-		DataDir:    dir,
-		Cfg:        cfg,
-		WebAI:      store,
-		WebAIRelay: webai.NewProxyRelay(store),
+		DataDir: dir,
+		Cfg:     cfg,
+		WebAI:   store,
 	}
 	if err := srv.parseTemplates(); err != nil {
 		t.Fatalf("parseTemplates: %v", err)
@@ -56,26 +55,7 @@ func TestWebAIHandlers(t *testing.T) {
 		t.Errorf("GET /web-ai missing expected platform texts: %s", body[:min(len(body), 500)])
 	}
 
-	// 2. POST /web-ai/connect
-	form := url.Values{
-		"platform":     {"chatgpt"},
-		"account_name": {"Test User"},
-		"email":        {"test@example.com"},
-		"session_key":  {"__Secure-1PSID=fake; SID=not-a-session"},
-		"tier":         {"plus"},
-	}
-	req = httptest.NewRequest("POST", "/web-ai/connect", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	w = httptest.NewRecorder()
-	srv.handleWebAIConnect(w, req)
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("POST /web-ai/connect status = %d, want 303", w.Code)
-	}
-	if accounts, err := store.GetAccounts(webai.PlatformChatGPT); err != nil || len(accounts) != 0 {
-		t.Fatalf("unverified manual cookie must not be stored as an active session: accounts=%+v err=%v", accounts, err)
-	}
-
-	// 3. POST /web-ai/prompt-generate
+	// 2. POST /web-ai/prompt-generate
 	pForm := url.Values{
 		"product_name": {"Áo Polo Cao Cấp"},
 		"niche":        {"thời trang"},
@@ -102,7 +82,7 @@ func TestWebAIHandlers(t *testing.T) {
 		t.Errorf("expected QC strengths, got none")
 	}
 
-	// 4. POST /web-ai/disconnect
+	// 3. POST /web-ai/disconnect
 	_, err := store.AddAccount(webai.Account{
 		Platform: webai.PlatformChatGPT, AccountName: "Test User", Email: "test@example.com",
 		SessionKey: "verified-session-fixture", Cookie: "session=fixture", Status: webai.StatusConnected,
@@ -126,7 +106,7 @@ func TestWebAIHandlers(t *testing.T) {
 		t.Errorf("account status want disconnected, got %s", acc.Status)
 	}
 
-	// 5. GET /web-ai/pool-status
+	// 4. GET /web-ai/pool-status
 	req = httptest.NewRequest("GET", "/web-ai/pool-status", nil)
 	w = httptest.NewRecorder()
 	srv.handleWebAIPoolStatus(w, req)
@@ -139,22 +119,6 @@ func TestWebAIHandlers(t *testing.T) {
 	}
 	if poolStatus["ok"] != true {
 		t.Errorf("expected poolStatus ok = true, got: %v", poolStatus)
-	}
-}
-
-func TestWebAICaptureSessionRejectsUnverifiedCookie(t *testing.T) {
-	srv, store := newTestWebAIServer(t)
-	defer store.Close()
-
-	request := httptest.NewRequest(http.MethodPost, "/api/web-ai/capture-session", strings.NewReader(`{"platform":"googleflow","cookie":"__Secure-1PSID=fake","email":"creator@example.com"}`))
-	request.Header.Set("Content-Type", "application/json")
-	response := httptest.NewRecorder()
-	srv.handleWebAICaptureSession(response, request)
-	if response.Code != http.StatusGone {
-		t.Fatalf("unverified session status=%d, want %d", response.Code, http.StatusGone)
-	}
-	if accounts, err := store.GetAccounts(webai.PlatformGoogleFlow); err != nil || len(accounts) != 0 {
-		t.Fatalf("unverified cookie must not be stored: accounts=%+v err=%v", accounts, err)
 	}
 }
 
@@ -322,7 +286,7 @@ func TestBioPinAndRedirectClick(t *testing.T) {
 func TestAccountProbeDoesNotMarkMissingCredentialsActiveOrExpired(t *testing.T) {
 	for _, platform := range []string{"chatgpt", "gemini", "claude"} {
 		t.Run(platform, func(t *testing.T) {
-			outcome, _ := probeAccountSessionOutcome(httptest.NewRequest(http.MethodGet, "/", nil).Context(), &webai.Account{Platform: platform})
+			outcome, _ := probeAccountSessionOutcome(httptest.NewRequest(http.MethodGet, "/", nil).Context(), &webai.Account{Platform: platform}, nil)
 			if outcome != accountProbeUnknown {
 				t.Fatalf("probe outcome = %q, want unknown without credentials", outcome)
 			}

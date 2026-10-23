@@ -12,21 +12,32 @@ var (
 	generalEmailRe   = regexp.MustCompile(`[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com\.vn|edu\.vn|gov\.vn|net\.vn|org\.vn|com|net|org|edu|gov|io|ai|vn|me|co|app|dev|xyz|info|[a-z]{2,4})`)
 )
 
-func cleanExtractedEmail(cand string) string {
-	cand = strings.TrimSpace(cand)
-	if isSystemOrStaticEmail(cand) {
-		return ""
-	}
-	if m := generalEmailRe.FindString(cand); m != "" {
-		if !isSystemOrStaticEmail(m) {
-			return m
-		}
-	}
-	if strings.Contains(cand, "@") && !isSystemOrStaticEmail(cand) {
-		return cand
+func accountEmail(value string) string {
+	value = strings.TrimSpace(value)
+	if match := generalEmailRe.FindString(value); match != "" && !isSystemOrStaticEmail(match) {
+		return strings.ToLower(match)
 	}
 	return ""
 }
+
+func firstAccountEmail(values ...string) string {
+	for _, value := range values {
+		if email := accountEmail(value); email != "" {
+			return email
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 func isSystemOrStaticEmail(email string) bool {
 	low := strings.ToLower(email)
 	return strings.HasSuffix(low, "@google.com") ||
@@ -37,31 +48,18 @@ func isSystemOrStaticEmail(email string) bool {
 		strings.Contains(low, "mixpanel") ||
 		strings.Contains(low, "cloudflare")
 }
+
 func parseGeminiAccountEmail(html string) string {
-	if m := wizEmailRe.FindStringSubmatch(html); len(m) > 1 {
-		cand := strings.TrimSpace(m[1])
-		if !isSystemOrStaticEmail(cand) {
-			return cand
-		}
-	}
-	if m := ariaLabelEmailRe.FindStringSubmatch(html); len(m) > 1 {
-		cand := strings.TrimSpace(m[1])
-		if !isSystemOrStaticEmail(cand) {
-			return cand
-		}
-	}
-	for _, m := range htmlTagEmailRe.FindAllStringSubmatch(html, -1) {
-		if len(m) > 1 {
-			cand := strings.TrimSpace(m[1])
-			if !isSystemOrStaticEmail(cand) {
-				return cand
+	for _, pattern := range []*regexp.Regexp{wizEmailRe, ariaLabelEmailRe, htmlTagEmailRe} {
+		if match := pattern.FindStringSubmatch(html); len(match) > 1 {
+			if email := accountEmail(match[1]); email != "" {
+				return email
 			}
 		}
 	}
-	for _, cand := range generalEmailRe.FindAllString(html, -1) {
-		cand = strings.TrimSpace(cand)
-		if !isSystemOrStaticEmail(cand) {
-			return cand
+	for _, match := range generalEmailRe.FindAllString(html, -1) {
+		if email := accountEmail(match); email != "" {
+			return email
 		}
 	}
 	return ""

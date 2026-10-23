@@ -44,7 +44,7 @@ func (s *Studio) GenerateWebAIVideo(ctx context.Context, platform string, reques
 	if err != nil {
 		return "", err
 	}
-	if session == nil || strings.TrimSpace(session.CookieHeader) == "" {
+	if session == nil || strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0 {
 		return "", fmt.Errorf("account %s chưa có phiên đăng nhập hợp lệ", platform)
 	}
 	if progress == nil {

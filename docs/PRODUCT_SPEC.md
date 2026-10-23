@@ -74,9 +74,9 @@ theo một con số cố định.
 ### Việc người dùng làm
 
 - Kết nối tài khoản mạng xã hội cần dùng và cấp quyền theo yêu cầu nền tảng.
-- Nếu instance chọn account AI web miễn phí làm provider, kết nối account đó một
-  lần khi provision. Đây là cấu hình provider riêng, không phải thao tác theo
-  từng job; API provider không cần login web thì không tạo bước này.
+- Nếu instance cần Web AI account, khôi phục account qua JSON backup một lần
+  khi provision. MiuNova không đọc profile browser người dùng; account này là
+  tùy chọn và không chặn job dùng provider API.
 - Xác nhận từng bài TikTok; số thao tác và UX cuối chờ quyết định O-07.
 - Theo dõi dashboard/cảnh báo; dừng hệ thống khi có sự cố nghiêm trọng.
 - Kết nối lại tài khoản nếu token hết hạn hoặc bị thu hồi.
@@ -93,11 +93,12 @@ theo một con số cố định.
 - Thử lại lỗi tạm thời có giới hạn; dừng và báo khi nguồn đã cạn hoặc lỗi không
   thể tự khắc phục.
 
-Luồng chính vẫn là người dùng kết nối social rồi quan sát. Account AI web miễn
-phí là nguồn tùy chọn có điều kiện: nếu được chọn, login phải hoàn tất một lần
-trên desktop trước khi job cần nguồn đó chạy; không gửi mật khẩu hoặc yêu cầu
-login lại theo từng job. Login Web AI từ điện thoại không được hỗ trợ. Xem
-[đăng nhập Web AI](features/remote-webai-login.md).
+Luồng chính vẫn là người dùng kết nối social rồi quan sát. Web AI account là
+nguồn tùy chọn và chỉ được khôi phục bằng JSON backup. MiuNova không đọc profile
+browser người dùng và không có interactive browser login. Thiếu Web AI account
+chỉ chặn job phụ thuộc nguồn đó; các luồng provider API vẫn hoạt động. Account
+không cần xác nhận Free thủ công; Flow vẫn cần consent credits trước khi tạo
+video.
 
 ### Điều kiện triển khai cấp hệ thống
 
@@ -376,9 +377,8 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
   TikTok dùng `/publishers/tiktok/callback`, Facebook dùng
   `/publishers/facebook/callback`; YouTube cần Google Web OAuth client và
   callback VPS. Static TikTok relay chỉ là phương án cứu hộ.
-- Nếu cần login account AI web khi app chạy trên VPS, người dùng hoàn tất trên
-  desktop qua dashboard đã xác thực. Login từ điện thoại bị chặn; trạng thái
-  live xem IMPLEMENTATION_STATUS.
+- Account AI web chỉ được khôi phục qua JSON backup; app không truy cập cookie
+  trong profile browser của người dùng.
 - Trang chủ ưu tiên: sức khỏe hệ thống, việc agent đang làm, blocker, kết quả
   publish, doanh thu đã duyệt, hiệu quả nội dung, quota/nguồn miễn phí.
 - Mỗi quyết định quan trọng hiển thị lý do, dữ liệu dùng, thời gian đo và bước
@@ -406,9 +406,8 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
    chọn sản phẩm hoặc tải clip. Publisher identity, credential, campaign
    approval và payout route phải được provision trước mà không buộc người dùng
    làm thêm bước affiliate; nếu mô hình đó chưa được xác định thì zero-touch
-   onboarding chưa đạt. Nếu dùng Web AI provider miễn phí, cho phép login tương
-   tác một lần trên desktop theo U-07, không login lại theo từng job; phone
-   login không hỗ trợ.
+   onboarding chưa đạt. Web AI account là nguồn tùy chọn và chỉ khôi phục từ
+   JSON backup; thiếu account không chặn các job dùng provider API.
 2. Mỗi sản phẩm affiliate được chọn để sản xuất có bằng chứng sales gần đây và
    rating/review có nguồn, freshness, scope và sample count; agent giải thích
    lý do chọn/bỏ. Review đạt quality floor và sample confidence tối thiểu;
@@ -426,15 +425,17 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
    kiện, dùng handoff thủ công hoặc đánh dấu unsupported; không lách qua browser.
    O-04 chốt trước O-07. Các platform khác tự publish khi permission và
    capability sẵn sàng.
-4. Nếu tài khoản AI miễn phí hết quota, thử account miễn phí khác đã kết nối;
-   nếu hết nguồn hợp lệ, dừng, lưu trạng thái và báo người dùng.
+4. Nếu account Web AI hết quota, thử account khác đã kết nối; nếu hết nguồn
+   khả dụng, dừng, lưu trạng thái và báo người dùng. Flow yêu cầu người dùng
+   xác nhận credits trước khi tạo video.
 5. Không có nguồn metrics thì không ghi số 0 thay cho thiếu dữ liệu và không
    tuyên bố chiến lược đã tối ưu.
 6. Mọi bước có idempotency/retry giới hạn, audit log và kill switch.
 7. Người dùng xem được trên điện thoại qua VPS HTTPS và hoàn tất OAuth trên
    từng social provider được bật bằng callback HTTPS quay về VPS; không cần
-   localhost hoặc chép URL thủ công. Nếu provider AI web được bật, người dùng
-   hoàn tất login tương tác trên desktop; API từ điện thoại bị từ chối.
+   localhost hoặc chép URL thủ công. Web AI account được khôi phục qua JSON
+   backup; app không đọc cookie từ browser đang chạy. Cookie được cập nhật sau
+   request khi provider trả cookie mới.
 8. Threads video chỉ được tính đã publish khi video qua URL HTTPS công khai
    tạm thời theo artifact, Meta xác nhận xử lý/xuất bản và app ghi status thật.
    URL không mở dashboard hay thư mục media; thiếu gateway thì video ở trạng
@@ -448,8 +449,7 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
    khẳng định đã tối ưu; không hứa viral.
 10. Người dùng chủ yếu quan sát dashboard dữ liệu job/event thật, lý do và nguồn
     cho quyết định, artifact/QC, trạng thái từng nền tảng, quota và blocker.
-    Thao tác thường lệ giới hạn ở kết nối social, login Web AI một lần nếu đã
-    chọn provider đó, xác nhận từng bài TikTok theo yêu cầu nền tảng và xử lý
+    Thao tác thường lệ giới hạn ở kết nối social, xác nhận từng bài TikTok theo yêu cầu nền tảng và xử lý
     cảnh báo không tự phục hồi. Không yêu cầu chọn sản phẩm, tải clip hoặc duyệt
     video định kỳ.
 
@@ -462,8 +462,12 @@ Agent chỉ kết luận về kênh/nội dung có đủ số liệu thật. Rep
 | U-03 — xác nhận từng bài TikTok | §3, §9 | AC3, AC10 | Số thao tác phụ thuộc UX bắt buộc; O-07. |
 | U-04 — chỉ miễn phí, hết mọi nguồn thì dừng và báo | §3, §8 | AC4, AC9 | Chỉ thử account/provider được phép; không né quota. |
 | U-05 — tên hiển thị MiuNova, không dùng OS làm tên sản phẩm | Tên tài liệu, logo và sơ đồ | — | `ai-creator-os`/`aicos` chỉ là định danh kỹ thuật tương thích. |
-| U-06 — login Web AI từ điện thoại khi app ở VPS | §4, §11, [thiết kế remote login](features/remote-webai-login.md) | — | Superseded by U-07 (2026-10-23). |
-| U-07 — login Web AI chỉ trên desktop; chặn login từ điện thoại | §4, §11, [thiết kế remote login](features/remote-webai-login.md) | AC1, AC7 | UI ẩn nút trên mobile; server từ chối request mobile. |
+| U-06 — login Web AI từ điện thoại khi app ở VPS | §4, §11 | — | Superseded by U-07 (2026-10-23). |
+| U-07 — login Web AI chỉ trên desktop cùng máy chạy app; chặn login từ điện thoại | §4, §11 | AC1, AC7 | Superseded by U-08 (2026-10-23). |
+| U-08 — giữ login Web AI trên desktop, không mở login từ điện thoại | §4, §11 | AC1, AC7 | Superseded by U-09 (2026-10-23). |
+| U-09 — chỉ giữ tự động đọc cookie nếu dùng được browser người dùng chọn; nếu không, bỏ phần đó và tập trung chức năng cốt lõi | §4, §11 | — | Confirmed by U-11. |
+| U-10 — bỏ xác nhận Free account; không stream browser | §4, §11 | AC1, AC7 | Ngoại lệ U-04 cho account Web AI do người dùng cung cấp; trạng thái không khẳng định plan/credit. Flow vẫn giữ consent credits. U-11 quyết định bỏ interactive browser login. |
+| U-11 — chỉ giữ auto-cookie nếu dùng được browser người dùng chọn; nếu không, gỡ browser login | §4, §11 | AC1, AC7 | Account Web AI optional; chỉ khôi phục qua JSON backup. CDP riêng vẫn dùng nội bộ cho job Flow/Muse, không dùng để đọc browser profile người dùng. |
 
 ## 13. Ngoài phạm vi
 
@@ -489,7 +493,5 @@ Các mục dưới đây phải chốt hoặc được kiểm chứng trước k
 - Quyền analytics/publish chính thức của từng nền tảng, kể cả Threads video.
 - Hostname HTTPS và cơ chế cấp/thu hồi URL media tạm cho Threads video; VPS có
   public HTTPS nhưng route `/media` hiện không phải gateway publish.
-- Xác minh browser display/keyboard từ xa khi chạy Web AI login thật trên
-  VPS/desktop/provider credentials.
 - Niche/locale mặc định. Hiện trạng Accesstrade nghiêng về thị trường Việt Nam.
 - Ngưỡng dữ liệu tối thiểu trước khi agent tuyên bố một sản phẩm/format thắng.

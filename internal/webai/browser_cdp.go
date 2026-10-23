@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,9 +17,12 @@ type browserCDPClient struct {
 	conn      *websocket.Conn
 	sessionID string
 	nextID    atomic.Int64
+	callMu    sync.Mutex
 }
 
 func (c *browserCDPClient) call(ctx context.Context, method string, params any, sessionID string) (json.RawMessage, error) {
+	c.callMu.Lock()
+	defer c.callMu.Unlock()
 	id := c.nextID.Add(1)
 	request := map[string]any{"id": id, "method": method, "params": params}
 	if sessionID != "" {
@@ -34,7 +38,7 @@ func (c *browserCDPClient) call(ctx context.Context, method string, params any, 
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		_ = c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		_ = c.conn.SetReadDeadline(time.Now().Add(8 * time.Second))
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
 			return nil, errors.New("Muse headless CDP connection failed")

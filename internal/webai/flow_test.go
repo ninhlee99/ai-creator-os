@@ -29,8 +29,8 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 		}
 		if p.ID == PlatformGoogleFlow {
 			foundFlow = true
-			if p.URL != "https://labs.google/fx/tools/flow" {
-				t.Errorf("expected Flow URL labs.google/fx/tools/flow, got %s", p.URL)
+			if p.URL != "https://flow.google.com/" {
+				t.Errorf("expected Flow URL https://flow.google.com/, got %s", p.URL)
 			}
 			if p.Badge != "Video · web API" {
 				t.Errorf("expected Flow web API badge, got %s", p.Badge)

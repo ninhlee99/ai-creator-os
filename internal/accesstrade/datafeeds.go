@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 	"sort"
@@ -12,8 +13,12 @@ import (
 	"time"
 )
 
-// maxDatafeedLimit là giới hạn API cho mỗi lần gọi /v1/datafeeds.
-const maxDatafeedLimit = 200
+// maxDatafeedLimit/maxDatafeedPages bound work per hunt while covering
+// products beyond the first API page.
+const (
+	maxDatafeedLimit = 200
+	maxDatafeedPages = 5
+)
 
 // DatafeedProduct là một sản phẩm trong datafeed Accesstrade.
 // Parse defensive: shape thật chốt khi có key thật của Ninh (xem
@@ -25,9 +30,9 @@ type DatafeedProduct struct {
 	Name string
 	// Images ảnh sản phẩm (danh sách, có thể chỉ 1).
 	Images []string
-	// Price giá bán hiện tại.
+	// Price giá bán hiện tại (field discount của AccessTrade).
 	Price float64
-	// OldPrice giá gốc trước giảm (0 = không rõ).
+	// OldPrice giá niêm yết trước giảm (0 = không rõ).
 	OldPrice float64
 	// Currency đơn vị tiền (thường VND).
 	Currency string
@@ -80,44 +85,41 @@ func (p DatafeedProduct) DiscountPct() float64 {
 type DatafeedFilter struct {
 	// Domain lọc theo domain advertiser (vd "shopee.vn"), "" = tất cả.
 	Domain string
-	// MinPrice/MaxPrice lọc theo giá (0 = không lọc).
+	// MinPrice/MaxPrice lọc theo giá bán (API discount_from/discount_to).
 	MinPrice, MaxPrice float64
 	// Limit số lượng tối đa (0 = mặc định, >200 bị cắt về 200).
 	Limit int
-	// Merchant lọc theo mã merchant (vd "shopee"), "" = tất cả.
+	// Merchant lọc theo mã merchant (vd "shopee"); API gọi tham số này là campaign.
 	Merchant string
 }
 
 // ListDatafeeds gọi GET /v1/datafeeds, parse danh sách sản phẩm.
 // API không có sort theo hoa hồng → sort HIGH_COMMISSION_RATE phía client
-// (commission cao nhất trước). Không gọi khi chưa có key (fail-closed).
-// Đợt Y: theo phân trang (page_token) tối đa 5 trang thay vì 1 trang duy
-// nhất — trước đây sản phẩm ngoài top-200 không bao giờ được săn.
+// nếu response có trường commission. Dùng page số nguyên theo schema API,
+// tối đa 5 trang. Không gọi khi chưa có key (fail-closed).
 func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]DatafeedProduct, error) {
 	limit := f.Limit
 	if limit <= 0 || limit > maxDatafeedLimit {
 		limit = maxDatafeedLimit
 	}
 	var out []DatafeedProduct
-	pageToken := ""
-	for page := 0; page < 5; page++ {
+	seen := make(map[string]bool)
+	for page := 1; page <= maxDatafeedPages; page++ {
 		q := url.Values{}
 		if f.Domain != "" {
 			q.Set("domain", f.Domain)
 		}
 		if f.Merchant != "" {
-			q.Set("merchant", f.Merchant)
+			q.Set("campaign", f.Merchant)
 		}
 		if f.MinPrice > 0 {
-			q.Set("min_price", strconv.FormatFloat(f.MinPrice, 'f', -1, 64))
+			q.Set("discount_from", strconv.FormatFloat(f.MinPrice, 'f', -1, 64))
 		}
 		if f.MaxPrice > 0 {
-			q.Set("max_price", strconv.FormatFloat(f.MaxPrice, 'f', -1, 64))
+			q.Set("discount_to", strconv.FormatFloat(f.MaxPrice, 'f', -1, 64))
 		}
 		q.Set("limit", strconv.Itoa(limit))
-		if pageToken != "" {
-			q.Set("page_token", pageToken)
-		}
+		q.Set("page", strconv.Itoa(page))
 		data, err := c.do(ctx, "GET", "/v1/datafeeds?"+q.Encode(), nil)
 		if err != nil {
 			return nil, err
@@ -126,21 +128,31 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 		if err != nil {
 			return nil, err
 		}
+		total := datafeedTotal(data)
 		for _, raw := range raws {
 			var m map[string]json.RawMessage
 			if err := json.Unmarshal(raw, &m); err != nil {
 				continue
 			}
+			listPrice := firstFloat(m, "price", "original_price", "price_before_discount", "list_price")
+			currentPrice := firstFloat(m, "discount", "sale_price", "discounted_price")
+			if currentPrice <= 0 {
+				currentPrice = listPrice
+			}
+			oldPrice := firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price")
+			if oldPrice <= 0 && currentPrice > 0 && listPrice > currentPrice {
+				oldPrice = listPrice
+			}
 			p := DatafeedProduct{
 				SKU:      firstString(m, "sku", "product_id", "id", "item_id"),
 				Name:     firstString(m, "name", "product_name", "title"),
-				Price:    firstFloat(m, "price", "sale_price", "discounted_price"),
-				OldPrice: firstFloat(m, "old_price", "original_price", "price_before_discount", "list_price"),
+				Price:    currentPrice,
+				OldPrice: oldPrice,
 				Currency: firstString(m, "currency"),
 				// Chỉ link có mã affiliate — KHÔNG lấy "url" (link gốc của
 				// shop, không ra hoa hồng).
 				AffLink:    firstString(m, "aff_link", "affiliate_link", "deeplink"),
-				Category:   firstString(m, "category", "category_name", "cat"),
+				Category:   firstString(m, "category", "category_name", "cat", "cate"),
 				ShopName:   firstString(m, "shop_name", "advertiser", "merchant", "domain"),
 				CampaignID: firstString(m, "campaign_id", "campaignId"),
 				Merchant:   firstString(m, "merchant", "campaign"),
@@ -155,13 +167,28 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 			if p.Name == "" && p.SKU == "" {
 				continue
 			}
+			key := p.SKU
+			if key == "" {
+				key = p.AffLink
+			}
+			if key != "" && seen[key] {
+				continue
+			}
+			if key != "" {
+				seen[key] = true
+			}
 			out = append(out, p)
 		}
-		next := datafeedNextToken(data)
-		if next == "" {
+		hasMore := len(raws) >= limit
+		if total > 0 {
+			hasMore = page*limit < total
+		}
+		if !hasMore {
 			break
 		}
-		pageToken = next
+		if page == maxDatafeedPages && total > page*limit {
+			log.Printf("accesstrade: datafeed capped at %d pages (%d/%d products)", maxDatafeedPages, page*limit, total)
+		}
 	}
 	// Sort client-side: hoa hồng cao nhất trước (ổn định theo tên).
 	sort.SliceStable(out, func(i, j int) bool {
@@ -173,14 +200,13 @@ func (c *Client) ListDatafeeds(ctx context.Context, f DatafeedFilter) ([]Datafee
 	return out, nil
 }
 
-// datafeedNextToken tách token trang tiếp theo khỏi response datafeed
-// ("" khi hết). API không trả token → chỉ 1 trang, đúng như trước.
-func datafeedNextToken(data []byte) string {
+// datafeedTotal reads documented top-level total; 0 means absent/unknown.
+func datafeedTotal(data []byte) int {
 	var env map[string]json.RawMessage
 	if err := json.Unmarshal(data, &env); err != nil {
-		return ""
+		return 0
 	}
-	return firstString(env, "next_page_token", "page_token", "nextPageToken", "cursor")
+	return int(firstFloat(env, "total"))
 }
 
 // normalizeRate chuẩn hoá tỷ lệ hoa hồng về 0..1: API trả 8.5 (= 8.5%)

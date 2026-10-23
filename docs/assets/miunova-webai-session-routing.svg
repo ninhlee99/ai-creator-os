@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">MiuNova free account routing</title>
-  <desc id="desc">Account miễn phí cần operator xác nhận. Flow chọn account miễn phí sẵn sàng, retry account khác chỉ khi nhận 429 trước submit, và dừng nếu mọi account hết quota. Lỗi sau submit không retry.</desc>
+  <title id="title">MiuNova Web AI session routing</title>
+  <desc id="desc">Web AI account được khôi phục qua JSON backup. Session active không xác nhận gói hoặc credits. Flow retry account khác chỉ khi nhận 429 trước submit; lỗi sau submit không retry.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#f4f5ff"/>
@@ -33,8 +33,8 @@
     <circle cx="28" cy="28" r="27" fill="url(#brand)"/>
     <path d="M16 28c0-8 5-13 12-13s12 5 12 13-5 13-12 13-12-5-12-13Zm12-18v8m0 20v8m18-18h-8M10 28H2" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
     <text x="72" y="24" class="tiny" fill="#6964c9">MIUNOVA · RESOURCE ROUTING</text>
-    <text x="72" y="58" font-size="35" font-weight="790">Chỉ dùng account miễn phí</text>
-    <text x="72" y="91" class="body muted">Xác nhận rõ · thử account khác khi bị giới hạn trước submit · dừng an toàn khi hết nguồn</text>
+    <text x="72" y="58" font-size="35" font-weight="790">Web AI account routing</text>
+    <text x="72" y="91" class="body muted">Session active không chứng minh gói/credits · retry chỉ khi 429 trước submit</text>
   </g>
 
   <g filter="url(#shadow)">
@@ -58,22 +58,22 @@
 
   <g>
     <circle cx="119" cy="275" r="20" fill="#eeecff"/><text x="113" y="282" font-size="19" font-weight="760" fill="#625bd0">1</text>
-    <text x="151" y="283" class="tiny" fill="#6d69cb">OPERATOR</text>
-    <text x="112" y="329" class="card-title">Đăng nhập</text>
-    <text x="112" y="363" class="body muted">Xác nhận account thuộc</text>
-    <text x="112" y="390" class="body muted">gói miễn phí.</text>
+    <text x="151" y="283" class="tiny" fill="#6d69cb">JSON BACKUP</text>
+    <text x="112" y="329" class="card-title">Khôi phục account</text>
+    <text x="112" y="363" class="body muted">Người dùng cung cấp</text>
+    <text x="112" y="390" class="body muted">cookie đã lưu.</text>
 
     <circle cx="447" cy="275" r="20" fill="#e7f5f1"/><text x="441" y="282" font-size="19" font-weight="760" fill="#318d7e">2</text>
-    <text x="479" y="283" class="tiny" fill="#318d7e">FREE-ONLY GATE</text>
+    <text x="479" y="283" class="tiny" fill="#318d7e">SESSION POOL</text>
     <text x="442" y="329" class="card-title">Account pool</text>
-    <text x="442" y="363" class="body muted">Active · Free đã xác nhận</text>
-    <text x="442" y="390" class="body muted">· phiên sẵn sàng</text>
+    <text x="442" y="363" class="body muted">Active · phiên đã lưu</text>
+    <text x="442" y="390" class="body muted">không xác nhận gói.</text>
 
     <circle cx="837" cy="275" r="20" fill="#edf0ff"/><text x="831" y="282" font-size="19" font-weight="760" fill="#555cb5">3</text>
     <text x="869" y="283" class="tiny" fill="#555cb5">GOOGLE FLOW</text>
     <text x="832" y="329" class="card-title">Gửi generation</text>
-    <text x="832" y="363" class="body muted">Chỉ dùng account đã qua gate</text>
-    <text x="832" y="390" class="body muted">trước khi gọi provider.</text>
+    <text x="832" y="363" class="body muted">Generation sau consent</text>
+    <text x="832" y="390" class="body muted">credits theo UI Flow.</text>
 
     <circle cx="1172" cy="230" r="20" fill="#e6f5ef"/><text x="1166" y="237" font-size="19" font-weight="760" fill="#318d7e">✓</text>
     <text x="1204" y="238" class="tiny" fill="#318d7e">THÀNH CÔNG</text>
@@ -87,19 +87,19 @@
     <text x="1172" y="553" class="body muted">khi Flow chưa nhận generation.</text>
 
     <circle cx="1172" cy="650" r="20" fill="#ffe8e8"/><text x="1166" y="657" font-size="18" font-weight="760" fill="#c2535b">!</text>
-    <text x="1204" y="658" class="tiny" fill="#b54c57">SAU SUBMIT / HẾT NGUỒN</text>
+    <text x="1204" y="658" class="tiny" fill="#b54c57">SAU SUBMIT / HẾT SESSION</text>
     <text x="1172" y="704" class="card-title">Dừng · báo lý do</text>
     <text x="1172" y="738" class="body muted">Không retry job đã nhận; không</text>
-    <text x="1172" y="763" class="body muted">chuyển sang account trả phí.</text>
+    <text x="1172" y="763" class="body muted">không retry job đã gửi.</text>
 
     <circle cx="447" cy="607" r="20" fill="#ffe9dd"/><text x="441" y="614" font-size="18" font-weight="760" fill="#bf6942">0</text>
-    <text x="479" y="615" class="tiny" fill="#bf6942">KHÔNG CÓ NGUỒN FREE</text>
+    <text x="479" y="615" class="tiny" fill="#bf6942">KHÔNG CÓ SESSION</text>
     <text x="442" y="663" class="card-title">Dừng trước khi gọi</text>
-    <text x="442" y="697" class="body muted">Báo thiếu account miễn phí</text>
-    <text x="442" y="722" class="body muted">đã xác nhận và khả dụng.</text>
+    <text x="442" y="697" class="body muted">Báo thiếu phiên khả dụng</text>
+    <text x="442" y="722" class="body muted">và hướng dẫn khôi phục.</text>
   </g>
 
-  <text x="84" y="824" class="body muted">Giới hạn: gói Free do operator tự xác nhận; MiuNova không xác minh plan hoặc chi phí provider.</text>
-  <text x="84" y="853" class="body muted">Gemini API cần xác nhận riêng theo bộ key; Veo bị chặn vì cần billing.</text>
+  <text x="84" y="824" class="body muted">MiuNova không xác minh plan hoặc chi phí Web AI; Flow cần consent credits trước khi tạo video.</text>
+  <text x="84" y="853" class="body muted">Gemini API keys cần xác nhận Free riêng; Veo bị chặn vì cần billing.</text>
   <text x="84" y="884" class="tiny" fill="#7d8199">MIUNOVA · 2D WORKFLOW DIAGRAM</text>
 </svg>

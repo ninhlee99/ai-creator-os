@@ -51,7 +51,11 @@ func (s *Store) migrate() error {
 		data_updated_at TEXT NOT NULL DEFAULT '',
 		commission_rate REAL NOT NULL DEFAULT 0,
 		shop_name TEXT NOT NULL DEFAULT '', rating REAL NOT NULL DEFAULT 0,
-		sold_count INTEGER NOT NULL DEFAULT 0, category TEXT NOT NULL DEFAULT '',
+		sold_count INTEGER NOT NULL DEFAULT 0,
+		demand_evidence_url TEXT NOT NULL DEFAULT '', demand_evidence_at TEXT NOT NULL DEFAULT '',
+		demand_evidence_rating REAL NOT NULL DEFAULT 0,
+		demand_evidence_sold_count INTEGER NOT NULL DEFAULT 0,
+		category TEXT NOT NULL DEFAULT '',
 		product_url TEXT NOT NULL DEFAULT '', theme TEXT NOT NULL DEFAULT '',
 		found_at TEXT NOT NULL,
 		UNIQUE(source, source_id));
@@ -200,6 +204,20 @@ func (s *Store) migrate() error {
 	if err := s.addColumn("products", "data_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
+	// Additive provenance fields. Existing metric values stay intact, but
+	// source-less rows fail the production/public-claim gate until refreshed.
+	if err := s.addColumn("products", "demand_evidence_url", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "demand_evidence_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "demand_evidence_rating", "REAL NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "demand_evidence_sold_count", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
 	// Đợt Y: một sản phẩm chỉ được chọn một lần cho mỗi account — chống
 	// race khi 2 chu kỳ (chạy tay + tick) cùng chọn 1 sản phẩm trước khi
 	// RecordUse commit. Dedupe bản ghi cũ trước để tạo được UNIQUE index.
@@ -280,20 +298,46 @@ func (s *Store) Count() (int64, error) {
 func (s *Store) Save(p Product) (int64, error) {
 	imgs, _ := json.Marshal(p.ImageURLs)
 	now := time.Now().Format("2006-01-02T15:04:05")
+	if p.DemandEvidenceURL != "" && p.DemandEvidenceAt != "" {
+		p.DemandEvidenceRating = p.Rating
+		p.DemandEvidenceSoldCount = p.SoldCount
+	}
 	res, err := s.db.Exec(`
 		INSERT INTO products(source,source_id,title,image_urls,price,currency,original_price,data_updated_at,
-			commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			commission_rate,shop_name,rating,sold_count,demand_evidence_url,demand_evidence_at,
+			demand_evidence_rating,demand_evidence_sold_count,category,product_url,theme,found_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(source,source_id) DO UPDATE SET
 			title=excluded.title, image_urls=excluded.image_urls, price=excluded.price,
 			original_price=excluded.original_price,
 			data_updated_at=CASE WHEN excluded.data_updated_at<>'' THEN excluded.data_updated_at ELSE products.data_updated_at END,
 			commission_rate=excluded.commission_rate, shop_name=excluded.shop_name,
 			rating=excluded.rating, sold_count=excluded.sold_count,
+			demand_evidence_url=CASE
+				WHEN excluded.demand_evidence_url<>'' OR excluded.demand_evidence_at<>'' THEN
+					CASE WHEN excluded.demand_evidence_url<>'' AND excluded.demand_evidence_at<>'' THEN excluded.demand_evidence_url ELSE '' END
+				WHEN excluded.rating<>products.rating OR excluded.sold_count<>products.sold_count THEN ''
+				ELSE products.demand_evidence_url END,
+			demand_evidence_at=CASE
+				WHEN excluded.demand_evidence_url<>'' OR excluded.demand_evidence_at<>'' THEN
+					CASE WHEN excluded.demand_evidence_url<>'' AND excluded.demand_evidence_at<>'' THEN excluded.demand_evidence_at ELSE '' END
+				WHEN excluded.rating<>products.rating OR excluded.sold_count<>products.sold_count THEN ''
+				ELSE products.demand_evidence_at END,
+			demand_evidence_rating=CASE
+				WHEN excluded.demand_evidence_url<>'' OR excluded.demand_evidence_at<>'' THEN
+					CASE WHEN excluded.demand_evidence_url<>'' AND excluded.demand_evidence_at<>'' THEN excluded.demand_evidence_rating ELSE 0 END
+				WHEN excluded.rating<>products.rating OR excluded.sold_count<>products.sold_count THEN 0
+				ELSE products.demand_evidence_rating END,
+			demand_evidence_sold_count=CASE
+				WHEN excluded.demand_evidence_url<>'' OR excluded.demand_evidence_at<>'' THEN
+					CASE WHEN excluded.demand_evidence_url<>'' AND excluded.demand_evidence_at<>'' THEN excluded.demand_evidence_sold_count ELSE 0 END
+				WHEN excluded.rating<>products.rating OR excluded.sold_count<>products.sold_count THEN 0
+				ELSE products.demand_evidence_sold_count END,
 			category=excluded.category, product_url=excluded.product_url,
 			theme=excluded.theme, found_at=excluded.found_at`,
 		p.Source, p.SourceID, p.Title, string(imgs), p.Price, p.Currency, p.OriginalPrice, p.DataUpdatedAt,
-		p.CommissionRate, p.ShopName, p.Rating, p.SoldCount, p.Category,
+		p.CommissionRate, p.ShopName, p.Rating, p.SoldCount, p.DemandEvidenceURL, p.DemandEvidenceAt,
+		p.DemandEvidenceRating, p.DemandEvidenceSoldCount, p.Category,
 		p.ProductURL, p.Theme, now)
 	if err != nil {
 		return 0, err
@@ -313,7 +357,9 @@ func scanProduct(row interface {
 	var imgs string
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price,
 		&p.Currency, &p.OriginalPrice, &p.DataUpdatedAt, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount,
-		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt, &p.ShelfStatus, &p.ShelfScore, &p.ClickCount)
+		&p.DemandEvidenceURL, &p.DemandEvidenceAt, &p.DemandEvidenceRating, &p.DemandEvidenceSoldCount,
+		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt,
+		&p.ShelfStatus, &p.ShelfScore, &p.ClickCount)
 	if err != nil {
 		return p, err
 	}
@@ -322,7 +368,8 @@ func scanProduct(row interface {
 }
 
 const productCols = `id,source,source_id,title,image_urls,price,currency,original_price,data_updated_at,` +
-	`commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at,` +
+	`commission_rate,shop_name,rating,sold_count,demand_evidence_url,demand_evidence_at,` +
+	`demand_evidence_rating,demand_evidence_sold_count,category,product_url,theme,found_at,` +
 	`shelf_status,shelf_score,click_count`
 
 // RecordClick increments the click counter for an affiliate product when

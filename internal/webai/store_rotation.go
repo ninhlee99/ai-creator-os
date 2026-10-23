@@ -2,7 +2,6 @@ package webai
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -12,8 +11,8 @@ func (s *Store) PickActiveAccount(platform string) (*Account, error) {
 	return s.PickActiveAccountExcluding(platform, nil)
 }
 
-// PickActiveAccountExcluding selects an available, confirmed-free account not
-// already tried by the current request.
+// PickActiveAccountExcluding selects an available account not already tried by
+// the current request.
 func (s *Store) PickActiveAccountExcluding(platform string, excluded map[string]struct{}) (*Account, error) {
 	accs, err := s.GetAccounts(platform)
 	if err != nil {
@@ -26,17 +25,22 @@ func (s *Store) PickActiveAccountExcluding(platform string, excluded map[string]
 	now := time.Now().UTC()
 	var shortestCool *Account
 	var shortestRemain int64 = 9999999
-	freeCount := 0
+	eligibleCount := 0
+	credentiallessCount := 0
 
 	for i := range accs {
 		acc := &accs[i]
-		if !acc.IsActive || !acc.IsConfirmedFree() {
+		if !acc.IsActive {
 			continue
 		}
 		if _, tried := excluded[acc.ID]; tried {
 			continue
 		}
-		freeCount++
+		if !accountHasProviderCredentials(*acc) {
+			credentiallessCount++
+			continue
+		}
+		eligibleCount++
 		if acc.Status == "cooldown" && !acc.CooldownUntil.IsZero() && acc.CooldownUntil.After(now) {
 			remain := int64(acc.CooldownUntil.Sub(now).Seconds())
 			if remain < shortestRemain {
@@ -65,14 +69,17 @@ func (s *Store) PickActiveAccountExcluding(platform string, excluded map[string]
 
 	if shortestCool != nil {
 		mins := (shortestRemain + 59) / 60
-		return nil, fmt.Errorf("không còn tài khoản miễn phí %s khả dụng; tài khoản tiếp theo (%s) có thể dùng sau %d phút",
+		return nil, fmt.Errorf("không còn tài khoản %s khả dụng; tài khoản tiếp theo (%s) có thể dùng sau %d phút",
 			platform, shortestCool.Email, mins)
 	}
 
-	if freeCount == 0 {
-		return nil, fmt.Errorf("không còn tài khoản %s miễn phí đã xác nhận để dùng; hãy kết nối tài khoản miễn phí khác", platform)
+	if eligibleCount == 0 {
+		if credentiallessCount > 0 {
+			return nil, fmt.Errorf("không còn tài khoản %s có cookie hoặc khóa phiên để dùng", platform)
+		}
+		return nil, fmt.Errorf("không còn tài khoản %s đang bật để dùng; hãy kết nối hoặc bật một tài khoản", platform)
 	}
-	return nil, fmt.Errorf("không có tài khoản miễn phí %s nào hợp lệ", platform)
+	return nil, fmt.Errorf("không có tài khoản %s nào hợp lệ", platform)
 }
 
 // MarkRateLimited puts an account into temporary cooldown and triggers auto-rotation.
@@ -110,7 +117,22 @@ func (s *Store) CountConnected() int {
 	defer s.mu.RUnlock()
 
 	var count int
-	_ = s.db.QueryRow(`SELECT COUNT(*) FROM webai_accounts WHERE status IN ('ok', 'connected') AND is_active = 1 AND lower(trim(tier)) = 'free' AND tier_confirmed = 1`).Scan(&count)
+	rows, err := s.db.Query(`SELECT platform, status, session_key, cookie, cookie_jar FROM webai_accounts WHERE is_active = 1`)
+	if err != nil {
+		return 0
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var platform, status, sessionKey, cookie, cookieJar string
+		if err := rows.Scan(&platform, &status, &sessionKey, &cookie, &cookieJar); err == nil &&
+			(status == "ok" || status == StatusConnected) &&
+			accountHasProviderCredentials(Account{Platform: platform, SessionKey: sessionKey, Cookie: cookie, CookieJar: decodeAccountCookieJar(cookieJar, cookie, platform)}) {
+			count++
+		}
+	}
+	if rows.Err() != nil {
+		return 0
+	}
 	return count
 }
 
@@ -119,7 +141,7 @@ func (s *Store) CountByPlatform(platform string) (ready, cooldown, total int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	rows, err := s.db.Query(`SELECT status, cooldown_until, tier, tier_confirmed, is_active FROM webai_accounts WHERE platform = ?`, platform)
+	rows, err := s.db.Query(`SELECT status, cooldown_until, is_active, session_key, cookie, cookie_jar FROM webai_accounts WHERE platform = ?`, platform)
 	if err != nil {
 		return 0, 0, 0
 	}
@@ -127,11 +149,11 @@ func (s *Store) CountByPlatform(platform string) (ready, cooldown, total int) {
 
 	now := time.Now().UTC()
 	for rows.Next() {
-		var st, cool, tier string
-		var tierConfirmed, isActive int
-		if err := rows.Scan(&st, &cool, &tier, &tierConfirmed, &isActive); err == nil {
+		var st, cool, sessionKey, cookie, cookieJar string
+		var isActive int
+		if err := rows.Scan(&st, &cool, &isActive, &sessionKey, &cookie, &cookieJar); err == nil {
 			total++
-			if tierConfirmed != 1 || !strings.EqualFold(strings.TrimSpace(tier), "free") || isActive != 1 {
+			if isActive != 1 || !accountHasProviderCredentials(Account{Platform: platform, SessionKey: sessionKey, Cookie: cookie, CookieJar: decodeAccountCookieJar(cookieJar, cookie, platform)}) {
 				continue
 			}
 			if st == "cooldown" {
@@ -172,5 +194,8 @@ func (acc *Account) fillDerived(cooldownUntil, lastUsed, lastChecked, createdAt,
 	}
 	if acc.RateLimitHits > 0 {
 		acc.LastRateLimitLabel = fmt.Sprintf("Bị rate-limit %d lần", acc.RateLimitHits)
+	}
+	if !accountHasProviderCredentials(*acc) {
+		acc.Status = StatusDisconnected
 	}
 }

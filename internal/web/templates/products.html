@@ -468,6 +468,11 @@ function atOrderSync() {
         <input type="number" name="sold" min="0" step="1" placeholder="1200">
       </div>
       <div class="field">
+        <label>Nguồn rating và số đã bán</label>
+        <input type="url" name="demand_evidence_url" placeholder="https://... trang sản phẩm hiển thị cả hai số">
+        <small>App ghi thời điểm bạn đối chiếu nhưng không xác minh nội dung trang. Số liệu nhập tay chỉ để tham khảo; chưa đủ điều kiện tạo video affiliate tự động.</small>
+      </div>
+      <div class="field">
         <label>Link affiliate (link kiếm tiền)</label>
         <input type="url" name="product_url" placeholder="https://s.shopee.vn/... · https://c.lazada.vn/... · link Accesstrade">
 
@@ -515,6 +520,8 @@ function atOrderSync() {
         <div>
           <strong style="font-size:13px;display:block;color:var(--text)">{{.Title}}</strong>
           <span style="font-size:11px;color:var(--muted)">Mã: {{.SourceID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Thời trang / Gia dụng{{end}}</span>
+          {{if eq .Source "manual"}}<br><span style="font-size:10.5px;color:var(--muted)">Số liệu nhập tay · chưa xác minh</span>{{else if .HasDemandSignals}}<br><span style="font-size:10.5px;color:#10b981">Nguồn demand còn hạn</span>{{else}}<br><span style="font-size:10.5px;color:var(--muted)">Demand thiếu nguồn hoặc đã cũ</span>{{end}}
+          {{if .DemandEvidenceURL}}<br><a href="{{.DemandEvidenceURL}}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở nguồn số liệu ↗</a>{{end}}
           {{if .ProductURL}}<br><a href="{{.ProductURL}}" target="_blank" rel="noopener" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở link mua sản phẩm ↗</a>{{end}}
         </div>
       </div>
@@ -532,14 +539,8 @@ function atOrderSync() {
     <td>{{if .Rating}}<span style="color:#f59e0b">★</span> <b>{{printf "%.1f" .Rating}}</b>{{else}}—{{end}}</td>
     <td>
       <form method="post" action="/products/shelf/toggle" style="margin:0">
-        <input type="hidden" name="platform_pid" value="{{.SourceID}}">
-        <input type="hidden" name="title" value="{{.Title}}">
-        <input type="hidden" name="price" value="{{.Price}}">
-        <input type="hidden" name="commission_rate" value="{{.CommissionRate}}">
-        <input type="hidden" name="category" value="{{.Category}}">
-        {{if .ImageURLs}}<input type="hidden" name="image_url" value="{{index .ImageURLs 0}}">{{end}}
-        <input type="hidden" name="product_url" value="{{.ProductURL}}">
-        {{if eq .ShelfStatus "shelf"}}
+        <input type="hidden" name="id" value="{{.ID}}">
+        {{if or (eq .ShelfStatus "shelf") (eq .ShelfStatus "scaled")}}
         <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px;color:#ef4444" title="Bấm để gỡ khỏi Kệ hàng Bio">
           ✓ Trên kệ (Gỡ)
         </button>

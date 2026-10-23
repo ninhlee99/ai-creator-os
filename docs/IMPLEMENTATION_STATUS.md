@@ -20,14 +20,14 @@ credential/quota.
 | Năng lực đích | Trạng thái code | Bằng chứng/giới hạn |
 |---|---|---|
 | Kết nối 5 nền tảng | Một phần | Publisher factory có TikTok, Facebook, Instagram, Threads, YouTube. Flow credential khác nhau; Instagram/Threads dựa token/ID cấu hình. |
-| Onboarding chỉ cần login social | Chưa đạt / mô hình mở | AccessTrade yêu cầu key `at.access_key` qua Settings; payout cũng cần publisher KYC, MST, e-contract và ngân hàng. Self-hosted VPS owner thường là người dùng; identity và payout chưa được MiuNova provision. UTM/sub-ID chỉ track nguồn, không chuyển payout. Nếu bật Web AI miễn phí, còn cần login provider một lần. Chưa có luồng chứng minh user chỉ phải kết nối social. |
+| Onboarding chỉ cần login social | Chưa đạt / mô hình mở | AccessTrade yêu cầu key `at.access_key` qua Settings; payout cũng cần publisher KYC, MST, e-contract và ngân hàng. Self-hosted VPS owner thường là người dùng; identity và payout chưa được MiuNova provision. UTM/sub-ID chỉ track nguồn, không chuyển payout. Web AI là nguồn tùy chọn; account khôi phục bằng JSON backup. Chưa có luồng chứng minh user chỉ phải kết nối social. |
 | Săn sản phẩm affiliate | Một phần | AccessTrade datafeed/campaign/link/order client có trong internal/accesstrade. Chưa xác minh bằng AccessTrade key thật theo feature docs. |
 | Chọn theo lượt bán/đánh giá | Chưa đạt | Product model có Rating/SoldCount; adapter hiện dùng AccessTrade `/v1/datafeeds`, parser/mapper không có hai field. Docs `/v1/top_products.total` ghi số lượng sản phẩm, không định nghĩa là số bán. TikTok Shop feed có `units_sold` nhưng đã bị loại khỏi scope trước đây; không tích hợp, không có kỳ sales gần đây được docs nêu và không có review. Chưa có review source được xác minh. Xem [RESEARCH](RESEARCH.md). |
-| Agent tự chọn sản phẩm | Một phần | AT Hunter lọc campaign đã duyệt/feed còn mới rồi sort theo `price × commission_rate`. Cổng sản xuất hiện giữ offer thiếu sold/rating trong kho, không tạo affiliate video; datafeed hiện map chưa có hai trường nên mọi offer mới đang chờ evidence. |
+| Agent tự chọn sản phẩm | Một phần | AT Hunter lọc campaign đã duyệt/feed còn mới rồi sort theo `price × commission_rate`. Cổng sản xuất giữ offer thiếu evidence trong kho; feed chưa có sales/rating và số liệu nhập tay không qua gate vì chưa xác minh nguồn/period/sample. Hiện chưa có offer đủ điều kiện tự tạo affiliate video. |
 | Tự tạo affiliate link | Một phần | AccessTrade `product_link/create` và thao tác UI có; AT Hunter tự động dùng `aff_link` trong datafeed. Chưa thấy hunter tạo link riêng theo publisher/channel/content để bảo đảm attribution cấp video. |
-| Tự tạo video affiliate | Chưa đạt theo free-only | Manual Studio cần clip chuyển động operator cung cấp. AT Hunter chỉ nhận sản phẩm có sold/rating; datafeed hiện không có nên offer mới ở lại kho và không tạo video. Nhánh Google Flow vẫn cần bật `at.hunter_flow_credits`; free account/quota phải được xác minh riêng, chưa chứng minh chi phí $0 end-to-end. |
+| Tự tạo video affiliate | Chưa đạt theo free-only | Manual Studio cần clip chuyển động operator cung cấp. AT Hunter chỉ nhận sản phẩm có evidence provider đủ tin cậy; datafeed hiện không có sales/rating và số liệu nhập tay không qua gate. Nhánh Google Flow vẫn cần bật `at.hunter_flow_credits`; free account/quota phải được xác minh riêng, chưa chứng minh chi phí $0 end-to-end. |
 | Tự tạo video viral | Chưa đạt | Viral radar có; full character edit/video pipeline bị tắt theo free-only khi provider cần billing. |
-| Free-account fallback | Một phần, chưa chứng minh end-to-end | Web AI pool chỉ chọn account active có cờ `free` do người dùng xác nhận; đăng nhập hỏi xác nhận vì provider không có API plan chung để app kiểm chứng. Flow và Muse direct call nhận HTTP 429 được phân loại chắc chắn trước submit thì lưu cooldown theo `Retry-After` và thử account free kế tiếp; hết nguồn thì dừng kèm lý do. Gemini API LLM/TTS/image bị khóa cho tới khi operator xác nhận toàn bộ key set miễn phí; thay đổi key tự thu hồi xác nhận. Veo bị chặn vì cần billing. Headless Flow/reference jobs và chi phí thực tế vẫn chưa có quota proof toàn luồng. |
+| Free-account fallback | Một phần, chưa chứng minh end-to-end | Web AI pool chọn account active theo trạng thái phiên; không xác minh gói hoặc credits và không cần xác nhận Free thủ công. Flow/Muse nhận HTTP 429 trước submit thì lưu cooldown theo `Retry-After` và thử account khác; lỗi sau submit không retry để tránh job trùng. Flow yêu cầu consent credits trước generation. Gemini API LLM/TTS/image vẫn cần operator xác nhận toàn bộ key set miễn phí; thay đổi key tự thu hồi xác nhận. Veo bị chặn vì cần billing. Chi phí thực tế chưa được chứng minh end-to-end. |
 | TikTok publish | Một phần / eligibility chưa xác minh | Content Posting API integration; mặc định draft-only. Direct Post cần creator info, preview, metadata/privacy/interactions, commercial disclosure và consent từng bài. TikTok guidelines loại công cụ chỉ phục vụ account developer/team. **Suy luận:** app có thể không đủ điều kiện audit Direct Post. O-04 phải giải quyết trước O-07; không tuyên bố public auto. Trang Terms/Privacy còn `CONTACT_EMAIL`; cần thay bằng thông tin liên hệ thật trước khi gửi app review hoặc public các trang này. |
 | Facebook publish | Một phần | Facebook publisher qua Graph API hoặc CLI, mặc định draft-only. Credential/permission và trạng thái thực cần xác minh. |
 | Instagram Reels | Một phần | Adapter có; mặc định tạo container/chờ, publish công khai khi bật IG_AUTO_PUBLISH. Không có draft API trong implementation notes. |
@@ -37,9 +37,9 @@ credential/quota.
 | Tự điều chỉnh mix viral/affiliate | Chưa đạt | Growth planner/format decisions có; không có bằng chứng cross-platform optimizer dùng doanh thu affiliate cùng growth metrics để đổi mix. |
 | Dashboard cho người quan sát | Một phần | Có dashboard, harness, activity/decision logs; chưa hợp nhất toàn bộ trạng thái end-to-end và nguồn quota theo PRODUCT_SPEC. |
 | Mobile từ VPS: social OAuth | Đã có cấu hình, cần xác minh deployment | TikTok dùng PKCE cho loopback/Desktop và state cho HTTPS Web callback qua `TIKTOK_REDIRECT_URI`; Facebook dùng `META_REDIRECT_URI`; YouTube dùng Google Web OAuth khi có `YOUTUBE_REDIRECT_URI` HTTPS, vẫn giữ Desktop/loopback khi để trống. Chưa xác minh trên VPS bằng client credentials thật. TikTok static relay còn là fallback copy/paste thủ công. |
-| Web AI login khi app chạy VPS | Desktop-only trong source; mobile bị tắt; live VPS/provider chưa xác minh | UI ẩn nút login trên mobile/coarse pointer; server từ chối mobile request ở routes start/screen/input/status/cancel. Viewer chỉ gửi mouse/keyboard; Google Flow mở Google Account thay cho canvas nặng. CDP loopback-only, session ID ngẫu nhiên, HTTPS gate từ xa. Chưa chạy login thật với provider credentials. Xem [remote-webai-login](features/remote-webai-login.md). |
+| Web AI account | Optional; JSON restore | Không đọc cookie từ browser đang chạy; tài khoản được khôi phục qua JSON backup. Không cần xác nhận Free thủ công. Probe 403 không tự coi phiên hết hạn; request cập nhật cookie mới theo account ID khi provider gửi `Set-Cookie`. |
 
-Sơ đồ quy tắc chọn account miễn phí và retry Flow: [MiuNova free-account routing](assets/miunova-free-account-rotation.svg).
+Sơ đồ session Web AI và retry quota: [MiuNova Web AI session routing](assets/miunova-webai-session-routing.svg).
 
 ## Chi tiết theo pipeline
 
@@ -80,10 +80,11 @@ Sơ đồ quy tắc chọn account miễn phí và retry Flow: [MiuNova free-acc
 - Web AI Studio trực tiếp chỉ retry account Flow/Muse khác khi nhận HTTP 429
   trong bước được xác định chắc chắn là trước khi provider nhận job/prompt. Lỗi
   sau submit không retry để tránh tạo job trùng. Retry-After được lưu thành cooldown.
-- Tier free là xác nhận của operator, không phải thông tin được provider trả.
-  Tài khoản cũ/import chưa xác nhận sẽ bị loại khỏi pool tới khi đăng nhập lại.
-- Gemini API chains yêu cầu xác nhận riêng gắn với fingerprint của bộ key hiện
-  tại; đổi bộ key sẽ khóa calls tới khi xác nhận lại. Đây vẫn là tự khai báo,
+- Account Web AI vào pool theo trạng thái account/phiên; không có bước xác nhận
+  plan Free và app không kiểm chứng plan/credits. HTTP 403 từ probe chỉ là
+  chưa xác minh, cookie được giữ. Đây là chính sách riêng cho account Web AI.
+- Gemini API chains vẫn có xác nhận operator riêng gắn với fingerprint của bộ
+  key hiện tại; đổi bộ key sẽ khóa calls tới khi xác nhận lại. Đây là khai báo,
   không phải billing check từ Google. Google Veo luôn bị chặn theo chính sách
   free-only vì endpoint cần project bật billing.
 - Temporal/visual QC tồn tại; lấy mẫu frame không chứng minh mọi khoảnh khắc

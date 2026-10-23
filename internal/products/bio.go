@@ -279,7 +279,9 @@ func (s *Store) scanBioListing(row interface{ Scan(...any) error }) (BioListing,
 	var published int
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price,
 		&p.Currency, &p.OriginalPrice, &p.DataUpdatedAt, &p.CommissionRate, &p.ShopName,
-		&p.Rating, &p.SoldCount, &p.Category, &p.ProductURL, &p.Theme, &p.FoundAt,
+		&p.Rating, &p.SoldCount, &p.DemandEvidenceURL, &p.DemandEvidenceAt,
+		&p.DemandEvidenceRating, &p.DemandEvidenceSoldCount,
+		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt,
 		&p.ShelfStatus, &p.ShelfScore, &p.ClickCount,
 		&published, &item.DisplayOrder, &item.VoucherCode, &item.VoucherValue,
 		&item.VoucherEndsAt, &item.VoucherTerms, &item.ProductDetails, &overrideImages)

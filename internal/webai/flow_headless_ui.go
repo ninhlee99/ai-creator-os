@@ -20,8 +20,8 @@ func flowUpdatedCookieHeader(ctx context.Context, client *browserCDPClient) stri
 	if json.Unmarshal(response, &cookies) != nil {
 		return ""
 	}
-	header := cookieHeaderForHost(cookies.Cookies, "google.com")
-	if !strings.Contains(header, "__Secure-1PSID=") {
+	header := browserCookieHeaderAllPaths(cookies.Cookies, BrowserCookieScope{Platform: PlatformGoogleFlow, CookieHost: "flow.google.com"})
+	if !googleFlowSessionCookiePresent(cookies.Cookies) {
 		return ""
 	}
 	return header
@@ -236,18 +236,4 @@ func flowAttachRequestFiles(ctx context.Context, client *browserCDPClient, reque
 		return errors.New("Flow did not confirm all source and character references")
 	}
 	return nil
-}
-
-func flowBrowserCookies(header string) []map[string]any {
-	var out []map[string]any
-	for _, part := range strings.Split(header, ";") {
-		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-		if !ok || name == "" {
-			continue
-		}
-		for _, cookieURL := range []string{flowAppURL, "https://labs.google/"} {
-			out = append(out, map[string]any{"name": name, "value": value, "url": cookieURL, "path": "/", "secure": true, "httpOnly": true})
-		}
-	}
-	return out
 }

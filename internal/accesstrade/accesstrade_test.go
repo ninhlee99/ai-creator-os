@@ -99,7 +99,7 @@ func TestCreateProductLink(t *testing.T) {
 		_, _ = r.Body.Read(buf)
 		gotBody = string(buf)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"data":{"url":"https://go.accesstrade.vn/abc","short_url":"https://short.vn/abc"}}`))
+		_, _ = w.Write([]byte(`{"success":true,"data":{"success_link":[{"aff_link":"https://go.accesstrade.vn/abc","short_link":"https://short.vn/abc"}],"error_link":[]}}`))
 	})
 	c := NewClient("k123")
 	c.BaseURL = srv.URL
@@ -113,7 +113,7 @@ func TestCreateProductLink(t *testing.T) {
 	if l.TrackingLink != "https://go.accesstrade.vn/abc" || l.ShortLink != "https://short.vn/abc" {
 		t.Errorf("link sai: %+v", l)
 	}
-	for _, want := range []string{`"url":"https://shopee.vn/sp1"`, `"campaign_id":"c1"`, `"utm_source":"tiktok"`, `"sub1":"acc1"`} {
+	for _, want := range []string{`"urls":["https://shopee.vn/sp1"]`, `"campaign_id":"c1"`, `"utm_source":"tiktok"`, `"sub1":"acc1"`} {
 		if !strings.Contains(gotBody, want) {
 			t.Errorf("body thiếu %s (body=%s)", want, gotBody)
 		}

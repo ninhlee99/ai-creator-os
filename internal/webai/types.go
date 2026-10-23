@@ -2,7 +2,6 @@ package webai
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -107,7 +106,7 @@ func SupportedPlatforms() []PlatformInfo {
 		},
 		{
 			ID:          PlatformMuseAI,
-			Name:        "Muse Chat (Meta)",
+			Name:        "Muse AI",
 			URL:         "https://muse.ai",
 			LoginURL:    "https://muse.ai/",
 			Icon:        "🎬",
@@ -121,8 +120,8 @@ func SupportedPlatforms() []PlatformInfo {
 		{
 			ID:          PlatformGoogleFlow,
 			Name:        "Google Flow",
-			URL:         "https://labs.google/fx/tools/flow",
-			LoginURL:    "https://labs.google/fx/tools/flow",
+			URL:         "https://flow.google.com/",
+			LoginURL:    "https://flow.google.com/",
 			Icon:        "🌊",
 			Color:       "#2563eb",
 			Badge:       "Video · web API",
@@ -136,33 +135,29 @@ func SupportedPlatforms() []PlatformInfo {
 
 // Account stores credentials and connection state for an AI Web service.
 type Account struct {
-	ID                   string    `json:"id"`
-	Platform             string    `json:"platform"`
-	AccountName          string    `json:"account_name"`
-	Email                string    `json:"email"`
-	SessionKey           string    `json:"session_key"`
-	Cookie               string    `json:"cookie"`
-	Status               string    `json:"status"` // ok | cooldown | rate_limited | invalid | disconnected
-	Tier                 string    `json:"tier"`   // free | paid | unknown
-	TierConfirmed        bool      `json:"tier_confirmed"`
-	CreditsRemaining     int       `json:"credits_remaining"`
-	CreditsTotal         int       `json:"credits_total"`
-	CooldownUntil        time.Time `json:"cooldown_until"`
-	CooldownRemainingSec int64     `json:"cooldown_remaining_sec"`
-	CooldownLabel        string    `json:"cooldown_label"`
-	Requests             int       `json:"requests"`
-	RateLimitHits        int       `json:"rate_limit_hits"`
-	LastRateLimitLabel   string    `json:"last_rate_limit_label"`
-	IsActive             bool      `json:"is_active"`
-	LastUsed             time.Time `json:"last_used"`
-	LastChecked          time.Time `json:"last_checked"`
-	CreatedAt            time.Time `json:"created_at"`
-	UpdatedAt            time.Time `json:"updated_at"`
-}
-
-// IsConfirmedFree reports whether user explicitly classified this account as free.
-func (acc Account) IsConfirmedFree() bool {
-	return acc.TierConfirmed && strings.EqualFold(strings.TrimSpace(acc.Tier), "free")
+	ID                   string          `json:"id"`
+	Platform             string          `json:"platform"`
+	AccountName          string          `json:"account_name"`
+	Email                string          `json:"email"`
+	SessionKey           string          `json:"session_key"`
+	Cookie               string          `json:"cookie"`
+	CookieJar            []BrowserCookie `json:"cookie_jar,omitempty"`
+	Status               string          `json:"status"` // ok | cooldown | rate_limited | invalid | disconnected
+	Tier                 string          `json:"tier"`   // provider plan, when known
+	TierConfirmed        bool            `json:"-"`      // legacy database column; no longer gates saved sessions
+	CreditsRemaining     int             `json:"credits_remaining"`
+	CreditsTotal         int             `json:"credits_total"`
+	CooldownUntil        time.Time       `json:"cooldown_until"`
+	CooldownRemainingSec int64           `json:"cooldown_remaining_sec"`
+	CooldownLabel        string          `json:"cooldown_label"`
+	Requests             int             `json:"requests"`
+	RateLimitHits        int             `json:"rate_limit_hits"`
+	LastRateLimitLabel   string          `json:"last_rate_limit_label"`
+	IsActive             bool            `json:"is_active"`
+	LastUsed             time.Time       `json:"last_used"`
+	LastChecked          time.Time       `json:"last_checked"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
 }
 
 // AdScene represents a single scene in a product ad storyboard.

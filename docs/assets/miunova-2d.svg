@@ -23,7 +23,7 @@
     <rect x="814" y="135" width="390" height="112" rx="18"/>
     <rect x="1238" y="135" width="506" height="112" rx="18"/>
   </g>
-  <text x="82" y="172" class="h">Người vận hành</text><text x="82" y="196" class="t">Điện thoại · social OAuth</text><text x="82" y="219" class="s">Web AI login tùy chọn qua remote browser</text>
+  <text x="82" y="172" class="h">Người vận hành</text><text x="82" y="196" class="t">Điện thoại · social OAuth</text><text x="82" y="219" class="s">Web AI account tùy chọn qua JSON backup</text>
   <text x="416" y="172" class="h">Tín hiệu &amp; dữ liệu</text><text x="416" y="200" class="t">Kênh · xu hướng · offer · hoa hồng</text><text x="416" y="222" class="s">Sales + review có nguồn; thiếu → watchlist</text>
   <text x="840" y="172" class="h">Nguồn tạo nội dung</text><text x="840" y="196" class="t">Chỉ account miễn phí được phép; quota có giới hạn</text><text x="840" y="219" class="s">Web AI: login một lần nếu instance chọn dùng</text>
   <text x="1264" y="172" class="h">Đầu ra theo quyền nền tảng</text><text x="1264" y="200" class="t">TikTok: kiểm eligibility → consent hoặc handoff</text><text x="1264" y="222" class="s">Threads video: URL media HTTPS tạm theo artifact</text>

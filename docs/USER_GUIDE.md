@@ -38,10 +38,10 @@ Các lựa chọn chạy/build đầy đủ nằm trong [README](../README.md) v
   dùng Desktop client/loopback. Google OAuth consent screen cũng cần cho phép
   tài khoản đăng nhập.
 - Bật bảo vệ đăng nhập dashboard trước khi mở app ra internet. Không public
-  cổng CDP, VNC hoặc browser-debug.
+  cổng CDP, VNC hoặc browser-debug; CDP chỉ dùng nội bộ cho hidden generation
+  fallback.
 - TikTok, Facebook và YouTube đều có callback cấu hình cho VPS; cần xác minh
-  HTTPS, proxy, consent screen và credentials thật của deployment. Đăng nhập
-  Web AI là luồng khác, chưa có browser viewer để thao tác từ điện thoại.
+  HTTPS, proxy, consent screen và credentials thật của deployment.
 
 ## 2. Kết nối tài khoản
 
@@ -50,11 +50,11 @@ Các lựa chọn chạy/build đầy đủ nằm trong [README](../README.md) v
    credentials và callback hợp lệ ở Settings.
 3. Instagram/Threads hiện phụ thuộc token và ID cấu hình; xem trạng thái từng
    adapter tại [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md).
-4. Nếu dùng account AI web miễn phí làm nguồn tạo nội dung, có thể quản lý tại
-   `/web-ai`. Nút đăng nhập mở browser tạm trên máy chạy app và hiển thị trong
-   modal để thao tác từ điện thoại. VPS cần Chrome/Chromium, dashboard có mật
-   khẩu và HTTPS; kết quả live trên VPS vẫn cần xác minh.
-   [Luồng remote login](features/remote-webai-login.md).
+4. Web AI là nguồn tạo nội dung tùy chọn. Trong **Cài đặt → Hệ thống → Web AI**,
+   dùng **Khôi phục JSON backup** để thêm account. MiuNova không đọc cookie từ
+   browser đang chạy. Cookie mới được lưu theo account khi provider trả cookie
+   mới. Trạng thái phiên không chứng minh account dùng gói Free; Flow yêu cầu
+   xác nhận credits trước khi tạo video.
 5. Affiliate hiện cần AccessTrade key, campaign được phép và publisher payout
    profile. App yêu cầu key trong Settings; AccessTrade còn yêu cầu publisher
    hoàn tất định danh, MST, hợp đồng điện tử và ngân hàng để nhận hoa hồng. Với
@@ -73,7 +73,7 @@ Các lựa chọn chạy/build đầy đủ nằm trong [README](../README.md) v
 | Viral | `/viral` | Radar tìm tín hiệu; pipeline video viral gốc đầy đủ chưa đạt đích và hiện bị chặn khi cần provider trả phí. |
 | Phát triển kênh | `/growth` | Growth planner và một phần YouTube metrics; chưa tối ưu đa nền tảng theo dữ liệu end-to-end. |
 | Xuất bản | `/publishers` | TikTok/Facebook/Instagram/Threads/YouTube có mức hỗ trợ khác nhau. Threads hiện chưa xuất bản video local; TikTok mặc định draft-only. |
-| Web AI | `/web-ai` | Quản lý account AI web; login browser tạm có viewer/chạm/bàn phím từ điện thoại qua dashboard đã xác thực. VPS cần Chrome/Chromium và HTTPS. |
+| Web AI | `/web-ai` | Lưu/kiểm tra account; Studio dùng phiên Muse/Flow đang bật. Khôi phục JSON backup cũng được hỗ trợ. HTTP 403 không tự đánh dấu phiên hết hạn. |
 | Cài đặt | `/settings` | Provider, AccessTrade, dry-run, master switch, thông báo và vận hành. Chỉ dùng cấu hình miễn phí theo yêu cầu sản phẩm. |
 | Sức khỏe | `/healthz` | Endpoint trạng thái tiến trình để kiểm tra app còn phản hồi. |
 
@@ -84,11 +84,12 @@ Chi tiết từng năng lực và cách kích hoạt nằm trong
 ## 4. Tài nguyên miễn phí và trạng thái job
 
 - Chỉ dùng provider/account có mức phí bằng 0 và được phép cho tác vụ đó.
-- Khi đăng nhập Web AI, xác nhận account đang ở gói miễn phí. MiuNova không thể
-  tự kiểm chứng plan của provider; tài khoản cũ/import chưa xác nhận không được
-  dùng để tạo nội dung.
+- Web AI account không cần xác nhận Free trong app và provider không có API plan
+  chung để MiuNova kiểm chứng. Session active chỉ xác nhận kết nối, không chứng
+  minh plan hoặc giá. Flow vẫn yêu cầu consent credits cho từng lần tạo; bật
+  `Google Flow credits` cho AT Hunter sẽ cho phép tự động dùng credits.
 - Khi Flow hoặc Muse báo HTTP 429 ở bước trước submit, MiuNova đưa account vào
-  cooldown và thử account miễn phí đã xác nhận khác. Không tạo/xoay account để
+  cooldown và thử account khác đang hoạt động. Không tạo/xoay account để
   né giới hạn, không retry sau khi provider đã nhận job/prompt, và không
   fallback sang trả phí.
 - Với Gemini API key, vào **Cài đặt → Nhà cung cấp** và xác nhận toàn bộ key

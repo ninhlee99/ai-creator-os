@@ -23,6 +23,7 @@ type FlowVideoResult struct {
 	ProjectID    string
 	MediaID      string
 	CookieHeader string
+	CookieJar    []BrowserCookie
 }
 
 // FlowAPIUnavailableError marks a failed preflight or an explicit rejected
@@ -71,10 +72,12 @@ func FlowPreSubmitRateLimitCooldown(err error) (time.Duration, bool) {
 func IsWebSessionAuthError(err error) bool {
 	var sessionErr *WebSessionAuthError
 	if errors.As(err, &sessionErr) {
-		return true
+		// HTTP 403 can be a Cloudflare or access-policy block. Only 401 proves
+		// that provider rejected the saved session itself.
+		return sessionErr.StatusCode == http.StatusUnauthorized
 	}
 	var flowErr *flowHTTPError
-	return errors.As(err, &flowErr) && (flowErr.status == http.StatusUnauthorized || flowErr.status == http.StatusForbidden)
+	return errors.As(err, &flowErr) && flowErr.status == http.StatusUnauthorized
 }
 
 type flowHTTPError struct {
@@ -85,31 +88,76 @@ type flowHTTPError struct {
 func (e *flowHTTPError) Error() string { return fmt.Sprintf("Flow HTTP %d", e.status) }
 
 type flowClient struct {
-	http      *http.Client
-	cookie    string
-	csrf      string
-	sessionID string
+	http           *http.Client
+	cookie         string
+	csrf           string
+	sessionID      string
+	onCookieUpdate func(string) error
+	snapshotJar    *cookieSnapshotJar
 }
 
 // ProbeGoogleFlowSession checks access to the authenticated Flow history API.
 func ProbeGoogleFlowSession(ctx context.Context, cookie string) error {
+	return ProbeGoogleFlowSessionWithCookieUpdate(ctx, cookie, nil)
+}
+
+// ProbeGoogleFlowSessionWithCookieUpdate persists cookies rotated by history.
+func ProbeGoogleFlowSessionWithCookieUpdate(ctx context.Context, cookie string, onCookieUpdate func(string) error) error {
 	if strings.TrimSpace(cookie) == "" {
 		return errors.New("Google Flow chưa có cookie phiên")
 	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	_, err := newFlowClient(cookie).history(ctx, "PINHOLE", "", 1)
+	_, err := newFlowClientWithCookieUpdate(cookie, onCookieUpdate).history(ctx, "PINHOLE", "", 1)
+	return err
+}
+
+// ProbeGoogleFlowSessionWithCookieSnapshot probes Flow using scoped cookies and
+// persists every response cookie together with its domain and path metadata.
+func ProbeGoogleFlowSessionWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, updater CookieSnapshotUpdater) error {
+	if strings.TrimSpace(cookie) == "" && len(cookies) == 0 {
+		return errors.New("Google Flow chưa có cookie phiên")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	client, err := newFlowClientWithCookieSnapshot(cookie, cookies, updater)
+	if err != nil {
+		return fmt.Errorf("không khởi tạo được cookie jar của Flow: %w", err)
+	}
+	_, err = client.history(ctx, "PINHOLE", "", 1)
 	return err
 }
 
 // GoogleFlowVideo calls Flow's web-client endpoints with a saved Google
 // session, then correlates its generation against the authenticated history.
 func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progress func(string)) (result FlowVideoResult, retErr error) {
+	return GoogleFlowVideoWithCookieUpdate(ctx, cookie, prompt, aspect, progress, nil)
+}
+
+// GoogleFlowVideoWithCookieUpdate reports each changed Set-Cookie snapshot
+// before the next Flow request uses the updated session.
+func GoogleFlowVideoWithCookieUpdate(ctx context.Context, cookie, prompt, aspect string, progress func(string), onCookieUpdate func(string) error) (result FlowVideoResult, retErr error) {
+	client := newFlowClientWithCookieUpdate(cookie, onCookieUpdate)
+	return googleFlowVideoWithClient(ctx, cookie, prompt, aspect, progress, client)
+}
+
+// GoogleFlowVideoWithCookieSnapshot sends imported cookies with their original
+// browser domain/path scope and persists each rotated snapshot before reuse.
+func GoogleFlowVideoWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, prompt, aspect string, progress func(string), updater CookieSnapshotUpdater) (result FlowVideoResult, retErr error) {
+	client, err := newFlowClientWithCookieSnapshot(cookie, cookies, updater)
+	if err != nil {
+		return result, fmt.Errorf("không khởi tạo được cookie jar của Flow: %w", err)
+	}
+	return googleFlowVideoWithClient(ctx, cookie, prompt, aspect, progress, client)
+}
+
+func googleFlowVideoWithClient(ctx context.Context, cookie, prompt, aspect string, progress func(string), client *flowClient) (result FlowVideoResult, retErr error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	if strings.TrimSpace(cookie) == "" {
+	if strings.TrimSpace(cookie) == "" && client.snapshotJar == nil {
 		return result, errors.New("Google Flow chưa có cookie phiên; kết nối tài khoản Flow trước")
 	}
 	if strings.TrimSpace(prompt) == "" {
@@ -118,10 +166,13 @@ func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progres
 	if progress == nil {
 		progress = func(string) {}
 	}
-	client := newFlowClient(cookie)
 	defer func() {
 		if client.cookie != "" {
 			result.CookieHeader = client.cookie
+		}
+		if client.snapshotJar != nil {
+			result.CookieJar = client.snapshotJar.Snapshot()
+			result.CookieHeader = client.snapshotJar.CookieHeader()
 		}
 	}()
 	before, err := client.history(ctx, "PINHOLE", "", 25)
@@ -195,6 +246,10 @@ func GoogleFlowVideo(ctx context.Context, cookie, prompt, aspect string, progres
 					continue
 				}
 				result = FlowVideoResult{MediaURL: mediaURL, ProjectID: projectID, MediaID: mediaID, CookieHeader: client.cookie}
+				if client.snapshotJar != nil {
+					result.CookieJar = client.snapshotJar.Snapshot()
+					result.CookieHeader = client.snapshotJar.CookieHeader()
+				}
 				return result, nil
 			}
 		}

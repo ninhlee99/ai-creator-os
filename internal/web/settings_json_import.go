@@ -23,6 +23,7 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 	geminiCount := 0
 	atCount := 0
 	webaiCount := 0
+	webaiFailed := 0
 
 	for _, k := range exp.GeminiAPIKeys {
 		if s.addGeminiKey(k) {
@@ -57,12 +58,15 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 		}
 	}
 
-	if s.WebAI != nil && len(exp.WebAIAccounts) > 0 {
-		for _, acc := range exp.WebAIAccounts {
-			if !acc.TierConfirmed {
-				acc.Tier = "unknown"
-			}
-			if _, err := s.WebAI.AddAccount(acc); err == nil {
+	if len(exp.WebAIAccounts) > 0 {
+		if s.WebAI == nil {
+			webaiFailed = len(exp.WebAIAccounts)
+		} else {
+			for _, acc := range exp.WebAIAccounts {
+				if _, err := s.WebAI.AddAccount(acc); err != nil {
+					webaiFailed++
+					continue
+				}
 				webaiCount++
 			}
 		}
@@ -71,8 +75,14 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 	s.Cfg.RefreshEnv()
 	s.applyPersistedEnv()
 	s.SyncGeminiKeys()
-	_ = s.Ledger.Decide("human", "env_import_json", nil, fmt.Sprintf("Import JSON: %d biến, %d key Gemini, %d WebAI", envCount, geminiCount, webaiCount), nil)
+	_ = s.Ledger.Decide("human", "env_import_json", nil, fmt.Sprintf("Import JSON: %d biến, %d key Gemini, %d WebAI thành công, %d WebAI lỗi", envCount, geminiCount, webaiCount, webaiFailed), nil)
 
+	if webaiFailed > 0 {
+		msg := fmt.Sprintf("Đã nhập một phần JSON: %d biến môi trường, %d key Gemini, %d tài khoản WebAI thành công; %d tài khoản WebAI không lưu được. Kiểm tra kho Web AI và định dạng account trong backup.", envCount, geminiCount, webaiCount, webaiFailed)
+		log.Printf("web: %s", msg)
+		seeOther(w, r, "/settings/system?err="+url.QueryEscape(msg))
+		return
+	}
 	msg := fmt.Sprintf("✓ Đã nhập thành công từ JSON: %d biến môi trường, %d key Gemini, %d tài khoản WebAI.", envCount, geminiCount, webaiCount)
 	log.Printf("web: %s", msg)
 	seeOther(w, r, "/settings/system?ok="+url.QueryEscape(msg))

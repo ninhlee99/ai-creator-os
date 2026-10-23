@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"time"
 
@@ -27,7 +28,21 @@ func (e *MuseGatewayUnavailableError) Unwrap() error { return e.cause }
 // direct TLS/WebSocket gateway cannot be reached. It uses installed
 // Chrome/Edge in headless mode and never opens a visible window.
 func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(string)) (out MuseReply, retErr error) {
-	if strings.TrimSpace(cookie) == "" || strings.TrimSpace(prompt) == "" {
+	return MuseChatHeadlessWithCookieUpdate(ctx, cookie, prompt, progress, nil)
+}
+
+func MuseChatHeadlessWithCookieUpdate(ctx context.Context, cookie, prompt string, progress func(string), onCookieUpdate func(string) error) (out MuseReply, retErr error) {
+	updater := func(header string, _ []BrowserCookie) error {
+		if onCookieUpdate != nil {
+			return onCookieUpdate(header)
+		}
+		return nil
+	}
+	return MuseChatHeadlessWithCookieSnapshot(ctx, cookie, nil, prompt, progress, updater)
+}
+
+func MuseChatHeadlessWithCookieSnapshot(ctx context.Context, cookie string, savedCookies []BrowserCookie, prompt string, progress func(string), updater CookieSnapshotUpdater) (out MuseReply, retErr error) {
+	if strings.TrimSpace(cookie) == "" && len(savedCookies) == 0 || strings.TrimSpace(prompt) == "" {
 		return out, errors.New("Muse headless fallback needs a session cookie and prompt")
 	}
 	if progress == nil {
@@ -99,7 +114,10 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 		return out, errors.New("Muse headless browser did not attach to page")
 	}
 	client.sessionID = session.SessionID
-	cookies := museBrowserCookies(cookie)
+	cookies := normalizeCookieJar(savedCookies)
+	if len(cookies) == 0 {
+		cookies = mergeCookieJarHeader(nil, cookie, PlatformMuseAI)
+	}
 	if len(cookies) == 0 {
 		return out, errors.New("saved Muse cookie header is empty")
 	}
@@ -108,14 +126,29 @@ func MuseChatHeadless(ctx context.Context, cookie, prompt string, progress func(
 			return out, err
 		}
 	}
-	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": cookies}, client.sessionID); err != nil {
+	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(PlatformMuseAI, cookies)}, client.sessionID); err != nil {
 		return out, errors.New("Muse headless browser rejected saved session cookies")
 	}
+	initialSnapshot, err := browserCookieSnapshotFromCDP(ctx, client)
+	if err != nil || len(initialSnapshot) == 0 {
+		initialSnapshot = cookies
+	}
+	monitorCtx, monitor := startBrowserCookieMonitor(ctx, client, initialSnapshot, browserCookieSnapshotFromCDP, PlatformMuseAI, updater)
+	ctx = monitorCtx
 	defer func() {
+		if monitorErr := monitor.stop(); monitorErr != nil {
+			retErr = fmt.Errorf("persist refreshed Muse cookies: %w", monitorErr)
+		}
 		refreshCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		if refreshed := museUpdatedCookieHeader(refreshCtx, client); refreshed != "" {
-			out.CookieHeader = refreshed
+		if refreshed, readErr := browserCookieSnapshotFromCDP(refreshCtx, client); readErr == nil && len(refreshed) > 0 {
+			out.CookieJar = refreshed
+			out.CookieHeader = browserCookieHeaderForPlatform(PlatformMuseAI, refreshed)
+			if !reflect.DeepEqual(refreshed, monitor.current()) && updater != nil {
+				if err := updater(out.CookieHeader, refreshed); err != nil {
+					retErr = fmt.Errorf("persist refreshed Muse cookies: %w", err)
+				}
+			}
 		}
 	}()
 	if _, err := client.call(ctx, "Page.navigate", map[string]any{"url": museHTTPBase + "/"}, client.sessionID); err != nil {
@@ -209,23 +242,10 @@ func museUpdatedCookieHeader(ctx context.Context, client *browserCDPClient) stri
 	if json.Unmarshal(response, &cookies) != nil {
 		return ""
 	}
-	header := cookieHeaderForHost(cookies.Cookies, "muse.ai")
-	for _, name := range []string{"hatch_sess=", "session=", "auth_token="} {
-		if strings.Contains(header, name) {
-			return header
-		}
+	scope := BrowserCookieScope{Platform: PlatformMuseAI, CookieHost: "muse.ai", CookiePath: "/api/auth/check"}
+	header := browserCookieHeaderAllPaths(cookies.Cookies, scope)
+	if len(museSessionCookieCandidates(cookies.Cookies, scope)) > 0 {
+		return header
 	}
 	return ""
-}
-
-func museBrowserCookies(header string) []map[string]any {
-	var out []map[string]any
-	for _, part := range strings.Split(header, ";") {
-		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-		if !ok || name == "" {
-			continue
-		}
-		out = append(out, map[string]any{"name": name, "value": value, "domain": ".muse.ai", "path": "/", "secure": true, "httpOnly": true})
-	}
-	return out
 }

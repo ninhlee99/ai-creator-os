@@ -56,7 +56,7 @@ func (s *Store) Search(keyword, theme string, minCommission float64, limit int) 
 	if len(where) > 0 {
 		clause = "WHERE " + strings.Join(where, " AND ")
 	}
-	q := `SELECT ` + productCols + ` FROM products ` + clause + ` ORDER BY commission_rate DESC, rating DESC, sold_count DESC LIMIT ?`
+	q := `SELECT ` + productCols + ` FROM products ` + clause + ` ORDER BY commission_rate DESC, id DESC LIMIT ?`
 	args = append(args, limit)
 	rows, err := s.db.Query(q, args...)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *Store) TopHighCommission(limit int) ([]Product, error) {
 	if limit <= 0 {
 		limit = 30
 	}
-	rows, err := s.db.Query(`SELECT `+productCols+` FROM products WHERE commission_rate >= 0.15 ORDER BY commission_rate DESC, rating DESC, sold_count DESC LIMIT ?`, limit)
+	rows, err := s.db.Query(`SELECT `+productCols+` FROM products WHERE commission_rate >= 0.15 ORDER BY commission_rate DESC, id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -7,11 +7,6 @@ import (
 	"strings"
 )
 
-// handleWebAIConnect maintains compatibility with legacy single-account connect calls.
-func (s *Server) handleWebAIConnect(w http.ResponseWriter, r *http.Request) {
-	s.handleWebAIAccountAdd(w, r)
-}
-
 // handleWebAIDisconnect disconnects an account and clears credentials.
 func (s *Server) handleWebAIDisconnect(w http.ResponseWriter, r *http.Request) {
 	redirectBack := func(param, msg string) {
@@ -57,30 +52,33 @@ func (s *Server) handleWebAIPromptGenerate(w http.ResponseWriter, r *http.Reques
 	s.writeJSON(w, pkg)
 }
 
-// handleWebAIPoolStatus returns live accounts status for the connected Web AI accounts.
+// handleWebAIPoolStatus separates saved account state from Studio eligibility.
 func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 	if s.WebAI == nil {
-		s.writeJSON(w, map[string]any{"ok": false, "total_connected": 0, "accounts": map[string]any{}})
+		s.writeJSON(w, map[string]any{"ok": false, "total_connected": 0, "active_accounts": 0, "studio_ready": 0, "accounts": map[string]any{}})
 		return
 	}
 
 	type platformSummary struct {
-		ID      string `json:"id"`
-		Name    string `json:"name"`
-		Icon    string `json:"icon"`
-		Total   int    `json:"total"`
-		Ready   int    `json:"ready"`
-		Cooling int    `json:"cooling"`
-		Status  string `json:"status"`
+		ID              string `json:"id"`
+		Name            string `json:"name"`
+		Icon            string `json:"icon"`
+		Total           int    `json:"total"`
+		Active          int    `json:"active"`
+		Ready           int    `json:"ready"`
+		StudioReady     int    `json:"studio_ready"`
+		Cooling         int    `json:"cooling"`
+		Status          string `json:"status"`
+		StudioSupported bool   `json:"studio_supported"`
 	}
 
 	platforms := []string{webai.PlatformClaude, webai.PlatformChatGPT, webai.PlatformGemini, webai.PlatformGrok, webai.PlatformMuseAI, webai.PlatformGoogleFlow}
 	names := map[string]string{
-		webai.PlatformClaude:     "Claude 5.5 Sonnet",
-		webai.PlatformChatGPT:    "ChatGPT (GPT-6 Luna)",
-		webai.PlatformGemini:     "Gemini 3.8 Flash",
-		webai.PlatformGrok:       "Grok 3 (xAI)",
-		webai.PlatformMuseAI:     "Muse Chat (Meta)",
+		webai.PlatformClaude:     "Claude",
+		webai.PlatformChatGPT:    "ChatGPT",
+		webai.PlatformGemini:     "Gemini",
+		webai.PlatformGrok:       "Grok",
+		webai.PlatformMuseAI:     "Muse AI",
 		webai.PlatformGoogleFlow: "Google Flow (video)",
 	}
 	icons := map[string]string{
@@ -94,43 +92,57 @@ func (s *Server) handleWebAIPoolStatus(w http.ResponseWriter, r *http.Request) {
 
 	summaries := make(map[string]platformSummary)
 	totalConnected := 0
+	activeAccounts := 0
+	studioReady := 0
 
 	for _, p := range platforms {
 		ready, cool, total := s.WebAI.CountByPlatform(p)
+		accounts, _ := s.WebAI.GetAccounts(p)
+		active, hasSavedSession := 0, false
+		for _, account := range accounts {
+			if !account.IsActive {
+				continue
+			}
+			active++
+			if account.Status == "ok" || account.Status == "connected" {
+				hasSavedSession = true
+			}
+		}
 		status := "offline"
-		if ready > 0 {
+		if hasSavedSession {
 			status = "ok"
 		} else if cool > 0 {
 			status = "cooldown"
+		} else if active > 0 {
+			status = "needs_attention"
+		}
+		studioSupported := webAIPlatformSupportsStudio(p)
+		platformStudioReady := 0
+		if studioSupported {
+			platformStudioReady = ready
 		}
 		summaries[p] = platformSummary{
-			ID:      p,
-			Name:    names[p],
-			Icon:    icons[p],
-			Total:   total,
-			Ready:   ready,
-			Cooling: cool,
-			Status:  status,
+			ID:              p,
+			Name:            names[p],
+			Icon:            icons[p],
+			Total:           total,
+			Active:          active,
+			Ready:           ready,
+			StudioReady:     platformStudioReady,
+			Cooling:         cool,
+			Status:          status,
+			StudioSupported: studioSupported,
 		}
 		totalConnected += ready
+		activeAccounts += active
+		studioReady += platformStudioReady
 	}
 
 	s.writeJSON(w, map[string]any{
 		"ok":              true,
 		"total_connected": totalConnected,
+		"active_accounts": activeAccounts,
+		"studio_ready":    studioReady,
 		"accounts":        summaries,
 	})
-}
-
-// handleWebAIProxy delegates requests to the ProxyRelay.
-func (s *Server) handleWebAIProxy(w http.ResponseWriter, r *http.Request) {
-	if s.WebAIRelay == nil {
-		if s.WebAI != nil {
-			s.WebAIRelay = webai.NewProxyRelay(s.WebAI)
-		} else {
-			http.Error(w, "Web AI relay not configured", http.StatusServiceUnavailable)
-			return
-		}
-	}
-	s.WebAIRelay.ServeHTTP(w, r)
 }

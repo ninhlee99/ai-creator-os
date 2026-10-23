@@ -50,22 +50,23 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 			spend = v
 		}
 	}
-	webAIViews, webAIConnected := s.webAIPlatformViews()
+	webAIViews, webAIConnected, webAIStudioReady := s.webAIPlatformViews()
 	return map[string]any{
-		"EnvStatus":      envs,
-		"WebAIPlatforms": webAIViews,
-		"WebAIConnected": webAIConnected,
-		"EnvSaved":       r.URL.Query().Get("envsaved"),
-		"EnvErr":         r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
-		"Ok":             r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang system
-		"Err":            r.URL.Query().Get("err"),
-		"DbPath":         s.Cfg.DatabasePath,
-		"Usage":          usage,
-		"Spend":          spend,
-		"TTSChain":       s.loadChain("tts"),
-		"LLMChain":       s.loadChain("llm"),
-		"TTSKeys":        s.keyRingStatuses("tts", "gemini"),
-		"LLMKeys":        s.keyRingStatuses("llm", "gemini"),
+		"EnvStatus":        envs,
+		"WebAIPlatforms":   webAIViews,
+		"WebAIConnected":   webAIConnected,
+		"WebAIStudioReady": webAIStudioReady,
+		"EnvSaved":         r.URL.Query().Get("envsaved"),
+		"EnvErr":           r.URL.Query().Get("enverr"), // Đợt AA: lỗi validate biến
+		"Ok":               r.URL.Query().Get("ok"),     // Đợt AA: toast chung trang system
+		"Err":              r.URL.Query().Get("err"),
+		"DbPath":           s.Cfg.DatabasePath,
+		"Usage":            usage,
+		"Spend":            spend,
+		"TTSChain":         s.loadChain("tts"),
+		"LLMChain":         s.loadChain("llm"),
+		"TTSKeys":          s.keyRingStatuses("tts", "gemini"),
+		"LLMKeys":          s.keyRingStatuses("llm", "gemini"),
 		// R2-W4: persisted master switch + daily API budget, editable in
 		// Settings · Hệ thống.
 		"MasterOn":   automation.MasterOn(s.settings()),

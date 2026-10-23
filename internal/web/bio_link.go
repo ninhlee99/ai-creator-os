@@ -170,10 +170,14 @@ func (s *Server) bioProductView(listing products.BioListing, channel string, now
 	if category == "" {
 		category = "Sản phẩm nổi bật"
 	}
+	rating, soldCount := 0.0, int64(0)
+	if p.HasDemandSignalsAt(now) {
+		rating, soldCount = p.Rating, p.SoldCount
+	}
 	return BioProductView{
 		ID: p.ID, Title: p.Title, ImageURLs: images, Price: p.Price,
 		PriceFormatted: formatBioMoney(p.Price, p.Currency), OriginalPrice: originalPrice,
-		DiscountBadge: discountBadge, Rating: p.Rating, SoldCount: p.SoldCount,
+		DiscountBadge: discountBadge, Rating: rating, SoldCount: soldCount,
 		Category: category, BuyURL: bioBuyURL(channel, p.ID),
 		DetailURL:      "/bio/" + url.PathEscape(channel) + "/product/" + strconv.FormatInt(p.ID, 10),
 		VoucherCopyURL: "/bio/" + url.PathEscape(channel) + "/products/" + strconv.FormatInt(p.ID, 10) + "/voucher-copy",

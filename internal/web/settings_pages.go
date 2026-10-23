@@ -95,7 +95,7 @@ func (s *Server) handleSettingsHeThong(w http.ResponseWriter, r *http.Request) {
 		"MasterOn", "APIBudget", "BudgetFrom",
 		"APIEnabled", "Version", "RestorePending", "DataDir", "DiskUsage",
 		"BackupLastOK", "BackupOffsiteDir", "NotifyOn", "NotifyWebhook", "NotifyChat", "NotifyHasBot",
-		"TickBeats", "QuotaCircuit", "WebAIPlatforms", "WebAIConnected", "GeminiModels")
+		"TickBeats", "QuotaCircuit", "WebAIPlatforms", "WebAIConnected", "WebAIStudioReady", "GeminiModels")
 }
 
 // handleSettingsNhaCungCap: "AI dùng nhà cung cấp nào trước, key nào còn sống?"

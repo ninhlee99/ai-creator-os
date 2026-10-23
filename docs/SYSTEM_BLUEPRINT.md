@@ -30,8 +30,6 @@ xưởng mô phỏng. Đây là vai trò logic, không khẳng định có bảy
 ```mermaid
 flowchart LR
     OWNER["Người vận hành<br/>điện thoại"] -->|HTTPS / OAuth| WEB["Web app mobile-first"]
-    WEB <--> LOGIN["Remote login bridge<br/>Web AI account tùy chọn"]
-    OWNER <-->|"browser tương tác đã xác thực"| LOGIN
     WEB <--> STATE[("Job state · event log · artifacts")]
     SCHED["Scheduler"] --> ORCH["Orchestrator"]
     ORCH <--> STATE
@@ -39,7 +37,6 @@ flowchart LR
     SCOUT --> DIRECTOR["Chiến lược nội dung"]
     DIRECTOR --> PRODUCER["Sản xuất"]
     PRODUCER --> ROUTER["Quota guard · free provider router"]
-    LOGIN -->|"session hợp lệ"| ROUTER
     ROUTER -->|"quota còn"| QC["Kiểm định"]
     ROUTER -->|"hết mọi nguồn miễn phí"| STOP["Dừng · ghi lý do · báo chủ"]
     QC -->|"đạt"| PUB["Publisher · adapter theo nền tảng"]
@@ -97,7 +94,7 @@ sơ đồ giữ nhánh export/handoff. Xem [IMPLEMENTATION_STATUS](IMPLEMENTATIO
 | **Quota Guard / Provider Router** | Chọn nguồn miễn phí phù hợp; thử account hợp lệ khác khi được phép; hết tất cả nguồn thì dừng và báo. Không gọi dịch vụ trả phí, không xoay account để né quota. |
 | **Governance / Permission Gate** | Chặn thao tác thiếu quyền, thiếu consent hoặc vượt policy. Chỉ bật TikTok API sau khi xác nhận eligibility; nếu chưa, dùng export/handoff. Direct Post vẫn cần UX lựa chọn và consent theo bài. Xem O-04 rồi O-07. |
 | **Media Delivery Gateway** | Cấp URL HTTPS tạm, chỉ đọc, cho một artifact đã QC khi nền tảng cần tự tải media (Threads video). Không mở dashboard hoặc thư mục media; hết TTL/đã fetch thì thu hồi. Nếu VPS chưa có public HTTPS host, không publish video Threads. |
-| **Remote Login Bridge (tùy chọn)** | Khi dùng Web AI account, chủ sở hữu thao tác browser tạm trên VPS qua dashboard đã xác thực; screenshot/input đi qua app, CDP chỉ loopback. Live VPS/provider cần xác minh; xem IMPLEMENTATION_STATUS. |
+| **Web AI Account Pool** | Nguồn tùy chọn; khôi phục account qua JSON backup và kiểm tra session. Session không xác minh plan/credits; Flow cần consent trước generation. App không đọc cookie từ browser profile người dùng. |
 | **Job State / Event Log** | Lưu trạng thái, nguồn, artifact, quyết định và lý do để dashboard chỉ hiển thị hoạt động có thật. |
 
 ## Một job chạy từ đầu đến cuối

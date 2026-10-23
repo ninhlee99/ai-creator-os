@@ -14,10 +14,10 @@ Tài liệu API chính thức: `https://developers.accesstrade.vn/`
 |---|---|
 | `client.go` | HTTP client: base URL, header `Authorization: Token <access_key>` + JSON, timeout 20s, retry tối đa 2 lần cho lỗi mạng/5xx (không retry 4xx). Không bao giờ log key — mask `••••abcd` |
 | `settings.go` | `KeySetting = "at.access_key"` — một nguồn duy nhất cho web + automation |
-| `campaigns.go` | `ListCampaigns` → GET `/v1/campaigns`; parse defensive nhiều dạng envelope (shape thật chốt khi có key thật). `ApprovedOnly()` lọc chiến dịch đã duyệt; `CommissionLabel()` — không có số thì hiện "—", không bịa |
-| `datafeeds.go` | `ListDatafeeds` → GET `/v1/datafeeds` (limit max 200); parse defensive; chuẩn hoá hoa hồng %→tỉ lệ 0..1; sort HIGH_COMMISSION_RATE phía client |
-| `links.go` | `CreateProductLink` → POST `/v1/product_link/create` (url, campaign_id, utm_source/medium, sub1–4) |
-| `orders.go` | `ListOrders` → GET `/v1/order-list` (since/until ISO, theo phân trang); **rate limiter nội bộ 10 req/phút** (cửa sổ trượt 60s, inject clock/sleep để test) |
+| `campaigns.go` | `ListCampaigns` → GET `/v1/campaigns`; phân trang theo `page`/`total_page` hoặc `total`; đọc `description.commission_policy`. `ApprovedOnly()` lọc chiến dịch đã duyệt; `CommissionLabel()` — không có số thì hiện "—", không bịa |
+| `datafeeds.go` | `ListDatafeeds` → GET `/v1/datafeeds` (page-based, tối đa 5 trang × 200); dùng đúng params `campaign`, `discount_from/to`; map `discount` thành giá bán và `price` thành giá gốc; chuẩn hoá hoa hồng nếu response có field |
+| `links.go` | `CreateProductLink` → POST `/v1/product_link/create` (`campaign_id`, `urls[]`, UTM, sub1–4); đọc `data.success_link[].aff_link/short_link` |
+| `orders.go` | `ListOrders` → GET `/v1/order-list` (since/until ISO, `page` số nguyên, limit 300, tối đa 10 trang); map `merchant`, `sales_time`, `is_confirmed`; **rate limiter nội bộ 10 req/phút** (cửa sổ trượt 60s) |
 | `hunter.go` | `Hunt` → datafeed → lọc (có aff_link, giá > 0) → map vào `products.Store` (Source="accesstrade", aff_link→ProductURL, ảnh→ImageURLs, dedupe theo SKU/aff_link, category→theme) |
 | `store.go` | SQLite `accesstrade.db` (WAL, `PRAGMA user_version` v2): `at_campaigns`, `at_links`, `at_orders` (upsert theo order_id, **UPDATE pending tại chỗ**), `at_sync_state` (watermark) |
 
@@ -89,6 +89,18 @@ hunter điền từ `ProductURL`) + `growth.DisclosureLine`.
 
 ## 6. Giới hạn đã biết (trung thực)
 
+- Schema datafeed chính thức có `price`, `discount`, `cate`, `campaign`,
+  `merchant`, `aff_link`, `sku`, `product_id`, `update_time`; không định nghĩa
+  sales/rating. Adapter phân trang bằng `page` và đọc giá bán từ `discount`.
+  Vì vậy datafeed chuẩn vẫn nằm trong watchlist, chưa đủ evidence để tự tạo
+  video affiliate.
+- Gate sales/rating yêu cầu nguồn provider, cả hai số, URL HTTPS làm nguồn đối
+  chiếu và thời điểm ghi nhận không quá 30 ngày. Số liệu nhập tay chỉ để tham
+  khảo, không tự xác minh nội dung trang và không qua gate production.
+  Migration thêm nguồn, thời điểm và snapshot hai chỉ số,
+  giữ nguyên số liệu cũ; snapshot làm gate tự đóng nếu bản app cũ đổi số mà
+  không cập nhật provenance. Bản ghi cũ thiếu nguồn vẫn nằm trong kho nhưng
+  không đủ gate và storefront sẽ ẩn số.
 - Chưa test với key thật của Ninh — mapping field response đang defensive;
   khi bấm "Tải chiến dịch" bằng key thật có thể cần chỉnh 1–2 field.
 - Một số campaign cần **đăng ký và chờ duyệt tay** trên site Accesstrade

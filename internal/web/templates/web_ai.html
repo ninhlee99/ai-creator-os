@@ -19,10 +19,10 @@
 <!-- Streamlined AI Status Pill Bar -->
 <div class="webai-status-summary-bar" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span class="status-pill {{if gt .ConnectedCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
-      {{if gt .ConnectedCount 0}}<span class="pulse-dot"></span>{{end}} {{.ConnectedCount}} AI Sẵn Sàng
+    <span class="status-pill {{if gt .StudioReadyCount 0}}status-pill-ok{{else}}status-pill-dim{{end}}">
+      {{if gt .StudioReadyCount 0}}<span class="pulse-dot"></span>{{end}} {{.StudioReadyCount}} phiên Muse / Flow dùng được cho Studio
     </span>
-    <span style="font-size:13px;color:var(--text)"><b>Nền tảng hỗ trợ:</b> ChatGPT · Claude · Gemini · Grok · Google Flow · Muse Chat</span>
+    <span style="font-size:13px;color:var(--text)"><b>Luồng hiện tại:</b> Kịch bản dùng LLM cấu hình hoặc bộ sinh nội bộ · render video dùng Muse Chat / Google Flow</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/settings/system#tab-webai" class="btn btn-primary btn-sm" style="font-size:12px">⚙️ Cấu hình tài khoản AI ↗</a>
@@ -36,7 +36,7 @@
   <div class="cockpit-header">
     <div class="cockpit-title">
       <h2>⚡ Điều Phối Kịch Bản &amp; Prompt Đa AI</h2>
-      <p>Biên soạn kịch bản và phân cảnh cho ChatGPT, Claude, Gemini, Google Flow và Muse Chat.</p>
+      <p>Tạo kịch bản bằng LLM cấu hình hoặc bộ sinh nội bộ, kèm prompt theo phong cách ChatGPT / Claude / Gemini; chuyển render video sang Muse Chat hoặc Google Flow.</p>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <span class="hint" style="align-self:center;margin-right:4px">Thử mẫu:</span>
@@ -78,7 +78,7 @@
 
   <div style="text-align:center;margin-bottom:24px">
     <button type="button" class="btn btn-mega-render" style="max-width:440px;margin:0 auto" onclick="generateMultiAIPrompts()">
-      ✨ Tạo Kịch Bản, Ảnh 4K &amp; Video Motion
+      ✨ Tạo Kịch Bản &amp; Bộ Prompt AI
     </button>
   </div>
 
@@ -530,7 +530,7 @@ function generateSceneImage(i, prompt) {
     if (box && img) {
       img.src = res.url;
       box.style.display = 'block';
-      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini' : '🎨 Đồ Họa 4K';
+      if (badge) badge.textContent = res.source === 'gemini' ? '✨ Gemini' : '🎨 Đồ họa cơ bản';
       if (useBtn) {
         useBtn.onclick = function() {
           var d = { product_name: name, niche: niche, photo_url: res.url, photo_path: res.path };

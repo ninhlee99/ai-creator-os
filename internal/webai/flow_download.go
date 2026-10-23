@@ -12,6 +12,10 @@ import (
 )
 
 func DownloadFlowVideo(ctx context.Context, mediaURL, outPath string) error {
+	return DownloadFlowVideoWithCookieSnapshot(ctx, "", nil, mediaURL, outPath, nil)
+}
+
+func DownloadFlowVideoWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, mediaURL, outPath string, updater CookieSnapshotUpdater) error {
 	if !isGoogleMediaURL(mediaURL) {
 		return errors.New("Google Flow media URL không được cho phép")
 	}
@@ -20,7 +24,10 @@ func DownloadFlowVideo(ctx context.Context, mediaURL, outPath string) error {
 		return errors.New("invalid Google Flow media URL")
 	}
 	req.Header.Set("User-Agent", museUserAgent)
-	client := &http.Client{Timeout: 3 * time.Minute}
+	client, err := NewCookieSnapshotHTTPClient(PlatformGoogleFlow, cookie, cookies, 3*time.Minute, updater)
+	if err != nil {
+		return errors.New("Google Flow cookie jar could not be initialized")
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.New("Google Flow media download failed")

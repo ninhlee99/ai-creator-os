@@ -8,12 +8,16 @@
 | ID | Quyết định | Tác động lên spec |
 |---|---|---|
 | U-01 | Sản phẩm phải tự tìm cơ hội affiliate, tự tạo video affiliate và video viral để phát triển kênh trên TikTok, Facebook, Threads, Instagram, YouTube. | Cả hai lane nằm trong một vòng tự hành; không dừng ở product catalog hay radar. |
-| U-02 | Người dùng muốn quan sát hệ thống; agent tự phân tích, chọn sản phẩm và quyết định nội dung. Người dùng chỉ muốn đăng nhập các tài khoản social cần thiết; nếu chọn account AI web miễn phí, login một lần trên desktop khi provision theo U-07. | Không yêu cầu chọn sản phẩm, tải clip hoặc duyệt nội dung định kỳ. Affiliate identity/payout cần thiết nhưng chưa có mô hình không buộc người dùng self-hosted nhập thêm credential; đây là blocker O-01, chưa được tính là đạt. |
+| U-02 | Người dùng muốn quan sát hệ thống; agent tự phân tích, chọn sản phẩm và quyết định nội dung. Người dùng chỉ muốn đăng nhập các tài khoản social cần thiết. | Không yêu cầu chọn sản phẩm, tải clip hoặc duyệt nội dung định kỳ. Affiliate identity/payout cần thiết nhưng chưa có mô hình không buộc người dùng self-hosted nhập thêm credential; đây là blocker O-01, chưa được tính là đạt. |
 | U-03 | Chủ sản phẩm yêu cầu một chạm xác nhận cho từng bài TikTok. | Yêu cầu đã ghi nhận; phạm vi “một chạm” chưa thể chốt trước UX bắt buộc của TikTok Direct Post. Xem O-07. |
 | U-04 | Chỉ dùng tài nguyên miễn phí. Khi một tài khoản/provider hết quota, thử tài khoản miễn phí khác; khi mọi nguồn phù hợp đều hết, dừng và báo. | Cấm fallback trả phí; quota exhaustion là trạng thái chờ có giải thích. |
 | U-05 | Tên hiển thị hệ thống là **MiuNova**; gợi mèo dễ thương và không gian; không dùng “OS” làm tên sản phẩm. | Tên và mascot mèo đã được người dùng chốt. Giữ `ai-creator-os` và `aicos` làm định danh kỹ thuật tương thích. |
 | U-06 | Khi app chạy trên VPS, người dùng cần đăng nhập provider AI từ điện thoại; Playwright có thể thay CDP. | Superseded by U-07 on 2026-10-23. |
-| U-07 | Web AI login chỉ hỗ trợ trên desktop; bỏ khả năng login từ điện thoại. | Ẩn login action trên thiết bị mobile và chặn mobile request ở server. Google Flow login mở Google Account page để tránh tải Flow canvas; login thật vẫn cần live verification. |
+| U-07 | Web AI login chỉ hỗ trợ trên desktop cùng máy chạy app; bỏ khả năng login từ điện thoại và browser stream từ VPS. | Superseded by U-08 on 2026-10-23; implementation only supported isolated Chromium via CDP. |
+| U-08 | Giữ desktop login Web AI qua Chrome/Edge đã cài; không mở login trên điện thoại hoặc stream browser vào popup. | Superseded by U-09. |
+| U-09 | Chỉ giữ tự động đọc cookie nếu dùng được browser người dùng chọn; nếu không, bỏ phần đó và tập trung chức năng cốt lõi. | Confirmed by U-11; phần login Chrome/Edge riêng trong U-10 bị bỏ. |
+| U-10 | Bỏ xác nhận Free thủ công trên account Web AI; không stream hình hoặc thao tác browser về popup. | Ngoại lệ U-04 cho account Web AI do người dùng cung cấp: account đang bật có thể vào pool. Trạng thái phiên không khẳng định plan/credit. HTTP 403 không tự coi phiên hết hạn; Flow vẫn yêu cầu xác nhận credits trước khi tạo video. Phần login Chrome/Edge riêng bị U-11 thay thế. |
+| U-11 | Chỉ giữ tự động đọc cookie nếu dùng được browser người dùng chọn; nếu không, bỏ login browser và tập trung chức năng cốt lõi. | Không có giao diện chung để đọc profile của browser đang chạy. MiuNova bỏ interactive browser login; account Web AI chỉ khôi phục qua JSON backup. Giữ browser CDP riêng cho job Flow/Muse, không đọc profile người dùng. |
 
 ## Suy ra từ yêu cầu; chưa cần cấu hình người dùng hằng ngày
 
@@ -48,7 +52,7 @@
 | TikTok publish | O-04 app eligibility/scope **trước** O-07 UX xác nhận theo bài; OAuth và quyền creator hợp lệ. | Xuất file/handoff sang TikTok; không gọi API hay browser automation để lách eligibility. |
 | Threads video | O-05 app scope/live verification, HTTPS Media Delivery Gateway theo artifact, Meta fetch/process/publish status thật. | Video chờ/không hỗ trợ; không tính text post là video. |
 | YouTube long-form | O-06 xác nhận có lane storytelling riêng, cùng với quota và quyền publish/analytics đã xác minh. | Có thể hoãn; không chặn short-form organic hoặc affiliate lanes. |
-| Web AI provider | Chỉ cần khi instance chọn Web AI provider; login một lần trên desktop. Login điện thoại không hỗ trợ. | Dùng provider API miễn phí khác nếu được phép; nếu không còn nguồn thì dừng job và báo. |
+| Web AI provider | Chỉ cần khi instance chủ động chọn Web AI provider; account được khôi phục qua JSON backup. | Không có account thì chỉ job phụ thuộc Web AI dừng; provider API khác tiếp tục hoạt động. |
 
 Dependency chính: **O-03** mở sản xuất media cho lane cần AI; **O-01 và O-02**
 cùng mở affiliate; **O-04 phải có trước O-07** cho TikTok. Kiểm chứng O-05 riêng

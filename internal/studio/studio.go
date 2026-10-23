@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 // LLM is the text-generation backend for the director. It matches
@@ -224,6 +226,7 @@ type WebAISession struct {
 	Platform     string
 	SessionToken string
 	CookieHeader string
+	CookieJar    []webai.BrowserCookie
 	Email        string
 }
 

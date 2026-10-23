@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // Campaign là một chiến dịch affiliate trên Accesstrade.
@@ -86,17 +88,30 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 		if f.Limit > 0 && len(out) >= f.Limit {
 			return out[:f.Limit], nil
 		}
-		var meta struct {
-			TotalPage json.Number `json:"total_page"`
-		}
+		var meta map[string]json.RawMessage
 		_ = json.Unmarshal(data, &meta)
-		total, _ := meta.TotalPage.Float64()
-		if len(raws) == 0 || float64(page) >= total {
+		totalPages := 0
+		var totalPage json.Number
+		if raw, ok := meta["total_page"]; ok && json.Unmarshal(raw, &totalPage) == nil {
+			if n, err := totalPage.Float64(); err == nil && n > 0 {
+				totalPages = int(n)
+			}
+		}
+		pageSize := f.Limit
+		if pageSize <= 0 {
+			pageSize = 50 // documented API default observed in current publisher response
+		}
+		total := int(firstFloat(meta, "total"))
+		if totalPages == 0 && total > 0 {
+			totalPages = (total + pageSize - 1) / pageSize
+		}
+		if len(raws) == 0 || (totalPages > 0 && page >= totalPages) ||
+			(totalPages == 0 && len(raws) < pageSize) {
 			break
 		}
 		// Đợt AM: chạm trần 20 trang mà vẫn còn → log warn thay vì cắt im lặng.
-		if page == maxCampaignPages && float64(page) < total {
-			log.Printf("accesstrade: chạm trần %d trang (còn %v trang) — một số chiến dịch bị bỏ qua", maxCampaignPages, total)
+		if page == maxCampaignPages && totalPages > page {
+			log.Printf("accesstrade: chạm trần %d trang (còn %d trang) — một số chiến dịch bị bỏ qua", maxCampaignPages, totalPages-page)
 		}
 	}
 	return out, nil
@@ -109,11 +124,20 @@ func parseCampaigns(raws []json.RawMessage) []Campaign {
 		if err := json.Unmarshal(raw, &m); err != nil {
 			continue
 		}
+		var description map[string]json.RawMessage
+		if rawDescription, ok := m["description"]; ok {
+			_ = json.Unmarshal(rawDescription, &description)
+		}
+		commissionPolicy := firstString(m, "commission_policy", "commission", "policy", "max_com")
+		if commissionPolicy == "" {
+			commissionPolicy = firstString(description, "commission_policy", "conversion_policy")
+		}
+		commissionPolicy = plainText(commissionPolicy)
 		cp := Campaign{
 			ID:               firstString(m, "campaign_id", "id", "campaignId"),
 			Name:             firstString(m, "name", "campaign_name", "title"),
 			Approval:         firstString(m, "approval", "approval_status", "status"),
-			CommissionPolicy: firstString(m, "commission_policy", "commission", "policy", "max_com"),
+			CommissionPolicy: commissionPolicy,
 			CookieDuration:   firstString(m, "cookie_duration", "cookie", "cookieDuration"),
 			Merchant:         firstString(m, "merchant"),
 		}
@@ -130,6 +154,24 @@ func parseCampaigns(raws []json.RawMessage) []Campaign {
 		out = append(out, cp)
 	}
 	return out
+}
+
+func plainText(s string) string {
+	var out strings.Builder
+	inTag := false
+	for _, r := range s {
+		switch r {
+		case '<':
+			inTag = true
+		case '>':
+			inTag = false
+		default:
+			if !inTag {
+				out.WriteRune(r)
+			}
+		}
+	}
+	return strings.Join(strings.Fields(html.UnescapeString(out.String())), " ")
 }
 
 // ApprovalLabel trả về nhãn tiếng Việt ngắn cho trạng thái duyệt.

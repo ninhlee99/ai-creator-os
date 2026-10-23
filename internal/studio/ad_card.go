@@ -69,7 +69,7 @@ type AdCardOptions struct {
 	Height        int
 }
 
-// ComposeProductAdCard renders a commercial-grade e-commerce promotional ad card.
+// ComposeProductAdCard renders a product card using only caller-supplied content.
 func ComposeProductAdCard(opts AdCardOptions, outPath string) error {
 	w := opts.Width
 	if w <= 0 {
@@ -108,7 +108,7 @@ func ComposeProductAdCard(opts AdCardOptions, outPath string) error {
 
 	topBadge := opts.TopBadge
 	if topBadge == "" {
-		topBadge = "✦ BST THỜI TRANG CAO CẤP 2026 ✦"
+		topBadge = "✦ SẢN PHẨM ✦"
 	}
 
 	// Draw top badge pill
@@ -119,7 +119,7 @@ func ComposeProductAdCard(opts AdCardOptions, outPath string) error {
 	// 5. Draw Product Title (Bold, Center)
 	title := opts.Title
 	if title == "" {
-		title = "ĐẦM DẠ HỘI LỤA SANG TRỌNG"
+		title = "SẢN PHẨM"
 	}
 	titleY := topMarginY + 85
 	lines := wrapText(title, 22)
@@ -158,52 +158,51 @@ func ComposeProductAdCard(opts AdCardOptions, outPath string) error {
 	// 7. Bottom Section: Social Proof, Price & CTA
 	bottomAreaY := int(float64(h) * 0.72)
 
-	// Rating & Social Proof
+	// Show only evidence explicitly supplied by caller.
 	rating := opts.RatingText
-	if rating == "" {
-		rating = "★★★★★ 4.9/5 · Đã Bán 2.4k+"
+	infoY := bottomAreaY
+	if rating != "" {
+		drawBadgePill(canvas, rating, w/2, infoY, bodyFace,
+			color.RGBA{30, 41, 59, 210}, color.RGBA{251, 191, 36, 255})
+		infoY += 80
 	}
-	drawBadgePill(canvas, rating, w/2, bottomAreaY, bodyFace,
-		color.RGBA{30, 41, 59, 210}, color.RGBA{251, 191, 36, 255})
 
-	// Price Block
-	priceY := bottomAreaY + 80
 	priceText := opts.PriceText
-	if priceText == "" {
-		priceText = "890.000 ₫"
+	priceY := infoY + 30
+	if priceText != "" {
+		drawTextCenteredWithShadow(canvas, priceText, w/2, priceY,
+			color.RGBA{251, 191, 36, 255}, color.RGBA{0, 0, 0, 240}, priceFace)
+		infoY = priceY + 45
 	}
-	drawTextCenteredWithShadow(canvas, priceText, w/2, priceY,
-		color.RGBA{251, 191, 36, 255}, color.RGBA{0, 0, 0, 240}, priceFace)
 
-	// Original Price & Discount Pill
-	discountY := priceY + 45
+	// Original price and discount appear only when caller provides them.
 	if opts.DiscountText != "" || opts.OriginalPrice != "" {
 		tag := opts.DiscountText
-		if tag == "" {
-			tag = "TIẾT KIỆM 40%"
-		}
 		if opts.OriginalPrice != "" {
-			tag = fmt.Sprintf("Gốc: %s · %s", opts.OriginalPrice, tag)
+			if tag != "" {
+				tag = fmt.Sprintf("Giá gốc: %s · %s", opts.OriginalPrice, tag)
+			} else {
+				tag = fmt.Sprintf("Giá gốc: %s", opts.OriginalPrice)
+			}
 		}
-		drawTextCenteredWithShadow(canvas, tag, w/2, discountY,
+		drawTextCenteredWithShadow(canvas, tag, w/2, infoY+20,
 			color.RGBA{203, 213, 225, 255}, color.RGBA{0, 0, 0, 220}, subFace)
 	}
 
-	// Bottom CTA Button
+	// CTA appears only when caller supplies a destination-specific action.
 	ctaText := opts.CTAText
-	if ctaText == "" {
-		ctaText = "👉 BẤM VÀO LINK BIO ĐỂ SĂN DEAL"
+	if ctaText != "" {
+		ctaY := h - 160
+		ctaW := w - 160
+		ctaH := 84
+		ctaX := 80
+		// Pulsing bright red/amber gradient CTA button
+		drawGradientButton(canvas, ctaX, ctaY, ctaW, ctaH, 20,
+			color.RGBA{239, 68, 68, 255}, color.RGBA{220, 38, 38, 255})
+		drawRoundedBorder(canvas, ctaX, ctaY, ctaW, ctaH, 20, 3, color.RGBA{254, 202, 202, 200})
+		drawTextCenteredWithShadow(canvas, ctaText, w/2, ctaY+54,
+			color.RGBA{255, 255, 255, 255}, color.RGBA{0, 0, 0, 180}, ctaFace)
 	}
-	ctaY := h - 160
-	ctaW := w - 160
-	ctaH := 84
-	ctaX := 80
-	// Pulsing bright red/amber gradient CTA button
-	drawGradientButton(canvas, ctaX, ctaY, ctaW, ctaH, 20,
-		color.RGBA{239, 68, 68, 255}, color.RGBA{220, 38, 38, 255})
-	drawRoundedBorder(canvas, ctaX, ctaY, ctaW, ctaH, 20, 3, color.RGBA{254, 202, 202, 200})
-	drawTextCenteredWithShadow(canvas, ctaText, w/2, ctaY+54,
-		color.RGBA{255, 255, 255, 255}, color.RGBA{0, 0, 0, 180}, ctaFace)
 
 	// Ensure target directory exists
 	if dir := filepath.Dir(outPath); dir != "" {

@@ -94,7 +94,7 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 		back("err", err.Error()+" — kiểm tra phiên trong Cài đặt → Tài khoản AI.")
 		return
 	}
-	if strings.TrimSpace(account.Cookie) == "" {
+	if strings.TrimSpace(account.Cookie) == "" && len(account.CookieJar) == 0 {
 		back("err", platformName+" chưa có cookie phiên hợp lệ; kết nối lại tài khoản trong Cài đặt → Tài khoản AI.")
 		return
 	}
@@ -115,15 +115,15 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 					authRejected := webai.IsWebSessionAuthError(err) || webai.IsWebSessionAuthError(initialErr)
 					if authRejected {
 						_ = s.WebAI.MarkSessionExpired(provider, usedAccount.Email)
-					} else if result.CookieHeader != "" {
-						if saveErr := s.persistWebAICookieRefresh(ctx, provider, usedAccount.Email, result.CookieHeader, true); saveErr != nil {
+					} else if result.CookieHeader != "" || len(result.CookieJar) > 0 {
+						if saveErr := s.persistWebAIResultCookies(usedAccount.ID, result.CookieHeader, result.CookieJar); saveErr != nil {
 							progress(60, "FLOW_COOKIE_REFRESH: chưa xác minh/lưu được cookie mới")
 						}
 					}
 					return "", "", err
 				}
-				if result.CookieHeader != "" && strings.TrimSpace(usedAccount.Email) != "" {
-					if err := s.persistWebAICookieRefresh(ctx, provider, usedAccount.Email, result.CookieHeader, false); err != nil {
+				if (result.CookieHeader != "" || len(result.CookieJar) > 0) && strings.TrimSpace(usedAccount.Email) != "" {
+					if err := s.persistWebAIResultCookies(usedAccount.ID, result.CookieHeader, result.CookieJar); err != nil {
 						progress(60, "FLOW_COOKIE_REFRESH: chưa lưu được phiên mới")
 					}
 				}
@@ -132,7 +132,15 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 				rawPath := outPath + ".source.mp4"
 				defer os.Remove(rawPath)
 				progress(78, "FLOW_DOWNLOAD: tải video gốc")
-				if err := webai.DownloadFlowVideo(ctx, result.MediaURL, rawPath); err != nil {
+				downloadCookies := usedAccount.CookieJar
+				if len(result.CookieJar) > 0 {
+					downloadCookies = result.CookieJar
+				}
+				if err := webai.DownloadFlowVideoWithCookieSnapshot(ctx, usedAccount.Cookie, downloadCookies, result.MediaURL, rawPath, func(cookie string, cookies []webai.BrowserCookie) error {
+					usedAccount.Cookie = cookie
+					usedAccount.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+					return s.persistWebAIResultCookies(usedAccount.ID, cookie, cookies)
+				}); err != nil {
 					return "", "", err
 				}
 				progress(86, "VIDEO_UPSCALE: xuất master "+strings.ToUpper(outputResolution))
@@ -149,21 +157,28 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 			var result webai.MuseReply
 			var err, initialErr error
 			for {
-				result, err = webai.MuseChat(ctx, usedMuseAccount.Cookie, usedMuseAccount.ID, promptText, func(line string) { progress(45, line) })
+				result, err = webai.MuseChatWithCookieSnapshot(ctx, usedMuseAccount.Cookie, usedMuseAccount.CookieJar, usedMuseAccount.ID, promptText, func(line string) { progress(45, line) }, func(cookie string, cookies []webai.BrowserCookie) error {
+					usedMuseAccount.Cookie = cookie
+					usedMuseAccount.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+					if len(cookies) > 0 {
+						return s.persistWebAICookieSnapshot(usedMuseAccount.ID, cookie, cookies)
+					}
+					return s.persistWebAICookieRefresh(usedMuseAccount.ID, cookie)
+				})
 				initialErr = err
 				if cooldown, limited := webai.MusePreSubmitRateLimitCooldown(err); limited {
 					if markErr := s.WebAI.MarkRateLimited(usedMuseAccount.ID, cooldown); markErr != nil {
-						err = fmt.Errorf("Muse Chat báo hết quota; không lưu được cooldown tài khoản miễn phí: %w", markErr)
+						err = fmt.Errorf("Muse Chat báo hết quota; không lưu được cooldown tài khoản: %w", markErr)
 						break
 					}
 					next, pickErr := s.WebAI.PickActiveAccountExcluding(webai.PlatformMuseAI, attemptedMuse)
 					if pickErr != nil {
-						err = fmt.Errorf("Muse Chat hết quota; dừng vì không còn tài khoản miễn phí khả dụng: %w", pickErr)
+						err = fmt.Errorf("Muse Chat hết quota; dừng vì không còn tài khoản khả dụng: %w", pickErr)
 						break
 					}
 					attemptedMuse[next.ID] = struct{}{}
 					usedMuseAccount = next
-					progress(20, "MUSE_ACCOUNT_ROTATION: tài khoản miễn phí trước bị giới hạn; chuyển sang tài khoản miễn phí tiếp theo")
+					progress(20, "MUSE_ACCOUNT_ROTATION: tài khoản trước bị giới hạn; chuyển sang tài khoản tiếp theo")
 					continue
 				}
 				var gatewayUnavailable *webai.MuseGatewayUnavailableError
@@ -171,10 +186,21 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 					progress(15, "MUSE_FALLBACK: direct gateway unavailable; starting headless browser")
 					refreshedCookie := result.CookieHeader
 					fallbackCookie := usedMuseAccount.Cookie
+					fallbackCookies := usedMuseAccount.CookieJar
 					if refreshedCookie != "" {
 						fallbackCookie = refreshedCookie
 					}
-					result, err = webai.MuseChatHeadless(ctx, fallbackCookie, promptText, func(line string) { progress(45, line) })
+					if len(result.CookieJar) > 0 {
+						fallbackCookies = result.CookieJar
+					}
+					result, err = webai.MuseChatHeadlessWithCookieSnapshot(ctx, fallbackCookie, fallbackCookies, promptText, func(line string) { progress(45, line) }, func(cookie string, cookies []webai.BrowserCookie) error {
+						usedMuseAccount.Cookie = cookie
+						usedMuseAccount.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+						if len(cookies) > 0 {
+							return s.persistWebAICookieSnapshot(usedMuseAccount.ID, cookie, cookies)
+						}
+						return s.persistWebAICookieRefresh(usedMuseAccount.ID, cookie)
+					})
 					if result.CookieHeader == "" {
 						result.CookieHeader = refreshedCookie
 					}
@@ -185,16 +211,16 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 				authRejected := webai.IsWebSessionAuthError(err) || webai.IsWebSessionAuthError(initialErr)
 				if authRejected {
 					_ = s.WebAI.MarkSessionExpired(provider, usedMuseAccount.Email)
-				} else if result.CookieHeader != "" {
-					if saveErr := s.persistWebAICookieRefresh(ctx, provider, usedMuseAccount.Email, result.CookieHeader, true); saveErr != nil {
+				} else if result.CookieHeader != "" || len(result.CookieJar) > 0 {
+					if saveErr := s.persistWebAIResultCookies(usedMuseAccount.ID, result.CookieHeader, result.CookieJar); saveErr != nil {
 						progress(60, "MUSE_COOKIE_REFRESH: chưa xác minh/lưu được cookie mới")
 					}
 				}
 				return "", "", err
 			}
 			refreshMuseSession := func() {
-				if result.CookieHeader != "" && strings.TrimSpace(usedMuseAccount.Email) != "" {
-					if err := s.persistWebAICookieRefresh(ctx, provider, usedMuseAccount.Email, result.CookieHeader, false); err != nil {
+				if (result.CookieHeader != "" || len(result.CookieJar) > 0) && strings.TrimSpace(usedMuseAccount.Email) != "" {
+					if err := s.persistWebAIResultCookies(usedMuseAccount.ID, result.CookieHeader, result.CookieJar); err != nil {
 						progress(96, "MUSE_COOKIE_REFRESH: chưa lưu được phiên mới")
 					}
 				}
@@ -245,10 +271,21 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 			}
 			progress(80, "MUSE_DOWNLOAD: tải media gốc")
 			mediaCookie := usedMuseAccount.Cookie
+			mediaCookies := usedMuseAccount.CookieJar
 			if result.CookieHeader != "" {
 				mediaCookie = result.CookieHeader
 			}
-			if err := downloadMuseMedia(ctx, mediaCookie, mediaURL, rawPath); err != nil {
+			if len(result.CookieJar) > 0 {
+				mediaCookies = result.CookieJar
+			}
+			if err := downloadMuseMediaWithCookieSnapshot(ctx, mediaCookie, mediaCookies, mediaURL, rawPath, func(cookie string, cookies []webai.BrowserCookie) error {
+				usedMuseAccount.Cookie = cookie
+				usedMuseAccount.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+				if len(cookies) > 0 {
+					return s.persistWebAICookieSnapshot(usedMuseAccount.ID, cookie, cookies)
+				}
+				return s.persistWebAICookieRefresh(usedMuseAccount.ID, cookie)
+			}); err != nil {
 				return "", "", err
 			}
 			if kind == "video" {
@@ -273,19 +310,26 @@ func (s *Server) generateStudioFlowVideo(ctx context.Context, initial *webai.Acc
 	current := initial
 	attempted := map[string]struct{}{initial.ID: {}}
 	for {
-		result, err := webai.GoogleFlowVideo(ctx, current.Cookie, prompt, aspect, progress)
+		result, err := webai.GoogleFlowVideoWithCookieSnapshot(ctx, current.Cookie, current.CookieJar, prompt, aspect, progress, func(cookie string, cookies []webai.BrowserCookie) error {
+			current.Cookie = cookie
+			current.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+			if len(cookies) > 0 {
+				return s.persistWebAICookieSnapshot(current.ID, cookie, cookies)
+			}
+			return s.persistWebAICookieRefresh(current.ID, cookie)
+		})
 		initialErr := err
 		if cooldown, limited := webai.FlowPreSubmitRateLimitCooldown(err); limited {
 			if markErr := s.WebAI.MarkRateLimited(current.ID, cooldown); markErr != nil {
-				return result, current, initialErr, fmt.Errorf("Google Flow báo hết quota; không lưu được cooldown tài khoản miễn phí: %w", markErr)
+				return result, current, initialErr, fmt.Errorf("Google Flow báo hết quota; không lưu được cooldown tài khoản: %w", markErr)
 			}
 			next, pickErr := s.WebAI.PickActiveAccountExcluding(webai.PlatformGoogleFlow, attempted)
 			if pickErr != nil {
-				return result, current, initialErr, fmt.Errorf("Google Flow hết quota; dừng vì không còn tài khoản miễn phí khả dụng: %w", pickErr)
+				return result, current, initialErr, fmt.Errorf("Google Flow hết quota; dừng vì không còn tài khoản khả dụng: %w", pickErr)
 			}
 			attempted[next.ID] = struct{}{}
 			current = next
-			progress("FLOW_ACCOUNT_ROTATION: tài khoản miễn phí trước bị giới hạn; chuyển sang tài khoản miễn phí tiếp theo")
+			progress("FLOW_ACCOUNT_ROTATION: tài khoản trước bị giới hạn; chuyển sang tài khoản tiếp theo")
 			continue
 		}
 		if webai.CanFallbackToGoogleFlowHeadless(err) && ctx.Err() == nil {
@@ -295,8 +339,19 @@ func (s *Server) generateStudioFlowVideo(ctx context.Context, initial *webai.Acc
 			if refreshedCookie != "" {
 				fallbackCookie = refreshedCookie
 			}
-			result, err = webai.GoogleFlowVideoHeadless(ctx, fallbackCookie, prompt, aspect, result.ProjectID, func(line string) {
+			fallbackCookies := current.CookieJar
+			if len(result.CookieJar) > 0 {
+				fallbackCookies = result.CookieJar
+			}
+			result, err = webai.GoogleFlowVideoHeadlessWithCookieSnapshot(ctx, fallbackCookie, fallbackCookies, prompt, aspect, result.ProjectID, func(line string) {
 				progress(line)
+			}, func(cookie string, cookies []webai.BrowserCookie) error {
+				current.Cookie = cookie
+				current.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+				if len(cookies) > 0 {
+					return s.persistWebAICookieSnapshot(current.ID, cookie, cookies)
+				}
+				return s.persistWebAICookieRefresh(current.ID, cookie)
 			})
 			if result.CookieHeader == "" {
 				result.CookieHeader = refreshedCookie

@@ -58,6 +58,7 @@ func (s *Store) migrate() error {
 			email TEXT NOT NULL DEFAULT '',
 			session_key TEXT NOT NULL DEFAULT '',
 			cookie TEXT NOT NULL DEFAULT '',
+			cookie_jar TEXT NOT NULL DEFAULT '[]',
 			status TEXT NOT NULL DEFAULT 'ok',
 			tier TEXT NOT NULL DEFAULT 'unknown',
 			tier_confirmed INTEGER NOT NULL DEFAULT 0,
@@ -108,6 +109,15 @@ func (s *Store) migrate() error {
 			return fmt.Errorf("webai: add account tier confirmation: %w", err)
 		}
 	}
+	hasCookieJar, err := accountTableHasColumn(tx, "cookie_jar")
+	if err != nil {
+		return fmt.Errorf("webai: inspect account cookie metadata: %w", err)
+	}
+	if !hasCookieJar {
+		if _, err := tx.Exec(`ALTER TABLE webai_accounts ADD COLUMN cookie_jar TEXT NOT NULL DEFAULT '[]'`); err != nil {
+			return fmt.Errorf("webai: add account cookie metadata: %w", err)
+		}
+	}
 
 	if _, err := tx.Exec(`UPDATE webai_accounts SET email = lower(trim(email)) WHERE email != '';`); err != nil {
 		return fmt.Errorf("webai: normalize account emails: %w", err)
@@ -124,6 +134,12 @@ func (s *Store) migrate() error {
 			  AND trim(candidate.cookie) != ''
 			ORDER BY candidate.updated_at DESC, candidate.id DESC LIMIT 1
 		), '') END,
+		cookie_jar = CASE WHEN trim(canonical.cookie_jar) NOT IN ('', '[]') THEN canonical.cookie_jar ELSE COALESCE((
+			SELECT candidate.cookie_jar FROM webai_accounts AS candidate
+			WHERE candidate.platform = canonical.platform AND candidate.email = canonical.email
+			  AND trim(candidate.cookie_jar) NOT IN ('', '[]')
+			ORDER BY candidate.updated_at DESC, candidate.id DESC LIMIT 1
+		), '[]') END,
 		session_key = CASE WHEN trim(canonical.session_key) != '' THEN canonical.session_key ELSE COALESCE((
 			SELECT candidate.session_key FROM webai_accounts AS candidate
 			WHERE candidate.platform = canonical.platform AND candidate.email = canonical.email
@@ -161,6 +177,16 @@ func (s *Store) migrate() error {
 	}
 	if _, err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_webai_accounts_platform_email ON webai_accounts(platform, email) WHERE email != '';`); err != nil {
 		return err
+	}
+	// Older account tests labeled blocked HTTP 403 probes as unknown, even when
+	// the browser had already saved a usable cookie. Keep those credentials
+	// connected; only HTTP 401 should mark a saved session expired.
+	if _, err := tx.Exec(`
+		UPDATE webai_accounts SET status = 'connected'
+		WHERE status = 'unknown' AND is_active = 1
+		  AND (trim(session_key) != '' OR trim(cookie) != '')
+	`); err != nil {
+		return fmt.Errorf("webai: restore saved sessions blocked by provider probes: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("webai: commit account migration: %w", err)

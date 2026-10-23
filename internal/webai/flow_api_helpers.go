@@ -11,35 +11,43 @@ import (
 )
 
 func mergeFlowCookieHeader(header string, updates []*http.Cookie) string {
-	pairs := make([]string, 0, 32)
-	values := make(map[string]string, 32)
-	for _, pair := range strings.Split(header, ";") {
-		name, value, ok := strings.Cut(strings.TrimSpace(pair), "=")
-		if !ok || name == "" {
-			continue
-		}
-		if _, exists := values[name]; !exists {
-			pairs = append(pairs, name)
-		}
-		values[name] = value
+	type cookieUpdate struct {
+		name    string
+		value   string
+		deleted bool
 	}
+	updateOrder := make([]string, 0, len(updates))
+	latestUpdates := make(map[string]cookieUpdate, len(updates))
 	for _, cookie := range updates {
 		if cookie == nil || cookie.Name == "" {
 			continue
 		}
-		if cookie.MaxAge < 0 || (!cookie.Expires.IsZero() && cookie.Expires.Before(time.Now())) {
-			delete(values, cookie.Name)
+		if _, exists := latestUpdates[cookie.Name]; !exists {
+			updateOrder = append(updateOrder, cookie.Name)
+		}
+		latestUpdates[cookie.Name] = cookieUpdate{
+			name: cookie.Name, value: cookie.Value,
+			deleted: cookie.Value == "" || cookie.MaxAge < 0 || (!cookie.Expires.IsZero() && cookie.Expires.Before(time.Now())),
+		}
+	}
+	if len(latestUpdates) == 0 {
+		return header
+	}
+	merged := make([]string, 0, strings.Count(header, ";")+len(latestUpdates)+1)
+	for _, pair := range strings.Split(header, ";") {
+		pair = strings.TrimSpace(pair)
+		name, _, ok := strings.Cut(pair, "=")
+		if !ok || name == "" {
 			continue
 		}
-		if _, exists := values[cookie.Name]; !exists {
-			pairs = append(pairs, cookie.Name)
+		if _, replaced := latestUpdates[name]; !replaced {
+			merged = append(merged, pair)
 		}
-		values[cookie.Name] = cookie.Value
 	}
-	merged := make([]string, 0, len(values))
-	for _, name := range pairs {
-		if value, ok := values[name]; ok {
-			merged = append(merged, name+"="+value)
+	for _, name := range updateOrder {
+		update := latestUpdates[name]
+		if !update.deleted {
+			merged = append(merged, update.name+"="+update.value)
 		}
 	}
 	return strings.Join(merged, "; ")

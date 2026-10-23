@@ -4,6 +4,7 @@ package web
 // the merged shelf tab, autopilot scheduling policy and music upload.
 
 import (
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -19,7 +20,7 @@ func parseBounded(s string, max float64) (float64, bool) {
 		return 0, true
 	}
 	v, err := strconv.ParseFloat(s, 64)
-	if err != nil || v < 0 || v > max {
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > max {
 		return 0, false
 	}
 	return v, true

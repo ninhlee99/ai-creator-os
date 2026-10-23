@@ -11,18 +11,24 @@ import (
 // webAIView holds template projection for Web AI Hub.
 // webAIView holds template projection for Web AI Hub with multi-account keyring.
 type webAIView struct {
-	Platform      webai.PlatformInfo
-	Accounts      []webai.Account
-	Primary       webai.Account
-	ReadyCount    int
-	CooldownCount int
-	TotalCount    int
-	HasAccounts   bool
-	IsConnected   bool
+	Platform        webai.PlatformInfo
+	Accounts        []webai.Account
+	Primary         webai.Account
+	ActiveCount     int
+	ReadyCount      int
+	StudioSupported bool
+	CooldownCount   int
+	TotalCount      int
+	HasAccounts     bool
+	IsConnected     bool
 }
 
-// webAIPlatformViews computes template views for each platform and the total ready accounts count.
-func (s *Server) webAIPlatformViews() ([]webAIView, int) {
+func webAIPlatformSupportsStudio(platform string) bool {
+	return platform == webai.PlatformMuseAI || platform == webai.PlatformGoogleFlow
+}
+
+// webAIPlatformViews returns saved-session counts and the subset usable by Studio.
+func (s *Server) webAIPlatformViews() ([]webAIView, int, int) {
 	platforms := webai.SupportedPlatforms()
 	var allAccounts map[string][]webai.Account
 	if s.WebAI != nil {
@@ -35,17 +41,21 @@ func (s *Server) webAIPlatformViews() ([]webAIView, int) {
 
 	views := make([]webAIView, 0, len(platforms))
 	totalConnected := 0
+	studioReady := 0
 	for _, p := range platforms {
 		var accs []webai.Account
 		if allAccounts != nil {
 			accs = allAccounts[p.ID]
 		}
-		ready, cooldown, total := 0, 0, len(accs)
+		ready, cooldown, activeCount, total := 0, 0, 0, len(accs)
 		var primary webai.Account
 		for _, a := range accs {
-			if a.IsActive && a.IsConfirmedFree() && (a.Status == "ok" || a.Status == "connected") {
+			if a.IsActive {
+				activeCount++
+			}
+			if a.IsActive && (a.Status == "ok" || a.Status == "connected") {
 				ready++
-			} else if a.IsActive && a.IsConfirmedFree() && a.Status == "cooldown" {
+			} else if a.IsActive && a.Status == "cooldown" {
 				cooldown++
 			}
 			if primary.ID == "" || a.IsActive {
@@ -59,19 +69,25 @@ func (s *Server) webAIPlatformViews() ([]webAIView, int) {
 				Tier:     "unknown",
 			}
 		}
-		totalConnected += ready
+		totalConnected += activeCount
+		studioSupported := webAIPlatformSupportsStudio(p.ID)
+		if studioSupported {
+			studioReady += ready
+		}
 		views = append(views, webAIView{
-			Platform:      p,
-			Accounts:      accs,
-			Primary:       primary,
-			ReadyCount:    ready,
-			CooldownCount: cooldown,
-			TotalCount:    total,
-			HasAccounts:   total > 0,
-			IsConnected:   ready > 0,
+			Platform:        p,
+			Accounts:        accs,
+			Primary:         primary,
+			ActiveCount:     activeCount,
+			ReadyCount:      ready,
+			StudioSupported: studioSupported,
+			CooldownCount:   cooldown,
+			TotalCount:      total,
+			HasAccounts:     total > 0,
+			IsConnected:     activeCount > 0,
 		})
 	}
-	return views, totalConnected
+	return views, totalConnected, studioReady
 }
 
 func resolveWebAIRedirect(r *http.Request, defaultTarget string) string {
@@ -88,7 +104,7 @@ func resolveWebAIRedirect(r *http.Request, defaultTarget string) string {
 
 // handleWebAI renders the AI Web Hub page with multi-account rotation support.
 func (s *Server) handleWebAI(w http.ResponseWriter, r *http.Request) {
-	views, totalConnected := s.webAIPlatformViews()
+	views, _, studioReady := s.webAIPlatformViews()
 
 	// Active tab inside the embedded workspace
 	activeTab := r.URL.Query().Get("tab")
@@ -99,31 +115,11 @@ func (s *Server) handleWebAI(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "web_ai", s.ctx(
 		"Title", "AI Web Hub — MiuNova",
 		"Platforms", views,
-		"ConnectedCount", totalConnected,
+		"StudioReadyCount", studioReady,
 		"ActiveTab", activeTab,
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
 	))
-}
-
-// handleWebAIAccountAdd rejects manually supplied sessions. Web sessions must
-// enter the pool through the browser-login flow, which validates cookie and identity.
-func (s *Server) handleWebAIAccountAdd(w http.ResponseWriter, r *http.Request) {
-	redirectBack := func(param, msg string) {
-		target := resolveWebAIRedirect(r, "/web-ai")
-		frag := ""
-		if idx := strings.Index(target, "#"); idx >= 0 {
-			frag = target[idx:]
-			target = target[:idx]
-		}
-		sep := "?"
-		if strings.Contains(target, "?") {
-			sep = "&"
-		}
-		seeOther(w, r, target+sep+param+"="+url.QueryEscape(msg)+frag)
-	}
-
-	redirectBack("err", "Hãy đăng nhập bằng trình duyệt để hệ thống xác minh email và cookie phiên hoạt động.")
 }
 
 // handleWebAIAccountDelete deletes an account from the pool.

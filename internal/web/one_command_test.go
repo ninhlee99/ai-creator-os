@@ -145,9 +145,9 @@ func TestDashboardProductMediaPicker(t *testing.T) {
 	if settings.Code != http.StatusOK {
 		t.Fatalf("GET /settings/system = %d, want 200", settings.Code)
 	}
-	for _, want := range []string{"webai-login-action"} {
+	for _, want := range []string{"webai-backup-import-action"} {
 		if !strings.Contains(settings.Body.String(), want) {
-			t.Errorf("Web AI action layout missing %q", want)
+			t.Errorf("Web AI backup import action missing %q", want)
 		}
 	}
 	if strings.Contains(settings.Body.String(), "webai-key-action") {
@@ -157,7 +157,7 @@ func TestDashboardProductMediaPicker(t *testing.T) {
 	if styles.Code != http.StatusOK {
 		t.Fatalf("GET /static/style.css = %d, want 200", styles.Code)
 	}
-	for _, want := range []string{".product-media-dropzone", ".webai-card-actions > .btn", "white-space: nowrap"} {
+	for _, want := range []string{".product-media-dropzone", ".webai-section-actions", "white-space: nowrap"} {
 		if !strings.Contains(styles.Body.String(), want) {
 			t.Errorf("stylesheet missing layout rule %q", want)
 		}

@@ -32,17 +32,17 @@ type Client struct {
 	BaseURL string
 	key     string
 	http    *http.Client
-	// orderLimit giới hạn nội bộ 10 req/phút cho /v1/order-list
-	// (spec Accesstrade). Lazy-init ở ListOrders.
+	// orderLimit giới hạn nội bộ 10 req/phút cho /v1/order-list.
 	orderLimit *rateLimiter
 }
 
 // NewClient tạo client với access_key của publisher.
 func NewClient(accessKey string) *Client {
 	return &Client{
-		BaseURL: DefaultBaseURL,
-		key:     accessKey,
-		http:    &http.Client{Timeout: requestTimeout},
+		BaseURL:    DefaultBaseURL,
+		key:        accessKey,
+		http:       &http.Client{Timeout: requestTimeout},
+		orderLimit: newOrderLimiter(),
 	}
 }
 

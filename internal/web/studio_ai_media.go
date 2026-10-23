@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 func museProductionPrompt(kind, prompt, aspect string) string {
@@ -63,6 +65,10 @@ func safeAIFileID(value string) string {
 }
 
 func downloadMuseMedia(ctx context.Context, cookie, rawURL, output string) error {
+	return downloadMuseMediaWithCookieSnapshot(ctx, cookie, nil, rawURL, output, nil)
+}
+
+func downloadMuseMediaWithCookieSnapshot(ctx context.Context, cookie string, cookies []webai.BrowserCookie, rawURL, output string, updater webai.CookieSnapshotUpdater) error {
 	u, err := url.Parse(rawURL)
 	if err != nil || u.Scheme != "https" || (u.Hostname() != "muse.ai" && u.Hostname() != "www.muse.ai") || !strings.HasPrefix(u.Path, "/files/") {
 		return fmt.Errorf("Muse media link is not a trusted muse.ai file URL")
@@ -72,8 +78,11 @@ func downloadMuseMedia(ctx context.Context, cookie, rawURL, output string) error
 		return fmt.Errorf("invalid Muse media URL")
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; AICOS/1.0)")
-	req.Header.Set("Cookie", cookie)
-	resp, err := (&http.Client{Timeout: 3 * time.Minute}).Do(req)
+	client, err := webai.NewCookieSnapshotHTTPClient(webai.PlatformMuseAI, cookie, cookies, 3*time.Minute, updater)
+	if err != nil {
+		return fmt.Errorf("could not initialize Muse cookie jar")
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("Muse media download failed")
 	}

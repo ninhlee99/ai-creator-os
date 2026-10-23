@@ -27,7 +27,6 @@ func initializeWebAI(srv *web.Server, dataDir string) *webai.Store {
 		return nil
 	}
 	srv.WebAI = store
-	srv.WebAIRelay = webai.NewProxyRelay(store)
 	srv.WireStudioWebAI()
 	log.Printf("webai: ready (%d accounts connected)", store.CountConnected())
 	return store

@@ -1390,6 +1390,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+  align-items: stretch;
   margin-bottom: 24px;
 }
 .webai-card {
@@ -1412,16 +1413,16 @@ details.product-manual > form > .btn { margin-top: 2px; }
 .webai-card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  min-height: 32px;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 8px 10px;
 }
 .webai-brand {
   display: flex;
   align-items: center;
   gap: 9px;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 1 150px;
+  min-width: 130px;
 }
 .webai-brand > div { min-width: 0; }
 .webai-icon {
@@ -1435,7 +1436,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
   font-size: 14px;
   line-height: 1.25;
   color: var(--text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .webai-card .status-pill {
   font-size: 10.5px;
@@ -1445,7 +1446,10 @@ details.product-manual > form > .btn { margin-top: 2px; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
 }
 .webai-card .status-pill-ok,
 .webai-card .status-pill-warn,
@@ -1454,7 +1458,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
   color: var(--muted);
   border: 1px solid var(--border);
 }
-.webai-status { flex: 0 0 auto; max-width: 100%; }
+.webai-status { min-width: 0; max-width: 100%; }
 .webai-card .pulse-dot {
   width: 6px;
   height: 6px;
@@ -1493,30 +1497,11 @@ details.product-manual > form > .btn { margin-top: 2px; }
 .meta-label { color: var(--muted); }
 .meta-val { font-weight: 600; }
 .meta-val.muted { font-weight: normal; color: var(--muted); }
-.webai-card-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 7px;
-  align-items: stretch;
-  margin-top: auto;
-}
-.webai-card-actions > .btn {
-  display: flex;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  white-space: nowrap;
-  justify-content: center;
-  min-height: 36px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 7px 10px;
-}
-.webai-mobile-login-note { display: none; }
 .webai-account-summary {
   display: flex;
   align-items: center;
   width: 100%;
+  margin-top: auto;
   gap: 10px;
   padding: 7px 9px;
   border: 1px solid var(--border);
@@ -1587,11 +1572,6 @@ details.product-manual > form > .btn { margin-top: 2px; }
 }
 @media (max-width: 760px) {
   .webai-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (pointer: coarse), (max-width: 760px) {
-  .webai-login-action { display: none !important; }
-  .webai-mobile-login-note { display: block; }
-  #bl-browser-view { display: none !important; }
 }
 @media (max-width: 520px) {
   .webai-section-actions { width: 100%; justify-content: space-between; }

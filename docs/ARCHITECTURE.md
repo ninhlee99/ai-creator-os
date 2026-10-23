@@ -21,7 +21,8 @@
 3. **Cloud API first, paid never.** LLM/TTS and image generation use configured
    provider APIs; **paid billing is off** (luật cứng của Ninh: key free-only,
    không billing, không Veo). Hỗ trợ thêm Web AI Multi-Account Hub (ChatGPT, Claude, Gemini,
-   Grok, Muse AI) tự động bắt session qua Chrome DevTools Protocol (CDP).
+   Grok, Muse AI) lưu session được khôi phục từ JSON backup và kiểm tra trạng
+   thái qua provider probe.
 4. **Deterministic governance over money.** LLM đề xuất; rules engine (Go)
    quyết định. Ngưỡng kill/double-down, quota, kill switch là code, không
    phải prompt.
@@ -49,9 +50,9 @@
        │              │              │              │
 ┌──────▼──────┐ ┌─────▼───────┐ ┌────▼────────┐ ┌───▼──────────┐
 │ harness     │ │ studio      │ │ growth      │ │ webai        │
-│ OODA loop,  │ │ video jobs  │ │ plan 30d,   │ │ CDP Browser  │
-│ episodic    │ │ (affiliate, │ │ ngưỡng,     │ │ login, cookie│
-│ memory,     │ │ viral 9:16, │ │ quota,      │ │ capture,     │
+│ OODA loop,  │ │ video jobs  │ │ plan 30d,   │ │ JSON restore │
+│ episodic    │ │ (affiliate, │ │ ngưỡng,     │ │ session check│
+│ memory,     │ │ viral 9:16, │ │ quota,      │ │ cookie update│
 │ portfolio   │ │ story 16:9) │ │ YT Analytics│ │ rotation     │
 └──────┬──────┘ └─────┬───────┘ └─────────────┘ └───┬──────────┘
        │              │                             │
@@ -126,7 +127,7 @@ chờ Ninh duyệt).
 | `GET /team` | `handleTeamPipelines` | Đội ngũ: sức khỏe 3 pipeline từ dữ liệu thật |
 | `/publishers*` | `handlePublishers*` | Đa nền tảng (OAuth TikTok, YouTube, Facebook Page) |
 | `/settings*` | `handleSettings*` | 5 trang con: Hệ thống (gồm **Kho Tài Khoản Web AI**) · Accesstrade · Nhà cung cấp · Model local · An toàn |
-| `/web-ai*` | `handleWebAI*` | Quản lý kho tài khoản Web AI & Trình duyệt tự động đăng nhập CDP |
+| `/web-ai*` | `handleWebAI*` | Quản lý account Web AI đã khôi phục, session check và pool |
 | `/api/*` | `requireAPI(...)` | Mặc định 404 khi tắt |
 | `/onboard` | `handleOnboard` | Wizard lần đầu |
 | `/kill`, `/unkill` | `handleKill` | Kill switch |
@@ -138,7 +139,7 @@ chờ Ninh duyệt).
 `internal/engines/chains.go` — provider mặc định:
 - **LLM**: Gemini API.
 - **TTS**: local macOS speech → Edge → Gemini.
-- **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse Chat, Google Flow. Muse/Flow use saved web sessions; Muse prefers direct Noise gateway and has hidden CDP fallback before prompt submission; Flow uses observed web-client calls.
+- **Web AI Hub** (`internal/webai`): ChatGPT, Claude, Gemini, Grok, Muse Chat, Google Flow. Accounts are restored from JSON backup; app does not read the user's browser profile. Session validators check imported cookies and persist refreshed cookies by account ID. Muse/Flow use saved web sessions; Muse prefers direct Noise gateway and has hidden CDP fallback before prompt submission; Flow uses observed web-client calls.
 - Chuỗi Avatar đã gỡ theo live (Đợt A).
 
 Keyring mỗi engine độc lập: round-robin, bỏ key invalid, cooldown 429/quota

@@ -9,6 +9,7 @@ Studio manages video production jobs, assets, quality checks, and media. It supp
 - `GET /studio` — affiliate production, library, and trends.
 - `GET /studio/create` — Muse/Flow creation form.
 - `POST /studio/generate` — validate request, select connected account, enqueue provider job.
+- `POST /studio/generate-image` — use Gemini when available; otherwise render a neutral text card from supplied product name/category. Fallback adds no rating, sales, price, discount, benefit, or unrelated local photo.
 - `GET /studio/jobs`, `GET /studio/jobs/{id}` — job list and detail.
 - `POST /studio/jobs/{id}/delete` — remove failed jobs.
 - `GET /studio/assets/{job}/{file}` — job assets.

@@ -38,10 +38,10 @@ qua Settings hoặc cơ chế deploy được dự án hỗ trợ; không commit
 - Không bịa sales, rating, metrics, claim hoặc trạng thái publish. Giữ provenance
   và freshness của dữ liệu; thiếu field phải biểu diễn là unknown ở sản phẩm đích.
 - OAuth/API credential không được render hoặc ghi log.
-- Web AI remote login dùng screenshot/input bridge qua app; CDP chỉ bind
-  loopback. VPS live login vẫn cần xác minh theo
-  `features/remote-webai-login.md`; không tuyên bố VPS đã xác nhận nếu chưa có
-  bằng chứng chạy thật.
+- Web AI accounts chỉ được khôi phục qua JSON backup; app không mở login browser
+  hoặc đọc profile browser người dùng. Session validator kiểm tra account;
+  request lưu cookie mới theo account ID. Account không cần xác nhận gói Free
+  thủ công; Flow generation vẫn cần consent dùng credits.
 
 ## 4. Bản đồ source
 
@@ -54,7 +54,7 @@ qua Settings hoặc cơ chế deploy được dự án hỗ trợ; không commit
 | `internal/products`, `internal/accesstrade`, `internal/affiliatehunter` | Catalog, offer discovery, affiliate links và đối soát |
 | `internal/studio`, `internal/viralradar` | Job media, shot plan, QC và radar |
 | `internal/publishers`, `internal/tiktok` | Adapter xuất bản theo nền tảng |
-| `internal/webai` | Account/session AI web, login capture và provider flows |
+| `internal/webai` | Account/session AI web được khôi phục từ backup, xác minh phiên và provider flows |
 | `internal/ledger`, `internal/backup` | Trạng thái bền vững, settings, backup/restore |
 
 Các vai trò trong [SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md) là mô hình công việc

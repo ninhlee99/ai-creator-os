@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Engine is the headless Web-to-API engine for MiuNova.
-// It wraps web adapters for ChatGPT, Claude, Gemini, and Muse AI with automatic multi-account rotation.
+// Engine groups saved-session helpers for Flow and Muse plus deterministic
+// script fallbacks. It does not call ChatGPT, Claude, or Gemini Web sessions.
 type Engine struct {
 	store *Store
 }
@@ -23,50 +23,17 @@ func (e *Engine) Store() *Store {
 	return e.store
 }
 
-// GenerateScript produces an end-to-end ad script package using rotating web accounts.
-// If an account encounters a rate-limit (429 / cooldown), it automatically rotates to the next account.
-func (e *Engine) GenerateScript(ctx context.Context, productName, niche, framework, keyBenefits, cta string) (*AdScriptPackage, error) {
-	// Synthesize baseline package using the creative frameworks
+// GenerateScript produces a deterministic baseline package. It does not call
+// a Web AI account; provider-backed generation uses GenerateAdScriptPackageWithEngine.
+func (e *Engine) GenerateScript(_ context.Context, productName, niche, framework, keyBenefits, cta string) (*AdScriptPackage, error) {
 	pkg := GenerateAdScriptPackage(productName, niche, framework, "", keyBenefits, cta)
-
-	if e.store == nil {
-		return &pkg, nil
-	}
-
-	// Try picking an active ChatGPT account for copywriting enhancement
-	acc, err := e.store.PickActiveAccount(PlatformChatGPT)
-	if err != nil {
-		// Fallback to Claude if ChatGPT pool is empty or in cooldown
-		var errClaude error
-		acc, errClaude = e.store.PickActiveAccount(PlatformClaude)
-		if errClaude != nil {
-			// All web accounts unavailable or empty — return deterministic prompt package
-			return &pkg, nil
-		}
-	}
-
-	// In production, the adapter makes headless calls using acc.SessionKey / acc.Cookie
-	// and handles automatic failover if rate-limited:
-	_ = acc
 	return &pkg, nil
 }
 
-// GenerateVisualFrame uses Gemini Web accounts to produce 4K prompt assets.
-func (e *Engine) GenerateVisualFrame(ctx context.Context, prompt string) (string, error) {
-	if e.store == nil {
-		return "", fmt.Errorf("webai: store not available")
-	}
-
-	acc, err := e.store.PickActiveAccount(PlatformGemini)
-	if err != nil {
-		return "", err
-	}
-
-	// If account gets rate-limited:
-	// e.store.MarkRateLimited(acc.ID, 1*time.Hour)
-	// and retry next
-	_ = acc
-	return "", nil
+// GenerateVisualFrame reports that saved Gemini Web sessions do not yet have
+// an image-generation adapter. Never signal success with an empty media URL.
+func (e *Engine) GenerateVisualFrame(context.Context, string) (string, error) {
+	return "", fmt.Errorf("webai: Gemini Web image generation is unavailable; use the configured image provider")
 }
 
 // FlowScenePrompt describes an optimized prompt for Google Flow.
@@ -98,7 +65,7 @@ func (e *Engine) GenerateFlowVideoClip(ctx context.Context, prompt, keyframeURL 
 	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(acc.Cookie) == "" {
+	if strings.TrimSpace(acc.Cookie) == "" && len(acc.CookieJar) == 0 {
 		return "", fmt.Errorf("google flow: saved account has no Google session cookie")
 	}
 	if keyframeURL != "" {
@@ -107,21 +74,36 @@ func (e *Engine) GenerateFlowVideoClip(ctx context.Context, prompt, keyframeURL 
 	attempted := map[string]struct{}{acc.ID: {}}
 	var result FlowVideoResult
 	for {
-		result, err = GoogleFlowVideo(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", nil)
+		result, err = GoogleFlowVideoWithCookieSnapshot(ctx, acc.Cookie, acc.CookieJar, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", nil, func(cookie string, cookies []BrowserCookie) error {
+			acc.Cookie = cookie
+			acc.CookieJar = cookies
+			return e.store.UpdateAccountCookieSnapshot(acc.ID, cookie, cookies)
+		})
 		if cooldown, limited := FlowPreSubmitRateLimitCooldown(err); limited {
 			if markErr := e.store.MarkRateLimited(acc.ID, cooldown); markErr != nil {
 				return "", fmt.Errorf("google flow: rate-limit account cooldown failed: %w", markErr)
 			}
 			next, pickErr := e.store.PickActiveAccountExcluding(PlatformGoogleFlow, attempted)
 			if pickErr != nil {
-				return "", fmt.Errorf("google flow: free account quota exhausted; stop: %w", pickErr)
+				return "", fmt.Errorf("google flow: account quota exhausted; stop: %w", pickErr)
 			}
 			attempted[next.ID] = struct{}{}
 			acc = next
 			continue
 		}
 		if CanFallbackToGoogleFlowHeadless(err) && (ctx == nil || ctx.Err() == nil) {
-			result, err = GoogleFlowVideoHeadless(ctx, acc.Cookie, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", result.ProjectID, nil)
+			fallbackCookies := acc.CookieJar
+			if len(result.CookieJar) > 0 {
+				fallbackCookies = result.CookieJar
+			}
+			result, err = GoogleFlowVideoHeadlessWithCookieSnapshot(ctx, acc.Cookie, fallbackCookies, prompt, "VIDEO_ASPECT_RATIO_PORTRAIT", result.ProjectID, nil, func(cookie string, cookies []BrowserCookie) error {
+				acc.Cookie = cookie
+				acc.CookieJar = cookies
+				if len(cookies) > 0 {
+					return e.store.UpdateAccountCookieSnapshot(acc.ID, cookie, cookies)
+				}
+				return e.store.UpdateAccountCookieRefresh(acc.ID, cookie)
+			})
 		}
 		break
 	}
@@ -171,7 +153,7 @@ func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL stri
 	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(acc.Cookie) == "" {
+	if strings.TrimSpace(acc.Cookie) == "" && len(acc.CookieJar) == 0 {
 		return "", fmt.Errorf("muse ai: saved account has no Muse session cookie")
 	}
 	if keyframeURL != "" {
@@ -180,14 +162,18 @@ func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL stri
 	attempted := map[string]struct{}{acc.ID: {}}
 	var result MuseReply
 	for {
-		result, err = MuseChat(ctx, acc.Cookie, acc.ID, prompt, nil)
+		result, err = MuseChatWithCookieSnapshot(ctx, acc.Cookie, acc.CookieJar, acc.ID, prompt, nil, func(cookie string, cookies []BrowserCookie) error {
+			acc.Cookie = cookie
+			acc.CookieJar = cookies
+			return e.store.UpdateAccountCookieSnapshot(acc.ID, cookie, cookies)
+		})
 		if cooldown, limited := MusePreSubmitRateLimitCooldown(err); limited {
 			if markErr := e.store.MarkRateLimited(acc.ID, cooldown); markErr != nil {
 				return "", fmt.Errorf("muse ai: rate-limit account cooldown failed: %w", markErr)
 			}
 			next, pickErr := e.store.PickActiveAccountExcluding(PlatformMuseAI, attempted)
 			if pickErr != nil {
-				return "", fmt.Errorf("muse ai: free account quota exhausted; stop: %w", pickErr)
+				return "", fmt.Errorf("muse ai: account quota exhausted; stop: %w", pickErr)
 			}
 			attempted[next.ID] = struct{}{}
 			acc = next
@@ -195,7 +181,18 @@ func (e *Engine) GenerateVideoClip(ctx context.Context, prompt, keyframeURL stri
 		}
 		var gatewayUnavailable *MuseGatewayUnavailableError
 		if errors.As(err, &gatewayUnavailable) {
-			result, err = MuseChatHeadless(ctx, acc.Cookie, prompt, nil)
+			fallbackCookies := acc.CookieJar
+			if len(result.CookieJar) > 0 {
+				fallbackCookies = result.CookieJar
+			}
+			result, err = MuseChatHeadlessWithCookieSnapshot(ctx, acc.Cookie, fallbackCookies, prompt, nil, func(cookie string, cookies []BrowserCookie) error {
+				acc.Cookie = cookie
+				acc.CookieJar = cookies
+				if len(cookies) > 0 {
+					return e.store.UpdateAccountCookieSnapshot(acc.ID, cookie, cookies)
+				}
+				return e.store.UpdateAccountCookieRefresh(acc.ID, cookie)
+			})
 		}
 		break
 	}

@@ -1,10 +1,10 @@
 # RESEARCH.md — Nghiên cứu nền tảng và kho tư liệu
 
 > PRODUCT_SPEC và PRODUCT_DECISIONS là nguồn quyết định sản phẩm. Mục “Current
-> findings” dưới đây được rà lại ngày 2026-10-22. Tư liệu cũ phía sau giữ để
+> findings” dưới đây được rà lại ngày 2026-10-23. Tư liệu cũ phía sau giữ để
 > tham khảo lịch sử; không dùng kế hoạch/policy cũ thay cho spec hiện hành.
 
-## Current findings — 2026-10-22
+## Current findings — 2026-10-23
 
 ### TikTok Content Posting API
 
@@ -42,6 +42,11 @@
 
 - API `/v1/datafeeds` documents price, discount, product, campaign, affiliate
   link and update time; it does not document sales or rating/review fields.
+- Schema response hiện hành dùng `page` (số trang), `campaign` (merchant
+  filter), `discount_from/to` (giá khuyến mại); mỗi item dùng `discount` làm
+  giá sau khuyến mại, `price` làm giá trước khuyến mại, `cate` làm category.
+  Adapter trước đó gửi `page_token`, `merchant`, `min_price/max_price` và đọc
+  `price` như giá bán; mapping đã được sửa theo schema này.
 - `/v1/top_products` accepts date filters, but docs define outer `total` as
   “số lượng sản phẩm” and do not define it as units/orders sold per offer or
   state a per-offer sales window. Do not use it as sales evidence.
@@ -57,6 +62,7 @@
   recent-sales and review gates in PRODUCT_SPEC; affiliate production must hold
   until an allowed evidence source is connected.
 - Sources: [Datafeeds API](https://developers.accesstrade.vn/api-publisher-vietnamese/lay-thong-tin-datafeeds),
+  [Campaigns API](https://developers.accesstrade.vn/api-publisher-vietnamese/lay-danh-sach-campaigns),
   [Top-selling products API](https://developers.accesstrade.vn/api-publisher-vietnamese/top-cac-san-pham-ban-chay-nhat),
   [TikTok Shop product search v2](https://developers.accesstrade.vn/api-publisher-vietnamese/tich-hop-api-publisher-at-cho-chien-dich-tiktok-shop/version-2-updated-version/tiktok-product-search-v2),
   [current source scope](features/products.md),
@@ -64,12 +70,17 @@
 
 ### Nguồn affiliate thay thế đã rà
 
-- **Shopee Affiliate:** Help Center chính thức nói API có danh sách shop/brand/
-  product offers, short link và conversion/validated reports. Trang Open API
-  của Shopee Việt Nam là ứng dụng JavaScript; schema trường không đọc được từ
-  trang công khai đã kiểm tra. Chưa xác nhận product-level sales theo 30 ngày,
-  rating/review, điều kiện publisher hoặc chi phí API. Chỉ là ứng viên cần
-  kiểm chứng, chưa đủ làm evidence source.
+- **Shopee Affiliate:** Help Center nói API có danh sách shop/brand/product
+  offers, short link và conversion/validated reports; trang này không công bố
+  schema field hay sales window. Portal affiliate cũng hiển thị hiệu suất
+  publisher (clicks, orders, items sold, sales) theo hôm qua/7 ngày/30 ngày/
+  kỳ tùy chọn và top 5 sản phẩm đã bán trong kỳ. **Suy luận:** đó là dữ liệu
+  hoạt động affiliate của publisher, chưa chứng minh sales cho mọi listing có
+  thể săn trước khi quảng bá. Trang Open API Shopee Việt Nam là ứng dụng
+  JavaScript; schema trường không đọc được từ trang công khai đã kiểm tra.
+  Chưa xác nhận product-level sales cho listing ứng viên, rating/review, điều
+  kiện publisher hoặc chi phí API. Chỉ là ứng viên cần kiểm chứng, chưa đủ làm
+  evidence source.
 - **Rentracks Vietnam:** Publisher docs có data feed/coupon feed và API. Hướng
   dẫn 2025 nói field trong datafeed thay đổi theo campaign/nhà cung cấp; API
   được mô tả cho publisher dạng sub-network cần liên hệ team Rentracks. Tài
@@ -83,11 +94,12 @@
   advertiser GB; schema này không chứng minh sales per-product theo kỳ hay độ
   sẵn có tại Việt Nam. Có thể khảo sát cho trường review, chưa thay được cổng
   sales.
-- Kết luận ngày 2026-10-22: chưa xác minh được provider thay thế nào đồng thời
+- Kết luận ngày 2026-10-23: chưa xác minh được provider thay thế nào đồng thời
   có commission/link hợp lệ, sales 30 ngày theo product, rating/review có mẫu,
   freshness/provenance rõ, quyền API hợp lệ và mức phí bằng 0. O-02 còn mở;
   không bật affiliate production khi chưa đạt evidence gate.
-- Nguồn chính thức: [Shopee API Access](https://help.shopee.sg/portal/10/article/191702-API-Access),
+- Nguồn chính thức: [Shopee Affiliate Portal](https://help.shopee.sg/portal/10/article/191692-Navigating-Shopee-Affiliate-Portal),
+  [Shopee API Access](https://help.shopee.sg/portal/10/article/191702-API-Access),
   [Shopee Vietnam Open API](https://affiliate.shopee.vn/open_api/list),
   [Rentracks Publisher](https://rentracks.com.vn/publisher/),
   [Rentracks dashboard guide 2025](https://rentracks.com.vn/huong-dan-cach-su-dung-dashboard-rentracks-2025/),
@@ -153,8 +165,9 @@
   URI đã đăng ký. Xem [Google Web Server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server)
   và [Google OAuth for installed apps](https://developers.google.com/identity/protocols/oauth2/native-app).
 - Kết luận: code có callback VPS cấu hình cho TikTok, Facebook và YouTube.
-  Chưa xác minh flow trên VPS với credentials thật. Web AI remote login đã có
-  screenshot/input bridge trong source; VPS/provider acceptance vẫn chưa chạy.
+  Chưa xác minh flow trên VPS với credentials thật. Web AI interactive login đã
+  gỡ vì implementation chỉ hỗ trợ isolated Chromium/CDP, không dùng được browser
+  người dùng tùy chọn. Hidden Chromium generation fallback vẫn riêng biệt.
 
 ## Historical archive — 2026-10-02
 

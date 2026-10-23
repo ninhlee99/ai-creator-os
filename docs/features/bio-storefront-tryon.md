@@ -3,8 +3,11 @@
 ## Current implementation
 
 - The storefront has a separate detail page for each product, showing available
-  source images, current/original price, discount, rating, sold count, shop,
-  freshness, and active voucher details. Unknown values stay unknown.
+  source images, current/original price, discount, eligible rating/sold count,
+  shop, freshness, and active voucher details. Rating and sold count appear
+  only when both have a recent HTTPS evidence source; missing or stale evidence
+  keeps the numbers hidden. Manual evidence links provide traceability, not
+  independent verification. Unknown values stay unknown.
 - Channels publish products independently. `/bio` opens only the explicitly
   selected default published channel; it never chooses the first account.
 - `/bio-admin` manages profile publication, default channel, product order,

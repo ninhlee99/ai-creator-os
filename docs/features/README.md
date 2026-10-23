@@ -10,8 +10,6 @@ mục đích → cách kích hoạt (bấm gì / tự động khi nào) → lu�
 > affiliate/viral đang giới hạn theo chính sách free-only, tích hợp Bản sắc thương hiệu (Brand DNA),
 > Quản trị cơ hội xu hướng (Trend Intelligence) và Bộ điều phối nhiệm vụ tự chủ (AI Mission Control).
 
-`remote-webai-login.md` mô tả Web AI login desktop-only; phone login bị tắt.
-Live VPS/provider login vẫn cần xác minh.
 Đọc [IMPLEMENTATION_STATUS](../IMPLEMENTATION_STATUS.md) trước khi dùng tài liệu
 này làm cam kết.
 
@@ -30,7 +28,7 @@ này làm cam kết.
 | 9 | Viral (`/viral`) — radar nguồn hoạt động; thay nhân vật tạm dừng vì editor video cần billing | [video-viral.md](video-viral.md) | ⚠ |
 | 10 | Kể chuyện (`/stories`) — truyện ngôi thứ nhất → ảnh 16:9 → TTS → dựng 16:9 | [storytelling.md](storytelling.md) | ✅ |
 | 11 | Đa nền tảng (`/publishers`) — TikTok / YouTube / Facebook OAuth | [multi-platform.md](multi-platform.md) | ✅ |
-| 12 | **Kho Tài Khoản Web AI (`/web-ai`) — login capture, Muse/Flow, account pool** | [web-ai.md](web-ai.md) | ✅ |
+| 12 | **Kho Tài Khoản Web AI (`/web-ai`) — account backup, Muse/Flow, account pool** | [web-ai.md](web-ai.md) | ⚠ |
 | 13 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [settings.md](settings.md) | ✅ |
 | 14 | Wizard lần đầu (`/onboard`) | [onboarding-wizard.md](onboarding-wizard.md) | ✅ |
 | 15 | Sao lưu & khôi phục | [backup-restore.md](backup-restore.md) | ✅ |

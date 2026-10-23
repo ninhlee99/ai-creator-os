@@ -3,14 +3,16 @@
   <div class="webai-section-head">
     <h3>Tài khoản AI</h3>
     <div class="webai-section-actions">
-      <span class="webai-ready-total" id="badge-webai-connected">{{.WebAIConnected}} sẵn sàng</span>
+      <span class="webai-ready-total" id="badge-webai-connected">{{.WebAIConnected}} tài khoản đang bật</span>
+      <button type="button" class="btn btn-secondary btn-sm webai-backup-import-action" onclick="openEnvImportModal()" title="Nhập toàn bộ cấu hình JSON backup, gồm account Web AI">
+        Khôi phục JSON backup
+      </button>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()">
         Kiểm tra tất cả phiên
       </button>
     </div>
   </div>
-  <p class="hint">MiuNova chỉ dùng tài khoản gói miễn phí đã xác nhận. Gói tài khoản do bạn khai báo; hệ thống không thể tự kiểm chứng với nhà cung cấp.</p>
-  <p class="webai-mobile-login-note">Đăng nhập Web AI chỉ hỗ trợ trên máy tính.</p>
+  <p class="hint">Khôi phục account từ JSON backup ở trên. MiuNova không đọc cookie từ browser đang chạy. Trạng thái phiên không đồng nghĩa với quyền tạo nội dung hoặc số credits. Studio render video qua Muse AI và Google Flow; cookie được lưu lại khi provider trả cookie mới.</p>
 
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
@@ -22,9 +24,11 @@
         </div>
         <div class="webai-status">
           {{if gt .ReadyCount 0}}
-          <span class="status-pill status-pill-ok"><span class="pulse-dot"></span>{{.ReadyCount}} sẵn sàng</span>
+          <span class="status-pill status-pill-ok"><span class="pulse-dot"></span>{{.ReadyCount}} phiên đang hoạt động</span>
           {{else if gt .CooldownCount 0}}
           <span class="status-pill status-pill-warn">{{.CooldownCount}} tạm nghỉ</span>
+          {{else if gt .ActiveCount 0}}
+          <span class="status-pill status-pill-warn">{{if .StudioSupported}}{{.ActiveCount}} tài khoản · chưa sẵn sàng cho Studio{{else}}{{.ActiveCount}} tài khoản đã lưu{{end}}</span>
           {{else}}
           {{if gt .TotalCount 0}}
           <span class="status-pill status-pill-warn">{{.TotalCount}} cần kiểm tra</span>
@@ -34,6 +38,7 @@
           {{end}}
         </div>
       </div>
+      <p class="hint" style="margin:4px 0 10px">{{if .StudioSupported}}Được tích hợp render video trong Studio.{{else}}Có thể lưu và kiểm tra phiên; chưa tích hợp làm engine Studio.{{end}}</p>
 
       <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
         <span class="webai-account-count">{{.TotalCount}}</span>
@@ -48,13 +53,6 @@
             <div class="webai-account-info">
               <strong>{{if .Email}}{{.Email}}{{else}}{{.AccountName}}{{end}}</strong>
               <div class="webai-account-meta-line">
-              {{if eq .Tier "paid"}}
-              <span class="badge badge-err">Gói trả phí · không dùng</span>
-              {{else if .IsConfirmedFree}}
-              <span class="badge badge-ok">Free · đã xác nhận</span>
-              {{else}}
-              <span class="badge badge-warn">Gói chưa xác nhận · không dùng</span>
-              {{end}}
               {{if eq .Status "cooldown"}}
               <span class="badge badge-warn">{{.CooldownLabel}}</span>
               {{else if or (eq .Status "invalid") (eq .Status "expired")}}
@@ -63,8 +61,10 @@
               <span class="badge badge-err">Đã ngắt kết nối</span>
               {{else if eq .Status "rate_limited"}}
               <span class="badge badge-warn">Đang giới hạn</span>
-              {{else if or (eq .Status "ok") (eq .Status "connected")}}
-              <span class="badge badge-ok">Phiên hoạt động</span>
+              {{else if eq .Status "ok"}}
+              <span class="badge badge-ok">Phiên đã xác minh</span>
+              {{else if eq .Status "connected"}}
+              <span class="badge badge-warn">Đã lưu · chưa kiểm tra</span>
               {{else}}
               <span class="badge badge-warn">Chưa xác minh</span>
               {{end}}
@@ -92,16 +92,11 @@
         {{else}}
           <div class="webai-account-empty">
             <strong>Chưa có tài khoản</strong>
-            <span>Kết nối tài khoản bằng nút phía dưới.</span>
+            <span>Khôi phục JSON backup ở phía trên để thêm account.</span>
           </div>
         {{end}}
       </template>
 
-      <div class="webai-card-actions">
-        <button type="button" class="btn btn-secondary btn-sm webai-login-action" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">
-          Đăng nhập
-        </button>
-      </div>
     </div>
     {{end}}
   </div>

@@ -48,7 +48,7 @@ func (s *Server) handleStudioUpload(w http.ResponseWriter, r *http.Request) {
 	serveMediaFile(w, r, path)
 }
 
-// handleStudioGenerateImage generates a high-quality product image via Gemini Imagen or visual fallback.
+// handleStudioGenerateImage generates an image via Gemini or a neutral card fallback.
 func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		writeJSONErr(w, "Studio chưa sẵn sàng", http.StatusServiceUnavailable)
@@ -80,7 +80,7 @@ func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Reques
 	if s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(r.Context()) {
 		geminiPrompt := prompt
 		if geminiPrompt == "" {
-			geminiPrompt = fmt.Sprintf("Ultra-detailed professional commercial advertising photograph of %s, %s, 4K quality, tack-sharp focus, photorealistic, cinematic studio lighting, commercial photography, no text, no watermark", productName, niche)
+			geminiPrompt = fmt.Sprintf("High-resolution photorealistic product scene of %s, %s, cinematic studio lighting, no text, no watermark", productName, niche)
 		}
 		if gerr := s.Studio.MediaGen().GenerateImage(r.Context(), geminiPrompt, nil, outPath); gerr == nil {
 			source = "gemini"
@@ -89,11 +89,7 @@ func (s *Server) handleStudioGenerateImage(w http.ResponseWriter, r *http.Reques
 
 	// If Gemini was not used or failed, generate high-quality visual card
 	if source != "gemini" {
-		sub := prompt
-		if sub == "" {
-			sub = "CHÍNH HÃNG 100% · ƯU ĐÃI ĐẶC BIỆT"
-		}
-		if err := studio.GenerateProductVisual(productName, niche, sub, wPx, hPx, outPath); err != nil {
+		if err := studio.GenerateProductVisual(productName, niche, "", wPx, hPx, outPath); err != nil {
 			writeJSONErr(w, "Không tạo được ảnh: "+err.Error(), http.StatusInternalServerError)
 			return
 		}

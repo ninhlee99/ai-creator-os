@@ -22,7 +22,7 @@
 ### Điểm mạnh cốt lõi hiện có:
 - **Zero-Dependency Runtime**: 1 file nhị phân tĩnh duy nhất (~22MB), không cần cài Python, Node.js, venv hay Docker.
 - **Tiết kiệm chi phí triệt để**: Triết lý *Free API first, local sidecar second, paid never*.
-- **Kho Tài Khoản Web AI (CDP Automated Login)**: Trình duyệt tự động đăng nhập ChatGPT, Claude, Gemini, Grok, Muse AI qua CDP với thư mục hồ sơ tạm thời cô lập (`os.MkdirTemp`), tự xoay vòng khi chạm rate limit mà không cần mua API trả phí.
+- **Kho Tài Khoản Web AI**: Lưu session được khôi phục từ JSON backup, kiểm tra session và tự xoay vòng account hợp lệ khi provider cho phép. Interactive browser login đã gỡ vì không thể đọc cookie từ browser bất kỳ.
 - **Bộ não tự hành cấp cao (`/harness`)**: Vòng lặp nhận thức OODA (Observe - Orient - Decide - Act) cùng ký ức kinh nghiệm (Episodic Memory).
 
 ---
@@ -64,9 +64,9 @@ Dưới góc nhìn một người dùng thực chiến, sau khi sử dụng toà
 ---
 
 ### 3.3. Kho Tài Khoản Web AI (`/settings/system#tab-webai`)
-* **Hiện trạng**: Trình duyệt CDP tự mở với hồ sơ cô lập (`os.MkdirTemp`), tự động bắt cookie; lưu email khi dịch vụ cung cấp danh tính đáng tin cậy. Quản lý trạng thái OK / Cooldown.
+* **Hiện trạng hiện hành (2026-10-23)**: Tài khoản chỉ khôi phục qua JSON backup. Luồng interactive browser login đã gỡ theo U-11 vì app không thể đọc profile của browser người dùng bất kỳ. CDP cô lập chỉ còn phục vụ job tạo nội dung Flow/Muse, không đọc browser profile. HTTP 401 có thể đánh dấu hết hạn; HTTP 403/lỗi mạng là chưa xác minh và giữ cookie.
 * **Khoảng trống (Gaps)**:
-  - Muse hiện chưa có endpoint JSON xác thực được xác nhận; phép probe giữ nguyên trạng thái và báo "chưa xác minh" khi nhận HTML/403/lỗi mạng, tránh gán nhầm sống hoặc hết hạn.
+  - Không có cơ chế tự lấy cookie từ browser người dùng; account phải được khôi phục thủ công từ backup.
   - **Chưa có cảnh báo thời hạn cookie (TTL Estimator)**: Một số nền tảng (như ChatGPT hoặc Google) có chu kỳ làm mới cookie sau 14-30 ngày. Cần ghi nhận ngày đăng nhập và cảnh báo khi phiên làm việc quá 20 ngày.
   - **Thiếu thống kê Quota & Số Yêu Cầu Đã Dùng**: Chưa có bộ đếm hiển thị hôm nay tài khoản này đã sinh bao nhiêu kịch bản, còn bao nhiêu lượt trước khi chạm ngưỡng rate limit.
 * **Nhu cầu người dùng (User Needs)**:
@@ -124,14 +124,17 @@ Dưới góc nhìn một người dùng thực chiến, sau khi sử dụng toà
 |---|---|---|---|
 | **Affiliate** | **Trang Bio Link Storefront (`/bio/{channel}`)** | 🔴 Cực cao (Khai thông dòng tiền mua hàng) | ✅ **Đã hoàn thành 100%** (Mobile-first, tìm kiếm tức thì, lọc danh mục, link affiliate) |
 | **Studio / Viral** | **Trình phát video HTML5 xem trực tiếp trong modal** | 🟡 Cao (Tiết kiệm thời gian review video) | ✅ **Đã hoàn thành 100%** (Modal theater mode, streaming HTTP 206 byte-range) |
-| **Web AI Hub** | **Nút kiểm tra phiên (Test Alive) & Cảnh báo hạn dùng** | 🟡 Cao (Chủ động tránh đứt gãy tác vụ) | ✅ **Đã hoàn thành 100%** (Test realtime ChatGPT, Claude, Gemini, Grok, Muse AI) |
-| **Web AI Hub** | **Đăng nhập tự động Muse AI qua OTP/2FA** | 🟡 Cao (Tự động bắt cookie sau khi nhập mã) | ✅ **Đã hoàn thành 100%** (CDP probe thông minh phân biệt OTP vs Logged-in) |
+| **Web AI Hub** | **Nút kiểm tra phiên (Test Alive) & Cảnh báo hạn dùng** | 🟡 Cao (Chủ động tránh đứt gãy tác vụ) | Một phần: có probe phiên; 403/lỗi mạng là chưa xác minh, chưa có TTL đáng tin. |
+| **Web AI Hub** | **Đăng nhập tự động Muse AI qua OTP/2FA** | 🟡 Cao (Tự động bắt cookie sau khi nhập mã) | Đã gỡ theo U-11; khôi phục account qua JSON backup. |
 | **Publishers** | **Telegram Webhook nhắc duyệt đăng nháp TikTok** | 🟡 Cao (Không bỏ lỡ khung giờ vàng) | ✅ **Đã hoàn thành 100%** (Tự động gửi tin nhắn báo nháp sẵn sàng) |
 | **Studio / Viral** | **Tự tạo phụ đề file `.srt` cho video ngắn** | 🟡 Cao (Tăng 40% tương tác người xem mute) | ✅ **Đã hoàn thành 100%** (Sinh .srt chuẩn SubRip, mux soft-subs, nút tải srt) |
 
 ---
 
-## 5. Hiện Trạng Hệ Thống Sau Khi Hoàn Thành Toàn Diện
+## 5. Ảnh Chụp Lịch Sử Ngày 2026-10-17
+
+Các mục bên dưới ghi lại trạng thái được báo cáo khi tài liệu lập. Chúng không
+chứng minh code hiện tại hoặc hành vi live; xem [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md).
 
 Toàn bộ các tính năng cốt lõi phục vụ nhà sáng tạo nội dung đã được hoàn thiện trực tiếp và đưa vào mã nguồn chính thức:
 
@@ -146,10 +149,10 @@ Toàn bộ các tính năng cốt lõi phục vụ nhà sáng tạo nội dung �
    - Thay thế toàn bộ video mẫu lỗi bằng `/static/sample_916.mp4`.
    - Nút ▶️ Xem trước được tích hợp xuyên suốt `/studio`, `/studio/jobs` và `/viral`.
 
-3. **Cơ chế Đăng nhập & Bắt phiên Muse AI hoàn thiện**:
-   - `cdpProbeMuseAI` nhận diện màn OTP/2FA và dấu hiệu tài khoản trong giao diện Muse.
-   - Bắt cookie phiên first-party từ `muse.ai`; không gửi cookie đăng nhập Meta/Facebook tới Muse.
-   - Bắt cookie phiên first-party `hatch_sess` qua CDP; không dùng `https://muse.ai/api/account` để kết luận phiên còn sống vì route này hiện trả HTML SPA với HTTP 200. Phép kiểm tra chỉ xác nhận sống khi API trả JSON có danh tính; 401 mới đánh dấu hết hạn, còn HTML/403/lỗi mạng giữ trạng thái chưa xác minh.
+3. **Web AI accounts hiện hành**:
+   - Khôi phục account qua JSON backup; app không mở login browser và không đọc profile browser người dùng.
+   - CDP cô lập chỉ chạy trong job tạo nội dung Flow/Muse. Cookie mới được lưu theo account khi provider trả cookie thay đổi.
+   - Probe HTTP 403/lỗi mạng hiện phiên là chưa xác minh, không kết luận cookie sai.
 
 4. **Tự động sinh phụ đề `.srt` cho Video Ngắn**:
    - Tự động sinh file SubRip `.srt` theo từng phân cảnh và mốc thời gian TTS.
@@ -159,6 +162,6 @@ Toàn bộ các tính năng cốt lõi phục vụ nhà sáng tạo nội dung �
 5. **Bộ thông báo Telegram tự động**:
    - Tự động gửi thông báo qua Telegram kèm link khi video render hoàn tất hoặc bản nháp TikTok sẵn sàng.
 
-6. **Kiểm tra phiên Web AI thời gian thực**:
-   - Nút "⚡ Kiểm Tra Tất Cả Phiên" và nút kiểm tra từng tài khoản trong Cài đặt Hệ thống.
-   - Kiểm tra phiên qua HTTP cho ChatGPT, Claude, Gemini và Grok. Muse chỉ báo còn sống khi nhận JSON có danh tính; phản hồi HTML/403/lỗi mạng được ghi là chưa xác minh, không đổi trạng thái tài khoản.
+6. **Kiểm tra phiên Web AI**:
+   - Có nút kiểm tra tất cả và kiểm tra từng account trong Cài đặt Hệ thống.
+   - HTTP 401 đánh dấu hết hạn; HTTP 403/lỗi mạng báo chưa xác minh và giữ cookie. Trạng thái account không chứng minh plan hoặc credits.

@@ -69,9 +69,8 @@ type Server struct {
 	// AvatarSidecar: parked-build support (như Avatar ở trên).
 	AvatarSidecar AvatarSidecarCtl
 
-	// WebAI quản lý kết nối và phiên đăng nhập Claude, ChatGPT, Gemini, Muse AI.
-	WebAI      *webai.Store
-	WebAIRelay *webai.ProxyRelay
+	// WebAI quản lý account và phiên AI Web đã được khôi phục từ backup.
+	WebAI *webai.Store
 
 	// Harness là Master Autonomous Agent điều phối nhận thức OODA và tự học.
 	Harness *harness.Harness
@@ -194,6 +193,7 @@ func (s *Server) WireStudioWebAI() {
 			Platform:     acc.Platform,
 			SessionToken: acc.SessionKey,
 			CookieHeader: acc.Cookie,
+			CookieJar:    append([]webai.BrowserCookie(nil), acc.CookieJar...),
 			Email:        acc.Email,
 		}, nil
 	})
@@ -209,11 +209,19 @@ func (s *Server) WireStudioWebAI() {
 		for {
 			var result webai.FlowVideoResult
 			var err error
+			refreshCookie := func(cookie string, cookies []webai.BrowserCookie) error {
+				current.CookieHeader = cookie
+				current.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+				if len(cookies) > 0 {
+					return s.persistWebAICookieSnapshot(current.AccountID, cookie, cookies)
+				}
+				return s.persistWebAICookieRefresh(current.AccountID, cookie)
+			}
 			switch request.Mode {
 			case "ingredients":
-				result, err = webai.GoogleFlowVideoIngredientsHeadless(ctx, current.CookieHeader, request.Prompt, request.AspectRatio, request.ImagePaths, request.ProjectID, progress)
+				result, err = webai.GoogleFlowVideoIngredientsHeadlessWithCookieSnapshot(ctx, current.CookieHeader, current.CookieJar, request.Prompt, request.AspectRatio, request.ImagePaths, request.ProjectID, progress, refreshCookie)
 			case "video_edit":
-				result, err = webai.GoogleFlowVideoEditHeadless(ctx, current.CookieHeader, request.Prompt, request.AspectRatio, request.VideoPath, request.ImagePaths, request.ProjectID, progress)
+				result, err = webai.GoogleFlowVideoEditHeadlessWithCookieSnapshot(ctx, current.CookieHeader, current.CookieJar, request.Prompt, request.AspectRatio, request.VideoPath, request.ImagePaths, request.ProjectID, progress, refreshCookie)
 			default:
 				return "", fmt.Errorf("unsupported Google Flow reference mode %q", request.Mode)
 			}
@@ -221,8 +229,8 @@ func (s *Server) WireStudioWebAI() {
 				authRejected := webai.IsWebSessionAuthError(err)
 				if authRejected && strings.TrimSpace(current.Email) != "" {
 					_ = s.WebAI.MarkSessionExpired(webai.PlatformGoogleFlow, current.Email)
-				} else if result.CookieHeader != "" {
-					if saveErr := s.persistWebAICookieRefresh(ctx, webai.PlatformGoogleFlow, current.Email, result.CookieHeader, true); saveErr != nil {
+				} else if result.CookieHeader != "" || len(result.CookieJar) > 0 {
+					if saveErr := s.persistWebAIResultCookies(current.AccountID, result.CookieHeader, result.CookieJar); saveErr != nil {
 						progress("FLOW_COOKIE_REFRESH: chưa xác minh/lưu được cookie mới")
 					}
 				}
@@ -235,27 +243,31 @@ func (s *Server) WireStudioWebAI() {
 					}
 					next, pickErr := s.WebAI.PickActiveAccountExcluding(webai.PlatformGoogleFlow, attempted)
 					if pickErr != nil {
-						return "", fmt.Errorf("Google Flow hết quota; dừng vì không còn tài khoản miễn phí khả dụng: %w", pickErr)
+						return "", fmt.Errorf("Google Flow hết quota; dừng vì không còn tài khoản khả dụng: %w", pickErr)
 					}
 					attempted[next.ID] = struct{}{}
 					current = &studio.WebAISession{
 						AccountID: next.ID, Platform: next.Platform, SessionToken: next.SessionKey,
-						CookieHeader: next.Cookie, Email: next.Email,
+						CookieHeader: next.Cookie, CookieJar: append([]webai.BrowserCookie(nil), next.CookieJar...), Email: next.Email,
 					}
 					request.ProjectID = ""
-					progress("FLOW_ACCOUNT_ROTATION: account miễn phí trước hết quota; chuyển sang account miễn phí tiếp theo")
+					progress("FLOW_ACCOUNT_ROTATION: account trước hết quota; chuyển sang account tiếp theo")
 					continue
 				}
 				return "", err
 			}
-			if result.CookieHeader != "" && strings.TrimSpace(current.Email) != "" {
-				if err := s.persistWebAICookieRefresh(ctx, webai.PlatformGoogleFlow, current.Email, result.CookieHeader, false); err != nil {
+			if (result.CookieHeader != "" || len(result.CookieJar) > 0) && strings.TrimSpace(current.Email) != "" {
+				if err := s.persistWebAIResultCookies(current.AccountID, result.CookieHeader, result.CookieJar); err != nil {
 					progress("FLOW_COOKIE_REFRESH: chưa lưu được cookie mới; job video vẫn tiếp tục")
 				} else {
 					progress("FLOW_COOKIE_REFRESH: đã cập nhật cookie account đã dùng")
 				}
 			}
-			if err := webai.DownloadFlowVideo(ctx, result.MediaURL, outputPath); err != nil {
+			if err := webai.DownloadFlowVideoWithCookieSnapshot(ctx, current.CookieHeader, current.CookieJar, result.MediaURL, outputPath, func(cookie string, cookies []webai.BrowserCookie) error {
+				current.CookieHeader = cookie
+				current.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
+				return s.persistWebAIResultCookies(current.AccountID, cookie, cookies)
+			}); err != nil {
 				return "", err
 			}
 			return result.ProjectID, nil
@@ -266,7 +278,7 @@ func (s *Server) WireStudioWebAI() {
 			return false, "không đọc được danh sách account: " + err.Error()
 		}
 		for _, account := range accounts {
-			if account.IsActive && account.IsConfirmedFree() && strings.TrimSpace(account.Cookie) != "" && (account.Status == "ok" || account.Status == "connected") {
+			if account.IsActive && (strings.TrimSpace(account.Cookie) != "" || len(account.CookieJar) > 0) && (account.Status == "ok" || account.Status == "connected") {
 				if email := strings.TrimSpace(account.Email); email != "" {
 					return true, "Flow · " + email
 				}

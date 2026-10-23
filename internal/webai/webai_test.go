@@ -3,8 +3,6 @@ package webai
 import (
 	"context"
 	"database/sql"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
@@ -300,22 +298,6 @@ func TestPromptSynthesizer(t *testing.T) {
 	pkgChatGPT := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineChatGPT, "Máy Lọc Không Khí", "Gia dụng", "problem_solution", "", "", "")
 	if pkgChatGPT.AIEngine != EngineChatGPT || pkgChatGPT.AIEngineBadge == "" {
 		t.Errorf("expected ChatGPT engine with badge, got engine=%s badge=%s", pkgChatGPT.AIEngine, pkgChatGPT.AIEngineBadge)
-	}
-}
-
-func TestProxyRelayHeaders(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "webai_proxy_test.db")
-	store, _ := NewStore(dbPath)
-	defer store.Close()
-
-	relay := NewProxyRelay(store)
-
-	// Test invalid platform
-	req := httptest.NewRequest("GET", "/web-ai/proxy/unknown", nil)
-	rr := httptest.NewRecorder()
-	relay.ServeHTTP(rr, req)
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("expected 400 for unknown platform, got %d", rr.Code)
 	}
 }
 

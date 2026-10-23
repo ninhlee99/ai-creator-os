@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -29,29 +30,71 @@ type flowHeadlessRequest struct {
 // GoogleFlowVideoHeadless uses the signed-in Flow web UI only after the direct
 // API has failed before accepting a generation request.
 func GoogleFlowVideoHeadless(ctx context.Context, cookie, prompt, aspect, projectID string, progress func(string)) (FlowVideoResult, error) {
+	return GoogleFlowVideoHeadlessWithCookieUpdate(ctx, cookie, prompt, aspect, projectID, progress, nil)
+}
+
+func GoogleFlowVideoHeadlessWithCookieUpdate(ctx context.Context, cookie, prompt, aspect, projectID string, progress func(string), onCookieUpdate func(string) error) (FlowVideoResult, error) {
+	updater := func(header string, _ []BrowserCookie) error {
+		if onCookieUpdate != nil {
+			return onCookieUpdate(header)
+		}
+		return nil
+	}
+	return GoogleFlowVideoHeadlessWithCookieSnapshot(ctx, cookie, nil, prompt, aspect, projectID, progress, updater)
+}
+
+func GoogleFlowVideoHeadlessWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, prompt, aspect, projectID string, progress func(string), updater CookieSnapshotUpdater) (FlowVideoResult, error) {
 	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
 		Mode: "text", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
-	}, progress)
+	}, cookies, progress, updater)
 }
 
 // GoogleFlowVideoIngredientsHeadless creates an 8-second clip from the exact
 // character/product reference images. The text-only reverse endpoint cannot
 // carry these inputs, so this path uses Flow's real Ingredients UI mode.
 func GoogleFlowVideoIngredientsHeadless(ctx context.Context, cookie, prompt, aspect string, imagePaths []string, projectID string, progress func(string)) (FlowVideoResult, error) {
+	return GoogleFlowVideoIngredientsHeadlessWithCookieUpdate(ctx, cookie, prompt, aspect, imagePaths, projectID, progress, nil)
+}
+
+func GoogleFlowVideoIngredientsHeadlessWithCookieUpdate(ctx context.Context, cookie, prompt, aspect string, imagePaths []string, projectID string, progress func(string), onCookieUpdate func(string) error) (FlowVideoResult, error) {
+	updater := func(header string, _ []BrowserCookie) error {
+		if onCookieUpdate != nil {
+			return onCookieUpdate(header)
+		}
+		return nil
+	}
+	return GoogleFlowVideoIngredientsHeadlessWithCookieSnapshot(ctx, cookie, nil, prompt, aspect, imagePaths, projectID, progress, updater)
+}
+
+func GoogleFlowVideoIngredientsHeadlessWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, prompt, aspect string, imagePaths []string, projectID string, progress func(string), updater CookieSnapshotUpdater) (FlowVideoResult, error) {
 	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
 		Mode: "ingredients", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
 		ImagePaths: imagePaths, ModelLabel: "Veo 3.1 Fast",
-	}, progress)
+	}, cookies, progress, updater)
 }
 
 // GoogleFlowVideoEditHeadless edits one source segment while using channel
 // character images as ingredients. Flow's video-edit model accepts at most
 // 10 seconds per edit.
 func GoogleFlowVideoEditHeadless(ctx context.Context, cookie, prompt, aspect, videoPath string, imagePaths []string, projectID string, progress func(string)) (FlowVideoResult, error) {
+	return GoogleFlowVideoEditHeadlessWithCookieUpdate(ctx, cookie, prompt, aspect, videoPath, imagePaths, projectID, progress, nil)
+}
+
+func GoogleFlowVideoEditHeadlessWithCookieUpdate(ctx context.Context, cookie, prompt, aspect, videoPath string, imagePaths []string, projectID string, progress func(string), onCookieUpdate func(string) error) (FlowVideoResult, error) {
+	updater := func(header string, _ []BrowserCookie) error {
+		if onCookieUpdate != nil {
+			return onCookieUpdate(header)
+		}
+		return nil
+	}
+	return GoogleFlowVideoEditHeadlessWithCookieSnapshot(ctx, cookie, nil, prompt, aspect, videoPath, imagePaths, projectID, progress, updater)
+}
+
+func GoogleFlowVideoEditHeadlessWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, prompt, aspect, videoPath string, imagePaths []string, projectID string, progress func(string), updater CookieSnapshotUpdater) (FlowVideoResult, error) {
 	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
 		Mode: "video_edit", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
 		ImagePaths: imagePaths, VideoPath: videoPath, ModelLabel: "Gemini Omni Flash 1.1",
-	}, progress)
+	}, cookies, progress, updater)
 }
 
 func validateFlowHeadlessRequest(request flowHeadlessRequest) error {
@@ -87,8 +130,8 @@ func validateFlowHeadlessRequest(request flowHeadlessRequest) error {
 	return nil
 }
 
-func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHeadlessRequest, progress func(string)) (result FlowVideoResult, retErr error) {
-	if strings.TrimSpace(cookie) == "" {
+func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHeadlessRequest, cookies []BrowserCookie, progress func(string), onCookieUpdate CookieSnapshotUpdater) (result FlowVideoResult, retErr error) {
+	if strings.TrimSpace(cookie) == "" && len(cookies) == 0 {
 		return result, errors.New("Google Flow headless fallback needs a session cookie")
 	}
 	if err := validateFlowHeadlessRequest(request); err != nil {
@@ -167,18 +210,35 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 			return result, err
 		}
 	}
-	cookies := flowBrowserCookies(cookie)
+	if len(cookies) == 0 {
+		cookies = mergeCookieJarHeader(nil, cookie, PlatformGoogleFlow)
+	}
 	if len(cookies) == 0 {
 		return result, errors.New("saved Google Flow cookie header is empty")
 	}
-	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": cookies}, client.sessionID); err != nil {
+	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(PlatformGoogleFlow, cookies)}, client.sessionID); err != nil {
 		return result, errors.New("Flow headless browser rejected saved session cookies")
 	}
+	initialSnapshot, err := browserCookieSnapshotFromCDP(ctx, client)
+	if err != nil || len(initialSnapshot) == 0 {
+		initialSnapshot = normalizeCookieJar(cookies)
+	}
+	monitorCtx, monitor := startBrowserCookieMonitor(ctx, client, initialSnapshot, browserCookieSnapshotFromCDP, PlatformGoogleFlow, onCookieUpdate)
+	ctx = monitorCtx
 	defer func() {
+		if monitorErr := monitor.stop(); monitorErr != nil {
+			retErr = fmt.Errorf("persist refreshed Flow cookies: %w", monitorErr)
+		}
 		refreshCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		if refreshed := flowUpdatedCookieHeader(refreshCtx, client); refreshed != "" {
-			result.CookieHeader = refreshed
+		if refreshed, readErr := browserCookieSnapshotFromCDP(refreshCtx, client); readErr == nil && len(refreshed) > 0 {
+			result.CookieJar = refreshed
+			result.CookieHeader = browserCookieHeaderForPlatform(PlatformGoogleFlow, refreshed)
+			if !reflect.DeepEqual(refreshed, monitor.current()) && onCookieUpdate != nil {
+				if err := onCookieUpdate(result.CookieHeader, refreshed); err != nil {
+					retErr = fmt.Errorf("persist refreshed Flow cookies: %w", err)
+				}
+			}
 		}
 	}()
 	startURL := flowAppURL

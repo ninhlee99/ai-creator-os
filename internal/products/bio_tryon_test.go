@@ -16,6 +16,12 @@ func newTryOnTestStore(t *testing.T, count int) (*Store, []int64) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
+	for i := int64(1); i <= 2; i++ {
+		subjectHash := fmt.Sprintf("%032d", i)
+		if _, err := store.UpsertBioGoogleAccount(subjectHash, fmt.Sprintf("buyer-%d@example.com", i), "Buyer", time.Now()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := store.SetBioProfile(1, true, "", true); err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +41,7 @@ func newTryOnTestStore(t *testing.T, count int) (*Store, []int64) {
 
 func tryOnRequest(productID int64, ip, device, image string, n int, now time.Time) BioTryOnRequest {
 	return BioTryOnRequest{
-		ID: fmt.Sprintf("bio-job-%024d", n), AccountID: 1, ProductID: productID,
+		ID: fmt.Sprintf("bio-job-%024d", n), AccountID: 1, BuyerGoogleAccountID: 1, ProductID: productID,
 		IPHash: ip, DeviceHash: device, ImageHash: image, Now: now,
 	}
 }
@@ -184,19 +190,19 @@ func TestGetBioTryOnJobRequiresMatchingIdentityAndRetention(t *testing.T) {
 	if _, err := store.ReserveBioTryOn(request); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.GetBioTryOnJob(request.ID, "different-device", now); err != ErrBioTryOnJobNotFound {
+	if _, err := store.GetBioTryOnJob(request.ID, 2, now); err != ErrBioTryOnJobNotFound {
 		t.Fatalf("unrelated identity read job: err=%v", err)
 	}
-	job, err := store.GetBioTryOnJob(request.ID, "device-read", now)
+	job, err := store.GetBioTryOnJob(request.ID, 1, now)
 	if err != nil || job.Status != "queued" {
 		t.Fatalf("same device on a new IP should read job: job=%+v err=%v", job, err)
 	}
-	if _, err := store.GetBioTryOnJob(request.ID, "device-read", now.Add(BioTryOnRetention)); err != ErrBioTryOnJobNotFound {
+	if _, err := store.GetBioTryOnJob(request.ID, 1, now.Add(BioTryOnRetention)); err != ErrBioTryOnJobNotFound {
 		t.Fatalf("expired job should not be retrievable: err=%v", err)
 	}
 }
 
-func TestBioTryOnReuseDoesNotCrossSharedIP(t *testing.T) {
+func TestBioTryOnReuseDoesNotCrossGoogleAccounts(t *testing.T) {
 	store, ids := newTryOnTestStore(t, 1)
 	now := time.Date(2026, 10, 23, 3, 0, 0, 0, time.UTC)
 	first := tryOnRequest(ids[0], "ip-shared", "device-one", "same-photo", 1, now)
@@ -204,12 +210,13 @@ func TestBioTryOnReuseDoesNotCrossSharedIP(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := tryOnRequest(ids[0], "ip-shared", "device-two", "same-photo", 2, now.Add(time.Second))
+	second.BuyerGoogleAccountID = 2
 	result, err := store.ReserveBioTryOn(second)
 	if err != nil || result.Reused || result.Job.ID != second.ID {
-		t.Fatalf("same IP must not reuse another device's upload: result=%+v err=%v", result, err)
+		t.Fatalf("different Google account must not reuse another account's upload: result=%+v err=%v", result, err)
 	}
-	if _, err := store.GetBioTryOnJob(first.ID, "device-two", now); err != ErrBioTryOnJobNotFound {
-		t.Fatalf("same IP device should not read another device's result: err=%v", err)
+	if _, err := store.GetBioTryOnJob(first.ID, 2, now); err != ErrBioTryOnJobNotFound {
+		t.Fatalf("different Google account should not read another account's result: err=%v", err)
 	}
 }
 
@@ -242,7 +249,7 @@ func TestRunningBioTryOnGetsProcessingDeadline(t *testing.T) {
 	if err := store.SetBioTryOnJobState(request.ID, "running", "", "", started); err != nil {
 		t.Fatal(err)
 	}
-	job, err := store.GetBioTryOnJob(request.ID, "device-running", started.Add(20*time.Minute))
+	job, err := store.GetBioTryOnJob(request.ID, 1, started.Add(20*time.Minute))
 	if err != nil || job.Status != "running" || !job.ExpiresAt.Equal(started.Add(BioTryOnProcessingTimeout)) {
 		t.Fatalf("running job should outlive queue timeout: job=%+v err=%v", job, err)
 	}

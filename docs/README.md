@@ -7,9 +7,11 @@ vẫn mang tên `ai-creator-os` để giữ tương thích.
 
 MiuNova tự tìm cơ hội affiliate, tạo nội dung gốc, phát triển nhiều kênh xã
 hội, xuất bản theo quyền từng nền tảng, đo kết quả và tự điều chỉnh. Đích là
-người dùng kết nối social rồi chủ yếu theo dõi; TikTok cần xác nhận từng bài,
-Web AI có thể cần đăng nhập provider một lần trên desktop; login Web AI từ điện
-thoại đã bị tắt. **Code chưa đạt đích này:**
+người dùng kết nối social rồi chủ yếu theo dõi; TikTok cần xác nhận từng bài.
+Web AI account là nguồn tùy chọn và được khôi phục qua JSON backup; MiuNova
+không đọc cookie từ browser đang chạy. Cookie mới được lưu theo account khi
+provider trả cookie mới.
+**Code chưa đạt đích này:**
 AccessTrade yêu cầu key và payout identity chưa có mô hình provisioning không
 buộc thêm bước affiliate; nguồn đang nối cũng thiếu sales gần đây và review;
 Threads video chưa có Media Delivery Gateway.
@@ -49,8 +51,6 @@ Direct Post cần lựa chọn và consent riêng theo bài. Xem
 ## Nhóm tài liệu
 
 - [Tài liệu tính năng](features/README.md): mô tả as-built.
-- [Login Web AI desktop khi app chạy VPS](features/remote-webai-login.md): login
-  điện thoại đã bị tắt; live provider/VPS chưa xác minh.
 - [Nghiên cứu](RESEARCH.md): nguồn và kết luận có ngày kiểm tra; chính sách API
   cần kiểm tra lại trước khi bật tích hợp.
 - [Kế hoạch phát triển kênh cũ](CHANNEL_GROWTH.md): thiết kế trước đây, giữ

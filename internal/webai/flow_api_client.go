@@ -14,8 +14,54 @@ import (
 )
 
 func newFlowClient(cookie string) *flowClient {
+	return newFlowClientWithCookieUpdate(cookie, nil)
+}
+
+func newFlowClientWithCookieUpdate(cookie string, onCookieUpdate func(string) error) *flowClient {
+	return &flowClient{
+		http:           &http.Client{Timeout: 45 * time.Second},
+		cookie:         cookie,
+		csrf:           flowCSRFToken(cookie),
+		sessionID:      ";" + fmt.Sprint(time.Now().UnixMilli()),
+		onCookieUpdate: onCookieUpdate,
+	}
+}
+
+func newFlowClientWithCookieSnapshot(cookie string, cookies []BrowserCookie, updater CookieSnapshotUpdater) (*flowClient, error) {
+	if len(cookies) == 0 {
+		legacyUpdater := func(header string) error {
+			if updater != nil {
+				return updater(header, nil)
+			}
+			return nil
+		}
+		return newFlowClientWithCookieUpdate(cookie, legacyUpdater), nil
+	}
+	jar, err := newCookieSnapshotJar(PlatformGoogleFlow, cookie, cookies, updater)
+	if err != nil {
+		return nil, err
+	}
+	return &flowClient{
+		http: &http.Client{
+			Timeout: 45 * time.Second,
+			Jar:     jar,
+			CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+				if len(via) >= 10 {
+					return http.ErrUseLastResponse
+				}
+				return jar.peekError()
+			},
+		},
+		cookie:      jar.CookieHeader(),
+		csrf:        flowCSRFToken(cookie),
+		sessionID:   ";" + fmt.Sprint(time.Now().UnixMilli()),
+		snapshotJar: jar,
+	}, nil
+}
+
+func flowCSRFToken(cookieHeader string) string {
 	csrf := ""
-	for _, part := range strings.Split(cookie, ";") {
+	for _, part := range strings.Split(cookieHeader, ";") {
 		name, value, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok {
 			continue
@@ -25,12 +71,7 @@ func newFlowClient(cookie string) *flowClient {
 			break
 		}
 	}
-	return &flowClient{
-		http:      &http.Client{Timeout: 45 * time.Second},
-		cookie:    cookie,
-		csrf:      csrf,
-		sessionID: ";" + fmt.Sprint(time.Now().UnixMilli()),
-	}
+	return csrf
 }
 
 func (c *flowClient) createProject(ctx context.Context, title string) (string, error) {
@@ -104,18 +145,46 @@ func (c *flowClient) requestJSON(ctx context.Context, method, target string, bod
 	req.Header.Set("Origin", "https://labs.google")
 	req.Header.Set("Referer", "https://labs.google/fx/tools/flow")
 	req.Header.Set("User-Agent", museUserAgent)
-	req.Header.Set("Cookie", c.cookie)
 	req.Header.Set("x-goog-authuser", "0")
-	if c.csrf != "" {
-		req.Header.Set("x-csrf-token", c.csrf)
-		req.Header.Set("x-next-auth-csrf-token", c.csrf)
+	csrf := c.csrf
+	if c.snapshotJar != nil {
+		if requestURL, parseErr := url.Parse(target); parseErr == nil {
+			csrf = flowCSRFToken(cookieHeaderFromHTTP(c.snapshotJar.Cookies(requestURL)))
+		}
+	} else {
+		req.Header.Set("Cookie", c.cookie)
+	}
+	if csrf != "" {
+		req.Header.Set("x-csrf-token", csrf)
+		req.Header.Set("x-next-auth-csrf-token", csrf)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
+		if c.snapshotJar != nil {
+			if persistErr := c.snapshotJar.takeError(); persistErr != nil {
+				return fmt.Errorf("persist refreshed Flow cookies: %w", persistErr)
+			}
+		}
 		return errors.New("Flow network request failed")
 	}
 	defer resp.Body.Close()
-	c.cookie = mergeFlowCookieHeader(c.cookie, resp.Cookies())
+	if c.snapshotJar != nil {
+		c.cookie = c.snapshotJar.CookieHeader()
+		if err := c.snapshotJar.takeError(); err != nil {
+			return fmt.Errorf("persist refreshed Flow cookies: %w", err)
+		}
+	} else {
+		previousCookie := c.cookie
+		c.cookie = mergeFlowCookieHeader(c.cookie, resp.Cookies())
+		if c.cookie != previousCookie {
+			c.csrf = flowCSRFToken(c.cookie)
+		}
+		if c.cookie != previousCookie && c.onCookieUpdate != nil {
+			if err := c.onCookieUpdate(c.cookie); err != nil {
+				return fmt.Errorf("persist refreshed Flow cookies: %w", err)
+			}
+		}
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 			return &WebSessionAuthError{Platform: PlatformGoogleFlow, StatusCode: resp.StatusCode}

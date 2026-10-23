@@ -21,18 +21,6 @@ func (s *Server) originGate(next http.Handler) http.Handler {
 	})
 }
 
-// browserLoginHTTPSGate prevents sending provider credentials over a remote
-// plaintext connection. TLS-terminating proxies must forward X-Forwarded-Proto.
-func (s *Server) browserLoginHTTPSGate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isRemoteRequest(r) && !isHTTPSRequest(r) {
-			http.Error(w, "đăng nhập từ thiết bị khác cần HTTPS", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func isHTTPSRequest(r *http.Request) bool {
 	if r.TLS != nil {
 		return true
