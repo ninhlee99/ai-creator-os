@@ -196,13 +196,22 @@ func mapDatafeed(dp DatafeedProduct, themeFallback string) products.Product {
 		Title:          dp.Name,
 		ImageURLs:      dp.Images,
 		Price:          dp.Price,
+		OriginalPrice:  dp.OldPrice,
 		Currency:       cur,
 		CommissionRate: dp.CommissionRate,
 		ShopName:       dp.ShopName,
 		Category:       dp.Category,
 		ProductURL:     dp.AffLink,
 		Theme:          theme,
+		DataUpdatedAt:  datafeedUpdatedAt(dp.UpdatedAt),
 	}
+}
+
+func datafeedUpdatedAt(updatedAt time.Time) string {
+	if updatedAt.IsZero() {
+		return ""
+	}
+	return updatedAt.UTC().Format(time.RFC3339)
 }
 
 // themeFor map category datafeed → theme slug của app (keyword đơn giản;

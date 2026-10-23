@@ -28,8 +28,10 @@ type oauthState struct {
 	verifier string // PKCE code_verifier ("" for the Web flow)
 	// redirectURI: callback URL đã dùng lúc authorize (YouTube yêu cầu khớp
 	// y hệt lúc đổi code; lưu ở đây để không phụ thuộc Host lúc callback).
-	redirectURI string
-	at          time.Time
+	redirectURI   string
+	bioReturnPath string
+	bioNonceHash  string
+	at            time.Time
 }
 
 const oauthStateTTL = 15 * time.Minute
@@ -63,6 +65,18 @@ func (o *oauthStates) issueWithRedirect(username, redirectURI string) string {
 	v.redirectURI = redirectURI
 	o.m[st] = v
 	return st
+}
+
+func (o *oauthStates) issueBioGoogle(returnPath, redirectURI, nonceHash string) string {
+	state := o.issue("", "")
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	value := o.m[state]
+	value.redirectURI = redirectURI
+	value.bioReturnPath = returnPath
+	value.bioNonceHash = nonceHash
+	o.m[state] = value
+	return state
 }
 
 // take consumes a fresh state, returning who started it (and the PKCE

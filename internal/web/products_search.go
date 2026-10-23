@@ -38,6 +38,11 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 		productErr(w, r, "", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
 		return
 	}
+	originalPrice, ok := parseBounded(r.PostFormValue("original_price"), 1e12)
+	if !ok {
+		productErr(w, r, "", "Giá gốc không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
+		return
+	}
 	commPct, ok := parseBounded(r.PostFormValue("commission_pct"), 100)
 	if !ok {
 		productErr(w, r, "", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
@@ -66,6 +71,7 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 		Theme:          theme,
 		ShopName:       strings.TrimSpace(r.PostFormValue("shop")),
 		Price:          price,
+		OriginalPrice:  originalPrice,
 		Currency:       "VND",
 		CommissionRate: commPct / 100,
 		Rating:         rating,

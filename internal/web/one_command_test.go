@@ -107,7 +107,7 @@ func TestOneCommandCreateEndpoint(t *testing.T) {
 	jsonReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	jsonReq.Header.Set("Accept", "application/json")
 	jsonRec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(jsonRec, jsonReq)
+	serveLocalTestRoute(s, jsonRec, jsonReq)
 
 	if jsonRec.Code != http.StatusOK {
 		t.Fatalf("API request expected 200, got %d, body: %s", jsonRec.Code, jsonRec.Body.String())

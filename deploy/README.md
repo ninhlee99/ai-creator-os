@@ -29,6 +29,15 @@ App mặc định chỉ nghe ở `127.0.0.1` (an toàn). Muốn mở từ xa:
 3. Thay thế: Cloudflare Tunnel (`cloudflared tunnel --url http://127.0.0.1:8080`).
    Không cần đổi `-addr`; app nhận ra request đi qua tunnel.
 
+Để Bio lấy quota theo IP qua Cloudflare Tunnel, thêm
+`AICOS_TRUST_CLOUDFLARE_IP=true` vào `.env`. App chỉ tin `CF-Connecting-IP`
+khi cờ này bật; header `X-Forwarded-For` chung luôn bị bỏ qua để tránh giả IP.
+Tailscale Serve proxy
+qua loopback nên hiện cả tailnet dùng chung một quota IP 15 lượt/ngày. Muốn
+Bio công khai cho người ngoài tailnet và quota tách theo IP, dùng Cloudflare
+Tunnel. Xem [Cloudflare client-IP header](https://developers.cloudflare.com/fundamentals/reference/http-headers/)
+và [Tailscale PROXY protocol](https://tailscale.com/docs/reference/tailscale-cli/serve).
+
 Không khuyên mở `-addr :8080` thẳng ra Internet (không có HTTPS).
 
 ## Xoay log (tự động trong app — Đợt R, mọi OS)

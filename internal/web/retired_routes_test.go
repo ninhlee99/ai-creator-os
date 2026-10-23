@@ -22,7 +22,7 @@ func TestRetiredTrendPresetRoutesAreGone(t *testing.T) {
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		rec := httptest.NewRecorder()
-		s.Routes().ServeHTTP(rec, req)
+		serveLocalTestRoute(s, rec, req)
 		if rec.Code != http.StatusNotFound && rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("%s %s = %d, want 404 or 405", tc.method, tc.path, rec.Code)
 		}

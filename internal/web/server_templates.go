@@ -55,6 +55,9 @@ var pageFiles = map[string]string{
 	"settings_providers":   "settings/providers.html",
 	"settings_safety":      "settings/safety.html",
 	"settings_accesstrade": "settings/accesstrade.html",
+	"bio_admin":            "bio_admin.html",
+	"bio_analytics":        "bio_analytics.html",
+	"bio_tryon_accounts":   "bio_tryon_accounts.html",
 	"web_ai":               "web_ai.html",
 	"onboard":              "onboard.html",
 }
@@ -97,6 +100,12 @@ func (s *Server) parseTemplates() error {
 		return fmt.Errorf("parse template bio.html: %w", err)
 	}
 	s.templates["bio"] = tbio
+	tproduct, err := template.New("bio_product").Funcs(templateFuncs).ParseFS(
+		templateFS, "templates/bio_product.html")
+	if err != nil {
+		return fmt.Errorf("parse template bio_product.html: %w", err)
+	}
+	s.templates["bio_product"] = tproduct
 	return nil
 }
 

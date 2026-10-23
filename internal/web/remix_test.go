@@ -66,7 +66,7 @@ func TestStudioRemixRequiresMotionClips(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/studio/jobs/legacy-affiliate/remix", &body)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("remix = %d", rec.Code)
 	}

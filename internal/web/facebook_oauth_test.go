@@ -59,7 +59,7 @@ func TestFacebookOAuthAuthorizeAndPerAccountPageSave(t *testing.T) {
 	t.Setenv("META_APP_SECRET", "meta-app-secret")
 	requestRecorder := httptest.NewRecorder()
 	requestInput := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/publishers/facebook/authorize?username=creator.one", nil)
-	s.Routes().ServeHTTP(requestRecorder, requestInput)
+	serveLocalTestRoute(s, requestRecorder, requestInput)
 	request := requestRecorder
 	if request.Code != http.StatusFound {
 		t.Fatalf("authorize = %d, want redirect", request.Code)

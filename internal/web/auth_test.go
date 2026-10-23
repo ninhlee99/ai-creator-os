@@ -67,6 +67,7 @@ func TestAuthGateDisabled(t *testing.T) {
 	})
 	s := &Server{} // Ledger nil → authEnabled() false
 	req := httptest.NewRequest("GET", "/dashboard", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
 	rr := httptest.NewRecorder()
 	s.authGate(next).ServeHTTP(rr, req)
 	if rr.Code != http.StatusTeapot {
@@ -91,14 +92,18 @@ func TestAuthGateEnabledFullFlow(t *testing.T) {
 
 	// Chưa đăng nhập → /dashboard bị đẩy về /login.
 	rr := httptest.NewRecorder()
-	gated.ServeHTTP(rr, httptest.NewRequest("GET", "/dashboard", nil))
+	localDashboard := httptest.NewRequest("GET", "/dashboard", nil)
+	localDashboard.RemoteAddr = "127.0.0.1:12345"
+	gated.ServeHTTP(rr, localDashboard)
 	if rr.Code != http.StatusSeeOther || !strings.Contains(rr.Header().Get("Location"), "/login") {
 		t.Fatalf("chưa đăng nhập phải redirect /login, got %d %q", rr.Code, rr.Header().Get("Location"))
 	}
 	// /healthz và /login luôn qua (watchdog + trang đăng nhập).
 	for _, p := range []string{"/healthz", "/login", "/static/app.js"} {
 		rr := httptest.NewRecorder()
-		gated.ServeHTTP(rr, httptest.NewRequest("GET", p, nil))
+		localRequest := httptest.NewRequest("GET", p, nil)
+		localRequest.RemoteAddr = "127.0.0.1:12345"
+		gated.ServeHTTP(rr, localRequest)
 		if rr.Code != http.StatusTeapot {
 			t.Fatalf("%s phải đi qua gate, got %d", p, rr.Code)
 		}
@@ -133,6 +138,7 @@ func TestAuthGateEnabledFullFlow(t *testing.T) {
 		t.Fatal("thiếu cookie session HttpOnly sau đăng nhập")
 	}
 	req2 := httptest.NewRequest("GET", "/dashboard", nil)
+	req2.RemoteAddr = "127.0.0.1:12345"
 	req2.AddCookie(sess)
 	rr2 := httptest.NewRecorder()
 	gated.ServeHTTP(rr2, req2)
@@ -172,8 +178,11 @@ func TestRemoteBlockedWithoutPassword(t *testing.T) {
 	if c := do("/settings", "127.0.0.1:5000", map[string]string{"Cf-Connecting-Ip": "1.2.3.4"}); c != http.StatusForbidden {
 		t.Errorf("tunnel chưa mật khẩu = %d, want 403", c)
 	}
-	if c := do("/healthz", "192.168.1.5:5000", nil); c != http.StatusOK {
-		t.Errorf("/healthz từ LAN = %d, want 200", c)
+	if c := do("/healthz", "192.168.1.5:5000", nil); c != http.StatusForbidden {
+		t.Errorf("/healthz từ LAN = %d, want 403", c)
+	}
+	if c := do("/healthz", "127.0.0.1:5000", nil); c != http.StatusOK {
+		t.Errorf("/healthz local = %d, want 200", c)
 	}
 	if c := do("/settings/system", "[::1]:5000", nil); c == http.StatusForbidden {
 		t.Errorf("máy chủ (::1) không được bị chặn")

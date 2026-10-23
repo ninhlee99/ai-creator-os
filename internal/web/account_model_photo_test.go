@@ -41,12 +41,10 @@ func TestHandleModelPhoto(t *testing.T) {
 		t.Fatalf("write samplePhoto: %v", err)
 	}
 
-	mux := s.Routes()
-
 	// 1. Success case: GET /models/42/face_front.jpg
 	req := httptest.NewRequest(http.MethodGet, "/models/42/face_front.jpg", nil)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 OK", rec.Code)
@@ -58,7 +56,7 @@ func TestHandleModelPhoto(t *testing.T) {
 	// 2. Disallowed extension: /models/42/secret.txt
 	reqBad := httptest.NewRequest(http.MethodGet, "/models/42/secret.txt", nil)
 	recBad := httptest.NewRecorder()
-	mux.ServeHTTP(recBad, reqBad)
+	serveLocalTestRoute(s, recBad, reqBad)
 	if recBad.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404 Not Found for disallowed extension", recBad.Code)
 	}
@@ -66,7 +64,7 @@ func TestHandleModelPhoto(t *testing.T) {
 	// 3. Non-numeric account ID
 	reqNonNum := httptest.NewRequest(http.MethodGet, "/models/abc/face_front.jpg", nil)
 	recNonNum := httptest.NewRecorder()
-	mux.ServeHTTP(recNonNum, reqNonNum)
+	serveLocalTestRoute(s, recNonNum, reqNonNum)
 	if recNonNum.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404 Not Found for non-numeric account", recNonNum.Code)
 	}
@@ -74,7 +72,7 @@ func TestHandleModelPhoto(t *testing.T) {
 	// 4. File does not exist
 	reqNotFound := httptest.NewRequest(http.MethodGet, "/models/42/missing.jpg", nil)
 	recNotFound := httptest.NewRecorder()
-	mux.ServeHTTP(recNotFound, reqNotFound)
+	serveLocalTestRoute(s, recNotFound, reqNotFound)
 	if recNotFound.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404 Not Found for missing photo", recNotFound.Code)
 	}

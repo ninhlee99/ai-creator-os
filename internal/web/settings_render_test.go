@@ -19,7 +19,7 @@ func TestSettingsTemplateRenders(t *testing.T) {
 	} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
-		s.Routes().ServeHTTP(rec, req)
+		serveLocalTestRoute(s, rec, req)
 		if rec.Code != 200 {
 			t.Fatalf("GET %s = %d", path, rec.Code)
 		}
@@ -34,7 +34,7 @@ func TestSettingsTemplateRenders(t *testing.T) {
 	for _, path := range []string{"/settings/nhan-vat", "/schedule"} {
 		req := httptest.NewRequest("GET", path, nil)
 		rec := httptest.NewRecorder()
-		s.Routes().ServeHTTP(rec, req)
+		serveLocalTestRoute(s, rec, req)
 		if rec.Code == 200 {
 			t.Errorf("GET %s = 200, want non-200 (parked)", path)
 		}

@@ -17,7 +17,7 @@ func TestHealthzStaleTicks(t *testing.T) {
 	s := newTestServer(t)
 	get := func() map[string]any {
 		rec := httptest.NewRecorder()
-		s.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+		serveLocalTestRoute(s, rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d", rec.Code)
 		}
@@ -70,7 +70,7 @@ func TestServeMediaFileExtendsWriteDeadline(t *testing.T) {
 func TestStaticAssetsCacheBusted(t *testing.T) {
 	s := newTestServer(t)
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login", nil))
+	serveLocalTestRoute(s, rec, httptest.NewRequest(http.MethodGet, "/login", nil))
 	if want := "/static/style.css?v=" + assetVersion; !strings.Contains(rec.Body.String(), want) {
 		t.Fatalf("page missing %q", want)
 	}
@@ -80,7 +80,7 @@ func TestStaticAssetsCacheBusted(t *testing.T) {
 		"/static/app.js?v=old":                "no-cache",
 	} {
 		rec := httptest.NewRecorder()
-		s.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
+		serveLocalTestRoute(s, rec, httptest.NewRequest(http.MethodGet, url, nil))
 		if got := rec.Header().Get("Cache-Control"); !strings.Contains(got, cc) {
 			t.Errorf("%s Cache-Control = %q, want %q", url, got, cc)
 		}

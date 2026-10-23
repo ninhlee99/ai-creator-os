@@ -20,7 +20,7 @@ func postJSON(t *testing.T, s *Server, path, body string) *httptest.ResponseReco
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 	return rec
 }
 

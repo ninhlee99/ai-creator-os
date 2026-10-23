@@ -8,7 +8,8 @@
     <h1>Sản phẩm</h1>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px;align-items:center">
-    <a href="/bio" target="_blank" class="btn btn-secondary btn-sm">Bio</a>
+    <a href="/bio-admin" class="btn btn-secondary btn-sm">Quản lý Bio</a>
+    <a href="/bio" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Xem Bio ↗</a>
     <a href="/studio" class="btn btn-primary btn-sm">Dựng video</a>
     <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>
   </div>
@@ -29,7 +30,7 @@
     <h2 style="margin:0;font-size:16px;border:none;padding:0;display:flex;align-items:center;gap:8px">
       <span>➕</span> Thêm sản phẩm
     </h2>
-    <span class="badge badge-dim" style="font-size:11px">Gắn trực tiếp vào Bio Link & Video AI</span>
+    <a href="/bio-admin" class="badge badge-dim" style="font-size:11px;text-decoration:none">Thêm vào kệ; chọn kênh trong Quản lý Bio →</a>
   </div>
 <form method="post" action="/products/shelf/add">
   <div class="grid2">
@@ -42,10 +43,14 @@
       <input type="text" name="title" required placeholder="vd: Tai nghe bluetooth X10">
     </div>
   </div>
-  <div class="grid3">
+  <div class="grid4">
     <div class="field">
       <label>Giá (VND) <span class="req">*</span></label>
       <input type="number" name="price" step="0.01" min="0" required placeholder="299000">
+    </div>
+    <div class="field">
+      <label>Giá gốc (VND)</label>
+      <input type="number" name="original_price" step="0.01" min="0" placeholder="Để trống nếu chưa rõ">
     </div>
     <div class="field">
       <label>Hoa hồng (%) <span class="req">*</span></label>
@@ -449,6 +454,10 @@ function atOrderSync() {
       <div class="field">
         <label>Giá (VND)</label>
         <input type="number" name="price" min="0" step="1000" placeholder="299000">
+      </div>
+      <div class="field">
+        <label>Giá gốc (VND)</label>
+        <input type="number" name="original_price" min="0" step="1000" placeholder="Để trống nếu chưa rõ">
       </div>
       <div class="field">
         <label>Rating (0–5)</label>

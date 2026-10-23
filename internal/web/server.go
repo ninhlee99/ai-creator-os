@@ -96,14 +96,22 @@ type Server struct {
 	// RemoteNeedsPassword: chưa đặt mật khẩu thì chặn mọi truy cập không
 	// đến từ chính máy chủ (Đợt AK). main bật; test mặc định tắt.
 	RemoteNeedsPassword bool
+	// TrustCloudflareIP enables CF-Connecting-IP only for loopback requests.
+	// Set only when Cloudflare Tunnel is the configured local proxy.
+	TrustCloudflareIP bool
 	// StaleTicks trả về tên các tick quá hạn chưa chạy (kẹt) — Đợt AK:
 	// /healthz báo needs_restart để watchdog ngoài tự khởi động lại app.
 	StaleTicks func() []string
 
 	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
 	// thời điểm hết hạn; restart là đăng nhập lại.
-	authMu       sync.Mutex
-	authSessions map[string]time.Time
+	authMu                sync.Mutex
+	authSessions          map[string]time.Time
+	bioTryOnKeyMu         sync.Mutex
+	bioGoogleSubjectKeyMu sync.Mutex
+	bioAnalyticsMu        sync.Mutex
+	bioGoogleSubjectKey   []byte
+	bioAnalyticsHMACKey   []byte
 
 	db                *sql.DB // read handle for decision/analytics queries
 	oauth             oauthStates
@@ -140,15 +148,16 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		return nil, err
 	}
 	s := &Server{
-		Ledger:    l,
-		Mgr:       mgr,
-		Cfg:       cfg,
-		Health:    map[string]HealthChecker{},
-		OutDir:    "data/output",
-		AvatarDir: "data/avatars", // parked-build support (handler avatar)
-		DataDir:   filepath.Dir(dbPath),
-		StartedAt: time.Now(), // Đợt S: /healthz
-		db:        db,
+		Ledger:            l,
+		Mgr:               mgr,
+		Cfg:               cfg,
+		Health:            map[string]HealthChecker{},
+		OutDir:            "data/output",
+		AvatarDir:         "data/avatars", // parked-build support (handler avatar)
+		DataDir:           filepath.Dir(dbPath),
+		StartedAt:         time.Now(), // Đợt S: /healthz
+		TrustCloudflareIP: getenvBool("AICOS_TRUST_CLOUDFLARE_IP", false),
+		db:                db,
 	}
 
 	s.applyPersistedEnv()

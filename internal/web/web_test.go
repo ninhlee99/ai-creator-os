@@ -50,15 +50,20 @@ func postForm(t *testing.T, s *Server, path string, v url.Values) *httptest.Resp
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(v.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 	return rec
 }
 
 func get(t *testing.T, s *Server, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	serveLocalTestRoute(s, rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec
+}
+
+func serveLocalTestRoute(s *Server, w http.ResponseWriter, r *http.Request) {
+	r.RemoteAddr = "127.0.0.1:12345"
+	s.Routes().ServeHTTP(w, r)
 }
 
 // (1) GET / renders the dashboard.

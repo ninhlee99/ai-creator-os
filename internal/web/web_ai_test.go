@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/webai"
@@ -28,6 +29,7 @@ func newTestWebAIServer(t *testing.T) (*Server, *webai.Store) {
 	cfg.dryRun.Store(true)
 
 	srv := &Server{
+		DataDir:    dir,
 		Cfg:        cfg,
 		WebAI:      store,
 		WebAIRelay: webai.NewProxyRelay(store),
@@ -240,6 +242,16 @@ func TestBioPinAndRedirectClick(t *testing.T) {
 	}
 	defer prodStore.Close()
 	srv.Products = prodStore
+	l, err := ledger.New(filepath.Join(t.TempDir(), "ledger.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	srv.Ledger = l
+	accountID, err := l.AddAccount("bio_creator", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// 1. Test POST /bio/pin
 	form := url.Values{
@@ -247,6 +259,7 @@ func TestBioPinAndRedirectClick(t *testing.T) {
 		"category":    {"Mỹ phẩm"},
 		"price":       {"249000"},
 		"product_url": {"https://shopee.vn/serum-rauma"},
+		"image_url":   {"https://img.shopee.vn/file/serum-rauma.jpg"},
 	}
 	req := httptest.NewRequest("POST", "/bio/pin", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -275,6 +288,12 @@ func TestBioPinAndRedirectClick(t *testing.T) {
 	}
 	if p.ClickCount != 0 {
 		t.Errorf("initial ClickCount = %d, want 0", p.ClickCount)
+	}
+	if err := prodStore.SetBioProfile(accountID, true, "", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := prodStore.SetBioListing(accountID, pid, true, 0, "", 0, "", ""); err != nil {
+		t.Fatal(err)
 	}
 
 	// 2. Test GET /bio-go/{id} records click and redirects

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/runtimeguard"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/ticksup"
@@ -22,6 +24,11 @@ import (
 )
 
 func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr string, srv *web.Server, l *ledger.Ledger, mgr *network.AccountManager, llmChain *engines.LLMChain, webCfg *web.Config, settings automation.LedgerSettings, tickSup *ticksup.Supervisor, autopilotArmed bool, guard *runtimeguard.Guard, studioInst *studio.Studio) {
+	bioRetentionDone := startBioTryOnRetentionWorker(ctx, srv, guard)
+	if srv != nil && srv.Products != nil && guard != nil {
+		guard.Go(ctx, "bio:tryon-renderer", srv.RunBioTryOnWorker)
+	}
+
 	if err := automation.SeedMasterSwitch(settings, getenvBool("MASTER_SWITCH", false)); err != nil {
 		log.Printf("settings: seed master switch: %v", err)
 	}
@@ -96,7 +103,50 @@ func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr s
 		log.Printf("shutdown: chờ job studio đang chạy...")
 		studioInst.Shutdown(30 * time.Second)
 	}
+	<-bioRetentionDone
 	log.Printf("shutdown: complete")
+}
+
+func startBioTryOnRetentionWorker(ctx context.Context, srv *web.Server, guard *runtimeguard.Guard) <-chan struct{} {
+	done := make(chan struct{})
+	if srv == nil || srv.Products == nil || guard == nil || srv.DataDir == "" {
+		close(done)
+		return done
+	}
+	guard.Go(ctx, "bio:tryon-retention", func(ctx context.Context) {
+		defer close(done)
+		cleanup := func() {
+			dedupeRemoved, dedupeErr := srv.Products.CleanupExpiredBioEventDedupe(time.Now())
+			if dedupeErr != nil {
+				log.Printf("bio analytics retention: cleanup failed: %v", dedupeErr)
+			} else if dedupeRemoved > 0 {
+				log.Printf("bio analytics retention: removed %d expired dedupe keys", dedupeRemoved)
+			}
+
+			removed, err := srv.Products.CleanupExpiredBioTryOnResults(
+				filepath.Join(srv.DataDir, products.BioTryOnResultsDir), time.Now(),
+			)
+			if err != nil {
+				log.Printf("bio try-on retention: cleanup failed: %v", err)
+				return
+			}
+			if removed > 0 {
+				log.Printf("bio try-on retention: removed %d expired jobs/results", removed)
+			}
+		}
+
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+		for {
+			cleanup()
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	})
+	return done
 }
 
 func startHarness(ctx context.Context, srv *web.Server, mgr *network.AccountManager, settings automation.LedgerSettings, webCfg *web.Config, llmChain *engines.LLMChain) {

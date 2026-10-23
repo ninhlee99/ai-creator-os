@@ -78,6 +78,11 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 		productErr(w, r, "shelf", "Giá không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
 		return
 	}
+	originalPrice, ok := parseBounded(r.PostFormValue("original_price"), 1e12)
+	if !ok {
+		productErr(w, r, "shelf", "Giá gốc không hợp lệ — nhập số ≥ 0 (đơn vị VND).")
+		return
+	}
 	rate, ok := parseBounded(r.PostFormValue("commission_pct"), 100)
 	if !ok {
 		productErr(w, r, "shelf", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
@@ -97,7 +102,8 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	p := products.Product{
 		Source: "manual", SourceID: pid, Title: title,
 		Category: strings.TrimSpace(r.PostFormValue("category")),
-		Price:    price, Currency: "VND", CommissionRate: rate / 100, Theme: theme,
+		Price: price, OriginalPrice: originalPrice, Currency: "VND",
+		CommissionRate: rate / 100, Theme: theme,
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {

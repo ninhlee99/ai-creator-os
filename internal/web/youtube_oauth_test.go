@@ -50,7 +50,7 @@ func TestYouTubeAuthorizeRedirectsToGoogle(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/publishers/youtube/authorize?username=yt_ok", nil)
 	req.Host = "127.0.0.1:8080"
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 	if rec.Code != http.StatusFound {
 		t.Fatalf("code = %d, want 302", rec.Code)
 	}
@@ -120,7 +120,7 @@ func TestOriginGateBlocksCrossSitePost(t *testing.T) {
 	evil.Host = "127.0.0.1:8080"
 	evil.Header.Set("Origin", "https://evil.com")
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, evil)
+	serveLocalTestRoute(s, rec, evil)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("cross-site POST = %d, want 403", rec.Code)
 	}
@@ -129,7 +129,7 @@ func TestOriginGateBlocksCrossSitePost(t *testing.T) {
 	local.Host = "127.0.0.1:8080"
 	local.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec2 := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec2, local)
+	serveLocalTestRoute(s, rec2, local)
 	if rec2.Code == http.StatusForbidden {
 		t.Fatal("POST nội bộ bị chặn oan")
 	}

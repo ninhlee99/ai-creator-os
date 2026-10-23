@@ -102,7 +102,7 @@
       <tbody>
       {{$curGroup := ""}}
       {{range .EnvStatus}}
-      {{if or (eq .Group "Google Gemini") (eq .Group "OpenAI & Claude & AI Khác")}}
+      {{if or (eq .Group "Google Gemini") (eq .Group "OpenAI & Claude & AI Khác") (eq .Group "Bio · Google Login")}}
       {{if not (or (eq .Name "GEMINI_TEXT_MODEL") (eq .Name "GEMINI_IMAGE_MODEL") (eq .Name "GEMINI_TTS_MODEL"))}}
         {{if ne $curGroup .Group}}
           {{$curGroup = .Group}}

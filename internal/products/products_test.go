@@ -122,6 +122,29 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSaveClearsOriginalPriceWhenPromotionEnds(t *testing.T) {
+	store, err := NewStore(filepath.Join(t.TempDir(), "products.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	id, err := store.Save(Product{Source: "manual", SourceID: "promo", Title: "Áo", Price: 300, OriginalPrice: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Save(Product{Source: "manual", SourceID: "promo", Title: "Áo", Price: 500}); err != nil {
+		t.Fatal(err)
+	}
+	product, err := store.GetByID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if product.OriginalPrice != 0 {
+		t.Fatalf("ended promotion retained stale original price %.2f", product.OriginalPrice)
+	}
+}
+
 // TestShelfLifecycle — trạng thái kệ sống cùng kho: thêm vào kệ → hiện
 // trong Shelf; gỡ khỏi kệ → không còn; hạ cấp dữ liệu cũ (DB không có cột
 // kệ) được migration tự thêm cột khi mở.
@@ -225,4 +248,3 @@ func TestRecordClick(t *testing.T) {
 		t.Errorf("ClickCount = %d, want 2", pAfter.ClickCount)
 	}
 }
-

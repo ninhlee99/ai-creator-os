@@ -21,7 +21,7 @@ func TestAffiliateRedirect(t *testing.T) {
 	s := newTestServer(t)
 	req := httptest.NewRequest("GET", "/affiliate", nil)
 	rec := httptest.NewRecorder()
-	s.Routes().ServeHTTP(rec, req)
+	serveLocalTestRoute(s, rec, req)
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("GET /affiliate = %d, want 303", rec.Code)
 	}

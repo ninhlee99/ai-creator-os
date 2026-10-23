@@ -1,0 +1,200 @@
+{{define "bio_product"}}<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Chi tiết {{.Product.Title}} từ kênh @{{.ChannelHandle}}">
+  <title>{{.Product.Title}} · @{{.ChannelHandle}}</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0c1018;--panel:#141b27;--panel2:#1a2432;--line:#263244;--text:#f5f7fa;--muted:#a5afbd;--accent:#76e0bd;--violet:#b8a1ff;--warning:#ffd58a}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#293249 0,transparent 55%),var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:inherit}.shell{max-width:980px;margin:0 auto;padding:20px 18px 48px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:24px}.brand{font-weight:800;letter-spacing:.02em}.back{color:var(--muted);text-decoration:none;font-size:13px}.layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:26px;align-items:start}
+    .gallery,.details{border:1px solid var(--line);border-radius:22px;background:rgba(20,27,39,.92);overflow:hidden}.hero{display:grid;place-items:center;aspect-ratio:4/4.6;background:#0a0e14}.hero img{width:100%;height:100%;object-fit:contain}.thumbs{display:flex;gap:8px;padding:12px;overflow-x:auto}.thumb{flex:0 0 66px;width:66px;height:66px;border:1px solid var(--line);border-radius:11px;background:#0a0e14;padding:0;overflow:hidden;cursor:pointer}.thumb img{width:100%;height:100%;object-fit:cover}.thumb[aria-current=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+    .details{padding:22px}.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);font-weight:700}.title{font-size:25px;line-height:1.2;letter-spacing:-.025em;margin:8px 0 12px}.meta{color:var(--muted);font-size:13px;display:flex;gap:8px;flex-wrap:wrap}.price-row{display:flex;align-items:baseline;gap:10px;margin:20px 0 4px;flex-wrap:wrap}.price{font-size:28px;font-weight:800;color:var(--accent);letter-spacing:-.03em}.original{text-decoration:line-through;color:var(--muted);font-size:14px}.discount{background:#472631;color:#ff9fae;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:700}.stale{color:var(--warning);font-size:12px;margin-top:8px}.product-info{margin:20px 0;padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--panel2)}.product-info h2{margin:0 0 7px;font-size:13px}.product-info p{margin:0;color:#d2d8e1;font-size:13px;line-height:1.65;white-space:pre-line;overflow-wrap:anywhere}.voucher{margin:18px 0;padding:14px;border:1px dashed #7d69ba;border-radius:15px;background:rgba(184,161,255,.08)}.voucher-head{color:var(--violet);font-weight:750;font-size:13px}.voucher-line{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}.voucher-code{font-family:ui-monospace,Menlo,monospace;font-weight:800;letter-spacing:.07em}.voucher button{border:1px solid #7666a8;border-radius:9px;padding:7px 10px;background:#2b2540;color:#fff;cursor:pointer;font-weight:700}.terms{font-size:11px;color:var(--muted);margin-top:6px}.actions{display:grid;gap:9px;margin-top:22px}.buy{display:flex;justify-content:center;align-items:center;text-decoration:none;border-radius:12px;padding:13px;background:linear-gradient(110deg,#82efc8,#5ed1ad);color:#102219;font-weight:850}.tryon-box{margin-top:14px;padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--panel2)}.tryon-box h2{margin:0 0 5px;font-size:17px}.tryon-box p{color:var(--muted);font-size:12px;margin:5px 0 12px}.tryon-form{display:grid;gap:10px}.tryon-form input[type=file]{width:100%;font-size:12px}.consent{display:flex;align-items:flex-start;gap:8px;color:var(--muted);font-size:11px}.consent input{margin:3px 0 0}.tryon{width:100%;border:0;border-radius:11px;padding:12px;background:var(--accent);color:#102219;font-weight:800;text-align:center;cursor:pointer}.tryon:disabled{opacity:.55;cursor:wait}.tryon-status{min-height:20px;color:var(--muted);font-size:12px;margin-top:9px}.tryon-results{margin-top:12px}.tryon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.tryon-grid figure{margin:0;min-width:0}.tryon-grid img{display:block;width:100%;height:150px;object-fit:contain;background:#0a0e14;border-radius:9px}.tryon-grid figcaption{margin-top:5px;color:var(--muted);font-size:10px;text-align:center}.tryon-note{color:var(--muted);font-size:11px;text-align:center;margin:7px 0 0}.shop{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}#toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#142d26;border:1px solid #2c7760;padding:9px 14px;border-radius:99px;transition:.18s}#toast.show{opacity:1;transform:translate(-50%,0)}
+    .google-login{display:block;text-align:center;padding:12px;border-radius:11px;background:#fff;color:#202124;font-weight:750;text-decoration:none}.google-account-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;color:var(--muted);font-size:12px}.google-account-row strong{color:var(--text)}.google-account-row form{margin:0}.google-logout{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:transparent;color:var(--text);cursor:pointer}.google-login-message{color:var(--warning)!important}
+    @media(max-width:720px){.shell{padding:14px 12px 30px}.layout{grid-template-columns:1fr;gap:14px}.details{padding:18px}.title{font-size:22px}.hero{aspect-ratio:1/1}.top{margin-bottom:16px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top"><span class="brand">MIUNOVA · SHOP</span><a class="back" href="{{.ProfileURL}}">← Xem thêm sản phẩm của @{{.ChannelHandle}}</a></header>
+    <div class="layout">
+      <section class="gallery" aria-label="Ảnh sản phẩm">
+        <div class="hero">
+          {{if .Product.ImageURLs}}<img id="bio-product-hero" src="{{index .Product.ImageURLs 0}}" alt="{{.Product.Title}}">{{else}}<span aria-hidden="true">Ảnh sản phẩm chưa có</span>{{end}}
+        </div>
+        {{if gt (len .Product.ImageURLs) 1}}
+        <div class="thumbs" aria-label="Chọn ảnh sản phẩm">
+          {{range $i, $image := .Product.ImageURLs}}<button class="thumb" type="button" aria-current="{{if eq $i 0}}true{{else}}false{{end}}" onclick="showProductImage(this,'{{$image}}')"><img src="{{$image}}" alt="Ảnh {{add $i 1}}" loading="lazy"></button>{{end}}
+        </div>
+        {{end}}
+      </section>
+      <section class="details">
+        <div class="eyebrow">{{.Product.Category}}</div>
+        <h1 class="title">{{.Product.Title}}</h1>
+        <div class="meta">
+          {{if .Product.ShopName}}<span>{{.Product.ShopName}}</span>{{end}}
+          {{if .Product.Rating}}<span>★ {{printf "%.1f" .Product.Rating}}</span>{{end}}
+          {{if .Product.SoldCount}}<span>{{.Product.SoldCount}} đã bán</span>{{end}}
+        </div>
+        <div class="price-row">
+          {{if gt .Product.Price 0.0}}<span class="price">{{.Product.PriceFormatted}}</span>{{else}}<span class="price">Xem giá tại shop</span>{{end}}
+          {{if .Product.OriginalPrice}}<span class="original">{{.Product.OriginalPrice}}</span>{{end}}
+          {{if .Product.DiscountBadge}}<span class="discount">{{.Product.DiscountBadge}}</span>{{end}}
+        </div>
+        {{if .Product.PriceStale}}<p class="stale">Giá từ nguồn đã cũ. Kiểm tra giá mới nhất tại shop trước khi mua.</p>{{else if .Product.DataUpdatedAt}}<p class="terms">Cập nhật nguồn: {{.Product.DataUpdatedAt}}</p>{{else if .Product.PriceFreshnessUnknown}}<p class="terms">Chưa rõ thời điểm cập nhật giá. Xác nhận giá tại shop trước khi mua.</p>{{end}}
+
+        {{if .Product.ProductDetails}}<section class="product-info" aria-labelledby="product-info-title"><h2 id="product-info-title">Thông tin sản phẩm</h2><p>{{.Product.ProductDetails}}</p></section>{{end}}
+
+        {{if .Product.VoucherAvailable}}
+        <div class="voucher">
+          <div class="voucher-head">MÃ ƯU ĐÃI</div>
+          <div class="voucher-line">{{if .Product.VoucherCode}}<span class="voucher-code">{{.Product.VoucherCode}}</span><button type="button" onclick="copyVoucher(this)">Sao chép</button>{{else}}<span class="voucher-code">Ưu đãi áp dụng tại shop</span>{{end}}</div>
+          {{if gt .Product.VoucherValue 0.0}}<div class="terms">Giảm {{.Product.VoucherValueFormatted}}</div>{{end}}
+          {{if .Product.VoucherTerms}}<div class="terms">{{.Product.VoucherTerms}}</div>{{end}}
+          {{if .Product.VoucherEndsAt}}<div class="terms">Hết hạn: {{.Product.VoucherEndsAt}}</div>{{end}}
+        </div>
+        {{end}}
+
+        <div class="actions">
+          <a class="buy" href="{{.Product.BuyURL}}">Xem giá và mua tại shop ↗</a>
+          <section class="tryon-box" aria-labelledby="tryon-title">
+            <h2 id="tryon-title">Thử phối đồ bằng AI</h2>
+            <p>AI tạo ảnh phối đồ phong cách 3D từ ảnh bạn tải lên và ảnh sản phẩm. Kết quả chỉ để tham khảo, không xác nhận độ vừa hay chi tiết chính xác.</p>
+            {{if .TryOnLoginMessage}}<p class="google-login-message" role="status">{{.TryOnLoginMessage}}</p>{{end}}
+            {{if .TryOnReady}}
+              {{if .TryOnSignedIn}}
+              <div class="google-account-row"><span>Đã đăng nhập: <strong>{{.TryOnGoogleEmail}}</strong></span>
+                <form method="post" action="{{.TryOnLogoutURL}}"><button class="google-logout" type="submit">Đăng xuất</button></form>
+              </div>
+              <form id="bio-tryon-form" class="tryon-form" action="{{.TryOnEndpoint}}" method="post" enctype="multipart/form-data">
+                <label for="bio-tryon-photo">Chọn ảnh toàn thân rõ người (JPG, PNG hoặc WebP; tối đa 8 MB)</label>
+                <input id="bio-tryon-photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required>
+                <label class="consent"><input type="checkbox" name="consent" required><span>Tôi đồng ý gửi ảnh lên Google AI để tạo ảnh phối đồ. Ảnh tải lên được xóa sau xử lý.</span></label>
+                <button class="tryon" type="submit">Tạo ảnh phối đồ</button>
+              </form>
+              {{else if .TryOnLoginReady}}
+              <a class="google-login" href="{{.TryOnLoginURL}}">Đăng nhập bằng Google để thử đồ</a>
+              {{else}}
+              <p>Đăng nhập Google chưa được cấu hình cho Bio.</p>
+              {{end}}
+            {{else}}
+            <p>Hiện chưa kết nối được bộ tạo ảnh hoặc ảnh sản phẩm phù hợp.</p>
+            {{end}}
+            <div id="bio-tryon-status" class="tryon-status" role="status" aria-live="polite"></div>
+            <div id="bio-tryon-results" class="tryon-results" hidden>
+              <div class="tryon-grid">
+                <figure><img id="bio-tryon-source" alt="Ảnh bạn tải lên"><figcaption>Ảnh gốc của bạn</figcaption></figure>
+                {{if .Product.ImageURLs}}<figure><img src="{{index .Product.ImageURLs 0}}" alt="Ảnh sản phẩm gốc"><figcaption>Ảnh sản phẩm gốc</figcaption></figure>{{end}}
+                <figure><img id="bio-tryon-output" alt="Ảnh phối đồ AI phong cách 3D"><figcaption>Kết quả AI · phong cách 3D</figcaption></figure>
+              </div>
+            </div>
+            <p class="tryon-note">Mỗi Google account: tối đa 3 lượt cho mỗi sản phẩm và 15 lượt mỗi ngày. Kết quả tự xóa sau 24 giờ.</p>
+          </section>
+        </div>
+        {{if .Product.ShopName}}<div class="shop">Sản phẩm từ {{.Product.ShopName}}. Giá, tồn kho và ưu đãi cuối cùng do shop xác nhận.</div>{{end}}
+      </section>
+    </div>
+  </main>
+  <div id="toast" role="status" aria-live="polite">Đã sao chép mã ưu đãi</div>
+  <script>
+    function showProductImage(button, src) {
+      var hero = document.getElementById('bio-product-hero');
+      if (hero) hero.src = src;
+      document.querySelectorAll('.thumb').forEach(function(item) { item.setAttribute('aria-current', item === button ? 'true' : 'false'); });
+    }
+    (function setupBioTryOn() {
+      var form = document.getElementById('bio-tryon-form');
+      if (!form) return;
+      var input = document.getElementById('bio-tryon-photo');
+      var button = form.querySelector('button[type="submit"]');
+      var status = document.getElementById('bio-tryon-status');
+      var results = document.getElementById('bio-tryon-results');
+      var source = document.getElementById('bio-tryon-source');
+      var output = document.getElementById('bio-tryon-output');
+      var sourceURL = '';
+      input.addEventListener('change', function() {
+        if (sourceURL) URL.revokeObjectURL(sourceURL);
+        sourceURL = input.files && input.files[0] ? URL.createObjectURL(input.files[0]) : '';
+        if (sourceURL) source.src = sourceURL;
+      });
+      form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        button.disabled = true;
+        results.hidden = true;
+        status.textContent = 'Đang tải ảnh và xếp lượt tạo ảnh…';
+        try {
+          var response = await fetch(form.action, {method:'POST', body:new FormData(form)});
+          var job = await response.json();
+          if (response.status === 401 && job.login_url) {
+            window.location.assign(job.login_url);
+            return;
+          }
+          if (!response.ok) throw new Error(job.error || 'Không gửi được ảnh thử đồ');
+          status.textContent = 'AI đang tạo ảnh phối đồ…';
+          for (var i = 0; i < 320; i++) {
+            await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+            var poll = await fetch(job.job_url, {cache:'no-store'});
+            if (!poll.ok) throw new Error('Không tìm thấy lượt thử đồ này');
+            var current = await poll.json();
+            if (current.status === 'succeeded') {
+              output.src = current.image_url;
+              results.hidden = false;
+              status.textContent = 'Đã tạo xong. Ảnh là bản phối AI ước lượng.';
+              return;
+            }
+            if (current.status === 'failed' || current.status === 'expired') {
+              throw new Error(current.message || 'Không tạo được ảnh phối đồ');
+            }
+          }
+          throw new Error('Tạo ảnh mất quá lâu. Hãy tải lại trang sau ít phút.');
+        } catch (error) {
+          status.textContent = error.message || 'Không tạo được ảnh phối đồ';
+        } finally {
+          button.disabled = false;
+        }
+      });
+    })();
+    function copyVoucher(button) {
+      if (button.disabled) return;
+      button.disabled = true;
+      var toast = document.getElementById('toast');
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 2200);
+      }
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).catch(function() { return legacyCopy(text); });
+        }
+        return legacyCopy(text);
+      }
+      function legacyCopy(text) {
+        var field = document.createElement('textarea');
+        field.value = text;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        var copied = document.execCommand('copy');
+        field.remove();
+        return copied ? Promise.resolve() : Promise.reject(new Error('clipboard unavailable'));
+      }
+      fetch('{{.Product.VoucherCopyURL}}', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:''})
+        .then(function(response) {
+          if (!response.ok) throw new Error('voucher unavailable');
+          return response.json();
+        })
+        .then(function(result) {
+          if (!result || !result.code) throw new Error('voucher unavailable');
+          return copyText(result.code);
+        })
+        .then(function() { showToast('Đã sao chép mã ưu đãi'); })
+        .catch(function() { showToast('Voucher đã hết hạn hoặc không thể xác minh. Hãy kiểm tra tại shop.'); })
+        .finally(function() { button.disabled = false; });
+    }
+  </script>
+</body>
+</html>{{end}}

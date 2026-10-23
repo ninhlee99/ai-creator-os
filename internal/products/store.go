@@ -47,6 +47,8 @@ func (s *Store) migrate() error {
 		source TEXT NOT NULL, source_id TEXT NOT NULL,
 		title TEXT NOT NULL, image_urls TEXT NOT NULL DEFAULT '[]',
 		price REAL NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT '',
+		original_price REAL NOT NULL DEFAULT 0,
+		data_updated_at TEXT NOT NULL DEFAULT '',
 		commission_rate REAL NOT NULL DEFAULT 0,
 		shop_name TEXT NOT NULL DEFAULT '', rating REAL NOT NULL DEFAULT 0,
 		sold_count INTEGER NOT NULL DEFAULT 0, category TEXT NOT NULL DEFAULT '',
@@ -62,8 +64,122 @@ func (s *Store) migrate() error {
 	-- generic key/value settings (e.g. autopilot schedule) so the web UI —
 	-- not env vars or CLI — is the control plane for operations.
 	CREATE TABLE IF NOT EXISTS settings(
-		key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');`)
+		key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');
+	CREATE TABLE IF NOT EXISTS bio_profiles(
+		account_id INTEGER PRIMARY KEY,
+		published INTEGER NOT NULL DEFAULT 0,
+		description TEXT NOT NULL DEFAULT '',
+		updated_at TEXT NOT NULL);
+	CREATE TABLE IF NOT EXISTS bio_listings(
+		account_id INTEGER NOT NULL,
+		product_id INTEGER NOT NULL,
+		published INTEGER NOT NULL DEFAULT 0,
+		display_order INTEGER NOT NULL DEFAULT 0,
+		voucher_code TEXT NOT NULL DEFAULT '',
+		voucher_value REAL NOT NULL DEFAULT 0,
+		voucher_ends_at TEXT NOT NULL DEFAULT '',
+		voucher_terms TEXT NOT NULL DEFAULT '',
+		product_details TEXT NOT NULL DEFAULT '',
+		image_urls_override TEXT NOT NULL DEFAULT '[]',
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		UNIQUE(account_id, product_id));
+	CREATE INDEX IF NOT EXISTS idx_bio_listings_published ON bio_listings(account_id,published,display_order);
+	CREATE TABLE IF NOT EXISTS bio_events(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		account_id INTEGER NOT NULL,
+		product_id INTEGER NOT NULL DEFAULT 0,
+		event_type TEXT NOT NULL,
+		local_day TEXT NOT NULL,
+		created_at TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_bio_events_account_day ON bio_events(account_id,local_day,event_type);
+	CREATE INDEX IF NOT EXISTS idx_bio_events_product_day ON bio_events(account_id,product_id,local_day,event_type);
+	CREATE INDEX IF NOT EXISTS idx_bio_events_created_at ON bio_events(created_at);
+	CREATE TABLE IF NOT EXISTS bio_event_dedupe(
+		dedupe_key TEXT PRIMARY KEY,
+		expires_at TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_bio_event_dedupe_expires ON bio_event_dedupe(expires_at);
+	CREATE TABLE IF NOT EXISTS bio_tryon_jobs(
+		id TEXT PRIMARY KEY,
+		account_id INTEGER NOT NULL,
+		buyer_google_account_id INTEGER NOT NULL DEFAULT 0,
+		product_id INTEGER NOT NULL,
+		ip_hash TEXT NOT NULL,
+		device_hash TEXT NOT NULL,
+		image_hash TEXT NOT NULL,
+		status TEXT NOT NULL,
+		result_path TEXT NOT NULL DEFAULT '',
+		error_code TEXT NOT NULL DEFAULT '',
+		local_day TEXT NOT NULL,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		expires_at TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_bio_tryon_reuse ON bio_tryon_jobs(product_id,image_hash,status,expires_at);
+	CREATE INDEX IF NOT EXISTS idx_bio_tryon_ip_product ON bio_tryon_jobs(ip_hash,product_id,created_at);
+	CREATE INDEX IF NOT EXISTS idx_bio_tryon_device_product ON bio_tryon_jobs(device_hash,product_id,created_at);
+	CREATE TABLE IF NOT EXISTS bio_google_accounts(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		subject_hash TEXT NOT NULL UNIQUE,
+		email TEXT NOT NULL DEFAULT '',
+		display_name TEXT NOT NULL DEFAULT '',
+		active INTEGER NOT NULL DEFAULT 1,
+		created_at TEXT NOT NULL,
+		last_login_at TEXT NOT NULL);
+	CREATE TABLE IF NOT EXISTS bio_google_sessions(
+		session_hash TEXT PRIMARY KEY,
+		account_id INTEGER NOT NULL,
+		created_at TEXT NOT NULL,
+		expires_at TEXT NOT NULL);
+	CREATE INDEX IF NOT EXISTS idx_bio_google_sessions_expiry ON bio_google_sessions(expires_at);
+	CREATE INDEX IF NOT EXISTS idx_bio_google_sessions_account ON bio_google_sessions(account_id);
+	CREATE TABLE IF NOT EXISTS bio_tryon_account_product_usage(
+		account_id INTEGER NOT NULL,
+		product_id INTEGER NOT NULL,
+		request_count INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY(account_id,product_id));
+	CREATE TABLE IF NOT EXISTS bio_tryon_account_daily_usage(
+		account_id INTEGER NOT NULL,
+		local_day TEXT NOT NULL,
+		request_count INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY(account_id,local_day));
+	CREATE TABLE IF NOT EXISTS bio_tryon_product_usage(
+		identity_type TEXT NOT NULL,
+		identity_hash TEXT NOT NULL,
+		product_id INTEGER NOT NULL,
+		request_count INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY(identity_type,identity_hash,product_id));
+	CREATE TABLE IF NOT EXISTS bio_tryon_daily_usage(
+		identity_type TEXT NOT NULL,
+		identity_hash TEXT NOT NULL,
+		local_day TEXT NOT NULL,
+		request_count INTEGER NOT NULL DEFAULT 0,
+		PRIMARY KEY(identity_type,identity_hash,local_day));`)
 	if err != nil {
+		return err
+	}
+	if err := s.addColumn("bio_listings", "image_urls_override", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		return err
+	}
+	if err := s.addColumn("bio_listings", "product_details", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.addColumn("bio_tryon_jobs", "buyer_google_account_id", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`UPDATE bio_tryon_jobs SET status='expired'
+		WHERE buyer_google_account_id=0 AND status IN ('queued','running','succeeded')`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`DROP INDEX IF EXISTS idx_bio_tryon_idempotency`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_bio_tryon_google_idempotency
+		ON bio_tryon_jobs(buyer_google_account_id,product_id,image_hash)
+		WHERE status IN ('queued','running','succeeded')`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_bio_tryon_buyer_account
+		ON bio_tryon_jobs(buyer_google_account_id,created_at)`); err != nil {
 		return err
 	}
 	// R2-W1: shelf state moved into this store (it used to live in the
@@ -76,6 +192,12 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.addColumn("products", "click_count", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "original_price", "REAL NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "data_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
 	// Đợt Y: một sản phẩm chỉ được chọn một lần cho mỗi account — chống
@@ -159,16 +281,18 @@ func (s *Store) Save(p Product) (int64, error) {
 	imgs, _ := json.Marshal(p.ImageURLs)
 	now := time.Now().Format("2006-01-02T15:04:05")
 	res, err := s.db.Exec(`
-		INSERT INTO products(source,source_id,title,image_urls,price,currency,
+		INSERT INTO products(source,source_id,title,image_urls,price,currency,original_price,data_updated_at,
 			commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(source,source_id) DO UPDATE SET
 			title=excluded.title, image_urls=excluded.image_urls, price=excluded.price,
+			original_price=excluded.original_price,
+			data_updated_at=CASE WHEN excluded.data_updated_at<>'' THEN excluded.data_updated_at ELSE products.data_updated_at END,
 			commission_rate=excluded.commission_rate, shop_name=excluded.shop_name,
 			rating=excluded.rating, sold_count=excluded.sold_count,
 			category=excluded.category, product_url=excluded.product_url,
 			theme=excluded.theme, found_at=excluded.found_at`,
-		p.Source, p.SourceID, p.Title, string(imgs), p.Price, p.Currency,
+		p.Source, p.SourceID, p.Title, string(imgs), p.Price, p.Currency, p.OriginalPrice, p.DataUpdatedAt,
 		p.CommissionRate, p.ShopName, p.Rating, p.SoldCount, p.Category,
 		p.ProductURL, p.Theme, now)
 	if err != nil {
@@ -188,7 +312,7 @@ func scanProduct(row interface {
 	var p Product
 	var imgs string
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price,
-		&p.Currency, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount,
+		&p.Currency, &p.OriginalPrice, &p.DataUpdatedAt, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount,
 		&p.Category, &p.ProductURL, &p.Theme, &p.FoundAt, &p.ShelfStatus, &p.ShelfScore, &p.ClickCount)
 	if err != nil {
 		return p, err
@@ -197,7 +321,7 @@ func scanProduct(row interface {
 	return p, nil
 }
 
-const productCols = `id,source,source_id,title,image_urls,price,currency,` +
+const productCols = `id,source,source_id,title,image_urls,price,currency,original_price,data_updated_at,` +
 	`commission_rate,shop_name,rating,sold_count,category,product_url,theme,found_at,` +
 	`shelf_status,shelf_score,click_count`
 

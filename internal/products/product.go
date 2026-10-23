@@ -13,6 +13,7 @@ type Product struct {
 	Title          string
 	ImageURLs      []string // listing photos (ground truth for product lock)
 	Price          float64
+	OriginalPrice  float64 // provider-supplied list price; 0 means unknown
 	Currency       string
 	CommissionRate float64 // 0..1 — the king metric
 	ShopName       string
@@ -22,6 +23,7 @@ type Product struct {
 	ProductURL     string
 	Theme          string // theme it was discovered under
 	FoundAt        string
+	DataUpdatedAt  string // provider timestamp; empty means unknown
 	// Shelf state (R2-W1): "shelf"/"scaled" = curated onto the Kệ hàng
 	// shelf; "" = discovery pool only. Lives in this same store so the
 	// autopilot sees shelf-added products immediately.

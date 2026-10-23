@@ -5,8 +5,8 @@ package web
 //
 // Thiết kế đơn giản, đủ cho app cá nhân single-user:
 //   - Chưa đặt mật khẩu → app chạy như cũ (mặc định bind localhost).
-//   - Đã đặt → mọi route (kể cả /api/*) yêu cầu đăng nhập, trừ /login,
-//     /logout, /healthz (watchdog), /static/*.
+//   - Đã đặt → mọi route riêng tư yêu cầu đăng nhập, trừ /login, /logout,
+//     /static/* và /healthz trên loopback. Từ xa chỉ mở allowlist Bio.
 //   - Hash: PBKDF2-HMAC-SHA256 100k vòng, salt 16 byte (stdlib only),
 //     lưu "v1$salthex$hashhex" trong ledger settings (auth.password_hash).
 //   - Session: token ngẫu nhiên 32 byte, cookie HttpOnly + SameSite=Lax,
@@ -171,14 +171,19 @@ func (s *Server) destroyAuthSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// authGate chặn mọi route khi đã đặt mật khẩu mà chưa đăng nhập.
-// /healthz luôn mở cho watchdog; /login//logout//static phục vụ trang đăng nhập.
+// authGate chặn route riêng tư khi chưa đăng nhập. Remote chỉ được vào
+// allowlist Bio; /healthz chỉ mở từ loopback cho watchdog.
 func (s *Server) authGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		remote := isRemoteRequest(r)
+		if isPublicBioRequest(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if !s.authEnabled() {
-			// Đợt AK: chưa đặt mật khẩu thì chỉ chính máy chủ được vào — mở
-			// app ra LAN/tunnel mà quên mật khẩu không biến thành cửa mở.
-			if s.RemoteNeedsPassword && r.URL.Path != "/healthz" && isRemoteRequest(r) {
+			// Remote visitors get only the explicit public bio allowlist.
+			// Private pages fail closed even when no dashboard password exists.
+			if remote {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.WriteHeader(http.StatusForbidden)
 				_, _ = w.Write([]byte(remoteBlockedHTML))
@@ -188,7 +193,7 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 			return
 		}
 		p := r.URL.Path
-		if p == "/login" || p == "/logout" || p == "/healthz" ||
+		if p == "/login" || p == "/logout" || (!remote && p == "/healthz") ||
 			p == "/favicon.ico" || strings.HasPrefix(p, "/static/") {
 			next.ServeHTTP(w, r)
 			return
