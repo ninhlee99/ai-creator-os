@@ -58,8 +58,12 @@ var bioTryOnDeniedNetworks = []netip.Prefix{
 	netip.MustParsePrefix("2002::/16"),
 }
 
-func (s *Server) bioTryOnReady(ctx context.Context) bool {
-	return s.Studio != nil && s.Studio.MediaGen() != nil && s.Studio.MediaGen().Healthy(ctx)
+const bioTryOnUnavailableMessage = "Thử phối đồ đang tạm dừng theo U-04: chưa có bộ tạo ảnh tham chiếu miễn phí."
+
+// The current free image provider cannot use reference photos. Reject requests
+// before accepting uploads or consuming per-account quota.
+func (s *Server) bioTryOnReady(context.Context) bool {
+	return false
 }
 
 func (s *Server) bioTryOnRoot() (string, error) {
@@ -84,8 +88,12 @@ func (s *Server) bioTryOnRoot() (string, error) {
 }
 
 func (s *Server) handleBioTryOnCreate(w http.ResponseWriter, r *http.Request) {
-	if s.Products == nil || !s.bioTryOnReady(r.Context()) {
+	if s.Products == nil {
 		writeJSONErr(w, "Tạo ảnh phối đồ AI hiện chưa sẵn sàng", http.StatusServiceUnavailable)
+		return
+	}
+	if !s.bioTryOnReady(r.Context()) {
+		writeJSONErr(w, bioTryOnUnavailableMessage, http.StatusServiceUnavailable)
 		return
 	}
 	channel := strings.TrimPrefix(r.PathValue("channel"), "@")

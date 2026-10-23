@@ -14,8 +14,8 @@
 
 <section class="form-card bio-tryon-readiness" aria-labelledby="bio-tryon-readiness-title">
   <div class="bio-tryon-status"><span class="bio-tryon-status-dot" aria-hidden="true"></span><strong id="bio-tryon-readiness-title">Thử phối đồ bằng AI</strong></div>
-  <p>Khách đăng nhập bằng Google. Mỗi tài khoản có tối đa 3 lượt cho một sản phẩm và 15 lượt mỗi ngày. Ảnh người mua được gửi tới Google AI; kết quả là ảnh 3D phong cách AI, không phải mô phỏng độ vừa hay ảnh sản phẩm chính xác.</p>
-  {{if .TryOnGoogleLoginReady}}<p class="notice">Đăng nhập Google đã sẵn sàng.</p>{{else}}<p class="err">Chưa cấu hình Google OAuth cho Bio. Cấu hình BIO_GOOGLE_CLIENT_ID, BIO_GOOGLE_CLIENT_SECRET và callback BIO_GOOGLE_REDIRECT_URI ở <a href="/settings/system">Cài đặt hệ thống</a>.</p>{{end}}
+  <p>Tính năng đang tạm dừng theo U-04: chưa có bộ tạo ảnh tham chiếu miễn phí. MiuNova không nhận ảnh mới, không tính quota và không gửi ảnh người mua tới Google AI.</p>
+  <p>Tài khoản và số liệu quota cũ vẫn giữ để tra cứu; không cần cấu hình OAuth khi tính năng tạm dừng.</p>
   <a href="/bio-admin/try-on-accounts" class="btn btn-secondary btn-sm">Theo dõi và khóa tài khoản Google</a>
 </section>
 

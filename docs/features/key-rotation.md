@@ -18,7 +18,7 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
 
 | Engine | File keyring | Chính sách |
 |---|---|---|
-| Media (ảnh) | `internal/studio/mediagen.go` (`GeminiMediaGen`) | round-robin; bỏ key invalid; cooldown khi 429/quota theo thang **60s → 5m → 15m** (`keyBackoffs`); key khoẻ lại → reset thang |
+| Media analysis (ảnh tham chiếu) | `internal/studio/mediagen_image.go` (`GeminiMediaGen`) | Gemini text model dùng round-robin; bỏ key invalid; cooldown khi 429/quota theo thang **60s → 5m → 15m** (`keyBackoffs`); key khỏe lại → reset thang |
 | TTS (giọng Gemini) | `internal/engines/tts/keyring.go` (`KeyRing`) | round-robin; `ReportRateLimit` → cooldown thang 60s→5m→15m; `ReportSuccess` → reset; `AllCoolingDown()` true → **failover sang tier tiếp theo**, không retry cào thêm |
 | LLM | `internal/engines/llm` (qua `LLMChain`) | cùng chính sách keyring như TTS |
 ### Chuỗi provider (failover theo tier)
@@ -31,9 +31,12 @@ Ba keyring độc lập (mỗi engine một vòng, không dùng chung vòng):
 - Quota free tính **riêng từng key** (per project per model) nên càng nhiều key trong
   `GEMINI_API_KEYS` càng đỡ nghẽn: keyring xoay round-robin, key nào 429/quota thì
   cooldown theo thang 60s → 5m → 15m, key khác gánh tiếp.
-- Số liệu tham khảo (nguồn bên thứ ba, chưa kiểm chứng, Google thay đổi thường xuyên):
-  image gen free khoảng ~10 request/phút và ~50 ảnh/ngày/key; text gen khoảng
-  15 request/phút, ~1500 request/ngày/key. Hết quota ngày giữa chừng: job chờ
+- Tạo ảnh không dùng Gemini keyring: prompt không có ảnh tham chiếu đi qua
+  Pollinations Free API Classic; ảnh tham chiếu bị chặn theo U-04. Gemini image
+  calls bị chặn vì các model hiện hành không có free tier.
+- Số liệu quota text tham khảo (nguồn bên thứ ba, chưa kiểm chứng, Google thay
+  đổi thường xuyên): khoảng 15 request/phút, ~1500 request/ngày/key. Hết quota
+  ngày giữa chừng: job chờ
   cooldown, hôm sau bấm **Chạy tiếp** (resume không render lại phần đã xong).
 - TTS có Edge dự phòng khi Gemini lỗi. LLM cần Gemini API key; hết quota thì
   yêu cầu LLM báo lỗi thay vì chuyển sang model local.

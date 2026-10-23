@@ -26,14 +26,10 @@
   view.
 - Bio stays a product storefront: product photos, current price, discount,
   product facts, shop, freshness, and seller voucher remain the source listing.
-  AI try-on is a separate, optional preview.
-- Try-on uses Gemini image generation with the shopper photo and product photo
-  as references. It creates a 3D-style image, not a 3D garment mesh or a fit
-  simulation. The result is labeled as an estimate and shown beside both source
-  photos.
-- Creating a try-on image requires Google sign-in. Google subject identifies
-  the shopper for quotas; the app stores a keyed hash of that subject plus the
-  verified email and display name used in the admin account list.
+- AI try-on is paused under U-04. The free image provider cannot accept
+  reference photos, while Gemini image models have no free tier. The product
+  page explains the pause, and the API rejects before upload, job reservation,
+  or quota consumption.
 
 ## Public/private boundary
 
@@ -84,7 +80,11 @@ never guesses an account. Unknown, private, or unpublished channels return 404.
 - `/bio-admin` lets the owner publish profiles/products and manage vouchers.
   It remains behind dashboard authentication.
 
-## Try-on flow and quotas
+## Retained try-on flow and quotas
+
+The flow below describes retained implementation for a future approved
+free-tier reference-capable provider. Current runtime rejects requests before
+upload or reservation, so these steps do not run.
 
 1. The buyer signs in with Google before the upload form appears. OAuth uses
    `openid email profile`, validates Google’s verified email claim, and
