@@ -32,7 +32,7 @@
             {{else}}
             <a href="/accounts/{{.ID}}?tab=model-photos" class="badge badge-warn" style="font-size:10.5px;text-decoration:none" title="Chưa có nhân vật — Bấm để thêm">+ Thêm nhân vật</a>
             {{end}}
-            {{if .Autopilot}}<span class="badge badge-ok">Tự động</span>{{end}}
+            {{if .Autopilot}}<span class="badge badge-warn" title="Đã bật cấu hình Autopilot; producer hiện tạm dừng">Autopilot bật · producer dừng</span>{{end}}
           </div>
         </div>
       </div>
@@ -70,8 +70,8 @@
       {{if .Theme}}<span class="badge badge-draft" title="Nhóm sản phẩm affiliate bán">🛍️ {{themeLabel .Theme}}</span>{{end}}
     </div>
     <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
-      {{range .Platforms}}<span class="badge badge-ok" style="font-size:11px" title="Nền tảng đã kết nối">✓ {{.}}</span>{{end}}
-      {{if not .Platforms}}<span class="badge badge-no" style="font-size:11px">Chưa kết nối MXH</span>{{end}}
+      {{range .Platforms}}<span class="badge badge-info" style="font-size:11px" title="Credentials cục bộ đã cấu hình; API chưa kiểm">{{.}}</span>{{end}}
+      {{if not .Platforms}}<span class="badge badge-no" style="font-size:11px">Chưa đủ credentials nền tảng</span>{{end}}
     </div>
 
     <div class="channel-card-footer" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:12px">

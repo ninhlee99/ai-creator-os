@@ -188,10 +188,18 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var brandDNA *growth.BrandDNA
+	brandDNAStatus := "Growth store chưa sẵn sàng; không đọc được hồ sơ."
 	if s.Growth != nil {
-		brandDNA, _ = s.Growth.GetBrandDNA(id)
-		if brandDNA == nil {
+		storedDNA, dnaErr := s.Growth.GetBrandDNA(id)
+		if dnaErr != nil {
+			log.Printf("web: load Brand DNA for account %d: %v", id, dnaErr)
+			brandDNAStatus = "Không đọc được hồ sơ đã lưu; mẫu gợi ý chưa được nạp."
+		} else if storedDNA == nil {
 			brandDNA = growth.DefaultBrandDNA(acct.Niche, id)
+			brandDNAStatus = "Đây là mẫu gợi ý theo ngách; chưa được lưu cho kênh."
+		} else {
+			brandDNA = storedDNA
+			brandDNAStatus = "Hồ sơ đã lưu cho kênh."
 		}
 	}
 
@@ -200,11 +208,12 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"Tab", s.accountTab(r),
 		"Allowed", allowed,
 		"BrandDNA", brandDNA,
+		"BrandDNAStatus", brandDNAStatus,
 		"Decisions", decisions,
 		"Publishers", pubNames,
 		"Gifts", gifts,
 		"Themes", themeOptions(),
-		"AutopilotReady", network.AutopilotReady(acct),
+		"AutopilotConfigured", network.AutopilotReady(acct),
 		"ModelPhotos", s.modelPhotoViews(id),
 		"StudioOK", s.Studio != nil,
 		"YTAnalytics", ytAnalyticsStatus(acct.Username, acct.YoutubeChannel),

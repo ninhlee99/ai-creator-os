@@ -71,19 +71,22 @@ func (s *Server) handleAccountBrandDNAReset(w http.ResponseWriter, r *http.Reque
 	}
 
 	defaultDNA := growth.DefaultBrandDNA(acct.Niche, id)
-	_ = s.Growth.SaveBrandDNA(defaultDNA)
+	if err := s.Growth.SaveBrandDNA(defaultDNA); err != nil {
+		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&err=%s", id, url.QueryEscape("Không lưu được mẫu Brand DNA: "+err.Error())))
+		return
+	}
 
-	seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&ok=%s", id, url.QueryEscape("Đã khôi phục Brand DNA chuẩn AI theo ngành hàng!")))
+	seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=brand-dna&ok=%s", id, url.QueryEscape("Đã thay bằng mẫu Brand DNA gợi ý theo ngách.")))
 }
 
-// ---------------------------------------------------------------- comment auto-reply
+// ---------------------------------------------------------------- comment reply simulation
 
 func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.accountID(w, r)
 	if !ok {
 		return
 	}
-	acct, err := s.Mgr.Get(id)
+	_, err := s.Mgr.Get(id)
 	if err != nil {
 		s.writeJSON(w, map[string]any{"ok": false, "error": "Không tìm thấy kênh"})
 		return
@@ -106,8 +109,8 @@ func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Req
 	delaySec := 45 + (len(userComment)*7)%75
 
 	var reply string
-	// Simulation never invents a marketplace deep link or performs an action.
-	affLink := ""
+	// This endpoint uses local keyword rules and fixed examples. It does not
+	// call an AI provider, read platform comments, or send a reply.
 
 	isPurchase := strings.Contains(low, "giá") || strings.Contains(low, "bao nhiêu") ||
 		strings.Contains(low, "mua") || strings.Contains(low, "link") ||
@@ -125,33 +128,23 @@ func (s *Server) handleAccountCommentSimulate(w http.ResponseWriter, r *http.Req
 	if isPurchase {
 		intent = "Câu hỏi về sản phẩm"
 		intentCode = "purchase"
-		action = "Mô phỏng: gợi ý phản hồi về sản phẩm"
-		if affLink == "" {
-			affLink = "Chưa cấu hình link liên kết."
-		}
-		switch acct.Persona {
-		case "genz", "playful":
-			reply = fmt.Sprintf("Dạ sốp gửi mình link săn sale giảm tới 45%% kèm mã freeship ở giỏ hàng góc trái video hoặc bấm vào đây nha: %s ✨ Tranh thủ kẻo hết deal nè bác ơi!", affLink)
-		case "expert", "tech":
-			reply = fmt.Sprintf("Chào bạn, dòng này hiệu năng thực tế rất ổn trong tầm giá. Bạn có thể xem chi tiết thông số và nhận ưu đãi bảo hành chính hãng ở link giỏ hàng này nhé: %s", affLink)
-		default:
-			reply = fmt.Sprintf("Dạ em gửi mình link săn ưu đãi chính hãng kèm freeship ở giỏ hàng góc trái video hoặc bấm vào đây xem nhé: %s 💖 Cần tư vấn thêm bạn cứ nhắn em nha!", affLink)
-		}
+		action = "Mô phỏng: hỏi người vận hành kiểm tra listing"
+		reply = "Bạn xem giá và phí vận chuyển đang hiển thị trên trang sản phẩm nhé; mô phỏng này không có dữ liệu listing để xác nhận giá hoặc ưu đãi."
 	} else if isPraise {
 		intent = "Khen ngợi / Đồng tình"
 		intentCode = "praise"
-		action = "Mô phỏng: cảm ơn và gợi ý theo dõi"
-		reply = "Cảm ơn bạn nhiều nha! Follow kênh để đón xem video hữu ích tiếp theo vào 19h tối mai nhé! 🔥"
+		action = "Mô phỏng: cảm ơn người xem"
+		reply = "Cảm ơn bạn đã xem và góp ý nha! 💛"
 	} else if isToxic {
 		intent = "Tiêu cực / Cần kiểm duyệt (Bảo vệ thương hiệu)"
 		intentCode = "toxic"
 		action = "Mô phỏng: đề xuất kiểm duyệt"
 		reply = "Bình luận cần được người vận hành xem xét."
 	} else {
-		intent = "Thắc mắc & Tranh luận (Kích thích Watch Time)"
+		intent = "Thắc mắc chung"
 		intentCode = "inquiry"
-		action = "Mô phỏng: gợi ý câu trả lời mở"
-		reply = "Theo bạn thì yếu tố nào quan trọng nhất? Cùng để lại bình luận để mình bàn luận thêm ở video sau nha! 👇"
+		action = "Mô phỏng: xin thêm thông tin"
+		reply = "Bạn muốn mình làm rõ điểm nào? Mô phỏng này chưa có ngữ cảnh video để trả lời cụ thể."
 	}
 
 	s.writeJSON(w, map[string]any{

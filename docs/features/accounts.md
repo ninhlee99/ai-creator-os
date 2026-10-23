@@ -11,15 +11,15 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
 ## 2. Kích hoạt
 - `GET /accounts` → `handleAccounts` (`internal/web/accounts.go:20`): danh sách.
 - `GET /accounts/new` → form tạo; `POST /accounts` → `handleAccountCreate`.
-- `GET /accounts/{id}?tab=overview|autopilot|brand-dna|connections` → `handleAccountDetail`
+- `GET /accounts/{id}?tab=overview|autopilot|brand-dna|connections|comments|model-photos` → `handleAccountDetail`
   (`internal/web/accounts.go:102`); tab mặc định/tên tab do `s.accountTab` đọc query.
 - Các nút POST trong từng tab (xem mục 3).
 
 ## 3. Luồng vận hành chi tiết
 
 ### Tab Tổng quan
-- Badge **YouTube Analytics** (Đợt H3): `Đã nối` (có token file) / `Chưa có
-  token` / `Chưa gắn kênh` — trung thực theo file tồn tại; thiếu scope
+- Badge **YouTube Analytics**: `Có token · API chưa kiểm` (có token file) /
+  `Chưa có token` / `Chưa gắn kênh` — chỉ kiểm tra file; thiếu scope
   `yt-analytics.readonly` thì lúc sync API báo 403 với hướng dẫn chạy lại
   `scripts/get-youtube-token.py`.
 - `handleAccountDetail` đọc: `s.Mgr.GetWithAutopilot(id)` (account + cấu hình autopilot),
@@ -31,23 +31,27 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
   → 303 về tab `ket-noi`, lỗi thì `?err=` + toast (không redirect câm).
 
 ### Tab Autopilot (affiliate hands-off)
-- `POST /accounts/{id}/theme` (`handleAccountTheme`, `account_autopilot.go:40`):
-  lưu theme + min commission → `s.autoGeneratePlan` sinh kế hoạch 30 ngày ngay
-  (zero-touch, lỗi chỉ log).
-- `POST /accounts/{id}/autopilot` (`handleAccountAutopilot`): bật/tắt autopilot
-  (`autopilot_enabled` = `"1"`/`"0"` trong ledger settings; unset = ON).
-- `POST /accounts/{id}/autopilot/run` (`handleAccountAutopilotRun`): chạy ngay một
-  chu kỳ `Autopilot.Run(ctx, accountID)` (xem `autonomous-daemon.md`).
+- `POST /accounts/{id}/theme` (`handleAccountTheme`): lưu theme để lọc sản phẩm
+  affiliate. Không thay Growth plan 30 ngày. Commission floor lưu riêng trong
+  form Autopilot.
+- `POST /accounts/{id}/autopilot` (`handleAccountAutopilot`): lưu bật/tắt và
+  commission floor trên hồ sơ kênh trong `network.db`.
+- Producer affiliate hiện dừng trước discovery/job creation đến khi có xác nhận
+  dùng Google Flow credits theo kênh. Nút chạy ngay đã gỡ khỏi UI; POST cũ trả
+  lỗi gate thay vì tuyên bố bắt đầu.
 - `POST /accounts/{id}/models/upload` (`handleAccountModelUpload`): upload ảnh mẫu
-  người mẫu → `ModelStore` (identity lock cho video affiliate); xem được ở
+  người mẫu → `ModelStore` (ảnh tham chiếu cho video affiliate; không đảm bảo
+  giữ mặt tuyệt đối ở mọi frame); xem được ở
   `GET /models/{account}/{file}`; xoá bằng `POST .../models/{photoID}/delete`.
+- Tab Mô phỏng phản hồi (`POST /accounts/{id}/comments/simulate`) phân loại bằng
+  luật từ khóa và câu mẫu cố định; không gọi AI, đọc comment nền tảng hoặc gửi reply.
 
 ### Tab Bản sắc (Brand DNA)
-- Quản trị bản sắc và định vị thương hiệu cho kênh nhằm tăng trưởng organic lâu dài.
-- Form nhập: Niche, USP (lợi thế độc nhất), Tone giọng, Khán giả mục tiêu, Từ khóa đỏ (cấm kỵ), Cam kết an toàn.
-- Nút "Điền mẫu gợi ý": nạp nhanh 1 trong 5 bộ Brand DNA chuẩn hóa (`tech_gadgets`, `beauty_cosmetics`, `home_lifestyle`, `daily_story`, `fashion_lookbook`).
-- `POST /accounts/{id}/brand-dna`: lưu vào SQLite `growth.db` bảng `brand_dna`, xác thực từ khóa đỏ & chính sách.
-- `POST /accounts/{id}/brand-dna/reset`: đặt lại về bản sắc mặc định.
+- Form lưu positioning, audience persona, value promise, tone, hook rules, content pillars, visual/audio style, red lines và checklist vào SQLite `growth.db` bảng `brand_dna`.
+- Nếu chưa có bản ghi, UI điền mẫu gợi ý theo ngách nhưng chưa lưu; trạng thái này được phân biệt với hồ sơ đã lưu. `POST /accounts/{id}/brand-dna` ghi hồ sơ do người vận hành gửi; không xác thực chính sách.
+- `POST /accounts/{id}/brand-dna/reset` ghi đè hồ sơ bằng mẫu tĩnh theo ngách. Mẫu này không được AI tạo hoặc tối ưu.
+- Affiliate Director dùng positioning, audience, tone, visual style và red lines làm ngữ cảnh prompt. Trend heuristic dùng positioning, content pillars và hook rules. Không phải mọi job Studio đều nhận Brand DNA.
+- Checklist QC chỉ được lưu tham khảo; chưa tự kiểm tra nội dung hoặc chặn publish. Red lines trong Affiliate Director là chỉ dẫn prompt, chưa phải gate deterministic.
 
 ### Tab Kết nối
 - `POST /accounts/{id}/youtube` (`handleAccountYoutube`): lưu YouTube channel +
@@ -56,8 +60,8 @@ nối nền tảng (YouTube/TikTok), chuyển trạng thái vòng đời.
   đẩy tài khoản qua một bước onboarding (`network.onboardStep`).
 - `POST /accounts/{id}/replan` (`handleAccountReplan`): chạy lại topic research
   (`network.MakeTopicResearch(s.Mgr, id, s.LLM)`).
-- Hiển thị trạng thái publisher từng nền tảng (`publishers.BuildPublishers`):
-  TikTok token/client, YouTube token, FB Page, RTMP — badge trung thực "thiếu/chưa".
+- Hiển thị adapter có credentials cục bộ (`publishers.BuildPublishers`); chưa
+  gọi API để xác minh token scope, quyền đăng hoặc publish thành công.
 
 ## 4. Fail-closed & an toàn
 - Mọi POST lỗi → `s.accountBack(..., errMsg)` → 303 về đúng tab kèm `?err=` + toast;

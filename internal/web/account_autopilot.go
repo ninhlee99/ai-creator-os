@@ -1,7 +1,7 @@
 package web
 
-// Per-account affiliate autopilot configuration: theme policy, hands-off
-// toggle and run, plus the model photo library used by the director.
+// Per-account affiliate autopilot configuration: theme policy, saved
+// hands-off settings, plus the model photo library used by the director.
 
 import (
 	"fmt"
@@ -61,10 +61,6 @@ func (s *Server) handleAccountTheme(w http.ResponseWriter, r *http.Request) {
 		s.accountRedirect(w, r, id, "Đã xóa chủ đề của tài khoản.", "")
 		return
 	}
-	// Zero-touch (Đợt 3): a fresh theme means a fresh 30-day plan.
-	if a, err := s.Mgr.Get(id); err == nil {
-		s.autoGeneratePlan(a, "Tự sinh khi đổi chủ đề")
-	}
 	s.accountRedirect(w, r, id, "Đã lưu chủ đề: "+themeLabelOf(theme)+".", "")
 }
 
@@ -97,14 +93,14 @@ func (s *Server) handleAccountAutopilot(w http.ResponseWriter, r *http.Request) 
 	}
 	if enabled {
 		s.accountRedirect(w, r, id,
-			fmt.Sprintf("Đã bật autopilot (hoa hồng tối thiểu %.1f%%).", pct), "")
+			fmt.Sprintf("Đã lưu cấu hình Autopilot bật (hoa hồng tối thiểu %.1f%%); producer hiện tạm dừng vì chưa có xác nhận dùng Flow credits theo kênh.", pct), "")
 		return
 	}
 	s.accountRedirect(w, r, id, "Đã tắt autopilot.", "")
 }
 
-// handleAccountAutopilotRun runs one hands-off cycle immediately and lands
-// on the studio job page. A backend failure is shown on the account page.
+// handleAccountAutopilotRun preserves the old route but reports the production
+// gate while automatic Flow credit authorization is unavailable.
 func (s *Server) handleAccountAutopilotRun(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.accountID(w, r)
 	if !ok {

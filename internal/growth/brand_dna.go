@@ -12,21 +12,20 @@ import (
 // to produce original content without relying on third-party reuploads.
 type BrandDNA struct {
 	AccountID       int64    `json:"account_id"`
-	Positioning     string   `json:"positioning"`       // Định vị kênh (e.g. Chuyên gia review mỹ phẩm trung thực)
-	AudiencePersona string   `json:"audience_persona"`  // Chân dung khán giả (tuổi, giới tính, nỗi đau, mong muốn)
-	ValuePromise    string   `json:"value_promise"`     // Lời hứa giá trị cốt lõi
-	ToneOfVoice     string   `json:"tone_of_voice"`     // Giọng điệu (chân thành, sắc sảo, hóm hỉnh, kịch tính...)
-	HookRules       []string `json:"hook_rules"`        // Nguyên tắc mở đầu 3s (câu hỏi ngược đời, con số gây sốc...)
-	ContentPillars  []string `json:"content_pillars"`   // 3-5 trụ cột nội dung đặc trưng
-	VisualStyle     string   `json:"visual_style"`      // Phong cách hình ảnh (ánh sáng, nhịp cắt, màu sắc chủ đạo)
-	AudioStyle      string   `json:"audio_style"`       // Phong cách âm thanh & giọng đọc (nhạc nền, âm lượng, tốc độ)
-	RedLines        []string `json:"red_lines"`         // Ranh giới đỏ & từ cấm chính sách
-	QCChecklist     []string `json:"qc_checklist"`      // Tiêu chuẩn nghiệm thu video nguyên bản (10 tiêu chí)
+	Positioning     string   `json:"positioning"`      // Định vị kênh (e.g. Chuyên gia review mỹ phẩm trung thực)
+	AudiencePersona string   `json:"audience_persona"` // Chân dung khán giả (tuổi, giới tính, nỗi đau, mong muốn)
+	ValuePromise    string   `json:"value_promise"`    // Lời hứa giá trị cốt lõi
+	ToneOfVoice     string   `json:"tone_of_voice"`    // Giọng điệu (chân thành, sắc sảo, hóm hỉnh, kịch tính...)
+	HookRules       []string `json:"hook_rules"`       // Nguyên tắc mở đầu 3s (câu hỏi ngược đời, con số gây sốc...)
+	ContentPillars  []string `json:"content_pillars"`  // 3-5 trụ cột nội dung đặc trưng
+	VisualStyle     string   `json:"visual_style"`     // Phong cách hình ảnh (ánh sáng, nhịp cắt, màu sắc chủ đạo)
+	AudioStyle      string   `json:"audio_style"`      // Phong cách âm thanh & giọng đọc (nhạc nền, âm lượng, tốc độ)
+	RedLines        []string `json:"red_lines"`        // Ranh giới đỏ & từ cấm chính sách
+	QCChecklist     []string `json:"qc_checklist"`     // Checklist lưu tham khảo; chưa được áp dụng làm gate tự động.
 	UpdatedAt       string   `json:"updated_at"`
 }
 
-// DefaultBrandDNA returns an industry-standard Brand DNA template tailored
-// to a niche and account ID.
+// DefaultBrandDNA returns an editable starter profile tailored to a niche and account ID.
 func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	nl := strings.ToLower(niche)
@@ -36,10 +35,10 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 		UpdatedAt: now,
 		QCChecklist: []string{
 			"Hook 3s đầu kích thích tò mò hoặc đánh đúng nỗi đau khán giả",
-			"Mật độ giá trị thông tin cao (Value-per-second > 80%)",
-			"100% nội dung nguyên bản — không sao chép nguyên trạng video Douyin/TikTok",
-			"Hình ảnh & đồ họa rõ nét, tỷ lệ 9:16 chuẩn vùng an toàn TikTok/Shorts",
-			"Âm thanh giọng đọc rõ ràng, nhạc nền lofi/ambient cân bằng chuẩn -14 LUFS",
+			"Nội dung có thông tin hữu ích; không gán KPI định lượng nếu chưa đo",
+			"Không sao chép nguyên trạng video Douyin/TikTok",
+			"Hình ảnh rõ, đúng tỷ lệ và vùng an toàn của nền tảng đích",
+			"Giọng đọc rõ; nhạc nền không át lời",
 			"Không chứa từ cấm hoặc tuyên bố sai sự thật vi phạm chính sách nền tảng",
 			"Có CTA (kêu gọi hành động) tự nhiên, gắn link bio hoặc giỏ hàng hợp lệ",
 			"Tông giọng và ngôn ngữ nhất quán với bản sắc thương hiệu đã định vị",
@@ -50,20 +49,20 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 
 	switch {
 	case strings.Contains(nl, "mỹ phẩm") || strings.Contains(nl, "skincare") || strings.Contains(nl, "làm đẹp") || strings.Contains(nl, "beauty"):
-		dna.Positioning = "Chuyên gia bóc tách thành phần mỹ phẩm & hướng dẫn chăm sóc da khoa học, nói thẳng sự thật"
+		dna.Positioning = "Kênh giải thích thành phần mỹ phẩm và chăm sóc da theo nguồn công bố"
 		dna.AudiencePersona = "Nữ 18-35 tuổi, dân văn phòng & sinh viên, quan tâm mụn/thâm/lão hóa, sợ mua nhầm hàng giả hoặc kem trộn"
-		dna.ValuePromise = "Giúp bạn hiểu đúng làn da và chọn đúng sản phẩm hiệu quả trong 60 giây, tiết kiệm hàng triệu đồng"
+		dna.ValuePromise = "Giúp bạn hiểu thành phần và cân nhắc sản phẩm theo nguồn thông tin rõ ràng"
 		dna.ToneOfVoice = "Thân thiện, chân thật, đồng cảm sâu sắc, giải thích thuật ngữ phức tạp bằng ví dụ đời thường"
 		dna.HookRules = []string{
-			"Bắt đầu bằng câu hỏi ngược đời: 'Tại sao càng dưỡng da mụn càng bùng phát?'",
+			"Câu hỏi mở: 'Bạn dựa vào đâu để chọn sản phẩm chăm sóc da?'",
 			"Đập vỡ ảo tưởng: 'Đừng phí tiền mua serum này nếu bạn chưa biết điều sau...'",
-			"Con số gây sốc: '90% người dùng BHA sai cách khiến da bị breakout'",
+			"Nêu một lỗi chăm sóc da phổ biến; chỉ dùng tỷ lệ hoặc công dụng y khoa khi có nguồn",
 			"Tình huống đồng cảm: 'Có bà nào trang điểm xong 2 tiếng là mốc meo vùng mũi không?'",
 		}
 		dna.ContentPillars = []string{
 			"Giải mã bảng thành phần hoạt chất (Niacinamide, Retinol, BHA)",
 			"So sánh trực diện 2 sản phẩm hot cùng phân khúc giá",
-			"Thử nghiệm thực tế 7-14 ngày trước và sau",
+			"Theo dõi trải nghiệm theo thời gian; ghi rõ mốc đo và giới hạn quan sát",
 			"Cảnh báo sai lầm kinh điển khi skincare tại nhà",
 			"Gợi ý chu trình tối giản cho người bận rộn",
 		}
@@ -76,14 +75,14 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 		}
 
 	case strings.Contains(nl, "công nghệ") || strings.Contains(nl, "tai nghe") || strings.Contains(nl, "điện tử") || strings.Contains(nl, "tech"):
-		dna.Positioning = "Reviewer công nghệ thực dụng: Tối ưu hiệu năng trên từng đồng chi phí"
+		dna.Positioning = "Kênh đánh giá công nghệ theo thông tin công bố và trải nghiệm có ghi nhận"
 		dna.AudiencePersona = "Nam & nữ 18-32 tuổi, yêu thích tiện ích số, tìm kiếm thiết bị công nghệ bền - đẹp - rẻ"
-		dna.ValuePromise = "Đánh giá thiết bị công nghệ khách quan, không nhận tiền nói quá, chỉ điểm đúng ưu - nhược điểm cốt lõi"
+		dna.ValuePromise = "Giúp khán giả xem ưu và nhược điểm dựa trên thông tin công bố và trải nghiệm có ghi nhận"
 		dna.ToneOfVoice = "Khách quan, logic, dứt khoát, hiện đại, mang tính kỹ thuật nhưng diễn đạt dễ hiểu"
 		dna.HookRules = []string{
-			"So sánh giá trị: 'Chiếc tai nghe 300k này có đè bẹp được hàng 2 triệu?'",
+			"So sánh giá trị: 'Mẫu này có đáng tiền hơn lựa chọn đắt hơn không?'",
 			"Cảnh báo người mua: 'Dừng lại ngay nếu bạn đang định mua món đồ công nghệ này...'",
-			"Trải nghiệm thực chiến: 'Sau 30 ngày dùng thử chiếc củ sạc GaN siêu nhỏ này, đây là sự thật'",
+			"Trải nghiệm thực tế: nêu rõ thời gian và điều kiện dùng thử nếu có",
 		}
 		dna.ContentPillars = []string{
 			"Thử nghiệm độ bền & tính năng ngặt nghèo (test chống ồn, test rơi)",
@@ -99,19 +98,19 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 		}
 
 	case strings.Contains(nl, "gia dụng") || strings.Contains(nl, "bếp") || strings.Contains(nl, "nhà") || strings.Contains(nl, "đời sống"):
-		dna.Positioning = "Cố vấn gia đình thông thái: Giải phóng sức lao động trong căn bếp & tổ ấm"
+		dna.Positioning = "Kênh chia sẻ cách chăm sóc nhà cửa và sử dụng thiết bị gia dụng"
 		dna.AudiencePersona = "Phụ nữ & gia đình 22-45 tuổi, bận rộn công việc, muốn chăm sóc nhà cửa tiện lợi và tiết kiệm thời gian"
-		dna.ValuePromise = "Giúp việc nội trợ trở nên nhẹ nhàng, tinh tế và ngập tràn niềm vui với thiết bị thông minh"
+		dna.ValuePromise = "Giúp người xem cân nhắc thao tác và thiết bị theo điều kiện sử dụng của gia đình"
 		dna.ToneOfVoice = "Ấm áp, ân cần, gần gũi như người chị em trong gia đình"
 		dna.HookRules = []string{
-			"Giải quyết bực bội: 'Mỗi lần dọn bếp mất 1 tiếng? Món này cắt giảm còn 10 phút'",
-			"Tình huống thực tế: 'Bữa cơm 15 phút cho người đi làm về muộn'",
+			"So sánh thao tác trước/sau; chỉ nêu thời gian khi đã đo trong điều kiện cụ thể",
+			"Mẹo bữa tối cho người về muộn; ghi rõ thời gian chuẩn bị thực tế",
 			"Hỏi xoáy đáp xoay: 'Có nên mua nồi chiên không dầu hơi nước không?'",
 		}
 		dna.ContentPillars = []string{
 			"Nấu món ngon siêu tốc với thiết bị gia dụng thông minh",
 			"Mẹo vệ sinh nhà cửa nhanh - sạch - không độc hại",
-			"Đánh giá độ bền và tính thực tế sau 6 tháng sử dụng",
+			"Đánh giá độ bền từ trải nghiệm có thật; nêu thời gian và điều kiện sử dụng",
 			"Tối ưu không gian sống cho nhà nhỏ / chung cư",
 		}
 		dna.VisualStyle = "Tone màu ấm cúng (warm amber/beige), góc máy sinh hoạt gia đình tự nhiên, các cảnh quay thức ăn hấp dẫn"
@@ -122,14 +121,14 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 		}
 
 	case strings.Contains(nl, "kể chuyện") || strings.Contains(nl, "lịch sử") || strings.Contains(nl, "truyện") || strings.Contains(nl, "story"):
-		dna.Positioning = "Người kể chuyện đêm khuya: Đánh thức chiều sâu tâm hồn qua những góc nhìn nhân văn"
+		dna.Positioning = "Kênh kể chuyện đời sống, lịch sử và góc nhìn nhân văn"
 		dna.AudiencePersona = "Khán giả 16-45 tuổi thích lắng đọng, chiêm nghiệm cuộc sống, nghe chuyện trước khi ngủ hoặc khi làm việc"
-		dna.ValuePromise = "Những câu chuyện nguyên bản chạm đến trái tim, mang lại sự bình yên và bài học sâu sắc"
+		dna.ValuePromise = "Kể chuyện có ngữ cảnh rõ ràng và nêu nguồn khi dùng tư liệu lịch sử"
 		dna.ToneOfVoice = "Trầm lắng, sâu sắc, giàu hình ảnh gợi cảm xúc, triết lý nhẹ nhàng"
 		dna.HookRules = []string{
 			"Mở đầu bằng nghịch lý cuộc đời: 'Có những người cả đời đi tìm hạnh phúc, đến khi tìm thấy thì...'",
 			"Cảnh ngộ đặc biệt: 'Năm tôi 18 tuổi, một người lạ đã dạy cho tôi bài học đắt nhất cuộc đời'",
-			"Bí ẩn lịch sử: 'Hơn 500 năm trước, một quyết định trong đêm mưa đã thay đổi cả vận mệnh'",
+			"Bí ẩn lịch sử: mở bằng một quyết định có thật và dẫn nguồn cho mốc thời gian",
 		}
 		dna.ContentPillars = []string{
 			"Truyện ngắn ngôi thứ nhất về tình thân, sự nghiệp, nhân duyên",
@@ -145,7 +144,7 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 		}
 
 	default: // Tổng hợp / Đa năng
-		dna.Positioning = "Kênh sáng tạo nội dung nguyên bản chất lượng cao: Cung cấp giải pháp thực tế cho cuộc sống"
+		dna.Positioning = "Kênh chia sẻ góc nhìn và giải pháp thực tế cho cuộc sống"
 		dna.AudiencePersona = "Khán giả trẻ năng động 18-35 tuổi, thích thông tin nhanh, gọn, có ích và có tính ứng dụng cao"
 		dna.ValuePromise = "Đúc kết kiến thức hữu ích trong từng giây, tôn trọng thời gian của khán giả"
 		dna.ToneOfVoice = "Năng lượng, thông minh, tin cậy, truyền cảm hứng"
@@ -237,7 +236,8 @@ func (s *Store) SaveBrandDNA(dna *BrandDNA) error {
 	return err
 }
 
-// ValidateContentAgainstDNA evaluates a proposed script/hook against Brand DNA red lines and quality rules.
+// ValidateContentAgainstDNA checks text against generic and simple brand red-line phrases.
+// It does not evaluate QCChecklist and is not currently wired into production flows.
 func (dna *BrandDNA) ValidateContentAgainstDNA(hook, script string) (pass bool, violations []string) {
 	if dna == nil {
 		return true, nil

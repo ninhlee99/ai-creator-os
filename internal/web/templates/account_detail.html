@@ -37,10 +37,10 @@
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
     <dt>{{.GrowthFollowersLabel}}</dt><dd>{{if .GrowthHasFollowers}}{{.GrowthFollowers}}{{else}}chưa kết nối{{end}}</dd>
     <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
-    <dt>YouTube Analytics</dt><dd>{{if eq .YTAnalytics "ok"}}<span class="badge badge-ok">Đã nối</span>{{else if eq .YTAnalytics "chuakenh"}}<span class="badge badge-no">Chưa gắn kênh</span>{{else}}<span class="badge badge-warn" title="Cần kết nối YouTube ở tab Kết nối bên dưới và cấp quyền đọc số liệu">Chưa có token</span>{{end}}</dd>
+    <dt>YouTube Analytics</dt><dd>{{if eq .YTAnalytics "ok"}}<span class="badge badge-warn" title="Có token file; chưa gọi Analytics API để kiểm scope hoặc quyền">Có token · API chưa kiểm</span>{{else if eq .YTAnalytics "chuakenh"}}<span class="badge badge-no">Chưa gắn kênh</span>{{else}}<span class="badge badge-no" title="Cần kết nối YouTube ở tab Kết nối bên dưới và cấp quyền đọc số liệu">Chưa có token</span>{{end}}</dd>
     <dt>Loại nội dung YT</dt><dd>{{if .Acct.YoutubeContentTypes}}{{join ", " .Acct.YoutubeContentTypes}}{{else}}—{{end}}</dd>
     {{if gt .Gifts 0.0}}<dt>Quà tặng nhận</dt><dd>{{fmtUSD .Gifts}}</dd>{{end}}
-    <dt>Nền tảng đã nối</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
+    <dt>Adapter có cấu hình</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
   </dl>
 </div>
 
@@ -56,16 +56,16 @@
       <img src="{{.URL}}" alt="Khuôn mặt nhân vật" style="width:68px;height:68px;border-radius:12px;object-fit:cover;border:2px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.15)">
       {{end}}
       <div>
-        <span class="badge badge-ok" style="font-weight:700">✓ Đã khóa nhận diện khuôn mặt</span>
-        <div style="color:var(--muted);font-size:12px;margin-top:4px">Khuôn mặt này được giữ cố định 100% khi sinh video viral, video nhảy sexy và affiliate.</div>
+        <span class="badge badge-info" style="font-weight:700">Ảnh tham chiếu đã lưu</span>
+        <div style="color:var(--muted);font-size:12px;margin-top:4px">Ảnh được gửi làm tham chiếu khi tạo video; kết quả có thể lệch giữa các khung hình.</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Tạo video trending với nhân vật này</a>
-      <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Tạo video affiliate</a>
+      <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Mở Viral Radar</a>
+      <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Mở Studio Affiliate</a>
     </div>
     {{else}}
-    <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Kênh chưa có ảnh khuôn mặt nhân vật. Hãy tải lên ảnh chân dung/khuôn mặt để AI sử dụng làm nhân vật xuyên suốt cho mọi video clip.</p>
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Kênh chưa có ảnh tham chiếu. Tải ảnh nhân vật để gửi kèm yêu cầu tạo video.</p>
     <a href="/accounts/{{$id}}?tab=model-photos" class="btn btn-primary btn-sm" style="align-self:flex-start">📁 Tải lên ảnh nhân vật ngay</a>
     {{end}}
   </div>
@@ -110,8 +110,8 @@
     <h2 style="margin:0 0 4px;font-size:18px">👤 Nhân Vật Đại Diện &amp; Khóa Khuôn Mặt AI</h2>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Tạo Video Trending</a>
-    <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Tạo Video Affiliate</a>
+    <a href="/viral?account={{.Acct.Username}}" class="btn btn-primary btn-sm">⚡ Mở Viral Radar</a>
+    <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Mở Studio Affiliate</a>
   </div>
 </div>
 
@@ -119,8 +119,8 @@
   <!-- Cột 1: Danh sách ảnh khuôn mặt đã lưu -->
   <div class="form-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>📸</span> Khuôn Mặt Đã Lưu ({{len .ModelPhotos}})</h3>
-      {{if .ModelPhotos}}<span class="badge badge-ok">Đã Khóa Nhận Diện</span>{{else}}<span class="badge badge-warn">Chưa Có Ảnh</span>{{end}}
+      <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>📸</span> Ảnh tham chiếu đã lưu ({{len .ModelPhotos}})</h3>
+      {{if .ModelPhotos}}<span class="badge badge-ok">Đã lưu ảnh tham chiếu</span>{{else}}<span class="badge badge-warn">Chưa có ảnh</span>{{end}}
     </div>
 
     {{if .ModelPhotos}}
@@ -150,7 +150,7 @@
     <form method="post" action="/accounts/{{$id}}/models/upload" enctype="multipart/form-data">
       <input type="hidden" name="tab" value="model-photos">
       <div class="field" style="margin-bottom:14px">
-        <label style="font-weight:700;font-size:13px">Chọn 1 hoặc nhiều ảnh khuôn mặt (JPG, PNG, WEBP — tối đa 15MB/ảnh)</label>
+        <label style="font-weight:700;font-size:13px">Chọn 1 hoặc nhiều ảnh tham chiếu (JPG, PNG, WEBP — tối đa 15MB/ảnh)</label>
         <div class="file-pick" style="margin-top:6px">
           <label class="btn btn-secondary btn-sm" style="cursor:pointer">📁 Chọn nhiều ảnh từ máy…
             <input type="file" name="photos" accept=".jpg,.jpeg,.png,.webp" multiple required onchange="var cnt=this.files.length;this.closest('.file-pick').querySelector('.file-name').textContent=cnt>1?(cnt+' ảnh đã chọn'):(this.files[0]?this.files[0].name:'Chưa chọn ảnh');">
@@ -160,14 +160,13 @@
       </div>
 
       <div style="background:var(--bg2);border-left:3px solid var(--accent);padding:10px 12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-        <strong>Tiêu chuẩn để AI nhận diện chuẩn nhất:</strong><br>
-        • Tải lên cùng lúc nhiều ảnh ở các góc chụp khác nhau (chính diện, góc nghiêng 45°, nụ cười, toàn thân).<br>
-        • Ảnh chụp cận mặt hoặc nửa người trên, ánh sáng tự nhiên rõ nét.<br>
-        • Không bị che khuất mắt, mũi, miệng bởi khẩu trang hoặc tóc.<br>
-        • AI MediaGen sẽ dùng tất cả các ảnh này để khóa nét khuôn mặt chuẩn 100%.
+        <strong>Ảnh tham chiếu cho luồng Studio tương thích:</strong><br>
+        • Góc chính diện và góc nghiêng rõ, ánh sáng đều, không che khuất khuôn mặt.<br>
+        • Ảnh được lưu theo kênh; không phải mọi luồng đều dùng toàn bộ ảnh.<br>
+        • Ảnh tham chiếu không bảo đảm kết quả tạo ảnh/video giữ nguyên diện mạo ở mọi khung hình.
       </div>
 
-      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">Tải lên &amp; Khóa Khuôn Mặt Nhân Vật</button>
+      <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">Lưu ảnh tham chiếu</button>
     </form>
   </div>
 </div>
@@ -177,9 +176,10 @@
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
     <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu (Brand DNA)</h2>
+    <p class="hint" style="margin:4px 0 0">{{.BrandDNAStatus}} Mẫu mặc định là gợi ý, không phải dữ liệu đo về khán giả. Affiliate Director dùng positioning, audience, tone, visual style và red lines; Trend Intelligence tạo gợi ý heuristic từ positioning, content pillars và hook rules. Các job khác chưa chắc dùng hồ sơ này.</p>
   </div>
-  <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Khôi phục Brand DNA chuẩn AI theo ngành hàng? Mọi tùy chỉnh hiện tại sẽ được thay bằng mẫu tối ưu.">
-    <button type="submit" class="btn btn-secondary btn-sm">🔄 Khôi phục mẫu AI chuẩn</button>
+  <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Thay toàn bộ Brand DNA hiện tại bằng mẫu gợi ý theo ngách đã cấu hình?">
+    <button type="submit" class="btn btn-secondary btn-sm">🔄 Dùng lại mẫu theo ngách</button>
   </form>
 </div>
 
@@ -204,7 +204,7 @@
 
       <div class="field">
         <label>Lời hứa giá trị (Value Promise)</label>
-        <input type="text" name="value_promise" value="{{if .BrandDNA}}{{.BrandDNA.ValuePromise}}{{end}}" placeholder="Ví dụ: Giúp bạn chọn đúng sản phẩm hiệu quả trong 60 giây, tiết kiệm tiền triệu" required style="font-size:13px">
+        <input type="text" name="value_promise" value="{{if .BrandDNA}}{{.BrandDNA.ValuePromise}}{{end}}" placeholder="Ví dụ: Giúp khán giả hiểu sản phẩm từ thông tin có nguồn rõ ràng" required style="font-size:13px">
         <div class="hint">Khán giả nhận được gì cụ thể sau mỗi video?</div>
       </div>
 
@@ -244,7 +244,7 @@
       <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🪝</span> 3. Công Thức Mở Đầu 3 Giây (Hook Rules)</h3>
       <div class="field">
         <label>Nguyên tắc viết Hook giữ chân (Mỗi dòng 1 công thức)</label>
-        <textarea name="hook_rules" rows="5" placeholder="Câu hỏi ngược đời: 'Tại sao càng dưỡng da mụn càng bùng phát?'&#10;Đập vỡ ảo tưởng: 'Đừng phí tiền mua món này nếu chưa biết...'&#10;Con số gây sốc: '90% người dùng sai cách dẫn đến...'&#10;Tình huống đồng cảm: 'Có ai từng bị...?'" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.HookRules}}{{end}}</textarea>
+        <textarea name="hook_rules" rows="5" placeholder="Câu hỏi mở: 'Bạn từng gặp tình huống này chưa?'&#10;So sánh: 'Điểm khác nhau giữa hai lựa chọn là gì?'&#10;Nêu lỗi phổ biến; chỉ dùng tỷ lệ/công dụng khi có nguồn&#10;Tình huống đồng cảm: 'Có ai từng bị...?'" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.HookRules}}{{end}}</textarea>
 
       </div>
     </div>
@@ -254,7 +254,7 @@
       <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>🏛️</span> 4. Trụ Cột Nội Dung (Content Pillars)</h3>
       <div class="field">
         <label>3–5 Trụ cột xuyên suốt (Mỗi dòng 1 trụ cột)</label>
-        <textarea name="content_pillars" rows="5" placeholder="Giải mã bảng thành phần hoạt chất&#10;So sánh trực diện 2 sản phẩm hot cùng tầm giá&#10;Thử nghiệm thực tế trước và sau 14 ngày&#10;Cảnh báo sai lầm kinh điển khi sử dụng&#10;Gợi ý chu trình tối giản cho người bận rộn" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.ContentPillars}}{{end}}</textarea>
+        <textarea name="content_pillars" rows="5" placeholder="Giải mã bảng thành phần hoạt chất&#10;So sánh hai sản phẩm theo dữ liệu công khai&#10;Theo dõi trải nghiệm; ghi rõ mốc đo và giới hạn&#10;Cảnh báo sai lầm có nguồn đáng tin&#10;Gợi ý chu trình tối giản cho người bận rộn" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.ContentPillars}}{{end}}</textarea>
 
       </div>
     </div>
@@ -263,10 +263,11 @@
 
   <!-- QC Checklist -->
   <div class="form-card" style="margin-bottom:24px">
-    <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>✅</span> 5. Tiêu Chuẩn Nghiệm Thu QC Nguyên Bản (10 Tiêu Chí)</h3>
+    <h3 style="margin-top:0;font-size:15px;display:flex;align-items:center;gap:6px"><span>✅</span> 5. Checklist QC tham khảo (10 mục mặc định)</h3>
     <div class="field">
-      <label>Checklist kiểm định trước khi đăng video (Mỗi dòng 1 tiêu chí)</label>
+      <label>Checklist lưu theo kênh (mỗi dòng 1 mục)</label>
       <textarea name="qc_checklist" rows="6" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.QCChecklist}}{{end}}</textarea>
+      <div class="hint">Được lưu để tham khảo; hiện chưa tự kiểm tra nội dung hoặc chặn đăng.</div>
     </div>
   </div>
 
@@ -282,7 +283,7 @@
 <h2>Phát triển kênh 🌱</h2>
 <p>
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
-  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hệ thống tự quyết nhịp đăng, giết/nhân đôi format; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
+  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hành động Growth phụ thuộc snapshot số liệu thật và ngưỡng đã cấu hình; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
 </p>
 {{if not .GrowthHasSnapshot}}{{end}}
 
@@ -382,6 +383,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chủ đề sản phẩm</h2>
   <form method="post" action="/accounts/{{$id}}/theme">
+    <input type="hidden" name="tab" value="autopilot">
     <div class="field">
       <label>Chủ đề affiliate của kênh này</label>
       <select name="theme">
@@ -390,7 +392,7 @@
         <option value="{{.Slug}}"{{if eq $.Acct.Theme .Slug}} selected{{end}}>{{.Label}}</option>
         {{end}}
       </select>
-      <div class="hint">Hệ thống sẽ tự tìm sản phẩm hoa hồng cao đúng chủ đề này.</div>
+      <div class="hint">Chủ đề dùng để lọc sản phẩm. Autopilot hiện chưa tạo video tự động.</div>
     </div>
     <button type="submit" class="btn btn-secondary btn-sm">Lưu chủ đề</button>
   </form>
@@ -399,6 +401,7 @@
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chế độ tự động</h2>
   <form method="post" action="/accounts/{{$id}}/autopilot">
+    <input type="hidden" name="tab" value="autopilot">
     <div class="field">
       <label><input type="checkbox" name="enabled" value="on"{{if .Acct.Autopilot}} checked{{end}}> Bật autopilot</label>
 
@@ -411,15 +414,12 @@
     <button type="submit" class="btn btn-secondary btn-sm">Lưu</button>
   </form>
   <div style="margin-top:12px">
-  {{if .AutopilotReady}}
-    <p><span class="badge badge-ok">Sẵn sàng chạy tự động</span></p>
-    <form method="post" action="/accounts/{{$id}}/autopilot/run"
-          data-confirm="Chạy autopilot ngay? Hệ thống sẽ tìm sản phẩm và làm video — có thể mất vài phút.">
-      <button type="submit" class="btn btn-sm">▶ Chạy autopilot ngay</button>
-    </form>
+  {{if .AutopilotConfigured}}
+    <p><span class="badge badge-warn">Đã lưu cấu hình · producer đang tạm dừng</span></p>
   {{else}}
-
+    <p class="hint">Bật Autopilot và chọn chủ đề để lưu cấu hình. Producer chưa chạy đến khi có xác nhận dùng Google Flow credits.</p>
   {{end}}
+  <p class="hint" style="margin:6px 0 0">Video tự động đang tạm dừng vì chưa có xác nhận dùng Google Flow credits theo kênh.</p>
   </div>
 </div>
 </div>
@@ -463,7 +463,8 @@
 {{else}}
 
 <div style="margin-bottom:16px">
-  <h2 style="margin:0 0 4px;font-size:18px">Kết nối mạng xã hội &amp; Phân phối video 🚀</h2>
+  <h2 style="margin:0 0 4px;font-size:18px">Kết nối nền tảng &amp; phân phối video</h2>
+  <p class="hint" style="margin:0">Trạng thái bên dưới phản ánh token/ID đã lưu; không gọi API để kiểm quyền đăng hoặc xác nhận publish thành công.</p>
 </div>
 
 <div class="grid2" style="margin-bottom:24px">
@@ -478,9 +479,9 @@
       </div>
       <div>
         {{if .PubStatus.YoutubeTokenDead}}
-          <span class="badge badge-err">⚠️ Token hết hạn</span>
+          <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
         {{else if .PubStatus.YoutubeToken}}
-          <span class="badge badge-ok">✓ Đã kết nối OAuth</span>
+          <span class="badge badge-warn">Có token · API chưa kiểm</span>
         {{else}}
           <span class="badge badge-no">Chưa có OAuth Token</span>
         {{end}}
@@ -519,11 +520,13 @@
         <h3 style="margin:0;display:flex;align-items:center;gap:8px">
           <span>🎵</span> TikTok Creator
         </h3>
-        <span class="hint">Video ngắn &amp; Giỏ hàng Affiliate</span>
+        <span class="hint">Video ngắn · mặc định tạo bản nháp; gắn link sản phẩm trong app TikTok</span>
       </div>
       <div>
-        {{if .PubStatus.TiktokToken}}
-          <span class="badge badge-ok">✓ Đã kết nối Token</span>
+        {{if .PubStatus.TiktokTokenDead}}
+          <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
+        {{else if .PubStatus.TiktokToken}}
+          <span class="badge badge-warn">Có token · API chưa kiểm</span>
         {{else}}
           <span class="badge badge-no">Chưa kết nối</span>
         {{end}}
@@ -547,9 +550,9 @@
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b>📘 Facebook Page</b>
-        {{if .PubStatus.FbPage}}<span class="badge badge-ok">✓ Đã kết nối</span>{{else}}<span class="badge badge-no">Chưa kết nối</span>{{end}}
+        {{if .PubStatus.FbPage}}<span class="badge badge-warn">Có Page ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu Page ID hoặc token</span>{{end}}
       </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Đăng Reels &amp; bài viết bán hàng</p>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Page video/bài viết; quyền và trạng thái publish cần kiểm tra.</p>
       <div style="margin-top:10px">
         {{if .PubStatus.FacebookClient}}
           <a class="btn btn-sm" href="/publishers/facebook/authorize?username={{.Acct.Username}}">
@@ -563,16 +566,16 @@
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b>📸 Instagram Reels</b>
-        {{if .PubStatus.Instagram}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+        {{if .PubStatus.Instagram}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
       </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Graph API 1080x1920 Full HD</p>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Reels; quyền đăng công khai phụ thuộc cấu hình opt-in.</p>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b>🧵 Threads</b>
-        {{if .PubStatus.Threads}}<span class="badge badge-ok">✓ Sẵn sàng</span>{{else}}<span class="badge badge-no">—</span>{{end}}
+        {{if .PubStatus.Threads}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
       </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Bài viết tâm sự gắn link bio</p>
+      <p class="hint" style="margin:6px 0 0;font-size:12px">Chỉ bài chữ kèm link; chưa hỗ trợ đăng video.</p>
     </div>
   </div>
   <div style="margin-top:14px">
@@ -623,7 +626,7 @@
       <dt>Tính cách AI (Persona)</dt><dd><span class="badge badge-info">{{.Acct.PersonaLabel}}</span></dd>
       <dt>Ngành hàng / Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}Đa năng{{end}}</dd>
       <dt>Link Affiliate Mặc Định</dt><dd><code style="font-size:11px;word-break:break-all">{{if .Acct.AffiliateLink}}{{.Acct.AffiliateLink}}{{else}}Chưa cấu hình{{end}}</code></dd>
-      <dt>Thuật toán Anti-Spam</dt><dd><span class="badge badge-ok">✓ Bật Anti-Bot Jitter (Trễ ngẫu nhiên 45s – 120s)</span></dd>
+      <dt>Tự động trả lời bình luận</dt><dd><span class="badge badge-warn">Chưa tích hợp nhận/gửi bình luận</span></dd>
     </dl>
 
   </div>
@@ -631,8 +634,9 @@
   <!-- Trình giả lập phản hồi AI trực tiếp -->
   <div class="form-card" style="border:1.5px solid var(--border)">
     <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-      <span>⚡</span> Trình Giả Lập Phản Hồi Bình Luận AI
+      <span>⚡</span> Mô phỏng phản hồi theo từ khóa
     </h3>
+    <p class="hint">Dùng luật từ khóa và câu mẫu cố định; không gọi AI, không đọc bình luận từ nền tảng và không gửi phản hồi.</p>
 
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
@@ -648,7 +652,7 @@
     </div>
 
     <button type="button" id="btn-sim-run" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px" onclick="runCommentSimulation({{$id}})">
-      ⚡ Kiểm Tra AI Phản Hồi Ngay
+      ⚡ Tạo câu trả lời mẫu
     </button>
 
     <!-- Kết quả mô phỏng -->
@@ -657,9 +661,9 @@
         <span class="badge badge-ok" id="sim-intent-tag" style="font-size:11px"></span>
         <span class="badge badge-dim" id="sim-delay-tag" style="font-size:10.5px"></span>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Hành động AI tự động:</div>
-      <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px" id="sim-action-text">Tự động phản hồi kèm Deep-link &amp; Ghim bình luận</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Nội dung phản hồi tự động gửi cho khách:</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Gợi ý trong mô phỏng:</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px" id="sim-action-text">Chỉ hiển thị gợi ý; không gửi bình luận</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Câu trả lời mẫu (chưa gửi):</div>
       <div style="background:var(--bg2);padding:10px 12px;border-radius:8px;border-left:3px solid var(--accent);font-size:13px;line-height:1.5;color:var(--text)" id="sim-reply-text">
 
       </div>
@@ -701,10 +705,10 @@ function runCommentSimulation(acctId) {
     }
     document.getElementById('sim-result-box').style.display = 'block';
     document.getElementById('sim-intent-tag').textContent = '🎯 ' + res.intent;
-    document.getElementById('sim-delay-tag').textContent = '⏱️ Anti-Spam: ' + res.delay_sec + 's trễ';
+    document.getElementById('sim-delay-tag').textContent = '⏱️ Thời gian chờ mô phỏng: ' + res.delay_sec + 's';
     document.getElementById('sim-action-text').textContent = res.action;
     document.getElementById('sim-reply-text').textContent = res.reply;
-    window.showToast('✓ AI đã phân tích ý định và sinh câu trả lời chuẩn xác!', true);
+    window.showToast('Đã tạo câu trả lời mẫu theo luật từ khóa.', true);
   })
   .catch(function(err) {
     btn.disabled = false;
