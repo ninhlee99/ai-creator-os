@@ -2,6 +2,7 @@ package publishers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -81,13 +82,10 @@ func TikTokRedirectIsLocal() bool {
 // HasClient reports whether client key + secret are set for this account.
 func (p *TikTokPublisher) HasClient() bool { return p.clientKey != "" && p.clientSecret != "" }
 
-// Scope is what the connect flow asks for: drafts need only video.upload;
-// video.publish is requested only when direct posting is enabled.
+// Scope is what the connect flow asks for. Direct Post stays disabled until
+// eligibility is verified and the per-post consent flow exists.
 func (p *TikTokPublisher) Scope() string {
-	if p.draftOnly {
-		return "user.info.basic," + tiktok.ScopeUploadDraft
-	}
-	return "user.info.basic," + tiktok.ScopeUploadDraft + "," + tiktok.ScopeDirectPost
+	return "user.info.basic," + tiktok.ScopeUploadDraft
 }
 
 // AuthorizeURL is the Login Kit URL the creator opens to grant access.
@@ -147,12 +145,21 @@ func (p *TikTokPublisher) Publish(ctx context.Context, videoPath, title, descrip
 	if !p.IsConfigured() {
 		return PublishResult{Ok: false, Platform: p.Name(), Error: "tiktok not configured"}
 	}
+	if !p.draftOnly {
+		return PublishResult{
+			Ok:       false,
+			Platform: p.Name(),
+			Error:    "TikTok Direct Post đang bị khóa: chưa xác minh eligibility và chưa có consent theo từng bài",
+		}
+	}
 	if title == "" {
 		title = truncate(description, 90)
 	}
 	publishID, err := p.client().PublishFile(videoPath, title, p.privacy, p.draftOnly)
 	if err != nil {
-		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300)}
+		var uncertain tiktok.DeliveryUncertainError
+		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300),
+			DeliveryUncertain: errors.As(err, &uncertain)}
 	}
 	return PublishResult{Ok: true, Platform: p.Name(), RemoteID: publishID, Draft: p.draftOnly}
 }

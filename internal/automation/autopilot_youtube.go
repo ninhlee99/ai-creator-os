@@ -15,13 +15,18 @@ var youtubeAffiliatePublisher = func(acct *network.Account) *publishers.YouTubeP
 	return pub
 }
 
-// autoPublishYouTubeAffiliate đăng video affiliate lên YouTube Shorts
-// (private-first, Ninh duyệt trong YouTube Studio). Quota-guarded: hết
-// quota ngày thì ghi log trung thực và bỏ qua (video vẫn nằm ở output).
+// autoPublishYouTubeAffiliate tải video affiliate lên YouTube Shorts theo
+// YOUTUBE_DEFAULT_PRIVACY (mặc định private). Quota-guarded: hết quota ngày
+// thì ghi log và bỏ qua (video vẫn nằm ở output).
 func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
 	// Đợt Y: idempotency — chân này đã done thì bỏ qua.
-	if s.JobStore.PublishLegStatus(jobID, "youtube") == studio.LegDone {
+	legStatus := s.JobStore.PublishLegStatus(jobID, "youtube")
+	if legStatus == studio.LegDone {
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: đã đăng rồi — bỏ qua.")
+		return
+	}
+	if legStatus == studio.LegNeedsReview {
+		s.JobStore.AppendLog(jobID, "Tự đăng YouTube: kết quả lần trước chưa rõ — kiểm tra YouTube Studio trước khi thử lại.")
 		return
 	}
 	pub := youtubeAffiliatePublisher(acct)
@@ -65,6 +70,14 @@ func (s *Service) autoPublishYouTubeAffiliate(ctx context.Context, jobID string,
 		}
 		if isYouTubeQuotaExceeded(res.Error) {
 			_ = s.Growth.ExhaustUploadQuota(quotaDay)
+		}
+		if res.DeliveryUncertain {
+			note := "Kết quả upload chưa xác định; dừng retry để tránh đăng trùng. Kiểm tra YouTube Studio trước khi xử lý tiếp."
+			s.JobStore.AppendLog(jobID, note+" Lỗi: "+res.Error)
+			_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegNeedsReview, "")
+			_ = s.decide("autopilot", "autopublish_yt_uncertain", &jobID,
+				note, map[string]any{"error": res.Error, "delivery_uncertain": true})
+			return
 		}
 		s.JobStore.AppendLog(jobID, "Tự đăng YouTube thất bại: "+res.Error)
 		_ = s.JobStore.SetPublishLeg(jobID, "youtube", studio.LegFailed, "")

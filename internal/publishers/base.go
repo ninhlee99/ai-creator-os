@@ -34,7 +34,13 @@ type PublishResult struct {
 	RemoteID string
 	URL      string
 	Error    string
-	Draft    bool
+	// On successful results, Draft marks a provider-specific non-public outcome.
+	// It may mean native draft (TikTok/Facebook), processed unpublished
+	// container (Instagram), or non-public privacy status (YouTube).
+	Draft bool
+	// DeliveryUncertain means the provider may have accepted the publish
+	// request, but the app did not receive enough confirmation to retry safely.
+	DeliveryUncertain bool
 	// UploadRequestAttempted marks that the provider's upload endpoint was
 	// called, even when its response failed or delivery was ambiguous.
 	UploadRequestAttempted bool

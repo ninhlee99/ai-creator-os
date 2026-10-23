@@ -4,9 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 )
+
+// DeliveryUncertainError means a video chunk may have reached TikTok even
+// though the client did not receive a definitive response.
+type DeliveryUncertainError struct{ Err error }
+
+func (e DeliveryUncertainError) Error() string { return e.Err.Error() }
+func (e DeliveryUncertainError) Unwrap() error { return e.Err }
 
 func (c *PostingClient) CreatorInfo() (map[string]any, error) {
 	h, err := c.auth()
@@ -116,10 +124,18 @@ func (c *PostingClient) PublishFile(path, title, privacyLevel string, draft bool
 				"Content-Range": fmt.Sprintf("bytes %d-%d/%d", first, last, size),
 			}, blob)
 		if perr != nil {
-			return "", fmt.Errorf("chunk %d upload failed: %w", i, perr)
+			err := fmt.Errorf("chunk %d upload failed: %w", i, perr)
+			if status == 0 || status == http.StatusRequestTimeout || status >= http.StatusInternalServerError {
+				return "", DeliveryUncertainError{Err: err}
+			}
+			return "", err
 		}
 		if status != 200 && status != 201 && status != 206 {
-			return "", fmt.Errorf("chunk %d upload failed: HTTP %d", i, status)
+			err := fmt.Errorf("chunk %d upload failed: HTTP %d", i, status)
+			if status == http.StatusRequestTimeout || status >= http.StatusInternalServerError {
+				return "", DeliveryUncertainError{Err: err}
+			}
+			return "", err
 		}
 	}
 	return publishID, nil

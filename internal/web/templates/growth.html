@@ -190,6 +190,15 @@
       <td>
         <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
         {{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener" style="font-size:12px">Xem video ↗</a>{{end}}
+        {{if eq .Status "needs_review"}}
+        <form method="post" action="/growth/items/{{.ID}}/publish-review" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:8px">
+          <label class="hint">YouTube video ID nếu đã thấy
+            <input name="remote_id" placeholder="Video ID" style="display:block;max-width:220px">
+          </label>
+          <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có video</button>
+          <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra YouTube và không thấy video. Hệ thống sẽ xếp lại đúng luồng upload.">Đã kiểm tra: chưa có</button>
+        </form>
+        {{end}}
       </td>
       <td>
         {{if .PubNote}}

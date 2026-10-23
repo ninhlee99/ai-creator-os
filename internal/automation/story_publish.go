@@ -91,7 +91,14 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 		// tránh bản trùng tích lũy im lặng (mất mạng sau khi YouTube đã nhận
 		// đủ bytes nhưng trước khi response về là kịch bản thật).
 		if dup, derr := s.checkDuplicateUpload(ctx, acct, vmeta.Title); derr != nil {
-			s.Story.AppendLog(jobID, "Kiểm tra trùng thất bại ("+derr.Error()+") — vẫn đăng lại.")
+			note := "Không đăng lại vì kiểm tra trùng thất bại: " + derr.Error()
+			s.Story.AppendLog(jobID, note)
+			_ = s.decide("story_publisher", "publish_youtube_failed", &username,
+				"không đăng lại vì chưa xác minh được lần upload trước.", map[string]any{
+					"job_id": jobID, "title": vmeta.Title, "error": note,
+					"delivery_uncertain": true,
+				})
+			return fmt.Sprintf("story %q: cần kiểm tra YouTube trước khi thử lại", j.Title), false
 		} else if dup {
 			s.Story.AppendLog(jobID, "Phát hiện video cùng tiêu đề đã có trên kênh (lần đăng dở trước đó) — bỏ qua đăng lại để tránh trùng.")
 			if s.Settings != nil {
@@ -123,13 +130,33 @@ func (s *Service) PublishStoryNow(ctx context.Context, jobID, username string) (
 			}
 			return fmt.Sprintf("story %q: YouTube cần nối lại — đã dừng retry", j.Title), false
 		}
-		s.Story.AppendLog(jobID, "Đăng YouTube thất bại: "+res.Error)
+		note := "Đăng YouTube thất bại: " + res.Error
+		if res.DeliveryUncertain {
+			note = "Kết quả upload YouTube chưa xác định; dừng retry và giữ marker để đối chiếu trước: " + res.Error
+		}
+		s.Story.AppendLog(jobID, note)
+		_ = s.decide("story_publisher", "publish_youtube_failed", &username,
+			"đăng truyện lên YouTube thất bại.", map[string]any{
+				"job_id": jobID, "title": vmeta.Title, "error": res.Error,
+				"delivery_uncertain": res.DeliveryUncertain,
+			})
 		if s.Settings != nil {
-			_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+			if res.UploadRequestAttempted {
+				s.Story.AppendLog(jobID, "Giữ marker đăng dở; lần sau sẽ kiểm tra video trùng trước khi thử lại.")
+			} else {
+				_ = s.Settings.Delete(KeyStoryPublishingPrefix + jobID)
+			}
+		}
+		if res.DeliveryUncertain {
+			return fmt.Sprintf("story %q: kết quả upload chưa rõ — kiểm tra YouTube trước khi thử lại", j.Title), false
 		}
 		return fmt.Sprintf("story %q: đăng thất bại — %s", j.Title, res.Error), false
 	}
-	logLine := "Đã đăng YouTube (private): " + res.RemoteID
+	privacyLabel := "công khai"
+	if res.Draft {
+		privacyLabel = "chưa công khai"
+	}
+	logLine := "Đã đăng YouTube (" + privacyLabel + "): " + res.RemoteID
 	if stalePublishing {
 		logLine += " (đã kiểm tra trùng trước khi đăng lại)"
 	}
@@ -340,11 +367,11 @@ func freshPublishingMarker(ts string) bool {
 }
 
 // checkDuplicateUpload hỏi uploader xem video cùng tiêu đề đã có trên kênh
-// chưa. Uploader không hỗ trợ → (false, nil) để caller đăng như thường.
+// chưa. Không có checker phải trả lỗi để caller không retry mù.
 func (s *Service) checkDuplicateUpload(ctx context.Context, acct *network.Account, title string) (bool, error) {
 	dc, ok := s.Uploader.(DuplicateChecker)
 	if !ok || dc == nil {
-		return false, nil
+		return false, fmt.Errorf("uploader không hỗ trợ kiểm tra video gần đây")
 	}
 	return dc.HasRecentUpload(ctx, acct, title, 24*time.Hour)
 }

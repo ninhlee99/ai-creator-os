@@ -14,14 +14,19 @@ import "time"
 
 // PublishLeg là một chân đăng của job affiliate.
 type PublishLeg struct {
-	JobID    string
-	Platform string // "tiktok" | "youtube"
+	JobID     string
+	Title     string
+	Platform  string // "tiktok" | "youtube" | Meta platform
+	RemoteID  string
+	Status    string
+	UpdatedAt string
 }
 
 // PublishLeg statuses.
 const (
-	LegDone   = "done"
-	LegFailed = "failed"
+	LegDone        = "done"
+	LegFailed      = "failed"
+	LegNeedsReview = "needs_review"
 )
 
 // PublishLegStatus trả về trạng thái chân đăng ("" khi chưa từng đăng).
@@ -69,4 +74,79 @@ func (s *Studio) FailedPublishLegs() []PublishLeg {
 		}
 	}
 	return out
+}
+
+// RecentPublishLegs returns recorded automatic publish outcomes, newest first.
+func (s *Studio) RecentPublishLegs(limit int) ([]PublishLeg, error) {
+	rows, err := s.db.Query(`SELECT p.job_id, COALESCE(j.title,''), p.platform,
+		p.remote_id, p.status, p.updated_at
+		FROM studio_publish_legs p
+		LEFT JOIN studio_jobs j ON j.id = p.job_id
+		WHERE p.status IN (?, ?, ?)
+		ORDER BY p.updated_at DESC, p.job_id DESC LIMIT ?`, LegDone, LegFailed, LegNeedsReview, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PublishLeg
+	for rows.Next() {
+		var leg PublishLeg
+		if err := rows.Scan(&leg.JobID, &leg.Title, &leg.Platform, &leg.RemoteID, &leg.Status, &leg.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, leg)
+	}
+	return out, rows.Err()
+}
+
+// RecentFailedPublishLegs returns current failed autopilot legs newest first.
+func (s *Studio) RecentFailedPublishLegs(limit int) ([]PublishLeg, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(`SELECT p.job_id, COALESCE(j.title,''), p.platform,
+		p.remote_id, p.status, p.updated_at
+		FROM studio_publish_legs p
+		LEFT JOIN studio_jobs j ON j.id = p.job_id
+		WHERE p.status=?
+		ORDER BY p.updated_at DESC, p.job_id DESC LIMIT ?`, LegFailed, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PublishLeg
+	for rows.Next() {
+		var leg PublishLeg
+		if err := rows.Scan(&leg.JobID, &leg.Title, &leg.Platform, &leg.RemoteID, &leg.Status, &leg.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, leg)
+	}
+	return out, rows.Err()
+}
+
+// RecentPublishLegIssues returns failed or ambiguous automatic publish legs.
+func (s *Studio) RecentPublishLegIssues(limit int) ([]PublishLeg, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	rows, err := s.db.Query(`SELECT p.job_id, COALESCE(j.title,''), p.platform,
+		p.remote_id, p.status, p.updated_at
+		FROM studio_publish_legs p
+		LEFT JOIN studio_jobs j ON j.id = p.job_id
+		WHERE p.status IN (?, ?)
+		ORDER BY p.updated_at DESC, p.job_id DESC LIMIT ?`, LegFailed, LegNeedsReview, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []PublishLeg
+	for rows.Next() {
+		var leg PublishLeg
+		if err := rows.Scan(&leg.JobID, &leg.Title, &leg.Platform, &leg.RemoteID, &leg.Status, &leg.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, leg)
+	}
+	return out, rows.Err()
 }

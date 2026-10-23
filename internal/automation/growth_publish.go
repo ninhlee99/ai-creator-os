@@ -34,7 +34,7 @@ func (s *Service) advanceAccount(ctx context.Context, a *network.Account) []stri
 	}
 
 	pending, _ := s.Growth.ItemsByStatus(a.ID,
-		[]string{growth.ItemProduced, growth.ItemWaitingConnect, growth.ItemWaitingQuota}, 50)
+		[]string{growth.ItemProduced, growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview}, 50)
 	for _, it := range pending {
 		if it.Variant == growth.VariantTikTok {
 			continue // TikTok stays draft-only until the Direct Post audit
@@ -49,6 +49,13 @@ func (s *Service) advanceAccount(ctx context.Context, a *network.Account) []stri
 // honest ("chờ kết nối"/"chờ quota") until a real upload returns a video
 // id.
 func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth.PlanItem) []string {
+	if it.Status == growth.ItemNeedsReview {
+		if s.JobStore != nil && it.StudioJobID != "" && s.JobStore.PublishLegStatus(it.StudioJobID, "youtube") == studio.LegDone {
+			rid := s.JobStore.PublishLegRemoteID(it.StudioJobID, "youtube")
+			_ = s.Growth.SetItemPublished(it.ID, rid)
+		}
+		return nil
+	}
 	up := s.uploader()
 	if up == nil {
 		return nil // no upload backend wired; leave the item waiting
@@ -80,7 +87,16 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	// Đợt AA: chân YouTube của job đã done (do autopilot OnDone đăng trước)
 	// thì không đăng lại — đánh dấu item đã đăng từ leg.
 	if s.JobStore != nil && it.StudioJobID != "" {
-		if s.JobStore.PublishLegStatus(it.StudioJobID, "youtube") == studio.LegDone {
+		legStatus := s.JobStore.PublishLegStatus(it.StudioJobID, "youtube")
+		if legStatus == studio.LegNeedsReview {
+			note := "Kết quả upload Autopilot chưa xác định; kiểm tra YouTube Studio trước khi thử lại."
+			_ = s.Growth.SetItemStatus(it.ID, growth.ItemNeedsReview, note)
+			return []string{a.Username + ": " + note}
+		}
+		if legStatus == studio.LegFailed {
+			return []string{a.Username + ": chờ Autopilot thử lại chân YouTube đã lỗi; Growth không tải lần nữa để tránh trùng."}
+		}
+		if legStatus == studio.LegDone {
 			rid := s.JobStore.PublishLegRemoteID(it.StudioJobID, "youtube")
 			_ = s.Growth.SetItemPublished(it.ID, rid)
 			_ = s.Growth.Decide("growth_publisher", "skip_duplicate_youtube", a.Username,
@@ -138,6 +154,16 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 			_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingConnect,
 				"Chờ kết nối YouTube: kênh chưa bật loại nội dung này — thêm loại nội dung cho kênh ở trang chi tiết tài khoản")
 			return nil
+		}
+		if res.DeliveryUncertain {
+			note := "Kết quả upload YouTube chưa xác định; dừng retry để tránh đăng trùng. Kiểm tra YouTube Studio trước khi xử lý tiếp."
+			_ = s.Growth.SetItemStatus(it.ID, growth.ItemNeedsReview, note)
+			_ = s.Growth.Decide("growth_publisher", "publish_youtube_failed", a.Username,
+				"upload có thể đã được YouTube nhận; cần đối chiếu trước khi retry.", map[string]any{
+					"item": it.ID, "job_id": it.StudioJobID, "title": it.PubTitle,
+					"error": res.Error, "delivery_uncertain": true, "quota_day": quotaDay,
+				})
+			return []string{a.Username + ": " + note}
 		}
 		_ = s.Growth.SetItemStatus(it.ID, growth.ItemProduced,
 			"Đăng YouTube thất bại: "+res.Error+" — hệ thống tự thử lại ở vòng sau")

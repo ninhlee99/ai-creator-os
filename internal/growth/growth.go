@@ -37,6 +37,7 @@ const (
 	ItemProduced       = "produced"        // render finished, not (yet) published
 	ItemWaitingConnect = "waiting_connect" // rendered, blocked on missing platform credentials
 	ItemWaitingQuota   = "waiting_quota"   // rendered, blocked on the daily API quota
+	ItemNeedsReview    = "needs_review"    // provider may have accepted upload; verify before retry
 	ItemPublished      = "published"
 	ItemDropped        = "dropped"
 	ItemFailed         = "failed" // linked Studio job failed / vanished

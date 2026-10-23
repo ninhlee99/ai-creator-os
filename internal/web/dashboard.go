@@ -22,6 +22,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if s.Studio != nil {
 		recentJobs = s.studioJobViews(s.Studio.ListJobs(6))
 	}
+	recentPublishOutcomes, err := s.dashboardPublishOutcomes(6)
+	if err != nil {
+		s.fail(w, err, "load recent publish outcomes")
+		return
+	}
 	s.render(w, "dashboard", s.ctx(
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
@@ -29,6 +34,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		"CommissionRevenue", commRevenue,
 		"NJobs", s.activeStudioJobs(),
 		"RecentJobs", recentJobs,
+		"RecentPublishOutcomes", recentPublishOutcomes,
 	))
 }
 

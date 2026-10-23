@@ -73,6 +73,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/jobs/{id}/cancel", s.handleStudioJobCancel)
 	mux.HandleFunc("POST /studio/jobs/{id}/delete", s.handleStudioJobDelete)
 	mux.HandleFunc("POST /studio/jobs/{id}/retry", s.handleStudioJobRetry)
+	mux.HandleFunc("POST /studio/jobs/{id}/publish-review", s.handleStudioPublishReview)
 	mux.HandleFunc("POST /studio/jobs/{id}/capcut", s.handleStudioJobCapCut)
 	mux.HandleFunc("POST /studio/jobs/{id}/remix", s.handleStudioJobRemix)
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
@@ -156,6 +157,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
 	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
 	mux.HandleFunc("POST /growth/thresholds", s.handleGrowthThresholds)
+	mux.HandleFunc("POST /growth/items/{id}/publish-review", s.handleGrowthPublishReview)
 
 	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
 	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.

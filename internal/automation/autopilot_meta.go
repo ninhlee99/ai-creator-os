@@ -39,12 +39,25 @@ func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j 
 		if !ok {
 			continue
 		}
-		if s.JobStore.PublishLegStatus(jobID, name) == studio.LegDone {
+		legStatus := s.JobStore.PublishLegStatus(jobID, name)
+		if legStatus == studio.LegDone {
+			continue
+		}
+		if legStatus == studio.LegNeedsReview {
+			s.JobStore.AppendLog(jobID, "Tự đăng "+name+": kết quả lần trước chưa rõ — kiểm tra nền tảng trước khi thử lại.")
 			continue
 		}
 		videoPath := s.OutputPath(j.Output)
 		res := pub.Publish(ctx, videoPath, title, desc, "short_video")
 		if !res.Ok {
+			if res.DeliveryUncertain {
+				note := "Kết quả publish chưa xác định; dừng retry để tránh đăng trùng. Kiểm tra " + name + " trước khi xử lý tiếp."
+				s.JobStore.AppendLog(jobID, note+" Lỗi: "+res.Error)
+				_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegNeedsReview, "")
+				_ = s.decide("autopilot", "autopublish_meta_uncertain", &jobID,
+					note, map[string]any{"platform": name, "error": res.Error, "delivery_uncertain": true})
+				continue
+			}
 			s.JobStore.AppendLog(jobID, "Tự đăng "+name+" thất bại: "+res.Error)
 			_ = s.JobStore.SetPublishLeg(jobID, name, studio.LegFailed, "")
 			_ = s.decide("autopilot", "autopublish_meta_failed", &jobID,
@@ -64,8 +77,13 @@ func (s *Service) autoPublishMetaAffiliate(ctx context.Context, jobID string, j 
 func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, j studio.Job, p studio.AffiliateParams, acct *network.Account) {
 	// Đợt Y: idempotency — chân này đã done thì bỏ qua (chống hook fire
 	// 2 lần hoặc retry tick chạy lại sau khi đã đăng).
-	if s.JobStore.PublishLegStatus(jobID, "tiktok") == studio.LegDone {
+	legStatus := s.JobStore.PublishLegStatus(jobID, "tiktok")
+	if legStatus == studio.LegDone {
 		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: đã đăng rồi — bỏ qua.")
+		return
+	}
+	if legStatus == studio.LegNeedsReview {
+		s.JobStore.AppendLog(jobID, "Tự đăng TikTok: kết quả lần trước chưa rõ — kiểm tra TikTok trước khi thử lại.")
 		return
 	}
 	var pub publishers.Publisher
@@ -87,6 +105,14 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 	videoPath := s.OutputPath(j.Output)
 	res := pub.Publish(ctx, videoPath, title, j.Caption, "short_video")
 	if !res.Ok {
+		if res.DeliveryUncertain {
+			note := "Kết quả upload TikTok chưa xác định; dừng retry để tránh draft trùng. Kiểm tra TikTok trước khi xử lý tiếp."
+			s.JobStore.AppendLog(jobID, note+" Lỗi: "+res.Error)
+			_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegNeedsReview, "")
+			_ = s.decide("autopilot", "autopublish_tiktok_uncertain", &jobID,
+				note, map[string]any{"error": res.Error, "delivery_uncertain": true})
+			return
+		}
 		s.JobStore.AppendLog(jobID, "Tự đăng thất bại: "+res.Error)
 		_ = s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegFailed, "")
 		_ = s.decide("autopilot", "autopublish_failed", &jobID,

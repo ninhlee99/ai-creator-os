@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 )
@@ -108,17 +109,25 @@ func (p *YouTubePublisher) PublishMeta(ctx context.Context, videoPath string, me
 			"Content-Range":  fmt.Sprintf("bytes 0-%d/%d", size-1, size),
 		}, blob)
 	if err != nil {
-		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300), UploadRequestAttempted: true}
+		uncertain := status == 0 || status == http.StatusRequestTimeout || status >= http.StatusInternalServerError
+		return PublishResult{Ok: false, Platform: p.Name(), Error: truncate(err.Error(), 300),
+			UploadRequestAttempted: true, DeliveryUncertain: uncertain}
 	}
 	data = nil
 	_ = json.Unmarshal(raw, &data)
 	if status != 200 && status != 201 {
 		return PublishResult{Ok: false, Platform: p.Name(),
-			Error: truncate(fmt.Sprintf("upload failed: HTTP %d %.200v", status, data), 300), UploadRequestAttempted: true}
+			Error:                  truncate(fmt.Sprintf("upload failed: HTTP %d %.200v", status, data), 300),
+			UploadRequestAttempted: true,
+			DeliveryUncertain:      status == http.StatusRequestTimeout || status >= http.StatusInternalServerError}
 	}
 	var vid, videoURL string
 	if data != nil {
 		vid, _ = data["id"].(string)
+	}
+	if vid == "" {
+		return PublishResult{Ok: false, Platform: p.Name(),
+			Error: "upload response missing video id", UploadRequestAttempted: true, DeliveryUncertain: true}
 	}
 	if vid != "" {
 		videoURL = "https://youtu.be/" + vid
