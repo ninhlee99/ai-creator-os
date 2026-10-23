@@ -28,7 +28,7 @@ không cần restart.
 
 **Cài đặt → tab Accesstrade** (`GET /settings/accesstrade`,
 `templates/settings/accesstrade.html`):
-- Ô nhập key (password, autocomplete off), badge **Đã kết nối** (mask
+- Ô nhập key (password, autocomplete off), badge **Có API key · chưa kiểm tra** (mask
   `••••abcd`) / **Chưa có key**.
 - Nút **Kiểm tra kết nối** (`POST /settings/accesstrade/test`, AJAX → toast):
   gọi `ListCampaigns(limit=1)`; lỗi mạng/key sai trả JSON trung thực, không
@@ -45,10 +45,15 @@ không cần restart.
 
 | Card | UI | Route |
 |---|---|---|
-| 🎯 Săn sản phẩm | Nút **Săn ngay** (AJAX → toast "Đã săn X sản phẩm mới, tạo Y video"); bảng sản phẩm AT mới nhất (chưa dùng làm video) | `POST /at/hunt` → `handleATHunt`: `Client.Hunt` → `products.Store` (Source="accesstrade") → top N mới → `automation.Service.MakeHunterVideo` → `studio.CreateAffiliateJob` (ảnh listing + nhạc, không chữ/voiceover) |
-| ⚙️ Tự động Accesstrade | Checkbox hunter/ordersync/campaigncheck + số video mỗi lần săn (AJAX → toast) | `POST /at/settings` → `handleATSettings` (lưu ledger settings `at.hunter_enabled`, `at.hunter_videos`, `at.ordersync_enabled`, `at.campaigncheck_enabled`) |
+| 🎯 Săn sản phẩm | Nút **Săn ngay** quét và lưu offer; trả riêng số offer mới, watchlist, video và lý do chưa tạo video | `POST /at/hunt` → `handleATHunt`: `Client.Hunt` → `products.Store`; chỉ thử tạo video khi có demand evidence, bật Flow credits, có ảnh tham chiếu theo kênh và producer sẵn sàng |
+| ⚙️ Tự động Accesstrade | Cài đặt lịch hunter/order sync/campaign check, số video tối đa và cho phép Flow credits | `POST /settings/accesstrade/automation` → `handleATAutomationSave` lưu `at.hunter_enabled`, `at.hunter_videos`, `at.hunter_flow_credits`, `at.ordersync_enabled`, `at.campaigncheck_enabled` cùng cadence |
 | ⏱️ Chu kỳ tự động (tab Cài đặt · Accesstrade) | Chu kỳ săn sản phẩm (giờ, 1–168) + chu kỳ đồng bộ đơn (phút, 5–1440); công tắc on/off ở trang Affiliate (form → 303 → toast) | `GET /settings/accesstrade`, `POST /settings/accesstrade/automation` → `handleATAutomationSave` (lưu `at.hunter_interval_hours`, `at.ordersync_interval_minutes`) |
 | 💰 Đối soát hoa hồng | Badge **Đã duyệt** / **Chờ duyệt** / **Từ chối** (hiện RIÊNG — pending không cộng vào đã duyệt); nút **Đồng bộ đơn** (AJAX → toast); bảng đơn gần nhất (mã đơn mask `AT12••••9X7Q`) | `POST /at/orders/sync` → `handleATOrderSync`: `ListOrders` (cửa sổ 7 ngày) → `UpsertOrders` (update pending tại chỗ) |
+
+Chỉ coi số tiền là dữ liệu hiện có sau khi `at_sync_state.orders.until` được ghi
+bởi lần sync thành công. Dashboard đọc `at_orders` (đã duyệt/chờ duyệt), không
+dùng tổng commission legacy trong `ledger.db`; lỗi đọc stats không được trình
+bày thành 0.
 
 ## 4. Fail-closed
 
@@ -66,7 +71,7 @@ không cần restart.
 
 | Tick | Hạn | Việc |
 |---|---|---|
-| `ATHunterTick` | `at.hunter_interval_hours` (mặc định 24) | `Hunt` → top N (`at.hunter_videos`, mặc định 3) sản phẩm MỚI → `MakeHunterVideo` (tải ảnh listing qua `studio.DownloadImage`, `CreateAffiliateJob` mode photo) → `products.RecordUse(id, 0, jobID)` (account 0 = video trực tiếp từ hunter) |
+| `ATHunterTick` | `at.hunter_interval_hours` (mặc định 24) | `Hunt` lưu offer; chỉ offer có sales/rating evidence mới vào production candidates. Tạo video còn cần `at.hunter_flow_credits=1`, kênh đích có ảnh tham chiếu và producer sẵn sàng; mặc định Flow credits tắt nên tick chỉ tìm/lưu offer. |
 | `ATOrderSyncTick` | `at.ordersync_interval_minutes` (mặc định 30) | `ListOrders` (rolling 7 ngày — bắt kịp đơn pending→approved) → `UpsertOrders` → watermark `orders.until` trong `at_sync_state` |
 | `ATCampaignCheckTick` | daily | `ListCampaigns` → upsert cache → campaign chưa duyệt → `ledger.Decide("at_hunter","campaign_pending",…)` làm alert |
 
@@ -106,8 +111,8 @@ hunter điền từ `ProductURL`) + `growth.DisclosureLine`.
 - Một số campaign cần **đăng ký và chờ duyệt tay** trên site Accesstrade
   (5 phút → vài ngày); app chỉ tạo link cho campaign `approval=successful`,
   không đoán/bỏ qua. Tick campaign check chỉ báo, không tự duyệt.
-- Tạo video hunter đốt quota Gemini (image gen) như autopilot thường —
-  DRY-RUN chặn; hết quota ngày → job fail-closed, tick hôm sau chạy tiếp.
+- Tạo video hunter gọi Google Flow sau khi được bật Flow credits; code không xác nhận
+  chi phí bằng 0. Khi chưa bật, hunter chỉ tìm/lưu offer và ghi lý do không tạo video.
 - Không sandbox công khai → mọi test chạm dữ liệu thật đều chỉ đọc.
 
 ## 7. Test

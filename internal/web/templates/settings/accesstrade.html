@@ -5,7 +5,7 @@
 
 <div class="cards">
   <div class="card">
-    <div class="num">{{if .ATKeySet}}<span class="badge badge-ok">Đã kết nối</span>{{else}}<span class="badge badge-draft">Chưa có mã</span>{{end}}</div>
+    <div class="num">{{if .ATKeySet}}<span class="badge badge-warn">Có API key · chưa kiểm tra</span>{{else}}<span class="badge badge-draft">Chưa có key</span>{{end}}</div>
     <div class="label">Trạng thái mã{{if .ATKeySet}} · <code>{{.ATMasked}}</code>{{end}}</div>
   </div>
   <div class="card">
@@ -13,8 +13,8 @@
     <div class="label">Chiến dịch đã tải về</div>
   </div>
   <div class="card">
-    <div class="num">{{if .ATStoreOK}}<span class="badge badge-ok">Sẵn sàng</span>{{else}}<span class="badge badge-err">Lỗi</span>{{end}}</div>
-    <div class="label">Kho Accesstrade</div>
+    <div class="num">{{if .ATStoreOK}}<span class="badge badge-info">Kho cục bộ đã mở</span>{{else}}<span class="badge badge-err">Kho chưa mở</span>{{end}}</div>
+    <div class="label">Trạng thái kho dữ liệu</div>
   </div>
 </div>
 
@@ -46,7 +46,7 @@
           <option value="">Chưa chọn kênh</option>
           {{range .ATHunterAccounts}}<option value="{{.ID}}" {{if eq .ID $.ATHunterAccountID}}selected{{end}}>{{.Username}} · {{.Theme}}</option>{{end}}
         </select>
-        <small>Chỉ tạo video khi kênh có ảnh nhân vật riêng. Hệ thống dùng ảnh listing và dựng footage mới; không ghép clip có sẵn.</small>
+        <small>Offer được lưu để xem. Tạo video cần sales/rating có nguồn, ảnh tham chiếu riêng cho kênh, producer sẵn sàng và quyền dùng Flow credits.</small>
         <label>Số video mỗi lần săn</label>
         <input type="number" name="hunter_videos" min="0" max="10" value="{{.ATAuto.HunterVideos}}">
         <label class="check"><input type="checkbox" name="hunter_flow_credits" value="1"{{if .ATAuto.HunterFlowCredits}} checked{{end}}> Cho phép Google Flow dùng credits khi tạo video tự động</label>

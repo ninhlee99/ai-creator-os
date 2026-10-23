@@ -18,8 +18,8 @@ func (s *Service) advanceAccount(ctx context.Context, a *network.Account) []stri
 		case studio.StatusDone:
 			if it.Variant == growth.VariantTikTok {
 				_ = s.Growth.SetItemProduced(it.ID,
-					"Đã render xong. Trước audit Direct Post, TikTok chỉ đăng nháp (qua luồng tự đăng nếu đang bật) — hệ thống không tự nhận là đã đăng công khai.")
-				notes = append(notes, a.Username+": render xong \""+it.Topic+"\" (TikTok — chờ đăng nháp)")
+					"Đã render xong; Growth chưa tự tải lên nháp TikTok. Tải MP4 tại trang Growth rồi đăng thủ công trong app TikTok.")
+				notes = append(notes, a.Username+": render xong \""+it.Topic+"\" (tải MP4 tại Growth để đăng thủ công lên TikTok)")
 			} else {
 				_ = s.Growth.SetItemProduced(it.ID, "Đã render xong, chờ đăng YouTube")
 			}
@@ -151,6 +151,11 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 			_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingQuota, note)
 			_ = s.Growth.InsertAlert(growth.Alert{AccountID: a.ID, Severity: "warn", Kind: "quota",
 				Message: note, ActionTaken: "Dừng thử lại tới ngày quota kế tiếp."})
+			_ = s.Growth.Decide("growth_publisher", "publish_youtube_failed", a.Username,
+				"YouTube từ chối upload vì quota project đã cạn.", map[string]any{
+					"item": it.ID, "job_id": it.StudioJobID, "title": it.PubTitle,
+					"error": res.Error, "quota_day": quotaDay,
+				})
 			return []string{a.Username + ": YouTube báo hết quota; đã dừng tới lần reset tiếp theo."}
 		}
 		if strings.Contains(res.Error, "not enabled for this channel") {
@@ -158,6 +163,11 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 			// it as a connection problem instead of retrying forever.
 			_ = s.Growth.SetItemStatus(it.ID, growth.ItemWaitingConnect,
 				"Chờ kết nối YouTube: kênh chưa bật loại nội dung này — thêm loại nội dung cho kênh ở trang chi tiết tài khoản")
+			_ = s.Growth.Decide("growth_publisher", "publish_youtube_failed", a.Username,
+				"YouTube từ chối loại nội dung của kênh.", map[string]any{
+					"item": it.ID, "job_id": it.StudioJobID, "title": it.PubTitle,
+					"error": res.Error,
+				})
 			return nil
 		}
 		if res.DeliveryUncertain {
@@ -172,6 +182,11 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 		}
 		_ = s.Growth.SetItemStatus(it.ID, growth.ItemProduced,
 			"Đăng YouTube thất bại: "+res.Error+" — hệ thống tự thử lại ở vòng sau")
+		_ = s.Growth.Decide("growth_publisher", "publish_youtube_failed", a.Username,
+			"đăng YouTube thất bại: "+res.Error, map[string]any{
+				"item": it.ID, "job_id": it.StudioJobID, "title": it.PubTitle,
+				"error": res.Error, "quota_day": quotaDay,
+			})
 		return []string{a.Username + ": đăng YouTube thất bại cho \"" + it.Topic + "\" — " + res.Error}
 	}
 	_ = s.Growth.SetItemPublished(it.ID, res.RemoteID)
@@ -183,6 +198,7 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 	_ = s.Growth.Decide("growth_publisher", "publish_youtube", a.Username,
 		"đã đăng \""+it.PubTitle+"\"", map[string]any{
 			"item": it.ID, "video": res.RemoteID, "draft": res.Draft,
+			"job_id": it.StudioJobID, "title": it.PubTitle,
 			"quota_units": growth.UploadCostUnits,
 		})
 	s.linkRelated(a, it)
@@ -191,7 +207,7 @@ func (s *Service) publishItem(ctx context.Context, a *network.Account, it growth
 		note += " (" + res.URL + ")"
 	}
 	if res.Draft {
-		note += " [đang để riêng tư theo YOUTUBE_DEFAULT_PRIVACY]"
+		note += " [đang để không công khai theo YOUTUBE_DEFAULT_PRIVACY]"
 	}
 	return []string{note}
 }

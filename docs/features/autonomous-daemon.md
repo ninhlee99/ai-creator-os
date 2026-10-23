@@ -65,16 +65,19 @@ Chi tiết bảng công tắc: `docs/ARCHITECTURE.md` §5b.
      - `dedupCheck`: concept trùng ≥80% (Jaccard) với nội dung 45 ngày qua
        (`DedupWindowDays`) → tự đổi góc kể (`ApplyAngle`), ghi decision + alert.
      - Dry-run → chỉ log "DRY-RUN — chưa sản xuất thật".
-     - `Producer.Enqueue` → `studioGrowthProducer.Enqueue` (`growth_produce.go:40`):
-       tài khoản có theme → `Autopilot.Run` (affiliate 30s);
-       tài khoản persona → **fail-closed** "pipeline kể chuyện YouTube chưa có
-       (đang phát triển ở đợt F)" — item được bỏ qua.
+     - `Producer.Enqueue` → `studioGrowthProducer.Enqueue` (`growth_produce.go`):
+       tài khoản có theme → `Autopilot.Run`, hiện dừng trước discovery/job vì
+       thiếu xác nhận Flow credits tự động theo account;
+       tài khoản persona → tạo Story job với thời lượng/khổ từ
+       `PlanItem.Variant`; renderer QC aspect và khoảng 80–125% target duration.
      - Lỗi enqueue → `NoteItemFailure` + alert warn (thử lại tick sau).
    - `advanceAccount`: item `producing` → hỏi `JobState(jobID)`:
-     `done` → `produced` (TikTok: ghi chú "chờ đăng nháp"); `failed` → `failed`;
+     `done` → `produced` (TikTok: Growth chưa tự tải lên draft; trang Growth
+     có tải MP4 để operator đăng thủ công);
+     `failed` → `failed`;
      job biến mất → `failed` ("không tìm thấy Studio job").
-     Item `produced`/`waiting_connect`/`waiting_quota` (trừ TikTok — draft-only
-     trước audit Direct Post) → `publishItem`:
+     Item `produced`/`waiting_connect`/`waiting_quota` (trừ TikTok — chưa có
+     Growth draft-upload route; MP4 tải thủ công ở Growth) → `publishItem`:
      - `Uploader.State(a)` chưa đủ (thiếu `YOUTUBE_CLIENT_ID`/`SECRET` hoặc token)
        → `waiting_connect` + ghi chú thiếu gì.
      - Quota: reserve nguyên tử 1 slot trong bucket riêng `videos.insert`

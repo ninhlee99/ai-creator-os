@@ -292,8 +292,8 @@ func AutopilotLastRun(s Settings) string {
 func AutopilotAutoPublish(s Settings) bool { return autopilotOn(s, "autopilot_auto_publish") }
 
 // AutopilotYouTubeEnabled reports the auto-publish-to-YouTube-Shorts
-// switch (đợt Q). Mặc định BẬT (unset = bật — tiền lệ Đợt 3); private-first
-// nên an toàn, Ninh duyệt trong YouTube Studio.
+// switch (đợt Q). Mặc định BẬT (unset = bật — tiền lệ Đợt 3); privacy theo
+// YOUTUBE_DEFAULT_PRIVACY (mặc định private).
 func AutopilotYouTubeEnabled(s Settings) bool { return autopilotOn(s, "autopilot_youtube_enabled") }
 
 // AutopilotMetaEnabled bật/tắt đăng chéo Facebook/Instagram/Threads.

@@ -17,8 +17,9 @@ import (
 // chặn mọi tick; chưa có access_key → bỏ qua im lặng + log (không spam
 // alert). Cadence và công tắc đều chỉnh từ UI (ledger settings).
 //
-//   - ATHunterTick: daily — quét datafeed sort hoa hồng cao → products.Store
-//     → top N sản phẩm mới tạo studio job affiliate (ảnh + nhạc).
+//   - ATHunterTick: daily — quét datafeed → products.Store; chỉ offer có
+//     sales/rating evidence, Flow credit opt-in, kênh và producer sẵn sàng mới
+//     được thử tạo Studio job.
 //   - ATOrderSyncTick: 30 phút — order-list (10 req/phút nội bộ) → upsert +
 //     update pending tại chỗ → đối soát.
 //   - ATCampaignCheckTick: daily — phát hiện campaign chưa duyệt → ghi

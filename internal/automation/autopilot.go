@@ -27,9 +27,10 @@ type JobStore interface {
 
 // ----------------------------------------------------------- the tick
 
-// AutopilotTick runs one scheduled affiliate cycle: theme ->
-// high-commission product -> video, hands-off. Returns log notes; the
-// Studio's SetOnDone hook handles publishing separately. Cadence:
+// AutopilotTick attempts one scheduled affiliate cycle. The current Studio
+// runner stops before product discovery until per-account Google Flow credit
+// authorization exists. Returns log notes; the Studio's SetOnDone hook
+// handles publishing separately. Cadence:
 // the UI-managed interval (default 6h); gates: kill switch, DRY-RUN,
 // the autopilot_enabled switch (default ON when unset — zero-touch,
 // a stored "0" opts out).
@@ -172,8 +173,8 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	if AutopilotAutoPublish(s.Settings) {
 		s.autoPublishTikTokAffiliate(ctx, jobID, j, p, acct)
 	}
-	// Đợt Q: YouTube Shorts private-first — kênh phân phối thứ hai, hoàn
-	// toàn tự động (không cần chạm tay như TikTok).
+	// Đợt Q: YouTube Shorts theo YOUTUBE_DEFAULT_PRIVACY — kênh phân phối thứ
+	// hai, tự động (không cần thao tác trong app như TikTok draft).
 	if AutopilotYouTubeEnabled(s.Settings) {
 		s.autoPublishYouTubeAffiliate(ctx, jobID, j, p, acct)
 	}

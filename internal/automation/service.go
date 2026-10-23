@@ -63,7 +63,7 @@ func (st YTState) Ready() bool { return st.HasClient && st.HasToken }
 func (st YTState) Label() string {
 	switch {
 	case st.Ready():
-		return "sẵn sàng đăng"
+		return "đủ credential cục bộ · chưa kiểm tra API"
 	case !st.HasClient:
 		return "thiếu OAuth app"
 	default:
@@ -89,7 +89,8 @@ type Uploader interface {
 	Upload(ctx context.Context, a *network.Account, videoPath, title, description, kind string) publishers.PublishResult
 }
 
-// AutopilotRunner runs hands-off affiliate cycles (products -> video).
+// AutopilotRunner attempts affiliate cycles; Studio may stop before product
+// discovery when account-level Google Flow credit authorization is absent.
 // *studio.Autopilot satisfies it.
 type AutopilotRunner interface {
 	Run(ctx context.Context, accountID int64) (studio.Result, error)

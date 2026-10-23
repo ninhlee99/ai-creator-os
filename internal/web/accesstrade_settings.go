@@ -17,9 +17,8 @@ func (s *Server) handleSettingsAccesstrade(w http.ResponseWriter, r *http.Reques
 		"ATHunterHours", "ATOrderSyncMins", "ATAuto", "ATHunterAccounts", "ATHunterAccountID")
 }
 
-// handleATAutomationSave lưu interval tick AT từ form (POST, redirect 303).
-// Công tắc on/off nằm ở trang Affiliate (POST /at/settings) — tab này chỉ
-// chỉnh chu kỳ, đúng nguyên tắc "UI cho mọi khả năng".
+// handleATAutomationSave lưu cadence và công tắc Accesstrade từ form
+// Cài đặt · Accesstrade. Caller cũ không gửi toggles chỉ đổi cadence.
 func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) {
 	if s.Ledger == nil {
 		seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kho dữ liệu chưa sẵn sàng."))
@@ -36,7 +35,6 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 	if hunterH > 168 {
 		hunterH = 168
 	}
-	_ = s.Ledger.SetSetting(automation.KeyATHunterIntervalHrs, strconv.Itoa(hunterH))
 	syncM, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("ordersync_mins")))
 	if syncM < 5 {
 		syncM = 5
@@ -44,7 +42,15 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 	if syncM > 1440 {
 		syncM = 1440
 	}
-	_ = s.Ledger.SetSetting(automation.KeyATOrderSyncIntervalM, strconv.Itoa(syncM))
+	type settingWrite struct {
+		key    string
+		value  string
+		delete bool
+	}
+	writes := []settingWrite{
+		{key: automation.KeyATHunterIntervalHrs, value: strconv.Itoa(hunterH)},
+		{key: automation.KeyATOrderSyncIntervalM, value: strconv.Itoa(syncM)},
+	}
 	// Đợt AK: form gộp gửi kèm công tắc (checkbox bỏ trống = tắt). Chỉ áp
 	// khi có cờ toggles để form/gọi cũ chỉ gửi chu kỳ không vô tình tắt hết.
 	if r.PostFormValue("toggles") == "1" {
@@ -52,9 +58,10 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 		n, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_videos")))
 		n = clampInt(n, 0, 10)
 		hunterOn := r.PostFormValue("hunter_on") == "1"
+		hunterFlowCredits := r.PostFormValue("hunter_flow_credits") == "1"
 		rawAccountID := strings.TrimSpace(r.PostFormValue("hunter_account_id"))
-		if hunterOn && n > 0 && rawAccountID == "" {
-			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Chọn kênh đích có ảnh nhân vật, hoặc đặt số video hunter về 0."))
+		if hunterOn && n > 0 && hunterFlowCredits && rawAccountID == "" {
+			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Đang bật Google Flow credits cho video hunter: chọn kênh đích có ảnh nhân vật, hoặc tắt credits/đặt số video về 0."))
 			return
 		}
 		if rawAccountID != "" {
@@ -77,15 +84,30 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 				seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Kênh đích chưa có ảnh nhân vật trong thư viện riêng."))
 				return
 			}
-			_ = s.Ledger.SetSetting(automation.KeyATHunterAccountID, strconv.FormatInt(accountID, 10))
+			writes = append(writes, settingWrite{key: automation.KeyATHunterAccountID, value: strconv.FormatInt(accountID, 10)})
 		} else {
-			_ = s.Ledger.DeleteSetting(automation.KeyATHunterAccountID)
+			writes = append(writes, settingWrite{key: automation.KeyATHunterAccountID, delete: true})
 		}
-		_ = s.Ledger.SetSetting(automation.KeyATHunterEnabled, on("hunter_on"))
-		_ = s.Ledger.SetSetting(automation.KeyATOrderSyncEnabled, on("ordersync_on"))
-		_ = s.Ledger.SetSetting(automation.KeyATCampaignCheckOn, on("campaign_on"))
-		_ = s.Ledger.SetSetting(automation.KeyATHunterVideos, itoa(n))
-		_ = s.Ledger.SetSetting(automation.KeyATHunterFlowCredits, on("hunter_flow_credits"))
+		writes = append(writes,
+			settingWrite{key: automation.KeyATHunterEnabled, value: on("hunter_on")},
+			settingWrite{key: automation.KeyATOrderSyncEnabled, value: on("ordersync_on")},
+			settingWrite{key: automation.KeyATCampaignCheckOn, value: on("campaign_on")},
+			settingWrite{key: automation.KeyATHunterVideos, value: itoa(n)},
+			settingWrite{key: automation.KeyATHunterFlowCredits, value: on("hunter_flow_credits")},
+		)
+	}
+	for _, write := range writes {
+		var err error
+		if write.delete {
+			err = s.Ledger.DeleteSetting(write.key)
+		} else {
+			err = s.Ledger.SetSetting(write.key, write.value)
+		}
+		if err != nil {
+			message := "Lưu cài đặt " + write.key + " thất bại: " + err.Error() + ". Các mục ghi trước đó có thể đã lưu."
+			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape(message))
+			return
+		}
 	}
 	_ = s.Ledger.Decide("human", "at_automation_save", nil, "Lưu cài đặt tự động Accesstrade.", nil)
 	seeOther(w, r, "/settings/accesstrade?ok="+url.QueryEscape("Đã lưu cài đặt tự động Accesstrade."))
