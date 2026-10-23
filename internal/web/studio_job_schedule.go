@@ -1,13 +1,11 @@
 package web
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // handleStudioScheduleSave saves the autopilot schedule settings directly from Studio.
@@ -42,29 +40,29 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	}
 
 	st := s.settings()
-	_ = st.Set(SettingAutopilotEnabled, enabled)
-	_ = st.Set(SettingAutopilotInterval, strconv.Itoa(hours))
-	_ = st.Set(SettingAutopilotAutoPublish, autoPub)
-	_ = st.Set(SettingAutopilotYouTube, youTube)
-	_ = st.Set(SettingAutopilotMeta, meta)
+	for _, setting := range []struct{ key, value string }{
+		{SettingAutopilotEnabled, enabled},
+		{SettingAutopilotInterval, strconv.Itoa(hours)},
+		{SettingAutopilotAutoPublish, autoPub},
+		{SettingAutopilotYouTube, youTube},
+		{SettingAutopilotMeta, meta},
+	} {
+		if err := st.Set(setting.key, setting.value); err != nil {
+			msg := fmt.Sprintf("Không lưu đủ cấu hình lịch (%s); một số giá trị có thể đã cập nhật. Hãy tải lại và kiểm tra.", setting.key)
+			seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape(msg))
+			return
+		}
+	}
 
 	msg := "Đã cập nhật lịch tự động: TẮT"
 	if enabled == "1" {
-		msg = fmt.Sprintf("Đã bật lịch tự động tạo video mỗi %d giờ.", hours)
+		msg = fmt.Sprintf("Đã lưu lịch mỗi %d giờ; producer đang tạm dừng nên chưa tạo video.", hours)
 	}
 	seeOther(w, r, "/studio/jobs?tab=schedule&msg="+url.QueryEscape(msg))
 }
 
-// handleStudioScheduleRunNow triggers one immediate autopilot production cycle.
+// handleStudioScheduleRunNow reports the current production gate instead of
+// claiming that a paused Autopilot cycle was started.
 func (s *Server) handleStudioScheduleRunNow(w http.ResponseWriter, r *http.Request) {
-	if s.Autopilot == nil {
-		seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Hệ thống Autopilot chưa được cấu hình runner."))
-		return
-	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
-		defer cancel()
-		_ = s.Autopilot.RunAll(ctx)
-	}()
-	seeOther(w, r, "/studio/jobs?tab=running&msg="+url.QueryEscape("Đã phát lệnh kích hoạt dây chuyền AI sản xuất video ngay lập tức!"))
+	seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Tạo video Autopilot đang tạm dừng cho tới khi có xác nhận dùng Google Flow credits theo kênh."))
 }
