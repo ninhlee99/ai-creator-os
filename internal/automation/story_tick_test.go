@@ -55,6 +55,7 @@ func storyTestService(t *testing.T) (*Service, *fakeStoryRunner) {
 
 func TestStoryTickEmptyQueue(t *testing.T) {
 	svc, r := storyTestService(t)
+	_ = svc.Settings.Set(KeyStoryEnabled, "1")
 	notes := svc.StoryTick(context.Background())
 	if len(r.params) != 0 {
 		t.Fatalf("params=%d, want 0 (hàng đợi trống)", len(r.params))
@@ -72,6 +73,7 @@ func TestStoryTickEmptyQueue(t *testing.T) {
 
 func TestStoryTickPopsOneTopic(t *testing.T) {
 	svc, r := storyTestService(t)
+	_ = svc.Settings.Set(KeyStoryEnabled, "1")
 	_ = svc.Settings.Set(KeyStoryTopics, "tuổi thơ ở quê\nlần đầu đi chợ Tết")
 	_ = svc.Settings.Set(KeyStoryWords, "700")
 	notes := svc.StoryTick(context.Background())
@@ -118,12 +120,14 @@ func TestStoryTickNoRunner(t *testing.T) {
 	}
 }
 
-func TestStoryTickDefaultOnWhenUnset(t *testing.T) {
+func TestStoryTickOffWhenUnset(t *testing.T) {
 	svc, r := storyTestService(t)
 	_ = svc.Settings.Set(KeyStoryTopics, "chủ đề mặc định")
-	svc.StoryTick(context.Background())
-	if len(r.params) != 1 {
-		t.Fatal("công tắc unset phải = BẬT (tiền lệ zero-touch Đợt 3)")
+	if notes := svc.StoryTick(context.Background()); len(notes) != 0 {
+		t.Fatalf("notes=%q, want no work while story schedule defaults off", notes)
+	}
+	if len(r.params) != 0 {
+		t.Fatal("unset story.enabled must not create a job")
 	}
 }
 
@@ -146,6 +150,8 @@ func TestStoryTickAutofillsTopics(t *testing.T) {
 	svc := NewService()
 	svc.Settings = LedgerSettings{L: l}
 	svc.Gate = &fakeGate{}
+	_ = svc.Settings.Set(KeyStoryEnabled, "1")
+	_ = svc.Settings.Set(KeyStoryTopicsAutofill, "1")
 	r := &fakeTopicRunner{topics: []string{"chủ đề A", "chủ đề B"}}
 	svc.Story = r
 	notes := svc.StoryTick(context.Background())
@@ -163,6 +169,8 @@ func TestStoryTickAutofillHonestOnError(t *testing.T) {
 	svc := NewService()
 	svc.Settings = LedgerSettings{L: l}
 	svc.Gate = &fakeGate{}
+	_ = svc.Settings.Set(KeyStoryEnabled, "1")
+	_ = svc.Settings.Set(KeyStoryTopicsAutofill, "1")
 	r := &fakeTopicRunner{genErr: fmt.Errorf("hết quota")}
 	svc.Story = r
 	notes := svc.StoryTick(context.Background())
@@ -180,18 +188,10 @@ func TestStoryTickAutofillHonestOnError(t *testing.T) {
 	}
 }
 
-func TestStoryAutoPublishDefaultOn(t *testing.T) {
+func TestStoryAutoPublishDefaultOff(t *testing.T) {
 	svc, _ := storyTestService(t)
-	// Đợt K: mặc định BẬT (private-first). Chưa chọn kênh → note rõ.
-	notes := svc.storyAutoPublish(context.Background())
-	found := false
-	for _, n := range notes {
-		if contains(n, "auto_publish bật nhưng chưa chọn kênh") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("mặc định phải bật auto_publish: %v", notes)
+	if notes := svc.storyAutoPublish(context.Background()); len(notes) != 0 {
+		t.Fatalf("notes=%q, want no auto-publish work while switch defaults off", notes)
 	}
 }
 
