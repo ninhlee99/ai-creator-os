@@ -40,7 +40,7 @@ func DefaultBrandDNA(niche string, accountID int64) *BrandDNA {
 			"Hình ảnh rõ, đúng tỷ lệ và vùng an toàn của nền tảng đích",
 			"Giọng đọc rõ; nhạc nền không át lời",
 			"Không chứa từ cấm hoặc tuyên bố sai sự thật vi phạm chính sách nền tảng",
-			"Có CTA (kêu gọi hành động) tự nhiên, gắn link bio hoặc giỏ hàng hợp lệ",
+			"Có CTA tự nhiên; affiliate hướng người xem tới sản phẩm TikTok Shop đã gắn",
 			"Tông giọng và ngôn ngữ nhất quán với bản sắc thương hiệu đã định vị",
 			"Nhịp dựng dứt khoát, cắt bỏ toàn bộ khoảng lặng thừa (dead air)",
 			"Mỗi video giải quyết trọn vẹn 1 vấn đề cụ thể của người xem",

@@ -59,6 +59,10 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không đọc được tham số job cũ"))
 		return
 	}
+	if err := s.ensureAffiliateRadarMusic(r.Context(), &p); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Không lấy được sound từ Radar: "+err.Error()))
+		return
+	}
 	planID, err := s.Studio.ReissueAffiliatePreparation(p)
 	if err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
@@ -66,6 +70,10 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 	}
 	p.PreparedPlanID = planID
 	p.FlowCreditsAcknowledged = r.FormValue("confirm_flow_credits") == "1"
+	if err := s.attachAffiliateVideoTracking(r.Context(), &p, planID); err != nil {
+		seeOther(w, r, "/studio/jobs?err="+url.QueryEscape(err.Error()))
+		return
+	}
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job mới: "+err.Error()))
 		return

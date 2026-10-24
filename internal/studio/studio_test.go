@@ -8,34 +8,6 @@ import (
 	"testing"
 )
 
-const kworbFixture = `<table><thead><tr><th>Pos</th><th>P+</th><th class="mp text">Artist - Title</th></thead><tbody>
-<tr><td>1</td><td>=</td><td class="mp text"><div>Dunghoangpham - Mật Ngọt - Nam Con Remix</div></td></tr>
-<tr><td>2</td><td>+19</td><td class="mp text"><div>Vũ. - Vì Anh Đâu Có Biết</div></td></tr>
-<tr><td>3</td><td>-1</td><td class="mp text"><div>Không Dấu Gạch Nối</div></td></tr>
-</tbody></table>`
-
-func TestParseKworbVN(t *testing.T) {
-	sounds := parseKworbVN(kworbFixture)
-	if len(sounds) != 3 {
-		t.Fatalf("got %d sounds, want 3", len(sounds))
-	}
-	if sounds[0].Rank != 1 || sounds[0].Artist != "Dunghoangpham" || sounds[0].Title != "Mật Ngọt - Nam Con Remix" {
-		t.Fatalf("row 1 wrong: %+v", sounds[0])
-	}
-	if sounds[1].Movement != "+19" {
-		t.Fatalf("row 2 movement wrong: %+v", sounds[1])
-	}
-	if sounds[2].Artist != "" || sounds[2].Title != "Không Dấu Gạch Nối" {
-		t.Fatalf("row 3 wrong: %+v", sounds[2])
-	}
-}
-
-func TestParseKworbVNEmpty(t *testing.T) {
-	if got := parseKworbVN("<html></html>"); len(got) != 0 {
-		t.Fatalf("want 0, got %d", len(got))
-	}
-}
-
 func TestParseImageResponse(t *testing.T) {
 	img := []byte{0x89, 0x50, 0x4e, 0x47} // PNG magic
 	data := []byte(`{"candidates":[{"content":{"parts":[` +
@@ -115,13 +87,6 @@ func TestGeminiMediaGenNoKeys(t *testing.T) {
 func TestProbeDurationMissing(t *testing.T) {
 	if d := probeDuration(context.Background(), "/nonexistent/file.mp4"); d != 0 {
 		t.Fatalf("want 0, got %f", d)
-	}
-}
-
-func TestDownloadAudioBadURL(t *testing.T) {
-	err := DownloadAudio(context.Background(), "http://127.0.0.1:1/nope.mp3", filepath.Join(t.TempDir(), "a.mp3"))
-	if err == nil {
-		t.Fatal("want error")
 	}
 }
 

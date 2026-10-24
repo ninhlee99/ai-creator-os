@@ -49,13 +49,12 @@ func (s *Server) generatePlanFor(a *network.Account, rationale string) (int, err
 	if len(pillars) == 0 {
 		return 0, fmt.Errorf("kênh chưa có ngách nội dung hoặc trụ cột do người dùng cấu hình")
 	}
-	prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a))
+	prof, err := s.Growth.EnsureProfile(a.ID)
 	if err != nil {
 		return 0, err
 	}
 	drafts := growth.GeneratePlan(growth.PlanRequest{
 		Stage:         prof.Stage,
-		HasYouTube:    hasYouTube(a),
 		Pillars:       pillars,
 		Start:         time.Now(),
 		Days:          30,

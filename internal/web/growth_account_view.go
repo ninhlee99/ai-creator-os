@@ -19,7 +19,7 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 	if s.Growth == nil {
 		return out
 	}
-	prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a))
+	prof, err := s.Growth.EnsureProfile(a.ID)
 	if err != nil || prof == nil {
 		return out
 	}
@@ -84,8 +84,6 @@ func (s *Server) accountGrowthView(a *network.Account) map[string]any {
 
 func growthFollowersLabel(source string) string {
 	switch source {
-	case "youtube_api":
-		return "YouTube subscribers"
 	case "tiktok_api":
 		return "TikTok followers"
 	default:

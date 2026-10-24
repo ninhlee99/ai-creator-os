@@ -11,9 +11,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
-	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 )
 
 // ------------------------------------------------------------------ ports
@@ -48,45 +46,17 @@ type Producer interface {
 	JobState(jobID string) (status, output string)
 }
 
-// YTState is the honest YouTube-upload readiness of one account.
-type YTState struct {
-	HasClient  bool // OAuth app (client id + secret) configured in Settings
-	HasToken   bool // per-account refresh token file present
-	HasChannel bool // channel mapping attached (metrics + display)
-	Privacy    string
+// StudioMaintenance exposes generic maintenance operations for rendered jobs.
+type StudioMaintenance interface {
+	SweepHungJobs(maxAge time.Duration) int
+	PruneFailedWork() (int, int64)
+	PruneOldJobs(maxAge time.Duration) int
 }
 
-// Ready reports whether an upload could actually be attempted.
-func (st YTState) Ready() bool { return st.HasClient && st.HasToken }
-
-// Label is the compact badge text for account rows.
-func (st YTState) Label() string {
-	switch {
-	case st.Ready():
-		return "đủ credential cục bộ · chưa kiểm tra API"
-	case !st.HasClient:
-		return "thiếu OAuth app"
-	default:
-		return "thiếu token tài khoản"
-	}
-}
-
-// Missing lists what blocks uploads, in Vietnamese, for item notes.
-func (st YTState) Missing() []string {
-	var m []string
-	if !st.HasClient {
-		m = append(m, "chưa nhập YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET trong Cài đặt")
-	}
-	if !st.HasToken {
-		m = append(m, "tài khoản chưa hoàn tất OAuth YouTube (chưa có token)")
-	}
-	return m
-}
-
-// Uploader publishes rendered videos to YouTube.
-type Uploader interface {
-	State(a *network.Account) YTState
-	Upload(ctx context.Context, a *network.Account, videoPath, title, description, kind string) publishers.PublishResult
+// ExecutionGate reads current publishing safety switches.
+type ExecutionGate interface {
+	KillSwitch() bool
+	DryRun() bool
 }
 
 // AutopilotRunner attempts affiliate cycles; Studio may stop before product
@@ -95,15 +65,6 @@ type Uploader interface {
 type AutopilotRunner interface {
 	Run(ctx context.Context, accountID int64) (studio.Result, error)
 	RunAll(ctx context.Context) []studio.Result
-}
-
-type ViralDiscovery interface {
-	Discover(ctx context.Context, query string) ([]viralradar.Source, error)
-}
-
-type ViralRunner interface {
-	EnqueueViral(ctx context.Context, p studio.ViralParams) (string, error)
-	DefaultModelPhoto() string
 }
 
 // OrdersSource is the affiliate-orders feed for money reconciliation.
@@ -124,15 +85,12 @@ type Service struct {
 	Growth   *growth.Store
 	Ledger   *ledger.Ledger
 	Accounts AccountManager
-	Gate     network.Gate // kill switch / dry-run; nil = treat as safest (dry-run on)
+	Gate     ExecutionGate // nil = safest (dry-run on)
 	Env      EnvProvider
 	Settings Settings // the single config facade (ledger-backed)
 
-	Producer    Producer
-	Uploader    Uploader
-	Autopilot   AutopilotRunner
-	ViralRadar  ViralDiscovery
-	ViralRunner ViralRunner
+	Producer  Producer
+	Autopilot AutopilotRunner
 
 	// JobStore is the studio job backend for the auto-publish hook.
 	// Nil = the hook never fires (videos stay in Studio output).
@@ -143,8 +101,7 @@ type Service struct {
 	AT           *accesstrade.Store
 	Products     *products.Store
 	StudioRunner StudioRunner
-	// ATMusicPath nhạc nền cho video hunter ("" = câm, job log ghi rõ).
-	ATMusicPath string
+	Maintenance  StudioMaintenance
 	// ATWorkDir thư mục tải ảnh sản phẩm cho video hunter.
 	ATWorkDir string
 	// DataDir thư mục dữ liệu app — disk guard (Đợt L) đo % đĩa đã dùng
@@ -156,12 +113,6 @@ type Service struct {
 	// CommissionSource overrides the affiliate-orders feed (tests inject a
 	// fake). Nil = build the real one from the current env.
 	CommissionSource OrdersSource
-
-	// Story automation (Đợt F): Story jobs dùng khổ dọc 9:16 mặc định.
-	// Nil Story = tick bỏ qua im lặng (studio chưa khởi tạo).
-	Story StoryRunner
-	// StoryMusicPath là file nhạc nền licensed cho truyện ("" = không nhạc).
-	StoryMusicPath string
 
 	// Timezone is the IANA name for "today" boundaries; falls back to
 	// fixed UTC+7 like the rest of the app.
@@ -203,9 +154,6 @@ func (s *Service) killed() bool {
 // tick then marks items failed honestly instead of crashing).
 func (s *Service) producer() Producer { return s.Producer }
 
-// uploader resolves the YouTube backend; nil when nothing is wired.
-func (s *Service) uploader() Uploader { return s.Uploader }
-
 // location resolves the service timezone like web.Server.location.
 func (s *Service) location() *time.Location {
 	if loc, err := time.LoadLocation(s.Timezone); err == nil {
@@ -215,8 +163,6 @@ func (s *Service) location() *time.Location {
 }
 
 func (s *Service) today() string { return time.Now().In(s.location()).Format("2006-01-02") }
-
-func (s *Service) quotaDay() string { return growth.YouTubeQuotaDay(time.Now()) }
 
 func (s *Service) nowISO() string { return time.Now().In(s.location()).Format("2006-01-02T15:04:05") }
 

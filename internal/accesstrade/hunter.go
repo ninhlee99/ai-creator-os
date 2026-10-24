@@ -16,6 +16,9 @@ const HunterSource = "accesstrade"
 
 // HunterFilter tham số một lần quét datafeed.
 type HunterFilter struct {
+	// Keywords limit TikTok Shop search to category terms; empty searches use
+	// one configured seed term per core product category.
+	Keywords []string
 	// Domain lọc advertiser ("" = tất cả).
 	Domain string
 	// MinPrice/MaxPrice lọc giá (0 = không lọc).
@@ -42,16 +45,99 @@ type HuntResult struct {
 	Updated int
 	// Skipped số bỏ qua (thiếu aff_link/giá).
 	Skipped int
-	// Watchlist sản phẩm thiếu dữ liệu bán hoặc rating; được lưu để theo dõi,
-	// nhưng không đủ điều kiện tạo video affiliate.
+	// Watchlist counts offers whose provider data omits sales or rating.
 	Watchlist int
+	// PendingReview offers waiting for an explicit operator decision.
+	PendingReview int
 	// Products là sản phẩm mới lưu vào catalog, sort theo hoa hồng kỳ vọng.
 	Products []products.Product
-	// ProductionCandidates là sản phẩm mới có ít nhất tín hiệu bán và rating.
+	// ProductionCandidates are explicitly approved offers with complete price,
+	// commission, currency, and product-link data.
 	ProductionCandidates []products.Product
 	// Note giải thích cho người dùng khi không săn được gì (vd chưa có
 	// chiến dịch sản phẩm nào được duyệt).
 	Note string
+}
+
+// HuntTikTokShop searches TikTok Shop feed, persists every eligible offer,
+// and sends only explicitly approved, complete offers to production. Missing
+// sales or rating stays visible as evidence gaps; operator approval controls.
+func (c *Client) HuntTikTokShop(ctx context.Context, ps *products.Store, f HunterFilter) (*HuntResult, error) {
+	if ps == nil {
+		return nil, fmt.Errorf("accesstrade: kho sản phẩm chưa sẵn sàng")
+	}
+	feed, err := c.SearchTikTokProducts(ctx, TikTokProductFilter{
+		Keywords: f.Keywords, MinCommission: f.MinCommissionRate,
+		MinPrice: f.MinPrice, MaxPrice: f.MaxPrice, Limit: f.Limit,
+		ThemeFallback: f.ThemeFallback,
+	})
+	if err != nil {
+		return nil, err
+	}
+	res := &HuntResult{}
+	for _, p := range feed {
+		if f.MaxAgeDays > 0 && p.DataUpdatedAt != "" {
+			updated, parseErr := time.Parse(time.RFC3339, p.DataUpdatedAt)
+			if parseErr == nil && time.Since(updated) > time.Duration(f.MaxAgeDays)*24*time.Hour {
+				res.Skipped++
+				continue
+			}
+		}
+		if p.Theme == "" {
+			p.Theme = f.ThemeFallback
+		}
+		_, lookupErr := ps.GetBySource(p.Source, p.SourceID)
+		isNew := lookupErr != nil
+		id, saveErr := ps.Save(p)
+		if saveErr != nil {
+			res.Skipped++
+			continue
+		}
+		p, saveErr = ps.GetByID(id)
+		if saveErr != nil {
+			res.Skipped++
+			continue
+		}
+		if isNew {
+			res.New++
+			res.Products = append(res.Products, p)
+		} else {
+			res.Updated++
+		}
+		if p.ReviewStatus == products.ReviewPending {
+			res.PendingReview++
+		}
+		if !p.HasDemandSignals() {
+			res.Watchlist++
+		}
+		if p.ReadyForAffiliateProduction() {
+			res.ProductionCandidates = append(res.ProductionCandidates, p)
+		}
+	}
+	if len(feed) == 0 {
+		res.Note = "Không tìm thấy sản phẩm TikTok Shop phù hợp với category, giá và commission đã chọn."
+	}
+	if res.Watchlist > 0 {
+		res.Note = joinHuntNote(res.Note, fmt.Sprintf("%d sản phẩm thiếu dữ liệu lượt bán hoặc rating từ provider; hãy cân nhắc khoảng trống bằng chứng khi duyệt.", res.Watchlist))
+	}
+	if res.PendingReview > 0 {
+		res.Note = joinHuntNote(res.Note, fmt.Sprintf("%d sản phẩm đang chờ duyệt; xem tab Chờ duyệt.", res.PendingReview))
+	}
+	byExpectedCommission := func(items []products.Product) {
+		sort.SliceStable(items, func(i, j int) bool {
+			return items[i].Price*items[i].CommissionRate > items[j].Price*items[j].CommissionRate
+		})
+	}
+	byExpectedCommission(res.Products)
+	byExpectedCommission(res.ProductionCandidates)
+	return res, nil
+}
+
+func joinHuntNote(current, next string) string {
+	if current == "" {
+		return next
+	}
+	return current + " " + next
 }
 
 // Hunt quét datafeed Accesstrade → lọc (có aff_link, giá > 0) → lưu vào
@@ -139,16 +225,24 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 			res.Skipped++
 			continue
 		}
-		p.ID = id
+		p, serr = ps.GetByID(id)
+		if serr != nil {
+			res.Skipped++
+			continue
+		}
 		if isNew {
 			res.New++
 			res.Products = append(res.Products, p)
 		} else {
 			res.Updated++
 		}
+		if p.ReviewStatus == products.ReviewPending {
+			res.PendingReview++
+		}
 		if !p.HasDemandSignals() {
 			res.Watchlist++
-		} else if isNew {
+		}
+		if p.ReadyForAffiliateProduction() {
 			res.ProductionCandidates = append(res.ProductionCandidates, p)
 		}
 	}
@@ -156,7 +250,15 @@ func (c *Client) Hunt(ctx context.Context, ps *products.Store, f HunterFilter) (
 		res.Note = fmt.Sprintf("Bỏ %d sản phẩm datafeed quá cũ (>%d ngày, ảnh/link thường đã chết).", stale, f.MaxAgeDays)
 	}
 	if res.Watchlist > 0 {
-		note := fmt.Sprintf("%d sản phẩm thiếu dữ liệu lượt bán hoặc rating; đã lưu trong kho, chưa tạo video affiliate.", res.Watchlist)
+		note := fmt.Sprintf("%d sản phẩm thiếu dữ liệu lượt bán hoặc rating từ provider; cân nhắc bằng chứng còn thiếu khi duyệt.", res.Watchlist)
+		if res.Note != "" {
+			res.Note += " " + note
+		} else {
+			res.Note = note
+		}
+	}
+	if res.PendingReview > 0 {
+		note := fmt.Sprintf("%d sản phẩm đang chờ bạn duyệt; chỉ offer đã duyệt và đủ trường bắt buộc mới vào sản xuất.", res.PendingReview)
 		if res.Note != "" {
 			res.Note += " " + note
 		} else {
@@ -196,6 +298,7 @@ func mapDatafeed(dp DatafeedProduct, themeFallback string) products.Product {
 		Title:          dp.Name,
 		ImageURLs:      dp.Images,
 		Price:          dp.Price,
+		PriceMax:       dp.Price,
 		OriginalPrice:  dp.OldPrice,
 		Currency:       cur,
 		CommissionRate: dp.CommissionRate,

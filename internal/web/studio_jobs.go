@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"strings"
@@ -112,11 +111,7 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 		displayedJobs = allJobs
 	}
 
-	schedEnabled, schedHours, schedLastRun, schedMusic, schedAutoPub, schedYouTube := s.scheduleView()
-	schedMeta := false
-	if s.Ledger != nil {
-		schedMeta = automation.AutopilotMetaEnabled(s.settings())
-	}
+	schedEnabled, schedHours, schedLastRun, schedAutoPub := s.scheduleView()
 
 	nextRunStr := "Đang chờ lịch kích hoạt"
 	if schedEnabled {
@@ -154,10 +149,7 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 		"SchedHours", schedHours,
 		"SchedLastRun", schedLastRun,
 		"SchedNextRun", nextRunStr,
-		"SchedMusic", schedMusic,
 		"SchedAutoPub", schedAutoPub,
-		"SchedYouTube", schedYouTube,
-		"SchedMeta", schedMeta,
 		"Msg", msg,
 		"Err", r.URL.Query().Get("err"),
 	))

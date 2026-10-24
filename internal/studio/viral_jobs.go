@@ -24,6 +24,24 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if !fileExists(p.SampleVideo) || !isViralVideoFile(p.SampleVideo) {
 		return "", fmt.Errorf("cần file video nguồn hợp lệ")
 	}
+	if !IsTikTokVideoURL(p.SourceVideoURL) {
+		return "", fmt.Errorf("cần video nguồn TikTok đã chọn trong Radar")
+	}
+	sourceVideo, err := s.ResolveTikTokRadarVideo(ctx, p.SourceVideoURL)
+	if err != nil {
+		return "", fmt.Errorf("video nguồn không thuộc Radar đã lưu: %w", err)
+	}
+	if p.SourceVideoID != "" && p.SourceVideoID != sourceVideo.VideoID {
+		return "", fmt.Errorf("video ID không khớp URL nguồn Radar")
+	}
+	p.SourceVideoURL = sourceVideo.VideoURL
+	p.SourceVideoID = sourceVideo.VideoID
+	p.SourceVideoAuthor = sourceVideo.Author
+	p.SourceMusicTitle = sourceVideo.SoundTitle()
+	p.SourceCollectedAt = sourceVideo.CollectedAt
+	if !ProbeHasAudio(ctx, p.SampleVideo) {
+		return "", fmt.Errorf("video nguồn Radar không có track âm thanh")
+	}
 	duration := probeDuration(ctx, p.SampleVideo)
 	if duration < 3 {
 		return "", fmt.Errorf("video nguồn phải dài ít nhất 3 giây")

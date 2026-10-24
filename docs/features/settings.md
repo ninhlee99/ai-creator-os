@@ -1,63 +1,13 @@
-# Cài đặt — 4 trang con tinh gọn
+# Cài đặt
 
-## 1. Mục đích
-Mọi cấu hình vận hành của app, chia 4 trang tinh gọn — mỗi trang trả lời đúng một câu hỏi.
-`/settings` redirect 303 về `/settings/system`.
-## 2. Kích hoạt
-- `GET /settings/system` → `handleSettingsHeThong`
-- `GET /settings/accesstrade` → Accesstrade key UI (nhập key 1 lần, nút test kết nối, badge trạng thái)
-- `GET /settings/providers` → `handleSettingsNhaCungCap`
-- `GET /settings/safety` → `handleSettingsAnToan`
-- (tất cả trong `internal/web/settings.go`; template trong
-  `internal/web/templates/settings/`; thanh chuyển trang là dải **tab** —
-  tab đang mở tô màu accent). Route `/settings/model-local` đã gỡ và trả 404.
+Cài đặt giữ thông tin cần cho hai flow video TikTok:
 
-## 3. Luồng vận hành chi tiết
+- API keys và nguồn affiliate.
+- TikTok OAuth/provider credentials.
+- Web AI accounts dùng cho Studio.
+- An toàn, backup và trạng thái worker.
+- Xuất cấu hình JSON và nhập cấu hình JSON.
 
-### Hệ thống (`system.html`)
-- **Trạng thái hệ thống**: phiên bản app (ldflags, mặc định `dev`), chi phí API
-  theo engine/provider (bảng `api_usage`).
-- **Ngân sách API/ngày**: `POST /settings/api-budget` → `automation.SetAPIBudgetUSD`
-  (key `ops.api_budget_usd`; validate 0–10000, sai → `?err=`); giá trị đã lưu thắng
-  env `DAILY_API_BUDGET_USD` nhằm bảo vệ chi phí các API cloud có phí.
-- **Khóa & biến cấu hình**: `POST /settings/env` → `handleSettingsEnvSave` —
-  chỉ cho sửa các tên trong `envNames` (tên lạ → 400); lưu 2 nơi: `os.Setenv`
-  (hiệu lực ngay) + `ledger.settings` (key `env.<NAME>`, để khởi động sau nạp lại
-  qua `applyPersistedEnv`); xong gọi `s.Cfg.RefreshEnv()` → runtime Config đổi
-  theo **không cần restart**.
-- **Công tắc chính** (MASTER_SWITCH): `POST /settings/master` →
-  `automation.SetMasterOn` (key `master.switch`, mặc định TẮT); tắt thì modal xác
-  nhận; mọi lần đổi ghi decision log. Daemon đọc live mỗi tick (xem
-  `kill-switch-dry-run-master.md`).
-- **API nội bộ**: `POST /settings/api` → `automation.SetAPIEnabled`
-  (key `api.enabled`, mặc định TẮT) — xem `internal-api.md`.
-- **Sao lưu & khôi phục**: xem `backup-restore.md`.
+Màn API Key chỉ có hai thao tác JSON: xuất và nhập.
 
-### Nhà cung cấp (`providers.html`)
-- **Chuỗi provider TTS / LLM**: `GET /settings/chain` → `handleChainGet`;
-  `POST /settings/chain` → `handleChainSave`; `POST /settings/chain/move` đổi
-  thứ tự; `POST /settings/chain/health` probe từng provider. Cấu trúc
-  `ChainConfig{Order[]}` lưu trong settings.
-  - TTS: local macOS speech → Edge → Gemini (`internal/engines/chains.go`).
-  - LLM: Gemini.
-- **Keyring từng engine**: `POST /settings/keys/add|delete`, `GET /settings/keys/status`,
-  `POST /settings/keys/test` — key hiện dạng `••••abcd`, không bao giờ render raw.
-- **Tab Accesstrade** (Đợt B): nhập `access_key` 1 lần → `POST` lưu ledger,
-  nút **Test kết nối** (gọi API thật, không log key), badge trạng thái +
-  số campaign đã duyệt. Chưa có key → tick bỏ qua im lặng (không spam alert).
-
-### An toàn (`safety.html`)
-- **Dry-run**: `POST /settings/dryrun` → `s.Cfg.SetDryRun(value=="on")` + decision log.
-- **Kill switch**: `POST /kill` → `SetKillSwitch(true)`; `POST /unkill` → false;
-  mỗi lần ghi decision `human/kill_switch`.
-
-## 4. Fail-closed & an toàn
-- Tên env không trong allowlist → 400, không ghi.
-- Ngân sách API sai định dạng → `?err=`, giữ giá trị cũ.
-- Mọi POST lỗi khác → `?err=` + toast.
-
-## 5. API key rotation
-Trang này là nơi **quản lý** key: keyring UI cho engine TTS/LLM (round-robin,
-cooldown 429 theo thang 60s→5m→15m, key invalid bị skip — xem `key-rotation.md`).
-Lưu key qua UI có hiệu lực ngay cho các lần gọi tiếp theo (keyring đọc lại),
-không cần restart.
+Web AI login mở Chromium cô lập trên desktop. Session connected không xác nhận free tier/credits.

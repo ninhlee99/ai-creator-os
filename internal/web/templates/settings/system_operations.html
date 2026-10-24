@@ -59,7 +59,6 @@
     <!-- Mật khẩu truy cập -->
     <div class="form-card">
       <h4 style="margin-top:0">🔐 Mật khẩu truy cập</h4>
-      <p class="hint" style="margin-top:-4px">Bảo vệ bảng điều khiển khi mở app ra mạng LAN/VPS.</p>
       {{if .AuthOn}}
       <p><span class="badge badge-ok">Đã đặt mật khẩu bảo vệ</span></p>
       <form method="post" action="/settings/auth/password">
@@ -126,7 +125,7 @@
   <!-- Sao lưu & Khôi phục -->
   <div class="form-card" style="margin-bottom:24px">
     <h4 style="margin-top:0">💾 Sao lưu &amp; Khôi phục dữ liệu</h4>
-    <p class="hint">Ảnh chụp thư mục dữ liệu (database, files, tokens). Bản tự động gần nhất: {{if .BackupLastOK}}<code>{{fmtVN .BackupLastOK}}</code>{{else}}Chưa có bản tự động{{end}}</p>
+    <p class="hint">Database · files · tokens · bản tự động gần nhất: {{if .BackupLastOK}}<code>{{fmtVN .BackupLastOK}}</code>{{else}}Chưa có{{end}}</p>
     <div class="cards">
       <div class="card">
         <div class="label">Tải bản sao lưu hiện tại</div>

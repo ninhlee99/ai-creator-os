@@ -7,49 +7,6 @@ import (
 	"path/filepath"
 )
 
-// CropCenterVertical center-crops a 16:9 film clip to the central 9:16
-// band and scales it to 1080x1920 — the automatic vertical trailer cut
-// (Ninh 2026-10-02: trailers are cropped, never re-shot).
-//
-// TRADEOFF, stated honestly: the crop keeps only the middle ~32% of the
-// frame width (~68% of horizontal pixels are dropped), then upscales
-// ~1.78x to 1080x1920, so trailers are softer than the film. This is why
-// trailer_worthy shots must be composed center-safe (see FILM_RULES.md):
-// main character/action inside the central 9:16 zone.
-func CropCenterVertical(ctx context.Context, src, dst string) error {
-	if dir := filepath.Dir(dst); dir != "" {
-		_ = os.MkdirAll(dir, 0o755)
-	}
-	args := []string{"-i", src,
-		"-vf", "crop=ih*9/16:ih,scale=1080:1920:flags=lanczos,setsar=1",
-	}
-	args = append(args, videoEncoder()...)
-	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "aac", dst)
-	return ffmpegRun(ctx, args...)
-}
-
-// ApplyCreatorAvatarOverlay overlays a high-resolution circular creator badge in the top-left corner
-// of the video to seamlessly brand creator identity into the video.
-func ApplyCreatorAvatarOverlay(ctx context.Context, inVideo, avatarPhoto, outVideo string) error {
-	if !fileExists(avatarPhoto) {
-		return copyStoryFile(inVideo, outVideo)
-	}
-
-	badgePNG := filepath.Join(filepath.Dir(outVideo), "creator_avatar_badge.png")
-	if err := CreateCircularAvatarBadge(avatarPhoto, 150, badgePNG); err != nil {
-		return copyStoryFile(inVideo, outVideo)
-	}
-
-	args := []string{
-		"-i", inVideo,
-		"-i", badgePNG,
-		"-filter_complex", "[0:v][1:v]overlay=36:72",
-		"-c:a", "copy",
-		outVideo,
-	}
-	return ffmpegRun(ctx, args...)
-}
-
 // TrimVideo cuts a single video to targetSec seconds while maintaining exact aspect ratio,
 // native resolution (e.g. 1080x1920), 30fps, and high visual quality without concatenation artifacts.
 func TrimVideo(ctx context.Context, inPath string, targetSec float64, aspect, outPath string) error {

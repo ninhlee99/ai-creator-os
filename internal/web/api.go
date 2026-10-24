@@ -46,10 +46,13 @@ type productJSON struct {
 	Title           string  `json:"title"`
 	Category        string  `json:"category"`
 	Price           float64 `json:"price"`
+	PriceMax        float64 `json:"price_max,omitempty"`
 	CommissionRate  float64 `json:"commission_rate"`
 	CommissionValue float64 `json:"commission_value"`
 	Score           float64 `json:"score"`
 	Status          string  `json:"status"`
+	ReviewStatus    string  `json:"review_status"`
+	ReviewNote      string  `json:"review_note,omitempty"`
 }
 
 // handleAPIProducts lists the shared product store (best score first).
@@ -72,10 +75,11 @@ func (s *Server) handleAPIProducts(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, productJSON{
 			ID: p.ID, PlatformPID: p.SourceID, Title: p.Title,
-			Category: p.Category, Price: p.Price,
+			Category: p.Category, Price: p.Price, PriceMax: p.PriceMax,
 			CommissionRate:  p.CommissionRate,
 			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
 			Score:           products.Score(p), Status: status,
+			ReviewStatus: p.ReviewStatus, ReviewNote: p.ReviewNote,
 		})
 	}
 	writeJSON(w, out)

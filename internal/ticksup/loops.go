@@ -21,8 +21,7 @@ type Deps struct {
 	Autopilot  bool // studio + products sẵn sàng
 	Growth     bool
 	AT         bool
-	Story      bool // studio sẵn sàng
-	Viral      bool // studio sẵn sàng
+	Studio     bool // studio sẵn sàng cho tự chữa và sao lưu
 }
 
 // ArmLoops khởi động mọi vòng tick đã bật, mỗi tick đi qua Supervisor
@@ -58,37 +57,17 @@ func ArmLoops(ctx context.Context, sup *Supervisor, d Deps) {
 		})
 		log.Printf("accesstrade: automation tick armed (hunter daily, order sync 30m, campaign check daily)")
 	}
-	if d.Story {
-		for _, n := range []string{"story", "selfheal", "backup", "story_public", "story_retry", "notify", "draft_digest"} {
+	if d.Studio {
+		for _, n := range []string{"selfheal", "backup", "notify"} {
 			sup.Watch(n, 5*time.Minute, 30*time.Minute)
 		}
 		go loop(ctx, 5*time.Minute, func() {
 			auto := d.NewService()
-			sup.Dispatch(ctx, "story", 30*time.Minute, auto.StoryTick)
-			// Đợt L: tự chữa lành (job treo + canh đĩa), 1 giờ/lần.
 			sup.Dispatch(ctx, "selfheal", 10*time.Minute, auto.SelfHealTick)
-			// Đợt M2: tự sao lưu data dir, 1 ngày/lần.
 			sup.Dispatch(ctx, "backup", 10*time.Minute, auto.BackupTick)
-			// Đợt N: tự chuyển public video private quá thời gian chờ.
-			sup.Dispatch(ctx, "story_public", 10*time.Minute, auto.StoryPublicTick)
-			// Đợt P: tự thử lại job story lỗi (backoff + giới hạn).
-			sup.Dispatch(ctx, "story_retry", 10*time.Minute, auto.StoryRetryTick)
-			// Đợt O2: gửi alert mới qua Telegram (nếu Ninh đã bật).
 			sup.Dispatch(ctx, "notify", 5*time.Minute, auto.NotifyTick)
-			// Digest "bản nháp chờ đăng" 1 lần/ngày → Telegram (Ninh bấm Đăng tay,
-			// không dùng Playwright tự đăng để tránh ban kênh).
-			sup.Dispatch(ctx, "draft_digest", 30*time.Minute, auto.DraftDigestTick)
 		})
-		log.Printf("story: lịch bật (job mới 24h/lần khi provider/gate cho phép; auto-publish mặc định tắt; private-first, chuyển public trễ nếu bật; self-heal mỗi giờ)")
-	}
-	if d.Viral {
-		sup.Watch("viral_radar", 5*time.Minute, 5*time.Minute)
-		go loop(ctx, 5*time.Minute, func() {
-			auto := d.NewService()
-			sup.Dispatch(ctx, "viral_radar", 5*time.Minute,
-				func(c context.Context) []string { return auto.ViralRadarTick(c, false) })
-		})
-		log.Printf("viral: YouTube radar armed (daily, 100k+ subscriber filter; requires API key)")
+		log.Printf("studio: self-heal, backup, notify ticks armed")
 	}
 }
 

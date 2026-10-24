@@ -241,24 +241,12 @@ func nearMonetization(targets []Target, followers float64) bool {
 	return false
 }
 
-// monetizationGatePassed: TikTok = the 1.000-follower LIVE milestone;
-// YouTube = 1.000 subs AND (4.000h OR 10M Shorts views) reached.
+// monetizationGatePassed checks the TikTok follower milestone.
 func monetizationGatePassed(targets []Target) bool {
-	reached := map[string]bool{}
 	for _, t := range targets {
-		if t.ReachedAt == "" {
-			continue
-		}
-		switch {
-		case t.Metric == "followers" && t.Threshold >= 1000:
-			return true // TikTok gate
-		case t.Metric == "subs" && t.Threshold >= 1000:
-			reached["subs1000"] = true
-		case t.Metric == "watch_hours_12m" && t.Threshold >= 4000:
-			reached["hours"] = true
-		case t.Metric == "shorts_views_90d" && t.Threshold >= 10000000:
-			reached["shorts"] = true
+		if t.Metric == "followers" && t.Threshold >= 1000 && t.ReachedAt != "" {
+			return true
 		}
 	}
-	return reached["subs1000"] && (reached["hours"] || reached["shorts"])
+	return false
 }

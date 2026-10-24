@@ -2,7 +2,7 @@
 //
 // Trước đây: 6 tick chạy NỐI TIẾP trong một goroutine, không recover, không
 // timeout. Một panic ở tick bất kỳ giết chết toàn bộ process (cả dashboard
-// HTTP); một tick treo (vd: upload YouTube kẹt) làm self-heal, backup và
+// HTTP); một tick treo (vd: upload video kẹt) làm self-heal, backup và
 // Telegram alert đứng im theo mà không ai biết — đúng lúc cần cảnh báo nhất.
 //
 // Bây giờ: mỗi tick chạy trong goroutine riêng qua Dispatch — panic được

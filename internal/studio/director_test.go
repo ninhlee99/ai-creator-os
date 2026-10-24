@@ -37,7 +37,7 @@ func TestWriteProShotList(t *testing.T) {
 		 "video_prompt":"model hugs bag, dolly out"}
 	]}`
 	shots, err := WriteProShotList(context.Background(), &stubLLM{reply: reply},
-		"Túi kem", "thời trang", 60)
+		"Túi kem", "thời trang", 24)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,9 +47,8 @@ func TestWriteProShotList(t *testing.T) {
 	if shots[0].Purpose != "hook" || shots[0].ShotSize != "CU" {
 		t.Fatalf("bad shot: %+v", shots[0])
 	}
-	// seconds=2 is clamped up to 5
-	if shots[1].Seconds != 5 {
-		t.Fatalf("seconds not clamped: %d", shots[1].Seconds)
+	if shots[1].Seconds != 6 {
+		t.Fatalf("4-8s shot durations must distribute to exact target: %d", shots[1].Seconds)
 	}
 }
 
@@ -67,7 +66,7 @@ func TestWriteProShotListFenced(t *testing.T) {
 		"\"camera_move\":\"static\",\"lens_light\":\"50mm\",\"seconds\":5,\"action\":\"d\"," +
 		"\"image_prompt\":\"img4\",\"video_prompt\":\"vid4\"}]}\n```"
 	shots, err := WriteProShotList(context.Background(), &stubLLM{reply: reply},
-		"Son", "mỹ phẩm", 60)
+		"Son", "mỹ phẩm", 24)
 	if err != nil {
 		t.Fatal(err)
 	}

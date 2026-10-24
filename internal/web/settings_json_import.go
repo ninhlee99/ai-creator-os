@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []byte) {
-	var exp EnvExportJSON
+func (s *Server) importConfigJSON(w http.ResponseWriter, r *http.Request, raw []byte) {
+	var exp ConfigExportJSON
 	if err := json.Unmarshal(raw, &exp); err != nil {
 		seeOther(w, r, "/settings/system?err="+url.QueryEscape("File JSON không hợp lệ: "+err.Error()))
 		return
@@ -21,7 +21,6 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 
 	envCount := 0
 	geminiCount := 0
-	atCount := 0
 	webaiCount := 0
 	webaiFailed := 0
 
@@ -33,7 +32,6 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 
 	if exp.AccesstradeKey != "" {
 		_ = s.Ledger.SetSetting(accesstrade.KeySetting, exp.AccesstradeKey)
-		atCount++
 	}
 	if exp.TelegramBot != "" {
 		_ = s.Ledger.SetSetting(automation.KeyNotifyTelegramBot, exp.TelegramBot)
@@ -75,7 +73,7 @@ func (s *Server) importFromJSON(w http.ResponseWriter, r *http.Request, raw []by
 	s.Cfg.RefreshEnv()
 	s.applyPersistedEnv()
 	s.SyncGeminiKeys()
-	_ = s.Ledger.Decide("human", "env_import_json", nil, fmt.Sprintf("Import JSON: %d biến, %d key Gemini, %d WebAI thành công, %d WebAI lỗi", envCount, geminiCount, webaiCount, webaiFailed), nil)
+	_ = s.Ledger.Decide("human", "config_import_json", nil, fmt.Sprintf("Import JSON: %d biến, %d key Gemini, %d WebAI thành công, %d WebAI lỗi", envCount, geminiCount, webaiCount, webaiFailed), nil)
 
 	if webaiFailed > 0 {
 		msg := fmt.Sprintf("Đã nhập một phần JSON: %d biến môi trường, %d key Gemini, %d tài khoản WebAI thành công; %d tài khoản WebAI không lưu được. Kiểm tra kho Web AI và định dạng account trong backup.", envCount, geminiCount, webaiCount, webaiFailed)

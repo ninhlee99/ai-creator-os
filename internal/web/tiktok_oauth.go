@@ -25,13 +25,8 @@ type oauthStates struct {
 
 type oauthState struct {
 	username string
-	verifier string // PKCE code_verifier ("" for the Web flow)
-	// redirectURI: callback URL đã dùng lúc authorize (YouTube yêu cầu khớp
-	// y hệt lúc đổi code; lưu ở đây để không phụ thuộc Host lúc callback).
-	redirectURI   string
-	bioReturnPath string
-	bioNonceHash  string
-	at            time.Time
+	verifier string // PKCE code_verifier for TikTok Desktop Login Kit
+	at       time.Time
 }
 
 const oauthStateTTL = 15 * time.Minute
@@ -54,31 +49,6 @@ func (o *oauthStates) issue(username, verifier string) string {
 	return st
 }
 
-// issueWithRedirect như issue nhưng nhớ thêm redirect URI (dùng cho
-// YouTube OAuth: Google yêu cầu redirect_uri lúc đổi code khớp y hệt
-// lúc authorize).
-func (o *oauthStates) issueWithRedirect(username, redirectURI string) string {
-	st := o.issue(username, "")
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	v := o.m[st]
-	v.redirectURI = redirectURI
-	o.m[st] = v
-	return st
-}
-
-func (o *oauthStates) issueBioGoogle(returnPath, redirectURI, nonceHash string) string {
-	state := o.issue("", "")
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	value := o.m[state]
-	value.redirectURI = redirectURI
-	value.bioReturnPath = returnPath
-	value.bioNonceHash = nonceHash
-	o.m[state] = value
-	return state
-}
-
 // take consumes a fresh state, returning who started it (and the PKCE
 // verifier). ok is false for unknown, reused or expired states.
 func (o *oauthStates) take(state string) (oauthState, bool) {
@@ -87,27 +57,6 @@ func (o *oauthStates) take(state string) (oauthState, bool) {
 	v, ok := o.m[state]
 	delete(o.m, state)
 	return v, ok && time.Since(v.at) <= oauthStateTTL
-}
-
-// parseOAuthRedirect pulls code/state/error out of whatever was pasted:
-// the full redirect URL, or just the query string.
-func parseOAuthRedirect(pasted string) (code, state, oerr string) {
-	pasted = strings.TrimSpace(pasted)
-	raw := pasted
-	if i := strings.Index(pasted, "?"); i >= 0 {
-		raw = pasted[i+1:]
-	}
-	if i := strings.Index(raw, "#"); i >= 0 {
-		raw = raw[:i]
-	}
-	q, err := url.ParseQuery(raw)
-	if err != nil {
-		return "", "", "không đọc được URL đã dán"
-	}
-	if e := q.Get("error"); e != "" {
-		return "", "", e + " " + q.Get("error_description")
-	}
-	return q.Get("code"), q.Get("state"), ""
 }
 
 func (s *Server) accountExists(username string) bool {
@@ -149,18 +98,16 @@ func (s *Server) handleTikTokAuthorize(w http.ResponseWriter, r *http.Request) {
 		publishersMsg(w, r, "err", msg)
 		return
 	}
-	// TikTok requires PKCE for its Desktop loopback flow. The Web flow uses
-	// the server-side client secret and state; do not send PKCE parameters there.
-	var verifier, challenge string
-	if publishers.TikTokRedirectIsLocal() {
-		verifier, challenge = tiktok.NewPKCE()
+	if err := publishers.ValidateTikTokDesktopRedirectURI(); err != nil {
+		publishersMsg(w, r, "err", err.Error())
+		return
 	}
+	verifier, challenge := tiktok.NewPKCE()
 	http.Redirect(w, r, p.AuthorizeURL(s.oauth.issue(username, verifier), challenge), http.StatusFound)
 }
 
-// handleTikTokCallback receives code/state after Allow: directly (local
-// redirect URI) or forwarded by the https relay page
-// docs/tiktok-app-site/callback.html, since TikTok rejects http redirects.
+// handleTikTokCallback receives the code/state directly at the Desktop
+// loopback redirect URI after the creator grants access.
 func (s *Server) handleTikTokCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	if e := q.Get("error"); e != "" {
@@ -170,25 +117,7 @@ func (s *Server) handleTikTokCallback(w http.ResponseWriter, r *http.Request) {
 	s.finishTikTokConnect(w, r, "", q.Get("code"), q.Get("state"))
 }
 
-// handleTikTokConnect takes the pasted redirect URL, exchanges the code
-// and writes tiktok_token_<username>.json. Tokens never reach the page.
-func (s *Server) handleTikTokConnect(w http.ResponseWriter, r *http.Request) {
-	_ = r.ParseForm()
-	username := r.PostFormValue("username")
-	if !s.accountExists(username) {
-		publishersMsg(w, r, "err", "Không có tài khoản "+username)
-		return
-	}
-	code, state, oerr := parseOAuthRedirect(r.PostFormValue("redirect"))
-	if oerr != "" {
-		publishersMsg(w, r, "err", "TikTok từ chối: "+oerr)
-		return
-	}
-	s.finishTikTokConnect(w, r, username, code, state)
-}
-
-// finishTikTokConnect validates state (and, for the paste form, that it was
-// issued for the chosen account), exchanges the code and writes the token.
+// finishTikTokConnect validates state, exchanges the code and writes the token.
 func (s *Server) finishTikTokConnect(w http.ResponseWriter, r *http.Request, username, code, state string) {
 	if code == "" {
 		publishersMsg(w, r, "err", "Không có ?code= — bấm lại “Kết nối TikTok”.")
@@ -199,33 +128,76 @@ func (s *Server) finishTikTokConnect(w http.ResponseWriter, r *http.Request, use
 		publishersMsg(w, r, "err", "state không khớp hoặc đã hết hạn (15 phút) — bấm lại “Kết nối TikTok”.")
 		return
 	}
+	if err := publishers.ValidateTikTokDesktopRedirectURI(); err != nil {
+		publishersMsg(w, r, "err", err.Error())
+		return
+	}
 	targetUsername := st.username
+	isNewAccount := targetUsername == "__new_tiktok__"
 	var targetAccountID int64
-	if targetUsername == "__new_tiktok__" {
-		candidateName := fmt.Sprintf("tiktok_creator_%d", time.Now().Unix()%10000)
-		acct, err := s.Mgr.Add(candidateName, "kênh TikTok thật đã xác thực", "")
-		if err != nil {
-			publishersMsg(w, r, "err", "Không tạo được kênh từ TikTok: "+err.Error())
+	if isNewAccount {
+		for attempt := 0; attempt < 8; attempt++ {
+			var suffix [16]byte
+			if _, err := rand.Read(suffix[:]); err != nil {
+				publishersMsg(w, r, "err", "Không tạo được mã kênh TikTok an toàn: "+err.Error())
+				return
+			}
+			candidateName := "tiktok_creator_" + hex.EncodeToString(suffix[:])
+			if s.accountExists(candidateName) {
+				continue
+			}
+			acct, err := s.Mgr.Add(candidateName, "kênh TikTok thật đã xác thực", "")
+			if err != nil {
+				publishersMsg(w, r, "err", "Không tạo được kênh từ TikTok: "+err.Error())
+				return
+			}
+			if acct.Username != candidateName {
+				continue
+			}
+			targetUsername = candidateName
+			targetAccountID = acct.ID
+			break
+		}
+		if targetAccountID == 0 {
+			publishersMsg(w, r, "err", "Không tạo được tên kênh TikTok mới; thử kết nối lại.")
 			return
 		}
-		targetUsername = candidateName
-		targetAccountID = acct.ID
-		s.advanceOnboarding(acct.ID)
-		s.autoGeneratePlan(acct, "Tự sinh cho kênh TikTok thật")
 	}
-	scope, err := publishers.NewTikTokPublisher(targetUsername).ExchangeCode(code, st.verifier)
+	_, err := publishers.NewTikTokPublisher(targetUsername).ExchangeCode(code, st.verifier)
 	if err != nil {
+		if targetAccountID > 0 {
+			if cleanupErr := s.Mgr.DeleteAccount(targetAccountID); cleanupErr != nil {
+				err = fmt.Errorf("%w; dọn kênh tạo dở thất bại: %v", err, cleanupErr)
+			}
+		}
 		publishersMsg(w, r, "err", "Đổi code lấy token thất bại: "+err.Error())
 		return
 	}
 	if s.Ledger != nil {
 		_ = s.Ledger.DeleteSetting(tiktokTokenDeadKey(targetUsername))
 	}
+	if targetAccountID == 0 {
+		accounts, listErr := s.Mgr.List()
+		if listErr == nil {
+			for _, acct := range accounts {
+				if acct.Username == targetUsername {
+					targetAccountID = acct.ID
+					break
+				}
+			}
+		}
+	}
 	if targetAccountID > 0 {
-		seeOther(w, r, fmt.Sprintf("/accounts/%d?tab=connections&ok=%s", targetAccountID, url.QueryEscape("Đã kết nối thành công kênh TikTok "+targetUsername+"!")))
+		if isNewAccount {
+			if acct, getErr := s.Mgr.Get(targetAccountID); getErr == nil {
+				s.advanceOnboarding(acct.ID)
+				s.autoGeneratePlan(acct, "Tự sinh cho kênh TikTok thật")
+			}
+		}
+		seeOther(w, r, "/accounts?ok="+url.QueryEscape("Đã kết nối thành công kênh TikTok "+targetUsername+"!"))
 		return
 	}
-	publishersMsg(w, r, "msg", "Đã kết nối TikTok cho "+targetUsername+" (scope: "+scope+"). Token lưu ở "+publishers.TikTokTokenPath(targetUsername)+".")
+	seeOther(w, r, "/accounts?err="+url.QueryEscape("TikTok đã xác thực nhưng không tìm thấy kênh @"+targetUsername+" trong danh sách kênh."))
 }
 
 func tiktokTokenDeadKey(username string) string { return "tiktok_token_dead:" + username }

@@ -1,6 +1,6 @@
 # STORYBOOK v3 — "Một ngày cùng chiếc túi kem" (30s, 9:16, TikTok Affiliate)
 
-Ngày: 2026-10-01. Verdict v2: hình ổn, nhạc chill OK nhưng chưa phải trending. v3: sửa cảnh lấy son + nhạc trending TikTok.
+Ngày: 2026-10-01. Verdict v2: hình ổn, v3 sửa cảnh lấy son. Sound phải lấy từ video nhảy viral do TikTok Radar thu thập.
 
 ## CONTINUITY BIBLE (xuyên suốt 5 shot — không được lệch)
 
@@ -50,11 +50,9 @@ Ngày: 2026-10-01. Verdict v2: hình ổn, nhạc chill OK nhưng chưa phải t
 - **Hành động**: ôm túi vào lòng, cười ấm nhìn camera.
 - **QC**: mặt đẹp nhất, túi rõ, fade out mượt.
 
-## ÂM THANH v3
-- Track: **"Vì Anh Đâu Có Biết" — Vũ. & Madihu** (V-pop chill, trending TikTok Việt Nam: #69 đang tăng +19 trên BXH TikTok VN ngày 2026-10-01, 7.270 video đang dùng sound này).
-- File: `music-vi-anh-dau-co-biet.m4a` (audio gốc từ TikTok CDN, 60s preview) — dùng đoạn 0:10–0:40.
-- Mix: full 30s, fade in 1.5s / fade out 1.5s, volume 0.85, stereo 44.1kHz.
-- Khi đăng TikTok: attach sound "Vì Anh Đâu Có Biết – Vũ. & Madihu" native từ thư viện TikTok (sound page: tiktok.com/music/Vì-Anh-Đâu-Có-Biết-7126928769944438785) để ăn reach trending + tránh bị mute bản quyền.
+## ÂM THANH
+- Nguồn: sound gốc của video nhảy viral được chọn trong TikTok Radar.
+- Video affiliate bàn giao im tiếng; khi hoàn tất bản nháp, chọn cùng sound native từ video Radar.
 
 ## EDIT
 - Nối 5 shot × 6s, fade in/out 0.8s, 1080×1920, 30fps, AAC 160k.

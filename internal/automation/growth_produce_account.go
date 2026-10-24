@@ -2,17 +2,15 @@ package automation
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"time"
 )
 
 func (s *Service) produceAccount(ctx context.Context, a *network.Account) []string {
 	var notes []string
-	if _, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err != nil {
+	if _, err := s.Growth.EnsureProfile(a.ID); err != nil {
 		return notes
 	}
 	today := s.today()
@@ -27,8 +25,8 @@ func (s *Service) produceAccount(ctx context.Context, a *network.Account) []stri
 	}
 	made := 0
 	for _, it := range due {
-		if effectiveDate(it) > today {
-			continue // variant stagger: not its day yet
+		if it.PlannedFor > today {
+			continue
 		}
 		if it.PlannedFor < staleCutoff {
 			_ = s.Growth.SetItemStatus(it.ID, growth.ItemDropped,
@@ -73,20 +71,6 @@ func (s *Service) produceAccount(ctx context.Context, a *network.Account) []stri
 		}
 		jobID, err := p.Enqueue(ctx, ProduceRequest{Account: a, Item: it})
 		if err != nil {
-			if errors.Is(err, studio.ErrStoryImageReferencesUnavailable) {
-				note := "Chưa sản xuất được: " + err.Error()
-				if statusErr := s.Growth.SetItemStatus(it.ID, growth.ItemFailed, note); statusErr != nil {
-					notes = append(notes, a.Username+": không thể ghi trạng thái dừng sản xuất cho \""+it.Topic+"\" — "+statusErr.Error())
-					continue
-				}
-				_ = s.Growth.InsertAlert(growth.Alert{
-					AccountID: a.ID, Severity: "warn", Kind: "plan",
-					Message:     "Đã dừng mục \"" + it.Topic + "\": " + err.Error(),
-					ActionTaken: "Đánh dấu lỗi để không thử lại mỗi vòng; tạo plan mới khi có provider ảnh tham chiếu miễn phí.",
-				})
-				notes = append(notes, a.Username+": dừng sản xuất \""+it.Topic+"\" — "+err.Error())
-				continue
-			}
 			n, _ := s.Growth.NoteItemFailure(it.ID, "Chưa sản xuất được: "+err.Error())
 			if n == 1 {
 				_ = s.Growth.InsertAlert(growth.Alert{

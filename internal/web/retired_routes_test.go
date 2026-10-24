@@ -19,6 +19,11 @@ func TestRetiredTrendPresetRoutesAreGone(t *testing.T) {
 		{http.MethodPost, "/team/agents/toggle"},
 		{http.MethodPost, "/team/agents/delete"},
 		{http.MethodPost, "/team/departments/assign"},
+		{http.MethodGet, "/stories"},
+		{http.MethodPost, "/studio/story"},
+		{http.MethodGet, "/api/studio/story-plots"},
+		{http.MethodPost, "/create-one-command"},
+		{http.MethodPost, "/api/create-one-command"},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		rec := httptest.NewRecorder()

@@ -48,25 +48,26 @@
         </div>
       </div>
       <nav>
-        <div class="nav-group">Studio</div>
-        <a href="/">
+        <div class="nav-group">TikTok</div>
+        <a href="/studio/trends">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7"/></svg>
+          <span>Radar xu hướng</span>
+        </a>
+        <a href="/studio">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span>Tạo nội dung</span>
+          <span>Tạo video</span>
         </a>
         <a href="/studio/jobs">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>Video</span>
         </a>
 
-        <div class="nav-group">Điều Hành</div>
-        <a href="/team">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span>Đội ngũ</span>
-        </a>
-
-        <div class="nav-group">Kênh &amp; Sản Phẩm</div>
-        <a href="/products"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Affiliate</span></a>
+        <div class="nav-group">Tăng trưởng</div>
+        <a href="/growth"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 3 6-7"/></svg><span>Phân tích</span></a>
         <a href="/accounts"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg><span>Kênh</span></a>
+
+        <div class="nav-group">Affiliate</div>
+        <a href="/products"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span>Sản phẩm &amp; hoa hồng</span></a>
 
         <a href="/settings"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Cài đặt</span></a>
       </nav>
@@ -75,8 +76,8 @@
       <div class="engine-status">
         {{if .Kill}}<span class="pulse-dot pulse-err"></span><span>Kill switch đang bật</span>
         {{else if .DryRun}}<span class="pulse-dot"></span><span>Chế độ chạy thử</span>
-        {{else if .MasterOn}}<span class="pulse-dot pulse-ok"></span><span>Daemon mạng được phép</span>
-        {{else}}<span class="pulse-dot"></span><span>Daemon mạng đang tắt</span>{{end}}
+        {{else if .MasterOn}}<span class="pulse-dot pulse-ok"></span><span>Lịch tự động được phép</span>
+        {{else}}<span class="pulse-dot"></span><span>Lịch tự động đang tắt</span>{{end}}
       </div>
     </div>
   </aside>
@@ -98,9 +99,9 @@
           {{else if .DryRun}}
             <span class="status-pill status-pill-muted" title="Chế độ chạy thử nghiệm an toàn"><span class="pulse-dot"></span> Chạy thử</span>
           {{else if .MasterOn}}
-            <span class="status-pill status-pill-ok" title="Master switch cho phép daemon mạng chạy qua các gate hiện hành"><span class="pulse-dot pulse-ok"></span> Daemon mạng được phép</span>
+            <span class="status-pill status-pill-ok" title="Master switch cho phép lịch tự động chạy qua các gate hiện hành"><span class="pulse-dot pulse-ok"></span> Lịch tự động được phép</span>
           {{else}}
-            <span class="status-pill status-pill-muted" title="Master switch đang chặn daemon mạng; scheduler khác có gate riêng"><span class="pulse-dot"></span> Daemon mạng đang tắt</span>
+            <span class="status-pill status-pill-muted" title="Master switch đang chặn lịch tự động"><span class="pulse-dot"></span> Lịch tự động đang tắt</span>
           {{end}}
           {{if .WebAICount}}
             <a href="/settings/system#tab-webai" class="status-pill status-pill-link" title="{{.WebAICount}} tài khoản có credential cục bộ và trạng thái connected/ok đã lưu; chưa gọi provider">
@@ -133,6 +134,7 @@
 {{template "confirm-modal" .}}
 {{template "video-modal" .}}
 <div id="toast" class="toast" hidden></div>
+<script src="/static/htmx.min.js?v={{assetVer}}"></script>
 <script src="/static/app.js?v={{assetVer}}"></script>
 </body>
 </html>{{end}}

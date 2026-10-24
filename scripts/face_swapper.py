@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 scripts/face_swapper.py — AI Face Swap Engine for MiuNova
-Hoán đổi khuôn mặt nhân vật AI vào video chuyển động (vũ đạo, affiliate lookbook, shorts).
+Hoán đổi danh tính nhân vật kênh vào video chuyển động TikTok.
 Hỗ trợ cả InsightFace/ONNXRuntime và fallback OpenCV Seamless Cloning.
 """
 

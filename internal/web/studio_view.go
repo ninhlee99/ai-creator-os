@@ -1,36 +1,48 @@
 package web
 
 import (
+	"encoding/json"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"path/filepath"
 	"strings"
 )
 
 // ---------------------------------------------------------------------------
-// Studio page: AI video creation (affiliate) + VN trending sounds
+// Studio page: AI video creation (affiliate)
 // ---------------------------------------------------------------------------
 
 // studioJobView is the template/JSON projection of a studio job.
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
-	ID                string `json:"id"`
-	Kind              string `json:"kind"`
-	Title             string `json:"title"`
-	Status            string `json:"status"`
-	Progress          int    `json:"progress"`
-	Output            string `json:"output"`
-	OutputKind        string `json:"output_kind"`
-	Caption           string `json:"caption"`
-	CreatedAt         string `json:"created_at"`
-	FinishedAt        string `json:"finished_at"`
-	KindLabel         string `json:"kind_label"`
-	Label             string `json:"label"`
-	Class             string `json:"class"`
-	QCVerified        bool   `json:"qc_verified"`
-	FailureReason     string `json:"failure_reason,omitempty"`
-	StoryPublishKnown bool   `json:"-"`
-	StoryPublished    bool   `json:"-"`
+	ID                     string `json:"id"`
+	Kind                   string `json:"kind"`
+	Title                  string `json:"title"`
+	Status                 string `json:"status"`
+	Progress               int    `json:"progress"`
+	Output                 string `json:"output"`
+	OutputKind             string `json:"output_kind"`
+	Caption                string `json:"caption"`
+	CreatedAt              string `json:"created_at"`
+	FinishedAt             string `json:"finished_at"`
+	KindLabel              string `json:"kind_label"`
+	Label                  string `json:"label"`
+	Class                  string `json:"class"`
+	QCVerified             bool   `json:"qc_verified"`
+	FailureReason          string `json:"failure_reason,omitempty"`
+	SourceMusicTitle       string `json:"source_music_title,omitempty"`
+	SourceMusicURL         string `json:"source_music_video_url,omitempty"`
+	SourceMusicVideoID     string `json:"source_music_video_id,omitempty"`
+	SourceMusicAuthor      string `json:"source_music_author,omitempty"`
+	SourceCollectedAt      string `json:"source_music_collected_at,omitempty"`
+	ProductID              int64  `json:"product_id,omitempty"`
+	ProductName            string `json:"product_name,omitempty"`
+	ProductShopID          string `json:"product_shop_id,omitempty"`
+	ProductPageURL         string `json:"product_page_url,omitempty"`
+	AffiliateLink          string `json:"affiliate_link,omitempty"`
+	AffiliateAttributionID string `json:"affiliate_attribution_id,omitempty"`
+	TikTokVideoID          string `json:"tiktok_video_id,omitempty"`
+	TikTokVideoURL         string `json:"tiktok_video_url,omitempty"`
 }
 
 func kindLabel(kind string) string {
@@ -47,17 +59,22 @@ func kindLabel(kind string) string {
 func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 	out := make([]studioJobView, 0, len(jobs))
 	for _, j := range jobs {
-		if s.Studio != nil && j.Status == studio.StatusDone && j.Log == "" &&
-			(j.Kind == studio.KindStory || j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) {
+		if s.Studio != nil && (j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) &&
+			(j.Params == "" || (j.Status == studio.StatusDone && j.Log == "")) {
 			if full, ok := s.Studio.GetJob(j.ID); ok {
-				j.Log = full.Log
+				if j.Params == "" {
+					j.Params = full.Params
+				}
+				if j.Status == studio.StatusDone && j.Log == "" {
+					j.Log = full.Log
+				}
 			}
 		}
 		failureReason := ""
 		if j.Status == studio.StatusFailed {
 			failureReason = studioFailureSummary(j.Log)
 		}
-		out = append(out, studioJobView{
+		view := studioJobView{
 			ID: j.ID, Kind: j.Kind, Title: j.Title, Status: j.Status,
 			Progress: j.Progress, Output: mediaName(j.Output), OutputKind: studioOutputKind(j.Output),
 			Caption:   j.Caption,
@@ -67,7 +84,47 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			Class:         statusClass(j.Status),
 			QCVerified:    studioOutputQCVerified(j),
 			FailureReason: failureReason,
-		})
+		}
+		if j.Kind == studio.KindAffiliate {
+			var p studio.AffiliateParams
+			if json.Unmarshal([]byte(j.Params), &p) == nil {
+				view.ProductID = p.ProductID
+				view.ProductName = strings.TrimSpace(p.ProductName)
+				view.AffiliateLink = p.AffLink
+				view.AffiliateAttributionID = p.AffiliateAttributionID
+				view.SourceMusicTitle = p.SourceMusicTitle
+				view.SourceMusicURL = p.SourceMusicVideoURL
+				view.SourceMusicVideoID = p.SourceMusicVideoID
+				view.SourceMusicAuthor = p.SourceMusicAuthor
+				view.SourceCollectedAt = p.SourceMusicCollectedAt
+				if p.ProductID > 0 && s.Products != nil {
+					if product, err := s.Products.GetByID(p.ProductID); err == nil {
+						view.ProductShopID = product.SourceID
+						view.ProductPageURL = product.ProductPageURL
+						if view.ProductName == "" {
+							view.ProductName = product.Title
+						}
+					}
+				}
+			}
+		} else if j.Kind == studio.KindViral {
+			var p studio.ViralParams
+			if json.Unmarshal([]byte(j.Params), &p) == nil {
+				view.SourceMusicTitle = p.SourceMusicTitle
+				view.SourceMusicURL = p.SourceVideoURL
+				view.SourceMusicVideoID = p.SourceVideoID
+				view.SourceMusicAuthor = p.SourceVideoAuthor
+				view.SourceCollectedAt = p.SourceCollectedAt
+			}
+		}
+		if s.Studio != nil && j.Status == studio.StatusDone && view.OutputKind == "video" &&
+			(j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) {
+			if publication, ok := s.Studio.TikTokPublicationForJob(j.ID); ok {
+				view.TikTokVideoID = publication.PlatformVideoID
+				view.TikTokVideoURL = publication.VideoURL
+			}
+		}
+		out = append(out, view)
 	}
 	return out
 }
@@ -119,8 +176,6 @@ func studioOutputQCVerified(j studio.Job) bool {
 	switch j.Kind {
 	case "ai_content":
 		return false
-	case studio.KindStory:
-		return strings.Contains(j.Log, "QC đạt:")
 	case studio.KindAffiliate, studio.KindViral:
 	default:
 		return false

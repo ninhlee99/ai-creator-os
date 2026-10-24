@@ -1,145 +1,81 @@
-{{define "title"}}Đa nền tảng{{end}}
+{{define "title"}}Kết nối TikTok{{end}}
 {{define "content"}}
-
-<!-- Pipeline Navigation Stepper -->
-
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1>Kết nối nền tảng</h1>
-  </div>
-  <div class="webai-header-actions">
-    <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh mới</a>
-    <a href="/accounts" class="btn btn-secondary">Quản lý Kênh</a>
-  </div>
-</div>
-
-{{if .PendingVideo}}
-<div class="card" style="border-radius:12px;padding:16px 20px;margin-bottom:20px;background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(16,185,129,0.08) 100%);border:1.5px solid var(--accent)">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-    <div style="display:flex;align-items:center;gap:12px">
-      <span style="font-size:28px">📤</span>
-      <div>
-        <strong style="font-size:15px;color:var(--text);display:block">Video đã chọn: {{if .PendingTitle}}{{.PendingTitle}}{{else}}Video{{end}}</strong>
-        <span style="font-size:12px;color:var(--muted)">Tải video để tự đăng trong ứng dụng nền tảng. MiuNova chưa gửi video qua API từ trang này.</span>
-      </div>
+<main class="mx-auto max-w-5xl space-y-5">
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="mb-1 text-xs font-bold uppercase tracking-[.16em] text-slate-500">Kênh đăng TikTok</p>
+      <h1 class="m-0">Kết nối TikTok</h1>
+      <p class="hint mt-1">Tải video vào Bản nháp và đồng bộ số liệu kênh.</p>
     </div>
-    <div style="display:flex;gap:8px">
-      <a href="{{.PendingVideo}}" download class="btn btn-secondary btn-sm" style="font-weight:700">⬇ Tải video về máy</a>
+    <a href="/accounts" class="btn btn-secondary">Quản lý kênh</a>
+  </header>
+
+  {{if .Err}}
+  <section class="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
+    <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-red-100 font-bold">!</span>
+    <div class="min-w-0 flex-1">
+      <strong>Kết nối chưa hoàn tất</strong>
+      <p class="mb-0 mt-1">{{.Err}}</p>
+      {{if .ErrDetail}}<details class="mt-2 text-sm"><summary class="cursor-pointer font-semibold">Chi tiết lỗi</summary><code class="mt-2 block break-all">{{.ErrDetail}}</code></details>{{end}}
     </div>
-  </div>
-</div>
-{{end}}
-
-<!-- Channel Unified Navigation Tabs -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/accounts">📱 Mạng Lưới Kênh</a>
-  <a href="/growth">🌱 Phát Triển Kênh &amp; KPI</a>
-  <a href="/publishers" class="active">🌐 Cổng Kết Nối Mạng Xã Hội</a>
-</nav>
-
-{{if .Msg}}<p class="notice">{{.Msg}}</p>{{end}}
-{{if .Err}}<p class="err">{{.Err}}</p>{{end}}
-
-<!-- Channels Matrix Table -->
-<h2 style="margin: 20px 0 8px; font-size: 17px;">Credentials theo hồ sơ kênh</h2>
-<p class="hint" style="margin:0 0 12px">Token và ID chỉ phản ánh cấu hình cục bộ; trang này không gọi API để xác nhận quyền đăng. TikTok chỉ gửi bản nháp; Direct Post đang khóa đến khi xác minh eligibility và có consent theo từng bài. Threads hiện chỉ đăng chữ kèm link, chưa đăng video.</p>
-{{if .Rows}}
-<div class="table-wrap" style="border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
-<table>
-  <thead>
-    <tr>
-      <th>Tài khoản Creator</th>
-      <th>Trạng thái Kênh</th>
-      <th>TikTok token</th>
-      <th>YouTube token</th>
-      <th>Facebook</th>
-      <th>Instagram</th>
-      <th>Threads</th>
-      <th>Adapter đủ cấu hình cục bộ</th>
-    </tr>
-  </thead>
-  <tbody>
-  {{range .Rows}}
-  <tr>
-    <td><strong>{{.Username}}</strong></td>
-    <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span></td>
-    <td>
-      {{if .TiktokTokenDead}}
-        <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
-      {{else if .TiktokToken}}
-        <span class="badge badge-warn">Có token · API chưa kiểm</span>
-      {{else}}
-        <span class="badge badge-no">Chưa có token</span>
-      {{end}}
-      {{if .TiktokClient}}
-        <a class="btn btn-secondary btn-sm" href="/publishers/tiktok/authorize?username={{.Username}}" style="margin-left:4px">
-          {{if or .TiktokToken .TiktokTokenDead}}Kết nối lại{{else}}Kết nối TikTok{{end}}
-        </a>
-      {{else}}
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
-      {{end}}
-    </td>
-    <td>
-      {{if .YoutubeTokenDead}}
-        <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
-      {{else if .YoutubeToken}}
-        <span class="badge badge-warn">Có token · API chưa kiểm</span>
-      {{else}}
-        <span class="badge badge-no">Chưa có token</span>
-      {{end}}
-      {{if .YoutubeClient}}
-        <a class="btn btn-secondary btn-sm" href="/publishers/youtube/authorize?username={{.Username}}" style="margin-left:4px">
-          {{if or .YoutubeToken .YoutubeTokenDead}}Nối lại{{else}}Nối YouTube{{end}}
-        </a>
-      {{else}}
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
-      {{end}}
-    </td>
-    <td>
-      {{if .FbPage}}<span class="badge badge-warn">Có Page ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu Page ID hoặc token</span>{{end}}
-      {{if .FacebookClient}}
-        <a class="btn btn-secondary btn-sm" href="/publishers/facebook/authorize?username={{.Username}}" style="margin-left:4px">
-          {{if .FbPage}}Nối lại{{else}}Kết nối Facebook{{end}}
-        </a>
-      {{else}}
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
-      {{end}}
-    </td>
-    <td>
-      {{if .Instagram}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
-      <a href="/settings/system#meta-social-settings" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
-    </td>
-    <td>
-      {{if .Threads}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
-      <a href="/settings/system#meta-social-settings" class="btn btn-secondary btn-sm" style="margin-left:4px">Cấu hình</a>
-    </td>
-    <td>{{if .Platforms}}{{join ", " .Platforms}}{{else}}—{{end}}</td>
-  </tr>
+  </section>
   {{end}}
-  </tbody>
-</table>
-</div>
-{{else}}
-<div class="empty-state" style="padding: 32px; text-align: center; background: var(--bg2); border-radius: 12px; border: 1px dashed var(--border); margin-top: 12px;">
-  <div class="es-icon" style="font-size: 32px; margin-bottom: 8px;">📱</div>
-  <h3 style="margin: 0 0 6px; font-size: 16px;">Chưa có kênh nào trong hệ thống</h3>
+  {{if .Msg}}<p class="notice" role="status">{{.Msg}}</p>{{end}}
 
-  <a href="/accounts/new" class="btn btn-primary">+ Tạo kênh mới ngay</a>
-</div>
-{{end}}
+  {{if .PendingVideo}}
+  <section class="card flex flex-wrap items-center justify-between gap-4">
+    <div><strong>Video sẵn sàng gửi TikTok</strong><p class="hint mb-0 mt-1">{{if .PendingTitle}}{{.PendingTitle}}{{else}}Video đã qua QC{{end}}</p></div>
+    <a href="{{.PendingVideo}}" download class="btn btn-primary">Tải video</a>
+  </section>
+  {{end}}
 
-{{if .AnyTikTokClient}}
-<div class="form-card" style="margin-top:24px">
-  <h3 style="margin-top:0;font-size:15px">🔧 Chuyển tiếp URL Callback thủ công (TikTok Relay)</h3>
+  {{if .Rows}}
+  <section aria-label="Tài khoản TikTok" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    {{range .Rows}}
+    <article class="card flex flex-col gap-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Kênh creator</p>
+          <h2 class="m-0 truncate text-xl"><a class="text-inherit no-underline hover:underline" href="/accounts/{{.AccountID}}">{{.Username}}</a></h2>
+        </div>
+        <span class="badge badge-info shrink-0">{{statusLabel .Status}}</span>
+      </div>
 
-  <form method="post" action="/publishers/tiktok/connect" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-    <select name="username" style="width:160px">
-      {{range .Rows}}{{if .TiktokClient}}<option value="{{.Username}}">{{.Username}}</option>{{end}}{{end}}
-    </select>
-    <input type="text" name="redirect" placeholder="{{.RedirectURI}}?code=...&amp;state=..." required style="flex:1">
-    <button type="submit" class="btn btn-sm">Lưu token</button>
-  </form>
-</div>
-{{end}}
+      <div class="rounded-xl bg-slate-50 p-3">
+        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Kết nối TikTok</p>
+        {{if .TiktokTokenDead}}
+          <p class="mb-0 font-semibold text-red-700">Token hết hạn hoặc bị từ chối</p>
+        {{else if .TiktokToken}}
+          <p class="mb-0 font-semibold text-slate-800">Đã lưu token · cần kết nối lại để cấp quyền mới</p>
+        {{else}}
+          <p class="mb-0 font-semibold text-slate-800">Chưa đăng nhập TikTok</p>
+        {{end}}
+      </div>
 
+      {{if .TiktokClient}}
+        <a class="btn btn-primary w-full justify-center" href="/publishers/tiktok/authorize?username={{.Username}}">{{if or .TiktokToken .TiktokTokenDead}}Kết nối lại TikTok{{else}}Đăng nhập TikTok{{end}}</a>
+      {{else}}
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Thiếu TikTok Client Key hoặc Client Secret.
+          <a class="ml-1 font-semibold underline" href="/settings/system#tab-social">Cấu hình TikTok</a>
+        </div>
+      {{end}}
+
+      <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
+        <span class="hint">Tải Bản nháp · hoàn tất đăng trong TikTok</span>
+        <a href="/accounts/{{.AccountID}}" class="btn btn-secondary btn-sm">Hồ sơ kênh</a>
+      </div>
+    </article>
+    {{end}}
+  </section>
+  {{else}}
+  <section class="empty-state rounded-2xl border border-slate-200 bg-white p-8 text-center">
+    <h2>Chưa có kênh creator</h2>
+    <p>Tạo kênh trước, rồi đăng nhập TikTok để gửi Bản nháp.</p>
+    <a href="/accounts/new" class="btn btn-primary">Thêm kênh</a>
+  </section>
+  {{end}}
+
+  <p class="hint m-0">Quyền dùng: tải video lên Bản nháp và đọc hồ sơ/số liệu được TikTok cấp.</p>
+</main>
 {{end}}

@@ -1,7 +1,6 @@
 package web
 
-// Affiliate product catalog: product search and discovery, manual add,
-// the merged shelf tab, autopilot scheduling policy and music upload.
+// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
 	"fmt"
@@ -20,7 +19,7 @@ const ledgerShelfMigrationKey = "migration.ledger_products_v1"
 // hàng tab's old home) into the shared product store — once, idempotently.
 // Shelf/scaled rows keep their shelf status + score; discovered/candidate
 // rows become plain store products. The ledger table itself is left
-// untouched for the parked agent universe (hunter/analyst/streamer).
+// untouched for active affiliate campaign history.
 func (s *Server) MigrateLedgerShelf() (int, error) {
 	if s.Products == nil || s.Ledger == nil {
 		return 0, nil
@@ -88,6 +87,16 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 		productErr(w, r, "shelf", "Hoa hồng không hợp lệ — nhập số từ 0 đến 100 (%).")
 		return
 	}
+	if price <= 0 || rate <= 0 {
+		productErr(w, r, "shelf", "Duyệt sản phẩm cần giá bán và hoa hồng lớn hơn 0.")
+		return
+	}
+	productURL := strings.TrimSpace(r.PostFormValue("product_url"))
+	parsedProductURL, urlErr := url.Parse(productURL)
+	if urlErr != nil || parsedProductURL.Scheme != "https" || parsedProductURL.Hostname() == "" || parsedProductURL.User != nil {
+		productErr(w, r, "shelf", "Cần link affiliate HTTPS hợp lệ trước khi thêm sản phẩm vào kệ.")
+		return
+	}
 	if pid == "" || title == "" {
 		productErr(w, r, "shelf", "Thiếu mã hoặc tên sản phẩm.")
 		return
@@ -102,15 +111,15 @@ func (s *Server) handleProductsShelfAdd(w http.ResponseWriter, r *http.Request) 
 	p := products.Product{
 		Source: "manual", SourceID: pid, Title: title,
 		Category: strings.TrimSpace(r.PostFormValue("category")),
-		Price: price, OriginalPrice: originalPrice, Currency: "VND",
-		CommissionRate: rate / 100, Theme: theme,
+		Price:    price, PriceMax: price, OriginalPrice: originalPrice, Currency: "VND",
+		CommissionRate: rate / 100, Theme: theme, ProductURL: productURL,
 	}
 	id, err := s.Products.Save(p)
 	if err != nil {
 		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Không lưu được sản phẩm: "+err.Error()))
 		return
 	}
-	if err := s.Products.SetShelf(id, "shelf", 0); err != nil {
+	if err := s.Products.ReviewProduct(id, products.ReviewApproved, "Duyệt thủ công"); err != nil {
 		seeOther(w, r, "/products?tab=shelf&err="+url.QueryEscape("Đã lưu sản phẩm nhưng không chuyển được vào kệ: "+err.Error()))
 		return
 	}
@@ -139,7 +148,7 @@ func (s *Server) handleProductsShelfToggle(w http.ResponseWriter, r *http.Reques
 	}
 	newStatus := "shelf"
 	newScore := products.Score(p)
-	msg := "Đã thêm \"" + p.Title + "\" vào Kệ hàng & Bio Link!"
+	msg := "Đã thêm \"" + p.Title + "\" vào danh sách sản phẩm affiliate!"
 	if p.ShelfStatus == "shelf" || p.ShelfStatus == "scaled" {
 		newStatus = ""
 		newScore = 0

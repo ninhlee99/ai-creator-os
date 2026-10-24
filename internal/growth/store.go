@@ -124,7 +124,6 @@ var itemColumnDDL = []string{
 	`ALTER TABLE content_plan_items ADD COLUMN pub_title TEXT`,
 	`ALTER TABLE content_plan_items ADD COLUMN pub_caption TEXT`,
 	`ALTER TABLE content_plan_items ADD COLUMN pub_note TEXT`,
-	`ALTER TABLE content_plan_items ADD COLUMN related_item_id INTEGER`,
 	`ALTER TABLE content_plan_items ADD COLUMN produced_at TEXT`,
 }
 
@@ -139,26 +138,6 @@ func NewStore(db *sql.DB) (*Store, error) {
 		if _, err := db.Exec(ddl); err != nil {
 			return nil, fmt.Errorf("growth schema: %w", err)
 		}
-	}
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS growth_youtube_quota (
-		day TEXT PRIMARY KEY,
-		units INTEGER NOT NULL DEFAULT 0
-	)`); err != nil {
-		return nil, fmt.Errorf("growth schema: %w", err)
-	}
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS growth_youtube_upload_quota (
-		day TEXT PRIMARY KEY,
-		uploads INTEGER NOT NULL DEFAULT 0
-	)`); err != nil {
-		return nil, fmt.Errorf("growth YouTube upload quota schema: %w", err)
-	}
-	// Preserve old per-day usage when moving from the former shared 10,000-unit
-	// bucket to videos.insert's separate 100-call bucket. INSERT OR IGNORE makes
-	// this migration idempotent; subsequent quota writes use the new table.
-	if _, err := db.Exec(`INSERT OR IGNORE INTO growth_youtube_upload_quota (day, uploads)
-		SELECT day, CASE WHEN units <= 0 THEN 0 ELSE (units + ? - 1) / ? END
-		FROM growth_youtube_quota`, LegacyUploadCostUnits, LegacyUploadCostUnits); err != nil {
-		return nil, fmt.Errorf("growth YouTube upload quota migration: %w", err)
 	}
 	for _, ddl := range itemColumnDDL {
 		if _, err := db.Exec(ddl); err != nil &&
@@ -177,7 +156,7 @@ func nowStr() string { return time.Now().UTC().Format("2006-01-02 15:04:05") }
 // cold_start profile (and the platform KPI ladder) on first sight. This is
 // the zero-touch bootstrap: an account handed to the app starts growing
 // without any human configuration step.
-func (s *Store) EnsureProfile(accountID int64, platform string, hasYouTube bool) (*Profile, error) {
+func (s *Store) EnsureProfile(accountID int64) (*Profile, error) {
 	p, err := s.GetProfile(accountID)
 	if err != nil {
 		return nil, err
@@ -190,22 +169,12 @@ func (s *Store) EnsureProfile(accountID int64, platform string, hasYouTube bool)
 		accountID, StageColdStart); err != nil {
 		return nil, err
 	}
-	for _, t := range DefaultTargets(platform) {
+	for _, t := range DefaultTargets() {
 		if _, err := s.db.Exec(
 			`INSERT OR IGNORE INTO growth_targets (account_id, metric, threshold, label, deadline)
 			 VALUES (?, ?, ?, ?, ?)`,
 			accountID, t.Metric, t.Threshold, t.Label, nullStr(t.Deadline)); err != nil {
 			return nil, err
-		}
-	}
-	if hasYouTube {
-		for _, t := range DefaultTargets("youtube") {
-			if _, err := s.db.Exec(
-				`INSERT OR IGNORE INTO growth_targets (account_id, metric, threshold, label, deadline)
-				 VALUES (?, ?, ?, ?, ?)`,
-				accountID, t.Metric, t.Threshold, t.Label, nullStr(t.Deadline)); err != nil {
-				return nil, err
-			}
 		}
 	}
 	return s.GetProfile(accountID)

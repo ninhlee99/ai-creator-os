@@ -9,20 +9,16 @@ import (
 	"time"
 )
 
-// fakeHealer mở rộng fakeStoryRunner với khả năng tự chữa của Studio.
+// fakeHealer exposes generic Studio maintenance operations for tests.
 type fakeHealer struct {
-	fakeStoryRunner
 	swept        int
 	prunedFailed int
-	prunedOld    int
 	freed        int64
 }
 
 func (f *fakeHealer) SweepHungJobs(maxAge time.Duration) int { return f.swept }
 func (f *fakeHealer) PruneFailedWork() (int, int64)          { return f.prunedFailed, f.freed }
-func (f *fakeHealer) PruneOldPublishedOutputs(maxAge time.Duration, isPublished func(id string) bool) (int, int64) {
-	return f.prunedOld, 0
-}
+func (f *fakeHealer) PruneOldJobs(maxAge time.Duration) int  { return 0 }
 
 func selfHealTestService(t *testing.T) (*Service, *fakeHealer) {
 	t.Helper()
@@ -31,7 +27,7 @@ func selfHealTestService(t *testing.T) (*Service, *fakeHealer) {
 	svc.Settings = LedgerSettings{L: l}
 	svc.Gate = &fakeGate{} // không kill, không dry-run
 	h := &fakeHealer{}
-	svc.Story = h
+	svc.Maintenance = h
 	svc.DataDir = t.TempDir() // đĩa test gần như trống
 	return svc, h
 }
@@ -77,7 +73,7 @@ func TestSelfHealDiskGuardPrunesWhenFull(t *testing.T) {
 	notes := svc.SelfHealTick(context.Background())
 	found := false
 	for _, n := range notes {
-		if strings.Contains(n, "đã dọn 3 job lỗi") && strings.Contains(n, "1.0 MB") {
+		if strings.Contains(n, "đã dọn file tạm của 3 job lỗi") && strings.Contains(n, "1.0 MB") {
 			found = true
 		}
 	}

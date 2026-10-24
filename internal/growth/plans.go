@@ -78,7 +78,7 @@ const planItemCols = `id, plan_id, account_id, planned_for, format_id, platform_
 	COALESCE(published_ref,''), COALESCE(studio_job_id,''), COALESCE(concept_text,''),
 	COALESCE(concept_hash,''), COALESCE(variant_group,''), COALESCE(dedup_action,''),
 	attempts, COALESCE(pub_title,''), COALESCE(pub_caption,''), COALESCE(pub_note,''),
-	COALESCE(related_item_id,0), COALESCE(produced_at,'')`
+	COALESCE(produced_at,'')`
 
 func scanPlanItem(rows *sql.Rows) (PlanItem, error) {
 	var it PlanItem
@@ -86,7 +86,7 @@ func scanPlanItem(rows *sql.Rows) (PlanItem, error) {
 		&it.Variant, &it.Topic, &it.Hook, &it.SeriesEp, &it.Status, &it.ContentItemID,
 		&it.PublishedRef, &it.StudioJobID, &it.ConceptText, &it.ConceptHash,
 		&it.VariantGroup, &it.DedupAction, &it.Attempts, &it.PubTitle, &it.PubCaption,
-		&it.PubNote, &it.RelatedItemID, &it.ProducedAt)
+		&it.PubNote, &it.ProducedAt)
 	return it, err
 }
 
@@ -290,32 +290,6 @@ func (s *Store) SetItemStatus(id int64, status, note string) error {
 	return err
 }
 
-// ClaimItemForPublishing atomically reserves one rendered item for upload.
-// Only one Growth tick can move an eligible item into the in-flight state.
-func (s *Store) ClaimItemForPublishing(id int64) (bool, error) {
-	res, err := s.db.Exec(
-		`UPDATE content_plan_items SET status = 'publishing', pub_note = ?
-		 WHERE id = ? AND status IN ('produced', 'waiting_connect', 'waiting_quota')`,
-		"Đang gửi video lên YouTube.", id)
-	if err != nil {
-		return false, err
-	}
-	changed, err := res.RowsAffected()
-	return changed == 1, err
-}
-
-// RecoverInterruptedPublishingItems moves uploads left in flight by a
-// process restart to review. Provider may have accepted the request.
-func (s *Store) RecoverInterruptedPublishingItems() (int64, error) {
-	res, err := s.db.Exec(
-		`UPDATE content_plan_items SET status = 'needs_review', pub_note = ? WHERE status = 'publishing'`,
-		"Growth upload bị gián đoạn khi ứng dụng dừng; kiểm tra YouTube Studio trước khi xử lý tiếp.")
-	if err != nil {
-		return 0, err
-	}
-	return res.RowsAffected()
-}
-
 // SetItemProduced marks the render finished (produced_at stamped).
 func (s *Store) SetItemProduced(id int64, note string) error {
 	_, err := s.db.Exec(
@@ -330,23 +304,6 @@ func (s *Store) SetItemPublished(id int64, ref string) error {
 		`UPDATE content_plan_items SET status = 'published', published_ref = ?, pub_note = '' WHERE id = ?`,
 		ref, id)
 	return err
-}
-
-// LinkRelatedItems records the sibling relation (Short <-> long-form)
-// both ways.
-func (s *Store) LinkRelatedItems(aID, bID int64) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(`UPDATE content_plan_items SET related_item_id = ? WHERE id = ?`, bID, aID); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(`UPDATE content_plan_items SET related_item_id = ? WHERE id = ?`, aID, bID); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
 
 // RecentNetworkItems returns recently produced/published items across the

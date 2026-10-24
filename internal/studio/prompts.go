@@ -12,10 +12,10 @@ import (
 	"text/template"
 )
 
-//go:embed prompts/*.txt prompts/parked/*.txt
+//go:embed prompts/*.txt
 var promptFS embed.FS
 
-// promptTemplates caches parsed templates. Film jobs render in background
+// promptTemplates caches parsed templates. Studio jobs render in background
 // goroutines (up to maxConcurrentStudioJobs), so the cache is mutex-guarded
 // — two jobs must never write the map concurrently.
 var (
@@ -29,11 +29,6 @@ func directorPrompt(name string, data any) (string, error) {
 	promptTemplatesMu.Unlock()
 	if !ok {
 		raw, err := promptFS.ReadFile("prompts/" + name)
-		if err != nil {
-			// Prompt đã park (PIVOT 2026-10-02) nằm ở prompts/parked/ —
-			// thử đó trước khi báo lỗi để build parked vẫn chạy được.
-			raw, err = promptFS.ReadFile("prompts/parked/" + name)
-		}
 		if err != nil {
 			return "", fmt.Errorf("director prompt %s: %w", name, err)
 		}
@@ -52,7 +47,7 @@ func directorPrompt(name string, data any) (string, error) {
 	return sb.String(), nil
 }
 
-// promptData carries the fields every film/affiliate prompt template needs.
+// promptData carries the fields used by affiliate and viral TikTok prompts.
 type promptData struct {
 	Topic            string
 	Niche            string
@@ -65,23 +60,7 @@ type promptData struct {
 	ProductEvidence  string
 	ReferenceSummary string
 	ReferenceBeats   string
-	Genre            string
 	Seconds          int
 	Duration         string
-	TotalSeconds     int
-	ActSeconds       int
 	N                int
-	Orient           string
-	Characters       string
-	// Cast là dàn nhân vật pha 1 đã chốt (tên — trích xác định từ thoại các
-	// hồi trước), truyền cho các hồi sau để giữ tên nhất quán.
-	Cast string
-	// Screenplay là kịch bản pha 1 (JSON) đưa vào prompt breakdown pha 2.
-	Screenplay string
-	// Story là truyện pha 0 (văn xuôi) đưa vào prompt chuyển thể pha 1.
-	Story string
-	// StoryWords là độ dài truyện mục tiêu (từ) cho pha 0.
-	StoryWords int
-	Recap1     string
-	Recap2     string
 }

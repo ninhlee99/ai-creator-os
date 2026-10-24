@@ -11,6 +11,10 @@ func newID() string {
 }
 
 func (s *Studio) insertJob(kind, title string, params any) (string, error) {
+	return s.insertJobWithID(newID(), kind, title, params)
+}
+
+func (s *Studio) insertJobWithID(id, kind, title string, params any) (string, error) {
 	// Đợt V: pre-flight đĩa — từ chối job mới khi đĩa gần đầy thay vì để
 	// job render dở rồi kẹt (video + backup zip có thể lấp đĩa rất nhanh).
 	if s.DiskGuard != nil {
@@ -23,7 +27,6 @@ func (s *Studio) insertJob(kind, title string, params any) (string, error) {
 		}
 	}
 	pj, _ := json.Marshal(params)
-	id := newID()
 	_, err := s.db.Exec(
 		`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
 		id, kind, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05"))

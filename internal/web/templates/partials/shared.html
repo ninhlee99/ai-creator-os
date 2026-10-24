@@ -81,8 +81,7 @@ by app.js and only submit after the user confirms here. */}}
     {{end}}
   </div>
   <div class="key-empty" data-empty {{if .Keys}}hidden{{end}}>
-    <p><strong>Chưa có API key nào.</strong> Thêm key để bật Gemini. Key cùng project dùng chung quota; xoay key không tăng giới hạn.</p>
-    <p>Tạo key tại <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> rồi bấm “+ Thêm key”. Quota và chi phí phụ thuộc cấu hình project Google; kiểm tra billing trước khi dùng.</p>
+    <p><strong>Chưa có API key.</strong> Thêm key từ <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a>. Key cùng project dùng chung quota; kiểm tra billing trước khi dùng.</p>
   </div>
   <div class="key-add" hidden>
     <input type="password" class="key-input" placeholder="Dán API key vào đây…" autocomplete="off" spellcheck="false">

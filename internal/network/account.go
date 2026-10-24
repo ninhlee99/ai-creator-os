@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
@@ -18,35 +17,17 @@ var TRANSITIONS = map[string]map[string]bool{
 	"onboarding":       {"researching": true, "retired": true},
 	"researching":      {"persona_assigned": true, "paused": true, "retired": true},
 	"persona_assigned": {"growing": true, "paused": true, "retired": true},
-	"growing":          {"live_ready": true, "paused": true, "retired": true},
-	"live_ready":       {"live": true, "paused": true, "retired": true},
-	"live":             {"live_ready": true, "paused": true, "penalized": true, "retired": true},
-	"paused":           {"live_ready": true, "growing": true, "retired": true},
+	"growing":          {"paused": true, "retired": true},
+	"paused":           {"growing": true, "retired": true},
 	"penalized":        {"paused": true, "retired": true}, // human decides; never auto-resume
 	"retired":          {},
 }
-
-// LiveEligibleStatuses mirrors Python's LIVE_ELIGIBLE_STATUSES.
-var LiveEligibleStatuses = map[string]bool{"live_ready": true, "live": true}
-
-// FollowersToLive is the TikTok follower requirement for going live.
-const FollowersToLive = 1000
 
 const (
 	FollowersSourceLegacy       = "legacy"
 	FollowersSourceTikTokManual = "tiktok_manual"
 	FollowersSourceTikTokAPI    = "tiktok_api"
 )
-
-func verifiedTikTokFollowerSource(source string) bool {
-	return source == FollowersSourceTikTokManual || source == FollowersSourceTikTokAPI
-}
-
-func trustedTikTokFollowerSource(source string) bool {
-	// Empty source is accepted for in-memory callers predating provenance.
-	// Persisted rows always get an explicit source from the DB default.
-	return source == "" || verifiedTikTokFollowerSource(source)
-}
 
 // Account is the network-facing view of a ledger account: plain Go types
 // instead of sql.NullString, with the lifecycle helpers attached.
@@ -60,41 +41,11 @@ type Account struct {
 	Followers           int64
 	FollowersSource     string
 	FollowersVerifiedAt string
-	RtmpKeyRef          string
-	RestWeekday         int64
 	Topics              []string // episode topics from the topic engine
-	YoutubeChannel      string
-	YoutubeContentTypes []string
 	// Affiliate autopilot (Ninh's 2026-10-01 requirements).
 	Theme         string  // chủ đề: theme slug from products.THEMES, "" = chưa chọn
 	Autopilot     bool    // hệ thống tự tìm sản phẩm + làm video
 	MinCommission float64 // ngưỡng hoa hồng tối thiểu, 0..1
-}
-
-// LiveEligible reports whether the account may go live right now.
-func (a *Account) LiveEligible() bool {
-	return LiveEligibleStatuses[a.Status] && a.TikTokLiveThresholdMet()
-}
-
-// TikTokLiveThresholdMet requires a current TikTok-sourced count. YouTube
-// subscribers and legacy unlabelled values cannot unlock livestreaming.
-func (a *Account) TikTokLiveThresholdMet() bool {
-	return verifiedTikTokFollowerSource(a.FollowersSource) && a.Followers >= FollowersToLive
-}
-
-// RtmpKey resolves the actual stream key from the environment at runtime.
-// rtmp_key_ref names the env var; when unset it falls back to the
-// TIKTOK_RTMP_KEY[_<USERNAME>] convention. Empty when nothing is set.
-func (a *Account) RtmpKey() string {
-	if a.RtmpKeyRef != "" {
-		if v := os.Getenv(a.RtmpKeyRef); v != "" {
-			return v
-		}
-	}
-	if v := os.Getenv("TIKTOK_RTMP_KEY_" + strings.ToUpper(a.Username)); v != "" {
-		return v
-	}
-	return os.Getenv("TIKTOK_RTMP_KEY")
 }
 
 func jsonStringList(raw string) []string {
@@ -116,11 +67,7 @@ func wrapAccount(row *ledger.Account) *Account {
 		Followers:           row.Followers,
 		FollowersSource:     row.FollowersSource,
 		FollowersVerifiedAt: row.FollowersVerifiedAt,
-		RtmpKeyRef:          row.RtmpKeyRef.String,
-		RestWeekday:         row.RestWeekday,
 		Topics:              jsonStringList(row.TopicsJSON),
-		YoutubeChannel:      row.YoutubeChannel.String,
-		YoutubeContentTypes: jsonStringList(row.YoutubeContentTypes),
 	}
 }
 
@@ -168,6 +115,11 @@ func NewAccountManager(l *ledger.Ledger, dbPath string) (*AccountManager, error)
 			return nil, fmt.Errorf("network: migrate autopilot: %w", err)
 		}
 	}
+	// Map retired account states to the current TikTok growth stage.
+	if _, err := db.Exec("UPDATE accounts SET status='growing' WHERE status IN ('live_ready','live')"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("network: migrate retired account states: %w", err)
+	}
 	return &AccountManager{ledger: l, db: db}, nil
 }
 
@@ -176,8 +128,8 @@ func (m *AccountManager) Close() error { return m.db.Close() }
 
 // Add registers a new account (duplicate username returns the existing id,
 // no error — see ledger.AddAccount) and returns the wrapped account.
-func (m *AccountManager) Add(username, nicheHint, rtmpKeyRef string) (*Account, error) {
-	id, err := m.ledger.AddAccount(username, nicheHint, rtmpKeyRef)
+func (m *AccountManager) Add(username, nicheHint string, _ ...string) (*Account, error) {
+	id, err := m.ledger.AddAccount(username, nicheHint)
 	if err != nil {
 		return nil, err
 	}
@@ -206,22 +158,6 @@ func (m *AccountManager) List(statuses ...string) ([]*Account, error) {
 	return out, nil
 }
 
-// ActivePersonas returns the personas of all non-retired accounts that have
-// one assigned — the diversity input for AssignPersona.
-func (m *AccountManager) ActivePersonas() ([]string, error) {
-	accts, err := m.List()
-	if err != nil {
-		return nil, err
-	}
-	var out []string
-	for _, a := range accts {
-		if a.Persona != "" && a.Status != "retired" {
-			out = append(out, a.Persona)
-		}
-	}
-	return out, nil
-}
-
 // SetTopicPlan persists the topic engine's output for an account.
 func (m *AccountManager) SetTopicPlan(accountID int64, niche string, topics []string) (*Account, error) {
 	tj, err := json.Marshal(topics)
@@ -237,36 +173,9 @@ func (m *AccountManager) SetTopicPlan(accountID int64, niche string, topics []st
 	return m.Get(accountID)
 }
 
-// SetYoutube configures this account's YouTube channel and which content
-// kinds it accepts (subset of short_video, short_film, ai_music, ai_remix;
-// empty disables YouTube for the account).
-func (m *AccountManager) SetYoutube(accountID int64, channel string, contentTypes []string) (*Account, error) {
-	valid := map[string]bool{
-		"short_video": true, "short_film": true, "ai_music": true, "ai_remix": true,
-	}
-	var cleaned []string
-	for _, c := range contentTypes {
-		if valid[c] {
-			cleaned = append(cleaned, c)
-		}
-	}
-	cj, err := json.Marshal(cleaned)
-	if err != nil {
-		return nil, err
-	}
-	_, err = m.db.Exec(
-		"UPDATE accounts SET youtube_channel = ?, youtube_content_types = ?, "+
-			"updated_at = datetime('now') WHERE id = ?",
-		channel, string(cj), accountID)
-	if err != nil {
-		return nil, err
-	}
-	return m.Get(accountID)
-}
-
 // UpdateAccount changes profile fields. Lifecycle status changes must use
 // Transition so the allowed-stage rules and decision log stay in force.
-func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHint, persona, youtubeChannel, theme string, autopilot bool, minComm float64) (*Account, error) {
+func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHint, persona, theme string, autopilot bool, minComm float64) (*Account, error) {
 	autoVal := 0
 	if autopilot {
 		autoVal = 1
@@ -274,10 +183,10 @@ func (m *AccountManager) UpdateAccount(accountID int64, username, niche, nicheHi
 	_, err := m.db.Exec(`
 		UPDATE accounts 
 		SET username = ?, niche = ?, niche_hint = ?, persona = ?,
-		    youtube_channel = ?, theme = ?, autopilot = ?, min_commission = ?, 
+		    theme = ?, autopilot = ?, min_commission = ?,
 		    updated_at = datetime('now')
 		WHERE id = ?
-	`, username, niche, nicheHint, persona, youtubeChannel, theme, autoVal, minComm, accountID)
+	`, username, niche, nicheHint, persona, theme, autoVal, minComm, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("network: update account: %w", err)
 	}
@@ -362,9 +271,7 @@ func (m *AccountManager) bumpViolationCount(accountID int64) (int64, error) {
 	return n, nil
 }
 
-// NetworkPauseSimilar is the guardrail for a penalized account: pause every
-// other account running the same persona that is live or live-ready, so the
-// network can never evade a penalty via sibling accounts.
+// NetworkPauseSimilar pauses active sibling accounts after a policy violation.
 func (m *AccountManager) NetworkPauseSimilar(accountID int64) ([]*Account, error) {
 	acct, err := m.Get(accountID)
 	if err != nil {
@@ -377,7 +284,7 @@ func (m *AccountManager) NetworkPauseSimilar(accountID int64) ([]*Account, error
 	}
 	var paused []*Account
 	for _, a := range accts {
-		if a.Persona == persona && (a.Status == "live" || a.Status == "live_ready") {
+		if a.Persona == persona && (a.Status == "growing" || a.Status == "persona_assigned") {
 			p, err := m.Transition(a.ID, "paused", nil)
 			if err != nil {
 				return paused, err

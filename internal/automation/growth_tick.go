@@ -2,8 +2,6 @@ package automation
 
 import (
 	"context"
-	"github.com/ninhlee99/ai-creator-os/internal/growth"
-	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"time"
 )
 
@@ -39,9 +37,8 @@ func (s *Service) SetProductionEnabled(on bool) error {
 
 // ------------------------------------------------------------ the tick
 
-// GrowthTick runs one scheduled production pass: due plan items ->
-// Studio renders -> YouTube uploads (quota-guarded), plus an hourly
-// metrics sync + decision loop through the existing engine. It runs by
+// GrowthTick runs one scheduled TikTok production pass and an hourly
+// metrics and affiliate-order sync. It runs by
 // default (a stored "0" opts out); the cmd daemon calls it on a timer.
 // Returned notes are for logs/UI — the pass also writes alerts and
 // decision rows itself. force=true is the manual "chạy ngay" button (an
@@ -100,36 +97,8 @@ func (s *Service) growthSyncDue() bool {
 	return err != nil || time.Since(t) >= time.Hour
 }
 
-// effectiveDate applies the per-variant schedule stagger (doc §5.2) to a
-// plan date.
-func effectiveDate(it growth.PlanItem) string {
-	t, err := time.Parse("2006-01-02", it.PlannedFor)
-	if err != nil {
-		return it.PlannedFor
-	}
-	return t.AddDate(0, 0, growth.VariantLagDays(it.Variant)).Format("2006-01-02")
-}
-
 func variantLabel(v string) string {
-	switch v {
-	case growth.VariantShorts:
-		return "YouTube Shorts"
-	case growth.VariantYouTube:
-		return "YouTube dài"
-	default:
-		return "TikTok"
-	}
-}
-
-func primaryPlatform(a *network.Account) string {
-	if len(a.YoutubeContentTypes) > 0 {
-		return "youtube"
-	}
-	return "tiktok"
-}
-
-func hasYouTube(a *network.Account) bool {
-	return a.YoutubeChannel != "" || len(a.YoutubeContentTypes) > 0
+	return "TikTok"
 }
 
 // -------------------------------------------------------- produce pass

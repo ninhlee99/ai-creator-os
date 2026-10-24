@@ -1,7 +1,6 @@
 package web
 
-// Publishers (multi-platform) page: connection status per account and
-// the API usage-cost table.
+// TikTok connection status per account and the API usage-cost table.
 
 import (
 	"net/http"
@@ -11,20 +10,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
-func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []string, status string) publisherRow {
-	if len(ytContentTypes) == 0 && fileExists(publishers.YouTubeTokenPath(username)) {
-		ytContentTypes = []string{"short_video", "short_film"}
-	}
-	var plats []string
-	for _, p := range publishers.BuildPublishers(username, ytChannel, ytContentTypes) {
-		plats = append(plats, p.Name())
-	}
-	ytDead := false
-	if s.Ledger != nil {
-		if _, ok, _ := s.Ledger.GetSetting(tokenDeadKey(username)); ok {
-			ytDead = true
-		}
-	}
+func (s *Server) publisherRowFor(username, status string) publisherRow {
 	ttPub := publishers.NewTikTokPublisher(username)
 	ttExists := fileExists(publishers.TikTokTokenPath(username))
 	ttDead := false
@@ -34,19 +20,11 @@ func (s *Server) publisherRowFor(username, ytChannel string, ytContentTypes []st
 		}
 	}
 	return publisherRow{
-		Username:         username,
-		Status:           status,
-		TiktokToken:      ttExists,
-		TiktokTokenDead:  ttDead,
-		TiktokClient:     ttPub.HasClient(),
-		YoutubeToken:     fileExists(publishers.YouTubeTokenPath(username)),
-		YoutubeClient:    publishers.NewYouTubePublisher(username, nil, "").HasClient(),
-		YoutubeTokenDead: ytDead,
-		FbPage:           publishers.FacebookPageConfigured(username),
-		FacebookClient:   s.facebookOAuthConfigured(),
-		Instagram:        publishers.NewInstagramPublisher(username).IsConfigured(),
-		Threads:          publishers.NewThreadsPublisher(username).IsConfigured(),
-		Platforms:        plats,
+		Username:        username,
+		Status:          status,
+		TiktokToken:     ttExists,
+		TiktokTokenDead: ttDead,
+		TiktokClient:    ttPub.HasClient(),
 	}
 }
 
@@ -58,23 +36,28 @@ func (s *Server) handlePublishers(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]publisherRow, 0, len(accounts))
 	for _, a := range accounts {
-		rows = append(rows, s.publisherRowFor(a.Username, a.YoutubeChannel, a.YoutubeContentTypes, a.Status))
-	}
-	anyTikTokClient := false
-	for _, row := range rows {
-		anyTikTokClient = anyTikTokClient || row.TiktokClient
+		row := s.publisherRowFor(a.Username, a.Status)
+		row.AccountID = a.ID
+		rows = append(rows, row)
 	}
 	rawVideo := r.URL.Query().Get("video")
 	pendingVideo := s.pendingVideoURL(rawVideo)
 	errMsg := r.URL.Query().Get("err")
+	errDetail := ""
+	if strings.Contains(errMsg, "lookup open.tiktokapis.com") {
+		errDetail = errMsg
+		errMsg = "Không phân giải được máy chủ TikTok trong môi trường chạy ứng dụng. Khởi động lại bản mới; nếu lỗi còn, kiểm tra DNS của máy hoặc container."
+	} else if strings.Contains(errMsg, "x509: OSStatus -26276") {
+		errDetail = errMsg
+		errMsg = "Go không xác minh được chứng chỉ qua macOS. Nếu ứng dụng đang chạy trong Codex/IDE sandbox, hãy mở ứng dụng từ Terminal thường rồi đăng nhập lại."
+	}
 	if rawVideo != "" && pendingVideo == "" && errMsg == "" {
 		errMsg = "Video không hợp lệ hoặc không còn trên máy."
 	}
-	s.render(w, "publishers", s.ctx("Rows", rows, "AnyTikTokClient", anyTikTokClient,
-		"Msg", r.URL.Query().Get("msg"), "Err", errMsg,
+	s.render(w, "publishers", s.ctx("Rows", rows,
+		"Msg", r.URL.Query().Get("msg"), "Err", errMsg, "ErrDetail", errDetail,
 		"PendingVideo", pendingVideo, "PendingTitle", r.URL.Query().Get("title"),
-		"RedirectURI", publishers.TikTokRedirectURI(), "RedirectLocal", publishers.TikTokRedirectIsLocal(),
-		"AppBase", "http://"+r.Host))
+	))
 }
 
 // pendingVideoURL accepts only an existing local video served by /media/{name}.

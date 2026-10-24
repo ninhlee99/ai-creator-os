@@ -21,9 +21,6 @@ type Autopilot struct {
 	store     *products.Store
 	providers []products.Provider
 	models    *ModelStore
-	// MusicPath is the trending-audio file to mix under autopilot videos.
-	// "" = silent video (the job log says so explicitly).
-	MusicPath string
 }
 
 // NewAutopilot wires the collaborators. Any of them may be nil only in

@@ -16,19 +16,6 @@ import (
 	"strings"
 )
 
-// ytAnalyticsStatus: "ok" (có token file), "chuakenh" (chưa gắn kênh),
-// "chuacotoken" (chưa có token). Trung thực — chỉ kiểm tra file tồn tại,
-// không đoán scope (thiếu scope → API báo 403 lúc sync).
-func ytAnalyticsStatus(username, channel string) string {
-	if strings.TrimSpace(channel) == "" {
-		return "chuakenh"
-	}
-	if _, err := os.Stat(publishers.YouTubeTokenPath(username)); err != nil {
-		return "chuacotoken"
-	}
-	return "ok"
-}
-
 func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Mgr.ListWithAutopilot()
 	if err != nil {
@@ -41,15 +28,15 @@ func (s *Server) handleAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, "accounts", s.ctx(
 		"Accounts", views,
+		"Notice", r.URL.Query().Get("ok"),
+		"Error", r.URL.Query().Get("err"),
 	))
 }
 
 func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "account_new", s.ctx(
 		"Error", r.URL.Query().Get("err"),
-		"HasYouTubeClient", publishers.NewYouTubePublisher("", nil, "").HasClient(),
 		"HasTikTokClient", publishers.NewTikTokPublisher("").HasClient(),
-		"HasMetaClient", s.facebookOAuthConfigured(),
 	))
 }
 
@@ -67,24 +54,11 @@ func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Kênh \""+username+"\" đã tồn tại."))
 		return
 	}
-	// Đợt AA: form đã gỡ field rtmp_key_ref (đợt W) — truyền rỗng, giữ
-	// signature Mgr.Add vì network daemon + ledger vẫn dùng cột RTMP
-	// (live engine, không thuộc phạm vi dọn UI).
-	acct, err := s.Mgr.Add(username,
-		strings.TrimSpace(r.PostFormValue("niche_hint")),
-		"")
+	acct, err := s.Mgr.Add(username, strings.TrimSpace(r.PostFormValue("niche_hint")))
 	if err != nil {
 		s.fail(w, err, "add account")
 		return
 	}
-	if ch := strings.TrimSpace(r.PostFormValue("youtube_channel")); ch != "" {
-		if err := s.Ledger.SetAccountStatus(acct.ID, acct.Status,
-			map[string]any{"youtube_channel": ch}); err != nil {
-			seeOther(w, r, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"?err="+url.QueryEscape("Không lưu được kênh YouTube: "+err.Error()))
-			return
-		}
-	}
-
 	// Gán nhân vật đại diện cho kênh:
 	if r.MultipartForm != nil {
 		for _, key := range []string{"photo", "model_photo", "character_photo"} {
@@ -178,15 +152,6 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "account decisions")
 		return
 	}
-	pubNames := []string{}
-	for _, p := range publishers.BuildPublishers(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes) {
-		pubNames = append(pubNames, p.Name())
-	}
-	gifts, err := s.Ledger.AccountGiftUSD(id)
-	if err != nil {
-		s.fail(w, err, "account gifts")
-		return
-	}
 	var brandDNA *growth.BrandDNA
 	brandDNAStatus := "Growth store chưa sẵn sàng; không đọc được hồ sơ."
 	if s.Growth != nil {
@@ -210,14 +175,11 @@ func (s *Server) handleAccountDetail(w http.ResponseWriter, r *http.Request) {
 		"BrandDNA", brandDNA,
 		"BrandDNAStatus", brandDNAStatus,
 		"Decisions", decisions,
-		"Publishers", pubNames,
-		"Gifts", gifts,
 		"Themes", themeOptions(),
 		"AutopilotConfigured", network.AutopilotReady(acct),
 		"ModelPhotos", s.modelPhotoViews(id),
 		"StudioOK", s.Studio != nil,
-		"YTAnalytics", ytAnalyticsStatus(acct.Username, acct.YoutubeChannel),
-		"PubStatus", s.publisherRowFor(acct.Username, acct.YoutubeChannel, acct.YoutubeContentTypes, acct.Status),
+		"PubStatus", s.publisherRowFor(acct.Username, acct.Status),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
 	)

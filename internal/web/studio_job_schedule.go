@@ -26,14 +26,6 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	if r.PostFormValue("auto_publish") == "on" {
 		autoPub = "1"
 	}
-	youTube := "0"
-	if r.PostFormValue("youtube_enabled") == "on" {
-		youTube = "1"
-	}
-	meta := "0"
-	if r.PostFormValue("meta_enabled") == "on" {
-		meta = "1"
-	}
 	hours := 6
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
@@ -44,8 +36,6 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 		{SettingAutopilotEnabled, enabled},
 		{SettingAutopilotInterval, strconv.Itoa(hours)},
 		{SettingAutopilotAutoPublish, autoPub},
-		{SettingAutopilotYouTube, youTube},
-		{SettingAutopilotMeta, meta},
 	} {
 		if err := st.Set(setting.key, setting.value); err != nil {
 			msg := fmt.Sprintf("Không lưu đủ cấu hình lịch (%s); một số giá trị có thể đã cập nhật. Hãy tải lại và kiểm tra.", setting.key)

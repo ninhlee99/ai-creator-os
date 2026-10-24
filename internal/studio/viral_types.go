@@ -16,9 +16,11 @@ type ViralParams struct {
 	TargetDuration          float64              `json:"target_duration"`             // exact source duration in seconds
 	OutputResolution        string               `json:"output_resolution,omitempty"` // 4k | 8k
 	FlowCreditsAcknowledged bool                 `json:"flow_credits_acknowledged,omitempty"`
-	MusicURL                string               `json:"music_url"` // Nhạc nền trending (tùy chọn)
-	MusicFile               string               `json:"music_file"`
 	SourceVideoURL          string               `json:"source_video_url,omitempty"`
+	SourceVideoID           string               `json:"source_video_id,omitempty"`
+	SourceVideoAuthor       string               `json:"source_video_author,omitempty"`
+	SourceMusicTitle        string               `json:"source_music_title,omitempty"`
+	SourceCollectedAt       string               `json:"source_collected_at,omitempty"`
 	SampleVideo             string               `json:"sample_video,omitempty"` // local file path to sample motion video
 	AIMode                  string               `json:"ai_mode,omitempty"`      // full_character_edit replaces the complete person in source footage
 	ReferenceSummary        string               `json:"reference_summary,omitempty"`

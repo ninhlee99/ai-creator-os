@@ -5,7 +5,7 @@
 <h2>How it works</h2>
 <ol>
 <li>The creator signs in with TikTok (Login Kit) and grants the <code>user.info.basic</code> and <code>video.upload</code> scopes.</li>
-<li>The operator authorizes MiuNova with TikTok. For VPS use, the registered redirect URI can point to the MiuNova HTTPS callback. The static relay page is a manual copy-and-paste fallback.</li>
+<li>The operator authorizes MiuNova with TikTok Login Kit for Desktop. The app uses PKCE and a loopback callback; the default URI is <code>http://127.0.0.1:8080/publishers/tiktok/callback</code>, which must be registered in TikTok Developer Portal.</li>
 <li>This build uploads drafts only. Direct Post is disabled until eligibility is verified and per-post consent controls exist.</li>
 <li>Videos and required metadata are sent to TikTok when the operator starts a draft upload. Drafts are reviewed in TikTok before publication.</li>
 </ol>

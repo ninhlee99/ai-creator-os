@@ -34,11 +34,11 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 	if !dueSince(s.Settings, keyATHunterLastRun, interval) {
 		return nil
 	}
-	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{ApprovedOnly: true, MaxAgeDays: 180})
+	res, err := cl.HuntTikTokShop(ctx, s.Products, accesstrade.HunterFilter{MaxAgeDays: 180})
 	if err != nil {
 		return []string{"săn sản phẩm thất bại: " + err.Error()}
 	}
-	if res.Note != "" && res.New == 0 {
+	if res.Note != "" && res.New == 0 && res.Updated == 0 && len(res.ProductionCandidates) == 0 {
 		stampRun(s.Settings, keyATHunterLastRun)
 		_ = s.decide("at_hunter", "hunt_blocked", nil, res.Note, nil)
 		return []string{"săn sản phẩm: " + res.Note}
@@ -47,7 +47,7 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 		stampRun(s.Settings, keyATHunterLastRun)
 		note := res.Note
 		if note == "" {
-			note = "không có sản phẩm nào có đủ tín hiệu lượt bán và rating để tạo video affiliate"
+			note = "không có offer nào đã duyệt và đủ giá, hoa hồng, link hợp lệ để tạo video affiliate"
 		}
 		if !atOn(s.Settings, KeyATHunterFlowCredits, false) {
 			note += " Google Flow đang tắt vì chưa bật quyền dùng credits."
@@ -180,6 +180,7 @@ func (s *Service) MakeHunterVideoForAccount(ctx context.Context, p products.Prod
 		VideoEngine:             studio.AffiliateVideoEngineGoogleFlow,
 		FlowCreditsAcknowledged: true,
 		AccountID:               accountID,
+		ProductID:               p.ID,
 		Niche:                   niche,
 		ProductName:             p.Title,
 		ModelPhoto:              modelPhotos[0],
@@ -187,9 +188,20 @@ func (s *Service) MakeHunterVideoForAccount(ctx context.Context, p products.Prod
 		ProductPhoto:            dst,
 		ExtraPhotos:             extra,
 		Seconds:                 30,
-		MusicPath:               s.ATMusicPath, // "" = video câm (job log ghi rõ)
-		AffLink:                 p.ProductURL,  // đợt Q: link Accesstrade vào mô tả YouTube
+		AffLink:                 p.ProductURL, // affiliate link used by the TikTok campaign
 	}
+	soundResolver, ok := s.StudioRunner.(interface {
+		ResolveTikTokRadarMusic(context.Context) (studio.TikTokTrendVideo, error)
+	})
+	if !ok {
+		return "", fmt.Errorf("Studio chưa hỗ trợ nguồn nhạc đã xác nhận từ Radar TikTok")
+	}
+	soundSource, soundErr := soundResolver.ResolveTikTokRadarMusic(ctx)
+	if soundErr != nil {
+		return "", fmt.Errorf("lấy sound TikTok từ Radar: %w", soundErr)
+	}
+	params.SourceMusicTitle = soundSource.SoundTitle()
+	params.SourceMusicVideoURL = soundSource.VideoURL
 	planner, ok := s.StudioRunner.(interface {
 		PrepareAffiliatePlan(context.Context, studio.AffiliateParams) (studio.AffiliatePreparation, error)
 	})
@@ -201,6 +213,18 @@ func (s *Service) MakeHunterVideoForAccount(ctx context.Context, p products.Prod
 		return "", fmt.Errorf("lập shot plan: %w", err)
 	}
 	params.PreparedPlanID = plan.ID
+	if p.Source == accesstrade.HunterSource {
+		client, ok := s.atClient()
+		if !ok {
+			return "", fmt.Errorf("AccessTrade chưa sẵn sàng để tạo link tracking cho video")
+		}
+		link, err := client.CreateTikTokVideoTrackingLink(ctx, p, plan.ID)
+		if err != nil {
+			return "", fmt.Errorf("tạo link tracking cho video: %w", err)
+		}
+		params.AffLink = link.TrackingURL
+		params.AffiliateAttributionID = plan.ID
+	}
 	return s.StudioRunner.CreateAffiliateJob(params)
 }
 

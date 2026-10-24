@@ -48,7 +48,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn file nhỏ hơn hoặc dán link nguồn.")
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
 	if !analysisOnly && r.PostFormValue("confirm_flow_credits") != "1" {
@@ -73,8 +73,6 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	account := r.PostFormValue("account")
 
 	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
-
-	musicURL := r.PostFormValue("music_url")
 
 	// Character / Model face lookup or direct upload (supports multiple photos)
 	upDir := filepath.Join(s.DataDir, "uploads")
@@ -178,32 +176,37 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 4. Resolve the required source video from upload or supported download.
+	// 4. Resolve source video from the selected TikTok Radar item.
 	tiktokLink := strings.TrimSpace(r.PostFormValue("tiktok_link"))
 	if tiktokLink == "" {
 		tiktokLink = strings.TrimSpace(r.PostFormValue("video_url"))
 	}
-	sampleVideoPath, uploadErr := saveUpload(r, "sample_video", upDir)
-	if uploadErr != nil {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video nguồn lỗi: "+uploadErr.Error())
+	if s.Studio == nil {
+		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
 		return
 	}
-	if sampleVideoPath != "" {
-		previewCleanup = append(previewCleanup, sampleVideoPath)
+	sourceVideo, err := s.Studio.ResolveTikTokRadarVideo(r.Context(), tiktokLink)
+	if err != nil {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
+		return
 	}
-	if sampleVideoPath == "" && tiktokLink != "" && (strings.HasPrefix(tiktokLink, "http://") || strings.HasPrefix(tiktokLink, "https://")) {
-		dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
-		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-		cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "-o", dlDst, tiktokLink)
-		if err := cmd.Run(); err == nil && fileExists(dlDst) {
-			sampleVideoPath = dlDst
-		} else {
-			cancel()
-			writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video nguồn. Tải file video trực tiếp hoặc kiểm tra lại link.")
-			return
-		}
+	tiktokLink = sourceVideo.VideoURL
+	var sampleVideoPath string
+	dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "-o", dlDst, tiktokLink)
+	if err := cmd.Run(); err == nil && fileExists(dlDst) {
+		sampleVideoPath = dlDst
+	} else {
 		cancel()
-		previewCleanup = append(previewCleanup, sampleVideoPath)
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video từ Radar. Làm mới Radar rồi chọn video khác.")
+		return
+	}
+	cancel()
+	previewCleanup = append(previewCleanup, sampleVideoPath)
+	if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar không có track âm thanh; chọn video khác.")
+		return
 	}
 
 	aiMode := strings.TrimSpace(r.PostFormValue("ai_mode"))
@@ -242,11 +245,14 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		ModelPhotos:             uploadedPhotos,
 		SampleVideo:             sampleVideoPath,
 		SourceVideoURL:          tiktokLink,
+		SourceVideoID:           sourceVideo.VideoID,
+		SourceVideoAuthor:       sourceVideo.Author,
+		SourceMusicTitle:        sourceVideo.SoundTitle(),
+		SourceCollectedAt:       sourceVideo.CollectedAt,
 		AIMode:                  aiMode,
 		TargetDuration:          float64(duration),
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
 		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",
-		MusicURL:                musicURL,
 	}
 	if analysisOnly {
 		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)

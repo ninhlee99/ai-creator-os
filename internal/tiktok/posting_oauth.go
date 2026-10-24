@@ -21,8 +21,8 @@ func NewPKCE() (verifier, challenge string) {
 	return verifier, hex.EncodeToString(sum[:])
 }
 
-// AuthorizeURL builds the Login Kit authorization URL. codeChallenge is
-// optional ("" = no PKCE, the Web flow).
+// AuthorizeURL builds the Login Kit authorization URL. Desktop callers must
+// provide codeChallenge; callers for other platforms may omit it.
 func (c *PostingClient) AuthorizeURL(redirectURI, scope, state, codeChallenge string) string {
 	q := url.Values{}
 	q.Set("client_key", c.ClientKey)

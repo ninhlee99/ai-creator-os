@@ -175,7 +175,7 @@ func (a *VisualAnchor) EnrichScenePrompt(actionDescription, cameraMotion string,
 
 // EnrichScenePromptForAspect injects identity and delivery framing into a scene prompt.
 func (a *VisualAnchor) EnrichScenePromptForAspect(actionDescription, cameraMotion string, sceneIndex, totalScenes int, aspect string) string {
-	actionDescription = storyPromptForAspect(actionDescription, aspect)
+	actionDescription = promptForAspect(actionDescription, aspect)
 	frameDescription := "vertical"
 	if aspect == "16:9" {
 		frameDescription = "horizontal 16:9 widescreen"
@@ -202,6 +202,24 @@ func (a *VisualAnchor) EnrichScenePromptForAspect(actionDescription, cameraMotio
 		frameDescription, sceneIndex, totalScenes, a.ActorName, a.Age, a.Ethnicity, a.Gender,
 		a.FaceTraits, a.Hairstyle, a.Wardrobe, refLock,
 		actionDescription, a.Environment, a.Lighting, cameraMotion, a.FilmStock)
+}
+
+func promptForAspect(prompt, aspect string) string {
+	if aspect != "16:9" {
+		return prompt
+	}
+	return strings.NewReplacer(
+		"vertical portrait", "horizontal landscape",
+		"Vertical portrait", "Horizontal landscape",
+		"VERTICAL PORTRAIT", "HORIZONTAL LANDSCAPE",
+		"vertical", "horizontal",
+		"Vertical", "Horizontal",
+		"VERTICAL", "HORIZONTAL",
+		"portrait", "landscape",
+		"Portrait", "Landscape",
+		"PORTRAIT", "LANDSCAPE",
+		"9:16", "16:9",
+	).Replace(prompt)
 }
 
 // FlowPrompt formats a prompt for manual text-to-video or image-to-video use in Google Flow.

@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// TrendSignal represents an input trend signal from Kworb, Douyin, or search queries.
+// TrendSignal represents a video trend and its sound from a configured feed.
 type TrendSignal struct {
 	Title    string `json:"title"`
-	Artist   string `json:"artist,omitempty"`
+	Music    string `json:"music,omitempty"`
 	Movement string `json:"movement,omitempty"` // e.g. "+15", "=", "NEW"
 	Source   string `json:"source"`
 	Rank     int    `json:"rank,omitempty"`
@@ -22,19 +22,19 @@ type TrendOpportunity struct {
 	ID                string   `json:"id"`
 	Title             string   `json:"title"`
 	Source            string   `json:"source"`
-	Category          string   `json:"category"`           // Âm thanh thịnh hành, Nỗi đau khán giả, Phân tích chuyên sâu
+	Category          string   `json:"category"`           // Loại tín hiệu từ video viral
 	VelocityScore     int      `json:"velocity_score"`     // 0-100 (tốc độ tăng trưởng)
 	AudienceDemand    string   `json:"audience_demand"`    // Câu hỏi / nhu cầu tiềm ẩn của khán giả
 	CompetitionLevel  string   `json:"competition_level"`  // Thấp, Trung bình, Bão hòa
 	BrandFitScore     int      `json:"brand_fit_score"`    // 0-100 (độ tương thích với Brand DNA)
 	OpportunityScore  int      `json:"opportunity_score"`  // 0-100 (điểm cơ hội tổng hợp)
 	OriginalAngles    []string `json:"original_angles"`    // 3-4 góc khai thác nguyên bản (không reup)
-	RecommendedFormat string   `json:"recommended_format"`// Shorts 9:16 (30-45s) | Video dài 16:9
+	RecommendedFormat string   `json:"recommended_format"` // TikTok 9:16
 	Confidence        int      `json:"confidence"`         // Độ tin cậy dữ liệu %
 	AnalyzedAt        string   `json:"analyzed_at"`
 }
 
-// AnalyzeTrendSignals transforms raw trending signals into actionable original
+// AnalyzeTrendSignals transforms viral-video feed signals into actionable original
 // content opportunities matched against a specific Brand DNA.
 func AnalyzeTrendSignals(ctx context.Context, brand *BrandDNA, signals []TrendSignal) []TrendOpportunity {
 	now := time.Now().Format("2006-01-02 15:04:05")
@@ -55,11 +55,11 @@ func AnalyzeTrendSignals(ctx context.Context, brand *BrandDNA, signals []TrendSi
 			Confidence: 85,
 		}
 
-		if sig.Artist != "" {
-			opp.Title = sig.Title + " — " + sig.Artist
-			opp.Category = "Âm thanh thịnh hành (Trending Sound)"
+		if sig.Music != "" {
+			opp.Title = sig.Title + " — " + sig.Music
+			opp.Category = "Video viral TikTok & âm thanh"
 		} else {
-			opp.Category = "Chủ đề tìm kiếm nổi bật"
+			opp.Category = "Video viral TikTok"
 		}
 
 		// Calculate Velocity based on movement and rank
@@ -121,7 +121,7 @@ func calculateBrandFit(brand *BrandDNA, sig TrendSignal) int {
 	if brand == nil {
 		return 75
 	}
-	text := strings.ToLower(sig.Title + " " + sig.Artist)
+	text := strings.ToLower(sig.Title + " " + sig.Music)
 	pos := strings.ToLower(brand.Positioning)
 
 	fit := 70
@@ -160,8 +160,8 @@ func extractAudienceDemand(niche string, sig TrendSignal) string {
 
 func generateOriginalAngles(brand *BrandDNA, sig TrendSignal, opp TrendOpportunity) []string {
 	title := sig.Title
-	if sig.Artist != "" {
-		title = sig.Title
+	if sig.Music != "" {
+		title += " — " + sig.Music
 	}
 
 	angles := []string{

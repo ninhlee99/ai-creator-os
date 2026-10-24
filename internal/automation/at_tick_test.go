@@ -78,6 +78,11 @@ func atTestServer() *httptest.Server {
 		case "/img":
 			w.Header().Set("Content-Type", "image/png")
 			_, _ = w.Write(tinyPNG)
+		case "/v2/tiktokshop_product_feeds":
+			_, _ = w.Write([]byte(`{"status":true,"data":{"products":[
+				{"product_id":"T1","title":"Tai nghe Pro","detail_link":"https://shop.tiktok.com/item/T1","sales_price":{"minimum_amount":459000,"maximum_amount":459000,"currency":"VND"},"commission":{"rate":1000},"has_inventory":true},
+				{"product_id":"T2","title":"Váy hoa","detail_link":"https://shop.tiktok.com/item/T2","sales_price":{"minimum_amount":189000,"maximum_amount":189000,"currency":"VND"},"commission":{"rate":1500},"has_inventory":true}
+			],"next_page_token":""}}`))
 		case "/v1/datafeeds":
 			// Như API thật: lọc theo merchant; merchant khác → rỗng.
 			if m := r.URL.Query().Get("merchant"); m != "" && m != "shopee" {
@@ -183,7 +188,7 @@ func TestATTickGates(t *testing.T) {
 
 // --- hunter ---
 
-func TestATHunterTick(t *testing.T) {
+func TestATHunterTickWatchlistsProductsWithoutDemandEvidence(t *testing.T) {
 	srv := atTestServer()
 	defer srv.Close()
 	svc, sr := newATService(t, mapSettings{
@@ -199,34 +204,27 @@ func TestATHunterTick(t *testing.T) {
 	if len(notes) != 1 {
 		t.Fatalf("muốn 1 note, được %v", notes)
 	}
-	if !strings.Contains(notes[0], "2 mới") || !strings.Contains(notes[0], "1 video") {
+	if !strings.Contains(notes[0], "2 sản phẩm thiếu dữ liệu lượt bán hoặc rating") {
 		t.Errorf("note sai: %q", notes[0])
 	}
-	// Chỉ top 1 (hoa hồng kỳ vọng cao nhất = T1: 459000×10%) được tạo video.
-	if len(sr.jobs) != 1 {
-		t.Fatalf("muốn 1 job, được %d", len(sr.jobs))
+	// Feed mock không có sales/rating evidence. Giữ cả hai trong watchlist;
+	// không dựng video cho tới khi Radar xác minh được nhu cầu.
+	if len(sr.jobs) != 0 {
+		t.Fatalf("đã tạo %d video khi thiếu evidence bán hàng", len(sr.jobs))
 	}
-	j := sr.jobs[0]
-	if j.ProductName != "Tai nghe Pro" || j.Mode != studio.AffiliateModeShots {
-		t.Errorf("job sai: %+v", j)
-	}
-	if j.ProductPhoto == "" {
-		t.Errorf("job thiếu ảnh sản phẩm đã tải")
-	}
-	// Dedupe: sản phẩm đã dùng không được tạo video lại.
+	// Pending products stay out of the production candidate query.
 	top, err := svc.Products.TopUnusedBySource("accesstrade", 0, 7, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(top) != 1 || top[0].SourceID != "T2" {
-		t.Errorf("sau khi dùng T1, chỉ còn T2 chưa dùng: %+v", top)
+	if len(top) != 0 {
+		t.Errorf("pending products không được vào danh sách sản xuất: %+v", top)
 	}
 	// Cadence: chạy lại ngay → không chạy nữa.
 	if notes := svc.ATHunterTick(context.Background()); len(notes) != 0 {
 		t.Errorf("chưa đến hạn phải im lặng, được %v", notes)
 	}
-	// Quá hạn → chạy lại: 0 sản phẩm mới → không tạo thêm video
-	// (sản phẩm cũ còn lại do autopilot theo account dùng tiếp).
+	// Quá hạn → làm mới watchlist; vẫn không tạo video từ evidence cũ.
 	old := time.Now().Add(-25 * time.Hour).Format(time.RFC3339)
 	_ = svc.Settings.Set(keyATHunterLastRun, old)
 	svc2sr := &fakeStudioRunner{}
@@ -235,8 +233,8 @@ func TestATHunterTick(t *testing.T) {
 	if len(svc2sr.jobs) != 0 {
 		t.Errorf("không có sản phẩm mới thì không tạo video, được %d job", len(svc2sr.jobs))
 	}
-	if !strings.Contains(notes[0], "0 mới") || !strings.Contains(notes[0], "0 video") {
-		t.Errorf("quét lại phải 0 mới / 0 video: %q", notes[0])
+	if len(notes) != 1 || !strings.Contains(notes[0], "thiếu dữ liệu lượt bán hoặc rating") {
+		t.Errorf("quét lại phải giữ sản phẩm trong watchlist: %q", notes)
 	}
 }
 

@@ -1,11 +1,9 @@
-{{define "title"}}Viral · Radar & phân tích{{end}}
+{{define "title"}}Video nhảy{{end}}
 {{define "content"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1 style="display:flex;align-items:center;gap:10px">
-      <span>🎬</span> Viral · Radar &amp; phân tích
-    </h1>
+    <h1>Video nhảy</h1>
   </div>
   <div class="webai-header-actions">
     <a href="/studio/jobs" class="btn btn-secondary btn-sm">Video</a>
@@ -17,43 +15,10 @@
 {{if .Viral.Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">⚠ {{.Viral.Error}}</p>{{end}}
 
 <section class="card" style="margin-bottom:18px;padding:16px">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-    <div>
-      <h2 style="margin:0 0 5px;font-size:16px">YouTube Viral Radar</h2>
-      <div class="hint">Video mới trong 7 ngày, xếp theo lượt xem, chỉ nhận kênh có ít nhất 100,000 subscribers.</div>
-    </div>
-    <span class="badge {{if .Viral.AutoOn}}badge-info{{else}}badge-no{{end}}">Lịch khám phá {{if .Viral.AutoOn}}BẬT{{else}}TẮT{{end}}</span>
-  </div>
-  {{if .Viral.RadarKeyReady}}
-    <p class="hint" style="margin:10px 0">Đã lưu YouTube API key; quyền truy cập được kiểm tra khi quét. Radar chỉ đọc và lưu nguồn: lịch chạy mỗi 24 giờ khi bật, kill switch có thể dừng; Master và dry-run không chặn discovery. <a href="/settings/system">Cài đặt API</a>.</p>
-  {{else}}
-    <p class="hint" style="margin:10px 0;color:var(--warning,#f59e0b)">Thêm <code>YOUTUBE_API_KEY</code> trong <a href="/settings/system">Cài đặt · Hệ thống</a> để quét nguồn YouTube.</p>
-  {{end}}
-  <form method="post" action="/viral/radar/refresh" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:10px">
-    <label class="field" style="flex:1;min-width:220px;margin:0">Chủ đề tìm kiếm
-      <input type="text" name="query" value="{{.Viral.RadarQuery}}" maxlength="100" placeholder="chủ đề hoặc nhóm nội dung">
-    </label>
-    <button type="submit" class="btn btn-secondary" {{if not .Viral.RadarKeyReady}}disabled title="Thêm YouTube API key trước"{{end}}>Quét lại Radar</button>
-  </form>
-  {{if .Viral.RadarLastRun}}<p class="hint" style="margin:8px 0 0">Lần quét gần nhất: {{.Viral.RadarLastRun}}</p>{{end}}
+  <strong>Chọn video nhảy viral từ TikTok Radar</strong>
+  <p class="hint" style="margin:6px 0 10px">Radar điền link video và sound gốc vào luồng này. Không tìm video từ bảng xếp hạng khác.</p>
+  <a href="/studio/trends" class="btn btn-secondary btn-sm">Mở Radar TikTok</a>
 </section>
-
-{{if .Viral.RadarSources}}
-<section class="card" style="margin-bottom:18px;padding:16px">
-  <h3 style="margin:0 0 10px;font-size:15px">Video tham khảo từ kênh có nhiều người đăng ký</h3>
-  <div style="display:grid;gap:10px">
-    {{range .Viral.RadarSources}}
-    <article style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;padding:8px;border-bottom:1px solid var(--border)">
-      {{if .ThumbnailURL}}<a href="{{.URL}}" target="_blank" rel="noopener"><img src="{{.ThumbnailURL}}" alt="" loading="lazy" style="width:96px;aspect-ratio:16/9;object-fit:cover;border-radius:6px"></a>{{end}}
-      <div>
-        <a href="{{.URL}}" target="_blank" rel="noopener" style="font-weight:700">{{.Title}}</a>
-        <div class="hint">{{.ChannelTitle}} · {{.Subscribers}} người đăng ký · {{.Views}} lượt xem · {{.DurationSeconds}} giây · {{.PublishedAt.Format "2006-01-02"}}</div>
-      </div>
-    </article>
-    {{end}}
-  </div>
-</section>
-{{end}}
 
 <form method="post" action="/viral/create" enctype="multipart/form-data" id="viral-dance-form" onsubmit="return validateViralProduction()">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
@@ -78,26 +43,21 @@
           </select>
         </label>
 
-        <!-- Cách 1: Dán link TikTok / Douyin trực tiếp -->
+        <!-- Chỉ nhận video tham chiếu đã chọn từ TikTok Radar -->
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px">
           <label style="font-weight:700;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span>🔗</span> Link TikTok / Douyin
+            <span>🔗</span> Video từ TikTok Radar
           </label>
           <div style="display:flex;gap:8px">
-            <input type="url" name="tiktok_link" id="viral-tiktok-link" placeholder="https://www.tiktok.com/@user/video/... hoặc link Douyin" style="flex:1;padding:10px;font-size:13px">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard('viral-tiktok-link')" style="font-weight:700">📋 Dán</button>
+            <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}" readonly required placeholder="Mở Radar TikTok để chọn video" style="flex:1;padding:10px;font-size:13px">
           </div>
-          <div class="hint" style="margin-top:8px">Video nguồn dùng để phân tích storyboard; nếu editor sẵn sàng, nó cũng là đầu vào thay nhân vật. Nếu link không tải được, chọn file video.</div>
-          <label style="display:block;font-weight:700;font-size:12.5px;margin-top:12px;margin-bottom:6px">Hoặc tải video nguồn</label>
-          <input type="file" name="sample_video" id="viral-source-video" accept="video/*">
+          {{if not .Viral.SourceVideoURL}}<p class="hint" style="margin:8px 0 0">Mở Radar, chọn video nhảy viral rồi quay lại đây.</p>{{end}}
         </div>
 
-        <!-- No fabricated real-time trend cards -->
         <div>
-          <label for="viral-topic" style="font-weight:700;font-size:12.5px;margin-bottom:6px;display:block">Chủ đề video</label>
-          <input type="text" name="topic" id="viral-topic" required placeholder="Ví dụ: 3 mẹo chăm cây trong căn hộ">
-          <input type="hidden" name="music_url" id="viral-music-url">
-          <p class="hint">Radar tìm video tham khảo trên YouTube; chưa có nguồn xu hướng realtime từ TikTok/Douyin.</p>
+          <label for="viral-topic" style="font-weight:700;font-size:12.5px;margin-bottom:6px;display:block">Tên video nhảy</label>
+          <input type="text" name="topic" id="viral-topic" value="{{.Viral.Topic}}" required placeholder="Tự điền từ video Radar">
+          {{if .Viral.SourceMusicTitle}}<p class="hint" id="viral-source-music-note" style="margin:6px 0 0">Video mẫu từ Radar · sound gốc: <strong>{{.Viral.SourceMusicTitle}}</strong>. Video đầu ra giữ sound nguồn.</p>{{end}}
         </div>
       </div>
 
@@ -157,7 +117,7 @@
           <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
             Render
           </h3>
-          <span class="badge badge-live" style="font-size:11px">Chuẩn TikTok / Shorts 9:16</span>
+          <span class="badge badge-live" style="font-size:11px">Video TikTok 9:16</span>
         </div>
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
@@ -194,7 +154,7 @@
             <button type="button" id="viral-analyze-button" class="btn btn-secondary" onclick="analyzeViralSource()" style="width:100%;font-weight:800">
             🔍 Phân tích video nguồn · xem storyboard
           </button>
-          <p class="hint" style="margin:8px 0 0">Phân tích frame lấy mẫu và dựng timeline tham khảo. Không tạo video, không thay nhân vật.</p>
+          <p class="hint" style="margin:8px 0 0">Storyboard only · không render hoặc thay nhân vật.</p>
           <div id="viral-analysis-result" role="status" aria-live="polite" style="margin-top:12px"></div>
         </div>
 
@@ -214,6 +174,16 @@ var viralVisibleAccountId = (function() {
   return account && account.selectedOptions.length ? account.selectedOptions[0].dataset.accountId : '';
 })();
 var viralCharacterEditorReady = {{.Viral.CharacterEditorReady}};
+var viralSourceInput = document.getElementById('viral-tiktok-link');
+if (viralSourceInput) {
+  var radarSourceURL = viralSourceInput.value;
+  viralSourceInput.addEventListener('input', function() {
+    if (viralSourceInput.value.trim() !== radarSourceURL.trim()) {
+      var soundNote = document.getElementById('viral-source-music-note');
+      if (soundNote) soundNote.hidden = true;
+    }
+  });
+}
 
 function onViralModelToggle(cb) {
   var account = document.getElementById('viral-account');
@@ -292,9 +262,8 @@ function validateViralProduction() {
     return false;
   }
   var url = document.getElementById('viral-tiktok-link');
-  var file = document.getElementById('viral-source-video');
-  if ((!url || !/^https?:\/\//i.test(url.value.trim())) && (!file || !file.files || !file.files.length)) {
-    alert('Chọn file video nguồn hoặc dán link TikTok/Douyin hợp lệ.');
+  if (!url || !/^https:\/\/(www\.|m\.|vm\.|vt\.)?tiktok\.com\//i.test(url.value.trim())) {
+    alert('Mở Radar TikTok rồi chọn video nhảy viral.');
     return false;
   }
   var model = Array.prototype.some.call(document.querySelectorAll('.viral-model-card'), function(card) {
@@ -315,15 +284,14 @@ function analyzeViralSource() {
   var account = document.getElementById('viral-account');
   var topic = document.getElementById('viral-topic');
   var url = document.getElementById('viral-tiktok-link');
-  var file = document.getElementById('viral-source-video');
   var model = Array.prototype.some.call(document.querySelectorAll('.viral-model-card'), function(card) {
     return card.style.display !== 'none' && card.querySelector('.viral-model-checkbox').checked;
   });
   var upload = document.querySelector('input[name="model_photos"]');
   if (!topic || !topic.value.trim()) return showViralAnalysisError('Nhập chủ đề video trước.');
   if (!account || !account.value) return showViralAnalysisError('Chọn kênh đích trước.');
-  if ((!url || !/^https?:\/\//i.test(url.value.trim())) && (!file || !file.files || !file.files.length)) {
-    return showViralAnalysisError('Chọn file video nguồn hoặc dán link TikTok/Douyin hợp lệ.');
+  if (!url || !/^https:\/\/(www\.|m\.|vm\.|vt\.)?tiktok\.com\//i.test(url.value.trim())) {
+    return showViralAnalysisError('Mở Radar TikTok rồi chọn video nhảy viral.');
   }
   if (!model && (!upload || !upload.files || !upload.files.length)) {
     return showViralAnalysisError('Chọn hoặc tải ảnh nhân vật của kênh đã chọn.');

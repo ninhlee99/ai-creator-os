@@ -104,6 +104,10 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		fail(fmt.Errorf("job thiếu Product Analyst brief hoặc Director shot list đã lập trước clip"))
 		return
 	}
+	if !IsTikTokVideoURL(p.SourceMusicVideoURL) {
+		fail(fmt.Errorf("job thiếu video TikTok từ Radar để lấy sound"))
+		return
+	}
 	productProfile := *p.PreparedProductBrief
 	shots := append([]ProShot(nil), p.PreparedShots...)
 	s.appendLog(id, "PRODUCT_ANALYSIS_START: dùng lại Product Analyst brief đã duyệt trước khi quay clip")
@@ -214,6 +218,13 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		fail(fmt.Errorf("nối các shot: %w", err))
 		return
 	}
+	s.appendLog(id, "SOUND_SOURCE_START: tải video đã chọn từ Radar và tách âm thanh gốc")
+	sourceMusicPath, err := downloadTikTokRadarAudio(ctx, p.SourceMusicVideoURL, work)
+	if err != nil {
+		fail(err)
+		return
+	}
+	s.appendLog(id, "SOUND_SOURCE_PASS: sound đã tách từ video TikTok Radar")
 	assembled := filepath.Join(work, "assembled.mp4")
 	final := filepath.Join(s.outDir, "studio-"+id+".mp4")
 	_ = os.Remove(final)
@@ -224,29 +235,18 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		}
 	}()
 	if p.VoiceoverPath != "" {
-		voiceVideo := filepath.Join(work, "voice.mp4")
-		if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v:0", "-map", "1:a:0", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceVideo); err != nil {
+		voiceBase := filepath.Join(work, "voice-base.mp4")
+		if err := ffmpegRun(ctx, "-i", silent, "-i", p.VoiceoverPath, "-map", "0:v:0", "-map", "1:a:0", "-af", "apad", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", voiceBase); err != nil {
 			fail(fmt.Errorf("ghép voiceover: %w", err))
 			return
 		}
-		if p.MusicPath != "" {
-			if err := MixMusicBed(ctx, voiceVideo, p.MusicPath, assembled); err != nil {
-				fail(fmt.Errorf("hòa âm voiceover và nhạc: %w", err))
-				return
-			}
-		} else if err := os.Rename(voiceVideo, assembled); err != nil {
-			fail(err)
-			return
-		}
-	} else if p.MusicPath != "" {
-		if err := MuxMusic(ctx, silent, p.MusicPath, p.MusicStart, assembled); err != nil {
-			fail(fmt.Errorf("ghép nhạc: %w", err))
+		if err := MixMusicBed(ctx, voiceBase, sourceMusicPath, assembled); err != nil {
+			fail(fmt.Errorf("ghép sound Radar dưới voiceover: %w", err))
 			return
 		}
 	} else {
-		s.appendLog(id, "Không có audio do người vận hành chỉ định; bỏ track âm thanh sinh tự động.")
-		if err := ffmpegRun(ctx, "-i", silent, "-map", "0:v:0", "-c:v", "copy", "-an", assembled); err != nil {
-			fail(fmt.Errorf("loại audio sinh tự động: %w", err))
+		if err := MuxMusic(ctx, silent, sourceMusicPath, 0, assembled); err != nil {
+			fail(fmt.Errorf("ghép sound Radar vào video: %w", err))
 			return
 		}
 	}
@@ -256,6 +256,10 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	}
 	if err := UpscaleVideo(ctx, assembled, final, p.AspectRatio, p.OutputResolution); err != nil {
 		fail(fmt.Errorf("upscale master %s: %w", strings.ToUpper(p.OutputResolution), err))
+		return
+	}
+	if !ProbeHasAudio(ctx, final) {
+		fail(fmt.Errorf("đầu ra affiliate bị mất sound đã tách từ Radar"))
 		return
 	}
 	masterWidth, masterHeight := ProbeDims(ctx, final)

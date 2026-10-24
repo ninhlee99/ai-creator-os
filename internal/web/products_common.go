@@ -1,7 +1,6 @@
 package web
 
-// Affiliate product catalog: product search and discovery, manual add,
-// the merged shelf tab, autopilot scheduling policy and music upload.
+// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
 	"math"

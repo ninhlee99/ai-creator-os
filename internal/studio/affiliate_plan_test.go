@@ -50,6 +50,15 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer st.Close()
+	if _, err := st.persistTikTokRadarResults(context.Background(), []TikTokTrendVideo{{
+		VideoID: "1234567890", Title: "Viral dance", Music: "Radar sound",
+		VideoURL: "https://www.tiktok.com/@creator/video/1234567890", PlayCount: 1000000,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetTikTokRadarDanceVerification(context.Background(), "1234567890", true); err != nil {
+		t.Fatal(err)
+	}
 	modelSource := filepath.Join(dir, "model.png")
 	productPhoto := filepath.Join(dir, "product.png")
 	if err := os.WriteFile(modelSource, []byte("model image"), 0o600); err != nil {
@@ -71,12 +80,16 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 		ProductName: "Cardigan M5091", Niche: "thời trang", ProductCategory: "apparel",
 		ProductUsage: "nhân vật mặc cardigan và cài khuy", ProductFocus: "hàng khuy phía trước",
 		ProductPhoto: productPhoto, ModelPhoto: model.Path, ModelPhotos: []string{model.Path}, Seconds: 30,
+		SourceMusicVideoURL: "https://www.tiktok.com/@creator/video/1234567890",
 	})
 	if err != nil {
 		t.Fatalf("PrepareAffiliatePlan: %v", err)
 	}
 	if len(prep.Shots) != 5 || prep.ProductBrief.Category != "apparel" {
 		t.Fatalf("unexpected preparation: %+v", prep)
+	}
+	if prep.Params.SourceMusicTitle != "Radar sound" || prep.Params.SourceMusicVideoURL != "https://www.tiktok.com/@creator/video/1234567890" {
+		t.Fatalf("shot plan did not retain Radar sound source: %+v", prep.Params)
 	}
 	loaded, err := st.GetAffiliatePreparation(prep.ID)
 	if err != nil || len(loaded.Shots) != len(prep.Shots) {
@@ -92,6 +105,7 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	}
 	jobID, err := st.CreateAffiliateJob(AffiliateParams{
 		PreparedPlanID: prep.ID, AccountID: 42, Mode: AffiliateModeShots, Clips: clips,
+		SourceMusicTitle: "untrusted form title", SourceMusicVideoURL: "https://www.tiktok.com/@other/video/9999999999",
 	})
 	if err != nil {
 		t.Fatalf("CreateAffiliateJob with saved plan: %v", err)
@@ -103,6 +117,9 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	var saved AffiliateParams
 	if err := json.Unmarshal([]byte(job.Params), &saved); err != nil {
 		t.Fatal(err)
+	}
+	if saved.SourceMusicTitle != "Radar sound" || saved.SourceMusicVideoURL != "https://www.tiktok.com/@creator/video/1234567890" {
+		t.Fatalf("job accepted untrusted sound source: title=%q URL=%q", saved.SourceMusicTitle, saved.SourceMusicVideoURL)
 	}
 	if len(saved.PreparedShots) != len(prep.Shots) || saved.PreparedProductBrief == nil || saved.PreparedPlanID != "" {
 		t.Fatalf("job did not retain consumed plan: shots=%d brief=%v plan_id=%q", len(saved.PreparedShots), saved.PreparedProductBrief != nil, saved.PreparedPlanID)
@@ -135,6 +152,7 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 		ProductName: "Cardigan M5091", Niche: "thời trang", ProductCategory: "apparel",
 		ProductUsage: "nhân vật mặc cardigan và cài khuy", ProductFocus: "hàng khuy phía trước",
 		ProductPhoto: productPhoto, ModelPhoto: model.Path, ModelPhotos: []string{model.Path}, Seconds: 30,
+		SourceMusicVideoURL: "https://www.tiktok.com/@creator/video/1234567890",
 	})
 	if err != nil {
 		t.Fatalf("PrepareAffiliatePlan for Flow: %v", err)

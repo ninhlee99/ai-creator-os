@@ -15,23 +15,27 @@ import (
 //go:embed templates/*.html templates/*/*.html
 var templateFS embed.FS
 
-//go:embed static/style.css
+//go:embed static/tailwind.css
 var staticCSS []byte
+
+//go:embed static/htmx.min.js
+var staticHTMX []byte
 
 //go:embed static/app.js
 var staticJS []byte
 
-//go:embed static/preview.mp3
-var staticPreviewAudio []byte
-
 //go:embed static/webai-login.js
 var staticWebAILoginJS []byte
+
+//go:embed static/preview.mp3
+var staticPreviewAudio []byte
 
 // assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
 // trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
 var assetVersion = func() string {
 	assets := append(append([]byte{}, staticCSS...), staticJS...)
+	assets = append(assets, staticHTMX...)
 	assets = append(assets, staticWebAILoginJS...)
 	h := sha256.Sum256(assets)
 	return hex.EncodeToString(h[:])[:10]
@@ -49,21 +53,13 @@ var pageFiles = map[string]string{
 	"studio_jobs":          "studio_jobs.html",
 	"studio_trends":        "studio_trends.html",
 	"publishers":           "publishers.html",
-	"facebook_pages":       "facebook_pages.html",
 	"products":             "products.html",
 	"viral":                "viral.html",
-	"stories":              "stories.html",
-	"team":                 "team.html",
 	"growth":               "growth.html",
-	"harness":              "harness.html",
 	"settings_system":      "settings/system.html",
 	"settings_providers":   "settings/providers.html",
 	"settings_safety":      "settings/safety.html",
 	"settings_accesstrade": "settings/accesstrade.html",
-	"bio_admin":            "bio_admin.html",
-	"bio_analytics":        "bio_analytics.html",
-	"bio_tryon_accounts":   "bio_tryon_accounts.html",
-	"web_ai":               "web_ai.html",
 	"onboard":              "onboard.html",
 }
 
@@ -98,19 +94,6 @@ func (s *Server) parseTemplates() error {
 	}
 	s.templates["login"] = t
 
-	// Bio Link Storefront standalone (không sidebar, mobile-first Linktree-style).
-	tbio, err := template.New("bio").Funcs(templateFuncs).ParseFS(
-		templateFS, "templates/bio.html")
-	if err != nil {
-		return fmt.Errorf("parse template bio.html: %w", err)
-	}
-	s.templates["bio"] = tbio
-	tproduct, err := template.New("bio_product").Funcs(templateFuncs).ParseFS(
-		templateFS, "templates/bio_product.html")
-	if err != nil {
-		return fmt.Errorf("parse template bio_product.html: %w", err)
-	}
-	s.templates["bio_product"] = tproduct
 	return nil
 }
 

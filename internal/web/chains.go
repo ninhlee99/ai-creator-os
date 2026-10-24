@@ -160,8 +160,7 @@ type LLMClient interface {
 	Name() string
 }
 
-// TTSChainAPI is the speech-synthesis chain behind video rendering and
-// live narration.
+// TTSChainAPI is the speech-synthesis chain behind TikTok video voiceovers.
 type TTSChainAPI interface {
 	Synthesize(ctx context.Context, text, voice string) ([]byte, error)
 	SetConfig(cfg ChainConfigJSON) // raw JSON, applied immediately
@@ -173,36 +172,6 @@ type TTSChainAPI interface {
 type HealthChecker interface {
 	Healthy(ctx context.Context) bool
 	Name() string
-}
-
-// ---------------------------------------------------------------------------
-// Parked-build support (PIVOT 2026-10-02): các interface dưới đây chỉ được
-// dùng khi build với -tags parked (handler avatar/live/film đã park).
-// Giữ lại ở bản thường để `go build -tags parked ./...` biên dịch được;
-// bản thường không nối implementation nào vào chúng.
-// ---------------------------------------------------------------------------
-
-// AvatarChainAPI is the avatar provider chain behind clip rendering and
-// the settings "render thử" button.
-type AvatarChainAPI interface {
-	// RenderTestClip renders a test clip: the adapter synthesizes text via
-	// the TTS chain, parses emotion cues and renders the avatar clip.
-	// It returns the mp4 path relative to the media dir ("/media/x.mp4").
-	RenderTestClip(ctx context.Context, characterID int64, text string) (relPath string, err error)
-	SetConfig(cfg ChainConfigJSON) // raw JSON, applied immediately
-	ProviderNames() []string
-	SupportsRealtime() bool
-}
-
-// AvatarSidecarCtl controls the parked avatar sidecar.
-type AvatarSidecarCtl interface {
-	Status() (state, detail string)
-	Start(ctx context.Context) error
-	Stop() error
-	Restart(ctx context.Context) error
-	EnsureModel(ctx context.Context, onProgress func(downloaded, total int64)) error
-	ModelConfigured() bool
-	ModelPresent() bool
 }
 
 // KeyStatus is one API key's rotation state, shown on the settings page.

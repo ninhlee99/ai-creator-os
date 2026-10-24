@@ -3,14 +3,80 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 )
+
+func (s *Server) attachAffiliateVideoTracking(ctx context.Context, p *studio.AffiliateParams, jobID string) error {
+	if p == nil || p.ProductID <= 0 {
+		return nil
+	}
+	if s.Products == nil {
+		return fmt.Errorf("kho sản phẩm chưa sẵn sàng để tạo tracking riêng cho video")
+	}
+	product, err := s.Products.GetByID(p.ProductID)
+	if err != nil || product.ReviewStatus != products.ReviewApproved {
+		return fmt.Errorf("sản phẩm không còn ở trạng thái đã duyệt")
+	}
+	if product.Source != accesstrade.HunterSource {
+		return nil
+	}
+	client, err := s.atClient()
+	if err != nil {
+		return err
+	}
+	linkCtx, cancel := context.WithTimeout(ctx, atTimeout)
+	defer cancel()
+	link, err := client.CreateTikTokVideoTrackingLink(linkCtx, product, jobID)
+	if err != nil {
+		return fmt.Errorf("không tạo được link AccessTrade riêng cho video: %w", err)
+	}
+	p.AffLink = link.TrackingURL
+	p.AffiliateAttributionID = jobID
+	return nil
+}
+
+func (s *Server) ensureAffiliateRadarMusic(ctx context.Context, p *studio.AffiliateParams) error {
+	if p == nil {
+		return fmt.Errorf("thiếu tham số affiliate")
+	}
+	if strings.TrimSpace(p.SourceMusicVideoURL) != "" {
+		if s.Studio == nil {
+			return fmt.Errorf("Studio chưa sẵn sàng để xác minh video Radar TikTok")
+		}
+		source, err := s.Studio.ResolveTikTokRadarVideo(ctx, p.SourceMusicVideoURL)
+		if err != nil {
+			return err
+		}
+		if !source.DanceVerified {
+			return fmt.Errorf("video chưa được xác nhận là video nhảy trong Radar TikTok")
+		}
+		p.SourceMusicTitle = source.SoundTitle()
+		p.SourceMusicVideoURL = source.VideoURL
+		p.SourceMusicVideoID = source.VideoID
+		p.SourceMusicAuthor = source.Author
+		p.SourceMusicCollectedAt = source.CollectedAt
+		return nil
+	}
+	if s.Studio == nil {
+		return fmt.Errorf("Studio chưa sẵn sàng để đọc nguồn nhạc Radar TikTok")
+	}
+	source, err := s.Studio.ResolveTikTokRadarMusic(ctx)
+	if err != nil {
+		return err
+	}
+	p.SourceMusicTitle = source.SoundTitle()
+	p.SourceMusicVideoURL = source.VideoURL
+	p.SourceMusicVideoID = source.VideoID
+	p.SourceMusicAuthor = source.Author
+	p.SourceMusicCollectedAt = source.CollectedAt
+	return nil
+}
 
 func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *http.Request, planID string) {
 	prep, err := s.Studio.GetAffiliatePreparation(planID)
@@ -19,6 +85,17 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 		return
 	}
 	p := prep.Params
+	if p.ProductID > 0 {
+		if s.Products == nil {
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Kho sản phẩm chưa sẵn sàng; không thể xác minh trạng thái duyệt."))
+			return
+		}
+		product, err := s.Products.GetByID(p.ProductID)
+		if err != nil || product.ReviewStatus != products.ReviewApproved {
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Sản phẩm đã bị gỡ khỏi danh sách duyệt; hãy duyệt lại trước khi tạo video."))
+			return
+		}
+	}
 	if raw := strings.TrimSpace(r.FormValue("account_id")); raw != "" {
 		id, _ := strconv.ParseInt(raw, 10, 64)
 		if id != p.AccountID {
@@ -68,36 +145,21 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 	}
 	p.PreparedPlanID = prep.ID
 	p.AspectRatio = "9:16"
-	p.BPM, _ = strconv.Atoi(r.FormValue("bpm"))
-	p.MusicStart, _ = strconv.ParseFloat(r.FormValue("music_start"), 64)
-	p.MusicTitle = strings.TrimSpace(r.FormValue("music_title"))
-	p.MusicArtist = strings.TrimSpace(r.FormValue("music_artist"))
-	p.FixedCaption = strings.TrimSpace(r.FormValue("fixed_caption"))
-	p.MusicPath, err = saveUpload(r, "music_file", s.Studio.UploadDir())
-	if err != nil {
-		seeOther(w, r, "/studio?err="+url.QueryEscape("File nhạc lỗi: "+err.Error()))
+	if title := strings.TrimSpace(r.FormValue("source_music_title")); title != "" {
+		p.SourceMusicTitle = title
+	}
+	if sourceURL := strings.TrimSpace(r.FormValue("source_music_video_url")); sourceURL != "" {
+		p.SourceMusicVideoURL = sourceURL
+	}
+	if err := s.ensureAffiliateRadarMusic(r.Context(), &p); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(err.Error()))
 		return
 	}
-	if p.MusicPath == "" {
-		if u := strings.TrimSpace(r.FormValue("music_url")); u != "" {
-			dst := filepath.Join(s.Studio.UploadDir(), fmt.Sprintf("%d-affiliate-music.m4a", time.Now().UnixNano()))
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
-			err = studio.DownloadAudio(ctx, u, dst)
-			cancel()
-			if err != nil {
-				seeOther(w, r, "/studio?err="+url.QueryEscape("Không tải được nhạc: "+err.Error()))
-				return
-			}
-			p.MusicPath = dst
-		}
+	if err := s.attachAffiliateVideoTracking(r.Context(), &p, prep.ID); err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(err.Error()))
+		return
 	}
-	if p.MusicPath == "" && strings.TrimSpace(r.FormValue("music_category")) != "" {
-		p.MusicPath = studio.FindTrendingMusic(strings.TrimSpace(r.FormValue("music_category")))
-		if p.MusicPath == "" {
-			seeOther(w, r, "/studio?err="+url.QueryEscape("Không tìm thấy nhạc cục bộ cho lựa chọn này."))
-			return
-		}
-	}
+	p.FixedCaption = strings.TrimSpace(r.FormValue("fixed_caption"))
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job: "+err.Error()))
 		return

@@ -59,6 +59,7 @@ type ChannelCreativeProfile struct {
 type AffiliateParams struct {
 	Mode             string   `json:"mode"`                 // photo | shots
 	AccountID        int64    `json:"account_id,omitempty"` // set by autopilot
+	ProductID        int64    `json:"product_id,omitempty"` // approved catalog offer, when selected
 	ChannelMemoryKey string   `json:"channel_memory_key,omitempty"`
 	Niche            string   `json:"niche"`
 	ProductName      string   `json:"product_name"`
@@ -74,20 +75,21 @@ type AffiliateParams struct {
 	ExtraPhotos []string `json:"extra_photos,omitempty"`
 	// FixedCaption: chú thích người dùng tự viết (Chỉnh sửa & dựng lại) —
 	// có thì dùng nguyên văn, không gọi AI/mẫu.
-	FixedCaption             string  `json:"fixed_caption,omitempty"`
-	Seconds                  int     `json:"seconds"`
-	BPM                      int     `json:"bpm"`         // retained for old jobs; ignored by affiliate rendering
-	MusicPath                string  `json:"music_path"`  // local audio file, "" = silent
-	MusicStart               float64 `json:"music_start"` // seconds into the track
-	MusicTitle               string  `json:"music_title"`
-	MusicArtist              string  `json:"music_artist"`
-	VideoEngine              string  `json:"video_engine,omitempty"` // googleflow | manual
-	FlowCreditsAcknowledged  bool    `json:"flow_credits_acknowledged,omitempty"`
-	OutputResolution         string  `json:"output_resolution,omitempty"` // 4k | 8k
-	AutoGenerateProductPhoto bool    `json:"auto_generate_product_photo,omitempty"`
+	FixedCaption             string `json:"fixed_caption,omitempty"`
+	Seconds                  int    `json:"seconds"`
+	SourceMusicTitle         string `json:"source_music_title,omitempty"`
+	SourceMusicVideoURL      string `json:"source_music_video_url,omitempty"`
+	SourceMusicVideoID       string `json:"source_music_video_id,omitempty"`
+	SourceMusicAuthor        string `json:"source_music_author,omitempty"`
+	SourceMusicCollectedAt   string `json:"source_music_collected_at,omitempty"`
+	VideoEngine              string `json:"video_engine,omitempty"` // googleflow | manual
+	FlowCreditsAcknowledged  bool   `json:"flow_credits_acknowledged,omitempty"`
+	OutputResolution         string `json:"output_resolution,omitempty"` // 4k | 8k
+	AutoGenerateProductPhoto bool   `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
-	AffLink string `json:"aff_link,omitempty"`
+	AffLink                string `json:"aff_link,omitempty"`
+	AffiliateAttributionID string `json:"affiliate_attribution_id,omitempty"`
 	// Clips are optional in Google Flow mode; manual mode needs one real clip
 	// for every approved shot.
 	Clips []string `json:"clips,omitempty"`

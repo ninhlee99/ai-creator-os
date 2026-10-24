@@ -5,11 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 )
+
+var apiHTTPTransport = func() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Resolver: &net.Resolver{PreferGo: true}}).DialContext
+	return transport
+}()
 
 // HTTPFunc is the injectable HTTP transport used by the clients.
 // It returns the status code and raw body; err is non-nil for transport
@@ -29,7 +36,7 @@ func DefaultHTTP(method, url string, headers map[string]string, body []byte) (in
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second, Transport: apiHTTPTransport}
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, nil, err

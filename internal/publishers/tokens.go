@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 )
 
-// tokenDir là thư mục chứa file OAuth token (tiktok_token_*.json,
-// youtube_token_*.json). R2-W7: token nằm trong thư mục dữ liệu của app
+// tokenDir là thư mục chứa file OAuth token TikTok. Token nằm trong thư mục dữ liệu của app
 // (<dataDir>/tokens), không còn rải ở thư mục làm việc hiện tại.
 var tokenDir = "."
 
@@ -28,7 +27,7 @@ func MigrateTokensFromCWD() {
 		log.Printf("publishers: thư mục token: %v", err)
 		return
 	}
-	for _, pat := range []string{"tiktok_token_*.json", "youtube_token_*.json"} {
+	for _, pat := range []string{"tiktok_token_*.json"} {
 		matches, err := filepath.Glob(pat)
 		if err != nil {
 			continue

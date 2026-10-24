@@ -11,78 +11,45 @@ import (
 )
 
 type dashboardVideoMetrics struct {
-	ChannelCount          int
-	AnalyticsChannelCount int
-	DataChannelCount      int
-	VideoCount            int
-	FailedChannels        int
-	AverageViews          string
-	LatestAt              string
-	HasMetrics            bool
-	State                 string
-	Detail                string
+	ChannelCount int
+	DataCount    int
+	Views30d     string
+	LatestAt     string
+	HasMetrics   bool
+	State        string
+	Detail       string
 }
 
-// dashboardVideoPerformance summarizes provider snapshots, not job output or
-// app estimates. Views cover the provider's last-30-day report and the local
-// snapshot must have been refreshed within the last seven days.
-func (s *Server) dashboardVideoPerformance(ctx context.Context, accounts []*network.Account) dashboardVideoMetrics {
-	view := dashboardVideoMetrics{}
+// dashboardVideoPerformance displays provider snapshots only. It ignores
+// old non-TikTok snapshots and never treats missing metrics as zero.
+func (s *Server) dashboardVideoPerformance(_ context.Context, accounts []*network.Account) dashboardVideoMetrics {
+	view := dashboardVideoMetrics{ChannelCount: len(accounts)}
 	if s.Growth == nil {
-		view.State = "Growth chưa sẵn sàng; chưa đọc được metrics video."
+		view.State = "Growth chưa sẵn sàng; chưa đọc được metrics TikTok."
 		return view
 	}
-	var weightedViews float64
+	var total float64
 	var latestAt time.Time
 	for _, account := range accounts {
-		if !hasYouTube(account) {
+		snapshot, err := s.Growth.LatestSnapshot(account.ID)
+		if err != nil || snapshot == nil || snapshot.Source != "tiktok_api" || snapshot.Views30d == nil {
 			continue
 		}
-		view.ChannelCount++
-		if !strings.HasPrefix(strings.TrimSpace(account.YoutubeChannel), "UC") {
-			continue
-		}
-		view.AnalyticsChannelCount++
-		summary, err := s.Growth.RecentVideoMetrics(ctx, account.ID, time.Now().Add(-7*24*time.Hour))
-		if err != nil {
-			view.FailedChannels++
-			continue
-		}
-		if summary.VideoCount == 0 || summary.AverageViews == nil {
-			continue
-		}
-		view.DataChannelCount++
-		view.VideoCount += summary.VideoCount
-		weightedViews += *summary.AverageViews * float64(summary.VideoCount)
-		if summary.LatestAt.After(latestAt) {
-			latestAt = summary.LatestAt
+		view.DataCount++
+		total += *snapshot.Views30d
+		if snapshot.TakenAt.After(latestAt) {
+			latestAt = snapshot.TakenAt
 		}
 	}
-	if view.ChannelCount == 0 {
-		view.State = "Chưa có kênh YouTube để đọc metrics video."
-		view.Detail = "TikTok, Instagram, Facebook và Threads chưa có nguồn metrics video-level trong dashboard."
-		return view
-	}
-	if view.AnalyticsChannelCount == 0 {
-		view.State = "Chưa có channel ID YouTube phù hợp cho Analytics."
-		view.Detail = "YouTube Analytics cần channel ID bắt đầu bằng UC; account chỉ có handle chưa đủ."
-		return view
-	}
-	if view.VideoCount == 0 {
-		view.State = "Chưa có metrics video được đồng bộ trong 7 ngày gần đây."
-		view.Detail = "Không có dữ liệu không đồng nghĩa 0 lượt xem. Kiểm tra OAuth Analytics và đồng bộ tại Growth."
-		if view.FailedChannels > 0 {
-			view.State = "Không đọc được metrics từ một số kênh YouTube."
-		}
+	if view.DataCount == 0 {
+		view.State = "TikTok chưa cung cấp metrics video cho dashboard."
+		view.Detail = "Lượt xem, thời gian xem và chuyển đổi đang để trạng thái chưa có dữ liệu."
 		return view
 	}
 	view.HasMetrics = true
-	view.AverageViews = dashboardCountLabel(int64(math.Round(weightedViews / float64(view.VideoCount))))
+	view.Views30d = dashboardCountLabel(int64(math.Round(total)))
 	view.LatestAt = latestAt.UTC().Format("02/01/2006 15:04")
-	view.Detail = "Views trong báo cáo YouTube Analytics 30 ngày; snapshot được lưu trong 7 ngày gần đây."
-	if view.FailedChannels > 0 {
-		view.Detail += " Một số kênh chưa đọc được; tổng hợp chỉ gồm kênh có dữ liệu."
-	}
+	view.Detail = "Tổng views 30 ngày từ snapshot TikTok được đồng bộ."
 	return view
 }
 

@@ -8,7 +8,7 @@ import (
 // Onboarding pipeline: new account -> growing automatically. Live eligibility
 // advances only after a verified TikTok follower count reaches the threshold.
 //
-//	onboarding -> researching -> persona_assigned -> growing -> live_ready
+//	onboarding -> researching -> persona_assigned -> growing
 //
 // The human adds the account and verifies its TikTok follower count when ready.
 // Everything after is the pipeline. The research step is injectable
@@ -22,7 +22,7 @@ type TopicBrief struct {
 	Hint   string
 }
 
-// ResearchFunc resolves an account's niche + episode topics.
+// ResearchFunc resolves an account's niche and TikTok video topics.
 // The hint argument is advisory; the implementation re-reads the account's
 // stored niche_hint, mirroring Python's _research.
 type ResearchFunc func(hint string) (TopicBrief, error)
@@ -118,15 +118,7 @@ func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, ll
 		// NEVER overwritten by the persona label — only the persona field
 		// is written.
 		nicheForMatch := firstNonEmpty(acct.Niche, acct.NicheHint)
-		active, err := mgr.ActivePersonas()
-		if err != nil {
-			return "", err
-		}
-		used := make(map[string]int, len(active))
-		for _, p := range active {
-			used[p]++
-		}
-		persona := AssignPersona(nicheForMatch, used)
+		persona := AssignPersona(nicheForMatch, nil)
 		p, _ := Describe(persona)
 		target := acct.Username
 		if err := mgr.ledger.Decide("onboarding", "persona_assigned", &target,
@@ -155,22 +147,9 @@ func onboardStep(mgr *AccountManager, accountID int64, research ResearchFunc, ll
 		return next.Status, nil
 
 	case "growing":
-		if acct.TikTokLiveThresholdMet() {
-			target := acct.Username
-			if err := mgr.ledger.Decide("onboarding", "live_unlocked", &target,
-				fmt.Sprintf("%d followers >= %d", acct.Followers, FollowersToLive),
-				map[string]any{"followers": acct.Followers}); err != nil {
-				return "", err
-			}
-			next, err := mgr.Transition(accountID, "live_ready", nil)
-			if err != nil {
-				return "", err
-			}
-			return next.Status, nil
-		}
-		return "growing", nil // keep posting short videos
+		return "growing", nil // account remains ready for TikTok video flows
 
 	default:
-		return acct.Status, nil // live_ready/live/paused/...: pipeline done
+		return acct.Status, nil // paused/penalized/retired: pipeline done
 	}
 }

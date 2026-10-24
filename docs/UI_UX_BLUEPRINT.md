@@ -1,43 +1,59 @@
-# UI_UX_BLUEPRINT — Thiết kế UI/UX hiện tại
+# UI/UX blueprint
 
-> Cập nhật 2026-10-20: khớp sidebar và route đang đăng ký trong `internal/web/routes.go`.
->
-> Nguyên tắc xuyên suốt: ít chữ (card/modal/tooltip/toast), trạng thái = màu +
-> nhãn rõ, palette slate trung tính `#F8FAFC` + khung trắng + chữ than `#0F172A` +
-> nhấn xanh `#2563EB`. Mỗi khả năng vận hành đều thao tác được từ UI
-> (không CLI-only). Tiếng Việt ngắn gọn.
+## Phạm vi
 
-## 1. Sidebar hiện tại (`internal/web/templates/base.html`)
+Chỉ expose hai flow: TikTok affiliate và TikTok viral. Truyện audio để phase sau. Account, settings, jobs và insights là công cụ dùng chung cho hai flow.
 
-| # | Mục | Route | Câu hỏi duy nhất nó trả lời |
-|---|---|---|---|
-| 1 | Tạo nội dung | `/` | Tạo nhanh hoặc chọn loại video |
-| 2 | Video | `/studio/jobs` | Theo dõi bản dựng và file |
-| 3 | Sản phẩm | `/products` | Tìm deal và quản lý kệ hàng |
-| 4 | Kênh | `/accounts` | Quản lý kênh và kết nối |
-| 5 | Cài đặt | `/settings` | Cấu hình app |
+## Công nghệ
 
-Affiliate, video dọc và kể chuyện mở từ trang Tạo nội dung. Các trang vận hành
-chuyên sâu như `/growth`, `/harness`, `/team` không chiếm vị trí điều hướng chính.
+- Go `html/template` render trang và partial phía server.
+- HTMX cho tìm/lọc, refresh Radar, đánh giá sản phẩm, duyệt/loại, poll job, sync metrics và áp dụng/hoàn tác recommendation.
+- Tailwind CSS version pin; compile thành local static CSS. Production không dùng CDN hoặc runtime compiler.
+- Dùng full URL/form fallback cho page load và mutation quan trọng; HTMX enhancement không giấu state/error.
+- Response partial cần có empty/loading/error/success states; action provider không được báo thành công trước provider evidence.
 
-## 2. Cài đặt (`internal/web/templates/settings/`)
+## Điều hướng
 
-| Trang | Câu hỏi duy nhất |
-|---|---|
-| Hệ thống (`system`) | App đang chạy chế độ gì? (version, ngân sách, env, API, sao lưu, Web AI) |
-| Nhà cung cấp (`providers`) | AI dùng nhà cung cấp nào trước, key nào còn sống? |
-| An toàn (`safety`) | Có đang ở chế độ an toàn không? (dry-run, kill switch) |
-| Accesstrade (`/settings/accesstrade`) | Kết nối và tự động hóa Accesstrade thế nào? |
+1. **Affiliate**: category radar, danh sách sản phẩm, candidate detail, approved/rejected, campaign jobs, order feedback.
+2. **TikTok viral**: topic radar, phân tích video, tạo phiên bản mới, jobs và performance feedback.
+3. **Kênh**: TikTok account, persona/brand, ảnh nhân vật, trạng thái OAuth.
+4. **Insights**: phân tích riêng affiliate/viral với evidence, baseline và recommendations.
+5. **Cài đặt**: TikTok OAuth, AccessTrade, media providers, automation bounds, safety, JSON config, backup.
 
-Tab Nhân vật AI và lịch live đã park; template cũ nằm ngoài `go:embed`.
-Phim điện ảnh cũng đã park, không phải pipeline trong binary mặc định.
+## Candidate detail
 
-## 4. Quy ước component
+- Header: sản phẩm, category, trạng thái và thời điểm cập nhật.
+- Evidence: giá/currency, commission/link/campaign, sales/rating/review nếu có, trend signals, channel fit.
+- Mỗi row có nguồn, timestamp và trạng thái `Có dữ liệu`, `Cũ`, `Chưa có dữ liệu`.
+- Hiện verdict, confidence, reason, rule version và missing evidence.
+- Action buttons: `Duyệt`, `Loại`, `Đánh giá lại`; loại sản phẩm chuyển sang danh sách `Bị loại` cùng evidence.
 
-- Template: `templates/<page>.html` (`{{define "title"}}` + `{{define "content"}}`),
-  route trong `routes.go`, handler theo miền, `static/app.js` chung (toast,
-  modal, confirm), `static/style.css` chung.
-- Template không dùng nữa → `internal/web/templates_parked/` (ngoài `go:embed`).
-- Badge trạng thái trung thực: đọc thật từ code (probe/exec/file tồn tại),
-  không đoán. Số "ước tính chưa kiểm chứng" phải ghi rõ.
-- Mọi POST lỗi → redirect về đúng trang kèm `?err=` + toast (không redirect câm).
+## Video and job states
+
+- TikTok Radar cho topic, region, sort và trạng thái phân loại dance.
+- Chỉ video dance được xác minh hoặc do người dùng chọn mới thành source audio.
+- Job detail cho source ID/URL, audio metadata, product/tracking link, QC, artifact và TikTok state.
+- Draft, product attachment, public post, pending reconciliation và failed là trạng thái tách biệt.
+
+## Insights
+
+- Affiliate funnel chỉ vẽ các bước có source thật; metric thiếu ghi `Chưa có dữ liệu`.
+- Viral metrics so sánh cùng cửa sổ và cohort; hiện sample size và source.
+- Recommendation hiển thị evidence, confidence, expected setting diff, current/new value, version, `Áp dụng` và `Hoàn tác`.
+- Không tự đổi offer, claim, account permission hoặc public publish.
+
+## Account card and API keys
+
+- Account card: username, connection state, character image, niche/theme và thao tác account.
+- Không dùng followers/view progress nếu không có metrics được xác minh.
+- API key panel chỉ có `Xuất JSON` và `Nhập JSON`.
+
+## HTMX behavior oracle
+
+| Hành động | Request | Expected response |
+|---|---|---|
+| Lọc product radar | GET partial với category/filter | Candidate rows khớp filter; count khớp rows |
+| Duyệt/loại candidate | POST action | Candidate state đổi, history reason/version hiện tại |
+| Chọn nguồn dance | POST Radar video ID | Job source ID/URL trùng lựa chọn; không chọn ngầm |
+| Refresh job | GET job partial | Hiện trạng thái DB/provider mới nhất, không giả lập thành công |
+| Apply/rollback setting | POST versioned diff | Current version tăng/khôi phục đúng value; audit entry hiện rõ |

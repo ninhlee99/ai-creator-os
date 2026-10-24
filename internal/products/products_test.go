@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestScoreCommissionDominates(t *testing.T) {
@@ -28,11 +29,19 @@ func TestRankOrder(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
+	now := time.Now().Format(time.RFC3339Nano)
+	withDemand := func(commission float64, sold int64, price float64) Product {
+		return Product{
+			Source: "accesstrade", CommissionRate: commission, SoldCount: sold, Price: price, Rating: 4.5,
+			DemandEvidenceURL: "https://shop.example/product", DemandEvidenceAt: now,
+			DemandEvidenceRating: 4.5, DemandEvidenceSoldCount: sold,
+		}
+	}
 	ps := []Product{
-		{CommissionRate: 0.20, SoldCount: 500, Price: 100},
-		{CommissionRate: 0.05, SoldCount: 500, Price: 100},
-		{CommissionRate: 0.20, SoldCount: 5, Price: 100},
-		{CommissionRate: 0.20, SoldCount: 500, Price: 99999},
+		withDemand(0.20, 500, 100),
+		withDemand(0.05, 500, 100),
+		withDemand(0.20, 5, 100),
+		withDemand(0.20, 500, 99999),
 	}
 	f := Filter(ps, Query{MinCommission: 0.10, MinSold: 100, MaxPrice: 1000})
 	if len(f) != 1 || f[0].CommissionRate != 0.20 || f[0].SoldCount != 500 {
@@ -87,18 +96,25 @@ func TestStoreRoundTrip(t *testing.T) {
 	defer s.Close()
 	id, err := s.Save(Product{
 		Source: "tiktok_shop", SourceID: "p1", Title: "Túi kem",
-		ImageURLs: []string{"https://x/y.jpg"}, Price: 299000,
+		ImageURLs: []string{"https://x/y.jpg"}, Price: 299000, Currency: "VND",
 		CommissionRate: 0.22, ShopName: "Shop A", Rating: 4.8,
-		SoldCount: 1200, Theme: "thời trang nữ",
+		SoldCount: 1200, Theme: "thời trang nữ", ProductURL: "https://shop.example/item",
 	})
 	if err != nil || id == 0 {
 		t.Fatalf("save: %v id=%d", err, id)
 	}
+	if err := s.ReviewProduct(id, ReviewApproved, "ok"); err != nil {
+		t.Fatalf("approve: %v", err)
+	}
 	// save again = upsert, same id
 	id2, err := s.Save(Product{Source: "tiktok_shop", SourceID: "p1",
-		Title: "Túi kem", CommissionRate: 0.25, Theme: "thời trang nữ"})
+		Title: "Túi kem", Price: 299000, Currency: "VND", ProductURL: "https://shop.example/item",
+		CommissionRate: 0.25, Theme: "thời trang nữ"})
 	if err != nil || id2 != id {
 		t.Fatalf("upsert: %v id2=%d want %d", err, id2, id)
+	}
+	if err := s.ReviewProduct(id, ReviewApproved, "ok"); err != nil {
+		t.Fatalf("reapprove changed offer: %v", err)
 	}
 	top, err := s.TopByTheme("thời trang nữ", 0.10, 7, 10)
 	if err != nil || len(top) != 1 || top[0].CommissionRate != 0.25 {
@@ -205,46 +221,5 @@ func TestShelfLifecycle(t *testing.T) {
 	}
 	if shelf, _ := reopened.Shelf(50); len(shelf) != 1 {
 		t.Fatalf("shelf = %d after migration, want 1", len(shelf))
-	}
-}
-
-func TestRecordClick(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "click_test.db")
-	store, err := NewStore(dbPath)
-	if err != nil {
-		t.Fatalf("NewStore: %v", err)
-	}
-	defer store.Close()
-
-	id, err := store.Save(Product{
-		Source:   "manual",
-		SourceID: "CLK1",
-		Title:    "Bàn chải điện",
-	})
-	if err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-
-	p, err := store.GetByID(id)
-	if err != nil {
-		t.Fatalf("GetByID: %v", err)
-	}
-	if p.ClickCount != 0 {
-		t.Errorf("initial ClickCount = %d, want 0", p.ClickCount)
-	}
-
-	if err := store.RecordClick(id); err != nil {
-		t.Fatalf("RecordClick 1: %v", err)
-	}
-	if err := store.RecordClick(id); err != nil {
-		t.Fatalf("RecordClick 2: %v", err)
-	}
-
-	pAfter, err := store.GetByID(id)
-	if err != nil {
-		t.Fatalf("GetByID after clicks: %v", err)
-	}
-	if pAfter.ClickCount != 2 {
-		t.Errorf("ClickCount = %d, want 2", pAfter.ClickCount)
 	}
 }

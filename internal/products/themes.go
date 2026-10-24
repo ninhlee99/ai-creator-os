@@ -66,6 +66,19 @@ var ThemeOrder = []string{
 	"cong-nghe", "the-thao", "sach-van-phong",
 }
 
+// TikTokRadarKeywords gives the unattended TikTok Shop radar one seed term
+// per supported category. Category-specific searches should pass all theme
+// keywords instead.
+func TikTokRadarKeywords() []string {
+	var out []string
+	for _, slug := range ThemeOrder {
+		if theme, ok := THEMES[slug]; ok && len(theme.Keywords) > 0 {
+			out = append(out, theme.Keywords[0])
+		}
+	}
+	return out
+}
+
 // DescribeTheme returns the catalog entry; ok=false for unknown slugs
 // (custom themes are allowed — they just carry no curated keywords).
 func DescribeTheme(slug string) (Theme, bool) {

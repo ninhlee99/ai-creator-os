@@ -85,19 +85,12 @@ func (s *Server) scalarInt(query string, args ...any) int64 {
 // --------------------------------------------------------------- publisher
 
 type publisherRow struct {
+	AccountID       int64
 	Username         string
 	Status           string
 	TiktokToken      bool
 	TiktokTokenDead  bool // refresh token chết / hết hạn
 	TiktokClient     bool // client key + secret present in env
-	YoutubeToken     bool
-	YoutubeClient    bool // OAuth client ID + secret present in env (Đợt AA)
-	YoutubeTokenDead bool // refresh token chết (invalid_grant) — Đợt AA
-	FbPage           bool
-	FacebookClient   bool // Meta App ID + Secret present in settings
-	Instagram        bool // IG_USER_ID + META_PAGE_TOKEN
-	Threads          bool // THREADS_USER_ID + THREADS_TOKEN
-	Platforms        []string
 }
 
 func fileExists(path string) bool {

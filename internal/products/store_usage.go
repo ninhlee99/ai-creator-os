@@ -1,6 +1,7 @@
 package products
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -38,9 +39,17 @@ func (s *Store) SetUsageJobID(productID, accountID int64, jobID string) error {
 // Shelf state lives in this same store so the autopilot (TopByTheme) sees
 // shelf-curated products immediately.
 func (s *Store) SetShelf(productID int64, status string, score float64) error {
-	_, err := s.db.Exec(
-		`UPDATE products SET shelf_status=?, shelf_score=? WHERE id=?`,
-		status, score, productID)
+	if status == "shelf" || status == "scaled" {
+		_, err := s.db.Exec(`UPDATE products SET shelf_status=?, shelf_score=?,
+			review_status='approved', review_note='Được chọn vào kệ', reviewed_at=? WHERE id=?`,
+			status, score, time.Now().UTC().Format(time.RFC3339), productID)
+		return err
+	}
+	if status != "" {
+		return fmt.Errorf("products: invalid shelf status %q", status)
+	}
+	_, err := s.db.Exec(`UPDATE products SET shelf_status='', shelf_score=0,
+		review_status='pending', review_note='', reviewed_at='' WHERE id=?`, productID)
 	return err
 }
 
@@ -52,7 +61,7 @@ func (s *Store) Shelf(limit int) ([]Product, error) {
 	}
 	rows, err := s.db.Query(`
 		SELECT `+productCols+` FROM products
-		WHERE shelf_status IN ('shelf','scaled')
+		WHERE shelf_status IN ('shelf','scaled') AND review_status='approved'
 		ORDER BY shelf_score DESC, commission_rate DESC, id LIMIT ?`, limit)
 	if err != nil {
 		return nil, err

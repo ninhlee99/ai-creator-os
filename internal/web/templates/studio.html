@@ -1,11 +1,9 @@
-{{define "title"}}Affiliate{{end}}
+{{define "title"}}Tạo video affiliate{{end}}
 {{define "content"}}
 
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
-    <h1 style="display:flex;align-items:center;gap:10px">
-      <span>👗</span> Affiliate
-    </h1>
+    <h1>Tạo video affiliate</h1>
   </div>
   <div class="webai-header-actions">
     <a href="/studio/create" class="btn btn-primary btn-sm">✨ Tạo bằng Muse / Flow</a>
@@ -18,6 +16,8 @@
 {{if .Warning}}<p class="notice notice-warn" role="status">{{.Warning}}</p>{{end}}
 
 <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="creative-ad-form">
+        <input type="hidden" name="source_music_title" value="{{.Prefill.SourceMusicTitle}}">
+        <input type="hidden" name="source_music_video_url" value="{{.Prefill.SourceMusicVideoURL}}">
   <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
 
     <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN (DƯỚI 3 BƯỚC) -->
@@ -120,7 +120,7 @@
           </div>
           <label style="font-weight:700;font-size:12px;display:block;margin-top:10px">Ảnh góc khác / chi tiết sản phẩm</label>
           <input type="file" name="extra_photos" accept="image/*" multiple>
-          <div class="hint">Product Analyst dùng tối đa 6 ảnh listing để khóa đúng sản phẩm và chi tiết. Ảnh không rõ hoặc sai món sẽ chặn job.</div>
+          <div class="hint">Tối đa 6 ảnh listing · ảnh mờ hoặc sai sản phẩm sẽ chặn job.</div>
           <input type="hidden" name="product_id" id="cr-product-id">
           <input type="hidden" name="photo_urls" id="cr-photo-urls" value="{{.Prefill.PhotoURL}}">
         </div>
@@ -177,20 +177,8 @@
           <input type="file" name="model_photos" accept="image/*" multiple>
         </div>
 
-        <div class="field" style="margin-bottom:12px">
-          <label style="font-weight:700;font-size:12.5px">Tệp nhạc</label>
-          <input type="file" name="music_file" accept="audio/*">
-        </div>
+        {{if .Prefill.SourceMusicVideoURL}}<p class="hint" style="margin-bottom:12px">Sound lấy từ Radar: <strong>{{if .Prefill.SourceMusicTitle}}{{.Prefill.SourceMusicTitle}}{{else}}Sound gốc video TikTok{{end}}</strong> · <a href="{{.Prefill.SourceMusicVideoURL}}" target="_blank" rel="noopener noreferrer">mở video nhảy</a>. Studio sẽ tách và ghép âm thanh gốc vào affiliate.</p>{{else}}<p class="hint" style="margin-bottom:12px">Bắt buộc: chọn video nhảy có sound trong <a href="/studio/trends">Radar TikTok</a>. Studio sẽ tách âm thanh và ghép vào affiliate.</p>{{end}}
 
-        <div class="field">
-          <label style="font-weight:700;font-size:12.5px">Nhạc nền có sẵn trên máy</label>
-          <select name="music_category" style="padding:10px">
-            <option value="">Không thêm nhạc</option>
-            <option value="fashion">Nhẹ, phù hợp thời trang</option>
-            <option value="dance">Sôi động</option>
-            <option value="chill">Nhẹ nhàng</option>
-          </select>
-        </div>
       </div>
 
       <!-- BƯỚC 3: CÔNG NGHỆ RENDER & XUẤT BẢN -->
@@ -403,7 +391,7 @@ function invalidateAffiliatePlan(message) {
 }
 
 function affiliatePrepField(field) {
-  return field && field.name && !['motion_clips','music_file','music_category','music_url','music_start','music_title','music_artist','bpm','prepared_plan_id','confirm_flow_credits','output_resolution'].includes(field.name);
+  return field && field.name && !['motion_clips','prepared_plan_id','confirm_flow_credits','output_resolution'].includes(field.name);
 }
 
 var affiliateForm = document.getElementById('creative-ad-form');
@@ -470,7 +458,6 @@ async function prepareAffiliatePlan() {
   submit.style.opacity = '.55';
   var body = new FormData(affiliateForm);
   body.delete('motion_clips');
-  body.delete('music_file');
   try {
     var response = await fetch('/studio/affiliate/plan', {method:'POST', body:body, headers:{'Accept':'application/json'}});
     var data = await response.json();

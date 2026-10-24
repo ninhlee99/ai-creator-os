@@ -1,7 +1,6 @@
 package web
 
-// Affiliate product catalog: product search and discovery, manual add,
-// the merged shelf tab, autopilot scheduling policy and music upload.
+// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
 	"context"
@@ -18,13 +17,13 @@ type accesstradeSearchProvider struct {
 func (p accesstradeSearchProvider) Name() string { return accesstrade.HunterSource }
 
 func (p accesstradeSearchProvider) Search(ctx context.Context, q products.Query) ([]products.Product, error) {
-	if _, err := p.client.Hunt(ctx, p.store, accesstrade.HunterFilter{
-		Limit: 200, MinCommissionRate: q.MinCommission, ThemeFallback: q.Theme,
-		ApprovedOnly: true, MaxAgeDays: 30,
+	if _, err := p.client.HuntTikTokShop(ctx, p.store, accesstrade.HunterFilter{
+		Keywords: q.Keywords, Limit: 200, MinCommissionRate: q.MinCommission, ThemeFallback: q.Theme,
+		MaxAgeDays: 30,
 	}); err != nil {
 		return nil, err
 	}
-	items, err := p.store.Search("", q.Theme, q.MinCommission, 500)
+	items, err := p.store.SearchSource(accesstrade.HunterSource, "", q.Theme, q.MinCommission, 500)
 	if err != nil {
 		return nil, err
 	}

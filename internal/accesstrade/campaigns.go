@@ -106,7 +106,7 @@ func (c *Client) ListCampaigns(ctx context.Context, f CampaignFilter) ([]Campaig
 			totalPages = (total + pageSize - 1) / pageSize
 		}
 		if len(raws) == 0 || (totalPages > 0 && page >= totalPages) ||
-			(totalPages == 0 && len(raws) < pageSize) {
+			(totalPages == 0 && len(raws) != pageSize) {
 			break
 		}
 		// Đợt AM: chạm trần 20 trang mà vẫn còn → log warn thay vì cắt im lặng.

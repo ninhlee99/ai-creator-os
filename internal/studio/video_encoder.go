@@ -11,19 +11,35 @@ import (
 const outFPS = 30
 
 // (Delivery dimensions come from AspectDims in studio.go: every renderer
-// takes the job aspect explicitly, so a "long" YouTube cut can never
+// takes the job aspect explicitly, so video rendering always follows
 // silently render vertical.)
 
 // videoEncoder picks the H.264 encoder once per process: Apple's hardware
-// encoder (h264_videotoolbox — included in macOS ffmpeg builds such as
-// Homebrew's) when present, libx264 otherwise. Delivery renders are
+// encoder only when a real encode probe succeeds, libx264 otherwise. Delivery renders are
 // 1080x1920 for platforms that re-encode on upload anyway, so the hardware
 // encoder's fixed bitrate costs nothing visible, runs several times
 // faster, and frees CPU cores for the zoompan/scale filters — which stay
 // on CPU either way and are the real bottleneck of these graphs.
+var videoToolboxH264Available = sync.OnceValue(func() bool { return probeVideoToolboxEncoder("h264_videotoolbox") })
+var videoToolboxHEVCAvailable = sync.OnceValue(func() bool { return probeVideoToolboxEncoder("hevc_videotoolbox") })
+var softwareHEVCAvailable = sync.OnceValue(func() bool {
+	encoders, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output()
+	return err == nil && bytes.Contains(encoders, []byte("libx265"))
+})
+
+func probeVideoToolboxEncoder(codec string) bool {
+	encoders, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output()
+	if err != nil || !bytes.Contains(encoders, []byte(codec)) {
+		return false
+	}
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error",
+		"-f", "lavfi", "-i", "color=c=black:s=320x240:r=30:d=1",
+		"-frames:v", "2", "-c:v", codec, "-f", "null", "-")
+	return cmd.Run() == nil
+}
+
 var videoEncoder = sync.OnceValue(func() []string {
-	if out, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output(); err == nil &&
-		bytes.Contains(out, []byte("h264_videotoolbox")) {
+	if videoToolboxH264Available() {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "12M", "-maxrate", "16M"}
 	}
 	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "18"}
@@ -34,22 +50,20 @@ var videoEncoder = sync.OnceValue(func() []string {
 func VideoEncoderArgs() []string { return videoEncoder() }
 
 var videoEncoder4K = sync.OnceValue(func() []string {
-	if out, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output(); err == nil &&
-		bytes.Contains(out, []byte("h264_videotoolbox")) {
+	if videoToolboxH264Available() {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "35M", "-maxrate", "45M"}
 	}
 	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "16", "-b:v", "35M"}
 })
 
 var videoEncoder8K = sync.OnceValue(func() []string {
-	encoders, _ := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output()
-	if bytes.Contains(encoders, []byte("hevc_videotoolbox")) {
+	if videoToolboxHEVCAvailable() {
 		return []string{"-c:v", "hevc_videotoolbox", "-b:v", "85M", "-maxrate", "110M"}
 	}
-	if bytes.Contains(encoders, []byte("libx265")) {
+	if softwareHEVCAvailable() {
 		return []string{"-c:v", "libx265", "-preset", "medium", "-crf", "17", "-tag:v", "hvc1"}
 	}
-	if bytes.Contains(encoders, []byte("h264_videotoolbox")) {
+	if videoToolboxH264Available() {
 		return []string{"-c:v", "h264_videotoolbox", "-b:v", "100M", "-maxrate", "125M"}
 	}
 	return []string{"-c:v", "libx264", "-preset", "slow", "-crf", "15", "-b:v", "100M"}

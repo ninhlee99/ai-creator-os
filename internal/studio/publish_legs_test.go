@@ -56,7 +56,7 @@ func TestMarkInterruptedJobsSweepsQueued(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer st.Close()
-	idQ, _ := st.insertJob(KindStory, "Queued", StoryParams{Topic: "x"})
+	idQ, _ := st.insertJob(KindAffiliate, "Queued", AffiliateParams{ProductName: "x"})
 	j, _ := st.GetJob(idQ)
 	if j.Status != StatusQueued {
 		t.Fatalf("job mới phải ở queued, được %q", j.Status)

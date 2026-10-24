@@ -5,10 +5,8 @@ import "time"
 // Chân đăng (publish legs) — idempotency cho auto-publish affiliate
 // (Đợt Y).
 //
-// Vấn đề: AutoPublishAffiliate không có marker nào ghi "job X đã đăng lên
-// TikTok/YouTube". TikTok OK + YouTube lỗi → chân YouTube mất vĩnh viễn
-// (job đã done, OnDone không bao giờ refire). Ngược lại hook fire 2 lần
-// → đăng trùng. Bảng studio_publish_legs khóa theo (job_id, platform):
+// AutoPublishAffiliate records TikTok delivery per job. The
+// studio_publish_legs key prevents duplicate drafts when hooks retry:
 // trước khi đăng mỗi chân, check done → bỏ qua; sau đăng ghi done/failed;
 // chân failed được tick thử lại.
 
@@ -16,7 +14,7 @@ import "time"
 type PublishLeg struct {
 	JobID     string
 	Title     string
-	Platform  string // "tiktok" | "youtube" | Meta platform
+	Platform  string // "tiktok"
 	RemoteID  string
 	Status    string
 	UpdatedAt string

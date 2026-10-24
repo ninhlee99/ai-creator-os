@@ -84,8 +84,6 @@ var productsSettingKeys = []string{
 	"autopilot_interval_hours",
 	"autopilot_last_run",
 	"autopilot_auto_publish",
-	"autopilot_youtube_enabled",
-	"autopilot_music_name",
 }
 
 // MigrateProductsSettings copies the legacy products.db control settings
@@ -290,21 +288,3 @@ func AutopilotLastRun(s Settings) string {
 
 // AutopilotAutoPublish reports the auto-publish-to-TikTok switch.
 func AutopilotAutoPublish(s Settings) bool { return autopilotOn(s, "autopilot_auto_publish") }
-
-// AutopilotYouTubeEnabled reports the auto-publish-to-YouTube-Shorts
-// switch (đợt Q). Mặc định BẬT (unset = bật — tiền lệ Đợt 3); privacy theo
-// YOUTUBE_DEFAULT_PRIVACY (mặc định private).
-func AutopilotYouTubeEnabled(s Settings) bool { return autopilotOn(s, "autopilot_youtube_enabled") }
-
-// AutopilotMetaEnabled bật/tắt đăng chéo Facebook/Instagram/Threads.
-// Mặc định BẬT (unset = bật) — nền tảng chưa cấu hình key thì tự bỏ qua.
-func AutopilotMetaEnabled(s Settings) bool { return autopilotOn(s, "autopilot_meta_enabled") }
-
-// AutopilotMusicName returns the UI-uploaded music bed filename, "" when none.
-func AutopilotMusicName(s Settings) string {
-	if s == nil {
-		return ""
-	}
-	v, _ := s.Get("autopilot_music_name")
-	return v
-}

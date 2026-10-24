@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// FindStockClips returns a list of high-quality filmed motion video clips
+// FindStockClips returns high-quality motion video clips
 // (9:16 vertical, continuous camera movement, 100% clean with zero text overlays).
 func FindStockClips(category string) []string {
 	searchDirs := []string{

@@ -4,22 +4,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-)
 
-func TestParseOAuthRedirect(t *testing.T) {
-	code, state, oerr := parseOAuthRedirect("  https://www.tiktok.com/?code=abc%2A1&scopes=video.upload&state=s1#x ")
-	if code != "abc*1" || state != "s1" || oerr != "" {
-		t.Fatalf("got %q %q %q", code, state, oerr)
-	}
-	if _, _, oerr := parseOAuthRedirect("https://www.tiktok.com/?error=access_denied&error_description=no"); !strings.Contains(oerr, "access_denied") {
-		t.Fatalf("error not surfaced: %q", oerr)
-	}
-	if code, _, _ := parseOAuthRedirect("code=zz&state=q"); code != "zz" {
-		t.Fatalf("bare query: %q", code)
-	}
-}
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
+)
 
 func TestTikTokConnectFlow(t *testing.T) {
 	s := newTestServer(t)
@@ -29,12 +19,16 @@ func TestTikTokConnectFlow(t *testing.T) {
 	t.Setenv("TIKTOK_CLIENT_KEY", "ck123")
 	t.Setenv("TIKTOK_CLIENT_SECRET", "secret")
 
-	// Token badge uses the publisher's sanitized file name.
-	if err := os.WriteFile("tiktok_token_shop_vn.json", []byte(`{}`), 0o600); err != nil {
+	// Token badge reads the app-scoped token directory and sanitized name.
+	tokenPath := publishers.TikTokTokenPath("shop.vn")
+	if err := os.MkdirAll(filepath.Dir(tokenPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tokenPath, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	body := get(t, s, "/publishers").Body.String()
-	if !strings.Contains(body, "Kết nối lại") || !strings.Contains(body, "badge-ok") {
+	if !strings.Contains(body, "Kết nối lại") || !strings.Contains(body, "Có token · API chưa kiểm") {
 		t.Fatalf("publishers page should show connected TikTok:\n%s", body)
 	}
 	if strings.Contains(body, "secret") {
@@ -48,7 +42,7 @@ func TestTikTokConnectFlow(t *testing.T) {
 	loc, _ := url.Parse(rec.Header().Get("Location"))
 	q := loc.Query()
 	if loc.Host != "www.tiktok.com" || q.Get("client_key") != "ck123" || q.Get("state") == "" ||
-		q.Get("scope") != "user.info.basic,video.upload" {
+		q.Get("scope") != "user.info.basic,user.info.stats,video.list,video.upload" {
 		t.Fatalf("bad authorize url %s", loc)
 	}
 	// Default = local Desktop flow: redirect back to this app + PKCE.
@@ -65,33 +59,6 @@ func TestTikTokConnectFlow(t *testing.T) {
 		t.Fatalf("callback error not surfaced: %s", l)
 	}
 
-	// HTTPS relay uses Web Login Kit, which returns the code to the paste form;
-	// Web flow does not use PKCE.
-	t.Setenv("TIKTOK_REDIRECT_URI", "https://example.github.io/cb.html")
-	if body := get(t, s, "/publishers").Body.String(); !strings.Contains(body, "Lưu token") {
-		t.Fatal("paste form missing in web flow")
-	}
-	rec = get(t, s, "/publishers/tiktok/authorize?username=shop.vn")
-	loc, _ = url.Parse(rec.Header().Get("Location"))
-	q = loc.Query()
-	if q.Get("code_challenge") != "" || q.Get("code_challenge_method") != "" || q.Get("redirect_uri") != "https://example.github.io/cb.html" {
-		t.Fatalf("https relay flow: %s", loc)
-	}
-
-	// Wrong account / wrong state never reach TikTok.
-	if _, err := s.Mgr.Add("other", "", ""); err != nil {
-		t.Fatal(err)
-	}
-	rec = postForm(t, s, "/publishers/tiktok/connect", url.Values{
-		"username": {"other"}, "redirect": {"https://www.tiktok.com/?code=c&state=" + q.Get("state")}})
-	if l := rec.Header().Get("Location"); !strings.Contains(l, "err=") {
-		t.Fatalf("state for another account accepted: %s", l)
-	}
-	rec = postForm(t, s, "/publishers/tiktok/connect", url.Values{
-		"username": {"shop.vn"}, "redirect": {"https://www.tiktok.com/?code=c&state=forged"}})
-	if l := rec.Header().Get("Location"); !strings.Contains(l, "err=") {
-		t.Fatalf("forged state accepted: %s", l)
-	}
 	rec = get(t, s, "/publishers/tiktok/authorize?username=ghost")
 	if l := rec.Header().Get("Location"); !strings.HasPrefix(l, "/publishers?err=") {
 		t.Fatalf("unknown account: %s", l)

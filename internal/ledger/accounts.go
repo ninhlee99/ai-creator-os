@@ -6,18 +6,12 @@ import (
 	"strings"
 )
 
-func (l *Ledger) AddAccount(username, nicheHint, rtmpKeyRef string) (int64, error) {
+func (l *Ledger) AddAccount(username, nicheHint string) (int64, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	var count int64
-	if err := l.db.QueryRow("SELECT COUNT(*) FROM accounts").Scan(&count); err != nil {
-		return 0, err
-	}
 	id, err := l.insertLocked("accounts", map[string]any{
-		"username":     username,
-		"niche_hint":   nicheHint,
-		"rtmp_key_ref": rtmpKeyRef,
-		"rest_weekday": count % 7,
+		"username":   username,
+		"niche_hint": nicheHint,
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -38,8 +32,7 @@ func (l *Ledger) AddAccount(username, nicheHint, rtmpKeyRef string) (int64, erro
 func (l *Ledger) GetAccount(accountID int64) (*Account, error) {
 	return scanAccount(l.db.QueryRow(
 		"SELECT id, username, status, persona, niche, niche_hint, topics_json, "+
-			"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, "+
-			"rest_weekday, gift_usd, created_at, updated_at "+
+			"followers, followers_source, followers_verified_at, created_at, updated_at "+
 			"FROM accounts WHERE id = ?", accountID))
 }
 
@@ -56,15 +49,13 @@ func (l *Ledger) ListAccounts(statuses []string) ([]Account, error) {
 		}
 		rows, err = l.db.Query(
 			"SELECT id, username, status, persona, niche, niche_hint, topics_json, "+
-				"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, "+
-				"rest_weekday, gift_usd, created_at, updated_at "+
+				"followers, followers_source, followers_verified_at, created_at, updated_at "+
 				"FROM accounts WHERE status IN ("+strings.Join(ph, ",")+") ORDER BY id",
 			args...)
 	} else {
 		rows, err = l.db.Query(
 			"SELECT id, username, status, persona, niche, niche_hint, topics_json, " +
-				"youtube_channel, youtube_content_types, followers, followers_source, followers_verified_at, rtmp_key_ref, " +
-				"rest_weekday, gift_usd, created_at, updated_at " +
+				"followers, followers_source, followers_verified_at, created_at, updated_at " +
 				"FROM accounts ORDER BY id")
 	}
 	if err != nil {
@@ -75,9 +66,7 @@ func (l *Ledger) ListAccounts(statuses []string) ([]Account, error) {
 	for rows.Next() {
 		var a Account
 		if err := rows.Scan(&a.ID, &a.Username, &a.Status, &a.Persona, &a.Niche,
-			&a.NicheHint, &a.TopicsJSON, &a.YoutubeChannel, &a.YoutubeContentTypes,
-			&a.Followers, &a.FollowersSource, &a.FollowersVerifiedAt,
-			&a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
+			&a.NicheHint, &a.TopicsJSON, &a.Followers, &a.FollowersSource, &a.FollowersVerifiedAt,
 			&a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
@@ -104,8 +93,7 @@ func (l *Ledger) SetAccountStatus(accountID int64, status string, fields map[str
 	return err
 }
 
-// SetFollowers records a TikTok follower count verified against the account's
-// TikTok profile. Legacy counts remain untrusted until a person verifies them.
+// SetFollowers records a TikTok follower count with its source timestamp.
 func (l *Ledger) SetFollowers(accountID int64, followers int64) error {
 	if followers < 0 {
 		return fmt.Errorf("TikTok followers cannot be negative")

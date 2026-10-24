@@ -14,7 +14,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/lockfile"
 	"github.com/ninhlee99/ai-creator-os/internal/logx"
-	"github.com/ninhlee99/ai-creator-os/internal/runtimeguard"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"github.com/ninhlee99/ai-creator-os/internal/web"
 )
@@ -115,8 +114,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	guard := runtimeguard.New()
-
 	var studioInst *studio.Studio
 
 	// -- 6. accounts + web server -------------------------------------------
@@ -126,7 +123,6 @@ func main() {
 	}
 	mgr := webRuntime.manager
 	srv := webRuntime.server
-	webCfg := webRuntime.config
 	autoSettings := webRuntime.settings
 	tickSup := webRuntime.tickSup
 	outDir := webRuntime.outDir
@@ -143,8 +139,7 @@ func main() {
 	// -- 6b. studio: AI video creation (affiliate) --------------------------------
 	// The studio reuses the LLM chain (director), the TTS chain (narration)
 	// and Gemini keys for text/image analysis. Prompt-only image generation
-	// uses Pollinations Free API Classic. (Film pipeline parked —
-	// PIVOT 2026-10-02.)
+	// uses Pollinations Free API Classic.
 	studioInst = initializeStudio(srv, *dataDir, outDir, geminiKeys, llmChain, ttsChain)
 	if studioInst != nil {
 		defer func() {
@@ -182,5 +177,5 @@ func main() {
 		}()
 	}
 
-	startWorkersAndServe(ctx, cancel, *addr, srv, l, mgr, llmChain, webCfg, autoSettings, tickSup, autopilotArmed, guard, studioInst)
+	startWorkersAndServe(ctx, cancel, *addr, srv, autoSettings, tickSup, autopilotArmed, studioInst)
 }

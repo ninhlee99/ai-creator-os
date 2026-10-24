@@ -168,6 +168,10 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
 		fail(fmt.Errorf("upscale master %s: %w", strings.ToUpper(resolution), err))
 		return
 	}
+	if !ProbeHasAudio(ctx, finalVideo) {
+		fail(fmt.Errorf("đầu ra viral bị mất audio từ video Radar"))
+		return
+	}
 	outWidth, outHeight, err := probeViralDimensions(ctx, finalVideo)
 	wantWidth, wantHeight, _ := VideoOutputDims("9:16", resolution)
 	if err != nil || outWidth != wantWidth || outHeight != wantHeight || math.Abs(float64(outWidth)/float64(outHeight)-9.0/16.0) > 0.015 {

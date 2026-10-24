@@ -16,33 +16,42 @@ type Product struct {
 	Title                   string
 	ImageURLs               []string // listing photos (ground truth for product lock)
 	Price                   float64
+	PriceMax                float64
 	OriginalPrice           float64 // provider-supplied list price; 0 means unknown
 	Currency                string
 	CommissionRate          float64 // 0..1 — the king metric
 	ShopName                string
 	Rating                  float64 // 0..5
 	SoldCount               int64
-	SoldCountKnown          bool // Provider explicitly supplied count; zero can be real.
+	SoldCountKnown          bool   // provider/user explicitly supplied count; zero can be a real value
 	DemandEvidenceURL       string // listing page where rating and sold count were observed
 	DemandEvidenceAt        string // RFC3339 capture time; empty means unknown
 	DemandEvidenceRating    float64
 	DemandEvidenceSoldCount int64
 	Category                string
 	ProductURL              string
-	ProductPageURL          string // Provider listing URL, not affiliate tracking URL.
+	ProductPageURL          string // provider listing URL, not affiliate tracking URL
 	Theme                   string // theme it was discovered under
 	FoundAt                 string
 	DataUpdatedAt           string // provider timestamp; empty means unknown
 	// Shelf state (R2-W1): "shelf"/"scaled" = curated onto the Kệ hàng
 	// shelf; "" = discovery pool only. Lives in this same store so the
 	// autopilot sees shelf-added products immediately.
-	ShelfStatus string
-	ShelfScore  float64
-	ClickCount  int64 // Total click-throughs from Bio Link storefront
+	ShelfStatus  string
+	ShelfScore   float64
+	ReviewStatus string // pending | approved | rejected
+	ReviewNote   string
+	ReviewedAt   string
 	// TikTok Radar evidence is attached only for web evaluation; it is not persisted.
 	TikTokRadarTrendEvidence string `json:"-"`
 	TikTokRadarTrendURL      string `json:"-"`
 }
+
+const (
+	ReviewPending  = "pending"
+	ReviewApproved = "approved"
+	ReviewRejected = "rejected"
+)
 
 // Query describes what the autopilot is hunting.
 type Query struct {
@@ -78,6 +87,13 @@ func (p Product) HasDemandSignalsAt(now time.Time) bool {
 	}
 	age := now.Sub(capturedAt)
 	return age >= -5*time.Minute && age <= 30*24*time.Hour
+}
+
+// ReadyForAffiliateProduction requires explicit human approval and a complete
+// offer. Missing provider sales or rating fields remain visible evidence gaps;
+// they do not silently overrule the operator's review decision.
+func (p Product) ReadyForAffiliateProduction() bool {
+	return p.ReviewStatus == ReviewApproved && EvaluateCandidate(p, time.Now()).OfferReady
 }
 
 func validDemandEvidenceURL(raw string) bool {

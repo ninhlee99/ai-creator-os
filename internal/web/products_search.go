@@ -1,7 +1,6 @@
 package web
 
-// Affiliate product catalog: product search and discovery, manual add,
-// the merged shelf tab, autopilot scheduling policy and music upload.
+// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
 	"context"
@@ -85,17 +84,18 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	p := products.Product{
-		Source:            "manual",
-		SourceID:          sourceID,
-		Title:             title,
-		Theme:             theme,
-		ShopName:          strings.TrimSpace(r.PostFormValue("shop")),
-		Price:             price,
-		OriginalPrice:     originalPrice,
-		Currency:          "VND",
-		CommissionRate:    commPct / 100,
-		Rating:            rating,
-		SoldCount:         sold,
+		Source:         "manual",
+		SourceID:       sourceID,
+		Title:          title,
+		Theme:          theme,
+		ShopName:       strings.TrimSpace(r.PostFormValue("shop")),
+		Price:          price,
+		PriceMax:       price,
+		OriginalPrice:  originalPrice,
+		Currency:       "VND",
+		CommissionRate: commPct / 100,
+		Rating:         rating,
+		SoldCount:      sold, SoldCountKnown: strings.TrimSpace(r.PostFormValue("sold")) != "",
 		DemandEvidenceURL: evidenceURL,
 		ImageURLs:         imgs,
 		ProductURL:        strings.TrimSpace(r.PostFormValue("product_url")),
@@ -115,10 +115,10 @@ func (s *Server) handleProductsAdd(w http.ResponseWriter, r *http.Request) {
 // problems are shown honestly instead of hidden.
 func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	if s.Products == nil {
-		s.render(w, "products", s.ctx(
+		s.renderProductResults(w, r, s.ctx(
 			"AT", s.atPageData(),
 			"Themes", themeOptions(),
-			"Error", "Kho sản phẩm chưa được khởi tạo. Hãy kiểm tra cấu hình app rồi thử lại.",
+			"SearchError", "Kho sản phẩm chưa được khởi tạo. Hãy kiểm tra cấu hình app rồi thử lại.",
 		))
 		return
 	}
@@ -135,10 +135,10 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 	if len(providers) == 0 {
 		client, err := s.atClient()
 		if err != nil {
-			s.render(w, "products", s.ctx(
+			s.renderProductResults(w, r, s.ctx(
 				"AT", s.atPageData(), "Tab", "discover", "Themes", themeOptions(),
 				"Theme", theme, "Keyword", keyword, "MinPct", minPct, "Shelf", s.shelfViews(),
-				"Error", "Kết nối Accesstrade để tìm deal thật; hoặc thêm sản phẩm thủ công.",
+				"SearchError", "Kết nối Accesstrade để tìm deal thật; hoặc thêm sản phẩm thủ công.",
 			))
 			return
 		}
@@ -196,8 +196,8 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 		"Warnings", warnings,
 	)
 	if rerr != nil {
-		data["Error"] = "Không đọc được kho sản phẩm: " + rerr.Error()
+		data["SearchError"] = "Không đọc được kho sản phẩm: " + rerr.Error()
 	}
 	data["AT"] = s.atPageData()
-	s.render(w, "products", data)
+	s.renderProductResults(w, r, data)
 }

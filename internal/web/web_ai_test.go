@@ -66,6 +66,28 @@ func TestStudioAIGenerateRequiresFlowCreditsConsent(t *testing.T) {
 	}
 }
 
+func TestSettingsSystemRendersWebAILoginButtons(t *testing.T) {
+	srv := newTestServer(t)
+	store, err := webai.NewStore(filepath.Join(t.TempDir(), "webai.db"))
+	if err != nil {
+		t.Fatalf("webai.NewStore: %v", err)
+	}
+	defer store.Close()
+	srv.WebAI = store
+	req := httptest.NewRequest(http.MethodGet, "/settings/system", nil)
+	rec := httptest.NewRecorder()
+	srv.handleSettingsHeThong(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("settings status=%d, body=%s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, marker := range []string{"Đăng nhập", "startBrowserLogin('museai'", "startBrowserLogin('googleflow'"} {
+		if !strings.Contains(body, marker) {
+			t.Errorf("settings missing Web AI login action %q", marker)
+		}
+	}
+}
+
 func TestBioPinAndRedirectClick(t *testing.T) {
 	srv, store := newTestWebAIServer(t)
 	defer store.Close()

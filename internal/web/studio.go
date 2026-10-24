@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
@@ -20,12 +19,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jobs := s.studioJobViews(s.Studio.ListJobs(30))
-	// Zero-touch (Đợt 3 / A6): a stale chart refreshes itself in the
-	// background — nobody has to remember the refresh button.
-	if studio.TrendsStale() {
-		studio.RefreshVNTrendingAsync()
-	}
-	sounds, trendsErr := studio.FetchVNTrending(r.Context())
 	activeJobs, jobCount := 0, len(jobs)
 	doneCount := 0
 	for _, j := range jobs {
@@ -102,11 +95,13 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	prefill := map[string]string{
-		"ProductName":  r.URL.Query().Get("product_name"),
-		"ProductPrice": r.URL.Query().Get("product_price"),
-		"Niche":        r.URL.Query().Get("niche"),
-		"AffLink":      r.URL.Query().Get("aff_link"),
-		"PhotoURL":     r.URL.Query().Get("photo_url"),
+		"ProductName":         r.URL.Query().Get("product_name"),
+		"ProductPrice":        r.URL.Query().Get("product_price"),
+		"Niche":               r.URL.Query().Get("niche"),
+		"AffLink":             r.URL.Query().Get("aff_link"),
+		"PhotoURL":            r.URL.Query().Get("photo_url"),
+		"SourceMusicTitle":    r.URL.Query().Get("source_music_title"),
+		"SourceMusicVideoURL": r.URL.Query().Get("source_music_video_url"),
 	}
 	if pid, err := strconv.ParseInt(r.URL.Query().Get("product_id"), 10, 64); err == nil && pid > 0 && s.Products != nil {
 		if p, err := s.Products.GetByID(pid); err == nil {
@@ -139,10 +134,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"InitialMode", mode,
 		"Notice", notice,
 		"Warning", r.URL.Query().Get("warn"),
-		"Sounds", sounds,
-		"TopSound", topSound(sounds),
-		"TrendsSource", studio.TrendsSource,
-		"TrendsErr", errText(trendsErr),
 		"MediaGenOK", mgOK,
 		"FlowReady", flowReady,
 		"FlowStatus", flowStatus,
@@ -152,10 +143,6 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		"AvailableModels", availableModels,
 		"Prefill", prefill,
 		"SelectedModelID", selectedModelID,
-		"AudioStoryPlots", studio.GetCuratedAudioStories(""),
-		"DefStoryGenre", s.atSettingStr(automation.KeyStoryGenre, "tâm lý"),
-		"DefStoryWords", s.atSettingInt(automation.KeyStoryWords, 600),
-		"DefStoryScenes", s.atSettingInt(automation.KeyStoryScenes, 6),
 		"Error", r.URL.Query().Get("err"),
 	))
 }

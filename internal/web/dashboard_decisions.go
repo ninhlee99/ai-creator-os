@@ -34,7 +34,7 @@ func (s *Server) recentDashboardDecisions(limit int) ([]dashboardDecisionView, e
 			return nil, err
 		}
 		d.Evidence = dashboardDecisionEvidence(d.Agent, d.Action, rawInputs)
-		d.NextStep, d.NextHref = dashboardDecisionNextStep(d.Agent, d.Action, rawInputs, d.Target)
+		d.NextStep, d.NextHref = dashboardDecisionNextStep(d.Agent, d.Action, d.Target)
 		out = append(out, d)
 	}
 	return out, rows.Err()
@@ -71,10 +71,6 @@ func dashboardDecisionEvidence(agent, action, raw string) string {
 		keys = []struct{ key, label string }{
 			{"item", "mục Growth"}, {"job_id", "job"}, {"quota_day", "ngày quota"}, {"used", "quota đã dùng"},
 		}
-	case agent == "story_publisher":
-		keys = []struct{ key, label string }{
-			{"job_id", "job"}, {"privacy", "privacy"}, {"draft", "bản nháp"},
-		}
 	case agent == "system" && action == "commission_reconcile":
 		keys = []struct{ key, label string }{{"source_state", "trạng thái nguồn"}}
 	default:
@@ -103,9 +99,7 @@ func dashboardDecisionEvidence(agent, action, raw string) string {
 	case agent == "growth_analyst":
 		source = "Growth snapshots"
 	case agent == "growth_publisher":
-		source = "Growth + YouTube API/quota"
-	case agent == "story_publisher":
-		source = "YouTube API"
+		source = "Growth + TikTok"
 	case agent == "system" && action == "commission_reconcile":
 		source = "AccessTrade reconciliation"
 	}
@@ -129,7 +123,7 @@ func dashboardEvidenceScalar(value any) (string, bool) {
 	}
 }
 
-func dashboardDecisionNextStep(agent, action, rawInputs, target string) (string, string) {
+func dashboardDecisionNextStep(agent, action, target string) (string, string) {
 	switch {
 	case agent == "system" && action == "commission_reconcile":
 		return "Mở đối soát Accesstrade", "/products#at-orders"
@@ -137,12 +131,6 @@ func dashboardDecisionNextStep(agent, action, rawInputs, target string) (string,
 		return "Mở danh sách sản phẩm", "/products"
 	case strings.HasPrefix(agent, "growth_") || agent == "growth":
 		return "Mở Growth", "/growth"
-	case agent == "story_publisher":
-		jobID := dashboardDecisionJobID(rawInputs)
-		if jobID != "" {
-			return "Mở job Studio", "/studio/jobs?id=" + jobID + "#job-" + jobID
-		}
-		return "Mở danh sách job", "/studio/jobs"
 	case agent == "autopilot":
 		if target != "" {
 			return "Mở job Studio", "/studio/jobs?id=" + target + "#job-" + target
@@ -153,14 +141,4 @@ func dashboardDecisionNextStep(agent, action, rawInputs, target string) (string,
 	default:
 		return "", ""
 	}
-}
-
-func dashboardDecisionJobID(raw string) string {
-	var inputs struct {
-		JobID string `json:"job_id"`
-	}
-	if json.Unmarshal([]byte(raw), &inputs) != nil {
-		return ""
-	}
-	return inputs.JobID
 }

@@ -18,7 +18,6 @@
   <a href="/accounts/{{$id}}?tab=overview"{{if eq .Tab "overview"}} class="active"{{end}}>Tổng quan</a>
   <a href="/accounts/{{$id}}?tab=model-photos"{{if eq .Tab "model-photos"}} class="active"{{end}}>👤 Nhân vật &amp; Khuôn mặt AI</a>
   <a href="/accounts/{{$id}}?tab=brand-dna"{{if eq .Tab "brand-dna"}} class="active"{{end}}>🧬 Bản sắc thương hiệu (Brand DNA)</a>
-  <a href="/accounts/{{$id}}?tab=comments"{{if eq .Tab "comments"}} class="active"{{end}}>💬 Mô phỏng trả lời</a>
   <a href="/accounts/{{$id}}?tab=autopilot"{{if eq .Tab "autopilot"}} class="active"{{end}}>Autopilot</a>
   <a href="/accounts/{{$id}}?tab=connections"{{if eq .Tab "connections"}} class="active"{{end}}>Kết nối</a>
 </nav>
@@ -32,15 +31,8 @@
     <a href="/accounts/{{$id}}/edit" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">✏️ Chỉnh sửa</a>
   </div>
   <dl class="kv">
-    <dt>Persona</dt><dd>{{.Acct.PersonaLabel}}</dd>
     <dt>Chủ đề</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
-    <dt>{{.GrowthFollowersLabel}}</dt><dd>{{if .GrowthHasFollowers}}{{.GrowthFollowers}}{{else}}chưa kết nối{{end}}</dd>
-    <dt>Kênh YouTube</dt><dd>{{if .Acct.YoutubeChannel}}{{.Acct.YoutubeChannel}}{{else}}—{{end}}</dd>
-    <dt>YouTube Analytics</dt><dd>{{if eq .YTAnalytics "ok"}}<span class="badge badge-warn" title="Có token file; chưa gọi Analytics API để kiểm scope hoặc quyền">Có token · API chưa kiểm</span>{{else if eq .YTAnalytics "chuakenh"}}<span class="badge badge-no">Chưa gắn kênh</span>{{else}}<span class="badge badge-no" title="Cần kết nối YouTube ở tab Kết nối bên dưới và cấp quyền đọc số liệu">Chưa có token</span>{{end}}</dd>
-    <dt>Loại nội dung YT</dt><dd>{{if .Acct.YoutubeContentTypes}}{{join ", " .Acct.YoutubeContentTypes}}{{else}}—{{end}}</dd>
-    {{if gt .Gifts 0.0}}<dt>Quà tặng nhận</dt><dd>{{fmtUSD .Gifts}}</dd>{{end}}
-    <dt>Adapter có cấu hình</dt><dd>{{if .Publishers}}{{join ", " .Publishers}}{{else}}—{{end}}</dd>
   </dl>
 </div>
 
@@ -65,7 +57,7 @@
       <a href="/studio?mode=ad&account={{.Acct.Username}}" class="btn btn-secondary btn-sm">🛍️ Mở Studio Affiliate</a>
     </div>
     {{else}}
-    <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Kênh chưa có ảnh tham chiếu. Tải ảnh nhân vật để gửi kèm yêu cầu tạo video.</p>
+    <p style="color:var(--muted);font-size:13px;margin:12px 0 16px">Chưa có ảnh tham chiếu.</p>
     <a href="/accounts/{{$id}}?tab=model-photos" class="btn btn-primary btn-sm" style="align-self:flex-start">📁 Tải lên ảnh nhân vật ngay</a>
     {{end}}
   </div>
@@ -74,34 +66,6 @@
 </div>
 
 
-
-{{if .Acct.Topics}}
-<h2>Kế hoạch chủ đề</h2>
-<ul class="clean">
-  {{range .Acct.Topics}}<li>{{.}}</li>{{end}}
-</ul>
-{{end}}
-
-{{if .GrowthProfile}}
-<h2>Phát triển kênh 🌱</h2>
-<p>
-  Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
-  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — xem &amp; điều chỉnh tại tab Autopilot.</span>
-</p>
-{{if not .GrowthHasSnapshot}}{{end}}
-{{end}}
-
-<h2>Lịch sử quyết định</h2>
-{{if .Decisions}}
-<ul class="clean">
-  {{range .Decisions}}
-  <li>{{with agentLabel .Agent}}{{.Icon}} {{.Label}}{{end}} · <span class="badge badge-draft">{{statusLabel .Action}}</span>
-    {{if .Target}} → {{.Target}}{{end}}{{if .Reason}}<br><span style="color:var(--muted)">{{.Reason}}</span>{{end}}</li>
-  {{end}}
-</ul>
-{{else}}
-<p class="empty">Chưa có quyết định nào cho kênh này.</p>
-{{end}}
 
 {{else if eq .Tab "model-photos"}}
 
@@ -137,10 +101,7 @@
     </div>
 
     {{else}}
-    <p class="empty" style="padding:24px 12px;text-align:center;color:var(--muted)">
-      Chưa có ảnh nhân vật nào được lưu cho kênh này.<br>
-      Hãy tải lên ảnh chụp rõ chân dung nhân vật ở form bên phải.
-    </p>
+    <p class="empty" style="padding:24px 12px;text-align:center;color:var(--muted)">Chưa có ảnh tham chiếu.</p>
     {{end}}
   </div>
 
@@ -160,10 +121,7 @@
       </div>
 
       <div style="background:var(--bg2);border-left:3px solid var(--accent);padding:10px 12px;border-radius:6px;font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-        <strong>Ảnh tham chiếu cho luồng Studio tương thích:</strong><br>
-        • Góc chính diện và góc nghiêng rõ, ánh sáng đều, không che khuất khuôn mặt.<br>
-        • Ảnh được lưu theo kênh; không phải mọi luồng đều dùng toàn bộ ảnh.<br>
-        • Ảnh tham chiếu không bảo đảm kết quả tạo ảnh/video giữ nguyên diện mạo ở mọi khung hình.
+        Ảnh rõ mặt, đủ sáng · kết quả tạo không đảm bảo giữ nguyên diện mạo.
       </div>
 
       <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700">Lưu ảnh tham chiếu</button>
@@ -176,7 +134,7 @@
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px">
   <div>
     <h2 style="margin:0 0 4px;font-size:18px">🧬 Bản Sắc Thương Hiệu (Brand DNA)</h2>
-    <p class="hint" style="margin:4px 0 0">{{.BrandDNAStatus}} Mẫu mặc định là gợi ý, không phải dữ liệu đo về khán giả. Affiliate Director dùng positioning, audience, tone, visual style và red lines; Trend Intelligence tạo gợi ý heuristic từ positioning, content pillars và hook rules. Các job khác chưa chắc dùng hồ sơ này.</p>
+    <p class="hint" style="margin:4px 0 0">{{.BrandDNAStatus}}</p>
   </div>
   <form method="post" action="/accounts/{{$id}}/brand-dna/reset" data-confirm="Thay toàn bộ Brand DNA hiện tại bằng mẫu gợi ý theo ngách đã cấu hình?">
     <button type="submit" class="btn btn-secondary btn-sm">🔄 Dùng lại mẫu theo ngách</button>
@@ -267,7 +225,7 @@
     <div class="field">
       <label>Checklist lưu theo kênh (mỗi dòng 1 mục)</label>
       <textarea name="qc_checklist" rows="6" style="font-size:13px;line-height:1.4">{{if .BrandDNA}}{{join "\n" .BrandDNA.QCChecklist}}{{end}}</textarea>
-      <div class="hint">Được lưu để tham khảo; hiện chưa tự kiểm tra nội dung hoặc chặn đăng.</div>
+      <span class="badge badge-dim">Chỉ lưu tham khảo</span>
     </div>
   </div>
 
@@ -283,7 +241,7 @@
 <h2>Phát triển kênh 🌱</h2>
 <p>
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
-  <span class="hint">(từ {{.GrowthProfile.StartedAt}}) — hành động Growth phụ thuộc snapshot số liệu thật và ngưỡng đã cấu hình; xem tổng quan tại <a href="/growth">Phát triển kênh</a>.</span>
+  <span class="hint">Từ {{.GrowthProfile.StartedAt}} · <a href="/growth">Tăng trưởng</a></span>
 </p>
 {{if not .GrowthHasSnapshot}}{{end}}
 
@@ -392,7 +350,6 @@
         <option value="{{.Slug}}"{{if eq $.Acct.Theme .Slug}} selected{{end}}>{{.Label}}</option>
         {{end}}
       </select>
-      <div class="hint">Chủ đề dùng để lọc sản phẩm. Autopilot hiện chưa tạo video tự động.</div>
     </div>
     <button type="submit" class="btn btn-secondary btn-sm">Lưu chủ đề</button>
   </form>
@@ -417,9 +374,9 @@
   {{if .AutopilotConfigured}}
     <p><span class="badge badge-warn">Đã lưu cấu hình · producer đang tạm dừng</span></p>
   {{else}}
-    <p class="hint">Bật Autopilot và chọn chủ đề để lưu cấu hình. Producer chưa chạy đến khi có xác nhận dùng Google Flow credits.</p>
+    <p><span class="badge badge-warn">Producer tạm dừng</span></p>
   {{end}}
-  <p class="hint" style="margin:6px 0 0">Video tự động đang tạm dừng vì chưa có xác nhận dùng Google Flow credits theo kênh.</p>
+  <p class="hint" style="margin:6px 0 0">Cần xác nhận dùng Google Flow credits để chạy video tự động.</p>
   </div>
 </div>
 </div>
@@ -439,7 +396,7 @@
     {{end}}
   </div>
   {{else}}
-  <p class="empty">Chưa có ảnh mẫu nào. Hãy upload ảnh của mẫu — hệ thống dùng để giữ đúng khuôn mặt khi làm video.</p>
+  <p class="empty">Chưa có ảnh mẫu.</p>
   {{end}}
   <div class="form-card">
     <h2 style="margin-top:0;border:none;padding:0">Tải ảnh mẫu lên (Chọn Nhiều Ảnh)</h2>
@@ -462,125 +419,23 @@
 
 {{else}}
 
-<div style="margin-bottom:16px">
-  <h2 style="margin:0 0 4px;font-size:18px">Kết nối nền tảng &amp; phân phối video</h2>
-  <p class="hint" style="margin:0">Trạng thái bên dưới phản ánh token/ID đã lưu; không gọi API để kiểm quyền đăng hoặc xác nhận publish thành công.</p>
-</div>
-
-<div class="grid2" style="margin-bottom:24px">
-  <!-- YouTube Connection Card -->
-  <div class="form-card" style="border-top:3px solid #ef4444">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-          <span style="color:#ef4444">▶</span> YouTube Studio
-        </h3>
-        <span class="hint">Shorts &amp; Video Chuẩn 9:16</span>
-      </div>
-      <div>
-        {{if .PubStatus.YoutubeTokenDead}}
-          <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
-        {{else if .PubStatus.YoutubeToken}}
-          <span class="badge badge-warn">Có token · API chưa kiểm</span>
-        {{else}}
-          <span class="badge badge-no">Chưa có OAuth Token</span>
-        {{end}}
-      </div>
-    </div>
-
-    <form method="post" action="/accounts/{{$id}}/youtube" style="margin-bottom:16px">
-      <div class="field">
-        <label>Channel ID (hoặc link kênh)</label>
-        <input type="text" name="channel" value="{{.Acct.YoutubeChannel}}" placeholder="vd: UCxxxxxxxxxxxxxxx">
-        <div class="hint">Dùng để quét số liệu subscribers, view và xếp hạng YPP.</div>
-      </div>
-      <div class="field">
-        <label>Loại nội dung sản xuất</label>
-        <input type="text" name="content_types" value="{{join ", " .Acct.YoutubeContentTypes}}"
-               placeholder="vd: short_video, ai_music">
-      </div>
-      <button type="submit" class="btn btn-secondary btn-sm">Lưu kênh YouTube</button>
-    </form>
-
-    <div style="border-top:1px dashed var(--border);padding-top:12px">
-      {{if .PubStatus.YoutubeClient}}
-        <a class="btn btn-sm" href="/publishers/youtube/authorize?username={{.Acct.Username}}">
-          {{if or .PubStatus.YoutubeToken .PubStatus.YoutubeTokenDead}}🔄 Cấp lại quyền YouTube OAuth{{else}}🔗 Nối YouTube OAuth ngay{{end}}
-        </a>
-      {{else}}
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối YouTube</a>
-      {{end}}
-    </div>
-  </div>
-
-  <!-- TikTok Connection Card -->
-  <div class="form-card" style="border-top:3px solid #00f2fe">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <h3 style="margin:0;display:flex;align-items:center;gap:8px">
-          <span>🎵</span> TikTok Creator
-        </h3>
-        <span class="hint">Video ngắn · mặc định tạo bản nháp; gắn link sản phẩm trong app TikTok</span>
-      </div>
-      <div>
-        {{if .PubStatus.TiktokTokenDead}}
-          <span class="badge badge-err">Token bị đánh dấu hết hạn</span>
-        {{else if .PubStatus.TiktokToken}}
-          <span class="badge badge-warn">Có token · API chưa kiểm</span>
-        {{else}}
-          <span class="badge badge-no">Chưa kết nối</span>
-        {{end}}
-      </div>
-    </div>
-    <div>
-      {{if .PubStatus.TiktokClient}}
-        <a class="btn btn-sm" href="/publishers/tiktok/authorize?username={{.Acct.Username}}">
-          {{if .PubStatus.TiktokToken}}🔄 Cấp lại quyền TikTok{{else}}🔗 Kết nối TikTok OAuth ngay{{end}}
-        </a>
-      {{else}}
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình kết nối TikTok</a>
-      {{end}}
-    </div>
-  </div>
-</div>
-
-<div class="form-card" style="margin-bottom:24px">
-  <h3 style="margin-top:0">Meta &amp; Mạng xã hội khác</h3>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-top:12px">
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b>📘 Facebook Page</b>
-        {{if .PubStatus.FbPage}}<span class="badge badge-warn">Có Page ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu Page ID hoặc token</span>{{end}}
-      </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Page video/bài viết; quyền và trạng thái publish cần kiểm tra.</p>
-      <div style="margin-top:10px">
-        {{if .PubStatus.FacebookClient}}
-          <a class="btn btn-sm" href="/publishers/facebook/authorize?username={{.Acct.Username}}">
-            {{if .PubStatus.FbPage}}🔄 Kết nối lại Facebook{{else}}📘 Đăng nhập Facebook{{end}}
-          </a>
-        {{else}}
-          <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">⚙️ Cấu hình Meta App ID / Secret</a>
-        {{end}}
-      </div>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b>📸 Instagram Reels</b>
-        {{if .PubStatus.Instagram}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
-      </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Reels; quyền đăng công khai phụ thuộc cấu hình opt-in.</p>
-    </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b>🧵 Threads</b>
-        {{if .PubStatus.Threads}}<span class="badge badge-warn">Có ID + token · API chưa kiểm</span>{{else}}<span class="badge badge-no">Thiếu ID hoặc token</span>{{end}}
-      </div>
-      <p class="hint" style="margin:6px 0 0;font-size:12px">Chỉ bài chữ kèm link; chưa hỗ trợ đăng video.</p>
-    </div>
-  </div>
-  <div style="margin-top:14px">
-    <a href="/settings/system" class="btn btn-secondary btn-sm">⚙️ Quản lý Token FB / IG / Threads trong Cài đặt</a>
-  </div>
+<div class="form-card" style="max-width:720px;margin-bottom:24px">
+  <h2 style="margin-top:0">Kết nối TikTok</h2>
+  <p class="hint">Token cục bộ; quyền gửi video chưa được xác minh end-to-end.</p>
+  {{if .PubStatus.TiktokTokenDead}}
+  <p><span class="badge badge-err">Token cần kết nối lại</span></p>
+  {{else if .PubStatus.TiktokToken}}
+  <p><span class="badge badge-warn">Đã lưu token · quyền API chưa kiểm</span></p>
+  {{else}}
+  <p><span class="badge badge-no">Chưa kết nối</span></p>
+  {{end}}
+  {{if .PubStatus.TiktokClient}}
+  <a class="btn btn-primary" href="/publishers/tiktok/authorize?username={{.Acct.Username}}">
+    {{if or .PubStatus.TiktokToken .PubStatus.TiktokTokenDead}}Kết nối lại TikTok{{else}}Đăng nhập TikTok{{end}}
+  </a>
+  {{else}}
+  <a href="/settings/system#tab-social" class="btn btn-secondary">Cấu hình TikTok Client Key / Secret</a>
+  {{end}}
 </div>
 
 <h2>Điều khiển &amp; Vòng đời Creator</h2>
@@ -603,120 +458,4 @@
 
 {{end}}
 
-{{if eq .Tab "comments"}}
-<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:18px">
-  <div style="display:flex;align-items:center;gap:10px">
-    <span style="font-size:26px">💬</span>
-    <div>
-      <h2 style="margin:0;font-size:18px;color:var(--text)">Tự Động Trả Lời Bình Luận &amp; Chốt Đơn</h2>
-      <div style="font-size:12.5px;color:var(--muted)">Thử cách phân loại và gợi ý câu trả lời. Chức năng này không gửi bình luận lên nền tảng.</div>
-    </div>
-  </div>
-  <span class="badge badge-dim" style="font-weight:700">Mô phỏng · không gửi thật</span>
-</div>
-
-<div class="grid2" style="margin-bottom:20px">
-  <!-- Cấu hình quy tắc kênh -->
-  <div class="form-card">
-    <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-      <span>⚙️</span> Quy Tắc Trả Lời &amp; Persona Kênh
-    </h3>
-    <dl class="kv">
-      <dt>Kênh phát sóng</dt><dd><b>@{{.Acct.Username}}</b></dd>
-      <dt>Tính cách AI (Persona)</dt><dd><span class="badge badge-info">{{.Acct.PersonaLabel}}</span></dd>
-      <dt>Ngành hàng / Niche</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}Đa năng{{end}}</dd>
-      <dt>Link Affiliate Mặc Định</dt><dd><code style="font-size:11px;word-break:break-all">{{if .Acct.AffiliateLink}}{{.Acct.AffiliateLink}}{{else}}Chưa cấu hình{{end}}</code></dd>
-      <dt>Tự động trả lời bình luận</dt><dd><span class="badge badge-warn">Chưa tích hợp nhận/gửi bình luận</span></dd>
-    </dl>
-
-  </div>
-
-  <!-- Trình giả lập phản hồi AI trực tiếp -->
-  <div class="form-card" style="border:1.5px solid var(--border)">
-    <h3 style="margin-top:0;display:flex;align-items:center;gap:8px">
-      <span>⚡</span> Mô phỏng phản hồi theo từ khóa
-    </h3>
-    <p class="hint">Dùng luật từ khóa và câu mẫu cố định; không gọi AI, không đọc bình luận từ nền tảng và không gửi phản hồi.</p>
-
-
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Áo này bao nhiêu tiền shop, có freeship không ạ?')">🛍️ Hỏi giá áo polo</button>
-      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Xin link mua tai nghe sony với ad ơi')">🎧 Xin link mua tai nghe</button>
-      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Video cuốn quá, làm thêm tập 2 đi bạn!')">🔥 Khen ngợi video</button>
-      <button type="button" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px" onclick="setSimComment('Dùng cái này coi chừng lừa đảo nha mọi người')">⚠️ Phản biện / Hoài nghi</button>
-    </div>
-
-    <div class="field" style="margin-bottom:12px">
-      <label>Nội dung bình luận của khán giả:</label>
-      <input type="text" id="sim-input-comment" placeholder="Dán bình luận thật để xem phản hồi dự kiến">
-    </div>
-
-    <button type="button" id="btn-sim-run" class="btn btn-primary btn-sm" style="width:100%;font-weight:700;padding:8px" onclick="runCommentSimulation({{$id}})">
-      ⚡ Tạo câu trả lời mẫu
-    </button>
-
-    <!-- Kết quả mô phỏng -->
-    <div id="sim-result-box" style="display:none;margin-top:14px;background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span class="badge badge-ok" id="sim-intent-tag" style="font-size:11px"></span>
-        <span class="badge badge-dim" id="sim-delay-tag" style="font-size:10.5px"></span>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Gợi ý trong mô phỏng:</div>
-      <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:10px" id="sim-action-text">Chỉ hiển thị gợi ý; không gửi bình luận</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Câu trả lời mẫu (chưa gửi):</div>
-      <div style="background:var(--bg2);padding:10px 12px;border-radius:8px;border-left:3px solid var(--accent);font-size:13px;line-height:1.5;color:var(--text)" id="sim-reply-text">
-
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function setSimComment(text) {
-  document.getElementById('sim-input-comment').value = text;
-}
-
-function runCommentSimulation(acctId) {
-  var comment = document.getElementById('sim-input-comment').value.trim();
-  if (!comment) {
-    alert('Vui lòng nhập nội dung bình luận.');
-    return;
-  }
-  var btn = document.getElementById('btn-sim-run');
-  var oldBtnText = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Đang phân tích ý định...';
-
-  var data = new URLSearchParams();
-  data.append('comment', comment);
-
-  fetch('/accounts/' + acctId + '/comments/simulate', {
-    method: 'POST',
-    body: data,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(res) {
-    btn.disabled = false;
-    btn.innerHTML = oldBtnText;
-    if (!res.ok) {
-      alert('Lỗi: ' + (res.error || 'Không thử nghiệm được'));
-      return;
-    }
-    document.getElementById('sim-result-box').style.display = 'block';
-    document.getElementById('sim-intent-tag').textContent = '🎯 ' + res.intent;
-    document.getElementById('sim-delay-tag').textContent = '⏱️ Thời gian chờ mô phỏng: ' + res.delay_sec + 's';
-    document.getElementById('sim-action-text').textContent = res.action;
-    document.getElementById('sim-reply-text').textContent = res.reply;
-    window.showToast('Đã tạo câu trả lời mẫu theo luật từ khóa.', true);
-  })
-  .catch(function(err) {
-    btn.disabled = false;
-    btn.innerHTML = oldBtnText;
-    alert('Lỗi kết nối: ' + err);
-  });
-}
-</script>
-
-{{end}}
 {{end}}

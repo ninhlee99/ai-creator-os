@@ -5,15 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
-	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/publishers"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 )
 
 // ------------------------------------------------------------ settings
@@ -37,11 +31,8 @@ func (s *Server) GrowthProductionEnabled() bool {
 // studioGrowthProducer adapts the Studio to automation.Producer.
 type studioGrowthProducer struct{ s *Server }
 
-// Enqueue renders one plan item. Product-theme accounts go through the
-// affiliate autopilot (theme -> product -> 30s format, per-account model
-// photos). Persona accounts go through the "Kể chuyện" YouTube pipeline
-// (story job) — fail-closed with an honest error when the Studio is not
-// ready or the item has no topic.
+// Enqueue renders one plan item. Product-theme accounts go through affiliate
+// autopilot. Persona production waits for a TikTok-native Growth renderer.
 func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.ProduceRequest) (string, error) {
 	a := req.Account
 	if a.Theme != "" {
@@ -57,39 +48,7 @@ func (p studioGrowthProducer) Enqueue(ctx context.Context, req automation.Produc
 		}
 		return res.JobID, nil
 	}
-	// Tài khoản persona: tạo job kể chuyện YouTube từ chủ đề của plan item.
-	if p.s.Studio == nil {
-		return "", fmt.Errorf("studio chưa sẵn sàng — không tạo được job kể chuyện")
-	}
-	topic := strings.TrimSpace(req.Item.Topic)
-	if topic == "" {
-		return "", fmt.Errorf("plan item thiếu chủ đề — không tạo được truyện")
-	}
-	switch req.Item.Variant {
-	case growth.VariantTikTok, growth.VariantShorts, growth.VariantYouTube:
-	default:
-		return "", fmt.Errorf("Growth variant không hỗ trợ: %q", req.Item.Variant)
-	}
-	mp := ""
-	if p.s.Cfg != nil {
-		if m := filepath.Join(filepath.Dir(p.s.Cfg.DatabasePath), "autopilot-music.m4a"); fileExists(m) {
-			mp = m
-		}
-	}
-	id, err := p.s.Studio.CreateStoryJob(studio.StoryParams{
-		Topic:         topic,
-		Genre:         "tâm lý",
-		TargetSeconds: growth.VariantSeconds(req.Item.Variant),
-		AspectRatio:   growth.VariantAspect(req.Item.Variant),
-		MusicOn:       mp != "",
-		MusicPath:     mp,
-		AccountID:     a.ID,
-		GrowthItemID:  req.Item.ID,
-	})
-	if err != nil {
-		return "", fmt.Errorf("tạo job kể chuyện lỗi: %w", err)
-	}
-	return id, nil
+	return "", fmt.Errorf("Growth chưa hỗ trợ tạo video TikTok cho tài khoản này; dùng luồng Video nhảy hoặc Affiliate trong Studio")
 }
 
 func (p studioGrowthProducer) JobState(jobID string) (string, string) {
@@ -107,61 +66,11 @@ func (p studioGrowthProducer) JobState(jobID string) (string, string) {
 	return j.Status, outPath
 }
 
-// youtubeGrowthUploader adapts the YouTube publisher to
-// automation.Uploader.
-type youtubeGrowthUploader struct{ s *Server }
-
-func (u youtubeGrowthUploader) State(a *network.Account) automation.YTState {
-	_, cidOK := u.s.effectiveEnv("YOUTUBE_CLIENT_ID")
-	_, csOK := u.s.effectiveEnv("YOUTUBE_CLIENT_SECRET")
-	priv, _ := u.s.effectiveEnv("YOUTUBE_DEFAULT_PRIVACY")
-	if priv == "" {
-		priv = "private"
-	}
-	return automation.YTState{
-		HasClient:  cidOK && csOK,
-		HasToken:   fileExists(publishers.YouTubeTokenPath(a.Username)),
-		HasChannel: a.YoutubeChannel != "",
-		Privacy:    priv,
-	}
-}
-
-func (u youtubeGrowthUploader) Upload(ctx context.Context, a *network.Account, videoPath, title, description, kind string) publishers.PublishResult {
-	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
-	pub.Synthetic = true // AI disclosure is mandatory (docs §3.6), never off
-	return pub.Publish(ctx, videoPath, title, description, kind)
-}
-
-// UploadMeta (Đợt M1): đăng kèm tags + thumbnail tùy chỉnh.
-func (u youtubeGrowthUploader) UploadMeta(ctx context.Context, a *network.Account, videoPath string, meta publishers.VideoMeta, kind string) publishers.PublishResult {
-	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
-	pub.Synthetic = true
-	return pub.PublishMeta(ctx, videoPath, meta, kind)
-}
-
-// HasRecentUpload (Đợt V — DuplicateChecker): kiểm tra video cùng tiêu đề
-// đã có trên kênh YouTube trong 24h qua chưa (chống đăng trùng khi retry).
-func (u youtubeGrowthUploader) HasRecentUpload(ctx context.Context, a *network.Account, title string, within time.Duration) (bool, error) {
-	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
-	return pub.FindRecentByTitle(ctx, title, within)
-}
-func (u youtubeGrowthUploader) UpdatePrivacy(ctx context.Context, a *network.Account, videoID, privacy string) error {
-	pub := publishers.NewYouTubePublisher(a.Username, a.YoutubeContentTypes, a.YoutubeChannel)
-	return pub.UpdatePrivacy(videoID, privacy)
-}
-
 func (s *Server) producer() automation.Producer {
 	if s.GrowthProducer != nil {
 		return s.GrowthProducer
 	}
 	return studioGrowthProducer{s: s}
-}
-
-func (s *Server) yt() automation.Uploader {
-	if s.GrowthYT != nil {
-		return s.GrowthYT
-	}
-	return youtubeGrowthUploader{s: s}
 }
 
 // ------------------------------------------------- automation service
@@ -177,19 +86,13 @@ func (s *Server) automation() *automation.Service {
 	svc.Settings = automation.LedgerSettings{L: s.Ledger}
 	svc.Env = s
 	svc.Producer = s.producer()
-	svc.Uploader = s.yt()
 	svc.Autopilot = s.Autopilot
-	if s.Studio != nil {
-		svc.ViralRunner = s.Studio
-	}
-	if key, ok := s.effectiveEnv("YOUTUBE_API_KEY"); ok && strings.TrimSpace(key) != "" {
-		svc.ViralRadar = viralradar.NewYouTube(key)
-	}
 	// Đợt AA: chỉ gán JobStore khi Studio thật sự tồn tại — gán nil
 	// *studio.Studio vào interface tạo interface non-nil chứa nil pointer,
 	// gọi method sẽ panic.
 	if s.Studio != nil {
 		svc.JobStore = s.Studio
+		svc.Maintenance = s.Studio
 	}
 	svc.CommissionSource = s.CommissionSource
 	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
@@ -206,19 +109,6 @@ func (s *Server) automation() *automation.Service {
 		svc.ATWorkDir = filepath.Join(dataDir, "at-hunter")
 		// Disk guard (Đợt L): đo % đĩa đã dùng tại thư mục dữ liệu.
 		svc.DataDir = dataDir
-		// Nhạc nền cho video hunter: dùng chung file nhạc autopilot
-		// Ninh đã upload ("" = video câm, job log ghi rõ).
-		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
-			svc.ATMusicPath = mp
-		}
-		// Story automation (Đợt F): kể chuyện ngôi thứ nhất. Nhạc nền dùng
-		// chung file autopilot Ninh đã upload.
-		if s.Studio != nil {
-			svc.Story = s.Studio
-		}
-		if mp := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(mp) {
-			svc.StoryMusicPath = mp
-		}
 	}
 	if s.Cfg != nil {
 		svc.Gate = s.Cfg
@@ -281,7 +171,7 @@ func (s *Server) handleGrowthProductionToggle(w http.ResponseWriter, r *http.Req
 	on := r.FormValue("enabled") == "1"
 	msg := "Đã tắt lịch Growth; thao tác chạy một vòng thủ công vẫn có thể xử lý plan đến hạn."
 	if on {
-		msg = "Đã bật lịch Growth. Tick có thể tạo Studio job và upload YouTube theo privacy setting khi item đến hạn và các gate, credential, quota đều qua. Trạng thái lưu không xác nhận worker đang chạy."
+		msg = "Đã bật lịch xử lý TikTok. Tick chỉ ghi nhận kết quả khi Studio và provider có evidence; trạng thái lưu không xác nhận worker đang chạy."
 	}
 	if err := s.automation().SetProductionEnabled(on); err != nil {
 		s.renderGrowth(w, []string{"Không lưu được cài đặt: " + err.Error()})

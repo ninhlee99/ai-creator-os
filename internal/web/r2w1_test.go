@@ -41,6 +41,7 @@ func TestShelfAddVisibleToAutopilot(t *testing.T) {
 		"commission_pct": {"20"},
 		"category":       {"điện tử"},
 		"theme":          {"cong-nghe"},
+		"product_url":    {"https://shop.example/item?aff=creator"},
 	})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("shelf add = %d, want 303", rec.Code)

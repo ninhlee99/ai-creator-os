@@ -10,7 +10,7 @@
 
 <section class="form-card" style="max-width:none;margin:16px 0">
   <h2>Gemini API · xác nhận gói miễn phí</h2>
-  <p>MiuNova không thể đọc trạng thái billing của Google. Khi bật, bạn xác nhận mọi Gemini API key hiện tại chỉ dùng quota miễn phí và project không bật thanh toán. Thêm, xóa hoặc đổi key sẽ tự khóa lại. Tạo video Google Veo luôn bị chặn vì cần project bật billing.</p>
+  <p>Billing không thể kiểm tra tự động. Xác nhận key chỉ dùng quota miễn phí; đổi key sẽ khóa lại. Veo cần billing nên đang khóa.</p>
   <form method="post" action="/settings/gemini-free-tier">
     <label style="display:flex;gap:10px;align-items:flex-start;margin:12px 0">
       <input type="checkbox" name="confirm_free" value="1" {{if .GeminiFreeTierConfirmed}}checked{{end}}>

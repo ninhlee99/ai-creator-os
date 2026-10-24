@@ -6,7 +6,6 @@ func TestAssignPersonaKeyword(t *testing.T) {
 	cases := map[string]string{
 		"học tiếng anh giao tiếp":   "teacher",
 		"kể chuyện đêm khuya":       "storyteller",
-		"live code mini-app python": "coder",
 		"chơi game indie chill":     "gamer",
 	}
 	for hint, want := range cases {
@@ -39,14 +38,14 @@ func TestAssignPersonaNeverAbovePhase2(t *testing.T) {
 func TestAssignPersonaDiversity(t *testing.T) {
 	// The only unused assignable persona wins.
 	used := map[string]int{"storyteller": 1, "teacher": 1, "gamer": 1}
-	if got := AssignPersona("", used); got != "coder" {
-		t.Errorf("AssignPersona diversity = %s, want coder", got)
+	if got := AssignPersona("", used); got != "gamer" {
+		t.Errorf("AssignPersona diversity = %s, want gamer", got)
 	}
 
 	// All used: reuse the least-used one, ties alphabetical.
-	usedAll := map[string]int{"storyteller": 2, "teacher": 1, "gamer": 1, "coder": 1}
-	if got := AssignPersona("something unrelated", usedAll); got != "coder" {
-		t.Errorf("AssignPersona least-used = %s, want coder", got)
+	usedAll := map[string]int{"storyteller": 2, "teacher": 1, "gamer": 1}
+	if got := AssignPersona("something unrelated", usedAll); got != "gamer" {
+		t.Errorf("AssignPersona least-used = %s, want gamer", got)
 	}
 
 	// Keyword match wins, but never duplicates an in-use persona.
@@ -57,12 +56,8 @@ func TestAssignPersonaDiversity(t *testing.T) {
 }
 
 func TestDescribe(t *testing.T) {
-	p, ok := Describe("coder")
-	if !ok {
-		t.Fatal("Describe(coder) not found")
-	}
-	if p.Phase != 2 {
-		t.Errorf("coder phase = %d, want 2", p.Phase)
+	if _, ok := Describe("coder"); ok {
+		t.Error("removed coder persona should be unknown")
 	}
 	if _, ok := Describe("nope"); ok {
 		t.Error("Describe(nope) should report unknown")

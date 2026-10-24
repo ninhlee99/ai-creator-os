@@ -1,36 +1,72 @@
 package web
 
 import (
+	"encoding/json"
+	"net/http"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"net/http"
-	"path/filepath"
-	"sort"
-	"time"
 )
 
 // ------------------------------------------------------------- /growth
 
-// growthAccountRow is one account's growth state on the overview page.
+// growthAccountRow is one account's TikTok growth state.
 type growthAccountRow struct {
-	Account               network.Account
-	Stage                 string
-	NextLabel             string
-	NextMetric            string
-	NextValue             float64
-	NextTarget            float64
-	NextPct               float64
-	HasNext               bool
-	HasSnapshot           bool
-	Followers             int64
-	FollowersLabel        string
-	ViewsTotal            int64
-	YTAnalyticsConfigured bool
-	YTUpload              string // YouTube upload readiness label (phase 2)
-	YTReady               bool
-	YPP                   []growth.YPPTierProgress // chỉ kênh YouTube
+	Account        network.Account
+	Stage          string
+	NextLabel      string
+	NextMetric     string
+	NextValue      float64
+	NextTarget     float64
+	NextPct        float64
+	HasNext        bool
+	HasSnapshot    bool
+	Followers      int64
+	FollowersKnown bool
+	VideoCount     int64
+	VideosKnown    bool
+	FollowersLabel string
+	Views30d       float64
+}
+
+type growthVideoMetricRow struct {
+	Username    string
+	VideoID     string
+	URL         string
+	Title       string
+	PublishedAt string
+	TakenAt     string
+	Views       string
+	Likes       string
+	Comments    string
+	Shares      string
+}
+
+type growthStudioVideoRow struct {
+	Username       string
+	JobID          string
+	Title          string
+	KindLabel      string
+	VideoID        string
+	URL            string
+	Views          string
+	Likes          string
+	Comments       string
+	Shares         string
+	TakenAt        string
+	HasMetrics     bool
+	AttributionID  string
+	Orders         accesstrade.OrderAttributionSummary
+	OrdersKnown    bool
+	OrdersSyncedAt string
 }
 
 type growthAlertRow struct {
@@ -60,42 +96,24 @@ func (s *Server) growthMediaOutput(jobID string) string {
 	return name
 }
 
-// primaryPlatform: accounts are TikTok-first; an account that carries
-// YouTube content types is treated as a YouTube channel for growth.
-func primaryPlatform(a *network.Account) string {
-	if len(a.YoutubeContentTypes) > 0 {
-		return "youtube"
-	}
-	return "tiktok"
-}
-
-func hasYouTube(a *network.Account) bool {
-	return a.YoutubeChannel != "" || len(a.YoutubeContentTypes) > 0
-}
-
 func metricValue(snap *growth.Snapshot, metric string) (float64, bool) {
 	if snap == nil {
 		return 0, false
 	}
 	switch metric {
-	case "followers", "subs", "subscribers":
+	case "followers":
 		if snap.Followers != nil {
 			return float64(*snap.Followers), true
 		}
-	case "watch_hours_12m", "views_total", "shorts_views_90d":
-		if v, ok := snap.Extra[metric]; ok {
-			switch n := v.(type) {
-			case int64:
-				return float64(n), true
-			case float64:
-				return n, true
-			}
+	case "views_30d":
+		if snap.Views30d != nil {
+			return *snap.Views30d, true
 		}
 	}
 	return 0, false
 }
 
-// growthView builds all data for the /growth page (also reused after a sync).
+// growthView builds all data for the /growth page.
 func (s *Server) growthView() map[string]any {
 	ctx := map[string]any{}
 	accounts, err := s.Mgr.List()
@@ -104,71 +122,66 @@ func (s *Server) growthView() map[string]any {
 		return ctx
 	}
 	ctx["Accounts"] = accounts
-	// Phase-2 production defaults — set before any early return so the
-	// production card renders honestly even with zero accounts.
 	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
 	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
 	ctx["Thresholds"] = automation.LoadThresholds(s.settings())
-	ctx["QuotaUsed"] = 0
-	ctx["QuotaLeft"] = growth.QuotaUploadsLeft(0)
-	ctx["QuotaLimit"] = growth.DailyQuotaUnits
-	ctx["QuotaPerUpload"] = growth.UploadCostUnits
-	ctx["QuotaReady"] = false
-	ctx["YTPrivacy"] = "private"
 	if s.Growth == nil {
 		ctx["Error"] = "Module Phát triển kênh chưa khởi tạo được (xem log máy chủ)."
 		return ctx
 	}
-	ytKeyVal, _ := s.effectiveEnv("YOUTUBE_API_KEY")
-	ytKey := ytKeyVal != ""
+
 	today := s.today()
 	var rows []growthAccountRow
 	var alerts []growthAlertRow
 	var upcoming []growthItemRow
-	var totalYTSubscribers, totalTikTokFollowers, totalViews int64
-	for i := range accounts {
-		a := accounts[i]
-		prof, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a))
-		if err != nil || prof == nil {
+	var videoMetrics []growthVideoMetricRow
+	var studioVideoMetrics []growthStudioVideoRow
+	var totalFollowers int64
+	var totalViews30d float64
+	allViews30dKnown := len(accounts) > 0
+	hasTikTokMetrics := false
+	atOrdersSyncedAt := ""
+	atOrdersSynced := false
+	if s.AT != nil {
+		atOrdersSyncedAt, atOrdersSynced = s.AT.GetSyncState("orders.until")
+	}
+	for _, account := range accounts {
+		profile, err := s.Growth.EnsureProfile(account.ID)
+		if err != nil || profile == nil {
 			continue
 		}
-		row := growthAccountRow{Account: *a, Stage: prof.Stage, YTAnalyticsConfigured: ytKey && a.YoutubeChannel != ""}
-		ytState := s.yt().State(a)
-		row.YTUpload = ytState.Label()
-		row.YTReady = ytState.Ready()
-		latest, _ := s.Growth.LatestSnapshot(a.ID)
-		if hasYouTube(a) {
-			row.YPP = growth.YPPProgress(latest)
-		}
-		if latest != nil {
-			row.HasSnapshot = true
-			row.FollowersLabel = growthFollowersLabel(latest.Source)
+		row := growthAccountRow{Account: *account, Stage: profile.Stage}
+		latest, _ := s.Growth.LatestSnapshot(account.ID)
+		if latest != nil && latest.Source == "tiktok_api" {
+			row.FollowersLabel = "TikTok followers"
 			if latest.Followers != nil {
+				row.FollowersKnown = true
 				row.Followers = *latest.Followers
-				switch latest.Source {
-				case "youtube_api":
-					totalYTSubscribers += *latest.Followers
-				case "tiktok_api":
-					totalTikTokFollowers += *latest.Followers
-				}
+				totalFollowers += *latest.Followers
 			}
-			if v, ok := metricValue(latest, "views_total"); ok {
-				row.ViewsTotal = int64(v)
-				totalViews += int64(v)
+			if latest.Videos != nil {
+				row.VideosKnown = true
+				row.VideoCount = *latest.Videos
 			}
-			if targets, err := s.Growth.ListTargets(a.ID); err == nil {
-				for _, t := range targets {
-					if t.ReachedAt != "" {
+			if latest.Views30d != nil {
+				row.Views30d = *latest.Views30d
+				totalViews30d += *latest.Views30d
+			} else {
+				allViews30dKnown = false
+			}
+			row.HasSnapshot = row.FollowersKnown || row.VideosKnown || latest.Views30d != nil
+			hasTikTokMetrics = hasTikTokMetrics || row.HasSnapshot
+			if targets, err := s.Growth.ListTargets(account.ID); err == nil {
+				for _, target := range targets {
+					if target.ReachedAt != "" {
 						continue
 					}
-					row.NextLabel = t.Label
-					row.NextMetric = t.Metric
-					row.NextTarget = t.Threshold
-					if cur, ok := metricValue(latest, t.Metric); ok {
-						row.NextValue = cur
+					row.NextLabel, row.NextMetric, row.NextTarget = target.Label, target.Metric, target.Threshold
+					if current, ok := metricValue(latest, target.Metric); ok {
+						row.NextValue = current
 					}
-					if t.Threshold > 0 {
-						row.NextPct = row.NextValue / t.Threshold * 100
+					if target.Threshold > 0 {
+						row.NextPct = row.NextValue / target.Threshold * 100
 						if row.NextPct > 100 {
 							row.NextPct = 100
 						}
@@ -177,24 +190,77 @@ func (s *Server) growthView() map[string]any {
 					break
 				}
 			}
+		} else {
+			allViews30dKnown = false
 		}
 		rows = append(rows, row)
 
-		if al, err := s.Growth.ListAlerts(a.ID, 5); err == nil {
-			for _, x := range al {
-				alerts = append(alerts, growthAlertRow{Alert: x, Username: a.Username})
+		if metrics, err := s.Growth.LatestVideoMetricRows(account.ID, 30); err == nil {
+			for _, metric := range metrics {
+				videoURL := ""
+				if studio.IsTikTokVideoURL(metric.ShareURL) {
+					videoURL = metric.ShareURL
+				} else if numericTikTokVideoID(metric.PlatformVideoID) {
+					videoURL = "https://www.tiktok.com/video/" + metric.PlatformVideoID
+				}
+				title := strings.TrimSpace(metric.Title)
+				if title == "" {
+					title = "Video TikTok " + metric.PlatformVideoID
+				}
+				videoMetrics = append(videoMetrics, growthVideoMetricRow{
+					Username: account.Username, VideoID: metric.PlatformVideoID, URL: videoURL, Title: title,
+					PublishedAt: shortMetricTime(metric.PublishedAt), TakenAt: shortMetricTime(metric.TakenAt),
+					Views: metricLabel(metric.Views), Likes: metricLabel(metric.Likes),
+					Comments: metricLabel(metric.Comments), Shares: metricLabel(metric.Shares),
+				})
 			}
 		}
-		if items, err := s.Growth.ActivePlanItems(a.ID); err == nil {
-			for _, it := range items {
-				switch it.Status {
-				case growth.ItemPlanned, growth.ItemEnqueueing, growth.ItemProducing, growth.ItemProduced, growth.ItemPublishing,
-					growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview:
-					if it.Status != growth.ItemPlanned || it.PlannedFor >= today {
-						upcoming = append(upcoming, growthItemRow{
-							PlanItem: it, Username: a.Username,
-							OutputFile: s.growthMediaOutput(it.StudioJobID),
-						})
+		if s.Studio != nil {
+			if publications, err := s.Studio.TikTokPublications(account.ID, 100); err == nil {
+				for _, publication := range publications {
+					row := growthStudioVideoRow{
+						Username: account.Username, JobID: publication.JobID, Title: publication.Title,
+						KindLabel: "TikTok Viral", VideoID: publication.PlatformVideoID, URL: publication.VideoURL,
+						Views: "—", Likes: "—", Comments: "—", Shares: "—", TakenAt: "—",
+					}
+					if publication.Kind == studio.KindAffiliate {
+						row.KindLabel = "Affiliate TikTok"
+						if job, ok := s.Studio.GetJob(publication.JobID); ok {
+							var params studio.AffiliateParams
+							if json.Unmarshal([]byte(job.Params), &params) == nil {
+								row.AttributionID = strings.TrimSpace(params.AffiliateAttributionID)
+							}
+						}
+						if row.AttributionID != "" && s.AT != nil && atOrdersSynced {
+							if orders, err := s.AT.OrderAttributionBySub2(row.AttributionID); err == nil {
+								row.Orders = orders
+								row.OrdersKnown = true
+								row.OrdersSyncedAt = shortMetricTimeString(atOrdersSyncedAt)
+							}
+						}
+					}
+					if metric, found, err := s.Growth.LatestVideoMetric(account.ID, publication.PlatformVideoID); err == nil && found {
+						row.Views, row.Likes = metricLabel(metric.Views), metricLabel(metric.Likes)
+						row.Comments, row.Shares = metricLabel(metric.Comments), metricLabel(metric.Shares)
+						row.TakenAt, row.HasMetrics = shortMetricTime(metric.TakenAt), true
+					}
+					studioVideoMetrics = append(studioVideoMetrics, row)
+				}
+			}
+		}
+
+		if accountAlerts, err := s.Growth.ListAlerts(account.ID, 5); err == nil {
+			for _, alert := range accountAlerts {
+				alerts = append(alerts, growthAlertRow{Alert: alert, Username: account.Username})
+			}
+		}
+		if items, err := s.Growth.ActivePlanItems(account.ID); err == nil {
+			for _, item := range items {
+				switch item.Status {
+				case growth.ItemPlanned, growth.ItemEnqueueing, growth.ItemProducing, growth.ItemProduced, growth.ItemFailed:
+					if item.Status != growth.ItemPlanned || item.PlannedFor >= today {
+						upcoming = append(upcoming, growthItemRow{PlanItem: item, Username: account.Username,
+							OutputFile: s.growthMediaOutput(item.StudioJobID)})
 					}
 				}
 			}
@@ -213,45 +279,53 @@ func (s *Server) growthView() map[string]any {
 	if len(upcoming) > 20 {
 		upcoming = upcoming[:20]
 	}
-	ctx["Rows"] = rows
-	ctx["Alerts"] = alerts
-	ctx["Upcoming"] = upcoming
-	ctx["TotalYTSubscribers"] = totalYTSubscribers
-	ctx["TotalTikTokFollowers"] = totalTikTokFollowers
-	ctx["TotalViews"] = totalViews
-	ctx["HasYTKey"] = ytKey
-	// Phase-2 production state: toggle, quota today, upload privacy.
-	ctx["ProdEnabled"] = s.GrowthProductionEnabled()
-	ctx["ProdDryRun"] = s.Cfg != nil && s.Cfg.DryRun()
-	// Đợt AA: số job đang chờ/đang chạy trong Studio — user biết hàng đợi dài bao nhiêu.
+	ctx["Rows"], ctx["Alerts"], ctx["Upcoming"] = rows, alerts, upcoming
+	ctx["TotalTikTokFollowers"] = totalFollowers
+	ctx["TotalViews30d"] = totalViews30d
+	ctx["TikTokMetricsAvailable"] = hasTikTokMetrics
+	ctx["Views30dKnown"] = allViews30dKnown
+	ctx["VideoMetrics"] = videoMetrics
+	ctx["StudioVideoMetrics"] = studioVideoMetrics
 	ctx["StudioPending"] = 0
 	if s.Studio != nil {
 		ctx["StudioPending"] = s.Studio.PendingJobCount()
 	}
-	quotaDay := growth.YouTubeQuotaDay(time.Now())
-	if used, err := s.Growth.QuotaUsed(quotaDay); err == nil {
-		ctx["QuotaUsed"] = used
-		ctx["QuotaLeft"] = growth.QuotaUploadsLeft(used)
-		ctx["QuotaReady"] = true
-	}
-	ctx["QuotaLimit"] = growth.DailyQuotaUnits
-	ctx["QuotaPerUpload"] = growth.UploadCostUnits
-	if priv, _ := s.effectiveEnv("YOUTUBE_DEFAULT_PRIVACY"); priv != "" {
-		ctx["YTPrivacy"] = priv
-	} else {
-		ctx["YTPrivacy"] = "private"
-	}
-	// Chỉ hiện bảng tiến độ YPP khi có ít nhất 1 kênh YouTube.
-	hasYT := false
-	for i := range accounts {
-		if hasYouTube(accounts[i]) {
-			hasYT = true
-			break
-		}
-	}
-	ctx["HasYTAccount"] = hasYT
 	ctx["Today"] = today
 	return ctx
+}
+
+func metricLabel(value *int64) string {
+	if value == nil {
+		return "—"
+	}
+	return strconv.FormatInt(*value, 10)
+}
+
+func shortMetricTime(value time.Time) string {
+	if value.IsZero() {
+		return "—"
+	}
+	return value.Local().Format("02/01/2006 15:04")
+}
+
+func shortMetricTimeString(value string) string {
+	parsed, err := time.Parse(time.RFC3339, strings.TrimSpace(value))
+	if err != nil {
+		return "—"
+	}
+	return shortMetricTime(parsed)
+}
+
+func numericTikTokVideoID(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // recentGrowthAlerts returns the newest persisted growth alerts for the
@@ -299,8 +373,7 @@ func (s *Server) dashboardGrowthState(accounts []*network.Account) ([]growthItem
 			displayStatus := statusLabel(item.Status)
 			isOverdue := false
 			switch item.Status {
-			case growth.ItemEnqueueing, growth.ItemProducing, growth.ItemQC, growth.ItemQueued, growth.ItemProduced, growth.ItemPublishing,
-				growth.ItemWaitingConnect, growth.ItemWaitingQuota, growth.ItemNeedsReview, growth.ItemFailed:
+			case growth.ItemEnqueueing, growth.ItemProducing, growth.ItemQC, growth.ItemQueued, growth.ItemProduced, growth.ItemFailed:
 			case growth.ItemPlanned:
 				if item.PlannedFor == "" || item.PlannedFor >= today {
 					continue
@@ -312,8 +385,7 @@ func (s *Server) dashboardGrowthState(accounts []*network.Account) ([]growthItem
 			}
 			row := growthItemRow{PlanItem: item, Username: account.Username, DashboardStatus: displayStatus}
 			queue = append(queue, row)
-			if isOverdue || item.Status == growth.ItemProduced || item.Status == growth.ItemWaitingConnect ||
-				item.Status == growth.ItemWaitingQuota || item.Status == growth.ItemNeedsReview || item.Status == growth.ItemFailed {
+			if isOverdue || item.Status == growth.ItemProduced || item.Status == growth.ItemFailed {
 				attention = append(attention, row)
 			}
 		}
@@ -350,6 +422,10 @@ func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 	accounts, err := s.Mgr.List()
 	if err != nil {
+		if r.Header.Get("HX-Request") == "true" {
+			s.renderGrowthSyncResult(w, r, s.ctx("SyncError", err.Error()))
+			return
+		}
 		s.render(w, "growth", s.ctx("Error", err.Error()))
 		return
 	}
@@ -362,7 +438,19 @@ func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 		data[k] = v
 	}
 	data["SyncNotes"] = notes
+	if r.Header.Get("HX-Request") == "true" {
+		s.renderGrowthSyncResult(w, r, data)
+		return
+	}
 	s.render(w, "growth", data)
+}
+
+func (s *Server) renderGrowthSyncResult(w http.ResponseWriter, r *http.Request, data map[string]any) {
+	t := s.templates["growth"]
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := t.ExecuteTemplate(w, "growth-sync-result", data); err != nil {
+		http.Error(w, "Không hiển thị được kết quả đồng bộ", http.StatusInternalServerError)
+	}
 }
 
 // ------------------------------------------------------------- plans

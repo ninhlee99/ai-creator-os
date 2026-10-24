@@ -6,8 +6,7 @@ package automation
 //     goroutine chết lặng) → failed + log rõ. Restart đã có
 //     MarkInterruptedJobs trong main.go.
 //  2. Canh đĩa: đầy quá ngưỡng → tự dọn theo thứ tự an toàn:
-//     file tạm của job lỗi trước, video truyện đã đăng YouTube (cũ) sau.
-//     Không bao giờ chạm job đang chạy/chờ hoặc video chưa đăng.
+//     file tạm của job lỗi. Không chạm job đang chạy/chờ hoặc output hoàn tất.
 // Mọi hành động đều ghi alert + note để Ninh thấy trên dashboard.
 
 import (
@@ -22,8 +21,7 @@ import (
 
 const (
 	KeySelfHealLastRun = "selfheal.last_run"
-	KeyDiskMaxPct      = "system.disk_max_pct"    // mặc định 85
-	KeyDiskPruneDays   = "system.disk_prune_days" // mặc định 30
+	KeyDiskMaxPct      = "system.disk_max_pct" // mặc định 85
 )
 
 const (
@@ -33,30 +31,13 @@ const (
 	hungJobMaxAge        = 12 * time.Hour
 )
 
-// hungSweeper + workPruner: khả năng tự chữa của Studio, soft-assert để
-// automation không phụ thuộc cứng vào *studio.Studio.
-type hungSweeper interface {
-	SweepHungJobs(maxAge time.Duration) int
-}
-
-type workPruner interface {
-	PruneFailedWork() (int, int64)
-	PruneOldPublishedOutputs(maxAge time.Duration, isPublished func(id string) bool) (int, int64)
-}
-
-// jobPruner: khả năng dọn job cũ của Studio (Đợt V), soft-assert như
-// hungSweeper/workPruner để automation không phụ thuộc cứng.
-type jobPruner interface {
-	PruneOldJobs(maxAge time.Duration) int
-}
-
 // SelfHealTick chạy 1 giờ/lần. Tôn trọng kill switch + dry-run như mọi tick.
 func (s *Service) SelfHealTick(ctx context.Context) []string {
 	_ = ctx
 	if s.killed() || s.dryRun() {
 		return nil
 	}
-	if s.Story == nil {
+	if s.Maintenance == nil {
 		return nil
 	}
 	if !dueSince(s.Settings, KeySelfHealLastRun, selfHealInterval) {
@@ -65,13 +46,11 @@ func (s *Service) SelfHealTick(ctx context.Context) []string {
 	defer stampRun(s.Settings, KeySelfHealLastRun)
 
 	var notes []string
-	if sw, ok := s.Story.(hungSweeper); ok && sw != nil {
-		if n := sw.SweepHungJobs(hungJobMaxAge); n > 0 {
-			msg := fmt.Sprintf("%d job treo quá 12h → đánh dấu thất bại (log chi tiết trong từng job)", n)
-			notes = append(notes, "tự chữa: "+msg)
-			s.alert("selfheal_hung", "warn", msg,
-				"Đã đánh dấu thất bại để pipeline không kẹt. Tạo lại thủ công từ trang Kể chuyện/Studio nếu cần.")
-		}
+	if n := s.Maintenance.SweepHungJobs(hungJobMaxAge); n > 0 {
+		msg := fmt.Sprintf("%d job treo quá 12h → đánh dấu thất bại (log chi tiết trong từng job)", n)
+		notes = append(notes, "tự chữa: "+msg)
+		s.alert("selfheal_hung", "warn", msg,
+			"Đã đánh dấu thất bại để Studio tiếp tục xử lý các job khác.")
 	}
 	notes = append(notes, s.diskGuard()...)
 	notes = append(notes, s.pruneTables()...)
@@ -97,10 +76,8 @@ func (s *Service) pruneTables() []string {
 			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d alert cũ", n))
 		}
 	}
-	if jp, ok := s.Story.(jobPruner); ok && jp != nil {
-		if n := jp.PruneOldJobs(60 * 24 * time.Hour); n > 0 {
-			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d job studio cũ (>60 ngày)", n))
-		}
+	if n := s.Maintenance.PruneOldJobs(60 * 24 * time.Hour); n > 0 {
+		notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d job studio cũ (>60 ngày)", n))
 	}
 	return notes
 }
@@ -118,28 +95,17 @@ func (s *Service) diskGuard() []string {
 	if pct < maxPct {
 		return nil
 	}
-	pr, ok := s.Story.(workPruner)
-	if !ok || pr == nil {
+	if s.Maintenance == nil {
 		msg := fmt.Sprintf("đĩa %d%% đầy (ngưỡng %d%%) — cần Ninh dọn tay", pct, maxPct)
 		s.alert("disk_guard", "warn", msg, "Chưa dọn tự động được. Xoá bớt video cũ trong thư mục dữ liệu.")
 		return []string{"tự chữa đĩa: " + msg}
 	}
 
-	fj, freed1 := pr.PruneFailedWork()
-	pruneDays := atInt(s.Settings, KeyDiskPruneDays, defaultDiskPruneDays)
-	isPub := func(id string) bool {
-		if s.Settings == nil {
-			return false
-		}
-		_, done := s.Settings.Get(KeyStoryPublishedPrefix + id)
-		return done
-	}
-	po, freed2 := pr.PruneOldPublishedOutputs(time.Duration(pruneDays)*24*time.Hour, isPub)
-	freed := freed1 + freed2
+	fj, freed := s.Maintenance.PruneFailedWork()
 
-	msg := fmt.Sprintf("đĩa %d%% đầy (ngưỡng %d%%): đã dọn %d job lỗi + %d video đã đăng cũ hơn %d ngày, giải phóng %s",
-		pct, maxPct, fj, po, pruneDays, formatBytes(freed))
-	action := "Đã dọn file tạm của job lỗi và file local của video đã đăng YouTube (bản đăng vẫn còn trên YouTube)."
+	msg := fmt.Sprintf("đĩa %d%% đầy (ngưỡng %d%%): đã dọn file tạm của %d job lỗi, giải phóng %s",
+		pct, maxPct, fj, formatBytes(freed))
+	action := "Đã dọn file tạm của job lỗi; video hoàn tất được giữ nguyên."
 
 	if pct2, err := DiskUsagePct(s.DataDir); err == nil && pct2 >= maxPct {
 		msg += fmt.Sprintf(" — vẫn %d%%, Ninh cần dọn tay hoặc thêm dung lượng", pct2)

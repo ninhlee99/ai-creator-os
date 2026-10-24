@@ -50,24 +50,14 @@ func initializeStudio(srv *web.Server, dataDir, outDir string, geminiKeys []stri
 			log.Printf("growth: could not recover interrupted production claims: %v", err)
 		} else {
 			for _, item := range items {
-				jobID, found, err := st.GrowthStoryJob(item.AccountID, item.ID)
-				if err != nil {
-					log.Printf("growth: could not reconcile item %d: %v", item.ID, err)
-					continue
-				}
-				if found {
-					err = srv.Growth.SetItemProduction(item.ID, jobID,
-						growth.VariantTitle(item), growth.VariantCaption(item))
-				} else {
-					err = srv.Growth.SetItemStatus(item.ID, growth.ItemPlanned,
-						"Không tìm thấy Studio job đã tạo; Growth sẽ thử lại mục này.")
-				}
+				err := srv.Growth.SetItemStatus(item.ID, growth.ItemFailed,
+					"Production bị ngắt khi app khởi động lại; kiểm tra lịch sử Studio trước khi tạo lại để tránh job trùng.")
 				if err != nil {
 					log.Printf("growth: could not finish recovery for item %d: %v", item.ID, err)
 				}
 			}
 			if len(items) > 0 {
-				log.Printf("growth: reconciled %d interrupted production claim(s)", len(items))
+				log.Printf("growth: marked %d interrupted production claim(s) for manual review", len(items))
 			}
 		}
 	}

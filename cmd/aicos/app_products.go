@@ -50,11 +50,6 @@ func initializeProducts(srv *web.Server, mgr *network.AccountManager, settings a
 
 func configureAutopilot(srv *web.Server, mgr *network.AccountManager, store *products.Store, models *studio.ModelStore, settings automation.LedgerSettings, dataDir string) {
 	autopilot := studio.NewAutopilot(srv.Studio, mgr, store, nil, models)
-	if path := filepath.Join(dataDir, "autopilot-music.m4a"); fileExists(path) {
-		autopilot.MusicPath = path
-	} else if path := filepath.Join(dataDir, "trending-audio.m4a"); fileExists(path) {
-		autopilot.MusicPath = path
-	}
 	srv.Autopilot = autopilot
 	log.Printf("autopilot: wired (source=Accesstrade store; production still requires per-account Flow credits authorization)")
 	publishHook := srv.AutomationService().AutoPublishHook()

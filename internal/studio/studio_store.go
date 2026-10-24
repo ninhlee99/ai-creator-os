@@ -100,6 +100,17 @@ func (s *Studio) migrate() error {
 		comment_count INTEGER NOT NULL DEFAULT 0, comments_known INTEGER NOT NULL DEFAULT 0,
 		share_count INTEGER NOT NULL DEFAULT 0, shares_known INTEGER NOT NULL DEFAULT 0,
 		UNIQUE(video_id,captured_at));
+	CREATE TABLE IF NOT EXISTS studio_tiktok_publications(
+		job_id TEXT PRIMARY KEY,
+		account_id INTEGER NOT NULL,
+		platform_video_id TEXT NOT NULL,
+		video_url TEXT NOT NULL,
+		linked_at TEXT NOT NULL,
+		UNIQUE(account_id, platform_video_id));
+	CREATE INDEX IF NOT EXISTS idx_studio_tiktok_publications_account
+		ON studio_tiktok_publications(account_id, linked_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_tiktok_radar_snapshots_video_time
+		ON studio_tiktok_radar_snapshots(video_id,captured_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_studio_assets_job ON studio_assets(job_id);`)
 	if err != nil {
 		return err
@@ -107,8 +118,8 @@ func (s *Studio) migrate() error {
 	// Additive migrations: tolerate "duplicate column" on re-run.
 	for _, q := range []string{
 		`ALTER TABLE studio_jobs ADD COLUMN caption TEXT NOT NULL DEFAULT ''`,
-		// Film Wave 1 (P0-7): per-scene render method ("veo" | "anh-tts" |
-		// ""), shown on the storyboard so the UI never overstates Veo usage.
+		// Per-scene render method ("veo" | "anh-tts" | ""), shown on the
+		// storyboard to identify how each TikTok scene was produced.
 		`ALTER TABLE studio_assets ADD COLUMN method TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE studio_tiktok_radar_videos ADD COLUMN dance_verified INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE studio_tiktok_radar_videos ADD COLUMN dance_verified_at TEXT NOT NULL DEFAULT ''`,
@@ -118,7 +129,7 @@ func (s *Studio) migrate() error {
 			return err
 		}
 	}
-	// Film Wave 3: bảng capabilities (khả năng AI: vẽ ảnh / quay video).
+	// Persist media-generation capability checks.
 	if err := s.ensureCapabilitiesTable(); err != nil {
 		return err
 	}

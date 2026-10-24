@@ -8,6 +8,8 @@
     <a href="/accounts/new" class="btn btn-primary">+ Thêm kênh</a>
   </div>
 </div>
+{{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+{{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
 
 {{if .Accounts}}
 <div class="channel-grid">
@@ -26,52 +28,26 @@
           <div class="channel-username">{{.Username}}</div>
           <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
             <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
-            <span class="badge badge-info" style="font-size:10.5px">{{.GrowthStage}}</span>
             {{if .HasModel}}
             <a href="/accounts/{{.ID}}?tab=model-photos" class="badge badge-ok" style="font-size:10.5px;text-decoration:none" title="Nhân vật đại diện của kênh">👤 Nhân vật riêng</a>
             {{else}}
             <a href="/accounts/{{.ID}}?tab=model-photos" class="badge badge-warn" style="font-size:10.5px;text-decoration:none" title="Chưa có nhân vật — Bấm để thêm">+ Thêm nhân vật</a>
             {{end}}
-            {{if .Autopilot}}<span class="badge badge-warn" title="Đã bật cấu hình Autopilot; producer hiện tạm dừng">Autopilot bật · producer dừng</span>{{end}}
           </div>
         </div>
       </div>
     </div>
-
-    <div class="channel-stats-row">
-      <div class="channel-stat-item" style="flex:1">
-        <span class="channel-stat-label">{{.FollowersLabel}}</span>
-        <span class="channel-stat-val">{{if .HasFollowers}}{{.FollowersCnt}}{{else}}—{{end}}</span>
-      </div>
-      <div class="channel-stat-item" style="flex:1">
-        <span class="channel-stat-label">Lượt xem 30N</span>
-        <span class="channel-stat-val" style="color:var(--accent)">{{if .Views30d}}{{.Views30d}}{{else}}—{{end}}</span>
-      </div>
-      <div class="channel-stat-item" style="flex:1">
-        <span class="channel-stat-label">Tính cách AI</span>
-        <span class="channel-stat-val" style="font-size:12px">{{.PersonaLabel}}</span>
-      </div>
-    </div>
-
-    {{if .HasNext}}
-    <div style="margin-top:10px;background:var(--bg3);padding:8px 10px;border-radius:8px;border:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:4px">
-        <span>🎯 {{.NextTarget}}</span>
-        <span style="color:var(--accent)">{{printf "%.0f" .NextPct}}%</span>
-      </div>
-      <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
-        <div style="width:{{.NextPct}}%;height:100%;background:linear-gradient(90deg, var(--accent), #10b981);border-radius:3px"></div>
-      </div>
-    </div>
-    {{end}}
 
     <div class="channel-tags-row" style="margin-top:10px">
       {{if .Niche}}<span class="badge badge-dim" title="Chủ đề nội dung kênh">🎯 {{.Niche}}</span>{{end}}
       {{if .Theme}}<span class="badge badge-draft" title="Nhóm sản phẩm affiliate bán">🛍️ {{themeLabel .Theme}}</span>{{end}}
     </div>
     <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
-      {{range .Platforms}}<span class="badge badge-info" style="font-size:11px" title="Credentials cục bộ đã cấu hình; API chưa kiểm">{{.}}</span>{{end}}
-      {{if not .Platforms}}<span class="badge badge-no" style="font-size:11px">Chưa đủ credentials nền tảng</span>{{end}}
+      {{if .TikTokConnected}}
+      <span class="badge badge-info" style="font-size:11px" title="Đã lưu thông tin OAuth TikTok; quyền API chưa kiểm tra">TikTok đã kết nối</span>
+      {{else}}
+      <span class="badge badge-no" style="font-size:11px">Chưa kết nối TikTok</span>
+      {{end}}
     </div>
 
     <div class="channel-card-footer" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:12px;border-top:1px solid var(--border);margin-top:12px">
@@ -91,7 +67,6 @@
 <div class="empty-state">
   <div class="es-icon">👤</div>
   <h3>Chưa có kênh nào</h3>
-  <p>Thêm kênh đầu tiên để AI bắt đầu thiết lập creator cho bạn.</p>
   <a class="btn" href="/accounts/new">+ Thêm kênh</a>
 </div>
 {{end}}

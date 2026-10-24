@@ -95,8 +95,7 @@ func (s *Service) alertAccountOnce(accountID int64, accountName, msg, action str
 	s.alert("autopilot_account", "warn", msg, action)
 }
 
-// retryFailedPublishLegs thử lại các chân đăng (TikTok/YouTube/Meta) bị lỗi tạm
-// thời ở chu kỳ trước (Đợt Y). Job phải còn done + output còn nguyên.
+// retryFailedPublishLegs retries failed TikTok drafts while job output remains.
 func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 	if s.JobStore == nil || s.Accounts == nil {
 		return nil
@@ -115,22 +114,9 @@ func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
 		if err != nil {
 			continue
 		}
-		switch leg.Platform {
-		case "tiktok":
-			if AutopilotAutoPublish(s.Settings) {
-				s.autoPublishTikTokAffiliate(ctx, leg.JobID, j, p, acct)
-				notes = append(notes, "thử lại chân đăng TikTok cho job "+leg.JobID)
-			}
-		case "youtube":
-			if AutopilotYouTubeEnabled(s.Settings) {
-				s.autoPublishYouTubeAffiliate(ctx, leg.JobID, j, p, acct)
-				notes = append(notes, "thử lại chân đăng YouTube cho job "+leg.JobID)
-			}
-		case "facebook", "instagram", "threads":
-			if AutopilotMetaEnabled(s.Settings) {
-				s.autoPublishMetaAffiliatePlatform(ctx, leg.JobID, j, p, acct, leg.Platform)
-				notes = append(notes, "thử lại chân đăng Meta "+leg.Platform+" cho job "+leg.JobID)
-			}
+		if leg.Platform == "tiktok" && AutopilotAutoPublish(s.Settings) {
+			s.autoPublishTikTokAffiliate(ctx, leg.JobID, j, p, acct)
+			notes = append(notes, "thử lại chân đăng TikTok cho job "+leg.JobID)
 		}
 	}
 	return notes
@@ -174,19 +160,9 @@ func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
 	if AutopilotAutoPublish(s.Settings) {
 		s.autoPublishTikTokAffiliate(ctx, jobID, j, p, acct)
 	}
-	// Đợt Q: YouTube Shorts theo YOUTUBE_DEFAULT_PRIVACY — kênh phân phối thứ
-	// hai, tự động (không cần thao tác trong app như TikTok draft).
-	if AutopilotYouTubeEnabled(s.Settings) {
-		s.autoPublishYouTubeAffiliate(ctx, jobID, j, p, acct)
-	}
-	// Đăng chéo Meta (Facebook Page nháp · Instagram Reels · Threads bài
-	// chữ kèm link). Chỉ nền tảng đã cấu hình key mới chạy.
-	if AutopilotMetaEnabled(s.Settings) {
-		s.autoPublishMetaAffiliate(ctx, jobID, j, p, acct)
-	}
 }
 
-// metaPublishersFor là seam để test inject publisher giả.
+// AutoPublishHook returns the background publishing callback wired to Studio.
 func (s *Service) AutoPublishHook() func(id string) {
 	return func(id string) {
 		go s.AutoPublishAffiliate(context.Background(), id)

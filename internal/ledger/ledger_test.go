@@ -32,11 +32,11 @@ func strp(s string) *string { return &s }
 func TestAddGetListAccount(t *testing.T) {
 	l := newTestLedger(t)
 
-	id1, err := l.AddAccount("alice", "cooking", "ALICE_RTMP")
+	id1, err := l.AddAccount("alice", "cooking")
 	if err != nil {
 		t.Fatalf("AddAccount: %v", err)
 	}
-	id2, err := l.AddAccount("bob", "fitness", "BOB_RTMP")
+	id2, err := l.AddAccount("bob", "fitness")
 	if err != nil {
 		t.Fatalf("AddAccount: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestAddGetListAccount(t *testing.T) {
 	if a.Username != "alice" || a.Status != "onboarding" {
 		t.Fatalf("unexpected account: %+v", a)
 	}
-	if a.RestWeekday != 0 || a.Followers != 0 {
+	if a.Followers != 0 {
 		t.Fatalf("unexpected defaults: %+v", a)
 	}
 
@@ -63,15 +63,15 @@ func TestAddGetListAccount(t *testing.T) {
 		t.Fatalf("unexpected list: %+v", all)
 	}
 
-	if err := l.SetAccountStatus(id1, "live", map[string]any{"persona": "teacher"}); err != nil {
+	if err := l.SetAccountStatus(id1, "growing", map[string]any{"persona": "teacher"}); err != nil {
 		t.Fatalf("SetAccountStatus: %v", err)
 	}
-	live, err := l.ListAccounts([]string{"live"})
+	growing, err := l.ListAccounts([]string{"growing"})
 	if err != nil {
-		t.Fatalf("ListAccounts(live): %v", err)
+		t.Fatalf("ListAccounts(growing): %v", err)
 	}
-	if len(live) != 1 || live[0].Username != "alice" || !live[0].Persona.Valid || live[0].Persona.String != "teacher" {
-		t.Fatalf("unexpected filtered list: %+v", live)
+	if len(growing) != 1 || growing[0].Username != "alice" || !growing[0].Persona.Valid || growing[0].Persona.String != "teacher" {
+		t.Fatalf("unexpected filtered list: %+v", growing)
 	}
 	// status filter with no matches
 	none, err := l.ListAccounts([]string{"retired"})
@@ -90,11 +90,11 @@ func TestAddGetListAccount(t *testing.T) {
 
 func TestAddAccountDuplicate(t *testing.T) {
 	l := newTestLedger(t)
-	id1, err := l.AddAccount("alice", "", "")
+	id1, err := l.AddAccount("alice", "")
 	if err != nil {
 		t.Fatalf("AddAccount: %v", err)
 	}
-	id2, err := l.AddAccount("alice", "other hint", "OTHER_RTMP")
+	id2, err := l.AddAccount("alice", "other hint")
 	if err != nil {
 		t.Fatalf("AddAccount duplicate: %v", err)
 	}
@@ -157,89 +157,9 @@ func TestRecordCommissionAndTotalRevenue(t *testing.T) {
 	}
 }
 
-func TestRecordGiftAccumulates(t *testing.T) {
+func TestDecisionAndUsage(t *testing.T) {
 	l := newTestLedger(t)
-	aid, _ := l.AddAccount("alice", "", "")
-	sid, err := l.StartSession(&aid)
-	if err != nil {
-		t.Fatalf("StartSession: %v", err)
-	}
-	if _, err := l.RecordGift(aid, 100, 0.5, &sid); err != nil {
-		t.Fatalf("RecordGift: %v", err)
-	}
-	if _, err := l.RecordGift(aid, 200, 1.0, nil); err != nil {
-		t.Fatalf("RecordGift: %v", err)
-	}
-	sum, err := l.AccountGiftUSD(aid)
-	if err != nil {
-		t.Fatalf("AccountGiftUSD: %v", err)
-	}
-	if sum != 1.5 {
-		t.Fatalf("expected 1.5, got %f", sum)
-	}
-	a, _ := l.GetAccount(aid)
-	if a.GiftUSD != 1.5 {
-		t.Fatalf("accounts.gift_usd not accumulated: %f", a.GiftUSD)
-	}
-	gs, err := l.GetGiftSummary()
-	if err != nil {
-		t.Fatalf("GetGiftSummary: %v", err)
-	}
-	if len(gs) != 1 || gs[0].Username != "alice" || gs[0].USD != 1.5 {
-		t.Fatalf("unexpected gift summary: %+v", gs)
-	}
-}
-
-func TestSlots(t *testing.T) {
-	l := newTestLedger(t)
-	aid, _ := l.AddAccount("alice", "", "")
-	if err := l.SaveSlots([]Slot{
-		{AccountID: aid, SlotDate: "2026-10-02", StartMin: 600, DurationMin: 60, Status: "planned"},
-		{AccountID: aid, SlotDate: "2026-10-02", StartMin: 1200, DurationMin: 60, Status: "planned"},
-	}); err != nil {
-		t.Fatalf("SaveSlots: %v", err)
-	}
-	slots, err := l.GetSlots("2026-10-02")
-	if err != nil {
-		t.Fatalf("GetSlots: %v", err)
-	}
-	if len(slots) != 2 || slots[0].StartMin != 600 || slots[1].StartMin != 1200 {
-		t.Fatalf("unexpected slots: %+v", slots)
-	}
-	// only the 10:00 slot is due at 11:00
-	due, err := l.DueSlots("2026-10-02", 660)
-	if err != nil {
-		t.Fatalf("DueSlots: %v", err)
-	}
-	if len(due) != 1 || due[0].StartMin != 600 {
-		t.Fatalf("unexpected due slots: %+v", due)
-	}
-	if err := l.SetSlotStatus(due[0].ID, "started"); err != nil {
-		t.Fatalf("SetSlotStatus: %v", err)
-	}
-	due, _ = l.DueSlots("2026-10-02", 660)
-	if len(due) != 0 {
-		t.Fatalf("started slot must not be due: %+v", due)
-	}
-}
-
-func TestSessionEventDecideUsage(t *testing.T) {
-	l := newTestLedger(t)
-
-	// session without account
-	sid, err := l.StartSession(nil)
-	if err != nil || sid == 0 {
-		t.Fatalf("StartSession(nil): id=%d err=%v", sid, err)
-	}
-	if err := l.LogEvent(sid, "segment", map[string]any{"n": 1}); err != nil {
-		t.Fatalf("LogEvent: %v", err)
-	}
-	if err := l.EndSession(sid, map[string]any{
-		"status": "ended", "duration_min": 45, "peak_viewers": 100,
-	}); err != nil {
-		t.Fatalf("EndSession: %v", err)
-	}
-
+	var err error
 	if err := l.Decide("governor", "scale_product", strp("pid-1"), "good ctr",
 		map[string]any{"ctr": 0.12}); err != nil {
 		t.Fatalf("Decide: %v", err)
@@ -363,7 +283,7 @@ func TestMigrationTwice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first New: %v", err)
 	}
-	if _, err := l1.AddAccount("alice", "", ""); err != nil {
+	if _, err := l1.AddAccount("alice", ""); err != nil {
 		t.Fatalf("AddAccount: %v", err)
 	}
 	if err := l1.Close(); err != nil {
@@ -379,14 +299,13 @@ func TestMigrationTwice(t *testing.T) {
 		t.Fatalf("data lost after re-open: %+v %v", all, err)
 	}
 	// migration columns usable on the re-opened DB
-	if err := l2.SetAccountStatus(all[0].ID, "live", map[string]any{
-		"topics_json": `["a","b"]`, "youtube_channel": "chan",
-		"youtube_content_types": `["short_video"]`,
+	if err := l2.SetAccountStatus(all[0].ID, "growing", map[string]any{
+		"topics_json": `["a","b"]`,
 	}); err != nil {
 		t.Fatalf("SetAccountStatus with migration columns: %v", err)
 	}
 	a, _ := l2.GetAccount(all[0].ID)
-	if a.TopicsJSON != `["a","b"]` || !a.YoutubeChannel.Valid || a.YoutubeChannel.String != "chan" {
+	if a.TopicsJSON != `["a","b"]` {
 		t.Fatalf("migration columns not persisted: %+v", a)
 	}
 }
@@ -420,11 +339,8 @@ func TestMigrationOnLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAccount on migrated DB: %v", err)
 	}
-	if a.Username != "legacy" || a.TopicsJSON != "[]" || a.YoutubeContentTypes != "[]" {
+	if a.Username != "legacy" || a.TopicsJSON != "[]" {
 		t.Fatalf("migration did not add columns with defaults: %+v", a)
-	}
-	if a.YoutubeChannel.Valid {
-		t.Fatalf("youtube_channel should be NULL: %+v", a)
 	}
 }
 
@@ -449,8 +365,8 @@ func legacyAccountsDDL(t *testing.T) string {
 		var out []string
 		for _, l := range strings.Split(trimmed, "\n") {
 			if strings.Contains(l, "topics_json") ||
-				strings.Contains(l, "youtube_channel") ||
-				strings.Contains(l, "youtube_content_types") {
+				strings.Contains(l, "followers_source") ||
+				strings.Contains(l, "followers_verified_at") {
 				continue
 			}
 			out = append(out, l)
@@ -572,45 +488,4 @@ func applySchemaWithoutSettings(t *testing.T, db *sql.DB) error {
 		}
 	}
 	return nil
-}
-
-func TestSessionsFeatured(t *testing.T) {
-	l := newTestLedger(t)
-	pid, err := l.AddProduct("pid-1", "Túi kem quilted cao cấp chính hãng", 500000, 0.18, "fashion")
-	if err != nil {
-		t.Fatalf("AddProduct: %v", err)
-	}
-	other, err := l.AddProduct("pid-2", "Ví da mini", 200000, 0.2, "fashion")
-	if err != nil {
-		t.Fatalf("AddProduct: %v", err)
-	}
-	s1, err := l.StartSession(nil)
-	if err != nil {
-		t.Fatalf("StartSession: %v", err)
-	}
-	s2, err := l.StartSession(nil)
-	if err != nil {
-		t.Fatalf("StartSession: %v", err)
-	}
-	// Exact product_moment events in two sessions + one duplicate in s1.
-	for _, sid := range []int64{s1, s1, s2} {
-		if err := l.LogEvent(sid, "product_moment", map[string]any{"product_id": pid, "product_title": "Túi kem quilted cao cấp chính hãng"}); err != nil {
-			t.Fatalf("LogEvent: %v", err)
-		}
-	}
-	// Legacy segment event that only embeds the title.
-	if err := l.LogEvent(s1, "segment", map[string]any{"script": "Giới thiệu Túi kem quilted cao cấp hôm nay"}); err != nil {
-		t.Fatalf("LogEvent legacy: %v", err)
-	}
-	// A different product must not be counted.
-	if err := l.LogEvent(s2, "product_moment", map[string]any{"product_id": other}); err != nil {
-		t.Fatalf("LogEvent other: %v", err)
-	}
-	n, err := l.SessionsFeatured(pid)
-	if err != nil {
-		t.Fatalf("SessionsFeatured: %v", err)
-	}
-	if n != 2 {
-		t.Fatalf("SessionsFeatured = %d, want 2 distinct sessions", n)
-	}
 }

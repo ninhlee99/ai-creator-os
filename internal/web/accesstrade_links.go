@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -114,7 +115,7 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
-	res, err := cl.Hunt(ctx, s.Products, accesstrade.HunterFilter{ApprovedOnly: true, MaxAgeDays: 180})
+	res, err := cl.HuntTikTokShop(ctx, s.Products, accesstrade.HunterFilter{MaxAgeDays: 180})
 	if err != nil {
 		writeJSONErr(w, "Săn sản phẩm thất bại: "+err.Error(), http.StatusBadGateway)
 		return
@@ -127,7 +128,11 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	accountID, accountErr := auto.HunterAccountID()
 	productionNote := ""
 	if len(res.ProductionCandidates) == 0 {
-		productionNote = "Chưa tạo video: sản phẩm thiếu dữ liệu lượt bán hoặc rating, đang nằm trong watchlist."
+		if res.PendingReview > 0 {
+			productionNote = fmt.Sprintf("Chưa tạo video: %d sản phẩm mới đang chờ bạn duyệt trong trang Sản phẩm.", res.PendingReview)
+		} else {
+			productionNote = "Chưa tạo video: cần sản phẩm đã duyệt, đủ giá/hoa hồng và có link sản phẩm hợp lệ."
+		}
 		want = 0
 	}
 	if want > 0 && !s.atSettingOn(automation.KeyATHunterFlowCredits, false) {
@@ -165,7 +170,7 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]any{
 		"ok": true, "new": res.New, "updated": res.Updated,
-		"skipped": res.Skipped, "watchlist": res.Watchlist,
+		"skipped": res.Skipped, "watchlist": res.Watchlist, "pending_review": res.PendingReview,
 		"production_candidates": len(res.ProductionCandidates),
 		"videos":                videos, "note": res.Note, "production_note": productionNote,
 	})

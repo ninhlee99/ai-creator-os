@@ -37,7 +37,6 @@ func (l *Ledger) GetUsage(day string, limit int) ([]UsageRow, error) {
 const (
 	SettingTTSChain                  = "tts.chain"
 	SettingLLMChain                  = "llm.chain"
-	SettingAvatarChain               = "avatar.chain"
 	SettingGeminiFreeTierFingerprint = "gemini.free_tier_fingerprint"
 )
 

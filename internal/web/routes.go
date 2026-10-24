@@ -10,6 +10,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
+	mux.HandleFunc("GET /static/htmx.min.js", s.handleStaticHTMX)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/webai-login.js", s.handleStaticWebAILoginJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
@@ -19,8 +20,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 
 	mux.HandleFunc("GET /", s.handleDashboard)
-	mux.HandleFunc("POST /create-one-command", s.handleOneCommandCreate)
-	mux.HandleFunc("POST /api/create-one-command", s.handleOneCommandCreate)
 	mux.HandleFunc("POST /automation/switch", s.handleAutoSwitch)
 	mux.HandleFunc("GET /accounts", s.handleAccounts)
 	mux.HandleFunc("GET /accounts/new", s.handleAccountNew)
@@ -30,7 +29,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /accounts/{id}/edit", s.handleAccountUpdate)
 	mux.HandleFunc("POST /accounts/{id}/delete", s.handleAccountDelete)
 	mux.HandleFunc("POST /accounts/{id}/transition", s.handleAccountTransition)
-	mux.HandleFunc("POST /accounts/{id}/youtube", s.handleAccountYoutube)
 	mux.HandleFunc("POST /accounts/{id}/onboard", s.handleAccountOnboard)
 	mux.HandleFunc("POST /accounts/{id}/replan", s.handleAccountReplan)
 
@@ -54,16 +52,9 @@ func (s *Server) Routes() http.Handler {
 	// Brand DNA (Bản sắc thương hiệu cho kênh — Organic growth)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna", s.handleAccountBrandDNASave)
 	mux.HandleFunc("POST /accounts/{id}/brand-dna/reset", s.handleAccountBrandDNAReset)
-	// Auto-Reply Comments & Affiliate Lead Conversion
-	mux.HandleFunc("POST /accounts/{id}/comments/simulate", s.handleAccountCommentSimulate)
-
-	// AI Mission Control
-	mux.HandleFunc("POST /missions/{id}/cancel", s.handleMissionCancel)
-	mux.HandleFunc("GET /api/missions/{id}", s.handleMissionDetailJSON)
-
 	mux.HandleFunc("GET /media/{name}", s.handleMedia)
 
-	// Studio: AI video creation (affiliate / short film) + VN trends.
+	// Studio: TikTok affiliate and viral video creation + radar.
 	mux.HandleFunc("GET /studio", s.handleStudio)
 	mux.HandleFunc("POST /studio/affiliate/plan", s.handleStudioAffiliatePlan)
 	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
@@ -75,6 +66,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/jobs/{id}/delete", s.handleStudioJobDelete)
 	mux.HandleFunc("POST /studio/jobs/{id}/retry", s.handleStudioJobRetry)
 	mux.HandleFunc("POST /studio/jobs/{id}/publish-review", s.handleStudioPublishReview)
+	mux.HandleFunc("POST /studio/jobs/{id}/tiktok-video", s.handleStudioTikTokVideoLink)
 	mux.HandleFunc("POST /studio/jobs/{id}/capcut", s.handleStudioJobCapCut)
 	mux.HandleFunc("POST /studio/jobs/{id}/remix", s.handleStudioJobRemix)
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
@@ -82,17 +74,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
 	mux.HandleFunc("POST /studio/trends/{videoID}/dance", s.handleStudioTrendDanceVerify)
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
-	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
 	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)
 	mux.HandleFunc("GET /studio/models/{account}/{file}", s.handleStudioModelPhoto)
 	mux.HandleFunc("POST /studio/generate-image", s.handleStudioGenerateImage)
 	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
-	mux.HandleFunc("POST /studio/story", s.handleStudioStoryCreate)
-	mux.HandleFunc("GET /api/studio/faceswap-status", s.handleAPIFaceSwapStatus)
-	mux.HandleFunc("GET /api/studio/story-plots", s.handleAPIStoryPlots)
-	mux.HandleFunc("GET /api/studio/tiktok-trends", s.handleAPITikTokTrends)
-	mux.HandleFunc("POST /api/studio/tiktok-analyze", s.handleAPITikTokAnalyze)
 
 	// Điều hướng /flow cũ về Studio
 	mux.HandleFunc("GET /flow", func(w http.ResponseWriter, r *http.Request) {
@@ -112,14 +98,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)
-	mux.HandleFunc("POST /publishers/tiktok/connect", s.handleTikTokConnect)
 	mux.HandleFunc("GET /publishers/tiktok/callback", s.handleTikTokCallback)
-	mux.HandleFunc("GET /publishers/facebook/authorize", s.handleFacebookAuthorize)
-	mux.HandleFunc("GET /publishers/facebook/callback", s.handleFacebookCallback)
-	mux.HandleFunc("POST /publishers/facebook/select", s.handleFacebookPageSelect)
-	// Đợt AA: YouTube OAuth trong app (trước đây chỉ có script Python).
-	mux.HandleFunc("GET /publishers/youtube/authorize", s.handleYouTubeAuthorize)
-	mux.HandleFunc("GET /publishers/youtube/callback", s.handleYouTubeCallback)
 
 	// Affiliate product discovery (theme search -> save into product store).
 	// Tab "Kệ hàng" (gộp từ trang /shop cũ) nằm trong cùng trang này.
@@ -128,32 +107,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /products/add", s.handleProductsAdd)
 	mux.HandleFunc("POST /products/shelf/add", s.handleProductsShelfAdd)
 	mux.HandleFunc("POST /products/shelf/toggle", s.handleProductsShelfToggle)
+	mux.HandleFunc("POST /products/review", s.handleProductsReview)
+	mux.HandleFunc("GET /products/{id}/history", s.handleProductHistory)
 	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
-	mux.HandleFunc("POST /products/music", s.handleAutopilotMusicUpload)
-
-	// Bio Link Storefront (Public mobile-first storefront for creator channels)
-	mux.HandleFunc("GET /bio", s.handleBioLink)
-	mux.HandleFunc("GET /bio/{channel}", s.handleBioLink)
-	mux.HandleFunc("GET /bio/{channel}/product/{id}", s.handleBioProduct)
-	mux.HandleFunc("GET /bio/{channel}/product/{id}/image/{asset}", s.handleBioProductImage)
-	mux.HandleFunc("GET /bio/{channel}/go/{id}", s.handleBioRedirect)
-	mux.HandleFunc("POST /bio/{channel}/products/{id}/voucher-copy", s.handleBioVoucherCopy)
-	mux.HandleFunc("POST /bio/{channel}/products/{id}/try-on", s.handleBioTryOnCreate)
-	mux.HandleFunc("GET /bio/google/login", s.handleBioGoogleLogin)
-	mux.HandleFunc("GET /bio/google/callback", s.handleBioGoogleCallback)
-	mux.HandleFunc("POST /bio/google/logout", s.handleBioGoogleLogout)
-	mux.HandleFunc("GET /bio/try-on/{id}", s.handleBioTryOnStatus)
-	mux.HandleFunc("GET /bio/try-on-result/{id}", s.handleBioTryOnImage)
-	mux.HandleFunc("GET /bio-go/{id}", s.handleBioRedirect)
-	mux.HandleFunc("GET /bio-go", s.handleBioRedirect)
-	mux.HandleFunc("POST /bio/pin", s.handleBioPin)
-	mux.HandleFunc("GET /bio-admin", s.handleBioAdmin)
-	mux.HandleFunc("POST /bio-admin/profile", s.handleBioAdminProfileSave)
-	mux.HandleFunc("POST /bio-admin/product", s.handleBioAdminProductSave)
-	mux.HandleFunc("GET /bio-admin/product-image/{asset}", s.handleBioAdminProductImage)
-	mux.HandleFunc("GET /bio-admin/analytics", s.handleBioAnalytics)
-	mux.HandleFunc("GET /bio-admin/try-on-accounts", s.handleBioTryOnAccounts)
-	mux.HandleFunc("POST /bio-admin/try-on-accounts/{id}/active", s.handleBioTryOnAccountActive)
 
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)
@@ -161,7 +117,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
 	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
 	mux.HandleFunc("POST /growth/thresholds", s.handleGrowthThresholds)
-	mux.HandleFunc("POST /growth/items/{id}/publish-review", s.handleGrowthPublishReview)
 
 	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
 	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.
@@ -172,9 +127,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /settings/dryrun", s.handleSettingsDryRun)
 	mux.HandleFunc("POST /settings/models/update", s.handleModelsUpdate)
 	mux.HandleFunc("POST /settings/env", s.handleSettingsEnvSave)
-	mux.HandleFunc("GET /settings/env/export", s.handleEnvExport)
-	mux.HandleFunc("GET /settings/env/export-json", s.handleEnvExportJSON)
-	mux.HandleFunc("POST /settings/env/import", s.handleEnvImport)
+	mux.HandleFunc("GET /settings/config/export-json", s.handleConfigJSONExport)
+	mux.HandleFunc("POST /settings/config/import-json", s.handleConfigJSONImport)
 	mux.HandleFunc("POST /settings/master", s.handleSettingsMaster)
 	mux.HandleFunc("POST /settings/api-budget", s.handleSettingsAPIBudget)
 	mux.HandleFunc("POST /settings/api", s.handleSettingsAPIToggle)
@@ -198,33 +152,10 @@ func (s *Server) Routes() http.Handler {
 	// Accesstrade (Đợt C): hunter + order sync + công tắc tick.
 	mux.HandleFunc("POST /at/hunt", s.handleATHunt)
 	mux.HandleFunc("POST /at/orders/sync", s.handleATOrderSync)
-	// Đợt F: Kể chuyện YouTube (truyện ngôi thứ nhất + ảnh 16:9 + TTS).
-	mux.HandleFunc("GET /stories", s.handleStories)
-	mux.HandleFunc("POST /stories", s.handleStoryCreate)
-	mux.HandleFunc("POST /stories/upload-text", s.handleStoryUploadText)
-	mux.HandleFunc("POST /stories/{id}/publish", s.handleStoryPublish)
-	mux.HandleFunc("POST /stories/{id}/publish-review", s.handleStoryPublishReview)
-	mux.HandleFunc("POST /stories/{id}/delete", s.handleStoryDelete)
-	mux.HandleFunc("POST /stories/{id}/retry", s.handleStoryRetry) // đợt Y: thử lại tay
-	mux.HandleFunc("GET /stories/{id}/log", s.handleStoryLog)      // đợt Y: nhật ký đầy đủ
-	mux.HandleFunc("POST /stories/settings", s.handleStorySettings)
-
-	// Video Viral AI 100% Gốc (Trendjack Spotlight Shorts 9:16).
+	// TikTok viral video creation.
 	mux.HandleFunc("GET /viral", s.handleViral)
 	mux.HandleFunc("POST /viral/create", s.handleViralCreate)
-	mux.HandleFunc("POST /viral/radar/refresh", s.handleViralRadarRefresh)
 
-	// Master Autonomous Harness Agent (OODA loop, experiential memory, portfolio control).
-	mux.HandleFunc("GET /harness", s.handleHarness)
-	mux.HandleFunc("POST /harness/cycle", s.handleHarnessRunCycle)
-	mux.HandleFunc("POST /harness/autonomy", s.handleHarnessAutonomy)
-	mux.HandleFunc("POST /harness/memory", s.handleHarnessMemoryAdd)
-	mux.HandleFunc("POST /harness/memory/delete", s.handleHarnessMemoryDelete)
-	mux.HandleFunc("GET /api/harness/cycles/{id}", s.handleHarnessCycleDetailJSON)
-	mux.HandleFunc("GET /api/harness/prompt-context", s.handleHarnessPromptPreview)
-	// Đội ngũ: sức khỏe 3 pipeline từ dữ liệu thật.
-	mux.HandleFunc("GET /team", s.handleTeamPipelines)
-	mux.HandleFunc("POST /team/dispatch", s.handleTeamDispatchGoal)
 	// provider chain configuration (new requirement)
 	mux.HandleFunc("GET /settings/chain", s.handleChainGet)
 	mux.HandleFunc("POST /settings/chain", s.handleChainSave)

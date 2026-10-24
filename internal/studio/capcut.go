@@ -4,11 +4,10 @@ package studio
 //
 // CapCut không có API, và file nháp dự án (draft_content.json) bị mã hóa
 // từ CapCut 6 — tự viết dự án CapCut không ổn định. Cách chắc chắn: gom
-// video đã dựng + ảnh/clip từng cảnh + nhạc vào 1 thư mục, mở Finder tới
+// video đã dựng + ảnh/clip từng cảnh vào 1 thư mục, mở Finder tới
 // đó và bật CapCut để người dùng kéo thả vào timeline chỉnh tiếp.
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func (s *Studio) ExportForEditing(id, destRoot string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	if err := copyStoryFile(filepath.Join(s.outDir, j.Output), filepath.Join(dir, "00-video-hoan-chinh"+filepath.Ext(j.Output))); err != nil {
+	if err := copyStudioFile(filepath.Join(s.outDir, j.Output), filepath.Join(dir, "00-video-hoan-chinh"+filepath.Ext(j.Output))); err != nil {
 		return "", fmt.Errorf("copy video: %w", err)
 	}
 	n := 1
@@ -46,13 +45,9 @@ func (s *Studio) ExportForEditing(id, destRoot string) (string, error) {
 			continue
 		}
 		dst := filepath.Join(dir, fmt.Sprintf("%02d-%s%s", n, a.Kind, filepath.Ext(a.Path)))
-		if copyStoryFile(a.Path, dst) == nil {
+		if copyStudioFile(a.Path, dst) == nil {
 			n++
 		}
-	}
-	var p AffiliateParams
-	if json.Unmarshal([]byte(j.Params), &p) == nil && p.MusicPath != "" {
-		_ = copyStoryFile(p.MusicPath, filepath.Join(dir, "nhac"+filepath.Ext(p.MusicPath)))
 	}
 	if j.Caption != "" {
 		_ = os.WriteFile(filepath.Join(dir, "caption.txt"), []byte(j.Caption), 0o644)

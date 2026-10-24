@@ -3,7 +3,7 @@
 <div class="webai-header" style="margin-bottom: 24px;">
   <div class="webai-header-left">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Chỉnh Sửa Kênh: @{{.Acct.Username}}</h1>
+    <h1 style="margin:0;font-size:24px;font-weight:800;letter-spacing:-0.5px">Chỉnh sửa kênh: @{{.Acct.Username}}</h1>
       <span class="badge badge-{{statusClass .Acct.Status}}">{{statusLabel .Acct.Status}}</span>
     </div>
   </div>
@@ -23,7 +23,6 @@
         <span class="account-edit-step">01</span>
         <div>
           <h2>Nhận diện &amp; định hướng</h2>
-          <p>Thông tin AI dùng để nhận diện và xây dựng nội dung cho kênh.</p>
         </div>
       </div>
 
@@ -35,24 +34,11 @@
       <div class="field">
         <label for="account-niche">Chủ đề kênh đã xác định</label>
         <input id="account-niche" type="text" name="niche" value="{{.Acct.Niche}}" placeholder="vd: kể chuyện đêm khuya, review đồ công nghệ">
-        <div class="hint">Chủ đề hiện tại dùng khi AI tạo kịch bản và kế hoạch nội dung.</div>
       </div>
 
       <div class="field">
         <label for="account-niche-hint">Gợi ý để AI nghiên cứu</label>
         <input id="account-niche-hint" type="text" name="niche_hint" value="{{.Acct.NicheHint}}" placeholder="vd: truyện radio, audio trinh thám, deal gia dụng">
-        <div class="hint">Ý tưởng ban đầu; không thay thế chủ đề kênh đã xác nhận.</div>
-      </div>
-
-      <div class="field">
-        <label for="account-persona">Tính cách AI</label>
-        <select id="account-persona" name="persona">
-          <option value="">— Mặc định theo hệ thống —</option>
-          {{$currPersona := .Acct.Persona}}
-          {{range .Personas}}
-          <option value="{{.Key}}"{{if eq $currPersona .Key}} selected{{end}}>{{.Label}} · {{.Style}}</option>
-          {{end}}
-        </select>
       </div>
 
       <div class="field account-edit-last-field">
@@ -71,44 +57,7 @@
         <div class="account-edit-panel-head">
           <span class="account-edit-step">02</span>
           <div>
-            <h2>Kênh xuất bản &amp; số liệu</h2>
-            <p>Liên kết YouTube và xem riêng số liệu dùng cho từng nền tảng.</p>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="account-youtube-channel">Kênh YouTube</label>
-          <input id="account-youtube-channel" type="text" name="youtube_channel" value="{{.Acct.YoutubeChannel}}" placeholder="@KenhChuyenDemKhuya hoặc UC…">
-          <div class="hint">Dùng để lấy subscribers và đăng video YouTube. OAuth được quản lý ở tab Kết nối.</div>
-        </div>
-
-        <div class="account-edit-metric">
-          <span>TikTok followers dùng xét livestream</span>
-          <strong>
-            {{if eq .Acct.FollowersSource "tiktok_manual"}}{{.Acct.Followers}} · đã xác minh thủ công
-            {{else if eq .Acct.FollowersSource "tiktok_api"}}{{.Acct.Followers}} · TikTok API
-            {{else if gt .Acct.Followers 0}}{{.Acct.Followers}} · dữ liệu cũ, chưa xác minh
-            {{else}}Chưa có số liệu đã xác minh{{end}}
-          </strong>
-        </div>
-        {{if .Acct.FollowersVerifiedAt}}<div class="hint">Xác minh lần cuối: {{.Acct.FollowersVerifiedAt}}</div>{{end}}
-        <div class="field">
-          <label for="account-tiktok-followers">TikTok followers hiện tại</label>
-          <input id="account-tiktok-followers" type="number" name="tiktok_followers" min="0" step="1" value="{{if eq .Acct.FollowersSource "tiktok_manual"}}{{.Acct.Followers}}{{end}}" placeholder="Nhập số trên hồ sơ TikTok">
-        </div>
-        <label class="account-edit-verify">
-          <input type="checkbox" name="verify_tiktok_followers" value="1">
-          <span><strong>Tôi đã đối chiếu số này với hồ sơ TikTok</strong><small>Chỉ lưu và dùng số này cho điều kiện livestream khi xác nhận.</small></span>
-        </label>
-        <div class="hint">Subscribers YouTube không thay thế TikTok followers. Số cũ chưa xác minh sẽ không mở khóa livestream.</div>
-      </section>
-
-      <section class="form-card account-edit-panel">
-        <div class="account-edit-panel-head">
-          <span class="account-edit-step">03</span>
-          <div>
             <h2>Affiliate &amp; Autopilot</h2>
-            <p>Chọn nhóm sản phẩm và mức hoa hồng tối thiểu cho kênh.</p>
           </div>
         </div>
 

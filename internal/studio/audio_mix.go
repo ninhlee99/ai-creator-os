@@ -17,37 +17,7 @@ func MuxMusic(ctx context.Context, videoPath, musicPath string, musicStart float
 		"-shortest", outPath)
 }
 
-// MuxSubtitles muxes an SRT subtitle track into a finished video without
-// re-encoding (mov_text, Vietnamese language tag). Empty srtText is a no-op
-// that copies the input — callers don't branch on "has subtitles".
-func MuxSubtitles(ctx context.Context, videoPath, srtText, outPath string) error {
-	if strings.TrimSpace(srtText) == "" {
-		return ffmpegRun(ctx, "-i", videoPath, "-c", "copy", outPath)
-	}
-	dir := filepath.Dir(outPath)
-	srt := filepath.Join(dir, "subs.srt")
-	if err := os.WriteFile(srt, []byte(srtText), 0o644); err != nil {
-		return err
-	}
-	defer os.Remove(srt)
-	return ffmpegRun(ctx,
-		"-i", videoPath, "-i", srt,
-		"-map", "0", "-map", "1",
-		"-c:v", "copy", "-c:a", "copy", "-c:s", "mov_text",
-		"-metadata:s:s:0", "language=vie",
-		outPath)
-}
-
-// srtTime formats seconds into standard SRT timestamp 00:00:00,000.
-func srtTime(sec float64) string {
-	if sec < 0 {
-		sec = 0
-	}
-	ms := int(sec*1000 + 0.5)
-	return fmt.Sprintf("%02d:%02d:%02d,%03d", ms/3600000, (ms/60000)%60, (ms/1000)%60, ms%1000)
-}
-
-// MixMusicBed mixes a music bed under a film's existing audio. When the
+// MixMusicBed mixes a TikTok music bed under voiceover or source audio. When the
 // video has a voice track the music is ducked ~8dB under it
 // (sidechaincompress); when the video is silent the music is laid straight.
 // The final mix is loudness-normalized to -14 LUFS like the affiliate
@@ -60,7 +30,7 @@ func MixMusicBed(ctx context.Context, videoPath, musicPath, outPath string) erro
 		_ = os.MkdirAll(dir, 0o755)
 	}
 	if !ProbeHasAudio(ctx, videoPath) {
-		// Silent film (pure Veo shots): music becomes the audio track.
+		// Silent footage: music becomes the audio track.
 		return ffmpegRun(ctx,
 			"-i", videoPath, "-stream_loop", "-1", "-i", musicPath,
 			"-map", "0:v", "-map", "1:a",

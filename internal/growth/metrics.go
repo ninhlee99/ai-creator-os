@@ -2,14 +2,11 @@ package growth
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
 // ErrNotConnected marks "this metric source is not wired up" — a normal,
@@ -19,15 +16,13 @@ var ErrNotConnected = errors.New("chưa kết nối")
 
 // SourceAccount is the account view a metric source needs.
 type SourceAccount struct {
-	ID                int64
-	Username          string
-	YoutubeChannel    string // channel id (UC...) or @handle; "" = not mapped
-	PublishedVideoIDs []string
+	ID       int64
+	Username string
 }
 
 // MetricsSource reads REAL metrics from one provider API.
 type MetricsSource interface {
-	// Name is the snapshot `source` value: youtube_api | tiktok_api.
+	// Name is the snapshot source value.
 	Name() string
 	// Fetch reads the account's current metrics. Implementations must be
 	// fail-closed: not configured => ErrNotConnected and zero network use.
@@ -44,6 +39,9 @@ type VideoMetricsSource interface {
 // Nil means provider did not return that metric; it is never converted to 0.
 type VideoMetric struct {
 	PlatformVideoID       string
+	Title                 string
+	ShareURL              string
+	PublishedAt           time.Time
 	TakenAt               time.Time
 	Views                 *int64
 	Likes                 *int64
@@ -85,124 +83,70 @@ func RecordVideoMetrics(ctx context.Context, store *Store, src VideoMetricsSourc
 	return len(metrics), nil
 }
 
-// ------------------------------------------------------------- YouTube
-
-// YouTubeSource reads channel statistics from the official YouTube Data
-// API v3 (channels.list). It needs an API key (Settings: YOUTUBE_API_KEY)
-// and the account's channel mapping (account detail: Kênh YouTube).
-//
-// Honest limits: Data API gives lifetime totals, not 30-day views or watch
-// hours — those come from YouTubeAnalyticsSource (Đợt H3, OAuth-only), so
-// Views30d stays unset until the Analytics token/scope is connected.
-type YouTubeSource struct {
-	APIKey  string
-	BaseURL string // default https://www.googleapis.com
-	Client  *http.Client
-}
-
-// NewYouTubeSource builds the source; empty key = not connected.
-func NewYouTubeSource(apiKey string) *YouTubeSource {
-	return &YouTubeSource{APIKey: apiKey}
-}
-
-func (y *YouTubeSource) Name() string { return "youtube_api" }
-
-func (y *YouTubeSource) httpClient() *http.Client {
-	if y.Client != nil {
-		return y.Client
-	}
-	return &http.Client{Timeout: 20 * time.Second}
-}
-
-func (y *YouTubeSource) base() string {
-	if y.BaseURL != "" {
-		return strings.TrimSuffix(y.BaseURL, "/")
-	}
-	return "https://www.googleapis.com"
-}
-
-func (y *YouTubeSource) Fetch(ctx context.Context, acct SourceAccount) (*Snapshot, error) {
-	if strings.TrimSpace(y.APIKey) == "" {
-		return nil, fmt.Errorf("%w: YouTube (chưa nhập YOUTUBE_API_KEY trong Cài đặt)", ErrNotConnected)
-	}
-	ch := strings.TrimSpace(acct.YoutubeChannel)
-	if ch == "" {
-		return nil, fmt.Errorf("%w: YouTube (tài khoản %s chưa gắn kênh — nhập ở trang chi tiết tài khoản)", ErrNotConnected, acct.Username)
-	}
-	param := "id=" + ch
-	if !strings.HasPrefix(ch, "UC") {
-		if !strings.HasPrefix(ch, "@") {
-			ch = "@" + ch
-		}
-		param = "forHandle=" + ch
-	}
-	url := fmt.Sprintf("%s/youtube/v3/channels?part=statistics&%s&key=%s", y.base(), param, y.APIKey)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := y.httpClient().Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("youtube api: %w", err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("youtube api: HTTP %d: %s", resp.StatusCode, snippet(body))
-	}
-	var parsed struct {
-		Items []struct {
-			Statistics struct {
-				ViewCount             string `json:"viewCount"`
-				SubscriberCount       string `json:"subscriberCount"`
-				VideoCount            string `json:"videoCount"`
-				HiddenSubscriberCount bool   `json:"hiddenSubscriberCount"`
-			} `json:"statistics"`
-		} `json:"items"`
-	}
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, fmt.Errorf("youtube api: bad response: %w", err)
-	}
-	if len(parsed.Items) == 0 {
-		return nil, fmt.Errorf("youtube api: không tìm thấy kênh %q", acct.YoutubeChannel)
-	}
-	st := parsed.Items[0].Statistics
-	snap := &Snapshot{Extra: map[string]any{}}
-	if n, err := strconv.ParseInt(st.ViewCount, 10, 64); err == nil {
-		snap.Extra["views_total"] = n
-	}
-	if !st.HiddenSubscriberCount {
-		if n, err := strconv.ParseInt(st.SubscriberCount, 10, 64); err == nil {
-			snap.Followers = &n
-		}
-	}
-	if n, err := strconv.ParseInt(st.VideoCount, 10, 64); err == nil {
-		snap.Videos = &n
-	}
-	return snap, nil
-}
-
 // -------------------------------------------------------------- TikTok
 
-// TikTokSource is the honest MVP stub: TikTok Display API metrics need a
-// per-account OAuth grant plus the Direct Post audit before any public
-// numbers exist (docs/CHANNEL_GROWTH.md §6.3). Until then this source is
-// never connected — the app does not scrape TikTok, ever.
+// TikTokSource reads creator-authorized profile and public-video counters
+// through TikTok Display API. Missing scopes and unavailable fields stay
+// unknown; this source never scrapes TikTok pages.
 type TikTokSource struct{}
 
 func (TikTokSource) Name() string { return "tiktok_api" }
 
-func (TikTokSource) Fetch(_ context.Context, acct SourceAccount) (*Snapshot, error) {
-	return nil, fmt.Errorf("%w: TikTok (Display API cần OAuth từng tài khoản + audit Direct Post; hiện chỉ đăng nháp)", ErrNotConnected)
+func (TikTokSource) Fetch(ctx context.Context, acct SourceAccount) (*Snapshot, error) {
+	if acct.Username == "" {
+		return nil, fmt.Errorf("%w: thiếu tên kênh TikTok", ErrNotConnected)
+	}
+	client := publishers.NewTikTokPublisher(acct.Username)
+	if !client.IsConfigured() {
+		return nil, fmt.Errorf("%w: %s chưa kết nối TikTok OAuth", ErrNotConnected, acct.Username)
+	}
+	stats, err := client.DisplayUserStats(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("TikTok profile metrics: %w; nếu thiếu quyền, kết nối lại kênh để cấp user.info.stats", err)
+	}
+	if stats.Followers == nil && stats.Videos == nil && stats.Likes == nil {
+		return nil, fmt.Errorf("%w: TikTok không trả profile statistics; cần scope user.info.stats", ErrNotConnected)
+	}
+	extra := map[string]any{}
+	if stats.Likes != nil {
+		extra["likes_count"] = *stats.Likes
+	}
+	return &Snapshot{
+		AccountID: acct.ID,
+		TakenAt:   time.Now().UTC(),
+		Source:    "tiktok_api",
+		Followers: stats.Followers,
+		Videos:    stats.Videos,
+		Extra:     extra,
+	}, nil
 }
 
-func snippet(b []byte) string {
-	s := strings.TrimSpace(string(b))
-	if len(s) > 200 {
-		s = s[:200] + "…"
+func (TikTokSource) FetchVideoMetrics(ctx context.Context, acct SourceAccount) ([]VideoMetric, error) {
+	if acct.Username == "" {
+		return nil, fmt.Errorf("%w: thiếu tên kênh TikTok", ErrNotConnected)
 	}
-	return s
+	client := publishers.NewTikTokPublisher(acct.Username)
+	if !client.IsConfigured() {
+		return nil, fmt.Errorf("%w: %s chưa kết nối TikTok OAuth", ErrNotConnected, acct.Username)
+	}
+	videos, err := client.DisplayVideoMetrics(ctx, 60)
+	if err != nil {
+		return nil, fmt.Errorf("TikTok video metrics: %w; nếu thiếu quyền, kết nối lại kênh để cấp video.list", err)
+	}
+	takenAt := time.Now().UTC()
+	out := make([]VideoMetric, 0, len(videos))
+	for _, video := range videos {
+		out = append(out, VideoMetric{
+			PlatformVideoID: video.ID,
+			Title:           video.Title,
+			ShareURL:        video.ShareURL,
+			PublishedAt:     video.PublishedAt,
+			TakenAt:         takenAt,
+			Views:           video.Views,
+			Likes:           video.Likes,
+			Comments:        video.Comments,
+			Shares:          video.Shares,
+		})
+	}
+	return out, nil
 }

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
+	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"os"
@@ -39,7 +40,7 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 			s.writeJSON(w, map[string]any{"ok": false, "error": "Không đọc được hồ sơ kênh: " + err.Error()})
 			return
 		}
-		p.ChannelProfile.Model = strings.TrimSpace(account.Persona)
+		p.ChannelProfile.Model = "nhân vật kênh theo ảnh tham chiếu"
 		p.ChannelMemoryKey = strings.TrimSpace(account.Username)
 		if p.ChannelProfile.Model == "" {
 			p.ChannelProfile.Model = strings.TrimSpace(account.Niche)
@@ -80,6 +81,12 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.AffiliateParams, error) {
 	var p studio.AffiliateParams
+	sourceMusicVideoURL := strings.TrimSpace(r.FormValue("source_music_video_url"))
+	source, err := s.Studio.ResolveTikTokRadarVideo(r.Context(), sourceMusicVideoURL)
+	if err != nil {
+		return p, fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi lập shot list: %w", err)
+	}
+	sourceMusicVideoURL = source.VideoURL
 	upDir := s.Studio.UploadDir()
 	if err := os.MkdirAll(upDir, 0o755); err != nil {
 		return p, fmt.Errorf("không tạo được thư mục upload: %w", err)
@@ -140,24 +147,35 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 	price := strings.TrimSpace(r.FormValue("product_price"))
 	affLink := strings.TrimSpace(r.FormValue("aff_link"))
 	var remotePhotoURLs []string
-	if raw := strings.TrimSpace(r.FormValue("product_id")); raw != "" && s.Products != nil {
-		if id, err := strconv.ParseInt(raw, 10, 64); err == nil && id > 0 {
-			if product, err := s.Products.GetByID(id); err == nil {
-				if productName == "" {
-					productName = product.Title
-				}
-				if niche == "" {
-					niche = product.Category
-				}
-				if price == "" && product.Price > 0 {
-					price = fmt.Sprintf("%.0f ₫", product.Price)
-				}
-				if affLink == "" {
-					affLink = product.ProductURL
-				}
-				remotePhotoURLs = append(remotePhotoURLs, product.ImageURLs...)
-			}
+	if raw := strings.TrimSpace(r.FormValue("product_id")); raw != "" {
+		if s.Products == nil {
+			return p, fmt.Errorf("kho sản phẩm chưa sẵn sàng để kiểm tra duyệt")
 		}
+		id, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || id <= 0 {
+			return p, fmt.Errorf("mã sản phẩm không hợp lệ")
+		}
+		product, err := s.Products.GetByID(id)
+		if err != nil {
+			return p, fmt.Errorf("không tìm thấy sản phẩm trong kho")
+		}
+		if product.ReviewStatus != products.ReviewApproved {
+			return p, fmt.Errorf("duyệt sản phẩm trước khi lập kế hoạch video affiliate")
+		}
+		p.ProductID = product.ID
+		if productName == "" {
+			productName = product.Title
+		}
+		if niche == "" {
+			niche = product.Category
+		}
+		if price == "" && product.Price > 0 {
+			price = fmt.Sprintf("%.0f ₫", product.Price)
+		}
+		if affLink == "" {
+			affLink = product.ProductURL
+		}
+		remotePhotoURLs = append(remotePhotoURLs, product.ImageURLs...)
 	}
 	for _, raw := range strings.Split(strings.TrimSpace(r.FormValue("photo_urls")), "\n") {
 		if raw = strings.TrimSpace(raw); strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
@@ -203,6 +221,8 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 		ProductFocus: strings.TrimSpace(r.FormValue("product_focus")),
 		AffLink:      affLink, ModelPhoto: modelPhotos[0], ModelPhotos: modelPhotos,
 		ProductPhoto: productPhoto, ExtraPhotos: extraPhotos, Seconds: seconds,
+		SourceMusicTitle:    source.SoundTitle(),
+		SourceMusicVideoURL: sourceMusicVideoURL,
 	}
 	if p.ProductName == "" {
 		return p, fmt.Errorf("nhập tên sản phẩm theo listing")

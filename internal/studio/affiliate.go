@@ -41,6 +41,9 @@ func AffiliateFlowVideoPrompt(productName string, shot ProShot) string {
 // AutoAffiliateProductionReady reports whether Studio can produce all footage
 // without operator-supplied clips. Current manual workflow is not autonomous.
 func (s *Studio) AutoAffiliateProductionReady() (bool, string) {
+	if _, err := s.ResolveTikTokRadarMusic(context.Background()); err != nil {
+		return false, err.Error()
+	}
 	if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
 		return false, reason
 	}
@@ -75,18 +78,6 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if submitted.OutputResolution != "" {
 		p.OutputResolution = submitted.OutputResolution
 	}
-	if submitted.MusicPath != "" {
-		p.MusicPath = submitted.MusicPath
-	}
-	if submitted.MusicStart != 0 {
-		p.MusicStart = submitted.MusicStart
-	}
-	if submitted.MusicTitle != "" {
-		p.MusicTitle = submitted.MusicTitle
-	}
-	if submitted.MusicArtist != "" {
-		p.MusicArtist = submitted.MusicArtist
-	}
 	if submitted.VoiceoverPath != "" {
 		p.VoiceoverPath = submitted.VoiceoverPath
 	}
@@ -98,6 +89,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	}
 	if submitted.AffLink != "" {
 		p.AffLink = submitted.AffLink
+	}
+	if submitted.AffiliateAttributionID != "" {
+		p.AffiliateAttributionID = submitted.AffiliateAttributionID
 	}
 	p.PreparedPlanID = preparationID
 	if p.PreparedProductBrief == nil || len(p.PreparedShots) == 0 {
@@ -144,6 +138,21 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.VideoEngine == AffiliateVideoEngineGoogleFlow && p.HasClips() {
 		return "", fmt.Errorf("Google Flow mode tạo mới từng shot; bỏ clip tải lên hoặc chọn chế độ thủ công")
 	}
+	if !IsTikTokVideoURL(p.SourceMusicVideoURL) {
+		return "", fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi tạo affiliate")
+	}
+	source, err := s.ResolveTikTokRadarVideo(context.Background(), p.SourceMusicVideoURL)
+	if err != nil {
+		return "", fmt.Errorf("không xác minh được sound Radar TikTok: %w", err)
+	}
+	if !source.DanceVerified {
+		return "", fmt.Errorf("video Radar chưa được xác nhận là video nhảy")
+	}
+	p.SourceMusicTitle = source.SoundTitle()
+	p.SourceMusicVideoURL = source.VideoURL
+	p.SourceMusicVideoID = source.VideoID
+	p.SourceMusicAuthor = source.Author
+	p.SourceMusicCollectedAt = source.CollectedAt
 	for i, clip := range p.Clips {
 		if !isViralVideoFile(strings.TrimSpace(clip)) {
 			return "", fmt.Errorf("clip %d không phải video hợp lệ", i+1)
@@ -198,9 +207,6 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 			return "", fmt.Errorf("Google Flow chưa sẵn sàng: %s", reason)
 		}
 	}
-	if p.BPM < 60 || p.BPM > 200 {
-		p.BPM = 120
-	}
 	// Consent applies to this submission only; retries must ask again.
 	p.FlowCreditsAcknowledged = false
 	planID := p.PreparedPlanID
@@ -212,7 +218,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if title == "" {
 		title = "Video affiliate"
 	}
-	id, err := s.insertJob(KindAffiliate, title, p)
+	// The one-use plan ID is also the job ID. AccessTrade Sub2 can therefore
+	// point directly to the exact video job without a separate lookup table.
+	id, err := s.insertJobWithID(planID, KindAffiliate, title, p)
 	if err != nil {
 		return "", err
 	}

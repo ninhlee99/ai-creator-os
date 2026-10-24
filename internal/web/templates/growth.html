@@ -1,230 +1,155 @@
-{{define "title"}}Phát triển kênh{{end}}
+{{define "title"}}Tăng trưởng TikTok{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1>Phát Triển Kênh &amp; Tăng Trưởng</h1>
-  </div>
+<div class="webai-header" style="margin-bottom:20px">
+  <div class="webai-header-left"><h1>Tăng trưởng TikTok</h1></div>
   <div class="webai-header-actions">
     <a href="/accounts" class="btn btn-secondary">Kênh Creator</a>
-    <a href="/publishers" class="btn btn-secondary">Cổng xuất bản</a>
+    <a href="/viral" class="btn btn-secondary">TikTok Viral</a>
   </div>
 </div>
-
-<!-- Channel Unified Navigation Tabs -->
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/accounts">📱 Mạng Lưới Kênh</a>
-  <a href="/growth" class="active">🌱 Phát Triển Kênh &amp; KPI</a>
-  <a href="/publishers">🌐 Cổng Kết Nối Mạng Xã Hội</a>
-</nav>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
-{{if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
-
-<div class="form-card" style="margin:12px 0">
-  <h2 style="margin-top:0;border:none;padding:0">Lịch sản xuất theo Growth plan</h2>
+<section class="form-card" style="margin:12px 0">
+  <h2 style="margin-top:0">Lịch sản xuất TikTok</h2>
   <p>
-    {{if .ProdEnabled}}<span class="badge badge-ok" title="Công tắc lịch đang bật; không xác nhận worker hoặc khả năng tạo job">lịch đang bật</span>{{else}}<span class="badge badge-no">lịch đang tắt</span>{{end}}
-    {{if .ProdDryRun}}<span class="badge badge-warn" title="Chưa sản xuất/đăng thật khi chạy thử">CHẠY THỬ</span>{{end}}
+    {{if .ProdEnabled}}<span class="badge badge-ok">lịch đang bật</span>{{else}}<span class="badge badge-no">lịch đang tắt</span>{{end}}
+    {{if .ProdDryRun}}<span class="badge badge-warn">CHẠY THỬ</span>{{end}}
     {{if .Kill}}<span class="badge badge-err">đã dừng khẩn cấp</span>{{end}}
-    {{if .QuotaReady}}<span class="badge badge-draft" title="YouTube videos.insert: {{.QuotaPerUpload}} điểm/lượt; bucket reset theo giờ Pacific">Quota YouTube {{.QuotaUsed}}/{{.QuotaLimit}} · còn {{.QuotaLeft}} lượt</span>{{else}}<span class="badge badge-warn" title="Trang chưa đọc được quota; bộ đăng sẽ kiểm tra lại trước mỗi yêu cầu">Quota YouTube chưa đọc được · sẽ kiểm tra trước khi đăng</span>{{end}}
-    <span class="badge badge-draft" title="Đổi ở Cài đặt · Kênh MXH; luôn gắn cờ nội dung AI">Đăng YouTube: {{.YTPrivacy}}</span>
-    {{if gt .StudioPending 0}}<span class="badge badge-warn" title="Job đang chờ/đang chạy trong Studio — hàng đợi dài thì item plan có thể quá hạn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
+    {{if gt .StudioPending 0}}<span class="badge badge-warn">Hàng đợi Studio: {{.StudioPending}}</span>{{end}}
   </p>
-  <p class="hint">Công tắc này cho phép Growth tick xử lý plan đến hạn. Khi provider, credential, quota và safety gate cho phép, tick có thể tạo Studio job rồi upload YouTube theo privacy setting. Trạng thái bật không chứng minh worker đang chạy.</p>
   <form method="post" action="/growth/production" style="display:inline">
-    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt lịch Growth</button>
-    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit" data-confirm="Cho phép Growth tick tự xử lý plan đến hạn. Khi các gate qua, hệ thống có thể tạo job và upload YouTube theo privacy setting.">Bật lịch Growth</button>{{end}}
+    {{if .ProdEnabled}}<input type="hidden" name="enabled" value="0"><button class="btn btn-secondary" type="submit">Tắt lịch</button>
+    {{else}}<input type="hidden" name="enabled" value="1"><button class="btn" type="submit">Bật lịch</button>{{end}}
   </form>
   <form method="post" action="/growth/production/run" style="display:inline">
-    <button class="btn btn-secondary" type="submit" data-confirm="Chạy một vòng Growth ngay. Có thể tạo Studio job và upload YouTube nếu item đến hạn, credential, quota và safety gate cho phép.">▶ Chạy một vòng ngay</button>
+    <button class="btn btn-secondary" type="submit">Chạy một vòng</button>
   </form>
-</div>
+  <form method="post" action="/growth/sync" style="display:inline">
+    <button class="btn btn-secondary" type="submit" hx-post="/growth/sync" hx-target="#growth-sync-result" hx-swap="outerHTML" hx-indicator="#growth-sync-loading">Đồng bộ dữ liệu</button>
+  </form>
+  <span id="growth-sync-loading" class="htmx-indicator text-sm text-slate-500" role="status">Đang đồng bộ TikTok…</span>
+</section>
+{{template "growth-sync-result" .}}
 
 <details class="advanced" style="margin:12px 0">
-  <summary>🧰 Tác vụ thủ công</summary>
-  <div class="toolbar" style="margin-top:10px">
-    <form method="post" action="/growth/sync" style="display:inline"
-          data-confirm="Đồng bộ số liệu + chạy vòng quyết định ngay?">
-      <button class="btn btn-secondary btn-sm" type="submit">⟳ Đồng bộ số liệu + chạy vòng quyết định</button>
-    </form>
-  </div>
-
-  <h3 style="margin-top:16px">Ngưỡng quyết định tăng trưởng</h3>
-  <form method="post" action="/growth/thresholds">
-    <div class="table-wrap">
-<table>
-      <tr><td>Video tối thiểu trước khi kill</td><td><input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}" style="width:6em"></td></tr>
-      <tr><td>Ngày tối thiểu trước khi kill</td><td><input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}" style="width:6em"></td></tr>
-      <tr><td><span title="Ngưỡng dùng average view percentage từ YouTube hoặc proxy share/save trên view; không đồng nghĩa tỉ lệ xem hết. Đặt 0 để tắt luật này.">Ngưỡng retention (0–1)</span></td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}" style="width:6em"></td></tr>
-      <tr><td><span title="Tỉ lệ chia sẻ/lưu dưới mức này thì format bị dừng (khi không có số liệu xem hết). Đặt 0 để tắt.">Ngưỡng share/save (0–1)</span></td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}" style="width:6em"></td></tr>
-      <tr><td><span title="Video đạt gấp X lần view trung bình thì hệ thống làm tiếp series 3 tập cùng hướng. Đặt 0 để tắt.">Hệ số double-down (× median)</span></td><td><input type="number" name="double_down_factor" step="0.5" min="0" value="{{.Thresholds.DoubleDownFactor}}" style="width:6em"></td></tr>
-      <tr><td><span title="Video đạt gấp X lần view trung bình thì hệ thống lên kế hoạch nhanh trong 24h. Đặt 0 để tắt.">Hệ số breakout (× median)</span></td><td><input type="number" name="breakout_factor" step="1" min="0" value="{{.Thresholds.BreakoutFactor}}" style="width:6em"></td></tr>
-      <tr><td>Ngày chững trước khi đánh dấu</td><td><input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}" style="width:6em"></td></tr>
-    </table>
-</div>
+  <summary>Ngưỡng cải tiến video</summary>
+  <form method="post" action="/growth/thresholds" style="margin-top:12px">
+    <div class="table-wrap"><table>
+      <tr><td>Số video tối thiểu trước khi dừng format</td><td><input type="number" name="kill_min_videos" min="1" value="{{.Thresholds.KillMinVideos}}"></td></tr>
+      <tr><td>Số ngày tối thiểu trước khi dừng format</td><td><input type="number" name="kill_min_days" min="1" value="{{.Thresholds.KillMinDays}}"></td></tr>
+      <tr><td>Ngưỡng retention (0–1)</td><td><input type="number" name="kill_completion_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillCompletionFloor}}"></td></tr>
+      <tr><td>Ngưỡng share/save trên lượt xem (0–1)</td><td><input type="number" name="kill_proxy_floor" step="0.01" min="0" max="1" value="{{.Thresholds.KillProxyFloor}}"></td></tr>
+      <tr><td>Hệ số làm tiếp format thắng</td><td><input type="number" name="double_down_factor" step="0.5" min="0" value="{{.Thresholds.DoubleDownFactor}}"></td></tr>
+      <tr><td>Hệ số breakout</td><td><input type="number" name="breakout_factor" step="1" min="0" value="{{.Thresholds.BreakoutFactor}}"></td></tr>
+      <tr><td>Ngày chững trước khi đánh dấu</td><td><input type="number" name="stalled_days" min="1" value="{{.Thresholds.StalledDays}}"></td></tr>
+    </table></div>
     <button class="btn btn-primary btn-sm" type="submit">Lưu ngưỡng</button>
   </form>
-  <form method="post" action="/growth/thresholds" style="display:inline;margin-top:8px"
-        data-confirm="Đặt lại mọi ngưỡng về mặc định?">
-    <input type="hidden" name="reset" value="1">
-    <button class="btn btn-secondary btn-sm" type="submit">Về mặc định</button>
+  <form method="post" action="/growth/thresholds" style="display:inline;margin-top:8px">
+    <input type="hidden" name="reset" value="1"><button class="btn btn-secondary btn-sm" type="submit">Về mặc định</button>
   </form>
 </details>
 
 {{if not .Accounts}}
-<div class="empty-state">
-  <strong>Chưa có tài khoản nào</strong>
-  <p>Tạo tài khoản TikTok/YouTube đầu tiên để hệ thống bắt đầu vòng khởi động (thử nghiệm 7 ngày).</p>
-  <a class="btn" href="/accounts/new">+ Thêm kênh</a>
-</div>
+<div class="empty-state"><strong>Chưa có tài khoản TikTok</strong><a class="btn" href="/accounts/new">+ Thêm kênh</a></div>
 {{else}}
-
 <div class="cards">
-  <div class="card"><div class="num">{{.TotalYTSubscribers}}</div><div class="label">YouTube subscribers · snapshot mới nhất</div></div>
-  <div class="card"><div class="num">{{.TotalTikTokFollowers}}</div><div class="label">TikTok followers · snapshot mới nhất</div></div>
-  <div class="card"><div class="num">{{.TotalViews}}</div><div class="label">Tổng lượt xem tích lũy (YouTube Data API)</div></div>
-  <div class="card"><div class="num">{{if .HasYTKey}}Đã nhập{{else}}Chưa nhập{{end}}</div><div class="label">YouTube API key — {{if .HasYTKey}}đồng bộ sẽ kiểm tra API{{else}}nhập tại <a href="/settings">Cài đặt</a> (mã API YouTube){{end}}</div></div>
+  <div class="card"><div class="num">{{if .TikTokMetricsAvailable}}{{.TotalTikTokFollowers}}{{else}}—{{end}}</div><div class="label">TikTok followers có dữ liệu</div></div>
+  <div class="card"><div class="num">{{if .Views30dKnown}}{{printf "%.0f" .TotalViews30d}}{{else}}—{{end}}</div><div class="label">Lượt xem 30 ngày · TikTok</div></div>
 </div>
+{{if not .TikTokMetricsAvailable}}<p class="hint">TikTok chưa cung cấp metrics cho dashboard; follower, lượt xem và thời gian xem chưa có dữ liệu.</p>{{end}}
+{{if .TikTokMetricsAvailable}}<p class="hint">TikTok Display API trả số follower và counters công khai của video. Retention, thời gian xem và nhân khẩu học chưa có dữ liệu qua quyền hiện tại.</p>{{end}}
 
-<h2>Trạng thái từng tài khoản</h2>
-<div class="table-wrap">
-<table>
-<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Subscribers / followers</th><th>Lượt xem</th><th>Số liệu YT</th><th>Đăng YouTube</th><th></th></tr>
+<h2>Kênh TikTok</h2>
+<div class="table-wrap"><table>
+<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Followers</th><th>Video công khai</th><th></th></tr>
 {{range .Rows}}
 <tr>
   <td><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
   <td><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
-  <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mọi mốc thang{{else}}Chưa có số liệu thật{{end}}</td>
-  <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}} ({{printf "%.0f" .NextPct}}%)</span>{{else}}—{{end}}</td>
-  <td>{{if .HasSnapshot}}<span class="hint">{{.FollowersLabel}}</span><br>{{.Followers}}{{else}}<span class="hint">chưa có số liệu</span>{{end}}</td>
-  <td>{{if .HasSnapshot}}{{.ViewsTotal}}{{else}}—{{end}}</td>
-  <td><span class="badge {{if .YTAnalyticsConfigured}}badge-draft{{else}}badge-no{{end}}" title="Chỉ kiểm tra API key và Channel ID đã lưu; chưa gọi YouTube API">{{if .YTAnalyticsConfigured}}API key + Channel ID đã lưu{{else}}Thiếu API key hoặc Channel ID{{end}}</span></td>
-  <td>{{if .YTReady}}<span class="badge badge-draft" title="Chỉ kiểm tra OAuth app và token cục bộ; quyền API chưa được kiểm tra">{{.YTUpload}}</span>{{else}}<span class="badge badge-warn" title="Thiếu cấu hình cục bộ để thử upload">{{.YTUpload}}</span>{{end}}</td>
-  <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở Autopilot</a></td>
+  <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Chưa có số liệu thật{{end}}</td>
+  <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
+  <td>{{if .FollowersKnown}}{{.Followers}}{{else}}—{{end}}</td>
+  <td>{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
+  <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở kênh</a></td>
 </tr>
 {{end}}
-</table>
-</div>
+</table></div>
 
-{{if .HasYTAccount}}
-<h2>Tiến độ kiếm tiền YouTube (YPP)</h2>
-
-<div class="table-wrap">
-<table>
-<tr><th>Kênh</th><th>Mức</th><th>Người đăng ký</th><th>Giờ xem 12 tháng</th><th>View Shorts 90 ngày</th><th>Tổng</th></tr>
-{{range $r := .Rows}}{{range $r.YPP}}
+<h2>Hiệu quả video theo job Studio</h2>
+<p class="hint">Sau khi đăng, liên kết URL công khai ở job hoàn tất trong Studio. Growth ghép snapshot TikTok theo đúng kênh và video; chưa có snapshot sẽ hiện dấu gạch.</p>
+{{if .StudioVideoMetrics}}
+<div class="table-wrap"><table>
+<tr><th>Kênh</th><th>Flow</th><th>Video / job</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Đơn AccessTrade</th><th>Cập nhật</th></tr>
+{{range .StudioVideoMetrics}}
 <tr>
-  <td>{{$r.Account.Username}}</td>
-  <td>{{.Tier.Name}}</td>
-  <td>{{printf "%.0f" .SubsPct}}%</td>
-  <td>{{if lt .WatchPct 0.0}}<span class="hint">chưa có số liệu</span>{{else}}{{printf "%.0f" .WatchPct}}%{{end}}</td>
-  <td>{{if lt .ShortsPct 0.0}}<span class="hint">chưa có số liệu</span>{{else}}{{printf "%.0f" .ShortsPct}}%{{end}}</td>
-  <td>{{if .Eligible}}<span class="badge badge-ok">Đủ điều kiện — đăng ký trong YouTube Studio</span>
-      {{else if .MissingData}}<span class="badge badge-no">Thiếu số liệu — nối YouTube (quyền Analytics) rồi bấm Đồng bộ</span>
-      {{else}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .OverallPct}}%"></div></div><span class="hint">{{printf "%.0f" .OverallPct}}%{{if .BestPath}} · đường nhanh nhất: {{.BestPath}}{{end}}</span>{{end}}</td>
+  <td>{{.Username}}</td>
+  <td>{{.KindLabel}}</td>
+  <td><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a><br><span class="hint">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Job Studio</a></span></td>
+  <td>{{.Views}}</td><td>{{.Likes}}</td><td>{{.Comments}}</td><td>{{.Shares}}</td>
+  <td>
+    {{if eq .KindLabel "Affiliate TikTok"}}
+      {{if .AttributionID}}
+        {{if .OrdersKnown}}
+          <strong>{{.Orders.TotalCount}} đơn</strong><br>
+          <span class="hint">Chờ {{.Orders.PendingCount}} · duyệt {{.Orders.ApprovedCount}} · từ chối {{.Orders.RejectedCount}}</span><br>
+          <span class="hint">Hoa hồng đã duyệt: {{printf "%.0f" .Orders.ApprovedCommission}}₫ · đồng bộ {{.OrdersSyncedAt}}</span>
+        {{else}}Chưa có snapshot đơn AccessTrade{{end}}
+      {{else}}Job chưa có mã tracking riêng{{end}}
+    {{else}}—{{end}}
+  </td>
+  <td>{{.TakenAt}}</td>
 </tr>
-{{end}}{{end}}
-</table>
-</div>
+{{end}}
+</table></div>
+{{else}}
+<p class="empty">Chưa liên kết video Studio nào. Mở job Affiliate hoặc TikTok Viral đã hoàn tất, rồi dán link video TikTok đã đăng.</p>
 {{end}}
 
-<div style="margin:28px 0 20px">
-  <h2 style="margin-bottom:8px">Cảnh báo &amp; Sức khỏe kênh 🛡️</h2>
-  {{if .Alerts}}
-  <div class="table-wrap">
-    <table>
-      <tr><th>Tài khoản</th><th>Nội dung</th><th>Hệ thống đã xử lý</th></tr>
-      {{range .Alerts}}
-      <tr>
-        <td><strong>{{.Username}}</strong></td>
-        <td><span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}">{{.Kind}}</span> {{.Message}}</td>
-        <td>{{.ActionTaken}}</td>
-      </tr>
-      {{end}}
-    </table>
-  </div>
-  {{else}}
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 4px rgba(0,0,0,0.03)">
-    <span style="font-size:24px">🛡️</span>
-    <div style="flex:1">
-      <b style="font-size:14px;color:var(--text)">Chưa ghi nhận cảnh báo tăng trưởng nào</b>
-
-    </div>
-    <span class="badge badge-draft" style="font-size:12px;padding:4px 10px">Không có cảnh báo mới</span>
-  </div>
-  {{end}}
-</div>
-
-<div style="margin:28px 0">
-  <div style="margin-bottom:12px">
-    <h2 style="margin:0 0 4px">Kế hoạch &amp; Lịch sản xuất sắp tới (Toàn mạng) 📅</h2>
-  </div>
-
-  {{if .Upcoming}}
-  <div class="table-wrap" style="border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
-  <table>
-    <thead>
-      <tr>
-        <th style="width:11%">Ngày</th>
-        <th style="width:14%">Tài khoản</th>
-        <th style="width:16%">Định dạng</th>
-        <th style="width:20%">Chủ đề</th>
-        <th style="width:14%">Trạng thái</th>
-        <th style="width:25%">Chiến lược Hook 3s</th>
-      </tr>
-    </thead>
-    <tbody>
-    {{range .Upcoming}}
-    <tr>
-      <td><span class="badge badge-dim" style="font-size:12px;font-weight:600">{{.PlannedFor}}</span></td>
-      <td><strong>{{.Username}}</strong></td>
-      <td>
-        <span class="badge badge-info" title="Persona Story job áp dụng khổ và thời lượng theo variant; QC kiểm tra đầu ra. Affiliate Autopilot hiện dừng trước khi tạo job.">Plan: {{variantAspect .Variant}} · {{variantSeconds .Variant}}s</span>
-        <span style="font-size:13px;color:var(--text);margin-left:4px">{{.Variant}}</span>
-        {{if .SeriesEp}}<span class="hint">· tập {{.SeriesEp}}</span>{{end}}
-      </td>
-      <td>
-        <b>{{.Topic}}</b>
-        {{if .DedupAction}}<br><span class="badge badge-warn" style="font-size:11px">đã đổi góc chống trùng</span>{{end}}
-        {{if .RelatedItemID}}<br><span class="badge badge-info" style="font-size:11px">có bản liên kết</span>{{end}}
-      </td>
-      <td>
-        <span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>
-        {{if .PublishedRef}}<br><a href="https://youtu.be/{{.PublishedRef}}" target="_blank" rel="noopener" style="font-size:12px">Xem video ↗</a>{{end}}
-        {{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download style="font-size:12px">⬇ Tải MP4</a>{{end}}
-        {{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" style="font-size:12px">Mở job Studio ↗</a>{{end}}
-        {{if eq .Status "needs_review"}}
-        <form method="post" action="/growth/items/{{.ID}}/publish-review" style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:8px">
-          <label class="hint">YouTube video ID nếu đã thấy
-            <input name="remote_id" placeholder="Video ID" style="display:block;max-width:220px">
-          </label>
-          <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có video</button>
-          <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra YouTube và không thấy video. Hệ thống sẽ xếp lại đúng luồng upload.">Đã kiểm tra: chưa có</button>
-        </form>
-        {{end}}
-      </td>
-      <td>
-        {{if .PubNote}}
-          <span class="hint" style="font-size:12px;line-height:1.4">{{.PubNote}}</span>
-        {{else}}
-          <span class="badge badge-dim" style="font-size:11px;margin-bottom:3px">🎯 Hook 3s tò mò + Payoff</span>
-          <div class="hint" style="font-size:12px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden" title="{{.Hook}}">{{.Hook}}</div>
-        {{end}}
-      </td>
-    </tr>
-    {{end}}
-    </tbody>
-  </table>
-  </div>
-  {{else}}
-  <div class="empty-state compact">
-    <div class="es-icon">📅</div>
-    <h3>Chưa có kế hoạch nội dung</h3>
-    <p>Kế hoạch sẽ tự động sinh khi bạn tạo kênh hoặc cấu hình lại chủ đề.</p>
-  </div>
-  {{end}}
-</div>
-
-
+<h2>Video TikTok có counters</h2>
+{{if .VideoMetrics}}
+<div class="table-wrap"><table>
+<tr><th>Kênh</th><th>Video</th><th>Ngày đăng</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Cập nhật</th></tr>
+{{range .VideoMetrics}}
+<tr>
+  <td>{{.Username}}</td>
+  <td>{{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a>{{else}}{{.Title}}{{end}}</td>
+  <td>{{.PublishedAt}}</td><td>{{.Views}}</td><td>{{.Likes}}</td><td>{{.Comments}}</td><td>{{.Shares}}</td><td>{{.TakenAt}}</td>
+</tr>
 {{end}}
+</table></div>
+{{else}}
+<p class="empty">Chưa có số liệu video. Kết nối lại TikTok và cấp quyền `user.info.stats` + `video.list`, rồi đồng bộ.</p>
+{{end}}
+
+<h2>Cảnh báo & sức khỏe kênh</h2>
+{{if .Alerts}}
+<div class="table-wrap"><table><tr><th>Kênh</th><th>Nội dung</th><th>Đã xử lý</th></tr>
+{{range .Alerts}}<tr><td>{{.Username}}</td><td><span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}">{{.Kind}}</span> {{.Message}}</td><td>{{.ActionTaken}}</td></tr>{{end}}
+</table></div>
+{{else}}<p class="empty">Chưa có cảnh báo tăng trưởng.</p>{{end}}
+
+<h2>Kế hoạch & video sắp tới</h2>
+{{if .Upcoming}}
+<div class="table-wrap"><table>
+<tr><th>Ngày</th><th>Kênh</th><th>Định dạng</th><th>Chủ đề</th><th>Trạng thái</th><th>Video / ghi chú</th></tr>
+{{range .Upcoming}}
+<tr>
+  <td>{{.PlannedFor}}</td><td>{{.Username}}</td>
+  <td>9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+  <td><strong>{{.Topic}}</strong>{{if .DedupAction}}<br><span class="badge badge-warn">đổi góc chống trùng</span>{{end}}</td>
+  <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download>Tải MP4</a>{{end}}{{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở Studio job</a>{{end}}</td>
+  <td>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</td>
+</tr>
+{{end}}
+</table></div>
+{{else}}<div class="empty-state compact"><h3>Chưa có kế hoạch TikTok</h3></div>{{end}}
+{{end}}
+{{end}}
+
+{{define "growth-sync-result"}}
+<div id="growth-sync-result" aria-live="polite">
+  {{if .SyncError}}<p class="err" role="alert">{{.SyncError}}</p>
+  {{else if .SyncNotes}}<div class="notice"><strong>Kết quả đồng bộ:</strong><ul class="clean">{{range .SyncNotes}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+</div>
 {{end}}

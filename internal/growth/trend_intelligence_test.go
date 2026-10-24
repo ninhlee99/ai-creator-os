@@ -10,18 +10,16 @@ func TestAnalyzeTrendSignals(t *testing.T) {
 
 	signals := []TrendSignal{
 		{
-			Title:    "Nơi Pháo Hoa Rực Rỡ",
-			Artist:   "Hòa Minzy & Đức Phúc",
-			Movement: "+12",
-			Source:   "Kworb TikTok VN",
-			Rank:     1,
+			Title:  "Dance trend in Vietnam",
+			Music:  "Nơi Pháo Hoa Rực Rỡ",
+			Source: "TikWM TikTok VN feed",
+			Rank:   1,
 		},
 		{
-			Title:    "Thiên Lý Ơi",
-			Artist:   "Jack",
-			Movement: "NEW",
-			Source:   "Kworb TikTok VN",
-			Rank:     3,
+			Title:  "Video dance viral",
+			Music:  "Thiên Lý Ơi",
+			Source: "TikWM TikTok VN feed",
+			Rank:   3,
 		},
 	}
 

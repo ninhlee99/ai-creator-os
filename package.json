@@ -1,0 +1,17 @@
+{
+  "name": "ai-creator-os-ui",
+  "private": true,
+  "scripts": {
+    "build:ui": "npm run vendor:htmx && npm run build:css",
+    "build:css": "tailwindcss -i internal/web/static/tailwind.input.css -o internal/web/static/tailwind.css --minify",
+    "watch:css": "tailwindcss -i internal/web/static/tailwind.input.css -o internal/web/static/tailwind.css --watch",
+    "vendor:htmx": "node scripts/vendor-htmx.mjs"
+  },
+  "dependencies": {
+    "htmx.org": "2.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
+  }
+}

@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/ninhlee99/ai-creator-os/internal/tiktok"
 )
 
 // tiktokKinds are the content kinds the TikTok publisher handles.
-var tiktokKinds = []string{"short_video", "short_film"}
+var tiktokKinds = []string{"short_video"}
 
 // TikTokPublisher publishes via the TikTok Content Posting API
 // (draft-first). One OAuth token file per TikTok account:
@@ -59,25 +61,33 @@ func TikTokTokenPath(username string) string {
 // Mac with no public website.
 const DefaultTikTokRedirectURI = "http://127.0.0.1:8080/publishers/tiktok/callback"
 
-// TikTokRedirectURI is the OAuth redirect registered on the TikTok
-// developer app (TIKTOK_REDIRECT_URI, default DefaultTikTokRedirectURI).
-// It must match the registered value character for character.
+// TikTokRedirectURI is the Desktop Login Kit callback registered in TikTok
+// Developer Portal. It must be a loopback URI and match character for character.
 func TikTokRedirectURI() string {
-	if v := os.Getenv("TIKTOK_REDIRECT_URI"); v != "" {
+	if v := strings.TrimSpace(os.Getenv("TIKTOK_REDIRECT_URI")); v != "" {
 		return v
 	}
 	return DefaultTikTokRedirectURI
 }
 
-// TikTokRedirectIsLocal reports a localhost/127.0.0.1 redirect: the
-// Desktop flow, which needs PKCE and lands back on this app directly.
-func TikTokRedirectIsLocal() bool {
-	u, err := url.Parse(TikTokRedirectURI())
+// ValidateTikTokDesktopRedirectURI rejects Web redirects. TikTok Desktop
+// Login Kit only accepts localhost/127.0.0.1 callbacks with an explicit port.
+func ValidateTikTokDesktopRedirectURI() error {
+	raw := TikTokRedirectURI()
+	u, err := url.Parse(raw)
 	if err != nil {
-		return false
+		return errors.New("Redirect URI TikTok Desktop không hợp lệ")
 	}
-	h := u.Hostname()
-	return h == "127.0.0.1" || h == "localhost" || h == "::1"
+	host := strings.ToLower(u.Hostname())
+	port, portErr := strconv.Atoi(u.Port())
+	validHost := host == "localhost" || host == "127.0.0.1"
+	validScheme := u.Scheme == "http"
+	validPort := portErr == nil && port > 0 && port <= 65535
+	validPath := u.Path == "/publishers/tiktok/callback" && u.RawPath == ""
+	if !validHost || !validScheme || !validPort || !validPath || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" {
+		return fmt.Errorf("TikTok Desktop cần Redirect URI loopback có port, ví dụ %s; đăng ký URI này trong TikTok Developer Portal", DefaultTikTokRedirectURI)
+	}
+	return nil
 }
 
 // HasClient reports whether client key + secret are set for this account.
@@ -86,7 +96,7 @@ func (p *TikTokPublisher) HasClient() bool { return p.clientKey != "" && p.clien
 // Scope is what the connect flow asks for. Direct Post stays disabled until
 // eligibility is verified and the per-post consent flow exists.
 func (p *TikTokPublisher) Scope() string {
-	return "user.info.basic," + tiktok.ScopeUploadDraft
+	return "user.info.basic,user.info.stats,video.list," + tiktok.ScopeUploadDraft
 }
 
 // AuthorizeURL is the Login Kit URL the creator opens to grant access.
@@ -100,6 +110,9 @@ func (p *TikTokPublisher) AuthorizeURL(state, codeChallenge string) string {
 func (p *TikTokPublisher) ExchangeCode(code, codeVerifier string) (string, error) {
 	if !p.HasClient() {
 		return "", fmt.Errorf("thiếu TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET")
+	}
+	if err := ValidateTikTokDesktopRedirectURI(); err != nil {
+		return "", err
 	}
 	data, err := p.client().ExchangeCode(code, TikTokRedirectURI(), codeVerifier)
 	if err != nil {
@@ -129,7 +142,23 @@ func (p *TikTokPublisher) AccessToken() (string, error) {
 	return p.client().AccessToken()
 }
 
-// Handles reports whether kind is one of short_video, short_film.
+// DisplayUserStats reads profile counters authorized through TikTok Display API.
+func (p *TikTokPublisher) DisplayUserStats(ctx context.Context) (tiktok.DisplayUserStats, error) {
+	if !p.IsConfigured() {
+		return tiktok.DisplayUserStats{}, fmt.Errorf("TikTok chưa kết nối OAuth")
+	}
+	return p.client().DisplayUserStats(ctx)
+}
+
+// DisplayVideoMetrics reads current counters for recent public TikTok videos.
+func (p *TikTokPublisher) DisplayVideoMetrics(ctx context.Context, limit int) ([]tiktok.DisplayVideoMetrics, error) {
+	if !p.IsConfigured() {
+		return nil, fmt.Errorf("TikTok chưa kết nối OAuth")
+	}
+	return p.client().ListDisplayVideoMetrics(ctx, limit)
+}
+
+// Handles reports whether kind is a TikTok short video.
 func (p *TikTokPublisher) Handles(kind string) bool { return handlesKind(kind, tiktokKinds) }
 
 func (p *TikTokPublisher) client() *tiktok.PostingClient {

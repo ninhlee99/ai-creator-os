@@ -1,9 +1,11 @@
 package web
 
 import (
+	"encoding/json"
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"log"
 	"strconv"
 	"strings"
@@ -59,7 +61,7 @@ type atView struct {
 	Links     []accesstrade.SavedLink
 	// Đợt C: hunter + đối soát.
 	Hunted            []products.Product
-	Orders            []accesstrade.SavedOrder
+	Orders            []atOrderView
 	OrderStats        accesstrade.OrderStats
 	OrderStatsSynced  bool
 	OrderStatsError   bool
@@ -71,6 +73,11 @@ type atView struct {
 	HunterVideos      int
 	HunterLastRun     string
 	OrderLastRun      string
+}
+
+type atOrderView struct {
+	accesstrade.SavedOrder
+	StudioJobID string
 }
 
 type atOrderSummary struct {
@@ -134,10 +141,21 @@ func (s *Server) atPageData() atView {
 	} else {
 		v.Links = ls
 	}
-	if os, err := s.AT.ListOrders(20); err != nil {
+	if orders, err := s.AT.ListOrders(20); err != nil {
 		log.Printf("web: at orders: %v", err)
 	} else {
-		v.Orders = os
+		for _, order := range orders {
+			orderView := atOrderView{SavedOrder: order}
+			if s.Studio != nil && order.Sub2 != "" {
+				if job, ok := s.Studio.GetJob(order.Sub2); ok && job.Kind == studio.KindAffiliate {
+					var params studio.AffiliateParams
+					if json.Unmarshal([]byte(job.Params), &params) == nil && params.AffiliateAttributionID == order.Sub2 {
+						orderView.StudioJobID = job.ID
+					}
+				}
+			}
+			v.Orders = append(v.Orders, orderView)
+		}
 	}
 	if summary, err := s.atOrderSummary(); err != nil {
 		log.Printf("web: at order stats: %v", err)

@@ -10,7 +10,7 @@ import (
 )
 
 // handleStudioJobRemix dựng lại 1 video affiliate với tham số đã sửa
-// (thời lượng, nhịp, đoạn nhạc, file nhạc, thứ tự ảnh, chú thích). Bản cũ
+// (thời lượng, thứ tự ảnh, chú thích). Bản cũ
 // giữ nguyên — đây là "chỉnh sửa" trong app vì CapCut không có API.
 func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 	back := func(q string) { seeOther(w, r, "/studio/jobs?"+q) }
@@ -35,29 +35,23 @@ func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("seconds"))); err == nil {
 		p.Seconds = clampInt(v, 10, 120)
 	}
-	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("bpm"))); err == nil {
-		p.BPM = clampInt(v, 60, 200)
-	}
-	if v, err := strconv.ParseFloat(strings.TrimSpace(r.FormValue("music_start")), 64); err == nil && v >= 0 {
-		p.MusicStart = v
-	}
-	music, err := saveUpload(r, "music_file", s.Studio.UploadDir())
-	if err != nil {
-		back("err=" + url.QueryEscape("File nhạc lỗi: "+err.Error()))
-		return
-	}
-	if music != "" {
-		p.MusicPath = music
-	}
 	p = reorderPhotos(p, r.FormValue("order"))
 	p.FixedCaption = strings.TrimSpace(r.FormValue("caption"))
 	p.FlowCreditsAcknowledged = r.FormValue("confirm_flow_credits") == "1"
+	if err := s.ensureAffiliateRadarMusic(r.Context(), &p); err != nil {
+		back("err=" + url.QueryEscape("Không lấy được sound từ Radar: "+err.Error()))
+		return
+	}
 	planID, err := s.Studio.ReissueAffiliatePreparation(p)
 	if err != nil {
 		back("err=" + url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
 		return
 	}
 	p.PreparedPlanID = planID
+	if err := s.attachAffiliateVideoTracking(r.Context(), &p, planID); err != nil {
+		back("err=" + url.QueryEscape(err.Error()))
+		return
+	}
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
 		back("err=" + url.QueryEscape("Không dựng lại được: "+err.Error()))
 		return

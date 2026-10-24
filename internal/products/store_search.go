@@ -10,7 +10,7 @@ func (s *Store) TopByTheme(theme string, minCommission float64, accountID int64,
 	}
 	rows, err := s.db.Query(`
 		SELECT `+productCols+` FROM products
-		WHERE theme = ? AND commission_rate >= ?
+		WHERE theme = ? AND commission_rate >= ? AND review_status = 'approved'
 		  AND id NOT IN (SELECT product_id FROM product_usage WHERE account_id = ?)`,
 		theme, minCommission, accountID)
 	if err != nil {
@@ -23,6 +23,9 @@ func (s *Store) TopByTheme(theme string, minCommission float64, accountID int64,
 		if err != nil {
 			return nil, err
 		}
+		if !p.ReadyForAffiliateProduction() {
+			continue
+		}
 		out = append(out, p)
 	}
 	ranked := Rank(out)
@@ -34,11 +37,25 @@ func (s *Store) TopByTheme(theme string, minCommission float64, accountID int64,
 
 // Search queries products matching a keyword and/or theme, with optional minCommission floor.
 func (s *Store) Search(keyword, theme string, minCommission float64, limit int) ([]Product, error) {
+	return s.search("", keyword, theme, minCommission, limit)
+}
+
+// SearchSource restricts results to one provider before ordering and limiting.
+func (s *Store) SearchSource(source, keyword, theme string, minCommission float64, limit int) ([]Product, error) {
+	return s.search(strings.TrimSpace(source), keyword, theme, minCommission, limit)
+}
+
+func (s *Store) search(source, keyword, theme string, minCommission float64, limit int) ([]Product, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	var where []string
 	var args []any
+	if source != "" {
+		where = append(where, "source = ?")
+		args = append(args, source)
+	}
+	where = append(where, "review_status <> 'rejected'")
 	if keyword = strings.TrimSpace(keyword); keyword != "" {
 		like := "%" + strings.ToLower(keyword) + "%"
 		where = append(where, "(LOWER(title) LIKE ? OR LOWER(category) LIKE ? OR LOWER(shop_name) LIKE ?)")
@@ -79,7 +96,7 @@ func (s *Store) TopHighCommission(limit int) ([]Product, error) {
 	if limit <= 0 {
 		limit = 30
 	}
-	rows, err := s.db.Query(`SELECT `+productCols+` FROM products WHERE commission_rate >= 0.15 ORDER BY commission_rate DESC, id DESC LIMIT ?`, limit)
+	rows, err := s.db.Query(`SELECT `+productCols+` FROM products WHERE commission_rate >= 0.15 AND review_status <> 'rejected' ORDER BY commission_rate DESC, id DESC LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +121,7 @@ func (s *Store) TopUnusedBySource(source string, minCommission float64, accountI
 	}
 	rows, err := s.db.Query(`
 		SELECT `+productCols+` FROM products
-		WHERE source = ? AND commission_rate >= ?
+		WHERE source = ? AND commission_rate >= ? AND review_status = 'approved'
 		  AND id NOT IN (SELECT product_id FROM product_usage WHERE account_id = ?)`,
 		source, minCommission, accountID)
 	if err != nil {
@@ -116,6 +133,9 @@ func (s *Store) TopUnusedBySource(source string, minCommission float64, accountI
 		p, err := scanProduct(rows)
 		if err != nil {
 			return nil, err
+		}
+		if !p.ReadyForAffiliateProduction() {
+			continue
 		}
 		out = append(out, p)
 	}

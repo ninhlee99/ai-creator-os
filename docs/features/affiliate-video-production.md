@@ -1,26 +1,24 @@
-# Affiliate video production
+# Video affiliate TikTok
 
-Affiliate jobs use a staged product-to-video workflow. Product analysis and directing run first through `POST /studio/affiliate/plan`, before the operator records or generates motion clips. The server stores the resulting product brief and exact shot list for seven days; job creation consumes that plan and the worker reuses it. Each later stage writes evidence to the job log or work directory; the pipeline board reads those real markers rather than inventing independent agent activity.
+## Flow
 
-## Production stages
+1. Chỉ chọn offer đã duyệt; giữ link và dữ kiện nguồn.
+2. Lập shot plan theo listing và ảnh nhân vật của kênh.
+3. Chọn video nhảy trong TikTok Radar làm nguồn âm thanh.
+4. Tạo từng shot bằng clip chuyển động đã cung cấp hoặc provider được phép.
+5. Trích audio từ đúng video Radar, ghép vào output và lưu provenance.
+6. QC hình, sản phẩm, audio và file; sau đó gửi TikTok Draft.
 
-1. **Product Analyst** inspects up to six listing images before clip production. It classifies product category, records visible details and evidence, blocks mismatched or uncertain products, and checks that requested focus is visible. Category-required physical use stays mandatory; operator notes can only add compatible details.
-2. **Director** writes a category-grounded shot list before clip production. Every shot has a structured `product_use_mode` validated against product category (`wear`, `carry`, `apply`, `operate`, `prepare`, `consume`, `use`), plus physical interaction, framing focus, emotional beat, and shared campaign setting/wardrobe. The mode must remain valid in detail shots too; clothing stays worn, shoes stay on feet, and a bag stays carried/worn. The plan needs a hook, wide product-use coverage, visible detail coverage, payoff, and at least three distinct shot sizes. It receives channel Brand DNA and channel-scoped memory as low-confidence creative guidance; memory cannot override product evidence or use requirements. UI shows camera/action/focus plus a complete manual video prompt per shot. Edits to prep inputs invalidate the browser's prepared plan.
-3. **Producer / Editor** supports two paths. Manual Studio receives one user-supplied motion clip per shot, rejects missing/short clips, normalizes each to its planned duration and vertical 9:16, joins them, and adds only supplied music or voiceover. AT Hunter can generate shots through Google Flow when `at.hunter_flow_credits` is enabled; that setting acknowledges possible credit use but does not verify a $0 cost. Still-image montage is not a success path.
-4. **Visual QC** first compares downscaled grayscale frames at 2 fps inside each shot and blocks frozen/nearly frozen footage. It then samples three output frames per shot against product and channel identity references. It checks product match/use, focus sharpness, professional composition, identity, emotional beat, continuity, and shot variety. Failure or uncertainty blocks completion. Pixel change detects frozen footage; it does not prove human motion or product use by itself.
-5. **Growth Analyst** uses real YouTube per-video analytics for published plan items linked by platform video ID: views, shares, average view percentage, and subscribers gained. TikTok per-video analytics and video-attributed affiliate clicks/orders are not wired; those gaps stay visible and do not become growth claims.
+## Hiện trạng
 
-## Operator inputs
+Shot plan, tải clip, dựng video và một số QC đã có. Manual flow còn cần clip chuyển động cho mỗi shot. Provider generation có thể dùng credits; consent trong UI không chứng minh dịch vụ miễn phí. Chưa chứng minh affiliate video miễn phí end-to-end.
 
-- Choose or auto-detect product category.
-- Add exact use instructions for unusual products.
-- Add alternate listing angles/details and identify the visible product feature to focus.
-- In Manual mode, create or record one motion clip per planned shot, in shot order, using the displayed prompt. Upload exactly the number of clips shown by the saved plan. The app normalizes clips but cannot prove how they were generated.
-- Use only listing-supported product details. Do not add performance, material, health, or quality claims that are not verified.
+AccessTrade TikTok Shop feed trả commission, giá và units sold khi publisher được chia sẻ số liệu; không trả rating/review. Chỉ số có nguồn mới được dùng; rating và fit thị trường giữ chưa biết nếu không có dữ liệu.
 
-## Limits
+Radar lưu sản phẩm mới ở trạng thái chờ duyệt. Sản phẩm bị loại giữ cùng lý do trong danh sách riêng. Studio từ chối lập shot plan từ product ID chưa duyệt. Sales/rating thiếu nguồn hoặc hết hạn chặn sản xuất tự động.
 
-- Manual affiliate jobs still require operator-supplied clips. Separate Muse Chat / Google Flow generation is available from `/studio/create`; Flow access and account credits vary. The AT Hunter Google Flow branch is opt-in and does not verify that usage is free, so it is not approved under the free-only policy until zero-cost access is proven. Product and character references guide prompts and QC; they do not alter uploaded footage or guarantee exact reproduction. A model-generated QC report is not a substitute for human review.
-- A completed render is not proof of views, engagement, affiliate clicks, orders, or revenue. YouTube format metrics require a matching `published_ref`; unlinked/manual posts and TikTok videos do not get per-video format conclusions.
+TikTok product attachment chưa được nối qua API; draft cần người dùng gắn sản phẩm trong TikTok. Job hiển thị tên/ID listing, chỉ dẫn gắn product card, link AccessTrade riêng để sao chép và mã `sub2` đối chiếu đơn. Link tracking không thay thế product card.
 
-Primary implementation: `internal/studio/product_analysis.go`, `internal/studio/director.go`, `internal/studio/affiliate_plan.go`, `internal/studio/affiliate.go`, `internal/studio/temporal_qc.go`, `internal/studio/visual_qc.go`, `internal/studio/prompts/affiliate_shotlist.txt`, `internal/web/studio.go`, `internal/web/team_pipeline.go`, and `internal/web/templates/studio.html`.
+Với offer TikTok Shop từ AccessTrade, mỗi job affiliate tạo một tracking link riêng. `sub1` giữ product ID, `sub2` trùng job ID; mã và link hiển thị trên job, còn `sub2` AccessTrade trả về mở đúng job khi job còn được lưu. Đơn chỉ quy được về video khi bài đó dùng đúng link và AccessTrade trả lại `sub2`. TikTok Shop product card vẫn phải gắn thủ công trong Creator.
+
+Sau khi tự đăng video công khai, dán URL vào job hoàn tất để Growth ghép counters TikTok theo account/video ID. TikTok Display API không cung cấp orders hoặc retention; số thiếu giữ unknown. Doanh số chỉ đối chiếu qua báo cáo AccessTrade có `sub2` đúng job.

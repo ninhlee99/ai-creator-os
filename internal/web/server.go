@@ -7,7 +7,6 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
-	"github.com/ninhlee99/ai-creator-os/internal/harness"
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -33,24 +32,15 @@ type Server struct {
 	LLM    LLMClient
 	TTS    TTSChainAPI
 	Studio *studio.Studio
-	// --- Parked-build support (PIVOT 2026-10-02) ---
-	// Avatar / AvatarSidecar / AvatarDir chỉ được dùng khi build với
-	// -tags parked (handler avatar đã park). Giữ field ở bản thường để
-	// build parked biên dịch được; bản thường không nối gì vào chúng.
-	Avatar    AvatarChainAPI
-	AvatarDir string
 	// Growth is the channel-growth engine store (nil when its tables could
 	// not be created; the /growth page then shows an honest error).
 	Growth *growth.Store
-	// GrowthProducer / GrowthYT are the production backends of the growth
-	// automation tick (plan item -> Studio job -> YouTube upload). Nil
-	// means the real Studio/publishers adapters; tests inject fakes.
+	// GrowthProducer is the production backend of the TikTok growth plan.
 	// CommissionSource is the affiliate-orders feed for money
 	// reconciliation (R2-W1). Nil = fail-closed legacy source (TikTok Shop
 	// đã loại bỏ ở Đợt H1); tests inject fakes.
 	CommissionSource automation.OrdersSource
 	GrowthProducer   automation.Producer
-	GrowthYT         automation.Uploader
 	// Autopilot runs hands-off affiliate cycles (products -> video).
 	// Products is the affiliate product store. ProductProviders are the
 	// configured product search providers. All three are injected by the
@@ -66,14 +56,8 @@ type Server struct {
 	// phần tạo ảnh của Studio).
 	OnGeminiKeys func(keys []string)
 	Health       map[string]HealthChecker
-	// AvatarSidecar: parked-build support (như Avatar ở trên).
-	AvatarSidecar AvatarSidecarCtl
-
 	// WebAI quản lý account và phiên AI Web đã được khôi phục từ backup.
 	WebAI *webai.Store
-
-	// Harness là Master Autonomous Agent điều phối nhận thức OODA và tự học.
-	Harness *harness.Harness
 
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
@@ -95,35 +79,18 @@ type Server struct {
 	// RemoteNeedsPassword: chưa đặt mật khẩu thì chặn mọi truy cập không
 	// đến từ chính máy chủ (Đợt AK). main bật; test mặc định tắt.
 	RemoteNeedsPassword bool
-	// TrustCloudflareIP enables CF-Connecting-IP only for loopback requests.
-	// Set only when Cloudflare Tunnel is the configured local proxy.
-	TrustCloudflareIP bool
 	// StaleTicks trả về tên các tick quá hạn chưa chạy (kẹt) — Đợt AK:
 	// /healthz báo needs_restart để watchdog ngoài tự khởi động lại app.
 	StaleTicks func() []string
 
 	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
 	// thời điểm hết hạn; restart là đăng nhập lại.
-	authMu                sync.Mutex
-	authSessions          map[string]time.Time
-	bioTryOnKeyMu         sync.Mutex
-	bioGoogleSubjectKeyMu sync.Mutex
-	bioAnalyticsMu        sync.Mutex
-	bioGoogleSubjectKey   []byte
-	bioAnalyticsHMACKey   []byte
+	authMu       sync.Mutex
+	authSessions map[string]time.Time
 
-	db                *sql.DB // read handle for decision/analytics queries
-	oauth             oauthStates
-	facebookPendingMu sync.Mutex
-	facebookPending   map[string]facebookPendingAccount
-	templates         map[string]*template.Template
-
-	// Avatar model-download progress — parked-build support (như trên).
-	avatarDlMu         sync.Mutex
-	avatarDlDownloaded int64
-	avatarDlTotal      int64
-	avatarDlDone       bool
-	avatarDlErr        string
+	db        *sql.DB // read handle for decision/analytics queries
+	oauth     oauthStates
+	templates map[string]*template.Template
 }
 
 // NewServer wires a dashboard against an existing ledger + account manager.
@@ -147,16 +114,14 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 		return nil, err
 	}
 	s := &Server{
-		Ledger:            l,
-		Mgr:               mgr,
-		Cfg:               cfg,
-		Health:            map[string]HealthChecker{},
-		OutDir:            "data/output",
-		AvatarDir:         "data/avatars", // parked-build support (handler avatar)
-		DataDir:           filepath.Dir(dbPath),
-		StartedAt:         time.Now(), // Đợt S: /healthz
-		TrustCloudflareIP: getenvBool("AICOS_TRUST_CLOUDFLARE_IP", false),
-		db:                db,
+		Ledger:    l,
+		Mgr:       mgr,
+		Cfg:       cfg,
+		Health:    map[string]HealthChecker{},
+		OutDir:    "data/output",
+		DataDir:   filepath.Dir(dbPath),
+		StartedAt: time.Now(), // Đợt S: /healthz
+		db:        db,
 	}
 
 	s.applyPersistedEnv()

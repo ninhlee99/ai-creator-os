@@ -19,7 +19,6 @@ type modelPhotoCardView struct {
 	FaceStatus  string
 	ViralURL    string
 	StudioURL   string
-	WebAIURL    string
 }
 
 // listModelPhotoCards lấy danh sách tất cả ảnh nhân vật trong thư viện toàn cục.
@@ -38,7 +37,7 @@ func (s *Server) listModelPhotoCards() []modelPhotoCardView {
 
 	accMap := make(map[int64]string)
 	if s.Mgr != nil {
-		if accs, err := s.Mgr.ListWithAutopilot(); err == nil {
+		if accs, err := s.Mgr.List(); err == nil {
 			for _, a := range accs {
 				accMap[a.ID] = a.Username
 			}
@@ -74,7 +73,6 @@ func (s *Server) listModelPhotoCards() []modelPhotoCardView {
 			FaceStatus:  faceStatus,
 			ViralURL:    fmt.Sprintf("/viral?model_id=%d", p.ID),
 			StudioURL:   fmt.Sprintf("/studio?model_id=%d", p.ID),
-			WebAIURL:    fmt.Sprintf("/web-ai?model_id=%d", p.ID),
 		})
 	}
 	return res

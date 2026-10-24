@@ -24,12 +24,9 @@ var autoSwitchDefs = []struct {
 	key, label, hint, page string
 	def                    bool
 }{
-	{"growth.production_enabled", "Lịch sản xuất theo Growth plan", "Cho phép xử lý plan đến hạn; có thể tạo job và upload YouTube nếu provider, credential, quota và safety gate đều qua.", "/growth", true},
+	{"growth.production_enabled", "Lịch xử lý kế hoạch TikTok", "Cho phép xử lý kế hoạch đến hạn; trạng thái và metrics chỉ được cập nhật khi có evidence từ provider.", "/growth", true},
 	{"autopilot_enabled", "Lịch autopilot affiliate", "Producer hiện dừng trước khi tạo video vì thiếu xác nhận dùng Google Flow credits; bật lịch không làm video chạy.", "/products", true},
 	{automation.KeyATHunterEnabled, "Quét sản phẩm Accesstrade", "Feed hiện thiếu sales/rating evidence nên chưa đủ điều kiện tự tạo video.", "/products", true},
-	{"viral.auto_produce_enabled", "Radar video xu hướng", "Tìm và lưu nguồn tham khảo; không tự dựng video viral.", "/viral", true},
-	{automation.KeyStoryEnabled, "Tự viết & dựng truyện", "Cần bật lịch và có chủ đề; tự refill chủ đề là công tắc riêng.", "/stories", false},
-	{automation.KeyStoryAutoPublish, "Tải truyện lên YouTube ở chế độ riêng tư", "Không tự chuyển video sang công khai.", "/stories", false},
 }
 
 func (s *Server) autoSwitches() []autoSwitch {

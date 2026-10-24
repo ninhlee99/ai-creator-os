@@ -316,13 +316,6 @@
   })();
 
   // ----------------------------------------------------- studio helpers
-  // Chọn bài nhạc trending vào form affiliate.
-  window.pickTrend = function (sel) {
-    var v = sel.value.split('|');
-    document.getElementById('music_title').value = v[0] || '';
-    document.getElementById('music_artist').value = v[1] || '';
-  };
-
   // Storyboard từng job: dùng nhãn/class do server trả (không định nghĩa
   // lại nhãn ở client — R2-W3).
   var boards = {};
@@ -451,36 +444,3 @@
     }, 5000);
   })();
 })();
-
-  // Ước tính chi phí/ETA trên form phim (Film Wave 1 / P0-4, Wave 3:
-  // theo chế độ dựng). Server render sẵn dòng cho 90s mặc định (no-JS vẫn thấy).
-  (function () {
-    var sec = document.getElementById('film-seconds');
-    var est = document.getElementById('film-est');
-    var mode = document.getElementById('film-mode');
-    if (!sec || !est) return;
-    var rate = parseFloat(est.getAttribute('data-rate') || '0.05') || 0.05;
-    var videoOK = est.getAttribute('data-video-ok') === 'true';
-    function effMode() {
-      var m = mode ? mode.value : 'auto';
-      if (m === 'auto') return videoOK ? 'veo' : 'cinematic';
-      return m;
-    }
-    function upd() {
-      if (effMode() === 'cinematic') {
-        est.textContent = 'Điện ảnh từ ảnh: ≈ $0 — chỉ tốn image gen (rẻ), không dùng Veo (ước tính chưa kiểm chứng)';
-        return;
-      }
-      var s = parseInt(sec.value || '90', 10) || 90;
-      if (s < 30) s = 30;
-      if (s > 3600) s = 3600;
-      var shots = Math.ceil(s / 8);
-      var cost = (shots * 8 * rate).toFixed(2);
-      var eta = shots * 3;
-      est.textContent = '≈ ' + shots + ' shot × 8s Veo × $' + rate + '/s ≈ $' + cost +
-        ' · render ~' + eta + ' phút (ước tính chưa kiểm chứng)';
-    }
-    sec.addEventListener('input', upd);
-    if (mode) mode.addEventListener('change', upd);
-    upd();
-  })();

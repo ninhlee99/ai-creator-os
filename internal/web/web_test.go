@@ -123,55 +123,6 @@ func TestAccountsPageNoLiveCopy(t *testing.T) {
 	}
 }
 
-func TestAccountCommentSimulate(t *testing.T) {
-	s := newTestServer(t)
-	rec := postForm(t, s, "/accounts", url.Values{
-		"username": {"affiliate_pro"},
-		"persona":  {"genz"},
-	})
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("POST /accounts = %d, want 303", rec.Code)
-	}
-
-	// 1. Test purchase comment
-	rec = postForm(t, s, "/accounts/1/comments/simulate", url.Values{
-		"comment": {"áo này giá bao nhiêu và có freeship không shop?"},
-	})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /comments/simulate = %d, want 200", rec.Code)
-	}
-	var res struct {
-		OK         bool   `json:"ok"`
-		IntentCode string `json:"intent_code"`
-		Reply      string `json:"reply"`
-	}
-	if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
-		t.Fatalf("decode json: %v", err)
-	}
-	if !res.OK || res.IntentCode != "purchase" || !strings.Contains(res.Reply, "http") {
-		t.Fatalf("unexpected simulation result: %+v", res)
-	}
-
-	// 2. Test praise comment
-	rec = postForm(t, s, "/accounts/1/comments/simulate", url.Values{
-		"comment": {"video hay quá ad ơi!"},
-	})
-	if rec.Code != http.StatusOK {
-		t.Fatalf("POST /comments/simulate = %d, want 200", rec.Code)
-	}
-	var res2 struct {
-		OK         bool   `json:"ok"`
-		IntentCode string `json:"intent_code"`
-	}
-	if err := json.NewDecoder(rec.Body).Decode(&res2); err != nil {
-		t.Fatalf("decode json: %v", err)
-	}
-	if !res2.OK || res2.IntentCode != "praise" {
-		t.Fatalf("unexpected praise result: %+v", res2)
-	}
-}
-
-// (3) POST /settings/dryrun: value=on -> true (required bugfix), off -> false.
 func TestDryRunToggle(t *testing.T) {
 	s := newTestServer(t)
 
@@ -313,7 +264,7 @@ func TestAllPagesRender(t *testing.T) {
 		"/accounts/1?tab=ket-noi":   "Điều khiển",
 		"/studio":                   "Studio AI",
 		"/studio/jobs":              "Video đã tạo",
-		"/studio/trends":            "Nhạc thịnh hành",
+		"/studio/trends":            "Radar TikTok",
 		"/products":                 "Sản phẩm Affiliate",
 		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
 		"/publishers":               "Đa nền tảng",

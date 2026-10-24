@@ -25,8 +25,6 @@ var _ embed.FS
 // existed. Duplicate-column errors are ignored so they are safe to re-run.
 var migrations = []string{
 	"ALTER TABLE accounts ADD COLUMN topics_json TEXT NOT NULL DEFAULT '[]'",
-	"ALTER TABLE accounts ADD COLUMN youtube_channel TEXT",
-	"ALTER TABLE accounts ADD COLUMN youtube_content_types TEXT NOT NULL DEFAULT '[]'",
 	"ALTER TABLE accounts ADD COLUMN followers_source TEXT NOT NULL DEFAULT 'legacy'",
 	"ALTER TABLE accounts ADD COLUMN followers_verified_at TEXT NOT NULL DEFAULT ''",
 }
@@ -208,9 +206,8 @@ func toJSON(v map[string]any) (string, error) {
 func scanAccount(row *sql.Row) (*Account, error) {
 	var a Account
 	err := row.Scan(&a.ID, &a.Username, &a.Status, &a.Persona, &a.Niche,
-		&a.NicheHint, &a.TopicsJSON, &a.YoutubeChannel, &a.YoutubeContentTypes,
+		&a.NicheHint, &a.TopicsJSON,
 		&a.Followers, &a.FollowersSource, &a.FollowersVerifiedAt,
-		&a.RtmpKeyRef, &a.RestWeekday, &a.GiftUSD,
 		&a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -229,14 +226,9 @@ type Account struct {
 	Niche               sql.NullString
 	NicheHint           sql.NullString
 	TopicsJSON          string
-	YoutubeChannel      sql.NullString
-	YoutubeContentTypes string
 	Followers           int64
 	FollowersSource     string
 	FollowersVerifiedAt string
-	RtmpKeyRef          sql.NullString
-	RestWeekday         int64
-	GiftUSD             float64
 	CreatedAt           string
 	UpdatedAt           string
 }
@@ -257,17 +249,6 @@ type Product struct {
 	UpdatedAt       string
 }
 
-// Slot maps the live_slots table.
-type Slot struct {
-	ID          int64
-	AccountID   int64
-	SlotDate    string // YYYY-MM-DD
-	StartMin    int    // minutes since midnight ICT
-	DurationMin int
-	Status      string // planned | started | done | skipped
-	CreatedAt   string
-}
-
 // Decision maps the decisions table.
 type Decision struct {
 	ID         int64
@@ -277,12 +258,6 @@ type Decision struct {
 	Reason     sql.NullString
 	InputsJSON sql.NullString
 	CreatedAt  string
-}
-
-// GiftSummary is one row of GetGiftSummary.
-type GiftSummary struct {
-	Username string
-	USD      float64
 }
 
 // UsageRow is one row of GetUsage.

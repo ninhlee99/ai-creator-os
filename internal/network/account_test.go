@@ -12,7 +12,7 @@ func TestTransitionValidChain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, to := range []string{"researching", "persona_assigned", "growing", "live_ready", "live", "live_ready"} {
+	for _, to := range []string{"researching", "persona_assigned", "growing", "paused", "growing"} {
 		a, err = mgr.Transition(a.ID, to, nil)
 		if err != nil {
 			t.Fatalf("transition to %s: %v", to, err)
@@ -31,13 +31,13 @@ func TestTransitionIllegal(t *testing.T) {
 	}
 	a = walkChain(t, mgr, a, "researching")
 
-	// researching -> live is not in TRANSITIONS
-	if _, err := mgr.Transition(a.ID, "live", nil); err == nil {
-		t.Fatal("expected error for illegal transition researching -> live")
+	// researching -> growing must pass persona assignment first.
+	if _, err := mgr.Transition(a.ID, "growing", nil); err == nil {
+		t.Fatal("expected error for illegal transition researching -> growing")
 	}
 
 	// penalized is terminal except paused/retired (human decides)
-	a = walkChain(t, mgr, a, "persona_assigned", "growing", "live_ready", "live")
+	a = walkChain(t, mgr, a, "persona_assigned", "growing")
 	a, err = mgr.Penalize(a.ID, "test")
 	if err != nil {
 		t.Fatal(err)
@@ -45,34 +45,15 @@ func TestTransitionIllegal(t *testing.T) {
 	if a.Status != "penalized" {
 		t.Fatalf("status = %s, want penalized", a.Status)
 	}
-	if _, err := mgr.Transition(a.ID, "live_ready", nil); err == nil {
+	if _, err := mgr.Transition(a.ID, "growing", nil); err == nil {
 		t.Fatal("expected error: penalized must never auto-resume")
 	}
 }
 
 func TestTransitionMissingAccount(t *testing.T) {
 	_, mgr := newTestManager(t)
-	if _, err := mgr.Transition(9999, "live", nil); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := mgr.Transition(9999, "growing", nil); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("expected sql.ErrNoRows, got %v", err)
-	}
-}
-
-func TestRtmpKey(t *testing.T) {
-	_, mgr := newTestManager(t)
-	t.Setenv("TEST_NET_RTMP_X", "livekey123")
-
-	a, _ := mgr.Add("rtmpuser", "", "TEST_NET_RTMP_X")
-	if got := a.RtmpKey(); got != "livekey123" {
-		t.Fatalf("RtmpKey = %q, want livekey123", got)
-	}
-
-	b, _ := mgr.Add("nokey", "", "")
-	if got := b.RtmpKey(); got != "" {
-		t.Fatalf("RtmpKey = %q, want empty", got)
-	}
-	t.Setenv("TIKTOK_RTMP_KEY", "fallbackkey")
-	if got := b.RtmpKey(); got != "fallbackkey" {
-		t.Fatalf("RtmpKey fallback = %q, want fallbackkey", got)
 	}
 }
 
@@ -90,7 +71,7 @@ func TestPenalizeCountsAndPausesSiblings(t *testing.T) {
 		if err2 != nil {
 			t.Fatal(err2)
 		}
-		return walkChain(t, mgr, a, "growing", "live_ready", "live")
+		return walkChain(t, mgr, a, "growing")
 	}
 	bad := mk("bad1")
 	sibling := mk("good1")
@@ -112,7 +93,7 @@ func TestPenalizeCountsAndPausesSiblings(t *testing.T) {
 		t.Fatalf("violation_count = %d, want 1", count)
 	}
 
-	// sibling on the same persona, live/live_ready, must be paused
+	// active sibling on same persona must be paused
 	sib, _ := mgr.Get(sibling.ID)
 	if sib.Status != "paused" {
 		t.Fatalf("sibling status = %s, want paused", sib.Status)

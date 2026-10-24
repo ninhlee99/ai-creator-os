@@ -77,8 +77,7 @@ var templateFuncs = template.FuncMap{
 	// agentLabel renders a raw agent slug as its Vietnamese label + icon
 	// for the decision feed (R2-11: no raw slugs in the UI).
 	"agentLabel": agentLabel,
-	// variantAspect and variantSeconds render the planned target. Persona Story
-	// jobs apply these values; the affiliate path has separate behavior.
+	// variantAspect and variantSeconds render the planned TikTok target.
 	"variantAspect":  growth.VariantAspect,
 	"variantSeconds": growth.VariantSeconds,
 	// dict builds a string-keyed map for passing named arguments to

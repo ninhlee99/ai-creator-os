@@ -1,11 +1,8 @@
 package web
 
 import (
-	"encoding/json"
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
-	"github.com/ninhlee99/ai-creator-os/internal/viralradar"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -38,7 +35,6 @@ type viralView struct {
 	SelectedAccountID     int64
 	CharacterEditorReady  bool
 	CharacterEditorStatus string
-	AutoOn                bool
 	ActiveCount           int
 	DoneCount             int
 	TotalCount            int
@@ -48,10 +44,9 @@ type viralView struct {
 	AvailableModels       []modelPhotoCardView
 	SelectedModelID       int64
 	SelectedModelPhoto    string
-	RadarSources          []viralradar.Source
-	RadarQuery            string
-	RadarLastRun          string
-	RadarKeyReady         bool
+	SourceVideoURL        string
+	SourceMusicTitle      string
+	Topic                 string
 }
 
 // handleViral renders the video creation form and actual job history.
@@ -90,33 +85,18 @@ func viralStatusVN(st string) string {
 func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	v := viralView{
-		StudioOK:        s.Studio != nil,
-		Error:           q.Get("err"),
-		Notice:          q.Get("notice"),
-		Warning:         q.Get("warn"),
-		AvailableModels: s.listModelPhotoCards(),
-		RadarQuery:      s.defaultViralRadarQuery(),
+		StudioOK:         s.Studio != nil,
+		Error:            q.Get("err"),
+		Notice:           q.Get("notice"),
+		Warning:          q.Get("warn"),
+		AvailableModels:  s.listModelPhotoCards(),
+		SourceVideoURL:   q.Get("source_video_url"),
+		SourceMusicTitle: q.Get("source_music_title"),
+		Topic:            q.Get("topic"),
 	}
 	if s.Studio != nil {
 		v.CharacterEditorReady, v.CharacterEditorStatus = s.Studio.ViralCharacterEditorStatus(r.Context())
 	}
-	if key, ok := s.effectiveEnv("YOUTUBE_API_KEY"); ok && strings.TrimSpace(key) != "" {
-		v.RadarKeyReady = true
-	}
-	settings := s.settings()
-	if raw, ok := settings.Get(automation.KeyViralRadarSources); ok {
-		_ = json.Unmarshal([]byte(raw), &v.RadarSources)
-		if len(v.RadarSources) > 10 {
-			v.RadarSources = v.RadarSources[:10]
-		}
-	}
-	if lastRun, ok := settings.Get("viral.radar.last_run"); ok {
-		v.RadarLastRun = lastRun
-	}
-	if query, ok := settings.Get(automation.KeyViralRadarQuery); ok && strings.TrimSpace(query) != "" {
-		v.RadarQuery = query
-	}
-
 	if msg := q.Get("msg"); msg == "created" {
 		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"
 	}
@@ -173,14 +153,7 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Video tham chiếu chỉ được chọn rõ ràng từ file đã nhập.
-
-	// Đọc công tắc tự động hóa viral
-	st := s.settings()
-	v.AutoOn = true
-	if val, ok := st.Get(automation.KeyViralAutoProduce); ok {
-		v.AutoOn = val == "1" || val == "true"
-	}
+	// Source video comes from a TikTok Radar link or an operator-uploaded file.
 
 	if s.Studio != nil {
 		jobs := s.Studio.ListViralJobs(40)

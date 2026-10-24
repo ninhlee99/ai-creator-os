@@ -19,7 +19,6 @@ func insertRawJob(t *testing.T, st *Studio, id, kind, status, createdAt, finishe
 		t.Fatalf("insert job: %v", err)
 	}
 }
-
 func TestSweepHungJobs(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
@@ -28,9 +27,9 @@ func TestSweepHungJobs(t *testing.T) {
 	}
 	old := time.Now().Add(-13 * time.Hour).Format("2006-01-02T15:04:05")
 	fresh := time.Now().Add(-time.Hour).Format("2006-01-02T15:04:05")
-	insertRawJob(t, st, "hung1", KindStory, StatusRunning, old, "", "")
-	insertRawJob(t, st, "fresh1", KindStory, StatusRunning, fresh, "", "")
-	insertRawJob(t, st, "done1", KindStory, StatusDone, old, old, "")
+	insertRawJob(t, st, "hung1", KindViral, StatusRunning, old, "", "")
+	insertRawJob(t, st, "fresh1", KindViral, StatusRunning, fresh, "", "")
+	insertRawJob(t, st, "done1", KindViral, StatusDone, old, old, "")
 
 	if n := st.SweepHungJobs(12 * time.Hour); n != 1 {
 		t.Fatalf("swept %d, want 1", n)
@@ -54,7 +53,7 @@ func TestPruneFailedWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().Format("2006-01-02T15:04:05")
-	insertRawJob(t, st, "fail1", KindStory, StatusFailed, now, now, "")
+	insertRawJob(t, st, "fail1", KindViral, StatusFailed, now, now, "")
 	// work dir + asset file của job lỗi
 	workFile := filepath.Join(outDir, "studio", "fail1", "tmp.bin")
 	if err := os.MkdirAll(filepath.Dir(workFile), 0o755); err != nil {
@@ -69,7 +68,7 @@ func TestPruneFailedWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	// job done không bị đụng
-	insertRawJob(t, st, "done1", KindStory, StatusDone, now, now, "")
+	insertRawJob(t, st, "done1", KindViral, StatusDone, now, now, "")
 	doneWork := filepath.Join(outDir, "studio", "done1", "tmp.bin")
 	if err := os.MkdirAll(filepath.Dir(doneWork), 0o755); err != nil {
 		t.Fatal(err)
@@ -93,47 +92,5 @@ func TestPruneFailedWork(t *testing.T) {
 	}
 	if j, _ := st.GetJob("fail1"); j.Status != StatusFailed {
 		t.Fatal("DB row của job lỗi phải giữ lại")
-	}
-}
-
-func TestPruneOldPublishedOutputs(t *testing.T) {
-	dir := t.TempDir()
-	outDir := filepath.Join(dir, "out")
-	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, outDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	oldVideo := filepath.Join(outDir, "old.mp4")
-	newVideo := filepath.Join(outDir, "new.mp4")
-	for _, p := range []string{oldVideo, newVideo} {
-		if err := os.WriteFile(p, []byte("video-data"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	old := time.Now().Add(-40 * 24 * time.Hour).Format("2006-01-02T15:04:05")
-	recent := time.Now().Add(-time.Hour).Format("2006-01-02T15:04:05")
-	insertRawJob(t, st, "pub-old", KindStory, StatusDone, old, old, oldVideo)
-	insertRawJob(t, st, "pub-new", KindStory, StatusDone, recent, recent, newVideo)
-	insertRawJob(t, st, "unpub-old", KindStory, StatusDone, old, old, oldVideo)
-	isPublished := func(id string) bool { return id == "pub-old" || id == "pub-new" }
-
-	n, freed := st.PruneOldPublishedOutputs(30*24*time.Hour, isPublished)
-	if n != 1 {
-		t.Fatalf("pruned %d, want 1 (chỉ video cũ + đã đăng)", n)
-	}
-	if freed <= 0 {
-		t.Fatal("phải giải phóng bytes")
-	}
-	if _, err := os.Stat(oldVideo); !os.IsNotExist(err) {
-		t.Fatal("video cũ đã đăng phải bị xóa file local")
-	}
-	if _, err := os.Stat(newVideo); err != nil {
-		t.Fatal("video mới đăng chưa tới hạn — không được xóa")
-	}
-	if j, _ := st.GetJob("pub-old"); j.Output != "" {
-		t.Fatal("output DB phải được xóa để UI không trỏ file chết")
 	}
 }

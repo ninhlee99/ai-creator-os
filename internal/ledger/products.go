@@ -134,55 +134,7 @@ func (l *Ledger) RecordCommission(period string, amount float64, source string) 
 	})
 }
 
-// ---- sessions / events / decisions / usage ----
-
-// StartSession opens a live session, optionally bound to an account.
-func (l *Ledger) StartSession(accountID *int64) (int64, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	var res sql.Result
-	var err error
-	if accountID == nil {
-		res, err = l.db.Exec("INSERT INTO live_sessions DEFAULT VALUES")
-	} else {
-		res, err = l.db.Exec(
-			"INSERT INTO live_sessions (account_id) VALUES (?)", *accountID)
-	}
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
-}
-
-// EndSession updates arbitrary session fields (e.g. ended_at,
-// duration_min, peak_viewers, status, notes).
-func (l *Ledger) EndSession(sessionID int64, fields map[string]any) error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	sets := make([]string, 0, len(fields))
-	vals := make([]any, 0, len(fields)+1)
-	for k, v := range fields {
-		sets = append(sets, k+" = ?")
-		vals = append(vals, normalize(v))
-	}
-	vals = append(vals, sessionID)
-	_, err := l.db.Exec(
-		"UPDATE live_sessions SET "+strings.Join(sets, ", ")+" WHERE id = ?",
-		vals...)
-	return err
-}
-
-// LogEvent appends a live event with a JSON payload.
-func (l *Ledger) LogEvent(sessionID int64, kind string, payload map[string]any) error {
-	pj, err := toJSON(payload)
-	if err != nil {
-		return err
-	}
-	_, err = l.insert("live_events", map[string]any{
-		"session_id": sessionID, "kind": kind, "payload": pj,
-	})
-	return err
-}
+// ---- decisions / usage ----
 
 // Decide records a governance decision with JSON inputs (audit trail).
 func (l *Ledger) Decide(agent, action string, target *string, reason string, inputs map[string]any) error {
@@ -234,30 +186,7 @@ func (l *Ledger) ProductStats(productID int64) (ProductStats, error) {
 	return st, err
 }
 
-// SessionsFeatured counts distinct live sessions in which a product was
-// featured. A session counts when the streamer logged a product_moment
-// event whose payload carries this product_id (exact JSON match); legacy
-// events that only embedded the product title in the payload are matched
-// on the first 20 runes of the title, mirroring the original Python query.
-func (l *Ledger) SessionsFeatured(productID int64) (int, error) {
-	var title string
-	if err := l.db.QueryRow("SELECT title FROM products WHERE id = ?", productID).Scan(&title); err != nil {
-		return 0, err
-	}
-	runes := []rune(title)
-	if len(runes) > 20 {
-		runes = runes[:20]
-	}
-	var n int
-	err := l.db.QueryRow(
-		"SELECT COUNT(DISTINCT session_id) FROM live_events WHERE "+
-			"(kind = 'product_moment' AND json_extract(payload, '$.product_id') = ?) "+
-			"OR payload LIKE ?",
-		productID, "%"+string(runes)+"%").Scan(&n)
-	return n, err
-}
-
 // ---- accounts (AI Creator Network) ----
 
 // AddAccount registers a TikTok account. A duplicate username returns the
-// existing id. The RTMP key itself is NEVER stored — only the env var name.
+// existing id.

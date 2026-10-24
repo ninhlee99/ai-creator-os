@@ -148,10 +148,13 @@ func TestAutopilotRun(t *testing.T) {
 	ap := NewAutopilot(st, mgr, pstore, []products.Provider{&stubProvider{}}, models)
 	pid, err := pstore.Save(products.Product{
 		Source: "stub", SourceID: "p1", Title: "Túi kem",
-		CommissionRate: 0.25,
-		Theme:          "thoi-trang-nu",
+		Price: 299000, Currency: "VND", ProductURL: "https://shop.example/item",
+		CommissionRate: 0.25, Theme: "thoi-trang-nu",
 	})
 	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pstore.ReviewProduct(pid, products.ReviewApproved, "đã duyệt"); err != nil {
 		t.Fatal(err)
 	}
 

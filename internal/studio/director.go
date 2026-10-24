@@ -7,11 +7,7 @@ import (
 	"strings"
 )
 
-// Director chuyên nghiệp (yêu cầu Ninh 2026-10-01):
-//   - Video affiliate 30s: list ảnh 5–10 ảnh.
-//   - Video từ 1 phút: shot list điện ảnh như có cameraman/photographer/
-//     editor thật — cỡ cảnh, chuyển động máy, ống kính, ánh sáng, story arc.
-// (Pipeline phim ngắn đã park — xem film_director.go, build tag parked.)
+// Director plans TikTok affiliate shots and source-grounded viral recreations.
 
 // ---------------------------------------------------------------------------
 // shot điện ảnh
@@ -55,12 +51,10 @@ func parseDirectorJSON(text string, v any) error {
 }
 
 // ---------------------------------------------------------------------------
-// 60s affiliate: shot list điện ảnh
+// Affiliate shot list
 // ---------------------------------------------------------------------------
 
-// WriteProShotList viết shot list điện ảnh cho video affiliate dài (>= 60s):
-// story arc hook -> build -> payoff, mỗi shot có cỡ cảnh, chuyển động máy,
-// ống kính/ánh sáng như cameraman thật. Không chữ, không voiceover.
+// WriteProShotList writes a TikTok affiliate shot list from product evidence.
 func WriteProShotList(ctx context.Context, llm LLM, productName, niche string, seconds int) ([]ProShot, error) {
 	return writeProShotList(ctx, llm, productName, niche, seconds, AffiliateProductProfile{}, ChannelCreativeProfile{}, false)
 }

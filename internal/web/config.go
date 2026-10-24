@@ -26,17 +26,14 @@ type Config struct {
 	GeminiAPIKeys []string // key rotation: GEMINI_API_KEYS (comma-separated) wins,
 	// legacy GEMINI_API_KEY is the single-key fallback
 
-	// TTS (avatar đã park — PIVOT 2026-10-02)
+	// TTS for TikTok video voiceovers.
 	TTSAPIKey string
 
-	// TikTok (RTMP live đã park — giữ field cho tương thích cấu hình cũ)
-	TiktokRTMPURL    string
-	TiktokRTMPKey    string
+	// AI disclosure shown with generated TikTok content when required.
 	AIDisclosureText string
 
 	// governance
-	DailyAPIBudgetUSD        float64
-	MaxLiveMinutesPerSession int
+	DailyAPIBudgetUSD float64
 
 	// hunter / analyst tuning
 	MinSellerRating     float64
@@ -122,12 +119,9 @@ func LoadConfig() *Config {
 
 		TTSAPIKey: getenv("TTS_API_KEY", ""),
 
-		TiktokRTMPURL:    getenv("TIKTOK_RTMP_URL", ""),
-		TiktokRTMPKey:    getenv("TIKTOK_RTMP_KEY", ""),
-		AIDisclosureText: getenv("AI_DISCLOSURE_TEXT", "AI-generated stream"),
+		AIDisclosureText: getenv("AI_DISCLOSURE_TEXT", "AI-generated content"),
 
-		DailyAPIBudgetUSD:        getenvFloat("DAILY_API_BUDGET_USD", 5.0),
-		MaxLiveMinutesPerSession: getenvInt("MAX_LIVE_MINUTES_PER_SESSION", 120),
+		DailyAPIBudgetUSD: getenvFloat("DAILY_API_BUDGET_USD", 5.0),
 
 		MinSellerRating:     getenvFloat("MIN_SELLER_RATING", 4.0),
 		MaxPrice:            getenvFloat("MAX_PRICE", 1_000_000),

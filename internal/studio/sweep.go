@@ -7,8 +7,7 @@ package studio
 //  1. SweepHungJobs (định kỳ): job kẹt ở "running" quá lâu mà app KHÔNG
 //     restart — ffmpeg treo, goroutine chết lặng. Không job nào hợp lệ
 //     chạy 12h.
-//  2. PruneFailedWork / PruneOldPublishedOutputs: dọn đĩa tự động, chỉ
-//     chạm những gì an toàn (job lỗi, video đã đăng xong).
+//  2. PruneFailedWork: dọn file tạm của job lỗi; output hoàn tất được giữ.
 
 import (
 	"fmt"
@@ -76,39 +75,6 @@ func (s *Studio) PruneFailedWork() (int, int64) {
 		s.appendLog(id, "Tự chữa đĩa: đã dọn file tạm của job lỗi")
 	}
 	return len(ids), freed
-}
-
-// PruneOldPublishedOutputs xóa file output local của truyện đã đăng
-// YouTube (private) từ quá maxAge — bản đăng vẫn còn trên YouTube,
-// log ghi rõ. Chỉ chạm KindStory có marker published (callback).
-// Trả về (số video, bytes giải phóng).
-func (s *Studio) PruneOldPublishedOutputs(maxAge time.Duration, isPublished func(id string) bool) (int, int64) {
-	if isPublished == nil {
-		return 0, 0
-	}
-	cutoff := time.Now().Add(-maxAge).Format("2006-01-02T15:04:05")
-	rows, err := s.db.Query(
-		`SELECT id, output FROM studio_jobs WHERE kind=? AND status=? AND output != '' AND finished_at != '' AND finished_at < ?`,
-		KindStory, StatusDone, cutoff)
-	if err != nil {
-		return 0, 0
-	}
-	type target struct{ id, output string }
-	var targets []target
-	for rows.Next() {
-		var t target
-		if rows.Scan(&t.id, &t.output) == nil && isPublished(t.id) {
-			targets = append(targets, t)
-		}
-	}
-	rows.Close()
-	var freed int64
-	for _, t := range targets {
-		freed += removeFile(t.output)
-		s.db.Exec(`UPDATE studio_jobs SET output='' WHERE id=?`, t.id)
-		s.appendLog(t.id, "Tự chữa đĩa: đã dọn file video local (bản đăng vẫn trên YouTube)")
-	}
-	return len(targets), freed
 }
 
 // removeFile xóa 1 file, trả về bytes đã giải phóng (0 nếu không xóa được).

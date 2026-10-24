@@ -1,18 +1,19 @@
-# Viral source discovery and character replacement (`/viral`)
+# Video viral TikTok
 
-`/viral` separates YouTube source discovery, storyboard analysis, and full-character replacement. The Radar stores candidate metadata; it does not download or reuse footage. Production uses Google Flow `video_edit` when Flow and visual QC are ready, and requires per-job credit acknowledgement. That acknowledgement does not guarantee $0 usage.
+## Flow
 
-## Current workflow
+1. TikTok Radar thu thập feed video Việt Nam qua TikWM hoặc tìm video TikTok theo keyword; lưu tối đa 2.000 nguồn gần nhất và snapshot chỉ số trong SQLite.
+2. Có thể lọc feed đã thu thập theo từ khóa trong caption TikTok; mọi từ trong chủ đề phải xuất hiện trong caption, không phân biệt dấu. Đây là lọc cục bộ, không phải tìm kiếm từ khóa trực tiếp trên TikTok; không có kết quả chỉ có nghĩa feed hiện tại không khớp.
+3. Chọn và tự xác nhận một video nhảy từ kết quả Radar.
+4. Dùng video đã chọn làm nguồn/reference cho job.
+5. Tải video, kiểm tra và lấy audio đúng từ nguồn.
+6. Tạo output, QC file/hình/audio và gửi TikTok Draft.
+7. Sau khi tự đăng công khai, dán URL video TikTok vào job đã hoàn tất để Growth ghép counters theo account/video ID.
 
-- Radar stores source candidates only; it does not download or reuse their footage.
-- Storyboard analysis samples a supplied source video and returns a reference timeline; it does not create a video or replace the character.
-- Before enqueue, production validates source file, minimum 3-second duration, 9:16 dimensions, character photos from the selected account, a ready Google Flow video-edit adapter, a ready visual QC analyzer, and per-job credit acknowledgement. The worker checks source dimensions again. Flow edits source segments up to 10 seconds, then assembles and checks output.
-- Existing rendered jobs without current QC evidence remain marked unverified and cannot be published from the done gallery.
+## Giới hạn hiện tại
 
-## Limits and status
+Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Feed và tìm kiếm keyword dùng TikWM, cần kiểm tra độ phủ/freshness khi vận hành. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
 
-- Flow availability and visual QC depend on local provider configuration. Private web APIs are not live-verified; jobs can fail after enqueue if provider behavior changes.
-- No source video, reference image, or prompt can guarantee perfect choreography, identity, or channel growth. A visual QC pass is screening evidence, not evidence of future views or sales.
-- InsightFace face swap is not accepted as full-character replacement because it changes only the face.
+Tạo video viral hoàn chỉnh và giữ đồng nhất với reference chưa được chứng minh end-to-end.
 
-Primary implementation: `internal/automation/viral_radar.go`, `internal/studio/viral_character_edit.go`, `internal/studio/viral_jobs.go`, `internal/web/viral.go`, and `internal/web/templates/viral.html`.
+Counters lấy từ TikTok Display API sau khi account cấp quyền và đồng bộ. Retention, watch-time, demographics, profile visits và follows riêng theo video chưa có dữ liệu; chưa có snapshot thì hiển thị unknown.

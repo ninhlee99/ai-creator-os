@@ -91,5 +91,3 @@ func (l *Ledger) DeleteCharacter(id int64) error {
 }
 
 // ---- gifts (append-only, provider evidence) ----
-
-// RecordGift records gift revenue and accumulates accounts.gift_usd.

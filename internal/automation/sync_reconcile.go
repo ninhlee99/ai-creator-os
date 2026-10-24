@@ -8,7 +8,6 @@ import (
 
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/publishers"
 )
 
 // ------------------------------------------------------- sync + decide
@@ -26,29 +25,17 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 		return []string{a.Username + ": module growth chưa sẵn sàng"}
 	}
 	var notes []string
-	if _, err := s.Growth.EnsureProfile(a.ID, primaryPlatform(a), hasYouTube(a)); err != nil {
+	if _, err := s.Growth.EnsureProfile(a.ID); err != nil {
 		return append(notes, a.Username+": "+err.Error())
 	}
-	srcAcct := growth.SourceAccount{ID: a.ID, Username: a.Username, YoutubeChannel: a.YoutubeChannel}
-	if items, err := s.Growth.ItemsByStatus(a.ID, []string{growth.ItemPublished}, 500); err != nil {
-		notes = append(notes, a.Username+": không đọc được danh sách video đã đăng để đối chiếu metrics — "+err.Error())
-	} else {
-		for _, item := range items {
-			if item.PublishedRef != "" {
-				srcAcct.PublishedVideoIDs = append(srcAcct.PublishedVideoIDs, item.PublishedRef)
-			}
-		}
-	}
-	youtubeAnalytics := growth.NewYouTubeAnalyticsSource(publishers.YouTubeAccessToken)
-	ytKeyVal := s.env("YOUTUBE_API_KEY")
+	srcAcct := growth.SourceAccount{ID: a.ID, Username: a.Username}
 	sources := []growth.MetricsSource{
-		growth.NewYouTubeSource(ytKeyVal),
-		// Đợt H3: Analytics điền Views30d + watch hours (OAuth, free).
-		// Chưa có token/scope → fail-closed, báo rõ trong notes.
-		youtubeAnalytics,
 		growth.TikTokSource{},
 	}
 	gotSnapshot := false
+	videoMetricsExpected := false
+	videoMetricSyncComplete := false
+	videoMetricSyncFailed := false
 	for _, src := range sources {
 		snap, err := growth.RecordSnapshot(ctx, s.Growth, src, srcAcct)
 		if err != nil {
@@ -58,17 +45,16 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 		gotSnapshot = true
 		notes = append(notes, fmt.Sprintf("%s: đã đồng bộ số liệu từ %s", a.Username, src.Name()))
 		if videoSource, ok := src.(growth.VideoMetricsSource); ok {
-			if len(srcAcct.PublishedVideoIDs) == 0 {
-				notes = append(notes, a.Username+": chưa có video YouTube đăng qua kế hoạch; bỏ qua metrics theo video")
+			videoMetricsExpected = true
+			count, err := growth.RecordVideoMetrics(ctx, s.Growth, videoSource, srcAcct)
+			if err != nil {
+				videoMetricSyncFailed = true
+				notes = append(notes, a.Username+": không đồng bộ được analytics theo video — "+err.Error())
+			} else if count > 0 {
+				videoMetricSyncComplete = true
+				notes = append(notes, fmt.Sprintf("%s: đã lưu metrics thật cho %d video (views, likes, comments, shares)", a.Username, count))
 			} else {
-				count, err := growth.RecordVideoMetrics(ctx, s.Growth, videoSource, srcAcct)
-				if err != nil {
-					notes = append(notes, a.Username+": không đồng bộ được analytics theo video — "+err.Error())
-				} else if count > 0 {
-					notes = append(notes, fmt.Sprintf("%s: đã lưu metrics thật cho %d video (views, shares, average view %%, subscriber gain)", a.Username, count))
-				} else {
-					notes = append(notes, a.Username+": nguồn không trả metrics theo video trong 30 ngày; không có kết luận format mới")
-				}
+				notes = append(notes, a.Username+": TikTok không trả video công khai trong lần đồng bộ này")
 			}
 		}
 		if snap.Followers != nil {
@@ -85,6 +71,9 @@ func (s *Service) SyncOneAccount(ctx context.Context, a *network.Account) []stri
 	}
 	if !gotSnapshot {
 		return notes // nothing real came back; decide nothing on stale air
+	}
+	if videoMetricsExpected && (videoMetricSyncFailed || !videoMetricSyncComplete) {
+		return append(notes, a.Username+": bỏ qua khuyến nghị format vì chưa có metrics video mới")
 	}
 	res, err := s.Growth.Evaluate(a.ID, a.Username, LoadThresholds(s.Settings), time.Now())
 	if err != nil {
@@ -225,8 +214,7 @@ func (s *Service) ReconcileCommissions(ctx context.Context) []string {
 // ---------------------------------------------------------------- payload
 
 // affiliateOrderList extracts order maps from the API payload; unknown
-// shapes are skipped rather than misread (mirrors analyst.orderList, which
-// lives in the parked agent universe — R2-W6 will resolve the duplication).
+// shapes are skipped rather than misread.
 func affiliateOrderList(data map[string]any) []map[string]any {
 	if data == nil {
 		return nil

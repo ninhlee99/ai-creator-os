@@ -22,9 +22,17 @@ func (s *Studio) CancelRunning(id string) bool {
 	return true
 }
 
+func copyStudioFile(src, dst string) error {
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, b, 0o644)
+}
+
 // DeleteJob cancels a running job (if any), waits for its goroutine to exit,
 // then removes its assets, output, work dir and DB rows. Works for any job
-// kind — DeleteStoryJob keeps its kind check and delegates here.
+// kind.
 func (s *Studio) DeleteJob(id string) error {
 	j, ok := s.GetJob(id)
 	if !ok {
@@ -48,6 +56,9 @@ func (s *Studio) DeleteJob(id string) error {
 		os.Remove(s.OutputPath(j.Output))
 	}
 	os.RemoveAll(filepath.Join(s.workRoot, id))
+	if _, err := s.db.Exec(`DELETE FROM studio_tiktok_publications WHERE job_id=?`, id); err != nil {
+		return fmt.Errorf("xoá liên kết TikTok: %w", err)
+	}
 	if _, err := s.db.Exec(`DELETE FROM studio_assets WHERE job_id=?`, id); err != nil {
 		return fmt.Errorf("xoá assets: %w", err)
 	}
@@ -59,7 +70,7 @@ func (s *Studio) DeleteJob(id string) error {
 
 // MarkInterruptedJobs fails every job left "running" from a previous process
 // (their render goroutines died with it). Call once at startup; returns the
-// number of jobs swept. The user can resume film jobs with RerunFilmJob.
+// number of jobs swept.
 //
 // Đợt Y: also fails jobs left "queued" — a queued job's goroutine died with
 // the old process too, and nothing ever re-dispatches it, so it would sit
@@ -88,38 +99,6 @@ func (s *Studio) MarkInterruptedJobs() int {
 		s.setStatus(sw.id, StatusFailed, 100)
 	}
 	return len(ids)
-}
-
-// DownloadAudio fetches a direct audio URL (mp3/m4a) to a local file — used
-// when the user pastes a TikTok CDN / direct link for the trending sound.
-func DownloadAudio(ctx context.Context, url, outPath string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15")
-	client := &http.Client{Timeout: 5 * time.Minute}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("audio HTTP %d", resp.StatusCode)
-	}
-	if dir := filepath.Dir(outPath); dir != "" {
-		_ = os.MkdirAll(dir, 0o755)
-	}
-	f, err := os.Create(outPath)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(f, io.LimitReader(resp.Body, 100<<20))
-	cerr := f.Close()
-	if err != nil {
-		return err
-	}
-	return cerr
 }
 
 // DownloadVideo fetches a direct video URL (mp4/webm/mov) to a local file — used
@@ -153,7 +132,6 @@ func DownloadVideo(ctx context.Context, url, outPath string) error {
 	}
 	return cerr
 }
-
 
 // stampUserVersion records the schema generation for future migrations
 // (R2-W7): a fresh database is marked with v, an existing stamp is never

@@ -49,15 +49,15 @@ func TestTrendReadiness(t *testing.T) {
 	dir := t.TempDir()
 	photo := makeTestPNG(t, dir, "p.png", "testsrc")
 	out := filepath.Join(dir, "v.mp4")
-	if err := AssembleBeatBounce(t.Context(), []string{photo, photo, photo}, 3, 120, "", 0, out, "9:16"); err != nil {
+	if err := AssembleStillPhotoList(t.Context(), []string{photo, photo, photo}, 3.4, "", 0, out, "9:16"); err != nil {
 		t.Fatal(err)
 	}
 	r := TrendReadiness(t.Context(), out, AffiliateParams{}, "Đẹp quá")
-	if r.Total != 7 || r.Score != 2 { // 9:16 + độ dài 9s; câm, không nhạc/hashtag/CTA/link
+	if r.Total != 6 || r.Score != 2 { // 9:16 + độ dài 9s; câm, không hashtag/CTA/link
 		t.Fatalf("score %d/%d: %+v", r.Score, r.Total, r.Checks)
 	}
-	r = TrendReadiness(t.Context(), out, AffiliateParams{MusicTitle: "X", MusicPath: "m.m4a", AffLink: "https://a"}, "Xem link mua #tui")
-	if r.Score != 6 {
+	r = TrendReadiness(t.Context(), out, AffiliateParams{AffLink: "https://a"}, "Xem link mua #tui")
+	if r.Score != 5 {
 		t.Fatalf("score %d: %+v", r.Score, r.Checks)
 	}
 }

@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-// TokenHealthReport chứa trạng thái kiểm tra sức khỏe của token nền tảng mạng xã hội.
+// TokenHealthReport describes a TikTok OAuth token check.
 type TokenHealthReport struct {
-	Platform    string    `json:"platform"`     // "youtube", "tiktok", "meta"
+	Platform    string    `json:"platform"`     // "tiktok"
 	Username    string    `json:"username"`     // tên kênh / tài khoản
 	File        string    `json:"file"`         // đường dẫn file token
 	Status      string    `json:"status"`       // "healthy", "warning", "revoked", "unconfigured"
@@ -23,9 +23,9 @@ type TokenHealthReport struct {
 }
 
 var (
-	tokenWorkerMu      sync.RWMutex
-	lastHealthReports  []TokenHealthReport
-	onTokenAlertHook   func(report TokenHealthReport)
+	tokenWorkerMu     sync.RWMutex
+	lastHealthReports []TokenHealthReport
+	onTokenAlertHook  func(report TokenHealthReport)
 )
 
 // SetOnTokenAlert đăng ký callback nhận thông báo khi có token bị hỏng hoặc hết hạn.
@@ -60,12 +60,7 @@ func InspectTokens() []TokenHealthReport {
 		name := f.Name()
 		fullPath := filepath.Join(tokenDir, name)
 
-		if strings.HasPrefix(name, "youtube_token_") {
-			u := strings.TrimPrefix(name, "youtube_token_")
-			u = strings.TrimSuffix(u, ".json")
-			rep := inspectYouTubeToken(u, fullPath, now)
-			reports = append(reports, rep)
-		} else if strings.HasPrefix(name, "tiktok_token_") {
+		if strings.HasPrefix(name, "tiktok_token_") {
 			u := strings.TrimPrefix(name, "tiktok_token_")
 			u = strings.TrimSuffix(u, ".json")
 			rep := inspectTikTokToken(u, fullPath, now)
@@ -78,41 +73,6 @@ func InspectTokens() []TokenHealthReport {
 	tokenWorkerMu.Unlock()
 
 	return reports
-}
-
-func inspectYouTubeToken(username, path string, now time.Time) TokenHealthReport {
-	rep := TokenHealthReport{
-		Platform:    "youtube",
-		Username:    username,
-		File:        filepath.Base(path),
-		Status:      "healthy",
-		Message:     "OAuth refresh token sẵn sàng",
-		LastChecked: now,
-	}
-
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		rep.Status = "warning"
-		rep.Message = fmt.Sprintf("Không đọc được file token: %v", err)
-		return rep
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(raw, &data); err != nil {
-		rep.Status = "warning"
-		rep.Message = "Định dạng JSON token không hợp lệ"
-		return rep
-	}
-
-	rf, _ := data["refresh_token"].(string)
-	if rf == "" {
-		rep.Status = "revoked"
-		rep.Message = "Thiếu refresh_token (cần xác thực lại qua OAuth)"
-		return rep
-	}
-
-	rep.Message = "Sẵn sàng (Tự động gia hạn theo yêu cầu)"
-	return rep
 }
 
 func inspectTikTokToken(username, path string, now time.Time) TokenHealthReport {

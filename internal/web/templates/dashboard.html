@@ -5,34 +5,15 @@
 {{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:20px">{{.Warning}}</div>{{end}}
 {{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
 
-<!-- QUICK CONTENT ROUTER -->
-<div class="card hero-creator" style="margin-bottom:24px">
-  <div class="hero-creator-header">
-    <div>
-      <h2 class="hero-creator-title" style="margin:0 0 4px;font-size:18px;border:none;padding:0">Bắt đầu tạo nội dung</h2>
-      <p style="margin:6px 0 0;color:var(--muted);font-size:13px">Kể chuyện tạo job ngay. Affiliate và video dọc chưa tự dựng từ câu lệnh; biểu mẫu sẽ mở bước chuẩn bị riêng.</p>
-    </div>
+<div class="card" style="margin-bottom:24px">
+  <h1 style="margin:0 0 5px;font-size:20px">Điều hành TikTok</h1>
+  <p class="hint" style="margin:0 0 14px">Xu hướng · sản phẩm · video · kênh</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/studio/trends" class="btn btn-primary">Radar TikTok</a>
+    <a href="/products" class="btn btn-secondary">Sản phẩm hoa hồng</a>
+    <a href="/studio" class="btn btn-secondary">Tạo video</a>
+    <a href="/growth" class="btn btn-secondary">Phân tích kênh</a>
   </div>
-
-  <form method="post" action="/create-one-command" id="one-command-form" style="margin:0">
-    <input type="hidden" name="back" value="/">
-    <div class="magic-search-box">
-      <span class="magic-icon">✨</span>
-      <input type="text" name="command" id="one-command-input"
-        placeholder="Ví dụ: Kể chuyện bí ẩn, review tai nghe, 5 mẹo làm việc với AI"
-        required autofocus>
-      <button type="submit" id="one-command-btn" class="btn btn-primary magic-btn">
-        <span>Tiếp tục</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-      </button>
-    </div>
-
-    <nav class="tabs" aria-label="Loại nội dung" style="margin:14px 0 0">
-      <a href="/studio">Affiliate</a>
-      <a href="/viral">Viral Radar</a>
-      <a href="/stories">Kể chuyện</a>
-    </nav>
-  </form>
 </div>
 
 <!-- KEY METRICS STRIP -->
@@ -82,7 +63,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Cần xử lý</h2>
-        <p>Trạng thái còn mở từ Studio, Story, Growth, đăng tự động, worker và quota; bỏ event đã có dấu xử lý thành công.</p>
       </div>
     </div>
     {{if .AttentionItems}}
@@ -98,9 +78,9 @@
       </article>
       {{end}}
     </div>
-    <p class="empty">Hiện tối đa 10 mục; mở khu vực tương ứng bên dưới để xem đầy đủ.</p>
+    <p class="empty">Tối đa 10 mục.</p>
     {{else if .AttentionSourcesKnown}}
-    <p class="empty">Không có blocker nào trong trạng thái hiện đọc được. Nguồn chưa có dữ liệu vẫn hiện bên dưới.</p>
+    <p class="empty">Không có blocker trong dữ liệu đã đọc.</p>
     {{else}}
     <p class="empty">Chưa có dữ liệu nguồn để xác nhận trạng thái blocker.</p>
     {{end}}
@@ -110,7 +90,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Tự động hóa</h2>
-        <p>Công tắc lịch chỉ đặt lịch riêng. Master điều khiển daemon mạng; kill switch và dry-run áp dụng theo từng workflow.</p>
       </div>
       <a href="/settings/system">Cài đặt vận hành ↗</a>
     </div>
@@ -143,7 +122,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Growth đang chạy / chờ xử lý</h2>
-        <p>Mục của kế hoạch hiện hành; lịch tương lai không tính là blocker.</p>
       </div>
       <a href="/growth">Mở Growth ↗</a>
     </div>
@@ -174,7 +152,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Trạng thái kiếm tiền</h2>
-        <p>Cấu hình trong app chưa chứng minh API live, quyền đăng, YPP, publisher approval hoặc payout.</p>
       </div>
     </div>
     <div class="dashboard-money-list">
@@ -194,17 +171,16 @@
   <section class="card dashboard-panel">
     <div class="dashboard-panel-heading">
       <div>
-        <h2>Hiệu quả video · YouTube</h2>
-        <p>Views trong báo cáo 30 ngày; snapshot phải mới trong 7 ngày. Thiếu dữ liệu không đồng nghĩa 0 views.</p>
+        <h2>Hiệu quả video · TikTok</h2>
+        <p>Thiếu dữ liệu không đồng nghĩa 0 lượt xem.</p>
       </div>
       <a href="/growth">Mở Growth ↗</a>
     </div>
     {{if .VideoPerformance.HasMetrics}}
     <article class="dashboard-money-row" style="border-top:0;padding-top:0">
-      <strong>{{.VideoPerformance.VideoCount}} video có metrics</strong>
-      <p>Trung bình {{.VideoPerformance.AverageViews}} lượt xem/video trong báo cáo 30 ngày.</p>
-      <small>{{.VideoPerformance.DataChannelCount}}/{{.VideoPerformance.AnalyticsChannelCount}} kênh có metrics · cập nhật {{.VideoPerformance.LatestAt}} UTC</small>
-      {{if .VideoPerformance.FailedChannels}}<small style="display:block;margin-top:5px;color:var(--warn-text)">Không đọc được {{.VideoPerformance.FailedChannels}} kênh khác; số tổng hợp hiện có thể thiếu.</small>{{end}}
+      <strong>{{.VideoPerformance.DataCount}} kênh có metrics</strong>
+      <p>{{.VideoPerformance.Views30d}} lượt xem trong 30 ngày.</p>
+      <small>Cập nhật {{.VideoPerformance.LatestAt}} UTC</small>
       {{if .VideoPerformance.Detail}}<small style="display:block;margin-top:5px;color:var(--muted)">{{.VideoPerformance.Detail}}</small>{{end}}
     </article>
     {{else}}
@@ -217,7 +193,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Quyết định hệ thống gần đây</h2>
-        <p>Nhật ký quyết định của agent/hệ thống; thao tác người dùng và test không hiện.</p>
       </div>
     </div>
     {{if .RecentDecisions}}
@@ -227,7 +202,6 @@
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
           <strong>{{with agentLabel .Agent}}{{.Icon}} {{.Label}}{{end}}</strong>
           <span class="badge badge-draft">{{statusLabel .Action}}</span>
-          {{if .Target}}<span style="font-size:12px;color:var(--muted)">{{.Target}}</span>{{end}}
         </div>
         {{if .Reason}}<p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{reasonLabel .Reason}}</p>{{end}}
         {{if .Evidence}}<small style="display:block;margin-top:4px;color:var(--muted)">Dữ liệu đã ghi: {{.Evidence}}</small>{{end}}
@@ -245,7 +219,6 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Cảnh báo Growth gần đây</h2>
-        <p>Cảnh báo đã lưu, kèm hành động hệ thống đã thực hiện.</p>
       </div>
       <a href="/growth">Mở Growth ↗</a>
     </div>
@@ -275,7 +248,7 @@
     <div class="dashboard-panel-heading">
       <div>
         <h2>Kết quả đăng gần đây</h2>
-        <p>Studio Autopilot giữ trạng thái mới nhất mỗi chân; Growth/Story lưu event. API thành công chưa chứng minh bài đã công khai.</p>
+        <p>API thành công chưa xác nhận nội dung đã công khai.</p>
       </div>
     </div>
     {{if .RecentPublishOutcomes}}
@@ -286,16 +259,14 @@
           <strong>{{publisherPlatformLabel .Platform}}</strong>
           <span class="badge badge-{{statusClass .Status}}">{{.OutcomeLabel}}</span>
           <span class="badge badge-draft">{{.Source}}</span>
-          {{if .Target}}<span style="font-size:12px;color:var(--muted)">{{.Target}}</span>{{end}}
         </div>
         <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{if .Title}}{{.Title}}{{else}}{{.JobID}}{{end}}</p>
         {{if .RemoteID}}<small style="display:block;margin-top:4px;color:var(--muted)">Mã nền tảng: <code>{{.RemoteID}}</code></small>{{end}}
         {{if .Note}}<small style="display:block;margin-top:4px;color:var(--muted)">{{.Note}}</small>{{end}}
-        {{if and (eq .Status "needs_review") (eq .Source "Affiliate Autopilot") (or (eq .Platform "youtube") (eq .Platform "tiktok") (eq .Platform "facebook") (eq .Platform "instagram") (eq .Platform "threads"))}}
+        {{if and (eq .Status "needs_review") (eq .Source "Affiliate Autopilot") (eq .Platform "tiktok")}}
         <form method="post" action="/studio/jobs/{{.JobID}}/publish-review" style="display:flex;flex-wrap:wrap;align-items:end;gap:6px;margin-top:8px">
-          <input type="hidden" name="platform" value="{{.Platform}}">
-          <label style="font-size:11px;color:var(--muted)">Mã bài/video nếu đã thấy
-            <input name="remote_id" placeholder="ID video hoặc bài trên nền tảng" style="display:block;max-width:260px">
+          <label style="font-size:11px;color:var(--muted)">Mã draft nếu đã thấy trong TikTok
+            <input name="remote_id" placeholder="TikTok draft ID" style="display:block;max-width:260px">
           </label>
           <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có nội dung</button>
           <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra nền tảng và không thấy nội dung. Autopilot sẽ được phép thử lại.">Đã kiểm tra: chưa có</button>
@@ -315,7 +286,7 @@
   <div class="dashboard-panel-heading">
     <div>
       <h2>Tác vụ nền &amp; quota</h2>
-      <p>Heartbeat cho biết tick chạy thành công gần nhất; chưa có heartbeat thì trạng thái chưa xác định.</p>
+      <p>Thiếu heartbeat · trạng thái chưa xác định.</p>
     </div>
     <a href="/settings/system">Chi tiết hệ thống ↗</a>
   </div>
@@ -345,7 +316,7 @@
     </div>
   </details>
   {{else}}
-  <p class="empty">Daemon chưa gửi heartbeat; không thể xác nhận tick tự động đang chạy.</p>
+  <p class="empty">Chưa có heartbeat · tick chưa xác định.</p>
   {{end}}
 </section>
 
@@ -373,13 +344,6 @@
         <div class="video-item-title" title="{{.Title}}">
           {{.Title}}
         </div>
-        {{if and (eq .Kind "story") (eq .Status "done")}}
-        <small style="display:block;margin:4px 0 8px;color:var(--muted)">
-          {{if not .StoryPublishKnown}}Không đọc được trạng thái đăng YouTube.
-          {{else if .StoryPublished}}Đã ghi nhận trên YouTube; quyền riêng tư có thể đổi theo lịch.
-          {{else}}Chưa có dấu xác nhận đã đăng YouTube.{{end}}
-        </small>
-        {{end}}
 
         {{if and (eq .Status "done") .Output}}
         <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để phóng to xem video">
@@ -428,20 +392,5 @@
   <p class="empty">Chưa có video.</p>
   {{end}}
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  var form = document.getElementById('one-command-form');
-  if (form) {
-    form.addEventListener('submit', function() {
-      var btn = document.getElementById('one-command-btn');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span>Đang mở luồng...</span>';
-      }
-    });
-  }
-});
-</script>
 
 {{end}}

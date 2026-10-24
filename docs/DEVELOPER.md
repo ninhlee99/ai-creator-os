@@ -1,82 +1,43 @@
-# MiuNova — Hướng dẫn phát triển
+# Hướng dẫn phát triển
 
-> Nguồn yêu cầu sản phẩm: [PRODUCT_SPEC](PRODUCT_SPEC.md). Chính sách hard
-> gate: [POLICY_AND_SAFETY](POLICY_AND_SAFETY.md). Trạng thái code đã đối chiếu:
-> [IMPLEMENTATION_STATUS](IMPLEMENTATION_STATUS.md). Mô tả as-built theo miền:
-> [features/README](features/README.md).
+## Thứ tự đọc
 
-## 1. Khởi chạy từ source
+1. PRODUCT_SPEC.md: acceptance của hai flow TikTok.
+2. PRODUCT_DECISIONS.md: quyết định sản phẩm đang có hiệu lực.
+3. IMPLEMENTATION_STATUS.md: giới hạn code đã biết.
+4. POLICY_AND_SAFETY.md: quy tắc dữ liệu, quyền truy cập, audio và publish.
 
-Yêu cầu phiên bản Go theo `go.mod` (hiện khai báo Go 1.26.0). Build và chạy:
+## Bản đồ code
 
-```bash
-go build -o aicos ./cmd/aicos
-./aicos
+| Gói | Phạm vi |
+|---|---|
+| cmd/aicos | Wiring và khởi chạy |
+| internal/web | HTTP, UI và static assets |
+| internal/network, internal/tiktok | Kênh và TikTok OAuth |
+| internal/studio | Radar, tạo video, audio, QC |
+| internal/products, internal/accesstrade | Offer, hoa hồng, link |
+| internal/publishers | TikTok Draft |
+| internal/growth | Metrics và tăng trưởng TikTok |
+| internal/webai | Phiên provider dùng cho tạo video |
+| internal/ledger, internal/backup | Lưu dữ liệu và backup |
+
+## Ranh giới sửa đổi
+
+- Sửa đúng layer và giữ nguồn dữ liệu gắn provenance.
+- Không thêm UI, route hay worker cho flow ngoài phạm vi hiện hành.
+- Không biến thiếu dữ liệu thành 0 hoặc thành claim.
+- Không retry request sau khi provider có thể đã nhận job nếu chưa đối chiếu trạng thái.
+- Không commit credentials, cookies, session hoặc media riêng.
+- Dùng gofmt cho Go. Kiểm tra theo yêu cầu task; không chạy test nếu chưa được yêu cầu.
+
+## UI assets
+
+UI dùng Go templates, HTMX và Tailwind CSS. HTMX được vendored local; Tailwind scan `internal/web/templates` rồi compile vào `internal/web/static/tailwind.css`.
+
+```sh
+npm ci
+npm run build:ui
+go build ./...
 ```
 
-FFmpeg là công cụ ngoài cần cho tác vụ dựng video. Cấu hình môi trường/secret
-qua Settings hoặc cơ chế deploy được dự án hỗ trợ; không commit credential.
-
-## 2. Thứ tự đọc trước khi sửa
-
-1. Đọc `PRODUCT_SPEC.md` để biết hành vi đích.
-2. Đọc `PRODUCT_DECISIONS.md` để phân biệt quyết định người dùng với giả định.
-3. Đọc `IMPLEMENTATION_STATUS.md` và source liên quan để biết khả năng hiện tại.
-4. Đọc `POLICY_AND_SAFETY.md` trước khi thay đổi account, provider, nội dung,
-   xuất bản hoặc quota.
-5. Nếu hành vi hiện tại và mục tiêu khác nhau, cập nhật evidence trong
-   `IMPLEMENTATION_STATUS.md`; không ghi feature as-built như thể mục tiêu đã
-   hoàn tất.
-
-## 3. Ranh giới cứng
-
-- Chỉ dùng nguồn miễn phí được phép; provider cần billing hoặc giá không rõ
-  không được gọi. Fallback giữa account chỉ khi account đã được ủy quyền và
-  provider cho phép; không né quota.
-- Xuất bản qua API/quyền hợp lệ. TikTok cần consent riêng cho từng bài theo
-  PRODUCT_SPEC; không bỏ consent để tiện tự động hóa.
-- Không bịa sales, rating, metrics, claim hoặc trạng thái publish. Giữ provenance
-  và freshness của dữ liệu; thiếu field phải biểu diễn là unknown ở sản phẩm đích.
-- OAuth/API credential không được render hoặc ghi log.
-- Web AI accounts chỉ được khôi phục qua JSON backup; app không mở login browser
-  hoặc đọc profile browser người dùng. Session validator kiểm tra account;
-  request lưu cookie mới theo account ID. Account không cần xác nhận gói Free
-  thủ công; Flow generation vẫn cần consent dùng credits.
-
-## 4. Bản đồ source
-
-| Thư mục | Trách nhiệm chính |
-|---|---|
-| `cmd/aicos` | Entrypoint và wiring ứng dụng |
-| `internal/web` | HTTP routes, handlers, templates, static assets và dashboard |
-| `internal/automation`, `internal/ticksup` | Ticks, lịch và tác vụ nền |
-| `internal/harness`, `internal/growth` | Điều phối quan sát/quyết định và kế hoạch tăng trưởng |
-| `internal/products`, `internal/accesstrade`, `internal/affiliatehunter` | Catalog, offer discovery, affiliate links và đối soát |
-| `internal/studio`, `internal/viralradar` | Job media, shot plan, QC và radar |
-| `internal/publishers`, `internal/tiktok` | Adapter xuất bản theo nền tảng |
-| `internal/webai` | Account/session AI web được khôi phục từ backup, xác minh phiên và provider flows |
-| `internal/ledger`, `internal/backup` | Trạng thái bền vững, settings, backup/restore |
-
-Các vai trò trong [SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md) là mô hình công việc
-mục tiêu. Không suy ra mỗi vai trò tương ứng với một process hoặc agent độc lập;
-xem harness/worker wiring thật trong source.
-
-## 5. Quy trình thay đổi
-
-- Giữ thay đổi ở đúng layer; ưu tiên dùng adapter/interface hiện có.
-- Cập nhật tài liệu tính năng nếu hành vi as-built đổi; cập nhật spec/decisions
-  nếu yêu cầu hoặc lựa chọn sản phẩm đổi.
-- Khi thêm route, provider, trạng thái job hoặc nguồn metrics, ghi quyền, lỗi,
-  quota, retry/idempotency và cách người vận hành nhìn thấy kết quả.
-- Dùng `gofmt` cho Go. Chạy kiểm tra liên quan theo yêu cầu của task; các lệnh
-  thông dụng là `go test ./...` và `go test -tags parked ./...`.
-- Kiểm tra `git diff --check`; không đưa credential, dữ liệu session, profile
-  browser hay artifact người dùng vào git.
-
-## 6. Tài liệu chuẩn
-
-- [SYSTEM_BLUEPRINT](SYSTEM_BLUEPRINT.md): kiến trúc mục tiêu, vai trò và job flow.
-- [README](../README.md): tóm tắt sản phẩm và cách chạy.
-- [USER_GUIDE](USER_GUIDE.md): vận hành theo khả năng hiện tại.
-- [ARCHITECTURE](ARCHITECTURE.md): ghi chú kiến trúc code kế thừa; đối chiếu
-  source và IMPLEMENTATION_STATUS trước khi dùng làm bằng chứng.
+Không đưa CDN hoặc runtime Tailwind compiler vào app.

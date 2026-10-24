@@ -23,7 +23,7 @@ func TestHuntApprovedFreshAffiliateOnly(t *testing.T) {
 		case "/v1/campaigns":
 			fmt.Fprintf(w, `{"data":%s,"page":1,"total_page":1}`, approved)
 		case "/v1/datafeeds":
-			if r.URL.Query().Get("merchant") != "shopee" {
+			if r.URL.Query().Get("campaign") != "shopee" {
 				fmt.Fprint(w, `{"data":[],"total":0}`)
 				return
 			}

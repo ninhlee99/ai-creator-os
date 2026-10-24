@@ -21,12 +21,8 @@ const (
 	StageStalled          = "stalled"
 )
 
-// Plan variants (platform adaptations of one idea).
-const (
-	VariantTikTok  = "tiktok"
-	VariantShorts  = "youtube_shorts"
-	VariantYouTube = "youtube_long"
-)
+// Plan variant.
+const VariantTikTok = "tiktok"
 
 // Plan item statuses.
 const (
@@ -37,9 +33,6 @@ const (
 	ItemQueued         = "queued"
 	ItemProduced       = "produced"        // render finished, not (yet) published
 	ItemWaitingConnect = "waiting_connect" // rendered, blocked on missing platform credentials
-	ItemWaitingQuota   = "waiting_quota"   // rendered, blocked on the daily API quota
-	ItemPublishing     = "publishing"      // upload request in flight; restart requires reconciliation
-	ItemNeedsReview    = "needs_review"    // provider may have accepted upload; verify before retry
 	ItemPublished      = "published"
 	ItemDropped        = "dropped"
 	ItemFailed         = "failed" // linked Studio job failed / vanished
@@ -51,11 +44,6 @@ const (
 	VerdictWinner  = "winner"
 	VerdictKilled  = "killed"
 )
-
-// YPPDeadline is the date after which NEW YouTube Partner Program
-// applicants face doubled thresholds (docs/CHANNEL_GROWTH.md §2.2). Plans
-// for channels not yet monetized count down to it.
-const YPPDeadline = "2027-02-01"
 
 // CanaryDays is the low-cadence probation window for new accounts (§5.3).
 const CanaryDays = 7
@@ -104,7 +92,7 @@ type Profile struct {
 type Target struct {
 	ID        int64
 	AccountID int64
-	Metric    string // followers | subs | watch_hours_12m | shorts_views_90d
+	Metric    string // followers
 	Threshold float64
 	Label     string
 	Deadline  string // "" = no deadline
@@ -133,25 +121,24 @@ type PlanItem struct {
 	AccountID     int64
 	PlannedFor    string // YYYY-MM-DD (ICT)
 	FormatID      string
-	Variant       string // tiktok | youtube_shorts | youtube_long
+	Variant       string // tiktok
 	Topic         string
 	Hook          string
 	SeriesEp      int
 	Status        string
 	ContentItemID int64
 	PublishedRef  string
-	// Phase 2 — production + anti-duplicate trail.
-	StudioJobID   string // studio_jobs.id (TEXT) that rendered this item
-	ConceptText   string // normalized concept the dedup guard compared
-	ConceptHash   string // sha256 over the concept token set
-	VariantGroup  string // "YYYY-MM-DD|<format_id>" — variants of one idea
-	DedupAction   string // "" | "angle_regenerated"
-	Attempts      int    // failed enqueue attempts so far
-	PubTitle      string // per-variant publish title decided at production
-	PubCaption    string // per-variant caption/description base
-	PubNote       string // honest publish/production state note (Vietnamese)
-	RelatedItemID int64  // plan item of the sibling variant (Short <-> long)
-	ProducedAt    string // when the render finished
+	// Production + anti-duplicate trail.
+	StudioJobID  string // studio_jobs.id (TEXT) that rendered this item
+	ConceptText  string // normalized concept the dedup guard compared
+	ConceptHash  string // sha256 over the concept token set
+	VariantGroup string // "YYYY-MM-DD|<format_id>" — variants of one idea
+	DedupAction  string // "" | "angle_regenerated"
+	Attempts     int    // failed enqueue attempts so far
+	PubTitle     string // per-variant publish title decided at production
+	PubCaption   string // per-variant caption/description base
+	PubNote      string // honest publish/production state note (Vietnamese)
+	ProducedAt   string // when the render finished
 }
 
 // FormatStat is the aggregated score of one format family on one account.
@@ -174,11 +161,11 @@ type FormatStat struct {
 type Snapshot struct {
 	AccountID int64
 	TakenAt   time.Time
-	Source    string // youtube_api | tiktok_api | import
+	Source    string // tiktok_api | import
 	Followers *int64
 	Views30d  *float64
 	Videos    *int64
-	Extra     map[string]any // watch_hours_12m, shorts_views_90d, views_total...
+	Extra     map[string]any
 }
 
 // Alert is one growth alert (growth_alerts row). Alerts are notify-only and

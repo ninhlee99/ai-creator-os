@@ -84,7 +84,7 @@ func TestAvailableVideoEngines(t *testing.T) {
 	}
 }
 
-func TestGenerateMotionVideoClipFallback(t *testing.T) {
+func TestGenerateMotionVideoClipDoesNotFallbackToStockOrStillImage(t *testing.T) {
 	dir := t.TempDir()
 	outMP4 := filepath.Join(dir, "test_clip.mp4")
 	keyframe := makeTestPNG(t, dir, "frame.png", "testsrc")
@@ -112,20 +112,14 @@ func TestGenerateMotionVideoClipFallback(t *testing.T) {
 		LogFn:       logFn,
 	})
 
-	if err != nil {
-		t.Fatalf("GenerateMotionVideoClip error: %v", err)
+	if err == nil {
+		t.Fatal("expected error when selected engine returned no motion footage")
 	}
-	if videoGen.calls != 1 {
-		t.Fatalf("auto mode called video provider %d times, want 1", videoGen.calls)
+	if videoGen.calls != 0 {
+		t.Fatalf("auto mode called paid video provider %d times without explicit selection", videoGen.calls)
 	}
-
-	if !fileExists(outMP4) {
-		t.Fatalf("expected output video file to exist at %s", outMP4)
-	}
-
-	w, h := ProbeDims(ctx, outMP4)
-	if w != 1080 || h != 1920 {
-		t.Errorf("expected dims 1080x1920, got %dx%d", w, h)
+	if fileExists(outMP4) {
+		t.Fatal("created an output by falling back to stock footage or a still image")
 	}
 }
 

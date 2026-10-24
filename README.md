@@ -1,56 +1,44 @@
 # MiuNova
 
-**MiuNova** là hệ thống AI định hướng tự tìm cơ hội affiliate, tạo video
-affiliate và nội dung gốc, phát triển kênh trên TikTok, Facebook, Threads,
-Instagram và YouTube. Đích sản phẩm là để người vận hành kết nối tài khoản xã
-hội rồi theo dõi; TikTok cần một chạm xác nhận cho từng bài. Chỉ dùng dịch vụ
-miễn phí: chuyển sang tài khoản miễn phí khác khi phù hợp; hết mọi nguồn thì
-dừng job và báo.
+MiuNova hỗ trợ tạo video TikTok qua ba flow:
 
-> Đây là mục tiêu sản phẩm, chưa phải mô tả đầy đủ năng lực hiện tại. Luồng tự
-> tìm hàng → tự tạo video → xuất bản → đo lường trên đủ năm nền tảng chưa hoàn
-> chỉnh. Xem [trạng thái implementation](docs/IMPLEMENTATION_STATUS.md).
+1. Video affiliate TikTok.
+2. Video viral TikTok.
+3. Truyện audio — để phase sau.
 
-## Tài liệu chuẩn
+Hiện chỉ hoàn thiện hai flow TikTok. Cả hai lấy âm thanh từ video nhảy viral mà Radar đã thu thập.
 
-- [PRODUCT_SPEC](docs/PRODUCT_SPEC.md): sản phẩm cần trở thành gì.
-- [PRODUCT_DECISIONS](docs/PRODUCT_DECISIONS.md): quyết định đã chốt, giả định,
-  và điểm còn mở.
-- [SYSTEM_BLUEPRINT](docs/SYSTEM_BLUEPRINT.md): bản vẽ hệ thống hoàn chỉnh,
-  vòng đời từng job, các giai đoạn và điểm dừng.
-- Bộ hình MiuNova: [logo](docs/assets/miunova-logo.svg), [kiến trúc 2D](docs/assets/miunova-2d.svg),
-  [phòng nhân sự 2.5D](docs/assets/miunova-25d-workroom.svg),
-  [xưởng sáng tạo 3D](docs/assets/miunova-3d-office.png).
-- [IMPLEMENTATION_STATUS](docs/IMPLEMENTATION_STATUS.md): khả năng hiện có và
-  giới hạn đã thấy trong code.
-- [Ghi chú kiến trúc code kế thừa](docs/ARCHITECTURE.md), [tài liệu tính năng](docs/features/README.md),
-  [hướng dẫn phát triển](docs/DEVELOPER.md).
-- [Chỉ mục tài liệu](docs/README.md).
+## Luồng đang ưu tiên
 
-## Hiện trạng tóm tắt
+Kết nối kênh TikTok → Radar thu thập video viral/nhảy → chọn video nguồn → chọn sản phẩm hoặc tạo video viral → kiểm tra video và âm thanh → gửi TikTok Draft để người dùng duyệt.
 
-Code có AccessTrade datafeed/order sync, shot plan/QC affiliate, Viral Radar,
-growth planning, agent harness và publisher adapters. Manual Studio cần clip
-chuyển động do operator cung cấp; Affiliate Autopilot hiện dừng trước product
-discovery khi gate xác nhận Flow credits còn tắt. Pipeline video viral đầy đủ,
-analytics đa nền tảng và UX xác nhận TikTok chưa đạt đích. Xem giới hạn khác ở
-[IMPLEMENTATION_STATUS](docs/IMPLEMENTATION_STATUS.md).
+## Hiện trạng
 
-## Chạy app
+Hai flow chưa đạt hoàn chỉnh end-to-end. Radar chưa phân loại video nhảy đủ tin cậy; nguồn sản phẩm AccessTrade thiếu dữ liệu bán gần đây và đánh giá; TikTok metrics chưa có nguồn đồng bộ đầy đủ. Xem [Implementation status](docs/IMPLEMENTATION_STATUS.md).
 
-```bash
-git clone https://github.com/ninhlee99/ai-creator-os
-cd ai-creator-os
+## UI stack
+
+Go HTML templates + HTMX partial updates + Tailwind CSS compiled to local static assets. Không tải HTMX/Tailwind từ CDN.
+
+## Chạy ứng dụng
+
+~~~bash
 go build -o aicos ./cmd/aicos
 ./aicos
-```
+~~~
 
-Mở `http://localhost:8080`. FFmpeg cần được cài riêng cho tác vụ dựng video.
-Khi chạy trên VPS và truy cập bằng điện thoại, cần cấu hình HTTPS, hostname
-công khai và OAuth callback tương ứng.
+Mở http://localhost:8080. Dựng video cần FFmpeg trên máy chạy app.
 
-## Định danh kỹ thuật
+Sau khi sửa UI, chạy `npm ci` rồi `npm run build:ui` để cập nhật HTMX/Tailwind assets trước khi build Go.
 
-Tên sản phẩm hiển thị: **MiuNova**. Tên repository/module kỹ thuật
-`ai-creator-os`, binary `aicos`, các route, cấu hình và thư mục dữ liệu hiện có
-được giữ nguyên để tương thích.
+## Tài liệu
+
+- [Product spec](docs/PRODUCT_SPEC.md)
+- [Quyết định sản phẩm](docs/PRODUCT_DECISIONS.md)
+- [Trạng thái triển khai](docs/IMPLEMENTATION_STATUS.md)
+- [Luồng âm thanh Radar](docs/OPEN_SPEC.md)
+- [Kiến trúc hệ thống](docs/SYSTEM_BLUEPRINT.md)
+- [Hướng dẫn vận hành](docs/USER_GUIDE.md)
+- [Tài liệu tính năng đang giữ](docs/features/README.md)
+
+Tên repository/module kỹ thuật vẫn là ai-creator-os; tên sản phẩm là MiuNova.

@@ -16,6 +16,16 @@ import (
 	"time"
 )
 
+func (s *Server) atSettingStr(key, def string) string {
+	if s.Ledger == nil {
+		return def
+	}
+	if v, ok, err := s.Ledger.GetSetting(key); err == nil && ok && strings.TrimSpace(v) != "" {
+		return strings.TrimSpace(v)
+	}
+	return def
+}
+
 // settingsData builds the full settings context once; each sub-page picks
 // the keys it needs (R2-W3: một trang = một mối quan tâm).
 func (s *Server) settingsData(r *http.Request) map[string]any {
@@ -221,10 +231,8 @@ func (s *Server) geminiModelsView() map[string]any {
 		"Status":    "🛠️ Cập nhật thủ công theo yêu cầu (Bấm nút để quét & nâng cấp toàn bộ model)",
 		"Report":    report,
 		"Items": []map[string]any{
-			modelItem(gmodels.Text, "Văn bản & Kịch bản (LLM)", "Sáng tạo kịch bản video viral, hook, cốt truyện audio"),
-			modelItem(gmodels.Image, "Gemini image (đã tắt theo U-04)", "Không gọi vì Gemini image không có free tier. Ảnh không tham chiếu dùng Pollinations Free API Classic; ảnh tham chiếu bị chặn."),
-			modelItem(gmodels.TTS, "Giọng đọc truyền cảm (TTS)", "Giọng đọc truyện audio đa cảm xúc (gemini-3.8-flash-tts)"),
-			modelItem(gmodels.Video, "Gemini Veo (đã tắt theo U-04)", "Không gọi vì Veo cần project bật billing; Google Flow cần xác nhận credits riêng."),
+			modelItem(gmodels.Text, "Kịch bản video (LLM)", "Viết hook, nội dung và caption cho video TikTok."),
+			modelItem(gmodels.TTS, "Lời đọc video (TTS)", "Tạo giọng đọc cho video affiliate và viral."),
 		},
 	}
 }
@@ -243,7 +251,7 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/settings/system?err="+url.QueryEscape("Kiểm tra model thất bại: "+err.Error()))
 		return
 	}
-	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Text: %s | Image: bị khóa theo U-04 | TTS: %s | Veo: bị khóa theo U-04",
+	msg := fmt.Sprintf("✓ Đã kiểm tra Gemini API (%d models khả dụng). Kịch bản: %s | Giọng đọc: %s",
 		rep.TotalModels, gmodels.Resolve(gmodels.Text), gmodels.Resolve(gmodels.TTS))
 	if rep.Updated && len(rep.Changes) > 0 {
 		var activeChanges []string
@@ -253,9 +261,9 @@ func (s *Server) handleModelsUpdate(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if len(activeChanges) > 0 {
-			msg = "🚀 Đã nâng cấp model Gemini đang bật: " + strings.Join(activeChanges, " · ") + ". Image và Veo vẫn bị khóa theo U-04."
+			msg = "🚀 Đã nâng cấp model Gemini đang bật: " + strings.Join(activeChanges, " · ") + "."
 		} else {
-			msg = fmt.Sprintf("Đã đồng bộ danh mục Gemini (%d models). Image và Veo vẫn bị khóa theo U-04.", rep.TotalModels)
+			msg = fmt.Sprintf("Đã đồng bộ danh mục Gemini (%d models).", rep.TotalModels)
 		}
 	}
 	_ = s.Ledger.Decide("human", "model_update_check", nil, msg, map[string]any{"updated": rep.Updated, "total": rep.TotalModels})

@@ -51,32 +51,20 @@ func TestOnboardStepKeepsResearchedNiche(t *testing.T) {
 	}
 }
 
-func TestOnboardStepGrowingGate(t *testing.T) {
-	l, mgr := newTestManager(t)
+func TestOnboardStepStaysGrowing(t *testing.T) {
+	_, mgr := newTestManager(t)
 	a, err := mgr.Add("ob3", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	a = walkChain(t, mgr, a, "researching", "persona_assigned", "growing")
 
-	// Below the follower threshold: stays growing.
 	status, err := OnboardStep(mgr, a.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if status != "growing" {
 		t.Fatalf("status = %s, want growing", status)
-	}
-	// At/above threshold: unlocks live.
-	if err := l.SetFollowers(a.ID, 1500); err != nil {
-		t.Fatal(err)
-	}
-	status, err = OnboardStep(mgr, a.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if status != "live_ready" {
-		t.Fatalf("status = %s, want live_ready", status)
 	}
 }
 
@@ -87,7 +75,7 @@ func TestOnboardStepDoneIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	a = walkChain(t, mgr, a, "researching", "persona_assigned", "growing")
-	status, err := OnboardStep(mgr, a.ID) // still growing, no followers
+	status, err := OnboardStep(mgr, a.ID)
 	if err != nil || status != "growing" {
 		t.Fatalf("status = %s, err = %v", status, err)
 	}

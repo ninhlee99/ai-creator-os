@@ -25,6 +25,18 @@ const affiliatePreparationLifetime = 7 * 24 * time.Hour
 // list that the later clip upload must follow.
 func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (AffiliatePreparation, error) {
 	var empty AffiliatePreparation
+	source, err := s.ResolveTikTokRadarVideo(ctx, p.SourceMusicVideoURL)
+	if err != nil {
+		return empty, fmt.Errorf("chọn video nhảy có sound trong Radar TikTok: %w", err)
+	}
+	if !source.DanceVerified {
+		return empty, fmt.Errorf("video Radar chưa được xác nhận là video nhảy")
+	}
+	p.SourceMusicTitle = source.SoundTitle()
+	p.SourceMusicVideoURL = source.VideoURL
+	p.SourceMusicVideoID = source.VideoID
+	p.SourceMusicAuthor = source.Author
+	p.SourceMusicCollectedAt = source.CollectedAt
 	p.ChannelProfile = normalizeChannelCreativeProfile(p.ChannelProfile)
 	if p.Seconds <= 0 {
 		p.Seconds = 60

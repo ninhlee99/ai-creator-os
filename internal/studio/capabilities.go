@@ -9,24 +9,15 @@ import (
 	"time"
 )
 
-// Film Wave 3 — "Khả năng AI": hệ thống phải BIẾT mình làm được gì trước
-// khi hứa. Video không tự probe vì Veo cần billing; ảnh dùng Pollinations
-// Free API Classic và không hỗ trợ ảnh tham chiếu.
-// Bảng capabilities lưu trong studio.db:
-//   - image_gen: probe thật qua Pollinations khi người vận hành yêu cầu.
-//   - video_gen: KHÔNG tự probe (1 lần quay thử tốn ~8s Veo tiền thật) —
-//     lấy từ lần quay thật gần nhất (method từng shot đã log từ Wave 1),
-//     hoặc nút "Kiểm tra quay video" bấm tay (có cảnh báo chi phí).
+// Capability checks report whether an image-generation provider is ready.
 
 const (
 	// New key prevents a stale Gemini capability result from being shown as
 	// evidence that the Pollinations path is healthy.
 	CapImageGen = "image_gen_pollinations"
-	CapVideoGen = "video_gen"
-
-	CapOK      = "ok"
-	CapFail    = "fail"
-	CapUnknown = "unknown"
+	CapOK       = "ok"
+	CapFail     = "fail"
+	CapUnknown  = "unknown"
 )
 
 // AICapability là một dòng trong bảng "Khả năng AI" (Cài đặt → Model local).
@@ -40,8 +31,6 @@ type AICapability struct {
 
 var capabilityLabels = map[string]string{
 	CapImageGen: "Vẽ ảnh (Pollinations, không ảnh tham chiếu)",
-	// CapVideoGen đã park cùng pipeline phim (film.go) — bảng "Khả năng AI"
-	// giờ chỉ còn vẽ ảnh (dùng cho ảnh minh họa kể chuyện, đợt F).
 }
 
 func (s *Studio) ensureCapabilitiesTable() error {

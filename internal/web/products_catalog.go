@@ -1,10 +1,8 @@
 package web
 
-// Affiliate product catalog: product search and discovery, manual add,
-// the merged shelf tab, autopilot scheduling policy and music upload.
+// Affiliate product catalog: discovery, manual add, shelf, and scheduling.
 
 import (
-	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
 	"log"
 	"math"
@@ -70,7 +68,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.Products == nil {
-		s.render(w, "products", s.ctx(
+		s.renderProductResults(w, r, s.ctx(
 			"AT", s.atPageData(),
 			"Tab", tab,
 			"Themes", themeOptions(),
@@ -84,14 +82,18 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	minPct := resolveMinCommission(theme, r.URL.Query().Get("min"))
 	var results []products.Product
 	var rerr error
-	if keyword != "" || theme != "" {
+	if tab == "pending" {
+		results, rerr = s.Products.ReviewList(products.ReviewPending, keyword, theme, 100)
+	} else if tab == "rejected" {
+		results, rerr = s.Products.ReviewList(products.ReviewRejected, keyword, theme, 50)
+	} else if keyword != "" || theme != "" {
 		results, rerr = s.Products.Search(keyword, theme, minPct/100, 30)
 	} else {
 		results, rerr = s.Products.TopHighCommission(30)
 	}
 	results = excludeSource(results, "market_verified")
 	if rerr != nil {
-		s.render(w, "products", s.ctx(
+		s.renderProductResults(w, r, s.ctx(
 			"AT", s.atPageData(),
 			"Tab", tab,
 			"Themes", themeOptions(),
@@ -104,7 +106,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	results = s.attachTikTokRadarEvidence(r.Context(), results)
-	enabled, hours, lastRun, music, autoPub, youTube := s.scheduleView()
+	enabled, hours, lastRun, autoPub := s.scheduleView()
 	// Autopilot status surface (A5): next scheduled run + stock on hand.
 	nextRun := ""
 	if enabled {
@@ -118,7 +120,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	if n, err := s.Products.Count(); err == nil {
 		stock = n
 	}
-	s.render(w, "products", s.ctx(
+	s.renderProductResults(w, r, s.ctx(
 		"AT", s.atPageData(),
 		"Tab", tab,
 		"Themes", themeOptions(),
@@ -134,17 +136,31 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"SchedLastRun", lastRun,
 		"SchedNextRun", nextRun,
 		"StockCount", stock,
-		"MusicName", music,
 		"AutoPublish", autoPub,
-		"YouTubeEnabled", youTube,
-		"MetaEnabled", automation.AutopilotMetaEnabled(s.settings()),
 	))
+}
+
+func (s *Server) renderProductResults(w http.ResponseWriter, r *http.Request, data map[string]any) {
+	if r.Header.Get("HX-Request") == "true" {
+		t := s.templates["products"]
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := t.ExecuteTemplate(w, "product-results", data); err != nil {
+			log.Printf("web: render product results: %v", err)
+			http.Error(w, "Không hiển thị được kết quả sản phẩm", http.StatusInternalServerError)
+		}
+		return
+	}
+	s.render(w, "products", data)
 }
 
 func productTabName(tab string) string {
 	switch tab {
 	case "shelf", "ke":
 		return "shelf"
+	case "rejected", "removed":
+		return "rejected"
+	case "pending", "review":
+		return "pending"
 	case "", "discover", "tim":
 		return "discover"
 	default:
@@ -159,11 +175,11 @@ type productView struct {
 	PlatformPID     string
 	Category        string
 	Price           float64
+	PriceMax        float64
 	CommissionRate  float64
 	CommissionValue float64
 	Score           float64
 	Status          string
-	ClickCount      int64
 	ImageURL        string
 	ProductURL      string
 }
@@ -196,11 +212,11 @@ func (s *Server) shelfViews() []productView {
 			PlatformPID:     p.SourceID,
 			Category:        p.Category,
 			Price:           p.Price,
+			PriceMax:        p.PriceMax,
 			CommissionRate:  p.CommissionRate,
 			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
 			Score:           products.Score(p),
 			Status:          p.ShelfStatus,
-			ClickCount:      p.ClickCount,
 			ImageURL:        img,
 			ProductURL:      p.ProductURL,
 		})

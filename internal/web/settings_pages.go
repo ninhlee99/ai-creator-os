@@ -134,7 +134,7 @@ type aiCapabilityView struct {
 	Detail    string
 }
 
-// aiCapabilityViews đọc trạng thái khả năng AI từ studio (Film Wave 3).
+// aiCapabilityViews reads image-generation readiness from Studio.
 func (s *Server) aiCapabilityViews() []aiCapabilityView {
 	if s.Studio == nil {
 		return nil

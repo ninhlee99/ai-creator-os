@@ -3,7 +3,7 @@
 // Vấn đề: KeyRing backoff 429 tối đa 15 phút và chỉ nằm trong bộ nhớ.
 // Khi mọi key đã hết quota ngày, mỗi ~15 phút một key "hồi" lại, tick tiếp
 // theo đốt 1 API call thật để rồi nhận 429 — vô vọng cả ngày, và các job
-// mới (vd: StoryRetryTick) vẫn được châm vào quota đã cạn.
+// mới vẫn bị chặn khỏi quota đã cạn.
 //
 // Circuit: đếm số lần liên tiếp "mọi key đang cooldown" (không có API call
 // nào thành công ở giữa). Đủ ngưỡng → mở mạch tới 0h đêm hôm sau theo giờ
