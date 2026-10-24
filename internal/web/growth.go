@@ -32,6 +32,8 @@ type growthAccountRow struct {
 	HasSnapshot    bool
 	Followers      int64
 	FollowersKnown bool
+	FollowerTrend  string
+	FollowerAdvice string
 	VideoCount     int64
 	VideosKnown    bool
 	FollowersLabel string
@@ -164,6 +166,9 @@ func (s *Server) growthView() map[string]any {
 		latest, _ := s.Growth.LatestSnapshot(account.ID)
 		if latest != nil && latest.Source == "tiktok_api" {
 			row.FollowersLabel = "TikTok followers"
+			if series, err := s.Growth.SnapshotSeries(account.ID, 500); err == nil {
+				row.FollowerTrend, row.FollowerAdvice = followerTrendAdvice(series, latest, time.Now())
+			}
 			if latest.Followers != nil {
 				row.FollowersKnown = true
 				row.Followers = *latest.Followers
@@ -312,6 +317,55 @@ func (s *Server) growthView() map[string]any {
 	}
 	ctx["Today"] = today
 	return ctx
+}
+
+// followerTrendAdvice compares fresh TikTok follower snapshots at least a
+// day apart. It stays unknown when history is missing or stale.
+func followerTrendAdvice(series []growth.Snapshot, latest *growth.Snapshot, now time.Time) (string, string) {
+	if latest == nil || latest.Source != "tiktok_api" || latest.Followers == nil {
+		return "Chưa có snapshot follower đủ dữ liệu", ""
+	}
+	currentAge := now.Sub(latest.TakenAt)
+	if currentAge < -5*time.Minute || currentAge > 14*24*time.Hour {
+		return "Snapshot follower đã cũ; đồng bộ lại", ""
+	}
+	for i := len(series) - 1; i >= 0; i-- {
+		previous := series[i]
+		if previous.Source != "tiktok_api" || previous.Followers == nil || !previous.TakenAt.Before(latest.TakenAt) {
+			continue
+		}
+		span := latest.TakenAt.Sub(previous.TakenAt)
+		if span < 24*time.Hour {
+			continue
+		}
+		if span > 14*24*time.Hour {
+			break
+		}
+		delta := *latest.Followers - *previous.Followers
+		period := followerTrendPeriod(span)
+		label := fmt.Sprintf("%+d trong %s · từ %s", delta, period, shortMetricTime(previous.TakenAt))
+		switch {
+		case delta < 0:
+			return label, "Followers giảm trong snapshot; thử CTA theo dõi rõ và nội dung dạng series, rồi đo lại."
+		case delta == 0:
+			return label, "Chưa tăng followers trong khoảng đo; thử CTA theo dõi rõ và nội dung dạng series. Chưa có retention để kết luận nguyên nhân."
+		default:
+			return label, "Followers đang tăng; giữ hướng hiện tại và chỉ đổi một yếu tố mỗi video để so sánh."
+		}
+	}
+	return "Chưa đủ 2 snapshot cách nhau ít nhất 24 giờ", ""
+}
+
+func followerTrendPeriod(span time.Duration) string {
+	totalHours := int(span / time.Hour)
+	days, hours := totalHours/24, totalHours%24
+	if hours == 0 {
+		return fmt.Sprintf("%d ngày", days)
+	}
+	if days == 0 {
+		return fmt.Sprintf("%d giờ", totalHours)
+	}
+	return fmt.Sprintf("%d ngày %d giờ", days, hours)
 }
 
 // annotateStudioVideoPerformance compares each linked post with other linked

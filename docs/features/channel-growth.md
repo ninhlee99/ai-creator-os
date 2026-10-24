@@ -14,4 +14,6 @@ Chỉ so sánh video có dữ liệu cùng loại/khoảng đo. Hiển thị c�
 
 TikTok Display API source đã nối cho follower/video totals và current views/likes/comments/shares của public videos khi account cấp `user.info.stats` + `video.list`. Scope và app approval cần được duyệt; account đã kết nối cần OAuth lại.
 
+Trang Growth so sánh follower giữa hai TikTok snapshot mới nhất cách nhau ít nhất 24 giờ, trong cửa sổ 14 ngày. Thiếu snapshot hoặc dữ liệu cũ thì hiện trạng thái chưa đủ dữ liệu; gợi ý chỉ đề xuất thử nghiệm, không khẳng định nguyên nhân tăng/giảm.
+
 Retention, watch-time, demographics, profile visits, follows-per-video và video-level order attribution vẫn chưa có source. Những trường này giữ `Chưa có dữ liệu`; không suy ra từ view count.

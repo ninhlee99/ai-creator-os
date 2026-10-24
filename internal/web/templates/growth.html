@@ -69,7 +69,7 @@
   <td><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
   <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Chưa có số liệu thật{{end}}</td>
   <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
-  <td>{{if .FollowersKnown}}{{.Followers}}{{else}}—{{end}}</td>
+  <td>{{if .FollowersKnown}}{{.Followers}}{{if .FollowerTrend}}<br><span class="hint">Δ {{.FollowerTrend}}</span>{{end}}{{if .FollowerAdvice}}<br><span class="hint">{{.FollowerAdvice}}</span>{{end}}{{else}}—{{end}}</td>
   <td>{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
   <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở kênh</a></td>
 </tr>
