@@ -79,6 +79,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
 	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
+	mux.HandleFunc("POST /studio/trends/{videoID}/dance", s.handleStudioTrendDanceVerify)
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
 	mux.HandleFunc("POST /studio/ad-creative", s.handleStudioAdCreative)
 	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)

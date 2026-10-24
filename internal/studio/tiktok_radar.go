@@ -4,74 +4,75 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"regexp"
+	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 )
 
 // TikTokTrendVideo holds metadata returned by the configured TikTok feed provider.
 type TikTokTrendVideo struct {
-	Rank          int    `json:"rank"`
-	VideoID       string `json:"video_id"`
-	Title         string `json:"title"`
-	Author        string `json:"author"`
-	UniqueID      string `json:"unique_id"`
-	Views         string `json:"views"`
-	PlayCount     int64  `json:"play_count"`
-	Likes         string `json:"likes"`
-	DiggCount     int64  `json:"digg_count"`
-	Music         string `json:"music"`
-	VideoURL      string `json:"video_url"`
-	CoverURL      string `json:"cover_url"`
-	PlayURL       string `json:"play_url"`
-	SuggestedHook string `json:"suggested_hook"`
-	Topic         string `json:"topic,omitempty"`
-	SearchVolume  string `json:"search_volume,omitempty"`
+	Rank            int     `json:"rank"`
+	VideoID         string  `json:"video_id"`
+	Title           string  `json:"title"`
+	Caption         string  `json:"caption,omitempty"`
+	Region          string  `json:"region,omitempty"`
+	Author          string  `json:"author"`
+	UniqueID        string  `json:"unique_id"`
+	Views           string  `json:"views"`
+	PlayCount       int64   `json:"play_count"`
+	PlayCountKnown  bool    `json:"play_count_known"`
+	Likes           string  `json:"likes"`
+	DiggCount       int64   `json:"digg_count"`
+	DiggCountKnown  bool    `json:"digg_count_known"`
+	Comments        string  `json:"comments,omitempty"`
+	CommentCount    int64   `json:"comment_count"`
+	CommentKnown    bool    `json:"comment_count_known"`
+	Shares          string  `json:"shares,omitempty"`
+	ShareCount      int64   `json:"share_count"`
+	ShareCountKnown bool    `json:"share_count_known"`
+	Music           string  `json:"music"`
+	VideoURL        string  `json:"video_url"`
+	CoverURL        string  `json:"cover_url"`
+	CollectedAt     string  `json:"collected_at,omitempty"`
+	DanceVerified   bool    `json:"dance_verified,omitempty"`
+	DanceVerifiedAt string  `json:"dance_verified_at,omitempty"`
+	ViewsPerHour    float64 `json:"views_per_hour,omitempty"`
+	VelocityKnown   bool    `json:"velocity_known"`
+	EngagementRate  float64 `json:"engagement_rate,omitempty"`
+	EngagementKnown bool    `json:"engagement_known"`
 }
 
-// ShowbizDrama đại diện cho 1 video drama nóng từ TikTok (Việt Nam) hoặc Douyin (Trung Quốc).
-type ShowbizDrama struct {
-	Rank        int    `json:"rank"`
-	Title       string `json:"title"`
-	Category    string `json:"category"` // "Showbiz Việt" hoặc "Showbiz Trung"
-	Region      string `json:"region"`   // "VN" hoặc "CN"
-	Platform    string `json:"platform"` // "TikTok VN" hoặc "Douyin CN"
-	Summary     string `json:"summary"`
-	ImageURL    string `json:"image_url"`
-	CoverURL    string `json:"cover_url"`
-	PlayURL     string `json:"play_url"`
-	SourceURL   string `json:"source_url"`
-	VideoURL    string `json:"video_url"`
-	Author      string `json:"author"`
-	UniqueID    string `json:"unique_id"`
-	Views       string `json:"views"`
-	Likes       string `json:"likes"`
-	Music       string `json:"music"`
-	PublishedAt string `json:"published_at"`
-	Hook3s      string `json:"hook_3s"`
+func (v TikTokTrendVideo) SoundTitle() string {
+	if title := strings.TrimSpace(v.Music); title != "" {
+		return title
+	}
+	return "Sound gốc video TikTok"
 }
+
+const TikTokTrendSource = "TikWM — TikTok feed và tìm kiếm video"
 
 // Cache TTL
 const (
-	tikTokTrendsTTL = 15 * time.Minute
-	showbizDramaTTL = 15 * time.Minute
+	tikTokTrendsTTL            = 15 * time.Minute
+	tikTokRadarFeedLimit       = 30
+	tikTokRadarTopicCacheLimit = 32
 )
 
 var (
 	ttMu           sync.Mutex
 	cachedTTTrends []TikTokTrendVideo
 	lastTTFetch    time.Time
-
-	dramaMu        sync.Mutex
-	cachedDramasVN []ShowbizDrama
-	cachedDramasCN []ShowbizDrama
-	lastDramaFetch time.Time
-	imgRegex       = regexp.MustCompile(`src=["']([^"']+)["']`)
-	htmlTagRegex   = regexp.MustCompile(`<[^>]+>`)
+	topicTTCache   = make(map[string]cachedTikTokRadarSearch)
 )
+
+type cachedTikTokRadarSearch struct {
+	videos    []TikTokTrendVideo
+	fetchedAt time.Time
+}
 
 // FormatCount định dạng số lượt xem / like thành chuỗi K/M dễ đọc (vd: 14.5M, 850K).
 func FormatCount(n int64) string {
@@ -84,61 +85,7 @@ func FormatCount(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// isVietnameseTikTok kiểm tra tiêu đề, tác giả hoặc bài hát có đúng là tiếng Việt / nội dung Việt Nam không.
-// Loại bỏ triệt để video tiếng Thái, Trung, Hàn, Nga, Ả Rập, Tây Ban Nha, Myanmar, Ấn Độ...
-func isVietnameseTikTok(title, author, music string) bool {
-	combined := title + " " + author + " " + music
-
-	// 1. Loại bỏ các ký tự ngoại ngữ đặc trưng
-	for _, r := range combined {
-		if unicode.Is(unicode.Thai, r) ||
-			unicode.Is(unicode.Han, r) ||
-			unicode.Is(unicode.Hangul, r) ||
-			unicode.Is(unicode.Cyrillic, r) ||
-			unicode.Is(unicode.Arabic, r) ||
-			(r >= 0x1000 && r <= 0x109F) || // Burmese
-			(r >= 0x0900 && r <= 0x097F) { // Devanagari / Hindi
-			return false
-		}
-	}
-
-	combLower := strings.ToLower(combined)
-
-	// 2. Loại bỏ các hashtag / từ khóa tiếng nước ngoài
-	foreignTags := []string{
-		"#latinus", "#myanmar", "#thailand", "#mexico", "#cambodia", "guanajuato",
-		"#nepal", "kasari banaune", "ayuuto", "hooyo", "#cheems", "#batnat",
-		"#creatorsearchinsights", "monetize i'd",
-	}
-	for _, tag := range foreignTags {
-		if strings.Contains(combLower, tag) {
-			return false
-		}
-	}
-
-	// 3. Có dấu tiếng Việt chuẩn
-	const vnDiacritics = "àáảãạâầấẩẫậăằắẳẵặèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠÂẦẤẨẪẬĂẰẮẲẴẶÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
-	if strings.ContainsAny(combined, vnDiacritics) {
-		return true
-	}
-
-	// 4. Có từ khóa văn hóa / nghệ sĩ / kênh Việt Nam không dấu
-	vnKeywords := []string{
-		"vietnam", "viet nam", "vpop", "v-pop", "tiktokvietnam", "vinahouse",
-		"remix viet", "vtv", "vtvcab", "schannel", "dunghoangpham", "sontung", "m-tp",
-		"hieuthuhai", "wren evans", "quang hung", "tang duy tan", "amee", "mono",
-		"khoai lang thang", "khoailangthang", "den vau", "hoa minzy", "duc phuc",
-	}
-	for _, kw := range vnKeywords {
-		if strings.Contains(combLower, kw) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// FetchTikTokTrendingVideos returns only records received from the live TikTok feed.
+// FetchTikTokTrendingVideos returns records received from the regional TikTok video feed.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
 	ttMu.Lock()
 	if time.Since(lastTTFetch) < tikTokTrendsTTL && len(cachedTTTrends) > 0 {
@@ -151,19 +98,21 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	if err != nil {
 		return nil, err
 	}
-	var live []TikTokTrendVideo
-	for _, item := range result {
-		if !isVietnameseTikTok(item.Title, item.Author, item.Music) {
-			continue
-		}
-		item.Rank = len(live) + 1
-		live = append(live, item)
-		if len(live) == 10 {
-			break
-		}
-	}
+	live := validateTikTokRadarResults(result)
 	if len(live) == 0 {
 		return nil, fmt.Errorf("nguồn TikTok không trả về dữ liệu hiện tại")
+	}
+	sort.SliceStable(live, func(i, j int) bool {
+		if live[i].PlayCountKnown != live[j].PlayCountKnown {
+			return live[i].PlayCountKnown
+		}
+		return live[i].PlayCount > live[j].PlayCount
+	})
+	if len(live) > tikTokRadarFeedLimit {
+		live = live[:tikTokRadarFeedLimit]
+	}
+	for i := range live {
+		live[i].Rank = i + 1
 	}
 
 	ttMu.Lock()
@@ -173,14 +122,180 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	return live, nil
 }
 
-// fetchLiveTikTokVideos truy vấn API luồng video thịnh hành TikTok.
+// FetchTikTokVideosForTopic queries TikTok's topic search provider. Empty
+// topic keeps the regional feed behavior; non-empty topics never silently
+// fall back to caption filtering over that small feed.
+func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
+	topic = strings.Join(strings.Fields(strings.TrimSpace(topic)), " ")
+	if topic == "" {
+		return FetchTikTokTrendingVideos(ctx)
+	}
+	if len([]rune(topic)) > 120 {
+		return nil, fmt.Errorf("chủ đề tìm kiếm tối đa 120 ký tự")
+	}
+	key := strings.ToLower(topic)
+	ttMu.Lock()
+	if cached, ok := topicTTCache[key]; ok && time.Since(cached.fetchedAt) < tikTokTrendsTTL {
+		videos := append([]TikTokTrendVideo(nil), cached.videos...)
+		ttMu.Unlock()
+		return videos, nil
+	}
+	ttMu.Unlock()
+
+	result, err := fetchLiveTikTokSearch(ctx, topic)
+	if err != nil {
+		return nil, err
+	}
+	live := validateTikTokRadarResults(result)
+	if len(live) > tikTokRadarFeedLimit {
+		live = live[:tikTokRadarFeedLimit]
+	}
+	sort.SliceStable(live, func(i, j int) bool {
+		if live[i].PlayCountKnown != live[j].PlayCountKnown {
+			return live[i].PlayCountKnown
+		}
+		if live[i].PlayCount != live[j].PlayCount {
+			return live[i].PlayCount > live[j].PlayCount
+		}
+		return live[i].DiggCount > live[j].DiggCount
+	})
+	for i := range live {
+		live[i].Rank = i + 1
+	}
+	ttMu.Lock()
+	if _, exists := topicTTCache[key]; !exists && len(topicTTCache) >= tikTokRadarTopicCacheLimit {
+		oldestKey := ""
+		var oldest time.Time
+		for cacheKey, entry := range topicTTCache {
+			if oldestKey == "" || entry.fetchedAt.Before(oldest) {
+				oldestKey, oldest = cacheKey, entry.fetchedAt
+			}
+		}
+		delete(topicTTCache, oldestKey)
+	}
+	topicTTCache[key] = cachedTikTokRadarSearch{videos: append([]TikTokTrendVideo(nil), live...), fetchedAt: time.Now()}
+	ttMu.Unlock()
+	return live, nil
+}
+
+func validateTikTokRadarResults(items []TikTokTrendVideo) []TikTokTrendVideo {
+	live := make([]TikTokTrendVideo, 0, len(items))
+	for _, item := range items {
+		item.VideoID = strings.TrimSpace(item.VideoID)
+		item.VideoURL = strings.TrimSpace(item.VideoURL)
+		if item.VideoID == "" || !IsTikTokVideoURL(item.VideoURL) || tiktokVideoID(item.VideoURL) != item.VideoID {
+			continue
+		}
+		item.CollectedAt = time.Now().UTC().Format(time.RFC3339)
+		live = append(live, item)
+	}
+	return live
+}
+
+// ResolveTikTokRadarMusic is intentionally fail-closed. Unattended jobs may
+// only use a recent video that an operator explicitly verified as dance.
+func ResolveTikTokRadarMusic(context.Context) (TikTokTrendVideo, error) {
+	return TikTokTrendVideo{}, fmt.Errorf("Radar chưa có video nhảy được xác nhận; chọn video nhảy thủ công trong Radar TikTok trước khi chạy affiliate tự động")
+}
+
+// ResolveTikTokRadarVideo confirms the submitted source was collected by
+// Radar. Callers use returned metadata, never form text.
+func ResolveTikTokRadarVideo(ctx context.Context, sourceURL string) (TikTokTrendVideo, error) {
+	if !IsTikTokVideoURL(sourceURL) {
+		return TikTokTrendVideo{}, fmt.Errorf("nguồn phải là video TikTok trong Radar")
+	}
+	videos, err := FetchTikTokTrendingVideos(ctx)
+	if err != nil {
+		return TikTokTrendVideo{}, err
+	}
+	return findTikTokRadarVideo(videos, sourceURL)
+}
+
+func findTikTokRadarVideo(videos []TikTokTrendVideo, sourceURL string) (TikTokTrendVideo, error) {
+	videoID := tiktokVideoID(sourceURL)
+	if videoID == "" {
+		return TikTokTrendVideo{}, fmt.Errorf("URL không trỏ tới video TikTok đã thu thập trong Radar")
+	}
+	for _, video := range videos {
+		if video.VideoID != videoID {
+			continue
+		}
+		return video, nil
+	}
+	return TikTokTrendVideo{}, fmt.Errorf("video không nằm trong kết quả Radar hiện tại; làm mới Radar rồi chọn lại")
+}
+
+func tiktokVideoID(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	for i := 0; i+1 < len(parts); i++ {
+		if parts[i] == "video" {
+			return strings.TrimSpace(parts[i+1])
+		}
+	}
+	return ""
+}
+
+// TikTokVideoIDFromURL returns the numeric public-video ID from a full TikTok
+// video URL. Short share URLs without a /video/{id} path are not accepted.
+func TikTokVideoIDFromURL(raw string) string {
+	if !IsTikTokVideoURL(raw) {
+		return ""
+	}
+	id := tiktokVideoID(raw)
+	if id == "" {
+		return ""
+	}
+	for _, digit := range id {
+		if digit < '0' || digit > '9' {
+			return ""
+		}
+	}
+	return id
+}
+
+// IsTikTokVideoURL accepts HTTPS TikTok URLs only.
+func IsTikTokVideoURL(raw string) bool {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme != "https" || u.User != nil {
+		return false
+	}
+	if port := u.Port(); port != "" && port != "443" {
+		return false
+	}
+	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	return host == "tiktok.com" || strings.HasSuffix(host, ".tiktok.com")
+}
+
+// fetchLiveTikTokVideos truy vấn feed video TikTok khu vực Việt Nam.
 func fetchLiveTikTokVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.tikwm.com/api/feed/list?region=VN&count=30", nil)
+	return fetchTikTokRadarEndpoint(ctx, "https://www.tikwm.com/api/feed/list?region=VN&count=20")
+}
+
+func fetchLiveTikTokSearch(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
+	endpoint, err := url.Parse("https://www.tikwm.com/api/feed/search")
+	if err != nil {
+		return nil, err
+	}
+	query := endpoint.Query()
+	query.Set("keywords", topic)
+	query.Set("count", "30")
+	query.Set("cursor", "0")
+	endpoint.RawQuery = query.Encode()
+	return fetchTikTokRadarEndpoint(ctx, endpoint.String())
+}
+
+func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTrendVideo, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Referer", "https://www.tikwm.com/")
 
 	client := &http.Client{Timeout: 6 * time.Second}
 	resp, err := client.Do(req)
@@ -193,75 +308,121 @@ func fetchLiveTikTokVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
 		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)
 	}
 
+	return parseTikTokRadarFeed(resp.Body)
+}
+
+func parseTikTokRadarFeed(r io.Reader) ([]TikTokTrendVideo, error) {
 	var payload struct {
-		Code int `json:"code"`
-		Data []struct {
-			VideoID   string `json:"video_id"`
-			Title     string `json:"title"`
-			PlayCount int64  `json:"play_count"`
-			DiggCount int64  `json:"digg_count"`
-			Cover     string `json:"cover"`
-			Play      string `json:"play"`
-			Author    struct {
-				Nickname string `json:"nickname"`
-				UniqueID string `json:"unique_id"`
-			} `json:"author"`
-			MusicInfo struct {
-				Title string `json:"title"`
-			} `json:"music_info"`
-		} `json:"data"`
+		Code int             `json:"code"`
+		Msg  string          `json:"msg"`
+		Data json.RawMessage `json:"data"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+	if err := json.NewDecoder(r).Decode(&payload); err != nil {
 		return nil, err
+	}
+	if payload.Code != 0 {
+		if strings.TrimSpace(payload.Msg) != "" {
+			return nil, fmt.Errorf("nguồn Radar TikTok: %s", strings.TrimSpace(payload.Msg))
+		}
+		return nil, fmt.Errorf("nguồn Radar TikTok trả mã lỗi %d", payload.Code)
+	}
+
+	type feedItem struct {
+		VideoID      string `json:"video_id"`
+		Title        string `json:"title"`
+		Region       string `json:"region"`
+		PlayCount    *int64 `json:"play_count"`
+		DiggCount    *int64 `json:"digg_count"`
+		CommentCount *int64 `json:"comment_count"`
+		ShareCount   *int64 `json:"share_count"`
+		Cover        string `json:"cover"`
+		Author       struct {
+			Nickname string `json:"nickname"`
+			UniqueID string `json:"unique_id"`
+		} `json:"author"`
+		Music     string `json:"music"`
+		MusicInfo struct {
+			Title string `json:"title"`
+		} `json:"music_info"`
+	}
+	var items []feedItem
+	data := strings.TrimSpace(string(payload.Data))
+	if strings.HasPrefix(data, "[") {
+		if err := json.Unmarshal(payload.Data, &items); err != nil {
+			return nil, err
+		}
+	} else if data != "" && data != "null" {
+		var searchData struct {
+			Videos []feedItem `json:"videos"`
+		}
+		if err := json.Unmarshal(payload.Data, &searchData); err != nil {
+			return nil, err
+		}
+		items = searchData.Videos
 	}
 
 	var results []TikTokTrendVideo
-	for _, item := range payload.Data {
-		title := strings.TrimSpace(item.Title)
+	for _, item := range items {
+		if strings.TrimSpace(item.VideoID) == "" {
+			continue
+		}
+		caption := strings.TrimSpace(item.Title)
+		title := caption
 		if title == "" {
-			title = fmt.Sprintf("Xu hướng TikTok của @%s", item.Author.UniqueID)
+			title = fmt.Sprintf("Video TikTok của @%s", item.Author.UniqueID)
 		}
 		music := strings.TrimSpace(item.MusicInfo.Title)
 		if music == "" {
-			music = "Âm thanh thịnh hành"
+			music = strings.TrimSpace(item.Music)
 		}
 
-		hook := fmt.Sprintf("Video trong feed hiện tại: %s", title)
-		if len(hook) > 80 {
-			hook = hook[:77] + "..."
+		videoURL := fmt.Sprintf("https://www.tiktok.com/@%s/video/%s", item.Author.UniqueID, item.VideoID)
+		if item.Author.UniqueID == "" {
+			videoURL = fmt.Sprintf("https://www.tiktok.com/video/%s", item.VideoID)
 		}
-
-		results = append(results, TikTokTrendVideo{
-			VideoID:       item.VideoID,
-			Title:         title,
-			Author:        item.Author.Nickname,
-			UniqueID:      item.Author.UniqueID,
-			PlayCount:     item.PlayCount,
-			Views:         FormatCount(item.PlayCount),
-			DiggCount:     item.DiggCount,
-			Likes:         FormatCount(item.DiggCount),
-			Music:         music,
-			VideoURL:      fmt.Sprintf("https://www.tiktok.com/@%s/video/%s", item.Author.UniqueID, item.VideoID),
-			CoverURL:      item.Cover,
-			PlayURL:       item.Play,
-			SuggestedHook: hook,
-		})
+		video := TikTokTrendVideo{
+			VideoID:  item.VideoID,
+			Title:    title,
+			Caption:  caption,
+			Region:   strings.TrimSpace(item.Region),
+			Author:   item.Author.Nickname,
+			UniqueID: item.Author.UniqueID,
+			Music:    music,
+			VideoURL: videoURL,
+			CoverURL: item.Cover,
+		}
+		if item.PlayCount != nil {
+			video.PlayCount = *item.PlayCount
+			video.PlayCountKnown = true
+			video.Views = FormatCount(*item.PlayCount)
+		}
+		if item.DiggCount != nil {
+			video.DiggCount = *item.DiggCount
+			video.DiggCountKnown = true
+			video.Likes = FormatCount(*item.DiggCount)
+		}
+		if item.CommentCount != nil {
+			video.CommentCount = *item.CommentCount
+			video.CommentKnown = true
+			video.Comments = FormatCount(*item.CommentCount)
+		}
+		if item.ShareCount != nil {
+			video.ShareCount = *item.ShareCount
+			video.ShareCountKnown = true
+			video.Shares = FormatCount(*item.ShareCount)
+		}
+		results = append(results, video)
 	}
 
 	return results, nil
 }
 
-// FetchSplitShowbizDrama quét và phân tích Drama thành 2 danh sách riêng biệt: Top 10 Showbiz Việt và Top 10 Showbiz Trung.
+// InvalidateTikTokRadarCache clears the regional video feed cache.
 func InvalidateTikTokRadarCache() {
 	ttMu.Lock()
 	lastTTFetch = time.Time{}
 	cachedTTTrends = nil
+	topicTTCache = make(map[string]cachedTikTokRadarSearch)
 	ttMu.Unlock()
-
-	dramaMu.Lock()
-	lastDramaFetch = time.Time{}
-	cachedDramasVN = nil
-	cachedDramasCN = nil
-	dramaMu.Unlock()
 }

@@ -1,73 +1,106 @@
-{{define "title"}}Nhạc thịnh hành{{end}}
+{{define "title"}}Radar TikTok{{end}}
 {{define "content"}}
-<div class="webai-header" style="margin-bottom: 20px;">
-  <div class="webai-header-left">
-    <h1 id="studio-top">Studio Dàn Dựng Video AI</h1>
-  </div>
-  <div class="webai-header-actions">
-    <span class="badge badge-ok" style="font-size:12px;padding:4px 10px">🇻🇳 Xu Hướng Việt Nam</span>
-  </div>
-</div>
+<main class="mx-auto max-w-7xl space-y-5">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 id="studio-top">Radar TikTok</h1>
+      <p class="hint mt-1">{{if .Topic}}Tìm video TikTok trực tiếp theo chủ đề, rồi xác nhận video nhảy trước khi dùng.{{else}}Thu thập feed video TikTok Việt Nam, rồi xác nhận video nhảy trước khi dùng.{{end}}</p>
+    </div>
+    <span class="badge badge-ok">{{if .Topic}}Kết quả tìm kiếm TikTok{{else}}🇻🇳 Feed Việt Nam{{end}}</span>
+  </header>
 
-<nav class="tabs" style="margin-bottom: 20px;">
-  <a href="/studio">Tạo video</a>
-  <a href="/studio/jobs?tab=running">Video đang dựng</a>
-  <a href="/studio/jobs?tab=schedule">Lên lịch tự động</a>
-  <a href="/studio/jobs">Video đã tạo</a>
-  <a href="/studio/trends" class="active">Nhạc thịnh hành</a>
-</nav>
+  <nav class="tabs">
+    <a href="/studio">Tạo video</a>
+    <a href="/studio/jobs?tab=running">Đang dựng</a>
+    <a href="/studio/jobs">Video đã tạo</a>
+    <a href="/studio/trends" class="active">Radar TikTok</a>
+  </nav>
 
-{{if and .TrendsErr .Sounds}}<p class="err">Dữ liệu đang cũ hoặc làm mới lỗi: {{.TrendsErr}}</p>{{end}}
+  {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
+  {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 
-<form method="post" action="/studio/trends/refresh" class="inline-form" style="margin-bottom:12px">
-  <button type="submit" class="btn btn-secondary btn-sm">↻ Làm mới bảng xếp hạng</button>
-</form>
+  <section class="card space-y-4">
+    <form action="/studio/trends" method="get"
+          hx-get="/studio/trends" hx-target="#studio-trends-results"
+          hx-swap="outerHTML" hx-push-url="true"
+          class="flex flex-wrap items-end gap-3">
+      <div class="min-w-56 flex-1">
+        <label for="radar-topic" class="mb-1 block text-sm font-semibold">Tìm video theo chủ đề</label>
+        <input id="radar-topic" type="search" name="topic" value="{{.Topic}}"
+               placeholder="Ví dụ: thời trang nữ" autocomplete="off"
+               class="w-full rounded-xl border border-slate-300 px-3 py-2">
+      </div>
+      <button type="submit" class="btn btn-primary">Tìm trên TikTok</button>
+      {{if .Topic}}<a href="/studio/trends" class="btn btn-secondary">Xóa lọc</a>{{end}}
+    </form>
+    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
+      <p class="hint">Nguồn: {{.TrendSource}} · Chủ đề gọi tìm kiếm video TikTok; sound lấy từ video Radar, không dùng danh sách nhạc thịnh hành.</p>
+      <form method="post" action="/studio/trends/refresh" class="inline-flex">
+        <input type="hidden" name="topic" value="{{.Topic}}">
+        <button type="submit" class="btn btn-secondary">↻ Tìm lại video</button>
+      </form>
+    </div>
+  </section>
 
-{{if .Sounds}}
-<div class="table-wrap" style="border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.03)">
-<table class="trends-table" style="margin:0">
-  <thead>
-    <tr>
-      <th style="width:7%">#</th>
-      <th style="width:10%">Biến động</th>
-      <th style="width:53%">Bài hát &amp; Nghệ sĩ</th>
-      <th style="width:30%;text-align:right">Thao tác</th>
-    </tr>
-  </thead>
-  <tbody>
-  {{range .Sounds}}
-  <tr class="trend-row" data-title="{{.Title}}" data-artist="{{.Artist}}">
-    <td><b style="font-size:14px;color:var(--text)">#{{.Rank}}</b></td>
-    <td>
-      {{if eq .Movement "="}}
-        <span class="badge badge-dim">=</span>
-      {{else if (hasPrefix .Movement "+")}}
-        <span class="badge badge-ok">{{.Movement}}</span>
-      {{else}}
-        <span class="badge badge-warn">{{.Movement}}</span>
-      {{end}}
-    </td>
-    <td>
-      <strong style="font-size:14px;color:var(--text)">{{.Artist}}</strong>
-      <span style="color:var(--muted)">– {{.Title}}</span>
-    </td>
-    <td style="text-align:right;white-space:nowrap">
-      <a href="/studio#tab-ad-creative" class="btn btn-sm" style="font-size:12px;padding:4px 10px">
-        Mở Studio
-      </a>
-    </td>
-  </tr>
-  {{end}}
-  </tbody>
-</table>
-</div>
-{{else}}
-<div class="empty-state compact">
-  <div class="es-icon">🎵</div>
-  <h3>Chưa tải được bảng xếp hạng</h3>
-  <p>{{.TrendsErr}}</p>
-</div>
+  {{template "studio-trends-results" .}}
+</main>
 {{end}}
 
-
+{{define "studio-trends-results"}}
+<section id="studio-trends-results" class="space-y-4" aria-live="polite">
+  {{if .TrendErr}}<p class="err" role="alert">Không tải được video TikTok: {{.TrendErr}}</p>{{end}}
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <h2 class="m-0 text-lg font-bold">{{if .Topic}}Video khớp “{{.Topic}}”{{else}}Video TikTok mới thu thập{{end}}</h2>
+    {{if .Videos}}<span class="badge badge-info">{{len .Videos}} video · xếp theo tốc độ tăng view khi đủ snapshot</span>{{end}}
+  </div>
+  {{if .Videos}}
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    {{range .Videos}}
+    <article class="card flex flex-col gap-2 p-3 shadow-sm">
+      {{if .CoverURL}}<a href="{{.VideoURL}}" target="_blank" rel="noopener noreferrer">
+        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy"
+             class="aspect-[3/4] w-full rounded-xl bg-slate-100 object-cover">
+      </a>{{end}}
+      <div class="flex justify-between gap-2 text-sm text-slate-600">
+        <span>{{if .PlayCountKnown}}{{.Views}} lượt xem{{else}}View chưa có dữ liệu{{end}}</span>
+        <span>{{if .DiggCountKnown}}{{.Likes}} lượt thích{{else}}Like chưa có dữ liệu{{end}}</span>
+      </div>
+      {{if .Region}}<span class="hint">Khu vực: {{.Region}}</span>{{end}}
+      <div class="flex flex-wrap gap-2 text-sm text-slate-600">
+        <span>{{if .CommentKnown}}{{.Comments}} bình luận{{else}}Bình luận chưa có dữ liệu{{end}}</span>
+        <span>{{if .ShareCountKnown}}{{.Shares}} chia sẻ{{else}}Chia sẻ chưa có dữ liệu{{end}}</span>
+      </div>
+      {{if .VelocityKnown}}
+      <span class="badge badge-info w-fit">+{{printf "%.0f" .ViewsPerHour}} view/giờ</span>
+      {{else}}
+      <span class="hint">Chưa đủ 2 mốc đo trong 7 ngày để tính tốc độ view.</span>
+      {{end}}
+      {{if .EngagementKnown}}<span class="hint">Tương tác/view: {{printf "%.1f" (pct .EngagementRate)}}%</span>{{end}}
+      {{if .DanceVerified}}<span class="badge badge-ok w-fit">Đã xác nhận video nhảy</span>{{else}}<span class="badge badge-info w-fit">Chưa xác nhận video nhảy</span>{{end}}
+      <strong class="break-words">{{.Title}}</strong>
+      <span class="hint">@{{.UniqueID}}</span>
+      <div><small class="hint">Âm thanh</small><strong class="block">{{if .Music}}{{.Music}}{{else}}Sound gốc video TikTok{{end}}</strong></div>
+      <div class="mt-auto flex flex-wrap gap-2 pt-2">
+        <a href="{{.VideoURL}}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Mở TikTok ↗</a>
+        {{if .DanceVerified}}
+        <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-primary btn-sm">Dùng âm thanh</a>
+        {{else}}<span class="hint self-center">Xác nhận là video nhảy để dùng âm thanh</span>{{end}}
+        {{if .DanceVerified}}
+        <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm">Làm video mẫu</a>
+        {{else}}<span class="hint self-center">Xác nhận video nhảy trước khi dùng làm mẫu</span>{{end}}
+      </div>
+      <form method="post" action="/studio/trends/{{.VideoID}}/dance" class="border-t border-slate-200 pt-2">
+        <input type="hidden" name="topic" value="{{$.Topic}}">
+        {{if .DanceVerified}}<input type="hidden" name="verified" value="0"><button type="submit" class="btn btn-secondary btn-sm">Bỏ xác nhận video nhảy</button>
+        {{else}}<input type="hidden" name="verified" value="1"><button type="submit" class="btn btn-secondary btn-sm">Xác nhận video nhảy</button>{{end}}
+      </form>
+    </article>
+    {{end}}
+  </div>
+  {{else if .Topic}}
+  <div class="empty-state"><h3>Không có video cho chủ đề này</h3><p>Thử từ khóa khác hoặc tìm lại sau.</p></div>
+  {{else if not .TrendErr}}
+  <div class="empty-state"><h3>Feed chưa có video</h3><p>Thử thu thập lại sau.</p></div>
+  {{end}}
+</section>
 {{end}}

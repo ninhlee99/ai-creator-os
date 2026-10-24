@@ -84,6 +84,22 @@ func (s *Studio) migrate() error {
 	CREATE TABLE IF NOT EXISTS studio_affiliate_plans(
 		id TEXT PRIMARY KEY, payload TEXT NOT NULL,
 		created_at TEXT NOT NULL);
+	CREATE TABLE IF NOT EXISTS studio_tiktok_radar_videos(
+		video_id TEXT PRIMARY KEY, payload TEXT NOT NULL,
+		collected_at TEXT NOT NULL,
+		dance_verified INTEGER NOT NULL DEFAULT 0,
+		dance_verified_at TEXT NOT NULL DEFAULT '');
+	CREATE INDEX IF NOT EXISTS idx_tiktok_radar_collected
+		ON studio_tiktok_radar_videos(collected_at DESC);
+	CREATE TABLE IF NOT EXISTS studio_tiktok_radar_snapshots(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		video_id TEXT NOT NULL, provider TEXT NOT NULL,
+		captured_at TEXT NOT NULL,
+		view_count INTEGER NOT NULL DEFAULT 0, views_known INTEGER NOT NULL DEFAULT 0,
+		like_count INTEGER NOT NULL DEFAULT 0, likes_known INTEGER NOT NULL DEFAULT 0,
+		comment_count INTEGER NOT NULL DEFAULT 0, comments_known INTEGER NOT NULL DEFAULT 0,
+		share_count INTEGER NOT NULL DEFAULT 0, shares_known INTEGER NOT NULL DEFAULT 0,
+		UNIQUE(video_id,captured_at));
 	CREATE INDEX IF NOT EXISTS idx_studio_assets_job ON studio_assets(job_id);`)
 	if err != nil {
 		return err
@@ -94,6 +110,8 @@ func (s *Studio) migrate() error {
 		// Film Wave 1 (P0-7): per-scene render method ("veo" | "anh-tts" |
 		// ""), shown on the storyboard so the UI never overstates Veo usage.
 		`ALTER TABLE studio_assets ADD COLUMN method TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE studio_tiktok_radar_videos ADD COLUMN dance_verified INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE studio_tiktok_radar_videos ADD COLUMN dance_verified_at TEXT NOT NULL DEFAULT ''`,
 	} {
 		if _, err := s.db.Exec(q); err != nil &&
 			!strings.Contains(err.Error(), "duplicate column") {
