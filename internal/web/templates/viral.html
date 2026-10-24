@@ -25,7 +25,7 @@
     <span class="badge {{if .Viral.AutoOn}}badge-info{{else}}badge-no{{end}}">Lịch khám phá {{if .Viral.AutoOn}}BẬT{{else}}TẮT{{end}}</span>
   </div>
   {{if .Viral.RadarKeyReady}}
-    <p class="hint" style="margin:10px 0">Đã lưu YouTube API key; quyền truy cập được kiểm tra khi quét. Lịch quét mỗi 24 giờ khi Master cho phép và Dry-run/Kill switch không chặn. <a href="/settings/system">Cài đặt API</a>.</p>
+    <p class="hint" style="margin:10px 0">Đã lưu YouTube API key; quyền truy cập được kiểm tra khi quét. Radar chỉ đọc và lưu nguồn: lịch chạy mỗi 24 giờ khi bật, kill switch có thể dừng; Master và dry-run không chặn discovery. <a href="/settings/system">Cài đặt API</a>.</p>
   {{else}}
     <p class="hint" style="margin:10px 0;color:var(--warning,#f59e0b)">Thêm <code>YOUTUBE_API_KEY</code> trong <a href="/settings/system">Cài đặt · Hệ thống</a> để quét nguồn YouTube.</p>
   {{end}}

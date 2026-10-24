@@ -88,13 +88,14 @@ cập nhật gần nhất và thao tác đồng bộ khi đã cấu hình key.
   động.
 - “Radar video xu hướng” chỉ bật/tắt tìm và lưu nguồn tham khảo; không tự dựng
   video viral. AT Hunter hiện thiếu sales/rating evidence từ feed để tạo video.
-- Kill switch dừng worker tự động. Một số thao tác thủ công trong UI vẫn có thể
-  chạy; banner nêu rõ ranh giới này.
+- Kill switch/dry-run áp dụng theo logic từng workflow; `MASTER_SWITCH` chỉ
+  điều khiển network daemon. Một số thao tác thủ công trong UI vẫn có thể chạy.
 
 ## 5. Fail-closed & an toàn
 
 - Trang đọc dữ liệu vận hành; công tắc lịch chỉ ghi cấu hình qua
-  `POST /automation/switch`. Worker vẫn tuân theo Master, dry-run và kill switch.
+  `POST /automation/switch`. Công tắc không chứng minh worker đang hoạt động;
+  mỗi workflow có gate riêng.
 - Lỗi đọc account → `s.fail` trả HTTP 500. Lỗi đọc Accesstrade order stats
   được log và chỉ hiện trạng thái lỗi tại ô commission; các panel khác vẫn
   render, không hiển thị số tiền mặc định bằng 0.

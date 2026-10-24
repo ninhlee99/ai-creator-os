@@ -26,7 +26,7 @@ này làm cam kết.
 | 7 | Studio AI (`/studio`) — affiliate / Muse-Flow creation / Jobs / Trends; Autopilot producer paused | [studio-ai.md](studio-ai.md) | ⚠ |
 | 8 | Affiliate (`/products`) — discovery/catalog, kệ Bio, AccessTrade links/orders; demand evidence và video autopilot chưa đạt | [products.md](products.md) | ⚠ |
 | 9 | Viral (`/viral`) — YouTube source radar/storyboard; Flow character edit cần provider, QC và xác nhận credits | [video-viral.md](video-viral.md) | ⚠ |
-| 10 | Kể chuyện (`/stories`) — Story thủ công mặc định 9:16; Growth persona áp dụng variant; thời lượng dài có thể lặp cảnh/đệm audio | [storytelling.md](storytelling.md) | ⚠ |
+| 10 | Kể chuyện (`/stories`) — form có; job mới bị chặn bởi gate ảnh tham chiếu; Story mặc định 9:16, Growth có variant riêng; timeline dài có thể lặp cảnh/đệm audio | [storytelling.md](storytelling.md) | ⚠ |
 | 11 | Đa nền tảng (`/publishers`) — OAuth/adapters có; quyền live và một số publish flow chưa xác minh/hoàn tất | [multi-platform.md](multi-platform.md) | ⚠ |
 | 12 | **Kho Tài Khoản Web AI (`/web-ai`) — account backup, Muse/Flow, account pool** | [web-ai.md](web-ai.md) | ⚠ |
 | 13 | Cài đặt — 5 trang (Hệ thống / Accesstrade / Nhà cung cấp / Model local / An toàn) | [settings.md](settings.md) | ✅ |

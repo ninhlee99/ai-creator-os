@@ -1,15 +1,17 @@
 # Kể chuyện (`/stories`)
 
-## Đang hoạt động
+## Luồng có trong source
 
 - Form tạo job nhận chủ đề hoặc truyện có sẵn. File `.txt` đọc trong browser;
   `.docx` được chuyển thành text qua `POST /stories/upload-text`.
-- `POST /stories` xếp job nền trong Studio. Pipeline viết hoặc nhận truyện,
-  chia cảnh, tạo ảnh, đọc TTS, ghép MP4 và cập nhật trạng thái job.
+- `POST /stories` gọi `CreateStoryJob`; cổng ảnh tham chiếu hiện từ chối job mới
+  trước khi xếp hàng. Pipeline viết/nhận truyện, chia cảnh, tạo ảnh, TTS, ghép
+  MP4 và QC vẫn có trong source khi provider hỗ trợ.
 - Trang liệt kê job, thời lượng đo từ file, tiến trình/lỗi; job lỗi có thể thử lại.
-- Lịch StoryTick lấy một chủ đề mỗi chu kỳ. Công tắc lịch nằm trong bảng Tự động
-  hóa trên Trang chủ; mặc định tắt. Cadence mặc định 24 giờ. Master, Dry-run và
-  Kill switch vẫn áp dụng.
+- Lịch StoryTick lấy một chủ đề mỗi chu kỳ khi provider ảnh cho phép. Công tắc
+  lịch nằm trong bảng Tự động hóa trên Trang chủ; mặc định tắt. Cadence mặc
+  định 24 giờ. StoryTick kiểm tra kill switch/dry-run; `MASTER_SWITCH` chỉ
+  điều khiển network daemon.
 - Tự refill chủ đề và tự đăng là cài đặt riêng. Tự đăng mặc định tắt, yêu cầu
   bật lịch truyện và chọn kênh; khi chạy, upload ép `privacyStatus=private`,
   không phụ thuộc `YOUTUBE_DEFAULT_PRIVACY` của pipeline khác.
