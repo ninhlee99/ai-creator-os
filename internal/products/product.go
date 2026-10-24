@@ -22,12 +22,14 @@ type Product struct {
 	ShopName                string
 	Rating                  float64 // 0..5
 	SoldCount               int64
+	SoldCountKnown          bool // Provider explicitly supplied count; zero can be real.
 	DemandEvidenceURL       string // listing page where rating and sold count were observed
 	DemandEvidenceAt        string // RFC3339 capture time; empty means unknown
 	DemandEvidenceRating    float64
 	DemandEvidenceSoldCount int64
 	Category                string
 	ProductURL              string
+	ProductPageURL          string // Provider listing URL, not affiliate tracking URL.
 	Theme                   string // theme it was discovered under
 	FoundAt                 string
 	DataUpdatedAt           string // provider timestamp; empty means unknown

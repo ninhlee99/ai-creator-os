@@ -33,6 +33,19 @@ var templateFuncs = template.FuncMap{
 	// fmtVND renders a VND amount with dot thousands separators:
 	// 1234500 → "1.234.500 ₫".
 	"fmtVND": func(v float64) string { return formatVND(v) },
+	"productMoney": func(v float64, currency string) string {
+		if v <= 0 {
+			return "Chưa có dữ liệu"
+		}
+		switch strings.ToUpper(strings.TrimSpace(currency)) {
+		case "VND":
+			return formatVND(v)
+		case "":
+			return fmt.Sprintf("%.2f · chưa rõ tiền tệ", v)
+		default:
+			return fmt.Sprintf("%.2f %s", v, strings.ToUpper(strings.TrimSpace(currency)))
+		}
+	},
 	// fmtUSD renders a USD amount with comma separators: "$1,234.50".
 	"fmtUSD": func(v float64) string { return formatUSD(v) },
 	// statusLabel renders a raw status slug as its Vietnamese label.

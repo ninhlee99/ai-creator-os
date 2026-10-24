@@ -528,6 +528,7 @@ function atOrderSync() {
         {{end}}
         <div>
           <strong style="font-size:13px;display:block;color:var(--text)">{{.Title}}</strong>
+          {{template "product-assessment" .}}
           <span style="font-size:11px;color:var(--muted)">Mã: {{.SourceID}} · Nhóm: {{if .Category}}{{.Category}}{{else}}Chưa phân loại{{end}}</span>
           {{if eq .Source "manual"}}<br><span style="font-size:10.5px;color:var(--muted)">Số liệu nhập tay · chưa xác minh</span>{{else if .HasDemandSignals}}<br><span style="font-size:10.5px;color:#10b981">Nguồn demand còn hạn</span>{{else}}<br><span style="font-size:10.5px;color:var(--muted)">Demand thiếu nguồn hoặc đã cũ</span>{{end}}
           {{if .DemandEvidenceURL}}<br><a href="{{.DemandEvidenceURL}}" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;color:var(--accent);font-weight:600">Mở nguồn số liệu ↗</a>{{end}}
@@ -574,5 +575,27 @@ function atOrderSync() {
   <p>Kiểm tra API key và nguồn đã cấu hình, hoặc thêm offer thủ công.</p>
 </div>
 {{end}}
+{{end}}
+{{end}}
+
+{{define "product-assessment"}}
+{{$product := .}}
+{{with .CandidateEvaluation}}
+<div style="margin-top:6px">
+  <span class="badge badge-{{.RecommendationTone}}">{{.Recommendation}}</span>
+  <details style="margin-top:5px;text-align:left">
+    <summary style="cursor:pointer;color:var(--accent);font-size:11px;font-weight:600">Xem đánh giá & bằng chứng</summary>
+    <div style="padding:7px 0;color:var(--muted);font-size:11px;line-height:1.55">
+      <div><strong>Offer:</strong> {{if .OfferReady}}đủ giá, tiền tệ, hoa hồng và link HTTPS{{else}}còn thiếu {{range $i, $gap := .OfferGaps}}{{if $i}}, {{end}}{{$gap}}{{end}}{{end}}</div>
+      <div><strong>Hoa hồng ước tính:</strong> {{if gt .CommissionPerOrder 0.0}}{{productMoney .CommissionPerOrder $product.Currency}}/đơn{{else}}chưa đủ giá hoặc tỷ lệ{{end}}</div>
+      {{if .HasCommissionFloor}}<div><strong>Mốc tham khảo danh mục:</strong> {{printf "%.0f" (pct .CommissionFloor)}}%{{if .BelowCommissionFloor}} · thấp hơn mốc{{end}}</div>{{end}}
+      <div><strong>Lượt bán:</strong> {{.SalesEvidence}}</div>
+      <div><strong>Rating / số lượt đánh giá:</strong> {{.RatingEvidence}}</div>
+      <div><strong>Xu hướng thị trường:</strong> {{.TrendEvidence}}</div>
+      <div><strong>Tệp tuổi:</strong> {{.AudienceEvidence}}</div>
+      <p style="margin:6px 0 0">Đánh giá chỉ hỗ trợ người duyệt, không tự đổi trạng thái. Xu hướng Radar và dữ liệu độ tuổi hiện chưa có.</p>
+    </div>
+  </details>
+</div>
 {{end}}
 {{end}}
