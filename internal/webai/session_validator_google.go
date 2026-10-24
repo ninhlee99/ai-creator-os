@@ -27,7 +27,7 @@ func probeGoogleAccountEmail(ctx context.Context, client *http.Client, auth *Web
 		if err != nil {
 			continue
 		}
-		if email := accountEmail(parseGeminiAccountEmail(string(body))); email != "" {
+		if email := accountEmail(parseGoogleAccountEmail(string(body))); email != "" {
 			return email
 		}
 	}

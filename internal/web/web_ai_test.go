@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/ledger"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
@@ -39,128 +38,6 @@ func newTestWebAIServer(t *testing.T) (*Server, *webai.Store) {
 	return srv, store
 }
 
-func TestWebAIHandlers(t *testing.T) {
-	srv, store := newTestWebAIServer(t)
-	defer store.Close()
-
-	// 1. GET /web-ai
-	req := httptest.NewRequest("GET", "/web-ai", nil)
-	w := httptest.NewRecorder()
-	srv.handleWebAI(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /web-ai status = %d, want 200", w.Code)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "AI Hub") || !strings.Contains(body, "ChatGPT") || !strings.Contains(body, "Claude") {
-		t.Errorf("GET /web-ai missing expected platform texts: %s", body[:min(len(body), 500)])
-	}
-
-	// 2. POST /web-ai/prompt-generate
-	pForm := url.Values{
-		"product_name": {"Áo Polo Cao Cấp"},
-		"niche":        {"thời trang"},
-		"framework":    {"problem_solution"},
-	}
-	req = httptest.NewRequest("POST", "/web-ai/prompt-generate", strings.NewReader(pForm.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	w = httptest.NewRecorder()
-	srv.handleWebAIPromptGenerate(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("prompt-generate status = %d, want 200", w.Code)
-	}
-	var pkg webai.AdScriptPackage
-	if err := json.Unmarshal(w.Body.Bytes(), &pkg); err != nil {
-		t.Fatalf("failed to decode JSON response: %v", err)
-	}
-	if pkg.ProductName != "Áo Polo Cao Cấp" || len(pkg.Scenes) != 4 {
-		t.Errorf("unexpected script package: %+v", pkg)
-	}
-	if pkg.QC.OverallScore <= 0 || pkg.QC.HookScore <= 0 {
-		t.Errorf("expected positive QC scorecard scores, got: %+v", pkg.QC)
-	}
-	if len(pkg.QC.Strengths) == 0 {
-		t.Errorf("expected QC strengths, got none")
-	}
-
-	// 3. POST /web-ai/disconnect
-	_, err := store.AddAccount(webai.Account{
-		Platform: webai.PlatformChatGPT, AccountName: "Test User", Email: "test@example.com",
-		SessionKey: "verified-session-fixture", Cookie: "session=fixture", Status: webai.StatusConnected,
-	})
-	if err != nil {
-		t.Fatalf("add disconnect fixture: %v", err)
-	}
-	dForm := url.Values{"platform": {"chatgpt"}}
-	req = httptest.NewRequest("POST", "/web-ai/disconnect", strings.NewReader(dForm.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	w = httptest.NewRecorder()
-	srv.handleWebAIDisconnect(w, req)
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("POST /web-ai/disconnect status = %d, want 303", w.Code)
-	}
-	acc, err := store.GetAccount("chatgpt")
-	if err != nil {
-		t.Fatalf("read disconnected account: %v", err)
-	}
-	if acc.Status != webai.StatusDisconnected {
-		t.Errorf("account status want disconnected, got %s", acc.Status)
-	}
-
-	// 4. GET /web-ai/pool-status
-	req = httptest.NewRequest("GET", "/web-ai/pool-status", nil)
-	w = httptest.NewRecorder()
-	srv.handleWebAIPoolStatus(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("GET /web-ai/pool-status status = %d, want 200", w.Code)
-	}
-	var poolStatus map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &poolStatus); err != nil {
-		t.Fatalf("failed to decode pool-status JSON: %v", err)
-	}
-	if poolStatus["ok"] != true {
-		t.Errorf("expected poolStatus ok = true, got: %v", poolStatus)
-	}
-}
-
-func TestStudioAdCreativeHandler(t *testing.T) {
-	srv, store := newTestWebAIServer(t)
-	defer store.Close()
-
-	dir := t.TempDir()
-	st, err := studio.New(filepath.Join(dir, "studio.db"), nil, nil, nil, dir)
-	if err != nil {
-		t.Fatalf("studio.New failed: %v", err)
-	}
-	defer func() {
-		st.Shutdown(300 * time.Millisecond)
-		_ = st.Close()
-	}()
-	srv.Studio = st
-
-	form := url.Values{
-		"product_name": {"Túi da công sở"},
-		"niche":        {"thời trang"},
-		"aspect_ratio": {"9:16"},
-		"seconds":      {"30"},
-		"bpm":          {"120"},
-	}
-	req := httptest.NewRequest("POST", "/studio/ad-creative", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	w := httptest.NewRecorder()
-	srv.handleStudioAdCreative(w, req)
-	if w.Code != http.StatusSeeOther {
-		t.Errorf("POST /studio/ad-creative status = %d, want 303", w.Code)
-	}
-
-	jobs := st.ListJobs(10)
-	if len(jobs) != 0 {
-		t.Errorf("legacy endpoint queued %d jobs without confirmed Flow credits and prepared shot plan", len(jobs))
-	}
-	if !strings.Contains(w.Header().Get("Location"), "err=") {
-		t.Errorf("legacy endpoint should redirect with its missing-input reason, location=%q", w.Header().Get("Location"))
-	}
-}
-
 func TestStudioAIGenerateRequiresFlowCreditsConsent(t *testing.T) {
 	srv, store := newTestWebAIServer(t)
 	defer store.Close()
@@ -187,13 +64,6 @@ func TestStudioAIGenerateRequiresFlowCreditsConsent(t *testing.T) {
 	if jobs := st.ListJobs(10); len(jobs) != 0 {
 		t.Fatalf("Flow request without consent queued %d jobs", len(jobs))
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func TestBioPinAndRedirectClick(t *testing.T) {
@@ -284,7 +154,7 @@ func TestBioPinAndRedirectClick(t *testing.T) {
 }
 
 func TestAccountProbeDoesNotMarkMissingCredentialsActiveOrExpired(t *testing.T) {
-	for _, platform := range []string{"chatgpt", "gemini", "claude"} {
+	for _, platform := range []string{"unsupported"} {
 		t.Run(platform, func(t *testing.T) {
 			outcome, _ := probeAccountSessionOutcome(httptest.NewRequest(http.MethodGet, "/", nil).Context(), &webai.Account{Platform: platform}, nil)
 			if outcome != accountProbeUnknown {

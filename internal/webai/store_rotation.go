@@ -126,6 +126,7 @@ func (s *Store) CountConnected() int {
 	for rows.Next() {
 		var platform, status, sessionKey, cookie, cookieJar string
 		if err := rows.Scan(&platform, &status, &sessionKey, &cookie, &cookieJar); err == nil &&
+			(platform == PlatformMuseAI || platform == PlatformGoogleFlow) &&
 			(status == "ok" || status == StatusConnected) &&
 			accountHasProviderCredentials(Account{Platform: platform, SessionKey: sessionKey, Cookie: cookie, CookieJar: decodeAccountCookieJar(cookieJar, cookie, platform)}) {
 			count++

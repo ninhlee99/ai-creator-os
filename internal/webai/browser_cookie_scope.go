@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+// BrowserCookieScope filters cookies read by a headless provider fallback.
+type BrowserCookieScope struct {
+	Platform   string
+	CookieHost string
+	CookiePath string
+}
+
 func browserCookieDomainMatches(domain string, scope BrowserCookieScope) bool {
 	if scope.CookieHost == "" {
 		return true

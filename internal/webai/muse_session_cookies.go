@@ -1,25 +1,9 @@
 package webai
 
 import (
-	"context"
-	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 )
-
-type museSessionValidator struct{}
-
-func (museSessionValidator) target() WebSessionTarget {
-	return WebSessionTarget{Platform: PlatformMuseAI, Name: "Muse AI"}
-}
-
-func (museSessionValidator) validateSession(ctx context.Context, _ *http.Client, auth *WebSessionAuth) error {
-	if err := ProbeMuseSessionWithCookieSnapshot(ctx, strings.TrimSpace(auth.CookieHeader), auth.CookieJar, webSessionCookieSnapshotUpdater(auth)); err != nil {
-		return fmt.Errorf("Muse chưa xác thực cookie: %w", err)
-	}
-	return nil
-}
 
 type museSessionCookieCandidate struct {
 	name     string

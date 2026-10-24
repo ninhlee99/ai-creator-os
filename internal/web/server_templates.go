@@ -24,11 +24,16 @@ var staticJS []byte
 //go:embed static/preview.mp3
 var staticPreviewAudio []byte
 
+//go:embed static/webai-login.js
+var staticWebAILoginJS []byte
+
 // assetVersion là hash nội dung CSS+JS nhúng (Đợt AK): URL asset đổi mỗi khi
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
 // trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
 var assetVersion = func() string {
-	h := sha256.Sum256(append(append([]byte{}, staticCSS...), staticJS...))
+	assets := append(append([]byte{}, staticCSS...), staticJS...)
+	assets = append(assets, staticWebAILoginJS...)
+	h := sha256.Sum256(assets)
 	return hex.EncodeToString(h[:])[:10]
 }()
 

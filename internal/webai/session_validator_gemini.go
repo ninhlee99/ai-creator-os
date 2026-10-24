@@ -19,7 +19,7 @@ func (geminiSessionValidator) validateSession(ctx context.Context, client *http.
 	if err != nil {
 		return fmt.Errorf("Gemini chưa xác thực cookie: %w", err)
 	}
-	email := accountEmail(parseGeminiAccountEmail(string(body)))
+	email := accountEmail(parseGoogleAccountEmail(string(body)))
 	if email == "" {
 		email = probeGoogleAccountEmail(ctx, client, auth)
 	}

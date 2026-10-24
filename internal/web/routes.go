@@ -11,6 +11,7 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /static/style.css", s.handleStaticCSS)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
+	mux.HandleFunc("GET /static/webai-login.js", s.handleStaticWebAILoginJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
 	mux.HandleFunc("GET /static/presets/{file}", s.handleStaticPresetImage)
 
@@ -98,14 +99,16 @@ func (s *Server) Routes() http.Handler {
 		http.Redirect(w, r, "/studio", http.StatusSeeOther)
 	})
 
-	// Web AI Hub (saved provider sessions)
-	mux.HandleFunc("GET /web-ai", s.handleWebAI)
-	mux.HandleFunc("POST /web-ai/disconnect", s.handleWebAIDisconnect)
+	// Legacy Web AI prompt cockpit now redirects to account login settings.
+	mux.HandleFunc("GET /web-ai", redirectTo("/settings/system#tab-webai"))
 	mux.HandleFunc("POST /web-ai/accounts/delete", s.handleWebAIAccountDelete)
 	mux.HandleFunc("POST /web-ai/accounts/test", s.handleWebAIAccountTest)
 	mux.HandleFunc("POST /web-ai/accounts/reset-cooldown", s.handleWebAIAccountResetCooldown)
-	mux.HandleFunc("POST /web-ai/prompt-generate", s.handleWebAIPromptGenerate)
-	mux.HandleFunc("GET /web-ai/pool-status", s.handleWebAIPoolStatus)
+	mux.Handle("POST /web-ai/browser-login/start", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginStart)))
+	mux.Handle("GET /web-ai/browser-login/status", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginStatus)))
+	mux.Handle("GET /web-ai/browser-login/screen", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginScreen)))
+	mux.Handle("POST /web-ai/browser-login/input", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginInput)))
+	mux.Handle("POST /web-ai/browser-login/cancel", s.browserLoginHTTPSGate(http.HandlerFunc(s.handleWebAIBrowserLoginCancel)))
 
 	mux.HandleFunc("GET /publishers", s.handlePublishers)
 	mux.HandleFunc("GET /publishers/tiktok/authorize", s.handleTikTokAuthorize)

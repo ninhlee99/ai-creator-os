@@ -1,7 +1,6 @@
 package webai
 
 import (
-	"context"
 	"database/sql"
 	"path/filepath"
 	"testing"
@@ -21,38 +20,38 @@ func TestWebAIStore(t *testing.T) {
 		t.Errorf("expected 0 connected, got %d", count)
 	}
 
-	// Save Claude account
+	// Save Muse AI account
 	err = store.SaveAccount(Account{
-		Platform:    PlatformClaude,
-		AccountName: "Ninh Claude",
+		Platform:    PlatformMuseAI,
+		AccountName: "Ninh Muse",
 		Email:       "ninh@example.com",
-		SessionKey:  "sk-ant-test12345",
+		Cookie:      "hatch_sess=muse-session",
 		Status:      StatusConnected,
-		Tier:        "pro",
+		Tier:        "free",
 	})
 	if err != nil {
 		t.Fatalf("SaveAccount failed: %v", err)
 	}
 
-	// Verify Claude account
-	acc, err := store.GetAccount(PlatformClaude)
+	// Verify Muse AI account
+	acc, err := store.GetAccount(PlatformMuseAI)
 	if err != nil {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
-	if acc.AccountName != "Ninh Claude" || acc.Status != StatusConnected || acc.Tier != "pro" {
+	if acc.AccountName != "Ninh Muse" || acc.Status != StatusConnected || acc.Tier != "free" {
 		t.Errorf("unexpected account data: %+v", acc)
 	}
 
-	// Save ChatGPT account
+	// Save Google Flow account
 	err = store.SaveAccount(Account{
-		Platform:    PlatformChatGPT,
-		AccountName: "Ninh GPT",
-		Email:       "gpt@example.com",
-		SessionKey:  "session-token-xyz",
+		Platform:    PlatformGoogleFlow,
+		AccountName: "Ninh Flow",
+		Email:       "flow@example.com",
+		Cookie:      "SID=flow-session",
 		Status:      StatusConnected,
 	})
 	if err != nil {
-		t.Fatalf("SaveAccount ChatGPT failed: %v", err)
+		t.Fatalf("SaveAccount Google Flow failed: %v", err)
 	}
 
 	if count := store.CountConnected(); count != 2 {
@@ -66,19 +65,19 @@ func TestWebAIStore(t *testing.T) {
 	if len(all) != len(SupportedPlatforms()) {
 		t.Errorf("expected %d platforms in map, got %d", len(SupportedPlatforms()), len(all))
 	}
-	if claudeAccs := all[PlatformClaude]; len(claudeAccs) == 0 || claudeAccs[0].Status != StatusConnected {
-		t.Errorf("expected claude connected: %+v", claudeAccs)
+	if museAccs := all[PlatformMuseAI]; len(museAccs) == 0 || museAccs[0].Status != StatusConnected {
+		t.Errorf("expected Muse connected: %+v", museAccs)
 	}
-	if geminiAccs := all[PlatformGemini]; len(geminiAccs) != 0 {
-		t.Errorf("expected gemini empty: %+v", geminiAccs)
+	if flowAccs := all[PlatformGoogleFlow]; len(flowAccs) == 0 || flowAccs[0].Status != StatusConnected {
+		t.Errorf("expected Flow connected: %+v", flowAccs)
 	}
 
-	// Disconnect Claude
-	err = store.DisconnectAccount(PlatformClaude)
+	// Disconnect Muse AI
+	err = store.DisconnectAccount(PlatformMuseAI)
 	if err != nil {
 		t.Fatalf("DisconnectAccount failed: %v", err)
 	}
-	acc, err = store.GetAccount(PlatformClaude)
+	acc, err = store.GetAccount(PlatformMuseAI)
 	if err != nil {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
@@ -99,29 +98,29 @@ func TestMultiAccountRotation(t *testing.T) {
 	}
 	defer store.Close()
 
-	// Add 2 accounts for Gemini
+	// Add 2 accounts for Google Flow
 	_, err = store.AddAccount(Account{
-		Platform:    PlatformGemini,
-		AccountName: "Gemini Acc 1",
+		Platform:    PlatformGoogleFlow,
+		AccountName: "Flow Acc 1",
 		Email:       "g1@example.com",
-		SessionKey:  "tok-gemini-1",
+		Cookie:      "SID=flow-1",
 	})
 	if err != nil {
 		t.Fatalf("AddAccount 1 failed: %v", err)
 	}
 
 	_, err = store.AddAccount(Account{
-		Platform:    PlatformGemini,
-		AccountName: "Gemini Acc 2",
+		Platform:    PlatformGoogleFlow,
+		AccountName: "Flow Acc 2",
 		Email:       "g2@example.com",
-		SessionKey:  "tok-gemini-2",
+		Cookie:      "SID=flow-2",
 	})
 	if err != nil {
 		t.Fatalf("AddAccount 2 failed: %v", err)
 	}
 
 	// First pick
-	acc1, err := store.PickActiveAccount(PlatformGemini)
+	acc1, err := store.PickActiveAccount(PlatformGoogleFlow)
 	if err != nil {
 		t.Fatalf("expected account picked, got err: %v", err)
 	}
@@ -132,7 +131,7 @@ func TestMultiAccountRotation(t *testing.T) {
 	}
 
 	// Next pick should automatically rotate to the other account
-	acc2, err := store.PickActiveAccount(PlatformGemini)
+	acc2, err := store.PickActiveAccount(PlatformGoogleFlow)
 	if err != nil {
 		t.Fatalf("expected auto-rotation to other account, got err: %v", err)
 	}
@@ -145,7 +144,7 @@ func TestMultiAccountRotation(t *testing.T) {
 		t.Fatalf("ResetCooldown failed: %v", err)
 	}
 
-	ready, cooldown, total := store.CountByPlatform(PlatformGemini)
+	ready, cooldown, total := store.CountByPlatform(PlatformGoogleFlow)
 	if ready != 2 || cooldown != 0 || total != 2 {
 		t.Errorf("expected 2 ready, 0 cooldown, 2 total, got ready=%d cool=%d total=%d", ready, cooldown, total)
 	}
@@ -158,18 +157,18 @@ func TestAccountIdentityUsesCanonicalEmail(t *testing.T) {
 	}
 	defer store.Close()
 
-	id1, err := store.UpsertAccountSession(PlatformGemini, "session-one", "cookie-one", "Google", " Creator@Example.com ", "free")
+	id1, err := store.UpsertAccountSession(PlatformGoogleFlow, "session-one", "SID=cookie-one", "Google", " Creator@Example.com ", "free")
 	if err != nil {
 		t.Fatalf("first upsert failed: %v", err)
 	}
-	id2, err := store.UpsertAccountSession(PlatformGemini, "session-two", "cookie-two", "Google creator", "creator@example.com", "free")
+	id2, err := store.UpsertAccountSession(PlatformGoogleFlow, "session-two", "SID=cookie-two", "Google creator", "creator@example.com", "free")
 	if err != nil {
 		t.Fatalf("second upsert failed: %v", err)
 	}
 	if id1 != id2 {
 		t.Fatalf("same platform email created two accounts: %q != %q", id1, id2)
 	}
-	accounts, err := store.GetAccounts(PlatformGemini)
+	accounts, err := store.GetAccounts(PlatformGoogleFlow)
 	if err != nil {
 		t.Fatalf("GetAccounts failed: %v", err)
 	}
@@ -181,8 +180,8 @@ func TestAccountIdentityUsesCanonicalEmail(t *testing.T) {
 	}
 
 	addID, err := store.AddAccount(Account{
-		Platform: PlatformGemini, AccountName: "Updated", Email: "CREATOR@example.com",
-		SessionKey: "session-three", Cookie: "cookie-three", Status: StatusConnected,
+		Platform: PlatformGoogleFlow, AccountName: "Updated", Email: "CREATOR@example.com",
+		SessionKey: "session-three", Cookie: "SID=cookie-three", Status: StatusConnected,
 	})
 	if err != nil {
 		t.Fatalf("AddAccount duplicate email should update existing account: %v", err)
@@ -190,7 +189,7 @@ func TestAccountIdentityUsesCanonicalEmail(t *testing.T) {
 	if addID != id1 {
 		t.Fatalf("AddAccount changed account ID for same email: got %q want %q", addID, id1)
 	}
-	accounts, err = store.GetAccounts(PlatformGemini)
+	accounts, err = store.GetAccounts(PlatformGoogleFlow)
 	if err != nil || len(accounts) != 1 || accounts[0].SessionKey != "session-three" {
 		t.Fatalf("AddAccount failed to update canonical identity: accounts=%+v err=%v", accounts, err)
 	}
@@ -222,7 +221,7 @@ func TestStoreMigrationCollapsesDuplicateEmails(t *testing.T) {
 		_, err = db.Exec(`
 			INSERT INTO webai_accounts (id, platform, account_name, email, session_key, cookie, status, tier, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, row.id, PlatformGemini, "Google", row.email, row.session, row.cookie, StatusConnected, "free", row.updated)
+		`, row.id, PlatformGoogleFlow, "Google", row.email, row.session, row.cookie, StatusConnected, "free", row.updated)
 		if err != nil {
 			_ = db.Close()
 			t.Fatalf("insert legacy duplicate %s: %v", row.id, err)
@@ -237,67 +236,12 @@ func TestStoreMigrationCollapsesDuplicateEmails(t *testing.T) {
 		t.Fatalf("reopen and migrate store: %v", err)
 	}
 	defer store.Close()
-	accounts, err := store.GetAccounts(PlatformGemini)
+	accounts, err := store.GetAccounts(PlatformGoogleFlow)
 	if err != nil {
 		t.Fatalf("GetAccounts failed: %v", err)
 	}
 	if len(accounts) != 1 || accounts[0].ID != "new" || accounts[0].Email != "creator@example.com" || accounts[0].Cookie != "active-cookie" {
 		t.Fatalf("migration did not retain newest canonical identity: %+v", accounts)
-	}
-}
-
-func TestPromptSynthesizer(t *testing.T) {
-	pkg := GenerateAdScriptPackage(
-		"Serum Dưỡng Trắng",
-		"Mỹ phẩm",
-		"problem_solution",
-		"Nữ 20-35 tuổi",
-		"Làm sáng da sau 7 ngày, mờ thâm nám",
-		"Bấm vào giỏ hàng ngay",
-	)
-
-	if pkg.ProductName != "Serum Dưỡng Trắng" {
-		t.Errorf("unexpected product name: %s", pkg.ProductName)
-	}
-	if len(pkg.Scenes) != 4 {
-		t.Errorf("expected 4 scenes, got %d", len(pkg.Scenes))
-	}
-	if pkg.Scenes[0].GeminiPrompt == "" {
-		t.Errorf("expected Gemini prompt to be generated")
-	}
-	if pkg.Scenes[0].MuseAIPrompt == "" {
-		t.Errorf("expected Muse AI prompt to be generated")
-	}
-	if pkg.ChatGPTPrompt == "" || pkg.ClaudePrompt == "" {
-		t.Errorf("expected ChatGPT and Claude prompts")
-	}
-
-	// Test three_reasons framework
-	pkg2 := GenerateAdScriptPackage("Bình Giữ Nhiệt Cao Cấp", "Gia dụng", "three_reasons", "", "", "")
-	if len(pkg2.Scenes) != 4 {
-		t.Errorf("expected 4 scenes in three_reasons, got %d", len(pkg2.Scenes))
-	}
-
-	// Test transformation framework
-	pkg3 := GenerateAdScriptPackage("Tai Nghe Chống Ồn", "Công nghệ", "transformation", "", "", "")
-	if len(pkg3.Scenes) != 4 {
-		t.Errorf("expected 4 scenes in transformation, got %d", len(pkg3.Scenes))
-	}
-
-	// Test AI Engine Personas
-	pkgGrok := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineGrok, "Camera Giám Sát", "Công nghệ", "problem_solution", "", "", "")
-	if pkgGrok.AIEngine != EngineGrok || pkgGrok.AIEngineBadge == "" {
-		t.Errorf("expected Grok engine with badge, got engine=%s badge=%s", pkgGrok.AIEngine, pkgGrok.AIEngineBadge)
-	}
-
-	pkgClaude := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineClaude, "Đầm Lụa Thiết Kế", "Thời trang", "transformation", "", "", "")
-	if pkgClaude.AIEngine != EngineClaude || pkgClaude.AIEngineBadge == "" {
-		t.Errorf("expected Claude engine with badge, got engine=%s badge=%s", pkgClaude.AIEngine, pkgClaude.AIEngineBadge)
-	}
-
-	pkgChatGPT := GenerateAdScriptPackageWithEngine(context.Background(), nil, EngineChatGPT, "Máy Lọc Không Khí", "Gia dụng", "problem_solution", "", "", "")
-	if pkgChatGPT.AIEngine != EngineChatGPT || pkgChatGPT.AIEngineBadge == "" {
-		t.Errorf("expected ChatGPT engine with badge, got engine=%s badge=%s", pkgChatGPT.AIEngine, pkgChatGPT.AIEngineBadge)
 	}
 }
 

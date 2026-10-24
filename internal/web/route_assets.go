@@ -34,4 +34,10 @@ func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request
 	_, _ = w.Write(staticPreviewAudio)
 }
 
+func (s *Server) handleStaticWebAILoginJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	setAssetCache(w, r)
+	_, _ = w.Write(staticWebAILoginJS)
+}
+
 // --------------------------------------------------------------- dashboard

@@ -13,14 +13,12 @@ import (
 type webAIView struct {
 	Platform        webai.PlatformInfo
 	Accounts        []webai.Account
-	Primary         webai.Account
 	ActiveCount     int
 	ReadyCount      int
 	StudioSupported bool
+	LoginSupported  bool
 	CooldownCount   int
 	TotalCount      int
-	HasAccounts     bool
-	IsConnected     bool
 }
 
 func webAIPlatformSupportsStudio(platform string) bool {
@@ -30,6 +28,7 @@ func webAIPlatformSupportsStudio(platform string) bool {
 // webAIPlatformViews returns saved-session counts and the subset usable by Studio.
 func (s *Server) webAIPlatformViews() ([]webAIView, int, int) {
 	platforms := webai.SupportedPlatforms()
+	loginTargets := webai.SupportedWebLoginTargets()
 	var allAccounts map[string][]webai.Account
 	if s.WebAI != nil {
 		var err error
@@ -48,7 +47,6 @@ func (s *Server) webAIPlatformViews() ([]webAIView, int, int) {
 			accs = allAccounts[p.ID]
 		}
 		ready, cooldown, activeCount, total := 0, 0, 0, len(accs)
-		var primary webai.Account
 		for _, a := range accs {
 			if a.IsActive {
 				activeCount++
@@ -58,33 +56,22 @@ func (s *Server) webAIPlatformViews() ([]webAIView, int, int) {
 			} else if a.IsActive && a.Status == "cooldown" {
 				cooldown++
 			}
-			if primary.ID == "" || a.IsActive {
-				primary = a
-			}
-		}
-		if primary.ID == "" {
-			primary = webai.Account{
-				Platform: p.ID,
-				Status:   webai.StatusDisconnected,
-				Tier:     "unknown",
-			}
 		}
 		totalConnected += activeCount
 		studioSupported := webAIPlatformSupportsStudio(p.ID)
+		_, loginSupported := loginTargets[p.ID]
 		if studioSupported {
 			studioReady += ready
 		}
 		views = append(views, webAIView{
 			Platform:        p,
 			Accounts:        accs,
-			Primary:         primary,
 			ActiveCount:     activeCount,
 			ReadyCount:      ready,
 			StudioSupported: studioSupported,
+			LoginSupported:  loginSupported,
 			CooldownCount:   cooldown,
 			TotalCount:      total,
-			HasAccounts:     total > 0,
-			IsConnected:     activeCount > 0,
 		})
 	}
 	return views, totalConnected, studioReady
@@ -102,30 +89,10 @@ func resolveWebAIRedirect(r *http.Request, defaultTarget string) string {
 	return defaultTarget
 }
 
-// handleWebAI renders the AI Web Hub page with multi-account rotation support.
-func (s *Server) handleWebAI(w http.ResponseWriter, r *http.Request) {
-	views, _, studioReady := s.webAIPlatformViews()
-
-	// Active tab inside the embedded workspace
-	activeTab := r.URL.Query().Get("tab")
-	if activeTab == "" {
-		activeTab = webai.PlatformChatGPT
-	}
-
-	s.render(w, "web_ai", s.ctx(
-		"Title", "AI Web Hub — MiuNova",
-		"Platforms", views,
-		"StudioReadyCount", studioReady,
-		"ActiveTab", activeTab,
-		"Notice", r.URL.Query().Get("ok"),
-		"Error", r.URL.Query().Get("err"),
-	))
-}
-
 // handleWebAIAccountDelete deletes an account from the pool.
 func (s *Server) handleWebAIAccountDelete(w http.ResponseWriter, r *http.Request) {
 	redirectBack := func(param, msg string) {
-		target := resolveWebAIRedirect(r, "/web-ai")
+		target := resolveWebAIRedirect(r, "/settings/system#tab-webai")
 		frag := ""
 		if idx := strings.Index(target, "#"); idx >= 0 {
 			frag = target[idx:]
@@ -157,7 +124,7 @@ func (s *Server) handleWebAIAccountDelete(w http.ResponseWriter, r *http.Request
 // handleWebAIAccountResetCooldown manually clears cooldown for an account.
 func (s *Server) handleWebAIAccountResetCooldown(w http.ResponseWriter, r *http.Request) {
 	redirectBack := func(param, msg string) {
-		target := resolveWebAIRedirect(r, "/web-ai")
+		target := resolveWebAIRedirect(r, "/settings/system#tab-webai")
 		frag := ""
 		if idx := strings.Index(target, "#"); idx >= 0 {
 			frag = target[idx:]

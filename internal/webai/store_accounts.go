@@ -135,13 +135,15 @@ func normalizeCookieJar(jar []cdpCookie) []cdpCookie {
 func cookieDefaultDomain(platform string) string {
 	switch strings.ToLower(strings.TrimSpace(platform)) {
 	case PlatformChatGPT:
-		return "chatgpt.com"
+		return ".chatgpt.com"
 	case PlatformClaude:
-		return "claude.ai"
-	case PlatformGemini, PlatformGoogleFlow:
+		return ".claude.ai"
+	case PlatformGemini:
 		return ".google.com"
 	case PlatformGrok:
-		return "grok.com"
+		return ".grok.com"
+	case PlatformGoogleFlow:
+		return ".google.com"
 	case PlatformMuseAI:
 		return ".muse.ai"
 	default:

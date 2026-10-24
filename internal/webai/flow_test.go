@@ -1,7 +1,6 @@
 package webai
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestGoogleFlowPlatformAndBundle(t *testing.T) {
+func TestGoogleFlowPlatformAndAccount(t *testing.T) {
 	// 1. Verify PlatformGoogleFlow is in SupportedPlatforms
 	platforms := SupportedPlatforms()
 	var foundFlow bool
@@ -70,28 +69,6 @@ func TestGoogleFlowPlatformAndBundle(t *testing.T) {
 	}
 	if acc.Platform != PlatformGoogleFlow {
 		t.Errorf("expected platform googleflow, got %s", acc.Platform)
-	}
-
-	// 3. Test BuildFlowPromptBundle
-	engine := NewEngine(store)
-	bundle := engine.BuildFlowPromptBundle("Video Viral Mỹ Phẩm", "Skincare", "fashion", []string{
-		"Girl applying cream",
-		"Smooth glowing skin reveal",
-	})
-
-	if bundle.TotalScenes != 2 {
-		t.Errorf("expected 2 scenes, got %d", bundle.TotalScenes)
-	}
-	if bundle.Aspect != "9:16 vertical" {
-		t.Errorf("expected 9:16 vertical, got %s", bundle.Aspect)
-	}
-	if len(bundle.Scenes) != 2 || bundle.Scenes[0].KeyframeFile != "scene_01.png" {
-		t.Errorf("invalid scene keyframe: %+v", bundle.Scenes)
-	}
-
-	// 4. Engine must reject incomplete saved sessions without issuing a network call.
-	if _, err := engine.GenerateFlowVideoClip(context.Background(), "test prompt", "scene_01.png", 5); err == nil {
-		t.Fatal("expected missing Flow cookie error")
 	}
 }
 

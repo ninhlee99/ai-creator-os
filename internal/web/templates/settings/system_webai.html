@@ -4,19 +4,16 @@
     <h3>Tài khoản AI</h3>
     <div class="webai-section-actions">
       <span class="webai-ready-total" id="badge-webai-connected">{{.WebAIConnected}} tài khoản đang bật</span>
-      <button type="button" class="btn btn-secondary btn-sm webai-backup-import-action" onclick="openEnvImportModal()" title="Nhập toàn bộ cấu hình JSON backup, gồm account Web AI">
-        Khôi phục JSON backup
-      </button>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-test-all-webai" onclick="testAllWebAIAccounts()">
         Kiểm tra tất cả phiên
       </button>
     </div>
   </div>
-  <p class="hint">Khôi phục account từ JSON backup ở trên. MiuNova không đọc cookie từ browser đang chạy. Trạng thái phiên không đồng nghĩa với quyền tạo nội dung hoặc số credits. Studio render video qua Muse AI và Google Flow; cookie được lưu lại khi provider trả cookie mới.</p>
+  <p class="webai-mobile-login-note">Đăng nhập chỉ hỗ trợ trên máy tính.</p>
 
   <div class="webai-grid">
     {{range .WebAIPlatforms}}
-    <div class="webai-card {{if .IsConnected}}connected{{end}}">
+    <div class="webai-card {{if gt .ActiveCount 0}}connected{{end}}">
       <div class="webai-card-top">
         <div class="webai-brand">
           <span class="webai-icon">{{.Platform.Icon}}</span>
@@ -24,11 +21,11 @@
         </div>
         <div class="webai-status">
           {{if gt .ReadyCount 0}}
-          <span class="status-pill status-pill-warn" title="Chỉ trạng thái tài khoản đã lưu; chưa kiểm tra session, quyền provider hoặc credits">{{.ReadyCount}} tài khoản đang bật, trạng thái connected/ok</span>
+          <span class="status-pill status-pill-warn" title="Trạng thái đã lưu; chưa xác minh phiên hoặc quyền provider">{{.ReadyCount}} kết nối</span>
           {{else if gt .CooldownCount 0}}
           <span class="status-pill status-pill-warn">{{.CooldownCount}} tạm nghỉ</span>
           {{else if gt .ActiveCount 0}}
-          <span class="status-pill status-pill-warn">{{if .StudioSupported}}{{.ActiveCount}} tài khoản · chưa sẵn sàng cho Studio{{else}}{{.ActiveCount}} tài khoản đã lưu{{end}}</span>
+          <span class="status-pill status-pill-warn">{{.ActiveCount}} tài khoản đang bật</span>
           {{else}}
           {{if gt .TotalCount 0}}
           <span class="status-pill status-pill-warn">{{.TotalCount}} cần kiểm tra</span>
@@ -38,13 +35,18 @@
           {{end}}
         </div>
       </div>
-      <p class="hint" style="margin:4px 0 10px">{{if .StudioSupported}}Được tích hợp render video trong Studio.{{else}}Có thể lưu và kiểm tra phiên; chưa tích hợp làm engine Studio.{{end}}</p>
-
-      <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
-        <span class="webai-account-count">{{.TotalCount}}</span>
-        <span class="webai-account-summary-copy"><strong>Tài khoản</strong></span>
-        <span class="webai-account-summary-arrow" aria-hidden="true">›</span>
-      </button>
+      <div class="webai-card-actions">
+        <button type="button" class="webai-account-summary" data-platform="{{.Platform.ID}}" data-platform-name="{{.Platform.Name}}" onclick="openWebAIAccountsModal(this)" aria-haspopup="dialog">
+          <span class="webai-account-count">{{.TotalCount}}</span>
+          <span class="webai-account-summary-copy"><strong>Tài khoản</strong></span>
+          <span class="webai-account-summary-arrow" aria-hidden="true">›</span>
+        </button>
+        {{if .LoginSupported}}
+        <button type="button" class="btn btn-primary btn-sm webai-login-action" onclick="startBrowserLogin('{{.Platform.ID}}', '{{.Platform.Name}}')">Đăng nhập</button>
+        {{else}}
+        <p class="webai-provider-note">Quản lý account đã lưu qua JSON cấu hình.</p>
+        {{end}}
+      </div>
       <template id="webai-account-template-{{.Platform.ID}}">
         {{if .Accounts}}
           <div class="webai-account-list">
@@ -92,7 +94,6 @@
         {{else}}
           <div class="webai-account-empty">
             <strong>Chưa có tài khoản</strong>
-            <span>Khôi phục JSON backup ở phía trên để thêm account.</span>
           </div>
         {{end}}
       </template>
@@ -101,4 +102,32 @@
     {{end}}
   </div>
 </div>
+{{end}}
+
+{{define "webai-login-modal"}}
+<div id="browser-login-modal" class="webai-modal-backdrop" hidden>
+  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);width:min(94vw,680px);max-width:680px;max-height:88vh;overflow-y:auto;padding:24px">
+    <div class="modal-head" style="margin-bottom:16px;padding:0 0 12px;border-bottom:1px solid var(--border)">
+      <h3 id="bl-modal-title" style="margin:0;font-size:18px">Đăng nhập Web AI</h3>
+      <button type="button" class="modal-close-btn" onclick="cancelBrowserLogin()" aria-label="Đóng">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center;margin-bottom:16px">
+        <div id="bl-status-icon" style="font-size:36px;margin-bottom:8px">⏳</div>
+        <div id="bl-status-text" style="font-weight:700;font-size:15px;margin-bottom:6px">Đang mở trình duyệt...</div>
+        <div id="bl-status-subtext" style="font-size:12px;color:var(--muted);line-height:1.5">Hoàn tất đăng nhập để lưu phiên.</div>
+      </div>
+      <div id="bl-browser-view" hidden>
+        <div style="background:#111;border-radius:12px;overflow:hidden;line-height:0">
+          <img id="bl-browser-screen" alt="Màn hình đăng nhập" draggable="false" style="display:block;width:100%;max-height:54vh;object-fit:contain;touch-action:none;user-select:none;-webkit-user-select:none">
+        </div>
+        <input id="bl-browser-keyboard" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Nhập vào trang đăng nhập" aria-label="Nhập vào trang đăng nhập" style="box-sizing:border-box;width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)">
+      </div>
+    </div>
+    <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
+      <button id="bl-close-after-login" type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy</button>
+    </div>
+  </div>
+</div>
+<script src="/static/webai-login.js?v={{assetVer}}"></script>
 {{end}}

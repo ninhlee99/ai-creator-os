@@ -11,13 +11,6 @@ type WebSessionTarget struct {
 	Name     string
 }
 
-// BrowserCookieScope filters cookies read by a headless provider fallback.
-type BrowserCookieScope struct {
-	Platform   string
-	CookieHost string
-	CookiePath string
-}
-
 type webSessionValidator interface {
 	target() WebSessionTarget
 	validateSession(context.Context, *http.Client, *WebSessionAuth) error
@@ -28,8 +21,6 @@ var webSessionValidators = []webSessionValidator{
 	claudeSessionValidator{},
 	geminiSessionValidator{},
 	grokSessionValidator{},
-	museSessionValidator{},
-	googleFlowSessionValidator{},
 }
 
 func webSessionValidatorFor(platform string) (webSessionValidator, bool) {

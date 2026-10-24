@@ -1592,6 +1592,39 @@ details.product-manual > form > .btn { margin-top: 2px; }
 .meta-label { color: var(--muted); }
 .meta-val { font-weight: 600; }
 .meta-val.muted { font-weight: normal; color: var(--muted); }
+.webai-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  margin-top: auto;
+}
+.webai-card-actions > .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+.webai-card-actions > .webai-login-action {
+  min-height: 32px;
+  justify-content: flex-start;
+  padding: 4px 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+  box-shadow: none;
+}
+.webai-card-actions > .webai-login-action:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+.webai-provider-note { margin: 0; color: var(--muted); font-size: 11px; }
+.webai-mobile-login-note { display: none; color: var(--muted); font-size: 12px; margin: 0; }
 .webai-account-summary {
   display: flex;
   align-items: center;
@@ -1607,6 +1640,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
   cursor: pointer;
   transition: background .15s ease;
 }
+.webai-card-actions .webai-account-summary { margin: 0; min-width: 0; }
 .webai-account-summary:hover {
   background: var(--hover-bg);
 }
@@ -1667,6 +1701,11 @@ details.product-manual > form > .btn { margin-top: 2px; }
 }
 @media (max-width: 760px) {
   .webai-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .webai-mobile-login-note { display: block; }
+  .webai-card-actions { grid-template-columns: minmax(0, 1fr); }
+  #bl-browser-view { display: none !important; }
 }
 @media (max-width: 520px) {
   .webai-section-actions { width: 100%; justify-content: space-between; }

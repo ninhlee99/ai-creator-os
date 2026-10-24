@@ -20,6 +20,17 @@ func accountEmail(value string) string {
 	return ""
 }
 
+func cleanExtractedEmail(candidate string) string {
+	candidate = strings.TrimSpace(candidate)
+	if isSystemOrStaticEmail(candidate) {
+		return ""
+	}
+	if match := generalEmailRe.FindString(candidate); match != "" && !isSystemOrStaticEmail(match) {
+		return match
+	}
+	return ""
+}
+
 func firstAccountEmail(values ...string) string {
 	for _, value := range values {
 		if email := accountEmail(value); email != "" {
@@ -49,7 +60,7 @@ func isSystemOrStaticEmail(email string) bool {
 		strings.Contains(low, "cloudflare")
 }
 
-func parseGeminiAccountEmail(html string) string {
+func parseGoogleAccountEmail(html string) string {
 	for _, pattern := range []*regexp.Regexp{wizEmailRe, ariaLabelEmailRe, htmlTagEmailRe} {
 		if match := pattern.FindStringSubmatch(html); len(match) > 1 {
 			if email := accountEmail(match[1]); email != "" {
