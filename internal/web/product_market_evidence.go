@@ -40,43 +40,55 @@ type productTrendEvidence struct {
 }
 
 func productTikTokTrendEvidence(product products.Product, videos []studio.TikTokTrendVideo) productTrendEvidence {
-	terms := productTrendTerms(product)
+	productTerm := normalizeTrendText(product.Title)
+	categoryTerms := productCategoryTrendTerms(product)
 	if len(videos) == 0 {
 		return productTrendEvidence{Text: "Radar chưa có video thu thập trong 7 ngày; chưa đủ dữ liệu để đánh giá xu hướng."}
 	}
-	if len(terms) == 0 {
+	if productTerm == "" && len(categoryTerms) == 0 {
 		return productTrendEvidence{Text: "Chưa có từ khóa category để đối chiếu với video TikTok Radar."}
 	}
 
-	matched := 0
+	productMatched := 0
+	categoryMatched := 0
 	matchedTerms := make(map[string]bool)
-	var leading studio.TikTokTrendVideo
+	var leadingProduct, leadingCategory studio.TikTokTrendVideo
 	for _, video := range videos {
 		text := normalizeTrendText(video.Title + " " + video.Caption)
-		hit := false
-		for _, term := range terms {
+		productHit := productTerm != "" && trendTextMatches(text, productTerm)
+		categoryHit := false
+		for _, term := range categoryTerms {
 			if trendTextMatches(text, term) {
-				hit = true
+				categoryHit = true
 				matchedTerms[term] = true
 			}
 		}
-		if !hit {
-			continue
+		if productHit {
+			productMatched++
+			if productMatched == 1 || radarVideoLeads(video, leadingProduct) {
+				leadingProduct = video
+			}
 		}
-		matched++
-		if matched == 1 || radarVideoLeads(video, leading) {
-			leading = video
+		if categoryHit {
+			categoryMatched++
+			if categoryMatched == 1 || radarVideoLeads(video, leadingCategory) {
+				leadingCategory = video
+			}
 		}
 	}
 
-	if matched == 0 {
+	if productMatched == 0 && categoryMatched == 0 {
+		termsHint := strings.Join(categoryTerms, ", ")
+		if termsHint == "" {
+			termsHint = "chưa có từ khóa ngành hàng"
+		}
 		return productTrendEvidence{Text: fmt.Sprintf(
-			"Radar đã thu thập %d video trong 7 ngày nhưng chưa thấy title/caption khớp từ khóa category (%s); mẫu này chưa đủ để kết luận sản phẩm không phù hợp.",
-			len(videos), strings.Join(terms, ", "))}
+			"Radar đã thu thập %d video trong 7 ngày nhưng chưa thấy title/caption khớp tên sản phẩm hoặc từ khóa ngành hàng (%s); mẫu này chưa đủ để kết luận sản phẩm không phù hợp.",
+			len(videos), termsHint)}
 	}
 
 	var hitTerms []string
-	for _, term := range terms {
+	for _, term := range categoryTerms {
 		if matchedTerms[term] {
 			hitTerms = append(hitTerms, term)
 			if len(hitTerms) == 3 {
@@ -84,18 +96,32 @@ func productTikTokTrendEvidence(product products.Product, videos []studio.TikTok
 			}
 		}
 	}
-	detail := fmt.Sprintf("Radar ghi nhận %d video trong 7 ngày khớp từ khóa category (%s).", matched, strings.Join(hitTerms, ", "))
+	detail := fmt.Sprintf("Radar 7 ngày: %d video khớp tên sản phẩm", productMatched)
+	if len(categoryTerms) > 0 {
+		categoryHits := strings.Join(hitTerms, ", ")
+		if categoryHits == "" {
+			categoryHits = "chưa có từ khóa khớp"
+		}
+		detail += fmt.Sprintf("; %d video khớp từ khóa ngành hàng (%s)", categoryMatched, categoryHits)
+	}
+	detail += ". Tín hiệu nội dung không xác minh lượt bán."
+	leading := leadingProduct
+	leadingGroup := "tên sản phẩm"
+	if productMatched == 0 {
+		leading = leadingCategory
+		leadingGroup = "ngành hàng"
+	}
 	if leading.VelocityKnown && finiteTrendMetric(leading.ViewsPerHour) {
-		detail += fmt.Sprintf(" Video dẫn đầu trong mẫu tăng khoảng %.0f lượt xem/giờ.", leading.ViewsPerHour)
+		detail += fmt.Sprintf(" Video dẫn đầu nhóm khớp %s tăng khoảng %.0f lượt xem/giờ.", leadingGroup, leading.ViewsPerHour)
 	} else if leading.PlayCountKnown {
-		detail += fmt.Sprintf(" Video dẫn đầu trong mẫu có %s lượt xem hiện tại; chưa có tốc độ tăng view.", studio.FormatCount(leading.PlayCount))
+		detail += fmt.Sprintf(" Video dẫn đầu nhóm khớp %s có %s lượt xem hiện tại; chưa có tốc độ tăng view.", leadingGroup, studio.FormatCount(leading.PlayCount))
 	} else {
-		detail += " Radar chưa có số lượt xem hoặc tốc độ tăng view cho video khớp."
+		detail += fmt.Sprintf(" Radar chưa có số lượt xem hoặc tốc độ tăng view cho video khớp %s.", leadingGroup)
 	}
 	return productTrendEvidence{Text: detail, VideoURL: leading.VideoURL}
 }
 
-func productTrendTerms(product products.Product) []string {
+func productCategoryTrendTerms(product products.Product) []string {
 	var rawTerms []string
 	if theme, ok := products.DescribeTheme(strings.TrimSpace(product.Theme)); ok {
 		rawTerms = append(rawTerms, theme.Keywords...)
@@ -103,10 +129,6 @@ func productTrendTerms(product products.Product) []string {
 	if strings.TrimSpace(product.Category) != "" {
 		rawTerms = append(rawTerms, product.Category)
 	}
-	if len(rawTerms) == 0 && strings.TrimSpace(product.Title) != "" {
-		rawTerms = append(rawTerms, product.Title)
-	}
-
 	terms := make([]string, 0, len(rawTerms))
 	seen := make(map[string]bool, len(rawTerms))
 	for _, raw := range rawTerms {
