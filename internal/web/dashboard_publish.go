@@ -41,19 +41,35 @@ func (s *Server) recentPublishOutcomes(legs []studio.PublishLeg, limit int) []da
 		if !strings.EqualFold(leg.Platform, "tiktok") {
 			continue
 		}
+		source := "TikTok Draft"
+		note := "Mở job Studio để xem trạng thái gửi TikTok."
+		if s.Studio != nil {
+			if job, ok := s.Studio.GetJob(leg.JobID); ok {
+				switch job.Kind {
+				case studio.KindAffiliate:
+					source, note = "TikTok Affiliate", "Mở TikTok để gắn sản phẩm rồi tự duyệt đăng."
+				case studio.KindViral:
+					source, note = "TikTok Viral", "Mở TikTok để kiểm tra video rồi tự duyệt đăng."
+				}
+			}
+		}
 		at, shown := studioPublishTime(leg.UpdatedAt)
 		label := "Lỗi"
-		note := "Mở job Studio để xem trạng thái gửi TikTok."
 		switch leg.Status {
 		case studio.LegPublishing:
 			label, note = "Đang gửi", "Chờ TikTok Creator Inbox xác nhận."
 		case studio.LegNeedsReview:
 			label, note = "Cần đối chiếu", "Kiểm tra Creator Inbox trước khi thử lại."
 		case studio.LegDone:
-			label, note = "Draft đã tải lên", "Mở TikTok để gắn link sản phẩm và sound rồi duyệt đăng."
+			label = "Draft đã tải lên"
+			if source == "TikTok Affiliate" {
+				note = "Mở TikTok để gắn sản phẩm rồi tự duyệt đăng."
+			} else {
+				note = "Mở TikTok để kiểm tra video rồi tự duyệt đăng."
+			}
 		}
 		out = append(out, dashboardPublishOutcome{
-			JobID: leg.JobID, Title: leg.Title, Platform: "tiktok", Source: "Affiliate Autopilot",
+			JobID: leg.JobID, Title: leg.Title, Platform: "tiktok", Source: source,
 			Status: leg.Status, OutcomeLabel: label, RemoteID: leg.RemoteID, Note: note,
 			UpdatedAt: shown, TimeKnown: !at.IsZero(), eventTime: at,
 		})

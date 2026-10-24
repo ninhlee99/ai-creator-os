@@ -263,7 +263,7 @@
         <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{if .Title}}{{.Title}}{{else}}{{.JobID}}{{end}}</p>
         {{if .RemoteID}}<small style="display:block;margin-top:4px;color:var(--muted)">Mã nền tảng: <code>{{.RemoteID}}</code></small>{{end}}
         {{if .Note}}<small style="display:block;margin-top:4px;color:var(--muted)">{{.Note}}</small>{{end}}
-        {{if and (eq .Status "needs_review") (eq .Source "Affiliate Autopilot") (eq .Platform "tiktok")}}
+        {{if and (eq .Status "needs_review") (eq .Platform "tiktok")}}
         <form method="post" action="/studio/jobs/{{.JobID}}/publish-review" style="display:flex;flex-wrap:wrap;align-items:end;gap:6px;margin-top:8px">
           <label style="font-size:11px;color:var(--muted)">Mã draft nếu đã thấy trong TikTok
             <input name="remote_id" placeholder="TikTok draft ID" style="display:block;max-width:260px">

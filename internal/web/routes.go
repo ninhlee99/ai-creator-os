@@ -66,6 +66,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/jobs/{id}/delete", s.handleStudioJobDelete)
 	mux.HandleFunc("POST /studio/jobs/{id}/retry", s.handleStudioJobRetry)
 	mux.HandleFunc("POST /studio/jobs/{id}/publish-review", s.handleStudioPublishReview)
+	mux.HandleFunc("POST /studio/jobs/{id}/tiktok-draft", s.handleStudioTikTokDraft)
 	mux.HandleFunc("POST /studio/jobs/{id}/tiktok-video", s.handleStudioTikTokVideoLink)
 	mux.HandleFunc("POST /studio/jobs/{id}/capcut", s.handleStudioJobCapCut)
 	mux.HandleFunc("POST /studio/jobs/{id}/remix", s.handleStudioJobRemix)

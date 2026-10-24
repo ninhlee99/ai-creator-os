@@ -13,7 +13,7 @@
 | Tạo video affiliate | Một phần | Shot plan/QC có; một số nhánh vẫn cần clip chuyển động do người dùng cung cấp hoặc provider cần credits. Chưa chứng minh tạo miễn phí end-to-end. |
 | Tạo video viral | Một phần | Nguồn video được ràng buộc vào Radar; khả năng tạo bản video hoàn chỉnh và giữ đúng audio cần xác minh end-to-end. |
 | Lấy audio Radar | Một phần | Code tải video nguồn, tách audio và kiểm tra track; cần xác minh bằng video thật và đầu ra cuối. |
-| Gửi TikTok Draft | Một phần | Adapter draft-first có; chưa chứng minh tài khoản/app thật đủ scope. Draft phải được người dùng hoàn tất trong TikTok. |
+| Gửi TikTok Draft | Một phần | Job Affiliate/Viral qua QC có thể gửi thủ công từ Studio; trạng thái dùng chung chống gửi trùng và kết quả không rõ cần đối chiếu trước retry. Chưa chứng minh tài khoản/app thật đủ scope. Draft phải được người dùng hoàn tất trong TikTok. |
 | Analytics/gợi ý | Một phần | TikTok Display API đã nối follower/video totals và current public-video views/likes/comments/shares; Growth so delta follower giữa snapshot cách nhau ít nhất 24 giờ. Job hoàn tất nhận link TikTok công khai để Growth ghép theo account + video ID. Affiliate Growth cũng tổng hợp đơn AccessTrade theo đúng `sub2` của job, tách trạng thái và hoa hồng đã duyệt; số liệu chỉ phản ánh các đơn đã đồng bộ, chưa xác minh với đơn thật. Chưa có retention, demographics, profile visits hoặc follows-per-video. TikTok Shop product card vẫn cần người dùng gắn thủ công trong TikTok. |
 | Truyện audio | Để phase sau | Không nằm trong acceptance hiện tại. |
 

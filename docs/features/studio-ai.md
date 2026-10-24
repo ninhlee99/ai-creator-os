@@ -20,4 +20,4 @@ Muse AI/Google Flow có thể hỗ trợ một số media generation. Session v�
 
 ## Hoàn tất
 
-Job chỉ xong khi artifact qua validation/QC. TikTok Draft cần người dùng duyệt trong app TikTok; không hiện như public post khi chưa có xác nhận thật.
+Job chỉ xong khi artifact qua validation/QC. Job Affiliate/Viral đã qua QC có thể gửi thủ công vào TikTok Creator Inbox từ Studio. Trạng thái gửi chống tạo draft trùng; kết quả không rõ phải đối chiếu trong TikTok trước khi gửi lại. Draft cần người dùng kiểm tra và duyệt trong app TikTok; không hiện như public post khi chưa có xác nhận thật.

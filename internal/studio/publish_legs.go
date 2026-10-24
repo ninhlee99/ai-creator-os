@@ -2,15 +2,14 @@ package studio
 
 import "time"
 
-// Chân đăng (publish legs) — idempotency cho auto-publish affiliate
-// (Đợt Y).
+// Chân TikTok Draft — idempotency dùng chung cho Studio và Autopilot.
 //
-// AutoPublishAffiliate records TikTok delivery per job. The
-// studio_publish_legs key prevents duplicate drafts when hooks retry:
+// studio_publish_legs records TikTok delivery per job. Its key prevents
+// duplicate drafts when a user submits twice or an autopilot hook retries:
 // trước khi đăng mỗi chân, check done → bỏ qua; sau đăng ghi done/failed;
 // chân failed được tick thử lại.
 
-// PublishLeg là một chân đăng của job affiliate.
+// PublishLeg là một chân gửi Draft của job TikTok.
 type PublishLeg struct {
 	JobID     string
 	Title     string
@@ -61,6 +60,22 @@ func (s *Studio) PublishLegRemoteID(jobID, platform string) string {
 	return rid
 }
 
+// BeginPublishLeg atomically claims a new or failed leg before contacting the
+// platform. Existing publishing, done, and needs-review legs cannot be claimed.
+func (s *Studio) BeginPublishLeg(jobID, platform string) (bool, error) {
+	res, err := s.db.Exec(`INSERT INTO studio_publish_legs(job_id,platform,remote_id,status,updated_at)
+		VALUES(?,?, '', ?, ?)
+		ON CONFLICT(job_id,platform) DO UPDATE SET
+			remote_id='', status=excluded.status, updated_at=excluded.updated_at
+		WHERE studio_publish_legs.status=?`,
+		jobID, platform, LegPublishing, time.Now().Format("2006-01-02T15:04:05"), LegFailed)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 // SetPublishLeg ghi (upsert) trạng thái chân đăng.
 func (s *Studio) SetPublishLeg(jobID, platform, status, remoteID string) error {
 	_, err := s.db.Exec(`INSERT INTO studio_publish_legs(job_id,platform,remote_id,status,updated_at)
@@ -73,7 +88,7 @@ func (s *Studio) SetPublishLeg(jobID, platform, status, remoteID string) error {
 	return err
 }
 
-// FailedPublishLegs liệt kê các chân đăng lỗi tạm thời để tick thử lại.
+// FailedPublishLegs liệt kê các chân gửi lỗi tạm thời để tick thử lại.
 func (s *Studio) FailedPublishLegs() []PublishLeg {
 	rows, err := s.db.Query(`SELECT job_id, platform FROM studio_publish_legs WHERE status=?`,
 		LegFailed)
@@ -91,7 +106,7 @@ func (s *Studio) FailedPublishLegs() []PublishLeg {
 	return out
 }
 
-// RecentPublishLegs returns recorded automatic publish outcomes, newest first.
+// RecentPublishLegs returns recorded TikTok Draft outcomes, newest first.
 func (s *Studio) RecentPublishLegs(limit int) ([]PublishLeg, error) {
 	rows, err := s.db.Query(`SELECT p.job_id, COALESCE(j.title,''), p.platform,
 		p.remote_id, p.status, p.updated_at
@@ -114,7 +129,7 @@ func (s *Studio) RecentPublishLegs(limit int) ([]PublishLeg, error) {
 	return out, rows.Err()
 }
 
-// RecentFailedPublishLegs returns current failed autopilot legs newest first.
+// RecentFailedPublishLegs returns current failed TikTok Draft legs newest first.
 func (s *Studio) RecentFailedPublishLegs(limit int) ([]PublishLeg, error) {
 	if limit <= 0 {
 		return nil, nil
@@ -140,7 +155,7 @@ func (s *Studio) RecentFailedPublishLegs(limit int) ([]PublishLeg, error) {
 	return out, rows.Err()
 }
 
-// RecentPublishLegIssues returns failed or ambiguous automatic publish legs.
+// RecentPublishLegIssues returns failed or ambiguous TikTok Draft legs.
 func (s *Studio) RecentPublishLegIssues(limit int) ([]PublishLeg, error) {
 	if limit <= 0 {
 		return nil, nil

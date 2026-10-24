@@ -133,9 +133,9 @@ func (s *Studio) migrate() error {
 	if err := s.ensureCapabilitiesTable(); err != nil {
 		return err
 	}
-	// Đợt Y: bảng chân đăng — idempotency cho auto-publish affiliate.
-	// Mỗi (job, platform) ghi trạng thái: "done" (kèm remote_id) hoặc
-	// "failed" (lỗi tạm thời, tick sau thử lại). Không có dòng = chưa đăng.
+	// Bảng trạng thái TikTok Draft dùng chung cho Studio và Autopilot.
+	// Mỗi (job, platform) ghi trạng thái done, failed, publishing hoặc
+	// needs_review để chống gửi trùng và đối chiếu kết quả chưa rõ.
 	if _, err := s.db.Exec(`CREATE TABLE IF NOT EXISTS studio_publish_legs(
 		job_id TEXT NOT NULL, platform TEXT NOT NULL,
 		remote_id TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',

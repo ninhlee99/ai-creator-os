@@ -56,7 +56,7 @@ func (s *Server) dashboardAttention(
 			class, state, detail = "warn", "cần đối chiếu", "Kiểm tra nền tảng trước khi thử lại; app đã dừng retry tự động."
 		}
 		items = append(items, dashboardAttentionItem{
-			Class: class, Source: "Autopilot",
+			Class: class, Source: "TikTok Draft",
 			Title:  "Chân đăng " + publisherPlatformLabel(leg.Platform) + " " + state,
 			Detail: joinAttentionDetail(title, detail),
 			Href:   "/studio/jobs?id=" + leg.JobID + "#job-" + leg.JobID,

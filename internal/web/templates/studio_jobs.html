@@ -255,6 +255,7 @@
         {{if .FinishedAt}}<span style="color:var(--accent);font-weight:700">✓ Xong</span>{{end}}
       </div>
       {{template "studio-tiktok-publication" .}}
+      {{template "studio-tiktok-draft-action" .}}
     </div>
 
     <div>
@@ -345,6 +346,7 @@
           {{if .FinishedAt}}<span style="color:var(--accent);font-weight:700">✓ Xong</span>{{end}}
         </div>
         {{template "studio-tiktok-publication" .}}
+        {{template "studio-tiktok-draft-action" .}}
       </div>
 
       <div>
@@ -395,6 +397,32 @@
   <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
     <a href="/studio" class="btn btn-primary" style="font-weight:700">🎬 Tạo video đầu tiên ngay</a>
   </div>
+</div>
+{{end}}
+{{end}}
+
+{{define "studio-tiktok-draft-action"}}
+{{if and .QCVerified (eq .OutputKind "video") (or (eq .Kind "affiliate") (eq .Kind "viral"))}}
+<div style="margin:8px 0;padding:9px;background:var(--bg3);border:1px solid var(--border);border-radius:9px">
+  <strong style="font-size:11px">TikTok Draft</strong>
+  {{if eq .TikTokDraftStatus "done"}}
+    <div class="badge badge-ok" style="margin-top:5px">Đã tải lên{{if .TikTokDraftRemoteID}} · ID {{.TikTokDraftRemoteID}}{{end}}</div>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Mở TikTok để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} và tự duyệt đăng.</small>
+  {{else if eq .TikTokDraftStatus "needs_review"}}
+    <div class="badge badge-warn" style="margin-top:5px">Kết quả chưa rõ</div>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Kiểm tra Creator Inbox trước khi gửi lại. <a href="/">Đối chiếu trạng thái ↗</a></small>
+  {{else if eq .TikTokDraftStatus "publishing"}}
+    <div class="badge badge-info" style="margin-top:5px">Đang gửi · chờ TikTok xác nhận</div>
+  {{else if not .TikTokDraftHasAccount}}
+    <small style="display:block;margin-top:5px;color:var(--muted)">Job chưa gắn tài khoản TikTok đích.</small>
+  {{else if not .TikTokDraftConfigured}}
+    <small style="display:block;margin-top:5px;color:var(--muted)">Chưa kết nối Draft API cho tài khoản này. <a href="/publishers">Kết nối TikTok ↗</a></small>
+  {{else}}
+    <form method="post" action="/studio/jobs/{{.ID}}/tiktok-draft" style="margin-top:6px">
+      <button class="btn btn-primary btn-sm" type="submit" style="width:100%;font-weight:700">{{if eq .TikTokDraftStatus "failed"}}Thử gửi lại Draft{{else}}Gửi vào TikTok Draft{{end}}</button>
+    </form>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Video chưa công khai. Mở TikTok để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} và duyệt đăng.</small>
+  {{end}}
 </div>
 {{end}}
 {{end}}

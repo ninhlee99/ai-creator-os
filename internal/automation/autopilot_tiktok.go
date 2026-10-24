@@ -33,8 +33,20 @@ func (s *Service) autoPublishTikTokAffiliate(ctx context.Context, jobID string, 
 		s.JobStore.AppendLog(jobID, "TikTok chưa kết nối OAuth; video vẫn nằm trong output Studio.")
 		return
 	}
-	if err := s.JobStore.SetPublishLeg(jobID, "tiktok", studio.LegPublishing, ""); err != nil {
+	claimed, err := s.JobStore.BeginPublishLeg(jobID, "tiktok")
+	if err != nil {
 		s.JobStore.AppendLog(jobID, "Không lưu được trạng thái gửi TikTok; chưa gọi nền tảng.")
+		return
+	}
+	if !claimed {
+		switch s.JobStore.PublishLegStatus(jobID, "tiktok") {
+		case studio.LegDone:
+			s.JobStore.AppendLog(jobID, "TikTok draft đã tải lên; bỏ qua lượt gọi trùng.")
+		case studio.LegNeedsReview, studio.LegPublishing:
+			s.JobStore.AppendLog(jobID, "Kết quả gửi TikTok chưa rõ hoặc đang xử lý; kiểm tra Creator Inbox trước khi thử lại.")
+		default:
+			s.JobStore.AppendLog(jobID, "TikTok draft chưa được claim; bỏ qua lượt gửi để tránh trùng.")
+		}
 		return
 	}
 

@@ -19,8 +19,8 @@ func (s *Server) handleStudioPublishReview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	job, ok := s.Studio.GetJob(jobID)
-	if !ok || job.Kind != studio.KindAffiliate {
-		fail("Chỉ đối chiếu được job affiliate.")
+	if !ok || (job.Kind != studio.KindAffiliate && job.Kind != studio.KindViral) {
+		fail("Chỉ đối chiếu được job TikTok Affiliate hoặc Viral.")
 		return
 	}
 	if s.Studio.PublishLegStatus(jobID, "tiktok") != studio.LegNeedsReview {
@@ -44,7 +44,7 @@ func (s *Server) handleStudioPublishReview(w http.ResponseWriter, r *http.Reques
 			fail("Không thể xếp lại TikTok draft: " + err.Error())
 			return
 		}
-		seeOther(w, r, "/?ok="+url.QueryEscape("Đã xác nhận chưa có draft; Autopilot sẽ thử lại theo lịch."))
+		seeOther(w, r, "/?ok="+url.QueryEscape("Đã xác nhận chưa có draft; có thể gửi lại từ job Studio."))
 	default:
 		fail("Chọn kết quả đối chiếu hợp lệ.")
 	}

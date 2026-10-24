@@ -10,6 +10,8 @@
 6. Tạo output, QC file/hình/audio và gửi TikTok Draft.
 7. Sau khi tự đăng công khai, dán URL video TikTok vào job đã hoàn tất để Growth ghép counters theo account/video ID.
 
+Job đã qua QC có nút gửi thủ công vào TikTok Creator Inbox. App lưu trạng thái để tránh gửi trùng; nếu API không xác nhận kết quả, cần kiểm tra Creator Inbox trước khi thử lại. Draft chưa công khai cho tới khi người dùng duyệt trong TikTok.
+
 ## Giới hạn hiện tại
 
 Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Feed và tìm kiếm keyword dùng TikWM, cần kiểm tra độ phủ/freshness khi vận hành. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.

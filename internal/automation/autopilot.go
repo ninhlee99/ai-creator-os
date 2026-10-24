@@ -21,6 +21,7 @@ type JobStore interface {
 	// khi đăng, ghi sau khi đăng, tick thử lại chân failed.
 	PublishLegStatus(jobID, platform string) string
 	PublishLegRemoteID(jobID, platform string) string
+	BeginPublishLeg(jobID, platform string) (bool, error)
 	SetPublishLeg(jobID, platform, status, remoteID string) error
 	FailedPublishLegs() []studio.PublishLeg
 }

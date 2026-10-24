@@ -2,9 +2,11 @@ package web
 
 import (
 	"encoding/json"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"path/filepath"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/publishers"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 // ---------------------------------------------------------------------------
@@ -43,6 +45,10 @@ type studioJobView struct {
 	AffiliateAttributionID string `json:"affiliate_attribution_id,omitempty"`
 	TikTokVideoID          string `json:"tiktok_video_id,omitempty"`
 	TikTokVideoURL         string `json:"tiktok_video_url,omitempty"`
+	TikTokDraftStatus      string `json:"tiktok_draft_status,omitempty"`
+	TikTokDraftRemoteID    string `json:"tiktok_draft_remote_id,omitempty"`
+	TikTokDraftHasAccount  bool   `json:"tiktok_draft_has_account,omitempty"`
+	TikTokDraftConfigured  bool   `json:"tiktok_draft_configured,omitempty"`
 }
 
 func kindLabel(kind string) string {
@@ -119,6 +125,14 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		}
 		if s.Studio != nil && j.Status == studio.StatusDone && view.OutputKind == "video" &&
 			(j.Kind == studio.KindAffiliate || j.Kind == studio.KindViral) {
+			view.TikTokDraftStatus = s.Studio.PublishLegStatus(j.ID, "tiktok")
+			view.TikTokDraftRemoteID = s.Studio.PublishLegRemoteID(j.ID, "tiktok")
+			if accountID := studioTikTokAccountID(j); accountID > 0 && s.Mgr != nil {
+				if account, err := s.Mgr.Get(accountID); err == nil {
+					view.TikTokDraftHasAccount = true
+					view.TikTokDraftConfigured = publishers.NewTikTokPublisher(account.Username).IsConfigured()
+				}
+			}
 			if publication, ok := s.Studio.TikTokPublicationForJob(j.ID); ok {
 				view.TikTokVideoID = publication.PlatformVideoID
 				view.TikTokVideoURL = publication.VideoURL
@@ -127,6 +141,22 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		out = append(out, view)
 	}
 	return out
+}
+
+func studioTikTokAccountID(job studio.Job) int64 {
+	switch job.Kind {
+	case studio.KindAffiliate:
+		var params studio.AffiliateParams
+		if json.Unmarshal([]byte(job.Params), &params) == nil {
+			return params.AccountID
+		}
+	case studio.KindViral:
+		var params studio.ViralParams
+		if json.Unmarshal([]byte(job.Params), &params) == nil {
+			return params.AccountID
+		}
+	}
+	return 0
 }
 
 func studioFailureSummary(log string) string {
