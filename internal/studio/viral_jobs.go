@@ -31,6 +31,9 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if err != nil {
 		return "", fmt.Errorf("video nguồn không thuộc Radar đã lưu: %w", err)
 	}
+	if !sourceVideo.DanceVerified {
+		return "", fmt.Errorf("video nguồn Radar chưa được xác nhận là video nhảy")
+	}
 	if p.SourceVideoID != "" && p.SourceVideoID != sourceVideo.VideoID {
 		return "", fmt.Errorf("video ID không khớp URL nguồn Radar")
 	}

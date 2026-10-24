@@ -190,6 +190,10 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
 		return
 	}
+	if !sourceVideo.DanceVerified {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar chưa được xác nhận là video nhảy; hãy xác nhận trong Radar trước khi tiếp tục.")
+		return
+	}
 	tiktokLink = sourceVideo.VideoURL
 	var sampleVideoPath string
 	dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))

@@ -14,6 +14,8 @@
 
 Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Feed và tìm kiếm keyword dùng TikWM, cần kiểm tra độ phủ/freshness khi vận hành. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
 
+Server xác minh nguồn đã được đánh dấu video nhảy trước khi phân tích hoặc tạo job; bỏ qua nút UI không thể dùng nguồn chưa xác nhận.
+
 Tạo video viral hoàn chỉnh và giữ đồng nhất với reference chưa được chứng minh end-to-end.
 
 Counters lấy từ TikTok Display API sau khi account cấp quyền và đồng bộ. Retention, watch-time, demographics, profile visits và follows riêng theo video chưa có dữ liệu; chưa có snapshot thì hiển thị unknown.
