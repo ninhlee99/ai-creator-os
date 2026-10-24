@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"sort"
@@ -51,22 +52,31 @@ type growthVideoMetricRow struct {
 }
 
 type growthStudioVideoRow struct {
-	Username       string
-	JobID          string
-	Title          string
-	KindLabel      string
-	VideoID        string
-	URL            string
-	Views          string
-	Likes          string
-	Comments       string
-	Shares         string
-	TakenAt        string
-	HasMetrics     bool
-	AttributionID  string
-	Orders         accesstrade.OrderAttributionSummary
-	OrdersKnown    bool
-	OrdersSyncedAt string
+	accountID       int64
+	viewsValue      int64
+	engagement      float64
+	engagementKnown bool
+	Username        string
+	JobID           string
+	Title           string
+	KindLabel       string
+	VideoID         string
+	URL             string
+	Views           string
+	Likes           string
+	Comments        string
+	Shares          string
+	TakenAt         string
+	HasMetrics      bool
+	AttributionID   string
+	Orders          accesstrade.OrderAttributionSummary
+	OrdersKnown     bool
+	OrdersSyncedAt  string
+	EngagementRate  string
+	EngagementBase  string
+	OrderPerView    string
+	Recommendation  string
+	SalesAdvice     string
 }
 
 type growthAlertRow struct {
@@ -219,7 +229,8 @@ func (s *Server) growthView() map[string]any {
 			if publications, err := s.Studio.TikTokPublications(account.ID, 100); err == nil {
 				for _, publication := range publications {
 					row := growthStudioVideoRow{
-						Username: account.Username, JobID: publication.JobID, Title: publication.Title,
+						accountID: account.ID,
+						Username:  account.Username, JobID: publication.JobID, Title: publication.Title,
 						KindLabel: "TikTok Viral", VideoID: publication.PlatformVideoID, URL: publication.VideoURL,
 						Views: "—", Likes: "—", Comments: "—", Shares: "—", TakenAt: "—",
 					}
@@ -243,6 +254,14 @@ func (s *Server) growthView() map[string]any {
 						row.Views, row.Likes = metricLabel(metric.Views), metricLabel(metric.Likes)
 						row.Comments, row.Shares = metricLabel(metric.Comments), metricLabel(metric.Shares)
 						row.TakenAt, row.HasMetrics = shortMetricTime(metric.TakenAt), true
+						if metric.Views != nil {
+							row.viewsValue = *metric.Views
+						}
+						if metric.Views != nil && *metric.Views > 0 && metric.Likes != nil && metric.Comments != nil && metric.Shares != nil {
+							row.engagement = (float64(*metric.Likes) + float64(*metric.Comments) + float64(*metric.Shares)) / float64(*metric.Views)
+							row.engagementKnown = true
+							row.EngagementRate = fmt.Sprintf("%.1f%%", row.engagement*100)
+						}
 					}
 					studioVideoMetrics = append(studioVideoMetrics, row)
 				}
@@ -266,6 +285,7 @@ func (s *Server) growthView() map[string]any {
 			}
 		}
 	}
+	annotateStudioVideoPerformance(studioVideoMetrics)
 	sort.Slice(alerts, func(i, j int) bool { return alerts[i].ID > alerts[j].ID })
 	if len(alerts) > 15 {
 		alerts = alerts[:15]
@@ -292,6 +312,72 @@ func (s *Server) growthView() map[string]any {
 	}
 	ctx["Today"] = today
 	return ctx
+}
+
+// annotateStudioVideoPerformance compares each linked post with other linked
+// Studio posts of the same flow on the same channel. It reports only observed
+// counters and synced AccessTrade orders; it does not infer watch time or age.
+func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
+	type baseline struct {
+		sum   float64
+		count int
+	}
+	keyFor := func(row growthStudioVideoRow) string {
+		return fmt.Sprintf("%d:%s", row.accountID, row.KindLabel)
+	}
+	baselines := map[string]baseline{}
+	for _, row := range rows {
+		if !row.engagementKnown {
+			continue
+		}
+		key := keyFor(row)
+		value := baselines[key]
+		value.sum += row.engagement
+		value.count++
+		baselines[key] = value
+	}
+	for i := range rows {
+		row := &rows[i]
+		if row.engagementKnown {
+			group := baselines[keyFor(*row)]
+			peerCount := group.count - 1
+			if peerCount > 0 {
+				average := (group.sum - row.engagement) / float64(peerCount)
+				row.EngagementBase = fmt.Sprintf("%.1f%%", average*100)
+				if row.engagement < average {
+					row.Recommendation = fmt.Sprintf("Engagement %.1f%% thấp hơn baseline %.1f%% của flow này trên kênh; thử hook vào hành động sớm hơn, bỏ intro và giữ phần được người xem phản hồi.", row.engagement*100, average*100)
+				} else {
+					row.Recommendation = fmt.Sprintf("Engagement %.1f%% bằng hoặc cao hơn baseline %.1f%%; giữ format đang hiệu quả, thử đổi từng yếu tố ở video kế tiếp.", row.engagement*100, average*100)
+				}
+			} else {
+				row.Recommendation = "Chưa có video cùng flow trên kênh để lập baseline; giữ snapshot này làm mốc so sánh."
+			}
+		} else if row.HasMetrics {
+			row.Recommendation = "TikTok chưa trả đủ views, likes, comments, shares để tính engagement; chưa kết luận hiệu quả video."
+		} else {
+			row.Recommendation = "Chưa có counters TikTok cho video; đồng bộ lại sau khi đăng."
+		}
+		if row.KindLabel != "Affiliate TikTok" {
+			continue
+		}
+		if !row.OrdersKnown {
+			row.SalesAdvice = "Chưa có lần đồng bộ đơn AccessTrade; chưa kết luận chuyển đổi."
+			continue
+		}
+		if row.viewsValue > 0 {
+			row.OrderPerView = fmt.Sprintf("%.3f%%", float64(row.Orders.TotalCount)/float64(row.viewsValue)*100)
+		}
+		switch {
+		case row.Orders.ApprovedCount > 0:
+			row.SalesAdvice = fmt.Sprintf("Có %d đơn đã duyệt; theo dõi tiếp hoa hồng và giữ lại offer/CTA của video.", row.Orders.ApprovedCount)
+		case row.Orders.PendingCount > 0:
+			row.SalesAdvice = "Có đơn đang chờ duyệt; đợi kết quả trước khi đổi offer."
+		case row.Orders.RejectedCount > 0:
+			row.SalesAdvice = "Đơn đã bị từ chối; kiểm tra trạng thái offer và điều kiện ghi nhận AccessTrade."
+		default:
+			row.SalesAdvice = "Chưa ghi nhận đơn theo mã video; kiểm tra tracking, giá và CTA. Chưa có dữ liệu click để tách nguyên nhân."
+		}
+	}
 }
 
 func metricLabel(value *int64) string {

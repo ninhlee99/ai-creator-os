@@ -77,10 +77,10 @@
 </table></div>
 
 <h2>Hiệu quả video theo job Studio</h2>
-<p class="hint">Sau khi đăng, liên kết URL công khai ở job hoàn tất trong Studio. Growth ghép snapshot TikTok theo đúng kênh và video; chưa có snapshot sẽ hiện dấu gạch.</p>
+<p class="hint">Liên kết URL công khai ở job Studio sau khi đăng. Engagement = like + comment + share trên view, so với video cùng flow trên cùng kênh. Đơn ghép bằng mã tracking riêng của job. Watch-time, nhân khẩu học và click chưa có nguồn.</p>
 {{if .StudioVideoMetrics}}
 <div class="table-wrap"><table>
-<tr><th>Kênh</th><th>Flow</th><th>Video / job</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Đơn AccessTrade</th><th>Cập nhật</th></tr>
+<tr><th>Kênh</th><th>Flow</th><th>Video / job</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Engagement</th><th>Đơn AccessTrade / view</th><th>Nhận định</th><th>Cập nhật</th></tr>
 {{range .StudioVideoMetrics}}
 <tr>
   <td>{{.Username}}</td>
@@ -88,16 +88,20 @@
   <td><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a><br><span class="hint">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Job Studio</a></span></td>
   <td>{{.Views}}</td><td>{{.Likes}}</td><td>{{.Comments}}</td><td>{{.Shares}}</td>
   <td>
+    {{if .EngagementRate}}{{.EngagementRate}}{{if .EngagementBase}}<br><span class="hint">baseline {{.EngagementBase}}</span>{{end}}{{else}}—{{end}}
+  </td>
+  <td>
     {{if eq .KindLabel "Affiliate TikTok"}}
       {{if .AttributionID}}
         {{if .OrdersKnown}}
-          <strong>{{.Orders.TotalCount}} đơn</strong><br>
+          <strong>{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · {{.OrderPerView}} / view{{end}}<br>
           <span class="hint">Chờ {{.Orders.PendingCount}} · duyệt {{.Orders.ApprovedCount}} · từ chối {{.Orders.RejectedCount}}</span><br>
           <span class="hint">Hoa hồng đã duyệt: {{printf "%.0f" .Orders.ApprovedCommission}}₫ · đồng bộ {{.OrdersSyncedAt}}</span>
         {{else}}Chưa có snapshot đơn AccessTrade{{end}}
       {{else}}Job chưa có mã tracking riêng{{end}}
     {{else}}—{{end}}
   </td>
+  <td style="min-width:260px;max-width:420px">{{.Recommendation}}{{if .SalesAdvice}}<br><span class="hint">Đơn: {{.SalesAdvice}}</span>{{end}}</td>
   <td>{{.TakenAt}}</td>
 </tr>
 {{end}}
