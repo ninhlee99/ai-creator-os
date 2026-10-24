@@ -43,9 +43,19 @@ func (b *browserStderrTail) hasMacOSBootstrapFailure() bool {
 	return strings.Contains(stderr, "bootstrap_check_in") && strings.Contains(stderr, "141")
 }
 
+func (b *browserStderrTail) hasMacOSMissingExecutable() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	stderr := strings.ToLower(string(b.data))
+	return strings.Contains(stderr, "klsnoexecutableerr") || strings.Contains(stderr, "code=-10827")
+}
+
 func browserProcessExitedError(binary string, processErr error, stderr *browserStderrTail) error {
 	if runtime.GOOS == "darwin" && stderr.hasMacOSBootstrapFailure() {
 		return fmt.Errorf("trình duyệt %s bị macOS chặn tại Crashpad/Mach bootstrap (lỗi 141): hãy mở MiuNova từ Terminal/iTerm trong phiên desktop rồi thử lại", filepath.Base(binary))
+	}
+	if runtime.GOOS == "darwin" && stderr.hasMacOSMissingExecutable() {
+		return fmt.Errorf("macOS không mở được ứng dụng %s (-10827: kLSNoExecutableErr); cài lại trình duyệt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium còn nguyên vẹn", filepath.Base(binary))
 	}
 	if processErr == nil {
 		return fmt.Errorf("trình duyệt %s đã thoát trước khi CDP sẵn sàng; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary))
