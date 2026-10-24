@@ -82,7 +82,7 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.AffiliateParams, error) {
 	var p studio.AffiliateParams
 	sourceMusicVideoURL := strings.TrimSpace(r.FormValue("source_music_video_url"))
-	source, err := s.Studio.ResolveTikTokRadarVideo(r.Context(), sourceMusicVideoURL)
+	source, err := s.Studio.ResolveTikTokRadarDanceVideo(r.Context(), sourceMusicVideoURL)
 	if err != nil {
 		return p, fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi lập shot list: %w", err)
 	}

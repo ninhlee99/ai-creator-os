@@ -49,12 +49,9 @@ func (s *Server) ensureAffiliateRadarMusic(ctx context.Context, p *studio.Affili
 		if s.Studio == nil {
 			return fmt.Errorf("Studio chưa sẵn sàng để xác minh video Radar TikTok")
 		}
-		source, err := s.Studio.ResolveTikTokRadarVideo(ctx, p.SourceMusicVideoURL)
+		source, err := s.Studio.ResolveTikTokRadarDanceVideo(ctx, p.SourceMusicVideoURL)
 		if err != nil {
 			return err
-		}
-		if !source.DanceVerified {
-			return fmt.Errorf("video chưa được xác nhận là video nhảy trong Radar TikTok")
 		}
 		p.SourceMusicTitle = source.SoundTitle()
 		p.SourceMusicVideoURL = source.VideoURL

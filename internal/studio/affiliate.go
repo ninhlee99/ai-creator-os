@@ -141,12 +141,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if !IsTikTokVideoURL(p.SourceMusicVideoURL) {
 		return "", fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi tạo affiliate")
 	}
-	source, err := s.ResolveTikTokRadarVideo(context.Background(), p.SourceMusicVideoURL)
+	source, err := s.ResolveTikTokRadarDanceVideo(context.Background(), p.SourceMusicVideoURL)
 	if err != nil {
 		return "", fmt.Errorf("không xác minh được sound Radar TikTok: %w", err)
-	}
-	if !source.DanceVerified {
-		return "", fmt.Errorf("video Radar chưa được xác nhận là video nhảy")
 	}
 	p.SourceMusicTitle = source.SoundTitle()
 	p.SourceMusicVideoURL = source.VideoURL

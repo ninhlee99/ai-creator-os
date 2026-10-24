@@ -13,6 +13,7 @@ import (
 const maxStoredTikTokRadarVideos = 2000
 
 const tiktokRadarSnapshotRetention = 30 * 24 * time.Hour
+const tiktokRadarDanceFreshness = 7 * 24 * time.Hour
 
 // CollectTikTokRadarVideos fetches the current feed and persists every
 // validated candidate before returning it to the Radar UI.
@@ -264,6 +265,37 @@ func (s *Studio) ResolveTikTokRadarVideo(ctx context.Context, sourceURL string) 
 	return s.loadTikTokRadarVideo(ctx, video.VideoID)
 }
 
+// ResolveTikTokRadarDanceVideo requires a manually verified dance source
+// collected within the last seven days.
+func (s *Studio) ResolveTikTokRadarDanceVideo(ctx context.Context, sourceURL string) (TikTokTrendVideo, error) {
+	video, err := s.ResolveTikTokRadarVideo(ctx, sourceURL)
+	if err != nil {
+		return TikTokTrendVideo{}, err
+	}
+	if err := validateTikTokRadarDanceFreshness(video, time.Now()); err != nil {
+		return TikTokTrendVideo{}, err
+	}
+	return video, nil
+}
+
+func validateTikTokRadarDanceFreshness(video TikTokTrendVideo, now time.Time) error {
+	if !video.DanceVerified {
+		return fmt.Errorf("video Radar chưa được xác nhận là video nhảy")
+	}
+	collectedAt, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(video.CollectedAt))
+	if err != nil {
+		return fmt.Errorf("video nhảy Radar thiếu thời điểm thu thập hợp lệ")
+	}
+	age := now.Sub(collectedAt)
+	if age < -5*time.Minute {
+		return fmt.Errorf("thời điểm thu thập video Radar nằm trong tương lai")
+	}
+	if age > tiktokRadarDanceFreshness {
+		return fmt.Errorf("video nhảy Radar đã quá 7 ngày; làm mới Radar và xác nhận video mới trước khi tạo")
+	}
+	return nil
+}
+
 func (s *Studio) loadTikTokRadarVideo(ctx context.Context, videoID string) (TikTokTrendVideo, error) {
 	var payload string
 	var danceVerified int
@@ -372,20 +404,28 @@ func (s *Studio) SetTikTokRadarDanceVerification(ctx context.Context, videoID st
 	return nil
 }
 
-// ResolveTikTokRadarMusic returns latest Radar source explicitly verified as
-// a dance video. Automation never infers a dance source from caption alone.
+// ResolveTikTokRadarMusic returns the most recently collected Radar source
+// explicitly verified as a dance video. Automation never infers dance from
+// caption alone and will not reuse a source older than seven days.
 func (s *Studio) ResolveTikTokRadarMusic(ctx context.Context) (TikTokTrendVideo, error) {
 	if s == nil || s.db == nil {
 		return TikTokTrendVideo{}, fmt.Errorf("Studio chưa sẵn sàng để đọc nguồn nhạc Radar TikTok")
 	}
 	var videoID string
 	err := s.db.QueryRowContext(ctx, `SELECT video_id FROM studio_tiktok_radar_videos
-		WHERE dance_verified=1 ORDER BY dance_verified_at DESC,collected_at DESC,video_id DESC LIMIT 1`).Scan(&videoID)
+		WHERE dance_verified=1 ORDER BY collected_at DESC,dance_verified_at DESC,video_id DESC LIMIT 1`).Scan(&videoID)
 	if err == sql.ErrNoRows {
 		return TikTokTrendVideo{}, fmt.Errorf("Radar chưa có video nhảy được xác nhận; chọn video nhảy thủ công trong Radar TikTok trước khi chạy affiliate tự động")
 	}
 	if err != nil {
 		return TikTokTrendVideo{}, fmt.Errorf("không đọc được nguồn nhạc Radar TikTok: %w", err)
 	}
-	return s.loadTikTokRadarVideo(ctx, videoID)
+	video, err := s.loadTikTokRadarVideo(ctx, videoID)
+	if err != nil {
+		return TikTokTrendVideo{}, err
+	}
+	if err := validateTikTokRadarDanceFreshness(video, time.Now()); err != nil {
+		return TikTokTrendVideo{}, err
+	}
+	return video, nil
 }

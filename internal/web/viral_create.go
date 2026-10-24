@@ -185,13 +185,9 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio chưa sẵn sàng để xác minh video Radar TikTok")
 		return
 	}
-	sourceVideo, err := s.Studio.ResolveTikTokRadarVideo(r.Context(), tiktokLink)
+	sourceVideo, err := s.Studio.ResolveTikTokRadarDanceVideo(r.Context(), tiktokLink)
 	if err != nil {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Chọn video từ Radar TikTok trước khi tiếp tục: "+err.Error())
-		return
-	}
-	if !sourceVideo.DanceVerified {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar chưa được xác nhận là video nhảy; hãy xác nhận trong Radar trước khi tiếp tục.")
 		return
 	}
 	tiktokLink = sourceVideo.VideoURL
