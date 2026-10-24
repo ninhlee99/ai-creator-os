@@ -39,6 +39,9 @@ type Product struct {
 	ShelfStatus string
 	ShelfScore  float64
 	ClickCount  int64 // Total click-throughs from Bio Link storefront
+	// TikTok Radar evidence is attached only for web evaluation; it is not persisted.
+	TikTokRadarTrendEvidence string `json:"-"`
+	TikTokRadarTrendURL      string `json:"-"`
 }
 
 // Query describes what the autopilot is hunting.

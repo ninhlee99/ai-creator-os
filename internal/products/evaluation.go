@@ -23,6 +23,7 @@ type CandidateEvaluation struct {
 	SalesEvidence        string
 	RatingEvidence       string
 	TrendEvidence        string
+	TrendSourceURL       string
 	AudienceEvidence     string
 }
 
@@ -39,6 +40,10 @@ func EvaluateCandidate(p Product, now time.Time) CandidateEvaluation {
 	}
 	if finitePositive(p.Price) && finitePositive(p.CommissionRate) && p.CommissionRate <= 1 {
 		e.CommissionPerOrder = p.Price * p.CommissionRate
+	}
+	if strings.TrimSpace(p.TikTokRadarTrendEvidence) != "" {
+		e.TrendEvidence = strings.TrimSpace(p.TikTokRadarTrendEvidence)
+		e.TrendSourceURL = strings.TrimSpace(p.TikTokRadarTrendURL)
 	}
 
 	if !finitePositive(p.Price) {

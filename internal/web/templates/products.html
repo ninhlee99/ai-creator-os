@@ -592,8 +592,9 @@ function atOrderSync() {
       <div><strong>Lượt bán:</strong> {{.SalesEvidence}}</div>
       <div><strong>Rating / số lượt đánh giá:</strong> {{.RatingEvidence}}</div>
       <div><strong>Xu hướng thị trường:</strong> {{.TrendEvidence}}</div>
+      {{if .TrendSourceURL}}<a href="{{.TrendSourceURL}}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-size:11px;font-weight:600">Mở video TikTok Radar ↗</a>{{end}}
       <div><strong>Tệp tuổi:</strong> {{.AudienceEvidence}}</div>
-      <p style="margin:6px 0 0">Đánh giá chỉ hỗ trợ người duyệt, không tự đổi trạng thái. Xu hướng Radar và dữ liệu độ tuổi hiện chưa có.</p>
+      <p style="margin:6px 0 0">Đánh giá chỉ hỗ trợ người duyệt, không tự đổi trạng thái. Dữ liệu độ tuổi hiện chưa có.</p>
     </div>
   </details>
 </div>

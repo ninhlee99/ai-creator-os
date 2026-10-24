@@ -182,6 +182,7 @@ func (s *Server) handleProductsSearch(w http.ResponseWriter, r *http.Request) {
 		saved++
 	}
 	results, rerr := s.Products.Search(keyword, theme, minComm, 30)
+	results = s.attachTikTokRadarEvidence(r.Context(), results)
 	data := s.ctx(
 		"Themes", themeOptions(),
 		"Theme", theme,

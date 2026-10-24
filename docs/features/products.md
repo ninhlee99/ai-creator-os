@@ -20,4 +20,4 @@ Fit xu hướng TikTok, tệp giới trẻ và mức độ viral chưa được 
 
 ## Đánh giá offer
 
-Danh sách sản phẩm hiển thị đề xuất dựa trên độ đầy đủ của offer, hoa hồng tham khảo theo category, sales và rating có nguồn. Đây là thông tin hỗ trợ người duyệt; không tự duyệt hoặc loại offer. AccessTrade chưa cung cấp rating/review trong feed hiện tại. Fit xu hướng TikTok và tệp tuổi tiếp tục hiện là chưa có dữ liệu cho đến khi Radar và analytics cung cấp bằng chứng phù hợp.
+Danh sách sản phẩm hiển thị đề xuất dựa trên độ đầy đủ của offer, hoa hồng tham khảo theo category, sales và rating có nguồn. Đây là thông tin hỗ trợ người duyệt; không tự duyệt hoặc loại offer. AccessTrade chưa cung cấp rating/review trong feed hiện tại. UI đối chiếu từ khóa category với title/caption video TikTok Radar thu thập trong 7 ngày và liên kết video nguồn; không có kết quả khớp vẫn chưa đủ để kết luận sản phẩm không phù hợp. Tệp tuổi tiếp tục hiện là chưa có dữ liệu cho đến khi analytics cung cấp bằng chứng phù hợp.
