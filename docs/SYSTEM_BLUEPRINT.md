@@ -18,8 +18,13 @@ flowchart LR
   AU --> VF[Viral remake]
   AF --> QC[QC + preview]
   VF --> QC
-  QC --> DR[TikTok Draft]
-  DR --> PM[Post metrics]
+  QC --> RV[Publish review + consent]
+  RV -->|Shop access| SP[Shoppable video + product anchor]
+  RV -->|approved Direct Post| DP[Direct Post]
+  RV -->|fallback| DR[TikTok Draft]
+  SP --> PM[Post metrics]
+  DP --> PM
+  DR --> PM
   AT --> OM[Orders + commission]
   PM --> FB[Feedback + bounded adjustments]
   OM --> FB
@@ -35,16 +40,16 @@ flowchart LR
 | `internal/products` | Candidate snapshots, category/rule evaluation, approved/rejected state, product usage |
 | `internal/studio` | Affiliate/viral plan, media generation, Radar audio extraction, QC, job/artifact provenance |
 | `internal/growth` | TikTok video snapshots, account baselines, funnel analysis, recommendations and rollback history |
-| `internal/tiktok` + `internal/publishers` | TikTok OAuth, upload draft, provider state/reconciliation |
+| `internal/tiktok` + `internal/publishers` | TikTok OAuth, draft/direct-post adapters, Shop shoppable-video adapter, provider state/reconciliation |
 | `internal/web` | Go templates, HTMX partials, operator review and controls |
 | `internal/ledger` | Accounts, characters, decisions, audit records and shared settings |
 
 ## Data contracts
 
-- Product candidate: provider + provider product ID + category + price/currency + commission + source timestamp + snapshot ID.
+- Product candidate: offer provider + offer/product ID + optional TikTok Shop product ID + verified mapping state + category + price/currency + commission + source timestamp + snapshot ID.
 - Evaluation: candidate snapshot + rule version + facts + unknowns + verdict + reason + confidence + actor + time.
 - TikTok Radar video: provider + video ID/URL + author + topic + collected-at + metrics snapshot + audio metadata + dance classification state.
-- Campaign/job: flow + account + product if affiliate + selected Radar source + audio source + provider + artifact/QC + draft/publish state.
+- Campaign/job: flow + account + approved offer ID + TikTok Shop product/anchor IDs and state if affiliate + selected Radar source + audio source + provider + artifact/QC + consent evidence + draft/publish state.
 - Performance: account/video ID + metric name/value + provider + timestamp + window + attribution scope.
 - Recommendation: evidence IDs + sample size + confidence + proposed setting diff + rule version + apply/rollback audit.
 
@@ -56,7 +61,8 @@ Unknown values stay null/unknown. Old snapshots remain immutable. Repeated syncs
 - Product verdict may auto-approve only after hard gates, freshness and configured confidence pass; otherwise `needs_review`.
 - Rejected products remain inspectable and re-evaluable.
 - Studio generation may proceed only from approved product or selected TikTok Radar source.
-- Public publish/product attachment must reflect a verified TikTok result. Until then use Draft and expose remaining manual steps.
+- Every TikTok submission requires a review screen, correct account display, explicit per-post consent and truthful provider state. Direct Post public mode requires approved scopes/audit and permitted app use; MiuNova's internal-tool use must not assume eligibility. Shoppable affiliate publish requires TikTok Shop partner/creator authorization and a confirmed product anchor. Otherwise use Draft/manual handoff.
+- Keep `upload/draft`, `publishing`, `public`, `failed`, and `reconcile_required` distinct. A successful upload response alone does not prove public post or attached product.
 - Setting auto-adjustment is bounded, reversible and versioned. Offer choice, claims, publish rights, account permissions and provider budgets require operator approval.
 - Preserve data in existing SQLite databases. Remove unused code and new-schema declarations without dropping existing user tables or rows.
 
@@ -70,4 +76,4 @@ Unknown values stay null/unknown. Old snapshots remain immutable. Repeated syncs
 
 ## External capability gaps
 
-Current repo has AccessTrade offers, links and orders; per-product sales/rating and TikTok video attribution are not proven. TikTok Radar collects a Vietnam feed via TikWM when no topic is set; a topic query calls TikWM `feed/search` directly. It stores at most 2,000 recent video records and 30 days of metric snapshots in SQLite, ranks by view velocity when two valid observations exist, and otherwise by current views. The external topic-search endpoint and feed freshness still need live verification; dance classification stays operator-confirmed. It accepts only TikTok URLs with matching provider video IDs. TikTok Display API code reads follower/video totals and current public-video counters when scopes are granted; retention, watch-time, demographics and Shop product attachment are not proven end-to-end. Keep each unsupported field `unknown` and gate related automation.
+Current repo has AccessTrade offers, links and orders; per-product sales/rating and TikTok video attribution are not proven. TikTok Radar collects a Vietnam feed via TikWM when no topic is set; a topic query calls TikWM `feed/search` directly. It stores at most 2,000 recent video records and 30 days of metric snapshots in SQLite, ranks by view velocity when two valid observations exist, and otherwise by current views. The external topic-search endpoint and feed freshness still need live verification; dance classification stays operator-confirmed. It accepts only TikTok URLs with matching provider video IDs. TikTok Display API code reads follower/video totals and current public-video counters when scopes are granted; retention, watch-time, demographics and Shop product attachment are not proven end-to-end. TikTok Content Posting API supports direct post or draft upload, with audit, consent and intended-use conditions. TikTok Shop documents a separate shoppable-video path with product anchors and partner/creator authorization. Repo currently proves draft upload only. Keep each unsupported field `unknown` and gate related automation.

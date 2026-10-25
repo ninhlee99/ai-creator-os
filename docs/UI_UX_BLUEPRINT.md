@@ -14,8 +14,8 @@ Chỉ expose hai flow: TikTok affiliate và TikTok viral. Truyện audio để p
 
 ## Điều hướng
 
-1. **Affiliate**: category radar, danh sách sản phẩm, candidate detail, approved/rejected, campaign jobs, order feedback.
-2. **TikTok viral**: topic radar, phân tích video, tạo phiên bản mới, jobs và performance feedback.
+1. **Affiliate**: category radar, danh sách sản phẩm, candidate detail, approved/rejected, campaign jobs, publish review, order feedback.
+2. **TikTok viral**: topic radar, phân tích video, tạo phiên bản mới, publish review, jobs và performance feedback.
 3. **Kênh**: TikTok account, persona/brand, ảnh nhân vật, trạng thái OAuth.
 4. **Insights**: phân tích riêng affiliate/viral với evidence, baseline và recommendations.
 5. **Cài đặt**: TikTok OAuth, AccessTrade, media providers, automation bounds, safety, JSON config, backup.
@@ -34,6 +34,17 @@ Chỉ expose hai flow: TikTok affiliate và TikTok viral. Truyện audio để p
 - Chỉ video dance được xác minh hoặc do người dùng chọn mới thành source audio.
 - Job detail cho source ID/URL, audio metadata, product/tracking link, QC, artifact và TikTok state.
 - Draft, product attachment, public post, pending reconciliation và failed là trạng thái tách biệt.
+
+## Publish review
+
+- Preview video và hiện nickname/account TikTok đích; refresh creator capabilities trước khi render nút đăng.
+- Caption và hashtags sửa được. Không đóng watermark, logo quảng bá, URL hay promotional text vào video.
+- Người dùng tự chọn privacy từ các lựa chọn provider trả về; không preselect. Hiện interaction controls theo creator info và để off mặc định.
+- Hiện commercial-content disclosure. Với video affiliate, cho chọn disclosure phù hợp và nêu nhãn TikTok sẽ gắn.
+- Với video do AI tạo/chỉnh sửa đáng kể, hiện lựa chọn disclosure/AI-generated label; gửi đúng `is_ai_generated` cho TikTok Shop Shoppable Video API. Nếu adapter không hỗ trợ nhãn cần thiết, public submit bị khóa và UI đưa người dùng sang Draft/manual handoff.
+- Với TikTok Shop, hiển thị TikTok Shop product ID, mapping tới AccessTrade offer đã duyệt, anchor title và trạng thái precheck/anchor. Mapping lệch thì chặn publish. AccessTrade tracking link là trường attribution riêng.
+- Hiện consent declaration sát nút `Đăng lên TikTok`; chưa consent thì không upload. Với Direct Post app chưa audit, chặn public mode và hướng dẫn Draft/manual handoff.
+- Sau submit, hiển thị provider state và poll/webhook result. Timeout dùng `Đang đối chiếu`, khóa retry tới khi reconcile; chỉ public status mới được gọi là đã đăng.
 
 ## Insights
 
@@ -57,3 +68,7 @@ Chỉ expose hai flow: TikTok affiliate và TikTok viral. Truyện audio để p
 | Chọn nguồn dance | POST Radar video ID | Job source ID/URL trùng lựa chọn; không chọn ngầm |
 | Refresh job | GET job partial | Hiện trạng thái DB/provider mới nhất, không giả lập thành công |
 | Apply/rollback setting | POST versioned diff | Current version tăng/khôi phục đúng value; audit entry hiện rõ |
+| Gửi video TikTok | Publish review → POST submit | Không gửi media trước consent; account/caption/privacy/disclosure gửi đúng lựa chọn; kết quả dùng provider state |
+| TikTok Shop anchor thất bại | Publish review → job detail | `anchor_state=failed`; bài không hiện `Đã đăng kèm sản phẩm`; có manual handoff nếu Draft khả dụng |
+| Offer không khớp Shop product | Publish review | Submit bị chặn; hiện hai ID và action sửa mapping |
+| Public publish chưa được cấp quyền | Publish review | Public mode bị chặn; UI nêu `Draft` hoặc `Cần hoàn tất trong TikTok` |

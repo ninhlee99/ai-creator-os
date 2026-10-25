@@ -1,13 +1,13 @@
 # Product spec — TikTok affiliate và TikTok viral
 
-Cập nhật: 2026-10-24. Risk: P1 — sản phẩm, hoa hồng, nội dung công khai và số liệu ảnh hưởng quyết định kinh doanh.
+Cập nhật: 2026-10-25. Risk: P1 — sản phẩm, hoa hồng, nội dung công khai và số liệu ảnh hưởng quyết định kinh doanh.
 
 ## Phạm vi
 
 Sản phẩm tập trung hai flow đang hoàn thiện:
 
-1. TikTok affiliate: tìm sản phẩm → đánh giá → duyệt/loại → tạo video bằng nhân vật kênh → gửi TikTok Draft/gắn sản phẩm → đo đơn hàng → cải tiến.
-2. TikTok viral: tìm video theo chủ đề → phân tích → tạo phiên bản sáng tạo bằng nhân vật kênh → gửi TikTok Draft → đo hiệu quả → cải tiến.
+1. TikTok affiliate: tìm sản phẩm → đánh giá → duyệt/loại → tạo video bằng nhân vật kênh → xem trước, xác nhận và đăng video có product anchor khi API đủ quyền → đo đơn hàng → cải tiến.
+2. TikTok viral: tìm video theo chủ đề → phân tích → tạo phiên bản sáng tạo bằng nhân vật kênh → xem trước, xác nhận và đăng hoặc gửi Draft theo quyền tài khoản → đo hiệu quả → cải tiến.
 
 Truyện audio để phase sau.
 
@@ -18,7 +18,8 @@ Truyện audio để phase sau.
 - Phân biệt dữ kiện provider trả về, kết quả tính toán và nhận định AI. Nhận định phải dẫn dữ kiện đầu vào.
 - Không kết luận thị trường, người trẻ, độ viral, doanh số hoặc nguyên nhân nhân quả nếu dữ liệu không hỗ trợ.
 - Giữ lịch sử phân tích, quyết định, cấu hình và version. Cho xem lại, chạy lại, hoàn tác.
-- Tự động duyệt sản phẩm theo rule có thể chỉnh; publish công khai vẫn cần người vận hành xác nhận cho tới khi quyền TikTok và kết quả publish được chứng minh.
+- Tự động duyệt sản phẩm theo rule có thể chỉnh. Trước mỗi lần gửi nội dung TikTok, người vận hành phải xem preview, chọn account/privacy/disclosure và xác nhận rõ thao tác publish; sau consent, hệ thống có thể tự gửi và reconcile trạng thái qua API đã được cấp quyền.
+- Không mặc định Direct Post đã được duyệt hoặc dùng được cho app nội bộ. Khi API/audit/scope chưa đủ, dùng TikTok Draft và yêu cầu người vận hành hoàn tất đăng trong TikTok.
 - Không tải lại hoặc đăng nguyên video tham chiếu. Phân tích cấu trúc, rồi tạo nội dung mới cho nhân vật kênh. Âm thanh cho cả hai flow lấy từ video nhảy viral TikTok Radar đã thu thập.
 
 ## Flow affiliate TikTok
@@ -66,9 +67,14 @@ Auto-approve chỉ khi tất cả hard gate qua, evidence đủ mới, confidenc
 
 ### 5. Đăng và đo chuyển đổi
 
-- Gửi TikTok Draft và hiển thị kết quả thật. Draft không đồng nghĩa bài đã public.
-- Gắn sản phẩm qua TikTok Shop/API chỉ khi account và scope hỗ trợ. Nếu không hỗ trợ, UI đưa link/các bước gắn sản phẩm để người vận hành hoàn tất; không giả lập trạng thái đã gắn.
-- Lưu campaign ID, product ID, tracking link, TikTok video ID, publish state và timestamps để nối dữ liệu.
+- Màn hình review trước đăng hiển thị video preview, đúng TikTok account/nickname, caption/hashtag sửa được, privacy do người dùng chọn (không đặt mặc định), quyền comment/duet/stitch theo creator info, disclosure nội dung thương mại, disclosure AI khi áp dụng và consent phù hợp. Không gửi media trước consent.
+- Với video affiliate TikTok Shop, dùng Shoppable Video API đã được TikTok cấp quyền để precheck, publish video và bind TikTok Shop `product_id` + anchor title. Candidate phải lưu riêng AccessTrade offer ID và TikTok Shop product ID; chỉ bind sau khi xác minh hai ID trỏ tới cùng sản phẩm và sản phẩm đủ điều kiện. Gửi `video_info.is_ai_generated=true` cho video do AI tạo. `product anchor` là link mua trong TikTok; AccessTrade tracking URL chỉ dùng cho attribution và không được giả thành product card.
+- Với video viral hoặc khi Shop API không khả dụng, dùng Direct Post API chỉ khi app được duyệt, tài khoản/scope đủ điều kiện và cách dùng được TikTok cho phép. Nếu không, gửi Draft qua Upload API; người vận hành hoàn tất bước còn thiếu trong TikTok.
+- Không đóng dấu watermark, logo quảng bá, URL hoặc promotional text lên nội dung video. Caption/hashtag có sẵn phải sửa được trước khi gửi.
+- Theo dõi status endpoint/webhook cho tới khi có kết quả: `draft_ready`, `precheck_pending`, `publishing`, `public`, `failed` hoặc `reconcile_required`. Chỉ hiện `Đã đăng công khai` khi provider trả post ID hoặc public status; timeout không rõ kết quả phải reconcile trước retry.
+- Với Direct Post API chưa qua audit, chặn lựa chọn public; TikTok giới hạn trạng thái `SELF_ONLY` và quota người đăng. Vì MiuNova hiện là app nội bộ cho các account do nhóm quản lý, khả năng dùng Direct Post công khai phải được TikTok xác nhận trước khi bật.
+- Nếu video cần nhãn AI-generated mà publishing adapter không hỗ trợ gửi nhãn đó, chặn public submit và chuyển sang Draft/manual handoff để người dùng bật nhãn trong TikTok.
+- Lưu campaign ID, product ID, TikTok Shop anchor state, AccessTrade tracking link, TikTok video ID, publish state, consent evidence và timestamps để nối dữ liệu.
 - Đồng bộ clicks, orders, canceled/returned orders, commission và settlement theo khả năng provider. Phân biệt pending/approved/rejected; không cộng trùng khi sync lại.
 - Attribution phải hiển thị provider, cửa sổ attribution và giới hạn ghép video↔đơn. Nếu không ghép được chính xác, báo ở cấp campaign/account, không quy công cho một video.
 
@@ -141,7 +147,7 @@ Nếu không có một mắt xích dữ liệu, nêu rõ khoảng trống và kh
 | Offer, campaign, commission, affiliate link | AccessTrade clients/cache | Sales và rating/review theo từng sản phẩm |
 | Orders/commission | AccessTrade order sync hiện có | Ghép attribution tới đúng TikTok video, canceled/returned và settlement đầy đủ |
 | Video Radar | TikTok Radar feed metadata theo vùng | Độ phủ/freshness production, dance classifier |
-| TikTok publish | Draft-first adapter | Scope/account eligibility, product attachment và public publish end-to-end |
+| TikTok publish | Draft upload adapter hiện có | Direct Post API có public mode sau audit và creator consent; app nội bộ có thể không đạt intended-use. TikTok Shop Shoppable Video API có precheck/publish/product anchor nhưng cần partner + creator authorization. Repo chưa xác minh scope, audit, anchor hoặc public publish thật. |
 | TikTok performance | Display API source cho profile/public-video counters + SQLite snapshots | Retention, watch time, demographics, profile visits/follows và video-level order attribution |
 | UI interactions | Go templates + vendored HTMX partials + pinned Tailwind compiled to local static CSS | Xác minh OAuth/provider thật và tiếp tục mở rộng partials cho các control còn lại |
 
@@ -153,12 +159,13 @@ Không được thay giới hạn ở bảng này bằng số liệu giả hoặ
 2. Mỗi candidate hiển thị nguồn/updated-at; thiếu sales/rating hiện `Chưa có dữ liệu`, không hiện 0.
 3. Evaluation cho verdict + evidence + confidence + lý do; reject xuất hiện trong danh sách xem lại; đánh giá lại giữ lịch sử.
 4. Chỉ candidate approved mới tạo campaign. Campaign gắn đúng product, account, tracking link và video nhảy đã chọn trong Radar.
-5. Affiliate video vượt QC claim/audio/file; UI phân biệt draft, attached product, public post và sync metrics.
+5. Affiliate video vượt QC claim/audio/file; preview/consent bắt buộc trước submit; UI phân biệt draft, Shop product anchor, public post và metrics. Product anchor phải khớp offer đã duyệt; public state chỉ có provider evidence.
 6. Viral Radar lọc topic; mỗi analysis dẫn source/timecode/metric; không tải lại nguyên video tham chiếu.
 7. Cả hai flow giữ source audio provenance và fail closed khi source thiếu audio hoặc ngoài Radar.
 8. Metrics snapshots có source/time/video/account/window; unknown không thành zero; sync lặp không nhân đôi đơn.
 9. Insight nêu evidence/sample size/unknowns và chỉ auto-apply bounded, reversible settings. Có audit diff và rollback.
 10. HTMX controls trả đúng partial/state; Tailwind CSS load từ local compiled asset; không cần runtime CDN.
+11. Publish review hiển thị đúng account, preview, caption sửa được, privacy/disclosure/AI label/consent và lỗi/quota; không gửi trước consent. Nếu API không đủ quyền hoặc không gửi được nhãn bắt buộc, app đưa Draft/manual handoff. Shoppable post chỉ hoàn tất khi TikTok xác nhận product anchor khớp offer đã duyệt.
 
 ## UI handoff oracle
 
@@ -168,6 +175,10 @@ Không được thay giới hạn ở bảng này bằng số liệu giả hoặ
 | Candidate bị loại | Candidate detail → Bị loại | Candidate xuất hiện trong danh sách Bị loại cùng reason/evidence |
 | Video nhảy chưa được xác nhận | Viral/Affiliate Radar | Trạng thái `Chưa phân loại`; không tự chọn source |
 | Draft được TikTok nhận | Campaign/job detail | Provider state + TikTok draft ID; không hiển thị `Đã đăng` |
+| Đăng video affiliate có product anchor | Publish review → Campaign/job detail | Consent timestamp + provider publish ID + TikTok video ID + `anchor_state=attached`; thiếu một tín hiệu thì không hiện `Đã đăng kèm sản phẩm` |
+| Offer và Shop product ID không khớp | Publish review | Publish bị chặn; UI nêu mismatch và yêu cầu sửa mapping hoặc dùng manual handoff |
+| Direct Post chưa qua audit | Publish review | Privacy chỉ cho giá trị provider cho phép; public bị chặn; giải thích rõ Draft/manual handoff |
+| Publish timeout sau submit | Campaign/job detail | `Đang đối chiếu`; không tạo lần publish mới cho tới khi status API/webhook xác định kết quả |
 | Metrics thiếu retention | Insights | retention hiển thị `Chưa có dữ liệu`; không có kết luận watch-time |
 | Recommendation được áp dụng | Insights/settings history | Hiện diff, version và nút `Hoàn tác`; version trước phục hồi sau rollback |
 
@@ -175,3 +186,11 @@ Không được thay giới hạn ở bảng này bằng số liệu giả hoặ
 
 1. Làm đúng hai flow TikTok và data truth/publish/metrics.
 2. Sau khi acceptance trên đạt, thiết kế lại truyện audio.
+
+## Tài liệu nền tảng đăng TikTok
+
+- [TikTok Content Posting API](https://developers.tiktok.com/products/content-posting-api/) hỗ trợ Direct Post và gửi nội dung vào Draft.
+- [TikTok Content Sharing Guidelines](https://developers.tiktok.com/docs/en/content-sharing-guidelines) quy định audit, intended use, preview, metadata/privacy/disclosure, consent, watermark và theo dõi trạng thái.
+- [TikTok Get Post Status](https://developers.tiktok.com/docs/en/content-posting-api-reference-get-video-status) định nghĩa poll/webhook và các trạng thái upload/publish.
+- [TikTok Shop Shoppable Video Integration](https://partner.tiktokshop.com/docv2/page/ng0l9170) mô tả luồng precheck, publish và bind product anchor; quyền partner/creator cần được cấp riêng.
+- [TikTok AI-generated content requirements](https://support.tiktok.com/en/using-tiktok/creating-videos/ai-generated-content) yêu cầu gắn nhãn nội dung AI thực tế/được chỉnh sửa đáng kể; video Shop có trường `is_ai_generated` riêng.
