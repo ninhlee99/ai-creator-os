@@ -150,7 +150,11 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 	// R2-W4 (R2-05): the runtime Config was read once at startup — refresh
 	// it so the value just saved through the UI takes effect now.
 	s.Cfg.RefreshEnv()
-	http.Redirect(w, r, "/settings/system?envsaved="+name, http.StatusSeeOther)
+	redirect := "/settings/system?envsaved=" + name
+	if strings.HasPrefix(name, "TIKTOK_") || name == "APIFY_API_TOKEN" {
+		redirect += "#tab-social"
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 // envNames is the allowlist of environment variables editable in Settings.
