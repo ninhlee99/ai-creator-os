@@ -139,17 +139,26 @@
 
 <h2>Kế hoạch & video sắp tới</h2>
 {{if .Upcoming}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">
-<tr><th>Ngày</th><th>Kênh</th><th>Định dạng</th><th>Chủ đề</th><th>Trạng thái</th><th>Video / ghi chú</th></tr>
+<div class="table-wrap mobile-table-scroll mobile-growth-upcoming-cards" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">
+<thead><tr><th scope="col">Ngày</th><th scope="col">Kênh</th><th scope="col">Định dạng</th><th scope="col">Chủ đề</th><th scope="col">Trạng thái</th><th scope="col">Video / ghi chú</th></tr></thead>
+<tbody>
 {{range .Upcoming}}
 <tr>
-  <td>{{.PlannedFor}}</td><td>{{.Username}}</td>
-  <td>9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
-  <td><strong>{{.Topic}}</strong>{{if .DedupAction}}<br><span class="badge badge-warn">đổi góc chống trùng</span>{{end}}</td>
-  <td><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download>Tải MP4</a>{{end}}{{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở Studio job</a>{{end}}</td>
-  <td>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</td>
+  <td data-label="Ngày"><strong>{{.PlannedFor}}</strong></td>
+  <td data-label="Kênh">{{.Username}}</td>
+  <td data-label="Định dạng">9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
+  <td data-label="Chủ đề"><strong>{{.Topic}}</strong>{{if .DedupAction}}<br><span class="badge badge-warn">đổi góc chống trùng</span>{{end}}</td>
+  <td data-label="Trạng thái"><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download>Tải MP4</a>{{end}}{{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở Studio job</a>{{end}}</td>
+  <td data-label="Video / ghi chú">
+    <div class="growth-upcoming-note-desktop">{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</div>
+    <details class="growth-upcoming-note-mobile">
+      <summary>{{if .PubNote}}Xem ghi chú{{else}}Xem hook{{end}}</summary>
+      <p>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</p>
+    </details>
+  </td>
 </tr>
 {{end}}
+</tbody>
 </table></div>
 {{else}}<div class="empty-state compact"><h3>Chưa có kế hoạch TikTok</h3></div>{{end}}
 {{end}}

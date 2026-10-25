@@ -1356,6 +1356,7 @@ details.product-manual > form > .btn { margin-top: 2px; }
 /* ---- Đợt X: bảng cuộn ngang trên mobile (không vỡ layout) ---- */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .mobile-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.growth-upcoming-note-mobile { display: none; }
 
 @media (max-width: 640px) {
   .mobile-table-scroll::before {
@@ -1525,6 +1526,88 @@ details.product-manual > form > .btn { margin-top: 2px; }
     justify-content: center;
     width: 100%;
     min-height: 42px;
+  }
+
+  .mobile-table-scroll.mobile-growth-upcoming-cards { overflow: visible; }
+  .mobile-table-scroll.mobile-growth-upcoming-cards::before { display: none; }
+  .mobile-growth-upcoming-cards .growth-upcoming-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg2);
+    box-shadow: var(--shadow);
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:first-child,
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:nth-child(4),
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:nth-child(5),
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:first-child {
+    background: var(--bg3);
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-table tbody > tr > td:last-child {
+    border-bottom: 0;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-note-desktop { display: none; }
+  .mobile-growth-upcoming-cards .growth-upcoming-note-mobile { display: block; }
+  .mobile-growth-upcoming-cards .growth-upcoming-note-mobile summary {
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .mobile-growth-upcoming-cards .growth-upcoming-note-mobile p {
+    margin: 8px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
   }
 }
 
