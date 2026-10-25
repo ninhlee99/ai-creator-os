@@ -60,7 +60,13 @@ func browserProcessExitedError(binary string, processErr error, stderr *browserS
 	if runtime.GOOS == "darwin" && processErr != nil && strings.Contains(strings.ToLower(processErr.Error()), "signal: aborted") {
 		return fmt.Errorf("macOS dừng trình duyệt %s trước khi CDP sẵn sàng; nếu MiuNova chạy trong Codex/IDE, hãy khởi chạy MiuNova từ Terminal/iTerm thường rồi thử lại", filepath.Base(binary))
 	}
+	if runtime.GOOS == "darwin" && processErr != nil {
+		return fmt.Errorf("macOS không khởi chạy được trình duyệt %s trước khi CDP sẵn sàng; nếu MiuNova đang chạy trong Codex/IDE, hãy mở lại từ Terminal/iTerm thường rồi thử lại. Chi tiết: %w", filepath.Base(binary), processErr)
+	}
 	if processErr == nil {
+		if runtime.GOOS == "darwin" {
+			return fmt.Errorf("trình duyệt %s đã thoát trước khi CDP sẵn sàng; nếu MiuNova đang chạy trong Codex/IDE, hãy mở app từ Terminal/iTerm thường rồi thử lại", filepath.Base(binary))
+		}
 		return fmt.Errorf("trình duyệt %s đã thoát trước khi CDP sẵn sàng; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary))
 	}
 	return fmt.Errorf("trình duyệt %s thoát trước khi CDP sẵn sàng: %w; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary), processErr)
