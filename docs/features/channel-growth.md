@@ -8,7 +8,7 @@ Metric cần account/video ID, provider, thời điểm và kỳ đo. Không có
 
 ## Gợi ý
 
-Chỉ so sánh video có dữ liệu cùng loại/khoảng đo. Hiển thị cỡ mẫu và nguồn. Gợi ý là thử nghiệm, không phải cam kết view, follower hay doanh thu.
+Chỉ so sánh video có dữ liệu cùng flow trên cùng kênh. Hiển thị số video baseline; dưới 3 video đối chiếu thì chỉ báo mẫu nhỏ, chưa kết luận cao/thấp. Gợi ý là thử nghiệm, không phải cam kết view, follower hay doanh thu.
 
 ## Trạng thái
 

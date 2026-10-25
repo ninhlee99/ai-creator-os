@@ -397,8 +397,10 @@ func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
 			peerCount := group.count - 1
 			if peerCount > 0 {
 				average := (group.sum - row.engagement) / float64(peerCount)
-				row.EngagementBase = fmt.Sprintf("%.1f%%", average*100)
-				if row.engagement < average {
+				row.EngagementBase = fmt.Sprintf("%.1f%% · n=%d", average*100, peerCount)
+				if peerCount < 3 {
+					row.Recommendation = fmt.Sprintf("Engagement %.1f%%; baseline mới có %d video cùng flow trên kênh, mẫu nhỏ nên chưa kết luận cao/thấp. Thử từng thay đổi và đo thêm.", row.engagement*100, peerCount)
+				} else if row.engagement < average {
 					row.Recommendation = fmt.Sprintf("Engagement %.1f%% thấp hơn baseline %.1f%% của flow này trên kênh; thử hook vào hành động sớm hơn, bỏ intro và giữ phần được người xem phản hồi.", row.engagement*100, average*100)
 				} else {
 					row.Recommendation = fmt.Sprintf("Engagement %.1f%% bằng hoặc cao hơn baseline %.1f%%; giữ format đang hiệu quả, thử đổi từng yếu tố ở video kế tiếp.", row.engagement*100, average*100)
