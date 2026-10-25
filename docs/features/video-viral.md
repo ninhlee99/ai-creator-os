@@ -15,7 +15,7 @@ Job đã qua QC có nút gửi thủ công vào TikTok Creator Inbox. App lưu t
 
 ## Giới hạn hiện tại
 
-Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Feed và tìm kiếm keyword dùng TikWM, cần kiểm tra độ phủ/freshness khi vận hành. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
+Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Feed mặc định đã nhận dữ liệu TikWM trong lần kiểm tra local gần nhất. Tìm kiếm keyword hiện bị TikWM Cloudflare challenge chặn HTTP 403; app báo rõ và không giả vờ lọc caption để thay thế tìm kiếm trên TikTok. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
 
 Server xác minh nguồn đã được đánh dấu video nhảy và Radar đã thu thập trong 7 ngày trước khi phân tích hoặc tạo job; bỏ qua nút UI không thể dùng nguồn chưa xác nhận hoặc đã cũ.
 

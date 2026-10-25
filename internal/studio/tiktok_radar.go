@@ -2,11 +2,16 @@ package studio
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -54,6 +59,12 @@ func (v TikTokTrendVideo) SoundTitle() string {
 }
 
 const TikTokTrendSource = "TikWM — TikTok feed và tìm kiếm video"
+
+var tikTokRadarHTTPTransport = func() *http.Transport {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Resolver: &net.Resolver{PreferGo: true}}).DialContext
+	return transport
+}()
 
 // Cache TTL
 const (
@@ -289,6 +300,43 @@ func fetchLiveTikTokSearch(ctx context.Context, topic string) ([]TikTokTrendVide
 }
 
 func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTrendVideo, error) {
+	req, err := newTikTokRadarRequest(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{Timeout: 20 * time.Second, Transport: tikTokRadarHTTPTransport}
+	resp, err := client.Do(req)
+	if err != nil && runtime.GOOS == "darwin" && strings.Contains(err.Error(), "x509: OSStatus -26276") {
+		fallbackClient, fallbackErr := newTikTokRadarFallbackClient()
+		if fallbackErr != nil {
+			return nil, fmt.Errorf("TikTok Radar không truy cập được xác minh chứng chỉ macOS; CA bundle fallback lỗi: %v: %w", fallbackErr, err)
+		}
+		retry, requestErr := newTikTokRadarRequest(ctx, endpoint)
+		if requestErr != nil {
+			return nil, requestErr
+		}
+		resp, err = fallbackClient.Do(retry)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+			if isTikTokRadarCloudflareChallenge(resp.Header, body) {
+				return nil, fmt.Errorf("TikWM đang chặn endpoint tìm kiếm tự động bằng Cloudflare challenge (HTTP 403); feed mặc định vẫn có thể dùng")
+			}
+		}
+		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)
+	}
+
+	return parseTikTokRadarFeed(resp.Body)
+}
+
+func newTikTokRadarRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -296,19 +344,35 @@ func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTre
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Referer", "https://www.tikwm.com/")
+	return req, nil
+}
 
-	client := &http.Client{Timeout: 6 * time.Second}
-	resp, err := client.Do(req)
+// newTikTokRadarFallbackClient retries only the macOS trustd sandbox failure
+// with the OS CA bundle. TLS certificate and hostname checks stay enabled.
+func newTikTokRadarFallbackClient() (*http.Client, error) {
+	if runtime.GOOS != "darwin" {
+		return nil, fmt.Errorf("fallback CA bundle chỉ hỗ trợ macOS")
+	}
+	pem, err := os.ReadFile("/etc/ssl/cert.pem")
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("CA bundle macOS không có chứng chỉ hợp lệ")
 	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Resolver: &net.Resolver{PreferGo: true}}).DialContext
+	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}
+	return &http.Client{Timeout: 20 * time.Second, Transport: transport}, nil
+}
 
-	return parseTikTokRadarFeed(resp.Body)
+func isTikTokRadarCloudflareChallenge(header http.Header, body []byte) bool {
+	if strings.EqualFold(strings.TrimSpace(header.Get("cf-mitigated")), "challenge") {
+		return true
+	}
+	response := strings.ToLower(string(body))
+	return strings.Contains(response, "challenges.cloudflare.com") && strings.Contains(response, "just a moment")
 }
 
 func parseTikTokRadarFeed(r io.Reader) ([]TikTokTrendVideo, error) {
