@@ -61,7 +61,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Notice", r.URL.Query().Get("ok"),
 		"TrendSource", source, "SourceNote", sourceNote, "TrendErr", errText(err),
 		"RankNote", tikTokRadarRankNote(videos),
-		"ShowApifySetup", source != studio.TikTokApifySource,
+		"ShowApifySetup", configuredSource != studio.TikTokApifySource,
 	)
 	if r.Header.Get("HX-Request") == "true" {
 		s.renderStudioTrendResults(w, data)

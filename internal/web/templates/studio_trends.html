@@ -8,7 +8,14 @@
         <div>
           <span class="badge badge-info">RADAR · TIKTOK</span>
           <h1 id="studio-top" class="mt-2">Video đang hot</h1>
-          <p class="hint mt-1 max-w-2xl">{{if .Topic}}Top video theo chủ đề đã chọn, xếp theo lượt xem rồi lượt tym.{{else}}Khám phá video TikTok Việt Nam; chọn chủ đề để lấy top 10 theo view và tym.{{end}} Xác nhận video nhảy trước khi dùng âm thanh.</p>
+          <p class="hint mt-1 max-w-2xl">
+            {{if eq .TrendSource "TikTok Business Discovery API"}}
+              {{if .Topic}}Video theo chủ đề đã chọn, xếp theo thứ tự TikTok Discovery.{{else}}Video phổ biến tại Việt Nam, xếp theo thứ tự TikTok Discovery.{{end}}
+            {{else}}
+              {{if .Topic}}Top video theo chủ đề đã chọn, xếp theo lượt xem rồi lượt tym.{{else}}Khám phá video TikTok Việt Nam; chọn chủ đề để lấy top 10 theo view và tym.{{end}}
+            {{end}}
+            Xác nhận video nhảy trước khi dùng âm thanh.
+          </p>
         </div>
       </div>
       <span class="badge badge-ok">{{if .Topic}}Tìm theo chủ đề{{else}}🇻🇳 Việt Nam{{end}}</span>
@@ -97,6 +104,7 @@
                 class="aspect-[9/16] w-full rounded-xl bg-slate-100"></iframe>
       </details>
       {{end}}
+      {{if or .PlayCountKnown .DiggCountKnown}}
       <div class="grid grid-cols-2 gap-2">
         <div class="rounded-xl bg-indigo-50 px-3 py-2">
           <span class="block text-[11px] font-semibold uppercase tracking-wider text-indigo-500">Lượt xem</span>
@@ -107,6 +115,7 @@
           <strong class="text-lg text-fuchsia-950">{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</strong>
         </div>
       </div>
+      {{end}}
       <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
         {{if .CommentKnown}}<span>{{.Comments}} bình luận</span>{{end}}
         {{if .ShareCountKnown}}<span>{{.Shares}} chia sẻ</span>{{end}}
