@@ -55,7 +55,7 @@ func browserProcessExitedError(binary string, processErr error, stderr *browserS
 		return fmt.Errorf("trình duyệt %s bị macOS chặn tại Crashpad/Mach bootstrap (lỗi 141): hãy mở MiuNova từ Terminal/iTerm trong phiên desktop rồi thử lại", filepath.Base(binary))
 	}
 	if runtime.GOOS == "darwin" && stderr.hasMacOSMissingExecutable() {
-		return fmt.Errorf("macOS không mở được ứng dụng %s (-10827: kLSNoExecutableErr); cài lại trình duyệt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium còn nguyên vẹn", filepath.Base(binary))
+		return fmt.Errorf("macOS LaunchServices không mở được ứng dụng %s (-10827: kLSNoExecutableErr); nếu MiuNova chạy trong Codex/IDE, hãy mở ứng dụng từ Terminal/iTerm thường rồi thử lại; nếu vẫn lỗi, cài lại trình duyệt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium còn nguyên vẹn", filepath.Base(binary))
 	}
 	if processErr == nil {
 		return fmt.Errorf("trình duyệt %s đã thoát trước khi CDP sẵn sàng; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary))
