@@ -4,7 +4,7 @@ Growth hỗ trợ cải thiện hai flow video TikTok; hiện chưa phải flow 
 
 ## Luồng dữ liệu
 
-Metric cần account/video ID, provider, thời điểm và kỳ đo. Không có nguồn đọc được thì trạng thái là chưa có dữ liệu. Job chưa đăng không được tính là hiệu quả.
+Metric cần account/video ID, provider, thời điểm và kỳ đo. Không có nguồn đọc được thì trạng thái là chưa có dữ liệu. Job chưa đăng không được tính là hiệu quả. Video thủ công gắn vào job chỉ được dùng để ghép đơn khi video ID xuất hiện trong snapshot `video.list` mới của đúng kênh; trước xác minh, đơn giữ trạng thái chưa ghép.
 
 ## Gợi ý
 

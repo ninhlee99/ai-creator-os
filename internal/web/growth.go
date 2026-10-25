@@ -54,31 +54,33 @@ type growthVideoMetricRow struct {
 }
 
 type growthStudioVideoRow struct {
-	accountID       int64
-	viewsValue      int64
-	engagement      float64
-	engagementKnown bool
-	Username        string
-	JobID           string
-	Title           string
-	KindLabel       string
-	VideoID         string
-	URL             string
-	Views           string
-	Likes           string
-	Comments        string
-	Shares          string
-	TakenAt         string
-	HasMetrics      bool
-	AttributionID   string
-	Orders          accesstrade.OrderAttributionSummary
-	OrdersKnown     bool
-	OrdersSyncedAt  string
-	EngagementRate  string
-	EngagementBase  string
-	OrderPerView    string
-	Recommendation  string
-	SalesAdvice     string
+	accountID             int64
+	viewsValue            int64
+	engagement            float64
+	engagementKnown       bool
+	Username              string
+	JobID                 string
+	Title                 string
+	KindLabel             string
+	VideoID               string
+	URL                   string
+	Views                 string
+	Likes                 string
+	Comments              string
+	Shares                string
+	TakenAt               string
+	HasMetrics            bool
+	MetricsFresh          bool
+	TikTokAccountVerified bool
+	AttributionID         string
+	Orders                accesstrade.OrderAttributionSummary
+	OrdersKnown           bool
+	OrdersSyncedAt        string
+	EngagementRate        string
+	EngagementBase        string
+	OrderPerView          string
+	Recommendation        string
+	SalesAdvice           string
 }
 
 type growthAlertRow struct {
@@ -247,25 +249,27 @@ func (s *Server) growthView() map[string]any {
 								row.AttributionID = strings.TrimSpace(params.AffiliateAttributionID)
 							}
 						}
-						if row.AttributionID != "" && s.AT != nil && atOrdersSynced {
-							if orders, err := s.AT.OrderAttributionBySub2(row.AttributionID); err == nil {
-								row.Orders = orders
-								row.OrdersKnown = true
-								row.OrdersSyncedAt = shortMetricTimeString(atOrdersSyncedAt)
-							}
-						}
 					}
 					if metric, found, err := s.Growth.LatestVideoMetric(account.ID, publication.PlatformVideoID); err == nil && found {
 						row.Views, row.Likes = metricLabel(metric.Views), metricLabel(metric.Likes)
 						row.Comments, row.Shares = metricLabel(metric.Comments), metricLabel(metric.Shares)
 						row.TakenAt, row.HasMetrics = shortMetricTime(metric.TakenAt), true
+						row.MetricsFresh = isFreshStudioTikTokMetric(metric.TakenAt, time.Now())
+						row.TikTokAccountVerified = row.MetricsFresh && metric.PlatformVideoID == publication.PlatformVideoID
 						if metric.Views != nil {
 							row.viewsValue = *metric.Views
 						}
-						if metric.Views != nil && *metric.Views > 0 && metric.Likes != nil && metric.Comments != nil && metric.Shares != nil {
+						if row.MetricsFresh && metric.Views != nil && *metric.Views > 0 && metric.Likes != nil && metric.Comments != nil && metric.Shares != nil {
 							row.engagement = (float64(*metric.Likes) + float64(*metric.Comments) + float64(*metric.Shares)) / float64(*metric.Views)
 							row.engagementKnown = true
 							row.EngagementRate = fmt.Sprintf("%.1f%%", row.engagement*100)
+						}
+					}
+					if row.KindLabel == "Affiliate TikTok" && row.TikTokAccountVerified && row.AttributionID != "" && s.AT != nil && atOrdersSynced {
+						if orders, err := s.AT.OrderAttributionBySub2(row.AttributionID); err == nil {
+							row.Orders = orders
+							row.OrdersKnown = true
+							row.OrdersSyncedAt = shortMetricTimeString(atOrdersSyncedAt)
 						}
 					}
 					studioVideoMetrics = append(studioVideoMetrics, row)
@@ -317,6 +321,16 @@ func (s *Server) growthView() map[string]any {
 	}
 	ctx["Today"] = today
 	return ctx
+}
+
+const studioTikTokMetricFreshness = 14 * 24 * time.Hour
+
+func isFreshStudioTikTokMetric(takenAt, now time.Time) bool {
+	if takenAt.IsZero() || now.IsZero() {
+		return false
+	}
+	age := now.Sub(takenAt)
+	return age >= -5*time.Minute && age <= studioTikTokMetricFreshness
 }
 
 // followerTrendAdvice compares fresh TikTok follower snapshots at least a
@@ -408,12 +422,22 @@ func annotateStudioVideoPerformance(rows []growthStudioVideoRow) {
 			} else {
 				row.Recommendation = "Chưa có video cùng flow trên kênh để lập baseline; giữ snapshot này làm mốc so sánh."
 			}
+		} else if row.HasMetrics && !row.MetricsFresh {
+			row.Recommendation = "Snapshot counters đã cũ; đồng bộ lại trước khi đánh giá hiệu quả video."
 		} else if row.HasMetrics {
 			row.Recommendation = "TikTok chưa trả đủ views, likes, comments, shares để tính engagement; chưa kết luận hiệu quả video."
 		} else {
 			row.Recommendation = "Chưa có counters TikTok cho video; đồng bộ lại sau khi đăng."
 		}
 		if row.KindLabel != "Affiliate TikTok" {
+			continue
+		}
+		if row.AttributionID == "" {
+			row.SalesAdvice = "Job chưa có mã tracking riêng; chưa thể ghép đơn cho video."
+			continue
+		}
+		if !row.TikTokAccountVerified {
+			row.SalesAdvice = "Chưa xác minh video thuộc kênh TikTok; chưa ghép đơn. Hãy đồng bộ Growth sau khi video xuất hiện công khai."
 			continue
 		}
 		if !row.OrdersKnown {
