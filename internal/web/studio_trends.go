@@ -70,6 +70,10 @@ func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Req
 		redirect("err", "Yêu cầu xác nhận video nhảy không hợp lệ.")
 		return
 	}
+	if verifiedValue == "1" && r.PostFormValue("confirm_dance_content") != "1" {
+		redirect("err", "Mở video và xác nhận đây thực sự là video nhảy trước khi dùng âm thanh.")
+		return
+	}
 	if err := s.Studio.SetTikTokRadarDanceVerification(r.Context(), r.PathValue("videoID"), verifiedValue == "1"); err != nil {
 		redirect("err", err.Error())
 		return

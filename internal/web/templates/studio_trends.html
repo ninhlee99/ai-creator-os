@@ -92,7 +92,13 @@
       <form method="post" action="/studio/trends/{{.VideoID}}/dance" class="border-t border-slate-200 pt-2">
         <input type="hidden" name="topic" value="{{$.Topic}}">
         {{if .DanceVerified}}<input type="hidden" name="verified" value="0"><button type="submit" class="btn btn-secondary btn-sm">Bỏ xác nhận video nhảy</button>
-        {{else}}<input type="hidden" name="verified" value="1"><button type="submit" class="btn btn-secondary btn-sm">Xác nhận video nhảy</button>{{end}}
+        {{else}}
+        <p class="hint mb-2">Chỉ xác nhận nếu đã xem và clip thực sự có người nhảy/vũ đạo. Caption hoặc tên sound không đủ.</p>
+        <label class="mb-2 flex items-start gap-2 text-sm">
+          <input type="checkbox" name="confirm_dance_content" value="1" required class="mt-1">
+          <span>Tôi đã xem video TikTok này và xác nhận nội dung chính là video nhảy.</span>
+        </label>
+        <input type="hidden" name="verified" value="1"><button type="submit" class="btn btn-secondary btn-sm">Xác nhận video nhảy</button>{{end}}
       </form>
     </article>
     {{end}}

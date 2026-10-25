@@ -4,7 +4,7 @@
 
 1. TikTok Radar thu thập feed video Việt Nam qua TikWM hoặc tìm video TikTok theo keyword; lưu tối đa 2.000 nguồn gần nhất và snapshot chỉ số trong SQLite.
 2. Có thể lọc feed đã thu thập theo từ khóa trong caption TikTok; mọi từ trong chủ đề phải xuất hiện trong caption, không phân biệt dấu. Đây là lọc cục bộ, không phải tìm kiếm từ khóa trực tiếp trên TikTok; không có kết quả chỉ có nghĩa feed hiện tại không khớp.
-3. Chọn và tự xác nhận một video nhảy từ kết quả Radar.
+3. Mở video và tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; hiển thị lượt xem, lượt thích, bình luận, chia sẻ, tốc độ tăng view và tương tác/view mà Radar có cho video đó.
 6. Tải video, kiểm tra và lấy audio đúng từ nguồn.
