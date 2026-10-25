@@ -61,7 +61,7 @@
 {{if .TikTokMetricsAvailable}}<p class="hint">TikTok Display API trả số follower và counters công khai của video. Retention, thời gian xem và nhân khẩu học chưa có dữ liệu qua quyền hiện tại.</p>{{end}}
 
 <h2>Kênh TikTok</h2>
-<div class="table-wrap"><table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0"><table class="growth-accounts-table">
 <tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Followers</th><th>Video công khai</th><th></th></tr>
 {{range .Rows}}
 <tr>
@@ -79,7 +79,7 @@
 <h2>Hiệu quả video theo job Studio</h2>
 <p class="hint">Liên kết URL công khai ở job Studio sau khi đăng. Chỉ ghép đơn khi video xuất hiện trong dữ liệu TikTok mới của đúng kênh. Engagement = like + comment + share trên view, so với video cùng flow trên cùng kênh. Watch-time, nhân khẩu học và click chưa có nguồn.</p>
 {{if .StudioVideoMetrics}}
-<div class="table-wrap"><table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0"><table class="growth-job-table">
 <tr><th>Kênh</th><th>Flow</th><th>Video / job</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Engagement</th><th>Đơn AccessTrade / view</th><th>Nhận định</th><th>Cập nhật</th></tr>
 {{range .StudioVideoMetrics}}
 <tr>
@@ -114,7 +114,7 @@
 
 <h2>Video TikTok có counters</h2>
 {{if .VideoMetrics}}
-<div class="table-wrap"><table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Số liệu video TikTok" tabindex="0"><table class="growth-video-table">
 <tr><th>Kênh</th><th>Video</th><th>Ngày đăng</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Cập nhật</th></tr>
 {{range .VideoMetrics}}
 <tr>
@@ -130,14 +130,14 @@
 
 <h2>Cảnh báo & sức khỏe kênh</h2>
 {{if .Alerts}}
-<div class="table-wrap"><table><tr><th>Kênh</th><th>Nội dung</th><th>Đã xử lý</th></tr>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Cảnh báo kênh TikTok" tabindex="0"><table class="growth-alerts-table"><tr><th>Kênh</th><th>Nội dung</th><th>Đã xử lý</th></tr>
 {{range .Alerts}}<tr><td>{{.Username}}</td><td><span class="badge badge-{{if eq .Severity "critical"}}err{{else if eq .Severity "warn"}}warn{{else}}info{{end}}">{{.Kind}}</span> {{.Message}}</td><td>{{.ActionTaken}}</td></tr>{{end}}
 </table></div>
 {{else}}<p class="empty">Chưa có cảnh báo tăng trưởng.</p>{{end}}
 
 <h2>Kế hoạch & video sắp tới</h2>
 {{if .Upcoming}}
-<div class="table-wrap"><table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">
 <tr><th>Ngày</th><th>Kênh</th><th>Định dạng</th><th>Chủ đề</th><th>Trạng thái</th><th>Video / ghi chú</th></tr>
 {{range .Upcoming}}
 <tr>

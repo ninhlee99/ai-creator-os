@@ -1322,6 +1322,11 @@ details.product-manual > form > .btn { margin-top: 2px; }
   .products-table-orders { min-width: 940px; }
   .products-table-catalog { min-width: 1120px; }
   .products-table-campaigns td:last-child { white-space: nowrap; }
+  .growth-accounts-table { min-width: 700px; }
+  .growth-job-table { min-width: 1280px; }
+  .growth-video-table { min-width: 920px; }
+  .growth-alerts-table { min-width: 620px; }
+  .growth-upcoming-table { min-width: 860px; }
 }
 
 /* ---- Responsive Mobile & Tablet Drawer, iOS zoom, Touch Targets ---- */
