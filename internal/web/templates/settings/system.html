@@ -17,11 +17,11 @@
 {{if .EnvErr}}<p class="err">{{.EnvErr}}</p>{{end}}
 
 <!-- Settings Top Tab Navigation (4 Views) -->
-<nav class="tabs settings-content-tabs" style="margin: 16px 0 20px 0;" aria-label="Mục cài đặt hệ thống">
-  <a href="#tab-apikeys" id="tab-btn-apikeys" class="active" onclick="switchSettingsTab('apikeys')">🔑 Khóa API</a>
-  <a href="#tab-social" id="tab-btn-social" onclick="switchSettingsTab('social')">🌐 Kênh mạng xã hội</a>
-  <a href="#tab-webai" id="tab-btn-webai" onclick="switchSettingsTab('webai')">🤖 Tài khoản AI</a>
-  <a href="#tab-system" id="tab-btn-system" onclick="switchSettingsTab('system')">⚙️ Vận hành</a>
+<nav class="tabs settings-content-tabs" style="margin: 16px 0 20px 0;" role="tablist" aria-label="Mục cài đặt hệ thống">
+  <a href="#tab-apikeys" id="tab-btn-apikeys" role="tab" aria-controls="panel-apikeys" aria-selected="true" tabindex="0" class="active" onclick="switchSettingsTab('apikeys')">🔑 Khóa API</a>
+  <a href="#tab-social" id="tab-btn-social" role="tab" aria-controls="panel-social" aria-selected="false" tabindex="-1" onclick="switchSettingsTab('social')">🌐 Kênh mạng xã hội</a>
+  <a href="#tab-webai" id="tab-btn-webai" role="tab" aria-controls="panel-webai" aria-selected="false" tabindex="-1" onclick="switchSettingsTab('webai')">🤖 Tài khoản AI</a>
+  <a href="#tab-system" id="tab-btn-system" role="tab" aria-controls="panel-system" aria-selected="false" tabindex="-1" onclick="switchSettingsTab('system')">⚙️ Vận hành</a>
 </nav>
 
 <!-- Web AI account pool: Muse AI and Google Flow. -->
@@ -106,14 +106,33 @@ function switchSettingsTab(tab) {
     var btn = document.getElementById('tab-btn-' + p);
     if (el) el.style.display = (p === tab) ? 'block' : 'none';
     if (btn) {
-      if (p === tab) btn.classList.add('active');
-      else btn.classList.remove('active');
+      var active = p === tab;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
     }
   });
   if (history.replaceState) {
     history.replaceState(null, null, '#tab-' + tab);
   }
 }
+
+document.querySelectorAll('.settings-content-tabs [role="tab"]').forEach(function(btn) {
+  btn.addEventListener('keydown', function(event) {
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.settings-content-tabs [role="tab"]'));
+    var index = tabs.indexOf(btn);
+    var nextIndex = index;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = tabs.length - 1;
+    else return;
+    event.preventDefault();
+    var nextTab = tabs[nextIndex];
+    nextTab.focus();
+    switchSettingsTab(nextTab.id.replace('tab-btn-', ''));
+  });
+});
 
 var webAIAccountsPreviousFocus = null;
 function openWebAIAccountsModal(trigger) {

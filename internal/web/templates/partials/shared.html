@@ -14,11 +14,11 @@ each page includes only what it uses. */}}
 
 {{/* Sub-nav across the 5 settings sub-pages. .SettingsPage selects active. */}}
 {{define "settings-nav"}}
-<nav class="tabs" role="tablist" aria-label="Cài đặt">
-  <a href="/settings/system"{{if eq .SettingsPage "system"}} class="active"{{end}}>⚙️ Hệ thống</a>
-  <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active"{{end}}>🛒 Accesstrade</a>
-  <a href="/settings/providers"{{if eq .SettingsPage "providers"}} class="active"{{end}}>🔀 Thứ tự AI</a>
-  <a href="/settings/safety"{{if eq .SettingsPage "safety"}} class="active"{{end}}>🛡️ An toàn</a>
+<nav class="tabs" aria-label="Các mục cài đặt">
+  <a href="/settings/system"{{if eq .SettingsPage "system"}} class="active" aria-current="page"{{end}}>⚙️ Hệ thống</a>
+  <a href="/settings/accesstrade"{{if eq .SettingsPage "accesstrade"}} class="active" aria-current="page"{{end}}>🛒 Accesstrade</a>
+  <a href="/settings/providers"{{if eq .SettingsPage "providers"}} class="active" aria-current="page"{{end}}>🔀 Thứ tự AI</a>
+  <a href="/settings/safety"{{if eq .SettingsPage "safety"}} class="active" aria-current="page"{{end}}>🛡️ An toàn</a>
 </nav>
 {{end}}
 
