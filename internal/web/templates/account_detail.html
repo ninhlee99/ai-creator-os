@@ -5,11 +5,8 @@
   <div>
     <h1 style="margin:0 0 4px">{{.Acct.Username}}</h1>
   </div>
-  <div style="display:flex;gap:8px;align-items:center">
+  <div style="display:flex;flex-wrap:wrap;justify-content:flex-start;gap:8px;align-items:center">
     <a href="/accounts/{{$id}}/edit" class="btn btn-primary btn-sm" style="font-weight:700">✏️ Chỉnh sửa kênh</a>
-    <form method="post" action="/accounts/{{$id}}/delete" data-confirm="Bạn có chắc chắn muốn XÓA VĨNH VIỄN kênh @{{.Acct.Username}}? Thao tác này không thể hoàn tác!" style="display:inline;margin:0">
-      <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--err)" title="Xóa kênh vĩnh viễn">🗑️ Xóa kênh</button>
-    </form>
     <a href="/accounts" class="btn btn-secondary btn-sm">← Danh sách kênh</a>
   </div>
 </div>
@@ -26,10 +23,7 @@
 
 <div class="grid2">
 <div class="form-card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <h2 style="margin:0;border:none;padding:0">Thông tin</h2>
-    <a href="/accounts/{{$id}}/edit" class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:3px 8px">✏️ Chỉnh sửa</a>
-  </div>
+  <h2 style="margin:0 0 8px;border:none;padding:0">Thông tin</h2>
   <dl class="kv">
     <dt>Chủ đề</dt><dd>{{if .Acct.Niche}}{{.Acct.Niche}}{{else}}—{{end}}</dd>
     <dt>Gợi ý ban đầu</dt><dd>{{if .Acct.NicheHint}}{{.Acct.NicheHint}}{{else}}—{{end}}</dd>
