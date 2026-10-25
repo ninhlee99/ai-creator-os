@@ -1299,6 +1299,30 @@ details.product-manual > form > .btn { margin-top: 2px; }
 
 /* ---- Đợt X: bảng cuộn ngang trên mobile (không vỡ layout) ---- */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mobile-table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .mobile-table-scroll::before {
+    content: "Vuốt ngang để xem các cột còn lại →";
+    display: block;
+    padding: 7px 10px;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .mobile-table-scroll table { margin: 0; }
+  .products-table-shelf { min-width: 820px; }
+  .products-table-campaigns { min-width: 640px; }
+  .products-table-links { min-width: 780px; }
+  .products-table-hunted { min-width: 660px; }
+  .products-table-orders { min-width: 940px; }
+  .products-table-catalog { min-width: 1120px; }
+  .products-table-campaigns td:last-child { white-space: nowrap; }
+}
 
 /* ---- Responsive Mobile & Tablet Drawer, iOS zoom, Touch Targets ---- */
 .sidebar-backdrop {

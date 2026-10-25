@@ -87,8 +87,8 @@
   {{if .Shelf}}<span class="badge badge-ok">{{len .Shelf}} sản phẩm</span>{{end}}
 </div>
 {{if .Shelf}}
-<div class="table-wrap">
-<table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Sản phẩm trong kệ hàng" tabindex="0">
+<table class="products-table-shelf">
   <tr><th>Sản phẩm</th><th>Danh mục</th><th>Giá</th><th>Hoa hồng</th>
       <th title="Điểm tính từ hoa hồng và nguồn dữ liệu hiện có">Điểm xếp hạng</th><th>Trạng thái</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Shelf}}
@@ -141,8 +141,8 @@
     <button type="submit" class="btn btn-secondary btn-sm">Tải chiến dịch</button>
   </form>
   {{if .AT.Campaigns}}
-  <div class="table-wrap">
-<table>
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Chiến dịch Accesstrade" tabindex="0">
+<table class="products-table-campaigns">
     <tr><th>Chiến dịch</th><th>Duyệt</th><th>Hoa hồng</th><th></th></tr>
     {{range .AT.Campaigns}}
     <tr>
@@ -163,8 +163,8 @@
 {{if .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Link đã tạo</h2>
-  <div class="table-wrap">
-<table>
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Link affiliate đã tạo" tabindex="0">
+<table class="products-table-links">
     <tr><th>Sản phẩm</th><th>Chiến dịch</th><th>Link theo dõi</th><th></th></tr>
     {{range .AT.Links}}
     <tr>
@@ -191,8 +191,8 @@
   {{else}}
   {{end}}
   {{if .AT.Hunted}}
-  <div class="table-wrap">
-<table>
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Kết quả săn sản phẩm" tabindex="0">
+<table class="products-table-hunted">
     <tr><th>Sản phẩm</th><th>Giá</th><th>Hoa hồng</th><th>Danh mục</th></tr>
     {{range .AT.Hunted}}
     <tr>
@@ -231,8 +231,8 @@
   </p>
   {{end}}
   {{if .AT.Orders}}
-  <div class="table-wrap">
-<table>
+  <div class="table-wrap mobile-table-scroll" role="region" aria-label="Đối soát đơn hàng" tabindex="0">
+<table class="products-table-orders">
     <tr><th>Mã đơn</th><th>Chiến dịch</th><th>Sub1 · sản phẩm</th><th>Sub2 · mã video</th><th>Hoa hồng</th><th>Trạng thái</th><th>Ngày đặt</th></tr>
     {{range .AT.Orders}}
     <tr>
@@ -543,8 +543,8 @@ function atOrderSync() {
   </div>
   <span class="badge badge-ok">{{len .Results}} sản phẩm</span>
 </div>
-<div class="table-wrap">
-<table>
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Kết quả sản phẩm" tabindex="0">
+<table class="products-table-catalog">
   <tr><th>Sản phẩm</th><th>Shop / Nguồn</th><th>Giá</th><th>Hoa hồng</th><th title="AccessTrade units_sold là tổng số bán; feed không nêu kỳ đo.">Đã bán</th><th>Đánh giá</th><th>Quyết định</th><th style="text-align:right">Thao tác</th></tr>
   {{range .Results}}
   <tr>
