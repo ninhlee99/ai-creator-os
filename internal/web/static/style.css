@@ -3076,21 +3076,49 @@ video.player, .media-preview-container video {
 
 @media (max-width: 640px) {
   .studio-step-nav {
-    display: flex;
-    overflow-x: auto;
-    padding: 2px 2px 8px;
-    margin-right: -4px;
-    overscroll-behavior-x: contain;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 0;
+    margin-right: 0;
+    overflow: visible;
   }
   .studio-step-nav a {
-    flex: 0 0 188px;
-    padding: 11px 12px;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 8px;
+  }
+  .studio-step-nav .studio-step-index {
+    flex-basis: 28px;
+    width: 28px;
+    height: 28px;
+  }
+  .studio-step-copy strong {
+    font-size: 12px;
+  }
+  .studio-step-copy small {
+    font-size: 10px;
+  }
+  .studio-step-arrow {
+    display: none;
   }
   .studio-step-card {
     padding: 16px;
   }
   .studio-step-title h3 {
     font-size: 15px;
+  }
+}
+
+@media (max-width: 380px) {
+  .studio-step-nav {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .studio-step-nav a {
+    padding: 8px 10px;
+  }
+  .studio-step-arrow {
+    display: inline;
   }
 }
 
