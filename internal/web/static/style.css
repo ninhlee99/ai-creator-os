@@ -1293,6 +1293,23 @@ ul.clean li:last-child { border-bottom: none; }
 /* ---- Styled file picker (studio/settings uploads) ---- */
 .file-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .file-pick input[type=file] { display: none; }
+.studio-model-file-pick { position: relative; }
+.file-pick input.studio-model-upload-input {
+  display: block;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.studio-model-upload-input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 .file-pick .file-name { color: var(--muted); font-size: var(--fs-sm);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   max-width: 320px; }

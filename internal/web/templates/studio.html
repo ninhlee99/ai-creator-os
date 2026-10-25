@@ -188,8 +188,13 @@
         {{end}}
 
         <div class="field" style="margin-bottom:12px">
-          <label style="font-weight:700;font-size:12.5px">Ảnh người mẫu</label>
-          <input type="file" name="model_photos" accept="image/*" multiple>
+          <label style="font-weight:700;font-size:12.5px">Hoặc tải ảnh mẫu khác</label>
+          <div class="file-pick studio-model-file-pick">
+            <input id="cr-model-photos" class="studio-model-upload-input" type="file" name="model_photos" accept="image/*" multiple aria-label="Tải ảnh mẫu khác" aria-describedby="cr-model-photo-help" onchange="onStudioModelPhotosPicked(this)">
+            <label for="cr-model-photos" class="btn btn-secondary btn-sm">📁 Chọn ảnh</label>
+            <span class="file-name" id="cr-model-photo-label" aria-live="polite">Chưa chọn ảnh</span>
+          </div>
+          <p class="hint" id="cr-model-photo-help" style="margin:6px 0 0">Ảnh tải lên sẽ thay ảnh thư viện đã chọn trong lần này; ảnh mới được lưu cho kênh.</p>
         </div>
 
         {{if .Prefill.SourceMusicVideoURL}}<p class="hint" style="margin-bottom:12px">Sound lấy từ Radar: <strong>{{if .Prefill.SourceMusicTitle}}{{.Prefill.SourceMusicTitle}}{{else}}Sound gốc video TikTok{{end}}</strong> · <a href="{{.Prefill.SourceMusicVideoURL}}" target="_blank" rel="noopener noreferrer">mở video nhảy</a>. Studio sẽ tách và ghép âm thanh gốc vào affiliate.</p>{{else}}<p class="hint" style="margin-bottom:12px">Bắt buộc: chọn video nhảy có sound trong <a href="/studio/trends">Radar TikTok</a>. Studio sẽ tách âm thanh và ghép vào affiliate.</p>{{end}}
@@ -304,6 +309,19 @@ function onStudioModelToggle(cb) {
     if (badge) { badge.textContent = 'Bấm để chọn'; badge.style.color = 'var(--muted)'; }
   }
   updateStudioModelCount();
+}
+
+function onStudioModelPhotosPicked(input) {
+  var label = document.getElementById('cr-model-photo-label');
+  if (!label) return;
+  var files = input && input.files ? input.files : [];
+  if (!files.length) {
+    label.textContent = 'Chưa chọn ảnh';
+  } else if (files.length > 1) {
+    label.textContent = files.length + ' ảnh đã chọn';
+  } else {
+    label.textContent = files[0].name;
+  }
 }
 
 function toggleAllStudioModels(state) {
