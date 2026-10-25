@@ -3069,7 +3069,7 @@ video.player, .media-preview-container video {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 16px;
-  scroll-margin-top: 24px;
+  scroll-margin-top: 72px;
 }
 .studio-step-heading {
   display: flex;
@@ -3094,6 +3094,7 @@ video.player, .media-preview-container video {
 }
 
 @media (max-width: 640px) {
+  .studio-step-card { scroll-margin-top: 80px; }
   .studio-step-nav {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
@@ -3129,6 +3130,7 @@ video.player, .media-preview-container video {
 }
 
 @media (max-width: 380px) {
+  .studio-step-card { scroll-margin-top: 112px; }
   .studio-step-nav {
     grid-template-columns: 1fr;
     gap: 6px;
