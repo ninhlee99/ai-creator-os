@@ -17,6 +17,10 @@ func (s *Server) handleStudioTikTokDraft(w http.ResponseWriter, r *http.Request)
 		seeOther(w, r, "/studio/jobs?tab=done&id="+url.QueryEscape(jobID)+"&"+key+"="+url.QueryEscape(message)+"#job-"+url.QueryEscape(jobID))
 	}
 	fail := func(message string) { redirect("err", message) }
+	if r.PostFormValue("publish_consent") != "yes" {
+		fail("Xác nhận đã xem trước và đồng ý gửi video vào TikTok Draft trước khi tiếp tục.")
+		return
+	}
 	if s.Studio == nil {
 		fail("Studio chưa sẵn sàng.")
 		return
@@ -70,6 +74,7 @@ func (s *Server) handleStudioTikTokDraft(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
+	s.Studio.AppendLog(jobID, "Người vận hành xác nhận đã xem trước video và đồng ý gửi vào TikTok Creator Inbox dưới dạng Draft; chưa đăng công khai.")
 
 	title := job.Title
 	if job.Kind == studio.KindAffiliate {

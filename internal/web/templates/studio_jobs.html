@@ -451,8 +451,13 @@ function copyAffiliateTrackingLink(button) {
   {{else if not .TikTokDraftConfigured}}
     <small style="display:block;margin-top:5px;color:var(--muted)">Chưa kết nối Draft API cho tài khoản này. <a href="/publishers">Kết nối TikTok ↗</a></small>
   {{else}}
+    <div style="font-size:11px;margin-top:5px">Tài khoản đích: <strong>@{{.TikTokDraftUser}}</strong></div>
     <form method="post" action="/studio/jobs/{{.ID}}/tiktok-draft" style="margin-top:6px">
-      <button class="btn btn-primary btn-sm" type="submit" style="width:100%;font-weight:700">{{if eq .TikTokDraftStatus "failed"}}Thử gửi lại Draft{{else}}Gửi vào TikTok Draft{{end}}</button>
+      <label style="display:flex;align-items:flex-start;gap:7px;margin:7px 0;font-size:10.5px;line-height:1.4">
+        <input type="checkbox" name="publish_consent" value="yes" required style="margin-top:2px">
+        <span>Tôi đã xem trước video ở trên và đồng ý gửi video này vào TikTok Creator Inbox dưới dạng Draft. Thao tác này chưa đăng công khai.</span>
+      </label>
+      <button class="btn btn-primary btn-sm" type="submit" style="width:100%;font-weight:700">{{if eq .TikTokDraftStatus "failed"}}Xác nhận và gửi lại Draft{{else}}Xác nhận và gửi TikTok Draft{{end}}</button>
     </form>
     <small style="display:block;margin-top:5px;color:var(--muted)">Video chưa công khai. Mở TikTok để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} và duyệt đăng.</small>
   {{end}}

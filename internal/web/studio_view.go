@@ -48,6 +48,7 @@ type studioJobView struct {
 	TikTokDraftStatus      string `json:"tiktok_draft_status,omitempty"`
 	TikTokDraftRemoteID    string `json:"tiktok_draft_remote_id,omitempty"`
 	TikTokDraftHasAccount  bool   `json:"tiktok_draft_has_account,omitempty"`
+	TikTokDraftUser        string `json:"tiktok_draft_user,omitempty"`
 	TikTokDraftConfigured  bool   `json:"tiktok_draft_configured,omitempty"`
 }
 
@@ -130,6 +131,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			if accountID := studioTikTokAccountID(j); accountID > 0 && s.Mgr != nil {
 				if account, err := s.Mgr.Get(accountID); err == nil {
 					view.TikTokDraftHasAccount = true
+					view.TikTokDraftUser = account.Username
 					view.TikTokDraftConfigured = publishers.NewTikTokPublisher(account.Username).IsConfigured()
 				}
 			}

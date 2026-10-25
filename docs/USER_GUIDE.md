@@ -16,7 +16,7 @@ Hướng dẫn tập trung hai flow TikTok đang được hoàn thiện. Truyệ
 2. Kiểm tra commission và thông tin offer. Không dựa vào số bán/rating nếu nguồn không cung cấp.
 3. Mở TikTok Radar, chọn video nhảy trong kết quả đã thu thập.
 4. Tạo video affiliate trong Studio. Xác nhận sản phẩm, audio nguồn, preview và QC.
-5. Gửi TikTok Draft; mở TikTok để xem và hoàn tất đăng.
+5. Xem lại preview, xác nhận tài khoản đích và đồng ý gửi TikTok Draft; mở TikTok để kiểm tra/gắn sản phẩm rồi hoàn tất đăng.
 
 ## Video viral TikTok
 
@@ -24,7 +24,7 @@ Hướng dẫn tập trung hai flow TikTok đang được hoàn thiện. Truyệ
 2. Chọn video nhảy làm reference; không nhập nguồn ngoài Radar.
 3. Tạo video từ nguồn đã chọn.
 4. Kiểm tra audio, hình ảnh, preview và QC.
-5. Gửi TikTok Draft và hoàn tất trong TikTok.
+5. Xem lại preview, xác nhận tài khoản đích và đồng ý gửi TikTok Draft; hoàn tất đăng trong TikTok.
 
 ## Khi flow dừng
 
