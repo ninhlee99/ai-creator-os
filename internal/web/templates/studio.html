@@ -75,72 +75,83 @@
         </div>
         {{end}}
 
-        <div class="grid2" style="gap:12px;margin-bottom:12px">
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Tên sản phẩm <span class="req">*</span></label>
-            <input type="text" name="product_name" id="cr-product-name" value="{{.Prefill.ProductName}}" required placeholder="Tên sản phẩm" style="padding:10px">
-          </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Giá bán theo thông tin sản phẩm</label>
-            <input type="text" name="product_price" value="{{.Prefill.ProductPrice}}" placeholder="Giá sản phẩm" style="padding:10px">
-          </div>
-        </div>
-
-        <div class="grid2" style="gap:12px;margin-bottom:14px">
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Danh mục</label>
-            <input type="text" name="niche" id="cr-niche" value="{{.Prefill.Niche}}" placeholder="Thời trang, mỹ phẩm, gia dụng..." style="padding:10px">
-          </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Link Affiliate / Giỏ hàng</label>
-            <input type="url" name="aff_link" value="{{.Prefill.AffLink}}" placeholder="https://..." style="padding:10px">
-          </div>
-        </div>
-
-        <div class="grid2" style="gap:12px;margin-bottom:14px">
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Nhóm sản phẩm để quay</label>
-            <select name="product_category" style="padding:10px">
-              <option value="">Tự nhận diện từ ảnh listing</option>
-              <option value="apparel">Quần áo</option>
-              <option value="footwear">Giày dép</option>
-              <option value="bag">Túi xách</option>
-              <option value="jewelry">Trang sức</option>
-              <option value="cosmetics">Mỹ phẩm</option>
-              <option value="home">Đồ gia dụng</option>
-              <option value="tech">Thiết bị công nghệ</option>
-              <option value="food">Thực phẩm</option>
-              <option value="other">Khác</option>
-            </select>
-          </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Ghi chú cách dùng thêm <span class="hint">(không thay cách dùng bắt buộc theo nhóm hàng)</span></label>
-            <input type="text" name="product_usage" placeholder="Ví dụ: khi mặc cardigan, cài hàng khuy trước khi bước đi" style="padding:10px">
-          </div>
-        </div>
-
         <div class="field" style="margin-bottom:14px">
-          <label style="font-weight:700;font-size:12.5px">Điểm nhìn thấy cần focus <span class="hint">(không nhập claim)</span></label>
-          <input type="text" name="product_focus" placeholder="Ví dụ: phom áo, hàng khuy, độ dài tay áo" style="padding:10px">
+          <label style="font-weight:700;font-size:12.5px">Tên sản phẩm <span class="req">*</span></label>
+          <input type="text" name="product_name" id="cr-product-name" value="{{.Prefill.ProductName}}" required placeholder="Tên sản phẩm" style="padding:10px">
         </div>
 
-        <!-- Ảnh sản phẩm -->
+        <!-- Ảnh listing là đầu vào bắt buộc; các trường còn lại có thể bổ sung sau. -->
         <div class="field" style="margin-bottom:14px">
           <label style="font-weight:700;font-size:12.5px;display:flex;justify-content:space-between">
-            <span>Ảnh listing sản phẩm <span class="req">*</span></span>
+            <span>Ảnh sản phẩm <span class="req">*</span></span>
           </label>
           <div class="file-pick">
             <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Tải ảnh sản phẩm từ máy…
               <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
             </label>
-            <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">Chưa chọn ảnh</span>
+            <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">{{if .Prefill.PhotoURL}}Ảnh có sẵn từ sản phẩm{{else}}Chưa chọn ảnh{{end}}</span>
           </div>
-          <label style="font-weight:700;font-size:12px;display:block;margin-top:10px">Ảnh góc khác / chi tiết sản phẩm</label>
-          <input type="file" name="extra_photos" accept="image/*" multiple>
-          <div class="hint">Tối đa 6 ảnh listing · ảnh mờ hoặc sai sản phẩm sẽ chặn job.</div>
+          <p class="hint" style="margin:6px 0 0">Chọn ảnh rõ, đúng sản phẩm. Có thể thêm ảnh chi tiết trong phần thông tin bổ sung.</p>
           <input type="hidden" name="product_id" id="cr-product-id">
           <input type="hidden" name="photo_urls" id="cr-photo-urls" value="{{.Prefill.PhotoURL}}">
         </div>
+
+        <details id="cr-product-details" class="advanced studio-product-details" {{if or .Prefill.ProductPrice .Prefill.Niche .Prefill.AffLink}}open{{end}}>
+          <summary>Thông tin bổ sung <span class="label-hint">(không bắt buộc)</span></summary>
+          <div class="grid2" style="gap:12px;margin:14px 0 12px">
+            <div class="field">
+              <label style="font-weight:700;font-size:12.5px">Giá theo thông tin sản phẩm</label>
+              <input type="text" name="product_price" value="{{.Prefill.ProductPrice}}" placeholder="Giá sản phẩm" style="padding:10px">
+            </div>
+            <div class="field">
+              <label style="font-weight:700;font-size:12.5px">Ngành hàng</label>
+              <input type="text" name="niche" id="cr-niche" value="{{.Prefill.Niche}}" placeholder="Thời trang, mỹ phẩm, gia dụng..." style="padding:10px">
+            </div>
+          </div>
+
+          <div class="grid2" style="gap:12px;margin-bottom:14px">
+            <div class="field">
+              <label style="font-weight:700;font-size:12.5px">Link Affiliate / Giỏ hàng</label>
+              <input type="url" name="aff_link" value="{{.Prefill.AffLink}}" placeholder="https://..." style="padding:10px">
+            </div>
+            <div class="field">
+              <label style="font-weight:700;font-size:12.5px">Nhóm sản phẩm để quay</label>
+              <select name="product_category" style="padding:10px">
+                <option value="">Tự nhận diện từ ảnh sản phẩm</option>
+                <option value="apparel">Quần áo</option>
+                <option value="footwear">Giày dép</option>
+                <option value="bag">Túi xách</option>
+                <option value="jewelry">Trang sức</option>
+                <option value="cosmetics">Mỹ phẩm</option>
+                <option value="home">Đồ gia dụng</option>
+                <option value="tech">Thiết bị công nghệ</option>
+                <option value="food">Thực phẩm</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-bottom:14px">
+            <label style="font-weight:700;font-size:12.5px">Ghi chú cách dùng thêm <span class="hint">(không thay cách dùng bắt buộc theo nhóm hàng)</span></label>
+            <input type="text" name="product_usage" placeholder="Ví dụ: khi mặc cardigan, cài hàng khuy trước khi bước đi" style="padding:10px">
+          </div>
+
+          <div class="field" style="margin-bottom:14px">
+            <label style="font-weight:700;font-size:12.5px">Điểm nhìn thấy cần tập trung <span class="hint">(không nhập claim)</span></label>
+            <input type="text" name="product_focus" placeholder="Ví dụ: phom áo, hàng khuy, độ dài tay áo" style="padding:10px">
+          </div>
+
+          <div class="field">
+            <label style="font-weight:700;font-size:12.5px">Ảnh góc khác / chi tiết sản phẩm</label>
+            <div class="file-pick">
+              <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Chọn ảnh bổ sung…
+                <input type="file" name="extra_photos" accept="image/*" multiple onchange="onExtraProductPhotosPicked(this)">
+              </label>
+              <span class="file-name" id="cr-extra-photo-label" style="font-size:12px">Chưa chọn ảnh</span>
+            </div>
+            <p class="hint" style="margin:6px 0 0">Tối đa 6 ảnh; ảnh mờ hoặc sai sản phẩm sẽ chặn job.</p>
+          </div>
+        </details>
 
         <!-- Âm thanh video affiliate -->
         <input type="hidden" name="tiktok_music_only" value="1">
@@ -399,6 +410,10 @@ function pickShelfProduct(sel) {
   if (niche && nicheEl) nicheEl.value = niche;
   var photoURLs = document.getElementById('cr-photo-urls');
   if (photoURLs) photoURLs.value = photo;
+  var photoLabel = document.getElementById('prod-photo-label-cr');
+  if (photoLabel) photoLabel.textContent = photo ? 'Ảnh có sẵn từ sản phẩm' : 'Chưa chọn ảnh';
+  var details = document.getElementById('cr-product-details');
+  if (details) details.open = true;
   if (aff) {
     var aEl = document.querySelector('input[name="aff_link"]');
     if (aEl) aEl.value = aff;
@@ -539,6 +554,19 @@ affiliateForm.addEventListener('submit', function(event) {
 function onProductPhotoPicked(input, prefix) {
   var label = document.getElementById('prod-photo-label-' + prefix);
   if (label && input.files && input.files[0]) label.textContent = input.files[0].name;
+}
+
+function onExtraProductPhotosPicked(input) {
+  var label = document.getElementById('cr-extra-photo-label');
+  if (!label) return;
+  var files = input && input.files ? input.files : [];
+  if (!files.length) {
+    label.textContent = 'Chưa chọn ảnh';
+  } else if (files.length > 1) {
+    label.textContent = files.length + ' ảnh đã chọn';
+  } else {
+    label.textContent = files[0].name;
+  }
 }
 
 filterStudioModels();
