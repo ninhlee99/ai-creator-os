@@ -47,7 +47,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Notice", r.URL.Query().Get("ok"),
 		"TrendSource", source, "TrendErr", errText(err),
 		"RankNote", tikTokRadarRankNote(videos),
-		"ShowApifySetup", topic != "" && source != studio.TikTokApifySource,
+		"ShowApifySetup", source != studio.TikTokApifySource,
 	)
 	if r.Header.Get("HX-Request") == "true" {
 		s.renderStudioTrendResults(w, data)
@@ -66,8 +66,14 @@ func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
 			knownMetrics++
 		}
 	}
+	if videos[0].Provider == studio.TikTokApifyTrendingSource && knownMetrics == 0 {
+		return "Apify tìm theo 3 cụm từ xu hướng Việt Nam; nguồn chưa trả view/tym nên giữ thứ tự kết quả."
+	}
 	if knownMetrics == 0 {
 		return "Nguồn này không cung cấp bộ đếm view/tym; thứ tự theo xếp hạng của nguồn."
+	}
+	if videos[0].Provider == studio.TikTokApifyTrendingSource {
+		return "Apify tìm theo 3 cụm từ xu hướng Việt Nam; xếp theo lượt xem giảm dần, lượt tym dùng để phá hòa."
 	}
 	for _, video := range videos {
 		if !video.PlayCountKnown || !video.DiggCountKnown {

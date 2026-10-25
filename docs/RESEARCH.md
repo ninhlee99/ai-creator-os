@@ -12,7 +12,7 @@ Nguồn chính thức:
 
 ## TikTok Radar
 
-Code lấy feed video Việt Nam và tìm kiếm keyword qua TikWM. Đây không phải TikTok API chính thức; freshness, độ phủ, giới hạn truy vấn và quy tắc thu thập cần được xác minh trước production. TikTok Research API hỗ trợ truy vấn keyword nhưng chỉ dùng được khi project được TikTok phê duyệt và cấp scope `research.data.basic`; không thay thế được bằng OAuth Login Kit thông thường. Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
+Radar hiện ưu tiên Apify TikTok Scraper khi có `APIFY_API_TOKEN` và dùng TikTok Business Discovery khi chưa có Apify token nhưng đã cấu hình access token + advertiser ID. Apify dựa trên tìm kiếm TikTok và tính phí theo kết quả; Business Discovery là API chính thức nhưng endpoint video theo hashtag không trả counters trong danh sách. Không có hai nguồn này thì Radar báo cần cấu hình, không gọi TikWM. TikTok Research API hỗ trợ truy vấn keyword nhưng chỉ dùng được khi project được TikTok phê duyệt và cấp scope `research.data.basic`; không thay thế được bằng OAuth Login Kit thông thường. Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
 
 ## AccessTrade
 

@@ -68,7 +68,7 @@ func (v TikTokTrendVideo) EmbedPlayerURL() string {
 	return "https://www.tiktok.com/player/v1/" + id + "?controls=1&description=1&music_info=1&rel=0"
 }
 
-const TikTokTrendSource = "TikWM — TikTok feed và tìm kiếm video"
+const TikTokTrendSource = "TikTok Radar"
 
 var tikTokRadarHTTPTransport = func() *http.Transport {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -110,7 +110,8 @@ func FormatCount(n int64) string {
 // FetchTikTokTrendingVideos returns records received from the regional TikTok video feed.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
 	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
-	if configErr != nil {
+	apifyConfig := tikTokApifyConfigFromEnv()
+	if configErr != nil && apifyConfig.APIToken == "" {
 		return nil, configErr
 	}
 	ttMu.Lock()
@@ -122,10 +123,12 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 
 	var result []TikTokTrendVideo
 	var err error
-	if configured {
+	if apifyConfig.APIToken != "" {
+		result, err = fetchApifyTikTokTrendingVideos(ctx, apifyConfig)
+	} else if configured {
 		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, "", config)
 	} else {
-		result, err = fetchLiveTikTokVideos(ctx)
+		return nil, missingTikTokRadarConfigError()
 	}
 	if err != nil {
 		return nil, err
@@ -178,7 +181,7 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 			return nil, configErr
 		}
 	}
-	key := "tikwm:" + strings.ToLower(topic)
+	key := "unconfigured:" + strings.ToLower(topic)
 	if configured {
 		key = "business:" + config.AdvertiserID + ":" + config.CountryCode + ":" + strings.ToLower(topic)
 	}
@@ -199,7 +202,7 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	} else if configured {
 		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, topic, config)
 	} else {
-		result, err = fetchLiveTikTokSearch(ctx, topic)
+		return nil, missingTikTokRadarConfigError()
 	}
 	if err != nil {
 		return nil, err
@@ -231,6 +234,10 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	topicTTCache[key] = cachedTikTokRadarSearch{videos: append([]TikTokTrendVideo(nil), live...), fetchedAt: time.Now()}
 	ttMu.Unlock()
 	return live, nil
+}
+
+func missingTikTokRadarConfigError() error {
+	return fmt.Errorf("chưa cấu hình nguồn TikTok: nhập API Token Apify hoặc cả Access Token và Advertiser ID TikTok Business Discovery trong Cài đặt → Kênh mạng xã hội")
 }
 
 func splitTikTokRadarTopics(topic string) ([]string, error) {
@@ -353,49 +360,6 @@ func IsTikTokVideoURL(raw string) bool {
 	return host == "tiktok.com" || strings.HasSuffix(host, ".tiktok.com")
 }
 
-// fetchLiveTikTokVideos truy vấn feed video TikTok khu vực Việt Nam.
-func fetchLiveTikTokVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
-	return fetchTikTokRadarEndpoint(ctx, "https://www.tikwm.com/api/feed/list?region=VN&count=20")
-}
-
-func fetchLiveTikTokSearch(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
-	endpoint, err := url.Parse("https://www.tikwm.com/api/feed/search")
-	if err != nil {
-		return nil, err
-	}
-	query := endpoint.Query()
-	query.Set("keywords", topic)
-	query.Set("count", "30")
-	query.Set("cursor", "0")
-	endpoint.RawQuery = query.Encode()
-	return fetchTikTokRadarEndpoint(ctx, endpoint.String())
-}
-
-func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTrendVideo, error) {
-	req, err := newTikTokRadarRequest(ctx, endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := doTikTokRadarRequest(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusForbidden {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-			if isTikTokRadarCloudflareChallenge(resp.Header, body) {
-				return nil, fmt.Errorf("TikWM đang chặn tìm kiếm bằng Cloudflare (HTTP 403); cấu hình Apify API token trong Cài đặt → Kênh mạng xã hội để tìm chủ đề và xếp theo view/tym")
-			}
-		}
-		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)
-	}
-
-	return parseTikTokRadarFeed(resp.Body)
-}
-
 func doTikTokRadarRequest(req *http.Request) (*http.Response, error) {
 	client := &http.Client{Timeout: 20 * time.Second, Transport: tikTokRadarHTTPTransport}
 	resp, err := client.Do(req)
@@ -408,17 +372,6 @@ func doTikTokRadarRequest(req *http.Request) (*http.Response, error) {
 	}
 	retry := req.Clone(req.Context())
 	return fallbackClient.Do(retry)
-}
-
-func newTikTokRadarRequest(ctx context.Context, endpoint string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Referer", "https://www.tikwm.com/")
-	return req, nil
 }
 
 // newTikTokRadarFallbackClient retries only the macOS trustd sandbox failure
@@ -439,14 +392,6 @@ func newTikTokRadarFallbackClient() (*http.Client, error) {
 	transport.DialContext = (&net.Dialer{Resolver: &net.Resolver{PreferGo: true}}).DialContext
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}
 	return &http.Client{Timeout: 20 * time.Second, Transport: transport}, nil
-}
-
-func isTikTokRadarCloudflareChallenge(header http.Header, body []byte) bool {
-	if strings.EqualFold(strings.TrimSpace(header.Get("cf-mitigated")), "challenge") {
-		return true
-	}
-	response := strings.ToLower(string(body))
-	return strings.Contains(response, "challenges.cloudflare.com") && strings.Contains(response, "just a moment")
 }
 
 func parseTikTokRadarFeed(r io.Reader) ([]TikTokTrendVideo, error) {

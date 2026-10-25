@@ -42,7 +42,7 @@
     </form>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
       <p class="hint">Nguồn: <strong>{{.TrendSource}}</strong> · Tìm kiếm theo chủ đề dùng dữ liệu video; sound lấy từ video Radar.</p>
-      {{if .ShowApifySetup}}<a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">Cấu hình Apify để lấy view/tym ↗</a>{{end}}
+      {{if .ShowApifySetup}}<a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">Cấu hình Apify để lấy top 10 có view/tym ↗</a>{{end}}
       <form method="post" action="/studio/trends/refresh" class="inline-flex">
         <input type="hidden" name="topic" value="{{.Topic}}">
         <button type="submit" class="btn btn-secondary">↻ Tìm mới</button>

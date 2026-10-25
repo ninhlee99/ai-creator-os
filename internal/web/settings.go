@@ -174,7 +174,7 @@ var envHelp = map[string]string{
 	"TIKTOK_REDIRECT_URI":            "TikTok Desktop Login Kit: chỉ dùng http://localhost hoặc 127.0.0.1, port đúng với app và đường dẫn /publishers/tiktok/callback. Mặc định: http://127.0.0.1:8080/publishers/tiktok/callback. Đăng ký đúng URI trong TikTok Developer Portal.",
 	"TIKTOK_DISCOVERY_ACCESS_TOKEN":  "Access Token TikTok API for Business đã cấp quyền Discovery; khác token đăng nhập TikTok Desktop ở trên.",
 	"TIKTOK_DISCOVERY_ADVERTISER_ID": "Advertiser ID được cấp quyền cho TikTok Business Discovery API.",
-	"APIFY_API_TOKEN":                "Token Apify dùng tìm TikTok theo tối đa 3 chủ đề và lấy view/tym. Mỗi lần tìm thu thập tối đa 60 video; Apify tính phí theo kết quả.",
+	"APIFY_API_TOKEN":                "Token Apify dùng lấy top video xu hướng Việt Nam hoặc tìm tối đa 3 chủ đề, kèm view/tym. Mỗi lần thu thập tối đa 60 video; Apify tính phí theo kết quả.",
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.

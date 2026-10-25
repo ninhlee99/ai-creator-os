@@ -55,7 +55,7 @@ func TikTokRadarSourceLabel() string {
 // TikTokRadarSourceLabelForTopic reports the provider selected for a regional
 // feed or a user-entered topic search.
 func TikTokRadarSourceLabelForTopic(topicSearch bool) string {
-	if topicSearch && tikTokApifyConfigFromEnv().APIToken != "" {
+	if tikTokApifyConfigFromEnv().APIToken != "" {
 		return TikTokApifySource
 	}
 	_, configured, err := tikTokBusinessDiscoveryConfigFromEnv()
@@ -65,7 +65,7 @@ func TikTokRadarSourceLabelForTopic(topicSearch bool) string {
 	if configured {
 		return TikTokBusinessDiscoverySource + " · thiếu cấu hình"
 	}
-	return TikTokTrendSource
+	return "Chưa cấu hình nguồn TikTok"
 }
 
 type tikTokBusinessEnvelope struct {

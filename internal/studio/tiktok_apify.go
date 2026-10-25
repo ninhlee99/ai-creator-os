@@ -14,13 +14,16 @@ import (
 )
 
 const (
-	TikTokApifySource        = "Apify TikTok Scraper"
-	tikTokApifyActorID       = "clockworks~tiktok-scraper"
-	tikTokApifyAPIBaseURL    = "https://api.apify.com/v2/actors/"
-	tikTokApifyPerTopic      = 20
-	tikTokApifyMaxRunTime    = 120 * time.Second
-	tikTokApifyResponseLimit = 4 << 20
+	TikTokApifySource         = "Apify TikTok Scraper"
+	TikTokApifyTrendingSource = "Apify TikTok Scraper · từ khóa xu hướng"
+	tikTokApifyActorID        = "clockworks~tiktok-scraper"
+	tikTokApifyAPIBaseURL     = "https://api.apify.com/v2/actors/"
+	tikTokApifyPerTopic       = 20
+	tikTokApifyMaxRunTime     = 120 * time.Second
+	tikTokApifyResponseLimit  = 4 << 20
 )
+
+var tikTokApifyTrendingQueries = []string{"viral Việt Nam", "hot trend Việt Nam", "xu hướng Việt Nam"}
 
 type tikTokApifyConfig struct {
 	APIToken string
@@ -28,6 +31,17 @@ type tikTokApifyConfig struct {
 
 func tikTokApifyConfigFromEnv() tikTokApifyConfig {
 	return tikTokApifyConfig{APIToken: strings.TrimSpace(os.Getenv("APIFY_API_TOKEN"))}
+}
+
+func fetchApifyTikTokTrendingVideos(ctx context.Context, cfg tikTokApifyConfig) ([]TikTokTrendVideo, error) {
+	videos, err := fetchApifyTikTokVideos(ctx, tikTokApifyTrendingQueries, cfg)
+	if err != nil {
+		return nil, err
+	}
+	for i := range videos {
+		videos[i].Provider = TikTokApifyTrendingSource
+	}
+	return videos, nil
 }
 
 type tikTokApifyInput struct {
