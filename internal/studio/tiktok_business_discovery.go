@@ -52,6 +52,16 @@ func TikTokRadarSourceLabel() string {
 	return TikTokRadarSourceLabelForTopic(false)
 }
 
+// TikTokRadarSourceConfigured reports whether the running process has a
+// complete credential set for either supported Radar provider.
+func TikTokRadarSourceConfigured() bool {
+	if tikTokApifyConfigFromEnv().APIToken != "" {
+		return true
+	}
+	_, configured, err := tikTokBusinessDiscoveryConfigFromEnv()
+	return configured && err == nil
+}
+
 // TikTokRadarSourceLabelForTopic reports the provider selected for a regional
 // feed or a user-entered topic search.
 func TikTokRadarSourceLabelForTopic(topicSearch bool) string {

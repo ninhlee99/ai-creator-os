@@ -43,6 +43,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Title", "Radar TikTok", "Path", "/studio/trends",
 		"Videos", videos,
 		"Topic", topic,
+		"SourceConfigured", studio.TikTokRadarSourceConfigured(),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
 		"TrendSource", source, "TrendErr", errText(err),

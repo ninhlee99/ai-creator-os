@@ -26,6 +26,7 @@
   {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
 
   <section class="card space-y-4 rounded-2xl border border-slate-200 p-4 shadow-sm sm:p-5">
+    {{if .SourceConfigured}}
     <form action="/studio/trends" method="get"
           hx-get="/studio/trends" hx-target="#studio-trends-results"
           hx-swap="outerHTML" hx-push-url="true"
@@ -48,6 +49,16 @@
         <button type="submit" class="btn btn-secondary">↻ Tìm mới</button>
       </form>
     </div>
+    {{else}}
+    <div class="notice notice-warn flex flex-wrap items-center justify-between gap-3" role="status">
+      <div>
+        <strong class="block">Chưa kết nối nguồn video</strong>
+        <p class="mb-0">Cấu hình nguồn để tìm video và xếp top 10.</p>
+      </div>
+      <a href="/settings/system#tab-social" class="btn btn-primary">Cấu hình nguồn video</a>
+    </div>
+    <p class="hint m-0">Apify cung cấp view/tym để xếp hạng; TikTok Business Discovery là nguồn chính thức, cần quyền API riêng.</p>
+    {{end}}
   </section>
 
   {{template "studio-trends-results" .}}
@@ -55,6 +66,7 @@
 {{end}}
 
 {{define "studio-trends-results"}}
+{{if .SourceConfigured}}
 <section id="studio-trends-results" class="space-y-4" aria-live="polite">
   {{if .TrendErr}}<p class="err" role="alert">Không tải được video TikTok: {{.TrendErr}}</p>{{end}}
   <div class="flex flex-wrap items-center justify-between gap-2">
@@ -131,4 +143,5 @@
   <div class="empty-state"><h3>Feed chưa có video</h3><p>Thử thu thập lại sau.</p></div>
   {{end}}
 </section>
+{{end}}
 {{end}}
