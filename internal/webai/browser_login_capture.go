@@ -104,6 +104,18 @@ func isPlaywrightCachedBrowser(binary string) bool {
 }
 
 func loginBrowserCandidates() ([]string, error) {
+	// Prefer Playwright's Chromium on macOS; installed browser apps can exit
+	// before their CDP endpoint opens.
+	if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) == "" && runtime.GOOS == "darwin" {
+		if cached := playwrightChromiumBinary(); cached != "" {
+			candidates := []string{cached}
+			if system, err := findChromiumBinary(); err == nil && filepath.Clean(system) != filepath.Clean(cached) {
+				candidates = append(candidates, system)
+			}
+			return candidates, nil
+		}
+	}
+
 	binary, err := findChromiumBinary()
 	if err != nil {
 		if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) != "" {
