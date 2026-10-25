@@ -78,7 +78,7 @@
       {{if .EngagementKnown}}<span class="hint">Tương tác/view: {{printf "%.1f" (pct .EngagementRate)}}%</span>{{end}}
       {{if .DanceVerified}}<span class="badge badge-ok w-fit">Đã xác nhận video nhảy</span>{{else}}<span class="badge badge-info w-fit">Chưa xác nhận video nhảy</span>{{end}}
       <strong class="break-words">{{.Title}}</strong>
-      <span class="hint">@{{.UniqueID}}</span>
+      <span class="hint">{{if .UniqueID}}@{{.UniqueID}}{{else}}Tài khoản creator chưa có trong dữ liệu nguồn{{end}}</span>
       <div><small class="hint">Âm thanh</small><strong class="block">{{if .Music}}{{.Music}}{{else}}Sound gốc video TikTok{{end}}</strong></div>
       <div class="mt-auto flex flex-wrap gap-2 pt-2">
         <a href="{{.VideoURL}}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Mở TikTok ↗</a>

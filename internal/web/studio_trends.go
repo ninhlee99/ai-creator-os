@@ -30,7 +30,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		s.writeJSON(w, map[string]any{
-			"source": studio.TikTokTrendSource,
+			"source": studio.TikTokRadarSourceLabel(),
 			"topic":  topic,
 			"videos": videos,
 			"error":  errText(err),
@@ -43,7 +43,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Topic", topic,
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
-		"TrendSource", studio.TikTokTrendSource, "TrendErr", errText(err),
+		"TrendSource", studio.TikTokRadarSourceLabel(), "TrendErr", errText(err),
 	)
 	if r.Header.Get("HX-Request") == "true" {
 		s.renderStudioTrendResults(w, data)

@@ -93,6 +93,10 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 		if strings.TrimSpace(video.CollectedAt) == "" {
 			video.CollectedAt = time.Now().UTC().Format(time.RFC3339)
 		}
+		provider := strings.TrimSpace(video.Provider)
+		if provider == "" {
+			provider = TikTokTrendSource
+		}
 		collectedAt, err := time.Parse(time.RFC3339Nano, video.CollectedAt)
 		if err != nil {
 			return fmt.Errorf("Radar trả thời điểm thu thập không hợp lệ cho video %s", video.VideoID)
@@ -108,7 +112,7 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 			return err
 		}
 		if _, err := snapshotStmt.ExecContext(ctx,
-			video.VideoID, TikTokTrendSource, snapshotAt,
+			video.VideoID, provider, snapshotAt,
 			video.PlayCount, video.PlayCountKnown,
 			video.DiggCount, video.DiggCountKnown,
 			video.CommentCount, video.CommentKnown,

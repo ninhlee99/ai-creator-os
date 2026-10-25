@@ -23,5 +23,25 @@
       <form method="post" action="/settings/env" class="toolbar" style="margin-top:6px"><input type="hidden" name="name" value="TIKTOK_REDIRECT_URI"><input type="text" name="value" autocomplete="off" style="flex:1"><button type="submit" class="btn btn-secondary btn-sm">Lưu</button></form>
     </div>
   </div>
+
+  <div class="form-card mt-4 max-w-3xl space-y-3">
+    <h3>TikTok Business Discovery · Radar video</h3>
+    <p class="hint">Dùng API TikTok chính thức để tìm video top theo hashtag/chủ đề. Cần TikTok API for Business app đã cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên. Mặc định khu vực Việt Nam.</p>
+    <p class="hint"><a href="https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714" target="_blank" rel="noopener noreferrer">Tài liệu Discovery API ↗</a></p>
+    {{$discoveryTokenOk := false}}{{$discoveryTokenMask := ""}}
+    {{$discoveryAdvertiserOk := false}}{{$discoveryAdvertiserMask := ""}}
+    {{range .EnvStatus}}
+      {{if eq .Name "TIKTOK_DISCOVERY_ACCESS_TOKEN"}}{{$discoveryTokenOk = .Ok}}{{$discoveryTokenMask = .Masked}}{{end}}
+      {{if eq .Name "TIKTOK_DISCOVERY_ADVERTISER_ID"}}{{$discoveryAdvertiserOk = .Ok}}{{$discoveryAdvertiserMask = .Masked}}{{end}}
+    {{end}}
+    <div class="field mt-3">
+      <label>Business Discovery Access Token</label>{{if $discoveryTokenOk}}<span class="badge badge-ok">Đã lưu · {{$discoveryTokenMask}}</span>{{else}}<span class="badge badge-no">Chưa lưu</span>{{end}}
+      <form method="post" action="/settings/env" class="mt-2 flex gap-2"><input type="hidden" name="name" value="TIKTOK_DISCOVERY_ACCESS_TOKEN"><input type="password" name="value" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"><button type="submit" class="btn btn-secondary btn-sm">Lưu</button></form>
+    </div>
+    <div class="field mt-3">
+      <label>Advertiser ID</label>{{if $discoveryAdvertiserOk}}<span class="badge badge-ok">Đã lưu · {{$discoveryAdvertiserMask}}</span>{{else}}<span class="badge badge-no">Chưa lưu</span>{{end}}
+      <form method="post" action="/settings/env" class="mt-2 flex gap-2"><input type="hidden" name="name" value="TIKTOK_DISCOVERY_ADVERTISER_ID"><input type="text" name="value" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"><button type="submit" class="btn btn-secondary btn-sm">Lưu</button></form>
+    </div>
+  </div>
 </div>
 {{end}}

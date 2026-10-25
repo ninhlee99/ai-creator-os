@@ -30,6 +30,7 @@ type TikTokTrendVideo struct {
 	Views           string  `json:"views"`
 	PlayCount       int64   `json:"play_count"`
 	PlayCountKnown  bool    `json:"play_count_known"`
+	Provider        string  `json:"provider,omitempty"`
 	Likes           string  `json:"likes"`
 	DiggCount       int64   `json:"digg_count"`
 	DiggCountKnown  bool    `json:"digg_count_known"`
@@ -98,6 +99,10 @@ func FormatCount(n int64) string {
 
 // FetchTikTokTrendingVideos returns records received from the regional TikTok video feed.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
+	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
+	if configErr != nil {
+		return nil, configErr
+	}
 	ttMu.Lock()
 	if time.Since(lastTTFetch) < tikTokTrendsTTL && len(cachedTTTrends) > 0 {
 		defer ttMu.Unlock()
@@ -105,7 +110,13 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	}
 	ttMu.Unlock()
 
-	result, err := fetchLiveTikTokVideos(ctx)
+	var result []TikTokTrendVideo
+	var err error
+	if configured {
+		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, "", config)
+	} else {
+		result, err = fetchLiveTikTokVideos(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +155,14 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	if len([]rune(topic)) > 120 {
 		return nil, fmt.Errorf("chủ đề tìm kiếm tối đa 120 ký tự")
 	}
-	key := strings.ToLower(topic)
+	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
+	if configErr != nil {
+		return nil, configErr
+	}
+	key := "tikwm:" + strings.ToLower(topic)
+	if configured {
+		key = "business:" + config.AdvertiserID + ":" + config.CountryCode + ":" + strings.ToLower(topic)
+	}
 	ttMu.Lock()
 	if cached, ok := topicTTCache[key]; ok && time.Since(cached.fetchedAt) < tikTokTrendsTTL {
 		videos := append([]TikTokTrendVideo(nil), cached.videos...)
@@ -153,7 +171,13 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	}
 	ttMu.Unlock()
 
-	result, err := fetchLiveTikTokSearch(ctx, topic)
+	var result []TikTokTrendVideo
+	var err error
+	if configured {
+		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, topic, config)
+	} else {
+		result, err = fetchLiveTikTokSearch(ctx, topic)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +222,9 @@ func validateTikTokRadarResults(items []TikTokTrendVideo) []TikTokTrendVideo {
 			continue
 		}
 		item.CollectedAt = time.Now().UTC().Format(time.RFC3339)
+		if strings.TrimSpace(item.Provider) == "" {
+			item.Provider = TikTokTrendSource
+		}
 		live = append(live, item)
 	}
 	return live
@@ -305,19 +332,7 @@ func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTre
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 20 * time.Second, Transport: tikTokRadarHTTPTransport}
-	resp, err := client.Do(req)
-	if err != nil && runtime.GOOS == "darwin" && strings.Contains(err.Error(), "x509: OSStatus -26276") {
-		fallbackClient, fallbackErr := newTikTokRadarFallbackClient()
-		if fallbackErr != nil {
-			return nil, fmt.Errorf("TikTok Radar không truy cập được xác minh chứng chỉ macOS; CA bundle fallback lỗi: %v: %w", fallbackErr, err)
-		}
-		retry, requestErr := newTikTokRadarRequest(ctx, endpoint)
-		if requestErr != nil {
-			return nil, requestErr
-		}
-		resp, err = fallbackClient.Do(retry)
-	}
+	resp, err := doTikTokRadarRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -327,13 +342,27 @@ func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTre
 		if resp.StatusCode == http.StatusForbidden {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 			if isTikTokRadarCloudflareChallenge(resp.Header, body) {
-				return nil, fmt.Errorf("TikWM đang chặn endpoint tìm kiếm tự động bằng Cloudflare challenge (HTTP 403); feed mặc định vẫn có thể dùng")
+				return nil, fmt.Errorf("TikWM đang chặn tìm kiếm chủ đề bằng Cloudflare (HTTP 403); cấu hình TikTok Business Discovery access token và advertiser ID trong Cài đặt → Kênh mạng xã hội để tìm video top theo hashtag chính thức")
 			}
 		}
 		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)
 	}
 
 	return parseTikTokRadarFeed(resp.Body)
+}
+
+func doTikTokRadarRequest(req *http.Request) (*http.Response, error) {
+	client := &http.Client{Timeout: 20 * time.Second, Transport: tikTokRadarHTTPTransport}
+	resp, err := client.Do(req)
+	if err == nil || runtime.GOOS != "darwin" || !strings.Contains(err.Error(), "x509: OSStatus -26276") {
+		return resp, err
+	}
+	fallbackClient, fallbackErr := newTikTokRadarFallbackClient()
+	if fallbackErr != nil {
+		return nil, fmt.Errorf("TikTok Radar không truy cập được xác minh chứng chỉ macOS; CA bundle fallback lỗi: %v: %w", fallbackErr, err)
+	}
+	retry := req.Clone(req.Context())
+	return fallbackClient.Do(retry)
 }
 
 func newTikTokRadarRequest(ctx context.Context, endpoint string) (*http.Request, error) {
