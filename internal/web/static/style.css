@@ -2929,3 +2929,119 @@ video.player, .media-preview-container video {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
 }
 
+/* Affiliate Studio: clear three-step flow */
+.studio-page-subtitle {
+  max-width: 680px;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.studio-step-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.studio-step-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.studio-step-nav a:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08);
+}
+.studio-step-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.studio-step-index {
+  display: inline-flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--accent);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+}
+.studio-step-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.studio-step-copy strong {
+  font-size: 13px;
+}
+.studio-step-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.studio-step-arrow {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+.studio-step-card {
+  padding: 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  scroll-margin-top: 24px;
+}
+.studio-step-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.studio-step-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+.studio-step-title h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .studio-step-nav {
+    display: flex;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    margin-right: -4px;
+    overscroll-behavior-x: contain;
+  }
+  .studio-step-nav a {
+    flex: 0 0 188px;
+    padding: 11px 12px;
+  }
+  .studio-step-card {
+    padding: 16px;
+  }
+  .studio-step-title h3 {
+    font-size: 15px;
+  }
+}
+

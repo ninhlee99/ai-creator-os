@@ -4,6 +4,7 @@
 <div class="webai-header" style="margin-bottom: 20px;">
   <div class="webai-header-left">
     <h1>Tạo video affiliate</h1>
+    <p class="hint studio-page-subtitle">Đi theo 3 bước: chọn sản phẩm, chuẩn bị người mẫu, rồi lập shot list và render.</p>
   </div>
   <div class="webai-header-actions">
     <a href="/studio/create" class="btn btn-primary btn-sm">✨ Tạo bằng Muse / Flow</a>
@@ -15,6 +16,24 @@
 {{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
 {{if .Warning}}<p class="notice notice-warn" role="status">{{.Warning}}</p>{{end}}
 
+<nav class="studio-step-nav" aria-label="Các bước tạo video affiliate">
+  <a href="#studio-step-product">
+    <span class="studio-step-index">01</span>
+    <span class="studio-step-copy"><strong>Sản phẩm</strong><small>Thông tin &amp; ảnh listing</small></span>
+    <span class="studio-step-arrow" aria-hidden="true">↓</span>
+  </a>
+  <a href="#studio-step-model">
+    <span class="studio-step-index">02</span>
+    <span class="studio-step-copy"><strong>Người mẫu</strong><small>Ảnh mẫu &amp; âm thanh</small></span>
+    <span class="studio-step-arrow" aria-hidden="true">↓</span>
+  </a>
+  <a href="#studio-step-video">
+    <span class="studio-step-index">03</span>
+    <span class="studio-step-copy"><strong>Video</strong><small>Shot list &amp; render</small></span>
+    <span class="studio-step-arrow" aria-hidden="true">↓</span>
+  </a>
+</nav>
+
 <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="creative-ad-form">
         <input type="hidden" name="source_music_title" value="{{.Prefill.SourceMusicTitle}}">
         <input type="hidden" name="source_music_video_url" value="{{.Prefill.SourceMusicVideoURL}}">
@@ -24,11 +43,9 @@
     <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
 
       <!-- BƯỚC 1: SẢN PHẨM THỜI TRANG & DEAL -->
-      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Sản phẩm
-          </h3>
+      <div class="card studio-step-card" id="studio-step-product">
+        <div class="studio-step-heading">
+          <div class="studio-step-title"><span class="studio-step-index">01</span><h3>Sản phẩm</h3></div>
           <span class="badge badge-ok" style="font-size:11px">Affiliate</span>
         </div>
 
@@ -131,11 +148,9 @@
       </div>
 
       <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT VÀ DÁNG NGƯỜI CỦA MẪU NỮ -->
-      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Ảnh người mẫu
-          </h3>
+      <div class="card studio-step-card" id="studio-step-model">
+        <div class="studio-step-heading">
+          <div class="studio-step-title"><span class="studio-step-index">02</span><h3>Ảnh người mẫu</h3></div>
           <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">{{if .AvailableModels}}Đã chọn {{len .AvailableModels}} góc mặt{{else}}Chưa có góc mặt nào{{end}}</span>
         </div>
 
@@ -182,11 +197,9 @@
       </div>
 
       <!-- BƯỚC 3: CÔNG NGHỆ RENDER & XUẤT BẢN -->
-      <div class="card" style="border-radius:14px;padding:20px;border:1.5px solid var(--border);background:var(--bg2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
-          <h3 style="margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px;color:var(--text)">
-            Video
-          </h3>
+      <div class="card studio-step-card" id="studio-step-video">
+        <div class="studio-step-heading">
+          <div class="studio-step-title"><span class="studio-step-index">03</span><h3>Video</h3></div>
           <span class="badge badge-live" style="font-size:11px">Khung dọc 9:16</span>
         </div>
 
