@@ -49,18 +49,19 @@ func directorPrompt(name string, data any) (string, error) {
 
 // promptData carries the fields used by affiliate and viral TikTok prompts.
 type promptData struct {
-	Topic            string
-	Niche            string
-	ChannelProfile   string
-	ChannelLearning  string
-	ProductCategory  string
-	ProductUse       string
-	ProductUseNotes  string
-	ProductFocus     string
-	ProductEvidence  string
-	ReferenceSummary string
-	ReferenceBeats   string
-	Seconds          int
-	Duration         string
-	N                int
+	Topic             string
+	Niche             string
+	ChannelProfile    string
+	ChannelLearning   string
+	ProductCategory   string
+	ProductUse        string
+	ProductUseNotes   string
+	ProductFocus      string
+	ProductEvidence   string
+	ReferenceSummary  string
+	ReferenceBeats    string
+	SourcePerformance string
+	Seconds           int
+	Duration          string
+	N                 int
 }

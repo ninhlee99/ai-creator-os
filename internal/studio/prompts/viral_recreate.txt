@@ -6,8 +6,13 @@ THỜI LƯỢNG NGUỒN VÀ ĐẦU RA: đúng {{.Duration}} giây
 TÓM TẮT NGUỒN ĐÃ QUAN SÁT: {{.ReferenceSummary}}
 BEAT THEO THỨ TỰ THỜI GIAN:
 {{.ReferenceBeats}}
+METRICS RADAR (mỗi trường có cờ *_known; false nghĩa là unknown):
+{{.SourcePerformance}}
 
 MỤC TIÊU:
+- Phân tích tối đa 4 tín hiệu cấu trúc có thể quan sát từ frame: mở đầu, nhịp, chuyển động, camera, edit, visual payoff. Mỗi tín hiệu phải trỏ tới evidence_times_sec trùng chính xác time_sec của beat. Observation chỉ mô tả điều nhìn thấy. Hypothesis phải mở đầu bằng “Có thể...” hoặc “Giả thuyết...”; đây là khả năng cần thử, không phải nguyên nhân viral đã chứng minh. Confidence chỉ mô tả độ rõ của observation, không phải độ chắc của giả thuyết.
+- Đề xuất tối đa 3 next_tests. Mỗi đề xuất chỉ thay đổi một tín hiệu quan sát được, có evidence_times_sec và chọn metric đúng một trong: views_per_hour, engagement_rate, share_count, comment_count, like_count. Không chọn metric retention, watch time, demographics hoặc profile visits. Metrics unknown không được coi là 0 và không được so với baseline không có trong dữ liệu.
+- Nếu beat hoặc metrics không đủ bằng chứng, để danh sách phân tích/thử nghiệm rỗng. Không bịa dữ liệu để lấp schema.
 - Giữ đúng thứ tự cảnh, hành động toàn thân/vũ đạo, nhịp thời gian, cỡ khung hình, hướng máy, chuyển động máy và điểm cắt có trong beat nguồn.
 - Thay toàn bộ người chính bằng nhân vật của kênh: khuôn mặt, tóc và danh tính cơ thể nhìn thấy. Face swap riêng lẻ không đạt.
 - Giữ bối cảnh, ánh sáng, vị trí vật thể và bố cục nguồn. Không thêm cảnh, hành động, đạo cụ, trang phục, hiệu ứng hoặc góc máy không có bằng chứng.
@@ -23,6 +28,14 @@ TRẢ JSON THUẦN THEO SCHEMA:
   "title": "Tiêu đề trung tính mô tả nguồn",
   "hook_3s": "",
   "core_angle": "Mô tả trung tính cách tái hiện nguồn",
+  "analysis": {
+    "factors": [
+      {"factor":"opening|pacing|movement|camera|editing|visual_payoff","observation":"Điều nhìn thấy","evidence_times_sec":[0.5],"hypothesis":"Có thể ...","confidence":"low|medium"}
+    ],
+    "next_tests": [
+      {"change":"Một thay đổi thử nghiệm gắn với evidence nguồn","metric":"views_per_hour|engagement_rate|share_count|comment_count|like_count","evidence_times_sec":[0.5]}
+    ]
+  },
   "hashtags": [],
   "call_to_action": "",
   "scenes": [

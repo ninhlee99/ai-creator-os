@@ -152,9 +152,9 @@
 
         <div style="padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px">
             <button type="button" id="viral-analyze-button" class="btn btn-secondary" onclick="analyzeViralSource()" style="width:100%;font-weight:800">
-            🔍 Phân tích video nguồn · xem storyboard
+            🔍 Phân tích yếu tố & storyboard
           </button>
-          <p class="hint" style="margin:8px 0 0">Storyboard only · không render hoặc thay nhân vật.</p>
+          <p class="hint" style="margin:8px 0 0">Quan sát frame, giả thuyết có dẫn chứng và thử nghiệm tiếp theo · không render video.</p>
           <div id="viral-analysis-result" role="status" aria-live="polite" style="margin-top:12px"></div>
         </div>
 
@@ -300,7 +300,7 @@ function analyzeViralSource() {
   result.replaceChildren();
   var loading = document.createElement('p');
   loading.className = 'hint';
-  loading.textContent = 'Đang đọc video nguồn và dựng storyboard…';
+  loading.textContent = 'Đang đọc frame, metrics Radar và dựng storyboard…';
   result.appendChild(loading);
   button.disabled = true;
   button.textContent = 'Đang phân tích…';
@@ -315,7 +315,7 @@ function analyzeViralSource() {
     .catch(function(error) { showViralAnalysisError(error.message || 'Không phân tích được video nguồn.'); })
     .finally(function() {
       button.disabled = false;
-      button.textContent = '🔍 Phân tích video nguồn · xem storyboard';
+      button.textContent = '🔍 Phân tích yếu tố & storyboard';
     });
 }
 
@@ -363,6 +363,66 @@ function renderViralStoryboard(storyboard) {
     panel.appendChild(limitation);
     result.appendChild(panel);
   }
+  var analysis = storyboard.analysis || {};
+  var factors = Array.isArray(analysis.factors) ? analysis.factors : [];
+  var tests = Array.isArray(analysis.next_tests) ? analysis.next_tests : [];
+  var factorLabels = {
+    opening: 'Mở đầu', pacing: 'Nhịp', movement: 'Chuyển động',
+    camera: 'Camera', editing: 'Dựng/cắt', visual_payoff: 'Điểm nhấn hình ảnh'
+  };
+  var metricLabels = {
+    views_per_hour: 'lượt xem/giờ', engagement_rate: 'tương tác/view',
+    share_count: 'lượt chia sẻ', comment_count: 'lượt bình luận', like_count: 'lượt thích'
+  };
+  var confidenceLabels = {low: 'thấp', medium: 'vừa'};
+  var analysisPanel = document.createElement('section');
+  analysisPanel.className = 'card space-y-3';
+  var analysisHeading = document.createElement('h3');
+  analysisHeading.textContent = 'Yếu tố quan sát & giả thuyết';
+  analysisPanel.appendChild(analysisHeading);
+  var analysisNote = document.createElement('p');
+  analysisNote.className = 'hint';
+  analysisNote.textContent = 'Giả thuyết dựa trên frame và metrics có sẵn; không chứng minh nguyên nhân viral, retention hoặc tệp tuổi.';
+  analysisPanel.appendChild(analysisNote);
+  factors.forEach(function(factor) {
+    var card = document.createElement('article');
+    card.className = 'rounded-xl border border-slate-200 p-3';
+    var title = document.createElement('strong');
+    title.textContent = (factorLabels[factor.factor] || 'Tín hiệu video') + ' · độ rõ quan sát ' + (confidenceLabels[factor.confidence] || 'thấp');
+    card.appendChild(title);
+    var observation = document.createElement('p');
+    observation.textContent = 'Quan sát: ' + (factor.observation || 'Chưa có mô tả.');
+    card.appendChild(observation);
+    var times = Array.isArray(factor.evidence_times_sec) ? factor.evidence_times_sec : [];
+    var evidence = document.createElement('p');
+    evidence.className = 'hint';
+    evidence.textContent = 'Mốc nguồn: ' + (times.length ? times.map(function(time) { return Number(time).toFixed(2) + 's'; }).join(', ') : 'không có');
+    card.appendChild(evidence);
+    var hypothesis = document.createElement('p');
+    hypothesis.textContent = 'Giả thuyết: ' + (factor.hypothesis || 'chưa đủ bằng chứng');
+    card.appendChild(hypothesis);
+    analysisPanel.appendChild(card);
+  });
+  if (tests.length) {
+    var testsHeading = document.createElement('strong');
+    testsHeading.textContent = 'Thử nghiệm cho video sau';
+    analysisPanel.appendChild(testsHeading);
+    tests.forEach(function(test) {
+      var line = document.createElement('p');
+      var metricName = metricLabels[test.metric] || 'metrics công khai';
+      var times = Array.isArray(test.evidence_times_sec) ? test.evidence_times_sec : [];
+      var evidence = times.map(function(time) { return Number(time).toFixed(2) + 's'; }).join(', ');
+      line.textContent = (test.change || 'Thử một thay đổi từ nguồn') + ' · đo ' + metricName + (evidence ? ' · dựa trên mốc ' + evidence : '');
+      analysisPanel.appendChild(line);
+    });
+  }
+  if (!factors.length && !tests.length) {
+    var noAnalysis = document.createElement('p');
+    noAnalysis.className = 'hint';
+    noAnalysis.textContent = 'Chưa đủ bằng chứng từ frame để nêu yếu tố hoặc thử nghiệm.';
+    analysisPanel.appendChild(noAnalysis);
+  }
+  result.appendChild(analysisPanel);
   var heading = document.createElement('h3');
   heading.style.margin = '0 0 8px';
   heading.textContent = storyboard.title || 'Storyboard video nguồn';

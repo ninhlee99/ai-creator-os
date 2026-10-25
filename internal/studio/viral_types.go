@@ -58,10 +58,31 @@ type ViralScript struct {
 	Title             string                 `json:"title"`
 	Hook3s            string                 `json:"hook_3s"`
 	CoreAngle         string                 `json:"core_angle"`
+	Analysis          ViralSourceAnalysis    `json:"analysis"`
 	Hashtags          []string               `json:"hashtags"`
 	CallToAction      string                 `json:"call_to_action"`
 	Scenes            []ViralScene           `json:"scenes"`
 	SourcePerformance ViralSourcePerformance `json:"source_performance"`
+}
+
+// ViralSourceAnalysis separates visible structure from unproven explanations.
+type ViralSourceAnalysis struct {
+	Factors   []ViralSourceFactor `json:"factors"`
+	NextTests []ViralNextTest     `json:"next_tests"`
+}
+
+type ViralSourceFactor struct {
+	Factor           string    `json:"factor"`
+	Observation      string    `json:"observation"`
+	EvidenceTimesSec []float64 `json:"evidence_times_sec"`
+	Hypothesis       string    `json:"hypothesis"`
+	Confidence       string    `json:"confidence"`
+}
+
+type ViralNextTest struct {
+	Change           string    `json:"change"`
+	Metric           string    `json:"metric"`
+	EvidenceTimesSec []float64 `json:"evidence_times_sec"`
 }
 
 // ViralSourcePerformance carries measured Radar counters into the analysis UI.

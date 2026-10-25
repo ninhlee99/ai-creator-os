@@ -55,13 +55,18 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	if err != nil {
 		return nil, fmt.Errorf("không mã hóa được beat video nguồn: %w", err)
 	}
+	performanceEvidence, err := json.Marshal(p.SourcePerformance)
+	if err != nil {
+		return nil, fmt.Errorf("không mã hóa được chỉ số Radar nguồn: %w", err)
+	}
 	prompt, err := directorPrompt("viral_recreate.txt", promptData{
-		Topic:            p.Topic,
-		Niche:            p.Account,
-		Seconds:          int(math.Round(duration)),
-		Duration:         formatViralDuration(duration),
-		ReferenceSummary: strings.TrimSpace(p.ReferenceSummary),
-		ReferenceBeats:   string(beats),
+		Topic:             p.Topic,
+		Niche:             p.Account,
+		Seconds:           int(math.Round(duration)),
+		Duration:          formatViralDuration(duration),
+		ReferenceSummary:  strings.TrimSpace(p.ReferenceSummary),
+		ReferenceBeats:    string(beats),
+		SourcePerformance: string(performanceEvidence),
 	})
 	if err != nil {
 		return nil, err
@@ -81,6 +86,7 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	if err := validateViralReferenceScenes(script.Scenes, duration); err != nil {
 		return nil, err
 	}
+	script.Analysis = sanitizeViralSourceAnalysis(script.Analysis, p.ReferenceBeats)
 
 	// The available source evidence is visual-only. Never infer audio, text,
 	// marketing copy, or engagement assets from sampled frames.
@@ -93,6 +99,91 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	}
 	script.SourcePerformance = p.SourcePerformance
 	return &script, nil
+}
+
+func sanitizeViralSourceAnalysis(analysis ViralSourceAnalysis, beats []ViralReferenceBeat) ViralSourceAnalysis {
+	var clean ViralSourceAnalysis
+	allowedFactors := map[string]bool{
+		"opening": true, "pacing": true, "movement": true,
+		"camera": true, "editing": true, "visual_payoff": true,
+	}
+	for _, factor := range analysis.Factors {
+		name := strings.ToLower(strings.TrimSpace(factor.Factor))
+		observation := cleanViralAnalysisText(factor.Observation, 220)
+		hypothesis := cleanViralAnalysisText(factor.Hypothesis, 260)
+		evidenceTimes := matchedViralEvidenceTimes(factor.EvidenceTimesSec, beats)
+		if !allowedFactors[name] || observation == "" || hypothesis == "" || len(evidenceTimes) == 0 {
+			continue
+		}
+		hypothesisLead := strings.ToLower(hypothesis)
+		if !strings.HasPrefix(hypothesisLead, "có thể") && !strings.HasPrefix(hypothesisLead, "giả thuyết") {
+			hypothesis = "Giả thuyết: " + hypothesis
+		}
+		confidence := strings.ToLower(strings.TrimSpace(factor.Confidence))
+		if confidence == "high" {
+			confidence = "medium"
+		}
+		if confidence != "medium" {
+			confidence = "low"
+		}
+		clean.Factors = append(clean.Factors, ViralSourceFactor{
+			Factor: name, Observation: observation, EvidenceTimesSec: evidenceTimes,
+			Hypothesis: hypothesis, Confidence: confidence,
+		})
+		if len(clean.Factors) == 4 {
+			break
+		}
+	}
+	allowedMetrics := map[string]bool{
+		"views_per_hour": true, "engagement_rate": true, "share_count": true,
+		"comment_count": true, "like_count": true,
+	}
+	for _, test := range analysis.NextTests {
+		change := cleanViralAnalysisText(test.Change, 220)
+		metric := strings.ToLower(strings.TrimSpace(test.Metric))
+		evidenceTimes := matchedViralEvidenceTimes(test.EvidenceTimesSec, beats)
+		if change == "" || !allowedMetrics[metric] || len(evidenceTimes) == 0 {
+			continue
+		}
+		clean.NextTests = append(clean.NextTests, ViralNextTest{
+			Change: change, Metric: metric, EvidenceTimesSec: evidenceTimes,
+		})
+		if len(clean.NextTests) == 3 {
+			break
+		}
+	}
+	return clean
+}
+
+func matchedViralEvidenceTimes(candidates []float64, beats []ViralReferenceBeat) []float64 {
+	matched := make([]float64, 0, min(len(candidates), 3))
+	seen := make(map[float64]bool)
+	for _, candidate := range candidates {
+		if math.IsNaN(candidate) || math.IsInf(candidate, 0) {
+			continue
+		}
+		for _, beat := range beats {
+			if math.Abs(candidate-beat.TimeSec) > 0.01 || seen[beat.TimeSec] {
+				continue
+			}
+			matched = append(matched, beat.TimeSec)
+			seen[beat.TimeSec] = true
+			break
+		}
+		if len(matched) == 3 {
+			break
+		}
+	}
+	return matched
+}
+
+func cleanViralAnalysisText(value string, maxRunes int) string {
+	value = strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+	runes := []rune(value)
+	if len(runes) > maxRunes {
+		value = string(runes[:maxRunes]) + "…"
+	}
+	return value
 }
 
 func formatViralDuration(seconds float64) string {
