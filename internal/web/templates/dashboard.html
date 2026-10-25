@@ -5,19 +5,19 @@
 {{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:20px">{{.Warning}}</div>{{end}}
 {{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
 
-<div class="card" style="margin-bottom:24px">
-  <h1 style="margin:0 0 5px;font-size:20px">Điều hành TikTok</h1>
-  <p class="hint" style="margin:0 0 14px">Xu hướng · sản phẩm · video · kênh</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/studio/trends" class="btn btn-primary">Radar TikTok</a>
-    <a href="/products" class="btn btn-secondary">Sản phẩm hoa hồng</a>
-    <a href="/studio" class="btn btn-secondary">Tạo video</a>
-    <a href="/growth" class="btn btn-secondary">Phân tích kênh</a>
+<section class="dashboard-hero" aria-labelledby="dashboard-heading">
+  <div class="dashboard-hero-copy">
+    <p class="dashboard-hero-kicker">MIUNOVA · TỔNG QUAN</p>
+    <h1 id="dashboard-heading">Điều hành nội dung</h1>
+    <p>Theo dõi kênh, video và hoa hồng tại một nơi.</p>
   </div>
-</div>
+  <div class="dashboard-hero-actions" role="group" aria-label="Lối tắt">
+    <a href="/studio" class="btn btn-primary">＋ Tạo video</a>
+    <a href="/studio/trends" class="btn btn-secondary">Xem video hot</a>
+  </div>
+</section>
 
-<!-- KEY METRICS STRIP -->
-<div class="stat-grid" style="margin-bottom:24px">
+<div class="stat-grid dashboard-stat-grid">
 
   <div class="stat-card">
     <div class="stat-label">Video đang xử lý</div>

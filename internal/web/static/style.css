@@ -191,8 +191,19 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   text-decoration: none; transform: translateX(2px);
 }
 .sidebar nav a.active {
-  background: var(--sidebar-hover); color: var(--accent);
-  font-weight: 600;
+  position: relative;
+  background: var(--accent-subtle); color: var(--accent);
+  font-weight: 650;
+}
+.sidebar nav a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--accent);
 }
 .sidebar nav a .nav-icon {
   width: 17px;
@@ -400,6 +411,57 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
 }
 .stat-sub a:hover {
   text-decoration: underline;
+}
+
+/* Dashboard opening: one clear next action, with secondary discovery path. */
+.dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 24px 26px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(125deg, var(--bg2) 52%, var(--accent-subtle));
+  box-shadow: var(--shadow-sm);
+}
+.dashboard-hero-copy { max-width: 680px; }
+.dashboard-hero-kicker {
+  margin: 0 0 7px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+.content .dashboard-hero h1 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 750;
+  letter-spacing: -0.7px;
+  line-height: 1.15;
+}
+.dashboard-hero-copy > p:last-child {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+.dashboard-hero-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+.dashboard-stat-grid { margin-bottom: 24px; }
+
+@media (max-width: 700px) {
+  .dashboard-hero { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px; }
+}
+@media (max-width: 480px) {
+  .dashboard-hero-actions { width: 100%; }
+  .dashboard-hero-actions .btn { flex: 1 1 145px; }
 }
 
 /* Dashboard operations panels */

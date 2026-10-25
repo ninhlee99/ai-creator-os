@@ -207,6 +207,7 @@
     });
     if (bestMatch) {
       bestMatch.classList.add('active');
+      bestMatch.setAttribute('aria-current', 'page');
     }
 
     // Mobile drawer toggle
