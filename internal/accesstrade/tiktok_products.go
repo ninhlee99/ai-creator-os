@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -133,8 +134,12 @@ func parseTikTokShopProduct(raw json.RawMessage, themeFallback string, now time.
 	if rate > 1 {
 		rate /= 10000 // AccessTrade v2 encodes 35.87% as 3587.
 	}
-	if rate > 0.8 || rate < 0 {
+	commissionAmount := firstFloat(commission, "amount")
+	if rate > 0.8 || rate < 0 || math.IsNaN(rate) || math.IsInf(rate, 0) {
 		rate = 0
+	}
+	if commissionAmount <= 0 || math.IsNaN(commissionAmount) || math.IsInf(commissionAmount, 0) {
+		commissionAmount = 0
 	}
 	soldCount, soldKnown := knownInt64(m["units_sold"])
 	category := tiktokProductCategories(m)
@@ -153,7 +158,8 @@ func parseTikTokShopProduct(raw json.RawMessage, themeFallback string, now time.
 		Price: minPrice, PriceMax: maxPrice,
 		OriginalPrice:  firstFloat(originalPrice, "minimum_amount"),
 		Currency:       firstString(price, "currency"),
-		CommissionRate: rate, ShopName: firstString(shop, "name"),
+		CommissionRate: rate, CommissionAmount: commissionAmount,
+		CommissionCurrency: firstString(commission, "currency"), ShopName: firstString(shop, "name"),
 		SoldCount: soldCount, SoldCountKnown: soldKnown,
 		Category: category, ProductPageURL: detailURL,
 		Theme:         themeFor(category, title),

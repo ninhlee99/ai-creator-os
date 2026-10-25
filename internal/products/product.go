@@ -20,6 +20,8 @@ type Product struct {
 	OriginalPrice           float64 // provider-supplied list price; 0 means unknown
 	Currency                string
 	CommissionRate          float64 // 0..1 — the king metric
+	CommissionAmount        float64 // provider-reported commission amount; 0 means unknown
+	CommissionCurrency      string  // currency of CommissionAmount; may differ from product price currency
 	ShopName                string
 	Rating                  float64 // 0..5
 	SoldCount               int64

@@ -9,7 +9,7 @@
 | Kết nối TikTok | Một phần | OAuth client dùng Go DNS resolver để tránh lỗi resolver hệ thống trên macOS. Smoke server đã chạy build mới; OAuth với tài khoản TikTok thật, quyền app và callback deployment vẫn chưa xác minh. |
 | Radar video TikTok | Một phần | Feed mặc định TikWM trả video Việt Nam trong lượt kiểm tra local; client dùng Go DNS resolver và macOS CA bundle fallback vẫn bật TLS verification. Topic `feed/search` hiện bị Cloudflare challenge HTTP 403; không né challenge và không lọc caption cục bộ thay thế. Kết quả được lưu tối đa 2.000 nguồn và snapshot metrics 30 ngày trong SQLite, xếp theo tốc độ tăng view khi có hai mốc trong 7 ngày; video thiếu lịch sử xếp theo view. Comments/shares chỉ hiện khi provider trả. Dance classification vẫn cần người xác nhận. |
 | Chọn video nhảy | Chọn thủ công | Xác nhận dance được lưu bền trong SQLite; server chặn cả job affiliate và viral nếu nguồn chưa xác nhận hoặc Radar chưa thu thập lại trong 7 ngày. Chưa có classifier dance tự động. |
-| Radar sản phẩm và duyệt | Một phần | TikTok Shop feed qua AccessTrade tìm theo category keyword, sort commission; UI ước tính commission/đơn theo dải giá khi nguồn có nhiều mức giá. Offer thiếu giá không bị bỏ khỏi kho. Currency/provider-updated-at/sales hiển thị unknown nếu nguồn không trả; rating/review không có trong feed hiện tại. Duyệt chặn offer thiếu giá, currency, commission hoặc link listing. Có thao tác loại kèm lý do và danh sách xem lại; tín hiệu xu hướng tách match tên sản phẩm/ngành hàng từ Radar nhưng chưa chấm độ phù hợp hoặc tệp tuổi. Sản xuất tự động cần offer đã duyệt và demand evidence còn hạn. |
+| Radar sản phẩm và duyệt | Một phần | TikTok Shop feed qua AccessTrade tìm theo category keyword, sort commission; khi có `commission.amount`, lưu và hiển thị amount/currency nguồn; chỉ ước tính rate × giá khi thiếu amount. Offer thiếu giá không bị bỏ khỏi kho. Currency/provider-updated-at/sales hiển thị unknown nếu nguồn không trả; rating/review không có trong feed hiện tại. Duyệt chặn offer thiếu giá, currency, commission hoặc link listing. Có thao tác loại kèm lý do và danh sách xem lại; tín hiệu xu hướng tách match tên sản phẩm/ngành hàng từ Radar nhưng chưa chấm độ phù hợp hoặc tệp tuổi. Sản xuất tự động cần offer đã duyệt và demand evidence còn hạn. |
 | Tạo video affiliate | Một phần | Shot plan/QC có; một số nhánh vẫn cần clip chuyển động do người dùng cung cấp hoặc provider cần credits. Chưa chứng minh tạo miễn phí end-to-end. |
 | Tạo video viral | Một phần | Nguồn video được ràng buộc vào Radar; phân tích storyboard hiển thị frame beats và counters Radar hiện có, không suy diễn nguyên nhân viral. Khả năng tạo bản video hoàn chỉnh và giữ đúng audio cần xác minh end-to-end. |
 | Lấy audio Radar | Một phần | Code tải video nguồn, tách audio và kiểm tra track; cần xác minh bằng video thật và đầu ra cuối. |
@@ -21,7 +21,7 @@
 
 1. Dance detection/select phải không lấy nhầm video viral thường.
 2. Hai luồng affiliate/viral phải dùng audio từ cùng video Radar được chọn.
-3. Job lưu URL/video ID/audio provenance và báo đúng lỗi tải/tách/ghép audio.
+3. Job lưu URL/video ID/audio provenance; lỗi tải video Radar giờ hiển thị stderr `yt-dlp`. Còn xác minh tách/ghép trên video thật.
 4. Offer hiển thị chính xác commission; sales/rating chỉ hiện nếu có nguồn thật.
 5. Video QC và gửi Draft phải giữ trạng thái thật, tránh retry gây job trùng.
 6. Xác minh Display API scopes bằng account thật; metrics retention, demographics và order attribution chỉ mở khi có nguồn thật.

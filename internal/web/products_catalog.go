@@ -170,18 +170,20 @@ func productTabName(tab string) string {
 
 // productView is the template projection of one shelf product (Kệ hàng).
 type productView struct {
-	ID              int64
-	Title           string
-	PlatformPID     string
-	Category        string
-	Price           float64
-	PriceMax        float64
-	CommissionRate  float64
-	CommissionValue float64
-	Score           float64
-	Status          string
-	ImageURL        string
-	ProductURL      string
+	ID                 int64
+	Title              string
+	PlatformPID        string
+	Category           string
+	Price              float64
+	PriceMax           float64
+	CommissionRate     float64
+	CommissionCurrency string
+	CommissionValue    float64
+	CommissionEstimate bool
+	Score              float64
+	Status             string
+	ImageURL           string
+	ProductURL         string
 }
 
 // shelfViews projects the shared product store's shelf (status
@@ -206,19 +208,28 @@ func (s *Server) shelfViews() []productView {
 		if len(p.ImageURLs) > 0 {
 			img = p.ImageURLs[0]
 		}
+		commissionValue := p.CommissionAmount
+		commissionCurrency := p.CommissionCurrency
+		commissionEstimate := commissionValue <= 0
+		if commissionEstimate {
+			commissionValue = math.Round(p.Price*p.CommissionRate*100) / 100
+			commissionCurrency = p.Currency
+		}
 		views = append(views, productView{
-			ID:              p.ID,
-			Title:           p.Title,
-			PlatformPID:     p.SourceID,
-			Category:        p.Category,
-			Price:           p.Price,
-			PriceMax:        p.PriceMax,
-			CommissionRate:  p.CommissionRate,
-			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
-			Score:           products.Score(p),
-			Status:          p.ShelfStatus,
-			ImageURL:        img,
-			ProductURL:      p.ProductURL,
+			ID:                 p.ID,
+			Title:              p.Title,
+			PlatformPID:        p.SourceID,
+			Category:           p.Category,
+			Price:              p.Price,
+			PriceMax:           p.PriceMax,
+			CommissionRate:     p.CommissionRate,
+			CommissionCurrency: commissionCurrency,
+			CommissionValue:    commissionValue,
+			CommissionEstimate: commissionEstimate,
+			Score:              products.Score(p),
+			Status:             p.ShelfStatus,
+			ImageURL:           img,
+			ProductURL:         p.ProductURL,
 		})
 	}
 	return views

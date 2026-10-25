@@ -12,6 +12,8 @@ type productSnapshotRecord struct {
 	OriginalPrice           float64 `json:"original_price"`
 	Currency                string  `json:"currency"`
 	CommissionRate          float64 `json:"commission_rate"`
+	CommissionAmount        float64 `json:"commission_amount"`
+	CommissionCurrency      string  `json:"commission_currency"`
 	ShopName                string  `json:"shop_name"`
 	Rating                  float64 `json:"rating"`
 	SoldCount               int64   `json:"sold_count"`
@@ -26,7 +28,8 @@ type productSnapshotRecord struct {
 func productSnapshotData(p Product) productSnapshotRecord {
 	return productSnapshotRecord{
 		Title: p.Title, Price: p.Price, PriceMax: p.PriceMax, OriginalPrice: p.OriginalPrice,
-		Currency: p.Currency, CommissionRate: p.CommissionRate, ShopName: p.ShopName,
+		Currency: p.Currency, CommissionRate: p.CommissionRate,
+		CommissionAmount: p.CommissionAmount, CommissionCurrency: p.CommissionCurrency, ShopName: p.ShopName,
 		Rating: p.Rating, SoldCount: p.SoldCount, SoldCountKnown: p.SoldCountKnown,
 		DemandEvidenceURL: p.DemandEvidenceURL, DemandEvidenceAt: p.DemandEvidenceAt,
 		DemandEvidenceRating: p.DemandEvidenceRating, DemandEvidenceSoldCount: p.DemandEvidenceSoldCount,
@@ -78,7 +81,8 @@ func (s *Store) History(id int64, limit int) (ProductHistory, error) {
 		}
 		item.Product = Product{
 			Title: data.Title, Price: data.Price, PriceMax: data.PriceMax, OriginalPrice: data.OriginalPrice,
-			Currency: data.Currency, CommissionRate: data.CommissionRate, ShopName: data.ShopName,
+			Currency: data.Currency, CommissionRate: data.CommissionRate,
+			CommissionAmount: data.CommissionAmount, CommissionCurrency: data.CommissionCurrency, ShopName: data.ShopName,
 			Rating: data.Rating, SoldCount: data.SoldCount, SoldCountKnown: data.SoldCountKnown,
 			DemandEvidenceURL: data.DemandEvidenceURL, DemandEvidenceAt: data.DemandEvidenceAt,
 			DemandEvidenceRating: data.DemandEvidenceRating, DemandEvidenceSoldCount: data.DemandEvidenceSoldCount,

@@ -50,6 +50,8 @@ func (s *Store) migrate() error {
 		original_price REAL NOT NULL DEFAULT 0,
 		data_updated_at TEXT NOT NULL DEFAULT '',
 		commission_rate REAL NOT NULL DEFAULT 0,
+		commission_amount REAL NOT NULL DEFAULT 0,
+		commission_currency TEXT NOT NULL DEFAULT '',
 		shop_name TEXT NOT NULL DEFAULT '', rating REAL NOT NULL DEFAULT 0,
 		sold_count INTEGER NOT NULL DEFAULT 0, sold_count_known INTEGER NOT NULL DEFAULT 0,
 		demand_evidence_url TEXT NOT NULL DEFAULT '', demand_evidence_at TEXT NOT NULL DEFAULT '',
@@ -105,6 +107,14 @@ func (s *Store) migrate() error {
 		return err
 	}
 	if err := s.addColumn("products", "data_updated_at", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	// Additive fields preserve existing products as unknown and remain readable
+	// by older binaries, which ignore these extra columns during rollback.
+	if err := s.addColumn("products", "commission_amount", "REAL NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := s.addColumn("products", "commission_currency", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
 	// Additive provenance fields. Existing metric values stay intact, but
@@ -231,44 +241,50 @@ func (s *Store) Save(p Product) (int64, error) {
 	defer tx.Rollback()
 	_, err = tx.Exec(`
 		INSERT INTO products(source,source_id,title,image_urls,price,price_max,currency,original_price,data_updated_at,
-			commission_rate,shop_name,rating,sold_count,sold_count_known,demand_evidence_url,demand_evidence_at,
+			commission_rate,commission_amount,commission_currency,shop_name,rating,sold_count,sold_count_known,demand_evidence_url,demand_evidence_at,
 			demand_evidence_rating,demand_evidence_sold_count,category,product_url,product_page_url,theme,found_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(source,source_id) DO UPDATE SET
 			review_status=CASE WHEN
 				excluded.title<>products.title OR excluded.image_urls<>products.image_urls OR
 				excluded.price<>products.price OR excluded.price_max<>products.price_max OR
-				excluded.commission_rate<>products.commission_rate OR excluded.category<>products.category OR
+				excluded.commission_rate<>products.commission_rate OR
+				excluded.commission_amount<>products.commission_amount OR excluded.commission_currency<>products.commission_currency OR excluded.category<>products.category OR
 				excluded.product_page_url<>products.product_page_url
 				THEN 'pending' ELSE products.review_status END,
 			review_note=CASE WHEN
 				excluded.title<>products.title OR excluded.image_urls<>products.image_urls OR
 				excluded.price<>products.price OR excluded.price_max<>products.price_max OR
-				excluded.commission_rate<>products.commission_rate OR excluded.category<>products.category OR
+				excluded.commission_rate<>products.commission_rate OR
+				excluded.commission_amount<>products.commission_amount OR excluded.commission_currency<>products.commission_currency OR excluded.category<>products.category OR
 				excluded.product_page_url<>products.product_page_url
 				THEN 'Thông tin offer đã đổi; cần duyệt lại.' ELSE products.review_note END,
 			reviewed_at=CASE WHEN
 				excluded.title<>products.title OR excluded.image_urls<>products.image_urls OR
 				excluded.price<>products.price OR excluded.price_max<>products.price_max OR
-				excluded.commission_rate<>products.commission_rate OR excluded.category<>products.category OR
+				excluded.commission_rate<>products.commission_rate OR
+				excluded.commission_amount<>products.commission_amount OR excluded.commission_currency<>products.commission_currency OR excluded.category<>products.category OR
 				excluded.product_page_url<>products.product_page_url
 				THEN '' ELSE products.reviewed_at END,
 			shelf_status=CASE WHEN
 				excluded.title<>products.title OR excluded.image_urls<>products.image_urls OR
 				excluded.price<>products.price OR excluded.price_max<>products.price_max OR
-				excluded.commission_rate<>products.commission_rate OR excluded.category<>products.category OR
+				excluded.commission_rate<>products.commission_rate OR
+				excluded.commission_amount<>products.commission_amount OR excluded.commission_currency<>products.commission_currency OR excluded.category<>products.category OR
 				excluded.product_page_url<>products.product_page_url
 				THEN '' ELSE products.shelf_status END,
 			shelf_score=CASE WHEN
 				excluded.title<>products.title OR excluded.image_urls<>products.image_urls OR
 				excluded.price<>products.price OR excluded.price_max<>products.price_max OR
-				excluded.commission_rate<>products.commission_rate OR excluded.category<>products.category OR
+				excluded.commission_rate<>products.commission_rate OR
+				excluded.commission_amount<>products.commission_amount OR excluded.commission_currency<>products.commission_currency OR excluded.category<>products.category OR
 				excluded.product_page_url<>products.product_page_url
 				THEN 0 ELSE products.shelf_score END,
 			title=excluded.title, image_urls=excluded.image_urls, price=excluded.price,
 			price_max=excluded.price_max, original_price=excluded.original_price,
 			data_updated_at=excluded.data_updated_at,
-			commission_rate=excluded.commission_rate, shop_name=excluded.shop_name,
+			commission_rate=excluded.commission_rate, commission_amount=excluded.commission_amount,
+			commission_currency=excluded.commission_currency, shop_name=excluded.shop_name,
 			rating=excluded.rating, sold_count=excluded.sold_count, sold_count_known=excluded.sold_count_known,
 			demand_evidence_url=CASE
 				WHEN excluded.demand_evidence_url<>'' OR excluded.demand_evidence_at<>'' THEN
@@ -296,7 +312,7 @@ func (s *Store) Save(p Product) (int64, error) {
 			product_page_url=CASE WHEN excluded.product_page_url<>'' THEN excluded.product_page_url ELSE products.product_page_url END,
 			theme=excluded.theme`,
 		p.Source, p.SourceID, p.Title, string(imgs), p.Price, p.PriceMax, p.Currency, p.OriginalPrice, p.DataUpdatedAt,
-		p.CommissionRate, p.ShopName, p.Rating, p.SoldCount, p.SoldCountKnown, p.DemandEvidenceURL, p.DemandEvidenceAt,
+		p.CommissionRate, p.CommissionAmount, p.CommissionCurrency, p.ShopName, p.Rating, p.SoldCount, p.SoldCountKnown, p.DemandEvidenceURL, p.DemandEvidenceAt,
 		p.DemandEvidenceRating, p.DemandEvidenceSoldCount, p.Category,
 		p.ProductURL, p.ProductPageURL, p.Theme, now)
 	if err != nil {
@@ -335,7 +351,8 @@ func scanProduct(row interface {
 	var p Product
 	var imgs string
 	err := row.Scan(&p.ID, &p.Source, &p.SourceID, &p.Title, &imgs, &p.Price, &p.PriceMax,
-		&p.Currency, &p.OriginalPrice, &p.DataUpdatedAt, &p.CommissionRate, &p.ShopName, &p.Rating, &p.SoldCount, &p.SoldCountKnown,
+		&p.Currency, &p.OriginalPrice, &p.DataUpdatedAt, &p.CommissionRate, &p.CommissionAmount, &p.CommissionCurrency,
+		&p.ShopName, &p.Rating, &p.SoldCount, &p.SoldCountKnown,
 		&p.DemandEvidenceURL, &p.DemandEvidenceAt, &p.DemandEvidenceRating, &p.DemandEvidenceSoldCount,
 		&p.Category, &p.ProductURL, &p.ProductPageURL, &p.Theme, &p.FoundAt,
 		&p.ShelfStatus, &p.ShelfScore, &p.ReviewStatus, &p.ReviewNote, &p.ReviewedAt)
@@ -347,7 +364,7 @@ func scanProduct(row interface {
 }
 
 const productCols = `id,source,source_id,title,image_urls,price,price_max,currency,original_price,data_updated_at,` +
-	`commission_rate,shop_name,rating,sold_count,sold_count_known,demand_evidence_url,demand_evidence_at,` +
+	`commission_rate,commission_amount,commission_currency,shop_name,rating,sold_count,sold_count_known,demand_evidence_url,demand_evidence_at,` +
 	`demand_evidence_rating,demand_evidence_sold_count,category,product_url,product_page_url,theme,found_at,` +
 	`shelf_status,shelf_score,review_status,review_note,reviewed_at`
 

@@ -41,18 +41,20 @@ func (s *Server) handleAPIStats(w http.ResponseWriter, r *http.Request) {
 }
 
 type productJSON struct {
-	ID              int64   `json:"id"`
-	PlatformPID     string  `json:"platform_pid"`
-	Title           string  `json:"title"`
-	Category        string  `json:"category"`
-	Price           float64 `json:"price"`
-	PriceMax        float64 `json:"price_max,omitempty"`
-	CommissionRate  float64 `json:"commission_rate"`
-	CommissionValue float64 `json:"commission_value"`
-	Score           float64 `json:"score"`
-	Status          string  `json:"status"`
-	ReviewStatus    string  `json:"review_status"`
-	ReviewNote      string  `json:"review_note,omitempty"`
+	ID                 int64   `json:"id"`
+	PlatformPID        string  `json:"platform_pid"`
+	Title              string  `json:"title"`
+	Category           string  `json:"category"`
+	Price              float64 `json:"price"`
+	PriceMax           float64 `json:"price_max,omitempty"`
+	CommissionRate     float64 `json:"commission_rate"`
+	CommissionAmount   float64 `json:"commission_amount,omitempty"`
+	CommissionCurrency string  `json:"commission_currency,omitempty"`
+	CommissionValue    float64 `json:"commission_value"`
+	Score              float64 `json:"score"`
+	Status             string  `json:"status"`
+	ReviewStatus       string  `json:"review_status"`
+	ReviewNote         string  `json:"review_note,omitempty"`
 }
 
 // handleAPIProducts lists the shared product store (best score first).
@@ -76,7 +78,8 @@ func (s *Server) handleAPIProducts(w http.ResponseWriter, r *http.Request) {
 		out = append(out, productJSON{
 			ID: p.ID, PlatformPID: p.SourceID, Title: p.Title,
 			Category: p.Category, Price: p.Price, PriceMax: p.PriceMax,
-			CommissionRate:  p.CommissionRate,
+			CommissionRate:   p.CommissionRate,
+			CommissionAmount: p.CommissionAmount, CommissionCurrency: p.CommissionCurrency,
 			CommissionValue: math.Round(p.Price*p.CommissionRate*100) / 100,
 			Score:           products.Score(p), Status: status,
 			ReviewStatus: p.ReviewStatus, ReviewNote: p.ReviewNote,

@@ -106,7 +106,7 @@
     </td>
     <td>{{if .Category}}{{.Category}}{{else}}—{{end}}</td>
     <td>{{fmtVND .Price}}{{if gt .PriceMax .Price}} – {{fmtVND .PriceMax}}{{end}}</td>
-    <td>Ước tính {{fmtVND .CommissionValue}}/đơn<br>
+    <td>{{if gt .CommissionValue 0.0}}{{if .CommissionEstimate}}Ước tính {{productMoney .CommissionValue .CommissionCurrency}}/đơn{{else}}Nguồn báo {{productMoney .CommissionValue .CommissionCurrency}}{{end}}{{else}}Chưa có dữ liệu{{end}}<br>
       {{if ge .CommissionRate 0.20}}
       <span class="badge badge-info" style="font-size:10.5px">Nguồn báo {{printf "%.0f" (pct .CommissionRate)}}%</span>
       {{else}}
@@ -505,7 +505,7 @@ function atOrderSync() {
     <summary style="cursor:pointer;color:var(--accent);font-size:11px;font-weight:600">Xem đánh giá & bằng chứng</summary>
     <div style="padding:7px 0;color:var(--muted);font-size:11px;line-height:1.55">
       <div><strong>Offer:</strong> {{if .OfferReady}}đủ giá, tiền tệ, hoa hồng và link HTTPS{{else}}còn thiếu {{range $i, $gap := .OfferGaps}}{{if $i}}, {{end}}{{$gap}}{{end}}{{end}}</div>
-      <div><strong>Hoa hồng ước tính:</strong> {{if gt .CommissionPerOrder 0.0}}{{productMoney .CommissionPerOrder $product.Currency}}{{if gt .CommissionPerOrderMax .CommissionPerOrder}}–{{productMoney .CommissionPerOrderMax $product.Currency}}{{end}}/đơn{{else}}chưa đủ giá hoặc tỷ lệ{{end}}</div>
+      {{if gt .CommissionAmount 0.0}}<div><strong>Hoa hồng theo nguồn:</strong> {{productMoney .CommissionAmount .CommissionCurrency}} · chưa xác nhận payout.</div>{{else}}<div><strong>Hoa hồng ước tính:</strong> {{if gt .CommissionPerOrder 0.0}}{{productMoney .CommissionPerOrder $product.Currency}}{{if gt .CommissionPerOrderMax .CommissionPerOrder}}–{{productMoney .CommissionPerOrderMax $product.Currency}}{{end}}/đơn{{else}}chưa đủ giá hoặc tỷ lệ{{end}}</div>{{end}}
       {{if .HasCommissionFloor}}<div><strong>Mốc tham khảo danh mục:</strong> {{printf "%.0f" (pct .CommissionFloor)}}%{{if .BelowCommissionFloor}} · thấp hơn mốc{{end}}</div>{{end}}
       <div><strong>Lượt bán:</strong> {{.SalesEvidence}}</div>
       <div><strong>Rating / số lượt đánh giá:</strong> {{.RatingEvidence}}</div>
@@ -571,9 +571,9 @@ function atOrderSync() {
     </td>
     <td><strong style="font-size:13px">{{productMoney .Price .Currency}}{{if and (gt .PriceMax .Price) (gt .Price 0.0)}} – {{productMoney .PriceMax .Currency}}{{end}}</strong></td>
     <td>
-      {{if gt .CommissionRate 0.0}}
-      <span class="badge badge-info" title="Tỷ lệ lấy từ nguồn sản phẩm; không xác nhận hoa hồng được ghi nhận hoặc payout">{{printf "%.0f" (pct .CommissionRate)}}%</span>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ước tính {{productMoney (mul .Price .CommissionRate) .Currency}}{{if and (gt .PriceMax .Price) (gt .Price 0.0)}}–{{productMoney (mul .PriceMax .CommissionRate) .Currency}}{{end}}/đơn</div>
+      {{if or (gt .CommissionRate 0.0) (gt .CommissionAmount 0.0)}}
+      {{if gt .CommissionRate 0.0}}<span class="badge badge-info" title="Tỷ lệ lấy từ nguồn sản phẩm; không xác nhận hoa hồng được ghi nhận hoặc payout">{{printf "%.0f" (pct .CommissionRate)}}%</span>{{end}}
+      {{if gt .CommissionAmount 0.0}}<div style="font-size:11.5px;color:var(--muted);margin-top:2px">Nguồn báo {{productMoney .CommissionAmount .CommissionCurrency}} · chưa xác nhận payout</div>{{else}}<div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ước tính {{productMoney (mul .Price .CommissionRate) .Currency}}{{if and (gt .PriceMax .Price) (gt .Price 0.0)}}–{{productMoney (mul .PriceMax .CommissionRate) .Currency}}{{end}}/đơn</div>{{end}}
       {{else}}<span class="hint">Chưa có dữ liệu</span>{{end}}
     </td>
     <td><span style="font-size:12px;font-weight:600">{{if .SoldCountKnown}}{{.SoldCount}}{{else}}Chưa có dữ liệu{{end}}</span></td>
@@ -634,7 +634,7 @@ function atOrderSync() {
   {{range .Snapshots}}
   <div style="padding:6px 0;border-bottom:1px solid var(--border);line-height:1.6">
     <span>{{.CapturedAt}}</span><br>
-    Giá {{productMoney .Product.Price .Product.Currency}} · Hoa hồng {{printf "%.0f" (pct .Product.CommissionRate)}}% · Đã bán {{if .Product.SoldCountKnown}}{{.Product.SoldCount}}{{else}}chưa có dữ liệu{{end}} · Đánh giá {{if gt .Product.Rating 0}}{{printf "%.1f" .Product.Rating}}{{else}}chưa có dữ liệu{{end}}
+    Giá {{productMoney .Product.Price .Product.Currency}} · Hoa hồng {{printf "%.0f" (pct .Product.CommissionRate)}}%{{if gt .Product.CommissionAmount 0.0}} (nguồn báo {{productMoney .Product.CommissionAmount .Product.CommissionCurrency}}){{end}} · Đã bán {{if .Product.SoldCountKnown}}{{.Product.SoldCount}}{{else}}chưa có dữ liệu{{end}} · Đánh giá {{if gt .Product.Rating 0}}{{printf "%.1f" .Product.Rating}}{{else}}chưa có dữ liệu{{end}}
   </div>
   {{end}}
   {{else}}

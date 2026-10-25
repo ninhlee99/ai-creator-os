@@ -17,6 +17,8 @@ type CandidateEvaluation struct {
 	OfferGaps             []string
 	CommissionPerOrder    float64
 	CommissionPerOrderMax float64
+	CommissionAmount      float64
+	CommissionCurrency    string
 	CommissionFloor       float64
 	HasCommissionFloor    bool
 	BelowCommissionFloor  bool
@@ -44,6 +46,10 @@ func EvaluateCandidate(p Product, now time.Time) CandidateEvaluation {
 		if finitePositive(p.PriceMax) && p.PriceMax > p.Price {
 			e.CommissionPerOrderMax = p.PriceMax * p.CommissionRate
 		}
+	}
+	if finitePositive(p.CommissionAmount) {
+		e.CommissionAmount = p.CommissionAmount
+		e.CommissionCurrency = strings.TrimSpace(p.CommissionCurrency)
 	}
 	if strings.TrimSpace(p.TikTokRadarTrendEvidence) != "" {
 		e.TrendEvidence = strings.TrimSpace(p.TikTokRadarTrendEvidence)
