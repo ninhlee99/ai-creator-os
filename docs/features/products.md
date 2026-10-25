@@ -15,7 +15,7 @@ Trang Products phục vụ video affiliate TikTok.
 
 ## Giới hạn
 
-AccessTrade feed trả giá, commission amount/currency/rate và có thể trả units sold; units sold có thể vắng nếu thiếu quyền chia sẻ dữ liệu. Feed không trả rating/review. Offer mới chờ duyệt; link affiliate TikTok Shop được tạo khi duyệt. Chỉ offer đã được duyệt, đủ giá/tiền tệ/hoa hồng và có link hợp lệ mới vào sản xuất. Thiếu sales hoặc rating vẫn hiện là khoảng trống bằng chứng để người duyệt cân nhắc; app không tự suy đoán hoặc tự loại offer.
+AccessTrade feed trả giá, commission amount/currency/rate và có thể trả tổng `units_sold`; số này có thể vắng nếu thiếu quyền chia sẻ dữ liệu, và feed không nêu kỳ đo nên không dùng riêng nó để kết luận tốc độ bán gần đây. Feed không trả rating/review. Offer mới chờ duyệt; link affiliate TikTok Shop được tạo khi duyệt. Chỉ offer đã được duyệt, đủ giá/tiền tệ/hoa hồng và có link hợp lệ mới vào sản xuất. Thiếu sales hoặc rating vẫn hiện là khoảng trống bằng chứng để người duyệt cân nhắc; app không tự suy đoán hoặc tự loại offer.
 
 Fit xu hướng TikTok, tệp giới trẻ và mức độ viral chưa được chấm tự động. UI phải để các mục này ở trạng thái chưa có dữ liệu thay vì tự suy đoán.
 

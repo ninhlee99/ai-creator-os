@@ -80,8 +80,15 @@ func EvaluateCandidate(p Product, now time.Time) CandidateEvaluation {
 	switch {
 	case p.SoldCountKnown && sourceName == "manual":
 		e.SalesEvidence = "Số đã bán do người dùng nhập; chưa được provider xác minh."
+	case p.SoldCountKnown && sourceName == "accesstrade":
+		e.SalesEvidence = "AccessTrade báo tổng " + formatSoldCount(p.SoldCount) + " units_sold; feed không nêu kỳ đo nên chưa thể kết luận tốc độ bán gần đây."
+		if updatedAt := strings.TrimSpace(p.DataUpdatedAt); updatedAt != "" {
+			e.SalesEvidence += " Thời điểm cập nhật do nguồn báo: " + updatedAt + "."
+		} else if capturedAt := strings.TrimSpace(p.DemandEvidenceAt); capturedAt != "" {
+			e.SalesEvidence += " Ứng dụng lấy dữ liệu lúc: " + capturedAt + "."
+		}
 	case p.SoldCountKnown && validDemandEvidenceURL(p.DemandEvidenceURL) && p.DemandEvidenceAt != "":
-		e.SalesEvidence = "Nguồn ghi nhận " + formatSoldCount(p.SoldCount) + " lượt bán tại thời điểm " + strings.TrimSpace(p.DemandEvidenceAt) + "."
+		e.SalesEvidence = "Ứng dụng lấy dữ liệu lúc " + strings.TrimSpace(p.DemandEvidenceAt) + "; nguồn báo " + formatSoldCount(p.SoldCount) + " lượt bán."
 	case p.SoldCountKnown:
 		e.SalesEvidence = "Nguồn báo " + formatSoldCount(p.SoldCount) + " lượt bán nhưng thiếu URL hoặc thời điểm lấy dữ liệu."
 	default:
