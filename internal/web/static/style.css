@@ -463,6 +463,25 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   .dashboard-hero-actions { width: 100%; }
   .dashboard-hero-actions .btn { flex: 1 1 145px; }
 }
+@media (max-width: 700px) {
+  .dashboard-stat-grid > .stat-card:last-child {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 16px;
+  }
+  .dashboard-stat-grid > .stat-card:last-child .stat-num {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    justify-self: end;
+    margin: 0;
+  }
+}
+@media (max-width: 480px) {
+  .dashboard-stat-grid > .stat-card:last-child { display: block; }
+  .dashboard-stat-grid > .stat-card:last-child .stat-num { margin: 4px 0 2px; }
+}
 
 /* Dashboard operations panels */
 .dashboard-panels {
