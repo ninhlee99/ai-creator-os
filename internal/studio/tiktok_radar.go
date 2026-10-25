@@ -59,6 +59,16 @@ func (v TikTokTrendVideo) SoundTitle() string {
 	return "Sound gốc video TikTok"
 }
 
+// EmbedPlayerURL returns TikTok's official player URL only when the saved
+// source URL contains the same numeric video ID.
+func (v TikTokTrendVideo) EmbedPlayerURL() string {
+	id := TikTokVideoIDFromURL(v.VideoURL)
+	if id == "" || id != strings.TrimSpace(v.VideoID) {
+		return ""
+	}
+	return "https://www.tiktok.com/player/v1/" + id + "?controls=1&description=1&music_info=1&rel=0"
+}
+
 const TikTokTrendSource = "TikWM — TikTok feed và tìm kiếm video"
 
 var tikTokRadarHTTPTransport = func() *http.Transport {

@@ -4,7 +4,7 @@
 
 1. TikTok Radar lấy feed video Việt Nam và lưu tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite.
 2. Khi cấu hình TikTok Business Discovery Access Token + Advertiser ID, Radar lấy hashtag phổ biến tại Việt Nam rồi tìm video top theo hashtag/chủ đề. Nếu chưa cấu hình, Radar dùng TikWM; endpoint tìm theo chủ đề hiện bị Cloudflare 403 và không thay bằng lọc caption cục bộ.
-3. Mở video và tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
+3. Với kết quả Discovery thiếu ảnh bìa, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; nêu tín hiệu cấu trúc và giả thuyết có mốc nguồn, kèm thử nghiệm cho video sau. Hiển thị metrics và tốc độ tăng view chỉ khi nguồn cung cấp dữ liệu và Radar có đủ snapshot.
 6. Tải video, kiểm tra và lấy audio đúng từ nguồn.

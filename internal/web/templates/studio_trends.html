@@ -61,6 +61,14 @@
         <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy"
              class="aspect-[3/4] w-full rounded-xl bg-slate-100 object-cover">
       </a>{{end}}
+      {{if and (not .CoverURL) .EmbedPlayerURL}}
+      <details class="space-y-2">
+        <summary class="btn btn-secondary btn-sm w-fit cursor-pointer">Xem trước video TikTok</summary>
+        <iframe src="{{.EmbedPlayerURL}}" title="Video TikTok: {{.Title}}" loading="lazy"
+                allow="encrypted-media; fullscreen; picture-in-picture" allowfullscreen
+                class="aspect-[9/16] w-full rounded-xl bg-slate-100"></iframe>
+      </details>
+      {{end}}
       <div class="flex justify-between gap-2 text-sm text-slate-600">
         <span>{{if .PlayCountKnown}}{{.Views}} lượt xem{{else}}View chưa có dữ liệu{{end}}</span>
         <span>{{if .DiggCountKnown}}{{.Likes}} lượt thích{{else}}Like chưa có dữ liệu{{end}}</span>
