@@ -3,7 +3,7 @@
 ## Flow
 
 1. TikTok Radar giữ tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite; giao diện chỉ hiện tối đa 10 video.
-2. Feed mặc định: nếu có `APIFY_API_TOKEN`, Radar tìm tối đa 20 video cho mỗi cụm `viral Việt Nam`, `hot trend Việt Nam`, `xu hướng Việt Nam`, rồi giữ top 10 theo view và tym. Apify tính phí theo dữ liệu trả về. Nếu chưa có token, Radar dùng TikTok Business Discovery khi đã cấu hình; API chính thức này lấy video theo hashtag phổ biến tại VN nhưng không trả bộ đếm view/tym. Tìm theo chủ đề ưu tiên Apify khi có token; nếu không thì dùng Business Discovery. Không có hai nguồn này thì Radar yêu cầu cấu hình, không gọi TikWM.
+2. Feed mặc định: nếu có `APIFY_API_TOKEN`, Radar tìm tối đa 20 video cho mỗi cụm `viral Việt Nam`, `hot trend Việt Nam`, `xu hướng Việt Nam`, rồi giữ top 10 theo view và tym. Apify tính phí theo dữ liệu trả về. Nếu Apify lỗi hoặc trả video không hợp lệ, Radar tự chuyển sang TikTok Business Discovery khi đã cấu hình; nếu chưa có Apify token, Discovery là nguồn chính. API chính thức này trả video đã xếp hạng theo hashtag phổ biến tại VN nhưng không trả bộ đếm view/tym. Tìm theo chủ đề cũng dùng thứ tự ưu tiên này. Không có hai nguồn này thì Radar yêu cầu cấu hình, không gọi TikWM.
 3. Với kết quả Discovery thiếu ảnh bìa, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; nêu tín hiệu cấu trúc và giả thuyết có mốc nguồn, kèm thử nghiệm cho video sau. Hiển thị metrics và tốc độ tăng view chỉ khi nguồn cung cấp dữ liệu và Radar có đủ snapshot.

@@ -109,8 +109,8 @@ func FormatCount(n int64) string {
 
 // FetchTikTokTrendingVideos returns records received from the regional TikTok video feed.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
-	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
 	apifyConfig := tikTokApifyConfigFromEnv()
+	_, _, configErr := tikTokBusinessDiscoveryConfigFromEnv()
 	if configErr != nil && apifyConfig.APIToken == "" {
 		return nil, configErr
 	}
@@ -121,15 +121,7 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	}
 	ttMu.Unlock()
 
-	var result []TikTokTrendVideo
-	var err error
-	if apifyConfig.APIToken != "" {
-		result, err = fetchApifyTikTokTrendingVideos(ctx, apifyConfig)
-	} else if configured {
-		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, "", config)
-	} else {
-		return nil, missingTikTokRadarConfigError()
-	}
+	result, err := fetchTikTokRadarVideos(ctx, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,13 +164,13 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	}
 	topic = strings.Join(topics, ", ")
 	apifyConfig := tikTokApifyConfigFromEnv()
-	var config tikTokBusinessDiscoveryConfig
-	configured := false
+	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
 	if apifyConfig.APIToken == "" {
-		var configErr error
-		config, configured, configErr = tikTokBusinessDiscoveryConfigFromEnv()
 		if configErr != nil {
 			return nil, configErr
+		}
+		if !configured {
+			return nil, missingTikTokRadarConfigError()
 		}
 	}
 	key := "unconfigured:" + strings.ToLower(topic)
@@ -196,14 +188,7 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	}
 	ttMu.Unlock()
 
-	var result []TikTokTrendVideo
-	if apifyConfig.APIToken != "" {
-		result, err = fetchApifyTikTokVideos(ctx, topics, apifyConfig)
-	} else if configured {
-		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, topic, config)
-	} else {
-		return nil, missingTikTokRadarConfigError()
-	}
+	result, err := fetchTikTokRadarVideos(ctx, topic, topics)
 	if err != nil {
 		return nil, err
 	}
@@ -238,6 +223,52 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 
 func missingTikTokRadarConfigError() error {
 	return fmt.Errorf("chưa cấu hình nguồn TikTok: nhập API Token Apify hoặc cả Access Token và Advertiser ID TikTok Business Discovery trong Cài đặt → Kênh mạng xã hội")
+}
+
+func fetchTikTokRadarVideos(ctx context.Context, topic string, topics []string) ([]TikTokTrendVideo, error) {
+	discoveryConfig, discoveryConfigured, discoveryConfigErr := tikTokBusinessDiscoveryConfigFromEnv()
+	apifyConfig := tikTokApifyConfigFromEnv()
+	if apifyConfig.APIToken == "" {
+		if discoveryConfigErr != nil {
+			return nil, discoveryConfigErr
+		}
+		if !discoveryConfigured {
+			return nil, missingTikTokRadarConfigError()
+		}
+		return fetchTikTokBusinessDiscoveryVideos(ctx, topic, discoveryConfig)
+	}
+
+	var videos []TikTokTrendVideo
+	var primaryErr error
+	if topic == "" {
+		videos, primaryErr = fetchApifyTikTokTrendingVideos(ctx, apifyConfig)
+	} else {
+		videos, primaryErr = fetchApifyTikTokVideos(ctx, topics, apifyConfig)
+	}
+	if primaryErr == nil && len(validateTikTokRadarResults(videos)) > 0 {
+		return videos, nil
+	}
+	if primaryErr == nil {
+		primaryErr = fmt.Errorf("Apify không trả về video TikTok hợp lệ")
+	}
+	if ctx.Err() != nil {
+		return nil, primaryErr
+	}
+	if discoveryConfigErr != nil {
+		return nil, fmt.Errorf("%w; cấu hình nguồn dự phòng TikTok Business Discovery không hợp lệ: %v", primaryErr, discoveryConfigErr)
+	}
+	if !discoveryConfigured {
+		return nil, fmt.Errorf("%w; chưa cấu hình TikTok Business Discovery làm nguồn dự phòng", primaryErr)
+	}
+
+	fallback, fallbackErr := fetchTikTokBusinessDiscoveryVideos(ctx, topic, discoveryConfig)
+	if fallbackErr == nil && len(validateTikTokRadarResults(fallback)) > 0 {
+		return fallback, nil
+	}
+	if fallbackErr == nil {
+		fallbackErr = fmt.Errorf("TikTok Business Discovery không trả về video hợp lệ")
+	}
+	return nil, fmt.Errorf("%w; nguồn dự phòng TikTok Business Discovery cũng lỗi: %v", primaryErr, fallbackErr)
 }
 
 func splitTikTokRadarTopics(topic string) ([]string, error) {

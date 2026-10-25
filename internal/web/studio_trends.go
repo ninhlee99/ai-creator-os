@@ -20,6 +20,8 @@ func errText(err error) string {
 func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.URL.Query().Get("topic"))
 	source := studio.TikTokRadarSourceLabelForTopic(topic != "")
+	configuredSource := source
+	sourceNote := ""
 	var videos []studio.TikTokTrendVideo
 	var err error
 	if s.Studio == nil {
@@ -29,13 +31,24 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	} else {
 		videos, err = s.Studio.CollectTikTokRadarVideos(r.Context())
 	}
+	if len(videos) > 0 && strings.TrimSpace(videos[0].Provider) != "" {
+		usedSource := videos[0].Provider
+		if usedSource == studio.TikTokApifyTrendingSource {
+			usedSource = studio.TikTokApifySource
+		}
+		if usedSource != configuredSource {
+			sourceNote = fmt.Sprintf("Nguồn chính %s gặp lỗi; Radar đang dùng nguồn dự phòng %s. Nguồn này không có số lượt xem/tym.", configuredSource, usedSource)
+		}
+		source = usedSource
+	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		s.writeJSON(w, map[string]any{
-			"source":    source,
-			"topic":     topic,
-			"videos":    videos,
-			"rank_note": tikTokRadarRankNote(videos),
-			"error":     errText(err),
+			"source":      source,
+			"source_note": sourceNote,
+			"topic":       topic,
+			"videos":      videos,
+			"rank_note":   tikTokRadarRankNote(videos),
+			"error":       errText(err),
 		})
 		return
 	}
@@ -46,7 +59,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"SourceConfigured", studio.TikTokRadarSourceConfigured(),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
-		"TrendSource", source, "TrendErr", errText(err),
+		"TrendSource", source, "SourceNote", sourceNote, "TrendErr", errText(err),
 		"RankNote", tikTokRadarRankNote(videos),
 		"ShowApifySetup", source != studio.TikTokApifySource,
 	)

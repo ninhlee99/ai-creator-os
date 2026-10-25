@@ -6,7 +6,7 @@
       <span class="badge badge-ok">Nguồn đề xuất</span>
     </div>
     <p class="hint">Apify tìm video theo từ khóa và trả số view/tym để xếp top 10. Mỗi lượt tìm nhận tối đa 3 chủ đề × 20 video. Apify tính phí theo dữ liệu nhận được; xem <a href="https://apify.com/clockworks/tiktok-scraper" target="_blank" rel="noopener noreferrer">Actor và bảng giá ↗</a>. TikTok có thể thay đổi luồng tìm kiếm nên nguồn bên thứ ba vẫn có lúc gián đoạn.</p>
-    <p class="hint">Tạo API token tại <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer">Apify · API & Integrations ↗</a>. Khi đã lưu token, Radar dùng Apify cho tìm kiếm chủ đề; các trang khác không tự gọi Apify.</p>
+    <p class="hint">Tạo API token tại <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer">Apify · API & Integrations ↗</a>. Khi đã lưu token, Radar dùng Apify cho tìm kiếm chủ đề; nếu Apify lỗi, Radar thử TikTok Business Discovery khi nguồn này đã cấu hình. Các trang khác không tự gọi Apify.</p>
     {{$apifyTokenOk := false}}{{$apifyTokenMask := ""}}
     {{range .EnvStatus}}
       {{if eq .Name "APIFY_API_TOKEN"}}{{$apifyTokenOk = .Ok}}{{$apifyTokenMask = .Masked}}{{end}}
@@ -43,7 +43,7 @@
 
   <div class="form-card mt-4 max-w-3xl space-y-3">
     <h3>TikTok Business Discovery · nguồn chính thức</h3>
-    <p class="hint">API chính thức tìm video theo hashtag phổ biến tại Việt Nam. Kết quả không có số view/tym chi tiết; TikTok xếp theo tín hiệu tổng hợp. Cần TikTok API for Business app đã cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên.</p>
+    <p class="hint">API chính thức tìm video theo hashtag phổ biến tại Việt Nam. Đây là nguồn dự phòng khi Apify lỗi, hoặc nguồn chính khi chưa cấu hình Apify. Kết quả không có số view/tym chi tiết; TikTok xếp theo tín hiệu tổng hợp. Cần TikTok API for Business app đã cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên.</p>
     <p class="hint"><a href="https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714" target="_blank" rel="noopener noreferrer">Tài liệu Discovery API ↗</a></p>
     {{$discoveryTokenOk := false}}{{$discoveryTokenMask := ""}}
     {{$discoveryAdvertiserOk := false}}{{$discoveryAdvertiserMask := ""}}

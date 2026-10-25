@@ -12,7 +12,7 @@ Nguồn chính thức:
 
 ## TikTok Radar
 
-Radar hiện ưu tiên Apify TikTok Scraper khi có `APIFY_API_TOKEN` và dùng TikTok Business Discovery khi chưa có Apify token nhưng đã cấu hình access token + advertiser ID. Apify dựa trên tìm kiếm TikTok và tính phí theo kết quả; Business Discovery là API chính thức nhưng endpoint video theo hashtag không trả counters trong danh sách. Không có hai nguồn này thì Radar báo cần cấu hình, không gọi TikWM. TikTok Research API hỗ trợ truy vấn keyword nhưng chỉ dùng được khi project được TikTok phê duyệt và cấp scope `research.data.basic`; không thay thế được bằng OAuth Login Kit thông thường. Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
+Radar ưu tiên Apify TikTok Scraper khi có `APIFY_API_TOKEN`; nếu Apify lỗi hoặc trả video không hợp lệ, Radar tự chuyển sang TikTok Business Discovery khi access token + advertiser ID hợp lệ. Nếu chưa có Apify token, Discovery dùng làm nguồn chính. Apify tìm theo TikTok và tính phí theo kết quả; Business Discovery là API chính thức, trả video đã xếp hạng theo hashtag nhưng không có bộ đếm view/tym. Không có hai nguồn này thì Radar báo cần cấu hình, không gọi TikWM. TikTok Research API không phải lựa chọn thực tế cho app thương mại: TikTok giới hạn quyền cho nhà nghiên cứu đủ điều kiện, mục đích phi lợi nhuận và cần phê duyệt; xem [điều kiện Research API](https://developers.tiktok.com/products/research-api/). Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
 
 ## AccessTrade
 
