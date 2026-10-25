@@ -78,11 +78,39 @@
       </article>
       {{end}}
     </div>
-    <p class="empty">Tối đa 10 mục.</p>
     {{else if .AttentionSourcesKnown}}
     <p class="empty">Không có blocker trong dữ liệu đã đọc.</p>
     {{else}}
     <p class="empty">Chưa có dữ liệu nguồn để xác nhận trạng thái blocker.</p>
+    {{end}}
+  </section>
+
+  <section class="card dashboard-panel">
+    <div class="dashboard-panel-heading">
+      <div>
+        <h2>Cảnh báo Growth gần đây</h2>
+      </div>
+      <a href="/growth">Mở Growth ↗</a>
+    </div>
+    {{if not .GrowthKnown}}
+    <p class="empty">Growth chưa sẵn sàng; không thể đọc cảnh báo.</p>
+    {{else if .RecentGrowthAlerts}}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {{range .RecentGrowthAlerts}}
+      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+          <span class="badge {{if eq .Severity "critical"}}badge-err{{else if eq .Severity "warn"}}badge-warn{{else}}badge-info{{end}}">{{if eq .Severity "critical"}}Nghiêm trọng{{else if eq .Severity "warn"}}Cảnh báo{{else}}Thông tin{{end}}</span>
+          <strong>{{.Username}}</strong>
+          <span style="font-size:12px;color:var(--muted)">{{statusLabel .Kind}}</span>
+        </div>
+        <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{.Message}}</p>
+        {{if .ActionTaken}}<small style="display:block;color:var(--muted)">Đã xử lý: {{.ActionTaken}}</small>{{end}}
+        <small style="display:block;margin-top:4px;color:var(--muted)">{{fmtVN .CreatedAt}} UTC</small>
+      </article>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="empty">Chưa có cảnh báo Growth được ghi nhận.</p>
     {{end}}
   </section>
 
@@ -212,35 +240,6 @@
     </div>
     {{else}}
     <p class="empty">Chưa có quyết định tự động được ghi nhận.</p>
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Cảnh báo Growth gần đây</h2>
-      </div>
-      <a href="/growth">Mở Growth ↗</a>
-    </div>
-    {{if not .GrowthKnown}}
-    <p class="empty">Growth chưa sẵn sàng; không thể đọc cảnh báo.</p>
-    {{else if .RecentGrowthAlerts}}
-    <div style="display:flex;flex-direction:column;gap:10px">
-      {{range .RecentGrowthAlerts}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <span class="badge {{if eq .Severity "critical"}}badge-err{{else if eq .Severity "warn"}}badge-warn{{else}}badge-info{{end}}">{{if eq .Severity "critical"}}Nghiêm trọng{{else if eq .Severity "warn"}}Cảnh báo{{else}}Thông tin{{end}}</span>
-          <strong>{{.Username}}</strong>
-          <span style="font-size:12px;color:var(--muted)">{{statusLabel .Kind}}</span>
-        </div>
-        <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{.Message}}</p>
-        {{if .ActionTaken}}<small style="display:block;color:var(--muted)">Đã xử lý: {{.ActionTaken}}</small>{{end}}
-        <small style="display:block;margin-top:4px;color:var(--muted)">{{fmtVN .CreatedAt}} UTC</small>
-      </article>
-      {{end}}
-    </div>
-    {{else}}
-    <p class="empty">Chưa có cảnh báo Growth được ghi nhận.</p>
     {{end}}
   </section>
 
