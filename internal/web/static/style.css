@@ -1383,6 +1383,76 @@ details.product-manual > form > .btn { margin-top: 2px; }
   .growth-video-table { min-width: 920px; }
   .growth-alerts-table { min-width: 620px; }
   .growth-upcoming-table { min-width: 860px; }
+
+  .mobile-table-scroll.mobile-product-cards { overflow: visible; }
+  .mobile-table-scroll.mobile-product-cards::before { display: none; }
+  .mobile-product-cards .products-table-catalog {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mobile-product-cards .products-table-catalog tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-product-cards .products-table-catalog thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mobile-product-cards .products-table-catalog tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg2);
+    box-shadow: var(--shadow);
+  }
+  .mobile-product-cards .products-table-catalog tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mobile-product-cards .products-table-catalog tbody > tr > td:first-child {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-product-cards .products-table-catalog td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+  .mobile-product-cards .products-table-catalog tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+    min-width: 0 !important;
+    border-top: 1px solid var(--border);
+    text-align: left !important;
+  }
+  .mobile-product-cards .products-table-catalog td:last-child form { margin: 0 0 8px !important; }
+  .mobile-product-cards .products-table-catalog td:last-child form:last-of-type { margin-bottom: 0 !important; }
+  .mobile-product-cards .products-table-catalog td:last-child form button { width: 100%; min-height: 42px; }
+  .mobile-product-cards .products-table-catalog td:last-child details { margin-top: 10px !important; }
 }
 
 /* ---- Responsive Mobile & Tablet Drawer, iOS zoom, Touch Targets ---- */
