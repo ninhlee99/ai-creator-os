@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -117,4 +119,48 @@ func findChromiumBinary() (string, error) {
 		}
 	}
 	return "", fmt.Errorf("không tìm thấy Chrome, Edge, Brave hoặc Chromium cho phiên Web AI; có thể đặt AICOS_BROWSER_BINARY")
+}
+
+func playwrightChromiumBinary() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+
+	arch := "x64"
+	if runtime.GOARCH == "arm64" {
+		arch = "arm64"
+	}
+	root := filepath.Join(home, "Library", "Caches", "ms-playwright")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return ""
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		left := chromiumCacheVersion(entries[i].Name())
+		right := chromiumCacheVersion(entries[j].Name())
+		if left == right {
+			return entries[i].Name() > entries[j].Name()
+		}
+		return left > right
+	})
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "chromium-") {
+			continue
+		}
+		binary := filepath.Join(root, entry.Name(), "chrome-mac-"+arch,
+			"Google Chrome for Testing.app", "Contents", "MacOS", "Google Chrome for Testing")
+		if info, err := os.Stat(binary); err == nil && !info.IsDir() && info.Mode()&0o111 != 0 {
+			return binary
+		}
+	}
+	return ""
+}
+
+func chromiumCacheVersion(name string) int {
+	version, _ := strconv.Atoi(strings.TrimPrefix(name, "chromium-"))
+	return version
 }

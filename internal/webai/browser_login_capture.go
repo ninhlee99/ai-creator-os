@@ -57,6 +57,9 @@ func browserProcessExitedError(binary string, processErr error, stderr *browserS
 	if runtime.GOOS == "darwin" && stderr.hasMacOSMissingExecutable() {
 		return fmt.Errorf("macOS LaunchServices không mở được ứng dụng %s (-10827: kLSNoExecutableErr); cài đặt trình duyệt hoặc chữ ký app có thể bị lỗi. Hãy cập nhật/cài lại trình duyệt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium hợp lệ", filepath.Base(binary))
 	}
+	if runtime.GOOS == "darwin" && processErr != nil && strings.Contains(strings.ToLower(processErr.Error()), "signal: aborted") {
+		return fmt.Errorf("macOS dừng trình duyệt %s trước khi CDP sẵn sàng; nếu MiuNova chạy trong Codex/IDE, hãy khởi chạy MiuNova từ Terminal/iTerm thường rồi thử lại", filepath.Base(binary))
+	}
 	if processErr == nil {
 		return fmt.Errorf("trình duyệt %s đã thoát trước khi CDP sẵn sàng; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary))
 	}
@@ -71,6 +74,9 @@ type loginBrowserSession struct {
 
 func loginBrowserCommand(ctx context.Context, binary string, args []string) (*exec.Cmd, error) {
 	if runtime.GOOS == "darwin" {
+		if isExplicitBrowserOverride(binary) || isPlaywrightCachedBrowser(binary) {
+			return exec.CommandContext(ctx, binary, args...), nil
+		}
 		if app := macOSApplicationBundle(binary); app != "" {
 			openArgs := []string{"-n", "-W", "-a", app, "--args"}
 			openArgs = append(openArgs, args...)
@@ -78,6 +84,93 @@ func loginBrowserCommand(ctx context.Context, binary string, args []string) (*ex
 		}
 	}
 	return exec.CommandContext(ctx, binary, args...), nil
+}
+
+func isExplicitBrowserOverride(binary string) bool {
+	env := strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY"))
+	if env == "" {
+		return false
+	}
+	resolved, err := exec.LookPath(env)
+	if err == nil {
+		return filepath.Clean(resolved) == filepath.Clean(binary)
+	}
+	return filepath.Clean(env) == filepath.Clean(binary)
+}
+
+func isPlaywrightCachedBrowser(binary string) bool {
+	path := filepath.ToSlash(filepath.Clean(binary))
+	return strings.Contains(path, "/Library/Caches/ms-playwright/")
+}
+
+func loginBrowserCandidates() ([]string, error) {
+	binary, err := findChromiumBinary()
+	if err != nil {
+		if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) != "" {
+			return nil, err
+		}
+		if cached := playwrightChromiumBinary(); cached != "" {
+			return []string{cached}, nil
+		}
+		return nil, err
+	}
+	candidates := []string{binary}
+	if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) == "" {
+		if cached := playwrightChromiumBinary(); cached != "" && filepath.Clean(cached) != filepath.Clean(binary) {
+			candidates = append(candidates, cached)
+		}
+	}
+	return candidates, nil
+}
+
+type loginBrowserLaunch struct {
+	cmd         *exec.Cmd
+	processDone chan error
+	wsURL       string
+}
+
+func launchLoginBrowser(ctx context.Context, binary string, args []string, port int) (loginBrowserLaunch, bool, error) {
+	command, err := loginBrowserCommand(ctx, binary, args)
+	if err != nil {
+		return loginBrowserLaunch{}, true, err
+	}
+	command.Stdout = io.Discard
+	stderr := &browserStderrTail{}
+	command.Stderr = stderr
+	if err := command.Start(); err != nil {
+		return loginBrowserLaunch{}, true, fmt.Errorf("không thể khởi chạy %s: %w", filepath.Base(binary), err)
+	}
+	processDone := make(chan error, 1)
+	go func() {
+		processDone <- command.Wait()
+		close(processDone)
+	}()
+
+	startupTimer := time.NewTimer(30 * time.Second)
+	defer startupTimer.Stop()
+	probeTicker := time.NewTicker(350 * time.Millisecond)
+	defer probeTicker.Stop()
+	for {
+		wsURL, probeErr := debuggerWSURL(port)
+		if probeErr == nil && wsURL != "" {
+			return loginBrowserLaunch{cmd: command, processDone: processDone, wsURL: wsURL}, false, nil
+		}
+		select {
+		case processErr := <-processDone:
+			return loginBrowserLaunch{}, true, browserProcessExitedError(binary, processErr, stderr)
+		case <-ctx.Done():
+			terminateBrowserAfterWait(command, processDone)
+			return loginBrowserLaunch{}, false, ctx.Err()
+		case <-startupTimer.C:
+			if runtime.GOOS == "darwin" && stderr.hasMacOSBootstrapFailure() {
+				terminateBrowserAfterWait(command, processDone)
+				return loginBrowserLaunch{}, false, browserProcessExitedError(binary, nil, stderr)
+			}
+			terminateBrowserAfterWait(command, processDone)
+			return loginBrowserLaunch{}, false, fmt.Errorf("trình duyệt %s không mở CDP sau 30 giây; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(binary))
+		case <-probeTicker.C:
+		}
+	}
 }
 
 func macOSApplicationBundle(binary string) string {
@@ -109,7 +202,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	bin, err := findChromiumBinary()
+	binaries, err := loginBrowserCandidates()
 	if err != nil {
 		return nil, err
 	}
@@ -126,10 +219,6 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		return nil, err
 	}
 	_ = portHold.Close()
-
-	if updateStatus != nil {
-		updateStatus("opening", fmt.Sprintf("Đang mở trình duyệt đăng nhập (%s)...", filepath.Base(bin)))
-	}
 
 	windowSize := "1280,900"
 	if target.Platform == PlatformGoogleFlow {
@@ -152,47 +241,33 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		args = append(args, "--headless=new", "--disable-gpu")
 	}
 	args = append(args, target.StartURL)
-	command, launchErr := loginBrowserCommand(ctx, bin, args)
-	if launchErr != nil {
-		return nil, launchErr
-	}
-	cmd := command
-	cmd.Stdout = io.Discard
-	stderr := &browserStderrTail{}
-	cmd.Stderr = stderr
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("không thể khởi chạy trình duyệt: %w", err)
-	}
-	processDone := make(chan error, 1)
-	go func() {
-		processDone <- cmd.Wait()
-		close(processDone)
-	}()
-	defer terminateBrowserAfterWait(cmd, processDone)
-
-	var wsURL string
-	startupTimer := time.NewTimer(30 * time.Second)
-	defer startupTimer.Stop()
-	probeTicker := time.NewTicker(350 * time.Millisecond)
-	defer probeTicker.Stop()
-	for {
-		wsURL, err = debuggerWSURL(port)
-		if err == nil && wsURL != "" {
+	var bin string
+	var launch loginBrowserLaunch
+	var launchFailures []string
+	for index, candidate := range binaries {
+		if updateStatus != nil {
+			message := fmt.Sprintf("Đang mở trình duyệt đăng nhập (%s)...", filepath.Base(candidate))
+			if index > 0 {
+				message = fmt.Sprintf("Trình duyệt trước không mở được; đang thử %s...", filepath.Base(candidate))
+			}
+			updateStatus("opening", message)
+		}
+		var retry bool
+		launch, retry, err = launchLoginBrowser(ctx, candidate, args, port)
+		if err == nil {
+			bin = candidate
 			break
 		}
-		select {
-		case processErr := <-processDone:
-			return nil, browserProcessExitedError(bin, processErr, stderr)
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-startupTimer.C:
-			if runtime.GOOS == "darwin" && stderr.hasMacOSBootstrapFailure() {
-				return nil, browserProcessExitedError(bin, nil, stderr)
-			}
-			return nil, fmt.Errorf("trình duyệt %s không mở CDP sau 30 giây; kiểm tra cài đặt hoặc đặt AICOS_BROWSER_BINARY tới Chrome/Chromium", filepath.Base(bin))
-		case <-probeTicker.C:
+		launchFailures = append(launchFailures, err.Error())
+		if !retry {
+			return nil, err
 		}
 	}
+	if launch.cmd == nil {
+		return nil, fmt.Errorf("không khởi chạy được trình duyệt đăng nhập: %s", strings.Join(launchFailures, "; "))
+	}
+	defer terminateBrowserAfterWait(launch.cmd, launch.processDone)
+	wsURL := launch.wsURL
 	if onBrowserReady != nil {
 		onBrowserReady(port)
 	}
