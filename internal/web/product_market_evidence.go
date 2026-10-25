@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -15,6 +16,8 @@ import (
 )
 
 const productTrendLookback = 7 * 24 * time.Hour
+
+var tiktokTrendHashtagPattern = regexp.MustCompile(`#([\p{L}\p{M}\p{N}_]+)`)
 
 // attachTikTokRadarEvidence adds recent Radar evidence to display copies only.
 func (s *Server) attachTikTokRadarEvidence(ctx context.Context, candidates []products.Product) []products.Product {
@@ -54,7 +57,7 @@ func productTikTokTrendEvidence(product products.Product, videos []studio.TikTok
 	matchedTerms := make(map[string]bool)
 	var leadingProduct, leadingCategory studio.TikTokTrendVideo
 	for _, video := range videos {
-		text := normalizeTrendText(video.Title + " " + video.Caption)
+		text := video.Title + " " + video.Caption
 		productHit := productTerm != "" && trendTextMatches(text, productTerm)
 		categoryHit := false
 		for _, term := range categoryTerms {
@@ -143,13 +146,24 @@ func productCategoryTrendTerms(product products.Product) []string {
 }
 
 func trendTextMatches(text, term string) bool {
-	if strings.Contains(" "+text+" ", " "+term+" ") {
+	text = strings.TrimSpace(text)
+	term = normalizeTrendText(term)
+	if text == "" || term == "" {
+		return false
+	}
+	normalizedText := normalizeTrendText(text)
+	if strings.Contains(" "+normalizedText+" ", " "+term+" ") {
 		return true
 	}
-	// Captions often join Vietnamese hashtags, for example #mypham.
-	compactText := strings.ReplaceAll(text, " ", "")
+	// Captions often join Vietnamese hashtags (for example #mypham), but
+	// substring matching ordinary words creates false trend evidence.
 	compactTerm := strings.ReplaceAll(term, " ", "")
-	return strings.Contains(compactText, compactTerm)
+	for _, match := range tiktokTrendHashtagPattern.FindAllStringSubmatch(text, -1) {
+		if len(match) == 2 && normalizeTrendText(match[1]) == compactTerm {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeTrendText(value string) string {
