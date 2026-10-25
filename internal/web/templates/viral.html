@@ -332,6 +332,37 @@ function showViralAnalysisError(message) {
 function renderViralStoryboard(storyboard) {
   var result = document.getElementById('viral-analysis-result');
   result.replaceChildren();
+  var performance = storyboard.source_performance;
+  if (performance) {
+    var panel = document.createElement('section');
+    panel.style.cssText = 'padding:10px;margin:8px 0;border:1px solid var(--border);border-radius:8px;background:var(--bg2)';
+    var performanceTitle = document.createElement('strong');
+    performanceTitle.textContent = 'Tín hiệu Radar của video nguồn';
+    panel.appendChild(performanceTitle);
+    var metric = function(value, known, suffix) {
+      return known ? new Intl.NumberFormat('vi-VN', {maximumFractionDigits: 1}).format(value) + (suffix || '') : 'Chưa có dữ liệu';
+    };
+    var values = [
+      ['Lượt xem', metric(performance.views, performance.views_known)],
+      ['Lượt thích', metric(performance.likes, performance.likes_known)],
+      ['Bình luận', metric(performance.comments, performance.comments_known)],
+      ['Chia sẻ', metric(performance.shares, performance.shares_known)],
+      ['Tăng view', metric(performance.views_per_hour, performance.velocity_known, ' lượt/giờ')],
+      ['Tương tác/view', metric(performance.engagement_rate * 100, performance.engagement_known, '%')]
+    ];
+    values.forEach(function(item) {
+      var line = document.createElement('p');
+      line.style.margin = '5px 0 0';
+      line.textContent = item[0] + ': ' + item[1];
+      panel.appendChild(line);
+    });
+    var limitation = document.createElement('p');
+    limitation.className = 'hint';
+    limitation.style.margin = '7px 0 0';
+    limitation.textContent = 'Số liệu cho biết lượt tiếp cận và tương tác; không chứng minh nguyên nhân viral, thời lượng xem hoặc tệp người xem.';
+    panel.appendChild(limitation);
+    result.appendChild(panel);
+  }
   var heading = document.createElement('h3');
   heading.style.margin = '0 0 8px';
   heading.textContent = storyboard.title || 'Storyboard video nguồn';

@@ -275,6 +275,9 @@ func (s *Studio) ResolveTikTokRadarDanceVideo(ctx context.Context, sourceURL str
 	if err := validateTikTokRadarDanceFreshness(video, time.Now()); err != nil {
 		return TikTokTrendVideo{}, err
 	}
+	if err := s.enrichTikTokRadarMetrics(ctx, &video); err != nil {
+		return TikTokTrendVideo{}, fmt.Errorf("không đọc được chỉ số Radar của video nguồn: %w", err)
+	}
 	return video, nil
 }
 

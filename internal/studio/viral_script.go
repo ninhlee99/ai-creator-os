@@ -91,6 +91,7 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 		script.Scenes[i].VoiceText = ""
 		script.Scenes[i].VisualHook = ""
 	}
+	script.SourcePerformance = p.SourcePerformance
 	return &script, nil
 }
 
