@@ -505,7 +505,7 @@ function atOrderSync() {
     <summary style="cursor:pointer;color:var(--accent);font-size:11px;font-weight:600">Xem đánh giá & bằng chứng</summary>
     <div style="padding:7px 0;color:var(--muted);font-size:11px;line-height:1.55">
       <div><strong>Offer:</strong> {{if .OfferReady}}đủ giá, tiền tệ, hoa hồng và link HTTPS{{else}}còn thiếu {{range $i, $gap := .OfferGaps}}{{if $i}}, {{end}}{{$gap}}{{end}}{{end}}</div>
-      <div><strong>Hoa hồng ước tính:</strong> {{if gt .CommissionPerOrder 0.0}}{{productMoney .CommissionPerOrder $product.Currency}}/đơn{{else}}chưa đủ giá hoặc tỷ lệ{{end}}</div>
+      <div><strong>Hoa hồng ước tính:</strong> {{if gt .CommissionPerOrder 0.0}}{{productMoney .CommissionPerOrder $product.Currency}}{{if gt .CommissionPerOrderMax .CommissionPerOrder}}–{{productMoney .CommissionPerOrderMax $product.Currency}}{{end}}/đơn{{else}}chưa đủ giá hoặc tỷ lệ{{end}}</div>
       {{if .HasCommissionFloor}}<div><strong>Mốc tham khảo danh mục:</strong> {{printf "%.0f" (pct .CommissionFloor)}}%{{if .BelowCommissionFloor}} · thấp hơn mốc{{end}}</div>{{end}}
       <div><strong>Lượt bán:</strong> {{.SalesEvidence}}</div>
       <div><strong>Rating / số lượt đánh giá:</strong> {{.RatingEvidence}}</div>
@@ -573,7 +573,7 @@ function atOrderSync() {
     <td>
       {{if gt .CommissionRate 0.0}}
       <span class="badge badge-info" title="Tỷ lệ lấy từ nguồn sản phẩm; không xác nhận hoa hồng được ghi nhận hoặc payout">{{printf "%.0f" (pct .CommissionRate)}}%</span>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ước tính {{productMoney (mul .Price .CommissionRate) .Currency}}/đơn</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Ước tính {{productMoney (mul .Price .CommissionRate) .Currency}}{{if and (gt .PriceMax .Price) (gt .Price 0.0)}}–{{productMoney (mul .PriceMax .CommissionRate) .Currency}}{{end}}/đơn</div>
       {{else}}<span class="hint">Chưa có dữ liệu</span>{{end}}
     </td>
     <td><span style="font-size:12px;font-weight:600">{{if .SoldCountKnown}}{{.SoldCount}}{{else}}Chưa có dữ liệu{{end}}</span></td>

@@ -11,20 +11,21 @@ import (
 // It is intentionally advisory: missing market or audience data must never
 // turn into an automatic approval or a fabricated negative verdict.
 type CandidateEvaluation struct {
-	Recommendation       string
-	RecommendationTone   string
-	OfferReady           bool
-	OfferGaps            []string
-	CommissionPerOrder   float64
-	CommissionFloor      float64
-	HasCommissionFloor   bool
-	BelowCommissionFloor bool
-	DemandVerified       bool
-	SalesEvidence        string
-	RatingEvidence       string
-	TrendEvidence        string
-	TrendSourceURL       string
-	AudienceEvidence     string
+	Recommendation        string
+	RecommendationTone    string
+	OfferReady            bool
+	OfferGaps             []string
+	CommissionPerOrder    float64
+	CommissionPerOrderMax float64
+	CommissionFloor       float64
+	HasCommissionFloor    bool
+	BelowCommissionFloor  bool
+	DemandVerified        bool
+	SalesEvidence         string
+	RatingEvidence        string
+	TrendEvidence         string
+	TrendSourceURL        string
+	AudienceEvidence      string
 }
 
 // EvaluateCandidate summarizes offer and demand evidence without treating
@@ -40,6 +41,9 @@ func EvaluateCandidate(p Product, now time.Time) CandidateEvaluation {
 	}
 	if finitePositive(p.Price) && finitePositive(p.CommissionRate) && p.CommissionRate <= 1 {
 		e.CommissionPerOrder = p.Price * p.CommissionRate
+		if finitePositive(p.PriceMax) && p.PriceMax > p.Price {
+			e.CommissionPerOrderMax = p.PriceMax * p.CommissionRate
+		}
 	}
 	if strings.TrimSpace(p.TikTokRadarTrendEvidence) != "" {
 		e.TrendEvidence = strings.TrimSpace(p.TikTokRadarTrendEvidence)
