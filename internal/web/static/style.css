@@ -1453,6 +1453,79 @@ details.product-manual > form > .btn { margin-top: 2px; }
   .mobile-product-cards .products-table-catalog td:last-child form:last-of-type { margin-bottom: 0 !important; }
   .mobile-product-cards .products-table-catalog td:last-child form button { width: 100%; min-height: 42px; }
   .mobile-product-cards .products-table-catalog td:last-child details { margin-top: 10px !important; }
+
+  .mobile-table-scroll.mobile-growth-cards { overflow: visible; }
+  .mobile-table-scroll.mobile-growth-cards::before { display: none; }
+  .mobile-growth-cards .growth-accounts-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .mobile-growth-cards .growth-accounts-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+  .mobile-growth-cards .growth-accounts-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mobile-growth-cards .growth-accounts-table tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg2);
+    box-shadow: var(--shadow);
+  }
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .mobile-growth-cards .growth-accounts-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:first-child,
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:nth-child(3),
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:nth-child(4),
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:last-child {
+    grid-column: 1 / -1;
+  }
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:last-child {
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+  }
+  .mobile-growth-cards .growth-accounts-table tbody > tr > td:last-child .btn {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+  }
 }
 
 /* ---- Responsive Mobile & Tablet Drawer, iOS zoom, Touch Targets ---- */

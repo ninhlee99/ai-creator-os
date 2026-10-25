@@ -61,19 +61,21 @@
 {{if .TikTokMetricsAvailable}}<p class="hint">TikTok Display API trả số follower và counters công khai của video. Retention, thời gian xem và nhân khẩu học chưa có dữ liệu qua quyền hiện tại.</p>{{end}}
 
 <h2>Kênh TikTok</h2>
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0"><table class="growth-accounts-table">
-<tr><th>Tài khoản</th><th>Giai đoạn</th><th>Mốc tiếp theo</th><th>Tiến độ</th><th>Followers</th><th>Video công khai</th><th></th></tr>
+<div class="table-wrap mobile-table-scroll mobile-growth-cards" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0"><table class="growth-accounts-table">
+<thead><tr><th scope="col">Tài khoản</th><th scope="col">Giai đoạn</th><th scope="col">Mốc tiếp theo</th><th scope="col">Tiến độ</th><th scope="col">Người theo dõi</th><th scope="col">Video công khai</th><th scope="col">Thao tác</th></tr></thead>
+<tbody>
 {{range .Rows}}
 <tr>
-  <td><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
-  <td><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
-  <td>{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Chưa có số liệu thật{{end}}</td>
-  <td>{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
-  <td>{{if .FollowersKnown}}{{.Followers}}{{if .FollowerTrend}}<br><span class="hint">Δ {{.FollowerTrend}}</span>{{end}}{{if .FollowerAdvice}}<br><span class="hint">{{.FollowerAdvice}}</span>{{end}}{{else}}—{{end}}</td>
-  <td>{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
-  <td><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở kênh</a></td>
+  <td data-label="Tài khoản"><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
+  <td data-label="Giai đoạn"><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
+  <td data-label="Mốc tiếp theo">{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Chưa có số liệu thật{{end}}</td>
+  <td data-label="Tiến độ">{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
+  <td data-label="Người theo dõi">{{if .FollowersKnown}}{{.Followers}}{{if .FollowerTrend}}<br><span class="hint">Δ {{.FollowerTrend}}</span>{{end}}{{if .FollowerAdvice}}<br><span class="hint">{{.FollowerAdvice}}</span>{{end}}{{else}}—{{end}}</td>
+  <td data-label="Video công khai">{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
+  <td data-label="Thao tác"><a class="btn btn-secondary btn-sm" href="/accounts/{{.Account.ID}}?tab=autopilot">Mở kênh</a></td>
 </tr>
 {{end}}
+</tbody>
 </table></div>
 
 <h2>Hiệu quả video theo job Studio</h2>
