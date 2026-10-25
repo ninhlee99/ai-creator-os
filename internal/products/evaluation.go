@@ -87,6 +87,15 @@ func EvaluateCandidate(p Product, now time.Time) CandidateEvaluation {
 		} else if capturedAt := strings.TrimSpace(p.DemandEvidenceAt); capturedAt != "" {
 			e.SalesEvidence += " Ứng dụng lấy dữ liệu lúc: " + capturedAt + "."
 		}
+		if p.SalesChangeMeasured {
+			if p.SalesUnitsChange < 0 {
+				e.SalesEvidence += " Hai snapshot app cách nhau " + formatDays(p.SalesChangeDays) + " ngày cho thấy số nguồn giảm " + formatSoldCount(-p.SalesUnitsChange) + "; có thể là hiệu chỉnh dữ liệu, không tính tốc độ bán."
+			} else {
+				e.SalesEvidence += " Hai snapshot app cách nhau " + formatDays(p.SalesChangeDays) + " ngày ghi nhận mức tăng " + formatSoldCount(p.SalesUnitsChange) + " units (khoảng " + formatDays(float64(p.SalesUnitsChange)/p.SalesChangeDays) + "/ngày); nguồn có thể cập nhật trễ."
+			}
+		} else {
+			e.SalesEvidence += " Chưa đủ hai snapshot cách nhau 6 giờ–14 ngày để ước tính thay đổi gần đây."
+		}
 	case p.SoldCountKnown && validDemandEvidenceURL(p.DemandEvidenceURL) && p.DemandEvidenceAt != "":
 		e.SalesEvidence = "Ứng dụng lấy dữ liệu lúc " + strings.TrimSpace(p.DemandEvidenceAt) + "; nguồn báo " + formatSoldCount(p.SoldCount) + " lượt bán."
 	case p.SoldCountKnown:
@@ -135,6 +144,10 @@ func formatSoldCount(count int64) string {
 
 func formatRating(rating float64) string {
 	return fmt.Sprintf("%.1f", rating)
+}
+
+func formatDays(days float64) string {
+	return fmt.Sprintf("%.1f", days)
 }
 
 func finitePositive(value float64) bool {

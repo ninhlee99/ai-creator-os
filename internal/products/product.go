@@ -45,8 +45,11 @@ type Product struct {
 	ReviewNote   string
 	ReviewedAt   string
 	// TikTok Radar evidence is attached only for web evaluation; it is not persisted.
-	TikTokRadarTrendEvidence string `json:"-"`
-	TikTokRadarTrendURL      string `json:"-"`
+	TikTokRadarTrendEvidence string  `json:"-"`
+	TikTokRadarTrendURL      string  `json:"-"`
+	SalesChangeMeasured      bool    `json:"-"`
+	SalesUnitsChange         int64   `json:"-"`
+	SalesChangeDays          float64 `json:"-"`
 }
 
 const (

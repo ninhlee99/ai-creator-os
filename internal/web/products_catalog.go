@@ -105,6 +105,7 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		))
 		return
 	}
+	results = s.attachProductSalesChange(results)
 	results = s.attachTikTokRadarEvidence(r.Context(), results)
 	enabled, hours, lastRun, autoPub := s.scheduleView()
 	// Autopilot status surface (A5): next scheduled run + stock on hand.
