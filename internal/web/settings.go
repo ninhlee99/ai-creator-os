@@ -38,6 +38,7 @@ var envLabels = map[string][2]string{
 	"TIKTOK_REDIRECT_URI":            {"Redirect URI (Callback TikTok)", "TikTok"},
 	"TIKTOK_DISCOVERY_ACCESS_TOKEN":  {"Access Token TikTok Business Discovery", "TikTok Business Discovery"},
 	"TIKTOK_DISCOVERY_ADVERTISER_ID": {"Advertiser ID TikTok Discovery", "TikTok Business Discovery"},
+	"APIFY_API_TOKEN":                {"API Token Apify cho Radar TikTok", "Apify"},
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
@@ -143,7 +144,7 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if strings.HasPrefix(name, "TIKTOK_DISCOVERY_") {
+	if strings.HasPrefix(name, "TIKTOK_DISCOVERY_") || name == "APIFY_API_TOKEN" {
 		studio.InvalidateTikTokRadarCache()
 	}
 	// R2-W4 (R2-05): the runtime Config was read once at startup — refresh
@@ -159,6 +160,7 @@ var envNames = []string{
 	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_TTS_MODEL",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_REDIRECT_URI",
 	"TIKTOK_DISCOVERY_ACCESS_TOKEN", "TIKTOK_DISCOVERY_ADVERTISER_ID",
+	"APIFY_API_TOKEN",
 }
 
 // envHelp giải thích ngắn gọn từng biến cho người không rành (Đợt AA,
@@ -172,6 +174,7 @@ var envHelp = map[string]string{
 	"TIKTOK_REDIRECT_URI":            "TikTok Desktop Login Kit: chỉ dùng http://localhost hoặc 127.0.0.1, port đúng với app và đường dẫn /publishers/tiktok/callback. Mặc định: http://127.0.0.1:8080/publishers/tiktok/callback. Đăng ký đúng URI trong TikTok Developer Portal.",
 	"TIKTOK_DISCOVERY_ACCESS_TOKEN":  "Access Token TikTok API for Business đã cấp quyền Discovery; khác token đăng nhập TikTok Desktop ở trên.",
 	"TIKTOK_DISCOVERY_ADVERTISER_ID": "Advertiser ID được cấp quyền cho TikTok Business Discovery API.",
+	"APIFY_API_TOKEN":                "Token Apify dùng tìm TikTok theo tối đa 3 chủ đề và lấy view/tym. Mỗi lần tìm thu thập tối đa 60 video; Apify tính phí theo kết quả.",
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.

@@ -19,6 +19,7 @@ func errText(err error) string {
 // handleStudioTrends shows viral TikTok videos and each video's sound metadata.
 func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.URL.Query().Get("topic"))
+	source := studio.TikTokRadarSourceLabelForTopic(topic != "")
 	var videos []studio.TikTokTrendVideo
 	var err error
 	if s.Studio == nil {
@@ -30,10 +31,11 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		s.writeJSON(w, map[string]any{
-			"source": studio.TikTokRadarSourceLabel(),
-			"topic":  topic,
-			"videos": videos,
-			"error":  errText(err),
+			"source":    source,
+			"topic":     topic,
+			"videos":    videos,
+			"rank_note": tikTokRadarRankNote(videos),
+			"error":     errText(err),
 		})
 		return
 	}
@@ -43,13 +45,36 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Topic", topic,
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
-		"TrendSource", studio.TikTokRadarSourceLabel(), "TrendErr", errText(err),
+		"TrendSource", source, "TrendErr", errText(err),
+		"RankNote", tikTokRadarRankNote(videos),
+		"ShowApifySetup", topic != "" && source != studio.TikTokApifySource,
 	)
 	if r.Header.Get("HX-Request") == "true" {
 		s.renderStudioTrendResults(w, data)
 		return
 	}
 	s.render(w, "studio_trends", data)
+}
+
+func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
+	if len(videos) == 0 {
+		return ""
+	}
+	knownMetrics := 0
+	for _, video := range videos {
+		if video.PlayCountKnown || video.DiggCountKnown {
+			knownMetrics++
+		}
+	}
+	if knownMetrics == 0 {
+		return "Nguồn này không cung cấp bộ đếm view/tym; thứ tự theo xếp hạng của nguồn."
+	}
+	for _, video := range videos {
+		if !video.PlayCountKnown || !video.DiggCountKnown {
+			return "Nguồn thiếu view/tym ở một số video; video có số liệu xếp trước, phần còn lại giữ thứ tự nguồn."
+		}
+	}
+	return "Xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa."
 }
 
 func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Request) {

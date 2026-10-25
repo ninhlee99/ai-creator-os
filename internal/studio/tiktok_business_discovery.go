@@ -49,6 +49,15 @@ func tikTokBusinessDiscoveryConfigFromEnv() (tikTokBusinessDiscoveryConfig, bool
 
 // TikTokRadarSourceLabel reports which provider the current process will use.
 func TikTokRadarSourceLabel() string {
+	return TikTokRadarSourceLabelForTopic(false)
+}
+
+// TikTokRadarSourceLabelForTopic reports the provider selected for a regional
+// feed or a user-entered topic search.
+func TikTokRadarSourceLabelForTopic(topicSearch bool) string {
+	if topicSearch && tikTokApifyConfigFromEnv().APIToken != "" {
+		return TikTokApifySource
+	}
 	_, configured, err := tikTokBusinessDiscoveryConfigFromEnv()
 	if configured && err == nil {
 		return TikTokBusinessDiscoverySource
@@ -266,14 +275,28 @@ func selectTikTokBusinessHashtags(hashtags []tikTokBusinessHashtag, topic, count
 		}
 		return localHashtags
 	}
-	topicKey := normalizeTikTokRadarTopic(topic)
-	if len([]rune(topicKey)) < 2 {
+	topics, err := splitTikTokRadarTopics(topic)
+	if err != nil {
+		return nil
+	}
+	topicKeys := make([]string, 0, len(topics))
+	for _, value := range topics {
+		key := normalizeTikTokRadarTopic(value)
+		if len([]rune(key)) >= 2 {
+			topicKeys = append(topicKeys, key)
+		}
+	}
+	if len(topicKeys) == 0 {
 		return nil
 	}
 	var selected []tikTokBusinessHashtag
 	for _, hashtag := range localHashtags {
-		if strings.Contains(normalizeTikTokRadarTopic(hashtag.Name), topicKey) {
-			selected = append(selected, hashtag)
+		hashtagKey := normalizeTikTokRadarTopic(hashtag.Name)
+		for _, topicKey := range topicKeys {
+			if strings.Contains(hashtagKey, topicKey) {
+				selected = append(selected, hashtag)
+				break
+			}
 		}
 	}
 	return selected

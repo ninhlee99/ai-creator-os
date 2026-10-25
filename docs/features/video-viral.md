@@ -2,8 +2,8 @@
 
 ## Flow
 
-1. TikTok Radar lấy feed video Việt Nam và lưu tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite.
-2. Khi cấu hình TikTok Business Discovery Access Token + Advertiser ID, Radar lấy hashtag phổ biến tại Việt Nam rồi tìm video top theo hashtag/chủ đề. Nếu chưa cấu hình, Radar dùng TikWM; endpoint tìm theo chủ đề hiện bị Cloudflare 403 và không thay bằng lọc caption cục bộ.
+1. TikTok Radar giữ tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite; giao diện chỉ hiện tối đa 10 video.
+2. Tìm theo chủ đề: nếu có `APIFY_API_TOKEN`, Radar gửi tối đa 3 cụm từ tới Apify TikTok Scraper, nhận tối đa 20 kết quả mỗi cụm, rồi xếp theo view giảm dần và tym giảm dần khi bằng view. Apify tính phí theo dữ liệu trả về. Nếu chưa có token, dùng TikTok Business Discovery khi đã cấu hình; API chính thức này trả video theo hashtag nhưng không có bộ đếm view/tym. Cuối cùng mới dùng TikWM, vốn có thể bị Cloudflare chặn HTTP 403.
 3. Với kết quả Discovery thiếu ảnh bìa, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; nêu tín hiệu cấu trúc và giả thuyết có mốc nguồn, kèm thử nghiệm cho video sau. Hiển thị metrics và tốc độ tăng view chỉ khi nguồn cung cấp dữ liệu và Radar có đủ snapshot.
@@ -15,7 +15,7 @@ Job đã qua QC có nút gửi thủ công vào TikTok Creator Inbox. App lưu t
 
 ## Giới hạn hiện tại
 
-Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. TikTok Business Discovery có endpoint chính thức trả top 20 video cho hashtag, xếp hạng theo tổ hợp views/comments/likes/shares; tích hợp cần access token và advertiser ID, hiện chưa xác minh với credential thật. API trả video ID/URL, không trả counters trong danh sách này nên metrics vẫn unknown nếu không có nguồn khác. Phân tích Viral đưa yếu tố hình ảnh quan sát được, mốc beat và giả thuyết thử nghiệm; đây không chứng minh nguyên nhân viral. Retention, demographics, profile visits và follows-per-video vẫn chưa có dữ liệu. TikWM topic search hiện bị Cloudflare challenge HTTP 403; app báo rõ và không giả vờ lọc caption để thay thế tìm kiếm trên TikTok. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
+Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. Apify TikTok Scraper nhận từ khóa và trả view/tym để Radar xếp top 10, nhưng là nguồn bên thứ ba có tính phí và chưa xác minh với token thật. TikTok Business Discovery là nguồn chính thức dự phòng; endpoint trả top 20 video theo hashtag, xếp theo tổ hợp views/comments/likes/shares nhưng không trả counters trong danh sách. Nếu nguồn không có đủ counters, giao diện ghi rõ và giữ thứ tự nguồn cho các video thiếu số liệu. Phân tích Viral đưa yếu tố hình ảnh quan sát được, mốc beat và giả thuyết thử nghiệm; đây không chứng minh nguyên nhân viral. Retention, demographics, profile visits và follows-per-video vẫn chưa có dữ liệu. TikWM topic search có thể bị Cloudflare challenge HTTP 403; app báo rõ và không giả vờ lọc caption để thay thế tìm kiếm trên TikTok. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
 
 Server xác minh nguồn đã được đánh dấu video nhảy và Radar đã thu thập trong 7 ngày trước khi phân tích hoặc tạo job; bỏ qua nút UI không thể dùng nguồn chưa xác nhận hoặc đã cũ.
 

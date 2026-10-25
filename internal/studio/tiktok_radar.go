@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -80,8 +79,9 @@ var tikTokRadarHTTPTransport = func() *http.Transport {
 // Cache TTL
 const (
 	tikTokTrendsTTL            = 15 * time.Minute
-	tikTokRadarFeedLimit       = 30
+	tikTokRadarFeedLimit       = 10
 	tikTokRadarTopicCacheLimit = 32
+	tikTokRadarMaxTopics       = 3
 )
 
 var (
@@ -134,12 +134,10 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	if len(live) == 0 {
 		return nil, fmt.Errorf("nguồn TikTok không trả về dữ liệu hiện tại")
 	}
-	sort.SliceStable(live, func(i, j int) bool {
-		if live[i].PlayCountKnown != live[j].PlayCountKnown {
-			return live[i].PlayCountKnown
-		}
-		return live[i].PlayCount > live[j].PlayCount
-	})
+	for i := range live {
+		live[i].Rank = i + 1
+	}
+	sortTikTokRadarVideosByPopularity(live)
 	if len(live) > tikTokRadarFeedLimit {
 		live = live[:tikTokRadarFeedLimit]
 	}
@@ -165,13 +163,27 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	if len([]rune(topic)) > 120 {
 		return nil, fmt.Errorf("chủ đề tìm kiếm tối đa 120 ký tự")
 	}
-	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
-	if configErr != nil {
-		return nil, configErr
+	topics, err := splitTikTokRadarTopics(topic)
+	if err != nil {
+		return nil, err
+	}
+	topic = strings.Join(topics, ", ")
+	apifyConfig := tikTokApifyConfigFromEnv()
+	var config tikTokBusinessDiscoveryConfig
+	configured := false
+	if apifyConfig.APIToken == "" {
+		var configErr error
+		config, configured, configErr = tikTokBusinessDiscoveryConfigFromEnv()
+		if configErr != nil {
+			return nil, configErr
+		}
 	}
 	key := "tikwm:" + strings.ToLower(topic)
 	if configured {
 		key = "business:" + config.AdvertiserID + ":" + config.CountryCode + ":" + strings.ToLower(topic)
+	}
+	if apifyConfig.APIToken != "" {
+		key = "apify:" + strings.ToLower(topic)
 	}
 	ttMu.Lock()
 	if cached, ok := topicTTCache[key]; ok && time.Since(cached.fetchedAt) < tikTokTrendsTTL {
@@ -182,8 +194,9 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	ttMu.Unlock()
 
 	var result []TikTokTrendVideo
-	var err error
-	if configured {
+	if apifyConfig.APIToken != "" {
+		result, err = fetchApifyTikTokVideos(ctx, topics, apifyConfig)
+	} else if configured {
 		result, err = fetchTikTokBusinessDiscoveryVideos(ctx, topic, config)
 	} else {
 		result, err = fetchLiveTikTokSearch(ctx, topic)
@@ -192,18 +205,15 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 		return nil, err
 	}
 	live := validateTikTokRadarResults(result)
+	for i := range live {
+		if live[i].Rank == 0 {
+			live[i].Rank = i + 1
+		}
+	}
+	sortTikTokRadarVideosByPopularity(live)
 	if len(live) > tikTokRadarFeedLimit {
 		live = live[:tikTokRadarFeedLimit]
 	}
-	sort.SliceStable(live, func(i, j int) bool {
-		if live[i].PlayCountKnown != live[j].PlayCountKnown {
-			return live[i].PlayCountKnown
-		}
-		if live[i].PlayCount != live[j].PlayCount {
-			return live[i].PlayCount > live[j].PlayCount
-		}
-		return live[i].DiggCount > live[j].DiggCount
-	})
 	for i := range live {
 		live[i].Rank = i + 1
 	}
@@ -221,6 +231,31 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	topicTTCache[key] = cachedTikTokRadarSearch{videos: append([]TikTokTrendVideo(nil), live...), fetchedAt: time.Now()}
 	ttMu.Unlock()
 	return live, nil
+}
+
+func splitTikTokRadarTopics(topic string) ([]string, error) {
+	parts := strings.Split(topic, ",")
+	topics := make([]string, 0, len(parts))
+	seen := make(map[string]struct{}, len(parts))
+	for _, part := range parts {
+		value := strings.Join(strings.Fields(strings.TrimSpace(part)), " ")
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, duplicate := seen[key]; duplicate {
+			continue
+		}
+		seen[key] = struct{}{}
+		topics = append(topics, value)
+	}
+	if len(topics) == 0 {
+		return nil, fmt.Errorf("nhập ít nhất một chủ đề TikTok")
+	}
+	if len(topics) > tikTokRadarMaxTopics {
+		return nil, fmt.Errorf("mỗi lần tìm tối đa %d chủ đề, ngăn cách bằng dấu phẩy", tikTokRadarMaxTopics)
+	}
+	return topics, nil
 }
 
 func validateTikTokRadarResults(items []TikTokTrendVideo) []TikTokTrendVideo {
@@ -352,7 +387,7 @@ func fetchTikTokRadarEndpoint(ctx context.Context, endpoint string) ([]TikTokTre
 		if resp.StatusCode == http.StatusForbidden {
 			body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 			if isTikTokRadarCloudflareChallenge(resp.Header, body) {
-				return nil, fmt.Errorf("TikWM đang chặn tìm kiếm chủ đề bằng Cloudflare (HTTP 403); cấu hình TikTok Business Discovery access token và advertiser ID trong Cài đặt → Kênh mạng xã hội để tìm video top theo hashtag chính thức")
+				return nil, fmt.Errorf("TikWM đang chặn tìm kiếm bằng Cloudflare (HTTP 403); cấu hình Apify API token trong Cài đặt → Kênh mạng xã hội để tìm chủ đề và xếp theo view/tym")
 			}
 		}
 		return nil, fmt.Errorf("tikwm status: %d", resp.StatusCode)

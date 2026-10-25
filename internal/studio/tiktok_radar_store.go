@@ -58,7 +58,7 @@ func (s *Studio) persistTikTokRadarResults(ctx context.Context, videos []TikTokT
 			return nil, fmt.Errorf("không đọc được lịch sử chỉ số Radar TikTok: %w", err)
 		}
 	}
-	sortTikTokRadarVideosByTrend(videos)
+	sortTikTokRadarVideosByPopularity(videos)
 	return videos, nil
 }
 
@@ -211,25 +211,22 @@ func (s *Studio) enrichTikTokRadarMetrics(ctx context.Context, video *TikTokTren
 	return nil
 }
 
-func sortTikTokRadarVideosByTrend(videos []TikTokTrendVideo) {
+func sortTikTokRadarVideosByPopularity(videos []TikTokTrendVideo) {
 	sort.SliceStable(videos, func(i, j int) bool {
 		a, b := videos[i], videos[j]
-		if a.VelocityKnown != b.VelocityKnown {
-			return a.VelocityKnown
-		}
-		if a.VelocityKnown && a.ViewsPerHour != b.ViewsPerHour {
-			return a.ViewsPerHour > b.ViewsPerHour
-		}
-		if a.EngagementKnown != b.EngagementKnown {
-			return a.EngagementKnown
-		}
-		if a.EngagementKnown && a.EngagementRate != b.EngagementRate {
-			return a.EngagementRate > b.EngagementRate
-		}
 		if a.PlayCountKnown != b.PlayCountKnown {
 			return a.PlayCountKnown
 		}
-		return a.PlayCount > b.PlayCount
+		if a.PlayCountKnown && a.PlayCount != b.PlayCount {
+			return a.PlayCount > b.PlayCount
+		}
+		if a.DiggCountKnown != b.DiggCountKnown {
+			return a.DiggCountKnown
+		}
+		if a.DiggCountKnown && a.DiggCount != b.DiggCount {
+			return a.DiggCount > b.DiggCount
+		}
+		return a.Rank > 0 && (b.Rank == 0 || a.Rank < b.Rank)
 	})
 }
 
