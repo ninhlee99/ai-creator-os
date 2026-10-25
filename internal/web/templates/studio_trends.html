@@ -50,7 +50,15 @@
     </form>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
       <p class="hint">Nguồn: <strong>{{.TrendSource}}</strong> · Tìm kiếm theo chủ đề dùng dữ liệu video; sound lấy từ video Radar.</p>
-      {{if .SourceNote}}<p class="hint m-0 w-full" role="status">{{.SourceNote}}</p>{{end}}
+      {{if .SourceNote}}
+      <div class="notice notice-warn m-0 flex w-full flex-wrap items-center justify-between gap-3" role="status">
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <span class="badge badge-info">Đang dùng nguồn dự phòng</span>
+          <span>{{.SourceNote}}</span>
+        </div>
+        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm shrink-0">Kiểm tra nguồn ↗</a>
+      </div>
+      {{end}}
       {{if .ShowApifySetup}}<a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">Cấu hình Apify để lấy top 10 có view/tym ↗</a>{{end}}
       <form method="post" action="/studio/trends/refresh" class="inline-flex">
         <input type="hidden" name="topic" value="{{.Topic}}">
