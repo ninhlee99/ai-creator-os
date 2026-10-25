@@ -97,7 +97,7 @@
     </article>
     {{end}}
   </div>
-  {{else if .Topic}}
+  {{else if and .Topic (not .TrendErr)}}
   <div class="empty-state"><h3>Không có video cho chủ đề này</h3><p>Thử từ khóa khác hoặc tìm lại sau.</p></div>
   {{else if not .TrendErr}}
   <div class="empty-state"><h3>Feed chưa có video</h3><p>Thử thu thập lại sau.</p></div>
