@@ -80,11 +80,16 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 
 	var uploadedPhotos []string
 	var previewCleanup []string
+	var sampleVideoPath string
+	keepSourceVideoForJob := false
 	defer func() {
 		if analysisOnly {
 			for _, path := range previewCleanup {
 				_ = os.Remove(path)
 			}
+		}
+		if !analysisOnly && !keepSourceVideoForJob && sampleVideoPath != "" {
+			_ = os.Remove(sampleVideoPath)
 		}
 	}()
 	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo"} {
@@ -191,18 +196,29 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tiktokLink = sourceVideo.VideoURL
-	var sampleVideoPath string
 	dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "-o", dlDst, tiktokLink)
-	if err := cmd.Run(); err == nil && fileExists(dlDst) {
-		sampleVideoPath = dlDst
-	} else {
-		cancel()
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video từ Radar. Làm mới Radar rồi chọn video khác.")
+	cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "--no-playlist", "-o", dlDst, tiktokLink)
+	downloadOutput, downloadErr := cmd.CombinedOutput()
+	cancel()
+	if downloadErr != nil {
+		_ = os.Remove(dlDst)
+		message := strings.Join(strings.Fields(strings.TrimSpace(string(downloadOutput))), " ")
+		if message == "" {
+			message = downloadErr.Error()
+		}
+		if len([]rune(message)) > 500 {
+			message = string([]rune(message)[:500]) + "…"
+		}
+		log.Printf("web: viral Radar download failed: %s", message)
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video từ Radar: "+message)
 		return
 	}
-	cancel()
+	if !fileExists(dlDst) {
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "yt-dlp kết thúc nhưng không tạo file video Radar.")
+		return
+	}
+	sampleVideoPath = dlDst
 	previewCleanup = append(previewCleanup, sampleVideoPath)
 	if !studio.ProbeHasAudio(r.Context(), sampleVideoPath) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar không có track âm thanh; chọn video khác.")
@@ -283,6 +299,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, false, http.StatusInternalServerError, "Lỗi tạo job: "+err.Error())
 		return
 	}
+	keepSourceVideoForJob = true
 
 	if s.Ledger != nil {
 		_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video thay nhân vật trên nguồn đã chọn job=%s genre=%s: %s", jobID, genre, topic), nil)
