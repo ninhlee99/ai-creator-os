@@ -7,7 +7,7 @@
   </div>
   <div class="webai-header-actions flex flex-wrap items-center gap-2">
     <a href="/studio" class="btn btn-primary btn-sm">Mở Studio</a>
-    <a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>
+    {{if eq .Tab "discover"}}<a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>{{end}}
   </div>
 </div>
 
@@ -130,6 +130,7 @@
 {{end}}
 {{else}}
 
+{{if eq .Tab "discover"}}
 {{if or .AT.KeySet .AT.Hunted .AT.Orders .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade
@@ -492,6 +493,32 @@ function atOrderSync() {
   </form>
 </details>
 
+{{else}}
+<section class="card mb-5 rounded-2xl border border-[var(--border)] bg-[var(--bg2)] p-4 shadow-sm md:p-5">
+  <form action="/products" method="get" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto]">
+    <input type="hidden" name="tab" value="{{.Tab}}">
+    <div class="field m-0">
+      <label for="product-review-query" class="mb-1 block text-sm font-semibold">Tìm trong danh sách</label>
+      <input id="product-review-query" type="search" name="q" value="{{.Keyword}}" placeholder="Tên hoặc từ khóa sản phẩm" autocomplete="off">
+    </div>
+    <div class="field m-0">
+      <label for="product-review-theme" class="mb-1 block text-sm font-semibold">Chủ đề</label>
+      <select id="product-review-theme" name="theme">
+        <option value="">Tất cả chủ đề</option>
+        {{range .Themes}}
+        <option value="{{.Slug}}"{{if eq $.Theme .Slug}} selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="submit" class="btn btn-primary">Lọc danh sách</button>
+      {{if or .Keyword .Theme}}<a href="/products?tab={{.Tab}}" class="btn btn-secondary">Xóa lọc</a>{{end}}
+    </div>
+  </form>
+  <p class="hint mb-0 mt-3">{{if eq .Tab "pending"}}Duyệt sản phẩm phù hợp để đưa vào kệ hàng.{{else}}Xem lại sản phẩm đã loại hoặc khôi phục về danh sách chờ duyệt.{{end}}</p>
+</section>
+{{end}}
+
 {{template "product-results" .}}
 {{end}}
 {{end}}
@@ -621,10 +648,22 @@ function atOrderSync() {
   <div class="es-icon">📦</div>
   <h3>Chưa có sản phẩm nào cho chủ đề này trong kho</h3>
 </div>
+{{else if eq .Tab "pending"}}
+<div class="empty-state compact">
+  <div class="es-icon">✅</div>
+  <h3>Không có sản phẩm chờ duyệt</h3>
+  <p>Sản phẩm mới tìm được sẽ xuất hiện trong Khám phá.</p>
+</div>
 {{else if eq .Tab "rejected"}}
 <div class="empty-state compact">
   <div class="es-icon">📦</div>
   <h3>Chưa có sản phẩm bị loại</h3>
+</div>
+{{else}}
+<div class="empty-state compact">
+  <div class="es-icon">🔎</div>
+  <h3>{{if .Searched}}Chưa tìm thấy sản phẩm phù hợp{{else}}Chưa có sản phẩm trong kho{{end}}</h3>
+  <p>{{if .Searched}}Thử từ khóa hoặc chủ đề khác.{{else}}Tìm deal để thêm vào kho, hoặc mở Thêm sản phẩm thủ công.{{end}}</p>
 </div>
 {{end}}
 
