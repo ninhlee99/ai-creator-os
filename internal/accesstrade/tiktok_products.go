@@ -78,7 +78,7 @@ func (c *Client) SearchTikTokProducts(ctx context.Context, f TikTokProductFilter
 		}
 		for _, raw := range payload.Products {
 			p := parseTikTokShopProduct(raw, f.ThemeFallback, now)
-			if p.SourceID == "" || p.CommissionRate <= 0 || p.CommissionRate < f.MinCommission ||
+			if p.SourceID == "" || (p.CommissionRate > 0 && p.CommissionRate < f.MinCommission) ||
 				(p.Price > 0 && f.MinPrice > 0 && p.Price < f.MinPrice) ||
 				(p.Price > 0 && f.MaxPrice > 0 && p.Price > f.MaxPrice) {
 				continue
