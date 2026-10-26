@@ -691,19 +691,6 @@
         });
       }
 
-      // Sidebar toggle from workflow toolbar
-      const wfSidebarToggle = document.getElementById('wf-sidebar-toggle');
-      if (wfSidebarToggle) {
-        wfSidebarToggle.addEventListener('click', () => {
-          const layout = document.querySelector('.layout');
-          if (!layout) return;
-          const isCollapsed = layout.classList.toggle('sidebar-collapsed');
-          try {
-            localStorage.setItem('aicos-sidebar-collapsed', isCollapsed ? '1' : '0');
-          } catch (e) {}
-        });
-      }
-
       // Theme toggle from workflow toolbar
       const wfThemeToggle = document.getElementById('wf-theme-toggle');
       if (wfThemeToggle) {
