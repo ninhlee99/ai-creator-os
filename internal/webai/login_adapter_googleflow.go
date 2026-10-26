@@ -26,29 +26,18 @@ func (googleFlowLoginAdapter) capture(ctx context.Context, browser loginBrowserS
 }
 
 func (googleFlowLoginAdapter) validateSession(ctx context.Context, client *http.Client, auth *CapturedWebAuth) error {
-	cookie := googleLoginCookie(auth)
-	if !strings.Contains(cookie, "SID=") && !strings.Contains(cookie, "__Secure-1PSID=") && !strings.Contains(cookie, "__Secure-3PSID=") {
+	rawCookie := strings.TrimSpace(auth.CookieHeader)
+	if !strings.Contains(rawCookie, "SID=") && !strings.Contains(rawCookie, "__Secure-1PSID=") && !strings.Contains(rawCookie, "__Secure-3PSID=") && !strings.Contains(rawCookie, "OSID=") {
 		return fmt.Errorf("Google Flow chưa nhận được cookie xác thực Google (SID / __Secure-1PSID)")
 	}
 
+	cookie := googleLoginCookie(auth)
 	actualEmail := probeGoogleLoginAccountEmail(ctx, client, cookie)
 	if actualEmail == "" {
 		actualEmail = accountEmail(auth.Email)
 	}
 	if actualEmail == "" {
 		return fmt.Errorf("Google Flow chưa xác minh được email tài khoản Google")
-	}
-
-	var probeErr error
-	if len(auth.CookieJar) > 0 {
-		probeErr = ProbeGoogleFlowSessionWithCookieSnapshot(ctx, cookie, auth.CookieJar, nil)
-	} else {
-		probeErr = ProbeGoogleFlowSession(ctx, cookie)
-	}
-	if probeErr != nil {
-		if strings.Contains(probeErr.Error(), "Flow HTTP 401") || strings.Contains(probeErr.Error(), "401") {
-			return fmt.Errorf("Google Flow chưa xác thực cookie: %w", probeErr)
-		}
 	}
 
 	expectedEmail := accountEmail(auth.Email)
@@ -81,7 +70,7 @@ func (adapter googleFlowLoginAdapter) sessionFromCookies(cookies []cdpCookie) (s
 	if session == "" {
 		session = firstLoginCookieValue(cookies, target,
 			"__Secure-1PSID", "__Secure-3PSID", "SID", "SSID", "SAPISID",
-			"__Secure-1PAPISID", "__Secure-1PSIDTS", "__Secure-3PSIDTS",
+			"__Secure-1PAPISID", "__Secure-1PSIDTS", "__Secure-3PSIDTS", "OSID",
 		)
 	}
 	return session, email

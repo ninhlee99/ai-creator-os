@@ -14,6 +14,10 @@ func googleLoginCookie(auth *CapturedWebAuth) string {
 	return cookie
 }
 
+func ProbeGoogleLoginAccountEmail(ctx context.Context, client *http.Client, cookie string) string {
+	return probeGoogleLoginAccountEmail(ctx, client, cookie)
+}
+
 func probeGoogleLoginAccountEmail(ctx context.Context, client *http.Client, cookie string) string {
 	for _, probe := range []struct{ url, host string }{
 		{"https://myaccount.google.com/", "myaccount.google.com"},
