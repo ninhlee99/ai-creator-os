@@ -61,14 +61,9 @@ func (s *Store) migrate() error {
 	return nil
 }
 
-// SeedDefaultPresets nạp các preset mẫu ban đầu vào cơ sở dữ liệu nếu chưa có.
+// SeedDefaultPresets nạp và đồng bộ các preset mẫu vào cơ sở dữ liệu.
 func (s *Store) SeedDefaultPresets() error {
 	for _, preset := range GetPresetGraphs() {
-		var existingID string
-		err := s.db.QueryRow(`SELECT id FROM studio_workflow_graphs WHERE id = ?;`, preset.ID).Scan(&existingID)
-		if err == nil && existingID != "" {
-			continue
-		}
 		if err := s.SaveGraph(&preset); err != nil {
 			return err
 		}

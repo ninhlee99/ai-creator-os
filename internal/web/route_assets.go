@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"path/filepath"
 )
 
 func setAssetCache(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +51,22 @@ func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "audio/mpeg")
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	_, _ = w.Write(staticPreviewAudio)
+}
+
+// handleStaticSampleVideo serves the bundled 9:16 sample video for flow canvas previews.
+func (s *Server) handleStaticSampleVideo(w http.ResponseWriter, r *http.Request) {
+	p := filepath.Join("internal", "web", "static", "sample_916.mp4")
+	w.Header().Set("Content-Type", "video/mp4")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	http.ServeFile(w, r, p)
+}
+
+// handleStaticAgentImage serves static agent/character illustrations for node previews.
+func (s *Server) handleStaticAgentImage(w http.ResponseWriter, r *http.Request) {
+	file := filepath.Base(r.PathValue("file"))
+	p := filepath.Join("internal", "web", "static", "agents", file)
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	http.ServeFile(w, r, p)
 }
 
 // --------------------------------------------------------------- dashboard

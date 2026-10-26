@@ -277,7 +277,13 @@
       portsRow.appendChild(outputsCol);
       nodeEl.appendChild(portsRow);
 
-      // 3. Node Footer & Status Indicator
+      // 3. Node Live Preview (ComfyUI Visual Feedback: Cutout, Composite, Video, etc.)
+      const previewEl = this.createNodePreviewElement(node);
+      if (previewEl) {
+        nodeEl.appendChild(previewEl);
+      }
+
+      // 4. Node Footer & Status Indicator
       const footer = document.createElement('div');
       footer.className = 'wf-node-footer';
       footer.id = `node-footer-${node.id}`;
@@ -371,6 +377,347 @@
       });
 
       return portEl;
+    }
+
+    createNodePreviewElement(node) {
+      const config = this.getNodePreviewConfig(node);
+      if (!config) return null;
+
+      const previewContainer = document.createElement('div');
+      previewContainer.className = `wf-node-preview ${config.isCutout ? 'preview-cutout' : ''}`;
+      previewContainer.id = `node-preview-${node.id}`;
+
+      // Badge
+      const badge = document.createElement('div');
+      badge.className = 'wf-preview-badge';
+      badge.innerHTML = config.badge;
+      previewContainer.appendChild(badge);
+
+      // Media element
+      if (config.type === 'video') {
+        const video = document.createElement('video');
+        video.src = config.url;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        // Auto play on hover
+        previewContainer.addEventListener('mouseenter', () => {
+          video.play().catch(() => {});
+        });
+        previewContainer.addEventListener('mouseleave', () => {
+          video.pause();
+        });
+        previewContainer.appendChild(video);
+      } else if (config.type === 'image' || config.type === 'cutout') {
+        const img = document.createElement('img');
+        img.src = config.url;
+        img.alt = node.title || 'Preview';
+        img.loading = 'lazy';
+        previewContainer.appendChild(img);
+      } else if (config.type === 'audio') {
+        const audioBox = document.createElement('div');
+        audioBox.className = 'wf-preview-audio-box';
+        audioBox.innerHTML = `
+          <div class="wf-preview-waveform">
+            <span style="height:40%"></span><span style="height:80%"></span><span style="height:60%"></span>
+            <span style="height:100%"></span><span style="height:70%"></span><span style="height:35%"></span>
+            <span style="height:90%"></span><span style="height:55%"></span><span style="height:75%"></span>
+          </div>
+          <div class="wf-preview-audio-title">${node.params?.audio_title || 'Âm thanh thịnh hành (128 BPM)'}</div>
+        `;
+        previewContainer.appendChild(audioBox);
+      }
+
+      // Quick actions toolbar
+      const actions = document.createElement('div');
+      actions.className = 'wf-preview-actions';
+
+      // 1. Zoom / Lightbox button
+      const zoomBtn = document.createElement('button');
+      zoomBtn.type = 'button';
+      zoomBtn.className = 'wf-preview-btn';
+      zoomBtn.title = 'Phóng to xem chi tiết';
+      zoomBtn.innerHTML = '🔍 Xem';
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openLightbox(node.title || 'Preview', config.url, config.type);
+      });
+      actions.appendChild(zoomBtn);
+
+      // 2. Upload button (if node supports uploading input asset)
+      if (config.canUpload) {
+        const uploadBtn = document.createElement('button');
+        uploadBtn.type = 'button';
+        uploadBtn.className = 'wf-preview-btn';
+        uploadBtn.title = 'Tải ảnh/video mới lên node này';
+        uploadBtn.innerHTML = '📤 Tải lên';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = config.type === 'video' ? 'video/mp4,video/*' : 'image/*';
+        fileInput.style.display = 'none';
+
+        fileInput.addEventListener('change', (ev) => {
+          const file = ev.target.files && ev.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (re) => {
+            const dataUrl = re.target.result;
+            if (!node.params) node.params = {};
+            node.params.preview_url = dataUrl;
+            if (config.type === 'video') {
+              node.params.video_path = file.name;
+            } else {
+              node.params.model_path = file.name;
+              node.params.product_image = file.name;
+            }
+            this.updateNodePreview(node.id, dataUrl);
+            this.propagatePreviewUpdate(node.id, dataUrl);
+          };
+          reader.readAsDataURL(file);
+        });
+
+        uploadBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          fileInput.click();
+        });
+
+        actions.appendChild(uploadBtn);
+        previewContainer.appendChild(fileInput);
+      }
+
+      previewContainer.appendChild(actions);
+
+      // Clicking preview container opens lightbox
+      previewContainer.addEventListener('click', (e) => {
+        if (e.target.closest('button') || e.target.closest('input')) return;
+        e.stopPropagation();
+        this.selectNode(node.id);
+        this.openLightbox(node.title || 'Preview', config.url, config.type);
+      });
+
+      return previewContainer;
+    }
+
+    getNodePreviewConfig(node) {
+      const type = node.type;
+      const params = node.params || {};
+
+      switch (type) {
+        case 'character_input':
+          return {
+            type: 'image',
+            url: params.preview_url || '/static/presets/char_01.jpg',
+            badge: '👤 Nhân vật mẫu',
+            canUpload: true,
+            isCutout: false
+          };
+
+        case 'product_input':
+          return {
+            type: 'image',
+            url: params.preview_url || '/static/presets/char_04.jpg',
+            badge: '🛍️ Sản phẩm mẫu',
+            canUpload: true,
+            isCutout: false
+          };
+
+        case 'product_extractor':
+        case 'background_remover':
+          return {
+            type: 'cutout',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_04.jpg',
+            badge: '✂️ Đã tách nền PNG',
+            canUpload: false,
+            isCutout: true
+          };
+
+        case 'image_composite':
+          return {
+            type: 'image',
+            url: params.preview_url || '/static/presets/char_02.jpg',
+            badge: '✨ Ghép phối cảnh AI',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'video_source':
+          return {
+            type: 'video',
+            url: params.preview_url || '/static/sample_916.mp4',
+            badge: '🎬 Video TikTok Radar (13.8s)',
+            canUpload: true,
+            isCutout: false
+          };
+
+        case 'dance_motion_extractor':
+          return {
+            type: 'image',
+            url: '/static/agents/dancer.jpg',
+            badge: '🕺 Vũ đạo 128 BPM (18 Poses)',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'dance_retarget':
+          return {
+            type: 'image',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_01.jpg',
+            badge: '🎭 Khớp khung xương',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'google_flow_video':
+          return {
+            type: 'video',
+            url: '/static/sample_916.mp4',
+            badge: '✨ Google Flow Veo 2',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'muse_ai_video':
+          return {
+            type: 'video',
+            url: '/static/sample_916.mp4',
+            badge: '⚡ Muse AI Video',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'custom_web_ai':
+          return {
+            type: 'video',
+            url: '/static/sample_916.mp4',
+            badge: '🧠 Web AI Video',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'video_upscale':
+          return {
+            type: 'video',
+            url: '/static/sample_916.mp4',
+            badge: '💎 4K 60FPS UHD Enhanced',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'video_output':
+          return {
+            type: 'video',
+            url: '/static/sample_916.mp4',
+            badge: '🎉 Video hoàn thiện 9:16',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'image_output':
+          return {
+            type: 'image',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_01.jpg',
+            badge: '🖼️ Ảnh hoàn thiện',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'audio_source':
+        case 'audio_merge':
+          return {
+            type: 'audio',
+            url: '/static/preview.mp3',
+            badge: '🎵 Âm thanh thịnh hành',
+            canUpload: false,
+            isCutout: false
+          };
+
+        default:
+          return null;
+      }
+    }
+
+    getConnectedInputPreview(nodeId) {
+      if (!this.graph.edges) return null;
+      const incomingEdge = this.graph.edges.find(e => e.to_node === nodeId);
+      if (!incomingEdge) return null;
+      const sourceNode = this.graph.nodes.find(n => n.id === incomingEdge.from_node);
+      if (!sourceNode) return null;
+      return sourceNode.params?.preview_url || null;
+    }
+
+    propagatePreviewUpdate(nodeId, newUrl) {
+      if (!this.graph.edges) return;
+      const outgoingEdges = this.graph.edges.filter(e => e.from_node === nodeId);
+      outgoingEdges.forEach(edge => {
+        const targetNode = this.graph.nodes.find(n => n.id === edge.to_node);
+        if (targetNode) {
+          if (!targetNode.params) targetNode.params = {};
+          targetNode.params.preview_url = newUrl;
+          this.updateNodePreview(targetNode.id, newUrl);
+          this.propagatePreviewUpdate(targetNode.id, newUrl);
+        }
+      });
+    }
+
+    updateNodePreview(nodeId, newUrl) {
+      const previewEl = document.getElementById(`node-preview-${nodeId}`);
+      if (!previewEl) return;
+      const img = previewEl.querySelector('img');
+      if (img) img.src = newUrl;
+      const video = previewEl.querySelector('video');
+      if (video) video.src = newUrl;
+    }
+
+    openLightbox(title, url, type) {
+      let modal = document.getElementById('wf-lightbox-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'wf-lightbox-modal';
+        modal.className = 'wf-lightbox-modal';
+        modal.innerHTML = `
+          <div class="wf-lightbox-content">
+            <div class="wf-lightbox-header">
+              <span class="wf-lightbox-title" id="wf-lightbox-title">Xem chi tiết</span>
+              <button type="button" class="wf-lightbox-close" id="wf-lightbox-close">&times;</button>
+            </div>
+            <div class="wf-lightbox-media" id="wf-lightbox-media"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        modal.querySelector('#wf-lightbox-close').addEventListener('click', () => {
+          modal.classList.remove('is-open');
+          const video = modal.querySelector('video');
+          if (video) video.pause();
+        });
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.classList.remove('is-open');
+            const video = modal.querySelector('video');
+            if (video) video.pause();
+          }
+        });
+      }
+
+      document.getElementById('wf-lightbox-title').innerText = title;
+      const mediaBox = document.getElementById('wf-lightbox-media');
+      mediaBox.innerHTML = '';
+      if (type === 'video') {
+        const v = document.createElement('video');
+        v.src = url;
+        v.controls = true;
+        v.autoplay = true;
+        v.playsInline = true;
+        mediaBox.appendChild(v);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        mediaBox.appendChild(img);
+      }
+      modal.classList.add('is-open');
     }
 
     renderWires() {
