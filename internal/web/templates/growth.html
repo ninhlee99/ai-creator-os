@@ -81,23 +81,24 @@
 <h2>Hiệu quả video theo job Studio</h2>
 <p class="hint">Liên kết URL công khai ở job Studio sau khi đăng. Chỉ ghép đơn khi video xuất hiện trong dữ liệu TikTok mới của đúng kênh. Engagement = like + comment + share trên view, so với video cùng flow trên cùng kênh. Watch-time, nhân khẩu học và click chưa có nguồn.</p>
 {{if .StudioVideoMetrics}}
-<div class="table-wrap mobile-table-scroll" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0"><table class="growth-job-table">
-<tr><th>Kênh</th><th>Flow</th><th>Video / job</th><th>Lượt xem</th><th>Thích</th><th>Bình luận</th><th>Chia sẻ</th><th>Engagement</th><th>Đơn AccessTrade / view</th><th>Nhận định</th><th>Cập nhật</th></tr>
+<div class="table-wrap mobile-table-scroll mobile-growth-job-cards" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0"><table class="growth-job-table">
+<thead><tr><th scope="col">Kênh</th><th scope="col">Loại video</th><th scope="col">Video / tác vụ</th><th scope="col">Lượt xem</th><th scope="col">Thích</th><th scope="col">Bình luận</th><th scope="col">Chia sẻ</th><th scope="col">Tỷ lệ tương tác</th><th scope="col">Đơn hàng / lượt xem</th><th scope="col">Nhận định</th><th scope="col">Cập nhật</th></tr></thead>
+<tbody>
 {{range .StudioVideoMetrics}}
 <tr>
-  <td>{{.Username}}</td>
-  <td>{{.KindLabel}}</td>
-  <td><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a><br><span class="hint">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Job Studio</a></span><br>{{if .TikTokAccountVerified}}<span class="badge badge-ok">Đã xác minh thuộc kênh</span>{{else}}<span class="hint">Chưa xác minh trong dữ liệu video của kênh</span>{{end}}</td>
-  <td>{{.Views}}</td><td>{{.Likes}}</td><td>{{.Comments}}</td><td>{{.Shares}}</td>
-  <td>
-    {{if .EngagementRate}}{{.EngagementRate}}{{if .EngagementBase}}<br><span class="hint">baseline {{.EngagementBase}}</span>{{end}}{{else}}—{{end}}
+  <td data-label="Kênh">{{.Username}}</td>
+  <td data-label="Loại video">{{.KindLabel}}</td>
+  <td data-label="Video / tác vụ"><a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.Title}} ↗</a><br><span class="hint">Video {{.VideoID}} · <a href="/studio/jobs?id={{urlquery .JobID}}#job-{{.JobID}}">Tác vụ Studio</a></span><br>{{if .TikTokAccountVerified}}<span class="badge badge-ok">Đã xác minh thuộc kênh</span>{{else}}<span class="hint">Chưa xác minh trong dữ liệu video của kênh</span>{{end}}</td>
+  <td data-label="Lượt xem">{{.Views}}</td><td data-label="Thích">{{.Likes}}</td><td data-label="Bình luận">{{.Comments}}</td><td data-label="Chia sẻ">{{.Shares}}</td>
+  <td data-label="Tỷ lệ tương tác">
+    {{if .EngagementRate}}{{.EngagementRate}}{{if .EngagementBase}}<br><span class="hint">mốc so sánh {{.EngagementBase}}</span>{{end}}{{else}}—{{end}}
   </td>
-  <td>
+  <td data-label="Đơn hàng / lượt xem">
     {{if eq .KindLabel "Affiliate TikTok"}}
       {{if .AttributionID}}
         {{if .TikTokAccountVerified}}
           {{if .OrdersKnown}}
-            <strong>{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · {{.OrderPerView}} / view{{end}}<br>
+            <strong>{{.Orders.TotalCount}} đơn</strong>{{if .OrderPerView}} · {{.OrderPerView}} / lượt xem{{end}}<br>
             <span class="hint">Chờ {{.Orders.PendingCount}} · duyệt {{.Orders.ApprovedCount}} · từ chối {{.Orders.RejectedCount}}</span><br>
             <span class="hint">Hoa hồng đã duyệt: {{printf "%.0f" .Orders.ApprovedCommission}}₫ · đồng bộ {{.OrdersSyncedAt}}</span>
           {{else}}Chưa có snapshot đơn AccessTrade{{end}}
@@ -105,10 +106,11 @@
       {{else}}Job chưa có mã tracking riêng{{end}}
     {{else}}—{{end}}
   </td>
-  <td style="min-width:260px;max-width:420px">{{.Recommendation}}{{if .SalesAdvice}}<br><span class="hint">Đơn: {{.SalesAdvice}}</span>{{end}}</td>
-  <td>{{.TakenAt}}{{if and .HasMetrics (not .MetricsFresh)}}<br><span class="hint">Snapshot cũ · đồng bộ lại</span>{{end}}</td>
+  <td data-label="Nhận định">{{.Recommendation}}{{if .SalesAdvice}}<br><span class="hint">Đơn: {{.SalesAdvice}}</span>{{end}}</td>
+  <td data-label="Cập nhật">{{.TakenAt}}{{if and .HasMetrics (not .MetricsFresh)}}<br><span class="hint">Dữ liệu cũ · đồng bộ lại</span>{{end}}</td>
 </tr>
 {{end}}
+</tbody>
 </table></div>
 {{else}}
 <p class="empty">Chưa liên kết video Studio nào. Mở job Affiliate hoặc TikTok Viral đã hoàn tất, rồi dán link video TikTok đã đăng.</p>
