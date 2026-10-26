@@ -175,7 +175,7 @@ func TestAccountIdentityUsesCanonicalEmail(t *testing.T) {
 	if len(accounts) != 1 {
 		t.Fatalf("same email should map to one account, got %d", len(accounts))
 	}
-	if accounts[0].Email != "creator@example.com" || accounts[0].SessionKey != "session-two" || accounts[0].Cookie != "cookie-two" {
+	if accounts[0].Email != "creator@example.com" || accounts[0].SessionKey != "session-two" || accounts[0].Cookie != "SID=cookie-two" {
 		t.Fatalf("canonical account did not receive latest session: %+v", accounts[0])
 	}
 

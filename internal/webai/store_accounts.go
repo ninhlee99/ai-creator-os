@@ -208,6 +208,9 @@ func accountHasProviderCredentials(acc Account) bool {
 		if strings.TrimSpace(acc.Cookie) != "" {
 			return true
 		}
+		if strings.TrimSpace(acc.SessionKey) != "" {
+			return true
+		}
 		for _, cookie := range acc.CookieJar {
 			if strings.TrimSpace(cookie.Name) != "" && cookie.Value != "" {
 				return true

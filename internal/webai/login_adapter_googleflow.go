@@ -12,15 +12,12 @@ type googleFlowLoginAdapter struct{}
 
 func (googleFlowLoginAdapter) target() WebLoginTarget {
 	return WebLoginTarget{
-		Platform: PlatformGoogleFlow,
-		Name:     "Google Flow",
-		// Keep login on the lightweight Google Account page. Opening Flow's
-		// project canvas just to capture Google cookies makes the login browser
-		// needlessly GPU-heavy.
-		StartURL:    "https://myaccount.google.com/",
+		Platform:    PlatformGoogleFlow,
+		Name:        "Google Flow",
+		StartURL:    "https://labs.google/fx/editor",
 		CookieHost:  "google.com",
 		CookieName:  "__Secure-1PSID",
-		LandingHost: "myaccount.google.com",
+		LandingHost: "labs.google",
 	}
 }
 
@@ -30,10 +27,19 @@ func (googleFlowLoginAdapter) capture(ctx context.Context, browser loginBrowserS
 
 func (googleFlowLoginAdapter) validateSession(ctx context.Context, client *http.Client, auth *CapturedWebAuth) error {
 	cookie := googleLoginCookie(auth)
-	if err := ProbeGoogleFlowSession(ctx, cookie); err != nil {
-		return fmt.Errorf("Google Flow chưa xác thực cookie: %w", err)
+	var probeErr error
+	if len(auth.CookieJar) > 0 {
+		probeErr = ProbeGoogleFlowSessionWithCookieSnapshot(ctx, cookie, auth.CookieJar, nil)
+	} else {
+		probeErr = ProbeGoogleFlowSession(ctx, cookie)
 	}
 	actualEmail := probeGoogleLoginAccountEmail(ctx, client, cookie)
+	if actualEmail == "" {
+		actualEmail = accountEmail(auth.Email)
+	}
+	if probeErr != nil && actualEmail == "" {
+		return fmt.Errorf("Google Flow chưa xác thực cookie: %w", probeErr)
+	}
 	if actualEmail == "" {
 		return fmt.Errorf("Google Flow đã xác thực phiên nhưng chưa xác minh được email tài khoản")
 	}
@@ -51,7 +57,7 @@ func (googleFlowLoginAdapter) matchesIdentityURL(rawURL string) bool {
 		return false
 	}
 	switch strings.ToLower(u.Hostname()) {
-	case "myaccount.google.com", "flow.google.com", "labs.google", "aitestkitchen.withgoogle.com":
+	case "myaccount.google.com", "flow.google.com", "labs.google", "aitestkitchen.withgoogle.com", "accounts.google.com":
 		return true
 	default:
 		return false
