@@ -352,22 +352,51 @@
 
         const p1 = this.getPortCoordinates(fromDot);
         const p2 = this.getPortCoordinates(toDot);
-
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const d = this.calculateBezier(p1.x, p1.y, p2.x, p2.y);
-        path.setAttribute('d', d);
-        path.setAttribute('class', 'flow-wire');
-        path.dataset.edgeId = edge.id;
 
-        // Click to delete wire
-        path.addEventListener('click', (e) => {
+        const fromNode = this.graph.nodes.find(n => n.id === edge.from_node);
+        const toNode = this.graph.nodes.find(n => n.id === edge.to_node);
+        const portType = fromDot.parentElement ? fromDot.parentElement.dataset.type : 'any';
+
+        const isRunning = (fromNode?.state?.status === 'running') || (toNode?.state?.status === 'running');
+
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', `flow-wire-group ${isRunning ? 'active-flowing' : ''}`);
+        group.dataset.edgeId = edge.id;
+
+        // 1. Shadow / Glow outline path (ComfyUI & n8n depth)
+        const shadowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        shadowPath.setAttribute('d', d);
+        shadowPath.setAttribute('class', 'flow-wire-shadow');
+        group.appendChild(shadowPath);
+
+        // 2. Core colored wire path
+        const wirePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        wirePath.setAttribute('d', d);
+        wirePath.setAttribute('class', `flow-wire port-type-${portType} ${isRunning ? 'wire-active' : ''}`);
+        group.appendChild(wirePath);
+
+        // 3. Flowing stream pulse path if connected nodes are running
+        if (isRunning) {
+          const pulsePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          pulsePath.setAttribute('d', d);
+          pulsePath.setAttribute('class', 'flow-wire-pulse');
+          group.appendChild(pulsePath);
+        }
+
+        // 4. Hit area for easy clicking / hover
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hitPath.setAttribute('d', d);
+        hitPath.setAttribute('class', 'flow-wire-hit');
+        hitPath.addEventListener('click', (e) => {
           e.stopPropagation();
           if (confirm('Bạn có muốn xóa kết nối dây này?')) {
             this.deleteEdge(edge.id);
           }
         });
+        group.appendChild(hitPath);
 
-        this.svgLayer.appendChild(path);
+        this.svgLayer.appendChild(group);
       });
     }
 
@@ -509,7 +538,7 @@
         return `<span class="wf-status-badge wf-status-idle">Chờ thực thi</span>`;
       }
       if (state.status === 'running') {
-        return `<span class="wf-status-badge wf-status-running">⚡ Đang xử lý (${state.progress || 10}%)...</span>`;
+        return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${state.progress || 10}%)...</span>`;
       }
       if (state.status === 'completed') {
         let preview = '';
@@ -730,11 +759,13 @@
                 const nodeEl = document.getElementById(`node-${nodeId}`);
                 if (nodeEl) {
                   nodeEl.classList.toggle('node-running', nodeState.status === 'running');
+                  nodeEl.classList.toggle('node-active-executing', nodeState.status === 'running');
                   nodeEl.classList.toggle('node-completed', nodeState.status === 'completed');
                   nodeEl.classList.toggle('node-failed', nodeState.status === 'failed');
                 }
               }
             });
+            this.renderWires(); // Re-render wires so active running wires light up
           }
 
           // Terminal completion

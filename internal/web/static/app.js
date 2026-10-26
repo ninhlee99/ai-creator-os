@@ -242,6 +242,28 @@
         }
       });
     }
+
+    // Desktop sidebar collapse / expand toggle
+    var layout = document.querySelector('.layout');
+    var collapseBtn = document.getElementById('sidebar-collapse-btn');
+    var topbarToggle = document.getElementById('topbar-sidebar-toggle');
+
+    try {
+      if (localStorage.getItem('aicos-sidebar-collapsed') === '1' && layout) {
+        layout.classList.add('sidebar-collapsed');
+      }
+    } catch (e) {}
+
+    function toggleSidebarCollapse() {
+      if (!layout) return;
+      var isCollapsed = layout.classList.toggle('sidebar-collapsed');
+      try {
+        localStorage.setItem('aicos-sidebar-collapsed', isCollapsed ? '1' : '0');
+      } catch (e) {}
+    }
+
+    if (collapseBtn) collapseBtn.addEventListener('click', toggleSidebarCollapse);
+    if (topbarToggle) topbarToggle.addEventListener('click', toggleSidebarCollapse);
   })();
 
   // ----------------------------------------------------- emoji spacing
