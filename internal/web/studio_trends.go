@@ -20,8 +20,6 @@ func errText(err error) string {
 func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.URL.Query().Get("topic"))
 	source := studio.TikTokRadarSourceLabelForTopic(topic != "")
-	configuredSource := source
-	sourceNote := ""
 	var videos []studio.TikTokTrendVideo
 	var err error
 	if s.Studio == nil {
@@ -32,23 +30,15 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		videos, err = s.Studio.CollectTikTokRadarVideos(r.Context())
 	}
 	if len(videos) > 0 && strings.TrimSpace(videos[0].Provider) != "" {
-		usedSource := videos[0].Provider
-		if usedSource == studio.TikTokApifyTrendingSource {
-			usedSource = studio.TikTokApifySource
-		}
-		if usedSource != configuredSource {
-			sourceNote = fmt.Sprintf("Nguồn chính %s gặp lỗi; Radar đang dùng nguồn dự phòng %s. Nguồn này không có số lượt xem/tym.", configuredSource, usedSource)
-		}
-		source = usedSource
+		source = videos[0].Provider
 	}
 	if strings.Contains(r.Header.Get("Accept"), "application/json") {
 		s.writeJSON(w, map[string]any{
-			"source":      source,
-			"source_note": sourceNote,
-			"topic":       topic,
-			"videos":      videos,
-			"rank_note":   tikTokRadarRankNote(videos),
-			"error":       errText(err),
+			"source":    source,
+			"topic":     topic,
+			"videos":    videos,
+			"rank_note": tikTokRadarRankNote(videos),
+			"error":     errText(err),
 		})
 		return
 	}
@@ -59,9 +49,8 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"SourceConfigured", studio.TikTokRadarSourceConfigured(),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
-		"TrendSource", source, "SourceNote", sourceNote, "TrendErr", errText(err),
+		"TrendSource", source, "TrendErr", errText(err),
 		"RankNote", tikTokRadarRankNote(videos),
-		"ShowApifySetup", configuredSource != studio.TikTokApifySource,
 	)
 	if r.Header.Get("HX-Request") == "true" {
 		s.renderStudioTrendResults(w, data)
@@ -80,14 +69,8 @@ func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
 			knownMetrics++
 		}
 	}
-	if videos[0].Provider == studio.TikTokApifyTrendingSource && knownMetrics == 0 {
-		return "Apify tìm theo 3 cụm từ xu hướng Việt Nam; nguồn chưa trả view/tym nên giữ thứ tự kết quả."
-	}
 	if knownMetrics == 0 {
 		return "Nguồn này không cung cấp bộ đếm view/tym; thứ tự theo xếp hạng của nguồn."
-	}
-	if videos[0].Provider == studio.TikTokApifyTrendingSource {
-		return "Apify tìm theo 3 cụm từ xu hướng Việt Nam; xếp theo lượt xem giảm dần, lượt tym dùng để phá hòa."
 	}
 	for _, video := range videos {
 		if !video.PlayCountKnown || !video.DiggCountKnown {

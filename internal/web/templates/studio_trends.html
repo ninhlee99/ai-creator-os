@@ -10,9 +10,9 @@
           <h1 id="studio-top" class="mt-2">Video đang hot</h1>
           <p class="hint mt-1 max-w-2xl">
             {{if eq .TrendSource "TikTok Business Discovery API"}}
-              {{if .Topic}}Video theo chủ đề đã chọn, xếp theo thứ tự TikTok Discovery.{{else}}Video phổ biến tại Việt Nam, xếp theo thứ tự TikTok Discovery.{{end}}
+              {{if .Topic}}Video khớp hashtag phổ biến theo chủ đề, xếp theo thứ tự TikTok Discovery.{{else}}Video phổ biến tại Việt Nam, xếp theo thứ tự TikTok Discovery.{{end}}
             {{else}}
-              {{if .Topic}}Top video theo chủ đề đã chọn, xếp theo lượt xem rồi lượt tym.{{else}}Khám phá video TikTok Việt Nam; chọn chủ đề để lấy top 10 theo view và tym.{{end}}
+              {{if .Topic}}Video khớp hashtag phổ biến theo chủ đề.{{else}}Khám phá video phổ biến tại Việt Nam.{{end}}
             {{end}}
             Xác nhận video nhảy trước khi dùng âm thanh.
           </p>
@@ -39,27 +39,17 @@
           hx-swap="outerHTML" hx-push-url="true"
           class="flex flex-wrap items-end gap-3">
       <div class="min-w-56 flex-1">
-        <label for="radar-topic" class="mb-1 block text-sm font-semibold">Chủ đề tìm kiếm</label>
+        <label for="radar-topic" class="mb-1 block text-sm font-semibold">Hashtag / chủ đề</label>
         <input id="radar-topic" type="search" name="topic" value="{{.Topic}}"
-               placeholder="Ví dụ: nữ nhảy, nữ dance, nữ sexy" autocomplete="off"
+               placeholder="Ví dụ: #nhảy, dance challenge" autocomplete="off"
                class="w-full rounded-xl border border-slate-300 px-3 py-2">
-        <p class="hint mt-1">Ngăn tối đa 3 chủ đề bằng dấu phẩy. Radar lấy 20 video mỗi chủ đề rồi giữ lại top 10.</p>
+        <p class="hint mt-1">Tìm trong hashtag đang thịnh hành; tối đa 3 cụm từ cách nhau bằng dấu phẩy. View/tym không có trong nguồn này.</p>
       </div>
       <button type="submit" class="btn btn-primary">⌕ Tìm top 10</button>
       {{if .Topic}}<a href="/studio/trends" class="btn btn-secondary">Xóa lọc</a>{{end}}
     </form>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
       <p class="hint">Nguồn: <strong>{{.TrendSource}}</strong> · Tìm kiếm theo chủ đề dùng dữ liệu video; sound lấy từ video Radar.</p>
-      {{if .SourceNote}}
-      <div class="notice notice-warn m-0 flex w-full flex-wrap items-center justify-between gap-3" role="status">
-        <div class="flex min-w-0 flex-wrap items-center gap-2">
-          <span class="badge badge-info">Đang dùng nguồn dự phòng</span>
-          <span>{{.SourceNote}}</span>
-        </div>
-        <a href="/settings/system#tab-social" class="btn btn-secondary btn-sm shrink-0">Kiểm tra nguồn ↗</a>
-      </div>
-      {{end}}
-      {{if .ShowApifySetup}}<a href="/settings/system#tab-social" class="btn btn-secondary btn-sm">Cấu hình Apify để lấy top 10 có view/tym ↗</a>{{end}}
       <form method="post" action="/studio/trends/refresh" class="inline-flex">
         <input type="hidden" name="topic" value="{{.Topic}}">
         <button type="submit" class="btn btn-secondary">↻ Tìm mới</button>
@@ -73,7 +63,7 @@
       </div>
       <a href="/settings/system#tab-social" class="btn btn-primary">Cấu hình nguồn video</a>
     </div>
-    <p class="hint m-0">Apify cung cấp view/tym để xếp hạng; TikTok Business Discovery là nguồn chính thức, cần quyền API riêng.</p>
+    <p class="hint m-0">Radar dùng TikTok Business Discovery. Cần quyền API for Business; nguồn trả thứ hạng nhưng không có view/tym chi tiết.</p>
     {{end}}
   </section>
 

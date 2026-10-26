@@ -1,6 +1,6 @@
 # Nghiên cứu cho hai flow TikTok
 
-Rà theo source và tài liệu provider ngày 2026-10-24. Link provider có thể đổi; kiểm tra lại trước khi bật production.
+Rà theo source và tài liệu provider ngày 2026-10-26. Link provider có thể đổi; kiểm tra lại trước khi bật production.
 
 ## TikTok Content Posting API
 
@@ -12,7 +12,7 @@ Nguồn chính thức:
 
 ## TikTok Radar
 
-Radar ưu tiên Apify TikTok Scraper khi có `APIFY_API_TOKEN`; nếu Apify lỗi hoặc trả video không hợp lệ, Radar tự chuyển sang TikTok Business Discovery khi access token + advertiser ID hợp lệ. Nếu chưa có Apify token, Discovery dùng làm nguồn chính. Apify tìm theo TikTok và tính phí theo kết quả; Business Discovery là API chính thức, trả video đã xếp hạng theo hashtag nhưng không có bộ đếm view/tym. Không có hai nguồn này thì Radar báo cần cấu hình, không gọi TikWM. TikTok Research API không phải lựa chọn thực tế cho app thương mại: TikTok giới hạn quyền cho nhà nghiên cứu đủ điều kiện, mục đích phi lợi nhuận và cần phê duyệt; xem [điều kiện Research API](https://developers.tiktok.com/products/research-api/). Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
+Radar chỉ dùng TikTok Business Discovery sau khi có Access Token và Advertiser ID. API chính thức tìm hashtag phổ biến và video theo hashtag, nhưng không trả counters; topic search chỉ khớp hashtag đang thịnh hành. Xem [Discovery API](https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714) và [API for Business overview](https://ads.tiktok.com/resources/help/article/marketing-api?lang=en). TikTok Research API không phải lựa chọn thực tế cho app thương mại: TikTok giới hạn quyền cho nhà nghiên cứu đủ điều kiện, mục đích phi lợi nhuận và cần phê duyệt; xem [điều kiện Research API](https://developers.tiktok.com/products/research-api/). Không dùng Playwright để thu thập tự động hoặc reverse-engineer endpoint TikTok: [TikTok Terms of Service (Vietnamese)](https://t.tiktok.com/legal/page/us/terms-of-service/vi) cấm thu thập tự động và reverse engineering nếu chưa có chấp thuận bằng văn bản. Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
 
 ## AccessTrade
 

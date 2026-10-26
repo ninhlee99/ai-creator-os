@@ -1,22 +1,5 @@
 {{define "settings-system-social"}}
 <div id="panel-social" class="settings-tab-panel" role="tabpanel" aria-labelledby="tab-btn-social" tabindex="0" style="display:none">
-  <div class="form-card max-w-3xl space-y-3 border-2 border-violet-200 bg-gradient-to-br from-violet-50 via-white to-indigo-50">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <h3>Radar TikTok · tìm theo chủ đề</h3>
-      <span class="badge badge-ok">Nguồn đề xuất</span>
-    </div>
-    <p class="hint">Apify tìm video theo từ khóa và trả số view/tym để xếp top 10. Mỗi lượt tìm nhận tối đa 3 chủ đề × 20 video. Apify tính phí theo dữ liệu nhận được; xem <a href="https://apify.com/clockworks/tiktok-scraper" target="_blank" rel="noopener noreferrer">Actor và bảng giá ↗</a>. TikTok có thể thay đổi luồng tìm kiếm nên nguồn bên thứ ba vẫn có lúc gián đoạn.</p>
-    <p class="hint">Tạo API token tại <a href="https://console.apify.com/account/integrations" target="_blank" rel="noopener noreferrer">Apify · API & Integrations ↗</a>. Khi đã lưu token, Radar dùng Apify cho tìm kiếm chủ đề; nếu Apify lỗi, Radar thử TikTok Business Discovery khi nguồn này đã cấu hình. Các trang khác không tự gọi Apify.</p>
-    {{$apifyTokenOk := false}}{{$apifyTokenMask := ""}}
-    {{range .EnvStatus}}
-      {{if eq .Name "APIFY_API_TOKEN"}}{{$apifyTokenOk = .Ok}}{{$apifyTokenMask = .Masked}}{{end}}
-    {{end}}
-    <div class="field mt-3">
-      <label>Apify API Token</label>{{if $apifyTokenOk}}<span class="badge badge-ok">Đã lưu · {{$apifyTokenMask}}</span>{{else}}<span class="badge badge-no">Chưa lưu</span>{{end}}
-      <form method="post" action="/settings/env" class="mt-2 flex gap-2"><input type="hidden" name="name" value="APIFY_API_TOKEN"><input type="password" name="value" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="apify_api_…"><button type="submit" class="btn btn-primary btn-sm">Lưu token</button></form>
-    </div>
-  </div>
-
   <div class="form-card" style="max-width:760px">
     <h3>TikTok OAuth</h3>
     <p class="hint">Đăng nhập dùng TikTok Desktop + PKCE. Chọn Desktop trong TikTok Developer Portal và đăng ký callback loopback mặc định: <code>http://127.0.0.1:8080/publishers/tiktok/callback</code>.</p>
@@ -43,7 +26,7 @@
 
   <div class="form-card mt-4 max-w-3xl space-y-3">
     <h3>TikTok Business Discovery · nguồn chính thức</h3>
-    <p class="hint">API chính thức tìm video theo hashtag phổ biến tại Việt Nam. Đây là nguồn dự phòng khi Apify lỗi, hoặc nguồn chính khi chưa cấu hình Apify. Kết quả không có số view/tym chi tiết; TikTok xếp theo tín hiệu tổng hợp. Cần TikTok API for Business app đã cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên.</p>
+    <p class="hint">Radar dùng API chính thức này để tìm hashtag phổ biến và video liên quan tại Việt Nam. Kết quả không có số view/tym chi tiết; TikTok cung cấp thứ hạng tổng hợp. Cần TikTok API for Business app đã được cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên.</p>
     <p class="hint"><a href="https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714" target="_blank" rel="noopener noreferrer">Tài liệu Discovery API ↗</a></p>
     {{$discoveryTokenOk := false}}{{$discoveryTokenMask := ""}}
     {{$discoveryAdvertiserOk := false}}{{$discoveryAdvertiserMask := ""}}

@@ -9,6 +9,12 @@
 - Không gọi provider có billing hoặc giá không rõ.
 - Session Web AI connected không chứng minh free plan hay credits còn lại.
 
+## Dữ liệu TikTok
+
+- Chỉ lấy dữ liệu Radar qua API TikTok đã cấp quyền.
+- Không scrape/crawl bằng Playwright hoặc reverse-engineer endpoint TikTok nếu chưa được TikTok chấp thuận bằng văn bản.
+- View, like và chỉ số khác không có trong API phải giữ là `unknown`.
+
 ## Dữ liệu sản phẩm
 
 - Lưu provider, offer ID, URL và thời điểm cập nhật.
