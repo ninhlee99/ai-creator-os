@@ -110,6 +110,32 @@ var schemaDDL = []string{
 		qc_checklist_json TEXT NOT NULL DEFAULT '[]',
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	)`,
+	`CREATE TABLE IF NOT EXISTS channel_diagnostics (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		account_id INTEGER NOT NULL,
+		flow_type TEXT NOT NULL,
+		target_id TEXT NOT NULL DEFAULT '',
+		funnel_stage TEXT NOT NULL,
+		diagnosis TEXT NOT NULL,
+		metrics_json TEXT NOT NULL DEFAULT '{}',
+		suggested_action TEXT NOT NULL,
+		auto_tuned INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_channel_diag_acct ON channel_diagnostics(account_id, flow_type, created_at DESC)`,
+	`CREATE TABLE IF NOT EXISTS settings_tuning_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		account_id INTEGER NOT NULL,
+		param_key TEXT NOT NULL,
+		old_value TEXT NOT NULL,
+		new_value TEXT NOT NULL,
+		change_pct REAL NOT NULL DEFAULT 0,
+		reason TEXT NOT NULL,
+		applied_at TEXT NOT NULL DEFAULT (datetime('now')),
+		rolled_back INTEGER NOT NULL DEFAULT 0,
+		rolled_back_at TEXT NOT NULL DEFAULT ''
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_tuning_history_acct ON settings_tuning_history(account_id, param_key, applied_at DESC)`,
 }
 
 // Phase-2 columns on content_plan_items (additive migration, duplicate

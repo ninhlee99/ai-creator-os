@@ -29,18 +29,13 @@ func TestSlugify(t *testing.T) {
 func TestGeneratePlanColdStartCanary(t *testing.T) {
 	start := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC) // Monday
 	items := GeneratePlan(PlanRequest{
-		Stage: StageColdStart, HasYouTube: true,
+		Stage: StageColdStart,
 		Pillars: []string{"truyện ngắn", "truyện ma"}, Start: start, Days: 30,
 	})
 	if len(items) == 0 {
 		t.Fatal("empty plan")
 	}
-	for _, it := range items {
-		if it.Variant == VariantYouTube {
-			t.Errorf("cold_start must not schedule long-form, got %+v", it)
-		}
-	}
-	// Canary week: exactly 1 tiktok + 1 shorts per day.
+	// Canary week: exactly 1 tiktok per day.
 	perDay := map[string]map[string]int{}
 	for _, it := range items {
 		if perDay[it.Date] == nil {
@@ -49,27 +44,23 @@ func TestGeneratePlanColdStartCanary(t *testing.T) {
 		perDay[it.Date][it.Variant]++
 	}
 	day0 := start.Format("2006-01-02")
-	if perDay[day0][VariantTikTok] != 1 || perDay[day0][VariantShorts] != 1 {
-		t.Errorf("canary day0 cadence = %v, want 1 tiktok + 1 shorts", perDay[day0])
+	if perDay[day0][VariantTikTok] != 1 {
+		t.Errorf("canary day0 cadence = %v, want 1 tiktok", perDay[day0])
 	}
 }
 
 func TestGeneratePlanScalingCadenceAndSeries(t *testing.T) {
 	start := time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC)
 	items := GeneratePlan(PlanRequest{
-		Stage: StageScaling, HasYouTube: true,
+		Stage: StageScaling,
 		Pillars: []string{"truyện ngắn"}, Start: start, Days: 14,
 	})
 	perDay := map[string]map[string]int{}
-	longDays := 0
 	for _, it := range items {
 		if perDay[it.Date] == nil {
 			perDay[it.Date] = map[string]int{}
 		}
 		perDay[it.Date][it.Variant]++
-		if it.Variant == VariantYouTube {
-			longDays++
-		}
 		if it.Variant == VariantTikTok && it.SeriesEp == 0 {
 			t.Errorf("scaling tiktok items must be numbered series episodes: %+v", it)
 		}
@@ -78,19 +69,16 @@ func TestGeneratePlanScalingCadenceAndSeries(t *testing.T) {
 	if perDay[day0][VariantTikTok] != 2 {
 		t.Errorf("scaling day0 tiktok = %d, want 2", perDay[day0][VariantTikTok])
 	}
-	if longDays != 4 { // 2/week * 2 weeks
-		t.Errorf("scaling long-form items = %d, want 4", longDays)
-	}
 }
 
-func TestGeneratePlanNoYouTube(t *testing.T) {
+func TestGeneratePlanTikTokOnly(t *testing.T) {
 	items := GeneratePlan(PlanRequest{
-		Stage: StageFormatTesting, HasYouTube: false,
+		Stage: StageFormatTesting,
 		Pillars: []string{"tip 60s"}, Start: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), Days: 7,
 	})
 	for _, it := range items {
 		if it.Variant != VariantTikTok {
-			t.Errorf("no-YouTube account must only get tiktok items, got %s", it.Variant)
+			t.Errorf("account must only get tiktok items, got %s", it.Variant)
 		}
 	}
 	if len(items) != 7 {
@@ -210,18 +198,7 @@ func TestAdvanceStage(t *testing.T) {
 }
 
 func TestDefaultTargets(t *testing.T) {
-	yt := DefaultTargets("youtube")
-	found := map[string]bool{}
-	for _, tg := range yt {
-		found[tg.Label] = true
-		if tg.Metric == "subs" && tg.Threshold == 1000 && tg.Deadline != YPPDeadline {
-			t.Error("YPP full subs target must carry the 2027-02-01 deadline")
-		}
-	}
-	if !found["YPP full — 4.000 giờ xem"] || !found["YPP full — 10 triệu view Shorts"] {
-		t.Error("YouTube ladder must include both YPP-full paths")
-	}
-	tk := DefaultTargets("tiktok")
+	tk := DefaultTargets()
 	hasLive := false
 	for _, tg := range tk {
 		if tg.Threshold == 1000 {

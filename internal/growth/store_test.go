@@ -34,7 +34,7 @@ func testStore(t *testing.T) *Store {
 
 func TestEnsureProfileCreatesLadder(t *testing.T) {
 	st := testStore(t)
-	p, err := st.EnsureProfile(7, "tiktok", true)
+	p, err := st.EnsureProfile(7)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,12 +45,12 @@ func TestEnsureProfileCreatesLadder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 3 TikTok follower milestones + 5 YouTube ladder rows.
-	if len(targets) != 8 {
-		t.Errorf("targets = %d, want 8 (3 tiktok + 5 youtube)", len(targets))
+	// 3 TikTok follower milestones
+	if len(targets) != 3 {
+		t.Errorf("targets = %d, want 3 (tiktok milestones)", len(targets))
 	}
 	// Idempotent: ensuring again must not duplicate.
-	if _, err := st.EnsureProfile(7, "tiktok", true); err != nil {
+	if _, err := st.EnsureProfile(7); err != nil {
 		t.Fatal(err)
 	}
 	targets2, _ := st.ListTargets(7)
@@ -93,7 +93,7 @@ func TestPlanInsertSupersede(t *testing.T) {
 
 func TestSnapshotRoundTripAndTargets(t *testing.T) {
 	st := testStore(t)
-	if _, err := st.EnsureProfile(5, "tiktok", false); err != nil {
+	if _, err := st.EnsureProfile(5); err != nil {
 		t.Fatal(err)
 	}
 	f := int64(1200)
@@ -126,7 +126,7 @@ func TestSnapshotRoundTripAndTargets(t *testing.T) {
 
 func TestEvaluateKillsWeakFormat(t *testing.T) {
 	st := testStore(t)
-	if _, err := st.EnsureProfile(9, "tiktok", false); err != nil {
+	if _, err := st.EnsureProfile(9); err != nil {
 		t.Fatal(err)
 	}
 	// Seed 9 published videos of one weak format + 1 of a strong one by
@@ -187,7 +187,7 @@ func TestEvaluateKillsWeakFormat(t *testing.T) {
 
 func TestEvaluateNoDataDecidesNothing(t *testing.T) {
 	st := testStore(t)
-	if _, err := st.EnsureProfile(11, "youtube", true); err != nil {
+	if _, err := st.EnsureProfile(11); err != nil {
 		t.Fatal(err)
 	}
 	res, err := st.Evaluate(11, "acct11", DefaultConfig(), time.Now())

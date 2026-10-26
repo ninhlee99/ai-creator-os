@@ -15,21 +15,20 @@ func draft(date, format, variant, topic string) PlanDraft {
 func TestPlanItemProductionTrail(t *testing.T) {
 	st := testStore(t)
 	today := time.Now().Format("2006-01-02")
-	if _, err := st.EnsureProfile(7, "tiktok", true); err != nil {
+	if _, err := st.EnsureProfile(7); err != nil {
 		t.Fatal(err)
 	}
 	_, err := st.InsertPlan(7, "d30", "test", []PlanDraft{
 		draft(today, "truyen_ma", VariantTikTok, "truyện ma — tập 1"),
-		draft(today, "truyen_ma", VariantShorts, "truyện ma — tập 1"),
-		draft(today, "truyen_ma", VariantYouTube, "truyện ma — bản dài tập 1"),
+		draft(today, "truyen_ngan", VariantTikTok, "truyện ngắn — tập 1"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	due, err := st.PlannedItemsDue(7, today, 60)
-	if err != nil || len(due) != 3 {
-		t.Fatalf("due = %d items, err %v; want 3", len(due), err)
+	if err != nil || len(due) != 2 {
+		t.Fatalf("due = %d items, err %v; want 2", len(due), err)
 	}
 	if due[0].VariantGroup != today+"|truyen_ma" {
 		t.Errorf("variant group not stored: %q", due[0].VariantGroup)
@@ -80,31 +79,21 @@ func TestPlanItemProductionTrail(t *testing.T) {
 		t.Errorf("after publish: %+v", got)
 	}
 
-	// Related links land both ways.
 	other := due[1]
-	if err := st.LinkRelatedItems(it.ID, other.ID); err != nil {
-		t.Fatal(err)
-	}
-	got, _ = st.GetItem(it.ID)
-	otherGot, _ := st.GetItem(other.ID)
-	if got.RelatedItemID != other.ID || otherGot.RelatedItemID != it.ID {
-		t.Errorf("related link not bidirectional: %d <-> %d", got.RelatedItemID, otherGot.RelatedItemID)
-	}
-
 	// A failed enqueue keeps the item planned and counts attempts.
 	n, err := st.NoteItemFailure(other.ID, "boom")
 	if err != nil || n != 1 {
 		t.Errorf("NoteItemFailure = %d, %v; want 1", n, err)
 	}
-	otherGot, _ = st.GetItem(other.ID)
+	otherGot, _ := st.GetItem(other.ID)
 	if otherGot.Status != ItemPlanned || otherGot.PubNote != "boom" {
 		t.Errorf("after failed attempt: %+v", otherGot)
 	}
 
 	// ItemsByStatus sees the in-flight set.
 	inFlight, err := st.ItemsByStatus(7, []string{ItemPublished, ItemPlanned}, 50)
-	if err != nil || len(inFlight) != 3 {
-		t.Errorf("in-flight = %d (%v), want 3", len(inFlight), err)
+	if err != nil || len(inFlight) != 2 {
+		t.Errorf("in-flight = %d (%v), want 2", len(inFlight), err)
 	}
 }
 

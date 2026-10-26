@@ -104,7 +104,7 @@ func TestApplyAngleChangesConcept(t *testing.T) {
 
 func TestSameLineExemptions(t *testing.T) {
 	base := PlanItem{ID: 1, AccountID: 7, FormatID: "truyen_ma", VariantGroup: "2026-10-02|truyen_ma", Variant: VariantTikTok}
-	sibling := PlanItem{ID: 2, AccountID: 7, FormatID: "truyen_ma", VariantGroup: "2026-10-02|truyen_ma", Variant: VariantShorts}
+	sibling := PlanItem{ID: 2, AccountID: 7, FormatID: "truyen_ma", VariantGroup: "2026-10-02|truyen_ma", Variant: VariantTikTok}
 	if !SameLine(base, sibling) {
 		t.Error("variant siblings should be same-line")
 	}
