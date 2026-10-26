@@ -82,9 +82,12 @@ func loadRef(path string) (geminiPart, error) {
 // GenerateImage uses Pollinations Free API Classic for prompts without refs.
 // Gemini image models require paid billing; reference generation therefore
 // remains unavailable under the free-only policy.
-func (*GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs []ImageRef, outPath string) error {
+func (g *GeminiMediaGen) GenerateImage(ctx context.Context, prompt string, refs []ImageRef, outPath string) error {
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("empty prompt")
+	}
+	if len(g.keys) == 0 {
+		return fmt.Errorf("gemini: no keys configured")
 	}
 	if len(refs) > 0 {
 		return fmt.Errorf("generate image with references: Gemini image models have no free tier; blocked by U-04")

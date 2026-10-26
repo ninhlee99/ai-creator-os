@@ -113,5 +113,5 @@ func TemplateCaption(productName, niche string) string {
 	if pt := productTag(name); pt != "" {
 		tags = pt + " " + tags
 	}
-	return hook + "\nSản phẩm và link mua được gắn trong TikTok Shop.\n" + tags
+	return hook + "\nXem chi tiết sản phẩm và link mua trong bio/mô tả.\n" + tags
 }

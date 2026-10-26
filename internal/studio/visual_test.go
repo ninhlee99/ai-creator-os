@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	_ "golang.org/x/image/webp"
 )
 
 func TestGenerateProductVisual(t *testing.T) {

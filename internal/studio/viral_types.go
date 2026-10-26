@@ -103,6 +103,48 @@ type ViralSourcePerformance struct {
 	EngagementKnown bool    `json:"engagement_known"`
 }
 
+// ViralDeconstructionSummary summarizes the reverse-engineered elements of a trending video:
+// 3s hook, pacing BPM, key retention triggers, and emotion arc.
+type ViralDeconstructionSummary struct {
+	SourceVideoID       string    `json:"source_video_id"`
+	HookType            string    `json:"hook_type"`
+	Opening3sPacing     string    `json:"opening_3s_pacing"`
+	AverageShotDuration float64   `json:"average_shot_duration"`
+	PacingBPM           float64   `json:"pacing_bpm"`
+	RetentionTriggers   []string  `json:"retention_triggers"`
+	EmotionArc          string    `json:"emotion_arc"`
+	AudioRhythmSyncSec  []float64 `json:"audio_rhythm_sync_sec"`
+}
+
+// SummarizeViralDeconstruction computes structural pacing and retention triggers from a script.
+func SummarizeViralDeconstruction(script *ViralScript) ViralDeconstructionSummary {
+	if script == nil {
+		return ViralDeconstructionSummary{}
+	}
+	s := ViralDeconstructionSummary{
+		HookType:        "visual_motion",
+		Opening3sPacing: "nhanh (cắt cảnh < 1.5s)",
+		EmotionArc:      "Tò mò -> Bất ngờ -> Giải tỏa cảm xúc",
+	}
+	if len(script.Scenes) > 0 {
+		totalDur := 0.0
+		for _, sc := range script.Scenes {
+			totalDur += sc.DurationSec
+			if sc.SourceStartSec > 0 {
+				s.AudioRhythmSyncSec = append(s.AudioRhythmSyncSec, sc.SourceStartSec)
+			}
+		}
+		s.AverageShotDuration = totalDur / float64(len(script.Scenes))
+		if s.AverageShotDuration > 0 {
+			s.PacingBPM = 60.0 / s.AverageShotDuration
+		}
+	}
+	for _, f := range script.Analysis.Factors {
+		s.RetentionTriggers = append(s.RetentionTriggers, f.Observation)
+	}
+	return s
+}
+
 type viralEditSegment struct {
 	Path     string
 	Start    float64
