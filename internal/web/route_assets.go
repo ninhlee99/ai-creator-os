@@ -39,6 +39,12 @@ func (s *Server) handleStaticWebAILoginJS(w http.ResponseWriter, r *http.Request
 	_, _ = w.Write(staticWebAILoginJS)
 }
 
+func (s *Server) handleStaticFlowCanvasJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	setAssetCache(w, r)
+	_, _ = w.Write(staticFlowCanvasJS)
+}
+
 // handleStaticPreviewAudio serves the bundled sample preview music.
 func (s *Server) handleStaticPreviewAudio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "audio/mpeg")

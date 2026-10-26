@@ -52,9 +52,10 @@ type TikTokTrendVideo struct {
 	Likes           string  `json:"likes"`
 	DiggCount       int64   `json:"digg_count"`
 	DiggCountKnown  bool    `json:"digg_count_known"`
-	Comments        string  `json:"comments,omitempty"`
-	CommentCount    int64   `json:"comment_count"`
-	CommentKnown    bool    `json:"comment_count_known"`
+	Comments          string  `json:"comments,omitempty"`
+	CommentCount      int64   `json:"comment_count"`
+	CommentKnown      bool    `json:"comment_count_known"`
+	CommentCountKnown bool    `json:"comment_count_known_alias,omitempty"`
 	Shares          string  `json:"shares,omitempty"`
 	ShareCount      int64   `json:"share_count"`
 	ShareCountKnown bool    `json:"share_count_known"`
@@ -98,8 +99,8 @@ var tikTokRadarHTTPTransport = func() *http.Transport {
 // Cache TTL
 const (
 	tikTokTrendsTTL            = 15 * time.Minute
-	tikTokRadarFeedLimit       = 10
-	tikTokRadarTopicCacheLimit = 32
+	tikTokRadarFeedLimit       = 5
+	tikTokRadarTopicCacheLimit = 64
 	tikTokRadarMaxTopics       = 3
 )
 

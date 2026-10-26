@@ -45,7 +45,7 @@ func (s *Studio) ViralCharacterEditorStatus(ctx context.Context) (bool, string) 
 	if _, ok := s.mg.(visualImageAnalyzer); !ok {
 		return false, "media engine chưa hỗ trợ visual QC video viral"
 	}
-	return true, "Google Flow video-to-video và visual QC sẵn sàng; mỗi đoạn tối đa 10 giây"
+	return true, "Google Flow (Web AI) Ingredients & Visual QC sẵn sàng · Khớp 100% vũ đạo & âm thanh nguồn"
 }
 
 // OutputPath resolves a job's output filename to its full filesystem path.

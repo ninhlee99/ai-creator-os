@@ -15,7 +15,7 @@ type DecisionLogger interface {
 // DefaultLLMConfig configures Gemini as the LLM provider.
 func DefaultLLMConfig(geminiKeys []string) ChainConfig {
 	return ChainConfig{Order: []ProviderEntry{
-		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 30 * time.Second, Retries: 0},
+		{Name: "gemini", Enabled: true, APIKeys: geminiKeys, Timeout: 120 * time.Second, Retries: 0},
 	}}
 }
 

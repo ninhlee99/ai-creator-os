@@ -146,7 +146,8 @@ func (g *GeminiMediaGen) AnalyzeImages(ctx context.Context, prompt string, refs 
 			return text, nil
 		}
 		lastErr = err
-		if tts.ClassifyKeyError(err) == tts.KeyErrOther {
+		errStr := strings.ToLower(err.Error())
+		if tts.ClassifyKeyError(err) == tts.KeyErrOther && !strings.Contains(errStr, "503") && !strings.Contains(errStr, "high demand") {
 			break
 		}
 	}
@@ -157,14 +158,29 @@ func (g *GeminiMediaGen) AnalyzeImages(ctx context.Context, prompt string, refs 
 }
 
 func (g *GeminiMediaGen) analyzeImagesWithKey(ctx context.Context, key string, body []byte) (string, error) {
-	model := gmodels.Resolve(gmodels.Text)
-	text, err := g.generateTextModel(ctx, model, key, body)
-	if err != nil && gmodels.IsModelGone(err) {
-		if next, discoverErr := gmodels.Rediscover(ctx, g.client, g.baseURL, key, gmodels.Text); discoverErr == nil {
-			return g.generateTextModel(ctx, next, key, body)
+	primaryModel := gmodels.Resolve(gmodels.Text)
+	candidates := []string{primaryModel, "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-flash-latest"}
+	seen := make(map[string]bool)
+	var lastErr error
+	for _, model := range candidates {
+		if model == "" || seen[model] {
+			continue
 		}
+		seen[model] = true
+		text, err := g.generateTextModel(ctx, model, key, body)
+		if err == nil {
+			return text, nil
+		}
+		lastErr = err
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "503") || strings.Contains(errMsg, "high demand") ||
+			strings.Contains(errMsg, "404") || strings.Contains(errMsg, "not found") ||
+			strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") {
+			continue
+		}
+		break
 	}
-	return text, err
+	return "", lastErr
 }
 
 func (g *GeminiMediaGen) generateTextModel(ctx context.Context, model, key string, body []byte) (string, error) {

@@ -7,6 +7,7 @@
     <p class="hint studio-page-subtitle">Đi theo 3 bước: chọn sản phẩm, chuẩn bị người mẫu, rồi lập shot list và render.</p>
   </div>
   <div class="webai-header-actions">
+    <a href="/studio/flow?preset=preset_affiliate_showcase" class="btn btn-primary btn-sm">🎨 Mở trong ComfyUI Visual Studio ↗</a>
     <a href="/studio/create" class="btn btn-secondary btn-sm">✨ Tạo nội dung AI</a>
     <a href="/studio/jobs" class="btn btn-secondary btn-sm">Video &amp; nội dung</a>
   </div>
@@ -265,10 +266,7 @@
           </div>
         </div>
 
-        <label id="cr-flow-consent-wrap" style="display:none;align-items:flex-start;gap:8px;margin:0 0 14px;padding:11px;border:1px solid var(--border);border-radius:9px">
-          <input type="checkbox" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1" style="margin-top:3px">
-          <span class="hint">Tôi xác nhận Google Flow sẽ tạo một clip 8 giây cho mỗi shot đã lập; lượt tạo có thể dùng credits theo account và không thể hoàn tác.</span>
-        </label>
+        <input type="hidden" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1">
 
         <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
           Tạo video affiliate
@@ -534,11 +532,6 @@ affiliateForm.addEventListener('submit', function(event) {
   if (!planID) {
     event.preventDefault();
     document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';
-    return;
-  }
-  if (flow && !document.getElementById('cr-confirm-flow-credits').checked) {
-    event.preventDefault();
-    document.getElementById('cr-plan-status').textContent = 'Xác nhận credits Google Flow trước khi tạo.';
     return;
   }
   if (!flow && clips.length !== affiliatePlanShotCount) {

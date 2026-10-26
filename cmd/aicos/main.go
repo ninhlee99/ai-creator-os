@@ -27,6 +27,7 @@ func main() {
 	loadDotEnv(".env")
 	addr := flag.String("addr", "127.0.0.1:8080", "listen address for the web dashboard (default localhost-only; pass :8080 to expose on LAN)")
 	dataDir := flag.String("data", "./data", "data directory (sqlite db, models, jobs, output)")
+	logDir := flag.String("logs", "./logs", "logs directory for application logs")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -66,7 +67,8 @@ func main() {
 	// StandardOutPath một lần và giữ fd nên newsyslog KHÔNG xoay được log
 	// của nó — xem deploy/README.md.
 	var fileOut io.Writer
-	if rot, rerr := logx.New(filepath.Join(*dataDir, "logs", "aicos.log"), logx.DefaultMaxSize, logx.DefaultMaxBackup); rerr != nil {
+	_ = os.MkdirAll(*logDir, 0o755)
+	if rot, rerr := logx.New(filepath.Join(*logDir, "aicos.log"), logx.DefaultMaxSize, logx.DefaultMaxBackup); rerr != nil {
 		log.Printf("log: không mở được file log xoay (%v) — ghi tiếp ra stderr", rerr)
 	} else {
 		defer rot.Close()
@@ -74,7 +76,7 @@ func main() {
 	}
 	logx.SetupRailsLogging(os.Stderr, fileOut, lvl)
 	if fileOut != nil {
-		log.Printf("log: Rails debug logger kích hoạt (file: %s/logs/aicos.log, xoay 20MB, giữ 7 bản)", *dataDir)
+		log.Printf("log: Rails debug logger kích hoạt (file: %s/aicos.log, xoay 20MB, giữ 7 bản)", *logDir)
 	}
 	// R2-W7: áp dụng bản khôi phục đang chờ TRƯỚC khi mở bất kỳ DB nào.
 	if err := backup.ApplyStaged(*dataDir); err != nil {

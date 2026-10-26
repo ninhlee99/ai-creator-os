@@ -220,6 +220,8 @@ type Studio struct {
 	webAI             WebAIResolver
 	webAIVideo        WebAIVideoRenderer
 	webAIAvailability WebAIAvailability
+	// FlowStore manages visual node graphs (ComfyUI / n8n workflows) and execution runs.
+	flowStore any
 }
 
 // WebAISession chứa thông tin phiên đăng nhập web (cookie, session token, email).

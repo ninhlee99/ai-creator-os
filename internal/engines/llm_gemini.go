@@ -27,7 +27,7 @@ func NewGeminiProviderKeys(keys []string) *GeminiProvider {
 	return &GeminiProvider{
 		ring:    tts.NewKeyRing(keys),
 		baseURL: "https://generativelanguage.googleapis.com",
-		http:    &http.Client{Timeout: 30 * time.Second},
+		http:    &http.Client{Timeout: 180 * time.Second},
 	}
 }
 
@@ -181,17 +181,29 @@ func (g *GeminiProvider) completeWithKey(ctx context.Context, key, system, promp
 	if auto {
 		model = gmodels.Resolve(gmodels.Text)
 	}
-	text, err := g.completeModel(ctx, httpc, baseURL, model, key, system, prompt, minimal)
-	if err != nil && auto && gmodels.IsModelGone(err) {
-		// Model bị Google tắt/đổi tên: dò model còn sống rồi thử lại 1 lần.
-		if nm, derr := gmodels.Rediscover(ctx, httpc, baseURL, key, gmodels.Text); derr == nil {
-			log.Printf("gemini: model %s không còn — chuyển sang %s", model, nm)
-			return g.completeModel(ctx, httpc, baseURL, nm, key, system, prompt, minimal)
-		} else {
-			log.Printf("gemini: model %s không còn nhưng dò model mới thất bại: %v", model, derr)
+	candidates := []string{model, "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-flash-latest"}
+	seen := make(map[string]bool)
+	var lastErr error
+	for _, m := range candidates {
+		if m == "" || seen[m] {
+			continue
 		}
+		seen[m] = true
+		text, err := g.completeModel(ctx, httpc, baseURL, m, key, system, prompt, minimal)
+		if err == nil {
+			return text, nil
+		}
+		lastErr = err
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "503") || strings.Contains(errMsg, "high demand") ||
+			strings.Contains(errMsg, "404") || strings.Contains(errMsg, "not found") ||
+			strings.Contains(errMsg, "429") || strings.Contains(errMsg, "quota") {
+			log.Printf("gemini: model %s lỗi tạm thời (%v) — thử tiếp model dự phòng", m, err)
+			continue
+		}
+		break
 	}
-	return text, err
+	return "", lastErr
 }
 
 func (g *GeminiProvider) completeModel(ctx context.Context, httpc *http.Client, baseURL, model, key, system, prompt string, minimal bool) (string, error) {

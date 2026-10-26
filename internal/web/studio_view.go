@@ -17,45 +17,68 @@ import (
 // Label/Class are rendered server-side so clients never redefine status
 // labels (R2-W3: một nguồn nhãn duy nhất).
 type studioJobView struct {
-	ID                     string `json:"id"`
-	Kind                   string `json:"kind"`
-	Title                  string `json:"title"`
-	Status                 string `json:"status"`
-	Progress               int    `json:"progress"`
-	Output                 string `json:"output"`
-	OutputKind             string `json:"output_kind"`
-	Caption                string `json:"caption"`
-	CreatedAt              string `json:"created_at"`
-	FinishedAt             string `json:"finished_at"`
-	KindLabel              string `json:"kind_label"`
-	Label                  string `json:"label"`
-	Class                  string `json:"class"`
-	QCVerified             bool   `json:"qc_verified"`
-	FailureReason          string `json:"failure_reason,omitempty"`
-	SourceMusicTitle       string `json:"source_music_title,omitempty"`
-	SourceMusicURL         string `json:"source_music_video_url,omitempty"`
-	SourceMusicVideoID     string `json:"source_music_video_id,omitempty"`
-	SourceMusicAuthor      string `json:"source_music_author,omitempty"`
-	SourceCollectedAt      string `json:"source_music_collected_at,omitempty"`
-	ProductID              int64  `json:"product_id,omitempty"`
-	ProductName            string `json:"product_name,omitempty"`
-	ProductShopID          string `json:"product_shop_id,omitempty"`
-	ProductPageURL         string `json:"product_page_url,omitempty"`
-	AffiliateLink          string `json:"affiliate_link,omitempty"`
-	AffiliateAttributionID string `json:"affiliate_attribution_id,omitempty"`
-	TikTokVideoID          string `json:"tiktok_video_id,omitempty"`
-	TikTokVideoURL         string `json:"tiktok_video_url,omitempty"`
-	TikTokDraftStatus      string `json:"tiktok_draft_status,omitempty"`
-	TikTokDraftRemoteID    string `json:"tiktok_draft_remote_id,omitempty"`
-	TikTokDraftHasAccount  bool   `json:"tiktok_draft_has_account,omitempty"`
-	TikTokDraftUser        string `json:"tiktok_draft_user,omitempty"`
-	TikTokDraftConfigured  bool   `json:"tiktok_draft_configured,omitempty"`
+	ID                     string   `json:"id"`
+	Kind                   string   `json:"kind"`
+	Title                  string   `json:"title"`
+	Status                 string   `json:"status"`
+	Progress               int      `json:"progress"`
+	Output                 string   `json:"output"`
+	OutputKind             string   `json:"output_kind"`
+	Caption                string   `json:"caption"`
+	CreatedAt              string   `json:"created_at"`
+	FinishedAt             string   `json:"finished_at"`
+	KindLabel              string   `json:"kind_label"`
+	Label                  string   `json:"label"`
+	Class                  string   `json:"class"`
+	QCVerified             bool     `json:"qc_verified"`
+	FailureReason          string   `json:"failure_reason,omitempty"`
+	Log                    string   `json:"log,omitempty"`
+	AccountName            string   `json:"account_name,omitempty"`
+	AccountID              int64    `json:"account_id,omitempty"`
+	ModelPhoto             string   `json:"model_photo,omitempty"`
+	ModelPhotos            []string `json:"model_photos,omitempty"`
+	TargetDuration         float64  `json:"target_duration,omitempty"`
+	OutputResolution       string   `json:"output_resolution,omitempty"`
+	Engine                 string   `json:"engine,omitempty"`
+	SourceVideoURL         string   `json:"source_video_url,omitempty"`
+	SourceVideoAuthor      string   `json:"source_video_author,omitempty"`
+	SourceMusicTitle       string   `json:"source_music_title,omitempty"`
+	SourceMusicURL         string   `json:"source_music_video_url,omitempty"`
+	SourceMusicVideoID     string   `json:"source_music_video_id,omitempty"`
+	SourceMusicAuthor      string   `json:"source_music_author,omitempty"`
+	SourceCollectedAt      string   `json:"source_music_collected_at,omitempty"`
+	ProductID              int64    `json:"product_id,omitempty"`
+	ProductName            string   `json:"product_name,omitempty"`
+	ProductShopID          string   `json:"product_shop_id,omitempty"`
+	ProductPageURL         string   `json:"product_page_url,omitempty"`
+	AffiliateLink          string   `json:"affiliate_link,omitempty"`
+	AffiliateAttributionID string   `json:"affiliate_attribution_id,omitempty"`
+	TikTokVideoID          string   `json:"tiktok_video_id,omitempty"`
+	TikTokVideoURL         string   `json:"tiktok_video_url,omitempty"`
+	TikTokDraftStatus      string   `json:"tiktok_draft_status,omitempty"`
+	TikTokDraftRemoteID    string   `json:"tiktok_draft_remote_id,omitempty"`
+	TikTokDraftHasAccount  bool     `json:"tiktok_draft_has_account,omitempty"`
+	TikTokDraftUser        string   `json:"tiktok_draft_user,omitempty"`
+	TikTokDraftConfigured  bool     `json:"tiktok_draft_configured,omitempty"`
+}
+
+func toModelWebURL(path string) string {
+	if path == "" {
+		return ""
+	}
+	slash := filepath.ToSlash(path)
+	if idx := strings.Index(slash, "/models/"); idx != -1 {
+		return slash[idx:]
+	}
+	return ""
 }
 
 func kindLabel(kind string) string {
 	switch kind {
 	case studio.KindAffiliate:
-		return "Affiliate"
+		return "Affiliate TikTok"
+	case studio.KindViral:
+		return "Viral TikTok"
 	case "ai_content":
 		return "Muse · Flow"
 	default:
@@ -91,10 +114,19 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 			Class:         statusClass(j.Status),
 			QCVerified:    studioOutputQCVerified(j),
 			FailureReason: failureReason,
+			Log:           j.Log,
 		}
 		if j.Kind == studio.KindAffiliate {
 			var p studio.AffiliateParams
 			if json.Unmarshal([]byte(j.Params), &p) == nil {
+				view.AccountID = p.AccountID
+				view.TargetDuration = float64(p.Seconds)
+				if p.OutputResolution != "" {
+					view.OutputResolution = strings.ToUpper(p.OutputResolution)
+				} else {
+					view.OutputResolution = "4K"
+				}
+				view.Engine = "Google Flow (Web AI)"
 				view.ProductID = p.ProductID
 				view.ProductName = strings.TrimSpace(p.ProductName)
 				view.AffiliateLink = p.AffLink
@@ -117,11 +149,33 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 		} else if j.Kind == studio.KindViral {
 			var p studio.ViralParams
 			if json.Unmarshal([]byte(j.Params), &p) == nil {
+				view.AccountName = p.Account
+				view.AccountID = p.AccountID
+				view.ModelPhoto = toModelWebURL(p.ModelPhoto)
+				for _, ph := range p.ModelPhotos {
+					if u := toModelWebURL(ph); u != "" {
+						view.ModelPhotos = append(view.ModelPhotos, u)
+					}
+				}
+				view.TargetDuration = p.TargetDuration
+				if p.OutputResolution != "" {
+					view.OutputResolution = strings.ToUpper(p.OutputResolution)
+				} else {
+					view.OutputResolution = "4K"
+				}
+				view.Engine = "Google Flow (Web AI)"
+				view.SourceVideoURL = p.SourceVideoURL
+				view.SourceVideoAuthor = p.SourceVideoAuthor
 				view.SourceMusicTitle = p.SourceMusicTitle
 				view.SourceMusicURL = p.SourceVideoURL
 				view.SourceMusicVideoID = p.SourceVideoID
 				view.SourceMusicAuthor = p.SourceVideoAuthor
 				view.SourceCollectedAt = p.SourceCollectedAt
+			}
+		}
+		if view.AccountName == "" && view.AccountID > 0 && s.Mgr != nil {
+			if acc, err := s.Mgr.Get(view.AccountID); err == nil && acc != nil {
+				view.AccountName = acc.Username
 			}
 		}
 		if s.Studio != nil && j.Status == studio.StatusDone && view.OutputKind == "video" &&

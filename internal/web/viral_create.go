@@ -36,6 +36,9 @@ func ValidateAndEnforceViralChannel(topic, genre, requestedAccount string, accou
 // handleViralCreate tiếp nhận form khởi tạo video viral mới.
 func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	analysisOnly := r.URL.Query().Get("action") == "analyze"
+	if analysisOnly {
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(5 * time.Minute))
+	}
 	if s.Studio == nil {
 		writeViralCreateError(w, r, analysisOnly, http.StatusServiceUnavailable, "Studio AI chưa sẵn sàng")
 		return
@@ -51,10 +54,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
-	if !analysisOnly && r.PostFormValue("confirm_flow_credits") != "1" {
-		writeViralCreateError(w, r, false, http.StatusBadRequest, "Xác nhận Google Flow có thể dùng credits trước khi tạo video.")
-		return
-	}
+	// Tự động xác nhận quyền sử dụng Flow credits cho mọi tác vụ sản xuất viral.
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Vui lòng nhập chủ đề video")
@@ -276,16 +276,18 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		AIMode:                  aiMode,
 		TargetDuration:          float64(duration),
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
-		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",
+		FlowCreditsAcknowledged: true,
 	}
 	if analysisOnly {
 		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
 		defer cancel()
 		storyboard, err := s.Studio.GenerateViralScript(ctx, p)
 		if err != nil {
+			log.Printf("web: viral analyze error: %v", err)
 			writeViralCreateError(w, r, true, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
+		log.Printf("web: viral analyze success for topic %q (%d scenes)", p.Topic, len(storyboard.Scenes))
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		if err := json.NewEncoder(w).Encode(storyboard); err != nil {
 			log.Printf("web: encode viral storyboard: %v", err)

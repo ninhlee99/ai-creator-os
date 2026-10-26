@@ -93,7 +93,7 @@ func GoogleFlowVideoEditHeadlessWithCookieUpdate(ctx context.Context, cookie, pr
 func GoogleFlowVideoEditHeadlessWithCookieSnapshot(ctx context.Context, cookie string, cookies []BrowserCookie, prompt, aspect, videoPath string, imagePaths []string, projectID string, progress func(string), updater CookieSnapshotUpdater) (FlowVideoResult, error) {
 	return googleFlowVideoHeadless(ctx, cookie, flowHeadlessRequest{
 		Mode: "video_edit", Prompt: prompt, Aspect: aspect, ProjectID: projectID,
-		ImagePaths: imagePaths, VideoPath: videoPath, ModelLabel: "Gemini Omni Flash 1.1",
+		ImagePaths: imagePaths, VideoPath: videoPath, ModelLabel: "Veo 3.1 Fast",
 	}, cookies, progress, updater)
 }
 
@@ -263,10 +263,40 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		}
 	}
 	result.ProjectID = request.ProjectID
-	composerReady, err := flowWaitForValue(ctx, client, `!!document.querySelector('.ProseMirror,div[contenteditable="true"],textarea')`, 60*time.Second)
+	_, _ = flowWaitForValue(ctx, client, `!document.querySelector('flow-loading-page')`, 45*time.Second)
+	composerReady, err := flowWaitForValue(ctx, client, `!!document.querySelector('.ProseMirror,div[contenteditable="true"]')`, 60*time.Second)
 	if err != nil || composerReady != true {
 		return result, errors.New("Flow prompt editor did not load; check saved Google session and access")
 	}
+
+	const hookScript = `(() => {
+		if (window.__flowInputHookInstalled) return;
+		window.__flowInputHookInstalled = true;
+
+		const origAddEvent = HTMLInputElement.prototype.addEventListener;
+		HTMLInputElement.prototype.addEventListener = function(type, listener, options) {
+			if (this.type === 'file') {
+				if (type === 'cancel') return;
+			}
+			return origAddEvent.apply(this, arguments);
+		};
+
+		const origClick = HTMLInputElement.prototype.click;
+		HTMLInputElement.prototype.click = function() {
+			if (this.type === 'file') {
+				window.__lastFileInput = this;
+				window.__flowInputSeq = (window.__flowInputSeq || 0) + 1;
+				this.id = 'flow-injected-file-input-' + window.__flowInputSeq;
+				if (!this.parentElement) {
+					document.body.appendChild(this);
+				}
+				return;
+			}
+			return origClick.apply(this, arguments);
+		};
+	})()`
+	_, _ = client.evaluate(ctx, hookScript)
+
 	baselineValue, err := client.evaluate(ctx, `(() => [...document.querySelectorAll('flow-video-tile video,video,a[href*="flow-content.google/video/"]')].map(e=>e.currentSrc||e.src||e.href).filter(Boolean))()`)
 	if err != nil {
 		return result, errors.New("cannot read Flow project before generation")
@@ -289,7 +319,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	if _, err := client.call(ctx, "Input.insertText", map[string]any{"text": request.Prompt}, client.sessionID); err != nil {
 		return result, errors.New("could not enter prompt in Flow editor")
 	}
-	clicked, err := flowWaitAndClick(ctx, client, `(() => {const e=document.querySelector('button.generate-icon-button,button[aria-label="Start generation"]');if(!e||e.disabled||e.getAttribute('aria-disabled')==='true')return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`, 30*time.Second)
+	clicked, err := flowWaitAndClick(ctx, client, `(() => {const e=document.querySelector('button.generate-icon-button,button[aria-label*="Bắt đầu tạo" i],button[aria-label*="Start generation" i]');if(!e||e.disabled||e.getAttribute('aria-disabled')==='true')return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`, 30*time.Second)
 	if err != nil || !clicked {
 		return result, errors.New("Flow generation button did not become ready")
 	}
@@ -316,6 +346,9 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		}
 		if message := flowHeadlessRateLimitMessage(ctx, client); message != "" {
 			return result, &flowUIRateLimitError{message: message}
+		}
+		if errMsg := flowHeadlessErrorMessage(ctx, client); errMsg != "" {
+			return result, fmt.Errorf("Google Flow: %s", errMsg)
 		}
 		// Flow mounts video elements lazily when the newest result tile is hovered.
 		bounds, _ := client.evaluate(ctx, `(() => {const xs=[...document.querySelectorAll('flow-video-tile')];const e=xs[xs.length-1];if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`)
@@ -367,6 +400,37 @@ func flowHeadlessRateLimitMessage(ctx context.Context, client *browserCDPClient)
 			}
 			return flat
 		}
+	}
+	return ""
+}
+
+func flowHeadlessErrorMessage(ctx context.Context, client *browserCDPClient) string {
+	value, err := client.evaluate(ctx, `(() => {
+	  const visible = e => { const r=e.getBoundingClientRect(), s=getComputedStyle(e); return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none' };
+	  const errTile = document.querySelector('flow-error-tile, .error-tile, [class*="error-tile"]');
+	  if (errTile) {
+	    const title = (errTile.querySelector('.error-title')?.innerText || '').trim();
+	    const msg = (errTile.querySelector('.error-message-text, .error-message, .error-subtitle')?.innerText || '').trim();
+	    if (title || msg) {
+	      return [title, msg].filter(Boolean).join(': ');
+	    }
+	    const fallback = (errTile.innerText || '').trim();
+	    if (fallback) return fallback;
+	  }
+	  const alerts = [...document.querySelectorAll('flow-toast,flow-banner,[role="alert"],.mat-mdc-snack-bar-container')].filter(visible);
+	  for (const el of alerts) {
+	    const text = (el.innerText || '').trim();
+	    if (/không thành công|vi phạm|chính sách|failed|error|violation|policy/i.test(text)) {
+	      return text;
+	    }
+	  }
+	  return '';
+	})()`)
+	if err != nil {
+		return ""
+	}
+	if s, ok := value.(string); ok {
+		return strings.TrimSpace(s)
 	}
 	return ""
 }

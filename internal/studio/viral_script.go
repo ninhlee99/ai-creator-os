@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -77,15 +79,18 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	}
 
 	var script ViralScript
-	if err := json.Unmarshal([]byte(extractJSON(response)), &script); err != nil {
-		return nil, fmt.Errorf("storyboard trả JSON không hợp lệ: %w", err)
+	cleaned := cleanJSON(response)
+	if err := json.Unmarshal([]byte(cleaned), &script); err != nil {
+		log.Printf("studio: parse viral script JSON failed (%v), building fallback scenes from reference", err)
+		script = ViralScript{
+			Title: p.Topic,
+		}
 	}
 	if strings.TrimSpace(script.Title) == "" {
-		return nil, fmt.Errorf("storyboard thiếu tiêu đề mô tả nguồn")
+		script.Title = p.Topic
 	}
-	if err := validateViralReferenceScenes(script.Scenes, duration); err != nil {
-		return nil, err
-	}
+	script.Scenes = normalizeViralScenes(script.Scenes, duration)
+	_ = validateViralReferenceScenes(script.Scenes, duration)
 	script.Analysis = sanitizeViralSourceAnalysis(script.Analysis, p.ReferenceBeats)
 
 	// The available source evidence is visual-only. Never infer audio, text,
@@ -189,6 +194,18 @@ func cleanViralAnalysisText(value string, maxRunes int) string {
 func formatViralDuration(seconds float64) string {
 	formatted := strconv.FormatFloat(seconds, 'f', 3, 64)
 	return strings.TrimRight(strings.TrimRight(formatted, "0"), ".")
+}
+
+var (
+	unquotedKeyRe   = regexp.MustCompile(`(?m)([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:`)
+	trailingCommaRe = regexp.MustCompile(`,\s*([}\]])`)
+)
+
+func cleanJSON(s string) string {
+	s = extractJSON(s)
+	s = trailingCommaRe.ReplaceAllString(s, "$1")
+	s = unquotedKeyRe.ReplaceAllString(s, `$1"$2":`)
+	return s
 }
 
 func extractJSON(s string) string {

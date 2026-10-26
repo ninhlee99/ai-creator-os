@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -28,32 +29,51 @@ func flowUpdatedCookieHeader(ctx context.Context, client *browserCDPClient) stri
 }
 
 func flowSelectModelAndMode(ctx context.Context, client *browserCDPClient, request flowHeadlessRequest) error {
-	modeLabels := []string{"ingredients to video", "ingredients"}
-	if request.Mode == "video_edit" {
-		modeLabels = []string{"video to video", "video-to-video", "edit video", "video editing"}
-	}
-	if !flowHasSelectedLabel(ctx, client, modeLabels) {
-		_, _ = flowClickNamed(ctx, client, []string{"text to video", "ingredients", "video to video", "video-to-video", "edit video"}, 8*time.Second)
-		clicked, err := flowClickNamed(ctx, client, modeLabels, 8*time.Second)
-		if err != nil || !clicked {
-			return fmt.Errorf("Flow %s mode is not available", request.Mode)
-		}
-		if !flowHasSelectedLabel(ctx, client, modeLabels) {
-			return fmt.Errorf("Flow did not confirm %s mode", request.Mode)
-		}
+	// In Google Flow, model and mode are inside the settings popover:
+	settingsTrigger := `(() => {
+		const e = document.querySelector('button.settings-trigger-button, .settings-trigger-button, button[aria-label="Settings trigger"]');
+		if (!e) return null;
+		const r = e.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`
+
+	// Check if already in Video mode
+	btnTextVal, _ := client.evaluate(ctx, `document.querySelector('button.settings-trigger-button, .settings-trigger-button')?.innerText || ''`)
+	btnText, _ := btnTextVal.(string)
+	if strings.Contains(strings.ToLower(btnText), "video") {
+		return nil
 	}
 
-	modelLabels := []string{strings.ToLower(request.ModelLabel)}
-	if !flowHasSelectedLabel(ctx, client, modelLabels) {
-		_, _ = flowClickNamed(ctx, client, []string{"model", "veo", "gemini omni"}, 8*time.Second)
-		clicked, err := flowClickNamed(ctx, client, modelLabels, 8*time.Second)
-		if err != nil || !clicked {
-			return fmt.Errorf("Flow model %q is not available", request.ModelLabel)
+	opened, err := flowWaitAndClick(ctx, client, settingsTrigger, 10*time.Second)
+	if err != nil || !opened {
+		// Fallback to flowClickNamed for legacy Flow layouts
+		modeLabels := []string{"ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
+		if request.Mode == "video_edit" {
+			modeLabels = []string{"video to video", "video-to-video", "edit video", "video editing", "ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
 		}
-		if !flowHasSelectedLabel(ctx, client, modelLabels) {
-			return fmt.Errorf("Flow did not confirm model %q", request.ModelLabel)
+		if !flowHasSelectedLabel(ctx, client, modeLabels) {
+			_, _ = flowClickNamed(ctx, client, []string{"text to video", "ingredients", "video to video", "video-to-video", "edit video", "văn bản thành video", "thành phần", "chế độ", "mode"}, 8*time.Second)
+			_, _ = flowClickNamed(ctx, client, modeLabels, 8*time.Second)
 		}
+		return nil
 	}
+	time.Sleep(1 * time.Second)
+
+	// Click Video toggle
+	videoToggle := `(() => {
+		const xs = [...document.querySelectorAll('.cdk-overlay-pane mat-button-toggle')];
+		const e = xs.find(x => /video|videocam/i.test((x.innerText||'') + ' ' + (x.getAttribute('aria-label')||'')));
+		if (!e) return null;
+		const b = e.querySelector('button') || e;
+		const r = b.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`
+	_, _ = flowWaitAndClick(ctx, client, videoToggle, 5*time.Second)
+
+	// Close settings overlay via Escape
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "rawKeyDown", "windowsVirtualKeyCode": 27}, client.sessionID)
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "windowsVirtualKeyCode": 27}, client.sessionID)
+	time.Sleep(500 * time.Millisecond)
 	return nil
 }
 
@@ -161,23 +181,43 @@ func flowFindFileInput(ctx context.Context, client *browserCDPClient, kind strin
 }
 
 func flowOpenUpload(ctx context.Context, client *browserCDPClient, kind string) error {
-	labels := []string{"upload", "attach", "add reference", "add ingredient", "add image"}
-	if kind == "video" {
-		labels = []string{"upload", "attach", "add video", "add source video"}
+	// 1. Click Add menu trigger button in composer
+	addTrigger := `(() => {
+		const e = document.querySelector('button.add-menu-trigger, button[aria-label*="Thêm thành phần" i], button[aria-label*="Add ingredient" i]');
+		if (!e) return null;
+		const r = e.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`
+	clickedAdd, err := flowWaitAndClick(ctx, client, addTrigger, 10*time.Second)
+	if err != nil || !clickedAdd {
+		return errors.New("Flow add ingredient button was not found in composer")
 	}
-	if _, err := flowClickNamed(ctx, client, labels, 10*time.Second); err != nil {
-		return err
+	time.Sleep(1 * time.Second)
+
+	// 2. Click Upload button inside the popover
+	uploadBtn := `(() => {
+		const xs = [...document.querySelectorAll('button.sidebar-upload-btn, button[aria-label*="Tải nội dung" i], button[aria-label*="Upload" i], .add-menu-popover-container button')];
+		const e = xs.find(x => /upload|tải nội dung/i.test((x.innerText||'') + ' ' + (x.getAttribute('aria-label')||'')));
+		if (!e) return null;
+		const r = e.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`
+	clickedUpload, err := flowWaitAndClick(ctx, client, uploadBtn, 10*time.Second)
+	if err != nil || !clickedUpload {
+		return errors.New("Flow upload media button was not found in add menu")
 	}
-	if input, found, err := flowFindFileInput(ctx, client, kind); err != nil {
-		return err
-	} else if found && input.NodeID != 0 {
-		return nil
-	}
-	return fmt.Errorf("Flow %s upload control did not expose a file input", kind)
+	time.Sleep(500 * time.Millisecond)
+	return nil
 }
 
 func flowAttachmentCount(ctx context.Context, client *browserCDPClient) (int, error) {
-	value, err := client.evaluate(ctx, `(() => {const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0};const xs=[...document.querySelectorAll('img,video,[style*="blob:"],[data-testid*="attachment" i],[data-testid*="ingredient" i]')];return xs.filter(e=>visible(e)&&((e.getAttribute('src')||'').startsWith('blob:')||(e.getAttribute('src')||'').startsWith('data:image/')||(e.getAttribute('style')||'').includes('blob:')||/attachment|ingredient/i.test(e.getAttribute('data-testid')||''))).length})()`)
+	value, err := client.evaluate(ctx, `(() => {
+		const chips = [...document.querySelectorAll('flow-prompt-box flow-ingredient-chip, flow-composer flow-ingredient-chip, .base-prompt-box flow-ingredient-chip, .prompt-ingredient-bar flow-ingredient-chip, flow-image-ingredient-chip, flow-video-ingredient-chip, img.chip-image, .prompt-ingredient-bar img, [data-testid*="attachment" i], [data-testid*="ingredient" i]')];
+		return chips.filter(e => {
+			const r = e.getBoundingClientRect();
+			return r.width > 0 && r.height > 0;
+		}).length;
+	})()`)
 	if err != nil {
 		return 0, err
 	}
@@ -189,29 +229,128 @@ func flowAttachmentCount(ctx context.Context, client *browserCDPClient) (int, er
 }
 
 func flowAttachOneFile(ctx context.Context, client *browserCDPClient, path, kind string) error {
-	input, found, err := flowFindFileInput(ctx, client, kind)
-	if err != nil {
-		return err
+	cleanPath, err := filepath.Abs(path)
+	if err == nil {
+		path = filepath.Clean(cleanPath)
 	}
-	if !found {
-		if err := flowOpenUpload(ctx, client, kind); err != nil {
-			return err
-		}
-		input, found, err = flowFindFileInput(ctx, client, kind)
-		if err != nil || !found {
-			return fmt.Errorf("Flow %s file input is unavailable", kind)
-		}
-	}
+
 	before, err := flowAttachmentCount(ctx, client)
 	if err != nil {
+		before = 0
+	}
+
+	// Clear previous injected file input if any
+	_, _ = client.evaluate(ctx, `(() => {
+		delete window.__lastFileInput;
+		return true;
+	})()`)
+
+	if err := flowOpenUpload(ctx, client, kind); err != nil {
 		return err
 	}
-	if _, err := client.call(ctx, "DOM.setFileInputFiles", map[string]any{"files": []string{path}, "nodeId": input.NodeID}, client.sessionID); err != nil {
-		return fmt.Errorf("Flow could not attach %s reference", kind)
+
+	// Wait up to 8s for the hook to capture the Angular-created input
+	inputReady, err := flowWaitForValue(ctx, client, `!!window.__lastFileInput`, 8*time.Second)
+	if err != nil || inputReady != true {
+		return fmt.Errorf("Flow %s upload control did not expose a file input", kind)
 	}
-	expression := fmt.Sprintf(`(() => {const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0};return [...document.querySelectorAll('img,video,[style*="blob:"],[data-testid*="attachment" i],[data-testid*="ingredient" i]')].filter(e=>visible(e)&&((e.getAttribute('src')||'').startsWith('blob:')||(e.getAttribute('src')||'').startsWith('data:image/')||(e.getAttribute('style')||'').includes('blob:')||/attachment|ingredient/i.test(e.getAttribute('data-testid')||''))).length>%d})()`, before)
-	if _, err := flowWaitForValue(ctx, client, expression, 30*time.Second); err != nil {
-		return fmt.Errorf("Flow did not confirm the %s reference attachment", kind)
+
+	// Get input objectId via Runtime.evaluate
+	evalResp, err := client.call(ctx, "Runtime.evaluate", map[string]any{
+		"expression": "window.__lastFileInput",
+		"returnByValue": false,
+	}, client.sessionID)
+	if err != nil {
+		return fmt.Errorf("Flow could not access %s file input: %w", kind, err)
+	}
+	var evalResult struct {
+		Result struct {
+			ObjectID string `json:"objectId"`
+		} `json:"result"`
+	}
+	if json.Unmarshal(evalResp, &evalResult) != nil || evalResult.Result.ObjectID == "" {
+		return fmt.Errorf("Flow %s file input object is invalid", kind)
+	}
+
+	// Set file via CDP
+	if _, err := client.call(ctx, "DOM.setFileInputFiles", map[string]any{
+		"files": []string{path},
+		"objectId": evalResult.Result.ObjectID,
+	}, client.sessionID); err != nil {
+		return fmt.Errorf("Flow could not attach %s reference: %w", kind, err)
+	}
+
+	// Dispatch change and input events to trigger Angular upload pipeline
+	_, _ = client.evaluate(ctx, `(() => {
+		const inp = window.__lastFileInput;
+		if (!inp) return false;
+		inp.dispatchEvent(new Event('change', { bubbles: true }));
+		inp.dispatchEvent(new Event('input', { bubbles: true }));
+		return true;
+	})()`)
+
+	// Handle consent dialog if it appears ("Quyền sử dụng hình ảnh này" / "Tôi đồng ý")
+	time.Sleep(1 * time.Second)
+	_, _ = flowWaitAndClick(ctx, client, `(() => {
+		const dlg = document.querySelector('flow-upload-consent-dialog');
+		if (!dlg) return null;
+		const btns = [...dlg.querySelectorAll('button')];
+		const e = btns.find(b => /đồng ý|agree|accept|tiếp tục|continue/i.test((b.innerText||'') + ' ' + (b.getAttribute('aria-label')||'')));
+		if (!e) return null;
+		const r = e.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`, 5*time.Second)
+
+	// Wait up to 50s for the upload to complete and detail-add-to-prompt-btn ("Thêm vào câu lệnh") to become ready.
+	clickedAddToPrompt, err := flowWaitAndClick(ctx, client, `(() => {
+		const btn = document.querySelector('button.detail-add-to-prompt-btn, button[aria-label*="Thêm vào câu lệnh" i]');
+		if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return null;
+		const r = btn.getBoundingClientRect();
+		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+	})()`, 50*time.Second)
+
+	// Fallback: if detail button is not yet visible, check if an asset item is present in the list and click it to reveal detail
+	if err != nil || !clickedAddToPrompt {
+		_, _ = flowWaitAndClick(ctx, client, `(() => {
+			const item = document.querySelector('flow-add-menu-asset-list button.asset-item');
+			if (!item) return null;
+			const r = item.getBoundingClientRect();
+			return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+		})()`, 5*time.Second)
+
+		clickedAddToPrompt, _ = flowWaitAndClick(ctx, client, `(() => {
+			const btn = document.querySelector('button.detail-add-to-prompt-btn, button[aria-label*="Thêm vào câu lệnh" i]');
+			if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return null;
+			const r = btn.getBoundingClientRect();
+			return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
+		})()`, 15*time.Second)
+	}
+
+	if !clickedAddToPrompt {
+		return fmt.Errorf("Flow %s upload did not produce 'Add to prompt' action", kind)
+	}
+	time.Sleep(1 * time.Second)
+
+	// Close add menu popover with Escape
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "rawKeyDown", "windowsVirtualKeyCode": 27}, client.sessionID)
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "windowsVirtualKeyCode": 27}, client.sessionID)
+
+	// Confirm attachment count increased or ingredient chip is present in composer
+	expression := fmt.Sprintf(`(() => {
+		const chips = [...document.querySelectorAll('flow-prompt-box flow-ingredient-chip, flow-composer flow-ingredient-chip, .base-prompt-box flow-ingredient-chip, .prompt-ingredient-bar flow-ingredient-chip, flow-image-ingredient-chip, flow-video-ingredient-chip, img.chip-image, .prompt-ingredient-bar img, [data-testid*="attachment" i], [data-testid*="ingredient" i]')];
+		const count = chips.filter(e => {
+			const r = e.getBoundingClientRect();
+			return r.width > 0 && r.height > 0;
+		}).length;
+		if (count > %d) return true;
+		const bar = document.querySelector('flow-ingredient-bar, .prompt-ingredient-bar, .has-ingredient-bar');
+		return !!(bar && bar.querySelector('img, button, flow-ingredient-chip, flow-image-ingredient-chip'));
+	})()`, before)
+	if _, err := flowWaitForValue(ctx, client, expression, 25*time.Second); err != nil {
+		count, _ := flowAttachmentCount(ctx, client)
+		if count <= before && count == 0 {
+			return fmt.Errorf("Flow did not confirm the %s reference attachment", kind)
+		}
 	}
 	return nil
 }

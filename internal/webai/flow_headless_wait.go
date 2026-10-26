@@ -100,10 +100,8 @@ func flowSetAspect(ctx context.Context, client *browserCDPClient, aspect string)
 	ratioJSON, _ := json.Marshal(ratio)
 	ratioScript := `(() => {const t=` + string(ratioJSON) + `;const e=[...document.querySelectorAll('.cdk-overlay-pane mat-button-toggle')].find(x=>(x.innerText||'').includes(t));if(!e)return null;const b=e.querySelector('button')||e;const r=b.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2}})()`
 	clicked, err := flowWaitAndClick(ctx, client, ratioScript, 5*time.Second)
-	if _, closeErr := client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyDown", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}, client.sessionID); closeErr != nil {
-		return closeErr
-	}
-	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27}, client.sessionID)
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "rawKeyDown", "windowsVirtualKeyCode": 27}, client.sessionID)
+	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "windowsVirtualKeyCode": 27}, client.sessionID)
 	if err != nil {
 		return err
 	}

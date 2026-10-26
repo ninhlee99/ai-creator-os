@@ -116,24 +116,84 @@
 </div>
 {{else if eq .Tab "failed"}}
 {{if .FailedJobs}}
-<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;flex-direction:column;gap:14px">
   {{range .FailedJobs}}
-  <div id="job-{{.ID}}" class="card" style="padding:14px;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
-    <div style="min-width:220px;flex:1">
-      <strong>{{.Title}}</strong>
-      <span class="badge badge-err" style="margin-left:8px">{{.Label}}</span>
-      <div style="font-size:11px;color:var(--muted);margin-top:5px">{{.KindLabel}} · {{fmtVN .CreatedAt}}</div>
-      <p style="margin:9px 0 0;color:var(--err);font-size:12px;line-height:1.5;overflow-wrap:anywhere">{{.FailureReason}}</p>
+  <div id="job-{{.ID}}" class="card" style="padding:18px 20px;border-radius:14px;background:var(--bg2);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,0.04)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="min-width:240px;flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <strong style="font-size:16px;color:var(--text)">{{.Title}}</strong>
+          <span class="badge badge-info" style="font-size:11px;font-weight:700">{{.KindLabel}}</span>
+          <span class="badge badge-err" style="font-size:11px;font-weight:700">{{.Label}}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>🆔 {{.ID}}</span>
+          <span>📅 {{fmtVN .CreatedAt}}</span>
+          {{if .FinishedAt}}<span>⏱ Kết thúc: {{fmtVN .FinishedAt}}</span>{{end}}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
+          <input type="hidden" name="confirm_flow_credits" value="1">
+          <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;padding:6px 14px">🔄 Thử lại ngay</button>
+        </form>
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+          <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
+        </form>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
-        <label style="display:block;font-size:10px;margin-bottom:5px"><input type="checkbox" name="confirm_flow_credits" value="1"> Cho phép Flow dùng credits</label>
-        <button class="btn btn-primary btn-sm" type="submit">🔄 Thử lại</button>
-      </form>
-      <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
-        <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
-      </form>
+
+    <!-- Metadata Grid: Channel, Reference, Audio, Engine -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;margin-bottom:12px;background:var(--bg3);padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12px">
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">KÊNH ĐÍCH &amp; NHÂN VẬT</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          {{if .ModelPhoto}}<img src="{{.ModelPhoto}}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">{{end}}
+          <strong style="color:var(--text)">{{if .AccountName}}@{{.AccountName}}{{else}}Kênh mặc định{{end}}</strong>
+          {{if gt (len .ModelPhotos) 1}}<span class="badge badge-draft" style="font-size:10px">+{{len .ModelPhotos}} ảnh</span>{{end}}
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">NGUỒN RADAR TIKTOK</span>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          {{if .SourceMusicURL}}
+          <a href="{{.SourceMusicURL}}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:700">TikTok Video ↗</a>
+          {{if .SourceMusicAuthor}}<span style="color:var(--muted)"> · @{{.SourceMusicAuthor}}</span>{{end}}
+          {{else}}
+          <span style="color:var(--muted)">Chưa có URL</span>
+          {{end}}
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">ÂM THANH GỐC</span>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:600">
+          {{if .SourceMusicTitle}}♫ {{.SourceMusicTitle}}{{else}}Track âm thanh nguồn{{end}}
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">ENGINE &amp; ĐỊNH DẠNG</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge badge-ok" style="font-size:10.5px;font-weight:700">🌊 {{if .Engine}}{{.Engine}}{{else}}Google Flow (Web AI){{end}}</span>
+          <span style="color:var(--muted);font-weight:600">{{if .TargetDuration}}{{.TargetDuration}}s · {{end}}{{.OutputResolution}}</span>
+        </div>
+      </div>
     </div>
+
+    <!-- Error reason callout -->
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-weight:700;color:var(--err);font-size:12.5px;margin-bottom:4px;display:flex;align-items:center;gap:6px">
+        <span>⚠️</span> Lý do tác vụ dừng lại:
+      </div>
+      <div style="font-size:12px;color:var(--text);line-height:1.5;overflow-wrap:anywhere">{{.FailureReason}}</div>
+    </div>
+
+    <!-- Log Console Details -->
+    {{if .Log}}
+    <details style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+      <summary style="font-size:12px;cursor:pointer;color:var(--muted);font-weight:600">📜 Xem nhật ký render (Console Log) · {{.ID}}</summary>
+      <pre style="margin-top:8px;font-family:monospace;font-size:11.5px;max-height:180px;overflow:auto;color:var(--text);background:var(--bg3);padding:10px;border-radius:6px;white-space:pre-wrap;line-height:1.4">{{.Log}}</pre>
+    </details>
+    {{end}}
   </div>
   {{end}}
 </div>
@@ -162,6 +222,7 @@
           <span class="badge badge-{{.Class}} job-status" style="font-weight:700">{{.Label}}</span>
           <span class="prog" style="font-weight:800;color:var(--accent)">{{.Progress}}%</span>
           <span>📅 Tạo: {{fmtVN .CreatedAt}}</span>
+          <span>🆔 {{.ID}}</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -179,6 +240,41 @@
       <div style="background:linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);height:100%;width:{{.Progress}}%;transition:width 0.4s ease"></div>
     </div>
 
+    <!-- Info Chips -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;margin-bottom:14px;background:var(--bg3);padding:12px 14px;border-radius:10px;border:1px solid var(--border);font-size:12px">
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">KÊNH ĐÍCH &amp; NHÂN VẬT</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          {{if .ModelPhoto}}<img src="{{.ModelPhoto}}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">{{end}}
+          <strong style="color:var(--text)">{{if .AccountName}}@{{.AccountName}}{{else}}Kênh mặc định{{end}}</strong>
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">NGUỒN RADAR TIKTOK</span>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          {{if .SourceMusicURL}}
+          <a href="{{.SourceMusicURL}}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:700">TikTok Video ↗</a>
+          {{if .SourceMusicAuthor}}<span style="color:var(--muted)"> · @{{.SourceMusicAuthor}}</span>{{end}}
+          {{else}}
+          <span style="color:var(--muted)">Chưa có URL</span>
+          {{end}}
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">ÂM THANH GỐC</span>
+        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:600">
+          {{if .SourceMusicTitle}}♫ {{.SourceMusicTitle}}{{else}}Track âm thanh nguồn{{end}}
+        </div>
+      </div>
+      <div>
+        <span style="color:var(--muted);display:block;margin-bottom:3px;font-size:11px;font-weight:600">ENGINE &amp; ĐỊNH DẠNG</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge badge-ok" style="font-size:10.5px;font-weight:700">🌊 {{if .Engine}}{{.Engine}}{{else}}Google Flow (Web AI){{end}}</span>
+          <span style="color:var(--muted);font-weight:600">{{if .TargetDuration}}{{.TargetDuration}}s · {{end}}{{.OutputResolution}}</span>
+        </div>
+      </div>
+    </div>
+
     {{if eq .Kind "affiliate"}}
     {{template "studio-affiliate-handoff" .}}
     {{end}}
@@ -187,9 +283,9 @@
       <button class="btn btn-secondary btn-sm" onclick="toggleBoard('{{.ID}}')">🎬 Storyboard Từng Cảnh</button>
     </div>
     <div class="board" style="margin-top:10px"></div>
-    <details style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
-      <summary style="font-size:12px;cursor:pointer;color:var(--muted);font-weight:600">📜 Nhật ký render chi tiết (Log Console)</summary>
-      <pre class="log" id="log-{{.ID}}" style="margin-top:8px;font-family:monospace;font-size:11.5px;max-height:160px;overflow:auto;color:var(--text);background:var(--bg);padding:10px;border-radius:6px"></pre>
+    <details open style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+      <summary style="font-size:12px;cursor:pointer;color:var(--muted);font-weight:600">📜 Nhật ký render chi tiết (Log Console) · Realtime</summary>
+      <pre class="log" id="log-{{.ID}}" style="margin-top:8px;font-family:monospace;font-size:11.5px;max-height:180px;overflow:auto;color:var(--text);background:var(--bg);padding:10px;border-radius:6px;line-height:1.4"></pre>
     </details>
   </div>
   {{end}}
@@ -215,6 +311,14 @@
       <div class="video-item-title" title="{{.Title}}">
         {{.Title}}
       </div>
+      {{if or .AccountName .ModelPhoto}}
+      <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text);margin:4px 0 6px">
+        {{if .ModelPhoto}}<img src="{{.ModelPhoto}}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;border:1px solid var(--border)">{{end}}
+        <strong style="color:var(--text)">@{{.AccountName}}</strong>
+        {{if .OutputResolution}}<span class="badge badge-draft" style="font-size:9.5px;padding:1px 5px">{{.OutputResolution}}</span>{{end}}
+        {{if .Engine}}<span class="badge badge-ok" style="font-size:9.5px;padding:1px 5px">🌊 Web AI</span>{{end}}
+      </div>
+      {{end}}
       {{if .SourceMusicTitle}}
       <div class="hint" style="margin:4px 0 8px">
         {{if eq .Kind "viral"}}Audio giữ từ video Radar:{{else}}Sound tách từ video Radar:{{end}}
@@ -276,7 +380,7 @@
           <div class="remix-grid" style="gap:6px">
             <label style="font-size:11px">Thời lượng (s)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên" style="padding:4px 6px;font-size:11px"></label>
           </div>
-          <label style="display:flex;align-items:flex-start;gap:6px;margin-top:7px;font-size:10px"><input type="checkbox" name="confirm_flow_credits" value="1"><span>Cho phép Google Flow dùng credits nếu cần dựng lại.</span></label>
+          <input type="hidden" name="confirm_flow_credits" value="1">
           <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;font-size:11px;width:100%;margin-top:6px">Dựng lại</button>
         </form>
       </details>

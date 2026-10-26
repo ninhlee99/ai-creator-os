@@ -27,6 +27,9 @@ var staticJS []byte
 //go:embed static/webai-login.js
 var staticWebAILoginJS []byte
 
+//go:embed static/flow-canvas.js
+var staticFlowCanvasJS []byte
+
 //go:embed static/preview.mp3
 var staticPreviewAudio []byte
 
@@ -52,6 +55,7 @@ var pageFiles = map[string]string{
 	"studio_ai_create":     "studio_ai_create.html",
 	"studio_jobs":          "studio_jobs.html",
 	"studio_trends":        "studio_trends.html",
+	"studio_flow":          "studio_flow.html",
 	"publishers":           "publishers.html",
 	"products":             "products.html",
 	"viral":                "viral.html",

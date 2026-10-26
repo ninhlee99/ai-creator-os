@@ -1,0 +1,144 @@
+{{define "title"}}Studio ComfyUI - AI Creator OS{{end}}
+
+{{define "content"}}
+<div class="flow-studio-page">
+  <!-- Top Control Bar -->
+  <header class="flow-toolbar">
+    <div class="flow-toolbar-left">
+      <div class="flow-brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="flow-icon"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><line x1="8.5" y1="7.5" x2="15.5" y2="10.5"/><line x1="8.5" y1="16.5" x2="15.5" y2="13.5"/></svg>
+        <span>Studio ComfyUI</span>
+      </div>
+
+      <div class="flow-select-group">
+        <label for="flow-preset-select">Mẫu luồng:</label>
+        <select id="flow-preset-select" class="form-select flow-preset-select">
+          <option value="preset_viral_dance" {{if eq .PresetID "preset_viral_dance"}}selected{{end}}>🔥 Viral TikTok Dance (Veo 2 Recreate)</option>
+          <option value="preset_affiliate_showcase" {{if eq .PresetID "preset_affiliate_showcase"}}selected{{end}}>🛍️ Affiliate Product Showcase (Bóc tách &amp; Ghép)</option>
+          <option value="preset_multi_ai" {{if eq .PresetID "preset_multi_ai"}}selected{{end}}>⚡ Multi-Engine AI (Gemini + Flow + Custom)</option>
+          {{range .Graphs}}
+            {{if not .IsPreset}}
+              <option value="{{.ID}}">📁 {{.Name}}</option>
+            {{end}}
+          {{end}}
+        </select>
+      </div>
+
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-add-node">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Thêm Node
+      </button>
+
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-save-graph">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Lưu luồng
+      </button>
+    </div>
+
+    <div class="flow-toolbar-right">
+      <div id="flow-run-status" class="flow-run-status status-idle">
+        <span class="status-dot"></span>
+        <span class="status-text">Sẵn sàng</span>
+      </div>
+
+      <button type="button" class="btn btn-danger btn-sm" id="btn-cancel-flow" style="display:none">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+        Dừng
+      </button>
+
+      <button type="button" class="btn btn-primary" id="btn-run-flow">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Chạy luồng (Run Flow)</span>
+      </button>
+
+      <div class="flow-zoom-controls">
+        <button type="button" class="btn-icon" id="btn-zoom-out" title="Thu nhỏ">-</button>
+        <span id="zoom-level">100%</span>
+        <button type="button" class="btn-icon" id="btn-zoom-in" title="Phóng to">+</button>
+        <button type="button" class="btn-icon" id="btn-zoom-reset" title="Đặt lại góc nhìn">⟲</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <div class="flow-workspace">
+    <!-- Canvas Editor Area -->
+    <div id="flow-canvas-container" class="flow-canvas-container">
+      <div id="flow-canvas-viewport" class="flow-canvas-viewport">
+        <!-- SVG Connections Layer -->
+        <svg id="flow-wires-svg" class="flow-wires-svg"></svg>
+        <!-- Nodes DOM Layer -->
+        <div id="flow-nodes-layer" class="flow-nodes-layer"></div>
+      </div>
+    </div>
+
+    <!-- Inspector / Sidebar Panel -->
+    <aside id="flow-inspector" class="flow-inspector">
+      <div class="inspector-tabs">
+        <button type="button" class="inspector-tab active" data-tab="node-details">Thuộc tính Node</button>
+        <button type="button" class="inspector-tab" data-tab="run-logs">Nhật ký thực thi</button>
+      </div>
+
+      <div class="inspector-content" id="tab-node-details">
+        <div id="inspector-empty" class="inspector-empty">
+          <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          <p>Nhấp vào một Node trên Canvas để xem và điều chỉnh tham số, hoặc xem trước kết quả trung gian.</p>
+        </div>
+        <div id="inspector-form" class="inspector-form" style="display:none">
+          <div class="inspector-header">
+            <span id="inspector-node-category" class="badge">Category</span>
+            <h3 id="inspector-node-title">Node Title</h3>
+            <p id="inspector-node-desc" class="inspector-node-desc"></p>
+          </div>
+
+          <div id="inspector-fields" class="inspector-fields"></div>
+
+          <div class="inspector-preview-section">
+            <h4>Xem trước kết quả</h4>
+            <div id="inspector-preview-box" class="inspector-preview-box">
+              <span class="muted">Chưa có dữ liệu xuất</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="inspector-content" id="tab-run-logs" style="display:none">
+        <div class="run-logs-header">
+          <span>Tiến độ: <strong id="run-progress-text">0%</strong></span>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-logs">Xóa log</button>
+        </div>
+        <div id="flow-logs-terminal" class="flow-logs-terminal">
+          <div class="log-line text-muted">[Sẵn sàng] Bấm 'Chạy luồng' để bắt đầu thực thi các node trên canvas...</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Modal: Add Node Palette -->
+<div id="add-node-modal" class="flow-modal" style="display:none">
+  <div class="flow-modal-dialog">
+    <div class="flow-modal-header">
+      <h3>Thư viện Node ComfyUI</h3>
+      <button type="button" class="flow-modal-close" id="btn-close-node-modal">&times;</button>
+    </div>
+    <div class="flow-modal-search">
+      <input type="text" id="node-search-input" placeholder="Tìm kiếm node (nhân vật, sản phẩm, bóc tách, google flow, upscale,...)..." autofocus>
+    </div>
+    <div class="flow-modal-categories" id="node-categories-list">
+      <button type="button" class="category-chip active" data-cat="all">Tất cả</button>
+      <button type="button" class="category-chip" data-cat="input">Đầu vào &amp; Tài sản</button>
+      <button type="button" class="category-chip" data-cat="process">Xử lý &amp; Vũ đạo</button>
+      <button type="button" class="category-chip" data-cat="ai">Web AI Video</button>
+      <button type="button" class="category-chip" data-cat="output">Xuất bản</button>
+    </div>
+    <div class="flow-node-cards-grid" id="modal-node-grid"></div>
+  </div>
+</div>
+
+<script>
+window.__INITIAL_GRAPH__ = {{if .ActiveGraph}}{{.ActiveGraph}}{{else}}null{{end}};
+window.__NODE_DEFINITIONS__ = {{if .NodeDefs}}{{.NodeDefs}}{{else}}[]{{end}};
+</script>
+<script src="/static/flow-canvas.js?v={{assetVer}}"></script>
+{{end}}

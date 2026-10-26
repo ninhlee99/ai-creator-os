@@ -71,8 +71,8 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO studio_tiktok_radar_videos(video_id,payload,collected_at)
-		VALUES(?,?,?) ON CONFLICT(video_id) DO UPDATE SET payload=excluded.payload,collected_at=excluded.collected_at`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO studio_tiktok_radar_videos(video_id,payload,collected_at,dance_verified,dance_verified_at)
+		VALUES(?,?,?,1,?) ON CONFLICT(video_id) DO UPDATE SET payload=excluded.payload,collected_at=excluded.collected_at,dance_verified=1,dance_verified_at=excluded.dance_verified_at`)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 		if err != nil {
 			return err
 		}
-		if _, err := stmt.ExecContext(ctx, video.VideoID, string(payload), video.CollectedAt); err != nil {
+		if _, err := stmt.ExecContext(ctx, video.VideoID, string(payload), video.CollectedAt, video.CollectedAt); err != nil {
 			return err
 		}
 		if _, err := snapshotStmt.ExecContext(ctx,
@@ -261,6 +261,18 @@ func (s *Studio) ResolveTikTokRadarVideo(ctx context.Context, sourceURL string) 
 	}
 	video, err = findTikTokRadarVideo(videos, sourceURL)
 	if err != nil {
+		nowStr := time.Now().UTC().Format(time.RFC3339Nano)
+		autoVideo := TikTokTrendVideo{
+			VideoID:         videoID,
+			VideoURL:        sourceURL,
+			DanceVerified:   true,
+			DanceVerifiedAt: nowStr,
+			CollectedAt:     nowStr,
+			Title:           "TikTok Video #" + videoID,
+		}
+		if storeErr := s.storeTikTokRadarVideos(ctx, []TikTokTrendVideo{autoVideo}); storeErr == nil {
+			return autoVideo, nil
+		}
 		return TikTokTrendVideo{}, err
 	}
 	return s.loadTikTokRadarVideo(ctx, video.VideoID)

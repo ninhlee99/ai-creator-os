@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -55,19 +56,22 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 	}
 
 	searchQuery := strings.TrimSpace(topic)
-	targetURL := "https://www.tiktok.com/explore"
-	if searchQuery != "" {
-		targetURL = "https://www.tiktok.com/search?q=" + url.QueryEscape(searchQuery)
+	if searchQuery == "" || strings.EqualFold(searchQuery, "Xu hướng Việt Nam") {
+		searchQuery = "xu hướng việt nam"
+	} else {
+		lower := strings.ToLower(searchQuery)
+		if !strings.Contains(lower, "việt nam") && !strings.Contains(lower, "viet nam") && !strings.Contains(lower, "vn") {
+			searchQuery += " việt nam"
+		}
 	}
+	targetURL := "https://www.tiktok.com/search?q=" + url.QueryEscape(searchQuery)
 
 	videos, err := runTikTokCrawlerBrowser(ctx, bin, targetURL)
 	if err != nil || len(videos) == 0 {
-		// If explore yielded no videos, fallback to searching trending videos in Vietnam
-		if searchQuery == "" {
-			fallbackURL := "https://www.tiktok.com/search?q=" + url.QueryEscape("hot trend việt nam")
-			if fallbackVideos, fErr := runTikTokCrawlerBrowser(ctx, bin, fallbackURL); fErr == nil && len(fallbackVideos) > 0 {
-				return fallbackVideos, nil
-			}
+		// Fallback tìm kiếm video hot trend TikTok Việt Nam
+		fallbackURL := "https://www.tiktok.com/search?q=" + url.QueryEscape("hot trend tiktok việt nam")
+		if fallbackVideos, fErr := runTikTokCrawlerBrowser(ctx, bin, fallbackURL); fErr == nil && len(fallbackVideos) > 0 {
+			return fallbackVideos, nil
 		}
 		if err != nil {
 			return nil, err
@@ -79,7 +83,7 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 }
 
 func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikTokTrendVideo, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	portListener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -105,6 +109,8 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 		"--no-default-browser-check",
 		"--disable-extensions",
 		"--disable-sync",
+		"--blink-settings=imagesEnabled=false",
+		"--lang=vi-VN,vi",
 		"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 		"about:blank",
 	}
@@ -126,7 +132,7 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 		return nil, err
 	}
 
-	conn, _, err := (&websocket.Dialer{HandshakeTimeout: 8 * time.Second}).DialContext(ctx, pageWS, nil)
+	conn, _, err := (&websocket.Dialer{HandshakeTimeout: 5 * time.Second}).DialContext(ctx, pageWS, nil)
 	if err != nil {
 		return nil, fmt.Errorf("không kết nối được WebSocket crawler: %w", err)
 	}
@@ -139,22 +145,25 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	if err := sendCDP(1, "Network.enable", map[string]any{}); err != nil {
 		return nil, err
 	}
-	if err := sendCDP(2, "Page.enable", map[string]any{}); err != nil {
+	_ = sendCDP(2, "Network.setBlockedURLs", map[string]any{
+		"urls": []string{"*.mp4", "*.webm", "*.woff*", "*.ttf", "*.otf", "*.gif"},
+	})
+	_ = sendCDP(3, "Network.setExtraHTTPHeaders", map[string]any{
+		"headers": map[string]string{
+			"Accept-Language": "vi-VN,vi;q=0.9,en;q=0.8",
+		},
+	})
+	if err := sendCDP(4, "Page.enable", map[string]any{}); err != nil {
 		return nil, err
 	}
-	if err := sendCDP(3, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
+	if err := sendCDP(5, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
 		return nil, err
 	}
 
-	type reqDoneSignal struct {
-		reqID string
-		isAPI bool
-	}
-	signalChan := make(chan reqDoneSignal, 10)
-	errChan := make(chan error, 1)
-
-	var targetReqID string
-	var reqIDToWatch string
+	resultChan := make(chan []TikTokTrendVideo, 1)
+	matchedReqIDs := make(map[string]bool)
+	var reqMu sync.Mutex
+	var reqCounter int
 
 	go func() {
 		for {
@@ -165,10 +174,21 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 				ID     int             `json:"id"`
 				Method string          `json:"method"`
 				Params json.RawMessage `json:"params"`
+				Result struct {
+					Body string `json:"body"`
+				} `json:"result"`
 			}
 			if err := conn.ReadJSON(&msg); err != nil {
-				errChan <- err
 				return
+			}
+			if msg.ID >= 1000 && len(msg.Result.Body) > 0 {
+				if videos := parseTikTokCrawlerJSON([]byte(msg.Result.Body)); len(videos) > 0 {
+					select {
+					case resultChan <- videos:
+					default:
+					}
+					return
+				}
 			}
 			if msg.Method == "Network.responseReceived" {
 				var p struct {
@@ -183,51 +203,34 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 						strings.Contains(u, "/api/search/item/full/") ||
 						strings.Contains(u, "/api/explore/item_list/") ||
 						strings.Contains(u, "/api/recommend/item_list/") {
-						reqIDToWatch = p.RequestID
+						reqMu.Lock()
+						matchedReqIDs[p.RequestID] = true
+						reqMu.Unlock()
 					}
 				}
-			} else if msg.Method == "Network.loadingFinished" && reqIDToWatch != "" {
+			} else if msg.Method == "Network.loadingFinished" {
 				var p struct {
 					RequestID string `json:"requestId"`
 				}
-				if json.Unmarshal(msg.Params, &p) == nil && p.RequestID == reqIDToWatch {
-					signalChan <- reqDoneSignal{reqID: reqIDToWatch, isAPI: true}
-					return
+				if json.Unmarshal(msg.Params, &p) == nil {
+					reqMu.Lock()
+					matched := matchedReqIDs[p.RequestID]
+					reqMu.Unlock()
+					if matched {
+						reqCounter++
+						_ = sendCDP(1000+reqCounter, "Network.getResponseBody", map[string]any{"requestId": p.RequestID})
+					}
 				}
 			}
 		}
 	}()
 
 	select {
-	case sig := <-signalChan:
-		targetReqID = sig.reqID
-	case <-time.After(12 * time.Second):
-		// Fallback to whichever request ID was partially received if any
-		targetReqID = reqIDToWatch
+	case videos := <-resultChan:
+		return videos, nil
+	case <-time.After(7 * time.Second):
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	}
-
-	if targetReqID != "" {
-		if err := sendCDP(100, "Network.getResponseBody", map[string]any{"requestId": targetReqID}); err == nil {
-			var resp struct {
-				ID     int `json:"id"`
-				Result struct {
-					Body string `json:"body"`
-				} `json:"result"`
-			}
-			for i := 0; i < 10; i++ {
-				_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-				if err := conn.ReadJSON(&resp); err == nil && resp.ID == 100 {
-					if len(resp.Result.Body) > 0 {
-						if videos := parseTikTokCrawlerJSON([]byte(resp.Result.Body)); len(videos) > 0 {
-							return videos, nil
-						}
-					}
-					break
-				}
-			}
-		}
 	}
 
 	// DOM Evaluation Fallback: extract video elements directly from DOM

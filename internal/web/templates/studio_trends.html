@@ -1,20 +1,493 @@
-{{define "title"}}Radar TikTok{{end}}
+{{define "title"}}Radar TikTok · Top Hot Nhất Việt Nam{{end}}
 {{define "content"}}
+<style>
+.radar-hero {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(236, 72, 153, 0.05) 50%, var(--bg2) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 20px;
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.08);
+}
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  user-select: none;
+}
+.topic-chip:hover {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+  transform: translateY(-1px);
+}
+.topic-chip.active {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+.topic-chip.active a {
+  color: #ffffff !important;
+}
+.btn-add-topic {
+  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  transition: all 0.2s;
+}
+.btn-add-topic:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35);
+  color: #fff;
+}
+/* Grid hiển thị 1 hàng: màn hình rộng hiển thị 5, màn hình vừa hiển thị top 4, không bao giờ rớt lẻ sang hàng 2 */
+.radar-grid {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+@media (min-width: 1200px) {
+  .radar-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 1199px) and (min-width: 768px) {
+  .radar-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .video-card-radar:nth-child(5) {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  .radar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+.video-card-radar {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.22s ease;
+  min-width: 0;
+}
+.video-card-radar:hover {
+  transform: translateY(-3px);
+  border-color: #6366f1;
+  box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.12);
+}
+.rank-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2.5px 8px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.rank-gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+}
+.rank-silver {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  color: #fff;
+}
+.rank-bronze {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+}
+.rank-default {
+  background: var(--bg3);
+  color: var(--muted);
+}
+.thumb-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  cursor: pointer;
+}
+.thumb-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+.thumb-container:hover img {
+  transform: scale(1.05);
+}
+.play-btn-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.thumb-container:hover .play-btn-overlay {
+  opacity: 1;
+}
+.play-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f46e5;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  padding-left: 3px;
+}
+.metric-box {
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  background: var(--bg3);
+}
+.metric-box.views {
+  background: rgba(99, 102, 241, 0.08);
+}
+.metric-box.likes {
+  background: rgba(236, 72, 153, 0.08);
+}
+.metric-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.metric-box.views .metric-val { color: #4f46e5; }
+.metric-box.likes .metric-val { color: #db2777; }
+
+/* Modal xem video trực tiếp trên màn hình */
+.radar-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+}
+.radar-modal-container {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  width: 94%;
+  max-width: 820px;
+  max-height: 90vh;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65), 0 0 50px rgba(99, 102, 241, 0.12);
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  overflow: hidden;
+  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.radar-modal-floating-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  transition: all 0.2s;
+}
+.radar-modal-floating-close:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  transform: scale(1.08);
+}
+.radar-modal-player-col {
+  width: 330px;
+  flex-shrink: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-right: 1px solid var(--border);
+}
+.radar-player-frame-wrap {
+  width: 100%;
+  height: 580px;
+  position: relative;
+  background: #000;
+}
+.radar-player-frame-wrap iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+.radar-modal-info-col {
+  flex: 1;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.radar-modal-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 36px;
+}
+.radar-modal-author-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.radar-creator-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #ec4899);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.radar-creator-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+.radar-modal-rank {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 1px;
+}
+.radar-modal-desc-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 11px 13px;
+}
+.radar-modal-desc-text {
+  font-size: 13.5px;
+  line-height: 1.45;
+  font-weight: 600;
+  color: var(--text);
+  max-height: 70px;
+  overflow-y: auto;
+}
+.radar-modal-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.radar-modal-stat-pill {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.radar-modal-stat-pill small {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.radar-modal-stat-pill strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.stat-views strong { color: #4f46e5; }
+.stat-likes strong { color: #db2777; }
+.stat-comments strong { color: #d97706; }
+.stat-shares strong { color: #059669; }
+
+.radar-modal-sound-box {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.sound-disc-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.radar-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.btn-radar-modal-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 13px;
+  text-decoration: none;
+  color: #fff !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-radar-modal-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+.btn-radar-modal-action.action-viral {
+  background: linear-gradient(135deg, #ef4444 0%, #ec4899 100%);
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35);
+}
+.btn-radar-modal-action.action-sound {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+.link-open-tt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.link-open-tt:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .radar-modal-container {
+    flex-direction: column;
+    max-width: 440px;
+    max-height: 94vh;
+    overflow-y: auto;
+  }
+  .radar-modal-player-col {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .radar-player-frame-wrap {
+    height: 460px;
+  }
+  .radar-modal-info-col {
+    padding: 18px 16px;
+  }
+  .radar-modal-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modalPopIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+</style>
+
 <main class="mx-auto max-w-7xl space-y-5">
-  <header class="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-fuchsia-50 p-5 shadow-sm sm:p-7">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div class="flex items-start gap-4">
-        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-2xl text-white shadow-lg shadow-indigo-200">♫</span>
+  <!-- Hero Section -->
+  <header class="radar-hero">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div style="width: 50px; height: 50px; border-radius: 16px; background: linear-gradient(135deg, #4f46e5 0%, #db2777 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);">
+          ♫
+        </div>
         <div>
-          <span class="badge badge-info">RADAR · TIKTOK</span>
-          <h1 id="studio-top" class="mt-2">Video đang hot</h1>
-          <p class="hint mt-1 max-w-2xl">
-            {{if .Topic}}Video thịnh hành theo chủ đề, xếp hạng theo dữ liệu tương tác thực tế từ TikTok.{{else}}Video đang thịnh hành tại Việt Nam thu thập qua Web Crawler tự động.{{end}}
-            Xác nhận video nhảy trước khi dùng âm thanh.
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="badge badge-info" style="font-weight:700;">RADAR TIKTOK</span>
+            <span class="badge badge-ok" style="font-weight:700;">🇻🇳 Chỉ quét Việt Nam</span>
+            <span class="badge badge-dim" style="font-size:11px;">⚡ Xem trực tiếp trên màn hình</span>
+          </div>
+          <h1 id="studio-top" style="margin: 4px 0 2px; font-size: 22px; font-weight: 800; color: var(--text);">
+            TikTok Radar · Video Hot Nhất
+          </h1>
+          <p class="hint" style="margin: 0; font-size: 13px;">
+            Bấm vào bất kỳ video nào để xem trực tiếp với âm thanh ngay trên màn hình. Mỗi chủ đề hiển thị gọn gàng trên 1 hàng.
           </p>
         </div>
       </div>
-      <span class="badge badge-ok">{{if .Topic}}Tìm theo chủ đề{{else}}🇻🇳 Việt Nam{{end}}</span>
+      <div class="flex items-center gap-2">
+        <form method="post" action="/studio/trends/refresh" class="inline-flex">
+          <input type="hidden" name="topic" value="{{.Topic}}">
+          <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 9999px; padding: 6px 16px; font-weight: 600;" title="Quét lại trực tiếp dữ liệu mới nhất từ TikTok">
+            ↻ Cập nhật realtime
+          </button>
+        </form>
+      </div>
     </div>
   </header>
 
@@ -25,114 +498,403 @@
     <a href="/studio/trends" class="active">Radar TikTok</a>
   </nav>
 
-  {{if .Error}}<p class="err" role="alert">{{.Error}}</p>{{end}}
-  {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+  {{if .Error}}<p class="err" role="alert" style="border-radius: 12px; padding: 12px 16px;">{{.Error}}</p>{{end}}
+  {{if .Notice}}<p class="notice" role="status" style="border-radius: 12px; padding: 12px 16px;">{{.Notice}}</p>{{end}}
 
-  <section class="card space-y-4 rounded-2xl border border-slate-200 p-4 shadow-sm sm:p-5">
-    <form action="/studio/trends" method="get"
-          hx-get="/studio/trends" hx-target="#studio-trends-results"
-          hx-swap="outerHTML" hx-push-url="true"
-          class="flex flex-wrap items-end gap-3">
-      <div class="min-w-56 flex-1">
-        <label for="radar-topic" class="mb-1 block text-sm font-semibold">Chủ đề / từ khóa</label>
-        <input id="radar-topic" type="search" name="topic" value="{{.Topic}}"
-               placeholder="Ví dụ: nhảy tiktok, dance challenge, thời trang" autocomplete="off"
-               class="w-full rounded-xl border border-slate-300 px-3 py-2">
-        <p class="hint mt-1">Tìm video theo chủ đề; tối đa 3 cụm từ cách nhau bằng dấu phẩy. Có đầy đủ số liệu view/tym thực tế.</p>
+  <!-- Container tổng được HTMX cập nhật đồng bộ cả thanh chủ đề active và video -->
+  {{template "studio-trends-content" .}}
+
+  <!-- Modal phát video trực tiếp trên màn hình -->
+  <div id="radar-player-modal" class="radar-modal-backdrop" style="display:none;" onclick="closeRadarPlayer(event)">
+    <div class="radar-modal-container" onclick="event.stopPropagation()">
+      <!-- Nút đóng nổi -->
+      <button type="button" class="radar-modal-floating-close" onclick="closeRadarPlayer()" title="Đóng (Esc)">✕</button>
+
+      <!-- Cột trái: Khung phát TikTok dọc chuẩn 9:16 -->
+      <div class="radar-modal-player-col">
+        <div class="radar-player-frame-wrap">
+          <iframe id="radar-player-iframe" src="" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary">⌕ Tìm top 10</button>
-      {{if .Topic}}<a href="/studio/trends" class="btn btn-secondary">Xóa lọc</a>{{end}}
-    </form>
-    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3">
-      <p class="hint">Nguồn: <strong>{{.TrendSource}}</strong> · Web Crawler tự động; sound lấy từ video Radar.</p>
-      <form method="post" action="/studio/trends/refresh" class="inline-flex">
-        <input type="hidden" name="topic" value="{{.Topic}}">
-        <button type="submit" class="btn btn-secondary">↻ Tìm mới</button>
+
+      <!-- Cột phải: Thông tin & Hành động tức thì -->
+      <div class="radar-modal-info-col">
+        <!-- Tác giả & Xếp hạng -->
+        <div class="radar-modal-author-row">
+          <div class="radar-modal-author-left">
+            <div id="radar-player-avatar" class="radar-creator-avatar">T</div>
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span id="radar-player-author" class="radar-creator-name">@creator</span>
+                <span class="badge badge-ok" style="font-size:9.5px;padding:1px 5px">✓ Xác minh</span>
+              </div>
+              <div id="radar-player-rank-badge" class="radar-modal-rank">👑 TOP 01 TRENDING</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tiêu đề / Caption video -->
+        <div class="radar-modal-desc-box">
+          <div id="radar-player-title" class="radar-modal-desc-text">Xem video TikTok</div>
+        </div>
+
+        <!-- Lưới chỉ số trực quan: Views, Tym, Comments, Shares -->
+        <div class="radar-modal-metrics-grid">
+          <div class="radar-modal-stat-pill stat-views">
+            <span style="font-size:16px">👁️</span>
+            <div>
+              <small>LƯỢT XEM</small>
+              <strong id="radar-player-views">—</strong>
+            </div>
+          </div>
+          <div class="radar-modal-stat-pill stat-likes">
+            <span style="font-size:16px">❤️</span>
+            <div>
+              <small>LƯỢT THÍCH</small>
+              <strong id="radar-player-likes">—</strong>
+            </div>
+          </div>
+          <div class="radar-modal-stat-pill stat-comments">
+            <span style="font-size:16px">💬</span>
+            <div>
+              <small>BÌNH LUẬN</small>
+              <strong id="radar-player-comments">—</strong>
+            </div>
+          </div>
+          <div class="radar-modal-stat-pill stat-shares">
+            <span style="font-size:16px">↗️</span>
+            <div>
+              <small>CHIA SẺ</small>
+              <strong id="radar-player-shares">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hộp thông tin Sound / Nhạc nền -->
+        <div class="radar-modal-sound-box">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="sound-disc-icon">♫</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:10px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:0.5px">Sound gốc thịnh hành</div>
+              <div id="radar-player-sound" style="font-size:12.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sound TikTok</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Các nút hành động chính nối luồng AI -->
+        <div class="radar-modal-actions">
+          <a id="radar-player-viral-btn" href="#" class="btn-radar-modal-action action-viral" title="Chuyển sang luồng thay nhân vật AI theo mẫu này">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:22px">🎬</span>
+              <div>
+                <div style="font-size:14px;font-weight:800">Làm video mẫu (AI Thay nhân vật)</div>
+                <div style="font-size:11px;opacity:0.9;font-weight:500">Giữ nguyên chuyển động & nhạc, tự động ghép mặt kênh</div>
+              </div>
+            </div>
+            <span style="font-size:16px;font-weight:800">→</span>
+          </a>
+
+          <a id="radar-player-sound-btn" href="#" class="btn-radar-modal-action action-sound" title="Dùng bài nhạc này cho kịch bản video bán hàng Affiliate">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:20px">♫</span>
+              <div>
+                <div style="font-size:13.5px;font-weight:800">Dùng nhạc này cho Video Affiliate</div>
+                <div style="font-size:11px;opacity:0.9;font-weight:500">Tự động trích xuất & ghép sound trend vào affiliate</div>
+              </div>
+            </div>
+            <span style="font-size:16px;font-weight:800">→</span>
+          </a>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+            <span class="hint" style="font-size:11px">⚡ Quy trình hoàn toàn tự động hoá</span>
+            <a id="radar-player-tt-btn" href="#" target="_blank" rel="noopener noreferrer" class="link-open-tt">
+              Mở trên TikTok ↗
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function selectTopicChip(linkEl) {
+  var chips = document.querySelectorAll('.topic-chip');
+  chips.forEach(function(c) { c.classList.remove('active'); });
+  var parentChip = linkEl.closest('.topic-chip');
+  if (parentChip) parentChip.classList.add('active');
+}
+
+function openRadarPlayerFromCard(el) {
+  var card = el.closest('.video-card-radar');
+  if (!card) return;
+  var d = card.dataset;
+  openRadarPlayer(d.videoId, d.title, d.music, d.videoUrl, d.author, d.views, d.likes, d.comments, d.shares, d.rank);
+}
+
+function openRadarPlayer(videoId, title, music, videoUrl, author, views, likes, comments, shares, rank) {
+  var modal = document.getElementById('radar-player-modal');
+  var iframe = document.getElementById('radar-player-iframe');
+  var titleEl = document.getElementById('radar-player-title');
+  var soundEl = document.getElementById('radar-player-sound');
+  var authorEl = document.getElementById('radar-player-author');
+  var avatarEl = document.getElementById('radar-player-avatar');
+  var rankEl = document.getElementById('radar-player-rank-badge');
+  var viewsEl = document.getElementById('radar-player-views');
+  var likesEl = document.getElementById('radar-player-likes');
+  var commentsEl = document.getElementById('radar-player-comments');
+  var sharesEl = document.getElementById('radar-player-shares');
+  var soundBtn = document.getElementById('radar-player-sound-btn');
+  var viralBtn = document.getElementById('radar-player-viral-btn');
+  var ttBtn = document.getElementById('radar-player-tt-btn');
+
+  if (!modal || !iframe) return;
+
+  var safeTitle = title || 'Xem video TikTok';
+  var safeMusic = music || 'Sound gốc video TikTok';
+  var safeAuthor = author || 'Creator TikTok';
+  var initial = safeAuthor.replace(/^@/, '').trim().charAt(0).toUpperCase() || 'T';
+
+  titleEl.innerText = safeTitle;
+  if (soundEl) soundEl.innerText = safeMusic;
+  if (authorEl) authorEl.innerText = safeAuthor.startsWith('@') ? safeAuthor : ('@' + safeAuthor);
+  if (avatarEl) avatarEl.innerText = initial;
+
+  var rankNum = parseInt(rank, 10);
+  if (rankEl) {
+    if (rankNum === 1) rankEl.innerText = '👑 TOP 01 TRENDING';
+    else if (rankNum === 2) rankEl.innerText = '🥈 TOP 02 TRENDING';
+    else if (rankNum === 3) rankEl.innerText = '🥉 TOP 03 TRENDING';
+    else if (rankNum > 0) rankEl.innerText = 'TOP ' + (rankNum < 10 ? '0' + rankNum : rankNum) + ' TRENDING';
+    else rankEl.innerText = 'HOT TRENDING VN';
+  }
+
+  if (viewsEl) viewsEl.innerText = views || '—';
+  if (likesEl) likesEl.innerText = likes || '—';
+  if (commentsEl) commentsEl.innerText = comments || '—';
+  if (sharesEl) sharesEl.innerText = shares || '—';
+
+  iframe.src = 'https://www.tiktok.com/player/v1/' + videoId + '?controls=1&autoplay=1&description=1&music_info=1';
+
+  soundBtn.href = '/studio?source_music_title=' + encodeURIComponent(safeMusic) + '&source_music_video_url=' + encodeURIComponent(videoUrl);
+  viralBtn.href = '/viral?source_video_url=' + encodeURIComponent(videoUrl) + '&source_music_title=' + encodeURIComponent(safeMusic) + '&topic=' + encodeURIComponent(safeTitle);
+  ttBtn.href = videoUrl;
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRadarPlayer(e) {
+  if (e && e.target && e.target.classList.contains('radar-modal-container')) return;
+  var modal = document.getElementById('radar-player-modal');
+  var iframe = document.getElementById('radar-player-iframe');
+  if (iframe) iframe.src = '';
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeRadarPlayer();
+});
+</script>
+{{end}}
+
+{{define "studio-trends-content"}}
+<div id="studio-trends-content" class="space-y-4">
+  <!-- Section Chủ đề theo dõi & Thêm chủ đề -->
+  <section class="card" style="border-radius: 16px; padding: 18px;">
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;">
+      <div>
+        <div style="font-size: 13.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);">
+          Chủ đề theo dõi
+        </div>
+        <div class="hint" style="font-size: 12px; margin-top: 1px;">
+          Bấm để chọn chủ đề (tự động đổi active tức thì). Hiển thị gọn 1 hàng 4-5 video hot nhất.
+        </div>
+      </div>
+      <button type="button" class="btn-add-topic" onclick="var f = document.getElementById('add-topic-form'); f.style.display = (f.style.display === 'none' || f.style.display === '') ? 'block' : 'none'; if(f.style.display === 'block') document.getElementById('new-topic-input').focus();">
+        ➕ Thêm chủ đề
+      </button>
+    </div>
+
+    <!-- Khung mở rộng Thêm chủ đề -->
+    <div id="add-topic-form" style="display: none; background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px;">
+      <form action="/studio/trends/topics" method="post" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <input id="new-topic-input" type="text" name="new_topic" placeholder="Nhập chủ đề muốn quét (Ví dụ: Công nghệ, Gia dụng tiện ích, Nhảy tiktok, Du lịch...)" required
+               style="flex: 1; min-width: 260px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-size: 13.5px;">
+        <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 16px; font-weight: 600; border-radius: 8px;">
+          ➕ Thêm & Quét ngay
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('add-topic-form').style.display='none';" style="padding: 8px 12px; border-radius: 8px;">
+          Đóng
+        </button>
       </form>
+      <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);">
+        <span style="font-weight: 600;">Gợi ý hot:</span>
+        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Nhảy dance challenge'; document.getElementById('new-topic-input').form.submit();">💃 Nhảy dance</button>
+        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Thời trang outfit'; document.getElementById('new-topic-input').form.submit();">👗 Thời trang</button>
+        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Đồ công nghệ'; document.getElementById('new-topic-input').form.submit();">📱 Công nghệ</button>
+        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Món ngon review'; document.getElementById('new-topic-input').form.submit();">🍜 Ăn uống</button>
+        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Đồ gia dụng thông minh'; document.getElementById('new-topic-input').form.submit();">🏠 Gia dụng</button>
+      </div>
+    </div>
+
+    <!-- Hàng các chủ đề dạng pill chips -->
+    <div id="topic-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+      {{$curr := .Topic}}
+      {{range .Topics}}
+      <div class="topic-chip {{if eq . $curr}}active{{end}}">
+        <a href="/studio/trends?topic={{urlquery .}}"
+           hx-get="/studio/trends?topic={{urlquery .}}"
+           hx-target="#studio-trends-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           onclick="selectTopicChip(this)"
+           style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+          {{if eq . "Xu hướng Việt Nam"}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}{{.}}
+        </a>
+        <form method="post" action="/studio/trends/topics/delete" onsubmit="return confirm('Xóa chủ đề này khỏi danh sách theo dõi?');" style="display: inline; margin: 0; padding: 0;">
+          <input type="hidden" name="topic" value="{{.}}">
+          <button type="submit" style="background: none; border: none; padding: 0 2px; margin-left: 2px; cursor: pointer; color: inherit; opacity: 0.6; font-size: 11px;" title="Xóa chủ đề này">✕</button>
+        </form>
+      </div>
+      {{end}}
     </div>
   </section>
 
   {{template "studio-trends-results" .}}
-</main>
+</div>
 {{end}}
 
 {{define "studio-trends-results"}}
-<section id="studio-trends-results" class="space-y-4" aria-live="polite">
-  {{if .TrendErr}}<p class="err" role="alert">Không tải được video TikTok: {{.TrendErr}}</p>{{end}}
-  <div class="flex flex-wrap items-center justify-between gap-2">
-    <div>
-      <h2 class="m-0 text-lg font-bold">{{if .Topic}}Top 10 · “{{.Topic}}”{{else}}Top video TikTok Việt Nam{{end}}</h2>
-      {{if .RankNote}}<p class="hint mt-1">{{.RankNote}}</p>{{end}}
-    </div>
-    {{if .Videos}}<span class="badge badge-info">{{len .Videos}} / 10 video</span>{{end}}
+<section id="studio-trends-results" style="display: flex; flex-direction: column; gap: 14px;" aria-live="polite">
+  {{if .TrendErr}}
+  <div style="background: var(--err-bg); border: 1px solid var(--err); border-radius: 12px; padding: 12px 16px; color: var(--err-text); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+    <div><strong>Không lấy được dữ liệu:</strong> {{.TrendErr}}</div>
+    <form method="post" action="/studio/trends/refresh" style="margin: 0;">
+      <input type="hidden" name="topic" value="{{.Topic}}">
+      <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px;">↻ Thử lại</button>
+    </form>
   </div>
-  {{if .Videos}}
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-    {{range .Videos}}
-    <article class="card flex flex-col gap-3 overflow-hidden rounded-2xl border border-slate-200 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div class="flex items-center justify-between">
-        <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold tracking-wide text-indigo-700">TOP {{printf "%02d" .Rank}}</span>
-        {{if .DanceVerified}}<span class="badge badge-ok">Đã xác nhận nhảy</span>{{else}}<span class="badge badge-info">Chưa xác nhận nhảy</span>{{end}}
-      </div>
-      {{if .CoverURL}}<a href="{{.VideoURL}}" target="_blank" rel="noopener noreferrer">
-        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy"
-             class="aspect-[3/4] w-full rounded-xl bg-slate-100 object-cover">
-      </a>{{end}}
-      {{if and (not .CoverURL) .EmbedPlayerURL}}
-      <details class="space-y-2">
-        <summary class="btn btn-secondary btn-sm w-fit cursor-pointer">Xem trước video TikTok</summary>
-        <iframe src="{{.EmbedPlayerURL}}" title="Video TikTok: {{.Title}}" loading="lazy"
-                allow="encrypted-media; fullscreen; picture-in-picture" allowfullscreen
-                class="aspect-[9/16] w-full rounded-xl bg-slate-100"></iframe>
-      </details>
-      {{end}}
-      {{if or .PlayCountKnown .DiggCountKnown}}
-      <div class="grid grid-cols-2 gap-2">
-        <div class="rounded-xl bg-indigo-50 px-3 py-2">
-          <span class="block text-[11px] font-semibold uppercase tracking-wider text-indigo-500">Lượt xem</span>
-          <strong class="text-lg text-indigo-950">{{if .PlayCountKnown}}{{.Views}}{{else}}—{{end}}</strong>
-        </div>
-        <div class="rounded-xl bg-fuchsia-50 px-3 py-2">
-          <span class="block text-[11px] font-semibold uppercase tracking-wider text-fuchsia-500">Lượt tym</span>
-          <strong class="text-lg text-fuchsia-950">{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</strong>
-        </div>
-      </div>
-      {{end}}
-      <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
-        {{if .CommentKnown}}<span>{{.Comments}} bình luận</span>{{end}}
-        {{if .ShareCountKnown}}<span>{{.Shares}} chia sẻ</span>{{end}}
-        {{if .Region}}<span>Khu vực: {{.Region}}</span>{{end}}
-      </div>
-      <strong class="break-words text-sm leading-5 text-slate-900">{{.Title}}</strong>
-      <span class="hint">{{if .UniqueID}}@{{.UniqueID}}{{else}}Tài khoản creator chưa có trong dữ liệu nguồn{{end}}</span>
-      <div><small class="hint">Âm thanh</small><strong class="block">{{if .Music}}{{.Music}}{{else}}Sound gốc video TikTok{{end}}</strong></div>
-      <div class="mt-auto flex flex-wrap gap-2 pt-2">
-        <a href="{{.VideoURL}}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Mở TikTok ↗</a>
-        {{if .DanceVerified}}
-        <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-primary btn-sm">Dùng âm thanh</a>
-        {{else}}<span class="hint self-center">Xác nhận video nhảy để dùng âm thanh</span>{{end}}
-        {{if .DanceVerified}}
-        <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm">Làm video mẫu</a>
-        {{else}}<span class="hint self-center">Xác nhận video nhảy trước khi dùng làm mẫu</span>{{end}}
-      </div>
-      <form method="post" action="/studio/trends/{{.VideoID}}/dance" class="border-t border-slate-200 pt-2">
-        <input type="hidden" name="topic" value="{{$.Topic}}">
-        {{if .DanceVerified}}<input type="hidden" name="verified" value="0"><button type="submit" class="btn btn-secondary btn-sm">Bỏ xác nhận video nhảy</button>
-        {{else}}
-        <p class="hint mb-2">Chỉ xác nhận nếu đã xem và clip thực sự có người nhảy/vũ đạo. Caption hoặc tên sound không đủ.</p>
-        <label class="mb-2 flex items-start gap-2 text-sm">
-          <input type="checkbox" name="confirm_dance_content" value="1" required class="mt-1">
-          <span>Tôi đã xem video TikTok này và xác nhận nội dung chính là video nhảy.</span>
-        </label>
-        <input type="hidden" name="verified" value="1"><button type="submit" class="btn btn-secondary btn-sm">Xác nhận video nhảy</button>{{end}}
+  {{end}}
+
+  <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+    <div>
+      <h2 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text);">
+        Video hot nhất · “{{.Topic}}”
+      </h2>
+      <p class="hint" style="margin: 2px 0 0; font-size: 12px;">
+        {{if .RankNote}}{{.RankNote}}{{else}}Top video thịnh hành nhất tại Việt Nam (xếp theo lượt xem cao nhất).{{end}}
+      </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="badge badge-info" style="font-weight: 700; font-size: 11.5px; padding: 3px 8px; border-radius: 9999px;">
+        1 Hàng · {{len .Videos}} video
+      </span>
+      <form method="post" action="/studio/trends/refresh" style="margin: 0;">
+        <input type="hidden" name="topic" value="{{.Topic}}">
+        <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 600; font-size: 11.5px; padding: 4px 10px;">↻ Quét lại</button>
       </form>
+    </div>
+  </div>
+
+  {{if .Videos}}
+  <div class="radar-grid">
+    {{range .Videos}}
+    <article class="video-card-radar"
+      data-video-id="{{.VideoID}}"
+      data-title="{{.Title}}"
+      data-music="{{.Music}}"
+      data-video-url="{{.VideoURL}}"
+      data-author="{{if .UniqueID}}@{{.UniqueID}}{{else if .Author}}{{.Author}}{{else}}Creator TikTok{{end}}"
+      data-views="{{if .PlayCountKnown}}{{.Views}}{{else}}—{{end}}"
+      data-likes="{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}"
+      data-comments="{{if or .CommentCountKnown .CommentKnown}}{{.Comments}}{{else}}—{{end}}"
+      data-shares="{{if .ShareCountKnown}}{{.Shares}}{{else}}—{{end}}"
+      data-rank="{{.Rank}}">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        {{if eq .Rank 1}}<span class="rank-badge rank-gold">👑 TOP 01</span>
+        {{else if eq .Rank 2}}<span class="rank-badge rank-silver">🥈 TOP 02</span>
+        {{else if eq .Rank 3}}<span class="rank-badge rank-bronze">🥉 TOP 03</span>
+        {{else}}<span class="rank-badge rank-default">TOP {{printf "%02d" .Rank}}</span>{{end}}
+
+        <span class="badge badge-ok" style="font-size: 10px; padding: 2px 6px;">✓ Đã xác minh</span>
+      </div>
+
+      <!-- Thumbnail có nút bấm Xem trực tiếp trên màn hình -->
+      <div class="thumb-container" onclick="openRadarPlayerFromCard(this)" title="Bấm để xem video ngay trên màn hình">
+        {{if .CoverURL}}
+        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy">
+        {{else}}
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;">▶</div>
+        {{end}}
+        <div class="play-btn-overlay">
+          <div class="play-circle">▶</div>
+          <span style="color:#fff;font-size:11px;font-weight:700;margin-top:6px;text-shadow:0 1px 3px rgba(0,0,0,0.8);">Xem video</span>
+        </div>
+        <div style="position: absolute; bottom: 6px; left: 6px; right: 6px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 10.5px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.9); pointer-events:none;">
+          <span>🇻🇳 VN</span>
+          <span>▶ Xem</span>
+        </div>
+      </div>
+
+      <!-- Hộp số liệu views và tym -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+        <div class="metric-box views">
+          <div style="font-size: 9.5px; font-weight: 700; color: #6366f1; text-transform: uppercase;">XEM</div>
+          <div class="metric-val">{{if .PlayCountKnown}}{{.Views}}{{else}}—{{end}}</div>
+        </div>
+        <div class="metric-box likes">
+          <div style="font-size: 9.5px; font-weight: 700; color: #ec4899; text-transform: uppercase;">TYM</div>
+          <div class="metric-val">{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</div>
+        </div>
+      </div>
+
+      <!-- Tiêu đề & Author -->
+      <div>
+        <strong style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; line-height: 1.35; color: var(--text);" title="{{.Title}}">
+          {{.Title}}
+        </strong>
+        <div class="hint" style="font-size: 10.5px; margin-top: 1px;">
+          {{if .UniqueID}}@{{.UniqueID}}{{else if .Author}}{{.Author}}{{else}}Creator TikTok{{end}}
+        </div>
+      </div>
+
+      <!-- Âm thanh -->
+      <div style="font-size: 10.5px; background: var(--bg3); padding: 5px 7px; border-radius: 6px;">
+        <small class="hint" style="display: block; font-size: 9.5px; font-weight: 600;">♫ SOUND GỐC</small>
+        <span style="font-weight: 600; color: var(--text); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{.Music}}">
+          {{if .Music}}{{.Music}}{{else}}Sound gốc video TikTok{{end}}
+        </span>
+      </div>
+
+      <!-- Nút hành động trực tiếp -->
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px; padding-top: 6px; border-top: 1px solid var(--border);">
+        <button type="button" class="btn btn-primary btn-sm" onclick="openRadarPlayerFromCard(this)" style="width: 100%; font-size: 11px; padding: 6px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700;">
+          ▶ Xem video
+        </button>
+        <div style="display: flex; gap: 5px;">
+          <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Ghép sound này vào video Affiliate">
+            ♫ Dùng nhạc
+          </a>
+          <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Làm video viral theo video này">
+            🎬 Làm mẫu
+          </a>
+        </div>
+      </div>
     </article>
     {{end}}
   </div>
   {{else if and .Topic (not .TrendErr)}}
-  <div class="empty-state"><h3>Không có video cho chủ đề này</h3><p>Thử từ khóa khác hoặc tìm lại sau.</p></div>
+  <div class="empty-state" style="padding: 30px; text-align: center;">
+    <h3>Chưa có video cho chủ đề này</h3>
+    <p>Bấm nút "Quét lại" bên trên để tải video từ TikTok Việt Nam.</p>
+  </div>
   {{else if not .TrendErr}}
-  <div class="empty-state"><h3>Feed chưa có video</h3><p>Thử thu thập lại sau.</p></div>
+  <div class="empty-state" style="padding: 30px; text-align: center;">
+    <h3>Feed chưa có video</h3>
+    <p>Đang tải dữ liệu từ TikTok Việt Nam...</p>
+  </div>
   {{end}}
 </section>
 {{end}}

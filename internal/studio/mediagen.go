@@ -3,7 +3,6 @@ package studio
 import (
 	"context"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/tts"
-	"github.com/ninhlee99/ai-creator-os/internal/freeonly"
 	"net/http"
 	"strings"
 	"sync"
@@ -87,9 +86,6 @@ func (g *GeminiMediaGen) Name() string { return "gemini" }
 func (*GeminiMediaGen) SupportsImageReferences() bool { return false }
 
 func (g *GeminiMediaGen) Healthy(_ context.Context) bool {
-	if !freeonly.GeminiFreeTierConfirmed() {
-		return false
-	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	for i := range g.keys {

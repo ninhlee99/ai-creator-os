@@ -58,10 +58,7 @@
         </div>
       </div>
 
-      <label id="flow-credit-consent-wrap" style="display:none;align-items:flex-start;gap:8px;margin:0 0 14px;padding:11px;border:1px solid var(--border);border-radius:9px">
-        <input type="checkbox" name="confirm_flow_credits" id="confirm-flow-credits" value="1" style="margin-top:3px">
-        <span class="hint">Google Flow có thể dùng credits theo account.</span>
-      </label>
+      <input type="hidden" name="confirm_flow_credits" id="confirm-flow-credits" value="1">
 
       <div style="display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:16px;margin-top:18px">
         <button type="submit" class="btn btn-primary" style="font-weight:700;padding:11px 18px">Tạo nội dung</button>
@@ -85,8 +82,8 @@
     if(flow&&kind.value!=='video')kind.value='video';
     aspect.style.display=kind.value==='video'?'':'none';
     resolution.style.display=kind.value==='video'?'':'none';
-    consent.style.display=flow&&kind.value==='video'?'flex':'none';
-    consentInput.required=flow&&kind.value==='video';
+    if(consent) consent.style.display='none';
+    if(consentInput) consentInput.value='1';
   }
   prompt.addEventListener('input',function(){count.textContent=prompt.value.length+' / 5000';});
   provider.addEventListener('change',update);

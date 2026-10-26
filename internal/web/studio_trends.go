@@ -2,11 +2,12 @@ package web
 
 import (
 	"fmt"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
 func errText(err error) string {
@@ -18,17 +19,33 @@ func errText(err error) string {
 
 // handleStudioTrends shows viral TikTok videos and each video's sound metadata.
 func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
+	var topics []string
+	if s.Studio != nil {
+		var err error
+		topics, err = s.Studio.ListTikTokRadarTopics(r.Context())
+		if err != nil || len(topics) == 0 {
+			topics = studio.DefaultTikTokTopics
+		}
+	} else {
+		topics = studio.DefaultTikTokTopics
+	}
+
 	topic := strings.TrimSpace(r.URL.Query().Get("topic"))
+	if topic == "" && len(topics) > 0 {
+		topic = topics[0]
+	}
+
 	source := studio.TikTokRadarSourceLabelForTopic(topic != "")
 	var videos []studio.TikTokTrendVideo
 	var err error
 	if s.Studio == nil {
 		err = fmt.Errorf("Studio chưa sẵn sàng để lưu video Radar TikTok")
 	} else if topic != "" {
-		videos, err = s.Studio.SearchTikTokRadarVideos(r.Context(), topic)
+		videos, err = s.Studio.GetTikTokRadarVideosForTopic(r.Context(), topic)
 	} else {
 		videos, err = s.Studio.CollectTikTokRadarVideos(r.Context())
 	}
+
 	if len(videos) > 0 && strings.TrimSpace(videos[0].Provider) != "" {
 		source = videos[0].Provider
 	}
@@ -36,6 +53,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		s.writeJSON(w, map[string]any{
 			"source":    source,
 			"topic":     topic,
+			"topics":    topics,
 			"videos":    videos,
 			"rank_note": tikTokRadarRankNote(videos),
 			"error":     errText(err),
@@ -46,6 +64,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"Title", "Radar TikTok", "Path", "/studio/trends",
 		"Videos", videos,
 		"Topic", topic,
+		"Topics", topics,
 		"SourceConfigured", studio.TikTokRadarSourceConfigured(),
 		"Error", r.URL.Query().Get("err"),
 		"Notice", r.URL.Query().Get("ok"),
@@ -70,14 +89,9 @@ func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
 		}
 	}
 	if knownMetrics == 0 {
-		return "Nguồn này không cung cấp bộ đếm view/tym; thứ tự theo xếp hạng của nguồn."
+		return "5 video xếp theo thứ tự tìm kiếm từ TikTok Việt Nam."
 	}
-	for _, video := range videos {
-		if !video.PlayCountKnown || !video.DiggCountKnown {
-			return "Nguồn thiếu view/tym ở một số video; video có số liệu xếp trước, phần còn lại giữ thứ tự nguồn."
-		}
-	}
-	return "Xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa."
+	return "5 video hot nhất tại Việt Nam (xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa)."
 }
 
 func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Request) {
@@ -113,22 +127,59 @@ func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Req
 	redirect("ok", "Đã bỏ xác nhận video nhảy.")
 }
 
-// handleStudioTrendsRefresh refreshes the TikTok video feed cache.
+// handleStudioTrendsRefresh refreshes the TikTok video feed cache for the given topic.
 func (s *Server) handleStudioTrendsRefresh(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.FormValue("topic"))
 	studio.InvalidateTikTokRadarCache()
-	redirect := "/studio/trends"
-	if topic != "" {
-		redirect += "?" + url.Values{"topic": []string{topic}}.Encode()
+	if s.Studio != nil && topic != "" {
+		_, _ = s.Studio.CollectTikTokRadarVideosForTopic(r.Context(), topic)
 	}
-	http.Redirect(w, r, redirect, http.StatusSeeOther)
+	redirect := "/studio/trends"
+	values := url.Values{}
+	if topic != "" {
+		values.Set("topic", topic)
+	}
+	values.Set("ok", "Đã cập nhật realtime 5 video hot nhất cho chủ đề này.")
+	http.Redirect(w, r, redirect+"?"+values.Encode(), http.StatusSeeOther)
+}
+
+// handleStudioTrendsAddTopic adds a new topic and collects top 5 hot videos.
+func (s *Server) handleStudioTrendsAddTopic(w http.ResponseWriter, r *http.Request) {
+	newTopic := strings.TrimSpace(r.FormValue("new_topic"))
+	if newTopic == "" {
+		http.Redirect(w, r, "/studio/trends?err="+url.QueryEscape("Vui lòng nhập tên chủ đề cần tìm kiếm."), http.StatusSeeOther)
+		return
+	}
+	if s.Studio == nil {
+		http.Redirect(w, r, "/studio/trends?err="+url.QueryEscape("Studio chưa sẵn sàng."), http.StatusSeeOther)
+		return
+	}
+
+	if err := s.Studio.AddTikTokRadarTopic(r.Context(), newTopic); err != nil {
+		http.Redirect(w, r, "/studio/trends?err="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&ok="+url.QueryEscape("Đã thêm chủ đề '"+newTopic+"' và lấy 5 video hot nhất."), http.StatusSeeOther)
+}
+
+// handleStudioTrendsDeleteTopic removes a topic from the list.
+func (s *Server) handleStudioTrendsDeleteTopic(w http.ResponseWriter, r *http.Request) {
+	topic := strings.TrimSpace(r.FormValue("topic"))
+	if s.Studio != nil && topic != "" {
+		_ = s.Studio.DeleteTikTokRadarTopic(r.Context(), topic)
+	}
+	http.Redirect(w, r, "/studio/trends?ok="+url.QueryEscape("Đã xóa chủ đề."), http.StatusSeeOther)
 }
 
 func (s *Server) renderStudioTrendResults(w http.ResponseWriter, data map[string]any) {
 	t := s.templates["studio_trends"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := t.ExecuteTemplate(w, "studio-trends-results", data); err != nil {
-		log.Printf("web: render TikTok Radar results: %v", err)
-		http.Error(w, "Không hiển thị được kết quả Radar TikTok", http.StatusInternalServerError)
+	// Ưu tiên render studio-trends-content để cập nhật đồng bộ cả thanh chủ đề active và danh sách video
+	if err := t.ExecuteTemplate(w, "studio-trends-content", data); err != nil {
+		if fbErr := t.ExecuteTemplate(w, "studio-trends-results", data); fbErr != nil {
+			log.Printf("web: render TikTok Radar content: %v", err)
+			http.Error(w, "Không hiển thị được kết quả Radar TikTok", http.StatusInternalServerError)
+		}
 	}
 }

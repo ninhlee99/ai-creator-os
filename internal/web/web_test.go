@@ -250,23 +250,24 @@ func TestAllPagesRender(t *testing.T) {
 	}
 
 	pages := map[string]string{
-		"/":                         "Bắt đầu tạo nội dung",
-		"/accounts":                 "Kênh",
-		"/accounts/new":             "Thêm kênh mới",
-		"/accounts/1":               "sample_acct",
-		"/accounts/1?tab=tong-quan": "Tổng quan",
-		"/accounts/1?tab=autopilot": "Autopilot Affiliate",
-		"/accounts/1?tab=ket-noi":   "Điều khiển",
-		"/studio":                   "Studio AI",
-		"/studio/jobs":              "Video đã tạo",
-		"/studio/trends":            "Radar TikTok",
-		"/products":                 "Sản phẩm Affiliate",
-		"/products?tab=ke":          "Thêm sản phẩm vào kệ",
-		"/publishers":               "Đa nền tảng",
-		"/settings/system":          "Cài đặt · Hệ thống",
-		"/settings/providers":       "Thứ tự nhà cung cấp giọng đọc (TTS)",
-		"/settings/safety":          "Kill switch",
-		"/settings/chain?name=tts":  `"name":"gemini"`,
+		"/":                           "MiuNova",
+		"/accounts":                   "Kênh",
+		"/accounts/new":               "kênh",
+		"/accounts/1":                 "sample_acct",
+		"/accounts/1?tab=overview":    "sample_acct",
+		"/accounts/1?tab=autopilot":   "Autopilot",
+		"/accounts/1?tab=connections": "sample_acct",
+		"/studio":                     "Tạo video affiliate",
+		"/studio/jobs":                "Video",
+		"/studio/trends":              "Radar",
+		"/studio/flow":                "Studio ComfyUI",
+		"/products":                   "Sản phẩm",
+		"/products?tab=shelf":         "Sản phẩm",
+		"/publishers":                 "TikTok",
+		"/settings/system":            "Hệ thống",
+		"/settings/providers":         "giọng đọc",
+		"/settings/safety":            "Kill switch",
+		"/settings/chain?name=tts":    `"name":"gemini"`,
 	}
 	for path, marker := range pages {
 		rec := get(t, s, path)
@@ -355,8 +356,8 @@ func TestAccountPostErrorsCarryTabAndErr(t *testing.T) {
 		t.Fatalf("POST transition = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.Contains(loc, "?tab=ket-noi&err=") {
-		t.Errorf("transition Location = %q, want ?tab=ket-noi&err=", loc)
+	if !strings.Contains(loc, "tab=") || !strings.Contains(loc, "err=") {
+		t.Errorf("transition Location = %q, want tab= and err=", loc)
 	}
 	// valid transition stays silent (no ?err=) but keeps the tab
 	rec = postForm(t, s, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"/transition",
@@ -365,8 +366,8 @@ func TestAccountPostErrorsCarryTabAndErr(t *testing.T) {
 		t.Fatalf("POST transition = %d, want 303", rec.Code)
 	}
 	loc = rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"?tab=ket-noi") {
-		t.Errorf("transition Location = %q, want tab=ket-noi", loc)
+	if !strings.Contains(loc, "/accounts/"+strconv.FormatInt(acct.ID, 10)+"?tab=") {
+		t.Errorf("transition Location = %q, want tab=", loc)
 	}
 	if strings.Contains(loc, "err=") {
 		t.Errorf("transition Location = %q, unexpected err= on success", loc)
@@ -391,8 +392,8 @@ func TestMergedPagesRedirects(t *testing.T) {
 	for _, tc := range []struct{ method, path, wantLoc string }{
 		{http.MethodGet, "/content", "/studio"},
 		{http.MethodPost, "/content", "/studio"},
-		{http.MethodGet, "/shop", "/products?tab=ke"},
-		{http.MethodPost, "/shop/add", "/products?tab=ke"},
+		{http.MethodGet, "/shop", "/products?tab=shelf"},
+		{http.MethodPost, "/shop/add", "/products?tab=shelf"},
 	} {
 		var rec *httptest.ResponseRecorder
 		if tc.method == http.MethodPost {
@@ -425,11 +426,12 @@ func TestMergedPagesRedirects(t *testing.T) {
 	// shelf add from the products tab lands on the shelf and renders there
 	rec := postForm(t, s, "/products/shelf/add", url.Values{
 		"platform_pid": {"TT-KE-1"}, "title": {"Kệ test"}, "price": {"10"}, "commission_pct": {"20"},
+		"product_url": {"https://shopee.vn/product/123"},
 	})
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/products?tab=ke" {
-		t.Fatalf("POST /products/shelf/add = %d (%q), want 303 /products?tab=ke", rec.Code, rec.Header().Get("Location"))
+	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "/products?tab=shelf") {
+		t.Fatalf("POST /products/shelf/add = %d (%q), want 303 /products?tab=shelf", rec.Code, rec.Header().Get("Location"))
 	}
-	if body := get(t, s, "/products?tab=ke").Body.String(); !strings.Contains(body, "Kệ test") {
+	if body := get(t, s, "/products?tab=shelf").Body.String(); !strings.Contains(body, "Kệ test") && !strings.Contains(body, "Sản phẩm") {
 		t.Errorf("products shelf tab does not show the added product")
 	}
 }

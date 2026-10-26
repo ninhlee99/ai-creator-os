@@ -13,6 +13,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /static/htmx.min.js", s.handleStaticHTMX)
 	mux.HandleFunc("GET /static/app.js", s.handleStaticJS)
 	mux.HandleFunc("GET /static/webai-login.js", s.handleStaticWebAILoginJS)
+	mux.HandleFunc("GET /static/flow-canvas.js", s.handleStaticFlowCanvasJS)
 	mux.HandleFunc("GET /static/preview.mp3", s.handleStaticPreviewAudio)
 	mux.HandleFunc("GET /static/presets/{file}", s.handleStaticPresetImage)
 
@@ -73,6 +74,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /studio/assets/{job}/{file}", s.handleStudioAsset)
 	mux.HandleFunc("GET /studio/trends", s.handleStudioTrends)
 	mux.HandleFunc("POST /studio/trends/refresh", s.handleStudioTrendsRefresh)
+	mux.HandleFunc("POST /studio/trends/topics", s.handleStudioTrendsAddTopic)
+	mux.HandleFunc("POST /studio/trends/topics/delete", s.handleStudioTrendsDeleteTopic)
 	mux.HandleFunc("POST /studio/trends/{videoID}/dance", s.handleStudioTrendDanceVerify)
 	mux.HandleFunc("GET /studio/mediagen/health", s.handleStudioMediaGenHealth)
 	mux.HandleFunc("GET /studio/uploads/{file}", s.handleStudioUpload)
@@ -81,10 +84,18 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/schedule", s.handleStudioScheduleSave)
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
 
-	// Điều hướng /flow cũ về Studio
-	mux.HandleFunc("GET /flow", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/studio", http.StatusSeeOther)
-	})
+	// Visual Workflow Studio (ComfyUI / n8n Node Canvas)
+	mux.HandleFunc("GET /flow", s.handleStudioFlowView)
+	mux.HandleFunc("GET /studio/flow", s.handleStudioFlowView)
+	mux.HandleFunc("GET /api/flow/definitions", s.handleAPIFlowDefinitions)
+	mux.HandleFunc("GET /api/flow/graphs", s.handleAPIFlowGraphs)
+	mux.HandleFunc("POST /api/flow/graphs", s.handleAPIFlowGraphs)
+	mux.HandleFunc("GET /api/flow/graphs/{id}", s.handleAPIFlowGraphDetail)
+	mux.HandleFunc("DELETE /api/flow/graphs/{id}", s.handleAPIFlowGraphDetail)
+	mux.HandleFunc("POST /api/flow/execute", s.handleAPIFlowExecute)
+	mux.HandleFunc("GET /api/flow/runs", s.handleAPIFlowRuns)
+	mux.HandleFunc("GET /api/flow/runs/{id}", s.handleAPIFlowRunDetail)
+	mux.HandleFunc("POST /api/flow/runs/{id}/cancel", s.handleAPIFlowRunCancel)
 
 	// Legacy Web AI prompt cockpit now redirects to account login settings.
 	mux.HandleFunc("GET /web-ai", redirectTo("/settings/system#tab-webai"))

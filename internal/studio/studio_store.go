@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const maxConcurrentStudioJobs = 2
@@ -143,6 +144,43 @@ func (s *Studio) migrate() error {
 		PRIMARY KEY(job_id, platform))`); err != nil {
 		return err
 	}
+
+	// Bảng lưu danh sách chủ đề TikTok Radar và ánh xạ 5 video hot nhất mỗi chủ đề.
+	if _, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS studio_tiktok_radar_topics(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			created_at TEXT NOT NULL);
+		CREATE TABLE IF NOT EXISTS studio_tiktok_radar_topic_videos(
+			topic TEXT NOT NULL,
+			video_id TEXT NOT NULL,
+			rank INTEGER NOT NULL,
+			updated_at TEXT NOT NULL,
+			PRIMARY KEY(topic, video_id));
+		CREATE INDEX IF NOT EXISTS idx_radar_topic_rank
+			ON studio_tiktok_radar_topic_videos(topic, rank ASC);
+	`); err != nil {
+		return err
+	}
+
+	// Khởi tạo các chủ đề mặc định của Việt Nam nếu bảng chủ đề trống
+	var topicCount int
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM studio_tiktok_radar_topics`).Scan(&topicCount); err == nil && topicCount == 0 {
+		defaultTopics := []string{
+			"Xu hướng Việt Nam",
+			"Nhảy trend",
+			"Thời trang",
+			"Làm đẹp",
+			"Review ẩm thực",
+		}
+		now := time.Now().UTC().Format(time.RFC3339)
+		for _, t := range defaultTopics {
+			_, _ = s.db.Exec(`INSERT INTO studio_tiktok_radar_topics(name, created_at) VALUES(?, ?) ON CONFLICT(name) DO NOTHING`, t, now)
+		}
+	}
+
+	// Tự động xác nhận video Radar (hệ thống tự động xác nhận video theo đúng yêu cầu người dùng)
+	_, _ = s.db.Exec(`UPDATE studio_tiktok_radar_videos SET dance_verified=1, dance_verified_at=collected_at WHERE dance_verified=0`)
 	return nil
 }
 

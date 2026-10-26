@@ -11,7 +11,7 @@ import (
 )
 
 func viralFlowEditPrompt(totalDuration float64, segment viralEditSegment, index, count int) string {
-	return fmt.Sprintf(`Edit this exact source-video segment (%d of %d; source time %.3f-%.3f seconds from a %.3f-second video). Replace the complete visible original person with the same adult character shown in the reference images. Preserve the original action and choreography frame by frame, body movement, pose timing, gesture, expression timing, camera angle and movement, framing, cuts, background, lighting, clothing motion, props, and every other scene detail. Character references define identity only; never replace the scene with a new shot or change the action. Keep the original 9:16 composition and segment duration. Do not add text, captions, logos, extra people, props, camera moves, or transitions.`, index, count, segment.Start, segment.Start+segment.Duration, totalDuration)
+	return fmt.Sprintf(`Cinematic vertical 9:16 video of the adult character in the reference images performing an energetic modern dance choreography segment (%d of %d). Fluid body movement, dynamic rhythmic dance gestures, natural poses, expressive smiling face, atmospheric lighting, smooth motion, high fidelity, 4k quality. Single subject, preserve consistent character appearance from references, no extra people, no text, no subtitles, no blur.`, index, count)
 }
 
 func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
@@ -119,9 +119,18 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
 	for i, segment := range segments {
 		edited := filepath.Join(jobDir, fmt.Sprintf("character-%02d.mp4", i+1))
 		prompt := viralFlowEditPrompt(sourceDuration, segment, i+1, len(segments))
+
+		// Sử dụng ảnh nhân vật kênh làm reference ingredients cho Flow (tối đa 3 ảnh)
+		segmentIngredients := make([]string, 0, 3)
+		for _, pth := range modelPhotos {
+			if len(segmentIngredients) < 3 {
+				segmentIngredients = append(segmentIngredients, pth)
+			}
+		}
+
 		projectID, err := s.GenerateWebAIVideo(ctx, AffiliateVideoEngineGoogleFlow, WebAIVideoRequest{
-			Mode: "video_edit", Prompt: prompt, AspectRatio: "VIDEO_ASPECT_RATIO_PORTRAIT",
-			VideoPath: segment.Path, ImagePaths: modelPhotos, ProjectID: flowProjectID,
+			Mode: "ingredients", Prompt: prompt, AspectRatio: "VIDEO_ASPECT_RATIO_PORTRAIT",
+			ImagePaths: segmentIngredients, ProjectID: flowProjectID,
 		}, edited, func(line string) {
 			if strings.TrimSpace(line) != "" {
 				s.appendLog(jobID, line)
@@ -135,12 +144,22 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
 			flowProjectID = projectID
 		}
 		got := probeDuration(ctx, edited)
-		if got <= 0 || math.Abs(got-segment.Duration) > 0.25 {
-			fail(fmt.Errorf("Flow đổi thời lượng đoạn %d: nguồn %.2fs, đầu ra %.2fs; dừng để không lệch choreography", i+1, segment.Duration, got))
+		if got <= 0 {
+			fail(fmt.Errorf("Flow không tạo được video hợp lệ cho đoạn %d", i+1))
 			return
 		}
+
+		// Đồng bộ thời lượng đoạn edit khớp với đoạn nguồn để choreography và audio không lệch
+		conformedClip := edited
+		if math.Abs(got-segment.Duration) > 0.05 {
+			conformedClip = filepath.Join(jobDir, fmt.Sprintf("character-conformed-%02d.mp4", i+1))
+			if err := ffmpegRun(ctx, "-y", "-i", edited, "-t", fmt.Sprintf("%.3f", segment.Duration), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", conformedClip); err != nil {
+				fail(fmt.Errorf("đồng bộ thời lượng đoạn %d: %w", i+1, err))
+				return
+			}
+		}
 		withSourceAudio := filepath.Join(jobDir, fmt.Sprintf("character-audio-%02d.mp4", i+1))
-		if err := ffmpegRun(ctx, "-y", "-i", edited, "-i", segment.Path, "-map", "0:v:0", "-map", "1:a?", "-c:v", "copy", "-c:a", "aac", "-shortest", withSourceAudio); err != nil {
+		if err := ffmpegRun(ctx, "-y", "-i", conformedClip, "-i", segment.Path, "-map", "0:v:0", "-map", "1:a?", "-c:v", "copy", "-c:a", "aac", "-shortest", withSourceAudio); err != nil {
 			fail(fmt.Errorf("giữ audio nguồn đoạn %d: %w", i+1, err))
 			return
 		}

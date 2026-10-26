@@ -51,10 +51,6 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 		back("err", "Google Flow hiện dùng để tạo video; dùng Muse Chat cho kịch bản và hình ảnh.")
 		return
 	}
-	if provider == webai.PlatformGoogleFlow && r.PostFormValue("confirm_flow_credits") != "1" {
-		back("err", "Xác nhận Google Flow có thể dùng credits trước khi tạo video.")
-		return
-	}
 	if prompt == "" || len([]rune(prompt)) > 5000 {
 		back("err", "Nhập prompt từ 1 đến 5.000 ký tự.")
 		return

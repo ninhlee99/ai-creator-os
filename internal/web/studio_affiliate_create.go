@@ -116,10 +116,6 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 		return
 	}
 	if p.VideoEngine == studio.AffiliateVideoEngineGoogleFlow {
-		if r.FormValue("confirm_flow_credits") != "1" {
-			seeOther(w, r, "/studio?err="+url.QueryEscape("Xác nhận Google Flow có thể dùng credits trước khi tạo video."))
-			return
-		}
 		p.FlowCreditsAcknowledged = true
 		if r.MultipartForm != nil && len(r.MultipartForm.File["motion_clips"]) > 0 {
 			seeOther(w, r, "/studio?err="+url.QueryEscape("Bỏ clip tải lên hoặc chọn chế độ thủ công."))
