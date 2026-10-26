@@ -2,6 +2,7 @@ package growth
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -30,20 +31,20 @@ func TestAnalyzeTrendSignals(t *testing.T) {
 	}
 
 	for _, opp := range opps {
-		if opp.OpportunityScore <= 0 || opp.OpportunityScore > 100 {
-			t.Errorf("invalid opportunity score: %d", opp.OpportunityScore)
+		if opp.OpportunityScore != nil {
+			t.Errorf("expected unknown opportunity score without market evidence, got %d", *opp.OpportunityScore)
 		}
-		if opp.VelocityScore <= 0 {
-			t.Errorf("expected positive velocity score, got %d", opp.VelocityScore)
+		if opp.VelocityScore != nil || opp.BrandFitScore != nil {
+			t.Error("expected unsupported velocity and brand-fit scores to remain unknown")
 		}
 		if len(opp.OriginalAngles) < 3 {
 			t.Errorf("expected at least 3 original angles, got %d", len(opp.OriginalAngles))
 		}
-		if opp.AudienceDemand == "" {
-			t.Error("expected non-empty audience demand")
+		if !strings.Contains(opp.AudienceDemand, "Chưa có dữ liệu") || !strings.Contains(opp.CompetitionLevel, "Chưa có dữ liệu") {
+			t.Errorf("expected audience demand and competition to remain unknown, got audience=%q competition=%q", opp.AudienceDemand, opp.CompetitionLevel)
 		}
-		if opp.Confidence != 85 {
-			t.Errorf("expected honest 85%% confidence, got %d", opp.Confidence)
+		if opp.Confidence != nil {
+			t.Errorf("expected uncalibrated confidence to remain unknown, got %d", *opp.Confidence)
 		}
 	}
 }
