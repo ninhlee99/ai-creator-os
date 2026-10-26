@@ -29,22 +29,7 @@
       <h3 class="m-0">TikTok Radar · Web Crawler tự động</h3>
       <span class="badge badge-ok">✓ Tự động kích hoạt</span>
     </div>
-    <p class="hint">Radar TikTok hiện sử dụng Web Crawler tự động tích hợp sẵn, trực tiếp thu thập video hot và tìm kiếm theo chủ đề tại Việt Nam với đầy đủ số liệu lượt xem, lượt tym, bình luận và sound gốc thực tế mà không bắt buộc phải có tài khoản TikTok Business.</p>
-    <p class="hint">Cấu hình TikTok Business Discovery bên dưới là tùy chọn (nếu có tài khoản Business được cấp quyền API):</p>
-    {{$discoveryTokenOk := false}}{{$discoveryTokenMask := ""}}
-    {{$discoveryAdvertiserOk := false}}{{$discoveryAdvertiserMask := ""}}
-    {{range .EnvStatus}}
-      {{if eq .Name "TIKTOK_DISCOVERY_ACCESS_TOKEN"}}{{$discoveryTokenOk = .Ok}}{{$discoveryTokenMask = .Masked}}{{end}}
-      {{if eq .Name "TIKTOK_DISCOVERY_ADVERTISER_ID"}}{{$discoveryAdvertiserOk = .Ok}}{{$discoveryAdvertiserMask = .Masked}}{{end}}
-    {{end}}
-    <div class="field mt-3">
-      <label>Business Discovery Access Token</label>{{if $discoveryTokenOk}}<span class="badge badge-ok">Đã lưu · {{$discoveryTokenMask}}</span>{{else}}<span class="badge badge-no">Chưa lưu</span>{{end}}
-      <form method="post" action="/settings/env" class="mt-2 flex gap-2"><input type="hidden" name="name" value="TIKTOK_DISCOVERY_ACCESS_TOKEN"><input type="password" name="value" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"><button type="submit" class="btn btn-secondary btn-sm">Lưu</button></form>
-    </div>
-    <div class="field mt-3">
-      <label>Advertiser ID</label>{{if $discoveryAdvertiserOk}}<span class="badge badge-ok">Đã lưu · {{$discoveryAdvertiserMask}}</span>{{else}}<span class="badge badge-no">Chưa lưu</span>{{end}}
-      <form method="post" action="/settings/env" class="mt-2 flex gap-2"><input type="hidden" name="name" value="TIKTOK_DISCOVERY_ADVERTISER_ID"><input type="text" name="value" autocomplete="off" class="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"><button type="submit" class="btn btn-secondary btn-sm">Lưu</button></form>
-    </div>
+    <p class="hint">Radar TikTok hoạt động tự động thông qua Web Crawler tích hợp sẵn (không yêu cầu tài khoản TikTok Business, Access Token hay Advertiser ID). Dữ liệu video, lượt xem, lượt tym và sound gốc được thu thập trực tiếp.</p>
   </div>
 </div>
 {{end}}

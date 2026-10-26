@@ -162,20 +162,17 @@ func (s *Server) handleSettingsEnvSave(w http.ResponseWriter, r *http.Request) {
 var envNames = []string{
 	"TTS_API_KEY", "GEMINI_TEXT_MODEL", "GEMINI_TTS_MODEL",
 	"TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET", "TIKTOK_REDIRECT_URI",
-	"TIKTOK_DISCOVERY_ACCESS_TOKEN", "TIKTOK_DISCOVERY_ADVERTISER_ID",
 }
 
 // envHelp giải thích ngắn gọn từng biến cho người không rành (Đợt AA,
 // finding C3) — hiện dưới tên biến ở trang Cài đặt · Hệ thống.
 var envHelp = map[string]string{
-	"TTS_API_KEY":                    "Key Gemini dự phòng cho giọng đọc. Có thể để trống nếu đã lưu key trong mục quản lý API key.",
-	"GEMINI_TEXT_MODEL":              "Không bắt buộc. Để trống để app tự chọn model viết kịch bản video.",
-	"GEMINI_TTS_MODEL":               "Không bắt buộc. Để trống để app tự chọn model giọng đọc video.",
-	"TIKTOK_CLIENT_KEY":              "Client Key của ứng dụng TikTok dùng để kết nối kênh.",
-	"TIKTOK_CLIENT_SECRET":           "Client Secret đi kèm Client Key TikTok.",
-	"TIKTOK_REDIRECT_URI":            "TikTok Desktop Login Kit: chỉ dùng http://localhost hoặc 127.0.0.1, port đúng với app và đường dẫn /publishers/tiktok/callback. Mặc định: http://127.0.0.1:8080/publishers/tiktok/callback. Đăng ký đúng URI trong TikTok Developer Portal.",
-	"TIKTOK_DISCOVERY_ACCESS_TOKEN":  "Access Token TikTok API for Business đã cấp quyền Discovery; khác token đăng nhập TikTok Desktop ở trên.",
-	"TIKTOK_DISCOVERY_ADVERTISER_ID": "Advertiser ID được cấp quyền cho TikTok Business Discovery API.",
+	"TTS_API_KEY":          "Key Gemini dự phòng cho giọng đọc. Có thể để trống nếu đã lưu key trong mục quản lý API key.",
+	"GEMINI_TEXT_MODEL":    "Không bắt buộc. Để trống để app tự chọn model viết kịch bản video.",
+	"GEMINI_TTS_MODEL":     "Không bắt buộc. Để trống để app tự chọn model giọng đọc video.",
+	"TIKTOK_CLIENT_KEY":    "Client Key của ứng dụng TikTok dùng để kết nối kênh.",
+	"TIKTOK_CLIENT_SECRET": "Client Secret đi kèm Client Key TikTok.",
+	"TIKTOK_REDIRECT_URI":  "TikTok Desktop Login Kit: chỉ dùng http://localhost hoặc 127.0.0.1, port đúng với app và đường dẫn /publishers/tiktok/callback. Mặc định: http://127.0.0.1:8080/publishers/tiktok/callback. Đăng ký đúng URI trong TikTok Developer Portal.",
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
