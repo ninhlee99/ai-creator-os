@@ -239,11 +239,6 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	_ = portHold.Close()
 
 	windowSize := "1280,900"
-	if target.Platform == PlatformGoogleFlow {
-		// Keep the Google Account login surface modest while preserving a crisp
-		// screenshot in the 680px viewer.
-		windowSize = "1024,768"
-	}
 	args := []string{
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--remote-debugging-address=127.0.0.1",
@@ -252,7 +247,6 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		"--no-default-browser-check",
 		"--disable-sync",
 		"--window-size=" + windowSize,
-		"--force-device-scale-factor=1",
 		"--new-window",
 	}
 	if runtime.GOOS == "linux" && os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
