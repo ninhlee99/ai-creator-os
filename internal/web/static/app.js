@@ -190,22 +190,25 @@
 
   // ------------------------------------------------------ sidebar active & drawer
   (function () {
+    var full = location.pathname + location.search;
     var p = location.pathname;
     var bestMatch = null;
     var bestLen = -1;
     document.querySelectorAll('.sidebar nav a').forEach(function (a) {
       var h = a.getAttribute('href');
       if (!h) return;
-      var clean = h.split('?')[0];
-      if (clean === '/workflow' && p === '/workflow') {
+      if (h === full) {
         bestMatch = a;
-        bestLen = 9999;
-      } else if (clean === p) {
-        bestMatch = a;
-        bestLen = 9999;
-      } else if (clean !== '/' && p.indexOf(clean) === 0 && clean.length > bestLen) {
-        bestMatch = a;
-        bestLen = clean.length;
+        bestLen = 99999;
+      } else if (bestLen < 99999) {
+        var clean = h.split('?')[0];
+        if (clean === p && clean !== '/') {
+          bestMatch = a;
+          bestLen = 9999;
+        } else if (clean !== '/' && p.indexOf(clean) === 0 && clean.length > bestLen) {
+          bestMatch = a;
+          bestLen = clean.length;
+        }
       }
     });
     if (bestMatch) {

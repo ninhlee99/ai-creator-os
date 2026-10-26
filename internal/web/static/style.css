@@ -248,6 +248,50 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   opacity: 1;
   stroke: var(--accent);
 }
+
+/* Sidebar Workflow Presets Sub-nav */
+.sidebar-workflow-menu {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-sub-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 6px 28px;
+  gap: 2px;
+}
+.sidebar-sub-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sidebar-link);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.sidebar-sub-link:hover {
+  color: var(--sidebar-text);
+  background: var(--sidebar-hover);
+}
+.sidebar-sub-link.active {
+  color: #6366F1;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.1);
+}
+.sub-link-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.layout.sidebar-collapsed .sidebar-sub-nav {
+  display: none;
+}
+
 .sidebar-footer {
   padding: 12px 14px 4px;
   border-top: 1px solid var(--sidebar-border);
@@ -3544,11 +3588,38 @@ video.player, .media-preview-container video {
 /* ==========================================================================
    Workflow Studio (n8n & ComfyUI Style Node Engine)
    ========================================================================== */
+/* ==========================================================================
+   Full-Screen Edge-to-Edge Workflow Studio Layout
+   ========================================================================== */
+body.page-workflow .topbar {
+  display: none !important;
+}
+
+body.page-workflow .content {
+  padding: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+body.page-workflow .main {
+  height: 100vh !important;
+  overflow: hidden !important;
+  flex: 1;
+}
+
+body.page-workflow .layout {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
 .wf-app-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 72px);
-  margin: -24px;
+  height: 100vh;
+  margin: 0;
+  width: 100%;
   overflow: hidden;
   background: var(--bg);
 }
@@ -3920,14 +3991,21 @@ video.player, .media-preview-container video {
   border: 1.5px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  cursor: default;
+  cursor: grab;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .wf-node:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
   border-color: #94A3B8;
+}
+
+.wf-node.is-dragging {
+  cursor: grabbing !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22), 0 0 0 2px #6366F1 !important;
+  z-index: 100 !important;
 }
 
 .wf-node.selected {

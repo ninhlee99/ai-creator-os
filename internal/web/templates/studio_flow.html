@@ -1,14 +1,19 @@
 {{define "title"}}Workflow Studio - AI Creator OS{{end}}
 
 {{define "content"}}
+<script>document.body.classList.add('page-workflow');</script>
 <div class="wf-app-container">
   <!-- Top Navigation / Toolbar (n8n Style) -->
   <header class="wf-header">
     <div class="wf-header-left">
+      <button type="button" class="wf-btn wf-btn-secondary" id="wf-sidebar-toggle" title="Thu nhỏ / Phóng to Sidebar">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </button>
+
       <div class="wf-brand">
         <div class="wf-title-block">
           <div class="wf-breadcrumb">
-            <a href="/workflow" class="wf-breadcrumb-root">Workflow</a>
+            <span class="wf-breadcrumb-root">Workflow</span>
             <span class="wf-breadcrumb-sep">/</span>
             <span id="wf-active-name" class="wf-breadcrumb-current">{{if .ActiveGraph}}{{.ActiveGraph.Name}}{{else}}Luồng mới{{end}}</span>
           </div>
@@ -17,20 +22,6 @@
             <span id="wf-node-count-badge" class="wf-info-pill">0 nodes</span>
           </div>
         </div>
-      </div>
-
-      <div class="wf-preset-dropdown-wrapper">
-        <label for="wf-preset-select" class="wf-label-muted">Mẫu quy trình:</label>
-        <select id="wf-preset-select" class="wf-select">
-          <option value="preset_viral_dance" {{if eq .PresetID "preset_viral_dance"}}selected{{end}}>🔥 Viral TikTok Dance (Veo 2 Recreate)</option>
-          <option value="preset_affiliate_showcase" {{if eq .PresetID "preset_affiliate_showcase"}}selected{{end}}>🛍️ Affiliate Product Showcase (Bóc tách &amp; Ghép)</option>
-          <option value="preset_multi_ai" {{if eq .PresetID "preset_multi_ai"}}selected{{end}}>⚡ Multi-Engine AI (Gemini + Flow + Custom)</option>
-          {{range .Graphs}}
-            {{if not .IsPreset}}
-              <option value="{{.ID}}">📁 {{.Name}}</option>
-            {{end}}
-          {{end}}
-        </select>
       </div>
     </div>
 
@@ -63,6 +54,9 @@
         <button type="button" class="wf-zoom-btn" id="btn-zoom-in" title="Phóng to">+</button>
         <button type="button" class="wf-zoom-btn" id="btn-zoom-reset" title="Khôi phục góc nhìn">⟲</button>
       </div>
+
+      <button type="button" class="wf-btn wf-btn-secondary" id="wf-theme-toggle" title="Chuyển giao diện sáng / tối">🌙</button>
+    </div>
     </div>
   </header>
 

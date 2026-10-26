@@ -189,29 +189,61 @@
         this.deleteNode(node.id);
       });
 
-      // Drag Node
-      let startX = 0, startY = 0;
-      header.addEventListener('mousedown', (e) => {
+      // Drag Node (Entire node card is smoothly draggable)
+      let startClientX = 0, startClientY = 0;
+      let startNodeX = 0, startNodeY = 0;
+      let isDraggingNode = false;
+
+      nodeEl.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
+
+        // Ignore interactive targets (port dots, add button, delete button, inputs, selects)
+        if (e.target.closest('.wf-port-dot') ||
+            e.target.closest('.wf-port-add-btn') ||
+            e.target.closest('.wf-node-del-btn') ||
+            e.target.closest('button') ||
+            e.target.closest('input') ||
+            e.target.closest('textarea') ||
+            e.target.closest('select') ||
+            e.target.closest('video') ||
+            e.target.closest('a')) {
+          return;
+        }
+
         e.stopPropagation();
+        e.preventDefault(); // Prevent browser text selection ghost drag
+
         this.selectNode(node.id);
 
-        startX = e.clientX;
-        startY = e.clientY;
+        isDraggingNode = true;
+        startClientX = e.clientX;
+        startClientY = e.clientY;
+        startNodeX = typeof node.x === 'number' ? node.x : (parseFloat(nodeEl.style.left) || 100);
+        startNodeY = typeof node.y === 'number' ? node.y : (parseFloat(nodeEl.style.top) || 100);
+
+        nodeEl.classList.add('is-dragging');
+        document.body.style.userSelect = 'none';
 
         const onMouseMove = (ev) => {
-          const dx = (ev.clientX - startX) / this.scale;
-          const dy = (ev.clientY - startY) / this.scale;
-          node.x = (node.x || 0) + dx;
-          node.y = (node.y || 0) + dy;
+          if (!isDraggingNode) return;
+          const dx = (ev.clientX - startClientX) / this.scale;
+          const dy = (ev.clientY - startClientY) / this.scale;
+
+          node.x = Math.round(startNodeX + dx);
+          node.y = Math.round(startNodeY + dy);
+
           nodeEl.style.left = `${node.x}px`;
           nodeEl.style.top = `${node.y}px`;
-          startX = ev.clientX;
-          startY = ev.clientY;
+
           this.renderWires();
         };
 
         const onMouseUp = () => {
+          if (isDraggingNode) {
+            isDraggingNode = false;
+            nodeEl.classList.remove('is-dragging');
+            document.body.style.userSelect = '';
+          }
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
         };
@@ -656,6 +688,32 @@
           this.panY = 40;
           this.applyTransform();
           this.updateZoomDisplay();
+        });
+      }
+
+      // Sidebar toggle from workflow toolbar
+      const wfSidebarToggle = document.getElementById('wf-sidebar-toggle');
+      if (wfSidebarToggle) {
+        wfSidebarToggle.addEventListener('click', () => {
+          const layout = document.querySelector('.layout');
+          if (!layout) return;
+          const isCollapsed = layout.classList.toggle('sidebar-collapsed');
+          try {
+            localStorage.setItem('aicos-sidebar-collapsed', isCollapsed ? '1' : '0');
+          } catch (e) {}
+        });
+      }
+
+      // Theme toggle from workflow toolbar
+      const wfThemeToggle = document.getElementById('wf-theme-toggle');
+      if (wfThemeToggle) {
+        wfThemeToggle.addEventListener('click', () => {
+          const doc = document.documentElement;
+          const cur = doc.dataset.theme === 'dark' ? 'light' : 'dark';
+          doc.dataset.theme = cur;
+          try {
+            localStorage.setItem('aicos-theme', cur);
+          } catch (e) {}
         });
       }
     }
