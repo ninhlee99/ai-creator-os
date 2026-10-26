@@ -52,24 +52,18 @@ func TikTokRadarSourceLabel() string {
 	return TikTokRadarSourceLabelForTopic(false)
 }
 
-// TikTokRadarSourceConfigured reports whether the official Discovery source
-// has a complete credential set.
+// TikTokRadarSourceConfigured reports whether the automated crawler is ready.
 func TikTokRadarSourceConfigured() bool {
-	_, configured, err := tikTokBusinessDiscoveryConfigFromEnv()
-	return configured && err == nil
+	return TikTokCrawlerConfigured()
 }
 
 // TikTokRadarSourceLabelForTopic reports the provider selected for a regional
 // feed or a user-entered topic search.
 func TikTokRadarSourceLabelForTopic(_ bool) string {
-	_, configured, err := tikTokBusinessDiscoveryConfigFromEnv()
-	if configured && err == nil {
-		return TikTokBusinessDiscoverySource
+	if TikTokCrawlerConfigured() {
+		return TikTokCrawlerSource
 	}
-	if configured {
-		return TikTokBusinessDiscoverySource + " · thiếu cấu hình"
-	}
-	return "Chưa cấu hình nguồn TikTok"
+	return "Chưa tìm thấy trình duyệt để chạy TikTok Crawler"
 }
 
 type tikTokBusinessEnvelope struct {
@@ -266,6 +260,10 @@ func selectTikTokBusinessHashtags(hashtags []tikTokBusinessHashtag, topic, count
 	countryCode = strings.ToUpper(strings.TrimSpace(countryCode))
 	localHashtags := make([]tikTokBusinessHashtag, 0, len(hashtags))
 	for _, hashtag := range hashtags {
+		if len(hashtag.TopCountryList) == 0 {
+			localHashtags = append(localHashtags, hashtag)
+			continue
+		}
 		for _, country := range hashtag.TopCountryList {
 			if strings.EqualFold(strings.TrimSpace(country), countryCode) {
 				localHashtags = append(localHashtags, hashtag)
@@ -312,6 +310,9 @@ func normalizeTikTokRadarTopic(value string) string {
 	for _, r := range value {
 		if unicode.Is(unicode.Mn, r) {
 			continue
+		}
+		if r == 'đ' {
+			r = 'd'
 		}
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			normalized.WriteRune(r)

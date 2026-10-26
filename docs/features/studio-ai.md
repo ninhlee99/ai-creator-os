@@ -4,7 +4,7 @@ Studio quản lý tạo video affiliate và video viral TikTok.
 
 ## Radar và nguồn
 
-TikTok Radar chỉ gọi TikTok Business Discovery sau khi cấu hình Access Token và Advertiser ID trong Cài đặt → Kênh mạng xã hội. API chính thức trả hashtag phổ biến và video xếp hạng theo hashtag tại Việt Nam, không trả counters. Topic search khớp hashtag đang thịnh hành, không phải tìm toàn bộ TikTok. Radar không gọi scraper bên thứ ba, không tự động quét bằng Playwright và không reverse-engineer endpoint TikTok. Nếu chưa cấp quyền Discovery, Radar yêu cầu cấu hình nguồn; không dùng TikWM. Metadata và lịch sử chỉ số lưu trong SQLite. Tích hợp Discovery chưa được xác minh với token thật. Radar không tự phân loại video nhảy; người dùng xác nhận video nhảy làm nguồn. Viral analysis hiển thị tín hiệu cấu trúc có mốc frame và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Mọi audio dùng trong hai flow phải lấy từ video nhảy đã xác nhận, được Radar thu thập trong 7 ngày; không dùng sound thay thế tự động.
+TikTok Radar sử dụng Web Crawler tự động tích hợp sẵn (thông qua trình duyệt local Edge/Chrome) để quét video thịnh hành và tìm kiếm theo chủ đề tại Việt Nam. Nguồn cung cấp đầy đủ video ID, tiêu đề, tác giả, ảnh bìa, sound gốc và số liệu lượt xem, lượt tym thực tế mà không cần tài khoản TikTok Business hay API token. Metadata và lịch sử chỉ số lưu trong SQLite. Radar không tự phân loại video nhảy; người dùng xác nhận video nhảy làm nguồn. Viral analysis hiển thị tín hiệu cấu trúc có mốc frame và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Mọi audio dùng trong hai flow phải lấy từ video nhảy đã xác nhận, được Radar thu thập trong 7 ngày; không dùng sound thay thế tự động.
 
 ## Affiliate
 

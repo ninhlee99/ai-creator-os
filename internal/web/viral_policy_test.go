@@ -10,7 +10,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
 )
 
-func TestViralCreateRejectsPaidEditorBeforeParsingUpload(t *testing.T) {
+func TestViralCreateRejectsUnreadyEditorBeforeParsingUpload(t *testing.T) {
 	dir := t.TempDir()
 	st, err := studio.New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
@@ -23,7 +23,7 @@ func TestViralCreateRejectsPaidEditorBeforeParsingUpload(t *testing.T) {
 	rec := httptest.NewRecorder()
 	s.handleViralCreate(rec, req)
 
-	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "free-only") {
-		t.Fatalf("status=%d location=%q, want early free-only redirect", rec.Code, rec.Header().Get("Location"))
+	if rec.Code != http.StatusSeeOther || !strings.Contains(rec.Header().Get("Location"), "err=") {
+		t.Fatalf("status=%d location=%q, want early unready editor redirect", rec.Code, rec.Header().Get("Location"))
 	}
 }

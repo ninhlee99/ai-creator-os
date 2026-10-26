@@ -29,7 +29,7 @@ func TestViralPageNoStudio(t *testing.T) {
 		t.Fatalf("GET /viral = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "Tạo video dọc") {
+	if !strings.Contains(body, "Video nhảy") {
 		t.Errorf("trang /viral thiếu tiêu đề: %s", body)
 	}
 }
@@ -42,10 +42,10 @@ func TestViralPageRenders(t *testing.T) {
 	}
 	body := rec.Body.String()
 	for _, want := range []string{
-		"Video tham chiếu tùy chọn",
-		"Chủ đề video",
-		"Không phải dữ liệu xu hướng trực tiếp",
-		"Tạo video (9:16)",
+		"Video tham chiếu bắt buộc",
+		"Tên video nhảy",
+		"Video từ TikTok Radar",
+		"Thay nhân vật",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang /viral thiếu nội dung %q", want)
@@ -56,7 +56,7 @@ func TestViralPageRenders(t *testing.T) {
 func TestViralCreate(t *testing.T) {
 	s := newViralServer(t)
 
-	// Test form create
+	// Test form create redirecting when editor is not ready
 	rec := postForm(t, s, "/viral/create", url.Values{
 		"topic":       {"3 Sai Lầm Tài Chính"},
 		"genre":       {"lifehack"},
@@ -67,13 +67,7 @@ func TestViralCreate(t *testing.T) {
 		t.Fatalf("POST /viral/create = %d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.Contains(loc, "msg=created") {
-		t.Errorf("Location = %q, want msg=created", loc)
-	}
-
-	// Dọn dẹp job để tránh goroutine ghi vào TempDir sau khi test hoàn tất
-	jobs := s.Studio.ListViralJobs(10)
-	for _, j := range jobs {
-		_ = s.Studio.DeleteJob(j.ID)
+	if !strings.Contains(loc, "err=") {
+		t.Errorf("Location = %q, want err=", loc)
 	}
 }

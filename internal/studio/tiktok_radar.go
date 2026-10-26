@@ -107,13 +107,9 @@ func FormatCount(n int64) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// FetchTikTokTrendingVideos returns records from TikTok Business Discovery.
+// FetchTikTokTrendingVideos returns records from TikTok Web Crawler.
 func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
-	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
-	if configErr != nil {
-		return nil, configErr
-	}
-	if !configured {
+	if !TikTokCrawlerConfigured() {
 		return nil, missingTikTokRadarConfigError()
 	}
 	ttMu.Lock()
@@ -123,7 +119,7 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	}
 	ttMu.Unlock()
 
-	result, err := fetchTikTokBusinessDiscoveryVideos(ctx, "", config)
+	result, err := fetchTikTokCrawlerVideos(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +145,7 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 	return live, nil
 }
 
-// FetchTikTokVideosForTopic queries TikTok Business Discovery by topic. Empty
+// FetchTikTokVideosForTopic queries TikTok Web Crawler by topic. Empty
 // topic keeps the regional feed behavior; non-empty topics never silently
 // fall back to caption filtering over that small feed.
 func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
@@ -165,14 +161,10 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 		return nil, err
 	}
 	topic = strings.Join(topics, ", ")
-	config, configured, configErr := tikTokBusinessDiscoveryConfigFromEnv()
-	if configErr != nil {
-		return nil, configErr
-	}
-	if !configured {
+	if !TikTokCrawlerConfigured() {
 		return nil, missingTikTokRadarConfigError()
 	}
-	key := "business:" + config.AdvertiserID + ":" + config.CountryCode + ":" + strings.ToLower(topic)
+	key := "crawler:VN:" + strings.ToLower(topic)
 	ttMu.Lock()
 	if cached, ok := topicTTCache[key]; ok && time.Since(cached.fetchedAt) < tikTokTrendsTTL {
 		videos := append([]TikTokTrendVideo(nil), cached.videos...)
@@ -181,7 +173,7 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 	}
 	ttMu.Unlock()
 
-	result, err := fetchTikTokBusinessDiscoveryVideos(ctx, topic, config)
+	result, err := fetchTikTokCrawlerVideos(ctx, topic)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +207,7 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 }
 
 func missingTikTokRadarConfigError() error {
-	return fmt.Errorf("chưa cấu hình TikTok Business Discovery: cần Access Token và Advertiser ID trong Cài đặt → Kênh mạng xã hội")
+	return fmt.Errorf("không tìm thấy trình duyệt (Microsoft Edge hoặc Google Chrome) trên hệ thống để chạy TikTok Crawler")
 }
 
 func splitTikTokRadarTopics(topic string) ([]string, error) {

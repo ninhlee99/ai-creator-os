@@ -3,8 +3,8 @@
 ## Flow
 
 1. TikTok Radar giữ tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite; giao diện chỉ hiện tối đa 10 video.
-2. Feed mặc định và topic search dùng TikTok Business Discovery. API trả hashtag phổ biến và video xếp hạng theo hashtag tại VN; topic search chỉ khớp hashtag đang thịnh hành, không tìm toàn bộ TikTok. Nguồn không trả bộ đếm view/tym nên giao diện giữ các chỉ số này là unknown. Radar không tự động quét TikTok bằng Playwright, không reverse-engineer endpoint riêng và không gọi scraper bên thứ ba. Nếu chưa cấp quyền Discovery, Radar yêu cầu cấu hình nguồn.
-3. Với kết quả Discovery thiếu ảnh bìa, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
+2. Feed mặc định và topic search dùng TikTok Web Crawler tự động (chạy headless browser local). Crawler trích xuất video thịnh hành, lượt xem (views), lượt tym (likes), tác giả, ảnh bìa và sound gốc thực tế mà không cần đăng ký tài khoản TikTok Business hay cấu hình API token.
+3. Với kết quả thu thập, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; nêu tín hiệu cấu trúc và giả thuyết có mốc nguồn, kèm thử nghiệm cho video sau. Hiển thị metrics và tốc độ tăng view chỉ khi nguồn cung cấp dữ liệu và Radar có đủ snapshot.
 6. Tải video, kiểm tra và lấy audio đúng từ nguồn.

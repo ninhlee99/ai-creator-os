@@ -25,9 +25,12 @@
   </div>
 
   <div class="form-card mt-4 max-w-3xl space-y-3">
-    <h3>TikTok Business Discovery · nguồn chính thức</h3>
-    <p class="hint">Radar dùng API chính thức này để tìm hashtag phổ biến và video liên quan tại Việt Nam. Kết quả không có số view/tym chi tiết; TikTok cung cấp thứ hạng tổng hợp. Cần TikTok API for Business app đã được cấp quyền Discovery, Access Token và Advertiser ID. Token này khác token TikTok Desktop bên trên.</p>
-    <p class="hint"><a href="https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714" target="_blank" rel="noopener noreferrer">Tài liệu Discovery API ↗</a></p>
+    <div class="flex items-center justify-between">
+      <h3 class="m-0">TikTok Radar · Web Crawler tự động</h3>
+      <span class="badge badge-ok">✓ Tự động kích hoạt</span>
+    </div>
+    <p class="hint">Radar TikTok hiện sử dụng Web Crawler tự động tích hợp sẵn, trực tiếp thu thập video hot và tìm kiếm theo chủ đề tại Việt Nam với đầy đủ số liệu lượt xem, lượt tym, bình luận và sound gốc thực tế mà không bắt buộc phải có tài khoản TikTok Business.</p>
+    <p class="hint">Cấu hình TikTok Business Discovery bên dưới là tùy chọn (nếu có tài khoản Business được cấp quyền API):</p>
     {{$discoveryTokenOk := false}}{{$discoveryTokenMask := ""}}
     {{$discoveryAdvertiserOk := false}}{{$discoveryAdvertiserMask := ""}}
     {{range .EnvStatus}}

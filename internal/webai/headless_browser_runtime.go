@@ -53,6 +53,11 @@ func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 	}
 }
 
+// FindChromiumBinary exports the binary resolution for headless automation.
+func FindChromiumBinary() (string, error) {
+	return findChromiumBinary()
+}
+
 func findChromiumBinary() (string, error) {
 	if env := strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")); env != "" {
 		if binary, err := exec.LookPath(env); err == nil {
