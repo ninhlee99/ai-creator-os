@@ -14,10 +14,10 @@ func (googleFlowLoginAdapter) target() WebLoginTarget {
 	return WebLoginTarget{
 		Platform:    PlatformGoogleFlow,
 		Name:        "Google Flow",
-		StartURL:    "https://labs.google/fx/editor",
+		StartURL:    "https://flow.google.com/",
 		CookieHost:  "google.com",
 		CookieName:  "__Secure-1PSID",
-		LandingHost: "labs.google",
+		LandingHost: "flow.google.com",
 	}
 }
 
