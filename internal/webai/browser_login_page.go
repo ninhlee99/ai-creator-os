@@ -41,12 +41,15 @@ func cdpHasLandingHost(port int, host string) bool {
 		if host == "flow.google.com" || host == "labs.google" {
 			isMatch = actualHost == "flow.google.com" || actualHost == "labs.google" || actualHost == "aitestkitchen.withgoogle.com"
 		}
+		if host == "grok.com" {
+			isMatch = actualHost == "grok.com" || actualHost == "x.ai" || strings.HasSuffix(actualHost, ".grok.com") || strings.HasSuffix(actualHost, ".x.ai")
+		}
 		if !isMatch {
 			continue
 		}
 
 		// Đang ở màn hình chọn tài khoản Google hoặc trang login thì CHƯA được coi là xong!
-		if actualHost == "accounts.google.com" || strings.Contains(t.URL, "AccountChooser") {
+		if actualHost == "accounts.google.com" || strings.Contains(t.URL, "AccountChooser") || strings.Contains(t.URL, "/login") || strings.Contains(t.URL, "/signin") {
 			continue
 		}
 		return true

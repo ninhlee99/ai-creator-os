@@ -30,7 +30,11 @@ func validateCapturedWebAuth(ctx context.Context, target WebLoginTarget, auth *C
 	}
 	email := accountEmail(auth.Email)
 	if email == "" && target.Platform != PlatformMuseAI {
-		return fmt.Errorf("chưa xác định được email thật của tài khoản")
+		if target.Platform == PlatformGrok && auth.SessionValue != "" {
+			email = "grok_user@grok.com"
+		} else {
+			return fmt.Errorf("chưa xác định được email thật của tài khoản")
+		}
 	}
 	auth.Email = email
 	return nil

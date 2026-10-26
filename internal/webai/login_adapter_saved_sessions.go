@@ -43,11 +43,19 @@ func (a cookieWebLoginAdapter) matchesIdentityURL(rawURL string) bool {
 		return false
 	}
 	host := strings.ToLower(strings.TrimSuffix(u.Hostname(), "."))
+	if a.config.Platform == PlatformGrok {
+		return host == "grok.com" || host == "x.ai" || strings.HasSuffix(host, ".grok.com") || strings.HasSuffix(host, ".x.ai")
+	}
 	root := normalizeCookieDomain(a.config.CookieHost)
 	return host == root || strings.HasSuffix(host, "."+root)
 }
 
-func (cookieWebLoginAdapter) identityScript() string { return accountIdentityScript() }
+func (a cookieWebLoginAdapter) identityScript() string {
+	if a.config.Platform == PlatformGrok {
+		return grokIdentityScript()
+	}
+	return accountIdentityScript()
+}
 
 func (a cookieWebLoginAdapter) sessionFromCookies(cookies []cdpCookie) (string, string) {
 	email, _ := loginCookieEmailHints(cookies, a.config)

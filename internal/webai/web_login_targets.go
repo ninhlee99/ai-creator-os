@@ -42,7 +42,7 @@ var webLoginAdapters = []webLoginAdapter{
 	cookieWebLoginAdapter{config: WebLoginTarget{
 		Platform: PlatformGrok, Name: "Grok", StartURL: "https://grok.com/",
 		CookieHost: "grok.com", CookieName: "sso", LandingHost: "grok.com",
-	}, cookieNames: []string{"sso", "sso-rw", "auth_token", "x-userid"}},
+	}, cookieNames: []string{"sso", "sso-rw", "auth_token", "ct0", "twid", "x-anonid", "x-userid"}},
 	museLoginAdapter{},
 	googleFlowLoginAdapter{},
 }

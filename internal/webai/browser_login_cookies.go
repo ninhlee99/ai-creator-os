@@ -54,6 +54,10 @@ func loginCookieDomainMatches(domain string, target WebLoginTarget) bool {
 		return cookieDomainWithin(domain, "google.com") || cookieDomainWithin(domain, "withgoogle.com") ||
 			(target.Platform == PlatformGoogleFlow && cookieDomainWithin(domain, "labs.google"))
 	}
+	if target.Platform == PlatformGrok {
+		return cookieDomainWithin(domain, "grok.com") || cookieDomainWithin(domain, "x.ai") ||
+			cookieDomainWithin(domain, "twitter.com") || cookieDomainWithin(domain, "x.com")
+	}
 	return cookieDomainWithin(domain, target.CookieHost)
 }
 
