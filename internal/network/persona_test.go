@@ -2,64 +2,26 @@ package network
 
 import "testing"
 
-func TestAssignPersonaKeyword(t *testing.T) {
-	cases := map[string]string{
-		"học tiếng anh giao tiếp":   "teacher",
-		"kể chuyện đêm khuya":       "storyteller",
-		"chơi game indie chill":     "gamer",
+func TestAssignPersonaAlwaysCreator(t *testing.T) {
+	if got := AssignPersona("thời trang", nil); got != "creator" {
+		t.Errorf("AssignPersona = %s, want creator", got)
 	}
-	for hint, want := range cases {
-		if got := AssignPersona(hint, nil); got != want {
-			t.Errorf("AssignPersona(%q) = %s, want %s", hint, got, want)
-		}
+	if got := AssignPersona("", map[string]int{"creator": 5}); got != "creator" {
+		t.Errorf("AssignPersona = %s, want creator", got)
 	}
 }
 
-func TestAssignPersonaNeverAbovePhase2(t *testing.T) {
-	// Hints that match phase 3/4 personas must NOT select them.
-	for _, hint := range []string{
-		"nhảy dance cover", "múa thời trang", // dancer (phase 4)
-		"nghe nhạc lofi", "hát karaoke", // musician (phase 3)
-	} {
-		got := AssignPersona(hint, map[string]int{})
-		p, ok := Describe(got)
-		if !ok {
-			t.Fatalf("Describe(%s) unknown", got)
-		}
-		if p.Phase > 2 {
-			t.Errorf("AssignPersona(%q) = %s (phase %d), want phase <= 2", hint, got, p.Phase)
-		}
-		if got == "dancer" || got == "musician" {
-			t.Errorf("AssignPersona(%q) = %s, must never assign phase>2 persona", hint, got)
-		}
+func TestDescribePersona(t *testing.T) {
+	p, ok := Describe("creator")
+	if !ok {
+		t.Fatal("Describe(creator) should be ok")
 	}
-}
-
-func TestAssignPersonaDiversity(t *testing.T) {
-	// The only unused assignable persona wins.
-	used := map[string]int{"storyteller": 1, "teacher": 1, "gamer": 1}
-	if got := AssignPersona("", used); got != "gamer" {
-		t.Errorf("AssignPersona diversity = %s, want gamer", got)
+	if p.Label != "Nhân vật kênh" {
+		t.Errorf("p.Label = %s, want Nhân vật kênh", p.Label)
 	}
-
-	// All used: reuse the least-used one, ties alphabetical.
-	usedAll := map[string]int{"storyteller": 2, "teacher": 1, "gamer": 1}
-	if got := AssignPersona("something unrelated", usedAll); got != "gamer" {
-		t.Errorf("AssignPersona least-used = %s, want gamer", got)
-	}
-
-	// Keyword match wins, but never duplicates an in-use persona.
-	usedT := map[string]int{"teacher": 1}
-	if got := AssignPersona("học tiếng anh", usedT); got == "teacher" {
-		t.Errorf("AssignPersona duplicated in-use teacher persona")
-	}
-}
-
-func TestDescribe(t *testing.T) {
-	if _, ok := Describe("coder"); ok {
-		t.Error("removed coder persona should be unknown")
-	}
-	if _, ok := Describe("nope"); ok {
-		t.Error("Describe(nope) should report unknown")
+	// Fallback for any unknown persona is creator
+	p2, ok2 := Describe("unknown")
+	if !ok2 || p2.Label != "Nhân vật kênh" {
+		t.Errorf("fallback for unknown should be creator: %+v, ok=%v", p2, ok2)
 	}
 }

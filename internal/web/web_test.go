@@ -234,7 +234,7 @@ func TestMediaValidation(t *testing.T) {
 // (6) Every GET page renders without error against sample data.
 func TestAllPagesRender(t *testing.T) {
 	s := newTestServer(t)
-	acct, err := s.Mgr.Add("sample_acct", "hint", "")
+	_, err := s.Mgr.Add("sample_acct", "hint", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,11 +243,6 @@ func TestAllPagesRender(t *testing.T) {
 		"title": "Tai nghe X10", "price": 25.0, "commission_rate": 0.12,
 		"commission_value": 3.0, "status": "shelf", "score": 0.9,
 	}); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Ledger.SaveSlots([]ledger.Slot{{
-		AccountID: acct.ID, SlotDate: s.today(), StartMin: 1200, DurationMin: 90, Status: "planned",
-	}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Ledger.Decide("test", "seed", nil, "seed decision", map[string]any{}); err != nil {

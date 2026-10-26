@@ -14,13 +14,12 @@ func TestTokenWorkerInspect(t *testing.T) {
 	tokenDir = tmp
 	defer func() { tokenDir = old }()
 
-	// Tạo 1 file token youtube hợp lệ
-	ytPath := filepath.Join(tmp, "youtube_token_testuser.json")
-	_ = os.WriteFile(ytPath, []byte(`{"refresh_token":"fake-refresh","access_token":"fake-access"}`), 0o600)
+	// Tạo 2 file token tiktok hợp lệ
+	tt1Path := filepath.Join(tmp, "tiktok_token_user1.json")
+	_ = os.WriteFile(tt1Path, []byte(`{"refresh_token":"tt1-refresh","access_token":"tt1-access"}`), 0o600)
 
-	// Tạo 1 file token tiktok hợp lệ
-	ttPath := filepath.Join(tmp, "tiktok_token_testuser.json")
-	_ = os.WriteFile(ttPath, []byte(`{"refresh_token":"tt-refresh","access_token":"tt-access"}`), 0o600)
+	tt2Path := filepath.Join(tmp, "tiktok_token_user2.json")
+	_ = os.WriteFile(tt2Path, []byte(`{"refresh_token":"tt2-refresh","access_token":"tt2-access"}`), 0o600)
 
 	reports := InspectTokens()
 	if len(reports) != 2 {

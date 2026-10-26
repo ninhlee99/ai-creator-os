@@ -47,7 +47,4 @@ func TestTokenDirAndMigration(t *testing.T) {
 	if got := TikTokTokenPath("shop_vn"); got != filepath.Join(tokDir, "tiktok_token_shop_vn.json") {
 		t.Fatalf("TikTokTokenPath = %q, want trong %s", got, tokDir)
 	}
-	if got := YouTubeTokenPath("shop_vn"); got != filepath.Join(tokDir, "youtube_token_shop_vn.json") {
-		t.Fatalf("YouTubeTokenPath = %q, want trong %s", got, tokDir)
-	}
 }

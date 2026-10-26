@@ -59,11 +59,11 @@ func TestResolveTopicAuto(t *testing.T) {
 
 func TestResolveTopicFallback(t *testing.T) {
 	// No LLM at all -> persona default, source="fallback".
-	plan := ResolveTopic(context.Background(), nil, "", "teacher", nil)
+	plan := ResolveTopic(context.Background(), nil, "", "creator", nil)
 	if plan.Source != SourceFallback {
 		t.Errorf("source = %s, want fallback", plan.Source)
 	}
-	if plan.Niche != FALLBACK_NICHES["teacher"] {
+	if plan.Niche != FALLBACK_NICHES["creator"] {
 		t.Errorf("niche = %q, want persona fallback", plan.Niche)
 	}
 	// LLM error with a hint -> hint kept, source="hint".

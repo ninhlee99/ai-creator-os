@@ -15,10 +15,10 @@ import (
 // Anything else is rejected loudly. Ported verbatim from account.py.
 var TRANSITIONS = map[string]map[string]bool{
 	"onboarding":       {"researching": true, "retired": true},
-	"researching":      {"persona_assigned": true, "paused": true, "retired": true},
-	"persona_assigned": {"growing": true, "paused": true, "retired": true},
-	"growing":          {"paused": true, "retired": true},
-	"paused":           {"growing": true, "retired": true},
+	"researching":      {"persona_assigned": true, "paused": true, "retired": true, "penalized": true},
+	"persona_assigned": {"growing": true, "paused": true, "retired": true, "penalized": true},
+	"growing":          {"paused": true, "retired": true, "penalized": true},
+	"paused":           {"growing": true, "retired": true, "penalized": true},
 	"penalized":        {"paused": true, "retired": true}, // human decides; never auto-resume
 	"retired":          {},
 }

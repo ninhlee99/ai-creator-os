@@ -6,14 +6,105 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/accesstrade"
+	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
+	"github.com/ninhlee99/ai-creator-os/internal/network"
 )
+
+type fakeJob struct{ status, output string }
+
+type fakeProducer struct {
+	jobs     map[string]*fakeJob
+	seq      int
+	enqueued []automation.ProduceRequest
+	failErr  error
+}
+
+func newFakeProducer() *fakeProducer { return &fakeProducer{jobs: map[string]*fakeJob{}} }
+
+func (f *fakeProducer) Enqueue(_ context.Context, req automation.ProduceRequest) (string, error) {
+	if f.failErr != nil {
+		return "", f.failErr
+	}
+	f.seq++
+	id := fmt.Sprintf("job-%d", f.seq)
+	f.jobs[id] = &fakeJob{status: "done", output: "/tmp/" + id + ".mp4"}
+	f.enqueued = append(f.enqueued, req)
+	return id, nil
+}
+
+func (f *fakeProducer) JobState(id string) (string, string) {
+	j, ok := f.jobs[id]
+	if !ok {
+		return "", ""
+	}
+	return j.status, j.output
+}
+
+func newGrowthServer(t *testing.T) (*Server, *fakeProducer, any) {
+	t.Helper()
+	s := newTestServer(t)
+	fp := newFakeProducer()
+	s.GrowthProducer = fp
+	s.Cfg.SetDryRun(false)
+	return s, fp, nil
+}
+
+func growthAccount(t *testing.T, s *Server, username string) *network.Account {
+	t.Helper()
+	a, err := s.Mgr.Add(username, "", "")
+	if err != nil {
+		t.Fatalf("Mgr.Add(%s): %v", username, err)
+	}
+	if _, err := s.Growth.EnsureProfile(a.ID); err != nil {
+		t.Fatalf("EnsureProfile: %v", err)
+	}
+	return a
+}
+
+func seedPlan(t *testing.T, s *Server, accountID int64, drafts ...growth.PlanDraft) {
+	t.Helper()
+	if _, err := s.Growth.InsertPlan(accountID, "d30", "test", drafts); err != nil {
+		t.Fatalf("InsertPlan: %v", err)
+	}
+}
+
+func draftOn(date, variant, topic string) growth.PlanDraft {
+	return growth.PlanDraft{
+		Date: date, FormatID: growth.Slugify(strings.Split(topic, "—")[0]),
+		Variant: variant, Topic: topic, Hook: "hook",
+		Group: date + "|" + growth.Slugify(strings.Split(topic, "—")[0]),
+	}
+}
+
+func itemByVariant(t *testing.T, s *Server, accountID int64, variant string) growth.PlanItem {
+	t.Helper()
+	_, items, err := s.Growth.ActivePlan(accountID)
+	if err != nil {
+		t.Fatalf("ActivePlan: %v", err)
+	}
+	for _, it := range items {
+		if it.Variant == variant {
+			return it
+		}
+	}
+	t.Fatalf("item variant %s not found in plan", variant)
+	return growth.PlanItem{}
+}
+
+func enableProduction(t *testing.T, s *Server) {
+	t.Helper()
+	if err := s.Ledger.SetSetting(SettingGrowthProduction, "1"); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // ------------------------------------------------------- setting semantics
 
@@ -41,9 +132,9 @@ func TestAutopilotSwitchesDefaultOn(t *testing.T) {
 	// R2-W4: the autopilot switches live in the single settings facade
 	// (ledger settings), not the products store.
 
-	enabled, _, _, autoPub, youTube := s.scheduleView()
-	if !enabled || !autoPub || !youTube {
-		t.Fatalf("unset switches: enabled=%v autoPublish=%v youTube=%v, want all ON", enabled, autoPub, youTube)
+	enabled, _, _, autoPub := s.scheduleView()
+	if !enabled || !autoPub {
+		t.Fatalf("unset switches: enabled=%v autoPublish=%v, want all ON", enabled, autoPub)
 	}
 	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "0"); err != nil {
 		t.Fatal(err)
@@ -51,14 +142,14 @@ func TestAutopilotSwitchesDefaultOn(t *testing.T) {
 	if err := s.Ledger.SetSetting(SettingAutopilotAutoPublish, "0"); err != nil {
 		t.Fatal(err)
 	}
-	enabled, _, _, autoPub, _ = s.scheduleView()
+	enabled, _, _, autoPub = s.scheduleView()
 	if enabled || autoPub {
 		t.Fatalf("stored 0: enabled=%v autoPublish=%v, want both OFF", enabled, autoPub)
 	}
 	if err := s.Ledger.SetSetting(SettingAutopilotEnabled, "1"); err != nil {
 		t.Fatal(err)
 	}
-	if enabled, _, _, _, _ = s.scheduleView(); !enabled {
+	if enabled, _, _, _ = s.scheduleView(); !enabled {
 		t.Error("stored 1: enabled = false, want ON")
 	}
 }

@@ -26,3 +26,16 @@ func (f *fakeAccounts) Get(id int64) (*network.Account, error) {
 func (f *fakeAccounts) Transition(id int64, status string, extra map[string]any) (*network.Account, error) {
 	return nil, nil
 }
+
+type fakeGate struct{ kill, dry bool }
+
+func (g *fakeGate) KillSwitch() bool { return g.kill }
+func (g *fakeGate) DryRun() bool     { return g.dry }
+
+type fakeEnv map[string]string
+
+func (e fakeEnv) EffectiveEnv(name string) (string, bool) {
+	v, ok := e[name]
+	return v, ok
+}
+

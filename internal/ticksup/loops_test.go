@@ -18,7 +18,7 @@ func TestArmLoopsAllDisabled(t *testing.T) {
 
 // ArmLoops với sup nil → no-op, không panic.
 func TestArmLoopsNilSupervisor(t *testing.T) {
-	ArmLoops(context.Background(), nil, Deps{Growth: true, Story: true})
+	ArmLoops(context.Background(), nil, Deps{Growth: true, Studio: true})
 }
 
 // loop: fn chạy mỗi interval cho tới khi ctx hủy.
