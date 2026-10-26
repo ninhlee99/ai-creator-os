@@ -1,4 +1,4 @@
-// FlowCanvas - Interactive Node Graph Workflow Canvas (ComfyUI / n8n style)
+// FlowCanvas - Interactive Node Graph Workflow Canvas (n8n & ComfyUI style)
 (function () {
   'use strict';
 
@@ -8,8 +8,14 @@
       this.viewport = document.getElementById('flow-canvas-viewport');
       this.svgLayer = document.getElementById('flow-wires-svg');
       this.nodesLayer = document.getElementById('flow-nodes-layer');
+      this.inspector = document.getElementById('flow-inspector');
+      this.nodeCountBadge = document.getElementById('wf-node-count-badge');
+      this.statusPill = document.getElementById('wf-status-pill');
 
       this.graph = window.__INITIAL_GRAPH__ || { id: 'custom_flow', name: 'Luồng tùy chỉnh', nodes: [], edges: [] };
+      if (!this.graph.nodes) this.graph.nodes = [];
+      if (!this.graph.edges) this.graph.edges = [];
+
       this.definitions = {};
       (window.__NODE_DEFINITIONS__ || []).forEach(d => {
         this.definitions[d.type] = d;
@@ -23,8 +29,9 @@
       this.panStartY = 0;
 
       this.selectedNodeId = null;
-      this.activeConnecting = null; // { nodeId, portId, isOutput, x, y }
+      this.activeConnecting = null; // { nodeId, portId, isOutput, startX, startY }
       this.tempWire = null;
+      this.pendingConnect = null; // { fromNode, fromPort } for clicking '+' handle
 
       this.currentRunId = null;
       this.pollInterval = null;
@@ -34,10 +41,11 @@
       this.bindToolbar();
       this.bindInspector();
       this.bindModal();
+      this.updateZoomDisplay();
     }
 
     initEvents() {
-      // Pan canvas
+      // Pan canvas by dragging background
       this.container.addEventListener('mousedown', (e) => {
         if (e.target === this.container || e.target === this.viewport || e.target === this.svgLayer) {
           this.isPanning = true;
@@ -68,7 +76,7 @@
         }
       });
 
-      // Zoom via mouse wheel
+      // Zoom via mouse wheel toward mouse point
       this.container.addEventListener('wheel', (e) => {
         e.preventDefault();
         const zoomFactor = 1.1;
@@ -83,7 +91,6 @@
           this.scale = Math.max(0.35, this.scale / zoomFactor);
         }
 
-        // Zoom toward mouse position
         this.panX = mouseX - (mouseX - this.panX) * (this.scale / prevScale);
         this.panY = mouseY - (mouseY - this.panY) * (this.scale / prevScale);
 
@@ -91,76 +98,98 @@
         this.updateZoomDisplay();
       }, { passive: false });
 
-      // Window resize
       window.addEventListener('resize', () => {
         this.renderWires();
       });
 
-      // Delete node / wire on Delete key
+      // Keyboard shortcuts
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-          if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-          if (this.selectedNodeId) {
-            this.deleteNode(this.selectedNodeId);
-          }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedNodeId) {
+          const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+          if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+          this.deleteNode(this.selectedNodeId);
+        } else if (e.key === '+' && !['input', 'textarea'].includes(document.activeElement?.tagName.toLowerCase())) {
+          this.openAddNodeModal();
+        } else if (e.key === 'Escape') {
+          this.closeAddNodeModal();
+          this.cancelConnecting();
         }
       });
     }
 
     applyTransform() {
       this.viewport.style.transform = `translate(${this.panX}px, ${this.panY}px) scale(${this.scale})`;
-      this.viewport.style.transformOrigin = '0 0';
     }
 
     updateZoomDisplay() {
-      const zEl = document.getElementById('zoom-level');
-      if (zEl) zEl.innerText = `${Math.round(this.scale * 100)}%`;
+      const zoomText = document.getElementById('zoom-level');
+      if (zoomText) {
+        zoomText.innerText = `${Math.round(this.scale * 100)}%`;
+      }
     }
 
     render() {
       this.nodesLayer.innerHTML = '';
-      this.svgLayer.innerHTML = '';
-
-      if (!this.graph.nodes) this.graph.nodes = [];
-      if (!this.graph.edges) this.graph.edges = [];
-
-      this.graph.nodes.forEach(node => this.renderNode(node));
+      if (this.graph.nodes && this.graph.nodes.length > 0) {
+        this.graph.nodes.forEach(node => {
+          this.renderNode(node);
+        });
+      }
       this.renderWires();
-      this.applyTransform();
+      if (this.nodeCountBadge) {
+        this.nodeCountBadge.innerText = `${(this.graph.nodes || []).length} nodes`;
+      }
     }
 
     renderNode(node) {
-      const def = this.definitions[node.Type] || this.definitions[node.type] || {};
+      const def = this.definitions[node.type] || {
+        type: node.type,
+        title: node.title || node.type,
+        category: node.category || 'process',
+        inputs: [],
+        outputs: []
+      };
+
+      const cat = node.category || def.category || 'process';
+
       const nodeEl = document.createElement('div');
-      nodeEl.className = `flow-node node-cat-${node.category || def.category || 'process'}`;
+      nodeEl.className = `wf-node cat-${cat}`;
       nodeEl.id = `node-${node.id}`;
+      nodeEl.dataset.nodeId = node.id;
       nodeEl.style.left = `${node.x || 100}px`;
       nodeEl.style.top = `${node.y || 100}px`;
 
-      if (node.id === this.selectedNodeId) {
+      if (this.selectedNodeId === node.id) {
         nodeEl.classList.add('selected');
       }
 
-      // Card Header
+      // 1. Node Header Main (n8n Card layout)
       const header = document.createElement('div');
-      header.className = 'node-header';
+      header.className = 'wf-node-main';
       header.innerHTML = `
-        <div class="node-title-group">
-          <span class="node-icon">${this.getCategoryIcon(node.category || def.category)}</span>
-          <span class="node-title">${node.title || def.title || node.type}</span>
+        <div class="wf-node-icon cat-${cat}">
+          <span>${this.getCategoryIcon(cat)}</span>
         </div>
-        <div class="node-header-actions">
-          <button type="button" class="node-btn-del" title="Xóa node">&times;</button>
+        <div class="wf-node-info">
+          <div class="wf-node-title" title="${node.title || def.title || node.type}">
+            ${node.title || def.title || node.type}
+          </div>
+          <div class="wf-node-subtitle" title="${def.title || node.type}">
+            ${def.title || node.type}
+          </div>
+        </div>
+        <div class="wf-node-actions">
+          <button type="button" class="wf-node-del-btn" title="Xóa node">&times;</button>
         </div>
       `;
 
-      // Delete button
-      header.querySelector('.node-btn-del').addEventListener('click', (e) => {
+      // Delete Node
+      header.querySelector('.wf-node-del-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         this.deleteNode(node.id);
       });
 
-      // Drag node
+      // Drag Node
       let startX = 0, startY = 0;
       header.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
@@ -193,14 +222,14 @@
 
       nodeEl.appendChild(header);
 
-      // Node Body: Ports
-      const body = document.createElement('div');
-      body.className = 'node-body';
+      // 2. Ports Row (Inputs on Left, Outputs on Right with + Handle)
+      const portsRow = document.createElement('div');
+      portsRow.className = 'wf-ports-row';
 
       const inputsCol = document.createElement('div');
-      inputsCol.className = 'node-ports-col inputs';
+      inputsCol.className = 'wf-ports-inputs';
       const outputsCol = document.createElement('div');
-      outputsCol.className = 'node-ports-col outputs';
+      outputsCol.className = 'wf-ports-outputs';
 
       const inputs = node.inputs || def.inputs || [];
       inputs.forEach(port => {
@@ -212,20 +241,18 @@
         outputsCol.appendChild(this.createPortElement(node.id, port, true));
       });
 
-      body.appendChild(inputsCol);
-      body.appendChild(outputsCol);
-      nodeEl.appendChild(body);
+      portsRow.appendChild(inputsCol);
+      portsRow.appendChild(outputsCol);
+      nodeEl.appendChild(portsRow);
 
-      // Node Preview / Status Footer
+      // 3. Node Footer & Status Indicator
       const footer = document.createElement('div');
-      footer.className = 'node-footer';
+      footer.className = 'wf-node-footer';
       footer.id = `node-footer-${node.id}`;
-
-      const state = node.state || { status: 'idle' };
-      footer.innerHTML = this.renderNodeStatus(state);
+      footer.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' });
       nodeEl.appendChild(footer);
 
-      // Select node on click
+      // Click anywhere on node to select
       nodeEl.addEventListener('click', (e) => {
         e.stopPropagation();
         this.selectNode(node.id);
@@ -236,32 +263,48 @@
 
     createPortElement(nodeId, port, isOutput) {
       const portEl = document.createElement('div');
-      portEl.className = `flow-port ${isOutput ? 'port-output' : 'port-input'} port-type-${port.type || 'any'}`;
+      portEl.className = `wf-port ${isOutput ? 'wf-port-output' : 'wf-port-input'} port-type-${port.type || 'any'}`;
       portEl.dataset.nodeId = nodeId;
       portEl.dataset.portId = port.id;
       portEl.dataset.type = port.type || 'any';
       portEl.dataset.isOutput = isOutput ? '1' : '0';
 
       const dot = document.createElement('span');
-      dot.className = 'port-dot';
+      dot.className = 'wf-port-dot';
       dot.title = `${port.name} (${port.type})`;
 
       const label = document.createElement('span');
-      label.className = 'port-label';
+      label.className = 'wf-port-label';
       label.innerText = port.name;
 
       if (isOutput) {
         portEl.appendChild(label);
         portEl.appendChild(dot);
+
+        // Add (+) quick connect handle button (n8n signature UX)
+        const addBtn = document.createElement('span');
+        addBtn.className = 'wf-port-add-btn';
+        addBtn.innerText = '+';
+        addBtn.title = 'Bấm để thêm bước tiếp theo và tự động nối dây';
+        addBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.pendingConnect = {
+            fromNode: nodeId,
+            fromPort: port.id,
+            portType: port.type
+          };
+          this.openAddNodeModal();
+        });
+        portEl.appendChild(addBtn);
       } else {
         portEl.appendChild(dot);
         portEl.appendChild(label);
       }
 
-      // Drag to connect wire
+      // Drag to create wire from output dot
       dot.addEventListener('mousedown', (e) => {
         e.stopPropagation();
-        if (!isOutput) return; // Chỉ kéo từ output port sang input port
+        if (!isOutput) return;
 
         const rect = dot.getBoundingClientRect();
         const containerRect = this.container.getBoundingClientRect();
@@ -279,7 +322,7 @@
         this.createTempWire(startX, startY);
       });
 
-      // Drop connection on input port
+      // Drop wire connection on input dot
       dot.addEventListener('mouseup', (e) => {
         e.stopPropagation();
         if (this.activeConnecting && !isOutput) {
@@ -358,7 +401,7 @@
     }
 
     findPortDot(nodeId, portId, isOutput) {
-      const selector = `.flow-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .port-dot`;
+      const selector = `.wf-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .wf-port-dot`;
       return this.nodesLayer.querySelector(selector);
     }
 
@@ -410,8 +453,8 @@
         type: nodeType,
         title: def.title,
         category: def.category,
-        x: x || 200,
-        y: y || 200,
+        x: Math.round(x || 200),
+        y: Math.round(y || 200),
         inputs: def.inputs ? JSON.parse(JSON.stringify(def.inputs)) : [],
         outputs: def.outputs ? JSON.parse(JSON.stringify(def.outputs)) : [],
         params: def.default_params ? JSON.parse(JSON.stringify(def.default_params)) : {},
@@ -419,44 +462,69 @@
       };
 
       this.graph.nodes.push(newNode);
+
+      // Auto-connect if pending from '+' handle
+      if (this.pendingConnect) {
+        const { fromNode, fromPort } = this.pendingConnect;
+        const matchingInput = (newNode.inputs || []).find(inp => inp.type === this.pendingConnect.portType) || (newNode.inputs || [])[0];
+        if (matchingInput) {
+          this.addEdge(fromNode, fromPort, id, matchingInput.id);
+        }
+        this.pendingConnect = null;
+      }
+
       this.render();
       this.selectNode(id);
     }
 
     selectNode(nodeId) {
       this.selectedNodeId = nodeId;
-      this.nodesLayer.querySelectorAll('.flow-node').forEach(el => {
+      this.nodesLayer.querySelectorAll('.wf-node').forEach(el => {
         el.classList.toggle('selected', el.id === `node-${nodeId}`);
       });
+      this.openInspector();
       this.updateInspector();
     }
 
     deselectAll() {
       this.selectedNodeId = null;
-      this.nodesLayer.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+      this.nodesLayer.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
       this.updateInspector();
+    }
+
+    openInspector() {
+      if (this.inspector) {
+        this.inspector.classList.remove('collapsed');
+      }
+    }
+
+    closeInspector() {
+      if (this.inspector) {
+        this.inspector.classList.add('collapsed');
+      }
     }
 
     renderNodeStatus(state) {
       if (!state || state.status === 'idle') {
-        return `<span class="status-badge idle">Chờ thực thi</span>`;
+        return `<span class="wf-status-badge wf-status-idle">Chờ thực thi</span>`;
       }
       if (state.status === 'running') {
-        return `<div class="status-running-box"><span class="spinner"></span> <span>Đang xử lý (${state.progress || 10}%)...</span></div>`;
+        return `<span class="wf-status-badge wf-status-running">⚡ Đang xử lý (${state.progress || 10}%)...</span>`;
       }
       if (state.status === 'completed') {
         let preview = '';
         if (state.output_preview) {
-          if (state.output_preview.endsWith('.mp4') || state.output_preview.endsWith('.webm')) {
-            preview = `<div class="node-media-preview"><video src="/media/${this.getFilename(state.output_preview)}" autoplay muted loop playsinline></video></div>`;
+          const fn = this.getFilename(state.output_preview);
+          if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
+            preview = `<div class="wf-node-preview-thumb"><video src="/media/${fn}" autoplay muted loop playsinline></video></div>`;
           } else {
-            preview = `<div class="node-media-preview"><img src="/media/${this.getFilename(state.output_preview)}" alt="Preview"></div>`;
+            preview = `<div class="wf-node-preview-thumb"><img src="/media/${fn}" alt="Preview"></div>`;
           }
         }
-        return `<div class="status-badge completed"><span class="check-icon">✓</span> Hoàn tất 100%</div>${preview}`;
+        return `<div class="wf-status-badge wf-status-completed">✓ Hoàn tất 100%</div>${preview}`;
       }
       if (state.status === 'failed') {
-        return `<div class="status-badge failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 30) : 'Thất bại'}</div>`;
+        return `<span class="wf-status-badge wf-status-failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 26) : 'Thất bại'}</span>`;
       }
       return '';
     }
@@ -470,7 +538,7 @@
       switch (cat) {
         case 'input': return '📥';
         case 'process': return '⚙️';
-        case 'ai': return '✨';
+        case 'ai': return '🧠';
         case 'output': return '📤';
         default: return '📦';
       }
@@ -478,88 +546,126 @@
 
     bindToolbar() {
       // Preset switcher
-      const presetSelect = document.getElementById('flow-preset-select');
+      const presetSelect = document.getElementById('wf-preset-select');
       if (presetSelect) {
         presetSelect.addEventListener('change', (e) => {
-          window.location.href = `/studio/flow?preset=${encodeURIComponent(e.target.value)}`;
+          window.location.href = `/workflow?preset=${encodeURIComponent(e.target.value)}`;
         });
       }
 
       // Add Node button
-      document.getElementById('btn-add-node').addEventListener('click', () => {
-        document.getElementById('add-node-modal').style.display = 'flex';
-      });
+      const btnAdd = document.getElementById('btn-add-node');
+      if (btnAdd) {
+        btnAdd.addEventListener('click', () => {
+          this.pendingConnect = null;
+          this.openAddNodeModal();
+        });
+      }
+
+      // FAB add node
+      const fabAdd = document.getElementById('fab-add-node');
+      if (fabAdd) {
+        fabAdd.addEventListener('click', () => {
+          this.pendingConnect = null;
+          this.openAddNodeModal();
+        });
+      }
 
       // Save Graph button
-      document.getElementById('btn-save-graph').addEventListener('click', async () => {
-        try {
-          const resp = await fetch('/api/flow/graphs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(this.graph)
-          });
-          const data = await resp.json();
-          if (data.ok) {
-            alert('Đã lưu đồ thị workflow thành công!');
-          } else {
-            alert('Lỗi lưu đồ thị: ' + (data.error || ''));
+      const btnSave = document.getElementById('btn-save-graph');
+      if (btnSave) {
+        btnSave.addEventListener('click', async () => {
+          try {
+            const resp = await fetch('/api/flow/graphs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.graph)
+            });
+            const data = await resp.json();
+            if (data.ok) {
+              alert('Đã lưu đồ thị workflow thành công!');
+            } else {
+              alert('Lỗi lưu đồ thị: ' + (data.error || ''));
+            }
+          } catch (err) {
+            alert('Lỗi kết nối máy chủ: ' + err.message);
           }
-        } catch (err) {
-          alert('Lỗi kết nối máy chủ: ' + err.message);
-        }
-      });
+        });
+      }
 
       // Run Flow button
-      document.getElementById('btn-run-flow').addEventListener('click', () => {
-        this.runFlow();
-      });
+      const btnRun = document.getElementById('btn-run-flow');
+      if (btnRun) {
+        btnRun.addEventListener('click', () => {
+          this.runFlow();
+        });
+      }
 
       // Cancel Flow button
-      document.getElementById('btn-cancel-flow').addEventListener('click', () => {
-        this.cancelFlow();
-      });
+      const btnCancel = document.getElementById('btn-cancel-flow');
+      if (btnCancel) {
+        btnCancel.addEventListener('click', () => {
+          this.cancelFlow();
+        });
+      }
 
       // Zoom buttons
-      document.getElementById('btn-zoom-in').addEventListener('click', () => {
-        this.scale = Math.min(2.5, this.scale * 1.15);
-        this.applyTransform();
-        this.updateZoomDisplay();
-      });
-      document.getElementById('btn-zoom-out').addEventListener('click', () => {
-        this.scale = Math.max(0.35, this.scale / 1.15);
-        this.applyTransform();
-        this.updateZoomDisplay();
-      });
-      document.getElementById('btn-zoom-reset').addEventListener('click', () => {
-        this.scale = 1.0;
-        this.panX = 40;
-        this.panY = 40;
-        this.applyTransform();
-        this.updateZoomDisplay();
-      });
+      const btnZoomIn = document.getElementById('btn-zoom-in');
+      if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', () => {
+          this.scale = Math.min(2.5, this.scale * 1.15);
+          this.applyTransform();
+          this.updateZoomDisplay();
+        });
+      }
+
+      const btnZoomOut = document.getElementById('btn-zoom-out');
+      if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', () => {
+          this.scale = Math.max(0.35, this.scale / 1.15);
+          this.applyTransform();
+          this.updateZoomDisplay();
+        });
+      }
+
+      const btnZoomReset = document.getElementById('btn-zoom-reset');
+      if (btnZoomReset) {
+        btnZoomReset.addEventListener('click', () => {
+          this.scale = 1.0;
+          this.panX = 40;
+          this.panY = 40;
+          this.applyTransform();
+          this.updateZoomDisplay();
+        });
+      }
     }
 
     async runFlow() {
       const runBtn = document.getElementById('btn-run-flow');
       const cancelBtn = document.getElementById('btn-cancel-flow');
-      const statusEl = document.getElementById('flow-run-status');
+      const statusPill = this.statusPill;
 
-      runBtn.disabled = true;
-      cancelBtn.style.display = 'inline-flex';
-      statusEl.className = 'flow-run-status status-running';
-      statusEl.innerHTML = '<span class="status-dot pulsing"></span> <span class="status-text">Đang chạy...</span>';
+      if (runBtn) runBtn.disabled = true;
+      if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+      if (statusPill) {
+        statusPill.className = 'wf-status-pill status-running';
+        statusPill.innerText = '⚡ Đang chạy workflow...';
+      }
 
-      // Reset node visual states to queued
+      // Reset visual node states to queued
       this.graph.nodes.forEach(n => {
         n.state = { status: 'queued', progress: 0 };
         const footer = document.getElementById(`node-footer-${n.id}`);
         if (footer) footer.innerHTML = this.renderNodeStatus(n.state);
       });
 
-      // Switch to log tab
-      document.querySelector('.inspector-tab[data-tab="run-logs"]').click();
+      // Switch inspector to logs tab
+      const logTabBtn = document.querySelector('.wf-tab[data-tab="run-logs"]');
+      if (logTabBtn) logTabBtn.click();
+      this.openInspector();
+
       this.clearLogs();
-      this.appendLog('[Khởi chạy] Đang gửi cấu hình đồ thị tới máy chủ...');
+      this.appendLog('[Khởi chạy] Đang kiểm tra cấu hình đồ thị Workflow...');
 
       try {
         const resp = await fetch('/api/flow/execute', {
@@ -573,15 +679,17 @@
         }
 
         this.currentRunId = data.run_id;
-        this.appendLog(`[Thực thi] Mã phiên chạy: ${this.currentRunId}`);
+        this.appendLog(`[DAG Engine] Đã kích hoạt phiên chạy ID: ${this.currentRunId}`);
         this.startPollingRun(this.currentRunId);
       } catch (err) {
-        runBtn.disabled = false;
-        cancelBtn.style.display = 'none';
-        statusEl.className = 'flow-run-status status-error';
-        statusEl.innerHTML = '<span class="status-dot"></span> <span class="status-text">Lỗi khởi chạy</span>';
+        if (runBtn) runBtn.disabled = false;
+        if (cancelBtn) cancelBtn.style.display = 'none';
+        if (statusPill) {
+          statusPill.className = 'wf-status-pill status-error';
+          statusPill.innerText = '⚠️ Lỗi khởi chạy';
+        }
         this.appendLog(`[LỖI] ${err.message}`);
-        alert('Lỗi chạy luồng: ' + err.message);
+        alert('Lỗi chạy workflow: ' + err.message);
       }
     }
 
@@ -595,13 +703,18 @@
           if (!res.ok || !res.run) return;
 
           const run = res.run;
-          document.getElementById('run-progress-text').innerText = `${run.progress || 0}%`;
+          const progressText = document.getElementById('run-progress-text');
+          if (progressText) {
+            progressText.innerText = `${run.progress || 0}%`;
+          }
 
           // Update terminal log
           if (run.log) {
-            document.getElementById('flow-logs-terminal').innerText = run.log;
             const term = document.getElementById('flow-logs-terminal');
-            term.scrollTop = term.scrollHeight;
+            if (term) {
+              term.innerText = run.log;
+              term.scrollTop = term.scrollHeight;
+            }
           }
 
           // Update node states
@@ -624,32 +737,40 @@
             });
           }
 
-          // Check terminal completion
+          // Terminal completion
           if (run.status === 'completed' || run.status === 'failed' || run.status === 'cancelled') {
             clearInterval(this.pollInterval);
             this.pollInterval = null;
 
-            document.getElementById('btn-run-flow').disabled = false;
-            document.getElementById('btn-cancel-flow').style.display = 'none';
+            const runBtn = document.getElementById('btn-run-flow');
+            const cancelBtn = document.getElementById('btn-cancel-flow');
+            if (runBtn) runBtn.disabled = false;
+            if (cancelBtn) cancelBtn.style.display = 'none';
 
-            const statusEl = document.getElementById('flow-run-status');
+            const statusPill = this.statusPill;
             if (run.status === 'completed') {
-              statusEl.className = 'flow-run-status status-completed';
-              statusEl.innerHTML = '<span class="status-dot"></span> <span class="status-text">Hoàn tất 100%</span>';
-              this.appendLog(`🎉 [Hoàn thành] Video cuối cùng: ${run.final_output || 'Thành công'}`);
+              if (statusPill) {
+                statusPill.className = 'wf-status-pill status-ready';
+                statusPill.innerText = '✓ Hoàn tất 100%';
+              }
+              this.appendLog(`🎉 [Hoàn tất thành công] Video thành phẩm: ${run.final_output || 'Hoàn tất'}`);
               if (run.final_output) {
                 this.showFinalModal(run.final_output);
               }
             } else if (run.status === 'failed') {
-              statusEl.className = 'flow-run-status status-error';
-              statusEl.innerHTML = '<span class="status-dot"></span> <span class="status-text">Thất bại</span>';
+              if (statusPill) {
+                statusPill.className = 'wf-status-pill status-error';
+                statusPill.innerText = '⚠️ Thất bại';
+              }
             } else {
-              statusEl.className = 'flow-run-status status-idle';
-              statusEl.innerHTML = '<span class="status-dot"></span> <span class="status-text">Đã hủy</span>';
+              if (statusPill) {
+                statusPill.className = 'wf-status-pill status-ready';
+                statusPill.innerText = 'Đã dừng';
+              }
             }
           }
         } catch (e) {
-          console.error('Polling error', e);
+          console.error('Workflow poll error', e);
         }
       }, 700);
     }
@@ -658,7 +779,7 @@
       if (!this.currentRunId) return;
       try {
         await fetch(`/api/flow/runs/${this.currentRunId}/cancel`, { method: 'POST' });
-        this.appendLog('[Hủy bỏ] Đã gửi tín hiệu hủy phiên thực thi');
+        this.appendLog('[Hủy bỏ] Đã gửi tín hiệu dừng tới hệ thống');
       } catch (e) {
         console.error(e);
       }
@@ -669,24 +790,29 @@
       const isVideo = filename.endsWith('.mp4') || filename.endsWith('.webm');
 
       const modal = document.createElement('div');
-      modal.className = 'flow-modal';
-      modal.style.display = 'flex';
+      modal.className = 'wf-modal-overlay';
       modal.innerHTML = `
-        <div class="flow-modal-dialog" style="max-width:540px">
-          <div class="flow-modal-header">
-            <h3>🎉 Video Thành Phẩm Studio ComfyUI</h3>
-            <button type="button" class="flow-modal-close">&times;</button>
+        <div class="wf-modal-window" style="max-width:560px">
+          <div class="wf-modal-top">
+            <div class="wf-modal-title">
+              <span class="wf-modal-title-icon">🎉</span>
+              <h3>Video Thành Phẩm Workflow</h3>
+            </div>
+            <button type="button" class="wf-modal-close">&times;</button>
           </div>
-          <div style="padding:16px;text-align:center">
-            ${isVideo ? `<video src="/media/${filename}" controls autoplay style="width:100%;max-height:480px;border-radius:8px;background:#000"></video>` : `<img src="/media/${filename}" style="max-width:100%;border-radius:8px">`}
-            <div style="margin-top:16px;display:flex;gap:10px;justify-content:center">
-              <a href="/media/${filename}" download class="btn btn-primary">⬇ Tải video về máy</a>
-              <a href="/studio/jobs" class="btn btn-secondary">Xem trong danh sách Video ↗</a>
+          <div style="padding:20px;text-align:center">
+            ${isVideo ? `<video src="/media/${filename}" controls autoplay style="width:100%;max-height:480px;border-radius:10px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,0.3)"></video>` : `<img src="/media/${filename}" style="max-width:100%;border-radius:10px">`}
+            <div style="margin-top:18px;display:flex;gap:12px;justify-content:center">
+              <a href="/media/${filename}" download class="wf-btn wf-btn-primary">⬇ Tải video về máy</a>
+              <a href="/studio/jobs" class="wf-btn wf-btn-secondary">Xem danh sách Video ↗</a>
             </div>
           </div>
         </div>
       `;
-      modal.querySelector('.flow-modal-close').addEventListener('click', () => modal.remove());
+      modal.querySelector('.wf-modal-close').addEventListener('click', () => modal.remove());
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
       document.body.appendChild(modal);
     }
 
@@ -694,7 +820,7 @@
       const term = document.getElementById('flow-logs-terminal');
       if (!term) return;
       const line = document.createElement('div');
-      line.className = 'log-line';
+      line.className = 'wf-log-row';
       line.innerText = msg;
       term.appendChild(line);
       term.scrollTop = term.scrollHeight;
@@ -706,22 +832,36 @@
     }
 
     bindInspector() {
-      document.querySelectorAll('.inspector-tab').forEach(tab => {
+      // Close button
+      const closeBtn = document.getElementById('btn-close-inspector');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          this.closeInspector();
+        });
+      }
+
+      // Tab switching
+      document.querySelectorAll('.wf-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-          document.querySelectorAll('.inspector-tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.inspector-content').forEach(c => c.style.display = 'none');
+          document.querySelectorAll('.wf-tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.wf-tab-pane').forEach(c => c.style.display = 'none');
           tab.classList.add('active');
           const target = document.getElementById(`tab-${tab.dataset.tab}`);
           if (target) target.style.display = 'block';
         });
       });
 
-      document.getElementById('btn-clear-logs').addEventListener('click', () => this.clearLogs());
+      const clearLogBtn = document.getElementById('btn-clear-logs');
+      if (clearLogBtn) {
+        clearLogBtn.addEventListener('click', () => this.clearLogs());
+      }
     }
 
     updateInspector() {
       const emptyEl = document.getElementById('inspector-empty');
       const formEl = document.getElementById('inspector-form');
+      if (!emptyEl || !formEl) return;
+
       if (!this.selectedNodeId) {
         emptyEl.style.display = 'block';
         formEl.style.display = 'none';
@@ -739,77 +879,93 @@
       formEl.style.display = 'block';
 
       const def = this.definitions[node.type] || {};
-      document.getElementById('inspector-node-title').innerText = node.title || def.title || node.type;
-      document.getElementById('inspector-node-category').innerText = (node.category || def.category || 'process').toUpperCase();
-      document.getElementById('inspector-node-desc').innerText = def.description || '';
+      const cat = node.category || def.category || 'process';
+
+      const iconEl = document.getElementById('inspector-node-icon');
+      if (iconEl) iconEl.innerText = this.getCategoryIcon(cat);
+
+      const titleEl = document.getElementById('inspector-node-title');
+      if (titleEl) titleEl.innerText = node.title || def.title || node.type;
+
+      const catEl = document.getElementById('inspector-node-category');
+      if (catEl) catEl.innerText = cat.toUpperCase();
+
+      const descEl = document.getElementById('inspector-node-desc');
+      if (descEl) descEl.innerText = def.description || '';
 
       const fieldsContainer = document.getElementById('inspector-fields');
-      fieldsContainer.innerHTML = '';
+      if (fieldsContainer) {
+        fieldsContainer.innerHTML = '';
 
-      if (!node.params) node.params = {};
-      const params = Object.assign({}, def.default_params, node.params);
+        if (!node.params) node.params = {};
+        const params = Object.assign({}, def.default_params, node.params);
 
-      Object.keys(params).forEach(key => {
-        const val = params[key];
-        const group = document.createElement('div');
-        group.className = 'form-group';
+        Object.keys(params).forEach(key => {
+          const val = params[key];
+          const group = document.createElement('div');
+          group.className = 'form-group';
 
-        const label = document.createElement('label');
-        label.innerText = this.formatParamLabel(key);
-        group.appendChild(label);
+          const label = document.createElement('label');
+          label.innerText = this.formatParamLabel(key);
+          group.appendChild(label);
 
-        if (typeof val === 'boolean') {
-          const chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.checked = val;
-          chk.addEventListener('change', () => {
-            node.params[key] = chk.checked;
-          });
-          group.appendChild(chk);
-        } else if (typeof val === 'number') {
-          const numInput = document.createElement('input');
-          numInput.type = 'number';
-          numInput.className = 'form-control';
-          numInput.value = val;
-          numInput.addEventListener('input', () => {
-            node.params[key] = parseFloat(numInput.value) || 0;
-          });
-          group.appendChild(numInput);
-        } else if (key.includes('prompt') || key.includes('template') || (typeof val === 'string' && val.length > 50)) {
-          const textarea = document.createElement('textarea');
-          textarea.className = 'form-control';
-          textarea.rows = 4;
-          textarea.value = val;
-          textarea.addEventListener('input', () => {
-            node.params[key] = textarea.value;
-          });
-          group.appendChild(textarea);
-        } else {
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.className = 'form-control';
-          input.value = val;
-          input.addEventListener('input', () => {
-            node.params[key] = input.value;
-          });
-          group.appendChild(input);
-        }
+          if (typeof val === 'boolean') {
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = val;
+            chk.addEventListener('change', () => {
+              node.params[key] = chk.checked;
+            });
+            group.appendChild(chk);
+          } else if (typeof val === 'number') {
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.className = 'form-control';
+            numInput.value = val;
+            numInput.addEventListener('input', () => {
+              node.params[key] = parseFloat(numInput.value) || 0;
+            });
+            group.appendChild(numInput);
+          } else if (key.includes('prompt') || key.includes('template') || (typeof val === 'string' && val.length > 50)) {
+            const textarea = document.createElement('textarea');
+            textarea.className = 'form-control';
+            textarea.rows = 4;
+            textarea.value = val;
+            textarea.addEventListener('input', () => {
+              node.params[key] = textarea.value;
+            });
+            group.appendChild(textarea);
+          } else {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.value = val;
+            input.addEventListener('input', () => {
+              node.params[key] = input.value;
+            });
+            group.appendChild(input);
+          }
 
-        fieldsContainer.appendChild(group);
-      });
+          fieldsContainer.appendChild(group);
+        });
+      }
 
       // Preview box
       const previewBox = document.getElementById('inspector-preview-box');
-      if (node.state && node.state.output_preview) {
-        const preview = node.state.output_preview;
-        const filename = this.getFilename(preview);
-        if (filename.endsWith('.mp4') || filename.endsWith('.webm')) {
-          previewBox.innerHTML = `<video src="/media/${filename}" controls autoplay muted loop style="max-width:100%;border-radius:6px"></video>`;
+      const previewStatus = document.getElementById('inspector-preview-status');
+      if (previewBox) {
+        if (node.state && node.state.output_preview) {
+          const fn = this.getFilename(node.state.output_preview);
+          if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
+          if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
+            previewBox.innerHTML = `<video src="/media/${fn}" controls autoplay muted loop style="max-width:100%;border-radius:6px"></video>`;
+          } else {
+            previewBox.innerHTML = `<img src="/media/${fn}" alt="Preview" style="max-width:100%;border-radius:6px">`;
+          }
         } else {
-          previewBox.innerHTML = `<img src="/media/${filename}" alt="Preview" style="max-width:100%;border-radius:6px">`;
+          if (previewStatus) previewStatus.innerText = 'Chưa có kết quả';
+          previewBox.innerHTML = '<span class="text-muted">Chưa có dữ liệu xuất</span>';
         }
-      } else {
-        previewBox.innerHTML = '<span class="muted">Chưa có kết quả chạy cho node này</span>';
       }
     }
 
@@ -817,83 +973,130 @@
       const labels = {
         template: 'Mẫu câu lệnh (Template)',
         prompt: 'Câu lệnh Prompt',
-        model_name: 'Tên nhân vật',
+        model_name: 'Tên nhân vật mẫu',
         product_title: 'Tên sản phẩm',
         aspect: 'Tỉ lệ khung hình (Aspect)',
         placement: 'Vị trí ghép sản phẩm',
-        scale: 'Tỉ lệ phóng to sản phẩm',
+        scale: 'Tỉ lệ phóng to',
         resolution: 'Độ phân giải',
-        expression: 'Biểu cảm vũ đạo',
-        provider_name: 'Tên nhà cung cấp Web AI',
+        expression: 'Biểu cảm & Điệu nhảy',
+        provider_name: 'Tên Web AI',
         target_url: 'Đường dẫn đăng nhập AI',
-        auto_publish_draft: 'Tự động tạo bản nháp TikTok'
+        auto_publish_draft: 'Tự động xuất TikTok nháp'
       };
       return labels[key] || key.replace(/_/g, ' ');
+    }
+
+    openAddNodeModal() {
+      const modal = document.getElementById('add-node-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        const searchInput = document.getElementById('node-search-input');
+        if (searchInput) {
+          searchInput.value = '';
+          searchInput.focus();
+        }
+        this.renderModalGrid('', 'all');
+      }
+    }
+
+    closeAddNodeModal() {
+      const modal = document.getElementById('add-node-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      this.pendingConnect = null;
     }
 
     bindModal() {
       const modal = document.getElementById('add-node-modal');
       const closeBtn = document.getElementById('btn-close-node-modal');
       const searchInput = document.getElementById('node-search-input');
-      const grid = document.getElementById('modal-node-grid');
 
-      closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => this.closeAddNodeModal());
+      }
+
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeAddNodeModal();
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const activeChip = document.querySelector('.wf-tag-filter.active');
+          const activeCat = activeChip ? activeChip.dataset.cat : 'all';
+          this.renderModalGrid(e.target.value, activeCat);
+        });
+      }
+
+      document.querySelectorAll('.wf-tag-filter').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.wf-tag-filter').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const query = searchInput ? searchInput.value : '';
+          this.renderModalGrid(query, chip.dataset.cat);
+        });
       });
+    }
 
-      const renderGrid = (filterText = '', filterCat = 'all') => {
-        grid.innerHTML = '';
-        Object.values(this.definitions).forEach(def => {
-          if (filterCat !== 'all' && def.category !== filterCat) return;
-          if (filterText) {
-            const query = filterText.toLowerCase();
-            const matchTitle = def.title.toLowerCase().includes(query);
-            const matchDesc = (def.description || '').toLowerCase().includes(query);
-            const matchType = def.type.toLowerCase().includes(query);
-            if (!matchTitle && !matchDesc && !matchType) return;
+    renderModalGrid(filterText = '', filterCat = 'all') {
+      const grid = document.getElementById('modal-node-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      Object.values(this.definitions).forEach(def => {
+        if (filterCat !== 'all' && def.category !== filterCat) return;
+        if (filterText) {
+          const query = filterText.toLowerCase();
+          const matchTitle = def.title.toLowerCase().includes(query);
+          const matchDesc = (def.description || '').toLowerCase().includes(query);
+          const matchType = def.type.toLowerCase().includes(query);
+          if (!matchTitle && !matchDesc && !matchType) return;
+        }
+
+        const cat = def.category || 'process';
+        const card = document.createElement('div');
+        card.className = `wf-library-card cat-${cat}`;
+        card.innerHTML = `
+          <div class="wf-card-top">
+            <div class="wf-card-icon-box cat-${cat}">
+              <span>${this.getCategoryIcon(cat)}</span>
+            </div>
+            <div>
+              <h4 class="wf-card-title">${def.title}</h4>
+            </div>
+          </div>
+          <p class="wf-card-desc">${def.description || ''}</p>
+          <div class="wf-card-bottom">
+            <span class="wf-card-cat-badge">${cat.toUpperCase()}</span>
+            <span class="wf-card-add-text">+ Thêm vào Canvas</span>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          let posX = 200, posY = 200;
+          if (this.pendingConnect) {
+            // Position near the source node
+            const parentNode = this.graph.nodes.find(n => n.id === this.pendingConnect.fromNode);
+            if (parentNode) {
+              posX = (parentNode.x || 100) + 320;
+              posY = (parentNode.y || 100);
+            }
+          } else {
+            // Place near screen center
+            const containerRect = this.container.getBoundingClientRect();
+            posX = (-this.panX + containerRect.width / 2 - 135) / this.scale;
+            posY = (-this.panY + containerRect.height / 2 - 60) / this.scale;
           }
 
-          const card = document.createElement('div');
-          card.className = `modal-node-card cat-${def.category}`;
-          card.innerHTML = `
-            <div class="card-header">
-              <span class="card-icon">${this.getCategoryIcon(def.category)}</span>
-              <h4>${def.title}</h4>
-            </div>
-            <p>${def.description || ''}</p>
-            <div class="card-footer">
-              <span class="badge">${def.category.toUpperCase()}</span>
-              <button type="button" class="btn btn-sm btn-primary">Thêm vào Canvas</button>
-            </div>
-          `;
-
-          card.addEventListener('click', () => {
-            // Thêm node vào giữa màn hình
-            const containerRect = this.container.getBoundingClientRect();
-            const centerX = (-this.panX + containerRect.width / 2 - 120) / this.scale;
-            const centerY = (-this.panY + containerRect.height / 2 - 60) / this.scale;
-            this.addNode(def.type, centerX, centerY);
-            modal.style.display = 'none';
-          });
-
-          grid.appendChild(card);
+          this.addNode(def.type, posX, posY);
+          this.closeAddNodeModal();
         });
-      };
 
-      searchInput.addEventListener('input', (e) => {
-        const activeCat = document.querySelector('.category-chip.active').dataset.cat;
-        renderGrid(e.target.value, activeCat);
+        grid.appendChild(card);
       });
-
-      document.querySelectorAll('.category-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
-          chip.classList.add('active');
-          renderGrid(searchInput.value, chip.dataset.cat);
-        });
-      });
-
-      renderGrid();
     }
   }
 

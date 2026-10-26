@@ -197,7 +197,10 @@
       var h = a.getAttribute('href');
       if (!h) return;
       var clean = h.split('?')[0];
-      if (clean === p) {
+      if (clean === '/workflow' && (p === '/workflow' || p === '/flow' || p === '/studio/flow' || p === '/studio/workflow')) {
+        bestMatch = a;
+        bestLen = 9999;
+      } else if (clean === p) {
         bestMatch = a;
         bestLen = 9999;
       } else if (clean !== '/' && p.indexOf(clean) === 0 && clean.length > bestLen) {

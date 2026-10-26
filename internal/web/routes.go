@@ -85,6 +85,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/schedule/run-now", s.handleStudioScheduleRunNow)
 
 	// Visual Workflow Studio (ComfyUI / n8n Node Canvas)
+	mux.HandleFunc("GET /workflow", s.handleStudioFlowView)
+	mux.HandleFunc("GET /studio/workflow", s.handleStudioFlowView)
 	mux.HandleFunc("GET /flow", s.handleStudioFlowView)
 	mux.HandleFunc("GET /studio/flow", s.handleStudioFlowView)
 	mux.HandleFunc("GET /api/flow/definitions", s.handleAPIFlowDefinitions)
