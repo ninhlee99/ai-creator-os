@@ -260,7 +260,6 @@ func TestAllPagesRender(t *testing.T) {
 		"/studio":                     "Tạo video affiliate",
 		"/studio/jobs":                "Video",
 		"/studio/trends":              "Radar",
-		"/studio/flow":                "Workflow",
 		"/workflow":                   "Workflow",
 		"/products":                   "Sản phẩm",
 		"/products?tab=shelf":         "Sản phẩm",

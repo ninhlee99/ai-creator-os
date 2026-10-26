@@ -3580,23 +3580,6 @@ video.player, .media-preview-container video {
   gap: 10px;
 }
 
-.wf-brand-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  color: #FFFFFF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.wf-brand-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
 .wf-title-block {
   display: flex;
   flex-direction: column;
@@ -3847,34 +3830,6 @@ video.player, .media-preview-container video {
   top: 0;
   left: 0;
   z-index: 2;
-}
-
-/* Quick Canvas Action Button (Floating FAB) */
-.wf-canvas-controls {
-  position: absolute;
-  bottom: 24px;
-  left: 24px;
-  z-index: 10;
-}
-
-.wf-fab {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: #6366F1;
-  color: #FFFFFF;
-  border: none;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.wf-fab:hover {
-  transform: scale(1.1);
-  background: #4F46E5;
 }
 
 /* Connecting Wires (ComfyUI & n8n Layered Bezier Engine) */

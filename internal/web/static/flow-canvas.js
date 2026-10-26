@@ -591,15 +591,6 @@
         });
       }
 
-      // FAB add node
-      const fabAdd = document.getElementById('fab-add-node');
-      if (fabAdd) {
-        fabAdd.addEventListener('click', () => {
-          this.pendingConnect = null;
-          this.openAddNodeModal();
-        });
-      }
-
       // Save Graph button
       const btnSave = document.getElementById('btn-save-graph');
       if (btnSave) {
