@@ -320,7 +320,41 @@ func (s *Server) growthView() map[string]any {
 		ctx["StudioPending"] = s.Studio.PendingJobCount()
 	}
 	ctx["Today"] = today
+
+	var allDiagnostics []growth.ChannelDiagnostic
+	var allTuningHistory []growth.TuningHistory
+	for _, account := range accounts {
+		if diags, err := s.Growth.ListDiagnostics(account.ID, 10); err == nil {
+			allDiagnostics = append(allDiagnostics, diags...)
+		}
+		if hist, err := s.Growth.ListTuningHistory(account.ID, 10); err == nil {
+			allTuningHistory = append(allTuningHistory, hist...)
+		}
+	}
+	ctx["Diagnostics"] = allDiagnostics
+	ctx["TuningHistory"] = allTuningHistory
+
 	return ctx
+}
+
+func (s *Server) handleGrowthTuningRollback(w http.ResponseWriter, r *http.Request) {
+	if s.Growth == nil {
+		http.Redirect(w, r, "/growth?err=Module+Growth+chưa+sẵn+sàng", http.StatusSeeOther)
+		return
+	}
+	historyID, _ := strconv.ParseInt(r.FormValue("history_id"), 10, 64)
+	accountID, _ := strconv.ParseInt(r.FormValue("account_id"), 10, 64)
+	if historyID <= 0 || accountID <= 0 {
+		http.Redirect(w, r, "/growth?err=Mã+cấu+hình+hoặc+tài+khoản+không+hợp+lệ", http.StatusSeeOther)
+		return
+	}
+	h, err := s.Growth.RollbackSetting(accountID, historyID)
+	if err != nil {
+		http.Redirect(w, r, "/growth?err="+fmt.Sprintf("Lỗi hoàn tác: %s", err.Error()), http.StatusSeeOther)
+		return
+	}
+	msg := fmt.Sprintf("Đã hoàn tác tham số %s về giá trị ban đầu (%s)", h.ParamKey, h.OldValue)
+	http.Redirect(w, r, "/growth?ok="+msg, http.StatusSeeOther)
 }
 
 const studioTikTokMetricFreshness = 14 * 24 * time.Hour

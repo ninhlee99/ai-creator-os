@@ -139,6 +139,56 @@
 </table></div>
 {{else}}<p class="empty">Chưa có cảnh báo tăng trưởng.</p>{{end}}
 
+<h2>Chẩn đoán Phễu Affiliate & Lan Truyền Viral</h2>
+{{if .Diagnostics}}
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Chẩn đoán phễu video" tabindex="0">
+<table class="growth-table">
+<thead><tr><th>Loại flow</th><th>Giai đoạn rớt phễu</th><th>Chẩn đoán & Nguyên nhân</th><th>Hành động cải thiện</th><th>Thời điểm</th></tr></thead>
+<tbody>
+{{range .Diagnostics}}
+<tr>
+  <td><span class="badge badge-{{if eq .FlowType "affiliate"}}ok{{else}}info{{end}}">{{if eq .FlowType "affiliate"}}TikTok Affiliate{{else}}TikTok Viral{{end}}</span></td>
+  <td><strong>{{.FunnelStage}}</strong></td>
+  <td>{{.Diagnosis}}</td>
+  <td><em>{{.SuggestedAction}}</em></td>
+  <td><span class="hint">{{.CreatedAt}}</span></td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}<p class="empty">Chưa có bản ghi chẩn đoán. Hệ thống sẽ tự phân tích sau khi video được đăng và thu thập số liệu.</p>{{end}}
+
+<h2>Lịch sử Tự Vi Chỉnh Cài Đặt (Self-Tuning) & Hoàn Tác</h2>
+{{if .TuningHistory}}
+<div class="table-wrap mobile-table-scroll" role="region" aria-label="Lịch sử vi chỉnh cài đặt" tabindex="0">
+<table class="growth-table">
+<thead><tr><th>Tham số</th><th>Điều chỉnh</th><th>Lý do</th><th>Thời gian</th><th>Thao tác</th></tr></thead>
+<tbody>
+{{range .TuningHistory}}
+<tr>
+  <td><code>{{.ParamKey}}</code></td>
+  <td>{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}})</td>
+  <td>{{.Reason}}</td>
+  <td><span class="hint">{{.AppliedAt}}</span></td>
+  <td>
+    {{if .RolledBack}}
+    <span class="badge badge-info">Đã hoàn tác</span>
+    {{else}}
+    <form method="post" action="/growth/tuning/rollback" style="display:inline">
+      <input type="hidden" name="history_id" value="{{.ID}}">
+      <input type="hidden" name="account_id" value="{{.AccountID}}">
+      <button class="btn btn-secondary btn-sm" type="submit">↩ Hoàn tác</button>
+    </form>
+    {{end}}
+  </td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}<p class="empty">Chưa có lượt vi chỉnh tự động nào được áp dụng.</p>{{end}}
+
 <h2>Kế hoạch & video sắp tới</h2>
 {{if .Upcoming}}
 <div class="table-wrap mobile-table-scroll mobile-growth-upcoming-cards" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">

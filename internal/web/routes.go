@@ -118,6 +118,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /growth/production", s.handleGrowthProductionToggle)
 	mux.HandleFunc("POST /growth/production/run", s.handleGrowthProductionRun)
 	mux.HandleFunc("POST /growth/thresholds", s.handleGrowthThresholds)
+	mux.HandleFunc("POST /growth/tuning/rollback", s.handleGrowthTuningRollback)
 
 	// Cài đặt tách 5 trang con (R2-W3, theo UI_UX_BLUEPRINT §2): mỗi trang
 	// trả lời đúng một câu hỏi. /settings giữ làm lối vào → redirect.
