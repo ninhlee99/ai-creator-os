@@ -48,8 +48,13 @@ func cdpHasLandingHost(port int, host string) bool {
 			continue
 		}
 
-		// Đang ở màn hình chọn tài khoản Google hoặc trang login thì CHƯA được coi là xong!
-		if actualHost == "accounts.google.com" || strings.Contains(t.URL, "AccountChooser") || strings.Contains(t.URL, "/login") || strings.Contains(t.URL, "/signin") {
+		// Đang ở màn hình chọn tài khoản Google, trang login hoặc trang giới thiệu công khai thì CHƯA được coi là xong!
+		if actualHost == "accounts.google.com" ||
+			strings.Contains(t.URL, "AccountChooser") ||
+			strings.Contains(t.URL, "/login") ||
+			strings.Contains(t.URL, "/signin") ||
+			strings.Contains(t.URL, "/about") ||
+			strings.Contains(t.URL, "/intro") {
 			continue
 		}
 		return true
