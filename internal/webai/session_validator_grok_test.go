@@ -20,27 +20,29 @@ func TestGrokSessionValidator_EmailResponse(t *testing.T) {
 		Platform:     PlatformGrok,
 		SessionValue: "sso-test-token",
 		CookieHeader: "sso=sso-test-token",
+		Email:        "creator@gmail.com",
 	}
 
-	body, err := webSessionProbeCaptured(context.Background(), ts.Client(), auth, ts.URL, "127.0.0.1", auth.CookieHeader, "application/json", nil)
-	if err != nil && auth.SessionValue != "" {
-		// Server simulated ok
-	}
-	_ = body
-
-	// Directly test validateSession behavior with 403 simulation
+	// Directly test validateSession behavior with 403 simulation when email is verified from browser
 	ts403 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 	}))
 	defer ts403.Close()
 
 	err403 := validator.validateSession(context.Background(), ts403.Client(), auth)
-	// On 403 with session value, should succeed with fallback
 	if err403 != nil {
-		t.Fatalf("expected 403 to be handled gracefully for grok, got: %v", err403)
+		t.Fatalf("expected 403 with verified email to succeed, got: %v", err403)
 	}
-	if auth.Email == "" {
-		t.Errorf("expected auth.Email to be set, got empty")
+
+	// Test 403 when email is empty - should return error waiting for browser
+	authEmptyEmail := &WebSessionAuth{
+		Platform:     PlatformGrok,
+		SessionValue: "sso-test-token",
+		CookieHeader: "sso=sso-test-token",
+	}
+	errEmpty := validator.validateSession(context.Background(), ts403.Client(), authEmptyEmail)
+	if errEmpty == nil {
+		t.Fatalf("expected 403 with empty email to fail and wait for browser, got nil")
 	}
 }
 

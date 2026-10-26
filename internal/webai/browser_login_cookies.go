@@ -20,6 +20,9 @@ func extractEmailFromJWT(token string) string {
 	if err != nil {
 		return ""
 	}
+	if match := generalEmailRe.FindString(string(payload)); match != "" && !isSystemOrStaticEmail(match) {
+		return strings.ToLower(match)
+	}
 	var data map[string]any
 	if err := json.Unmarshal(payload, &data); err != nil {
 		return ""
@@ -28,7 +31,7 @@ func extractEmailFromJWT(token string) string {
 		if val, ok := data[key].(string); ok {
 			val = strings.TrimSpace(val)
 			if strings.Contains(val, "@") && !isSystemOrStaticEmail(val) {
-				return val
+				return strings.ToLower(val)
 			}
 		}
 	}
@@ -79,7 +82,9 @@ func loginCookieEmailHints(cookies []cdpCookie, target WebLoginTarget) (email, p
 	for _, cookie := range cookies {
 		inTargetDomain := loginCookieDomainMatches(cookie.Domain, target)
 		isMuseProviderCookie := target.Platform == PlatformMuseAI && isMuseIdentityProviderHost(strings.TrimPrefix(cookie.Domain, "."))
-		if !inTargetDomain && !isMuseProviderCookie {
+		isGoogleSSO := (target.Platform == PlatformGrok || target.Platform == PlatformGoogleFlow) &&
+			(cookieDomainWithin(cookie.Domain, "google.com") || cookieDomainWithin(cookie.Domain, "withgoogle.com"))
+		if !inTargetDomain && !isMuseProviderCookie && !isGoogleSSO {
 			continue
 		}
 

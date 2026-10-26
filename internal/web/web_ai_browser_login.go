@@ -104,9 +104,6 @@ func (s *Server) handleWebAIBrowserLoginStart(w http.ResponseWriter, r *http.Req
 				return
 			}
 			email := strings.TrimSpace(auth.Email)
-			if email == "" && tgt.Platform == webai.PlatformGrok {
-				email = "grok_user@grok.com"
-			}
 			if email == "" && tgt.Platform != webai.PlatformMuseAI {
 				msg := "Đã xác thực phiên nhưng chưa xác minh được email thật; chưa lưu tài khoản."
 				mgr.UpdateSession(sess.ID, "failed", msg, "", msg)
