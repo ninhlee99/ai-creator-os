@@ -223,3 +223,75 @@ func TestShelfLifecycle(t *testing.T) {
 		t.Fatalf("shelf = %d after migration, want 1", len(shelf))
 	}
 }
+
+func TestEvaluate5AxisAndReviewShelf(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_eval.db")
+	store, err := NewStore(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	opts := DefaultAutoEvalOptions()
+	opts.RadarKeywords = []string{"son", "kem chống nắng", "tai nghe"}
+
+	// 1. High commission youth beauty product -> approved
+	goodProd := Product{
+		Source: "accesstrade", SourceID: "good1", Title: "Son dưỡng có màu cấp ẩm",
+		Price: 150000, Currency: "VND", CommissionRate: 0.20,
+		Category: "Mỹ phẩm", Theme: "làm đẹp", ProductURL: "https://example.com/item1",
+		SoldCount: 500, SoldCountKnown: true, Rating: 4.8,
+	}
+	id1, err := store.Save(goodProd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eval1, err := store.AutoReviewCandidate(id1, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if eval1.Verdict != ReviewApproved {
+		t.Errorf("good product verdict = %s (want approved); reason: %s", eval1.Verdict, eval1.RejectionReason)
+	}
+
+	// 2. Too expensive for youth -> rejected
+	expProd := Product{
+		Source: "accesstrade", SourceID: "exp1", Title: "Đồng hồ thông minh sang trọng",
+		Price: 1500000, Currency: "VND", CommissionRate: 0.15,
+		Category: "Phụ kiện", Theme: "công nghệ", ProductURL: "https://example.com/item2",
+		SoldCount: 10, SoldCountKnown: true, Rating: 4.5,
+	}
+	id2, err := store.Save(expProd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eval2, err := store.AutoReviewCandidate(id2, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if eval2.Verdict != ReviewRejected || eval2.RejectionCode != "PRICE_TOO_HIGH_FOR_YOUTH" {
+		t.Errorf("expensive product verdict = %s, code = %s; want rejected / PRICE_TOO_HIGH_FOR_YOUTH", eval2.Verdict, eval2.RejectionCode)
+	}
+
+	// 3. Rejected list contains the rejected product
+	rejected, err := store.ListRejected(10)
+	if err != nil || len(rejected) != 1 {
+		t.Fatalf("ListRejected = %d (want 1), err: %v", len(rejected), err)
+	}
+	if rejected[0].ID != id2 {
+		t.Errorf("rejected[0].ID = %d, want %d", rejected[0].ID, id2)
+	}
+
+	// 4. Re-evaluate with higher price ceiling and adjusted score threshold approves it
+	optsRelaxed := opts
+	optsRelaxed.YouthPriceCeiling = 2000000 // allow up to 2M
+	optsRelaxed.ScoreThreshold = 60.0
+	eval2Re, err := store.ReEvaluateProduct(id2, optsRelaxed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if eval2Re.Verdict != ReviewApproved {
+		t.Errorf("re-eval with relaxed ceiling = %s, want approved", eval2Re.Verdict)
+	}
+}
+

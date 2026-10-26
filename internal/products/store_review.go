@@ -124,3 +124,31 @@ func (s *Store) ReviewList(status, keyword, theme string, limit int) ([]Product,
 	}
 	return out, rows.Err()
 }
+
+// AutoReviewCandidate runs the 5-axis evaluation and applies the automated verdict.
+func (s *Store) AutoReviewCandidate(id int64, opts AutoEvalOptions) (FiveAxisEvaluation, error) {
+	p, err := s.GetByID(id)
+	if err != nil {
+		return FiveAxisEvaluation{}, err
+	}
+	eval := Evaluate5Axis(p, opts, time.Now())
+	note := eval.EvidenceSummary
+	if eval.Verdict == ReviewRejected {
+		note = fmt.Sprintf("[%s] %s", eval.RejectionCode, eval.RejectionReason)
+	}
+	if err := s.ReviewProduct(id, eval.Verdict, note); err != nil {
+		return eval, err
+	}
+	return eval, nil
+}
+
+// ReEvaluateProduct clears previous rejection and re-runs the 5-axis evaluation with updated rules.
+func (s *Store) ReEvaluateProduct(id int64, opts AutoEvalOptions) (FiveAxisEvaluation, error) {
+	return s.AutoReviewCandidate(id, opts)
+}
+
+// ListRejected returns products currently on the rejected shelf for operator inspection.
+func (s *Store) ListRejected(limit int) ([]Product, error) {
+	return s.ReviewList(ReviewRejected, "", "", limit)
+}
+
