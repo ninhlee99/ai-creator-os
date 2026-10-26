@@ -35,6 +35,15 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Cấu hình Rails debug logger: console hiển thị màu ANSI, file ghi plain text chuẩn Rails
+	lvl := logx.LevelDebug
+	if envLvl := os.Getenv("RAILS_LOG_LEVEL"); envLvl != "" {
+		lvl = logx.ParseLevel(envLvl)
+	} else if envLvl := os.Getenv("LOG_LEVEL"); envLvl != "" {
+		lvl = logx.ParseLevel(envLvl)
+	}
+	logx.SetupRailsLogging(os.Stderr, nil, lvl)
+
 	log.Printf("aicos %s starting (addr=%s data=%s)", version, *addr, *dataDir)
 
 	// -- 1. data dir + ledger ---------------------------------------------
@@ -56,12 +65,16 @@ func main() {
 	// Đợt R: app tự xoay log theo dung lượng (20MB, giữ 7 bản). launchd mở
 	// StandardOutPath một lần và giữ fd nên newsyslog KHÔNG xoay được log
 	// của nó — xem deploy/README.md.
+	var fileOut io.Writer
 	if rot, rerr := logx.New(filepath.Join(*dataDir, "logs", "aicos.log"), logx.DefaultMaxSize, logx.DefaultMaxBackup); rerr != nil {
 		log.Printf("log: không mở được file log xoay (%v) — ghi tiếp ra stderr", rerr)
 	} else {
 		defer rot.Close()
-		log.SetOutput(io.MultiWriter(os.Stderr, rot))
-		log.Printf("log: ghi vào %s (tự xoay 20MB, giữ 7 bản)", rot.Path())
+		fileOut = rot
+	}
+	logx.SetupRailsLogging(os.Stderr, fileOut, lvl)
+	if fileOut != nil {
+		log.Printf("log: Rails debug logger kích hoạt (file: %s/logs/aicos.log, xoay 20MB, giữ 7 bản)", *dataDir)
 	}
 	// R2-W7: áp dụng bản khôi phục đang chờ TRƯỚC khi mở bất kỳ DB nào.
 	if err := backup.ApplyStaged(*dataDir); err != nil {

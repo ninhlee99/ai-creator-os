@@ -202,7 +202,7 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc(legacy.pattern, redirectTo(legacy.target))
 	}
 
-	return s.recoverer(s.originGate(s.authGate(s.onboardGate(mux))))
+	return s.railsRequestLogger(s.recoverer(s.originGate(s.authGate(s.onboardGate(mux)))))
 }
 
 // originGate chống CSRF đơn giản mà bao phủ mọi POST (Đợt AA, finding C4):

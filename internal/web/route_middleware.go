@@ -5,7 +5,50 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/logx"
 )
+
+type responseObserver struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (o *responseObserver) WriteHeader(code int) {
+	if !o.wroteHeader {
+		o.status = code
+		o.wroteHeader = true
+	}
+	o.ResponseWriter.WriteHeader(code)
+}
+
+func (o *responseObserver) Write(b []byte) (int, error) {
+	if !o.wroteHeader {
+		o.status = http.StatusOK
+		o.wroteHeader = true
+	}
+	return o.ResponseWriter.Write(b)
+}
+
+func (o *responseObserver) Unwrap() http.ResponseWriter {
+	return o.ResponseWriter
+}
+
+// railsRequestLogger outputs HTTP requests in classic Ruby on Rails debug logger format.
+func (s *Server) railsRequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		obs := &responseObserver{ResponseWriter: w, status: http.StatusOK}
+		defer func() {
+			dur := time.Since(start)
+			loc := obs.Header().Get("Location")
+			logx.LogRequest(r, obs.status, dur, loc)
+		}()
+		next.ServeHTTP(obs, r)
+	})
+}
 
 func (s *Server) originGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +120,3 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-// redirectTo returns a handler that 303-redirects every request to loc.
-// Used for the legacy page URLs replaced by tabs in the Đợt 2 merge.

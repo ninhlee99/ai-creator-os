@@ -17,6 +17,25 @@ import (
 	"time"
 )
 
+// TikTokRadarSourceLabel reports which provider the current process will use.
+func TikTokRadarSourceLabel() string {
+	return TikTokRadarSourceLabelForTopic(false)
+}
+
+// TikTokRadarSourceConfigured reports whether the automated crawler is ready.
+func TikTokRadarSourceConfigured() bool {
+	return TikTokCrawlerConfigured()
+}
+
+// TikTokRadarSourceLabelForTopic reports the provider selected for a regional
+// feed or a user-entered topic search.
+func TikTokRadarSourceLabelForTopic(_ bool) string {
+	if TikTokCrawlerConfigured() {
+		return TikTokCrawlerSource
+	}
+	return "Chưa tìm thấy trình duyệt để chạy TikTok Crawler"
+}
+
 // TikTokTrendVideo holds metadata returned by the configured TikTok feed provider.
 type TikTokTrendVideo struct {
 	Rank            int     `json:"rank"`

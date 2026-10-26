@@ -95,3 +95,29 @@ func TestResolveTikTokRadarMusicRequiresOperatorSelection(t *testing.T) {
 		t.Fatalf("ResolveTikTokRadarMusic error = %v, want manual Radar selection", err)
 	}
 }
+
+func TestSplitTikTokRadarTopics(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantLen int
+		wantErr bool
+	}{
+		{"nhảy, vũ đạo, dance", 3, false},
+		{"  thời trang , , mỹ phẩm  ", 2, false},
+		{"dance, DANCE, Dance", 1, false},
+		{"", 0, true},
+		{"   ", 0, true},
+		{"a, b, c, d", 0, true}, // vượt quá 3 topics
+	}
+
+	for _, tc := range tests {
+		got, err := splitTikTokRadarTopics(tc.input)
+		if (err != nil) != tc.wantErr {
+			t.Errorf("splitTikTokRadarTopics(%q) error = %v, wantErr %v", tc.input, err, tc.wantErr)
+			continue
+		}
+		if !tc.wantErr && len(got) != tc.wantLen {
+			t.Errorf("splitTikTokRadarTopics(%q) got len %d, want %d", tc.input, len(got), tc.wantLen)
+		}
+	}
+}
