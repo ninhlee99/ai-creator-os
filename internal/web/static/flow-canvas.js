@@ -1180,7 +1180,15 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    window.flowCanvas = new FlowCanvas();
-  });
+  function initCanvas() {
+    if (!window.flowCanvas) {
+      window.flowCanvas = new FlowCanvas();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCanvas);
+  } else {
+    initCanvas();
+  }
 })();

@@ -372,9 +372,6 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
   border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;
   line-height: 1.2;
 }
-  border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;
-  line-height: 1.2;
-}
 .status-pill-ok {
   background: var(--ok-bg); color: var(--ok-text); border: 1px solid rgba(16, 185, 129, 0.25);
 }

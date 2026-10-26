@@ -43,11 +43,12 @@ func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
 	nodeDefs := flow.ListDefinitions()
 
 	data := map[string]any{
-		"ActiveTab":   "flow",
-		"Graphs":      graphs,
-		"ActiveGraph": activeGraph,
-		"NodeDefs":    nodeDefs,
-		"PresetID":    preset,
+		"ActiveTab":      "flow",
+		"Graphs":         graphs,
+		"ActiveGraph":    activeGraph,
+		"NodeDefs":       nodeDefs,
+		"PresetID":       preset,
+		"IsWorkflowPage": true,
 	}
 
 	s.render(w, "studio_flow", data)
