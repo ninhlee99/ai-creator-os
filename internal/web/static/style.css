@@ -4634,6 +4634,7 @@ body.page-workflow .layout {
    ========================================================================== */
 .wf-inspector {
   width: 380px;
+  min-width: 380px;
   background: var(--bg2);
   border-left: 1px solid var(--border);
   display: flex;
@@ -4641,7 +4642,17 @@ body.page-workflow .layout {
   overflow: hidden;
   z-index: 15;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
-  transition: transform 0.25s ease;
+  transition: width 0.22s ease, min-width 0.22s ease, opacity 0.22s ease, border-color 0.22s ease;
+}
+
+.wf-inspector.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  border-left-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
 }
 
 .wf-inspector-top {

@@ -916,6 +916,7 @@
     deselectAll() {
       this.selectedNodeId = null;
       this.nodesLayer.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
+      this.closeInspector();
       this.updateInspector();
     }
 
@@ -929,6 +930,8 @@
       if (this.inspector) {
         this.inspector.classList.add('collapsed');
       }
+      this.selectedNodeId = null;
+      this.nodesLayer.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
     }
 
     renderNodeStatus(state) {
