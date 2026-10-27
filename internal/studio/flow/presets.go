@@ -5,6 +5,7 @@ func GetPresetGraphs() []FlowGraph {
 	return []FlowGraph{
 		PresetViralDance(),
 		PresetAffiliateShowcase(),
+		PresetFashionTryOnAngles(),
 		PresetMultiAIHybrid(),
 	}
 }
@@ -298,6 +299,159 @@ func PresetMultiAIHybrid() FlowGraph {
 			{ID: "e5", FromNode: "node_flow", FromPort: "video_out", ToNode: "node_concat", ToPort: "scene_1"},
 			{ID: "e6", FromNode: "node_custom_ai", FromPort: "result_out", ToNode: "node_concat", ToPort: "scene_2"},
 			{ID: "e7", FromNode: "node_concat", FromPort: "master_video", ToNode: "node_output", ToPort: "video_in"},
+		},
+	}
+}
+
+// PresetFashionTryOnAngles: Luồng thời trang thay đổi trang phục nữ và dựng video đa góc quay với sản phẩm.
+func PresetFashionTryOnAngles() FlowGraph {
+	return FlowGraph{
+		ID:          "preset_fashion_tryon",
+		Name:        "Fashion Try-On & Đa Góc Quay (Đầm Lụa Pháp)",
+		Description: "Thay đổi trang phục cho nhân vật mẫu sang Đầm Lụa Satin Pháp, tự động điều hướng 3 góc quay (Runway walk, Bán thân 360, Cận cảnh chất vải) và render video lookbook chất lượng cao",
+		Category:    "fashion",
+		IsPreset:    true,
+		Nodes: []FlowNode{
+			{
+				ID:       "node_char",
+				Type:     "character_input",
+				Title:    "1. Nhân vật mẫu (Miu Street Style)",
+				Category: CategoryInput,
+				X:        60,
+				Y:        80,
+				Params: map[string]any{
+					"model_name":  "Miu Urban Model",
+					"model_path":  "/static/presets/pintest-01.jpg",
+					"preview_url": "/static/presets/pintest-01.jpg",
+				},
+			},
+			{
+				ID:       "node_garment",
+				Type:     "product_input",
+				Title:    "2. Đầm Lụa Satin Pháp Nữ",
+				Category: CategoryInput,
+				X:        60,
+				Y:        490,
+				Params: map[string]any{
+					"product_title": "Đầm Lụa Satin Pháp Dáng Dài (French Silk Slip Dress)",
+					"product_image": "/static/presets/char_02.jpg",
+					"preview_url":   "/static/presets/char_02.jpg",
+					"affiliate_url": "https://shopee.vn/french-silk-slip-dress",
+				},
+			},
+			{
+				ID:       "node_extract",
+				Type:     "product_extractor",
+				Title:    "3. Bóc tách phom váy lụa",
+				Category: CategoryProcess,
+				X:        430,
+				Y:        490,
+				Params: map[string]any{
+					"refine_edges": true,
+				},
+			},
+			{
+				ID:       "node_tryon",
+				Type:     "virtual_tryon",
+				Title:    "4. Thay đổi trang phục AI (Virtual Try-on)",
+				Category: CategoryProcess,
+				X:        790,
+				Y:        180,
+				Params: map[string]any{
+					"fit_style":     "seamless_luxury",
+					"preserve_face": true,
+					"preview_url":   "/static/presets/pintest-01.jpg",
+				},
+			},
+			{
+				ID:       "node_director",
+				Type:     "camera_angles_director",
+				Title:    "5. Đạo diễn 3 góc quay điện ảnh",
+				Category: CategoryProcess,
+				X:        1160,
+				Y:        180,
+				Params: map[string]any{
+					"shot_style": "high_fashion_editorial",
+				},
+			},
+			{
+				ID:       "node_flow_video",
+				Type:     "google_flow_video",
+				Title:    "6. Google Flow Veo 2 (Render đa góc quay)",
+				Category: CategoryAI,
+				X:        1530,
+				Y:        180,
+				Params: map[string]any{
+					"aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+					"mode":   "ingredients",
+				},
+			},
+			{
+				ID:       "node_audio",
+				Type:     "audio_source",
+				Title:    "7. Nhạc Runway Lounge Beat",
+				Category: CategoryInput,
+				X:        1160,
+				Y:        500,
+				Params: map[string]any{
+					"audio_title": "Paris Fashion Runway Lounge Beat (115 BPM)",
+					"audio_path":  "/static/preview.mp3",
+				},
+			},
+			{
+				ID:       "node_concat",
+				Type:     "concat_scenes",
+				Title:    "8. Ghép 3 góc quay (Toàn thân + Bán thân + Cận cảnh)",
+				Category: CategoryProcess,
+				X:        1900,
+				Y:        180,
+			},
+			{
+				ID:       "node_audio_merge",
+				Type:     "audio_merge",
+				Title:    "9. Lồng nhạc & Âm thanh Runway",
+				Category: CategoryProcess,
+				X:        2270,
+				Y:        280,
+				Params: map[string]any{
+					"audio_codec": "aac",
+				},
+			},
+			{
+				ID:       "node_upscale",
+				Type:     "video_upscale",
+				Title:    "10. Làm nét & Nâng chuẩn 4K UHD",
+				Category: CategoryProcess,
+				X:        2640,
+				Y:        280,
+				Params: map[string]any{
+					"resolution": "4k",
+				},
+			},
+			{
+				ID:       "node_output",
+				Type:     "video_output",
+				Title:    "11. Xuất video Lookbook 9:16",
+				Category: CategoryOutput,
+				X:        3010,
+				Y:        280,
+				Params: map[string]any{
+					"title": "Lookbook Đầm Lụa Pháp - Xu hướng thời trang nữ cao cấp",
+				},
+			},
+		},
+		Edges: []FlowEdge{
+			{ID: "e1", FromNode: "node_char", FromPort: "character_image", ToNode: "node_tryon", ToPort: "character_image"},
+			{ID: "e2", FromNode: "node_garment", FromPort: "product_image", ToNode: "node_extract", ToPort: "source_image"},
+			{ID: "e3", FromNode: "node_extract", FromPort: "cutout_image", ToNode: "node_tryon", ToPort: "garment_image"},
+			{ID: "e4", FromNode: "node_tryon", FromPort: "fitted_image", ToNode: "node_director", ToPort: "character_image"},
+			{ID: "e5", FromNode: "node_director", FromPort: "angle_full", ToNode: "node_flow_video", ToPort: "prompt"},
+			{ID: "e6", FromNode: "node_tryon", FromPort: "fitted_image", ToNode: "node_flow_video", ToPort: "character_image"},
+			{ID: "e7", FromNode: "node_flow_video", FromPort: "video_out", ToNode: "node_concat", ToPort: "scene_1"},
+			{ID: "e8", FromNode: "node_concat", FromPort: "master_video", ToNode: "node_audio_merge", ToPort: "video_in"},
+			{ID: "e9", FromNode: "node_audio", FromPort: "audio_file", ToNode: "node_audio_merge", ToPort: "audio_in"},
+			{ID: "e10", FromNode: "node_audio_merge", FromPort: "video_out", ToNode: "node_upscale", ToPort: "video_in"},
+			{ID: "e11", FromNode: "node_upscale", FromPort: "video_out", ToNode: "node_output", ToPort: "video_in"},
 		},
 	}
 }

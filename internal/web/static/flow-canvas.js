@@ -35,12 +35,14 @@
 
       this.currentRunId = null;
       this.pollInterval = null;
+      this.savedGraphs = window.__SAVED_GRAPHS__ || [];
 
       this.initEvents();
       this.render();
       this.bindToolbar();
       this.bindInspector();
       this.bindModal();
+      this.bindGraphsModal();
       this.updateZoomDisplay();
     }
 
@@ -589,6 +591,24 @@
             isCutout: false
           };
 
+        case 'virtual_tryon':
+          return {
+            type: 'image',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/pintest-01.jpg',
+            badge: '👗 Thay trang phục AI',
+            canUpload: false,
+            isCutout: false
+          };
+
+        case 'camera_angles_director':
+          return {
+            type: 'image',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/pintest-01.jpg',
+            badge: '🎬 3 Góc quay điện ảnh',
+            canUpload: false,
+            isCutout: false
+          };
+
         case 'google_flow_video':
           return {
             type: 'video',
@@ -975,11 +995,37 @@
     }
 
     bindToolbar() {
-      // Preset switcher
+      // Workflow switcher dropdown
+      const switcherSelect = document.getElementById('wf-switcher-select');
+      if (switcherSelect) {
+        switcherSelect.addEventListener('change', (e) => {
+          this.loadGraphById(e.target.value);
+        });
+      }
+
+      // Legacy preset select fallback
       const presetSelect = document.getElementById('wf-preset-select');
       if (presetSelect) {
         presetSelect.addEventListener('change', (e) => {
-          window.location.href = `/workflow?preset=${encodeURIComponent(e.target.value)}`;
+          this.loadGraphById(e.target.value);
+        });
+      }
+
+      // Open graphs list modal
+      const btnOpenGraphs = document.getElementById('btn-open-graphs-modal');
+      if (btnOpenGraphs) {
+        btnOpenGraphs.addEventListener('click', () => {
+          this.openGraphsModal();
+        });
+      }
+
+      // Create new workflow button
+      const btnNew = document.getElementById('btn-new-graph');
+      if (btnNew) {
+        btnNew.addEventListener('click', () => {
+          if (confirm('Tạo một workflow mới trống? Các thay đổi chưa lưu trên luồng hiện tại có thể bị mất.')) {
+            this.createNewGraph();
+          }
         });
       }
 
@@ -996,6 +1042,16 @@
       const btnSave = document.getElementById('btn-save-graph');
       if (btnSave) {
         btnSave.addEventListener('click', async () => {
+          let name = this.graph.name;
+          if (this.graph.is_preset) {
+            const newName = prompt('Đây là mẫu preset có sẵn. Vui lòng đặt tên cho bản lưu riêng của bạn:', `${this.graph.name} (Bản sao)`);
+            if (!newName) return;
+            name = newName;
+            this.graph.id = `flow_${Date.now()}`;
+            this.graph.name = newName;
+            this.graph.is_preset = false;
+          }
+
           try {
             const resp = await fetch('/api/flow/graphs', {
               method: 'POST',
@@ -1004,9 +1060,13 @@
             });
             const data = await resp.json();
             if (data.ok) {
-              alert('Đã lưu đồ thị workflow thành công!');
+              const activeName = document.getElementById('wf-active-name');
+              if (activeName) activeName.innerText = this.graph.name;
+              window.history.pushState(null, '', `/workflow?preset=${encodeURIComponent(this.graph.id)}`);
+              alert(`✓ Đã lưu workflow "${this.graph.name}" thành công!`);
+              await this.refreshGraphsList();
             } else {
-              alert('Lỗi lưu đồ thị: ' + (data.error || ''));
+              alert('Lỗi lưu workflow: ' + (data.error || ''));
             }
           } catch (err) {
             alert('Lỗi kết nối máy chủ: ' + err.message);
@@ -1533,6 +1593,256 @@
 
         grid.appendChild(card);
       });
+    }
+
+    bindGraphsModal() {
+      const modal = document.getElementById('wf-graphs-modal');
+      const closeBtn = document.getElementById('btn-close-graphs-modal');
+      const searchInput = document.getElementById('graphs-search-input');
+      const createBtn = document.getElementById('btn-modal-create-graph');
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => this.closeGraphsModal());
+      }
+
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeGraphsModal();
+        });
+      }
+
+      if (createBtn) {
+        createBtn.addEventListener('click', () => {
+          this.closeGraphsModal();
+          this.createNewGraph();
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const activeChip = document.querySelector('#graphs-filter-tabs .wf-tag-filter.active');
+          const activeFilter = activeChip ? activeChip.dataset.filter : 'all';
+          this.renderGraphsModalGrid(e.target.value, activeFilter);
+        });
+      }
+
+      document.querySelectorAll('#graphs-filter-tabs .wf-tag-filter').forEach(chip => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('#graphs-filter-tabs .wf-tag-filter').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          const query = searchInput ? searchInput.value : '';
+          this.renderGraphsModalGrid(query, chip.dataset.filter);
+        });
+      });
+    }
+
+    openGraphsModal() {
+      const modal = document.getElementById('wf-graphs-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        const searchInput = document.getElementById('graphs-search-input');
+        if (searchInput) searchInput.value = '';
+        this.renderGraphsModalGrid('', 'all');
+      }
+    }
+
+    closeGraphsModal() {
+      const modal = document.getElementById('wf-graphs-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    renderGraphsModalGrid(query = '', filter = 'all') {
+      const grid = document.getElementById('modal-graphs-grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const graphs = this.savedGraphs || [];
+      const q = query.toLowerCase().trim();
+
+      graphs.forEach(g => {
+        if (filter === 'presets' || filter === 'preset') {
+          if (!g.is_preset) return;
+        } else if (filter === 'custom') {
+          if (g.is_preset) return;
+        } else if (filter !== 'all') {
+          if (g.category !== filter) return;
+        }
+
+        if (q) {
+          const matchName = (g.name || '').toLowerCase().includes(q);
+          const matchDesc = (g.description || '').toLowerCase().includes(q);
+          const matchCat = (g.category || '').toLowerCase().includes(q);
+          if (!matchName && !matchDesc && !matchCat) return;
+        }
+
+        const card = document.createElement('div');
+        card.className = `wf-graph-card ${this.graph && this.graph.id === g.id ? 'is-active' : ''}`;
+
+        let catTag = 'tag-custom';
+        let catLabel = 'Tự tạo';
+        if (g.is_preset) {
+          catTag = 'tag-preset';
+          catLabel = 'Mẫu Preset';
+        } else if (g.category === 'fashion') {
+          catTag = 'tag-fashion';
+          catLabel = 'Thời trang';
+        }
+
+        card.innerHTML = `
+          <div>
+            <div class="wf-graph-card-header">
+              <span class="wf-graph-card-title">${g.name}</span>
+              <span class="wf-graph-tag ${catTag}">${catLabel}</span>
+            </div>
+            <p class="wf-graph-card-desc">${g.description || 'Workflow tự động hóa video'}</p>
+          </div>
+          <div class="wf-graph-card-meta">
+            <span>⚡ ${g.node_count || 0} nodes • ${g.edge_count || 0} dây nối</span>
+            <div class="wf-graph-card-actions">
+              ${!g.is_preset ? `<button type="button" class="wf-btn wf-btn-danger btn-del-graph" title="Xóa workflow này">🗑️</button>` : ''}
+              <button type="button" class="wf-btn wf-btn-primary btn-open-graph">Mở</button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.btn-open-graph').addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.loadGraphById(g.id);
+        });
+
+        const delBtn = card.querySelector('.btn-del-graph');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.deleteGraph(g.id, g.name);
+          });
+        }
+
+        card.addEventListener('click', () => {
+          this.loadGraphById(g.id);
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    async loadGraphById(id) {
+      try {
+        const resp = await fetch(`/api/flow/graphs/${id}`);
+        const data = await resp.json();
+        if (data.ok && data.graph) {
+          this.graph = data.graph;
+          if (!this.graph.nodes) this.graph.nodes = [];
+          if (!this.graph.edges) this.graph.edges = [];
+          this.render();
+          this.deselectAll();
+
+          const activeName = document.getElementById('wf-active-name');
+          if (activeName) activeName.innerText = this.graph.name;
+
+          const switcher = document.getElementById('wf-switcher-select');
+          if (switcher) switcher.value = id;
+
+          window.history.pushState(null, '', `/workflow?preset=${encodeURIComponent(id)}`);
+          this.closeGraphsModal();
+        } else {
+          alert('Không thể mở workflow: ' + (data.error || ''));
+        }
+      } catch (err) {
+        console.error('Lỗi tải workflow:', err);
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+      }
+    }
+
+    createNewGraph() {
+      const newId = `flow_${Date.now()}`;
+      this.graph = {
+        id: newId,
+        name: 'Workflow mới tùy chỉnh',
+        description: 'Tạo bởi người dùng',
+        category: 'custom',
+        is_preset: false,
+        nodes: [],
+        edges: []
+      };
+      this.render();
+      this.deselectAll();
+
+      const activeName = document.getElementById('wf-active-name');
+      if (activeName) activeName.innerText = this.graph.name;
+
+      window.history.pushState(null, '', `/workflow?preset=${newId}`);
+      this.openAddNodeModal();
+    }
+
+    async deleteGraph(id, name) {
+      if (!confirm(`Bạn có chắc muốn xóa workflow "${name}"? Thao tác này không thể hoàn tác.`)) {
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/flow/graphs/${id}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (data.ok) {
+          this.savedGraphs = this.savedGraphs.filter(g => g.id !== id);
+          await this.refreshGraphsList();
+          this.renderGraphsModalGrid();
+          if (this.graph.id === id) {
+            this.loadGraphById('preset_viral_dance');
+          }
+        } else {
+          alert('Lỗi xóa workflow: ' + (data.error || ''));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+      }
+    }
+
+    async refreshGraphsList() {
+      try {
+        const resp = await fetch('/api/flow/graphs');
+        const data = await resp.json();
+        if (data.ok && Array.isArray(data.graphs)) {
+          this.savedGraphs = data.graphs;
+
+          // Update count label
+          const countLabel = document.getElementById('wf-saved-count-label');
+          if (countLabel) {
+            countLabel.innerText = `Danh sách (${data.graphs.length})`;
+          }
+
+          // Update select dropdown
+          const switcher = document.getElementById('wf-switcher-select');
+          if (switcher) {
+            switcher.innerHTML = '';
+
+            const presetGroup = document.createElement('optgroup');
+            presetGroup.label = '✨ Mẫu workflow có sẵn';
+
+            const userGroup = document.createElement('optgroup');
+            userGroup.label = '💾 Workflow bạn đã lưu';
+
+            data.graphs.forEach(g => {
+              const opt = document.createElement('option');
+              opt.value = g.id;
+              opt.innerText = g.name;
+              if (this.graph && this.graph.id === g.id) opt.selected = true;
+
+              if (g.is_preset) {
+                presetGroup.appendChild(opt);
+              } else {
+                userGroup.appendChild(opt);
+              }
+            });
+
+            switcher.appendChild(presetGroup);
+            if (userGroup.children.length > 0) {
+              switcher.appendChild(userGroup);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Không thể cập nhật danh sách workflow', e);
+      }
     }
   }
 

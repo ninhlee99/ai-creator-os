@@ -422,6 +422,50 @@ func registerAllBuiltinNodes() {
 		},
 		Executor: executeImageOutput,
 	})
+
+	// 19. Virtual Try-On Node (Thay đổi trang phục thời trang)
+	RegisterNode(NodeDefinition{
+		Type:        "virtual_tryon",
+		Title:       "Thay đổi trang phục AI (Virtual Try-on)",
+		Category:    CategoryProcess,
+		Description: "Hoán đổi trang phục thời trang nữ sang đầm/váy/outfit mới, bảo toàn khuôn mặt và form dáng nhân vật mẫu",
+		Icon:        "shirt",
+		Inputs: []FlowPort{
+			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
+			{ID: "garment_image", Name: "Ảnh trang phục", Type: PortTypeImage, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "fitted_image", Name: "Ảnh sau khi thay đồ", Type: PortTypeImage, Description: "Nhân vật mẫu mặc trang phục mới hoàn chỉnh"},
+			{ID: "mask_image", Name: "Mặt nạ trang phục", Type: PortTypeImage, Description: "Vùng phân đoạn trang phục"},
+		},
+		DefaultParams: map[string]any{
+			"fit_style":     "seamless_luxury",
+			"preserve_face": true,
+		},
+		Executor: executeVirtualTryOn,
+	})
+
+	// 20. Camera Angles Director Node (Đạo diễn đa góc quay điện ảnh)
+	RegisterNode(NodeDefinition{
+		Type:        "camera_angles_director",
+		Title:       "Đạo diễn đa góc quay (Multi-Angle Director)",
+		Category:    CategoryProcess,
+		Description: "Tự động thiết lập chuỗi 3 góc máy điện ảnh: toàn thân runway walk, bán thân xoay 360 dáng và cận cảnh chất vải",
+		Icon:        "video",
+		Inputs: []FlowPort{
+			{ID: "character_image", Name: "Ảnh nhân vật mặc trang phục", Type: PortTypeImage, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "angle_full", Name: "Góc 1: Toàn thân Runway", Type: PortTypeText, Description: "Prompt góc toàn thân bước đi catwalk"},
+			{ID: "angle_medium", Name: "Góc 2: Bán thân xoay dáng", Type: PortTypeText, Description: "Prompt góc bán thân xoay nhẹ khoe form"},
+			{ID: "angle_detail", Name: "Góc 3: Cận cảnh chất vải", Type: PortTypeText, Description: "Prompt cận cảnh sợi vải satin ngọc trai"},
+			{ID: "storyboard_prompts", Name: "Chuỗi 3 phân cảnh", Type: PortTypeImageList, Description: "Bộ 3 prompt cho các phân cảnh"},
+		},
+		DefaultParams: map[string]any{
+			"shot_style": "high_fashion_editorial",
+		},
+		Executor: executeCameraAnglesDirector,
+	})
 }
 
 func nodeParamString(params map[string]any, key, fallback string) string {

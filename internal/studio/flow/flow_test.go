@@ -363,6 +363,34 @@ func TestTC10_FullPresetAffiliateShowcaseExecution(t *testing.T) {
 	}
 }
 
+func TestTC13_FullPresetFashionTryOnExecution(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	preset := PresetFashionTryOnAngles()
+	run, err := ExecuteGraph(ctx, &preset)
+	if err != nil {
+		t.Fatalf("TC-13: Thực thi PresetFashionTryOnAngles thất bại: %v (Log: %s)", err, run.Log)
+	}
+
+	if run.Status != "completed" {
+		t.Errorf("TC-13: Trạng thái mong muốn 'completed', nhận: %s", run.Status)
+	}
+	if run.Progress != 100 {
+		t.Errorf("TC-13: Tiến độ mong muốn 100%%, nhận: %d", run.Progress)
+	}
+	if run.FinalOutput == "" || !fileExists(run.FinalOutput) {
+		t.Errorf("TC-13: FinalOutput video không tồn tại: %s", run.FinalOutput)
+	}
+
+	for _, n := range preset.Nodes {
+		st, ok := run.NodeStates[n.ID]
+		if !ok || st.Status != "completed" {
+			t.Errorf("TC-13: Node %s (%s) chưa hoàn thành (status=%s)", n.ID, n.Type, st.Status)
+		}
+	}
+}
+
 func TestTC11_RunCancellation(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)
