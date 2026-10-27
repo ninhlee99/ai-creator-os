@@ -217,9 +217,6 @@ func (c *LLMChain) Complete(ctx context.Context, system, prompt string) (string,
 // error so the chain survives.
 func (c *LLMChain) attempt(ctx context.Context, p LLMProvider, timeout time.Duration, system, prompt string) (text string, err error) {
 	if timeout > 0 {
-		if timeout < 120*time.Second {
-			timeout = 120 * time.Second
-		}
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
