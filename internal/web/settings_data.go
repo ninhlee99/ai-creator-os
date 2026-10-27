@@ -9,6 +9,7 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 	"github.com/ninhlee99/ai-creator-os/internal/engines/gmodels"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"log"
 	"net/http"
 	"net/url"
@@ -62,7 +63,8 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 	}
 	webAIViews, webAIConnected, webAIStudioReady := s.webAIPlatformViews()
 	return map[string]any{
-		"EnvStatus":        envs,
+		"EnvStatus":              envs,
+		"TikTokRadarConfigured": studio.TikTokRadarSourceConfigured(),
 		"WebAIPlatforms":   webAIViews,
 		"WebAIConnected":   webAIConnected,
 		"WebAIStudioReady": webAIStudioReady,

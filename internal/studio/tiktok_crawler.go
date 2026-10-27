@@ -323,9 +323,6 @@ func parseTikTokCrawlerJSON(body []byte) []TikTokTrendVideo {
 		}
 
 		music := strings.TrimSpace(item.Music.Title)
-		if music == "" {
-			music = "Sound gốc video TikTok"
-		}
 
 		videoURL := fmt.Sprintf("https://www.tiktok.com/@%s/video/%s", item.Author.UniqueID, id)
 		if item.Author.UniqueID == "" {

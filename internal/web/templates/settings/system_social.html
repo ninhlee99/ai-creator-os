@@ -27,9 +27,9 @@
   <div class="form-card mt-4 max-w-3xl space-y-3">
     <div class="flex items-center justify-between">
       <h3 class="m-0">TikTok Radar · Web Crawler tự động</h3>
-      <span class="badge badge-ok">✓ Tự động kích hoạt</span>
+      {{if .TikTokRadarConfigured}}<span class="badge badge-ok">✓ Đã tìm thấy browser cục bộ</span>{{else}}<span class="badge badge-no">⚠ Chưa tìm thấy browser</span>{{end}}
     </div>
-    <p class="hint">Radar TikTok hoạt động tự động thông qua Web Crawler tích hợp sẵn (không yêu cầu tài khoản TikTok Business, Access Token hay Advertiser ID). Dữ liệu video, lượt xem, lượt tym và sound gốc được thu thập trực tiếp.</p>
+    <p class="hint">Radar dùng Web Crawler với Edge, Chrome, Brave hoặc Chromium cục bộ; không dùng Access Token TikTok Business. Crawler đọc trang và phản hồi trình duyệt, không phải API chính thức. Chỉ số và metadata sound có thể thiếu; trường thiếu phải hiện là chưa có dữ liệu. Trạng thái browser chỉ xác nhận đã tìm thấy chương trình, không bảo đảm lần thu thập thành công.</p>
   </div>
 </div>
 {{end}}

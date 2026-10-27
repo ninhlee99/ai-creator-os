@@ -72,10 +72,7 @@ type TikTokTrendVideo struct {
 }
 
 func (v TikTokTrendVideo) SoundTitle() string {
-	if title := strings.TrimSpace(v.Music); title != "" {
-		return title
-	}
-	return "Sound gốc video TikTok"
+	return strings.TrimSpace(v.Music)
 }
 
 // EmbedPlayerURL returns TikTok's official player URL only when the saved

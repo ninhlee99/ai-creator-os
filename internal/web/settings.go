@@ -36,8 +36,6 @@ var envLabels = map[string][2]string{
 	"TIKTOK_CLIENT_KEY":              {"Client Key ứng dụng TikTok", "TikTok"},
 	"TIKTOK_CLIENT_SECRET":           {"Client Secret ứng dụng TikTok", "TikTok"},
 	"TIKTOK_REDIRECT_URI":            {"Redirect URI (Callback TikTok)", "TikTok"},
-	"TIKTOK_DISCOVERY_ACCESS_TOKEN":  {"Access Token TikTok Business Discovery", "TikTok Business Discovery"},
-	"TIKTOK_DISCOVERY_ADVERTISER_ID": {"Advertiser ID TikTok Discovery", "TikTok Business Discovery"},
 }
 
 // envSettingKey namespaces a UI-saved env value inside the settings table.
