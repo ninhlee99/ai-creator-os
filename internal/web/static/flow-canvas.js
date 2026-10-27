@@ -327,28 +327,28 @@
         startNodeX = typeof node.x === 'number' ? node.x : (parseFloat(nodeEl.style.left) || 100);
         startNodeY = typeof node.y === 'number' ? node.y : (parseFloat(nodeEl.style.top) || 100);
 
-        nodeEl.classList.add('is-dragging');
-        document.body.style.userSelect = 'none';
-
         const onMouseMove = (ev) => {
           if (!isDraggingNode) return;
           const dist = Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY);
-          if (dist > 3) {
+          if (dist > 8) {
             hasDragged = true;
+            nodeEl.classList.add('is-dragging');
+            document.body.style.userSelect = 'none';
+
+            const dx = (ev.clientX - startClientX) / this.scale;
+            const dy = (ev.clientY - startClientY) / this.scale;
+
+            node.x = Math.round(startNodeX + dx);
+            node.y = Math.round(startNodeY + dy);
+
+            nodeEl.style.left = `${node.x}px`;
+            nodeEl.style.top = `${node.y}px`;
+
+            this.renderWires();
           }
-          const dx = (ev.clientX - startClientX) / this.scale;
-          const dy = (ev.clientY - startClientY) / this.scale;
-
-          node.x = Math.round(startNodeX + dx);
-          node.y = Math.round(startNodeY + dy);
-
-          nodeEl.style.left = `${node.x}px`;
-          nodeEl.style.top = `${node.y}px`;
-
-          this.renderWires();
         };
 
-        const onMouseUp = () => {
+        const onMouseUp = (ev) => {
           if (isDraggingNode) {
             isDraggingNode = false;
             nodeEl.classList.remove('is-dragging');
@@ -361,8 +361,13 @@
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
 
-          // Guarantee final wire alignment upon dropping node
-          this.renderWires();
+          const totalDist = Math.hypot((ev.clientX || startClientX) - startClientX, (ev.clientY || startClientY) - startClientY);
+          if (totalDist > 8) {
+            hasDragged = true;
+            this.renderWires();
+          } else {
+            hasDragged = false;
+          }
         };
 
         window.addEventListener('mousemove', onMouseMove);
@@ -2201,6 +2206,41 @@
         });
       }
 
+      // Large button to open full node detail modal
+      const openLargeBtn = document.getElementById('btn-inspector-open-modal-large');
+      if (openLargeBtn) {
+        openLargeBtn.addEventListener('click', () => {
+          if (this.selectedNodeId) {
+            this.openNodeDetailModal(this.selectedNodeId);
+          }
+        });
+      }
+
+      // Variable chips insertion into Inspector prompt textarea
+      const promptArea = document.getElementById('inspector-prompt-input');
+      const charCounter = document.getElementById('inspector-prompt-char-count');
+      document.querySelectorAll('.wf-inspector-prompt-chips .wf-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const varText = btn.dataset.var;
+          if (promptArea && varText) {
+            const start = promptArea.selectionStart || promptArea.value.length;
+            const end = promptArea.selectionEnd || promptArea.value.length;
+            const val = promptArea.value;
+            promptArea.value = val.substring(0, start) + varText + val.substring(end);
+            promptArea.focus();
+            promptArea.selectionStart = promptArea.selectionEnd = start + varText.length;
+            if (charCounter) charCounter.innerText = `${promptArea.value.length} ký tự`;
+            if (this.selectedNodeId) {
+              const node = this.graph.nodes.find(n => n.id === this.selectedNodeId);
+              if (node) {
+                if (!node.params) node.params = {};
+                node.params.prompt = promptArea.value;
+                if (node.params.template !== undefined) node.params.template = promptArea.value;
+              }
+            }
+          }
+        });
+      });
     }
 
     renderWorkflowBoundaryInspector(node, container) {
@@ -2551,26 +2591,184 @@
         provider_name: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
         aspect: node.type === 'google_flow_video'
           ? [['VIDEO_ASPECT_RATIO_PORTRAIT', '9:16 · Dọc'], ['VIDEO_ASPECT_RATIO_LANDSCAPE', '16:9 · Ngang']]
-          : [['9:16', '9:16 · Dọc'], ['16:9', '16:9 · Ngang'], ['1:1', '1:1 · Vuông']],
-        operation: [['resize_aspect', 'Đổi tỷ lệ khung hình'], ['color_grade', 'Cân màu']],
+          : [['9:16', '9:16 · Dọc (TikTok/Reels/Shorts)'], ['16:9', '16:9 · Ngang (YouTube/TV)'], ['1:1', '1:1 · Vuông (Feed)']],
+        operation: [['resize_aspect', 'Đổi tỷ lệ khung hình'], ['color_grade', 'Cân màu điện ảnh']],
         aspect_ratio: [['9:16', '9:16 · Dọc'], ['16:9', '16:9 · Ngang'], ['1:1', '1:1 · Vuông'], ['4:5', '4:5 · Dọc']],
         filter_preset: [['cinematic_vibrant', 'Điện ảnh · màu rực'], ['cyber_neon', 'Cyber neon'], ['vintage_warm', 'Vintage ấm']],
-        fit_style: [['seamless_luxury', 'May đo cao cấp'], ['sexy_dance_fit', 'Trang phục nhảy K-pop'], ['kpop_stage_outfit', 'Trang phục sân khấu K-pop'], ['bodycon_glamour', 'Bodycon sang trọng']],
+        fabric_type: [
+          ['silk_satin', 'Lụa Satin cao cấp (Mềm mịn, óng ả, rủ sóng nước)'],
+          ['cotton_twill', 'Cotton Twill (Dệt chéo đứng phom chuẩn)'],
+          ['chiffon_sheer', 'Chiffon mỏng nhẹ (Bay bổng, mềm mại)'],
+          ['leather_gloss', 'Da bóng thời trang (Glossy Leather bắt sáng)'],
+          ['denim_heavy', 'Vải Jean Denim (Dày dặn, cá tính)'],
+          ['velvet_plush', 'Nhung tuyết xa xỉ (Plush Velvet sang trọng)'],
+          ['linen_breeze', 'Linen tự nhiên (Thoáng mát, mộc mạc)']
+        ],
+        cloth_tension: [
+          ['fluid_drape', 'Rủ tự nhiên theo đường cong cơ thể (Fluid Drape)'],
+          ['liquid_flow', 'Chuyển động sóng nước mềm mại (Liquid Flow)'],
+          ['stiff_structured', 'Giữ phom cứng cáp định hình (Structured)'],
+          ['wind_flutter', 'Bay tà bồng bềnh trong gió (Wind Flutter)']
+        ],
+        drape_flow: [
+          ['liquid_flow', 'Chuyển động sóng nước mềm mại (Liquid Flow)'],
+          ['fluid_drape', 'Rủ tự nhiên mềm mại (Fluid Drape)'],
+          ['stiff_structured', 'Giữ phom cứng cáp (Structured)'],
+          ['wind_flutter', 'Bay tà bồng bềnh trong gió (Wind Flutter)']
+        ],
+        simulation_quality: [
+          ['ultra_high', 'Siêu cao cấp 4K (Ultra High Mesh)'],
+          ['high', 'Chất lượng cao (High Quality)'],
+          ['balanced', 'Cân bằng tốc độ & chất lượng (Balanced)']
+        ],
+        lut_profile: [
+          ['editorial_vogue_2026', 'Editorial Vogue 2026 (Chuẩn tạp chí thời trang)'],
+          ['cinematic_teal_orange', 'Điện ảnh Teal & Orange'],
+          ['warm_film_35mm', 'Film nhựa 35mm ấm áp cổ điển'],
+          ['clean_commercial_pop', 'Thương mại trong trẻo tươi tắn'],
+          ['cyber_neon_glow', 'Cyber Neon sắc sảo hiện đại']
+        ],
+        shot_style: [
+          ['high_fashion_editorial', 'Thời trang High-Fashion điện ảnh'],
+          ['dynamic_dance_tracking', 'Bắt nét chuyển động vũ đạo mượt mà'],
+          ['commercial_luxury', 'TVC thương mại sang trọng'],
+          ['tiktok_viral_punchy', 'TikTok Viral cận cảnh chuyển động']
+        ],
+        dance_style: [
+          ['sexy_dance_tiktok', 'Sexy Dance quyến rũ TikTok'],
+          ['kpop_girlgroup_sharp', 'Vũ đạo K-pop Girlgroup sắc nét'],
+          ['hiphop_street_flow', 'Hip-hop đường phố mạnh mẽ'],
+          ['waacking_voguing', 'Waacking / Voguing thời trang']
+        ],
+        dance_type: [
+          ['sexy_dance', 'Sexy Dance quyến rũ gợi cảm'],
+          ['kpop_dance', 'K-pop Dance đồng đều bắt mắt'],
+          ['modern_dance', 'Nhảy hiện đại & đương đại'],
+          ['street_dance', 'Nhảy đường phố sôi động']
+        ],
+        motion_fidelity: [
+          ['exact_100', 'Khớp chính xác 100% động tác gốc'],
+          ['smooth_enhanced', 'Khớp 95% + Tăng độ mượt mà chuyển động'],
+          ['stylized_dance', 'Khớp động tác + Phong cách hóa theo dáng người']
+        ],
+        pose_style: [
+          ['catwalk_runway', 'Catwalk sải bước sàn diễn thời trang'],
+          ['fashion_pose_editorial', 'Tạo dáng Lookbook thời trang tĩnh'],
+          ['dynamic_rhythm', 'Nhún nhảy uyển chuyển theo điệu nhạc']
+        ],
+        skeleton_precision: [
+          ['high_density', 'Mật độ cao DensePose (Chính xác từng khớp)'],
+          ['standard_pose', 'Chuẩn MediaPipe / OpenPose']
+        ],
+        bitrate_mode: [
+          ['high_quality', 'Bitrate chất lượng cao (Không nén)'],
+          ['cbr_tiktok_optimized', 'Tối ưu thuật toán nén TikTok (1080p 60fps)']
+        ],
+        target_resolution: [
+          ['1080x1920', '1080x1920 (TikTok 9:16 Full HD)'],
+          ['2160x3840', '2160x3840 (TikTok 9:16 4K Ultra HD)'],
+          ['1920x1080', '1920x1080 (YouTube 16:9 Ngang Full HD)'],
+          ['1080x1080', '1080x1080 (Instagram 1:1 Vuông)']
+        ],
+        key_position: [
+          ['front_left_45', 'Đèn chính góc 45° bên trái'],
+          ['front_right_45', 'Đèn chính góc 45° bên phải'],
+          ['top_overhead_beauty', 'Đèn trên đỉnh tạo bóng mắt sang trọng (Beauty Light)']
+        ],
+        fill_ratio: [
+          ['1:2', 'Tỉ lệ 1:2 (Ánh sáng studio mềm mại tự nhiên)'],
+          ['1:3', 'Tỉ lệ 1:3 (Đậm chất điện ảnh, giàu chiều sâu)'],
+          ['1:1', 'Tỉ lệ 1:1 (Sáng đều phong cách Lookbook)']
+        ],
+        mood: [
+          ['high_fashion_studio', 'Studio thời trang xa xỉ'],
+          ['glamour_neon_stage', 'Sân khấu đèn màu Glamour'],
+          ['warm_natural_sun', 'Nắng tự nhiên ấm áp']
+        ],
+        aperture: [
+          ['f/1.4', 'f/1.4 (Xóa phông mờ mịt, nổi bật chủ thể)'],
+          ['f/1.8', 'f/1.8 (Xóa phông điện ảnh tiêu chuẩn)'],
+          ['f/2.8', 'f/2.8 (Rõ nét cả chủ thể & chi tiết bối cảnh)']
+        ],
+        focal_length: [
+          ['35mm', '35mm (Góc rộng thời trang, kéo dài chân tôn dáng)'],
+          ['50mm', '50mm (Góc mắt người chân thực)'],
+          ['85mm', '85mm (Chân dung xóa phông nén cảnh)']
+        ],
+        camera_motion: [
+          ['fixed_tripod', 'Chân máy cố định chống rung'],
+          ['smooth_push_in', 'Đẩy máy quay từ từ lại gần (Push-in)'],
+          ['orbit_slow', 'Quay vòng quanh nhân vật 360°'],
+          ['dynamic_handheld', 'Cầm tay nhẹ nhàng tự nhiên']
+        ],
+        rendering_engine: [
+          ['muse_chat_mcp', 'Meta Muse AI Engine (Neural Diffusion)'],
+          ['google_flow_veo', 'Google Flow Veo 3.1'],
+          ['wan_video_2026', 'Wan Video 2.1 / 2026']
+        ],
+        motion_smoothness: [
+          ['fluid_cinema', 'Chuyển động điện ảnh mượt mà 60fps'],
+          ['standard_motion', 'Chuyển động chuẩn tự nhiên 30fps'],
+          ['dynamic_impact', 'Chuyển động dứt khoát theo beat nhạc']
+        ],
+        gender: [
+          ['female', 'Nữ (Female Avatar)'],
+          ['male', 'Nam (Male Avatar)'],
+          ['unisex', 'Phi giới tính (Unisex)']
+        ],
+        expression: [
+          ['sensual_alluring', 'Quyến rũ, gợi cảm và cuốn hút'],
+          ['confident_smile', 'Nụ cười tự tin rạng rỡ'],
+          ['cool_fierce', 'Thần thái sắc lạnh cá tính'],
+          ['playful_wink', 'Nháy mắt tinh nghịch vui tươi']
+        ],
+        placement: [
+          ['holding_hand', 'Nhân vật cầm trên tay'],
+          ['wearing_body', 'Mặc trên người'],
+          ['beside_character', 'Đặt cạnh nhân vật'],
+          ['floating_magic', 'Lơ lửng hiệu ứng ma thuật']
+        ],
+        fit_style: [
+          ['seamless_luxury', 'May đo cao cấp ôm dáng (Seamless Luxury)'],
+          ['sexy_dance_fit', 'Trang phục nhảy K-pop quyến rũ'],
+          ['kpop_stage_outfit', 'Trang phục sân khấu K-pop'],
+          ['bodycon_glamour', 'Bodycon tôn đường cong sang trọng']
+        ],
         location_type: [
-          ['luxury_penthouse', 'Penthouse cao cấp'], ['minimalist_studio', 'Studio tối giản'],
-          ['fashion_boutique', 'Boutique thời trang'], ['paris_runway', 'Sàn diễn Paris'],
-          ['cafe_chill', 'Quán cà phê'], ['sunset_rooftop', 'Rooftop hoàng hôn'],
-          ['neon_dance_studio', 'Studio nhảy neon'], ['kpop_concert_stage', 'Sân khấu K-pop'],
-          ['cyberpunk_rooftop', 'Rooftop cyberpunk'], ['sensual_club_lounge', 'Club lounge'], ['custom', 'Tùy chỉnh']
+          ['luxury_penthouse', 'Penthouse cao cấp'],
+          ['minimalist_studio', 'Studio tối giản'],
+          ['fashion_boutique', 'Boutique thời trang Pháp'],
+          ['paris_runway', 'Sàn diễn Paris Runway'],
+          ['cafe_chill', 'Quán cà phê Hàn Quốc'],
+          ['sunset_rooftop', 'Rooftop hoàng hôn lộng gió'],
+          ['neon_dance_studio', 'Studio nhảy đèn LED Neon'],
+          ['kpop_concert_stage', 'Sân khấu K-pop hoành tráng'],
+          ['cyberpunk_rooftop', 'Rooftop cyberpunk mưa đêm'],
+          ['sensual_club_lounge', 'Club lounge ánh sáng quyến rũ'],
+          ['custom', 'Tùy chỉnh theo prompt']
         ],
         time_of_day: [
-          ['golden_hour', 'Hoàng hôn Golden Hour'], ['morning_sunlight', 'Nắng ban mai'],
-          ['high_noon_editorial', 'Ánh sáng editorial'], ['blue_hour_dusk', 'Chạng vạng Blue Hour'],
-          ['night_neon', 'Neon ban đêm'], ['dynamic_stage_lights', 'Đèn sân khấu chuyển động'],
-          ['studio_three_point', 'Đèn studio 3 điểm'], ['midnight_luxury', 'Đêm sang trọng']
+          ['golden_hour', 'Hoàng hôn Golden Hour vàng ấm'],
+          ['morning_sunlight', 'Nắng ban mai trong trẻo'],
+          ['high_noon_editorial', 'Ánh sáng thẳng sắc sảo Editorial'],
+          ['blue_hour_dusk', 'Chạng vạng Blue Hour huyền ảo'],
+          ['night_neon', 'Neon ban đêm rực rỡ'],
+          ['dynamic_stage_lights', 'Đèn sân khấu chuyển động theo nhạc'],
+          ['studio_three_point', 'Đèn studio 3 điểm tiêu chuẩn'],
+          ['midnight_luxury', 'Đêm sang trọng huyền bí']
         ],
-        resolution: [['1080p', '1080p'], ['4k', '4K']],
-        audio_codec: [['aac', 'AAC'], ['copy', 'Giữ codec gốc']],
+        color_temperature: [
+          ['warm_golden', 'Vàng ấm áp (3200K)'],
+          ['neutral_daylight', 'Ánh sáng tự nhiên (5600K)'],
+          ['cool_blue', 'Xanh lạnh huyền bí (7000K)']
+        ],
+        light_intensity: [
+          ['soft_diffused', 'Khuếch tán mềm mịn tôn da (Soft Diffused)'],
+          ['dramatic_high_contrast', 'Tương phản gắt ấn tượng (Dramatic)'],
+          ['glamour_glow', 'Tỏa sáng rực rỡ (Glamour Glow)']
+        ],
+        resolution: [['1080p', '1080p (Full HD)'], ['4k', '4K (Ultra HD)']],
+        audio_codec: [['aac', 'AAC (Chuẩn TikTok)'], ['copy', 'Giữ codec gốc']],
         method: [['POST', 'POST'], ['GET', 'GET'], ['PUT', 'PUT'], ['PATCH', 'PATCH'], ['DELETE', 'DELETE'], ['HEAD', 'HEAD']]
       };
       if (key === 'output_type') {
@@ -2580,6 +2778,68 @@
         return allowed;
       }
       return choices[key] || null;
+    }
+
+    createSliderOrNumberInput(key, val, node, id, onChange) {
+      const sliderConfigs = {
+        wrinkle_depth: { min: 0, max: 1, step: 0.05, unit: '' },
+        stiffness: { min: 0, max: 1, step: 0.05, unit: '' },
+        blend_ratio: { min: 0.5, max: 1, step: 0.02, unit: '' },
+        face_similarity_threshold: { min: 0.5, max: 1, step: 0.02, unit: '' },
+        contrast_boost: { min: 0.8, max: 1.8, step: 0.02, unit: 'x' },
+        saturation: { min: 0.5, max: 2.0, step: 0.05, unit: 'x' },
+        gravity_factor: { min: 0, max: 20, step: 0.5, unit: ' m/s²' },
+        wind_force: { min: 0, max: 10, step: 0.2, unit: ' m/s' },
+        key_light_lux: { min: 200, max: 5000, step: 100, unit: ' Lux' },
+        rim_color_kelvin: { min: 2500, max: 9000, step: 100, unit: 'K' },
+        scale: { min: 0.1, max: 2.0, step: 0.05, unit: 'x' },
+        fps: { min: 12, max: 60, step: 1, unit: ' fps' }
+      };
+      const cfg = sliderConfigs[key];
+      if (!cfg) return null;
+
+      const numVal = typeof val === 'number' ? val : (parseFloat(val) || cfg.min);
+      const wrap = document.createElement('div');
+      wrap.className = 'wf-slider-control';
+      wrap.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;margin-top:4px;';
+
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = cfg.min;
+      range.max = cfg.max;
+      range.step = cfg.step;
+      range.value = numVal;
+      range.style.cssText = 'flex:1;cursor:pointer;accent-color:var(--primary,#6366f1);height:6px;';
+
+      const numInput = document.createElement('input');
+      numInput.type = 'number';
+      numInput.className = 'form-control';
+      numInput.min = cfg.min;
+      numInput.max = cfg.max;
+      numInput.step = cfg.step;
+      numInput.value = numVal;
+      numInput.style.cssText = 'width:78px;text-align:right;padding:4px 8px;font-size:12px;font-weight:600;border-radius:6px;';
+      if (id) numInput.id = id;
+
+      const badge = document.createElement('span');
+      badge.style.cssText = 'font-size:11px;color:var(--muted,#94a3b8);min-width:30px;white-space:nowrap;';
+      badge.textContent = cfg.unit || '';
+
+      const handleUpdate = (newVal) => {
+        const v = parseFloat(newVal);
+        const valid = isNaN(v) ? cfg.min : v;
+        range.value = valid;
+        numInput.value = valid;
+        if (typeof onChange === 'function') onChange(valid);
+      };
+
+      range.addEventListener('input', () => handleUpdate(range.value));
+      numInput.addEventListener('input', () => handleUpdate(numInput.value));
+
+      wrap.appendChild(range);
+      wrap.appendChild(numInput);
+      if (cfg.unit) wrap.appendChild(badge);
+      return wrap;
     }
 
     isMediaParameter(key) {
@@ -2852,10 +3112,9 @@
       const promptGroup = document.getElementById('inspector-prompt-group');
       const promptInput = document.getElementById('inspector-prompt-input');
       const charCounter = document.getElementById('inspector-prompt-char-count');
-      const supportsPrompt = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'prompt') || Object.prototype.hasOwnProperty.call(def.default_params || {}, 'template');
       if (promptGroup && promptInput) {
-        promptGroup.style.display = supportsPrompt ? 'block' : 'none';
-        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (def.default_params?.prompt || def.default_params?.template || def.description || ''));
+        promptGroup.style.display = 'block';
+        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (node.params?.system_prompt !== undefined ? node.params.system_prompt : (def.default_params?.prompt || def.default_params?.template || def.description || '')));
         promptInput.value = curPrompt;
         if (charCounter) charCounter.innerText = `${curPrompt.length} ký tự`;
 
@@ -2879,19 +3138,28 @@
 		if (isWorkflowBoundary) this.renderWorkflowBoundaryInspector(node, fieldsContainer);
 		else if (isWorkflowCall) this.renderWorkflowCallInspector(node, fieldsContainer);
 
-        const skipKeys = ['prompt', 'template', 'model', 'node_name', 'preview_url'];
+        const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
           if (skipKeys.includes(key)) return;
 
           const val = params[key];
           const group = document.createElement('div');
-          group.className = 'form-group';
+          group.className = 'form-group wf-inspector-param-group';
+          group.style.marginBottom = '12px';
 
           const label = document.createElement('label');
+          label.style.display = 'block';
+          label.style.fontWeight = '600';
+          label.style.fontSize = '12px';
+          label.style.marginBottom = '4px';
           label.innerText = this.formatParamLabel(key);
           group.appendChild(label);
+
           const choiceSelect = this.createChoiceSelect(key, val, node, `inspector-field-${key}`);
+          const sliderControl = this.createSliderOrNumberInput(key, val, node, `inspector-field-${key}`, (newVal) => {
+            node.params[key] = newVal;
+          });
 
           if (key === 'product_id' && node.type === 'product_input') {
             group.appendChild(this.createProductSelect(node, val, `inspector-field-${key}`));
@@ -2902,14 +3170,26 @@
           } else if (choiceSelect) {
             choiceSelect.addEventListener('change', () => { node.params[key] = choiceSelect.value; });
             group.appendChild(choiceSelect);
+          } else if (sliderControl) {
+            group.appendChild(sliderControl);
           } else if (typeof val === 'boolean') {
+            const chkWrap = document.createElement('label');
+            chkWrap.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px;';
+
             const chk = document.createElement('input');
             chk.type = 'checkbox';
             chk.checked = val;
             chk.addEventListener('change', () => {
               node.params[key] = chk.checked;
             });
-            group.appendChild(chk);
+            chkWrap.appendChild(chk);
+
+            const span = document.createElement('span');
+            span.innerText = 'Bật / Kích hoạt chức năng này';
+            span.style.fontSize = '12.5px';
+            chkWrap.appendChild(span);
+
+            group.appendChild(chkWrap);
           } else if (typeof val === 'number') {
             const numInput = document.createElement('input');
             numInput.type = 'number';
@@ -3369,12 +3649,14 @@
     formatParamLabel(key) {
       const labels = {
         template: 'Mẫu câu lệnh (Template)',
-        prompt: 'Câu lệnh Prompt',
+        prompt: 'Câu lệnh Prompt & Chỉ dẫn AI',
+        system_prompt: 'Chỉ đạo vai trò AI (System Prompt)',
+        negative_prompt: 'Prompt phủ định (Negative Prompt)',
         model_name: 'Tên nhân vật mẫu',
         product_title: 'Tên sản phẩm',
         aspect: 'Tỉ lệ khung hình (Aspect)',
         placement: 'Vị trí ghép sản phẩm',
-        scale: 'Tỉ lệ phóng to',
+        scale: 'Tỉ lệ phóng to (Scale)',
         resolution: 'Độ phân giải',
         expression: 'Biểu cảm & Điệu nhảy',
         provider_name: 'Tên Web AI',
@@ -3399,7 +3681,7 @@
         shot_style: 'Phong cách góc máy điện ảnh',
         location_type: 'Bối cảnh không gian (Location)',
         custom_location: 'Mô tả không gian tùy chỉnh',
-        depth_of_field: 'Độ sâu trường ảnh (Depth of Field)',
+        depth_of_field: 'Độ sâu trường ảnh xóa phông (Depth of Field)',
         time_of_day: 'Thời gian & Ánh sáng (Time & Lighting)',
         color_temperature: 'Nhiệt độ màu (Color Temp)',
         light_intensity: 'Cường độ ánh sáng (Intensity)',
@@ -3418,9 +3700,42 @@
         auth_token: 'Mã xác thực Bearer Token',
         mode: 'Chế độ xử lý logic (Mode)',
         media_title: 'Tiêu đề tài nguyên media',
-        filename_prefix: 'Tiền tố tên file xuất xưởng'
+        filename_prefix: 'Tiền tố tên file xuất xưởng',
+        fabric_type: 'Chất liệu vải 3D (Fabric Material)',
+        wrinkle_depth: 'Độ nhăn vải & nếp gấp (Wrinkle Depth)',
+        stiffness: 'Độ cứng phom vải (Fabric Stiffness)',
+        drape_flow: 'Độ rủ & Sóng vải (Drape & Flow)',
+        cloth_tension: 'Độ căng bề mặt vải (Cloth Tension)',
+        gravity_factor: 'Trọng lực mô phỏng (Gravity Factor)',
+        gravity_simulation: 'Mô phỏng trọng lực vật lý (Physics Gravity)',
+        wind_force: 'Lực gió tương tác (Wind Force)',
+        simulation_quality: 'Chất lượng mô phỏng 3D (Simulation Quality)',
+        lut_profile: 'Hồ sơ màu sắc 3D LUT (Color Profile)',
+        blend_ratio: 'Tỷ lệ hòa trộn khuôn mặt (Face Blend)',
+        preserve_expression: 'Giữ nguyên biểu cảm gốc (Preserve Expression)',
+        face_similarity_threshold: 'Ngưỡng nhận diện khuôn mặt (Similarity)',
+        gender: 'Giới tính nhân vật (Gender)',
+        pose_style: 'Kiểu dáng chuyển động (Pose Style)',
+        skeleton_precision: 'Độ chính xác khung xương (Skeleton Precision)',
+        aperture: 'Khẩu độ ống kính (Aperture)',
+        focal_length: 'Tiêu cự máy quay (Focal Length)',
+        camera_motion: 'Chuyển động máy quay (Camera Motion)',
+        key_light_lux: 'Cường độ đèn chính (Key Light Lux)',
+        key_position: 'Góc đặt đèn chính (Key Light Angle)',
+        fill_ratio: 'Tỉ lệ đèn phụ Fill Light (Fill Ratio)',
+        rim_color_kelvin: 'Nhiệt độ màu đèn ven (Rim Kelvin)',
+        mood: 'Bầu không khí ánh sáng (Lighting Mood)',
+        motion_smoothness: 'Độ mượt chuyển động (Motion Smoothness)',
+        rendering_engine: 'Công cụ tạo video (AI Render Engine)',
+        bitrate_mode: 'Chế độ nén Bitrate (Bitrate Mode)',
+        keyframe_count: 'Số khung hình trích xuất (Keyframes)',
+        require_audio: 'Yêu cầu có âm thanh (Require Audio)',
+        refine_edges: 'Làm mịn viền bóc tách (Refine Edges)',
+        auto_crop: 'Tự động căn chỉnh & cắt khung (Auto Crop)',
+        affiliate_url: 'Đường dẫn liên kết Affiliate (URL)'
       };
-      return labels[key] || key.replace(/_/g, ' ');
+      if (labels[key]) return labels[key];
+      return String(key).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
     openAddNodeModal() {
@@ -3956,6 +4271,15 @@
         });
       }
 
+      const btnOpenLarge = document.getElementById('btn-inspector-open-modal-large');
+      if (btnOpenLarge) {
+        btnOpenLarge.addEventListener('click', () => {
+          if (this.selectedNodeId) {
+            this.openNodeDetailModal(this.selectedNodeId);
+          }
+        });
+      }
+
       // Tab switching
       document.querySelectorAll('.wf-ndm-tab').forEach(tabBtn => {
         tabBtn.addEventListener('click', () => {
@@ -4071,6 +4395,9 @@
           label.innerText = this.formatParamLabel(key);
           formGroup.appendChild(label);
           const choiceSelect = this.createChoiceSelect(key, val, node, `ndm-field-${key}`);
+          const sliderControl = this.createSliderOrNumberInput(key, val, node, `ndm-field-${key}`, (newVal) => {
+            node.params[key] = newVal;
+          });
 
           if (key === 'product_id' && node.type === 'product_input') {
             formGroup.appendChild(this.createProductSelect(node, val, `ndm-field-${key}`));
@@ -4079,7 +4406,10 @@
             note.textContent = 'Chỉ hiển thị sản phẩm đã duyệt và đủ dữ liệu affiliate.';
             formGroup.appendChild(note);
           } else if (choiceSelect) {
+            choiceSelect.addEventListener('change', () => { node.params[key] = choiceSelect.value; });
             formGroup.appendChild(choiceSelect);
+          } else if (sliderControl) {
+            formGroup.appendChild(sliderControl);
           } else if (typeof val === 'boolean') {
             const chkWrap = document.createElement('label');
             chkWrap.style.display = 'flex';
@@ -4223,12 +4553,17 @@
           inPorts.forEach(p => {
             const row = document.createElement('div');
             row.className = 'wf-ndm-port-row';
-            const connectedEdges = (this.graph.edges || []).filter(e => e.to === node.id && (e.toPort === p.id || !e.toPort));
+            const connectedEdges = (this.graph.edges || []).filter(e => {
+              const toId = e.to || e.to_node;
+              const toPort = e.toPort || e.to_port;
+              return toId === node.id && (!p.id || toPort === p.id || !toPort);
+            });
             let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
             if (connectedEdges.length > 0) {
               const srcNodes = connectedEdges.map(e => {
-                const src = this.graph.nodes.find(n => n.id === e.from);
-                return src ? (src.title || src.type) : e.from;
+                const srcId = e.from || e.from_node;
+                const src = this.graph.nodes.find(n => n.id === srcId);
+                return src ? (src.title || src.type) : srcId;
               }).join(', ');
               connInfo = `<span class="wf-ndm-port-conn">← Nối từ: <strong>${escapeHTML(srcNodes)}</strong></span>`;
             }
@@ -4254,12 +4589,17 @@
           outPorts.forEach(p => {
             const row = document.createElement('div');
             row.className = 'wf-ndm-port-row';
-            const connectedEdges = (this.graph.edges || []).filter(e => e.from === node.id && (e.fromPort === p.id || !e.fromPort));
+            const connectedEdges = (this.graph.edges || []).filter(e => {
+              const fromId = e.from || e.from_node;
+              const fromPort = e.fromPort || e.from_port;
+              return fromId === node.id && (!p.id || fromPort === p.id || !fromPort);
+            });
             let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
             if (connectedEdges.length > 0) {
               const destNodes = connectedEdges.map(e => {
-                const dest = this.graph.nodes.find(n => n.id === e.to);
-                return dest ? (dest.title || dest.type) : e.to;
+                const destId = e.to || e.to_node;
+                const dest = this.graph.nodes.find(n => n.id === destId);
+                return dest ? (dest.title || dest.type) : destId;
               }).join(', ');
               connInfo = `<span class="wf-ndm-port-conn">→ Nối tới: <strong>${escapeHTML(destNodes)}</strong></span>`;
             }

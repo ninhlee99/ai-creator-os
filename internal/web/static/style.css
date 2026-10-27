@@ -6116,6 +6116,10 @@ body.page-workflow .layout {
 /* ==========================================================================
    Node Detail & Deep Configuration Modal (Modern Dark/Light Glassmorphism)
    ========================================================================== */
+#node-detail-modal {
+  z-index: 2000;
+}
+
 .wf-node-detail-modal-window {
   max-width: 900px;
   width: 95%;
@@ -6542,3 +6546,47 @@ body.page-workflow .layout {
   background: rgba(79, 70, 229, 0.12);
   transform: scale(1.15);
 }
+
+/* Modern Parameter Controls & Prompt Chips */
+.wf-chip-btn {
+  background: var(--bg3, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  color: var(--fg, #e2e8f0);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.wf-chip-btn:hover {
+  background: var(--primary, #6366f1);
+  color: #ffffff;
+  border-color: var(--primary, #6366f1);
+  transform: translateY(-1px);
+}
+
+.wf-slider-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.wf-slider-control input[type="range"] {
+  accent-color: #6366f1;
+}
+
+.wf-inspector-param-group {
+  padding: 8px 10px;
+  background: var(--bg3, rgba(255, 255, 255, 0.02));
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+}
+
+.wf-inspector-param-group label {
+  color: var(--fg, #e2e8f0);
+}
+

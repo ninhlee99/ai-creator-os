@@ -159,6 +159,13 @@
         </div>
 
         <div id="inspector-form" style="display:none">
+          <div class="wf-inspector-modal-btn-wrap" style="margin: 4px 0 14px;">
+            <button type="button" class="wf-btn wf-btn-primary" id="btn-inspector-open-modal-large" style="width:100%;padding:10px 14px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;border-radius:8px;box-shadow:0 4px 12px rgba(99,102,241,0.25);">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.2" fill="none"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              <span>Mở Modal Chi Tiết &amp; Cấu Hình AI Prompt</span>
+            </button>
+          </div>
+
           <p id="inspector-node-desc" class="wf-node-desc-text"></p>
           <small id="inspector-node-guidance" class="text-muted" style="display:none"></small>
 
@@ -193,14 +200,21 @@
           </div>
 
           <!-- Prompt Editor (Prominent & Minimalist) -->
-          <div id="inspector-prompt-group" class="wf-form-group wf-prompt-editor-group" style="display:none;">
+          <div id="inspector-prompt-group" class="wf-form-group wf-prompt-editor-group" style="display:block;">
             <div class="wf-prompt-header">
               <label for="inspector-prompt-input" class="wf-field-label">
-                <span>📝 Câu lệnh Prompt AI</span>
+                <span>📝 Câu lệnh Prompt &amp; Chỉ dẫn AI</span>
               </label>
               <span id="inspector-prompt-char-count" class="wf-char-counter">0 ký tự</span>
             </div>
-            <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="5" placeholder="Nhập câu lệnh prompt tại đây (hỗ trợ biến {input}, {product_title},...)..."></textarea>
+            <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="4" placeholder="Nhập câu lệnh prompt tùy chỉnh hoặc chỉ dẫn AI cho node này (hỗ trợ biến {input}, {product_title},...)..."></textarea>
+            <div class="wf-inspector-prompt-chips" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
+              <button type="button" class="wf-chip-btn" data-var="{input}" title="Chèn biến input">+ {input}</button>
+              <button type="button" class="wf-chip-btn" data-var="{product_title}" title="Chèn biến tên sản phẩm">+ {product_title}</button>
+              <button type="button" class="wf-chip-btn" data-var="{character_name}" title="Chèn biến nhân vật">+ {character_name}</button>
+              <button type="button" class="wf-chip-btn" data-var="{environment}" title="Chèn biến không gian">+ {environment}</button>
+              <button type="button" class="wf-chip-btn" data-var="{lighting}" title="Chèn biến ánh sáng">+ {lighting}</button>
+            </div>
           </div>
 
           <!-- Dynamic Other Parameters -->
