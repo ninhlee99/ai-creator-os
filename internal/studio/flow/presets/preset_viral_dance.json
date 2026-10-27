@@ -29,7 +29,8 @@
         "dance_style": "",
         "keyframe_count": 6,
         "require_audio": true,
-        "strict_analysis": true
+        "strict_analysis": false,
+        "analysis_timeout_seconds": 25
       }
     },
     {
@@ -66,7 +67,7 @@
       "y": 40,
       "params": {
         "outfit_name": "",
-        "prompt": "Describe the intended outfit style {{fit_style}} for the supplied character. Preserve the same adult person's identity, body proportions, and natural appearance. Do not claim that clothing was physically generated or replaced; return a concise English outfit direction."
+        "prompt": "Wardrobe direction: {{fit_style}}. Preserve the supplied character's face, hair and body proportions."
       }
     },
     {
@@ -80,7 +81,7 @@
         "location_type": "neon_dance_studio",
         "custom_location": "",
         "depth_of_field": "cinematic_bokeh",
-        "prompt": "Create a concise English scene direction for {{location_type}}. Custom details: {{custom_location}}. Keep the subject clear and preserve the choreography framing."
+        "prompt": "{{location_type}} background. {{custom_location}} Keep the character clearly visible and preserve dance framing."
       }
     },
     {
@@ -94,7 +95,7 @@
         "color_temperature": "cyber_neon_magenta",
         "light_intensity": "dramatic_contrast",
         "time_of_day": "dynamic_stage_lights",
-        "prompt": "Create concise lighting direction for {{time_of_day}}, {{color_temperature}} color temperature and {{light_intensity}} intensity. Match scene: {{environment_desc}}."
+        "prompt": "{{time_of_day}} lighting with {{color_temperature}} color temperature and {{light_intensity}} intensity. Keep the face and outfit clearly visible in {{environment_desc}}."
       }
     },
     {

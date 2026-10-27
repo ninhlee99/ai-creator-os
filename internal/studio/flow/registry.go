@@ -263,10 +263,11 @@ func registerAllBuiltinNodes() {
 			{ID: "source_video", Name: "Video chuyển động nguồn", Type: PortTypeVideo, Description: "Video chỉ dùng làm tham chiếu chuyển động"},
 		},
 		DefaultParams: map[string]any{
-			"dance_style":     "",
-			"keyframe_count":  5,
-			"require_audio":   false,
-			"strict_analysis": false,
+			"dance_style":              "",
+			"keyframe_count":           5,
+			"require_audio":            false,
+			"strict_analysis":          false,
+			"analysis_timeout_seconds": 25,
 		},
 		Executor: executeDanceMotionExtractor,
 	})

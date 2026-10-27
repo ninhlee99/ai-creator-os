@@ -552,20 +552,41 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		}
 		keyframes = append(keyframes, frame)
 	}
-	if ctx.AnalyzeImages == nil {
-		return nil, fmt.Errorf("bóc tách chuyển động cần Vision AI đã cấu hình")
-	}
 	styleHint := nodeParamString(node.Params, "dance_style", "")
 	analysisPrompt := fmt.Sprintf("Phân tích thứ tự chuyển động cơ thể qua các keyframe của video dài %.2f giây. Mô tả pose, hướng, nhịp và chuyển tiếp chỉ từ hình đã thấy; không đoán BPM. Gợi ý phong cách: %s", duration, styleHint)
-	movement, err := ctx.AnalyzeImages(ctx.Context, analysisPrompt, keyframes)
-	if err != nil || strings.TrimSpace(movement) == "" {
-		if nodeParamBool(node.Params, "strict_analysis", false) {
-			if err == nil {
-				err = fmt.Errorf("Vision AI trả mô tả chuyển động rỗng")
-			}
-			return nil, fmt.Errorf("phân tích chuyển động thất bại: %w", err)
+	strictAnalysis := nodeParamBool(node.Params, "strict_analysis", false)
+	analysisCtx := ctx.Context
+	if analysisCtx == nil {
+		analysisCtx = context.Background()
+	}
+	if !strictAnalysis {
+		timeoutSeconds := nodeParamInt(node.Params, "analysis_timeout_seconds", 25)
+		if timeoutSeconds < 1 || timeoutSeconds > 120 {
+			timeoutSeconds = 25
 		}
-		movement = fmt.Sprintf("Chuỗi vũ đạo nhảy gợi cảm nhịp nhàng, tư thế uyển chuyển tôn dáng, chuyển động hông và tay đồng điệu. Phong cách: %s", styleHint)
+		var cancel context.CancelFunc
+		analysisCtx, cancel = context.WithTimeout(analysisCtx, time.Duration(timeoutSeconds)*time.Second)
+		defer cancel()
+	}
+	var movement string
+	var analysisErr error
+	if ctx.AnalyzeImages == nil {
+		analysisErr = fmt.Errorf("bóc tách chuyển động cần Vision AI đã cấu hình")
+	} else {
+		movement, analysisErr = ctx.AnalyzeImages(analysisCtx, analysisPrompt, keyframes)
+	}
+	if analysisErr != nil || strings.TrimSpace(movement) == "" {
+		if strictAnalysis {
+			if analysisErr == nil {
+				analysisErr = fmt.Errorf("Vision AI trả mô tả chuyển động rỗng")
+			}
+			return nil, fmt.Errorf("phân tích chuyển động thất bại: %w", analysisErr)
+		}
+		movement = "Use the attached source video as the authoritative motion reference. Follow its observed choreography, pose sequence, transitions and timing; do not invent movements."
+		if strings.TrimSpace(styleHint) != "" {
+			movement += " Dance style: " + strings.TrimSpace(styleHint) + "."
+		}
+		ctx.Log("DanceMotionExtractorNode: Vision AI không phản hồi; dùng video nguồn làm tham chiếu chuyển động trực tiếp cho Muse AI")
 	}
 	audioPath := ""
 	if hasAudio, _ := probeFlowHasAudio(videoIn); hasAudio {

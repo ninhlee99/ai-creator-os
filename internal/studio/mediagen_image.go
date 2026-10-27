@@ -79,6 +79,13 @@ func loadRef(path string) (geminiPart, error) {
 	}}, nil
 }
 
+func redactGeminiKey(message, key string) string {
+	if key == "" {
+		return message
+	}
+	return strings.ReplaceAll(message, key, "[REDACTED]")
+}
+
 // GenerateImage uses Pollinations Free API Classic for prompts without refs.
 // Gemini image models require paid billing; reference generation therefore
 // remains unavailable under the free-only policy.
@@ -187,12 +194,12 @@ func (g *GeminiMediaGen) generateTextModel(ctx context.Context, model, key strin
 	apiURL := g.baseURL + "/v1beta/models/" + model + ":generateContent?key=" + key
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Gemini request invalid: %s", redactGeminiKey(err.Error(), key))
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := g.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Gemini request failed: %s", redactGeminiKey(err.Error(), key))
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
@@ -200,7 +207,8 @@ func (g *GeminiMediaGen) generateTextModel(ctx context.Context, model, key strin
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, trunc(string(data), 300))
+		body := redactGeminiKey(string(data), key)
+		return "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, trunc(body, 300))
 	}
 	var result geminiGenResponse
 	if err := json.Unmarshal(data, &result); err != nil {
