@@ -16,10 +16,6 @@ import (
 
 // executeCustomUniversalAI thực thi node AI Đa Năng có thể nhận đồng thời Text, Image, Video, Audio.
 func executeCustomUniversalAI(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	textIn := inputString(inputs, "text_in", inputString(inputs, "text", inputString(inputs, "prompt", "")))
-	if textIn == "" && inputs["data_in"] != nil {
-		textIn = fmt.Sprint(inputs["data_in"])
-	}
 	imageIn := inputString(inputs, "image_in", inputString(inputs, "image", ""))
 	videoIn := inputString(inputs, "video_in", inputString(inputs, "video", ""))
 	audioIn := inputString(inputs, "audio_in", inputString(inputs, "audio", ""))
@@ -38,9 +34,8 @@ func executeCustomUniversalAI(ctx *ExecutionContext, node *FlowNode, inputs map[
 			return nil, fmt.Errorf("video đầu vào không hợp lệ")
 		}
 	}
-	promptTpl := nodeParamString(node.Params, "prompt", "{{text_in}}")
 	systemPrompt := nodeParamString(node.Params, "system_prompt", "Bạn là trợ lý AI sáng tạo nội dung.")
-	prompt := strings.NewReplacer("{{text_in}}", textIn, "{text}", textIn, "{input}", textIn).Replace(promptTpl)
+	prompt := resolveNodePrompt(node, inputs, []string{"text_in", "text", "prompt", "data_in"}, "")
 	if strings.TrimSpace(prompt) == "" {
 		return nil, fmt.Errorf("thiếu prompt")
 	}

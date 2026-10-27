@@ -281,6 +281,8 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+			// Blank means use connected prompt input. A custom value overrides it.
+			"prompt": "",
 		},
 		Executor: executeGoogleFlowVideo,
 	})
@@ -301,6 +303,8 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"aspect": "9:16",
+			// Blank means use connected prompt input. A custom value overrides it.
+			"prompt": "",
 		},
 		Executor: executeMuseAIVideo,
 	})
@@ -343,6 +347,7 @@ func registerAllBuiltinNodes() {
 		DefaultParams: map[string]any{
 			"provider_name": "googleflow",
 			"output_type":   "video",
+			"prompt":        "",
 		},
 		Executor: executeCustomWebAI,
 	})

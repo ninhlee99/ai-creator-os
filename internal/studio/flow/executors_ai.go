@@ -2,19 +2,18 @@ package flow
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
 func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := inputString(inputs, "prompt", "")
-	if prompt == "" {
-		prompt = nodeParamString(node.Params, "prompt", "Cinematic vertical 9:16 video, highly detailed, 4k quality")
-	}
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Cinematic vertical 9:16 video, highly detailed, 4k quality")
 
 	ingredients := []string{}
 	if raw, ok := inputs["ingredients"]; ok && raw != nil {
@@ -76,10 +75,7 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 }
 
 func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := inputString(inputs, "prompt", "")
-	if prompt == "" {
-		prompt = nodeParamString(node.Params, "prompt", "Tạo 1 video thời trang dọc 9:16 dài 10 giây: Bạn nữ trong ảnh tham chiếu 1 diện chiếc đầm trong ảnh tham chiếu 2, tạo dáng dạo phố sành điệu, chuyển động mềm mại tự nhiên.")
-	}
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Tạo 1 video thời trang dọc 9:16 dài 10 giây: Bạn nữ trong ảnh tham chiếu 1 diện chiếc đầm trong ảnh tham chiếu 2, tạo dáng dạo phố sành điệu, chuyển động mềm mại tự nhiên.")
 
 	// Đảm bảo chỉ thị nghiêm ngặt: KHÔNG sử dụng hiệu ứng zoom-in hay zoom-out
 	if !strings.Contains(strings.ToLower(prompt), "zoom") {
@@ -266,9 +262,9 @@ func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 }
 
 func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := inputString(inputs, "prompt_in", "")
-	if prompt == "" {
-		prompt = nodeParamString(node.Params, "prompt", "")
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt_in"}, "")
+	if strings.TrimSpace(prompt) == "" {
+		return nil, fmt.Errorf("thiếu prompt: nối cổng prompt hoặc nhập prompt riêng cho node")
 	}
 	providerName := nodeParamString(node.Params, "provider_name", "googleflow")
 	outputType := strings.ToLower(nodeParamString(node.Params, "output_type", "video"))
@@ -330,12 +326,9 @@ func isSupportedFlowModel(m string) bool {
 }
 
 func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := nodeParamString(node.Params, "prompt", "")
+	prompt := resolveNodePrompt(node, inputs, []string{"input", "prompt"}, "")
 	if prompt == "" {
 		return nil, fmt.Errorf("custom AI prompt chưa được cấu hình")
-	}
-	if value, ok := inputs["input"]; ok {
-		prompt = strings.ReplaceAll(prompt, "{{input}}", fmt.Sprint(value))
 	}
 	systemPrompt := nodeParamString(node.Params, "system_prompt", "Bạn là trợ lý sáng tạo nội dung.")
 	outputType := strings.ToLower(nodeParamString(node.Params, "output_type", "text"))
@@ -395,6 +388,65 @@ func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[str
 		return map[string]any{"output": outPath, "text": "", "media": outPath}, nil
 	default:
 		return nil, fmt.Errorf("kiểu output không hỗ trợ: %s", outputType)
+	}
+}
+
+// resolveNodePrompt applies node-specific prompt text to connected inputs.
+// Blank node prompt passes the upstream value through; {{input}} inserts the
+// first configured text input when the operator writes a custom prompt.
+func resolveNodePrompt(node *FlowNode, inputs map[string]any, inputKeys []string, fallback string) string {
+	upstream := ""
+	for _, key := range inputKeys {
+		if value, ok := inputs[key]; ok && value != nil {
+			if text := promptValue(value); strings.TrimSpace(text) != "" {
+				upstream = text
+				break
+			}
+		}
+	}
+
+	template := nodeParamString(node.Params, "prompt", "")
+	if strings.TrimSpace(template) == "" {
+		if upstream != "" {
+			return strings.TrimSpace(upstream)
+		}
+		return strings.TrimSpace(fallback)
+	}
+
+	replacements := make([]string, 0, len(inputs)*4+6)
+	keys := make([]string, 0, len(inputs))
+	for key := range inputs {
+		if key == "input" || key == "prompt" {
+			continue // These names are handled as semantic prompt aliases below.
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		value := promptValue(inputs[key])
+		replacements = append(replacements, "{{"+key+"}}", value, "{"+key+"}", value)
+	}
+	replacements = append(replacements, "{{input}}", upstream, "{input}", upstream)
+	if prompt, ok := inputs["prompt"]; ok {
+		replacements = append(replacements, "{{prompt}}", promptValue(prompt), "{prompt}", promptValue(prompt))
+	}
+	return strings.TrimSpace(strings.NewReplacer(replacements...).Replace(template))
+}
+
+func promptValue(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(v)
+	case []string:
+		return strings.Join(v, ", ")
+	default:
+		encoded, err := json.Marshal(v)
+		if err == nil {
+			return string(encoded)
+		}
+		return fmt.Sprint(v)
 	}
 }
 

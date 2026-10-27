@@ -184,8 +184,9 @@
                 <h3 class="wf-inspector-section-title">Prompt</h3>
                 <span id="inspector-prompt-char-count" class="wf-char-counter">0 ký tự</span>
               </div>
-              <label class="wf-field-label" for="inspector-prompt-input">Câu lệnh</label>
-              <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="5" placeholder="Nhập prompt cho node này..."></textarea>
+              <label id="inspector-prompt-label" class="wf-field-label" for="inspector-prompt-input">Prompt riêng cho node</label>
+              <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="5" aria-describedby="inspector-prompt-help" placeholder="Để trống để dùng prompt từ node trước..."></textarea>
+              <p id="inspector-prompt-help" class="wf-inspector-section-help">Để trống: dùng prompt qua dây nối. Nhập nội dung riêng để thay thế; chèn {{input}} để bổ sung prompt upstream.</p>
               <div id="inspector-prompt-chips" class="wf-inspector-prompt-chips"></div>
               <div id="inspector-system-prompt-group" class="wf-inspector-subfield" style="display:none;">
                 <label class="wf-field-label" for="inspector-system-prompt-input">System prompt</label>

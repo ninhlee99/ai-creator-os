@@ -3124,12 +3124,26 @@
       // Show prompt fields only when this node definition actually supports them.
       const promptGroup = document.getElementById('inspector-prompt-group');
       const promptInput = document.getElementById('inspector-prompt-input');
+      const promptLabel = document.getElementById('inspector-prompt-label');
+      const promptHelp = document.getElementById('inspector-prompt-help');
       const charCounter = document.getElementById('inspector-prompt-char-count');
       const defaults = def.default_params || {};
       const params = node.params || {};
       const supportsPrompt = ['prompt', 'template'].some(key => Object.prototype.hasOwnProperty.call(defaults, key) || Object.prototype.hasOwnProperty.call(params, key));
       const supportsSystemPrompt = Object.prototype.hasOwnProperty.call(defaults, 'system_prompt') || Object.prototype.hasOwnProperty.call(params, 'system_prompt');
       const supportsNegativePrompt = Object.prototype.hasOwnProperty.call(defaults, 'negative_prompt') || Object.prototype.hasOwnProperty.call(params, 'negative_prompt');
+      if (promptLabel && promptHelp) {
+        if (node.type === 'prompt_template') {
+          promptLabel.textContent = 'Mẫu prompt';
+          promptHelp.textContent = 'Dùng {character}, {product}, {motion}; nội dung lấy từ các cổng text đầu vào.';
+        } else if (node.type === 'custom_script_runner') {
+          promptLabel.textContent = 'Mẫu văn bản';
+          promptHelp.textContent = 'Dùng biến input được chèn bên dưới để lấy dữ liệu từ các cổng vào.';
+        } else {
+          promptLabel.textContent = 'Prompt riêng cho node';
+          promptHelp.textContent = 'Để trống: dùng prompt qua dây nối. Nhập nội dung riêng để thay thế; chèn {{input}} để bổ sung prompt upstream.';
+        }
+      }
       const systemGroup = document.getElementById('inspector-system-prompt-group');
       const systemInput = document.getElementById('inspector-system-prompt-input');
       const negativeGroup = document.getElementById('inspector-negative-prompt-group');
@@ -3172,7 +3186,7 @@
       const chips = document.getElementById('inspector-prompt-chips');
       if (chips) {
         chips.replaceChildren();
-        const variables = this.promptVariablesForNode(node.type);
+        const variables = this.promptVariablesForNode(node.type, def);
         chips.style.display = supportsPrompt && variables.length ? 'flex' : 'none';
         variables.forEach(variable => {
           const chip = document.createElement('button');
@@ -3417,14 +3431,17 @@
       }
     }
 
-    promptVariablesForNode(type) {
+    promptVariablesForNode(type, def) {
       const variables = {
         prompt_template: ['{character}', '{motion}', '{product}'],
-        custom_ai_prompt: ['{{input}}'],
-        custom_universal_ai: ['{{text_in}}', '{text}', '{input}'],
         custom_script_runner: ['{{input_1}}', '{{input_2}}', '{{text_in}}']
       };
-      return variables[type] || [];
+      if (variables[type]) return variables[type];
+      const inputs = Array.isArray(def?.inputs) ? def.inputs : [];
+      return Array.from(new Set([
+        '{{input}}',
+        ...inputs.filter(port => port.type === 'text').map(port => `{{${port.id}}}`)
+      ]));
     }
 
     renderInspectorPorts(node) {
