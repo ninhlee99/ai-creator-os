@@ -47,26 +47,18 @@ func executeProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[s
 	// 2. Nếu là URL trực tuyến (TikTok, Reels, Instagram, Shopee, Web URL)
 	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
 		ctx.Log(fmt.Sprintf("ProductExtractorNode: Đang tải tài nguyên nguồn từ link: %s", src))
-		if downloaded, _, err := DownloadMediaResource(ctx.Context, src, ctx.WorkDir, "auto"); err == nil && fileExists(downloaded) {
-			src = downloaded
+		downloaded, _, err := DownloadMediaResource(ctx.Context, src, ctx.WorkDir, "auto")
+		if err != nil {
+			return nil, fmt.Errorf("không tải được nguồn sản phẩm: %w", err)
 		}
+		if !fileExists(downloaded) {
+			return nil, fmt.Errorf("URL không trả về file ảnh hoặc video hợp lệ")
+		}
+		src = downloaded
 	}
 
-	// 3. Fallback nếu chưa có file
 	if src == "" || !fileExists(src) {
-		candidates, _ := filepath.Glob("data/uploads/*product*")
-		if len(candidates) > 0 {
-			src = candidates[0]
-		} else if fileExists("internal/web/static/sample_916.mp4") {
-			src = "internal/web/static/sample_916.mp4"
-		} else {
-			demoPath := filepath.Join(ctx.WorkDir, "default_product.jpg")
-			_ = os.MkdirAll(ctx.WorkDir, 0o755)
-			if err := writeDummyImage(demoPath, 800, 800, "PRODUCT"); err != nil {
-				return nil, fmt.Errorf("không có nguồn ảnh hoặc video sản phẩm: %w", err)
-			}
-			src = demoPath
-		}
+		return nil, fmt.Errorf("chưa có ảnh hoặc video nguồn; nối nguồn hoặc chọn file trong node bóc tách sản phẩm")
 	}
 
 	sourceImage := src
