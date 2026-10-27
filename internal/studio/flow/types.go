@@ -106,6 +106,7 @@ type NodeDefinition struct {
 	Inputs        []FlowPort     `json:"inputs"`
 	Outputs       []FlowPort     `json:"outputs"`
 	DefaultParams map[string]any `json:"default_params"`
+	Hidden        bool           `json:"hidden,omitempty"`
 	Executor      NodeExecutor   `json:"-"`
 }
 

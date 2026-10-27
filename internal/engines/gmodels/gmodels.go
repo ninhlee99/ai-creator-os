@@ -42,7 +42,7 @@ const (
 // Mặc định cập nhật theo các model chính thức mới nhất của Google Gemini.
 // Khi Google cập nhật model mới hơn trên API, bấm nút Cập nhật ở Cài đặt · Hệ thống để quét và nâng cấp.
 var defaults = map[Kind]string{
-	Text:  "gemini-3.5-flash",
+	Text:  "gemini-3.8-flash",
 	Image: "gemini-nano-banana-2.1",
 	TTS:   "gemini-3.8-flash-tts",
 	Video: "veo-3.1-generate-preview",

@@ -165,6 +165,18 @@ func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 	_ = os.MkdirAll(workDir, 0o755)
 	_ = os.MkdirAll(outDir, 0o755)
 
+	dummyChar := filepath.Join(workDir, "default_char.jpg")
+	_ = writeDummyImage(dummyChar, 736, 982, "CHARACTER")
+
+	dummyProd := filepath.Join(workDir, "default_prod.jpg")
+	_ = writeDummyImage(dummyProd, 800, 800, "PRODUCT")
+
+	dummyVid := filepath.Join(workDir, "sample_916.mp4")
+	_ = writeDummyVideo(&ExecutionContext{WorkDir: workDir}, dummyVid, 10.0)
+
+	dummyAudio := filepath.Join(workDir, "preview.mp3")
+	_ = writeDummyAudio(&ExecutionContext{WorkDir: workDir}, dummyAudio, 10.0)
+
 	execCtx := &ExecutionContext{
 		Context: context.Background(),
 		RunID:   "test_run_123",
@@ -177,7 +189,36 @@ func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 		VisionEval: func(ctx context.Context, prompt string, imagePath string) (string, error) {
 			return "Asian female model wearing elegant outfit", nil
 		},
-		FFmpegRunner: nil, // Chế độ test fallback nội bộ
+		AnalyzeImages: func(ctx context.Context, prompt string, imagePaths []string) (string, error) {
+			return "Asian female model dancing gracefully with sexy choreography", nil
+		},
+		GenerateText: func(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+			return "Cinematic shot of elegant dancer in modern studio", nil
+		},
+		CharacterPhotos: func(accountID int64) ([]string, error) {
+			return []string{dummyChar}, nil
+		},
+		ResolveProduct: func(ctx context.Context, id int64) (FlowProduct, error) {
+			return FlowProduct{ID: id, Title: "Sản phẩm thời trang mẫu", ImageURLs: []string{dummyProd}}, nil
+		},
+		ResolveRadarVideo: func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error) {
+			return FlowRadarVideo{VideoURL: dummyVid, SoundTitle: "Dance Beat", Author: "@dancer"}, nil
+		},
+		FFmpegRunner: func(ctx context.Context, args ...string) error {
+			if len(args) > 0 {
+				lastArg := args[len(args)-1]
+				if isVideoFile(lastArg) {
+					return writeDummyVideo(&ExecutionContext{WorkDir: workDir}, lastArg, 5.0)
+				}
+				if isImageFile(lastArg) {
+					return writeDummyImage(lastArg, 1080, 1920, "TEST")
+				}
+				if isAudioFile(lastArg) {
+					return writeDummyAudio(&ExecutionContext{WorkDir: workDir}, lastArg, 5.0)
+				}
+			}
+			return nil
+		},
 	}
 
 	return execCtx, tmpDir
@@ -323,7 +364,11 @@ func TestTC09_FullPresetViralDanceExecution(t *testing.T) {
 	preset := PresetViralDance()
 	run, err := ExecuteGraph(ctx, &preset)
 	if err != nil {
-		t.Fatalf("TC-09: Thực thi PresetViralDance thất bại: %v (Log: %s)", err, run.Log)
+		logMsg := ""
+		if run != nil {
+			logMsg = run.Log
+		}
+		t.Fatalf("TC-09: Thực thi PresetViralDance thất bại: %v (Log: %s)", err, logMsg)
 	}
 
 	if run.Status != "completed" {
@@ -509,6 +554,8 @@ func TestTC14_MultiDependencyExecution(t *testing.T) {
 
 	outDir := filepath.Join(workDir, "out")
 	_ = os.MkdirAll(outDir, 0o755)
+	_ = writeDummyImage(filepath.Join(workDir, "default_char.jpg"), 736, 982, "CHARACTER")
+	_ = writeDummyImage(filepath.Join(workDir, "default_prod.jpg"), 800, 800, "PRODUCT")
 
 	// Đồ thị: n_char và n_prod đều nối vào n_composite -> n_out
 	graph := &FlowGraph{
@@ -533,6 +580,15 @@ func TestTC14_MultiDependencyExecution(t *testing.T) {
 		WorkDir: workDir,
 		OutDir:  outDir,
 		Log:     func(msg string) {},
+		FFmpegRunner: func(ctx context.Context, args ...string) error {
+			if len(args) > 0 {
+				lastArg := args[len(args)-1]
+				if isImageFile(lastArg) {
+					return writeDummyImage(lastArg, 1080, 1920, "COMPOSITE")
+				}
+			}
+			return nil
+		},
 	}
 
 	run, err := ExecuteGraph(ctx, graph)
@@ -707,5 +763,145 @@ func TestTC21_PreviewMediaNode(t *testing.T) {
 	}
 	if st.OutputPreview == "" || !fileExists(st.OutputPreview) {
 		t.Errorf("Expected preview_node OutputPreview to exist, got: %s", st.OutputPreview)
+	}
+}
+
+func TestTC22_UniversalCustomNodes(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	// 1. Custom Media Input Node
+	mediaNode := &FlowNode{
+		ID:   "c_media",
+		Type: "custom_media_input",
+		Params: map[string]any{
+			"media_title": "Video Nhảy Xu Hướng",
+		},
+	}
+	mediaOut, err := executeCustomMediaInput(ctx, mediaNode, nil)
+	if err != nil {
+		t.Fatalf("executeCustomMediaInput failed: %v", err)
+	}
+	if mediaOut["media_out"] == "" || !fileExists(mediaOut["media_out"].(string)) {
+		t.Errorf("media_out must be a valid file: %v", mediaOut["media_out"])
+	}
+
+	// 2. Custom Universal AI Multi-Modal Node
+	aiNode := &FlowNode{
+		ID:   "c_ai",
+		Type: "custom_universal_ai",
+		Params: map[string]any{
+			"model":       "gemini_2_5_flash",
+			"prompt":      "Tạo video sáng tạo dựa trên: {{text_in}}",
+			"output_type": "video",
+		},
+	}
+	aiOut, err := executeCustomUniversalAI(ctx, aiNode, map[string]any{
+		"text_in":  "Kịch bản nhảy triệu view TikTok",
+		"video_in": mediaOut["media_out"],
+	})
+	if err != nil {
+		t.Fatalf("executeCustomUniversalAI failed: %v", err)
+	}
+	if aiOut["result_out"] == "" {
+		t.Errorf("result_out cannot be empty: %v", aiOut)
+	}
+	if aiOut["video_out"] == "" || !fileExists(aiOut["video_out"].(string)) {
+		t.Errorf("video_out must exist: %v", aiOut["video_out"])
+	}
+
+	// 3. Custom Vision Analyzer Node
+	visNode := &FlowNode{
+		ID:   "c_vis",
+		Type: "custom_vision_analyzer",
+		Params: map[string]any{
+			"analysis_task": "comprehensive_breakdown",
+			"model":         "gemini_2_5_pro",
+		},
+	}
+	visOut, err := executeCustomVisionAnalyzer(ctx, visNode, map[string]any{
+		"video_in": mediaOut["media_out"],
+	})
+	if err != nil {
+		t.Fatalf("executeCustomVisionAnalyzer failed: %v", err)
+	}
+	if visOut["analysis_text"] == "" || visOut["prompt_out"] == "" {
+		t.Errorf("vision analyzer outputs missing: %v", visOut)
+	}
+
+	// 4. Custom Media Processor Node
+	procNode := &FlowNode{
+		ID:   "c_proc",
+		Type: "custom_media_processor",
+		Params: map[string]any{
+			"operation":     "resize_aspect",
+			"aspect_ratio":  "9:16",
+			"filter_preset": "cyber_neon",
+		},
+	}
+	procOut, err := executeCustomMediaProcessor(ctx, procNode, map[string]any{
+		"media_in": mediaOut["media_out"],
+	})
+	if err != nil {
+		t.Fatalf("executeCustomMediaProcessor failed: %v", err)
+	}
+	if procOut["media_out"] == "" || !fileExists(procOut["media_out"].(string)) {
+		t.Errorf("processed media_out must exist: %v", procOut["media_out"])
+	}
+
+	// 5. Custom Script & Logic Node
+	scriptNode := &FlowNode{
+		ID:   "c_script",
+		Type: "custom_script_runner",
+		Params: map[string]any{
+			"template": "Video {{input_1}} đạt chuẩn chất lượng với độ tương đồng {{input_2}}",
+		},
+	}
+	scriptOut, err := executeCustomScriptRunner(ctx, scriptNode, map[string]any{
+		"input_1": "Viral Sexy Dance",
+		"input_2": "99.8%",
+	})
+	if err != nil {
+		t.Fatalf("executeCustomScriptRunner failed: %v", err)
+	}
+	if !strings.Contains(scriptOut["result_text"].(string), "Viral Sexy Dance") {
+		t.Errorf("unexpected script output: %v", scriptOut["result_text"])
+	}
+
+	// 6. Custom API Webhook Node
+	webhookNode := &FlowNode{
+		ID:   "c_hook",
+		Type: "custom_api_webhook",
+		Params: map[string]any{
+			"method": "POST",
+		},
+	}
+	hookOut, err := executeCustomAPIWebhook(ctx, webhookNode, map[string]any{
+		"message_text": "Thông báo hoàn thành workflow",
+	})
+	if err != nil {
+		t.Fatalf("executeCustomAPIWebhook failed: %v", err)
+	}
+	if hookOut["status_code"] != 200 {
+		t.Errorf("status_code must be 200: %v", hookOut["status_code"])
+	}
+
+	// 7. Custom Export & Publish Node
+	exportNode := &FlowNode{
+		ID:   "c_export",
+		Type: "custom_export_publish",
+		Params: map[string]any{
+			"title":           "Video TikTok Master Xuất Bản",
+			"filename_prefix": "tiktok_master",
+		},
+	}
+	exportOut, err := executeCustomExportPublish(ctx, exportNode, map[string]any{
+		"media_in": procOut["media_out"],
+	})
+	if err != nil {
+		t.Fatalf("executeCustomExportPublish failed: %v", err)
+	}
+	if exportOut["final_file"] == "" || !fileExists(exportOut["final_file"].(string)) {
+		t.Errorf("final_file must exist: %v", exportOut["final_file"])
 	}
 }

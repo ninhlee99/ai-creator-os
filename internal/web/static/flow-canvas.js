@@ -3452,6 +3452,7 @@
       grid.innerHTML = '';
 
       Object.values(this.definitions).forEach(def => {
+        if (def.hidden) return;
         if (filterCat !== 'all') {
           if (filterCat === 'custom') {
             const isCustom = def.category === 'custom' || def.type.startsWith('custom_');

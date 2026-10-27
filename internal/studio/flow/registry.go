@@ -324,13 +324,14 @@ func registerAllBuiltinNodes() {
 		Executor:      executeGeminiVision,
 	})
 
-	// 13. Custom Web AI Node (Node AI tùy biến mở rộng)
+	// 13. Custom Web AI Node (Node AI tùy biến mở rộng - legacy alias của custom_universal_ai)
 	RegisterNode(NodeDefinition{
 		Type:        "custom_web_ai",
 		Title:       "Node Web AI tùy biến (Custom AI)",
 		Category:    CategoryCustom,
 		Description: "Tạo text, ảnh hoặc video qua LLM, image generator, Google Flow hoặc Muse AI đã cấu hình",
 		Icon:        "cpu",
+		Hidden:      true,
 		Inputs: []FlowPort{
 			{ID: "prompt_in", Name: "Prompt đầu vào", Type: PortTypeText, Required: true},
 			{ID: "asset_in", Name: "File đầu vào", Type: PortTypeAny, Required: false},
@@ -623,15 +624,15 @@ func registerAllBuiltinNodes() {
 		Executor: executeVideoMasterOutput,
 	})
 
-	// 33. Preview Media Node (Xem trước kết quả ComfyUI)
+	// 33. Preview Media Node (Xem trước ảnh / video / audio)
 	RegisterNode(NodeDefinition{
 		Type:        "preview_media",
-		Title:       "Xem trước kết quả (Preview Image/Media)",
+		Title:       "Xem trước Media (Preview Image / Video / Audio)",
 		Category:    CategoryOutput,
-		Description: "Hiển thị trực tiếp kết quả ảnh, mặt nạ hoặc video trên Canvas ngay sau khi node chạy xong (tương tự Preview Image trong ComfyUI)",
+		Description: "Hiển thị trực tiếp kết quả ảnh, video, âm thanh hoặc mặt nạ trên Canvas ngay sau khi node chạy xong",
 		Icon:        "eye",
 		Inputs: []FlowPort{
-			{ID: "media_in", Name: "Ảnh/Video cần xem", Type: PortTypeAny, Required: true},
+			{ID: "media_in", Name: "Ảnh/Video/Audio cần xem", Type: PortTypeAny, Required: true},
 		},
 		Outputs: []FlowPort{
 			{ID: "media_out", Name: "Truyền tiếp (Passthrough)", Type: PortTypeAny, Description: "Dữ liệu media truyền tiếp sang các node khác"},
@@ -640,13 +641,14 @@ func registerAllBuiltinNodes() {
 		Executor:      executePreviewMedia,
 	})
 
-	// 34. Preview Image Node (Alias tương thích ComfyUI chuẩn)
+	// 34. Preview Image Node (Legacy alias gộp vào preview_media)
 	RegisterNode(NodeDefinition{
 		Type:        "preview_image",
 		Title:       "Xem trước ảnh (Preview Image)",
 		Category:    CategoryOutput,
-		Description: "Hiển thị ảnh hoặc mặt nạ kết quả trực tiếp trên Canvas (ComfyUI Preview Image)",
+		Description: "Hiển thị ảnh hoặc mặt nạ kết quả trực tiếp trên Canvas",
 		Icon:        "eye",
+		Hidden:      true,
 		Inputs: []FlowPort{
 			{ID: "images", Name: "Ảnh cần xem", Type: PortTypeAny, Required: true},
 		},
@@ -657,13 +659,32 @@ func registerAllBuiltinNodes() {
 		Executor:      executePreviewMedia,
 	})
 
-	// 35. Custom AI Prompt Node (n8n & ComfyUI Custom Node)
+	// 34b. Preview Video Node (Legacy alias gộp vào preview_media)
+	RegisterNode(NodeDefinition{
+		Type:        "preview_video",
+		Title:       "Xem trước video (Preview Video)",
+		Category:    CategoryOutput,
+		Description: "Hiển thị video kết quả trực tiếp trên Canvas",
+		Icon:        "eye",
+		Hidden:      true,
+		Inputs: []FlowPort{
+			{ID: "video_in", Name: "Video cần xem", Type: PortTypeAny, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "video_out", Name: "Truyền tiếp", Type: PortTypeAny, Description: "Dữ liệu video truyền tiếp"},
+		},
+		DefaultParams: map[string]any{},
+		Executor:      executePreviewMedia,
+	})
+
+	// 35. Custom AI Prompt Node (Legacy alias gộp vào custom_universal_ai)
 	RegisterNode(NodeDefinition{
 		Type:        "custom_ai_prompt",
 		Title:       "Node Custom (AI Prompt / LLM)",
 		Category:    CategoryCustom,
 		Description: "Tạo văn bản bằng LLM đang cấu hình, ảnh bằng image generator hoặc video qua Google Flow/Muse AI",
 		Icon:        "sparkles",
+		Hidden:      true,
 		Inputs: []FlowPort{
 			{ID: "input", Name: "Dữ liệu nguồn (Input)", Type: PortTypeAny, Required: false},
 			{ID: "image", Name: "Ảnh tham chiếu (Image)", Type: PortTypeImage, Required: false},
@@ -675,7 +696,7 @@ func registerAllBuiltinNodes() {
 			{ID: "media", Name: "Tệp media (Video/Image)", Type: PortTypeAny, Description: "File video hoặc ảnh đã tạo"},
 		},
 		DefaultParams: map[string]any{
-			"model":         "active",
+			"model":         "gemini-3.8-flash",
 			"provider":      "googleflow",
 			"system_prompt": "Bạn là chuyên gia sáng tạo nội dung AI chuyên nghiệp...",
 			"prompt":        "Tạo nội dung hấp dẫn dựa trên đầu vào: {{input}}",
@@ -689,7 +710,7 @@ func registerAllBuiltinNodes() {
 		Type:        "custom_universal_ai",
 		Title:       "AI Đa Năng Vạn Năng (Universal AI Node)",
 		Category:    CategoryCustom,
-		Description: "Tạo text, ảnh hoặc video qua các provider đã cấu hình; video được đưa vào dưới dạng frame tham chiếu. Audio analysis/generation chưa được hỗ trợ.",
+		Description: "Tạo text, ảnh hoặc video qua các provider đã cấu hình (Gemini 3.8 Flash, ChatGPT GPT-6 Luna, Claude 5.5 Sonnet, Veo 2, Muse AI).",
 		Icon:        "cpu",
 		Inputs: []FlowPort{
 			{ID: "text_in", Name: "Văn bản / Kịch bản (Text)", Type: PortTypeText, Required: false},
@@ -704,6 +725,7 @@ func registerAllBuiltinNodes() {
 			{ID: "video_out", Name: "Video sinh ra (Video)", Type: PortTypeVideo, Description: "File video AI tạo ra"},
 		},
 		DefaultParams: map[string]any{
+			"model":         "gemini-3.8-flash",
 			"system_prompt": "Bạn là chuyên gia AI đa năng cao cấp xử lý mọi yêu cầu sáng tạo nội dung.",
 			"prompt":        "Xử lý và tạo nội dung chất lượng cao: {{text_in}}",
 			"output_type":   "auto",
