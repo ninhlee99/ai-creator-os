@@ -57,6 +57,7 @@
       this.pendingUploads = new Map();
       this.uploadErrors = new Map();
       this.mediaUploadSequence = new Map();
+      this.pendingRunInputUploads = 0;
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
       this.workflowContractLoading = new Set();
       this.workflowContractRequests = new Map();
@@ -2291,6 +2292,14 @@
       const cancel = document.getElementById('btn-cancel-workflow-run-inputs');
       const close = document.getElementById('btn-close-workflow-run-inputs');
       if (!modal || !form || !fields) return Promise.reject(new Error('Thiếu giao diện nhập dữ liệu workflow'));
+      const submitButton = form.querySelector('button[type="submit"]');
+      const submitButtonLabel = submitButton?.textContent || 'Chạy workflow';
+      const updateSubmitUploadState = () => {
+        const pending = this.pendingRunInputUploads;
+        if (!submitButton) return;
+        submitButton.disabled = pending > 0;
+        submitButton.textContent = pending > 0 ? `Đang tải ${pending} tệp…` : submitButtonLabel;
+      };
 
       fields.replaceChildren();
       inputNodes.forEach(node => {
@@ -2409,6 +2418,8 @@
           upload.addEventListener('click', () => file.click());
           file.addEventListener('change', async () => {
             if (!file.files?.[0]) return;
+            this.pendingRunInputUploads += 1;
+            updateSubmitUploadState();
             upload.disabled = true;
             upload.textContent = 'Đang tải…';
             try {
@@ -2430,6 +2441,8 @@
             } catch (error) {
               alert(error.message || 'Không tải được tệp');
             } finally {
+              this.pendingRunInputUploads = Math.max(0, this.pendingRunInputUploads - 1);
+              updateSubmitUploadState();
               upload.disabled = false;
               upload.textContent = 'Tải tệp';
             }
@@ -2485,6 +2498,7 @@
         const onKeyDown = event => { if (event.key === 'Escape') finish(null); };
         form.onsubmit = event => {
           event.preventDefault();
+          if (this.pendingRunInputUploads > 0) return;
           if (!form.reportValidity()) return;
           const result = {};
           fields.querySelectorAll('[data-workflow-input-key]').forEach(input => {
