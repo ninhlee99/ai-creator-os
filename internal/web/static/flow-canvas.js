@@ -244,8 +244,9 @@
       const safeNodeId = escapeHTML(node.id);
       const safeCategory = escapeHTML(cat);
       const model = node.params && (node.params.model || node.params.provider);
+      const shortModel = this.formatModelShortName(model);
       const modelTag = model
-        ? `<span class="wf-node-model-pill" id="node-model-${safeNodeId}">${escapeHTML(model)}</span>`
+        ? `<span class="wf-node-model-pill" id="node-model-${safeNodeId}">${escapeHTML(shortModel)}</span>`
         : `<span class="wf-node-model-pill" id="node-model-${safeNodeId}" style="display:none;"></span>`;
       header.innerHTML = `
         <div class="wf-node-icon cat-${safeCategory}">
@@ -3042,11 +3043,30 @@
       }
     }
 
+    formatModelShortName(model) {
+      if (!model) return '';
+      const map = {
+        'gemini-3.8-flash': 'Gemini 3.8',
+        'gemini-3.1-pro': 'Gemini 3.1 Pro',
+        'gemini_2_5_flash': 'Gemini 3.8',
+        'gemini_2_5_pro': 'Gemini 3.1 Pro',
+        'gpt-6-luna': 'GPT-6 Luna',
+        'claude-5-5-sonet': 'Claude 5.5',
+        'claude_5_5_sonet': 'Claude 5.5',
+        'grok-3': 'Grok 3',
+        'veo-3.1': 'Veo 3.1',
+        'muse-gen-2': 'Muse Gen-2',
+        'active': 'Hệ thống',
+        'auto': 'Auto LLM',
+      };
+      return map[model.toLowerCase()] || model;
+    }
+
     updateNodeModelBadge(nodeId, model) {
       const badge = document.getElementById(`node-model-${nodeId}`);
       if (badge) {
         if (model) {
-          badge.innerText = model;
+          badge.innerText = this.formatModelShortName(model);
           badge.style.display = '';
         } else {
           badge.style.display = 'none';

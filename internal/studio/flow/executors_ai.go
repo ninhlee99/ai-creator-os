@@ -315,6 +315,20 @@ func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	}
 }
 
+func isSupportedFlowModel(m string) bool {
+	m = strings.ToLower(strings.TrimSpace(m))
+	switch m {
+	case "active", "auto",
+		"gemini-3.8-flash", "gemini-3.1-pro", "gemini_2_5_flash", "gemini_2_5_pro",
+		"gpt-6-luna",
+		"claude-5-5-sonet", "claude_5_5_sonet",
+		"grok-3", "veo-3.1", "muse-gen-2":
+		return true
+	default:
+		return false
+	}
+}
+
 func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := nodeParamString(node.Params, "prompt", "")
 	if prompt == "" {
@@ -333,7 +347,7 @@ func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[str
 
 	switch outputType {
 	case "text":
-		if model != "active" && model != "auto" {
+		if model != "active" && model != "auto" && !isSupportedFlowModel(model) {
 			return nil, fmt.Errorf("model %q không được cấu hình; chọn active để dùng LLM của hệ thống", model)
 		}
 		if len(refImages) > 0 {
@@ -355,7 +369,7 @@ func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[str
 		}
 		return map[string]any{"output": textOut, "text": textOut, "media": ""}, nil
 	case "image":
-		if model != "active" && model != "auto" {
+		if model != "active" && model != "auto" && !isSupportedFlowModel(model) {
 			return nil, fmt.Errorf("image model %q chưa được nối", model)
 		}
 		if ctx.GenerateImage == nil {

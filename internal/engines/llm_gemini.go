@@ -181,7 +181,7 @@ func (g *GeminiProvider) completeWithKey(ctx context.Context, key, system, promp
 	if auto {
 		model = gmodels.Resolve(gmodels.Text)
 	}
-	candidates := []string{model, "gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-flash-latest"}
+	candidates := []string{model, "gemini-3.8-flash", "gemini-3.1-pro", "gemini-3.5-flash", "gemini-flash-latest"}
 	seen := make(map[string]bool)
 	var lastErr error
 	for _, m := range candidates {
