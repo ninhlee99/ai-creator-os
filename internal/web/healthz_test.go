@@ -85,6 +85,13 @@ func TestStaticAssetsCacheBusted(t *testing.T) {
 			t.Errorf("%s Cache-Control = %q, want %q", url, got, cc)
 		}
 	}
+	css := httptest.NewRecorder()
+	serveLocalTestRoute(s, css, httptest.NewRequest(http.MethodGet, "/static/style.css", nil))
+	for _, selector := range []string{".wf-inspector-tab {", ".wf-inspector-tabs {"} {
+		if !strings.Contains(css.Body.String(), selector) {
+			t.Errorf("/static/style.css missing custom selector %q", selector)
+		}
+	}
 }
 
 func TestDiskBadgeSeverity(t *testing.T) {

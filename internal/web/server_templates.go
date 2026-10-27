@@ -18,6 +18,9 @@ var templateFS embed.FS
 //go:embed static/tailwind.css
 var staticCSS []byte
 
+//go:embed static/style.css
+var staticComponentCSS []byte
+
 //go:embed static/htmx.min.js
 var staticHTMX []byte
 
@@ -37,7 +40,8 @@ var staticPreviewAudio []byte
 // nội dung đổi, nên cập nhật app là trình duyệt lấy giao diện mới ngay —
 // trước đây cache 1 giờ khiến người dùng vẫn thấy giao diện cũ.
 var assetVersion = func() string {
-	assets := append(append([]byte{}, staticCSS...), staticJS...)
+	assets := append(append([]byte{}, staticCSS...), staticComponentCSS...)
+	assets = append(assets, staticJS...)
 	assets = append(assets, staticHTMX...)
 	assets = append(assets, staticWebAILoginJS...)
 	assets = append(assets, staticFlowCanvasJS...)

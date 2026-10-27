@@ -18,6 +18,7 @@ func (s *Server) handleStaticCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	setAssetCache(w, r)
 	_, _ = w.Write(staticCSS)
+	_, _ = w.Write(staticComponentCSS)
 }
 
 func (s *Server) handleStaticHTMX(w http.ResponseWriter, r *http.Request) {
