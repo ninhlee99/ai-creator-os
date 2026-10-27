@@ -19,6 +19,9 @@ func ValidateGraph(graph *FlowGraph) ([]string, error) {
 	nodeMap := make(map[string]*FlowNode, len(graph.Nodes))
 	for i := range graph.Nodes {
 		n := &graph.Nodes[i]
+		if isUnsupportedExperimental3DNode(n.Type) {
+			return nil, fmt.Errorf("node %q (%s) đã bị gỡ vì chưa có bộ xử lý 3D thật; hãy thay bằng node được hỗ trợ", n.Title, n.Type)
+		}
 		if _, exists := nodeMap[n.ID]; exists {
 			return nil, fmt.Errorf("trùng lặp ID node: %s", n.ID)
 		}
@@ -260,24 +263,17 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 
 	now := time.Now().Format(time.RFC3339)
 
-	// Kiến trúc Muse AI: 1 Flow là 1 Thread. Mỗi lần start flow sẽ tạo ra 1 thread mới!
-	if ctx.MuseThreadID == "" {
-		ctx.MuseThreadID = fmt.Sprintf("thread_flow_%s_%d", graph.ID, time.Now().UnixNano())
-		ctx.MuseThreadURL = fmt.Sprintf("https://muse.ai/chat?session=%s", ctx.MuseThreadID)
-	}
-	ctx.MuseThreadStarted = false // Đánh dấu node đầu tiên của flow này sẽ tạo thread mới trên Muse AI
+	ctx.MuseThreadStarted = false
 
 	run := &FlowRun{
-		ID:            ctx.RunID,
-		GraphID:       graph.ID,
-		GraphName:     graph.Name,
-		Status:        "running",
-		Progress:      0,
-		MuseThreadID:  ctx.MuseThreadID,
-		MuseThreadURL: ctx.MuseThreadURL,
-		NodeStates:    make(map[string]NodeState),
-		Outputs:       make(map[string]any),
-		CreatedAt:     now,
+		ID:         ctx.RunID,
+		GraphID:    graph.ID,
+		GraphName:  graph.Name,
+		Status:     "running",
+		Progress:   0,
+		NodeStates: make(map[string]NodeState),
+		Outputs:    make(map[string]any),
+		CreatedAt:  now,
 	}
 
 	// Khởi tạo trạng thái ban đầu cho toàn bộ node
@@ -363,7 +359,7 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		// 2. Thu thập inputs từ các node đi trước
 		nodeInputs := make(map[string]any)
 
-		// Tự động kế thừa ngữ cảnh AI toàn luồng (FaceID profile, Garment & Scene Analysis) giúp các node tự động hiểu nhau mà không cần nối dây thủ công quá nhiều
+		// Share descriptive values from earlier nodes where explicit edges are not defined.
 		for _, prevOutputs := range portData {
 			for k, v := range prevOutputs {
 				if strings.HasPrefix(k, "character_") || strings.HasPrefix(k, "garment_") || k == "face_id" {
@@ -474,10 +470,6 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		nodeState.OutputPreview = previewURL
 		nodeState.Outputs = outputs
 
-		// Kiến trúc: 1 Flow là 1 Thread. Toàn bộ các node trong cùng 1 lần chạy flow chia sẻ chung 1 Thread Muse AI
-		nodeState.MuseSessionID = ctx.MuseThreadID
-		nodeState.MuseThreadURL = ctx.MuseThreadURL
-
 		nodeState.FinishedAt = time.Now().Format(time.RFC3339)
 		run.NodeStates[nodeID] = nodeState
 
@@ -528,9 +520,7 @@ func isVisualNodeType(nodeType string) bool {
 	case "character_input", "product_input", "product_extractor", "image_composite",
 		"virtual_tryon", "google_flow_video", "muse_ai_video", "video_source",
 		"video_upscale", "concat_scenes", "video_output", "image_output",
-		"character_identity", "face_lock_refiner", "body_skeleton_pose",
-		"garment_mesh_extractor", "surface_cloth_warper", "muse_ai_neural_render",
-		"neural_composite_shader", "cinematic_color_grading", "video_master_output",
+		"muse_ai_neural_render", "cinematic_color_grading", "video_master_output",
 		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_output":
 		return true
 	default:

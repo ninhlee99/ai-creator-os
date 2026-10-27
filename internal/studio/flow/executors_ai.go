@@ -88,63 +88,43 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	}
 
 	ingredients := []string{}
-	if refImg := inputString(inputs, "reference_image", ""); refImg != "" && fileExists(refImg) {
-		ingredients = append(ingredients, refImg)
-	}
-	if charImg := inputString(inputs, "character_image", ""); charImg != "" && fileExists(charImg) {
-		ingredients = append(ingredients, charImg)
-	}
-	if prodImg := inputString(inputs, "product_image", ""); prodImg != "" && fileExists(prodImg) {
-		ingredients = append(ingredients, prodImg)
+	for _, key := range []string{"reference_image", "character_image", "product_image"} {
+		path := inputString(inputs, key, "")
+		if path == "" {
+			continue
+		}
+		if !fileExists(path) {
+			return nil, fmt.Errorf("Muse AI reference file does not exist: %s", key)
+		}
+		ingredients = append(ingredients, path)
 	}
 
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", node.ID))
-	threadID := ctx.MuseThreadID
-	if threadID == "" {
-		threadID = fmt.Sprintf("thread_flow_%s", node.ID)
-	}
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
 
 	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
 	isNewThread := !ctx.MuseThreadStarted
 	ctx.MuseThreadStarted = true
 
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt vào Thread của Flow trên Muse AI (Tạo thread mới: %v, Thread: %s)...", isNewThread, threadID))
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt vào Muse AI (tạo thread mới: %v)...", isNewThread))
 
 	// 1. Gọi trực tiếp Muse-Chat-MCP để Meta Muse AI tạo video thực thụ trong thread của flow
 	museErr := callMuseChatMCP(ctx.Context, isNewThread, threadTitle, prompt, ingredients, outPath)
-	if museErr == nil && fileExists(outPath) {
-		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI thực tế đã sẵn sàng -> %s", filepath.Base(outPath)))
-		return map[string]any{
-			"video_out":       outPath,
-			"muse_session_id": threadID,
-			"muse_thread_url": fmt.Sprintf("https://muse.ai/chat?session=%s", threadID),
-		}, nil
-	}
-
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Muse-Chat-MCP phản hồi: %v. Kiểm tra engine fallback...", museErr))
-
-	// 2. Fallback sang EngineCall nếu có
-	var err error
-	if ctx.EngineCall != nil {
+	if museErr != nil || !fileExists(outPath) {
+		if ctx.EngineCall == nil {
+			return nil, fmt.Errorf("Muse AI không tạo được video qua MCP: %v", museErr)
+		}
+		ctx.Log(fmt.Sprintf("MuseAIVideoNode: MCP không có video (%v); thử provider Muse đã cấu hình", museErr))
 		aspect := nodeParamString(node.Params, "aspect", "9:16")
-		_, err = ctx.EngineCall(ctx.Context, "museai", prompt, ingredients, aspect, outPath)
-	}
-
-	if err != nil || !fileExists(outPath) {
-		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Dựng chuyển động điện ảnh Muse AI -> %s", filepath.Base(outPath)))
-		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, prompt, 5.0); renderErr != nil {
-			return nil, fmt.Errorf("MuseAIVideoNode thất bại: %w", renderErr)
+		if _, err := ctx.EngineCall(ctx.Context, "museai", prompt, ingredients, aspect, outPath); err != nil {
+			return nil, fmt.Errorf("Muse AI không tạo được video qua MCP (%v) hoặc provider (%w)", museErr, err)
 		}
 	}
-
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Đã hoàn tất video Muse AI -> %s", filepath.Base(outPath)))
-
-	return map[string]any{
-		"video_out":       outPath,
-		"muse_session_id": threadID,
-		"muse_thread_url": fmt.Sprintf("https://muse.ai/chat?session=%s", threadID),
-	}, nil
+	if !fileExists(outPath) {
+		return nil, fmt.Errorf("Muse AI provider hoàn tất nhưng không tạo được video đầu ra")
+	}
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
+	return map[string]any{"video_out": outPath}, nil
 }
 
 // callMuseChatMCP tương tác với cầu Muse-Chat-MCP qua CLI.

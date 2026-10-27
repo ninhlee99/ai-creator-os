@@ -59,6 +59,9 @@ func (s *Store) migrate() error {
 			return fmt.Errorf("migrate workflow store: %w", err)
 		}
 	}
+	if _, err := s.db.Exec(`DELETE FROM studio_workflow_graphs WHERE id = ? AND is_preset = 1`, "preset_fashion_3d_studio"); err != nil {
+		return fmt.Errorf("remove retired 3D/VFX preset: %w", err)
+	}
 	return nil
 }
 
@@ -211,7 +214,7 @@ func (s *Store) SaveRun(r *FlowRun) error {
 // GetRun lấy trạng thái chi tiết của một lượt chạy flow.
 func (s *Store) GetRun(id string) (*FlowRun, error) {
 	var (
-		r                      FlowRun
+		r                       FlowRun
 		nodeStatesJSON, outJSON string
 	)
 	query := `SELECT id, graph_id, graph_name, status, progress, node_states, outputs, final_output, log, created_at, finished_at
@@ -246,7 +249,7 @@ func (s *Store) ListRuns(limit int) ([]FlowRun, error) {
 	list := make([]FlowRun, 0)
 	for rows.Next() {
 		var (
-			r                      FlowRun
+			r                       FlowRun
 			nodeStatesJSON, outJSON string
 		)
 		if err := rows.Scan(

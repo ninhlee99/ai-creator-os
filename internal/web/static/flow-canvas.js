@@ -678,7 +678,7 @@
       const params = node.params || {};
 
       // 1. Chỉ các node đầu vào (Input Asset Nodes) mới hiển thị ảnh/video nguồn trước khi chạy workflow
-      if (type === 'character_input' || type === 'character_identity') {
+      if (type === 'character_input') {
         const inputUrl = params.preview_url || params.model_path || params.character_image || '';
         if (!inputUrl) return null;
         return {
@@ -731,18 +731,10 @@
           badge = '👁️ ComfyUI Preview';
         } else if (type === 'product_extractor' || type === 'background_remover') {
           badge = '✂️ Bóc tách sản phẩm (AI Matting)';
-        } else if (type === 'garment_mesh_extractor') {
-          badge = '👗 Cấu trúc vải 3D';
-        } else if (type === 'surface_cloth_warper') {
-          badge = '✨ Vải ôm dáng 3D';
-        } else if (type === 'body_skeleton_pose') {
-          badge = '🦴 Khung xương DensePose';
         } else if (type === 'muse_ai_neural_render') {
-          badge = '⚡ Muse AI Neural Render';
-        } else if (type === 'face_lock_refiner') {
-          badge = '🔒 Khóa mặt điện ảnh';
+          badge = '🎬 Video tạo bằng Muse AI';
         } else if (type === 'cinematic_color_grading') {
-          badge = '🎨 Chỉnh màu 3D LUT';
+          badge = '🎨 Cân chỉnh tương phản và bão hòa';
         } else if (type === 'video_master_output' || type === 'video_output') {
           badge = '🎬 Master Video 9:16';
         } else if (type === 'virtual_tryon') {
@@ -1434,9 +1426,7 @@
         'character_input', 'product_input', 'product_extractor', 'background_remover',
         'image_composite', 'virtual_tryon', 'google_flow_video', 'muse_ai_video',
         'video_source', 'video_upscale', 'concat_scenes', 'video_output', 'image_output',
-        'character_identity', 'face_lock_refiner', 'body_skeleton_pose',
-        'garment_mesh_extractor', 'surface_cloth_warper', 'muse_ai_neural_render',
-        'neural_composite_shader', 'cinematic_color_grading', 'video_master_output',
+        'muse_ai_neural_render', 'cinematic_color_grading', 'video_master_output',
         'preview_media', 'preview_image', 'preview_video'
       ];
       return visualTypes.includes(type);
@@ -1868,7 +1858,7 @@
         if (footer) footer.innerHTML = this.renderNodeStatus(n.state);
 
         // Bỏ preview kết quả cũ trước khi chạy workflow (chỉ giữ ảnh/video tài nguyên đầu vào của input nodes)
-        if (!['character_input', 'character_identity', 'product_input', 'video_source'].includes(n.type)) {
+        if (!['character_input', 'product_input', 'video_source'].includes(n.type)) {
           const previewEl = document.getElementById(`node-preview-${n.id}`);
           if (previewEl) previewEl.remove();
         }
@@ -2965,35 +2955,10 @@
         confidence_threshold: 'Độ nhạy bóc tách nền (Threshold)',
         feather_radius: 'Độ làm mềm viền cắt (Feather)',
         invert_mask: 'Đảo ngược mặt nạ chọn (Mask)',
-        // Tham số Studio 3D & VFX Chuyên nghiệp:
-        focal_length: 'Tiêu cự quang học (Focal Length)',
-        aperture: 'Khẩu độ ống kính (Aperture Bokeh)',
-        camera_motion: 'Chuyển động máy quay (Camera Motion)',
-        depth_of_field: 'Độ sâu trường ảnh (Depth of Field)',
-        key_light_lux: 'Công suất đèn chính (Key Light Lux)',
-        key_position: 'Góc đặt đèn chính (Key Position)',
-        fill_ratio: 'Tỉ lệ đèn bù sáng (Fill Ratio)',
-        rim_color_kelvin: 'Nhiệt độ màu đèn viền (Kelvin)',
-        face_similarity_threshold: 'Độ tương đồng khuôn mặt (Threshold)',
-        pose_style: 'Phong cách dáng điệu 3D (3D Pose Style)',
-        skeleton_precision: 'Độ nét khung xương (Precision)',
-        fabric_type: 'Chất liệu vải 3D (Fabric Type)',
-        wrinkle_depth: 'Độ nhăn và rủ của vải (Wrinkle Depth)',
-        cloth_tension: 'Độ căng vải (Cloth Tension)',
-        gravity_simulation: 'Mô phỏng trọng lực vật lý (Gravity)',
-        lut_profile: 'Bảng màu điện ảnh (3D LUT Profile)',
         contrast_boost: 'Tăng tương phản (Contrast Boost)',
         saturation: 'Độ bão hòa màu (Saturation)',
-        rendering_engine: 'Động cơ Render (Render Engine)',
-        motion_smoothness: 'Độ mượt chuyển động (Motion Smoothness)',
-        hdri_preset: 'Môi trường HDRI 360 (HDRI Preset)',
-        shadow_softness: 'Độ mềm bóng đổ tiếp xúc',
-        ambient_occlusion: 'Hiệu ứng Ambient Occlusion',
         target_resolution: 'Độ phân giải Master (Resolution)',
         fps: 'Tốc độ khung hình (FPS)',
-        bitrate_mode: 'Chế độ Bitrate xuất xưởng',
-        blend_ratio: 'Tỉ lệ hòa trộn Face-Lock',
-        preserve_expression: 'Bảo toàn biểu cảm nhân vật',
         shot_style: 'Phong cách góc máy điện ảnh'
       };
       return labels[key] || key.replace(/_/g, ' ');
@@ -3234,7 +3199,7 @@
         let catLabel = '💾 Luồng của bạn';
         if (g.category === 'vfx_3d') {
           catTag = 'tag-vfx3d';
-          catLabel = '💎 3D VFX Studio';
+          catLabel = 'Workflow 3D/VFX';
         } else if (g.is_preset) {
           catTag = 'tag-preset';
           catLabel = '✨ Mẫu hệ thống';

@@ -314,7 +314,7 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 						node.Params["product_title"] = paramVal
 					}
 				case "character_image_url", "avatar_url":
-					if node.Type == "character_input" || node.Type == "character_identity" || node.Type == "asset_model_profile" {
+					if node.Type == "character_input" || node.Type == "asset_model_profile" {
 						node.Params["image_url"] = paramVal
 						node.Params["source_image"] = paramVal
 						node.Params["character_image"] = paramVal
@@ -326,12 +326,12 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 						node.Params["product_image"] = paramVal
 					}
 				case "video_url", "source_video", "source_video_url", "motion_video_url":
-					if _, hasVideo := node.Params["video_url"]; hasVideo || node.Type == "video_source" || node.Type == "asset_video_input" || node.Type == "body_skeleton_pose" {
+					if _, hasVideo := node.Params["video_url"]; hasVideo || node.Type == "video_source" || node.Type == "asset_video_input" {
 						node.Params["video_url"] = paramVal
 						node.Params["source_video"] = paramVal
 					}
 				case "image_url":
-					if _, hasImage := node.Params["image_url"]; hasImage || node.Type == "character_input" || node.Type == "character_identity" || node.Type == "asset_model_profile" {
+					if _, hasImage := node.Params["image_url"]; hasImage || node.Type == "character_input" || node.Type == "asset_model_profile" {
 						node.Params["image_url"] = paramVal
 						node.Params["source_image"] = paramVal
 					}
