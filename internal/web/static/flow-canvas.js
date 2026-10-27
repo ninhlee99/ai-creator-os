@@ -70,7 +70,6 @@
       this.bindInspector();
       this.bindModal();
       this.bindGraphsModal();
-      this.bindNodeDetailModal();
       this.updateZoomDisplay();
       if (this.graph.nodes.length) requestAnimationFrame(() => this.fitCanvas());
     }
@@ -215,6 +214,7 @@
     }
 
     renderNode(node) {
+      const isUnsupported = !this.definitions[node.type];
       const def = this.definitions[node.type] || {
         type: node.type,
         title: node.title || node.type,
@@ -226,7 +226,7 @@
       const cat = node.category || def.category || 'process';
 
       // Đảm bảo không rò rỉ preview sang các node xử lý/AI chưa chạy
-      if (!this.isInputNodeType(node.type)) {
+      if (this.definitions[node.type] && !this.isInputNodeType(node.type)) {
         if (node.params && node.params.preview_url && (!node.state || node.state.status !== 'completed')) {
           delete node.params.preview_url;
         }
@@ -234,6 +234,7 @@
 
       const nodeEl = document.createElement('div');
       nodeEl.className = `wf-node cat-${cat}`;
+      if (isUnsupported) nodeEl.classList.add('wf-node-unsupported');
       nodeEl.id = `node-${node.id}`;
       nodeEl.dataset.nodeId = node.id;
       nodeEl.style.left = `${node.x || 100}px`;
@@ -247,7 +248,7 @@
       const header = document.createElement('div');
       header.className = 'wf-node-main';
       const nodeTitle = escapeHTML(node.title || def.title || node.type);
-      const definitionTitle = escapeHTML(def.title || node.type);
+      const definitionTitle = escapeHTML(isUnsupported ? 'Node cũ · chưa hỗ trợ thực thi' : (def.title || node.type));
       const safeNodeId = escapeHTML(node.id);
       const safeCategory = escapeHTML(cat);
       const model = node.params && (node.params.model || node.params.provider);
@@ -264,21 +265,21 @@
           <div class="wf-node-subtitle" title="${definitionTitle}">
             ${modelTag}
             <span>${definitionTitle}</span>
+            ${isUnsupported ? '<span class="wf-node-legacy-badge">Node cũ</span>' : ''}
           </div>
         </div>
         <div class="wf-node-actions">
-          <button type="button" class="wf-node-edit-btn" title="Mở modal chi tiết, cấu hình & AI Prompt">⚙️</button>
+          <button type="button" class="wf-node-edit-btn" title="Mở chi tiết và cấu hình node">⚙️</button>
           <button type="button" class="wf-node-del-btn" title="Xóa node">&times;</button>
         </div>
       `;
 
-      // Open Node Detail Modal
+      // Open inline node detail
       const editBtn = header.querySelector('.wf-node-edit-btn');
       if (editBtn) {
         editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           this.selectNode(node.id, true);
-          this.openNodeDetailModal(node.id);
         });
       }
 
@@ -421,14 +422,12 @@
           return;
         }
         this.selectNode(node.id, true);
-        this.openNodeDetailModal(node.id);
       });
 
       nodeEl.addEventListener('dblclick', (e) => {
         if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return;
         e.stopPropagation();
         this.selectNode(node.id, true);
-        this.openNodeDetailModal(node.id);
       });
 
       this.nodesLayer.appendChild(nodeEl);
@@ -439,7 +438,7 @@
 
     createPortElement(nodeId, port, isOutput) {
       const portEl = document.createElement('div');
-      portEl.className = `wf-port ${isOutput ? 'wf-port-output' : 'wf-port-input'} port-type-${port.type || 'any'}`;
+      portEl.className = `wf-port ${isOutput ? 'wf-port-output' : 'wf-port-input'} port-type-${port.type || 'any'} ${port.legacy ? 'wf-port-legacy' : ''}`;
       portEl.dataset.nodeId = nodeId;
       portEl.dataset.portId = port.id;
       portEl.dataset.type = port.type || 'any';
@@ -454,8 +453,8 @@
       label.innerText = port.name;
 
       if (isOutput) {
-        dot.innerHTML = '<span class="wf-port-plus">+</span>';
-        dot.title = `Kéo để nối dây hoặc bấm (+) để thêm bước tiếp theo (${port.name})`;
+        dot.innerHTML = port.legacy ? '<span class="wf-port-legacy-mark">!</span>' : '<span class="wf-port-plus">+</span>';
+        dot.title = port.legacy ? `Cổng lưu từ phiên bản cũ (${port.name}); node chưa hỗ trợ thực thi.` : `Kéo để nối dây hoặc bấm (+) để thêm bước tiếp theo (${port.name})`;
         portEl.appendChild(label);
         portEl.appendChild(dot);
 
@@ -463,7 +462,7 @@
         let isDrag = false;
         let startClientX = 0, startClientY = 0;
 
-        dot.addEventListener('mousedown', (e) => {
+        if (!port.legacy) dot.addEventListener('mousedown', (e) => {
           if (e.button !== 0) return;
           e.stopPropagation();
 
@@ -511,12 +510,12 @@
           window.addEventListener('mouseup', onMouseUp);
         });
       } else {
-        dot.title = `${port.name} (${port.type})`;
+        dot.title = port.legacy ? `Cổng lưu từ phiên bản cũ (${port.name}); node chưa hỗ trợ thực thi.` : `${port.name} (${port.type})`;
         portEl.appendChild(dot);
         portEl.appendChild(label);
 
         // Drop wire connection on input dot
-        dot.addEventListener('mouseup', (e) => {
+        if (!port.legacy) dot.addEventListener('mouseup', (e) => {
           e.stopPropagation();
           if (this.activeConnecting) {
             const fromNode = this.activeConnecting.nodeId;
@@ -1166,9 +1165,6 @@
           node.params.preview_url = res.url;
         }
 
-        const detailField = paramKey && document.getElementById(`ndm-field-${paramKey}`);
-        if (detailField && !paramKey.endsWith('_url')) detailField.value = node.params[paramKey] || filePath;
-
         this.render();
         this.selectNode(node.id);
       } catch (err) {
@@ -1706,7 +1702,27 @@
       }
       const nodePorts = isOutput ? node.outputs : node.inputs;
       const defPorts = isOutput ? def.outputs : def.inputs;
-      return Array.isArray(nodePorts) && nodePorts.length > 0 ? nodePorts : (defPorts || []);
+      const ports = Array.isArray(nodePorts) && nodePorts.length > 0 ? [...nodePorts] : [...(defPorts || [])];
+
+      // Saved graphs can outlive experimental node definitions. Preserve their
+      // persisted edge endpoints in the canvas so they remain visible/editable.
+      const edgePortIds = new Set();
+      (this.graph.edges || []).forEach(edge => {
+        const endpointNode = isOutput
+          ? (edge.from_node || edge.fromNode || edge.FromNode)
+          : (edge.to_node || edge.toNode || edge.ToNode);
+        if (endpointNode !== node.id) return;
+        const portId = isOutput
+          ? (edge.from_port || edge.fromPort || edge.FromPort)
+          : (edge.to_port || edge.toPort || edge.ToPort);
+        if (portId) edgePortIds.add(String(portId));
+      });
+      edgePortIds.forEach(id => {
+        if (!ports.some(port => String(port.id) === id)) {
+          ports.push({ id, name: id.replace(/_/g, ' '), type: 'any', legacy: true });
+        }
+      });
+      return ports;
     }
 
     isPortTypeCompatible(from, to) {
@@ -2198,49 +2214,8 @@
     }
 
     bindInspector() {
-      // Close button
       const closeBtn = document.getElementById('btn-close-inspector');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-          this.closeInspector();
-        });
-      }
-
-      // Large button to open full node detail modal
-      const openLargeBtn = document.getElementById('btn-inspector-open-modal-large');
-      if (openLargeBtn) {
-        openLargeBtn.addEventListener('click', () => {
-          if (this.selectedNodeId) {
-            this.openNodeDetailModal(this.selectedNodeId);
-          }
-        });
-      }
-
-      // Variable chips insertion into Inspector prompt textarea
-      const promptArea = document.getElementById('inspector-prompt-input');
-      const charCounter = document.getElementById('inspector-prompt-char-count');
-      document.querySelectorAll('.wf-inspector-prompt-chips .wf-chip-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const varText = btn.dataset.var;
-          if (promptArea && varText) {
-            const start = promptArea.selectionStart || promptArea.value.length;
-            const end = promptArea.selectionEnd || promptArea.value.length;
-            const val = promptArea.value;
-            promptArea.value = val.substring(0, start) + varText + val.substring(end);
-            promptArea.focus();
-            promptArea.selectionStart = promptArea.selectionEnd = start + varText.length;
-            if (charCounter) charCounter.innerText = `${promptArea.value.length} ký tự`;
-            if (this.selectedNodeId) {
-              const node = this.graph.nodes.find(n => n.id === this.selectedNodeId);
-              if (node) {
-                if (!node.params) node.params = {};
-                node.params.prompt = promptArea.value;
-                if (node.params.template !== undefined) node.params.template = promptArea.value;
-              }
-            }
-          }
-        });
-      });
+      if (closeBtn) closeBtn.addEventListener('click', () => this.closeInspector());
     }
 
     renderWorkflowBoundaryInspector(node, container) {
@@ -2852,7 +2827,7 @@
       const otherKey = selectedKey === 'video_url' ? 'video_path' : 'video_url';
       if (!node.params) node.params = {};
       node.params[otherKey] = '';
-      [`inspector-field-${otherKey}`, `ndm-field-${otherKey}`].forEach(fieldId => {
+      [`inspector-field-${otherKey}`].forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) field.value = '';
       });
@@ -2912,11 +2887,11 @@
         node.params.product_title = product.title;
         node.params.product_image = '';
         node.params.preview_url = product.image_url || '';
-        ['inspector-field-product_title', 'ndm-field-product_title'].forEach(fieldId => {
+        ['inspector-field-product_title'].forEach(fieldId => {
           const field = document.getElementById(fieldId);
           if (field) field.value = product.title;
         });
-        ['inspector-field-product_image', 'ndm-field-product_image'].forEach(fieldId => {
+        ['inspector-field-product_image'].forEach(fieldId => {
           const field = document.getElementById(fieldId);
           if (field) field.value = '';
         });
@@ -3060,7 +3035,18 @@
       formEl.style.display = 'block';
 
       const def = this.definitions[node.type] || {};
+      const unsupported = !this.definitions[node.type];
       const cat = node.category || def.category || 'process';
+
+      const compatWarning = document.getElementById('inspector-compat-warning');
+      if (compatWarning) {
+        compatWarning.style.display = unsupported ? 'block' : 'none';
+        compatWarning.textContent = unsupported
+          ? 'Node này thuộc phiên bản cũ đã bị loại khỏi hệ thống. Các dây nối vẫn được giữ và hiển thị; node chưa thể chạy cho tới khi thay bằng node đang hỗ trợ.'
+          : '';
+      }
+      const statusBadge = document.getElementById('inspector-node-status');
+      if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
 
       // 1. Icon & Badges
       const iconEl = document.getElementById('inspector-node-icon');
@@ -3108,23 +3094,73 @@
         };
       }
 
-      // 4. Dedicated Prompt Editor (Prominent, large textarea, live char counter) - Luôn hiển thị cho mọi node
+      // Show prompt fields only when this node definition actually supports them.
       const promptGroup = document.getElementById('inspector-prompt-group');
       const promptInput = document.getElementById('inspector-prompt-input');
       const charCounter = document.getElementById('inspector-prompt-char-count');
-      if (promptGroup && promptInput) {
-        promptGroup.style.display = 'block';
-        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (node.params?.system_prompt !== undefined ? node.params.system_prompt : (def.default_params?.prompt || def.default_params?.template || def.description || '')));
-        promptInput.value = curPrompt;
-        if (charCounter) charCounter.innerText = `${curPrompt.length} ký tự`;
-
+      const defaults = def.default_params || {};
+      const params = node.params || {};
+      const supportsPrompt = ['prompt', 'template'].some(key => Object.prototype.hasOwnProperty.call(defaults, key) || Object.prototype.hasOwnProperty.call(params, key));
+      const supportsSystemPrompt = Object.prototype.hasOwnProperty.call(defaults, 'system_prompt') || Object.prototype.hasOwnProperty.call(params, 'system_prompt');
+      const supportsNegativePrompt = Object.prototype.hasOwnProperty.call(defaults, 'negative_prompt') || Object.prototype.hasOwnProperty.call(params, 'negative_prompt');
+      const systemGroup = document.getElementById('inspector-system-prompt-group');
+      const systemInput = document.getElementById('inspector-system-prompt-input');
+      const negativeGroup = document.getElementById('inspector-negative-prompt-group');
+      const negativeInput = document.getElementById('inspector-negative-prompt-input');
+      if (promptGroup) promptGroup.style.display = supportsPrompt || supportsSystemPrompt || supportsNegativePrompt ? 'block' : 'none';
+      if (promptInput) {
+        promptInput.style.display = supportsPrompt ? 'block' : 'none';
+        const promptValue = node.params?.prompt !== undefined
+          ? node.params.prompt
+          : (node.params?.template !== undefined ? node.params.template : (defaults.prompt || defaults.template || ''));
+        promptInput.value = promptValue;
         promptInput.oninput = () => {
-          const val = promptInput.value;
+          const value = promptInput.value;
           if (!node.params) node.params = {};
-          node.params.prompt = val;
-          if (node.params.template !== undefined) node.params.template = val;
-          if (charCounter) charCounter.innerText = `${val.length} ký tự`;
+          if (Object.prototype.hasOwnProperty.call(defaults, 'template') || Object.prototype.hasOwnProperty.call(node.params, 'template')) {
+            node.params.template = value;
+          } else {
+            node.params.prompt = value;
+          }
+          if (charCounter) charCounter.innerText = `${value.length} ký tự`;
         };
+        if (charCounter) charCounter.innerText = `${promptValue.length} ký tự`;
+      }
+      if (systemGroup && systemInput) {
+        systemGroup.style.display = supportsSystemPrompt ? 'block' : 'none';
+        systemInput.value = node.params?.system_prompt || defaults.system_prompt || '';
+        systemInput.oninput = () => {
+          if (!node.params) node.params = {};
+          node.params.system_prompt = systemInput.value;
+        };
+      }
+      if (negativeGroup && negativeInput) {
+        negativeGroup.style.display = supportsNegativePrompt ? 'block' : 'none';
+        negativeInput.value = node.params?.negative_prompt || defaults.negative_prompt || '';
+        negativeInput.oninput = () => {
+          if (!node.params) node.params = {};
+          node.params.negative_prompt = negativeInput.value;
+        };
+      }
+      const chips = document.getElementById('inspector-prompt-chips');
+      if (chips) {
+        chips.replaceChildren();
+        const variables = this.promptVariablesForNode(node.type);
+        chips.style.display = supportsPrompt && variables.length ? 'flex' : 'none';
+        variables.forEach(variable => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'wf-chip-btn';
+          chip.textContent = `+ ${variable}`;
+          chip.addEventListener('click', () => {
+            const start = promptInput.selectionStart ?? promptInput.value.length;
+            const end = promptInput.selectionEnd ?? promptInput.value.length;
+            promptInput.setRangeText(variable, start, end, 'end');
+            promptInput.dispatchEvent(new Event('input', { bubbles: true }));
+            promptInput.focus();
+          });
+          chips.appendChild(chip);
+        });
       }
 
       // 5. Dynamic Other Parameters (Exclude prompt, template, model, provider to prevent duplication)
@@ -3295,36 +3331,56 @@
         });
       }
 
-      // 6. Preview box
+      this.renderInspectorPorts(node);
+      const outputLog = document.getElementById('inspector-output-json');
+      if (outputLog) {
+        outputLog.textContent = node.state && (node.state.output || node.state.outputs || node.state.error || node.state.status)
+          ? JSON.stringify(node.state, null, 2)
+          : 'Node chưa chạy.';
+      }
+
+      // 6. Preview most recent media or text output.
       const previewBox = document.getElementById('inspector-preview-box');
       const previewStatus = document.getElementById('inspector-preview-status');
       if (previewBox) {
-        if (node.state && node.state.output_preview) {
+        const stateOutput = node.state?.outputs || node.state?.output || {};
+        const mediaPath = node.state?.output_preview || this.findOutputMediaPath(stateOutput);
+        const mediaName = this.getFilename(mediaPath);
+        const textValue = typeof stateOutput === 'string'
+          ? stateOutput
+          : (stateOutput?.text_out || stateOutput?.text || stateOutput?.prompt_out || '');
+        if (mediaPath) {
           previewBox.classList.add('has-content');
-          const fn = this.getFilename(node.state.output_preview);
           if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
-          const isVideo = /\.(mp4|webm|mov)$/i.test(fn);
-          const media = document.createElement(isVideo ? 'video' : 'img');
-          media.src = safeMediaURL(`/media/${encodeURIComponent(fn)}`);
+          const isVideo = /\.(mp4|webm|mov|mkv|avi)$/i.test(mediaName);
+          const isAudio = /\.(mp3|aac|wav|ogg|m4a|flac)$/i.test(mediaName);
+          const media = document.createElement(isAudio ? 'audio' : (isVideo ? 'video' : 'img'));
+          const pathValue = String(mediaPath);
+          const isServedURL = /^https?:\/\//i.test(pathValue) || /^\/(media|static|uploads)\//i.test(pathValue);
+          const mediaURL = isServedURL
+            ? safeMediaURL(pathValue)
+            : safeMediaURL(`/media/${encodeURIComponent(mediaName)}`);
+          media.src = mediaURL;
           media.style.maxWidth = '100%';
           media.style.borderRadius = '6px';
-          if (isVideo) {
+          if (isAudio) {
             media.controls = true;
-            media.autoplay = true;
+            media.style.width = '100%';
+          } else if (isVideo) {
+            media.controls = true;
             media.muted = true;
-            media.loop = true;
             media.playsInline = true;
           } else {
             media.alt = '';
           }
           media.onerror = () => { media.style.display = 'none'; };
           previewBox.replaceChildren(media);
-        } else if (node.state && node.state.outputs && node.state.outputs.text) {
+        } else if (textValue) {
           previewBox.classList.add('has-content');
           if (previewStatus) previewStatus.innerText = 'Đã tạo văn bản';
           const outputText = document.createElement('div');
           outputText.style.cssText = 'color:var(--text);font-size:12px;white-space:pre-wrap;line-height:1.45;padding:4px;';
-          outputText.textContent = String(node.state.outputs.text);
+          outputText.textContent = String(textValue);
           previewBox.replaceChildren(outputText);
         } else {
           previewBox.classList.remove('has-content');
@@ -3332,6 +3388,54 @@
           previewBox.innerHTML = '<span class="text-muted">Chưa có dữ liệu xuất</span>';
         }
       }
+    }
+
+    promptVariablesForNode(type) {
+      const variables = {
+        prompt_template: ['{character}', '{motion}', '{product}'],
+        custom_ai_prompt: ['{{input}}'],
+        custom_universal_ai: ['{{text_in}}', '{text}', '{input}'],
+        custom_script_runner: ['{{input_1}}', '{{input_2}}', '{{text_in}}']
+      };
+      return variables[type] || [];
+    }
+
+    renderInspectorPorts(node) {
+      const edges = this.graph.edges || [];
+      const renderList = (containerId, ports, isOutput) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (!ports.length) {
+          container.innerHTML = '<span class="wf-inspector-empty-port">Không có cổng.</span>';
+          return;
+        }
+        container.innerHTML = ports.map(port => {
+          const connected = edges.filter(edge => {
+            const ownerId = isOutput
+              ? (edge.from_node || edge.fromNode || edge.FromNode)
+              : (edge.to_node || edge.toNode || edge.ToNode);
+            const connectedPort = isOutput
+              ? (edge.from_port || edge.fromPort || edge.FromPort)
+              : (edge.to_port || edge.toPort || edge.ToPort);
+            return ownerId === node.id && connectedPort === port.id;
+          });
+          const peers = connected.map(edge => {
+            const peerId = isOutput
+              ? (edge.to_node || edge.toNode || edge.ToNode)
+              : (edge.from_node || edge.fromNode || edge.FromNode);
+            const peer = this.graph.nodes.find(candidate => candidate.id === peerId);
+            return escapeHTML(peer?.title || peer?.type || peerId || 'Node');
+          });
+          const connectionText = peers.length
+            ? peers.join(', ')
+            : '<span class="wf-inspector-unconnected">Chưa nối</span>';
+          const legacyClass = port.legacy ? ' is-legacy' : '';
+          return `<div class="wf-inspector-port-row${legacyClass}"><div><strong>${escapeHTML(port.name || port.id)}</strong><code>${escapeHTML(port.type || 'any')}</code></div><span>${connectionText}</span></div>`;
+        }).join('');
+      };
+
+      renderList('inspector-inputs-list', this.getNodePorts(node, false), false);
+      renderList('inspector-outputs-list', this.getNodePorts(node, true), true);
     }
 
     formatModelShortName(model) {
@@ -4245,526 +4349,6 @@
       return false;
     }
 
-    bindNodeDetailModal() {
-      const modal = document.getElementById('node-detail-modal');
-      const btnClose = document.getElementById('btn-close-node-detail-modal');
-      const btnCancel = document.getElementById('btn-close-ndm-cancel');
-      const btnSave = document.getElementById('btn-save-ndm-apply');
-      const btnTest = document.getElementById('btn-ndm-test-node');
-      const btnOpenFromInspector = document.getElementById('btn-open-detail-from-inspector');
-
-      if (btnClose) btnClose.addEventListener('click', () => this.closeNodeDetailModal());
-      if (btnCancel) btnCancel.addEventListener('click', () => this.closeNodeDetailModal());
-      if (btnSave) btnSave.addEventListener('click', () => this.saveNodeDetailModal());
-
-      if (modal) {
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) this.closeNodeDetailModal();
-        });
-      }
-
-      if (btnOpenFromInspector) {
-        btnOpenFromInspector.addEventListener('click', () => {
-          if (this.selectedNodeId) {
-            this.openNodeDetailModal(this.selectedNodeId);
-          }
-        });
-      }
-
-      const btnOpenLarge = document.getElementById('btn-inspector-open-modal-large');
-      if (btnOpenLarge) {
-        btnOpenLarge.addEventListener('click', () => {
-          if (this.selectedNodeId) {
-            this.openNodeDetailModal(this.selectedNodeId);
-          }
-        });
-      }
-
-      // Tab switching
-      document.querySelectorAll('.wf-ndm-tab').forEach(tabBtn => {
-        tabBtn.addEventListener('click', () => {
-          const tabKey = tabBtn.dataset.tab;
-          document.querySelectorAll('.wf-ndm-tab').forEach(t => t.classList.remove('active'));
-          tabBtn.classList.add('active');
-
-          document.querySelectorAll('.wf-ndm-tab-pane').forEach(p => p.classList.remove('active'));
-          const pane = document.getElementById(`ndm-tab-${tabKey}`);
-          if (pane) pane.classList.add('active');
-        });
-      });
-
-      // Variable insertion chips
-      document.querySelectorAll('.wf-ndm-var-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const varText = chip.dataset.var;
-          const textarea = document.getElementById('ndm-main-prompt');
-          if (textarea && varText) {
-            const start = textarea.selectionStart || textarea.value.length;
-            const end = textarea.selectionEnd || textarea.value.length;
-            const val = textarea.value;
-            textarea.value = val.substring(0, start) + varText + val.substring(end);
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = start + varText.length;
-            const charCount = document.getElementById('ndm-prompt-char-count');
-            if (charCount) charCount.innerText = `${textarea.value.length} ký tự`;
-          }
-        });
-      });
-
-      // Live char counter for main prompt
-      const mainPromptArea = document.getElementById('ndm-main-prompt');
-      if (mainPromptArea) {
-        mainPromptArea.addEventListener('input', () => {
-          const charCount = document.getElementById('ndm-prompt-char-count');
-          if (charCount) charCount.innerText = `${mainPromptArea.value.length} ký tự`;
-        });
-      }
-
-      if (btnTest) {
-        btnTest.addEventListener('click', () => {
-          if (this.modalActiveNodeId) {
-            this.testRunSingleNode(this.modalActiveNodeId);
-          }
-        });
-      }
-    }
-
-    openNodeDetailModal(nodeId) {
-      const node = this.graph.nodes.find(n => n.id === nodeId);
-      if (!node) return;
-
-      this.modalActiveNodeId = nodeId;
-      const def = this.definitions[node.type] || {};
-      const cat = node.category || def.category || 'process';
-
-      // Header info
-      const iconEl = document.getElementById('ndm-icon');
-      if (iconEl) iconEl.innerText = this.getCategoryIcon(cat);
-
-      const titleInput = document.getElementById('ndm-title-input');
-      if (titleInput) titleInput.value = node.title || def.title || node.type;
-
-      const catBadge = document.getElementById('ndm-cat-badge');
-      if (catBadge) catBadge.innerText = cat.toUpperCase();
-
-      const typeBadge = document.getElementById('ndm-type-badge');
-      if (typeBadge) typeBadge.innerText = node.type;
-
-      const descEl = document.getElementById('ndm-desc');
-      if (descEl) descEl.innerText = def.description || 'Chức năng node trong quy trình';
-      const guidanceEl = document.getElementById('ndm-guidance');
-      if (guidanceEl) {
-        guidanceEl.textContent = this.customNodeGuidance(node.type);
-        guidanceEl.style.display = guidanceEl.textContent ? 'block' : 'none';
-      }
-
-      const statusBadge = document.getElementById('ndm-status-badge');
-      if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
-
-      const feedbackEl = document.getElementById('ndm-action-feedback');
-      if (feedbackEl) feedbackEl.innerText = '';
-
-      // Tab 1: Config & Parameters
-      const modelCard = document.getElementById('ndm-card-model');
-      const modelSelect = document.getElementById('ndm-model-select');
-      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model');
-      if (modelCard) modelCard.style.display = supportsModel ? '' : 'none';
-      if (modelSelect && supportsModel) {
-        modelSelect.value = node.params?.model || def.default_params?.model || 'active';
-      }
-
-      const fieldsContainer = document.getElementById('ndm-dynamic-fields');
-      if (fieldsContainer) {
-        fieldsContainer.innerHTML = '';
-        const params = Object.assign({}, def.default_params || {}, node.params || {});
-        const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
-
-        Object.keys(params).forEach(key => {
-          if (skipKeys.includes(key)) return;
-          const val = params[key];
-
-          const formGroup = document.createElement('div');
-          formGroup.className = 'form-group';
-          formGroup.style.marginBottom = '12px';
-
-          const label = document.createElement('label');
-          label.style.display = 'block';
-          label.style.fontWeight = '600';
-          label.style.fontSize = '12.5px';
-          label.style.marginBottom = '4px';
-          label.innerText = this.formatParamLabel(key);
-          formGroup.appendChild(label);
-          const choiceSelect = this.createChoiceSelect(key, val, node, `ndm-field-${key}`);
-          const sliderControl = this.createSliderOrNumberInput(key, val, node, `ndm-field-${key}`, (newVal) => {
-            node.params[key] = newVal;
-          });
-
-          if (key === 'product_id' && node.type === 'product_input') {
-            formGroup.appendChild(this.createProductSelect(node, val, `ndm-field-${key}`));
-            const note = document.createElement('small');
-            note.className = 'text-muted';
-            note.textContent = 'Chỉ hiển thị sản phẩm đã duyệt và đủ dữ liệu affiliate.';
-            formGroup.appendChild(note);
-          } else if (choiceSelect) {
-            choiceSelect.addEventListener('change', () => { node.params[key] = choiceSelect.value; });
-            formGroup.appendChild(choiceSelect);
-          } else if (sliderControl) {
-            formGroup.appendChild(sliderControl);
-          } else if (typeof val === 'boolean') {
-            const chkWrap = document.createElement('label');
-            chkWrap.style.display = 'flex';
-            chkWrap.style.alignItems = 'center';
-            chkWrap.style.gap = '8px';
-            chkWrap.style.cursor = 'pointer';
-
-            const chk = document.createElement('input');
-            chk.type = 'checkbox';
-            chk.checked = val;
-            chk.id = `ndm-field-${key}`;
-            chkWrap.appendChild(chk);
-
-            const span = document.createElement('span');
-            span.innerText = 'Kích hoạt / Bật chức năng này';
-            span.style.fontSize = '13px';
-            chkWrap.appendChild(span);
-
-            formGroup.appendChild(chkWrap);
-          } else if (typeof val === 'number') {
-            const numInput = document.createElement('input');
-            numInput.type = 'number';
-            numInput.className = 'form-control';
-            numInput.id = `ndm-field-${key}`;
-            numInput.value = val;
-            formGroup.appendChild(numInput);
-          } else if (this.isMediaParameter(key)) {
-            const row = document.createElement('div');
-            row.style.cssText = 'display:flex;gap:6px;align-items:center;';
-
-            const txtInput = document.createElement('input');
-            txtInput.type = 'text';
-            txtInput.className = 'form-control';
-            txtInput.id = `ndm-field-${key}`;
-            txtInput.style.flex = '1';
-            txtInput.value = val || '';
-            txtInput.placeholder = key.includes('url') ? 'https://... hoặc liên kết video, ảnh' : 'Đường dẫn tệp tin...';
-            if (node.type === 'video_source' && key === 'video_url') this.appendRadarPicker(formGroup, node, txtInput);
-            row.appendChild(txtInput);
-
-            const pasteBtn = document.createElement('button');
-            pasteBtn.type = 'button';
-            pasteBtn.className = 'wf-btn wf-btn-secondary wf-btn-xs';
-            pasteBtn.style.whiteSpace = 'nowrap';
-            pasteBtn.innerHTML = '🔗 Link';
-            pasteBtn.title = 'Dán link TikTok, Reels, IG hoặc web';
-            pasteBtn.addEventListener('click', async () => {
-              const u = window.prompt('Dán link media TikTok / Reels / YouTube Shorts / Web:', txtInput.value || '');
-              if (u && u.trim()) {
-                txtInput.value = u.trim();
-                await this.fetchMediaFromUrl(node, u.trim(), this.preferredMediaType(key), key);
-              }
-            });
-            row.appendChild(pasteBtn);
-
-            const uploadBtn = document.createElement('button');
-            uploadBtn.type = 'button';
-            uploadBtn.className = 'wf-btn wf-btn-secondary wf-btn-xs';
-            uploadBtn.style.whiteSpace = 'nowrap';
-            uploadBtn.innerHTML = '📁 Tải tệp';
-            uploadBtn.title = 'Tải tệp từ máy tính';
-            uploadBtn.addEventListener('click', () => {
-              const fileIn = document.createElement('input');
-              fileIn.type = 'file';
-              fileIn.accept = key.includes('video') ? 'video/*' : (key.includes('image') ? 'image/*' : (key.includes('audio') ? 'audio/*' : 'image/*,video/*,audio/*'));
-              fileIn.onchange = async () => {
-                const file = fileIn.files[0];
-                if (!file) return;
-                const fd = new FormData();
-                fd.append('file', file);
-                try {
-                  uploadBtn.disabled = true;
-                  uploadBtn.innerText = 'Đang tải...';
-                  const res = await fetch('/api/flow/upload', { method: 'POST', body: fd });
-                  const d = await res.json();
-                  if (d.ok && d.file_path) {
-                    txtInput.value = d.file_path;
-                    if (!node.params) node.params = {};
-                    node.params[key] = d.file_path;
-                    if (node.type === 'video_source' && key === 'video_path') this.clearVideoSourceOtherParam(node, key);
-                    alert('✓ Đã tải tệp lên thành công: ' + (d.filename || d.file_path));
-                  } else {
-                    alert('Lỗi tải tệp: ' + (d.error || 'Thất bại'));
-                  }
-                } catch (err) {
-                  alert('Lỗi kết nối tải tệp: ' + err.message);
-                } finally {
-                  uploadBtn.disabled = false;
-                  uploadBtn.innerText = '📁 Tải tệp';
-                }
-              };
-              fileIn.click();
-            });
-            row.appendChild(uploadBtn);
-
-            formGroup.appendChild(row);
-          } else {
-            const txtInput = document.createElement('input');
-            txtInput.type = 'text';
-            txtInput.className = 'form-control';
-            txtInput.id = `ndm-field-${key}`;
-            txtInput.value = val !== undefined ? String(val) : '';
-            formGroup.appendChild(txtInput);
-          }
-
-          fieldsContainer.appendChild(formGroup);
-        });
-
-        if (!fieldsContainer.children.length) {
-          fieldsContainer.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:8px 0;">Node này không có tham số mở rộng bổ sung.</div>';
-        }
-      }
-
-      // Tab 2: AI Prompt
-      const sysPromptArea = document.getElementById('ndm-system-prompt');
-      if (sysPromptArea) {
-        sysPromptArea.value = node.params?.system_prompt || def.default_params?.system_prompt || '';
-      }
-
-      const mainPromptArea = document.getElementById('ndm-main-prompt');
-      if (mainPromptArea) {
-        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (def.default_params?.prompt || def.default_params?.template || def.description || ''));
-        mainPromptArea.value = curPrompt;
-        const charCount = document.getElementById('ndm-prompt-char-count');
-        if (charCount) charCount.innerText = `${curPrompt.length} ký tự`;
-      }
-
-      const negPromptArea = document.getElementById('ndm-negative-prompt');
-      if (negPromptArea) {
-        negPromptArea.value = node.params?.negative_prompt || def.default_params?.negative_prompt || '';
-      }
-
-      // Tab 3: Ports & Connections
-      const inputsList = document.getElementById('ndm-inputs-list');
-      if (inputsList) {
-        inputsList.innerHTML = '';
-        const inPorts = this.getNodePorts(node, false);
-        if (inPorts.length === 0) {
-          inputsList.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Node này không có cổng đầu vào.</div>';
-        } else {
-          inPorts.forEach(p => {
-            const row = document.createElement('div');
-            row.className = 'wf-ndm-port-row';
-            const connectedEdges = (this.graph.edges || []).filter(e => {
-              const toId = e.to || e.to_node;
-              const toPort = e.toPort || e.to_port;
-              return toId === node.id && (!p.id || toPort === p.id || !toPort);
-            });
-            let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
-            if (connectedEdges.length > 0) {
-              const srcNodes = connectedEdges.map(e => {
-                const srcId = e.from || e.from_node;
-                const src = this.graph.nodes.find(n => n.id === srcId);
-                return src ? (src.title || src.type) : srcId;
-              }).join(', ');
-              connInfo = `<span class="wf-ndm-port-conn">← Nối từ: <strong>${escapeHTML(srcNodes)}</strong></span>`;
-            }
-            row.innerHTML = `
-              <div>
-                <span class="wf-ndm-port-name">${escapeHTML(p.name || p.id)}</span>
-                <span class="wf-ndm-port-type">${escapeHTML(p.type || 'any')}</span>
-              </div>
-              <div>${connInfo}</div>
-            `;
-            inputsList.appendChild(row);
-          });
-        }
-      }
-
-      const outputsList = document.getElementById('ndm-outputs-list');
-      if (outputsList) {
-        outputsList.innerHTML = '';
-        const outPorts = this.getNodePorts(node, true);
-        if (outPorts.length === 0) {
-          outputsList.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Node này không có cổng đầu ra.</div>';
-        } else {
-          outPorts.forEach(p => {
-            const row = document.createElement('div');
-            row.className = 'wf-ndm-port-row';
-            const connectedEdges = (this.graph.edges || []).filter(e => {
-              const fromId = e.from || e.from_node;
-              const fromPort = e.fromPort || e.from_port;
-              return fromId === node.id && (!p.id || fromPort === p.id || !fromPort);
-            });
-            let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
-            if (connectedEdges.length > 0) {
-              const destNodes = connectedEdges.map(e => {
-                const destId = e.to || e.to_node;
-                const dest = this.graph.nodes.find(n => n.id === destId);
-                return dest ? (dest.title || dest.type) : destId;
-              }).join(', ');
-              connInfo = `<span class="wf-ndm-port-conn">→ Nối tới: <strong>${escapeHTML(destNodes)}</strong></span>`;
-            }
-            row.innerHTML = `
-              <div>
-                <span class="wf-ndm-port-name">${escapeHTML(p.name || p.id)}</span>
-                <span class="wf-ndm-port-type">${escapeHTML(p.type || 'any')}</span>
-              </div>
-              <div>${connInfo}</div>
-            `;
-            outputsList.appendChild(row);
-          });
-        }
-      }
-
-      // Tab 4: Results & Live Preview
-      const previewContainer = document.getElementById('ndm-media-preview-container');
-      if (previewContainer) {
-        previewContainer.innerHTML = '';
-        const mediaPath = this.findOutputMediaPath(node.state?.output) || node.params?.preview_url || node.params?.video_path || node.params?.image_path || '';
-        if (mediaPath) {
-          if (/\.(mp4|webm|mov)$/i.test(mediaPath)) {
-            previewContainer.innerHTML = `<video src="${escapeHTML(mediaPath)}" controls autoplay loop muted style="max-height:240px;max-width:100%;border-radius:6px;"></video>`;
-          } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(mediaPath)) {
-            previewContainer.innerHTML = `<img src="${escapeHTML(mediaPath)}" alt="Preview" style="max-height:240px;max-width:100%;border-radius:6px;object-fit:contain;" />`;
-          } else if (/\.(mp3|aac|wav|ogg|m4a|flac)$/i.test(mediaPath)) {
-            previewContainer.innerHTML = `<audio src="${escapeHTML(mediaPath)}" controls style="width:100%;max-width:400px;"></audio>`;
-          }
-        } else {
-          previewContainer.innerHTML = '<div class="wf-ndm-preview-empty">Node chưa được thực thi hoặc chưa có tệp media kết quả.</div>';
-        }
-      }
-
-      const logBox = document.getElementById('ndm-output-json');
-      if (logBox) {
-        if (node.state && (node.state.output || node.state.error || node.state.status)) {
-          logBox.innerText = JSON.stringify(node.state, null, 2);
-        } else {
-          logBox.innerText = 'Node đang ở trạng thái nhàn rỗi (chưa chạy). Bấm "⚡ Chạy thử Node này" để thực thi trực tiếp.';
-        }
-      }
-
-      // Open Modal
-      const modal = document.getElementById('node-detail-modal');
-      if (modal) {
-        modal.style.display = 'flex';
-      }
-    }
-
-    closeNodeDetailModal() {
-      const modal = document.getElementById('node-detail-modal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-      this.modalActiveNodeId = null;
-    }
-
-    saveNodeDetailModal() {
-      if (!this.modalActiveNodeId) return;
-      const node = this.graph.nodes.find(n => n.id === this.modalActiveNodeId);
-      if (!node) return;
-
-      if (!node.params) node.params = {};
-
-      // 1. Title
-      const titleInput = document.getElementById('ndm-title-input');
-      if (titleInput && titleInput.value.trim()) {
-        node.title = titleInput.value.trim();
-        const cardTitleEl = document.getElementById(`node-title-${node.id}`);
-        if (cardTitleEl) cardTitleEl.innerText = node.title;
-      }
-
-      // 2. Model
-      const modelSelect = document.getElementById('ndm-model-select');
-      const modelCard = document.getElementById('ndm-card-model');
-      if (modelSelect && modelCard && modelCard.style.display !== 'none') {
-        node.params.model = modelSelect.value;
-        this.updateNodeModelBadge(node.id, modelSelect.value);
-      }
-
-      // 3. Prompt & Personas
-      const sysPromptArea = document.getElementById('ndm-system-prompt');
-      if (sysPromptArea) {
-        node.params.system_prompt = sysPromptArea.value;
-      }
-
-      const mainPromptArea = document.getElementById('ndm-main-prompt');
-      if (mainPromptArea) {
-        node.params.prompt = mainPromptArea.value;
-        if (node.params.template !== undefined) node.params.template = mainPromptArea.value;
-      }
-
-      const negPromptArea = document.getElementById('ndm-negative-prompt');
-      if (negPromptArea) {
-        node.params.negative_prompt = negPromptArea.value;
-      }
-
-      // 4. Dynamic Fields
-      const def = this.definitions[node.type] || {};
-      const params = Object.assign({}, def.default_params || {}, node.params || {});
-      const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
-      Object.keys(params).forEach(key => {
-        if (skipKeys.includes(key)) return;
-        const el = document.getElementById(`ndm-field-${key}`);
-        if (!el) return;
-        if (el.type === 'checkbox') {
-          node.params[key] = el.checked;
-        } else if (el.type === 'number') {
-          node.params[key] = parseFloat(el.value) || 0;
-        } else {
-          node.params[key] = el.value;
-        }
-      });
-      if (node.type === 'video_source' && node.params.video_url) node.params.video_path = '';
-
-      // Update Inspector sidebar if this node is selected
-      if (this.selectedNodeId === node.id) {
-        this.updateInspector();
-      }
-
-      this.graphPersisted = false;
-
-      const feedbackEl = document.getElementById('ndm-action-feedback');
-      if (feedbackEl) {
-        feedbackEl.innerText = '✓ Đã cập nhật cấu hình node!';
-        setTimeout(() => {
-          if (feedbackEl) feedbackEl.innerText = '';
-        }, 2500);
-      }
-    }
-
-    async testRunSingleNode(nodeId) {
-      const node = this.graph.nodes.find(n => n.id === nodeId);
-      if (!node) return;
-
-      const feedbackEl = document.getElementById('ndm-action-feedback');
-      const statusBadge = document.getElementById('ndm-status-badge');
-      if (feedbackEl) feedbackEl.innerText = '⚡ Đang thực thi node...';
-
-      if (!node.state) node.state = {};
-      node.state.status = 'running';
-      node.state.progress = 50;
-      if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
-
-      try {
-        const resp = await fetch('/api/flow/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ graph_id: this.graph.id, node_id: nodeId })
-        });
-        const d = await resp.json();
-        node.state.status = 'completed';
-        node.state.progress = 100;
-        if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
-        if (feedbackEl) feedbackEl.innerText = '✓ Node hoàn tất thành công!';
-
-        const logBox = document.getElementById('ndm-output-json');
-        if (logBox) logBox.innerText = JSON.stringify(d, null, 2);
-      } catch (e) {
-        node.state.status = 'completed';
-        node.state.progress = 100;
-        if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
-        if (feedbackEl) feedbackEl.innerText = '✓ Đã kiểm tra cấu hình node!';
-      }
-    }
   }
 
   function initCanvas() {
