@@ -210,6 +210,10 @@ type Studio struct {
 	// jobSem caps concurrent renders (see jobSlot); lazily built because
 	// tests also construct Studio as a struct literal.
 	jobSem chan struct{}
+	// radarTopicRefreshSem serializes background topic backfills to avoid
+	// launching multiple headless browser crawlers at once.
+	radarTopicRefreshSem    chan struct{}
+	radarTopicRefreshStates map[string]radarTopicRefreshState
 	// DiskGuard, nếu khác nil, trả về % đĩa đã dùng của workRoot (Đợt V).
 	// insertJob từ chối job mới khi vượt MaxDiskPct (mặc định 95).
 	DiskGuard  func() (int, error)

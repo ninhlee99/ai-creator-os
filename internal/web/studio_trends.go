@@ -60,9 +60,14 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	coveragePending := false
+	if s.Studio != nil {
+		coveragePending = s.Studio.QueueTikTokRadarTopicRefresh(topic, len(videos))
+	}
 	data := s.ctx(
 		"Title", "Radar TikTok", "Path", "/studio/trends",
 		"Videos", videos,
+		"CoveragePending", coveragePending,
 		"Topic", topic,
 		"Topics", topics,
 		"SourceConfigured", studio.TikTokRadarSourceConfigured(),
@@ -89,9 +94,9 @@ func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
 		}
 	}
 	if knownMetrics == 0 {
-		return "5 video xếp theo thứ tự tìm kiếm từ TikTok Việt Nam."
+		return "Tối đa 8 video xếp theo thứ tự tìm kiếm từ TikTok Việt Nam."
 	}
-	return "5 video hot nhất tại Việt Nam (xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa)."
+	return "Tối đa 8 video hot nhất tại Việt Nam (xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa)."
 }
 
 func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Request) {
@@ -139,11 +144,11 @@ func (s *Server) handleStudioTrendsRefresh(w http.ResponseWriter, r *http.Reques
 	if topic != "" {
 		values.Set("topic", topic)
 	}
-	values.Set("ok", "Đã cập nhật realtime 5 video hot nhất cho chủ đề này.")
+	values.Set("ok", "Đã cập nhật tối đa 8 video hot nhất cho chủ đề này.")
 	http.Redirect(w, r, redirect+"?"+values.Encode(), http.StatusSeeOther)
 }
 
-// handleStudioTrendsAddTopic adds a new topic and collects top 5 hot videos.
+// handleStudioTrendsAddTopic adds a new topic and collects up to 8 hot videos.
 func (s *Server) handleStudioTrendsAddTopic(w http.ResponseWriter, r *http.Request) {
 	newTopic := strings.TrimSpace(r.FormValue("new_topic"))
 	if newTopic == "" {
@@ -160,7 +165,7 @@ func (s *Server) handleStudioTrendsAddTopic(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&ok="+url.QueryEscape("Đã thêm chủ đề '"+newTopic+"' và lấy 5 video hot nhất."), http.StatusSeeOther)
+	http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&ok="+url.QueryEscape("Đã thêm chủ đề '"+newTopic+"' và lấy tối đa 8 video hot nhất."), http.StatusSeeOther)
 }
 
 // handleStudioTrendsDeleteTopic removes a topic from the list.

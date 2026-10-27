@@ -96,7 +96,7 @@ var tikTokRadarHTTPTransport = func() *http.Transport {
 // Cache TTL
 const (
 	tikTokTrendsTTL            = 15 * time.Minute
-	tikTokRadarFeedLimit       = 5
+	tikTokRadarFeedLimit       = 8
 	tikTokRadarTopicCacheLimit = 64
 	tikTokRadarMaxTopics       = 3
 )

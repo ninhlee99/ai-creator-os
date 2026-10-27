@@ -67,7 +67,7 @@ func TestTikTokRadarTopicsCRUD(t *testing.T) {
 	}
 }
 
-func TestTikTokRadarTop5Limit(t *testing.T) {
+func TestTikTokRadarTop8Limit(t *testing.T) {
 	tmpDir := t.TempDir()
 	dbPath := filepath.Join(tmpDir, "test_studio.db")
 
@@ -118,8 +118,8 @@ func TestTikTokRadarTop5Limit(t *testing.T) {
 		t.Fatalf("GetTikTokRadarVideosForTopic: %v", err)
 	}
 
-	if len(results) != 5 {
-		t.Fatalf("expected exactly 5 videos, got %d", len(results))
+	if len(results) != 8 {
+		t.Fatalf("expected exactly 8 videos, got %d", len(results))
 	}
 
 	// Verify they are sorted by PlayCount descending

@@ -61,28 +61,27 @@
   box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35);
   color: #fff;
 }
-/* Grid hiển thị 1 hàng: màn hình rộng hiển thị 5, màn hình vừa hiển thị top 4, không bao giờ rớt lẻ sang hàng 2 */
+/* Lưới 4×2 trên desktop; giảm số cột ở màn hình nhỏ để card còn dễ đọc. */
 .radar-grid {
   display: grid;
   gap: 12px;
   width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 @media (min-width: 1200px) {
   .radar-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 @media (max-width: 1199px) and (min-width: 768px) {
   .radar-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-  .video-card-radar:nth-child(5) {
-    display: none !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 767px) {
   .radar-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 .video-card-radar {
@@ -700,7 +699,7 @@ document.addEventListener('keydown', function(e) {
 {{end}}
 
 {{define "studio-trends-content"}}
-<div id="studio-trends-content" class="space-y-4">
+<div id="studio-trends-content" class="space-y-4" {{if .CoveragePending}}hx-get="/studio/trends?topic={{urlquery .Topic}}" hx-trigger="load delay:2s, every 4s" hx-target="this" hx-swap="outerHTML"{{end}}>
   <!-- Section Chủ đề theo dõi & Thêm chủ đề -->
   <section class="card" style="border-radius: 16px; padding: 18px;">
     <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;">
@@ -709,7 +708,7 @@ document.addEventListener('keydown', function(e) {
           Chủ đề theo dõi
         </div>
         <div class="hint" style="font-size: 12px; margin-top: 1px;">
-          Bấm để chọn chủ đề (tự động đổi active tức thì). Hiển thị gọn 1 hàng 4-5 video hot nhất.
+          Bấm để chọn chủ đề. Tối đa 8 video, xếp theo mức độ phổ biến.
         </div>
       </div>
       <button type="button" class="btn-add-topic" onclick="var f = document.getElementById('add-topic-form'); f.style.display = (f.style.display === 'none' || f.style.display === '') ? 'block' : 'none'; if(f.style.display === 'block') document.getElementById('new-topic-input').focus();">
@@ -789,8 +788,9 @@ document.addEventListener('keydown', function(e) {
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span class="badge badge-info" style="font-weight: 700; font-size: 11.5px; padding: 3px 8px; border-radius: 9999px;">
-        1 Hàng · {{len .Videos}} video
+        Top 8 · {{len .Videos}} video
       </span>
+      {{if .CoveragePending}}<span class="badge badge-dim" role="status" style="font-size: 11px;">↻ Đang bổ sung video…</span>{{end}}
       <form method="post" action="/studio/trends/refresh" style="margin: 0;">
         <input type="hidden" name="topic" value="{{.Topic}}">
         <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 600; font-size: 11.5px; padding: 4px 10px;">↻ Quét lại</button>
@@ -828,7 +828,7 @@ document.addEventListener('keydown', function(e) {
       <!-- Thumbnail có nút bấm Xem trực tiếp trên màn hình -->
       <div class="thumb-container" onclick="openRadarPlayerFromCard(this)" title="Bấm để xem video ngay trên màn hình">
         {{if .CoverURL}}
-        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy">
+        <img src="{{.CoverURL}}" alt="Ảnh bìa video TikTok" loading="lazy" decoding="async">
         {{else}}
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;">▶</div>
         {{end}}

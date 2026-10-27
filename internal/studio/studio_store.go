@@ -145,7 +145,7 @@ func (s *Studio) migrate() error {
 		return err
 	}
 
-	// Bảng lưu danh sách chủ đề TikTok Radar và ánh xạ 5 video hot nhất mỗi chủ đề.
+	// Bảng lưu danh sách chủ đề TikTok Radar và ánh xạ tối đa 8 video hot nhất mỗi chủ đề.
 	if _, err := s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS studio_tiktok_radar_topics(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,

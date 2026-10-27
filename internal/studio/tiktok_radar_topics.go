@@ -41,7 +41,7 @@ func (s *Studio) ListTikTokRadarTopics(ctx context.Context) ([]string, error) {
 	return topics, nil
 }
 
-// AddTikTokRadarTopic thêm một chủ đề mới và quét ngay 5 video hot nhất.
+// AddTikTokRadarTopic thêm một chủ đề mới và quét ngay tối đa 8 video hot nhất.
 func (s *Studio) AddTikTokRadarTopic(ctx context.Context, topic string) error {
 	topic = strings.TrimSpace(topic)
 	if topic == "" {
@@ -60,7 +60,7 @@ func (s *Studio) AddTikTokRadarTopic(ctx context.Context, topic string) error {
 		return fmt.Errorf("không thêm được chủ đề: %w", err)
 	}
 
-	// Quét ngay 5 video hot nhất cho chủ đề này
+	// Quét ngay tối đa 8 video hot nhất cho chủ đề này.
 	_, _ = s.CollectTikTokRadarVideosForTopic(ctx, topic)
 	return nil
 }
@@ -89,7 +89,7 @@ func (s *Studio) DeleteTikTokRadarTopic(ctx context.Context, topic string) error
 	return tx.Commit()
 }
 
-// GetTikTokRadarVideosForTopic lấy 5 video hot nhất cho chủ đề đã lưu trong DB (realtime, không giật lag).
+// GetTikTokRadarVideosForTopic lấy tối đa 8 video hot nhất cho chủ đề đã lưu trong DB.
 // Nếu chưa có trong DB, sẽ quét trực tiếp từ TikTok.
 func (s *Studio) GetTikTokRadarVideosForTopic(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
 	topic = strings.TrimSpace(topic)
@@ -156,7 +156,7 @@ func (s *Studio) GetTikTokRadarVideosForTopic(ctx context.Context, topic string)
 	return s.CollectTikTokRadarVideosForTopic(ctx, topic)
 }
 
-// CollectTikTokRadarVideosForTopic quét trực tiếp từ TikTok, lưu kết quả và cập nhật 5 video hot nhất cho chủ đề.
+// CollectTikTokRadarVideosForTopic quét trực tiếp từ TikTok, lưu và xếp hạng tối đa 8 video cho chủ đề.
 func (s *Studio) CollectTikTokRadarVideosForTopic(ctx context.Context, topic string) ([]TikTokTrendVideo, error) {
 	topic = strings.TrimSpace(topic)
 	if topic == "" {
@@ -206,4 +206,59 @@ func (s *Studio) saveTopicVideos(ctx context.Context, topic string, videos []Tik
 		}
 	}
 	return tx.Commit()
+}
+
+type radarTopicRefreshState struct {
+	running     bool
+	lastAttempt time.Time
+}
+
+const radarTopicRefreshCooldown = 15 * time.Minute
+
+// QueueTikTokRadarTopicRefresh backfills short cached topic lists without
+// holding the page request open. Only one headless crawler runs at a time.
+// It returns true while a refresh is queued or running, so the UI can poll.
+func (s *Studio) QueueTikTokRadarTopicRefresh(topic string, currentCount int) bool {
+	topic = strings.TrimSpace(topic)
+	if s == nil || s.db == nil || topic == "" || currentCount == 0 || currentCount >= tikTokRadarFeedLimit || !TikTokCrawlerConfigured() {
+		return false
+	}
+
+	s.mu.Lock()
+	if s.radarTopicRefreshStates == nil {
+		s.radarTopicRefreshStates = make(map[string]radarTopicRefreshState)
+	}
+	state := s.radarTopicRefreshStates[topic]
+	now := time.Now()
+	if state.running {
+		s.mu.Unlock()
+		return true
+	}
+	if !state.lastAttempt.IsZero() && now.Sub(state.lastAttempt) < radarTopicRefreshCooldown {
+		s.mu.Unlock()
+		return false
+	}
+	if s.radarTopicRefreshSem == nil {
+		s.radarTopicRefreshSem = make(chan struct{}, 1)
+	}
+	sem := s.radarTopicRefreshSem
+	state.running = true
+	state.lastAttempt = now
+	s.radarTopicRefreshStates[topic] = state
+	s.mu.Unlock()
+
+	go func() {
+		sem <- struct{}{}
+		defer func() { <-sem }()
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		_, _ = s.CollectTikTokRadarVideosForTopic(ctx, topic)
+
+		s.mu.Lock()
+		state := s.radarTopicRefreshStates[topic]
+		state.running = false
+		s.radarTopicRefreshStates[topic] = state
+		s.mu.Unlock()
+	}()
+	return true
 }

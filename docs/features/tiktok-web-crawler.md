@@ -1,6 +1,6 @@
 # TikTok Web Crawler
 
-Cập nhật: 2026-10-27. Đây là tài liệu chuẩn cho nguồn thu thập TikTok Radar.
+Cập nhật: 2026-10-28. Đây là tài liệu chuẩn cho nguồn thu thập TikTok Radar.
 
 ## Nguồn hiện tại
 
@@ -13,7 +13,8 @@ Crawler không dùng Access Token TikTok Business hoặc Advertiser ID. TikTok D
 - Feed mặc định tìm `xu hướng việt nam`; topic được chuẩn hóa và thêm `việt nam` khi thiếu. Topic tối đa 120 ký tự.
 - Nếu topic người dùng không có kết quả, trả lỗi cho topic đó; không thay bằng video của tìm kiếm tổng quát. Chỉ feed mặc định được thử query xu hướng chung.
 - Browser có timeout tổng 15 giây. Sau tối đa 7 giây không có phản hồi phù hợp, crawler thử đọc danh sách video đang có trong DOM.
-- Network response có thể cung cấp ID, caption, tác giả, ảnh bìa, sound metadata và view/like/comment/share counts. Code trả tối đa 5 kết quả; lượt xem đã biết xếp giảm dần, lượt thích phá hòa, sau đó dùng thứ hạng từ nguồn.
+- Network response có thể cung cấp ID, caption, tác giả, ảnh bìa, sound metadata và view/like/comment/share counts. Code trả tối đa 8 kết quả; lượt xem đã biết xếp giảm dần, lượt thích phá hòa, sau đó dùng thứ hạng từ nguồn.
+- Radar hiển thị tối đa 8 video mỗi chủ đề: 4 cột × 2 hàng trên desktop, ít cột hơn trên màn hình nhỏ. Thumbnail tải lazy; thiếu video trong danh sách lưu được bổ sung nền, tối đa một crawler headless chạy cùng lúc.
 - DOM fallback chỉ cung cấp ID, caption, tác giả và ảnh bìa; metrics và sound metadata không có thì giữ unknown. UI hiển thị gạch cho metrics thiếu và `Chưa có metadata sound` khi thiếu tên sound.
 - Nguồn lưu trong SQLite: tối đa 2.000 video, metric snapshots tối đa 30 ngày. Video mới mặc định chưa xác nhận dance; người vận hành phải đánh dấu rõ sau khi xem video. Chưa có classifier.
 
