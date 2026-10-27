@@ -207,6 +207,128 @@ func executeWorkflowCall(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	return result, nil
 }
 
+func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	workflowID := nodeParamString(node.Params, "workflow_id", "")
+	if workflowID == "" {
+		return nil, fmt.Errorf("chọn workflow con để xử lý từng phần tử")
+	}
+	if ctx.ResolveWorkflow == nil {
+		return nil, fmt.Errorf("không có bộ phân giải workflow đã lưu")
+	}
+	items, ok := workflowMapItems(inputs["items"])
+	if !ok || len(items) == 0 {
+		return nil, fmt.Errorf("Workflow Map cần một danh sách không rỗng")
+	}
+	maxItems := nodeParamInt(node.Params, "max_items", 20)
+	if maxItems < 1 || maxItems > 100 {
+		return nil, fmt.Errorf("giới hạn phần tử phải từ 1 đến 100")
+	}
+	if len(items) > maxItems {
+		return nil, fmt.Errorf("danh sách có %d phần tử, vượt giới hạn %d; tăng giới hạn hoặc chia danh sách", len(items), maxItems)
+	}
+
+	childGraph, err := ctx.ResolveWorkflow(workflowID)
+	if err != nil {
+		return nil, fmt.Errorf("không tải được workflow con %q: %w", workflowID, err)
+	}
+	if problem := WorkflowReusableError(childGraph); problem != "" {
+		return nil, fmt.Errorf("workflow con chưa sẵn sàng: %s", problem)
+	}
+	childInputs, childOutputs, err := WorkflowContract(childGraph)
+	if err != nil {
+		return nil, err
+	}
+	itemInputKey := nodeParamString(node.Params, "item_input_key", childInputs[0].ID)
+	resultOutputKey := nodeParamString(node.Params, "result_output_key", childOutputs[0].ID)
+	indexInputKey := nodeParamString(node.Params, "index_input_key", "")
+	var itemPort, resultPort FlowPort
+	for _, port := range childInputs {
+		if port.ID == itemInputKey {
+			itemPort = port
+		}
+		if indexInputKey != "" && port.ID == indexInputKey && port.Type != PortTypeNumber {
+			return nil, fmt.Errorf("input thứ tự %q của workflow con phải có kiểu number", port.Name)
+		}
+	}
+	for _, port := range childOutputs {
+		if port.ID == resultOutputKey {
+			resultPort = port
+		}
+	}
+	if itemPort.ID == "" {
+		return nil, fmt.Errorf("workflow con không có input phần tử %q", itemInputKey)
+	}
+	if indexInputKey == itemInputKey {
+		return nil, fmt.Errorf("input phần tử và input thứ tự phải khác nhau")
+	}
+	if indexInputKey != "" {
+		found := false
+		for _, port := range childInputs {
+			if port.ID == indexInputKey {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("workflow con không có input thứ tự %q", indexInputKey)
+		}
+	}
+	if resultPort.ID == "" {
+		return nil, fmt.Errorf("workflow con không có output kết quả %q", resultOutputKey)
+	}
+	if _, ok := inputs["items"]; !ok {
+		return nil, fmt.Errorf("thiếu danh sách cần xử lý")
+	}
+
+	results := make([]any, 0, len(items))
+	mapID := safeWorkflowPathPart(node.ID)
+	for i, item := range items {
+		childValues := map[string]any{itemInputKey: item}
+		if indexInputKey != "" {
+			childValues[indexInputKey] = i + 1
+		}
+		if err := ValidateWorkflowRunInputs(childGraph, childValues); err != nil {
+			return nil, fmt.Errorf("input workflow con ở phần tử %d không hợp lệ: %w", i+1, err)
+		}
+
+		childCtx := *ctx
+		childCtx.WorkflowInputs = childValues
+		childCtx.NodeStatus = nil
+		childCtx.RunID = fmt.Sprintf("%s__%s_item_%03d", ctx.RunID, mapID, i+1)
+		childCtx.WorkDir = filepath.Join(ctx.WorkDir, "iterations", mapID, fmt.Sprintf("item_%03d", i+1))
+		if err := os.MkdirAll(childCtx.WorkDir, 0o755); err != nil {
+			return nil, fmt.Errorf("không tạo được thư mục phần tử %d: %w", i+1, err)
+		}
+		iterationGraph := cloneWorkflowWithPrefix(childGraph, fmt.Sprintf("%s_item_%03d_", mapID, i+1))
+		run, err := ExecuteGraph(&childCtx, iterationGraph)
+		if err != nil {
+			return nil, fmt.Errorf("workflow con thất bại ở phần tử %d/%d: %w", i+1, len(items), err)
+		}
+		result, exists := run.Outputs[resultOutputKey]
+		if !exists || isEmptyFlowValue(result) {
+			return nil, fmt.Errorf("workflow con không tạo output %q ở phần tử %d", resultPort.Name, i+1)
+		}
+		results = append(results, result)
+		ctx.Log(fmt.Sprintf("Workflow Map: hoàn tất phần tử %d/%d", i+1, len(items)))
+	}
+	return map[string]any{"results": results}, nil
+}
+
+func workflowMapItems(value any) ([]any, bool) {
+	switch items := value.(type) {
+	case []any:
+		return items, true
+	case []string:
+		result := make([]any, len(items))
+		for i, item := range items {
+			result[i] = item
+		}
+		return result, true
+	default:
+		return nil, false
+	}
+}
+
 func matchWorkflowPorts(actual, expected []FlowPort, direction string) error {
 	if len(actual) != len(expected) {
 		return fmt.Errorf("contract %s của workflow thay đổi; tải lại node workflow", direction)

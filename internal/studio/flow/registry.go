@@ -439,7 +439,8 @@ func registerAllBuiltinNodes() {
 		Description: "Ghép các đoạn video ngắn thành video hoàn chỉnh theo đúng thứ tự nhịp điệu",
 		Icon:        "film",
 		Inputs: []FlowPort{
-			{ID: "scene_1", Name: "Phân cảnh 1", Type: PortTypeVideo, Required: true},
+			{ID: "scenes", Name: "Danh sách phân cảnh", Type: PortTypeAny, Required: false, Description: "Danh sách video theo thứ tự từ Workflow Map."},
+			{ID: "scene_1", Name: "Phân cảnh 1", Type: PortTypeVideo, Required: false},
 			{ID: "scene_2", Name: "Phân cảnh 2", Type: PortTypeVideo, Required: false},
 			{ID: "scene_3", Name: "Phân cảnh 3", Type: PortTypeVideo, Required: false},
 		},
@@ -955,6 +956,23 @@ func registerAllBuiltinNodes() {
 			"workflow_id": "",
 		},
 		Executor: executeWorkflowCall,
+	})
+	RegisterNode(NodeDefinition{
+		Type:        "workflow_map",
+		Title:       "Lặp qua danh sách (Workflow Map)",
+		Category:    CategoryWorkflow,
+		Description: "Chạy cùng workflow con cho từng phần tử theo thứ tự; xử lý nhiều cảnh hoặc nhiều ảnh mà không nhân bản node.",
+		Icon:        "repeat-2",
+		Inputs:      []FlowPort{{ID: "items", Name: "Danh sách cần xử lý", Type: PortTypeAny, Required: true}},
+		Outputs:     []FlowPort{{ID: "results", Name: "Kết quả theo thứ tự", Type: PortTypeAny}},
+		DefaultParams: map[string]any{
+			"workflow_id":       "",
+			"item_input_key":    "",
+			"index_input_key":   "",
+			"result_output_key": "",
+			"max_items":         20,
+		},
+		Executor: executeWorkflowMap,
 	})
 	for _, category := range []struct{ key, title string }{
 		{"affiliate", "Affiliate"},

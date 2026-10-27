@@ -775,12 +775,31 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 
 func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	scenes := []string{}
-	for _, key := range []string{"scene_1", "scene_2", "scene_3"} {
-		if path := inputString(inputs, key, ""); path != "" {
-			if !fileExists(path) || !isVideoFile(path) {
-				return nil, fmt.Errorf("phân cảnh %s không phải video hợp lệ", key)
+	if rawScenes, exists := inputs["scenes"]; exists && !isEmptyFlowValue(rawScenes) {
+		for _, key := range []string{"scene_1", "scene_2", "scene_3"} {
+			if inputString(inputs, key, "") != "" {
+				return nil, fmt.Errorf("nối danh sách phân cảnh hoặc các cổng scene_1–scene_3, không dùng cùng lúc")
+			}
+		}
+		items, ok := workflowMapItems(rawScenes)
+		if !ok {
+			return nil, fmt.Errorf("cổng danh sách phân cảnh cần một danh sách video")
+		}
+		for i, item := range items {
+			path, ok := item.(string)
+			if !ok || !fileExists(path) || !isVideoFile(path) {
+				return nil, fmt.Errorf("phân cảnh %d trong danh sách không phải video hợp lệ", i+1)
 			}
 			scenes = append(scenes, path)
+		}
+	} else {
+		for _, key := range []string{"scene_1", "scene_2", "scene_3"} {
+			if path := inputString(inputs, key, ""); path != "" {
+				if !fileExists(path) || !isVideoFile(path) {
+					return nil, fmt.Errorf("phân cảnh %s không phải video hợp lệ", key)
+				}
+				scenes = append(scenes, path)
+			}
 		}
 	}
 

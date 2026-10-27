@@ -33,6 +33,13 @@ Hướng dẫn vận hành quy trình TikTok đang được hoàn thiện và wo
 3. Xem lại node **Viết truyện audio** nếu cần đổi cách viết; node **Tổng hợp giọng kể** dùng chuỗi TTS trong Cài đặt. Persona giọng phụ thuộc provider; macOS Say hiện dùng giọng Linh.
 4. Node cân bằng âm thanh tự giảm nhạc khi có lời, lặp nhạc tới hết track chính và chuẩn hóa đầu ra. Không tải nhạc thì node truyền nguyên lời kể. Kết quả gồm kịch bản văn bản và file WAV trong thư mục output.
 
+## Lặp workflow con qua danh sách
+
+1. Tạo workflow con, thêm node **Đầu vào workflow** cho một phần tử và node **Đầu ra workflow** cho kết quả; nối các node xử lý giữa hai cổng rồi lưu.
+2. Trong workflow cha, nối danh sách vào **Lặp qua danh sách (Workflow Map)**. Chọn workflow con, input nhận từng phần tử và output muốn thu về; có thể chọn thêm input kiểu số để nhận thứ tự phần tử.
+3. Input bắt buộc khác trong workflow con phải có giá trị mặc định. Kết quả giữ nguyên thứ tự đầu vào; mặc định xử lý tối đa 20 phần tử, cấu hình được từ 1 đến 100.
+4. Để ghép video, nối `results` vào cổng **Danh sách phân cảnh** của **Ghép nối phân cảnh**. Không nối đồng thời cổng danh sách và các cổng `scene_1`–`scene_3`.
+
 ## Khi flow dừng
 
 - Chưa xác định video có vũ đạo: không dùng làm nguồn âm thanh; mở video để kiểm tra rồi xác nhận hoặc chọn video khác.

@@ -1686,8 +1686,12 @@
       return type === 'workflow_call' || (typeof type === 'string' && type.startsWith('workflow_call_'));
     }
 
+    isWorkflowMapType(type) {
+      return type === 'workflow_map';
+    }
+
     getWorkflowPortTypes() {
-      return ['any', 'image', 'image_list', 'video', 'audio', 'text', 'product', 'motion', 'number', 'config'];
+      return ['any', 'image', 'image_list', 'text_list', 'video', 'audio', 'text', 'product', 'motion', 'number', 'config'];
     }
 
     getNodePorts(node, isOutput) {
@@ -2750,6 +2754,88 @@
       }
     }
 
+    renderWorkflowMapInspector(node, container) {
+      const params = node.params || (node.params = {});
+      const candidates = this.savedGraphs.filter(graph => graph.id !== this.graph.id);
+      const makeGroup = (title, current, options, placeholderText, onChange) => {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        const label = document.createElement('label');
+        label.textContent = title;
+        const select = document.createElement('select');
+        select.className = 'form-control';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = placeholderText;
+        select.appendChild(placeholder);
+        options.forEach(optionData => {
+          const option = document.createElement('option');
+          option.value = optionData.value;
+          option.textContent = optionData.label;
+          option.disabled = Boolean(optionData.disabled);
+          if (option.disabled) option.title = optionData.title || '';
+          select.appendChild(option);
+        });
+        select.value = current || '';
+        select.addEventListener('change', () => onChange(select.value));
+        group.append(label, select);
+        container.appendChild(group);
+        return select;
+      };
+
+      const workflows = candidates.map(graph => {
+        const inputs = Array.isArray(graph.inputs) ? graph.inputs : [];
+        const outputs = Array.isArray(graph.outputs) ? graph.outputs : [];
+        const disabled = graph.workflow_reusable === false || !inputs.length || !outputs.length;
+        return {
+          value: graph.id,
+          label: `${graph.name} · ${inputs.length} input / ${outputs.length} output${disabled ? ' · chưa sẵn sàng' : ''}`,
+          disabled,
+          title: graph.workflow_error || 'Workflow cần ít nhất một input và một output hợp lệ.'
+        };
+      });
+
+      makeGroup('Workflow con cho mỗi phần tử', params.workflow_id, workflows, 'Chọn workflow đã lưu…', workflowID => {
+        const graph = candidates.find(item => item.id === workflowID);
+        params.workflow_id = workflowID;
+        params.workflow_name = graph?.name || '';
+        params.item_input_key = graph?.inputs?.[0]?.id || '';
+        params.index_input_key = '';
+        params.result_output_key = graph?.outputs?.[0]?.id || '';
+        this.render();
+        this.selectNode(node.id);
+      });
+
+      const selected = candidates.find(graph => graph.id === params.workflow_id);
+      if (!selected) {
+        const help = document.createElement('small');
+        help.className = 'text-muted';
+        help.textContent = 'Workflow con cần input/output contract hợp lệ. Mỗi phần tử chạy thành một lần thực thi riêng, giữ nguyên thứ tự.';
+        container.appendChild(help);
+        return;
+      }
+
+      const inputs = Array.isArray(selected.inputs) ? selected.inputs : [];
+      const outputs = Array.isArray(selected.outputs) ? selected.outputs : [];
+      makeGroup('Input nhận từng phần tử', params.item_input_key, inputs.map(port => ({
+        value: port.id,
+        label: `${port.name || port.id} · ${port.type}`
+      })), 'Chọn input…', value => { params.item_input_key = value; });
+      makeGroup('Input thứ tự (tùy chọn)', params.index_input_key, inputs.filter(port => port.type === 'number').map(port => ({
+        value: port.id,
+        label: `${port.name || port.id} · number`
+      })), 'Không truyền số thứ tự', value => { params.index_input_key = value; });
+      makeGroup('Output thu về cho mỗi phần tử', params.result_output_key, outputs.map(port => ({
+        value: port.id,
+        label: `${port.name || port.id} · ${port.type}`
+      })), 'Chọn output…', value => { params.result_output_key = value; });
+
+      const summary = document.createElement('small');
+      summary.className = 'text-muted';
+      summary.textContent = 'Input bắt buộc khác cần có giá trị mặc định trong workflow con. Giới hạn xử lý đặt ở phần tham số bên dưới.';
+      container.appendChild(summary);
+    }
+
     async loadWorkflowContract(node, workflowId, rerender = true) {
       const requestToken = Symbol('workflow-contract');
       const previousWorkflowId = node.params.workflow_id || '';
@@ -3279,6 +3365,7 @@
         custom_universal_ai: 'Dùng cho một node đa phương thức với cổng Text/Image/Video. Video chỉ được lấy frame tham chiếu; audio chưa được hỗ trợ.',
         text_to_speech: 'Nối kịch bản vào cổng Văn bản. Chọn persona ở cổng hoặc tham số; giọng thực tế tùy provider TTS. macOS Say hiện dùng giọng Linh. Văn bản dài tự chia theo câu rồi ghép thành một file WAV.',
         audio_mix: 'Nối lời đọc vào Track chính; nhạc nền là tùy chọn. Khi bật ducking, nhạc tự nhỏ xuống trong lúc có lời. Không nối nhạc thì node truyền nguyên track chính.',
+        workflow_map: 'Nối một danh sách vào node. Chọn workflow con xử lý một phần tử; kết quả giữ nguyên thứ tự. Workflow con cần ít nhất một input và output.',
         custom_web_ai: 'Dùng khi cần chọn Google Flow hoặc Muse AI và truyền prompt cùng một file tham chiếu; output chọn Text, Image hoặc Video.',
         custom_ai_prompt: 'Dùng cho prompt tùy biến với system prompt, model hệ thống và cổng output riêng cho text/media.',
         custom_vision_analyzer: 'Phân tích ảnh hoặc một frame video; không phân tích toàn bộ chuyển động video.',
@@ -3467,8 +3554,10 @@
         const params = Object.assign({}, def.default_params, node.params);
 		const isWorkflowBoundary = node.type === 'workflow_input' || node.type === 'workflow_output';
 		const isWorkflowCall = this.isWorkflowCallType(node.type);
+		const isWorkflowMap = this.isWorkflowMapType(node.type);
 		if (isWorkflowBoundary) this.renderWorkflowBoundaryInspector(node, fieldsContainer);
 		else if (isWorkflowCall) this.renderWorkflowCallInspector(node, fieldsContainer);
+		else if (isWorkflowMap) this.renderWorkflowMapInspector(node, fieldsContainer);
         else if (node.type === 'virtual_tryon') {
           const guidance = document.createElement('p');
           guidance.className = 'wf-inspector-section-help';
@@ -3476,7 +3565,7 @@
           fieldsContainer.appendChild(guidance);
         }
 
-        const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
+        const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url', 'workflow_id', 'workflow_name', 'item_input_key', 'index_input_key', 'result_output_key'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
           if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style')) return;
@@ -4076,6 +4165,7 @@
       const labels = {
         voice: 'Phong cách giọng đọc',
         chunk_size: 'Ký tự tối đa mỗi đoạn đọc',
+        max_items: 'Số phần tử tối đa mỗi lần chạy',
         voice_volume: 'Âm lượng track chính',
         music_volume: 'Âm lượng nhạc nền',
         duck_music: 'Giảm nhạc khi có lời đọc',

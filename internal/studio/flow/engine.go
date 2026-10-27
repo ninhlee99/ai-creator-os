@@ -530,6 +530,9 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 					}
 				}
 			}
+			if previewURL == "" {
+				previewURL = firstMediaPath(outputs)
+			}
 		}
 
 		// Nếu có file preview và ctx.OutDir được chỉ định, đảm bảo copy về OutDir để web load /media/ không 404
@@ -624,7 +627,8 @@ func isVisualNodeType(nodeType string) bool {
 		"virtual_tryon", "google_flow_video", "muse_ai_video", "video_source",
 		"video_upscale", "concat_scenes", "video_output", "image_output",
 		"muse_ai_neural_render", "cinematic_color_grading", "video_master_output",
-		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_output",
+		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_map", "workflow_output",
+		"text_to_speech", "audio_mix",
 		"scene_environment", "lighting_atmosphere", "dance_motion_extractor", "dance_retarget",
 		"custom_universal_ai", "custom_media_input", "custom_vision_analyzer", "custom_media_processor", "custom_export_publish":
 		return true
@@ -634,7 +638,7 @@ func isVisualNodeType(nodeType string) bool {
 }
 
 func firstMediaPath(value any) string {
-	mediaExt := map[string]bool{".mp4": true, ".webm": true, ".mov": true, ".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	mediaExt := map[string]bool{".mp4": true, ".webm": true, ".mov": true, ".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".mp3": true, ".aac": true, ".wav": true, ".ogg": true, ".m4a": true, ".flac": true}
 	var find func(any) string
 	find = func(item any) string {
 		switch value := item.(type) {
@@ -643,6 +647,12 @@ func firstMediaPath(value any) string {
 				return value
 			}
 		case []any:
+			for _, child := range value {
+				if path := find(child); path != "" {
+					return path
+				}
+			}
+		case []string:
 			for _, child := range value {
 				if path := find(child); path != "" {
 					return path
