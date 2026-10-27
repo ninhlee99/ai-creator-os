@@ -4579,6 +4579,22 @@
       }
     }
 
+    showAllNodes() {
+      this.pendingConnect = null;
+      const searchInput = document.getElementById('node-search-input');
+      if (searchInput) searchInput.value = '';
+      const allChip = document.querySelector('#node-categories-list .wf-tag-filter[data-cat="all"]');
+      document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
+        const active = chip === allChip;
+        chip.classList.toggle('active', active);
+        chip.setAttribute('aria-pressed', String(active));
+      });
+      const categoryScroller = document.getElementById('node-categories-list');
+      if (categoryScroller) categoryScroller.scrollLeft = 0;
+      this.renderModalGrid('', 'all');
+      this.syncNodeCategoryScrollButtons();
+    }
+
     closeAddNodeModal() {
       const modal = document.getElementById('add-node-modal');
       if (modal) {
@@ -4636,10 +4652,11 @@
           chip.setAttribute('aria-pressed', 'true');
           this.revealNodeCategory(chip);
           const category = chip.dataset.cat || 'all';
-          if (category === 'all') this.pendingConnect = null;
-          const query = category === 'all' ? '' : (searchInput ? searchInput.value : '');
-          if (category === 'all' && searchInput) searchInput.value = '';
-          this.renderModalGrid(query, category);
+          if (category === 'all') {
+            this.showAllNodes();
+            return;
+          }
+          this.renderModalGrid(searchInput ? searchInput.value : '', category);
         });
       });
       this.syncNodeCategoryScrollButtons();
@@ -4754,21 +4771,18 @@
 
         action.addEventListener('click', () => {
           const searchInput = document.getElementById('node-search-input');
+          if (action.textContent === 'Xem tất cả node') {
+            this.showAllNodes();
+            if (searchInput) searchInput.focus();
+            return;
+          }
           if (this.pendingConnect && !hasFilters) {
             this.closeAddNodeModal();
             return;
           }
           if (searchInput) searchInput.value = '';
-          const allChip = document.querySelector('#node-categories-list .wf-tag-filter[data-cat="all"]');
-          document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
-            const active = chip === allChip;
-            chip.classList.toggle('active', active);
-            chip.setAttribute('aria-pressed', String(active));
-          });
-          const categoryScroller = document.getElementById('node-categories-list');
-          if (categoryScroller) categoryScroller.scrollLeft = 0;
-          this.renderModalGrid('', 'all');
-          this.syncNodeCategoryScrollButtons();
+          const activeChip = document.querySelector('#node-categories-list .wf-tag-filter.active');
+          this.renderModalGrid('', activeChip ? (activeChip.dataset.cat || 'all') : 'all');
           if (searchInput) searchInput.focus();
         });
 
