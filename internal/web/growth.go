@@ -614,6 +614,10 @@ func (s *Server) handleGrowth(w http.ResponseWriter, r *http.Request) {
 	for k, v := range s.growthView() {
 		data[k] = v
 	}
+	data["Tab"] = "overview"
+	if r.URL.Query().Get("tab") == "ops" {
+		data["Tab"] = "ops"
+	}
 	s.render(w, "growth", data)
 }
 
@@ -626,7 +630,12 @@ func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 			s.renderGrowthSyncResult(w, r, s.ctx("SyncError", err.Error()))
 			return
 		}
-		s.render(w, "growth", s.ctx("Error", err.Error()))
+		data := s.ctx("Error", err.Error())
+		for k, v := range s.growthView() {
+			data[k] = v
+		}
+		data["Tab"] = "ops"
+		s.render(w, "growth", data)
 		return
 	}
 	var notes []string
@@ -642,6 +651,7 @@ func (s *Server) handleGrowthSync(w http.ResponseWriter, r *http.Request) {
 		s.renderGrowthSyncResult(w, r, data)
 		return
 	}
+	data["Tab"] = "ops"
 	s.render(w, "growth", data)
 }
 

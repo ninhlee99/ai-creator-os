@@ -8,9 +8,15 @@
   </div>
 </div>
 
+<nav class="tabs" style="margin-bottom:20px">
+  <a href="/growth"{{if ne .Tab "ops"}} class="active"{{end}}>Tổng quan</a>
+  <a href="/growth?tab=ops"{{if eq .Tab "ops"}} class="active"{{end}}>Vận hành</a>
+</nav>
+
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{if eq .Tab "ops"}}
 <section class="form-card" style="margin:12px 0">
-  <h2 style="margin-top:0">Lịch sản xuất TikTok</h2>
+  <h2 style="margin-top:0">Lịch xử lý kế hoạch tăng trưởng</h2>
   <p>
     {{if .ProdEnabled}}<span class="badge badge-ok">lịch đang bật</span>{{else}}<span class="badge badge-no">lịch đang tắt</span>{{end}}
     {{if .ProdDryRun}}<span class="badge badge-warn">CHẠY THỬ</span>{{end}}
@@ -50,6 +56,7 @@
   </form>
 </details>
 
+{{else}}
 {{if not .Accounts}}
 <div class="empty-state"><strong>Chưa có tài khoản TikTok</strong><a class="btn" href="/accounts/new">+ Thêm kênh</a></div>
 {{else}}
@@ -159,7 +166,11 @@
 </div>
 {{else}}<p class="empty">Chưa có bản ghi chẩn đoán. Hệ thống sẽ tự phân tích sau khi video được đăng và thu thập số liệu.</p>{{end}}
 
-<h2>Lịch sử Tự Vi Chỉnh Cài Đặt (Self-Tuning) & Hoàn Tác</h2>
+{{end}}
+{{end}}
+
+{{if eq .Tab "ops"}}
+<h2>Lịch sử tự điều chỉnh &amp; hoàn tác</h2>
 {{if .TuningHistory}}
 <div class="table-wrap mobile-table-scroll" role="region" aria-label="Lịch sử vi chỉnh cài đặt" tabindex="0">
 <table class="growth-table">
@@ -171,17 +182,7 @@
   <td>{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}})</td>
   <td>{{.Reason}}</td>
   <td><span class="hint">{{.AppliedAt}}</span></td>
-  <td>
-    {{if .RolledBack}}
-    <span class="badge badge-info">Đã hoàn tác</span>
-    {{else}}
-    <form method="post" action="/growth/tuning/rollback" style="display:inline">
-      <input type="hidden" name="history_id" value="{{.ID}}">
-      <input type="hidden" name="account_id" value="{{.AccountID}}">
-      <button class="btn btn-secondary btn-sm" type="submit">↩ Hoàn tác</button>
-    </form>
-    {{end}}
-  </td>
+  <td>{{if .RolledBack}}<span class="badge badge-info">Đã hoàn tác</span>{{else}}<form method="post" action="/growth/tuning/rollback" style="display:inline"><input type="hidden" name="history_id" value="{{.ID}}"><input type="hidden" name="account_id" value="{{.AccountID}}"><button class="btn btn-secondary btn-sm" type="submit">↩ Hoàn tác</button></form>{{end}}</td>
 </tr>
 {{end}}
 </tbody>
@@ -189,7 +190,7 @@
 </div>
 {{else}}<p class="empty">Chưa có lượt vi chỉnh tự động nào được áp dụng.</p>{{end}}
 
-<h2>Kế hoạch & video sắp tới</h2>
+<h2>Kế hoạch &amp; video sắp tới</h2>
 {{if .Upcoming}}
 <div class="table-wrap mobile-table-scroll mobile-growth-upcoming-cards" role="region" aria-label="Kế hoạch và video sắp tới" tabindex="0"><table class="growth-upcoming-table">
 <thead><tr><th scope="col">Ngày</th><th scope="col">Kênh</th><th scope="col">Định dạng</th><th scope="col">Chủ đề</th><th scope="col">Trạng thái</th><th scope="col">Video / ghi chú</th></tr></thead>
@@ -201,19 +202,12 @@
   <td data-label="Định dạng">9:16 · 60s{{if .SeriesEp}} · tập {{.SeriesEp}}{{end}}</td>
   <td data-label="Chủ đề"><strong>{{.Topic}}</strong>{{if .DedupAction}}<br><span class="badge badge-warn">đổi góc chống trùng</span>{{end}}</td>
   <td data-label="Trạng thái"><span class="badge badge-{{statusClass .Status}}">{{statusLabel .Status}}</span>{{if .OutputFile}}<br><a href="/media/{{.OutputFile}}" download>Tải MP4</a>{{end}}{{if .StudioJobID}}<br><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở Studio job</a>{{end}}</td>
-  <td data-label="Video / ghi chú">
-    <div class="growth-upcoming-note-desktop">{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</div>
-    <details class="growth-upcoming-note-mobile">
-      <summary>{{if .PubNote}}Xem ghi chú{{else}}Xem hook{{end}}</summary>
-      <p>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</p>
-    </details>
-  </td>
+  <td data-label="Video / ghi chú"><div class="growth-upcoming-note-desktop">{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</div><details class="growth-upcoming-note-mobile"><summary>{{if .PubNote}}Xem ghi chú{{else}}Xem hook{{end}}</summary><p>{{if .PubNote}}{{.PubNote}}{{else}}{{.Hook}}{{end}}</p></details></td>
 </tr>
 {{end}}
 </tbody>
 </table></div>
 {{else}}<div class="empty-state compact"><h3>Chưa có kế hoạch TikTok</h3></div>{{end}}
-{{end}}
 {{end}}
 
 {{define "growth-sync-result"}}

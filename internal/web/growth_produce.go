@@ -156,6 +156,7 @@ func (s *Server) renderGrowth(w http.ResponseWriter, notes []string) {
 	for k, v := range s.growthView() {
 		data[k] = v
 	}
+	data["Tab"] = "ops"
 	if len(notes) > 0 {
 		data["SyncNotes"] = notes
 	}
