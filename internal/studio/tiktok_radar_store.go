@@ -261,18 +261,6 @@ func (s *Studio) ResolveTikTokRadarVideo(ctx context.Context, sourceURL string) 
 	}
 	video, err = findTikTokRadarVideo(videos, sourceURL)
 	if err != nil {
-		nowStr := time.Now().UTC().Format(time.RFC3339Nano)
-		autoVideo := TikTokTrendVideo{
-			VideoID:         videoID,
-			VideoURL:        sourceURL,
-			DanceVerified:   true,
-			DanceVerifiedAt: nowStr,
-			CollectedAt:     nowStr,
-			Title:           "TikTok Video #" + videoID,
-		}
-		if storeErr := s.storeTikTokRadarVideos(ctx, []TikTokTrendVideo{autoVideo}); storeErr == nil {
-			return autoVideo, nil
-		}
 		return TikTokTrendVideo{}, err
 	}
 	return s.loadTikTokRadarVideo(ctx, video.VideoID)

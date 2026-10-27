@@ -4,7 +4,7 @@ Studio quản lý tạo video affiliate và video viral TikTok.
 
 ## Radar và nguồn
 
-TikTok Radar dùng Web Crawler cục bộ; field metrics và sound metadata có thể thiếu, dance flag hiện chưa đáng tin. Xem [tài liệu chuẩn về TikTok Web Crawler](tiktok-web-crawler.md). Viral analysis chỉ nêu tín hiệu quan sát và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Audio lấy từ video nguồn đã chọn; không tự thay sound khi tải hoặc tách audio thất bại.
+TikTok Radar dùng Web Crawler cục bộ; field metrics và sound metadata có thể thiếu. Crawler không phân loại video nhảy: video mới ở trạng thái chưa xác nhận cho tới khi người vận hành xem và xác nhận trên card Radar. Chỉ video đã thu thập và xác nhận thủ công mới dùng làm nguồn audio. Xem [tài liệu chuẩn về TikTok Web Crawler](tiktok-web-crawler.md). Viral analysis chỉ nêu tín hiệu quan sát và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Audio lấy từ video nguồn đã chọn; không tự thay sound khi tải hoặc tách audio thất bại.
 
 ## Affiliate
 
