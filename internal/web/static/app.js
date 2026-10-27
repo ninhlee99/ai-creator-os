@@ -248,9 +248,9 @@
 
     // Desktop sidebar collapse / expand toggle
     var layout = document.querySelector('.layout');
-    var collapseBtn = document.getElementById('sidebar-collapse-btn');
     var topbarToggle = document.getElementById('topbar-sidebar-toggle');
     var wfSidebarToggle = document.getElementById('wf-sidebar-toggle');
+    var brandInfo = document.querySelector('.sidebar .brand-info');
 
     try {
       if (localStorage.getItem('aicos-sidebar-collapsed') === '1' && layout) {
@@ -274,7 +274,13 @@
       }
     }
 
-    if (collapseBtn) collapseBtn.addEventListener('click', toggleSidebarCollapse);
+    if (brandInfo) {
+      brandInfo.addEventListener('click', function () {
+        if (layout && layout.classList.contains('sidebar-collapsed')) {
+          toggleSidebarCollapse();
+        }
+      });
+    }
     if (topbarToggle) topbarToggle.addEventListener('click', toggleSidebarCollapse);
     if (wfSidebarToggle) wfSidebarToggle.addEventListener('click', toggleSidebarCollapse);
 

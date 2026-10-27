@@ -156,9 +156,17 @@ func (s *Server) handleATTest(w http.ResponseWriter, r *http.Request) {
 
 // handleATSyncCampaigns đồng bộ campaign từ API vào cache (POST → redirect).
 func (s *Server) handleATSyncCampaigns(w http.ResponseWriter, r *http.Request) {
+	redirect := func(key, message string) string {
+		values := url.Values{}
+		if r.URL.Query().Get("tab") == "affiliate" {
+			values.Set("tab", "affiliate")
+		}
+		values.Set(key, message)
+		return "/products?" + values.Encode()
+	}
 	cl, err := s.atClient()
 	if err != nil {
-		seeOther(w, r, "/products?err="+url.QueryEscape(err.Error()))
+		seeOther(w, r, redirect("err", err.Error()))
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), atTimeout)
@@ -167,11 +175,11 @@ func (s *Server) handleATSyncCampaigns(w http.ResponseWriter, r *http.Request) {
 	// ~10.000 chiến dịch (~9MB/trang) nên không tải hết.
 	cs, err := cl.ListCampaigns(ctx, accesstrade.CampaignFilter{Approval: "successful"})
 	if err != nil {
-		seeOther(w, r, "/products?err="+url.QueryEscape("Tải chiến dịch thất bại: "+err.Error()))
+		seeOther(w, r, redirect("err", "Tải chiến dịch thất bại: "+err.Error()))
 		return
 	}
 	if err := s.AT.UpsertCampaigns(cs); err != nil {
-		seeOther(w, r, "/products?err="+url.QueryEscape("Lưu cache thất bại: "+err.Error()))
+		seeOther(w, r, redirect("err", "Lưu cache thất bại: "+err.Error()))
 		return
 	}
 	msg := "Đã tải " + itoa(len(cs)) + " chiến dịch bạn đã được duyệt."
@@ -180,7 +188,7 @@ func (s *Server) handleATSyncCampaigns(w http.ResponseWriter, r *http.Request) {
 	} else if len(cs) < 3 {
 		msg += " Nên đăng ký thêm chiến dịch đúng ngành hàng (thời trang, mỹ phẩm, gia dụng…) trên pub.accesstrade.vn."
 	}
-	seeOther(w, r, "/products?ok="+url.QueryEscape(msg))
+	seeOther(w, r, redirect("ok", msg))
 }
 
 // linkCreateJSON là body JSON của POST /at/links/create.

@@ -7,7 +7,7 @@
   </div>
   <div class="webai-header-actions flex flex-wrap items-center gap-2">
     <a href="/studio" class="btn btn-primary btn-sm">Mở Studio</a>
-    {{if eq .Tab "discover"}}<a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>{{end}}
+    {{if eq .Tab "affiliate"}}<a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>{{end}}
   </div>
 </div>
 
@@ -17,6 +17,7 @@
   <a href="/products?tab=pending"{{if eq .Tab "pending"}} class="active"{{end}}>Chờ duyệt</a>
   <a href="/products?tab=shelf"{{if eq .Tab "shelf"}} class="active"{{end}}>Kệ hàng</a>
   <a href="/products?tab=rejected"{{if eq .Tab "rejected"}} class="active"{{end}}>Đã loại bỏ</a>
+  <a href="/products?tab=affiliate"{{if eq .Tab "affiliate"}} class="active"{{end}}>Affiliate</a>
 </nav>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
@@ -130,7 +131,7 @@
 {{end}}
 {{else}}
 
-{{if eq .Tab "discover"}}
+{{if eq .Tab "affiliate"}}
 {{if or .AT.KeySet .AT.Hunted .AT.Orders .AT.Links}}
 <div class="form-card">
   <h2 style="margin-top:0;border:none;padding:0">Chiến dịch Accesstrade
@@ -138,7 +139,7 @@
   </h2>
   {{if not .AT.KeySet}}
   {{else}}
-  <form method="post" action="/at/campaigns/sync" style="margin-bottom:0.75rem">
+  <form method="post" action="/at/campaigns/sync?tab=affiliate" style="margin-bottom:0.75rem">
     <button type="submit" class="btn btn-secondary btn-sm">Tải chiến dịch</button>
   </form>
   {{if .AT.Campaigns}}
@@ -390,6 +391,8 @@ function atOrderSync() {
 </div>
 {{end}}
 
+{{else}}
+{{if eq .Tab "discover"}}
 <div class="card products-search-card mb-5 rounded-2xl border border-[var(--border)] bg-[var(--bg2)] p-4 shadow-sm md:p-6">
   <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:8px">

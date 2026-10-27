@@ -127,7 +127,6 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /products/shelf/toggle", s.handleProductsShelfToggle)
 	mux.HandleFunc("POST /products/review", s.handleProductsReview)
 	mux.HandleFunc("GET /products/{id}/history", s.handleProductHistory)
-	mux.HandleFunc("POST /products/schedule", s.handleProductsSchedule)
 
 	mux.HandleFunc("GET /growth", s.handleGrowth)
 	mux.HandleFunc("POST /growth/sync", s.handleGrowthSync)

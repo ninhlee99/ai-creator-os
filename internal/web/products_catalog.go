@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // themeOption is one entry of the theme dropdown.
@@ -82,7 +81,9 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	minPct := resolveMinCommission(theme, r.URL.Query().Get("min"))
 	var results []products.Product
 	var rerr error
-	if tab == "pending" {
+	if tab == "affiliate" {
+		// Affiliate operations have their own tab; do not load product candidates.
+	} else if tab == "pending" {
 		results, rerr = s.Products.ReviewList(products.ReviewPending, keyword, theme, 100)
 	} else if tab == "rejected" {
 		results, rerr = s.Products.ReviewList(products.ReviewRejected, keyword, theme, 50)
@@ -107,20 +108,6 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	results = s.attachProductSalesChange(results)
 	results = s.attachTikTokRadarEvidence(r.Context(), results)
-	enabled, hours, lastRun, autoPub := s.scheduleView()
-	// Autopilot status surface (A5): next scheduled run + stock on hand.
-	nextRun := ""
-	if enabled {
-		if lt, err := time.Parse(time.RFC3339, lastRun); err == nil {
-			nextRun = lt.Add(time.Duration(hours) * time.Hour).Format("15:04 02/01")
-		} else {
-			nextRun = "vòng tới"
-		}
-	}
-	var stock int64
-	if n, err := s.Products.Count(); err == nil {
-		stock = n
-	}
 	s.renderProductResults(w, r, s.ctx(
 		"AT", s.atPageData(),
 		"Tab", tab,
@@ -132,12 +119,6 @@ func (s *Server) handleProducts(w http.ResponseWriter, r *http.Request) {
 		"Shelf", s.shelfViews(),
 		"Notice", r.URL.Query().Get("ok"),
 		"Error", r.URL.Query().Get("err"),
-		"SchedEnabled", enabled,
-		"SchedHours", hours,
-		"SchedLastRun", lastRun,
-		"SchedNextRun", nextRun,
-		"StockCount", stock,
-		"AutoPublish", autoPub,
 	))
 }
 
@@ -158,6 +139,8 @@ func productTabName(tab string) string {
 	switch tab {
 	case "shelf", "ke":
 		return "shelf"
+	case "affiliate", "tracking":
+		return "affiliate"
 	case "rejected", "removed":
 		return "rejected"
 	case "pending", "review":
