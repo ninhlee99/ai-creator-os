@@ -2305,28 +2305,78 @@
         if (value == null) value = '';
         const type = String(params.value_type || 'text');
         const options = Array.isArray(params.options) ? params.options : [];
+        const optionEntries = options.map(option => {
+          if (option && typeof option === 'object') {
+            return {
+              value: String(option.value ?? option.label ?? ''),
+              label: String(option.label ?? option.value ?? '')
+            };
+          }
+          return { value: String(option ?? ''), label: String(option ?? '') };
+        }).filter(option => option.value !== '');
+        const useOptionPicker = optionEntries.length > 0 && ['text', 'any'].includes(type);
         const group = document.createElement('div');
         group.className = 'wf-run-input-field';
         let control;
 
-        if (options.length) {
-          control = document.createElement('input');
-          control.type = 'text';
-          control.className = 'wf-form-input';
-          const list = document.createElement('datalist');
-          list.id = `workflow-input-options-${node.id}`;
-          control.setAttribute('list', list.id);
-          options.forEach(option => {
-            const optionValue = option && typeof option === 'object' ? option.value : option;
-            const optionLabel = option && typeof option === 'object' ? (option.label ?? option.value) : option;
+        if (useOptionPicker) {
+          const select = document.createElement('select');
+          select.id = `workflow-input-${node.id}`;
+          label.htmlFor = select.id;
+          select.setAttribute('aria-label', String(params.label || node.title || key));
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = 'Chọn một giá trị';
+          select.appendChild(placeholder);
+          optionEntries.forEach(option => {
             const element = document.createElement('option');
-            element.value = String(optionValue ?? '');
-            element.label = String(optionLabel ?? '');
-            list.appendChild(element);
+            element.value = option.value;
+            element.textContent = option.label;
+            select.appendChild(element);
           });
-          control.value = String(value);
-          control.placeholder = 'Chọn gợi ý hoặc nhập giá trị riêng';
-          group.append(label, control, list);
+          let customValue = '__workflow_custom__';
+          while (optionEntries.some(option => option.value === customValue)) customValue += '_';
+          const customOption = document.createElement('option');
+          customOption.value = customValue;
+          customOption.textContent = 'Tự nhập…';
+          select.appendChild(customOption);
+
+          const customInput = document.createElement('input');
+          customInput.type = 'text';
+          customInput.className = 'wf-form-input';
+          customInput.id = `${select.id}-custom`;
+          customInput.hidden = true;
+          customInput.placeholder = 'Nhập giá trị riêng cho lần chạy này';
+          customInput.setAttribute('aria-label', `Giá trị tùy chỉnh: ${String(params.label || node.title || key)}`);
+
+          const valueText = String(value);
+          const matchedOption = optionEntries.find(option => option.value === valueText);
+          if (matchedOption) {
+            select.value = matchedOption.value;
+          } else if (valueText !== '') {
+            select.value = customValue;
+            customInput.value = valueText;
+            customInput.hidden = false;
+            control = customInput;
+          }
+          if (!control) control = select;
+
+          select.addEventListener('change', () => {
+            if (control.dataset.workflowInputKey) {
+              delete control.dataset.workflowInputKey;
+              delete control.dataset.workflowInputType;
+            }
+            const customMode = select.value === customValue;
+            customInput.hidden = !customMode;
+            label.htmlFor = customMode ? customInput.id : select.id;
+            customInput.required = customMode && params.required !== false;
+            select.required = !customMode && params.required !== false;
+            control = customMode ? customInput : select;
+            control.dataset.workflowInputKey = key;
+            control.dataset.workflowInputType = type;
+            if (customMode) customInput.focus();
+          });
+          group.append(label, select, customInput);
         } else if (type === 'number') {
           control = document.createElement('input');
           control.type = 'number';
@@ -2404,7 +2454,7 @@
         control.dataset.workflowInputKey = key;
         control.dataset.workflowInputType = type;
         control.required = params.required !== false;
-        if (!['image', 'image_list', 'video', 'audio'].includes(type) && !options.length) group.append(label, control);
+        if (!['image', 'image_list', 'video', 'audio'].includes(type) && !useOptionPicker) group.append(label, control);
         const helpText = String(params.help || '');
         if (helpText) {
           const help = document.createElement('small');
@@ -2714,7 +2764,7 @@
         const optionsGroup = document.createElement('div');
         optionsGroup.className = 'form-group';
         const optionsLabel = document.createElement('label');
-        optionsLabel.innerText = 'Gợi ý khi chạy (không bắt buộc)';
+        optionsLabel.innerText = 'Lựa chọn nhanh khi chạy';
         const optionsInput = document.createElement('textarea');
         optionsInput.className = 'form-control';
         optionsInput.rows = 3;
@@ -2723,13 +2773,13 @@
           return String(option ?? '');
         }) : [];
         optionsInput.value = optionValues.join('\n');
-        optionsInput.placeholder = 'Mỗi gợi ý một dòng. Người chạy vẫn có thể nhập giá trị khác.';
+        optionsInput.placeholder = 'Mỗi lựa chọn một dòng. Người chạy vẫn có thể tự nhập giá trị khác.';
         optionsInput.addEventListener('input', () => {
           params.options = optionsInput.value.split('\n').map(value => value.trim()).filter(Boolean);
         });
         const optionsHelp = document.createElement('small');
         optionsHelp.className = 'text-muted';
-        optionsHelp.textContent = 'Gợi ý xuất hiện khi nhập ở mỗi lần chạy; giá trị vẫn có thể tùy chỉnh.';
+        optionsHelp.textContent = 'Người chạy có thể chọn một giá trị hoặc chọn “Tự nhập” để đổi cho lần chạy đó.';
         optionsGroup.append(optionsLabel, optionsInput, optionsHelp);
         container.appendChild(optionsGroup);
 
