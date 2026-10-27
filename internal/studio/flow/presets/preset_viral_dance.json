@@ -41,7 +41,7 @@
       "x": 360,
       "y": 520,
       "params": {
-        "max_segment_seconds": 10,
+        "max_segment_seconds": 4,
         "require_audio": true
       }
     },

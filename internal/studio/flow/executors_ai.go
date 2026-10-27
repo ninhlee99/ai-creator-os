@@ -316,7 +316,7 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 		return fmt.Errorf("không tạo được thư mục tải media Muse: %w", err)
 	}
 
-	args := []string{cliPath}
+	args := []string{cliPath, "--timeout", "480000"}
 	if isNewThread {
 		// Bắt đầu 1 thread mới cho lần chạy Flow này
 		args = append(args, "--new-thread")
@@ -339,8 +339,9 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 	}
 	args = append(args, fullPrompt)
 
-	// 1. Gửi prompt tạo video tới Muse AI (cho phép thời gian chờ tối đa 3 phút)
-	cmdTimeout, cancel := context.WithTimeout(ctx, 180*time.Second)
+	// Muse có thể hoàn tất chat trước khi media sẵn sàng để tải về.
+	// Cho chat tối đa 8 phút và giữ thêm thời gian polling file đầu ra.
+	cmdTimeout, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(cmdTimeout, "node", args...)
@@ -349,10 +350,10 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 		return fmt.Errorf("muse-cli chat lỗi: %w: %s", err, string(out))
 	}
 
-	// 2. Tải media (video .mp4) do Muse tạo về thư mục làm việc (với cơ chế polling trong tối đa 15s chờ video render)
+	// 2. Poll media mới sinh tối đa 90 giây trước khi báo lỗi.
 	dlArgs := []string{cliPath, "--media", "current", "--download", "--dir", workDir}
 	var lastDlOut []byte
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 30; attempt++ {
 		dlCmd := exec.CommandContext(cmdTimeout, "node", dlArgs...)
 		dlOut, dlErr := dlCmd.CombinedOutput()
 		lastDlOut = dlOut
