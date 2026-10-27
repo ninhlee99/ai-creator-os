@@ -51,6 +51,9 @@
       this.currentRunId = null;
       this.lastWorkflowInputs = {};
       this.pollInterval = null;
+      this.pendingUploads = new Map();
+      this.uploadErrors = new Map();
+      this.mediaUploadSequence = new Map();
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
       this.workflowContractLoading = new Set();
       this.workflowContractRequests = new Map();
@@ -665,19 +668,20 @@
         fileInput.addEventListener('change', async (ev) => {
           const file = ev.target.files && ev.target.files[0];
           if (!file) return;
+          const uploadSequence = (this.mediaUploadSequence.get(node.id) || 0) + 1;
+          this.mediaUploadSequence.set(node.id, uploadSequence);
+          this.uploadErrors.delete(node.id);
 
-          // 1. Hiển thị tức thời preview cục bộ qua base64 cho riêng node này
+          // Preview cục bộ chỉ dùng để hiển thị; không đưa data URL vào graph params.
           const reader = new FileReader();
           reader.onload = (re) => {
+            if (this.mediaUploadSequence.get(node.id) !== uploadSequence) return;
             const dataUrl = re.target.result;
-            if (!node.params) node.params = {};
-            node.params.preview_url = dataUrl;
             this.updateNodePreview(node.id, dataUrl);
           };
           reader.readAsDataURL(file);
 
-          // 2. Tải trực tiếp file lên máy chủ AI Creator OS
-          try {
+          const uploadTask = (async () => {
             const formData = new FormData();
             formData.append('file', file);
             const resp = await fetch('/api/flow/upload', {
@@ -685,27 +689,44 @@
               body: formData
             });
             const res = await resp.json();
-            if (res.ok) {
-              if (!node.params) node.params = {};
-              node.params.preview_url = res.url;
-              if (config.type === 'video' || file.type.startsWith('video/')) {
-                node.params.video_path = res.file_path;
-                if (node.type === 'product_extractor' || node.type === 'background_remover') {
-                  node.params.source_video = res.file_path;
-                  node.params.source_image = res.file_path;
-                }
-              } else if (node.type === 'character_input') {
-                node.params.model_path = res.file_path;
-                node.params.character_image = res.file_path;
-              } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
-                node.params.source_image = res.file_path;
-              } else {
-                node.params.product_image = res.file_path;
-              }
-              this.updateNodePreview(node.id, res.url);
+            if (!resp.ok || !res.ok || !res.file_path || !res.url) {
+              throw new Error(res?.error || 'Máy chủ không lưu được tệp tải lên');
             }
+            if (this.mediaUploadSequence.get(node.id) !== uploadSequence) return;
+
+            if (!node.params) node.params = {};
+            node.params.preview_url = res.url;
+            if (config.type === 'video' || file.type.startsWith('video/')) {
+              node.params.video_path = res.file_path;
+              if (node.type === 'product_extractor' || node.type === 'background_remover') {
+                node.params.source_video = res.file_path;
+                node.params.source_image = res.file_path;
+              }
+            } else if (node.type === 'character_input') {
+              node.params.model_path = res.file_path;
+              node.params.character_image = res.file_path;
+            } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
+              node.params.source_image = res.file_path;
+            } else {
+              node.params.product_image = res.file_path;
+            }
+            this.uploadErrors.delete(node.id);
+            this.updateNodePreview(node.id, res.url);
+          })();
+
+          this.pendingUploads.set(node.id, uploadTask);
+          try {
+            await uploadTask;
           } catch (uploadErr) {
-            console.warn('Lỗi tải file lên server, tiếp tục dùng dữ liệu cục bộ', uploadErr);
+            if (this.mediaUploadSequence.get(node.id) === uploadSequence) {
+              this.uploadErrors.set(node.id, uploadErr.message || 'Tải tệp lên thất bại');
+              console.warn('Lỗi tải file lên server', uploadErr);
+              alert(`Không tải được tệp lên máy chủ: ${uploadErr.message || uploadErr}. Workflow chưa thể chạy bằng tệp mới.`);
+            }
+          } finally {
+            if (this.pendingUploads.get(node.id) === uploadTask) {
+              this.pendingUploads.delete(node.id);
+            }
           }
         });
 
@@ -1999,6 +2020,22 @@
       const cancelBtn = document.getElementById('btn-cancel-flow');
       const statusPill = this.statusPill;
       const runPanel = document.getElementById('flow-run-panel');
+
+      if (this.pendingUploads.size) {
+        if (runBtn) runBtn.disabled = true;
+        try {
+          while (this.pendingUploads.size) {
+            await Promise.allSettled([...this.pendingUploads.values()]);
+          }
+        } finally {
+          if (runBtn) runBtn.disabled = false;
+        }
+      }
+      const failedUpload = this.uploadErrors.values().next().value;
+      if (failedUpload) {
+        alert(`Sửa lỗi tải tệp trước khi chạy workflow: ${failedUpload}`);
+        return;
+      }
 
       let workflowInputs;
       try {
