@@ -17,6 +17,9 @@
     }
   };
 
+  const FLOW_CLIPBOARD_PREFIX = 'MIUNOVA_FLOW_CLIPBOARD_V1:';
+  const FLOW_CLIPBOARD_STORAGE_KEY = 'miunova.workflow.clipboard.v1';
+
   class FlowCanvas {
     constructor() {
       this.container = document.getElementById('flow-canvas-container');
@@ -152,9 +155,23 @@
 
       // Keyboard shortcuts
       window.addEventListener('keydown', (e) => {
+        const target = e.target instanceof Element ? e.target : null;
+        const isEditingText = Boolean(target?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]'));
+        if ((e.metaKey || e.ctrlKey) && !e.altKey && !isEditingText) {
+          if (e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            void this.copyCanvasContent();
+            return;
+          }
+          if (e.key.toLowerCase() === 'v') {
+            e.preventDefault();
+            void this.pasteCanvasContent();
+            return;
+          }
+        }
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedNodeId) {
           const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-          if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+          if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select' || isEditingText) return;
           this.deleteNode(this.selectedNodeId);
         } else if (e.key === '+' && !['input', 'textarea'].includes(document.activeElement?.tagName.toLowerCase())) {
           this.openAddNodeModal();
@@ -1475,6 +1492,156 @@
       this.render();
     }
 
+    createCanvasClipboardPayload() {
+      const selectedNode = this.selectedNodeId && this.graph.nodes.find(node => node.id === this.selectedNodeId);
+      const nodes = selectedNode ? [selectedNode] : (this.graph.nodes || []);
+      if (!nodes.length) return null;
+      const copiedIDs = new Set(nodes.map(node => String(node.id)));
+      const clonedNodes = nodes.map(node => {
+        const clone = JSON.parse(JSON.stringify(node));
+        delete clone.state;
+        return clone;
+      });
+      const edges = (this.graph.edges || [])
+        .filter(edge => copiedIDs.has(String(edge.from_node)) && copiedIDs.has(String(edge.to_node)))
+        .map(edge => JSON.parse(JSON.stringify(edge)));
+      return {
+        format: 'miunova-workflow-clipboard',
+        version: 1,
+        kind: selectedNode ? 'nodes' : 'workflow',
+        source_graph_id: this.graph.id || '',
+        nodes: clonedNodes,
+        edges
+      };
+    }
+
+    parseCanvasClipboard(text) {
+      if (typeof text !== 'string' || !text.startsWith(FLOW_CLIPBOARD_PREFIX)) return null;
+      try {
+        const payload = JSON.parse(text.slice(FLOW_CLIPBOARD_PREFIX.length));
+        if (payload?.format !== 'miunova-workflow-clipboard' || payload.version !== 1 || !['nodes', 'workflow'].includes(payload.kind)) return null;
+        if (!Array.isArray(payload.nodes) || !payload.nodes.length || !Array.isArray(payload.edges) || payload.nodes.length > 5000 || payload.edges.length > 20000) return null;
+        const seenIDs = new Set();
+        for (const node of payload.nodes) {
+          if (!node || typeof node.id !== 'string' || !node.id || typeof node.type !== 'string' || !node.type || seenIDs.has(node.id)) return null;
+          seenIDs.add(node.id);
+        }
+        for (const edge of payload.edges) {
+          if (!edge || typeof edge.from_node !== 'string' || typeof edge.to_node !== 'string' ||
+              !seenIDs.has(edge.from_node) || !seenIDs.has(edge.to_node) ||
+              typeof edge.from_port !== 'string' || typeof edge.to_port !== 'string') return null;
+        }
+        return payload;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    flashClipboardButton(buttonID, message) {
+      const label = document.querySelector(`#${buttonID} [data-clipboard-label]`);
+      if (!label) return;
+      const original = label.dataset.originalLabel || label.textContent;
+      label.dataset.originalLabel = original;
+      label.textContent = message;
+      window.clearTimeout(label._resetTimer);
+      label._resetTimer = window.setTimeout(() => {
+        if (label.isConnected) label.textContent = original;
+      }, 1500);
+    }
+
+    async copyCanvasContent() {
+      const payload = this.createCanvasClipboardPayload();
+      if (!payload) {
+        this.flashClipboardButton('btn-copy-canvas', 'Canvas trống');
+        return false;
+      }
+      const text = FLOW_CLIPBOARD_PREFIX + JSON.stringify(payload);
+      try { window.localStorage.setItem(FLOW_CLIPBOARD_STORAGE_KEY, text); } catch (_) {}
+      try {
+        if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      } catch (_) {
+        // Same-origin local storage remains available as an in-app clipboard fallback.
+      }
+      this.flashClipboardButton('btn-copy-canvas', payload.kind === 'workflow' ? 'Đã chép workflow' : 'Đã chép node');
+      return true;
+    }
+
+    async pasteCanvasContent() {
+      let text = '';
+      try {
+        if (navigator.clipboard?.readText) {
+          text = await navigator.clipboard.readText();
+        }
+      } catch (_) {
+        // Same-origin local storage remains available as an in-app clipboard fallback.
+      }
+      let payload = this.parseCanvasClipboard(text);
+      if (!payload) {
+        try { payload = this.parseCanvasClipboard(window.localStorage.getItem(FLOW_CLIPBOARD_STORAGE_KEY) || ''); } catch (_) {}
+      }
+      if (!payload) {
+        this.flashClipboardButton('btn-paste-canvas', 'Clipboard không có node/flow');
+        return false;
+      }
+      return this.pasteCanvasPayload(payload);
+    }
+
+    makePastedID(prefix, usedIDs) {
+      let id = '';
+      do {
+        id = `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+      } while (usedIDs.has(id));
+      usedIDs.add(id);
+      return id;
+    }
+
+    pasteCanvasPayload(payload) {
+      if (!payload || !Array.isArray(this.graph.nodes) || !Array.isArray(this.graph.edges)) return false;
+      const nodeIDs = new Set(this.graph.nodes.map(node => String(node.id)));
+      const edgeIDs = new Set(this.graph.edges.map(edge => String(edge.id)));
+      const remap = new Map();
+      payload.nodes.forEach(node => remap.set(node.id, this.makePastedID('node', nodeIDs)));
+
+      const positions = payload.nodes.map(node => ({ x: Number(node.x) || 0, y: Number(node.y) || 0 }));
+      const bounds = positions.reduce((box, point) => ({
+        left: Math.min(box.left, point.x),
+        top: Math.min(box.top, point.y),
+        right: Math.max(box.right, point.x + 280),
+        bottom: Math.max(box.bottom, point.y + 150)
+      }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+      const centerX = (this.container.clientWidth / 2 - this.panX) / this.scale;
+      const centerY = (this.container.clientHeight / 2 - this.panY) / this.scale;
+      const offsetX = centerX - (bounds.left + bounds.right) / 2;
+      const offsetY = centerY - (bounds.top + bounds.bottom) / 2;
+
+      const copiedNodes = payload.nodes.map(node => {
+        const clone = JSON.parse(JSON.stringify(node));
+        clone.id = remap.get(node.id);
+        clone.x = Math.round((Number(node.x) || 0) + offsetX);
+        clone.y = Math.round((Number(node.y) || 0) + offsetY);
+        clone.state = { status: 'idle', progress: 0 };
+        return clone;
+      });
+      const copiedEdges = payload.edges.flatMap(edge => {
+        const fromNode = remap.get(String(edge.from_node));
+        const toNode = remap.get(String(edge.to_node));
+        if (!fromNode || !toNode) return [];
+        const clone = JSON.parse(JSON.stringify(edge));
+        clone.id = this.makePastedID('edge', edgeIDs);
+        clone.from_node = fromNode;
+        clone.to_node = toNode;
+        return [clone];
+      });
+
+      this.graph.nodes.push(...copiedNodes);
+      this.graph.edges.push(...copiedEdges);
+      this.render();
+      this.selectNode(copiedNodes[0].id);
+      const kindLabel = payload.kind === 'workflow' ? 'workflow' : (copiedNodes.length === 1 ? 'node' : `${copiedNodes.length} node`);
+      this.flashClipboardButton('btn-paste-canvas', `Đã dán ${kindLabel}`);
+      return true;
+    }
+
     addNode(nodeType, x, y) {
       const def = this.definitions[nodeType];
       if (!def) return;
@@ -1797,6 +1964,11 @@
           this.openAddNodeModal();
         });
       }
+
+      const btnCopyCanvas = document.getElementById('btn-copy-canvas');
+      if (btnCopyCanvas) btnCopyCanvas.addEventListener('click', () => { void this.copyCanvasContent(); });
+      const btnPasteCanvas = document.getElementById('btn-paste-canvas');
+      if (btnPasteCanvas) btnPasteCanvas.addEventListener('click', () => { void this.pasteCanvasContent(); });
 
       // Save Graph button
       const btnSave = document.getElementById('btn-save-graph');

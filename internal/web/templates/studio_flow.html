@@ -65,6 +65,16 @@
           <span>Thêm node</span>
         </button>
 
+        <button type="button" class="wf-btn wf-btn-secondary wf-btn-xs" id="btn-copy-canvas" title="Chọn một node để sao chép node; bỏ chọn để sao chép toàn workflow. Hỗ trợ Ctrl/Cmd+C" aria-label="Sao chép node hoặc toàn workflow">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+          <span data-clipboard-label>Sao chép</span>
+        </button>
+
+        <button type="button" class="wf-btn wf-btn-secondary wf-btn-xs" id="btn-paste-canvas" title="Dán node hoặc workflow đã sao chép vào canvas này. Hỗ trợ Ctrl/Cmd+V" aria-label="Dán vào canvas">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><path d="M8 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-2"/><rect x="8" y="2" width="8" height="5" rx="1"/></svg>
+          <span data-clipboard-label>Dán</span>
+        </button>
+
         <button type="button" class="wf-btn wf-btn-secondary wf-btn-xs" id="btn-save-graph" title="Lưu cấu hình workflow (Ctrl+S)">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
           <span>Lưu</span>
