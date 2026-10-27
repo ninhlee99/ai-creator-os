@@ -13,7 +13,7 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 		ctx = context.Background()
 	}
 	if !p.FlowCreditsAcknowledged {
-		return "", fmt.Errorf("cần xác nhận Google Flow có thể dùng credits trước khi tạo video")
+		return "", fmt.Errorf("cần xác nhận Muse AI có thể dùng credits trước khi tạo video")
 	}
 	if ready, reason := s.ViralCharacterEditorStatus(ctx); !ready {
 		return "", fmt.Errorf("viral editor chưa sẵn sàng: %s", reason)

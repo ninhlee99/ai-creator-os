@@ -115,10 +115,10 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Engine đã đổi sau khi lập shot plan; hãy lập lại plan."))
 		return
 	}
-	if p.VideoEngine == studio.AffiliateVideoEngineGoogleFlow {
+	if p.VideoEngine == studio.AffiliateVideoEngineMuseAI || p.VideoEngine == studio.AffiliateVideoEngineGoogleFlow {
 		p.FlowCreditsAcknowledged = true
 		if r.MultipartForm != nil && len(r.MultipartForm.File["motion_clips"]) > 0 {
-			seeOther(w, r, "/studio?err="+url.QueryEscape("Bỏ clip tải lên hoặc chọn chế độ thủ công."))
+			seeOther(w, r, "/studio?err="+url.QueryEscape("Bỏ clip tải lên khi dùng Muse AI hoặc chọn chế độ thủ công."))
 			return
 		}
 	} else {

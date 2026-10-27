@@ -1,0 +1,169 @@
+{
+  "id": "preset_muse_video_shot",
+  "name": "Muse AI Shot Renderer",
+  "description": "Workflow con: nhận một video tham chiếu chuyển động và bộ ảnh nhân vật, tạo một shot bằng Muse AI rồi khớp thời lượng với nguồn.",
+  "category": "internal",
+  "is_preset": true,
+  "nodes": [
+    {
+      "id": "input_segment",
+      "type": "workflow_input",
+      "title": "Video tham chiếu chuyển động (tùy chọn)",
+      "category": "workflow",
+      "x": 60,
+      "y": 180,
+      "params": {
+        "key": "segment_video",
+        "label": "Video tham chiếu",
+        "value_type": "video",
+        "required": false
+      }
+    },
+    {
+      "id": "input_images",
+      "type": "workflow_input",
+      "title": "Ảnh khóa nhân vật",
+      "category": "workflow",
+      "x": 60,
+      "y": 360,
+      "params": {
+        "key": "reference_images",
+        "label": "Ảnh nhân vật",
+        "value_type": "image_list",
+        "required": true
+      }
+    },
+    {
+      "id": "input_duration",
+      "type": "workflow_input",
+      "title": "Thời lượng shot (giây)",
+      "category": "workflow",
+      "x": 60,
+      "y": 700,
+      "params": {
+        "key": "duration",
+        "label": "Thời lượng shot",
+        "value_type": "number",
+        "required": false
+      }
+    },
+    {
+      "id": "input_variables",
+      "type": "workflow_input",
+      "title": "Biến prompt của shot",
+      "category": "workflow",
+      "x": 60,
+      "y": 540,
+      "params": {
+        "key": "variables",
+        "label": "Biến prompt",
+        "value_type": "config",
+        "required": true
+      }
+    },
+    {
+      "id": "prompt",
+      "type": "prompt_template",
+      "title": "Prompt shot Muse AI",
+      "category": "process",
+      "x": 420,
+      "y": 420,
+      "params": {
+        "template": "Create one continuous vertical 9:16 video shot lasting about {{duration_seconds}} seconds. Preserve identity, face, hair and body proportions from the first character reference photo(s) only. Use any attached reference video only for observed movement and framing; never copy its person, outfit, location or product. Observed movement: {{movement_analysis}}. Dance style: {{dance_type}}. Expression: {{expression}}. Wardrobe direction: {{outfit_desc}} {{wardrobe_styling}}. Setting: {{environment_desc}} {{scene_setting}}. Lighting: {{lighting_desc}} {{lens_light}}. When product information is supplied, reproduce the product from the last product-only reference image exactly; ignore any people, pose, background or text in product references. Do not change its category, color, silhouette, material or details. Product: {{product_name}}. Category: {{product_category}}. Visible attributes: {{product_description}}. Required use mode: {{product_use_mode}}. Keep this product visible during the real use action: {{action}}; {{product_interaction}}. Product detail: {{product_focus}}. Framing: {{framing}}. Camera movement: {{camera_move}}. Emotional beat: {{emotion_beat}}. Motion direction: {{motion_direction}}. Additional shot direction: {{shot_prompt}}. Follow supplied shot directions. Keep natural body mechanics, stable anatomy and one continuous camera move. No cuts, product substitutions, unrelated clothing or accessories, captions, text, watermark or unsupported claims."
+      }
+    },
+    {
+      "id": "muse",
+      "type": "muse_ai_video",
+      "title": "Tạo video shot bằng Muse AI",
+      "category": "ai",
+      "x": 760,
+      "y": 280,
+      "params": {
+        "aspect": "9:16"
+      }
+    },
+    {
+      "id": "trim",
+      "type": "video_trim",
+      "title": "Khớp thời lượng shot",
+      "category": "process",
+      "x": 1100,
+      "y": 280,
+      "params": {
+        "tolerance_seconds": 0.15
+      }
+    },
+    {
+      "id": "output_video",
+      "type": "workflow_output",
+      "title": "Video shot",
+      "category": "workflow",
+      "x": 1460,
+      "y": 280,
+      "params": {
+        "key": "video",
+        "label": "Video shot",
+        "value_type": "video"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "input_variables",
+      "from_port": "value",
+      "to_node": "prompt",
+      "to_port": "variables"
+    },
+    {
+      "id": "e2",
+      "from_node": "prompt",
+      "from_port": "prompt",
+      "to_node": "muse",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e3",
+      "from_node": "input_images",
+      "from_port": "value",
+      "to_node": "muse",
+      "to_port": "reference_images"
+    },
+    {
+      "id": "e4",
+      "from_node": "input_segment",
+      "from_port": "value",
+      "to_node": "muse",
+      "to_port": "reference_video"
+    },
+    {
+      "id": "e5",
+      "from_node": "muse",
+      "from_port": "video_out",
+      "to_node": "trim",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e6",
+      "from_node": "input_segment",
+      "from_port": "value",
+      "to_node": "trim",
+      "to_port": "reference_video"
+    },
+    {
+      "id": "e7",
+      "from_node": "trim",
+      "from_port": "video_out",
+      "to_node": "output_video",
+      "to_port": "value"
+    },
+    {
+      "id": "e_duration",
+      "from_node": "input_duration",
+      "from_port": "value",
+      "to_node": "trim",
+      "to_port": "duration"
+    }
+  ]
+}

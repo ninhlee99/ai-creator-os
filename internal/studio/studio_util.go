@@ -23,11 +23,23 @@ func (s *Studio) CancelRunning(id string) bool {
 }
 
 func copyStudioFile(src, dst string) error {
-	b, err := os.ReadFile(src)
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, b, 0o644)
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
 }
 
 // DeleteJob cancels a running job (if any), waits for its goroutine to exit,

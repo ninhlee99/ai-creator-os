@@ -122,6 +122,7 @@ type ExecutionContext struct {
 	Log               func(msg string)
 	NodeStatus        func(nodeID string, state NodeState)
 	EngineCall        func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
+	MuseRender        func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error
 	MediaGen          any
 	VisionEval        func(ctx context.Context, prompt string, imagePath string) (string, error)
 	AnalyzeImages     func(ctx context.Context, prompt string, imagePaths []string) (string, error)

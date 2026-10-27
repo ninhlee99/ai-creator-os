@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const affiliateMotionClipsError = "chế độ thủ công cần một clip chuyển động thật cho mỗi shot; hoặc chọn Google Flow để tạo clip từ ảnh nhân vật và listing"
+const affiliateMotionClipsError = "chế độ thủ công cần một clip chuyển động thật cho mỗi shot; hoặc chọn Muse AI để tự tạo footage từ ảnh nhân vật và listing"
 
 func affiliateFlowReferencePaths(p AffiliateParams) []string {
 	paths := []string{p.ModelPhoto, p.ProductPhoto}
@@ -31,20 +31,13 @@ func affiliateFlowReferencePaths(p AffiliateParams) []string {
 	return refs
 }
 
-func AffiliateFlowVideoPrompt(productName string, shot ProShot) string {
-	return fmt.Sprintf(`Create one 8-second vertical 9:16 commercial video shot. Reference image 1 is the channel character: preserve this same adult person's identity, face, hair, skin tone, body proportions, and natural movement. Reference image 2 is the exact product from the listing; reference image 3, when present, shows another angle/detail of that same item. The character must physically wear, carry, apply, operate, prepare, or consume the exact product as required by use mode %q. Never merely pose beside it, hold apparel instead of wearing it, or replace it with a similar product. Preserve visible listing details: %s. Shot action: %s. Product interaction: %s. Framing: %s. Camera movement: %s. Lens and light: %s. Emotional beat: %s. Wardrobe continuity: %s. Setting: %s. Motion: %s. Keep the product in frame and in active use throughout; reserve a short sharp detail moment for focus. Natural body mechanics, stable anatomy, one continuous camera move, polished commercial lighting, clean composition, no cuts, no captions, no text, no watermark. Do not invent product claims or accessories.`,
-		shot.ProductUseMode, shot.ProductFocus, shot.Action, shot.ProductInteraction,
-		shot.ShotSize, shot.CameraMove, shot.LensLight, shot.EmotionBeat,
-		shot.WardrobeStyling, shot.SceneSetting, shot.VideoPrompt)
-}
-
 // AutoAffiliateProductionReady reports whether Studio can produce all footage
 // without operator-supplied clips. Current manual workflow is not autonomous.
 func (s *Studio) AutoAffiliateProductionReady() (bool, string) {
 	if _, err := s.ResolveTikTokRadarMusic(context.Background()); err != nil {
 		return false, err.Error()
 	}
-	if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
+	if ready, reason := s.MuseVideoReady(context.Background()); !ready {
 		return false, reason
 	}
 	if s.llm == nil || !s.llm.Healthy(context.Background()) {
@@ -56,7 +49,7 @@ func (s *Studio) AutoAffiliateProductionReady() (bool, string) {
 	if _, ok := s.mg.(visualImageAnalyzer); !ok {
 		return false, "media engine chưa hỗ trợ phân tích ảnh và QC video"
 	}
-	return true, "Google Flow, Product Analyst, Director và visual QC sẵn sàng"
+	return true, "Muse AI, Product Analyst, Director và visual QC sẵn sàng"
 }
 
 func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
@@ -110,7 +103,10 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 		return "", fmt.Errorf("affiliate production chỉ nhận video có footage chuyển động; chế độ ảnh tĩnh không được xuất thành video hoàn chỉnh")
 	}
 	if p.VideoEngine == "" {
-		p.VideoEngine = AffiliateVideoEngineGoogleFlow
+		p.VideoEngine = AffiliateVideoEngineMuseAI
+	}
+	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
+		p.VideoEngine = AffiliateVideoEngineMuseAI
 	}
 	p.OutputResolution, err = NormalizeVideoOutputResolution(p.OutputResolution)
 	if err != nil {
@@ -122,11 +118,11 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.AspectRatio != "9:16" {
 		return "", fmt.Errorf("affiliate hiện chỉ hỗ trợ khung dọc 9:16")
 	}
-	if p.VideoEngine != AffiliateVideoEngineGoogleFlow && p.VideoEngine != AffiliateVideoEngineManual {
+	if p.VideoEngine != AffiliateVideoEngineMuseAI && p.VideoEngine != AffiliateVideoEngineManual {
 		return "", fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow && !p.FlowCreditsAcknowledged {
-		return "", fmt.Errorf("cần xác nhận Google Flow có thể dùng credits trước khi tạo video")
+	if p.VideoEngine == AffiliateVideoEngineMuseAI && !p.FlowCreditsAcknowledged {
+		return "", fmt.Errorf("cần xác nhận Muse AI có thể dùng credits trước khi tạo video")
 	}
 	if p.VideoEngine == AffiliateVideoEngineManual && !p.HasClips() {
 		return "", fmt.Errorf("%s", affiliateMotionClipsError)
@@ -135,8 +131,8 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.VideoEngine == AffiliateVideoEngineManual && len(p.Clips) != expectedClips {
 		return "", fmt.Errorf("video %ds cần %d clip theo shot list; đã nhận %d", p.Seconds, expectedClips, len(p.Clips))
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow && p.HasClips() {
-		return "", fmt.Errorf("Google Flow mode tạo mới từng shot; bỏ clip tải lên hoặc chọn chế độ thủ công")
+	if p.VideoEngine == AffiliateVideoEngineMuseAI && p.HasClips() {
+		return "", fmt.Errorf("Muse AI tạo mới từng shot; bỏ clip tải lên hoặc chọn chế độ thủ công")
 	}
 	if !IsTikTokVideoURL(p.SourceMusicVideoURL) {
 		return "", fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi tạo affiliate")
@@ -199,9 +195,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if _, ok := s.mg.(visualImageAnalyzer); !ok {
 		return "", fmt.Errorf("media engine chưa hỗ trợ visual QC ảnh/video affiliate")
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-		if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
-			return "", fmt.Errorf("Google Flow chưa sẵn sàng: %s", reason)
+	if p.VideoEngine == AffiliateVideoEngineMuseAI {
+		if ready, reason := s.MuseVideoReady(context.Background()); !ready {
+			return "", fmt.Errorf("Muse AI chưa sẵn sàng: %s", reason)
 		}
 	}
 	// Consent applies to this submission only; retries must ask again.

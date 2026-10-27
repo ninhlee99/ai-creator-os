@@ -54,7 +54,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
-	// Tự động xác nhận quyền sử dụng Flow credits cho mọi tác vụ sản xuất viral.
+	// Tự động xác nhận quyền sử dụng Muse AI credits cho tác vụ viral.
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Vui lòng nhập chủ đề video")

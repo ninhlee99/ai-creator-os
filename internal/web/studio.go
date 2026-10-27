@@ -3,7 +3,6 @@ package web
 import (
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
-	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,7 +31,7 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 	if mg := s.Studio.MediaGen(); mg != nil {
 		mgOK = mg.Healthy(r.Context())
 	}
-	flowReady, flowStatus := s.Studio.WebAIVideoReady(studio.AffiliateVideoEngineGoogleFlow)
+	flowReady, flowStatus := s.Studio.MuseVideoReady(r.Context())
 
 	var accountNames []string
 	var accountOptions []*network.Account

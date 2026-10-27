@@ -3,10 +3,12 @@ package flow
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -262,6 +264,9 @@ func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error) {
 			return "test_project", writeDummyVideo(&ExecutionContext{WorkDir: workDir}, outPath, 3.0)
 		},
+		MuseRender: func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error {
+			return runFlowTestFFmpeg(ctx, "-y", "-f", "lavfi", "-i", "color=c=purple:s=540x960:d=10", "-t", "10", "-c:v", "libx264", "-pix_fmt", "yuv420p", outPath)
+		},
 		VisionEval: func(ctx context.Context, prompt string, imagePath string) (string, error) {
 			return "Asian female model wearing elegant outfit", nil
 		},
@@ -295,6 +300,14 @@ func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 			}
 			return nil
 		},
+	}
+	execCtx.ResolveWorkflow = func(id string) (*FlowGraph, error) {
+		for _, graph := range GetPresetGraphs() {
+			if graph.ID == id {
+				return &graph, nil
+			}
+		}
+		return nil, fmt.Errorf("workflow test không tìm thấy: %s", id)
 	}
 
 	return execCtx, tmpDir
@@ -436,8 +449,32 @@ func TestTC08_ExecuteAINodes(t *testing.T) {
 func TestTC09_FullPresetViralDanceExecution(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)
+	ctx.FFmpegRunner = func(ctx context.Context, args ...string) error {
+		return runFlowTestFFmpeg(ctx, args...)
+	}
+	ctx.ResolveWorkflow = func(id string) (*FlowGraph, error) {
+		for _, graph := range GetPresetGraphs() {
+			if graph.ID == id {
+				return &graph, nil
+			}
+		}
+		return nil, fmt.Errorf("workflow test không tìm thấy: %s", id)
+	}
+	sourceVideo := filepath.Join(tmpDir, "work", "sample_916.mp4")
+	if err := runFlowTestFFmpeg(context.Background(), "-y", "-f", "lavfi", "-i", "color=c=purple:s=540x960:d=3", "-f", "lavfi", "-i", "sine=frequency=440:duration=3", "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", sourceVideo); err != nil {
+		t.Fatalf("tạo video nguồn test: %v", err)
+	}
 
 	preset := PresetViralDance()
+	for i := range preset.Nodes {
+		switch preset.Nodes[i].ID {
+		case "video":
+			preset.Nodes[i].Params["video_path"] = sourceVideo
+			preset.Nodes[i].Params["require_radar_dance"] = false
+		case "resolution_input":
+			preset.Nodes[i].Params["value"] = "1080p"
+		}
+	}
 	run, err := ExecuteGraph(ctx, &preset)
 	if err != nil {
 		logMsg := ""
@@ -466,14 +503,41 @@ func TestTC09_FullPresetViralDanceExecution(t *testing.T) {
 	}
 }
 
+func runFlowTestFFmpeg(ctx context.Context, args ...string) error {
+	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
+}
+
 func TestTC10_FullPresetAffiliateShowcaseExecution(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)
+	ctx.FFmpegRunner = func(ctx context.Context, args ...string) error {
+		return runFlowTestFFmpeg(ctx, args...)
+	}
+	musicPath := filepath.Join(tmpDir, "work", "preview.mp3")
+	if err := runFlowTestFFmpeg(context.Background(), "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-c:a", "libmp3lame", musicPath); err != nil {
+		t.Fatalf("tạo nhạc test: %v", err)
+	}
 
 	preset := PresetAffiliateShowcase()
+	for i := range preset.Nodes {
+		switch preset.Nodes[i].ID {
+		case "music":
+			preset.Nodes[i].Params["audio_path"] = musicPath
+		case "resolution":
+			preset.Nodes[i].Params["value"] = "1080p"
+		}
+	}
 	run, err := ExecuteGraph(ctx, &preset)
 	if err != nil {
-		t.Fatalf("TC-10: Thực thi PresetAffiliateShowcase thất bại: %v (Log: %s)", err, run.Log)
+		logMsg := ""
+		if run != nil {
+			logMsg = run.Log
+		}
+		t.Fatalf("TC-10: Thực thi PresetAffiliateShowcase thất bại: %v (Log: %s)", err, logMsg)
 	}
 
 	if run.Status != "completed" {

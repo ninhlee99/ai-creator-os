@@ -228,7 +228,7 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 		return p, fmt.Errorf("nhập tên sản phẩm theo listing")
 	}
 	if p.VideoEngine == "" {
-		p.VideoEngine = studio.AffiliateVideoEngineGoogleFlow
+		p.VideoEngine = studio.AffiliateVideoEngineMuseAI
 	}
 	return p, nil
 }

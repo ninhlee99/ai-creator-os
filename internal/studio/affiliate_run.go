@@ -20,20 +20,23 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		s.appendLog(id, "LỖI: job Affiliate cũ dùng chế độ ảnh tĩnh; tạo job mới bằng footage chuyển động và ảnh listing thật.")
 		return
 	}
+	if p.VideoEngine == AffiliateVideoEngineGoogleFlow || p.VideoEngine == "" {
+		p.VideoEngine = AffiliateVideoEngineMuseAI
+	}
 	if p.VideoEngine == AffiliateVideoEngineManual && !p.HasClips() {
 		s.setStatus(id, StatusFailed, 100)
 		s.appendLog(id, "LỖI: "+affiliateMotionClipsError)
 		return
 	}
-	if p.VideoEngine != AffiliateVideoEngineGoogleFlow && p.VideoEngine != AffiliateVideoEngineManual {
+	if p.VideoEngine != AffiliateVideoEngineMuseAI && p.VideoEngine != AffiliateVideoEngineManual {
 		s.setStatus(id, StatusFailed, 100)
 		s.appendLog(id, fmt.Sprintf("LỖI: engine affiliate không được hỗ trợ: %q", p.VideoEngine))
 		return
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-		if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
+	if p.VideoEngine == AffiliateVideoEngineMuseAI {
+		if ready, reason := s.MuseVideoReady(context.Background()); !ready {
 			s.setStatus(id, StatusFailed, 100)
-			s.appendLog(id, "LỖI: Google Flow chưa sẵn sàng: "+reason)
+			s.appendLog(id, "LỖI: Muse AI chưa sẵn sàng: "+reason)
 			return
 		}
 	}
@@ -155,42 +158,38 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		fail(fmt.Errorf("cần đúng %d clip chuyển động theo shot list; đã nhận %d", len(shots), len(p.Clips)))
 		return
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-		s.appendLog(id, fmt.Sprintf("PRODUCTION_START: tạo %d shot riêng bằng Google Flow Ingredients; dùng ảnh nhân vật và listing thật", len(shots)))
-	} else {
-		s.appendLog(id, fmt.Sprintf("PRODUCTION_START: chuẩn hóa %d clip chuyển động người dùng cung cấp", len(shots)))
+	if p.VideoEngine == AffiliateVideoEngineMuseAI {
+		s.appendLog(id, fmt.Sprintf("WORKFLOW_START: gửi %d shot đã duyệt qua Affiliate Workflow API và Muse AI", len(shots)))
+		final, err := s.runAffiliateWorkflow(ctx, id, work, p, productProfile, shots)
+		if err != nil {
+			fail(err)
+			return
+		}
+		s.appendLog(id, "WORKFLOW_PASS: Muse AI, trim shot, concat, sound, grade, upscale và export hoàn tất")
+		s.setStatus(id, StatusRunning, 85)
+		if err := s.runAffiliateVisualGate(ctx, id, final, work, p, productProfile, shots); err != nil {
+			_ = os.Remove(final)
+			fail(err)
+			return
+		}
+		s.setOutput(id, filepath.Base(final))
+		caption := strings.TrimSpace(p.FixedCaption)
+		if caption == "" {
+			caption = p.ProductName
+		} else {
+			s.appendLog(id, "Dùng chú thích bạn đã sửa.")
+		}
+		s.setCaption(id, caption)
+		s.setStatus(id, StatusDone, 100)
+		s.appendLog(id, "Xong: "+filepath.Base(final))
+		s.fireOnDone(id)
+		return
 	}
+	s.appendLog(id, fmt.Sprintf("PRODUCTION_START: chuẩn hóa %d clip chuyển động người dùng cung cấp", len(shots)))
 	clips := make([]string, 0, len(shots))
 	clipDurations := make([]float64, 0, len(shots))
 	for i, sh := range shots {
-		clipInput := ""
-		if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-			clipInput = filepath.Join(work, fmt.Sprintf("flow-shot-%02d.mp4", i+1))
-			refs := affiliateFlowReferencePaths(p)
-			if len(refs) < 2 {
-				fail(fmt.Errorf("shot %d: Google Flow cần ít nhất ảnh nhân vật và ảnh listing sản phẩm", i+1))
-				return
-			}
-			prompt := AffiliateFlowVideoPrompt(p.ProductName, sh)
-			s.appendLog(id, fmt.Sprintf("FLOW_SHOT_START: %d/%d · %s · focus=%s · use=%s", i+1, len(shots), sh.ShotSize, sh.ProductFocus, sh.ProductUseMode))
-			_, err := s.GenerateWebAIVideo(ctx, AffiliateVideoEngineGoogleFlow, WebAIVideoRequest{
-				Mode: "ingredients", Prompt: prompt, AspectRatio: "VIDEO_ASPECT_RATIO_PORTRAIT", ImagePaths: refs,
-			}, clipInput, func(line string) {
-				if strings.TrimSpace(line) != "" {
-					s.appendLog(id, line)
-				}
-			})
-			if err != nil {
-				fail(fmt.Errorf("Google Flow shot %d/%d: %w", i+1, len(shots), err))
-				return
-			}
-			if !fileExists(clipInput) || !isViralVideoFile(clipInput) {
-				fail(fmt.Errorf("Google Flow shot %d/%d không trả MP4 hợp lệ", i+1, len(shots)))
-				return
-			}
-		} else {
-			clipInput = strings.TrimSpace(p.Clips[i])
-		}
+		clipInput := strings.TrimSpace(p.Clips[i])
 		assetPrompt := fmt.Sprintf("%s · %s · %s · wardrobe: %s · setting: %s · product: %s · focus: %s · motion prompt: %s",
 			sh.ShotSize, sh.LensLight, sh.EmotionBeat, sh.WardrobeStyling, sh.SceneSetting,
 			sh.ProductInteraction, sh.ProductFocus, sh.VideoPrompt)
@@ -207,11 +206,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 		clipDurations = append(clipDurations, float64(sh.Seconds))
 		s.setStatus(id, StatusRunning, 10+int(60*float64(i+1)/float64(len(shots))))
 	}
-	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-		s.appendLog(id, fmt.Sprintf("PRODUCTION_PASS: Google Flow đã tạo %d shot có ingredients", len(clips)))
-	} else {
-		s.appendLog(id, fmt.Sprintf("PRODUCTION_PASS: đã nhận %d clip chuyển động thủ công", len(clips)))
-	}
+	s.appendLog(id, fmt.Sprintf("PRODUCTION_PASS: đã nhận %d clip chuyển động thủ công", len(clips)))
 	silent := filepath.Join(work, "silent.mp4")
 	s.appendLog(id, fmt.Sprintf("REMASTER_START: ghép shot và upscale một lượt lên %s · giữ trọn khung dọc", strings.ToUpper(p.OutputResolution)))
 	if err := ConcatClipsToMaster(ctx, clips, clipDurations, p.AspectRatio, p.OutputResolution, silent, false); err != nil {

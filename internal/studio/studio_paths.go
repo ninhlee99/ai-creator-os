@@ -3,7 +3,10 @@ package studio
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 func (s *Studio) Close() error { return s.db.Close() }
@@ -33,10 +36,37 @@ func (s *Studio) WorkDir() string { return s.workRoot }
 // MediaGen exposes the provider (dashboard health card).
 func (s *Studio) MediaGen() MediaGen { return s.mg }
 
-// ViralCharacterEditorStatus reports whether Flow character editing and
+// MuseVideoReady reports whether the real Muse browser session can render.
+func (s *Studio) MuseVideoReady(ctx context.Context) (bool, string) {
+	cliPath := filepath.Join("data", "third_party", "Muse-Chat-MCP", "muse-cli.mjs")
+	serverPath := filepath.Join("data", "third_party", "Muse-Chat-MCP", "muse-server.mjs")
+	if !fileExists(cliPath) || !fileExists(serverPath) {
+		return false, "Muse-Chat-MCP chưa được cài đầy đủ"
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		return false, "chưa cài Node.js để chạy Muse-Chat-MCP"
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(checkCtx, node, serverPath, "--self-test").CombinedOutput()
+	status := string(output)
+	if err != nil {
+		return false, "không kiểm tra được phiên Muse AI"
+	}
+	if !strings.Contains(status, `"loggedIn":true`) || !strings.Contains(status, `"composerReady":true`) {
+		return false, "Muse AI chưa đăng nhập hoặc composer chưa sẵn sàng"
+	}
+	return true, "Muse AI đã đăng nhập và sẵn sàng tạo video"
+}
+
+// ViralCharacterEditorStatus reports whether Muse rendering and
 // the required visual QC analyzer are ready.
 func (s *Studio) ViralCharacterEditorStatus(ctx context.Context) (bool, string) {
-	if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
+	if ready, reason := s.MuseVideoReady(ctx); !ready {
 		return false, reason
 	}
 	if s.mg == nil || !s.mg.Healthy(ctx) {
@@ -45,7 +75,7 @@ func (s *Studio) ViralCharacterEditorStatus(ctx context.Context) (bool, string) 
 	if _, ok := s.mg.(visualImageAnalyzer); !ok {
 		return false, "media engine chưa hỗ trợ visual QC video viral"
 	}
-	return true, "Google Flow (Web AI) Ingredients & Visual QC sẵn sàng · Khớp 100% vũ đạo & âm thanh nguồn"
+	return true, "Muse AI và visual QC sẵn sàng"
 }
 
 // OutputPath resolves a job's output filename to its full filesystem path.

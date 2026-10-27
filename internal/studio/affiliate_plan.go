@@ -64,17 +64,14 @@ func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (A
 		return empty, fmt.Errorf("thiếu ảnh listing sản phẩm thật")
 	}
 	if p.VideoEngine == "" {
-		p.VideoEngine = AffiliateVideoEngineGoogleFlow
-	}
-	if p.VideoEngine != AffiliateVideoEngineGoogleFlow && p.VideoEngine != AffiliateVideoEngineManual {
-		return empty, fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
+		p.VideoEngine = AffiliateVideoEngineMuseAI
 	}
 	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
-		if ready, reason := s.WebAIVideoReady(AffiliateVideoEngineGoogleFlow); !ready {
-			return empty, fmt.Errorf("Google Flow chưa sẵn sàng: %s", reason)
-		}
+		p.VideoEngine = AffiliateVideoEngineMuseAI
 	}
-
+	if p.VideoEngine != AffiliateVideoEngineMuseAI && p.VideoEngine != AffiliateVideoEngineManual {
+		return empty, fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
+	}
 	accountPhotos := s.queryAccountModelPhotos(p.AccountID)
 	allowed := make(map[string]bool, len(accountPhotos))
 	for _, photo := range accountPhotos {

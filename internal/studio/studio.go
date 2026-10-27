@@ -40,6 +40,7 @@ const (
 	AffiliateModePhoto             = "photo"
 	AffiliateModeShots             = "shots"
 	AffiliateVideoEngineGoogleFlow = "googleflow"
+	AffiliateVideoEngineMuseAI     = "museai"
 	AffiliateVideoEngineManual     = "manual"
 	VideoOutput4K                  = "4k"
 	VideoOutput8K                  = "8k"

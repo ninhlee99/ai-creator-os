@@ -249,8 +249,33 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		}
 		ingredients = append(ingredients, path)
 	}
+	for _, key := range []string{"reference_images", "ingredients", "character_images", "product_images"} {
+		items, ok := workflowMapItems(inputs[key])
+		if !ok {
+			continue
+		}
+		for _, item := range items {
+			path, ok := item.(string)
+			if !ok || strings.TrimSpace(path) == "" {
+				continue
+			}
+			if !fileExists(path) || !isImageFile(path) {
+				return nil, fmt.Errorf("Muse AI reference image is invalid: %s", key)
+			}
+			ingredients = append(ingredients, path)
+		}
+	}
+	if referenceVideo := inputString(inputs, "reference_video", ""); referenceVideo != "" {
+		if !fileExists(referenceVideo) || !isVideoFile(referenceVideo) {
+			return nil, fmt.Errorf("Muse AI reference video is invalid")
+		}
+		ingredients = append(ingredients, referenceVideo)
+	}
 
-	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", node.ID))
+	if err := os.MkdirAll(ctx.WorkDir, 0o755); err != nil {
+		return nil, fmt.Errorf("không tạo được thư mục làm việc cho Muse AI: %w", err)
+	}
+	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", safeWorkflowPathPart(node.ID)))
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
 
 	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
@@ -260,19 +285,15 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt vào Muse AI (tạo thread mới: %v)...", isNewThread))
 
 	// 1. Gọi trực tiếp Muse-Chat-MCP để Meta Muse AI tạo video thực thụ trong thread của flow
-	museErr := callMuseChatMCP(ctx.Context, isNewThread, threadTitle, prompt, ingredients, outPath)
-	if museErr != nil || !fileExists(outPath) {
-		if ctx.EngineCall == nil {
-			return nil, fmt.Errorf("Muse AI không tạo được video qua MCP: %v", museErr)
-		}
-		ctx.Log(fmt.Sprintf("MuseAIVideoNode: MCP không có video (%v); thử provider Muse đã cấu hình", museErr))
-		aspect := nodeParamString(node.Params, "aspect", "9:16")
-		if _, err := ctx.EngineCall(ctx.Context, "museai", prompt, ingredients, aspect, outPath); err != nil {
-			return nil, fmt.Errorf("Muse AI không tạo được video qua MCP (%v) hoặc provider (%w)", museErr, err)
-		}
+	render := ctx.MuseRender
+	if render == nil {
+		render = callMuseChatMCP
 	}
-	if !fileExists(outPath) {
-		return nil, fmt.Errorf("Muse AI provider hoàn tất nhưng không tạo được video đầu ra")
+	if err := render(ctx.Context, isNewThread, threadTitle, prompt, ingredients, outPath); err != nil {
+		return nil, fmt.Errorf("Muse AI không tạo được video qua MCP: %w", err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return nil, fmt.Errorf("Muse AI không tạo được video đầu ra hợp lệ")
 	}
 	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
 	return map[string]any{"video_out": outPath}, nil
@@ -286,8 +307,14 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 		return fmt.Errorf("không tìm thấy muse-cli.mjs tại %s", cliPath)
 	}
 
-	workDir := filepath.Dir(outPath)
-	_ = os.MkdirAll(workDir, 0o755)
+	workDir := filepath.Join(filepath.Dir(outPath), safeWorkflowPathPart(strings.TrimSuffix(filepath.Base(outPath), filepath.Ext(outPath))+"_download"))
+	workDir, err := filepath.Abs(workDir)
+	if err != nil {
+		return fmt.Errorf("không xác định được thư mục tải media Muse: %w", err)
+	}
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		return fmt.Errorf("không tạo được thư mục tải media Muse: %w", err)
+	}
 
 	args := []string{cliPath}
 	if isNewThread {
@@ -332,14 +359,27 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 		if dlErr == nil {
 			// Tìm tệp video .mp4 vừa tải về và chuyển vào outPath
 			matches, _ := filepath.Glob(filepath.Join(workDir, "*.mp4"))
-			for i := len(matches) - 1; i >= 0; i-- {
-				latestVideo := matches[i]
-				if latestVideo != outPath && !strings.Contains(latestVideo, "_temp") {
-					if fi, err := os.Stat(latestVideo); err == nil && fi.Size() > 50000 {
-						_ = copyFile(latestVideo, outPath)
-						if fileExists(outPath) {
-							return nil
-						}
+			sort.Slice(matches, func(i, j int) bool {
+				left, leftErr := os.Stat(matches[i])
+				right, rightErr := os.Stat(matches[j])
+				if leftErr != nil {
+					return false
+				}
+				if rightErr != nil {
+					return true
+				}
+				return left.ModTime().After(right.ModTime())
+			})
+			for _, latestVideo := range matches {
+				if strings.Contains(latestVideo, "_temp") || !isVideoFile(latestVideo) {
+					continue
+				}
+				if fi, err := os.Stat(latestVideo); err == nil && fi.Size() > 50000 {
+					if err := copyFile(latestVideo, outPath); err != nil {
+						return fmt.Errorf("không chép được media Muse mới tải: %w", err)
+					}
+					if fileExists(outPath) && isVideoFile(outPath) {
+						return nil
 					}
 				}
 			}

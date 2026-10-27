@@ -431,22 +431,47 @@ func executeAudioSource(ctx *ExecutionContext, node *FlowNode, inputs map[string
 
 func executePromptTemplate(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	template := nodeParamString(node.Params, "template", "Cinematic vertical 9:16 video of {character} {motion}, showcasing {product}. Beautiful soft lighting, 4k ultra realistic, smooth motion.")
-
-	charDesc := inputString(inputs, "character_desc", "the adult character from the reference images")
-	prodDesc := inputString(inputs, "product_desc", "the featured product")
-	motionDesc := inputString(inputs, "motion_desc", "performing a graceful and dynamic modern dance choreography")
-
-	prompt := strings.ReplaceAll(template, "{character}", charDesc)
-	prompt = strings.ReplaceAll(prompt, "{product}", prodDesc)
-	prompt = strings.ReplaceAll(prompt, "{motion}", motionDesc)
-
-	// Chuẩn hóa khoảng trắng
-	prompt = strings.Join(strings.Fields(prompt), " ")
+	variables := map[string]any{
+		"character": inputString(inputs, "character_desc", "the adult character from the reference images"),
+		"product":   inputString(inputs, "product_desc", "the featured product"),
+		"motion":    inputString(inputs, "motion_desc", "performing a graceful and dynamic modern dance choreography"),
+	}
+	for key, value := range inputs {
+		if key != "variables" && value != nil {
+			variables[key] = value
+		}
+	}
+	for key, value := range promptTemplateVariables(node.Params["variables"]) {
+		variables[key] = value
+	}
+	for key, value := range promptTemplateVariables(inputs["variables"]) {
+		variables[key] = value
+	}
+	prompt := expandPromptTemplate(template, variables)
 	ctx.Log(fmt.Sprintf("PromptTemplateNode: Đã tạo câu lệnh prompt (%d ký tự)", len(prompt)))
 
 	return map[string]any{
-		"prompt": prompt,
+		"prompt":           prompt,
+		"workflow_context": map[string]any{"variables": variables},
 	}, nil
+}
+
+func promptTemplateVariables(value any) map[string]any {
+	variables, ok := workflowMapObject(value)
+	if !ok {
+		return map[string]any{}
+	}
+	return variables
+}
+
+func expandPromptTemplate(template string, variables map[string]any) string {
+	prompt := template
+	for key, value := range variables {
+		text := strings.TrimSpace(fmt.Sprint(value))
+		prompt = strings.ReplaceAll(prompt, "{{"+key+"}}", text)
+		prompt = strings.ReplaceAll(prompt, "{"+key+"}", text)
+	}
+	return strings.Join(strings.Fields(prompt), " ")
 }
 
 func inputString(inputs map[string]any, key, fallback string) string {

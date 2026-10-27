@@ -238,16 +238,38 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	if err != nil {
 		return nil, err
 	}
-	itemInputKey := nodeParamString(node.Params, "item_input_key", childInputs[0].ID)
+	itemInputKey := nodeParamString(node.Params, "item_input_key", "")
 	resultOutputKey := nodeParamString(node.Params, "result_output_key", childOutputs[0].ID)
 	indexInputKey := nodeParamString(node.Params, "index_input_key", "")
+	itemInputMap, err := workflowMapInputMap(node.Params["item_input_map"])
+	if err != nil {
+		return nil, err
+	}
+	if itemInputKey == "" && len(itemInputMap) == 0 {
+		itemInputKey = childInputs[0].ID
+	}
 	var itemPort, resultPort FlowPort
 	for _, port := range childInputs {
 		if port.ID == itemInputKey {
 			itemPort = port
 		}
+		if _, mapped := itemInputMap[port.ID]; mapped && port.ID == itemInputKey {
+			return nil, fmt.Errorf("input phần tử %q không thể đồng thời nhận cả item và item map", port.Name)
+		}
 		if indexInputKey != "" && port.ID == indexInputKey && port.Type != PortTypeNumber {
 			return nil, fmt.Errorf("input thứ tự %q của workflow con phải có kiểu number", port.Name)
+		}
+	}
+	for targetKey := range itemInputMap {
+		found := false
+		for _, port := range childInputs {
+			if port.ID == targetKey {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("workflow con không có input map %q", targetKey)
 		}
 	}
 	for _, port := range childOutputs {
@@ -255,10 +277,10 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 			resultPort = port
 		}
 	}
-	if itemPort.ID == "" {
+	if itemInputKey != "" && itemPort.ID == "" {
 		return nil, fmt.Errorf("workflow con không có input phần tử %q", itemInputKey)
 	}
-	if indexInputKey == itemInputKey {
+	if indexInputKey != "" && indexInputKey == itemInputKey {
 		return nil, fmt.Errorf("input phần tử và input thứ tự phải khác nhau")
 	}
 	if indexInputKey != "" {
@@ -279,11 +301,107 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	if _, ok := inputs["items"]; !ok {
 		return nil, fmt.Errorf("thiếu danh sách cần xử lý")
 	}
+	contextValues, err := workflowMapContext(inputs["context"])
+	if err != nil {
+		return nil, err
+	}
+	mergeContextIntoItem := nodeParamBool(node.Params, "merge_context_into_item", false)
+	childInputSet := make(map[string]bool, len(childInputs))
+	childInputTypes := make(map[string]PortType, len(childInputs))
+	for _, port := range childInputs {
+		childInputSet[port.ID] = true
+		childInputTypes[port.ID] = port.Type
+	}
+	sharedImageInputKey := nodeParamString(node.Params, "shared_image_input_key", "")
+	sharedImages := flowStringList(inputs["reference_images"])
+	if sharedImageInputKey != "" {
+		portType, found := childInputTypes[sharedImageInputKey]
+		if !found || (portType != PortTypeImageList && portType != PortTypeImage && portType != PortTypeAny) {
+			return nil, fmt.Errorf("workflow con cần input ảnh %q kiểu image hoặc image_list", sharedImageInputKey)
+		}
+		if len(sharedImages) == 0 {
+			return nil, fmt.Errorf("thiếu ảnh tham chiếu dùng chung cho input workflow con %q", sharedImageInputKey)
+		}
+		for _, imagePath := range sharedImages {
+			if !fileExists(imagePath) || !isImageFile(imagePath) {
+				return nil, fmt.Errorf("ảnh tham chiếu dùng chung không hợp lệ: %s", filepath.Base(imagePath))
+			}
+		}
+	}
 
 	results := make([]any, 0, len(items))
 	mapID := safeWorkflowPathPart(node.ID)
 	for i, item := range items {
-		childValues := map[string]any{itemInputKey: item}
+		childValues := make(map[string]any, len(contextValues)+len(itemInputMap)+2)
+		for key, value := range contextValues {
+			if childInputSet[key] {
+				childValues[key] = value
+			}
+		}
+		if sharedImageInputKey != "" {
+			if _, mapped := itemInputMap[sharedImageInputKey]; mapped || sharedImageInputKey == itemInputKey {
+				return nil, fmt.Errorf("input ảnh dùng chung %q bị map trùng với item", sharedImageInputKey)
+			}
+			childValues[sharedImageInputKey] = sharedImages
+		}
+		if itemInputKey != "" {
+			itemValue := item
+			if mergeContextIntoItem {
+				itemValues, ok := workflowMapObject(item)
+				if !ok {
+					return nil, fmt.Errorf("phần tử %d cần là object khi merge_context_into_item bật", i+1)
+				}
+				merged := make(map[string]any, len(contextValues)+len(itemValues))
+				for key, value := range contextValues {
+					merged[key] = value
+				}
+				for key, value := range itemValues {
+					merged[key] = value
+				}
+				itemValue = merged
+			}
+			childValues[itemInputKey] = itemValue
+		}
+		if mergeContextIntoItem {
+			itemValues, ok := workflowMapObject(item)
+			if !ok {
+				return nil, fmt.Errorf("phần tử %d cần là object khi merge_context_into_item bật", i+1)
+			}
+			for key, itemValue := range itemValues {
+				if !childInputSet[key] {
+					continue
+				}
+				if contextValue, exists := childValues[key]; exists {
+					if contextObject, ok := workflowMapObject(contextValue); ok {
+						if itemObject, ok := workflowMapObject(itemValue); ok {
+							merged := make(map[string]any, len(contextObject)+len(itemObject))
+							for field, value := range contextObject {
+								merged[field] = value
+							}
+							for field, value := range itemObject {
+								merged[field] = value
+							}
+							childValues[key] = merged
+							continue
+						}
+					}
+				}
+				childValues[key] = itemValue
+			}
+		}
+		if len(itemInputMap) > 0 {
+			itemValues, ok := workflowMapObject(item)
+			if !ok {
+				return nil, fmt.Errorf("phần tử %d cần là object để map input workflow con", i+1)
+			}
+			for targetKey, sourceKey := range itemInputMap {
+				value, exists := itemValues[sourceKey]
+				if !exists || isEmptyWorkflowValue(value, true) {
+					return nil, fmt.Errorf("phần tử %d thiếu trường %q để map vào input %q", i+1, sourceKey, targetKey)
+				}
+				childValues[targetKey] = value
+			}
+		}
 		if indexInputKey != "" {
 			childValues[indexInputKey] = i + 1
 		}
@@ -299,6 +417,9 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		if err := os.MkdirAll(childCtx.WorkDir, 0o755); err != nil {
 			return nil, fmt.Errorf("không tạo được thư mục phần tử %d: %w", i+1, err)
 		}
+		if ctx.NodeStatus != nil {
+			ctx.NodeStatus(node.ID, NodeState{Status: "running", Progress: int(float64(i) / float64(len(items)) * 100)})
+		}
 		iterationGraph := cloneWorkflowWithPrefix(childGraph, fmt.Sprintf("%s_item_%03d_", mapID, i+1))
 		run, err := ExecuteGraph(&childCtx, iterationGraph)
 		if err != nil {
@@ -309,9 +430,65 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 			return nil, fmt.Errorf("workflow con không tạo output %q ở phần tử %d", resultPort.Name, i+1)
 		}
 		results = append(results, result)
+		if ctx.NodeStatus != nil {
+			ctx.NodeStatus(node.ID, NodeState{Status: "running", Progress: int(float64(i+1) / float64(len(items)) * 100)})
+		}
 		ctx.Log(fmt.Sprintf("Workflow Map: hoàn tất phần tử %d/%d", i+1, len(items)))
 	}
 	return map[string]any{"results": results}, nil
+}
+
+func workflowMapContext(value any) (map[string]any, error) {
+	if value == nil {
+		return map[string]any{}, nil
+	}
+	contextValues, ok := workflowMapObject(value)
+	if !ok {
+		return nil, fmt.Errorf("context cần là object các giá trị dùng chung")
+	}
+	return contextValues, nil
+}
+
+func workflowMapObject(value any) (map[string]any, bool) {
+	switch object := value.(type) {
+	case map[string]any:
+		return object, true
+	case map[string]string:
+		values := make(map[string]any, len(object))
+		for key, value := range object {
+			values[key] = value
+		}
+		return values, true
+	default:
+		return nil, false
+	}
+}
+
+func workflowMapInputMap(value any) (map[string]string, error) {
+	if value == nil {
+		return map[string]string{}, nil
+	}
+	result := make(map[string]string)
+	switch fields := value.(type) {
+	case map[string]any:
+		for target, rawSource := range fields {
+			source, ok := rawSource.(string)
+			if !ok || strings.TrimSpace(target) == "" || strings.TrimSpace(source) == "" {
+				return nil, fmt.Errorf("item_input_map cần ánh xạ tên input sang tên trường object")
+			}
+			result[target] = strings.TrimSpace(source)
+		}
+	case map[string]string:
+		for target, source := range fields {
+			if strings.TrimSpace(target) == "" || strings.TrimSpace(source) == "" {
+				return nil, fmt.Errorf("item_input_map cần ánh xạ tên input sang tên trường object")
+			}
+			result[target] = strings.TrimSpace(source)
+		}
+	default:
+		return nil, fmt.Errorf("item_input_map cần là object")
+	}
+	return result, nil
 }
 
 func workflowMapItems(value any) ([]any, bool) {

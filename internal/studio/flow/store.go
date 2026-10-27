@@ -186,6 +186,9 @@ func (s *Store) ListGraphs() ([]FlowSummary, error) {
 		if err := rows.Scan(&id, &name, &desc, &cat, &isPresetInt, &graphJSON, &updated); err != nil {
 			return nil, err
 		}
+		if cat == "internal" {
+			continue
+		}
 		var g FlowGraph
 		_ = json.Unmarshal([]byte(graphJSON), &g)
 		inputs, outputs, _ := WorkflowContract(&g)

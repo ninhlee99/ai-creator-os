@@ -16,7 +16,7 @@ import (
 
 func splitViralSourceForEditing(ctx context.Context, source string, duration float64, workDir string) ([]viralEditSegment, error) {
 	if duration < 3 {
-		return nil, fmt.Errorf("video nguồn phải dài ít nhất 3s để dùng Google Flow video edit")
+		return nil, fmt.Errorf("video nguồn phải dài ít nhất 3s để chia và render bằng Muse AI")
 	}
 	const maxEditSeconds = 10.0
 	count := int(math.Ceil(duration / maxEditSeconds))

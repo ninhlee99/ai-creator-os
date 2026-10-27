@@ -182,9 +182,16 @@ func registerAllBuiltinNodes() {
 			{ID: "character_desc", Name: "Mô tả nhân vật", Type: PortTypeText, Required: false},
 			{ID: "product_desc", Name: "Mô tả sản phẩm", Type: PortTypeText, Required: false},
 			{ID: "motion_desc", Name: "Mô tả chuyển động", Type: PortTypeText, Required: false},
+			{ID: "character_name", Name: "Tên nhân vật", Type: PortTypeText, Required: false},
+			{ID: "product_title", Name: "Tên sản phẩm", Type: PortTypeText, Required: false},
+			{ID: "outfit_desc", Name: "Mô tả trang phục", Type: PortTypeText, Required: false},
+			{ID: "environment_desc", Name: "Mô tả bối cảnh", Type: PortTypeText, Required: false},
+			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
+			{ID: "variables", Name: "Biến tùy chỉnh", Type: PortTypeConfig, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh hoàn chỉnh", Type: PortTypeText, Description: "Prompt chuẩn hóa đã chèn các biến"},
+			{ID: "workflow_context", Name: "Context workflow con", Type: PortTypeConfig, Description: "Map biến có thể truyền vào Workflow Map hoặc Workflow Call"},
 		},
 		DefaultParams: map[string]any{
 			"template": "Cinematic vertical 9:16 video of {character} {motion}, showcasing {product}. Beautiful soft lighting, 4k ultra realistic, smooth motion.",
@@ -253,11 +260,13 @@ func registerAllBuiltinNodes() {
 			{ID: "keyframes", Name: "Keyframe vũ đạo", Type: PortTypeImageList, Description: "Các frame tư thế chính trích xuất từ video"},
 			{ID: "beat_audio", Name: "Âm thanh trích xuất", Type: PortTypeAudio, Description: "Track audio gốc trích xuất, không phân tích nhịp"},
 			{ID: "dance_style", Name: "Mô tả chuyển động", Type: PortTypeText, Description: "Mô tả chuyển động do Vision AI tạo"},
+			{ID: "source_video", Name: "Video chuyển động nguồn", Type: PortTypeVideo, Description: "Video chỉ dùng làm tham chiếu chuyển động"},
 		},
 		DefaultParams: map[string]any{
-			"dance_style":    "",
-			"keyframe_count": 5,
-			"require_audio":  false,
+			"dance_style":     "",
+			"keyframe_count":  5,
+			"require_audio":   false,
+			"strict_analysis": false,
 		},
 		Executor: executeDanceMotionExtractor,
 	})
@@ -271,8 +280,10 @@ func registerAllBuiltinNodes() {
 		Icon:        "shuffle",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
+			{ID: "character_images", Name: "Ảnh nhân vật bổ sung", Type: PortTypeImageList, Required: false},
 			{ID: "motion_data", Name: "Dữ liệu vũ đạo", Type: PortTypeMotion, Required: true},
 			{ID: "keyframes", Name: "Keyframes vũ đạo", Type: PortTypeImageList, Required: false},
+			{ID: "reference_video", Name: "Video chuyển động nguồn", Type: PortTypeVideo, Required: false},
 			{ID: "ingredients", Name: "Ảnh tham chiếu bổ sung", Type: PortTypeImageList, Required: false},
 			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Required: false},
 			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
@@ -281,12 +292,15 @@ func registerAllBuiltinNodes() {
 		Outputs: []FlowPort{
 			{ID: "prompt_choreography", Name: "Prompt vũ đạo", Type: PortTypeText, Description: "Mô tả chuyển động nghệ thuật an toàn cho AI"},
 			{ID: "prompt", Name: "Câu lệnh tạo video", Type: PortTypeText, Description: "Prompt chuẩn hóa cho bộ sinh video AI"},
+			{ID: "prompt_context", Name: "Biến prompt", Type: PortTypeConfig, Description: "Các biến chuyển động, bối cảnh, ánh sáng và outfit cho prompt template"},
 			{ID: "ingredients", Name: "Thành phần chuẩn bị", Type: PortTypeImageList, Description: "Các ảnh nguyên liệu cho bộ tạo video"},
 			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Description: "Ảnh nhân vật truyền tiếp"},
+			{ID: "reference_video", Name: "Video chuyển động nguồn", Type: PortTypeVideo, Description: "Video nguồn chỉ làm tham chiếu chuyển động"},
 		},
 		DefaultParams: map[string]any{
-			"expression": "sensual_alluring",
-			"dance_type": "sexy_dance",
+			"expression":      "confident",
+			"dance_type":      "",
+			"prompt_template": "",
 		},
 		Executor: executeDanceRetarget,
 	})
@@ -324,6 +338,8 @@ func registerAllBuiltinNodes() {
 		Inputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh prompt", Type: PortTypeText, Required: true},
 			{ID: "reference_image", Name: "Ảnh tham chiếu", Type: PortTypeImage, Required: false},
+			{ID: "reference_images", Name: "Các ảnh tham chiếu", Type: PortTypeImageList, Required: false},
+			{ID: "reference_video", Name: "Video tham chiếu", Type: PortTypeVideo, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "video_out", Name: "Video từ Muse AI", Type: PortTypeVideo, Description: "Video hoàn chỉnh sinh bởi Muse AI"},
@@ -405,8 +421,9 @@ func registerAllBuiltinNodes() {
 		Description: "Trộn track chính với nhạc nền; có thể tự giảm nhạc khi có lời đọc và lặp nhạc nền đến hết track chính.",
 		Icon:        "volume-2",
 		Inputs: []FlowPort{
-			{ID: "voice_in", Name: "Track chính / giọng đọc", Type: PortTypeAudio, Required: true},
+			{ID: "voice_in", Name: "Track chính / giọng đọc", Type: PortTypeAudio, Required: false},
 			{ID: "music_in", Name: "Nhạc nền tùy chọn", Type: PortTypeAudio, Required: false},
+			{ID: "duration", Name: "Thời lượng đầu ra (giây)", Type: PortTypeNumber, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "audio_out", Name: "Audio đã trộn", Type: PortTypeAudio, Description: "Bản phối WAV đã cân bằng âm lượng."},
@@ -430,6 +447,7 @@ func registerAllBuiltinNodes() {
 		Icon:        "maximize",
 		Inputs: []FlowPort{
 			{ID: "video_in", Name: "Video đầu vào", Type: PortTypeVideo, Required: true},
+			{ID: "resolution", Name: "Độ phân giải đầu ra", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "video_out", Name: "Video nét cao (4K)", Type: PortTypeVideo, Description: "Video master sau khi upscale"},
@@ -459,6 +477,36 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{},
 		Executor:      executeConcatScenes,
+	})
+	RegisterNode(NodeDefinition{
+		Type:        "video_split",
+		Title:       "Chia video theo đoạn (Video Split)",
+		Category:    CategoryProcess,
+		Description: "Chia video nguồn thành các đoạn liền mạch, đồng thời tách track âm thanh gốc để workflow xử lý và ghép lại.",
+		Icon:        "scissors",
+		Inputs:      []FlowPort{{ID: "video_in", Name: "Video nguồn", Type: PortTypeVideo, Required: true}},
+		Outputs: []FlowPort{
+			{ID: "segments", Name: "Danh sách đoạn video", Type: PortTypeAny, Description: "Các đoạn theo thứ tự, kèm đường dẫn và thời lượng."},
+			{ID: "audio_out", Name: "Âm thanh nguồn", Type: PortTypeAudio, Description: "Track âm thanh gốc đã tách."},
+			{ID: "duration", Name: "Thời lượng nguồn", Type: PortTypeNumber},
+		},
+		DefaultParams: map[string]any{"max_segment_seconds": 10, "require_audio": true},
+		Executor:      executeVideoSplit,
+	})
+	RegisterNode(NodeDefinition{
+		Type:        "video_trim",
+		Title:       "Khớp thời lượng video (Video Trim)",
+		Category:    CategoryProcess,
+		Description: "Cắt video theo thời lượng mục tiêu hoặc theo video tham chiếu; dừng nếu video tạo ra ngắn hơn mục tiêu.",
+		Icon:        "timer",
+		Inputs: []FlowPort{
+			{ID: "video_in", Name: "Video cần khớp", Type: PortTypeVideo, Required: true},
+			{ID: "reference_video", Name: "Video lấy thời lượng", Type: PortTypeVideo, Required: false},
+			{ID: "duration", Name: "Thời lượng mục tiêu (giây)", Type: PortTypeNumber, Required: false},
+		},
+		Outputs:       []FlowPort{{ID: "video_out", Name: "Video đúng thời lượng", Type: PortTypeVideo}},
+		DefaultParams: map[string]any{"tolerance_seconds": 0.15},
+		Executor:      executeVideoTrim,
 	})
 
 	// 17. Video Output Node
@@ -522,7 +570,9 @@ func registerAllBuiltinNodes() {
 		Icon:        "shirt",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
+			{ID: "character_images", Name: "Ảnh nhân vật bổ sung", Type: PortTypeImageList, Required: false},
 			{ID: "garment_image", Name: "Ảnh trang phục", Type: PortTypeImage, Required: false},
+			{ID: "product_images", Name: "Ảnh listing bổ sung", Type: PortTypeImageList, Required: false},
 			{ID: "outfit_name", Name: "Tên/mô tả outfit", Type: PortTypeText, Required: false},
 			{ID: "fit_style", Name: "Phong cách trang phục", Type: PortTypeText, Required: false},
 			{ID: "prompt_in", Name: "Prompt đầu vào", Type: PortTypeText, Required: false},
@@ -971,16 +1021,23 @@ func registerAllBuiltinNodes() {
 		Type:        "workflow_map",
 		Title:       "Lặp qua danh sách (Workflow Map)",
 		Category:    CategoryWorkflow,
-		Description: "Chạy cùng workflow con cho từng phần tử theo thứ tự; xử lý nhiều cảnh hoặc nhiều ảnh mà không nhân bản node.",
+		Description: "Chạy cùng workflow con cho từng phần tử theo thứ tự; truyền context chung và map trường của từng phần tử vào input workflow con.",
 		Icon:        "repeat-2",
-		Inputs:      []FlowPort{{ID: "items", Name: "Danh sách cần xử lý", Type: PortTypeAny, Required: true}},
-		Outputs:     []FlowPort{{ID: "results", Name: "Kết quả theo thứ tự", Type: PortTypeAny}},
+		Inputs: []FlowPort{
+			{ID: "items", Name: "Danh sách cần xử lý", Type: PortTypeAny, Required: true},
+			{ID: "context", Name: "Context dùng chung", Type: PortTypeConfig, Required: false},
+			{ID: "reference_images", Name: "Ảnh tham chiếu dùng chung", Type: PortTypeImageList, Required: false},
+		},
+		Outputs: []FlowPort{{ID: "results", Name: "Kết quả theo thứ tự", Type: PortTypeAny}},
 		DefaultParams: map[string]any{
-			"workflow_id":       "",
-			"item_input_key":    "",
-			"index_input_key":   "",
-			"result_output_key": "",
-			"max_items":         20,
+			"workflow_id":             "",
+			"item_input_key":          "",
+			"item_input_map":          map[string]any{},
+			"shared_image_input_key":  "",
+			"merge_context_into_item": false,
+			"index_input_key":         "",
+			"result_output_key":       "",
+			"max_items":               20,
 		},
 		Executor: executeWorkflowMap,
 	})

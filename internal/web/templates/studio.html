@@ -230,12 +230,12 @@
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Engine tạo footage</label>
+            <label style="font-weight:700;font-size:12.5px">Tạo footage</label>
             <select name="video_engine" id="cr-video-engine" style="padding:10px;font-weight:700" onchange="onAffiliateEngineChange()">
-              <option value="googleflow" {{if .FlowReady}}selected{{end}} {{if not .FlowReady}}disabled{{end}}>Google Flow · nhân vật dùng sản phẩm</option>
-              <option value="manual" {{if not .FlowReady}}selected{{end}}>Tải clip chuyển động đã quay/tạo</option>
+              <option value="museai" {{if .FlowReady}}selected{{end}} {{if not .FlowReady}}disabled{{end}}>Muse AI · nhân vật dùng sản phẩm</option>
+              <option value="manual" {{if not .FlowReady}}selected{{end}}>Tải clip chuyển động đã quay</option>
             </select>
-            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint">Flow chưa kết nối · <a href="/settings/system#tab-webai">Kết nối</a></div>{{end}}
+            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint">{{.FlowStatus}}</div>{{end}}
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Dạng video</label>
@@ -294,7 +294,7 @@ function updateAffiliateClipCount() {
 updateAffiliateClipCount();
 
 function onAffiliateEngineChange() {
-  var flow = document.getElementById('cr-video-engine').value === 'googleflow';
+  var flow = document.getElementById('cr-video-engine').value === 'museai';
   var field = document.getElementById('cr-manual-clips-field');
   var input = document.getElementById('cr-motion-clips');
   var consent = document.getElementById('cr-flow-consent-wrap');
@@ -509,7 +509,7 @@ async function prepareAffiliatePlan() {
     planID.value = data.plan_id;
     affiliatePlanShotCount = (data.shots || []).length;
     renderAffiliatePlan(data);
-    var flow = document.getElementById('cr-video-engine').value === 'googleflow';
+    var flow = document.getElementById('cr-video-engine').value === 'museai';
     status.textContent = flow ? ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · Flow sẽ quay từng cảnh từ ảnh tham chiếu.') : ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · tải clip theo thứ tự bên dưới.');
     document.getElementById('cr-clip-count-hint').textContent = flow ? (affiliatePlanShotCount + ' clip Flow · mỗi shot tạo riêng, sau đó cắt theo nhịp đã duyệt.') : (data.seconds + ' giây cần đúng ' + affiliatePlanShotCount + ' clip theo plan đã duyệt.');
     clipInput.disabled = flow;
@@ -528,7 +528,7 @@ async function prepareAffiliatePlan() {
 affiliateForm.addEventListener('submit', function(event) {
   var planID = document.getElementById('cr-prepared-plan-id').value;
   var clips = document.getElementById('cr-motion-clips').files;
-  var flow = document.getElementById('cr-video-engine').value === 'googleflow';
+  var flow = document.getElementById('cr-video-engine').value === 'museai';
   if (!planID) {
     event.preventDefault();
     document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';

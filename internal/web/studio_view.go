@@ -126,7 +126,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 				} else {
 					view.OutputResolution = "4K"
 				}
-				view.Engine = "Google Flow (Web AI)"
+				view.Engine = "Muse AI Workflow"
 				view.ProductID = p.ProductID
 				view.ProductName = strings.TrimSpace(p.ProductName)
 				view.AffiliateLink = p.AffLink
@@ -163,7 +163,7 @@ func (s *Server) studioJobViews(jobs []studio.Job) []studioJobView {
 				} else {
 					view.OutputResolution = "4K"
 				}
-				view.Engine = "Google Flow (Web AI)"
+				view.Engine = "Muse AI Workflow"
 				view.SourceVideoURL = p.SourceVideoURL
 				view.SourceVideoAuthor = p.SourceVideoAuthor
 				view.SourceMusicTitle = p.SourceMusicTitle

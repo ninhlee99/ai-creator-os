@@ -1,17 +1,17 @@
 {
   "id": "preset_viral_dance",
-  "name": "TikTok Viral Sexy Dance",
-  "description": "Phân tích chuyển động từ video nhảy đã xác thực trong Radar, chọn ảnh nhân vật và outfit tham chiếu, tạo prompt video, render, ghép audio, cân màu, upscale và xuất file",
+  "name": "TikTok Viral Dance",
+  "description": "Phân tích chuyển động video Radar, khóa danh tính từ ảnh kênh, render từng đoạn bằng Muse AI, giữ audio nguồn và xuất video hoàn chỉnh.",
   "category": "viral",
   "is_preset": true,
   "nodes": [
     {
-      "id": "node_video",
+      "id": "video",
       "type": "video_source",
-      "title": "1. Video TikTok Radar gốc (Trend sexy dance)",
+      "title": "1. Video TikTok Radar",
       "category": "input",
-      "x": 60,
-      "y": 460,
+      "x": 40,
+      "y": 340,
       "params": {
         "require_radar_dance": true,
         "video_path": "",
@@ -19,25 +19,38 @@
       }
     },
     {
-      "id": "node_dance_extract",
+      "id": "dance",
       "type": "dance_motion_extractor",
-      "title": "2. Phân tích chuyển động & tách beat",
+      "title": "2. Phân tích chuyển động nguồn",
       "category": "process",
-      "x": 440,
-      "y": 460,
+      "x": 360,
+      "y": 160,
       "params": {
         "dance_style": "",
-        "keyframe_count": 5,
+        "keyframe_count": 6,
+        "require_audio": true,
+        "strict_analysis": true
+      }
+    },
+    {
+      "id": "split",
+      "type": "video_split",
+      "title": "3. Chia video thành shot Muse",
+      "category": "process",
+      "x": 360,
+      "y": 520,
+      "params": {
+        "max_segment_seconds": 10,
         "require_audio": true
       }
     },
     {
-      "id": "node_char",
+      "id": "character",
       "type": "character_input",
-      "title": "3. Ảnh nhân vật đã chọn",
+      "title": "4. Ảnh nhân vật kênh",
       "category": "input",
-      "x": 60,
-      "y": 80,
+      "x": 40,
+      "y": 40,
       "params": {
         "account_id": 0,
         "model_name": "",
@@ -45,145 +58,173 @@
       }
     },
     {
-      "id": "node_tryon",
+      "id": "outfit",
       "type": "virtual_tryon",
-      "title": "4. Chuẩn bị outfit tham chiếu",
+      "title": "5. Hướng trang phục",
       "category": "process",
-      "x": 440,
-      "y": 80,
+      "x": 360,
+      "y": 40,
       "params": {
-        "outfit_name": "Set đồ nhảy K-pop sexy ôm sát body tôn dáng",
-        "prompt": "Describe reference outfit {{outfit_name}} in style {{fit_style}}. Preserve garment details from the reference image and never change the model identity. Return one concise visual description in English."
+        "outfit_name": "",
+        "prompt": "Describe the intended outfit style {{fit_style}} for the supplied character. Preserve the same adult person's identity, body proportions, and natural appearance. Do not claim that clothing was physically generated or replaced; return a concise English outfit direction."
       }
     },
     {
-      "id": "node_env",
+      "id": "environment",
       "type": "scene_environment",
-      "title": "5. Không gian / Bối cảnh phòng tập Neon",
+      "title": "6. Bối cảnh",
       "category": "process",
-      "x": 820,
-      "y": 180,
+      "x": 700,
+      "y": 40,
       "params": {
-        "depth_of_field": "cinematic_bokeh",
         "location_type": "neon_dance_studio",
-        "prompt": "Create a concise visual background prompt for {{location_type}}. Additional location details: {{custom_location}}. Keep a polished fashion campaign look with {{depth_of_field}} depth of field. Return only the environment description in English."
+        "custom_location": "",
+        "depth_of_field": "cinematic_bokeh",
+        "prompt": "Create a concise English scene direction for {{location_type}}. Custom details: {{custom_location}}. Keep the subject clear and preserve the choreography framing."
       }
     },
     {
-      "id": "node_light",
+      "id": "lighting",
       "type": "lighting_atmosphere",
-      "title": "6. Thời gian & Ánh sáng sân khấu biểu diễn",
-      "category": "process",
-      "x": 1200,
-      "y": 180,
+      "title": "7. Ánh sáng",
+      "category": "lighting",
+      "x": 1040,
+      "y": 40,
       "params": {
         "color_temperature": "cyber_neon_magenta",
         "light_intensity": "dramatic_contrast",
         "time_of_day": "dynamic_stage_lights",
-        "prompt": "Create a concise lighting direction for {{time_of_day}}, {{color_temperature}} color temperature, and {{light_intensity}} intensity. Match this scene: {{environment_desc}}. Return only the lighting description in English."
+        "prompt": "Create concise lighting direction for {{time_of_day}}, {{color_temperature}} color temperature and {{light_intensity}} intensity. Match scene: {{environment_desc}}."
       }
     },
     {
-      "id": "node_dance_retarget",
+      "id": "retarget",
       "type": "dance_retarget",
-      "title": "7. Tạo prompt vũ đạo từ phân tích",
+      "title": "8. Prompt chuyển động có thể tùy chỉnh",
       "category": "process",
-      "x": 1580,
-      "y": 240,
+      "x": 1380,
+      "y": 200,
       "params": {
         "dance_type": "TikTok dance",
-        "expression": "confident"
+        "expression": "confident",
+        "prompt_template": "Create a vertical 9:16 dance shot. Follow only the movement observed in the attached source video: {{movement_analysis}}. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Use supplied character photos as the sole source of identity. One adult subject, realistic anatomy and motion."
       }
     },
     {
-      "id": "node_flow_video",
-      "type": "google_flow_video",
-      "title": "8. Google Flow Veo 2 (Render video nhảy vũ đạo)",
-      "category": "ai",
-      "x": 1960,
-      "y": 240,
+      "id": "render_map",
+      "type": "workflow_map",
+      "title": "9. Muse AI render từng shot",
+      "category": "workflow",
+      "x": 1740,
+      "y": 380,
       "params": {
-        "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
-        "prompt": "Create a short vertical 9:16 cinematic fashion video. Preserve subject identity and garment design. Follow this creative direction: {{input}}. Use natural movement, realistic materials, and clean editorial lighting."
+        "workflow_id": "preset_muse_video_shot",
+        "item_input_map": {
+          "segment_video": "video_path",
+          "duration": "duration_seconds"
+        },
+        "shared_image_input_key": "reference_images",
+        "result_output_key": "video",
+        "max_items": 20
       }
     },
     {
-      "id": "node_audio_merge",
-      "type": "audio_merge",
-      "title": "9. Lồng âm thanh gốc đã bóc tách",
+      "id": "concat",
+      "type": "concat_scenes",
+      "title": "10. Ghép shot theo thứ tự",
       "category": "process",
-      "x": 2340,
-      "y": 320,
+      "x": 2100,
+      "y": 380,
+      "params": {}
+    },
+    {
+      "id": "audio",
+      "type": "audio_merge",
+      "title": "11. Giữ âm thanh video Radar",
+      "category": "process",
+      "x": 2440,
+      "y": 380,
       "params": {
         "audio_codec": "aac"
       }
     },
     {
-      "id": "node_color_grade",
+      "id": "grade",
       "type": "cinematic_color_grading",
-      "title": "10. Cân chỉnh ánh sáng sân khấu & Độ tương phản",
+      "title": "12. Cân màu",
       "category": "post",
-      "x": 2720,
-      "y": 320,
+      "x": 2780,
+      "y": 380,
       "params": {
-        "contrast_boost": 1.15,
-        "saturation": 1.08
+        "contrast_boost": 1.08,
+        "saturation": 1.04
       }
     },
     {
-      "id": "node_upscale",
+      "id": "upscale",
       "type": "video_upscale",
-      "title": "11. Làm nét & Nâng chuẩn 4K UHD",
+      "title": "13. Xuất độ phân giải",
       "category": "process",
-      "x": 3100,
-      "y": 320,
+      "x": 3120,
+      "y": 380,
       "params": {
-        "resolution": "4k"
+        "resolution": "4k",
+        "crf": 18
       }
     },
     {
-      "id": "node_output",
+      "id": "export",
       "type": "video_output",
-      "title": "12. Xuất video Viral TikTok 9:16",
+      "title": "14. Xuất video Viral",
       "category": "output",
-      "x": 3480,
-      "y": 320,
+      "x": 3460,
+      "y": 380,
       "params": {
         "title": "TikTok Dance Video"
       }
     },
     {
-      "id": "input_fit_style",
+      "id": "fit_input",
       "type": "workflow_input",
-      "title": "Phong cách cho lần chạy",
+      "title": "Phong cách trang phục",
       "category": "workflow",
-      "x": 140,
-      "y": 580,
+      "x": 40,
+      "y": 700,
       "params": {
         "key": "fit_style",
         "label": "Phong cách trang phục",
         "value_type": "text",
-        "required": true,
-        "value": "Trang phục biểu diễn K-pop",
-        "options": [
-          "May đo cao cấp ôm dáng (Seamless Luxury)",
-          "Trang phục biểu diễn K-pop",
-          "Bodycon glamour",
-          "Streetwear hiện đại",
-          "Trang phục công sở thanh lịch",
-          "Trang phục truyền thống",
-          "Váy dạ hội"
-        ],
-        "help": "Chọn gợi ý hoặc tự mô tả phong cách. Giá trị chỉ dùng cho lần chạy này."
+        "required": false,
+        "value": "Trang phục biểu diễn K-pop"
       }
     },
     {
-      "id": "output_video",
+      "id": "resolution_input",
+      "type": "workflow_input",
+      "title": "Độ phân giải đầu ra",
+      "category": "workflow",
+      "x": 700,
+      "y": 700,
+      "params": {
+        "key": "resolution",
+        "label": "Độ phân giải",
+        "value_type": "text",
+        "required": false,
+        "value": "4k",
+        "options": [
+          "1080p",
+          "4k",
+          "8k"
+        ]
+      }
+    },
+    {
+      "id": "workflow_output",
       "type": "workflow_output",
       "title": "Video thành phẩm",
       "category": "workflow",
-      "x": 3840,
-      "y": 320,
+      "x": 3800,
+      "y": 380,
       "params": {
         "key": "video",
         "label": "Video thành phẩm",
@@ -194,142 +235,163 @@
   "edges": [
     {
       "id": "e1",
-      "from_node": "node_video",
+      "from_node": "video",
       "from_port": "video_path",
-      "to_node": "node_dance_extract",
+      "to_node": "dance",
       "to_port": "video_in"
     },
     {
       "id": "e2",
-      "from_node": "node_char",
-      "from_port": "character_image",
-      "to_node": "node_tryon",
-      "to_port": "character_image"
+      "from_node": "video",
+      "from_port": "video_path",
+      "to_node": "split",
+      "to_port": "video_in"
     },
     {
       "id": "e3",
-      "from_node": "node_tryon",
-      "from_port": "fitted_image",
-      "to_node": "node_env",
+      "from_node": "character",
+      "from_port": "character_image",
+      "to_node": "outfit",
       "to_port": "character_image"
     },
     {
       "id": "e4",
-      "from_node": "node_env",
-      "from_port": "environment_desc",
-      "to_node": "node_light",
-      "to_port": "environment_desc"
+      "from_node": "fit_input",
+      "from_port": "value",
+      "to_node": "outfit",
+      "to_port": "fit_style"
     },
     {
       "id": "e5",
-      "from_node": "node_tryon",
+      "from_node": "outfit",
       "from_port": "fitted_image",
-      "to_node": "node_dance_retarget",
+      "to_node": "environment",
       "to_port": "character_image"
     },
     {
       "id": "e6",
-      "from_node": "node_dance_extract",
-      "from_port": "motion_data",
-      "to_node": "node_dance_retarget",
-      "to_port": "motion_data"
-    },
-    {
-      "id": "e7",
-      "from_node": "node_dance_extract",
-      "from_port": "keyframes",
-      "to_node": "node_dance_retarget",
-      "to_port": "keyframes"
-    },
-    {
-      "id": "e8",
-      "from_node": "node_env",
+      "from_node": "environment",
       "from_port": "environment_desc",
-      "to_node": "node_dance_retarget",
+      "to_node": "lighting",
       "to_port": "environment_desc"
     },
     {
+      "id": "e7",
+      "from_node": "character",
+      "from_port": "character_image",
+      "to_node": "retarget",
+      "to_port": "character_image"
+    },
+    {
+      "id": "e8",
+      "from_node": "character",
+      "from_port": "character_images",
+      "to_node": "retarget",
+      "to_port": "character_images"
+    },
+    {
       "id": "e9",
-      "from_node": "node_light",
-      "from_port": "lighting_desc",
-      "to_node": "node_dance_retarget",
-      "to_port": "lighting_desc"
+      "from_node": "dance",
+      "from_port": "motion_data",
+      "to_node": "retarget",
+      "to_port": "motion_data"
     },
     {
       "id": "e10",
-      "from_node": "node_tryon",
-      "from_port": "outfit_desc",
-      "to_node": "node_dance_retarget",
-      "to_port": "outfit_desc"
+      "from_node": "environment",
+      "from_port": "environment_desc",
+      "to_node": "retarget",
+      "to_port": "environment_desc"
     },
     {
       "id": "e11",
-      "from_node": "node_tryon",
-      "from_port": "ingredients",
-      "to_node": "node_dance_retarget",
-      "to_port": "ingredients"
+      "from_node": "lighting",
+      "from_port": "lighting_desc",
+      "to_node": "retarget",
+      "to_port": "lighting_desc"
     },
     {
       "id": "e12",
-      "from_node": "node_dance_retarget",
-      "from_port": "prompt_choreography",
-      "to_node": "node_flow_video",
-      "to_port": "prompt"
+      "from_node": "outfit",
+      "from_port": "outfit_desc",
+      "to_node": "retarget",
+      "to_port": "outfit_desc"
     },
     {
       "id": "e13",
-      "from_node": "node_dance_retarget",
-      "from_port": "ingredients",
-      "to_node": "node_flow_video",
-      "to_port": "ingredients"
+      "from_node": "split",
+      "from_port": "segments",
+      "to_node": "render_map",
+      "to_port": "items"
     },
     {
       "id": "e14",
-      "from_node": "node_flow_video",
-      "from_port": "video_out",
-      "to_node": "node_audio_merge",
-      "to_port": "video_in"
+      "from_node": "retarget",
+      "from_port": "prompt_context",
+      "to_node": "render_map",
+      "to_port": "context"
     },
     {
       "id": "e15",
-      "from_node": "node_dance_extract",
-      "from_port": "beat_audio",
-      "to_node": "node_audio_merge",
-      "to_port": "audio_in"
+      "from_node": "retarget",
+      "from_port": "ingredients",
+      "to_node": "render_map",
+      "to_port": "reference_images"
     },
     {
       "id": "e16",
-      "from_node": "node_audio_merge",
-      "from_port": "video_out",
-      "to_node": "node_color_grade",
-      "to_port": "video_in"
+      "from_node": "render_map",
+      "from_port": "results",
+      "to_node": "concat",
+      "to_port": "scenes"
     },
     {
       "id": "e17",
-      "from_node": "node_color_grade",
-      "from_port": "video_out",
-      "to_node": "node_upscale",
+      "from_node": "concat",
+      "from_port": "master_video",
+      "to_node": "audio",
       "to_port": "video_in"
     },
     {
       "id": "e18",
-      "from_node": "node_upscale",
+      "from_node": "split",
+      "from_port": "audio_out",
+      "to_node": "audio",
+      "to_port": "audio_in"
+    },
+    {
+      "id": "e19",
+      "from_node": "audio",
       "from_port": "video_out",
-      "to_node": "node_output",
+      "to_node": "grade",
       "to_port": "video_in"
     },
     {
-      "id": "e_runtime_fit_style",
-      "from_node": "input_fit_style",
-      "from_port": "value",
-      "to_node": "node_tryon",
-      "to_port": "fit_style"
+      "id": "e20",
+      "from_node": "grade",
+      "from_port": "video_out",
+      "to_node": "upscale",
+      "to_port": "video_in"
     },
     {
-      "id": "e_workflow_output_video",
-      "from_node": "node_output",
+      "id": "e21",
+      "from_node": "resolution_input",
+      "from_port": "value",
+      "to_node": "upscale",
+      "to_port": "resolution"
+    },
+    {
+      "id": "e22",
+      "from_node": "upscale",
+      "from_port": "video_out",
+      "to_node": "export",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e23",
+      "from_node": "export",
       "from_port": "final_video",
-      "to_node": "output_video",
+      "to_node": "workflow_output",
       "to_port": "value"
     }
   ]
