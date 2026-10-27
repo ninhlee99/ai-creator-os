@@ -3,9 +3,9 @@ package flow
 // GetPresetGraphs trả về các mẫu luồng ComfyUI có sẵn trong hệ thống.
 func GetPresetGraphs() []FlowGraph {
 	return []FlowGraph{
-		PresetFashionTryOnAngles(),
-		PresetViralDance(),
 		PresetAffiliateShowcase(),
+		PresetViralDance(),
+		PresetFashionTryOnAngles(),
 		PresetMultiAIHybrid(),
 	}
 }

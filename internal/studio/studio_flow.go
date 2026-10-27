@@ -23,6 +23,7 @@ func (s *Studio) GetFlowStore() (*flow.Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("khởi tạo workflow store: %w", err)
 	}
+	_ = fs.SeedDefaultPresets()
 	s.flowStore = fs
 	return fs, nil
 }
