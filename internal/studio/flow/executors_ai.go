@@ -18,20 +18,22 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 
 	ingredients := []string{}
 	if raw, ok := inputs["ingredients"]; ok && raw != nil {
-		if list, ok := raw.([]string); ok {
-			ingredients = append(ingredients, list...)
-		} else if item, ok := raw.(string); ok && item != "" {
-			ingredients = append(ingredients, item)
+		for _, item := range flowStringList(raw) {
+			resolved := resolveAssetPath(item, ctx.WorkDir)
+			if resolved == "" || !isImageFile(resolved) {
+				return nil, fmt.Errorf("ảnh tham chiếu không hợp lệ: %s", filepath.Base(item))
+			}
+			ingredients = append(ingredients, resolved)
 		}
 	}
-	if charImg := inputString(inputs, "character_image", ""); charImg != "" && fileExists(charImg) {
-		ingredients = append(ingredients, charImg)
-	}
-	if refImg := inputString(inputs, "reference_image", ""); refImg != "" && fileExists(refImg) {
-		ingredients = append(ingredients, refImg)
-	}
-	if prodImg := inputString(inputs, "product_image", ""); prodImg != "" && fileExists(prodImg) {
-		ingredients = append(ingredients, prodImg)
+	for _, key := range []string{"character_image", "reference_image", "product_image"} {
+		if img := inputString(inputs, key, ""); img != "" {
+			resolved := resolveAssetPath(img, ctx.WorkDir)
+			if resolved == "" || !isImageFile(resolved) {
+				return nil, fmt.Errorf("ảnh tham chiếu %s không hợp lệ", key)
+			}
+			ingredients = append(ingredients, resolved)
+		}
 	}
 
 	// Khử trùng lặp ảnh trong ingredients
@@ -412,14 +414,14 @@ func customImageInputs(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 	video := inputString(inputs, "video", inputString(inputs, "video_in", ""))
 	if video != "" {
 		video = resolveAssetPath(video, ctx.WorkDir)
-		if video == "" || !isVideoFile(video) {
+		if video == "" || !isVideoFile(video) || !fileExists(video) {
 			return nil, fmt.Errorf("video đầu vào không hợp lệ")
 		}
 		frame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_reference_frame.jpg", node.ID))
 		if ctx.FFmpegRunner == nil {
-			return nil, fmt.Errorf("trích xuất frame cần FFmpeg")
+			return nil, fmt.Errorf("trích xuất frame từ video cần FFmpeg")
 		}
-		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-ss", "1", "-i", video, "-vframes", "1", "-q:v", "2", frame); err != nil || !fileExists(frame) {
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-ss", "0", "-i", video, "-vframes", "1", "-q:v", "2", frame); err != nil || !fileExists(frame) || !isImageFile(frame) {
 			return nil, fmt.Errorf("không trích xuất được frame từ video")
 		}
 		images = append(images, frame)
