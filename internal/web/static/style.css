@@ -5860,6 +5860,11 @@ body.page-workflow .layout {
   animation: wfModalSlideIn 0.2s ease-out;
 }
 
+#add-node-modal .wf-modal-window {
+  height: 86vh;
+  min-height: 0;
+}
+
 @keyframes wfModalSlideIn {
   from { opacity: 0; transform: scale(0.96) translateY(-10px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
@@ -6047,6 +6052,14 @@ body.page-workflow .layout {
   padding: 22px;
   overflow-y: auto;
   max-height: 55vh;
+}
+
+#modal-node-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  align-content: start;
+  grid-auto-rows: max-content;
 }
 
 .wf-library-card {
