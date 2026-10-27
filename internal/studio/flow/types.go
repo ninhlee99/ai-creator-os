@@ -18,16 +18,32 @@ const (
 	PortTypeMotion    PortType = "motion"
 	PortTypeNumber    PortType = "number"
 	PortTypeConfig    PortType = "config"
+	// 3D Studio & VFX Ports:
+	PortTypeMesh      PortType = "mesh"    // Dữ liệu lưới 3D, Face Landmark, UV Mesh
+	PortTypePose      PortType = "pose"    // Dữ liệu khung xương 3D / DensePose
+	PortTypeCamera    PortType = "camera"  // Ma trận quang học máy quay (Focal length, Aperture, Matrix)
+	PortTypeLight     PortType = "light"   // Thiết lập dàn đèn 3-Point Light Rig / HDR
+	PortTypeTexture   PortType = "texture" // Bề mặt chất liệu vải, Normal/Depth Map
 )
 
-// NodeCategory phân loại nhóm node trên giao diện Canvas ComfyUI / n8n.
+// NodeCategory phân loại nhóm node trên giao diện Canvas ComfyUI / Blender / n8n.
 type NodeCategory string
 
 const (
+	// Phân loại cơ bản tương thích ngược
 	CategoryInput   NodeCategory = "input"
 	CategoryProcess NodeCategory = "process"
 	CategoryAI      NodeCategory = "ai"
 	CategoryOutput  NodeCategory = "output"
+
+	// 6 Tầng Kiến trúc Studio 3D & VFX Chuyên nghiệp:
+	CategoryIdentity NodeCategory = "identity" // Avatar & Digital Human (Khuôn mặt, FaceID, Vóc dáng)
+	CategoryGeometry NodeCategory = "geometry" // 3D Mesh, Khung xương DensePose & Biến dạng vải
+	CategoryCamera   NodeCategory = "camera"   // Virtual Cinematography (Máy quay quang học & Điều phối góc)
+	CategoryLighting NodeCategory = "lighting" // 3D Studio Environment (3-Point Lighting, HDR Relighting)
+	CategoryRender   NodeCategory = "render"   // Neural Diffusion & Shader Engines (Muse AI, Veo, Shaders)
+	CategoryPost     NodeCategory = "post"     // VFX Compositing, Color Grade & Master Timeline
+	CategoryWorkflow NodeCategory = "workflow" // Workflow inputs, outputs and reusable subflows
 )
 
 // FlowPort đại diện cho một cổng vào hoặc ra của node.
@@ -61,6 +77,8 @@ type NodeState struct {
 	Progress      int    `json:"progress"`
 	Error         string `json:"error,omitempty"`
 	OutputPreview string `json:"output_preview,omitempty"`
+	MuseSessionID string `json:"muse_session_id,omitempty"` // ID phiên chat riêng biệt trên Muse AI
+	MuseThreadURL string `json:"muse_thread_url,omitempty"` // URL xem trực tiếp phiên chat trên Muse Web
 	StartedAt     string `json:"started_at,omitempty"`
 	FinishedAt    string `json:"finished_at,omitempty"`
 }
@@ -102,17 +120,23 @@ type NodeDefinition struct {
 
 // ExecutionContext chứa dữ liệu môi trường và các hàm callback khi chạy node.
 type ExecutionContext struct {
-	Context     context.Context
-	RunID       string
-	WorkDir     string
-	OutDir      string
-	AccountID   int
-	Log         func(msg string)
-	NodeStatus  func(nodeID string, state NodeState)
-	EngineCall  func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
-	MediaGen    any
-	VisionEval  func(ctx context.Context, prompt string, imagePath string) (string, error)
-	FFmpegRunner func(ctx context.Context, args ...string) error
+	Context           context.Context
+	RunID             string
+	WorkDir           string
+	OutDir            string
+	AccountID         int
+	MuseThreadID      string // ID Thread Muse AI duy nhất cho toàn bộ flow run này (1 Flow = 1 Thread)
+	MuseThreadURL     string // URL xem trực tiếp Thread trên Muse Web
+	MuseThreadStarted bool   // Đánh dấu thread mới đã được mở ở node đầu tiên chưa
+	Log               func(msg string)
+	NodeStatus        func(nodeID string, state NodeState)
+	EngineCall        func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
+	MediaGen          any
+	VisionEval        func(ctx context.Context, prompt string, imagePath string) (string, error)
+	FFmpegRunner      func(ctx context.Context, args ...string) error
+	WorkflowInputs    map[string]any
+	ResolveWorkflow   func(id string) (*FlowGraph, error)
+	WorkflowStack     []string
 }
 
 // NodeExecutor là hàm thực thi một node dựa trên inputs đã tính toán từ các node trước.
@@ -120,17 +144,19 @@ type NodeExecutor func(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 
 // FlowRun ghi lại một lần thực thi của graph.
 type FlowRun struct {
-	ID          string               `json:"id"`
-	GraphID     string               `json:"graph_id"`
-	GraphName   string               `json:"graph_name"`
-	Status      string               `json:"status"` // queued, running, completed, failed, cancelled
-	Progress    int                  `json:"progress"`
-	NodeStates  map[string]NodeState `json:"node_states"`
-	Outputs     map[string]any       `json:"outputs"`
-	FinalOutput string               `json:"final_output,omitempty"`
-	Log         string               `json:"log"`
-	CreatedAt   string               `json:"created_at"`
-	FinishedAt  string               `json:"finished_at,omitempty"`
+	ID            string               `json:"id"`
+	GraphID       string               `json:"graph_id"`
+	GraphName     string               `json:"graph_name"`
+	Status        string               `json:"status"` // queued, running, completed, failed, cancelled
+	Progress      int                  `json:"progress"`
+	MuseThreadID  string               `json:"muse_thread_id,omitempty"`  // Thread Muse AI duy nhất của lần chạy flow này (1 Flow = 1 Thread)
+	MuseThreadURL string               `json:"muse_thread_url,omitempty"` // URL xem trực tiếp Thread của flow
+	NodeStates    map[string]NodeState `json:"node_states"`
+	Outputs       map[string]any       `json:"outputs"`
+	FinalOutput   string               `json:"final_output,omitempty"`
+	Log           string               `json:"log"`
+	CreatedAt     string               `json:"created_at"`
+	FinishedAt    string               `json:"finished_at,omitempty"`
 }
 
 // FlowSummary tóm tắt nhanh để hiển thị danh sách graph.

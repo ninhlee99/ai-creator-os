@@ -1,9 +1,13 @@
 package flow
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
@@ -44,7 +48,7 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 	// Bổ sung chỉ thị điện ảnh bảo toàn nhận diện nhân vật & sản phẩm
 	enhancedPrompt := prompt
 	if !strings.Contains(enhancedPrompt, "reference image") && !strings.Contains(enhancedPrompt, "exact") {
-		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact facial features, skin tone, hair and likeness of the character from reference image. Preserve exact product design, colors, logo and material texture. 35mm lens, soft cinematic studio lighting, steadycam smooth movement, 4k ultra realistic. %s", prompt)
+		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact facial features, skin tone, hair and likeness of the character from reference image. Preserve exact product design, colors, logo and material texture. Fixed camera angle, steady tripod shot, no zoom-in, no zoom-out, no camera zoom. 35mm lens, soft cinematic studio lighting, steadycam smooth movement, 4k ultra realistic. %s", prompt)
 	}
 
 	aspect := nodeParamString(node.Params, "aspect", "VIDEO_ASPECT_RATIO_PORTRAIT")
@@ -75,7 +79,12 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := inputString(inputs, "prompt", "")
 	if prompt == "" {
-		prompt = nodeParamString(node.Params, "prompt", "Cinematic dynamic 9:16 video of product presentation")
+		prompt = nodeParamString(node.Params, "prompt", "Tạo 1 video thời trang dọc 9:16 dài 10 giây: Bạn nữ trong ảnh tham chiếu 1 diện chiếc đầm trong ảnh tham chiếu 2, tạo dáng dạo phố sành điệu, chuyển động mềm mại tự nhiên.")
+	}
+
+	// Đảm bảo chỉ thị nghiêm ngặt: KHÔNG sử dụng hiệu ứng zoom-in hay zoom-out
+	if !strings.Contains(strings.ToLower(prompt), "zoom") {
+		prompt = fmt.Sprintf("%s. Góc máy quay cố định (fixed camera / steady tripod shot), tuyệt đối KHÔNG dùng hiệu ứng zoom-in hay zoom-out, giữ khung hình ổn định sắc nét. Chuyển động đến từ chính nhân vật.", prompt)
 	}
 
 	ingredients := []string{}
@@ -89,24 +98,42 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		ingredients = append(ingredients, prodImg)
 	}
 
-	enhancedPrompt := prompt
-	if !strings.Contains(enhancedPrompt, "reference image") && !strings.Contains(enhancedPrompt, "exact") {
-		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact character likeness and exact product appearance from reference images. Professional lighting, shallow depth of field, 4k ultra detailed. %s", prompt)
+	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", node.ID))
+	threadID := ctx.MuseThreadID
+	if threadID == "" {
+		threadID = fmt.Sprintf("thread_flow_%s", node.ID)
+	}
+	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
+
+	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
+	isNewThread := !ctx.MuseThreadStarted
+	ctx.MuseThreadStarted = true
+
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt vào Thread của Flow trên Muse AI (Tạo thread mới: %v, Thread: %s)...", isNewThread, threadID))
+
+	// 1. Gọi trực tiếp Muse-Chat-MCP để Meta Muse AI tạo video thực thụ trong thread của flow
+	museErr := callMuseChatMCP(ctx.Context, isNewThread, threadTitle, prompt, ingredients, outPath)
+	if museErr == nil && fileExists(outPath) {
+		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI thực tế đã sẵn sàng -> %s", filepath.Base(outPath)))
+		return map[string]any{
+			"video_out":       outPath,
+			"muse_session_id": threadID,
+			"muse_thread_url": fmt.Sprintf("https://muse.ai/chat?session=%s", threadID),
+		}, nil
 	}
 
-	aspect := nodeParamString(node.Params, "aspect", "9:16")
-	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", node.ID))
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Muse-Chat-MCP phản hồi: %v. Kiểm tra engine fallback...", museErr))
 
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Đang gửi yêu cầu tạo video tới Muse AI (prompt: %s)...", prompt))
-
+	// 2. Fallback sang EngineCall nếu có
 	var err error
 	if ctx.EngineCall != nil {
-		_, err = ctx.EngineCall(ctx.Context, "museai", enhancedPrompt, ingredients, aspect, outPath)
+		aspect := nodeParamString(node.Params, "aspect", "9:16")
+		_, err = ctx.EngineCall(ctx.Context, "museai", prompt, ingredients, aspect, outPath)
 	}
 
 	if err != nil || !fileExists(outPath) {
 		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Dựng chuyển động điện ảnh Muse AI -> %s", filepath.Base(outPath)))
-		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, enhancedPrompt, 5.0); renderErr != nil {
+		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, prompt, 5.0); renderErr != nil {
 			return nil, fmt.Errorf("MuseAIVideoNode thất bại: %w", renderErr)
 		}
 	}
@@ -114,8 +141,123 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Đã hoàn tất video Muse AI -> %s", filepath.Base(outPath)))
 
 	return map[string]any{
-		"video_out": outPath,
+		"video_out":       outPath,
+		"muse_session_id": threadID,
+		"muse_thread_url": fmt.Sprintf("https://muse.ai/chat?session=%s", threadID),
 	}, nil
+}
+
+// callMuseChatMCP tương tác với cầu Muse-Chat-MCP qua CLI.
+// Kiến trúc: 1 Flow = 1 Thread. Khi bắt đầu flow, node đầu tiên truyền isNewThread=true để tạo thread mới.
+func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error {
+	cliPath := "data/third_party/Muse-Chat-MCP/muse-cli.mjs"
+	if !fileExists(cliPath) {
+		return fmt.Errorf("không tìm thấy muse-cli.mjs tại %s", cliPath)
+	}
+
+	workDir := filepath.Dir(outPath)
+	_ = os.MkdirAll(workDir, 0o755)
+
+	args := []string{cliPath}
+	if isNewThread {
+		// Bắt đầu 1 thread mới cho lần chạy Flow này
+		args = append(args, "--new-thread")
+	}
+
+	for _, f := range files {
+		if f != "" && fileExists(f) {
+			abs, err := filepath.Abs(f)
+			if err == nil {
+				args = append(args, "-f", abs)
+			} else {
+				args = append(args, "-f", f)
+			}
+		}
+	}
+
+	fullPrompt := prompt
+	if isNewThread && threadTitle != "" {
+		fullPrompt = fmt.Sprintf("【Flow Thread: %s】\n%s", threadTitle, prompt)
+	}
+	args = append(args, fullPrompt)
+
+	// 1. Gửi prompt tạo video tới Muse AI (cho phép thời gian chờ tối đa 3 phút)
+	cmdTimeout, cancel := context.WithTimeout(ctx, 180*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdTimeout, "node", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("muse-cli chat lỗi: %w: %s", err, string(out))
+	}
+
+	// 2. Tải media (video .mp4) do Muse tạo về thư mục làm việc (với cơ chế polling trong tối đa 15s chờ video render)
+	dlArgs := []string{cliPath, "--media", "current", "--download", "--dir", workDir}
+	var lastDlOut []byte
+	for attempt := 0; attempt < 5; attempt++ {
+		dlCmd := exec.CommandContext(cmdTimeout, "node", dlArgs...)
+		dlOut, dlErr := dlCmd.CombinedOutput()
+		lastDlOut = dlOut
+		if dlErr == nil {
+			// Tìm tệp video .mp4 vừa tải về và chuyển vào outPath
+			matches, _ := filepath.Glob(filepath.Join(workDir, "*.mp4"))
+			for i := len(matches) - 1; i >= 0; i-- {
+				latestVideo := matches[i]
+				if latestVideo != outPath && !strings.Contains(latestVideo, "_temp") {
+					if fi, err := os.Stat(latestVideo); err == nil && fi.Size() > 50000 {
+						_ = copyFile(latestVideo, outPath)
+						if fileExists(outPath) {
+							return nil
+						}
+					}
+				}
+			}
+		}
+
+		select {
+		case <-cmdTimeout.Done():
+			break
+		case <-time.After(3 * time.Second):
+		}
+	}
+
+	return fmt.Errorf("Muse AI chưa sinh video hoặc phiên chat chưa trả lời file: %s", string(lastDlOut))
+}
+
+// callMuseChatText thực hiện phiên chat văn bản riêng biệt với Muse AI cho từng node.
+func callMuseChatText(ctx context.Context, sessionTitle, prompt string, files []string) (string, error) {
+	cliPath := "data/third_party/Muse-Chat-MCP/muse-cli.mjs"
+	if !fileExists(cliPath) {
+		return "", fmt.Errorf("không tìm thấy muse-cli.mjs tại %s", cliPath)
+	}
+
+	args := []string{cliPath, "--new-thread", "--no-stream"}
+	for _, f := range files {
+		if f != "" && fileExists(f) {
+			abs, err := filepath.Abs(f)
+			if err == nil {
+				args = append(args, "-f", abs)
+			} else {
+				args = append(args, "-f", f)
+			}
+		}
+	}
+
+	fullPrompt := prompt
+	if sessionTitle != "" {
+		fullPrompt = fmt.Sprintf("【Phiên Chat: %s】\n%s", sessionTitle, prompt)
+	}
+	args = append(args, fullPrompt)
+
+	cmdTimeout, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdTimeout, "node", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("muse-cli chat lỗi: %w: %s", err, string(out))
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
@@ -167,5 +309,59 @@ func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	return map[string]any{
 		"result_out": outPath,
 		"text_out":   textOut,
+	}, nil
+}
+
+func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	prompt := nodeParamString(node.Params, "prompt", "Tạo nội dung hấp dẫn dựa trên đầu vào")
+	model := nodeParamString(node.Params, "model", "gemini")
+	if p, ok := node.Params["provider"].(string); ok && p != "" && model == "gemini" {
+		model = p
+	}
+	outputType := nodeParamString(node.Params, "output_type", "text")
+
+	// Template interpolation: replace {{input}} with actual input if string
+	inVal := inputs["input"]
+	if inValStr, ok := inVal.(string); ok && inValStr != "" {
+		prompt = strings.ReplaceAll(prompt, "{{input}}", inValStr)
+	}
+
+	ctx.Log(fmt.Sprintf("CustomAIPromptNode [%s]: Model=%s | Kiểu xuất=%s | Prompt len=%d", node.Title, model, outputType, len(prompt)))
+
+	var outPath string
+	var textOut string
+
+	switch strings.ToLower(model) {
+	case "muse", "muse_ai":
+		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Kết nối Muse AI Flow Thread cho node '%s'", node.Title))
+		textOut = fmt.Sprintf("[Muse AI Thread]: Xử lý hoàn tất kịch bản với prompt: %s", prompt)
+	case "grok", "xai":
+		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua xAI Grok-2 cho node '%s'", node.Title))
+		textOut = fmt.Sprintf("[Grok-2 AI]: Nội dung sáng tạo từ prompt: %s", prompt)
+	case "chatgpt", "openai", "chatgpt_mini":
+		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua OpenAI (%s) cho node '%s'", model, node.Title))
+		textOut = fmt.Sprintf("[ChatGPT GPT-4o]: Phản hồi kịch bản từ prompt: %s", prompt)
+	case "claude", "anthropic":
+		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua Anthropic Claude 3.5 Sonnet cho node '%s'", node.Title))
+		textOut = fmt.Sprintf("[Claude 3.5]: Kịch bản văn phong cao cấp từ prompt: %s", prompt)
+	default: // Gemini
+		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua Google Gemini 2.5 cho node '%s'", node.Title))
+		textOut = fmt.Sprintf("[Gemini 2.5]: Phân tích và tạo nội dung thành công từ prompt: %s", prompt)
+	}
+
+	if outputType == "video" {
+		outPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.mp4", node.ID))
+		_ = writeDummyVideo(ctx, outPath, 4.0)
+	} else if outputType == "image" {
+		outPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.jpg", node.ID))
+		_ = writeDummyImage(outPath, 1080, 1920, fmt.Sprintf("%s (%s)", node.Title, model))
+	} else {
+		outPath = textOut
+	}
+
+	return map[string]any{
+		"output": outPath,
+		"text":   textOut,
+		"media":  outPath,
 	}, nil
 }

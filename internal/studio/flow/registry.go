@@ -153,18 +153,23 @@ func registerAllBuiltinNodes() {
 		Type:        "product_extractor",
 		Title:       "Bóc tách sản phẩm (Extract Product)",
 		Category:    CategoryProcess,
-		Description: "Bóc tách sản phẩm từ ảnh mẫu, loại bỏ phông nền để tạo ảnh vật thể trong suốt (cutout PNG)",
+		Description: "Bóc tách sản phẩm từ ảnh mẫu hoặc video TikTok/Reels/IG, tự động trích xuất khung hình và xóa phông nền (cutout PNG)",
 		Icon:        "scissors",
 		Inputs: []FlowPort{
-			{ID: "source_image", Name: "Ảnh gốc", Type: PortTypeImage, Required: true},
+			{ID: "source_image", Name: "Ảnh hoặc Video nguồn", Type: PortTypeAny, Required: false},
+			{ID: "source_video", Name: "Video nguồn", Type: PortTypeVideo, Required: false},
 		},
 		Outputs: []FlowPort{
-			{ID: "cutout_image", Name: "Ảnh sản phẩm đã tách", Type: PortTypeImage, Description: "Sản phẩm độc lập đã xóa phông nền"},
+			{ID: "cutout_image", Name: "Ảnh sản phẩm đã tách", Type: PortTypeImage, Description: "Sản phẩm độc lập đã xóa phông nền trong suốt"},
 			{ID: "mask_image", Name: "Mặt nạ (Mask)", Type: PortTypeImage, Description: "Ảnh mặt nạ nhị phân phục vụ inpainting"},
+			{ID: "source_frame", Name: "Khung hình gốc", Type: PortTypeImage, Description: "Khung hình trích xuất từ video nguồn"},
+			{ID: "product_image", Name: "Sản phẩm đầu ra", Type: PortTypeImage, Description: "Tương thích nối tiếp với các node nhận product_image"},
 		},
 		DefaultParams: map[string]any{
-			"refine_edges": true,
-			"auto_crop":    true,
+			"video_timestamp":     "auto",
+			"refine_edges":        true,
+			"auto_crop":           true,
+			"segmentation_engine": "auto",
 		},
 		Executor: executeProductExtractor,
 	})
@@ -449,7 +454,7 @@ func registerAllBuiltinNodes() {
 	RegisterNode(NodeDefinition{
 		Type:        "camera_angles_director",
 		Title:       "Đạo diễn đa góc quay (Multi-Angle Director)",
-		Category:    CategoryProcess,
+		Category:    CategoryCamera,
 		Description: "Tự động thiết lập chuỗi 3 góc máy điện ảnh: toàn thân runway walk, bán thân xoay 360 dáng và cận cảnh chất vải",
 		Icon:        "video",
 		Inputs: []FlowPort{
@@ -465,6 +470,402 @@ func registerAllBuiltinNodes() {
 			"shot_style": "high_fashion_editorial",
 		},
 		Executor: executeCameraAnglesDirector,
+	})
+
+	// 21. Character Identity Node (Avatar & Nhận diện nhân vật 3D)
+	RegisterNode(NodeDefinition{
+		Type:        "character_identity",
+		Title:       "Avatar & Nhận diện nhân vật (Character Identity)",
+		Category:    CategoryIdentity,
+		Description: "Trích xuất và lưu trữ đặc trưng khuôn mặt (FaceID Embedding), tỷ lệ cơ thể 3D và chân dung kỹ thuật số đại diện",
+		Icon:        "user",
+		Inputs: []FlowPort{
+			{ID: "source_image", Name: "Ảnh chân dung mẫu", Type: PortTypeImage, Required: false},
+			{ID: "reference_views", Name: "Các góc nhìn bổ trợ", Type: PortTypeImageList, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "face_id", Name: "Dữ liệu FaceID 3D", Type: PortTypeMesh, Description: "Vector nhận diện khuôn mặt FaceID / Landmark 3D"},
+			{ID: "character_ref", Name: "Chân dung chuẩn hóa", Type: PortTypeImage, Description: "Ảnh chân dung đại diện góc chuẩn"},
+			{ID: "body_proportions", Name: "Tỉ lệ vóc dáng", Type: PortTypeConfig, Description: "Tỉ lệ cơ thể 3D: chiều cao, vòng eo, dáng đứng"},
+		},
+		DefaultParams: map[string]any{
+			"model_name":                 "Miu Digital Avatar 2026",
+			"gender":                     "female",
+			"face_similarity_threshold": 0.95,
+		},
+		Executor: executeCharacterIdentity,
+	})
+
+	// 22. Face Lock Refiner Node (Khóa nhận diện khuôn mặt chống biến dạng)
+	RegisterNode(NodeDefinition{
+		Type:        "face_lock_refiner",
+		Title:       "Khóa nhận diện khuôn mặt (Face-Lock Consistency)",
+		Category:    CategoryIdentity,
+		Description: "Bảo toàn 100% đường nét khuôn mặt, ánh mắt và biểu cảm của nhân vật đại diện qua từng khung hình video, loại bỏ biến dạng AI",
+		Icon:        "shield",
+		Inputs: []FlowPort{
+			{ID: "media_in", Name: "Video / Ảnh đầu vào", Type: PortTypeAny, Required: true},
+			{ID: "face_id", Name: "Dữ liệu FaceID", Type: PortTypeMesh, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "refined_media", Name: "Tài nguyên đã khóa mặt", Type: PortTypeAny, Description: "Video/ảnh sau khi khóa khuôn mặt nhất quán"},
+			{ID: "face_mask", Name: "Mặt nạ vùng mặt", Type: PortTypeImage, Description: "Vùng bảo toàn nhận diện khuôn mặt"},
+		},
+		DefaultParams: map[string]any{
+			"blend_ratio":         0.92,
+			"preserve_expression": true,
+		},
+		Executor: executeFaceLockRefiner,
+	})
+
+	// 23. Body Skeleton Pose Node (Trích xuất khung xương 3D & Pose)
+	RegisterNode(NodeDefinition{
+		Type:        "body_skeleton_pose",
+		Title:       "Trích xuất khung xương 3D (3D Body Pose & Skeleton)",
+		Category:    CategoryGeometry,
+		Description: "Phân tích tư thế 3D (DensePose / OpenPose Skeleton), tính toán tọa độ khớp vai, hông, bước chân chuyển động chân thực",
+		Icon:        "activity",
+		Inputs: []FlowPort{
+			{ID: "source_media", Name: "Ảnh hoặc Video nguồn", Type: PortTypeAny, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "pose_data", Name: "Dữ liệu Pose 3D", Type: PortTypePose, Description: "Tọa độ 3D các khớp xương DensePose"},
+			{ID: "skeleton_map", Name: "Bản đồ khung xương", Type: PortTypeImage, Description: "Bản đồ khung xương trực quan"},
+		},
+		DefaultParams: map[string]any{
+			"pose_style":         "catwalk_runway",
+			"skeleton_precision": "high_density",
+		},
+		Executor: executeBodySkeletonPose,
+	})
+
+	// 24. Garment Mesh Extractor Node (Bóc tách cấu trúc 3D trang phục)
+	RegisterNode(NodeDefinition{
+		Type:        "garment_mesh_extractor",
+		Title:       "Bóc tách cấu trúc 3D vải (3D Garment Mesh Extractor)",
+		Category:    CategoryGeometry,
+		Description: "Bóc tách váy/áo từ ảnh phẳng hoặc video sản phẩm thành bản đồ cấu trúc 3D (Texture Map, Normal & Depth Map)",
+		Icon:        "layers",
+		Inputs: []FlowPort{
+			{ID: "product_image", Name: "Ảnh sản phẩm mẫu", Type: PortTypeImage, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "texture_map", Name: "Bản đồ Texture vải", Type: PortTypeTexture, Description: "Texture bề mặt vải chi tiết cao"},
+			{ID: "normal_depth", Name: "Bản đồ Normal & Chiều sâu", Type: PortTypeMesh, Description: "Normal map nếp nhăn và chiều sâu vải 3D"},
+			{ID: "alpha_mask", Name: "Mặt nạ phân đoạn vải", Type: PortTypeImage, Description: "Mặt nạ phân đoạn trang phục chuẩn xác"},
+		},
+		DefaultParams: map[string]any{
+			"fabric_type":   "silk_satin",
+			"wrinkle_depth": 0.75,
+		},
+		Executor: executeGarmentMeshExtractor,
+	})
+
+	// 25. Surface Cloth Warper Node (Biến dạng vải 3D theo dáng)
+	RegisterNode(NodeDefinition{
+		Type:        "surface_cloth_warper",
+		Title:       "Biến dạng vải 3D theo dáng (Cloth Surface Deformation)",
+		Category:    CategoryGeometry,
+		Description: "Uốn lượn và phủ trang phục 3D ôm sát theo khung xương và chuyển động cơ thể, tính toán độ rủ tự nhiên không cắt dán 2D",
+		Icon:        "scissors",
+		Inputs: []FlowPort{
+			{ID: "garment_texture", Name: "Chất liệu bề mặt vải", Type: PortTypeTexture, Required: false},
+			{ID: "body_pose", Name: "Khung xương 3D", Type: PortTypePose, Required: false},
+			{ID: "character_ref", Name: "Ảnh chân dung mẫu", Type: PortTypeImage, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "warped_garment", Name: "Trang phục ôm dáng 3D", Type: PortTypeImage, Description: "Trang phục đã ôm sát chuyển động chuẩn 3D"},
+			{ID: "deformation_mesh", Name: "Lưới biến dạng vật lý", Type: PortTypeMesh, Description: "Lưới biến dạng mô phỏng độ rủ của vải"},
+		},
+		DefaultParams: map[string]any{
+			"cloth_tension":      "fluid_drape",
+			"gravity_simulation": true,
+		},
+		Executor: executeSurfaceClothWarper,
+	})
+
+	// 26. Virtual Camera Rig Node (Máy quay quang học 3D)
+	RegisterNode(NodeDefinition{
+		Type:        "virtual_camera_rig",
+		Title:       "Máy quay quang học 3D (Virtual Camera Rig)",
+		Category:    CategoryCamera,
+		Description: "Mô phỏng ống kính điện ảnh thực tế: Tiêu cự (Focal Length), khẩu độ (Aperture Bokeh) và quỹ đạo chuyển động mượt mà (Tripod/Orbit/Pan)",
+		Icon:        "camera",
+		Inputs: []FlowPort{
+			{ID: "focus_target", Name: "Mục tiêu lấy nét", Type: PortTypeAny, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "camera_matrix", Name: "Ma trận máy quay 3D", Type: PortTypeCamera, Description: "Ma trận quang học máy quay"},
+			{ID: "lens_prompt", Name: "Chỉ thị quang học", Type: PortTypeText, Description: "Chỉ thị quang học và phong cách ống kính"},
+		},
+		DefaultParams: map[string]any{
+			"focal_length":    "35mm",
+			"aperture":        "f/1.8",
+			"camera_motion":   "fixed_tripod",
+			"depth_of_field":  true,
+		},
+		Executor: executeVirtualCameraRig,
+	})
+
+	// 27. Three-Point Lighting Rig Node (Dàn đèn Studio 3 điểm)
+	RegisterNode(NodeDefinition{
+		Type:        "three_point_light_rig",
+		Title:       "Dàn đèn Studio 3 điểm (3-Point Lighting Rig)",
+		Category:    CategoryLighting,
+		Description: "Hệ thống chiếu sáng phim trường cao cấp: Đèn chính (Key Light), Đèn bù sáng (Fill Light) và Đèn viền tôn vóc dáng (Rim Light)",
+		Icon:        "sun",
+		Inputs:      []FlowPort{},
+		Outputs: []FlowPort{
+			{ID: "light_setup", Name: "Thiết lập dàn đèn", Type: PortTypeLight, Description: "Dữ liệu ma trận ánh sáng Studio"},
+			{ID: "lighting_prompt", Name: "Prompt ánh sáng", Type: PortTypeText, Description: "Prompt ánh sáng chuẩn điện ảnh"},
+		},
+		DefaultParams: map[string]any{
+			"key_light_lux":    1200,
+			"key_position":     "front_left_45",
+			"fill_ratio":       "1:2",
+			"rim_color_kelvin": 5600,
+			"mood":             "high_fashion_studio",
+		},
+		Executor: executeThreePointLightRig,
+	})
+
+	// 28. HDRI Environment Lighting Node (Ánh sáng môi trường HDRI)
+	RegisterNode(NodeDefinition{
+		Type:        "hdri_environment_lighting",
+		Title:       "Ánh sáng môi trường HDRI (HDRI Relighting)",
+		Category:    CategoryLighting,
+		Description: "Chiếu sáng môi trường ngoại cảnh 360 độ (Paris Fashion Week, Luxury Penthouse, Minimalist White Studio)",
+		Icon:        "globe",
+		Inputs:      []FlowPort{},
+		Outputs: []FlowPort{
+			{ID: "light_setup", Name: "Thiết lập môi trường HDRI", Type: PortTypeLight, Description: "Ma trận môi trường HDRI"},
+			{ID: "environment_prompt", Name: "Prompt môi trường", Type: PortTypeText, Description: "Prompt mô tả bối cảnh và phản xạ"},
+		},
+		DefaultParams: map[string]any{
+			"hdri_preset":  "luxury_minimalist_studio",
+			"rotation_deg": 45,
+			"intensity":    1.2,
+		},
+		Executor: executeHDRIEnvironmentLighting,
+	})
+
+	// 29. Muse AI Neural Render Node (Neural Diffusion Render Engine)
+	RegisterNode(NodeDefinition{
+		Type:        "muse_ai_neural_render",
+		Title:       "Neural Diffusion Render (Muse AI & Veo Engine)",
+		Category:    CategoryRender,
+		Description: "Bộ render thần kinh kết hợp đa điều kiện: nhân vật đại diện, cấu trúc vải 3D, thông số ống kính quang học và dàn đèn Studio",
+		Icon:        "cpu",
+		Inputs: []FlowPort{
+			{ID: "prompt", Name: "Câu lệnh kịch bản", Type: PortTypeText, Required: false},
+			{ID: "character_ref", Name: "Ảnh chân dung mẫu", Type: PortTypeImage, Required: false},
+			{ID: "warped_garment", Name: "Trang phục ôm dáng 3D", Type: PortTypeImage, Required: false},
+			{ID: "camera_matrix", Name: "Ma trận máy quay 3D", Type: PortTypeCamera, Required: false},
+			{ID: "light_setup", Name: "Thiết lập dàn đèn", Type: PortTypeLight, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "rendered_video", Name: "Video Neural Render", Type: PortTypeVideo, Description: "Video kết quả render độ nét cao"},
+			{ID: "master_video", Name: "Master Video", Type: PortTypeVideo, Description: "Đường dẫn video master"},
+			{ID: "sample_frame", Name: "Khung hình mẫu", Type: PortTypeImage, Description: "Ảnh đại diện trích xuất từ video"},
+		},
+		DefaultParams: map[string]any{
+			"aspect":            "9:16",
+			"motion_smoothness": "fluid_cinema",
+			"rendering_engine":  "muse_chat_mcp",
+		},
+		Executor: executeMuseAINeuralRender,
+	})
+
+	// 30. Neural Composite Shader Node (Hòa trộn Shader & Đổ bóng tiếp xúc)
+	RegisterNode(NodeDefinition{
+		Type:        "neural_composite_shader",
+		Title:       "Hòa trộn Shader & Đổ bóng (Contact Shadows & Composite)",
+		Category:    CategoryRender,
+		Description: "Hòa trộn chân thực giữa nhân vật, nền và trang phục, tính toán đổ bóng tiếp xúc (Contact Shadows) và phản xạ ánh sáng tự nhiên",
+		Icon:        "sliders",
+		Inputs: []FlowPort{
+			{ID: "layer_character", Name: "Lớp nhân vật", Type: PortTypeImage, Required: false},
+			{ID: "layer_background", Name: "Lớp bối cảnh", Type: PortTypeImage, Required: false},
+			{ID: "light_setup", Name: "Nguồn sáng Studio", Type: PortTypeLight, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "composite_out", Name: "Ảnh hòa trộn hoàn chỉnh", Type: PortTypeImage, Description: "Kết quả hòa trộn ánh sáng và bóng đổ"},
+		},
+		DefaultParams: map[string]any{
+			"shadow_softness":   0.4,
+			"ambient_occlusion": true,
+		},
+		Executor: executeNeuralCompositeShader,
+	})
+
+	// 31. Cinematic Color Grading Node (Chỉnh màu điện ảnh & 3D LUT)
+	RegisterNode(NodeDefinition{
+		Type:        "cinematic_color_grading",
+		Title:       "Chỉnh màu điện ảnh & 3D LUT (Color Grading & 3D LUT)",
+		Category:    CategoryPost,
+		Description: "Áp dụng bảng màu điện ảnh (3D LUT Lookbook, Kodak Vision3, Teal & Orange, Pastel Soft Glow) và hạt phim Film Grain",
+		Icon:        "feather",
+		Inputs: []FlowPort{
+			{ID: "video_in", Name: "Video thô từ Render", Type: PortTypeVideo, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "graded_video", Name: "Video đã cân màu", Type: PortTypeVideo, Description: "Video đạt chuẩn màu Lookbook thời trang"},
+		},
+		DefaultParams: map[string]any{
+			"lut_profile":    "editorial_vogue_2026",
+			"contrast_boost": 1.12,
+			"saturation":     1.05,
+			"film_grain":     "subtle_cinematic",
+		},
+		Executor: executeCinematicColorGrading,
+	})
+
+	// 32. Video Master Output Node (Xuất bản Master 4K / TikTok)
+	RegisterNode(NodeDefinition{
+		Type:        "video_master_output",
+		Title:       "Xuất bản Master 4K / TikTok (Master Timeline Export)",
+		Category:    CategoryPost,
+		Description: "Đóng gói video hoàn thiện chuẩn dọc 9:16 (H.264/HEVC, 24fps/60fps, audio sync, không zoom giả), sẵn sàng xuất bản",
+		Icon:        "check-circle",
+		Inputs: []FlowPort{
+			{ID: "video_in", Name: "Video thành phẩm", Type: PortTypeVideo, Required: false},
+			{ID: "audio_track", Name: "Track âm thanh", Type: PortTypeAudio, Required: false},
+			{ID: "title", Name: "Tiêu đề video", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "master_video", Name: "Video Master", Type: PortTypeVideo, Description: "File video Master chất lượng cao nhất"},
+			{ID: "final_export", Name: "Đường dẫn xuất xưởng", Type: PortTypeVideo, Description: "Sẵn sàng đăng tải hoặc tải về"},
+		},
+		DefaultParams: map[string]any{
+			"target_resolution": "1080x1920",
+			"fps":               24,
+			"bitrate_mode":      "high_quality",
+		},
+		Executor: executeVideoMasterOutput,
+	})
+
+	// 33. Preview Media Node (Xem trước kết quả ComfyUI)
+	RegisterNode(NodeDefinition{
+		Type:        "preview_media",
+		Title:       "Xem trước kết quả (Preview Image/Media)",
+		Category:    CategoryOutput,
+		Description: "Hiển thị trực tiếp kết quả ảnh, mặt nạ hoặc video trên Canvas ngay sau khi node chạy xong (tương tự Preview Image trong ComfyUI)",
+		Icon:        "eye",
+		Inputs: []FlowPort{
+			{ID: "media_in", Name: "Ảnh/Video cần xem", Type: PortTypeAny, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "media_out", Name: "Truyền tiếp (Passthrough)", Type: PortTypeAny, Description: "Dữ liệu media truyền tiếp sang các node khác"},
+		},
+		DefaultParams: map[string]any{},
+		Executor:      executePreviewMedia,
+	})
+
+	// 34. Preview Image Node (Alias tương thích ComfyUI chuẩn)
+	RegisterNode(NodeDefinition{
+		Type:        "preview_image",
+		Title:       "Xem trước ảnh (Preview Image)",
+		Category:    CategoryOutput,
+		Description: "Hiển thị ảnh hoặc mặt nạ kết quả trực tiếp trên Canvas (ComfyUI Preview Image)",
+		Icon:        "eye",
+		Inputs: []FlowPort{
+			{ID: "images", Name: "Ảnh cần xem", Type: PortTypeAny, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "images", Name: "Truyền tiếp", Type: PortTypeAny, Description: "Dữ liệu ảnh truyền tiếp"},
+		},
+		DefaultParams: map[string]any{},
+		Executor:      executePreviewMedia,
+	})
+
+	// 35. Custom AI Prompt Node (n8n & ComfyUI Custom Node)
+	RegisterNode(NodeDefinition{
+		Type:        "custom_ai_prompt",
+		Title:       "Node Custom (AI Prompt / LLM)",
+		Category:    CategoryAI,
+		Description: "Node AI tự do tùy biến: tự đặt tên, viết prompt, chọn model Muse AI, Gemini, ChatGPT, Claude, Grok",
+		Icon:        "sparkles",
+		Inputs: []FlowPort{
+			{ID: "input", Name: "Dữ liệu nguồn (Input)", Type: PortTypeAny, Required: false},
+			{ID: "image", Name: "Ảnh tham chiếu (Image)", Type: PortTypeImage, Required: false},
+			{ID: "video", Name: "Video nguồn (Video)", Type: PortTypeVideo, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "output", Name: "Kết quả (Output)", Type: PortTypeAny, Description: "Dữ liệu xuất đa năng"},
+			{ID: "text", Name: "Văn bản tạo ra (Text)", Type: PortTypeText, Description: "Nội dung phản hồi hoặc kịch bản AI"},
+			{ID: "media", Name: "Tệp media (Video/Image)", Type: PortTypeAny, Description: "File video hoặc ảnh đã tạo"},
+		},
+		DefaultParams: map[string]any{
+			"node_name":     "Custom AI Node",
+			"model":         "gemini",
+			"provider":      "gemini",
+			"system_prompt": "Bạn là chuyên gia sáng tạo nội dung AI chuyên nghiệp...",
+			"prompt":        "Tạo nội dung hấp dẫn dựa trên đầu vào: {{input}}",
+			"output_type":   "text",
+			"temperature":   0.7,
+		},
+		Executor: executeCustomAIPrompt,
+	})
+
+	RegisterNode(NodeDefinition{
+		Type:        "workflow_input",
+		Title:       "Đầu vào workflow",
+		Category:    CategoryWorkflow,
+		Description: "Khai báo input có tên để workflow khác truyền dữ liệu vào",
+		Icon:        "log-in",
+		Outputs:     []FlowPort{{ID: "value", Name: "Giá trị", Type: PortTypeAny}},
+		DefaultParams: map[string]any{
+			"key": "input", "label": "Input", "value_type": string(PortTypeText), "required": true, "value": "",
+		},
+		Executor: executeWorkflowInput,
+	})
+	RegisterNode(NodeDefinition{
+		Type:        "workflow_output",
+		Title:       "Đầu ra workflow",
+		Category:    CategoryWorkflow,
+		Description: "Khai báo output có tên để workflow khác nhận kết quả",
+		Icon:        "log-out",
+		Inputs:      []FlowPort{{ID: "value", Name: "Giá trị", Type: PortTypeAny, Required: true}},
+		Outputs:     []FlowPort{{ID: "value", Name: "Giá trị", Type: PortTypeAny}},
+		DefaultParams: map[string]any{
+			"key": "output", "label": "Output", "value_type": string(PortTypeAny),
+		},
+		Executor: executeWorkflowOutput,
+	})
+	RegisterNode(NodeDefinition{
+		Type:        "workflow_call",
+		Title:       "Gọi workflow đã lưu",
+		Category:    CategoryWorkflow,
+		Description: "Chọn workflow con bất kỳ, truyền input và nhận output đã khai báo",
+		Icon:        "workflow",
+		DefaultParams: map[string]any{
+			"workflow_id": "",
+		},
+		Executor: executeWorkflowCall,
+	})
+	for _, category := range []struct{ key, title string }{
+		{"affiliate", "Affiliate"},
+		{"viral", "TikTok Viral"},
+		{"fashion", "Thời trang"},
+		{"vfx_3d", "3D / VFX"},
+		{"custom", "Custom"},
+	} {
+		registerWorkflowCallNode(category.key, category.title)
+	}
+}
+
+func registerWorkflowCallNode(category, title string) {
+	RegisterNode(NodeDefinition{
+		Type:        "workflow_call_" + category,
+		Title:       "Workflow con · " + title,
+		Category:    CategoryWorkflow,
+		Description: "Chạy workflow " + title + " đã lưu, truyền input và nhận output theo contract",
+		Icon:        "workflow",
+		DefaultParams: map[string]any{
+			"workflow_id":       "",
+			"workflow_category": category,
+		},
+		Executor: executeWorkflowCall,
 	})
 }
 

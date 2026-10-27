@@ -89,6 +89,9 @@ func (s *Studio) ExecuteFlowGraph(ctx context.Context, runID string, graph *flow
 		FFmpegRunner: func(ctx context.Context, args ...string) error {
 			return ffmpegRun(ctx, args...)
 		},
+		ResolveWorkflow: func(id string) (*flow.FlowGraph, error) {
+			return fStore.GetGraph(id)
+		},
 	}
 
 	completedRun, execErr := flow.ExecuteGraph(execCtx, graph)

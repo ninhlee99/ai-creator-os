@@ -250,6 +250,7 @@
     var layout = document.querySelector('.layout');
     var collapseBtn = document.getElementById('sidebar-collapse-btn');
     var topbarToggle = document.getElementById('topbar-sidebar-toggle');
+    var wfSidebarToggle = document.getElementById('wf-sidebar-toggle');
 
     try {
       if (localStorage.getItem('aicos-sidebar-collapsed') === '1' && layout) {
@@ -263,10 +264,34 @@
       try {
         localStorage.setItem('aicos-sidebar-collapsed', isCollapsed ? '1' : '0');
       } catch (e) {}
+
+      // Notify window and canvas of layout change
+      window.dispatchEvent(new Event('resize'));
+      if (window.flowCanvas && typeof window.flowCanvas.renderWires === 'function') {
+        setTimeout(function () {
+          window.flowCanvas.renderWires();
+        }, 220);
+      }
     }
 
     if (collapseBtn) collapseBtn.addEventListener('click', toggleSidebarCollapse);
     if (topbarToggle) topbarToggle.addEventListener('click', toggleSidebarCollapse);
+    if (wfSidebarToggle) wfSidebarToggle.addEventListener('click', toggleSidebarCollapse);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === '[' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target ? e.target.tagName : '')) {
+        toggleSidebarCollapse();
+      }
+    });
+
+    var brandInfo = document.querySelector('.brand-info');
+    if (brandInfo) {
+      brandInfo.addEventListener('click', function () {
+        if (layout && layout.classList.contains('sidebar-collapsed')) {
+          toggleSidebarCollapse();
+        }
+      });
+    }
   })();
 
   // ----------------------------------------------------- emoji spacing

@@ -22,7 +22,8 @@ func NewStore(db *sql.DB) (*Store, error) {
 	if err := s.migrate(); err != nil {
 		return nil, err
 	}
-	_ = s.SeedDefaultPresets()
+	// Không tự động seed presets vào database khi khởi động.
+	// Chỉ tạo flow theo nhu cầu, và chỉ lưu thành flow hệ thống (preset) khi người dùng yêu cầu.
 	return s, nil
 }
 

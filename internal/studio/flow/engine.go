@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -37,50 +38,8 @@ func ValidateGraph(graph *FlowGraph) ([]string, error) {
 			return nil, fmt.Errorf("kết nối tới node không tồn tại: %s", edge.ToNode)
 		}
 
-		// Kiểm tra cổng nguồn
-		fromPortFound := false
-		var fromPortType PortType
-		for _, p := range fromNode.Outputs {
-			if p.ID == edge.FromPort {
-				fromPortFound = true
-				fromPortType = p.Type
-				break
-			}
-		}
-		if !fromPortFound {
-			// Tra cứu từ definition
-			if def, ok := GetNodeDefinition(fromNode.Type); ok {
-				for _, p := range def.Outputs {
-					if p.ID == edge.FromPort {
-						fromPortFound = true
-						fromPortType = p.Type
-						break
-					}
-				}
-			}
-		}
-
-		// Kiểm tra cổng đích
-		toPortFound := false
-		var toPortType PortType
-		for _, p := range toNode.Inputs {
-			if p.ID == edge.ToPort {
-				toPortFound = true
-				toPortType = p.Type
-				break
-			}
-		}
-		if !toPortFound {
-			if def, ok := GetNodeDefinition(toNode.Type); ok {
-				for _, p := range def.Inputs {
-					if p.ID == edge.ToPort {
-						toPortFound = true
-						toPortType = p.Type
-						break
-					}
-				}
-			}
-		}
+		fromPort, fromPortFound := nodeOutputPort(fromNode, edge.FromPort)
+		toPort, toPortFound := nodeInputPort(toNode, edge.ToPort)
 
 		if !fromPortFound {
 			return nil, fmt.Errorf("node %s không có cổng xuất '%s'", edge.FromNode, edge.FromPort)
@@ -90,9 +49,20 @@ func ValidateGraph(graph *FlowGraph) ([]string, error) {
 		}
 
 		// Kiểm tra tính tương thích của kiểu dữ liệu
-		if !isPortTypeCompatible(fromPortType, toPortType) {
+		if !isPortTypeCompatible(fromPort.Type, toPort.Type) {
 			return nil, fmt.Errorf("kiểu dữ liệu cổng không khớp: node %s cổng '%s' (%s) -> node %s cổng '%s' (%s)",
-				edge.FromNode, edge.FromPort, fromPortType, edge.ToNode, edge.ToPort, toPortType)
+				edge.FromNode, edge.FromPort, fromPort.Type, edge.ToNode, edge.ToPort, toPort.Type)
+		}
+	}
+
+	for i := range graph.Nodes {
+		node := &graph.Nodes[i]
+		inputs := nodeInputPorts(node)
+		for _, port := range inputs {
+			if !port.Required || hasIncomingPort(graph.Edges, node.ID, port.ID) || nodeHasInputValue(node, port.ID) {
+				continue
+			}
+			return nil, fmt.Errorf("node %s thiếu input bắt buộc '%s'", node.Title, port.Name)
 		}
 	}
 
@@ -103,6 +73,105 @@ func ValidateGraph(graph *FlowGraph) ([]string, error) {
 	}
 
 	return order, nil
+}
+
+func nodeInputPort(node *FlowNode, portID string) (FlowPort, bool) {
+	for _, port := range nodeInputPorts(node) {
+		if port.ID == portID {
+			return port, true
+		}
+	}
+	return FlowPort{}, false
+}
+
+func nodeOutputPort(node *FlowNode, portID string) (FlowPort, bool) {
+	for _, port := range nodeOutputPorts(node) {
+		if port.ID == portID {
+			return port, true
+		}
+	}
+	return FlowPort{}, false
+}
+
+func nodeInputPorts(node *FlowNode) []FlowPort {
+	if node == nil {
+		return nil
+	}
+	if node.Type == "workflow_output" {
+		return []FlowPort{{ID: "value", Name: "Giá trị", Type: workflowNodeValueType(node), Required: true}}
+	}
+	if len(node.Inputs) > 0 {
+		return node.Inputs
+	}
+	if def, ok := GetNodeDefinition(node.Type); ok {
+		return def.Inputs
+	}
+	return nil
+}
+
+func nodeOutputPorts(node *FlowNode) []FlowPort {
+	if node == nil {
+		return nil
+	}
+	switch node.Type {
+	case "workflow_input":
+		return []FlowPort{{ID: "value", Name: "Giá trị", Type: workflowNodeValueType(node)}}
+	case "workflow_output":
+		return []FlowPort{{ID: "value", Name: "Giá trị", Type: workflowNodeValueType(node)}}
+	}
+	if len(node.Outputs) > 0 {
+		return node.Outputs
+	}
+	if def, ok := GetNodeDefinition(node.Type); ok {
+		return def.Outputs
+	}
+	return nil
+}
+
+func workflowNodeValueType(node *FlowNode) PortType {
+	if node == nil {
+		return PortTypeAny
+	}
+	typeName := nodeParamString(node.Params, "value_type", string(PortTypeAny))
+	portType := PortType(typeName)
+	if !validWorkflowPortType(portType) {
+		return PortTypeAny
+	}
+	return portType
+}
+
+func hasIncomingPort(edges []FlowEdge, nodeID, portID string) bool {
+	for _, edge := range edges {
+		if edge.ToNode == nodeID && edge.ToPort == portID {
+			return true
+		}
+	}
+	return false
+}
+
+func nodeHasInputValue(node *FlowNode, portID string) bool {
+	if node == nil || node.Params == nil {
+		return false
+	}
+	keys := []string{portID}
+	switch portID {
+	case "prompt", "prompt_in":
+		keys = append(keys, "prompt", "template")
+	case "character_image":
+		keys = append(keys, "model_path", "character_image")
+	case "product_image":
+		keys = append(keys, "product_image")
+	case "video_in", "video_path":
+		keys = append(keys, "video_path", "video_url")
+	case "image_in", "source_image":
+		keys = append(keys, "image_path", "model_path", "product_image", "source_image")
+	}
+	for _, key := range keys {
+		if value, ok := node.Params[key]; ok && value != nil && strings.TrimSpace(fmt.Sprint(value)) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func isPortTypeCompatible(from, to PortType) bool {
@@ -163,21 +232,51 @@ func topologicalSort(graph *FlowGraph) ([]string, error) {
 
 // ExecuteGraph thực thi toàn bộ luồng đồ thị theo thứ tự topo.
 func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
+	if ctx == nil {
+		return nil, errors.New("execution context is nil")
+	}
+	if graph == nil {
+		return nil, errors.New("workflow graph is nil")
+	}
+	if ctx.Context == nil {
+		ctx.Context = context.Background()
+	}
+	for _, activeID := range ctx.WorkflowStack {
+		if activeID == graph.ID {
+			return nil, fmt.Errorf("phát hiện workflow gọi lặp: %s", graph.ID)
+		}
+	}
+	if len(ctx.WorkflowStack) >= 8 {
+		return nil, errors.New("workflow lồng nhau vượt quá 8 cấp")
+	}
+	ctx.WorkflowStack = append(ctx.WorkflowStack, graph.ID)
+	defer func() { ctx.WorkflowStack = ctx.WorkflowStack[:len(ctx.WorkflowStack)-1] }()
+
 	order, err := ValidateGraph(graph)
 	if err != nil {
 		return nil, fmt.Errorf("xác thực đồ thị thất bại: %w", err)
 	}
 
 	now := time.Now().Format(time.RFC3339)
+
+	// Kiến trúc Muse AI: 1 Flow là 1 Thread. Mỗi lần start flow sẽ tạo ra 1 thread mới!
+	if ctx.MuseThreadID == "" {
+		ctx.MuseThreadID = fmt.Sprintf("thread_flow_%s_%d", graph.ID, time.Now().UnixNano())
+		ctx.MuseThreadURL = fmt.Sprintf("https://muse.ai/chat?session=%s", ctx.MuseThreadID)
+	}
+	ctx.MuseThreadStarted = false // Đánh dấu node đầu tiên của flow này sẽ tạo thread mới trên Muse AI
+
 	run := &FlowRun{
-		ID:         ctx.RunID,
-		GraphID:    graph.ID,
-		GraphName:  graph.Name,
-		Status:     "running",
-		Progress:   0,
-		NodeStates: make(map[string]NodeState),
-		Outputs:    make(map[string]any),
-		CreatedAt:  now,
+		ID:            ctx.RunID,
+		GraphID:       graph.ID,
+		GraphName:     graph.Name,
+		Status:        "running",
+		Progress:      0,
+		MuseThreadID:  ctx.MuseThreadID,
+		MuseThreadURL: ctx.MuseThreadURL,
+		NodeStates:    make(map[string]NodeState),
+		Outputs:       make(map[string]any),
+		CreatedAt:     now,
 	}
 
 	// Khởi tạo trạng thái ban đầu cho toàn bộ node
@@ -262,6 +361,18 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 
 		// 2. Thu thập inputs từ các node đi trước
 		nodeInputs := make(map[string]any)
+
+		// Tự động kế thừa ngữ cảnh AI toàn luồng (FaceID profile, Garment & Scene Analysis) giúp các node tự động hiểu nhau mà không cần nối dây thủ công quá nhiều
+		for _, prevOutputs := range portData {
+			for k, v := range prevOutputs {
+				if strings.HasPrefix(k, "character_") || strings.HasPrefix(k, "garment_") || k == "face_id" {
+					if nodeInputs[k] == nil {
+						nodeInputs[k] = v
+					}
+				}
+			}
+		}
+
 		for _, edge := range incomingEdges[nodeID] {
 			if sourceOutputs, ok := portData[edge.FromNode]; ok {
 				if val, exists := sourceOutputs[edge.FromPort]; exists {
@@ -311,16 +422,33 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			outputs = make(map[string]any)
 		}
 		portData[nodeID] = outputs
+		if node.Type == "workflow_output" {
+			key := nodeParamString(node.Params, "key", "output")
+			if value, exists := nodeInputs["value"]; exists {
+				run.Outputs[key] = value
+			}
+		}
 
-		// Xác định output preview (ảnh hoặc video) CHỈ CHO CÁC NODE VISUAL MEDIA THỰC TẾ
+		// Xác định output preview (ảnh hoặc video) cho các node visual media và node preview
 		var previewURL string
 		if isVisualNodeType(node.Type) {
-			for _, val := range outputs {
-				if s, ok := val.(string); ok && s != "" {
-					ext := strings.ToLower(filepath.Ext(s))
-					if (ext == ".mp4" || ext == ".webm" || ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp") && !strings.Contains(s, "_mask.") {
+			// Ưu tiên video trước nếu node có sinh video
+			for _, key := range []string{"master_video", "rendered_video", "video_out", "graded_video", "final_video", "video", "image_out", "final_image", "character_ref", "sample_frame", "product_cutout", "warped_garment"} {
+				if val, exists := outputs[key]; exists {
+					if s, ok := val.(string); ok && s != "" && fileExists(s) {
 						previewURL = s
 						break
+					}
+				}
+			}
+			if previewURL == "" {
+				for _, val := range outputs {
+					if s, ok := val.(string); ok && s != "" {
+						ext := strings.ToLower(filepath.Ext(s))
+						if ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
+							previewURL = s
+							break
+						}
 					}
 				}
 			}
@@ -337,6 +465,11 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		nodeState.Status = "completed"
 		nodeState.Progress = 100
 		nodeState.OutputPreview = previewURL
+
+		// Kiến trúc: 1 Flow là 1 Thread. Toàn bộ các node trong cùng 1 lần chạy flow chia sẻ chung 1 Thread Muse AI
+		nodeState.MuseSessionID = ctx.MuseThreadID
+		nodeState.MuseThreadURL = ctx.MuseThreadURL
+
 		nodeState.FinishedAt = time.Now().Format(time.RFC3339)
 		run.NodeStates[nodeID] = nodeState
 
@@ -356,6 +489,18 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			if finalImg, ok := outputs["final_image"].(string); ok {
 				run.FinalOutput = finalImg
 			}
+		} else if node.Type == "video_master_output" {
+			if finalVid, ok := outputs["master_video"].(string); ok {
+				run.FinalOutput = finalVid
+			}
+		} else if node.Type == "workflow_output" {
+			if finalMedia := firstMediaPath(nodeInputs["value"]); finalMedia != "" {
+				run.FinalOutput = finalMedia
+			}
+		} else if node.Type == "workflow_call" || strings.HasPrefix(node.Type, "workflow_call_") {
+			if finalMedia := firstMediaPath(outputs); finalMedia != "" {
+				run.FinalOutput = finalMedia
+			}
 		}
 
 		appendRunLog(fmt.Sprintf("Node [%d/%d] '%s' hoàn tất thành công (100%%)", idx+1, totalNodes, node.Title))
@@ -374,9 +519,40 @@ func isVisualNodeType(nodeType string) bool {
 	switch nodeType {
 	case "character_input", "product_input", "product_extractor", "image_composite",
 		"virtual_tryon", "google_flow_video", "muse_ai_video", "video_source",
-		"video_upscale", "concat_scenes", "video_output", "image_output":
+		"video_upscale", "concat_scenes", "video_output", "image_output",
+		"character_identity", "face_lock_refiner", "body_skeleton_pose",
+		"garment_mesh_extractor", "surface_cloth_warper", "muse_ai_neural_render",
+		"neural_composite_shader", "cinematic_color_grading", "video_master_output",
+		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_output":
 		return true
 	default:
 		return false
 	}
+}
+
+func firstMediaPath(value any) string {
+	mediaExt := map[string]bool{".mp4": true, ".webm": true, ".mov": true, ".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	var find func(any) string
+	find = func(item any) string {
+		switch value := item.(type) {
+		case string:
+			if value != "" && mediaExt[strings.ToLower(filepath.Ext(value))] && fileExists(value) {
+				return value
+			}
+		case []any:
+			for _, child := range value {
+				if path := find(child); path != "" {
+					return path
+				}
+			}
+		case map[string]any:
+			for _, child := range value {
+				if path := find(child); path != "" {
+					return path
+				}
+			}
+		}
+		return ""
+	}
+	return find(value)
 }

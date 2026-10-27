@@ -3,6 +3,9 @@ package flow
 import (
 	"context"
 	"database/sql"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -423,13 +426,21 @@ func TestTC12_StoreCRUD(t *testing.T) {
 		t.Fatalf("NewStore lỗi: %v", err)
 	}
 
-	// 1. Kiểm tra seed presets
+	// 1. Kiểm tra ban đầu không tự động seed preset (theo yêu cầu hệ thống sạch)
 	graphs, err := store.ListGraphs()
 	if err != nil {
 		t.Fatalf("ListGraphs lỗi: %v", err)
 	}
+	if len(graphs) != 0 {
+		t.Errorf("Kỳ vọng ban đầu không tự động seed preset, có: %d", len(graphs))
+	}
+	// Kiểm tra gọi thủ công SeedDefaultPresets khi được yêu cầu lưu thành flow hệ thống
+	if err := store.SeedDefaultPresets(); err != nil {
+		t.Fatalf("SeedDefaultPresets lỗi: %v", err)
+	}
+	graphs, _ = store.ListGraphs()
 	if len(graphs) < 3 {
-		t.Errorf("Kỳ vọng ít nhất 3 preset được seed, có: %d", len(graphs))
+		t.Errorf("Kỳ vọng ít nhất 3 preset sau khi gọi SeedDefaultPresets, có: %d", len(graphs))
 	}
 
 	// 2. Lưu graph tùy chỉnh
@@ -538,5 +549,277 @@ func TestTC14_MultiDependencyExecution(t *testing.T) {
 		if !ok || st.Status != "completed" {
 			t.Errorf("Node %s chưa hoàn thành: %+v", n.ID, st)
 		}
+	}
+}
+
+func TestTC17_ProductExtractorFromVideoAndImage(t *testing.T) {
+	workDir := filepath.Join(os.TempDir(), "aicos_test_tc17_work")
+	outDir := filepath.Join(os.TempDir(), "aicos_test_tc17_out")
+	_ = os.RemoveAll(workDir)
+	_ = os.RemoveAll(outDir)
+	_ = os.MkdirAll(workDir, 0o755)
+	_ = os.MkdirAll(outDir, 0o755)
+	defer os.RemoveAll(workDir)
+	defer os.RemoveAll(outDir)
+
+	// Tạo một ảnh mẫu RGBA để test bóc tách
+	testImgPath := filepath.Join(workDir, "test_prod.png")
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for y := 0; y < 100; y++ {
+		for x := 0; x < 100; x++ {
+			if x >= 25 && x <= 75 && y >= 25 && y <= 75 {
+				img.Set(x, y, color.RGBA{R: 255, G: 0, B: 0, A: 255})
+			} else {
+				img.Set(x, y, color.RGBA{R: 240, G: 240, B: 240, A: 255})
+			}
+		}
+	}
+	f, err := os.Create(testImgPath)
+	if err != nil {
+		t.Fatalf("tạo test img lỗi: %v", err)
+	}
+	_ = png.Encode(f, img)
+	_ = f.Close()
+
+	graph := &FlowGraph{
+		ID:   "extractor_test_graph",
+		Name: "Product Extractor Test",
+		Nodes: []FlowNode{
+			{
+				ID:   "ext_node",
+				Type: "product_extractor",
+				Params: map[string]any{
+					"source_image": testImgPath,
+				},
+			},
+		},
+	}
+
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		RunID:   "run_ext_test",
+		WorkDir: workDir,
+		OutDir:  outDir,
+		Log:     func(msg string) {},
+	}
+
+	run, err := ExecuteGraph(ctx, graph)
+	if err != nil {
+		t.Fatalf("ExecuteGraph lỗi: %v", err)
+	}
+	if run.Status != "completed" {
+		t.Fatalf("Kỳ vọng completed, nhận: %s (log: %s)", run.Status, run.Log)
+	}
+
+	st, ok := run.NodeStates["ext_node"]
+	if !ok || st.Status != "completed" {
+		t.Fatalf("Node ext_node chưa hoàn thành: %+v", st)
+	}
+
+	if st.OutputPreview == "" || !fileExists(st.OutputPreview) {
+		t.Errorf("Kỳ vọng OutputPreview tồn tại, nhận: %v", st.OutputPreview)
+	}
+}
+
+func TestTC18_MediaDownloaderHTMLScraper(t *testing.T) {
+	// Giả lập một trang web HTML có thẻ OpenGraph hình ảnh và video
+	htmlPayload := `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta property="og:title" content="Sản phẩm Test" />
+  <meta property="og:image" content="https://example.com/assets/banner_product.jpg" />
+  <meta property="og:video" content="https://example.com/assets/sample_video.mp4" />
+</head>
+<body>
+  <h1>Chi tiết sản phẩm</h1>
+  <img src="/img/detail.png" />
+</body>
+</html>
+`
+	videoURL := extractMediaURLFromHTML(htmlPayload, "https://example.com/item/123", "video")
+	if videoURL != "https://example.com/assets/sample_video.mp4" {
+		t.Errorf("Kỳ vọng lấy được video URL, nhận: %s", videoURL)
+	}
+
+	imageURL := extractMediaURLFromHTML(htmlPayload, "https://example.com/item/123", "image")
+	if imageURL != "https://example.com/assets/banner_product.jpg" {
+		t.Errorf("Kỳ vọng lấy được image URL, nhận: %s", imageURL)
+	}
+}
+
+func TestTC19_3DStudioNodesExecution(t *testing.T) {
+	tempDir := t.TempDir()
+	charImg := filepath.Join(tempDir, "model.jpg")
+	productImg := filepath.Join(tempDir, "garment.jpg")
+	_ = writeDummyImage(charImg, 720, 1280, "Char Model")
+	_ = writeDummyImage(productImg, 720, 1280, "Product Garment")
+
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		WorkDir: tempDir,
+		Log:     func(msg string) {},
+	}
+
+	// 1. Character Identity
+	nodeChar := &FlowNode{ID: "char_node", Type: "character_identity"}
+	outChar, err := executeCharacterIdentity(ctx, nodeChar, map[string]any{"source_image": charImg})
+	if err != nil {
+		t.Fatalf("executeCharacterIdentity failed: %v", err)
+	}
+	if outChar["character_ref"] == "" || outChar["face_id"] == "" {
+		t.Fatalf("Character Identity missing output: %+v", outChar)
+	}
+
+	// 2. Body Skeleton Pose
+	nodePose := &FlowNode{ID: "pose_node", Type: "body_skeleton_pose"}
+	outPose, err := executeBodySkeletonPose(ctx, nodePose, map[string]any{"source_media": outChar["character_ref"]})
+	if err != nil {
+		t.Fatalf("executeBodySkeletonPose failed: %v", err)
+	}
+	if outPose["pose_data"] == "" || outPose["skeleton_map"] == "" {
+		t.Fatalf("Body Skeleton Pose missing output: %+v", outPose)
+	}
+
+	// 3. Garment Mesh Extractor
+	nodeGarment := &FlowNode{ID: "garment_node", Type: "garment_mesh_extractor"}
+	outGarment, err := executeGarmentMeshExtractor(ctx, nodeGarment, map[string]any{"product_image": productImg})
+	if err != nil {
+		t.Fatalf("executeGarmentMeshExtractor failed: %v", err)
+	}
+	if outGarment["texture_map"] == "" || outGarment["normal_depth"] == "" {
+		t.Fatalf("Garment Mesh Extractor missing output: %+v", outGarment)
+	}
+
+	// 4. Surface Cloth Warper
+	nodeWarp := &FlowNode{ID: "warp_node", Type: "surface_cloth_warper"}
+	outWarp, err := executeSurfaceClothWarper(ctx, nodeWarp, map[string]any{
+		"garment_texture": outGarment["texture_map"],
+		"body_pose":       outPose["pose_data"],
+		"character_ref":   outChar["character_ref"],
+	})
+	if err != nil {
+		t.Fatalf("executeSurfaceClothWarper failed: %v", err)
+	}
+	if outWarp["warped_garment"] == "" {
+		t.Fatalf("Surface Cloth Warper missing warped_garment: %+v", outWarp)
+	}
+
+	// 5. Virtual Camera Rig
+	nodeCam := &FlowNode{ID: "cam_node", Type: "virtual_camera_rig"}
+	outCam, err := executeVirtualCameraRig(ctx, nodeCam, map[string]any{})
+	if err != nil {
+		t.Fatalf("executeVirtualCameraRig failed: %v", err)
+	}
+	if outCam["camera_matrix"] == nil || outCam["lens_prompt"] == "" {
+		t.Fatalf("Virtual Camera Rig missing output: %+v", outCam)
+	}
+
+	// 6. Three-Point Light Rig
+	nodeLight := &FlowNode{ID: "light_node", Type: "three_point_light_rig"}
+	outLight, err := executeThreePointLightRig(ctx, nodeLight, map[string]any{})
+	if err != nil {
+		t.Fatalf("executeThreePointLightRig failed: %v", err)
+	}
+	if outLight["light_setup"] == nil || outLight["lighting_prompt"] == "" {
+		t.Fatalf("Three Point Light Rig missing output: %+v", outLight)
+	}
+
+	// 7. Video Master Output
+	nodeMaster := &FlowNode{ID: "master_node", Type: "video_master_output"}
+	dummyVideo := filepath.Join(tempDir, "input_vid.mp4")
+	_ = writeDummyVideo(ctx, dummyVideo, 3.0)
+	outMaster, err := executeVideoMasterOutput(ctx, nodeMaster, map[string]any{"video_in": dummyVideo})
+	if err != nil {
+		t.Fatalf("executeVideoMasterOutput failed: %v", err)
+	}
+	if outMaster["master_video"] == "" || !fileExists(outMaster["master_video"].(string)) {
+		t.Fatalf("Video Master Output failed to produce file: %+v", outMaster)
+	}
+}
+
+func TestTC20_PresetFashion3DStudioExecution(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	preset := PresetFashion3DStudio()
+	run, err := ExecuteGraph(ctx, &preset)
+	if err != nil {
+		t.Fatalf("ExecuteGraph for PresetFashion3DStudio failed: %v (log: %s)", err, run.Log)
+	}
+
+	if run.Status != "completed" {
+		t.Fatalf("Expected run completed, got: %s (log: %s)", run.Status, run.Log)
+	}
+
+	// Check master export node
+	st, ok := run.NodeStates["node_master_export"]
+	if !ok || st.Status != "completed" {
+		t.Fatalf("node_master_export did not complete: %+v", st)
+	}
+	if st.OutputPreview == "" || !fileExists(st.OutputPreview) {
+		t.Errorf("Expected OutputPreview to exist, got: %s", st.OutputPreview)
+	}
+}
+
+func TestTC21_PreviewMediaNode(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "out")
+	_ = os.MkdirAll(outDir, 0755)
+
+	testImg := filepath.Join(tmpDir, "test_sample.png")
+	if err := writeDummyImage(testImg, 400, 400, "Sample Image for Preview"); err != nil {
+		t.Fatalf("writeDummyImage failed: %v", err)
+	}
+
+	g := FlowGraph{
+		ID:   "test_preview_graph",
+		Name: "Test Preview Node Execution",
+		Nodes: []FlowNode{
+			{
+				ID:    "char_node",
+				Type:  "character_input",
+				Title: "Nhân vật",
+				Params: map[string]any{
+					"model_path": testImg,
+				},
+			},
+			{
+				ID:    "preview_node",
+				Type:  "preview_media",
+				Title: "Xem trước kết quả",
+			},
+		},
+		Edges: []FlowEdge{
+			{
+				ID:       "e_char_preview",
+				FromNode: "char_node",
+				FromPort: "character_image",
+				ToNode:   "preview_node",
+				ToPort:   "media_in",
+			},
+		},
+	}
+
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		WorkDir: tmpDir,
+		OutDir:  outDir,
+		Log:     func(msg string) {},
+	}
+	run, err := ExecuteGraph(ctx, &g)
+	if err != nil {
+		t.Fatalf("ExecuteGraph failed: %v", err)
+	}
+	if run.Status != "completed" {
+		t.Fatalf("Expected run completed, got: %s (log: %s)", run.Status, run.Log)
+	}
+
+	st, ok := run.NodeStates["preview_node"]
+	if !ok || st.Status != "completed" {
+		t.Fatalf("preview_node did not complete: %+v", st)
+	}
+	if st.OutputPreview == "" || !fileExists(st.OutputPreview) {
+		t.Errorf("Expected preview_node OutputPreview to exist, got: %s", st.OutputPreview)
 	}
 }

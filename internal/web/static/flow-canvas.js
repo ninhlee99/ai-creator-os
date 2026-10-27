@@ -36,8 +36,10 @@
       this.currentRunId = null;
       this.pollInterval = null;
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
+      this.workflowContractLoading = new Set();
 
       this.initEvents();
+      this.setupResizeObserver();
       this.applyTransform();
       this.render();
       this.bindToolbar();
@@ -45,6 +47,20 @@
       this.bindModal();
       this.bindGraphsModal();
       this.updateZoomDisplay();
+    }
+
+    setupResizeObserver() {
+      if (window.ResizeObserver) {
+        this.resizeObserver = new ResizeObserver(() => {
+          if (this.wiresRaf) cancelAnimationFrame(this.wiresRaf);
+          this.wiresRaf = requestAnimationFrame(() => {
+            this.renderWires();
+          });
+        });
+        if (this.nodesLayer) {
+          this.resizeObserver.observe(this.nodesLayer);
+        }
+      }
     }
 
     initEvents() {
@@ -169,16 +185,18 @@
       // 1. Node Header Main (n8n Card layout)
       const header = document.createElement('div');
       header.className = 'wf-node-main';
+      const modelTag = (node.params && (node.params.model || node.params.provider)) ? `<span class="wf-node-model-pill" id="node-model-${node.id}">${node.params.model || node.params.provider}</span>` : `<span class="wf-node-model-pill" id="node-model-${node.id}" style="display:none;"></span>`;
       header.innerHTML = `
         <div class="wf-node-icon cat-${cat}">
           <span>${this.getCategoryIcon(cat)}</span>
         </div>
         <div class="wf-node-info">
-          <div class="wf-node-title" title="${node.title || def.title || node.type}">
+          <div class="wf-node-title" id="node-title-${node.id}" title="${node.title || def.title || node.type}">
             ${node.title || def.title || node.type}
           </div>
           <div class="wf-node-subtitle" title="${def.title || node.type}">
-            ${def.title || node.type}
+            ${modelTag}
+            <span>${def.title || node.type}</span>
           </div>
         </div>
         <div class="wf-node-actions">
@@ -196,6 +214,7 @@
       let startClientX = 0, startClientY = 0;
       let startNodeX = 0, startNodeY = 0;
       let isDraggingNode = false;
+      let hasDragged = false;
       let rafId = null;
 
       nodeEl.addEventListener('mousedown', (e) => {
@@ -217,9 +236,14 @@
         e.stopPropagation();
         e.preventDefault(); // Prevent browser text selection ghost drag
 
-        this.selectNode(node.id);
+        // Visually highlight node without opening popup detail
+        this.selectedNodeId = node.id;
+        this.nodesLayer.querySelectorAll('.wf-node').forEach(el => {
+          el.classList.toggle('selected', el.id === `node-${node.id}`);
+        });
 
         isDraggingNode = true;
+        hasDragged = false;
         startClientX = e.clientX;
         startClientY = e.clientY;
         startNodeX = typeof node.x === 'number' ? node.x : (parseFloat(nodeEl.style.left) || 100);
@@ -230,6 +254,10 @@
 
         const onMouseMove = (ev) => {
           if (!isDraggingNode) return;
+          const dist = Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY);
+          if (dist > 3) {
+            hasDragged = true;
+          }
           const dx = (ev.clientX - startClientX) / this.scale;
           const dy = (ev.clientY - startClientY) / this.scale;
 
@@ -239,10 +267,7 @@
           nodeEl.style.left = `${node.x}px`;
           nodeEl.style.top = `${node.y}px`;
 
-          if (rafId) cancelAnimationFrame(rafId);
-          rafId = requestAnimationFrame(() => {
-            this.renderWires();
-          });
+          this.renderWires();
         };
 
         const onMouseUp = () => {
@@ -277,12 +302,12 @@
       const outputsCol = document.createElement('div');
       outputsCol.className = 'wf-ports-outputs';
 
-      const inputs = node.inputs || def.inputs || [];
+      const inputs = this.getNodePorts(node, false);
       inputs.forEach(port => {
         inputsCol.appendChild(this.createPortElement(node.id, port, false));
       });
 
-      const outputs = node.outputs || def.outputs || [];
+      const outputs = this.getNodePorts(node, true);
       outputs.forEach(port => {
         outputsCol.appendChild(this.createPortElement(node.id, port, true));
       });
@@ -304,13 +329,21 @@
       footer.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
       nodeEl.appendChild(footer);
 
-      // Click anywhere on node to select
+      // Click anywhere on node to select and open popup detail (ONLY if user didn't drag/move)
       nodeEl.addEventListener('click', (e) => {
+        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return;
         e.stopPropagation();
-        this.selectNode(node.id);
+        if (hasDragged) {
+          hasDragged = false;
+          return;
+        }
+        this.selectNode(node.id, true);
       });
 
       this.nodesLayer.appendChild(nodeEl);
+      if (this.resizeObserver) {
+        this.resizeObserver.observe(nodeEl);
+      }
     }
 
     createPortElement(nodeId, port, isOutput) {
@@ -347,10 +380,9 @@
           startClientX = e.clientX;
           startClientY = e.clientY;
 
-          const rect = dot.getBoundingClientRect();
-          const vpRect = this.viewport.getBoundingClientRect();
-          const startX = (rect.left + rect.width / 2 - vpRect.left) / this.scale;
-          const startY = (rect.top + rect.height / 2 - vpRect.top) / this.scale;
+          const p = this.getPortCoordinates(dot);
+          const startX = p.x;
+          const startY = p.y;
 
           this.activeConnecting = {
             nodeId,
@@ -416,11 +448,11 @@
       const config = this.getNodePreviewConfig(node);
       if (!config) return null;
 
-      // Không render nếu không có url và node không cho phép tải lên
-      if (!config.url && !config.canUpload) return null;
+      // Không render nếu không có url, không cho phép upload và không phải dedicated preview
+      if (!config.url && !config.canUpload && !config.isDedicatedPreview) return null;
 
       const previewContainer = document.createElement('div');
-      previewContainer.className = `wf-node-preview ${config.isCutout ? 'preview-cutout' : ''}`;
+      previewContainer.className = `wf-node-preview ${config.isCutout ? 'preview-cutout' : ''} ${config.isDedicatedPreview ? 'preview-dedicated' : ''}`;
       previewContainer.id = `node-preview-${node.id}`;
 
       // Badge
@@ -438,6 +470,7 @@
           video.loop = true;
           video.playsInline = true;
           video.preload = 'metadata';
+          video.onloadedmetadata = () => { this.renderWires(); };
           video.onerror = () => { video.style.display = 'none'; };
           // Auto play on hover
           previewContainer.addEventListener('mouseenter', () => {
@@ -452,14 +485,19 @@
           img.src = config.url;
           img.alt = '';
           img.loading = 'lazy';
+          img.onload = () => { this.renderWires(); };
           img.onerror = () => { img.style.display = 'none'; };
           previewContainer.appendChild(img);
         }
       } else {
         const placeholder = document.createElement('div');
         placeholder.className = 'wf-preview-empty-placeholder';
-        placeholder.style.cssText = 'padding:14px 10px;text-align:center;font-size:12px;color:var(--text-muted, #94a3b8);background:rgba(0,0,0,0.15);border-radius:6px;';
-        placeholder.innerHTML = '<span>Chưa có ảnh mẫu. Bấm <b>Tải lên</b> bên dưới</span>';
+        placeholder.style.cssText = 'padding:16px 12px;text-align:center;font-size:12px;color:var(--text-muted, #94a3b8);background:rgba(0,0,0,0.18);border-radius:6px;width:100%;';
+        if (config.isDedicatedPreview) {
+          placeholder.innerHTML = '<span>👁️ <b>Chờ kết nối</b><br>Nối dây từ cổng ra của bất kỳ node nào vào đây để xem kết quả trực tiếp</span>';
+        } else {
+          placeholder.innerHTML = '<span>Chưa có mẫu. Bấm <b>Tải lên</b> hoặc <b>Dán link</b></span>';
+        }
         previewContainer.appendChild(placeholder);
       }
 
@@ -479,19 +517,56 @@
           this.openLightbox(node.title || 'Preview', config.url, config.type);
         });
         actions.appendChild(zoomBtn);
+
+        const dlBtn = document.createElement('button');
+        dlBtn.type = 'button';
+        dlBtn.className = 'wf-preview-btn';
+        dlBtn.title = 'Tải file kết quả về máy';
+        dlBtn.innerHTML = '💾 Tải';
+        dlBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fn = this.getFilename(config.url) || 'result_preview';
+          const a = document.createElement('a');
+          a.href = config.url;
+          a.download = fn;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
+        actions.appendChild(dlBtn);
       }
 
-      // 2. Upload button (if node supports uploading input asset)
+      // 2. Paste Link button (TikTok, Reels, IG, Web Video/Image)
+      if (config.canFetchUrl || config.canUpload) {
+        const linkBtn = document.createElement('button');
+        linkBtn.type = 'button';
+        linkBtn.className = 'wf-preview-btn';
+        linkBtn.title = 'Nhập link video TikTok, Reels, IG hoặc ảnh/video từ web';
+        linkBtn.innerHTML = '🔗 Dán link';
+        linkBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const currentUrl = node.params?.url || node.params?.video_url || '';
+          const inputUrl = window.prompt('Dán đường link (TikTok, Instagram Reels, IG, YouTube Shorts hoặc link web):', currentUrl);
+          if (inputUrl && inputUrl.trim()) {
+            await this.fetchMediaFromUrl(node, inputUrl.trim(), config.type);
+          }
+        });
+        actions.appendChild(linkBtn);
+      }
+
+      // 3. Upload button (if node supports uploading input asset)
       if (config.canUpload) {
         const uploadBtn = document.createElement('button');
         uploadBtn.type = 'button';
         uploadBtn.className = 'wf-preview-btn';
-        uploadBtn.title = 'Tải ảnh/video mới lên node này';
+        uploadBtn.title = 'Tải ảnh/video mới từ máy tính lên node này';
         uploadBtn.innerHTML = '📤 Tải lên';
 
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.accept = config.type === 'video' ? 'video/mp4,video/*' : 'image/*';
+        fileInput.accept = (node.type === 'product_extractor' || node.type === 'background_remover')
+          ? 'image/*,video/*,video/mp4'
+          : (config.type === 'video' ? 'video/mp4,video/*' : 'image/*');
         fileInput.style.display = 'none';
 
         fileInput.addEventListener('change', async (ev) => {
@@ -509,7 +584,7 @@
           };
           reader.readAsDataURL(file);
 
-          // 2. Tải trực tiếp file lên máy chủ AI Creator OS để hệ thống xử lý đúng tệp ảnh/sản phẩm thực tế
+          // 2. Tải trực tiếp file lên máy chủ AI Creator OS
           try {
             const formData = new FormData();
             formData.append('file', file);
@@ -521,11 +596,17 @@
             if (res.ok) {
               if (!node.params) node.params = {};
               node.params.preview_url = res.url;
-              if (config.type === 'video') {
+              if (config.type === 'video' || file.type.startsWith('video/')) {
                 node.params.video_path = res.file_path;
+                if (node.type === 'product_extractor' || node.type === 'background_remover') {
+                  node.params.source_video = res.file_path;
+                  node.params.source_image = res.file_path;
+                }
               } else if (node.type === 'character_input') {
                 node.params.model_path = res.file_path;
                 node.params.character_image = res.file_path;
+              } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
+                node.params.source_image = res.file_path;
               } else {
                 node.params.product_image = res.file_path;
               }
@@ -565,121 +646,112 @@
       const type = node.type;
       const params = node.params || {};
 
-      switch (type) {
-        case 'character_input':
-          return {
-            type: 'image',
-            url: params.preview_url || params.model_path || '',
-            badge: '👤 Nhân vật mẫu',
-            canUpload: true,
-            isCutout: false
-          };
-
-        case 'product_input':
-          return {
-            type: 'image',
-            url: params.preview_url || params.product_image || '',
-            badge: '🛍️ Sản phẩm mẫu',
-            canUpload: true,
-            isCutout: false
-          };
-
-        case 'product_extractor':
-        case 'background_remover':
-          return {
-            type: 'cutout',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
-            badge: '✂️ Bóc tách sản phẩm',
-            canUpload: false,
-            isCutout: true
-          };
-
-        case 'image_composite':
-          return {
-            type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
-            badge: '✨ Ghép phối cảnh AI',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'virtual_tryon':
-          return {
-            type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
-            badge: '👗 Thay trang phục AI',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'google_flow_video':
-          return {
-            type: 'video',
-            url: params.preview_url || '',
-            badge: '✨ Google Flow Veo 2',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'muse_ai_video':
-          return {
-            type: 'video',
-            url: params.preview_url || '',
-            badge: '⚡ Muse AI Video',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'video_source':
-          return {
-            type: 'video',
-            url: params.preview_url || params.video_path || '',
-            badge: '🎬 Video TikTok gốc',
-            canUpload: true,
-            isCutout: false
-          };
-
-        case 'video_upscale':
-          return {
-            type: 'video',
-            url: params.preview_url || '',
-            badge: '💎 4K 60FPS UHD Enhanced',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'video_output':
-          return {
-            type: 'video',
-            url: params.preview_url || '',
-            badge: '🎉 Video hoàn thiện 9:16',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'image_output':
-          return {
-            type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
-            badge: '🖼️ Ảnh hoàn thiện',
-            canUpload: false,
-            isCutout: false
-          };
-
-        // Các node dạng logic, kịch bản prompt, phân tích camera, âm thanh không hiển thị preview ảnh
-        default:
-          return null;
+      // 1. Chỉ các node đầu vào (Input Asset Nodes) mới hiển thị ảnh/video nguồn trước khi chạy workflow
+      if (type === 'character_input' || type === 'character_identity') {
+        const inputUrl = params.preview_url || params.model_path || params.character_image || '';
+        if (!inputUrl) return null;
+        return {
+          type: 'image',
+          url: inputUrl,
+          badge: '👤 Nhân vật mẫu',
+          canUpload: true,
+          canFetchUrl: true,
+          isCutout: false
+        };
       }
+
+      if (type === 'product_input') {
+        const inputUrl = params.preview_url || params.product_image || '';
+        if (!inputUrl) return null;
+        return {
+          type: 'image',
+          url: inputUrl,
+          badge: '🛍️ Sản phẩm mẫu',
+          canUpload: true,
+          canFetchUrl: true,
+          isCutout: false
+        };
+      }
+
+      if (type === 'video_source') {
+        const inputUrl = params.preview_url || params.video_path || '';
+        if (!inputUrl) return null;
+        return {
+          type: 'video',
+          url: inputUrl,
+          badge: '🎬 Video TikTok/Reels gốc',
+          canUpload: true,
+          canFetchUrl: true,
+          isCutout: false
+        };
+      }
+
+      // 2. Tất cả các node xử lý, 3D, AI, Preview Node:
+      // CHỈ CÓ PREVIEW SAU KHI NODE ĐÃ CHẠY XONG VÀ CÓ KẾT QUẢ THỰC TẾ (ComfyUI standard)
+      // Trước khi chạy workflow, hoàn toàn không hiển thị khung preview để canvas gọn gàng
+      if (node.state && node.state.status === 'completed' && node.state.output_preview) {
+        const fn = this.getFilename(node.state.output_preview);
+        const url = `/media/${fn}`;
+        const isVid = fn.endsWith('.mp4') || fn.endsWith('.webm') || fn.endsWith('.mov');
+        const isCutout = fn.endsWith('.png');
+
+        let badge = '✓ Kết quả thực thi';
+        if (type.startsWith('preview_')) {
+          badge = '👁️ ComfyUI Preview';
+        } else if (type === 'product_extractor' || type === 'background_remover') {
+          badge = '✂️ Bóc tách sản phẩm (AI Matting)';
+        } else if (type === 'garment_mesh_extractor') {
+          badge = '👗 Cấu trúc vải 3D';
+        } else if (type === 'surface_cloth_warper') {
+          badge = '✨ Vải ôm dáng 3D';
+        } else if (type === 'body_skeleton_pose') {
+          badge = '🦴 Khung xương DensePose';
+        } else if (type === 'muse_ai_neural_render') {
+          badge = '⚡ Muse AI Neural Render';
+        } else if (type === 'face_lock_refiner') {
+          badge = '🔒 Khóa mặt điện ảnh';
+        } else if (type === 'cinematic_color_grading') {
+          badge = '🎨 Chỉnh màu 3D LUT';
+        } else if (type === 'video_master_output' || type === 'video_output') {
+          badge = '🎬 Master Video 9:16';
+        } else if (type === 'virtual_tryon') {
+          badge = '👗 Thay trang phục AI';
+        } else if (type === 'image_composite') {
+          badge = '✨ Ghép phối cảnh AI';
+        }
+
+        return {
+          type: isVid ? 'video' : (isCutout ? 'cutout' : 'image'),
+          url: url,
+          badge: badge,
+          canUpload: false,
+          canFetchUrl: false,
+          isCutout: isCutout,
+          isDedicatedPreview: type.startsWith('preview_')
+        };
+      }
+
+      // Trước khi chạy: không hiển thị preview
+      return null;
     }
 
     getConnectedInputPreview(nodeId) {
       if (!this.graph.edges) return null;
-      const incomingEdge = this.graph.edges.find(e => (e.to_node || e.toNode || e.ToNode) === nodeId);
-      if (!incomingEdge) return null;
-      const fromNodeId = incomingEdge.from_node || incomingEdge.fromNode || incomingEdge.FromNode;
-      const sourceNode = this.graph.nodes.find(n => n.id === fromNodeId);
-      if (!sourceNode) return null;
-      return sourceNode.params?.preview_url || null;
+      const incomingEdges = this.graph.edges.filter(e => (e.to_node || e.toNode || e.ToNode) === nodeId);
+      if (!incomingEdges.length) return null;
+      for (const incomingEdge of incomingEdges) {
+        const fromNodeId = incomingEdge.from_node || incomingEdge.fromNode || incomingEdge.FromNode;
+        const sourceNode = this.graph.nodes.find(n => n.id === fromNodeId);
+        if (sourceNode) {
+          if (sourceNode.state?.output_preview) {
+            return `/media/${this.getFilename(sourceNode.state.output_preview)}`;
+          }
+          if (sourceNode.params?.preview_url) {
+            return sourceNode.params.preview_url;
+          }
+        }
+      }
+      return null;
     }
 
     propagatePreviewUpdate(nodeId, newUrl) {
@@ -698,12 +770,251 @@
     }
 
     updateNodePreview(nodeId, newUrl) {
-      const previewEl = document.getElementById(`node-preview-${nodeId}`);
-      if (!previewEl) return;
-      const img = previewEl.querySelector('img');
-      if (img) img.src = newUrl;
-      const video = previewEl.querySelector('video');
-      if (video) video.src = newUrl;
+      this.updateNodeVisualPreview(nodeId, newUrl);
+    }
+
+    updateNodeVisualPreview(nodeId, outputPreviewOrUrl) {
+      if (!outputPreviewOrUrl) return;
+      const node = this.graph.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const url = outputPreviewOrUrl.startsWith('/') || outputPreviewOrUrl.startsWith('http')
+        ? outputPreviewOrUrl
+        : `/media/${this.getFilename(outputPreviewOrUrl)}`;
+
+      const isVid = url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov');
+      const isCutout = url.endsWith('.png');
+
+      const nodeEl = document.getElementById(`node-${nodeId}`);
+      if (!nodeEl) return;
+
+      let previewContainer = document.getElementById(`node-preview-${nodeId}`);
+      if (!previewContainer) {
+        previewContainer = document.createElement('div');
+        previewContainer.className = `wf-node-preview ${isCutout ? 'preview-cutout' : ''} ${node.type && node.type.startsWith('preview_') ? 'preview-dedicated' : ''}`;
+        previewContainer.id = `node-preview-${nodeId}`;
+
+        const footer = document.getElementById(`node-footer-${nodeId}`);
+        if (footer) {
+          nodeEl.insertBefore(previewContainer, footer);
+        } else {
+          nodeEl.appendChild(previewContainer);
+        }
+      }
+
+      previewContainer.innerHTML = '';
+      if (isCutout) {
+        previewContainer.classList.add('preview-cutout');
+      } else {
+        previewContainer.classList.remove('preview-cutout');
+      }
+
+      // Badge
+      const badge = document.createElement('div');
+      badge.className = 'wf-preview-badge';
+      if (node.type && node.type.startsWith('preview_')) {
+        badge.innerHTML = '👁️ ComfyUI Preview';
+      } else if (isVid) {
+        badge.innerHTML = '▶ Video kết quả';
+      } else {
+        badge.innerHTML = '✓ Kết quả thực thi';
+      }
+      previewContainer.appendChild(badge);
+
+      if (isVid) {
+        const video = document.createElement('video');
+        video.src = url;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.autoplay = true;
+        video.style.maxWidth = '100%';
+        video.style.borderRadius = '6px';
+        video.onloadedmetadata = () => { this.renderWires(); };
+        video.onerror = () => { video.style.display = 'none'; };
+        previewContainer.appendChild(video);
+      } else {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '6px';
+        img.onload = () => { this.renderWires(); };
+        img.onerror = () => { img.style.display = 'none'; };
+        previewContainer.appendChild(img);
+      }
+
+      // Quick actions: Zoom + Download
+      const actions = document.createElement('div');
+      actions.className = 'wf-preview-actions';
+
+      const zoomBtn = document.createElement('button');
+      zoomBtn.type = 'button';
+      zoomBtn.className = 'wf-preview-btn';
+      zoomBtn.title = 'Phóng to xem chi tiết';
+      zoomBtn.innerHTML = '🔍 Xem';
+      zoomBtn.onclick = (e) => {
+        e.stopPropagation();
+        this.openLightbox(node.title || 'Preview', url, isVid ? 'video' : 'image');
+      };
+      actions.appendChild(zoomBtn);
+
+      const dlBtn = document.createElement('button');
+      dlBtn.type = 'button';
+      dlBtn.className = 'wf-preview-btn';
+      dlBtn.title = 'Tải file kết quả về máy';
+      dlBtn.innerHTML = '💾 Tải';
+      dlBtn.onclick = (e) => {
+        e.stopPropagation();
+        const fn = this.getFilename(url) || 'result_preview';
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fn;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+      actions.appendChild(dlBtn);
+
+      previewContainer.appendChild(actions);
+
+      previewContainer.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        e.stopPropagation();
+        this.selectNode(nodeId);
+        this.openLightbox(node.title || 'Preview', url, isVid ? 'video' : 'image');
+      };
+
+      // Cập nhật inspector preview nếu đang chọn node này
+      if (this.selectedNodeId === nodeId) {
+        const previewBox = document.getElementById('inspector-preview-box');
+        const previewStatus = document.getElementById('inspector-preview-status');
+        if (previewBox) {
+          previewBox.classList.add('has-content');
+          if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
+          if (isVid) {
+            previewBox.innerHTML = `<video src="${url}" controls autoplay muted loop playsinline onerror="this.style.display='none'" style="max-width:100%;border-radius:6px"></video>`;
+          } else {
+            previewBox.innerHTML = `<img src="${url}" alt="" onerror="this.style.display='none'" style="max-width:100%;border-radius:6px">`;
+          }
+        }
+      }
+    }
+
+    propagatePreviewToOutputs(nodeId, url) {
+      if (!this.graph.edges) return;
+      const outgoing = this.graph.edges.filter(e => (e.from_node || e.fromNode || e.FromNode) === nodeId);
+      outgoing.forEach(edge => {
+        const toNodeId = edge.to_node || edge.toNode || edge.ToNode;
+        const targetNode = this.graph.nodes.find(n => n.id === toNodeId);
+        if (targetNode && (targetNode.type === 'preview_media' || targetNode.type === 'preview_image' || targetNode.type === 'preview_video')) {
+          if (!targetNode.params) targetNode.params = {};
+          targetNode.params.preview_url = url;
+          this.updateNodeVisualPreview(toNodeId, url);
+        }
+      });
+    }
+
+    addPreviewNode() {
+      const selected = this.graph.nodes.find(n => n.id === this.selectedNodeId);
+      let posX = 450, posY = 250;
+      if (selected) {
+        posX = selected.x + 320;
+        posY = selected.y;
+      } else {
+        const vpRect = this.viewport.getBoundingClientRect();
+        posX = (-this.panX + vpRect.width / 2) / this.scale - 120;
+        posY = (-this.panY + vpRect.height / 2) / this.scale - 100;
+      }
+
+      const id = `node_preview_${Date.now()}`;
+      const newNode = {
+        id: id,
+        type: 'preview_media',
+        title: 'Xem trước kết quả (Preview Media)',
+        x: Math.round(posX),
+        y: Math.round(posY),
+        inputs: [{ id: 'media_in', name: 'Ảnh/Video cần xem', type: 'any', required: true }],
+        outputs: [{ id: 'media_out', name: 'Truyền tiếp', type: 'any' }],
+        params: {},
+        state: { status: 'idle', progress: 0 }
+      };
+
+      this.graph.nodes.push(newNode);
+
+      // Tự động nối dây từ output của node đang chọn sang Preview Node
+      if (selected && selected.outputs && selected.outputs.length > 0) {
+        const outPort = selected.outputs[0].id;
+        this.addEdge(selected.id, outPort, id, 'media_in');
+        if (selected.state?.output_preview) {
+          newNode.params.preview_url = `/media/${this.getFilename(selected.state.output_preview)}`;
+        } else if (selected.params?.preview_url) {
+          newNode.params.preview_url = selected.params.preview_url;
+        }
+      }
+
+      this.render();
+      this.selectNode(id);
+    }
+
+    async fetchMediaFromUrl(node, targetUrl, preferredType) {
+      if (!targetUrl || !targetUrl.trim()) return;
+      targetUrl = targetUrl.trim();
+
+      const previewEl = document.getElementById(`node-preview-${node.id}`);
+      let prevHtml = '';
+      if (previewEl) {
+        prevHtml = previewEl.innerHTML;
+        previewEl.innerHTML = `<div style="padding:16px 8px;text-align:center;font-size:11px;color:#38bdf8;background:rgba(15,23,42,0.65);border-radius:6px;line-height:1.4;">⏳ Đang tải media từ link...<br><span style="font-size:10px;opacity:0.8;">(TikTok, Reels, IG, Web)</span></div>`;
+      }
+
+      try {
+        const resp = await fetch('/api/flow/fetch-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: targetUrl,
+            preferred_type: preferredType || (node.type === 'video_source' ? 'video' : 'any')
+          })
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.ok) {
+          throw new Error(res.error || 'Không thể tải media từ URL');
+        }
+
+        if (!node.params) node.params = {};
+        node.params.url = targetUrl;
+
+        if (res.media_type === 'video') {
+          node.params.video_path = res.file_path;
+          node.params.video_url = targetUrl;
+          if (node.type === 'product_extractor' || node.type === 'background_remover') {
+            node.params.source_video = res.file_path;
+            node.params.source_image = res.file_path;
+          }
+          node.params.preview_url = res.preview_url || res.url;
+        } else {
+          if (node.type === 'character_input') {
+            node.params.model_path = res.file_path;
+            node.params.character_image = res.file_path;
+          } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
+            node.params.source_image = res.file_path;
+          } else {
+            node.params.product_image = res.file_path;
+          }
+          node.params.preview_url = res.url;
+        }
+
+        this.render();
+        this.selectNode(node.id);
+        this.propagatePreviewUpdate(node.id, node.params.preview_url);
+      } catch (err) {
+        console.error('Lỗi nạp link media:', err);
+        if (previewEl && prevHtml) {
+          previewEl.innerHTML = prevHtml;
+        }
+        alert(`Không thể tải media từ link: ${err.message || err}`);
+      }
     }
 
     openLightbox(title, url, type) {
@@ -846,18 +1157,69 @@
     }
 
     calculateBezier(x1, y1, x2, y2) {
-      const dx = Math.max(50, Math.abs(x2 - x1) * 0.55);
-      return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+
+      if (dx >= 20) {
+        // Luồng xuôi tự nhiên từ trái sang phải
+        const tension = Math.min(Math.max(45, dx * 0.5), 180);
+        return `M ${x1} ${y1} C ${x1 + tension} ${y1}, ${x2 - tension} ${y2}, ${x2} ${y2}`;
+      } else {
+        // Luồng quẹo ngược về sau (Loopback wire): uốn cong mượt mà hình chữ S, không bị gập góc
+        const dist = Math.hypot(dx, dy);
+        const loopOffset = Math.min(180, Math.max(65, dist * 0.35));
+        const cyOffset = dy >= 0 ? Math.min(60, Math.max(25, Math.abs(dy) * 0.2)) : -Math.min(60, Math.max(25, Math.abs(dy) * 0.2));
+        return `M ${x1} ${y1} C ${x1 + loopOffset} ${y1 + cyOffset}, ${x2 - loopOffset} ${y2 - cyOffset}, ${x2} ${y2}`;
+      }
     }
 
     findPortDot(nodeId, portId, isOutput) {
-      if (!nodeId || !portId) return null;
-      const selector = `.wf-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .wf-port-dot`;
-      return this.nodesLayer.querySelector(selector);
+      if (!nodeId) return null;
+
+      // 1. Tìm chính xác theo data-node-id và data-port-id
+      if (portId) {
+        const dot = this.nodesLayer.querySelector(`.wf-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .wf-port-dot`);
+        if (dot) return dot;
+      }
+
+      // 2. Tìm kiếm linh hoạt theo case-insensitive hoặc alias phổ biến
+      const ports = Array.from(this.nodesLayer.querySelectorAll(`.wf-port[data-node-id="${nodeId}"][data-is-output="${isOutput ? '1' : '0'}"]`));
+      if (portId && ports.length > 0) {
+        const pLower = portId.toLowerCase().replace(/[-_]/g, '');
+        for (const p of ports) {
+          const curId = (p.dataset.portId || '').toLowerCase().replace(/[-_]/g, '');
+          if (curId === pLower || curId.includes(pLower) || pLower.includes(curId)) {
+            const dot = p.querySelector('.wf-port-dot');
+            if (dot) return dot;
+          }
+        }
+      }
+
+      // 3. Fallback thông minh: nếu node chỉ có cổng cùng chiều, tự động gán vào cổng khả dụng đầu tiên
+      if (ports.length > 0) {
+        const fallbackDot = ports[0].querySelector('.wf-port-dot');
+        if (fallbackDot) return fallbackDot;
+      }
+
+      return null;
     }
 
     getPortCoordinates(dotEl) {
       if (!dotEl) return { x: 0, y: 0 };
+      const nodeEl = dotEl.closest('.wf-node');
+      if (nodeEl) {
+        const nx = parseFloat(nodeEl.style.left) || 0;
+        const ny = parseFloat(nodeEl.style.top) || 0;
+        const nodeRect = nodeEl.getBoundingClientRect();
+        const dotRect = dotEl.getBoundingClientRect();
+        const relX = (dotRect.left + dotRect.width / 2 - nodeRect.left) / this.scale;
+        const relY = (dotRect.top + dotRect.height / 2 - nodeRect.top) / this.scale;
+        return {
+          x: Math.round(nx + relX),
+          y: Math.round(ny + relY)
+        };
+      }
+
       const dotRect = dotEl.getBoundingClientRect();
       const vpRect = this.viewport.getBoundingClientRect();
       return {
@@ -867,6 +1229,19 @@
     }
 
     addEdge(fromNode, fromPort, toNode, toPort) {
+	  const source = this.graph.nodes.find(n => n.id === fromNode);
+	  const target = this.graph.nodes.find(n => n.id === toNode);
+	  const sourcePort = source && this.getNodePorts(source, true).find(p => p.id === fromPort);
+	  const targetPort = target && this.getNodePorts(target, false).find(p => p.id === toPort);
+	  if (!sourcePort || !targetPort) {
+	    alert('Không thể nối dây: cổng không còn tồn tại. Tải lại contract workflow con.');
+	    return false;
+	  }
+	  if (!this.isPortTypeCompatible(sourcePort.type, targetPort.type)) {
+	    alert(`Không thể nối ${sourcePort.type} vào ${targetPort.type}. Chọn cổng cùng kiểu dữ liệu.`);
+	    return false;
+	  }
+
       // Remove any existing edge to the same input port
       this.graph.edges = this.graph.edges.filter(e => !(e.to_node === toNode && e.to_port === toPort));
 
@@ -879,6 +1254,21 @@
       };
       this.graph.edges.push(newEdge);
       this.renderWires();
+
+      // ComfyUI: Khi nối dây vào node Preview, lập tức chuyển kết quả xem trước sang
+      const targetNode = this.graph.nodes.find(n => n.id === toNode);
+      if (targetNode && (targetNode.type === 'preview_media' || targetNode.type === 'preview_image' || targetNode.type === 'preview_video')) {
+        const sourceNode = this.graph.nodes.find(n => n.id === fromNode);
+        if (sourceNode) {
+          const previewUrl = sourceNode.state?.output_preview ? `/media/${this.getFilename(sourceNode.state.output_preview)}` : (sourceNode.params?.preview_url || '');
+          if (previewUrl) {
+            targetNode.params = targetNode.params || {};
+            targetNode.params.preview_url = previewUrl;
+            this.updateNodeVisualPreview(toNode, previewUrl);
+          }
+        }
+      }
+      return true;
     }
 
     deleteEdge(edgeId) {
@@ -922,9 +1312,11 @@
       // Auto-connect if pending from '+' handle
       if (this.pendingConnect) {
         const { fromNode, fromPort } = this.pendingConnect;
-        const matchingInput = (newNode.inputs || []).find(inp => inp.type === this.pendingConnect.portType) || (newNode.inputs || [])[0];
+        const matchingInput = this.getNodePorts(newNode, false).find(inp => this.isPortTypeCompatible(this.pendingConnect.portType, inp.type));
         if (matchingInput) {
           this.addEdge(fromNode, fromPort, id, matchingInput.id);
+        } else {
+          alert('Node đã thêm nhưng không có cổng input tương thích để tự nối.');
         }
         this.pendingConnect = null;
       }
@@ -933,13 +1325,15 @@
       this.selectNode(id);
     }
 
-    selectNode(nodeId) {
+    selectNode(nodeId, openDetail = true) {
       this.selectedNodeId = nodeId;
       this.nodesLayer.querySelectorAll('.wf-node').forEach(el => {
         el.classList.toggle('selected', el.id === `node-${nodeId}`);
       });
-      this.openInspector();
-      this.updateInspector();
+      if (openDetail) {
+        this.openInspector();
+        this.updateInspector();
+      }
     }
 
     deselectAll() {
@@ -974,16 +1368,7 @@
         return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${state.progress || 20}%)...</span>`;
       }
       if (state.status === 'completed') {
-        let preview = '';
-        if (state.output_preview && this.isVisualNodeType(nodeType)) {
-          const fn = this.getFilename(state.output_preview);
-          if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
-            preview = `<div class="wf-node-preview-thumb" onclick="event.stopPropagation(); window.flowCanvas && window.flowCanvas.openLightbox('Kết quả Video', '/media/${fn}', 'video')" title="Bấm để xem video phóng to"><video src="/media/${fn}" autoplay muted loop playsinline onerror="this.parentElement.style.display='none'"></video><span class="wf-thumb-play-icon">▶</span></div>`;
-          } else {
-            preview = `<div class="wf-node-preview-thumb" onclick="event.stopPropagation(); window.flowCanvas && window.flowCanvas.openLightbox('Kết quả hình ảnh', '/media/${fn}', 'image')" title="Bấm để phóng to xem ảnh"><img src="/media/${fn}" alt="" onerror="this.parentElement.style.display='none'"></div>`;
-          }
-        }
-        return `<div class="wf-status-badge wf-status-completed">✓ Hoàn tất 100%</div>${preview}`;
+        return `<div class="wf-status-badge wf-status-completed">✓ Hoàn tất 100%</div>`;
       }
       if (state.status === 'failed') {
         return `<span class="wf-status-badge wf-status-failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 32) : 'Thất bại'}</span>`;
@@ -996,7 +1381,11 @@
       const visualTypes = [
         'character_input', 'product_input', 'product_extractor', 'background_remover',
         'image_composite', 'virtual_tryon', 'google_flow_video', 'muse_ai_video',
-        'video_source', 'video_upscale', 'concat_scenes', 'video_output', 'image_output'
+        'video_source', 'video_upscale', 'concat_scenes', 'video_output', 'image_output',
+        'character_identity', 'face_lock_refiner', 'body_skeleton_pose',
+        'garment_mesh_extractor', 'surface_cloth_warper', 'muse_ai_neural_render',
+        'neural_composite_shader', 'cinematic_color_grading', 'video_master_output',
+        'preview_media', 'preview_image', 'preview_video'
       ];
       return visualTypes.includes(type);
     }
@@ -1006,33 +1395,55 @@
       return path.split('/').pop();
     }
 
+    isWorkflowCallType(type) {
+      return type === 'workflow_call' || (typeof type === 'string' && type.startsWith('workflow_call_'));
+    }
+
+    getWorkflowPortTypes() {
+      return ['any', 'image', 'image_list', 'video', 'audio', 'text', 'product', 'motion', 'number', 'config', 'mesh', 'pose', 'camera', 'light', 'texture'];
+    }
+
+    getNodePorts(node, isOutput) {
+      const def = this.definitions[node.type] || {};
+      const params = node.params || {};
+      if (node.type === 'workflow_input') {
+        return isOutput
+          ? [{ id: 'value', name: params.label || 'Giá trị', type: params.value_type || 'any' }]
+          : [];
+      }
+      if (node.type === 'workflow_output') {
+        const port = { id: 'value', name: params.label || 'Giá trị', type: params.value_type || 'any' };
+        return isOutput ? [port] : [{ ...port, required: true }];
+      }
+      const nodePorts = isOutput ? node.outputs : node.inputs;
+      const defPorts = isOutput ? def.outputs : def.inputs;
+      return Array.isArray(nodePorts) && nodePorts.length > 0 ? nodePorts : (defPorts || []);
+    }
+
+    isPortTypeCompatible(from, to) {
+      return !from || !to || from === 'any' || to === 'any' || from === to || (from === 'image' && to === 'image_list');
+    }
+
     getCategoryIcon(cat) {
       switch (cat) {
+        // 6 Tầng Kiến trúc Studio 3D & VFX Chuyên nghiệp:
+        case 'identity': return '👤';
+        case 'geometry': return '📐';
+        case 'camera': return '🎥';
+        case 'lighting': return '💡';
+        case 'render': return '🧠';
+        case 'post': return '🎨';
+        case 'workflow': return '🧩';
+        // Danh mục cơ bản tương thích:
         case 'input': return '📥';
         case 'process': return '⚙️';
-        case 'ai': return '🧠';
+        case 'ai': return '🤖';
         case 'output': return '📤';
         default: return '📦';
       }
     }
 
     bindToolbar() {
-      // Workflow switcher dropdown
-      const switcherSelect = document.getElementById('wf-switcher-select');
-      if (switcherSelect) {
-        switcherSelect.addEventListener('change', (e) => {
-          this.loadGraphById(e.target.value);
-        });
-      }
-
-      // Legacy preset select fallback
-      const presetSelect = document.getElementById('wf-preset-select');
-      if (presetSelect) {
-        presetSelect.addEventListener('change', (e) => {
-          this.loadGraphById(e.target.value);
-        });
-      }
-
       // Open graphs list modal
       const btnOpenGraphs = document.getElementById('btn-open-graphs-modal');
       if (btnOpenGraphs) {
@@ -1174,6 +1585,95 @@
           } catch (e) {}
         });
       }
+
+      // Export API button & Modal listeners
+      const btnExportApi = document.getElementById('btn-export-api');
+      if (btnExportApi) {
+        btnExportApi.addEventListener('click', () => {
+          this.openExportApiModal();
+        });
+      }
+
+      const btnCloseApiModal = document.getElementById('btn-close-api-modal');
+      if (btnCloseApiModal) {
+        btnCloseApiModal.addEventListener('click', () => {
+          this.closeExportApiModal();
+        });
+      }
+
+      const btnCloseApiFooter = document.getElementById('btn-close-api-footer');
+      if (btnCloseApiFooter) {
+        btnCloseApiFooter.addEventListener('click', () => {
+          this.closeExportApiModal();
+        });
+      }
+
+      const btnCopyApiUrl = document.getElementById('btn-copy-api-url');
+      if (btnCopyApiUrl) {
+        btnCopyApiUrl.addEventListener('click', () => {
+          const urlEl = document.getElementById('api-endpoint-url');
+          if (urlEl) {
+            navigator.clipboard.writeText(urlEl.innerText).then(() => {
+              btnCopyApiUrl.innerText = '✓ Đã chép';
+              setTimeout(() => btnCopyApiUrl.innerText = 'Copy URL', 2000);
+            });
+          }
+        });
+      }
+
+      const tabBtnCurl = document.getElementById('tab-btn-curl');
+      const tabBtnJsonFlat = document.getElementById('tab-btn-json-flat');
+      const tabBtnJsonNode = document.getElementById('tab-btn-json-node');
+      const tabContentCurl = document.getElementById('api-tab-content-curl');
+      const tabContentJsonFlat = document.getElementById('api-tab-content-json-flat');
+      const tabContentJsonNode = document.getElementById('api-tab-content-json-node');
+
+      const setApiTab = (tab) => {
+        [tabBtnCurl, tabBtnJsonFlat, tabBtnJsonNode].forEach(btn => btn && btn.classList.remove('active'));
+        [tabContentCurl, tabContentJsonFlat, tabContentJsonNode].forEach(c => { if (c) c.style.display = 'none'; });
+
+        if (tab === 'curl' && tabBtnCurl && tabContentCurl) {
+          tabBtnCurl.classList.add('active');
+          tabContentCurl.style.display = 'block';
+        } else if (tab === 'json-flat' && tabBtnJsonFlat && tabContentJsonFlat) {
+          tabBtnJsonFlat.classList.add('active');
+          tabContentJsonFlat.style.display = 'block';
+        } else if (tab === 'json-node' && tabBtnJsonNode && tabContentJsonNode) {
+          tabBtnJsonNode.classList.add('active');
+          tabContentJsonNode.style.display = 'block';
+        }
+      };
+
+      if (tabBtnCurl) tabBtnCurl.addEventListener('click', () => setApiTab('curl'));
+      if (tabBtnJsonFlat) tabBtnJsonFlat.addEventListener('click', () => setApiTab('json-flat'));
+      if (tabBtnJsonNode) tabBtnJsonNode.addEventListener('click', () => setApiTab('json-node'));
+
+      const btnCopyCurl = document.getElementById('btn-copy-curl');
+      if (btnCopyCurl) {
+        btnCopyCurl.addEventListener('click', () => {
+          let textToCopy = '';
+          if (tabBtnCurl && tabBtnCurl.classList.contains('active')) {
+            textToCopy = document.getElementById('api-curl-code')?.innerText || '';
+          } else if (tabBtnJsonNode && tabBtnJsonNode.classList.contains('active')) {
+            textToCopy = document.getElementById('api-request-body-node')?.value || '';
+          } else {
+            textToCopy = document.getElementById('api-request-body')?.value || '';
+          }
+          if (textToCopy) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              btnCopyCurl.innerText = '✓ Đã sao chép';
+              setTimeout(() => btnCopyCurl.innerText = 'Sao chép', 2000);
+            });
+          }
+        });
+      }
+
+      const btnRunApiTest = document.getElementById('btn-run-api-test');
+      if (btnRunApiTest) {
+        btnRunApiTest.addEventListener('click', () => {
+          this.runApiTest();
+        });
+      }
     }
 
     async runFlow() {
@@ -1188,17 +1688,19 @@
         statusPill.innerText = '⚡ Đang chạy workflow...';
       }
 
-      // Reset visual node states to queued
+      // Reset visual node states to queued and remove previous execution previews from processing nodes
       this.graph.nodes.forEach(n => {
         n.state = { status: 'queued', progress: 0 };
         const footer = document.getElementById(`node-footer-${n.id}`);
         if (footer) footer.innerHTML = this.renderNodeStatus(n.state);
-      });
 
-      // Switch inspector to logs tab
-      const logTabBtn = document.querySelector('.wf-tab[data-tab="run-logs"]');
-      if (logTabBtn) logTabBtn.click();
-      this.openInspector();
+        // Bỏ preview kết quả cũ trước khi chạy workflow (chỉ giữ ảnh/video tài nguyên đầu vào của input nodes)
+        if (!['character_input', 'character_identity', 'product_input', 'video_source'].includes(n.type)) {
+          const previewEl = document.getElementById(`node-preview-${n.id}`);
+          if (previewEl) previewEl.remove();
+        }
+      });
+      this.renderWires();
 
       this.clearLogs();
       this.appendLog('[Khởi chạy] Đang kiểm tra cấu hình đồ thị Workflow...');
@@ -1259,6 +1761,8 @@
               const nodeState = run.node_states[nodeId];
               const node = this.graph.nodes.find(n => n.id === nodeId);
               if (node) {
+                const prevStatus = node.state?.status;
+                const prevPreview = node.state?.output_preview;
                 node.state = nodeState;
                 const footer = document.getElementById(`node-footer-${nodeId}`);
                 if (footer) footer.innerHTML = this.renderNodeStatus(nodeState, node.type);
@@ -1269,6 +1773,12 @@
                   nodeEl.classList.toggle('node-active-executing', nodeState.status === 'running');
                   nodeEl.classList.toggle('node-completed', nodeState.status === 'completed');
                   nodeEl.classList.toggle('node-failed', nodeState.status === 'failed');
+                }
+
+                // ComfyUI Live Preview: Tự động hiển thị kết quả trực tiếp lên node trên Canvas ngay khi chạy xong
+                if (nodeState.output_preview && (nodeState.output_preview !== prevPreview || nodeState.status !== prevStatus)) {
+                  this.updateNodeVisualPreview(nodeId, nodeState.output_preview);
+                  this.propagatePreviewToOutputs(nodeId, `/media/${this.getFilename(nodeState.output_preview)}`);
                 }
               }
             });
@@ -1378,20 +1888,274 @@
         });
       }
 
-      // Tab switching
-      document.querySelectorAll('.wf-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-          document.querySelectorAll('.wf-tab').forEach(t => t.classList.remove('active'));
-          document.querySelectorAll('.wf-tab-pane').forEach(c => c.style.display = 'none');
-          tab.classList.add('active');
-          const target = document.getElementById(`tab-${tab.dataset.tab}`);
-          if (target) target.style.display = 'block';
-        });
-      });
+    }
 
-      const clearLogBtn = document.getElementById('btn-clear-logs');
-      if (clearLogBtn) {
-        clearLogBtn.addEventListener('click', () => this.clearLogs());
+    renderWorkflowBoundaryInspector(node, container) {
+      const params = node.params || (node.params = {});
+      const addTextField = (key, labelText, value, onChange) => {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        const label = document.createElement('label');
+        label.innerText = labelText;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control';
+        input.value = value || '';
+        input.addEventListener('change', () => onChange(input.value.trim()));
+        group.append(label, input);
+        container.appendChild(group);
+      };
+
+      addTextField('key', 'Khóa input/output', params.key || '', value => {
+        params.key = value.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^[^a-z]+/, '');
+      });
+      addTextField('label', 'Tên hiển thị', params.label || '', value => { params.label = value; });
+
+      const typeGroup = document.createElement('div');
+      typeGroup.className = 'form-group';
+      const typeLabel = document.createElement('label');
+      typeLabel.innerText = 'Kiểu dữ liệu';
+      const typeSelect = document.createElement('select');
+      typeSelect.className = 'form-control';
+      this.getWorkflowPortTypes().forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.innerText = type;
+        typeSelect.appendChild(option);
+      });
+      typeSelect.value = this.getWorkflowPortTypes().includes(params.value_type) ? params.value_type : 'any';
+      typeSelect.addEventListener('change', () => {
+        params.value_type = typeSelect.value;
+        this.render();
+        this.selectNode(node.id);
+      });
+      typeGroup.append(typeLabel, typeSelect);
+      container.appendChild(typeGroup);
+
+      if (node.type === 'workflow_input') {
+        const requiredGroup = document.createElement('label');
+        requiredGroup.className = 'form-group';
+        const required = document.createElement('input');
+        required.type = 'checkbox';
+        required.checked = params.required !== false;
+        required.addEventListener('change', () => { params.required = required.checked; });
+        requiredGroup.append(required, document.createTextNode(' Input bắt buộc'));
+        container.appendChild(requiredGroup);
+
+        const valueGroup = document.createElement('div');
+        valueGroup.className = 'form-group';
+        const valueLabel = document.createElement('label');
+        valueLabel.innerText = 'Giá trị mặc định / đầu vào';
+        const valueInput = document.createElement('textarea');
+        valueInput.className = 'form-control';
+        valueInput.rows = 3;
+        valueInput.value = params.value == null ? '' : String(params.value);
+        valueInput.placeholder = 'Có thể truyền giá trị này qua webhook bằng khóa input phía trên';
+        valueInput.addEventListener('input', () => { params.value = valueInput.value; });
+        valueGroup.append(valueLabel, valueInput);
+        container.appendChild(valueGroup);
+
+        if (['image', 'image_list', 'video', 'audio'].includes(params.value_type)) {
+          const upload = document.createElement('button');
+          upload.type = 'button';
+          upload.className = 'btn btn-secondary btn-sm';
+          upload.innerText = '📁 Tải media làm giá trị mặc định';
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.hidden = true;
+          fileInput.accept = params.value_type === 'image' || params.value_type === 'image_list' ? 'image/*' : `${params.value_type}/*`;
+          fileInput.addEventListener('change', async () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) return;
+            upload.disabled = true;
+            upload.innerText = 'Đang tải…';
+            try {
+              const form = new FormData();
+              form.append('file', file);
+              const response = await fetch('/api/flow/upload', { method: 'POST', body: form });
+              const result = await response.json();
+              if (!result.ok) throw new Error(result.error || 'Tải media thất bại');
+              params.value = result.file_path;
+              params.preview_url = result.url;
+              this.render();
+              this.selectNode(node.id);
+            } catch (error) {
+              alert(error.message || 'Không tải được media');
+            } finally {
+              upload.disabled = false;
+              upload.innerText = '📁 Tải media làm giá trị mặc định';
+            }
+          });
+          upload.addEventListener('click', () => fileInput.click());
+          container.append(upload, fileInput);
+        }
+      }
+    }
+
+    getWorkflowContract(graph) {
+      const inputs = [];
+      const outputs = [];
+      const seen = { input: new Set(), output: new Set() };
+      const validTypes = new Set(this.getWorkflowPortTypes());
+      (graph.nodes || []).forEach(node => {
+        if (node.type !== 'workflow_input' && node.type !== 'workflow_output') return;
+        const params = node.params || {};
+        const key = String(params.key || '').trim();
+        if (!/^[a-z][a-z0-9_]{0,47}$/.test(key)) throw new Error(`Node “${node.title || key}” có khóa không hợp lệ`);
+        const direction = node.type === 'workflow_input' ? 'input' : 'output';
+        if (seen[direction].has(key)) throw new Error(`Trùng khóa ${direction}: ${key}`);
+        seen[direction].add(key);
+        const type = String(params.value_type || 'any');
+        if (!validTypes.has(type)) throw new Error(`Kiểu dữ liệu không hỗ trợ: ${type}`);
+        const port = { id: key, name: String(params.label || key), type };
+        if (direction === 'input') port.required = params.required !== false;
+        (direction === 'input' ? inputs : outputs).push(port);
+      });
+      if (!inputs.length || !outputs.length) throw new Error('Workflow cần ít nhất một Đầu vào và một Đầu ra');
+      return { inputs, outputs };
+    }
+
+    renderWorkflowCallInspector(node, container) {
+      const params = node.params || (node.params = {});
+      const fixedCategory = node.type === 'workflow_call' ? '' : node.type.slice('workflow_call_'.length);
+      if (fixedCategory) params.workflow_category = fixedCategory;
+      const categories = [
+        { value: 'affiliate', label: 'Affiliate' },
+        { value: 'viral', label: 'TikTok Viral' },
+        { value: 'fashion', label: 'Thời trang' },
+        { value: 'vfx_3d', label: '3D / VFX' },
+        { value: 'custom', label: 'Custom' }
+      ];
+
+      const categoryGroup = document.createElement('div');
+      categoryGroup.className = 'form-group';
+      const categoryLabel = document.createElement('label');
+      categoryLabel.innerText = 'Loại workflow';
+      if (fixedCategory) {
+        const fixed = document.createElement('div');
+        fixed.className = 'form-control';
+        fixed.innerText = (categories.find(c => c.value === fixedCategory) || { label: fixedCategory }).label;
+        categoryGroup.append(categoryLabel, fixed);
+      } else {
+        const categorySelect = document.createElement('select');
+        categorySelect.className = 'form-control';
+        const any = document.createElement('option');
+        any.value = '';
+        any.innerText = 'Tất cả loại';
+        categorySelect.appendChild(any);
+        categories.forEach(category => {
+          const option = document.createElement('option');
+          option.value = category.value;
+          option.innerText = category.label;
+          categorySelect.appendChild(option);
+        });
+        categorySelect.value = params.workflow_category || '';
+        categorySelect.addEventListener('change', () => {
+          const connected = this.graph.edges.some(edge => edge.from_node === node.id || edge.to_node === node.id);
+          if (connected && !confirm('Đổi loại workflow sẽ xóa các kết nối hiện tại của node. Tiếp tục?')) {
+            categorySelect.value = params.workflow_category || '';
+            return;
+          }
+          params.workflow_category = categorySelect.value;
+          params.workflow_id = '';
+          this.graph.edges = this.graph.edges.filter(edge => edge.from_node !== node.id && edge.to_node !== node.id);
+          node.inputs = [];
+          node.outputs = [];
+          this.render();
+          this.selectNode(node.id);
+        });
+        categoryGroup.append(categoryLabel, categorySelect);
+      }
+      container.appendChild(categoryGroup);
+
+      const flowGroup = document.createElement('div');
+      flowGroup.className = 'form-group';
+      const flowLabel = document.createElement('label');
+      flowLabel.innerText = 'Workflow đã lưu';
+      const flowSelect = document.createElement('select');
+      flowSelect.className = 'form-control';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.innerText = 'Chọn workflow…';
+      flowSelect.appendChild(placeholder);
+      const candidates = this.savedGraphs.filter(graph => graph.id !== this.graph.id && (!params.workflow_category || graph.category === params.workflow_category));
+      candidates.forEach(graph => {
+        const option = document.createElement('option');
+        option.value = graph.id;
+        option.innerText = `${graph.name} · ${graph.category || 'custom'}`;
+        flowSelect.appendChild(option);
+      });
+      flowSelect.value = params.workflow_id || '';
+      flowSelect.addEventListener('change', () => {
+        if (!flowSelect.value) {
+          params.workflow_id = '';
+          node.inputs = [];
+          node.outputs = [];
+          this.render();
+          this.selectNode(node.id);
+          return;
+        }
+        this.loadWorkflowContract(node, flowSelect.value);
+      });
+      flowGroup.append(flowLabel, flowSelect);
+      container.appendChild(flowGroup);
+
+      if (params.workflow_id && (!node.inputs?.length || !node.outputs?.length) && !this.workflowContractLoading.has(node.id)) {
+        this.loadWorkflowContract(node, params.workflow_id);
+      }
+      if (params.workflow_id) {
+        const refresh = document.createElement('button');
+        refresh.type = 'button';
+        refresh.className = 'btn btn-secondary btn-sm';
+        refresh.innerText = 'Tải lại input/output';
+        refresh.addEventListener('click', () => this.loadWorkflowContract(node, params.workflow_id));
+        container.appendChild(refresh);
+      }
+    }
+
+    async loadWorkflowContract(node, workflowId, rerender = true) {
+      if (this.workflowContractLoading.has(node.id)) return;
+      this.workflowContractLoading.add(node.id);
+      try {
+        const response = await fetch(`/api/flow/graphs/${encodeURIComponent(workflowId)}`);
+        const result = await response.json();
+        if (!response.ok || !result.ok || !result.graph) throw new Error(result.error || 'Không tải được workflow');
+        const contract = this.getWorkflowContract(result.graph);
+        const category = node.params.workflow_category || '';
+        if (category && result.graph.category !== category) throw new Error(`Workflow thuộc loại ${result.graph.category}, cần ${category}`);
+        const previousInputIds = new Set((node.inputs || []).map(port => port.id));
+        const previousOutputIds = new Set((node.outputs || []).map(port => port.id));
+        const inputIds = new Set(contract.inputs.map(port => port.id));
+        const outputIds = new Set(contract.outputs.map(port => port.id));
+        const oldEdgeCount = this.graph.edges.length;
+        this.graph.edges = this.graph.edges.filter(edge => {
+          if (edge.to_node === node.id && !inputIds.has(edge.to_port)) return false;
+          if (edge.from_node === node.id && !outputIds.has(edge.from_port)) return false;
+          return true;
+        });
+        node.inputs = contract.inputs;
+        node.outputs = contract.outputs;
+        node.params.workflow_id = workflowId;
+        node.params.workflow_name = result.graph.name;
+        if (oldEdgeCount !== this.graph.edges.length || [...previousInputIds].some(id => !inputIds.has(id)) || [...previousOutputIds].some(id => !outputIds.has(id))) {
+          alert('Contract thay đổi; các kết nối tới cổng đã bỏ bị xóa. Kiểm tra lại dây workflow.');
+        }
+        if (rerender) {
+          this.render();
+          this.selectNode(node.id);
+        }
+      } catch (error) {
+        node.params.workflow_id = '';
+        this.graph.edges = this.graph.edges.filter(edge => edge.from_node !== node.id && edge.to_node !== node.id);
+        node.inputs = [];
+        node.outputs = [];
+        if (rerender) {
+          this.render();
+          this.selectNode(node.id);
+        }
+        alert(error.message || 'Không tải được contract workflow');
+      } finally {
+        this.workflowContractLoading.delete(node.id);
       }
     }
 
@@ -1419,26 +2183,84 @@
       const def = this.definitions[node.type] || {};
       const cat = node.category || def.category || 'process';
 
+      // 1. Icon & Badges
       const iconEl = document.getElementById('inspector-node-icon');
       if (iconEl) iconEl.innerText = this.getCategoryIcon(cat);
-
-      const titleEl = document.getElementById('inspector-node-title');
-      if (titleEl) titleEl.innerText = node.title || def.title || node.type;
 
       const catEl = document.getElementById('inspector-node-category');
       if (catEl) catEl.innerText = cat.toUpperCase();
 
+      const typeBadge = document.getElementById('inspector-node-type-badge');
+      if (typeBadge) typeBadge.innerText = node.type;
+
+      // 2. Editable Node Title (n8n / ComfyUI direct renaming)
+      const titleInput = document.getElementById('inspector-node-title-input');
+      if (titleInput) {
+        titleInput.value = node.title || def.title || node.type;
+        titleInput.oninput = () => {
+          node.title = titleInput.value;
+          const cardTitleEl = document.getElementById(`node-title-${node.id}`);
+          if (cardTitleEl) {
+            cardTitleEl.innerText = titleInput.value || def.title || node.type;
+          }
+        };
+      }
+
       const descEl = document.getElementById('inspector-node-desc');
       if (descEl) descEl.innerText = def.description || '';
 
+      // 3. Model Selector (Muse AI, Gemini, Grok, ChatGPT, Claude) - Luôn hiển thị cho mọi node
+      const modelGroup = document.getElementById('inspector-model-group');
+      const modelSelect = document.getElementById('inspector-model-select');
+      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model') || Object.prototype.hasOwnProperty.call(def.default_params || {}, 'provider');
+      if (modelGroup && modelSelect) {
+        modelGroup.style.display = supportsModel ? 'block' : 'none';
+        modelSelect.value = node.params?.model || node.params?.provider || 'gemini';
+        modelSelect.onchange = () => {
+          const m = modelSelect.value;
+          if (!node.params) node.params = {};
+          node.params.model = m;
+          node.params.provider = m;
+          this.updateNodeModelBadge(node.id, m);
+        };
+      }
+
+      // 4. Dedicated Prompt Editor (Prominent, large textarea, live char counter) - Luôn hiển thị cho mọi node
+      const promptGroup = document.getElementById('inspector-prompt-group');
+      const promptInput = document.getElementById('inspector-prompt-input');
+      const charCounter = document.getElementById('inspector-prompt-char-count');
+      const supportsPrompt = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'prompt') || Object.prototype.hasOwnProperty.call(def.default_params || {}, 'template');
+      if (promptGroup && promptInput) {
+        promptGroup.style.display = supportsPrompt ? 'block' : 'none';
+        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (def.default_params?.prompt || def.default_params?.template || def.description || ''));
+        promptInput.value = curPrompt;
+        if (charCounter) charCounter.innerText = `${curPrompt.length} ký tự`;
+
+        promptInput.oninput = () => {
+          const val = promptInput.value;
+          if (!node.params) node.params = {};
+          node.params.prompt = val;
+          if (node.params.template !== undefined) node.params.template = val;
+          if (charCounter) charCounter.innerText = `${val.length} ký tự`;
+        };
+      }
+
+      // 5. Dynamic Other Parameters (Exclude prompt, template, model, provider to prevent duplication)
       const fieldsContainer = document.getElementById('inspector-fields');
       if (fieldsContainer) {
         fieldsContainer.innerHTML = '';
-
         if (!node.params) node.params = {};
         const params = Object.assign({}, def.default_params, node.params);
+		const isWorkflowBoundary = node.type === 'workflow_input' || node.type === 'workflow_output';
+		const isWorkflowCall = this.isWorkflowCallType(node.type);
+		if (isWorkflowBoundary) this.renderWorkflowBoundaryInspector(node, fieldsContainer);
+		else if (isWorkflowCall) this.renderWorkflowCallInspector(node, fieldsContainer);
 
-        Object.keys(params).forEach(key => {
+        const skipKeys = ['prompt', 'template', 'model', 'provider', 'node_name', 'preview_url'];
+
+        if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
+          if (skipKeys.includes(key)) return;
+
           const val = params[key];
           const group = document.createElement('div');
           group.className = 'form-group';
@@ -1464,15 +2286,79 @@
               node.params[key] = parseFloat(numInput.value) || 0;
             });
             group.appendChild(numInput);
-          } else if (key.includes('prompt') || key.includes('template') || (typeof val === 'string' && val.length > 50)) {
-            const textarea = document.createElement('textarea');
-            textarea.className = 'form-control';
-            textarea.rows = 4;
-            textarea.value = val;
-            textarea.addEventListener('input', () => {
-              node.params[key] = textarea.value;
+          } else if (key.includes('url') || key.includes('path') || key.includes('image') || key.includes('video')) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.style.flex = '1';
+            input.value = val;
+            input.placeholder = key.includes('url') ? 'https://www.tiktok.com/... hoặc link ảnh/video' : 'Đường dẫn tệp...';
+            input.addEventListener('input', () => {
+              node.params[key] = input.value;
             });
-            group.appendChild(textarea);
+            row.appendChild(input);
+
+            // Nút dán link / fetch URL
+            const fetchBtn = document.createElement('button');
+            fetchBtn.type = 'button';
+            fetchBtn.className = 'btn btn-secondary';
+            fetchBtn.style.cssText = 'padding:4px 8px;font-size:11px;white-space:nowrap;';
+            fetchBtn.title = 'Tải media từ link TikTok, Reels, IG, Web';
+            fetchBtn.innerHTML = '🔗 Link';
+            fetchBtn.addEventListener('click', async () => {
+              const u = window.prompt('Dán link video TikTok, Instagram Reels, IG, YouTube Shorts hoặc link ảnh/video web:', input.value || '');
+              if (u && u.trim()) {
+                input.value = u.trim();
+                await this.fetchMediaFromUrl(node, u.trim(), key.includes('video') ? 'video' : 'any');
+              }
+            });
+            row.appendChild(fetchBtn);
+
+            // Nút tải tệp từ máy
+            const uploadBtn = document.createElement('button');
+            uploadBtn.type = 'button';
+            uploadBtn.className = 'btn btn-secondary';
+            uploadBtn.style.cssText = 'padding:4px 8px;font-size:11px;white-space:nowrap;';
+            uploadBtn.title = 'Tải tệp từ máy tính';
+            uploadBtn.innerHTML = '📁 Tải';
+
+            const hiddenFile = document.createElement('input');
+            hiddenFile.type = 'file';
+            hiddenFile.accept = key.includes('video') ? 'video/mp4,video/*' : 'image/*,video/*';
+            hiddenFile.style.display = 'none';
+            hiddenFile.addEventListener('change', async (fev) => {
+              const file = fev.target.files && fev.target.files[0];
+              if (!file) return;
+              try {
+                uploadBtn.disabled = true;
+                uploadBtn.innerText = '⏳';
+                const fd = new FormData();
+                fd.append('file', file);
+                const r = await fetch('/api/flow/upload', { method: 'POST', body: fd });
+                const d = await r.json();
+                if (d.ok) {
+                  input.value = d.file_path;
+                  node.params[key] = d.file_path;
+                  node.params.preview_url = d.url;
+                  this.updateNodePreview(node.id, d.url);
+                  this.propagatePreviewUpdate(node.id, d.url);
+                }
+              } catch (uErr) {
+                console.error(uErr);
+              } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '📁 Tải';
+              }
+            });
+
+            uploadBtn.addEventListener('click', () => hiddenFile.click());
+            row.appendChild(uploadBtn);
+            row.appendChild(hiddenFile);
+
+            group.appendChild(row);
           } else {
             const input = document.createElement('input');
             input.type = 'text';
@@ -1488,11 +2374,12 @@
         });
       }
 
-      // Preview box
+      // 6. Preview box
       const previewBox = document.getElementById('inspector-preview-box');
       const previewStatus = document.getElementById('inspector-preview-status');
       if (previewBox) {
         if (node.state && node.state.output_preview) {
+          previewBox.classList.add('has-content');
           const fn = this.getFilename(node.state.output_preview);
           if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
           if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
@@ -1500,10 +2387,265 @@
           } else {
             previewBox.innerHTML = `<img src="/media/${fn}" alt="" onerror="this.style.display='none'" style="max-width:100%;border-radius:6px">`;
           }
+        } else if (node.state && node.state.outputs && node.state.outputs.text) {
+          previewBox.classList.add('has-content');
+          if (previewStatus) previewStatus.innerText = 'Đã tạo văn bản';
+          previewBox.innerHTML = `<div style="color:var(--text);font-size:12px;white-space:pre-wrap;line-height:1.45;padding:4px;">${node.state.outputs.text}</div>`;
         } else {
+          previewBox.classList.remove('has-content');
           if (previewStatus) previewStatus.innerText = 'Chưa có kết quả';
           previewBox.innerHTML = '<span class="text-muted">Chưa có dữ liệu xuất</span>';
         }
+      }
+    }
+
+    updateNodeModelBadge(nodeId, model) {
+      const badge = document.getElementById(`node-model-${nodeId}`);
+      if (badge) {
+        if (model) {
+          badge.innerText = model;
+          badge.style.display = '';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    }
+
+    openExportApiModal() {
+      const modal = document.getElementById('export-api-modal');
+      if (!modal) return;
+
+      const urlEl = document.getElementById('api-endpoint-url');
+      const origin = window.location.origin || 'http://localhost:8080';
+      const apiUrl = `${origin}/api/flow/api-run`;
+      if (urlEl) urlEl.innerText = apiUrl;
+
+      // Auto-detect ALL input parameters across the workflow
+      const detectedFlatParams = {};
+      const detectedNodeParams = {};
+      const detectedChips = [];
+
+      let charImageCount = 0;
+      let productImageCount = 0;
+      let otherImageCount = 0;
+      let videoCount = 0;
+      let promptCount = 0;
+
+      (this.graph.nodes || []).forEach(n => {
+        const type = (n.type || '').toLowerCase();
+        const cat = (n.category || '').toLowerCase();
+        const params = n.params || {};
+        const title = n.title || n.id;
+
+        // 1. Character / Avatar Image Input
+        if (type.includes('character') || type.includes('avatar') || type.includes('identity')) {
+          charImageCount++;
+          const paramKey = charImageCount === 1 ? 'character_image_url' : `character_image_url_${charImageCount}`;
+          const val = params.image_url || params.source_image || params.character_image || 'https://example.com/assets/model_face.jpg';
+          detectedFlatParams[paramKey] = val;
+          detectedChips.push({
+            name: paramKey,
+            type: 'IMAGE',
+            nodeRef: title,
+            desc: `Ảnh người mẫu / Face ID`
+          });
+          detectedNodeParams[n.id] = { image_url: val };
+        }
+        // 2. Product / Garment / Fabric Image Input
+        else if (type.includes('product') || type.includes('garment') || type.includes('fabric') || type.includes('cloth')) {
+          productImageCount++;
+          const paramKey = productImageCount === 1 ? 'product_image_url' : `product_image_url_${productImageCount}`;
+          const val = params.image_url || params.source_image || params.product_image || 'https://example.com/assets/product_garment.png';
+          detectedFlatParams[paramKey] = val;
+          if (params.product_title || type.includes('product')) {
+            detectedFlatParams['product_name'] = params.product_title || 'Áo khoác Bomber 3D';
+          }
+          detectedChips.push({
+            name: paramKey,
+            type: 'IMAGE',
+            nodeRef: title,
+            desc: `Ảnh sản phẩm / vải 3D`
+          });
+          detectedNodeParams[n.id] = { image_url: val };
+        }
+        // 3. Video Input (Motion, Pose, Source Video)
+        else if (type.includes('video') || type.includes('pose') || type.includes('skeleton') || params.video_url || params.source_video) {
+          videoCount++;
+          const paramKey = videoCount === 1 ? 'video_url' : `video_url_${videoCount}`;
+          const val = params.video_url || params.source_video || 'https://www.tiktok.com/@trend/video/123456';
+          detectedFlatParams[paramKey] = val;
+          detectedChips.push({
+            name: paramKey,
+            type: 'VIDEO',
+            nodeRef: title,
+            desc: `Video chuyển động / Pose`
+          });
+          detectedNodeParams[n.id] = { video_url: val };
+        }
+        // 4. Prompt Input (Script, Scenario, AI Prompt)
+        else if (type.includes('prompt') || type.includes('script') || (params.prompt && cat === 'input')) {
+          promptCount++;
+          const paramKey = promptCount === 1 ? 'prompt' : `prompt_${promptCount}`;
+          const val = params.prompt || 'Video ngắn giới thiệu thời trang phong cách năng động...';
+          detectedFlatParams[paramKey] = val;
+          detectedChips.push({
+            name: paramKey,
+            type: 'TEXT',
+            nodeRef: title,
+            desc: `Prompt kịch bản AI`
+          });
+          detectedNodeParams[n.id] = { prompt: val };
+        }
+        // 5. Generic Image Input
+        else if (params.image_url || params.source_image) {
+          otherImageCount++;
+          const paramKey = `image_url_${otherImageCount}`;
+          const val = params.image_url || params.source_image || 'https://example.com/assets/sample.jpg';
+          detectedFlatParams[paramKey] = val;
+          detectedChips.push({
+            name: paramKey,
+            type: 'IMAGE',
+            nodeRef: title,
+            desc: `Ảnh đầu vào`
+          });
+          detectedNodeParams[n.id] = { image_url: val };
+        }
+      });
+
+      // Default fallback if no specific input nodes detected
+      if (Object.keys(detectedFlatParams).length === 0) {
+        detectedFlatParams['prompt'] = 'Video ngắn giới thiệu thời trang phong cách năng động';
+        detectedChips.push({ name: 'prompt', type: 'TEXT', nodeRef: 'Workflow', desc: 'Nội dung Prompt' });
+      }
+
+      // Render parameter chips
+      const paramsListEl = document.getElementById('api-detected-params-list');
+      if (paramsListEl) {
+        paramsListEl.innerHTML = detectedChips.map(c => `
+          <div class="wf-api-param-chip" title="${c.nodeRef}">
+            <span class="wf-api-param-key">${c.name}</span>
+            <span class="wf-api-param-type">${c.type}</span>
+            <span class="wf-api-param-noderef">[${c.nodeRef.slice(0, 24)}]</span>
+          </div>
+        `).join('');
+      }
+
+      const samplePayloadFlat = {
+        graph_id: this.graph.id,
+        params: detectedFlatParams
+      };
+
+      const samplePayloadNode = {
+        graph_id: this.graph.id,
+        params: Object.keys(detectedNodeParams).length > 0 ? detectedNodeParams : detectedFlatParams
+      };
+
+      const jsonStrFlat = JSON.stringify(samplePayloadFlat, null, 2);
+      const jsonStrNode = JSON.stringify(samplePayloadNode, null, 2);
+
+      const reqBodyEl = document.getElementById('api-request-body');
+      if (reqBodyEl) reqBodyEl.value = jsonStrFlat;
+
+      const reqBodyNodeEl = document.getElementById('api-request-body-node');
+      if (reqBodyNodeEl) reqBodyNodeEl.value = jsonStrNode;
+
+      const curlCodeEl = document.getElementById('api-curl-code');
+      if (curlCodeEl) {
+        curlCodeEl.innerText = `curl -X POST ${apiUrl} \\\n  -H "Content-Type: application/json" \\\n  -d '${jsonStrFlat}'`;
+      }
+
+      const respWrap = document.getElementById('api-test-response-wrap');
+      if (respWrap) respWrap.style.display = 'none';
+      const statusEl = document.getElementById('api-test-status');
+      if (statusEl) statusEl.innerText = '';
+
+      modal.style.display = 'flex';
+    }
+
+    closeExportApiModal() {
+      const modal = document.getElementById('export-api-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async runApiTest() {
+      const statusEl = document.getElementById('api-test-status');
+      const respWrap = document.getElementById('api-test-response-wrap');
+      const respCode = document.getElementById('api-test-response-code');
+      const respBadge = document.getElementById('api-response-status-badge');
+      const reqBodyEl = document.getElementById('api-request-body');
+      const reqBodyNodeEl = document.getElementById('api-request-body-node');
+      const tabBtnJsonNode = document.getElementById('tab-btn-json-node');
+      const btnTest = document.getElementById('btn-run-api-test');
+
+      const isNodeTab = tabBtnJsonNode && tabBtnJsonNode.classList.contains('active');
+      const targetTextarea = isNodeTab && reqBodyNodeEl ? reqBodyNodeEl : reqBodyEl;
+
+      if (!targetTextarea) return;
+      let payload;
+      try {
+        payload = JSON.parse(targetTextarea.value);
+      } catch (err) {
+        alert('Cú pháp JSON không hợp lệ: ' + err.message);
+        return;
+      }
+
+      if (statusEl) {
+        statusEl.style.color = '#6366F1';
+        statusEl.innerText = '⏳ Đang gửi request tới API...';
+      }
+      if (btnTest) btnTest.disabled = true;
+
+      try {
+        const resp = await fetch('/api/flow/api-run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (respWrap && respCode) {
+          respWrap.style.display = 'block';
+          respCode.innerText = JSON.stringify(data, null, 2);
+        }
+
+        if (respBadge) {
+          if (resp.ok && data.ok) {
+            respBadge.className = 'wf-badge wf-badge-success';
+            respBadge.innerText = '200 OK';
+          } else {
+            respBadge.className = 'wf-badge wf-badge-danger';
+            respBadge.innerText = `${resp.status || 400} Error`;
+          }
+        }
+
+        if (data.ok && data.run_id) {
+          if (statusEl) {
+            statusEl.style.color = '#10B981';
+            statusEl.innerText = `✓ API đã nhận lệnh! Run ID: ${data.run_id}`;
+          }
+          this.activeRun = { id: data.run_id, graph_id: payload.graph_id, status: 'running' };
+          if (this.statusPill) {
+            this.statusPill.className = 'wf-status-pill status-running';
+            this.statusPill.innerText = `⚡ API Run: ${data.run_id.slice(-8)}`;
+          }
+          this.listenRunProgress(data.run_id);
+        } else {
+          if (statusEl) {
+            statusEl.style.color = '#EF4444';
+            statusEl.innerText = `❌ Lỗi: ${data.error || 'Thất bại'}`;
+          }
+        }
+      } catch (e) {
+        if (statusEl) {
+          statusEl.style.color = '#EF4444';
+          statusEl.innerText = `❌ Lỗi kết nối: ${e.message}`;
+        }
+        if (respBadge) {
+          respBadge.className = 'wf-badge wf-badge-danger';
+          respBadge.innerText = 'Connection Failed';
+        }
+      } finally {
+        if (btnTest) btnTest.disabled = false;
       }
     }
 
@@ -1520,7 +2662,49 @@
         expression: 'Biểu cảm & Điệu nhảy',
         provider_name: 'Tên Web AI',
         target_url: 'Đường dẫn đăng nhập AI',
-        auto_publish_draft: 'Tự động xuất TikTok nháp'
+        auto_publish_draft: 'Tự động xuất TikTok nháp',
+        url: 'Đường dẫn liên kết (TikTok/Reels/IG/Web)',
+        video_url: 'Đường dẫn video mạng xã hội',
+        video_path: 'Tệp video mẫu',
+        model_path: 'Tệp ảnh nhân vật',
+        character_image: 'Ảnh nhân vật mẫu',
+        product_image: 'Ảnh sản phẩm mẫu',
+        source_image: 'Ảnh / Video nguồn bóc tách',
+        source_video: 'Video nguồn bóc tách',
+        video_timestamp: 'Thời điểm trích khung hình video (giây)',
+        confidence_threshold: 'Độ nhạy bóc tách nền (Threshold)',
+        feather_radius: 'Độ làm mềm viền cắt (Feather)',
+        invert_mask: 'Đảo ngược mặt nạ chọn (Mask)',
+        // Tham số Studio 3D & VFX Chuyên nghiệp:
+        focal_length: 'Tiêu cự quang học (Focal Length)',
+        aperture: 'Khẩu độ ống kính (Aperture Bokeh)',
+        camera_motion: 'Chuyển động máy quay (Camera Motion)',
+        depth_of_field: 'Độ sâu trường ảnh (Depth of Field)',
+        key_light_lux: 'Công suất đèn chính (Key Light Lux)',
+        key_position: 'Góc đặt đèn chính (Key Position)',
+        fill_ratio: 'Tỉ lệ đèn bù sáng (Fill Ratio)',
+        rim_color_kelvin: 'Nhiệt độ màu đèn viền (Kelvin)',
+        face_similarity_threshold: 'Độ tương đồng khuôn mặt (Threshold)',
+        pose_style: 'Phong cách dáng điệu 3D (3D Pose Style)',
+        skeleton_precision: 'Độ nét khung xương (Precision)',
+        fabric_type: 'Chất liệu vải 3D (Fabric Type)',
+        wrinkle_depth: 'Độ nhăn và rủ của vải (Wrinkle Depth)',
+        cloth_tension: 'Độ căng vải (Cloth Tension)',
+        gravity_simulation: 'Mô phỏng trọng lực vật lý (Gravity)',
+        lut_profile: 'Bảng màu điện ảnh (3D LUT Profile)',
+        contrast_boost: 'Tăng tương phản (Contrast Boost)',
+        saturation: 'Độ bão hòa màu (Saturation)',
+        rendering_engine: 'Động cơ Render (Render Engine)',
+        motion_smoothness: 'Độ mượt chuyển động (Motion Smoothness)',
+        hdri_preset: 'Môi trường HDRI 360 (HDRI Preset)',
+        shadow_softness: 'Độ mềm bóng đổ tiếp xúc',
+        ambient_occlusion: 'Hiệu ứng Ambient Occlusion',
+        target_resolution: 'Độ phân giải Master (Resolution)',
+        fps: 'Tốc độ khung hình (FPS)',
+        bitrate_mode: 'Chế độ Bitrate xuất xưởng',
+        blend_ratio: 'Tỉ lệ hòa trộn Face-Lock',
+        preserve_expression: 'Bảo toàn biểu cảm nhân vật',
+        shot_style: 'Phong cách góc máy điện ảnh'
       };
       return labels[key] || key.replace(/_/g, ' ');
     }
@@ -1563,15 +2747,15 @@
 
       if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-          const activeChip = document.querySelector('.wf-tag-filter.active');
+          const activeChip = document.querySelector('#node-categories-list .wf-tag-filter.active');
           const activeCat = activeChip ? activeChip.dataset.cat : 'all';
           this.renderModalGrid(e.target.value, activeCat);
         });
       }
 
-      document.querySelectorAll('.wf-tag-filter').forEach(chip => {
+      document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
         chip.addEventListener('click', () => {
-          document.querySelectorAll('.wf-tag-filter').forEach(c => c.classList.remove('active'));
+          document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(c => c.classList.remove('active'));
           chip.classList.add('active');
           const query = searchInput ? searchInput.value : '';
           this.renderModalGrid(query, chip.dataset.cat);
@@ -1586,6 +2770,10 @@
 
       Object.values(this.definitions).forEach(def => {
         if (filterCat !== 'all' && def.category !== filterCat) return;
+        if (this.pendingConnect) {
+          const compatible = (def.inputs || []).some(port => this.isPortTypeCompatible(this.pendingConnect.portType, port.type));
+          if (!compatible) return;
+        }
         if (filterText) {
           const query = filterText.toLowerCase();
           const matchTitle = def.title.toLowerCase().includes(query);
@@ -1635,6 +2823,15 @@
 
         grid.appendChild(card);
       });
+
+      if (!grid.children.length) {
+        const empty = document.createElement('div');
+        empty.className = 'wf-library-empty';
+        empty.innerText = this.pendingConnect
+          ? 'Không có node nào nhận được kiểu dữ liệu này. Hãy thêm node bằng thanh công cụ.'
+          : 'Không tìm thấy node phù hợp. Thử từ khóa hoặc nhóm khác.';
+        grid.appendChild(empty);
+      }
     }
 
     bindGraphsModal() {
@@ -1738,14 +2935,18 @@
         card.className = `wf-graph-card ${isActive ? 'is-active' : ''}`;
 
         let catIcon = '⚡';
-        if (g.category === 'viral') catIcon = '🕺';
+        if (g.category === 'vfx_3d') catIcon = '💎';
+        else if (g.category === 'viral') catIcon = '🕺';
         else if (g.category === 'fashion') catIcon = '👗';
         else if (g.category === 'affiliate') catIcon = '🛍️';
         else if (g.category === 'custom') catIcon = '🧠';
 
         let catTag = 'tag-custom';
         let catLabel = '💾 Luồng của bạn';
-        if (g.is_preset) {
+        if (g.category === 'vfx_3d') {
+          catTag = 'tag-vfx3d';
+          catLabel = '💎 3D VFX Studio';
+        } else if (g.is_preset) {
           catTag = 'tag-preset';
           catLabel = '✨ Mẫu hệ thống';
         } else if (g.category === 'fashion') {
@@ -1962,29 +3163,31 @@
           const switcher = document.getElementById('wf-switcher-select');
           if (switcher) {
             switcher.innerHTML = '';
+            if (!data.graphs || data.graphs.length === 0) {
+              switcher.style.display = 'none';
+            } else {
+              switcher.style.display = '';
+              const presetGroup = document.createElement('optgroup');
+              presetGroup.label = '✨ Mẫu workflow có sẵn';
 
-            const presetGroup = document.createElement('optgroup');
-            presetGroup.label = '✨ Mẫu workflow có sẵn';
+              const userGroup = document.createElement('optgroup');
+              userGroup.label = '💾 Workflow bạn đã lưu';
 
-            const userGroup = document.createElement('optgroup');
-            userGroup.label = '💾 Workflow bạn đã lưu';
+              data.graphs.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.innerText = g.name;
+                if (this.graph && this.graph.id === g.id) opt.selected = true;
 
-            data.graphs.forEach(g => {
-              const opt = document.createElement('option');
-              opt.value = g.id;
-              opt.innerText = g.name;
-              if (this.graph && this.graph.id === g.id) opt.selected = true;
+                if (g.is_preset) {
+                  presetGroup.appendChild(opt);
+                } else {
+                  userGroup.appendChild(opt);
+                }
+              });
 
-              if (g.is_preset) {
-                presetGroup.appendChild(opt);
-              } else {
-                userGroup.appendChild(opt);
-              }
-            });
-
-            switcher.appendChild(presetGroup);
-            if (userGroup.children.length > 0) {
-              switcher.appendChild(userGroup);
+              if (presetGroup.children.length > 0) switcher.appendChild(presetGroup);
+              if (userGroup.children.length > 0) switcher.appendChild(userGroup);
             }
           }
         }

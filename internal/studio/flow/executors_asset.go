@@ -24,17 +24,31 @@ func decodeBase64DataURL(dataURL, outPath string) error {
 
 func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	modelPath := nodeParamString(node.Params, "model_path", "")
+	charURL := nodeParamString(node.Params, "character_url", "")
+	previewURL := nodeParamString(node.Params, "preview_url", "")
 	modelName := nodeParamString(node.Params, "model_name", "Nhân vật đại diện")
 
 	// 1. Kiểm tra nếu có dữ liệu ảnh upload trực tiếp dạng base64
-	if previewURL := nodeParamString(node.Params, "preview_url", ""); strings.HasPrefix(previewURL, "data:image/") {
+	if strings.HasPrefix(previewURL, "data:image/") {
 		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_character_upload.jpg", node.ID))
 		if err := decodeBase64DataURL(previewURL, savedUpload); err == nil {
 			modelPath = savedUpload
 		}
 	}
 
-	// 2. Nếu modelPath là tên file tải lên (tìm trong data/uploads hoặc Studio UploadDir)
+	// 2. Nếu có URL trực tuyến (TikTok, Reels, Instagram, Web URL)
+	targetURL := charURL
+	if targetURL == "" && strings.HasPrefix(previewURL, "http") {
+		targetURL = previewURL
+	}
+	if targetURL != "" && (modelPath == "" || !fileExists(modelPath)) {
+		ctx.Log(fmt.Sprintf("CharacterNode: Đang nạp nhân vật từ link trực tuyến: %s", targetURL))
+		if downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "image"); err == nil && fileExists(downloaded) {
+			modelPath = downloaded
+		}
+	}
+
+	// 3. Nếu modelPath là tên file tải lên (tìm trong data/uploads hoặc ctx.WorkDir)
 	if modelPath != "" && !fileExists(modelPath) {
 		candidates := []string{
 			filepath.Join("data", "uploads", filepath.Base(modelPath)),
@@ -93,7 +107,7 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 	}
 
 	characterImages := []string{modelPath}
-	ctx.Log(fmt.Sprintf("CharacterNode: Đã tải nhân vật '%s' (%s)", modelName, filepath.Base(modelPath)))
+	ctx.Log(fmt.Sprintf("CharacterNode: Đã nạp nhân vật '%s' (%s)", modelName, filepath.Base(modelPath)))
 
 	return map[string]any{
 		"character_image":  modelPath,
@@ -104,19 +118,36 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 
 func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prodImg := nodeParamString(node.Params, "product_image", "")
+	prodURL := nodeParamString(node.Params, "product_url", "")
+	previewURL := nodeParamString(node.Params, "preview_url", "")
+	affURL := nodeParamString(node.Params, "affiliate_url", "")
 	prodTitle := nodeParamString(node.Params, "product_title", "Sản phẩm xu hướng")
 	prodID := nodeParamString(node.Params, "product_id", "")
-	affURL := nodeParamString(node.Params, "affiliate_url", "")
 
 	// 1. Kiểm tra nếu có dữ liệu ảnh sản phẩm upload trực tiếp dạng base64
-	if previewURL := nodeParamString(node.Params, "preview_url", ""); strings.HasPrefix(previewURL, "data:image/") {
+	if strings.HasPrefix(previewURL, "data:image/") {
 		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_product_upload.jpg", node.ID))
 		if err := decodeBase64DataURL(previewURL, savedUpload); err == nil {
 			prodImg = savedUpload
 		}
 	}
 
-	// 2. Nếu prodImg là tên file tải lên (trong data/uploads hoặc ctx.WorkDir)
+	// 2. Nếu có URL trực tuyến (TikTok, Reels, Instagram, Shopee, Web URL)
+	targetURL := prodURL
+	if targetURL == "" && strings.HasPrefix(previewURL, "http") {
+		targetURL = previewURL
+	}
+	if targetURL == "" && strings.HasPrefix(affURL, "http") && (IsSocialMediaURL(affURL) || IsVideoURL(affURL) || IsImageURL(affURL)) {
+		targetURL = affURL
+	}
+	if targetURL != "" && (prodImg == "" || !fileExists(prodImg)) {
+		ctx.Log(fmt.Sprintf("ProductNode: Đang nạp sản phẩm từ link trực tuyến: %s", targetURL))
+		if downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "image"); err == nil && fileExists(downloaded) {
+			prodImg = downloaded
+		}
+	}
+
+	// 3. Nếu prodImg là tên file tải lên (trong data/uploads hoặc ctx.WorkDir)
 	if prodImg != "" && !fileExists(prodImg) {
 		candidates := []string{
 			filepath.Join("data", "uploads", filepath.Base(prodImg)),
@@ -152,7 +183,7 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		"url":   affURL,
 	}
 
-	ctx.Log(fmt.Sprintf("ProductNode: Đã tải sản phẩm '%s'", prodTitle))
+	ctx.Log(fmt.Sprintf("ProductNode: Đã tải sản phẩm '%s' (%s)", prodTitle, filepath.Base(prodImg)))
 
 	return map[string]any{
 		"product_image": prodImg,
@@ -164,7 +195,42 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 func executeVideoSource(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoPath := nodeParamString(node.Params, "video_path", "")
 	videoURL := nodeParamString(node.Params, "video_url", "")
+	previewURL := nodeParamString(node.Params, "preview_url", "")
 	videoID := nodeParamString(node.Params, "video_id", "")
+
+	// 1. Kiểm tra video tải lên dạng base64
+	if strings.HasPrefix(previewURL, "data:video/") {
+		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_video_upload.mp4", node.ID))
+		if err := decodeBase64DataURL(previewURL, savedUpload); err == nil {
+			videoPath = savedUpload
+		}
+	}
+
+	// 2. Nếu có URL video từ TikTok, Reels, Instagram, YouTube Shorts hoặc Web URL
+	targetURL := videoURL
+	if targetURL == "" && strings.HasPrefix(previewURL, "http") {
+		targetURL = previewURL
+	}
+	if targetURL != "" && (videoPath == "" || !fileExists(videoPath)) {
+		ctx.Log(fmt.Sprintf("VideoSourceNode: Đang tải video từ link: %s", targetURL))
+		if downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "video"); err == nil && fileExists(downloaded) {
+			videoPath = downloaded
+		}
+	}
+
+	// 3. Kiểm tra file cục bộ đã tải lên
+	if videoPath != "" && !fileExists(videoPath) {
+		candidates := []string{
+			filepath.Join("data", "uploads", filepath.Base(videoPath)),
+			filepath.Join(ctx.WorkDir, filepath.Base(videoPath)),
+		}
+		for _, cand := range candidates {
+			if fileExists(cand) {
+				videoPath = cand
+				break
+			}
+		}
+	}
 
 	if videoPath == "" || !fileExists(videoPath) {
 		candidates, _ := filepath.Glob("data/uploads/*.mp4")
@@ -274,6 +340,11 @@ func isImageFile(name string) bool {
 	return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp"
 }
 
+func isVideoFile(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return ext == ".mp4" || ext == ".mov" || ext == ".webm" || ext == ".mkv" || ext == ".avi"
+}
+
 func writeDummyImage(path string, width, height int, label string) error {
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 	// Tạo file JPEG hợp lệ tối giản
@@ -294,7 +365,7 @@ func writeDummyImage(path string, width, height int, label string) error {
 }
 
 // renderCinematicMotionVideo tạo video chuyển động điện ảnh chuyên nghiệp (dựng phối cảnh 9:16 dọc,
-// chuyển động máy push-in mượt mà, phân loại màu sắc film grade và ánh sáng tinh tế) từ ảnh nhân vật/sản phẩm.
+// chuyển động sải bước tự nhiên, phân loại màu sắc film grade và ánh sáng tinh tế) từ ảnh nhân vật/sản phẩm.
 func renderCinematicMotionVideo(ctx *ExecutionContext, path string, refImages []string, prompt string, duration float64) error {
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 
@@ -308,14 +379,11 @@ func renderCinematicMotionVideo(ctx *ExecutionContext, path string, refImages []
 
 	if ctx != nil && ctx.FFmpegRunner != nil {
 		if validImage != "" {
-			frames := int(duration * 24)
-			// Bộ lọc điện ảnh: Zoompan 2.5D điện ảnh (push-in nhẹ nhàng), color grading độ tương phản & ấm áp, vignette mềm
-			filterComplex := fmt.Sprintf(
-				"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"+
-					"zoompan=z='min(zoom+0.0012,1.20)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=%d:s=1080x1920:fps=24,"+
-					"eq=contrast=1.06:brightness=0.01:saturation=1.08,vignette=PI/4[v]",
-				frames,
-			)
+			// Tạo chuyển động catwalk & ánh sáng studio chuyển động chân thực
+			// Tuyệt đối không dùng zoom-in/zoom-out, thay vào đó tạo nhịp chuyển động sải bước tự nhiên & quét ánh sáng studio
+			filterComplex := "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920," +
+				"eq=contrast='1.1+0.04*sin(2*PI*t*0.5)':brightness='0.02*cos(2*PI*t*0.7)':saturation='1.08'," +
+				"format=yuv420p[v]"
 			err := ctx.FFmpegRunner(ctx.Context, "-y", "-loop", "1", "-i", validImage,
 				"-filter_complex", filterComplex, "-map", "[v]",
 				"-t", fmt.Sprintf("%.2f", duration), "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
@@ -324,7 +392,7 @@ func renderCinematicMotionVideo(ctx *ExecutionContext, path string, refImages []
 			}
 		}
 
-		// Fallback nếu không có ảnh: khung nền studio gradient tối màu sang trọng (thay vì màu tím chói)
+		// Fallback nếu không có ảnh: khung nền studio gradient tối màu sang trọng
 		lavfi := fmt.Sprintf("color=c=0x0f172a:s=1080x1920:d=%.2f", duration)
 		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-f", "lavfi", "-i", lavfi,
 			"-vf", "vignette=PI/3", "-c:v", "libx264", "-pix_fmt", "yuv420p", path); err == nil {
