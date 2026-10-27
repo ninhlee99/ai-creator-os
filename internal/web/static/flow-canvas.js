@@ -4714,9 +4714,61 @@
       if (!grid.children.length) {
         const empty = document.createElement('div');
         empty.className = 'wf-library-empty';
-        empty.innerText = this.pendingConnect
-          ? 'Không có node nào nhận được kiểu dữ liệu này. Hãy thêm node bằng thanh công cụ.'
-          : 'Không tìm thấy node phù hợp. Thử từ khóa hoặc nhóm khác.';
+        empty.setAttribute('role', 'status');
+        empty.setAttribute('aria-live', 'polite');
+        const hasFilters = Boolean(filterText.trim()) || filterCat !== 'all';
+        const icon = document.createElement('div');
+        icon.className = 'wf-library-empty-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = this.pendingConnect
+          ? '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 7h8v10H8z"/><path d="M3 12h4m10 0h4M5 10l2 2-2 2m14-4-2 2 2 2"/></svg>'
+          : '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/><path d="M8.5 10.8h4.6"/></svg>';
+        const title = document.createElement('h4');
+        const description = document.createElement('p');
+        const action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'wf-library-empty-action';
+
+        if (this.pendingConnect) {
+          title.textContent = 'Chưa tìm thấy node tương thích';
+          description.textContent = hasFilters
+            ? 'Không có node khớp bộ lọc và kiểu dữ liệu của cổng đang nối.'
+            : 'Hiện chưa có node nào nhận kiểu dữ liệu này. Hãy kiểm tra cổng hoặc hủy thao tác nối.';
+          action.textContent = hasFilters ? 'Xóa bộ lọc' : 'Hủy kết nối';
+        } else if (filterText.trim()) {
+          title.textContent = 'Không tìm thấy node';
+          description.textContent = 'Thử từ khóa khác hoặc xem lại toàn bộ thư viện node.';
+          action.textContent = 'Xóa tìm kiếm';
+        } else if (filterCat !== 'all') {
+          title.textContent = 'Nhóm này chưa có node';
+          description.textContent = 'Chọn nhóm khác hoặc mở toàn bộ thư viện node.';
+          action.textContent = 'Xem tất cả node';
+        } else {
+          title.textContent = 'Thư viện node đang trống';
+          description.textContent = 'Hiện chưa có node nào sẵn sàng để thêm vào workflow.';
+          action.hidden = true;
+        }
+
+        action.addEventListener('click', () => {
+          if (this.pendingConnect && !hasFilters) {
+            this.closeAddNodeModal();
+            return;
+          }
+          if (searchInput) searchInput.value = '';
+          const allChip = document.querySelector('#node-categories-list .wf-tag-filter[data-cat="all"]');
+          document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
+            const active = chip === allChip;
+            chip.classList.toggle('active', active);
+            chip.setAttribute('aria-pressed', String(active));
+          });
+          const categoryScroller = document.getElementById('node-categories-list');
+          if (categoryScroller) categoryScroller.scrollLeft = 0;
+          this.renderModalGrid('', 'all');
+          this.syncNodeCategoryScrollButtons();
+          if (searchInput) searchInput.focus();
+        });
+
+        empty.append(icon, title, description, action);
         grid.appendChild(empty);
       }
     }
