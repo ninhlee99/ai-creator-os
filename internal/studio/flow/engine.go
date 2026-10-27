@@ -362,8 +362,8 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		// Kiểm tra nếu context bị hủy giữa chừng
 		if err := ctx.Context.Err(); err != nil {
 			run.Status = "cancelled"
-			run.Log = logBuilder.String()
 			appendRunLog("Luồng thực thi đã bị hủy bởi người dùng")
+			run.Log = logBuilder.String()
 			return run, err
 		}
 
@@ -390,8 +390,8 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			}
 			run.NodeStates[nodeID] = nodeState
 			run.Status = "failed"
-			run.Log = logBuilder.String()
 			appendRunLog(fmt.Sprintf("LỖI PHỤ THUỘC tại node '%s': Cần chờ các node [%s] hoàn tất trước!", node.Title, strings.Join(pendingParents, ", ")))
+			run.Log = logBuilder.String()
 			return run, fmt.Errorf("node '%s' cần chờ các node hoàn tất: %s", node.Title, strings.Join(pendingParents, ", "))
 		}
 
@@ -453,6 +453,7 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			nodeState.Error = "Node không có hàm thực thi"
 			run.NodeStates[nodeID] = nodeState
 			run.Status = "failed"
+			appendRunLog(fmt.Sprintf("LỖI tại node '%s': %s", node.Title, nodeState.Error))
 			run.Log = logBuilder.String()
 			return run, fmt.Errorf("node %s thiếu executor", node.Title)
 		}
@@ -464,8 +465,8 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			nodeState.FinishedAt = time.Now().Format(time.RFC3339)
 			run.NodeStates[nodeID] = nodeState
 			run.Status = "failed"
-			run.Log = logBuilder.String()
 			appendRunLog(fmt.Sprintf("LỖI tại node '%s': %s", node.Title, execErr.Error()))
+			run.Log = logBuilder.String()
 			return run, execErr
 		}
 		for _, edge := range graph.Edges {
@@ -483,8 +484,8 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 				nodeState.FinishedAt = time.Now().Format(time.RFC3339)
 				run.NodeStates[nodeID] = nodeState
 				run.Status = "failed"
-				run.Log = logBuilder.String()
 				appendRunLog("LỖI contract output: " + execErr.Error())
+				run.Log = logBuilder.String()
 				return run, execErr
 			}
 		}

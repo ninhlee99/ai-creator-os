@@ -93,6 +93,35 @@ func TestCustomAPIWebhookDryRunMatchesDeclaredOutputs(t *testing.T) {
 	}
 }
 
+func TestExecuteGraphPersistsFailureDiagnosticInRunLog(t *testing.T) {
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		RunID:   "run_failure_log_test",
+		WorkDir: t.TempDir(),
+		OutDir:  t.TempDir(),
+		Log:     func(string) {},
+	}
+	graph := &FlowGraph{
+		ID:   "failure_log_test",
+		Name: "Failure log test",
+		Nodes: []FlowNode{
+			{ID: "webhook", Type: "custom_api_webhook", Title: "Webhook", Params: map[string]any{"webhook_url": "not-a-url"}},
+			{ID: "output", Type: "workflow_output", Title: "Output", Params: map[string]any{"key": "response", "value_type": "text"}},
+		},
+		Edges: []FlowEdge{
+			{ID: "e1", FromNode: "webhook", FromPort: "response_text", ToNode: "output", ToPort: "value"},
+		},
+	}
+
+	run, err := ExecuteGraph(ctx, graph)
+	if err == nil {
+		t.Fatal("expected invalid webhook URL to fail workflow")
+	}
+	if run == nil || !strings.Contains(run.Log, "LỖI tại node 'Webhook'") {
+		t.Fatalf("run log is missing failure diagnostic: %q", run.Log)
+	}
+}
+
 func TestTC02_CycleDetection(t *testing.T) {
 	// Tạo đồ thị có chu trình: N1 -> N2 -> N3 -> N1
 	g := &FlowGraph{
