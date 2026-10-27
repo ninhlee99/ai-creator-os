@@ -72,6 +72,27 @@ func TestNodeDefinitionsStableOrderAndLightingCategory(t *testing.T) {
 	}
 }
 
+func TestCustomAPIWebhookDryRunMatchesDeclaredOutputs(t *testing.T) {
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		Log:     func(string) {},
+	}
+	node := &FlowNode{ID: "webhook_dry_run", Type: "custom_api_webhook"}
+
+	outputs, err := executeCustomAPIWebhook(ctx, node, nil)
+	if err != nil {
+		t.Fatalf("dry-run returned error: %v", err)
+	}
+	for _, key := range []string{"response_data", "status_code", "response_text"} {
+		if _, ok := outputs[key]; !ok {
+			t.Errorf("dry-run output is missing declared port %q", key)
+		}
+	}
+	if outputs["status_code"] != 200 {
+		t.Errorf("dry-run status_code = %v, want 200", outputs["status_code"])
+	}
+}
+
 func TestTC02_CycleDetection(t *testing.T) {
 	// Tạo đồ thị có chu trình: N1 -> N2 -> N3 -> N1
 	g := &FlowGraph{

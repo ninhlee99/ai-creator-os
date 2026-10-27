@@ -387,10 +387,11 @@ func executeCustomAPIWebhook(ctx *ExecutionContext, node *FlowNode, inputs map[s
 
 	if webhookURL == "" {
 		ctx.Log(fmt.Sprintf("CustomAPIWebhook [%s]: Chưa cấu hình webhook_url (Dry-run mode mô phỏng gửi thành công)", node.ID))
+		mockResponse := `{"status":"ok","mock":true}`
 		return map[string]any{
+			"response_data": map[string]any{"status": "ok", "mock": true},
 			"status_code":   200,
-			"response_body": `{"status":"ok","mock":true}`,
-			"is_success":    true,
+			"response_text": mockResponse,
 		}, nil
 	}
 
