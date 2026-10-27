@@ -541,15 +541,15 @@ function copyAffiliateTrackingLink(button) {
 {{define "studio-tiktok-draft-action"}}
 {{if and .QCVerified (eq .OutputKind "video") (or (eq .Kind "affiliate") (eq .Kind "viral"))}}
 <div style="margin:8px 0;padding:9px;background:var(--bg3);border:1px solid var(--border);border-radius:9px">
-  <strong style="font-size:11px">TikTok Draft</strong>
+  <strong style="font-size:11px">TikTok · gửi bản nháp</strong>
   {{if eq .TikTokDraftStatus "done"}}
-    <div class="badge badge-ok" style="margin-top:5px">Đã tải lên{{if .TikTokDraftRemoteID}} · ID {{.TikTokDraftRemoteID}}{{end}}</div>
-    <small style="display:block;margin-top:5px;color:var(--muted)">Mở TikTok để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} và tự duyệt đăng.</small>
+    <div class="badge badge-ok" style="margin-top:5px">Bước 1/2 hoàn tất · Draft đã tải lên · Chưa công khai{{if .TikTokDraftRemoteID}} · ID {{.TikTokDraftRemoteID}}{{end}}</div>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Bước 2/2: mở TikTok Creator Inbox, kiểm tra bản nháp{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} rồi tự duyệt đăng.</small>
   {{else if eq .TikTokDraftStatus "needs_review"}}
-    <div class="badge badge-warn" style="margin-top:5px">Kết quả chưa rõ</div>
-    <small style="display:block;margin-top:5px;color:var(--muted)">Kiểm tra Creator Inbox trước khi gửi lại. <a href="/">Đối chiếu trạng thái ↗</a></small>
+    <div class="badge badge-warn" style="margin-top:5px">Chưa rõ Draft đã được tạo hay chưa</div>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Bước tiếp theo: kiểm tra Creator Inbox và đối chiếu trạng thái trước khi gửi lại. <a href="/">Đối chiếu ↗</a></small>
   {{else if eq .TikTokDraftStatus "publishing"}}
-    <div class="badge badge-info" style="margin-top:5px">Đang gửi · chờ TikTok xác nhận</div>
+    <div class="badge badge-info" style="margin-top:5px">Bước 1/2 · đang gửi Draft, chờ TikTok xác nhận</div>
   {{else if not .TikTokDraftHasAccount}}
     <small style="display:block;margin-top:5px;color:var(--muted)">Job chưa gắn tài khoản TikTok đích.</small>
   {{else if not .TikTokDraftConfigured}}
@@ -563,7 +563,7 @@ function copyAffiliateTrackingLink(button) {
       </label>
       <button class="btn btn-primary btn-sm" type="submit" style="width:100%;font-weight:700">{{if eq .TikTokDraftStatus "failed"}}Xác nhận và gửi lại Draft{{else}}Xác nhận và gửi TikTok Draft{{end}}</button>
     </form>
-    <small style="display:block;margin-top:5px;color:var(--muted)">Video chưa công khai. Mở TikTok để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} và duyệt đăng.</small>
+    <small style="display:block;margin-top:5px;color:var(--muted)">Sau khi gửi thành công: Draft chưa công khai. Mở TikTok Creator Inbox để kiểm tra{{if eq .Kind "affiliate"}}, gắn sản phẩm{{end}} rồi tự duyệt đăng.</small>
   {{end}}
 </div>
 {{end}}

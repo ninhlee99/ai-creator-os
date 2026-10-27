@@ -59,13 +59,13 @@ func (s *Server) recentPublishOutcomes(legs []studio.PublishLeg, limit int) []da
 		case studio.LegPublishing:
 			label, note = "Đang gửi", "Chờ TikTok Creator Inbox xác nhận."
 		case studio.LegNeedsReview:
-			label, note = "Cần đối chiếu", "Kiểm tra Creator Inbox trước khi thử lại."
+			label, note = "Draft chưa rõ trạng thái", "Kiểm tra Creator Inbox và đối chiếu trạng thái trước khi gửi lại."
 		case studio.LegDone:
-			label = "Draft đã tải lên"
+			label = "Draft đã tải lên · chưa công khai"
 			if source == "TikTok Affiliate" {
-				note = "Mở TikTok để gắn sản phẩm rồi tự duyệt đăng."
+				note = "Bước tiếp theo: mở TikTok Creator Inbox, kiểm tra Draft, gắn sản phẩm rồi tự duyệt đăng."
 			} else {
-				note = "Mở TikTok để kiểm tra video rồi tự duyệt đăng."
+				note = "Bước tiếp theo: mở TikTok Creator Inbox, kiểm tra Draft rồi tự duyệt đăng."
 			}
 		}
 		out = append(out, dashboardPublishOutcome{
