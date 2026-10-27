@@ -298,6 +298,13 @@
       "to_port": "motion_data"
     },
     {
+      "id": "e9_keyframes",
+      "from_node": "dance",
+      "from_port": "keyframes",
+      "to_node": "retarget",
+      "to_port": "keyframes"
+    },
+    {
       "id": "e10",
       "from_node": "environment",
       "from_port": "environment_desc",

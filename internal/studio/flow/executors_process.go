@@ -647,23 +647,6 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 		}
 	}
 
-	variables := map[string]any{
-		"movement_analysis": movement,
-		"dance_type":        danceType,
-		"expression":        expression,
-		"environment_desc":  envDesc,
-		"lighting_desc":     lightDesc,
-		"outfit_desc":       outfitDesc,
-	}
-	template := nodeParamString(node.Params, "prompt_template", "")
-	if strings.TrimSpace(template) == "" {
-		template = "Create a vertical 9:16 dance video with the character from the reference images. Use the attached source video only as motion guidance; follow the observed movement sequence without claiming exact motion capture: {{movement_analysis}}. Dance style: {{dance_type}}. Expression: {{expression}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Outfit: {{outfit_desc}}. Preserve the supplied character identity and keep one subject."
-	}
-	for key, value := range promptTemplateVariables(node.Params["variables"]) {
-		variables[key] = value
-	}
-	prompt := expandPromptTemplate(template, variables)
-
 	ingredients := []string{charImg}
 	for _, path := range flowStringList(inputs["character_images"]) {
 		if len(ingredients) >= 3 {
@@ -675,11 +658,45 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 	}
 	if extra, ok := inputs["ingredients"]; ok {
 		for _, path := range flowStringList(extra) {
-			if fileExists(path) && isImageFile(path) && len(ingredients) < 4 && !containsString(ingredients, path) {
+			if len(ingredients) >= 4 {
+				break
+			}
+			if fileExists(path) && isImageFile(path) && !containsString(ingredients, path) {
 				ingredients = append(ingredients, path)
 			}
 		}
 	}
+	characterReferenceCount := len(ingredients)
+	motionKeyframes := make([]string, 0)
+	for _, path := range flowStringList(inputs["keyframes"]) {
+		if resolved := resolveAssetPath(path, ctx.WorkDir); resolved != "" {
+			path = resolved
+		}
+		if !fileExists(path) || !isImageFile(path) {
+			return nil, fmt.Errorf("DanceRetargetNode: keyframe chuyển động không hợp lệ")
+		}
+		motionKeyframes = append(motionKeyframes, path)
+	}
+	ingredients = append(ingredients, motionKeyframes...)
+
+	variables := map[string]any{
+		"movement_analysis":         movement,
+		"dance_type":                danceType,
+		"expression":                expression,
+		"environment_desc":          envDesc,
+		"lighting_desc":             lightDesc,
+		"outfit_desc":               outfitDesc,
+		"character_reference_count": characterReferenceCount,
+		"motion_keyframe_count":     len(motionKeyframes),
+	}
+	template := nodeParamString(node.Params, "prompt_template", "")
+	if strings.TrimSpace(template) == "" {
+		template = "Create a vertical 9:16 dance video with the character from the reference images. Use the attached source video only as motion guidance; follow the observed movement sequence without claiming exact motion capture: {{movement_analysis}}. Dance style: {{dance_type}}. Expression: {{expression}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Outfit: {{outfit_desc}}. Preserve the supplied character identity and keep one subject."
+	}
+	for key, value := range promptTemplateVariables(node.Params["variables"]) {
+		variables[key] = value
+	}
+	prompt := expandPromptTemplate(template, variables)
 
 	ctx.Log(fmt.Sprintf("Dance Prompt Builder: Tạo prompt từ phân tích chuyển động (style=%s)", danceType))
 
