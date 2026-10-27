@@ -75,30 +75,35 @@ func executeCinematicColorGrading(ctx *ExecutionContext, node *FlowNode, inputs 
 		videoIn = inputString(inputs, "media_in", "")
 	}
 
+	if videoIn == "" {
+		videoIn = inputString(inputs, "video_out", "")
+	}
 	contrast := nodeParamFloat(node.Params, "contrast_boost", 1.12)
 	saturation := nodeParamFloat(node.Params, "saturation", 1.05)
 	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {
 		return nil, fmt.Errorf("cân chỉnh màu cần file video đầu vào hợp lệ")
 	}
-	if ctx.FFmpegRunner == nil {
-		return nil, fmt.Errorf("cân chỉnh màu cần FFmpeg; không có file đầu ra nào được tạo")
-	}
 
 	gradedOut := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_adjusted.mp4", node.ID))
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Cinematic Color Grading cần FFmpeg")
+	}
+
 	eqFilter := fmt.Sprintf("eq=contrast=%.2f:saturation=%.2f:brightness=0.01", contrast, saturation)
 	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn,
 		"-vf", eqFilter,
 		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", gradedOut); err != nil {
-		return nil, fmt.Errorf("FFmpeg không cân chỉnh được màu video: %w", err)
+		return nil, fmt.Errorf("FFmpeg cân chỉnh màu thất bại: %w", err)
 	}
-	if !fileExists(gradedOut) {
-		return nil, fmt.Errorf("FFmpeg hoàn tất nhưng không tạo được video đã cân chỉnh")
+	if !fileExists(gradedOut) || !isVideoFile(gradedOut) {
+		return nil, fmt.Errorf("FFmpeg không tạo được video đã cân chỉnh")
 	}
 
 	ctx.Log(fmt.Sprintf("Đã cân chỉnh tương phản %.2f và bão hòa %.2f", contrast, saturation))
 
 	return map[string]any{
 		"graded_video": gradedOut,
+		"video_out":    gradedOut,
 	}, nil
 }
 
@@ -113,7 +118,7 @@ func executeVideoMasterOutput(ctx *ExecutionContext, node *FlowNode, inputs map[
 	}
 
 	audioTrack := inputString(inputs, "audio_track", "")
-	title := inputString(inputs, "title", "Video Master 2026")
+	title := inputString(inputs, "title", nodeParamString(node.Params, "title", "Video Master"))
 
 	res := nodeParamString(node.Params, "target_resolution", "1080x1920")
 	fps := nodeParamInt(node.Params, "fps", 24)

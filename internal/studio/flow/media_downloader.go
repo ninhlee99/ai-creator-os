@@ -66,6 +66,19 @@ func IsImageURL(raw string) bool {
 	return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".avif" || ext == ".gif"
 }
 
+func isAudioURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(u.Path)) {
+	case ".mp3", ".aac", ".wav", ".m4a", ".ogg", ".flac":
+		return true
+	default:
+		return false
+	}
+}
+
 // extractMediaURLFromHTML phân tích cú pháp HTML thuần Go (không cần thư viện bên ngoài) để tìm video/ảnh từ trang web.
 func extractMediaURLFromHTML(htmlContent, pageURL, preferredType string) string {
 	baseU, _ := url.Parse(pageURL)
@@ -103,6 +116,17 @@ func extractMediaURLFromHTML(htmlContent, pageURL, preferredType string) string 
 			regexp.MustCompile(`(?i)<video\s+[^>]*src=["']([^"']+)["']`),
 		}
 		for _, re := range videoPatterns {
+			if match := re.FindStringSubmatch(htmlContent); len(match) > 1 {
+				return resolveURL(match[1])
+			}
+		}
+	}
+	if preferredType == "audio" {
+		audioPatterns := []*regexp.Regexp{
+			regexp.MustCompile(`(?i)<audio\s+[^>]*src=["']([^"']+)["']`),
+			regexp.MustCompile(`(?i)<source\s+[^>]*src=["']([^"']+\.(?:mp3|aac|wav|m4a|ogg|flac)(?:\?[^"']*)?)["']`),
+		}
+		for _, re := range audioPatterns {
 			if match := re.FindStringSubmatch(htmlContent); len(match) > 1 {
 				return resolveURL(match[1])
 			}
@@ -159,6 +183,9 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 
 	// 1. Nếu là đường dẫn file cục bộ đã tồn tại
 	if fileExists(rawURL) {
+		if isAudioFile(rawURL) {
+			return rawURL, "audio", nil
+		}
 		if isVideoFile(rawURL) {
 			if targetType == "image" {
 				framePath := filepath.Join(destDir, fmt.Sprintf("%d_extracted_frame.jpg", time.Now().UnixNano()))
@@ -172,13 +199,17 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	}
 
 	// 2. Nếu là Data URL Base64
-	if strings.HasPrefix(rawURL, "data:image/") || strings.HasPrefix(rawURL, "data:video/") {
+	if strings.HasPrefix(rawURL, "data:image/") || strings.HasPrefix(rawURL, "data:video/") || strings.HasPrefix(rawURL, "data:audio/") {
 		isVid := strings.HasPrefix(rawURL, "data:video/")
+		isAudio := strings.HasPrefix(rawURL, "data:audio/")
 		ext := ".jpg"
 		mType := "image"
 		if isVid {
 			ext = ".mp4"
 			mType = "video"
+		} else if isAudio {
+			ext = audioExtension(rawURL)
+			mType = "audio"
 		}
 		targetPath := filepath.Join(destDir, fmt.Sprintf("%d_base64_upload%s", time.Now().UnixNano(), ext))
 		if err := decodeBase64DataURL(rawURL, targetPath); err != nil {
@@ -281,10 +312,14 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 
 	isDirectVideo := IsVideoURL(rawURL)
 	isVid := strings.Contains(contentType, "video") || isDirectVideo
+	isAudio := strings.Contains(contentType, "audio") || targetType == "audio" && isAudioURL(rawURL)
 	ext := ".jpg"
 	mType := "image"
 
-	if isVid {
+	if isAudio {
+		ext = audioExtensionFromContentType(contentType, rawURL)
+		mType = "audio"
+	} else if isVid {
 		ext = ".mp4"
 		mType = "video"
 	} else if strings.Contains(contentType, "png") {
@@ -313,4 +348,41 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	}
 
 	return destPath, mType, nil
+}
+
+func audioExtension(dataURL string) string {
+	lower := strings.ToLower(dataURL)
+	switch {
+	case strings.HasPrefix(lower, "data:audio/mpeg"), strings.HasPrefix(lower, "data:audio/mp3"):
+		return ".mp3"
+	case strings.HasPrefix(lower, "data:audio/wav"), strings.HasPrefix(lower, "data:audio/x-wav"):
+		return ".wav"
+	case strings.HasPrefix(lower, "data:audio/mp4"), strings.HasPrefix(lower, "data:audio/m4a"):
+		return ".m4a"
+	case strings.HasPrefix(lower, "data:audio/ogg"):
+		return ".ogg"
+	case strings.HasPrefix(lower, "data:audio/flac"):
+		return ".flac"
+	default:
+		return ".aac"
+	}
+}
+
+func audioExtensionFromContentType(contentType, rawURL string) string {
+	switch {
+	case strings.Contains(contentType, "mpeg"), strings.Contains(contentType, "mp3"):
+		return ".mp3"
+	case strings.Contains(contentType, "wav"):
+		return ".wav"
+	case strings.Contains(contentType, "mp4"), strings.Contains(contentType, "m4a"):
+		return ".m4a"
+	case strings.Contains(contentType, "ogg"):
+		return ".ogg"
+	case strings.Contains(contentType, "flac"):
+		return ".flac"
+	case strings.Contains(contentType, "aac"):
+		return ".aac"
+	default:
+		return filepath.Ext(rawURL)
+	}
 }

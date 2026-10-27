@@ -11,6 +11,7 @@ const (
 	PortTypeAny       PortType = "any"
 	PortTypeImage     PortType = "image"
 	PortTypeImageList PortType = "image_list"
+	PortTypeTextList  PortType = "text_list"
 	PortTypeVideo     PortType = "video"
 	PortTypeAudio     PortType = "audio"
 	PortTypeText      PortType = "text"
@@ -34,6 +35,7 @@ const (
 	CategoryRender   NodeCategory = "render"   // Remote video generation providers
 	CategoryPost     NodeCategory = "post"     // FFmpeg finishing operations
 	CategoryWorkflow NodeCategory = "workflow" // Workflow inputs, outputs and reusable subflows
+	CategoryCustom   NodeCategory = "custom"   // Universal custom nodes (Video, Image, Audio, AI, Webhook)
 )
 
 // FlowPort đại diện cho một cổng vào hoặc ra của node.
@@ -120,10 +122,47 @@ type ExecutionContext struct {
 	EngineCall        func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
 	MediaGen          any
 	VisionEval        func(ctx context.Context, prompt string, imagePath string) (string, error)
+	AnalyzeImages     func(ctx context.Context, prompt string, imagePaths []string) (string, error)
+	GenerateText      func(ctx context.Context, systemPrompt, prompt string) (string, error)
+	GenerateImage     func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
+	CharacterPhotos   func(accountID int64) ([]string, error)
 	FFmpegRunner      func(ctx context.Context, args ...string) error
 	WorkflowInputs    map[string]any
 	ResolveWorkflow   func(id string) (*FlowGraph, error)
+	ResolveProduct    func(ctx context.Context, id int64) (FlowProduct, error)
+	ResolveRadarVideo func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
 	WorkflowStack     []string
+}
+
+// FlowProduct contains approved catalog data available to product_input nodes.
+type FlowProduct struct {
+	ID                 int64
+	Title              string
+	ImageURLs          []string
+	Price              float64
+	Currency           string
+	CommissionRate     float64
+	CommissionAmount   float64
+	CommissionCurrency string
+	ShopName           string
+	Category           string
+	ProductURL         string
+	ReviewStatus       string
+}
+
+// FlowRadarVideo contains source metadata verified against the durable Radar store.
+type FlowRadarVideo struct {
+	VideoID     string
+	VideoURL    string
+	Author      string
+	SoundTitle  string
+	CollectedAt string
+}
+
+// ExecutionServices connects domain data owned by the host application.
+type ExecutionServices struct {
+	ResolveProduct    func(ctx context.Context, id int64) (FlowProduct, error)
+	ResolveRadarVideo func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
 }
 
 // NodeExecutor là hàm thực thi một node dựa trên inputs đã tính toán từ các node trước.

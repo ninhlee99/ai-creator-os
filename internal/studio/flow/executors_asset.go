@@ -4,10 +4,62 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
+
+func resolveAssetPath(p string, workDir string, fallbacks ...string) string {
+	if p != "" && fileExists(p) {
+		return p
+	}
+	candidates := make([]string, 0, 16)
+	if p != "" {
+		base := filepath.Base(p)
+		clean := strings.TrimPrefix(p, "/")
+		clean = strings.TrimPrefix(clean, "static/")
+		candidates = append(candidates,
+			p,
+			clean,
+			filepath.Join("internal", "web", "static", clean),
+			filepath.Join("internal", "web", "static", "presets", base),
+			filepath.Join("data", "presets", "characters", base),
+			filepath.Join("data", "uploads", base),
+			filepath.Join("internal", "web", "static", base),
+		)
+		if workDir != "" {
+			candidates = append(candidates, filepath.Join(workDir, base))
+		}
+	}
+	for _, fb := range fallbacks {
+		fbBase := filepath.Base(fb)
+		fbClean := strings.TrimPrefix(fb, "/")
+		fbClean = strings.TrimPrefix(fbClean, "static/")
+		candidates = append(candidates,
+			fb,
+			fbClean,
+			filepath.Join("internal", "web", "static", fbClean),
+			filepath.Join("internal", "web", "static", "presets", fbBase),
+			filepath.Join("data", "presets", "characters", fbBase),
+			filepath.Join("data", "uploads", fbBase),
+			filepath.Join("internal", "web", "static", fbBase),
+		)
+		if workDir != "" {
+			candidates = append(candidates, filepath.Join(workDir, fbBase))
+		}
+	}
+	for _, c := range candidates {
+		if fileExists(c) {
+			return c
+		}
+	}
+	return ""
+}
 
 func decodeBase64DataURL(dataURL, outPath string) error {
 	parts := strings.SplitN(dataURL, ",", 2)
@@ -26,7 +78,8 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 	modelPath := nodeParamString(node.Params, "model_path", "")
 	charURL := nodeParamString(node.Params, "character_url", "")
 	previewURL := nodeParamString(node.Params, "preview_url", "")
-	modelName := nodeParamString(node.Params, "model_name", "Nhân vật đại diện")
+	modelName := nodeParamString(node.Params, "model_name", "")
+	var characterImages []string
 
 	// 1. Kiểm tra nếu có dữ liệu ảnh upload trực tiếp dạng base64
 	if strings.HasPrefix(previewURL, "data:image/") {
@@ -55,24 +108,36 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 	}
 
 	// 3. Nếu modelPath là tên file tải lên (tìm trong data/uploads hoặc ctx.WorkDir)
-	if modelPath != "" && !fileExists(modelPath) {
-		candidates := []string{
-			filepath.Join("data", "uploads", filepath.Base(modelPath)),
-			filepath.Join(ctx.WorkDir, filepath.Base(modelPath)),
-		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				modelPath = cand
-				break
-			}
+	if modelPath != "" {
+		if resolved := resolveAssetPath(modelPath, ctx.WorkDir); resolved != "" {
+			modelPath = resolved
 		}
 	}
-
 	if modelPath == "" || !fileExists(modelPath) {
-		return nil, fmt.Errorf("chưa có ảnh nhân vật hợp lệ; chọn hoặc tải ảnh vào node Nhân vật mẫu")
+		accountID := int64(nodeParamInt(node.Params, "account_id", 0))
+		if accountID > 0 && ctx.CharacterPhotos != nil {
+			photos, err := ctx.CharacterPhotos(accountID)
+			if err != nil {
+				return nil, fmt.Errorf("không tải được ảnh nhân vật của account: %w", err)
+			}
+			characterImages = append(characterImages, photos...)
+			index := nodeParamInt(node.Params, "model_photo_index", 0)
+			if index < 0 || index >= len(photos) {
+				return nil, fmt.Errorf("model_photo_index ngoài phạm vi ảnh nhân vật (%d ảnh)", len(photos))
+			}
+			modelPath = photos[index]
+		}
+	}
+	if modelPath == "" || !fileExists(modelPath) || !isImageFile(modelPath) {
+		return nil, fmt.Errorf("chọn ảnh nhân vật hoặc account có ảnh đại diện hợp lệ")
+	}
+	if strings.TrimSpace(modelName) == "" {
+		modelName = strings.TrimSuffix(filepath.Base(modelPath), filepath.Ext(modelPath))
 	}
 
-	characterImages := []string{modelPath}
+	if len(characterImages) == 0 {
+		characterImages = []string{modelPath}
+	}
 	ctx.Log(fmt.Sprintf("CharacterNode: Đã nạp nhân vật '%s' (%s)", modelName, filepath.Base(modelPath)))
 
 	return map[string]any{
@@ -87,8 +152,37 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	prodURL := nodeParamString(node.Params, "product_url", "")
 	previewURL := nodeParamString(node.Params, "preview_url", "")
 	affURL := nodeParamString(node.Params, "affiliate_url", "")
-	prodTitle := nodeParamString(node.Params, "product_title", "Sản phẩm xu hướng")
 	prodID := nodeParamString(node.Params, "product_id", "")
+	prodTitle := nodeParamString(node.Params, "product_title", "")
+	productInfo := map[string]any{}
+	var productImageURLs []string
+
+	if prodID != "" {
+		id, err := strconv.ParseInt(prodID, 10, 64)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("product_id không hợp lệ: %q", prodID)
+		}
+		if ctx.ResolveProduct == nil {
+			return nil, fmt.Errorf("Product Input chưa được nối với catalog")
+		}
+		product, err := ctx.ResolveProduct(ctx.Context, id)
+		if err != nil {
+			return nil, fmt.Errorf("không tải được sản phẩm %d: %w", id, err)
+		}
+		prodTitle = product.Title
+		productImageURLs = append(productImageURLs, product.ImageURLs...)
+		if len(product.ImageURLs) > 0 {
+			prodURL = product.ImageURLs[0]
+		}
+		prodImg = ""
+		affURL = product.ProductURL
+		productInfo = map[string]any{
+			"id": id, "title": product.Title, "price": product.Price, "currency": product.Currency,
+			"commission_rate": product.CommissionRate, "commission_amount": product.CommissionAmount,
+			"commission_currency": product.CommissionCurrency, "shop_name": product.ShopName,
+			"category": product.Category, "url": product.ProductURL, "review_status": product.ReviewStatus,
+		}
+	}
 
 	// 1. Kiểm tra nếu có dữ liệu ảnh sản phẩm upload trực tiếp dạng base64
 	if strings.HasPrefix(previewURL, "data:image/") {
@@ -104,9 +198,6 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	if targetURL == "" && strings.HasPrefix(previewURL, "http") {
 		targetURL = previewURL
 	}
-	if targetURL == "" && strings.HasPrefix(affURL, "http") && (IsSocialMediaURL(affURL) || IsVideoURL(affURL) || IsImageURL(affURL)) {
-		targetURL = affURL
-	}
 	if targetURL != "" && (prodImg == "" || !fileExists(prodImg)) {
 		ctx.Log(fmt.Sprintf("ProductNode: Đang nạp sản phẩm từ link trực tuyến: %s", targetURL))
 		downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "image")
@@ -120,36 +211,43 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}
 
 	// 3. Nếu prodImg là tên file tải lên (trong data/uploads hoặc ctx.WorkDir)
-	if prodImg != "" && !fileExists(prodImg) {
-		candidates := []string{
-			filepath.Join("data", "uploads", filepath.Base(prodImg)),
-			filepath.Join(ctx.WorkDir, filepath.Base(prodImg)),
+	if prodImg != "" {
+		if resolved := resolveAssetPath(prodImg, ctx.WorkDir); resolved != "" {
+			prodImg = resolved
 		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				prodImg = cand
+	}
+	if prodImg == "" || !fileExists(prodImg) || !isImageFile(prodImg) {
+		return nil, fmt.Errorf("chọn sản phẩm trong catalog hoặc cung cấp ảnh sản phẩm thật")
+	}
+	if strings.TrimSpace(prodTitle) == "" {
+		return nil, fmt.Errorf("thiếu tên sản phẩm")
+	}
+	productInfo["id"] = prodID
+	productInfo["title"] = prodTitle
+	productInfo["image"] = prodImg
+	productInfo["url"] = affURL
+	productImages := []string{prodImg}
+	if len(productImageURLs) > 1 {
+		for _, imageURL := range productImageURLs[1:] {
+			if len(productImages) >= 4 {
 				break
 			}
+			imagePath, _, err := DownloadMediaResource(ctx.Context, imageURL, ctx.WorkDir, "image")
+			if err != nil || !fileExists(imagePath) || !isImageFile(imagePath) {
+				return nil, fmt.Errorf("không tải được ảnh phụ của sản phẩm %q", prodTitle)
+			}
+			productImages = append(productImages, imagePath)
 		}
 	}
-
-	if prodImg == "" || !fileExists(prodImg) {
-		return nil, fmt.Errorf("chưa có ảnh sản phẩm hợp lệ; chọn hoặc tải ảnh vào node Sản phẩm mẫu")
-	}
-
-	productInfo := map[string]any{
-		"id":    prodID,
-		"title": prodTitle,
-		"image": prodImg,
-		"url":   affURL,
-	}
+	productInfo["images"] = productImages
 
 	ctx.Log(fmt.Sprintf("ProductNode: Đã tải sản phẩm '%s' (%s)", prodTitle, filepath.Base(prodImg)))
 
 	return map[string]any{
-		"product_image": prodImg,
-		"product_title": prodTitle,
-		"product_info":  productInfo,
+		"product_image":  prodImg,
+		"product_images": productImages,
+		"product_title":  prodTitle,
+		"product_info":   productInfo,
 	}, nil
 }
 
@@ -157,7 +255,10 @@ func executeVideoSource(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	videoPath := nodeParamString(node.Params, "video_path", "")
 	videoURL := nodeParamString(node.Params, "video_url", "")
 	previewURL := nodeParamString(node.Params, "preview_url", "")
-	videoID := nodeParamString(node.Params, "video_id", "")
+	videoID := ""
+	author := ""
+	soundTitle := ""
+	radarVerified := false
 
 	// 1. Kiểm tra video tải lên dạng base64
 	if strings.HasPrefix(previewURL, "data:video/") {
@@ -174,61 +275,112 @@ func executeVideoSource(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		targetURL = previewURL
 	}
 	if targetURL != "" && (videoPath == "" || !fileExists(videoPath)) {
-		ctx.Log(fmt.Sprintf("VideoSourceNode: Đang tải video từ link: %s", targetURL))
-		downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "video")
-		if err != nil {
-			return nil, fmt.Errorf("không tải được video nguồn: %w", err)
+		if IsSocialMediaURL(targetURL) {
+			if ctx.ResolveRadarVideo == nil {
+				return nil, fmt.Errorf("TikTok source cần Radar video đã lưu")
+			}
+			resolved, err := ctx.ResolveRadarVideo(ctx.Context, targetURL, nodeParamBool(node.Params, "require_radar_dance", false))
+			if err != nil {
+				return nil, fmt.Errorf("không xác thực được video với Radar: %w", err)
+			}
+			downloaded, _, err := DownloadMediaResource(ctx.Context, resolved.VideoURL, ctx.WorkDir, "video")
+			if err != nil {
+				return nil, fmt.Errorf("không tải được video đã xác thực từ Radar: %w", err)
+			}
+			videoPath = downloaded
+			videoID = resolved.VideoID
+			author = resolved.Author
+			soundTitle = resolved.SoundTitle
+			radarVerified = true
+		} else {
+			if !nodeParamBool(node.Params, "allow_external_url", false) {
+				return nil, fmt.Errorf("URL không phải nguồn Radar; bật allow_external_url để tải nguồn trực tiếp")
+			}
+			ctx.Log(fmt.Sprintf("VideoSourceNode: Đang tải video từ URL trực tiếp: %s", targetURL))
+			downloaded, _, err := DownloadMediaResource(ctx.Context, targetURL, ctx.WorkDir, "video")
+			if err != nil {
+				return nil, fmt.Errorf("không tải được video: %w", err)
+			}
+			videoPath = downloaded
 		}
-		if !fileExists(downloaded) {
-			return nil, fmt.Errorf("URL không trả về file video hợp lệ")
-		}
-		videoPath = downloaded
 	}
 
 	// 3. Kiểm tra file cục bộ đã tải lên
-	if videoPath != "" && !fileExists(videoPath) {
-		candidates := []string{
-			filepath.Join("data", "uploads", filepath.Base(videoPath)),
-			filepath.Join(ctx.WorkDir, filepath.Base(videoPath)),
-		}
-		for _, cand := range candidates {
-			if fileExists(cand) {
-				videoPath = cand
-				break
-			}
+	if videoPath != "" {
+		if resolved := resolveAssetPath(videoPath, ctx.WorkDir); resolved != "" {
+			videoPath = resolved
 		}
 	}
-
-	if videoPath == "" || !fileExists(videoPath) {
-		return nil, fmt.Errorf("chưa có video nguồn hợp lệ; chọn hoặc tải video vào node Video mẫu gốc")
+	if videoPath == "" || !fileExists(videoPath) || !isVideoFile(videoPath) {
+		return nil, fmt.Errorf("Video Source cần video thật từ upload, Radar hoặc URL được cho phép")
+	}
+	if nodeParamBool(node.Params, "require_radar_dance", false) && !radarVerified {
+		return nil, fmt.Errorf("workflow này yêu cầu video nhảy đã xác thực trong Radar")
 	}
 
-	// Trích xuất audio từ video
-	audioTrack := filepath.Join(ctx.WorkDir, "source_audio.aac")
-	if ctx.FFmpegRunner != nil {
-		_ = ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoPath, "-vn", "-c:a", "aac", audioTrack)
+	duration, err := probeFlowDuration(videoPath)
+	if err != nil {
+		return nil, fmt.Errorf("không đọc được thời lượng video: %w", err)
 	}
-
-	duration := 13.87
+	audioTrack := ""
+	if hasAudio, _ := probeFlowHasAudio(videoPath); hasAudio && ctx.FFmpegRunner != nil {
+		audioTrack = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_source_audio.aac", node.ID))
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoPath, "-vn", "-c:a", "aac", audioTrack); err != nil || !fileExists(audioTrack) {
+			return nil, fmt.Errorf("không trích xuất được audio từ video nguồn")
+		}
+	}
 	ctx.Log(fmt.Sprintf("VideoSourceNode: Đã nạp video nguồn (id=%s, file=%s)", videoID, filepath.Base(videoPath)))
 
 	return map[string]any{
 		"video_path":  videoPath,
 		"audio_track": audioTrack,
 		"duration":    duration,
-		"video_url":   videoURL,
+		"video_id":    videoID,
+		"author":      author,
+		"sound_title": soundTitle,
 	}, nil
 }
 
 func executeAudioSource(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	audioPath := nodeParamString(node.Params, "audio_path", "")
-	audioTitle := nodeParamString(node.Params, "audio_title", "Nhạc nền thịnh hành")
-
-	if audioPath == "" || !fileExists(audioPath) {
-		return nil, fmt.Errorf("chưa có file âm thanh hợp lệ; chọn hoặc tải audio vào node Âm thanh / Nhạc nền")
+	audioURL := nodeParamString(node.Params, "audio_url", "")
+	previewURL := nodeParamString(node.Params, "preview_url", "")
+	audioTitle := nodeParamString(node.Params, "audio_title", "")
+	if strings.HasPrefix(previewURL, "data:audio/") {
+		headerEnd := strings.Index(previewURL, ",")
+		if headerEnd < 0 {
+			return nil, fmt.Errorf("upload audio có data URL không hợp lệ")
+		}
+		ext := audioExtension(previewURL[:headerEnd])
+		audioPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_audio_upload.%s", node.ID, ext))
+		if err := decodeBase64DataURL(previewURL, audioPath); err != nil {
+			return nil, fmt.Errorf("upload audio không hợp lệ: %w", err)
+		}
+	}
+	if audioURL == "" && strings.HasPrefix(previewURL, "http") {
+		audioURL = previewURL
+	}
+	if audioURL != "" && (audioPath == "" || !fileExists(audioPath)) {
+		downloaded, _, err := DownloadMediaResource(ctx.Context, audioURL, ctx.WorkDir, "audio")
+		if err != nil {
+			return nil, fmt.Errorf("không tải được audio: %w", err)
+		}
+		audioPath = downloaded
 	}
 
-	ctx.Log(fmt.Sprintf("AudioSourceNode: Đã nạp âm thanh '%s'", audioTitle))
+	if audioPath != "" {
+		if resolved := resolveAssetPath(audioPath, ctx.WorkDir); resolved != "" {
+			audioPath = resolved
+		}
+	}
+	if audioPath == "" || !fileExists(audioPath) || !isAudioFile(audioPath) {
+		return nil, fmt.Errorf("Audio Source cần file audio thật hoặc audio URL hợp lệ")
+	}
+	if audioTitle == "" {
+		audioTitle = strings.TrimSuffix(filepath.Base(audioPath), filepath.Ext(audioPath))
+	}
+
+	ctx.Log(fmt.Sprintf("AudioSourceNode: Đã nạp âm thanh '%s' (%s)", audioTitle, filepath.Base(audioPath)))
 
 	return map[string]any{
 		"audio_file":  audioPath,
@@ -291,62 +443,59 @@ func isVideoFile(name string) bool {
 	return ext == ".mp4" || ext == ".mov" || ext == ".webm" || ext == ".mkv" || ext == ".avi"
 }
 
-func writeDummyImage(path string, width, height int, label string) error {
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	// Tạo file JPEG hợp lệ tối giản
-	// Header JPEG tối giản 1x1 pixel nếu không có ffmpeg
-	header := []byte{
-		0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
-		0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
-		0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
-		0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20, 0x24, 0x2E, 0x27, 0x20,
-		0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27,
-		0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x0B, 0x08, 0x00, 0x01,
-		0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xC4, 0x00, 0x1F, 0x00, 0x00, 0x01, 0x05, 0x01, 0x01,
-		0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
-		0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F,
-		0x00, 0xBF, 0x80, 0xFF, 0xD9,
-	}
-	return os.WriteFile(path, header, 0o644)
+func isAudioFile(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return ext == ".mp3" || ext == ".aac" || ext == ".wav" || ext == ".m4a" || ext == ".ogg" || ext == ".flac"
 }
 
-// renderCinematicMotionVideo tạo video chuyển động điện ảnh chuyên nghiệp (dựng phối cảnh 9:16 dọc,
-// chuyển động sải bước tự nhiên, phân loại màu sắc film grade và ánh sáng tinh tế) từ ảnh nhân vật/sản phẩm.
-func renderCinematicMotionVideo(ctx *ExecutionContext, path string, refImages []string, prompt string, duration float64) error {
+func probeFlowDuration(path string) (float64, error) {
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe chưa được cài")
+	}
+	output, err := exec.Command(ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path).Output()
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe lỗi: %w", err)
+	}
+	duration, err := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
+	if err != nil || duration <= 0 {
+		return 0, fmt.Errorf("thời lượng video không hợp lệ")
+	}
+	return duration, nil
+}
+
+func probeFlowHasAudio(path string) (bool, error) {
+	ffprobe, err := exec.LookPath("ffprobe")
+	if err != nil {
+		return false, fmt.Errorf("ffprobe chưa được cài")
+	}
+	output, err := exec.Command(ffprobe, "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=codec_type", "-of", "csv=p=0", path).Output()
+	if err != nil {
+		return false, fmt.Errorf("ffprobe audio lỗi: %w", err)
+	}
+	return strings.TrimSpace(string(output)) == "audio", nil
+}
+
+func writeDummyImage(path string, width, height int, label string) error {
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-
-	var validImage string
-	for _, img := range refImages {
-		if img != "" && fileExists(img) {
-			validImage = img
-			break
+	if width <= 0 {
+		width = 100
+	}
+	if height <= 0 {
+		height = 100
+	}
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.Set(x, y, color.RGBA{R: 200, G: 210, B: 220, A: 255})
 		}
 	}
-
-	if ctx != nil && ctx.FFmpegRunner != nil {
-		if validImage != "" {
-			// Tạo chuyển động catwalk & ánh sáng studio chuyển động chân thực
-			// Tuyệt đối không dùng zoom-in/zoom-out, thay vào đó tạo nhịp chuyển động sải bước tự nhiên & quét ánh sáng studio
-			filterComplex := "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920," +
-				"eq=contrast='1.1+0.04*sin(2*PI*t*0.5)':brightness='0.02*cos(2*PI*t*0.7)':saturation='1.08'," +
-				"format=yuv420p[v]"
-			err := ctx.FFmpegRunner(ctx.Context, "-y", "-loop", "1", "-i", validImage,
-				"-filter_complex", filterComplex, "-map", "[v]",
-				"-t", fmt.Sprintf("%.2f", duration), "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
-			if err == nil && fileExists(path) {
-				return nil
-			}
-		}
-
-		// Fallback nếu không có ảnh: khung nền studio gradient tối màu sang trọng
-		lavfi := fmt.Sprintf("color=c=0x0f172a:s=1080x1920:d=%.2f", duration)
-		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-f", "lavfi", "-i", lavfi,
-			"-vf", "vignette=PI/3", "-c:v", "libx264", "-pix_fmt", "yuv420p", path); err == nil {
-			return nil
-		}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
 	}
-
-	return writeDummyVideo(ctx, path, duration)
+	defer f.Close()
+	return jpeg.Encode(f, img, &jpeg.Options{Quality: 90})
 }
 
 func writeDummyVideo(ctx *ExecutionContext, path string, duration float64) error {
@@ -362,19 +511,4 @@ func writeDummyVideo(ctx *ExecutionContext, path string, duration float64) error
 		0x00, 0x00, 0x00, 0x10, 'm', 'd', 'a', 't', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
 	return os.WriteFile(path, mp4Minimal, 0o644)
-}
-
-func writeDummyAudio(ctx *ExecutionContext, path string, duration float64) error {
-	_ = os.MkdirAll(filepath.Dir(path), 0o755)
-	if ctx != nil && ctx.FFmpegRunner != nil {
-		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-f", "lavfi", "-i", fmt.Sprintf("sine=frequency=440:duration=%.2f", duration), "-c:a", "aac", path); err == nil {
-			return nil
-		}
-	}
-	wavHeader := []byte{
-		'R', 'I', 'F', 'F', 0x24, 0x00, 0x00, 0x00, 'W', 'A', 'V', 'E', 'f', 'm', 't', ' ',
-		0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xAC, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00,
-		0x02, 0x00, 0x10, 0x00, 'd', 'a', 't', 'a', 0x00, 0x00, 0x00, 0x00,
-	}
-	return os.WriteFile(path, wavHeader, 0o644)
 }

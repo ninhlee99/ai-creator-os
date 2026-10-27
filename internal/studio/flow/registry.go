@@ -59,7 +59,7 @@ func registerAllBuiltinNodes() {
 		Type:        "character_input",
 		Title:       "Nhân vật mẫu (Character)",
 		Category:    CategoryInput,
-		Description: "Chọn nhân vật mẫu từ thư viện kênh đã lưu hoặc tải ảnh nhân vật lên",
+		Description: "Chọn ảnh nhân vật đã tải lên hoặc lấy ảnh từ thư viện của account đã chọn",
 		Icon:        "user",
 		Inputs:      []FlowPort{},
 		Outputs: []FlowPort{
@@ -68,10 +68,10 @@ func registerAllBuiltinNodes() {
 			{ID: "character_name", Name: "Tên nhân vật", Type: PortTypeText, Description: "Tên hoặc mô tả ngắn của nhân vật"},
 		},
 		DefaultParams: map[string]any{
-			"account_id": 0,
-			"model_path": "",
-			"model_name": "Miu Character",
-			"gender":     "female",
+			"account_id":        0,
+			"model_path":        "",
+			"model_photo_index": 0,
+			"model_name":        "",
 		},
 		Executor: executeCharacterInput,
 	})
@@ -81,18 +81,19 @@ func registerAllBuiltinNodes() {
 		Type:        "product_input",
 		Title:       "Sản phẩm mẫu (Product)",
 		Category:    CategoryInput,
-		Description: "Chọn sản phẩm tiếp thị liên kết (Accesstrade / Shopee / TikTok Shop) hoặc tải ảnh sản phẩm",
+		Description: "Chọn sản phẩm đã duyệt trong catalog hoặc nhập ảnh, tên và affiliate URL thật",
 		Icon:        "package",
 		Inputs:      []FlowPort{},
 		Outputs: []FlowPort{
 			{ID: "product_image", Name: "Ảnh sản phẩm", Type: PortTypeImage, Description: "Ảnh gốc của sản phẩm cần tiếp thị"},
+			{ID: "product_images", Name: "Ảnh sản phẩm bổ sung", Type: PortTypeImageList, Description: "Tối đa bốn ảnh listing đã tải"},
 			{ID: "product_title", Name: "Tên sản phẩm", Type: PortTypeText, Description: "Tiêu đề sản phẩm"},
 			{ID: "product_info", Name: "Dữ liệu sản phẩm", Type: PortTypeProduct, Description: "Chi tiết giá, link và hoa hồng sản phẩm"},
 		},
 		DefaultParams: map[string]any{
 			"product_id":    "",
 			"product_image": "",
-			"product_title": "Sản phẩm xu hướng",
+			"product_title": "",
 			"affiliate_url": "",
 		},
 		Executor: executeProductInput,
@@ -103,19 +104,22 @@ func registerAllBuiltinNodes() {
 		Type:        "video_source",
 		Title:       "Video mẫu gốc (Radar Video)",
 		Category:    CategoryInput,
-		Description: "Chọn video viral từ TikTok Radar xu hướng hoặc file video mp4 mẫu",
+		Description: "Chọn video TikTok đã xác thực trong Radar hoặc video upload/URL trực tiếp được cho phép",
 		Icon:        "video",
 		Inputs:      []FlowPort{},
 		Outputs: []FlowPort{
 			{ID: "video_path", Name: "Video nguồn", Type: PortTypeVideo, Description: "File video mp4 đầy đủ của trend nguồn"},
 			{ID: "audio_track", Name: "Âm thanh gốc", Type: PortTypeAudio, Description: "Track âm thanh / nhạc nền gốc từ video"},
 			{ID: "duration", Name: "Thời lượng (s)", Type: PortTypeNumber, Description: "Độ dài video nguồn tính theo giây"},
+			{ID: "video_id", Name: "Radar video ID", Type: PortTypeText, Description: "ID Radar nếu nguồn đã được xác thực"},
+			{ID: "author", Name: "Tác giả nguồn", Type: PortTypeText, Description: "Tác giả do Radar lưu"},
+			{ID: "sound_title", Name: "Tên âm thanh nguồn", Type: PortTypeText, Description: "Tên âm thanh do Radar lưu"},
 		},
 		DefaultParams: map[string]any{
-			"video_url":  "",
-			"video_path": "",
-			"video_id":   "",
-			"author":     "",
+			"video_url":           "",
+			"video_path":          "",
+			"require_radar_dance": false,
+			"allow_external_url":  false,
 		},
 		Executor: executeVideoSource,
 	})
@@ -125,7 +129,7 @@ func registerAllBuiltinNodes() {
 		Type:        "audio_source",
 		Title:       "Âm thanh / Nhạc nền (Audio)",
 		Category:    CategoryInput,
-		Description: "Nhạc nền trending, file voiceover lồng tiếng hoặc nhạc nền tùy chọn",
+		Description: "Nạp file audio thật hoặc URL audio trực tiếp",
 		Icon:        "music",
 		Inputs:      []FlowPort{},
 		Outputs: []FlowPort{
@@ -134,7 +138,8 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"audio_path":  "",
-			"audio_title": "Nhạc nền thịnh hành",
+			"audio_url":   "",
+			"audio_title": "",
 		},
 		Executor: executeAudioSource,
 	})
@@ -144,7 +149,7 @@ func registerAllBuiltinNodes() {
 		Type:        "prompt_template",
 		Title:       "Tạo câu lệnh (Prompt Template)",
 		Category:    CategoryProcess,
-		Description: "Ghép các biến (nhân vật, sản phẩm, hành động, phong cách) thành prompt tối ưu cho AI",
+		Description: "Thay biến nhân vật, sản phẩm và chuyển động trong template prompt",
 		Icon:        "edit-3",
 		Inputs: []FlowPort{
 			{ID: "character_desc", Name: "Mô tả nhân vật", Type: PortTypeText, Required: false},
@@ -155,9 +160,7 @@ func registerAllBuiltinNodes() {
 			{ID: "prompt", Name: "Câu lệnh hoàn chỉnh", Type: PortTypeText, Description: "Prompt chuẩn hóa đã chèn các biến"},
 		},
 		DefaultParams: map[string]any{
-			"template":    "Cinematic vertical 9:16 video of {character} {motion}, showcasing {product}. Beautiful soft lighting, 4k ultra realistic, smooth motion.",
-			"visual_mood": "cinematic",
-			"aspect":      "9:16",
+			"template": "Cinematic vertical 9:16 video of {character} {motion}, showcasing {product}. Beautiful soft lighting, 4k ultra realistic, smooth motion.",
 		},
 		Executor: executePromptTemplate,
 	})
@@ -167,7 +170,7 @@ func registerAllBuiltinNodes() {
 		Type:        "product_extractor",
 		Title:       "Bóc tách sản phẩm (Extract Product)",
 		Category:    CategoryProcess,
-		Description: "Bóc tách sản phẩm từ ảnh mẫu hoặc video TikTok/Reels/IG, tự động trích xuất khung hình và xóa phông nền (cutout PNG)",
+		Description: "Trích frame video nếu cần, rồi tách nền bằng model local hoặc heuristic; kiểm tra cutout trước khi dùng",
 		Icon:        "scissors",
 		Inputs: []FlowPort{
 			{ID: "source_image", Name: "Ảnh hoặc Video nguồn", Type: PortTypeAny, Required: false},
@@ -180,10 +183,9 @@ func registerAllBuiltinNodes() {
 			{ID: "product_image", Name: "Sản phẩm đầu ra", Type: PortTypeImage, Description: "Tương thích nối tiếp với các node nhận product_image"},
 		},
 		DefaultParams: map[string]any{
-			"video_timestamp":     "auto",
-			"refine_edges":        true,
-			"auto_crop":           true,
-			"segmentation_engine": "auto",
+			"video_timestamp": "auto",
+			"refine_edges":    true,
+			"auto_crop":       true,
 		},
 		Executor: executeProductExtractor,
 	})
@@ -193,19 +195,18 @@ func registerAllBuiltinNodes() {
 		Type:        "image_composite",
 		Title:       "Ghép sản phẩm với nhân vật (Composite)",
 		Category:    CategoryProcess,
-		Description: "Ghép ảnh sản phẩm đã bóc tách vào tay hoặc bên cạnh nhân vật mẫu, điều chỉnh tỉ lệ và ánh sáng",
+		Description: "Ghép ảnh sản phẩm dạng overlay lên ảnh nhân vật tại vị trí xấp xỉ; không tạo tư thế cầm sản phẩm",
 		Icon:        "layers",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Required: true},
 			{ID: "product_image", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: true},
 		},
 		Outputs: []FlowPort{
-			{ID: "composite_image", Name: "Ảnh ghép hoàn chỉnh", Type: PortTypeImage, Description: "Nhân vật mẫu đang cầm/trưng bày sản phẩm"},
+			{ID: "composite_image", Name: "Ảnh overlay", Type: PortTypeImage, Description: "Ảnh sản phẩm được overlay tại vị trí xấp xỉ"},
 		},
 		DefaultParams: map[string]any{
-			"placement":  "holding_hand", // holding_hand, beside, wearing, foreground
-			"scale":      0.45,
-			"blend_mode": "natural",
+			"placement": "holding_hand",
+			"scale":     0.45,
 		},
 		Executor: executeImageComposite,
 	})
@@ -215,19 +216,21 @@ func registerAllBuiltinNodes() {
 		Type:        "dance_motion_extractor",
 		Title:       "Bóc tách điệu nhảy (Extract Dance)",
 		Category:    CategoryProcess,
-		Description: "Phân tích video TikTok gốc để bóc tách nhịp điệu (BPM), các frame vũ đạo then chốt và chuỗi chuyển động",
+		Description: "Trích keyframe theo thời lượng video rồi dùng Vision AI mô tả chuỗi chuyển động; không đo BPM",
 		Icon:        "activity",
 		Inputs: []FlowPort{
 			{ID: "video_in", Name: "Video gốc", Type: PortTypeVideo, Required: true},
 		},
 		Outputs: []FlowPort{
-			{ID: "motion_data", Name: "Dữ liệu vũ đạo", Type: PortTypeMotion, Description: "Phân đoạn vũ đạo, nhịp beat và pose timing"},
+			{ID: "motion_data", Name: "Dữ liệu vũ đạo", Type: PortTypeMotion, Description: "Mô tả thứ tự chuyển động và thời lượng; không đo BPM"},
 			{ID: "keyframes", Name: "Keyframe vũ đạo", Type: PortTypeImageList, Description: "Các frame tư thế chính trích xuất từ video"},
-			{ID: "beat_audio", Name: "Âm thanh trích xuất", Type: PortTypeAudio, Description: "Âm thanh đã đồng bộ nhịp"},
+			{ID: "beat_audio", Name: "Âm thanh trích xuất", Type: PortTypeAudio, Description: "Track audio gốc trích xuất, không phân tích nhịp"},
+			{ID: "dance_style", Name: "Mô tả chuyển động", Type: PortTypeText, Description: "Mô tả chuyển động do Vision AI tạo"},
 		},
 		DefaultParams: map[string]any{
-			"segment_duration": 6.9,
-			"extract_poses":    true,
+			"dance_style":    "",
+			"keyframe_count": 5,
+			"require_audio":  false,
 		},
 		Executor: executeDanceMotionExtractor,
 	})
@@ -235,21 +238,28 @@ func registerAllBuiltinNodes() {
 	// 9. Dance Retarget Node (Ghép nối điệu nhảy, biểu cảm vào nhân vật)
 	RegisterNode(NodeDefinition{
 		Type:        "dance_retarget",
-		Title:       "Ghép vũ đạo vào nhân vật (Retarget)",
+		Title:       "Tạo prompt vũ đạo",
 		Category:    CategoryProcess,
-		Description: "Gắn kết điệu nhảy, cử chỉ và biểu cảm từ video gốc vào khuôn mặt và thân hình của nhân vật mẫu",
+		Description: "Tạo prompt video từ phân tích chuyển động và ảnh tham chiếu; không thực hiện motion capture/retarget",
 		Icon:        "shuffle",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
 			{ID: "motion_data", Name: "Dữ liệu vũ đạo", Type: PortTypeMotion, Required: true},
+			{ID: "keyframes", Name: "Keyframes vũ đạo", Type: PortTypeImageList, Required: false},
+			{ID: "ingredients", Name: "Ảnh tham chiếu bổ sung", Type: PortTypeImageList, Required: false},
+			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Required: false},
+			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
+			{ID: "outfit_desc", Name: "Mô tả trang phục", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "prompt_choreography", Name: "Prompt vũ đạo", Type: PortTypeText, Description: "Mô tả chuyển động nghệ thuật an toàn cho AI"},
+			{ID: "prompt", Name: "Câu lệnh tạo video", Type: PortTypeText, Description: "Prompt chuẩn hóa cho bộ sinh video AI"},
 			{ID: "ingredients", Name: "Thành phần chuẩn bị", Type: PortTypeImageList, Description: "Các ảnh nguyên liệu cho bộ tạo video"},
+			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Description: "Ảnh nhân vật truyền tiếp"},
 		},
 		DefaultParams: map[string]any{
-			"expression": "expressive_smile", // expressive_smile, energetic, confident, cool
-			"body_type":  "preserve_model",
+			"expression": "sensual_alluring",
+			"dance_type": "sexy_dance",
 		},
 		Executor: executeDanceRetarget,
 	})
@@ -259,7 +269,7 @@ func registerAllBuiltinNodes() {
 		Type:        "google_flow_video",
 		Title:       "Google Flow Veo 2 (Web AI Video)",
 		Category:    CategoryAI,
-		Description: "Tạo video AI chất lượng cao bằng tài khoản web Google Flow đã lưu trên hệ thống",
+		Description: "Tạo video bằng Google Flow; cần prompt và ít nhất một ảnh tham chiếu thật",
 		Icon:        "zap",
 		Inputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh prompt", Type: PortTypeText, Required: true},
@@ -271,7 +281,6 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
-			"mode":   "ingredients",
 		},
 		Executor: executeGoogleFlowVideo,
 	})
@@ -292,7 +301,6 @@ func registerAllBuiltinNodes() {
 		},
 		DefaultParams: map[string]any{
 			"aspect": "9:16",
-			"style":  "cinematic",
 		},
 		Executor: executeMuseAIVideo,
 	})
@@ -312,18 +320,16 @@ func registerAllBuiltinNodes() {
 			{ID: "description", Name: "Mô tả chi tiết", Type: PortTypeText, Description: "Phân tích trực quan sâu từ Gemini"},
 			{ID: "optimized_prompt", Name: "Prompt tối ưu", Type: PortTypeText, Description: "Prompt tạo video hoàn thiện"},
 		},
-		DefaultParams: map[string]any{
-			"mode": "auto_prompt", // auto_prompt, product_breakdown, style_analysis
-		},
-		Executor: executeGeminiVision,
+		DefaultParams: map[string]any{},
+		Executor:      executeGeminiVision,
 	})
 
 	// 13. Custom Web AI Node (Node AI tùy biến mở rộng)
 	RegisterNode(NodeDefinition{
 		Type:        "custom_web_ai",
 		Title:       "Node Web AI tùy biến (Custom AI)",
-		Category:    CategoryAI,
-		Description: "Mở rộng và kết nối với bất kỳ dịch vụ Web AI nào (ChatGPT, Claude, Grok, Midjourney, v.v.)",
+		Category:    CategoryCustom,
+		Description: "Tạo text, ảnh hoặc video qua LLM, image generator, Google Flow hoặc Muse AI đã cấu hình",
 		Icon:        "cpu",
 		Inputs: []FlowPort{
 			{ID: "prompt_in", Name: "Prompt đầu vào", Type: PortTypeText, Required: true},
@@ -334,9 +340,8 @@ func registerAllBuiltinNodes() {
 			{ID: "text_out", Name: "Văn bản phản hồi", Type: PortTypeText, Description: "Nội dung phản hồi dạng text"},
 		},
 		DefaultParams: map[string]any{
-			"provider_name": "ChatGPT / Claude / Grok",
-			"target_url":    "https://grok.com/",
-			"output_type":   "video", // video, image, text
+			"provider_name": "googleflow",
+			"output_type":   "video",
 		},
 		Executor: executeCustomWebAI,
 	})
@@ -350,14 +355,13 @@ func registerAllBuiltinNodes() {
 		Icon:        "volume-2",
 		Inputs: []FlowPort{
 			{ID: "video_in", Name: "Video hình ảnh", Type: PortTypeVideo, Required: true},
-			{ID: "audio_in", Name: "Âm thanh gốc", Type: PortTypeAudio, Required: true},
+			{ID: "audio_in", Name: "Âm thanh gốc (tùy chọn)", Type: PortTypeAudio, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "video_out", Name: "Video có âm thanh", Type: PortTypeVideo, Description: "Video mp4 hoàn chỉnh đồng bộ tiếng và hình"},
 		},
 		DefaultParams: map[string]any{
 			"audio_codec": "aac",
-			"keep_length": "shortest",
 		},
 		Executor: executeAudioMerge,
 	})
@@ -397,10 +401,8 @@ func registerAllBuiltinNodes() {
 		Outputs: []FlowPort{
 			{ID: "master_video", Name: "Video Master", Type: PortTypeVideo, Description: "Video hoàn chỉnh nối liền mạch các cảnh"},
 		},
-		DefaultParams: map[string]any{
-			"transition": "none",
-		},
-		Executor: executeConcatScenes,
+		DefaultParams: map[string]any{},
+		Executor:      executeConcatScenes,
 	})
 
 	// 17. Video Output Node
@@ -408,7 +410,7 @@ func registerAllBuiltinNodes() {
 		Type:        "video_output",
 		Title:       "Xuất video TikTok (Video Output)",
 		Category:    CategoryOutput,
-		Description: "Xuất file video thành phẩm chuẩn dọc 9:16, xem trực tiếp, tải về hoặc chuyển vào hàng đợi đăng TikTok",
+		Description: "Sao chép video thành phẩm vào thư mục output để xem và tải về",
 		Icon:        "check-circle",
 		Inputs: []FlowPort{
 			{ID: "video_in", Name: "Video thành phẩm", Type: PortTypeVideo, Required: true},
@@ -417,10 +419,8 @@ func registerAllBuiltinNodes() {
 		Outputs: []FlowPort{
 			{ID: "final_video", Name: "Video cuối cùng", Type: PortTypeVideo, Description: "Đường dẫn file video master sẵn sàng xuất bản"},
 		},
-		DefaultParams: map[string]any{
-			"auto_publish_draft": false,
-		},
-		Executor: executeVideoOutput,
+		DefaultParams: map[string]any{},
+		Executor:      executeVideoOutput,
 	})
 
 	// 18. Image Output Node
@@ -442,26 +442,79 @@ func registerAllBuiltinNodes() {
 		Executor: executeImageOutput,
 	})
 
-	// 19. Virtual Try-On Node (Thay đổi trang phục thời trang)
+	// 19. Outfit Prompt Builder. Image generator does not support true virtual try-on.
 	RegisterNode(NodeDefinition{
 		Type:        "virtual_tryon",
-		Title:       "Thay đổi trang phục AI (Virtual Try-on)",
+		Title:       "Chuẩn bị prompt trang phục",
 		Category:    CategoryProcess,
-		Description: "Hoán đổi trang phục thời trang nữ sang đầm/váy/outfit mới, bảo toàn khuôn mặt và form dáng nhân vật mẫu",
+		Description: "Giữ ảnh nhân vật và ảnh trang phục gốc làm tham chiếu; tạo mô tả outfit cho node sinh ảnh/video. Không thay quần áo trong ảnh tĩnh.",
 		Icon:        "shirt",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
-			{ID: "garment_image", Name: "Ảnh trang phục", Type: PortTypeImage, Required: true},
+			{ID: "garment_image", Name: "Ảnh trang phục", Type: PortTypeImage, Required: false},
+			{ID: "outfit_name", Name: "Tên/mô tả outfit", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
-			{ID: "fitted_image", Name: "Ảnh sau khi thay đồ", Type: PortTypeImage, Description: "Nhân vật mẫu mặc trang phục mới hoàn chỉnh"},
-			{ID: "mask_image", Name: "Mặt nạ trang phục", Type: PortTypeImage, Description: "Vùng phân đoạn trang phục"},
+			{ID: "fitted_image", Name: "Ảnh nhân vật (tương thích cũ)", Type: PortTypeImage, Description: "Ảnh gốc truyền tiếp; chưa thay trang phục"},
+			{ID: "character_image", Name: "Ảnh nhân vật gốc", Type: PortTypeImage, Description: "Ảnh gốc truyền tiếp làm tham chiếu"},
+			{ID: "garment_image", Name: "Ảnh trang phục gốc", Type: PortTypeImage, Description: "Ảnh trang phục truyền tiếp làm tham chiếu"},
+			{ID: "ingredients", Name: "Ảnh tham chiếu", Type: PortTypeImageList, Description: "Ảnh nhân vật và trang phục gốc"},
+			{ID: "outfit_desc", Name: "Mô tả trang phục", Type: PortTypeText, Description: "Mô tả trang phục cho AI sinh video"},
 		},
 		DefaultParams: map[string]any{
-			"fit_style":     "seamless_luxury",
-			"preserve_face": true,
+			"fit_style":   "seamless_luxury",
+			"outfit_name": "trang phục thời trang cao cấp",
 		},
 		Executor: executeVirtualTryOn,
+	})
+
+	// 20. Scene Environment Node (Không gian / Bối cảnh)
+	RegisterNode(NodeDefinition{
+		Type:        "scene_environment",
+		Title:       "Không gian / Bối cảnh (Scene Environment)",
+		Category:    CategoryProcess,
+		Description: "Thiết lập không gian bối cảnh: căn hộ penthouse, boutique Pháp, studio tối giản, phòng tập vũ đạo neon, sân khấu biểu diễn Kpop, rooftop hoàng hôn",
+		Icon:        "map-pin",
+		Inputs: []FlowPort{
+			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Required: false},
+			{ID: "prompt_in", Name: "Câu lệnh đầu vào", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Description: "Mô tả bối cảnh chi tiết cho AI"},
+			{ID: "environment_prompt", Name: "Câu lệnh không gian", Type: PortTypeText, Description: "Prompt không gian hoàn chỉnh"},
+			{ID: "prompt_out", Name: "Câu lệnh tổng hợp", Type: PortTypeText, Description: "Prompt đã chèn không gian"},
+			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Description: "Ảnh nhân vật truyền tiếp"},
+		},
+		DefaultParams: map[string]any{
+			"location_type":   "fashion_boutique",
+			"custom_location": "",
+			"depth_of_field":  "cinematic_bokeh",
+		},
+		Executor: executeSceneEnvironment,
+	})
+
+	// 21. Lighting Atmosphere Node (Thời gian & Ánh sáng)
+	RegisterNode(NodeDefinition{
+		Type:        "lighting_atmosphere",
+		Title:       "Thời gian & Ánh sáng (Time & Lighting)",
+		Category:    CategoryProcess,
+		Description: "Thiết lập thời điểm trong ngày và hiệu ứng ánh sáng: hoàng hôn Golden Hour, ban mai dịu mát, ánh đèn neon đêm, ánh đèn sân khấu biểu diễn",
+		Icon:        "sun",
+		Inputs: []FlowPort{
+			{ID: "prompt_in", Name: "Câu lệnh đầu vào", Type: PortTypeText, Required: false},
+			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Description: "Mô tả hiệu ứng ánh sáng & thời gian"},
+			{ID: "lighting_prompt", Name: "Câu lệnh ánh sáng", Type: PortTypeText, Description: "Prompt ánh sáng hoàn chỉnh"},
+			{ID: "prompt_out", Name: "Câu lệnh tổng hợp", Type: PortTypeText, Description: "Prompt đã chèn ánh sáng & thời gian"},
+		},
+		DefaultParams: map[string]any{
+			"time_of_day":       "golden_hour",
+			"color_temperature": "warm_golden",
+			"light_intensity":   "soft_diffused",
+		},
+		Executor: executeLightingAtmosphere,
 	})
 
 	// 20. Camera Angles Director Node (Đạo diễn đa góc quay điện ảnh)
@@ -469,16 +522,21 @@ func registerAllBuiltinNodes() {
 		Type:        "camera_angles_director",
 		Title:       "Đạo diễn đa góc quay (Multi-Angle Director)",
 		Category:    CategoryCamera,
-		Description: "Tự động thiết lập chuỗi 3 góc máy điện ảnh: toàn thân runway walk, bán thân xoay 360 dáng và cận cảnh chất vải",
+		Description: "Tạo ba prompt góc máy cho toàn thân, bán thân và chi tiết chất liệu; không tự render cảnh",
 		Icon:        "video",
 		Inputs: []FlowPort{
 			{ID: "character_image", Name: "Ảnh nhân vật mặc trang phục", Type: PortTypeImage, Required: true},
+			{ID: "product_title", Name: "Tên sản phẩm", Type: PortTypeText, Required: false},
+			{ID: "character_name", Name: "Tên nhân vật", Type: PortTypeText, Required: false},
+			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Required: false},
+			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "angle_full", Name: "Góc 1: Toàn thân Runway", Type: PortTypeText, Description: "Prompt góc toàn thân bước đi catwalk"},
 			{ID: "angle_medium", Name: "Góc 2: Bán thân xoay dáng", Type: PortTypeText, Description: "Prompt góc bán thân xoay nhẹ khoe form"},
 			{ID: "angle_detail", Name: "Góc 3: Cận cảnh chất vải", Type: PortTypeText, Description: "Prompt cận cảnh sợi vải satin ngọc trai"},
-			{ID: "storyboard_prompts", Name: "Chuỗi 3 phân cảnh", Type: PortTypeImageList, Description: "Bộ 3 prompt cho các phân cảnh"},
+			{ID: "storyboard_prompts", Name: "Chuỗi 3 phân cảnh", Type: PortTypeTextList, Description: "Bộ ba prompt góc quay"},
+			{ID: "subject_image", Name: "Ảnh tham chiếu", Type: PortTypeImage, Description: "Ảnh gốc cho node sinh cảnh"},
 		},
 		DefaultParams: map[string]any{
 			"shot_style": "high_fashion_editorial",
@@ -503,9 +561,6 @@ func registerAllBuiltinNodes() {
 			{ID: "master_video", Name: "Master Video", Type: PortTypeVideo, Description: "Đường dẫn video master"},
 			{ID: "sample_frame", Name: "Khung hình mẫu", Type: PortTypeImage, Description: "Ảnh đại diện trích xuất từ video"},
 		},
-		DefaultParams: map[string]any{
-			"aspect": "9:16",
-		},
 		Executor: executeMuseAINeuralRender,
 	})
 
@@ -521,6 +576,7 @@ func registerAllBuiltinNodes() {
 		},
 		Outputs: []FlowPort{
 			{ID: "graded_video", Name: "Video đã cân chỉnh", Type: PortTypeVideo, Description: "Video sau điều chỉnh tương phản và bão hòa"},
+			{ID: "video_out", Name: "Video đã cân chỉnh (video_out)", Type: PortTypeVideo, Description: "Video sau điều chỉnh tương phản và bão hòa"},
 		},
 		DefaultParams: map[string]any{
 			"contrast_boost": 1.12,
@@ -590,8 +646,8 @@ func registerAllBuiltinNodes() {
 	RegisterNode(NodeDefinition{
 		Type:        "custom_ai_prompt",
 		Title:       "Node Custom (AI Prompt / LLM)",
-		Category:    CategoryAI,
-		Description: "Node AI tự do tùy biến: tự đặt tên, viết prompt, chọn model Muse AI, Gemini, ChatGPT, Claude, Grok",
+		Category:    CategoryCustom,
+		Description: "Tạo văn bản bằng LLM đang cấu hình, ảnh bằng image generator hoặc video qua Google Flow/Muse AI",
 		Icon:        "sparkles",
 		Inputs: []FlowPort{
 			{ID: "input", Name: "Dữ liệu nguồn (Input)", Type: PortTypeAny, Required: false},
@@ -604,15 +660,178 @@ func registerAllBuiltinNodes() {
 			{ID: "media", Name: "Tệp media (Video/Image)", Type: PortTypeAny, Description: "File video hoặc ảnh đã tạo"},
 		},
 		DefaultParams: map[string]any{
-			"node_name":     "Custom AI Node",
-			"model":         "gemini",
-			"provider":      "gemini",
+			"model":         "active",
+			"provider":      "googleflow",
 			"system_prompt": "Bạn là chuyên gia sáng tạo nội dung AI chuyên nghiệp...",
 			"prompt":        "Tạo nội dung hấp dẫn dựa trên đầu vào: {{input}}",
 			"output_type":   "text",
-			"temperature":   0.7,
 		},
 		Executor: executeCustomAIPrompt,
+	})
+
+	// 36. Universal AI node: text/image/video input, text/image/video output.
+	RegisterNode(NodeDefinition{
+		Type:        "custom_universal_ai",
+		Title:       "AI Đa Năng Vạn Năng (Universal AI Node)",
+		Category:    CategoryCustom,
+		Description: "Tạo text, ảnh hoặc video qua các provider đã cấu hình; video được đưa vào dưới dạng frame tham chiếu. Audio analysis/generation chưa được hỗ trợ.",
+		Icon:        "cpu",
+		Inputs: []FlowPort{
+			{ID: "text_in", Name: "Văn bản / Kịch bản (Text)", Type: PortTypeText, Required: false},
+			{ID: "image_in", Name: "Ảnh đầu vào (Image)", Type: PortTypeImage, Required: false},
+			{ID: "video_in", Name: "Video đầu vào (Video)", Type: PortTypeVideo, Required: false},
+			{ID: "data_in", Name: "Dữ liệu cấu hình (Data)", Type: PortTypeAny, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "result_out", Name: "Kết quả chính (Primary Output)", Type: PortTypeAny, Description: "Kết quả hoàn chỉnh (Media hoặc Text)"},
+			{ID: "text_out", Name: "Văn bản xuất (Text)", Type: PortTypeText, Description: "Phản hồi văn bản từ AI"},
+			{ID: "image_out", Name: "Ảnh sinh ra (Image)", Type: PortTypeImage, Description: "File ảnh AI tạo ra"},
+			{ID: "video_out", Name: "Video sinh ra (Video)", Type: PortTypeVideo, Description: "File video AI tạo ra"},
+		},
+		DefaultParams: map[string]any{
+			"system_prompt": "Bạn là chuyên gia AI đa năng cao cấp xử lý mọi yêu cầu sáng tạo nội dung.",
+			"prompt":        "Xử lý và tạo nội dung chất lượng cao: {{text_in}}",
+			"output_type":   "auto",
+		},
+		Executor: executeCustomUniversalAI,
+	})
+
+	// 37. Custom Media Input Node (Tải lên hoặc dán link bất kỳ media nào)
+	RegisterNode(NodeDefinition{
+		Type:        "custom_media_input",
+		Title:       "Đầu vào Media Tùy Biến (Custom Media Input)",
+		Category:    CategoryCustom,
+		Description: "Nhận ảnh, video hoặc audio từ file tải lên, đường dẫn cục bộ hoặc URL media trực tiếp",
+		Icon:        "folder-plus",
+		Inputs:      []FlowPort{},
+		Outputs: []FlowPort{
+			{ID: "media_out", Name: "Media đầu ra", Type: PortTypeAny, Description: "Tệp media đa năng"},
+			{ID: "image_out", Name: "Ảnh trích xuất", Type: PortTypeImage, Description: "Đầu ra dạng ảnh"},
+			{ID: "video_out", Name: "Video đầu ra", Type: PortTypeVideo, Description: "Đầu ra dạng video"},
+			{ID: "audio_out", Name: "Âm thanh", Type: PortTypeAudio, Description: "Đầu ra dạng âm thanh"},
+			{ID: "url_out", Name: "URL nguồn", Type: PortTypeText, Description: "Đường link đã nạp"},
+		},
+		DefaultParams: map[string]any{
+			"media_title": "Tài nguyên tùy biến",
+			"media_url":   "",
+			"media_path":  "",
+		},
+		Executor: executeCustomMediaInput,
+	})
+
+	// 38. Custom Vision & Video Analyzer Node
+	RegisterNode(NodeDefinition{
+		Type:        "custom_vision_analyzer",
+		Title:       "Phân tích Thị giác & Video (Vision Analyzer)",
+		Category:    CategoryCustom,
+		Description: "Phân tích ảnh hoặc một frame video bằng Vision AI đã cấu hình; tạo prompt tái hiện dựa trên kết quả thật",
+		Icon:        "eye",
+		Inputs: []FlowPort{
+			{ID: "image_in", Name: "Ảnh cần phân tích", Type: PortTypeImage, Required: false},
+			{ID: "video_in", Name: "Video cần phân tích", Type: PortTypeVideo, Required: false},
+			{ID: "prompt_in", Name: "Chỉ thị bổ sung", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "analysis_text", Name: "Bản phân tích chi tiết", Type: PortTypeText, Description: "Nội dung phân tích trực quan sâu"},
+			{ID: "prompt_out", Name: "Prompt ngược tối ưu", Type: PortTypeText, Description: "Prompt tái tạo bằng AI"},
+			{ID: "detected_data", Name: "Dữ liệu cấu trúc", Type: PortTypeAny, Description: "Chi tiết đối tượng nhận diện"},
+		},
+		DefaultParams: map[string]any{
+			"analysis_task": "comprehensive_breakdown",
+		},
+		Executor: executeCustomVisionAnalyzer,
+	})
+
+	// 39. Custom Media Processor Node (Biến đổi media bằng FFmpeg)
+	RegisterNode(NodeDefinition{
+		Type:        "custom_media_processor",
+		Title:       "Xử lý & Biến đổi Media (Media Processor)",
+		Category:    CategoryCustom,
+		Description: "Dùng FFmpeg để đổi tỷ lệ khung hình hoặc áp dụng bộ lọc màu đã hỗ trợ trên ảnh/video",
+		Icon:        "sliders",
+		Inputs: []FlowPort{
+			{ID: "media_in", Name: "Media đầu vào", Type: PortTypeAny, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "media_out", Name: "Media thành phẩm", Type: PortTypeAny, Description: "File sau khi xử lý"},
+			{ID: "video_out", Name: "Video thành phẩm", Type: PortTypeVideo, Description: "Đầu ra dạng video"},
+			{ID: "image_out", Name: "Ảnh thành phẩm", Type: PortTypeImage, Description: "Đầu ra dạng ảnh"},
+		},
+		DefaultParams: map[string]any{
+			"operation":     "resize_aspect",
+			"aspect_ratio":  "9:16",
+			"filter_preset": "cinematic_vibrant",
+		},
+		Executor: executeCustomMediaProcessor,
+	})
+
+	// 40. Text template node; does not execute arbitrary scripts.
+	RegisterNode(NodeDefinition{
+		Type:        "custom_script_runner",
+		Title:       "Ghép template văn bản",
+		Category:    CategoryCustom,
+		Description: "Thay {{input_1}}, {{input_2}} và {{text_in}} trong template văn bản",
+		Icon:        "code",
+		Inputs: []FlowPort{
+			{ID: "input_1", Name: "Đầu vào 1", Type: PortTypeAny, Required: false},
+			{ID: "input_2", Name: "Đầu vào 2", Type: PortTypeAny, Required: false},
+			{ID: "text_in", Name: "Văn bản (Text)", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "output", Name: "Kết quả logic", Type: PortTypeAny, Description: "Dữ liệu sau khi xử lý"},
+			{ID: "result_text", Name: "Văn bản kết quả", Type: PortTypeText, Description: "Chuỗi ký tự thành phẩm"},
+			{ID: "result_data", Name: "Dữ liệu cấu trúc", Type: PortTypeConfig, Description: "Dữ liệu metadata"},
+		},
+		DefaultParams: map[string]any{
+			"template": "{{input_1}} - {{input_2}}",
+		},
+		Executor: executeCustomScriptRunner,
+	})
+
+	// 41. Custom Webhook & API Node (Kết nối mọi dịch vụ trên thế giới)
+	RegisterNode(NodeDefinition{
+		Type:        "custom_api_webhook",
+		Title:       "Kết nối API & Webhook (Webhook Node)",
+		Category:    CategoryCustom,
+		Description: "Gửi JSON request qua HTTP(S) và trả body/status từ endpoint cấu hình",
+		Icon:        "send",
+		Inputs: []FlowPort{
+			{ID: "payload_in", Name: "Dữ liệu gửi (Payload)", Type: PortTypeAny, Required: false},
+			{ID: "message_text", Name: "Tin nhắn gửi (Text)", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "response_data", Name: "Dữ liệu phản hồi", Type: PortTypeAny, Description: "JSON phản hồi từ máy chủ"},
+			{ID: "status_code", Name: "Mã trạng thái HTTP", Type: PortTypeNumber, Description: "Mã phản hồi HTTP (200, 201,...)"},
+			{ID: "response_text", Name: "Văn bản phản hồi", Type: PortTypeText, Description: "Body dạng text"},
+		},
+		DefaultParams: map[string]any{
+			"method":      "POST",
+			"webhook_url": "",
+			"auth_token":  "",
+		},
+		Executor: executeCustomAPIWebhook,
+	})
+
+	// 42. Custom export node. Publishing requires a separate consent flow.
+	RegisterNode(NodeDefinition{
+		Type:        "custom_export_publish",
+		Title:       "Xuất file media",
+		Category:    CategoryCustom,
+		Description: "Sao chép media gốc vào thư mục output và tạo đường dẫn tải; không đăng lên nền tảng",
+		Icon:        "download",
+		Inputs: []FlowPort{
+			{ID: "media_in", Name: "Media thành phẩm", Type: PortTypeAny, Required: true},
+			{ID: "title", Name: "Tiêu đề video/ảnh", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "final_file", Name: "Tệp thành phẩm", Type: PortTypeAny, Description: "Đường dẫn tệp trên hệ thống"},
+			{ID: "file_url", Name: "Đường dẫn tải về (URL)", Type: PortTypeText, Description: "Link tải về trình duyệt"},
+		},
+		DefaultParams: map[string]any{
+			"title":           "Thành phẩm xuất xưởng",
+			"filename_prefix": "aicos_export",
+		},
+		Executor: executeCustomExportPublish,
 	})
 
 	RegisterNode(NodeDefinition{

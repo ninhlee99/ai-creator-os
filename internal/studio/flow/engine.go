@@ -69,14 +69,65 @@ func ValidateGraph(graph *FlowGraph) ([]string, error) {
 			return nil, fmt.Errorf("node %s thiếu input bắt buộc '%s'", node.Title, port.Name)
 		}
 	}
-
 	// Sắp xếp topo (Topological Sort) và phát hiện chu trình (Kahn's Algorithm)
 	order, err := topologicalSort(graph)
 	if err != nil {
 		return nil, err
 	}
 
+	if err := validateGraphTerminals(graph); err != nil {
+		return nil, err
+	}
+
 	return order, nil
+}
+
+func validateGraphTerminals(graph *FlowGraph) error {
+	terminals := map[string]bool{}
+	reverseEdges := make(map[string][]string, len(graph.Nodes))
+	for _, edge := range graph.Edges {
+		reverseEdges[edge.ToNode] = append(reverseEdges[edge.ToNode], edge.FromNode)
+	}
+	for _, node := range graph.Nodes {
+		if isWorkflowTerminal(node.Type) {
+			terminals[node.ID] = true
+		}
+	}
+	if len(terminals) == 0 {
+		return nil
+	}
+	reachesTerminal := make(map[string]bool, len(graph.Nodes))
+	queue := make([]string, 0, len(terminals))
+	for id := range terminals {
+		reachesTerminal[id] = true
+		queue = append(queue, id)
+	}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		for _, parent := range reverseEdges[current] {
+			if !reachesTerminal[parent] {
+				reachesTerminal[parent] = true
+				queue = append(queue, parent)
+			}
+		}
+	}
+	for _, node := range graph.Nodes {
+		if !reachesTerminal[node.ID] {
+			return fmt.Errorf("node %q không dẫn tới node kết thúc", node.Title)
+		}
+	}
+	return nil
+}
+
+func isWorkflowTerminal(nodeType string) bool {
+	switch nodeType {
+	case "video_output", "image_output", "video_master_output", "custom_export_publish",
+		"preview_media", "preview_image", "preview_video", "workflow_output", "custom_api_webhook":
+		return true
+	default:
+		return false
+	}
 }
 
 func nodeInputPort(node *FlowNode, portID string) (FlowPort, bool) {
@@ -104,11 +155,11 @@ func nodeInputPorts(node *FlowNode) []FlowPort {
 	if node.Type == "workflow_output" {
 		return []FlowPort{{ID: "value", Name: "Giá trị", Type: workflowNodeValueType(node), Required: true}}
 	}
+	if def, ok := GetNodeDefinition(node.Type); ok && node.Type != "workflow_call" && !strings.HasPrefix(node.Type, "workflow_call_") {
+		return def.Inputs
+	}
 	if len(node.Inputs) > 0 {
 		return node.Inputs
-	}
-	if def, ok := GetNodeDefinition(node.Type); ok {
-		return def.Inputs
 	}
 	return nil
 }
@@ -123,11 +174,11 @@ func nodeOutputPorts(node *FlowNode) []FlowPort {
 	case "workflow_output":
 		return []FlowPort{{ID: "value", Name: "Giá trị", Type: workflowNodeValueType(node)}}
 	}
+	if def, ok := GetNodeDefinition(node.Type); ok && node.Type != "workflow_call" && !strings.HasPrefix(node.Type, "workflow_call_") {
+		return def.Outputs
+	}
 	if len(node.Outputs) > 0 {
 		return node.Outputs
-	}
-	if def, ok := GetNodeDefinition(node.Type); ok {
-		return def.Outputs
 	}
 	return nil
 }
@@ -413,6 +464,23 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			appendRunLog(fmt.Sprintf("LỖI tại node '%s': %s", node.Title, execErr.Error()))
 			return run, execErr
 		}
+		for _, edge := range graph.Edges {
+			if edge.FromNode != nodeID {
+				continue
+			}
+			value, exists := outputs[edge.FromPort]
+			if !exists || isEmptyFlowValue(value) {
+				execErr = fmt.Errorf("node %q không trả dữ liệu cho cổng đã nối %q", node.Title, edge.FromPort)
+				nodeState.Status = "failed"
+				nodeState.Error = execErr.Error()
+				nodeState.FinishedAt = time.Now().Format(time.RFC3339)
+				run.NodeStates[nodeID] = nodeState
+				run.Status = "failed"
+				run.Log = logBuilder.String()
+				appendRunLog("LỖI contract output: " + execErr.Error())
+				return run, execErr
+			}
+		}
 
 		// Lưu kết quả của node vào bảng trung gian
 		if outputs == nil {
@@ -493,6 +561,16 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 			if finalVid, ok := outputs["master_video"].(string); ok {
 				run.FinalOutput = finalVid
 			}
+		} else if node.Type == "custom_export_publish" {
+			if finalFile, ok := outputs["final_file"].(string); ok {
+				run.FinalOutput = finalFile
+			}
+		} else if node.Type == "preview_media" || node.Type == "preview_image" || node.Type == "preview_video" {
+			if preview, ok := outputs["media_out"].(string); ok {
+				run.FinalOutput = preview
+			} else if preview, ok := outputs["images"].(string); ok {
+				run.FinalOutput = preview
+			}
 		} else if node.Type == "workflow_output" {
 			if finalMedia := firstMediaPath(nodeInputs["value"]); finalMedia != "" {
 				run.FinalOutput = finalMedia
@@ -515,13 +593,33 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	return run, nil
 }
 
+func isEmptyFlowValue(value any) bool {
+	if value == nil {
+		return true
+	}
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed) == ""
+	case []string:
+		return len(typed) == 0
+	case []any:
+		return len(typed) == 0
+	case map[string]any:
+		return len(typed) == 0
+	default:
+		return false
+	}
+}
+
 func isVisualNodeType(nodeType string) bool {
 	switch nodeType {
 	case "character_input", "product_input", "product_extractor", "image_composite",
 		"virtual_tryon", "google_flow_video", "muse_ai_video", "video_source",
 		"video_upscale", "concat_scenes", "video_output", "image_output",
 		"muse_ai_neural_render", "cinematic_color_grading", "video_master_output",
-		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_output":
+		"preview_media", "preview_image", "preview_video", "workflow_call", "workflow_output",
+		"scene_environment", "lighting_atmosphere", "dance_motion_extractor", "dance_retarget",
+		"custom_universal_ai", "custom_media_input", "custom_vision_analyzer", "custom_media_processor", "custom_export_publish":
 		return true
 	default:
 		return false

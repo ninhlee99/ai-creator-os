@@ -43,8 +43,21 @@ func executeProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[s
 	if src == "" {
 		src = nodeParamString(node.Params, "product_image", "")
 	}
+	if src == "" {
+		src = nodeParamString(node.Params, "source_image", "")
+	}
+	if src == "" {
+		src = nodeParamString(node.Params, "image", "")
+	}
 
-	// 2. Nếu là URL trực tuyến (TikTok, Reels, Instagram, Shopee, Web URL)
+	// 2. Tìm kiếm trong kho tài nguyên cục bộ
+	if src != "" {
+		if resolved := resolveAssetPath(src, ctx.WorkDir); resolved != "" {
+			src = resolved
+		}
+	}
+
+	// 3. Nếu là URL trực tuyến (TikTok, Reels, Instagram, Shopee, Web URL)
 	if strings.HasPrefix(src, "http://") || strings.HasPrefix(src, "https://") {
 		ctx.Log(fmt.Sprintf("ProductExtractorNode: Đang tải tài nguyên nguồn từ link: %s", src))
 		downloaded, _, err := DownloadMediaResource(ctx.Context, src, ctx.WorkDir, "auto")
@@ -74,7 +87,7 @@ func executeProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[s
 		}
 
 		if err := ExtractFrameFromVideo(ctx.Context, src, extractedFrame, timestamp); err != nil {
-			_ = ExtractFrameFromVideo(ctx.Context, src, extractedFrame, 0.5)
+			return nil, fmt.Errorf("không trích xuất được frame video: %w", err)
 		}
 		sourceImage = extractedFrame
 		ctx.Log(fmt.Sprintf("ProductExtractorNode: Đã trích xuất khung hình sản phẩm từ video '%s' tại %.1fs", filepath.Base(src), timestamp))
@@ -87,29 +100,14 @@ func executeProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[s
 
 	autoCrop := nodeParamBool(node.Params, "auto_crop", true)
 	refineEdges := nodeParamBool(node.Params, "refine_edges", true)
-	engineMode := nodeParamString(node.Params, "segmentation_engine", "auto")
-
-	// Phối hợp Web AI Vision nếu người dùng yêu cầu Web AI phân tích cô lập sản phẩm
-	if engineMode == "web_ai_muse" || engineMode == "hybrid" {
-		ctx.Log("ProductExtractorNode: Đang gửi ảnh sang Web AI Muse để nhận diện và định vị cấu trúc sản phẩm...")
-		visPrompt := "Analyze this product photo. Identify the exact garment or product subject, its silhouette boundaries, and material details."
-		if desc, err := callMuseChatText(ctx.Context, "Product Segmentation & Cutout", visPrompt, []string{sourceImage}); err == nil && len(desc) > 20 {
-			ctx.Log(fmt.Sprintf("ProductExtractorNode: Web AI Muse đã phân tích cấu trúc sản phẩm thành công (%d ký tự)", len(desc)))
-		}
-	}
-
 	// 5. Tiến hành bóc tách sản phẩm, loại bỏ phông nền tạo PNG trong suốt
 	isolateGarment := nodeParamBool(node.Params, "isolate_garment", false) || nodeParamString(node.Params, "subject_type", "") == "garment"
 	removeSkin := nodeParamBool(node.Params, "remove_skin", false)
 	if err := segmentGarmentToCutout(sourceImage, cutoutPath, maskPath, autoCrop, refineEdges, isolateGarment, removeSkin); err != nil {
-		ctx.Log(fmt.Sprintf("ProductExtractorNode: Thuật toán RGBA chuyển sang FFmpeg colorkey: %v", err))
-		if ctx.FFmpegRunner != nil {
-			_ = ctx.FFmpegRunner(ctx.Context, "-y", "-i", sourceImage, "-vf", "colorkey=0xFFFFFF:0.15:0.1,scale=800:800:force_original_aspect_ratio=decrease", "-pix_fmt", "rgba", cutoutPath)
-			_ = ctx.FFmpegRunner(ctx.Context, "-y", "-i", sourceImage, "-vf", "format=gray,eq=contrast=2.0:brightness=-0.1", maskPath)
-		} else {
-			_ = copyFile(sourceImage, cutoutPath)
-			_ = copyFile(sourceImage, maskPath)
-		}
+		return nil, fmt.Errorf("không tách được nền sản phẩm: %w", err)
+	}
+	if !fileExists(cutoutPath) || !fileExists(maskPath) {
+		return nil, fmt.Errorf("bộ tách nền không tạo đủ ảnh cutout và mask")
 	}
 
 	ctx.Log(fmt.Sprintf("ProductExtractorNode: Đã bóc tách thành công sản phẩm trong suốt -> %s", filepath.Base(cutoutPath)))
@@ -479,28 +477,28 @@ func executeImageComposite(ctx *ExecutionContext, node *FlowNode, inputs map[str
 	scale := nodeParamFloat(node.Params, "scale", 0.45)
 
 	// Ghép sản phẩm vào nhân vật mẫu theo vị trí tự nhiên
-	if ctx.FFmpegRunner != nil {
-		// overlay filter: đặt sản phẩm ở góc cầm tự nhiên (phía dưới bên phải)
-		overlayX := "W-w-50"
-		overlayY := "H-h-120"
-		if placement == "beside" {
-			overlayX = "50"
-			overlayY = "(H-h)/2"
-		} else if placement == "foreground" {
-			overlayX = "(W-w)/2"
-			overlayY = "H-h-80"
-		}
-
-		scaleFilter := fmt.Sprintf("scale=iw*%.2f:-1", scale)
-		filterGraph := fmt.Sprintf("[1:v]%s[p];[0:v][p]overlay=%s:%s", scaleFilter, overlayX, overlayY)
-
-		err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", charImg, "-i", prodImg, "-filter_complex", filterGraph, "-q:v", "2", compositePath)
-		if err != nil {
-			// Fallback copy ảnh nhân vật nếu overlay ffmpeg gặp lỗi định dạng
-			_ = copyFile(charImg, compositePath)
-		}
-	} else {
-		_ = copyFile(charImg, compositePath)
+	if placement != "beside" && placement != "foreground" && placement != "holding_hand" {
+		return nil, fmt.Errorf("vị trí ghép không hỗ trợ: %s", placement)
+	}
+	if scale <= 0 || scale > 1 {
+		return nil, fmt.Errorf("tỷ lệ sản phẩm phải lớn hơn 0 và không vượt quá 1")
+	}
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Image Composite cần FFmpeg")
+	}
+	overlayX, overlayY := "W-w-50", "H-h-120"
+	if placement == "beside" {
+		overlayX, overlayY = "50", "(H-h)/2"
+	} else if placement == "foreground" {
+		overlayX, overlayY = "(W-w)/2", "H-h-80"
+	}
+	scaleFilter := fmt.Sprintf("scale=iw*%.2f:-1", scale)
+	filterGraph := fmt.Sprintf("[1:v]%s[p];[0:v][p]overlay=%s:%s", scaleFilter, overlayX, overlayY)
+	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", charImg, "-i", prodImg, "-filter_complex", filterGraph, "-q:v", "2", compositePath); err != nil {
+		return nil, fmt.Errorf("FFmpeg ghép ảnh thất bại: %w", err)
+	}
+	if !fileExists(compositePath) || !isImageFile(compositePath) {
+		return nil, fmt.Errorf("FFmpeg không tạo được ảnh ghép hợp lệ")
 	}
 
 	ctx.Log(fmt.Sprintf("ImageCompositeNode: Đã ghép sản phẩm với nhân vật mẫu (kiểu=%s) -> %s", placement, filepath.Base(compositePath)))
@@ -512,95 +510,172 @@ func executeImageComposite(ctx *ExecutionContext, node *FlowNode, inputs map[str
 
 func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoIn := inputString(inputs, "video_in", "")
-	if videoIn == "" || !fileExists(videoIn) {
+	if videoIn == "" {
+		videoIn = inputString(inputs, "video_path", "")
+	}
+	if videoIn == "" {
+		videoIn = nodeParamString(node.Params, "video_path", "")
+	}
+	if videoIn != "" {
+		if resolved := resolveAssetPath(videoIn, ctx.WorkDir); resolved != "" {
+			videoIn = resolved
+		}
+	}
+	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {
 		return nil, fmt.Errorf("DanceMotionExtractorNode: Thiếu video gốc")
 	}
-
-	keyframe1 := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_keyframe_01.jpg", node.ID))
-	keyframe2 := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_keyframe_02.jpg", node.ID))
-	extractedAudio := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_beat_audio.aac", node.ID))
-
-	if ctx.FFmpegRunner != nil {
-		// Trích xuất 2 keyframe bối cảnh và vũ đạo
-		_ = ctx.FFmpegRunner(ctx.Context, "-y", "-ss", "0.5", "-i", videoIn, "-vframes", "1", "-q:v", "2", keyframe1)
-		_ = ctx.FFmpegRunner(ctx.Context, "-y", "-ss", "3.0", "-i", videoIn, "-vframes", "1", "-q:v", "2", keyframe2)
-		// Trích xuất audio
-		_ = ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vn", "-c:a", "aac", extractedAudio)
+	duration, err := probeFlowDuration(videoIn)
+	if err != nil {
+		return nil, fmt.Errorf("không đọc được thời lượng video nhảy: %w", err)
+	}
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("bóc tách vũ đạo cần FFmpeg")
+	}
+	frameCount := nodeParamInt(node.Params, "keyframe_count", 5)
+	if frameCount < 2 || frameCount > 12 {
+		return nil, fmt.Errorf("keyframe_count phải từ 2 đến 12")
+	}
+	keyframes := make([]string, 0, frameCount)
+	for i := 0; i < frameCount; i++ {
+		timestamp := duration * float64(i+1) / float64(frameCount+1)
+		frame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_keyframe_%02d.jpg", node.ID, i+1))
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-ss", fmt.Sprintf("%.3f", timestamp), "-i", videoIn, "-vframes", "1", "-q:v", "2", frame); err != nil || !fileExists(frame) {
+			return nil, fmt.Errorf("không trích xuất được keyframe %.2fs", timestamp)
+		}
+		keyframes = append(keyframes, frame)
+	}
+	if ctx.AnalyzeImages == nil {
+		return nil, fmt.Errorf("bóc tách chuyển động cần Vision AI đã cấu hình")
+	}
+	styleHint := nodeParamString(node.Params, "dance_style", "")
+	analysisPrompt := fmt.Sprintf("Phân tích thứ tự chuyển động cơ thể qua các keyframe của video dài %.2f giây. Mô tả pose, hướng, nhịp và chuyển tiếp chỉ từ hình đã thấy; không đoán BPM. Gợi ý phong cách: %s", duration, styleHint)
+	movement, err := ctx.AnalyzeImages(ctx.Context, analysisPrompt, keyframes)
+	if err != nil {
+		return nil, fmt.Errorf("Vision AI không phân tích được chuyển động từ keyframe: %w", err)
+	}
+	if strings.TrimSpace(movement) == "" {
+		return nil, fmt.Errorf("Vision AI trả mô tả chuyển động rỗng")
+	}
+	audioPath := ""
+	if hasAudio, err := probeFlowHasAudio(videoIn); err != nil {
+		return nil, err
+	} else if hasAudio {
+		audioPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_beat_audio.aac", node.ID))
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vn", "-c:a", "aac", audioPath); err != nil || !fileExists(audioPath) {
+			return nil, fmt.Errorf("không trích xuất được audio nguồn")
+		}
+	} else if nodeParamBool(node.Params, "require_audio", false) {
+		return nil, fmt.Errorf("video nhảy đã chọn không có audio")
 	}
 
-	keyframes := []string{}
-	if fileExists(keyframe1) {
-		keyframes = append(keyframes, keyframe1)
-	}
-	if fileExists(keyframe2) {
-		keyframes = append(keyframes, keyframe2)
-	}
-
-	motionData := map[string]any{
-		"bpm":              128,
-		"dance_style":      "modern_tiktok_dance",
-		"rhythm":           "upbeat",
-		"keyframes_count":  len(keyframes),
-		"choreography_tag": "viral_dance_sequence",
-	}
-
-	ctx.Log(fmt.Sprintf("DanceMotionExtractorNode: Đã trích xuất vũ đạo và %d keyframes từ video gốc", len(keyframes)))
+	motionData := map[string]any{"movement_analysis": movement, "duration_seconds": duration, "keyframes_count": len(keyframes)}
+	ctx.Log(fmt.Sprintf("DanceMotionExtractorNode: Phân tích %d keyframe trong video %.2fs", len(keyframes), duration))
 
 	return map[string]any{
 		"motion_data": motionData,
 		"keyframes":   keyframes,
-		"beat_audio":  extractedAudio,
+		"beat_audio":  audioPath,
+		"dance_style": movement,
 	}, nil
 }
 
 func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	charImg := inputString(inputs, "character_image", "")
-	if charImg == "" || !fileExists(charImg) {
+	if charImg == "" {
+		charImg = inputString(inputs, "fitted_image", "")
+	}
+	if charImg != "" {
+		if resolved := resolveAssetPath(charImg, ctx.WorkDir); resolved != "" {
+			charImg = resolved
+		}
+	}
+	if charImg == "" || !fileExists(charImg) || !isImageFile(charImg) {
 		return nil, fmt.Errorf("DanceRetargetNode: Thiếu ảnh nhân vật mẫu")
 	}
 
-	expression := nodeParamString(node.Params, "expression", "expressive_smile")
+	expression := nodeParamString(node.Params, "expression", "sensual_alluring")
+	danceType := nodeParamString(node.Params, "dance_type", "sexy_dance")
+	envDesc := inputString(inputs, "environment_desc", "")
+	lightDesc := inputString(inputs, "lighting_desc", "")
+	outfitDesc := inputString(inputs, "outfit_desc", "")
+	motionData, ok := inputs["motion_data"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("Dance Prompt Builder cần motion_data từ video source")
+	}
+	movement := strings.TrimSpace(fmt.Sprint(motionData["movement_analysis"]))
+	if movement == "" || movement == "<nil>" {
+		return nil, fmt.Errorf("motion_data không có phân tích chuyển động")
+	}
 
-	// Tạo prompt mô tả chuyển động vũ đạo nghệ thuật chuẩn chính sách Veo / Google Flow
-	prompt := fmt.Sprintf("Cinematic vertical 9:16 video of the adult character in the reference images performing an energetic modern dance choreography. Fluid body movement, dynamic rhythmic dance gestures, natural poses, %s, atmospheric lighting, smooth motion, high fidelity, 4k quality. Single subject, preserve consistent character appearance from references, no extra people, no text, no blur.", expression)
+	var keyframes []string
+	if kfRaw, ok := inputs["keyframes"]; ok {
+		if kfList, ok := kfRaw.([]string); ok {
+			keyframes = kfList
+		}
+	}
 
-	// Chuẩn bị ingredients cho bộ sinh video (chỉ đưa ảnh nhân vật của kênh để tránh lỗi chính sách người nổi tiếng)
+	prompt := fmt.Sprintf("Create a vertical 9:16 dance video with the character from the reference image. Use this observed motion sequence as guidance; do not claim exact motion capture: %s. Dance style: %s. Expression: %s. Setting: %s. Lighting: %s. Outfit: %s. Preserve the visible character identity and keep one subject.", movement, danceType, expression, envDesc, lightDesc, outfitDesc)
+
 	ingredients := []string{charImg}
+	for _, kf := range keyframes {
+		if fileExists(kf) && len(ingredients) < 3 {
+			ingredients = append(ingredients, kf)
+		}
+	}
+	if extra, ok := inputs["ingredients"]; ok {
+		for _, path := range flowStringList(extra) {
+			if fileExists(path) && isImageFile(path) && len(ingredients) < 4 && !containsString(ingredients, path) {
+				ingredients = append(ingredients, path)
+			}
+		}
+	}
 
-	ctx.Log(fmt.Sprintf("DanceRetargetNode: Đã gắn vũ đạo & biểu cảm '%s' vào nhân vật mẫu", expression))
+	ctx.Log(fmt.Sprintf("Dance Prompt Builder: Tạo prompt từ phân tích chuyển động (style=%s)", danceType))
 
 	return map[string]any{
 		"prompt_choreography": prompt,
+		"prompt":              prompt,
 		"ingredients":         ingredients,
+		"character_image":     charImg,
 	}, nil
 }
 
 func executeAudioMerge(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoIn := inputString(inputs, "video_in", "")
 	audioIn := inputString(inputs, "audio_in", "")
+	audioCodec := strings.ToLower(nodeParamString(node.Params, "audio_codec", "aac"))
+	if audioCodec != "aac" && audioCodec != "copy" {
+		return nil, fmt.Errorf("audio_codec chỉ hỗ trợ aac hoặc copy")
+	}
 
-	if videoIn == "" || !fileExists(videoIn) {
+	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {
 		return nil, fmt.Errorf("AudioMergeNode: Thiếu file video đầu vào")
 	}
-	if audioIn == "" || !fileExists(audioIn) {
-		ctx.Log("AudioMergeNode: Không có audio riêng, giữ nguyên track âm thanh của video")
+	if audioIn == "" {
+		hasAudio, err := probeFlowHasAudio(videoIn)
+		if err != nil {
+			return nil, err
+		}
+		if !hasAudio {
+			return nil, fmt.Errorf("không có audio riêng hoặc audio nhúng trong video")
+		}
 		return map[string]any{"video_out": videoIn}, nil
+	}
+	if !fileExists(audioIn) || !isAudioFile(audioIn) {
+		return nil, fmt.Errorf("AudioMergeNode: Track audio không hợp lệ")
 	}
 
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_audio_merged.mp4", node.ID))
 
-	if ctx.FFmpegRunner != nil {
-		err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-i", audioIn, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac", "-shortest", outPath)
-		if err != nil {
-			// Thử lại với âm thanh fallback
-			_ = ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-i", audioIn, "-c:v", "copy", "-c:a", "aac", outPath)
-		}
-	} else {
-		_ = copyFile(videoIn, outPath)
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Audio Merge cần FFmpeg")
 	}
-
-	if !fileExists(outPath) {
-		outPath = videoIn
+	args := []string{"-y", "-i", videoIn, "-i", audioIn, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", audioCodec, "-shortest", outPath}
+	if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+		return nil, fmt.Errorf("không ghép được audio: %w", err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return nil, fmt.Errorf("FFmpeg không tạo được video có audio")
 	}
 
 	ctx.Log(fmt.Sprintf("AudioMergeNode: Đã ghép âm thanh vào video -> %s", filepath.Base(outPath)))
@@ -612,30 +687,32 @@ func executeAudioMerge(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 
 func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoIn := inputString(inputs, "video_in", "")
-	if videoIn == "" || !fileExists(videoIn) {
+	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {
 		return nil, fmt.Errorf("VideoUpscaleNode: Thiếu file video đầu vào")
 	}
 
 	resolution := strings.ToLower(nodeParamString(node.Params, "resolution", "4k"))
+	crf := nodeParamInt(node.Params, "crf", 18)
+	if crf < 0 || crf > 51 {
+		return nil, fmt.Errorf("CRF phải từ 0 đến 51")
+	}
 	targetScale := "1080:1920"
-	if resolution == "4k" {
+	if resolution == "4k" || resolution == "2160p" {
 		targetScale = "2160:3840"
+	} else if resolution != "1080p" {
+		return nil, fmt.Errorf("resolution chưa hỗ trợ: %s", resolution)
 	}
 
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_upscaled_%s.mp4", node.ID, resolution))
 
-	if ctx.FFmpegRunner != nil {
-		err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vf", fmt.Sprintf("scale=%s:flags=lanczos,unsharp=5:5:0.8:3:3:0.4", targetScale), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "copy", outPath)
-		if err != nil {
-			// Fallback copy nếu upscale lỗi
-			_ = copyFile(videoIn, outPath)
-		}
-	} else {
-		_ = copyFile(videoIn, outPath)
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Video Upscale cần FFmpeg")
 	}
-
-	if !fileExists(outPath) {
-		outPath = videoIn
+	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vf", fmt.Sprintf("scale=%s:force_original_aspect_ratio=decrease:flags=lanczos,pad=%s:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:3:3:0.4", targetScale, targetScale), "-c:v", "libx264", "-preset", "veryfast", "-crf", fmt.Sprint(crf), "-pix_fmt", "yuv420p", "-c:a", "copy", outPath); err != nil {
+		return nil, fmt.Errorf("không upscale được video: %w", err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return nil, fmt.Errorf("FFmpeg không tạo được video đã upscale")
 	}
 
 	ctx.Log(fmt.Sprintf("VideoUpscaleNode: Đã nâng cấp video lên chuẩn %s (%s)", strings.ToUpper(resolution), filepath.Base(outPath)))
@@ -648,7 +725,10 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	scenes := []string{}
 	for _, key := range []string{"scene_1", "scene_2", "scene_3"} {
-		if path := inputString(inputs, key, ""); path != "" && fileExists(path) {
+		if path := inputString(inputs, key, ""); path != "" {
+			if !fileExists(path) || !isVideoFile(path) {
+				return nil, fmt.Errorf("phân cảnh %s không phải video hợp lệ", key)
+			}
 			scenes = append(scenes, path)
 		}
 	}
@@ -659,23 +739,49 @@ func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	if len(scenes) == 1 {
 		return map[string]any{"master_video": scenes[0]}, nil
 	}
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Concat Scenes cần FFmpeg")
+	}
 
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_master.mp4", node.ID))
-	listFile := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_concat_list.txt", node.ID))
-
-	var listContent strings.Builder
-	for _, sc := range scenes {
-		listContent.WriteString(fmt.Sprintf("file '%s'\n", sc))
-	}
-	_ = os.WriteFile(listFile, []byte(listContent.String()), 0o644)
-
-	if ctx.FFmpegRunner != nil {
-		err := ctx.FFmpegRunner(ctx.Context, "-y", "-f", "concat", "-safe", "0", "-i", listFile, "-c", "copy", outPath)
+	args := []string{"-y"}
+	allScenesHaveAudio := true
+	for _, scene := range scenes {
+		args = append(args, "-i", scene)
+		hasAudio, err := probeFlowHasAudio(scene)
 		if err != nil {
-			_ = copyFile(scenes[0], outPath)
+			return nil, fmt.Errorf("không thể kiểm tra audio của scene %s: %w", filepath.Base(scene), err)
 		}
-	} else {
-		_ = copyFile(scenes[0], outPath)
+		allScenesHaveAudio = allScenesHaveAudio && hasAudio
+	}
+	filters := make([]string, 0, len(scenes)*2+1)
+	concatInputs := make([]string, 0, len(scenes)*2)
+	for i := range scenes {
+		filters = append(filters, fmt.Sprintf("[%d:v:0]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,fps=30,setsar=1,format=yuv420p[v%d]", i, i))
+		concatInputs = append(concatInputs, fmt.Sprintf("[v%d]", i))
+		if allScenesHaveAudio {
+			filters = append(filters, fmt.Sprintf("[%d:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a%d]", i, i))
+			concatInputs = append(concatInputs, fmt.Sprintf("[a%d]", i))
+		}
+	}
+	audioCount := 0
+	outputLabels := "[vout]"
+	if allScenesHaveAudio {
+		audioCount = 1
+		outputLabels = "[vout][aout]"
+	}
+	concatFilter := strings.Join(concatInputs, "") + fmt.Sprintf("concat=n=%d:v=1:a=%d%s", len(scenes), audioCount, outputLabels)
+	filters = append(filters, concatFilter)
+	args = append(args, "-filter_complex", strings.Join(filters, ";"), "-map", "[vout]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart")
+	if allScenesHaveAudio {
+		args = append(args, "-map", "[aout]", "-c:a", "aac")
+	}
+	args = append(args, outPath)
+	if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+		return nil, fmt.Errorf("không ghép được video scenes: %w", err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return nil, fmt.Errorf("FFmpeg không tạo được video scenes")
 	}
 
 	ctx.Log(fmt.Sprintf("ConcatScenesNode: Đã ghép nối %d phân cảnh thành video master -> %s", len(scenes), filepath.Base(outPath)))
@@ -687,37 +793,157 @@ func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 
 func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	charImg := inputString(inputs, "character_image", "")
+	if resolved := resolveAssetPath(charImg, ctx.WorkDir); resolved != "" {
+		charImg = resolved
+	}
+	if charImg == "" || !fileExists(charImg) || !isImageFile(charImg) {
+		return nil, fmt.Errorf("Outfit Prompt Builder cần ảnh nhân vật hợp lệ")
+	}
+
 	garmentImg := inputString(inputs, "garment_image", "")
-
-	if charImg == "" || !fileExists(charImg) {
-		return nil, fmt.Errorf("VirtualTryOnNode: Thiếu ảnh nhân vật mẫu")
+	if garmentImg == "" {
+		garmentImg = inputString(inputs, "product_image", "")
 	}
-	if garmentImg == "" || !fileExists(garmentImg) {
-		return nil, fmt.Errorf("VirtualTryOnNode: Thiếu ảnh trang phục mẫu")
+	if garmentImg == "" {
+		garmentImg = inputString(inputs, "cutout_image", "")
+	}
+	if resolved := resolveAssetPath(garmentImg, ctx.WorkDir); resolved != "" {
+		garmentImg = resolved
+	}
+	if garmentImg != "" && (!fileExists(garmentImg) || !isImageFile(garmentImg)) {
+		return nil, fmt.Errorf("ảnh trang phục không hợp lệ")
 	}
 
-	fittedPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_fitted.jpg", node.ID))
-	maskPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_tryon_mask.png", node.ID))
+	fitStyle := nodeParamString(node.Params, "fit_style", "seamless_luxury")
+	outfitName := inputString(inputs, "outfit_name", nodeParamString(node.Params, "outfit_name", "trang phục thời trang cao cấp"))
 
-	if ctx.FFmpegRunner != nil {
-		// Tiêu chuẩn Editor điện ảnh: Giữ nguyên 100% gương mặt nhân vật (từ cằm trở lên),
-		// bóc tách nền trang phục bằng colorkey tránh mảng đen và đặt vị trí tự nhiên từ ngang ngực trở xuống (H*0.48).
-		err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", charImg, "-i", garmentImg,
-			"-filter_complex", "[1:v]colorkey=black:0.15:0.05,scale=iw*0.72:ih*0.72[g];[0:v][g]overlay=(W-w)/2:H*0.48[out]",
-			"-map", "[out]", "-q:v", "2", fittedPath)
-		if err != nil || !fileExists(fittedPath) {
-			_ = copyFile(charImg, fittedPath)
+	var outfitDesc string
+	switch fitStyle {
+	case "sexy_dance_fit", "kpop_stage_outfit":
+		outfitDesc = fmt.Sprintf("wearing %s, styled as a K-pop performance outfit with coordinated stage details", outfitName)
+	case "bodycon_glamour":
+		outfitDesc = fmt.Sprintf("wearing %s in a glamorous bodycon styling", outfitName)
+	default:
+		outfitDesc = fmt.Sprintf("wearing %s with seamless bespoke luxury tailoring", outfitName)
+	}
+
+	ingredients := []string{charImg}
+	if garmentImg != "" {
+		ingredients = append(ingredients, garmentImg)
+	}
+	ctx.Log(fmt.Sprintf("Outfit Prompt Builder: Giữ ảnh tham chiếu gốc, tạo mô tả outfit (%s)", fitStyle))
+	return map[string]any{
+		"fitted_image":    charImg,
+		"character_image": charImg,
+		"garment_image":   garmentImg,
+		"ingredients":     ingredients,
+		"outfit_desc":     outfitDesc,
+	}, nil
+}
+
+func executeSceneEnvironment(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	locationType := nodeParamString(node.Params, "location_type", "fashion_boutique")
+	customLocation := nodeParamString(node.Params, "custom_location", "")
+	depthOfField := nodeParamString(node.Params, "depth_of_field", "cinematic_bokeh")
+	charImg := inputString(inputs, "character_image", "")
+	promptIn := inputString(inputs, "prompt_in", "")
+
+	var envDesc string
+	switch locationType {
+	case "luxury_penthouse":
+		envDesc = "an ultra-luxurious modern penthouse apartment with floor-to-ceiling glass panoramic windows overlooking a breathtaking modern skyline, marble flooring, sophisticated interior architecture"
+	case "minimalist_studio":
+		envDesc = "a sleek minimalist high-fashion studio with soft curved cyclorama background, elegant architectural arches, neutral cream and warm beige aesthetic"
+	case "fashion_boutique":
+		envDesc = "a prestigious Paris haute-couture fashion boutique, warm golden ambient interior accents, mirrored dressing display, luxury velvet decor"
+	case "paris_runway":
+		envDesc = "an iconic Paris Fashion Week indoor grand runway stage, polished glossy reflective floor, dramatic fashion editorial stage backdrop, international fashion show atmosphere"
+	case "cafe_chill":
+		envDesc = "a cozy chic aesthetic Seoul designer cafe, warm wooden textures, soft aesthetic indoor plants, sunlit window seats, inviting contemporary lifestyle vibe"
+	case "sunset_rooftop":
+		envDesc = "a glamorous open-air skyscraper rooftop terrace during sunset, panoramic skyline view with glass railing, luxury lounge aesthetic"
+	case "neon_dance_studio":
+		envDesc = "a professional modern urban dance rehearsal studio with full-wall reflective mirrors, polished dark hardwood dance floor, vibrant programmable LED light strips framing the space"
+	case "kpop_concert_stage":
+		envDesc = "a spectacular K-pop live concert main stage, giant immersive visual LED backdrop screens displaying dynamic particle motion graphics, concert arena production"
+	case "cyberpunk_rooftop":
+		envDesc = "a futuristic cyber city rooftop at night, glowing neon signs, wet reflective floor surfaces reflecting colorful lights, high-tech urban nightscape"
+	case "sensual_club_lounge":
+		envDesc = "an exclusive sensual VIP club lounge, ambient mood lighting, moody atmospheric haze, plush velvet furnishings, seductive nightlife ambiance"
+	case "custom":
+		if customLocation != "" {
+			envDesc = customLocation
+		} else {
+			envDesc = "a stylish aesthetic studio environment with modern artistic backdrop"
 		}
-	} else {
-		_ = copyFile(charImg, fittedPath)
+	default:
+		envDesc = locationType
 	}
-	_ = copyFile(garmentImg, maskPath)
 
-	ctx.Log(fmt.Sprintf("VirtualTryOnNode: Đã thay trang phục thời trang mới cho nhân vật mẫu (bảo toàn khuôn mặt) -> %s", filepath.Base(fittedPath)))
+	envPrompt := fmt.Sprintf("Setting and environment: %s, with %s camera depth of field.", envDesc, depthOfField)
+	promptOut := promptIn
+	if promptOut != "" {
+		promptOut = fmt.Sprintf("%s, set in %s", promptOut, envDesc)
+	} else {
+		promptOut = envPrompt
+	}
+
+	ctx.Log(fmt.Sprintf("SceneEnvironmentNode: Đã thiết lập không gian bối cảnh '%s' (%s)", locationType, envDesc))
+
+	outputs := map[string]any{
+		"environment_desc":   envDesc,
+		"environment_prompt": envPrompt,
+		"prompt_out":         promptOut,
+	}
+	if charImg != "" {
+		outputs["character_image"] = charImg
+	}
+	return outputs, nil
+}
+
+func executeLightingAtmosphere(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	timeOfDay := nodeParamString(node.Params, "time_of_day", "golden_hour")
+	colorTemp := nodeParamString(node.Params, "color_temperature", "warm_golden")
+	intensity := nodeParamString(node.Params, "light_intensity", "soft_diffused")
+	promptIn := inputString(inputs, "prompt_in", "")
+	environment := inputString(inputs, "environment_desc", "")
+
+	var lightDesc string
+	switch timeOfDay {
+	case "golden_hour":
+		lightDesc = "golden hour warm sunset lighting, soft sun flares, radiant backlight emphasizing silhouette and contours, luminous golden rim light"
+	case "morning_sunlight":
+		lightDesc = "fresh early morning natural sunlight streaming through, clean soft daylight illumination, pure clarity, gentle highlights"
+	case "high_noon_editorial":
+		lightDesc = "crisp high-fashion editorial daylight, high-key clear lighting, pristine clarity, sharp shadow contrast"
+	case "blue_hour_dusk":
+		lightDesc = "cinematic blue hour twilight, gentle ambient dusk hues mixed with warm interior illumination, romantic moody contrast"
+	case "night_neon":
+		lightDesc = "vibrant night neon illumination, dramatic dual-tone cyan and magenta neon edge highlights, striking nighttime contrast"
+	case "dynamic_stage_lights":
+		lightDesc = "dynamic theatrical concert stage lighting, pulsating multi-color spotlights synchronized to musical rhythm, dramatic volumetric light beams, glowing rim light"
+	case "studio_three_point":
+		lightDesc = "professional commercial 3-point studio softbox lighting (key light, fill light, and delicate hair/rim backlight) perfectly sculpting facial features and garment texture"
+	case "midnight_luxury":
+		lightDesc = "sophisticated midnight ambient lighting, moody dimmed luxury warmth, subtle accent illumination"
+	default:
+		lightDesc = timeOfDay
+	}
+
+	lightingPrompt := fmt.Sprintf("Lighting and atmosphere: %s, %s color temperature, %s illumination. Environment: %s.", lightDesc, colorTemp, intensity, environment)
+	promptOut := promptIn
+	if promptOut != "" {
+		promptOut = fmt.Sprintf("%s, illuminated by %s, in %s", promptOut, lightDesc, environment)
+	} else {
+		promptOut = lightingPrompt
+	}
+
+	ctx.Log(fmt.Sprintf("LightingAtmosphereNode: Đã thiết lập ánh sáng & thời gian '%s' (%s)", timeOfDay, lightDesc))
 
 	return map[string]any{
-		"fitted_image": fittedPath,
-		"mask_image":   maskPath,
+		"lighting_desc":   lightDesc,
+		"lighting_prompt": lightingPrompt,
+		"prompt_out":      promptOut,
 	}, nil
 }
 
@@ -725,6 +951,12 @@ func executeCameraAnglesDirector(ctx *ExecutionContext, node *FlowNode, inputs m
 	subjectImg := inputString(inputs, "subject_image", "")
 	if subjectImg == "" {
 		subjectImg = inputString(inputs, "character_image", "")
+	}
+	if resolved := resolveAssetPath(subjectImg, ctx.WorkDir); resolved != "" {
+		subjectImg = resolved
+	}
+	if subjectImg == "" || !fileExists(subjectImg) || !isImageFile(subjectImg) {
+		return nil, fmt.Errorf("Camera Angles Director cần ảnh nhân vật tham chiếu hợp lệ")
 	}
 
 	productTitle := inputString(inputs, "product_title", "")
@@ -737,9 +969,12 @@ func executeCameraAnglesDirector(ctx *ExecutionContext, node *FlowNode, inputs m
 		charName = nodeParamString(node.Params, "model_name", "nhân vật đại diện")
 	}
 
-	fullPrompt := fmt.Sprintf("Cinematic 9:16 vertical runway fashion film featuring the exact character (%s) from reference image walking confidently on runway, presenting %s. Maintain exact face, hair, and garment details. Photorealistic 4k, steadycam movement.", charName, productTitle)
-	mediumPrompt := fmt.Sprintf("Cinematic 9:16 medium close-up shot, the exact character (%s) gracefully turns around, smiling warmly at camera, highlighting the craftsmanship of %s. Golden hour soft lighting, 35mm lens.", charName, productTitle)
-	detailPrompt := fmt.Sprintf("Cinematic 9:16 dynamic macro close-up, camera smoothly gliding over the luxurious fabric and fine texture of %s, glistening lighting, ultra sharp 8k detail.", productTitle)
+	environment := inputString(inputs, "environment_desc", "")
+	lighting := inputString(inputs, "lighting_desc", "")
+	shotStyle := nodeParamString(node.Params, "shot_style", "high_fashion_editorial")
+	fullPrompt := fmt.Sprintf("%s style. Cinematic 9:16 full body runway shot with the character (%s) walking confidently and presenting %s. Keep visible character and garment details. Environment: %s. Lighting: %s. Photorealistic, steady camera movement.", shotStyle, charName, productTitle, environment, lighting)
+	mediumPrompt := fmt.Sprintf("%s style. Cinematic 9:16 medium shot of the character (%s) turning naturally to present %s. Keep visible character and garment details. Environment: %s. Lighting: %s. 35mm lens.", shotStyle, charName, productTitle, environment, lighting)
+	detailPrompt := fmt.Sprintf("%s style. Cinematic 9:16 detail shot showing the visible material and construction of %s. Environment: %s. Lighting: %s. Keep design details consistent with reference images.", shotStyle, productTitle, environment, lighting)
 
 	ctx.Log(fmt.Sprintf("CameraAnglesDirector: Đã thiết lập đạo diễn 3 góc quay điện ảnh bảo toàn nhận diện (%s & %s)", charName, productTitle))
 
@@ -759,6 +994,35 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, 0o644)
+}
+
+func flowStringList(value any) []string {
+	switch values := value.(type) {
+	case []string:
+		return values
+	case []any:
+		result := make([]string, 0, len(values))
+		for _, item := range values {
+			if path, ok := item.(string); ok && path != "" {
+				result = append(result, path)
+			}
+		}
+		return result
+	case string:
+		if values != "" {
+			return []string{values}
+		}
+	}
+	return nil
+}
+
+func containsString(values []string, value string) bool {
+	for _, item := range values {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }
 
 // executePreviewMedia thực thi node xem trước kết quả trực quan (tương tự Preview Image trong ComfyUI)
@@ -786,23 +1050,29 @@ func executePreviewMedia(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}
 
 	if mediaPath == "" {
-		dummy := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_preview.png", node.ID))
-		_ = writeDummyImage(dummy, 600, 600, "Preview Media: Không có tín hiệu")
-		mediaPath = dummy
+		return nil, fmt.Errorf("Preview cần file ảnh hoặc video đầu vào")
 	}
 
 	destMedia := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_%s", node.ID, filepath.Base(mediaPath)))
 	if destMedia != mediaPath {
-		_ = copyFile(mediaPath, destMedia)
+		if err := copyFile(mediaPath, destMedia); err != nil {
+			return nil, fmt.Errorf("không thể chuẩn bị file preview: %w", err)
+		}
 	}
 
 	ctx.Log(fmt.Sprintf("PreviewMediaNode: Đang hiển thị kết quả xem trước cho '%s'", filepath.Base(destMedia)))
 
-	return map[string]any{
+	outputs := map[string]any{
 		"media_out": destMedia,
 		"preview":   destMedia,
-		"image":     destMedia,
-		"images":    destMedia,
-		"video":     destMedia,
-	}, nil
+	}
+	if isImageFile(destMedia) {
+		outputs["image"] = destMedia
+		outputs["images"] = destMedia
+	} else if isVideoFile(destMedia) {
+		outputs["video"] = destMedia
+	} else {
+		return nil, fmt.Errorf("Preview không hỗ trợ media dạng %s", filepath.Ext(destMedia))
+	}
+	return outputs, nil
 }

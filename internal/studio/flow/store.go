@@ -75,6 +75,33 @@ func (s *Store) SeedDefaultPresets() error {
 	return nil
 }
 
+// IsPresetID kiểm tra xem ID có phải là workflow preset của hệ thống không.
+func (s *Store) IsPresetID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, p := range GetPresetGraphs() {
+		if p.ID == id {
+			return true
+		}
+	}
+	var isPreset int
+	err := s.db.QueryRow(`SELECT is_preset FROM studio_workflow_graphs WHERE id = ?;`, id).Scan(&isPreset)
+	return err == nil && isPreset == 1
+}
+
+// SaveUserGraph lưu hoặc cập nhật workflow do người dùng tạo hoặc chỉnh sửa.
+// Hàm này nghiêm cấm ghi đè lên các workflow preset có sẵn của hệ thống.
+func (s *Store) SaveUserGraph(g *FlowGraph) error {
+	if g == nil || g.ID == "" {
+		return errors.New("workflow hoặc ID không hợp lệ")
+	}
+	if g.IsPreset || s.IsPresetID(g.ID) {
+		return errors.New("không thể ghi đè workflow preset của hệ thống. Vui lòng nhân bản (copy) để lưu thành workflow cá nhân")
+	}
+	return s.SaveGraph(g)
+}
+
 // SaveGraph lưu hoặc cập nhật thông tin đồ thị vào database.
 func (s *Store) SaveGraph(g *FlowGraph) error {
 	if g == nil || g.ID == "" {

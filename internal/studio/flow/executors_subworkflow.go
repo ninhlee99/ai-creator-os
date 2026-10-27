@@ -67,7 +67,7 @@ func WorkflowContract(graph *FlowGraph) (inputs, outputs []FlowPort, err error) 
 
 func validWorkflowPortType(portType PortType) bool {
 	switch portType {
-	case PortTypeAny, PortTypeImage, PortTypeImageList, PortTypeVideo, PortTypeAudio,
+	case PortTypeAny, PortTypeImage, PortTypeImageList, PortTypeTextList, PortTypeVideo, PortTypeAudio,
 		PortTypeText, PortTypeProduct, PortTypeMotion, PortTypeNumber, PortTypeConfig:
 		return true
 	default:

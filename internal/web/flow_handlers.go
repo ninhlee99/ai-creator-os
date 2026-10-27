@@ -94,8 +94,8 @@ func (s *Server) handleAPIFlowGraphs(w http.ResponseWriter, r *http.Request) {
 		if g.ID == "" {
 			g.ID = fmt.Sprintf("flow_%d", time.Now().UnixNano())
 		}
-		if err := fStore.SaveGraph(&g); err != nil {
-			http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		if err := fStore.SaveUserGraph(&g); err != nil {
+			http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusBadRequest)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -206,7 +206,7 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 			flowCancelMu.Unlock()
 			cancel()
 		}()
-		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, targetGraph)
+		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, targetGraph, s.flowExecutionServices())
 	}()
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -375,7 +375,7 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 			flowCancelMu.Unlock()
 			cancel()
 		}()
-		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, &clonedGraph)
+		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, &clonedGraph, s.flowExecutionServices())
 	}()
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

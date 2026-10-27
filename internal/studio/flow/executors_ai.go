@@ -56,17 +56,14 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 
 	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow Veo 2 (ingredients: %d ảnh tham chiếu, aspect: %s)...", len(ingredients), aspect))
 
-	var err error
-	if ctx.EngineCall != nil {
-		_, err = ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, outPath)
+	if ctx.EngineCall == nil {
+		return nil, fmt.Errorf("Google Flow chưa được nối với workflow engine")
 	}
-
-	// Nếu Web AI chưa có phiên hoặc chạy offline: dùng trình dựng chuyển động điện ảnh chuyên nghiệp (Cinematic Motion Engine)
-	if err != nil || !fileExists(outPath) {
-		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Khởi tạo render chuyển động điện ảnh (Cinematic Engine) với %d ảnh tham chiếu -> %s", len(ingredients), filepath.Base(outPath)))
-		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, enhancedPrompt, 6.9); renderErr != nil {
-			return nil, fmt.Errorf("GoogleFlowVideoNode thất bại: %w", renderErr)
-		}
+	if _, err := ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, outPath); err != nil {
+		return nil, fmt.Errorf("Google Flow không tạo được video: %w", err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return nil, fmt.Errorf("Google Flow không tạo được tệp video hợp lệ")
 	}
 
 	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Video Google Flow đã sẵn sàng -> %s", filepath.Base(outPath)))
@@ -243,22 +240,20 @@ func callMuseChatText(ctx context.Context, sessionTitle, prompt string, files []
 func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	imgIn := inputString(inputs, "image_in", "")
 	task := inputString(inputs, "task", "Phân tích đặc điểm nhân vật, trang phục, và gợi ý câu lệnh mô tả cử chỉ tự nhiên")
-
-	var desc string
-	var optPrompt string
-
-	if ctx.VisionEval != nil && imgIn != "" && fileExists(imgIn) {
-		res, err := ctx.VisionEval(ctx.Context, task, imgIn)
-		if err == nil && res != "" {
-			desc = res
-		}
+	if imgIn == "" || !fileExists(imgIn) {
+		return nil, fmt.Errorf("Gemini Vision cần ảnh nguồn hợp lệ")
 	}
-
-	if desc == "" {
-		desc = "Nhân vật nữ phong cách hiện đại, biểu cảm tươi tắn, ánh sáng điện ảnh mềm mại, trang phục trẻ trung thanh lịch."
+	if ctx.VisionEval == nil {
+		return nil, fmt.Errorf("Gemini Vision chưa được nối với bộ phân tích ảnh")
 	}
-
-	optPrompt = fmt.Sprintf("A stylish video featuring a confident character (%s) performing engaging gestures with lively facial expression, cinematic warm lighting, sharp focus, 4k ultra realistic, vertical 9:16 format.", desc)
+	desc, err := ctx.VisionEval(ctx.Context, task, imgIn)
+	if err != nil {
+		return nil, fmt.Errorf("Gemini Vision phân tích ảnh thất bại: %w", err)
+	}
+	if strings.TrimSpace(desc) == "" {
+		return nil, fmt.Errorf("Gemini Vision trả phân tích rỗng")
+	}
+	optPrompt := fmt.Sprintf("A stylish video featuring a confident character (%s) performing engaging gestures with lively facial expression, cinematic warm lighting, sharp focus, 4k ultra realistic, vertical 9:16 format.", desc)
 
 	ctx.Log(fmt.Sprintf("GeminiVisionNode: Hoàn tất phân tích ảnh -> tạo prompt tối ưu (%d ký tự)", len(optPrompt)))
 
@@ -270,78 +265,194 @@ func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 
 func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := inputString(inputs, "prompt_in", "")
-	providerName := nodeParamString(node.Params, "provider_name", "Grok / ChatGPT / Claude")
-	targetURL := nodeParamString(node.Params, "target_url", "https://grok.com/")
-	outputType := nodeParamString(node.Params, "output_type", "video")
-
-	ctx.Log(fmt.Sprintf("CustomWebAINode: Chạy engine tùy biến '%s' (%s, kiểu xuất=%s)", providerName, targetURL, outputType))
-
-	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.%s", node.ID, map[bool]string{true: "mp4", false: "jpg"}[outputType == "video"]))
-
-	if outputType == "video" {
-		_ = writeDummyVideo(ctx, outPath, 4.0)
-	} else {
-		_ = writeDummyImage(outPath, 1080, 1920, providerName)
+	if prompt == "" {
+		prompt = nodeParamString(node.Params, "prompt", "")
 	}
+	providerName := nodeParamString(node.Params, "provider_name", "googleflow")
+	outputType := strings.ToLower(nodeParamString(node.Params, "output_type", "video"))
+	provider, err := flowVideoProvider(providerName)
+	if err != nil && outputType == "video" {
+		return nil, err
+	}
+	ctx.Log(fmt.Sprintf("CustomWebAINode: Gọi provider '%s' (kiểu xuất=%s)", providerName, outputType))
 
-	textOut := fmt.Sprintf("Phản hồi thành công từ %s với prompt: %s", providerName, prompt)
-
-	return map[string]any{
-		"result_out": outPath,
-		"text_out":   textOut,
-	}, nil
+	refImages, err := customImageInputs(ctx, node, inputs)
+	if err != nil {
+		return nil, err
+	}
+	switch outputType {
+	case "video":
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.mp4", node.ID))
+		if err := callFlowVideoProvider(ctx, provider, prompt, refImages, nodeParamString(node.Params, "aspect", "VIDEO_ASPECT_RATIO_PORTRAIT"), outPath); err != nil {
+			return nil, err
+		}
+		return map[string]any{"result_out": outPath, "text_out": ""}, nil
+	case "image":
+		if ctx.GenerateImage == nil {
+			return nil, fmt.Errorf("image generator chưa được nối")
+		}
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.jpg", node.ID))
+		if err := ctx.GenerateImage(ctx.Context, prompt, refImages, outPath); err != nil {
+			return nil, fmt.Errorf("tạo ảnh thất bại: %w", err)
+		}
+		if !fileExists(outPath) || !isImageFile(outPath) {
+			return nil, fmt.Errorf("image provider không tạo được tệp ảnh hợp lệ")
+		}
+		return map[string]any{"result_out": outPath, "text_out": ""}, nil
+	case "text":
+		if ctx.GenerateText == nil {
+			return nil, fmt.Errorf("LLM chưa được nối")
+		}
+		text, err := ctx.GenerateText(ctx.Context, nodeParamString(node.Params, "system_prompt", ""), prompt)
+		if err != nil {
+			return nil, fmt.Errorf("tạo văn bản thất bại: %w", err)
+		}
+		return map[string]any{"result_out": text, "text_out": text}, nil
+	default:
+		return nil, fmt.Errorf("kiểu xuất không hỗ trợ: %s", outputType)
+	}
 }
 
 func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := nodeParamString(node.Params, "prompt", "Tạo nội dung hấp dẫn dựa trên đầu vào")
-	model := nodeParamString(node.Params, "model", "gemini")
-	if p, ok := node.Params["provider"].(string); ok && p != "" && model == "gemini" {
-		model = p
+	prompt := nodeParamString(node.Params, "prompt", "")
+	if prompt == "" {
+		return nil, fmt.Errorf("custom AI prompt chưa được cấu hình")
 	}
-	outputType := nodeParamString(node.Params, "output_type", "text")
-
-	// Template interpolation: replace {{input}} with actual input if string
-	inVal := inputs["input"]
-	if inValStr, ok := inVal.(string); ok && inValStr != "" {
-		prompt = strings.ReplaceAll(prompt, "{{input}}", inValStr)
+	if value, ok := inputs["input"]; ok {
+		prompt = strings.ReplaceAll(prompt, "{{input}}", fmt.Sprint(value))
 	}
-
-	ctx.Log(fmt.Sprintf("CustomAIPromptNode [%s]: Model=%s | Kiểu xuất=%s | Prompt len=%d", node.Title, model, outputType, len(prompt)))
-
-	var outPath string
-	var textOut string
-
-	switch strings.ToLower(model) {
-	case "muse", "muse_ai":
-		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Kết nối Muse AI Flow Thread cho node '%s'", node.Title))
-		textOut = fmt.Sprintf("[Muse AI Thread]: Xử lý hoàn tất kịch bản với prompt: %s", prompt)
-	case "grok", "xai":
-		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua xAI Grok-2 cho node '%s'", node.Title))
-		textOut = fmt.Sprintf("[Grok-2 AI]: Nội dung sáng tạo từ prompt: %s", prompt)
-	case "chatgpt", "openai", "chatgpt_mini":
-		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua OpenAI (%s) cho node '%s'", model, node.Title))
-		textOut = fmt.Sprintf("[ChatGPT GPT-4o]: Phản hồi kịch bản từ prompt: %s", prompt)
-	case "claude", "anthropic":
-		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua Anthropic Claude 3.5 Sonnet cho node '%s'", node.Title))
-		textOut = fmt.Sprintf("[Claude 3.5]: Kịch bản văn phong cao cấp từ prompt: %s", prompt)
-	default: // Gemini
-		ctx.Log(fmt.Sprintf("CustomAIPromptNode: Thực thi qua Google Gemini 2.5 cho node '%s'", node.Title))
-		textOut = fmt.Sprintf("[Gemini 2.5]: Phân tích và tạo nội dung thành công từ prompt: %s", prompt)
+	systemPrompt := nodeParamString(node.Params, "system_prompt", "Bạn là trợ lý sáng tạo nội dung.")
+	outputType := strings.ToLower(nodeParamString(node.Params, "output_type", "text"))
+	model := strings.ToLower(nodeParamString(node.Params, "model", "active"))
+	refImages, err := customImageInputs(ctx, node, inputs)
+	if err != nil {
+		return nil, err
 	}
 
-	if outputType == "video" {
-		outPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.mp4", node.ID))
-		_ = writeDummyVideo(ctx, outPath, 4.0)
-	} else if outputType == "image" {
-		outPath = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.jpg", node.ID))
-		_ = writeDummyImage(outPath, 1080, 1920, fmt.Sprintf("%s (%s)", node.Title, model))
-	} else {
-		outPath = textOut
+	switch outputType {
+	case "text":
+		if model != "active" && model != "auto" {
+			return nil, fmt.Errorf("model %q không được cấu hình; chọn active để dùng LLM của hệ thống", model)
+		}
+		if len(refImages) > 0 {
+			if ctx.AnalyzeImages == nil {
+				return nil, fmt.Errorf("phân tích ảnh chưa được nối")
+			}
+			visualContext, err := ctx.AnalyzeImages(ctx.Context, systemPrompt+"\n"+prompt, refImages)
+			if err != nil {
+				return nil, fmt.Errorf("phân tích ảnh đầu vào thất bại: %w", err)
+			}
+			prompt += "\n\nPhân tích ảnh nguồn:\n" + visualContext
+		}
+		if ctx.GenerateText == nil {
+			return nil, fmt.Errorf("LLM chưa được nối")
+		}
+		textOut, err := ctx.GenerateText(ctx.Context, systemPrompt, prompt)
+		if err != nil {
+			return nil, fmt.Errorf("LLM thất bại: %w", err)
+		}
+		return map[string]any{"output": textOut, "text": textOut, "media": ""}, nil
+	case "image":
+		if model != "active" && model != "auto" {
+			return nil, fmt.Errorf("image model %q chưa được nối", model)
+		}
+		if ctx.GenerateImage == nil {
+			return nil, fmt.Errorf("image generator chưa được nối")
+		}
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.jpg", node.ID))
+		if err := ctx.GenerateImage(ctx.Context, prompt, refImages, outPath); err != nil {
+			return nil, fmt.Errorf("tạo ảnh thất bại: %w", err)
+		}
+		if !fileExists(outPath) || !isImageFile(outPath) {
+			return nil, fmt.Errorf("image provider không tạo được tệp ảnh hợp lệ")
+		}
+		return map[string]any{"output": outPath, "text": "", "media": outPath}, nil
+	case "video":
+		provider, err := flowVideoProvider(nodeParamString(node.Params, "provider", "googleflow"))
+		if err != nil {
+			return nil, err
+		}
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_ai.mp4", node.ID))
+		if err := callFlowVideoProvider(ctx, provider, prompt, refImages, nodeParamString(node.Params, "aspect", "VIDEO_ASPECT_RATIO_PORTRAIT"), outPath); err != nil {
+			return nil, err
+		}
+		return map[string]any{"output": outPath, "text": "", "media": outPath}, nil
+	default:
+		return nil, fmt.Errorf("kiểu output không hỗ trợ: %s", outputType)
 	}
+}
 
-	return map[string]any{
-		"output": outPath,
-		"text":   textOut,
-		"media":  outPath,
-	}, nil
+func customImageInputs(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) ([]string, error) {
+	images := make([]string, 0, 4)
+	for _, key := range []string{"image", "image_in", "reference_image", "character_image", "product_image"} {
+		path := inputString(inputs, key, "")
+		if path != "" {
+			resolved := resolveAssetPath(path, ctx.WorkDir)
+			if resolved == "" || !isImageFile(resolved) {
+				return nil, fmt.Errorf("ảnh đầu vào %s không hợp lệ", key)
+			}
+			images = append(images, resolved)
+		}
+	}
+	asset := inputString(inputs, "asset_in", "")
+	if asset != "" {
+		resolved := resolveAssetPath(asset, ctx.WorkDir)
+		switch {
+		case resolved != "" && isImageFile(resolved):
+			images = append(images, resolved)
+		case resolved != "" && isVideoFile(resolved):
+			if inputString(inputs, "video", inputString(inputs, "video_in", "")) != "" {
+				return nil, fmt.Errorf("chỉ nối một video vào node")
+			}
+			inputs["video_in"] = resolved
+		default:
+			return nil, fmt.Errorf("file đầu vào không phải ảnh hoặc video hợp lệ")
+		}
+	}
+	video := inputString(inputs, "video", inputString(inputs, "video_in", ""))
+	if video != "" {
+		video = resolveAssetPath(video, ctx.WorkDir)
+		if video == "" || !isVideoFile(video) {
+			return nil, fmt.Errorf("video đầu vào không hợp lệ")
+		}
+		frame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_custom_reference_frame.jpg", node.ID))
+		if ctx.FFmpegRunner == nil {
+			return nil, fmt.Errorf("trích xuất frame cần FFmpeg")
+		}
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-ss", "1", "-i", video, "-vframes", "1", "-q:v", "2", frame); err != nil || !fileExists(frame) {
+			return nil, fmt.Errorf("không trích xuất được frame từ video")
+		}
+		images = append(images, frame)
+	}
+	return images, nil
+}
+
+func flowVideoProvider(value string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "googleflow", "google flow", "veo", "veo 2", "veo 3":
+		return "googleflow", nil
+	case "muse", "museai", "muse ai":
+		return "museai", nil
+	default:
+		return "", fmt.Errorf("video provider %q chưa được nối; hỗ trợ Google Flow hoặc Muse AI", value)
+	}
+}
+
+func callFlowVideoProvider(ctx *ExecutionContext, provider, prompt string, images []string, aspect, outPath string) error {
+	if ctx.EngineCall == nil {
+		return fmt.Errorf("video provider %s chưa được nối", provider)
+	}
+	if strings.TrimSpace(prompt) == "" {
+		return fmt.Errorf("thiếu prompt tạo video")
+	}
+	if len(images) == 0 {
+		return fmt.Errorf("tạo video cần ít nhất một ảnh tham chiếu thật")
+	}
+	if _, err := ctx.EngineCall(ctx.Context, provider, prompt, images, aspect, outPath); err != nil {
+		return fmt.Errorf("%s không tạo được video: %w", provider, err)
+	}
+	if !fileExists(outPath) || !isVideoFile(outPath) {
+		return fmt.Errorf("%s không tạo được tệp video hợp lệ", provider)
+	}
+	return nil
 }
