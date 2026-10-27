@@ -4636,6 +4636,7 @@
           chip.setAttribute('aria-pressed', 'true');
           this.revealNodeCategory(chip);
           const category = chip.dataset.cat || 'all';
+          if (category === 'all') this.pendingConnect = null;
           const query = category === 'all' ? '' : (searchInput ? searchInput.value : '');
           if (category === 'all' && searchInput) searchInput.value = '';
           this.renderModalGrid(query, category);
