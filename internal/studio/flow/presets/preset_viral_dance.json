@@ -95,7 +95,7 @@
         "color_temperature": "cyber_neon_magenta",
         "light_intensity": "dramatic_contrast",
         "time_of_day": "dynamic_stage_lights",
-        "prompt": "{{time_of_day}} lighting with {{color_temperature}} color temperature and {{light_intensity}} intensity. Keep the face and outfit clearly visible in {{environment_desc}}."
+        "prompt": "{{time_of_day}} stage lighting with {{color_temperature}} color temperature and {{light_intensity}} intensity. Keep the face and outfit clearly visible."
       }
     },
     {
@@ -119,7 +119,7 @@
       "x": 1740,
       "y": 380,
       "params": {
-        "workflow_id": "preset_muse_video_shot",
+        "workflow_id": "preset_muse_viral_shot",
         "item_input_map": {
           "segment_video": "video_path",
           "duration": "duration_seconds"

@@ -1,0 +1,169 @@
+{
+  "id": "preset_muse_viral_shot",
+  "name": "Muse AI Dance Shot",
+  "description": "Workflow con: tạo một shot nhảy bằng Muse AI, khóa danh tính theo ảnh nhân vật, bám chuyển động và khung hình video nguồn.",
+  "category": "internal",
+  "is_preset": true,
+  "nodes": [
+    {
+      "id": "input_segment",
+      "type": "workflow_input",
+      "title": "Video tham chiếu chuyển động",
+      "category": "workflow",
+      "x": 60,
+      "y": 180,
+      "params": {
+        "key": "segment_video",
+        "label": "Video tham chiếu",
+        "value_type": "video",
+        "required": true
+      }
+    },
+    {
+      "id": "input_images",
+      "type": "workflow_input",
+      "title": "Ảnh khóa danh tính",
+      "category": "workflow",
+      "x": 60,
+      "y": 360,
+      "params": {
+        "key": "reference_images",
+        "label": "Ảnh nhân vật",
+        "value_type": "image_list",
+        "required": true
+      }
+    },
+    {
+      "id": "input_duration",
+      "type": "workflow_input",
+      "title": "Thời lượng shot (giây)",
+      "category": "workflow",
+      "x": 60,
+      "y": 700,
+      "params": {
+        "key": "duration",
+        "label": "Thời lượng shot",
+        "value_type": "number",
+        "required": false
+      }
+    },
+    {
+      "id": "input_variables",
+      "type": "workflow_input",
+      "title": "Biến prompt dance",
+      "category": "workflow",
+      "x": 60,
+      "y": 540,
+      "params": {
+        "key": "variables",
+        "label": "Biến prompt",
+        "value_type": "config",
+        "required": true
+      }
+    },
+    {
+      "id": "prompt",
+      "type": "prompt_template",
+      "title": "Prompt Muse dance shot",
+      "category": "process",
+      "x": 420,
+      "y": 420,
+      "params": {
+        "template": "Create exactly one continuous vertical 9:16 dance video. Use the attached character photo(s) only to preserve the same adult woman's identity, face, hair and body proportions. Use the attached source video as the authoritative reference for choreography, pose sequence, timing, movement direction, pace and subject framing. Follow its movement beat by beat; do not invent, omit or rearrange gestures. The source dancer is motion reference only: do not copy that person's identity, face, hair, outfit, location, audio or text. Wardrobe: {{outfit_desc}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Dance style: {{dance_type}}. Expression: {{expression}}. Movement notes: {{movement_analysis}}. Start with the subject already centered and fully visible; keep her centered with clear head and foot margins throughout. Keep one fixed camera at eye level, full-body framing, no zoom, pan, tracking, entrance, exit or cuts. Preserve one consistent identity, outfit and setting. Use natural anatomy and hands. No additional people, captions, logos or watermark."
+      }
+    },
+    {
+      "id": "muse",
+      "type": "muse_ai_video",
+      "title": "Tạo dance shot bằng Muse AI",
+      "category": "ai",
+      "x": 760,
+      "y": 280,
+      "params": {
+        "aspect": "9:16"
+      }
+    },
+    {
+      "id": "trim",
+      "type": "video_trim",
+      "title": "Khớp thời lượng shot",
+      "category": "process",
+      "x": 1100,
+      "y": 280,
+      "params": {
+        "tolerance_seconds": 0.15
+      }
+    },
+    {
+      "id": "output_video",
+      "type": "workflow_output",
+      "title": "Dance shot",
+      "category": "workflow",
+      "x": 1460,
+      "y": 280,
+      "params": {
+        "key": "video",
+        "label": "Dance shot",
+        "value_type": "video"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "input_variables",
+      "from_port": "value",
+      "to_node": "prompt",
+      "to_port": "variables"
+    },
+    {
+      "id": "e2",
+      "from_node": "prompt",
+      "from_port": "prompt",
+      "to_node": "muse",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e3",
+      "from_node": "input_images",
+      "from_port": "value",
+      "to_node": "muse",
+      "to_port": "reference_images"
+    },
+    {
+      "id": "e4",
+      "from_node": "input_segment",
+      "from_port": "value",
+      "to_node": "muse",
+      "to_port": "reference_video"
+    },
+    {
+      "id": "e5",
+      "from_node": "muse",
+      "from_port": "video_out",
+      "to_node": "trim",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e6",
+      "from_node": "input_segment",
+      "from_port": "value",
+      "to_node": "trim",
+      "to_port": "reference_video"
+    },
+    {
+      "id": "e7",
+      "from_node": "trim",
+      "from_port": "video_out",
+      "to_node": "output_video",
+      "to_port": "value"
+    },
+    {
+      "id": "e_duration",
+      "from_node": "input_duration",
+      "from_port": "value",
+      "to_node": "trim",
+      "to_port": "duration"
+    }
+  ]
+}
