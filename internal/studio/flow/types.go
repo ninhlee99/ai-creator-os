@@ -154,6 +154,7 @@ type FlowSummary struct {
 	NodeCount        int        `json:"node_count"`
 	EdgeCount        int        `json:"edge_count"`
 	WorkflowReusable bool       `json:"workflow_reusable"`
+	WorkflowError    string     `json:"workflow_error,omitempty"`
 	Inputs           []FlowPort `json:"inputs,omitempty"`
 	Outputs          []FlowPort `json:"outputs,omitempty"`
 	UpdatedAt        string     `json:"updated_at"`

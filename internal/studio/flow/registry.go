@@ -644,7 +644,7 @@ func registerAllBuiltinNodes() {
 		Type:        "workflow_call",
 		Title:       "Gọi workflow đã lưu",
 		Category:    CategoryWorkflow,
-		Description: "Chọn workflow con bất kỳ, truyền input và nhận output đã khai báo",
+		Description: "Gọi workflow đã lưu có ít nhất một node Đầu vào và một node Đầu ra; truyền input và nhận output theo contract",
 		Icon:        "workflow",
 		DefaultParams: map[string]any{
 			"workflow_id": "",
@@ -666,7 +666,7 @@ func registerWorkflowCallNode(category, title string) {
 		Type:        "workflow_call_" + category,
 		Title:       "Workflow con · " + title,
 		Category:    CategoryWorkflow,
-		Description: "Chạy workflow " + title + " đã lưu, truyền input và nhận output theo contract",
+		Description: "Chạy workflow " + title + " đã lưu có node Đầu vào và Đầu ra, truyền input và nhận output theo contract",
 		Icon:        "workflow",
 		DefaultParams: map[string]any{
 			"workflow_id":       "",

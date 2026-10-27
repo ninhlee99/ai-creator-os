@@ -152,9 +152,8 @@ func (s *Store) ListGraphs() ([]FlowSummary, error) {
 		}
 		var g FlowGraph
 		_ = json.Unmarshal([]byte(graphJSON), &g)
-		inputs, outputs, contractErr := WorkflowContract(&g)
-		_, validationErr := ValidateGraph(&g)
-		workflowReusable := contractErr == nil && validationErr == nil && len(inputs) > 0 && len(outputs) > 0
+		inputs, outputs, _ := WorkflowContract(&g)
+		workflowError := WorkflowReusableError(&g)
 		list = append(list, FlowSummary{
 			ID:               id,
 			Name:             name,
@@ -163,7 +162,8 @@ func (s *Store) ListGraphs() ([]FlowSummary, error) {
 			IsPreset:         isPresetInt == 1,
 			NodeCount:        len(g.Nodes),
 			EdgeCount:        len(g.Edges),
-			WorkflowReusable: workflowReusable,
+			WorkflowReusable: workflowError == "",
+			WorkflowError:    workflowError,
 			Inputs:           inputs,
 			Outputs:          outputs,
 			UpdatedAt:        updated,

@@ -10,6 +10,20 @@ import (
 
 var workflowPortKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,47}$`)
 
+func WorkflowReusableError(graph *FlowGraph) string {
+	inputs, outputs, err := WorkflowContract(graph)
+	if err != nil {
+		return err.Error()
+	}
+	if _, err := ValidateGraph(graph); err != nil {
+		return err.Error()
+	}
+	if len(inputs) == 0 || len(outputs) == 0 {
+		return "workflow cần ít nhất một node Đầu vào và một node Đầu ra"
+	}
+	return ""
+}
+
 func WorkflowContract(graph *FlowGraph) (inputs, outputs []FlowPort, err error) {
 	if graph == nil {
 		return nil, nil, fmt.Errorf("workflow không tồn tại")

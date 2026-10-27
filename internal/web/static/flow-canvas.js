@@ -2259,14 +2259,16 @@
       flowSelect.className = 'form-control';
       const placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.innerText = 'Chọn workflow có input/output…';
+      placeholder.innerText = 'Chọn workflow đã sẵn sàng…';
       flowSelect.appendChild(placeholder);
       const candidates = this.savedGraphs.filter(graph => graph.id !== this.graph.id && (!params.workflow_category || graph.category === params.workflow_category));
+      const unusableCandidates = candidates.filter(graph => graph.workflow_reusable === false);
       candidates.forEach(graph => {
         const option = document.createElement('option');
         option.value = graph.id;
         option.disabled = graph.workflow_reusable === false;
-        option.innerText = `${graph.name} · ${graph.category || 'custom'}${option.disabled ? ' · cần khai báo input/output' : ''}`;
+        option.innerText = `${graph.name} · ${graph.category || 'custom'}${option.disabled ? ' · chưa sẵn sàng' : ''}`;
+        if (option.disabled) option.title = graph.workflow_error || 'Kiểm tra workflow và khai báo Đầu vào/Đầu ra.';
         flowSelect.appendChild(option);
       });
       flowSelect.value = params.workflow_id || '';
@@ -2292,11 +2294,33 @@
       });
       flowGroup.append(flowLabel, flowSelect);
       container.appendChild(flowGroup);
-      if (!candidates.some(graph => graph.workflow_reusable !== false)) {
+      const prerequisiteHint = document.createElement('small');
+      prerequisiteHint.className = 'text-muted';
+      prerequisiteHint.innerText = 'Workflow con phải được lưu, có node Đầu vào và Đầu ra, đồng thời qua kiểm tra cấu hình.';
+      flowGroup.appendChild(prerequisiteHint);
+      if (!candidates.length) {
         const hint = document.createElement('small');
         hint.className = 'text-muted';
-        hint.innerText = 'Workflow con cần ít nhất một node Đầu vào và một node Đầu ra, sau đó lưu lại.';
+        hint.innerText = params.workflow_category
+          ? `Chưa có workflow đã lưu thuộc loại ${params.workflow_category}.`
+          : 'Chưa có workflow khác để gọi.';
         flowGroup.appendChild(hint);
+      }
+      if (unusableCandidates.length) {
+        const details = document.createElement('details');
+        details.style.marginTop = '6px';
+        const summary = document.createElement('summary');
+        summary.innerText = `${unusableCandidates.length} workflow chưa sẵn sàng`;
+        details.appendChild(summary);
+        const reasons = document.createElement('ul');
+        reasons.style.cssText = 'margin:4px 0 0;padding-left:20px';
+        unusableCandidates.forEach(graph => {
+          const item = document.createElement('li');
+          item.innerText = `${graph.name}: ${graph.workflow_error || 'kiểm tra node Đầu vào và Đầu ra'}`;
+          reasons.appendChild(item);
+        });
+        details.appendChild(reasons);
+        flowGroup.appendChild(details);
       }
 
       if (params.workflow_id && (!node.inputs?.length || !node.outputs?.length) && !this.workflowContractLoading.has(node.id)) {
@@ -2306,9 +2330,14 @@
         const refresh = document.createElement('button');
         refresh.type = 'button';
         refresh.className = 'btn btn-secondary btn-sm';
-        refresh.innerText = 'Tải lại input/output';
+        refresh.innerText = 'Đồng bộ cổng từ workflow con';
+        refresh.title = 'Dùng sau khi sửa input/output workflow con và lưu workflow đó.';
         refresh.addEventListener('click', () => this.loadWorkflowContract(node, params.workflow_id));
         container.appendChild(refresh);
+        const refreshHint = document.createElement('small');
+        refreshHint.className = 'text-muted';
+        refreshHint.innerText = 'Sau khi đổi contract workflow con, đồng bộ lại cổng. Kết nối không tương thích sẽ được liệt kê trước khi xóa.';
+        container.appendChild(refreshHint);
       }
     }
 
@@ -2330,31 +2359,40 @@
         const oldOutputSignature = JSON.stringify(node.outputs || []);
         const nextInputs = new Map(contract.inputs.map(port => [port.id, port]));
         const nextOutputs = new Map(contract.outputs.map(port => [port.id, port]));
-        const oldEdgeCount = this.graph.edges.length;
-        this.graph.edges = this.graph.edges.filter(edge => {
+        const compatibleEdges = [];
+        const removedEdges = [];
+        this.graph.edges.forEach(edge => {
+          let compatible = true;
           if (edge.to_node === node.id) {
             const targetPort = nextInputs.get(edge.to_port);
             const sourceNode = this.graph.nodes.find(candidate => candidate.id === edge.from_node);
             const sourcePort = sourceNode && this.getNodePorts(sourceNode, true).find(port => port.id === edge.from_port);
-            return Boolean(targetPort && sourcePort && this.isPortTypeCompatible(sourcePort.type, targetPort.type));
-          }
-          if (edge.from_node === node.id) {
+            compatible = Boolean(targetPort && sourcePort && this.isPortTypeCompatible(sourcePort.type, targetPort.type));
+          } else if (edge.from_node === node.id) {
             const sourcePort = nextOutputs.get(edge.from_port);
             const targetNode = this.graph.nodes.find(candidate => candidate.id === edge.to_node);
             const targetPort = targetNode && this.getNodePorts(targetNode, false).find(port => port.id === edge.to_port);
-            return Boolean(sourcePort && targetPort && this.isPortTypeCompatible(sourcePort.type, targetPort.type));
+            compatible = Boolean(sourcePort && targetPort && this.isPortTypeCompatible(sourcePort.type, targetPort.type));
           }
-          return true;
+          (compatible ? compatibleEdges : removedEdges).push(edge);
         });
+        if (removedEdges.length && !confirm(`Contract của “${result.graph.name}” không còn tương thích với ${removedEdges.length} kết nối. Đồng bộ sẽ xóa các kết nối đó. Tiếp tục?`)) {
+          if (rerender) {
+            this.render();
+            this.selectNode(node.id);
+          }
+          return;
+        }
+        this.graph.edges = compatibleEdges;
         node.inputs = contract.inputs;
         node.outputs = contract.outputs;
         node.params.workflow_id = workflowId;
         node.params.workflow_name = result.graph.name;
         const contractChanged = oldInputSignature !== JSON.stringify(contract.inputs) || oldOutputSignature !== JSON.stringify(contract.outputs);
-        if (oldEdgeCount !== this.graph.edges.length || contractChanged) {
-          alert(oldEdgeCount !== this.graph.edges.length
-            ? 'Contract thay đổi; các kết nối không còn tương thích đã bị xóa. Kiểm tra lại dây workflow.'
-            : 'Contract workflow con thay đổi. Kiểm tra lại các kết nối và lưu workflow.');
+        if (removedEdges.length) {
+          alert(`Đã đồng bộ contract và xóa ${removedEdges.length} kết nối không tương thích. Kiểm tra canvas rồi lưu workflow.`);
+        } else if (contractChanged) {
+          alert('Đã đồng bộ contract workflow con. Kiểm tra các cổng rồi lưu workflow.');
         }
         if (rerender) {
           this.render();

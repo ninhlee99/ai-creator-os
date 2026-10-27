@@ -146,16 +146,7 @@ func (s *Server) handleAPIFlowGraphDetail(w http.ResponseWriter, r *http.Request
 		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusNotFound)
 		return
 	}
-	inputs, outputs, contractErr := flow.WorkflowContract(g)
-	_, validationErr := flow.ValidateGraph(g)
-	workflowError := ""
-	if contractErr != nil {
-		workflowError = contractErr.Error()
-	} else if validationErr != nil {
-		workflowError = validationErr.Error()
-	} else if len(inputs) == 0 || len(outputs) == 0 {
-		workflowError = "workflow cần ít nhất một node Đầu vào và một node Đầu ra"
-	}
+	workflowError := flow.WorkflowReusableError(g)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":                true,
