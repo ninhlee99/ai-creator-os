@@ -9,7 +9,7 @@ Sản phẩm tập trung hai flow đang hoàn thiện:
 1. TikTok affiliate: tìm sản phẩm → đánh giá → duyệt/loại → tạo video bằng nhân vật kênh → xem trước, xác nhận và đăng video có product anchor khi API đủ quyền → đo đơn hàng → cải tiến.
 2. TikTok viral: tìm video theo chủ đề → phân tích → tạo phiên bản sáng tạo bằng nhân vật kênh → xem trước, xác nhận và đăng hoặc gửi Draft theo quyền tài khoản → đo hiệu quả → cải tiến.
 
-Quy trình sản xuất truyện audio riêng trong Studio để phase sau. Workflow canvas vẫn là công cụ tổng quát: người dùng có thể nhân bản preset Truyện audio để viết kịch bản, tạo giọng đọc và xuất WAV; preset không mở rộng acceptance của hai quy trình TikTok.
+Quy trình sản xuất truyện audio riêng trong Studio để phase sau. Workflow canvas vẫn là công cụ tổng quát: người dùng có thể nhân bản preset Truyện audio để viết kịch bản, tạo một giọng đọc, trộn nhạc nền tùy chọn và xuất WAV; preset không mở rộng acceptance của hai quy trình TikTok.
 
 ## Nguyên tắc dữ liệu và tự động hóa
 
@@ -186,7 +186,7 @@ Không được thay giới hạn ở bảng này bằng số liệu giả hoặ
 ## Phase
 
 1. Làm đúng hai flow TikTok và data truth/publish/metrics.
-2. Sau khi acceptance trên đạt, thiết kế quy trình sản xuất truyện audio riêng trong Studio (nhiều vai, âm thanh theo cảnh, review và xuất bản). Workflow canvas hiện chỉ cung cấp khung tạo kịch bản + một giọng đọc.
+2. Sau khi acceptance trên đạt, thiết kế quy trình sản xuất truyện audio riêng trong Studio (nhiều vai, âm thanh theo cảnh, review và xuất bản). Workflow canvas hiện cung cấp khung tạo kịch bản + một giọng đọc + nhạc nền tùy chọn.
 
 ## Tài liệu nền tảng đăng TikTok
 

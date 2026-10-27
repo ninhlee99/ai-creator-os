@@ -685,6 +685,57 @@ func executeAudioMerge(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 	}, nil
 }
 
+func executeAudioMix(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	voicePath := inputString(inputs, "voice_in", "")
+	if voicePath == "" || !fileExists(voicePath) || !isAudioFile(voicePath) {
+		return nil, fmt.Errorf("Audio Mix cần track chính hợp lệ")
+	}
+	musicPath := inputString(inputs, "music_in", "")
+	if musicPath == "" {
+		return map[string]any{"audio_out": voicePath}, nil
+	}
+	if !fileExists(musicPath) || !isAudioFile(musicPath) {
+		return nil, fmt.Errorf("track nhạc nền không hợp lệ")
+	}
+	if ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("Audio Mix cần FFmpeg")
+	}
+
+	voiceVolume := nodeParamFloat(node.Params, "voice_volume", 1.0)
+	musicVolume := nodeParamFloat(node.Params, "music_volume", 0.18)
+	if voiceVolume < 0 || voiceVolume > 2 || musicVolume < 0 || musicVolume > 2 {
+		return nil, fmt.Errorf("âm lượng từng track phải nằm trong khoảng 0–2")
+	}
+	args := []string{"-y", "-i", voicePath}
+	if nodeParamBool(node.Params, "loop_music", true) {
+		args = append(args, "-stream_loop", "-1")
+	}
+	args = append(args, "-i", musicPath)
+
+	filter := fmt.Sprintf("[0:a]volume=%g[voice];[1:a]volume=%g[music];", voiceVolume, musicVolume)
+	if nodeParamBool(node.Params, "duck_music", true) {
+		filter += "[music][voice]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=450[bed];"
+	} else {
+		filter += "[music]anull[bed];"
+	}
+	filter += "[voice][bed]amix=inputs=2:duration=first:dropout_transition=2"
+	if nodeParamBool(node.Params, "normalize", true) {
+		filter += ",loudnorm=I=-16:TP=-1.5:LRA=11"
+	}
+	filter += ",alimiter=limit=0.95[aout]"
+
+	outPath := filepath.Join(ctx.WorkDir, safeWorkflowPathPart(node.ID)+"_audio_mix.wav")
+	args = append(args, "-filter_complex", filter, "-map", "[aout]", "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", outPath)
+	if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+		return nil, fmt.Errorf("không trộn được track audio: %w", err)
+	}
+	if !fileExists(outPath) || !isAudioFile(outPath) {
+		return nil, fmt.Errorf("FFmpeg không tạo được audio đã trộn")
+	}
+	ctx.Log(fmt.Sprintf("AudioMix: Đã trộn track chính với nhạc nền (duck=%v, loop=%v)", nodeParamBool(node.Params, "duck_music", true), nodeParamBool(node.Params, "loop_music", true)))
+	return map[string]any{"audio_out": outPath}, nil
+}
+
 func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoIn := inputString(inputs, "video_in", "")
 	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {

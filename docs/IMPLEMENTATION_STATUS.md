@@ -15,7 +15,7 @@
 | Lấy audio Radar | Một phần | Code tải video nguồn, tách audio và kiểm tra track; cần xác minh bằng video thật và đầu ra cuối. |
 | Gửi TikTok Draft | Một phần | Studio hiện hiển thị account đích, bắt buộc người vận hành xác nhận đã xem preview và đồng ý gửi Draft, rồi ghi consent vào log job. Trạng thái gửi chống tạo draft trùng và kết quả không rõ cần đối chiếu trước retry. Chưa chứng minh tài khoản/app thật đủ scope. Draft vẫn cần người dùng hoàn tất trong TikTok; public publish và product anchor chưa nối. |
 | Analytics/gợi ý | Một phần | TikTok Display API đã nối follower/video totals và current public-video views/likes/comments/shares; Growth so delta follower giữa snapshot cách nhau ít nhất 24 giờ. Job hoàn tất nhận link TikTok công khai; chỉ xem video đã xác minh trong snapshot `video.list` mới của đúng kênh và chỉ sau đó ghép đơn AccessTrade theo `sub2`. Engagement baseline so video cùng flow/kênh, hiển thị số mẫu; dưới 3 video đối chiếu thì chưa kết luận cao/thấp. Chưa có retention, demographics, profile visits hoặc follows-per-video. TikTok Shop product card vẫn cần người dùng gắn thủ công trong TikTok. |
-| Workflow truyện audio | Có preset viết → TTS → WAV | Dùng LLM và TTS chain đang cấu hình; chưa có dựng nhiều vai, nhạc nền/hiệu ứng theo cảnh hoặc workflow sản xuất audio riêng trong Studio. Chưa xác minh end-to-end với provider thật. |
+| Workflow truyện audio | Có preset viết → TTS → trộn nhạc tùy chọn → WAV | Dùng LLM và TTS chain đang cấu hình; chưa có dựng nhiều vai, âm thanh theo cảnh hoặc workflow sản xuất audio riêng trong Studio. Chưa xác minh end-to-end với provider thật. |
 
 ## Acceptance chưa xác minh
 

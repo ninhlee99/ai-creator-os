@@ -1,6 +1,6 @@
 # Tài liệu MiuNova
 
-MiuNova hiện tập trung hai quy trình sản xuất TikTok: affiliate và viral. Workflow canvas còn hỗ trợ ráp flow sáng tạo riêng; preset Truyện audio có thể viết kịch bản, tạo giọng đọc và xuất WAV. Đây chưa phải quy trình sản xuất audio riêng trong Studio.
+MiuNova hiện tập trung hai quy trình sản xuất TikTok: affiliate và viral. Workflow canvas còn hỗ trợ ráp flow sáng tạo riêng; preset Truyện audio có thể viết kịch bản, tạo giọng đọc, trộn nhạc nền tùy chọn và xuất WAV. Đây chưa phải quy trình sản xuất audio riêng trong Studio.
 
 ## Nguồn sự thật
 

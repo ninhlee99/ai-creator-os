@@ -46,6 +46,22 @@
       }
     },
     {
+      "id": "input_music_track",
+      "type": "workflow_input",
+      "title": "Nhạc nền tùy chọn",
+      "category": "workflow",
+      "x": 60,
+      "y": 700,
+      "params": {
+        "key": "background_music",
+        "label": "Nhạc nền",
+        "value_type": "audio",
+        "required": false,
+        "value": "",
+        "help": "Tải nhạc nền lên ở lần chạy này. Để trống nếu chỉ muốn xuất lời kể."
+      }
+    },
+    {
       "id": "node_story_writer",
       "type": "custom_universal_ai",
       "title": "Viết truyện audio",
@@ -71,11 +87,26 @@
       }
     },
     {
+      "id": "node_audio_mix",
+      "type": "audio_mix",
+      "title": "Cân bằng lời kể & nhạc nền",
+      "category": "process",
+      "x": 1080,
+      "y": 180,
+      "params": {
+        "voice_volume": 1.0,
+        "music_volume": 0.18,
+        "duck_music": true,
+        "loop_music": true,
+        "normalize": true
+      }
+    },
+    {
       "id": "node_audio_export",
       "type": "audio_output",
       "title": "Xuất truyện audio WAV",
       "category": "output",
-      "x": 1120,
+      "x": 1400,
       "y": 180,
       "params": {}
     },
@@ -84,7 +115,7 @@
       "type": "workflow_output",
       "title": "Kịch bản truyện",
       "category": "workflow",
-      "x": 1120,
+      "x": 1400,
       "y": 410,
       "params": {
         "key": "story_text",
@@ -97,7 +128,7 @@
       "type": "workflow_output",
       "title": "File audio hoàn thiện",
       "category": "workflow",
-      "x": 1460,
+      "x": 1740,
       "y": 180,
       "params": {
         "key": "story_audio",
@@ -110,8 +141,10 @@
     {"id": "e_story_idea", "from_node": "input_story_idea", "from_port": "value", "to_node": "node_story_writer", "to_port": "text_in"},
     {"id": "e_story_text", "from_node": "node_story_writer", "from_port": "text_out", "to_node": "node_narrator", "to_port": "text_in"},
     {"id": "e_story_voice", "from_node": "input_voice_style", "from_port": "value", "to_node": "node_narrator", "to_port": "voice_in"},
+    {"id": "e_story_music", "from_node": "input_music_track", "from_port": "value", "to_node": "node_audio_mix", "to_port": "music_in"},
     {"id": "e_story_script_output", "from_node": "node_story_writer", "from_port": "text_out", "to_node": "output_story_text", "to_port": "value"},
-    {"id": "e_story_audio_export", "from_node": "node_narrator", "from_port": "audio_out", "to_node": "node_audio_export", "to_port": "audio_in"},
+    {"id": "e_story_audio_mix_voice", "from_node": "node_narrator", "from_port": "audio_out", "to_node": "node_audio_mix", "to_port": "voice_in"},
+    {"id": "e_story_audio_export", "from_node": "node_audio_mix", "from_port": "audio_out", "to_node": "node_audio_export", "to_port": "audio_in"},
     {"id": "e_story_audio_output", "from_node": "node_audio_export", "from_port": "final_audio", "to_node": "output_story_audio", "to_port": "value"}
   ]
 }

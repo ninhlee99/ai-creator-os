@@ -388,6 +388,28 @@ func registerAllBuiltinNodes() {
 		},
 		Executor: executeAudioMerge,
 	})
+	RegisterNode(NodeDefinition{
+		Type:        "audio_mix",
+		Title:       "Trộn giọng đọc & nhạc nền (Audio Mix)",
+		Category:    CategoryProcess,
+		Description: "Trộn track chính với nhạc nền; có thể tự giảm nhạc khi có lời đọc và lặp nhạc nền đến hết track chính.",
+		Icon:        "volume-2",
+		Inputs: []FlowPort{
+			{ID: "voice_in", Name: "Track chính / giọng đọc", Type: PortTypeAudio, Required: true},
+			{ID: "music_in", Name: "Nhạc nền tùy chọn", Type: PortTypeAudio, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "audio_out", Name: "Audio đã trộn", Type: PortTypeAudio, Description: "Bản phối WAV đã cân bằng âm lượng."},
+		},
+		DefaultParams: map[string]any{
+			"voice_volume": 1.0,
+			"music_volume": 0.18,
+			"duck_music":   true,
+			"loop_music":   true,
+			"normalize":    true,
+		},
+		Executor: executeAudioMix,
+	})
 
 	// 15. Video Upscale Node
 	RegisterNode(NodeDefinition{

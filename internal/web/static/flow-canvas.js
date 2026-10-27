@@ -3028,6 +3028,8 @@
 
     createSliderOrNumberInput(key, val, node, id, onChange) {
       const sliderConfigs = {
+        voice_volume: { min: 0, max: 2, step: 0.05, unit: 'x' },
+        music_volume: { min: 0, max: 2, step: 0.05, unit: 'x' },
         wrinkle_depth: { min: 0, max: 1, step: 0.05, unit: '' },
         stiffness: { min: 0, max: 1, step: 0.05, unit: '' },
         blend_ratio: { min: 0.5, max: 1, step: 0.02, unit: '' },
@@ -3276,6 +3278,7 @@
       const guidance = {
         custom_universal_ai: 'Dùng cho một node đa phương thức với cổng Text/Image/Video. Video chỉ được lấy frame tham chiếu; audio chưa được hỗ trợ.',
         text_to_speech: 'Nối kịch bản vào cổng Văn bản. Chọn persona ở cổng hoặc tham số; giọng thực tế tùy provider TTS. macOS Say hiện dùng giọng Linh. Văn bản dài tự chia theo câu rồi ghép thành một file WAV.',
+        audio_mix: 'Nối lời đọc vào Track chính; nhạc nền là tùy chọn. Khi bật ducking, nhạc tự nhỏ xuống trong lúc có lời. Không nối nhạc thì node truyền nguyên track chính.',
         custom_web_ai: 'Dùng khi cần chọn Google Flow hoặc Muse AI và truyền prompt cùng một file tham chiếu; output chọn Text, Image hoặc Video.',
         custom_ai_prompt: 'Dùng cho prompt tùy biến với system prompt, model hệ thống và cổng output riêng cho text/media.',
         custom_vision_analyzer: 'Phân tích ảnh hoặc một frame video; không phân tích toàn bộ chuyển động video.',
@@ -4073,6 +4076,11 @@
       const labels = {
         voice: 'Phong cách giọng đọc',
         chunk_size: 'Ký tự tối đa mỗi đoạn đọc',
+        voice_volume: 'Âm lượng track chính',
+        music_volume: 'Âm lượng nhạc nền',
+        duck_music: 'Giảm nhạc khi có lời đọc',
+        loop_music: 'Lặp nhạc đến hết track chính',
+        normalize: 'Chuẩn hóa âm lượng đầu ra',
         template: 'Mẫu câu lệnh (Template)',
         prompt: 'Câu lệnh Prompt & Chỉ dẫn AI',
         system_prompt: 'Chỉ đạo vai trò AI (System Prompt)',

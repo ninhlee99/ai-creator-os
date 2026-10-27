@@ -29,9 +29,9 @@ Hướng dẫn vận hành quy trình TikTok đang được hoàn thiện và wo
 ## Workflow truyện audio
 
 1. Mở Workflow và chọn preset **Truyện audio · Viết & kể**. Preset hệ thống chỉ đọc; nhân bản để sửa prompt hoặc cấu hình.
-2. Bấm Chạy workflow. Nhập ý tưởng truyện và chọn phong cách giọng đọc cho lần chạy này.
+2. Bấm Chạy workflow. Nhập ý tưởng, chọn phong cách giọng đọc và tải nhạc nền tùy chọn cho lần chạy này.
 3. Xem lại node **Viết truyện audio** nếu cần đổi cách viết; node **Tổng hợp giọng kể** dùng chuỗi TTS trong Cài đặt. Persona giọng phụ thuộc provider; macOS Say hiện dùng giọng Linh.
-4. Kết quả gồm kịch bản văn bản và file WAV trong thư mục output. Văn bản dài được chia theo câu rồi ghép thành một file.
+4. Node cân bằng âm thanh tự giảm nhạc khi có lời, lặp nhạc tới hết track chính và chuẩn hóa đầu ra. Không tải nhạc thì node truyền nguyên lời kể. Kết quả gồm kịch bản văn bản và file WAV trong thư mục output.
 
 ## Khi flow dừng
 
