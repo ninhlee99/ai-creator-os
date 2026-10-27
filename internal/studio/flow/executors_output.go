@@ -75,3 +75,19 @@ func executeImageOutput(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		"final_image": finalPath,
 	}, nil
 }
+
+func executeAudioOutput(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	audioIn := inputString(inputs, "audio_in", "")
+	if audioIn == "" || !fileExists(audioIn) || !isAudioFile(audioIn) {
+		return nil, fmt.Errorf("AudioOutputNode: Không có file audio đầu vào hợp lệ")
+	}
+	if err := os.MkdirAll(ctx.OutDir, 0o755); err != nil {
+		return nil, fmt.Errorf("không tạo được thư mục output: %w", err)
+	}
+	finalPath := filepath.Join(ctx.OutDir, fmt.Sprintf("flow_audio_%s%s", ctx.RunID, filepath.Ext(audioIn)))
+	if err := copyFile(audioIn, finalPath); err != nil {
+		return nil, fmt.Errorf("không thể xuất audio: %w", err)
+	}
+	ctx.Log(fmt.Sprintf("AudioOutputNode: Audio cuối cùng đã sẵn sàng tại %s", filepath.Base(finalPath)))
+	return map[string]any{"final_audio": finalPath}, nil
+}

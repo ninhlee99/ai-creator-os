@@ -441,6 +441,21 @@ func registerAllBuiltinNodes() {
 		},
 		Executor: executeImageOutput,
 	})
+	RegisterNode(NodeDefinition{
+		Type:        "audio_output",
+		Title:       "Xuất audio hoàn thiện (Audio Output)",
+		Category:    CategoryOutput,
+		Description: "Sao chép file audio thành phẩm vào thư mục output để nghe và tải về",
+		Icon:        "volume-2",
+		Inputs: []FlowPort{
+			{ID: "audio_in", Name: "Audio thành phẩm", Type: PortTypeAudio, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "final_audio", Name: "Audio cuối cùng", Type: PortTypeAudio, Description: "File audio hoàn thiện để nghe và tải về"},
+		},
+		DefaultParams: map[string]any{},
+		Executor:      executeAudioOutput,
+	})
 
 	// 19. Outfit Prompt Builder. Image generator does not support true virtual try-on.
 	RegisterNode(NodeDefinition{
