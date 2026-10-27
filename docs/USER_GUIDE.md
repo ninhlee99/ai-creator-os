@@ -20,7 +20,7 @@ Hướng dẫn tập trung hai flow TikTok đang được hoàn thiện. Truyệ
 
 ## Video viral TikTok
 
-1. Mở TikTok Radar và cập nhật feed; crawler cần browser cục bộ.
+1. Mở TikTok Radar và cập nhật feed. Cách chuẩn bị browser và giới hạn dữ liệu: [TikTok Web Crawler](features/tiktok-web-crawler.md).
 2. Mở video xem nội dung thật rồi xác nhận vũ đạo trên card. Chỉ video đã xác nhận mới có hành động dùng làm nguồn.
 3. Tạo video từ nguồn đã chọn.
 4. Kiểm tra audio, hình ảnh, preview và QC.

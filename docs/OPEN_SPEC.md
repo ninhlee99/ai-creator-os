@@ -2,6 +2,8 @@
 
 Cập nhật: 2026-10-24. Áp dụng cho video affiliate TikTok và video viral TikTok.
 
+Radar source contract và giới hạn crawler: [TikTok Web Crawler](features/tiktok-web-crawler.md).
+
 ## Mục tiêu
 
 Chọn âm thanh từ video nhảy viral mà Radar đã thu thập.
@@ -11,7 +13,7 @@ Chọn âm thanh từ video nhảy viral mà Radar đã thu thập.
 - Video phải có trong kết quả TikTok Radar hiện tại.
 - Lưu TikTok video ID, URL nguồn, tác giả, thời điểm thu thập và metadata audio.
 - Chỉ dùng video nhảy. Caption hoặc tên sound có từ khóa dance chưa đủ bằng chứng để tự coi là video nhảy.
-- Nếu không có phân loại video đáng tin, yêu cầu người vận hành chọn đúng video trong Radar.
+- Radar hiện không có classifier; người vận hành phải xem và xác nhận video đúng trong Radar.
 
 ## Dùng trong hai flow
 

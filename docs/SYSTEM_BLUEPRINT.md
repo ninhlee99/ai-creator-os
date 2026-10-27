@@ -12,7 +12,7 @@ flowchart LR
   PR --> EV[Evidence + evaluation]
   EV -->|approved| AF[Affiliate campaign]
   EV -->|rejected| RJ[Rejected list]
-  TR[TikTok Radar by topic] --> VA[Viral analysis]
+  TR[TikTok Radar · Web Crawler] --> VA[Viral analysis]
   TR -->|dance source selected| AU[Audio extraction]
   AU --> AF
   AU --> VF[Viral remake]
@@ -48,7 +48,7 @@ flowchart LR
 
 - Product candidate: offer provider + offer/product ID + optional TikTok Shop product ID + verified mapping state + category + price/currency + commission + source timestamp + snapshot ID.
 - Evaluation: candidate snapshot + rule version + facts + unknowns + verdict + reason + confidence + actor + time.
-- TikTok Radar video: provider + video ID/URL + author + topic + collected-at + metrics snapshot + audio metadata + dance classification state.
+- TikTok Radar video: Web Crawler source + video ID/URL + author + topic + collected-at + metrics snapshot + audio metadata + manual dance review state. Crawler contract in [TikTok Web Crawler](features/tiktok-web-crawler.md).
 - Campaign/job: flow + account + approved offer ID + TikTok Shop product/anchor IDs and state if affiliate + selected Radar source + audio source + provider + artifact/QC + consent evidence + draft/publish state.
 - Performance: account/video ID + metric name/value + provider + timestamp + window + attribution scope.
 - Recommendation: evidence IDs + sample size + confidence + proposed setting diff + rule version + apply/rollback audit.
@@ -76,4 +76,4 @@ Unknown values stay null/unknown. Old snapshots remain immutable. Repeated syncs
 
 ## External capability gaps
 
-Current repo has AccessTrade offers, links and orders; per-product sales/rating and TikTok video attribution are not proven. TikTok Radar uses a local headless Web Crawler through browser CDP, not Business Discovery. It reads TikTok search network responses and falls back to DOM; network fields may include counters/sound metadata while DOM fallback leaves them unknown. Feed returns up to five videos, stores up to 2,000 and keeps snapshots for 30 days. The crawler depends on an installed local browser and undocumented page/network structure; authorization for production use is not verified. Dance verification is operator-confirmed per video; migration clears old auto-labels that had no review provenance. TikTok Display API is separate and reads public-video counters after publish when scopes are granted; retention, watch-time, demographics and Shop product attachment are not proven end-to-end. TikTok Content Posting API supports draft upload; Direct Post and TikTok Shop product anchors remain unverified. Keep unsupported fields `unknown` and gate related automation.
+Current repo has AccessTrade offers, links and orders; per-product sales/rating and TikTok video attribution are not proven. Radar implementation, unknown-field behavior, manual dance review, local-browser dependency and production permission status are documented in [TikTok Web Crawler](features/tiktok-web-crawler.md). TikTok Display API is separate and reads public-video counters after publish when scopes are granted; retention, watch-time, demographics and Shop product attachment are not proven end-to-end. TikTok Content Posting API supports draft upload; Direct Post and TikTok Shop product anchors remain unverified. Keep unsupported fields `unknown` and gate related automation.

@@ -11,10 +11,7 @@
 
 ## Dữ liệu TikTok
 
-- Nguồn Radar hiện tại là Web Crawler cục bộ, không phải API TikTok chính thức; crawler đọc trang và phản hồi mạng của browser.
-- Code không chứng minh TikTok đã cho phép cách crawl này. Trước production phải xác minh quyền/phạm vi sử dụng; nếu chưa xác minh, không tuyên bố compliant và cần tắt crawl tự động hoặc dùng nguồn được phép.
-- Không bypass đăng nhập, CAPTCHA, access control hoặc giới hạn nền tảng.
-- Chỉ số và metadata sound không có trong phản hồi phải giữ là unknown; tên sound không chứng minh audio track hay quyền sử dụng.
+- Tuân theo [crawler contract](features/tiktok-web-crawler.md) về quyền sử dụng production, không bypass giới hạn nền tảng và cách giữ trường dữ liệu chưa được nguồn xác nhận ở trạng thái `unknown`.
 
 ## Dữ liệu sản phẩm
 

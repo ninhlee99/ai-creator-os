@@ -82,11 +82,11 @@ Auto-approve chỉ khi tất cả hard gate qua, evidence đủ mới, confidenc
 
 ### 1. Radar theo chủ đề
 
-- Nguồn hiện tại là Web Crawler cục bộ; source, fallback, timeout và unknown-field contract theo [tài liệu TikTok Web Crawler](features/tiktok-web-crawler.md).
-- Người dùng chọn topic/category, vùng, khoảng thời gian và tiêu chí viral.
+- Nguồn hiện tại là Web Crawler cục bộ. Hành vi thu thập, fallback, timeout và unknown-field contract chỉ định tại [tài liệu TikTok Web Crawler](features/tiktok-web-crawler.md).
+- Người dùng chọn một topic đã lưu hoặc thêm topic mới.
 - Radar lưu video ID/URL, author, caption, sound metadata, views/likes/comments/shares, thời điểm thu thập và provider.
-- Sắp xếp theo view velocity và tương tác khi có đủ snapshot theo thời gian; tổng view cao đơn lẻ không chứng minh đang lên trend.
-- Nhãn “video nhảy” chỉ được gán sau xác nhận thủ công của người vận hành; crawler không phân loại dance. Classifier chỉ có thể tự gán sau khi đạt ngưỡng đã kiểm chứng. Video chưa xác nhận không được chọn làm nguồn audio.
+- Danh sách xếp theo lượt xem đã biết; lượt thích phá hòa. Đây là xếp hạng phổ biến, không phải tốc độ tăng view; tốc độ chỉ dùng trong phân tích khi có đủ snapshot.
+- Video mới ở trạng thái `Chưa xác nhận vũ đạo`; chỉ người vận hành đã xem mới xác nhận. Video chưa xác nhận không được chọn làm nguồn audio. Không có phân loại dance tự động trong phạm vi sản phẩm hiện tại.
 
 ### 2. Phân tích video
 
@@ -147,7 +147,7 @@ Nếu không có một mắt xích dữ liệu, nêu rõ khoảng trống và kh
 |---|---|---|
 | Offer, campaign, commission, affiliate link | AccessTrade clients/cache | Sales và rating/review theo từng sản phẩm |
 | Orders/commission | AccessTrade order sync hiện có | Ghép attribution tới đúng TikTok video, canceled/returned và settlement đầy đủ |
-| Video Radar | Local Web Crawler, SQLite, conditional metrics | Permission review, reliable dance confirmation, production coverage/freshness |
+| Video Radar | Web Crawler cục bộ, SQLite, conditional metrics | Quyền sử dụng production, coverage/freshness thật; chi tiết ở [crawler contract](features/tiktok-web-crawler.md) |
 | TikTok publish | Draft upload adapter hiện có | Direct Post API có public mode sau audit và creator consent; app nội bộ có thể không đạt intended-use. TikTok Shop Shoppable Video API có precheck/publish/product anchor nhưng cần partner + creator authorization. Repo chưa xác minh scope, audit, anchor hoặc public publish thật. |
 | TikTok performance | Display API source cho profile/public-video counters + SQLite snapshots | Retention, watch time, demographics, profile visits/follows và video-level order attribution |
 | UI interactions | Go templates + vendored HTMX partials + pinned Tailwind compiled to local static CSS | Xác minh OAuth/provider thật và tiếp tục mở rộng partials cho các control còn lại |
@@ -174,7 +174,7 @@ Không được thay giới hạn ở bảng này bằng số liệu giả hoặ
 |---|---|---|
 | Radar không có sales/rating evidence | Candidate detail | `Chưa có dữ liệu` hiển thị; auto-approval bị chặn |
 | Candidate bị loại | Candidate detail → Bị loại | Candidate xuất hiện trong danh sách Bị loại cùng reason/evidence |
-| Video nhảy chưa được xác nhận | Viral/Affiliate Radar | Trạng thái `Chưa phân loại`; không tự chọn source |
+| Video nhảy chưa được xác nhận | Viral/Affiliate Radar | Trạng thái `Chưa xác nhận vũ đạo`; không tự chọn source |
 | Draft được TikTok nhận | Campaign/job detail | Provider state + TikTok draft ID; không hiển thị `Đã đăng` |
 | Đăng video affiliate có product anchor | Publish review → Campaign/job detail | Consent timestamp + provider publish ID + TikTok video ID + `anchor_state=attached`; thiếu một tín hiệu thì không hiện `Đã đăng kèm sản phẩm` |
 | Offer và Shop product ID không khớp | Publish review | Publish bị chặn; UI nêu mismatch và yêu cầu sửa mapping hoặc dùng manual handoff |

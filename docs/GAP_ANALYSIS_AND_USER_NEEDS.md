@@ -12,8 +12,7 @@ Cập nhật: 2026-10-27. Phạm vi hiện tại gồm hai flow TikTok; truyện
 
 ## Flow video viral TikTok
 
-- Radar hiện dùng Web Crawler cục bộ; cần xác minh quyền production, hiện đúng topic search và không giả metrics/sound khi thiếu. Dance xác nhận thủ công sau khi xem video; chưa có classifier tự động.
-- Caption/sound keyword chưa đủ bằng chứng để tự chọn dance clip.
+- Radar dùng Web Crawler; kiểm tra quyền production và giới hạn nguồn theo [tài liệu crawler chuẩn](features/tiktok-web-crawler.md). Dance xác nhận thủ công sau khi xem video; caption/sound không tự chọn clip.
 - Cần bảo toàn video/audio nguồn tới artifact cuối và lưu provenance trên job.
 - Tạo output viral hoàn chỉnh cần xác minh trên video nguồn thật.
 
