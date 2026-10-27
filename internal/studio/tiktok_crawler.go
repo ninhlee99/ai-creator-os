@@ -56,7 +56,8 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 	}
 
 	searchQuery := strings.TrimSpace(topic)
-	if searchQuery == "" || strings.EqualFold(searchQuery, "Xu hướng Việt Nam") {
+	isRegionalFeed := searchQuery == "" || strings.EqualFold(searchQuery, "Xu hướng Việt Nam")
+	if isRegionalFeed {
 		searchQuery = "xu hướng việt nam"
 	} else {
 		lower := strings.ToLower(searchQuery)
@@ -68,10 +69,12 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 
 	videos, err := runTikTokCrawlerBrowser(ctx, bin, targetURL)
 	if err != nil || len(videos) == 0 {
-		// Fallback tìm kiếm video hot trend TikTok Việt Nam
-		fallbackURL := "https://www.tiktok.com/search?q=" + url.QueryEscape("hot trend tiktok việt nam")
-		if fallbackVideos, fErr := runTikTokCrawlerBrowser(ctx, bin, fallbackURL); fErr == nil && len(fallbackVideos) > 0 {
-			return fallbackVideos, nil
+		if isRegionalFeed {
+			// Chỉ feed mặc định mới được thử truy vấn xu hướng tổng quát.
+			fallbackURL := "https://www.tiktok.com/search?q=" + url.QueryEscape("hot trend tiktok việt nam")
+			if fallbackVideos, fErr := runTikTokCrawlerBrowser(ctx, bin, fallbackURL); fErr == nil && len(fallbackVideos) > 0 {
+				return fallbackVideos, nil
+			}
 		}
 		if err != nil {
 			return nil, err
