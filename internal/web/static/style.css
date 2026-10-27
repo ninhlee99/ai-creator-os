@@ -4191,33 +4191,54 @@ body.page-workflow .layout {
 .wf-ports-row {
   display: flex;
   justify-content: space-between;
+  width: 100%;
   padding: 6px 0;
   border-top: 1px solid var(--border-subtle);
   position: relative;
 }
 
-.wf-ports-inputs, .wf-ports-outputs {
+.wf-ports-inputs {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-ports-outputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  margin-left: auto;
+  align-items: flex-end;
 }
 
 .wf-port {
   display: flex;
   align-items: center;
-  gap: 6px;
   position: relative;
+  min-height: 20px;
 }
 
 .wf-port.wf-port-input {
-  margin-left: -7px;
+  padding-left: 14px;
+  justify-content: flex-start;
 }
 
 .wf-port.wf-port-output {
-  margin-right: -7px;
+  padding-right: 14px;
+  justify-content: flex-end;
+  width: 100%;
 }
 
-.wf-port-dot {
+/* Input Port Dot: Pinned to Left Border Edge */
+.wf-port.wf-port-input .wf-port-dot {
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -4225,53 +4246,73 @@ body.page-workflow .layout {
   border: 2.5px solid var(--bg2);
   cursor: crosshair;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  z-index: 5;
 }
 
-.wf-port-dot:hover {
-  transform: scale(1.35);
+.wf-port.wf-port-input .wf-port-dot:hover {
+  transform: translateY(-50%) scale(1.35);
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
 }
 
-/* Output Add Node Handle (+) */
-.wf-port-add-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
+/* Output Port (+) Handle: Pinned to Right Border Edge */
+.wf-port.wf-port-output .wf-port-dot {
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #6366F1;
-  color: #FFFFFF;
-  font-size: 12px;
-  font-weight: 700;
   border: 2px solid var(--bg2);
   cursor: pointer;
-  transition: transform 0.15s, background 0.15s;
-  box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.25);
+  z-index: 5;
 }
 
-.wf-port-add-btn:hover {
-  transform: scale(1.3);
-  background: #4F46E5;
+.wf-port.wf-port-output .wf-port-dot:hover {
+  transform: translateY(-50%) scale(1.3);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.7);
+}
+
+.wf-port-plus {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #FFFFFF;
+  pointer-events: none;
+  user-select: none;
+  display: block;
+  margin-top: -1px;
 }
 
 /* Port Data-Type Color Badges */
-.port-type-image .wf-port-dot, .port-type-image_list .wf-port-dot { background: #3B82F6; }
-.port-type-video .wf-port-dot { background: #EC4899; }
-.port-type-audio .wf-port-dot { background: #F59E0B; }
-.port-type-text .wf-port-dot { background: #10B981; }
-.port-type-motion .wf-port-dot { background: #8B5CF6; }
-.port-type-product .wf-port-dot { background: #06B6D4; }
+.port-type-image .wf-port-dot, .port-type-image_list .wf-port-dot { background: #3B82F6 !important; }
+.port-type-video .wf-port-dot { background: #EC4899 !important; }
+.port-type-audio .wf-port-dot { background: #F59E0B !important; }
+.port-type-text .wf-port-dot { background: #10B981 !important; }
+.port-type-motion .wf-port-dot { background: #8B5CF6 !important; }
+.port-type-product .wf-port-dot { background: #06B6D4 !important; }
 
 .wf-port-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .wf-port-input .wf-port-label {
-  padding-left: 4px;
+  padding-left: 0;
+}
+
+.wf-port-output .wf-port-label {
+  text-align: right;
+  padding-right: 0;
 }
 
 .wf-port-output .wf-port-label {

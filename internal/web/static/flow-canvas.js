@@ -316,65 +316,84 @@
       label.innerText = port.name;
 
       if (isOutput) {
+        dot.innerHTML = '<span class="wf-port-plus">+</span>';
+        dot.title = `Kéo để nối dây hoặc bấm (+) để thêm bước tiếp theo (${port.name})`;
         portEl.appendChild(label);
         portEl.appendChild(dot);
 
-        // Add (+) quick connect handle button (n8n signature UX)
-        const addBtn = document.createElement('span');
-        addBtn.className = 'wf-port-add-btn';
-        addBtn.innerText = '+';
-        addBtn.title = 'Bấm để thêm bước tiếp theo và tự động nối dây';
-        addBtn.addEventListener('click', (e) => {
+        // Click / Drag handle logic for output port (+)
+        let isDrag = false;
+        let startClientX = 0, startClientY = 0;
+
+        dot.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
           e.stopPropagation();
-          this.pendingConnect = {
-            fromNode: nodeId,
-            fromPort: port.id,
-            portType: port.type
+
+          isDrag = false;
+          startClientX = e.clientX;
+          startClientY = e.clientY;
+
+          const rect = dot.getBoundingClientRect();
+          const containerRect = this.container.getBoundingClientRect();
+          const startX = (rect.left + rect.width / 2 - containerRect.left - this.panX) / this.scale;
+          const startY = (rect.top + rect.height / 2 - containerRect.top - this.panY) / this.scale;
+
+          this.activeConnecting = {
+            nodeId,
+            portId: port.id,
+            portType: port.type,
+            startX,
+            startY
           };
-          this.openAddNodeModal();
+
+          const onMouseMove = (ev) => {
+            const dist = Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY);
+            if (dist > 3 && !isDrag) {
+              isDrag = true;
+              this.createTempWire(startX, startY);
+            }
+          };
+
+          const onMouseUp = (ev) => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+
+            if (!isDrag) {
+              // Clicked (+) without dragging: open Add Node Modal and auto-connect
+              this.cancelConnecting();
+              this.pendingConnect = {
+                fromNode: nodeId,
+                fromPort: port.id,
+                portType: port.type
+              };
+              this.openAddNodeModal();
+            }
+          };
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
         });
-        portEl.appendChild(addBtn);
       } else {
+        dot.title = `${port.name} (${port.type})`;
         portEl.appendChild(dot);
         portEl.appendChild(label);
-      }
 
-      // Drag to create wire from output dot
-      dot.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        if (!isOutput) return;
+        // Drop wire connection on input dot
+        dot.addEventListener('mouseup', (e) => {
+          e.stopPropagation();
+          if (this.activeConnecting) {
+            const fromNode = this.activeConnecting.nodeId;
+            const fromPort = this.activeConnecting.portId;
+            const toNode = nodeId;
+            const toPort = port.id;
 
-        const rect = dot.getBoundingClientRect();
-        const containerRect = this.container.getBoundingClientRect();
-        const startX = (rect.left + rect.width / 2 - containerRect.left - this.panX) / this.scale;
-        const startY = (rect.top + rect.height / 2 - containerRect.top - this.panY) / this.scale;
-
-        this.activeConnecting = {
-          nodeId,
-          portId: port.id,
-          portType: port.type,
-          startX,
-          startY
-        };
-
-        this.createTempWire(startX, startY);
-      });
-
-      // Drop wire connection on input dot
-      dot.addEventListener('mouseup', (e) => {
-        e.stopPropagation();
-        if (this.activeConnecting && !isOutput) {
-          const fromNode = this.activeConnecting.nodeId;
-          const fromPort = this.activeConnecting.portId;
-          const toNode = nodeId;
-          const toPort = port.id;
-
-          if (fromNode !== toNode) {
-            this.addEdge(fromNode, fromPort, toNode, toPort);
+            if (fromNode !== toNode) {
+              this.addEdge(fromNode, fromPort, toNode, toPort);
+            }
+            this.cancelConnecting();
           }
-          this.cancelConnecting();
-        }
-      });
+        });
+      }
 
       return portEl;
     }
