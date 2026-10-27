@@ -74,6 +74,39 @@ func (s *Server) handleAPIFlowDefinitions(w http.ResponseWriter, r *http.Request
 	})
 }
 
+func (s *Server) handleAPIFlowProducts(w http.ResponseWriter, r *http.Request) {
+	type flowProduct struct {
+		ID           int64  `json:"id"`
+		Title        string `json:"title"`
+		Category     string `json:"category,omitempty"`
+		ImageURL     string `json:"image_url,omitempty"`
+		ReviewStatus string `json:"review_status"`
+	}
+	items := []flowProduct{}
+	if s.Products != nil {
+		catalog, err := s.Products.All(100)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		for _, product := range catalog {
+			if !product.ReadyForAffiliateProduction() {
+				continue
+			}
+			imageURL := ""
+			if len(product.ImageURLs) > 0 {
+				imageURL = product.ImageURLs[0]
+			}
+			items = append(items, flowProduct{
+				ID: product.ID, Title: product.Title, Category: product.Category,
+				ImageURL: imageURL, ReviewStatus: product.ReviewStatus,
+			})
+		}
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "products": items})
+}
+
 func (s *Server) handleAPIFlowGraphs(w http.ResponseWriter, r *http.Request) {
 	if s.Studio == nil {
 		http.Error(w, `{"ok":false,"error":"Studio unavailable"}`, http.StatusServiceUnavailable)
@@ -464,7 +497,7 @@ func (s *Server) handleAPIFlowRuns(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleAPIFlowUpload lưu trữ file ảnh hoặc video người dùng tải lên cho các node trong workflow.
+// handleAPIFlowUpload lưu ảnh, video và audio cho các node trong workflow.
 func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(50 << 20); err != nil { // max 50MB
 		http.Error(w, `{"ok":false,"error":"Dung lượng file vượt quá giới hạn hoặc định dạng không hợp lệ"}`, http.StatusBadRequest)
@@ -479,7 +512,12 @@ func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" && ext != ".mp4" && ext != ".webm" && ext != ".mp3" && ext != ".wav" {
+	supportedExt := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
+		".mp4": true, ".mov": true, ".webm": true, ".mkv": true, ".avi": true,
+		".mp3": true, ".aac": true, ".wav": true, ".m4a": true, ".ogg": true, ".flac": true,
+	}
+	if !supportedExt[ext] {
 		http.Error(w, `{"ok":false,"error":"Định dạng file không được hỗ trợ"}`, http.StatusBadRequest)
 		return
 	}

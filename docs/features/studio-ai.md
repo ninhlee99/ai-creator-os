@@ -22,7 +22,9 @@ Muse AI/Google Flow có thể hỗ trợ một số media generation. Session v�
 
 Preset Affiliate và Fashion tạo ba clip toàn thân/bán thân/cận cảnh, ghép thành video, lồng audio, cân màu, upscale và xuất file. Preset Viral phân tích frame bằng Vision AI, dựng prompt từ mô tả chuyển động, render video, dùng lại audio nguồn và xuất file. Các preset cần ảnh nhân vật, sản phẩm đã duyệt hoặc ảnh sản phẩm thật, audio/video nguồn thật và provider đã cấu hình trước khi chạy.
 
-Node AI custom hỗ trợ text, image và video qua dịch vụ đang cấu hình. Video đầu vào được lấy một frame làm ảnh tham chiếu; phân tích hoặc tạo audio chưa được hỗ trợ. `custom_script_runner` chỉ thay biến trong template văn bản, không chạy code tùy ý. `virtual_tryon` giữ ảnh gốc và chuẩn bị outfit prompt; không thay quần áo trong ảnh. `dance_retarget` tạo prompt từ mô tả Vision AI; không thực hiện motion capture. `image_composite` chỉ overlay ảnh ở vị trí xấp xỉ. `custom_export_publish` và `video_output` chỉ xuất file; đăng TikTok cần workflow consent riêng trong Studio.
+Node AI custom hỗ trợ text, image và video qua dịch vụ đang cấu hình. Video đầu vào được lấy một frame làm ảnh tham chiếu; phân tích hoặc tạo audio chưa được hỗ trợ. Audio Source, Audio Merge và Audio Output nạp, ghép hoặc xuất file audio, không tạo hay phân tích audio bằng AI. `custom_script_runner` chỉ thay biến trong template văn bản, không chạy code tùy ý. `virtual_tryon` giữ ảnh gốc và chuẩn bị outfit prompt; không thay quần áo trong ảnh. `dance_retarget` tạo prompt từ mô tả Vision AI; không thực hiện motion capture. `image_composite` chỉ overlay ảnh ở vị trí xấp xỉ. `custom_export_publish` và các node output chỉ xuất file; đăng TikTok cần workflow consent riêng trong Studio.
+
+Trong Workflow Studio, product input chọn sản phẩm đã duyệt trong catalog; video source có thể chọn video từ Radar theo chủ đề. Dropdown cài đặt chỉ liệt kê giá trị executor đang hỗ trợ. Fit Canvas đưa toàn bộ workflow vào vùng nhìn khi mở graph.
 
 Workflow chạy thật cần nguồn media, catalog/provider, FFmpeg và cấu hình phù hợp. Preset chưa phải một lần bấm để sinh nội dung nếu các đầu vào còn trống.
 

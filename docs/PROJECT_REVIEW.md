@@ -18,16 +18,23 @@ Cập nhật: 2026-10-27. Rà tĩnh source và tài liệu; chưa xác minh bằ
 4. **TikTok Draft:** xác minh OAuth scope, submit, trạng thái Draft và xử lý timeout với tài khoản/app thật. Kết quả không rõ cần đối chiếu trước retry.
 5. **Growth:** xác minh Display API scopes và metrics bằng tài khoản thật; không suy ra retention/demographics khi API không trả.
 
-## Feedback UI/UX
+## Feedback UI/UX đã xử lý trong source
 
-- **Radar:** card nêu rõ chưa xác nhận, yêu cầu xem video; crawler không phân loại vũ đạo.
-- **Sản phẩm:** Khám phá và Affiliate tách riêng; thao tác duyệt/sync giữ đúng tab.
-- **Workflow:** prereq và lý do workflow chưa dùng được hiện trên node gọi; cập nhật contract hỏi trước khi xóa dây không tương thích.
-- **Workflow inputs:** chọn catalog đang yêu cầu nhập `product_id`; video Radar cần dán URL. Nên có product/Radar picker để tránh nhầm ID và nguồn chưa xác thực.
-- **Workflow settings:** các tham số dạng enum như provider, output type, operation, location vẫn là text field; người dùng chỉ thấy lỗi sau khi chạy. Nên dùng dropdown có nhãn và mô tả lựa chọn.
-- **Custom nodes:** Universal AI, Custom Web AI và AI Prompt chồng công dụng; cần hướng dẫn chọn node theo text/image/video, kèm nhãn rõ giới hạn audio và provider.
-- **Preset workflows:** ba scene render tạo canvas rộng, cần zoom/pan để theo dõi toàn luồng. Nhãn 8a/8b/8c và node concat giúp thứ tự rõ hơn.
+- **Workflow inputs:** product input có picker chỉ liệt kê sản phẩm đã duyệt, đủ dữ liệu affiliate. Video source có picker Radar theo chủ đề, hiển thị trạng thái xác nhận vũ đạo; URL gõ tay vẫn qua kiểm tra của executor.
+- **Media upload:** upload node nhận ảnh, video và audio theo định dạng executor hỗ trợ. Link picker gửi/đọc đúng contract `type` của endpoint.
+- **Workflow settings:** provider, output type, operation, aspect ratio, location, lighting time, codec, resolution và HTTP method dùng dropdown theo giá trị executor hỗ trợ.
+- **Custom nodes:** inspector và detail modal nêu rõ trường hợp dùng Universal AI, Web AI, AI Prompt; nhắc giới hạn frame video, audio, script và publish.
+- **Preset workflows:** có Fit Canvas để xem toàn graph khi mở preset hoặc đổi workflow.
+- **Audio output:** có node xuất audio riêng; run panel phát và tải file audio.
 - **TikTok Draft:** UI phân biệt Draft đã tải lên nhưng chưa công khai với bước kiểm tra/duyệt tiếp theo trong TikTok.
+
+## Giới hạn năng lực node còn lại
+
+- Chưa có AI node phân tích hoặc tạo audio. Audio Source, Audio Merge và Audio Output chỉ nạp, ghép hoặc xuất file audio.
+- Vision Analyzer chỉ phân tích ảnh hoặc một frame video; Dance Retarget tạo prompt từ kết quả Vision, không thực hiện motion capture.
+- Virtual Try-On giữ ảnh gốc và tạo mô tả outfit; không thay trang phục trong ảnh tĩnh. Image Composite overlay ảnh ở vị trí xấp xỉ.
+- Custom Script Runner chỉ thay biến trong template; không chạy mã tùy ý. Export nodes chỉ xuất file; đăng TikTok cần luồng consent riêng.
+- Preset graph có đầu ra và đường dây hoàn chỉnh, nhưng cần input thật, FFmpeg và provider sẵn sàng. Chưa xác minh end-to-end với tài khoản/provider production.
 
 ## Phase tiếp
 

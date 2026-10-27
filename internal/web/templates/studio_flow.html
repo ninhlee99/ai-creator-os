@@ -107,6 +107,7 @@
           <span id="zoom-level" class="wf-zoom-text">100%</span>
           <button type="button" class="wf-zoom-btn" id="btn-zoom-in" title="Phóng to">+</button>
           <button type="button" class="wf-zoom-btn" id="btn-zoom-reset" title="Khôi phục góc nhìn">⟲</button>
+          <button type="button" class="wf-zoom-btn" id="btn-fit-workflow" title="Thu phóng để xem toàn bộ workflow">⛶</button>
         </div>
 
         <button type="button" class="wf-btn wf-btn-secondary wf-btn-xs wf-btn-icon" id="wf-theme-toggle" title="Chuyển giao diện sáng / tối">🌙</button>
@@ -159,6 +160,7 @@
 
         <div id="inspector-form" style="display:none">
           <p id="inspector-node-desc" class="wf-node-desc-text"></p>
+          <small id="inspector-node-guidance" class="text-muted" style="display:none"></small>
 
           <!-- Model Selector (Muse AI, Gemini, Grok, ChatGPT, Claude) -->
           <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;">
@@ -397,6 +399,7 @@
             <span class="wf-node-detail-type-badge" id="ndm-type-badge">script_generator</span>
           </div>
           <p class="wf-node-detail-desc" id="ndm-desc">Mô tả chức năng của node...</p>
+          <small id="ndm-guidance" class="text-muted" style="display:none"></small>
         </div>
       </div>
       <div class="wf-node-detail-header-right">

@@ -72,6 +72,7 @@
       this.bindGraphsModal();
       this.bindNodeDetailModal();
       this.updateZoomDisplay();
+      if (this.graph.nodes.length) requestAnimationFrame(() => this.fitCanvas());
     }
 
     setupResizeObserver() {
@@ -170,6 +171,34 @@
       if (zoomText) {
         zoomText.innerText = `${Math.round(this.scale * 100)}%`;
       }
+    }
+
+    fitCanvas() {
+      if (!this.graph.nodes?.length) return;
+      const width = this.container.clientWidth;
+      const height = this.container.clientHeight;
+      if (!width || !height) return;
+      const bounds = this.graph.nodes.reduce((rect, node) => {
+        const element = document.getElementById(`node-${node.id}`);
+        const x = Number(node.x) || 0;
+        const y = Number(node.y) || 0;
+        const nodeWidth = element?.offsetWidth || 280;
+        const nodeHeight = element?.offsetHeight || 180;
+        rect.left = Math.min(rect.left, x);
+        rect.top = Math.min(rect.top, y);
+        rect.right = Math.max(rect.right, x + nodeWidth);
+        rect.bottom = Math.max(rect.bottom, y + nodeHeight);
+        return rect;
+      }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+      const graphWidth = Math.max(1, bounds.right - bounds.left);
+      const graphHeight = Math.max(1, bounds.bottom - bounds.top);
+      this.scale = Math.min((width - 64) / graphWidth, (height - 112) / graphHeight, 1.25);
+      this.scale = Math.max(0.2, this.scale);
+      this.panX = (width - graphWidth * this.scale) / 2 - bounds.left * this.scale;
+      this.panY = (height - graphHeight * this.scale) / 2 - bounds.top * this.scale;
+      this.applyTransform();
+      this.updateZoomDisplay();
+      requestAnimationFrame(() => this.renderWires());
     }
 
     render() {
@@ -599,7 +628,7 @@
           const currentUrl = node.params?.url || node.params?.video_url || '';
           const inputUrl = window.prompt('Dán đường link (TikTok, Instagram Reels, IG, YouTube Shorts hoặc link web):', currentUrl);
           if (inputUrl && inputUrl.trim()) {
-            await this.fetchMediaFromUrl(node, inputUrl.trim(), config.type);
+            await this.fetchMediaFromUrl(node, inputUrl.trim(), config.type === 'cutout' ? 'image' : config.type);
           }
         });
         actions.appendChild(linkBtn);
@@ -1032,9 +1061,18 @@
       this.selectNode(id);
     }
 
-    async fetchMediaFromUrl(node, targetUrl, preferredType) {
+    async fetchMediaFromUrl(node, targetUrl, preferredType, paramKey = '') {
       if (!targetUrl || !targetUrl.trim()) return;
       targetUrl = targetUrl.trim();
+
+      if (node.type === 'video_source') {
+        if (!node.params) node.params = {};
+        node.params.video_url = targetUrl;
+        this.clearVideoSourceOtherParam(node, 'video_url');
+        this.render();
+        this.selectNode(node.id);
+        return;
+      }
 
       const previewEl = document.getElementById(`node-preview-${node.id}`);
       let prevHtml = '';
@@ -1049,7 +1087,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: targetUrl,
-            preferred_type: preferredType || (node.type === 'video_source' ? 'video' : 'any')
+            type: preferredType || 'auto'
           })
         });
         const res = await resp.json();
@@ -1057,28 +1095,60 @@
           throw new Error(res.error || 'Không thể tải media từ URL');
         }
 
-        if (!node.params) node.params = {};
-        node.params.url = targetUrl;
+        const mediaType = res.type || res.media_type;
+        if (!['image', 'video', 'audio'].includes(mediaType)) {
+          throw new Error('Máy chủ không xác định được loại media từ URL');
+        }
+        if (preferredType && preferredType !== 'auto' && mediaType !== preferredType) {
+          throw new Error(`Link trả về ${mediaType || 'media không rõ loại'}, cần ${preferredType}`);
+        }
 
-        if (res.media_type === 'video') {
-          node.params.video_path = res.file_path;
-          node.params.video_url = targetUrl;
-          if (node.type === 'product_extractor' || node.type === 'background_remover') {
-            node.params.source_video = res.file_path;
-            node.params.source_image = res.file_path;
+        if (!node.params) node.params = {};
+        if (!paramKey) node.params.url = targetUrl;
+        const filePath = res.file_path;
+
+        if (mediaType === 'audio') {
+          if (node.type === 'audio_source') {
+            node.params.audio_path = filePath;
+            node.params.audio_url = targetUrl;
+          } else if (node.type === 'custom_media_input') {
+            node.params.media_path = filePath;
+            node.params.media_url = targetUrl;
+          } else {
+            const pathKey = paramKey.endsWith('_url') ? paramKey.replace(/_url$/, '_path') : paramKey;
+            if (pathKey) node.params[pathKey] = filePath;
           }
-          node.params.preview_url = res.preview_url || res.url;
+          node.params.preview_url = res.url;
+        } else if (mediaType === 'video') {
+          if (node.type === 'custom_media_input') {
+            node.params.media_path = filePath;
+            node.params.media_url = targetUrl;
+          } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
+            node.params.source_video = filePath;
+          } else {
+            const pathKey = paramKey.endsWith('_url') ? paramKey.replace(/_url$/, '_path') : '';
+            node.params[pathKey || 'video_path'] = filePath;
+            if (paramKey.endsWith('_url')) node.params[paramKey] = targetUrl;
+          }
+          node.params.preview_url = res.thumbnail_url || res.url;
         } else {
           if (node.type === 'character_input') {
-            node.params.model_path = res.file_path;
-            node.params.character_image = res.file_path;
+            node.params.model_path = filePath;
+            node.params.character_image = filePath;
           } else if (node.type === 'product_extractor' || node.type === 'background_remover') {
-            node.params.source_image = res.file_path;
+            node.params.source_image = filePath;
+          } else if (node.type === 'custom_media_input') {
+            node.params.media_path = filePath;
+            node.params.media_url = targetUrl;
           } else {
-            node.params.product_image = res.file_path;
+            const pathKey = paramKey.endsWith('_url') ? paramKey.replace(/_url$/, '_path') : paramKey;
+            node.params[pathKey || 'product_image'] = filePath;
           }
           node.params.preview_url = res.url;
         }
+
+        const detailField = paramKey && document.getElementById(`ndm-field-${paramKey}`);
+        if (detailField && !paramKey.endsWith('_url')) detailField.value = node.params[paramKey] || filePath;
 
         this.render();
         this.selectNode(node.id);
@@ -1551,7 +1621,7 @@
             media.src = url;
             media.controls = true;
             row.appendChild(media);
-          } else if (/\.(mp3|wav|ogg|m4a)$/i.test(filename)) {
+          } else if (/\.(mp3|aac|wav|ogg|m4a|flac)$/i.test(filename)) {
             const media = document.createElement('audio');
             media.src = url;
             media.controls = true;
@@ -1580,7 +1650,7 @@
     }
 
     findOutputMediaPath(value) {
-      const mediaPattern = /\.(mp4|webm|mov|jpg|jpeg|png|webp|mp3|wav|ogg|m4a)$/i;
+      const mediaPattern = /\.(mp4|webm|mov|jpg|jpeg|png|webp|mp3|aac|wav|ogg|m4a|flac)$/i;
       if (typeof value === 'string') return mediaPattern.test(value) ? value : '';
       if (Array.isArray(value)) {
         for (const child of value) {
@@ -1777,6 +1847,9 @@
           this.updateZoomDisplay();
         });
       }
+
+      const btnFitWorkflow = document.getElementById('btn-fit-workflow');
+      if (btnFitWorkflow) btnFitWorkflow.addEventListener('click', () => this.fitCanvas());
 
       // Theme toggle from workflow toolbar
       const wfThemeToggle = document.getElementById('wf-theme-toggle');
@@ -2459,6 +2532,239 @@
       }
     }
 
+    parameterChoices(key, node) {
+      const choices = {
+        provider: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
+        provider_name: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
+        aspect: node.type === 'google_flow_video'
+          ? [['VIDEO_ASPECT_RATIO_PORTRAIT', '9:16 · Dọc'], ['VIDEO_ASPECT_RATIO_LANDSCAPE', '16:9 · Ngang']]
+          : [['9:16', '9:16 · Dọc'], ['16:9', '16:9 · Ngang'], ['1:1', '1:1 · Vuông']],
+        operation: [['resize_aspect', 'Đổi tỷ lệ khung hình'], ['color_grade', 'Cân màu']],
+        aspect_ratio: [['9:16', '9:16 · Dọc'], ['16:9', '16:9 · Ngang'], ['1:1', '1:1 · Vuông'], ['4:5', '4:5 · Dọc']],
+        filter_preset: [['cinematic_vibrant', 'Điện ảnh · màu rực'], ['cyber_neon', 'Cyber neon'], ['vintage_warm', 'Vintage ấm']],
+        fit_style: [['seamless_luxury', 'May đo cao cấp'], ['sexy_dance_fit', 'Trang phục nhảy K-pop'], ['kpop_stage_outfit', 'Trang phục sân khấu K-pop'], ['bodycon_glamour', 'Bodycon sang trọng']],
+        location_type: [
+          ['luxury_penthouse', 'Penthouse cao cấp'], ['minimalist_studio', 'Studio tối giản'],
+          ['fashion_boutique', 'Boutique thời trang'], ['paris_runway', 'Sàn diễn Paris'],
+          ['cafe_chill', 'Quán cà phê'], ['sunset_rooftop', 'Rooftop hoàng hôn'],
+          ['neon_dance_studio', 'Studio nhảy neon'], ['kpop_concert_stage', 'Sân khấu K-pop'],
+          ['cyberpunk_rooftop', 'Rooftop cyberpunk'], ['sensual_club_lounge', 'Club lounge'], ['custom', 'Tùy chỉnh']
+        ],
+        time_of_day: [
+          ['golden_hour', 'Hoàng hôn Golden Hour'], ['morning_sunlight', 'Nắng ban mai'],
+          ['high_noon_editorial', 'Ánh sáng editorial'], ['blue_hour_dusk', 'Chạng vạng Blue Hour'],
+          ['night_neon', 'Neon ban đêm'], ['dynamic_stage_lights', 'Đèn sân khấu chuyển động'],
+          ['studio_three_point', 'Đèn studio 3 điểm'], ['midnight_luxury', 'Đêm sang trọng']
+        ],
+        resolution: [['1080p', '1080p'], ['4k', '4K']],
+        audio_codec: [['aac', 'AAC'], ['copy', 'Giữ codec gốc']],
+        method: [['POST', 'POST'], ['GET', 'GET'], ['PUT', 'PUT'], ['PATCH', 'PATCH'], ['DELETE', 'DELETE'], ['HEAD', 'HEAD']]
+      };
+      if (key === 'output_type') {
+        const allowed = node.type === 'custom_universal_ai'
+          ? [['auto', 'Tự chọn (mặc định là văn bản)'], ['text', 'Văn bản'], ['image', 'Ảnh'], ['video', 'Video']]
+          : [['text', 'Văn bản'], ['image', 'Ảnh'], ['video', 'Video']];
+        return allowed;
+      }
+      return choices[key] || null;
+    }
+
+    isMediaParameter(key) {
+      if (['affiliate_url', 'webhook_url', 'product_url'].includes(key)) return false;
+      return /(?:^|_)(?:image|video|audio|media)(?:_|$)/i.test(key) || /(?:^|_)path$/i.test(key);
+    }
+
+    clearVideoSourceOtherParam(node, selectedKey) {
+      if (node.type !== 'video_source') return;
+      const otherKey = selectedKey === 'video_url' ? 'video_path' : 'video_url';
+      if (!node.params) node.params = {};
+      node.params[otherKey] = '';
+      [`inspector-field-${otherKey}`, `ndm-field-${otherKey}`].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.value = '';
+      });
+    }
+
+    preferredMediaType(key) {
+      if (key.includes('audio')) return 'audio';
+      if (key.includes('video')) return 'video';
+      if (key.includes('image')) return 'image';
+      return 'auto';
+    }
+
+    createChoiceSelect(key, value, node, id) {
+      const choices = this.parameterChoices(key, node);
+      if (!choices) return null;
+      const select = document.createElement('select');
+      select.className = 'form-control';
+      if (id) select.id = id;
+      choices.forEach(([choiceValue, label]) => {
+        const option = document.createElement('option');
+        option.value = choiceValue;
+        option.textContent = label;
+        select.appendChild(option);
+      });
+      const current = String(value ?? '');
+      if (current && !choices.some(([choiceValue]) => choiceValue === current)) {
+        const option = document.createElement('option');
+        option.value = current;
+        option.textContent = `Giá trị đang lưu: ${current}`;
+        select.appendChild(option);
+      }
+      select.value = current || choices[0][0];
+      return select;
+    }
+
+    createProductSelect(node, currentValue, id) {
+      const select = document.createElement('select');
+      select.className = 'form-control';
+      if (id) select.id = id;
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Chọn sản phẩm đã duyệt…';
+      select.appendChild(placeholder);
+      const current = String(currentValue || '');
+      if (current) {
+        const option = document.createElement('option');
+        option.value = current;
+        option.textContent = `Sản phẩm #${current} · đang tải…`;
+        select.appendChild(option);
+        select.value = current;
+      }
+      select.addEventListener('change', () => {
+        if (!node.params) node.params = {};
+        node.params.product_id = select.value;
+        const product = (select._flowProducts || []).find(item => String(item.id) === select.value);
+        if (!product) return;
+        node.params.product_title = product.title;
+        node.params.product_image = '';
+        node.params.preview_url = product.image_url || '';
+        ['inspector-field-product_title', 'ndm-field-product_title'].forEach(fieldId => {
+          const field = document.getElementById(fieldId);
+          if (field) field.value = product.title;
+        });
+        ['inspector-field-product_image', 'ndm-field-product_image'].forEach(fieldId => {
+          const field = document.getElementById(fieldId);
+          if (field) field.value = '';
+        });
+        if (product.image_url) this.updateNodeVisualPreview(node.id, product.image_url);
+      });
+      fetch('/api/flow/products', { headers: { Accept: 'application/json' } })
+        .then(response => response.json().then(data => ({ response, data })))
+        .then(({ response, data }) => {
+          if (!response.ok || !data.ok) throw new Error(data.error || 'Không tải được catalog');
+          select._flowProducts = data.products || [];
+          (data.products || []).forEach(product => {
+            const option = document.createElement('option');
+            option.value = String(product.id);
+            option.textContent = `${product.title}${product.category ? ` · ${product.category}` : ''}`;
+            select.appendChild(option);
+          });
+          if (current && !(data.products || []).some(product => String(product.id) === current)) {
+            const stale = Array.from(select.options).find(option => option.value === current);
+            if (stale) stale.textContent = `Sản phẩm #${current} · không còn đủ điều kiện`;
+          }
+          select.value = current;
+          if (!(data.products || []).length) placeholder.textContent = 'Catalog chưa có sản phẩm được duyệt';
+        })
+        .catch(() => {
+          placeholder.textContent = 'Không tải được catalog sản phẩm';
+        });
+      return select;
+    }
+
+    appendRadarPicker(group, node, input) {
+      const topicSelect = document.createElement('select');
+      topicSelect.className = 'form-control';
+      const topicPlaceholder = document.createElement('option');
+      topicPlaceholder.value = '';
+      topicPlaceholder.textContent = 'Chủ đề Radar…';
+      topicSelect.appendChild(topicPlaceholder);
+
+      const select = document.createElement('select');
+      select.className = 'form-control';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = 'Chọn video từ Radar…';
+      select.appendChild(placeholder);
+      const current = String(node.params?.video_url || '');
+      select.value = current;
+      const hint = document.createElement('small');
+      hint.className = 'text-muted';
+      hint.innerHTML = 'Video chưa được xác thực sẽ không chạy ở workflow yêu cầu vũ đạo. <a href="/studio/trends" target="_blank" rel="noopener">Mở Radar để xem và xác nhận</a>.';
+      select.addEventListener('change', () => {
+        if (!select.value) return;
+        if (!node.params) node.params = {};
+        node.params.video_url = select.value;
+        this.clearVideoSourceOtherParam(node, 'video_url');
+        if (input) input.value = select.value;
+      });
+      group.append(topicSelect, select, hint);
+      let requestVersion = 0;
+      const loadTopic = async topic => {
+        const version = ++requestVersion;
+        placeholder.textContent = 'Đang tải video Radar…';
+        select.replaceChildren(placeholder);
+        try {
+          const url = topic ? `/studio/trends?topic=${encodeURIComponent(topic)}` : '/studio/trends';
+          const response = await fetch(url, { headers: { Accept: 'application/json' } });
+          const data = await response.json();
+          if (version !== requestVersion) return;
+          if (!response.ok || (data.videos != null && !Array.isArray(data.videos))) throw new Error(data.error || 'Không tải được Radar');
+          const topics = data.topics || [];
+          if (topicSelect.options.length <= 1) {
+            topics.forEach(item => {
+              const option = document.createElement('option');
+              option.value = item;
+              option.textContent = item;
+              topicSelect.appendChild(option);
+            });
+          }
+          topicSelect.value = data.topic || topic || '';
+          const radarURL = new URL('/studio/trends', window.location.origin);
+          if (topicSelect.value) radarURL.searchParams.set('topic', topicSelect.value);
+          const radarLink = hint.querySelector('a');
+          if (radarLink) radarLink.href = radarURL.pathname + radarURL.search;
+
+          const videos = Array.isArray(data.videos) ? data.videos : [];
+          if (current && !videos.some(video => video.video_url === current)) {
+            const saved = document.createElement('option');
+            saved.value = current;
+            saved.textContent = 'Nguồn đang lưu';
+            select.appendChild(saved);
+          }
+          videos.forEach(video => {
+            if (!video.video_url) return;
+            const option = document.createElement('option');
+            option.value = video.video_url;
+            const status = video.dance_verified ? 'Đã xác nhận vũ đạo' : 'Chưa xác nhận vũ đạo';
+            option.textContent = `${video.title || video.music || 'Video Radar'} · @${video.unique_id || video.author || 'TikTok'} · ${status}`;
+            option.disabled = Boolean(node.params?.require_radar_dance) && !video.dance_verified;
+            option.title = video.dance_verified ? 'Đã xác nhận trong Radar' : 'Mở Radar để xác nhận video nhảy';
+            select.appendChild(option);
+          });
+          select.value = current;
+          if (!videos.length) placeholder.textContent = 'Chủ đề chưa có video; mở Radar để cập nhật';
+        } catch (_) {
+          if (version === requestVersion) placeholder.textContent = 'Không tải được Radar; mở trang Radar để kiểm tra';
+        }
+      };
+      topicSelect.addEventListener('change', () => loadTopic(topicSelect.value));
+      loadTopic('');
+    }
+
+    customNodeGuidance(type) {
+      const guidance = {
+        custom_universal_ai: 'Dùng cho một node đa phương thức với cổng Text/Image/Video. Video chỉ được lấy frame tham chiếu; audio chưa được hỗ trợ.',
+        custom_web_ai: 'Dùng khi cần chọn Google Flow hoặc Muse AI và truyền prompt cùng một file tham chiếu; output chọn Text, Image hoặc Video.',
+        custom_ai_prompt: 'Dùng cho prompt tùy biến với system prompt, model hệ thống và cổng output riêng cho text/media.',
+        custom_vision_analyzer: 'Phân tích ảnh hoặc một frame video; không phân tích toàn bộ chuyển động video.',
+        custom_script_runner: 'Chỉ thay biến trong template văn bản; node không chạy mã tùy ý.',
+        custom_export_publish: 'Xuất file để tải xuống; đăng lên TikTok cần workflow duyệt và bước publish riêng.'
+      };
+      return guidance[type] || '';
+    }
+
     updateInspector() {
       const emptyEl = document.getElementById('inspector-empty');
       const formEl = document.getElementById('inspector-form');
@@ -2508,6 +2814,11 @@
 
       const descEl = document.getElementById('inspector-node-desc');
       if (descEl) descEl.innerText = def.description || '';
+      const guidanceEl = document.getElementById('inspector-node-guidance');
+      if (guidanceEl) {
+        guidanceEl.textContent = this.customNodeGuidance(node.type);
+        guidanceEl.style.display = guidanceEl.textContent ? 'block' : 'none';
+      }
 
       // 3. LLM selector appears only where executor supports model choice.
       const modelGroup = document.getElementById('inspector-model-group');
@@ -2567,8 +2878,18 @@
           const label = document.createElement('label');
           label.innerText = this.formatParamLabel(key);
           group.appendChild(label);
+          const choiceSelect = this.createChoiceSelect(key, val, node, `inspector-field-${key}`);
 
-          if (typeof val === 'boolean') {
+          if (key === 'product_id' && node.type === 'product_input') {
+            group.appendChild(this.createProductSelect(node, val, `inspector-field-${key}`));
+            const note = document.createElement('small');
+            note.className = 'text-muted';
+            note.textContent = 'Chỉ hiển thị sản phẩm đã duyệt và đủ dữ liệu affiliate.';
+            group.appendChild(note);
+          } else if (choiceSelect) {
+            choiceSelect.addEventListener('change', () => { node.params[key] = choiceSelect.value; });
+            group.appendChild(choiceSelect);
+          } else if (typeof val === 'boolean') {
             const chk = document.createElement('input');
             chk.type = 'checkbox';
             chk.checked = val;
@@ -2585,19 +2906,22 @@
               node.params[key] = parseFloat(numInput.value) || 0;
             });
             group.appendChild(numInput);
-          } else if (key.includes('url') || key.includes('path') || key.includes('image') || key.includes('video')) {
+          } else if (this.isMediaParameter(key)) {
             const row = document.createElement('div');
             row.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-control';
+            input.id = `inspector-field-${key}`;
             input.style.flex = '1';
             input.value = val;
             input.placeholder = key.includes('url') ? 'https://www.tiktok.com/... hoặc link ảnh/video' : 'Đường dẫn tệp...';
             input.addEventListener('input', () => {
               node.params[key] = input.value;
+              if (node.type === 'video_source' && key === 'video_url') this.clearVideoSourceOtherParam(node, key);
             });
+            if (node.type === 'video_source' && key === 'video_url') this.appendRadarPicker(group, node, input);
             row.appendChild(input);
 
             // Nút dán link / fetch URL
@@ -2607,11 +2931,15 @@
             fetchBtn.style.cssText = 'padding:4px 8px;font-size:11px;white-space:nowrap;';
             fetchBtn.title = 'Tải media từ link TikTok, Reels, IG, Web';
             fetchBtn.innerHTML = '🔗 Link';
+            if (node.type === 'video_source' && key === 'video_url') {
+              fetchBtn.title = 'Lưu URL; workflow xác thực Radar hoặc quyền URL trực tiếp khi chạy';
+              fetchBtn.innerHTML = '↗ URL';
+            }
             fetchBtn.addEventListener('click', async () => {
               const u = window.prompt('Dán link video TikTok, Instagram Reels, IG, YouTube Shorts hoặc link ảnh/video web:', input.value || '');
               if (u && u.trim()) {
                 input.value = u.trim();
-                await this.fetchMediaFromUrl(node, u.trim(), key.includes('video') ? 'video' : 'any');
+                await this.fetchMediaFromUrl(node, u.trim(), this.preferredMediaType(key), key);
               }
             });
             row.appendChild(fetchBtn);
@@ -2626,7 +2954,7 @@
 
             const hiddenFile = document.createElement('input');
             hiddenFile.type = 'file';
-            hiddenFile.accept = key.includes('video') ? 'video/mp4,video/*' : 'image/*,video/*';
+            hiddenFile.accept = key.includes('audio') ? 'audio/*' : (key.includes('video') ? 'video/*' : (key === 'media_path' ? 'image/*,video/*,audio/*' : 'image/*'));
             hiddenFile.style.display = 'none';
             hiddenFile.addEventListener('change', async (fev) => {
               const file = fev.target.files && fev.target.files[0];
@@ -2641,6 +2969,7 @@
                 if (d.ok) {
                   input.value = d.file_path;
                   node.params[key] = d.file_path;
+                  if (node.type === 'video_source' && key === 'video_path') this.clearVideoSourceOtherParam(node, key);
                   node.params.preview_url = d.url;
                   this.updateNodePreview(node.id, d.url);
                   this.propagatePreviewUpdate(node.id, d.url);
@@ -2662,6 +2991,7 @@
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-control';
+            input.id = `inspector-field-${key}`;
             input.value = val;
             input.addEventListener('input', () => {
               node.params[key] = input.value;
@@ -3443,6 +3773,7 @@
           this.graphPersisted = true;
           this.savedGraphFingerprint = this.graphFingerprint();
           this.render();
+          requestAnimationFrame(() => this.fitCanvas());
           this.deselectAll();
           this.syncGraphHeader();
           const switcher = document.getElementById('wf-switcher-select');
@@ -3665,6 +3996,11 @@
 
       const descEl = document.getElementById('ndm-desc');
       if (descEl) descEl.innerText = def.description || 'Chức năng node trong quy trình';
+      const guidanceEl = document.getElementById('ndm-guidance');
+      if (guidanceEl) {
+        guidanceEl.textContent = this.customNodeGuidance(node.type);
+        guidanceEl.style.display = guidanceEl.textContent ? 'block' : 'none';
+      }
 
       const statusBadge = document.getElementById('ndm-status-badge');
       if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
@@ -3702,8 +4038,17 @@
           label.style.marginBottom = '4px';
           label.innerText = this.formatParamLabel(key);
           formGroup.appendChild(label);
+          const choiceSelect = this.createChoiceSelect(key, val, node, `ndm-field-${key}`);
 
-          if (typeof val === 'boolean') {
+          if (key === 'product_id' && node.type === 'product_input') {
+            formGroup.appendChild(this.createProductSelect(node, val, `ndm-field-${key}`));
+            const note = document.createElement('small');
+            note.className = 'text-muted';
+            note.textContent = 'Chỉ hiển thị sản phẩm đã duyệt và đủ dữ liệu affiliate.';
+            formGroup.appendChild(note);
+          } else if (choiceSelect) {
+            formGroup.appendChild(choiceSelect);
+          } else if (typeof val === 'boolean') {
             const chkWrap = document.createElement('label');
             chkWrap.style.display = 'flex';
             chkWrap.style.alignItems = 'center';
@@ -3729,7 +4074,7 @@
             numInput.id = `ndm-field-${key}`;
             numInput.value = val;
             formGroup.appendChild(numInput);
-          } else if (key.includes('url') || key.includes('path') || key.includes('image') || key.includes('video') || key.includes('audio')) {
+          } else if (this.isMediaParameter(key)) {
             const row = document.createElement('div');
             row.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
@@ -3740,6 +4085,7 @@
             txtInput.style.flex = '1';
             txtInput.value = val || '';
             txtInput.placeholder = key.includes('url') ? 'https://... hoặc liên kết video, ảnh' : 'Đường dẫn tệp tin...';
+            if (node.type === 'video_source' && key === 'video_url') this.appendRadarPicker(formGroup, node, txtInput);
             row.appendChild(txtInput);
 
             const pasteBtn = document.createElement('button');
@@ -3752,7 +4098,7 @@
               const u = window.prompt('Dán link media TikTok / Reels / YouTube Shorts / Web:', txtInput.value || '');
               if (u && u.trim()) {
                 txtInput.value = u.trim();
-                await this.fetchMediaFromUrl(node, u.trim(), key.includes('video') ? 'video' : 'any');
+                await this.fetchMediaFromUrl(node, u.trim(), this.preferredMediaType(key), key);
               }
             });
             row.appendChild(pasteBtn);
@@ -3766,7 +4112,7 @@
             uploadBtn.addEventListener('click', () => {
               const fileIn = document.createElement('input');
               fileIn.type = 'file';
-              fileIn.accept = key.includes('video') ? 'video/*' : (key.includes('image') ? 'image/*' : (key.includes('audio') ? 'audio/*' : '*/*'));
+              fileIn.accept = key.includes('video') ? 'video/*' : (key.includes('image') ? 'image/*' : (key.includes('audio') ? 'audio/*' : 'image/*,video/*,audio/*'));
               fileIn.onchange = async () => {
                 const file = fileIn.files[0];
                 if (!file) return;
@@ -3777,11 +4123,12 @@
                   uploadBtn.innerText = 'Đang tải...';
                   const res = await fetch('/api/flow/upload', { method: 'POST', body: fd });
                   const d = await res.json();
-                  if (d.ok && d.path) {
-                    txtInput.value = d.path;
+                  if (d.ok && d.file_path) {
+                    txtInput.value = d.file_path;
                     if (!node.params) node.params = {};
-                    node.params[key] = d.path;
-                    alert('✓ Đã tải tệp lên thành công: ' + (d.name || d.path));
+                    node.params[key] = d.file_path;
+                    if (node.type === 'video_source' && key === 'video_path') this.clearVideoSourceOtherParam(node, key);
+                    alert('✓ Đã tải tệp lên thành công: ' + (d.filename || d.file_path));
                   } else {
                     alert('Lỗi tải tệp: ' + (d.error || 'Thất bại'));
                   }
@@ -3906,7 +4253,7 @@
             previewContainer.innerHTML = `<video src="${escapeHTML(mediaPath)}" controls autoplay loop muted style="max-height:240px;max-width:100%;border-radius:6px;"></video>`;
           } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(mediaPath)) {
             previewContainer.innerHTML = `<img src="${escapeHTML(mediaPath)}" alt="Preview" style="max-height:240px;max-width:100%;border-radius:6px;object-fit:contain;" />`;
-          } else if (/\.(mp3|wav|ogg|m4a)$/i.test(mediaPath)) {
+          } else if (/\.(mp3|aac|wav|ogg|m4a|flac)$/i.test(mediaPath)) {
             previewContainer.innerHTML = `<audio src="${escapeHTML(mediaPath)}" controls style="width:100%;max-width:400px;"></audio>`;
           }
         } else {
@@ -3994,6 +4341,7 @@
           node.params[key] = el.value;
         }
       });
+      if (node.type === 'video_source' && node.params.video_url) node.params.video_path = '';
 
       // Update Inspector sidebar if this node is selected
       if (this.selectedNodeId === node.id) {
