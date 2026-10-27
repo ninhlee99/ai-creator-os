@@ -4750,6 +4750,7 @@
         }
 
         action.addEventListener('click', () => {
+          const searchInput = document.getElementById('node-search-input');
           if (this.pendingConnect && !hasFilters) {
             this.closeAddNodeModal();
             return;
