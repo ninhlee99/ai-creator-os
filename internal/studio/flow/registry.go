@@ -324,7 +324,7 @@ func registerAllBuiltinNodes() {
 			{ID: "description", Name: "Mô tả chi tiết", Type: PortTypeText, Description: "Phân tích trực quan sâu từ Gemini"},
 			{ID: "optimized_prompt", Name: "Prompt tối ưu", Type: PortTypeText, Description: "Prompt tạo video hoàn thiện"},
 		},
-		DefaultParams: map[string]any{},
+		DefaultParams: map[string]any{"task": ""},
 		Executor:      executeGeminiVision,
 	})
 

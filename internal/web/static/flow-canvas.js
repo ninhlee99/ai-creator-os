@@ -3267,6 +3267,15 @@
             chkWrap.appendChild(span);
 
             group.appendChild(chkWrap);
+          } else if (typeof val === 'string' && key === 'task') {
+            const input = document.createElement('textarea');
+            input.className = 'form-control';
+            input.rows = 3;
+            input.value = val;
+            input.placeholder = 'Để trống để nhận chỉ thị từ cổng task';
+            input.setAttribute('aria-label', this.formatParamLabel(key));
+            input.addEventListener('input', () => { node.params[key] = input.value; });
+            group.appendChild(input);
           } else if (typeof val === 'number') {
             const numInput = document.createElement('input');
             numInput.type = 'number';
@@ -3839,6 +3848,7 @@
         fit_style: 'Phong cách trang phục (Fit Style)',
         outfit_name: 'Tên trang phục biểu diễn / thời trang',
         output_type: 'Kiểu kết quả đầu ra (Output Type)',
+        task: 'Chỉ thị phân tích riêng (để trống dùng cổng task)',
         analysis_task: 'Nhiệm vụ phân tích thị giác',
         operation: 'Tác vụ xử lý media (Operation)',
         aspect_ratio: 'Tỷ lệ khung hình (Aspect Ratio)',

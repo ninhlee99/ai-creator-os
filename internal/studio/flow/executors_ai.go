@@ -237,7 +237,7 @@ func callMuseChatText(ctx context.Context, sessionTitle, prompt string, files []
 
 func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	imgIn := inputString(inputs, "image_in", "")
-	task := inputString(inputs, "task", "Phân tích đặc điểm nhân vật, trang phục, và gợi ý câu lệnh mô tả cử chỉ tự nhiên")
+	task := resolveNodeText(node, inputs, "task", []string{"task"}, "Phân tích đặc điểm nhân vật, trang phục, và gợi ý câu lệnh mô tả cử chỉ tự nhiên")
 	if imgIn == "" || !fileExists(imgIn) {
 		return nil, fmt.Errorf("Gemini Vision cần ảnh nguồn hợp lệ")
 	}
@@ -395,6 +395,10 @@ func executeCustomAIPrompt(ctx *ExecutionContext, node *FlowNode, inputs map[str
 // Blank node prompt passes the upstream value through; {{input}} inserts the
 // first configured text input when the operator writes a custom prompt.
 func resolveNodePrompt(node *FlowNode, inputs map[string]any, inputKeys []string, fallback string) string {
+	return resolveNodeText(node, inputs, "prompt", inputKeys, fallback)
+}
+
+func resolveNodeText(node *FlowNode, inputs map[string]any, paramKey string, inputKeys []string, fallback string) string {
 	upstream := ""
 	for _, key := range inputKeys {
 		if value, ok := inputs[key]; ok && value != nil {
@@ -405,7 +409,7 @@ func resolveNodePrompt(node *FlowNode, inputs map[string]any, inputKeys []string
 		}
 	}
 
-	template := nodeParamString(node.Params, "prompt", "")
+	template := nodeParamString(node.Params, paramKey, "")
 	if strings.TrimSpace(template) == "" {
 		if upstream != "" {
 			return strings.TrimSpace(upstream)
