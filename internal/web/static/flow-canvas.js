@@ -4539,12 +4539,43 @@
       const modal = document.getElementById('add-node-modal');
       if (modal) {
         modal.style.display = 'flex';
+        const categories = document.querySelectorAll('#node-categories-list .wf-tag-filter');
+        categories.forEach(chip => {
+          const active = chip.dataset.cat === 'all';
+          chip.classList.toggle('active', active);
+          chip.setAttribute('aria-pressed', String(active));
+        });
+        const categoryScroller = document.getElementById('node-categories-list');
+        if (categoryScroller) categoryScroller.scrollLeft = 0;
         const searchInput = document.getElementById('node-search-input');
         if (searchInput) {
           searchInput.value = '';
           searchInput.focus();
         }
         this.renderModalGrid('', 'all');
+        requestAnimationFrame(() => this.syncNodeCategoryScrollButtons());
+      }
+    }
+
+    syncNodeCategoryScrollButtons() {
+      const scroller = document.getElementById('node-categories-list');
+      const previous = document.getElementById('node-categories-prev');
+      const next = document.getElementById('node-categories-next');
+      if (!scroller || !previous || !next) return;
+      const maxScroll = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+      previous.disabled = scroller.scrollLeft <= 1;
+      next.disabled = scroller.scrollLeft >= maxScroll - 1;
+    }
+
+    revealNodeCategory(chip) {
+      const scroller = document.getElementById('node-categories-list');
+      if (!scroller || !chip) return;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const chipRect = chip.getBoundingClientRect();
+      if (chipRect.left < scrollerRect.left) {
+        scroller.scrollBy({ left: chipRect.left - scrollerRect.left - 8, behavior: 'smooth' });
+      } else if (chipRect.right > scrollerRect.right) {
+        scroller.scrollBy({ left: chipRect.right - scrollerRect.right + 8, behavior: 'smooth' });
       }
     }
 
@@ -4560,6 +4591,24 @@
       const modal = document.getElementById('add-node-modal');
       const closeBtn = document.getElementById('btn-close-node-modal');
       const searchInput = document.getElementById('node-search-input');
+      const categoryScroller = document.getElementById('node-categories-list');
+      const previousCategory = document.getElementById('node-categories-prev');
+      const nextCategory = document.getElementById('node-categories-next');
+
+      if (categoryScroller) {
+        categoryScroller.addEventListener('scroll', () => this.syncNodeCategoryScrollButtons(), { passive: true });
+      }
+      if (previousCategory) {
+        previousCategory.addEventListener('click', () => {
+          if (categoryScroller) categoryScroller.scrollBy({ left: -Math.max(240, categoryScroller.clientWidth * 0.75), behavior: 'smooth' });
+        });
+      }
+      if (nextCategory) {
+        nextCategory.addEventListener('click', () => {
+          if (categoryScroller) categoryScroller.scrollBy({ left: Math.max(240, categoryScroller.clientWidth * 0.75), behavior: 'smooth' });
+        });
+      }
+      window.addEventListener('resize', () => this.syncNodeCategoryScrollButtons());
 
       if (closeBtn) {
         closeBtn.addEventListener('click', () => this.closeAddNodeModal());
@@ -4582,11 +4631,15 @@
       document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
         chip.addEventListener('click', () => {
           document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(c => c.classList.remove('active'));
+          document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(c => c.setAttribute('aria-pressed', 'false'));
           chip.classList.add('active');
+          chip.setAttribute('aria-pressed', 'true');
+          this.revealNodeCategory(chip);
           const query = searchInput ? searchInput.value : '';
           this.renderModalGrid(query, chip.dataset.cat);
         });
       });
+      this.syncNodeCategoryScrollButtons();
     }
 
     renderModalGrid(filterText = '', filterCat = 'all') {

@@ -293,18 +293,22 @@
       </div>
     </div>
 
-    <div class="wf-modal-tags" id="node-categories-list">
-      <button type="button" class="wf-tag-filter active" data-cat="all">Tất cả nodes</button>
-      <button type="button" class="wf-tag-filter" data-cat="custom">✨ Node Custom (Vạn Năng)</button>
-      <button type="button" class="wf-tag-filter" data-cat="input">📥 Đầu vào</button>
-      <button type="button" class="wf-tag-filter" data-cat="process">⚙️ Xử lý</button>
-      <button type="button" class="wf-tag-filter" data-cat="ai">🤖 AI</button>
-      <button type="button" class="wf-tag-filter" data-cat="camera">🎥 Camera &amp; Lens</button>
-      <button type="button" class="wf-tag-filter" data-cat="lighting">💡 Studio Lighting</button>
-      <button type="button" class="wf-tag-filter" data-cat="output">📤 Đầu ra</button>
-      <button type="button" class="wf-tag-filter" data-cat="workflow">🧩 Workflow con</button>
-      <button type="button" class="wf-tag-filter" data-cat="render">🧠 Neural Render</button>
-      <button type="button" class="wf-tag-filter" data-cat="post">🎨 VFX &amp; Master</button>
+    <div class="wf-modal-tags-shell">
+      <button type="button" class="wf-tag-scroll-btn" id="node-categories-prev" aria-label="Cuộn danh mục sang trái" title="Danh mục trước">‹</button>
+      <div class="wf-modal-tags" id="node-categories-list" role="group" aria-label="Danh mục node">
+        <button type="button" class="wf-tag-filter active" data-cat="all" aria-pressed="true">Tất cả nodes</button>
+        <button type="button" class="wf-tag-filter" data-cat="custom" aria-pressed="false">✨ Node Custom</button>
+        <button type="button" class="wf-tag-filter" data-cat="input" aria-pressed="false">📥 Đầu vào</button>
+        <button type="button" class="wf-tag-filter" data-cat="process" aria-pressed="false">⚙️ Xử lý</button>
+        <button type="button" class="wf-tag-filter" data-cat="ai" aria-pressed="false">🤖 AI</button>
+        <button type="button" class="wf-tag-filter" data-cat="camera" aria-pressed="false">🎥 Camera &amp; Lens</button>
+        <button type="button" class="wf-tag-filter" data-cat="lighting" aria-pressed="false">💡 Studio Lighting</button>
+        <button type="button" class="wf-tag-filter" data-cat="output" aria-pressed="false">📤 Đầu ra</button>
+        <button type="button" class="wf-tag-filter" data-cat="workflow" aria-pressed="false">🧩 Workflow con</button>
+        <button type="button" class="wf-tag-filter" data-cat="render" aria-pressed="false">🧠 Neural Render</button>
+        <button type="button" class="wf-tag-filter" data-cat="post" aria-pressed="false">🎨 VFX &amp; Master</button>
+      </div>
+      <button type="button" class="wf-tag-scroll-btn" id="node-categories-next" aria-label="Cuộn danh mục sang phải" title="Danh mục tiếp theo">›</button>
     </div>
 
     <div class="wf-modal-cards-grid" id="modal-node-grid"></div>

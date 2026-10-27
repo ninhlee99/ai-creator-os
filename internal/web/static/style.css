@@ -6012,6 +6012,17 @@ body.page-workflow .layout {
   stroke: #FFFFFF;
 }
 
+.wf-modal-tags-shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 58px;
+  min-width: 0;
+  padding: 0 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .wf-modal-tags {
   display: flex;
   gap: 8px;
@@ -6019,6 +6030,50 @@ body.page-workflow .layout {
   overflow-x: auto;
   background: var(--bg3);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+#add-node-modal .wf-modal-tags {
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+#add-node-modal .wf-modal-tags::-webkit-scrollbar {
+  display: none;
+}
+
+.wf-tag-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.wf-tag-scroll-btn:hover:not(:disabled) {
+  color: #6366F1;
+  border-color: #6366F1;
+  background: var(--bg2);
+}
+
+.wf-tag-scroll-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .wf-tag-filter {
@@ -6032,6 +6087,13 @@ body.page-workflow .layout {
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+}
+
+#add-node-modal .wf-tag-filter {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 38px;
 }
 
 .wf-tag-filter:hover {
