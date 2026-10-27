@@ -9,6 +9,8 @@ Chỉ hai flow TikTok đang triển khai. Truyện audio để phase sau.
 
 ## Hạ tầng dùng chung
 
+- [TikTok Web Crawler cho Radar](tiktok-web-crawler.md)
+
 - [Kênh TikTok](accounts.md)
 - [AccessTrade](accesstrade.md)
 - [Studio, audio Radar và QC](studio-ai.md)

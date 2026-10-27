@@ -82,10 +82,11 @@ Auto-approve chỉ khi tất cả hard gate qua, evidence đủ mới, confidenc
 
 ### 1. Radar theo chủ đề
 
+- Nguồn hiện tại là Web Crawler cục bộ; source, fallback, timeout và unknown-field contract theo [tài liệu TikTok Web Crawler](features/tiktok-web-crawler.md).
 - Người dùng chọn topic/category, vùng, khoảng thời gian và tiêu chí viral.
 - Radar lưu video ID/URL, author, caption, sound metadata, views/likes/comments/shares, thời điểm thu thập và provider.
 - Sắp xếp theo view velocity và tương tác khi có đủ snapshot theo thời gian; tổng view cao đơn lẻ không chứng minh đang lên trend.
-- Nhãn “video nhảy” chỉ tự gán khi classifier đạt ngưỡng đã kiểm chứng; nếu chưa, để `unclassified` và yêu cầu chọn thủ công.
+- Nhãn “video nhảy” chỉ tự gán khi classifier đạt ngưỡng đã kiểm chứng; nếu chưa, để `unclassified` và yêu cầu chọn thủ công. Hiện code chưa đạt điều kiện này: crawler không phân loại dance, nhưng backend auto-set `dance_verified`; đây là acceptance gap.
 
 ### 2. Phân tích video
 
@@ -146,7 +147,7 @@ Nếu không có một mắt xích dữ liệu, nêu rõ khoảng trống và kh
 |---|---|---|
 | Offer, campaign, commission, affiliate link | AccessTrade clients/cache | Sales và rating/review theo từng sản phẩm |
 | Orders/commission | AccessTrade order sync hiện có | Ghép attribution tới đúng TikTok video, canceled/returned và settlement đầy đủ |
-| Video Radar | TikTok Radar feed metadata theo vùng | Độ phủ/freshness production, dance classifier |
+| Video Radar | Local Web Crawler, SQLite, conditional metrics | Permission review, reliable dance confirmation, production coverage/freshness |
 | TikTok publish | Draft upload adapter hiện có | Direct Post API có public mode sau audit và creator consent; app nội bộ có thể không đạt intended-use. TikTok Shop Shoppable Video API có precheck/publish/product anchor nhưng cần partner + creator authorization. Repo chưa xác minh scope, audit, anchor hoặc public publish thật. |
 | TikTok performance | Display API source cho profile/public-video counters + SQLite snapshots | Retention, watch time, demographics, profile visits/follows và video-level order attribution |
 | UI interactions | Go templates + vendored HTMX partials + pinned Tailwind compiled to local static CSS | Xác minh OAuth/provider thật và tiếp tục mở rộng partials cho các control còn lại |

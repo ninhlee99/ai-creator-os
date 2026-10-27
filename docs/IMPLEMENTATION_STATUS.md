@@ -1,14 +1,14 @@
 # Trạng thái triển khai
 
-Ảnh chụp source: 2026-10-25. Đây là rà soát tĩnh; chưa chứng minh hoạt động với tài khoản/provider thật.
+Ảnh chụp source: 2026-10-27. Đây là rà soát tĩnh; chưa chứng minh hoạt động với tài khoản/provider thật.
 
 ## Hai flow đang làm
 
 | Bước | Trạng thái | Giới hạn hiện tại |
 |---|---|---|
 | Kết nối TikTok | Một phần | OAuth client dùng Go DNS resolver để tránh lỗi resolver hệ thống trên macOS. Smoke server đã chạy build mới; OAuth với tài khoản TikTok thật, quyền app và callback deployment vẫn chưa xác minh. |
-| Radar video TikTok | Một phần | TikTok Business Discovery là nguồn duy nhất, sau khi cấu hình Access Token và Advertiser ID. Lấy hashtag phổ biến và video theo hashtag tại VN; API trả ID/URL, không trả counters. Topic search chỉ khớp hashtag đang thịnh hành. Không dùng scraper trả phí, Playwright scrape hoặc reverse-engineered endpoint. Nếu thiếu quyền/cấu hình, Radar báo cần cấu hình. Kết quả lưu tối đa 2.000 nguồn và snapshot metrics 30 ngày. |
-| Chọn video nhảy | Chọn thủ công | Người dùng phải xác nhận đã xem clip và nội dung thực sự là vũ đạo; server chặn xác nhận thiếu dấu này, đồng thời chặn job nếu nguồn chưa xác nhận hoặc Radar chưa thu thập lại trong 7 ngày. Chưa có classifier dance tự động. |
+| Radar video TikTok | Một phần | Dùng Web Crawler headless trên browser cục bộ qua CDP; không dùng TikTok Business token. Network response có thể trả metrics/sound, DOM fallback chỉ có ID/caption/author/cover. Kết quả feed tối đa 5 video, topic sai/không có kết quả trả lỗi; dữ liệu lưu tối đa 2.000 video và 30 ngày snapshot. Settings chỉ xác nhận browser binary tồn tại. Chưa xác minh quyền crawl production. Backend hiện tự đặt dance flag cho mọi kết quả, không có classifier; UI “Đã xác minh” gây hiểu nhầm. Xem [tài liệu crawler](features/tiktok-web-crawler.md). |
+| Chọn video nhảy | Chưa đáng tin | Có endpoint và freshness gate 7 ngày, nhưng crawler tự bật `dance_verified` cho mọi video và UI không có nút xác nhận/bỏ xác nhận. Gate hiện tại không chứng minh người dùng đã xem video; chưa có classifier. |
 | Radar sản phẩm và duyệt | Một phần | TikTok Shop feed qua AccessTrade tìm theo category keyword, sort commission; khi có `commission.amount`, lưu và hiển thị amount/currency nguồn; chỉ ước tính rate × giá khi thiếu amount. `units_sold` hiển thị là tổng từ feed; feed không nêu kỳ đo. Khi có hai snapshot app cách nhau 6 giờ–14 ngày, UI tính chênh lệch quan sát được và ghi rõ khả năng trễ từ nguồn. Offer thiếu giá không bị bỏ khỏi kho. Currency/provider-updated-at/sales hiển thị unknown nếu nguồn không trả; rating/review không có trong feed hiện tại. Duyệt chặn offer thiếu giá, currency, commission hoặc link listing. Có thao tác loại kèm lý do và danh sách xem lại; tín hiệu xu hướng tách match tên sản phẩm/ngành hàng từ Radar nhưng chưa chấm độ phù hợp hoặc tệp tuổi. Sản xuất tự động cần offer đã duyệt và demand evidence còn hạn. |
 | Tạo video affiliate | Một phần | Shot plan/QC có; một số nhánh vẫn cần clip chuyển động do người dùng cung cấp hoặc provider cần credits. Chưa chứng minh tạo miễn phí end-to-end. |
 | Tạo video viral | Một phần | Nguồn video được ràng buộc vào Radar; phân tích trả tối đa 4 yếu tố cấu trúc quan sát có mốc beat và 3 thử nghiệm một biến cho video sau. Mốc được xác thực lại với beat nguồn; giả thuyết không chứng minh nguyên nhân viral. Metrics/retention/audience chỉ hiện khi có nguồn; tạo bản video hoàn chỉnh và giữ đúng audio cần xác minh end-to-end. |

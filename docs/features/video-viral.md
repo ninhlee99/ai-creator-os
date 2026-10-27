@@ -3,7 +3,7 @@
 ## Flow
 
 1. TikTok Radar giữ tối đa 2.000 nguồn gần nhất cùng snapshot chỉ số trong SQLite; giao diện chỉ hiện tối đa 10 video.
-2. Feed mặc định và topic search dùng TikTok Web Crawler tự động (chạy headless browser local). Crawler trích xuất video thịnh hành, lượt xem (views), lượt tym (likes), tác giả, ảnh bìa và sound gốc thực tế mà không cần đăng ký tài khoản TikTok Business hay cấu hình API token.
+2. Feed mặc định và topic search dùng [TikTok Web Crawler](tiktok-web-crawler.md) chạy bằng browser headless cục bộ; không cần Access Token TikTok Business. Metrics và sound metadata chỉ có khi phản hồi trang cung cấp.
 3. Với kết quả thu thập, mở preview TikTok chính thức ngay trên thẻ Radar. Tự xác nhận nội dung chính thực sự là người nhảy/vũ đạo; caption hoặc tên sound không đủ.
 4. Dùng video đã chọn làm nguồn/reference cho job.
 5. Phân tích storyboard từ các frame mẫu; nêu tín hiệu cấu trúc và giả thuyết có mốc nguồn, kèm thử nghiệm cho video sau. Hiển thị metrics và tốc độ tăng view chỉ khi nguồn cung cấp dữ liệu và Radar có đủ snapshot.
@@ -15,9 +15,9 @@ Job đã qua QC có nút gửi thủ công vào TikTok Creator Inbox. App lưu t
 
 ## Giới hạn hiện tại
 
-Radar không phân loại dance đáng tin; người dùng cần xác nhận video nhảy. TikTok Business Discovery là nguồn duy nhất: endpoint trả video theo hashtag phổ biến, xếp hạng theo tín hiệu tổng hợp nhưng không trả counters. Giao diện ghi rõ giới hạn và giữ view/tym là unknown. Discovery cần quyền API for Business; nếu chưa cấu hình, Radar không tải video. Phân tích Viral đưa yếu tố hình ảnh quan sát được, mốc beat và giả thuyết thử nghiệm; đây không chứng minh nguyên nhân viral. Retention, demographics, profile visits và follows-per-video vẫn chưa có dữ liệu. Metadata đã thu thập giữ trong SQLite để nguồn không mất khi cache hết hạn. Nếu chưa chọn đúng video từ Radar hoặc không lấy được audio, flow phải dừng. Không dùng URL ngoài Radar hoặc sound thay thế tự động.
+Radar chưa có dance classifier. Hiện backend tự đặt `dance_verified` cho mọi kết quả và thẻ hiển thị xác minh; cờ này không chứng minh vũ đạo. Đây là gap cần xử lý trước automation chọn audio. Crawler có thể thiếu counters/sound metadata; không có field thì giữ unknown. Mỗi topic search chỉ trả đúng topic hoặc lỗi; không dùng kết quả của topic chung thay thế. Các giới hạn nguồn, profile tạm, timeout, lưu trữ và quyền sử dụng ghi trong [tài liệu crawler](tiktok-web-crawler.md). Phân tích Viral đưa yếu tố hình ảnh quan sát được, mốc beat và giả thuyết thử nghiệm; đây không chứng minh nguyên nhân viral. Retention, demographics, profile visits và follows-per-video vẫn chưa có dữ liệu. Nếu không lấy được audio từ đúng video Radar đã chọn, flow phải dừng.
 
-Server xác minh nguồn đã được đánh dấu video nhảy và Radar đã thu thập trong 7 ngày trước khi phân tích hoặc tạo job; bỏ qua nút UI không thể dùng nguồn chưa xác nhận hoặc đã cũ.
+Server yêu cầu cờ video nhảy và Radar thu thập trong 7 ngày trước khi phân tích hoặc tạo job. Nhưng crawler tự bật cờ cho mọi kết quả; hiện gate này không chứng minh người dùng đã xác nhận video.
 
 Storyboard mô tả bằng chứng hình ảnh theo mốc thời gian và số liệu Radar hiện có. Các giả thuyết chỉ để thiết kế thử nghiệm, không chứng minh nguyên nhân viral; retention, watch-time, demographics, profile visits và follows riêng theo video vẫn chưa có dữ liệu. Tạo video viral hoàn chỉnh và giữ đồng nhất với reference chưa được chứng minh end-to-end.
 

@@ -30,8 +30,8 @@ Chỉ expose hai flow: TikTok affiliate và TikTok viral. Truyện audio để p
 
 ## Video and job states
 
-- TikTok Radar cho topic, region, sort và trạng thái phân loại dance.
-- Chỉ video dance được xác minh hoặc do người dùng chọn mới thành source audio.
+- TikTok Radar dùng Web Crawler; hiển thị browser readiness, source, fetch error, metrics/audio metadata missing và topic chính xác. Xem [crawler contract](features/tiktok-web-crawler.md).
+- Không hiển thị crawler fetch như dance verification. Chỉ video người dùng thực sự xem và xác nhận mới được dùng làm source audio; backend hiện auto-set dance flag nên đây là UX/logic gap.
 - Job detail cho source ID/URL, audio metadata, product/tracking link, QC, artifact và TikTok state.
 - Draft, product attachment, public post, pending reconciliation và failed là trạng thái tách biệt.
 

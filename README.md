@@ -1,12 +1,11 @@
 # MiuNova
 
-MiuNova hỗ trợ tạo video TikTok qua ba flow:
+MiuNova hiện tập trung vào hai flow TikTok:
 
 1. Video affiliate TikTok.
 2. Video viral TikTok.
-3. Truyện audio — để phase sau.
 
-Hiện chỉ hoàn thiện hai flow TikTok. Cả hai lấy âm thanh từ video nhảy viral mà Radar đã thu thập.
+Truyện audio là roadmap, không nằm trong flow hiện tại. Cả hai flow TikTok lấy audio từ video Radar đã chọn. Radar hiện dùng Web Crawler cục bộ; xem [TikTok Web Crawler](docs/features/tiktok-web-crawler.md) để biết nguồn, giới hạn và trạng thái hiện tại.
 
 ## Luồng đang ưu tiên
 
@@ -36,6 +35,7 @@ Sau khi sửa UI, chạy `npm ci` rồi `npm run build:ui` để cập nhật HT
 - [Product spec](docs/PRODUCT_SPEC.md)
 - [Quyết định sản phẩm](docs/PRODUCT_DECISIONS.md)
 - [Trạng thái triển khai](docs/IMPLEMENTATION_STATUS.md)
+- [TikTok Web Crawler](docs/features/tiktok-web-crawler.md)
 - [Luồng âm thanh Radar](docs/OPEN_SPEC.md)
 - [Kiến trúc hệ thống](docs/SYSTEM_BLUEPRINT.md)
 - [Hướng dẫn vận hành](docs/USER_GUIDE.md)

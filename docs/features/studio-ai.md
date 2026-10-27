@@ -4,7 +4,7 @@ Studio quản lý tạo video affiliate và video viral TikTok.
 
 ## Radar và nguồn
 
-TikTok Radar sử dụng Web Crawler tự động tích hợp sẵn (thông qua trình duyệt local Edge/Chrome) để quét video thịnh hành và tìm kiếm theo chủ đề tại Việt Nam. Nguồn cung cấp đầy đủ video ID, tiêu đề, tác giả, ảnh bìa, sound gốc và số liệu lượt xem, lượt tym thực tế mà không cần tài khoản TikTok Business hay API token. Metadata và lịch sử chỉ số lưu trong SQLite. Radar không tự phân loại video nhảy; người dùng xác nhận video nhảy làm nguồn. Viral analysis hiển thị tín hiệu cấu trúc có mốc frame và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Mọi audio dùng trong hai flow phải lấy từ video nhảy đã xác nhận, được Radar thu thập trong 7 ngày; không dùng sound thay thế tự động.
+TikTok Radar dùng Web Crawler cục bộ; field metrics và sound metadata có thể thiếu, dance flag hiện chưa đáng tin. Xem [tài liệu chuẩn về TikTok Web Crawler](tiktok-web-crawler.md). Viral analysis chỉ nêu tín hiệu quan sát và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Audio lấy từ video nguồn đã chọn; không tự thay sound khi tải hoặc tách audio thất bại.
 
 ## Affiliate
 

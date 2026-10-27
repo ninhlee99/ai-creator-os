@@ -8,7 +8,7 @@ Chưa đạt flow end-to-end. Các điểm rủi ro tập trung ở chọn đún
 
 ## Thứ tự xử lý
 
-1. **Radar dance:** feed hiện chưa có phân loại dance đáng tin. Từ khóa caption/sound không đủ làm bằng chứng tự động.
+1. **Radar dance:** Web Crawler hiện không phân loại dance nhưng backend tự đánh dấu mọi kết quả là đã xác minh; UI cũng không có control để review. Không dùng cờ này làm bằng chứng hoặc auto-select audio.
 2. **Audio:** xác minh audio được trích từ đúng video Radar đã chọn và tồn tại trong MP4 cuối.
 3. **Affiliate evidence:** AccessTrade cung cấp offer/commission nhưng chưa có sales/review evidence cần để gọi sản phẩm bán chạy hoặc đánh giá tốt.
 4. **Video QC:** kiểm tra sản phẩm, chuyển động, tỉ lệ, audio và file trước khi cho gửi Draft.

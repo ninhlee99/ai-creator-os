@@ -12,7 +12,7 @@ Nguồn chính thức:
 
 ## TikTok Radar
 
-Radar chỉ dùng TikTok Business Discovery sau khi có Access Token và Advertiser ID. API chính thức tìm hashtag phổ biến và video theo hashtag, nhưng không trả counters; topic search chỉ khớp hashtag đang thịnh hành. Xem [Discovery API](https://business-api.tiktok.com/gateway/docs/index?doc_id=1825119005427714) và [API for Business overview](https://ads.tiktok.com/resources/help/article/marketing-api?lang=en). TikTok Research API không phải lựa chọn thực tế cho app thương mại: TikTok giới hạn quyền cho nhà nghiên cứu đủ điều kiện, mục đích phi lợi nhuận và cần phê duyệt; xem [điều kiện Research API](https://developers.tiktok.com/products/research-api/). Không dùng Playwright để thu thập tự động hoặc reverse-engineer endpoint TikTok: [TikTok Terms of Service (Vietnamese)](https://t.tiktok.com/legal/page/us/terms-of-service/vi) cấm thu thập tự động và reverse engineering nếu chưa có chấp thuận bằng văn bản. Metadata caption/sound không đủ để xác nhận video có nhảy. Dùng lựa chọn thủ công trong Radar khi detector chưa đáng tin.
+Radar hiện dùng [TikTok Web Crawler](features/tiktok-web-crawler.md), không dùng TikTok Business Discovery. Business Discovery và Research API là các lựa chọn khác, không phải nguồn code hiện tại. Không có hồ sơ phê duyệt quyền crawl; nội dung tài liệu này không xác nhận crawler được TikTok cho phép. Trước production cần rà soát policy/quyền truy cập và chuyển sang nguồn được phép nếu chưa có approval. Metadata caption/sound không đủ để chứng minh video có nhảy; dance flag hiện tại cũng không phải classifier.
 
 ## AccessTrade
 

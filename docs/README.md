@@ -1,6 +1,6 @@
 # Tài liệu MiuNova
 
-MiuNova có ba flow sản phẩm: video affiliate TikTok, video viral TikTok và truyện audio. Thứ tự hiện tại: hoàn thiện hai flow TikTok; truyện audio để phase sau.
+MiuNova hiện tập trung hai flow TikTok: affiliate và viral. Truyện audio là roadmap, chưa nằm trong acceptance hiện tại.
 
 ## Nguồn sự thật
 
@@ -9,6 +9,7 @@ MiuNova có ba flow sản phẩm: video affiliate TikTok, video viral TikTok và
 | Sản phẩm cần làm gì? | [PRODUCT_SPEC.md](PRODUCT_SPEC.md) |
 | Lựa chọn nào đã chốt? | [PRODUCT_DECISIONS.md](PRODUCT_DECISIONS.md) |
 | Code hiện làm được gì? | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) |
+| Radar TikTok lấy dữ liệu ra sao? | [TikTok Web Crawler](features/tiktok-web-crawler.md) |
 | Âm thanh phải lấy và kiểm tra ra sao? | [OPEN_SPEC.md](OPEN_SPEC.md) |
 | Các khối kỹ thuật nối với nhau thế nào? | [SYSTEM_BLUEPRINT.md](SYSTEM_BLUEPRINT.md), [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Cách dùng app? | [USER_GUIDE.md](USER_GUIDE.md) |

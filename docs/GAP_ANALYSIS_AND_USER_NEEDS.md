@@ -1,6 +1,6 @@
 # Khoảng cách hiện tại
 
-Cập nhật: 2026-10-24. Phạm vi gồm ba flow sản phẩm; phase hiện tại hoàn thiện hai flow TikTok, truyện audio để sau.
+Cập nhật: 2026-10-27. Phạm vi hiện tại gồm hai flow TikTok; truyện audio là roadmap.
 
 ## Flow video affiliate TikTok
 
@@ -12,7 +12,7 @@ Cập nhật: 2026-10-24. Phạm vi gồm ba flow sản phẩm; phase hiện t�
 
 ## Flow video viral TikTok
 
-- Radar cần thu thập đủ video viral và phân loại video nhảy chính xác.
+- Radar hiện dùng Web Crawler cục bộ; cần xác minh quyền production, hiện đúng topic search và không giả metrics/sound khi thiếu. Backend auto-set dance flag cho tất cả kết quả nhưng không có classifier; UI chưa cung cấp xác nhận thủ công.
 - Caption/sound keyword chưa đủ bằng chứng để tự chọn dance clip.
 - Cần bảo toàn video/audio nguồn tới artifact cuối và lưu provenance trên job.
 - Tạo output viral hoàn chỉnh cần xác minh trên video nguồn thật.

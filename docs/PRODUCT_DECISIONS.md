@@ -4,12 +4,12 @@ Cập nhật: 2026-10-25.
 
 ## Phạm vi đã chốt
 
-1. Sản phẩm có ba flow: video affiliate TikTok, video viral TikTok, truyện audio.
-2. Thứ tự giao hàng hiện tại: hoàn thiện hai flow TikTok trước; truyện audio để phase sau.
+1. Phạm vi hiện tại gồm video affiliate TikTok và video viral TikTok; truyện audio là roadmap, không phải flow đang triển khai.
+2. Radar video TikTok dùng Web Crawler cục bộ hiện có; TikTok Display API chỉ dùng riêng cho counters sau publish khi account cấp scope.
 3. Video affiliate và video viral lấy âm thanh từ video nhảy viral do Radar thu thập.
 4. Video affiliate và video viral chỉ dùng âm thanh từ video nhảy đã chọn trong Radar.
 5. Không khẳng định sales, đánh giá, followers, quyền sử dụng hay trạng thái đăng nếu chưa có bằng chứng từ nguồn tương ứng.
-6. Chỉ dùng provider/tài khoản được phép và chi phí bằng 0; không né giới hạn/quota. Publish TikTok cần consent rõ cho từng nội dung và trạng thái thật từ API.
+6. Chỉ dùng provider/tài khoản được phép và chi phí bằng 0; không né giới hạn/quota. Radar crawler chạy được không chứng minh quyền crawl đã được cấp; production approval chưa được ghi nhận. Publish TikTok cần consent rõ cho từng nội dung và trạng thái thật từ API.
 7. Thiết kế hỗ trợ TikTok Shop Shoppable Video khi partner/creator scope cho phép bind product anchor; Direct Post public chỉ bật khi app audit/intended-use/account scope cho phép. Khi thiếu điều kiện, dùng Draft/manual handoff.
 
 ## Điều kiện chưa đạt

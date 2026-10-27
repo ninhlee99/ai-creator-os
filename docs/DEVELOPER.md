@@ -6,6 +6,7 @@
 2. PRODUCT_DECISIONS.md: quyết định sản phẩm đang có hiệu lực.
 3. IMPLEMENTATION_STATUS.md: giới hạn code đã biết.
 4. POLICY_AND_SAFETY.md: quy tắc dữ liệu, quyền truy cập, audio và publish.
+5. features/tiktok-web-crawler.md: nguồn Radar và giới hạn crawler.
 
 ## Bản đồ code
 

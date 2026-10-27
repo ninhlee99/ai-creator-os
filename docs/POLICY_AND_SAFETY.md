@@ -11,9 +11,10 @@
 
 ## Dữ liệu TikTok
 
-- Chỉ lấy dữ liệu Radar qua API TikTok đã cấp quyền.
-- Không scrape/crawl bằng Playwright hoặc reverse-engineer endpoint TikTok nếu chưa được TikTok chấp thuận bằng văn bản.
-- View, like và chỉ số khác không có trong API phải giữ là `unknown`.
+- Nguồn Radar hiện tại là Web Crawler cục bộ, không phải API TikTok chính thức; crawler đọc trang và phản hồi mạng của browser.
+- Code không chứng minh TikTok đã cho phép cách crawl này. Trước production phải xác minh quyền/phạm vi sử dụng; nếu chưa xác minh, không tuyên bố compliant và cần tắt crawl tự động hoặc dùng nguồn được phép.
+- Không bypass đăng nhập, CAPTCHA, access control hoặc giới hạn nền tảng.
+- Chỉ số và metadata sound không có trong phản hồi phải giữ là unknown; tên sound không chứng minh audio track hay quyền sử dụng.
 
 ## Dữ liệu sản phẩm
 
