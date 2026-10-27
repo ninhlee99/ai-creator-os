@@ -2,6 +2,22 @@
 
 {{define "content"}}
 <script>document.body.classList.add('page-workflow');</script>
+<style>
+.wf-app-container{position:relative}
+.wf-graph-name-input{width:min(30vw,320px);min-width:120px;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent;outline:none}
+.wf-graph-name-input:focus,.wf-graph-category-select:focus{border-color:var(--accent);background:var(--bg2)}
+.wf-graph-category-select{max-width:130px;border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent;color:var(--muted);font-size:11px}
+.wf-run-panel{position:absolute;z-index:30;left:16px;bottom:16px;width:min(560px,calc(100vw - 32px));max-height:min(42vh,360px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--bg2);box-shadow:0 12px 36px rgba(0,0,0,.24)}
+.wf-run-panel[hidden]{display:none}
+.wf-run-panel-header{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);font-size:12px}
+.wf-run-panel-header span{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.wf-run-panel-header button{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
+.wf-run-log{min-height:36px;max-height:120px;overflow:auto;padding:8px 12px;color:var(--text);font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+.wf-run-output{display:grid;grid-template-columns:minmax(70px,auto) minmax(0,1fr);align-items:start;gap:8px 12px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text);font-size:12px}
+.wf-run-output pre{grid-column:2;margin:0;max-height:120px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.wf-run-output img,.wf-run-output video,.wf-run-output audio{grid-column:2;max-width:100%;max-height:180px;border-radius:6px;background:#000}
+.wf-run-output a{grid-column:2;width:fit-content;color:var(--accent)}
+</style>
 <div class="wf-app-container">
   <!-- Top Navigation / Toolbar (n8n Style - 2 Rows) -->
   <header class="wf-header">
@@ -14,7 +30,14 @@
         <div class="wf-breadcrumb">
           <span class="wf-breadcrumb-root">Workflow</span>
           <span class="wf-breadcrumb-sep">/</span>
-          <span id="wf-active-name" class="wf-breadcrumb-current">{{if .ActiveGraph}}{{.ActiveGraph.Name}}{{else}}Luồng mới{{end}}</span>
+          <input id="wf-active-name" class="wf-breadcrumb-current wf-graph-name-input" aria-label="Tên workflow" maxlength="120" value="{{if .ActiveGraph}}{{.ActiveGraph.Name}}{{else}}Luồng mới{{end}}">
+          <select id="wf-active-category" class="wf-graph-category-select" aria-label="Loại workflow">
+            <option value="custom"{{if and .ActiveGraph (eq .ActiveGraph.Category "custom")}} selected{{end}}>Custom</option>
+            <option value="affiliate"{{if and .ActiveGraph (eq .ActiveGraph.Category "affiliate")}} selected{{end}}>Affiliate</option>
+            <option value="viral"{{if and .ActiveGraph (eq .ActiveGraph.Category "viral")}} selected{{end}}>TikTok Viral</option>
+            <option value="fashion"{{if and .ActiveGraph (eq .ActiveGraph.Category "fashion")}} selected{{end}}>Thời trang</option>
+            <option value="vfx_3d"{{if and .ActiveGraph (eq .ActiveGraph.Category "vfx_3d")}} selected{{end}}>3D / VFX</option>
+          </select>
         </div>
         <div class="wf-badge-row">
           <span id="wf-status-pill" class="wf-status-pill status-ready">
@@ -164,6 +187,16 @@
       </div>
     </aside>
   </div>
+
+  <section id="flow-run-panel" class="wf-run-panel" aria-live="polite" hidden>
+    <div class="wf-run-panel-header">
+      <strong>Kết quả chạy workflow</strong>
+      <span id="run-progress-text">0%</span>
+      <button type="button" id="btn-close-run-panel" aria-label="Ẩn kết quả chạy">&times;</button>
+    </div>
+    <div id="flow-run-outputs" class="wf-run-outputs" hidden></div>
+    <div id="flow-logs-terminal" class="wf-run-log" role="log" aria-live="polite"></div>
+  </section>
 </div>
 
 <!-- Modal: n8n Node Library Palette -->
@@ -194,6 +227,9 @@
       <button type="button" class="wf-tag-filter" data-cat="post">🎨 VFX &amp; Master</button>
       <button type="button" class="wf-tag-filter" data-cat="input">📥 Đầu vào</button>
       <button type="button" class="wf-tag-filter" data-cat="process">⚙️ Xử lý</button>
+      <button type="button" class="wf-tag-filter" data-cat="ai">🤖 AI</button>
+      <button type="button" class="wf-tag-filter" data-cat="output">📤 Đầu ra</button>
+      <button type="button" class="wf-tag-filter" data-cat="workflow">🧩 Workflow con</button>
     </div>
 
     <div class="wf-modal-cards-grid" id="modal-node-grid"></div>
@@ -285,7 +321,7 @@
       <!-- Helper Tip about multiple params -->
       <div class="wf-api-guide-tip">
         <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <span><strong>Khi có nhiều ảnh / video:</strong> Truyền theo tên tham số chuẩn (<code>character_image_url</code>, <code>product_image_url</code>, <code>video_url</code>) hoặc truyền theo <code>node_id</code> tại tab <em>JSON (Theo Node ID)</em>.</span>
+        <span id="api-guide-text"><strong>Khi có nhiều ảnh / video:</strong> Truyền theo tên tham số chuẩn (<code>character_image_url</code>, <code>product_image_url</code>, <code>video_url</code>) hoặc truyền theo <code>node_id</code> tại tab <em>JSON (Theo Node ID)</em>.</span>
       </div>
 
       <!-- Code Snippet Card (Integrated Header with Tabs + Copy Button) -->

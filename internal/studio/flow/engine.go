@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -442,7 +443,13 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 				}
 			}
 			if previewURL == "" {
-				for _, val := range outputs {
+				outputKeys := make([]string, 0, len(outputs))
+				for key := range outputs {
+					outputKeys = append(outputKeys, key)
+				}
+				sort.Strings(outputKeys)
+				for _, key := range outputKeys {
+					val := outputs[key]
 					if s, ok := val.(string); ok && s != "" {
 						ext := strings.ToLower(filepath.Ext(s))
 						if ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
@@ -465,6 +472,7 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		nodeState.Status = "completed"
 		nodeState.Progress = 100
 		nodeState.OutputPreview = previewURL
+		nodeState.Outputs = outputs
 
 		// Kiến trúc: 1 Flow là 1 Thread. Toàn bộ các node trong cùng 1 lần chạy flow chia sẻ chung 1 Thread Muse AI
 		nodeState.MuseSessionID = ctx.MuseThreadID
@@ -546,8 +554,13 @@ func firstMediaPath(value any) string {
 				}
 			}
 		case map[string]any:
-			for _, child := range value {
-				if path := find(child); path != "" {
+			keys := make([]string, 0, len(value))
+			for key := range value {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				if path := find(value[key]); path != "" {
 					return path
 				}
 			}

@@ -77,6 +77,7 @@ type NodeState struct {
 	Progress      int    `json:"progress"`
 	Error         string `json:"error,omitempty"`
 	OutputPreview string `json:"output_preview,omitempty"`
+	Outputs       map[string]any `json:"outputs,omitempty"`
 	MuseSessionID string `json:"muse_session_id,omitempty"` // ID phiên chat riêng biệt trên Muse AI
 	MuseThreadURL string `json:"muse_thread_url,omitempty"` // URL xem trực tiếp phiên chat trên Muse Web
 	StartedAt     string `json:"started_at,omitempty"`
@@ -161,12 +162,15 @@ type FlowRun struct {
 
 // FlowSummary tóm tắt nhanh để hiển thị danh sách graph.
 type FlowSummary struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	IsPreset    bool   `json:"is_preset"`
-	NodeCount   int    `json:"node_count"`
-	EdgeCount   int    `json:"edge_count"`
-	UpdatedAt   string `json:"updated_at"`
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Description      string     `json:"description"`
+	Category         string     `json:"category"`
+	IsPreset         bool       `json:"is_preset"`
+	NodeCount        int        `json:"node_count"`
+	EdgeCount        int        `json:"edge_count"`
+	WorkflowReusable bool       `json:"workflow_reusable"`
+	Inputs           []FlowPort `json:"inputs,omitempty"`
+	Outputs          []FlowPort `json:"outputs,omitempty"`
+	UpdatedAt        string     `json:"updated_at"`
 }
