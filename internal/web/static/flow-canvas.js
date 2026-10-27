@@ -2,6 +2,21 @@
 (function () {
   'use strict';
 
+  const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+
+  const safeMediaURL = value => {
+    const raw = String(value || '').trim();
+    if (/^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : '';
+    } catch (_) {
+      return '';
+    }
+  };
+
   class FlowCanvas {
     constructor() {
       this.container = document.getElementById('flow-canvas-container');
@@ -194,18 +209,23 @@
       // 1. Node Header Main (n8n Card layout)
       const header = document.createElement('div');
       header.className = 'wf-node-main';
-      const modelTag = (node.params && (node.params.model || node.params.provider)) ? `<span class="wf-node-model-pill" id="node-model-${node.id}">${node.params.model || node.params.provider}</span>` : `<span class="wf-node-model-pill" id="node-model-${node.id}" style="display:none;"></span>`;
+      const nodeTitle = escapeHTML(node.title || def.title || node.type);
+      const definitionTitle = escapeHTML(def.title || node.type);
+      const safeNodeId = escapeHTML(node.id);
+      const safeCategory = escapeHTML(cat);
+      const model = node.params && (node.params.model || node.params.provider);
+      const modelTag = model
+        ? `<span class="wf-node-model-pill" id="node-model-${safeNodeId}">${escapeHTML(model)}</span>`
+        : `<span class="wf-node-model-pill" id="node-model-${safeNodeId}" style="display:none;"></span>`;
       header.innerHTML = `
-        <div class="wf-node-icon cat-${cat}">
+        <div class="wf-node-icon cat-${safeCategory}">
           <span>${this.getCategoryIcon(cat)}</span>
         </div>
         <div class="wf-node-info">
-          <div class="wf-node-title" id="node-title-${node.id}" title="${node.title || def.title || node.type}">
-            ${node.title || def.title || node.type}
-          </div>
-          <div class="wf-node-subtitle" title="${def.title || node.type}">
+          <div class="wf-node-title" id="node-title-${safeNodeId}" title="${nodeTitle}">${nodeTitle}</div>
+          <div class="wf-node-subtitle" title="${definitionTitle}">
             ${modelTag}
-            <span>${def.title || node.type}</span>
+            <span>${definitionTitle}</span>
           </div>
         </div>
         <div class="wf-node-actions">
@@ -456,6 +476,8 @@
     createNodePreviewElement(node) {
       const config = this.getNodePreviewConfig(node);
       if (!config) return null;
+      const mediaURL = config.url ? safeMediaURL(config.url) : '';
+      if (config.url && !mediaURL) return null;
 
       // Không render nếu không có url, không cho phép upload và không phải dedicated preview
       if (!config.url && !config.canUpload && !config.isDedicatedPreview) return null;
@@ -474,7 +496,7 @@
       if (config.url) {
         if (config.type === 'video') {
           const video = document.createElement('video');
-          video.src = config.url;
+          video.src = mediaURL;
           video.muted = true;
           video.loop = true;
           video.playsInline = true;
@@ -491,7 +513,7 @@
           previewContainer.appendChild(video);
         } else if (config.type === 'image' || config.type === 'cutout') {
           const img = document.createElement('img');
-          img.src = config.url;
+          img.src = mediaURL;
           img.alt = '';
           img.loading = 'lazy';
           img.onload = () => { this.renderWires(); };
@@ -523,7 +545,7 @@
         zoomBtn.innerHTML = '🔍 Xem';
         zoomBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.openLightbox(node.title || 'Preview', config.url, config.type);
+          this.openLightbox(node.title || 'Preview', mediaURL, config.type);
         });
         actions.appendChild(zoomBtn);
 
@@ -536,7 +558,7 @@
           e.stopPropagation();
           const fn = this.getFilename(config.url) || 'result_preview';
           const a = document.createElement('a');
-          a.href = config.url;
+          a.href = mediaURL;
           a.download = fn;
           document.body.appendChild(a);
           a.click();
@@ -644,7 +666,7 @@
         e.stopPropagation();
         this.selectNode(node.id);
         if (config.url) {
-          this.openLightbox(node.title || 'Preview', config.url, config.type);
+          this.openLightbox(node.title || 'Preview', mediaURL, config.type);
         }
       });
 
@@ -700,7 +722,7 @@
       // Trước khi chạy workflow, hoàn toàn không hiển thị khung preview để canvas gọn gàng
       if (node.state && node.state.status === 'completed' && node.state.output_preview) {
         const fn = this.getFilename(node.state.output_preview);
-        const url = `/media/${fn}`;
+        const url = `/media/${encodeURIComponent(fn)}`;
         const isVid = fn.endsWith('.mp4') || fn.endsWith('.webm') || fn.endsWith('.mov');
         const isCutout = fn.endsWith('.png');
 
@@ -787,9 +809,11 @@
       const node = this.graph.nodes.find(n => n.id === nodeId);
       if (!node) return;
 
-      const url = outputPreviewOrUrl.startsWith('/') || outputPreviewOrUrl.startsWith('http')
-        ? outputPreviewOrUrl
-        : `/media/${this.getFilename(outputPreviewOrUrl)}`;
+      const rawUrl = String(outputPreviewOrUrl).startsWith('/') || String(outputPreviewOrUrl).startsWith('http')
+        ? String(outputPreviewOrUrl)
+        : `/media/${encodeURIComponent(this.getFilename(outputPreviewOrUrl))}`;
+      const url = safeMediaURL(rawUrl);
+      if (!url) return;
 
       const isVid = url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov');
       const isCutout = url.endsWith('.png');
@@ -901,11 +925,23 @@
         if (previewBox) {
           previewBox.classList.add('has-content');
           if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
+          const mediaURL = safeMediaURL(url);
+          if (!mediaURL) return;
+          const media = document.createElement(isVid ? 'video' : 'img');
+          media.src = mediaURL;
+          media.style.maxWidth = '100%';
+          media.style.borderRadius = '6px';
           if (isVid) {
-            previewBox.innerHTML = `<video src="${url}" controls autoplay muted loop playsinline onerror="this.style.display='none'" style="max-width:100%;border-radius:6px"></video>`;
+            media.controls = true;
+            media.autoplay = true;
+            media.muted = true;
+            media.loop = true;
+            media.playsInline = true;
           } else {
-            previewBox.innerHTML = `<img src="${url}" alt="" onerror="this.style.display='none'" style="max-width:100%;border-radius:6px">`;
+            media.alt = '';
           }
+          media.onerror = () => { media.style.display = 'none'; };
+          previewBox.replaceChildren(media);
         }
       }
     }
@@ -1027,6 +1063,8 @@
     }
 
     openLightbox(title, url, type) {
+      url = safeMediaURL(url);
+      if (!url) return;
       let modal = document.getElementById('wf-lightbox-modal');
       if (!modal) {
         modal = document.createElement('div');
@@ -1184,15 +1222,18 @@
 
     findPortDot(nodeId, portId, isOutput) {
       if (!nodeId) return null;
+      const ports = Array.from(this.nodesLayer.querySelectorAll('.wf-port')).filter(port =>
+        port.dataset.nodeId === String(nodeId) && port.dataset.isOutput === (isOutput ? '1' : '0')
+      );
 
       // 1. Tìm chính xác theo data-node-id và data-port-id
       if (portId) {
-        const dot = this.nodesLayer.querySelector(`.wf-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .wf-port-dot`);
+        const exactPort = ports.find(port => port.dataset.portId === String(portId));
+        const dot = exactPort && exactPort.querySelector('.wf-port-dot');
         if (dot) return dot;
       }
 
       // 2. Tìm kiếm linh hoạt theo case-insensitive hoặc alias phổ biến
-      const ports = Array.from(this.nodesLayer.querySelectorAll(`.wf-port[data-node-id="${nodeId}"][data-is-output="${isOutput ? '1' : '0'}"]`));
       if (portId && ports.length > 0) {
         const pLower = portId.toLowerCase().replace(/[-_]/g, '');
         for (const p of ports) {
@@ -1374,13 +1415,15 @@
         return `<span class="wf-status-badge wf-status-idle">⏳ Đang xếp hàng...</span>`;
       }
       if (state.status === 'running') {
-        return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${state.progress || 20}%)...</span>`;
+        const progress = Math.max(0, Math.min(100, Number(state.progress) || 20));
+        return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${progress}%)...</span>`;
       }
       if (state.status === 'completed') {
         return `<div class="wf-status-badge wf-status-completed">✓ Hoàn tất 100%</div>`;
       }
       if (state.status === 'failed') {
-        return `<span class="wf-status-badge wf-status-failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 32) : 'Thất bại'}</span>`;
+        const error = String(state.error || '');
+        return `<span class="wf-status-badge wf-status-failed" title="${escapeHTML(error)}">⚠️ Lỗi: ${escapeHTML(error ? error.slice(0, 32) : 'Thất bại')}</span>`;
       }
       return '';
     }
@@ -1967,7 +2010,8 @@
 
     showFinalModal(outputUrl) {
       const filename = this.getFilename(outputUrl);
-      const isVideo = filename.endsWith('.mp4') || filename.endsWith('.webm');
+      const isVideo = /\.(mp4|webm|mov)$/i.test(filename);
+      const mediaURL = `/media/${encodeURIComponent(filename)}`;
 
       const modal = document.createElement('div');
       modal.className = 'wf-modal-overlay';
@@ -1980,15 +2024,31 @@
             </div>
             <button type="button" class="wf-modal-close">&times;</button>
           </div>
-          <div style="padding:20px;text-align:center">
-            ${isVideo ? `<video src="/media/${filename}" controls autoplay style="width:100%;max-height:480px;border-radius:10px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,0.3)"></video>` : `<img src="/media/${filename}" style="max-width:100%;border-radius:10px">`}
+          <div class="wf-final-media" style="padding:20px;text-align:center">
             <div style="margin-top:18px;display:flex;gap:12px;justify-content:center">
-              <a href="/media/${filename}" download class="wf-btn wf-btn-primary">⬇ Tải video về máy</a>
+              <a class="wf-btn wf-btn-primary wf-final-download" download>⬇ Tải video về máy</a>
               <a href="/studio/jobs" class="wf-btn wf-btn-secondary">Xem danh sách Video ↗</a>
             </div>
           </div>
         </div>
       `;
+      const media = document.createElement(isVideo ? 'video' : 'img');
+      media.src = mediaURL;
+      media.style.maxWidth = '100%';
+      media.style.borderRadius = '10px';
+      if (isVideo) {
+        media.controls = true;
+        media.autoplay = true;
+        media.style.width = '100%';
+        media.style.maxHeight = '480px';
+        media.style.background = '#000';
+        media.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)';
+      }
+      const mediaBox = modal.querySelector('.wf-final-media');
+      mediaBox.insertBefore(media, mediaBox.firstChild);
+      const download = modal.querySelector('.wf-final-download');
+      download.href = mediaURL;
+      download.download = filename;
       modal.querySelector('.wf-modal-close').addEventListener('click', () => modal.remove());
       modal.addEventListener('click', (e) => {
         if (e.target === modal) modal.remove();
@@ -2550,15 +2610,29 @@
           previewBox.classList.add('has-content');
           const fn = this.getFilename(node.state.output_preview);
           if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
-          if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
-            previewBox.innerHTML = `<video src="/media/${fn}" controls autoplay muted loop playsinline onerror="this.style.display='none'" style="max-width:100%;border-radius:6px"></video>`;
+          const isVideo = /\.(mp4|webm|mov)$/i.test(fn);
+          const media = document.createElement(isVideo ? 'video' : 'img');
+          media.src = safeMediaURL(`/media/${encodeURIComponent(fn)}`);
+          media.style.maxWidth = '100%';
+          media.style.borderRadius = '6px';
+          if (isVideo) {
+            media.controls = true;
+            media.autoplay = true;
+            media.muted = true;
+            media.loop = true;
+            media.playsInline = true;
           } else {
-            previewBox.innerHTML = `<img src="/media/${fn}" alt="" onerror="this.style.display='none'" style="max-width:100%;border-radius:6px">`;
+            media.alt = '';
           }
+          media.onerror = () => { media.style.display = 'none'; };
+          previewBox.replaceChildren(media);
         } else if (node.state && node.state.outputs && node.state.outputs.text) {
           previewBox.classList.add('has-content');
           if (previewStatus) previewStatus.innerText = 'Đã tạo văn bản';
-          previewBox.innerHTML = `<div style="color:var(--text);font-size:12px;white-space:pre-wrap;line-height:1.45;padding:4px;">${node.state.outputs.text}</div>`;
+          const outputText = document.createElement('div');
+          outputText.style.cssText = 'color:var(--text);font-size:12px;white-space:pre-wrap;line-height:1.45;padding:4px;';
+          outputText.textContent = String(node.state.outputs.text);
+          previewBox.replaceChildren(outputText);
         } else {
           previewBox.classList.remove('has-content');
           if (previewStatus) previewStatus.innerText = 'Chưa có kết quả';
@@ -2733,10 +2807,10 @@
       const paramsListEl = document.getElementById('api-detected-params-list');
       if (paramsListEl) {
         paramsListEl.innerHTML = detectedChips.map(c => `
-          <div class="wf-api-param-chip" title="${c.nodeRef}">
-            <span class="wf-api-param-key">${c.name}</span>
-            <span class="wf-api-param-type">${c.type}</span>
-            <span class="wf-api-param-noderef">[${c.nodeRef.slice(0, 24)}]</span>
+          <div class="wf-api-param-chip" title="${escapeHTML(c.nodeRef)}">
+            <span class="wf-api-param-key">${escapeHTML(c.name)}</span>
+            <span class="wf-api-param-type">${escapeHTML(c.type)}</span>
+            <span class="wf-api-param-noderef">[${escapeHTML(c.nodeRef.slice(0, 24))}]</span>
           </div>
         `).join('');
       }
@@ -3003,16 +3077,16 @@
         card.className = `wf-library-card cat-${cat}`;
         card.innerHTML = `
           <div class="wf-card-top">
-            <div class="wf-card-icon-box cat-${cat}">
+            <div class="wf-card-icon-box cat-${escapeHTML(cat)}">
               <span>${this.getCategoryIcon(cat)}</span>
             </div>
             <div>
-              <h4 class="wf-card-title">${def.title}</h4>
+              <h4 class="wf-card-title">${escapeHTML(def.title)}</h4>
             </div>
           </div>
-          <p class="wf-card-desc">${def.description || ''}</p>
+          <p class="wf-card-desc">${escapeHTML(def.description || '')}</p>
           <div class="wf-card-bottom">
-            <span class="wf-card-cat-badge">${cat.toUpperCase()}</span>
+            <span class="wf-card-cat-badge">${escapeHTML(cat.toUpperCase())}</span>
             <span class="wf-card-add-text">+ Thêm vào Canvas</span>
           </div>
         `;
@@ -3175,17 +3249,17 @@
             <div class="wf-graph-card-header">
               <div class="wf-graph-card-title-group">
                 <span class="wf-graph-card-icon">${catIcon}</span>
-                <span class="wf-graph-card-title">${g.name}</span>
+                <span class="wf-graph-card-title">${escapeHTML(g.name)}</span>
               </div>
               <span class="wf-graph-tag ${catTag}">${catLabel}</span>
             </div>
-            <p class="wf-graph-card-desc">${g.description || 'Workflow tự động hóa sản xuất video AI Creator OS'}</p>
+            <p class="wf-graph-card-desc">${escapeHTML(g.description || 'Workflow tự động hóa sản xuất video AI Creator OS')}</p>
           </div>
           <div class="wf-graph-card-meta">
             <div class="wf-graph-card-meta-info">
-              <span>⚡ ${g.node_count || 0} nodes</span>
+              <span>⚡ ${Number(g.node_count) || 0} nodes</span>
               <span>•</span>
-              <span>🔗 ${g.edge_count || 0} dây nối</span>
+              <span>🔗 ${Number(g.edge_count) || 0} dây nối</span>
             </div>
             <div class="wf-graph-card-actions">
               ${!g.is_preset ? `
