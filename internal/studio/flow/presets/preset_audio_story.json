@@ -1,0 +1,117 @@
+{
+  "id": "preset_audio_story",
+  "name": "Truyện audio · Viết & kể",
+  "description": "Viết truyện tiếng Việt theo ý tưởng mỗi lần chạy, tổng hợp giọng đọc và xuất file WAV. Có thể nhân bản để sửa prompt, giọng và cách dựng.",
+  "category": "story",
+  "is_preset": true,
+  "nodes": [
+    {
+      "id": "input_story_idea",
+      "type": "workflow_input",
+      "title": "Ý tưởng / chủ đề truyện",
+      "category": "workflow",
+      "x": 60,
+      "y": 140,
+      "params": {
+        "key": "story_idea",
+        "label": "Ý tưởng truyện",
+        "value_type": "text",
+        "required": true,
+        "value": "Một người con trở về căn nhà ven biển sau nhiều năm xa quê và tìm thấy những bức thư chưa từng được gửi.",
+        "help": "Nhập chủ đề, nhân vật, bối cảnh hoặc điều bạn muốn người nghe cảm nhận."
+      }
+    },
+    {
+      "id": "input_voice_style",
+      "type": "workflow_input",
+      "title": "Phong cách giọng đọc",
+      "category": "workflow",
+      "x": 60,
+      "y": 420,
+      "params": {
+        "key": "voice_style",
+        "label": "Giọng đọc",
+        "value_type": "text",
+        "required": false,
+        "value": "warm-female",
+        "options": [
+          {"value": "warm-female", "label": "Nữ · ấm áp, kể chuyện"},
+          {"value": "clear-teacher", "label": "Nữ · rõ ràng"},
+          {"value": "upbeat-host", "label": "Nữ · tươi sáng"},
+          {"value": "energetic-caster", "label": "Nam · năng lượng"},
+          {"value": "male", "label": "Nam · trầm"},
+          {"value": "default", "label": "Mặc định hệ thống"}
+        ],
+        "help": "Chọn gợi ý hoặc nhập persona khác. Giọng thực tế tùy provider TTS; macOS Say hiện dùng giọng Linh."
+      }
+    },
+    {
+      "id": "node_story_writer",
+      "type": "custom_universal_ai",
+      "title": "Viết truyện audio",
+      "category": "ai",
+      "x": 430,
+      "y": 180,
+      "params": {
+        "output_type": "text",
+        "system_prompt": "Bạn là biên kịch truyện audio tiếng Việt. Viết nguyên tác tự nhiên, giàu hình ảnh và cảm xúc, phù hợp để nghe thành lời. Không dùng tiêu đề markdown, ghi chú sân khấu, ký hiệu hoặc lời dẫn ngoài truyện. Tránh lặp ý. Kết thúc trọn vẹn.",
+        "prompt": "Hãy viết truyện audio tiếng Việt dài khoảng 500–700 từ theo ý tưởng sau. Tạo mở đầu cuốn hút, diễn biến rõ, một bước ngoặt cảm xúc và kết thúc có dư âm. Ý tưởng: {{text_in}}"
+      }
+    },
+    {
+      "id": "node_narrator",
+      "type": "text_to_speech",
+      "title": "Tổng hợp giọng kể",
+      "category": "ai",
+      "x": 790,
+      "y": 180,
+      "params": {
+        "voice": "warm-female",
+        "chunk_size": 2200
+      }
+    },
+    {
+      "id": "node_audio_export",
+      "type": "audio_output",
+      "title": "Xuất truyện audio WAV",
+      "category": "output",
+      "x": 1120,
+      "y": 180,
+      "params": {}
+    },
+    {
+      "id": "output_story_text",
+      "type": "workflow_output",
+      "title": "Kịch bản truyện",
+      "category": "workflow",
+      "x": 1120,
+      "y": 410,
+      "params": {
+        "key": "story_text",
+        "label": "Kịch bản truyện",
+        "value_type": "text"
+      }
+    },
+    {
+      "id": "output_story_audio",
+      "type": "workflow_output",
+      "title": "File audio hoàn thiện",
+      "category": "workflow",
+      "x": 1460,
+      "y": 180,
+      "params": {
+        "key": "story_audio",
+        "label": "Truyện audio WAV",
+        "value_type": "audio"
+      }
+    }
+  ],
+  "edges": [
+    {"id": "e_story_idea", "from_node": "input_story_idea", "from_port": "value", "to_node": "node_story_writer", "to_port": "text_in"},
+    {"id": "e_story_text", "from_node": "node_story_writer", "from_port": "text_out", "to_node": "node_narrator", "to_port": "text_in"},
+    {"id": "e_story_voice", "from_node": "input_voice_style", "from_port": "value", "to_node": "node_narrator", "to_port": "voice_in"},
+    {"id": "e_story_script_output", "from_node": "node_story_writer", "from_port": "text_out", "to_node": "output_story_text", "to_port": "value"},
+    {"id": "e_story_audio_export", "from_node": "node_narrator", "from_port": "audio_out", "to_node": "node_audio_export", "to_port": "audio_in"},
+    {"id": "e_story_audio_output", "from_node": "node_audio_export", "from_port": "final_audio", "to_node": "output_story_audio", "to_port": "value"}
+  ]
+}

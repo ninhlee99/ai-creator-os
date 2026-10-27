@@ -143,6 +143,23 @@ func registerAllBuiltinNodes() {
 		},
 		Executor: executeAudioSource,
 	})
+	RegisterNode(NodeDefinition{
+		Type:        "text_to_speech",
+		Title:       "Tạo giọng đọc (Text to Speech)",
+		Category:    CategoryAI,
+		Description: "Chuyển văn bản hoặc kịch bản thành file WAV bằng chuỗi TTS đã cấu hình trong Cài đặt.",
+		Icon:        "mic",
+		Inputs: []FlowPort{
+			{ID: "text_in", Name: "Văn bản / kịch bản", Type: PortTypeText, Required: true},
+			{ID: "voice_in", Name: "Phong cách giọng đọc", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "audio_out", Name: "Giọng đọc (WAV)", Type: PortTypeAudio, Description: "File WAV 24 kHz mono đã tổng hợp."},
+			{ID: "text_out", Name: "Văn bản đã đọc", Type: PortTypeText, Description: "Văn bản truyền tiếp để lưu hoặc hiển thị."},
+		},
+		DefaultParams: map[string]any{"voice": "warm-female"},
+		Executor:      executeTextToSpeech,
+	})
 
 	// 5. Prompt Template Node
 	RegisterNode(NodeDefinition{

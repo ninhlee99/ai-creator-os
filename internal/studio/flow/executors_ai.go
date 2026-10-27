@@ -10,7 +10,163 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
+
+func executeTextToSpeech(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	text := inputString(inputs, "text_in", "")
+	if strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("node tạo giọng đọc cần văn bản hoặc kịch bản")
+	}
+	if ctx.SynthesizeSpeech == nil {
+		return nil, fmt.Errorf("dịch vụ TTS chưa được kết nối")
+	}
+
+	voice := strings.TrimSpace(inputString(inputs, "voice_in", nodeParamString(node.Params, "voice", "warm-female")))
+	if voice == "" {
+		voice = "warm-female"
+	}
+	if err := os.MkdirAll(ctx.WorkDir, 0o755); err != nil {
+		return nil, fmt.Errorf("không tạo được thư mục làm việc cho audio: %w", err)
+	}
+	chunkSize := nodeParamInt(node.Params, "chunk_size", 2200)
+	if chunkSize < 300 {
+		chunkSize = 300
+	} else if chunkSize > 10000 {
+		chunkSize = 10000
+	}
+	chunks := splitSpeechText(text, chunkSize)
+	if len(chunks) > 1 && ctx.FFmpegRunner == nil {
+		return nil, fmt.Errorf("ghép các đoạn đọc dài cần FFmpeg")
+	}
+	baseName := safeWorkflowPathPart(node.ID)
+	partPaths := make([]string, 0, len(chunks))
+	for i, chunk := range chunks {
+		wav, err := ctx.SynthesizeSpeech(ctx.Context, chunk, voice)
+		if err != nil {
+			return nil, fmt.Errorf("tạo đoạn đọc %d/%d thất bại: %w", i+1, len(chunks), err)
+		}
+		if len(wav) < 12 || string(wav[:4]) != "RIFF" || string(wav[8:12]) != "WAVE" {
+			return nil, fmt.Errorf("dịch vụ TTS không trả về WAV hợp lệ ở đoạn %d", i+1)
+		}
+		partPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_speech_part_%03d.wav", baseName, i+1))
+		if err := os.WriteFile(partPath, wav, 0o600); err != nil {
+			return nil, fmt.Errorf("không lưu được đoạn đọc %d: %w", i+1, err)
+		}
+		partPaths = append(partPaths, partPath)
+	}
+	audioPath := partPaths[0]
+	if len(partPaths) > 1 {
+		audioPath = filepath.Join(ctx.WorkDir, baseName+"_speech.wav")
+		args := []string{"-y"}
+		var labels strings.Builder
+		for i, partPath := range partPaths {
+			args = append(args, "-i", partPath)
+			fmt.Fprintf(&labels, "[%d:a:0]", i)
+		}
+		filter := fmt.Sprintf("%sconcat=n=%d:v=0:a=1[aout]", labels.String(), len(partPaths))
+		args = append(args, "-filter_complex", filter, "-map", "[aout]", "-c:a", "pcm_s16le", "-ar", "24000", "-ac", "1", audioPath)
+		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
+			return nil, fmt.Errorf("ghép các đoạn đọc thất bại: %w", err)
+		}
+	}
+	if !fileExists(audioPath) || !isAudioFile(audioPath) {
+		return nil, fmt.Errorf("không tạo được file giọng đọc hoàn chỉnh")
+	}
+	ctx.Log(fmt.Sprintf("TextToSpeech: Đã tạo giọng %s từ %d đoạn", voice, len(chunks)))
+	return map[string]any{"audio_out": audioPath, "text_out": text}, nil
+}
+
+func splitSpeechText(text string, maxRunes int) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	if maxRunes < 1 || utf8.RuneCountInString(text) <= maxRunes {
+		return []string{text}
+	}
+
+	var sentences []string
+	var current strings.Builder
+	runes := []rune(text)
+	for i, r := range runes {
+		current.WriteRune(r)
+		if strings.ContainsRune(".!?。！？", r) && (i+1 == len(runes) || isSpeechSpace(runes[i+1])) {
+			if sentence := strings.TrimSpace(current.String()); sentence != "" {
+				sentences = append(sentences, sentence)
+			}
+			current.Reset()
+		}
+	}
+	if sentence := strings.TrimSpace(current.String()); sentence != "" {
+		sentences = append(sentences, sentence)
+	}
+
+	chunks := make([]string, 0, utf8.RuneCountInString(text)/maxRunes+1)
+	var chunk strings.Builder
+	flush := func() {
+		if value := strings.TrimSpace(chunk.String()); value != "" {
+			chunks = append(chunks, value)
+		}
+		chunk.Reset()
+	}
+	for _, sentence := range sentences {
+		if utf8.RuneCountInString(sentence) > maxRunes {
+			flush()
+			chunks = append(chunks, splitSpeechWords(sentence, maxRunes)...)
+			continue
+		}
+		separator := ""
+		if chunk.Len() > 0 {
+			separator = " "
+		}
+		if utf8.RuneCountInString(chunk.String())+utf8.RuneCountInString(separator)+utf8.RuneCountInString(sentence) > maxRunes {
+			flush()
+			separator = ""
+		}
+		chunk.WriteString(separator)
+		chunk.WriteString(sentence)
+	}
+	flush()
+	return chunks
+}
+
+func splitSpeechWords(text string, maxRunes int) []string {
+	chunks := make([]string, 0)
+	var chunk strings.Builder
+	flush := func() {
+		if value := strings.TrimSpace(chunk.String()); value != "" {
+			chunks = append(chunks, value)
+		}
+		chunk.Reset()
+	}
+	for _, word := range strings.Fields(text) {
+		if utf8.RuneCountInString(word) > maxRunes {
+			flush()
+			runes := []rune(word)
+			for len(runes) > maxRunes {
+				chunks = append(chunks, string(runes[:maxRunes]))
+				runes = runes[maxRunes:]
+			}
+			chunk.WriteString(string(runes))
+			continue
+		}
+		separator := ""
+		if chunk.Len() > 0 {
+			separator = " "
+		}
+		if utf8.RuneCountInString(chunk.String())+utf8.RuneCountInString(separator)+utf8.RuneCountInString(word) > maxRunes {
+			flush()
+			separator = ""
+		}
+		chunk.WriteString(separator)
+		chunk.WriteString(word)
+	}
+	flush()
+	return chunks
+}
+
+func isSpeechSpace(r rune) bool { return r == ' ' || r == '\n' || r == '\r' || r == '\t' }
 
 func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Cinematic vertical 9:16 video, highly detailed, 4k quality")

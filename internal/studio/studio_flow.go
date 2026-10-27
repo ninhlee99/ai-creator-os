@@ -111,6 +111,12 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			}
 			return s.llm.Complete(ctx, systemPrompt, prompt)
 		},
+		SynthesizeSpeech: func(ctx context.Context, text, voice string) ([]byte, error) {
+			if s.narrator == nil {
+				return nil, fmt.Errorf("TTS chưa được cấu hình")
+			}
+			return s.narrator(ctx, text, voice)
+		},
 		GenerateImage: func(ctx context.Context, prompt string, imagePaths []string, outPath string) error {
 			if s.mg == nil || !s.mg.Healthy(ctx) {
 				return fmt.Errorf("image generator chưa sẵn sàng")

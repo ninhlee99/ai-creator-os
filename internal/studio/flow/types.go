@@ -125,6 +125,7 @@ type ExecutionContext struct {
 	VisionEval        func(ctx context.Context, prompt string, imagePath string) (string, error)
 	AnalyzeImages     func(ctx context.Context, prompt string, imagePaths []string) (string, error)
 	GenerateText      func(ctx context.Context, systemPrompt, prompt string) (string, error)
+	SynthesizeSpeech  func(ctx context.Context, text, voice string) ([]byte, error)
 	GenerateImage     func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
 	CharacterPhotos   func(accountID int64) ([]string, error)
 	FFmpegRunner      func(ctx context.Context, args ...string) error

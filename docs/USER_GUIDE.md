@@ -1,6 +1,6 @@
 # Hướng dẫn vận hành
 
-Hướng dẫn tập trung hai flow TikTok đang được hoàn thiện. Truyện audio để phase sau.
+Hướng dẫn vận hành quy trình TikTok đang được hoàn thiện và workflow canvas.
 
 ## Chuẩn bị
 
@@ -25,6 +25,13 @@ Hướng dẫn tập trung hai flow TikTok đang được hoàn thiện. Truyệ
 3. Tạo video từ nguồn đã chọn.
 4. Kiểm tra audio, hình ảnh, preview và QC.
 5. Xem lại preview, xác nhận tài khoản đích và đồng ý gửi TikTok Draft; hoàn tất đăng trong TikTok.
+
+## Workflow truyện audio
+
+1. Mở Workflow và chọn preset **Truyện audio · Viết & kể**. Preset hệ thống chỉ đọc; nhân bản để sửa prompt hoặc cấu hình.
+2. Bấm Chạy workflow. Nhập ý tưởng truyện và chọn phong cách giọng đọc cho lần chạy này.
+3. Xem lại node **Viết truyện audio** nếu cần đổi cách viết; node **Tổng hợp giọng kể** dùng chuỗi TTS trong Cài đặt. Persona giọng phụ thuộc provider; macOS Say hiện dùng giọng Linh.
+4. Kết quả gồm kịch bản văn bản và file WAV trong thư mục output. Văn bản dài được chia theo câu rồi ghép thành một file.
 
 ## Khi flow dừng
 
