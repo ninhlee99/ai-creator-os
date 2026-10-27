@@ -4736,7 +4736,7 @@
         empty.className = 'wf-library-empty';
         empty.setAttribute('role', 'status');
         empty.setAttribute('aria-live', 'polite');
-        const hasFilters = Boolean(filterText.trim()) || filterCat !== 'all';
+        const hasFilters = Boolean(filterText.trim()) || filterCat !== 'all' || Boolean(this.pendingConnect);
         const icon = document.createElement('div');
         icon.className = 'wf-library-empty-icon';
         icon.setAttribute('aria-hidden', 'true');
@@ -4751,18 +4751,14 @@
 
         if (this.pendingConnect) {
           title.textContent = 'Chưa tìm thấy node tương thích';
-          description.textContent = hasFilters
-            ? 'Không có node khớp bộ lọc và kiểu dữ liệu của cổng đang nối.'
-            : 'Hiện chưa có node nào nhận kiểu dữ liệu này. Hãy kiểm tra cổng hoặc hủy thao tác nối.';
-          action.textContent = hasFilters ? 'Xóa bộ lọc' : 'Hủy kết nối';
-        } else if (filterText.trim()) {
+          description.textContent = 'Bỏ lọc kết nối để xem toàn bộ thư viện node.';
+          action.textContent = 'Xem tất cả nodes';
+          action.dataset.action = 'show-all-nodes';
+        } else if (hasFilters) {
           title.textContent = 'Không tìm thấy node';
-          description.textContent = 'Thử từ khóa khác hoặc xem lại toàn bộ thư viện node.';
-          action.textContent = 'Xóa tìm kiếm';
-        } else if (filterCat !== 'all') {
-          title.textContent = 'Nhóm này chưa có node';
-          description.textContent = 'Chọn nhóm khác hoặc mở toàn bộ thư viện node.';
-          action.textContent = 'Xem tất cả node';
+          description.textContent = 'Thử từ khóa khác hoặc mở lại toàn bộ thư viện node.';
+          action.textContent = 'Xem tất cả nodes';
+          action.dataset.action = 'show-all-nodes';
         } else {
           title.textContent = 'Thư viện node đang trống';
           description.textContent = 'Hiện chưa có node nào sẵn sàng để thêm vào workflow.';
@@ -4771,7 +4767,7 @@
 
         action.addEventListener('click', () => {
           const searchInput = document.getElementById('node-search-input');
-          if (action.textContent === 'Xem tất cả node') {
+          if (action.dataset.action === 'show-all-nodes') {
             this.showAllNodes();
             if (searchInput) searchInput.focus();
             return;
