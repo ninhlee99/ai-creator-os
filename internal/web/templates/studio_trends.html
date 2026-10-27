@@ -819,9 +819,9 @@ document.addEventListener('keydown', function(e) {
         {{else}}<span class="rank-badge rank-default">TOP {{printf "%02d" .Rank}}</span>{{end}}
 
         {{if .DanceVerified}}
-        <span class="badge badge-ok" style="font-size: 10px; padding: 2px 6px;">✓ Bạn đã xác nhận dance</span>
+        <span class="badge badge-ok" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">✓ Đã xác nhận vũ đạo</span>
         {{else}}
-        <span class="badge badge-warn" style="font-size: 10px; padding: 2px 6px;">Chưa xác nhận dance</span>
+        <span class="badge badge-warn" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">Chưa xác nhận · cần xem video</span>
         {{end}}
       </div>
 
@@ -882,11 +882,12 @@ document.addEventListener('keydown', function(e) {
       <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="display: grid; gap: 6px; margin: 0;">
         <input type="hidden" name="verified" value="1">
         <input type="hidden" name="topic" value="{{$.Topic}}">
-        <label style="display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.35;">
+        <small class="hint" style="font-size: 10.5px; line-height: 1.35;">Crawler không phân loại vũ đạo; caption và sound không phải bằng chứng.</small>
+        <label style="display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.35; font-weight: 600;">
           <input type="checkbox" name="confirm_dance_content" value="1" required style="margin: 1px 0 0;">
-          <span>Tôi đã xem video và xác nhận nội dung có vũ đạo.</span>
+          <span>Tôi đã mở và xem video; nội dung có vũ đạo.</span>
         </label>
-        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">Xác nhận video nhảy</button>
+        <button type="submit" class="btn btn-primary btn-sm" style="width: 100%; font-weight: 700;">Xác nhận vũ đạo</button>
       </form>
       {{end}}
 
@@ -905,7 +906,7 @@ document.addEventListener('keydown', function(e) {
           </a>
         </div>
         {{else}}
-        <div class="hint" style="font-size: 10.5px; text-align: center;">Xác nhận video có vũ đạo trước khi dùng làm nguồn.</div>
+        <div class="hint" style="font-size: 10.5px; text-align: center;">Mở xem và xác nhận vũ đạo để bật hành động dùng nguồn.</div>
         {{end}}
       </div>
     </article>
