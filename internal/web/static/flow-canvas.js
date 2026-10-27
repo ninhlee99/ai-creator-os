@@ -225,6 +225,13 @@
 
       const cat = node.category || def.category || 'process';
 
+      // Đảm bảo không rò rỉ preview sang các node xử lý/AI chưa chạy
+      if (!this.isInputNodeType(node.type)) {
+        if (node.params && node.params.preview_url && (!node.state || node.state.status !== 'completed')) {
+          delete node.params.preview_url;
+        }
+      }
+
       const nodeEl = document.createElement('div');
       nodeEl.className = `wf-node cat-${cat}`;
       nodeEl.id = `node-${node.id}`;
@@ -654,14 +661,13 @@
           const file = ev.target.files && ev.target.files[0];
           if (!file) return;
 
-          // 1. Hiển thị tức thời preview cục bộ qua base64
+          // 1. Hiển thị tức thời preview cục bộ qua base64 cho riêng node này
           const reader = new FileReader();
           reader.onload = (re) => {
             const dataUrl = re.target.result;
             if (!node.params) node.params = {};
             node.params.preview_url = dataUrl;
             this.updateNodePreview(node.id, dataUrl);
-            this.propagatePreviewUpdate(node.id, dataUrl);
           };
           reader.readAsDataURL(file);
 
@@ -692,7 +698,6 @@
                 node.params.product_image = res.file_path;
               }
               this.updateNodePreview(node.id, res.url);
-              this.propagatePreviewUpdate(node.id, res.url);
             }
           } catch (uploadErr) {
             console.warn('Lỗi tải file lên server, tiếp tục dùng dữ liệu cục bộ', uploadErr);
@@ -845,19 +850,20 @@
       return null;
     }
 
+    isInputNodeType(type) {
+      return type === 'character_input' ||
+             type === 'product_input' ||
+             type === 'video_source' ||
+             type === 'audio_source' ||
+             type === 'custom_media_input' ||
+             type === 'character_identity';
+    }
+
     propagatePreviewUpdate(nodeId, newUrl) {
-      if (!this.graph.edges) return;
-      const outgoingEdges = this.graph.edges.filter(e => (e.from_node || e.fromNode || e.FromNode) === nodeId);
-      outgoingEdges.forEach(edge => {
-        const toNodeId = edge.to_node || edge.toNode || edge.ToNode;
-        const targetNode = this.graph.nodes.find(n => n.id === toNodeId);
-        if (targetNode) {
-          if (!targetNode.params) targetNode.params = {};
-          targetNode.params.preview_url = newUrl;
-          this.updateNodePreview(targetNode.id, newUrl);
-          this.propagatePreviewUpdate(targetNode.id, newUrl);
-        }
-      });
+      // TUYỆT ĐỐI KHÔNG lan truyền preview sang các node downstream.
+      // Mỗi node có preview hoàn toàn độc lập: node đầu vào hiển thị ảnh upload của node đó,
+      // các node xử lý/AI chỉ hiển thị kết quả sau khi node đó chạy xong.
+      return;
     }
 
     updateNodePreview(nodeId, newUrl) {
@@ -868,6 +874,13 @@
       if (!outputPreviewOrUrl) return;
       const node = this.graph.nodes.find(n => n.id === nodeId);
       if (!node) return;
+
+      const isInput = this.isInputNodeType(node.type);
+      if (!isInput && (!node.state || node.state.status !== 'completed')) {
+        const existingPreview = document.getElementById(`node-preview-${nodeId}`);
+        if (existingPreview) existingPreview.remove();
+        return;
+      }
 
       const rawUrl = String(outputPreviewOrUrl).startsWith('/') || String(outputPreviewOrUrl).startsWith('http')
         ? String(outputPreviewOrUrl)
@@ -1153,7 +1166,6 @@
 
         this.render();
         this.selectNode(node.id);
-        this.propagatePreviewUpdate(node.id, node.params.preview_url);
       } catch (err) {
         console.error('Lỗi nạp link media:', err);
         if (previewEl && prevHtml) {
@@ -2973,7 +2985,6 @@
                   if (node.type === 'video_source' && key === 'video_path') this.clearVideoSourceOtherParam(node, key);
                   node.params.preview_url = d.url;
                   this.updateNodePreview(node.id, d.url);
-                  this.propagatePreviewUpdate(node.id, d.url);
                 }
               } catch (uErr) {
                 console.error(uErr);
