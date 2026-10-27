@@ -14,7 +14,7 @@ func GetPresetGraphs() []FlowGraph {
 func PresetViralDance() FlowGraph {
 	return FlowGraph{
 		ID:          "preset_viral_dance",
-		Name:        "TikTok Viral Sexy Dance (Bóc tách vũ đạo → Model → Trang phục → Không gian & Ánh sáng → Render vũ đạo chuẩn)",
+		Name:        "TikTok Viral Sexy Dance",
 		Description: "Phân tích chuyển động từ video nhảy đã xác thực trong Radar, chọn ảnh nhân vật và outfit tham chiếu, tạo prompt video, render, ghép audio, cân màu, upscale và xuất file",
 		Category:    "viral",
 		IsPreset:    true,
@@ -191,7 +191,7 @@ func PresetViralDance() FlowGraph {
 func PresetAffiliateShowcase() FlowGraph {
 	return FlowGraph{
 		ID:          "preset_affiliate_showcase",
-		Name:        "TikTok Affiliate Pro (Chọn SP → Model → Bóc tách → Thử đồ → Không gian → Ánh sáng → Video 9:16)",
+		Name:        "TikTok Affiliate Pro",
 		Description: "Chọn ảnh nhân vật và sản phẩm affiliate thật, chuẩn bị outfit prompt, tạo ba cảnh riêng, ghép audio, upscale và xuất video",
 		Category:    "affiliate",
 		IsPreset:    true,
@@ -411,7 +411,7 @@ func PresetAffiliateShowcase() FlowGraph {
 func PresetMultiAIHybrid() FlowGraph {
 	return FlowGraph{
 		ID:          "preset_multi_ai",
-		Name:        "Multi-Engine AI Studio (Gemini + Flow + Custom AI)",
+		Name:        "Multi-Engine AI Studio",
 		Description: "Dùng Gemini Vision phân tích ảnh, sinh prompt tối ưu, kết hợp nhiều Web AI và ghép cảnh hoàn thiện",
 		Category:    "custom",
 		IsPreset:    true,
