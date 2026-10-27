@@ -72,7 +72,7 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 	}
 	defer tx.Rollback()
 	stmt, err := tx.PrepareContext(ctx, `INSERT INTO studio_tiktok_radar_videos(video_id,payload,collected_at,dance_verified,dance_verified_at)
-		VALUES(?,?,?,1,?) ON CONFLICT(video_id) DO UPDATE SET payload=excluded.payload,collected_at=excluded.collected_at,dance_verified=1,dance_verified_at=excluded.dance_verified_at`)
+		VALUES(?,?,?,0,'') ON CONFLICT(video_id) DO UPDATE SET payload=excluded.payload,collected_at=excluded.collected_at`)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (s *Studio) storeTikTokRadarVideos(ctx context.Context, videos []TikTokTren
 		if err != nil {
 			return err
 		}
-		if _, err := stmt.ExecContext(ctx, video.VideoID, string(payload), video.CollectedAt, video.CollectedAt); err != nil {
+		if _, err := stmt.ExecContext(ctx, video.VideoID, string(payload), video.CollectedAt); err != nil {
 			return err
 		}
 		if _, err := snapshotStmt.ExecContext(ctx,

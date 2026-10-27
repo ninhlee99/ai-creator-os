@@ -5,7 +5,7 @@ MiuNova hiện tập trung vào hai flow TikTok:
 1. Video affiliate TikTok.
 2. Video viral TikTok.
 
-Truyện audio là roadmap, không nằm trong flow hiện tại. Cả hai flow TikTok lấy audio từ video Radar đã chọn. Radar hiện dùng Web Crawler cục bộ; xem [TikTok Web Crawler](docs/features/tiktok-web-crawler.md) để biết nguồn, giới hạn và trạng thái hiện tại.
+Truyện audio là roadmap, không nằm trong flow hiện tại. Cả hai flow TikTok chỉ lấy audio từ video Radar đã được người vận hành xác nhận có vũ đạo. Radar hiện dùng Web Crawler cục bộ; xem [TikTok Web Crawler](docs/features/tiktok-web-crawler.md) để biết nguồn, giới hạn và trạng thái hiện tại.
 
 ## Luồng đang ưu tiên
 

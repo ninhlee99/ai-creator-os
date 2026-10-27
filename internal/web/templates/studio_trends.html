@@ -818,7 +818,11 @@ document.addEventListener('keydown', function(e) {
         {{else if eq .Rank 3}}<span class="rank-badge rank-bronze">🥉 TOP 03</span>
         {{else}}<span class="rank-badge rank-default">TOP {{printf "%02d" .Rank}}</span>{{end}}
 
-        <span class="badge badge-ok" style="font-size: 10px; padding: 2px 6px;">✓ Đã xác minh</span>
+        {{if .DanceVerified}}
+        <span class="badge badge-ok" style="font-size: 10px; padding: 2px 6px;">✓ Bạn đã xác nhận dance</span>
+        {{else}}
+        <span class="badge badge-warn" style="font-size: 10px; padding: 2px 6px;">Chưa xác nhận dance</span>
+        {{end}}
       </div>
 
       <!-- Thumbnail có nút bấm Xem trực tiếp trên màn hình -->
@@ -868,11 +872,30 @@ document.addEventListener('keydown', function(e) {
         </span>
       </div>
 
+      {{if .DanceVerified}}
+      <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="margin: 0;">
+        <input type="hidden" name="verified" value="0">
+        <input type="hidden" name="topic" value="{{$.Topic}}">
+        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">Bỏ xác nhận video nhảy</button>
+      </form>
+      {{else}}
+      <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="display: grid; gap: 6px; margin: 0;">
+        <input type="hidden" name="verified" value="1">
+        <input type="hidden" name="topic" value="{{$.Topic}}">
+        <label style="display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.35;">
+          <input type="checkbox" name="confirm_dance_content" value="1" required style="margin: 1px 0 0;">
+          <span>Tôi đã xem video và xác nhận nội dung có vũ đạo.</span>
+        </label>
+        <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">Xác nhận video nhảy</button>
+      </form>
+      {{end}}
+
       <!-- Nút hành động trực tiếp -->
       <div style="margin-top: auto; display: flex; flex-direction: column; gap: 5px; padding-top: 6px; border-top: 1px solid var(--border);">
         <button type="button" class="btn btn-primary btn-sm" onclick="openRadarPlayerFromCard(this)" style="width: 100%; font-size: 11px; padding: 6px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700;">
           ▶ Xem video
         </button>
+        {{if .DanceVerified}}
         <div style="display: flex; gap: 5px;">
           <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Ghép sound này vào video Affiliate">
             ♫ Dùng nhạc
@@ -881,6 +904,9 @@ document.addEventListener('keydown', function(e) {
             🎬 Làm mẫu
           </a>
         </div>
+        {{else}}
+        <div class="hint" style="font-size: 10.5px; text-align: center;">Xác nhận video có vũ đạo trước khi dùng làm nguồn.</div>
+        {{end}}
       </div>
     </article>
     {{end}}

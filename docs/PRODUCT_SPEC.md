@@ -86,7 +86,7 @@ Auto-approve chỉ khi tất cả hard gate qua, evidence đủ mới, confidenc
 - Người dùng chọn topic/category, vùng, khoảng thời gian và tiêu chí viral.
 - Radar lưu video ID/URL, author, caption, sound metadata, views/likes/comments/shares, thời điểm thu thập và provider.
 - Sắp xếp theo view velocity và tương tác khi có đủ snapshot theo thời gian; tổng view cao đơn lẻ không chứng minh đang lên trend.
-- Nhãn “video nhảy” chỉ tự gán khi classifier đạt ngưỡng đã kiểm chứng; nếu chưa, để `unclassified` và yêu cầu chọn thủ công. Hiện code chưa đạt điều kiện này: crawler không phân loại dance, nhưng backend auto-set `dance_verified`; đây là acceptance gap.
+- Nhãn “video nhảy” chỉ được gán sau xác nhận thủ công của người vận hành; crawler không phân loại dance. Classifier chỉ có thể tự gán sau khi đạt ngưỡng đã kiểm chứng. Video chưa xác nhận không được chọn làm nguồn audio.
 
 ### 2. Phân tích video
 

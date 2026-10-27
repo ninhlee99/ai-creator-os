@@ -179,9 +179,31 @@ func (s *Studio) migrate() error {
 		}
 	}
 
-	// Tự động xác nhận video Radar (hệ thống tự động xác nhận video theo đúng yêu cầu người dùng)
-	_, _ = s.db.Exec(`UPDATE studio_tiktok_radar_videos SET dance_verified=1, dance_verified_at=collected_at WHERE dance_verified=0`)
-	return nil
+	return s.migrateManualDanceVerification()
+}
+
+// migrateManualDanceVerification clears historical crawler auto-labels once.
+// Those values do not prove an operator reviewed the video.
+func (s *Studio) migrateManualDanceVerification() error {
+	var version int
+	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return err
+	}
+	if version >= 2 {
+		return nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE studio_tiktok_radar_videos SET dance_verified=0,dance_verified_at=''`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`PRAGMA user_version = 2`); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Close releases the database handle.

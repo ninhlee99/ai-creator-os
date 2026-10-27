@@ -1,6 +1,6 @@
 # Rà soát dự án
 
-Cập nhật: 2026-10-24. Phạm vi rà soát: hai flow TikTok đang ưu tiên.
+Cập nhật: 2026-10-27. Phạm vi rà soát: hai flow TikTok đang ưu tiên.
 
 ## Kết luận
 
@@ -8,7 +8,7 @@ Chưa đạt flow end-to-end. Các điểm rủi ro tập trung ở chọn đún
 
 ## Thứ tự xử lý
 
-1. **Radar dance:** Web Crawler hiện không phân loại dance nhưng backend tự đánh dấu mọi kết quả là đã xác minh; UI cũng không có control để review. Không dùng cờ này làm bằng chứng hoặc auto-select audio.
+1. **Radar dance:** xác nhận hiện là thao tác thủ công trên từng card; không có classifier. Cần kiểm tra UX và dữ liệu cũ sau migration trước khi bật auto-select audio.
 2. **Audio:** xác minh audio được trích từ đúng video Radar đã chọn và tồn tại trong MP4 cuối.
 3. **Affiliate evidence:** AccessTrade cung cấp offer/commission nhưng chưa có sales/review evidence cần để gọi sản phẩm bán chạy hoặc đánh giá tốt.
 4. **Video QC:** kiểm tra sản phẩm, chuyển động, tỉ lệ, audio và file trước khi cho gửi Draft.

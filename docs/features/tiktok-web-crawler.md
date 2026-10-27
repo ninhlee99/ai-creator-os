@@ -15,7 +15,7 @@ Crawler không dùng Access Token TikTok Business hoặc Advertiser ID. TikTok D
 - Browser có timeout tổng 15 giây. Sau tối đa 7 giây không có phản hồi phù hợp, crawler thử đọc danh sách video đang có trong DOM.
 - Network response có thể cung cấp ID, caption, tác giả, ảnh bìa, sound metadata và view/like/comment/share counts. Code trả tối đa 5 kết quả sau khi xếp hạng.
 - DOM fallback chỉ cung cấp ID, caption, tác giả và ảnh bìa; metrics và sound metadata không có thì giữ unknown. UI hiển thị gạch cho metrics thiếu và `Chưa có metadata sound` khi thiếu tên sound.
-- Nguồn lưu trong SQLite: tối đa 2.000 video, metric snapshots tối đa 30 ngày. Dance flag hiện được code tự đặt cho mọi kết quả crawler; đây không phải bằng chứng video có vũ đạo và không có classifier.
+- Nguồn lưu trong SQLite: tối đa 2.000 video, metric snapshots tối đa 30 ngày. Video mới mặc định chưa xác nhận dance; người vận hành phải đánh dấu rõ sau khi xem video. Chưa có classifier.
 
 Âm thanh dùng cho job được trích từ video nguồn đã chọn. Tên sound chỉ là metadata, không chứng minh audio track, quyền sử dụng hay nguồn gốc bản quyền.
 
@@ -25,4 +25,4 @@ Cài đặt chỉ báo browser binary đã được tìm thấy; điều đó kh
 
 Việc crawler chạy được không xác nhận TikTok đã cho phép truy cập tự động. Trước khi dùng production, chủ sản phẩm cần xác minh quyền/phạm vi sử dụng. Nếu chưa xác minh được, không tuyên bố tuân thủ; cần tắt crawl tự động hoặc chuyển sang nguồn được phép. Không bypass đăng nhập, CAPTCHA, access control hay giới hạn nền tảng.
 
-Dance verification hiện chưa đáng tin: backend tự đánh dấu mọi kết quả là `dance_verified`, còn UI hiển thị nhãn xác minh. Không dùng cờ đó làm bằng chứng video là dance; cần sửa luồng xác nhận trước khi cho automation chọn sound tự động.
+Dance verification là xác nhận thủ công, không phải kết quả crawler hay classifier. Lịch sử cờ auto-mark từ phiên bản cũ được reset một lần khi nâng cấp; cần xem lại video trước khi xác nhận. Chỉ nguồn đã xác nhận mới dùng được cho audio.
