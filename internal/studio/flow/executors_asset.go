@@ -322,6 +322,9 @@ func executeVideoSource(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	if err != nil {
 		return nil, fmt.Errorf("không đọc được thời lượng video: %w", err)
 	}
+	if duration <= 0 {
+		return nil, fmt.Errorf("thời lượng video không hợp lệ")
+	}
 	audioTrack := ""
 	if hasAudio, _ := probeFlowHasAudio(videoPath); hasAudio && ctx.FFmpegRunner != nil {
 		audioTrack = filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_source_audio.aac", node.ID))
