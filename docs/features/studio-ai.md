@@ -18,6 +18,14 @@ Dùng video TikTok Radar đã chọn làm reference; lưu URL/ID nguồn trên j
 
 Muse AI/Google Flow có thể hỗ trợ một số media generation. Session và credits phụ thuộc provider; không được mô tả là miễn phí nếu chưa xác minh. Lỗi sau submit cần đối chiếu trước retry.
 
+## Workflow Studio
+
+Preset Affiliate và Fashion tạo ba clip toàn thân/bán thân/cận cảnh, ghép thành video, lồng audio, cân màu, upscale và xuất file. Preset Viral phân tích frame bằng Vision AI, dựng prompt từ mô tả chuyển động, render video, dùng lại audio nguồn và xuất file. Các preset cần ảnh nhân vật, sản phẩm đã duyệt hoặc ảnh sản phẩm thật, audio/video nguồn thật và provider đã cấu hình trước khi chạy.
+
+Node AI custom hỗ trợ text, image và video qua dịch vụ đang cấu hình. Video đầu vào được lấy một frame làm ảnh tham chiếu; phân tích hoặc tạo audio chưa được hỗ trợ. `custom_script_runner` chỉ thay biến trong template văn bản, không chạy code tùy ý. `virtual_tryon` giữ ảnh gốc và chuẩn bị outfit prompt; không thay quần áo trong ảnh. `dance_retarget` tạo prompt từ mô tả Vision AI; không thực hiện motion capture. `image_composite` chỉ overlay ảnh ở vị trí xấp xỉ. `custom_export_publish` và `video_output` chỉ xuất file; đăng TikTok cần workflow consent riêng trong Studio.
+
+Workflow chạy thật cần nguồn media, catalog/provider, FFmpeg và cấu hình phù hợp. Preset chưa phải một lần bấm để sinh nội dung nếu các đầu vào còn trống.
+
 ## Hoàn tất
 
 Job chỉ xong khi artifact qua validation/QC. Job Affiliate/Viral đã qua QC có thể gửi vào TikTok Creator Inbox từ Studio sau khi người vận hành xem preview, xác nhận account đích và đồng ý gửi Draft. Consent được ghi vào log job. Trạng thái gửi chống tạo draft trùng; kết quả không rõ phải đối chiếu trong TikTok trước khi gửi lại. Draft cần người dùng kiểm tra và duyệt trong app TikTok; không hiện như public post khi chưa có xác nhận thật.

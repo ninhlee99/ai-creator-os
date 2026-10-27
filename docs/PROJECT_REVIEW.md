@@ -23,6 +23,10 @@ Cập nhật: 2026-10-27. Rà tĩnh source và tài liệu; chưa xác minh bằ
 - **Radar:** card nêu rõ chưa xác nhận, yêu cầu xem video; crawler không phân loại vũ đạo.
 - **Sản phẩm:** Khám phá và Affiliate tách riêng; thao tác duyệt/sync giữ đúng tab.
 - **Workflow:** prereq và lý do workflow chưa dùng được hiện trên node gọi; cập nhật contract hỏi trước khi xóa dây không tương thích.
+- **Workflow inputs:** chọn catalog đang yêu cầu nhập `product_id`; video Radar cần dán URL. Nên có product/Radar picker để tránh nhầm ID và nguồn chưa xác thực.
+- **Workflow settings:** các tham số dạng enum như provider, output type, operation, location vẫn là text field; người dùng chỉ thấy lỗi sau khi chạy. Nên dùng dropdown có nhãn và mô tả lựa chọn.
+- **Custom nodes:** Universal AI, Custom Web AI và AI Prompt chồng công dụng; cần hướng dẫn chọn node theo text/image/video, kèm nhãn rõ giới hạn audio và provider.
+- **Preset workflows:** ba scene render tạo canvas rộng, cần zoom/pan để theo dõi toàn luồng. Nhãn 8a/8b/8c và node concat giúp thứ tự rõ hơn.
 - **TikTok Draft:** UI phân biệt Draft đã tải lên nhưng chưa công khai với bước kiểm tra/duyệt tiếp theo trong TikTok.
 
 ## Phase tiếp

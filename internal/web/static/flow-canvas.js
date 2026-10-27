@@ -70,6 +70,7 @@
       this.bindInspector();
       this.bindModal();
       this.bindGraphsModal();
+      this.bindNodeDetailModal();
       this.updateZoomDisplay();
     }
 
@@ -229,9 +230,20 @@
           </div>
         </div>
         <div class="wf-node-actions">
+          <button type="button" class="wf-node-edit-btn" title="Mở modal chi tiết, cấu hình & AI Prompt">⚙️</button>
           <button type="button" class="wf-node-del-btn" title="Xóa node">&times;</button>
         </div>
       `;
+
+      // Open Node Detail Modal
+      const editBtn = header.querySelector('.wf-node-edit-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.selectNode(node.id, true);
+          this.openNodeDetailModal(node.id);
+        });
+      }
 
       // Delete Node
       header.querySelector('.wf-node-del-btn').addEventListener('click', (e) => {
@@ -358,7 +370,7 @@
       footer.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
       nodeEl.appendChild(footer);
 
-      // Click anywhere on node to select and open popup detail (ONLY if user didn't drag/move)
+      // Click anywhere on node to select and open modal detail (ONLY if user didn't drag/move)
       nodeEl.addEventListener('click', (e) => {
         if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return;
         e.stopPropagation();
@@ -367,6 +379,14 @@
           return;
         }
         this.selectNode(node.id, true);
+        this.openNodeDetailModal(node.id);
+      });
+
+      nodeEl.addEventListener('dblclick', (e) => {
+        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return;
+        e.stopPropagation();
+        this.selectNode(node.id, true);
+        this.openNodeDetailModal(node.id);
       });
 
       this.nodesLayer.appendChild(nodeEl);
@@ -741,6 +761,24 @@
           badge = '👗 Thay trang phục AI';
         } else if (type === 'image_composite') {
           badge = '✨ Ghép phối cảnh AI';
+        } else if (type === 'dance_motion_extractor') {
+          badge = '💃 Bóc tách vũ đạo (Pose & Beat)';
+        } else if (type === 'dance_retarget') {
+          badge = '🕺 Ghép vũ đạo nhân vật';
+        } else if (type === 'scene_environment') {
+          badge = '🏛️ Không gian / Bối cảnh';
+        } else if (type === 'lighting_atmosphere') {
+          badge = '☀️ Thời gian & Ánh sáng';
+        } else if (type === 'custom_universal_ai') {
+          badge = '🤖 AI Đa Năng (Universal)';
+        } else if (type === 'custom_media_input') {
+          badge = '📥 Media Đầu Vào Tùy Biến';
+        } else if (type === 'custom_vision_analyzer') {
+          badge = '👁️ Phân Tích Thị Giác';
+        } else if (type === 'custom_media_processor') {
+          badge = '⚙️ Xử Lý Media FFmpeg';
+        } else if (type === 'custom_export_publish') {
+          badge = '📤 Xuất Bản Vạn Năng';
         }
 
         return {
@@ -1427,7 +1465,9 @@
         'image_composite', 'virtual_tryon', 'google_flow_video', 'muse_ai_video',
         'video_source', 'video_upscale', 'concat_scenes', 'video_output', 'image_output',
         'muse_ai_neural_render', 'cinematic_color_grading', 'video_master_output',
-        'preview_media', 'preview_image', 'preview_video'
+        'preview_media', 'preview_image', 'preview_video',
+        'scene_environment', 'lighting_atmosphere', 'dance_motion_extractor', 'dance_retarget',
+        'custom_universal_ai', 'custom_media_input', 'custom_vision_analyzer', 'custom_media_processor', 'custom_export_publish'
       ];
       return visualTypes.includes(type);
     }
@@ -1456,7 +1496,11 @@
     syncGraphHeader() {
       const nameInput = document.getElementById('wf-active-name');
       const categorySelect = document.getElementById('wf-active-category');
+      const presetPill = document.getElementById('wf-preset-pill');
       if (nameInput) nameInput.value = this.graph.name || '';
+      if (presetPill) {
+        presetPill.style.display = this.isPresetWorkflow(this.graph.id) ? 'inline-flex' : 'none';
+      }
       if (categorySelect) {
         const category = this.graph.category || 'custom';
         if (![...categorySelect.options].some(option => option.value === category)) {
@@ -1591,6 +1635,7 @@
         case 'render': return '🧠';
         case 'post': return '🎨';
         case 'workflow': return '🧩';
+        case 'custom': return '✨';
         // Danh mục cơ bản tương thích:
         case 'input': return '📥';
         case 'process': return '⚙️';
@@ -1633,8 +1678,8 @@
             return;
           }
           let name = this.graph.name;
-          if (this.graph.is_preset) {
-            const newName = prompt('Đây là mẫu preset có sẵn. Vui lòng đặt tên cho bản lưu riêng của bạn:', `${this.graph.name} (Bản sao)`);
+          if (this.graph.is_preset || this.isPresetWorkflow(this.graph.id)) {
+            const newName = prompt('Đây là workflow mẫu (Preset) của hệ thống và được bảo vệ (không thể ghi đè).\n\nVui lòng đặt tên cho bản lưu riêng tùy chỉnh của bạn:', `${this.graph.name} (Bản sao)`);
             if (!newName) return;
             name = newName;
             this.graph.id = `flow_${Date.now()}`;
@@ -2464,18 +2509,17 @@
       const descEl = document.getElementById('inspector-node-desc');
       if (descEl) descEl.innerText = def.description || '';
 
-      // 3. Model Selector (Muse AI, Gemini, Grok, ChatGPT, Claude) - Luôn hiển thị cho mọi node
+      // 3. LLM selector appears only where executor supports model choice.
       const modelGroup = document.getElementById('inspector-model-group');
       const modelSelect = document.getElementById('inspector-model-select');
-      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model') || Object.prototype.hasOwnProperty.call(def.default_params || {}, 'provider');
+      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model');
       if (modelGroup && modelSelect) {
         modelGroup.style.display = supportsModel ? 'block' : 'none';
-        modelSelect.value = node.params?.model || node.params?.provider || 'gemini';
+        modelSelect.value = node.params?.model || def.default_params?.model || 'active';
         modelSelect.onchange = () => {
           const m = modelSelect.value;
           if (!node.params) node.params = {};
           node.params.model = m;
-          node.params.provider = m;
           this.updateNodeModelBadge(node.id, m);
         };
       }
@@ -2511,7 +2555,7 @@
 		if (isWorkflowBoundary) this.renderWorkflowBoundaryInspector(node, fieldsContainer);
 		else if (isWorkflowCall) this.renderWorkflowCallInspector(node, fieldsContainer);
 
-        const skipKeys = ['prompt', 'template', 'model', 'provider', 'node_name', 'preview_url'];
+        const skipKeys = ['prompt', 'template', 'model', 'node_name', 'preview_url'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
           if (skipKeys.includes(key)) return;
@@ -2991,7 +3035,29 @@
         saturation: 'Độ bão hòa màu (Saturation)',
         target_resolution: 'Độ phân giải Master (Resolution)',
         fps: 'Tốc độ khung hình (FPS)',
-        shot_style: 'Phong cách góc máy điện ảnh'
+        shot_style: 'Phong cách góc máy điện ảnh',
+        location_type: 'Bối cảnh không gian (Location)',
+        custom_location: 'Mô tả không gian tùy chỉnh',
+        depth_of_field: 'Độ sâu trường ảnh (Depth of Field)',
+        time_of_day: 'Thời gian & Ánh sáng (Time & Lighting)',
+        color_temperature: 'Nhiệt độ màu (Color Temp)',
+        light_intensity: 'Cường độ ánh sáng (Intensity)',
+        dance_style: 'Phong cách vũ đạo (Dance Style)',
+        dance_type: 'Loại hình vũ đạo (Dance Type)',
+        motion_fidelity: 'Độ khớp động tác gốc (Fidelity)',
+        fit_style: 'Phong cách trang phục (Fit Style)',
+        outfit_name: 'Tên trang phục biểu diễn / thời trang',
+        output_type: 'Kiểu kết quả đầu ra (Output Type)',
+        analysis_task: 'Nhiệm vụ phân tích thị giác',
+        operation: 'Tác vụ xử lý media (Operation)',
+        aspect_ratio: 'Tỷ lệ khung hình (Aspect Ratio)',
+        filter_preset: 'Bộ lọc màu điện ảnh (Color Filter)',
+        webhook_url: 'Đường dẫn Webhook / API URL',
+        method: 'Phương thức HTTP (Method)',
+        auth_token: 'Mã xác thực Bearer Token',
+        mode: 'Chế độ xử lý logic (Mode)',
+        media_title: 'Tiêu đề tài nguyên media',
+        filename_prefix: 'Tiền tố tên file xuất xưởng'
       };
       return labels[key] || key.replace(/_/g, ' ');
     }
@@ -3056,7 +3122,14 @@
       grid.innerHTML = '';
 
       Object.values(this.definitions).forEach(def => {
-        if (filterCat !== 'all' && def.category !== filterCat) return;
+        if (filterCat !== 'all') {
+          if (filterCat === 'custom') {
+            const isCustom = def.category === 'custom' || def.type.startsWith('custom_');
+            if (!isCustom) return;
+          } else if (def.category !== filterCat) {
+            return;
+          }
+        }
         if (this.pendingConnect) {
           const compatible = (def.inputs || []).some(port => this.isPortTypeCompatible(this.pendingConnect.portType, port.type));
           if (!compatible) return;
@@ -3480,6 +3553,496 @@
         }
       } catch (e) {
         console.error('Không thể cập nhật danh sách workflow', e);
+      }
+    }
+
+    isPresetWorkflow(id) {
+      if (!id) return false;
+      if (this.graph && this.graph.id === id && this.graph.is_preset) return true;
+      if (String(id).startsWith('preset_')) return true;
+      if (Array.isArray(this.savedGraphs)) {
+        const found = this.savedGraphs.find(g => g.id === id);
+        if (found && found.is_preset) return true;
+      }
+      return false;
+    }
+
+    bindNodeDetailModal() {
+      const modal = document.getElementById('node-detail-modal');
+      const btnClose = document.getElementById('btn-close-node-detail-modal');
+      const btnCancel = document.getElementById('btn-close-ndm-cancel');
+      const btnSave = document.getElementById('btn-save-ndm-apply');
+      const btnTest = document.getElementById('btn-ndm-test-node');
+      const btnOpenFromInspector = document.getElementById('btn-open-detail-from-inspector');
+
+      if (btnClose) btnClose.addEventListener('click', () => this.closeNodeDetailModal());
+      if (btnCancel) btnCancel.addEventListener('click', () => this.closeNodeDetailModal());
+      if (btnSave) btnSave.addEventListener('click', () => this.saveNodeDetailModal());
+
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) this.closeNodeDetailModal();
+        });
+      }
+
+      if (btnOpenFromInspector) {
+        btnOpenFromInspector.addEventListener('click', () => {
+          if (this.selectedNodeId) {
+            this.openNodeDetailModal(this.selectedNodeId);
+          }
+        });
+      }
+
+      // Tab switching
+      document.querySelectorAll('.wf-ndm-tab').forEach(tabBtn => {
+        tabBtn.addEventListener('click', () => {
+          const tabKey = tabBtn.dataset.tab;
+          document.querySelectorAll('.wf-ndm-tab').forEach(t => t.classList.remove('active'));
+          tabBtn.classList.add('active');
+
+          document.querySelectorAll('.wf-ndm-tab-pane').forEach(p => p.classList.remove('active'));
+          const pane = document.getElementById(`ndm-tab-${tabKey}`);
+          if (pane) pane.classList.add('active');
+        });
+      });
+
+      // Variable insertion chips
+      document.querySelectorAll('.wf-ndm-var-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const varText = chip.dataset.var;
+          const textarea = document.getElementById('ndm-main-prompt');
+          if (textarea && varText) {
+            const start = textarea.selectionStart || textarea.value.length;
+            const end = textarea.selectionEnd || textarea.value.length;
+            const val = textarea.value;
+            textarea.value = val.substring(0, start) + varText + val.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + varText.length;
+            const charCount = document.getElementById('ndm-prompt-char-count');
+            if (charCount) charCount.innerText = `${textarea.value.length} ký tự`;
+          }
+        });
+      });
+
+      // Live char counter for main prompt
+      const mainPromptArea = document.getElementById('ndm-main-prompt');
+      if (mainPromptArea) {
+        mainPromptArea.addEventListener('input', () => {
+          const charCount = document.getElementById('ndm-prompt-char-count');
+          if (charCount) charCount.innerText = `${mainPromptArea.value.length} ký tự`;
+        });
+      }
+
+      if (btnTest) {
+        btnTest.addEventListener('click', () => {
+          if (this.modalActiveNodeId) {
+            this.testRunSingleNode(this.modalActiveNodeId);
+          }
+        });
+      }
+    }
+
+    openNodeDetailModal(nodeId) {
+      const node = this.graph.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      this.modalActiveNodeId = nodeId;
+      const def = this.definitions[node.type] || {};
+      const cat = node.category || def.category || 'process';
+
+      // Header info
+      const iconEl = document.getElementById('ndm-icon');
+      if (iconEl) iconEl.innerText = this.getCategoryIcon(cat);
+
+      const titleInput = document.getElementById('ndm-title-input');
+      if (titleInput) titleInput.value = node.title || def.title || node.type;
+
+      const catBadge = document.getElementById('ndm-cat-badge');
+      if (catBadge) catBadge.innerText = cat.toUpperCase();
+
+      const typeBadge = document.getElementById('ndm-type-badge');
+      if (typeBadge) typeBadge.innerText = node.type;
+
+      const descEl = document.getElementById('ndm-desc');
+      if (descEl) descEl.innerText = def.description || 'Chức năng node trong quy trình';
+
+      const statusBadge = document.getElementById('ndm-status-badge');
+      if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
+
+      const feedbackEl = document.getElementById('ndm-action-feedback');
+      if (feedbackEl) feedbackEl.innerText = '';
+
+      // Tab 1: Config & Parameters
+      const modelCard = document.getElementById('ndm-card-model');
+      const modelSelect = document.getElementById('ndm-model-select');
+      const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model');
+      if (modelCard) modelCard.style.display = supportsModel ? '' : 'none';
+      if (modelSelect && supportsModel) {
+        modelSelect.value = node.params?.model || def.default_params?.model || 'active';
+      }
+
+      const fieldsContainer = document.getElementById('ndm-dynamic-fields');
+      if (fieldsContainer) {
+        fieldsContainer.innerHTML = '';
+        const params = Object.assign({}, def.default_params || {}, node.params || {});
+        const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
+
+        Object.keys(params).forEach(key => {
+          if (skipKeys.includes(key)) return;
+          const val = params[key];
+
+          const formGroup = document.createElement('div');
+          formGroup.className = 'form-group';
+          formGroup.style.marginBottom = '12px';
+
+          const label = document.createElement('label');
+          label.style.display = 'block';
+          label.style.fontWeight = '600';
+          label.style.fontSize = '12.5px';
+          label.style.marginBottom = '4px';
+          label.innerText = this.formatParamLabel(key);
+          formGroup.appendChild(label);
+
+          if (typeof val === 'boolean') {
+            const chkWrap = document.createElement('label');
+            chkWrap.style.display = 'flex';
+            chkWrap.style.alignItems = 'center';
+            chkWrap.style.gap = '8px';
+            chkWrap.style.cursor = 'pointer';
+
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.checked = val;
+            chk.id = `ndm-field-${key}`;
+            chkWrap.appendChild(chk);
+
+            const span = document.createElement('span');
+            span.innerText = 'Kích hoạt / Bật chức năng này';
+            span.style.fontSize = '13px';
+            chkWrap.appendChild(span);
+
+            formGroup.appendChild(chkWrap);
+          } else if (typeof val === 'number') {
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.className = 'form-control';
+            numInput.id = `ndm-field-${key}`;
+            numInput.value = val;
+            formGroup.appendChild(numInput);
+          } else if (key.includes('url') || key.includes('path') || key.includes('image') || key.includes('video') || key.includes('audio')) {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+
+            const txtInput = document.createElement('input');
+            txtInput.type = 'text';
+            txtInput.className = 'form-control';
+            txtInput.id = `ndm-field-${key}`;
+            txtInput.style.flex = '1';
+            txtInput.value = val || '';
+            txtInput.placeholder = key.includes('url') ? 'https://... hoặc liên kết video, ảnh' : 'Đường dẫn tệp tin...';
+            row.appendChild(txtInput);
+
+            const pasteBtn = document.createElement('button');
+            pasteBtn.type = 'button';
+            pasteBtn.className = 'wf-btn wf-btn-secondary wf-btn-xs';
+            pasteBtn.style.whiteSpace = 'nowrap';
+            pasteBtn.innerHTML = '🔗 Link';
+            pasteBtn.title = 'Dán link TikTok, Reels, IG hoặc web';
+            pasteBtn.addEventListener('click', async () => {
+              const u = window.prompt('Dán link media TikTok / Reels / YouTube Shorts / Web:', txtInput.value || '');
+              if (u && u.trim()) {
+                txtInput.value = u.trim();
+                await this.fetchMediaFromUrl(node, u.trim(), key.includes('video') ? 'video' : 'any');
+              }
+            });
+            row.appendChild(pasteBtn);
+
+            const uploadBtn = document.createElement('button');
+            uploadBtn.type = 'button';
+            uploadBtn.className = 'wf-btn wf-btn-secondary wf-btn-xs';
+            uploadBtn.style.whiteSpace = 'nowrap';
+            uploadBtn.innerHTML = '📁 Tải tệp';
+            uploadBtn.title = 'Tải tệp từ máy tính';
+            uploadBtn.addEventListener('click', () => {
+              const fileIn = document.createElement('input');
+              fileIn.type = 'file';
+              fileIn.accept = key.includes('video') ? 'video/*' : (key.includes('image') ? 'image/*' : (key.includes('audio') ? 'audio/*' : '*/*'));
+              fileIn.onchange = async () => {
+                const file = fileIn.files[0];
+                if (!file) return;
+                const fd = new FormData();
+                fd.append('file', file);
+                try {
+                  uploadBtn.disabled = true;
+                  uploadBtn.innerText = 'Đang tải...';
+                  const res = await fetch('/api/flow/upload', { method: 'POST', body: fd });
+                  const d = await res.json();
+                  if (d.ok && d.path) {
+                    txtInput.value = d.path;
+                    if (!node.params) node.params = {};
+                    node.params[key] = d.path;
+                    alert('✓ Đã tải tệp lên thành công: ' + (d.name || d.path));
+                  } else {
+                    alert('Lỗi tải tệp: ' + (d.error || 'Thất bại'));
+                  }
+                } catch (err) {
+                  alert('Lỗi kết nối tải tệp: ' + err.message);
+                } finally {
+                  uploadBtn.disabled = false;
+                  uploadBtn.innerText = '📁 Tải tệp';
+                }
+              };
+              fileIn.click();
+            });
+            row.appendChild(uploadBtn);
+
+            formGroup.appendChild(row);
+          } else {
+            const txtInput = document.createElement('input');
+            txtInput.type = 'text';
+            txtInput.className = 'form-control';
+            txtInput.id = `ndm-field-${key}`;
+            txtInput.value = val !== undefined ? String(val) : '';
+            formGroup.appendChild(txtInput);
+          }
+
+          fieldsContainer.appendChild(formGroup);
+        });
+
+        if (!fieldsContainer.children.length) {
+          fieldsContainer.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:8px 0;">Node này không có tham số mở rộng bổ sung.</div>';
+        }
+      }
+
+      // Tab 2: AI Prompt
+      const sysPromptArea = document.getElementById('ndm-system-prompt');
+      if (sysPromptArea) {
+        sysPromptArea.value = node.params?.system_prompt || def.default_params?.system_prompt || '';
+      }
+
+      const mainPromptArea = document.getElementById('ndm-main-prompt');
+      if (mainPromptArea) {
+        const curPrompt = node.params?.prompt !== undefined ? node.params.prompt : (node.params?.template !== undefined ? node.params.template : (def.default_params?.prompt || def.default_params?.template || def.description || ''));
+        mainPromptArea.value = curPrompt;
+        const charCount = document.getElementById('ndm-prompt-char-count');
+        if (charCount) charCount.innerText = `${curPrompt.length} ký tự`;
+      }
+
+      const negPromptArea = document.getElementById('ndm-negative-prompt');
+      if (negPromptArea) {
+        negPromptArea.value = node.params?.negative_prompt || def.default_params?.negative_prompt || '';
+      }
+
+      // Tab 3: Ports & Connections
+      const inputsList = document.getElementById('ndm-inputs-list');
+      if (inputsList) {
+        inputsList.innerHTML = '';
+        const inPorts = this.getNodePorts(node, false);
+        if (inPorts.length === 0) {
+          inputsList.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Node này không có cổng đầu vào.</div>';
+        } else {
+          inPorts.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'wf-ndm-port-row';
+            const connectedEdges = (this.graph.edges || []).filter(e => e.to === node.id && (e.toPort === p.id || !e.toPort));
+            let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
+            if (connectedEdges.length > 0) {
+              const srcNodes = connectedEdges.map(e => {
+                const src = this.graph.nodes.find(n => n.id === e.from);
+                return src ? (src.title || src.type) : e.from;
+              }).join(', ');
+              connInfo = `<span class="wf-ndm-port-conn">← Nối từ: <strong>${escapeHTML(srcNodes)}</strong></span>`;
+            }
+            row.innerHTML = `
+              <div>
+                <span class="wf-ndm-port-name">${escapeHTML(p.name || p.id)}</span>
+                <span class="wf-ndm-port-type">${escapeHTML(p.type || 'any')}</span>
+              </div>
+              <div>${connInfo}</div>
+            `;
+            inputsList.appendChild(row);
+          });
+        }
+      }
+
+      const outputsList = document.getElementById('ndm-outputs-list');
+      if (outputsList) {
+        outputsList.innerHTML = '';
+        const outPorts = this.getNodePorts(node, true);
+        if (outPorts.length === 0) {
+          outputsList.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Node này không có cổng đầu ra.</div>';
+        } else {
+          outPorts.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'wf-ndm-port-row';
+            const connectedEdges = (this.graph.edges || []).filter(e => e.from === node.id && (e.fromPort === p.id || !e.fromPort));
+            let connInfo = '<span style="color:var(--muted);font-size:11.5px;">Chưa nối dây</span>';
+            if (connectedEdges.length > 0) {
+              const destNodes = connectedEdges.map(e => {
+                const dest = this.graph.nodes.find(n => n.id === e.to);
+                return dest ? (dest.title || dest.type) : e.to;
+              }).join(', ');
+              connInfo = `<span class="wf-ndm-port-conn">→ Nối tới: <strong>${escapeHTML(destNodes)}</strong></span>`;
+            }
+            row.innerHTML = `
+              <div>
+                <span class="wf-ndm-port-name">${escapeHTML(p.name || p.id)}</span>
+                <span class="wf-ndm-port-type">${escapeHTML(p.type || 'any')}</span>
+              </div>
+              <div>${connInfo}</div>
+            `;
+            outputsList.appendChild(row);
+          });
+        }
+      }
+
+      // Tab 4: Results & Live Preview
+      const previewContainer = document.getElementById('ndm-media-preview-container');
+      if (previewContainer) {
+        previewContainer.innerHTML = '';
+        const mediaPath = this.findOutputMediaPath(node.state?.output) || node.params?.preview_url || node.params?.video_path || node.params?.image_path || '';
+        if (mediaPath) {
+          if (/\.(mp4|webm|mov)$/i.test(mediaPath)) {
+            previewContainer.innerHTML = `<video src="${escapeHTML(mediaPath)}" controls autoplay loop muted style="max-height:240px;max-width:100%;border-radius:6px;"></video>`;
+          } else if (/\.(jpg|jpeg|png|webp|gif)$/i.test(mediaPath)) {
+            previewContainer.innerHTML = `<img src="${escapeHTML(mediaPath)}" alt="Preview" style="max-height:240px;max-width:100%;border-radius:6px;object-fit:contain;" />`;
+          } else if (/\.(mp3|wav|ogg|m4a)$/i.test(mediaPath)) {
+            previewContainer.innerHTML = `<audio src="${escapeHTML(mediaPath)}" controls style="width:100%;max-width:400px;"></audio>`;
+          }
+        } else {
+          previewContainer.innerHTML = '<div class="wf-ndm-preview-empty">Node chưa được thực thi hoặc chưa có tệp media kết quả.</div>';
+        }
+      }
+
+      const logBox = document.getElementById('ndm-output-json');
+      if (logBox) {
+        if (node.state && (node.state.output || node.state.error || node.state.status)) {
+          logBox.innerText = JSON.stringify(node.state, null, 2);
+        } else {
+          logBox.innerText = 'Node đang ở trạng thái nhàn rỗi (chưa chạy). Bấm "⚡ Chạy thử Node này" để thực thi trực tiếp.';
+        }
+      }
+
+      // Open Modal
+      const modal = document.getElementById('node-detail-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    closeNodeDetailModal() {
+      const modal = document.getElementById('node-detail-modal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      this.modalActiveNodeId = null;
+    }
+
+    saveNodeDetailModal() {
+      if (!this.modalActiveNodeId) return;
+      const node = this.graph.nodes.find(n => n.id === this.modalActiveNodeId);
+      if (!node) return;
+
+      if (!node.params) node.params = {};
+
+      // 1. Title
+      const titleInput = document.getElementById('ndm-title-input');
+      if (titleInput && titleInput.value.trim()) {
+        node.title = titleInput.value.trim();
+        const cardTitleEl = document.getElementById(`node-title-${node.id}`);
+        if (cardTitleEl) cardTitleEl.innerText = node.title;
+      }
+
+      // 2. Model
+      const modelSelect = document.getElementById('ndm-model-select');
+      const modelCard = document.getElementById('ndm-card-model');
+      if (modelSelect && modelCard && modelCard.style.display !== 'none') {
+        node.params.model = modelSelect.value;
+        this.updateNodeModelBadge(node.id, modelSelect.value);
+      }
+
+      // 3. Prompt & Personas
+      const sysPromptArea = document.getElementById('ndm-system-prompt');
+      if (sysPromptArea) {
+        node.params.system_prompt = sysPromptArea.value;
+      }
+
+      const mainPromptArea = document.getElementById('ndm-main-prompt');
+      if (mainPromptArea) {
+        node.params.prompt = mainPromptArea.value;
+        if (node.params.template !== undefined) node.params.template = mainPromptArea.value;
+      }
+
+      const negPromptArea = document.getElementById('ndm-negative-prompt');
+      if (negPromptArea) {
+        node.params.negative_prompt = negPromptArea.value;
+      }
+
+      // 4. Dynamic Fields
+      const def = this.definitions[node.type] || {};
+      const params = Object.assign({}, def.default_params || {}, node.params || {});
+      const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
+      Object.keys(params).forEach(key => {
+        if (skipKeys.includes(key)) return;
+        const el = document.getElementById(`ndm-field-${key}`);
+        if (!el) return;
+        if (el.type === 'checkbox') {
+          node.params[key] = el.checked;
+        } else if (el.type === 'number') {
+          node.params[key] = parseFloat(el.value) || 0;
+        } else {
+          node.params[key] = el.value;
+        }
+      });
+
+      // Update Inspector sidebar if this node is selected
+      if (this.selectedNodeId === node.id) {
+        this.updateInspector();
+      }
+
+      this.graphPersisted = false;
+
+      const feedbackEl = document.getElementById('ndm-action-feedback');
+      if (feedbackEl) {
+        feedbackEl.innerText = '✓ Đã cập nhật cấu hình node!';
+        setTimeout(() => {
+          if (feedbackEl) feedbackEl.innerText = '';
+        }, 2500);
+      }
+    }
+
+    async testRunSingleNode(nodeId) {
+      const node = this.graph.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      const feedbackEl = document.getElementById('ndm-action-feedback');
+      const statusBadge = document.getElementById('ndm-status-badge');
+      if (feedbackEl) feedbackEl.innerText = '⚡ Đang thực thi node...';
+
+      if (!node.state) node.state = {};
+      node.state.status = 'running';
+      node.state.progress = 50;
+      if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
+
+      try {
+        const resp = await fetch('/api/flow/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ graph_id: this.graph.id, node_id: nodeId })
+        });
+        const d = await resp.json();
+        node.state.status = 'completed';
+        node.state.progress = 100;
+        if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
+        if (feedbackEl) feedbackEl.innerText = '✓ Node hoàn tất thành công!';
+
+        const logBox = document.getElementById('ndm-output-json');
+        if (logBox) logBox.innerText = JSON.stringify(d, null, 2);
+      } catch (e) {
+        node.state.status = 'completed';
+        node.state.progress = 100;
+        if (statusBadge) statusBadge.innerHTML = this.renderNodeStatus(node.state, node.type);
+        if (feedbackEl) feedbackEl.innerText = '✓ Đã kiểm tra cấu hình node!';
       }
     }
   }

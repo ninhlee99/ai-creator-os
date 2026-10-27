@@ -39,6 +39,7 @@
           </select>
         </div>
         <div class="wf-badge-row">
+          <span id="wf-preset-pill" class="wf-info-pill" style="display:none;background:rgba(99,102,241,0.12);color:#4f46e5;font-weight:600;border:1px solid rgba(99,102,241,0.25);">🔒 Preset Hệ Thống (Chỉ đọc)</span>
           <span id="wf-status-pill" class="wf-status-pill status-ready">
             <span class="wf-status-dot"></span>
             <span>Sẵn sàng</span>
@@ -141,7 +142,13 @@
             </div>
           </div>
         </div>
-        <button type="button" class="wf-btn-close" id="btn-close-inspector" title="Đóng bảng thuộc tính">&times;</button>
+        <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+          <button type="button" class="wf-btn wf-btn-primary wf-btn-xs" id="btn-open-detail-from-inspector" title="Mở hộp thoại Modal Chi tiết & Cấu hình chuyên sâu" style="display:flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2.5" fill="none"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+            <span>Modal Chi tiết</span>
+          </button>
+          <button type="button" class="wf-btn-close" id="btn-close-inspector" title="Đóng bảng thuộc tính">&times;</button>
+        </div>
       </div>
 
       <div class="wf-inspector-body">
@@ -156,16 +163,11 @@
           <!-- Model Selector (Muse AI, Gemini, Grok, ChatGPT, Claude) -->
           <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;">
             <label for="inspector-model-select" class="wf-field-label">
-              <span>🤖 Trí tuệ nhân tạo (AI Model)</span>
+              <span>LLM đang cấu hình cho hệ thống</span>
             </label>
             <select id="inspector-model-select" class="wf-form-select">
-              <option value="gemini">🌟 Google Gemini (Gemini 2.5 Flash)</option>
-              <option value="gemini_pro">🌟 Google Gemini Pro (2.5 Pro High Quality)</option>
-              <option value="muse">🤖 Muse AI (Thread Flow Orchestrator)</option>
-              <option value="chatgpt">⚡ OpenAI (ChatGPT / GPT-4o)</option>
-              <option value="chatgpt_mini">⚡ OpenAI (GPT-4o Mini Fast)</option>
-              <option value="claude">🧠 Anthropic Claude (Claude 3.5 Sonnet)</option>
-              <option value="grok">🚀 xAI Grok (Grok-2 Vision & Text)</option>
+              <option value="active">Dùng LLM đang cấu hình</option>
+              <option value="auto">Tự chọn LLM khả dụng</option>
             </select>
           </div>
 
@@ -218,17 +220,16 @@
 
     <div class="wf-modal-tags" id="node-categories-list">
       <button type="button" class="wf-tag-filter active" data-cat="all">Tất cả nodes</button>
-      <button type="button" class="wf-tag-filter" data-cat="identity">👤 Avatar &amp; Identity</button>
-      <button type="button" class="wf-tag-filter" data-cat="geometry">📐 3D Mesh &amp; Pose</button>
-      <button type="button" class="wf-tag-filter" data-cat="camera">🎥 Camera &amp; Lens</button>
-      <button type="button" class="wf-tag-filter" data-cat="lighting">💡 Studio Lighting</button>
-      <button type="button" class="wf-tag-filter" data-cat="render">🧠 Neural Render</button>
-      <button type="button" class="wf-tag-filter" data-cat="post">🎨 VFX &amp; Master</button>
+      <button type="button" class="wf-tag-filter" data-cat="custom">✨ Node Custom (Vạn Năng)</button>
       <button type="button" class="wf-tag-filter" data-cat="input">📥 Đầu vào</button>
       <button type="button" class="wf-tag-filter" data-cat="process">⚙️ Xử lý</button>
       <button type="button" class="wf-tag-filter" data-cat="ai">🤖 AI</button>
+      <button type="button" class="wf-tag-filter" data-cat="camera">🎥 Camera &amp; Lens</button>
+      <button type="button" class="wf-tag-filter" data-cat="lighting">💡 Studio Lighting</button>
       <button type="button" class="wf-tag-filter" data-cat="output">📤 Đầu ra</button>
       <button type="button" class="wf-tag-filter" data-cat="workflow">🧩 Workflow con</button>
+      <button type="button" class="wf-tag-filter" data-cat="render">🧠 Neural Render</button>
+      <button type="button" class="wf-tag-filter" data-cat="post">🎨 VFX &amp; Master</button>
     </div>
 
     <div class="wf-modal-cards-grid" id="modal-node-grid"></div>
@@ -378,6 +379,212 @@
         <span id="api-test-status" class="wf-api-test-status"></span>
       </div>
       <button type="button" class="wf-btn wf-btn-secondary" id="btn-close-api-footer">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Node Detail & Deep Configuration (Chi tiết & Cấu hình Node & AI Prompt) -->
+<div id="node-detail-modal" class="wf-modal-overlay" style="display:none">
+  <div class="wf-modal-window wf-node-detail-modal-window">
+    <!-- Header -->
+    <div class="wf-modal-top wf-node-detail-header">
+      <div class="wf-node-detail-header-left">
+        <div class="wf-node-detail-icon" id="ndm-icon">⚡</div>
+        <div class="wf-node-detail-title-wrap">
+          <div class="wf-node-detail-title-row">
+            <input type="text" id="ndm-title-input" class="wf-ndm-title-input" placeholder="Tên node...">
+            <span class="wf-node-detail-cat-badge" id="ndm-cat-badge">AI</span>
+            <span class="wf-node-detail-type-badge" id="ndm-type-badge">script_generator</span>
+          </div>
+          <p class="wf-node-detail-desc" id="ndm-desc">Mô tả chức năng của node...</p>
+        </div>
+      </div>
+      <div class="wf-node-detail-header-right">
+        <span id="ndm-status-badge" class="wf-status-badge wf-status-idle">Chờ thực thi</span>
+        <button type="button" class="wf-modal-close" id="btn-close-node-detail-modal" title="Đóng modal">&times;</button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="wf-ndm-tabs">
+      <button type="button" class="wf-ndm-tab active" data-tab="config">
+        <span>⚙️</span> Cấu hình & Tham số
+      </button>
+      <button type="button" class="wf-ndm-tab" data-tab="prompt">
+        <span>✍️</span> Prompt & Hướng dẫn AI
+      </button>
+      <button type="button" class="wf-ndm-tab" data-tab="ports">
+        <span>🔌</span> Cổng kết nối & Luồng I/O
+      </button>
+      <button type="button" class="wf-ndm-tab" data-tab="preview">
+        <span>👁️</span> Kết quả & Xem trước
+      </button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="wf-ndm-body">
+      <!-- Tab 1: Config & Parameters -->
+      <div class="wf-ndm-tab-pane active" id="ndm-tab-config">
+        <div class="wf-ndm-grid">
+          <!-- Model Selector Card -->
+          <div class="wf-ndm-card" id="ndm-card-model">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">🧠</span>
+              <div>
+                <strong>LLM cho node này</strong>
+                <div class="wf-ndm-card-subtitle">Chọn LLM hệ thống hoặc cho phép tự chọn</div>
+              </div>
+            </div>
+            <select id="ndm-model-select" class="form-control wf-ndm-select">
+              <option value="active">Dùng LLM đang cấu hình</option>
+              <option value="auto">Tự chọn LLM khả dụng</option>
+            </select>
+          </div>
+
+          <!-- Dynamic Parameter Fields -->
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">🎛️</span>
+              <div>
+                <strong>Tham số chi tiết của Node</strong>
+                <div class="wf-ndm-card-subtitle">Tùy biến các tham số đặc thù cho chức năng này</div>
+              </div>
+            </div>
+            <div id="ndm-dynamic-fields" class="wf-ndm-fields-list">
+              <!-- Dynamically populated fields -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Prompt AI & Instructions -->
+      <div class="wf-ndm-tab-pane" id="ndm-tab-prompt">
+        <div class="wf-ndm-grid">
+          <!-- System Prompt / Persona -->
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">🎭</span>
+              <div>
+                <strong>System Prompt / Vai trò chuyên gia (Persona)</strong>
+                <div class="wf-ndm-card-subtitle">Định hình phong cách, tư duy và tiêu chuẩn chất lượng của AI khi xử lý node này</div>
+              </div>
+            </div>
+            <textarea id="ndm-system-prompt" class="form-control wf-ndm-textarea" rows="3" placeholder="Ví dụ: Bạn là một đạo diễn kịch bản TikTok triệu view chuyên nghiệp..."></textarea>
+          </div>
+
+          <!-- Main User Prompt -->
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">💬</span>
+              <div>
+                <strong>Câu lệnh Prompt chính (Main Prompt)</strong>
+                <div class="wf-ndm-card-subtitle">Hướng dẫn chi tiết, định dạng output và các tiêu chí cụ thể</div>
+              </div>
+              <div class="wf-ndm-char-count" id="ndm-prompt-char-count">0 ký tự</div>
+            </div>
+
+            <!-- Variable Insertion Bar -->
+            <div class="wf-ndm-var-bar">
+              <span class="wf-ndm-var-bar-label">Chèn biến động:</span>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{input}}`}}">+ {{`{{input}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{topic}}`}}">+ {{`{{topic}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{product_name}}`}}">+ {{`{{product_name}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{character_avatar}}`}}">+ {{`{{character_avatar}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{style}}`}}">+ {{`{{style}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{aspect_ratio}}`}}">+ {{`{{aspect_ratio}}`}}</button>
+              <button type="button" class="wf-ndm-var-chip" data-var="{{`{{duration}}`}}">+ {{`{{duration}}`}}</button>
+            </div>
+
+            <textarea id="ndm-main-prompt" class="form-control wf-ndm-textarea wf-ndm-main-prompt-area" rows="7" placeholder="Nhập câu lệnh prompt chi tiết..."></textarea>
+          </div>
+
+          <!-- Negative Prompt (for visual / media nodes) -->
+          <div class="wf-ndm-card" id="ndm-card-negative-prompt">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">🚫</span>
+              <div>
+                <strong>Negative Prompt (Các yếu tố cần loại bỏ)</strong>
+                <div class="wf-ndm-card-subtitle">Áp dụng cho các mô hình sinh hình ảnh, video (loại trừ mờ, biến dạng, watermark, v.v.)</div>
+              </div>
+            </div>
+            <textarea id="ndm-negative-prompt" class="form-control wf-ndm-textarea" rows="2" placeholder="Ví dụ: blurry, distorted anatomy, low quality, bad hands, watermark..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Ports & I/O Data Flow -->
+      <div class="wf-ndm-tab-pane" id="ndm-tab-ports">
+        <div class="wf-ndm-ports-layout">
+          <!-- Inputs Column -->
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">📥</span>
+              <div>
+                <strong>Cổng đầu vào (Input Ports)</strong>
+                <div class="wf-ndm-card-subtitle">Dữ liệu node này nhận vào từ các bước trước</div>
+              </div>
+            </div>
+            <div id="ndm-inputs-list" class="wf-ndm-ports-list"></div>
+          </div>
+
+          <!-- Outputs Column -->
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">📤</span>
+              <div>
+                <strong>Cổng đầu ra (Output Ports)</strong>
+                <div class="wf-ndm-card-subtitle">Dữ liệu node này tạo ra và truyền cho các bước tiếp theo</div>
+              </div>
+            </div>
+            <div id="ndm-outputs-list" class="wf-ndm-ports-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: Results & Live Preview -->
+      <div class="wf-ndm-tab-pane" id="ndm-tab-preview">
+        <div class="wf-ndm-grid">
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">📺</span>
+              <div>
+                <strong>Media xem trước (Media Preview)</strong>
+                <div class="wf-ndm-card-subtitle">Kết quả video, hình ảnh hoặc âm thanh tạo ra từ node này</div>
+              </div>
+            </div>
+            <div id="ndm-media-preview-container" class="wf-ndm-preview-box">
+              <div class="wf-ndm-preview-empty">Node chưa được thực thi hoặc chưa có dữ liệu media kết quả.</div>
+            </div>
+          </div>
+
+          <div class="wf-ndm-card">
+            <div class="wf-ndm-card-title">
+              <span class="wf-ndm-card-icon">📜</span>
+              <div>
+                <strong>Nhật ký & Dữ liệu trả về (Output Data & Runtime Log)</strong>
+                <div class="wf-ndm-card-subtitle">Toàn bộ thông tin phản hồi và log chi tiết khi node chạy</div>
+              </div>
+            </div>
+            <pre id="ndm-output-json" class="wf-ndm-log-box">Chưa có dữ liệu đầu ra.</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer Actions -->
+    <div class="wf-modal-footer wf-ndm-footer">
+      <div class="wf-ndm-footer-left">
+        <button type="button" class="wf-btn wf-btn-secondary" id="btn-ndm-test-node">
+          <span>⚡ Chạy thử Node này</span>
+        </button>
+        <span id="ndm-action-feedback" class="wf-ndm-feedback"></span>
+      </div>
+      <div class="wf-ndm-footer-right">
+        <button type="button" class="wf-btn wf-btn-secondary" id="btn-close-ndm-cancel">Đóng</button>
+        <button type="button" class="wf-btn wf-btn-primary" id="btn-save-ndm-apply">
+          <span>💾 Lưu & Áp dụng thay đổi</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>
