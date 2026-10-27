@@ -4944,7 +4944,8 @@ body.page-workflow .layout {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px;
+  min-height: 62px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
 }
@@ -5029,6 +5030,16 @@ body.page-workflow .layout {
   transition: all 0.15s ease;
 }
 
+.wf-inspector .wf-inspector-title-input {
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: 3px 6px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  font-size: 15px;
+}
+
 .wf-inspector-title-input:hover {
   background: var(--bg3);
   border-color: var(--border);
@@ -5038,6 +5049,59 @@ body.page-workflow .layout {
   background: var(--bg2);
   border-color: #6366F1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.wf-inspector .wf-inspector-title-input:focus {
+  background: var(--bg2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.wf-inspector-badge {
+  display: flex;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-size: 17px;
+}
+
+.wf-category-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--bg3);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.045em;
+}
+
+.wf-btn-close {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.wf-btn-close:hover {
+  border-color: var(--err);
+  background: var(--err-bg);
+  color: var(--err-text);
 }
 
 .wf-inspector-sub-badges {
@@ -6070,6 +6134,102 @@ body.page-workflow .layout {
   max-width: 94vw !important;
 }
 
+.wf-run-input-modal-window {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(780px, 88vh);
+}
+
+.wf-run-input-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wf-run-input-modal-body {
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
+.wf-run-input-intro {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wf-run-input-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wf-run-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.wf-run-input-field input,
+.wf-run-input-field textarea,
+.wf-run-input-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.wf-run-input-field textarea {
+  min-height: 88px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.wf-run-input-field input:focus,
+.wf-run-input-field textarea:focus,
+.wf-run-input-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+
+.wf-run-media-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-run-media-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.wf-run-input-help {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.wf-run-input-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+@media (max-width: 600px) {
+  .wf-run-input-modal-body { padding: 16px; }
+  .wf-run-input-footer { padding: 12px 16px; }
+  .wf-run-media-row { align-items: stretch; flex-direction: column; }
+}
+
 .wf-flow-switcher-wrap {
   display: flex;
   align-items: center;
@@ -6409,13 +6569,17 @@ body.page-workflow .layout {
 }
 
 .wf-inspector-param-group {
-  padding: 8px 10px;
-  background: var(--bg3, rgba(255, 255, 255, 0.02));
-  border-radius: 8px;
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .wf-inspector-param-group label {
-  color: var(--fg, #e2e8f0);
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
 }
 

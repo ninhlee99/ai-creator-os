@@ -1,0 +1,433 @@
+{
+  "id": "preset_affiliate_showcase",
+  "name": "TikTok Affiliate Pro",
+  "description": "Chọn ảnh nhân vật và sản phẩm affiliate thật, chuẩn bị outfit prompt, tạo ba cảnh riêng, ghép audio, upscale và xuất video",
+  "category": "affiliate",
+  "is_preset": true,
+  "nodes": [
+    {
+      "id": "node_char",
+      "type": "character_input",
+      "title": "1. Model nhân vật đại diện",
+      "category": "input",
+      "x": 60,
+      "y": 80,
+      "params": {
+        "account_id": 0,
+        "model_name": "",
+        "model_path": ""
+      }
+    },
+    {
+      "id": "node_prod",
+      "type": "product_input",
+      "title": "2. Sản phẩm tiếp thị liên kết",
+      "category": "input",
+      "x": 60,
+      "y": 460,
+      "params": {
+        "affiliate_url": "",
+        "preview_url": "",
+        "product_image": "",
+        "product_title": ""
+      }
+    },
+    {
+      "id": "node_extract",
+      "type": "product_extractor",
+      "title": "3. Bóc tách phom dáng sản phẩm",
+      "category": "process",
+      "x": 440,
+      "y": 460,
+      "params": {
+        "auto_crop": true,
+        "refine_edges": true
+      }
+    },
+    {
+      "id": "node_tryon",
+      "type": "virtual_tryon",
+      "title": "4. Chuẩn bị outfit tham chiếu",
+      "category": "process",
+      "x": 820,
+      "y": 180,
+      "params": {
+        "outfit_name": "",
+        "prompt": "Describe reference outfit {{outfit_name}} in style {{fit_style}}. Preserve garment details from the reference image and never change the model identity. Return one concise visual description in English."
+      }
+    },
+    {
+      "id": "node_env",
+      "type": "scene_environment",
+      "title": "5. Không gian / Bối cảnh sang trọng",
+      "category": "process",
+      "x": 1200,
+      "y": 180,
+      "params": {
+        "depth_of_field": "cinematic_bokeh",
+        "location_type": "fashion_boutique",
+        "prompt": "Create a concise visual background prompt for {{location_type}}. Additional location details: {{custom_location}}. Keep a polished fashion campaign look with {{depth_of_field}} depth of field. Return only the environment description in English."
+      }
+    },
+    {
+      "id": "node_light",
+      "type": "lighting_atmosphere",
+      "title": "6. Thời gian & Ánh sáng Golden Hour",
+      "category": "process",
+      "x": 1580,
+      "y": 180,
+      "params": {
+        "color_temperature": "warm_golden",
+        "light_intensity": "soft_diffused",
+        "time_of_day": "golden_hour",
+        "prompt": "Create a concise lighting direction for {{time_of_day}}, {{color_temperature}} color temperature, and {{light_intensity}} intensity. Match this scene: {{environment_desc}}. Return only the lighting description in English."
+      }
+    },
+    {
+      "id": "node_director",
+      "type": "camera_angles_director",
+      "title": "7. Đạo diễn 3 góc quay điện ảnh",
+      "category": "camera",
+      "x": 1960,
+      "y": 180,
+      "params": {
+        "product_title": "",
+        "shot_style": "high-fashion editorial",
+        "full_prompt_template": "High-fashion vertical 9:16 full-body campaign shot. Show {{character_name}} presenting {{product_title}}; outfit: {{outfit_desc}}. Scene: {{environment_desc}}. Lighting: {{lighting_desc}}. Natural confident movement, stable camera, photorealistic details.",
+        "medium_prompt_template": "High-fashion vertical 9:16 medium shot of {{character_name}} turning naturally to present {{product_title}}; outfit: {{outfit_desc}}. Scene: {{environment_desc}}. Lighting: {{lighting_desc}}. Preserve face and garment details; elegant 35mm editorial framing.",
+        "detail_prompt_template": "Vertical 9:16 fashion detail shot of {{product_title}}; outfit: {{outfit_desc}}. Show fabric texture, seams, and construction clearly. Scene: {{environment_desc}}. Lighting: {{lighting_desc}}. Keep design consistent with reference images."
+      }
+    },
+    {
+      "id": "node_flow_full",
+      "type": "google_flow_video",
+      "title": "8a. Render toàn thân",
+      "category": "ai",
+      "x": 2340,
+      "y": 80,
+      "params": {
+        "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+        "prompt": "Create a vertical 9:16 high-fashion campaign video, full-body framing. Preserve the same adult model, face, body proportions, and garment design. Use graceful runway movement, stable camera, natural fabric motion. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
+      }
+    },
+    {
+      "id": "node_flow_medium",
+      "type": "google_flow_video",
+      "title": "8b. Render bán thân",
+      "category": "ai",
+      "x": 2340,
+      "y": 260,
+      "params": {
+        "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+        "prompt": "Create a vertical 9:16 high-fashion campaign video, medium framing. Preserve the same adult model and exact garment details. Show a natural turn and confident presentation, elegant camera motion, realistic fabric movement. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
+      }
+    },
+    {
+      "id": "node_flow_detail",
+      "type": "google_flow_video",
+      "title": "8c. Render cận cảnh chất liệu",
+      "category": "ai",
+      "x": 2340,
+      "y": 440,
+      "params": {
+        "aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+        "prompt": "Create a vertical 9:16 close-up fashion video focused on garment texture and construction. Keep reference design and colors exact; use a slow editorial camera move and realistic material motion. Direction: {{input}}. No cuts, captions, logos, or extra subjects."
+      }
+    },
+    {
+      "id": "node_concat",
+      "type": "concat_scenes",
+      "title": "9. Ghép ba phân cảnh",
+      "category": "process",
+      "x": 2720,
+      "y": 280,
+      "params": {}
+    },
+    {
+      "id": "node_audio",
+      "type": "audio_source",
+      "title": "10. Nhạc nền",
+      "category": "input",
+      "x": 2340,
+      "y": 620,
+      "params": {
+        "audio_path": "",
+        "audio_title": ""
+      }
+    },
+    {
+      "id": "node_audio_merge",
+      "type": "audio_merge",
+      "title": "11. Lồng nhạc & Âm thanh đồng bộ",
+      "category": "process",
+      "x": 3100,
+      "y": 280,
+      "params": {
+        "audio_codec": "aac"
+      }
+    },
+    {
+      "id": "node_color_grade",
+      "type": "cinematic_color_grading",
+      "title": "12. Cân chỉnh màu sắc & Tôn da",
+      "category": "post",
+      "x": 3480,
+      "y": 280,
+      "params": {
+        "contrast_boost": 1.12,
+        "saturation": 1.06
+      }
+    },
+    {
+      "id": "node_upscale",
+      "type": "video_upscale",
+      "title": "13. Làm nét & Nâng chuẩn 4K UHD",
+      "category": "process",
+      "x": 3860,
+      "y": 280,
+      "params": {
+        "resolution": "4k"
+      }
+    },
+    {
+      "id": "node_output",
+      "type": "video_output",
+      "title": "14. Xuất video TikTok 9:16",
+      "category": "output",
+      "x": 4240,
+      "y": 280,
+      "params": {
+        "title": "Affiliate Lookbook"
+      }
+    },
+    {
+      "id": "input_fit_style",
+      "type": "workflow_input",
+      "title": "Phong cách cho lần chạy",
+      "category": "workflow",
+      "x": 520,
+      "y": 680,
+      "params": {
+        "key": "fit_style",
+        "label": "Phong cách trang phục",
+        "value_type": "text",
+        "required": true,
+        "value": "May đo cao cấp ôm dáng (Seamless Luxury)",
+        "options": [
+          "May đo cao cấp ôm dáng (Seamless Luxury)",
+          "Trang phục biểu diễn K-pop",
+          "Bodycon glamour",
+          "Streetwear hiện đại",
+          "Trang phục công sở thanh lịch",
+          "Trang phục truyền thống",
+          "Váy dạ hội"
+        ],
+        "help": "Chọn gợi ý hoặc tự mô tả phong cách. Giá trị chỉ dùng cho lần chạy này."
+      }
+    },
+    {
+      "id": "output_video",
+      "type": "workflow_output",
+      "title": "Video thành phẩm",
+      "category": "workflow",
+      "x": 4600,
+      "y": 280,
+      "params": {
+        "key": "video",
+        "label": "Video thành phẩm",
+        "value_type": "video"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "node_char",
+      "from_port": "character_image",
+      "to_node": "node_tryon",
+      "to_port": "character_image"
+    },
+    {
+      "id": "e2",
+      "from_node": "node_prod",
+      "from_port": "product_image",
+      "to_node": "node_extract",
+      "to_port": "source_image"
+    },
+    {
+      "id": "e3",
+      "from_node": "node_extract",
+      "from_port": "cutout_image",
+      "to_node": "node_tryon",
+      "to_port": "garment_image"
+    },
+    {
+      "id": "e4",
+      "from_node": "node_tryon",
+      "from_port": "fitted_image",
+      "to_node": "node_env",
+      "to_port": "character_image"
+    },
+    {
+      "id": "e5",
+      "from_node": "node_env",
+      "from_port": "character_image",
+      "to_node": "node_director",
+      "to_port": "character_image"
+    },
+    {
+      "id": "e6",
+      "from_node": "node_prod",
+      "from_port": "product_title",
+      "to_node": "node_tryon",
+      "to_port": "outfit_name"
+    },
+    {
+      "id": "e7",
+      "from_node": "node_prod",
+      "from_port": "product_title",
+      "to_node": "node_director",
+      "to_port": "product_title"
+    },
+    {
+      "id": "e8",
+      "from_node": "node_char",
+      "from_port": "character_name",
+      "to_node": "node_director",
+      "to_port": "character_name"
+    },
+    {
+      "id": "e9",
+      "from_node": "node_env",
+      "from_port": "environment_desc",
+      "to_node": "node_light",
+      "to_port": "environment_desc"
+    },
+    {
+      "id": "e10",
+      "from_node": "node_env",
+      "from_port": "environment_desc",
+      "to_node": "node_director",
+      "to_port": "environment_desc"
+    },
+    {
+      "id": "e11",
+      "from_node": "node_light",
+      "from_port": "lighting_desc",
+      "to_node": "node_director",
+      "to_port": "lighting_desc"
+    },
+    {
+      "id": "e12",
+      "from_node": "node_director",
+      "from_port": "angle_full",
+      "to_node": "node_flow_full",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e13",
+      "from_node": "node_director",
+      "from_port": "angle_medium",
+      "to_node": "node_flow_medium",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e14",
+      "from_node": "node_director",
+      "from_port": "angle_detail",
+      "to_node": "node_flow_detail",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e15",
+      "from_node": "node_tryon",
+      "from_port": "ingredients",
+      "to_node": "node_flow_full",
+      "to_port": "ingredients"
+    },
+    {
+      "id": "e16",
+      "from_node": "node_tryon",
+      "from_port": "ingredients",
+      "to_node": "node_flow_medium",
+      "to_port": "ingredients"
+    },
+    {
+      "id": "e17",
+      "from_node": "node_tryon",
+      "from_port": "ingredients",
+      "to_node": "node_flow_detail",
+      "to_port": "ingredients"
+    },
+    {
+      "id": "e18",
+      "from_node": "node_flow_full",
+      "from_port": "video_out",
+      "to_node": "node_concat",
+      "to_port": "scene_1"
+    },
+    {
+      "id": "e19",
+      "from_node": "node_flow_medium",
+      "from_port": "video_out",
+      "to_node": "node_concat",
+      "to_port": "scene_2"
+    },
+    {
+      "id": "e20",
+      "from_node": "node_flow_detail",
+      "from_port": "video_out",
+      "to_node": "node_concat",
+      "to_port": "scene_3"
+    },
+    {
+      "id": "e21",
+      "from_node": "node_concat",
+      "from_port": "master_video",
+      "to_node": "node_audio_merge",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e22",
+      "from_node": "node_audio",
+      "from_port": "audio_file",
+      "to_node": "node_audio_merge",
+      "to_port": "audio_in"
+    },
+    {
+      "id": "e23",
+      "from_node": "node_audio_merge",
+      "from_port": "video_out",
+      "to_node": "node_color_grade",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e24",
+      "from_node": "node_color_grade",
+      "from_port": "video_out",
+      "to_node": "node_upscale",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e25",
+      "from_node": "node_upscale",
+      "from_port": "video_out",
+      "to_node": "node_output",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e_runtime_fit_style",
+      "from_node": "input_fit_style",
+      "from_port": "value",
+      "to_node": "node_tryon",
+      "to_port": "fit_style"
+    },
+    {
+      "id": "e_workflow_output_video",
+      "from_node": "node_output",
+      "from_port": "final_video",
+      "to_node": "output_video",
+      "to_port": "value"
+    }
+  ]
+}

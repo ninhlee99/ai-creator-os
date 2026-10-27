@@ -203,6 +203,7 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		GraphID string          `json:"graph_id"`
 		Graph   *flow.FlowGraph `json:"graph"`
+		Inputs  map[string]any  `json:"inputs"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"ok":false,"error":"Invalid JSON"}`, http.StatusBadRequest)
@@ -222,6 +223,10 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"ok":false,"error":"Không có đồ thị hợp lệ để thực thi"}`, http.StatusBadRequest)
 		return
 	}
+	if err := flow.ValidateWorkflowRunInputs(targetGraph, req.Inputs); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusBadRequest)
+		return
+	}
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())
 
@@ -239,7 +244,7 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 			flowCancelMu.Unlock()
 			cancel()
 		}()
-		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, targetGraph, s.flowExecutionServices())
+		_, _ = s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, targetGraph, req.Inputs, s.flowExecutionServices())
 	}()
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -392,6 +397,10 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	if err := flow.ValidateWorkflowRunInputs(&clonedGraph, nil); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusBadRequest)
+		return
 	}
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())

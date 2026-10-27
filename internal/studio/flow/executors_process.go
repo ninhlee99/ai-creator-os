@@ -814,17 +814,30 @@ func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		return nil, fmt.Errorf("ảnh trang phục không hợp lệ")
 	}
 
-	fitStyle := nodeParamString(node.Params, "fit_style", "seamless_luxury")
-	outfitName := inputString(inputs, "outfit_name", nodeParamString(node.Params, "outfit_name", "trang phục thời trang cao cấp"))
-
-	var outfitDesc string
-	switch fitStyle {
-	case "sexy_dance_fit", "kpop_stage_outfit":
-		outfitDesc = fmt.Sprintf("wearing %s, styled as a K-pop performance outfit with coordinated stage details", outfitName)
-	case "bodycon_glamour":
-		outfitDesc = fmt.Sprintf("wearing %s in a glamorous bodycon styling", outfitName)
-	default:
-		outfitDesc = fmt.Sprintf("wearing %s with seamless bespoke luxury tailoring", outfitName)
+	fitStyle := inputString(inputs, "fit_style", nodeParamString(node.Params, "fit_style", ""))
+	outfitName := inputString(inputs, "outfit_name", nodeParamString(node.Params, "outfit_name", "trang phục theo ảnh tham chiếu"))
+	legacyStyles := map[string]string{
+		"seamless_luxury":   "seamless bespoke luxury tailoring",
+		"sexy_dance_fit":    "K-pop performance styling with coordinated stage details",
+		"kpop_stage_outfit": "K-pop performance styling with coordinated stage details",
+		"bodycon_glamour":   "glamorous bodycon styling",
+	}
+	if legacy, ok := legacyStyles[fitStyle]; ok {
+		fitStyle = legacy
+	}
+	if fitStyle == "" {
+		fitStyle = "consistent with the reference garment"
+	}
+	outfitDesc := fmt.Sprintf("wearing %s, styled as %s", outfitName, fitStyle)
+	promptInputs := make(map[string]any, len(inputs)+2)
+	for key, value := range inputs {
+		promptInputs[key] = value
+	}
+	promptInputs["fit_style"] = fitStyle
+	promptInputs["outfit_name"] = outfitName
+	if prompt := resolveNodePrompt(node, promptInputs, []string{"prompt_in"}, ""); prompt != "" &&
+		(nodeParamString(node.Params, "prompt", "") != "" || inputString(inputs, "prompt_in", "") != "") {
+		outfitDesc = prompt
 	}
 
 	ingredients := []string{charImg}
@@ -880,9 +893,25 @@ func executeSceneEnvironment(ctx *ExecutionContext, node *FlowNode, inputs map[s
 		envDesc = locationType
 	}
 
+	promptInputs := make(map[string]any, len(inputs)+4)
+	for key, value := range inputs {
+		promptInputs[key] = value
+	}
+	promptInputs["location_type"] = locationType
+	promptInputs["custom_location"] = customLocation
+	promptInputs["depth_of_field"] = depthOfField
+	promptInputs["environment_desc"] = envDesc
+	customPrompt := resolveNodePrompt(node, promptInputs, []string{"prompt_in"}, "")
+	customPromptEnabled := nodeParamString(node.Params, "prompt", "") != ""
+	if customPromptEnabled {
+		envDesc = customPrompt
+	}
 	envPrompt := fmt.Sprintf("Setting and environment: %s, with %s camera depth of field.", envDesc, depthOfField)
 	promptOut := promptIn
-	if promptOut != "" {
+	if customPromptEnabled {
+		envPrompt = customPrompt
+		promptOut = customPrompt
+	} else if promptOut != "" {
 		promptOut = fmt.Sprintf("%s, set in %s", promptOut, envDesc)
 	} else {
 		promptOut = envPrompt
@@ -930,9 +959,24 @@ func executeLightingAtmosphere(ctx *ExecutionContext, node *FlowNode, inputs map
 		lightDesc = timeOfDay
 	}
 
+	promptInputs := make(map[string]any, len(inputs)+4)
+	for key, value := range inputs {
+		promptInputs[key] = value
+	}
+	promptInputs["time_of_day"] = timeOfDay
+	promptInputs["color_temperature"] = colorTemp
+	promptInputs["light_intensity"] = intensity
+	customPrompt := resolveNodePrompt(node, promptInputs, []string{"prompt_in"}, "")
+	customPromptEnabled := nodeParamString(node.Params, "prompt", "") != ""
+	if customPromptEnabled {
+		lightDesc = customPrompt
+	}
 	lightingPrompt := fmt.Sprintf("Lighting and atmosphere: %s, %s color temperature, %s illumination. Environment: %s.", lightDesc, colorTemp, intensity, environment)
 	promptOut := promptIn
-	if promptOut != "" {
+	if customPromptEnabled {
+		lightingPrompt = customPrompt
+		promptOut = customPrompt
+	} else if promptOut != "" {
 		promptOut = fmt.Sprintf("%s, illuminated by %s, in %s", promptOut, lightDesc, environment)
 	} else {
 		promptOut = lightingPrompt
@@ -971,10 +1015,22 @@ func executeCameraAnglesDirector(ctx *ExecutionContext, node *FlowNode, inputs m
 
 	environment := inputString(inputs, "environment_desc", "")
 	lighting := inputString(inputs, "lighting_desc", "")
+	outfitDesc := inputString(inputs, "outfit_desc", "")
 	shotStyle := nodeParamString(node.Params, "shot_style", "high_fashion_editorial")
-	fullPrompt := fmt.Sprintf("%s style. Cinematic 9:16 full body runway shot with the character (%s) walking confidently and presenting %s. Keep visible character and garment details. Environment: %s. Lighting: %s. Photorealistic, steady camera movement.", shotStyle, charName, productTitle, environment, lighting)
-	mediumPrompt := fmt.Sprintf("%s style. Cinematic 9:16 medium shot of the character (%s) turning naturally to present %s. Keep visible character and garment details. Environment: %s. Lighting: %s. 35mm lens.", shotStyle, charName, productTitle, environment, lighting)
-	detailPrompt := fmt.Sprintf("%s style. Cinematic 9:16 detail shot showing the visible material and construction of %s. Environment: %s. Lighting: %s. Keep design details consistent with reference images.", shotStyle, productTitle, environment, lighting)
+	promptInputs := map[string]any{
+		"character_name":   charName,
+		"product_title":    productTitle,
+		"outfit_desc":      outfitDesc,
+		"environment_desc": environment,
+		"lighting_desc":    lighting,
+		"shot_style":       shotStyle,
+	}
+	fullPrompt := resolveNodeText(node, promptInputs, "full_prompt_template", nil,
+		fmt.Sprintf("%s style. Cinematic 9:16 full body runway shot with the character (%s) walking confidently and presenting %s. Keep visible character and garment details. Environment: %s. Lighting: %s. Photorealistic, steady camera movement.", shotStyle, charName, productTitle, environment, lighting))
+	mediumPrompt := resolveNodeText(node, promptInputs, "medium_prompt_template", nil,
+		fmt.Sprintf("%s style. Cinematic 9:16 medium shot of the character (%s) turning naturally to present %s. Keep visible character and garment details. Environment: %s. Lighting: %s. 35mm lens.", shotStyle, charName, productTitle, environment, lighting))
+	detailPrompt := resolveNodeText(node, promptInputs, "detail_prompt_template", nil,
+		fmt.Sprintf("%s style. Cinematic 9:16 detail shot showing the visible material and construction of %s. Environment: %s. Lighting: %s. Keep design details consistent with reference images.", shotStyle, productTitle, environment, lighting))
 
 	ctx.Log(fmt.Sprintf("CameraAnglesDirector: Đã thiết lập đạo diễn 3 góc quay điện ảnh bảo toàn nhận diện (%s & %s)", charName, productTitle))
 

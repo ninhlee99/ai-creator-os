@@ -474,6 +474,8 @@ func registerAllBuiltinNodes() {
 			{ID: "character_image", Name: "Ảnh nhân vật mẫu", Type: PortTypeImage, Required: true},
 			{ID: "garment_image", Name: "Ảnh trang phục", Type: PortTypeImage, Required: false},
 			{ID: "outfit_name", Name: "Tên/mô tả outfit", Type: PortTypeText, Required: false},
+			{ID: "fit_style", Name: "Phong cách trang phục", Type: PortTypeText, Required: false},
+			{ID: "prompt_in", Name: "Prompt đầu vào", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "fitted_image", Name: "Ảnh nhân vật (tương thích cũ)", Type: PortTypeImage, Description: "Ảnh gốc truyền tiếp; chưa thay trang phục"},
@@ -482,11 +484,8 @@ func registerAllBuiltinNodes() {
 			{ID: "ingredients", Name: "Ảnh tham chiếu", Type: PortTypeImageList, Description: "Ảnh nhân vật và trang phục gốc"},
 			{ID: "outfit_desc", Name: "Mô tả trang phục", Type: PortTypeText, Description: "Mô tả trang phục cho AI sinh video"},
 		},
-		DefaultParams: map[string]any{
-			"fit_style":   "seamless_luxury",
-			"outfit_name": "trang phục thời trang cao cấp",
-		},
-		Executor: executeVirtualTryOn,
+		DefaultParams: map[string]any{"prompt": ""},
+		Executor:      executeVirtualTryOn,
 	})
 
 	// 20. Scene Environment Node (Không gian / Bối cảnh)
@@ -510,6 +509,7 @@ func registerAllBuiltinNodes() {
 			"location_type":   "fashion_boutique",
 			"custom_location": "",
 			"depth_of_field":  "cinematic_bokeh",
+			"prompt":          "",
 		},
 		Executor: executeSceneEnvironment,
 	})
@@ -534,6 +534,7 @@ func registerAllBuiltinNodes() {
 			"time_of_day":       "golden_hour",
 			"color_temperature": "warm_golden",
 			"light_intensity":   "soft_diffused",
+			"prompt":            "",
 		},
 		Executor: executeLightingAtmosphere,
 	})
@@ -549,6 +550,7 @@ func registerAllBuiltinNodes() {
 			{ID: "character_image", Name: "Ảnh nhân vật mặc trang phục", Type: PortTypeImage, Required: true},
 			{ID: "product_title", Name: "Tên sản phẩm", Type: PortTypeText, Required: false},
 			{ID: "character_name", Name: "Tên nhân vật", Type: PortTypeText, Required: false},
+			{ID: "outfit_desc", Name: "Mô tả trang phục", Type: PortTypeText, Required: false},
 			{ID: "environment_desc", Name: "Mô tả không gian", Type: PortTypeText, Required: false},
 			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
 		},
@@ -560,7 +562,10 @@ func registerAllBuiltinNodes() {
 			{ID: "subject_image", Name: "Ảnh tham chiếu", Type: PortTypeImage, Description: "Ảnh gốc cho node sinh cảnh"},
 		},
 		DefaultParams: map[string]any{
-			"shot_style": "high_fashion_editorial",
+			"shot_style":             "high_fashion_editorial",
+			"full_prompt_template":   "",
+			"medium_prompt_template": "",
+			"detail_prompt_template": "",
 		},
 		Executor: executeCameraAnglesDirector,
 	})

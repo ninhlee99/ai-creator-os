@@ -66,7 +66,7 @@ func (s *Store) migrate() error {
 // SeedDefaultPresets nạp và đồng bộ các preset mẫu vào cơ sở dữ liệu.
 func (s *Store) SeedDefaultPresets() error {
 	for _, preset := range GetPresetGraphs() {
-		if err := s.SaveGraph(&preset); err != nil {
+		if err := s.saveGraph(&preset); err != nil {
 			return err
 		}
 	}
@@ -105,6 +105,16 @@ func (s *Store) SaveGraph(g *FlowGraph) error {
 	if g == nil || g.ID == "" {
 		return errors.New("graph hoặc ID không hợp lệ")
 	}
+	if g.IsPreset || s.IsPresetID(g.ID) {
+		return errors.New("không thể ghi đè workflow preset của hệ thống. Vui lòng nhân bản (copy) để lưu thành workflow cá nhân")
+	}
+	return s.saveGraph(g)
+}
+
+func (s *Store) saveGraph(g *FlowGraph) error {
+	if g == nil || g.ID == "" {
+		return errors.New("graph hoặc ID không hợp lệ")
+	}
 	now := time.Now().Format(time.RFC3339)
 	if g.CreatedAt == "" {
 		g.CreatedAt = now
@@ -128,6 +138,7 @@ func (s *Store) SaveGraph(g *FlowGraph) error {
 			description = excluded.description,
 			category = excluded.category,
 			graph_json = excluded.graph_json,
+			is_preset = excluded.is_preset,
 			updated_at = excluded.updated_at;`
 
 	_, err = s.db.Exec(query, g.ID, g.Name, g.Description, g.Category, string(data), isPresetInt, g.CreatedAt, g.UpdatedAt)

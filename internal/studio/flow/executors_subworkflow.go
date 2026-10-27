@@ -65,6 +65,43 @@ func WorkflowContract(graph *FlowGraph) (inputs, outputs []FlowPort, err error) 
 	return inputs, outputs, nil
 }
 
+// ValidateWorkflowRunInputs checks per-run values against declared workflow inputs.
+func ValidateWorkflowRunInputs(graph *FlowGraph, values map[string]any) error {
+	inputs, _, err := WorkflowContract(graph)
+	if err != nil {
+		return err
+	}
+	ports := make(map[string]FlowPort, len(inputs))
+	for _, port := range inputs {
+		ports[port.ID] = port
+	}
+	for key := range values {
+		if _, ok := ports[key]; !ok {
+			return fmt.Errorf("input workflow không được khai báo: %s", key)
+		}
+	}
+	for _, port := range inputs {
+		value, provided := values[port.ID]
+		if !provided {
+			value, provided = workflowInputDefault(graph, port.ID)
+		}
+		if port.Required && isEmptyWorkflowValue(value, provided) {
+			return fmt.Errorf("thiếu input workflow bắt buộc %q", port.Name)
+		}
+	}
+	return nil
+}
+
+func workflowInputDefault(graph *FlowGraph, key string) (any, bool) {
+	for _, node := range graph.Nodes {
+		if node.Type == "workflow_input" && nodeParamString(node.Params, "key", "") == key {
+			value, exists := node.Params["value"]
+			return value, exists
+		}
+	}
+	return nil, false
+}
+
 func validWorkflowPortType(portType PortType) bool {
 	switch portType {
 	case PortTypeAny, PortTypeImage, PortTypeImageList, PortTypeTextList, PortTypeVideo, PortTypeAudio,

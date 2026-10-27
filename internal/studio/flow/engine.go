@@ -424,6 +424,10 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		for _, edge := range incomingEdges[nodeID] {
 			if sourceOutputs, ok := portData[edge.FromNode]; ok {
 				if val, exists := sourceOutputs[edge.FromPort]; exists {
+					if source := nodeMap[edge.FromNode]; source.Type == "workflow_input" &&
+						!nodeParamBool(source.Params, "required", true) && isEmptyFlowValue(val) {
+						continue
+					}
 					nodeInputs[edge.ToPort] = val
 				}
 			}
@@ -469,6 +473,9 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 				continue
 			}
 			value, exists := outputs[edge.FromPort]
+			if node.Type == "workflow_input" && !nodeParamBool(node.Params, "required", true) && (!exists || isEmptyFlowValue(value)) {
+				continue
+			}
 			if !exists || isEmptyFlowValue(value) {
 				execErr = fmt.Errorf("node %q không trả dữ liệu cho cổng đã nối %q", node.Title, edge.FromPort)
 				nodeState.Status = "failed"

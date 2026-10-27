@@ -30,6 +30,11 @@ func (s *Studio) GetFlowStore() (*flow.Store, error) {
 
 // ExecuteFlowGraph thực thi đồ thị ComfyUI trong môi trường của Studio.
 func (s *Studio) ExecuteFlowGraph(ctx context.Context, runID string, graph *flow.FlowGraph, serviceOptions ...flow.ExecutionServices) (*flow.FlowRun, error) {
+	return s.ExecuteFlowGraphWithInputs(ctx, runID, graph, nil, serviceOptions...)
+}
+
+// ExecuteFlowGraphWithInputs executes a workflow with values supplied for its named workflow_input nodes.
+func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, graph *flow.FlowGraph, workflowInputs map[string]any, serviceOptions ...flow.ExecutionServices) (*flow.FlowRun, error) {
 	if runID == "" {
 		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())
 	}
@@ -76,10 +81,11 @@ func (s *Studio) ExecuteFlowGraph(ctx context.Context, runID string, graph *flow
 	}
 
 	execCtx := &flow.ExecutionContext{
-		Context: ctx,
-		RunID:   runID,
-		WorkDir: workDir,
-		OutDir:  s.outDir,
+		Context:        ctx,
+		RunID:          runID,
+		WorkDir:        workDir,
+		OutDir:         s.outDir,
+		WorkflowInputs: workflowInputs,
 		Log: func(msg string) {
 			// Callback ghi log
 		},

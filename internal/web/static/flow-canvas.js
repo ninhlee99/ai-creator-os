@@ -49,6 +49,7 @@
       this.pendingConnect = null; // { fromNode, fromPort } for clicking '+' handle
 
       this.currentRunId = null;
+      this.lastWorkflowInputs = {};
       this.pollInterval = null;
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
       this.workflowContractLoading = new Set();
@@ -1994,6 +1995,16 @@
       const cancelBtn = document.getElementById('btn-cancel-flow');
       const statusPill = this.statusPill;
       const runPanel = document.getElementById('flow-run-panel');
+
+      let workflowInputs;
+      try {
+        workflowInputs = await this.collectWorkflowRunInputs();
+        if (workflowInputs === null) return;
+      } catch (err) {
+        alert(`Không thể chạy workflow: ${err.message}`);
+        return;
+      }
+
       if (runPanel) runPanel.hidden = false;
       this.renderWorkflowOutputs({});
 
@@ -2025,7 +2036,7 @@
         const resp = await fetch('/api/flow/execute', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ graph: this.graph })
+          body: JSON.stringify({ graph: this.graph, inputs: workflowInputs })
         });
         const data = await resp.json();
         if (!data.ok) {
@@ -2045,6 +2056,203 @@
         this.appendLog(`[LỖI] ${err.message}`);
         alert('Lỗi chạy workflow: ' + err.message);
       }
+    }
+
+    collectWorkflowRunInputs() {
+      const inputNodes = (this.graph.nodes || []).filter(node => node.type === 'workflow_input');
+      if (!inputNodes.length) return Promise.resolve({});
+
+      const seen = new Set();
+      for (const node of inputNodes) {
+        const key = String(node.params?.key || '').trim();
+        if (!/^[a-z][a-z0-9_]{0,47}$/.test(key)) {
+          return Promise.reject(new Error(`Node “${node.title || key}” cần khóa input hợp lệ`));
+        }
+        if (seen.has(key)) return Promise.reject(new Error(`Trùng khóa input: ${key}`));
+        seen.add(key);
+      }
+
+      const modal = document.getElementById('workflow-run-input-modal');
+      const form = document.getElementById('workflow-run-input-form');
+      const fields = document.getElementById('workflow-run-input-fields');
+      const cancel = document.getElementById('btn-cancel-workflow-run-inputs');
+      const close = document.getElementById('btn-close-workflow-run-inputs');
+      if (!modal || !form || !fields) return Promise.reject(new Error('Thiếu giao diện nhập dữ liệu workflow'));
+
+      fields.replaceChildren();
+      inputNodes.forEach(node => {
+        const params = node.params || {};
+        const key = String(params.key || '').trim();
+        const label = document.createElement('label');
+        label.className = 'wf-field-label';
+        label.textContent = `${String(params.label || node.title || key)}${params.required === false ? '' : ' *'}`;
+
+        const remembered = Object.prototype.hasOwnProperty.call(this.lastWorkflowInputs, key);
+        let value = remembered ? this.lastWorkflowInputs[key] : params.value;
+        if (value == null) value = '';
+        const type = String(params.value_type || 'text');
+        const options = Array.isArray(params.options) ? params.options : [];
+        const group = document.createElement('div');
+        group.className = 'wf-run-input-field';
+        let control;
+
+        if (options.length) {
+          control = document.createElement('input');
+          control.type = 'text';
+          control.className = 'wf-form-input';
+          const list = document.createElement('datalist');
+          list.id = `workflow-input-options-${node.id}`;
+          control.setAttribute('list', list.id);
+          options.forEach(option => {
+            const optionValue = option && typeof option === 'object' ? option.value : option;
+            const optionLabel = option && typeof option === 'object' ? (option.label ?? option.value) : option;
+            const element = document.createElement('option');
+            element.value = String(optionValue ?? '');
+            element.label = String(optionLabel ?? '');
+            list.appendChild(element);
+          });
+          control.value = String(value);
+          control.placeholder = 'Chọn gợi ý hoặc nhập giá trị riêng';
+          group.append(label, control, list);
+        } else if (type === 'number') {
+          control = document.createElement('input');
+          control.type = 'number';
+          control.className = 'wf-form-input';
+          control.value = value === '' ? '' : String(value);
+        } else if (['image', 'image_list', 'video', 'audio'].includes(type)) {
+          const row = document.createElement('div');
+          row.className = 'wf-run-media-row';
+          if (type === 'image_list') {
+            control = document.createElement('textarea');
+            control.rows = 3;
+            control.value = Array.isArray(value) ? value.join('\n') : String(value);
+            control.placeholder = 'Một đường dẫn ảnh mỗi dòng';
+          } else {
+            control = document.createElement('input');
+            control.type = 'text';
+            control.className = 'wf-form-input';
+            control.placeholder = 'Dán đường dẫn hoặc tải tệp';
+            control.value = String(value);
+          }
+          const upload = document.createElement('button');
+          upload.type = 'button';
+          upload.className = 'wf-btn wf-btn-secondary wf-btn-xs';
+          upload.textContent = 'Tải tệp';
+          const file = document.createElement('input');
+          file.type = 'file';
+          file.hidden = true;
+          file.accept = type === 'image_list' ? 'image/*' : `${type}/*`;
+          file.multiple = type === 'image_list';
+          upload.addEventListener('click', () => file.click());
+          file.addEventListener('change', async () => {
+            if (!file.files?.[0]) return;
+            upload.disabled = true;
+            upload.textContent = 'Đang tải…';
+            try {
+              const paths = [];
+              for (const selectedFile of Array.from(file.files || [])) {
+                const payload = new FormData();
+                payload.append('file', selectedFile);
+                const response = await fetch('/api/flow/upload', { method: 'POST', body: payload });
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.error || 'Tải tệp thất bại');
+                paths.push(result.file_path || result.url || '');
+              }
+              if (type === 'image_list') {
+                const existing = control.value.split('\n').map(path => path.trim()).filter(Boolean);
+                control.value = [...existing, ...paths.filter(Boolean)].join('\n');
+              } else {
+                control.value = paths[0] || '';
+              }
+            } catch (error) {
+              alert(error.message || 'Không tải được tệp');
+            } finally {
+              upload.disabled = false;
+              upload.textContent = 'Tải tệp';
+            }
+          });
+          row.append(control, upload, file);
+          group.append(label, row);
+        } else if (['text_list', 'product', 'motion', 'config'].includes(type)) {
+          control = document.createElement('textarea');
+          control.className = 'wf-form-textarea';
+          control.rows = 4;
+          if (type === 'text_list') control.value = Array.isArray(value) ? value.join('\n') : String(value);
+          else control.value = value && typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+          control.placeholder = type === 'text_list' ? 'Một giá trị mỗi dòng' : 'Nhập dữ liệu JSON';
+        } else {
+          control = document.createElement('textarea');
+          control.className = 'wf-form-textarea';
+          control.rows = 3;
+          control.value = String(value);
+          control.placeholder = params.required === false ? 'Để trống nếu không cần' : 'Nhập giá trị cho lần chạy này';
+        }
+
+        control.dataset.workflowInputKey = key;
+        control.dataset.workflowInputType = type;
+        control.required = params.required !== false;
+        if (!['image', 'image_list', 'video', 'audio'].includes(type) && !options.length) group.append(label, control);
+        const helpText = String(params.help || '');
+        if (helpText) {
+          const help = document.createElement('small');
+          help.className = 'wf-run-input-help';
+          help.textContent = helpText;
+          group.appendChild(help);
+        }
+        fields.appendChild(group);
+      });
+
+      modal.style.display = 'flex';
+      const firstControl = fields.querySelector('input:not([type=file]), textarea, select');
+      if (firstControl) requestAnimationFrame(() => firstControl.focus());
+
+      return new Promise(resolve => {
+        let settled = false;
+        const finish = result => {
+          if (settled) return;
+          settled = true;
+          modal.style.display = 'none';
+          form.onsubmit = null;
+          cancel.onclick = null;
+          close.onclick = null;
+          modal.onclick = null;
+          window.removeEventListener('keydown', onKeyDown);
+          resolve(result);
+        };
+        const onKeyDown = event => { if (event.key === 'Escape') finish(null); };
+        form.onsubmit = event => {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          const result = {};
+          fields.querySelectorAll('[data-workflow-input-key]').forEach(input => {
+            const key = input.dataset.workflowInputKey;
+            const type = input.dataset.workflowInputType;
+            if (type === 'image_list' || type === 'text_list') {
+              result[key] = input.value.split('\n').map(value => value.trim()).filter(Boolean);
+            } else if (['product', 'motion', 'config'].includes(type) && input.value.trim()) {
+              try {
+                result[key] = JSON.parse(input.value);
+              } catch (_) {
+                input.setCustomValidity('Dữ liệu cần là JSON hợp lệ.');
+                input.reportValidity();
+                input.setCustomValidity('');
+                return;
+              }
+            } else if (input.type === 'number' && input.value !== '') {
+              result[key] = Number(input.value);
+            } else {
+              result[key] = input.value;
+            }
+          });
+          if (Object.keys(result).length !== inputNodes.length) return;
+          this.lastWorkflowInputs = result;
+          finish(result);
+        };
+        cancel.onclick = () => finish(null);
+        close.onclick = () => finish(null);
+        modal.onclick = event => { if (event.target === modal) finish(null); };
+        window.addEventListener('keydown', onKeyDown);
+      });
     }
 
     startPollingRun(runId) {
@@ -2289,6 +2497,41 @@
         required.addEventListener('change', () => { params.required = required.checked; });
         requiredGroup.append(required, document.createTextNode(' Input bắt buộc'));
         container.appendChild(requiredGroup);
+
+        const optionsGroup = document.createElement('div');
+        optionsGroup.className = 'form-group';
+        const optionsLabel = document.createElement('label');
+        optionsLabel.innerText = 'Gợi ý khi chạy (không bắt buộc)';
+        const optionsInput = document.createElement('textarea');
+        optionsInput.className = 'form-control';
+        optionsInput.rows = 3;
+        const optionValues = Array.isArray(params.options) ? params.options.map(option => {
+          if (option && typeof option === 'object') return String(option.label ?? option.value ?? '');
+          return String(option ?? '');
+        }) : [];
+        optionsInput.value = optionValues.join('\n');
+        optionsInput.placeholder = 'Mỗi gợi ý một dòng. Người chạy vẫn có thể nhập giá trị khác.';
+        optionsInput.addEventListener('input', () => {
+          params.options = optionsInput.value.split('\n').map(value => value.trim()).filter(Boolean);
+        });
+        const optionsHelp = document.createElement('small');
+        optionsHelp.className = 'text-muted';
+        optionsHelp.textContent = 'Gợi ý xuất hiện khi nhập ở mỗi lần chạy; giá trị vẫn có thể tùy chỉnh.';
+        optionsGroup.append(optionsLabel, optionsInput, optionsHelp);
+        container.appendChild(optionsGroup);
+
+        const helpGroup = document.createElement('div');
+        helpGroup.className = 'form-group';
+        const helpLabel = document.createElement('label');
+        helpLabel.innerText = 'Hướng dẫn cho người chạy';
+        const helpInput = document.createElement('input');
+        helpInput.type = 'text';
+        helpInput.className = 'form-control';
+        helpInput.value = params.help || '';
+        helpInput.placeholder = 'Ví dụ: Chọn phong cách phù hợp với sản phẩm';
+        helpInput.addEventListener('input', () => { params.help = helpInput.value; });
+        helpGroup.append(helpLabel, helpInput);
+        container.appendChild(helpGroup);
 
         const valueGroup = document.createElement('div');
         valueGroup.className = 'form-group';
@@ -3214,16 +3457,21 @@
 		const isWorkflowCall = this.isWorkflowCallType(node.type);
 		if (isWorkflowBoundary) this.renderWorkflowBoundaryInspector(node, fieldsContainer);
 		else if (isWorkflowCall) this.renderWorkflowCallInspector(node, fieldsContainer);
+        else if (node.type === 'virtual_tryon') {
+          const guidance = document.createElement('p');
+          guidance.className = 'wf-inspector-section-help';
+          guidance.textContent = 'Muốn đổi phong cách mỗi lần chạy? Thêm node Đầu vào workflow, khai báo lựa chọn, rồi nối vào cổng “Phong cách trang phục”.';
+          fieldsContainer.appendChild(guidance);
+        }
 
         const skipKeys = ['prompt', 'template', 'system_prompt', 'negative_prompt', 'model', 'node_name', 'preview_url'];
 
         if (!isWorkflowBoundary && !isWorkflowCall) Object.keys(params).forEach(key => {
-          if (skipKeys.includes(key)) return;
+          if (skipKeys.includes(key) || (node.type === 'virtual_tryon' && key === 'fit_style')) return;
 
           const val = params[key];
           const group = document.createElement('div');
           group.className = 'form-group wf-inspector-param-group';
-          group.style.marginBottom = '12px';
 
           const label = document.createElement('label');
           label.style.display = 'block';
@@ -3273,6 +3521,15 @@
             input.rows = 3;
             input.value = val;
             input.placeholder = 'Để trống để nhận chỉ thị từ cổng task';
+            input.setAttribute('aria-label', this.formatParamLabel(key));
+            input.addEventListener('input', () => { node.params[key] = input.value; });
+            group.appendChild(input);
+          } else if (typeof val === 'string' && /prompt|template/i.test(key)) {
+            const input = document.createElement('textarea');
+            input.className = 'wf-prompt-textarea';
+            input.rows = 5;
+            input.value = val;
+            input.placeholder = 'Nhập prompt riêng; dùng {{input}} để chèn nội dung từ node trước.';
             input.setAttribute('aria-label', this.formatParamLabel(key));
             input.addEventListener('input', () => { node.params[key] = input.value; });
             group.appendChild(input);

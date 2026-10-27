@@ -1,0 +1,176 @@
+{
+  "id": "preset_multi_ai",
+  "name": "Multi-Engine AI Studio",
+  "description": "Dùng Gemini Vision phân tích ảnh, sinh prompt tối ưu, kết hợp nhiều Web AI và ghép cảnh hoàn thiện",
+  "category": "custom",
+  "is_preset": true,
+  "nodes": [
+    {
+      "id": "node_char",
+      "type": "character_input",
+      "title": "1. Nhân vật mẫu",
+      "category": "input",
+      "x": 60,
+      "y": 180,
+      "params": {}
+    },
+    {
+      "id": "node_gemini",
+      "type": "gemini_vision",
+      "title": "2. Phân tích Gemini Vision",
+      "category": "ai",
+      "x": 380,
+      "y": 180,
+      "params": {}
+    },
+    {
+      "id": "node_flow",
+      "type": "google_flow_video",
+      "title": "3. Cảnh 1: Google Flow Veo",
+      "category": "ai",
+      "x": 720,
+      "y": 80,
+      "params": {
+        "prompt": "Create a short vertical 9:16 cinematic fashion video. Preserve subject identity and garment design. Follow this creative direction: {{input}}. Use natural movement, realistic materials, and clean editorial lighting."
+      }
+    },
+    {
+      "id": "node_custom_ai",
+      "type": "custom_web_ai",
+      "title": "4. Cảnh 2: Custom Web AI",
+      "category": "ai",
+      "x": 720,
+      "y": 320,
+      "params": {
+        "output_type": "video",
+        "provider_name": "googleflow",
+        "prompt": "Refine the visual prompt for a short vertical fashion video. Preserve all reference details and character identity. Direction: {{input}}."
+      }
+    },
+    {
+      "id": "node_concat",
+      "type": "concat_scenes",
+      "title": "5. Ghép nối 2 phân cảnh",
+      "category": "process",
+      "x": 1060,
+      "y": 200,
+      "params": {}
+    },
+    {
+      "id": "node_output",
+      "type": "video_output",
+      "title": "6. Xuất video Master",
+      "category": "output",
+      "x": 1380,
+      "y": 200,
+      "params": {}
+    },
+    {
+      "id": "input_creative_direction",
+      "type": "workflow_input",
+      "title": "Định hướng sáng tạo cho lần chạy",
+      "category": "workflow",
+      "x": 60,
+      "y": 520,
+      "params": {
+        "key": "creative_direction",
+        "label": "Thể loại / định hướng sáng tạo",
+        "value_type": "text",
+        "required": true,
+        "value": "Analyze subject, clothing, visual style and scene; preserve the character identity and write concise cinematic direction for a short vertical video.",
+        "options": [
+          "Video thời trang điện ảnh",
+          "Kể chuyện cảm xúc",
+          "Phong cách phim tài liệu",
+          "Video giới thiệu sản phẩm"
+        ],
+        "help": "Mô tả thể loại, tông cảm xúc hoặc phong cách hình ảnh cho AI."
+      }
+    },
+    {
+      "id": "output_video",
+      "type": "workflow_output",
+      "title": "Video thành phẩm",
+      "category": "workflow",
+      "x": 1740,
+      "y": 200,
+      "params": {
+        "key": "video",
+        "label": "Video thành phẩm",
+        "value_type": "video"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "node_char",
+      "from_port": "character_image",
+      "to_node": "node_gemini",
+      "to_port": "image_in"
+    },
+    {
+      "id": "e2",
+      "from_node": "node_gemini",
+      "from_port": "optimized_prompt",
+      "to_node": "node_flow",
+      "to_port": "prompt"
+    },
+    {
+      "id": "e3",
+      "from_node": "node_char",
+      "from_port": "character_image",
+      "to_node": "node_flow",
+      "to_port": "character_image"
+    },
+    {
+      "id": "e4",
+      "from_node": "node_gemini",
+      "from_port": "optimized_prompt",
+      "to_node": "node_custom_ai",
+      "to_port": "prompt_in"
+    },
+    {
+      "id": "e8",
+      "from_node": "node_char",
+      "from_port": "character_image",
+      "to_node": "node_custom_ai",
+      "to_port": "asset_in"
+    },
+    {
+      "id": "e5",
+      "from_node": "node_flow",
+      "from_port": "video_out",
+      "to_node": "node_concat",
+      "to_port": "scene_1"
+    },
+    {
+      "id": "e6",
+      "from_node": "node_custom_ai",
+      "from_port": "result_out",
+      "to_node": "node_concat",
+      "to_port": "scene_2"
+    },
+    {
+      "id": "e7",
+      "from_node": "node_concat",
+      "from_port": "master_video",
+      "to_node": "node_output",
+      "to_port": "video_in"
+    },
+    {
+      "id": "e_runtime_creative_direction",
+      "from_node": "input_creative_direction",
+      "from_port": "value",
+      "to_node": "node_gemini",
+      "to_port": "task"
+    },
+    {
+      "id": "e_workflow_output_video",
+      "from_node": "node_output",
+      "from_port": "final_video",
+      "to_node": "output_video",
+      "to_port": "value"
+    }
+  ]
+}
