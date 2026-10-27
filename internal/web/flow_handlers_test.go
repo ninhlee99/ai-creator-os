@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -168,5 +169,45 @@ func TestTC15_WebAPI_ExecuteAndPolling(t *testing.T) {
 	srv.handleAPIFlowRuns(wRuns, reqRuns)
 	if wRuns.Result().StatusCode != http.StatusOK {
 		t.Fatalf("GET /api/flow/runs status = %d", wRuns.Result().StatusCode)
+	}
+}
+
+func TestTC16_WebAPI_Upload(t *testing.T) {
+	srv, cleanup := setupTestServerWithFlow(t)
+	defer cleanup()
+
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	part, err := writer.CreateFormFile("file", "test_character.jpg")
+	if err != nil {
+		t.Fatalf("CreateFormFile failed: %v", err)
+	}
+	// Ghi byte ảnh JPEG hợp lệ
+	_, _ = part.Write([]byte{0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00, 0x01, 0xFF, 0xD9})
+	_ = writer.Close()
+
+	req := httptest.NewRequest("POST", "/api/flow/upload", &buf)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+
+	srv.handleAPIFlowUpload(w, req)
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("POST /api/flow/upload status = %d, body = %s", w.Result().StatusCode, w.Body.String())
+	}
+
+	var res struct {
+		Ok       bool   `json:"ok"`
+		FilePath string `json:"file_path"`
+		Filename string `json:"filename"`
+		URL      string `json:"url"`
+	}
+	if err := json.NewDecoder(w.Result().Body).Decode(&res); err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	if !res.Ok || res.FilePath == "" || res.URL == "" {
+		t.Errorf("Kết quả upload không hợp lệ: %+v", res)
+	}
+	if _, err := os.Stat(res.FilePath); err != nil {
+		t.Errorf("File upload không tồn tại trên đĩa: %s", res.FilePath)
 	}
 }

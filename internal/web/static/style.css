@@ -4005,6 +4005,11 @@ body.page-workflow .layout {
   cursor: grabbing !important;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22), 0 0 0 2px #6366F1 !important;
   z-index: 100 !important;
+  transition: none !important;
+}
+
+.wf-node.is-dragging * {
+  transition: none !important;
 }
 
 .wf-node.selected {
@@ -4530,6 +4535,64 @@ body.page-workflow .layout {
   text-align: center;
 }
 
+/* Node Completed Output Preview Thumbnail */
+.wf-node-preview-thumb {
+  margin-top: 8px;
+  width: 100%;
+  max-height: 140px;
+  min-height: 70px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #090D16;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wf-node-preview-thumb:hover {
+  transform: scale(1.02);
+  border-color: #10B981;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+}
+
+.wf-node-preview-thumb img,
+.wf-node-preview-thumb video {
+  width: 100%;
+  height: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.wf-node-preview-thumb .wf-thumb-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: background 0.15s;
+}
+
+.wf-node-preview-thumb:hover .wf-thumb-play-icon {
+  background: rgba(16, 185, 129, 0.9);
+}
+
 /* Scanning Shimmer Beam effect on preview while node is executing */
 .wf-node.node-running .wf-node-preview::before {
   content: '';
@@ -4926,35 +4989,101 @@ body.page-workflow .layout {
 }
 
 .wf-modal-search-box {
-  position: relative;
   padding: 14px 22px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
+  gap: 12px;
+  background: var(--bg2);
 }
 
+.wf-modal-search-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.wf-modal-search-wrapper .wf-search-icon,
 .wf-search-icon {
   position: absolute;
-  left: 34px;
+  left: 14px;
   color: var(--muted);
   pointer-events: none;
+  transition: color 0.15s ease;
 }
 
+.wf-modal-search-wrapper input,
 .wf-modal-search-box input {
   width: 100%;
-  padding: 11px 14px 11px 42px;
-  border-radius: 8px;
+  height: 42px;
+  padding: 0 14px 0 42px;
+  border-radius: 9px;
   border: 1.5px solid var(--border);
   background: var(--bg3);
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--text);
-  transition: border-color 0.15s;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
+.wf-modal-search-wrapper input:focus,
 .wf-modal-search-box input:focus {
   border-color: #6366F1;
   outline: none;
   background: var(--bg2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.wf-modal-search-wrapper input:focus + .wf-search-icon,
+.wf-modal-search-wrapper:focus-within .wf-search-icon {
+  color: #6366F1;
+}
+
+/* Modal Primary Create Button (Tạo mới) */
+.wf-modal-create-btn {
+  height: 42px;
+  padding: 0 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background-color: #4F46E5 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4338CA !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.wf-modal-create-btn:hover {
+  background-color: #4338CA !important;
+  border-color: #3730A3 !important;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.wf-modal-create-btn:active {
+  background-color: #3730A3 !important;
+  border-color: #312E81 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.wf-modal-create-btn svg,
+.wf-modal-create-btn span {
+  pointer-events: none;
+}
+
+.wf-modal-create-btn svg {
+  flex-shrink: 0;
+  stroke: #FFFFFF;
 }
 
 .wf-modal-tags {
@@ -5112,96 +5241,229 @@ body.page-workflow .layout {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
+.wf-graphs-modal-window {
+  max-width: 1040px !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5) !important;
+}
+
 .wf-graphs-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-  max-height: 56vh;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  max-height: 58vh;
   overflow-y: auto;
-  padding: 16px 22px;
+  padding: 16px 20px;
 }
 
 .wf-graph-card {
-  background: var(--bg3);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .wf-graph-card:hover {
   border-color: #6366F1;
   background: var(--bg2);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2.5px);
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .wf-graph-card.is-active {
   border-color: #6366F1;
-  background: var(--bg2);
-  box-shadow: 0 0 0 2px #6366F1;
+  background: rgba(99, 102, 241, 0.04);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4), 0 8px 24px rgba(99, 102, 241, 0.15);
 }
 
 .wf-graph-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 10px;
+}
+
+.wf-graph-card-title-group {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex: 1;
+}
+
+.wf-graph-card-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .wf-graph-card-title {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.35;
+}
+
+.wf-graph-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #6366F1;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-bottom: 6px;
 }
 
 .wf-graph-card-desc {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
-  line-height: 1.4;
+  line-height: 1.45;
+  margin: 6px 0 0 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.wf-graph-card-meta {
+.wf-graph-card-pipeline-preview {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 8px;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
   font-size: 11px;
   color: var(--muted);
 }
 
+:root[data-theme="light"] .wf-graph-card-pipeline-preview {
+  background: #F1F5F9;
+}
+
+.wf-graph-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  padding-top: 12px;
+  font-size: 11.5px;
+  color: var(--muted);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wf-graph-card-meta-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
 .wf-graph-card-actions {
   display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+.wf-btn-del-graph {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #EF4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  padding: 4px 9px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.wf-btn-del-graph:hover {
+  background: #EF4444 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3) !important;
+}
+
+.wf-btn-dup-graph {
+  background: var(--bg3) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  padding: 4px 9px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.wf-btn-dup-graph:hover {
+  border-color: #6366F1 !important;
+  color: #6366F1 !important;
+}
+
+.wf-btn-open-graph {
+  background: #6366F1 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  padding: 4px 12px !important;
+  font-size: 12px !important;
+}
+
+.wf-btn-open-graph:hover {
+  background: #4F46E5 !important;
 }
 
 .wf-graph-tag {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #6366F1;
+  padding: 2.5px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .wf-graph-tag.tag-preset {
   background: rgba(16, 185, 129, 0.12);
   color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.wf-graph-tag.tag-custom {
+  background: rgba(99, 102, 241, 0.12);
+  color: #818CF8;
+  border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
 .wf-graph-tag.tag-fashion {
   background: rgba(236, 72, 153, 0.12);
   color: #EC4899;
+  border: 1px solid rgba(236, 72, 153, 0.25);
+}
+
+.btn-header-del {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #EF4444 !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+}
+
+.btn-header-del:hover {
+  background: #EF4444 !important;
+  color: #FFFFFF !important;
 }

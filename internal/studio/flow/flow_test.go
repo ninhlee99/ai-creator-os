@@ -488,3 +488,55 @@ func TestTC12_StoreCRUD(t *testing.T) {
 		t.Errorf("Kỳ vọng không cho phép xóa preset mẫu")
 	}
 }
+
+func TestTC14_MultiDependencyExecution(t *testing.T) {
+	workDir, err := os.MkdirTemp("", "flow-dep-test-*")
+	if err != nil {
+		t.Fatalf("MkdirTemp failed: %v", err)
+	}
+	defer os.RemoveAll(workDir)
+
+	outDir := filepath.Join(workDir, "out")
+	_ = os.MkdirAll(outDir, 0o755)
+
+	// Đồ thị: n_char và n_prod đều nối vào n_composite -> n_out
+	graph := &FlowGraph{
+		ID:   "multi_dep_graph",
+		Name: "Multi Dependency Test",
+		Nodes: []FlowNode{
+			{ID: "n_char", Type: "character_input", Title: "Nhân vật"},
+			{ID: "n_prod", Type: "product_input", Title: "Sản phẩm"},
+			{ID: "n_comp", Type: "image_composite", Title: "Ghép phối cảnh"},
+			{ID: "n_out", Type: "image_output", Title: "Ảnh xuất"},
+		},
+		Edges: []FlowEdge{
+			{ID: "e1", FromNode: "n_char", FromPort: "character_image", ToNode: "n_comp", ToPort: "character_image"},
+			{ID: "e2", FromNode: "n_prod", FromPort: "product_image", ToNode: "n_comp", ToPort: "product_image"},
+			{ID: "e3", FromNode: "n_comp", FromPort: "composite_image", ToNode: "n_out", ToPort: "image_in"},
+		},
+	}
+
+	ctx := &ExecutionContext{
+		Context: context.Background(),
+		RunID:   "run_dep_test",
+		WorkDir: workDir,
+		OutDir:  outDir,
+		Log:     func(msg string) {},
+	}
+
+	run, err := ExecuteGraph(ctx, graph)
+	if err != nil {
+		t.Fatalf("ExecuteGraph lỗi: %v", err)
+	}
+	if run.Status != "completed" {
+		t.Fatalf("Kỳ vọng completed, nhận: %s (log: %s)", run.Status, run.Log)
+	}
+
+	// Đảm bảo cả 4 node đều có status completed
+	for _, n := range graph.Nodes {
+		st, ok := run.NodeStates[n.ID]
+		if !ok || st.Status != "completed" {
+			t.Errorf("Node %s chưa hoàn thành: %+v", n.ID, st)
+		}
+	}
+}

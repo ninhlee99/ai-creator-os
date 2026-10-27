@@ -114,7 +114,38 @@ func (s *Server) handleMedia(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	serveMediaFile(w, r, filepath.Join(s.OutDir, name))
+	targetPath := filepath.Join(s.OutDir, name)
+	if !fileExists(targetPath) {
+		// Fallback 1: check in Studio UploadDir
+		if s.Studio != nil {
+			cand := filepath.Join(s.Studio.UploadDir(), name)
+			if fileExists(cand) {
+				targetPath = cand
+			}
+		}
+		// Fallback 2: check in data/uploads
+		if !fileExists(targetPath) {
+			cand := filepath.Join("data", "uploads", name)
+			if fileExists(cand) {
+				targetPath = cand
+			}
+		}
+		// Fallback 3: check in Studio run directories
+		if !fileExists(targetPath) {
+			matches, _ := filepath.Glob(filepath.Join(s.OutDir, "studio", "runs", "*", name))
+			if len(matches) > 0 {
+				targetPath = matches[0]
+			}
+		}
+		// Fallback 4: check in data/work/runs
+		if !fileExists(targetPath) {
+			matches, _ := filepath.Glob(filepath.Join("data", "work", "runs", "*", name))
+			if len(matches) > 0 {
+				targetPath = matches[0]
+			}
+		}
+	}
+	serveMediaFile(w, r, targetPath)
 }
 
 // handleStudioModelPhoto serves uploaded user model photos from data/output/studio/models/{account}/{file}.

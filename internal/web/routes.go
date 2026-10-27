@@ -94,6 +94,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/flow/graphs/{id}", s.handleAPIFlowGraphDetail)
 	mux.HandleFunc("DELETE /api/flow/graphs/{id}", s.handleAPIFlowGraphDetail)
 	mux.HandleFunc("POST /api/flow/execute", s.handleAPIFlowExecute)
+	mux.HandleFunc("POST /api/flow/upload", s.handleAPIFlowUpload)
 	mux.HandleFunc("GET /api/flow/runs", s.handleAPIFlowRuns)
 	mux.HandleFunc("GET /api/flow/runs/{id}", s.handleAPIFlowRunDetail)
 	mux.HandleFunc("POST /api/flow/runs/{id}/cancel", s.handleAPIFlowRunCancel)

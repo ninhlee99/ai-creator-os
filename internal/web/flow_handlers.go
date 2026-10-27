@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -273,5 +277,59 @@ func (s *Server) handleAPIFlowRuns(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":   true,
 		"runs": runs,
+	})
+}
+
+// handleAPIFlowUpload lưu trữ file ảnh hoặc video người dùng tải lên cho các node trong workflow.
+func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(50 << 20); err != nil { // max 50MB
+		http.Error(w, `{"ok":false,"error":"Dung lượng file vượt quá giới hạn hoặc định dạng không hợp lệ"}`, http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, `{"ok":false,"error":"Không tìm thấy file tải lên"}`, http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" && ext != ".mp4" && ext != ".webm" && ext != ".mp3" && ext != ".wav" {
+		http.Error(w, `{"ok":false,"error":"Định dạng file không được hỗ trợ"}`, http.StatusBadRequest)
+		return
+	}
+
+	uploadDir := "data/uploads"
+	if s.Studio != nil && s.Studio.UploadDir() != "" {
+		uploadDir = s.Studio.UploadDir()
+	}
+	_ = os.MkdirAll(uploadDir, 0o755)
+
+	safeBasename := filepath.Base(header.Filename)
+	safeBasename = strings.ReplaceAll(safeBasename, " ", "_")
+	targetFilename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), safeBasename)
+	targetPath := filepath.Join(uploadDir, targetFilename)
+
+	dst, err := os.Create(targetPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	absPath, _ := filepath.Abs(targetPath)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"ok":        true,
+		"file_path": absPath,
+		"filename":  targetFilename,
+		"url":       "/media/" + targetFilename,
 	})
 }

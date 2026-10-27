@@ -223,7 +223,44 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		node := nodeMap[nodeID]
 		def, _ := GetNodeDefinition(node.Type)
 
-		// Thu thập inputs từ các node đi trước
+		// 1. Kiểm tra nghiêm ngặt: Mọi node tiên quyết (dependencies) phải hoàn tất 100%
+		var pendingParents []string
+		for _, edge := range incomingEdges[nodeID] {
+			parentState, exists := run.NodeStates[edge.FromNode]
+			if !exists || parentState.Status != "completed" {
+				pTitle := edge.FromNode
+				if pNode, ok := nodeMap[edge.FromNode]; ok {
+					pTitle = pNode.Title
+				}
+				pendingParents = append(pendingParents, pTitle)
+			}
+		}
+		if len(pendingParents) > 0 {
+			nodeState := NodeState{
+				Status:     "failed",
+				Error:      fmt.Sprintf("Chưa thể thực thi vì các node tiên quyết chưa hoàn thành: %s", strings.Join(pendingParents, ", ")),
+				FinishedAt: time.Now().Format(time.RFC3339),
+			}
+			run.NodeStates[nodeID] = nodeState
+			run.Status = "failed"
+			run.Log = logBuilder.String()
+			appendRunLog(fmt.Sprintf("LỖI PHỤ THUỘC tại node '%s': Cần chờ các node [%s] hoàn tất trước!", node.Title, strings.Join(pendingParents, ", ")))
+			return run, fmt.Errorf("node '%s' cần chờ các node hoàn tất: %s", node.Title, strings.Join(pendingParents, ", "))
+		}
+
+		if len(incomingEdges[nodeID]) > 0 {
+			parentTitles := make([]string, 0, len(incomingEdges[nodeID]))
+			for _, edge := range incomingEdges[nodeID] {
+				pTitle := edge.FromNode
+				if pNode, ok := nodeMap[edge.FromNode]; ok {
+					pTitle = pNode.Title
+				}
+				parentTitles = append(parentTitles, pTitle)
+			}
+			appendRunLog(fmt.Sprintf("Node [%d/%d] '%s': Đã xác nhận hoàn tất đầy đủ %d node nguồn: [%s]", idx+1, totalNodes, node.Title, len(parentTitles), strings.Join(parentTitles, ", ")))
+		}
+
+		// 2. Thu thập inputs từ các node đi trước
 		nodeInputs := make(map[string]any)
 		for _, edge := range incomingEdges[nodeID] {
 			if sourceOutputs, ok := portData[edge.FromNode]; ok {
@@ -236,7 +273,7 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		// Đánh dấu node đang chạy
 		nodeState := NodeState{
 			Status:    "running",
-			Progress:  10,
+			Progress:  20,
 			StartedAt: time.Now().Format(time.RFC3339),
 		}
 		run.NodeStates[nodeID] = nodeState
@@ -275,15 +312,25 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		}
 		portData[nodeID] = outputs
 
-		// Xác định output preview (ảnh hoặc video)
+		// Xác định output preview (ảnh hoặc video) CHỈ CHO CÁC NODE VISUAL MEDIA THỰC TẾ
 		var previewURL string
-		for _, val := range outputs {
-			if s, ok := val.(string); ok && s != "" {
-				ext := strings.ToLower(filepath.Ext(s))
-				if ext == ".mp4" || ext == ".webm" || ext == ".jpg" || ext == ".png" || ext == ".webp" {
-					previewURL = s
-					break
+		if isVisualNodeType(node.Type) {
+			for _, val := range outputs {
+				if s, ok := val.(string); ok && s != "" {
+					ext := strings.ToLower(filepath.Ext(s))
+					if (ext == ".mp4" || ext == ".webm" || ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp") && !strings.Contains(s, "_mask.") {
+						previewURL = s
+						break
+					}
 				}
+			}
+		}
+
+		// Nếu có file preview và ctx.OutDir được chỉ định, đảm bảo copy về OutDir để web load /media/ không 404
+		if previewURL != "" && ctx.OutDir != "" && fileExists(previewURL) {
+			destMedia := filepath.Join(ctx.OutDir, filepath.Base(previewURL))
+			if !fileExists(destMedia) {
+				_ = copyFile(previewURL, destMedia)
 			}
 		}
 
@@ -321,4 +368,15 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	appendRunLog(fmt.Sprintf("Toàn bộ đồ thị đã thực thi thành công 100%% (Final Output: %s)", filepath.Base(run.FinalOutput)))
 
 	return run, nil
+}
+
+func isVisualNodeType(nodeType string) bool {
+	switch nodeType {
+	case "character_input", "product_input", "product_extractor", "image_composite",
+		"virtual_tryon", "google_flow_video", "muse_ai_video", "video_source",
+		"video_upscale", "concat_scenes", "video_output", "image_output":
+		return true
+	default:
+		return false
+	}
 }

@@ -38,6 +38,7 @@
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
 
       this.initEvents();
+      this.applyTransform();
       this.render();
       this.bindToolbar();
       this.bindInspector();
@@ -191,10 +192,11 @@
         this.deleteNode(node.id);
       });
 
-      // Drag Node (Entire node card is smoothly draggable)
+      // Drag Node (Entire node card is smoothly draggable with real-time wire auto-stretch)
       let startClientX = 0, startClientY = 0;
       let startNodeX = 0, startNodeY = 0;
       let isDraggingNode = false;
+      let rafId = null;
 
       nodeEl.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
@@ -237,7 +239,10 @@
           nodeEl.style.left = `${node.x}px`;
           nodeEl.style.top = `${node.y}px`;
 
-          this.renderWires();
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            this.renderWires();
+          });
         };
 
         const onMouseUp = () => {
@@ -246,8 +251,15 @@
             nodeEl.classList.remove('is-dragging');
             document.body.style.userSelect = '';
           }
+          if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          }
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
+
+          // Guarantee final wire alignment upon dropping node
+          this.renderWires();
         };
 
         window.addEventListener('mousemove', onMouseMove);
@@ -289,7 +301,7 @@
       const footer = document.createElement('div');
       footer.className = 'wf-node-footer';
       footer.id = `node-footer-${node.id}`;
-      footer.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' });
+      footer.innerHTML = this.renderNodeStatus(node.state || { status: 'idle' }, node.type);
       nodeEl.appendChild(footer);
 
       // Click anywhere on node to select
@@ -336,9 +348,9 @@
           startClientY = e.clientY;
 
           const rect = dot.getBoundingClientRect();
-          const containerRect = this.container.getBoundingClientRect();
-          const startX = (rect.left + rect.width / 2 - containerRect.left - this.panX) / this.scale;
-          const startY = (rect.top + rect.height / 2 - containerRect.top - this.panY) / this.scale;
+          const vpRect = this.viewport.getBoundingClientRect();
+          const startX = (rect.left + rect.width / 2 - vpRect.left) / this.scale;
+          const startY = (rect.top + rect.height / 2 - vpRect.top) / this.scale;
 
           this.activeConnecting = {
             nodeId,
@@ -404,6 +416,9 @@
       const config = this.getNodePreviewConfig(node);
       if (!config) return null;
 
+      // Không render nếu không có url và node không cho phép tải lên
+      if (!config.url && !config.canUpload) return null;
+
       const previewContainer = document.createElement('div');
       previewContainer.className = `wf-node-preview ${config.isCutout ? 'preview-cutout' : ''}`;
       previewContainer.id = `node-preview-${node.id}`;
@@ -415,39 +430,37 @@
       previewContainer.appendChild(badge);
 
       // Media element
-      if (config.type === 'video') {
-        const video = document.createElement('video');
-        video.src = config.url;
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        // Auto play on hover
-        previewContainer.addEventListener('mouseenter', () => {
-          video.play().catch(() => {});
-        });
-        previewContainer.addEventListener('mouseleave', () => {
-          video.pause();
-        });
-        previewContainer.appendChild(video);
-      } else if (config.type === 'image' || config.type === 'cutout') {
-        const img = document.createElement('img');
-        img.src = config.url;
-        img.alt = node.title || 'Preview';
-        img.loading = 'lazy';
-        previewContainer.appendChild(img);
-      } else if (config.type === 'audio') {
-        const audioBox = document.createElement('div');
-        audioBox.className = 'wf-preview-audio-box';
-        audioBox.innerHTML = `
-          <div class="wf-preview-waveform">
-            <span style="height:40%"></span><span style="height:80%"></span><span style="height:60%"></span>
-            <span style="height:100%"></span><span style="height:70%"></span><span style="height:35%"></span>
-            <span style="height:90%"></span><span style="height:55%"></span><span style="height:75%"></span>
-          </div>
-          <div class="wf-preview-audio-title">${node.params?.audio_title || 'Âm thanh thịnh hành (128 BPM)'}</div>
-        `;
-        previewContainer.appendChild(audioBox);
+      if (config.url) {
+        if (config.type === 'video') {
+          const video = document.createElement('video');
+          video.src = config.url;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.preload = 'metadata';
+          video.onerror = () => { video.style.display = 'none'; };
+          // Auto play on hover
+          previewContainer.addEventListener('mouseenter', () => {
+            video.play().catch(() => {});
+          });
+          previewContainer.addEventListener('mouseleave', () => {
+            video.pause();
+          });
+          previewContainer.appendChild(video);
+        } else if (config.type === 'image' || config.type === 'cutout') {
+          const img = document.createElement('img');
+          img.src = config.url;
+          img.alt = '';
+          img.loading = 'lazy';
+          img.onerror = () => { img.style.display = 'none'; };
+          previewContainer.appendChild(img);
+        }
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'wf-preview-empty-placeholder';
+        placeholder.style.cssText = 'padding:14px 10px;text-align:center;font-size:12px;color:var(--text-muted, #94a3b8);background:rgba(0,0,0,0.15);border-radius:6px;';
+        placeholder.innerHTML = '<span>Chưa có ảnh mẫu. Bấm <b>Tải lên</b> bên dưới</span>';
+        previewContainer.appendChild(placeholder);
       }
 
       // Quick actions toolbar
@@ -455,16 +468,18 @@
       actions.className = 'wf-preview-actions';
 
       // 1. Zoom / Lightbox button
-      const zoomBtn = document.createElement('button');
-      zoomBtn.type = 'button';
-      zoomBtn.className = 'wf-preview-btn';
-      zoomBtn.title = 'Phóng to xem chi tiết';
-      zoomBtn.innerHTML = '🔍 Xem';
-      zoomBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.openLightbox(node.title || 'Preview', config.url, config.type);
-      });
-      actions.appendChild(zoomBtn);
+      if (config.url) {
+        const zoomBtn = document.createElement('button');
+        zoomBtn.type = 'button';
+        zoomBtn.className = 'wf-preview-btn';
+        zoomBtn.title = 'Phóng to xem chi tiết';
+        zoomBtn.innerHTML = '🔍 Xem';
+        zoomBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.openLightbox(node.title || 'Preview', config.url, config.type);
+        });
+        actions.appendChild(zoomBtn);
+      }
 
       // 2. Upload button (if node supports uploading input asset)
       if (config.canUpload) {
@@ -479,25 +494,47 @@
         fileInput.accept = config.type === 'video' ? 'video/mp4,video/*' : 'image/*';
         fileInput.style.display = 'none';
 
-        fileInput.addEventListener('change', (ev) => {
+        fileInput.addEventListener('change', async (ev) => {
           const file = ev.target.files && ev.target.files[0];
           if (!file) return;
 
+          // 1. Hiển thị tức thời preview cục bộ qua base64
           const reader = new FileReader();
           reader.onload = (re) => {
             const dataUrl = re.target.result;
             if (!node.params) node.params = {};
             node.params.preview_url = dataUrl;
-            if (config.type === 'video') {
-              node.params.video_path = file.name;
-            } else {
-              node.params.model_path = file.name;
-              node.params.product_image = file.name;
-            }
             this.updateNodePreview(node.id, dataUrl);
             this.propagatePreviewUpdate(node.id, dataUrl);
           };
           reader.readAsDataURL(file);
+
+          // 2. Tải trực tiếp file lên máy chủ AI Creator OS để hệ thống xử lý đúng tệp ảnh/sản phẩm thực tế
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const resp = await fetch('/api/flow/upload', {
+              method: 'POST',
+              body: formData
+            });
+            const res = await resp.json();
+            if (res.ok) {
+              if (!node.params) node.params = {};
+              node.params.preview_url = res.url;
+              if (config.type === 'video') {
+                node.params.video_path = res.file_path;
+              } else if (node.type === 'character_input') {
+                node.params.model_path = res.file_path;
+                node.params.character_image = res.file_path;
+              } else {
+                node.params.product_image = res.file_path;
+              }
+              this.updateNodePreview(node.id, res.url);
+              this.propagatePreviewUpdate(node.id, res.url);
+            }
+          } catch (uploadErr) {
+            console.warn('Lỗi tải file lên server, tiếp tục dùng dữ liệu cục bộ', uploadErr);
+          }
         });
 
         uploadBtn.addEventListener('click', (e) => {
@@ -516,7 +553,9 @@
         if (e.target.closest('button') || e.target.closest('input')) return;
         e.stopPropagation();
         this.selectNode(node.id);
-        this.openLightbox(node.title || 'Preview', config.url, config.type);
+        if (config.url) {
+          this.openLightbox(node.title || 'Preview', config.url, config.type);
+        }
       });
 
       return previewContainer;
@@ -530,7 +569,7 @@
         case 'character_input':
           return {
             type: 'image',
-            url: params.preview_url || '/static/presets/char_01.jpg',
+            url: params.preview_url || params.model_path || '',
             badge: '👤 Nhân vật mẫu',
             canUpload: true,
             isCutout: false
@@ -539,7 +578,7 @@
         case 'product_input':
           return {
             type: 'image',
-            url: params.preview_url || '/static/presets/char_04.jpg',
+            url: params.preview_url || params.product_image || '',
             badge: '🛍️ Sản phẩm mẫu',
             canUpload: true,
             isCutout: false
@@ -549,8 +588,8 @@
         case 'background_remover':
           return {
             type: 'cutout',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_04.jpg',
-            badge: '✂️ Đã tách nền PNG',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
+            badge: '✂️ Bóc tách sản phẩm',
             canUpload: false,
             isCutout: true
           };
@@ -558,35 +597,8 @@
         case 'image_composite':
           return {
             type: 'image',
-            url: params.preview_url || '/static/presets/char_02.jpg',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
             badge: '✨ Ghép phối cảnh AI',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'video_source':
-          return {
-            type: 'video',
-            url: params.preview_url || '/static/sample_916.mp4',
-            badge: '🎬 Video TikTok Radar (13.8s)',
-            canUpload: true,
-            isCutout: false
-          };
-
-        case 'dance_motion_extractor':
-          return {
-            type: 'image',
-            url: '/static/agents/dancer.jpg',
-            badge: '🕺 Vũ đạo 128 BPM (18 Poses)',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'dance_retarget':
-          return {
-            type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_01.jpg',
-            badge: '🎭 Khớp khung xương',
             canUpload: false,
             isCutout: false
           };
@@ -594,17 +606,8 @@
         case 'virtual_tryon':
           return {
             type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/pintest-01.jpg',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
             badge: '👗 Thay trang phục AI',
-            canUpload: false,
-            isCutout: false
-          };
-
-        case 'camera_angles_director':
-          return {
-            type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/pintest-01.jpg',
-            badge: '🎬 3 Góc quay điện ảnh',
             canUpload: false,
             isCutout: false
           };
@@ -612,7 +615,7 @@
         case 'google_flow_video':
           return {
             type: 'video',
-            url: '/static/sample_916.mp4',
+            url: params.preview_url || '',
             badge: '✨ Google Flow Veo 2',
             canUpload: false,
             isCutout: false
@@ -621,25 +624,25 @@
         case 'muse_ai_video':
           return {
             type: 'video',
-            url: '/static/sample_916.mp4',
+            url: params.preview_url || '',
             badge: '⚡ Muse AI Video',
             canUpload: false,
             isCutout: false
           };
 
-        case 'custom_web_ai':
+        case 'video_source':
           return {
             type: 'video',
-            url: '/static/sample_916.mp4',
-            badge: '🧠 Web AI Video',
-            canUpload: false,
+            url: params.preview_url || params.video_path || '',
+            badge: '🎬 Video TikTok gốc',
+            canUpload: true,
             isCutout: false
           };
 
         case 'video_upscale':
           return {
             type: 'video',
-            url: '/static/sample_916.mp4',
+            url: params.preview_url || '',
             badge: '💎 4K 60FPS UHD Enhanced',
             canUpload: false,
             isCutout: false
@@ -648,7 +651,7 @@
         case 'video_output':
           return {
             type: 'video',
-            url: '/static/sample_916.mp4',
+            url: params.preview_url || '',
             badge: '🎉 Video hoàn thiện 9:16',
             canUpload: false,
             isCutout: false
@@ -657,22 +660,13 @@
         case 'image_output':
           return {
             type: 'image',
-            url: params.preview_url || this.getConnectedInputPreview(node.id) || '/static/presets/char_01.jpg',
+            url: params.preview_url || this.getConnectedInputPreview(node.id) || '',
             badge: '🖼️ Ảnh hoàn thiện',
             canUpload: false,
             isCutout: false
           };
 
-        case 'audio_source':
-        case 'audio_merge':
-          return {
-            type: 'audio',
-            url: '/static/preview.mp3',
-            badge: '🎵 Âm thanh thịnh hành',
-            canUpload: false,
-            isCutout: false
-          };
-
+        // Các node dạng logic, kịch bản prompt, phân tích camera, âm thanh không hiển thị preview ảnh
         default:
           return null;
       }
@@ -680,18 +674,20 @@
 
     getConnectedInputPreview(nodeId) {
       if (!this.graph.edges) return null;
-      const incomingEdge = this.graph.edges.find(e => e.to_node === nodeId);
+      const incomingEdge = this.graph.edges.find(e => (e.to_node || e.toNode || e.ToNode) === nodeId);
       if (!incomingEdge) return null;
-      const sourceNode = this.graph.nodes.find(n => n.id === incomingEdge.from_node);
+      const fromNodeId = incomingEdge.from_node || incomingEdge.fromNode || incomingEdge.FromNode;
+      const sourceNode = this.graph.nodes.find(n => n.id === fromNodeId);
       if (!sourceNode) return null;
       return sourceNode.params?.preview_url || null;
     }
 
     propagatePreviewUpdate(nodeId, newUrl) {
       if (!this.graph.edges) return;
-      const outgoingEdges = this.graph.edges.filter(e => e.from_node === nodeId);
+      const outgoingEdges = this.graph.edges.filter(e => (e.from_node || e.fromNode || e.FromNode) === nodeId);
       outgoingEdges.forEach(edge => {
-        const targetNode = this.graph.nodes.find(n => n.id === edge.to_node);
+        const toNodeId = edge.to_node || edge.toNode || edge.ToNode;
+        const targetNode = this.graph.nodes.find(n => n.id === toNodeId);
         if (targetNode) {
           if (!targetNode.params) targetNode.params = {};
           targetNode.params.preview_url = newUrl;
@@ -760,27 +756,34 @@
     }
 
     renderWires() {
-      this.svgLayer.innerHTML = '';
-      if (!this.graph.edges) return;
+      while (this.svgLayer.firstChild) {
+        this.svgLayer.removeChild(this.svgLayer.firstChild);
+      }
+      if (!this.graph.edges || !Array.isArray(this.graph.edges)) return;
 
       this.graph.edges.forEach(edge => {
-        const fromDot = this.findPortDot(edge.from_node, edge.from_port, true);
-        const toDot = this.findPortDot(edge.to_node, edge.to_port, false);
+        const fromNodeId = edge.from_node || edge.fromNode || edge.FromNode;
+        const fromPortId = edge.from_port || edge.fromPort || edge.FromPort;
+        const toNodeId = edge.to_node || edge.toNode || edge.ToNode;
+        const toPortId = edge.to_port || edge.toPort || edge.ToPort;
+
+        const fromDot = this.findPortDot(fromNodeId, fromPortId, true);
+        const toDot = this.findPortDot(toNodeId, toPortId, false);
         if (!fromDot || !toDot) return;
 
         const p1 = this.getPortCoordinates(fromDot);
         const p2 = this.getPortCoordinates(toDot);
         const d = this.calculateBezier(p1.x, p1.y, p2.x, p2.y);
 
-        const fromNode = this.graph.nodes.find(n => n.id === edge.from_node);
-        const toNode = this.graph.nodes.find(n => n.id === edge.to_node);
-        const portType = fromDot.parentElement ? fromDot.parentElement.dataset.type : 'any';
+        const fromNode = this.graph.nodes ? this.graph.nodes.find(n => n.id === fromNodeId) : null;
+        const toNode = this.graph.nodes ? this.graph.nodes.find(n => n.id === toNodeId) : null;
+        const portType = fromDot.parentElement ? (fromDot.parentElement.getAttribute('data-type') || fromDot.parentElement.dataset?.type || 'any') : 'any';
 
         const isRunning = (fromNode?.state?.status === 'running') || (toNode?.state?.status === 'running');
 
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('class', `flow-wire-group ${isRunning ? 'active-flowing' : ''}`);
-        group.dataset.edgeId = edge.id;
+        group.setAttribute('data-edge-id', edge.id || '');
 
         // 1. Shadow / Glow outline path (ComfyUI & n8n depth)
         const shadowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -826,9 +829,9 @@
 
     updateTempWire(clientX, clientY) {
       if (!this.tempWire || !this.activeConnecting) return;
-      const containerRect = this.container.getBoundingClientRect();
-      const curX = (clientX - containerRect.left - this.panX) / this.scale;
-      const curY = (clientY - containerRect.top - this.panY) / this.scale;
+      const vpRect = this.viewport.getBoundingClientRect();
+      const curX = (clientX - vpRect.left) / this.scale;
+      const curY = (clientY - vpRect.top) / this.scale;
 
       const d = this.calculateBezier(this.activeConnecting.startX, this.activeConnecting.startY, curX, curY);
       this.tempWire.setAttribute('d', d);
@@ -848,16 +851,18 @@
     }
 
     findPortDot(nodeId, portId, isOutput) {
+      if (!nodeId || !portId) return null;
       const selector = `.wf-port[data-node-id="${nodeId}"][data-port-id="${portId}"][data-is-output="${isOutput ? '1' : '0'}"] .wf-port-dot`;
       return this.nodesLayer.querySelector(selector);
     }
 
     getPortCoordinates(dotEl) {
-      const rect = dotEl.getBoundingClientRect();
-      const containerRect = this.container.getBoundingClientRect();
+      if (!dotEl) return { x: 0, y: 0 };
+      const dotRect = dotEl.getBoundingClientRect();
+      const vpRect = this.viewport.getBoundingClientRect();
       return {
-        x: (rect.left + rect.width / 2 - containerRect.left - this.panX) / this.scale,
-        y: (rect.top + rect.height / 2 - containerRect.top - this.panY) / this.scale
+        x: (dotRect.left + dotRect.width / 2 - vpRect.left) / this.scale,
+        y: (dotRect.top + dotRect.height / 2 - vpRect.top) / this.scale
       };
     }
 
@@ -883,7 +888,11 @@
 
     deleteNode(nodeId) {
       this.graph.nodes = this.graph.nodes.filter(n => n.id !== nodeId);
-      this.graph.edges = this.graph.edges.filter(e => e.from_node !== nodeId && e.to_node !== nodeId);
+      this.graph.edges = this.graph.edges.filter(e => {
+        const fromNode = e.from_node || e.fromNode || e.FromNode;
+        const toNode = e.to_node || e.toNode || e.ToNode;
+        return fromNode !== nodeId && toNode !== nodeId;
+      });
       if (this.selectedNodeId === nodeId) {
         this.deselectAll();
       }
@@ -954,29 +963,42 @@
       this.nodesLayer.querySelectorAll('.wf-node').forEach(el => el.classList.remove('selected'));
     }
 
-    renderNodeStatus(state) {
+    renderNodeStatus(state, nodeType) {
       if (!state || state.status === 'idle') {
         return `<span class="wf-status-badge wf-status-idle">Chờ thực thi</span>`;
       }
+      if (state.status === 'queued') {
+        return `<span class="wf-status-badge wf-status-idle">⏳ Đang xếp hàng...</span>`;
+      }
       if (state.status === 'running') {
-        return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${state.progress || 10}%)...</span>`;
+        return `<span class="wf-status-badge wf-status-running"><span class="wf-spinner"></span> ⚡ Đang thực thi (${state.progress || 20}%)...</span>`;
       }
       if (state.status === 'completed') {
         let preview = '';
-        if (state.output_preview) {
+        if (state.output_preview && this.isVisualNodeType(nodeType)) {
           const fn = this.getFilename(state.output_preview);
           if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
-            preview = `<div class="wf-node-preview-thumb"><video src="/media/${fn}" autoplay muted loop playsinline></video></div>`;
+            preview = `<div class="wf-node-preview-thumb" onclick="event.stopPropagation(); window.flowCanvas && window.flowCanvas.openLightbox('Kết quả Video', '/media/${fn}', 'video')" title="Bấm để xem video phóng to"><video src="/media/${fn}" autoplay muted loop playsinline onerror="this.parentElement.style.display='none'"></video><span class="wf-thumb-play-icon">▶</span></div>`;
           } else {
-            preview = `<div class="wf-node-preview-thumb"><img src="/media/${fn}" alt="Preview"></div>`;
+            preview = `<div class="wf-node-preview-thumb" onclick="event.stopPropagation(); window.flowCanvas && window.flowCanvas.openLightbox('Kết quả hình ảnh', '/media/${fn}', 'image')" title="Bấm để phóng to xem ảnh"><img src="/media/${fn}" alt="" onerror="this.parentElement.style.display='none'"></div>`;
           }
         }
         return `<div class="wf-status-badge wf-status-completed">✓ Hoàn tất 100%</div>${preview}`;
       }
       if (state.status === 'failed') {
-        return `<span class="wf-status-badge wf-status-failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 26) : 'Thất bại'}</span>`;
+        return `<span class="wf-status-badge wf-status-failed" title="${state.error || ''}">⚠️ Lỗi: ${state.error ? state.error.slice(0, 32) : 'Thất bại'}</span>`;
       }
       return '';
+    }
+
+    isVisualNodeType(type) {
+      if (!type) return false;
+      const visualTypes = [
+        'character_input', 'product_input', 'product_extractor', 'background_remover',
+        'image_composite', 'virtual_tryon', 'google_flow_video', 'muse_ai_video',
+        'video_source', 'video_upscale', 'concat_scenes', 'video_output', 'image_output'
+      ];
+      return visualTypes.includes(type);
     }
 
     getFilename(path) {
@@ -1071,6 +1093,26 @@
           } catch (err) {
             alert('Lỗi kết nối máy chủ: ' + err.message);
           }
+        });
+      }
+
+      // Duplicate Active Graph button
+      const btnDupActive = document.getElementById('btn-duplicate-active-graph');
+      if (btnDupActive) {
+        btnDupActive.addEventListener('click', () => {
+          this.duplicateGraph(this.graph.id, this.graph.name);
+        });
+      }
+
+      // Delete Active Graph button
+      const btnDelActive = document.getElementById('btn-delete-active-graph');
+      if (btnDelActive) {
+        btnDelActive.addEventListener('click', () => {
+          if (this.graph.is_preset) {
+            alert('Đây là mẫu preset có sẵn của hệ thống. Bạn có thể bấm "Nhân bản" để tạo bản sao riêng và tự do chỉnh sửa hoặc xóa.');
+            return;
+          }
+          this.deleteGraph(this.graph.id, this.graph.name);
         });
       }
 
@@ -1219,7 +1261,7 @@
               if (node) {
                 node.state = nodeState;
                 const footer = document.getElementById(`node-footer-${nodeId}`);
-                if (footer) footer.innerHTML = this.renderNodeStatus(nodeState);
+                if (footer) footer.innerHTML = this.renderNodeStatus(nodeState, node.type);
 
                 const nodeEl = document.getElementById(`node-${nodeId}`);
                 if (nodeEl) {
@@ -1454,9 +1496,9 @@
           const fn = this.getFilename(node.state.output_preview);
           if (previewStatus) previewStatus.innerText = 'Đã có kết quả';
           if (fn.endsWith('.mp4') || fn.endsWith('.webm')) {
-            previewBox.innerHTML = `<video src="/media/${fn}" controls autoplay muted loop style="max-width:100%;border-radius:6px"></video>`;
+            previewBox.innerHTML = `<video src="/media/${fn}" controls autoplay muted loop playsinline onerror="this.style.display='none'" style="max-width:100%;border-radius:6px"></video>`;
           } else {
-            previewBox.innerHTML = `<img src="/media/${fn}" alt="Preview" style="max-width:100%;border-radius:6px">`;
+            previewBox.innerHTML = `<img src="/media/${fn}" alt="" onerror="this.style.display='none'" style="max-width:100%;border-radius:6px">`;
           }
         } else {
           if (previewStatus) previewStatus.innerText = 'Chưa có kết quả';
@@ -1659,6 +1701,20 @@
       const graphs = this.savedGraphs || [];
       const q = query.toLowerCase().trim();
 
+      // Cập nhật số lượng đếm trên các tab bộ lọc
+      const total = graphs.length;
+      const presetsCount = graphs.filter(g => g.is_preset).length;
+      const customCount = graphs.filter(g => !g.is_preset).length;
+
+      const countAll = document.getElementById('count-all');
+      if (countAll) countAll.innerText = `(${total})`;
+      const countCustom = document.getElementById('count-custom');
+      if (countCustom) countCustom.innerText = `(${customCount})`;
+      const countPreset = document.getElementById('count-preset');
+      if (countPreset) countPreset.innerText = `(${presetsCount})`;
+
+      let matchCount = 0;
+
       graphs.forEach(g => {
         if (filter === 'presets' || filter === 'preset') {
           if (!g.is_preset) return;
@@ -1675,41 +1731,81 @@
           if (!matchName && !matchDesc && !matchCat) return;
         }
 
+        matchCount++;
+
+        const isActive = this.graph && this.graph.id === g.id;
         const card = document.createElement('div');
-        card.className = `wf-graph-card ${this.graph && this.graph.id === g.id ? 'is-active' : ''}`;
+        card.className = `wf-graph-card ${isActive ? 'is-active' : ''}`;
+
+        let catIcon = '⚡';
+        if (g.category === 'viral') catIcon = '🕺';
+        else if (g.category === 'fashion') catIcon = '👗';
+        else if (g.category === 'affiliate') catIcon = '🛍️';
+        else if (g.category === 'custom') catIcon = '🧠';
 
         let catTag = 'tag-custom';
-        let catLabel = 'Tự tạo';
+        let catLabel = '💾 Luồng của bạn';
         if (g.is_preset) {
           catTag = 'tag-preset';
-          catLabel = 'Mẫu Preset';
+          catLabel = '✨ Mẫu hệ thống';
         } else if (g.category === 'fashion') {
           catTag = 'tag-fashion';
-          catLabel = 'Thời trang';
+          catLabel = '👗 Thời trang';
         }
 
         card.innerHTML = `
           <div>
+            ${isActive ? `<div class="wf-graph-active-badge">● Đang mở trên Canvas</div>` : ''}
             <div class="wf-graph-card-header">
-              <span class="wf-graph-card-title">${g.name}</span>
+              <div class="wf-graph-card-title-group">
+                <span class="wf-graph-card-icon">${catIcon}</span>
+                <span class="wf-graph-card-title">${g.name}</span>
+              </div>
               <span class="wf-graph-tag ${catTag}">${catLabel}</span>
             </div>
-            <p class="wf-graph-card-desc">${g.description || 'Workflow tự động hóa video'}</p>
+            <p class="wf-graph-card-desc">${g.description || 'Workflow tự động hóa sản xuất video AI Creator OS'}</p>
           </div>
           <div class="wf-graph-card-meta">
-            <span>⚡ ${g.node_count || 0} nodes • ${g.edge_count || 0} dây nối</span>
+            <div class="wf-graph-card-meta-info">
+              <span>⚡ ${g.node_count || 0} nodes</span>
+              <span>•</span>
+              <span>🔗 ${g.edge_count || 0} dây nối</span>
+            </div>
             <div class="wf-graph-card-actions">
-              ${!g.is_preset ? `<button type="button" class="wf-btn wf-btn-danger btn-del-graph" title="Xóa workflow này">🗑️</button>` : ''}
-              <button type="button" class="wf-btn wf-btn-primary btn-open-graph">Mở</button>
+              ${!g.is_preset ? `
+                <button type="button" class="wf-btn-del-graph btn-del-graph" title="Xóa vĩnh viễn workflow đã lưu này">
+                  🗑️ Xóa
+                </button>
+              ` : ''}
+              <button type="button" class="wf-btn-dup-graph btn-dup-graph" title="Tạo bản sao riêng để bạn tự do chỉnh sửa và xóa">
+                📑 Nhân bản
+              </button>
+              <button type="button" class="wf-btn-open-graph btn-open-graph">
+                ${isActive ? '✓ Đang xem' : 'Mở'}
+              </button>
             </div>
           </div>
         `;
 
-        card.querySelector('.btn-open-graph').addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.loadGraphById(g.id);
-        });
+        // Sự kiện mở workflow
+        const openBtn = card.querySelector('.btn-open-graph');
+        if (openBtn) {
+          openBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.loadGraphById(g.id);
+          });
+        }
 
+        // Sự kiện nhân bản
+        const dupBtn = card.querySelector('.btn-dup-graph');
+        if (dupBtn) {
+          dupBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.duplicateGraph(g.id, g.name);
+          });
+        }
+
+        // Sự kiện xóa workflow đã lưu
         const delBtn = card.querySelector('.btn-del-graph');
         if (delBtn) {
           delBtn.addEventListener('click', (e) => {
@@ -1724,6 +1820,57 @@
 
         grid.appendChild(card);
       });
+
+      // Trạng thái trống nếu không có kết quả tìm kiếm
+      if (matchCount === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; color: var(--muted);">
+            <div style="font-size: 38px; margin-bottom: 12px;">📂</div>
+            <div style="font-weight: 700; font-size: 16px; color: var(--text);">Không tìm thấy workflow phù hợp</div>
+            <p style="font-size: 13px; margin: 6px 0 18px; color: var(--muted);">Bạn có thể thử tìm với từ khóa khác hoặc bấm tạo một luồng workflow mới.</p>
+            <button type="button" class="wf-modal-create-btn" style="margin: 0 auto;" onclick="document.getElementById('btn-modal-create-graph').click()">
+              <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Tạo mới</span>
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    async duplicateGraph(id, name) {
+      try {
+        const resp = await fetch(`/api/flow/graphs/${id}`);
+        const data = await resp.json();
+        if (!data.ok || !data.graph) {
+          alert('Không thể đọc dữ liệu workflow để nhân bản');
+          return;
+        }
+
+        const cloned = JSON.parse(JSON.stringify(data.graph));
+        cloned.id = `flow_${Date.now()}`;
+        cloned.name = `${name} (Bản sao)`;
+        cloned.is_preset = false;
+        cloned.created_at = new Date().toISOString();
+        cloned.updated_at = new Date().toISOString();
+
+        const saveResp = await fetch('/api/flow/graphs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cloned)
+        });
+        const saveRes = await saveResp.json();
+        if (saveRes.ok) {
+          await this.refreshGraphsList();
+          this.renderGraphsModalGrid();
+          await this.loadGraphById(cloned.id);
+          alert(`✓ Đã nhân bản thành công: "${cloned.name}". Đây là bản lưu riêng của bạn, bạn có thể tự do chỉnh sửa hoặc xóa!`);
+          this.closeGraphsModal();
+        } else {
+          alert('Lỗi nhân bản: ' + (saveRes.error || ''));
+        }
+      } catch (err) {
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+      }
     }
 
     async loadGraphById(id) {
@@ -1776,7 +1923,7 @@
     }
 
     async deleteGraph(id, name) {
-      if (!confirm(`Bạn có chắc muốn xóa workflow "${name}"? Thao tác này không thể hoàn tác.`)) {
+      if (!confirm(`Bạn có chắc muốn xóa vĩnh viễn workflow "${name}"? Thao tác này không thể hoàn tác.`)) {
         return;
       }
       try {
@@ -1786,11 +1933,12 @@
           this.savedGraphs = this.savedGraphs.filter(g => g.id !== id);
           await this.refreshGraphsList();
           this.renderGraphsModalGrid();
-          if (this.graph.id === id) {
+          if (this.graph && this.graph.id === id) {
             this.loadGraphById('preset_viral_dance');
           }
+          alert(`✓ Đã xóa thành công workflow "${name}"!`);
         } else {
-          alert('Lỗi xóa workflow: ' + (data.error || ''));
+          alert('Không thể xóa workflow: ' + (data.error || ''));
         }
       } catch (err) {
         alert('Lỗi kết nối máy chủ: ' + err.message);

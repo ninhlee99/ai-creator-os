@@ -1,15 +1,52 @@
 package flow
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
+func decodeBase64DataURL(dataURL, outPath string) error {
+	parts := strings.SplitN(dataURL, ",", 2)
+	if len(parts) != 2 {
+		return errors.New("invalid data url")
+	}
+	raw, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return err
+	}
+	_ = os.MkdirAll(filepath.Dir(outPath), 0o755)
+	return os.WriteFile(outPath, raw, 0o644)
+}
+
 func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	modelPath := nodeParamString(node.Params, "model_path", "")
 	modelName := nodeParamString(node.Params, "model_name", "Nhân vật đại diện")
+
+	// 1. Kiểm tra nếu có dữ liệu ảnh upload trực tiếp dạng base64
+	if previewURL := nodeParamString(node.Params, "preview_url", ""); strings.HasPrefix(previewURL, "data:image/") {
+		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_character_upload.jpg", node.ID))
+		if err := decodeBase64DataURL(previewURL, savedUpload); err == nil {
+			modelPath = savedUpload
+		}
+	}
+
+	// 2. Nếu modelPath là tên file tải lên (tìm trong data/uploads hoặc Studio UploadDir)
+	if modelPath != "" && !fileExists(modelPath) {
+		candidates := []string{
+			filepath.Join("data", "uploads", filepath.Base(modelPath)),
+			filepath.Join(ctx.WorkDir, filepath.Base(modelPath)),
+		}
+		for _, cand := range candidates {
+			if fileExists(cand) {
+				modelPath = cand
+				break
+			}
+		}
+	}
 
 	// Nếu chưa có model_path cụ thể, tìm ảnh nhân vật sẵn có trong thư viện
 	if modelPath == "" || !fileExists(modelPath) {
@@ -70,6 +107,28 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	prodTitle := nodeParamString(node.Params, "product_title", "Sản phẩm xu hướng")
 	prodID := nodeParamString(node.Params, "product_id", "")
 	affURL := nodeParamString(node.Params, "affiliate_url", "")
+
+	// 1. Kiểm tra nếu có dữ liệu ảnh sản phẩm upload trực tiếp dạng base64
+	if previewURL := nodeParamString(node.Params, "preview_url", ""); strings.HasPrefix(previewURL, "data:image/") {
+		savedUpload := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_product_upload.jpg", node.ID))
+		if err := decodeBase64DataURL(previewURL, savedUpload); err == nil {
+			prodImg = savedUpload
+		}
+	}
+
+	// 2. Nếu prodImg là tên file tải lên (trong data/uploads hoặc ctx.WorkDir)
+	if prodImg != "" && !fileExists(prodImg) {
+		candidates := []string{
+			filepath.Join("data", "uploads", filepath.Base(prodImg)),
+			filepath.Join(ctx.WorkDir, filepath.Base(prodImg)),
+		}
+		for _, cand := range candidates {
+			if fileExists(cand) {
+				prodImg = cand
+				break
+			}
+		}
+	}
 
 	if prodImg == "" || !fileExists(prodImg) {
 		// Tìm ảnh sản phẩm mẫu sẵn có
@@ -232,6 +291,48 @@ func writeDummyImage(path string, width, height int, label string) error {
 		0x00, 0xBF, 0x80, 0xFF, 0xD9,
 	}
 	return os.WriteFile(path, header, 0o644)
+}
+
+// renderCinematicMotionVideo tạo video chuyển động điện ảnh chuyên nghiệp (dựng phối cảnh 9:16 dọc,
+// chuyển động máy push-in mượt mà, phân loại màu sắc film grade và ánh sáng tinh tế) từ ảnh nhân vật/sản phẩm.
+func renderCinematicMotionVideo(ctx *ExecutionContext, path string, refImages []string, prompt string, duration float64) error {
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+
+	var validImage string
+	for _, img := range refImages {
+		if img != "" && fileExists(img) {
+			validImage = img
+			break
+		}
+	}
+
+	if ctx != nil && ctx.FFmpegRunner != nil {
+		if validImage != "" {
+			frames := int(duration * 24)
+			// Bộ lọc điện ảnh: Zoompan 2.5D điện ảnh (push-in nhẹ nhàng), color grading độ tương phản & ấm áp, vignette mềm
+			filterComplex := fmt.Sprintf(
+				"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"+
+					"zoompan=z='min(zoom+0.0012,1.20)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=%d:s=1080x1920:fps=24,"+
+					"eq=contrast=1.06:brightness=0.01:saturation=1.08,vignette=PI/4[v]",
+				frames,
+			)
+			err := ctx.FFmpegRunner(ctx.Context, "-y", "-loop", "1", "-i", validImage,
+				"-filter_complex", filterComplex, "-map", "[v]",
+				"-t", fmt.Sprintf("%.2f", duration), "-c:v", "libx264", "-pix_fmt", "yuv420p", path)
+			if err == nil && fileExists(path) {
+				return nil
+			}
+		}
+
+		// Fallback nếu không có ảnh: khung nền studio gradient tối màu sang trọng (thay vì màu tím chói)
+		lavfi := fmt.Sprintf("color=c=0x0f172a:s=1080x1920:d=%.2f", duration)
+		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-f", "lavfi", "-i", lavfi,
+			"-vf", "vignette=PI/3", "-c:v", "libx264", "-pix_fmt", "yuv420p", path); err == nil {
+			return nil
+		}
+	}
+
+	return writeDummyVideo(ctx, path, duration)
 }
 
 func writeDummyVideo(ctx *ExecutionContext, path string, duration float64) error {

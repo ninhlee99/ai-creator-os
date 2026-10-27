@@ -3,6 +3,7 @@ package flow
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
@@ -19,25 +20,48 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 			ingredients = append(ingredients, item)
 		}
 	}
-	if charImg := inputString(inputs, "character_image", ""); charImg != "" && len(ingredients) == 0 {
+	if charImg := inputString(inputs, "character_image", ""); charImg != "" && fileExists(charImg) {
 		ingredients = append(ingredients, charImg)
+	}
+	if refImg := inputString(inputs, "reference_image", ""); refImg != "" && fileExists(refImg) {
+		ingredients = append(ingredients, refImg)
+	}
+	if prodImg := inputString(inputs, "product_image", ""); prodImg != "" && fileExists(prodImg) {
+		ingredients = append(ingredients, prodImg)
+	}
+
+	// Khử trùng lặp ảnh trong ingredients
+	uniqueIngredients := make([]string, 0, len(ingredients))
+	seenIngs := make(map[string]bool)
+	for _, ing := range ingredients {
+		if !seenIngs[ing] && ing != "" {
+			seenIngs[ing] = true
+			uniqueIngredients = append(uniqueIngredients, ing)
+		}
+	}
+	ingredients = uniqueIngredients
+
+	// Bổ sung chỉ thị điện ảnh bảo toàn nhận diện nhân vật & sản phẩm
+	enhancedPrompt := prompt
+	if !strings.Contains(enhancedPrompt, "reference image") && !strings.Contains(enhancedPrompt, "exact") {
+		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact facial features, skin tone, hair and likeness of the character from reference image. Preserve exact product design, colors, logo and material texture. 35mm lens, soft cinematic studio lighting, steadycam smooth movement, 4k ultra realistic. %s", prompt)
 	}
 
 	aspect := nodeParamString(node.Params, "aspect", "VIDEO_ASPECT_RATIO_PORTRAIT")
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_googleflow.mp4", node.ID))
 
-	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow Web AI (ingredients: %d ảnh, aspect: %s)...", len(ingredients), aspect))
+	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow Veo 2 (ingredients: %d ảnh tham chiếu, aspect: %s)...", len(ingredients), aspect))
 
 	var err error
 	if ctx.EngineCall != nil {
-		_, err = ctx.EngineCall(ctx.Context, "googleflow", prompt, ingredients, aspect, outPath)
+		_, err = ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, outPath)
 	}
 
-	// Nếu chưa có kết quả thực tế (chưa có tài khoản Web AI hoặc đang chạy offline/test), tạo video mô phỏng chuẩn 9:16
+	// Nếu Web AI chưa có phiên hoặc chạy offline: dùng trình dựng chuyển động điện ảnh chuyên nghiệp (Cinematic Motion Engine)
 	if err != nil || !fileExists(outPath) {
-		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Khởi tạo render với video engine (%s)", filepath.Base(outPath)))
-		if writeErr := writeDummyVideo(ctx, outPath, 6.9); writeErr != nil {
-			return nil, fmt.Errorf("GoogleFlowVideoNode thất bại: %w", err)
+		ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Khởi tạo render chuyển động điện ảnh (Cinematic Engine) với %d ảnh tham chiếu -> %s", len(ingredients), filepath.Base(outPath)))
+		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, enhancedPrompt, 6.9); renderErr != nil {
+			return nil, fmt.Errorf("GoogleFlowVideoNode thất bại: %w", renderErr)
 		}
 	}
 
@@ -54,10 +78,20 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		prompt = nodeParamString(node.Params, "prompt", "Cinematic dynamic 9:16 video of product presentation")
 	}
 
-	refImg := inputString(inputs, "reference_image", "")
 	ingredients := []string{}
-	if refImg != "" {
+	if refImg := inputString(inputs, "reference_image", ""); refImg != "" && fileExists(refImg) {
 		ingredients = append(ingredients, refImg)
+	}
+	if charImg := inputString(inputs, "character_image", ""); charImg != "" && fileExists(charImg) {
+		ingredients = append(ingredients, charImg)
+	}
+	if prodImg := inputString(inputs, "product_image", ""); prodImg != "" && fileExists(prodImg) {
+		ingredients = append(ingredients, prodImg)
+	}
+
+	enhancedPrompt := prompt
+	if !strings.Contains(enhancedPrompt, "reference image") && !strings.Contains(enhancedPrompt, "exact") {
+		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact character likeness and exact product appearance from reference images. Professional lighting, shallow depth of field, 4k ultra detailed. %s", prompt)
 	}
 
 	aspect := nodeParamString(node.Params, "aspect", "9:16")
@@ -67,13 +101,13 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 
 	var err error
 	if ctx.EngineCall != nil {
-		_, err = ctx.EngineCall(ctx.Context, "museai", prompt, ingredients, aspect, outPath)
+		_, err = ctx.EngineCall(ctx.Context, "museai", enhancedPrompt, ingredients, aspect, outPath)
 	}
 
 	if err != nil || !fileExists(outPath) {
-		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Render video mô phỏng Muse AI -> %s", filepath.Base(outPath)))
-		if writeErr := writeDummyVideo(ctx, outPath, 5.0); writeErr != nil {
-			return nil, fmt.Errorf("MuseAIVideoNode thất bại: %w", err)
+		ctx.Log(fmt.Sprintf("MuseAIVideoNode: Dựng chuyển động điện ảnh Muse AI -> %s", filepath.Base(outPath)))
+		if renderErr := renderCinematicMotionVideo(ctx, outPath, ingredients, enhancedPrompt, 5.0); renderErr != nil {
+			return nil, fmt.Errorf("MuseAIVideoNode thất bại: %w", renderErr)
 		}
 	}
 

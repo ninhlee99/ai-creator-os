@@ -40,6 +40,7 @@ var assetVersion = func() string {
 	assets := append(append([]byte{}, staticCSS...), staticJS...)
 	assets = append(assets, staticHTMX...)
 	assets = append(assets, staticWebAILoginJS...)
+	assets = append(assets, staticFlowCanvasJS...)
 	h := sha256.Sum256(assets)
 	return hex.EncodeToString(h[:])[:10]
 }()

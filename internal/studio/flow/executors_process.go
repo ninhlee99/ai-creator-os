@@ -277,10 +277,12 @@ func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	maskPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_tryon_mask.png", node.ID))
 
 	if ctx.FFmpegRunner != nil {
+		// Tiêu chuẩn Editor điện ảnh: Giữ nguyên 100% gương mặt nhân vật (từ cằm trở lên),
+		// bóc tách nền trang phục bằng colorkey tránh mảng đen và đặt vị trí tự nhiên từ ngang ngực trở xuống (H*0.48).
 		err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", charImg, "-i", garmentImg,
-			"-filter_complex", "[1:v]scale=iw*0.75:ih*0.75[g];[0:v][g]overlay=(W-w)/2:H*0.35[out]",
-			"-map", "[out]", fittedPath)
-		if err != nil {
+			"-filter_complex", "[1:v]colorkey=black:0.15:0.05,scale=iw*0.72:ih*0.72[g];[0:v][g]overlay=(W-w)/2:H*0.48[out]",
+			"-map", "[out]", "-q:v", "2", fittedPath)
+		if err != nil || !fileExists(fittedPath) {
 			_ = copyFile(charImg, fittedPath)
 		}
 	} else {
@@ -288,7 +290,7 @@ func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}
 	_ = copyFile(garmentImg, maskPath)
 
-	ctx.Log(fmt.Sprintf("VirtualTryOnNode: Đã thay trang phục thời trang mới cho nhân vật mẫu -> %s", filepath.Base(fittedPath)))
+	ctx.Log(fmt.Sprintf("VirtualTryOnNode: Đã thay trang phục thời trang mới cho nhân vật mẫu (bảo toàn khuôn mặt) -> %s", filepath.Base(fittedPath)))
 
 	return map[string]any{
 		"fitted_image": fittedPath,
@@ -302,11 +304,21 @@ func executeCameraAnglesDirector(ctx *ExecutionContext, node *FlowNode, inputs m
 		subjectImg = inputString(inputs, "character_image", "")
 	}
 
-	fullPrompt := "Cinematic 9:16 vertical runway fashion video of model wearing French silk slip dress, full-body walking confidently on a sunlit Paris boulevard, flowing fabric, photorealistic 4k, smooth steady-cam movement."
-	mediumPrompt := "Cinematic 9:16 medium close-up fashion shot, model gracefully turning around 360 degrees showcasing the dress fit and waistline, smiling warmly at camera, golden hour soft lighting, high-fashion editorial."
-	detailPrompt := "Cinematic 9:16 extreme macro close-up, camera gliding over the luxurious silk satin texture and delicate seams of the dress, soft breeze fluttering the hem, glistening reflections, ultra sharp 8k detail."
+	productTitle := inputString(inputs, "product_title", "")
+	if productTitle == "" {
+		productTitle = nodeParamString(node.Params, "product_title", "trang phục/sản phẩm cao cấp")
+	}
 
-	ctx.Log("CameraAnglesDirector: Đã thiết lập đạo diễn 3 góc quay: Toàn thân Runway, Bán thân 360 Turn và Cận cảnh chất vải")
+	charName := inputString(inputs, "character_name", "")
+	if charName == "" {
+		charName = nodeParamString(node.Params, "model_name", "nhân vật đại diện")
+	}
+
+	fullPrompt := fmt.Sprintf("Cinematic 9:16 vertical runway fashion film featuring the exact character (%s) from reference image walking confidently on runway, presenting %s. Maintain exact face, hair, and garment details. Photorealistic 4k, steadycam movement.", charName, productTitle)
+	mediumPrompt := fmt.Sprintf("Cinematic 9:16 medium close-up shot, the exact character (%s) gracefully turns around, smiling warmly at camera, highlighting the craftsmanship of %s. Golden hour soft lighting, 35mm lens.", charName, productTitle)
+	detailPrompt := fmt.Sprintf("Cinematic 9:16 dynamic macro close-up, camera smoothly gliding over the luxurious fabric and fine texture of %s, glistening lighting, ultra sharp 8k detail.", productTitle)
+
+	ctx.Log(fmt.Sprintf("CameraAnglesDirector: Đã thiết lập đạo diễn 3 góc quay điện ảnh bảo toàn nhận diện (%s & %s)", charName, productTitle))
 
 	return map[string]any{
 		"angle_full":         fullPrompt,
