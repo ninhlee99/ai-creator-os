@@ -32,6 +32,7 @@ const (
 	CategoryOutput  NodeCategory = "output"
 
 	CategoryCamera   NodeCategory = "camera"
+	CategoryLighting NodeCategory = "lighting"
 	CategoryRender   NodeCategory = "render"   // Remote video generation providers
 	CategoryPost     NodeCategory = "post"     // FFmpeg finishing operations
 	CategoryWorkflow NodeCategory = "workflow" // Workflow inputs, outputs and reusable subflows

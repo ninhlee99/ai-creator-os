@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -43,6 +44,31 @@ func TestTC01_NodeRegistry(t *testing.T) {
 		if def.Executor == nil {
 			t.Errorf("TC-01: Node %s thiếu hàm Executor", reqType)
 		}
+	}
+}
+
+func TestNodeDefinitionsStableOrderAndLightingCategory(t *testing.T) {
+	defs := ListDefinitions()
+	if !sort.SliceIsSorted(defs, func(i, j int) bool {
+		if defs[i].Category != defs[j].Category {
+			return defs[i].Category < defs[j].Category
+		}
+		if defs[i].Title != defs[j].Title {
+			return defs[i].Title < defs[j].Title
+		}
+		return defs[i].Type < defs[j].Type
+	}) {
+		t.Fatal("node definitions must be sorted by category, title, and type")
+	}
+
+	lightingCount := 0
+	for _, def := range defs {
+		if def.Category == CategoryLighting {
+			lightingCount++
+		}
+	}
+	if lightingCount == 0 {
+		t.Fatal("Studio Lighting category must contain at least one node")
 	}
 }
 

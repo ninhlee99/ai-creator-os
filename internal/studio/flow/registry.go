@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"sort"
 	"sync"
 )
 
@@ -35,6 +36,15 @@ func ListDefinitions() []NodeDefinition {
 		}
 		list = append(list, def)
 	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].Category != list[j].Category {
+			return list[i].Category < list[j].Category
+		}
+		if list[i].Title != list[j].Title {
+			return list[i].Title < list[j].Title
+		}
+		return list[i].Type < list[j].Type
+	})
 	return list
 }
 
@@ -558,7 +568,7 @@ func registerAllBuiltinNodes() {
 	RegisterNode(NodeDefinition{
 		Type:        "lighting_atmosphere",
 		Title:       "Thời gian & Ánh sáng (Time & Lighting)",
-		Category:    CategoryProcess,
+		Category:    CategoryLighting,
 		Description: "Thiết lập thời điểm trong ngày và hiệu ứng ánh sáng: hoàng hôn Golden Hour, ban mai dịu mát, ánh đèn neon đêm, ánh đèn sân khấu biểu diễn",
 		Icon:        "sun",
 		Inputs: []FlowPort{
