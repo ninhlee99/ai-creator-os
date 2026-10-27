@@ -149,6 +149,12 @@
         </div>
       </div>
 
+      <nav id="inspector-tabs" class="wf-inspector-tabs" role="tablist" aria-label="Chi tiết node" style="display:none">
+        <button id="inspector-tab-parameters-button" type="button" class="wf-inspector-tab active" role="tab" aria-selected="true" aria-controls="inspector-tab-parameters" data-inspector-tab="parameters">Tham số</button>
+        <button id="inspector-tab-io-button" type="button" class="wf-inspector-tab" role="tab" aria-selected="false" aria-controls="inspector-tab-io" data-inspector-tab="io">Đầu vào / đầu ra</button>
+        <button id="inspector-tab-result-button" type="button" class="wf-inspector-tab" role="tab" aria-selected="false" aria-controls="inspector-tab-result" data-inspector-tab="result">Kết quả</button>
+      </nav>
+
       <div class="wf-inspector-body">
         <div id="inspector-empty" class="wf-inspector-empty">
           <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="1.5" fill="none"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -160,89 +166,65 @@
           <p id="inspector-node-desc" class="wf-node-desc-text"></p>
           <small id="inspector-node-guidance" class="text-muted" style="display:none"></small>
 
-          <!-- Model Selector (Muse AI, Gemini, Grok, ChatGPT, Claude) -->
-          <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;">
-            <label for="inspector-model-select" class="wf-field-label">
-              <span>LLM đang cấu hình cho hệ thống</span>
-            </label>
-            <select id="inspector-model-select" class="wf-form-select">
-              <optgroup label="🌟 Mặc định hệ thống">
-                <option value="active">Dùng LLM đang cấu hình trong Cài đặt</option>
-                <option value="auto">Tự động chọn LLM khả dụng tối ưu</option>
-              </optgroup>
-              <optgroup label="⚡ Google Gemini (gemini.google.com)">
-                <option value="gemini-3.8-flash">Google Gemini 3.8 Flash (Mới nhất, siêu nhanh, đa phương thức)</option>
-                <option value="gemini-3.1-pro">Google Gemini 3.1 Pro (Mới nhất, suy luận sâu &amp; logic)</option>
-              </optgroup>
-              <optgroup label="🧠 OpenAI ChatGPT (chatgpt.com)">
-                <option value="gpt-6-luna">OpenAI GPT-6 Luna (Mới nhất, siêu tốc độ, độ trễ thấp)</option>
-              </optgroup>
-              <optgroup label="🎭 Anthropic Claude (claude.ai)">
-                <option value="claude-5-5-sonet">Anthropic Claude 5.5 Sonnet (Mới nhất, tư duy cao cấp)</option>
-              </optgroup>
-              <optgroup label="🚀 xAI Grok (grok.com)">
-                <option value="grok-3">xAI Grok-3 (Mới nhất, thời gian thực)</option>
-              </optgroup>
-              <optgroup label="🎬 Video AI Engines (flow.google.com &amp; muse.ai)">
-                <option value="veo-3.1">Google Veo 3.1 (flow.google.com - Video AI thế hệ mới)</option>
-                <option value="muse-gen-2">Muse AI Gen-2 (muse.ai - Video chuyển động mượt mà)</option>
-              </optgroup>
-            </select>
-          </div>
+          <section id="inspector-tab-parameters" class="wf-inspector-tab-pane active" role="tabpanel" aria-labelledby="inspector-tab-parameters-button" data-inspector-pane="parameters">
+            <div id="inspector-model-group" class="wf-form-group wf-model-selector-group" style="display:none;">
+              <label for="inspector-model-select" class="wf-field-label"><span>Model AI</span></label>
+              <select id="inspector-model-select" class="wf-form-select">
+                <optgroup label="Mặc định hệ thống"><option value="active">Model đang cấu hình</option><option value="auto">Tự động chọn</option></optgroup>
+                <optgroup label="Google Gemini"><option value="gemini-3.8-flash">Gemini Flash</option><option value="gemini-3.1-pro">Gemini Pro</option></optgroup>
+                <optgroup label="OpenAI"><option value="gpt-6-luna">GPT Luna</option></optgroup>
+                <optgroup label="Anthropic"><option value="claude-5-5-sonet">Claude Sonnet</option></optgroup>
+                <optgroup label="xAI"><option value="grok-3">Grok</option></optgroup>
+                <optgroup label="Video AI"><option value="veo-3.1">Veo</option><option value="muse-gen-2">Muse</option></optgroup>
+              </select>
+            </div>
 
-          <!-- Prompt Editor (shown only when node supports prompt parameters) -->
-          <section id="inspector-prompt-group" class="wf-inspector-section wf-prompt-editor-group" style="display:none;">
-            <div class="wf-prompt-header">
-              <div>
-                <h3 class="wf-inspector-section-title">Prompt &amp; chỉ dẫn AI</h3>
-                <p class="wf-inspector-section-help">Chỉ áp dụng với node có tham số prompt.</p>
+            <section id="inspector-prompt-group" class="wf-inspector-section wf-prompt-editor-group" style="display:none;">
+              <div class="wf-prompt-header">
+                <h3 class="wf-inspector-section-title">Prompt</h3>
+                <span id="inspector-prompt-char-count" class="wf-char-counter">0 ký tự</span>
               </div>
-              <label for="inspector-prompt-input" class="wf-char-counter">
-                <span id="inspector-prompt-char-count">0 ký tự</span>
-              </label>
-            </div>
-            <label class="wf-field-label" for="inspector-prompt-input">Câu lệnh</label>
-            <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="5" placeholder="Nhập prompt cho node này..."></textarea>
-            <div id="inspector-prompt-chips" class="wf-inspector-prompt-chips"></div>
-            <div id="inspector-system-prompt-group" class="wf-inspector-subfield" style="display:none;">
-              <label class="wf-field-label" for="inspector-system-prompt-input">Vai trò AI (System Prompt)</label>
-              <textarea id="inspector-system-prompt-input" class="wf-form-textarea" rows="3" placeholder="Định nghĩa vai trò và tiêu chuẩn của AI..."></textarea>
-            </div>
-            <div id="inspector-negative-prompt-group" class="wf-inspector-subfield" style="display:none;">
-              <label class="wf-field-label" for="inspector-negative-prompt-input">Nội dung cần tránh</label>
-              <textarea id="inspector-negative-prompt-input" class="wf-form-textarea" rows="2" placeholder="Chi tiết không muốn xuất hiện..."></textarea>
-            </div>
+              <label class="wf-field-label" for="inspector-prompt-input">Câu lệnh</label>
+              <textarea id="inspector-prompt-input" class="wf-form-textarea wf-prompt-textarea" rows="5" placeholder="Nhập prompt cho node này..."></textarea>
+              <div id="inspector-prompt-chips" class="wf-inspector-prompt-chips"></div>
+              <div id="inspector-system-prompt-group" class="wf-inspector-subfield" style="display:none;">
+                <label class="wf-field-label" for="inspector-system-prompt-input">System prompt</label>
+                <textarea id="inspector-system-prompt-input" class="wf-form-textarea" rows="3"></textarea>
+              </div>
+              <div id="inspector-negative-prompt-group" class="wf-inspector-subfield" style="display:none;">
+                <label class="wf-field-label" for="inspector-negative-prompt-input">Nội dung cần tránh</label>
+                <textarea id="inspector-negative-prompt-input" class="wf-form-textarea" rows="2"></textarea>
+              </div>
+            </section>
+
+            <section class="wf-inspector-section" aria-labelledby="inspector-settings-title">
+              <div class="wf-inspector-section-heading"><h3 id="inspector-settings-title" class="wf-inspector-section-title">Cấu hình</h3></div>
+              <div id="inspector-fields" class="wf-fields-group"></div>
+            </section>
           </section>
 
-          <section class="wf-inspector-section" aria-labelledby="inspector-settings-title">
-            <div class="wf-inspector-section-heading">
-              <h3 id="inspector-settings-title" class="wf-inspector-section-title">Cấu hình node</h3>
-              <span class="wf-inspector-section-help">Thay đổi được áp dụng trực tiếp vào workflow.</span>
-            </div>
-            <div id="inspector-fields" class="wf-fields-group"></div>
+          <section id="inspector-tab-io" class="wf-inspector-tab-pane" role="tabpanel" aria-labelledby="inspector-tab-io-button" data-inspector-pane="io" hidden>
+            <section class="wf-inspector-section" aria-labelledby="inspector-ports-title">
+              <div class="wf-inspector-section-heading"><h3 id="inspector-ports-title" class="wf-inspector-section-title">Luồng dữ liệu</h3></div>
+              <div class="wf-inspector-io-grid">
+                <div><h4>Đầu vào</h4><div id="inspector-inputs-list" class="wf-inspector-ports-list"></div></div>
+                <div><h4>Đầu ra</h4><div id="inspector-outputs-list" class="wf-inspector-ports-list"></div></div>
+              </div>
+            </section>
           </section>
 
-          <section class="wf-inspector-section" aria-labelledby="inspector-ports-title">
-            <div class="wf-inspector-section-heading">
-              <h3 id="inspector-ports-title" class="wf-inspector-section-title">Kết nối workflow</h3>
-              <span class="wf-inspector-section-help">Cổng vào, cổng ra và node đang nối.</span>
-            </div>
-            <div class="wf-inspector-io-grid">
-              <div><h4>Đầu vào</h4><div id="inspector-inputs-list" class="wf-inspector-ports-list"></div></div>
-              <div><h4>Đầu ra</h4><div id="inspector-outputs-list" class="wf-inspector-ports-list"></div></div>
-            </div>
-          </section>
-
-          <section class="wf-inspector-section" aria-labelledby="inspector-result-title">
-            <div class="wf-inspector-section-heading">
-              <h3 id="inspector-result-title" class="wf-inspector-section-title">Kết quả gần nhất</h3>
-              <span id="inspector-preview-status" class="wf-preview-tag">Chưa có kết quả</span>
-            </div>
-            <div id="inspector-preview-box" class="wf-preview-frame"><span class="text-muted">Node chưa chạy.</span></div>
-            <details class="wf-inspector-output-details">
-              <summary>Dữ liệu trả về &amp; lỗi</summary>
-              <pre id="inspector-output-json" class="wf-inspector-log">Chưa có dữ liệu.</pre>
-            </details>
+          <section id="inspector-tab-result" class="wf-inspector-tab-pane" role="tabpanel" aria-labelledby="inspector-tab-result-button" data-inspector-pane="result" hidden>
+            <section class="wf-inspector-section" aria-labelledby="inspector-result-title">
+              <div class="wf-inspector-section-heading">
+                <h3 id="inspector-result-title" class="wf-inspector-section-title">Kết quả chạy</h3>
+                <span id="inspector-preview-status" class="wf-preview-tag">Chưa có kết quả</span>
+              </div>
+              <div id="inspector-preview-box" class="wf-preview-frame"><span class="text-muted">Node chưa chạy.</span></div>
+              <details class="wf-inspector-output-details">
+                <summary>Dữ liệu và lỗi</summary>
+                <pre id="inspector-output-json" class="wf-inspector-log">Chưa có dữ liệu.</pre>
+              </details>
+            </section>
           </section>
         </div>
       </div>

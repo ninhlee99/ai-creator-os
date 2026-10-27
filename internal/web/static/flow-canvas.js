@@ -1490,6 +1490,7 @@
     }
 
     selectNode(nodeId, openDetail = true) {
+      if (this.selectedNodeId !== nodeId) this.activeInspectorTab = 'parameters';
       this.selectedNodeId = nodeId;
       this.nodesLayer.querySelectorAll('.wf-node').forEach(el => {
         el.classList.toggle('selected', el.id === `node-${nodeId}`);
@@ -2216,6 +2217,25 @@
     bindInspector() {
       const closeBtn = document.getElementById('btn-close-inspector');
       if (closeBtn) closeBtn.addEventListener('click', () => this.closeInspector());
+      document.querySelectorAll('[data-inspector-tab]').forEach(tab => {
+        tab.addEventListener('click', () => this.setInspectorTab(tab.dataset.inspectorTab));
+      });
+    }
+
+    setInspectorTab(tabName) {
+      const allowed = new Set(['parameters', 'io', 'result']);
+      const activeTab = allowed.has(tabName) ? tabName : 'parameters';
+      this.activeInspectorTab = activeTab;
+      document.querySelectorAll('[data-inspector-tab]').forEach(tab => {
+        const active = tab.dataset.inspectorTab === activeTab;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-inspector-pane]').forEach(pane => {
+        const active = pane.dataset.inspectorPane === activeTab;
+        pane.hidden = !active;
+        pane.classList.toggle('active', active);
+      });
     }
 
     renderWorkflowBoundaryInspector(node, container) {
@@ -3016,11 +3036,13 @@
     updateInspector() {
       const emptyEl = document.getElementById('inspector-empty');
       const formEl = document.getElementById('inspector-form');
+      const tabsEl = document.getElementById('inspector-tabs');
       if (!emptyEl || !formEl) return;
 
       if (!this.selectedNodeId) {
         emptyEl.style.display = 'block';
         formEl.style.display = 'none';
+        if (tabsEl) tabsEl.style.display = 'none';
         return;
       }
 
@@ -3028,11 +3050,14 @@
       if (!node) {
         emptyEl.style.display = 'block';
         formEl.style.display = 'none';
+        if (tabsEl) tabsEl.style.display = 'none';
         return;
       }
 
       emptyEl.style.display = 'none';
       formEl.style.display = 'block';
+      if (tabsEl) tabsEl.style.display = 'flex';
+      this.setInspectorTab(this.activeInspectorTab || 'parameters');
 
       const def = this.definitions[node.type] || {};
       const unsupported = !this.definitions[node.type];
@@ -3062,8 +3087,10 @@
       const titleInput = document.getElementById('inspector-node-title-input');
       if (titleInput) {
         titleInput.value = node.title || def.title || node.type;
+        titleInput.title = titleInput.value;
         titleInput.oninput = () => {
           node.title = titleInput.value;
+          titleInput.title = titleInput.value;
           const cardTitleEl = document.getElementById(`node-title-${node.id}`);
           if (cardTitleEl) {
             cardTitleEl.innerText = titleInput.value || def.title || node.type;

@@ -4941,19 +4941,59 @@ body.page-workflow .layout {
 
 .wf-inspector-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
 }
 
 .wf-inspector-actions {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.wf-inspector-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+
+.wf-inspector-tab {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 6px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wf-inspector-tab:hover {
+  color: var(--text);
+  background: var(--bg3);
+}
+
+.wf-inspector-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.wf-inspector-tab-pane[hidden] {
+  display: none !important;
 }
 
 .wf-inspector-title-row {
@@ -4976,12 +5016,16 @@ body.page-workflow .layout {
   width: 100%;
   border: 1px solid transparent;
   background: transparent;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
+  line-height: 1.35;
   color: var(--text);
   border-radius: 6px;
   padding: 3px 6px;
   outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
@@ -5420,7 +5464,7 @@ body.page-workflow .layout {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
-  padding: 16px;
+  padding: 12px 14px;
 }
 
 .wf-inspector-empty {
@@ -5442,19 +5486,19 @@ body.page-workflow .layout {
 }
 
 .wf-inspector-warning {
-  margin: 0 0 14px;
-  padding: 11px 12px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
   border: 1px solid rgba(245, 158, 11, 0.35);
   border-radius: 9px;
   background: rgba(245, 158, 11, 0.1);
   color: var(--text);
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.5;
 }
 
 .wf-inspector-section {
-  margin: 14px 0;
-  padding: 14px;
+  margin: 10px 0;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: 11px;
   background: var(--bg2);
@@ -5621,11 +5665,11 @@ body.page-workflow .layout {
   }
 
   .wf-inspector-top {
-    padding: 12px;
+    padding: 10px 12px;
   }
 
   .wf-inspector-body {
-    padding: 12px;
+    padding: 10px 12px;
   }
 }
 
