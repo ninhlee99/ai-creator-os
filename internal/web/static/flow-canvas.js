@@ -660,7 +660,7 @@
         linkBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
           const currentUrl = node.params?.url || node.params?.video_url || '';
-          const inputUrl = window.prompt('Dán đường link (TikTok, Instagram Reels, IG, YouTube Shorts hoặc link web):', currentUrl);
+          const inputUrl = await window.showAppPrompt('Dán đường link (TikTok, Instagram Reels, IG, YouTube Shorts hoặc link web):', currentUrl, { label: 'Đường dẫn media', placeholder: 'https://…', confirmText: 'Tải media' });
           if (inputUrl && inputUrl.trim()) {
             await this.fetchMediaFromUrl(node, inputUrl.trim(), config.type === 'cutout' ? 'image' : config.type);
           }
@@ -739,7 +739,7 @@
             if (this.mediaUploadSequence.get(node.id) === uploadSequence) {
               this.uploadErrors.set(node.id, uploadErr.message || 'Tải tệp lên thất bại');
               console.warn('Lỗi tải file lên server', uploadErr);
-              alert(`Không tải được tệp lên máy chủ: ${uploadErr.message || uploadErr}. Workflow chưa thể chạy bằng tệp mới.`);
+              window.showAppNotice(`Không tải được tệp lên máy chủ: ${uploadErr.message || uploadErr}. Workflow chưa thể chạy bằng tệp mới.`);
             }
           } finally {
             if (this.pendingUploads.get(node.id) === uploadTask) {
@@ -1212,7 +1212,7 @@
         if (previewEl && prevHtml) {
           previewEl.innerHTML = prevHtml;
         }
-        alert(`Không thể tải media từ link: ${err.message || err}`);
+        window.showAppNotice(`Không thể tải media từ link: ${err.message || err}`);
       }
     }
 
@@ -1321,9 +1321,9 @@
         const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         hitPath.setAttribute('d', d);
         hitPath.setAttribute('class', 'flow-wire-hit');
-        hitPath.addEventListener('click', (e) => {
+        hitPath.addEventListener('click', async (e) => {
           e.stopPropagation();
-          if (confirm('Bạn có muốn xóa kết nối dây này?')) {
+          if (await window.showAppConfirm('Bạn có muốn xóa kết nối dây này?', { title: 'Xóa kết nối', confirmText: 'Xóa', danger: true })) {
             this.deleteEdge(edge.id);
           }
         });
@@ -1438,11 +1438,11 @@
 	  const sourcePort = source && this.getNodePorts(source, true).find(p => p.id === fromPort);
 	  const targetPort = target && this.getNodePorts(target, false).find(p => p.id === toPort);
 	  if (!sourcePort || !targetPort) {
-	    alert('Không thể nối dây: cổng không còn tồn tại. Tải lại contract workflow con.');
+	    window.showAppNotice('Không thể nối dây: cổng không còn tồn tại. Tải lại contract workflow con.');
 	    return false;
 	  }
 	  if (!this.isPortTypeCompatible(sourcePort.type, targetPort.type)) {
-	    alert(`Không thể nối ${sourcePort.type} vào ${targetPort.type}. Chọn cổng cùng kiểu dữ liệu.`);
+	    window.showAppNotice(`Không thể nối ${sourcePort.type} vào ${targetPort.type}. Chọn cổng cùng kiểu dữ liệu.`);
 	    return false;
 	  }
 
@@ -1670,7 +1670,7 @@
         if (matchingInput) {
           this.addEdge(fromNode, fromPort, id, matchingInput.id);
         } else {
-          alert('Node đã thêm nhưng không có cổng input tương thích để tự nối.');
+          window.showAppNotice('Node đã thêm nhưng không có cổng input tương thích để tự nối.');
         }
         this.pendingConnect = null;
       }
@@ -1764,8 +1764,8 @@
       return this.graphFingerprint() !== this.savedGraphFingerprint;
     }
 
-    confirmDiscardGraphChanges() {
-      return !this.isGraphDirty() || confirm('Workflow có thay đổi chưa lưu. Bỏ thay đổi và tiếp tục?');
+    async confirmDiscardGraphChanges() {
+      return !this.isGraphDirty() || await window.showAppConfirm('Workflow có thay đổi chưa lưu. Bỏ thay đổi và tiếp tục?', { title: 'Thay đổi chưa lưu', confirmText: 'Bỏ thay đổi', danger: true });
     }
 
     syncGraphHeader() {
@@ -1955,7 +1955,7 @@
 
       // Create new workflow button
       const btnNew = document.getElementById('btn-new-graph');
-      if (btnNew) btnNew.addEventListener('click', () => this.createNewGraph());
+      if (btnNew) btnNew.addEventListener('click', async () => this.createNewGraph());
 
       // Add Node button
       const btnAdd = document.getElementById('btn-add-node');
@@ -1977,13 +1977,13 @@
         btnSave.addEventListener('click', async () => {
           this.syncGraphMetadataFromHeader();
           if (!this.graph.name) {
-            alert('Nhập tên workflow trước khi lưu.');
+            window.showAppNotice('Nhập tên workflow trước khi lưu.');
             document.getElementById('wf-active-name')?.focus();
             return;
           }
           let name = this.graph.name;
           if (this.graph.is_preset || this.isPresetWorkflow(this.graph.id)) {
-            const newName = prompt('Đây là workflow mẫu (Preset) của hệ thống và được bảo vệ (không thể ghi đè).\n\nVui lòng đặt tên cho bản lưu riêng tùy chỉnh của bạn:', `${this.graph.name} (Bản sao)`);
+            const newName = await window.showAppPrompt('Đây là workflow mẫu (Preset) của hệ thống và được bảo vệ (không thể ghi đè). Vui lòng đặt tên cho bản lưu riêng tùy chỉnh của bạn:', `${this.graph.name} (Bản sao)`, { label: 'Tên workflow', required: true, confirmText: 'Lưu bản sao' });
             if (!newName) return;
             name = newName;
             this.graph.id = `flow_${Date.now()}`;
@@ -2005,13 +2005,13 @@
               this.savedGraphFingerprint = this.graphFingerprint();
               this.syncGraphHeader();
               window.history.pushState(null, '', `/workflow?preset=${encodeURIComponent(this.graph.id)}`);
-              alert(`✓ Đã lưu workflow "${this.graph.name}" thành công!`);
+              window.showAppNotice(`✓ Đã lưu workflow "${this.graph.name}" thành công!`);
               await this.refreshGraphsList();
             } else {
-              alert('Lỗi lưu workflow: ' + (data.error || ''));
+              window.showAppNotice('Lỗi lưu workflow: ' + (data.error || ''));
             }
           } catch (err) {
-            alert('Lỗi kết nối máy chủ: ' + err.message);
+            window.showAppNotice('Lỗi kết nối máy chủ: ' + err.message);
           }
         });
       }
@@ -2029,7 +2029,7 @@
       if (btnDelActive) {
         btnDelActive.addEventListener('click', () => {
           if (this.graph.is_preset) {
-            alert('Đây là mẫu preset có sẵn của hệ thống. Bạn có thể bấm "Nhân bản" để tạo bản sao riêng và tự do chỉnh sửa hoặc xóa.');
+            window.showAppNotice('Đây là mẫu preset có sẵn của hệ thống. Bạn có thể bấm "Nhân bản" để tạo bản sao riêng và tự do chỉnh sửa hoặc xóa.');
             return;
           }
           this.deleteGraph(this.graph.id, this.graph.name);
@@ -2206,7 +2206,7 @@
       }
       const failedUpload = this.uploadErrors.values().next().value;
       if (failedUpload) {
-        alert(`Sửa lỗi tải tệp trước khi chạy workflow: ${failedUpload}`);
+        window.showAppNotice(`Sửa lỗi tải tệp trước khi chạy workflow: ${failedUpload}`);
         return;
       }
 
@@ -2215,7 +2215,7 @@
         workflowInputs = await this.collectWorkflowRunInputs();
         if (workflowInputs === null) return;
       } catch (err) {
-        alert(`Không thể chạy workflow: ${err.message}`);
+        window.showAppNotice(`Không thể chạy workflow: ${err.message}`);
         return;
       }
 
@@ -2268,7 +2268,7 @@
           statusPill.innerText = '⚠️ Lỗi khởi chạy';
         }
         this.appendLog(`[LỖI] ${err.message}`);
-        alert('Lỗi chạy workflow: ' + err.message);
+        window.showAppNotice('Lỗi chạy workflow: ' + err.message);
       }
     }
 
@@ -2439,7 +2439,7 @@
                 control.value = paths[0] || '';
               }
             } catch (error) {
-              alert(error.message || 'Không tải được tệp');
+              window.showAppNotice(error.message || 'Không tải được tệp');
             } finally {
               this.pendingRunInputUploads = Math.max(0, this.pendingRunInputUploads - 1);
               updateSubmitUploadState();
@@ -2848,7 +2848,7 @@
               this.render();
               this.selectNode(node.id);
             } catch (error) {
-              alert(error.message || 'Không tải được media');
+              window.showAppNotice(error.message || 'Không tải được media');
             } finally {
               upload.disabled = false;
               upload.innerText = '📁 Tải media làm giá trị mặc định';
@@ -2917,9 +2917,9 @@
           categorySelect.appendChild(option);
         });
         categorySelect.value = params.workflow_category || '';
-        categorySelect.addEventListener('change', () => {
+        categorySelect.addEventListener('change', async () => {
           const connected = this.graph.edges.some(edge => edge.from_node === node.id || edge.to_node === node.id);
-          if (connected && !confirm('Đổi loại workflow sẽ xóa các kết nối hiện tại của node. Tiếp tục?')) {
+          if (connected && !await window.showAppConfirm('Đổi loại workflow sẽ xóa các kết nối hiện tại của node. Tiếp tục?', { title: 'Đổi loại workflow', confirmText: 'Đổi loại', danger: true })) {
             categorySelect.value = params.workflow_category || '';
             return;
           }
@@ -2958,10 +2958,10 @@
         flowSelect.appendChild(option);
       });
       flowSelect.value = params.workflow_id || '';
-      flowSelect.addEventListener('change', () => {
+      flowSelect.addEventListener('change', async () => {
         if (!flowSelect.value) {
           const connected = this.graph.edges.some(edge => edge.from_node === node.id || edge.to_node === node.id);
-          if (connected && !confirm('Bỏ workflow con sẽ xóa các kết nối của node. Tiếp tục?')) {
+          if (connected && !await window.showAppConfirm('Bỏ workflow con sẽ xóa các kết nối của node. Tiếp tục?', { title: 'Bỏ workflow con', confirmText: 'Bỏ workflow', danger: true })) {
             flowSelect.value = params.workflow_id || '';
             return;
           }
@@ -3144,7 +3144,7 @@
           }
           (compatible ? compatibleEdges : removedEdges).push(edge);
         });
-        if (removedEdges.length && !confirm(`Contract của “${result.graph.name}” không còn tương thích với ${removedEdges.length} kết nối. Đồng bộ sẽ xóa các kết nối đó. Tiếp tục?`)) {
+        if (removedEdges.length && !await window.showAppConfirm(`Contract của “${result.graph.name}” không còn tương thích với ${removedEdges.length} kết nối. Đồng bộ sẽ xóa các kết nối đó. Tiếp tục?`, { title: 'Đồng bộ workflow con', confirmText: 'Đồng bộ và xóa dây', danger: true })) {
           if (rerender) {
             this.render();
             this.selectNode(node.id);
@@ -3158,9 +3158,9 @@
         node.params.workflow_name = result.graph.name;
         const contractChanged = oldInputSignature !== JSON.stringify(contract.inputs) || oldOutputSignature !== JSON.stringify(contract.outputs);
         if (removedEdges.length) {
-          alert(`Đã đồng bộ contract và xóa ${removedEdges.length} kết nối không tương thích. Kiểm tra canvas rồi lưu workflow.`);
+          window.showAppNotice(`Đã đồng bộ contract và xóa ${removedEdges.length} kết nối không tương thích. Kiểm tra canvas rồi lưu workflow.`);
         } else if (contractChanged) {
-          alert('Đã đồng bộ contract workflow con. Kiểm tra các cổng rồi lưu workflow.');
+          window.showAppNotice('Đã đồng bộ contract workflow con. Kiểm tra các cổng rồi lưu workflow.');
         }
         if (rerender) {
           this.render();
@@ -3173,7 +3173,7 @@
           this.render();
           this.selectNode(node.id);
         }
-        alert(error.message || 'Không tải được contract workflow');
+        window.showAppNotice(error.message || 'Không tải được contract workflow');
       } finally {
         if (this.workflowContractRequests.get(node.id) === requestToken) {
           this.workflowContractRequests.delete(node.id);
@@ -3946,7 +3946,7 @@
               fetchBtn.innerHTML = '↗ URL';
             }
             fetchBtn.addEventListener('click', async () => {
-              const u = window.prompt('Dán link video TikTok, Instagram Reels, IG, YouTube Shorts hoặc link ảnh/video web:', input.value || '');
+              const u = await window.showAppPrompt('Dán link video TikTok, Instagram Reels, IG, YouTube Shorts hoặc link ảnh/video web:', input.value || '', { label: 'Đường dẫn media', placeholder: 'https://…', confirmText: 'Tải media' });
               if (u && u.trim()) {
                 input.value = u.trim();
                 await this.fetchMediaFromUrl(node, u.trim(), this.preferredMediaType(key), key);
@@ -4156,7 +4156,7 @@
     openExportApiModal() {
       this.syncGraphMetadataFromHeader();
       if (!this.graphPersisted || this.isGraphDirty()) {
-        alert('Lưu workflow trước khi export API để endpoint chạy đúng phiên bản đã lưu.');
+        window.showAppNotice('Lưu workflow trước khi export API để endpoint chạy đúng phiên bản đã lưu.');
         return;
       }
       const modal = document.getElementById('export-api-modal');
@@ -4183,7 +4183,7 @@
         try {
           this.getWorkflowContract(this.graph);
         } catch (error) {
-          alert('Không thể export workflow: ' + error.message);
+          window.showAppNotice('Không thể export workflow: ' + error.message);
           return;
         }
         workflowInputs.forEach(node => {
@@ -4365,7 +4365,7 @@
       try {
         payload = JSON.parse(targetTextarea.value);
       } catch (err) {
-        alert('Cú pháp JSON không hợp lệ: ' + err.message);
+        window.showAppNotice('Cú pháp JSON không hợp lệ: ' + err.message);
         return;
       }
 
@@ -4793,8 +4793,8 @@
       }
 
       if (createBtn) {
-        createBtn.addEventListener('click', () => {
-          if (this.createNewGraph()) this.closeGraphsModal();
+        createBtn.addEventListener('click', async () => {
+          if (await this.createNewGraph()) this.closeGraphsModal();
         });
       }
 
@@ -4928,32 +4928,32 @@
         // Sự kiện mở workflow
         const openBtn = card.querySelector('.btn-open-graph');
         if (openBtn) {
-          openBtn.addEventListener('click', (e) => {
+          openBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            this.loadGraphById(g.id);
+            await this.loadGraphById(g.id);
           });
         }
 
         // Sự kiện nhân bản
         const dupBtn = card.querySelector('.btn-dup-graph');
         if (dupBtn) {
-          dupBtn.addEventListener('click', (e) => {
+          dupBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            this.duplicateGraph(g.id, g.name);
+            await this.duplicateGraph(g.id, g.name);
           });
         }
 
         // Sự kiện xóa workflow đã lưu
         const delBtn = card.querySelector('.btn-del-graph');
         if (delBtn) {
-          delBtn.addEventListener('click', (e) => {
+          delBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            this.deleteGraph(g.id, g.name);
+            await this.deleteGraph(g.id, g.name);
           });
         }
 
-        card.addEventListener('click', () => {
-          this.loadGraphById(g.id);
+        card.addEventListener('click', async () => {
+          await this.loadGraphById(g.id);
         });
 
         grid.appendChild(card);
@@ -4980,7 +4980,7 @@
         const resp = await fetch(`/api/flow/graphs/${id}`);
         const data = await resp.json();
         if (!data.ok || !data.graph) {
-          alert('Không thể đọc dữ liệu workflow để nhân bản');
+          window.showAppNotice('Không thể đọc dữ liệu workflow để nhân bản');
           return;
         }
 
@@ -5001,18 +5001,18 @@
           await this.refreshGraphsList();
           this.renderGraphsModalGrid();
           await this.loadGraphById(cloned.id);
-          alert(`✓ Đã nhân bản thành công: "${cloned.name}". Đây là bản lưu riêng của bạn, bạn có thể tự do chỉnh sửa hoặc xóa!`);
+          window.showAppNotice(`✓ Đã nhân bản thành công: "${cloned.name}". Đây là bản lưu riêng của bạn, bạn có thể tự do chỉnh sửa hoặc xóa!`);
           this.closeGraphsModal();
         } else {
-          alert('Lỗi nhân bản: ' + (saveRes.error || ''));
+          window.showAppNotice('Lỗi nhân bản: ' + (saveRes.error || ''));
         }
       } catch (err) {
-        alert('Lỗi kết nối máy chủ: ' + err.message);
+        window.showAppNotice('Lỗi kết nối máy chủ: ' + err.message);
       }
     }
 
     async loadGraphById(id, force = false) {
-      if (!force && !this.confirmDiscardGraphChanges()) return false;
+      if (!force && !await this.confirmDiscardGraphChanges()) return false;
       try {
         const resp = await fetch('/api/flow/graphs/' + encodeURIComponent(id));
         const data = await resp.json();
@@ -5034,16 +5034,16 @@
           this.closeGraphsModal();
           return true;
         }
-        alert('Không thể mở workflow: ' + (data.error || ''));
+        window.showAppNotice('Không thể mở workflow: ' + (data.error || ''));
       } catch (err) {
         console.error('Lỗi tải workflow:', err);
-        alert('Lỗi kết nối máy chủ: ' + err.message);
+        window.showAppNotice('Lỗi kết nối máy chủ: ' + err.message);
       }
       return false;
     }
 
-    createNewGraph() {
-      if (!this.confirmDiscardGraphChanges()) return false;
+    async createNewGraph() {
+      if (!await this.confirmDiscardGraphChanges()) return false;
       this.workflowContractRequests.clear();
       this.workflowContractLoading.clear();
       const newId = 'flow_' + Date.now();
@@ -5067,7 +5067,7 @@
     }
 
     async deleteGraph(id, name) {
-      if (!confirm(`Bạn có chắc muốn xóa vĩnh viễn workflow "${name}"? Thao tác này không thể hoàn tác.`)) {
+      if (!await window.showAppConfirm(`Bạn có chắc muốn xóa vĩnh viễn workflow "${name}"? Thao tác này không thể hoàn tác.`, { title: 'Xóa workflow', confirmText: 'Xóa vĩnh viễn', danger: true })) {
         return;
       }
       try {
@@ -5080,12 +5080,12 @@
           if (this.graph && this.graph.id === id) {
             this.loadGraphById('preset_viral_dance', true);
           }
-          alert(`✓ Đã xóa thành công workflow "${name}"!`);
+          window.showAppNotice(`✓ Đã xóa thành công workflow "${name}"!`);
         } else {
-          alert('Không thể xóa workflow: ' + (data.error || ''));
+          window.showAppNotice('Không thể xóa workflow: ' + (data.error || ''));
         }
       } catch (err) {
-        alert('Lỗi kết nối máy chủ: ' + err.message);
+        window.showAppNotice('Lỗi kết nối máy chủ: ' + err.message);
       }
     }
 

@@ -74,7 +74,7 @@
       </form>
       <form method="post" action="/settings/auth/password/disable" style="margin-top:8px">
         <input type="hidden" name="current_password" id="pw-cur-dis">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="var p = prompt('Nhập mật khẩu hiện tại để tắt:'); if(p){document.getElementById('pw-cur-dis').value=p; this.form.submit();}">Tắt mật khẩu</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-disable-password">Tắt mật khẩu</button>
       </form>
       {{else}}
       <p><span class="badge badge-dim">Chưa đặt mật khẩu</span></p>
@@ -115,8 +115,8 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
           <button type="submit" class="btn btn-primary btn-sm">Lưu cấu hình</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Telegram!');else alert('Lỗi gửi Telegram!');})">✈️ Test Telegram</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="fetch('/settings/notify-discord-test', {method:'POST'}).then(function(r){if(r.ok)alert('Đã gửi tin thử Discord!');else alert('Lỗi gửi Discord!');})">🎮 Test Discord</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-notify-test="/settings/notify-test" data-success="Đã gửi tin thử Telegram!" data-error="Lỗi gửi Telegram!">✈️ Test Telegram</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-notify-test="/settings/notify-discord-test" data-success="Đã gửi tin thử Discord!" data-error="Lỗi gửi Discord!">🎮 Test Discord</button>
         </div>
       </form>
     </div>
@@ -198,4 +198,32 @@
     </div>
   </details>
 </div>
+<script>
+(function () {
+  var disableButton = document.getElementById('btn-disable-password');
+  if (disableButton) disableButton.addEventListener('click', async function () {
+    var password = await window.showAppPrompt('Nhập mật khẩu hiện tại để tắt bảo vệ.', '', {
+      title: 'Tắt mật khẩu truy cập', label: 'Mật khẩu hiện tại', inputType: 'password', required: true, confirmText: 'Tiếp tục'
+    });
+    if (password === null) return;
+    document.getElementById('pw-cur-dis').value = password;
+    disableButton.form.requestSubmit();
+  });
+
+  document.querySelectorAll('[data-notify-test]').forEach(function (button) {
+    button.addEventListener('click', async function () {
+      button.disabled = true;
+      try {
+        var response = await fetch(button.dataset.notifyTest, { method: 'POST' });
+        if (!response.ok) throw new Error(button.dataset.error || 'Gửi tin thử thất bại.');
+        await window.showAppNotice(button.dataset.success, { title: 'Kiểm tra thông báo', tone: 'success' });
+      } catch (error) {
+        await window.showAppNotice(error.message || button.dataset.error, { title: 'Không gửi được', tone: 'danger' });
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+})();
+</script>
 {{end}}

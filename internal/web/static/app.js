@@ -48,50 +48,202 @@
     }
   } catch (e) { /* bỏ qua */ }
 
-  // ------------------------------------------------------ modal xác nhận
-  // Form có data-confirm="..." sẽ hiện modal thay vì confirm() của trình
-  // duyệt; chỉ submit khi người dùng bấm Xác nhận.
-  var modal = null, modalMsg = null, pendingForm = null;
-  function ensureModal() {
-    if (modal) return;
-    modal = document.getElementById('confirm-modal');
-    modalMsg = document.getElementById('confirm-modal-msg');
-    if (!modal || !modalMsg) { modal = null; return; }
-    document.getElementById('confirm-modal-cancel').addEventListener('click', function () {
-      modal.hidden = true;
-      pendingForm = null;
+  // ------------------------------------------------------ shared app dialog
+  // One in-app modal handles notices, confirmations and text/password prompts.
+  var dialogBackdrop = document.getElementById('aicos-dialog-backdrop');
+  var dialog = document.getElementById('aicos-dialog');
+  var dialogQueue = [];
+  var activeDialog = null;
+  var dialogParts = dialog ? {
+    title: document.getElementById('aicos-dialog-title'),
+    message: document.getElementById('aicos-dialog-message'),
+    icon: document.getElementById('aicos-dialog-icon'),
+    field: document.getElementById('aicos-dialog-field'),
+    label: document.getElementById('aicos-dialog-label'),
+    input: document.getElementById('aicos-dialog-input'),
+    textarea: document.getElementById('aicos-dialog-textarea'),
+    error: document.getElementById('aicos-dialog-error'),
+    cancel: document.getElementById('aicos-dialog-cancel'),
+    confirm: document.getElementById('aicos-dialog-confirm')
+  } : null;
+
+  function activeDialogField() {
+    if (!activeDialog || activeDialog.options.mode !== 'prompt' || !dialogParts) return null;
+    return activeDialog.options.multiline ? dialogParts.textarea : dialogParts.input;
+  }
+
+  function hideDialog(result) {
+    if (!activeDialog || !dialogBackdrop) return;
+    var finished = activeDialog;
+    activeDialog = null;
+    dialogBackdrop.hidden = true;
+    document.body.classList.remove('aicos-dialog-open');
+    if (finished.previousFocus && finished.previousFocus.focus) finished.previousFocus.focus();
+    finished.resolve(result);
+    setTimeout(showNextDialog, 0);
+  }
+
+  function confirmDialog() {
+    if (!activeDialog || !dialogParts) return;
+    if (activeDialog.options.mode === 'prompt') {
+      var field = activeDialogField();
+      var value = field ? field.value : '';
+      if (activeDialog.options.required && !String(value).trim()) {
+        dialogParts.error.textContent = activeDialog.options.requiredMessage || 'Vui lòng nhập giá trị.';
+        if (field) field.focus();
+        return;
+      }
+      hideDialog(value);
+      return;
+    }
+    hideDialog(activeDialog.options.mode === 'confirm');
+  }
+
+  function showNextDialog() {
+    if (activeDialog || !dialogQueue.length || !dialogBackdrop || !dialog || !dialogParts) return;
+    var item = dialogQueue.shift();
+    var options = item.options;
+    activeDialog = {
+      options: options,
+      resolve: item.resolve,
+      previousFocus: document.activeElement
+    };
+
+    var mode = options.mode || 'notice';
+    var tone = options.tone || (mode === 'confirm' ? 'warning' : 'info');
+    var icons = { info: 'i', success: '✓', warning: '!', danger: '×', error: '×' };
+    dialog.dataset.tone = tone;
+    dialogParts.title.textContent = options.title || (mode === 'confirm' ? 'Xác nhận' : mode === 'prompt' ? 'Nhập thông tin' : 'Thông báo');
+    dialogParts.message.textContent = options.message == null ? '' : String(options.message);
+    dialogParts.icon.textContent = options.icon || icons[tone] || icons.info;
+    dialogParts.field.hidden = mode !== 'prompt';
+    dialogParts.error.textContent = '';
+    dialogParts.cancel.hidden = mode === 'notice';
+    dialogParts.cancel.textContent = options.cancelText || 'Hủy';
+    dialogParts.confirm.textContent = options.confirmText || (mode === 'notice' ? 'Đóng' : mode === 'prompt' ? 'Tiếp tục' : 'Xác nhận');
+    dialogParts.confirm.className = 'btn ' + (options.danger ? 'btn-danger' : 'btn-primary');
+    dialogParts.input.hidden = Boolean(options.multiline);
+    dialogParts.textarea.hidden = !options.multiline;
+    if (mode === 'prompt') {
+      var field = options.multiline ? dialogParts.textarea : dialogParts.input;
+      if (!options.multiline) field.type = options.inputType || 'text';
+      field.value = options.defaultValue == null ? '' : String(options.defaultValue);
+      field.placeholder = options.placeholder || '';
+      field.readOnly = Boolean(options.readOnly);
+      dialogParts.label.textContent = options.label || 'Giá trị';
+      dialogParts.label.htmlFor = options.multiline ? 'aicos-dialog-textarea' : 'aicos-dialog-input';
+      field.setAttribute('aria-label', options.label || 'Giá trị');
+      dialogParts.field.hidden = false;
+    } else {
+      dialogParts.input.value = '';
+      dialogParts.textarea.value = '';
+      dialogParts.input.readOnly = false;
+      dialogParts.textarea.readOnly = false;
+    }
+
+    dialogBackdrop.hidden = false;
+    document.body.classList.add('aicos-dialog-open');
+    var focusTarget = mode === 'prompt' ? activeDialogField() : (mode === 'notice' ? dialogParts.confirm : dialogParts.cancel);
+    setTimeout(function () {
+      if (focusTarget && focusTarget.focus) {
+        focusTarget.focus();
+        if (mode === 'prompt' && options.selectOnOpen && focusTarget.select) focusTarget.select();
+      }
+    }, 0);
+  }
+
+  function showDialog(options) {
+    return new Promise(function (resolve) {
+      if (!dialogBackdrop || !dialog || !dialogParts) {
+        if ((options || {}).mode === 'notice') window.showToast((options || {}).message || '', false);
+        resolve((options || {}).mode === 'confirm' ? false : null);
+        return;
+      }
+      dialogQueue.push({ options: options || {}, resolve: resolve });
+      showNextDialog();
     });
-    modal.addEventListener('click', function (ev) {
-      if (ev.target === modal) { modal.hidden = true; pendingForm = null; }
+  }
+
+  window.showAppNotice = function (message, options) {
+    return showDialog(Object.assign({}, options || {}, { mode: 'notice', message: message }));
+  };
+  window.showAppConfirm = function (message, options) {
+    return showDialog(Object.assign({}, options || {}, { mode: 'confirm', message: message }));
+  };
+  window.showAppPrompt = function (message, defaultValue, options) {
+    return showDialog(Object.assign({}, options || {}, { mode: 'prompt', message: message, defaultValue: defaultValue }));
+  };
+
+  if (dialogParts) {
+    dialogParts.cancel.addEventListener('click', function () {
+      if (!activeDialog) return;
+      hideDialog(activeDialog.options.mode === 'prompt' ? null : false);
     });
-    document.getElementById('confirm-modal-ok').addEventListener('click', function () {
-      modal.hidden = true;
-      var f = pendingForm;
-      pendingForm = null;
-      if (f) { f._aicosConfirmed = true; f.requestSubmit(); }
+    dialogParts.confirm.addEventListener('click', confirmDialog);
+    dialogBackdrop.addEventListener('click', function (event) {
+      if (event.target === dialogBackdrop && activeDialog && activeDialog.options.dismissible !== false) {
+        hideDialog(activeDialog.options.mode === 'prompt' ? null : false);
+      }
     });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Escape' && modal && !modal.hidden) {
-        modal.hidden = true;
-        pendingForm = null;
+    document.addEventListener('keydown', function (event) {
+      if (!activeDialog) return;
+      if (event.key === 'Escape' && activeDialog.options.dismissible !== false) {
+        event.preventDefault();
+        hideDialog(activeDialog.options.mode === 'prompt' ? null : false);
+        return;
+      }
+      if (event.key === 'Enter' && activeDialog.options.mode === 'prompt' && event.target !== dialogParts.textarea) {
+        event.preventDefault();
+        confirmDialog();
+        return;
+      }
+      if (event.key === 'Tab') {
+        var focusable = Array.from(dialog.querySelectorAll('button:not([hidden]), input:not([hidden]), textarea:not([hidden])')).filter(function (el) { return !el.disabled; });
+        if (!focusable.length) return;
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
   }
-  document.addEventListener('submit', function (ev) {
-    var f = ev.target;
-    if (!f || !f.getAttribute) return;
-    var msg = f.getAttribute('data-confirm');
-    if (!msg || f._aicosConfirmed) return;
-    ev.preventDefault();
-    ensureModal();
-    if (!modal) { // không có modal trong trang: submit thẳng
-      f._aicosConfirmed = true;
-      f.requestSubmit();
-      return;
-    }
-    modalMsg.textContent = msg;
-    pendingForm = f;
-    modal.hidden = false;
+
+  // Forms marked data-confirm submit only after the in-app confirmation.
+  var confirmingForms = new WeakSet();
+  document.addEventListener('submit', function (event) {
+    var form = event.target;
+    if (!form || !form.getAttribute) return;
+    var submitter = event.submitter;
+    var confirmSource = submitter && submitter.hasAttribute('data-confirm') ? submitter : form;
+    var message = confirmSource.getAttribute('data-confirm');
+    if (!message || form._aicosConfirmed) return;
+    event.preventDefault();
+    if (confirmingForms.has(form)) return;
+    confirmingForms.add(form);
+    var danger = confirmSource.hasAttribute('data-confirm-danger') || /x[oó]a|dừng khẩn|tắt công tắc/i.test(message);
+    window.showAppConfirm(message, {
+      title: confirmSource.getAttribute('data-confirm-title') || 'Xác nhận thao tác',
+      confirmText: confirmSource.getAttribute('data-confirm-label') || 'Xác nhận',
+      danger: danger,
+      tone: danger ? 'danger' : 'warning'
+    }).then(function (confirmed) {
+      if (!confirmed) return;
+      form._aicosConfirmed = true;
+      if (submitter && submitter.form === form) form.requestSubmit(submitter);
+      else form.requestSubmit();
+      setTimeout(function () { form._aicosConfirmed = false; }, 0);
+    }).finally(function () {
+      confirmingForms.delete(form);
+    });
+  }, true);
+
+  // Replace htmx's native hx-confirm() prompt with the shared dialog.
+  document.body.addEventListener('htmx:confirm', function (event) {
+    var detail = event.detail || {};
+    if (!detail.question) return;
+    event.preventDefault();
+    window.showAppConfirm(detail.question).then(function (confirmed) {
+      if (confirmed && typeof detail.issueRequest === 'function') detail.issueRequest(true);
+    });
   });
 
   // ------------------------------------------------------ video modal

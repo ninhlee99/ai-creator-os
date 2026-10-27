@@ -375,7 +375,7 @@
         {{else}}
         {{if eq .Status "failed"}}
         <a href="/studio/jobs?id={{.ID}}#job-{{.ID}}" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-weight:700">Chi tiết render ↗</a>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa tác vụ thất bại này cùng toàn bộ file liên quan?" data-confirm-danger>
           <input type="hidden" name="return_to" value="/">
           <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--err);font-weight:700" title="Xóa tác vụ thất bại" aria-label="Xóa tác vụ thất bại">🗑</button>
         </form>

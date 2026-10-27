@@ -94,7 +94,7 @@ document.querySelectorAll('.keyring').forEach(function (root) {
     var msg = card.querySelector('.key-msg');
     if (ev.target.closest('.key-del-btn')) {
       var masked = card.querySelector('.key-masked').textContent;
-      if (!confirm('Xóa key ' + masked + ' khỏi ' + provider + '?')) return;
+      if (!await window.showAppConfirm('Xóa key ' + masked + ' khỏi ' + provider + '?', { title: 'Xóa API key', confirmText: 'Xóa key', danger: true })) return;
       msg.hidden = true;
       try {
         var r = await postQS('delete', 'idx=' + encodeURIComponent(idx));
@@ -105,7 +105,7 @@ document.querySelectorAll('.keyring').forEach(function (root) {
       return;
     }
     if (ev.target.closest('.key-test-btn')) {
-      if (!window.confirm('Kiểm tra key sẽ gửi request thật tới Gemini và tiêu thụ quota. Tiếp tục?')) return;
+      if (!await window.showAppConfirm('Kiểm tra key sẽ gửi request thật tới Gemini và tiêu thụ quota. Tiếp tục?', { title: 'Kiểm tra API key', confirmText: 'Gửi request', tone: 'warning' })) return;
       var btn = ev.target.closest('.key-test-btn');
       btn.disabled = true;
       msg.hidden = false; msg.textContent = 'Đang kiểm tra…'; msg.className = 'key-msg';

@@ -266,17 +266,17 @@ function filterViralModels() {
 
 function validateViralProduction() {
   if (!viralCharacterEditorReady) {
-    alert('Google Flow video-edit adapter chưa sẵn sàng: {{.Viral.CharacterEditorStatus}}');
+    window.showAppNotice('Google Flow video-edit adapter chưa sẵn sàng: {{.Viral.CharacterEditorStatus}}');
     return false;
   }
   var account = document.getElementById('viral-account');
   if (!account || !account.value) {
-    alert('Chọn kênh đích trước khi tạo video.');
+    window.showAppNotice('Chọn kênh đích trước khi tạo video.');
     return false;
   }
   var url = document.getElementById('viral-tiktok-link');
   if (!url || !/^https:\/\/(www\.|m\.|vm\.|vt\.)?tiktok\.com\//i.test(url.value.trim())) {
-    alert('Mở Radar TikTok rồi chọn video nhảy viral.');
+    window.showAppNotice('Mở Radar TikTok rồi chọn video nhảy viral.');
     return false;
   }
   var model = Array.prototype.some.call(document.querySelectorAll('.viral-model-card'), function(card) {
@@ -284,7 +284,7 @@ function validateViralProduction() {
   });
   var upload = document.querySelector('input[name="model_photos"]');
   if (!model && (!upload || !upload.files || !upload.files.length)) {
-    alert('Chọn hoặc tải ảnh nhân vật của kênh đã chọn.');
+    window.showAppNotice('Chọn hoặc tải ảnh nhân vật của kênh đã chọn.');
     return false;
   }
   return true;
@@ -465,7 +465,7 @@ function pasteFromClipboard(targetId) {
       var el = document.getElementById(targetId);
       if (el) el.value = text;
     }).catch(function() {
-      alert('Vui lòng dán trực tiếp bằng phím Ctrl+V hoặc Cmd+V.');
+      window.showAppNotice('Vui lòng dán trực tiếp bằng phím Ctrl+V hoặc Cmd+V.');
     });
   }
 }

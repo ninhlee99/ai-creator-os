@@ -137,7 +137,7 @@
           <input type="hidden" name="confirm_flow_credits" value="1">
           <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;padding:6px 14px">🔄 Thử lại ngay</button>
         </form>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa tác vụ thất bại này cùng toàn bộ file liên quan?')">
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa tác vụ thất bại này cùng toàn bộ file liên quan?" data-confirm-danger>
           <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
         </form>
       </div>
@@ -229,7 +229,7 @@
         <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
           <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--warn);padding:4px 10px;font-size:12px;font-weight:700">⏸ Hủy</button>
         </form>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
           <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--err);padding:4px 8px;font-size:12px" title="Xóa video và file">🗑</button>
         </form>
       </div>
@@ -303,7 +303,7 @@
           <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
           {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
         </div>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
+        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
           <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
         </form>
       </div>
@@ -420,7 +420,7 @@
             <span class="badge badge-{{.Class}}" style="font-size:10px;font-weight:700">{{.Label}}</span>
             {{if and (eq .Status "done") (not .QCVerified)}}<span style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #f59e0b;border-radius:999px;padding:2px 7px" title="Job hoàn tất render nhưng thiếu bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
           </div>
-          <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Xóa job này và toàn bộ file liên quan?')">
+          <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
             <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err);padding:2px 6px;font-size:11px" title="Xóa video và file">🗑</button>
           </form>
         </div>
@@ -515,9 +515,9 @@ function copyPostKit(title, kind) {
     tagBase + ' ' + kindTag;
 
   navigator.clipboard.writeText(kit).then(function() {
-    alert('✓ Đã sao chép tiêu đề, caption và hashtag TikTok.');
+    window.showAppNotice('Đã sao chép tiêu đề, caption và hashtag TikTok.', { title: 'Đã sao chép', tone: 'success' });
   }).catch(function() {
-    prompt('Sao chép nội dung đăng kênh:', kit);
+    window.showAppPrompt('Sao chép nội dung đăng kênh:', kit, { label: 'Nội dung', multiline: true, readOnly: true, selectOnOpen: true, confirmText: 'Đóng' });
   });
 }
 
@@ -526,10 +526,10 @@ function copyAffiliateTrackingLink(button) {
   if (!value) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(value).then(function() {
-      alert('Đã sao chép link tracking AccessTrade của video.');
-    }).catch(function() { prompt('Sao chép link tracking:', value); });
+      window.showAppNotice('Đã sao chép link tracking AccessTrade của video.', { title: 'Đã sao chép', tone: 'success' });
+    }).catch(function() { window.showAppPrompt('Sao chép link tracking:', value, { label: 'Link tracking', readOnly: true, selectOnOpen: true, confirmText: 'Đóng' }); });
   } else {
-    prompt('Sao chép link tracking:', value);
+    window.showAppPrompt('Sao chép link tracking:', value, { label: 'Link tracking', readOnly: true, selectOnOpen: true, confirmText: 'Đóng' });
   }
 }
 </script>

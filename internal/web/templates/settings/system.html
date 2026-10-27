@@ -192,18 +192,18 @@ function testWebAIAccount(id, btn) {
   .then(function(res) { return res.json(); })
   .then(function(data) {
     if (data.ok) {
-      alert('✓ ' + (data.message || 'Phiên làm việc còn sống và hoạt động tốt!'));
-      location.reload();
+      window.showAppNotice(data.message || 'Phiên làm việc còn sống và hoạt động tốt!', { title: 'Phiên hoạt động', tone: 'success' }).then(function () { location.reload(); });
+      return;
     } else if (data.outcome === 'unknown') {
-      alert('ℹ ' + (data.message || 'Đã lưu cookie; nhà cung cấp chưa cho phép xác minh từ máy chủ.'));
-      location.reload();
+      window.showAppNotice(data.message || 'Đã lưu cookie; nhà cung cấp chưa cho phép xác minh từ máy chủ.', { title: 'Chưa xác minh được', tone: 'warning' }).then(function () { location.reload(); });
+      return;
     } else {
-      alert('⚠ ' + (data.error || data.message || 'Phiên làm việc đã hết hạn hoặc không kết nối được'));
-      location.reload();
+      window.showAppNotice(data.error || data.message || 'Phiên làm việc đã hết hạn hoặc không kết nối được', { title: 'Phiên không hoạt động', tone: 'danger' }).then(function () { location.reload(); });
+      return;
     }
   })
   .catch(function(err) {
-    alert('Lỗi kiểm tra phiên: ' + err.message);
+    window.showAppNotice('Lỗi kiểm tra phiên: ' + err.message);
   })
   .finally(function() {
     if (btn) {
@@ -227,17 +227,17 @@ function testAllWebAIAccounts() {
   .then(function(res) { return res.json(); })
   .then(function(data) {
     if (data.ok) {
-      alert('Kết quả kiểm tra toàn diện:\n' + (data.message || 'Hoàn tất!'));
+      window.showAppNotice(data.message || 'Hoàn tất!', { title: 'Kết quả kiểm tra toàn diện', tone: 'success' }).then(function () { location.reload(); });
       var currentURL = new URL(window.location.href);
       currentURL.hash = 'tab-webai';
       window.history.replaceState(null, '', currentURL.toString());
-      location.reload();
+      return;
     } else {
-      alert('Lỗi kiểm tra: ' + (data.error || 'Thao tác không thành công'));
+      window.showAppNotice('Lỗi kiểm tra: ' + (data.error || 'Thao tác không thành công'));
     }
   })
   .catch(function(err) {
-    alert('Lỗi kết nối kiểm tra: ' + err.message);
+    window.showAppNotice('Lỗi kết nối kiểm tra: ' + err.message);
   })
   .finally(function() {
     if (btn) {

@@ -753,7 +753,7 @@ document.addEventListener('keydown', function(e) {
            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 4px;">
           {{if eq . "Xu hướng Việt Nam"}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}{{.}}
         </a>
-        <form method="post" action="/studio/trends/topics/delete" onsubmit="return confirm('Xóa chủ đề này khỏi danh sách theo dõi?');" style="display: inline; margin: 0; padding: 0;">
+        <form method="post" action="/studio/trends/topics/delete" data-confirm="Xóa chủ đề này khỏi danh sách theo dõi?" data-confirm-danger style="display: inline; margin: 0; padding: 0;">
           <input type="hidden" name="topic" value="{{.}}">
           <button type="submit" style="background: none; border: none; padding: 0 2px; margin-left: 2px; cursor: pointer; color: inherit; opacity: 0.6; font-size: 11px;" title="Xóa chủ đề này">✕</button>
         </form>
