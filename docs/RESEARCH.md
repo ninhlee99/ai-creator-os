@@ -12,7 +12,7 @@ Nguồn chính thức:
 
 ## TikTok Radar
 
-Radar hiện dùng [TikTok Web Crawler](features/tiktok-web-crawler.md), không dùng TikTok Business Discovery. Business Discovery và Research API là các lựa chọn khác, không phải nguồn code hiện tại. Không có hồ sơ phê duyệt quyền crawl; nội dung tài liệu này không xác nhận crawler được TikTok cho phép. Trước production cần rà soát policy/quyền truy cập và chuyển sang nguồn được phép nếu chưa có approval. Metadata caption/sound không đủ để chứng minh video có nhảy; dance flag hiện tại cũng không phải classifier.
+Radar hiện dùng [TikTok Web Crawler](features/tiktok-web-crawler.md), không dùng TikTok Business Discovery. Business Discovery và Research API là các lựa chọn khác, không phải nguồn code hiện tại. Không có hồ sơ phê duyệt quyền crawl; nội dung tài liệu này không xác nhận crawler được TikTok cho phép. Trước production cần rà soát policy/quyền truy cập và chuyển sang nguồn được phép nếu chưa có approval. Crawler không phân loại video nhảy; operator phải xác nhận từng video trước khi dùng làm nguồn audio.
 
 ## AccessTrade
 
