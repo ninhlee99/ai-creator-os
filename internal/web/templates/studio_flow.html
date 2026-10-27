@@ -36,7 +36,6 @@
             <option value="affiliate"{{if and .ActiveGraph (eq .ActiveGraph.Category "affiliate")}} selected{{end}}>Affiliate</option>
             <option value="viral"{{if and .ActiveGraph (eq .ActiveGraph.Category "viral")}} selected{{end}}>TikTok Viral</option>
             <option value="fashion"{{if and .ActiveGraph (eq .ActiveGraph.Category "fashion")}} selected{{end}}>Thời trang</option>
-            <option value="vfx_3d"{{if and .ActiveGraph (eq .ActiveGraph.Category "vfx_3d")}} selected{{end}}>3D / VFX</option>
           </select>
         </div>
         <div class="wf-badge-row">
@@ -263,7 +262,6 @@
 
     <div class="wf-modal-tags" id="graphs-filter-tabs">
       <button type="button" class="wf-tag-filter active" data-filter="all">Tất cả <span class="wf-filter-count" id="count-all"></span></button>
-      <button type="button" class="wf-tag-filter" data-filter="vfx_3d">Workflow 3D/VFX</button>
       <button type="button" class="wf-tag-filter" data-filter="custom">💾 Luồng của tôi <span class="wf-filter-count" id="count-custom"></span></button>
       <button type="button" class="wf-tag-filter" data-filter="preset">✨ Mẫu có sẵn (Presets) <span class="wf-filter-count" id="count-preset"></span></button>
       <button type="button" class="wf-tag-filter" data-filter="fashion">👗 Thời trang nữ</button>

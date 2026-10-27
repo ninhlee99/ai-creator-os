@@ -1557,7 +1557,7 @@
     }
 
     getWorkflowPortTypes() {
-      return ['any', 'image', 'image_list', 'video', 'audio', 'text', 'product', 'motion', 'number', 'config', 'mesh', 'pose', 'camera', 'light', 'texture'];
+      return ['any', 'image', 'image_list', 'video', 'audio', 'text', 'product', 'motion', 'number', 'config'];
     }
 
     getNodePorts(node, isOutput) {
@@ -2205,7 +2205,6 @@
         { value: 'affiliate', label: 'Affiliate' },
         { value: 'viral', label: 'TikTok Viral' },
         { value: 'fashion', label: 'Thời trang' },
-        { value: 'vfx_3d', label: '3D / VFX' },
         { value: 'custom', label: 'Custom' }
       ];
 
@@ -2690,11 +2689,6 @@
             PRODUCT: {},
             MOTION: {},
             CONFIG: {},
-            MESH: {},
-            POSE: {},
-            CAMERA: {},
-            LIGHT: {},
-            TEXTURE: {},
             ANY: params.value || ''
           };
           detectedFlatParams[key] = Object.prototype.hasOwnProperty.call(samples, type) ? samples[type] : '';
@@ -2729,13 +2723,13 @@
           const val = params.image_url || params.source_image || params.product_image || 'https://example.com/assets/product_garment.png';
           detectedFlatParams[paramKey] = val;
           if (params.product_title || type.includes('product')) {
-            detectedFlatParams['product_name'] = params.product_title || 'Áo khoác Bomber 3D';
+            detectedFlatParams['product_name'] = params.product_title || 'Sản phẩm mẫu';
           }
           detectedChips.push({
             name: paramKey,
             type: 'IMAGE',
             nodeRef: title,
-            desc: `Ảnh sản phẩm / vải 3D`
+            desc: `Ảnh sản phẩm / vải`
           });
           detectedNodeParams[n.id] = { image_url: val };
         }
@@ -3189,18 +3183,14 @@
         card.className = `wf-graph-card ${isActive ? 'is-active' : ''}`;
 
         let catIcon = '⚡';
-        if (g.category === 'vfx_3d') catIcon = '💎';
-        else if (g.category === 'viral') catIcon = '🕺';
+        if (g.category === 'viral') catIcon = '🕺';
         else if (g.category === 'fashion') catIcon = '👗';
         else if (g.category === 'affiliate') catIcon = '🛍️';
         else if (g.category === 'custom') catIcon = '🧠';
 
         let catTag = 'tag-custom';
         let catLabel = '💾 Luồng của bạn';
-        if (g.category === 'vfx_3d') {
-          catTag = 'tag-vfx3d';
-          catLabel = 'Workflow 3D/VFX';
-        } else if (g.is_preset) {
+        if (g.is_preset) {
           catTag = 'tag-preset';
           catLabel = '✨ Mẫu hệ thống';
         } else if (g.category === 'fashion') {

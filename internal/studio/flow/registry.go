@@ -655,7 +655,6 @@ func registerAllBuiltinNodes() {
 		{"affiliate", "Affiliate"},
 		{"viral", "TikTok Viral"},
 		{"fashion", "Thời trang"},
-		{"vfx_3d", "3D / VFX"},
 		{"custom", "Custom"},
 	} {
 		registerWorkflowCallNode(category.key, category.title)
