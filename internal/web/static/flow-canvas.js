@@ -4635,8 +4635,10 @@
           chip.classList.add('active');
           chip.setAttribute('aria-pressed', 'true');
           this.revealNodeCategory(chip);
-          const query = searchInput ? searchInput.value : '';
-          this.renderModalGrid(query, chip.dataset.cat);
+          const category = chip.dataset.cat || 'all';
+          const query = category === 'all' ? '' : (searchInput ? searchInput.value : '');
+          if (category === 'all' && searchInput) searchInput.value = '';
+          this.renderModalGrid(query, category);
         });
       });
       this.syncNodeCategoryScrollButtons();
