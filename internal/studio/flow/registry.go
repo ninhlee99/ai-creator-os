@@ -410,6 +410,50 @@ func registerAllBuiltinNodes() {
 		Executor: executeCustomWebAI,
 	})
 
+	// 13b. Web AI Product Extractor & Analyzer
+	RegisterNode(NodeDefinition{
+		Type:        "webai_product_extractor",
+		Title:       "Web AI · Bóc tách & Phân tích sản phẩm",
+		Category:    CategoryAI,
+		Description: "Dùng Web AI (ChatGPT, Gemini, Claude, Grok) bóc tách sản phẩm từ ảnh, trích xuất vật liệu, màu sắc và tự động tạo prompt Image-to-Image",
+		Icon:        "crop",
+		Inputs: []FlowPort{
+			{ID: "image_in", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: true},
+			{ID: "task", Name: "Yêu cầu thêm", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "description", Name: "Mô tả sản phẩm", Type: PortTypeText, Description: "Mô tả chi tiết kiểu dáng, chất liệu, màu sắc"},
+			{ID: "clean_prompt", Name: "Prompt tái tạo", Type: PortTypeText, Description: "Prompt tối ưu dùng cho tạo ảnh/video tái tạo sản phẩm"},
+			{ID: "product_profile", Name: "Dữ liệu thuộc tính", Type: PortTypeConfig, Description: "Dữ liệu JSON bóc tách"},
+		},
+		DefaultParams: map[string]any{
+			"provider": "gemini",
+		},
+		Executor: executeWebAIProductExtractor,
+	})
+
+	// 13c. Web AI Image-to-Image Node
+	RegisterNode(NodeDefinition{
+		Type:        "webai_img2img",
+		Title:       "Web AI · Biến đổi ảnh (Image-to-Image)",
+		Category:    CategoryAI,
+		Description: "Biến đổi ảnh, đặt sản phẩm vào bối cảnh mới qua ChatGPT (DALL-E), Gemini (Imagen), Grok (Flux) dùng website thật",
+		Icon:        "image",
+		Inputs: []FlowPort{
+			{ID: "image_in", Name: "Ảnh gốc", Type: PortTypeImage, Required: true},
+			{ID: "prompt_in", Name: "Bối cảnh / Mô tả mới", Type: PortTypeText, Required: true},
+		},
+		Outputs: []FlowPort{
+			{ID: "image_out", Name: "Ảnh kết quả", Type: PortTypeImage, Description: "Ảnh thành phẩm đã biến đổi"},
+			{ID: "result_out", Name: "File kết quả", Type: PortTypeAny, Description: "Ảnh thành phẩm"},
+		},
+		DefaultParams: map[string]any{
+			"provider_name": "chatgpt",
+			"style":         "cinematic studio lighting",
+		},
+		Executor: executeWebAIImg2Img,
+	})
+
 	// 14. Audio Merge Node
 	RegisterNode(NodeDefinition{
 		Type:        "audio_merge",

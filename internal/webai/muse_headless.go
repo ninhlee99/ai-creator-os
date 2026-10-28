@@ -130,27 +130,11 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	}
 	defer conn.Close()
 	client := &browserCDPClient{conn: conn}
-	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
+	targetID, _, err := client.attachOrReusePageTarget(ctx)
 	if err != nil {
 		return out, err
 	}
-	var target struct {
-		TargetID string `json:"targetId"`
-	}
-	if err := json.Unmarshal(created, &target); err != nil || target.TargetID == "" {
-		return out, errors.New("Muse headless browser did not create a page")
-	}
-	attached, err := client.call(ctx, "Target.attachToTarget", map[string]any{"targetId": target.TargetID, "flatten": true}, "")
-	if err != nil {
-		return out, err
-	}
-	var session struct {
-		SessionID string `json:"sessionId"`
-	}
-	if err := json.Unmarshal(attached, &session); err != nil || session.SessionID == "" {
-		return out, errors.New("Muse headless browser did not attach to page")
-	}
-	client.sessionID = session.SessionID
+	defer client.closePage(context.Background(), targetID)
 	cookies := normalizeCookieJar(savedCookies)
 	if len(cookies) == 0 {
 		cookies = mergeCookieJarHeader(nil, cookie, PlatformMuseAI)
@@ -164,6 +148,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 		}
 	}
 	client.enableStealth(ctx)
+	client.setupResourceThrottling(ctx)
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(PlatformMuseAI, cookies)}, client.sessionID); err != nil {
 		return out, errors.New("Muse headless browser rejected saved session cookies")
 	}

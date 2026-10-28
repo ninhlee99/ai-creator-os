@@ -144,27 +144,11 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 	}
 	defer conn.Close()
 	client := &browserCDPClient{conn: conn}
-	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
+	targetID, _, err := client.attachOrReusePageTarget(ctx)
 	if err != nil {
 		return result, err
 	}
-	var target struct {
-		TargetID string `json:"targetId"`
-	}
-	if json.Unmarshal(created, &target) != nil || target.TargetID == "" {
-		return result, errors.New("Web AI browser did not create a page")
-	}
-	attached, err := client.call(ctx, "Target.attachToTarget", map[string]any{"targetId": target.TargetID, "flatten": true}, "")
-	if err != nil {
-		return result, err
-	}
-	var session struct {
-		SessionID string `json:"sessionId"`
-	}
-	if json.Unmarshal(attached, &session) != nil || session.SessionID == "" {
-		return result, errors.New("Web AI browser did not attach to page")
-	}
-	client.sessionID = session.SessionID
+	defer client.closePage(context.Background(), targetID)
 	cookies := normalizeCookieJar(savedCookies)
 	if len(cookies) == 0 {
 		cookies = mergeCookieJarHeader(nil, cookie, platform)
@@ -178,6 +162,7 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 		}
 	}
 	client.enableStealth(ctx)
+	client.setupResourceThrottling(ctx)
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(platform, cookies)}, client.sessionID); err != nil {
 		return result, fmt.Errorf("Web AI browser rejected saved session cookies: %w", err)
 	}

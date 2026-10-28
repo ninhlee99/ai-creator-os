@@ -391,6 +391,104 @@ func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}, nil
 }
 
+func executeWebAIProductExtractor(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	imgIn := inputString(inputs, "image_in", "")
+	if imgIn == "" || !fileExists(imgIn) {
+		return nil, fmt.Errorf("cần ảnh sản phẩm hợp lệ để bóc tách và phân tích")
+	}
+	customTask := inputString(inputs, "task", nodeParamString(node.Params, "task", ""))
+	provider := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider", "gemini")))
+
+	prompt := "Bạn là chuyên gia thị giác AI phân tích sản phẩm quảng cáo. Hãy quan sát kỹ ảnh sản phẩm được đính kèm và bóc tách chi tiết: " +
+		"1. Tên và loại sản phẩm (Category). " +
+		"2. Màu sắc chủ đạo, chất liệu, họa tiết, hình dáng đặc trưng. " +
+		"3. Điểm nhấn thương hiệu / logo / bao bì. " +
+		"4. Viết 1 đoạn mô tả chi tiết sản phẩm. " +
+		"5. Viết 1 câu prompt tiếng Anh (clean_prompt) để dùng trong AI image/video generator tái tạo sản phẩm trên nền studio sang trọng hoặc bối cảnh tự nhiên. "
+	if customTask != "" {
+		prompt += "Yêu cầu bổ sung: " + customTask
+	}
+
+	var rawAnalysis string
+	var err error
+	if isBrowserWebAIProvider(provider) && ctx.WebAIOperation != nil {
+		thread := ctx.webAIConversation(provider)
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_extract.txt", node.ID))
+		var nextURL, nextAccountID string
+		rawAnalysis, _, nextURL, nextAccountID, err = ctx.WebAIOperation(ctx.Context, provider, prompt, []string{imgIn}, "text", outPath, thread.URL, thread.AccountID)
+		ctx.setWebAIConversation(provider, WebAIConversation{URL: nextURL, AccountID: nextAccountID})
+		if err != nil {
+			return nil, fmt.Errorf("bóc tách sản phẩm qua %s Web AI thất bại: %w", provider, err)
+		}
+	} else if ctx.VisionEval != nil {
+		rawAnalysis, err = ctx.VisionEval(ctx.Context, prompt, imgIn)
+		if err != nil {
+			return nil, fmt.Errorf("phân tích sản phẩm thất bại: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("không có dịch vụ phân tích thị giác Web AI khả dụng")
+	}
+
+	rawAnalysis = strings.TrimSpace(rawAnalysis)
+	cleanPrompt := fmt.Sprintf("High-end commercial product shot of %s, clean modern studio lighting, elegant reflection, 8k ultra realistic, cinematic depth of field", rawAnalysis)
+	if len(rawAnalysis) > 120 {
+		cleanPrompt = fmt.Sprintf("Commercial product showcase: %s, professional studio lighting, 8k UHD", rawAnalysis[:120])
+	}
+
+	ctx.Log(fmt.Sprintf("WebAIProductExtractor: Đã bóc tách sản phẩm thành công (%d ký tự)", len(rawAnalysis)))
+
+	return map[string]any{
+		"description":  rawAnalysis,
+		"clean_prompt": cleanPrompt,
+		"product_profile": map[string]any{
+			"source_image": imgIn,
+			"analysis":     rawAnalysis,
+			"clean_prompt": cleanPrompt,
+		},
+	}, nil
+}
+
+func executeWebAIImg2Img(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
+	imgIn := inputString(inputs, "image_in", "")
+	if imgIn == "" || !fileExists(imgIn) {
+		return nil, fmt.Errorf("cần ảnh nguồn hợp lệ cho Image-to-Image")
+	}
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt_in"}, "")
+	if strings.TrimSpace(prompt) == "" {
+		return nil, fmt.Errorf("cần mô tả hoặc bối cảnh mới cho ảnh")
+	}
+	provider := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider_name", "chatgpt")))
+	style := nodeParamString(node.Params, "style", "cinematic studio lighting")
+
+	fullPrompt := fmt.Sprintf("Based on the provided reference image, generate a new image that preserves the exact subject identity, details, and colors, while changing the setting and environment to: %s. Style: %s, high resolution, sharp focus.", prompt, style)
+
+	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_img2img.jpg", node.ID))
+	if isBrowserWebAIProvider(provider) && ctx.WebAIOperation != nil {
+		thread := ctx.webAIConversation(provider)
+		_, mediaPath, nextURL, nextAccountID, err := ctx.WebAIOperation(ctx.Context, provider, fullPrompt, []string{imgIn}, "image", outPath, thread.URL, thread.AccountID)
+		ctx.setWebAIConversation(provider, WebAIConversation{URL: nextURL, AccountID: nextAccountID})
+		if err != nil {
+			return nil, fmt.Errorf("Image-to-Image qua %s thất bại: %w", provider, err)
+		}
+		if mediaPath == "" || !fileExists(mediaPath) {
+			return nil, fmt.Errorf("%s không trả về file ảnh Image-to-Image hợp lệ", provider)
+		}
+		ctx.Log(fmt.Sprintf("WebAIImg2Img: Đã tạo ảnh mới thành công từ ảnh gốc qua %s", provider))
+		return map[string]any{"image_out": mediaPath, "result_out": mediaPath}, nil
+	}
+
+	if ctx.GenerateImage != nil {
+		if err := ctx.GenerateImage(ctx.Context, fullPrompt, []string{imgIn}, outPath); err != nil {
+			return nil, fmt.Errorf("tạo ảnh thất bại: %w", err)
+		}
+		if fileExists(outPath) {
+			return map[string]any{"image_out": outPath, "result_out": outPath}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("không có dịch vụ tạo ảnh Web AI khả dụng cho %s", provider)
+}
+
 func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := resolveNodePrompt(node, inputs, []string{"prompt_in"}, "")
 	if strings.TrimSpace(prompt) == "" {

@@ -2,7 +2,6 @@ package webai
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -181,33 +180,18 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	}
 	defer conn.Close()
 	client := &browserCDPClient{conn: conn}
-	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
+	targetID, _, err := client.attachOrReusePageTarget(ctx)
 	if err != nil {
 		return result, err
 	}
-	var target struct {
-		TargetID string `json:"targetId"`
-	}
-	if json.Unmarshal(created, &target) != nil || target.TargetID == "" {
-		return result, errors.New("Flow headless browser did not create a page")
-	}
-	attached, err := client.call(ctx, "Target.attachToTarget", map[string]any{"targetId": target.TargetID, "flatten": true}, "")
-	if err != nil {
-		return result, err
-	}
-	var session struct {
-		SessionID string `json:"sessionId"`
-	}
-	if json.Unmarshal(attached, &session) != nil || session.SessionID == "" {
-		return result, errors.New("Flow headless browser did not attach to page")
-	}
-	client.sessionID = session.SessionID
+	defer client.closePage(context.Background(), targetID)
 	for _, method := range []string{"Page.enable", "Runtime.enable", "Network.enable"} {
 		if _, err := client.call(ctx, method, map[string]any{}, client.sessionID); err != nil {
 			return result, err
 		}
 	}
 	client.enableStealth(ctx)
+	client.setupResourceThrottling(ctx)
 	if len(cookies) == 0 {
 		cookies = mergeCookieJarHeader(nil, cookie, PlatformGoogleFlow)
 	}
