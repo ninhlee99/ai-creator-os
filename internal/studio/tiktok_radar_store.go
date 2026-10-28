@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -14,18 +15,12 @@ const maxStoredTikTokRadarVideos = 2000
 
 const tiktokRadarSnapshotRetention = 30 * 24 * time.Hour
 const tiktokRadarDanceFreshness = 7 * 24 * time.Hour
+const tiktokRadarRecentCandidateMaxAge = 90 * time.Minute
 
-// CollectTikTokRadarVideos fetches the current feed and persists every
-// validated candidate before returning it to the Radar UI.
+// CollectTikTokRadarVideos refreshes the default trend topic and returns its
+// analyzed Top 8 candidates.
 func (s *Studio) CollectTikTokRadarVideos(ctx context.Context) ([]TikTokTrendVideo, error) {
-	if s == nil || s.db == nil {
-		return nil, fmt.Errorf("Studio chưa sẵn sàng để lưu kết quả Radar TikTok")
-	}
-	videos, err := FetchTikTokTrendingVideos(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return s.persistTikTokRadarResults(ctx, videos)
+	return s.CollectTikTokRadarVideosForTopic(ctx, "Xu hướng Việt Nam")
 }
 
 // SearchTikTokRadarVideos runs a topic search against TikTok's video search
@@ -36,9 +31,65 @@ func (s *Studio) SearchTikTokRadarVideos(ctx context.Context, topic string) ([]T
 	}
 	videos, err := FetchTikTokVideosForTopic(ctx, topic)
 	if err != nil {
+		if IsTikTokRadarProtectedDefaultTopic(topic) {
+			cached, cacheErr := s.recentTikTokRadarCandidates(ctx)
+			if cacheErr != nil {
+				return nil, fmt.Errorf("%w; đọc cache video gần đây thất bại: %v", err, cacheErr)
+			}
+			if len(cached) >= tikTokRadarFeedLimit {
+				log.Printf("TikTok Radar: live search failed for default topic; reusing %d crawler candidates collected within %s", len(cached), tiktokRadarRecentCandidateMaxAge)
+				if jobID, _, jobErr := s.findActiveTikTokRadarRefreshJob(topic); jobErr == nil && jobID != "" {
+					s.appendLog(jobID, fmt.Sprintf("TikTok search tạm lỗi; phân tích lại %d video đã thu thập trong %s gần nhất.", len(cached), tiktokRadarRecentCandidateMaxAge))
+				}
+				return cached, nil
+			}
+		}
 		return nil, err
 	}
 	return s.persistTikTokRadarResults(ctx, videos)
+}
+
+func (s *Studio) recentTikTokRadarCandidates(ctx context.Context) ([]TikTokTrendVideo, error) {
+	if s == nil || s.db == nil {
+		return nil, fmt.Errorf("Studio chưa sẵn sàng")
+	}
+	cutoff := time.Now().UTC().Add(-tiktokRadarRecentCandidateMaxAge).Format(time.RFC3339)
+	rows, err := s.db.QueryContext(ctx, `SELECT payload FROM studio_tiktok_radar_videos
+		WHERE collected_at>=? ORDER BY collected_at DESC LIMIT ?`, cutoff, tikTokRadarCandidateLimit*2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	videos := make([]TikTokTrendVideo, 0, tikTokRadarCandidateLimit)
+	seen := make(map[string]struct{}, tikTokRadarCandidateLimit)
+	for rows.Next() {
+		var payload string
+		if err := rows.Scan(&payload); err != nil {
+			return nil, err
+		}
+		var video TikTokTrendVideo
+		if err := json.Unmarshal([]byte(payload), &video); err != nil {
+			continue
+		}
+		video.VideoID = strings.TrimSpace(video.VideoID)
+		if video.VideoID == "" || video.Provider != TikTokCrawlerSource || !IsTikTokVideoURL(video.VideoURL) || tiktokVideoID(video.VideoURL) != video.VideoID {
+			continue
+		}
+		if _, ok := seen[video.VideoID]; ok {
+			continue
+		}
+		seen[video.VideoID] = struct{}{}
+		videos = append(videos, video)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sortTikTokRadarVideosByPopularity(videos)
+	if len(videos) > tikTokRadarCandidateLimit {
+		videos = videos[:tikTokRadarCandidateLimit]
+	}
+	return videos, nil
 }
 
 func (s *Studio) persistTikTokRadarResults(ctx context.Context, videos []TikTokTrendVideo) ([]TikTokTrendVideo, error) {
@@ -214,6 +265,18 @@ func (s *Studio) enrichTikTokRadarMetrics(ctx context.Context, video *TikTokTren
 func sortTikTokRadarVideosByPopularity(videos []TikTokTrendVideo) {
 	sort.SliceStable(videos, func(i, j int) bool {
 		a, b := videos[i], videos[j]
+		if a.VelocityKnown != b.VelocityKnown {
+			return a.VelocityKnown
+		}
+		if a.VelocityKnown && a.ViewsPerHour != b.ViewsPerHour {
+			return a.ViewsPerHour > b.ViewsPerHour
+		}
+		if a.EngagementKnown != b.EngagementKnown {
+			return a.EngagementKnown
+		}
+		if a.EngagementKnown && a.EngagementRate != b.EngagementRate {
+			return a.EngagementRate > b.EngagementRate
+		}
 		if a.PlayCountKnown != b.PlayCountKnown {
 			return a.PlayCountKnown
 		}

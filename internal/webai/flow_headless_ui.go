@@ -152,7 +152,8 @@ func flowFileInputs(ctx context.Context, client *browserCDPClient) ([]flowFileIn
 		for i := 0; i+1 < len(node.Node.Attributes); i += 2 {
 			attrs[strings.ToLower(node.Node.Attributes[i])] = node.Node.Attributes[i+1]
 		}
-		inputs = append(inputs, flowFileInput{NodeID: nodeID, Accept: strings.ToLower(attrs["accept"]), Multiple: attrs["multiple"] != ""})
+		_, multiple := attrs["multiple"]
+		inputs = append(inputs, flowFileInput{NodeID: nodeID, Accept: strings.ToLower(attrs["accept"]), Multiple: multiple})
 	}
 	return inputs, nil
 }
@@ -257,7 +258,7 @@ func flowAttachOneFile(ctx context.Context, client *browserCDPClient, path, kind
 
 	// Get input objectId via Runtime.evaluate
 	evalResp, err := client.call(ctx, "Runtime.evaluate", map[string]any{
-		"expression": "window.__lastFileInput",
+		"expression":    "window.__lastFileInput",
 		"returnByValue": false,
 	}, client.sessionID)
 	if err != nil {
@@ -274,7 +275,7 @@ func flowAttachOneFile(ctx context.Context, client *browserCDPClient, path, kind
 
 	// Set file via CDP
 	if _, err := client.call(ctx, "DOM.setFileInputFiles", map[string]any{
-		"files": []string{path},
+		"files":    []string{path},
 		"objectId": evalResult.Result.ObjectID,
 	}, client.sessionID); err != nil {
 		return fmt.Errorf("Flow could not attach %s reference: %w", kind, err)

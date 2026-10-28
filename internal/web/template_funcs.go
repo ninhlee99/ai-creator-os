@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/growth"
 	"github.com/ninhlee99/ai-creator-os/internal/products"
+	"github.com/ninhlee99/ai-creator-os/internal/studio"
 	"html/template"
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
 	"net/url"
@@ -62,8 +63,9 @@ var templateFuncs = template.FuncMap{
 	"join": func(sep string, xs []string) string {
 		return strings.Join(xs, sep)
 	},
-	"hasPrefix": strings.HasPrefix,
-	"urlQuery":  url.QueryEscape,
+	"hasPrefix":             strings.HasPrefix,
+	"isProtectedRadarTopic": studio.IsTikTokRadarProtectedDefaultTopic,
+	"urlQuery":              url.QueryEscape,
 	// themeLabel renders a theme slug as its catalog label.
 	"themeLabel": func(slug string) string {
 		if t, ok := products.DescribeTheme(slug); ok {

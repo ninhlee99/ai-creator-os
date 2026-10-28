@@ -79,6 +79,8 @@ func kindLabel(kind string) string {
 		return "Affiliate TikTok"
 	case studio.KindViral:
 		return "Viral TikTok"
+	case studio.KindTikTokRadarRefresh:
+		return "TikTok Radar"
 	case "ai_content":
 		return "Muse · Flow"
 	default:

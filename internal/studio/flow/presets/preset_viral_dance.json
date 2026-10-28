@@ -27,7 +27,7 @@
       "y": 160,
       "params": {
         "dance_style": "",
-        "keyframe_count": 6,
+        "keyframe_count": 12,
         "require_audio": true,
         "strict_analysis": true,
         "analysis_timeout_seconds": 90
@@ -41,7 +41,7 @@
       "x": 360,
       "y": 520,
       "params": {
-        "max_segment_seconds": 3.7,
+        "max_segment_seconds": 10,
         "require_audio": true
       }
     },
@@ -67,7 +67,7 @@
       "y": 40,
       "params": {
         "outfit_name": "",
-        "prompt": "Wardrobe direction: {{fit_style}}. Preserve the supplied character's face, hair and body proportions."
+        "prompt": "Replace only the performer's identity with the selected channel character. Preserve the exact outfit, clothing colors, fit, accessories and body pose visible in the source video. Do not add logos or change wardrobe. Preserve the selected character's face, hair and body proportions. Wardrobe direction: {{fit_style}}."
       }
     },
     {
@@ -78,10 +78,10 @@
       "x": 700,
       "y": 40,
       "params": {
-        "location_type": "neon_dance_studio",
-        "custom_location": "",
-        "depth_of_field": "cinematic_bokeh",
-        "prompt": "{{location_type}} background. {{custom_location}} Match the source camera framing and subject position. Preserve off-frame intervals and empty frames when present."
+        "location_type": "custom",
+        "custom_location": "the exact original source-video location, background, visible objects and spatial layout",
+        "depth_of_field": "preserve source video",
+        "prompt": "Preserve the source TikTok video's exact location, background, visible objects, spatial layout and camera framing. Do not create a studio, relocate the performer, add or remove scene objects, or change the background."
       }
     },
     {
@@ -92,10 +92,10 @@
       "x": 1040,
       "y": 40,
       "params": {
-        "color_temperature": "cyber_neon_magenta",
-        "light_intensity": "dramatic_contrast",
-        "time_of_day": "dynamic_stage_lights",
-        "prompt": "{{time_of_day}} stage lighting with {{color_temperature}} color temperature and {{light_intensity}} intensity. Keep the face and outfit clearly visible."
+        "color_temperature": "preserve source video",
+        "light_intensity": "preserve source video",
+        "time_of_day": "preserve source video",
+        "prompt": "Preserve the source video's existing light direction, brightness, color, exposure and shadows. Do not add stage lights, neon, relighting or a new color grade. Keep the replacement character naturally integrated into the original scene."
       }
     },
     {
@@ -106,9 +106,9 @@
       "x": 1380,
       "y": 200,
       "params": {
-        "dance_type": "TikTok dance",
-        "expression": "confident",
-        "prompt_template": "Create a vertical 9:16 dance shot. Follow only the movement observed in the attached source video: {{movement_analysis}}. The final {{motion_keyframe_count}} motion-reference images correspond in order to these moments in the source clip: {{motion_keyframe_timestamps}}. Reproduce each distinct pose and hand position at its corresponding beat, then interpolate transitions smoothly; do not hold or repeat the opening pose across later beats. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Use supplied character photos as the sole source of identity. One adult subject, realistic anatomy and motion."
+        "dance_type": "reproduce the source choreography exactly",
+        "expression": "match the source performer's visible expression",
+        "prompt_template": "Create a vertical 9:16 video-to-video full-performer replacement of the attached TikTok source. Preserve the source video's exact scene, background, props, lighting, framing, camera movement, performer position and path, choreography, pose order, timing, transitions and cuts. Replace only the performer's identity with the selected channel character; keep the source performer's clothing, colors, fit and accessories unchanged. Do not stage a new dance, change the location, invent actions, alter camera framing, add props, or restyle the video. Use the attached source video as the motion and scene authority. Follow the observed movement analysis: {{movement_analysis}}. The final {{motion_keyframe_count}} chronological motion-reference images correspond to source times {{motion_keyframe_timestamps}}; reproduce their poses and hand positions at those times and interpolate only the visible transitions. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Source scene: {{environment_desc}}. Source lighting: {{lighting_desc}}. Use the selected channel-character photos as the sole identity reference. Keep one realistic adult performer with stable face, hair, body proportions and anatomy. No captions, added text or watermark."
       }
     },
     {
@@ -141,7 +141,9 @@
       "category": "process",
       "x": 2100,
       "y": 380,
-      "params": {}
+      "params": {
+        "fit_mode": "cover"
+      }
     },
     {
       "id": "audio",
@@ -162,8 +164,8 @@
       "x": 2780,
       "y": 380,
       "params": {
-        "contrast_boost": 1.08,
-        "saturation": 1.04
+        "contrast_boost": 1.0,
+        "saturation": 1.0
       }
     },
     {
@@ -175,7 +177,8 @@
       "y": 380,
       "params": {
         "resolution": "4k",
-        "crf": 18
+        "crf": 18,
+        "fit_mode": "cover"
       }
     },
     {
@@ -201,7 +204,7 @@
         "label": "Phong cách trang phục",
         "value_type": "text",
         "required": false,
-        "value": "Trang phục biểu diễn K-pop"
+        "value": "Match the source performer's exact visible outfit and accessories; do not change clothing."
       }
     },
     {

@@ -26,8 +26,8 @@ import (
 func (s *Studio) SweepHungJobs(maxAge time.Duration) int {
 	cutoff := time.Now().Add(-maxAge).Format("2006-01-02T15:04:05")
 	rows, err := s.db.Query(
-		`SELECT id FROM studio_jobs WHERE status=? AND created_at < ?`,
-		StatusRunning, cutoff)
+		`SELECT id FROM studio_jobs WHERE status=? AND created_at < ? AND kind<>?`,
+		StatusRunning, cutoff, KindTikTokRadarRefresh)
 	if err != nil {
 		return 0
 	}

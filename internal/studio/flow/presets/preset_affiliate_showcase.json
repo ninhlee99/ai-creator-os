@@ -54,7 +54,7 @@
       "y": 200,
       "params": {
         "outfit_name": "",
-        "prompt": "Write a concise wardrobe direction for {{fit_style}} that supports this product-use action: {{outfit_name}}. Preserve the character identity. Never claim the still image has been physically edited."
+        "prompt": "Keep the selected channel character identity and use the exact product shown in the listing: {{outfit_name}}. Follow each shot's product-use mode; wear only wearable products. Preserve the product's visible category, color, silhouette, material, cut and details. Do not invent product details or claims, and do not claim a still image was edited."
       }
     },
     {
@@ -68,7 +68,7 @@
         "depth_of_field": "cinematic_bokeh",
         "location_type": "fashion_boutique",
         "custom_location": "",
-        "prompt": "Create an English scene direction for {{location_type}}. Custom location: {{custom_location}}. Keep the product-use action visible and believable."
+        "prompt": "Use this campaign setting consistently: {{environment_desc}}. Keep the product-use action visible and believable. Avoid unrelated props, location changes, captions and signs."
       }
     },
     {
@@ -82,7 +82,7 @@
         "color_temperature": "warm_golden",
         "light_intensity": "soft_diffused",
         "time_of_day": "golden_hour",
-        "prompt": "Create an English lighting direction for {{time_of_day}}, {{color_temperature}} tone, {{light_intensity}} intensity. Environment: {{environment_desc}}."
+        "prompt": "Use {{light_intensity}} {{color_temperature}} lighting at {{time_of_day}}. Preserve accurate product color and texture, natural skin tone, and soft realistic shadows. Avoid flicker and dramatic color casts. Environment: {{environment_desc}}."
       }
     },
     {
@@ -172,7 +172,9 @@
       "category": "process",
       "x": 2080,
       "y": 400,
-      "params": {}
+      "params": {
+        "fit_mode": "cover"
+      }
     },
     {
       "id": "music",
@@ -283,7 +285,8 @@
       "y": 400,
       "params": {
         "resolution": "4k",
-        "crf": 18
+        "crf": 18,
+        "fit_mode": "cover"
       }
     },
     {

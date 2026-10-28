@@ -50,6 +50,9 @@ func (s *Studio) DeleteJob(id string) error {
 	if !ok {
 		return fmt.Errorf("không tìm thấy job %s", id)
 	}
+	if j.Kind == KindTikTokRadarRefresh && (j.Status == StatusQueued || j.Status == StatusRunning) {
+		return fmt.Errorf("không thể xóa job Radar đang chạy; theo dõi trong tab Radar TikTok")
+	}
 	s.CancelRunning(id)
 	deadline := time.Now().Add(5 * time.Second)
 	for {
@@ -80,24 +83,27 @@ func (s *Studio) DeleteJob(id string) error {
 	return nil
 }
 
-// MarkInterruptedJobs fails every job left "running" from a previous process
-// (their render goroutines died with it). Call once at startup; returns the
-// number of jobs swept.
+// MarkInterruptedJobs fails interrupted Studio jobs at startup. TikTok Radar
+// refresh jobs are excluded because their persisted queue resumes after WebAI
+// initialization.
 //
 // Đợt Y: also fails jobs left "queued" — a queued job's goroutine died with
 // the old process too, and nothing ever re-dispatches it, so it would sit
 // at "đang chờ" forever while the UI pretends work is happening.
 func (s *Studio) MarkInterruptedJobs() int {
-	rows, err := s.db.Query(`SELECT id, status FROM studio_jobs WHERE status IN (?,?)`,
+	rows, err := s.db.Query(`SELECT id, status, kind FROM studio_jobs WHERE status IN (?,?)`,
 		StatusRunning, StatusQueued)
 	if err != nil {
 		return 0
 	}
-	type swept struct{ id, status string }
+	type swept struct{ id, status, kind string }
 	var ids []swept
 	for rows.Next() {
 		var sw swept
-		if rows.Scan(&sw.id, &sw.status) == nil {
+		if rows.Scan(&sw.id, &sw.status, &sw.kind) == nil {
+			if sw.kind == KindTikTokRadarRefresh {
+				continue
+			}
 			ids = append(ids, sw)
 		}
 	}

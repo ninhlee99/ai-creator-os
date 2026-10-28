@@ -38,37 +38,38 @@ func TikTokRadarSourceLabelForTopic(_ bool) string {
 
 // TikTokTrendVideo holds metadata returned by the configured TikTok feed provider.
 type TikTokTrendVideo struct {
-	Rank            int     `json:"rank"`
-	VideoID         string  `json:"video_id"`
-	Title           string  `json:"title"`
-	Caption         string  `json:"caption,omitempty"`
-	Region          string  `json:"region,omitempty"`
-	Author          string  `json:"author"`
-	UniqueID        string  `json:"unique_id"`
-	Views           string  `json:"views"`
-	PlayCount       int64   `json:"play_count"`
-	PlayCountKnown  bool    `json:"play_count_known"`
-	Provider        string  `json:"provider,omitempty"`
-	Likes           string  `json:"likes"`
-	DiggCount       int64   `json:"digg_count"`
-	DiggCountKnown  bool    `json:"digg_count_known"`
-	Comments          string  `json:"comments,omitempty"`
-	CommentCount      int64   `json:"comment_count"`
-	CommentKnown      bool    `json:"comment_count_known"`
-	CommentCountKnown bool    `json:"comment_count_known_alias,omitempty"`
-	Shares          string  `json:"shares,omitempty"`
-	ShareCount      int64   `json:"share_count"`
-	ShareCountKnown bool    `json:"share_count_known"`
-	Music           string  `json:"music"`
-	VideoURL        string  `json:"video_url"`
-	CoverURL        string  `json:"cover_url"`
-	CollectedAt     string  `json:"collected_at,omitempty"`
-	DanceVerified   bool    `json:"dance_verified,omitempty"`
-	DanceVerifiedAt string  `json:"dance_verified_at,omitempty"`
-	ViewsPerHour    float64 `json:"views_per_hour,omitempty"`
-	VelocityKnown   bool    `json:"velocity_known"`
-	EngagementRate  float64 `json:"engagement_rate,omitempty"`
-	EngagementKnown bool    `json:"engagement_known"`
+	Rank              int                         `json:"rank"`
+	VideoID           string                      `json:"video_id"`
+	Title             string                      `json:"title"`
+	Caption           string                      `json:"caption,omitempty"`
+	Region            string                      `json:"region,omitempty"`
+	Author            string                      `json:"author"`
+	UniqueID          string                      `json:"unique_id"`
+	Views             string                      `json:"views"`
+	PlayCount         int64                       `json:"play_count"`
+	PlayCountKnown    bool                        `json:"play_count_known"`
+	Provider          string                      `json:"provider,omitempty"`
+	Likes             string                      `json:"likes"`
+	DiggCount         int64                       `json:"digg_count"`
+	DiggCountKnown    bool                        `json:"digg_count_known"`
+	Comments          string                      `json:"comments,omitempty"`
+	CommentCount      int64                       `json:"comment_count"`
+	CommentKnown      bool                        `json:"comment_count_known"`
+	CommentCountKnown bool                        `json:"comment_count_known_alias,omitempty"`
+	Shares            string                      `json:"shares,omitempty"`
+	ShareCount        int64                       `json:"share_count"`
+	ShareCountKnown   bool                        `json:"share_count_known"`
+	Music             string                      `json:"music"`
+	VideoURL          string                      `json:"video_url"`
+	CoverURL          string                      `json:"cover_url"`
+	CollectedAt       string                      `json:"collected_at,omitempty"`
+	DanceVerified     bool                        `json:"dance_verified,omitempty"`
+	DanceVerifiedAt   string                      `json:"dance_verified_at,omitempty"`
+	Analysis          *TikTokRadarContentAnalysis `json:"content_analysis,omitempty"`
+	ViewsPerHour      float64                     `json:"views_per_hour,omitempty"`
+	VelocityKnown     bool                        `json:"velocity_known"`
+	EngagementRate    float64                     `json:"engagement_rate,omitempty"`
+	EngagementKnown   bool                        `json:"engagement_known"`
 }
 
 func (v TikTokTrendVideo) SoundTitle() string {
@@ -97,6 +98,7 @@ var tikTokRadarHTTPTransport = func() *http.Transport {
 const (
 	tikTokTrendsTTL            = 15 * time.Minute
 	tikTokRadarFeedLimit       = 8
+	tikTokRadarCandidateLimit  = 32
 	tikTokRadarTopicCacheLimit = 64
 	tikTokRadarMaxTopics       = 3
 )
@@ -148,8 +150,8 @@ func FetchTikTokTrendingVideos(ctx context.Context) ([]TikTokTrendVideo, error) 
 		live[i].Rank = i + 1
 	}
 	sortTikTokRadarVideosByPopularity(live)
-	if len(live) > tikTokRadarFeedLimit {
-		live = live[:tikTokRadarFeedLimit]
+	if len(live) > tikTokRadarCandidateLimit {
+		live = live[:tikTokRadarCandidateLimit]
 	}
 	for i := range live {
 		live[i].Rank = i + 1
@@ -201,8 +203,8 @@ func FetchTikTokVideosForTopic(ctx context.Context, topic string) ([]TikTokTrend
 		}
 	}
 	sortTikTokRadarVideosByPopularity(live)
-	if len(live) > tikTokRadarFeedLimit {
-		live = live[:tikTokRadarFeedLimit]
+	if len(live) > tikTokRadarCandidateLimit {
+		live = live[:tikTokRadarCandidateLimit]
 	}
 	for i := range live {
 		live[i].Rank = i + 1

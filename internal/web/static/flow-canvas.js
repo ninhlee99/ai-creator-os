@@ -3373,6 +3373,7 @@
           ['glamour_glow', 'Tỏa sáng rực rỡ (Glamour Glow)']
         ],
         resolution: [['1080p', '1080p (Full HD)'], ['4k', '4K (Ultra HD)']],
+        fit_mode: [['contain', 'Giữ trọn khung hình · có thể có viền'], ['cover', 'Lấp đầy khung hình · cắt phần thừa']],
         audio_codec: [['aac', 'AAC (Chuẩn TikTok)'], ['copy', 'Giữ codec gốc']],
         method: [['POST', 'POST'], ['GET', 'GET'], ['PUT', 'PUT'], ['PATCH', 'PATCH'], ['DELETE', 'DELETE'], ['HEAD', 'HEAD']]
       };
@@ -4451,6 +4452,7 @@
         model_name: 'Tên nhân vật mẫu',
         product_title: 'Tên sản phẩm',
         aspect: 'Tỉ lệ khung hình (Aspect)',
+        fit_mode: 'Cách khớp khung hình',
         placement: 'Vị trí ghép sản phẩm',
         scale: 'Tỉ lệ phóng to (Scale)',
         resolution: 'Độ phân giải',
@@ -4609,19 +4611,8 @@
       const closeBtn = document.getElementById('btn-close-node-modal');
       const searchInput = document.getElementById('node-search-input');
       const categoryScroller = document.getElementById('node-categories-list');
-      const nodeGrid = document.getElementById('modal-node-grid');
       const previousCategory = document.getElementById('node-categories-prev');
       const nextCategory = document.getElementById('node-categories-next');
-
-      if (nodeGrid) {
-        nodeGrid.addEventListener('click', (event) => {
-          const action = event.target.closest('[data-action="show-all-nodes"]');
-          if (!action || !nodeGrid.contains(action)) return;
-          event.preventDefault();
-          this.showAllNodes();
-          searchInput?.focus();
-        });
-      }
 
       if (categoryScroller) {
         categoryScroller.addEventListener('scroll', () => this.syncNodeCategoryScrollButtons(), { passive: true });
@@ -4765,16 +4756,22 @@
           title.textContent = 'Chưa tìm thấy node tương thích';
           description.textContent = 'Bỏ lọc kết nối để xem toàn bộ thư viện node.';
           action.textContent = 'Xem tất cả nodes';
-          action.dataset.action = 'show-all-nodes';
         } else if (hasFilters) {
           title.textContent = 'Không tìm thấy node';
           description.textContent = 'Thử từ khóa khác hoặc mở lại toàn bộ thư viện node.';
           action.textContent = 'Xem tất cả nodes';
-          action.dataset.action = 'show-all-nodes';
         } else {
           title.textContent = 'Thư viện node đang trống';
           description.textContent = 'Hiện chưa có node nào sẵn sàng để thêm vào workflow.';
           action.hidden = true;
+        }
+
+        if (!action.hidden) {
+          action.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.showAllNodes();
+            document.getElementById('node-search-input')?.focus();
+          });
         }
 
         empty.append(icon, title, description, action);

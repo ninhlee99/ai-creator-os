@@ -49,24 +49,32 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 	if len(videos) > 0 && strings.TrimSpace(videos[0].Provider) != "" {
 		source = videos[0].Provider
 	}
-	if strings.Contains(r.Header.Get("Accept"), "application/json") {
-		s.writeJSON(w, map[string]any{
-			"source":    source,
-			"topic":     topic,
-			"topics":    topics,
-			"videos":    videos,
-			"rank_note": tikTokRadarRankNote(videos),
-			"error":     errText(err),
-		})
-		return
-	}
 	coveragePending := false
+	refreshErr := ""
 	if s.Studio != nil {
 		coveragePending = s.Studio.QueueTikTokRadarTopicRefresh(topic, len(videos))
+		refreshErr = s.Studio.TikTokRadarTopicRefreshError(topic)
+	}
+	if err == nil && refreshErr != "" {
+		err = fmt.Errorf("quét nền Radar: %s", refreshErr)
+	}
+	if strings.Contains(r.Header.Get("Accept"), "application/json") {
+		s.writeJSON(w, map[string]any{
+			"source":               source,
+			"topic":                topic,
+			"topics":               topics,
+			"videos":               videos,
+			"dance_filter_enabled": studio.TikTokRadarTopicRequiresDance(topic),
+			"coverage_pending":     coveragePending,
+			"rank_note":            tikTokRadarRankNote(videos),
+			"error":                errText(err),
+		})
+		return
 	}
 	data := s.ctx(
 		"Title", "Radar TikTok", "Path", "/studio/trends",
 		"Videos", videos,
+		"DanceFilterEnabled", studio.TikTokRadarTopicRequiresDance(topic),
 		"CoveragePending", coveragePending,
 		"Topic", topic,
 		"Topics", topics,
@@ -88,15 +96,22 @@ func tikTokRadarRankNote(videos []studio.TikTokTrendVideo) string {
 		return ""
 	}
 	knownMetrics := 0
+	knownVelocity := 0
 	for _, video := range videos {
 		if video.PlayCountKnown || video.DiggCountKnown {
 			knownMetrics++
 		}
+		if video.VelocityKnown {
+			knownVelocity++
+		}
 	}
 	if knownMetrics == 0 {
-		return "Tối đa 8 video xếp theo thứ tự tìm kiếm từ TikTok Việt Nam."
+		return "Tối đa 8 video đạt chủ đề đã phân tích; xếp theo thứ tự tìm kiếm khi chưa có chỉ số."
 	}
-	return "Tối đa 8 video hot nhất tại Việt Nam (xếp theo lượt xem giảm dần; lượt tym dùng để phá hòa)."
+	if knownVelocity > 0 {
+		return "Tối đa 8 video đạt chủ đề; ưu tiên tốc độ tăng view, rồi engagement và tổng view."
+	}
+	return "Tối đa 8 video đạt chủ đề; xếp theo engagement rồi tổng view khi chưa đủ snapshot tăng trưởng."
 }
 
 func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Request) {
@@ -136,15 +151,22 @@ func (s *Server) handleStudioTrendDanceVerify(w http.ResponseWriter, r *http.Req
 func (s *Server) handleStudioTrendsRefresh(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.FormValue("topic"))
 	studio.InvalidateTikTokRadarCache()
-	if s.Studio != nil && topic != "" {
-		_, _ = s.Studio.CollectTikTokRadarVideosForTopic(r.Context(), topic)
+	if s.Studio == nil || topic == "" {
+		values := url.Values{"err": {"Không thể làm mới Radar khi Studio hoặc chủ đề chưa sẵn sàng."}}
+		http.Redirect(w, r, "/studio/trends?"+values.Encode(), http.StatusSeeOther)
+		return
+	}
+	if !s.Studio.QueueTikTokRadarTopicRefreshNow(topic) {
+		values := url.Values{"err": {"Không thể chạy quét Radar; kiểm tra crawler TikTok."}, "topic": {topic}}
+		http.Redirect(w, r, "/studio/trends?"+values.Encode(), http.StatusSeeOther)
+		return
 	}
 	redirect := "/studio/trends"
 	values := url.Values{}
 	if topic != "" {
 		values.Set("topic", topic)
 	}
-	values.Set("ok", "Đã cập nhật tối đa 8 video hot nhất cho chủ đề này.")
+	values.Set("ok", "Đã xếp lịch phân tích và cập nhật Top 8 cho chủ đề này.")
 	http.Redirect(w, r, redirect+"?"+values.Encode(), http.StatusSeeOther)
 }
 
@@ -164,16 +186,26 @@ func (s *Server) handleStudioTrendsAddTopic(w http.ResponseWriter, r *http.Reque
 		http.Redirect(w, r, "/studio/trends?err="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
-
-	http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&ok="+url.QueryEscape("Đã thêm chủ đề '"+newTopic+"' và lấy tối đa 8 video hot nhất."), http.StatusSeeOther)
+	studio.InvalidateTikTokRadarCache()
+	if !s.Studio.QueueTikTokRadarTopicRefreshNow(newTopic) {
+		http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&err="+url.QueryEscape("Đã lưu chủ đề nhưng crawler TikTok chưa sẵn sàng để lấy Top 8."), http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(newTopic)+"&ok="+url.QueryEscape("Đã thêm chủ đề '"+newTopic+"'; Radar đang lấy và phân tích Top 8."), http.StatusSeeOther)
 }
 
 // handleStudioTrendsDeleteTopic removes a topic from the list.
 func (s *Server) handleStudioTrendsDeleteTopic(w http.ResponseWriter, r *http.Request) {
 	topic := strings.TrimSpace(r.FormValue("topic"))
-	if s.Studio != nil && topic != "" {
-		_ = s.Studio.DeleteTikTokRadarTopic(r.Context(), topic)
+	if s.Studio == nil || topic == "" {
+		http.Redirect(w, r, "/studio/trends?err="+url.QueryEscape("Studio hoặc chủ đề chưa sẵn sàng."), http.StatusSeeOther)
+		return
 	}
+	if err := s.Studio.DeleteTikTokRadarTopic(r.Context(), topic); err != nil {
+		http.Redirect(w, r, "/studio/trends?topic="+url.QueryEscape(topic)+"&err="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	studio.InvalidateTikTokRadarCache()
 	http.Redirect(w, r, "/studio/trends?ok="+url.QueryEscape("Đã xóa chủ đề."), http.StatusSeeOther)
 }
 

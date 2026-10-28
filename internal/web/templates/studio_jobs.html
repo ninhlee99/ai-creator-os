@@ -133,10 +133,12 @@
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        {{if ne .Kind "tiktok_radar_refresh"}}
         <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
           <input type="hidden" name="confirm_flow_credits" value="1">
           <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;padding:6px 14px">🔄 Thử lại ngay</button>
         </form>
+        {{end}}
         <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa tác vụ thất bại này cùng toàn bộ file liên quan?" data-confirm-danger>
           <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--err)" title="Xóa tác vụ thất bại">🗑 Xóa</button>
         </form>
@@ -226,12 +228,16 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
+        {{if ne .Kind "tiktok_radar_refresh"}}
         <form method="post" action="/studio/jobs/{{.ID}}/cancel" style="display:inline">
           <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--warn);padding:4px 10px;font-size:12px;font-weight:700">⏸ Hủy</button>
         </form>
         <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa job này và toàn bộ file liên quan?" data-confirm-danger>
           <button class="btn btn-secondary btn-sm" type="submit" style="color:var(--err);padding:4px 8px;font-size:12px" title="Xóa video và file">🗑</button>
         </form>
+        {{else}}
+        <span class="badge badge-dim" style="font-size:11px">Theo dõi tại Radar TikTok</span>
+        {{end}}
       </div>
     </div>
 

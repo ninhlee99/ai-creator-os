@@ -160,7 +160,16 @@ func (s *Server) WireStudioWebAI() {
 			CookieHeader: acc.Cookie,
 			CookieJar:    append([]webai.BrowserCookie(nil), acc.CookieJar...),
 			Email:        acc.Email,
+			CookieUpdater: func(cookie string, cookies []webai.BrowserCookie) error {
+				return s.persistWebAIResultCookies(acc.ID, cookie, cookies)
+			},
 		}, nil
+	})
+	s.Studio.SetWebAIImageAnalyzer(func(ctx context.Context, session *studio.WebAISession, prompt string, imagePaths []string) (string, error) {
+		if session == nil {
+			return "", fmt.Errorf("Web AI session is missing")
+		}
+		return webai.AnalyzeImagesInWebUI(ctx, session.Platform, session.CookieHeader, session.CookieJar, prompt, imagePaths, session.CookieUpdater)
 	})
 	s.Studio.SetWebAIVideoRenderer(func(ctx context.Context, session *studio.WebAISession, request studio.WebAIVideoRequest, outputPath string, progress func(string)) (string, error) {
 		if session.Platform != webai.PlatformGoogleFlow {

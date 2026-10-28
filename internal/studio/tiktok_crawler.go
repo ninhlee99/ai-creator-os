@@ -28,8 +28,8 @@ func TikTokCrawlerConfigured() bool {
 }
 
 type tikTokRawItem struct {
-	ID    string `json:"id"`
-	Desc  string `json:"desc"`
+	ID     string `json:"id"`
+	Desc   string `json:"desc"`
 	Author struct {
 		Nickname string `json:"nickname"`
 		UniqueID string `json:"uniqueId"`
@@ -56,33 +56,44 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 	}
 
 	searchQuery := strings.TrimSpace(topic)
-	isRegionalFeed := searchQuery == "" || strings.EqualFold(searchQuery, "Xu hướng Việt Nam")
+	isRegionalFeed := searchQuery == "" || IsTikTokRadarProtectedDefaultTopic(searchQuery)
+	searchQueries := []string{searchQuery}
 	if isRegionalFeed {
-		searchQuery = "xu hướng việt nam"
+		searchQueries = []string{
+			"xu hướng việt nam",
+			"trend nhảy tiktok việt nam",
+			"điệu nhảy xu hướng việt nam",
+			"dance trend tiktok vietnam",
+		}
 	} else {
 		lower := strings.ToLower(searchQuery)
 		if !strings.Contains(lower, "việt nam") && !strings.Contains(lower, "viet nam") && !strings.Contains(lower, "vn") {
 			searchQuery += " việt nam"
 		}
-	}
-	targetURL := "https://www.tiktok.com/search?q=" + url.QueryEscape(searchQuery)
-
-	videos, err := runTikTokCrawlerBrowser(ctx, bin, targetURL)
-	if err != nil || len(videos) == 0 {
-		if isRegionalFeed {
-			// Chỉ feed mặc định mới được thử truy vấn xu hướng tổng quát.
-			fallbackURL := "https://www.tiktok.com/search?q=" + url.QueryEscape("hot trend tiktok việt nam")
-			if fallbackVideos, fErr := runTikTokCrawlerBrowser(ctx, bin, fallbackURL); fErr == nil && len(fallbackVideos) > 0 {
-				return fallbackVideos, nil
-			}
-		}
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("TikTok Crawler không thu thập được video cho chủ đề %q", topic)
+		searchQueries = []string{searchQuery}
 	}
 
-	return videos, nil
+	var videos []TikTokTrendVideo
+	var fetchErrors []error
+	for _, query := range searchQueries {
+		targetURL := "https://www.tiktok.com/search?q=" + url.QueryEscape(query)
+		found, fetchErr := runTikTokCrawlerBrowser(ctx, bin, targetURL)
+		if fetchErr != nil {
+			fetchErrors = append(fetchErrors, fmt.Errorf("TikTok search %q: %w", query, fetchErr))
+			continue
+		}
+		videos = mergeTikTokRadarCandidates(videos, found)
+		if len(videos) >= tikTokRadarCandidateLimit {
+			return videos, nil
+		}
+	}
+	if len(videos) > 0 {
+		return videos, nil
+	}
+	if len(fetchErrors) > 0 {
+		return nil, errors.Join(fetchErrors...)
+	}
+	return nil, fmt.Errorf("TikTok Crawler không thu thập được video cho chủ đề %q", topic)
 }
 
 func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikTokTrendVideo, error) {
@@ -164,11 +175,13 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	}
 
 	resultChan := make(chan []TikTokTrendVideo, 1)
+	readerDone := make(chan struct{})
 	matchedReqIDs := make(map[string]bool)
 	var reqMu sync.Mutex
 	var reqCounter int
 
 	go func() {
+		defer close(readerDone)
 		for {
 			if ctx.Err() != nil {
 				return
@@ -230,13 +243,26 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 
 	select {
 	case videos := <-resultChan:
-		return videos, nil
+		<-readerDone
+		if len(videos) >= tikTokRadarCandidateLimit {
+			return videos[:tikTokRadarCandidateLimit], nil
+		}
+		// Scroll search results for additional candidates so AI filtering can
+		// replace rejected videos instead of stopping at the first eight.
+		domVideos, domErr := evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
+		if domErr != nil {
+			return videos, nil
+		}
+		return mergeTikTokRadarCandidates(videos, domVideos), nil
 	case <-time.After(7 * time.Second):
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 
 	// DOM Evaluation Fallback: extract video elements directly from DOM
+	_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
+	<-readerDone
+	_ = conn.SetReadDeadline(time.Time{})
 	return evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
 }
 
@@ -273,7 +299,7 @@ func waitCrawlerDebuggerURL(ctx context.Context, port int) (string, error) {
 func parseTikTokCrawlerJSON(body []byte) []TikTokTrendVideo {
 	var payload struct {
 		StatusCode int `json:"status_code"`
-		Data []struct {
+		Data       []struct {
 			Item *tikTokRawItem `json:"item"`
 		} `json:"data"`
 		ItemList []tikTokRawItem `json:"itemList"`
@@ -360,7 +386,7 @@ func parseTikTokCrawlerJSON(body []byte) []TikTokTrendVideo {
 			Shares:          FormatCount(item.Stats.ShareCount),
 		}
 		videos = append(videos, v)
-		if len(videos) >= 15 {
+		if len(videos) >= tikTokRadarCandidateLimit {
 			break
 		}
 	}
@@ -369,29 +395,39 @@ func parseTikTokCrawlerJSON(body []byte) []TikTokTrendVideo {
 }
 
 func evaluateTikTokCrawlerDOM(ctx context.Context, conn *websocket.Conn, sendCDP func(int, string, any) error) ([]TikTokTrendVideo, error) {
-	evalScript := `(() => {
+	evalScript := fmt.Sprintf(`(async () => {
 		const results = [];
-		const links = Array.from(document.querySelectorAll('a[href*="/video/"]'));
 		const seen = new Set();
-		for (const a of links) {
-			const href = a.href;
-			const match = href.match(/@([^/]+)\/video\/(\d+)/);
-			if (!match) continue;
-			const uniqueId = match[1];
-			const id = match[2];
-			if (seen.has(id)) continue;
-			seen.add(id);
-
-			let container = a.closest('[data-e2e="search_video-item"]') || a.closest('div');
-			const img = a.querySelector('img') || (container ? container.querySelector('img') : null);
-			const cover = img ? img.src : '';
-			const caption = container ? (container.innerText || '').slice(0, 140) : '';
-
-			results.push({ id, uniqueId, url: href, cover, caption });
-			if (results.length >= 10) break;
+		const collect = () => {
+			const links = Array.from(document.querySelectorAll('a[href*="/video/"]'));
+			for (const a of links) {
+				const href = a.href;
+				const match = href.match(/@([^/]+)\/video\/(\d+)/);
+				if (!match) continue;
+				const uniqueId = match[1];
+				const id = match[2];
+				if (seen.has(id)) continue;
+				seen.add(id);
+				const container = a.closest('[data-e2e="search_video-item"]') || a.closest('div');
+				const media = a.querySelector('img,video') || (container ? container.querySelector('img,video') : null);
+				const cover = media ? (media.getAttribute('src') || media.getAttribute('data-src') || media.getAttribute('poster') || '') : '';
+				const caption = container ? (container.innerText || '').slice(0, 140) : '';
+				results.push({ id, uniqueId, url: href, cover, caption });
+				if (results.length >= %d) break;
+			}
+		};
+		let stagnant = 0;
+		for (let page = 0; page < 5 && results.length < %d && stagnant < 2; page++) {
+			collect();
+			const before = results.length;
+			window.scrollTo(0, document.body.scrollHeight);
+			await new Promise(resolve => setTimeout(resolve, 900));
+			collect();
+			stagnant = results.length === before ? stagnant + 1 : 0;
 		}
+		collect();
 		return results;
-	})()`
+	})()`, tikTokRadarCandidateLimit, tikTokRadarCandidateLimit)
 
 	if err := sendCDP(200, "Runtime.evaluate", map[string]any{
 		"expression":    evalScript,
@@ -416,8 +452,8 @@ func evaluateTikTokCrawlerDOM(ctx context.Context, conn *websocket.Conn, sendCDP
 		} `json:"result"`
 	}
 
-	_ = conn.SetReadDeadline(time.Now().Add(4 * time.Second))
-	for i := 0; i < 5; i++ {
+	_ = conn.SetReadDeadline(time.Now().Add(7 * time.Second))
+	for i := 0; i < 8; i++ {
 		if err := conn.ReadJSON(&evalResp); err == nil && evalResp.ID == 200 {
 			var videos []TikTokTrendVideo
 			for _, item := range evalResp.Result.Result.Value {
@@ -440,10 +476,34 @@ func evaluateTikTokCrawlerDOM(ctx context.Context, conn *websocket.Conn, sendCDP
 					Provider:    TikTokCrawlerSource,
 					CollectedAt: time.Now().UTC().Format(time.RFC3339),
 				})
+				if len(videos) >= tikTokRadarCandidateLimit {
+					break
+				}
 			}
 			return videos, nil
 		}
 	}
 
 	return nil, fmt.Errorf("không trích xuất được danh sách video TikTok từ trang web")
+}
+
+func mergeTikTokRadarCandidates(primary, additional []TikTokTrendVideo) []TikTokTrendVideo {
+	merged := make([]TikTokTrendVideo, 0, tikTokRadarCandidateLimit)
+	seen := make(map[string]struct{}, tikTokRadarCandidateLimit)
+	for _, group := range [][]TikTokTrendVideo{primary, additional} {
+		for _, video := range group {
+			if strings.TrimSpace(video.VideoID) == "" {
+				continue
+			}
+			if _, duplicate := seen[video.VideoID]; duplicate {
+				continue
+			}
+			seen[video.VideoID] = struct{}{}
+			merged = append(merged, video)
+			if len(merged) >= tikTokRadarCandidateLimit {
+				return merged
+			}
+		}
+	}
+	return merged
 }

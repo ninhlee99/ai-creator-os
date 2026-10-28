@@ -569,6 +569,11 @@
           </div>
         </div>
 
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+          <strong style="font-size:11px;color:var(--text);">AI phân tích video và nội dung</strong>
+          <p id="radar-player-analysis" style="margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--text);"></p>
+        </div>
+
         <!-- Hộp thông tin Sound / Nhạc nền -->
         <div class="radar-modal-sound-box">
           <div style="display:flex;align-items:center;gap:10px">
@@ -629,6 +634,8 @@ function openRadarPlayerFromCard(el) {
   if (!card) return;
   var d = card.dataset;
   openRadarPlayer(d.videoId, d.title, d.music, d.videoUrl, d.author, d.views, d.likes, d.comments, d.shares, d.rank);
+  var analysisEl = document.getElementById('radar-player-analysis');
+  if (analysisEl) analysisEl.innerText = d.analysisSummary || 'Chưa có phân tích video.';
 }
 
 function openRadarPlayer(videoId, title, music, videoUrl, author, views, likes, comments, shares, rank) {
@@ -699,7 +706,7 @@ document.addEventListener('keydown', function(e) {
 {{end}}
 
 {{define "studio-trends-content"}}
-<div id="studio-trends-content" class="space-y-4" {{if .CoveragePending}}hx-get="/studio/trends?topic={{urlquery .Topic}}" hx-trigger="load delay:2s, every 4s" hx-target="this" hx-swap="outerHTML"{{end}}>
+<div id="studio-trends-content" class="space-y-4" hx-get="/studio/trends?topic={{urlquery .Topic}}" hx-trigger="{{if .CoveragePending}}load delay:2s, every 4s{{else}}every 15m{{end}}" hx-target="this" hx-swap="outerHTML">
   <!-- Section Chủ đề theo dõi & Thêm chủ đề -->
   <section class="card" style="border-radius: 16px; padding: 18px;">
     <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;">
@@ -708,7 +715,7 @@ document.addEventListener('keydown', function(e) {
           Chủ đề theo dõi
         </div>
         <div class="hint" style="font-size: 12px; margin-top: 1px;">
-          Bấm để chọn chủ đề. Tối đa 8 video, xếp theo mức độ phổ biến.
+          Tab Xu hướng Việt Nam chỉ nhận clip có bằng chứng vũ đạo; chủ đề khác lọc theo nội dung. Radar quét, phân tích và xếp TOP 8 chạy nền; ưu tiên tăng view, engagement rồi tổng view. Trang tự cập nhật mỗi 15 phút.
         </div>
       </div>
       <button type="button" class="btn-add-topic" onclick="var f = document.getElementById('add-topic-form'); f.style.display = (f.style.display === 'none' || f.style.display === '') ? 'block' : 'none'; if(f.style.display === 'block') document.getElementById('new-topic-input').focus();">
@@ -750,12 +757,14 @@ document.addEventListener('keydown', function(e) {
            hx-push-url="true"
            onclick="selectTopicChip(this)"
            style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 4px;">
-          {{if eq . "Xu hướng Việt Nam"}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}{{.}}
+          {{if isProtectedRadarTopic .}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}{{.}}
         </a>
+        {{if not (isProtectedRadarTopic .)}}
         <form method="post" action="/studio/trends/topics/delete" data-confirm="Xóa chủ đề này khỏi danh sách theo dõi?" data-confirm-danger style="display: inline; margin: 0; padding: 0;">
           <input type="hidden" name="topic" value="{{.}}">
           <button type="submit" style="background: none; border: none; padding: 0 2px; margin-left: 2px; cursor: pointer; color: inherit; opacity: 0.6; font-size: 11px;" title="Xóa chủ đề này">✕</button>
         </form>
+        {{end}}
       </div>
       {{end}}
     </div>
@@ -790,7 +799,7 @@ document.addEventListener('keydown', function(e) {
       <span class="badge badge-info" style="font-weight: 700; font-size: 11.5px; padding: 3px 8px; border-radius: 9999px;">
         Top 8 · {{len .Videos}} video
       </span>
-      {{if .CoveragePending}}<span class="badge badge-dim" role="status" style="font-size: 11px;">↻ Đang bổ sung video…</span>{{end}}
+      {{if .CoveragePending}}<span class="badge badge-dim" role="status" style="font-size: 11px;">↻ AI đang phân tích và xếp TOP 8 nền…</span>{{end}}
       <form method="post" action="/studio/trends/refresh" style="margin: 0;">
         <input type="hidden" name="topic" value="{{.Topic}}">
         <button type="submit" class="btn btn-secondary btn-sm" style="border-radius: 8px; font-weight: 600; font-size: 11.5px; padding: 4px 10px;">↻ Quét lại</button>
@@ -811,6 +820,7 @@ document.addEventListener('keydown', function(e) {
       data-likes="{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}"
       data-comments="{{if or .CommentCountKnown .CommentKnown}}{{.Comments}}{{else}}—{{end}}"
       data-shares="{{if .ShareCountKnown}}{{.Shares}}{{else}}—{{end}}"
+      data-analysis-summary="{{if .Analysis}}{{.Analysis.Summary}} {{.Analysis.Evidence}}{{end}}"
       data-rank="{{.Rank}}">
       <div style="display: flex; align-items: center; justify-content: space-between;">
         {{if eq .Rank 1}}<span class="rank-badge rank-gold">👑 TOP 01</span>
@@ -818,12 +828,27 @@ document.addEventListener('keydown', function(e) {
         {{else if eq .Rank 3}}<span class="rank-badge rank-bronze">🥉 TOP 03</span>
         {{else}}<span class="rank-badge rank-default">TOP {{printf "%02d" .Rank}}</span>{{end}}
 
+        {{if $.DanceFilterEnabled}}
         {{if .DanceVerified}}
         <span class="badge badge-ok" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">✓ Đã xác nhận vũ đạo</span>
         {{else}}
-        <span class="badge badge-warn" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">Chưa xác nhận · cần xem video</span>
+        <span class="badge badge-warn" style="font-size: 11px; padding: 4px 7px; font-weight: 700;">Cần xem trước khi dùng sound</span>
+        {{end}}
         {{end}}
       </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        {{if $.DanceFilterEnabled}}
+        {{if .Analysis.DanceDetected}}
+        <span class="badge badge-ok" style="font-size:10px;">💃 AI phát hiện vũ đạo · {{printf "%.2f" .Analysis.DanceConfidence}}</span>
+        {{else}}
+        <span class="badge badge-dim" style="font-size:10px;">AI chưa xác nhận vũ đạo</span>
+        {{end}}
+        {{end}}
+        <span class="badge badge-info" style="font-size:10px;">Khớp chủ đề {{printf "%.2f" .Analysis.TopicRelevance}}</span>
+        {{if .Analysis.Providers}}<span class="badge badge-dim" style="font-size:9px;">AI: {{join ", " .Analysis.Providers}}</span>{{end}}
+      </div>
+      {{if .Analysis.Summary}}<small class="hint" style="font-size:9.5px;line-height:1.4;">{{.Analysis.Summary}} {{.Analysis.Evidence}}</small>{{end}}
 
       <!-- Thumbnail có nút bấm Xem trực tiếp trên màn hình -->
       <div class="thumb-container" onclick="openRadarPlayerFromCard(this)" title="Bấm để xem video ngay trên màn hình">
@@ -853,6 +878,11 @@ document.addEventListener('keydown', function(e) {
           <div class="metric-val">{{if .DiggCountKnown}}{{.Likes}}{{else}}—{{end}}</div>
         </div>
       </div>
+      {{if .VelocityKnown}}
+      <small class="hint" style="font-size:10px;">↗ {{printf "%.0f" .ViewsPerHour}} view/giờ · snapshot gần đây</small>
+      {{else if .EngagementKnown}}
+      <small class="hint" style="font-size:10px;">Engagement {{printf "%.1f%%" (mul .EngagementRate 100)}} · chưa đủ snapshot tăng trưởng</small>
+      {{end}}
 
       <!-- Tiêu đề & Author -->
       <div>
@@ -872,17 +902,17 @@ document.addEventListener('keydown', function(e) {
         </span>
       </div>
 
-      {{if .DanceVerified}}
+      {{if and $.DanceFilterEnabled .DanceVerified}}
       <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="margin: 0;">
         <input type="hidden" name="verified" value="0">
         <input type="hidden" name="topic" value="{{$.Topic}}">
         <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">Bỏ xác nhận video nhảy</button>
       </form>
-      {{else}}
+      {{else if $.DanceFilterEnabled}}
       <form method="post" action="/studio/trends/{{.VideoID}}/dance" style="display: grid; gap: 6px; margin: 0;">
         <input type="hidden" name="verified" value="1">
         <input type="hidden" name="topic" value="{{$.Topic}}">
-        <small class="hint" style="font-size: 10.5px; line-height: 1.35;">Crawler không phân loại vũ đạo; caption và sound không phải bằng chứng.</small>
+        <small class="hint" style="font-size: 10.5px; line-height: 1.35;">AI phân tích vũ đạo; cần xem video trước khi xác nhận để dùng sound.</small>
         <label style="display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.35; font-weight: 600;">
           <input type="checkbox" name="confirm_dance_content" value="1" required style="margin: 1px 0 0;">
           <span>Tôi đã mở và xem video; nội dung có vũ đạo.</span>
@@ -896,6 +926,7 @@ document.addEventListener('keydown', function(e) {
         <button type="button" class="btn btn-primary btn-sm" onclick="openRadarPlayerFromCard(this)" style="width: 100%; font-size: 11px; padding: 6px; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-weight: 700;">
           ▶ Xem video
         </button>
+        {{if $.DanceFilterEnabled}}
         {{if .DanceVerified}}
         <div style="display: flex; gap: 5px;">
           <a href="/studio?source_music_title={{urlquery .Music}}&amp;source_music_video_url={{urlquery .VideoURL}}" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 10.5px; padding: 5px; text-align: center;" title="Ghép sound này vào video Affiliate">
@@ -908,14 +939,19 @@ document.addEventListener('keydown', function(e) {
         {{else}}
         <div class="hint" style="font-size: 10.5px; text-align: center;">Mở xem và xác nhận vũ đạo để bật hành động dùng nguồn.</div>
         {{end}}
+        {{else}}
+        <a href="/viral?source_video_url={{urlquery .VideoURL}}&amp;source_music_title={{urlquery .Music}}&amp;topic={{urlquery .Title}}" class="btn btn-secondary btn-sm" style="width: 100%; font-size: 10.5px; padding: 5px; text-align: center;" title="Dùng video làm mẫu; không cần xác nhận dance cho topic tùy chỉnh">
+          🎬 Làm mẫu video
+        </a>
+        {{end}}
       </div>
     </article>
     {{end}}
   </div>
   {{else if and .Topic (not .TrendErr)}}
   <div class="empty-state" style="padding: 30px; text-align: center;">
-    <h3>Chưa có video cho chủ đề này</h3>
-    <p>Bấm nút "Quét lại" bên trên để tải video từ TikTok Việt Nam.</p>
+    <h3>{{if .CoveragePending}}Đang lấy và phân tích video cho chủ đề{{else}}Chưa có video đạt chủ đề{{end}}</h3>
+    <p>{{if .CoveragePending}}Radar đang đọc caption và frame theo thời gian, chấm độ khớp nội dung rồi cập nhật danh sách Top 8.{{else}}Chưa có kết quả phù hợp hoặc chưa phân tích được video. Bấm “Quét lại” để thử nguồn mới.{{end}}</p>
   </div>
   {{else if not .TrendErr}}
   <div class="empty-state" style="padding: 30px; text-align: center;">

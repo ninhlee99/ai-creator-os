@@ -4,7 +4,7 @@ Studio quản lý tạo video affiliate và video viral TikTok.
 
 ## Radar và nguồn
 
-TikTok Radar dùng Web Crawler cục bộ; field metrics và sound metadata có thể thiếu. Crawler không phân loại video nhảy: video mới ở trạng thái chưa xác nhận cho tới khi người vận hành xem và xác nhận trên card Radar. Chỉ video đã thu thập và xác nhận thủ công mới dùng làm nguồn audio. Xem [tài liệu chuẩn về TikTok Web Crawler](tiktok-web-crawler.md). Viral analysis chỉ nêu tín hiệu quan sát và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Audio lấy từ video nguồn đã chọn; không tự thay sound khi tải hoặc tách audio thất bại.
+TikTok Radar dùng Web Crawler cục bộ; field metrics và sound metadata có thể thiếu. Phân tích ưu tiên Gemini Web, ChatGPT Web, Claude Web, Grok Web đã kết nối; Gemini API key chỉ dùng khi không có kết quả WebAI hợp lệ. AI đọc 4 frame theo thời gian cùng caption để chấm vũ đạo và độ khớp topic. Chỉ tab mặc định `Xu hướng Việt Nam` yêu cầu bằng chứng vũ đạo; topic khác chỉ cần khớp nội dung. Với tab mặc định, người vận hành vẫn phải xem và xác nhận video trước khi dùng audio. Xem [tài liệu chuẩn về TikTok Web Crawler](tiktok-web-crawler.md). Viral analysis chỉ nêu tín hiệu quan sát và giả thuyết thử nghiệm, không khẳng định nguyên nhân viral. Audio lấy từ video nguồn đã chọn; không tự thay sound khi tải hoặc tách audio thất bại.
 
 ## Affiliate
 

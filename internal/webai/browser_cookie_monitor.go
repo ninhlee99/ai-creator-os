@@ -3,8 +3,10 @@ package webai
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -102,8 +104,19 @@ func browserCookieSetParams(platform string, cookies []BrowserCookie) []map[stri
 	for _, cookie := range normalizeCookieJar(cookies) {
 		param := map[string]any{
 			"name": cookie.Name, "value": cookie.Value,
-			"domain": cookie.Domain, "path": cookie.Path,
 			"secure": cookie.Secure, "httpOnly": cookie.HTTPOnly,
+		}
+		if strings.HasPrefix(cookie.Name, "__Host-") {
+			host := normalizeCookieDomain(cookie.Domain)
+			if host == "" || !cookie.Secure || cookie.Path != "/" || strings.ContainsAny(host, "/:@?#") {
+				continue
+			}
+			// __Host- cookies must be host-only. Using domain here makes
+			// Chromium reject the entire Network.setCookies request.
+			param["url"] = fmt.Sprintf("https://%s/", host)
+		} else {
+			param["domain"] = cookie.Domain
+			param["path"] = cookie.Path
 		}
 		if !cookie.Session && cookie.Expires > 0 {
 			param["expires"] = cookie.Expires

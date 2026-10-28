@@ -1,29 +1,29 @@
-# TikTok Radar audio source spec
+# TikTok Radar video and audio source spec
 
-Cập nhật: 2026-10-24. Áp dụng cho video affiliate TikTok và video viral TikTok.
+Cập nhật: 2026-10-28. Áp dụng cho nguồn video viral và nguồn audio affiliate TikTok.
 
 Radar source contract và giới hạn crawler: [TikTok Web Crawler](features/tiktok-web-crawler.md).
 
 ## Mục tiêu
 
-Chọn âm thanh từ video nhảy viral mà Radar đã thu thập.
+Dùng video đã thu thập trong Radar làm reference viral; dùng sound từ video nhảy đã xác nhận cho affiliate.
 
 ## Nguồn hợp lệ
 
-- Video phải có trong kết quả TikTok Radar hiện tại.
+- Video phải được TikTok Radar thu thập và lưu; audio affiliate còn cần xác nhận dance trong thời hạn cho phép.
 - Lưu TikTok video ID, URL nguồn, tác giả, thời điểm thu thập và metadata audio.
-- Chỉ dùng video nhảy. Caption hoặc tên sound có từ khóa dance chưa đủ bằng chứng để tự coi là video nhảy.
-- Radar hiện không có classifier; người vận hành phải xem và xác nhận video đúng trong Radar.
+- Chỉ tab mặc định `Xu hướng Việt Nam` lọc video nhảy. Topic người dùng tự thêm chỉ lọc độ khớp chủ đề; không cần xác nhận dance để dùng video làm reference viral.
+- Dùng audio affiliate cần video từ tab mặc định, bằng chứng frame do AI và xác nhận thủ công. Caption hoặc tên sound có từ khóa dance chưa đủ bằng chứng.
 
 ## Dùng trong hai flow
 
-- Affiliate: người vận hành chọn video nhảy Radar; Studio tách audio từ đúng URL đó rồi ghép vào video sản phẩm.
-- Viral: video Radar đã chọn là reference; giữ liên kết tới nguồn và audio tương ứng.
+- Affiliate: người vận hành chọn video nhảy đã xác nhận trong Radar; Studio tách audio từ đúng URL đó rồi ghép vào video sản phẩm.
+- Viral: video Radar đã chọn là reference; topic tùy chỉnh không cần xác nhận dance. Giữ liên kết tới video nguồn và audio tương ứng.
 - Hai flow không được tự đổi sang sound từ một video viral khác nếu tải nguồn thất bại.
 
 ## Kiểm tra bắt buộc
 
-1. Xác minh URL là video TikTok và video thuộc kết quả Radar.
+1. Xác minh URL là video TikTok đã thu thập trong Radar. Audio affiliate cần thêm dance confirmation còn mới.
 2. Tải video nguồn; kiểm tra file và có audio track.
 3. Trích audio, ghép vào output; kiểm tra output phát được và audio không rỗng.
 4. Lưu source video ID/URL, audio metadata và trạng thái từng bước vào job.
@@ -31,4 +31,4 @@ Chọn âm thanh từ video nhảy viral mà Radar đã thu thập.
 
 ## Acceptance
 
-Với một video Radar được chọn, đầu ra cả hai flow phải mang audio từ đúng video đó. Job detail phải cho biết nguồn dùng; log không chứa credential/session. Khi feed không có video nhảy hợp lệ, UI phải yêu cầu chọn/làm mới Radar thay vì tự chọn video khác.
+Viral flow nhận video từ topic tùy chỉnh làm reference mà không yêu cầu xác nhận dance. Affiliate chỉ dùng audio từ video nhảy đã xác nhận. Đầu ra phải giữ nguồn/audio tương ứng; job detail cho biết nguồn dùng; log không chứa credential/session. Khi tab mặc định không có video nhảy hợp lệ, UI yêu cầu chọn/làm mới Radar thay vì tự chọn video khác.

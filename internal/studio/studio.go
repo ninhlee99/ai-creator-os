@@ -23,7 +23,8 @@ type Narrator func(ctx context.Context, text, voice string) ([]byte, error)
 
 // Job kinds.
 const (
-	KindAffiliate = "affiliate"
+	KindAffiliate          = "affiliate"
+	KindTikTokRadarRefresh = "tiktok_radar_refresh"
 )
 
 // Job statuses.
@@ -34,14 +35,14 @@ const (
 	StatusFailed  = "failed"
 )
 
-// AffiliateModePhoto = legacy image montage; AffiliateModeShots = live
-// motion clips. ViralModeFullCharacterEdit requires full-person video editing.
+// AffiliateModePhoto = legacy image montage; AffiliateModeShots = Muse AI
+// renders planned shots. ViralModeFullCharacterEdit requires full-person video editing.
 const (
 	AffiliateModePhoto             = "photo"
 	AffiliateModeShots             = "shots"
-	AffiliateVideoEngineGoogleFlow = "googleflow"
+	AffiliateVideoEngineGoogleFlow = "googleflow" // Legacy alias; normalized to Muse AI.
 	AffiliateVideoEngineMuseAI     = "museai"
-	AffiliateVideoEngineManual     = "manual"
+	AffiliateVideoEngineManual     = "manual" // Legacy alias; normalized to Muse AI.
 	VideoOutput4K                  = "4k"
 	VideoOutput8K                  = "8k"
 	ViralModeFullCharacterEdit     = "full_character_edit"
@@ -83,7 +84,7 @@ type AffiliateParams struct {
 	SourceMusicVideoID       string `json:"source_music_video_id,omitempty"`
 	SourceMusicAuthor        string `json:"source_music_author,omitempty"`
 	SourceMusicCollectedAt   string `json:"source_music_collected_at,omitempty"`
-	VideoEngine              string `json:"video_engine,omitempty"` // googleflow | manual
+	VideoEngine              string `json:"video_engine,omitempty"` // museai; legacy values are normalized to Muse AI
 	FlowCreditsAcknowledged  bool   `json:"flow_credits_acknowledged,omitempty"`
 	OutputResolution         string `json:"output_resolution,omitempty"` // 4k | 8k
 	AutoGenerateProductPhoto bool   `json:"auto_generate_product_photo,omitempty"`
@@ -91,8 +92,7 @@ type AffiliateParams struct {
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
 	AffLink                string `json:"aff_link,omitempty"`
 	AffiliateAttributionID string `json:"affiliate_attribution_id,omitempty"`
-	// Clips are optional in Google Flow mode; manual mode needs one real clip
-	// for every approved shot.
+	// Clips are optional motion references; Muse AI still renders every shot.
 	Clips []string `json:"clips,omitempty"`
 	// PreparedPlanID binds a web-created shot plan to the exact job inputs.
 	// The worker receives the saved profile and shots after the plan is consumed.
@@ -222,25 +222,30 @@ type Studio struct {
 	// PromptEnhancer supplies channel-scoped lessons to compatible creative prompts.
 	PromptEnhancer func(ctx context.Context, niche, channel string) string
 	// webAI connects channel production to selected, email-keyed provider accounts.
-	webAI             WebAIResolver
-	webAIVideo        WebAIVideoRenderer
-	webAIAvailability WebAIAvailability
+	webAI              WebAIResolver
+	webAIVideo         WebAIVideoRenderer
+	webAIImageAnalyzer WebAIImageAnalyzer
+	webAIAvailability  WebAIAvailability
 	// FlowStore manages visual node graphs (ComfyUI / n8n workflows) and execution runs.
 	flowStore any
 }
 
 // WebAISession chứa thông tin phiên đăng nhập web (cookie, session token, email).
 type WebAISession struct {
-	AccountID    string
-	Platform     string
-	SessionToken string
-	CookieHeader string
-	CookieJar    []webai.BrowserCookie
-	Email        string
+	AccountID     string
+	Platform      string
+	SessionToken  string
+	CookieHeader  string
+	CookieJar     []webai.BrowserCookie
+	Email         string
+	CookieUpdater webai.CookieSnapshotUpdater
 }
 
 // WebAIResolver là hàm truy vấn tài khoản Web AI đang kết nối theo nền tảng.
 type WebAIResolver func(platform string) (*WebAISession, error)
+
+// WebAIImageAnalyzer inspects local image samples through a signed-in provider UI.
+type WebAIImageAnalyzer func(context.Context, *WebAISession, string, []string) (string, error)
 
 // WebAIVideoRequest describes a reference-driven Flow operation. The adapter
 // must not silently drop image or source-video inputs.

@@ -12,6 +12,12 @@ func (s *Studio) SetWebAIResolver(r WebAIResolver) {
 	s.webAI = r
 }
 
+func (s *Studio) SetWebAIImageAnalyzer(analyzer WebAIImageAnalyzer) {
+	s.mu.Lock()
+	s.webAIImageAnalyzer = analyzer
+	s.mu.Unlock()
+}
+
 func (s *Studio) SetWebAIVideoRenderer(renderer WebAIVideoRenderer, availability WebAIAvailability) {
 	s.mu.Lock()
 	s.webAIVideo = renderer

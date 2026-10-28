@@ -543,8 +543,9 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 	}
 	keyframes := make([]string, 0, frameCount)
 	keyframeTimestamps := make([]float64, 0, frameCount)
+	lastSampleTime := math.Max(0, duration-0.05)
 	for i := 0; i < frameCount; i++ {
-		timestamp := duration * float64(i+1) / float64(frameCount+1)
+		timestamp := lastSampleTime * float64(i) / float64(frameCount-1)
 		frame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_keyframe_%02d.jpg", node.ID, i+1))
 		if err := ctx.FFmpegRunner(ctx.Context, "-y", "-ss", fmt.Sprintf("%.3f", timestamp), "-i", videoIn, "-vframes", "1", "-q:v", "2", frame); err != nil || !fileExists(frame) {
 			if nodeParamBool(node.Params, "strict_analysis", false) {
@@ -563,7 +564,7 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		}
 		fmt.Fprintf(&timeline, "frame %d at %.2fs", i+1, timestamp)
 	}
-	analysisPrompt := fmt.Sprintf("Analyze the supplied source-video keyframes in chronological order for a %.2f-second clip. Timestamp sequence: %s. Return one numbered note for each frame, describing visible hand/arm/torso/head pose, gaze, subject position and framing, then describe transitions between adjacent frames. Use only visible evidence; do not guess BPM or invent unseen actions. Style hint: %s", duration, timeline.String(), styleHint)
+	analysisPrompt := fmt.Sprintf("Analyze the supplied source-video keyframes in chronological order for a %.2f-second clip. Timestamp sequence: %s. Return exactly one numbered note per image, in this exact format: '1. 0.000s: ...'. Use the matching timestamp shown above. In each note describe visible hand/arm/torso/head pose, gaze, subject position and framing; do not merge or omit frames. After the numbered notes, add one unnumbered 'Transitions:' paragraph describing only visible changes between adjacent samples and clearly mark unobserved intervals uncertain. Use visible evidence only; do not guess BPM or invent unseen actions. Style hint: %s", duration, timeline.String(), styleHint)
 	strictAnalysis := nodeParamBool(node.Params, "strict_analysis", false)
 	analysisCtx := ctx.Context
 	if analysisCtx == nil {
@@ -582,6 +583,9 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		analysisErr = fmt.Errorf("bóc tách chuyển động cần Vision AI đã cấu hình")
 	} else {
 		movement, analysisErr = ctx.AnalyzeImages(analysisCtx, analysisPrompt, keyframes)
+	}
+	if analysisErr == nil && strictAnalysis {
+		analysisErr = validateDanceMotionAnalysis(movement, keyframeTimestamps)
 	}
 	if analysisErr != nil || strings.TrimSpace(movement) == "" {
 		if strictAnalysis {
@@ -869,16 +873,21 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 
 	resolution := strings.ToLower(inputString(inputs, "resolution", nodeParamString(node.Params, "resolution", "4k")))
 	crf := nodeParamInt(node.Params, "crf", 18)
+	fitMode := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "fit_mode", "contain")))
 	if crf < 0 || crf > 51 {
 		return nil, fmt.Errorf("CRF phải từ 0 đến 51")
 	}
-	targetScale := "1080:1920"
+	width, height := 1080, 1920
 	if resolution == "4k" || resolution == "2160p" {
-		targetScale = "2160:3840"
+		width, height = 2160, 3840
 	} else if resolution == "8k" || resolution == "4320p" {
-		targetScale = "4320:7680"
+		width, height = 4320, 7680
 	} else if resolution != "1080p" {
 		return nil, fmt.Errorf("resolution chưa hỗ trợ: %s", resolution)
+	}
+	fitFilter, err := videoFitFilter(width, height, fitMode)
+	if err != nil {
+		return nil, err
 	}
 
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_upscaled_%s.mp4", node.ID, resolution))
@@ -886,7 +895,7 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	if ctx.FFmpegRunner == nil {
 		return nil, fmt.Errorf("Video Upscale cần FFmpeg")
 	}
-	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vf", fmt.Sprintf("scale=%s:force_original_aspect_ratio=decrease:flags=lanczos,pad=%s:(ow-iw)/2:(oh-ih)/2,unsharp=5:5:0.8:3:3:0.4", targetScale, targetScale), "-c:v", "libx264", "-preset", "veryfast", "-crf", fmt.Sprint(crf), "-pix_fmt", "yuv420p", "-c:a", "copy", outPath); err != nil {
+	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn, "-vf", fitFilter+",unsharp=5:5:0.8:3:3:0.4", "-c:v", "libx264", "-preset", "veryfast", "-crf", fmt.Sprint(crf), "-pix_fmt", "yuv420p", "-c:a", "copy", outPath); err != nil {
 		return nil, fmt.Errorf("không upscale được video: %w", err)
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
@@ -900,8 +909,45 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}, nil
 }
 
+func videoFitFilter(width, height int, fitMode string) (string, error) {
+	switch fitMode {
+	case "contain":
+		return fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease:flags=lanczos,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=black", width, height, width, height), nil
+	case "cover":
+		return fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d:(iw-ow)/2:(ih-oh)/2", width, height, width, height), nil
+	default:
+		return "", fmt.Errorf("fit_mode chưa hỗ trợ: %s (dùng contain hoặc cover)", fitMode)
+	}
+}
+
 var danceAnalysisSectionStart = regexp.MustCompile(`(?m)^\s*\d+\.\s+`)
 var danceAnalysisTimestamp = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)\s*(?:seconds|s)\b`)
+
+func validateDanceMotionAnalysis(analysis string, expectedTimestamps []float64) error {
+	sections := danceAnalysisSectionStart.FindAllStringIndex(analysis, -1)
+	if len(sections) != len(expectedTimestamps) {
+		return fmt.Errorf("Vision AI cần mô tả đủ %d keyframe có đánh số; nhận %d", len(expectedTimestamps), len(sections))
+	}
+	for i, heading := range sections {
+		sectionEnd := len(analysis)
+		if i+1 < len(sections) {
+			sectionEnd = sections[i+1][0]
+		}
+		section := strings.TrimSpace(analysis[heading[1]:sectionEnd])
+		match := danceAnalysisTimestamp.FindStringSubmatch(section)
+		if len(match) != 2 {
+			return fmt.Errorf("Vision AI thiếu timestamp ở keyframe %d", i+1)
+		}
+		timestamp, err := strconv.ParseFloat(match[1], 64)
+		if err != nil || math.Abs(timestamp-expectedTimestamps[i]) > 0.1 {
+			return fmt.Errorf("Vision AI timestamp keyframe %d không khớp nguồn", i+1)
+		}
+		if len([]rune(section)) < 24 {
+			return fmt.Errorf("Vision AI mô tả keyframe %d quá ngắn để dùng làm chỉ dẫn chuyển động", i+1)
+		}
+	}
+	return nil
+}
 
 func danceAnalysisForSegment(analysis string, start, end float64) string {
 	sections := danceAnalysisSectionStart.FindAllStringIndex(analysis, -1)
@@ -920,7 +966,7 @@ func danceAnalysisForSegment(analysis string, start, end float64) string {
 		if err != nil || timestamp < start-0.001 || timestamp > end+0.001 {
 			continue
 		}
-		if transition := strings.Index(strings.ToLower(section), "transition"); transition >= 0 {
+		if transition := strings.Index(strings.ToLower(section), "transitions:"); transition >= 0 {
 			section = strings.TrimSpace(section[:transition])
 		}
 		if section != "" {
@@ -1157,7 +1203,11 @@ func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	if len(scenes) == 0 {
 		return nil, fmt.Errorf("ConcatScenesNode: Cần ít nhất một phân cảnh video để ghép nối")
 	}
-	if len(scenes) == 1 {
+	fitMode := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "fit_mode", "contain")))
+	if fitMode != "contain" && fitMode != "cover" {
+		return nil, fmt.Errorf("fit_mode chưa hỗ trợ: %s (dùng contain hoặc cover)", fitMode)
+	}
+	if len(scenes) == 1 && fitMode == "contain" {
 		return map[string]any{"master_video": scenes[0]}, nil
 	}
 	if ctx.FFmpegRunner == nil {
@@ -1177,8 +1227,12 @@ func executeConcatScenes(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}
 	filters := make([]string, 0, len(scenes)*2+1)
 	concatInputs := make([]string, 0, len(scenes)*2)
+	videoFilter, err := videoFitFilter(1080, 1920, fitMode)
+	if err != nil {
+		return nil, err
+	}
 	for i := range scenes {
-		filters = append(filters, fmt.Sprintf("[%d:v:0]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,fps=30,setsar=1,format=yuv420p[v%d]", i, i))
+		filters = append(filters, fmt.Sprintf("[%d:v:0]%s,fps=30,setsar=1,format=yuv420p[v%d]", i, videoFilter, i))
 		concatInputs = append(concatInputs, fmt.Sprintf("[v%d]", i))
 		if allScenesHaveAudio {
 			filters = append(filters, fmt.Sprintf("[%d:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a%d]", i, i))

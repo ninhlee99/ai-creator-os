@@ -27,7 +27,7 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if !IsTikTokVideoURL(p.SourceVideoURL) {
 		return "", fmt.Errorf("cần video nguồn TikTok đã chọn trong Radar")
 	}
-	sourceVideo, err := s.ResolveTikTokRadarDanceVideo(ctx, p.SourceVideoURL)
+	sourceVideo, err := s.ResolveTikTokRadarVideo(ctx, p.SourceVideoURL)
 	if err != nil {
 		return "", fmt.Errorf("video nguồn không thuộc Radar đã lưu: %w", err)
 	}

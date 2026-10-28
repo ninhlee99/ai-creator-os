@@ -145,7 +145,7 @@ func (s *Studio) migrate() error {
 		return err
 	}
 
-	// Bảng lưu danh sách chủ đề TikTok Radar và ánh xạ tối đa 8 video hot nhất mỗi chủ đề.
+	// Bảng lưu chủ đề Radar và candidate analysis; các hàng đạt điều kiện đứng đầu.
 	if _, err := s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS studio_tiktok_radar_topics(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,11 +155,16 @@ func (s *Studio) migrate() error {
 			topic TEXT NOT NULL,
 			video_id TEXT NOT NULL,
 			rank INTEGER NOT NULL,
+			analysis_payload TEXT NOT NULL DEFAULT '',
 			updated_at TEXT NOT NULL,
 			PRIMARY KEY(topic, video_id));
 		CREATE INDEX IF NOT EXISTS idx_radar_topic_rank
 			ON studio_tiktok_radar_topic_videos(topic, rank ASC);
 	`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`ALTER TABLE studio_tiktok_radar_topic_videos ADD COLUMN analysis_payload TEXT NOT NULL DEFAULT ''`); err != nil &&
+		!strings.Contains(err.Error(), "duplicate column") {
 		return err
 	}
 
@@ -176,6 +181,35 @@ func (s *Studio) migrate() error {
 		now := time.Now().UTC().Format(time.RFC3339)
 		for _, t := range defaultTopics {
 			_, _ = s.db.Exec(`INSERT INTO studio_tiktok_radar_topics(name, created_at) VALUES(?, ?) ON CONFLICT(name) DO NOTHING`, t, now)
+		}
+	}
+
+	// The dance-filtered default tab is reserved; restore it if an older build
+	// allowed deleting it. Keep the existing Vietnamese/English alias as-is.
+	rows, err := s.db.Query(`SELECT name FROM studio_tiktok_radar_topics`)
+	if err != nil {
+		return err
+	}
+	protectedTopicExists := false
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			return err
+		}
+		if IsTikTokRadarProtectedDefaultTopic(name) {
+			protectedTopicExists = true
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	if !protectedTopicExists {
+		if _, err := s.db.Exec(`INSERT INTO studio_tiktok_radar_topics(name, created_at) VALUES(?, ?) ON CONFLICT(name) DO NOTHING`, "Xu hướng Việt Nam", time.Now().UTC().Format(time.RFC3339)); err != nil {
+			return err
 		}
 	}
 

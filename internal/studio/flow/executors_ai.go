@@ -232,6 +232,10 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 
 func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Tạo 1 video thời trang dọc 9:16 dài 10 giây: Bạn nữ trong ảnh tham chiếu 1 diện chiếc đầm trong ảnh tham chiếu 2, tạo dáng dạo phố sành điệu, chuyển động mềm mại tự nhiên.")
+	aspect := strings.TrimSpace(nodeParamString(node.Params, "aspect", "9:16"))
+	if aspect != "" {
+		prompt = fmt.Sprintf("%s. Output aspect ratio: %s. Fill the complete frame edge to edge; do not add letterbox, pillarbox, borders, or empty margins. Keep the subject safely inside the frame.", prompt, aspect)
+	}
 
 	// Đảm bảo chỉ thị nghiêm ngặt: KHÔNG sử dụng hiệu ứng zoom-in hay zoom-out
 	if !strings.Contains(strings.ToLower(prompt), "zoom") {

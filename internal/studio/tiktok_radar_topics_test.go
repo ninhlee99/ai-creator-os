@@ -29,8 +29,7 @@ func TestTikTokRadarTopicsCRUD(t *testing.T) {
 
 	// 2. Add custom topic
 	customTopic := "Đồ gia dụng thông minh"
-	// Note: AddTikTokRadarTopic calls CollectTikTokRadarVideosForTopic which might try crawling if browser is available.
-	// Let's directly insert or test with DB method:
+	// Topic creation stays independent from the background crawl.
 	_, err = st.db.Exec(`INSERT INTO studio_tiktok_radar_topics(name, created_at) VALUES(?, '2026-10-26T12:00:00Z')`, customTopic)
 	if err != nil {
 		t.Fatalf("insert topic error: %v", err)
@@ -92,7 +91,18 @@ func TestTikTokRadarTop8Limit(t *testing.T) {
 			PlayCountKnown: true,
 			DiggCount:      int64(i * 5000),
 			DiggCountKnown: true,
+			Analysis: &TikTokRadarContentAnalysis{
+				Version:         tikTokRadarAnalysisVersion,
+				Status:          "complete",
+				Topic:           topic,
+				DanceDetected:   true,
+				DanceConfidence: 0.95,
+				TopicRelevance:  0.95,
+			},
 		})
+	}
+	for i := range vids {
+		vids[i].Analysis.SourceHash = radarSourceFingerprint(vids[i])
 	}
 
 	// Persist videos into studio DB
@@ -132,5 +142,41 @@ func TestTikTokRadarTop8Limit(t *testing.T) {
 		if r.Rank != i+1 {
 			t.Errorf("expected Rank %d, got %d", i+1, r.Rank)
 		}
+	}
+}
+
+func TestTikTokRadarDuplicateVideoIDUpdatesExistingRecord(t *testing.T) {
+	st, err := New(filepath.Join(t.TempDir(), "radar.db"), nil, nil, nil, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	ctx := context.Background()
+	first := TikTokTrendVideo{
+		VideoID: "1234567890", Title: "old caption", VideoURL: "https://www.tiktok.com/@creator/video/1234567890",
+		PlayCount: 100, PlayCountKnown: true,
+	}
+	if _, err := st.persistTikTokRadarResults(ctx, []TikTokTrendVideo{first}); err != nil {
+		t.Fatal(err)
+	}
+	updated := first
+	updated.Title = "updated caption"
+	updated.PlayCount = 250
+	if _, err := st.persistTikTokRadarResults(ctx, []TikTokTrendVideo{updated}); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := st.loadTikTokRadarVideo(ctx, first.VideoID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Title != updated.Title || stored.PlayCount != updated.PlayCount {
+		t.Fatalf("duplicate ID did not refresh metadata: %+v", stored)
+	}
+	var count int
+	if err := st.db.QueryRow(`SELECT COUNT(*) FROM studio_tiktok_radar_videos WHERE video_id=?`, first.VideoID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("stored %d records for duplicate video ID, want 1", count)
 	}
 }

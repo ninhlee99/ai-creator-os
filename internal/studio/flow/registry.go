@@ -458,6 +458,7 @@ func registerAllBuiltinNodes() {
 		DefaultParams: map[string]any{
 			"resolution": "4k", // 1080p, 4k
 			"crf":        18,
+			"fit_mode":   "contain",
 		},
 		Executor: executeVideoUpscale,
 	})
@@ -478,7 +479,7 @@ func registerAllBuiltinNodes() {
 		Outputs: []FlowPort{
 			{ID: "master_video", Name: "Video Master", Type: PortTypeVideo, Description: "Video hoàn chỉnh nối liền mạch các cảnh"},
 		},
-		DefaultParams: map[string]any{},
+		DefaultParams: map[string]any{"fit_mode": "contain"},
 		Executor:      executeConcatScenes,
 	})
 	RegisterNode(NodeDefinition{
