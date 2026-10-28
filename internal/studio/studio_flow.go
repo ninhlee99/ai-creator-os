@@ -2,6 +2,7 @@ package studio
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -427,6 +428,21 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 				return nil, fmt.Errorf("kênh %d chưa có ảnh nhân vật trong thư viện", accountID)
 			}
 			return photos, nil
+		},
+		EvaluateVideo: func(ctx context.Context, videoPath, workDir string) (map[string]any, error) {
+			evalReport, err := s.EvaluateVideoQuality(ctx, videoPath, workDir, analyzeImages)
+			if err != nil {
+				return nil, err
+			}
+			data, err := json.Marshal(evalReport)
+			if err != nil {
+				return nil, err
+			}
+			var result map[string]any
+			if err := json.Unmarshal(data, &result); err != nil {
+				return nil, err
+			}
+			return result, nil
 		},
 		ResolveProduct:    services.ResolveProduct,
 		ResolveRadarVideo: services.ResolveRadarVideo,

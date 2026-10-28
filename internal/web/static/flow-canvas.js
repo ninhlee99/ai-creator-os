@@ -310,9 +310,15 @@
       const definitionTitle = escapeHTML(isUnsupported ? 'Node cũ · chưa hỗ trợ thực thi' : (def.title || node.type));
       const safeNodeId = escapeHTML(node.id);
       const safeCategory = escapeHTML(cat);
+      const mode = node.params && node.params.provider_mode;
       const model = node.params && (node.params.model || node.params.provider);
-      const shortModel = this.formatModelShortName(model);
-      const modelTag = model
+      let shortModel = this.formatModelShortName(model);
+      if (mode === 'api_key') {
+        shortModel = `API · ${shortModel || 'Key'}`;
+      } else if (mode === 'web_ai' && node.params && node.params.provider) {
+        shortModel = `Web · ${this.formatModelShortName(node.params.provider)}`;
+      }
+      const modelTag = (model || mode)
         ? `<span class="wf-node-model-pill" id="node-model-${safeNodeId}">${escapeHTML(shortModel)}</span>`
         : `<span class="wf-node-model-pill" id="node-model-${safeNodeId}" style="display:none;"></span>`;
       header.innerHTML = `
@@ -3288,7 +3294,58 @@
           ['male', 'Nam · trầm'],
           ['default', 'Mặc định hệ thống']
         ],
-        provider: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
+        provider_mode: [
+          ['web_ai', 'Web AI (Tài khoản login miễn phí)'],
+          ['api_key', 'API Key (Khóa API trả phí)']
+        ],
+        provider: [
+          ['google_flow', 'Google Flow (Veo 3.1)'],
+          ['muse_ai', 'Muse AI (Gen-2)'],
+          ['chatgpt', 'ChatGPT (OpenAI)'],
+          ['gemini', 'Google Gemini'],
+          ['grok', 'xAI Grok'],
+          ['claude', 'Anthropic Claude'],
+          ['runway', 'Runway Gen-3 (API)'],
+          ['luma', 'Luma Ray-2 (API)'],
+          ['kling', 'Kling 1.5 (API)'],
+          ['sora', 'OpenAI Sora (API)'],
+          ['stability', 'Stability SDXL / SD3 (API)'],
+          ['midjourney', 'Midjourney (API/Bridge)'],
+          ['googleflow', 'Google Flow (Veo)'],
+          ['museai', 'Muse AI']
+        ],
+        model: [
+          ['auto', 'Tự động chọn (Khuyên dùng)'],
+          ['gpt-4o', 'GPT-4o (Đa nhiệm cao cấp)'],
+          ['gpt-4o-mini', 'GPT-4o Mini (Nhanh & Tiết kiệm)'],
+          ['gemini-1.5-pro', 'Gemini 1.5 Pro (Ngữ cảnh sâu)'],
+          ['gemini-1.5-flash', 'Gemini 1.5 Flash (Siêu tốc)'],
+          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Logic & Viết lách)'],
+          ['grok-2', 'Grok 2 (Sáng tạo)'],
+          ['veo-3.1-fast', 'Veo 3.1 Fast (Google Flow Video)'],
+          ['muse-gen2', 'Muse Gen-2 (Chuyển động mượt mà)'],
+          ['dall-e-3', 'DALL-E 3 (Chuẩn xác prompt ảnh)'],
+          ['imagen-3', 'Imagen 3 (Chất lượng ảnh cao)'],
+          ['flux-1-schnell', 'Flux 1 Schnell (Chi tiết sắc nét)'],
+          ['sdxl', 'Stable Diffusion XL'],
+          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo'],
+          ['ray-2', 'Luma Ray-2']
+        ],
+        style_preset: [
+          ['cinematic', 'Điện ảnh (Cinematic 4K lighting)'],
+          ['photorealistic', 'Ảnh chụp thực tế (DSLR Photorealistic)'],
+          ['commercial_ad', 'Quảng cáo thương mại cao cấp (Studio TVC)'],
+          ['tiktok_viral', 'TikTok Viral (Tươi sáng, năng động)'],
+          ['anime', 'Phong cách Hoạt hình / Anime'],
+          ['none', 'Không áp dụng preset']
+        ],
+        task_type: [
+          ['auto', 'Tự động theo bối cảnh'],
+          ['extract_product', 'Bóc tách thuộc tính sản phẩm'],
+          ['describe_character', 'Phân tích nhân vật & cử chỉ'],
+          ['optimize_prompt', 'Tạo prompt tối ưu cho Video/Ảnh'],
+          ['quality_audit', 'Kiểm tra chất lượng & độ nét']
+        ],
         provider_name: [
           ['chatgpt', 'ChatGPT Web'], ['claude', 'Claude Web'], ['grok', 'Grok Web'], ['gemini', 'Gemini Web'],
           ['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']
@@ -3735,6 +3792,12 @@
 
     customNodeGuidance(type) {
       const guidance = {
+        ai_prompt_craft: 'Tool ghép prompt ComfyUI/n8n: Thay thế biến {{character}}, {{product}}, {{context}}, {{style}} tự động, nạp style preset điện ảnh và xuất prompt chuẩn cho model video/ảnh.',
+        ai_video_generate: 'Tool tạo video AI chuẩn hóa: Hỗ trợ chuyển đổi Web AI (tài khoản đăng nhập) và API Key trả phí (Veo, Muse, Runway Gen-3, Luma Ray-2, Kling, Sora). Tự chọn model và tỷ lệ khung hình.',
+        ai_image_generate: 'Tool sinh ảnh AI & Image-to-Image: Hỗ trợ Web AI (ChatGPT DALL-E, Gemini Imagen, Grok Flux) và API Key trả phí (OpenAI, Stability SDXL). Nhận ảnh đầu vào để thay đổi bối cảnh.',
+        ai_vision_analyzer: 'Tool phân tích thị giác AI (Multimodal): Bóc tách đặc điểm ảnh sản phẩm/nhân vật, trích xuất thuộc tính và tự động sản sinh prompt tối ưu cho bước tạo tiếp theo.',
+        ai_text_llm: 'Tool ngôn ngữ AI: Sáng tạo kịch bản viral, viết hook affiliate bán hàng, biên tập prompt và xuất dữ liệu JSON có cấu trúc. Hỗ trợ chuyển đổi linh hoạt giữa Web AI và API Key.',
+        video_qc_evaluator: 'Tool kiểm định chất lượng video: Phân tích kỹ thuật (độ phân giải, bitrate, giật hình, đồng bộ tiếng) kết hợp AI chấm điểm 0-100 và kết luận PASSED/FAILED.',
         custom_universal_ai: 'Dùng cho một node đa phương thức với cổng Text/Image/Video. Video chỉ được lấy frame tham chiếu; audio chưa được hỗ trợ.',
         text_to_speech: 'Nối kịch bản vào cổng Văn bản. Chọn persona ở cổng hoặc tham số; giọng thực tế tùy provider TTS. macOS Say hiện dùng giọng Linh. Văn bản dài tự chia theo câu rồi ghép thành một file WAV.',
         audio_mix: 'Nối lời đọc vào Track chính; nhạc nền là tùy chọn. Khi bật ducking, nhạc tự nhỏ xuống trong lúc có lời. Không nối nhạc thì node truyền nguyên track chính.',
@@ -4176,6 +4239,7 @@
     promptVariablesForNode(type, def) {
       const variables = {
         prompt_template: ['{character}', '{motion}', '{product}'],
+        ai_prompt_craft: ['{{character}}', '{{product}}', '{{context}}', '{{style}}', '{{prompt}}'],
         custom_script_runner: ['{{input_1}}', '{{input_2}}', '{{text_in}}']
       };
       if (variables[type]) return variables[type];
@@ -4231,12 +4295,37 @@
         'gemini-3.1-pro': 'Gemini 3.1 Pro',
         'gemini_2_5_flash': 'Gemini 3.8',
         'gemini_2_5_pro': 'Gemini 3.1 Pro',
+        'gemini-1.5-pro': 'Gemini 1.5 Pro',
+        'gemini-1.5-flash': 'Gemini 1.5 Flash',
         'gpt-6-luna': 'GPT-6 Luna',
+        'gpt-4o': 'GPT-4o',
+        'gpt-4o-mini': 'GPT-4o Mini',
         'claude-5-5-sonet': 'Claude 5.5',
         'claude_5_5_sonet': 'Claude 5.5',
+        'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
         'grok-3': 'Grok 3',
+        'grok-2': 'Grok 2',
         'veo-3.1': 'Veo 3.1',
+        'veo-3.1-fast': 'Veo 3.1 Fast',
         'muse-gen-2': 'Muse Gen-2',
+        'muse-gen2': 'Muse Gen-2',
+        'dall-e-3': 'DALL-E 3',
+        'imagen-3': 'Imagen 3',
+        'flux-1-schnell': 'Flux 1',
+        'sdxl': 'SDXL',
+        'gen3a_turbo': 'Runway Gen-3',
+        'ray-2': 'Luma Ray-2',
+        'kling-1.5': 'Kling 1.5',
+        'sora': 'Sora',
+        'google_flow': 'Google Flow',
+        'muse_ai': 'Muse AI',
+        'chatgpt': 'ChatGPT',
+        'gemini': 'Gemini',
+        'grok': 'Grok',
+        'claude': 'Claude',
+        'runway': 'Runway',
+        'luma': 'Luma',
+        'kling': 'Kling',
         'active': 'Hệ thống',
         'auto': 'Auto LLM',
       };
@@ -4246,8 +4335,16 @@
     updateNodeModelBadge(nodeId, model) {
       const badge = document.getElementById(`node-model-${nodeId}`);
       if (badge) {
-        if (model) {
-          badge.innerText = this.formatModelShortName(model);
+        const node = this.graph?.nodes?.find(n => n.id === nodeId);
+        const mode = node?.params?.provider_mode;
+        let text = this.formatModelShortName(model);
+        if (mode === 'api_key') {
+          text = `API · ${text || 'Key'}`;
+        } else if (mode === 'web_ai' && node?.params?.provider) {
+          text = `Web · ${this.formatModelShortName(node.params.provider)}`;
+        }
+        if (text) {
+          badge.innerText = text;
           badge.style.display = '';
         } else {
           badge.style.display = 'none';
@@ -4553,6 +4650,17 @@
 
     formatParamLabel(key) {
       const labels = {
+        provider_mode: 'Chế độ hoạt động (Mode)',
+        provider: 'Nhà cung cấp AI (Provider)',
+        model: 'Mô hình AI (Model)',
+        custom_prompt: 'Prompt ghi đè riêng (Custom Override)',
+        prompt_override: 'Prompt ghi đè riêng (Custom Override)',
+        api_key: 'Khóa API riêng (API Key Override)',
+        style_preset: 'Bộ phong cách tạo (Style Preset)',
+        task_type: 'Mục đích phân tích (Task Type)',
+        min_score: 'Điểm chất lượng tối thiểu (Min QC Score)',
+        strict_mode: 'Chế độ chấm nghiêm ngặt (Strict Mode)',
+        duration_sec: 'Thời lượng video (giây)',
         voice: 'Phong cách giọng đọc',
         chunk_size: 'Ký tự tối đa mỗi đoạn đọc',
         max_items: 'Số phần tử tối đa mỗi lần chạy',

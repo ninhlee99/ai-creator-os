@@ -155,6 +155,7 @@ type ExecutionContext struct {
 	SynthesizeSpeech      func(ctx context.Context, text, voice string) ([]byte, error)
 	GenerateImage         func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
 	CharacterPhotos       func(accountID int64) ([]string, error)
+	EvaluateVideo         func(ctx context.Context, videoPath, workDir string) (map[string]any, error)
 	FFmpegRunner          func(ctx context.Context, args ...string) error
 	WorkflowInputs        map[string]any
 	ResolveWorkflow       func(id string) (*FlowGraph, error)

@@ -1047,6 +1047,176 @@ func registerAllBuiltinNodes() {
 		Executor: executeCustomExportPublish,
 	})
 
+	// 43. Standard Tool Node: Soạn thảo & Ghép Prompt (AI Prompt Craft)
+	RegisterNode(NodeDefinition{
+		Type:        "ai_prompt_craft",
+		Title:       "Soạn thảo & Ghép Prompt (Prompt Craft)",
+		Category:    CategoryProcess,
+		Description: "Công cụ tạo, tinh chỉnh và định dạng prompt (tương tự CLIP Text Encode trong ComfyUI). Ghép biến tự động và áp dụng preset điện ảnh.",
+		Icon:        "edit-3",
+		Inputs: []FlowPort{
+			{ID: "character_text", Name: "Mô tả nhân vật", Type: PortTypeText, Required: false},
+			{ID: "product_text", Name: "Mô tả sản phẩm", Type: PortTypeText, Required: false},
+			{ID: "context_text", Name: "Bối cảnh / Hành động", Type: PortTypeText, Required: false},
+			{ID: "style_text", Name: "Phong cách hình ảnh", Type: PortTypeText, Required: false},
+			{ID: "variables", Name: "Biến tùy biến", Type: PortTypeConfig, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "prompt_out", Name: "Prompt hoàn chỉnh", Type: PortTypeText, Description: "Prompt chuẩn hóa đã chèn biến và style preset"},
+			{ID: "negative_prompt_out", Name: "Negative Prompt", Type: PortTypeText, Description: "Prompt loại bỏ chi tiết xấu"},
+			{ID: "context_out", Name: "Dữ liệu cấu hình", Type: PortTypeConfig, Description: "Map biến context truyền tiếp"},
+		},
+		DefaultParams: map[string]any{
+			"template":        "Cinematic vertical 9:16 video of {{character}} presenting {{product}}. {{context}}",
+			"negative_prompt": "blurry, low quality, distorted, extra limbs, bad anatomy, artifacts, text, watermark",
+			"style_preset":    "cinematic",
+			"custom_prompt":   "",
+		},
+		Executor: executeAIPromptCraft,
+	})
+
+	// 44. Standard Tool Node: Tạo Video AI (Universal AI Video Tool)
+	RegisterNode(NodeDefinition{
+		Type:        "ai_video_generate",
+		Title:       "Tạo Video AI (AI Video Tool)",
+		Category:    CategoryAI,
+		Description: "Tool tạo video AI chuẩn hóa: hỗ trợ chuyển đổi linh hoạt giữa Web AI (tài khoản đăng nhập) và API Key trả phí (Veo, Muse, Runway, Luma, Kling, Sora).",
+		Icon:        "film",
+		Inputs: []FlowPort{
+			{ID: "prompt_in", Name: "Prompt tạo video", Type: PortTypeText, Required: false},
+			{ID: "image_in", Name: "Ảnh khởi đầu / Tham chiếu", Type: PortTypeImage, Required: false},
+			{ID: "images_in", Name: "Danh sách ảnh tham chiếu", Type: PortTypeImageList, Required: false},
+			{ID: "video_in", Name: "Video chuyển động mẫu", Type: PortTypeVideo, Required: false},
+			{ID: "negative_prompt_in", Name: "Negative Prompt", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "video_out", Name: "Video thành phẩm", Type: PortTypeVideo, Description: "Video clip đã tạo hoàn thiện"},
+			{ID: "thumbnail_out", Name: "Ảnh bìa thumbnail", Type: PortTypeImage, Description: "Ảnh đại diện trích xuất từ video"},
+			{ID: "meta_out", Name: "Thông số kỹ thuật", Type: PortTypeConfig, Description: "Thông tin model, provider, aspect ratio"},
+		},
+		DefaultParams: map[string]any{
+			"provider_mode": "web_ai",
+			"provider":      "google_flow",
+			"model":         "auto",
+			"aspect_ratio":  "9:16",
+			"duration_sec":  8,
+			"custom_prompt": "",
+			"api_key":       "",
+		},
+		Executor: executeAIVideoGenerate,
+	})
+
+	// 45. Standard Tool Node: Tạo & Biến đổi Ảnh AI (Universal AI Image Tool)
+	RegisterNode(NodeDefinition{
+		Type:        "ai_image_generate",
+		Title:       "Tạo & Biến đổi Ảnh AI (AI Image Tool)",
+		Category:    CategoryAI,
+		Description: "Tool tạo ảnh và Image-to-Image chuẩn hóa: chuyển đổi linh hoạt giữa Web AI (ChatGPT DALL-E, Gemini Imagen, Grok Flux) và API Key trả phí (OpenAI, Stability SDXL).",
+		Icon:        "image",
+		Inputs: []FlowPort{
+			{ID: "prompt_in", Name: "Prompt tạo ảnh", Type: PortTypeText, Required: false},
+			{ID: "image_in", Name: "Ảnh gốc Image-to-Image", Type: PortTypeImage, Required: false},
+			{ID: "images_in", Name: "Danh sách ảnh tham chiếu", Type: PortTypeImageList, Required: false},
+			{ID: "negative_prompt_in", Name: "Negative Prompt", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "image_out", Name: "Ảnh thành phẩm", Type: PortTypeImage, Description: "Ảnh chất lượng cao tạo ra"},
+			{ID: "result_out", Name: "File kết quả", Type: PortTypeAny, Description: "Đường dẫn file ảnh xuất xưởng"},
+			{ID: "meta_out", Name: "Thông số kỹ thuật", Type: PortTypeConfig, Description: "Thông tin provider, model, aspect"},
+		},
+		DefaultParams: map[string]any{
+			"provider_mode": "web_ai",
+			"provider":      "chatgpt",
+			"model":         "auto",
+			"aspect_ratio":  "9:16",
+			"custom_prompt": "",
+			"api_key":       "",
+		},
+		Executor: executeAIImageGenerate,
+	})
+
+	// 46. Standard Tool Node: Phân tích Thị giác AI (Universal Vision Tool)
+	RegisterNode(NodeDefinition{
+		Type:        "ai_vision_analyzer",
+		Title:       "Phân tích Thị giác AI (Vision Tool)",
+		Category:    CategoryAI,
+		Description: "Tool phân tích thị giác đa phương thức: bóc tách đặc điểm sản phẩm, nhận diện nhân vật, thẩm định chất lượng và tự sinh prompt tối ưu.",
+		Icon:        "eye",
+		Inputs: []FlowPort{
+			{ID: "image_in", Name: "Ảnh cần phân tích", Type: PortTypeImage, Required: false},
+			{ID: "images_in", Name: "Danh sách ảnh", Type: PortTypeImageList, Required: false},
+			{ID: "video_in", Name: "Video (trích frame)", Type: PortTypeVideo, Required: false},
+			{ID: "prompt_in", Name: "Chỉ đạo phân tích", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "analysis_text", Name: "Báo cáo phân tích", Type: PortTypeText, Description: "Nội dung nhận định chi tiết"},
+			{ID: "optimized_prompt", Name: "Prompt tối ưu", Type: PortTypeText, Description: "Prompt chuẩn hóa sẵn sàng cho node tạo video/ảnh"},
+			{ID: "data_out", Name: "Dữ liệu JSON", Type: PortTypeConfig, Description: "Cấu trúc dữ liệu bóc tách được"},
+		},
+		DefaultParams: map[string]any{
+			"provider_mode": "web_ai",
+			"provider":      "gemini",
+			"model":         "auto",
+			"task_type":     "auto",
+			"custom_prompt": "",
+			"api_key":       "",
+		},
+		Executor: executeAIVisionAnalyzer,
+	})
+
+	// 47. Standard Tool Node: Soạn thảo & Kịch bản AI (Universal Text LLM Tool)
+	RegisterNode(NodeDefinition{
+		Type:        "ai_text_llm",
+		Title:       "Soạn thảo & Kịch bản AI (Text LLM Tool)",
+		Category:    CategoryAI,
+		Description: "Tool ngôn ngữ AI: viết kịch bản viral, hook bán hàng affiliate, biên tập prompt và xuất dữ liệu JSON có cấu trúc. Hỗ trợ Web AI và API Key.",
+		Icon:        "cpu",
+		Inputs: []FlowPort{
+			{ID: "prompt_in", Name: "Nội dung yêu cầu", Type: PortTypeText, Required: false},
+			{ID: "context_in", Name: "Dữ liệu bổ trợ", Type: PortTypeConfig, Required: false},
+			{ID: "system_prompt_in", Name: "System Prompt riêng", Type: PortTypeText, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "text_out", Name: "Văn bản hoàn thiện", Type: PortTypeText, Description: "Nội dung văn bản kết quả"},
+			{ID: "json_out", Name: "Dữ liệu JSON", Type: PortTypeConfig, Description: "JSON phân tích có cấu trúc"},
+		},
+		DefaultParams: map[string]any{
+			"provider_mode": "web_ai",
+			"provider":      "chatgpt",
+			"model":         "auto",
+			"system_prompt": "Bạn là chuyên gia sáng tạo kịch bản video ngắn triệu view và copywriter affiliate đỉnh cao.",
+			"custom_prompt": "",
+			"temperature":   0.7,
+			"api_key":       "",
+		},
+		Executor: executeAITextLLM,
+	})
+
+	// 48. Standard Tool Node: Đánh giá Chất lượng Video (Video Quality QC Tool)
+	RegisterNode(NodeDefinition{
+		Type:        "video_qc_evaluator",
+		Title:       "Đánh giá Chất lượng Video (Video QC Tool)",
+		Category:    CategoryProcess,
+		Description: "Tool thẩm định chất lượng video: phân tích kỹ thuật (ffprobe, audio sync, freeze, black frames) kết hợp AI chấm điểm 0-100 và kết luận PASSED/FAILED.",
+		Icon:        "check-circle",
+		Inputs: []FlowPort{
+			{ID: "video_in", Name: "Video cần thẩm định", Type: PortTypeVideo, Required: true},
+			{ID: "reference_image", Name: "Ảnh đối chiếu", Type: PortTypeImage, Required: false},
+		},
+		Outputs: []FlowPort{
+			{ID: "video_out", Name: "Video gốc (Passthrough)", Type: PortTypeVideo, Description: "Video truyền tiếp để xuất tệp"},
+			{ID: "overall_score", Name: "Điểm chất lượng (0-100)", Type: PortTypeNumber, Description: "Điểm tổng kết chất lượng video"},
+			{ID: "verdict", Name: "Kết luận (Verdict)", Type: PortTypeText, Description: "PASSED / ACCEPTABLE / FAILED"},
+			{ID: "feedback", Name: "Góp ý cải thiện", Type: PortTypeText, Description: "Khuyến nghị chi tiết cho video"},
+			{ID: "qc_report", Name: "Báo cáo đầy đủ", Type: PortTypeConfig, Description: "Chi tiết toàn bộ thông số đánh giá"},
+		},
+		DefaultParams: map[string]any{
+			"min_score":   60,
+			"strict_mode": false,
+		},
+		Executor: executeVideoQCEvaluator,
+	})
+
 	RegisterNode(NodeDefinition{
 		Type:        "workflow_input",
 		Title:       "Đầu vào workflow",
