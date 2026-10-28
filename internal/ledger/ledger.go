@@ -43,19 +43,22 @@ func New(path string) (*Ledger, error) {
 			return nil, err
 		}
 	}
-	db, err := sql.Open("sqlite", path)
+	dsn := path
+	if !strings.Contains(path, "?") {
+		dsn = path + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=cache_size(-20000)"
+	}
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open ledger db: %w", err)
 	}
-	// Mirror Python's single locked connection: one underlying connection
-	// means the per-connection pragmas below always hold.
-	db.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(16)
+	db.SetMaxIdleConns(4)
 
 	if err := applySchema(db); err != nil {
 		db.Close()
 		return nil, err
 	}
-	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000"} {
+	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000", "PRAGMA synchronous=NORMAL"} {
 		if _, err := db.Exec(p); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("pragma %q: %w", p, err)

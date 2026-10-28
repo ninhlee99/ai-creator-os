@@ -18,17 +18,36 @@ import (
 
 var profileLocks sync.Map
 
-const maxConcurrentHeadlessBrowsers = 1
+var (
+	browserSlotMu        sync.Mutex
+	headlessBrowserSlots chan struct{}
+	lastBrowserLimit     int
+)
 
-var headlessBrowserSlots = make(chan struct{}, maxConcurrentHeadlessBrowsers)
+func getHeadlessBrowserSlots() chan struct{} {
+	browserSlotMu.Lock()
+	defer browserSlotMu.Unlock()
+	limit := 1
+	if env := strings.TrimSpace(os.Getenv("AICOS_MAX_HEADLESS_BROWSERS")); env != "" {
+		if n, err := strconv.Atoi(env); err == nil && n >= 1 && n <= 8 {
+			limit = n
+		}
+	}
+	if headlessBrowserSlots == nil || lastBrowserLimit != limit {
+		headlessBrowserSlots = make(chan struct{}, limit)
+		lastBrowserLimit = limit
+	}
+	return headlessBrowserSlots
+}
 
 func acquireHeadlessBrowserSlot(ctx context.Context) (func(), error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	slots := getHeadlessBrowserSlots()
 	select {
-	case headlessBrowserSlots <- struct{}{}:
-		return func() { <-headlessBrowserSlots }, nil
+	case slots <- struct{}{}:
+		return func() { <-slots }, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

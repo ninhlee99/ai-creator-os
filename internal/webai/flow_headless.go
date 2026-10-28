@@ -328,30 +328,64 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		if err := ctx.Err(); err != nil {
 			return result, err
 		}
-		mediaValue, err := client.evaluate(ctx, `(() => {const all=[...document.querySelectorAll('flow-video-tile video,video,a[href*="flow-content.google/video/"]')];return all.map(e=>e.currentSrc||e.src||e.href).filter(Boolean)})()`)
-		if err == nil {
-			for _, raw := range valueStrings(mediaValue) {
-				if baseline[raw] || !isGoogleMediaURL(raw) {
-					continue
-				}
-				result.MediaURL = raw
-				if _, path, ok := strings.Cut(strings.SplitN(raw, "?", 2)[0], "/video/"); ok {
-					result.MediaID = strings.TrimSuffix(path, "/")
-				}
-				result.CookieHeader = flowUpdatedCookieHeader(ctx, client)
-				return result, nil
+		probeValue, err := client.evaluate(ctx, `(() => {
+			const visible = e => { const r=e.getBoundingClientRect(), s=getComputedStyle(e); return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none' };
+			const media = [...document.querySelectorAll('flow-video-tile video,video,a[href*="flow-content.google/video/"]')].map(e=>e.currentSrc||e.src||e.href).filter(Boolean);
+			const tiles = [...document.querySelectorAll('flow-video-tile')];
+			const lastTile = tiles[tiles.length - 1];
+			let hoverPoint = null;
+			if (lastTile) {
+				const r = lastTile.getBoundingClientRect();
+				if (r.width > 0 && r.height > 0) hoverPoint = {x: r.x + r.width/2, y: r.y + r.height/2};
 			}
-		}
-		if message := flowHeadlessRateLimitMessage(ctx, client); message != "" {
-			return result, &flowUIRateLimitError{message: message}
-		}
-		if errMsg := flowHeadlessErrorMessage(ctx, client); errMsg != "" {
-			return result, fmt.Errorf("Google Flow: %s", errMsg)
-		}
-		// Flow mounts video elements lazily when the newest result tile is hovered.
-		bounds, _ := client.evaluate(ctx, `(() => {const xs=[...document.querySelectorAll('flow-video-tile')];const e=xs[xs.length-1];if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`)
-		if point, ok := bounds.(map[string]any); ok {
-			_, _ = client.call(ctx, "Input.dispatchMouseEvent", map[string]any{"type": "mouseMoved", "x": point["x"], "y": point["y"]}, client.sessionID)
+			const alerts = [...document.querySelectorAll('[role="alert"],[role="status"],[aria-live="assertive"],[aria-live="polite"],[class*="toast"],[class*="snackbar"],[data-state="open"]')]
+				.filter(visible).map(e=>(e.innerText||e.textContent||'').trim()).filter(Boolean).join('\n').slice(0,1200);
+			let errorMsg = '';
+			const errTile = document.querySelector('flow-error-tile, .error-tile, [class*="error-tile"]');
+			if (errTile) {
+				const title = (errTile.querySelector('.error-title')?.innerText || '').trim();
+				const msg = (errTile.querySelector('.error-message-text, .error-message, .error-subtitle')?.innerText || '').trim();
+				errorMsg = [title, msg].filter(Boolean).join(': ') || (errTile.innerText || '').trim();
+			}
+			return { media, alerts, errorMsg, hover: hoverPoint };
+		})()`)
+		if err == nil {
+			if probeMap, ok := probeValue.(map[string]any); ok {
+				if mediaRaw, ok := probeMap["media"].([]any); ok {
+					for _, rawItem := range mediaRaw {
+						if raw, ok := rawItem.(string); ok {
+							if baseline[raw] || !isGoogleMediaURL(raw) {
+								continue
+							}
+							result.MediaURL = raw
+							if _, path, ok := strings.Cut(strings.SplitN(raw, "?", 2)[0], "/video/"); ok {
+								result.MediaID = strings.TrimSuffix(path, "/")
+							}
+							result.CookieHeader = flowUpdatedCookieHeader(ctx, client)
+							return result, nil
+						}
+					}
+				}
+				if alertsText, ok := probeMap["alerts"].(string); ok && alertsText != "" {
+					if phrase := parseFlowRateLimitPhrase(alertsText); phrase != "" {
+						return result, &flowUIRateLimitError{message: phrase}
+					}
+				}
+				if errorMsg, ok := probeMap["errorMsg"].(string); ok && errorMsg != "" {
+					return result, fmt.Errorf("Google Flow: %s", errorMsg)
+				}
+				if hoverMap, ok := probeMap["hover"].(map[string]any); ok && hoverMap != nil {
+					_, _ = client.call(ctx, "Input.dispatchMouseEvent", map[string]any{"type": "mouseMoved", "x": hoverMap["x"], "y": hoverMap["y"]}, client.sessionID)
+				}
+			}
+		} else {
+			// Fallback to legacy checks if batched probe failed
+			if message := flowHeadlessRateLimitMessage(ctx, client); message != "" {
+				return result, &flowUIRateLimitError{message: message}
+			}
+			if errMsg := flowHeadlessErrorMessage(ctx, client); errMsg != "" {
+				return result, fmt.Errorf("Google Flow: %s", errMsg)
+			}
 		}
 		if time.Now().After(nextProgress) {
 			progress("FLOW_HEADLESS_WAIT: đang chờ Flow render video")
@@ -360,7 +394,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		select {
 		case <-ctx.Done():
 			return result, ctx.Err()
-		case <-time.After(1500 * time.Millisecond):
+		case <-time.After(3 * time.Second):
 		}
 	}
 	return result, errors.New("Flow headless UI timed out waiting for a downloadable video")
@@ -379,6 +413,10 @@ func flowHeadlessRateLimitMessage(ctx context.Context, client *browserCDPClient)
 	if !ok {
 		return ""
 	}
+	return parseFlowRateLimitPhrase(text)
+}
+
+func parseFlowRateLimitPhrase(text string) string {
 	flat := strings.Join(strings.Fields(text), " ")
 	lower := strings.ToLower(flat)
 	phrases := []string{

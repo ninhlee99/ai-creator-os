@@ -119,6 +119,21 @@
     }
 
     initEvents() {
+      // Event delegation for deleting wires on click
+      if (this.svgLayer) {
+        this.svgLayer.addEventListener('click', async (e) => {
+          const hitPath = e.target.closest('.flow-wire-hit');
+          if (!hitPath) return;
+          const group = hitPath.closest('[data-edge-id]');
+          const edgeId = group ? group.getAttribute('data-edge-id') : null;
+          if (!edgeId) return;
+          e.stopPropagation();
+          if (await window.showAppConfirm('Bạn có muốn xóa kết nối dây này?', { title: 'Xóa kết nối', confirmText: 'Xóa', danger: true })) {
+            this.deleteEdge(edgeId);
+          }
+        });
+      }
+
       // Pan canvas by dragging background
       this.container.addEventListener('mousedown', (e) => {
         if (e.target === this.container || e.target === this.viewport || e.target === this.svgLayer) {
@@ -389,7 +404,12 @@
             nodeEl.style.left = `${node.x}px`;
             nodeEl.style.top = `${node.y}px`;
 
-            this.renderWires();
+            if (!rafId) {
+              rafId = requestAnimationFrame(() => {
+                rafId = null;
+                this.renderWires();
+              });
+            }
           }
         };
 
@@ -1349,16 +1369,10 @@
           group.appendChild(pulsePath);
         }
 
-        // 4. Hit area for easy clicking / hover
+        // 4. Hit area for easy clicking / hover (handled via svgLayer event delegation)
         const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         hitPath.setAttribute('d', d);
         hitPath.setAttribute('class', 'flow-wire-hit');
-        hitPath.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (await window.showAppConfirm('Bạn có muốn xóa kết nối dây này?', { title: 'Xóa kết nối', confirmText: 'Xóa', danger: true })) {
-            this.deleteEdge(edge.id);
-          }
-        });
         group.appendChild(hitPath);
 
         this.svgLayer.appendChild(group);

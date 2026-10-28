@@ -17,12 +17,17 @@ type Store struct {
 
 // NewStore opens (or creates) the product database.
 func NewStore(dbPath string) (*Store, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	dsn := dbPath
+	if !strings.Contains(dbPath, "?") {
+		dsn = dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=cache_size(-20000)"
+	}
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("products: open db: %w", err)
 	}
-	db.SetMaxOpenConns(1)
-	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000"} {
+	db.SetMaxOpenConns(16)
+	db.SetMaxIdleConns(4)
+	for _, p := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000", "PRAGMA synchronous=NORMAL"} {
 		if _, err := db.Exec(p); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("products: pragma %q: %w", p, err)

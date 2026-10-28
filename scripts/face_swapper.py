@@ -254,13 +254,28 @@ def run_insightface_swap(source_path, target_video, output_video, max_frames=0):
     import insightface
     from insightface.app import FaceAnalysis
 
-    app = FaceAnalysis(name='buffalo_l')
+    try:
+        import onnxruntime as ort
+        available = ort.get_available_providers()
+        provs = []
+        if "CoreMLExecutionProvider" in available:
+            provs.append("CoreMLExecutionProvider")
+        if "CUDAExecutionProvider" in available:
+            provs.append("CUDAExecutionProvider")
+        provs.append("CPUExecutionProvider")
+    except Exception:
+        provs = ['CPUExecutionProvider']
+
+    app = FaceAnalysis(name='buffalo_l', providers=provs)
     app.prepare(ctx_id=0, det_size=(640, 640))
 
     model_path = os.path.expanduser("~/.insightface/models/inswapper_128.onnx")
     if not os.path.exists(model_path):
         raise ValueError("Thiếu mô hình inswapper_128.onnx; hãy cài đặt trước khi chạy production")
-    swapper = insightface.model_zoo.get_model(model_path)
+    try:
+        swapper = insightface.model_zoo.get_model(model_path, providers=provs)
+    except Exception:
+        swapper = insightface.model_zoo.get_model(model_path)
 
     all_source_faces, source_face = load_and_rank_source_faces(app, source_path)
 

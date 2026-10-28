@@ -436,7 +436,7 @@ func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, repl
 		select {
 		case <-ctx.Done():
 			return reply, ctx.Err()
-		case <-time.After(750 * time.Millisecond):
+		case <-time.After(2 * time.Second):
 		}
 	}
 	return reply, fmt.Errorf("Muse reply completed but its %s attachment did not appear within 8 minutes", mediaKind)

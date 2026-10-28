@@ -74,31 +74,33 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 		searchQueries = []string{searchQuery}
 	}
 
-	var videos []TikTokTrendVideo
-	var fetchErrors []error
+	var targetURLs []string
 	for _, query := range searchQueries {
-		targetURL := "https://www.tiktok.com/search?q=" + url.QueryEscape(query)
-		found, fetchErr := runTikTokCrawlerBrowser(ctx, bin, targetURL)
-		if fetchErr != nil {
-			fetchErrors = append(fetchErrors, fmt.Errorf("TikTok search %q: %w", query, fetchErr))
-			continue
-		}
-		videos = mergeTikTokRadarCandidates(videos, found)
-		if len(videos) >= tikTokRadarCandidateLimit {
-			return videos, nil
-		}
+		targetURLs = append(targetURLs, "https://www.tiktok.com/search?q="+url.QueryEscape(query))
+	}
+	videos, err := runTikTokCrawlerBrowserBatch(ctx, bin, targetURLs)
+	if err != nil && len(videos) == 0 {
+		return nil, fmt.Errorf("TikTok Crawler không thu thập được video cho chủ đề %q: %w", topic, err)
 	}
 	if len(videos) > 0 {
 		return videos, nil
-	}
-	if len(fetchErrors) > 0 {
-		return nil, errors.Join(fetchErrors...)
 	}
 	return nil, fmt.Errorf("TikTok Crawler không thu thập được video cho chủ đề %q", topic)
 }
 
 func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikTokTrendVideo, error) {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	return runTikTokCrawlerBrowserBatch(ctx, bin, []string{targetURL})
+}
+
+func runTikTokCrawlerBrowserBatch(ctx context.Context, bin string, targetURLs []string) ([]TikTokTrendVideo, error) {
+	if len(targetURLs) == 0 {
+		return nil, errors.New("không có URL để thu thập dữ liệu")
+	}
+	timeout := time.Duration(12+len(targetURLs)*8) * time.Second
+	if timeout > 35*time.Second {
+		timeout = 35 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	releaseBrowserSlot, err := webai.AcquireHeadlessBrowserSlot(ctx)
 	if err != nil {
@@ -171,107 +173,128 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	_ = sendCDP(5, "Page.addScriptToEvaluateOnNewDocument", map[string]any{
 		"source": `try{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});}catch(_){}`,
 	})
-	if err := sendCDP(6, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
-		return nil, err
-	}
 
-	resultChan := make(chan []TikTokTrendVideo, 1)
-	readerDone := make(chan struct{})
-	var readerStop atomic.Bool
-	matchedReqIDs := make(map[string]bool)
-	var reqMu sync.Mutex
-	var reqCounter int
+	var allVideos []TikTokTrendVideo
+	cdpID := 10
 
-	go func() {
-		defer close(readerDone)
-		for {
-			if ctx.Err() != nil || readerStop.Load() {
-				return
-			}
-			var msg struct {
-				ID     int             `json:"id"`
-				Method string          `json:"method"`
-				Params json.RawMessage `json:"params"`
-				Result struct {
-					Body string `json:"body"`
-				} `json:"result"`
-			}
-			if err := conn.ReadJSON(&msg); err != nil {
-				return
-			}
-			if readerStop.Load() {
-				return
-			}
-			if msg.ID >= 1000 && len(msg.Result.Body) > 0 {
-				if videos := parseTikTokCrawlerJSON([]byte(msg.Result.Body)); len(videos) > 0 {
-					select {
-					case resultChan <- videos:
-					default:
-					}
+	for _, targetURL := range targetURLs {
+		if ctx.Err() != nil {
+			break
+		}
+		if len(allVideos) >= tikTokRadarCandidateLimit {
+			break
+		}
+
+		cdpID++
+		if err := sendCDP(cdpID, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
+			continue
+		}
+
+		resultChan := make(chan []TikTokTrendVideo, 1)
+		readerDone := make(chan struct{})
+		var readerStop atomic.Bool
+		matchedReqIDs := make(map[string]bool)
+		var reqMu sync.Mutex
+		var reqCounter int
+
+		go func() {
+			defer close(readerDone)
+			for {
+				if ctx.Err() != nil || readerStop.Load() {
 					return
 				}
-			}
-			if msg.Method == "Network.responseReceived" {
-				var p struct {
-					RequestID string `json:"requestId"`
-					Response  struct {
-						URL string `json:"url"`
-					} `json:"response"`
+				var msg struct {
+					ID     int             `json:"id"`
+					Method string          `json:"method"`
+					Params json.RawMessage `json:"params"`
+					Result struct {
+						Body string `json:"body"`
+					} `json:"result"`
 				}
-				if json.Unmarshal(msg.Params, &p) == nil {
-					u := p.Response.URL
-					if strings.Contains(u, "/api/search/general/full/") ||
-						strings.Contains(u, "/api/search/item/full/") ||
-						strings.Contains(u, "/api/explore/item_list/") ||
-						strings.Contains(u, "/api/recommend/item_list/") {
+				if err := conn.ReadJSON(&msg); err != nil {
+					return
+				}
+				if readerStop.Load() {
+					return
+				}
+				if msg.ID >= 1000 && len(msg.Result.Body) > 0 {
+					if videos := parseTikTokCrawlerJSON([]byte(msg.Result.Body)); len(videos) > 0 {
+						select {
+						case resultChan <- videos:
+						default:
+						}
+						return
+					}
+				}
+				if msg.Method == "Network.responseReceived" {
+					var p struct {
+						RequestID string `json:"requestId"`
+						Response  struct {
+							URL string `json:"url"`
+						} `json:"response"`
+					}
+					if json.Unmarshal(msg.Params, &p) == nil {
+						u := p.Response.URL
+						if strings.Contains(u, "/api/search/general/full/") ||
+							strings.Contains(u, "/api/search/item/full/") ||
+							strings.Contains(u, "/api/explore/item_list/") ||
+							strings.Contains(u, "/api/recommend/item_list/") {
+							reqMu.Lock()
+							matchedReqIDs[p.RequestID] = true
+							reqMu.Unlock()
+						}
+					}
+				} else if msg.Method == "Network.loadingFinished" {
+					var p struct {
+						RequestID string `json:"requestId"`
+					}
+					if json.Unmarshal(msg.Params, &p) == nil {
 						reqMu.Lock()
-						matchedReqIDs[p.RequestID] = true
+						matched := matchedReqIDs[p.RequestID]
 						reqMu.Unlock()
-					}
-				}
-			} else if msg.Method == "Network.loadingFinished" {
-				var p struct {
-					RequestID string `json:"requestId"`
-				}
-				if json.Unmarshal(msg.Params, &p) == nil {
-					reqMu.Lock()
-					matched := matchedReqIDs[p.RequestID]
-					reqMu.Unlock()
-					if matched && !readerStop.Load() {
-						reqCounter++
-						_ = sendCDP(1000+reqCounter, "Network.getResponseBody", map[string]any{"requestId": p.RequestID})
+						if matched && !readerStop.Load() {
+							reqCounter++
+							_ = sendCDP(1000+reqCounter, "Network.getResponseBody", map[string]any{"requestId": p.RequestID})
+						}
 					}
 				}
 			}
-		}
-	}()
+		}()
 
-	select {
-	case videos := <-resultChan:
-		readerStop.Store(true)
-		<-readerDone
-		if len(videos) >= tikTokRadarCandidateLimit {
-			return videos[:tikTokRadarCandidateLimit], nil
+		select {
+		case videos := <-resultChan:
+			readerStop.Store(true)
+			<-readerDone
+			allVideos = mergeTikTokRadarCandidates(allVideos, videos)
+			if len(allVideos) >= tikTokRadarCandidateLimit {
+				return allVideos[:tikTokRadarCandidateLimit], nil
+			}
+			domVideos, domErr := evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
+			if domErr == nil && len(domVideos) > 0 {
+				allVideos = mergeTikTokRadarCandidates(allVideos, domVideos)
+			}
+		case <-time.After(6 * time.Second):
+			readerStop.Store(true)
+			_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
+			<-readerDone
+			_ = conn.SetReadDeadline(time.Time{})
+			domVideos, domErr := evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
+			if domErr == nil && len(domVideos) > 0 {
+				allVideos = mergeTikTokRadarCandidates(allVideos, domVideos)
+			}
+		case <-ctx.Done():
+			readerStop.Store(true)
+			return allVideos, ctx.Err()
 		}
-		// Scroll search results for additional candidates so AI filtering can
-		// replace rejected videos instead of stopping at the first eight.
-		domVideos, domErr := evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
-		if domErr != nil {
-			return videos, nil
-		}
-		return mergeTikTokRadarCandidates(videos, domVideos), nil
-	case <-time.After(7 * time.Second):
-	case <-ctx.Done():
-		readerStop.Store(true)
-		return nil, ctx.Err()
 	}
 
-	// DOM Evaluation Fallback: stop reader goroutine cleanly before evaluating DOM
-	readerStop.Store(true)
-	_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
-	<-readerDone
-	_ = conn.SetReadDeadline(time.Time{})
-	return evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
+	if len(allVideos) > 0 {
+		if len(allVideos) > tikTokRadarCandidateLimit {
+			allVideos = allVideos[:tikTokRadarCandidateLimit]
+		}
+		return allVideos, nil
+	}
+	return nil, errors.New("không tìm thấy video nào qua trình duyệt crawler")
 }
 
 func waitCrawlerDebuggerURL(ctx context.Context, profileDir string) (string, error) {

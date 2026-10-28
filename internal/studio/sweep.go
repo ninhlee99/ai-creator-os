@@ -112,7 +112,45 @@ func (s *Studio) PruneFailedWork() (int, int64) {
 		s.appendLog(job.id, "Tự chữa đĩa: đã dọn file tạm của job lỗi")
 		pruned++
 	}
+	tPruned, tFreed := s.PruneTransientOutputFiles(24 * time.Hour)
+	pruned += tPruned
+	freed += tFreed
 	return pruned, freed
+}
+
+// PruneTransientOutputFiles dọn dẹp các tệp tạm / test rác trong outDir cũ hơn maxAge.
+func (s *Studio) PruneTransientOutputFiles(maxAge time.Duration) (int, int64) {
+	if s.outDir == "" {
+		return 0, 0
+	}
+	cutoff := time.Now().Add(-maxAge)
+	patterns := []string{
+		"test_*", "script_test_*", "*_isolated_test.*", "magick_test_*",
+		"preview_cutout_*", "ai_cutout_*", "ai_mask_*", "*_on_black.*",
+	}
+	var prunedCount int
+	var freedBytes int64
+
+	for _, pat := range patterns {
+		matches, err := filepath.Glob(filepath.Join(s.outDir, pat))
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			info, err := os.Stat(match)
+			if err != nil || info.IsDir() {
+				continue
+			}
+			if info.ModTime().Before(cutoff) {
+				sz := info.Size()
+				if err := os.Remove(match); err == nil {
+					prunedCount++
+					freedBytes += sz
+				}
+			}
+		}
+	}
+	return prunedCount, freedBytes
 }
 
 func safeJobWorkDir(workRoot, jobID string) (string, bool) {
