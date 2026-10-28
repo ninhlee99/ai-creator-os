@@ -462,6 +462,16 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		}
 
 		outputs, execErr := executor(ctx, node, nodeInputs)
+		if ctxErr := ctx.Context.Err(); ctxErr != nil {
+			nodeState.Status = "failed"
+			nodeState.Error = ctxErr.Error()
+			nodeState.FinishedAt = time.Now().Format(time.RFC3339)
+			run.NodeStates[nodeID] = nodeState
+			run.Status = "cancelled"
+			appendRunLog(fmt.Sprintf("Luồng bị hủy tại node '%s': %s", node.Title, ctxErr.Error()))
+			run.Log = logBuilder.String()
+			return run, ctxErr
+		}
 		if execErr != nil {
 			nodeState.Status = "failed"
 			nodeState.Error = execErr.Error()
@@ -596,6 +606,14 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		}
 
 		appendRunLog(fmt.Sprintf("Node [%d/%d] '%s' hoàn tất thành công (100%%)", idx+1, totalNodes, node.Title))
+	}
+
+	if err := ctx.Context.Err(); err != nil {
+		run.Status = "cancelled"
+		run.FinishedAt = time.Now().Format(time.RFC3339)
+		appendRunLog("Luồng thực thi đã bị hủy bởi người dùng")
+		run.Log = logBuilder.String()
+		return run, err
 	}
 
 	run.Status = "completed"

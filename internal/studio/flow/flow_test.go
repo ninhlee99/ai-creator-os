@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -624,6 +625,48 @@ func TestTC11_RunCancellation(t *testing.T) {
 	}
 }
 
+func TestRunCancelledDuringFinalNodeDoesNotComplete(t *testing.T) {
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const nodeType = "test_cancel_final_flow_node"
+	RegisterNode(NodeDefinition{
+		Type: nodeType,
+		Executor: func(*ExecutionContext, *FlowNode, map[string]any) (map[string]any, error) {
+			cancel()
+			return map[string]any{}, nil
+		},
+	})
+	graph := &FlowGraph{
+		ID: "cancel-final-node", Name: "cancel final node",
+		Nodes: []FlowNode{{ID: "cancel", Type: nodeType}},
+	}
+	run, err := ExecuteGraph(&ExecutionContext{Context: cancelCtx}, graph)
+	if err == nil || run == nil || run.Status != "cancelled" {
+		t.Fatalf("ExecuteGraph = (%+v, %v), want cancelled run and context error", run, err)
+	}
+}
+
+func TestRunCancelledDuringNodeStaysCancelledWhenExecutorReturnsContextError(t *testing.T) {
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	const nodeType = "test_cancel_error_flow_node"
+	RegisterNode(NodeDefinition{
+		Type: nodeType,
+		Executor: func(*ExecutionContext, *FlowNode, map[string]any) (map[string]any, error) {
+			cancel()
+			return nil, context.Canceled
+		},
+	})
+	graph := &FlowGraph{
+		ID: "cancel-error-node", Name: "cancel error node",
+		Nodes: []FlowNode{{ID: "cancel", Type: nodeType}},
+	}
+	run, err := ExecuteGraph(&ExecutionContext{Context: cancelCtx}, graph)
+	if !errors.Is(err, context.Canceled) || run == nil || run.Status != "cancelled" {
+		t.Fatalf("ExecuteGraph = (%+v, %v), want cancelled run and context.Canceled", run, err)
+	}
+}
+
 func TestTC12_StoreCRUD(t *testing.T) {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
@@ -683,6 +726,9 @@ func TestTC12_StoreCRUD(t *testing.T) {
 		GraphName: "Test Custom Flow",
 		Status:    "running",
 		Progress:  50,
+		NodeStates: map[string]NodeState{
+			"node1": {Status: "running", Progress: 20},
+		},
 	}
 	if err := store.SaveRun(run); err != nil {
 		t.Fatalf("SaveRun lỗi: %v", err)
@@ -693,6 +739,22 @@ func TestTC12_StoreCRUD(t *testing.T) {
 	}
 	if retRun.Progress != 50 {
 		t.Errorf("Progress run không khớp: %d", retRun.Progress)
+	}
+	if cancelled, err := store.CancelRun(run.ID); err != nil || !cancelled {
+		t.Fatalf("CancelRun = (%v, %v), want cancellation", cancelled, err)
+	}
+	if err := store.SaveRun(&FlowRun{
+		ID: run.ID, Status: "completed", Progress: 100,
+		NodeStates: map[string]NodeState{"node1": {Status: "completed", Progress: 100}},
+	}); err != nil {
+		t.Fatalf("SaveRun after cancellation: %v", err)
+	}
+	retRun, err = store.GetRun(run.ID)
+	if err != nil || retRun.Status != "cancelled" {
+		t.Fatalf("late run save changed cancelled state: status=%q err=%v", retRun.Status, err)
+	}
+	if got := retRun.NodeStates["node1"].Status; got != "completed" {
+		t.Fatalf("late run save did not persist final node state: got %q", got)
 	}
 	if err := store.SaveRun(&FlowRun{ID: "run_unsupported_output", Outputs: map[string]any{"channel": make(chan int)}}); err == nil {
 		t.Fatal("SaveRun must return output serialization errors")

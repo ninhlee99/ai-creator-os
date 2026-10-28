@@ -63,6 +63,13 @@ func (s *Studio) startTrackedJob(id string, ctx context.Context, cancel context.
 	}
 	s.running[id] = cancel
 	s.mu.Unlock()
+	if _, ok := s.GetJob(id); !ok {
+		s.mu.Lock()
+		delete(s.running, id)
+		s.mu.Unlock()
+		cancel()
+		return fmt.Errorf("studio job %q no longer exists", id)
+	}
 
 	go func() {
 		defer func() {

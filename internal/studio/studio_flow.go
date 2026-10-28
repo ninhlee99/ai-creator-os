@@ -78,9 +78,57 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 			s.mu.Unlock()
 			cancel()
 		}()
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				_, _ = s.recordFlowPanic(runID, graph, recovered)
+			}
+		}()
 		_, _ = s.ExecuteFlowGraphWithInputs(runCtx, runID, graph, inputs, services...)
 	}()
 	return nil
+}
+
+func (s *Studio) recordFlowPanic(runID string, graph *flow.FlowGraph, recovered any) (run *flow.FlowRun, err error) {
+	defer func() {
+		if panicValue := recover(); panicValue != nil {
+			run = nil
+			err = fmt.Errorf("record workflow panic: %v", panicValue)
+		}
+	}()
+	message := fmt.Sprintf("workflow panic: %v", recovered)
+	store, err := s.GetFlowStore()
+	if err != nil {
+		return nil, err
+	}
+	run, err = store.GetRun(runID)
+	if err != nil || run == nil {
+		run = &flow.FlowRun{
+			ID: runID, GraphID: graph.ID, GraphName: graph.Name,
+			NodeStates: make(map[string]flow.NodeState), Outputs: make(map[string]any),
+			CreatedAt: time.Now().Format(time.RFC3339),
+		}
+		for _, node := range graph.Nodes {
+			run.NodeStates[node.ID] = flow.NodeState{Status: "queued"}
+		}
+	}
+	for id, state := range run.NodeStates {
+		if state.Status == "running" {
+			state.Status = "failed"
+			state.Error = message
+			state.FinishedAt = time.Now().Format(time.RFC3339)
+			run.NodeStates[id] = state
+		}
+	}
+	run.Status = "failed"
+	run.FinishedAt = time.Now().Format(time.RFC3339)
+	if run.Log != "" && !strings.HasSuffix(run.Log, "\n") {
+		run.Log += "\n"
+	}
+	run.Log += message + "\n"
+	if err := store.SaveRun(run); err != nil {
+		return run, err
+	}
+	return run, nil
 }
 
 // CancelFlowRun cancels an active detached workflow without removing its
@@ -107,7 +155,7 @@ func cloneWorkflowInputs(inputs map[string]any) map[string]any {
 }
 
 // ExecuteFlowGraphWithInputs executes a workflow with values supplied for its named workflow_input nodes.
-func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, graph *flow.FlowGraph, workflowInputs map[string]any, serviceOptions ...flow.ExecutionServices) (*flow.FlowRun, error) {
+func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, graph *flow.FlowGraph, workflowInputs map[string]any, serviceOptions ...flow.ExecutionServices) (completedRun *flow.FlowRun, execErr error) {
 	if graph == nil {
 		return nil, fmt.Errorf("workflow graph is nil")
 	}
@@ -117,6 +165,16 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	if runID == "" {
 		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())
 	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			completedRun, execErr = s.recordFlowPanic(runID, graph, recovered)
+			if execErr == nil {
+				execErr = fmt.Errorf("workflow panic: %v", recovered)
+			} else {
+				execErr = errors.Join(fmt.Errorf("workflow panic: %v", recovered), execErr)
+			}
+		}
+	}()
 	fStore, err := s.GetFlowStore()
 	if err != nil {
 		return nil, err
@@ -268,7 +326,7 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			return fStore.GetGraph(id)
 		},
 	}
-	completedRun, execErr := flow.ExecuteGraph(execCtx, graph)
+	completedRun, execErr = flow.ExecuteGraph(execCtx, graph)
 	if completedRun != nil {
 		if err := fStore.SaveRun(completedRun); err != nil {
 			persistErr := fmt.Errorf("lưu trạng thái kết thúc workflow: %w", err)

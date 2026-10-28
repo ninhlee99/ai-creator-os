@@ -2,7 +2,9 @@ package web
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -554,11 +556,18 @@ func (s *Server) handleAPIFlowRunCancel(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	if !cancelled {
+		if run, err := fStore.GetRun(id); err == nil {
+			cancelled = run.Status == "cancelled"
+		} else if errors.Is(err, sql.ErrNoRows) {
+			cancelled = active
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"ok":        true,
-		"cancelled": cancelled || active,
+		"cancelled": cancelled,
 	})
 }
 

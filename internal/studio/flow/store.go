@@ -246,7 +246,8 @@ func (s *Store) SaveRun(r *FlowRun) error {
 	query := `INSERT INTO studio_workflow_runs (id, graph_id, graph_name, status, progress, node_states, outputs, final_output, log, created_at, finished_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-			status = excluded.status,
+			status = CASE WHEN studio_workflow_runs.status = 'cancelled'
+				THEN 'cancelled' ELSE excluded.status END,
 			progress = excluded.progress,
 			node_states = excluded.node_states,
 			outputs = excluded.outputs,

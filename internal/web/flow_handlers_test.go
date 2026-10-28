@@ -193,6 +193,15 @@ func TestFlowCancelDoesNotOverwriteTerminalRun(t *testing.T) {
 		if w.Result().StatusCode != http.StatusOK {
 			t.Fatalf("cancel %s returned HTTP %d", status, w.Result().StatusCode)
 		}
+		var response struct {
+			Cancelled bool `json:"cancelled"`
+		}
+		if err := json.NewDecoder(w.Result().Body).Decode(&response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Cancelled != (status == "cancelled") {
+			t.Fatalf("cancel %s response cancelled=%v", status, response.Cancelled)
+		}
 		persisted, err := store.GetRun(run.ID)
 		if err != nil {
 			t.Fatal(err)

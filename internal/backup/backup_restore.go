@@ -7,10 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
+var restoreStageMu sync.Mutex
+
 func Stage(dataDir string, zr *zip.Reader) error {
+	restoreStageMu.Lock()
+	defer restoreStageMu.Unlock()
+
 	if PendingRestore(dataDir) {
 		return fmt.Errorf("đã có bản khôi phục chờ áp dụng; khởi động lại trước khi stage bản khác")
 	}

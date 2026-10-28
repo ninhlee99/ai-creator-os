@@ -46,6 +46,10 @@ func copyStudioFile(src, dst string) error {
 // then removes its assets, output, work dir and DB rows. Works for any job
 // kind.
 func (s *Studio) DeleteJob(id string) error {
+	return s.deleteJob(id, 5*time.Second)
+}
+
+func (s *Studio) deleteJob(id string, stopTimeout time.Duration) error {
 	j, ok := s.GetJob(id)
 	if !ok {
 		return fmt.Errorf("không tìm thấy job %s", id)
@@ -54,15 +58,22 @@ func (s *Studio) DeleteJob(id string) error {
 		return fmt.Errorf("không thể xóa job Radar đang chạy; theo dõi trong tab Radar TikTok")
 	}
 	s.CancelRunning(id)
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(stopTimeout)
 	for {
 		s.mu.Lock()
 		_, stillRunning := s.running[id]
 		s.mu.Unlock()
-		if !stillRunning || time.Now().After(deadline) {
+		if !stillRunning {
 			break
 		}
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("job %s chưa dừng; chưa xóa dữ liệu", id)
+		}
 		time.Sleep(100 * time.Millisecond)
+	}
+	j, ok = s.GetJob(id)
+	if !ok {
+		return fmt.Errorf("không tìm thấy job %s sau khi dừng", id)
 	}
 	for _, a := range s.ListAssets(id) {
 		os.Remove(a.Path)

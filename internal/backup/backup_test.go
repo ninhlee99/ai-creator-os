@@ -3,11 +3,13 @@ package backup
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -230,6 +232,67 @@ func TestStagePreservesExistingPendingRestore(t *testing.T) {
 	}
 	if !PendingRestore(target) {
 		t.Fatal("existing pending restore flag was cleared")
+	}
+}
+
+func TestConcurrentStageAcceptsOnlyOneRestore(t *testing.T) {
+	archives := make([][]byte, 2)
+	markers := make([][]byte, 2)
+	for i := range archives {
+		source := t.TempDir()
+		seedData(t, source)
+		markers[i] = make([]byte, 2<<20)
+		if _, err := rand.Read(markers[i]); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(source, "content_jobs.json"), markers[i], 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var archive bytes.Buffer
+		if err := Create(source, &archive); err != nil {
+			t.Fatalf("Create archive %d: %v", i, err)
+		}
+		archives[i] = archive.Bytes()
+	}
+
+	target := t.TempDir()
+	start := make(chan struct{})
+	readers := []*zip.Reader{openZip(t, archives[0]), openZip(t, archives[1])}
+	type result struct {
+		index int
+		err   error
+	}
+	results := make(chan result, len(archives))
+	var wg sync.WaitGroup
+	for i := range archives {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			results <- result{index: i, err: Stage(target, readers[i])}
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	winners := 0
+	var winner int
+	for result := range results {
+		if result.err == nil {
+			winners++
+			winner = result.index
+		}
+	}
+	if winners != 1 {
+		t.Fatalf("concurrent Stage accepted %d archives, want exactly one", winners)
+	}
+	if !PendingRestore(target) {
+		t.Fatal("successful Stage did not write pending restore flag")
+	}
+	staged, err := os.ReadFile(filepath.Join(target, stagingDir, "content_jobs.json"))
+	if err != nil || !bytes.Equal(staged, markers[winner]) {
+		t.Fatalf("staged archive content does not match accepted restore: err=%v", err)
 	}
 }
 
