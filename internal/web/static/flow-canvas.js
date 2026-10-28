@@ -4581,16 +4581,17 @@
 
     showAllNodes() {
       this.pendingConnect = null;
-      const searchInput = document.getElementById('node-search-input');
+      const modal = document.getElementById('add-node-modal');
+      const searchInput = modal?.querySelector('#node-search-input');
       if (searchInput) searchInput.value = '';
-      const allChip = document.querySelector('#node-categories-list .wf-tag-filter[data-cat="all"]');
-      document.querySelectorAll('#node-categories-list .wf-tag-filter').forEach(chip => {
+      const categoryList = modal?.querySelector('#node-categories-list');
+      const allChip = categoryList?.querySelector('.wf-tag-filter[data-cat="all"]');
+      categoryList?.querySelectorAll('.wf-tag-filter').forEach(chip => {
         const active = chip === allChip;
         chip.classList.toggle('active', active);
         chip.setAttribute('aria-pressed', String(active));
       });
-      const categoryScroller = document.getElementById('node-categories-list');
-      if (categoryScroller) categoryScroller.scrollLeft = 0;
+      if (categoryList) categoryList.scrollLeft = 0;
       this.renderModalGrid('', 'all');
       this.syncNodeCategoryScrollButtons();
     }
@@ -4608,8 +4609,19 @@
       const closeBtn = document.getElementById('btn-close-node-modal');
       const searchInput = document.getElementById('node-search-input');
       const categoryScroller = document.getElementById('node-categories-list');
+      const nodeGrid = document.getElementById('modal-node-grid');
       const previousCategory = document.getElementById('node-categories-prev');
       const nextCategory = document.getElementById('node-categories-next');
+
+      if (nodeGrid) {
+        nodeGrid.addEventListener('click', (event) => {
+          const action = event.target.closest('[data-action="show-all-nodes"]');
+          if (!action || !nodeGrid.contains(action)) return;
+          event.preventDefault();
+          this.showAllNodes();
+          searchInput?.focus();
+        });
+      }
 
       if (categoryScroller) {
         categoryScroller.addEventListener('scroll', () => this.syncNodeCategoryScrollButtons(), { passive: true });
@@ -4764,23 +4776,6 @@
           description.textContent = 'Hiện chưa có node nào sẵn sàng để thêm vào workflow.';
           action.hidden = true;
         }
-
-        action.addEventListener('click', () => {
-          const searchInput = document.getElementById('node-search-input');
-          if (action.dataset.action === 'show-all-nodes') {
-            this.showAllNodes();
-            if (searchInput) searchInput.focus();
-            return;
-          }
-          if (this.pendingConnect && !hasFilters) {
-            this.closeAddNodeModal();
-            return;
-          }
-          if (searchInput) searchInput.value = '';
-          const activeChip = document.querySelector('#node-categories-list .wf-tag-filter.active');
-          this.renderModalGrid('', activeChip ? (activeChip.dataset.cat || 'all') : 'all');
-          if (searchInput) searchInput.focus();
-        });
 
         empty.append(icon, title, description, action);
         grid.appendChild(empty);
