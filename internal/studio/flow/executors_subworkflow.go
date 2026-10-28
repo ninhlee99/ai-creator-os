@@ -301,8 +301,17 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	previousVideoFrameInputKey := nodeParamString(node.Params, "previous_video_frame_input_key", "")
 	previousVideoFrameVariablesKey := nodeParamString(node.Params, "previous_video_frame_variables_key", "variables")
 	previousVideoFrameInsertAt := nodeParamInt(node.Params, "previous_video_frame_insert_at", -1)
+	insertAfterReferencePrefix := nodeParamBool(node.Params, "previous_video_frame_insert_after_reference_prefix", false)
 	if previousVideoFrameInsertAt < -1 {
 		return nil, fmt.Errorf("previous_video_frame_insert_at phải là -1 hoặc vị trí không âm")
+	}
+	referencePrefixCount := -1
+	if insertAfterReferencePrefix {
+		prefixCount := flowInputFloat(inputs, "reference_prefix_count", -1)
+		if prefixCount < 0 || prefixCount > 100 || float64(int(prefixCount)) != prefixCount {
+			return nil, fmt.Errorf("reference_prefix_count phải là số nguyên từ 0 đến 100")
+		}
+		referencePrefixCount = int(prefixCount)
 	}
 	if previousVideoFrameInputKey != "" {
 		if resultPort.Type != PortTypeVideo {
@@ -433,6 +442,9 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 			for key, value := range variables {
 				variablesWithContinuity[key] = value
 			}
+			if insertAfterReferencePrefix {
+				variablesWithContinuity["character_reference_count"] = referencePrefixCount
+			}
 			if i > 0 {
 				variablesWithContinuity["previous_shot_reference_count"] = 1
 			} else {
@@ -461,6 +473,12 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 				return nil, fmt.Errorf("thiếu ảnh tham chiếu hiện có để chèn frame liên tục vào %q", previousVideoFrameInputKey)
 			}
 			insertAt := previousVideoFrameInsertAt
+			if insertAfterReferencePrefix {
+				if referencePrefixCount > len(references) {
+					return nil, fmt.Errorf("reference_prefix_count %d vượt quá %d ảnh tham chiếu", referencePrefixCount, len(references))
+				}
+				insertAt = referencePrefixCount
+			}
 			if insertAt < 0 || insertAt > len(references) {
 				insertAt = len(references)
 			}

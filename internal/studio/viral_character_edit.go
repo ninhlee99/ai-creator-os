@@ -100,6 +100,7 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
 			case "character":
 				node.Params["account_id"] = p.AccountID
 				node.Params["model_path"] = photos[0]
+				node.Params["model_paths"] = photos
 				node.Params["model_name"] = p.Account
 			case "export":
 				node.Params["title"] = p.Topic

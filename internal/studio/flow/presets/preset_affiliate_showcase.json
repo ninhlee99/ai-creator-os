@@ -162,6 +162,7 @@
         "share_muse_thread": true,
         "previous_video_frame_input_key": "reference_images",
         "previous_video_frame_insert_at": 1,
+        "previous_video_frame_insert_after_reference_prefix": true,
         "previous_video_frame_variables_key": "variables"
       }
     },
@@ -345,8 +346,8 @@
     },
     {
       "id": "e5",
-      "from_node": "extract",
-      "from_port": "product_image",
+      "from_node": "product",
+      "from_port": "product_images",
       "to_node": "outfit",
       "to_port": "product_images"
     },
@@ -384,6 +385,13 @@
       "from_port": "ingredients",
       "to_node": "render_map",
       "to_port": "reference_images"
+    },
+    {
+      "id": "e10_reference_prefix",
+      "from_node": "outfit",
+      "from_port": "character_reference_count",
+      "to_node": "render_map",
+      "to_port": "reference_prefix_count"
     },
     {
       "id": "e11",

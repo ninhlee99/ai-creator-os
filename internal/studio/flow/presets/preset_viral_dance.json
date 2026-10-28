@@ -30,7 +30,8 @@
         "keyframe_count": 12,
         "require_audio": true,
         "strict_analysis": true,
-        "analysis_timeout_seconds": 90
+        "analysis_timeout_seconds": 90,
+        "analysis_prompt_template": "Analyze source-video keyframes independently and chronologically for a {{duration_seconds}}-second clip. Timestamps map one-to-one to images in attachment order: {{timestamps}}. Return exactly {{keyframe_count}} numbered notes, one per image, in this format: '1. 0.000s: ...'. For each image describe only visible subject position, whether fully visible/cropped/absent, hand/arm/torso/head pose, gaze and framing. Do not infer between images or assume continuity. If a detail is unclear, say unclear. After the notes, add one 'Transitions:' paragraph comparing adjacent images only; mark unobserved intervals uncertain. Use visible evidence only. Do not guess BPM or invent actions. Style hint (not evidence): {{style_hint}}"
       }
     },
     {
@@ -131,6 +132,7 @@
         "share_muse_thread": true,
         "previous_video_frame_input_key": "reference_images",
         "previous_video_frame_insert_at": 1,
+        "previous_video_frame_insert_after_reference_prefix": true,
         "previous_video_frame_variables_key": "variables"
       }
     },
@@ -339,6 +341,13 @@
       "from_port": "character_images",
       "to_node": "split",
       "to_port": "character_images"
+    },
+    {
+      "id": "e12_character_reference_count",
+      "from_node": "retarget",
+      "from_port": "character_reference_count",
+      "to_node": "render_map",
+      "to_port": "reference_prefix_count"
     },
     {
       "id": "e12_motion_keyframes",

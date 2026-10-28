@@ -53,7 +53,11 @@ type ViralQCFrameEvidence struct {
 	Frame                    int    `json:"frame"`
 	Segment                  int    `json:"segment"`
 	FullCharacterReplacement string `json:"full_character_replacement"`
+	CharacterIdentity        string `json:"character_identity"`
 	ActionMatch              string `json:"action_match"`
+	Focus                    string `json:"focus"`
+	Composition              string `json:"composition"`
+	Continuity               string `json:"continuity"`
 	Evidence                 string `json:"evidence"`
 }
 

@@ -30,6 +30,7 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 		case "char":
 			node.Params["account_id"] = p.AccountID
 			node.Params["model_path"] = p.ModelPhoto
+			node.Params["model_paths"] = append([]string{p.ModelPhoto}, p.ModelPhotos...)
 			node.Params["model_name"] = strings.TrimSuffix(filepath.Base(p.ModelPhoto), filepath.Ext(p.ModelPhoto))
 		case "product":
 			productID := ""
@@ -38,6 +39,7 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 			}
 			node.Params["product_id"] = productID
 			node.Params["product_image"] = p.ProductPhoto
+			node.Params["product_images"] = append([]string(nil), p.ExtraPhotos...)
 			node.Params["product_title"] = p.ProductName
 			node.Params["affiliate_url"] = p.AffLink
 		case "music":

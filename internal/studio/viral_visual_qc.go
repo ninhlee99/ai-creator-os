@@ -45,7 +45,7 @@ func (s *Studio) evaluateViralVideo(ctx context.Context, videoPath, workDir stri
 		"Compare ordered channel-character references and two video frame sequences. Images 1-%d are the same channel character from different reference angles. Images %d-%d are source frames in time order. Remaining %d images are output frames at matching timestamps, in time order. Topic: %q. %s %s\n"+
 			"Judge whether the entire main person was replaced with the channel character across face, hair, and visible body identity; face-only replacement is failure. The full-body look may adapt to source pose, but output must not retain original actor identity. Compare source and output frame-by-frame: preserve scene order, body choreography/action, timing, camera movement, framing, and cuts. Judge visible evidence only. Still samples cannot prove continuous motion.\n"+
 			"Each edit segment has five ordered source and output samples across the segment at matching timestamps. Judge every sampled action independently; do not infer between samples.\n"+
-			"Return JSON only with fields: decision (pass|fail|uncertain), summary, character_identity (match|mismatch|uncertain), full_character_replacement (complete|partial|face_only|not_replaced|uncertain), scene_order (match|mismatch|uncertain), action_sequence (match|partial|mismatch|uncertain), camera_pattern (match|partial|mismatch|uncertain), motion (visible|still|uncertain), issues (array), viral_frame_evidence (one item for every output frame in order: frame integer, segment integer, full_character_replacement complete|partial|face_only|not_replaced|uncertain, action_match match|partial|mismatch|uncertain, evidence short visible comparison). Include all %d output frames and preserve segment numbers. Set decision=pass only when full_character_replacement=complete, character_identity=match, scene_order=match, action_sequence=match, camera_pattern=match, motion=visible, and every viral_frame_evidence item says complete replacement and matching action. No numeric quality score.",
+			"Return JSON only with fields: decision (pass|fail|uncertain), summary, character_identity (match|mismatch|uncertain), full_character_replacement (complete|partial|face_only|not_replaced|uncertain), scene_order (match|mismatch|uncertain), action_sequence (match|partial|mismatch|uncertain), camera_pattern (match|partial|mismatch|uncertain), motion (visible|still|uncertain), sharpness (sharp|soft|blurred|uncertain), composition (professional|weak|cluttered|uncertain), continuity (consistent|inconsistent|uncertain), issues (array), viral_frame_evidence (one item for every output frame in order: frame integer, segment integer, full_character_replacement complete|partial|face_only|not_replaced|uncertain, character_identity match|mismatch|uncertain, action_match match|partial|mismatch|uncertain, focus sharp|soft|blurred|uncertain, composition professional|weak|cluttered|uncertain, continuity consistent|inconsistent|uncertain, evidence short visible comparison). Include all %d output frames and preserve segment numbers. Set decision=pass only when full_character_replacement=complete, character_identity=match, scene_order=match, action_sequence=match, camera_pattern=match, motion=visible, sharpness=sharp, composition=professional, continuity=consistent, and every viral_frame_evidence item confirms complete replacement, matching character identity/action, sharp focus, professional composition and consistent continuity. No numeric quality score.",
 		identityEnd, identityEnd+1, sourceEnd, len(outputFrames), p.Topic,
 		describeSampledFrames("Source", sourceFrames), describeSampledFrames("Output", outputFrames), len(outputFrames))
 	report, err := s.analyzeVisualQC(ctx, prompt, refs)
@@ -104,7 +104,10 @@ func viralQCFieldsPass(r VisualQCReport, expectedFrames, expectedSegments int) b
 		!strings.EqualFold(r.SceneOrder, "match") ||
 		!strings.EqualFold(r.ActionSequence, "match") ||
 		!strings.EqualFold(r.CameraPattern, "match") ||
-		!strings.EqualFold(r.Motion, "visible") {
+		!strings.EqualFold(r.Motion, "visible") ||
+		!strings.EqualFold(r.Sharpness, "sharp") ||
+		!strings.EqualFold(r.Composition, "professional") ||
+		!strings.EqualFold(r.Continuity, "consistent") {
 		return false
 	}
 	if expectedSegments < 1 || expectedFrames != expectedSegments*viralQCFramesPerSegment || len(r.ViralFrameEvidence) != expectedFrames {
@@ -114,7 +117,11 @@ func viralQCFieldsPass(r VisualQCReport, expectedFrames, expectedSegments int) b
 		if evidence.Frame != i+1 ||
 			evidence.Segment != i/viralQCFramesPerSegment+1 ||
 			!strings.EqualFold(evidence.FullCharacterReplacement, "complete") ||
+			!strings.EqualFold(evidence.CharacterIdentity, "match") ||
 			!strings.EqualFold(evidence.ActionMatch, "match") ||
+			!strings.EqualFold(evidence.Focus, "sharp") ||
+			!strings.EqualFold(evidence.Composition, "professional") ||
+			!strings.EqualFold(evidence.Continuity, "consistent") ||
 			strings.TrimSpace(evidence.Evidence) == "" {
 			return false
 		}

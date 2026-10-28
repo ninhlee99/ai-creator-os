@@ -140,15 +140,26 @@ func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[str
 		modelName = strings.TrimSuffix(filepath.Base(modelPath), filepath.Ext(modelPath))
 	}
 
-	if len(characterImages) == 0 {
-		characterImages = []string{modelPath}
+	identityReferences := []string{modelPath}
+	for _, path := range append(characterImages, flowStringList(node.Params["model_paths"])...) {
+		if resolved := resolveAssetPath(path, ctx.WorkDir); resolved != "" {
+			path = resolved
+		}
+		if len(identityReferences) >= 3 {
+			break
+		}
+		if fileExists(path) && isImageFile(path) && !containsString(identityReferences, path) {
+			identityReferences = append(identityReferences, path)
+		}
 	}
+	characterImages = identityReferences
 	ctx.Log(fmt.Sprintf("CharacterNode: Đã nạp nhân vật '%s' (%s)", modelName, filepath.Base(modelPath)))
 
 	return map[string]any{
-		"character_image":  modelPath,
-		"character_images": characterImages,
-		"character_name":   modelName,
+		"character_image":           modelPath,
+		"character_images":          characterImages,
+		"character_reference_count": len(characterImages),
+		"character_name":            modelName,
 	}, nil
 }
 
@@ -257,12 +268,28 @@ func executeProductInput(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 			if err != nil || !fileExists(imagePath) || !isImageFile(imagePath) {
 				return nil, fmt.Errorf("không tải được ảnh phụ của sản phẩm %q", prodTitle)
 			}
+			if !containsString(productImages, imagePath) {
+				productImages = append(productImages, imagePath)
+			}
+		}
+	}
+	for _, imagePath := range flowStringList(node.Params["product_images"]) {
+		if len(productImages) >= 4 {
+			break
+		}
+		if resolved := resolveAssetPath(imagePath, ctx.WorkDir); resolved != "" {
+			imagePath = resolved
+		}
+		if !fileExists(imagePath) || !isImageFile(imagePath) {
+			return nil, fmt.Errorf("ảnh listing bổ sung của sản phẩm %q không hợp lệ", prodTitle)
+		}
+		if !containsString(productImages, imagePath) {
 			productImages = append(productImages, imagePath)
 		}
 	}
 	productInfo["images"] = productImages
 
-	ctx.Log(fmt.Sprintf("ProductNode: Đã tải sản phẩm '%s' (%s)", prodTitle, filepath.Base(prodImg)))
+	ctx.Log(fmt.Sprintf("ProductNode: Đã tải sản phẩm '%s' (%s, %d ảnh tham chiếu)", prodTitle, filepath.Base(prodImg), len(productImages)))
 
 	return map[string]any{
 		"product_image":  prodImg,

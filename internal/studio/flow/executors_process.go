@@ -564,7 +564,16 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		}
 		fmt.Fprintf(&timeline, "frame %d at %.2fs", i+1, timestamp)
 	}
-	analysisPrompt := fmt.Sprintf("Analyze the supplied source-video keyframes in chronological order for a %.2f-second clip. Timestamp sequence: %s. Return exactly one numbered note per image, in this exact format: '1. 0.000s: ...'. Use the matching timestamp shown above. In each note describe visible hand/arm/torso/head pose, gaze, subject position and framing; do not merge or omit frames. After the numbered notes, add one unnumbered 'Transitions:' paragraph describing only visible changes between adjacent samples and clearly mark unobserved intervals uncertain. Use visible evidence only; do not guess BPM or invent unseen actions. Style hint: %s", duration, timeline.String(), styleHint)
+	analysisPromptTemplate := nodeParamString(node.Params, "analysis_prompt_template", "")
+	if strings.TrimSpace(analysisPromptTemplate) == "" {
+		analysisPromptTemplate = "Analyze source-video keyframes independently and chronologically for a {{duration_seconds}}-second clip. Timestamps map one-to-one to images in attachment order: {{timestamps}}. Return exactly {{keyframe_count}} numbered notes, one per image, in this format: '1. 0.000s: ...'. For each image describe only visible subject position, whether fully visible/cropped/absent, hand/arm/torso/head pose, gaze and framing. Do not infer between images or assume continuity. If a detail is unclear, say unclear. After the notes, add one 'Transitions:' paragraph comparing adjacent images only; mark unobserved intervals uncertain. Use visible evidence only. Do not guess BPM or invent actions. Style hint (not evidence): {{style_hint}}"
+	}
+	analysisPrompt := expandPromptTemplate(analysisPromptTemplate, map[string]any{
+		"duration_seconds": fmt.Sprintf("%.2f", duration),
+		"timestamps":       timeline.String(),
+		"keyframe_count":   frameCount,
+		"style_hint":       styleHint,
+	})
 	strictAnalysis := nodeParamBool(node.Params, "strict_analysis", false)
 	analysisCtx := ctx.Context
 	if analysisCtx == nil {
@@ -664,16 +673,16 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 		}
 	}
 
-	ingredients := []string{charImg}
+	characterReferences := []string{charImg}
 	for _, path := range flowStringList(inputs["character_images"]) {
-		if len(ingredients) >= 3 {
+		if len(characterReferences) >= 3 {
 			break
 		}
-		if fileExists(path) && isImageFile(path) && !containsString(ingredients, path) {
-			ingredients = append(ingredients, path)
+		if fileExists(path) && isImageFile(path) && !containsString(characterReferences, path) {
+			characterReferences = append(characterReferences, path)
 		}
 	}
-	characterReferences := append([]string(nil), ingredients...)
+	ingredients := append([]string(nil), characterReferences...)
 	if extra, ok := inputs["ingredients"]; ok {
 		for _, path := range flowStringList(extra) {
 			if len(ingredients) >= 4 {
@@ -684,7 +693,7 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 			}
 		}
 	}
-	characterReferenceCount := len(ingredients)
+	characterReferenceCount := len(characterReferences)
 	motionKeyframes := make([]string, 0)
 	for _, path := range flowStringList(inputs["keyframes"]) {
 		if resolved := resolveAssetPath(path, ctx.WorkDir); resolved != "" {
@@ -736,14 +745,15 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 	ctx.Log(fmt.Sprintf("Dance Prompt Builder: Tạo prompt từ phân tích chuyển động (style=%s)", danceType))
 
 	return map[string]any{
-		"prompt_choreography": prompt,
-		"prompt":              prompt,
-		"prompt_context":      map[string]any{"variables": variables},
-		"ingredients":         ingredients,
-		"character_images":    characterReferences,
-		"motion_keyframes":    motionKeyframeRefs,
-		"character_image":     charImg,
-		"reference_video":     inputString(inputs, "reference_video", ""),
+		"prompt_choreography":       prompt,
+		"prompt":                    prompt,
+		"prompt_context":            map[string]any{"variables": variables},
+		"ingredients":               ingredients,
+		"character_images":          characterReferences,
+		"character_reference_count": characterReferenceCount,
+		"motion_keyframes":          motionKeyframeRefs,
+		"character_image":           charImg,
+		"reference_video":           inputString(inputs, "reference_video", ""),
 	}, nil
 }
 
@@ -1315,15 +1325,16 @@ func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		outfitDesc = prompt
 	}
 
-	ingredients := []string{charImg}
+	characterReferences := []string{charImg}
 	for _, path := range flowStringList(inputs["character_images"]) {
-		if len(ingredients) >= 3 {
+		if len(characterReferences) >= 3 {
 			break
 		}
-		if fileExists(path) && isImageFile(path) && !containsString(ingredients, path) {
-			ingredients = append(ingredients, path)
+		if fileExists(path) && isImageFile(path) && !containsString(characterReferences, path) {
+			characterReferences = append(characterReferences, path)
 		}
 	}
+	ingredients := append([]string(nil), characterReferences...)
 	if garmentImg != "" {
 		if len(ingredients) < 6 && !containsString(ingredients, garmentImg) {
 			ingredients = append(ingredients, garmentImg)
@@ -1339,11 +1350,12 @@ func executeVirtualTryOn(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}
 	ctx.Log(fmt.Sprintf("Outfit Prompt Builder: Giữ ảnh tham chiếu gốc, tạo mô tả outfit (%s)", fitStyle))
 	return map[string]any{
-		"fitted_image":    charImg,
-		"character_image": charImg,
-		"garment_image":   garmentImg,
-		"ingredients":     ingredients,
-		"outfit_desc":     outfitDesc,
+		"fitted_image":              charImg,
+		"character_image":           charImg,
+		"character_reference_count": len(characterReferences),
+		"garment_image":             garmentImg,
+		"ingredients":               ingredients,
+		"outfit_desc":               outfitDesc,
 	}, nil
 }
 
