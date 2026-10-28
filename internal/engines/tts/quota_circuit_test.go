@@ -27,10 +27,8 @@ func TestCircuitTripsAfterThreshold(t *testing.T) {
 	if until.IsZero() {
 		t.Fatal("thiếu thời điểm tự đóng")
 	}
-	// Mở tới 0h đêm nay (giờ địa phương), không phải "vài phút nữa".
-	now := time.Now()
-	y, m, d := now.Date()
-	want := time.Date(y, m, d+1, 0, 0, 0, 0, now.Location())
+	// Quota Gemini reset at midnight Pacific, independent of host timezone.
+	want := nextPacificMidnight(time.Now())
 	if !until.Equal(want) {
 		t.Fatalf("mở tới %v, muốn %v", until, want)
 	}

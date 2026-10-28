@@ -31,7 +31,7 @@ func TestSettingsAccesstradePage(t *testing.T) {
 		t.Fatalf("GET /settings/accesstrade = %d, muốn 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Cài đặt · Accesstrade", "Chưa có mã", "access_key", `href="/settings/accesstrade"`} {
+	for _, want := range []string{"Cài đặt · Accesstrade", "Chưa có key", "access_key", `href="/settings/accesstrade"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang thiếu %q", want)
 		}
@@ -83,8 +83,8 @@ func TestATKeySaveAndMasked(t *testing.T) {
 		t.Fatalf("lưu key = %d, muốn 303", rec.Code)
 	}
 	body := get(t, s, "/settings/accesstrade").Body.String()
-	if !strings.Contains(body, "Đã kết nối") {
-		t.Error("sau khi lưu key phải hiện Đã kết nối")
+	if !strings.Contains(body, "Có API key · chưa kiểm tra") {
+		t.Error("sau khi lưu key phải hiện trạng thái chưa kiểm tra API")
 	}
 	if !strings.Contains(body, "••••9999") {
 		t.Error("key phải hiện dạng mask ••••9999")
@@ -102,7 +102,7 @@ func TestATKeySaveAndMasked(t *testing.T) {
 
 func TestProductsATCard(t *testing.T) {
 	s := newTestServer(t)
-	body := get(t, s, "/products").Body.String()
+	body := get(t, s, "/products?tab=affiliate").Body.String()
 	for _, want := range []string{"Chiến dịch Accesstrade", "Chưa có key", "/settings/accesstrade"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("trang Affiliate thiếu %q", want)

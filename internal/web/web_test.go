@@ -73,7 +73,7 @@ func TestDashboard(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET / = %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); !strings.Contains(body, "Bắt đầu tạo nội dung") {
+	if body := rec.Body.String(); !strings.Contains(body, "Điều hành nội dung") {
 		t.Fatalf("dashboard body missing title; got %d bytes", len(body))
 	}
 }
@@ -118,8 +118,8 @@ func TestAccountsPageNoLiveCopy(t *testing.T) {
 			t.Fatalf("trang Kênh còn copy live pre-pivot: %q", bad)
 		}
 	}
-	if !strings.Contains(body, "Affiliate") || !strings.Contains(body, "Video Viral") {
-		t.Fatalf("trang Kênh phải nêu 3 trụ, body thiếu")
+	if !strings.Contains(body, "Kênh") || !strings.Contains(body, "+ Thêm kênh") {
+		t.Fatalf("trang Kênh thiếu tiêu đề hoặc lối tạo kênh")
 	}
 }
 

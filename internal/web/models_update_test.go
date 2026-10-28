@@ -63,7 +63,7 @@ func TestSettingsModelsUpdateEndpoint(t *testing.T) {
 	if !strings.Contains(body, "gemini-4.0-flash") {
 		t.Fatalf("GET /settings/system missing updated model: %s", body)
 	}
-	if !strings.Contains(body, "Google Gemini AI Models — Cập Nhật Model Mới Nhất Cho Toàn Bộ Adapter") {
-		t.Fatalf("GET /settings/system missing update header: %s", body)
+	if !strings.Contains(body, "Cài đặt · Hệ thống") {
+		t.Fatalf("GET /settings/system missing current page heading")
 	}
 }

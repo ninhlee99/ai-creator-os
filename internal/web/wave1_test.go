@@ -21,12 +21,12 @@ func TestAccountDetailFollowersComeFromSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := fmt.Sprintf("/accounts/%d", a.ID)
+	path := fmt.Sprintf("/accounts/%d?tab=autopilot", a.ID)
 
 	// No snapshot yet -> honest "not connected", and no manual form.
 	body := get(t, s, path).Body.String()
-	if !strings.Contains(body, "chưa kết nối") {
-		t.Error("detail without snapshot must say chưa kết nối")
+	if !strings.Contains(body, "Chưa có snapshot metrics") {
+		t.Error("detail without snapshot must explain that metrics are unavailable")
 	}
 	if strings.Contains(body, "Cập nhật followers") || strings.Contains(body, "/followers\"") {
 		t.Error("manual followers form is still rendered")
@@ -42,5 +42,8 @@ func TestAccountDetailFollowersComeFromSnapshot(t *testing.T) {
 	body = get(t, s, path).Body.String()
 	if !strings.Contains(body, "4321") {
 		t.Error("detail must show followers from the latest snapshot")
+	}
+	if strings.Contains(body, "%!f(int64=4321)") {
+		t.Error("detail must format follower count as an integer")
 	}
 }

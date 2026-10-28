@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func affiliateFlowReferencePaths(p AffiliateParams) []string {
@@ -141,8 +142,15 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	p.SourceMusicVideoID = source.VideoID
 	p.SourceMusicAuthor = source.Author
 	p.SourceMusicCollectedAt = source.CollectedAt
+	probeCtx, cancelProbe := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelProbe()
 	for i, clip := range p.Clips {
-		if !isViralVideoFile(strings.TrimSpace(clip)) {
+		clip = strings.TrimSpace(clip)
+		if !isViralVideoFile(clip) || probeDuration(probeCtx, clip) <= 0 {
+			return "", fmt.Errorf("clip %d không phải video hợp lệ", i+1)
+		}
+		width, height := ProbeDims(probeCtx, clip)
+		if width <= 0 || height <= 0 {
 			return "", fmt.Errorf("clip %d không phải video hợp lệ", i+1)
 		}
 	}

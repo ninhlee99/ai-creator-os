@@ -28,8 +28,8 @@ func TestTikTokConnectFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := get(t, s, "/publishers").Body.String()
-	if !strings.Contains(body, "Kết nối lại") || !strings.Contains(body, "Có token · API chưa kiểm") {
-		t.Fatalf("publishers page should show connected TikTok:\n%s", body)
+	if !strings.Contains(body, "Kết nối lại TikTok") || !strings.Contains(body, "Đã lưu token · cần kết nối lại để cấp quyền mới") {
+		t.Fatalf("publishers page should show saved token as needing reauthorization:\n%s", body)
 	}
 	if strings.Contains(body, "secret") {
 		t.Fatal("client secret leaked into page")

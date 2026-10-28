@@ -121,7 +121,8 @@ func TestTC15_WebAPI_ExecuteAndPolling(t *testing.T) {
 
 	// Execute preset_viral_dance
 	execPayload := map[string]any{
-		"graph_id": "preset_viral_dance",
+		"graph_id":                  "preset_viral_dance",
+		"muse_credits_acknowledged": true,
 	}
 	body, _ := json.Marshal(execPayload)
 	reqExec := httptest.NewRequest("POST", "/api/flow/execute", bytes.NewReader(body))

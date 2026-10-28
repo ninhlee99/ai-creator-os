@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -27,7 +28,7 @@ var errFakeOrders = errors.New("simulated affiliate API outage")
 // tab Kệ hàng hiển thị nó, /api/products đọc kho chung.
 func TestShelfAddVisibleToAutopilot(t *testing.T) {
 	s := newTestServer(t)
-	store, err := products.NewStore("products-r2w1.db")
+	store, err := products.NewStore(filepath.Join(t.TempDir(), "products.db"))
 	if err != nil {
 		t.Fatalf("products store: %v", err)
 	}
@@ -60,9 +61,9 @@ func TestShelfAddVisibleToAutopilot(t *testing.T) {
 	}
 
 	// Shelf tab renders it from the shared store.
-	rec = get(t, s, "/products?tab=ke")
+	rec = get(t, s, "/products?tab=shelf")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /products?tab=ke = %d, want 200", rec.Code)
+		t.Fatalf("GET /products?tab=shelf = %d, want 200", rec.Code)
 	}
 	if body := rec.Body.String(); !strings.Contains(body, "Tai nghe X10") {
 		t.Error("shelf tab body does not show the added product")
@@ -96,7 +97,7 @@ func TestShelfAddVisibleToAutopilot(t *testing.T) {
 // được nhập một lần, idempotent, sang kho chung.
 func TestShelfMigrationLegacyLedger(t *testing.T) {
 	s := newTestServer(t)
-	store, err := products.NewStore("products-r2w1-mig.db")
+	store, err := products.NewStore(filepath.Join(t.TempDir(), "products-mig.db"))
 	if err != nil {
 		t.Fatalf("products store: %v", err)
 	}

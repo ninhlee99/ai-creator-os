@@ -75,16 +75,19 @@ func TestATSettingsSave(t *testing.T) {
 
 func TestProductsPageRendersNewCards(t *testing.T) {
 	s := newTestServer(t)
-	// Chưa có key (Đợt AK): đúng 1 thẻ kết nối, không lặp 3 khối rỗng.
-	body := get(t, s, "/products").Body.String()
-	if !strings.Contains(body, "Nhập mã truy cập") || strings.Contains(body, "Đối soát hoa hồng") {
-		t.Errorf("chưa có key phải chỉ hiện thẻ kết nối Accesstrade")
+	// Without a key, affiliate controls stay disabled and status remains honest.
+	body := get(t, s, "/products?tab=affiliate").Body.String()
+	if !strings.Contains(body, "Nhập mã truy cập") || !strings.Contains(body, "Chưa có key") {
+		t.Errorf("affiliate tab must show key setup state")
+	}
+	if strings.Contains(body, `id="at-hunt-btn"`) || strings.Contains(body, `id="at-sync-btn"`) {
+		t.Errorf("affiliate API actions must be hidden without a key")
 	}
 	// Có key: đủ các khối săn / đối soát.
 	if err := s.Ledger.SetSetting(accesstrade.KeySetting, "test-key"); err != nil {
 		t.Fatal(err)
 	}
-	rec := get(t, s, "/products")
+	rec := get(t, s, "/products?tab=affiliate")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /products phải 200, được %d", rec.Code)
 	}

@@ -11,15 +11,15 @@ import (
 func TestAutoPanelToggle(t *testing.T) {
 	s := newTestServer(t)
 	body := get(t, s, "/").Body.String()
-	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Radar video xu hướng") {
+	if !strings.Contains(body, "Tự động hóa") || !strings.Contains(body, "Quét sản phẩm Accesstrade") {
 		t.Fatal("Trang chủ thiếu bảng tự động hóa")
 	}
-	rec := postForm(t, s, "/automation/switch", url.Values{"key": {"viral.auto_produce_enabled"}, "on": {"0"}})
+	rec := postForm(t, s, "/automation/switch", url.Values{"key": {"autopilot_enabled"}, "on": {"0"}})
 	if rec.Code != 303 {
 		t.Fatalf("toggle = %d", rec.Code)
 	}
-	if s.atSettingOn("viral.auto_produce_enabled", true) {
-		t.Fatal("switch viral phải thấy đã tắt")
+	if s.atSettingOn("autopilot_enabled", true) {
+		t.Fatal("affiliate autopilot switch must be off")
 	}
 	if rec := postForm(t, s, "/automation/switch", url.Values{"key": {"master.switch"}, "on": {"1"}}); rec.Code != 400 {
 		t.Fatalf("khóa ngoài danh sách phải bị từ chối, got %d", rec.Code)
@@ -40,7 +40,7 @@ func TestMoneyReadinessHonest(t *testing.T) {
 			t.Fatalf("%s thiếu bước tiếp theo", m.Name)
 		}
 	}
-	if !strings.Contains(get(t, s, "/").Body.String(), "Sẵn sàng kiếm tiền") {
+	if !strings.Contains(get(t, s, "/").Body.String(), "Trạng thái kiếm tiền") {
 		t.Fatal("Trang chủ thiếu bảng kiếm tiền")
 	}
 }

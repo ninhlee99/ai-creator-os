@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -95,17 +97,51 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	if err != nil || len(loaded.Shots) != len(prep.Shots) {
 		t.Fatalf("saved plan load = %d shots, err %v", len(loaded.Shots), err)
 	}
+	badClip := filepath.Join(dir, "not-a-video.mp4")
+	if err := os.WriteFile(badClip, []byte("not a video"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	badClips := make([]string, len(prep.Shots))
+	for i := range badClips {
+		badClips[i] = badClip
+	}
+	_, err = st.CreateAffiliateJob(AffiliateParams{
+		PreparedPlanID: prep.ID, AccountID: 42, Mode: AffiliateModeShots, Clips: badClips,
+		FlowCreditsAcknowledged: true,
+	})
+	if err == nil || !strings.Contains(err.Error(), "clip 1") {
+		t.Fatalf("CreateAffiliateJob with corrupt clip error = %v, want synchronous clip rejection", err)
+	}
+	if _, err := st.GetAffiliatePreparation(prep.ID); err != nil {
+		t.Fatalf("corrupt clip consumed approved plan: %v", err)
+	}
 
+	ffmpeg, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Skip("ffmpeg unavailable for valid clip fixture")
+	}
+	validClip := filepath.Join(dir, "valid-clip.mp4")
+	if output, err := exec.Command(ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=32x32:d=1", "-c:v", "libx264", "-pix_fmt", "yuv420p", validClip).CombinedOutput(); err != nil {
+		t.Fatalf("create valid clip fixture: %v: %s", err, output)
+	}
 	clips := make([]string, len(prep.Shots))
 	for i := range clips {
-		clips[i] = filepath.Join(dir, "shot-"+string(rune('0'+i))+".mp4")
-		if err := os.WriteFile(clips[i], []byte("not a video"), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		clips[i] = validClip
 	}
+	var readinessChecks atomic.Int32
+	st.SetWebAIMuseRenderer(func(context.Context, *WebAISession, MuseChatRequest, string, func(string)) (string, error) {
+		return "unused-output.mp4", nil
+	})
+	st.SetWebAIVideoRenderer(nil, func(string) (bool, string) {
+		if readinessChecks.Add(1) == 1 {
+			return true, "ready"
+		}
+		return false, "test readiness changed after job submission"
+	})
 	jobID, err := st.CreateAffiliateJob(AffiliateParams{
 		PreparedPlanID: prep.ID, AccountID: 42, Mode: AffiliateModeShots, Clips: clips,
-		SourceMusicTitle: "untrusted form title", SourceMusicVideoURL: "https://www.tiktok.com/@other/video/9999999999",
+		FlowCreditsAcknowledged: true,
+		SourceMusicTitle:        "untrusted form title", SourceMusicVideoURL: "https://www.tiktok.com/@other/video/9999999999",
 	})
 	if err != nil {
 		t.Fatalf("CreateAffiliateJob with saved plan: %v", err)
@@ -138,7 +174,7 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if !failed {
-		t.Fatal("dummy clips did not finish worker failure path")
+		t.Fatal("worker did not stop when Muse readiness changed")
 	}
 	if media.analyzeCalls != 1 || llm.calls != 1 {
 		t.Fatalf("job should reuse plan; analyzer calls=%d director calls=%d", media.analyzeCalls, llm.calls)

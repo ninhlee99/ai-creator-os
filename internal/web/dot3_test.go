@@ -214,7 +214,7 @@ func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
 	if body := beforeSync.Body.String(); !strings.Contains(body, "Chưa có dữ liệu đơn") || strings.Contains(body, "999.000 ₫") {
 		t.Fatalf("dashboard treated legacy commission as current Accesstrade stats: %s", body)
 	}
-	productsBeforeSync := get(t, s, "/products")
+	productsBeforeSync := get(t, s, "/products?tab=affiliate")
 	if !strings.Contains(productsBeforeSync.Body.String(), "Chưa đồng bộ") {
 		t.Fatal("products page treated unsynced Accesstrade orders as known zero")
 	}
@@ -242,7 +242,7 @@ func TestDashboardUsesSyncedAccesstradeStats(t *testing.T) {
 	if strings.Contains(body, "999.000 ₫") {
 		t.Error("dashboard rendered legacy commission as current Accesstrade revenue")
 	}
-	productsAfterSync := get(t, s, "/products")
+	productsAfterSync := get(t, s, "/products?tab=affiliate")
 	for _, want := range []string{"Đã duyệt: 1 đơn · 150.000 ₫", "Chờ duyệt: 1 đơn · 25.000 ₫", "Cập nhật 23/10/2026 05:00 UTC"} {
 		if !strings.Contains(productsAfterSync.Body.String(), want) {
 			t.Errorf("products page missing synced order summary %q", want)

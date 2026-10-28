@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/freeonly"
 )
 
 // stubTTS is a scripted TTS provider for chain tests.
@@ -139,6 +141,9 @@ func TestTTSChainMissingKeyFailsFast(t *testing.T) {
 }
 
 func TestGeminiTTSMissingKey(t *testing.T) {
+	previous := freeonly.GeminiFreeTierConfirmed()
+	freeonly.SetGeminiFreeTierConfirmed(true)
+	t.Cleanup(func() { freeonly.SetGeminiFreeTierConfirmed(previous) })
 	g := NewGeminiTTSProviderKeys([]string{""})
 	if g.Name() != "gemini" {
 		t.Fatalf("name = %q", g.Name())

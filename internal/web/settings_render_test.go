@@ -58,8 +58,8 @@ func TestSettingsTemplateRenders(t *testing.T) {
 			t.Errorf("sidebar still references %q", gone)
 		}
 	}
-	if !strings.Contains(body, "/team") {
-		t.Error("sidebar missing /team (Đội ngũ — 3 pipeline, Đợt H2)")
+	if !strings.Contains(body, "/growth") {
+		t.Error("sidebar missing /growth")
 	}
 	for _, want := range []string{">Kênh<", ">Affiliate<"} {
 		if !strings.Contains(body, want) {

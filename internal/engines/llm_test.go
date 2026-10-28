@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/freeonly"
 )
 
 // stubLLM is a scripted LLM provider for chain tests.
@@ -232,6 +234,9 @@ func TestParseGeminiText(t *testing.T) {
 }
 
 func TestGeminiMissingKey(t *testing.T) {
+	previous := freeonly.GeminiFreeTierConfirmed()
+	freeonly.SetGeminiFreeTierConfirmed(true)
+	t.Cleanup(func() { freeonly.SetGeminiFreeTierConfirmed(previous) })
 	g := NewGeminiProviderKeys([]string{""})
 	if g.Healthy(context.Background()) {
 		t.Fatal("Healthy should be false without key")

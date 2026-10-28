@@ -237,7 +237,13 @@
   Giai đoạn hiện tại: <span class="badge badge-{{statusClass .GrowthProfile.Stage}}">{{statusLabel .GrowthProfile.Stage}}</span>
   <span class="hint">Từ {{.GrowthProfile.StartedAt}} · <a href="/growth">Tăng trưởng</a></span>
 </p>
-{{if not .GrowthHasSnapshot}}{{end}}
+{{if not .GrowthHasSnapshot}}
+<p class="hint">Chưa có snapshot metrics; followers chưa được đồng bộ.</p>
+{{else if .GrowthHasFollowers}}
+<p><strong>{{.GrowthFollowersLabel}}:</strong> {{printf "%d" .GrowthFollowers}}</p>
+{{else}}
+<p class="hint">Snapshot mới nhất chưa có dữ liệu followers.</p>
+{{end}}
 
 <div class="grid2">
 <div class="form-card">

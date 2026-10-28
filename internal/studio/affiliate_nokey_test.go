@@ -7,9 +7,8 @@ import (
 	"testing"
 )
 
-// Free-only affiliate must not silently call a paid video API or queue a
-// job that can only fail after startup.
-func TestAffiliateRequiresUserMotionClipsBeforeQueue(t *testing.T) {
+// Affiliate jobs need an approved shot plan before they can be queued.
+func TestAffiliateRequiresPreparedShotPlanBeforeQueue(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
@@ -25,20 +24,6 @@ func TestAffiliateRequiresUserMotionClipsBeforeQueue(t *testing.T) {
 	}
 	if got := st.ListJobs(10); len(got) != 0 {
 		t.Fatalf("queued %d jobs without motion footage", len(got))
-	}
-}
-
-// Missing motion clips are rejected synchronously with a clear instruction.
-func TestAffiliateMissingMotionClipsExplains(t *testing.T) {
-	dir := t.TempDir()
-	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.Close()
-	_, err = st.CreateAffiliateJob(AffiliateParams{ProductName: "X"})
-	if err == nil || !strings.Contains(err.Error(), "clip chuyển động") {
-		t.Fatalf("error = %v, want motion clip instruction", err)
 	}
 }
 
