@@ -80,9 +80,9 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 		}
 	}
 	if threadURL != "" {
-		parsed, err := url.Parse(threadURL)
-		if err != nil || parsed.Scheme != "https" || (parsed.Hostname() != "muse.ai" && parsed.Hostname() != "www.muse.ai") {
-			return out, errors.New("Muse thread URL is invalid")
+		threadURL = museConversationURL(threadURL)
+		if threadURL == "" {
+			return out, errors.New("Muse thread URL is invalid or has no conversation ID")
 		}
 	}
 	if progress == nil {
@@ -266,7 +266,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	}
 	out.Text = reply.Text
 	out.MediaURLs = extractMuseMediaURLs(map[string]any{"links": reply.Links}, reply.Text)
-	out.ThreadURL = reply.Thread
+	out.ThreadURL = museConversationURL(reply.Thread)
 	blobLinks := reply.VideoLinks
 	if mediaKind == "image" {
 		blobLinks = reply.ImageLinks
@@ -292,6 +292,18 @@ func museAttachmentKind(kind string) string {
 	default:
 		return ""
 	}
+}
+
+func museConversationURL(raw string) string {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme != "https" || (parsed.Hostname() != "muse.ai" && parsed.Hostname() != "www.muse.ai") {
+		return ""
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) < 2 || parts[0] != "thread" || strings.TrimSpace(parts[1]) == "" {
+		return ""
+	}
+	return parsed.String()
 }
 
 type museAssistantReply struct {
