@@ -17,3 +17,5 @@ TikTok Display API source đã nối cho follower/video totals và current views
 Trang Growth so sánh follower giữa hai TikTok snapshot mới nhất cách nhau ít nhất 24 giờ, trong cửa sổ 14 ngày. Thiếu snapshot hoặc dữ liệu cũ thì hiện trạng thái chưa đủ dữ liệu; gợi ý chỉ đề xuất thử nghiệm, không khẳng định nguyên nhân tăng/giảm.
 
 Retention, watch-time, demographics, profile visits, follows-per-video và video-level order attribution vẫn chưa có source. Những trường này giữ `Chưa có dữ liệu`; không suy ra từ view count.
+
+Chẩn đoán legacy không có provenance/kỳ đo/baseline được hiển thị là chưa xác minh; metric thô vẫn được giữ. Chẩn đoán hiện tại luôn `unknown` cho tới khi có evidence contract đủ nguồn, account/video attribution, timestamp/window và baseline cùng kênh. Growth tuning dùng allowlist các ngưỡng `growth.Config`, override riêng trong `growth_profiles.tuning_json`, giới hạn 15% mỗi lần và chỉ nhận evidence có source, ít nhất 3 ID/sample, baseline, cửa sổ RFC3339 và confidence ≥0.8. Apply cùng audit ghi trong một transaction. Rollback chỉ chấp nhận bản ghi applied còn là giá trị hiện tại; lịch sử legacy vẫn không được xem là đã áp dụng.

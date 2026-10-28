@@ -147,7 +147,7 @@ type loginBrowserLaunch struct {
 	wsURL       string
 }
 
-func launchLoginBrowser(ctx context.Context, binary string, args []string, port int) (loginBrowserLaunch, bool, error) {
+func launchLoginBrowser(ctx context.Context, binary string, args []string, profile string) (loginBrowserLaunch, bool, error) {
 	command, err := loginBrowserCommand(ctx, binary, args)
 	if err != nil {
 		return loginBrowserLaunch{}, true, err
@@ -169,7 +169,7 @@ func launchLoginBrowser(ctx context.Context, binary string, args []string, port 
 	probeTicker := time.NewTicker(350 * time.Millisecond)
 	defer probeTicker.Stop()
 	for {
-		wsURL, probeErr := debuggerWSURL(port)
+		wsURL, probeErr := debuggerWSURLFromProfile(profile)
 		if probeErr == nil && wsURL != "" {
 			return loginBrowserLaunch{cmd: command, processDone: processDone, wsURL: wsURL}, false, nil
 		}
@@ -232,15 +232,9 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	defer func() { _ = os.RemoveAll(dir) }()
 
 	clearChromiumSingletonLocks(dir)
-	port, portHold, err := pickFreePort()
-	if err != nil {
-		return nil, err
-	}
-	_ = portHold.Close()
-
 	windowSize := "1280,900"
 	args := []string{
-		fmt.Sprintf("--remote-debugging-port=%d", port),
+		"--remote-debugging-port=0",
 		"--remote-debugging-address=127.0.0.1",
 		"--user-data-dir=" + dir,
 		"--no-first-run",
@@ -265,7 +259,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 			updateStatus("opening", message)
 		}
 		var retry bool
-		launch, retry, err = launchLoginBrowser(ctx, candidate, args, port)
+		launch, retry, err = launchLoginBrowser(ctx, candidate, args, dir)
 		if err == nil {
 			bin = candidate
 			break
@@ -280,6 +274,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	}
 	defer terminateBrowserAfterWait(launch.cmd, launch.processDone)
 	wsURL := launch.wsURL
+	port := debuggerPortFromProfile(dir)
 	if onBrowserReady != nil {
 		onBrowserReady(port)
 	}

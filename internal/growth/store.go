@@ -16,6 +16,7 @@ var schemaDDL = []string{
 		growth_stage TEXT NOT NULL DEFAULT 'cold_start',
 		cadence_per_day REAL NOT NULL DEFAULT 1.0,
 		plan_horizon_days INTEGER NOT NULL DEFAULT 30,
+		tuning_json TEXT NOT NULL DEFAULT '{}',
 		started_at TEXT NOT NULL DEFAULT (datetime('now')),
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	)`,
@@ -131,6 +132,8 @@ var schemaDDL = []string{
 		new_value TEXT NOT NULL,
 		change_pct REAL NOT NULL DEFAULT 0,
 		reason TEXT NOT NULL,
+		applied INTEGER NOT NULL DEFAULT 0,
+		evidence_json TEXT NOT NULL DEFAULT '{}',
 		applied_at TEXT NOT NULL DEFAULT (datetime('now')),
 		rolled_back INTEGER NOT NULL DEFAULT 0,
 		rolled_back_at TEXT NOT NULL DEFAULT ''
@@ -153,6 +156,12 @@ var itemColumnDDL = []string{
 	`ALTER TABLE content_plan_items ADD COLUMN produced_at TEXT`,
 }
 
+var tuningColumnDDL = []string{
+	`ALTER TABLE growth_profiles ADD COLUMN tuning_json TEXT NOT NULL DEFAULT '{}'`,
+	`ALTER TABLE settings_tuning_history ADD COLUMN applied INTEGER NOT NULL DEFAULT 0`,
+	`ALTER TABLE settings_tuning_history ADD COLUMN evidence_json TEXT NOT NULL DEFAULT '{}'`,
+}
+
 // Store persists growth state in the app's shared SQLite database.
 type Store struct {
 	db *sql.DB
@@ -169,6 +178,11 @@ func NewStore(db *sql.DB) (*Store, error) {
 		if _, err := db.Exec(ddl); err != nil &&
 			!strings.Contains(err.Error(), "duplicate column") {
 			return nil, fmt.Errorf("growth schema: %w", err)
+		}
+	}
+	for _, ddl := range tuningColumnDDL {
+		if _, err := db.Exec(ddl); err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return nil, fmt.Errorf("growth tuning schema: %w", err)
 		}
 	}
 	return &Store{db: db}, nil

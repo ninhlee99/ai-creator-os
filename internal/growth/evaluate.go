@@ -31,6 +31,10 @@ func (s *Store) Evaluate(accountID int64, username string, cfg Config, now time.
 	if prof == nil {
 		return nil, fmt.Errorf("growth: account %d chưa có hồ sơ growth", accountID)
 	}
+	cfg, err = s.configWithAccountTuning(accountID, cfg)
+	if err != nil {
+		return nil, err
+	}
 	res := &EvalResult{StageBefore: prof.Stage, StageAfter: prof.Stage}
 
 	stats, err := s.RecomputeFormatStats(accountID)

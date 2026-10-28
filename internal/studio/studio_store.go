@@ -12,6 +12,7 @@ import (
 )
 
 const maxConcurrentStudioJobs = 2
+const maxPendingStudioJobs = 20
 
 // jobSlot returns the render semaphore, creating it on first use.
 func (s *Studio) jobSlot() chan struct{} {
@@ -21,6 +22,70 @@ func (s *Studio) jobSlot() chan struct{} {
 		s.jobSem = make(chan struct{}, maxConcurrentStudioJobs)
 	}
 	return s.jobSem
+}
+
+// reserveJobAdmission bounds persisted queued+running work before accepting a
+// new goroutine. Count-and-insert are atomic against other in-process callers.
+func (s *Studio) reserveJobAdmission(insert func() error) error {
+	s.queueMu.Lock()
+	defer s.queueMu.Unlock()
+	s.mu.Lock()
+	shuttingDown := s.shuttingDown
+	s.mu.Unlock()
+	if shuttingDown {
+		return fmt.Errorf("studio is shutting down")
+	}
+	pending := 0
+	if s.db != nil {
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`, StatusQueued, StatusRunning).Scan(&pending); err != nil {
+			return fmt.Errorf("đếm job đang chờ: %w", err)
+		}
+	}
+	pending += s.queuedFlows
+	if pending >= maxPendingStudioJobs {
+		return fmt.Errorf("hàng đợi Studio đã đầy (%d job); chờ job hoàn tất rồi thử lại", maxPendingStudioJobs)
+	}
+	return insert()
+}
+
+func (s *Studio) reserveFlowAdmission(insert func() error) error {
+	s.queueMu.Lock()
+	defer s.queueMu.Unlock()
+	s.mu.Lock()
+	shuttingDown := s.shuttingDown
+	s.mu.Unlock()
+	if shuttingDown {
+		return fmt.Errorf("studio is shutting down")
+	}
+	pending := s.queuedFlows
+	if s.db != nil {
+		if err := s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`, StatusQueued, StatusRunning).Scan(&pending); err != nil {
+			return fmt.Errorf("đếm job đang chờ: %w", err)
+		}
+		pending += s.queuedFlows
+	}
+	if pending >= maxPendingStudioJobs {
+		return fmt.Errorf("hàng đợi Studio đã đầy (%d job); chờ job hoàn tất rồi thử lại", maxPendingStudioJobs)
+	}
+	if err := insert(); err != nil {
+		return err
+	}
+	s.queuedFlows++
+	return nil
+}
+
+func (s *Studio) renderSlot(ctx context.Context) (chan struct{}, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Admission bounds accepted work; render semaphore caps active CPU/RAM use.
+	sem := s.jobSlot()
+	select {
+	case sem <- struct{}{}:
+		return sem, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // New opens (or creates) the studio database and returns the orchestrator.

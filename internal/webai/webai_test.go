@@ -2,10 +2,43 @@ package webai
 
 import (
 	"database/sql"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestAccountJSONKeepsSessionFieldsForLegacyConfigImport(t *testing.T) {
+	account := Account{SessionKey: "session-secret", Cookie: "sid=cookie-secret", CookieJar: []BrowserCookie{{Name: "sid", Value: "cookie-secret"}}}
+	encoded, err := json.Marshal(account)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded Account
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.SessionKey != account.SessionKey || decoded.Cookie != account.Cookie || len(decoded.CookieJar) != 1 {
+		t.Fatalf("legacy account import lost credentials: %+v", decoded)
+	}
+}
+
+func TestBrowserHeapDefaultAndBounds(t *testing.T) {
+	t.Setenv("AICOS_BROWSER_MAX_HEAP_MB", "")
+	if got := browserMaxHeapMB(); got != "512" {
+		t.Fatalf("default browser heap = %s, want 512 MB", got)
+	}
+	t.Setenv("AICOS_BROWSER_MAX_HEAP_MB", "2048")
+	if got := browserMaxHeapMB(); got != "2048" {
+		t.Fatalf("configured browser heap = %s, want 2048 MB", got)
+	}
+	for _, invalid := range []string{"not-a-number", "255", "4097"} {
+		t.Setenv("AICOS_BROWSER_MAX_HEAP_MB", invalid)
+		if got := browserMaxHeapMB(); got != "512" {
+			t.Errorf("invalid heap %q resolved to %s, want default 512 MB", invalid, got)
+		}
+	}
+}
 
 func TestWebAIStore(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "webai_test.db")

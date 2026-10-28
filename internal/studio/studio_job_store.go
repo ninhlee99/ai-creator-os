@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -19,11 +20,20 @@ func (s *Studio) insertJobWithID(id, kind, title string, params any) (string, er
 	if err := s.checkDiskCapacity(); err != nil {
 		return "", err
 	}
-	pj, _ := json.Marshal(params)
-	_, err := s.db.Exec(
-		`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
-		id, kind, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05"))
-	return id, err
+	pj, err := json.Marshal(params)
+	if err != nil {
+		return "", fmt.Errorf("marshal job params: %w", err)
+	}
+	err = s.reserveJobAdmission(func() error {
+		_, err := s.db.Exec(
+			`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
+			id, kind, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05"))
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 func (s *Studio) checkDiskCapacity() error {
@@ -47,6 +57,10 @@ func (s *Studio) startTrackedJob(id string, ctx context.Context, cancel context.
 	if ctx == nil || cancel == nil || run == nil {
 		return fmt.Errorf("job context, cancel, and runner are required")
 	}
+	if _, ok := s.GetJob(id); !ok {
+		cancel()
+		return fmt.Errorf("studio job %q no longer exists", id)
+	}
 	s.mu.Lock()
 	if s.shuttingDown {
 		s.mu.Unlock()
@@ -63,6 +77,8 @@ func (s *Studio) startTrackedJob(id string, ctx context.Context, cancel context.
 	}
 	s.running[id] = cancel
 	s.mu.Unlock()
+	// Close the gap between the first existence check and registration: a
+	// concurrent DeleteJob may have removed the row before this job was tracked.
 	if _, ok := s.GetJob(id); !ok {
 		s.mu.Lock()
 		delete(s.running, id)
@@ -70,7 +86,6 @@ func (s *Studio) startTrackedJob(id string, ctx context.Context, cancel context.
 		cancel()
 		return fmt.Errorf("studio job %q no longer exists", id)
 	}
-
 	go func() {
 		defer func() {
 			s.mu.Lock()
@@ -93,56 +108,75 @@ func (s *Studio) insertAffiliateJobWithPlan(id, title string, params any) error 
 	if err != nil {
 		return fmt.Errorf("marshal affiliate job params: %w", err)
 	}
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	result, err := tx.Exec(`DELETE FROM studio_affiliate_plans WHERE id=?`, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows != 1 {
-		return fmt.Errorf("shot plan đã được dùng hoặc không còn tồn tại; hãy lập plan mới")
-	}
-	if _, err := tx.Exec(`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
-		id, KindAffiliate, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05")); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return s.reserveJobAdmission(func() error {
+		tx, err := s.db.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+		result, err := tx.Exec(`DELETE FROM studio_affiliate_plans WHERE id=?`, id)
+		if err != nil {
+			return err
+		}
+		rows, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows != 1 {
+			return fmt.Errorf("shot plan đã được dùng hoặc không còn tồn tại; hãy lập plan mới")
+		}
+		if _, err := tx.Exec(`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
+			id, KindAffiliate, title, StatusQueued, string(pj), time.Now().Format("2006-01-02T15:04:05")); err != nil {
+			return err
+		}
+		return tx.Commit()
+	})
 }
 
-func (s *Studio) setStatus(id, status string, progress int) {
+func (s *Studio) setStatus(id, status string, progress int) error {
 	fin := ""
 	if status == StatusDone || status == StatusFailed {
 		fin = time.Now().Format("2006-01-02T15:04:05")
 	}
-	s.db.Exec(`UPDATE studio_jobs SET status=?, progress=?, finished_at=CASE WHEN ? != '' THEN ? ELSE finished_at END WHERE id=?`,
+	_, err := s.db.Exec(`UPDATE studio_jobs SET status=?, progress=?, finished_at=CASE WHEN ? != '' THEN ? ELSE finished_at END WHERE id=?`,
 		status, progress, fin, fin, id)
+	if err != nil {
+		log.Printf("studio: persist job status %s: %v", id, err)
+	}
+	return err
 }
 
-func (s *Studio) setOutput(id, output string) {
-	s.db.Exec(`UPDATE studio_jobs SET output=? WHERE id=?`, output, id)
+func (s *Studio) setOutput(id, output string) error {
+	_, err := s.db.Exec(`UPDATE studio_jobs SET output=? WHERE id=?`, output, id)
+	if err != nil {
+		log.Printf("studio: persist job output %s: %v", id, err)
+	}
+	return err
 }
 
-func (s *Studio) setCaption(id, caption string) {
-	s.db.Exec(`UPDATE studio_jobs SET caption=? WHERE id=?`, caption, id)
+func (s *Studio) setCaption(id, caption string) error {
+	_, err := s.db.Exec(`UPDATE studio_jobs SET caption=? WHERE id=?`, caption, id)
+	if err != nil {
+		log.Printf("studio: persist job caption %s: %v", id, err)
+	}
+	return err
 }
 
 // AppendLog adds a line to a job's log from outside the studio package
 // (e.g. Studio completion notifications in cmd/aicos).
 func (s *Studio) AppendLog(id, line string) { s.appendLog(id, line) }
 
-// PendingJobCount đếm job đang chờ hoặc đang chạy (đợt AA — trang growth
-// hiện số này để user biết hàng đợi dài bao nhiêu).
+// PendingJobCount đếm job và workflow đang chờ hoặc đang chạy (đợt AA — trang
+// growth hiện số này để user biết hàng đợi dài bao nhiêu).
 func (s *Studio) PendingJobCount() int {
 	var n int
-	_ = s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`,
-		StatusQueued, StatusRunning).Scan(&n)
+	if s.db != nil {
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM studio_jobs WHERE status IN (?,?)`,
+			StatusQueued, StatusRunning).Scan(&n)
+	}
+	s.queueMu.Lock()
+	n += s.queuedFlows
+	s.queueMu.Unlock()
 	return n
 }
 

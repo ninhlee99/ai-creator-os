@@ -19,11 +19,17 @@ func TestVideoOutputDims(t *testing.T) {
 		{"9:16", VideoOutput8K, 4320, 7680},
 		{"16:9", VideoOutput8K, 7680, 4320},
 		{"1:1", VideoOutput8K, 7680, 7680},
+		{"9:16", VideoOutput1080P, 1080, 1920},
+		{"16:9", VideoOutput1080P, 1920, 1080},
+		{"1:1", VideoOutput1080P, 1080, 1080},
 	} {
 		w, h, err := VideoOutputDims(tc.aspect, tc.resolution)
 		if err != nil || w != tc.width || h != tc.height {
 			t.Errorf("VideoOutputDims(%q, %q) = %dx%d, %v; want %dx%d", tc.aspect, tc.resolution, w, h, err, tc.width, tc.height)
 		}
+	}
+	if got, err := NormalizeVideoOutputResolution(""); err != nil || got != VideoOutput1080P {
+		t.Errorf("empty resolution = %q, %v; want default %q", got, err, VideoOutput1080P)
 	}
 }
 

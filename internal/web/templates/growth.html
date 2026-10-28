@@ -146,16 +146,17 @@
 </table></div>
 {{else}}<p class="empty">Chưa có cảnh báo tăng trưởng.</p>{{end}}
 
-<h2>Chẩn đoán Phễu Affiliate & Lan Truyền Viral</h2>
+<h2>Trạng thái dữ liệu và chẩn đoán</h2>
+<p class="hint">Chẩn đoán cần nguồn, kỳ đo và baseline cùng kênh. Khi thiếu một trong các dữ liệu này, trạng thái là “Chưa đủ dữ liệu”; hệ thống không suy đoán nguyên nhân hoặc tự đổi cấu hình.</p>
 {{if .Diagnostics}}
 <div class="table-wrap mobile-table-scroll" role="region" aria-label="Chẩn đoán phễu video" tabindex="0">
 <table class="growth-table">
-<thead><tr><th>Loại flow</th><th>Giai đoạn rớt phễu</th><th>Chẩn đoán & Nguyên nhân</th><th>Hành động cải thiện</th><th>Thời điểm</th></tr></thead>
+<thead><tr><th>Loại flow</th><th>Trạng thái</th><th>Bằng chứng / khoảng trống</th><th>Bước tiếp theo</th><th>Thời điểm</th></tr></thead>
 <tbody>
 {{range .Diagnostics}}
 <tr>
   <td><span class="badge badge-{{if eq .FlowType "affiliate"}}ok{{else}}info{{end}}">{{if eq .FlowType "affiliate"}}TikTok Affiliate{{else}}TikTok Viral{{end}}</span></td>
-  <td><strong>{{.FunnelStage}}</strong></td>
+  <td><strong>{{if eq .FunnelStage "unknown"}}Chưa đủ dữ liệu{{else}}{{.FunnelStage}}{{end}}</strong></td>
   <td>{{.Diagnosis}}</td>
   <td><em>{{.SuggestedAction}}</em></td>
   <td><span class="hint">{{.CreatedAt}}</span></td>
@@ -170,7 +171,8 @@
 {{end}}
 
 {{if eq .Tab "ops"}}
-<h2>Lịch sử tự điều chỉnh &amp; hoàn tác</h2>
+<h2>Lịch sử thay đổi cấu hình</h2>
+<p class="hint">Điều chỉnh được giới hạn theo từng tài khoản, tối đa 15% mỗi lần; mỗi thay đổi lưu nguồn, khoảng đo, cỡ mẫu, baseline và confidence. Hoàn tác chỉ chạy khi giá trị hiện tại vẫn khớp bản ghi.</p>
 {{if .TuningHistory}}
 <div class="table-wrap mobile-table-scroll" role="region" aria-label="Lịch sử vi chỉnh cài đặt" tabindex="0">
 <table class="growth-table">
@@ -179,16 +181,16 @@
 {{range .TuningHistory}}
 <tr>
   <td><code>{{.ParamKey}}</code></td>
-  <td>{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}})</td>
+  <td>{{if .Applied}}{{.OldValue}} → <strong>{{.NewValue}}</strong> ({{printf "%+.1f%%" .ChangePct}}){{else}}{{.OldValue}} → {{.NewValue}}<br><span class="hint">Bản ghi legacy; chưa xác minh đã áp dụng</span>{{end}}{{if .EvidenceJSON}}<details><summary>Bằng chứng</summary><pre>{{.EvidenceJSON}}</pre></details>{{end}}</td>
   <td>{{.Reason}}</td>
   <td><span class="hint">{{.AppliedAt}}</span></td>
-  <td>{{if .RolledBack}}<span class="badge badge-info">Đã hoàn tác</span>{{else}}<form method="post" action="/growth/tuning/rollback" style="display:inline"><input type="hidden" name="history_id" value="{{.ID}}"><input type="hidden" name="account_id" value="{{.AccountID}}"><button class="btn btn-secondary btn-sm" type="submit">↩ Hoàn tác</button></form>{{end}}</td>
+  <td>{{if not .Applied}}<span class="badge badge-warn">Legacy · chưa xác minh</span>{{else if .RolledBack}}<span class="badge badge-info">Đã hoàn tác {{.RolledBackAt}}</span>{{else}}<form method="post" action="/growth/tuning/rollback"><input type="hidden" name="account_id" value="{{.AccountID}}"><input type="hidden" name="history_id" value="{{.ID}}"><button class="btn btn-sm" type="submit">Hoàn tác</button></form>{{end}}</td>
 </tr>
 {{end}}
 </tbody>
 </table>
 </div>
-{{else}}<p class="empty">Chưa có lượt vi chỉnh tự động nào được áp dụng.</p>{{end}}
+{{else}}<p class="empty">Chưa có thay đổi cấu hình nào được xác nhận là đã áp dụng.</p>{{end}}
 
 <h2>Kế hoạch &amp; video sắp tới</h2>
 {{if .Upcoming}}

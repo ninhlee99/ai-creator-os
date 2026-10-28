@@ -5,7 +5,7 @@ package automation
 // Trước đây sao lưu chỉ bấm tay (Cài đặt · Hệ thống → Tải bản sao lưu).
 // Máy chạy 24/7 không người trông mà mất ledger.db/studio.db là mất hết
 // lịch sử quyết định. BackupTick chạy 1 ngày/lần (trong goroutine story/
-// self-heal), dùng chung backup.Create, lưu vào <dataDir>/backups/,
+// self-heal), dùng chung backup.CreateValidatedToFile, lưu vào <dataDir>/backups/,
 // chỉ giữ N bản mới nhất (mặc định 7). Lỗi → alert warn, không crash tick.
 
 import (
@@ -54,7 +54,7 @@ func (s *Service) BackupTick(ctx context.Context) []string {
 	}
 
 	dir := filepath.Join(s.DataDir, "backups")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return []string{fmt.Sprintf("sao lưu tự động thất bại: %v", err)}
 	}
 	name := fmt.Sprintf("aicos-backup-%s.zip", time.Now().Format("20060102-150405"))

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -154,21 +153,20 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		return result, errors.New("cannot create temporary Flow headless profile")
 	}
 	defer releaseProfile()
-	port, listener, err := pickFreePort()
-	if err != nil {
-		return result, errors.New("cannot allocate Flow headless debugging port")
-	}
-	_ = listener.Close()
-	args := optimizedHeadlessBrowserArgs(port, profile, "1440,1100")
+	args := optimizedHeadlessBrowserArgs(0, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)
+	if err != nil {
+		return result, errors.New("cannot configure Flow headless browser output")
+	}
+	defer closeBrowserOutput()
 	configureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return result, errors.New("cannot start Flow headless browser")
 	}
 	defer terminateBrowser(cmd)
 
-	browserURL, err := waitDebuggerURL(ctx, port, profile)
+	browserURL, err := waitDebuggerURL(ctx, 0, profile)
 	if err != nil {
 		return result, errors.New("Flow headless browser did not start")
 	}

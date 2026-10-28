@@ -47,14 +47,12 @@ func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p 
 		return
 	}
 
-	sem := s.jobSlot()
-	select {
-	case sem <- struct{}{}:
-		defer func() { <-sem }()
-	case <-ctx.Done():
-		s.failViralJob(jobID, fmt.Errorf("job bị hủy khi chờ lượt render"))
+	sem, slotErr := s.renderSlot(ctx)
+	if slotErr != nil {
+		s.failViralJob(jobID, slotErr)
 		return
 	}
+	defer func() { <-sem }()
 
 	jobDir := filepath.Join(s.workRoot, jobID)
 	if err := os.MkdirAll(jobDir, 0o755); err != nil {

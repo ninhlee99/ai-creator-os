@@ -14,7 +14,7 @@ type ViralParams struct {
 	ModelPhoto              string                 `json:"model_photo,omitempty"`       // local file path to character face reference image
 	ModelPhotos             []string               `json:"model_photos,omitempty"`      // multi-angle face reference images for character locking
 	TargetDuration          float64                `json:"target_duration"`             // exact source duration in seconds
-	OutputResolution        string                 `json:"output_resolution,omitempty"` // 4k | 8k
+	OutputResolution        string                 `json:"output_resolution,omitempty"` // 1080p | 4k | 8k
 	FlowCreditsAcknowledged bool                   `json:"flow_credits_acknowledged,omitempty"`
 	SourceVideoURL          string                 `json:"source_video_url,omitempty"`
 	SourceVideoID           string                 `json:"source_video_id,omitempty"`

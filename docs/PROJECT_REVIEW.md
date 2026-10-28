@@ -1,6 +1,6 @@
 # Rà soát dự án
 
-Cập nhật: 2026-10-27. Rà tĩnh source và tài liệu; chưa xác minh bằng tài khoản/provider thật.
+Cập nhật: 2026-10-28. Rà source, tài liệu và test cục bộ; chưa xác minh bằng tài khoản/provider production thật.
 
 ## Đã xử lý trong source
 
@@ -9,6 +9,10 @@ Cập nhật: 2026-10-27. Rà tĩnh source và tài liệu; chưa xác minh bằ
 - Màn hình Sản phẩm tách khám phá/duyệt khỏi vận hành Affiliate. Growth tách Tổng quan khỏi Vận hành.
 - Workflow có input/output contract, gọi workflow con theo loại Affiliate, TikTok Viral, Thời trang hoặc Custom; contract sai, thiếu hoặc thay đổi sẽ báo lỗi khi chạy.
 - Scaffold 3D/VFX giả đã gỡ. Loại workflow và kiểu cổng không được backend hỗ trợ cũng đã gỡ khỏi UI.
+- Backup dùng SQLite online snapshots, archive/staging có giới hạn và kiểm tra; secret bị loại khỏi ledger snapshot, `webai.db`/token file nhạy cảm không xuất vào ZIP plaintext.
+- Studio giới hạn hàng đợi và concurrent render; output social mặc định 1080p; job dọn output/cache cũ theo policy.
+- WebAI/CDP dùng profile cô lập, port debug động và cleanup browser process; output trình duyệt đi thẳng null device để child process không giữ pipe của `Cmd.Wait`.
+- Growth không còn suy diễn hook/retention/giá/“healthy” khi thiếu provenance, kỳ đo, baseline; tuning áp dụng qua override allowlist theo account, bounded 15%, evidence-backed audit và rollback chống ghi đè setting mới.
 
 ## Còn cần xác minh ngoài source
 

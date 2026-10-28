@@ -48,8 +48,11 @@ func main() {
 	log.Printf("aicos %s starting (addr=%s data=%s)", version, *addr, *dataDir)
 
 	// -- 1. data dir + ledger ---------------------------------------------
-	if err := os.MkdirAll(*dataDir, 0o755); err != nil {
+	if err := os.MkdirAll(*dataDir, 0o700); err != nil {
 		log.Fatalf("data dir: %v", err)
+	}
+	if err := os.Chmod(*dataDir, 0o700); err != nil {
+		log.Fatalf("secure data dir permissions: %v", err)
 	}
 	// Đợt S: single-instance — flock giữ suốt thời gian process sống; OS tự
 	// giải phóng khi crash nên không bao giờ kẹt khóa "ma". Đã có instance

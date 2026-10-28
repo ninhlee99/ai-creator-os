@@ -1,6 +1,8 @@
 package studio
 
 import (
+	"database/sql"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,8 +30,15 @@ func (s *Studio) fireOnDone(id string) {
 func (s *Studio) appendLog(id, line string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.db == nil {
+		log.Printf("studio: cannot persist job log %s: database is nil", id)
+		return
+	}
 	var cur string
-	_ = s.db.QueryRow(`SELECT log FROM studio_jobs WHERE id=?`, id).Scan(&cur)
+	if err := s.db.QueryRow(`SELECT log FROM studio_jobs WHERE id=?`, id).Scan(&cur); err != nil && err != sql.ErrNoRows {
+		log.Printf("studio: read job log %s: %v", id, err)
+		return
+	}
 	if cur != "" {
 		cur += "\n"
 	}
@@ -38,7 +47,9 @@ func (s *Studio) appendLog(id, line string) {
 	// vô hạn (write amplification mỗi lần append đọc-cộng-ghi cả cột). Giữ
 	// marker pipeline mới nhất để log dài vẫn chứng minh được các bước QC.
 	cur = trimJobLog(cur)
-	s.db.Exec(`UPDATE studio_jobs SET log=? WHERE id=?`, cur, id)
+	if _, err := s.db.Exec(`UPDATE studio_jobs SET log=? WHERE id=?`, cur, id); err != nil {
+		log.Printf("studio: persist job log %s: %v", id, err)
+	}
 }
 
 // maxJobLogLines: số dòng log gần nhất giữ lại ngoài pipeline evidence.
@@ -181,6 +192,13 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 			}
 			removeJobWorkDir(jobDir, finalPath)
 		}
+		// Affiliate final outputs live in outDir, not the per-job work directory.
+		if candidate.job.Output != "" && s.outDir != "" {
+			finalPath := s.OutputPath(candidate.job.Output)
+			if pathWithinDir(s.outDir, finalPath) && !pathWithinDir(s.workRoot, finalPath) && filepath.Base(finalPath) == candidate.job.Output {
+				_ = os.Remove(finalPath)
+			}
+		}
 		s.removeJobInputUploads(candidate.job)
 	}
 	totalPruned += len(pruned)
@@ -249,8 +267,12 @@ func (s *Studio) addAsset(jobID string, idx int, kind, prompt string) int64 {
 	return id
 }
 
-func (s *Studio) setAsset(id int64, status, path string) {
-	s.db.Exec(`UPDATE studio_assets SET status=?, path=? WHERE id=?`, status, path, id)
+func (s *Studio) setAsset(id int64, status, path string) error {
+	_, err := s.db.Exec(`UPDATE studio_assets SET status=?, path=? WHERE id=?`, status, path, id)
+	if err != nil {
+		log.Printf("studio: persist asset %d: %v", id, err)
+	}
+	return err
 }
 
 // GetJob returns one job.

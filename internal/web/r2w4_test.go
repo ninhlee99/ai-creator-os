@@ -3,6 +3,8 @@ package web
 import (
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/ninhlee99/ai-creator-os/internal/automation"
@@ -137,5 +139,36 @@ func TestGrowthThresholdsThroughUI(t *testing.T) {
 	def := growth.DefaultConfig()
 	if got := automation.LoadThresholds(s.settings()); got != def {
 		t.Errorf("thresholds after reset = %+v, want defaults", got)
+	}
+}
+
+func TestGrowthRollbackDoesNotClaimUnsupportedRollback(t *testing.T) {
+	s := newTestServer(t)
+	accountID, err := s.Ledger.AddAccount("@rollback_test", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Growth.EnsureProfile(accountID); err != nil {
+		t.Fatal(err)
+	}
+	h, err := s.Growth.ApplyBoundedAdjustment(accountID, "growth.kill_min_videos", 8, 12, "test rollback", growth.TuningEvidence{
+		Source: "test", EvidenceIDs: []string{"v1", "v2", "v3"}, WindowStart: "2026-09-01T00:00:00Z", WindowEnd: "2026-10-01T00:00:00Z",
+		Baseline: 100, Observed: 120, SampleSize: 3, Confidence: .9, Explanation: "test evidence",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := postForm(t, s, "/growth/tuning/rollback", url.Values{
+		"history_id": {strconv.FormatInt(h.ID, 10)}, "account_id": {strconv.FormatInt(accountID, 10)},
+	})
+	if rec.Code != 303 {
+		t.Fatalf("POST rollback code = %d, want redirect", rec.Code)
+	}
+	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "ok=") || strings.Contains(loc, "err=") {
+		t.Fatalf("rollback redirect = %q, want success", loc)
+	}
+	cfg, err := s.Growth.ConfigForAccount(accountID, growth.DefaultConfig())
+	if err != nil || cfg.KillMinVideos != 8 {
+		t.Fatalf("rollback config = %+v, err=%v", cfg, err)
 	}
 }

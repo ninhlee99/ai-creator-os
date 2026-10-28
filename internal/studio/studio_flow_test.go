@@ -3,6 +3,7 @@ package studio
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,22 @@ func TestShutdownCancelsDetachedFlowAndRejectsNewFlow(t *testing.T) {
 	}
 }
 
+func TestShutdownRejectsNewPersistedJobs(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	st.Shutdown(0)
+	if _, err := st.insertJob(KindViral, "after shutdown", ViralParams{}); err == nil || !strings.Contains(err.Error(), "studio is shutting down") {
+		t.Fatalf("insertJob after shutdown error = %v", err)
+	}
+	if got := st.PendingJobCount(); got != 0 {
+		t.Fatalf("shutdown rejected job but queue has %d jobs", got)
+	}
+}
+
 func TestQueuedFlowWaitsForSharedRenderSlotAndCanBeCancelled(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
@@ -104,6 +121,9 @@ func TestQueuedFlowWaitsForSharedRenderSlotAndCanBeCancelled(t *testing.T) {
 	run, err := store.GetRun("queued-flow")
 	if err != nil || run == nil || run.Status != "queued" {
 		t.Fatalf("workflow should persist as queued while render slots are full: run=%+v err=%v", run, err)
+	}
+	if got := st.PendingJobCount(); got != 1 {
+		t.Fatalf("pending job count = %d, want queued workflow included", got)
 	}
 	if !st.CancelFlowRun("queued-flow") {
 		t.Fatal("queued workflow was not cancellable")
@@ -188,6 +208,62 @@ func TestStartTrackedJobRejectsDeletedJob(t *testing.T) {
 	}
 	if ctx.Err() == nil {
 		t.Fatal("startTrackedJob did not cancel rejected job context")
+	}
+}
+
+func TestStudioQueueRejectsJobAbovePendingLimit(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	for i := 0; i < maxPendingStudioJobs; i++ {
+		id := fmt.Sprintf("queued-%02d", i)
+		if _, err := st.insertJobWithID(id, KindViral, id, map[string]int{"i": i}); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+	if _, err := st.insertJob(KindViral, "overflow", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "hàng đợi Studio đã đầy") {
+		t.Fatalf("overflow insert error = %v, want queue-full rejection", err)
+	}
+	if got := st.PendingJobCount(); got != maxPendingStudioJobs {
+		t.Fatalf("pending jobs = %d, want cap %d", got, maxPendingStudioJobs)
+	}
+}
+
+func TestStartTrackedJobDoesNotReserveQueueTwice(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	for i := 0; i < maxPendingStudioJobs; i++ {
+		id := fmt.Sprintf("queued-%02d", i)
+		if _, err := st.insertJobWithID(id, KindViral, id, map[string]int{"i": i}); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	started := make(chan struct{})
+	done := make(chan struct{})
+	if err := st.startTrackedJob("queued-00", ctx, cancel, func(context.Context) {
+		close(started)
+		close(done)
+	}); err != nil {
+		t.Fatalf("start already-admitted job at queue capacity: %v", err)
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("already-admitted job did not start")
+	}
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("already-admitted job did not finish")
 	}
 }
 

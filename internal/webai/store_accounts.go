@@ -596,11 +596,13 @@ func (s *Store) GetAccounts(platform string) ([]Account, error) {
 
 	// First auto-clear expired cooldowns
 	nowStr := time.Now().UTC().Format("2006-01-02 15:04:05")
-	_, _ = s.db.Exec(`
+	if _, err := s.db.Exec(`
 		UPDATE webai_accounts
 		SET status = 'ok', cooldown_until = ''
 		WHERE status = 'cooldown' AND cooldown_until != '' AND cooldown_until <= ?
-	`, nowStr)
+	`, nowStr); err != nil {
+		return nil, fmt.Errorf("webai: clear expired cooldowns: %w", err)
+	}
 
 	rows, err := s.db.Query(`
 		SELECT id, platform, account_name, email, session_key, cookie, cookie_jar, status, tier, tier_confirmed,
@@ -630,6 +632,9 @@ func (s *Store) GetAccounts(platform string) ([]Account, error) {
 		acc.fillDerived(cooldownUntil, lastUsed, lastChecked, createdAt, updatedAt)
 		list = append(list, acc)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return list, nil
 }
 
@@ -641,9 +646,10 @@ func (s *Store) GetAllAccounts() (map[string][]Account, error) {
 	}
 	for _, p := range SupportedPlatforms() {
 		accs, err := s.GetAccounts(p.ID)
-		if err == nil {
-			res[p.ID] = accs
+		if err != nil {
+			return nil, fmt.Errorf("webai: list %s accounts: %w", p.ID, err)
 		}
+		res[p.ID] = accs
 	}
 	return res, nil
 }

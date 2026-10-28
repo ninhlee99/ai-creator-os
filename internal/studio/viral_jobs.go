@@ -134,7 +134,9 @@ func (s *Studio) enqueueValidatedViral(p ViralParams, museCreditsAcknowledged bo
 	}); err != nil {
 		s.appendLog(id, "LỖI: "+err.Error())
 		s.setStatus(id, StatusFailed, 100)
-		return id, err
+		// The queued job is already durable and visible in Studio; preserve its
+		// ID so callers can inspect the terminal failure and retry deliberately.
+		return id, nil
 	}
 	return id, nil
 }

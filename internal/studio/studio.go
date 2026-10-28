@@ -44,6 +44,7 @@ const (
 	AffiliateVideoEngineMuseAI     = "museai"
 	AffiliateVideoEngineManual     = "manual" // Legacy alias; normalized to Muse AI.
 	VideoOutput4K                  = "4k"
+	VideoOutput1080P               = "1080p"
 	VideoOutput8K                  = "8k"
 	ViralModeFullCharacterEdit     = "full_character_edit"
 )
@@ -86,7 +87,7 @@ type AffiliateParams struct {
 	SourceMusicCollectedAt   string `json:"source_music_collected_at,omitempty"`
 	VideoEngine              string `json:"video_engine,omitempty"` // museai; legacy values are normalized to Muse AI
 	FlowCreditsAcknowledged  bool   `json:"flow_credits_acknowledged,omitempty"`
-	OutputResolution         string `json:"output_resolution,omitempty"` // 4k | 8k
+	OutputResolution         string `json:"output_resolution,omitempty"` // 1080p | 4k | 8k
 	AutoGenerateProductPhoto bool   `json:"auto_generate_product_photo,omitempty"`
 	// AffLink: link affiliate Accesstrade của sản phẩm (đợt Q). "" = không
 	// có — video vẫn đăng được, chỉ thiếu link kiếm tiền trong mô tả.
@@ -148,11 +149,8 @@ func AspectDims8K(aspect string) (w, h int) {
 
 // AspectDims maps a job aspect to ffmpeg output dimensions. Unknown or
 // empty aspects fall back to 9:16 so old jobs/params keep rendering.
-// When MASTER_QUALITY_4K=1, delivery renders output full 4K UHD (2160x3840 / 3840x2160).
+// Delivery renders default to 1080p for resource-safe social output.
 func AspectDims(aspect string) (w, h int) {
-	if os.Getenv("MASTER_QUALITY_4K") == "1" {
-		return AspectDims4K(aspect)
-	}
 	if aspect == "16:9" {
 		return 1920, 1080
 	}
@@ -212,7 +210,9 @@ type Studio struct {
 	QC ShotQCChecker
 	// jobSem caps concurrent renders (see jobSlot); lazily built because
 	// tests also construct Studio as a struct literal.
-	jobSem chan struct{}
+	jobSem      chan struct{}
+	queueMu     sync.Mutex
+	queuedFlows int
 	// radarTopicRefreshSem serializes background topic backfills to avoid
 	// launching multiple headless browser crawlers at once.
 	radarTopicRefreshSem    chan struct{}

@@ -68,7 +68,7 @@
         </div>
         <div class="field">
           <label>Mật khẩu mới</label>
-          <input type="password" name="password" minlength="4">
+          <input type="password" name="password" minlength="15">
         </div>
         <button type="submit" class="btn btn-primary btn-sm">Đổi mật khẩu</button>
       </form>
@@ -80,8 +80,8 @@
       <p><span class="badge badge-dim">Chưa đặt mật khẩu</span></p>
       <form method="post" action="/settings/auth/password">
         <div class="field">
-          <label>Mật khẩu mới (tối thiểu 4 ký tự)</label>
-          <input type="password" name="password" minlength="4" required>
+          <label>Mật khẩu mới (tối thiểu 15 ký tự)</label>
+          <input type="password" name="password" minlength="15" required>
         </div>
         <button type="submit" class="btn btn-primary btn-sm">Đặt mật khẩu</button>
       </form>
@@ -125,7 +125,7 @@
   <!-- Sao lưu & Khôi phục -->
   <div class="form-card" style="margin-bottom:24px">
     <h4 style="margin-top:0">💾 Sao lưu &amp; Khôi phục dữ liệu</h4>
-    <p class="hint">Database · files · tokens · bản tự động gần nhất: {{if .BackupLastOK}}<code>{{fmtVN .BackupLastOK}}</code>{{else}}Chưa có{{end}}</p>
+    <p class="hint">Database và file đầu vào. Vì an toàn, bản sao lưu bỏ API key, biến môi trường bí mật, token đăng nhập và tài khoản Web AI; sau khôi phục cần nhập lại các credential này. Bản tự động gần nhất: {{if .BackupLastOK}}<code>{{fmtVN .BackupLastOK}}</code>{{else}}Chưa có{{end}}</p>
     <div class="cards">
       <div class="card">
         <div class="label">Tải bản sao lưu hiện tại</div>

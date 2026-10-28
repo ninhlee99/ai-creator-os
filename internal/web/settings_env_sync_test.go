@@ -49,6 +49,8 @@ func TestConfigJSONExportAndImport(t *testing.T) {
 	defer cleanup()
 
 	_ = s.Ledger.SetSetting("env:ELEVENLABS_API_KEY", "el-test-key-555")
+	_ = s.Ledger.SetSetting("accesstrade.api_key", "at-secret-444")
+	_ = s.Ledger.SetSetting("notify.telegram_bot", "telegram-secret-333")
 
 	// 1. Export JSON
 	req := httptest.NewRequest("GET", "/settings/config/export-json", nil)
@@ -63,8 +65,19 @@ func TestConfigJSONExportAndImport(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &exp); err != nil {
 		t.Fatalf("unmarshal export json: %v", err)
 	}
-	if exp.EnvVars["ELEVENLABS_API_KEY"] != "el-test-key-555" {
-		t.Errorf("expected ELEVENLABS_API_KEY in json export, got %q", exp.EnvVars["ELEVENLABS_API_KEY"])
+	if len(exp.EnvVars) != 0 || len(exp.GeminiAPIKeys) != 0 {
+		t.Errorf("secret fields must be absent from export: env=%v gemini=%v", exp.EnvVars, exp.GeminiAPIKeys)
+	}
+	for _, secret := range []string{"el-test-key-555", "at-secret-444", "telegram-secret-333", "AIzaSyTestKey"} {
+		if bytes.Contains(rec.Body.Bytes(), []byte(secret)) {
+			t.Fatalf("plain JSON export leaked secret %q", secret)
+		}
+	}
+	if bytes.Contains(rec.Body.Bytes(), []byte("web_ai_accounts")) || bytes.Contains(rec.Body.Bytes(), []byte("cookie")) || bytes.Contains(rec.Body.Bytes(), []byte("session_key")) {
+		t.Fatal("plain JSON export must not include provider session credentials")
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store, private" {
+		t.Fatalf("Cache-Control = %q; want no-store, private", got)
 	}
 
 	// 2. Import multipart JSON file

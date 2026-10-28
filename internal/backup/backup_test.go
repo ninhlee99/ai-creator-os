@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 	_ "modernc.org/sqlite"
 )
 
@@ -34,9 +36,18 @@ func seedData(t *testing.T, dir string) map[string][]byte {
 		}
 		sdb.Close()
 	}
+	webaiPath := filepath.Join(dir, "webai.db")
+	webaiDB, err := sql.Open("sqlite", webaiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := webaiDB.Exec(`CREATE TABLE credentials(cookie TEXT); INSERT INTO credentials VALUES('bearer-secret')`); err != nil {
+		webaiDB.Close()
+		t.Fatal(err)
+	}
+	_ = webaiDB.Close()
 	files := map[string][]byte{
 		"content_jobs.json": []byte(`{"jobs":[]}`),
-		"tokens/a.json":     []byte(`{"refresh_token":"r"}`),
 	}
 	for rel, body := range files {
 		full := filepath.Join(dir, rel)
@@ -113,7 +124,6 @@ func TestBackupRoundTrip(t *testing.T) {
 	}
 
 	// Giả lập mất dữ liệu: xoá token, ghi đè ledger.
-	os.Remove(filepath.Join(dir, "tokens", "a.json"))
 	os.WriteFile(filepath.Join(dir, "ledger.db"), []byte("SQLite format 3\x00CORRUPT"), 0o600)
 
 	if err := Stage(dir, openZip(t, buf.Bytes())); err != nil {
@@ -156,9 +166,121 @@ func TestBackupRoundTrip(t *testing.T) {
 	}
 }
 
+func TestBackupRedactsLedgerCredentialsAndTokenFiles(t *testing.T) {
+	dir := t.TempDir()
+	seedData(t, dir)
+	ledger, err := sql.Open("sqlite", filepath.Join(dir, "ledger.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ledger.Exec(`CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	for key, value := range map[string]string{
+		"env:GEMINI_API_KEY":    "secret-env-key",
+		"at.access_key":         "secret-at-key",
+		"auth.password_hash":    "offline-crackable-hash",
+		"llm.chain":             `{"order":[{"name":"gemini","api_key":"secret-json-key","headers":{"Authorization":"Bearer secret-authz","private_key":"secret-private","jwt":"secret-jwt"},"auth":{"type":"bearer","value":"secret-auth-object"},"enabled":true}]}`,
+		"env:GEMINI_TEXT_MODEL": "gemini-2.5-pro",
+		"automation.master":     "1",
+	} {
+		if _, err := ledger.Exec(`INSERT INTO settings(key,value) VALUES(?,?)`, key, value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = ledger.Close()
+	tokenDir := filepath.Join(dir, "tokens")
+	if err := os.MkdirAll(tokenDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tokenDir, "refresh.json"), []byte(`{"refresh_token":"secret-refresh"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var archive bytes.Buffer
+	if err := Create(dir, &archive); err != nil {
+		t.Fatal(err)
+	}
+	zr := openZip(t, archive.Bytes())
+	var ledgerBytes []byte
+	for _, file := range zr.File {
+		if file.Name == "tokens/refresh.json" {
+			t.Fatal("backup included token file")
+		}
+		if file.Name == "ledger.db" {
+			reader, err := file.Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ledgerBytes, err = io.ReadAll(reader)
+			_ = reader.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, secret := range []string{"secret-env-key", "secret-at-key", "secret-json-key", "secret-authz", "secret-private", "secret-jwt", "secret-auth-object", "offline-crackable-hash"} {
+		if bytes.Contains(ledgerBytes, []byte(secret)) {
+			t.Fatal("backup ledger contains credential material")
+		}
+	}
+	safeDBPath := filepath.Join(t.TempDir(), "ledger.db")
+	if err := os.WriteFile(safeDBPath, ledgerBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	safeDB, err := sql.Open("sqlite", safeDBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer safeDB.Close()
+	var ops string
+	if err := safeDB.QueryRow(`SELECT value FROM settings WHERE key='automation.master'`).Scan(&ops); err != nil || ops != "1" {
+		t.Fatalf("safe setting lost: value=%q err=%v", ops, err)
+	}
+	var chain string
+	if err := safeDB.QueryRow(`SELECT value FROM settings WHERE key='llm.chain'`).Scan(&chain); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(chain, "secret-json-key") || !strings.Contains(chain, "gemini") {
+		t.Fatalf("chain backup should retain provider config but redact API key: %s", chain)
+	}
+	var model string
+	if err := safeDB.QueryRow(`SELECT value FROM settings WHERE key='env:GEMINI_TEXT_MODEL'`).Scan(&model); err != nil || model != "gemini-2.5-pro" {
+		t.Fatalf("non-secret environment setting should survive backup: value=%q err=%v", model, err)
+	}
+}
+
+func TestRedactJSONCredentialsHandlesEmbeddedJSON(t *testing.T) {
+	got := redactJSONCredentials(map[string]any{
+		"payload": `{"auth":{"access_token":"nested-secret"},"private_key":"nested-private","model":"keep"}`,
+		"plain":   "keep this text",
+	})
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{"nested-secret", "nested-private"} {
+		if bytes.Contains(encoded, []byte(secret)) {
+			t.Fatalf("nested JSON credential %q survived redaction: %s", secret, encoded)
+		}
+	}
+	if !bytes.Contains(encoded, []byte("keep this text")) || !bytes.Contains(encoded, []byte("keep")) {
+		t.Fatalf("non-secret fields should survive redaction: %s", encoded)
+	}
+}
+
 func TestBackupRestorePreservesStudioInputsAndPortableModelPhotos(t *testing.T) {
 	source := t.TempDir()
 	seedData(t, source)
+	webStore, err := webai.NewStore(filepath.Join(source, "webai.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := webStore.AddAccount(webai.Account{Platform: "museai", AccountName: "Test", SessionKey: "bearer-secret"}); err != nil {
+		webStore.Close()
+		t.Fatal(err)
+	}
+	_ = webStore.Close()
 	modelPath := filepath.Join(source, "output", "studio", "models", "7", "character.jpg")
 	uploadPath := filepath.Join(source, "output", "studio", "uploads", "product.jpg")
 	for path, body := range map[string][]byte{
@@ -224,6 +346,9 @@ func TestBackupRestorePreservesStudioInputsAndPortableModelPhotos(t *testing.T) 
 	entries := make(map[string]bool, len(zr.File))
 	for _, entry := range zr.File {
 		entries[entry.Name] = true
+	}
+	if entries["webai.db"] {
+		t.Fatal("plaintext backup must exclude WebAI database containing bearer credentials")
 	}
 	if !entries["output/studio/models/7/character.jpg"] || !entries["output/studio/uploads/product.jpg"] {
 		t.Fatalf("backup omitted studio inputs: %v", entries)

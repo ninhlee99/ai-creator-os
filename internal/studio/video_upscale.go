@@ -12,7 +12,9 @@ import (
 
 func NormalizeVideoOutputResolution(value string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "", VideoOutput4K:
+	case "", VideoOutput1080P:
+		return VideoOutput1080P, nil
+	case VideoOutput4K:
 		return VideoOutput4K, nil
 	case VideoOutput8K:
 		return VideoOutput8K, nil
@@ -28,6 +30,13 @@ func VideoOutputDims(aspect, resolution string) (int, int, error) {
 	resolution, err := NormalizeVideoOutputResolution(resolution)
 	if err != nil {
 		return 0, 0, err
+	}
+	if resolution == VideoOutput1080P {
+		if aspect == "1:1" {
+			return 1080, 1080, nil
+		}
+		w, h := AspectDims(aspect)
+		return w, h, nil
 	}
 	if resolution == VideoOutput8K {
 		w, h := AspectDims8K(aspect)
@@ -117,8 +126,10 @@ func ConcatClipsToMaster(ctx context.Context, clips []string, durations []float6
 	}
 	if resolution == VideoOutput8K {
 		args = append(args, VideoEncoderArgs8K()...)
-	} else {
+	} else if resolution == VideoOutput4K {
 		args = append(args, VideoEncoderArgs4K()...)
+	} else {
+		args = append(args, VideoEncoderArgs()...)
 	}
 	args = append(args, "-fps_mode", "passthrough", "-pix_fmt", "yuv420p")
 	if hasAudio {

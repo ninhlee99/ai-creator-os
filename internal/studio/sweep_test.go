@@ -203,7 +203,7 @@ func TestPrunersSkipActiveFailedJobs(t *testing.T) {
 	}
 }
 
-func TestPruneOldJobsRemovesJobArtifactsAndKeepsFinalOutput(t *testing.T) {
+func TestPruneOldJobsRemovesJobArtifactsAndFinalOutput(t *testing.T) {
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "out")
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, outDir)
@@ -267,8 +267,8 @@ func TestPruneOldJobsRemovesJobArtifactsAndKeepsFinalOutput(t *testing.T) {
 	if _, err := os.Stat(productInput); !os.IsNotExist(err) {
 		t.Fatalf("old input upload remains: %v", err)
 	}
-	if _, err := os.Stat(finalOutput); err != nil {
-		t.Fatalf("final output was removed: %v", err)
+	if _, err := os.Stat(finalOutput); !os.IsNotExist(err) {
+		t.Fatalf("expired final output remains: %v", err)
 	}
 	if _, err := os.Stat(externalAsset); err != nil {
 		t.Fatalf("asset outside job directory was removed: %v", err)

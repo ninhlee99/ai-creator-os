@@ -279,7 +279,7 @@ func waitDebuggerURL(ctx context.Context, port int, profileDir ...string) (strin
 	client := &http.Client{Timeout: 2 * time.Second}
 	for {
 		if err := ctx.Err(); err != nil {
-			return "", errors.New("Muse headless browser did not start")
+			return "", errors.New("headless browser did not start")
 		}
 		if ws := readDevToolsActivePortWS(dir, port); ws != "" {
 			return ws, nil
@@ -299,8 +299,8 @@ func waitDebuggerURL(ctx context.Context, port int, profileDir ...string) (strin
 		}
 		select {
 		case <-ctx.Done():
-			return "", errors.New("Muse headless browser did not start")
-		case <-time.After(150 * time.Millisecond):
+			return "", errors.New("headless browser did not start")
+		case <-time.After(100 * time.Millisecond):
 		}
 	}
 }

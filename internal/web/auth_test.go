@@ -9,11 +9,12 @@ import (
 
 // Hash + kiểm tra mật khẩu (PBKDF2, salt ngẫu nhiên mỗi lần).
 func TestAuthPasswordHashVerify(t *testing.T) {
-	h1, err := hashAuthPassword("mat-khau-123")
+	password := "mat-khau-123456"
+	h1, err := hashAuthPassword(password)
 	if err != nil {
 		t.Fatal(err)
 	}
-	h2, err := hashAuthPassword("mat-khau-123")
+	h2, err := hashAuthPassword(password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,17 +24,17 @@ func TestAuthPasswordHashVerify(t *testing.T) {
 	if !strings.HasPrefix(h1, "v1$") {
 		t.Fatalf("định dạng hash sai: %q", h1[:8])
 	}
-	if !checkAuthPassword("mat-khau-123", h1) {
+	if !checkAuthPassword(password, h1) {
 		t.Fatal("mật khẩu đúng bị từ chối")
 	}
-	if checkAuthPassword("sai-mat-khau", h1) {
+	if checkAuthPassword("sai-mat-khau-123", h1) {
 		t.Fatal("mật khẩu sai được chấp nhận")
 	}
-	if checkAuthPassword("mat-khau-123", "v1$deadbeef$00") {
+	if checkAuthPassword(password, "v1$deadbeef$00") {
 		t.Fatal("hash hỏng được chấp nhận")
 	}
-	if _, err := hashAuthPassword("abc"); err == nil {
-		t.Fatal("mật khẩu 3 ký tự phải bị từ chối")
+	if _, err := hashAuthPassword("mat-khau-123"); err == nil {
+		t.Fatal("mật khẩu dưới 15 ký tự phải bị từ chối")
 	}
 }
 
@@ -79,7 +80,7 @@ func TestAuthGateDisabled(t *testing.T) {
 // qua, đăng nhập đúng thì vào được.
 func TestAuthGateEnabledFullFlow(t *testing.T) {
 	s := newTestServer(t)
-	if err := s.setAuthPassword("bi-mat-123"); err != nil {
+	if err := s.setAuthPassword("bi-mat-1234567890"); err != nil {
 		t.Fatal(err)
 	}
 	if !s.authEnabled() {
@@ -120,7 +121,7 @@ func TestAuthGateEnabledFullFlow(t *testing.T) {
 	}
 
 	// Đăng nhập đúng → có cookie session → vào được /dashboard.
-	form = strings.NewReader("password=bi-mat-123&next=%2Fdashboard")
+	form = strings.NewReader("password=bi-mat-1234567890&next=%2Fdashboard")
 	req = httptest.NewRequest("POST", "/login", form)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr = httptest.NewRecorder()
@@ -156,6 +157,27 @@ func TestAuthGateEnabledFullFlow(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitAfterRepeatedFailures(t *testing.T) {
+	s := newTestServer(t)
+	if err := s.setAuthPassword("bi-mat-1234567890"); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < loginAttemptLimit; i++ {
+		req := httptest.NewRequest("POST", "/login", strings.NewReader("password=wrong"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.RemoteAddr = "192.0.2.10:1234"
+		s.handleLogin(httptest.NewRecorder(), req)
+	}
+	req := httptest.NewRequest("POST", "/login", strings.NewReader("password=bi-mat-1234567890"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.RemoteAddr = "192.0.2.10:4321"
+	rr := httptest.NewRecorder()
+	s.handleLogin(rr, req)
+	if rr.Code != http.StatusTooManyRequests || rr.Header().Get("Retry-After") == "" {
+		t.Fatalf("expected throttled login with Retry-After, got %d headers=%v", rr.Code, rr.Header())
+	}
+}
+
 // Đợt AK: chưa có mật khẩu → chỉ chính máy chủ vào được; LAN/tunnel bị chặn,
 // /healthz vẫn mở. Đặt mật khẩu xong → về luồng đăng nhập bình thường.
 func TestRemoteBlockedWithoutPassword(t *testing.T) {
@@ -187,7 +209,7 @@ func TestRemoteBlockedWithoutPassword(t *testing.T) {
 	if c := do("/settings/system", "[::1]:5000", nil); c == http.StatusForbidden {
 		t.Errorf("máy chủ (::1) không được bị chặn")
 	}
-	if err := s.setAuthPassword("mat-khau-dai-123"); err != nil {
+	if err := s.setAuthPassword("mat-khau-dai-1234567"); err != nil {
 		t.Fatal(err)
 	}
 	if c := do("/settings", "192.168.1.5:5000", nil); c != http.StatusSeeOther {

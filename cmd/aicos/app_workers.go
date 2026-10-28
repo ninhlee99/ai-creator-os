@@ -28,23 +28,32 @@ func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr s
 	})
 
 	httpSrv := &http.Server{
-		Addr:         addr,
-		Handler:      srv.Routes(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 300 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:              addr,
+		Handler:           srv.Routes(),
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      300 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
+	serveErr := make(chan error, 1)
 	go func() {
 		log.Printf("http: listening on %s", addr)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http: %v", err)
+			serveErr <- err
+			return
 		}
+		serveErr <- nil
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
-	log.Printf("shutdown: signal received, stopping...")
+	select {
+	case <-stop:
+		log.Printf("shutdown: signal received, stopping...")
+	case err := <-serveErr:
+		if err != nil {
+			log.Printf("http server stopped: %v", err)
+		}
+	}
 	cancel()
 
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)

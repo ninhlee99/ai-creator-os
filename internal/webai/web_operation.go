@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -118,20 +117,19 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 		return result, errors.New("cannot create temporary Web AI browser profile")
 	}
 	defer releaseProfile()
-	port, listener, err := pickFreePort()
-	if err != nil {
-		return result, errors.New("cannot allocate Web AI browser debugging port")
-	}
-	_ = listener.Close()
-	args := optimizedHeadlessBrowserArgs(port, profile, "1440,1100")
+	args := optimizedHeadlessBrowserArgs(0, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)
+	if err != nil {
+		return result, errors.New("cannot configure Web AI headless browser output")
+	}
+	defer closeBrowserOutput()
 	configureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return result, errors.New("cannot start Web AI headless browser")
 	}
 	defer terminateBrowser(cmd)
-	browserURL, err := waitDebuggerURL(ctx, port, profile)
+	browserURL, err := waitDebuggerURL(ctx, 0, profile)
 	if err != nil {
 		return result, err
 	}

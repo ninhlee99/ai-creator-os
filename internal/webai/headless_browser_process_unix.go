@@ -35,15 +35,31 @@ func terminateBrowser(cmd *exec.Cmd) {
 	}()
 
 	processGroupID := cmd.Process.Pid
-	_ = signalBrowserProcessGroup(processGroupID, syscall.SIGINT)
+	_ = interruptBrowserProcessTree(cmd)
 	deadline := time.Now().Add(3 * time.Second)
 	for browserProcessGroupExists(processGroupID) && time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	if browserProcessGroupExists(processGroupID) {
-		_ = signalBrowserProcessGroup(processGroupID, syscall.SIGKILL)
+		_ = killBrowserProcessTree(cmd)
 	}
 	<-done
+}
+
+func interruptBrowserProcessTree(cmd *exec.Cmd) error {
+	if cmd == nil || cmd.Process == nil {
+		return os.ErrProcessDone
+	}
+	return signalBrowserProcessGroup(cmd.Process.Pid, syscall.SIGINT)
+}
+
+func killBrowserProcessTree(cmd *exec.Cmd) error {
+	if cmd == nil || cmd.Process == nil {
+		return os.ErrProcessDone
+	}
+	err := signalBrowserProcessGroup(cmd.Process.Pid, syscall.SIGKILL)
+	_ = cmd.Process.Kill()
+	return err
 }
 
 func signalBrowserProcessGroup(processGroupID int, signal syscall.Signal) error {

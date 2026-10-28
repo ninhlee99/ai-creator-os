@@ -29,15 +29,17 @@ func (s *Studio) CreateExternalJob(kind, title string, params any, run ExternalJ
 			}
 		}()
 
-		sem := s.jobSlot()
-		select {
-		case sem <- struct{}{}:
-			defer func() { <-sem }()
-		case <-ctx.Done():
-			s.appendLog(id, "Đã hủy trước khi bắt đầu.")
+		sem, slotErr := s.renderSlot(ctx)
+		if slotErr != nil {
+			if ctx.Err() != nil {
+				s.appendLog(id, "Đã hủy trước khi bắt đầu.")
+			} else {
+				s.appendLog(id, "LỖI: "+slotErr.Error())
+			}
 			s.setStatus(id, StatusFailed, 100)
 			return
 		}
+		defer func() { <-sem }()
 		s.setStatus(id, StatusRunning, 1)
 		progress := func(percent int, line string) {
 			if percent < 1 {

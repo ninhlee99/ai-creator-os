@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -102,47 +101,28 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	portListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("không mở được cổng kết nối crawler: %w", err)
-	}
-	port := portListener.Addr().(*net.TCPAddr).Port
-	_ = portListener.Close()
-
 	profileDir, err := os.MkdirTemp("", "aicos-tt-crawler-*")
 	if err != nil {
 		return nil, fmt.Errorf("không tạo được thư mục tạm cho crawler: %w", err)
 	}
 	defer os.RemoveAll(profileDir)
 
-	args := []string{
-		"--headless=new",
-		fmt.Sprintf("--remote-debugging-port=%d", port),
-		"--remote-debugging-address=127.0.0.1",
-		fmt.Sprintf("--user-data-dir=%s", profileDir),
-		"--disable-gpu",
-		"--disable-dev-shm-usage",
-		"--disable-software-rasterizer",
-		"--no-first-run",
-		"--no-default-browser-check",
-		"--disable-extensions",
-		"--disable-sync",
-		"--disable-background-networking",
-		"--disable-background-timer-throttling",
-		"--disable-backgrounding-occluded-windows",
-		"--disable-renderer-backgrounding",
-		"--disk-cache-size=1048576",
-		"--media-cache-size=1048576",
-		"--js-flags=--max-old-space-size=384",
-		"--blink-settings=imagesEnabled=false",
-		"--mute-audio",
-		"--lang=vi-VN,vi",
-		"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-		"about:blank",
+	args := webai.OptimizedHeadlessBrowserArgs(0, profileDir, "1440,900")
+	args = args[:len(args)-1] // replace about:blank with crawler-specific settings
+	for i, arg := range args {
+		if strings.HasPrefix(arg, "--blink-settings=") {
+			args[i] = arg + ",imagesEnabled=false"
+			break
+		}
 	}
+	args = append(args, "--lang=vi-VN,vi", "about:blank")
 
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	closeBrowserOutput, err := webai.ConfigureHeadlessBrowserOutput(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("không cấu hình được output trình duyệt crawler: %w", err)
+	}
+	defer closeBrowserOutput()
 	webai.ConfigureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("không khởi động được trình duyệt crawler: %w", err)
@@ -150,7 +130,7 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	defer webai.TerminateBrowser(cmd)
 
 	// Wait for WebSocket debugger URL
-	pageWS, err := waitCrawlerDebuggerURL(ctx, port)
+	pageWS, err := waitCrawlerDebuggerURL(ctx, profileDir)
 	if err != nil {
 		return nil, err
 	}
@@ -289,24 +269,29 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	return evaluateTikTokCrawlerDOM(ctx, conn, sendCDP)
 }
 
-func waitCrawlerDebuggerURL(ctx context.Context, port int) (string, error) {
+func waitCrawlerDebuggerURL(ctx context.Context, profileDir string) (string, error) {
 	client := &http.Client{Timeout: 2 * time.Second}
 	for {
 		if err := ctx.Err(); err != nil {
 			return "", errors.New("trình duyệt crawler không kịp khởi động")
 		}
-		resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json", port))
-		if err == nil {
-			var targets []struct {
-				Type string `json:"type"`
-				WS   string `json:"webSocketDebuggerUrl"`
-			}
-			decodeErr := json.NewDecoder(resp.Body).Decode(&targets)
-			_ = resp.Body.Close()
-			if decodeErr == nil {
-				for _, t := range targets {
-					if t.Type == "page" && t.WS != "" {
-						return t.WS, nil
+		if activePort, err := os.ReadFile(filepath.Join(profileDir, "DevToolsActivePort")); err == nil {
+			var port int
+			if _, err := fmt.Sscanf(string(activePort), "%d", &port); err == nil && port > 0 && port <= 65535 {
+				resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/json", port))
+				if err == nil {
+					var targets []struct {
+						Type string `json:"type"`
+						WS   string `json:"webSocketDebuggerUrl"`
+					}
+					decodeErr := json.NewDecoder(resp.Body).Decode(&targets)
+					_ = resp.Body.Close()
+					if decodeErr == nil {
+						for _, t := range targets {
+							if t.Type == "page" && t.WS != "" {
+								return t.WS, nil
+							}
+						}
 					}
 				}
 			}

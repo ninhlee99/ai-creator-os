@@ -37,12 +37,12 @@ func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target
 					}
 				}
 				auth := &CapturedWebAuth{
-					Platform:                target.Platform,
-					SessionValue:            session,
-					CookieHeader:            cookieHeaderForTarget(cookies, target),
-					CookieJar:               loginCookieJarForTarget(cookies, target),
-					Email:                   email,
-					BrowserUsed:             filepath.Base(browser.binary),
+					Platform:     target.Platform,
+					SessionValue: session,
+					CookieHeader: cookieHeaderForTarget(cookies, target),
+					CookieJar:    loginCookieJarForTarget(cookies, target),
+					Email:        email,
+					BrowserUsed:  filepath.Base(browser.binary),
 				}
 				if err := validateCapturedWebAuth(ctx, target, auth); err == nil {
 					if ctx.Err() != nil {
@@ -59,6 +59,12 @@ func captureCookieLogin(ctx context.Context, browser loginBrowserSession, target
 				}
 			}
 		}
-		time.Sleep(time.Second)
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
 	}
 }

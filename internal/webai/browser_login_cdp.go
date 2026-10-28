@@ -4,11 +4,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+func debuggerPortFromProfile(profile string) int {
+	contents, err := os.ReadFile(filepath.Join(profile, "DevToolsActivePort"))
+	if err != nil {
+		return 0
+	}
+	fields := strings.Fields(string(contents))
+	if len(fields) == 0 {
+		return 0
+	}
+	port, _ := strconv.Atoi(fields[0])
+	return port
+}
+
+func debuggerWSURLFromProfile(profile string) (string, error) {
+	port := debuggerPortFromProfile(profile)
+	if port <= 0 || port > 65535 {
+		return "", fmt.Errorf("Chromium did not publish DevToolsActivePort")
+	}
+	return debuggerWSURL(port)
+}
 
 func debuggerWSURL(port int) (string, error) {
 	client := &http.Client{Timeout: 2 * time.Second}

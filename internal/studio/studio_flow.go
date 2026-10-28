@@ -52,25 +52,32 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())
 	}
 	runCtx, cancel := context.WithCancel(ctx)
-	s.mu.Lock()
-	if s.shuttingDown {
-		s.mu.Unlock()
+	if err := s.reserveFlowAdmission(func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.shuttingDown {
+			return fmt.Errorf("studio is shutting down")
+		}
+		if s.flowRuns == nil {
+			s.flowRuns = make(map[string]context.CancelFunc)
+		}
+		if _, exists := s.flowRuns[runID]; exists {
+			return fmt.Errorf("workflow run %q is already active", runID)
+		}
+		s.flowRuns[runID] = cancel
+		return nil
+	}); err != nil {
 		cancel()
-		return fmt.Errorf("studio is shutting down")
+		return err
 	}
-	if s.flowRuns == nil {
-		s.flowRuns = make(map[string]context.CancelFunc)
-	}
-	if _, exists := s.flowRuns[runID]; exists {
-		s.mu.Unlock()
-		cancel()
-		return fmt.Errorf("workflow run %q is already active", runID)
-	}
-	s.flowRuns[runID] = cancel
-	s.mu.Unlock()
 
 	store, err := s.GetFlowStore()
 	if err != nil {
+		s.queueMu.Lock()
+		if s.queuedFlows > 0 {
+			s.queuedFlows--
+		}
+		s.queueMu.Unlock()
 		s.mu.Lock()
 		delete(s.flowRuns, runID)
 		s.mu.Unlock()
@@ -86,17 +93,26 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 		queued.NodeStates[node.ID] = flow.NodeState{Status: "queued"}
 	}
 	if err := store.SaveRun(queued); err != nil {
+		s.queueMu.Lock()
+		if s.queuedFlows > 0 {
+			s.queuedFlows--
+		}
+		s.queueMu.Unlock()
 		s.mu.Lock()
 		delete(s.flowRuns, runID)
 		s.mu.Unlock()
 		cancel()
 		return fmt.Errorf("lưu trạng thái queue workflow: %w", err)
 	}
-
 	services := append([]flow.ExecutionServices(nil), serviceOptions...)
 	inputs := cloneWorkflowInputs(workflowInputs)
 	go func() {
 		defer func() {
+			s.queueMu.Lock()
+			if s.queuedFlows > 0 {
+				s.queuedFlows--
+			}
+			s.queueMu.Unlock()
 			s.mu.Lock()
 			delete(s.flowRuns, runID)
 			s.mu.Unlock()
@@ -215,13 +231,11 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	sem := s.jobSlot()
-	select {
-	case sem <- struct{}{}:
-		defer func() { <-sem }()
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	sem, err := s.renderSlot(ctx)
+	if err != nil {
+		return nil, err
 	}
+	defer func() { <-sem }()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}

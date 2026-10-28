@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -102,21 +101,20 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 		return out, errors.New("cannot create temporary Muse headless profile")
 	}
 	defer releaseProfile()
-	port, listener, err := pickFreePort()
-	if err != nil {
-		return out, errors.New("cannot allocate Muse headless debugging port")
-	}
-	_ = listener.Close()
-	args := optimizedHeadlessBrowserArgs(port, profile, "1280,1000")
+	args := optimizedHeadlessBrowserArgs(0, profile, "1280,1000")
 	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)
+	if err != nil {
+		return out, errors.New("cannot configure Muse headless browser output")
+	}
+	defer closeBrowserOutput()
 	configureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return out, errors.New("cannot start Muse headless browser")
 	}
 	defer terminateBrowser(cmd)
 
-	browserURL, err := waitDebuggerURL(ctx, port, profile)
+	browserURL, err := waitDebuggerURL(ctx, 0, profile)
 	if err != nil {
 		return out, err
 	}

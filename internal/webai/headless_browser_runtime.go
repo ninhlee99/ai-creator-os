@@ -65,6 +65,10 @@ func acquireAccountBrowserProfile(platform, cookieHeader string, cookies []Brows
 			if _, loaded := profileLocks.LoadOrStore(key, struct{}{}); !loaded {
 				baseDir := filepath.Join(os.TempDir(), "aicos-browser-profiles", key)
 				if err := os.MkdirAll(baseDir, 0o700); err == nil {
+					if err := os.Chmod(baseDir, 0o700); err != nil {
+						profileLocks.Delete(key)
+						return "", func() {}, fmt.Errorf("secure browser profile: %w", err)
+					}
 					clearChromiumSingletonLocks(baseDir)
 					return baseDir, func() {
 						cleanChromiumVolatileCaches(baseDir)
@@ -89,25 +93,19 @@ func optimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []str
 	if windowSize == "" {
 		windowSize = "1440,1100"
 	}
-	return []string{
+	args := []string{
 		"--headless=new",
 		"--disable-gpu",
-		"--disable-dev-shm-usage",
-		"--disable-software-rasterizer",
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-sync",
 		"--disable-extensions",
 		"--disable-background-networking",
-		"--disable-background-timer-throttling",
-		"--disable-backgrounding-occluded-windows",
-		"--disable-renderer-backgrounding",
-		"--disable-ipc-flooding-protection",
 		"--disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion,AudioServiceOutOfProcess",
 		"--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
 		"--disk-cache-size=10485760",
 		"--media-cache-size=10485760",
-		"--js-flags=--max-old-space-size=512",
+		"--js-flags=--max-old-space-size=" + browserMaxHeapMB(),
 		"--hide-scrollbars",
 		"--mute-audio",
 		"--window-size=" + windowSize,
@@ -116,12 +114,52 @@ func optimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []str
 		"--user-data-dir=" + profileDir,
 		"about:blank",
 	}
+	// /dev/shm is RAM-backed on Linux. Disable it only in constrained
+	// containers where Chromium's shared-memory allocation otherwise fails.
+	if os.Getenv("AICOS_BROWSER_DISABLE_DEV_SHM") == "1" {
+		args = append(args, "--disable-dev-shm-usage")
+	}
+	return args
+}
+
+// OptimizedHeadlessBrowserArgs exposes the shared Chromium baseline for
+// headless integrations outside webai, such as Studio's TikTok crawler.
+func OptimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []string {
+	return optimizedHeadlessBrowserArgs(port, profileDir, windowSize)
+}
+
+func browserMaxHeapMB() string {
+	const defaultHeapMB = 512
+	value := strings.TrimSpace(os.Getenv("AICOS_BROWSER_MAX_HEAP_MB"))
+	if value == "" {
+		return strconv.Itoa(defaultHeapMB)
+	}
+	mb, err := strconv.Atoi(value)
+	if err != nil || mb < 256 || mb > 4096 {
+		return strconv.Itoa(defaultHeapMB)
+	}
+	return strconv.Itoa(mb)
 }
 
 // ConfigureHeadlessBrowserCommand exports process-group isolation for callers
 // outside package webai (such as Studio's TikTok crawler).
 func ConfigureHeadlessBrowserCommand(cmd *exec.Cmd) {
 	configureHeadlessBrowserCommand(cmd)
+}
+
+// ConfigureHeadlessBrowserOutput points child output at the OS null device.
+// Using io.Discard makes os/exec create copy pipes; Chromium descendants can
+// inherit those pipes and keep Cmd.Wait blocked after the browser is killed.
+func ConfigureHeadlessBrowserOutput(cmd *exec.Cmd) (func(), error) {
+	if cmd == nil {
+		return nil, fmt.Errorf("headless browser command is nil")
+	}
+	null, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		return nil, fmt.Errorf("open null device for browser output: %w", err)
+	}
+	cmd.Stdout, cmd.Stderr = null, null
+	return func() { _ = null.Close() }, nil
 }
 
 // TerminateBrowser exports graceful process-group termination for callers
@@ -139,11 +177,11 @@ func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 		return
 	default:
 	}
-	_ = cmd.Process.Signal(os.Interrupt)
+	interruptBrowserProcessTree(cmd)
 	select {
 	case <-processDone:
 	case <-time.After(3 * time.Second):
-		terminateBrowser(cmd)
+		killBrowserProcessTree(cmd)
 		<-processDone
 	}
 }

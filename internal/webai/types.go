@@ -115,8 +115,8 @@ type Account struct {
 	Platform             string          `json:"platform"`
 	AccountName          string          `json:"account_name"`
 	Email                string          `json:"email"`
-	SessionKey           string          `json:"session_key"`
-	Cookie               string          `json:"cookie"`
+	SessionKey           string          `json:"session_key,omitempty"`
+	Cookie               string          `json:"cookie,omitempty"`
 	CookieJar            []BrowserCookie `json:"cookie_jar,omitempty"`
 	Status               string          `json:"status"` // ok | cooldown | rate_limited | invalid | disconnected
 	Tier                 string          `json:"tier"`   // provider plan, when known

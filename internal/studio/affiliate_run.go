@@ -56,15 +56,18 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 		s.appendLog(id, "LỖI: Muse AI chưa sẵn sàng: "+reason)
 		return
 	}
-	sem := s.jobSlot()
-	select {
-	case sem <- struct{}{}:
-		defer func() { <-sem }()
-	case <-ctx.Done():
-		s.setStatus(id, StatusFailed, 100)
-		s.appendLog(id, "LỖI: job bị hủy khi đang chờ lượt render")
+	sem, slotErr := s.renderSlot(ctx)
+	if slotErr != nil {
+		if ctx.Err() != nil {
+			s.setStatus(id, StatusFailed, 100)
+			s.appendLog(id, "LỖI: job bị hủy khi đang chờ lượt render")
+		} else {
+			s.setStatus(id, StatusFailed, 100)
+			s.appendLog(id, "LỖI: "+slotErr.Error())
+		}
 		return
 	}
+	defer func() { <-sem }()
 
 	s.setStatus(id, StatusRunning, 5)
 	fail := func(err error) {

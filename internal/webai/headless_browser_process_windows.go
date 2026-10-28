@@ -20,7 +20,7 @@ func terminateBrowser(cmd *exec.Cmd) {
 		_ = cmd.Wait()
 		close(done)
 	}()
-	_ = cmd.Process.Signal(os.Interrupt)
+	_ = interruptBrowserProcessTree(cmd)
 	select {
 	case <-done:
 		return
@@ -28,9 +28,23 @@ func terminateBrowser(cmd *exec.Cmd) {
 	}
 	// Kill entire Windows process tree (renderer, GPU, utility children) so
 	// headless browser subprocesses never stay orphaned in memory.
+	_ = killBrowserProcessTree(cmd)
+	<-done
+}
+
+func interruptBrowserProcessTree(cmd *exec.Cmd) error {
+	if cmd == nil || cmd.Process == nil {
+		return os.ErrProcessDone
+	}
+	return cmd.Process.Signal(os.Interrupt)
+}
+
+func killBrowserProcessTree(cmd *exec.Cmd) error {
+	if cmd == nil || cmd.Process == nil {
+		return os.ErrProcessDone
+	}
 	if pid := cmd.Process.Pid; pid > 0 {
 		_ = exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(pid)).Run()
 	}
-	_ = cmd.Process.Kill()
-	<-done
+	return cmd.Process.Kill()
 }

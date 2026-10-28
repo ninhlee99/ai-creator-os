@@ -21,4 +21,4 @@ Cập nhật: 2026-10-25.
 
 ## Tài khoản AI tạo video
 
-Đăng nhập Web AI dùng Chromium cô lập; không đọc profile browser cá nhân. Trạng thái đăng nhập không xác nhận gói miễn phí hoặc credits. JSON backup/import chỉ dùng trong màn API Key.
+Đăng nhập Web AI dùng Chromium cô lập; không đọc profile browser cá nhân. Trạng thái đăng nhập không xác nhận gói miễn phí hoặc credits. JSON import/export nằm ở màn API Key; export mới không chứa credential, còn import giữ tương thích file legacy.

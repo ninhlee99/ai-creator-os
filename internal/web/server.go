@@ -57,12 +57,13 @@ type Server struct {
 	// phần tạo ảnh của Studio).
 	OnGeminiKeys func(keys []string)
 	Health       map[string]HealthChecker
-	// WebAI quản lý account và phiên AI Web đã được khôi phục từ backup.
+	// WebAI quản lý account và phiên AI Web. Store không được đưa vào backup
+	// ZIP plaintext vì chứa cookie và bearer session.
 	WebAI *webai.Store
 
 	// OutDir holds rendered videos (served at /media/).
 	OutDir string
-	// DataDir is the app data directory (sqlite DBs, jobs, tokens). The
+	// DataDir is the app data directory (sqlite DBs, jobs, credentials). The
 	// single place state lives; derived from the ledger path (R2-W7).
 	DataDir string
 	// Onboarding puts the server in first-run wizard mode: every route
@@ -86,8 +87,9 @@ type Server struct {
 
 	// authMu/authSessions: session đăng nhập dashboard (Đợt T). Token →
 	// thời điểm hết hạn; restart là đăng nhập lại.
-	authMu       sync.Mutex
-	authSessions map[string]time.Time
+	authMu        sync.Mutex
+	authSessions  map[string]time.Time
+	loginAttempts map[string]loginAttemptState
 
 	db        *sql.DB // read handle for decision/analytics queries
 	oauth     oauthStates

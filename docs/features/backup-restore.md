@@ -1,8 +1,8 @@
 # Sao lưu & khôi phục
 
 ## 1. Mục đích
-Chụp ảnh toàn bộ dữ liệu app thành file zip tải về; khôi phục bằng cách upload file —
-an toàn vì file thật chỉ bị thay khi app chưa mở DB.
+Chụp dữ liệu vận hành app thành file zip tải về; credential được lược bỏ khỏi archive.
+Khôi phục bằng cách upload file — file thật chỉ bị thay khi app chưa mở DB.
 
 ## 2. Kích hoạt
 - Ở Cài đặt · Hệ thống, khối "Sao lưu & khôi phục":
@@ -10,10 +10,12 @@ an toàn vì file thật chỉ bị thay khi app chưa mở DB.
   - `POST /settings/backup/restore` → `handleBackupRestore` (upload file).
 
 ## 3. Luồng vận hành chi tiết
-1. **Tạo** (`backup.Create`, `internal/backup/backup.go:43`): zip
-   - 5 database: `ledger.db`, `studio.db`, `products.db`, `accesstrade.db`, `webai.db`; mỗi DB được chụp bằng SQLite online backup nên archive không cần `-wal`/`-shm`
+1. **Tạo** (`backup.CreateValidatedToFile`): chụp DB SQLite qua online backup,
+   nén vào file tạm, kiểm tra archive trên đĩa rồi stream/tái đặt file — không
+   cần giữ toàn bộ ZIP (tới 512 MiB) trong RAM.
+   - 4 database: `ledger.db`, `studio.db`, `products.db`, `accesstrade.db`; `webai.db` bị loại vì chứa cookie/session bearer. SQLite online backup nên archive không cần `-wal`/`-shm`.
+   - Từ `ledger.db` bị lược `env:*`, API key, notification secret, webhook và password hash; cấu hình provider còn lại được giữ nhưng JSON credential fields bị xóa. Snapshot được `secure_delete` + `VACUUM` trước ZIP.
    - file đơn: `content_jobs.json`
-   - thư mục: `tokens/` (đệ quy 1 cấp, bỏ thư mục con)
    - input do người dùng tải lên và DB còn tham chiếu: `output/studio/models/` và
      `output/studio/uploads/` (ảnh nhân vật, ảnh listing, clip/audio đầu vào).
    - manifest `aicos-backup.json` (`{"app":"aicos","created":"..."}`)
@@ -22,7 +24,8 @@ an toàn vì file thật chỉ bị thay khi app chưa mở DB.
    "thư mục dữ liệu trống — không có gì để sao lưu". File tải về tên
    `aicos-backup-YYYYMMDD-HHMMSS.zip`; ghi decision `human/backup_create`.
 
-   **Cố ý loại trừ**: video render và cache trong `output/` ngoài hai thư mục
+   **Cố ý loại trừ**: OAuth token files trong `tokens/`, tài khoản Web AI,
+   credential settings, video render và cache trong `output/` ngoài hai thư mục
    input trên, cùng `avatars/` và model AI tải về. Ảnh nhân vật và upload đầu
    vào được giữ vì workflow viral/affiliate cần chúng để retry.
 2. **Khôi phục** (`handleBackupRestore`): upload (tối đa 512MB) → `backup.Stage`:
@@ -43,5 +46,7 @@ an toàn vì file thật chỉ bị thay khi app chưa mở DB.
   không bị đụng tới."`
 - Áp dụng chỉ khi không có handle DB nào mở (lúc startup) → không corrupt DB.
 
-## 5. API key rotation
-Không dùng key cloud. (Token OAuth nằm trong `tokens/` nên được sao lưu cùng.)
+## 5. Credential recovery
+Sau restore, nhập lại API key, env secret, notification credential và đăng nhập
+lại Web AI/TikTok. Đây là chủ ý bảo vệ: backup ZIP không chứa bearer credentials.
+Archive tạm và backup tự động được tạo với permission riêng tư của hệ điều hành.

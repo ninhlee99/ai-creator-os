@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,8 +15,8 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/backup"
 )
 
-// Sao lưu & khôi phục thư mục dữ liệu (R2-W7, R2-07), ở Cài đặt · Hệ
-// thống. Sao lưu = zip 5 database + file job + token, tải về máy.
+// Sao lưu & khôi phục thư mục dữ liệu (R2-W7, R2-07), ở Cài đặt · Hệ thống.
+// Archive được tạo/kiểm chứng trên file tạm rồi stream về client.
 // Khôi phục = upload zip → kiểm chứng → stage → yêu cầu restart app để
 // áp dụng (an toàn vì file chỉ được đổi khi chưa có handle DB nào mở).
 
@@ -50,7 +51,9 @@ func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
 		"Đã tạo bản sao lưu "+name+".", map[string]any{"file": name})
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
-	_, _ = io.Copy(w, f)
+	if _, err := io.Copy(w, f); err != nil {
+		log.Printf("web: stream backup download: %v", err)
+	}
 }
 
 // handleBackupRestore nhận file zip qua file tạm trên đĩa, kiểm chứng rồi stage
@@ -73,38 +76,22 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		failClosed("không đọc được file upload")
 		return
 	}
-	f, _, err := r.FormFile("file")
+	f, header, err := r.FormFile("file")
 	if err != nil {
 		failClosed("chưa chọn file sao lưu")
 		return
 	}
 	defer f.Close()
-
-	tmp, err := os.CreateTemp("", "aicos-restore-upload-*.zip")
-	if err != nil {
-		failClosed("không tạo được file tạm")
-		return
-	}
-	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
-
-	written, copyErr := io.Copy(tmp, io.LimitReader(f, int64(backup.MaxBackupArchiveBytes)+1))
-	closeErr := tmp.Close()
-	if copyErr != nil || closeErr != nil {
-		failClosed("không đọc được file sao lưu")
-		return
-	}
-	if uint64(written) > backup.MaxBackupArchiveBytes {
+	if header.Size < 0 || uint64(header.Size) > backup.MaxBackupArchiveBytes {
 		failClosed("file sao lưu vượt giới hạn 512 MiB")
 		return
 	}
-	zr, err := zip.OpenReader(tmpPath)
+	zr, err := zip.NewReader(f, header.Size)
 	if err != nil {
 		failClosed("file không phải zip hợp lệ")
 		return
 	}
-	defer zr.Close()
-	if err := backup.Stage(s.DataDir, &zr.Reader); err != nil {
+	if err := backup.Stage(s.DataDir, zr); err != nil {
 		failClosed(err.Error())
 		return
 	}

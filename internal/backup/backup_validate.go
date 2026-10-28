@@ -194,13 +194,6 @@ func validatedBackupEntryName(name string) (string, error) {
 			return name, nil
 		}
 	}
-	for _, dir := range snapshotDirs {
-		prefix := dir + "/"
-		base := strings.TrimPrefix(name, prefix)
-		if strings.HasPrefix(name, prefix) && !strings.Contains(base, "/") && validPortableFilename(base) {
-			return name, nil
-		}
-	}
 	for _, dir := range snapshotTreeDirs {
 		prefix := dir + "/"
 		if !strings.HasPrefix(name, prefix) {

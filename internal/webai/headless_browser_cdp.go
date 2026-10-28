@@ -2,7 +2,6 @@ package webai
 
 import (
 	"encoding/json"
-	"net"
 )
 
 // BrowserCookie stores provider cookie scope and metadata alongside legacy
@@ -31,11 +30,3 @@ type cdpCookie = BrowserCookie
 // CookieSnapshotUpdater persists the flat compatibility header and scoped jar
 // after a provider rotates cookies.
 type CookieSnapshotUpdater func(cookieHeader string, cookies []BrowserCookie) error
-
-func pickFreePort() (int, net.Listener, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, nil, err
-	}
-	return listener.Addr().(*net.TCPAddr).Port, listener, nil
-}

@@ -207,7 +207,9 @@ func flowOpenUpload(ctx context.Context, client *browserCDPClient, kind string) 
 	if err != nil || !clickedAdd {
 		return errors.New("Flow add ingredient button was not found in composer")
 	}
-	time.Sleep(1 * time.Second)
+	if _, err := flowWaitForValue(ctx, client, `!!document.querySelector('.add-menu-popover-container, flow-add-menu, [role="menu"]')`, 5*time.Second); err != nil {
+		return errors.New("Flow add menu did not open")
+	}
 
 	// 2. Click Upload button inside the popover
 	uploadBtn := `(() => {
@@ -221,7 +223,9 @@ func flowOpenUpload(ctx context.Context, client *browserCDPClient, kind string) 
 	if err != nil || !clickedUpload {
 		return errors.New("Flow upload media button was not found in add menu")
 	}
-	time.Sleep(500 * time.Millisecond)
+	if _, err := flowWaitForValue(ctx, client, `!!window.__lastFileInput || !!document.querySelector('input[type="file"]')`, 5*time.Second); err != nil {
+		return errors.New("Flow upload control did not open")
+	}
 	return nil
 }
 
@@ -305,7 +309,8 @@ func flowAttachOneFile(ctx context.Context, client *browserCDPClient, path, kind
 	})()`)
 
 	// Handle consent dialog if it appears ("Quyền sử dụng hình ảnh này" / "Tôi đồng ý")
-	time.Sleep(1 * time.Second)
+	// Consent dialog is optional; wait briefly for it to appear, then accept.
+	_, _ = flowWaitForValue(ctx, client, `!!document.querySelector('flow-upload-consent-dialog')`, 2*time.Second)
 	_, _ = flowWaitAndClick(ctx, client, `(() => {
 		const dlg = document.querySelector('flow-upload-consent-dialog');
 		if (!dlg) return null;
@@ -344,8 +349,6 @@ func flowAttachOneFile(ctx context.Context, client *browserCDPClient, path, kind
 	if !clickedAddToPrompt {
 		return fmt.Errorf("Flow %s upload did not produce 'Add to prompt' action", kind)
 	}
-	time.Sleep(1 * time.Second)
-
 	// Close add menu popover with Escape
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "rawKeyDown", "windowsVirtualKeyCode": 27}, client.sessionID)
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "windowsVirtualKeyCode": 27}, client.sessionID)

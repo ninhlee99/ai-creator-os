@@ -24,6 +24,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,8 +35,77 @@ const (
 	authSessionCookie   = "aicos_session"
 	authSessionTTL      = 30 * 24 * time.Hour
 	authPBKDF2Iter      = 100_000
-	authMinLen          = 4
+	authMinLen          = 15
 )
+
+const (
+	loginAttemptWindow = 15 * time.Minute
+	loginAttemptLimit  = 8
+	maxLoginAttemptIPs = 4096
+)
+
+type loginAttemptState struct {
+	count int
+	until time.Time
+}
+
+func (s *Server) loginClientKey(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil || host == "" {
+		host = r.RemoteAddr
+	}
+	return host
+}
+
+func (s *Server) loginRateLimited(r *http.Request, now time.Time) (bool, time.Duration) {
+	key := s.loginClientKey(r)
+	s.authMu.Lock()
+	defer s.authMu.Unlock()
+	if s.loginAttempts == nil {
+		s.loginAttempts = make(map[string]loginAttemptState)
+	}
+	for client, state := range s.loginAttempts {
+		if !now.Before(state.until) {
+			delete(s.loginAttempts, client)
+		}
+	}
+	state, ok := s.loginAttempts[key]
+	if !ok || state.count < loginAttemptLimit {
+		return false, 0
+	}
+	return true, state.until.Sub(now)
+}
+
+func (s *Server) recordLoginFailure(r *http.Request, now time.Time) {
+	key := s.loginClientKey(r)
+	s.authMu.Lock()
+	if s.loginAttempts == nil {
+		s.loginAttempts = make(map[string]loginAttemptState)
+	}
+	state := s.loginAttempts[key]
+	if !now.Before(state.until) {
+		state = loginAttemptState{until: now.Add(loginAttemptWindow)}
+	}
+	if _, exists := s.loginAttempts[key]; !exists && len(s.loginAttempts) >= maxLoginAttemptIPs {
+		oldestIP := ""
+		var oldest time.Time
+		for ip, candidate := range s.loginAttempts {
+			if oldestIP == "" || candidate.until.Before(oldest) {
+				oldestIP, oldest = ip, candidate.until
+			}
+		}
+		delete(s.loginAttempts, oldestIP)
+	}
+	state.count++
+	s.loginAttempts[key] = state
+	s.authMu.Unlock()
+}
+
+func (s *Server) clearLoginFailures(r *http.Request) {
+	s.authMu.Lock()
+	delete(s.loginAttempts, s.loginClientKey(r))
+	s.authMu.Unlock()
+}
 
 // pbkdf2SHA256 là PBKDF2-HMAC-SHA256 viết tay bằng stdlib (tránh thêm
 // dependency x/crypto chỉ cho một hàm băm mật khẩu).
@@ -228,6 +298,13 @@ const remoteBlockedHTML = `<!doctype html><html lang="vi"><meta charset="utf-8">
 // handleLogin: GET → trang đăng nhập; POST → kiểm tra mật khẩu.
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
+		if limited, wait := s.loginRateLimited(r, time.Now()); limited {
+			seconds := int(wait.Seconds()) + 1
+			w.Header().Set("Retry-After", strconv.Itoa(seconds))
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte("Quá nhiều lần đăng nhập sai. Thử lại sau ít phút."))
+			return
+		}
 		if err := r.ParseForm(); err != nil {
 			s.fail(w, err, "parse login")
 			return
@@ -235,10 +312,12 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		pw := r.PostFormValue("password")
 		stored, ok, _ := s.Ledger.GetSetting(KeyAuthPasswordHash)
 		if !ok || !checkAuthPassword(pw, stored) {
+			s.recordLoginFailure(r, time.Now())
 			// Chung chung cố ý — không tiết lộ "chưa đặt mật khẩu".
 			s.renderLogin(w, "Sai mật khẩu.", r.URL.Query().Get("next"))
 			return
 		}
+		s.clearLoginFailures(r)
 		tok, err := s.newAuthSession()
 		if err != nil {
 			s.fail(w, err, "new session")
