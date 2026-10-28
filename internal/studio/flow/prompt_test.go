@@ -30,3 +30,13 @@ func TestResolveNodePromptUsesFallbackWithoutInput(t *testing.T) {
 		t.Fatalf("fallback = %q", got)
 	}
 }
+
+func TestExpandPromptTemplateResolvesNestedVariables(t *testing.T) {
+	got := expandPromptTemplate("{{shot_prompt}}", map[string]any{
+		"shot_prompt":  "Show {{product_name}} clearly.",
+		"product_name": "Silk dress",
+	})
+	if got != "Show Silk dress clearly." {
+		t.Fatalf("nested prompt = %q", got)
+	}
+}

@@ -193,7 +193,7 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 					if len(result.CookieJar) > 0 {
 						fallbackCookies = result.CookieJar
 					}
-					result, err = webai.MuseChatHeadlessWithCookieSnapshot(ctx, fallbackCookie, fallbackCookies, promptText, func(line string) { progress(45, line) }, func(cookie string, cookies []webai.BrowserCookie) error {
+					result, err = webai.MuseChatHeadlessWithCookieSnapshotForKind(ctx, fallbackCookie, fallbackCookies, promptText, kind, func(line string) { progress(45, line) }, func(cookie string, cookies []webai.BrowserCookie) error {
 						usedMuseAccount.Cookie = cookie
 						usedMuseAccount.CookieJar = append([]webai.BrowserCookie(nil), cookies...)
 						if len(cookies) > 0 {
@@ -233,6 +233,17 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 				}
 				if err := os.WriteFile(s.Studio.OutputPath(filename), []byte(result.Text+"\n"), 0o644); err != nil {
 					return "", "", err
+				}
+				return filename, "", nil
+			}
+			if kind == "image" && len(result.MediaData) > 0 {
+				ext := museImageDataExtension(result.MediaData, result.MediaMime)
+				if ext == "" {
+					return "", "", fmt.Errorf("Muse blob is not a supported PNG, JPEG, or WebP image")
+				}
+				filename := fmt.Sprintf("muse_%s%s", safeAIFileID(usedMuseAccount.ID+title), ext)
+				if _, err := saveMuseImageData(s.Studio.OutputPath(filename), result.MediaData, result.MediaMime); err != nil {
+					return "", "", fmt.Errorf("could not save Muse image output: %w", err)
 				}
 				return filename, "", nil
 			}

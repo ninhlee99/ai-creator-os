@@ -44,7 +44,15 @@ func MuseChatHeadlessWithCookieUpdate(ctx context.Context, cookie, prompt string
 }
 
 func MuseChatHeadlessWithCookieSnapshot(ctx context.Context, cookie string, savedCookies []BrowserCookie, prompt string, progress func(string), updater CookieSnapshotUpdater) (out MuseReply, retErr error) {
-	return MuseChatHeadlessWithFilesAndThreadCookieSnapshot(ctx, cookie, savedCookies, prompt, nil, "", false, progress, updater)
+	return MuseChatHeadlessWithCookieSnapshotForKind(ctx, cookie, savedCookies, prompt, "", progress, updater)
+}
+
+// MuseChatHeadlessWithCookieSnapshotForKind waits for image/video attachments
+// when requested; text chats return with the assistant reply.
+func MuseChatHeadlessWithCookieSnapshotForKind(ctx context.Context, cookie string, savedCookies []BrowserCookie, prompt, kind string, progress func(string), updater CookieSnapshotUpdater) (out MuseReply, retErr error) {
+	return museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(
+		ctx, cookie, savedCookies, prompt, nil, "", false, "", museAttachmentKind(kind), progress, updater,
+	)
 }
 
 // MuseChatHeadlessWithFilesAndThreadCookieSnapshot runs a chat in a temporary
@@ -56,6 +64,10 @@ func MuseChatHeadlessWithFilesAndThreadCookieSnapshot(ctx context.Context, cooki
 // MuseChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName handles the
 // first-use name question without modifying the workflow prompt.
 func MuseChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.Context, cookie string, savedCookies []BrowserCookie, prompt string, files []string, threadURL string, newThread bool, accountName string, progress func(string), updater CookieSnapshotUpdater) (out MuseReply, retErr error) {
+	return museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx, cookie, savedCookies, prompt, files, threadURL, newThread, accountName, "video", progress, updater)
+}
+
+func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.Context, cookie string, savedCookies []BrowserCookie, prompt string, files []string, threadURL string, newThread bool, accountName, mediaKind string, progress func(string), updater CookieSnapshotUpdater) (out MuseReply, retErr error) {
 	if strings.TrimSpace(cookie) == "" && len(savedCookies) == 0 || strings.TrimSpace(prompt) == "" {
 		return out, errors.New("Muse headless renderer needs a saved session and nonempty prompt")
 	}
@@ -246,14 +258,20 @@ func MuseChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 			return out, err
 		}
 	}
-	reply, err = waitMuseVideoAttachment(ctx, client, reply, progress)
-	if err != nil {
-		return out, err
+	if mediaKind != "" {
+		reply, err = waitMuseMediaAttachment(ctx, client, reply, mediaKind, progress)
+		if err != nil {
+			return out, err
+		}
 	}
 	out.Text = reply.Text
 	out.MediaURLs = extractMuseMediaURLs(map[string]any{"links": reply.Links}, reply.Text)
 	out.ThreadURL = reply.Thread
-	for _, mediaURL := range reply.VideoLinks {
+	blobLinks := reply.VideoLinks
+	if mediaKind == "image" {
+		blobLinks = reply.ImageLinks
+	}
+	for _, mediaURL := range blobLinks {
 		if !strings.HasPrefix(mediaURL, "blob:") {
 			continue
 		}
@@ -267,11 +285,21 @@ func MuseChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	return out, nil
 }
 
+func museAttachmentKind(kind string) string {
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case "video", "image":
+		return strings.ToLower(strings.TrimSpace(kind))
+	default:
+		return ""
+	}
+}
+
 type museAssistantReply struct {
 	Count      int      `json:"count"`
 	Text       string   `json:"text"`
 	Links      []string `json:"links"`
 	VideoLinks []string `json:"videoLinks"`
+	ImageLinks []string `json:"imageLinks"`
 	Thread     string   `json:"thread"`
 }
 
@@ -328,13 +356,14 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 		if err := ctx.Err(); err != nil {
 			return museAssistantReply{}, err
 		}
-		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
+		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],imageLinks:n?[...n.querySelectorAll('img[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
 		if err == nil {
 			var snapshot struct {
 				Count      int      `json:"count"`
 				Text       string   `json:"text"`
 				Links      []string `json:"links"`
 				VideoLinks []string `json:"videoLinks"`
+				ImageLinks []string `json:"imageLinks"`
 				Busy       bool     `json:"busy"`
 				Thread     string   `json:"thread"`
 			}
@@ -344,7 +373,7 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 						stableAt = time.Now()
 					}
 					if time.Since(stableAt) >= 1800*time.Millisecond {
-						return museAssistantReply{Count: snapshot.Count, Text: snapshot.Text, Links: snapshot.Links, VideoLinks: snapshot.VideoLinks, Thread: snapshot.Thread}, nil
+						return museAssistantReply{Count: snapshot.Count, Text: snapshot.Text, Links: snapshot.Links, VideoLinks: snapshot.VideoLinks, ImageLinks: snapshot.ImageLinks, Thread: snapshot.Thread}, nil
 					}
 				} else {
 					lastText = snapshot.Text
@@ -361,8 +390,8 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 	return museAssistantReply{}, errors.New("Muse headless browser timed out waiting for reply")
 }
 
-func waitMuseVideoAttachment(ctx context.Context, client *browserCDPClient, reply museAssistantReply, progress func(string)) (museAssistantReply, error) {
-	if museReplyHasVideoAttachment(reply) {
+func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, reply museAssistantReply, mediaKind string, progress func(string)) (museAssistantReply, error) {
+	if museReplyHasMediaAttachment(reply, mediaKind) {
 		return reply, nil
 	}
 	deadline := time.Now().Add(8 * time.Minute)
@@ -371,7 +400,7 @@ func waitMuseVideoAttachment(ctx context.Context, client *browserCDPClient, repl
 		if err := ctx.Err(); err != nil {
 			return reply, err
 		}
-		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
+		value, err := client.evaluate(ctx, `(() => {const a=[...document.querySelectorAll('[data-message-item][data-message-role="assistant"]')];const n=a[a.length-1];return {count:a.length,text:n?(n.innerText||n.textContent||''):'',links:n?[...n.querySelectorAll('a[href],video[src],source[src],img[src]')].map(x=>x.href||x.src):[],videoLinks:n?[...n.querySelectorAll('video[src],source[src]')].map(x=>x.src):[],imageLinks:n?[...n.querySelectorAll('img[src]')].map(x=>x.src):[],busy:!!document.querySelector('[data-testid="hatch-composer-stop-button"]'),thread:location.href}})()`)
 		if err == nil {
 			var snapshot museAssistantReply
 			var state struct {
@@ -379,18 +408,19 @@ func waitMuseVideoAttachment(ctx context.Context, client *browserCDPClient, repl
 				Text       string   `json:"text"`
 				Links      []string `json:"links"`
 				VideoLinks []string `json:"videoLinks"`
+				ImageLinks []string `json:"imageLinks"`
 				Busy       bool     `json:"busy"`
 				Thread     string   `json:"thread"`
 			}
 			if raw, marshalErr := json.Marshal(value); marshalErr == nil && json.Unmarshal(raw, &state) == nil {
-				snapshot = museAssistantReply{Count: state.Count, Text: state.Text, Links: state.Links, VideoLinks: state.VideoLinks, Thread: state.Thread}
-				if snapshot.Count >= reply.Count && !state.Busy && museReplyHasVideoAttachment(snapshot) {
+				snapshot = museAssistantReply{Count: state.Count, Text: state.Text, Links: state.Links, VideoLinks: state.VideoLinks, ImageLinks: state.ImageLinks, Thread: state.Thread}
+				if snapshot.Count >= reply.Count && !state.Busy && museReplyHasMediaAttachment(snapshot, mediaKind) {
 					return snapshot, nil
 				}
 			}
 		}
 		if progress != nil && time.Since(lastProgress) >= 15*time.Second {
-			progress("MUSE_HEADLESS: chờ tệp video được đính kèm")
+			progress("MUSE_HEADLESS: chờ tệp media được đính kèm")
 			lastProgress = time.Now()
 		}
 		select {
@@ -399,23 +429,28 @@ func waitMuseVideoAttachment(ctx context.Context, client *browserCDPClient, repl
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
-	return reply, errors.New("Muse reply completed but its video attachment did not appear within 8 minutes")
+	return reply, fmt.Errorf("Muse reply completed but its %s attachment did not appear within 8 minutes", mediaKind)
 }
 
-func museReplyHasVideoAttachment(reply museAssistantReply) bool {
-	for _, link := range reply.Links {
+func museReplyHasMediaAttachment(reply museAssistantReply, mediaKind string) bool {
+	links := reply.VideoLinks
+	validExtensions := map[string]bool{".mp4": true, ".webm": true}
+	if mediaKind == "image" {
+		links = reply.ImageLinks
+		validExtensions = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".webp": true}
+	}
+	for _, link := range links {
 		if strings.HasPrefix(link, "blob:") {
-			continue
-		}
-		parsed, err := url.Parse(link)
-		if err == nil {
-			ext := strings.ToLower(filepath.Ext(parsed.Path))
-			if ext == ".mp4" || ext == ".webm" {
-				return true
-			}
+			return true
 		}
 	}
-	return len(reply.VideoLinks) > 0
+	for _, link := range reply.Links {
+		parsed, err := url.Parse(link)
+		if err == nil && validExtensions[strings.ToLower(filepath.Ext(parsed.Path))] {
+			return true
+		}
+	}
+	return false
 }
 
 func waitMuseUserMessage(ctx context.Context, client *browserCDPClient, prompt string, timeout time.Duration) error {

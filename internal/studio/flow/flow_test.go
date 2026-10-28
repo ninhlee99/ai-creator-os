@@ -449,6 +449,31 @@ func TestTC08_ExecuteAINodes(t *testing.T) {
 func TestTC09_FullPresetViralDanceExecution(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)
+	ctx.AnalyzeImages = func(_ context.Context, prompt string, imagePaths []string) (string, error) {
+		const marker = "Timestamps map one-to-one to images in attachment order: "
+		start := strings.Index(prompt, marker)
+		if start < 0 {
+			return "", fmt.Errorf("dance-analysis timestamps missing from prompt")
+		}
+		timeline := prompt[start+len(marker):]
+		if end := strings.Index(timeline, ". Return exactly "); end >= 0 {
+			timeline = timeline[:end]
+		}
+		frames := strings.Split(timeline, ", ")
+		if len(frames) != len(imagePaths) {
+			return "", fmt.Errorf("got %d timestamps for %d frames", len(frames), len(imagePaths))
+		}
+		var analysis strings.Builder
+		for i, frame := range frames {
+			fields := strings.Fields(frame)
+			if len(fields) < 4 {
+				return "", fmt.Errorf("invalid frame timestamp %q", frame)
+			}
+			timestamp := strings.TrimSuffix(fields[3], "s")
+			fmt.Fprintf(&analysis, "%d. %ss: synthetic frame has no visible performer; pose and gaze are unclear, framing stays fixed.\n", i+1, timestamp)
+		}
+		return analysis.String(), nil
+	}
 	ctx.FFmpegRunner = func(ctx context.Context, args ...string) error {
 		return runFlowTestFFmpeg(ctx, args...)
 	}

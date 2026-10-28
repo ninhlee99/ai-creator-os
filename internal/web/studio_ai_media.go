@@ -169,6 +169,47 @@ func saveMuseVideoData(output string, data []byte, contentType string) error {
 	return os.Rename(tmpPath, output)
 }
 
+func saveMuseImageData(output string, data []byte, contentType string) (string, error) {
+	if len(data) < 12 || len(data) > 50<<20 {
+		return "", fmt.Errorf("Muse image size is invalid or exceeds allowed limit")
+	}
+	ext := museImageDataExtension(data, contentType)
+	if ext == "" {
+		return "", fmt.Errorf("Muse blob is not a supported PNG, JPEG, or WebP image")
+	}
+	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+		return "", err
+	}
+	f, err := os.CreateTemp(filepath.Dir(output), ".aicos-muse-*")
+	if err != nil {
+		return "", err
+	}
+	tmpPath := f.Name()
+	defer os.Remove(tmpPath)
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	if err := f.Chmod(0o644); err != nil {
+		_ = f.Close()
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		return "", err
+	}
+	if err := verifyMuseMedia(tmpPath, ext); err != nil {
+		return "", err
+	}
+	if err := os.Rename(tmpPath, output); err != nil {
+		return "", err
+	}
+	return ext, nil
+}
+
 func museVideoDataExtension(data []byte, contentType string) string {
 	ext := ""
 	switch strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])) {
@@ -181,6 +222,27 @@ func museVideoDataExtension(data []byte, contentType string) string {
 		ext = ".mp4"
 	} else if len(data) >= 4 && string(data[:4]) == string([]byte{0x1a, 0x45, 0xdf, 0xa3}) {
 		ext = ".webm"
+	}
+	return ext
+}
+
+func museImageDataExtension(data []byte, contentType string) string {
+	ext := ""
+	switch strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])) {
+	case "image/png":
+		ext = ".png"
+	case "image/jpeg", "image/jpg":
+		ext = ".jpg"
+	case "image/webp":
+		ext = ".webp"
+	}
+	switch {
+	case len(data) >= 8 && string(data[:8]) == "\x89PNG\r\n\x1a\n":
+		ext = ".png"
+	case len(data) >= 2 && data[0] == 0xff && data[1] == 0xd8:
+		ext = ".jpg"
+	case len(data) >= 12 && string(data[:4]) == "RIFF" && string(data[8:12]) == "WEBP":
+		ext = ".webp"
 	}
 	return ext
 }

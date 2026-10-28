@@ -97,6 +97,42 @@ func TestMuseMediaURLsAllowQueryAndRequireTrustedHost(t *testing.T) {
 	}
 }
 
+func TestMuseHeadlessWaitsOnlyForRequestedMediaKinds(t *testing.T) {
+	for kind, want := range map[string]string{
+		"video":   "video",
+		" Video ": "video",
+		"image":   "image",
+		"script":  "",
+		"":        "",
+	} {
+		if got := museAttachmentKind(kind); got != want {
+			t.Errorf("museAttachmentKind(%q) = %q, want %q", kind, got, want)
+		}
+	}
+}
+
+func TestMuseReplyHasMediaAttachmentMatchesRequestedKind(t *testing.T) {
+	for _, target := range []struct {
+		name  string
+		reply museAssistantReply
+		kind  string
+		want  bool
+	}{
+		{"video blob", museAssistantReply{VideoLinks: []string{"blob:video"}}, "video", true},
+		{"image blob", museAssistantReply{ImageLinks: []string{"blob:image"}}, "image", true},
+		{"video blob is not image", museAssistantReply{VideoLinks: []string{"blob:video"}}, "image", false},
+		{"image blob is not video", museAssistantReply{ImageLinks: []string{"blob:image"}}, "video", false},
+		{"video URL", museAssistantReply{Links: []string{"https://muse.ai/files/a.mp4"}}, "video", true},
+		{"image URL", museAssistantReply{Links: []string{"https://muse.ai/files/a.webp"}}, "image", true},
+	} {
+		t.Run(target.name, func(t *testing.T) {
+			if got := museReplyHasMediaAttachment(target.reply, target.kind); got != target.want {
+				t.Errorf("museReplyHasMediaAttachment(%q) = %t, want %t", target.kind, got, target.want)
+			}
+		})
+	}
+}
+
 func TestFlowHeadlessFallbackIsRestrictedToPreSubmitErrors(t *testing.T) {
 	preSubmit := &FlowAPIUnavailableError{cause: errors.New("Flow denied API access")}
 	if !CanFallbackToGoogleFlowHeadless(fmt.Errorf("preflight: %w", preSubmit)) {

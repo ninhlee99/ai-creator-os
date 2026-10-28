@@ -518,10 +518,18 @@ func promptTemplateVariables(value any) map[string]any {
 
 func expandPromptTemplate(template string, variables map[string]any) string {
 	prompt := template
-	for key, value := range variables {
-		text := strings.TrimSpace(fmt.Sprint(value))
-		prompt = strings.ReplaceAll(prompt, "{{"+key+"}}", text)
-		prompt = strings.ReplaceAll(prompt, "{"+key+"}", text)
+	// Values may themselves contain template variables. Repeat substitution so
+	// nested prompts resolve independently of Go map iteration order.
+	for pass := 0; pass <= len(variables); pass++ {
+		previous := prompt
+		for key, value := range variables {
+			text := strings.TrimSpace(fmt.Sprint(value))
+			prompt = strings.ReplaceAll(prompt, "{{"+key+"}}", text)
+			prompt = strings.ReplaceAll(prompt, "{"+key+"}", text)
+		}
+		if prompt == previous {
+			break
+		}
 	}
 	return strings.Join(strings.Fields(prompt), " ")
 }

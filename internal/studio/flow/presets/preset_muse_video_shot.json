@@ -69,7 +69,27 @@
       "x": 420,
       "y": 420,
       "params": {
-        "template": "Create exactly {{duration_seconds}} seconds of one continuous vertical 9:16 video shot. Render now; never ask a question, request confirmation, or wait. Treat this as an independent shot: ignore prior chats, products, locations, camera choices and instructions. Use only current attachments and this prompt. Reference priority: the first {{character_reference_count}} still images define the character's identity, face, hair and body proportions. If previous_shot_reference_count is 1, the next still is a frame from the previous shot; use it only for visual continuity and the same outfit, never as the identity or product source. Product-only references after that frame define the exact product; copy visible category, color, silhouette, fit and details. If text conflicts with a product reference, follow the image. Preserve the visible front/closure exactly; do not infer buttons, openings, material or logos that cannot be seen. If uncertain, make the conservative visual match and continue without asking. Use an attached reference video only for visible movement and framing, never its person, outfit, location, product or duration. Wardrobe: {{outfit_desc}} {{wardrobe_styling}}. Setting: {{environment_desc}} {{scene_setting}}. Lighting: {{lighting_desc}} {{lens_light}}. Product: {{product_name}}. Category: {{product_category}}. Visible attributes: {{product_description}}. Required use mode: {{product_use_mode}}. Show the product during this real use action: {{action}}; {{product_interaction}}. Product focus: {{product_focus}}. Framing: {{framing}}. Camera movement: {{camera_move}}. Emotional beat: {{emotion_beat}}. Motion direction: {{motion_direction}}. Additional shot direction: {{shot_prompt}}. Follow current shot directions when consistent with the reference images. Keep natural body mechanics, stable anatomy and one continuous camera move. No cuts, product substitutions, unrelated clothing or accessories, captions, added text, watermark or unsupported claims."
+        "template": "Create exactly {{duration_seconds}} seconds of one continuous vertical 9:16 video shot. Render now; never ask a question, request confirmation, or wait. Treat this as an independent shot: ignore prior chats, products, locations, camera choices and instructions. Use only current attachments and this prompt. Reference priority: the first {{character_reference_count}} still images define the character's identity, face, hair and body proportions. If previous_shot_reference_count is 1, the next still is a frame from the previous shot; use it only for visual continuity and the same outfit, never as the identity or product source. Product-only references after that frame define the exact product; copy visible category, color, silhouette, fit and details. If text conflicts with a product reference, follow the image. Preserve the visible front/closure exactly; do not infer buttons, openings, material or logos that cannot be seen. If uncertain, make the conservative visual match and continue without asking. Use an attached reference video only for visible movement and framing, never its person, outfit, location, product or duration. Wardrobe: {{outfit_desc}} {{wardrobe_styling}}. Setting: {{environment_desc}} {{scene_setting}}. Lighting: {{lighting_desc}} {{lens_light}}. Product: {{product_name}}. Category: {{product_category}}. Visible attributes: {{product_description}}. Required use mode: {{product_use_mode}}. Show the product during this real use action: {{action}}; {{product_interaction}}. Product focus: {{product_focus}}. Framing: {{framing}}. Camera movement: {{camera_move}}. Emotional beat: {{emotion_beat}}. Motion direction: {{motion_direction}}. Additional shot direction: {{shot_prompt}}. Follow current shot directions when consistent with the reference images. Keep natural body mechanics, stable anatomy and one continuous camera move. No cuts, product substitutions, unrelated clothing or accessories, captions, added text, watermark or unsupported claims.",
+        "variables": {
+          "outfit_desc": "the selected character's outfit",
+          "wardrobe_styling": "preserve the reference outfit",
+          "environment_desc": "a natural product-use setting",
+          "scene_setting": "keep the setting consistent",
+          "lighting_desc": "soft realistic lighting",
+          "lens_light": "natural lens and light",
+          "product_name": "the featured product",
+          "product_category": "the listed product",
+          "product_description": "match visible listing details",
+          "product_use_mode": "truthful real-world use",
+          "action": "demonstrate the product naturally",
+          "product_interaction": "keep the product visible and correctly used",
+          "product_focus": "keep the product clear in frame",
+          "framing": "medium shot",
+          "camera_move": "steady smooth movement",
+          "emotion_beat": "confident and warm",
+          "motion_direction": "natural human movement",
+          "shot_prompt": "show the featured product in a clear, truthful use demonstration"
+        }
       }
     },
     {
