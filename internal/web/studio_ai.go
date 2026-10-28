@@ -51,6 +51,10 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 		back("err", "Google Flow hiện dùng để tạo video; dùng Muse Chat cho kịch bản và hình ảnh.")
 		return
 	}
+	if r.PostFormValue("confirm_flow_credits") != "1" {
+		back("err", "Xác nhận yêu cầu có thể dùng credits tài khoản trước khi tạo nội dung.")
+		return
+	}
 	if prompt == "" || len([]rune(prompt)) > 5000 {
 		back("err", "Nhập prompt từ 1 đến 5.000 ký tự.")
 		return
@@ -228,6 +232,21 @@ func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) 
 					return "", "", err
 				}
 				if err := os.WriteFile(s.Studio.OutputPath(filename), []byte(result.Text+"\n"), 0o644); err != nil {
+					return "", "", err
+				}
+				return filename, "", nil
+			}
+			if kind == "video" && len(result.MediaData) > 0 {
+				filename := fmt.Sprintf("muse_%s.mp4", safeAIFileID(usedMuseAccount.ID+title))
+				outPath := s.Studio.OutputPath(filename)
+				rawPath := outPath + ".source" + museVideoDataExtension(result.MediaData, result.MediaMime)
+				defer os.Remove(rawPath)
+				progress(80, "MUSE_BLOB_SAVE: lưu video gốc")
+				if err := saveMuseVideoData(rawPath, result.MediaData, result.MediaMime); err != nil {
+					return "", "", fmt.Errorf("could not save Muse video output: %w", err)
+				}
+				progress(86, "VIDEO_UPSCALE: xuất master "+strings.ToUpper(outputResolution))
+				if err := studio.UpscaleVideo(ctx, rawPath, outPath, outputAspect, outputResolution); err != nil {
 					return "", "", err
 				}
 				return filename, "", nil

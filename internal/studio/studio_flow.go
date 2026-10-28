@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 // GetFlowStore trả về bộ lưu trữ đồ thị ComfyUI của Studio (khởi tạo lười nếu cần).
@@ -79,13 +82,39 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 		}
 		return analyzer.AnalyzeImages(ctx, prompt, refs)
 	}
+	var museSessionOnce sync.Once
+	var museSession *WebAISession
+	var museSessionErr error
+	museRender := func(renderCtx context.Context, isNewThread bool, threadURL, threadTitle, prompt string, files []string, outputPath string) (string, error) {
+		if !services.MuseCreditsAcknowledged {
+			return "", fmt.Errorf("cần xác nhận workflow có thể dùng credits Muse AI trước khi tạo video")
+		}
+		museSessionOnce.Do(func() {
+			museSession, museSessionErr = s.GetWebAISessionForEmail("museai", services.MuseAccountEmail)
+		})
+		if museSessionErr != nil {
+			return "", museSessionErr
+		}
+		accountName := services.MuseAccountName
+		if strings.TrimSpace(accountName) == "" && museSession != nil {
+			accountName = museSession.AccountName
+		}
+		return s.RenderMuseChat(renderCtx, museSession, MuseChatRequest{
+			NewThread: isNewThread, ThreadURL: threadURL, Title: threadTitle,
+			AccountName: accountName,
+			Prompt:      prompt, Files: append([]string(nil), files...),
+		}, outputPath, func(message string) {})
+	}
 
 	execCtx := &flow.ExecutionContext{
-		Context:        ctx,
-		RunID:          runID,
-		WorkDir:        workDir,
-		OutDir:         s.outDir,
-		WorkflowInputs: workflowInputs,
+		Context:               ctx,
+		RunID:                 runID,
+		WorkDir:               workDir,
+		OutDir:                s.outDir,
+		WorkflowInputs:        workflowInputs,
+		MuseAccountEmail:      services.MuseAccountEmail,
+		MuseAccountName:       services.MuseAccountName,
+		MuseRenderWithSession: museRender,
 		Log: func(msg string) {
 			// Callback ghi log
 		},
@@ -97,6 +126,16 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			}
 		},
 		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error) {
+			switch strings.ToLower(strings.TrimSpace(platform)) {
+			case webai.PlatformMuseAI:
+				if !services.MuseCreditsAcknowledged {
+					return "", fmt.Errorf("cần xác nhận workflow có thể dùng Muse AI credits trước khi tạo video")
+				}
+			case webai.PlatformGoogleFlow:
+				if !services.GoogleFlowCreditsAcknowledged {
+					return "", fmt.Errorf("cần xác nhận workflow có thể dùng Google Flow credits trước khi tạo video")
+				}
+			}
 			req := WebAIVideoRequest{
 				Mode:        "ingredients",
 				Prompt:      prompt,

@@ -144,7 +144,10 @@
         </div>
 
         {{if .Viral.CharacterEditorReady}}
-        <input type="hidden" name="confirm_flow_credits" id="viral-flow-credit-consent" value="1">
+        <label style="display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;line-height:1.5">
+          <input type="checkbox" name="confirm_flow_credits" id="viral-flow-credit-consent" value="1" required style="margin-top:4px">
+          <span>Tôi xác nhận video có thể sử dụng Muse AI credits của tài khoản. Trạng thái đăng nhập không xác nhận gói miễn phí.</span>
+        </label>
         {{else}}
         <p class="err" style="margin:0 0 14px">Thay nhân vật đang tạm dừng: {{.Viral.CharacterEditorStatus}}. Phân tích storyboard vẫn dùng được.</p>
         {{end}}

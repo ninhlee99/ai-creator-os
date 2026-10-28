@@ -21,11 +21,14 @@ const (
 	museUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
 )
 
-// MuseReply contains the text returned by Muse and media links explicitly
-// present in that reply. Muse's chat transport is an internal Noise gateway.
+// MuseReply contains Muse response text and media collected from its chat UI
+// or internal gateway transport.
 type MuseReply struct {
 	Text         string
 	MediaURLs    []string
+	MediaData    []byte
+	MediaMime    string
+	ThreadURL    string
 	CookieHeader string
 	CookieJar    []BrowserCookie
 }

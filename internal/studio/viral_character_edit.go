@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
-func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
+func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams, museCreditsAcknowledged bool) {
 	s.appendLog(jobID, "SOURCE_VALIDATION_START: kiểm tra video nguồn, ảnh nhân vật, Muse AI và visual QC")
 	sourceDuration := probeDuration(context.Background(), p.SampleVideo)
 	if sourceDuration <= 0 {
@@ -110,7 +112,7 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams) {
 		}
 		s.setStatus(jobID, StatusRunning, 10)
 		s.appendLog(jobID, fmt.Sprintf("WORKFLOW_START: chạy preset Viral qua Workflow API · Muse AI · %.2fs · %s", sourceDuration, resolution))
-		flowRun, err := s.ExecuteFlowGraphWithInputs(ctx, "viral-"+jobID, graph, nil)
+		flowRun, err := s.ExecuteFlowGraphWithInputs(ctx, "viral-"+jobID, graph, nil, flow.ExecutionServices{MuseCreditsAcknowledged: museCreditsAcknowledged})
 		if err != nil {
 			s.failViralJob(jobID, fmt.Errorf("Workflow API Viral thất bại: %w", err))
 			return

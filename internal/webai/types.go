@@ -86,7 +86,7 @@ func SupportedPlatforms() []PlatformInfo {
 			Badge:       "Tạo nội dung",
 			Description: "Viết kịch bản, tạo ảnh và video trong Muse Chat",
 			AuthGuide:   "Đăng nhập tài khoản Meta có quyền truy cập Muse Chat",
-			Placeholder: "Dùng phiên Muse đã lưu; gọi gateway trực tiếp",
+			Placeholder: "Dùng phiên Muse đã lưu; tạo video bằng Chrome/Edge ẩn",
 			Features:    nil,
 		},
 		{

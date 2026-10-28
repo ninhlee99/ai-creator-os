@@ -32,17 +32,12 @@ func executeMuseAINeuralRender(ctx *ExecutionContext, node *FlowNode, inputs map
 	sampleFrame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_sample_frame.jpg", node.ID))
 
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
-
-	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
-	isNewThread := ctx.startMuseThread()
-
-	ctx.Log(fmt.Sprintf("Muse AI: gửi prompt tạo video (thread mới: %v, %d ảnh tham chiếu)", isNewThread, len(refFiles)))
-
-	if err := callMuseChatMCP(ctx.Context, isNewThread, threadTitle, masterPrompt, refFiles, outVideo); err != nil {
-		return nil, fmt.Errorf("Muse AI không tạo được video: %w", err)
+	ctx.Log(fmt.Sprintf("Muse AI: gửi prompt tạo video (%d ảnh tham chiếu)", len(refFiles)))
+	if err := renderMuseWorkflowNode(ctx, threadTitle, masterPrompt, refFiles, outVideo); err != nil {
+		return nil, err
 	}
-	if !fileExists(outVideo) {
-		return nil, fmt.Errorf("Muse AI chưa tạo file video đầu ra")
+	if !fileExists(outVideo) || !isVideoFile(outVideo) {
+		return nil, fmt.Errorf("Muse AI chưa tạo file video đầu ra hợp lệ")
 	}
 
 	// Trích xuất 1 frame mẫu cho Preview

@@ -58,7 +58,10 @@
         </div>
       </div>
 
-      <input type="hidden" name="confirm_flow_credits" id="confirm-flow-credits" value="1">
+      <label style="display:flex;align-items:flex-start;gap:10px;margin-top:16px;line-height:1.5">
+        <input type="checkbox" name="confirm_flow_credits" id="confirm-flow-credits" value="1" required style="margin-top:4px">
+        <span>Tôi xác nhận yêu cầu có thể sử dụng credits của tài khoản Muse AI hoặc Google Flow. Trạng thái đăng nhập không xác nhận gói miễn phí.</span>
+      </label>
 
       <div style="display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:16px;margin-top:18px">
         <button type="submit" class="btn btn-primary" style="font-weight:700;padding:11px 18px">Tạo nội dung</button>
@@ -72,8 +75,6 @@
   var kind=document.getElementById('kind');
   var aspect=document.getElementById('aspect-field');
   var resolution=document.getElementById('output-resolution-field');
-  var consent=document.getElementById('flow-credit-consent-wrap');
-  var consentInput=document.getElementById('confirm-flow-credits');
   var count=document.getElementById('prompt-count');
   var prompt=document.getElementById('prompt');
   function update(){
@@ -82,8 +83,6 @@
     if(flow&&kind.value!=='video')kind.value='video';
     aspect.style.display=kind.value==='video'?'':'none';
     resolution.style.display=kind.value==='video'?'':'none';
-    if(consent) consent.style.display='none';
-    if(consentInput) consentInput.value='1';
   }
   prompt.addEventListener('input',function(){count.textContent=prompt.value.length+' / 5000';});
   provider.addEventListener('change',update);

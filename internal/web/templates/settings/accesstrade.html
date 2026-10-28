@@ -46,10 +46,10 @@
           <option value="">Chưa chọn kênh</option>
           {{range .ATHunterAccounts}}<option value="{{.ID}}" {{if eq .ID $.ATHunterAccountID}}selected{{end}}>{{.Username}} · {{.Theme}}</option>{{end}}
         </select>
-        <small>Tạo video cần dữ liệu offer, ảnh tham chiếu, producer sẵn sàng và quyền dùng Flow credits.</small>
+        <small>Tạo video cần dữ liệu offer, ảnh tham chiếu, producer sẵn sàng và quyền dùng Muse AI credits.</small>
         <label>Số video mỗi lần săn</label>
         <input type="number" name="hunter_videos" min="0" max="10" value="{{.ATAuto.HunterVideos}}">
-        <label class="check"><input type="checkbox" name="hunter_flow_credits" value="1"{{if .ATAuto.HunterFlowCredits}} checked{{end}}> Cho phép Google Flow dùng credits khi tạo video tự động</label>
+        <label class="check"><input type="checkbox" name="hunter_flow_credits" value="1"{{if .ATAuto.HunterFlowCredits}} checked{{end}}> Cho phép Muse AI dùng credits khi tạo video tự động</label>
       </div>
       <div class="field">
         <label class="check"><input type="checkbox" name="ordersync_on" value="1"{{if .ATAuto.OrderSyncOn}} checked{{end}}> Tự đồng bộ đơn hàng</label>

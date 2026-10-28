@@ -17,6 +17,15 @@
     }
   };
 
+  const flowGraphMayUseProviderCredits = graph => (graph?.nodes || []).some(node => {
+    const type = String(node?.type || '').toLowerCase();
+    const defaultOutputType = type === 'custom_web_ai' ? 'video' : type === 'custom_universal_ai' ? 'auto' : 'text';
+    const outputType = String(node?.params?.output_type || defaultOutputType).toLowerCase();
+    return type === 'muse_ai_video' || type === 'muse_ai_neural_render' || type === 'google_flow_video' ||
+      (['custom_web_ai', 'custom_ai_prompt', 'custom_universal_ai'].includes(type) && outputType === 'video') ||
+      type === 'workflow_map' || type === 'workflow_call' || type.startsWith('workflow_call_');
+  });
+
   const FLOW_CLIPBOARD_PREFIX = 'MIUNOVA_FLOW_CLIPBOARD_V1:';
   const FLOW_CLIPBOARD_STORAGE_KEY = 'miunova.workflow.clipboard.v1';
 
@@ -2219,6 +2228,9 @@
         return;
       }
 
+      const providerCreditsAcknowledged = flowGraphMayUseProviderCredits(this.graph);
+      if (providerCreditsAcknowledged && !window.confirm('Workflow này có thể gửi nội dung tới Muse AI hoặc Google Flow và dùng credits của tài khoản. Chỉ tiếp tục nếu bạn cho phép dùng credits. Tiếp tục?')) return;
+
       if (runPanel) runPanel.hidden = false;
       this.renderWorkflowOutputs({});
 
@@ -2250,7 +2262,12 @@
         const resp = await fetch('/api/flow/execute', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ graph: this.graph, inputs: workflowInputs })
+          body: JSON.stringify({
+            graph: this.graph,
+            inputs: workflowInputs,
+            muse_credits_acknowledged: providerCreditsAcknowledged,
+            google_flow_credits_acknowledged: providerCreditsAcknowledged
+          })
         });
         const data = await resp.json();
         if (!data.ok) {
@@ -4321,6 +4338,15 @@
         params: workflowInputs.length ? detectedFlatParams : (Object.keys(detectedNodeParams).length > 0 ? detectedNodeParams : detectedFlatParams)
       };
 
+      if (flowGraphMayUseProviderCredits(this.graph)) {
+        samplePayloadFlat.muse_credits_acknowledged = false;
+        samplePayloadNode.muse_credits_acknowledged = false;
+        samplePayloadFlat.google_flow_credits_acknowledged = false;
+        samplePayloadNode.google_flow_credits_acknowledged = false;
+        const guide = document.getElementById('api-guide-text');
+        if (guide) guide.innerText = 'Workflow có thể dùng Muse AI hoặc Google Flow credits. Chỉ đặt trường xác nhận provider tương ứng thành true khi bên gọi đã cho phép.';
+      }
+
       const jsonStrFlat = JSON.stringify(samplePayloadFlat, null, 2);
       const jsonStrNode = JSON.stringify(samplePayloadNode, null, 2);
 
@@ -4368,6 +4394,12 @@
       } catch (err) {
         window.showAppNotice('Cú pháp JSON không hợp lệ: ' + err.message);
         return;
+      }
+
+      if (flowGraphMayUseProviderCredits(this.graph)) {
+        if (!window.confirm('API test này có thể gửi nội dung tới Muse AI hoặc Google Flow và dùng credits của tài khoản. Chỉ tiếp tục nếu bạn cho phép dùng credits. Tiếp tục?')) return;
+        payload.muse_credits_acknowledged = true;
+        payload.google_flow_credits_acknowledged = true;
       }
 
       if (statusEl) {

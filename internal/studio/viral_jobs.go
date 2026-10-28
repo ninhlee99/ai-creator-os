@@ -88,11 +88,13 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if p.Topic == "" {
 		p.Topic = "Video viral"
 	}
+	museCreditsAcknowledged := p.FlowCreditsAcknowledged
+	p.FlowCreditsAcknowledged = false
 	id, err := s.insertJob(KindViral, p.Topic, p)
 	if err != nil {
 		return "", err
 	}
-	go s.runViral(id, p)
+	go s.runViral(id, p, museCreditsAcknowledged)
 	return id, nil
 }
 
@@ -112,12 +114,12 @@ func (s *Studio) ListViralJobs(limit int) []Job {
 }
 
 // runViral runs full-character source editing on the selected viral video.
-func (s *Studio) runViral(jobID string, p ViralParams) {
+func (s *Studio) runViral(jobID string, p ViralParams, museCreditsAcknowledged bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.setStatus(jobID, StatusFailed, 100)
 			s.appendLog(jobID, fmt.Sprintf("LỖI panic (%v) — job dừng an toàn.", r))
 		}
 	}()
-	s.runViralFullCharacterEdit(jobID, p)
+	s.runViralFullCharacterEdit(jobID, p, museCreditsAcknowledged)
 }

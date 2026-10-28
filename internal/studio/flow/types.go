@@ -114,32 +114,36 @@ type NodeDefinition struct {
 // ExecutionContext chứa dữ liệu môi trường và các hàm callback khi chạy node.
 type MuseThreadState struct {
 	Started bool
+	URL     string
 }
 
 type ExecutionContext struct {
-	Context           context.Context
-	RunID             string
-	WorkDir           string
-	OutDir            string
-	AccountID         int
-	MuseThread        *MuseThreadState
-	Log               func(msg string)
-	NodeStatus        func(nodeID string, state NodeState)
-	EngineCall        func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
-	MuseRender        func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error
-	MediaGen          any
-	VisionEval        func(ctx context.Context, prompt string, imagePath string) (string, error)
-	AnalyzeImages     func(ctx context.Context, prompt string, imagePaths []string) (string, error)
-	GenerateText      func(ctx context.Context, systemPrompt, prompt string) (string, error)
-	SynthesizeSpeech  func(ctx context.Context, text, voice string) ([]byte, error)
-	GenerateImage     func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
-	CharacterPhotos   func(accountID int64) ([]string, error)
-	FFmpegRunner      func(ctx context.Context, args ...string) error
-	WorkflowInputs    map[string]any
-	ResolveWorkflow   func(id string) (*FlowGraph, error)
-	ResolveProduct    func(ctx context.Context, id int64) (FlowProduct, error)
-	ResolveRadarVideo func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
-	WorkflowStack     []string
+	Context               context.Context
+	RunID                 string
+	WorkDir               string
+	OutDir                string
+	AccountID             int
+	MuseThread            *MuseThreadState
+	MuseAccountEmail      string
+	MuseAccountName       string
+	Log                   func(msg string)
+	NodeStatus            func(nodeID string, state NodeState)
+	EngineCall            func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
+	MuseRender            func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error
+	MuseRenderWithSession func(ctx context.Context, isNewThread bool, threadURL, threadTitle, prompt string, files []string, outPath string) (string, error)
+	MediaGen              any
+	VisionEval            func(ctx context.Context, prompt string, imagePath string) (string, error)
+	AnalyzeImages         func(ctx context.Context, prompt string, imagePaths []string) (string, error)
+	GenerateText          func(ctx context.Context, systemPrompt, prompt string) (string, error)
+	SynthesizeSpeech      func(ctx context.Context, text, voice string) ([]byte, error)
+	GenerateImage         func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
+	CharacterPhotos       func(accountID int64) ([]string, error)
+	FFmpegRunner          func(ctx context.Context, args ...string) error
+	WorkflowInputs        map[string]any
+	ResolveWorkflow       func(id string) (*FlowGraph, error)
+	ResolveProduct        func(ctx context.Context, id int64) (FlowProduct, error)
+	ResolveRadarVideo     func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
+	WorkflowStack         []string
 }
 
 func (ctx *ExecutionContext) startMuseThread() bool {
@@ -178,8 +182,12 @@ type FlowRadarVideo struct {
 
 // ExecutionServices connects domain data owned by the host application.
 type ExecutionServices struct {
-	ResolveProduct    func(ctx context.Context, id int64) (FlowProduct, error)
-	ResolveRadarVideo func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
+	ResolveProduct                func(ctx context.Context, id int64) (FlowProduct, error)
+	ResolveRadarVideo             func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
+	MuseAccountEmail              string
+	MuseAccountName               string
+	MuseCreditsAcknowledged       bool
+	GoogleFlowCreditsAcknowledged bool
 }
 
 // NodeExecutor là hàm thực thi một node dựa trên inputs đã tính toán từ các node trước.

@@ -16,7 +16,7 @@ Dùng video TikTok Radar đã chọn làm reference; lưu URL/ID nguồn trên j
 
 ## Provider jobs
 
-Muse AI/Google Flow có thể hỗ trợ một số media generation. Session và credits phụ thuộc provider; không được mô tả là miễn phí nếu chưa xác minh. Lỗi sau submit cần đối chiếu trước retry.
+Muse AI/Google Flow có thể hỗ trợ một số media generation. Form Tạo nội dung, render Affiliate/Viral, retry/remix và mỗi lần chạy Workflow Studio cần xác nhận có thể dùng credits. Muse workflow dùng Chrome/Edge/Chromium cài trên máy chạy app ở chế độ headless và account Muse đã kết nối. Webhook API kiểm tra graph và subworkflow, kể cả custom video node: gửi `muse_credits_acknowledged: true` cho Muse hoặc `google_flow_credits_acknowledged: true` cho Google Flow. Session không xác nhận gói miễn phí; không được mô tả là miễn phí nếu chưa xác minh. Lỗi sau submit cần đối chiếu trước retry.
 
 ## Workflow Studio
 

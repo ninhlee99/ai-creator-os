@@ -136,7 +136,7 @@ func (s *Server) handleATHunt(w http.ResponseWriter, r *http.Request) {
 		want = 0
 	}
 	if want > 0 && !s.atSettingOn(automation.KeyATHunterFlowCredits, false) {
-		productionNote = "Chưa bật quyền dùng Google Flow credits cho video hunter."
+		productionNote = "Chưa bật quyền dùng Muse AI credits cho video hunter."
 		want = 0
 	}
 	if s.Studio != nil && want > 0 {

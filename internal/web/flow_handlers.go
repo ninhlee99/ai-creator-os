@@ -201,9 +201,13 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		GraphID string          `json:"graph_id"`
-		Graph   *flow.FlowGraph `json:"graph"`
-		Inputs  map[string]any  `json:"inputs"`
+		GraphID                       string          `json:"graph_id"`
+		Graph                         *flow.FlowGraph `json:"graph"`
+		Inputs                        map[string]any  `json:"inputs"`
+		MuseAccountEmail              string          `json:"muse_account_email"`
+		MuseAccountName               string          `json:"muse_account_name"`
+		MuseCreditsAcknowledged       bool            `json:"muse_credits_acknowledged"`
+		GoogleFlowCreditsAcknowledged bool            `json:"google_flow_credits_acknowledged"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"ok":false,"error":"Invalid JSON"}`, http.StatusBadRequest)
@@ -227,6 +231,14 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusBadRequest)
 		return
 	}
+	if flowGraphRequiresMuseCredits(targetGraph, fStore, map[string]bool{}) && !req.MuseCreditsAcknowledged {
+		http.Error(w, `{"ok":false,"error":"Workflow có thể dùng Muse AI credits; xác nhận bằng muse_credits_acknowledged=true trước khi chạy."}`, http.StatusBadRequest)
+		return
+	}
+	if flowGraphRequiresGoogleFlowCredits(targetGraph, fStore, map[string]bool{}) && !req.GoogleFlowCreditsAcknowledged {
+		http.Error(w, `{"ok":false,"error":"Workflow có thể dùng Google Flow credits; xác nhận bằng google_flow_credits_acknowledged=true trước khi chạy."}`, http.StatusBadRequest)
+		return
+	}
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())
 
@@ -244,7 +256,12 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 			flowCancelMu.Unlock()
 			cancel()
 		}()
-		_, _ = s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, targetGraph, req.Inputs, s.flowExecutionServices())
+		services := s.flowExecutionServices()
+		services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
+		services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
+		services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
+		services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
+		_, _ = s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, targetGraph, req.Inputs, services)
 	}()
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -269,9 +286,13 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		GraphID string                 `json:"graph_id"`
-		Graph   *flow.FlowGraph        `json:"graph"`
-		Params  map[string]interface{} `json:"params"`
+		GraphID                       string                 `json:"graph_id"`
+		Graph                         *flow.FlowGraph        `json:"graph"`
+		Params                        map[string]interface{} `json:"params"`
+		MuseAccountEmail              string                 `json:"muse_account_email"`
+		MuseAccountName               string                 `json:"muse_account_name"`
+		MuseCreditsAcknowledged       bool                   `json:"muse_credits_acknowledged"`
+		GoogleFlowCreditsAcknowledged bool                   `json:"google_flow_credits_acknowledged"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"ok":false,"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
@@ -402,6 +423,14 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusBadRequest)
 		return
 	}
+	if flowGraphRequiresMuseCredits(&clonedGraph, fStore, map[string]bool{}) && !req.MuseCreditsAcknowledged {
+		http.Error(w, `{"ok":false,"error":"Workflow có thể dùng Muse AI credits; xác nhận bằng muse_credits_acknowledged=true trước khi chạy."}`, http.StatusBadRequest)
+		return
+	}
+	if flowGraphRequiresGoogleFlowCredits(&clonedGraph, fStore, map[string]bool{}) && !req.GoogleFlowCreditsAcknowledged {
+		http.Error(w, `{"ok":false,"error":"Workflow có thể dùng Google Flow credits; xác nhận bằng google_flow_credits_acknowledged=true trước khi chạy."}`, http.StatusBadRequest)
+		return
+	}
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())
 
@@ -417,7 +446,12 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 			flowCancelMu.Unlock()
 			cancel()
 		}()
-		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, &clonedGraph, s.flowExecutionServices())
+		services := s.flowExecutionServices()
+		services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
+		services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
+		services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
+		services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
+		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, &clonedGraph, services)
 	}()
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -431,6 +465,79 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 		"injected_params": req.Params,
 		"status_url":      "/api/flow/runs/" + runID,
 	})
+}
+
+func flowGraphRequiresMuseCredits(graph *flow.FlowGraph, store *flow.Store, visited map[string]bool) bool {
+	return flowGraphRequiresProviderCredits(graph, store, visited, "museai")
+}
+
+func flowGraphRequiresGoogleFlowCredits(graph *flow.FlowGraph, store *flow.Store, visited map[string]bool) bool {
+	return flowGraphRequiresProviderCredits(graph, store, visited, "googleflow")
+}
+
+func flowGraphRequiresProviderCredits(graph *flow.FlowGraph, store *flow.Store, visited map[string]bool, provider string) bool {
+	if graph == nil {
+		return false
+	}
+	for _, node := range graph.Nodes {
+		if flowNodeRequiresProviderCredits(node, provider) {
+			return true
+		}
+		if node.Type != "workflow_map" && node.Type != "workflow_call" && !strings.HasPrefix(node.Type, "workflow_call_") {
+			continue
+		}
+		workflowID, _ := node.Params["workflow_id"].(string)
+		workflowID = strings.TrimSpace(workflowID)
+		if workflowID == "" || visited[workflowID] || store == nil {
+			continue
+		}
+		visited[workflowID] = true
+		child, err := store.GetGraph(workflowID)
+		if err == nil && flowGraphRequiresProviderCredits(child, store, visited, provider) {
+			return true
+		}
+	}
+	return false
+}
+
+func flowNodeRequiresProviderCredits(node flow.FlowNode, provider string) bool {
+	switch node.Type {
+	case "muse_ai_video", "muse_ai_neural_render":
+		return provider == "museai"
+	case "google_flow_video":
+		return provider == "googleflow"
+	case "custom_web_ai":
+		if flowHandlerParamString(node.Params, "output_type", "video") != "video" {
+			return false
+		}
+		return normalizeFlowProvider(flowHandlerParamString(node.Params, "provider_name", "googleflow")) == provider
+	case "custom_ai_prompt", "custom_universal_ai":
+		if flowHandlerParamString(node.Params, "output_type", "text") != "video" {
+			return false
+		}
+		return normalizeFlowProvider(flowHandlerParamString(node.Params, "provider", "googleflow")) == provider
+	default:
+		return false
+	}
+}
+
+func flowHandlerParamString(params map[string]any, key, fallback string) string {
+	value, ok := params[key].(string)
+	if !ok || strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func normalizeFlowProvider(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "googleflow", "google flow", "veo", "veo 2", "veo 3":
+		return "googleflow"
+	case "muse", "museai", "muse ai":
+		return "museai"
+	default:
+		return strings.ToLower(strings.TrimSpace(value))
+	}
 }
 
 func (s *Server) handleAPIFlowRunDetail(w http.ResponseWriter, r *http.Request) {

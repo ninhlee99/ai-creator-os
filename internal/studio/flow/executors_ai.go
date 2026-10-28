@@ -1,15 +1,12 @@
 package flow
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 	"unicode/utf8"
 )
 
@@ -282,25 +279,42 @@ func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	}
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_museai.mp4", safeWorkflowPathPart(node.ID)))
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
-
-	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
-	isNewThread := ctx.startMuseThread()
-
-	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt vào Muse AI (tạo thread mới: %v)...", isNewThread))
-
-	// 1. Gọi trực tiếp Muse-Chat-MCP để Meta Muse AI tạo video thực thụ trong thread của flow
-	render := ctx.MuseRender
-	if render == nil {
-		render = callMuseChatMCP
-	}
-	if err := render(ctx.Context, isNewThread, threadTitle, prompt, ingredients, outPath); err != nil {
-		return nil, fmt.Errorf("Muse AI không tạo được video qua MCP: %w", err)
+	if err := renderMuseWorkflowNode(ctx, threadTitle, prompt, ingredients, outPath); err != nil {
+		return nil, err
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
 		return nil, fmt.Errorf("Muse AI không tạo được video đầu ra hợp lệ")
 	}
 	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Video Muse AI đã sẵn sàng -> %s", filepath.Base(outPath)))
 	return map[string]any{"video_out": outPath}, nil
+}
+
+func renderMuseWorkflowNode(ctx *ExecutionContext, threadTitle, prompt string, files []string, outPath string) error {
+	isNewThread := ctx.startMuseThread()
+	threadURL := ""
+	if ctx.MuseThread != nil {
+		threadURL = ctx.MuseThread.URL
+	}
+	if !isNewThread && ctx.MuseRenderWithSession != nil && strings.TrimSpace(threadURL) == "" {
+		return fmt.Errorf("Muse thread URL missing; stopping to avoid rendering this shot in a different chat")
+	}
+	ctx.Log(fmt.Sprintf("MuseAIVideoNode: Gửi prompt qua Muse nội bộ (thread mới: %v, %d tệp tham chiếu)...", isNewThread, len(files)))
+	var nextThreadURL string
+	var err error
+	if ctx.MuseRenderWithSession != nil {
+		nextThreadURL, err = ctx.MuseRenderWithSession(ctx.Context, isNewThread, threadURL, threadTitle, prompt, files, outPath)
+	} else if ctx.MuseRender != nil {
+		err = ctx.MuseRender(ctx.Context, isNewThread, threadTitle, prompt, files, outPath)
+	} else {
+		err = fmt.Errorf("Muse renderer nội bộ chưa được nối")
+	}
+	if err != nil {
+		return fmt.Errorf("Muse AI không tạo được video: %w", err)
+	}
+	if ctx.MuseThread != nil && strings.TrimSpace(nextThreadURL) != "" {
+		ctx.MuseThread.URL = nextThreadURL
+	}
+	return nil
 }
 
 func promptHasExplicitCameraGuidance(prompt string) bool {
@@ -316,278 +330,6 @@ func promptHasExplicitCameraGuidance(prompt string) bool {
 		}
 	}
 	return false
-}
-
-// callMuseChatMCP tương tác với cầu Muse-Chat-MCP qua CLI.
-// Kiến trúc: 1 Flow = 1 Thread. Khi bắt đầu flow, node đầu tiên truyền isNewThread=true để tạo thread mới.
-func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error {
-	cliPath := "data/third_party/Muse-Chat-MCP/muse-cli.mjs"
-	if !fileExists(cliPath) {
-		return fmt.Errorf("không tìm thấy muse-cli.mjs tại %s", cliPath)
-	}
-
-	workDir := filepath.Join(filepath.Dir(outPath), safeWorkflowPathPart(strings.TrimSuffix(filepath.Base(outPath), filepath.Ext(outPath))+"_download"))
-	workDir, err := filepath.Abs(workDir)
-	if err != nil {
-		return fmt.Errorf("không xác định được thư mục tải media Muse: %w", err)
-	}
-	if err := os.MkdirAll(workDir, 0o755); err != nil {
-		return fmt.Errorf("không tạo được thư mục tải media Muse: %w", err)
-	}
-
-	args := []string{cliPath, "--timeout", "480000"}
-	if isNewThread {
-		// Bắt đầu 1 thread mới cho lần chạy Flow này
-		args = append(args, "--new-thread")
-	}
-
-	for _, f := range files {
-		if f != "" && fileExists(f) {
-			abs, err := filepath.Abs(f)
-			if err == nil {
-				args = append(args, "-f", abs)
-			} else {
-				args = append(args, "-f", f)
-			}
-		}
-	}
-
-	fullPrompt := prompt
-	if isNewThread && threadTitle != "" {
-		fullPrompt = fmt.Sprintf("【Flow Thread: %s】\n%s", threadTitle, prompt)
-	}
-	args = append(args, fullPrompt)
-
-	// Muse có thể hoàn tất chat trước khi media sẵn sàng để tải về.
-	// Cho chat tối đa 8 phút và giữ thêm thời gian polling file đầu ra.
-	cmdTimeout, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdTimeout, "node", args...)
-	out, err := cmd.CombinedOutput()
-	chatFailure := ""
-	if err != nil {
-		chatFailure = fmt.Sprintf("muse-cli chat lỗi: %v", err)
-		if detail := strings.TrimSpace(string(out)); detail != "" {
-			if len(detail) > 2000 {
-				detail = detail[:2000]
-			}
-			chatFailure += ": " + detail
-		}
-	}
-
-	// Muse can finish its reply before its video attachment is ready. Poll the
-	// chat without downloading until the latest assistant reply exposes media.
-	// Download only when that reply's media list changes; downloading the whole
-	// chat on every poll duplicates all uploaded reference images.
-	var lastAssistantText string
-	var lastMediaOutput string
-	var lastAssistantMediaKey string
-mediaPoll:
-	for attempt := 0; attempt < 30; attempt++ {
-		media, mediaOutput, mediaErr := queryMuseChatMedia(cmdTimeout, cliPath, "", false)
-		if mediaErr == nil {
-			latestUserIndex, assistantURLs, assistantText := latestMuseAssistantMedia(media)
-			if assistantText != "" {
-				lastAssistantText = assistantText
-			}
-			mediaKey := strings.Join(assistantURLs, "\n")
-			if len(assistantURLs) > 0 && mediaKey != lastAssistantMediaKey {
-				attemptDir := filepath.Join(workDir, fmt.Sprintf("poll_%02d", attempt+1))
-				downloaded, downloadOutput, downloadErr := queryMuseChatMedia(cmdTimeout, cliPath, attemptDir, true)
-				lastMediaOutput = string(downloadOutput)
-				if downloadErr == nil {
-					lastAssistantMediaKey = mediaKey
-					downloadUserIndex, downloadAssistantURLs, _ := latestMuseAssistantMedia(downloaded)
-					if downloadUserIndex == latestUserIndex {
-						for _, videoPath := range museAssistantVideoFiles(downloaded, downloadAssistantURLs) {
-							if strings.Contains(videoPath, "_temp") || !isVideoFile(videoPath) {
-								continue
-							}
-							if info, err := os.Stat(videoPath); err == nil && info.Size() > 50000 {
-								if err := copyFile(videoPath, outPath); err != nil {
-									return fmt.Errorf("không chép được media Muse mới tải: %w", err)
-								}
-								_ = os.RemoveAll(attemptDir)
-								if fileExists(outPath) && isVideoFile(outPath) {
-									return nil
-								}
-							}
-						}
-					}
-					_ = os.RemoveAll(attemptDir)
-				}
-			} else if len(assistantURLs) == 0 && museReplyNeedsConfirmation(string(out)) {
-				return fmt.Errorf("Muse AI chưa tạo video và đang yêu cầu xác nhận: %s", truncateMuseText(string(out), 1200))
-			}
-		} else {
-			lastMediaOutput = string(mediaOutput)
-		}
-
-		select {
-		case <-cmdTimeout.Done():
-			break mediaPoll
-		case <-time.After(3 * time.Second):
-		}
-	}
-
-	if chatFailure != "" {
-		if strings.TrimSpace(lastMediaOutput) == "" {
-			return fmt.Errorf("Muse AI chưa tạo được video; %s; phản hồi: %s", chatFailure, truncateMuseText(lastAssistantText, 1200))
-		}
-		return fmt.Errorf("Muse AI chưa tạo được video; %s; kiểm tra media thất bại: %s", chatFailure, truncateMuseText(lastMediaOutput, 1200))
-	}
-	return fmt.Errorf("Muse AI chưa sinh video; phản hồi: %s; media: %s", truncateMuseText(lastAssistantText, 1200), truncateMuseText(lastMediaOutput, 1200))
-}
-
-type museChatMediaItem struct {
-	Index int      `json:"index"`
-	Role  string   `json:"role"`
-	Text  string   `json:"text"`
-	URLs  []string `json:"urls"`
-}
-
-type museChatMediaDownload struct {
-	Saved []struct {
-		File string `json:"file"`
-	} `json:"saved"`
-}
-
-type museChatMediaResult struct {
-	Items     []museChatMediaItem   `json:"items"`
-	URLs      []string              `json:"urls"`
-	Downloads museChatMediaDownload `json:"downloads"`
-}
-
-func queryMuseChatMedia(ctx context.Context, cliPath, downloadDir string, download bool) (*museChatMediaResult, []byte, error) {
-	args := []string{cliPath, "--media", "current", "--json", "--timeout", "10000"}
-	if download {
-		args = append(args, "--download", "--dir", downloadDir)
-	}
-	cmd := exec.CommandContext(ctx, "node", args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, output, err
-	}
-	var result museChatMediaResult
-	if err := json.Unmarshal(output, &result); err != nil {
-		return nil, output, fmt.Errorf("Muse CLI trả JSON media không hợp lệ: %w", err)
-	}
-	return &result, output, nil
-}
-
-func latestMuseAssistantMedia(media *museChatMediaResult) (int, []string, string) {
-	if media == nil {
-		return -1, nil, ""
-	}
-	latestUserIndex := -1
-	for _, item := range media.Items {
-		if strings.EqualFold(item.Role, "user") && item.Index > latestUserIndex {
-			latestUserIndex = item.Index
-		}
-	}
-	var urls []string
-	var assistantText string
-	for _, item := range media.Items {
-		if item.Index <= latestUserIndex || !strings.EqualFold(item.Role, "assistant") {
-			continue
-		}
-		assistantText = item.Text
-		urls = append(urls, item.URLs...)
-	}
-	return latestUserIndex, uniqueMuseStrings(urls), assistantText
-}
-
-func uniqueMuseStrings(values []string) []string {
-	seen := make(map[string]struct{}, len(values))
-	unique := make([]string, 0, len(values))
-	for _, value := range values {
-		if _, exists := seen[value]; exists {
-			continue
-		}
-		seen[value] = struct{}{}
-		unique = append(unique, value)
-	}
-	return unique
-}
-
-func museAssistantVideoFiles(media *museChatMediaResult, assistantURLs []string) []string {
-	if media == nil || len(media.Downloads.Saved) == 0 {
-		return nil
-	}
-	urlIndex := make(map[string]int, len(media.URLs))
-	for i, mediaURL := range media.URLs {
-		urlIndex[mediaURL] = i
-	}
-	var files []string
-	for _, mediaURL := range assistantURLs {
-		index, ok := urlIndex[mediaURL]
-		if !ok || index >= len(media.Downloads.Saved) {
-			continue
-		}
-		if path := media.Downloads.Saved[index].File; path != "" {
-			files = append(files, path)
-		}
-	}
-	return files
-}
-
-func museReplyNeedsConfirmation(text string) bool {
-	lower := strings.ToLower(text)
-	for _, cue := range []string{
-		"do you want me to", "would you like me to", "please confirm", "which option",
-		"i haven't rendered", "i have not rendered", "before i render", "before rendering",
-		"i haven't generated", "i have not generated", "the pasted motion notes don't match",
-	} {
-		if strings.Contains(lower, cue) {
-			return true
-		}
-	}
-	return false
-}
-
-func truncateMuseText(text string, maxRunes int) string {
-	runes := []rune(strings.TrimSpace(text))
-	if len(runes) <= maxRunes {
-		return string(runes)
-	}
-	return string(runes[:maxRunes]) + "…"
-}
-
-// callMuseChatText thực hiện phiên chat văn bản riêng biệt với Muse AI cho từng node.
-func callMuseChatText(ctx context.Context, sessionTitle, prompt string, files []string) (string, error) {
-	cliPath := "data/third_party/Muse-Chat-MCP/muse-cli.mjs"
-	if !fileExists(cliPath) {
-		return "", fmt.Errorf("không tìm thấy muse-cli.mjs tại %s", cliPath)
-	}
-
-	args := []string{cliPath, "--new-thread", "--no-stream"}
-	for _, f := range files {
-		if f != "" && fileExists(f) {
-			abs, err := filepath.Abs(f)
-			if err == nil {
-				args = append(args, "-f", abs)
-			} else {
-				args = append(args, "-f", f)
-			}
-		}
-	}
-
-	fullPrompt := prompt
-	if sessionTitle != "" {
-		fullPrompt = fmt.Sprintf("【Phiên Chat: %s】\n%s", sessionTitle, prompt)
-	}
-	args = append(args, fullPrompt)
-
-	cmdTimeout, cancel := context.WithTimeout(ctx, 60*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(cmdTimeout, "node", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("muse-cli chat lỗi: %w: %s", err, string(out))
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func executeGeminiVision(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {

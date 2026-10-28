@@ -93,7 +93,7 @@ func (s *Server) handleAccountAutopilot(w http.ResponseWriter, r *http.Request) 
 	}
 	if enabled {
 		s.accountRedirect(w, r, id,
-			fmt.Sprintf("Đã lưu cấu hình Autopilot bật (hoa hồng tối thiểu %.1f%%); producer hiện tạm dừng vì chưa có xác nhận dùng Flow credits theo kênh.", pct), "")
+			fmt.Sprintf("Đã lưu cấu hình Autopilot bật (hoa hồng tối thiểu %.1f%%); producer hiện tạm dừng vì chưa có xác nhận dùng Muse AI credits theo kênh.", pct), "")
 		return
 	}
 	s.accountRedirect(w, r, id, "Đã tắt autopilot.", "")

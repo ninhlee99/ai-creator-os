@@ -54,5 +54,5 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 // handleStudioScheduleRunNow reports the current production gate instead of
 // claiming that a paused Autopilot cycle was started.
 func (s *Server) handleStudioScheduleRunNow(w http.ResponseWriter, r *http.Request) {
-	seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Tạo video Autopilot đang tạm dừng cho tới khi có xác nhận dùng Google Flow credits theo kênh."))
+	seeOther(w, r, "/studio/jobs?tab=schedule&err="+url.QueryEscape("Tạo video Autopilot đang tạm dừng cho tới khi có xác nhận dùng Muse AI credits theo kênh."))
 }

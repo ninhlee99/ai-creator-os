@@ -50,15 +50,15 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 			note = "không có offer nào đã duyệt và đủ giá, hoa hồng, link hợp lệ để tạo video affiliate"
 		}
 		if !atOn(s.Settings, KeyATHunterFlowCredits, false) {
-			note += " Google Flow đang tắt vì chưa bật quyền dùng credits."
+			note += " Video Muse AI đang tắt vì chưa bật quyền dùng credits."
 		}
 		_ = s.decide("at_hunter", "hunt_blocked_evidence", nil, note, nil)
 		return []string{"săn sản phẩm: " + note}
 	}
 	videos := 0
 	want := atInt(s.Settings, KeyATHunterVideos, defaultATHunterVideos)
-	flowCreditsDisabled := !atOn(s.Settings, KeyATHunterFlowCredits, false)
-	if flowCreditsDisabled {
+	museCreditsDisabled := !atOn(s.Settings, KeyATHunterFlowCredits, false)
+	if museCreditsDisabled {
 		want = 0
 	}
 	if s.StudioRunner != nil && want > 0 {
@@ -99,8 +99,8 @@ func (s *Service) ATHunterTick(ctx context.Context) []string {
 	stampRun(s.Settings, keyATHunterLastRun)
 	note := fmt.Sprintf("săn sản phẩm: %d mới, %d watchlist thiếu sales/rating, %d cập nhật, %d bỏ qua → %d video",
 		res.New, res.Watchlist, res.Updated, res.Skipped, videos)
-	if flowCreditsDisabled {
-		note += "; video tự động đang tắt đến khi bật quyền dùng Google Flow credits"
+	if museCreditsDisabled {
+		note += "; video tự động đang tắt đến khi bật quyền dùng Muse AI credits"
 	}
 	if accountErr != nil && s.StudioRunner != nil && want > 0 {
 		note += "; chưa tạo video: " + accountErr.Error()
@@ -129,7 +129,7 @@ func (s *Service) MakeHunterVideoForAccount(ctx context.Context, p products.Prod
 		return "", fmt.Errorf("Studio chưa sẵn sàng")
 	}
 	if !atOn(s.Settings, KeyATHunterFlowCredits, false) {
-		return "", fmt.Errorf("chưa bật quyền dùng Google Flow credits cho video hunter tự động")
+		return "", fmt.Errorf("chưa bật quyền dùng Muse AI credits cho video hunter tự động")
 	}
 	if readiness, ok := s.StudioRunner.(interface{ AutoAffiliateProductionReady() (bool, string) }); ok {
 		ready, reason := readiness.AutoAffiliateProductionReady()

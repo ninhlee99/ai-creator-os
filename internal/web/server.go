@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"log"
 	_ "modernc.org/sqlite" // registers the "sqlite" driver (pure Go, no cgo)
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -156,6 +157,7 @@ func (s *Server) WireStudioWebAI() {
 		return &studio.WebAISession{
 			AccountID:    acc.ID,
 			Platform:     acc.Platform,
+			AccountName:  acc.AccountName,
 			SessionToken: acc.SessionKey,
 			CookieHeader: acc.Cookie,
 			CookieJar:    append([]webai.BrowserCookie(nil), acc.CookieJar...),
@@ -164,6 +166,81 @@ func (s *Server) WireStudioWebAI() {
 				return s.persistWebAIResultCookies(acc.ID, cookie, cookies)
 			},
 		}, nil
+	})
+	s.Studio.SetWebAIAccountResolver(func(platform, email string) (*studio.WebAISession, error) {
+		accounts, err := s.WebAI.GetAccounts(platform)
+		if err != nil {
+			return nil, err
+		}
+		for _, account := range accounts {
+			if !strings.EqualFold(strings.TrimSpace(account.Email), strings.TrimSpace(email)) {
+				continue
+			}
+			if !account.IsActive || (account.Status != "ok" && account.Status != "connected") || strings.TrimSpace(account.Cookie) == "" && len(account.CookieJar) == 0 {
+				return nil, fmt.Errorf("Muse account %s is inactive or has no usable session", email)
+			}
+			return &studio.WebAISession{
+				AccountID: account.ID, Platform: account.Platform, AccountName: account.AccountName,
+				SessionToken: account.SessionKey, CookieHeader: account.Cookie,
+				CookieJar: append([]webai.BrowserCookie(nil), account.CookieJar...), Email: account.Email,
+				CookieUpdater: func(cookie string, cookies []webai.BrowserCookie) error {
+					return s.persistWebAIResultCookies(account.ID, cookie, cookies)
+				},
+			}, nil
+		}
+		return nil, fmt.Errorf("Muse account %s is not connected", email)
+	})
+	s.Studio.SetWebAIMuseRenderer(func(ctx context.Context, session *studio.WebAISession, request studio.MuseChatRequest, outputPath string, progress func(string)) (string, error) {
+		if session.Platform != webai.PlatformMuseAI {
+			return "", fmt.Errorf("Muse renderer requires a Muse account, got %q", session.Platform)
+		}
+		name := strings.Join(strings.Fields(request.AccountName), " ")
+		if name == "" {
+			name = strings.Join(strings.Fields(session.AccountName), " ")
+		}
+		if runes := []rune(name); len(runes) > 80 {
+			name = string(runes[:80])
+		}
+		reply, err := webai.MuseChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(
+			ctx, session.CookieHeader, session.CookieJar, request.Prompt, request.Files,
+			request.ThreadURL, request.NewThread, name, progress, session.CookieUpdater,
+		)
+		session.CookieHeader = reply.CookieHeader
+		if len(reply.CookieJar) > 0 {
+			session.CookieJar = append([]webai.BrowserCookie(nil), reply.CookieJar...)
+		}
+		if err != nil {
+			return "", err
+		}
+		if len(reply.MediaData) > 0 {
+			if err := saveMuseVideoData(outputPath, reply.MediaData, reply.MediaMime); err != nil {
+				return "", fmt.Errorf("could not save Muse video output: %w", err)
+			}
+			return reply.ThreadURL, nil
+		}
+		mediaURL := ""
+		for _, candidate := range reply.MediaURLs {
+			parsed, parseErr := url.Parse(candidate)
+			if parseErr != nil {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(parsed.Path))
+			if ext == ".mp4" || ext == ".webm" {
+				mediaURL = candidate
+				break
+			}
+		}
+		if mediaURL == "" {
+			message := strings.Join(strings.Fields(reply.Text), " ")
+			if len([]rune(message)) > 500 {
+				message = string([]rune(message)[:500]) + "…"
+			}
+			return "", fmt.Errorf("Muse replied without a downloadable video: %s", message)
+		}
+		if err := downloadMuseMediaWithCookieSnapshot(ctx, session.CookieHeader, session.CookieJar, mediaURL, outputPath, session.CookieUpdater); err != nil {
+			return "", err
+		}
+		return reply.ThreadURL, nil
 	})
 	s.Studio.SetWebAIImageAnalyzer(func(ctx context.Context, session *studio.WebAISession, prompt string, imagePaths []string) (string, error) {
 		if session == nil {
@@ -254,9 +331,13 @@ func (s *Server) WireStudioWebAI() {
 		for _, account := range accounts {
 			if account.IsActive && (strings.TrimSpace(account.Cookie) != "" || len(account.CookieJar) > 0) && (account.Status == "ok" || account.Status == "connected") {
 				if email := strings.TrimSpace(account.Email); email != "" {
-					return true, "Flow · " + email
+					label := "Flow"
+					if platform == webai.PlatformMuseAI {
+						label = "Muse"
+					}
+					return true, label + " · " + email
 				}
-				return true, "Flow · đã kết nối"
+				return true, "đã kết nối"
 			}
 		}
 		return false, "Chưa kết nối"

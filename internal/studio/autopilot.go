@@ -14,7 +14,7 @@ import (
 )
 
 // Autopilot holds affiliate automation wiring. Production stays paused until
-// account-level authorization for automatic Google Flow credit use exists.
+// account-level authorization for automatic Muse AI credit use exists.
 type Autopilot struct {
 	studio    *Studio
 	accounts  *network.AccountManager
@@ -45,7 +45,7 @@ type Result struct {
 	Product     products.Product
 }
 
-// Run exits before product discovery until automatic Flow credit use is
+// Run exits before product discovery until automatic Muse AI credit use is
 // explicitly authorized for the account.
 func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 	var r Result
@@ -62,7 +62,7 @@ func (a *Autopilot) Run(ctx context.Context, accountID int64) (Result, error) {
 		return r, fmt.Errorf("autopilot: account %s chưa sẵn sàng (bật autopilot + chọn theme trong UI)",
 			acct.Username)
 	}
-	return r, fmt.Errorf("autopilot: tạm dừng; chưa có xác nhận dùng Google Flow credits tự động theo account")
+	return r, fmt.Errorf("autopilot: tạm dừng; chưa có xác nhận dùng Muse AI credits tự động theo account")
 }
 
 // RunAll runs every account that is autopilot-ready. One account's failure

@@ -54,7 +54,10 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
-	// Tự động xác nhận quyền sử dụng Muse AI credits cho tác vụ viral.
+	if !analysisOnly && r.PostFormValue("confirm_flow_credits") != "1" {
+		writeViralCreateError(w, r, false, http.StatusBadRequest, "Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
+		return
+	}
 	topic := strings.TrimSpace(r.PostFormValue("topic"))
 	if topic == "" {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Vui lòng nhập chủ đề video")
@@ -276,7 +279,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		AIMode:                  aiMode,
 		TargetDuration:          float64(duration),
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
-		FlowCreditsAcknowledged: true,
+		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",
 	}
 	if analysisOnly {
 		ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)

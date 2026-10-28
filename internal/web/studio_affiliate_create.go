@@ -124,7 +124,7 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 		return
 	}
 	p.VideoEngine = studio.AffiliateVideoEngineMuseAI
-	p.FlowCreditsAcknowledged = true
+	p.FlowCreditsAcknowledged = r.PostFormValue("confirm_flow_credits") == "1"
 	clips, err := saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
 	if err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Clip tham chiếu lỗi: "+err.Error()))
@@ -173,6 +173,10 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	}
 	if err := r.ParseMultipartForm(60 << 20); err != nil {
 		studioErr("Không đọc được form — thử lại.")
+		return
+	}
+	if r.PostFormValue("confirm_flow_credits") != "1" {
+		studioErr("Xác nhận video có thể dùng Muse AI credits trước khi tạo job.")
 		return
 	}
 	planID := strings.TrimSpace(r.FormValue("prepared_plan_id"))

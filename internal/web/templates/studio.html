@@ -258,7 +258,10 @@
           </div>
         </div>
 
-        <input type="hidden" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1">
+        <label style="display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;line-height:1.5">
+          <input type="checkbox" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1" required style="margin-top:4px">
+          <span>Tôi xác nhận các shot có thể sử dụng Muse AI credits của tài khoản. Trạng thái đăng nhập không xác nhận gói miễn phí.</span>
+        </label>
 
         <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
           Tạo video affiliate

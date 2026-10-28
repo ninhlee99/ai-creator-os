@@ -238,7 +238,7 @@ func TestATHunterTickWatchlistsProductsWithoutDemandEvidence(t *testing.T) {
 	}
 }
 
-func TestATHunterTickDoesNotRenderWithoutFlowCreditsOptIn(t *testing.T) {
+func TestATHunterTickDoesNotRenderWithoutMuseCreditsOptIn(t *testing.T) {
 	srv := atTestServer()
 	defer srv.Close()
 	svc, runner := newATService(t, mapSettings{
@@ -250,10 +250,10 @@ func TestATHunterTickDoesNotRenderWithoutFlowCreditsOptIn(t *testing.T) {
 	}, srv)
 	notes := svc.ATHunterTick(context.Background())
 	if len(notes) != 1 || !strings.Contains(notes[0], "credits") {
-		t.Fatalf("hunter note = %v, want Flow credits opt-in reason", notes)
+		t.Fatalf("hunter note = %v, want Muse AI credits opt-in reason", notes)
 	}
 	if len(runner.jobs) != 0 {
-		t.Fatalf("hunter rendered %d jobs without Flow credits opt-in", len(runner.jobs))
+		t.Fatalf("hunter rendered %d jobs without Muse AI credits opt-in", len(runner.jobs))
 	}
 }
 

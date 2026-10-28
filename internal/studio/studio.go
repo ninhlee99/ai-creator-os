@@ -223,7 +223,9 @@ type Studio struct {
 	PromptEnhancer func(ctx context.Context, niche, channel string) string
 	// webAI connects channel production to selected, email-keyed provider accounts.
 	webAI              WebAIResolver
+	webAIAccount       WebAIAccountResolver
 	webAIVideo         WebAIVideoRenderer
+	webAIMuse          MuseChatRenderer
 	webAIImageAnalyzer WebAIImageAnalyzer
 	webAIAvailability  WebAIAvailability
 	// FlowStore manages visual node graphs (ComfyUI / n8n workflows) and execution runs.
@@ -234,6 +236,7 @@ type Studio struct {
 type WebAISession struct {
 	AccountID     string
 	Platform      string
+	AccountName   string
 	SessionToken  string
 	CookieHeader  string
 	CookieJar     []webai.BrowserCookie
@@ -243,6 +246,9 @@ type WebAISession struct {
 
 // WebAIResolver là hàm truy vấn tài khoản Web AI đang kết nối theo nền tảng.
 type WebAIResolver func(platform string) (*WebAISession, error)
+
+// WebAIAccountResolver selects one explicitly named provider account.
+type WebAIAccountResolver func(platform, email string) (*WebAISession, error)
 
 // WebAIImageAnalyzer inspects local image samples through a signed-in provider UI.
 type WebAIImageAnalyzer func(context.Context, *WebAISession, string, []string) (string, error)
@@ -261,6 +267,19 @@ type WebAIVideoRequest struct {
 // WebAIVideoRenderer writes a verified downloaded MP4 to outputPath and
 // returns the provider project ID for reuse across shots in one job.
 type WebAIVideoRenderer func(context.Context, *WebAISession, WebAIVideoRequest, string, func(string)) (string, error)
+
+// MuseChatRequest carries one browser-backed Muse conversation operation.
+type MuseChatRequest struct {
+	NewThread   bool
+	ThreadURL   string
+	Title       string
+	AccountName string
+	Prompt      string
+	Files       []string
+}
+
+// MuseChatRenderer sends prompt and local media through the selected Muse account.
+type MuseChatRenderer func(context.Context, *WebAISession, MuseChatRequest, string, func(string)) (string, error)
 
 type WebAIAvailability func(platform string) (bool, string)
 

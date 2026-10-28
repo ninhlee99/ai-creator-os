@@ -68,7 +68,7 @@
       "y": 40,
       "params": {
         "outfit_name": "",
-        "prompt": "Replace only the performer's identity with the selected channel character. Preserve the exact outfit, clothing colors, fit, accessories and body pose visible in the source video. Do not add logos or change wardrobe. Preserve the selected character's face, hair and body proportions. Wardrobe direction: {{fit_style}}."
+        "prompt": "Replace the performer's face, hair and body proportions with the selected channel character, using the character photos as the only identity source. Preserve the source clothing, colors, fit and non-identity accessories. Do not copy the source face, hairline, bangs or eyewear unless the same features appear in the selected character photos. Match the source pose after replacing identity. Do not add logos or redesign wardrobe. Wardrobe direction: {{fit_style}}."
       }
     },
     {
@@ -109,7 +109,7 @@
       "params": {
         "dance_type": "reproduce the source choreography exactly",
         "expression": "match the source performer's visible expression",
-        "prompt_template": "Create a vertical 9:16 video-to-video full-performer replacement of the attached TikTok source. Preserve the source video's exact scene, background, props, lighting, framing, camera movement, performer position and path, choreography, pose order, timing, transitions and cuts. Replace only the performer's identity with the selected channel character; keep the source performer's clothing, colors, fit and accessories unchanged. Do not stage a new dance, change the location, invent actions, alter camera framing, add props, or restyle the video. Use the attached source video as the motion and scene authority. Follow the observed movement analysis: {{movement_analysis}}. The final {{motion_keyframe_count}} chronological motion-reference images correspond to source times {{motion_keyframe_timestamps}}; reproduce their poses and hand positions at those times and interpolate only the visible transitions. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Source scene: {{environment_desc}}. Source lighting: {{lighting_desc}}. Use the selected channel-character photos as the sole identity reference. Keep one realistic adult performer with stable face, hair, body proportions and anatomy. No captions, added text or watermark."
+        "prompt_template": "Create a vertical 9:16 video-to-video replacement of the complete performer in the attached TikTok source. Preserve the source scene, background, objects, lighting, framing, camera movement, performer path, choreography, pose order, timing, exits, re-entry and cuts. Replace the source face, hair, hairline and body identity completely with the selected channel character; these attributes must match the character photos, never the source performer. Do not retain source bangs, hairstyle or eyewear unless the same features appear in the identity photos. Preserve source clothing, colors, fit and non-identity accessories. Do not stage a new dance, relocate the performer, invent actions, change framing, add props or redesign clothing. Use the source video as movement and scene authority. Follow observed movement analysis: {{movement_analysis}}. The final {{motion_keyframe_count}} chronological motion-reference images map to source times {{motion_keyframe_timestamps}}; use them only for source poses, position and hand placement. Style: {{dance_type}}. Expression: {{expression}}. Wardrobe: {{outfit_desc}}. Scene: {{environment_desc}}. Lighting: {{lighting_desc}}. The selected channel-character photos are the sole identity authority. Keep one realistic adult performer with stable replacement face, hair, body proportions and anatomy. No captions, added text or watermark."
       }
     },
     {
@@ -129,7 +129,7 @@
         },
         "result_output_key": "video",
         "max_items": 20,
-        "share_muse_thread": true,
+        "share_muse_thread": false,
         "previous_video_frame_input_key": "reference_images",
         "previous_video_frame_insert_at": 1,
         "previous_video_frame_insert_after_reference_prefix": true,

@@ -3,10 +3,9 @@ package studio
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
-	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 func (s *Studio) Close() error { return s.db.Close() }
@@ -36,31 +35,12 @@ func (s *Studio) WorkDir() string { return s.workRoot }
 // MediaGen exposes the provider (dashboard health card).
 func (s *Studio) MediaGen() MediaGen { return s.mg }
 
-// MuseVideoReady reports whether the real Muse browser session can render.
+// MuseVideoReady checks connected Muse account readiness without an MCP sidecar.
 func (s *Studio) MuseVideoReady(ctx context.Context) (bool, string) {
-	cliPath := filepath.Join("data", "third_party", "Muse-Chat-MCP", "muse-cli.mjs")
-	serverPath := filepath.Join("data", "third_party", "Muse-Chat-MCP", "muse-server.mjs")
-	if !fileExists(cliPath) || !fileExists(serverPath) {
-		return false, "Muse-Chat-MCP chưa được cài đầy đủ"
+	if _, err := webai.FindChromiumBinary(); err != nil {
+		return false, "chưa cài Chrome, Edge hoặc Chromium để chạy Muse ẩn"
 	}
-	node, err := exec.LookPath("node")
-	if err != nil {
-		return false, "chưa cài Node.js để chạy Muse-Chat-MCP"
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	checkCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
-	defer cancel()
-	output, err := exec.CommandContext(checkCtx, node, serverPath, "--self-test").CombinedOutput()
-	status := string(output)
-	if err != nil {
-		return false, "không kiểm tra được phiên Muse AI"
-	}
-	if !strings.Contains(status, `"loggedIn":true`) || !strings.Contains(status, `"composerReady":true`) {
-		return false, "Muse AI chưa đăng nhập hoặc composer chưa sẵn sàng"
-	}
-	return true, "Muse AI đã đăng nhập và sẵn sàng tạo video"
+	return s.WebAIVideoReady(webai.PlatformMuseAI)
 }
 
 // ViralCharacterEditorStatus reports whether Muse rendering and

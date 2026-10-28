@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
-func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string, p AffiliateParams, productProfile AffiliateProductProfile, shots []ProShot) (string, error) {
+func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string, p AffiliateParams, productProfile AffiliateProductProfile, shots []ProShot, museCreditsAcknowledged bool) (string, error) {
 	musicPath, err := downloadTikTokRadarAudio(ctx, p.SourceMusicVideoURL, workDir)
 	if err != nil {
 		return "", fmt.Errorf("không tải được sound Radar: %w", err)
@@ -92,7 +94,7 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 		inputs["voice_audio"] = p.VoiceoverPath
 	}
 	runID := "affiliate-" + safeAffiliateRunID(jobID)
-	run, err := s.ExecuteFlowGraphWithInputs(ctx, runID, graph, inputs)
+	run, err := s.ExecuteFlowGraphWithInputs(ctx, runID, graph, inputs, flow.ExecutionServices{MuseCreditsAcknowledged: museCreditsAcknowledged})
 	if err != nil {
 		return "", fmt.Errorf("Workflow API Affiliate: %w", err)
 	}

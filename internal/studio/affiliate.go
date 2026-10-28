@@ -196,6 +196,7 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 		}
 	}
 	// Consent applies to this submission only; retries must ask again.
+	museCreditsAcknowledged := p.FlowCreditsAcknowledged
 	p.FlowCreditsAcknowledged = false
 	planID := p.PreparedPlanID
 	p.PreparedPlanID = ""
@@ -212,6 +213,6 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	go s.runAffiliate(id, p)
+	go s.runAffiliate(id, p, museCreditsAcknowledged)
 	return id, nil
 }

@@ -131,6 +131,60 @@ func downloadMuseMediaWithCookieSnapshot(ctx context.Context, cookie string, coo
 	return nil
 }
 
+func saveMuseVideoData(output string, data []byte, contentType string) error {
+	if len(data) < 12 || len(data) > 250<<20 {
+		return fmt.Errorf("Muse video size is invalid or exceeds allowed limit")
+	}
+	ext := museVideoDataExtension(data, contentType)
+	if ext == "" {
+		return fmt.Errorf("Muse blob is not a supported MP4 or WebM video")
+	}
+	if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(output), ".aicos-muse-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := f.Name()
+	defer os.Remove(tmpPath)
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Chmod(0o644); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := verifyMuseMedia(tmpPath, ext); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, output)
+}
+
+func museVideoDataExtension(data []byte, contentType string) string {
+	ext := ""
+	switch strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0])) {
+	case "video/mp4", "application/mp4":
+		ext = ".mp4"
+	case "video/webm":
+		ext = ".webm"
+	}
+	if len(data) >= 8 && string(data[4:8]) == "ftyp" {
+		ext = ".mp4"
+	} else if len(data) >= 4 && string(data[:4]) == string([]byte{0x1a, 0x45, 0xdf, 0xa3}) {
+		ext = ".webm"
+	}
+	return ext
+}
+
 func verifyMuseMedia(path, ext string) error {
 	f, err := os.Open(path)
 	if err != nil {

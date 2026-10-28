@@ -12,6 +12,12 @@ func (s *Studio) SetWebAIResolver(r WebAIResolver) {
 	s.webAI = r
 }
 
+func (s *Studio) SetWebAIAccountResolver(r WebAIAccountResolver) {
+	s.mu.Lock()
+	s.webAIAccount = r
+	s.mu.Unlock()
+}
+
 func (s *Studio) SetWebAIImageAnalyzer(analyzer WebAIImageAnalyzer) {
 	s.mu.Lock()
 	s.webAIImageAnalyzer = analyzer
@@ -25,10 +31,19 @@ func (s *Studio) SetWebAIVideoRenderer(renderer WebAIVideoRenderer, availability
 	s.mu.Unlock()
 }
 
+func (s *Studio) SetWebAIMuseRenderer(renderer MuseChatRenderer) {
+	s.mu.Lock()
+	s.webAIMuse = renderer
+	s.mu.Unlock()
+}
+
 func (s *Studio) WebAIVideoReady(platform string) (bool, string) {
 	s.mu.Lock()
 	availability := s.webAIAvailability
 	rendererReady := s.webAIVideo != nil
+	if platform == "museai" {
+		rendererReady = s.webAIMuse != nil
+	}
 	s.mu.Unlock()
 	if !rendererReady {
 		return false, "bộ tạo video Web AI chưa được nối"
@@ -68,6 +83,35 @@ func (s *Studio) GetWebAISession(platform string) (*WebAISession, error) {
 		return nil, fmt.Errorf("studio: web ai resolver chưa được thiết lập")
 	}
 	return r(platform)
+}
+
+func (s *Studio) GetWebAISessionForEmail(platform, email string) (*WebAISession, error) {
+	if strings.TrimSpace(email) == "" {
+		return s.GetWebAISession(platform)
+	}
+	s.mu.Lock()
+	r := s.webAIAccount
+	s.mu.Unlock()
+	if r == nil {
+		return nil, fmt.Errorf("studio: explicit web ai account resolver is not configured")
+	}
+	return r(platform, email)
+}
+
+func (s *Studio) RenderMuseChat(ctx context.Context, session *WebAISession, request MuseChatRequest, outputPath string, progress func(string)) (string, error) {
+	s.mu.Lock()
+	renderer := s.webAIMuse
+	s.mu.Unlock()
+	if renderer == nil {
+		return "", fmt.Errorf("Muse internal renderer is not configured")
+	}
+	if session == nil || strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0 {
+		return "", fmt.Errorf("Muse account has no valid saved session")
+	}
+	if progress == nil {
+		progress = func(string) {}
+	}
+	return renderer(ctx, session, request, outputPath, progress)
 }
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job

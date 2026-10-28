@@ -134,7 +134,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         {{if ne .Kind "tiktok_radar_refresh"}}
-        <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline">
+        <form method="post" action="/studio/jobs/{{.ID}}/retry" style="display:inline" data-confirm="Thử lại có thể gửi yêu cầu mới tới AI provider và dùng credits. Đã đối chiếu trạng thái lần chạy trước chưa? Tiếp tục?">
           <input type="hidden" name="confirm_flow_credits" value="1">
           <button class="btn btn-primary btn-sm" type="submit" style="font-weight:700;padding:6px 14px">🔄 Thử lại ngay</button>
         </form>
@@ -382,7 +382,7 @@
       {{if eq .Kind "affiliate"}}
       <details class="advanced remix" style="margin-top:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
         <summary style="font-size:11px;font-weight:700;cursor:pointer">✏️ Remix</summary>
-        <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data" style="margin-top:8px">
+        <form method="post" action="/studio/jobs/{{.ID}}/remix" enctype="multipart/form-data" style="margin-top:8px" data-confirm="Dựng lại sẽ gửi yêu cầu mới tới Muse AI và có thể dùng credits. Tiếp tục?">
           <div class="remix-grid" style="gap:6px">
             <label style="font-size:11px">Thời lượng (s)<input type="number" name="seconds" min="10" max="120" placeholder="giữ nguyên" style="padding:4px 6px;font-size:11px"></label>
           </div>

@@ -53,12 +53,16 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 
 	switch j.Kind {
 	case studio.KindViral:
+		if r.FormValue("confirm_flow_credits") != "1" {
+			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Xác nhận video có thể dùng Muse AI credits trước khi thử lại."))
+			return
+		}
 		var p studio.ViralParams
 		if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Không đọc được tham số job viral cũ"))
 			return
 		}
-		p.FlowCreditsAcknowledged = true
+		p.FlowCreditsAcknowledged = r.FormValue("confirm_flow_credits") == "1"
 		newID, err := s.Studio.EnqueueViral(r.Context(), p)
 		if err != nil {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Không thể thử lại job viral: "+err.Error()))
@@ -68,6 +72,10 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 		return
 
 	case studio.KindAffiliate:
+		if r.FormValue("confirm_flow_credits") != "1" {
+			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Xác nhận video có thể dùng Muse AI credits trước khi thử lại."))
+			return
+		}
 		var p studio.AffiliateParams
 		if err := json.Unmarshal([]byte(j.Params), &p); err != nil {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Không đọc được tham số job cũ"))
@@ -83,7 +91,7 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.PreparedPlanID = planID
-		p.FlowCreditsAcknowledged = true
+		p.FlowCreditsAcknowledged = r.FormValue("confirm_flow_credits") == "1"
 		if err := s.attachAffiliateVideoTracking(r.Context(), &p, planID); err != nil {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape(err.Error()))
 			return

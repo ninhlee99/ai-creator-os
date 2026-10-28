@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (s *Studio) runAffiliate(id string, p AffiliateParams) {
+func (s *Studio) runAffiliate(id string, p AffiliateParams, museCreditsAcknowledged bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.setStatus(id, StatusFailed, 100)
@@ -161,7 +161,7 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams) {
 	s.appendLog(id, "DIRECTOR_START: dùng lại shot list và prompt đã duyệt trước khi quay clip")
 	s.appendLog(id, fmt.Sprintf("DIRECTOR_PASS: %d shot · hook, 3+ cỡ cảnh, hành động riêng, detail, payoff", len(shots)))
 	s.appendLog(id, fmt.Sprintf("WORKFLOW_START: gửi %d shot qua Workflow API và Muse AI", len(shots)))
-	final, err := s.runAffiliateWorkflow(ctx, id, work, p, productProfile, shots)
+	final, err := s.runAffiliateWorkflow(ctx, id, work, p, productProfile, shots, museCreditsAcknowledged)
 	if err != nil {
 		fail(err)
 		return

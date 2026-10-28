@@ -58,10 +58,10 @@ func (s *Server) handleATAutomationSave(w http.ResponseWriter, r *http.Request) 
 		n, _ := strconv.Atoi(strings.TrimSpace(r.PostFormValue("hunter_videos")))
 		n = clampInt(n, 0, 10)
 		hunterOn := r.PostFormValue("hunter_on") == "1"
-		hunterFlowCredits := r.PostFormValue("hunter_flow_credits") == "1"
+		hunterMuseCredits := r.PostFormValue("hunter_flow_credits") == "1"
 		rawAccountID := strings.TrimSpace(r.PostFormValue("hunter_account_id"))
-		if hunterOn && n > 0 && hunterFlowCredits && rawAccountID == "" {
-			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Đang bật Google Flow credits cho video hunter: chọn kênh đích có ảnh nhân vật, hoặc tắt credits/đặt số video về 0."))
+		if hunterOn && n > 0 && hunterMuseCredits && rawAccountID == "" {
+			seeOther(w, r, "/settings/accesstrade?err="+url.QueryEscape("Đang bật Muse AI credits cho video hunter: chọn kênh đích có ảnh nhân vật, hoặc tắt credits/đặt số video về 0."))
 			return
 		}
 		if rawAccountID != "" {

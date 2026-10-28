@@ -41,7 +41,7 @@ func (c *browserCDPClient) call(ctx context.Context, method string, params any, 
 		_ = c.conn.SetReadDeadline(time.Now().Add(8 * time.Second))
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			return nil, errors.New("Muse headless CDP connection failed")
+			return nil, fmt.Errorf("Muse headless CDP connection failed: %w", err)
 		}
 		var response struct {
 			ID     int64           `json:"id"`
@@ -64,12 +64,28 @@ func (c *browserCDPClient) evaluate(ctx context.Context, expression string) (any
 		return nil, err
 	}
 	var result struct {
+		ExceptionDetails *struct {
+			Text      string `json:"text"`
+			Exception struct {
+				Description string `json:"description"`
+			} `json:"exception"`
+		} `json:"exceptionDetails"`
 		Result struct {
 			Value any `json:"value"`
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(response, &result); err != nil {
 		return nil, err
+	}
+	if result.ExceptionDetails != nil {
+		detail := result.ExceptionDetails.Text
+		if description := result.ExceptionDetails.Exception.Description; description != "" {
+			detail = description
+		}
+		if detail == "" {
+			detail = "JavaScript evaluation failed"
+		}
+		return nil, errors.New(detail)
 	}
 	return result.Result.Value, nil
 }
