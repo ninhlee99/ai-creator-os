@@ -316,20 +316,23 @@ func registerAllBuiltinNodes() {
 	// 10. Google Flow Video Node
 	RegisterNode(NodeDefinition{
 		Type:        "google_flow_video",
-		Title:       "Google Flow Veo 2 (Web AI Video)",
+		Title:       "Google Flow · Veo 3.1 Fast",
 		Category:    CategoryAI,
-		Description: "Tạo video bằng Google Flow; cần prompt và ít nhất một ảnh tham chiếu thật",
+		Description: "Tạo clip 8 giây bằng Google Flow Ingredients-to-Video; nhận tối đa 3 ảnh tham chiếu",
 		Icon:        "zap",
 		Inputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh prompt", Type: PortTypeText, Required: true},
 			{ID: "ingredients", Name: "Thành phần ảnh", Type: PortTypeImageList, Required: false},
+			{ID: "reference_images", Name: "Các ảnh tham chiếu", Type: PortTypeImageList, Required: false},
+			{ID: "reference_image", Name: "Ảnh tham chiếu", Type: PortTypeImage, Required: false},
 			{ID: "character_image", Name: "Ảnh nhân vật", Type: PortTypeImage, Required: false},
+			{ID: "product_image", Name: "Ảnh sản phẩm", Type: PortTypeImage, Required: false},
 		},
 		Outputs: []FlowPort{
-			{ID: "video_out", Name: "Video tạo bởi Flow", Type: PortTypeVideo, Description: "Video 9:16 độ phân giải cao từ Google Flow"},
+			{ID: "video_out", Name: "Video tạo bởi Flow", Type: PortTypeVideo, Description: "Clip từ Google Flow"},
 		},
 		DefaultParams: map[string]any{
-			"aspect": "VIDEO_ASPECT_RATIO_PORTRAIT",
+			"aspect": "9:16",
 			// Blank means use connected prompt input. A custom value overrides it.
 			"prompt": "",
 		},
@@ -379,25 +382,29 @@ func registerAllBuiltinNodes() {
 		Executor:      executeGeminiVision,
 	})
 
-	// 13. Custom Web AI Node (Node AI tùy biến mở rộng - legacy alias của custom_universal_ai)
+	// 13. Browser-backed Web AI Node for signed-in provider websites.
 	RegisterNode(NodeDefinition{
 		Type:        "custom_web_ai",
-		Title:       "Node Web AI tùy biến (Custom AI)",
+		Title:       "Web AI · Dùng website thật",
 		Category:    CategoryCustom,
-		Description: "Tạo text, ảnh hoặc video qua LLM, image generator, Google Flow hoặc Muse AI đã cấu hình",
+		Description: "Gửi prompt và file qua website Claude, ChatGPT, Grok, Gemini; nhận text hoặc media theo quyền provider",
 		Icon:        "cpu",
-		Hidden:      true,
 		Inputs: []FlowPort{
 			{ID: "prompt_in", Name: "Prompt đầu vào", Type: PortTypeText, Required: true},
-			{ID: "asset_in", Name: "File đầu vào", Type: PortTypeAny, Required: false},
+			{ID: "image_in", Name: "Ảnh đầu vào", Type: PortTypeImage, Required: false},
+			{ID: "images_in", Name: "Danh sách ảnh đầu vào", Type: PortTypeImageList, Required: false},
+			{ID: "video_in", Name: "Video đầu vào", Type: PortTypeVideo, Required: false},
+			{ID: "asset_in", Name: "Media đầu vào", Type: PortTypeAny, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "result_out", Name: "Kết quả xuất", Type: PortTypeAny, Description: "File video hoặc ảnh từ Custom AI"},
 			{ID: "text_out", Name: "Văn bản phản hồi", Type: PortTypeText, Description: "Nội dung phản hồi dạng text"},
+			{ID: "image_out", Name: "Ảnh tạo ra", Type: PortTypeImage, Description: "Ảnh do provider tạo"},
+			{ID: "video_out", Name: "Video tạo ra", Type: PortTypeVideo, Description: "Video do provider tạo"},
 		},
 		DefaultParams: map[string]any{
-			"provider_name": "googleflow",
-			"output_type":   "video",
+			"provider_name": "chatgpt",
+			"output_type":   "text",
 			"prompt":        "",
 		},
 		Executor: executeCustomWebAI,

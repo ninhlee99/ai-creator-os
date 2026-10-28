@@ -11,6 +11,7 @@
     if (/^data:image\/(?:png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
     try {
       const parsed = new URL(raw, window.location.origin);
+      if (parsed.protocol === 'blob:' && parsed.origin === window.location.origin) return parsed.href;
       return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : '';
     } catch (_) {
       return '';
@@ -20,7 +21,7 @@
   const workflowMediaURL = value => {
     const raw = String(value || '').trim();
     if (!raw) return '';
-    if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw) || /^\/(?:media|static|studio\/uploads|uploads)\//i.test(raw)) {
+    if (/^(?:data:image\/|blob:|https?:\/\/)/i.test(raw) || /^\/(?:media|static|studio\/uploads|uploads)\//i.test(raw)) {
       return safeMediaURL(raw);
     }
     const filename = raw.split(/[\\/]/).pop();
@@ -31,8 +32,9 @@
     const type = String(node?.type || '').toLowerCase();
     const defaultOutputType = type === 'custom_web_ai' ? 'video' : type === 'custom_universal_ai' ? 'auto' : 'text';
     const outputType = String(node?.params?.output_type || defaultOutputType).toLowerCase();
+    const provider = String(node?.params?.provider_name || node?.params?.provider || (type === 'custom_web_ai' ? 'googleflow' : '')).toLowerCase().replace(/[\s_-]+/g, '');
     return type === 'muse_ai_video' || type === 'muse_ai_neural_render' || type === 'google_flow_video' ||
-      (['custom_web_ai', 'custom_ai_prompt', 'custom_universal_ai'].includes(type) && outputType === 'video') ||
+      (['custom_web_ai', 'custom_ai_prompt', 'custom_universal_ai'].includes(type) && outputType === 'video' && ['googleflow', 'veo', 'veo2', 'veo3', 'muse', 'museai'].includes(provider)) ||
       type === 'workflow_map' || type === 'workflow_call' || type.startsWith('workflow_call_');
   });
 
@@ -76,6 +78,7 @@
       this.pendingUploads = new Map();
       this.uploadErrors = new Map();
       this.mediaUploadSequence = new Map();
+      this.mediaPreviewObjectURLs = new Map();
       this.pendingRunInputUploads = 0;
       this.savedGraphs = window.__SAVED_GRAPHS__ || [];
       this.workflowContractLoading = new Set();
@@ -711,14 +714,13 @@
           this.mediaUploadSequence.set(node.id, uploadSequence);
           this.uploadErrors.delete(node.id);
 
-          // Preview cục bộ chỉ dùng để hiển thị; không đưa data URL vào graph params.
-          const reader = new FileReader();
-          reader.onload = (re) => {
-            if (this.mediaUploadSequence.get(node.id) !== uploadSequence) return;
-            const dataUrl = re.target.result;
-            this.updateNodePreview(node.id, dataUrl);
-          };
-          reader.readAsDataURL(file);
+          // Object URL previews image without allocating a base64 copy in RAM.
+          this.releaseMediaPreviewObjectURL(node.id);
+          const localPreviewURL = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+          if (localPreviewURL) {
+            this.mediaPreviewObjectURLs.set(node.id, localPreviewURL);
+            this.updateNodePreview(node.id, localPreviewURL);
+          }
 
           const uploadTask = (async () => {
             const formData = new FormData();
@@ -750,6 +752,7 @@
               node.params.product_image = res.file_path;
             }
             this.uploadErrors.delete(node.id);
+            this.releaseMediaPreviewObjectURL(node.id);
             this.updateNodePreview(node.id, res.url);
           })();
 
@@ -758,6 +761,10 @@
             await uploadTask;
           } catch (uploadErr) {
             if (this.mediaUploadSequence.get(node.id) === uploadSequence) {
+              this.releaseMediaPreviewObjectURL(node.id);
+              const previousPreview = node.params?.preview_url || node.params?.model_path || node.params?.product_image || '';
+              if (previousPreview) this.updateNodePreview(node.id, previousPreview);
+              else document.getElementById(`node-preview-${node.id}`)?.remove();
               this.uploadErrors.set(node.id, uploadErr.message || 'Tải tệp lên thất bại');
               console.warn('Lỗi tải file lên server', uploadErr);
               window.showAppNotice(`Không tải được tệp lên máy chủ: ${uploadErr.message || uploadErr}. Workflow chưa thể chạy bằng tệp mới.`);
@@ -933,6 +940,13 @@
 
     updateNodePreview(nodeId, newUrl) {
       this.updateNodeVisualPreview(nodeId, newUrl);
+    }
+
+    releaseMediaPreviewObjectURL(nodeId) {
+      const url = this.mediaPreviewObjectURLs.get(nodeId);
+      if (!url) return;
+      URL.revokeObjectURL(url);
+      this.mediaPreviewObjectURLs.delete(nodeId);
     }
 
     updateNodeVisualPreview(nodeId, outputPreviewOrUrl) {
@@ -3223,7 +3237,10 @@
           ['default', 'Mặc định hệ thống']
         ],
         provider: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
-        provider_name: [['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']],
+        provider_name: [
+          ['chatgpt', 'ChatGPT Web'], ['claude', 'Claude Web'], ['grok', 'Grok Web'], ['gemini', 'Gemini Web'],
+          ['googleflow', 'Google Flow (Veo)'], ['museai', 'Muse AI']
+        ],
         aspect: node.type === 'google_flow_video'
           ? [['VIDEO_ASPECT_RATIO_PORTRAIT', '9:16 · Dọc'], ['VIDEO_ASPECT_RATIO_LANDSCAPE', '16:9 · Ngang']]
           : [['9:16', '9:16 · Dọc (TikTok/Reels/Shorts)'], ['16:9', '16:9 · Ngang (YouTube/TV)'], ['1:1', '1:1 · Vuông (Feed)']],
@@ -3670,7 +3687,7 @@
         text_to_speech: 'Nối kịch bản vào cổng Văn bản. Chọn persona ở cổng hoặc tham số; giọng thực tế tùy provider TTS. macOS Say hiện dùng giọng Linh. Văn bản dài tự chia theo câu rồi ghép thành một file WAV.',
         audio_mix: 'Nối lời đọc vào Track chính; nhạc nền là tùy chọn. Khi bật ducking, nhạc tự nhỏ xuống trong lúc có lời. Không nối nhạc thì node truyền nguyên track chính.',
         workflow_map: 'Nối một danh sách vào node. Chọn workflow con xử lý một phần tử; kết quả giữ nguyên thứ tự. Workflow con cần ít nhất một input và output.',
-        custom_web_ai: 'Dùng khi cần chọn Google Flow hoặc Muse AI và truyền prompt cùng một file tham chiếu; output chọn Text, Image hoặc Video.',
+        custom_web_ai: 'Gửi prompt và ảnh/video trực tiếp qua website đã đăng nhập. Output theo năng lực và quyền của provider; Claude chỉ trả text, ChatGPT không còn tạo video.',
         custom_ai_prompt: 'Dùng cho prompt tùy biến với system prompt, model hệ thống và cổng output riêng cho text/media.',
         custom_vision_analyzer: 'Phân tích ảnh hoặc một frame video; không phân tích toàn bộ chuyển động video.',
         custom_script_runner: 'Chỉ thay biến trong template văn bản; node không chạy mã tùy ý.',

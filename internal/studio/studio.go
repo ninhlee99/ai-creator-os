@@ -226,6 +226,7 @@ type Studio struct {
 	// webAI connects channel production to selected, email-keyed provider accounts.
 	webAI              WebAIResolver
 	webAIAccount       WebAIAccountResolver
+	webAIAccountByID   WebAIAccountIDResolver
 	webAIVideo         WebAIVideoRenderer
 	webAIMuse          MuseChatRenderer
 	webAIImageAnalyzer WebAIImageAnalyzer
@@ -251,6 +252,9 @@ type WebAIResolver func(platform string) (*WebAISession, error)
 
 // WebAIAccountResolver selects one explicitly named provider account.
 type WebAIAccountResolver func(platform, email string) (*WebAISession, error)
+
+// WebAIAccountIDResolver selects an exact saved provider account.
+type WebAIAccountIDResolver func(platform, accountID string) (*WebAISession, error)
 
 // WebAIImageAnalyzer inspects local image samples through a signed-in provider UI.
 type WebAIImageAnalyzer func(context.Context, *WebAISession, string, []string) (string, error)

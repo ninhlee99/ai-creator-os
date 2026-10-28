@@ -29,57 +29,64 @@ func flowUpdatedCookieHeader(ctx context.Context, client *browserCDPClient) stri
 }
 
 func flowSelectModelAndMode(ctx context.Context, client *browserCDPClient, request flowHeadlessRequest) error {
-	// In Google Flow, model and mode are inside the settings popover:
-	settingsTrigger := `(() => {
-		const e = document.querySelector('button.settings-trigger-button, .settings-trigger-button, button[aria-label="Settings trigger"]');
-		if (!e) return null;
-		const r = e.getBoundingClientRect();
-		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
-	})()`
-
-	// Check if already in Video mode
-	btnTextVal, _ := client.evaluate(ctx, `document.querySelector('button.settings-trigger-button, .settings-trigger-button')?.innerText || ''`)
-	btnText, _ := btnTextVal.(string)
-	if strings.Contains(strings.ToLower(btnText), "video") {
+	if request.Mode == "text" {
 		return nil
 	}
-
-	opened, err := flowWaitAndClick(ctx, client, settingsTrigger, 10*time.Second)
-	if err != nil || !opened {
-		// Fallback to flowClickNamed for legacy Flow layouts
-		modeLabels := []string{"ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
-		if request.Mode == "video_edit" {
-			modeLabels = []string{"video to video", "video-to-video", "edit video", "video editing", "ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
-		}
-		if !flowHasSelectedLabel(ctx, client, modeLabels) {
-			_, _ = flowClickNamed(ctx, client, []string{"text to video", "ingredients", "video to video", "video-to-video", "edit video", "văn bản thành video", "thành phần", "chế độ", "mode"}, 8*time.Second)
-			_, _ = flowClickNamed(ctx, client, modeLabels, 8*time.Second)
-		}
-		return nil
+	modeLabels := []string{"ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
+	if request.Mode == "video_edit" {
+		modeLabels = []string{"video to video", "video-to-video", "edit video", "video editing", "ingredients to video", "ingredients", "thành phần thành video", "nguyên liệu thành video", "thành phần", "nguyên liệu"}
 	}
-	time.Sleep(1 * time.Second)
+	if request.Mode != "ingredients" && request.Mode != "video_edit" {
+		return fmt.Errorf("unsupported Google Flow mode %q", request.Mode)
+	}
 
-	// Click Video toggle
-	videoToggle := `(() => {
-		const xs = [...document.querySelectorAll('.cdk-overlay-pane mat-button-toggle')];
-		const e = xs.find(x => /video|videocam/i.test((x.innerText||'') + ' ' + (x.getAttribute('aria-label')||'')));
-		if (!e) return null;
-		const b = e.querySelector('button') || e;
-		const r = b.getBoundingClientRect();
-		return (r.width > 0 && r.height > 0) ? {x: r.x + r.width/2, y: r.y + r.height/2} : null;
-	})()`
-	_, _ = flowWaitAndClick(ctx, client, videoToggle, 5*time.Second)
+	if strings.TrimSpace(request.ModelLabel) != "" {
+		modelLabels := []string{strings.ToLower(strings.TrimSpace(request.ModelLabel))}
+		if !flowHasSelectedLabel(ctx, client, modelLabels) && !flowTriggerContains(ctx, client, modelLabels) {
+			opened, err := flowWaitAndClick(ctx, client, `(() => {const e=document.querySelector('button.settings-trigger-button,.settings-trigger-button,button[aria-label*="settings" i]');if(!e)return null;const r=e.getBoundingClientRect();return r.width>0&&r.height>0?{x:r.x+r.width/2,y:r.y+r.height/2}:null})()`, 5*time.Second)
+			if err != nil || !opened {
+				return errors.New("Google Flow model settings control was not found")
+			}
+			clicked, err := flowClickNamed(ctx, client, modelLabels, 4*time.Second)
+			if err != nil {
+				return err
+			}
+			if !clicked {
+				return fmt.Errorf("Google Flow model %q is unavailable in current account or UI", request.ModelLabel)
+			}
+		}
+	}
 
-	// Close settings overlay via Escape
+	videoLabels := []string{"video", "videocam", "video generation"}
+	if !flowHasSelectedLabel(ctx, client, videoLabels) {
+		clicked, err := flowClickNamed(ctx, client, videoLabels, 6*time.Second)
+		if err != nil {
+			return err
+		}
+		if !clicked && !flowTriggerContains(ctx, client, videoLabels) {
+			return errors.New("Google Flow Video mode could not be selected")
+		}
+	}
+	if !flowHasSelectedLabel(ctx, client, modeLabels) {
+		clicked, err := flowClickNamed(ctx, client, modeLabels, 8*time.Second)
+		if err != nil {
+			return err
+		}
+		if !clicked {
+			return errors.New("Google Flow Ingredients mode could not be selected")
+		}
+	}
+	if !flowHasSelectedLabel(ctx, client, modeLabels) && !flowTriggerContains(ctx, client, modeLabels) {
+		return errors.New("Google Flow did not confirm the requested Ingredients mode")
+	}
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "rawKeyDown", "windowsVirtualKeyCode": 27}, client.sessionID)
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "windowsVirtualKeyCode": 27}, client.sessionID)
-	time.Sleep(500 * time.Millisecond)
 	return nil
 }
 
 func flowClickNamed(ctx context.Context, client *browserCDPClient, labels []string, timeout time.Duration) (bool, error) {
 	encoded, _ := json.Marshal(labels)
-	expression := `(() => {const labels=` + string(encoded) + `;const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};const xs=[...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],[role="combobox"]')].filter(visible);const e=xs.find(x=>{const t=((x.innerText||'')+' '+(x.getAttribute('aria-label')||'')+' '+(x.getAttribute('title')||'')).toLowerCase();return labels.some(s=>t.includes(s))&&!x.disabled&&x.getAttribute('aria-disabled')!=='true'});if(!e)return false;e.click();return true})()`
+	expression := `(() => {const labels=` + string(encoded) + `;const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};const xs=[...document.querySelectorAll('button,[role="button"],[role="menuitem"],[role="option"],[role="combobox"],mat-button-toggle')].filter(visible);const text=e=>((e.innerText||'')+' '+(e.getAttribute('aria-label')||'')+' '+(e.getAttribute('title')||'')).toLowerCase().replace(/\s+/g,' ').trim();const enabled=e=>!e.disabled&&e.getAttribute('aria-disabled')!=='true';const exact=xs.filter(x=>enabled(x)&&labels.some(s=>text(x)===s));let e=exact.find(x=>x.matches('[role="option"],[role="menuitem"],mat-button-toggle')||x.closest('.cdk-overlay-pane'));if(!e)e=exact.find(x=>!x.matches('.settings-trigger-button'));if(!e)e=exact[0];if(!e)e=xs.find(x=>enabled(x)&&(x.matches('[role="option"],[role="menuitem"],mat-button-toggle')||x.closest('.cdk-overlay-pane'))&&labels.some(s=>text(x).includes(s)));if(!e)return false;e.click();return true})()`
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if err := ctx.Err(); err != nil {
@@ -100,7 +107,14 @@ func flowClickNamed(ctx context.Context, client *browserCDPClient, labels []stri
 
 func flowHasSelectedLabel(ctx context.Context, client *browserCDPClient, labels []string) bool {
 	encoded, _ := json.Marshal(labels)
-	expression := `(() => {const labels=` + string(encoded) + `;const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};return [...document.querySelectorAll('button,[role="button"],[role="combobox"],[aria-selected="true"],[aria-pressed="true"]')].some(e=>{if(!visible(e)||e.disabled||e.getAttribute('aria-expanded')==='true')return false;const t=((e.innerText||'')+' '+(e.getAttribute('aria-label')||'')+' '+(e.getAttribute('title')||'')).toLowerCase();if(!labels.some(s=>t.includes(s)))return false;return e.getAttribute('aria-selected')==='true'||e.getAttribute('aria-pressed')==='true'||e.getAttribute('data-state')==='checked'||/selected|active|checked/.test(e.className||'')||e.matches('button,[role="combobox"]')})})()`
+	expression := `(() => {const labels=` + string(encoded) + `;const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};return [...document.querySelectorAll('[aria-selected="true"],[aria-pressed="true"],[data-state="checked"],mat-button-toggle-checked,.mat-button-toggle-checked,.selected,.active')].some(e=>{if(!visible(e))return false;const t=((e.innerText||'')+' '+(e.getAttribute('aria-label')||'')+' '+(e.getAttribute('title')||'')).toLowerCase();return labels.some(s=>t.includes(s))})})()`
+	value, err := client.evaluate(ctx, expression)
+	return err == nil && value == true
+}
+
+func flowTriggerContains(ctx context.Context, client *browserCDPClient, labels []string) bool {
+	encoded, _ := json.Marshal(labels)
+	expression := `(() => {const labels=` + string(encoded) + `;const e=document.querySelector('button.settings-trigger-button,.settings-trigger-button,button[aria-label*="settings" i],button[aria-label*="aspect" i]');if(!e)return false;const t=((e.innerText||'')+' '+(e.getAttribute('aria-label')||'')).toLowerCase();return labels.some(s=>t.includes(s))})()`
 	value, err := client.evaluate(ctx, expression)
 	return err == nil && value == true
 }

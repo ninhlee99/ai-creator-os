@@ -265,15 +265,15 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 				_ = fStore.SaveRun(run)
 			}
 		},
-		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error) {
+		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect, projectID, accountID, outPath string) (string, string, error) {
 			switch strings.ToLower(strings.TrimSpace(platform)) {
 			case webai.PlatformMuseAI:
 				if !services.MuseCreditsAcknowledged {
-					return "", fmt.Errorf("cần xác nhận workflow có thể dùng Muse AI credits trước khi tạo video")
+					return projectID, accountID, fmt.Errorf("cần xác nhận workflow có thể dùng Muse AI credits trước khi tạo video")
 				}
 			case webai.PlatformGoogleFlow:
 				if !services.GoogleFlowCreditsAcknowledged {
-					return "", fmt.Errorf("cần xác nhận workflow có thể dùng Google Flow credits trước khi tạo video")
+					return projectID, accountID, fmt.Errorf("cần xác nhận workflow có thể dùng Google Flow credits trước khi tạo video")
 				}
 			}
 			req := WebAIVideoRequest{
@@ -281,14 +281,32 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 				Prompt:      prompt,
 				AspectRatio: aspect,
 				ImagePaths:  images,
+				ProjectID:   projectID,
 			}
-			return s.GenerateWebAIVideo(ctx, platform, req, outPath, func(line string) {})
+			nextProjectID, nextAccountID, err := s.GenerateWebAIVideoForAccount(ctx, platform, accountID, req, outPath, func(line string) {})
+			return nextProjectID, nextAccountID, err
 		},
 		GenerateText: func(ctx context.Context, systemPrompt, prompt string) (string, error) {
 			if s.llm == nil || !s.llm.Healthy(ctx) {
 				return "", fmt.Errorf("LLM chưa sẵn sàng")
 			}
 			return s.llm.Complete(ctx, systemPrompt, prompt)
+		},
+		WebAIOperation: func(ctx context.Context, platform, prompt string, files []string, outputType, outputPath, conversationURL, accountID string) (string, string, string, string, error) {
+			var session *WebAISession
+			var err error
+			if accountID != "" {
+				session, err = s.GetWebAISessionByID(platform, accountID)
+			} else {
+				session, err = s.GetWebAISession(platform)
+			}
+			if err != nil {
+				return "", "", conversationURL, accountID, err
+			}
+			result, err := webai.UseWebAIInWebUI(ctx, platform, session.CookieHeader, session.CookieJar, webai.WebAIOperationRequest{
+				Prompt: prompt, Files: files, OutputType: outputType, OutputPath: outputPath, ConversationURL: conversationURL,
+			}, session.CookieUpdater)
+			return result.Text, result.MediaPath, result.ConversationURL, session.AccountID, err
 		},
 		SynthesizeSpeech: func(ctx context.Context, text, voice string) ([]byte, error) {
 			if s.narrator == nil {

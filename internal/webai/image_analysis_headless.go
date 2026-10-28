@@ -5,15 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"log"
-	"os"
-	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 type imageAnalysisPage struct {
@@ -21,29 +16,31 @@ type imageAnalysisPage struct {
 	composer        string
 	responses       string
 	busy            string
-	fileInputAccept string
+	imageURL        string
+	videoURL        string
+	imageModeLabels []string
+	videoModeLabels []string
 }
 
 var imageAnalysisPages = map[string]imageAnalysisPage{
 	PlatformChatGPT: {
 		url: "https://chatgpt.com/", composer: "#prompt-textarea, [data-testid='prompt-textarea'], textarea, [contenteditable='true']",
 		responses: "[data-message-author-role='assistant']", busy: "[data-testid*='stop'], button[aria-label*='Stop generating' i]",
-		fileInputAccept: "image/",
 	},
 	PlatformClaude: {
 		url: "https://claude.ai/new", composer: "[contenteditable='true'], [data-testid*='chat-input'] textarea, textarea",
 		responses: ".font-claude-response", busy: "button[aria-label*='Stop' i], [data-testid*='stop']",
-		fileInputAccept: "image/",
 	},
 	PlatformGemini: {
 		url: "https://gemini.google.com/app", composer: "rich-textarea [contenteditable='true'], .ql-editor, textarea, [contenteditable='true']",
 		responses: "model-response, .response-container", busy: "button[aria-label*='Stop' i], mat-spinner",
-		fileInputAccept: "image/",
+		imageModeLabels: []string{"create image", "create images"}, videoModeLabels: []string{"create video"},
 	},
 	PlatformGrok: {
 		url: "https://grok.com/", composer: "textarea, [contenteditable='true']",
 		responses: "main [data-message-author-role='assistant'], main [data-role='assistant'], main [data-testid*='assistant' i], [data-testid*='conversation-turn'], main article", busy: "button[aria-label*='Stop' i], [data-testid*='stop']",
-		fileInputAccept: "image/",
+		imageURL: "https://grok.com/imagine", videoURL: "https://grok.com/imagine",
+		imageModeLabels: []string{"image"}, videoModeLabels: []string{"video"},
 	},
 }
 
@@ -51,140 +48,14 @@ var imageAnalysisPages = map[string]imageAnalysisPage{
 // provider's signed-in website. It uses no provider chat API or undocumented
 // web endpoint.
 func AnalyzeImagesInWebUI(ctx context.Context, platform, cookie string, savedCookies []BrowserCookie, prompt string, imagePaths []string, updater CookieSnapshotUpdater) (answer string, retErr error) {
-	page, ok := imageAnalysisPages[strings.ToLower(strings.TrimSpace(platform))]
-	if !ok {
-		return "", fmt.Errorf("image analysis is unsupported for Web AI platform %q", platform)
+	if len(imagePaths) == 0 {
+		return "", errors.New("Web AI image analysis needs 1-10 images")
 	}
-	if strings.TrimSpace(prompt) == "" || len(imagePaths) == 0 || len(imagePaths) > 10 {
-		return "", errors.New("Web AI image analysis needs prompt and 1-10 images")
-	}
-	resolvedImagePaths := make([]string, 0, len(imagePaths))
-	for _, path := range imagePaths {
-		absolute, absErr := filepath.Abs(path)
-		if absErr != nil {
-			return "", fmt.Errorf("resolve Web AI image path: %w", absErr)
-		}
-		info, err := os.Stat(absolute)
-		if err != nil || info.IsDir() || info.Size() <= 0 || info.Size() > 20<<20 {
-			return "", fmt.Errorf("Web AI image is missing, empty, or exceeds 20 MB: %s", path)
-		}
-		resolvedImagePaths = append(resolvedImagePaths, absolute)
-	}
-	if strings.TrimSpace(cookie) == "" && len(savedCookies) == 0 {
-		return "", errors.New("Web AI image analysis needs a saved session")
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	bin, err := findChromiumBinary()
-	if err != nil {
-		return "", fmt.Errorf("Web AI image analysis needs Chrome, Edge, Brave, or Chromium: %w", err)
-	}
-	profile, err := os.MkdirTemp("", "aicos-webai-image-*")
-	if err != nil {
-		return "", errors.New("cannot create temporary Web AI browser profile")
-	}
-	defer os.RemoveAll(profile)
-	clearChromiumSingletonLocks(profile)
-	port, listener, err := pickFreePort()
-	if err != nil {
-		return "", errors.New("cannot allocate Web AI browser debugging port")
-	}
-	_ = listener.Close()
-	args := []string{
-		"--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
-		"--no-default-browser-check", "--disable-sync", "--disable-extensions",
-		"--disable-background-networking", "--hide-scrollbars", "--window-size=1440,1100",
-		"--remote-debugging-address=127.0.0.1", fmt.Sprintf("--remote-debugging-port=%d", port),
-		"--user-data-dir=" + profile, "about:blank",
-	}
-	cmd := exec.CommandContext(ctx, bin, args...)
-	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
-	if err := cmd.Start(); err != nil {
-		return "", errors.New("cannot start Web AI headless browser")
-	}
-	defer terminateBrowser(cmd)
-	browserURL, err := waitDebuggerURL(ctx, port)
-	if err != nil {
-		return "", err
-	}
-	conn, _, err := (&websocket.Dialer{HandshakeTimeout: 8 * time.Second}).DialContext(ctx, browserURL, nil)
-	if err != nil {
-		return "", errors.New("cannot connect to Web AI headless browser")
-	}
-	defer conn.Close()
-	client := &browserCDPClient{conn: conn}
-	created, err := client.call(ctx, "Target.createTarget", map[string]any{"url": "about:blank"}, "")
-	if err != nil {
-		return "", err
-	}
-	var target struct {
-		TargetID string `json:"targetId"`
-	}
-	if json.Unmarshal(created, &target) != nil || target.TargetID == "" {
-		return "", errors.New("Web AI browser did not create a page")
-	}
-	attached, err := client.call(ctx, "Target.attachToTarget", map[string]any{"targetId": target.TargetID, "flatten": true}, "")
-	if err != nil {
-		return "", err
-	}
-	var session struct {
-		SessionID string `json:"sessionId"`
-	}
-	if json.Unmarshal(attached, &session) != nil || session.SessionID == "" {
-		return "", errors.New("Web AI browser did not attach to page")
-	}
-	client.sessionID = session.SessionID
-	cookies := normalizeCookieJar(savedCookies)
-	if len(cookies) == 0 {
-		cookies = mergeCookieJarHeader(nil, cookie, platform)
-	}
-	if len(cookies) == 0 {
-		return "", errors.New("saved Web AI cookie snapshot is empty")
-	}
-	for _, method := range []string{"Page.enable", "Runtime.enable", "Network.enable", "DOM.enable"} {
-		if _, err := client.call(ctx, method, map[string]any{}, client.sessionID); err != nil {
-			return "", err
-		}
-	}
-	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(platform, cookies)}, client.sessionID); err != nil {
-		return "", fmt.Errorf("Web AI browser rejected saved session cookies: %w", err)
-	}
-	if _, err := client.call(ctx, "Page.navigate", map[string]any{"url": page.url}, client.sessionID); err != nil {
-		return "", errors.New("Web AI page navigation failed")
-	}
-	if err := waitForWebAIComposer(ctx, client, page.composer, 45*time.Second); err != nil {
-		return "", fmt.Errorf("%s composer did not load; check saved session and web access: %w", platform, err)
-	}
-	baseline, err := webAIResponseCount(ctx, client, page.responses, prompt)
-	if err != nil {
-		return "", fmt.Errorf("cannot read %s conversation before prompt: %w", platform, err)
-	}
-	if err := attachWebAIImages(ctx, client, page.fileInputAccept, resolvedImagePaths); err != nil {
-		return "", fmt.Errorf("attach images in %s: %w", platform, err)
-	}
-	if err := setWebAIPrompt(ctx, client, page.composer, prompt); err != nil {
-		return "", fmt.Errorf("enter prompt in %s: %w", platform, err)
-	}
-	if err := submitWebAIPrompt(ctx, client, platform); err != nil {
-		return "", fmt.Errorf("submit prompt in %s: %w", platform, err)
-	}
-	answer, err = waitWebAIAnswer(ctx, client, page.responses, page.busy, prompt, baseline, 65*time.Second)
-	if err != nil {
-		return "", fmt.Errorf("wait for %s response: %w", platform, err)
-	}
-	if updater != nil {
-		refreshCtx, refreshCancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer refreshCancel()
-		if refreshed, readErr := browserCookieSnapshotFromCDP(refreshCtx, client); readErr == nil && len(refreshed) > 0 {
-			if updateErr := updater(imageAnalysisCookieHeader(platform, refreshed), refreshed); updateErr != nil {
-				log.Printf("webai image analysis: could not persist refreshed %s cookies: %v", platform, updateErr)
-			}
-		}
-	}
-	return answer, nil
+	result, err := UseWebAIInWebUI(ctx, platform, cookie, savedCookies, WebAIOperationRequest{
+		Prompt: prompt, Files: imagePaths, OutputType: "text",
+		requireRadarMarkers: strings.Contains(strings.ToLower(prompt), "video_index") || strings.Contains(strings.ToLower(prompt), "dance_detected"),
+	}, updater)
+	return result.Text, err
 }
 
 func imageAnalysisCookieHeader(platform string, cookies []BrowserCookie) string {
@@ -211,12 +82,18 @@ func waitForWebAIComposer(ctx context.Context, client *browserCDPClient, selecto
 	return errors.New("composer wait timed out")
 }
 
-func webAIResponseExpression(selector, prompt string, includeBusy string) string {
+func webAIResponseExpression(selector, prompt string, includeBusy string, requireRadarMarkers ...bool) string {
+	requireRadar := len(requireRadarMarkers) > 0 && requireRadarMarkers[0]
 	return `(() => {
 		const normalize=s=>(s||'').replace(/\s+/g,' ').trim();
 		const promptText=normalize(` + mustJSON(prompt) + `);
+		const requireRadarMarkers=` + strconv.FormatBool(requireRadar) + `;
 		const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden'};
 		const assistant=e=>e.querySelector("[data-message-author-role='assistant'],[data-role='assistant'],[data-testid*='assistant' i]")||e;
+		const media=e=>({
+			images:[...e.querySelectorAll('img')].filter(x=>x.complete&&x.naturalWidth>=128&&x.naturalHeight>=128).map(x=>x.currentSrc||x.src).filter(Boolean),
+			videos:[...e.querySelectorAll('video,video source,a[href]')].map(x=>x.currentSrc||x.src||x.href||'').filter(u=>/^(blob:|data:video\/|https?:)/i.test(u)&&(/\.(mp4|webm|mov)(?:[?#]|$)/i.test(u)||/^blob:|^data:video\//i.test(u)))
+		});
 		const xs=[...new Set([...document.querySelectorAll(` + mustJSON(selector) + `)].map(assistant))].filter(e=>{
 			if(!visible(e))return false;
 			for(let n=e;n&&n!==document.body;n=n.parentElement){
@@ -226,17 +103,21 @@ func webAIResponseExpression(selector, prompt string, includeBusy string) string
 			}
 			const raw=normalize(e.innerText||e.textContent||'');
 			const text=promptText?normalize(raw.split(promptText).join(' ')):raw;
-			return /dance_detected|video_index/i.test(text);
+			const artifacts=media(e);
+		if(requireRadarMarkers)return text.length>0&&/dance_detected|video_index/i.test(text);
+		return text.length>0||artifacts.images.length>0||artifacts.videos.length>0;
 		});
 		const busy=[...document.querySelectorAll(` + includeBusy + `)].some(visible);
-		const raw=xs.length?(xs[xs.length-1].innerText||xs[xs.length-1].textContent||''):'';
+		const latest=xs.length?xs[xs.length-1]:null;
+		const raw=latest?(latest.innerText||latest.textContent||''):'';
 		const text=promptText?normalize(raw).split(promptText).join(' ').trim():raw;
-		return {count:xs.length,text,busy};
+		const artifacts=latest?media(latest):{images:[],videos:[]};
+		return {count:xs.length,text,busy,images:artifacts.images,videos:artifacts.videos};
 	})()`
 }
 
-func webAIResponseCount(ctx context.Context, client *browserCDPClient, selector, prompt string) (int, error) {
-	value, err := client.evaluate(ctx, webAIResponseExpression(selector, prompt, mustJSON(":root:disabled")))
+func webAIResponseCount(ctx context.Context, client *browserCDPClient, selector, prompt string, requireRadarMarkers ...bool) (int, error) {
+	value, err := client.evaluate(ctx, webAIResponseExpression(selector, prompt, mustJSON(":root:disabled"), requireRadarMarkers...))
 	if err != nil {
 		return 0, err
 	}
@@ -250,15 +131,15 @@ func webAIResponseCount(ctx context.Context, client *browserCDPClient, selector,
 	return state.Count, nil
 }
 
-func attachWebAIImages(ctx context.Context, client *browserCDPClient, accept string, paths []string) error {
+func attachWebAIFiles(ctx context.Context, client *browserCDPClient, paths []string) error {
 	inputs, err := flowFileInputs(ctx, client)
 	if err != nil {
 		return err
 	}
-	selected := selectWebAIImageInput(inputs, accept, len(paths))
+	selected := selectWebAIFileInput(inputs, paths)
 	if selected == nil {
 		if err := openWebAIAttachmentMenu(ctx, client); err != nil {
-			return errors.New("image file input not found")
+			return errors.New("file input not found")
 		}
 		select {
 		case <-ctx.Done():
@@ -269,10 +150,10 @@ func attachWebAIImages(ctx context.Context, client *browserCDPClient, accept str
 		if err != nil {
 			return err
 		}
-		selected = selectWebAIImageInput(inputs, accept, len(paths))
+		selected = selectWebAIFileInput(inputs, paths)
 	}
 	if selected == nil {
-		return errors.New("provider has no multi-image input")
+		return errors.New("provider has no file input accepting all selected files")
 	}
 	if _, err := client.call(ctx, "DOM.setFileInputFiles", map[string]any{"files": paths, "nodeId": selected.NodeID}, client.sessionID); err != nil {
 		return err
@@ -285,24 +166,56 @@ func attachWebAIImages(ctx context.Context, client *browserCDPClient, accept str
 	return nil
 }
 
-func selectWebAIImageInput(inputs []flowFileInput, accept string, count int) *flowFileInput {
+func selectWebAIFileInput(inputs []flowFileInput, paths []string) *flowFileInput {
 	var fallback *flowFileInput
 	for i := range inputs {
 		input := &inputs[i]
-		if !flowInputMatches(*input, "image") || (accept != "" && !strings.Contains(input.Accept, accept)) {
+		if !webAIInputAcceptsPaths(*input, paths) {
 			continue
 		}
 		if fallback == nil {
 			fallback = input
 		}
-		if input.Multiple || count == 1 {
+		if input.Multiple || len(paths) == 1 {
 			return input
 		}
 	}
-	if fallback != nil && count == 1 {
+	if fallback != nil && len(paths) == 1 {
 		return fallback
 	}
 	return nil
+}
+
+func webAIInputAcceptsPaths(input flowFileInput, paths []string) bool {
+	if len(paths) == 0 {
+		return false
+	}
+	if input.Accept == "" || strings.Contains(input.Accept, "*/*") {
+		return true
+	}
+	for _, path := range paths {
+		ext := strings.ToLower(filepath.Ext(path))
+		kind := ""
+		if strings.Contains(" .png .jpg .jpeg .webp ", " "+ext+" ") {
+			kind = "image"
+		} else if strings.Contains(" .mp4 .mov .webm .m4v ", " "+ext+" ") {
+			kind = "video"
+		} else {
+			return false
+		}
+		matched := false
+		for _, accepted := range strings.Split(strings.ToLower(input.Accept), ",") {
+			accepted = strings.TrimSpace(accepted)
+			if accepted == "" || accepted == "*/*" || strings.HasPrefix(accepted, kind+"/") || accepted == ext {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
 }
 
 func openWebAIAttachmentMenu(ctx context.Context, client *browserCDPClient) error {
@@ -336,48 +249,6 @@ func submitWebAIPrompt(ctx context.Context, client *browserCDPClient, platform s
 	}
 	_, _ = client.call(ctx, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "key": "Enter", "code": "Enter", "windowsVirtualKeyCode": 13, "nativeVirtualKeyCode": 13}, client.sessionID)
 	return nil
-}
-
-func waitWebAIAnswer(ctx context.Context, client *browserCDPClient, responses, busy, prompt string, baseline int, timeout time.Duration) (string, error) {
-	expression := webAIResponseExpression(responses, prompt, mustJSON(busy))
-	deadline := time.Now().Add(timeout)
-	lastText := ""
-	stableAt := time.Time{}
-	for time.Now().Before(deadline) {
-		if err := ctx.Err(); err != nil {
-			return "", err
-		}
-		value, err := client.evaluate(ctx, expression)
-		if err == nil {
-			var state struct {
-				Count int    `json:"count"`
-				Text  string `json:"text"`
-				Busy  bool   `json:"busy"`
-			}
-			if raw, marshalErr := json.Marshal(value); marshalErr == nil && json.Unmarshal(raw, &state) == nil {
-				cleanText := strings.TrimSpace(state.Text)
-				if state.Count > baseline && cleanText != "" && !state.Busy {
-					if state.Text == lastText {
-						if stableAt.IsZero() {
-							stableAt = time.Now()
-						}
-						if time.Since(stableAt) >= 1400*time.Millisecond {
-							return cleanText, nil
-						}
-					} else {
-						lastText = state.Text
-						stableAt = time.Time{}
-					}
-				}
-			}
-		}
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(500 * time.Millisecond):
-		}
-	}
-	return "", errors.New("response wait timed out")
 }
 
 func mustJSON(value string) string {

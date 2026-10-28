@@ -22,7 +22,7 @@ type webAIView struct {
 }
 
 func webAIPlatformSupportsStudio(platform string) bool {
-	return platform == webai.PlatformMuseAI || platform == webai.PlatformGoogleFlow
+	return platform == webai.PlatformChatGPT || platform == webai.PlatformClaude || platform == webai.PlatformGemini || platform == webai.PlatformGrok || platform == webai.PlatformMuseAI || platform == webai.PlatformGoogleFlow
 }
 
 // webAIPlatformViews returns saved-session counts and the subset usable by Studio.

@@ -144,7 +144,19 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 	return s, nil
 }
 
-// WireStudioWebAI kết nối kho tài khoản Web AI (Google Flow, Muse AI) với Studio AI video engine.
+// WireStudioWebAI connects saved web accounts to Studio's browser-backed provider operations.
+func (s *Server) studioWebAISession(account webai.Account) *studio.WebAISession {
+	accountID := account.ID
+	return &studio.WebAISession{
+		AccountID: account.ID, Platform: account.Platform, AccountName: account.AccountName,
+		SessionToken: account.SessionKey, CookieHeader: account.Cookie,
+		CookieJar: append([]webai.BrowserCookie(nil), account.CookieJar...), Email: account.Email,
+		CookieUpdater: func(cookie string, cookies []webai.BrowserCookie) error {
+			return s.persistWebAIResultCookies(accountID, cookie, cookies)
+		},
+	}
+}
+
 func (s *Server) WireStudioWebAI() {
 	if s.Studio == nil || s.WebAI == nil {
 		return
@@ -189,6 +201,22 @@ func (s *Server) WireStudioWebAI() {
 			}, nil
 		}
 		return nil, fmt.Errorf("Muse account %s is not connected", email)
+	})
+	s.Studio.SetWebAIAccountIDResolver(func(platform, accountID string) (*studio.WebAISession, error) {
+		accounts, err := s.WebAI.GetAccounts(platform)
+		if err != nil {
+			return nil, err
+		}
+		for _, account := range accounts {
+			if account.ID != accountID {
+				continue
+			}
+			if !account.IsActive || (account.Status != "ok" && account.Status != "connected") || strings.TrimSpace(account.Cookie) == "" && len(account.CookieJar) == 0 {
+				return nil, fmt.Errorf("Web AI account %s is inactive or has no usable session", accountID)
+			}
+			return s.studioWebAISession(account), nil
+		}
+		return nil, fmt.Errorf("Web AI account %s is not connected to %s", accountID, platform)
 	})
 	s.Studio.SetWebAIMuseRenderer(func(ctx context.Context, session *studio.WebAISession, request studio.MuseChatRequest, outputPath string, progress func(string)) (string, error) {
 		if session.Platform != webai.PlatformMuseAI {
@@ -253,6 +281,7 @@ func (s *Server) WireStudioWebAI() {
 			return "", fmt.Errorf("reference video generation only supports Google Flow, got %q", session.Platform)
 		}
 		current := session
+		defer func() { *session = *current }()
 		attempted := map[string]struct{}{}
 		if id := strings.TrimSpace(current.AccountID); id != "" {
 			attempted[id] = struct{}{}
@@ -297,10 +326,7 @@ func (s *Server) WireStudioWebAI() {
 						return "", fmt.Errorf("Google Flow hết quota; dừng vì không còn tài khoản khả dụng: %w", pickErr)
 					}
 					attempted[next.ID] = struct{}{}
-					current = &studio.WebAISession{
-						AccountID: next.ID, Platform: next.Platform, SessionToken: next.SessionKey,
-						CookieHeader: next.Cookie, CookieJar: append([]webai.BrowserCookie(nil), next.CookieJar...), Email: next.Email,
-					}
+					current = s.studioWebAISession(*next)
 					request.ProjectID = ""
 					progress("FLOW_ACCOUNT_ROTATION: account trước hết quota; chuyển sang account tiếp theo")
 					continue

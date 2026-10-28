@@ -166,22 +166,24 @@ func splitSpeechWords(text string, maxRunes int) []string {
 func isSpeechSpace(r rune) bool { return r == ' ' || r == '\n' || r == '\r' || r == '\t' }
 
 func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
-	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Cinematic vertical 9:16 video, highly detailed, 4k quality")
+	prompt := resolveNodePrompt(node, inputs, []string{"prompt"}, "Photorealistic fashion video. Preserve the exact identity of the target person and the design, colors, logo, and material texture of the product.")
 
 	ingredients := []string{}
-	if raw, ok := inputs["ingredients"]; ok && raw != nil {
-		for _, item := range flowStringList(raw) {
-			resolved := resolveAssetPath(item, ctx.WorkDir)
-			if resolved == "" || !isImageFile(resolved) {
-				return nil, fmt.Errorf("ảnh tham chiếu không hợp lệ: %s", filepath.Base(item))
+	for _, key := range []string{"ingredients", "reference_images", "images", "character_images", "product_images"} {
+		if raw, ok := inputs[key]; ok && raw != nil {
+			for _, item := range flowStringList(raw) {
+				resolved := resolveAssetPath(item, ctx.WorkDir)
+				if resolved == "" || !isImageFile(resolved) || !fileExists(resolved) {
+					return nil, fmt.Errorf("ảnh tham chiếu không hợp lệ: %s", filepath.Base(item))
+				}
+				ingredients = append(ingredients, resolved)
 			}
-			ingredients = append(ingredients, resolved)
 		}
 	}
-	for _, key := range []string{"character_image", "reference_image", "product_image"} {
+	for _, key := range []string{"character_image", "reference_image", "product_image", "image"} {
 		if img := inputString(inputs, key, ""); img != "" {
 			resolved := resolveAssetPath(img, ctx.WorkDir)
-			if resolved == "" || !isImageFile(resolved) {
+			if resolved == "" || !isImageFile(resolved) || !fileExists(resolved) {
 				return nil, fmt.Errorf("ảnh tham chiếu %s không hợp lệ", key)
 			}
 			ingredients = append(ingredients, resolved)
@@ -198,22 +200,28 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 		}
 	}
 	ingredients = uniqueIngredients
+	if len(ingredients) > 3 {
+		return nil, fmt.Errorf("Google Flow Ingredients nhận tối đa 3 ảnh tham chiếu; workflow đang có %d", len(ingredients))
+	}
 
 	// Bổ sung chỉ thị điện ảnh bảo toàn nhận diện nhân vật & sản phẩm
 	enhancedPrompt := prompt
-	if !strings.Contains(enhancedPrompt, "reference image") && !strings.Contains(enhancedPrompt, "exact") {
-		enhancedPrompt = fmt.Sprintf("Photorealistic vertical 9:16 cinematic video. Maintain exact facial features, skin tone, hair and likeness of the character from reference image. Preserve exact product design, colors, logo and material texture. Fixed camera angle, steady tripod shot, no zoom-in, no zoom-out, no camera zoom. 35mm lens, soft cinematic studio lighting, steadycam smooth movement, 4k ultra realistic. %s", prompt)
+	if !strings.Contains(strings.ToLower(enhancedPrompt), "reference image") && !strings.Contains(strings.ToLower(enhancedPrompt), "exact") {
+		enhancedPrompt = fmt.Sprintf("Photorealistic cinematic video. Maintain the exact identity of the person shown in the reference images. Preserve the product design, colors, logo, and material texture. Use smooth natural movement and stable framing. %s", prompt)
 	}
 
-	aspect := nodeParamString(node.Params, "aspect", "VIDEO_ASPECT_RATIO_PORTRAIT")
+	aspect := nodeParamString(node.Params, "aspect", "9:16")
 	outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_googleflow.mp4", node.ID))
 
-	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow Veo 2 (ingredients: %d ảnh tham chiếu, aspect: %s)...", len(ingredients), aspect))
+	ctx.Log(fmt.Sprintf("GoogleFlowVideoNode: Đang gửi yêu cầu tạo video tới Google Flow (ingredients: %d ảnh tham chiếu, aspect: %s)...", len(ingredients), aspect))
 
 	if ctx.EngineCall == nil {
 		return nil, fmt.Errorf("Google Flow chưa được nối với workflow engine")
 	}
-	if _, err := ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, outPath); err != nil {
+	projectID, accountID := googleFlowThreadValues(ctx)
+	nextProjectID, nextAccountID, err := ctx.EngineCall(ctx.Context, "googleflow", enhancedPrompt, ingredients, aspect, projectID, accountID, outPath)
+	setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
+	if err != nil {
 		return nil, fmt.Errorf("Google Flow không tạo được video: %w", err)
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {
@@ -225,6 +233,31 @@ func executeGoogleFlowVideo(ctx *ExecutionContext, node *FlowNode, inputs map[st
 	return map[string]any{
 		"video_out": outPath,
 	}, nil
+}
+
+func googleFlowThreadValues(ctx *ExecutionContext) (projectID, accountID string) {
+	if ctx == nil || ctx.GoogleFlowThread == nil {
+		return "", ""
+	}
+	return ctx.GoogleFlowThread.ProjectID, ctx.GoogleFlowThread.AccountID
+}
+
+func setGoogleFlowThreadValues(ctx *ExecutionContext, projectID, accountID string) {
+	if ctx == nil {
+		return
+	}
+	if ctx.GoogleFlowThread == nil {
+		ctx.GoogleFlowThread = &GoogleFlowThreadState{}
+	}
+	if strings.TrimSpace(accountID) != "" && strings.TrimSpace(ctx.GoogleFlowThread.AccountID) != "" && strings.TrimSpace(accountID) != strings.TrimSpace(ctx.GoogleFlowThread.AccountID) && strings.TrimSpace(projectID) == "" {
+		ctx.GoogleFlowThread.ProjectID = ""
+	}
+	if strings.TrimSpace(projectID) != "" {
+		ctx.GoogleFlowThread.ProjectID = strings.TrimSpace(projectID)
+	}
+	if strings.TrimSpace(accountID) != "" {
+		ctx.GoogleFlowThread.AccountID = strings.TrimSpace(accountID)
+	}
 }
 
 func executeMuseAIVideo(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
@@ -363,8 +396,41 @@ func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	if strings.TrimSpace(prompt) == "" {
 		return nil, fmt.Errorf("thiếu prompt: nối cổng prompt hoặc nhập prompt riêng cho node")
 	}
-	providerName := nodeParamString(node.Params, "provider_name", "googleflow")
+	providerName := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "provider_name", "googleflow")))
 	outputType := strings.ToLower(nodeParamString(node.Params, "output_type", "video"))
+	if isBrowserWebAIProvider(providerName) {
+		if ctx.WebAIOperation == nil {
+			return nil, fmt.Errorf("Web AI browser provider chưa được nối")
+		}
+		files, err := customWebAIFiles(ctx, inputs)
+		if err != nil {
+			return nil, err
+		}
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_webai_result", node.ID))
+		thread := ctx.webAIConversation(providerName)
+		text, mediaPath, nextURL, nextAccountID, err := ctx.WebAIOperation(ctx.Context, providerName, prompt, files, outputType, outPath, thread.URL, thread.AccountID)
+		ctx.setWebAIConversation(providerName, WebAIConversation{URL: nextURL, AccountID: nextAccountID})
+		if err != nil {
+			return nil, fmt.Errorf("%s Web AI thất bại: %w", providerName, err)
+		}
+		outputs := map[string]any{"result_out": text, "text_out": text}
+		switch outputType {
+		case "text":
+		case "image":
+			if mediaPath == "" || !fileExists(mediaPath) || !isImageFile(mediaPath) {
+				return nil, fmt.Errorf("%s không tạo được file ảnh hợp lệ", providerName)
+			}
+			outputs["result_out"], outputs["image_out"] = mediaPath, mediaPath
+		case "video":
+			if mediaPath == "" || !fileExists(mediaPath) || !isVideoFile(mediaPath) {
+				return nil, fmt.Errorf("%s không tạo được file video hợp lệ", providerName)
+			}
+			outputs["result_out"], outputs["video_out"] = mediaPath, mediaPath
+		default:
+			return nil, fmt.Errorf("kiểu output không hỗ trợ: %s", outputType)
+		}
+		return outputs, nil
+	}
 	provider, err := flowVideoProvider(providerName)
 	if err != nil && outputType == "video" {
 		return nil, err
@@ -406,6 +472,59 @@ func executeCustomWebAI(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	default:
 		return nil, fmt.Errorf("kiểu xuất không hỗ trợ: %s", outputType)
 	}
+}
+
+func isBrowserWebAIProvider(provider string) bool {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "chatgpt", "claude", "gemini", "grok":
+		return true
+	default:
+		return false
+	}
+}
+
+func customWebAIFiles(ctx *ExecutionContext, inputs map[string]any) ([]string, error) {
+	keys := []string{"image", "image_in", "video", "video_in", "reference_image", "reference_video", "character_image", "product_image", "asset_in"}
+	files := make([]string, 0, 4)
+	seen := make(map[string]struct{})
+	add := func(value string, key string) error {
+		if strings.TrimSpace(value) == "" {
+			return nil
+		}
+		resolved := resolveAssetPath(value, ctx.WorkDir)
+		if resolved == "" || !fileExists(resolved) || !isImageFile(resolved) && !isVideoFile(resolved) {
+			return fmt.Errorf("Web AI input %s is not a valid image or video", key)
+		}
+		if _, ok := seen[resolved]; !ok {
+			seen[resolved] = struct{}{}
+			files = append(files, resolved)
+		}
+		return nil
+	}
+	for _, key := range keys {
+		if err := add(inputString(inputs, key, ""), key); err != nil {
+			return nil, err
+		}
+	}
+	for _, key := range []string{"images_in", "images", "reference_images", "ingredients", "product_images"} {
+		items, ok := workflowMapItems(inputs[key])
+		if !ok {
+			continue
+		}
+		for _, item := range items {
+			value, ok := item.(string)
+			if !ok {
+				continue
+			}
+			if err := add(value, key); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if len(files) > 10 {
+		return nil, fmt.Errorf("Web AI accepts at most 10 input files")
+	}
+	return files, nil
 }
 
 func isSupportedFlowModel(m string) bool {
@@ -608,16 +727,30 @@ func flowVideoProvider(value string) (string, error) {
 }
 
 func callFlowVideoProvider(ctx *ExecutionContext, provider, prompt string, images []string, aspect, outPath string) error {
-	if ctx.EngineCall == nil {
-		return fmt.Errorf("video provider %s chưa được nối", provider)
-	}
 	if strings.TrimSpace(prompt) == "" {
 		return fmt.Errorf("thiếu prompt tạo video")
 	}
 	if len(images) == 0 {
 		return fmt.Errorf("tạo video cần ít nhất một ảnh tham chiếu thật")
 	}
-	if _, err := ctx.EngineCall(ctx.Context, provider, prompt, images, aspect, outPath); err != nil {
+	var err error
+	if strings.EqualFold(provider, "museai") && (ctx.MuseRenderWithSession != nil || ctx.MuseRender != nil) {
+		err = renderMuseWorkflowNode(ctx, "Workflow Muse AI", prompt, images, outPath)
+	} else {
+		if ctx.EngineCall == nil {
+			return fmt.Errorf("video provider %s chưa được nối", provider)
+		}
+		projectID, accountID := "", ""
+		if strings.EqualFold(provider, "googleflow") {
+			projectID, accountID = googleFlowThreadValues(ctx)
+		}
+		nextProjectID, nextAccountID, callErr := ctx.EngineCall(ctx.Context, provider, prompt, images, aspect, projectID, accountID, outPath)
+		if strings.EqualFold(provider, "googleflow") {
+			setGoogleFlowThreadValues(ctx, nextProjectID, nextAccountID)
+		}
+		err = callErr
+	}
+	if err != nil {
 		return fmt.Errorf("%s không tạo được video: %w", provider, err)
 	}
 	if !fileExists(outPath) || !isVideoFile(outPath) {

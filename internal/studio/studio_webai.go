@@ -18,6 +18,12 @@ func (s *Studio) SetWebAIAccountResolver(r WebAIAccountResolver) {
 	s.mu.Unlock()
 }
 
+func (s *Studio) SetWebAIAccountIDResolver(r WebAIAccountIDResolver) {
+	s.mu.Lock()
+	s.webAIAccountByID = r
+	s.mu.Unlock()
+}
+
 func (s *Studio) SetWebAIImageAnalyzer(analyzer WebAIImageAnalyzer) {
 	s.mu.Lock()
 	s.webAIImageAnalyzer = analyzer
@@ -55,23 +61,37 @@ func (s *Studio) WebAIVideoReady(platform string) (bool, string) {
 }
 
 func (s *Studio) GenerateWebAIVideo(ctx context.Context, platform string, request WebAIVideoRequest, outputPath string, progress func(string)) (string, error) {
+	projectID, _, err := s.GenerateWebAIVideoForAccount(ctx, platform, "", request, outputPath, progress)
+	return projectID, err
+}
+
+// GenerateWebAIVideoForAccount keeps successive workflow shots on the same
+// Google Flow account so their project remains accessible between nodes.
+func (s *Studio) GenerateWebAIVideoForAccount(ctx context.Context, platform, accountID string, request WebAIVideoRequest, outputPath string, progress func(string)) (string, string, error) {
 	s.mu.Lock()
 	renderer := s.webAIVideo
 	s.mu.Unlock()
 	if renderer == nil {
-		return "", fmt.Errorf("bộ tạo video Web AI chưa sẵn sàng")
+		return "", accountID, fmt.Errorf("bộ tạo video Web AI chưa sẵn sàng")
 	}
-	session, err := s.GetWebAISession(platform)
+	var session *WebAISession
+	var err error
+	if strings.TrimSpace(accountID) != "" {
+		session, err = s.GetWebAISessionByID(platform, accountID)
+	} else {
+		session, err = s.GetWebAISession(platform)
+	}
 	if err != nil {
-		return "", err
+		return "", accountID, err
 	}
 	if session == nil || strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0 {
-		return "", fmt.Errorf("account %s chưa có phiên đăng nhập hợp lệ", platform)
+		return "", accountID, fmt.Errorf("account %s chưa có phiên đăng nhập hợp lệ", platform)
 	}
 	if progress == nil {
 		progress = func(string) {}
 	}
-	return renderer(ctx, session, request, outputPath, progress)
+	projectID, err := renderer(ctx, session, request, outputPath, progress)
+	return projectID, session.AccountID, err
 }
 
 // GetWebAISession lấy thông tin phiên Web AI đang hoạt động cho một nền tảng.
@@ -96,6 +116,19 @@ func (s *Studio) GetWebAISessionForEmail(platform, email string) (*WebAISession,
 		return nil, fmt.Errorf("studio: explicit web ai account resolver is not configured")
 	}
 	return r(platform, email)
+}
+
+func (s *Studio) GetWebAISessionByID(platform, accountID string) (*WebAISession, error) {
+	if strings.TrimSpace(accountID) == "" {
+		return s.GetWebAISession(platform)
+	}
+	s.mu.Lock()
+	r := s.webAIAccountByID
+	s.mu.Unlock()
+	if r == nil {
+		return nil, fmt.Errorf("studio: explicit web ai account ID resolver is not configured")
+	}
+	return r(platform, accountID)
 }
 
 func (s *Studio) RenderMuseChat(ctx context.Context, session *WebAISession, request MuseChatRequest, outputPath string, progress func(string)) (string, error) {

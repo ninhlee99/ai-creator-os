@@ -318,6 +318,12 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	if isRootGraph || ctx.MuseThread == nil {
 		ctx.MuseThread = &MuseThreadState{}
 	}
+	if isRootGraph || ctx.GoogleFlowThread == nil {
+		ctx.GoogleFlowThread = &GoogleFlowThreadState{}
+	}
+	if isRootGraph || ctx.WebAIThreads == nil {
+		ctx.WebAIThreads = &WebAIThreadState{Conversations: make(map[string]WebAIConversation)}
+	}
 
 	run := &FlowRun{
 		ID:         ctx.RunID,

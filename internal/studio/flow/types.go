@@ -117,6 +117,20 @@ type MuseThreadState struct {
 	URL     string
 }
 
+type GoogleFlowThreadState struct {
+	ProjectID string
+	AccountID string
+}
+
+type WebAIConversation struct {
+	URL       string
+	AccountID string
+}
+
+type WebAIThreadState struct {
+	Conversations map[string]WebAIConversation
+}
+
 type ExecutionContext struct {
 	Context               context.Context
 	RunID                 string
@@ -124,16 +138,19 @@ type ExecutionContext struct {
 	OutDir                string
 	AccountID             int
 	MuseThread            *MuseThreadState
+	GoogleFlowThread      *GoogleFlowThreadState
+	WebAIThreads          *WebAIThreadState
 	MuseAccountEmail      string
 	MuseAccountName       string
 	Log                   func(msg string)
 	NodeStatus            func(nodeID string, state NodeState)
-	EngineCall            func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
+	EngineCall            func(ctx context.Context, platform string, prompt string, images []string, aspect, projectID, accountID, outPath string) (nextProjectID, nextAccountID string, err error)
 	MuseRender            func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error
 	MuseRenderWithSession func(ctx context.Context, isNewThread bool, threadURL, threadTitle, prompt string, files []string, outPath string) (string, error)
 	MediaGen              any
 	VisionEval            func(ctx context.Context, prompt string, imagePath string) (string, error)
 	AnalyzeImages         func(ctx context.Context, prompt string, imagePaths []string) (string, error)
+	WebAIOperation        func(ctx context.Context, platform, prompt string, files []string, outputType, outputPath, conversationURL, accountID string) (text, mediaPath, nextConversationURL, nextAccountID string, err error)
 	GenerateText          func(ctx context.Context, systemPrompt, prompt string) (string, error)
 	SynthesizeSpeech      func(ctx context.Context, text, voice string) ([]byte, error)
 	GenerateImage         func(ctx context.Context, prompt string, imagePaths []string, outPath string) error
@@ -153,6 +170,39 @@ func (ctx *ExecutionContext) startMuseThread() bool {
 	isNewThread := !ctx.MuseThread.Started
 	ctx.MuseThread.Started = true
 	return isNewThread
+}
+
+func (ctx *ExecutionContext) webAIConversation(provider string) WebAIConversation {
+	if ctx == nil {
+		return WebAIConversation{}
+	}
+	if ctx.WebAIThreads == nil {
+		ctx.WebAIThreads = &WebAIThreadState{Conversations: make(map[string]WebAIConversation)}
+	}
+	if ctx.WebAIThreads.Conversations == nil {
+		ctx.WebAIThreads.Conversations = make(map[string]WebAIConversation)
+	}
+	return ctx.WebAIThreads.Conversations[provider]
+}
+
+func (ctx *ExecutionContext) setWebAIConversation(provider string, state WebAIConversation) {
+	if ctx == nil {
+		return
+	}
+	if ctx.WebAIThreads == nil {
+		ctx.WebAIThreads = &WebAIThreadState{Conversations: make(map[string]WebAIConversation)}
+	}
+	if ctx.WebAIThreads.Conversations == nil {
+		ctx.WebAIThreads.Conversations = make(map[string]WebAIConversation)
+	}
+	previous := ctx.WebAIThreads.Conversations[provider]
+	if state.URL == "" {
+		state.URL = previous.URL
+	}
+	if state.AccountID == "" {
+		state.AccountID = previous.AccountID
+	}
+	ctx.WebAIThreads.Conversations[provider] = state
 }
 
 // FlowProduct contains approved catalog data available to product_input nodes.

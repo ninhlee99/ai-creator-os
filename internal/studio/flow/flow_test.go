@@ -343,8 +343,11 @@ func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 		WorkDir: workDir,
 		OutDir:  outDir,
 		Log:     func(msg string) {},
-		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error) {
-			return "test_project", writeDummyVideo(&ExecutionContext{WorkDir: workDir}, outPath, 3.0)
+		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect, projectID, accountID, outPath string) (string, string, error) {
+			if platform == "googleflow" && projectID != "" && projectID != "test_project" {
+				return projectID, accountID, fmt.Errorf("unexpected project ID %q", projectID)
+			}
+			return "test_project", "test_account", writeDummyVideo(&ExecutionContext{WorkDir: workDir}, outPath, 3.0)
 		},
 		MuseRender: func(ctx context.Context, isNewThread bool, threadTitle, prompt string, files []string, outPath string) error {
 			return runFlowTestFFmpeg(ctx, "-y", "-f", "lavfi", "-i", "color=c=purple:s=540x960:d=10", "-t", "10", "-c:v", "libx264", "-pix_fmt", "yuv420p", outPath)
@@ -579,6 +582,101 @@ func TestTC08_ExecuteAINodes(t *testing.T) {
 	}
 	if geminiOut["optimized_prompt"] == "" {
 		t.Errorf("optimized_prompt rỗng")
+	}
+}
+
+func TestGoogleFlowNodesReuseProjectAndAccountWithinWorkflow(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir(), Log: func(string) {}}
+	imagePath := filepath.Join(ctx.WorkDir, "ingredient.png")
+	if err := writeDummyImage(imagePath, 120, 160, "INGREDIENT"); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	ctx.EngineCall = func(_ context.Context, platform, _ string, images []string, _ string, projectID, accountID, outPath string) (string, string, error) {
+		calls++
+		if platform != "googleflow" || len(images) != 1 || images[0] != imagePath {
+			t.Fatalf("Flow call lost provider or reference image: platform=%s images=%v", platform, images)
+		}
+		if calls == 1 && (projectID != "" || accountID != "") {
+			t.Fatalf("first Flow call must start fresh thread: project=%q account=%q", projectID, accountID)
+		}
+		if calls == 2 && (projectID != "project-1" || accountID != "account-1") {
+			t.Fatalf("second Flow call did not reuse project/account: project=%q account=%q", projectID, accountID)
+		}
+		if err := writeDummyVideo(ctx, outPath, 2); err != nil {
+			return projectID, accountID, err
+		}
+		return "project-1", "account-1", nil
+	}
+	node := &FlowNode{ID: "flow", Type: "google_flow_video", Params: map[string]any{"aspect": "9:16"}}
+	for i := 0; i < 2; i++ {
+		if _, err := executeGoogleFlowVideo(ctx, node, map[string]any{"prompt": "fashion shot", "reference_images": []string{imagePath}}); err != nil {
+			t.Fatalf("Flow node call %d: %v", i+1, err)
+		}
+	}
+	if calls != 2 || ctx.GoogleFlowThread.ProjectID != "project-1" || ctx.GoogleFlowThread.AccountID != "account-1" {
+		t.Fatalf("Flow thread state not retained: calls=%d state=%+v", calls, ctx.GoogleFlowThread)
+	}
+}
+
+func TestCustomWebAINodesReuseConversationWithinWorkflow(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir()}
+	calls := 0
+	ctx.WebAIOperation = func(_ context.Context, platform, prompt string, files []string, outputType, outputPath, conversationURL, accountID string) (string, string, string, string, error) {
+		calls++
+		if platform != "chatgpt" || prompt == "" || len(files) != 0 || outputType != "text" || outputPath == "" {
+			t.Fatalf("unexpected Web AI request: %s %q %v %s %q", platform, prompt, files, outputType, outputPath)
+		}
+		if calls == 1 && (conversationURL != "" || accountID != "") {
+			t.Fatalf("first provider call must start a fresh conversation")
+		}
+		if calls == 2 && (conversationURL != "https://chatgpt.com/c/workflow" || accountID != "chatgpt-account") {
+			t.Fatalf("second provider call did not reuse conversation/account: url=%q account=%q", conversationURL, accountID)
+		}
+		return "reply", "", "https://chatgpt.com/c/workflow", "chatgpt-account", nil
+	}
+	node := &FlowNode{ID: "chat", Type: "custom_web_ai", Params: map[string]any{
+		"provider_name": "chatgpt", "output_type": "text", "prompt": "continue the lookbook plan",
+	}}
+	for i := 0; i < 2; i++ {
+		if _, err := executeCustomWebAI(ctx, node, nil); err != nil {
+			t.Fatalf("Web AI node call %d: %v", i+1, err)
+		}
+	}
+	state := ctx.webAIConversation("chatgpt")
+	if calls != 2 || state.URL != "https://chatgpt.com/c/workflow" || state.AccountID != "chatgpt-account" {
+		t.Fatalf("Web AI conversation state not retained: calls=%d state=%+v", calls, state)
+	}
+}
+
+func TestCustomMuseVideoProviderUsesWorkflowMuseThread(t *testing.T) {
+	ctx := &ExecutionContext{Context: context.Background(), WorkDir: t.TempDir(), Log: func(string) {}, MuseThread: &MuseThreadState{}}
+	imagePath := filepath.Join(ctx.WorkDir, "ingredient.png")
+	if err := writeDummyImage(imagePath, 120, 160, "INGREDIENT"); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	ctx.MuseRenderWithSession = func(_ context.Context, newThread bool, threadURL, _, _ string, _ []string, outPath string) (string, error) {
+		calls++
+		if calls == 1 && (!newThread || threadURL != "") {
+			t.Fatalf("first Muse call must create workflow thread: new=%v url=%q", newThread, threadURL)
+		}
+		if calls == 2 && (newThread || threadURL != "https://muse.example/thread/workflow") {
+			t.Fatalf("second Muse call did not reuse workflow thread: new=%v url=%q", newThread, threadURL)
+		}
+		if err := writeDummyVideo(ctx, outPath, 2); err != nil {
+			return threadURL, err
+		}
+		return "https://muse.example/thread/workflow", nil
+	}
+	for i := 0; i < 2; i++ {
+		outPath := filepath.Join(ctx.WorkDir, fmt.Sprintf("muse-%d.mp4", i))
+		if err := callFlowVideoProvider(ctx, "museai", "fashion shot", []string{imagePath}, "9:16", outPath); err != nil {
+			t.Fatalf("Muse provider call %d: %v", i+1, err)
+		}
+	}
+	if calls != 2 || ctx.MuseThread.URL != "https://muse.example/thread/workflow" {
+		t.Fatalf("Muse workflow thread not retained: calls=%d thread=%+v", calls, ctx.MuseThread)
 	}
 }
 
@@ -1303,5 +1401,39 @@ func TestTC22_UniversalCustomNodes(t *testing.T) {
 	}
 	if exportOut["final_file"] == "" || !fileExists(exportOut["final_file"].(string)) {
 		t.Errorf("final_file must exist: %v", exportOut["final_file"])
+	}
+}
+
+func TestCustomWebAINodeUsesSelectedWebProviderAndPreservesVideoUpload(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+	imagePath := filepath.Join(ctx.WorkDir, "reference.jpg")
+	videoPath := filepath.Join(ctx.WorkDir, "reference.mp4")
+	if err := writeDummyImage(imagePath, 64, 64, "ref"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(videoPath, []byte("video"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	ctx.WebAIOperation = func(_ context.Context, platform, prompt string, files []string, outputType, outputPath, conversationURL, accountID string) (string, string, string, string, error) {
+		called = true
+		if platform != "gemini" || prompt != "Inspect both references" || outputType != "text" {
+			t.Fatalf("unexpected Web AI request: platform=%s prompt=%s output=%s", platform, prompt, outputType)
+		}
+		if len(files) != 2 || files[0] != imagePath || files[1] != videoPath {
+			t.Fatalf("Web AI request lost uploaded files: %v", files)
+		}
+		return "Observed both references", "", "", "", nil
+	}
+	node := &FlowNode{ID: "webai", Type: "custom_web_ai", Params: map[string]any{
+		"provider_name": "gemini", "output_type": "text", "prompt": "Inspect both references",
+	}}
+	outputs, err := executeCustomWebAI(ctx, node, map[string]any{"image_in": imagePath, "video_in": videoPath})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !called || outputs["text_out"] != "Observed both references" || outputs["result_out"] != "Observed both references" {
+		t.Fatalf("unexpected Web AI output: called=%v outputs=%v", called, outputs)
 	}
 }
