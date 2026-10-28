@@ -82,6 +82,51 @@ func TestShutdownCancelsDetachedFlowAndRejectsNewFlow(t *testing.T) {
 	}
 }
 
+func TestQueuedFlowWaitsForSharedRenderSlotAndCanBeCancelled(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	sem := st.jobSlot()
+	for i := 0; i < cap(sem); i++ {
+		sem <- struct{}{}
+	}
+	graph := &flow.FlowGraph{ID: "queued-graph", Name: "Queued graph"}
+	if err := st.StartFlowGraphWithInputs(context.Background(), "queued-flow", graph, nil); err != nil {
+		t.Fatal(err)
+	}
+	store, err := st.GetFlowStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := store.GetRun("queued-flow")
+	if err != nil || run == nil || run.Status != "queued" {
+		t.Fatalf("workflow should persist as queued while render slots are full: run=%+v err=%v", run, err)
+	}
+	if !st.CancelFlowRun("queued-flow") {
+		t.Fatal("queued workflow was not cancellable")
+	}
+	for i := 0; i < cap(sem); i++ {
+		<-sem
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		run, err = store.GetRun("queued-flow")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if run.Status == "cancelled" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if run == nil || run.Status != "cancelled" {
+		t.Fatalf("queued workflow did not persist cancellation: %+v", run)
+	}
+}
+
 func TestShutdownTracksJobBeforeRunnerStarts(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))

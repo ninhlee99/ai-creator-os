@@ -69,6 +69,30 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 	s.flowRuns[runID] = cancel
 	s.mu.Unlock()
 
+	store, err := s.GetFlowStore()
+	if err != nil {
+		s.mu.Lock()
+		delete(s.flowRuns, runID)
+		s.mu.Unlock()
+		cancel()
+		return err
+	}
+	queued := &flow.FlowRun{
+		ID: runID, GraphID: graph.ID, GraphName: graph.Name, Status: "queued",
+		NodeStates: make(map[string]flow.NodeState), Outputs: make(map[string]any),
+		CreatedAt: time.Now().Format(time.RFC3339),
+	}
+	for _, node := range graph.Nodes {
+		queued.NodeStates[node.ID] = flow.NodeState{Status: "queued"}
+	}
+	if err := store.SaveRun(queued); err != nil {
+		s.mu.Lock()
+		delete(s.flowRuns, runID)
+		s.mu.Unlock()
+		cancel()
+		return fmt.Errorf("lưu trạng thái queue workflow: %w", err)
+	}
+
 	services := append([]flow.ExecutionServices(nil), serviceOptions...)
 	inputs := cloneWorkflowInputs(workflowInputs)
 	go func() {
@@ -83,9 +107,35 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 				_, _ = s.recordFlowPanic(runID, graph, recovered)
 			}
 		}()
-		_, _ = s.ExecuteFlowGraphWithInputs(runCtx, runID, graph, inputs, services...)
+		_, runErr := s.ExecuteFlowGraphWithInputs(runCtx, runID, graph, inputs, services...)
+		if runErr != nil && runCtx.Err() != nil {
+			s.markQueuedFlowRunCancelled(runID)
+		}
 	}()
 	return nil
+}
+
+func (s *Studio) markQueuedFlowRunCancelled(runID string) {
+	store, err := s.GetFlowStore()
+	if err != nil {
+		return
+	}
+	run, err := store.GetRun(runID)
+	if err != nil || run == nil || run.Status != "queued" {
+		return
+	}
+	now := time.Now().Format(time.RFC3339)
+	for id, state := range run.NodeStates {
+		if state.Status == "queued" {
+			state.Status = "cancelled"
+			state.FinishedAt = now
+			run.NodeStates[id] = state
+		}
+	}
+	run.Status = "cancelled"
+	run.FinishedAt = now
+	run.Log += "Workflow bị hủy khi đang chờ lượt chạy.\n"
+	_ = store.SaveRun(run)
 }
 
 func (s *Studio) recordFlowPanic(runID string, graph *flow.FlowGraph, recovered any) (run *flow.FlowRun, err error) {
@@ -161,6 +211,19 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	sem := s.jobSlot()
+	select {
+	case sem <- struct{}{}:
+		defer func() { <-sem }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	if runID == "" {
 		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())

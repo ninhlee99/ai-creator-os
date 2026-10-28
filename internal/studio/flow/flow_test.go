@@ -1043,6 +1043,104 @@ func TestTC12_StoreCRUD(t *testing.T) {
 	}
 }
 
+func TestNewStoreRecoversInterruptedRuns(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "flow.db")
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	store, err := NewStore(db)
+	if err != nil {
+		db.Close()
+		t.Fatalf("NewStore: %v", err)
+	}
+	if err := store.SaveRun(&FlowRun{
+		ID: "run_interrupted", Status: "running", Progress: 20,
+		NodeStates: map[string]NodeState{
+			"completed": {Status: "completed", Progress: 100},
+			"running":   {Status: "running", Progress: 20},
+			"queued":    {Status: "queued"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveRun(&FlowRun{
+		ID: "run_terminal", Status: "completed", Progress: 100,
+		NodeStates: map[string]NodeState{"done": {Status: "completed", Progress: 100}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveRun(&FlowRun{
+		ID: "run_queued", Status: "queued",
+		NodeStates: map[string]NodeState{"waiting": {Status: "queued"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveRun(&FlowRun{ID: "run_corrupt", Status: "running"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE studio_workflow_runs SET node_states='not-json' WHERE id='run_corrupt'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	store, err = NewStore(db)
+	if err != nil {
+		t.Fatalf("NewStore after restart: %v", err)
+	}
+
+	interrupted, err := store.GetRun("run_interrupted")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if interrupted.Status != "failed" || interrupted.FinishedAt == "" {
+		t.Fatalf("interrupted run = status %q finished_at %q, want failed and finished", interrupted.Status, interrupted.FinishedAt)
+	}
+	if got := interrupted.NodeStates["completed"].Status; got != "completed" {
+		t.Fatalf("completed node status = %q, want completed", got)
+	}
+	if got := interrupted.NodeStates["running"].Status; got != "failed" {
+		t.Fatalf("running node status = %q, want failed", got)
+	}
+	if got := interrupted.NodeStates["queued"].Status; got != "cancelled" {
+		t.Fatalf("queued node status = %q, want cancelled", got)
+	}
+	if !strings.Contains(interrupted.Log, "workflow interrupted by app restart") {
+		t.Fatalf("recovery log = %q, want restart explanation", interrupted.Log)
+	}
+	queued, err := store.GetRun("run_queued")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if queued.Status != "failed" || queued.NodeStates["waiting"].Status != "cancelled" {
+		t.Fatalf("queued run = status %q, node %q; want failed/cancelled", queued.Status, queued.NodeStates["waiting"].Status)
+	}
+
+	corrupt, err := store.GetRun("run_corrupt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if corrupt.Status != "failed" || len(corrupt.NodeStates) != 0 {
+		t.Fatalf("corrupt run = status %q nodes %v, want failed with empty node states", corrupt.Status, corrupt.NodeStates)
+	}
+
+	terminal, err := store.GetRun("run_terminal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if terminal.Status != "completed" || terminal.NodeStates["done"].Status != "completed" {
+		t.Fatalf("terminal run changed during recovery: %+v", terminal)
+	}
+}
+
 func TestTC14_MultiDependencyExecution(t *testing.T) {
 	workDir, err := os.MkdirTemp("", "flow-dep-test-*")
 	if err != nil {

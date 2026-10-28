@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -22,7 +23,97 @@ func NewStore(db *sql.DB) (*Store, error) {
 	if err := s.migrate(); err != nil {
 		return nil, err
 	}
+	if err := s.recoverInterruptedRuns(); err != nil {
+		return nil, err
+	}
 	return s, nil
+}
+
+func (s *Store) recoverInterruptedRuns() error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin workflow recovery: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(`SELECT id, node_states, log FROM studio_workflow_runs WHERE status IN ('queued', 'running')`)
+	if err != nil {
+		return fmt.Errorf("list interrupted workflow runs: %w", err)
+	}
+	type interruptedRun struct {
+		id, nodeStatesJSON, log string
+	}
+	var runs []interruptedRun
+	for rows.Next() {
+		var run interruptedRun
+		if err := rows.Scan(&run.id, &run.nodeStatesJSON, &run.log); err != nil {
+			rows.Close()
+			return fmt.Errorf("read interrupted workflow run: %w", err)
+		}
+		runs = append(runs, run)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return fmt.Errorf("iterate interrupted workflow runs: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close interrupted workflow runs: %w", err)
+	}
+	if len(runs) == 0 {
+		return tx.Commit()
+	}
+
+	finishedAt := time.Now().Format(time.RFC3339)
+	message := "workflow interrupted by app restart"
+	for _, run := range runs {
+		nodeStates := make(map[string]NodeState)
+		if err := json.Unmarshal([]byte(run.nodeStatesJSON), &nodeStates); err != nil {
+			// Keep the app usable even if one old run contains corrupt state JSON.
+			nodeStates = make(map[string]NodeState)
+		}
+		if nodeStates == nil {
+			nodeStates = make(map[string]NodeState)
+		}
+		for id, state := range nodeStates {
+			switch state.Status {
+			case "running":
+				state.Status = "failed"
+				state.Error = message
+				state.FinishedAt = finishedAt
+			case "queued":
+				state.Status = "cancelled"
+				state.Error = message
+				state.FinishedAt = finishedAt
+			default:
+				continue
+			}
+			nodeStates[id] = state
+		}
+		encodedStates, err := json.Marshal(nodeStates)
+		if err != nil {
+			return fmt.Errorf("encode recovered workflow run %s: %w", run.id, err)
+		}
+		logEntry := fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), message)
+		if run.log != "" {
+			run.log = strings.TrimRight(run.log, "\n") + "\n"
+		}
+		result, err := tx.Exec(`UPDATE studio_workflow_runs
+			SET status='failed', node_states=?, log=?, finished_at=?
+			WHERE id=? AND status IN ('queued', 'running')`, string(encodedStates), run.log+logEntry+"\n", finishedAt, run.id)
+		if err != nil {
+			return fmt.Errorf("recover workflow run %s: %w", run.id, err)
+		}
+		if changed, err := result.RowsAffected(); err != nil || changed > 1 {
+			if err != nil {
+				return fmt.Errorf("verify workflow recovery %s: %w", run.id, err)
+			}
+			return fmt.Errorf("recover workflow run %s changed %d rows", run.id, changed)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit workflow recovery: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) migrate() error {
