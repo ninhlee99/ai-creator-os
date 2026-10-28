@@ -279,6 +279,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 			EngagementRate: sourceVideo.EngagementRate, EngagementKnown: sourceVideo.EngagementKnown,
 		},
 		AIMode:                  aiMode,
+		WorkflowID:              strings.TrimSpace(r.PostFormValue("workflow_id")),
 		TargetDuration:          float64(duration),
 		OutputResolution:        strings.TrimSpace(r.PostFormValue("output_resolution")),
 		FlowCreditsAcknowledged: r.PostFormValue("confirm_flow_credits") == "1",

@@ -60,6 +60,9 @@
         this.definitions[d.type] = d;
       });
 
+      this.customAPIModels = [];
+      this.refreshCustomAPIModels();
+
       this.scale = 1.0;
       this.panX = 40;
       this.panY = 40;
@@ -335,7 +338,7 @@
         </div>
         <div class="wf-node-actions">
           <button type="button" class="wf-node-edit-btn" title="Mở chi tiết và cấu hình node">⚙️</button>
-          <button type="button" class="wf-node-del-btn" title="Xóa node">&times;</button>
+          ${!this.isPresetWorkflow(this.graph ? this.graph.id : '') ? '<button type="button" class="wf-node-del-btn" title="Xóa node">&times;</button>' : ''}
         </div>
       `;
 
@@ -349,10 +352,13 @@
       }
 
       // Delete Node
-      header.querySelector('.wf-node-del-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.deleteNode(node.id);
-      });
+      const delBtn = header.querySelector('.wf-node-del-btn');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.deleteNode(node.id);
+        });
+      }
 
       // Drag Node (Entire node card is smoothly draggable with real-time wire auto-stretch)
       let startClientX = 0, startClientY = 0;
@@ -1528,11 +1534,19 @@
     }
 
     deleteEdge(edgeId) {
+      if (this.isPresetWorkflow(this.graph ? this.graph.id : '')) {
+        window.showAppNotice('Workflow hệ thống là chỉ đọc. Hãy bấm "Nhân bản" để chỉnh sửa!');
+        return;
+      }
       this.graph.edges = this.graph.edges.filter(e => e.id !== edgeId);
       this.renderWires();
     }
 
     deleteNode(nodeId) {
+      if (this.isPresetWorkflow(this.graph ? this.graph.id : '')) {
+        window.showAppNotice('Workflow hệ thống là chỉ đọc. Hãy bấm "Nhân bản" để chỉnh sửa!');
+        return;
+      }
       this.graph.nodes = this.graph.nodes.filter(n => n.id !== nodeId);
       this.graph.edges = this.graph.edges.filter(e => {
         const fromNode = e.from_node || e.fromNode || e.FromNode;
@@ -1620,6 +1634,10 @@
     }
 
     async pasteCanvasContent() {
+      if (this.isPresetWorkflow(this.graph ? this.graph.id : '')) {
+        window.showAppNotice('Workflow hệ thống là chỉ đọc. Hãy bấm "Nhân bản" để chỉnh sửa và dán nội dung!');
+        return false;
+      }
       let text = '';
       try {
         if (navigator.clipboard?.readText) {
@@ -1827,9 +1845,15 @@
       const nameInput = document.getElementById('wf-active-name');
       const categorySelect = document.getElementById('wf-active-category');
       const presetPill = document.getElementById('wf-preset-pill');
-      if (nameInput) nameInput.value = this.graph.name || '';
+      const isPreset = this.isPresetWorkflow(this.graph ? this.graph.id : '');
+
+      if (nameInput) {
+        nameInput.value = this.graph.name || '';
+        nameInput.readOnly = isPreset;
+        nameInput.title = isPreset ? 'Workflow hệ thống (Bảo vệ · Chỉ đọc)' : 'Tên workflow';
+      }
       if (presetPill) {
-        presetPill.style.display = this.isPresetWorkflow(this.graph.id) ? 'inline-flex' : 'none';
+        presetPill.style.display = isPreset ? 'inline-flex' : 'none';
       }
       if (categorySelect) {
         const category = this.graph.category || 'custom';
@@ -1840,6 +1864,42 @@
           categorySelect.appendChild(option);
         }
         categorySelect.value = category;
+        categorySelect.disabled = isPreset;
+      }
+
+      // Quản lý hiển thị các nút thao tác theo yêu cầu:
+      // "Đối với các workflow hệ thống, hãy ẩn các button như sao chép, copy, save, xoá, thêm node đi nhé. Chỉ có button nhân bản workflow hoặc mới"
+      const btnAddNode = document.getElementById('btn-add-node');
+      const btnCopyCanvas = document.getElementById('btn-copy-canvas');
+      const btnPasteCanvas = document.getElementById('btn-paste-canvas');
+      const btnSaveGraph = document.getElementById('btn-save-graph');
+      const btnDeleteGraph = document.getElementById('btn-delete-active-graph');
+      const btnDuplicate = document.getElementById('btn-duplicate-active-graph');
+      const btnNew = document.getElementById('btn-new-graph');
+
+      if (btnAddNode) btnAddNode.style.display = isPreset ? 'none' : 'inline-flex';
+      if (btnCopyCanvas) btnCopyCanvas.style.display = isPreset ? 'none' : 'inline-flex';
+      if (btnPasteCanvas) btnPasteCanvas.style.display = isPreset ? 'none' : 'inline-flex';
+      if (btnSaveGraph) btnSaveGraph.style.display = isPreset ? 'none' : 'inline-flex';
+      if (btnDeleteGraph) btnDeleteGraph.style.display = isPreset ? 'none' : 'inline-flex';
+
+      if (btnDuplicate) {
+        btnDuplicate.style.display = 'inline-flex';
+        if (isPreset) {
+          btnDuplicate.classList.add('wf-btn-accent');
+          btnDuplicate.classList.remove('wf-btn-secondary');
+          btnDuplicate.title = 'Nhân bản workflow hệ thống để tùy chỉnh tự do';
+        } else {
+          btnDuplicate.classList.remove('wf-btn-accent');
+          btnDuplicate.classList.add('wf-btn-secondary');
+          btnDuplicate.title = 'Nhân bản workflow hiện tại';
+        }
+      }
+      if (btnNew) btnNew.style.display = 'inline-flex';
+
+      const banner = document.getElementById('wf-preset-notice-banner');
+      if (banner) {
+        banner.style.display = isPreset ? 'inline-flex' : 'none';
       }
     }
 
@@ -2048,7 +2108,13 @@
 
       // Create new workflow button
       const btnNew = document.getElementById('btn-new-graph');
-      if (btnNew) btnNew.addEventListener('click', async () => this.createNewGraph());
+      if (btnNew) btnNew.addEventListener('click', async () => this.openNewTemplateModal());
+
+      const btnCloseTemplateModal = document.getElementById('btn-close-new-template-modal');
+      if (btnCloseTemplateModal) btnCloseTemplateModal.addEventListener('click', () => this.closeNewTemplateModal());
+
+      const btnCreateBlank = document.getElementById('btn-create-blank-graph');
+      if (btnCreateBlank) btnCreateBlank.addEventListener('click', async () => this.createNewBlankGraph());
 
       // Add Node button
       const btnAdd = document.getElementById('btn-add-node');
@@ -3316,20 +3382,25 @@
         ],
         model: [
           ['auto', 'Tự động chọn (Khuyên dùng)'],
+          ['gpt-4.5', 'GPT-4.5 (OpenAI 2026)'],
           ['gpt-4o', 'GPT-4o (Đa nhiệm cao cấp)'],
-          ['gpt-4o-mini', 'GPT-4o Mini (Nhanh & Tiết kiệm)'],
-          ['gemini-1.5-pro', 'Gemini 1.5 Pro (Ngữ cảnh sâu)'],
-          ['gemini-1.5-flash', 'Gemini 1.5 Flash (Siêu tốc)'],
-          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet (Logic & Viết lách)'],
-          ['grok-2', 'Grok 2 (Sáng tạo)'],
-          ['veo-3.1-fast', 'Veo 3.1 Fast (Google Flow Video)'],
-          ['muse-gen2', 'Muse Gen-2 (Chuyển động mượt mà)'],
-          ['dall-e-3', 'DALL-E 3 (Chuẩn xác prompt ảnh)'],
-          ['imagen-3', 'Imagen 3 (Chất lượng ảnh cao)'],
+          ['gpt-4o-mini', 'GPT-4o Mini (Siêu tốc)'],
+          ['gemini-2.5-pro', 'Gemini 2.5 Pro (Google 2026)'],
+          ['gemini-2.5-flash', 'Gemini 2.5 Flash (Google 2026)'],
+          ['claude-3-7-sonnet', 'Claude 3.7 Sonnet (Anthropic 2026)'],
+          ['claude-3-5-sonnet', 'Claude 3.5 Sonnet'],
+          ['grok-3', 'Grok 3 (xAI 2026)'],
+          ['grok-2', 'Grok 2 (xAI)'],
+          ['veo-3.1-fast', 'Veo 3.1 Fast (Google Flow Video 2026)'],
+          ['muse-gen2', 'Muse Gen-2 (Muse AI 2026)'],
+          ['dall-e-3', 'DALL-E 3 (OpenAI Image)'],
+          ['imagen-3', 'Imagen 3 (Google Image)'],
           ['flux-1-schnell', 'Flux 1 Schnell (Chi tiết sắc nét)'],
           ['sdxl', 'Stable Diffusion XL'],
-          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo'],
-          ['ray-2', 'Luma Ray-2']
+          ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
+          ['ray-2', 'Luma Ray-2 (Video API)'],
+          ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
+          ['sora', 'OpenAI Sora (Video API 2026)']
         ],
         style_preset: [
           ['cinematic', 'Điện ảnh (Cinematic 4K lighting)'],
@@ -3427,7 +3498,7 @@
         ],
         target_resolution: [
           ['1080x1920', '1080x1920 (TikTok 9:16 Full HD)'],
-          ['2160x3840', '2160x3840 (TikTok 9:16 4K Ultra HD)'],
+          ['1440x2560', '1440x2560 (TikTok 9:16 2K QHD - Giới hạn tối đa)'],
           ['1920x1080', '1920x1080 (YouTube 16:9 Ngang Full HD)'],
           ['1080x1080', '1080x1080 (Instagram 1:1 Vuông)']
         ],
@@ -3528,7 +3599,7 @@
           ['dramatic_high_contrast', 'Tương phản gắt ấn tượng (Dramatic)'],
           ['glamour_glow', 'Tỏa sáng rực rỡ (Glamour Glow)']
         ],
-        resolution: [['1080p', '1080p (Full HD)'], ['4k', '4K (Ultra HD)']],
+        resolution: [['1080p', '1080p (Full HD 1080x1920)'], ['2k', '2K QHD (1440x2560 - Tối đa)']],
         fit_mode: [['contain', 'Giữ trọn khung hình · có thể có viền'], ['cover', 'Lấp đầy khung hình · cắt phần thừa']],
         audio_codec: [['aac', 'AAC (Chuẩn TikTok)'], ['copy', 'Giữ codec gốc']],
         method: [['POST', 'POST'], ['GET', 'GET'], ['PUT', 'PUT'], ['PATCH', 'PATCH'], ['DELETE', 'DELETE'], ['HEAD', 'HEAD']]
@@ -3886,13 +3957,95 @@
         guidanceEl.style.display = guidanceEl.textContent ? 'block' : 'none';
       }
 
-      // 3. LLM selector appears only where executor supports model choice.
+      // 3. LLM / Model selector dynamically populated based on provider_mode
       const modelGroup = document.getElementById('inspector-model-group');
       const modelSelect = document.getElementById('inspector-model-select');
       const supportsModel = Object.prototype.hasOwnProperty.call(def.default_params || {}, 'model');
       if (modelGroup && modelSelect) {
         modelGroup.style.display = supportsModel ? 'block' : 'none';
-        modelSelect.value = node.params?.model || def.default_params?.model || 'active';
+        const isAPIKeyMode = node.params?.provider_mode === 'api_key';
+        modelSelect.innerHTML = '';
+
+        if (isAPIKeyMode) {
+          // 1. User configured API Keys from Settings
+          if (Array.isArray(this.customAPIModels) && this.customAPIModels.length > 0) {
+            const userGroup = document.createElement('optgroup');
+            userGroup.label = '🔑 Cấu hình API Key của bạn (Cài đặt)';
+            this.customAPIModels.forEach(m => {
+              const opt = document.createElement('option');
+              opt.value = m.name;
+              opt.textContent = `${m.name} (${m.model})`;
+              userGroup.appendChild(opt);
+            });
+            modelSelect.appendChild(userGroup);
+          }
+
+          // 2. Standard 2026 API Models
+          const stdGroup = document.createElement('optgroup');
+          stdGroup.label = '⚡ Model API Chuẩn 2026';
+          [
+            ['auto', 'Tự động chọn (Khuyên dùng)'],
+            ['gpt-4.5', 'OpenAI GPT-4.5 (2026)'],
+            ['gpt-4o', 'OpenAI GPT-4o'],
+            ['gpt-4o-mini', 'OpenAI GPT-4o Mini'],
+            ['gemini-2.5-pro', 'Google Gemini 2.5 Pro (2026)'],
+            ['gemini-2.5-flash', 'Google Gemini 2.5 Flash (2026)'],
+            ['claude-3-7-sonnet', 'Anthropic Claude 3.7 Sonnet (2026)'],
+            ['claude-3-5-sonnet', 'Anthropic Claude 3.5 Sonnet'],
+            ['grok-3', 'xAI Grok 3 (2026)'],
+            ['veo-3.1-fast', 'Google Veo 3.1 Fast (Video API)'],
+            ['gen3a_turbo', 'Runway Gen-3 Alpha Turbo (Video API)'],
+            ['ray-2', 'Luma Ray-2 (Video API)'],
+            ['kling-1.5', 'Kling 1.5 Pro (Video API)'],
+            ['sora', 'OpenAI Sora (Video API 2026)'],
+            ['dall-e-3', 'DALL-E 3 (Image API)'],
+            ['imagen-3', 'Imagen 3 (Image API)'],
+            ['flux-1-schnell', 'Flux 1 Schnell (Image API)']
+          ].forEach(([val, lbl]) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = lbl;
+            stdGroup.appendChild(opt);
+          });
+          modelSelect.appendChild(stdGroup);
+        } else {
+          // Web AI (Logged-in browser accounts)
+          const webGroup = document.createElement('optgroup');
+          webGroup.label = '🌐 Web AI (Tài khoản login trình duyệt 2026)';
+          [
+            ['auto', 'Tự động chọn theo Web AI'],
+            ['veo-3.1-fast', 'Google Flow · Veo 3.1 Fast (2026)'],
+            ['muse-gen2', 'Muse AI · Gen-2 (2026)'],
+            ['gemini-2.5-flash', 'Gemini Web · 2.5 Flash (2026)'],
+            ['gemini-2.5-pro', 'Gemini Web · 2.5 Pro (2026)'],
+            ['gpt-4.5', 'ChatGPT Web · GPT-4.5 (2026)'],
+            ['gpt-4o', 'ChatGPT Web · GPT-4o'],
+            ['grok-3', 'Grok Web · Grok 3 (2026)'],
+            ['grok-2', 'Grok Web · Grok 2'],
+            ['claude-3-7-sonnet', 'Claude Web · 3.7 Sonnet (2026)'],
+            ['claude-3-5-sonnet', 'Claude Web · 3.5 Sonnet'],
+            ['dall-e-3', 'DALL-E 3 (Ảnh ChatGPT)'],
+            ['imagen-3', 'Imagen 3 (Ảnh Gemini)'],
+            ['flux-1-schnell', 'Flux 1 (Ảnh Grok)']
+          ].forEach(([val, lbl]) => {
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = lbl;
+            webGroup.appendChild(opt);
+          });
+          modelSelect.appendChild(webGroup);
+        }
+
+        const currentModel = node.params?.model || def.default_params?.model || 'auto';
+        // Check if currentModel exists in select, if not add it
+        const exists = Array.from(modelSelect.options).some(o => o.value === currentModel);
+        if (!exists && currentModel) {
+          const customOpt = document.createElement('option');
+          customOpt.value = currentModel;
+          customOpt.textContent = `Model đã chọn: ${currentModel}`;
+          modelSelect.appendChild(customOpt);
+        }
+        modelSelect.value = currentModel;
         modelSelect.onchange = () => {
           const m = modelSelect.value;
           if (!node.params) node.params = {};
@@ -4291,15 +4444,19 @@
     formatModelShortName(model) {
       if (!model) return '';
       const map = {
+        'gemini-2.5-pro': 'Gemini 2.5 Pro',
+        'gemini-2.5-flash': 'Gemini 2.5 Flash',
         'gemini-3.8-flash': 'Gemini 3.8',
         'gemini-3.1-pro': 'Gemini 3.1 Pro',
         'gemini_2_5_flash': 'Gemini 3.8',
         'gemini_2_5_pro': 'Gemini 3.1 Pro',
         'gemini-1.5-pro': 'Gemini 1.5 Pro',
         'gemini-1.5-flash': 'Gemini 1.5 Flash',
+        'gpt-4.5': 'GPT-4.5',
         'gpt-6-luna': 'GPT-6 Luna',
         'gpt-4o': 'GPT-4o',
         'gpt-4o-mini': 'GPT-4o Mini',
+        'claude-3-7-sonnet': 'Claude 3.7',
         'claude-5-5-sonet': 'Claude 5.5',
         'claude_5_5_sonet': 'Claude 5.5',
         'claude-3-5-sonnet': 'Claude 3.5 Sonnet',
@@ -4311,6 +4468,7 @@
         'muse-gen2': 'Muse Gen-2',
         'dall-e-3': 'DALL-E 3',
         'imagen-3': 'Imagen 3',
+        'flux-1': 'Flux 1',
         'flux-1-schnell': 'Flux 1',
         'sdxl': 'SDXL',
         'gen3a_turbo': 'Runway Gen-3',
@@ -4762,6 +4920,10 @@
     }
 
     openAddNodeModal() {
+      if (this.isPresetWorkflow(this.graph ? this.graph.id : '')) {
+        window.showAppNotice('Workflow hệ thống là chỉ đọc. Hãy bấm "Nhân bản" để chỉnh sửa và thêm node!');
+        return;
+      }
       const modal = document.getElementById('add-node-modal');
       if (modal) {
         modal.style.display = 'flex';
@@ -5269,6 +5431,105 @@
       return false;
     }
 
+    openNewTemplateModal() {
+      const modal = document.getElementById('wf-new-template-modal');
+      if (!modal) {
+        this.createNewGraph();
+        return;
+      }
+      this.renderNewTemplateModalContent();
+      modal.style.display = 'flex';
+    }
+
+    closeNewTemplateModal() {
+      const modal = document.getElementById('wf-new-template-modal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    renderNewTemplateModalContent() {
+      const presetsGrid = document.getElementById('new-template-presets-grid');
+      const customGrid = document.getElementById('new-template-custom-grid');
+      const customSection = document.getElementById('new-template-custom-section');
+
+      const allGraphs = this.savedGraphs || [];
+      const presets = allGraphs.filter(g => g.is_preset);
+      const customWorkflows = allGraphs.filter(g => !g.is_preset);
+
+      if (presetsGrid) {
+        presetsGrid.innerHTML = presets.map(p => `
+          <div class="wf-graph-card" style="cursor:pointer;border:1.5px solid var(--border);border-radius:12px;padding:14px;background:var(--bg2);transition:all 0.2s" onclick="window.flowCanvas.createFromTemplate('${p.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span class="badge badge-info" style="font-size:10.5px">⚡ Hệ thống</span>
+              <span style="font-size:11px;color:var(--muted)">${(p.nodes || []).length || 5} nodes</span>
+            </div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:4px">${p.name || p.title || p.id}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.4">${p.description || 'Workflow hệ thống được tối ưu sẵn'}</div>
+            <div style="margin-top:10px;display:flex;justify-content:flex-end">
+              <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Dùng template này →</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      if (customGrid) {
+        if (customWorkflows.length === 0) {
+          if (customSection) customSection.style.display = 'none';
+        } else {
+          if (customSection) customSection.style.display = 'block';
+          customGrid.innerHTML = customWorkflows.map(c => `
+            <div class="wf-graph-card" style="cursor:pointer;border:1.5px solid var(--border);border-radius:12px;padding:14px;background:var(--bg2);transition:all 0.2s" onclick="window.flowCanvas.createFromTemplate('${c.id}')">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span class="badge badge-dim" style="font-size:10.5px">📁 Workflow của tôi</span>
+                <span style="font-size:11px;color:var(--muted)">${(c.nodes || []).length || 0} nodes</span>
+              </div>
+              <div style="font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:4px">${c.name || c.title || c.id}</div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.4">${c.description || 'Workflow tự tạo'}</div>
+              <div style="margin-top:10px;display:flex;justify-content:flex-end">
+                <span style="font-size:11.5px;font-weight:700;color:var(--accent)">Dùng template này →</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    async createFromTemplate(templateId) {
+      this.closeNewTemplateModal();
+      if (!await this.confirmDiscardGraphChanges()) return;
+      try {
+        const resp = await fetch(`/api/flow/graphs/${templateId}`);
+        const data = await resp.json();
+        if (!data.ok || !data.graph) {
+          window.showAppNotice('Không thể tải template: ' + (data.error || ''));
+          return;
+        }
+        const cloned = JSON.parse(JSON.stringify(data.graph));
+        cloned.id = 'flow_' + Date.now();
+        cloned.name = `${cloned.name} (Bản mới)`;
+        cloned.is_preset = false;
+        cloned.category = cloned.category || 'custom';
+        delete cloned.created_at;
+        delete cloned.updated_at;
+        (cloned.nodes || []).forEach(n => delete n.state);
+
+        this.graph = cloned;
+        this.graphPersisted = false;
+        this.savedGraphFingerprint = this.graphFingerprint();
+        this.render();
+        this.deselectAll();
+        this.syncGraphHeader();
+        window.history.pushState(null, '', '/workflow?preset=' + cloned.id);
+        window.showAppNotice(`✓ Đã tạo workflow mới từ template "${data.graph.name}"!`);
+      } catch (err) {
+        window.showAppNotice('Lỗi khi tải template: ' + err.message);
+      }
+    }
+
+    async createNewBlankGraph() {
+      this.closeNewTemplateModal();
+      return await this.createNewGraph();
+    }
+
     async createNewGraph() {
       if (!await this.confirmDiscardGraphChanges()) return false;
       this.workflowContractRequests.clear();
@@ -5363,6 +5624,18 @@
         }
       } catch (e) {
         console.error('Không thể cập nhật danh sách workflow', e);
+      }
+    }
+
+    async refreshCustomAPIModels() {
+      try {
+        const resp = await fetch('/api/custom-models');
+        const data = await resp.json();
+        if (data.ok && Array.isArray(data.models)) {
+          this.customAPIModels = data.models;
+        }
+      } catch (e) {
+        console.warn('Failed to load custom API models', e);
       }
     }
 

@@ -150,6 +150,9 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 	if title := strings.TrimSpace(r.FormValue("source_music_title")); title != "" {
 		p.SourceMusicTitle = title
 	}
+	if wfID := strings.TrimSpace(r.FormValue("workflow_id")); wfID != "" {
+		p.WorkflowID = wfID
+	}
 	if sourceURL := strings.TrimSpace(r.FormValue("source_music_video_url")); sourceURL != "" {
 		p.SourceMusicVideoURL = sourceURL
 	}

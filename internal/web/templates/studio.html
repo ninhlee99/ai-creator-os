@@ -1,273 +1,290 @@
 {{define "title"}}Tạo video affiliate{{end}}
 {{define "content"}}
 
-<div class="webai-header" style="margin-bottom: 20px;">
+<div class="webai-header" style="margin-bottom: 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
   <div class="webai-header-left">
-    <h1>Tạo video affiliate</h1>
-    <p class="hint studio-page-subtitle">Đi theo 3 bước: chọn sản phẩm, chuẩn bị người mẫu, rồi lập shot list và render.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="badge badge-ok" style="font-size:11px">Affiliate Video</span>
+      <span style="font-size:12px;color:var(--muted)">Chuẩn 9:16 Dọc</span>
+    </div>
+    <h1 style="margin:0;font-size:22px;font-weight:800;color:var(--text)">Tạo video affiliate</h1>
+    <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Render video review &amp; giới thiệu sản phẩm tự động bằng AI theo từng shot list chuẩn chuyển đổi.</p>
   </div>
-  <div class="webai-header-actions">
-    <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-primary btn-sm">🎨 Mở trong Workflow Studio ↗</a>
-    <a href="/viral" class="btn btn-secondary btn-sm">🔥 Tạo video Viral</a>
-    <a href="/studio/jobs" class="btn btn-secondary btn-sm">Job &amp; thành phẩm</a>
+  <div class="webai-header-actions" style="display:flex;gap:8px">
+    <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:700">🛒 Radar sản phẩm</a>
+    <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-primary btn-sm" style="font-weight:700">🎨 Mở trong Workflow Studio ↗</a>
   </div>
 </div>
 
-{{if .Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-bottom:16px">{{.Error}}</p>{{end}}
-{{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
-{{if .Warning}}<p class="notice notice-warn" role="status">{{.Warning}}</p>{{end}}
-
-<nav class="studio-step-nav" aria-label="Các bước tạo video affiliate">
-  <a href="#studio-step-product">
-    <span class="studio-step-index">01</span>
-    <span class="studio-step-copy"><strong>Sản phẩm</strong><small>Thông tin &amp; ảnh listing</small></span>
-    <span class="studio-step-arrow" aria-hidden="true">↓</span>
-  </a>
-  <a href="#studio-step-model">
-    <span class="studio-step-index">02</span>
-    <span class="studio-step-copy"><strong>Người mẫu</strong><small>Ảnh mẫu &amp; âm thanh</small></span>
-    <span class="studio-step-arrow" aria-hidden="true">↓</span>
-  </a>
-  <a href="#studio-step-video">
-    <span class="studio-step-index">03</span>
-    <span class="studio-step-copy"><strong>Video</strong><small>Shot list &amp; render</small></span>
-    <span class="studio-step-arrow" aria-hidden="true">↓</span>
-  </a>
-</nav>
+{{if .Error}}<p class="err" style="background:rgba(239,68,68,0.1);padding:10px 14px;border-radius:8px;color:#ef4444;border:1px solid rgba(239,68,68,0.25);margin-bottom:16px">⚠ {{.Error}}</p>{{end}}
+{{if .Notice}}<p class="ok" style="background:rgba(16,185,129,0.1);padding:10px 14px;border-radius:8px;color:#10b981;border:1px solid rgba(16,185,129,0.25);margin-bottom:16px">✓ {{.Notice}}</p>{{end}}
+{{if .Warning}}<p class="notice notice-warn" role="status" style="margin-bottom:16px">{{.Warning}}</p>{{end}}
 
 <form method="post" action="/studio/affiliate" enctype="multipart/form-data" id="creative-ad-form">
-        <input type="hidden" name="source_music_title" value="{{.Prefill.SourceMusicTitle}}">
-        <input type="hidden" name="source_music_video_url" value="{{.Prefill.SourceMusicVideoURL}}">
-  <div class="studio-workbench-split" style="display:grid;grid-template-columns:minmax(0,1fr);gap:20px">
+  <input type="hidden" name="source_music_title" value="{{.Prefill.SourceMusicTitle}}">
+  <input type="hidden" name="source_music_video_url" value="{{.Prefill.SourceMusicVideoURL}}">
 
-    <!-- CỘT TRÁI: FORM 3 BƯỚC TINH GỌN (DƯỚI 3 BƯỚC) -->
-    <div class="studio-controls-col" style="display:flex;flex-direction:column;gap:18px">
+  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
 
-      <!-- BƯỚC 1: SẢN PHẨM THỜI TRANG & DEAL -->
-      <div class="card studio-step-card" id="studio-step-product">
-        <div class="studio-step-heading">
-          <div class="studio-step-title"><span class="studio-step-index">01</span><h3>Sản phẩm</h3></div>
-          <span class="badge badge-ok" style="font-size:11px">Affiliate</span>
-        </div>
+    <!-- BƯỚC 1: CHỌN WORKFLOW (MẶC ĐỊNH HOẶC CUSTOM) -->
+    <div class="card" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>🧩</span> Workflow Thực Thi
+        </h3>
+        <span class="badge badge-info" style="font-size:11px">Tự chọn Engine</span>
+      </div>
 
-        <div class="field" style="margin-bottom:14px">
-          <label style="font-weight:700;font-size:12.5px">Kênh nhận diện nhân vật <span class="req">*</span></label>
-          <select name="account_id" id="cr-account-id" onchange="filterStudioModels()" required style="width:100%;padding:10px">
-            {{range .AccountOptions}}
-            <option value="{{.ID}}" {{if eq .ID $.SelectedAccountID}}selected{{end}}>{{.Username}}</option>
-            {{end}}
-          </select>
-        </div>
-
-        {{if .Shelf}}
-        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:14px">
-          <label style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <span>📦 Chọn nhanh từ kệ hàng đã lưu:</span>
-            <a href="/products?tab=shelf" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600">Mở kệ hàng ↗</a>
-          </label>
-          <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:12.5px;font-weight:600;width:100%;padding:8px">
-            <option value="">— Bấm để chọn sản phẩm có sẵn trên kệ —</option>
-            {{range .Shelf}}
-            <option value="{{.Title}}" data-id="{{.ID}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}">
-              {{.Title}} · {{fmtVND .Price}}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;align-items:center">
+        <div>
+          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chọn Workflow chạy video:</label>
+          <select name="workflow_id" id="affiliate-workflow-id" style="width:100%;padding:10px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+            <option value="preset_affiliate_showcase" {{if eq .SelectedWorkflowID "preset_affiliate_showcase"}}selected{{end}}>
+              ⚡ [Mặc định] Affiliate Showcase Workflow (Muse AI &amp; Veo 3.1)
+            </option>
+            {{range .AvailableWorkflows}}
+            {{if ne .ID "preset_affiliate_showcase"}}
+            <option value="{{.ID}}" {{if eq .ID $.SelectedWorkflowID}}selected{{end}}>
+              📁 {{.Title}} {{if .Category}}({{.Category}}){{end}}
             </option>
             {{end}}
+            {{end}}
           </select>
         </div>
-        {{end}}
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-secondary btn-sm" style="font-size:12px;padding:9px 14px;white-space:nowrap">
+            ✏️ Tùy biến Workflow này
+          </a>
+        </div>
+      </div>
+    </div>
 
-        <div class="field" style="margin-bottom:14px">
-          <label style="font-weight:700;font-size:12.5px">Tên sản phẩm <span class="req">*</span></label>
-          <input type="text" name="product_name" id="cr-product-name" value="{{.Prefill.ProductName}}" required placeholder="Tên sản phẩm" style="padding:10px">
+    <!-- BƯỚC 2: SẢN PHẨM & LISTING -->
+    <div class="card" id="studio-step-product" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>📦</span> Sản Phẩm &amp; Listing
+        </h3>
+        <span class="badge badge-ok" style="font-size:11px">Affiliate Deal</span>
+      </div>
+
+      <div class="field" style="margin-bottom:14px">
+        <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:6px">Kênh nhận diện nhân vật <span class="req">*</span></label>
+        <select name="account_id" id="cr-account-id" onchange="filterStudioModels()" required style="width:100%;padding:10px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          {{range .AccountOptions}}
+          <option value="{{.ID}}" {{if eq .ID $.SelectedAccountID}}selected{{end}}>@{{.Username}}</option>
+          {{end}}
+        </select>
+      </div>
+
+      {{if .Shelf}}
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span>⚡ Chọn nhanh từ kệ hàng đã lưu:</span>
+          <a href="/products?tab=shelf" target="_blank" style="font-size:11px;color:var(--accent);font-weight:600">Mở kệ hàng ↗</a>
+        </label>
+        <select id="quick-shelf-select" onchange="pickShelfProduct(this)" style="font-size:13px;font-weight:600;width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          <option value="">— Bấm để chọn sản phẩm có sẵn trên kệ —</option>
+          {{range .Shelf}}
+          <option value="{{.Title}}" data-id="{{.ID}}" data-price="{{fmtVND .Price}}" data-niche="{{.Category}}" data-photo="{{.ImageURL}}" data-aff="{{.ProductURL}}">
+            {{.Title}} · {{fmtVND .Price}}
+          </option>
+          {{end}}
+        </select>
+      </div>
+      {{end}}
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:14px;margin-bottom:14px">
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:6px">Tên sản phẩm <span class="req">*</span></label>
+          <input type="text" name="product_name" id="cr-product-name" value="{{.Prefill.ProductName}}" required placeholder="Nhập tên sản phẩm quảng cáo" style="width:100%;padding:9px 12px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
         </div>
 
-        <!-- Ảnh listing là đầu vào bắt buộc; các trường còn lại có thể bổ sung sau. -->
-        <div class="field" style="margin-bottom:14px">
-          <label style="font-weight:700;font-size:12.5px;display:flex;justify-content:space-between">
-            <span>Ảnh sản phẩm <span class="req">*</span></span>
-          </label>
-          <div class="file-pick">
-            <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Tải ảnh sản phẩm từ máy…
-              <input type="file" name="product_photo" accept="image/*" onchange="onProductPhotoPicked(this, 'cr')">
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:6px">Ảnh sản phẩm (Các góc chụp) <span class="req">*</span></label>
+          <div class="file-pick" style="display:flex;gap:10px;align-items:center">
+            <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:9px 14px;cursor:pointer">📁 Tải ảnh sản phẩm (chọn nhiều ảnh)…
+              <input type="file" name="product_photos" accept="image/*" multiple onchange="onProductPhotoPicked(this, 'cr')" style="display:none">
             </label>
-            <span class="file-name" id="prod-photo-label-cr" style="font-size:12px">{{if .Prefill.PhotoURL}}Ảnh có sẵn từ sản phẩm{{else}}Chưa chọn ảnh{{end}}</span>
+            <span class="file-name" id="prod-photo-label-cr" style="font-size:12px;color:var(--muted)">{{if .Prefill.PhotoURL}}Ảnh có sẵn từ sản phẩm{{else}}Chưa chọn ảnh{{end}}</span>
           </div>
-          <p class="hint" style="margin:6px 0 0">Chọn ảnh rõ, đúng sản phẩm. Có thể thêm ảnh chi tiết trong phần thông tin bổ sung.</p>
           <input type="hidden" name="product_id" id="cr-product-id">
           <input type="hidden" name="photo_urls" id="cr-photo-urls" value="{{.Prefill.PhotoURL}}">
         </div>
+      </div>
 
-        <details id="cr-product-details" class="advanced studio-product-details" {{if or .Prefill.ProductPrice .Prefill.Niche .Prefill.AffLink}}open{{end}}>
-          <summary>Thông tin bổ sung <span class="label-hint">(không bắt buộc)</span></summary>
-          <div class="grid2" style="gap:12px;margin:14px 0 12px">
-            <div class="field">
-              <label style="font-weight:700;font-size:12.5px">Giá theo thông tin sản phẩm</label>
-              <input type="text" name="product_price" value="{{.Prefill.ProductPrice}}" placeholder="Giá sản phẩm" style="padding:10px">
-            </div>
-            <div class="field">
-              <label style="font-weight:700;font-size:12.5px">Ngành hàng</label>
-              <input type="text" name="niche" id="cr-niche" value="{{.Prefill.Niche}}" placeholder="Thời trang, mỹ phẩm, gia dụng..." style="padding:10px">
-            </div>
-          </div>
-
-          <div class="grid2" style="gap:12px;margin-bottom:14px">
-            <div class="field">
-              <label style="font-weight:700;font-size:12.5px">Link Affiliate / Giỏ hàng</label>
-              <input type="url" name="aff_link" value="{{.Prefill.AffLink}}" placeholder="https://..." style="padding:10px">
-            </div>
-            <div class="field">
-              <label style="font-weight:700;font-size:12.5px">Nhóm sản phẩm để quay</label>
-              <select name="product_category" style="padding:10px">
-                <option value="">Tự nhận diện từ ảnh sản phẩm</option>
-                <option value="apparel">Quần áo</option>
-                <option value="footwear">Giày dép</option>
-                <option value="bag">Túi xách</option>
-                <option value="jewelry">Trang sức</option>
-                <option value="cosmetics">Mỹ phẩm</option>
-                <option value="home">Đồ gia dụng</option>
-                <option value="tech">Thiết bị công nghệ</option>
-                <option value="food">Thực phẩm</option>
-                <option value="other">Khác</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="field" style="margin-bottom:14px">
-            <label style="font-weight:700;font-size:12.5px">Ghi chú cách dùng thêm <span class="hint">(không thay cách dùng bắt buộc theo nhóm hàng)</span></label>
-            <input type="text" name="product_usage" placeholder="Ví dụ: khi mặc cardigan, cài hàng khuy trước khi bước đi" style="padding:10px">
-          </div>
-
-          <div class="field" style="margin-bottom:14px">
-            <label style="font-weight:700;font-size:12.5px">Điểm nhìn thấy cần tập trung <span class="hint">(không nhập claim)</span></label>
-            <input type="text" name="product_focus" placeholder="Ví dụ: phom áo, hàng khuy, độ dài tay áo" style="padding:10px">
-          </div>
-
+      <details id="cr-product-details" class="advanced studio-product-details" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px" {{if or .Prefill.ProductPrice .Prefill.Niche .Prefill.AffLink}}open{{end}}>
+        <summary style="font-size:13px;font-weight:700;cursor:pointer;color:var(--text)">Thông tin bổ sung &amp; Link hoa hồng</summary>
+        <div class="grid2" style="gap:12px;margin:14px 0 12px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Ảnh góc khác / chi tiết sản phẩm</label>
-            <div class="file-pick">
-              <label class="btn btn-secondary btn-sm" style="font-size:12px;padding:8px 14px">📁 Chọn ảnh bổ sung…
-                <input type="file" name="extra_photos" accept="image/*" multiple onchange="onExtraProductPhotosPicked(this)">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Giá niêm yết</label>
+            <input type="text" name="product_price" value="{{.Prefill.ProductPrice}}" placeholder="Ví dụ: 199.000₫" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Ngành hàng</label>
+            <input type="text" name="niche" id="cr-niche" value="{{.Prefill.Niche}}" placeholder="Thời trang, mỹ phẩm, đồ gia dụng..." style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          </div>
+        </div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:12px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Link Affiliate / Giỏ hàng</label>
+            <input type="url" name="aff_link" value="{{.Prefill.AffLink}}" placeholder="https://..." style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Nhóm sản phẩm</label>
+            <select name="product_category" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+              <option value="">Tự động nhận diện qua AI</option>
+              <option value="apparel">Quần áo &amp; Thời trang</option>
+              <option value="footwear">Giày dép</option>
+              <option value="bag">Túi xách &amp; Balo</option>
+              <option value="jewelry">Trang sức &amp; Phụ kiện</option>
+              <option value="cosmetics">Mỹ phẩm &amp; Skincare</option>
+              <option value="home">Đồ gia dụng &amp; Đời sống</option>
+              <option value="tech">Thiết bị công nghệ</option>
+              <option value="food">Thực phẩm &amp; Đồ uống</option>
+              <option value="other">Khác</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid2" style="gap:12px;margin-bottom:12px">
+          <div class="field">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Điểm nhìn thấy cần làm nổi bật</label>
+            <input type="text" name="product_focus" placeholder="Ví dụ: phom dáng, chất liệu, đường may, độ bóng" style="width:100%;padding:8px 10px;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          </div>
+          <div class="field">
+            <label style="font-weight:700;font-size:12px;display:block;margin-bottom:4px">Ảnh bổ sung góc chi tiết</label>
+            <div class="file-pick" style="display:flex;gap:8px;align-items:center">
+              <label class="btn btn-secondary btn-sm" style="font-size:11px;padding:8px 12px;cursor:pointer">📁 Chọn ảnh…
+                <input type="file" name="extra_photos" accept="image/*" multiple onchange="onExtraProductPhotosPicked(this)" style="display:none">
               </label>
-              <span class="file-name" id="cr-extra-photo-label" style="font-size:12px">Chưa chọn ảnh</span>
+              <span class="file-name" id="cr-extra-photo-label" style="font-size:12px;color:var(--muted)">Chưa chọn</span>
             </div>
-            <p class="hint" style="margin:6px 0 0">Tối đa 6 ảnh; ảnh mờ hoặc sai sản phẩm sẽ chặn job.</p>
           </div>
-        </details>
+        </div>
+      </details>
 
-        <!-- Âm thanh video affiliate -->
-        <input type="hidden" name="tiktok_music_only" value="1">
-        <input type="hidden" name="voiceover_text" id="cr-voiceover-text" value="">
+      <input type="hidden" name="tiktok_music_only" value="1">
+      <input type="hidden" name="voiceover_text" id="cr-voiceover-text" value="">
+    </div>
+
+    <!-- BƯỚC 3: NHÂN VẬT ĐẠI DIỆN -->
+    <div class="card" id="studio-step-model" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>👤</span> Người Mẫu Đại Diện Kênh
+        </h3>
+        <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">{{if .AvailableModels}}Đã chọn {{len .AvailableModels}} góc mặt{{else}}Chưa có góc mặt nào{{end}}</span>
       </div>
 
-      <!-- BƯỚC 2: CHỌN CÁC GÓC MẶT VÀ DÁNG NGƯỜI CỦA MẪU NỮ -->
-      <div class="card studio-step-card" id="studio-step-model">
-        <div class="studio-step-heading">
-          <div class="studio-step-title"><span class="studio-step-index">02</span><h3>Ảnh người mẫu</h3></div>
-          <span class="badge badge-ok" style="font-size:11px" id="cr-model-selected-count">{{if .AvailableModels}}Đã chọn {{len .AvailableModels}} góc mặt{{else}}Chưa có góc mặt nào{{end}}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-weight:700;font-size:12px;color:var(--muted)">Chọn các góc mặt &amp; dáng mẫu để khoá nhận diện AI:</span>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
         </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <label style="font-weight:700;font-size:12.5px;margin:0">Chọn các góc khuôn mặt &amp; dáng chụp của mẫu nữ:</label>
-          <div style="display:flex;gap:6px">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(true)" style="font-size:11px;padding:2px 8px;font-weight:700">✓ Chọn tất cả</button>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllStudioModels(false)" style="font-size:11px;padding:2px 8px">Bỏ chọn</button>
-          </div>
-        </div>
-
-        <input type="hidden" name="model_id" id="cr-model-id" value="{{.SelectedModelID}}">
-
-        {{if .AvailableModels}}
-        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:14px" id="cr-model-grid">
-          {{range $idx, $m := .AvailableModels}}
-          <label class="character-model-card cr-model-card" data-account-id="{{$m.AccountID}}" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid var(--border);background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
-            <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" {{if eq $m.AccountID $.SelectedAccountID}}checked{{end}} class="cr-model-checkbox" onchange="onStudioModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
-            <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
-              <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
-            </div>
-            <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-              {{$m.AccountName}} · #{{add $idx 1}}
-            </div>
-            <span class="cr-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
-              ✓ Đã chọn
-            </span>
-          </label>
-          {{end}}
-        </div>
-        {{else}}
-        <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px">
-          Chưa có ảnh người mẫu.
-        </div>
-        {{end}}
-
-        <div class="field" style="margin-bottom:12px">
-          <label style="font-weight:700;font-size:12.5px">Hoặc tải ảnh mẫu khác</label>
-          <div class="file-pick studio-model-file-pick">
-            <input id="cr-model-photos" class="studio-model-upload-input" type="file" name="model_photos" accept="image/*" multiple aria-label="Tải ảnh mẫu khác" aria-describedby="cr-model-photo-help" onchange="onStudioModelPhotosPicked(this)">
-            <label for="cr-model-photos" class="btn btn-secondary btn-sm">📁 Chọn ảnh</label>
-            <span class="file-name" id="cr-model-photo-label" aria-live="polite">Chưa chọn ảnh</span>
-          </div>
-          <p class="hint" id="cr-model-photo-help" style="margin:6px 0 0">Ảnh tải lên sẽ thay ảnh thư viện đã chọn trong lần này; ảnh mới được lưu cho kênh.</p>
-        </div>
-
-        {{if .Prefill.SourceMusicVideoURL}}<p class="hint" style="margin-bottom:12px">Sound lấy từ Radar: <strong>{{if .Prefill.SourceMusicTitle}}{{.Prefill.SourceMusicTitle}}{{else}}Chưa có metadata sound{{end}}</strong> · <a href="{{.Prefill.SourceMusicVideoURL}}" target="_blank" rel="noopener noreferrer">mở video nhảy</a>. Studio sẽ tách và ghép âm thanh gốc vào affiliate.</p>{{else}}<p class="hint" style="margin-bottom:12px">Bắt buộc: chọn video nhảy có sound trong <a href="/studio/trends">Radar TikTok</a>. Studio sẽ tách âm thanh và ghép vào affiliate.</p>{{end}}
-
       </div>
 
-      <!-- BƯỚC 3: CÔNG NGHỆ RENDER & XUẤT BẢN -->
-      <div class="card studio-step-card" id="studio-step-video">
-        <div class="studio-step-heading">
-          <div class="studio-step-title"><span class="studio-step-index">03</span><h3>Video</h3></div>
-          <span class="badge badge-live" style="font-size:11px">Khung dọc 9:16</span>
-        </div>
+      <input type="hidden" name="model_id" id="cr-model-id" value="{{.SelectedModelID}}">
 
-        <input type="hidden" name="prepared_plan_id" id="cr-prepared-plan-id">
-        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--bg3)">
-          <div style="font-weight:800;margin-bottom:6px">Bước 1 · Phân tích sản phẩm và lập shot list</div>
-          <button type="button" class="btn btn-secondary" id="cr-plan-button" onclick="prepareAffiliatePlan()">📝 Lập shot list</button>
-          <span id="cr-plan-status" class="hint" style="margin-left:8px"></span>
-          <div id="cr-plan-result" style="display:none;margin-top:14px"></div>
-        </div>
-
-        <div class="grid2" style="gap:12px;margin-bottom:16px">
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Tạo video bằng</label>
-            <div class="readonly-field" style="padding:10px 12px;font-weight:700">Workflow API · Muse AI · render riêng từng shot</div>
-            <input type="hidden" name="video_engine" id="cr-video-engine" value="museai">
-            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint" style="color:var(--danger)">{{.FlowStatus}}</div>{{end}}
+      {{if .AvailableModels}}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:10px;margin-bottom:14px" id="cr-model-grid">
+        {{range $idx, $m := .AvailableModels}}
+        <label class="character-model-card cr-model-card" data-account-id="{{$m.AccountID}}" style="cursor:pointer;border-radius:10px;overflow:hidden;border:2px solid var(--border);background:var(--bg3);transition:all 0.2s;text-align:center;padding:6px;display:block;position:relative">
+          <input type="checkbox" name="model_photo_ids" value="{{$m.ID}}" {{if eq $m.AccountID $.SelectedAccountID}}checked{{end}} class="cr-model-checkbox" onchange="onStudioModelToggle(this)" style="position:absolute;top:8px;left:8px;width:18px;height:18px;accent-color:#2563eb;cursor:pointer;z-index:2">
+          <div style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;margin-bottom:6px">
+            <img src="{{$m.URL}}" alt="{{$m.Filename}}" style="width:100%;height:100%;object-fit:cover;display:block">
           </div>
-          <div class="field" id="cr-manual-clips-field">
-            <label style="font-weight:700;font-size:12.5px">Clip tham chiếu chuyển động <span class="hint">(tùy chọn)</span></label>
-            <input type="file" name="motion_clips" id="cr-motion-clips" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" multiple disabled>
-            <div class="hint" id="cr-clip-count-hint">Lập shot list trước. Có thể thêm một clip tham chiếu cho mỗi shot; Muse AI vẫn tạo video mới theo nhân vật và sản phẩm đã chọn.</div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{$m.AccountName}} · #{{add $idx 1}}
           </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
-            <select name="seconds" id="cr-seconds" style="padding:10px;font-weight:600" onchange="updateAffiliateClipCount()">
-              <option value="60" selected>🎯 60 giây</option>
-              <option value="30">⚡ 30 giây</option>
-              <option value="45">⏱️ 45 giây</option>
-            </select>
-            <div class="hint" id="cr-duration-hint">60 giây · lập shot list, sau đó Muse AI tạo video theo từng shot.</div>
-          </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Độ phân giải đầu ra</label>
-            <select name="output_resolution" style="padding:10px;font-weight:700">
-              <option value="1080p" selected>1080p · phù hợp TikTok</option>
-              <option value="4k">4K · master</option>
-            </select>
-          </div>
-        </div>
-
-        <label style="display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;line-height:1.5">
-          <input type="checkbox" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1" required style="margin-top:4px">
-          <span>Tôi xác nhận các shot có thể sử dụng Muse AI credits của tài khoản. Trạng thái đăng nhập không xác nhận gói miễn phí.</span>
+          <span class="cr-model-badge" style="font-size:10px;color:#2563eb;font-weight:700">
+            ✓ Đã chọn
+          </span>
         </label>
+        {{end}}
+      </div>
+      {{else}}
+      <div style="background:rgba(239,68,68,0.06);border:1px dashed #ef4444;border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px">
+        Chưa có ảnh người mẫu. Vui lòng thêm ảnh trong màn hình Kênh hoặc tải ảnh bên dưới.
+      </div>
+      {{end}}
 
-        <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
-          Tạo video affiliate
-        </button>
+      <div class="field" style="margin-bottom:8px">
+        <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:4px">Hoặc tải ảnh người mẫu mới</label>
+        <div class="file-pick studio-model-file-pick" style="display:flex;gap:10px;align-items:center">
+          <input id="cr-model-photos" class="studio-model-upload-input" type="file" name="model_photos" accept="image/*" multiple onchange="onStudioModelPhotosPicked(this)" style="display:none">
+          <label for="cr-model-photos" class="btn btn-secondary btn-sm" style="cursor:pointer">📁 Chọn ảnh từ máy</label>
+          <span class="file-name" id="cr-model-photo-label" style="font-size:12px;color:var(--muted)">Chưa chọn ảnh</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BƯỚC 4: LẬP SHOT LIST VÀ RENDER -->
+    <div class="card" id="studio-step-video" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+          <span>🎬</span> Lập Shot List &amp; Render Video
+        </h3>
+        <span class="badge badge-live" style="font-size:11px">Khung dọc 9:16</span>
       </div>
 
+      <input type="hidden" name="prepared_plan_id" id="cr-prepared-plan-id">
+      
+      <!-- Box Phân tích & Lập shot list -->
+      <div style="border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--bg3)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div>
+            <div style="font-weight:800;font-size:14px;color:var(--text)">Giai đoạn 1: Phân tích sản phẩm &amp; Tạo kịch bản shot</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">AI bóc tách điểm sáng listing, tính năng độc đáo và lên góc máy chi tiết.</div>
+          </div>
+          <button type="button" class="btn btn-secondary" id="cr-plan-button" onclick="prepareAffiliatePlan()" style="font-weight:700">
+            📝 Lập shot list
+          </button>
+        </div>
+        <span id="cr-plan-status" class="hint" style="font-size:12px;display:block;margin-top:6px"></span>
+        <div id="cr-plan-result" style="display:none;margin-top:14px"></div>
+      </div>
+
+      <!-- Settings render -->
+      <div class="grid2" style="gap:12px;margin-bottom:16px">
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:4px">Công nghệ kết xuất</label>
+          <div class="readonly-field" style="padding:10px 12px;font-weight:700;border-radius:8px;border:1px solid var(--border);background:var(--bg)">Workflow AI Engine · Muse AI &amp; Veo 3.1</div>
+          <input type="hidden" name="video_engine" id="cr-video-engine" value="museai">
+        </div>
+        <div class="field" id="cr-manual-clips-field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:4px">Clip tham chiếu chuyển động <span class="hint">(tùy chọn)</span></label>
+          <input type="file" name="motion_clips" id="cr-motion-clips" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" multiple disabled style="width:100%;padding:8px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+          <div class="hint" id="cr-clip-count-hint" style="font-size:11px;margin-top:4px">Lập shot list trước để kích hoạt clip tham chiếu theo từng shot.</div>
+        </div>
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:4px">Thời lượng video</label>
+          <select name="seconds" id="cr-seconds" style="width:100%;padding:10px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)" onchange="updateAffiliateClipCount()">
+            <option value="60" selected>🎯 60 giây (Đầy đủ kịch bản)</option>
+            <option value="45">⏱️ 45 giây (Chuẩn tương tác)</option>
+            <option value="30">⚡ 30 giây (Nhanh, súc tích)</option>
+          </select>
+          <div class="hint" id="cr-duration-hint" style="font-size:11px;margin-top:4px">60 giây · tương ứng khoảng 10 shot phân cảnh.</div>
+        </div>
+        <div class="field">
+          <label style="font-weight:700;font-size:12.5px;display:block;margin-bottom:4px">Độ phân giải video</label>
+          <select name="output_resolution" style="width:100%;padding:10px;font-weight:700;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+            <option value="1080p" selected>1080p · Chuẩn TikTok HD</option>
+            <option value="4k">4K · Ultra HD</option>
+          </select>
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;margin:0 0 16px;line-height:1.5;cursor:pointer">
+        <input type="checkbox" name="confirm_flow_credits" id="cr-confirm-flow-credits" value="1" required style="margin-top:3px;accent-color:#10b981;width:16px;height:16px">
+        <span style="font-size:12.5px;color:var(--text)">Xác nhận thực thi workflow kết xuất video tự động bằng Muse AI &amp; Video Engine đã cấu hình.</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary" id="btn-submit-render-cr" disabled style="width:100%;padding:14px;font-size:15px;font-weight:800;border-radius:10px;background:linear-gradient(135deg, #2563eb 0%, #10b981 100%);box-shadow:0 4px 14px rgba(16,185,129,0.3);border:none;cursor:pointer;opacity:.55">
+        🚀 Bắt đầu Render Video Affiliate
+      </button>
     </div>
 
   </div>
@@ -365,8 +382,8 @@ function autoGenerateFashionScript() {
   var priceInput = document.querySelector('input[name="product_price"]');
   var price = priceInput ? priceInput.value.trim() : '';
   var linkInput = document.querySelector('input[name="aff_link"]');
-  var script = 'Sản phẩm theo listing: ' + name + (price ? '. Giá theo listing: ' + price : '');
-  if (linkInput && linkInput.value.trim()) script += '. Xem thông tin tại liên kết sản phẩm đã cung cấp.';
+  var script = 'Sản phẩm: ' + name + (price ? '. Giá: ' + price : '');
+  if (linkInput && linkInput.value.trim()) script += '. Mua ngay tại link bên dưới.';
   var ta = document.getElementById('cr-voiceover-text');
   if (ta) ta.value = script;
 }
@@ -441,18 +458,17 @@ function renderAffiliatePlan(data) {
   var root = document.getElementById('cr-plan-result');
   root.replaceChildren();
   var brief = data.product_brief || {};
-  root.appendChild(affiliatePlanNode('div', 'Product Analyst · ' + (brief.item || brief.category || 'Sản phẩm') + ' · Cách dùng: ' + (brief.use_action || '') + ' · Focus: ' + (brief.focus || ''), 'font-size:12px;margin-bottom:10px'));
+  root.appendChild(affiliatePlanNode('div', 'Product Analyst · ' + (brief.item || brief.category || 'Sản phẩm') + ' · Focus: ' + (brief.focus || ''), 'font-weight:700;font-size:12px;margin-bottom:10px'));
   (brief.evidence || []).forEach(function(line) {
-    root.appendChild(affiliatePlanNode('div', 'Bằng chứng listing: ' + line, 'font-size:11px;color:var(--muted);margin-bottom:4px'));
+    root.appendChild(affiliatePlanNode('div', 'Điểm nổi bật: ' + line, 'font-size:11.5px;color:var(--muted);margin-bottom:4px'));
   });
   (data.shots || []).forEach(function(shot) {
     var card = affiliatePlanNode('article', '', 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:8px;background:var(--bg2)');
-    card.appendChild(affiliatePlanNode('div', 'Shot ' + shot.index + ' · ' + shot.purpose + ' · ' + shot.seconds + ' giây · ' + shot.shot_size, 'font-weight:800'));
-    card.appendChild(affiliatePlanNode('div', 'Cách dùng: ' + shot.product_use_mode + ' · Hành động: ' + shot.product_interaction + ' · Focus: ' + shot.product_focus, 'font-size:12px;margin-top:5px'));
-    card.appendChild(affiliatePlanNode('div', 'Camera: ' + shot.camera_move + ' · ' + shot.lens_light + ' · Cảm xúc: ' + shot.emotion_beat, 'font-size:12px;margin-top:4px'));
-    card.appendChild(affiliatePlanNode('div', 'Action: ' + shot.action, 'font-size:12px;margin-top:4px'));
-    card.appendChild(affiliatePlanNode('pre', shot.manual_prompt, 'white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.45;background:var(--bg3);padding:9px;border-radius:8px;margin:8px 0'));
-    var copy = affiliatePlanNode('button', '📋 Copy prompt');
+    card.appendChild(affiliatePlanNode('div', 'Shot ' + shot.index + ' · ' + shot.purpose + ' · ' + shot.seconds + ' giây · ' + shot.shot_size, 'font-weight:800;color:var(--text)'));
+    card.appendChild(affiliatePlanNode('div', 'Góc quay: ' + shot.camera_move + ' · Ánh sáng: ' + shot.lens_light, 'font-size:12px;margin-top:4px;color:var(--muted)'));
+    card.appendChild(affiliatePlanNode('div', 'Diễn xuất: ' + shot.action, 'font-size:12px;margin-top:4px'));
+    card.appendChild(affiliatePlanNode('pre', shot.manual_prompt, 'white-space:pre-wrap;font-family:inherit;font-size:12px;line-height:1.45;background:var(--bg3);padding:9px;border-radius:8px;margin:8px 0;border:1px solid var(--border)'));
+    var copy = affiliatePlanNode('button', '📋 Copy prompt shot này');
     copy.type = 'button';
     copy.className = 'btn btn-secondary btn-sm';
     copy.addEventListener('click', function() {
@@ -473,11 +489,11 @@ async function prepareAffiliatePlan() {
   var clipInput = document.getElementById('cr-motion-clips');
   var submit = document.getElementById('btn-submit-render-cr');
   if (!document.getElementById('cr-product-name').value.trim()) {
-    status.textContent = 'Nhập tên sản phẩm trước.';
+    status.textContent = 'Vui lòng nhập tên sản phẩm trước.';
     return;
   }
   button.disabled = true;
-  status.textContent = 'Đang phân tích listing và viết shot plan…';
+  status.textContent = 'Đang phân tích listing và tạo shot plan AI…';
   planID.value = '';
   clipInput.disabled = true;
   clipInput.required = false;
@@ -493,13 +509,13 @@ async function prepareAffiliatePlan() {
     planID.value = data.plan_id;
     affiliatePlanShotCount = (data.shots || []).length;
     renderAffiliatePlan(data);
-    status.textContent = 'Plan đã khóa · ' + affiliatePlanShotCount + ' shot · Workflow API gửi từng shot sang Muse AI.';
-    document.getElementById('cr-clip-count-hint').textContent = 'Tùy chọn: thêm đúng ' + affiliatePlanShotCount + ' clip tham chiếu theo thứ tự shot. Muse AI vẫn tạo video mới.';
+    status.textContent = 'Kịch bản đã sẵn sàng (' + affiliatePlanShotCount + ' shots). Có thể bấm Render ngay!';
+    document.getElementById('cr-clip-count-hint').textContent = 'Tùy chọn: thêm đúng ' + affiliatePlanShotCount + ' clip tham chiếu theo thứ tự shot.';
     clipInput.disabled = false;
     clipInput.required = false;
     submit.disabled = !affiliateMuseReady;
     submit.style.opacity = affiliateMuseReady ? '1' : '.55';
-    if (!affiliateMuseReady) status.textContent += ' Muse AI chưa sẵn sàng: {{.FlowStatus}}';
+    if (!affiliateMuseReady) status.textContent += ' (Muse AI chưa sẵn sàng: {{.FlowStatus}})';
   } catch (err) {
     status.textContent = err.message || 'Không lập được shot plan';
   } finally {
@@ -512,7 +528,7 @@ affiliateForm.addEventListener('submit', function(event) {
   var clips = document.getElementById('cr-motion-clips').files;
   if (!planID) {
     event.preventDefault();
-    document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';
+    document.getElementById('cr-plan-status').textContent = 'Vui lòng bấm "Lập shot list" trước khi render.';
     return;
   }
   if (!affiliateMuseReady) {
@@ -532,7 +548,14 @@ affiliateForm.addEventListener('submit', function(event) {
 
 function onProductPhotoPicked(input, prefix) {
   var label = document.getElementById('prod-photo-label-' + prefix);
-  if (label && input.files && input.files[0]) label.textContent = input.files[0].name;
+  if (!label || !input.files) return;
+  if (input.files.length === 1) {
+    label.textContent = input.files[0].name;
+  } else if (input.files.length > 1) {
+    label.textContent = input.files.length + ' ảnh sản phẩm đã chọn';
+  } else {
+    label.textContent = 'Chưa chọn ảnh';
+  }
 }
 
 function onExtraProductPhotosPicked(input) {

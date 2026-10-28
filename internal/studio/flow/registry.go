@@ -500,19 +500,19 @@ func registerAllBuiltinNodes() {
 	// 15. Video Upscale Node
 	RegisterNode(NodeDefinition{
 		Type:        "video_upscale",
-		Title:       "Làm nét & Upscale 4K (Upscale)",
+		Title:       "Làm nét & Nâng cấp video (Upscale 1080p / 2K)",
 		Category:    CategoryProcess,
-		Description: "Nâng cấp độ phân giải video lên chuẩn 1080p hoặc 4K, tinh chỉnh chi tiết và tương phản",
+		Description: "Nâng cấp độ phân giải từ 360p, 480p lên chuẩn 1080p hoặc 2K (giới hạn tối đa 2K), làm nét và tối ưu độ tương phản",
 		Icon:        "maximize",
 		Inputs: []FlowPort{
-			{ID: "video_in", Name: "Video đầu vào", Type: PortTypeVideo, Required: true},
-			{ID: "resolution", Name: "Độ phân giải đầu ra", Type: PortTypeText, Required: false},
+			{ID: "video_in", Name: "Video đầu vào (360p-720p)", Type: PortTypeVideo, Required: true},
+			{ID: "resolution", Name: "Độ phân giải đích (1080p / 2K)", Type: PortTypeText, Required: false},
 		},
 		Outputs: []FlowPort{
-			{ID: "video_out", Name: "Video nét cao (4K)", Type: PortTypeVideo, Description: "Video master sau khi upscale"},
+			{ID: "video_out", Name: "Video nét cao (1080p / 2K)", Type: PortTypeVideo, Description: "Video chất lượng cao sau khi upscale"},
 		},
 		DefaultParams: map[string]any{
-			"resolution": "4k", // 1080p, 4k
+			"resolution": "1080p", // 1080p, 2k (tối đa 2k)
 			"crf":        18,
 			"fit_mode":   "contain",
 		},

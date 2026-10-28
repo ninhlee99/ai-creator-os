@@ -877,19 +877,31 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 		return nil, fmt.Errorf("VideoUpscaleNode: Thiếu file video đầu vào")
 	}
 
-	resolution := strings.ToLower(inputString(inputs, "resolution", nodeParamString(node.Params, "resolution", "4k")))
+	resolution := strings.ToLower(inputString(inputs, "resolution", nodeParamString(node.Params, "resolution", "1080p")))
 	crf := nodeParamInt(node.Params, "crf", 18)
 	fitMode := strings.ToLower(strings.TrimSpace(nodeParamString(node.Params, "fit_mode", "contain")))
 	if crf < 0 || crf > 51 {
 		return nil, fmt.Errorf("CRF phải từ 0 đến 51")
 	}
 	width, height := 1080, 1920
-	if resolution == "4k" || resolution == "2160p" {
-		width, height = 2160, 3840
-	} else if resolution == "8k" || resolution == "4320p" {
-		width, height = 4320, 7680
-	} else if resolution != "1080p" {
-		return nil, fmt.Errorf("resolution chưa hỗ trợ: %s", resolution)
+	switch resolution {
+	case "2k", "1440p", "2560x1440", "1440x2560":
+		resolution = "2k"
+		width, height = 1440, 2560
+	case "1080p", "1920x1080", "1080x1920":
+		resolution = "1080p"
+		width, height = 1080, 1920
+	case "720p", "1280x720", "720x1280":
+		width, height = 720, 1280
+	case "4k", "2160p", "8k", "4320p":
+		// Giới hạn lại upscale tối đa lên 2K theo yêu cầu hệ thống
+		ctx.Log("VideoUpscaleNode: Cảnh báo - Giới hạn độ phân giải upscale tối đa là 2K (1440x2560)")
+		resolution = "2k"
+		width, height = 1440, 2560
+	default:
+		// Mặc định chuẩn 1080p Full HD nếu không xác định
+		resolution = "1080p"
+		width, height = 1080, 1920
 	}
 	fitFilter, err := videoFitFilter(width, height, fitMode)
 	if err != nil {

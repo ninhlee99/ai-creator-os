@@ -207,17 +207,25 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (p studio.Affil
 			remotePhotoURLs = append(remotePhotoURLs, raw)
 		}
 	}
-	productPhoto, err := saveUpload(r, "product_photo", upDir)
-	if productPhoto != "" {
-		listingUploads = append(listingUploads, productPhoto)
+	var allProductUploads []string
+	if photos, pErr := saveUploads(r, "product_photos", upDir, 12); pErr == nil && len(photos) > 0 {
+		allProductUploads = append(allProductUploads, photos...)
 	}
-	if err != nil {
-		return p, fmt.Errorf("ảnh sản phẩm lỗi: %w", err)
+	if photos, pErr := saveUploads(r, "product_photo", upDir, 12); pErr == nil && len(photos) > 0 {
+		allProductUploads = append(allProductUploads, photos...)
 	}
-	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
-	listingUploads = append(listingUploads, extraPhotos...)
+	productPhoto := ""
+	if len(allProductUploads) > 0 {
+		productPhoto = allProductUploads[0]
+		listingUploads = append(listingUploads, allProductUploads...)
+	}
+	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 12)
 	if err != nil {
 		return p, fmt.Errorf("ảnh góc khác lỗi: %w", err)
+	}
+	listingUploads = append(listingUploads, extraPhotos...)
+	if len(allProductUploads) > 1 {
+		extraPhotos = append(extraPhotos, allProductUploads[1:]...)
 	}
 	for i, raw := range remotePhotoURLs {
 		if productPhoto != "" && len(extraPhotos) >= 5 {

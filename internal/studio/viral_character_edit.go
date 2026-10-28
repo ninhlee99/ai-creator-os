@@ -74,7 +74,14 @@ func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p 
 		s.failViralJob(jobID, err)
 		return
 	} else {
-		graph, err := store.GetGraph("preset_viral_dance")
+		targetWorkflow := "preset_viral_dance"
+		if p.WorkflowID != "" {
+			targetWorkflow = p.WorkflowID
+		}
+		graph, err := store.GetGraph(targetWorkflow)
+		if err != nil {
+			graph, err = store.GetGraph("preset_viral_dance")
+		}
 		if err != nil {
 			s.failViralJob(jobID, fmt.Errorf("không tải được preset Viral Workflow: %w", err))
 			return

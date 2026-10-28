@@ -14,6 +14,7 @@ import (
 
 var templateFuncs = template.FuncMap{
 	"assetVer": func() string { return assetVersion },
+	"sub": func(a, b int) int { return a - b },
 	// fmtTime renders slot minutes-since-midnight as HH:MM.
 	"fmtTime": func(min int) string {
 		return fmt.Sprintf("%02d:%02d", min/60, min%60)

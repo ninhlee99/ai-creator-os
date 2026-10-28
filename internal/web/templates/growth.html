@@ -61,13 +61,11 @@
 <div class="empty-state"><strong>Chưa có tài khoản TikTok</strong><a class="btn" href="/accounts/new">+ Thêm kênh</a></div>
 {{else}}
 <div class="cards">
-  <div class="card"><div class="num">{{if .TikTokMetricsAvailable}}{{.TotalTikTokFollowers}}{{else}}—{{end}}</div><div class="label">TikTok followers có dữ liệu</div></div>
-  <div class="card"><div class="num">{{if .Views30dKnown}}{{printf "%.0f" .TotalViews30d}}{{else}}—{{end}}</div><div class="label">Lượt xem 30 ngày · TikTok</div></div>
+  <div class="card"><div class="num">{{if .TikTokMetricsAvailable}}{{.TotalTikTokFollowers}}{{else}}—{{end}}</div><div class="label">Tổng Người theo dõi</div></div>
+  <div class="card"><div class="num">{{if .Views30dKnown}}{{printf "%.0f" .TotalViews30d}}{{else}}—{{end}}</div><div class="label">Lượt xem 30 ngày</div></div>
 </div>
-{{if not .TikTokMetricsAvailable}}<p class="hint">TikTok chưa cung cấp metrics cho dashboard; follower, lượt xem và thời gian xem chưa có dữ liệu.</p>{{end}}
-{{if .TikTokMetricsAvailable}}<p class="hint">TikTok Display API trả số follower và counters công khai của video. Retention, thời gian xem và nhân khẩu học chưa có dữ liệu qua quyền hiện tại.</p>{{end}}
 
-<h2>Kênh TikTok</h2>
+<h2>Tiến độ phát triển Kênh</h2>
 <div class="table-wrap mobile-table-scroll mobile-growth-cards" role="region" aria-label="Tiến độ các kênh TikTok" tabindex="0"><table class="growth-accounts-table">
 <thead><tr><th scope="col">Tài khoản</th><th scope="col">Giai đoạn</th><th scope="col">Mốc tiếp theo</th><th scope="col">Tiến độ</th><th scope="col">Người theo dõi</th><th scope="col">Video công khai</th><th scope="col">Thao tác</th></tr></thead>
 <tbody>
@@ -75,7 +73,7 @@
 <tr>
   <td data-label="Tài khoản"><a href="/accounts/{{.Account.ID}}">{{.Account.Username}}</a></td>
   <td data-label="Giai đoạn"><span class="badge badge-{{statusClass .Stage}}">{{statusLabel .Stage}}</span></td>
-  <td data-label="Mốc tiếp theo">{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Chưa có số liệu thật{{end}}</td>
+  <td data-label="Mốc tiếp theo">{{if .HasNext}}{{.NextLabel}}{{else if .HasSnapshot}}Đã đạt mốc hiện có{{else}}Đang cập nhật{{end}}</td>
   <td data-label="Tiến độ">{{if .HasNext}}<div class="progress"><div class="progress-bar" style="width:{{printf "%.0f" .NextPct}}%"></div></div><span class="hint">{{printf "%.0f" .NextValue}} / {{printf "%.0f" .NextTarget}}</span>{{else}}—{{end}}</td>
   <td data-label="Người theo dõi">{{if .FollowersKnown}}{{.Followers}}{{if .FollowerTrend}}<br><span class="hint">Δ {{.FollowerTrend}}</span>{{end}}{{if .FollowerAdvice}}<br><span class="hint">{{.FollowerAdvice}}</span>{{end}}{{else}}—{{end}}</td>
   <td data-label="Video công khai">{{if .VideosKnown}}{{.VideoCount}}{{else}}—{{end}}</td>
@@ -85,8 +83,7 @@
 </tbody>
 </table></div>
 
-<h2>Hiệu quả video theo job Studio</h2>
-<p class="hint">Liên kết URL công khai ở job Studio sau khi đăng. Chỉ ghép đơn khi video xuất hiện trong dữ liệu TikTok mới của đúng kênh. Engagement = like + comment + share trên view, so với video cùng flow trên cùng kênh. Watch-time, nhân khẩu học và click chưa có nguồn.</p>
+<h2>Hiệu quả video đã xuất bản</h2>
 {{if .StudioVideoMetrics}}
 <div class="table-wrap mobile-table-scroll mobile-growth-job-cards" role="region" aria-label="Hiệu quả video theo job Studio" tabindex="0"><table class="growth-job-table">
 <thead><tr><th scope="col">Kênh</th><th scope="col">Loại video</th><th scope="col">Video / tác vụ</th><th scope="col">Lượt xem</th><th scope="col">Thích</th><th scope="col">Bình luận</th><th scope="col">Chia sẻ</th><th scope="col">Tỷ lệ tương tác</th><th scope="col">Đơn hàng / lượt xem</th><th scope="col">Nhận định</th><th scope="col">Cập nhật</th></tr></thead>

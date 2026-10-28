@@ -62,6 +62,7 @@ type ChannelCreativeProfile struct {
 
 type AffiliateParams struct {
 	Mode             string   `json:"mode"`                 // photo | shots
+	WorkflowID       string   `json:"workflow_id,omitempty"` // custom workflow ID or preset_affiliate_showcase
 	AccountID        int64    `json:"account_id,omitempty"` // set by autopilot
 	ProductID        int64    `json:"product_id,omitempty"` // approved catalog offer, when selected
 	ChannelMemoryKey string   `json:"channel_memory_key,omitempty"`

@@ -1,5 +1,113 @@
 {{define "settings-system-apikeys"}}
 <div id="panel-apikeys" class="settings-tab-panel" role="tabpanel" aria-labelledby="tab-btn-apikeys" tabindex="0">
+
+  <!-- =========================================================================
+       CUSTOM API MODELS & PROVIDERS (USER-MANAGED API KEYS & ENDPOINTS)
+       ========================================================================= -->
+  <div class="card" style="border-radius:14px;padding:20px 24px;margin-bottom:24px;border:1.5px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">🔑</span>
+          <h3 style="margin:0;font-size:16px;font-weight:800;color:var(--text)">Cấu hình API Key &amp; Model Tùy biến</h3>
+          <span class="badge badge-ok" style="font-size:11px">2026 Engine Ready</span>
+        </div>
+        <p style="margin:4px 0 0 0;font-size:12.5px;color:var(--muted)">Thiết lập API Key, Endpoint và Model ID (OpenAI, Gemini API, Anthropic, Runway, hoặc bên thứ 3). Các node Workflow sẽ chọn model theo tên cấu hình tại đây.</p>
+      </div>
+    </div>
+
+    <!-- Danh sách model đã lưu -->
+    <div class="table-wrap" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+      <table style="margin:0;font-size:12.5px">
+        <thead>
+          <tr style="background:var(--bg3)">
+            <th style="width:26%">Tên Cấu Hình (Hiển thị ở Node)</th>
+            <th style="width:14%">Provider</th>
+            <th style="width:26%">Endpoint &amp; Model ID</th>
+            <th style="width:12%">Loại</th>
+            <th style="width:14%">API Key</th>
+            <th style="width:8%;text-align:right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .CustomAPIModels}}
+          <tr>
+            <td>
+              <strong style="color:var(--text)">{{.Name}}</strong>
+            </td>
+            <td>
+              <span class="badge badge-info" style="text-transform:uppercase;font-size:10.5px">{{.Provider}}</span>
+            </td>
+            <td>
+              <code style="font-size:11.5px;color:var(--accent)">{{.Model}}</code>
+              <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">{{.Endpoint}}</div>
+            </td>
+            <td>
+              <span class="badge badge-dim" style="font-size:10px">{{.Type}}</span>
+            </td>
+            <td>
+              {{if .APIKey}}
+              <code style="font-size:11px;background:var(--bg3);padding:2px 6px;border-radius:4px">••••{{if gt (len .APIKey) 4}}{{slice .APIKey (sub (len .APIKey) 4)}}{{else}}••••{{end}}</code>
+              {{else}}
+              <span style="color:var(--muted);font-size:11.5px">Dùng ENV</span>
+              {{end}}
+            </td>
+            <td style="text-align:right">
+              <form method="post" action="/api/custom-models/delete" onsubmit="return confirm('Xóa cấu hình API này?')" style="display:inline">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:2px 8px;color:#ef4444">Xóa</button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Form thêm mới model API -->
+    <details style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px">
+      <summary style="font-weight:700;font-size:13px;cursor:pointer;color:var(--text)">＋ Thêm Cấu Hình API Key &amp; Model Mới</summary>
+      <form method="post" action="/api/custom-models" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px">
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">Tên cấu hình (Ví dụ: OpenAI GPT-4o Prod)</label>
+          <input type="text" name="name" required placeholder="Tên để chọn trong Node" style="width:100%;font-size:12px;padding:6px 10px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">Nhà cung cấp (Provider)</label>
+          <select name="provider" style="width:100%;font-size:12px;padding:6px 10px">
+            <option value="openai">OpenAI (hoặc API tương thích)</option>
+            <option value="gemini">Google Gemini API</option>
+            <option value="anthropic">Anthropic Claude API</option>
+            <option value="custom">Bên thứ ba / Tự lưu trữ / Video API</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">Endpoint Base URL</label>
+          <input type="url" name="endpoint" placeholder="https://api.openai.com/v1" style="width:100%;font-size:12px;padding:6px 10px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">Model ID (Ví dụ: gpt-4.5-preview)</label>
+          <input type="text" name="model" required placeholder="gpt-4.5, gemini-2.5-pro, claude-3-7..." style="width:100%;font-size:12px;padding:6px 10px">
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">Loại tác vụ (Type)</label>
+          <select name="type" style="width:100%;font-size:12px;padding:6px 10px">
+            <option value="multimodal">Đa nhiệm (Text &amp; Vision)</option>
+            <option value="text">Văn bản / Kịch bản (Text LLM)</option>
+            <option value="image">Tạo ảnh (Image Generator)</option>
+            <option value="video">Tạo video (Video Generator)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px">API Key (Khóa bí mật)</label>
+          <input type="password" name="api_key" placeholder="sk-..." autocomplete="off" style="width:100%;font-size:12px;padding:6px 10px">
+        </div>
+        <div style="grid-column:1/-1;display:flex;justify-content:flex-end;margin-top:6px">
+          <button type="submit" class="btn btn-primary btn-sm" style="font-weight:700;padding:7px 16px">Lưu Cấu Hình Model</button>
+        </div>
+      </form>
+    </details>
+  </div>
   <!-- JSON config transfer -->
   <div class="card" style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,0.03);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
     <div style="flex:1;min-width:280px">

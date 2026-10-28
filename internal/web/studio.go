@@ -122,7 +122,28 @@ func (s *Server) handleStudio(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var availableWorkflows []WorkflowOption
+	if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+		if list, err := fs.ListGraphs(); err == nil {
+			for _, sum := range list {
+				availableWorkflows = append(availableWorkflows, WorkflowOption{
+					ID:          sum.ID,
+					Title:       sum.Name,
+					Category:    sum.Category,
+					Description: sum.Description,
+					IsPreset:    sum.IsPreset,
+				})
+			}
+		}
+	}
+	selectedWorkflowID := r.URL.Query().Get("workflow_id")
+	if selectedWorkflowID == "" {
+		selectedWorkflowID = "preset_affiliate_showcase"
+	}
+
 	s.render(w, "studio", s.ctx(
+		"AvailableWorkflows", availableWorkflows,
+		"SelectedWorkflowID", selectedWorkflowID,
 		"Jobs", jobs, // giữ field cho tương thích: danh sách job ở /studio/jobs
 		"Shelf", s.shelfViews(),
 		"JobCount", jobCount,

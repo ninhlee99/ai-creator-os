@@ -103,6 +103,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/flow/runs", s.handleAPIFlowRuns)
 	mux.HandleFunc("GET /api/flow/runs/{id}", s.handleAPIFlowRunDetail)
 	mux.HandleFunc("POST /api/flow/runs/{id}/cancel", s.handleAPIFlowRunCancel)
+	mux.HandleFunc("GET /api/custom-models", s.handleListCustomAPIModels)
+	mux.HandleFunc("POST /api/custom-models", s.handleSaveCustomAPIModel)
+	mux.HandleFunc("POST /api/custom-models/delete", s.handleDeleteCustomAPIModel)
 
 	// Legacy Web AI prompt cockpit now redirects to account login settings.
 	mux.HandleFunc("GET /web-ai", redirectTo("/settings/system#tab-webai"))

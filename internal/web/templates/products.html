@@ -83,7 +83,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
   <div>
       <h2 style="margin:0;font-size:18px">Sản phẩm đã chọn</h2>
-      <span class="badge badge-dim">Video cần offer đủ điều kiện</span>
+      <span class="badge badge-dim">Sản phẩm sẵn sàng tạo video</span>
   </div>
   {{if .Shelf}}<span class="badge badge-ok">{{len .Shelf}} sản phẩm</span>{{end}}
 </div>
@@ -185,7 +185,6 @@
   <h2 style="margin-top:0;border:none;padding:0">🎯 Săn sản phẩm
     <a href="/settings/accesstrade" title="Chỉnh ở Cài đặt · Accesstrade">{{if .AT.HunterOn}}<span class="badge badge-info">Lịch quét: BẬT</span>{{else}}<span class="badge badge-draft">Lịch quét: TẮT</span>{{end}}</a>
   </h2>
-  <p class="hint">Chưa có offer đủ điều kiện tạo video.</p>
   {{if .AT.KeySet}}
   <p>
     <button type="button" class="btn btn-primary btn-sm" id="at-hunt-btn" onclick="atHunt()">Săn ngay</button>

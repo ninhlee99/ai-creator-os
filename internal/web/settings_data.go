@@ -62,8 +62,10 @@ func (s *Server) settingsData(r *http.Request) map[string]any {
 		}
 	}
 	webAIViews, webAIConnected, webAIStudioReady := s.webAIPlatformViews()
+	customModels, _ := s.listCustomAPIModels()
 	return map[string]any{
 		"EnvStatus":              envs,
+		"CustomAPIModels":        customModels,
 		"TikTokRadarConfigured": studio.TikTokRadarSourceConfigured(),
 		"WebAIPlatforms":   webAIViews,
 		"WebAIConnected":   webAIConnected,

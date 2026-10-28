@@ -6,6 +6,7 @@ const KindViral = "viral"
 // ViralParams chứa cấu hình đầu vào để tạo 1 video viral.
 type ViralParams struct {
 	Topic                   string                 `json:"topic"`
+	WorkflowID              string                 `json:"workflow_id,omitempty"` // custom workflow ID or preset_viral_dance
 	Genre                   string                 `json:"genre"`       // mystery, lifehack, trendjack, tech_fact, koc_review
 	VisualMood              string                 `json:"visual_mood"` // cinematic, vibrant_3d, realistic, cyber_neon
 	Voice                   string                 `json:"voice"`       // TTS provider voice identifier

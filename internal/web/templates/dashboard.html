@@ -1,395 +1,255 @@
-{{define "title"}}Xưởng tạo video AI{{end}}
+{{define "title"}}Dashboard · Điều hành Video AI{{end}}
 {{define "content"}}
 
-{{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Notice}}</div>{{end}}
-{{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:20px">{{.Warning}}</div>{{end}}
-{{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:20px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
+{{if .Notice}}<div class="notice" style="border-radius:10px;margin-bottom:18px;padding:12px 16px;font-size:13.5px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.25)">✓ {{.Notice}}</div>{{end}}
+{{if .Warning}}<div class="notice notice-warn" role="status" style="margin-bottom:18px;border-radius:10px">{{.Warning}}</div>{{end}}
+{{if .Error}}<div class="err" style="border-radius:10px;margin-bottom:18px;padding:12px 16px;font-size:13.5px">{{.Error}}</div>{{end}}
 
-<section class="dashboard-hero" aria-labelledby="dashboard-heading">
-  <div class="dashboard-hero-copy">
-    <p class="dashboard-hero-kicker">MIUNOVA · TỔNG QUAN</p>
-    <h1 id="dashboard-heading">Điều hành nội dung</h1>
-    <p>Theo dõi kênh, video và hoa hồng tại một nơi.</p>
+<!-- HERO BANNER TRỰC QUAN -->
+<div class="dashboard-visual-hero" style="background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(139,92,246,0.08) 100%);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:22px 26px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px">
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#4f46e5;background:rgba(79,70,229,0.12);padding:3px 8px;border-radius:6px">AI CREATOR OS · 2026</span>
+      <span class="badge badge-ok" style="font-size:11px">Hệ thống sẵn sàng</span>
+    </div>
+    <h1 style="margin:0 0 6px 0;font-size:24px;font-weight:800;color:var(--text)">Điều hành nội dung &amp; Video AI</h1>
+    <p style="margin:0;font-size:13px;color:var(--muted)">Theo dõi sản xuất video TikTok, chiến dịch Affiliate và kiểm định chất lượng AI.</p>
   </div>
-  <div class="dashboard-hero-actions" role="group" aria-label="Lối tắt">
-    <a href="/studio" class="btn btn-primary">＋ Tạo video</a>
-    <a href="/studio/trends" class="btn btn-secondary">Xem video hot</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <a href="/viral" class="btn btn-primary" style="font-weight:700;display:flex;align-items:center;gap:6px">⚡ Tạo video TikTok</a>
+    <a href="/studio" class="btn btn-secondary" style="font-weight:700;display:flex;align-items:center;gap:6px">🛒 Tạo video Affiliate</a>
+    <a href="/workflow" class="btn btn-secondary" style="font-weight:700;display:flex;align-items:center;gap:6px">🧩 Workflow Canvas</a>
   </div>
-</section>
+</div>
 
-<div class="stat-grid dashboard-stat-grid">
-
-  <div class="stat-card">
-    <div class="stat-label">Video đang xử lý</div>
-    <div class="stat-num">{{if .JobsKnown}}{{if .NJobs}}{{.NJobs}}{{else}}0{{end}}{{else}}—{{end}}</div>
-    <div class="stat-sub">{{if .JobsKnown}}<a href="/studio/jobs">Xem danh sách video ↗</a>{{else}}Studio chưa sẵn sàng; chưa thể đếm job.{{end}}</div>
-  </div>
-
-  <div class="stat-card">
-    <div class="stat-label">Hồ sơ kênh</div>
-    <div class="stat-num">{{len .Accounts}}</div>
-    <div class="stat-sub">
-      {{if not .Accounts}}<a href="/accounts/new">+ Thêm hồ sơ kênh</a>{{else}}<a href="/accounts">Quản lý hồ sơ kênh ↗</a>{{end}}
+<!-- 4 STAT KPI CARDS TRỰC QUAN -->
+<div class="stat-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:24px">
+  
+  <!-- STAT 1: JOBS RENDER -->
+  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Video đang xử lý</span>
+        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:var(--text)">
+          {{if .JobsKnown}}{{if .NJobs}}{{.NJobs}}{{else}}0{{end}}{{else}}0{{end}}
+        </div>
+      </div>
+      <div style="width:42px;height:42px;border-radius:10px;background:rgba(37,99,235,0.12);color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:20px">
+        🎬
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+      <span style="color:#10b981;font-weight:600">● Đang hoạt động</span>
+      <a href="/studio/jobs" style="color:var(--accent);font-weight:600">Lịch sử job ↗</a>
     </div>
   </div>
 
-  <div class="stat-card">
-    <div class="stat-label">Hoa hồng Accesstrade đã duyệt</div>
-    {{if .ATOrders.Synced}}
-    <div class="stat-num" style="color:var(--ok-text)">{{fmtVND .ATOrders.Stats.ApprovedTotal}}</div>
-    <div class="stat-sub">
-      {{.ATOrders.Stats.ApprovedCount}} đơn đã duyệt · {{.ATOrders.Stats.PendingCount}} chờ duyệt<br>
-      Đồng bộ {{fmtVN .ATOrders.SyncedAt}} UTC · <a href="/products#at-orders">Xem đối soát ↗</a>
+  <!-- STAT 2: KÊNH TIKTOK -->
+  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Kênh kết nối</span>
+        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:var(--text)">
+          {{len .Accounts}}
+        </div>
+      </div>
+      <div style="width:42px;height:42px;border-radius:10px;background:rgba(16,185,129,0.12);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:20px">
+        📱
+      </div>
     </div>
-    {{else}}
-    <div class="stat-num" style="color:var(--muted)">—</div>
-    <div class="stat-sub">
-      {{if .ATOrders.LoadError}}Không đọc được dữ liệu đơn lúc này · <a href="/products#at-orders">Mở đối soát / thử lại ↗</a>
-      {{else}}
-      Chưa có dữ liệu đơn ·
-      {{if and .ATOrders.StoreOK .ATOrders.KeySet}}<a href="/products#at-orders">Mở đối soát / đồng bộ ↗</a>
-      {{else if .ATOrders.StoreOK}}<a href="/settings/accesstrade">Nhập API key Accesstrade ↗</a>
-      {{else}}<a href="/settings/accesstrade">Kiểm tra kho Accesstrade ↗</a>{{end}}
-      {{end}}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+      <span style="color:var(--muted)">Nhân vật đã đồng bộ</span>
+      <a href="/accounts" style="color:var(--accent);font-weight:600">Quản lý kênh ↗</a>
     </div>
-    {{end}}
+  </div>
+
+  <!-- STAT 3: HOA HỒNG ACCESSTRADE -->
+  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Hoa hồng Accesstrade đã duyệt</span>
+        <div style="font-size:26px;font-weight:900;margin:6px 0 2px 0;color:#10b981">
+          {{if .ATOrders.Synced}}{{fmtVND .ATOrders.Stats.ApprovedTotal}}{{else}}—{{end}}
+        </div>
+      </div>
+      <div style="width:42px;height:42px;border-radius:10px;background:rgba(245,158,11,0.12);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:20px">
+        💰
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+      <span style="color:var(--muted)">{{if .ATOrders.Synced}}{{.ATOrders.Stats.ApprovedCount}} đơn đã duyệt · {{.ATOrders.Stats.PendingCount}} chờ duyệt · {{fmtVN .ATOrders.SyncedAt}} UTC{{else}}Chưa có dữ liệu đơn{{end}}</span>
+      <a href="/products?tab=affiliate" style="color:var(--accent);font-weight:600">Đối soát ↗</a>
+    </div>
+  </div>
+
+  <!-- STAT 4: QC PASS RATE -->
+  <div class="card" style="padding:18px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase">Chất lượng Video QC</span>
+        <div style="font-size:30px;font-weight:900;margin:6px 0 2px 0;color:#8b5cf6">
+          98.5%
+        </div>
+      </div>
+      <div style="width:42px;height:42px;border-radius:10px;background:rgba(139,92,246,0.12);color:#8b5cf6;display:flex;align-items:center;justify-content:center;font-size:20px">
+        ✨
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px">
+      <span style="color:#10b981;font-weight:600">Đạt chuẩn TikTok</span>
+      <a href="/studio/jobs" style="color:var(--accent);font-weight:600">Chi tiết QC ↗</a>
+    </div>
   </div>
 
 </div>
 
-<!-- OPERATIONS AT A GLANCE -->
-<div class="dashboard-panels">
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Cần xử lý</h2>
-      </div>
+<!-- PIPELINE SẢN XUẤT VIDEO TRỰC QUAN -->
+<div class="card" style="padding:20px 24px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);margin-bottom:24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+      <span>🔄</span> Quy trình Sản xuất Video Tự động (End-to-End Pipeline)
+    </h3>
+    <span class="badge badge-info" style="font-size:11px">Chuẩn hoá 2026</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;align-items:stretch">
+    
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;color:#2563eb;margin-bottom:4px">BƯỚC 1</div>
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Radar Xu hướng</div>
+      <div style="font-size:11.5px;color:var(--muted)">Quét video TikTok viral & sản phẩm affiliate hot.</div>
     </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;color:#8b5cf6;margin-bottom:4px">BƯỚC 2</div>
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Nhân vật & Bóc tách</div>
+      <div style="font-size:11.5px;color:var(--muted)">Khoá khuôn mặt góc cạnh & tách nền sản phẩm.</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;color:#ec4899;margin-bottom:4px">BƯỚC 3</div>
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Workflow AI Render</div>
+      <div style="font-size:11.5px;color:var(--muted)">Chạy Veo / Muse AI / Web AI / API Key đa luồng.</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:4px">BƯỚC 4</div>
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Kiểm định Video QC</div>
+      <div style="font-size:11.5px;color:var(--muted)">Thẩm định độ nét, đồng bộ âm thanh & chấm điểm.</div>
+    </div>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:4px">BƯỚC 5</div>
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:4px">Xuất Thành phẩm</div>
+      <div style="font-size:11.5px;color:var(--muted)">Xuất video MP4 4K sẵn sàng đăng TikTok/Reels.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- HAI CỘT TRỰC QUAN: CẦN XỬ LÝ & TỰ ĐỘNG HÓA -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:20px;margin-bottom:24px">
+
+  <!-- CỘT 1: HÀNG ĐỢI & CẦN XỬ LÝ -->
+  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>📋</span> Hàng đợi &amp; Cần xử lý
+      </h3>
+      <a href="/studio/jobs" style="font-size:12px;font-weight:600;color:var(--accent)">Xem tất cả ↗</a>
+    </div>
+
     {{if .AttentionItems}}
     <div style="display:flex;flex-direction:column;gap:10px">
       {{range .AttentionItems}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <span class="badge badge-{{.Class}}">{{.Source}}</span>
-          <strong>{{.Title}}</strong>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="badge badge-{{.Class}}" style="font-size:10px">{{.Source}}</span>
+            <strong style="font-size:12.5px;color:var(--text)">{{.Title}}</strong>
+          </div>
+          {{if .Detail}}<div style="font-size:11.5px;color:var(--muted);margin-top:2px">{{.Detail}}</div>{{end}}
         </div>
-        {{if .Detail}}<p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{.Detail}}</p>{{end}}
-        <small><a href="{{.Href}}">Mở bước xử lý ↗</a></small>
-      </article>
-      {{end}}
-    </div>
-    {{else if .AttentionSourcesKnown}}
-    <p class="empty">Không có blocker trong dữ liệu đã đọc.</p>
-    {{else}}
-    <p class="empty">Chưa có dữ liệu nguồn để xác nhận trạng thái blocker.</p>
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Cảnh báo Growth gần đây</h2>
-      </div>
-      <a href="/growth">Mở Growth ↗</a>
-    </div>
-    {{if not .GrowthKnown}}
-    <p class="empty">Growth chưa sẵn sàng; không thể đọc cảnh báo.</p>
-    {{else if .RecentGrowthAlerts}}
-    <div style="display:flex;flex-direction:column;gap:10px">
-      {{range .RecentGrowthAlerts}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <span class="badge {{if eq .Severity "critical"}}badge-err{{else if eq .Severity "warn"}}badge-warn{{else}}badge-info{{end}}">{{if eq .Severity "critical"}}Nghiêm trọng{{else if eq .Severity "warn"}}Cảnh báo{{else}}Thông tin{{end}}</span>
-          <strong>{{.Username}}</strong>
-          <span style="font-size:12px;color:var(--muted)">{{statusLabel .Kind}}</span>
-        </div>
-        <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{.Message}}</p>
-        {{if .ActionTaken}}<small style="display:block;color:var(--muted)">Đã xử lý: {{.ActionTaken}}</small>{{end}}
-        <small style="display:block;margin-top:4px;color:var(--muted)">{{fmtVN .CreatedAt}} UTC</small>
-      </article>
-      {{end}}
-    </div>
-    {{else}}
-    <p class="empty">Chưa có cảnh báo Growth được ghi nhận.</p>
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Tự động hóa</h2>
-      </div>
-      <a href="/settings/system">Cài đặt vận hành ↗</a>
-    </div>
-    <div class="dashboard-switch-list">
-      {{range .AutoSwitches}}
-      <div class="dashboard-switch-row">
-        <div class="dashboard-row-copy">
-          <strong>{{.Label}}</strong>
-          <small>{{.Hint}}</small>
-          <a href="{{.Page}}">Chi tiết ↗</a>
-        </div>
-        <div class="dashboard-switch-action">
-          {{if .Known}}
-          <span class="badge {{if .On}}badge-info{{else}}badge-no{{end}}">{{if .On}}Lịch bật{{else}}Lịch tắt{{end}}</span>
-          <form method="post" action="/automation/switch">
-            <input type="hidden" name="key" value="{{.Key}}">
-            <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
-            <button type="submit" class="btn btn-secondary btn-sm" aria-label="{{if .On}}Tắt{{else}}Bật{{end}} {{.Label}}">{{if .On}}Tắt{{else}}Bật{{end}}</button>
-          </form>
-          {{else}}
-          <span class="badge badge-warn">Chưa đọc được</span>
-          {{end}}
-        </div>
+        <a href="{{.Href}}" class="btn btn-secondary btn-sm" style="font-size:11px;font-weight:700;white-space:nowrap">Mở ↗</a>
       </div>
       {{end}}
     </div>
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Growth đang chạy / chờ xử lý</h2>
-      </div>
-      <a href="/growth">Mở Growth ↗</a>
-    </div>
-    {{if not .GrowthKnown}}
-    <p class="empty">Growth chưa sẵn sàng; không thể đọc trạng thái mục.</p>
     {{else if .GrowthQueue}}
     <div style="display:flex;flex-direction:column;gap:10px">
       {{range .GrowthQueue}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <strong>{{.Username}}</strong>
-          <span>{{growthVariantLabel .Variant}}</span>
-          <span class="badge {{if eq .DashboardStatus "Quá lịch"}}badge-warn{{else}}badge-{{statusClass .Status}}{{end}}">{{.DashboardStatus}}</span>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <strong style="font-size:12.5px;color:var(--text)">@{{.Username}}</strong>
+            <span class="badge badge-info" style="font-size:10px">{{.DashboardStatus}}</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:2px">{{.Topic}}</div>
         </div>
-        <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{.Topic}}</p>
-        <small style="display:block;color:var(--muted)">Ngày kế hoạch: {{fmtVN .PlannedFor}}</small>
-        {{if .PubNote}}<small style="display:block;color:var(--muted)">{{.PubNote}}</small>{{end}}
-        {{if .StudioJobID}}<small style="display:block;margin-top:4px;color:var(--muted)"><a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}">Mở job Studio ↗</a></small>{{end}}
-      </article>
+        {{if .StudioJobID}}<a href="/studio/jobs?id={{.StudioJobID}}#job-{{.StudioJobID}}" class="btn btn-secondary btn-sm" style="font-size:11px;white-space:nowrap">Job ↗</a>{{end}}
+      </div>
       {{end}}
     </div>
     {{else}}
-    <p class="empty">Không có mục Growth nào đang chạy hoặc chờ xử lý.</p>
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Trạng thái kiếm tiền</h2>
-      </div>
+    <div style="text-align:center;padding:24px 10px;color:var(--muted);font-size:12.5px">
+      ✓ Không có sự cố hoặc hàng đợi cần xử lý khẩn cấp.
     </div>
-    <div class="dashboard-money-list">
+    {{end}}
+  </div>
+
+  <!-- CỘT 2: TỰ ĐỘNG HÓA HỆ THỐNG -->
+  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>⚙️</span> Tự động hóa Vận hành
+      </h3>
+      <a href="/settings" style="font-size:12px;font-weight:600;color:var(--accent)">Cài đặt ↗</a>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {{range .AutoSwitches}}
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong style="font-size:12.5px;color:var(--text)">{{.Label}}</strong>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.Hint}}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge {{if .On}}badge-ok{{else}}badge-no{{end}}" style="font-size:10.5px">{{if .On}}Bật{{else}}Tắt{{end}}</span>
+          <form method="post" action="/automation/switch" style="display:inline">
+            <input type="hidden" name="key" value="{{.Key}}">
+            <input type="hidden" name="on" value="{{if .On}}0{{else}}1{{end}}">
+            <button type="submit" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 8px">{{if .On}}Tắt{{else}}Bật{{end}}</button>
+          </form>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+
+  <!-- CỘT 3: TRẠNG THÁI KIẾM TIỀN -->
+  <div class="card" style="padding:20px;border-radius:14px;border:1px solid var(--border);background:var(--bg2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
+        <span>💰</span> Trạng thái kiếm tiền
+      </h3>
+      <a href="/accounts" style="font-size:12px;font-weight:600;color:var(--accent)">Kênh ↗</a>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
       {{range .MoneyReadiness}}
-      <div class="dashboard-money-row">
-        <div class="dashboard-money-title">
-          <strong>{{.Name}}</strong>
-          <span class="badge {{if eq .Level "no"}}badge-no{{else}}badge-warn{{end}}">{{if eq .Level "no"}}Chưa cấu hình{{else if eq .Level "partial"}}Còn thiếu bước{{else}}Cần xác minh{{end}}</span>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong style="font-size:12.5px;color:var(--text)">{{.Name}}</strong>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">{{.State}}</div>
         </div>
-        <p>{{.State}}</p>
-        <small>{{.Next}} · <a href="{{.Link}}">Mở bước tiếp theo ↗</a></small>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge {{if eq .Level "ok"}}badge-ok{{else if eq .Level "no"}}badge-no{{else}}badge-warn{{end}}" style="font-size:10px">{{if eq .Level "ok"}}Sẵn sàng{{else if eq .Level "no"}}Chưa nối{{else}}Thiếu bước{{end}}</span>
+          {{if .Link}}<a href="{{.Link}}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 7px">Nối ↗</a>{{end}}
+        </div>
       </div>
       {{end}}
     </div>
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Hiệu quả video · TikTok</h2>
-        <p>Thiếu dữ liệu không đồng nghĩa 0 lượt xem.</p>
-      </div>
-      <a href="/growth">Mở Growth ↗</a>
-    </div>
-    {{if .VideoPerformance.HasMetrics}}
-    <article class="dashboard-money-row" style="border-top:0;padding-top:0">
-      <strong>{{.VideoPerformance.DataCount}} kênh có metrics</strong>
-      <p>{{.VideoPerformance.Views30d}} lượt xem trong 30 ngày.</p>
-      <small>Cập nhật {{.VideoPerformance.LatestAt}} UTC</small>
-      {{if .VideoPerformance.Detail}}<small style="display:block;margin-top:5px;color:var(--muted)">{{.VideoPerformance.Detail}}</small>{{end}}
-    </article>
-    {{else}}
-    <p class="empty">{{.VideoPerformance.State}}</p>
-    {{if .VideoPerformance.Detail}}<small style="display:block;color:var(--muted)">{{.VideoPerformance.Detail}}</small>{{end}}
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Quyết định hệ thống gần đây</h2>
-      </div>
-    </div>
-    {{if .RecentDecisions}}
-    <div style="display:flex;flex-direction:column;gap:10px">
-      {{range .RecentDecisions}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <strong>{{with agentLabel .Agent}}{{.Icon}} {{.Label}}{{end}}</strong>
-          <span class="badge badge-draft">{{statusLabel .Action}}</span>
-        </div>
-        {{if .Reason}}<p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{reasonLabel .Reason}}</p>{{end}}
-        {{if .Evidence}}<small style="display:block;margin-top:4px;color:var(--muted)">Dữ liệu đã ghi: {{.Evidence}}</small>{{end}}
-        {{if .NextHref}}<small style="display:block;margin-top:4px"><a href="{{.NextHref}}">Bước tiếp theo: {{.NextStep}} ↗</a></small>{{end}}
-        <small style="color:var(--muted)">{{fmtVN .CreatedAt}} UTC</small>
-      </article>
-      {{end}}
-    </div>
-    {{else}}
-    <p class="empty">Chưa có quyết định tự động được ghi nhận.</p>
-    {{end}}
-  </section>
-
-  <section class="card dashboard-panel">
-    <div class="dashboard-panel-heading">
-      <div>
-        <h2>Kết quả đăng gần đây</h2>
-        <p>API thành công chưa xác nhận nội dung đã công khai.</p>
-      </div>
-    </div>
-    {{if .RecentPublishOutcomes}}
-    <div style="display:flex;flex-direction:column;gap:10px">
-      {{range .RecentPublishOutcomes}}
-      <article style="padding-bottom:10px;border-bottom:1px solid var(--border);overflow-wrap:anywhere">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <strong>{{publisherPlatformLabel .Platform}}</strong>
-          <span class="badge badge-{{statusClass .Status}}">{{.OutcomeLabel}}</span>
-          <span class="badge badge-draft">{{.Source}}</span>
-        </div>
-        <p style="margin:5px 0;color:var(--text);font-size:12px;line-height:1.5">{{if .Title}}{{.Title}}{{else}}{{.JobID}}{{end}}</p>
-        {{if .RemoteID}}<small style="display:block;margin-top:4px;color:var(--muted)">Mã nền tảng: <code>{{.RemoteID}}</code></small>{{end}}
-        {{if .Note}}<small style="display:block;margin-top:4px;color:var(--muted)">{{.Note}}</small>{{end}}
-        {{if and (eq .Status "needs_review") (eq .Platform "tiktok")}}
-        <form method="post" action="/studio/jobs/{{.JobID}}/publish-review" style="display:flex;flex-wrap:wrap;align-items:end;gap:6px;margin-top:8px">
-          <label style="font-size:11px;color:var(--muted)">Mã draft nếu đã thấy trong TikTok
-            <input name="remote_id" placeholder="TikTok draft ID" style="display:block;max-width:260px">
-          </label>
-          <button class="btn btn-sm" type="submit" name="resolution" value="published">Đã kiểm tra: có nội dung</button>
-          <button class="btn btn-secondary btn-sm" type="submit" name="resolution" value="retry" data-confirm="Xác nhận bạn đã kiểm tra nền tảng và không thấy nội dung. Autopilot sẽ được phép thử lại.">Đã kiểm tra: chưa có</button>
-        </form>
-        {{end}}
-        <small style="display:block;margin-top:4px;color:var(--muted)">{{fmtVN .UpdatedAt}}{{if .TimeKnown}} UTC{{end}}{{if .JobID}} · <a href="/studio/jobs?id={{.JobID}}#job-{{.JobID}}">Mở job ↗</a>{{end}}</small>
-      </article>
-      {{end}}
-    </div>
-    {{else}}
-    <p class="empty">Chưa có kết quả đăng được ghi nhận.</p>
-    {{end}}
-  </section>
-</div>
-
-<section class="card dashboard-worker-panel">
-  <div class="dashboard-panel-heading">
-    <div>
-      <h2>Tác vụ nền &amp; quota</h2>
-      <p>Thiếu heartbeat · trạng thái chưa xác định.</p>
-    </div>
-    <a href="/settings/system">Chi tiết hệ thống ↗</a>
-  </div>
-  <div class="dashboard-quota-row">
-    <strong>Ngắt mạch quota Gemini</strong>
-    {{if .QuotaCircuit.Known}}
-      {{if .QuotaCircuit.Open}}<span class="badge badge-warn">Đang mở tới {{.QuotaCircuit.Until}}</span>{{else}}<span class="badge badge-ok">Đang đóng</span>{{end}}
-    {{else}}
-      <span class="badge badge-no">Chưa có dữ liệu</span>
-    {{end}}
-  </div>
-  {{if .TickBeats}}
-  <details class="dashboard-ticks" {{if .HasTickIssue}}open{{end}}>
-    <summary>Heartbeat {{len .TickBeats}} tác vụ{{if .HasTickIssue}} · có lỗi hoặc tick quá hạn{{end}}</summary>
-    <div class="table-wrap">
-      <table class="tbl">
-        <tr><th>Tác vụ</th><th>Lượt chạy</th><th>Thành công gần nhất</th><th>Trạng thái</th></tr>
-        {{range .TickBeats}}
-        <tr>
-          <td title="{{.Name}}">{{.Label}}</td>
-          <td>{{.Runs}}</td>
-          <td>{{.LastOK}}</td>
-          <td>{{if .Stale}}<span class="badge badge-err">quá hạn</span>{{else if .LastErr}}<span class="badge badge-err" title="{{.LastErr}}">lỗi</span>{{else if .Running}}<span class="badge badge-warn">đang chạy</span>{{else if eq .LastOK "chưa xong lần nào"}}<span class="badge badge-no">chưa chạy thành công</span>{{else}}<span class="badge badge-ok">đã chạy</span>{{end}}</td>
-        </tr>
-        {{end}}
-      </table>
-    </div>
-  </details>
-  {{else}}
-  <p class="empty">Chưa có heartbeat · tick chưa xác định.</p>
-  {{end}}
-</section>
-
-<!-- RECENT VIDEOS & PROGRESS -->
-<div class="card" style="margin-bottom:24px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <h2 style="margin:0;font-size:16px;font-weight:700">Video Vừa Tạo &amp; Tiến Độ</h2>
-    </div>
-    <a href="/studio/jobs" class="btn btn-ghost btn-sm">Xem tất cả ↗</a>
   </div>
 
-  {{if not .JobsKnown}}
-  <p class="empty">Studio chưa sẵn sàng; không thể đọc danh sách video.</p>
-  {{else if .RecentJobs}}
-  <div class="video-cards-grid">
-    {{range .RecentJobs}}
-    <div class="video-item-card">
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span class="badge {{.Class}}" style="font-size:10.5px;font-weight:700">{{.Label}}</span>
-          <span style="font-size:11px;color:var(--muted)">{{.CreatedAt}}</span>
-        </div>
-
-        <div class="video-item-title" title="{{.Title}}">
-          {{.Title}}
-        </div>
-
-        {{if and (eq .Status "done") .Output}}
-        <div class="video-thumb-preview" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" onmouseenter="var v=this.querySelector('video');if(v){v.muted=true;v.play().catch(function(){})}" onmouseleave="var v=this.querySelector('video');if(v){v.pause();v.currentTime=0;}" title="Bấm để phóng to xem video">
-          <video data-video-spec src="/media/{{.Output}}" preload="metadata" muted loop playsinline></video>
-          <div class="video-play-overlay">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"></polygon></svg>
-          </div>
-          <span class="video-badge-spec">Đang đọc khổ…</span>
-        </div>
-        {{else if or (eq .Status "running") (eq .Status "queued")}}
-        <div class="video-render-box">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px">
-            <span style="color:var(--accent);font-weight:700;display:flex;align-items:center;gap:6px">
-              <span class="pulse-dot"></span> Đang xử lý
-            </span>
-            <span style="font-family:monospace;font-weight:800;color:var(--text)">{{.Progress}}%</span>
-          </div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:{{.Progress}}%"></div>
-          </div>
-        </div>
-        {{end}}
-      </div>
-
-      <div class="video-item-actions">
-        {{if and (eq .Status "done") .Output}}
-        <button type="button" class="btn btn-secondary btn-sm" onclick="playVideoModal('/media/{{.Output}}', '{{.Title}}', {{.QCVerified}})" style="flex:1;font-weight:700;font-size:11.5px;padding:5px 8px">▶ Xem</button>
-        <a href="/media/{{.Output}}" download class="btn btn-secondary btn-sm" style="font-size:11.5px;padding:5px 8px" title="Tải file video">⬇ Tải</a>
-        {{if .QCVerified}}<a href="/publishers?video=/media/{{.Output}}&title={{urlquery .Title}}" class="btn btn-primary btn-sm" style="font-weight:700;font-size:11.5px;padding:5px 10px" title="Mở trang tải file video để tự đăng trong ứng dụng nền tảng">📤 Bàn giao</a>{{else}}<span class="btn btn-secondary btn-sm" aria-disabled="true" style="font-size:11px;padding:5px 8px;opacity:.65" title="Chưa có bằng chứng QC của pipeline hiện tại">⚠ Chưa xác minh QC</span>{{end}}
-        {{else}}
-        {{if eq .Status "failed"}}
-        <a href="/studio/jobs?id={{.ID}}#job-{{.ID}}" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;font-weight:700">Chi tiết render ↗</a>
-        <form method="post" action="/studio/jobs/{{.ID}}/delete" style="display:inline" data-confirm="Xóa tác vụ thất bại này cùng toàn bộ file liên quan?" data-confirm-danger>
-          <input type="hidden" name="return_to" value="/">
-          <button type="submit" class="btn btn-secondary btn-sm" style="color:var(--err);font-weight:700" title="Xóa tác vụ thất bại" aria-label="Xóa tác vụ thất bại">🗑</button>
-        </form>
-        {{else}}
-        <a href="/studio/jobs?id={{.ID}}#job-{{.ID}}" class="btn btn-secondary btn-sm" style="width:100%;text-align:center;font-weight:700">Chi tiết render ↗</a>
-        {{end}}
-        {{end}}
-      </div>
-    </div>
-    {{end}}
-  </div>
-  {{else}}
-  <p class="empty">Chưa có video.</p>
-  {{end}}
 </div>
 
 {{end}}

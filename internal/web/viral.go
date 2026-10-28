@@ -47,6 +47,17 @@ type viralView struct {
 	SourceVideoURL        string
 	SourceMusicTitle      string
 	Topic                 string
+	AvailableWorkflows    []WorkflowOption
+	SelectedWorkflowID    string
+}
+
+// WorkflowOption chứa thông tin tóm tắt của workflow để lựa chọn tại các màn hình tạo video.
+type WorkflowOption struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Category    string `json:"category"`
+	Description string `json:"description"`
+	IsPreset    bool   `json:"is_preset"`
 }
 
 // handleViral renders the video creation form and actual job history.
@@ -93,9 +104,26 @@ func (s *Server) handleViral(w http.ResponseWriter, r *http.Request) {
 		SourceVideoURL:   q.Get("source_video_url"),
 		SourceMusicTitle: q.Get("source_music_title"),
 		Topic:            q.Get("topic"),
+		SelectedWorkflowID: q.Get("workflow_id"),
+	}
+	if v.SelectedWorkflowID == "" {
+		v.SelectedWorkflowID = "preset_viral_dance"
 	}
 	if s.Studio != nil {
 		v.CharacterEditorReady, v.CharacterEditorStatus = s.Studio.ViralCharacterEditorStatus(r.Context())
+		if fs, err := s.Studio.GetFlowStore(); err == nil && fs != nil {
+			if list, err := fs.ListGraphs(); err == nil {
+				for _, sum := range list {
+					v.AvailableWorkflows = append(v.AvailableWorkflows, WorkflowOption{
+						ID:          sum.ID,
+						Title:       sum.Name,
+						Category:    sum.Category,
+						Description: sum.Description,
+						IsPreset:    sum.IsPreset,
+					})
+				}
+			}
+		}
 	}
 	if msg := q.Get("msg"); msg == "created" {
 		v.Notice = "Tác vụ sản xuất video viral AI đã được đưa vào hàng đợi thành công!"

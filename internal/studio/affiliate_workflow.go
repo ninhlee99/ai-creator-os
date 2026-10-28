@@ -19,7 +19,14 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 	if err != nil {
 		return "", err
 	}
-	graph, err := store.GetGraph("preset_affiliate_showcase")
+	targetWorkflow := "preset_affiliate_showcase"
+	if p.WorkflowID != "" {
+		targetWorkflow = p.WorkflowID
+	}
+	graph, err := store.GetGraph(targetWorkflow)
+	if err != nil {
+		graph, err = store.GetGraph("preset_affiliate_showcase")
+	}
 	if err != nil {
 		return "", fmt.Errorf("không tải được preset Affiliate Workflow: %w", err)
 	}
