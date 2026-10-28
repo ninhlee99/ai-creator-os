@@ -3,7 +3,6 @@ package webai
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,9 +127,14 @@ func launchLoginBrowser(ctx context.Context, binary string, args []string, profi
 	if err != nil {
 		return loginBrowserLaunch{}, true, err
 	}
-	command.Stdout = io.Discard
+	closeOutput, err := ConfigureHeadlessBrowserOutput(command)
+	if err != nil {
+		return loginBrowserLaunch{}, true, fmt.Errorf("không cấu hình được output %s: %w", filepath.Base(binary), err)
+	}
+	defer closeOutput()
 	stderr := &browserStderrTail{}
 	command.Stderr = stderr
+	ConfigureHeadlessBrowserCommand(command)
 	if err := command.Start(); err != nil {
 		return loginBrowserLaunch{}, true, fmt.Errorf("không thể khởi chạy %s: %w", filepath.Base(binary), err)
 	}

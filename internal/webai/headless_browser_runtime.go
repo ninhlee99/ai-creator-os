@@ -147,9 +147,6 @@ func optimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []str
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--user-data-dir=" + profileDir,
 	}
-	if runtime.GOOS == "darwin" && port == 0 {
-		args[len(args)-2] = "--remote-debugging-port=0"
-	}
 	args = append(args, "about:blank")
 	// /dev/shm is RAM-backed on Linux. Disable it only in constrained
 	// containers where Chromium's shared-memory allocation otherwise fails.
