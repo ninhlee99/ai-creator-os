@@ -111,7 +111,7 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 		displayedJobs = allJobs
 	}
 
-	schedEnabled, schedHours, schedLastRun, schedAutoPub := s.scheduleView()
+	schedEnabled, schedHours, schedLastRun := s.scheduleView()
 
 	nextRunStr := "Đang chờ lịch kích hoạt"
 	if schedEnabled {
@@ -149,7 +149,6 @@ func (s *Server) handleStudioJobs(w http.ResponseWriter, r *http.Request) {
 		"SchedHours", schedHours,
 		"SchedLastRun", schedLastRun,
 		"SchedNextRun", nextRunStr,
-		"SchedAutoPub", schedAutoPub,
 		"Msg", msg,
 		"Err", r.URL.Query().Get("err"),
 	))

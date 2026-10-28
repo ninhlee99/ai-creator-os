@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
@@ -45,157 +44,54 @@ func (s *Studio) analyzeViralReference(ctx context.Context, videoPath string, du
 	if err != nil {
 		return "", nil, fmt.Errorf("phân tích frame video nguồn: %w", err)
 	}
+	return parseViralReferenceAnalysis(raw, duration)
+}
+
+func parseViralReferenceAnalysis(raw string, duration float64) (string, []ViralReferenceBeat, error) {
 	var result map[string]json.RawMessage
 	cleaned := cleanJSON(raw)
 	if err := json.Unmarshal([]byte(cleaned), &result); err != nil {
-		log.Printf("studio: parse viral reference JSON failed (%v), fallback to synthesized beats", err)
+		return "", nil, fmt.Errorf("phân tích video nguồn trả JSON không hợp lệ: %w", err)
 	}
 	var summary string
 	var beats []ViralReferenceBeat
-	if result != nil {
-		_ = json.Unmarshal(result["summary"], &summary)
-		_ = json.Unmarshal(result["beats"], &beats)
+	if err := json.Unmarshal(result["summary"], &summary); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu summary hợp lệ: %w", err)
+	}
+	if err := json.Unmarshal(result["beats"], &beats); err != nil {
+		return "", nil, fmt.Errorf("phân tích video nguồn thiếu beats hợp lệ: %w", err)
 	}
 	if strings.TrimSpace(summary) == "" {
-		summary = "Quan sát cấu trúc và nhịp điệu chuyển động của video nguồn"
+		summary = "Quan sát các frame nguồn theo thứ tự thời gian"
 	}
-	beats = normalizeViralBeats(beats, duration)
-	_ = validateViralReferenceBeats(beats, duration)
+	for i := range beats {
+		beats[i].Framing = strings.TrimSpace(beats[i].Framing)
+		beats[i].SubjectAction = strings.TrimSpace(beats[i].SubjectAction)
+		beats[i].BodyMovement = strings.TrimSpace(beats[i].BodyMovement)
+		beats[i].CameraMovement = strings.TrimSpace(beats[i].CameraMovement)
+		beats[i].EditTransition = strings.TrimSpace(beats[i].EditTransition)
+		beats[i].Energy = strings.TrimSpace(beats[i].Energy)
+		beats[i].Uncertainty = strings.TrimSpace(beats[i].Uncertainty)
+	}
+	if err := validateViralReferenceBeats(beats, duration); err != nil {
+		return "", nil, err
+	}
 	return strings.TrimSpace(summary), beats, nil
 }
 
-func normalizeViralBeats(beats []ViralReferenceBeat, duration float64) []ViralReferenceBeat {
-	if len(beats) == 0 {
-		return []ViralReferenceBeat{
-			{
-				TimeSec:        0.0,
-				Framing:        "Toàn thân",
-				SubjectAction:  "Vũ đạo nhảy theo nhịp nhạc nguồn",
-				BodyMovement:   "Chuyển động nhịp nhàng theo giai điệu",
-				CameraMovement: "Camera tĩnh bắt trọn chuyển động",
-				EditTransition: "Cắt trực tiếp",
-				Energy:         "Năng động",
-				Uncertainty:    "Thấp",
-			},
-		}
-	}
-	for i := range beats {
-		if beats[i].TimeSec < 0 {
-			beats[i].TimeSec = 0
-		}
-		if beats[i].TimeSec > duration {
-			beats[i].TimeSec = duration
-		}
-		if i > 0 && beats[i].TimeSec <= beats[i-1].TimeSec {
-			beats[i].TimeSec = math.Min(duration, beats[i-1].TimeSec+0.5)
-		}
-		if strings.TrimSpace(beats[i].Framing) == "" {
-			beats[i].Framing = "Toàn cảnh"
-		}
-		if strings.TrimSpace(beats[i].SubjectAction) == "" {
-			beats[i].SubjectAction = "Vũ đạo nhảy theo nguồn"
-		}
-		if strings.TrimSpace(beats[i].BodyMovement) == "" {
-			beats[i].BodyMovement = "Chuyển động vũ đạo"
-		}
-	}
-	return beats
-}
-
-func normalizeViralScenes(scenes []ViralScene, target float64) []ViralScene {
-	if target <= 0 {
-		target = 15.0
-	}
-	if len(scenes) == 0 {
-		count := int(math.Ceil(target / 6.0))
-		if count < 1 {
-			count = 1
-		}
-		step := target / float64(count)
-		for i := 0; i < count; i++ {
-			start := float64(i) * step
-			end := float64(i+1) * step
-			if i == count-1 {
-				end = target
-			}
-			scenes = append(scenes, ViralScene{
-				Index:          i + 1,
-				Phase:          "source_beat",
-				SourceStartSec: start,
-				SourceEndSec:   end,
-				DurationSec:    end - start,
-				ImagePrompt:    fmt.Sprintf("Keyframe %d, full channel character replacement, vertical 9:16", i+1),
-				VideoPrompt:    fmt.Sprintf("Recreating choreography and camera movement for segment %.1f to %.1fs", start, end),
-			})
-		}
-		return scenes
-	}
-
-	for i := range scenes {
-		if strings.TrimSpace(scenes[i].ImagePrompt) == "" {
-			scenes[i].ImagePrompt = fmt.Sprintf("Keyframe %d, full character replacement, vertical 9:16", i+1)
-		}
-		if strings.TrimSpace(scenes[i].VideoPrompt) == "" {
-			scenes[i].VideoPrompt = "Dynamic dance movement and camera tracking from source video"
-		}
-		scenes[i].Index = i + 1
-		scenes[i].Phase = "source_beat"
-	}
-
-	cursor := 0.0
-	for i := 0; i < len(scenes)-1; i++ {
-		scenes[i].SourceStartSec = cursor
-		d := scenes[i].SourceEndSec - scenes[i].SourceStartSec
-		if d < 3.5 || d > 8.5 {
-			remainTime := target - cursor
-			remainScenes := len(scenes) - i
-			idealDuration := remainTime / float64(remainScenes)
-			if idealDuration < 4.0 {
-				idealDuration = math.Min(remainTime, 4.0)
-			} else if idealDuration > 8.0 {
-				idealDuration = 8.0
-			}
-			scenes[i].SourceEndSec = cursor + idealDuration
-		} else {
-			scenes[i].SourceEndSec = cursor + d
-		}
-		if scenes[i].SourceEndSec >= target-1.0 {
-			scenes[i].SourceEndSec = target
-			scenes = scenes[:i+1]
-			break
-		}
-		scenes[i].DurationSec = scenes[i].SourceEndSec - scenes[i].SourceStartSec
-		cursor = scenes[i].SourceEndSec
-	}
-
-	lastIdx := len(scenes) - 1
-	scenes[lastIdx].SourceStartSec = cursor
-	scenes[lastIdx].SourceEndSec = target
-	scenes[lastIdx].DurationSec = target - cursor
-
-	if scenes[lastIdx].DurationSec < 3.5 && len(scenes) > 1 {
-		scenes[lastIdx-1].SourceEndSec = target
-		scenes[lastIdx-1].DurationSec = target - scenes[lastIdx-1].SourceStartSec
-		scenes = scenes[:lastIdx]
-	}
-
-	for i := range scenes {
-		scenes[i].Index = i + 1
-		scenes[i].DurationSec = scenes[i].SourceEndSec - scenes[i].SourceStartSec
-	}
-	return scenes
-}
-
 func validateViralReferenceBeats(beats []ViralReferenceBeat, duration float64) error {
+	if math.IsNaN(duration) || math.IsInf(duration, 0) || duration <= 0 {
+		return fmt.Errorf("thời lượng video nguồn không hợp lệ")
+	}
 	if len(beats) == 0 {
 		return fmt.Errorf("thiếu beat quan sát từ video nguồn")
 	}
 	lastTime := -1.0
 	for i, beat := range beats {
-		if beat.TimeSec < 0 || beat.TimeSec > duration || beat.TimeSec < lastTime {
+		if math.IsNaN(beat.TimeSec) || math.IsInf(beat.TimeSec, 0) || beat.TimeSec < 0 || beat.TimeSec > duration || (i > 0 && beat.TimeSec <= lastTime) {
 			return fmt.Errorf("beat nguồn %d có timestamp thiếu, ngoài video hoặc sai thứ tự", i+1)
 		}
-		if strings.TrimSpace(beat.Framing+beat.SubjectAction+beat.BodyMovement+beat.CameraMovement+beat.EditTransition+beat.Energy) == "" {
+		if strings.TrimSpace(beat.Framing+beat.SubjectAction+beat.BodyMovement) == "" {
 			return fmt.Errorf("beat nguồn %d thiếu mô tả hình ảnh quan sát được", i+1)
 		}
 		lastTime = beat.TimeSec
@@ -204,6 +100,9 @@ func validateViralReferenceBeats(beats []ViralReferenceBeat, duration float64) e
 }
 
 func validateViralReferenceScenes(scenes []ViralScene, target float64) error {
+	if math.IsNaN(target) || math.IsInf(target, 0) || target <= 0 {
+		return fmt.Errorf("thời lượng video nguồn không hợp lệ")
+	}
 	if len(scenes) == 0 {
 		return fmt.Errorf("storyboard nguồn không có cảnh")
 	}
@@ -213,19 +112,22 @@ func validateViralReferenceScenes(scenes []ViralScene, target float64) error {
 		if strings.TrimSpace(scene.ImagePrompt) == "" || strings.TrimSpace(scene.VideoPrompt) == "" {
 			return fmt.Errorf("storyboard cảnh %d thiếu keyframe hoặc chuyển động theo nguồn", i+1)
 		}
-		if math.Abs(scene.SourceStartSec-cursor) > 0.5 {
+		if math.IsNaN(scene.SourceStartSec) || math.IsInf(scene.SourceStartSec, 0) || math.IsNaN(scene.SourceEndSec) || math.IsInf(scene.SourceEndSec, 0) || scene.SourceStartSec < 0 || scene.SourceEndSec > target || math.Abs(scene.SourceStartSec-cursor) > 0.05 {
 			return fmt.Errorf("storyboard cảnh %d tạo khoảng trống hoặc chồng lấn với timeline nguồn", i+1)
 		}
 		if scene.SourceEndSec <= scene.SourceStartSec {
 			return fmt.Errorf("storyboard cảnh %d có khoảng timestamp không hợp lệ", i+1)
 		}
 		sceneDuration := scene.SourceEndSec - scene.SourceStartSec
+		if math.IsNaN(scene.DurationSec) || math.IsInf(scene.DurationSec, 0) || scene.DurationSec <= 0 || math.Abs(scene.DurationSec-sceneDuration) > 0.05 {
+			return fmt.Errorf("storyboard cảnh %d khai duration không khớp khoảng nguồn", i+1)
+		}
 		scene.Index = i + 1
 		scene.Phase = "source_beat"
 		scene.DurationSec = sceneDuration
 		cursor = scene.SourceEndSec
 	}
-	if math.Abs(cursor-target) > 0.5 {
+	if math.Abs(cursor-target) > 0.05 {
 		return fmt.Errorf("timeline storyboard kết thúc ở %.3f giây, nguồn dài %.3f giây", cursor, target)
 	}
 	return nil
@@ -249,7 +151,7 @@ func isViralVideoFile(path string) bool {
 }
 
 func sampleViralReferenceFrames(ctx context.Context, videoPath, outDir string, duration float64) ([]viralSampleFrame, error) {
-	if duration <= 0 {
+	if math.IsNaN(duration) || math.IsInf(duration, 0) || duration <= 0 {
 		return nil, fmt.Errorf("không đọc được thời lượng video")
 	}
 	count := int(math.Ceil(duration * 2)) // two ordered source samples per second

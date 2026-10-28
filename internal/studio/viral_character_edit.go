@@ -6,19 +6,22 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
-func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams, museCreditsAcknowledged bool) {
+func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p ViralParams, museCreditsAcknowledged bool) {
 	s.appendLog(jobID, "SOURCE_VALIDATION_START: kiểm tra video nguồn, ảnh nhân vật, Muse AI và visual QC")
-	sourceDuration := probeDuration(context.Background(), p.SampleVideo)
-	if sourceDuration <= 0 {
+	sourceDuration := probeDuration(ctx, p.SampleVideo)
+	if math.IsNaN(sourceDuration) || math.IsInf(sourceDuration, 0) || sourceDuration <= 0 {
 		s.failViralJob(jobID, fmt.Errorf("không đọc được thời lượng video nguồn"))
 		return
 	}
-	width, height, err := probeViralDimensions(context.Background(), p.SampleVideo)
+	if err := validateViralSourceDuration(sourceDuration); err != nil {
+		s.failViralJob(jobID, err)
+		return
+	}
+	width, height, err := probeViralDimensions(ctx, p.SampleVideo)
 	if err != nil {
 		s.failViralJob(jobID, err)
 		return
@@ -31,29 +34,14 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams, museCred
 		s.failViralJob(jobID, fmt.Errorf("thiếu video nguồn hoặc ảnh nhân vật của kênh"))
 		return
 	}
-	if ready, reason := s.ViralCharacterEditorStatus(context.Background()); !ready {
+	if ready, reason := s.ViralCharacterEditorStatus(ctx); !ready {
 		s.failViralJob(jobID, fmt.Errorf("Muse AI chưa sẵn sàng: %s", reason))
 		return
 	}
-	if !ProbeHasAudio(context.Background(), p.SampleVideo) {
+	if !ProbeHasAudio(ctx, p.SampleVideo) {
 		s.failViralJob(jobID, fmt.Errorf("video nguồn Radar không có track âm thanh"))
 		return
 	}
-
-	timeout := 20*time.Minute + time.Duration(sourceDuration*10)*time.Second
-	if timeout > 6*time.Hour {
-		timeout = 6 * time.Hour
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	s.mu.Lock()
-	s.running[jobID] = cancel
-	s.mu.Unlock()
-	defer func() {
-		s.mu.Lock()
-		delete(s.running, jobID)
-		s.mu.Unlock()
-	}()
 
 	sem := s.jobSlot()
 	select {
@@ -95,6 +83,12 @@ func (s *Studio) runViralFullCharacterEdit(jobID string, p ViralParams, museCred
 				node.Params = map[string]any{}
 			}
 			switch node.ID {
+			case "split":
+				node.Params["max_segment_seconds"] = maxViralSegmentDurationSeconds
+				node.Params["min_segment_seconds"] = minViralSourceDurationSeconds
+				node.Params["max_segments"] = maxViralRenderSegments
+			case "render_map":
+				node.Params["max_items"] = maxViralRenderSegments
 			case "video":
 				node.Params["video_path"] = p.SampleVideo
 				// EnqueueViral đã xác thực nguồn với Radar trước khi tạo job.

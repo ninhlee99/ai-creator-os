@@ -498,7 +498,7 @@ func (s *Studio) queueTikTokRadarTopicRefresh(topic string, currentCount int, fo
 	if recovered {
 		s.appendLog(jobID, "Khôi phục job Radar sau khi tiến trình trước bị ngắt.")
 	}
-	go s.runTikTokRadarRefreshJob(topic, jobID)
+	s.runTikTokRadarRefreshJob(topic, jobID)
 	return true
 }
 
@@ -543,17 +543,50 @@ func (s *Studio) latestTikTokRadarRefreshJob(topic string) (time.Time, bool, err
 }
 
 func (s *Studio) runTikTokRadarRefreshJob(topic, jobID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), tikTokRadarTopicRefreshTimeout)
 	s.mu.Lock()
+	if s.shuttingDown {
+		state := s.radarTopicRefreshStates[topic]
+		if state.jobID == jobID {
+			state.running = false
+			state.cancel = nil
+			s.radarTopicRefreshStates[topic] = state
+		}
+		s.mu.Unlock()
+		cancel()
+		return
+	}
+	if s.running == nil {
+		s.running = make(map[string]context.CancelFunc)
+	}
+	if _, exists := s.running[jobID]; exists {
+		s.mu.Unlock()
+		cancel()
+		return
+	}
+	s.running[jobID] = cancel
 	if s.radarTopicRefreshSem == nil {
 		s.radarTopicRefreshSem = make(chan struct{}, 1)
 	}
 	sem := s.radarTopicRefreshSem
+	state := s.radarTopicRefreshStates[topic]
+	if state.jobID == jobID {
+		state.cancel = cancel
+		s.radarTopicRefreshStates[topic] = state
+	}
 	s.mu.Unlock()
-	s.runTikTokRadarRefreshJobWithSemaphore(topic, jobID, sem)
+	go func() {
+		defer func() {
+			s.mu.Lock()
+			delete(s.running, jobID)
+			s.mu.Unlock()
+			cancel()
+		}()
+		s.runTikTokRadarRefreshJobWithSemaphore(topic, jobID, sem, ctx, cancel)
+	}()
 }
 
-func (s *Studio) runTikTokRadarRefreshJobWithSemaphore(topic, jobID string, sem chan struct{}) {
-	ctx, cancel := context.WithTimeout(context.Background(), tikTokRadarTopicRefreshTimeout)
+func (s *Studio) runTikTokRadarRefreshJobWithSemaphore(topic, jobID string, sem chan struct{}, ctx context.Context, cancel context.CancelFunc) {
 	defer func() {
 		s.mu.Lock()
 		state := s.radarTopicRefreshStates[topic]
@@ -573,7 +606,6 @@ func (s *Studio) runTikTokRadarRefreshJobWithSemaphore(topic, jobID string, sem 
 			s.setStatus(jobID, StatusFailed, 100)
 		}
 	}()
-	defer cancel()
 	s.mu.Lock()
 	state := s.radarTopicRefreshStates[topic]
 	canRun := state.jobID == jobID && !state.deleting
@@ -690,7 +722,7 @@ func (s *Studio) queueTikTokRadarTopicRefreshJob(topic, jobID string) bool {
 	state.jobID = jobID
 	s.radarTopicRefreshStates[topic] = state
 	s.mu.Unlock()
-	go s.runTikTokRadarRefreshJob(topic, jobID)
+	s.runTikTokRadarRefreshJob(topic, jobID)
 	return true
 }
 

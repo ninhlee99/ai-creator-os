@@ -18,6 +18,8 @@ Crawler không phân loại dance; video chưa được xác nhận không dùng
 
 Server yêu cầu cờ xác nhận thủ công và Radar thu thập trong 7 ngày trước khi phân tích hoặc tạo job. Cờ cũ không có provenance xác nhận được reset khi nâng cấp.
 
+Renderer hiện hỗ trợ nguồn dài 3–200 giây: tối đa 20 shot Muse, mỗi shot 3–10 giây. Nguồn ngoài giới hạn bị từ chối trước khi xếp job.
+
 Storyboard mô tả bằng chứng hình ảnh theo mốc thời gian và số liệu Radar hiện có. Các giả thuyết chỉ để thiết kế thử nghiệm, không chứng minh nguyên nhân viral; retention, watch-time, demographics, profile visits và follows riêng theo video vẫn chưa có dữ liệu. Tạo video viral hoàn chỉnh và giữ đồng nhất với reference chưa được chứng minh end-to-end.
 
 Counters lấy từ TikTok Display API sau khi account cấp quyền và đồng bộ. Retention, watch-time, demographics, profile visits và follows riêng theo video chưa có dữ liệu; chưa có snapshot thì hiển thị unknown.

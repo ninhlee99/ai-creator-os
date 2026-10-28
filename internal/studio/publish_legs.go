@@ -1,13 +1,16 @@
 package studio
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
-// Chân TikTok Draft — idempotency dùng chung cho Studio và Autopilot.
+// Chân TikTok Draft — idempotency cho thao tác gửi có consent từng video.
 //
 // studio_publish_legs records TikTok delivery per job. Its key prevents
-// duplicate drafts when a user submits twice or an autopilot hook retries:
-// trước khi đăng mỗi chân, check done → bỏ qua; sau đăng ghi done/failed;
-// chân failed được tick thử lại.
+// duplicate drafts when a user submits twice. Failed legs can be retried only
+// after the operator confirms preview and consent again.
 
 // PublishLeg là một chân gửi Draft của job TikTok.
 type PublishLeg struct {
@@ -60,10 +63,18 @@ func (s *Studio) PublishLegRemoteID(jobID, platform string) string {
 	return rid
 }
 
-// BeginPublishLeg atomically claims a new or failed leg before contacting the
-// platform. Existing publishing, done, and needs-review legs cannot be claimed.
-func (s *Studio) BeginPublishLeg(jobID, platform string) (bool, error) {
-	res, err := s.db.Exec(`INSERT INTO studio_publish_legs(job_id,platform,remote_id,status,updated_at)
+// BeginPublishLegWithConsent atomically claims a delivery attempt and stores
+// its operator consent before any platform request can be sent.
+func (s *Studio) BeginPublishLegWithConsent(jobID, platform, consentLog string) (bool, error) {
+	if strings.TrimSpace(consentLog) == "" {
+		return false, fmt.Errorf("TikTok consent evidence is required")
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	res, err := tx.Exec(`INSERT INTO studio_publish_legs(job_id,platform,remote_id,status,updated_at)
 		VALUES(?,?, '', ?, ?)
 		ON CONFLICT(job_id,platform) DO UPDATE SET
 			remote_id='', status=excluded.status, updated_at=excluded.updated_at
@@ -72,8 +83,28 @@ func (s *Studio) BeginPublishLeg(jobID, platform string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	n, err := res.RowsAffected()
-	return n == 1, err
+	changed, err := res.RowsAffected()
+	if err != nil || changed != 1 {
+		return false, err
+	}
+	var current string
+	if err := tx.QueryRow(`SELECT log FROM studio_jobs WHERE id=?`, jobID).Scan(&current); err != nil {
+		return false, err
+	}
+	if current != "" {
+		current += "\n"
+	}
+	current += time.Now().Format("15:04:05") + " " + consentLog
+	if lines := strings.Split(current, "\n"); len(lines) > maxJobLogLines {
+		current = strings.Join(lines[len(lines)-maxJobLogLines:], "\n")
+	}
+	if _, err := tx.Exec(`UPDATE studio_jobs SET log=? WHERE id=?`, current, jobID); err != nil {
+		return false, err
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // SetPublishLeg ghi (upsert) trạng thái chân đăng.

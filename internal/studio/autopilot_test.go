@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -102,6 +103,24 @@ func testPNGServer(t *testing.T) string {
 	}))
 	t.Cleanup(srv.Close)
 	return srv.URL + "/p.png"
+}
+
+func TestDownloadImageRejectsOversizedResponse(t *testing.T) {
+	const maxImageBytes = int64(15 << 20)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Length", fmt.Sprint(maxImageBytes+1))
+		_, _ = io.CopyN(w, strings.NewReader(strings.Repeat("x", int(maxImageBytes+1))), maxImageBytes+1)
+	}))
+	defer srv.Close()
+	dst := filepath.Join(t.TempDir(), "oversized.png")
+
+	if err := DownloadImage(context.Background(), srv.URL+"/large.png", dst); err == nil {
+		t.Fatal("DownloadImage accepted a response larger than 15 MiB")
+	}
+	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		t.Fatalf("oversized partial image remains at destination: stat err = %v", err)
+	}
 }
 
 func TestAutopilotRun(t *testing.T) {

@@ -87,11 +87,7 @@ func (s *Server) automation() *automation.Service {
 	svc.Env = s
 	svc.Producer = s.producer()
 	svc.Autopilot = s.Autopilot
-	// Đợt AA: chỉ gán JobStore khi Studio thật sự tồn tại — gán nil
-	// *studio.Studio vào interface tạo interface non-nil chứa nil pointer,
-	// gọi method sẽ panic.
 	if s.Studio != nil {
-		svc.JobStore = s.Studio
 		svc.Maintenance = s.Studio
 	}
 	svc.CommissionSource = s.CommissionSource

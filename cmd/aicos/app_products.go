@@ -52,11 +52,7 @@ func configureAutopilot(srv *web.Server, mgr *network.AccountManager, store *pro
 	autopilot := studio.NewAutopilot(srv.Studio, mgr, store, nil, models)
 	srv.Autopilot = autopilot
 	log.Printf("autopilot: wired (source=Accesstrade store; production still requires per-account Flow credits authorization)")
-	publishHook := srv.AutomationService().AutoPublishHook()
 	srv.Studio.SetOnDone(func(jobID string) {
-		if publishHook != nil {
-			publishHook(jobID)
-		}
 		go notifyCompletedStudioJob(srv, jobID)
 	})
 	seedAutopilotSchedule(settings)

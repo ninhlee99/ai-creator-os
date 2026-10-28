@@ -199,24 +199,6 @@ func (s *Studio) ReissueAffiliatePreparation(p AffiliateParams) (string, error) 
 	return prep.ID, nil
 }
 
-func (s *Studio) consumeAffiliatePreparation(id string) error {
-	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("thiếu mã shot plan cần tiêu thụ")
-	}
-	result, err := s.db.Exec(`DELETE FROM studio_affiliate_plans WHERE id = ?`, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows != 1 {
-		return fmt.Errorf("shot plan đã được dùng hoặc không còn tồn tại; hãy lập plan mới")
-	}
-	return nil
-}
-
 // AffiliateManualVideoPrompt turns one approved shot into a usable prompt for
 // an operator-operated video tool or a live-action shoot.
 func AffiliateManualVideoPrompt(productName string, shot ProShot) string {

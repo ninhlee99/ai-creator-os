@@ -83,7 +83,6 @@ var productsSettingKeys = []string{
 	"autopilot_enabled",
 	"autopilot_interval_hours",
 	"autopilot_last_run",
-	"autopilot_auto_publish",
 }
 
 // MigrateProductsSettings copies the legacy products.db control settings
@@ -285,6 +284,3 @@ func AutopilotLastRun(s Settings) string {
 	v, _ := s.Get("autopilot_last_run")
 	return v
 }
-
-// AutopilotAutoPublish reports the auto-publish-to-TikTok switch.
-func AutopilotAutoPublish(s Settings) bool { return autopilotOn(s, "autopilot_auto_publish") }

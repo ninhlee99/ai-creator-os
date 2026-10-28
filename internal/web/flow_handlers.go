@@ -9,15 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
-)
-
-var (
-	flowCancelMu sync.Mutex
-	flowCancels  = make(map[string]context.CancelFunc)
 )
 
 func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
@@ -242,27 +236,15 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())
 
-	// Đăng ký context hủy
-	ctx, cancel := context.WithCancel(context.Background())
-	flowCancelMu.Lock()
-	flowCancels[runID] = cancel
-	flowCancelMu.Unlock()
-
-	// Chạy luồng nền
-	go func() {
-		defer func() {
-			flowCancelMu.Lock()
-			delete(flowCancels, runID)
-			flowCancelMu.Unlock()
-			cancel()
-		}()
-		services := s.flowExecutionServices()
-		services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
-		services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
-		services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
-		services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
-		_, _ = s.Studio.ExecuteFlowGraphWithInputs(ctx, runID, targetGraph, req.Inputs, services)
-	}()
+	services := s.flowExecutionServices()
+	services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
+	services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
+	services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
+	services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
+	if err := s.Studio.StartFlowGraphWithInputs(context.Background(), runID, targetGraph, req.Inputs, services); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusServiceUnavailable)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
@@ -434,25 +416,15 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 
 	runID := fmt.Sprintf("run_%d", time.Now().UnixNano())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	flowCancelMu.Lock()
-	flowCancels[runID] = cancel
-	flowCancelMu.Unlock()
-
-	go func() {
-		defer func() {
-			flowCancelMu.Lock()
-			delete(flowCancels, runID)
-			flowCancelMu.Unlock()
-			cancel()
-		}()
-		services := s.flowExecutionServices()
-		services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
-		services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
-		services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
-		services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
-		_, _ = s.Studio.ExecuteFlowGraph(ctx, runID, &clonedGraph, services)
-	}()
+	services := s.flowExecutionServices()
+	services.MuseAccountEmail = strings.TrimSpace(req.MuseAccountEmail)
+	services.MuseAccountName = strings.TrimSpace(req.MuseAccountName)
+	services.MuseCreditsAcknowledged = req.MuseCreditsAcknowledged
+	services.GoogleFlowCreditsAcknowledged = req.GoogleFlowCreditsAcknowledged
+	if err := s.Studio.StartFlowGraphWithInputs(context.Background(), runID, &clonedGraph, nil, services); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusServiceUnavailable)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
@@ -565,27 +537,28 @@ func (s *Server) handleAPIFlowRunDetail(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) handleAPIFlowRunCancel(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	flowCancelMu.Lock()
-	cancel, ok := flowCancels[id]
-	if ok && cancel != nil {
-		cancel()
-		delete(flowCancels, id)
+	if s.Studio == nil {
+		http.Error(w, `{"ok":false,"error":"Studio unavailable"}`, http.StatusServiceUnavailable)
+		return
 	}
-	flowCancelMu.Unlock()
+	id := r.PathValue("id")
+	active := s.Studio.CancelFlowRun(id)
 
-	if s.Studio != nil {
-		if fStore, err := s.Studio.GetFlowStore(); err == nil {
-			if run, err := fStore.GetRun(id); err == nil && run != nil {
-				run.Status = "cancelled"
-				_ = fStore.SaveRun(run)
-			}
-		}
+	fStore, err := s.Studio.GetFlowStore()
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	cancelled, err := fStore.CancelRun(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"ok": true,
+		"ok":        true,
+		"cancelled": cancelled || active,
 	})
 }
 
@@ -642,7 +615,10 @@ func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 	if s.Studio != nil && s.Studio.UploadDir() != "" {
 		uploadDir = s.Studio.UploadDir()
 	}
-	_ = os.MkdirAll(uploadDir, 0o755)
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	safeBasename := filepath.Base(header.Filename)
 	safeBasename = strings.ReplaceAll(safeBasename, " ", "_")
@@ -691,7 +667,10 @@ func (s *Server) handleAPIFlowFetchURL(w http.ResponseWriter, r *http.Request) {
 	if s.Studio != nil && s.Studio.UploadDir() != "" {
 		uploadDir = s.Studio.UploadDir()
 	}
-	_ = os.MkdirAll(uploadDir, 0o755)
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
 	destPath, mediaType, err := flow.DownloadMediaResource(r.Context(), req.URL, uploadDir, req.Type)
 	if err != nil {

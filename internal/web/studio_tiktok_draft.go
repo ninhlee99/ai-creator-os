@@ -56,9 +56,10 @@ func (s *Server) handleStudioTikTokDraft(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	claimed, err := s.Studio.BeginPublishLeg(jobID, "tiktok")
+	claimed, err := s.Studio.BeginPublishLegWithConsent(jobID, "tiktok",
+		"Người vận hành xác nhận đã xem trước video và đồng ý gửi vào TikTok Creator Inbox dưới dạng Draft; chưa đăng công khai.")
 	if err != nil {
-		fail("Không lưu được trạng thái gửi TikTok; chưa tải video lên.")
+		fail("Không lưu được trạng thái gửi và bằng chứng xác nhận; chưa tải video lên.")
 		return
 	}
 	if !claimed {
@@ -74,8 +75,6 @@ func (s *Server) handleStudioTikTokDraft(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
-	s.Studio.AppendLog(jobID, "Người vận hành xác nhận đã xem trước video và đồng ý gửi vào TikTok Creator Inbox dưới dạng Draft; chưa đăng công khai.")
-
 	title := job.Title
 	if job.Kind == studio.KindAffiliate {
 		var params studio.AffiliateParams

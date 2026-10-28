@@ -2,7 +2,6 @@ package automation
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/ninhlee99/ai-creator-os/internal/network"
 	"github.com/ninhlee99/ai-creator-os/internal/studio"
@@ -10,28 +9,12 @@ import (
 	"time"
 )
 
-// ------------------------------------------------- scheduler boundaries
-
-// JobStore is the studio-job boundary the autopilot needs.
-// *studio.Studio satisfies it.
-type JobStore interface {
-	GetJob(id string) (studio.Job, bool)
-	AppendLog(id, line string)
-	// Publish legs (Đợt Y): idempotency cho auto-publish — check trước
-	// khi đăng, ghi sau khi đăng, tick thử lại chân failed.
-	PublishLegStatus(jobID, platform string) string
-	PublishLegRemoteID(jobID, platform string) string
-	BeginPublishLeg(jobID, platform string) (bool, error)
-	SetPublishLeg(jobID, platform, status, remoteID string) error
-	FailedPublishLegs() []studio.PublishLeg
-}
-
 // ----------------------------------------------------------- the tick
 
 // AutopilotTick attempts one scheduled affiliate cycle. The current Studio
 // runner stops before product discovery until per-account Google Flow credit
-// authorization exists. Returns log notes; the Studio's SetOnDone hook
-// handles publishing separately. Cadence:
+// authorization exists. Returns log notes. TikTok handoff stays operator-
+// triggered after per-video review. Cadence:
 // the UI-managed interval (default 6h); gates: kill switch, DRY-RUN,
 // the autopilot_enabled switch (default ON when unset; a stored "0" opts
 // out). The current producer may still stop before discovery at its
@@ -69,13 +52,11 @@ func (s *Service) AutopilotTick(ctx context.Context) []string {
 				"kiểm tra theme/ảnh mẫu/API key trong UI rồi bật lại")
 		}
 	}
-	// Đợt Y: thử lại các chân đăng lỗi tạm thời ở chu kỳ trước.
-	retryNotes := s.retryFailedPublishLegs(ctx)
 	if s.Settings != nil {
 		_ = s.Settings.Set("autopilot_last_run", time.Now().Format(time.RFC3339))
 	}
 	notes := []string{fmt.Sprintf("autopilot: chu kỳ đã xong (%d video đã xếp)", done)}
-	return append(notes, retryNotes...)
+	return notes
 }
 
 // alertAccountOnce gửi alert warn cho account, tối đa 1 lần/24h cho cùng
@@ -96,84 +77,9 @@ func (s *Service) alertAccountOnce(accountID int64, accountName, msg, action str
 	s.alert("autopilot_account", "warn", msg, action)
 }
 
-// retryFailedPublishLegs retries failed TikTok drafts while job output remains.
-func (s *Service) retryFailedPublishLegs(ctx context.Context) []string {
-	if s.JobStore == nil || s.Accounts == nil {
-		return nil
-	}
-	var notes []string
-	for _, leg := range s.JobStore.FailedPublishLegs() {
-		j, ok := s.JobStore.GetJob(leg.JobID)
-		if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
-			continue
-		}
-		var p studio.AffiliateParams
-		if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
-			continue
-		}
-		acct, err := s.Accounts.Get(p.AccountID)
-		if err != nil {
-			continue
-		}
-		if leg.Platform == "tiktok" && AutopilotAutoPublish(s.Settings) {
-			s.autoPublishTikTokAffiliate(ctx, leg.JobID, j, p, acct)
-			notes = append(notes, "thử lại chân đăng TikTok cho job "+leg.JobID)
-		}
-	}
-	return notes
-}
-
-// ------------------------------------------------------ auto-publish
-
-// AutoPublishAffiliate posts a finished autopilot affiliate video to
-// TikTok (the Studio SetOnDone hook calls this in the background).
-// The toggle defaults ON when unset (Đợt 3); a stored "0" opts out.
-// Fail-closed at every step: kill switch / DRY-RUN, non-affiliate jobs,
-// manual jobs (no AccountID), disabled toggle, and missing TikTok OAuth
-// all skip quietly with a job-log line. TikTok posts as draft by default,
-// so the operator attaches any product link in the TikTok app before going
-// public.
-func (s *Service) AutoPublishAffiliate(ctx context.Context, jobID string) {
-	// Đợt 3: the shared kill switch and DRY-RUN gate every real publish.
-	if s.killed() || s.dryRun() {
-		return
-	}
-	if s.JobStore == nil {
-		return
-	}
-	j, ok := s.JobStore.GetJob(jobID)
-	if !ok || j.Kind != studio.KindAffiliate || j.Status != studio.StatusDone || j.Output == "" {
-		return
-	}
-	var p studio.AffiliateParams
-	if err := json.Unmarshal([]byte(j.Params), &p); err != nil || p.AccountID == 0 {
-		return // manual studio job — never auto-publish
-	}
-	if s.Accounts == nil {
-		return
-	}
-	acct, err := s.Accounts.Get(p.AccountID)
-	if err != nil {
-		s.JobStore.AppendLog(jobID, "Tự đăng: không tìm thấy account — bỏ qua.")
-		return
-	}
-	// TikTok: nháp (giới hạn nền tảng — gắn giỏ hàng tay trong app).
-	if AutopilotAutoPublish(s.Settings) {
-		s.autoPublishTikTokAffiliate(ctx, jobID, j, p, acct)
-	}
-}
-
-// AutoPublishHook returns the background publishing callback wired to Studio.
-func (s *Service) AutoPublishHook() func(id string) {
-	return func(id string) {
-		go s.AutoPublishAffiliate(context.Background(), id)
-	}
-}
-
 // Compile-time boundary checks: *network.AccountManager satisfies
 // AccountManager, *studio.Autopilot satisfies AutopilotRunner.
 var (
 	_ AccountManager  = (*network.AccountManager)(nil)
 	_ AutopilotRunner = (*studio.Autopilot)(nil)
-	_ JobStore        = (*studio.Studio)(nil)
 )

@@ -2,6 +2,7 @@ package studio
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,7 +27,9 @@ func (s *Studio) GetFlowStore() (*flow.Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("khởi tạo workflow store: %w", err)
 	}
-	_ = fs.SeedDefaultPresets()
+	if err := fs.SeedDefaultPresets(); err != nil {
+		return nil, fmt.Errorf("khởi tạo workflow presets: %w", err)
+	}
 	s.flowStore = fs
 	return fs, nil
 }
@@ -36,8 +39,81 @@ func (s *Studio) ExecuteFlowGraph(ctx context.Context, runID string, graph *flow
 	return s.ExecuteFlowGraphWithInputs(ctx, runID, graph, nil, serviceOptions...)
 }
 
+// StartFlowGraphWithInputs starts a detached workflow run and tracks its
+// cancellation until completion so Studio shutdown can drain it safely.
+func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, graph *flow.FlowGraph, workflowInputs map[string]any, serviceOptions ...flow.ExecutionServices) error {
+	if graph == nil {
+		return fmt.Errorf("workflow graph is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if runID == "" {
+		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	s.mu.Lock()
+	if s.shuttingDown {
+		s.mu.Unlock()
+		cancel()
+		return fmt.Errorf("studio is shutting down")
+	}
+	if s.flowRuns == nil {
+		s.flowRuns = make(map[string]context.CancelFunc)
+	}
+	if _, exists := s.flowRuns[runID]; exists {
+		s.mu.Unlock()
+		cancel()
+		return fmt.Errorf("workflow run %q is already active", runID)
+	}
+	s.flowRuns[runID] = cancel
+	s.mu.Unlock()
+
+	services := append([]flow.ExecutionServices(nil), serviceOptions...)
+	inputs := cloneWorkflowInputs(workflowInputs)
+	go func() {
+		defer func() {
+			s.mu.Lock()
+			delete(s.flowRuns, runID)
+			s.mu.Unlock()
+			cancel()
+		}()
+		_, _ = s.ExecuteFlowGraphWithInputs(runCtx, runID, graph, inputs, services...)
+	}()
+	return nil
+}
+
+// CancelFlowRun cancels an active detached workflow without removing its
+// lifecycle record; shutdown keeps waiting until its executor exits.
+func (s *Studio) CancelFlowRun(runID string) bool {
+	s.mu.Lock()
+	cancel, ok := s.flowRuns[runID]
+	if ok && cancel != nil {
+		cancel()
+	}
+	s.mu.Unlock()
+	return ok
+}
+
+func cloneWorkflowInputs(inputs map[string]any) map[string]any {
+	if inputs == nil {
+		return nil
+	}
+	copy := make(map[string]any, len(inputs))
+	for key, value := range inputs {
+		copy[key] = value
+	}
+	return copy
+}
+
 // ExecuteFlowGraphWithInputs executes a workflow with values supplied for its named workflow_input nodes.
 func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, graph *flow.FlowGraph, workflowInputs map[string]any, serviceOptions ...flow.ExecutionServices) (*flow.FlowRun, error) {
+	if graph == nil {
+		return nil, fmt.Errorf("workflow graph is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if runID == "" {
 		runID = fmt.Sprintf("run_%d", time.Now().UnixNano())
 	}
@@ -51,8 +127,12 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 
 	workDir := filepath.Join(s.workRoot, "runs", runID)
-	_ = os.MkdirAll(workDir, 0o755)
-	_ = os.MkdirAll(s.outDir, 0o755)
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
+		return nil, fmt.Errorf("tạo thư mục workflow: %w", err)
+	}
+	if err := os.MkdirAll(s.outDir, 0o755); err != nil {
+		return nil, fmt.Errorf("tạo thư mục output workflow: %w", err)
+	}
 
 	initialRun := &flow.FlowRun{
 		ID:         runID,
@@ -67,7 +147,9 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	for _, n := range graph.Nodes {
 		initialRun.NodeStates[n.ID] = flow.NodeState{Status: "queued", Progress: 0}
 	}
-	_ = fStore.SaveRun(initialRun)
+	if err := fStore.SaveRun(initialRun); err != nil {
+		return nil, fmt.Errorf("lưu trạng thái khởi tạo workflow: %w", err)
+	}
 	analyzeImages := func(ctx context.Context, prompt string, imagePaths []string) (string, error) {
 		analyzer, ok := s.mg.(visualImageAnalyzer)
 		if !ok || s.mg == nil || !s.mg.Healthy(ctx) {
@@ -188,7 +270,13 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 	completedRun, execErr := flow.ExecuteGraph(execCtx, graph)
 	if completedRun != nil {
-		_ = fStore.SaveRun(completedRun)
+		if err := fStore.SaveRun(completedRun); err != nil {
+			persistErr := fmt.Errorf("lưu trạng thái kết thúc workflow: %w", err)
+			if execErr != nil {
+				return completedRun, errors.Join(execErr, persistErr)
+			}
+			return completedRun, persistErr
+		}
 	}
 
 	return completedRun, execErr

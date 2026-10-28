@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (s *Studio) runAffiliate(id string, p AffiliateParams, museCreditsAcknowledged bool) {
+func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams, museCreditsAcknowledged bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.setStatus(id, StatusFailed, 100)
@@ -30,21 +30,11 @@ func (s *Studio) runAffiliate(id string, p AffiliateParams, museCreditsAcknowled
 		s.appendLog(id, fmt.Sprintf("LỖI: engine affiliate không được hỗ trợ: %q", p.VideoEngine))
 		return
 	}
-	if ready, reason := s.MuseVideoReady(context.Background()); !ready {
+	if ready, reason := s.MuseVideoReady(ctx); !ready {
 		s.setStatus(id, StatusFailed, 100)
 		s.appendLog(id, "LỖI: Muse AI chưa sẵn sàng: "+reason)
 		return
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	s.running[id] = cancel
-	s.mu.Unlock()
-	defer func() {
-		s.mu.Lock()
-		delete(s.running, id)
-		s.mu.Unlock()
-	}()
-
 	sem := s.jobSlot()
 	select {
 	case sem <- struct{}{}:

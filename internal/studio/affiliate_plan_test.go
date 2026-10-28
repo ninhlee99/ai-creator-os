@@ -199,4 +199,40 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	if _, err := st.GetAffiliatePreparation(flowPrep.ID); err != nil {
 		t.Fatalf("rejected Flow job consumed its prepared plan: %v", err)
 	}
+
+	retryPrep, err := st.PrepareAffiliatePlan(context.Background(), flowPrep.Params)
+	if err != nil {
+		t.Fatalf("PrepareAffiliatePlan for disk guard: %v", err)
+	}
+	st.DiskGuard = func() (int, error) { return 99, nil }
+	retryParams := retryPrep.Params
+	retryParams.PreparedPlanID = retryPrep.ID
+	retryParams.FlowCreditsAcknowledged = true
+	if _, err := st.CreateAffiliateJob(retryParams); err == nil || !strings.Contains(err.Error(), "đĩa đã dùng") {
+		t.Fatalf("CreateAffiliateJob at disk limit error = %v, want disk guard", err)
+	}
+	if _, err := st.GetAffiliatePreparation(retryPrep.ID); err != nil {
+		t.Fatalf("disk guard consumed retryable shot plan: %v", err)
+	}
+	if _, ok := st.GetJob(retryPrep.ID); ok {
+		t.Fatal("disk guard inserted a partial affiliate job")
+	}
+	st.DiskGuard = nil
+	dbRetryPrep, err := st.PrepareAffiliatePlan(context.Background(), retryPrep.Params)
+	if err != nil {
+		t.Fatalf("PrepareAffiliatePlan for database rollback: %v", err)
+	}
+	if _, err := st.db.Exec(`INSERT INTO studio_jobs(id,kind,title,status,params,created_at) VALUES(?,?,?,?,?,?)`,
+		dbRetryPrep.ID, "sentinel", "existing row", StatusQueued, "{}", time.Now().Format("2006-01-02T15:04:05")); err != nil {
+		t.Fatalf("insert duplicate job ID fixture: %v", err)
+	}
+	dbRetryParams := dbRetryPrep.Params
+	dbRetryParams.PreparedPlanID = dbRetryPrep.ID
+	dbRetryParams.FlowCreditsAcknowledged = true
+	if _, err := st.CreateAffiliateJob(dbRetryParams); err == nil {
+		t.Fatal("CreateAffiliateJob succeeded with duplicate job ID")
+	}
+	if _, err := st.GetAffiliatePreparation(dbRetryPrep.ID); err != nil {
+		t.Fatalf("database insert failure consumed retryable shot plan: %v", err)
+	}
 }

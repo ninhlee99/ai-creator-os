@@ -117,7 +117,7 @@ func (s *Server) tickBeatViews() []TickBeatView {
 // tickLabels dịch tên kỹ thuật của tick sang tiếng người (Đợt AK): Ninh đọc
 // "Đăng video reup" thay vì `reup_post`.
 var tickLabels = map[string]string{
-	"autopilot":    "Tự động đăng (autopilot)",
+	"autopilot":    "Affiliate Autopilot",
 	"growth":       "Phát triển kênh",
 	"accesstrade":  "Affiliate Accesstrade",
 	"viral":        "Video Viral: sản xuất video",

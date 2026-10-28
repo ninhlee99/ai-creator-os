@@ -67,9 +67,9 @@
   </div>
 
   <div class="card" style="border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">TÁC VỤ SAU KHI VIDEO HOÀN TẤT</div>
-      <div style="font-size:12px;font-weight:600;color:var(--text)">
-      {{if .SchedAutoPub}}<span class="badge badge-ok" style="font-size:10px">Bản nháp TikTok</span>{{else}}<span class="badge badge-draft" style="font-size:10px">Chỉ lưu video</span>{{end}}
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">GỬI TIKTOK</div>
+    <div style="font-size:12px;font-weight:600;color:var(--text)">
+      Chỉ gửi Draft sau khi xem trước và xác nhận riêng từng video.
     </div>
   </div>
 </div>
@@ -86,7 +86,7 @@
       </label>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-bottom:18px">
+    <div style="margin-bottom:18px">
       <div>
         <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chu kỳ đã lưu · giờ</label>
         <select name="interval_hours" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text)">
@@ -96,16 +96,6 @@
           <option value="12" {{if eq .SchedHours 12}}selected{{end}}>Mỗi 12 giờ (2 video/ngày)</option>
           <option value="24" {{if eq .SchedHours 24}}selected{{end}}>Mỗi 24 giờ (1 video/ngày)</option>
         </select>
-      </div>
-
-      <div>
-        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Gửi video vào bản nháp TikTok khi dựng xong</label>
-        <div style="display:flex;flex-direction:column;gap:6px;padding-top:4px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-            <input type="checkbox" name="auto_publish" {{if .SchedAutoPub}}checked{{end}}>
-            <span>Gửi video TikTok dưới dạng bản nháp</span>
-          </label>
-        </div>
       </div>
     </div>
 

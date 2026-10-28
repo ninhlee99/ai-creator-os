@@ -3,11 +3,13 @@ package backup
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func ValidateZipFile(path string) error {
@@ -70,13 +72,15 @@ func validateZipReader(zr *zip.Reader) error {
 	return nil
 }
 func Validate(zr *zip.Reader) error {
-	var manifest, ledger bool
+	var manifestFile *zip.File
+	manifestCount, ledgerCount := 0, 0
 	for _, f := range zr.File {
 		switch filepath.Clean(f.Name) {
 		case ManifestName:
-			manifest = true
+			manifestFile = f
+			manifestCount++
 		case "ledger.db":
-			ledger = true
+			ledgerCount++
 			rc, err := f.Open()
 			if err != nil {
 				return fmt.Errorf("mở ledger.db trong zip: %w", err)
@@ -93,11 +97,50 @@ func Validate(zr *zip.Reader) error {
 			return fmt.Errorf("entry đáng ngờ trong bản sao lưu: %s", f.Name)
 		}
 	}
-	if !manifest {
+	if manifestCount == 0 {
 		return fmt.Errorf("thiếu %s — không phải bản sao lưu của aicos", ManifestName)
 	}
-	if !ledger {
+	if manifestCount != 1 {
+		return fmt.Errorf("bản sao lưu có %d manifest; cần đúng một", manifestCount)
+	}
+	if ledgerCount == 0 {
 		return fmt.Errorf("thiếu ledger.db trong bản sao lưu")
+	}
+	if ledgerCount != 1 {
+		return fmt.Errorf("bản sao lưu có %d ledger.db; cần đúng một", ledgerCount)
+	}
+	if err := validateManifest(manifestFile); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateManifest(file *zip.File) error {
+	rc, err := file.Open()
+	if err != nil {
+		return fmt.Errorf("mở %s: %w", ManifestName, err)
+	}
+	defer rc.Close()
+	const maxManifestBytes = 64 << 10
+	raw, err := io.ReadAll(io.LimitReader(rc, maxManifestBytes+1))
+	if err != nil {
+		return fmt.Errorf("đọc %s: %w", ManifestName, err)
+	}
+	if len(raw) > maxManifestBytes {
+		return fmt.Errorf("%s vượt quá giới hạn kích thước", ManifestName)
+	}
+	var manifest struct {
+		App     string `json:"app"`
+		Created string `json:"created"`
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		return fmt.Errorf("%s không hợp lệ: %w", ManifestName, err)
+	}
+	if manifest.App != "aicos" {
+		return fmt.Errorf("%s không phải bản sao lưu của aicos", ManifestName)
+	}
+	if _, err := time.Parse(time.RFC3339, manifest.Created); err != nil {
+		return fmt.Errorf("%s thiếu thời điểm tạo hợp lệ", ManifestName)
 	}
 	return nil
 }

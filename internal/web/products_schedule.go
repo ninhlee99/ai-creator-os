@@ -7,15 +7,12 @@ import (
 )
 
 // scheduleView reads the current schedule state for the products page.
-func (s *Server) scheduleView() (enabled bool, hours int, lastRun string, autoPublish bool) {
-	// Automation switches read from the single settings facade (R2-W4):
-	// ledger settings. Switches default ON when unset (Đợt 3); a stored
-	// "0" is an explicit operator choice and always wins.
+func (s *Server) scheduleView() (enabled bool, hours int, lastRun string) {
+	// Automation settings read from the single settings facade (R2-W4).
 	st := s.settings()
 	enabled = automation.AutopilotEnabled(st)
 	hours = automation.AutopilotIntervalHours(st)
 	lastRun = automation.AutopilotLastRun(st)
-	autoPublish = automation.AutopilotAutoPublish(st)
 	return
 }
 
@@ -25,8 +22,7 @@ func (s *Server) scheduleView() (enabled bool, hours int, lastRun string, autoPu
 // scheduler wiring) and internal/automation read the same keys the UI
 // writes.
 const (
-	SettingAutopilotEnabled     = "autopilot_enabled"
-	SettingAutopilotInterval    = "autopilot_interval_hours"
-	SettingAutopilotLastRun     = "autopilot_last_run"
-	SettingAutopilotAutoPublish = "autopilot_auto_publish"
+	SettingAutopilotEnabled  = "autopilot_enabled"
+	SettingAutopilotInterval = "autopilot_interval_hours"
+	SettingAutopilotLastRun  = "autopilot_last_run"
 )

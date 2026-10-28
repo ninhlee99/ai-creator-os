@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFormatCount(t *testing.T) {
@@ -93,6 +94,49 @@ func TestFindTikTokRadarVideoRequiresCollectedSource(t *testing.T) {
 func TestResolveTikTokRadarMusicRequiresOperatorSelection(t *testing.T) {
 	if _, err := ResolveTikTokRadarMusic(context.Background()); err == nil || !strings.Contains(err.Error(), "chọn video nhảy thủ công") {
 		t.Fatalf("ResolveTikTokRadarMusic error = %v, want manual Radar selection", err)
+	}
+}
+
+func TestValidateTikTokRadarDanceFreshness(t *testing.T) {
+	now := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name    string
+		video   TikTokTrendVideo
+		wantErr string
+	}{
+		{
+			name:    "unverified",
+			video:   TikTokTrendVideo{CollectedAt: now.Format(time.RFC3339Nano)},
+			wantErr: "chưa được xác nhận",
+		},
+		{
+			name:    "stale",
+			video:   TikTokTrendVideo{DanceVerified: true, CollectedAt: now.Add(-8 * 24 * time.Hour).Format(time.RFC3339Nano)},
+			wantErr: "quá 7 ngày",
+		},
+		{
+			name:    "future",
+			video:   TikTokTrendVideo{DanceVerified: true, CollectedAt: now.Add(6 * time.Minute).Format(time.RFC3339Nano)},
+			wantErr: "trong tương lai",
+		},
+		{
+			name:  "recent verified",
+			video: TikTokTrendVideo{DanceVerified: true, CollectedAt: now.Add(-time.Hour).Format(time.RFC3339Nano)},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateTikTokRadarDanceFreshness(tc.video, now)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("fresh verified source rejected: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("freshness error = %v, want %q", err, tc.wantErr)
+			}
+		})
 	}
 }
 

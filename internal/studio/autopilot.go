@@ -125,11 +125,22 @@ func DownloadImage(ctx context.Context, url, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	// 15 MB cap — listing photos are small; this stops runaway downloads.
-	if _, err := io.CopyN(f, resp.Body, 15<<20); err != nil && err != io.EOF {
+	// Read one byte beyond the cap so oversized responses fail instead of
+	// being accepted as silently truncated image files.
+	const maxImageBytes = int64(15 << 20)
+	written, copyErr := io.Copy(f, io.LimitReader(resp.Body, maxImageBytes+1))
+	closeErr := f.Close()
+	if copyErr != nil {
 		_ = os.Remove(dst)
-		return err
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(dst)
+		return closeErr
+	}
+	if written > maxImageBytes {
+		_ = os.Remove(dst)
+		return fmt.Errorf("image exceeds %d-byte limit", maxImageBytes)
 	}
 	return nil
 }

@@ -173,6 +173,61 @@ func TestTC15_WebAPI_ExecuteAndPolling(t *testing.T) {
 	}
 }
 
+func TestFlowCancelDoesNotOverwriteTerminalRun(t *testing.T) {
+	srv, cleanup := setupTestServerWithFlow(t)
+	defer cleanup()
+
+	store, err := srv.Studio.GetFlowStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{"completed", "failed", "cancelled"} {
+		run := &flow.FlowRun{ID: "terminal-" + status, Status: status, NodeStates: map[string]flow.NodeState{}, Outputs: map[string]any{}}
+		if err := store.SaveRun(run); err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest("POST", "/api/flow/runs/"+run.ID+"/cancel", nil)
+		req.SetPathValue("id", run.ID)
+		w := httptest.NewRecorder()
+		srv.handleAPIFlowRunCancel(w, req)
+		if w.Result().StatusCode != http.StatusOK {
+			t.Fatalf("cancel %s returned HTTP %d", status, w.Result().StatusCode)
+		}
+		persisted, err := store.GetRun(run.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if persisted.Status != status {
+			t.Fatalf("cancel overwrote terminal status %q with %q", status, persisted.Status)
+		}
+	}
+}
+
+func TestFlowCancelMarksActiveRun(t *testing.T) {
+	srv, cleanup := setupTestServerWithFlow(t)
+	defer cleanup()
+
+	store, err := srv.Studio.GetFlowStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := &flow.FlowRun{ID: "active-run", Status: "running", NodeStates: map[string]flow.NodeState{}, Outputs: map[string]any{}}
+	if err := store.SaveRun(run); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest("POST", "/api/flow/runs/"+run.ID+"/cancel", nil)
+	req.SetPathValue("id", run.ID)
+	w := httptest.NewRecorder()
+	srv.handleAPIFlowRunCancel(w, req)
+	persisted, err := store.GetRun(run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Status != "cancelled" {
+		t.Fatalf("active run status = %q, want cancelled", persisted.Status)
+	}
+}
+
 func TestTC16_WebAPI_Upload(t *testing.T) {
 	srv, cleanup := setupTestServerWithFlow(t)
 	defer cleanup()

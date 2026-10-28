@@ -156,17 +156,14 @@ func TestMigrateProductsSettings(t *testing.T) {
 func TestAutopilotSwitchDefaultsOn(t *testing.T) {
 	l, _ := openTestLedger(t)
 	st := LedgerSettings{L: l}
-	if !AutopilotEnabled(st) || !AutopilotAutoPublish(st) {
-		t.Error("unset switches: want both ON by default")
+	if !AutopilotEnabled(st) {
+		t.Error("unset switch: AutopilotEnabled want ON by default")
 	}
 	if err := st.Set("autopilot_enabled", "0"); err != nil {
 		t.Fatal(err)
 	}
 	if AutopilotEnabled(st) {
 		t.Error("stored 0: AutopilotEnabled = true, want false")
-	}
-	if !AutopilotAutoPublish(st) {
-		t.Error("autoPublish must stay ON independently")
 	}
 	if n := AutopilotIntervalHours(st); n != 6 {
 		t.Errorf("default interval = %d, want 6", n)

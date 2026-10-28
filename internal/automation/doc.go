@@ -1,6 +1,6 @@
 // Package automation holds the hands-off execution layer of AI Creator
-// OS: the growth tick (plan -> production -> publish), the affiliate
-// autopilot scheduler and the auto-publish hook. R2-W4 moved these out of
+// OS: the growth tick (plan -> production), the affiliate autopilot
+// scheduler. R2-W4 moved these out of
 // the web dashboard so the schedule logic lives in one place with clean
 // dependency interfaces — no web import anywhere in this package.
 //

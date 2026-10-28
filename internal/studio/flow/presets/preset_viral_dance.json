@@ -43,6 +43,8 @@
       "y": 520,
       "params": {
         "max_segment_seconds": 10,
+        "min_segment_seconds": 3,
+        "max_segments": 20,
         "require_audio": true
       }
     },

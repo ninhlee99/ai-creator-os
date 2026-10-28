@@ -22,10 +22,6 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	if r.PostFormValue("enabled") == "on" {
 		enabled = "1"
 	}
-	autoPub := "0"
-	if r.PostFormValue("auto_publish") == "on" {
-		autoPub = "1"
-	}
 	hours := 6
 	if h, err := strconv.Atoi(strings.TrimSpace(r.PostFormValue("interval_hours"))); err == nil && h >= 1 && h <= 168 {
 		hours = h
@@ -35,7 +31,6 @@ func (s *Server) handleStudioScheduleSave(w http.ResponseWriter, r *http.Request
 	for _, setting := range []struct{ key, value string }{
 		{SettingAutopilotEnabled, enabled},
 		{SettingAutopilotInterval, strconv.Itoa(hours)},
-		{SettingAutopilotAutoPublish, autoPub},
 	} {
 		if err := st.Set(setting.key, setting.value); err != nil {
 			msg := fmt.Sprintf("Không lưu đủ cấu hình lịch (%s); một số giá trị có thể đã cập nhật. Hãy tải lại và kiểm tra.", setting.key)

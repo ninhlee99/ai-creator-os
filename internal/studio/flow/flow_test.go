@@ -694,6 +694,18 @@ func TestTC12_StoreCRUD(t *testing.T) {
 	if retRun.Progress != 50 {
 		t.Errorf("Progress run không khớp: %d", retRun.Progress)
 	}
+	if err := store.SaveRun(&FlowRun{ID: "run_unsupported_output", Outputs: map[string]any{"channel": make(chan int)}}); err == nil {
+		t.Fatal("SaveRun must return output serialization errors")
+	}
+	if _, err := db.Exec(`UPDATE studio_workflow_runs SET outputs='not-json' WHERE id=?`, run.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.GetRun(run.ID); err == nil {
+		t.Fatal("GetRun must reject malformed stored outputs")
+	}
+	if _, err := store.ListRuns(20); err == nil {
+		t.Fatal("ListRuns must reject malformed stored outputs")
+	}
 
 	// 5. Xóa graph tùy chỉnh
 	if err := store.DeleteGraph("custom_g1"); err != nil {

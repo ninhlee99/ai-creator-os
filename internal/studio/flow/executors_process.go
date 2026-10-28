@@ -1002,6 +1002,12 @@ func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 	if err != nil {
 		return nil, err
 	}
+	maxSegments := nodeParamInt(node.Params, "max_segments", 100)
+	minSegment := nodeParamFloat(node.Params, "min_segment_seconds", 0)
+	segmentPlan, err := planVideoSegments(duration, maxSegment, minSegment, maxSegments)
+	if err != nil {
+		return nil, err
+	}
 	hasAudio, err := probeFlowHasAudio(videoIn)
 	if err != nil {
 		return nil, err
@@ -1047,12 +1053,12 @@ func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 			contextVariables = promptContext
 		}
 	}
-	segmentCount := int(math.Ceil(duration / maxSegment))
+	segmentCount := len(segmentPlan)
 	segments := make([]any, 0, segmentCount)
 	base := safeWorkflowPathPart(node.ID)
-	for i := 0; i < segmentCount; i++ {
-		start := float64(i) * maxSegment
-		segmentDuration := math.Min(maxSegment, duration-start)
+	for i, segment := range segmentPlan {
+		start := segment.Start
+		segmentDuration := segment.Duration
 		path := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_segment_%03d.mp4", base, i+1))
 		args := []string{"-y", "-ss", fmt.Sprintf("%.3f", start), "-i", videoIn, "-t", fmt.Sprintf("%.3f", segmentDuration), "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-movflags", "+faststart", path}
 		if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
@@ -1103,6 +1109,51 @@ func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 	}
 	ctx.Log(fmt.Sprintf("VideoSplit: chia video %.2fs thành %d đoạn, audio=%v", duration, segmentCount, hasAudio))
 	return result, nil
+}
+
+type videoSegmentInterval struct {
+	Start    float64
+	Duration float64
+}
+
+func planVideoSegments(duration, maxSegment, minSegment float64, maxSegments int) ([]videoSegmentInterval, error) {
+	if math.IsNaN(duration) || math.IsInf(duration, 0) || duration <= 0 {
+		return nil, fmt.Errorf("thời lượng video nguồn không hợp lệ")
+	}
+	if math.IsNaN(maxSegment) || math.IsInf(maxSegment, 0) || maxSegment <= 0 || maxSegment > 10 {
+		return nil, fmt.Errorf("max_segment_seconds phải lớn hơn 0 và không quá 10 giây")
+	}
+	if math.IsNaN(minSegment) || math.IsInf(minSegment, 0) || minSegment < 0 || minSegment > maxSegment {
+		return nil, fmt.Errorf("min_segment_seconds phải từ 0 đến max_segment_seconds")
+	}
+	if maxSegments < 1 || maxSegments > 100 {
+		return nil, fmt.Errorf("max_segments phải từ 1 đến 100")
+	}
+	countFloat := math.Ceil(duration / maxSegment)
+	if countFloat > float64(maxSegments) {
+		return nil, fmt.Errorf("video %.2fs cần %.0f đoạn; giới hạn hiện tại %d", duration, countFloat, maxSegments)
+	}
+	count := int(countFloat)
+	if count < 1 {
+		count = 1
+	}
+	segmentDuration := duration / float64(count)
+	if segmentDuration > maxSegment+0.001 {
+		return nil, fmt.Errorf("không chia được video %.2fs thành các đoạn tối đa %.2fs", duration, maxSegment)
+	}
+	if minSegment > 0 && segmentDuration < minSegment {
+		return nil, fmt.Errorf("video %.2fs tạo đoạn %.2fs, ngắn hơn giới hạn %.2fs", duration, segmentDuration, minSegment)
+	}
+	segments := make([]videoSegmentInterval, 0, count)
+	for i := 0; i < count; i++ {
+		start := float64(i) * segmentDuration
+		partDuration := segmentDuration
+		if i == count-1 {
+			partDuration = duration - start
+		}
+		segments = append(segments, videoSegmentInterval{Start: start, Duration: partDuration})
+	}
+	return segments, nil
 }
 
 func executeVideoTrim(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {

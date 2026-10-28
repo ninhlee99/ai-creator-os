@@ -190,7 +190,9 @@ func (s *Store) ListGraphs() ([]FlowSummary, error) {
 			continue
 		}
 		var g FlowGraph
-		_ = json.Unmarshal([]byte(graphJSON), &g)
+		if err := json.Unmarshal([]byte(graphJSON), &g); err != nil {
+			return nil, fmt.Errorf("decode workflow %s: %w", id, err)
+		}
 		inputs, outputs, _ := WorkflowContract(&g)
 		workflowError := WorkflowReusableError(&g)
 		list = append(list, FlowSummary{
@@ -232,8 +234,14 @@ func (s *Store) SaveRun(r *FlowRun) error {
 	if r == nil || r.ID == "" {
 		return errors.New("run hoặc ID không hợp lệ")
 	}
-	nodeStatesJSON, _ := json.Marshal(r.NodeStates)
-	outputsJSON, _ := json.Marshal(r.Outputs)
+	nodeStatesJSON, err := json.Marshal(r.NodeStates)
+	if err != nil {
+		return fmt.Errorf("mã hóa trạng thái node workflow: %w", err)
+	}
+	outputsJSON, err := json.Marshal(r.Outputs)
+	if err != nil {
+		return fmt.Errorf("mã hóa outputs workflow: %w", err)
+	}
 
 	query := `INSERT INTO studio_workflow_runs (id, graph_id, graph_name, status, progress, node_states, outputs, final_output, log, created_at, finished_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -246,8 +254,19 @@ func (s *Store) SaveRun(r *FlowRun) error {
 			log = excluded.log,
 			finished_at = excluded.finished_at;`
 
-	_, err := s.db.Exec(query, r.ID, r.GraphID, r.GraphName, r.Status, r.Progress, string(nodeStatesJSON), string(outputsJSON), r.FinalOutput, r.Log, r.CreatedAt, r.FinishedAt)
+	_, err = s.db.Exec(query, r.ID, r.GraphID, r.GraphName, r.Status, r.Progress, string(nodeStatesJSON), string(outputsJSON), r.FinalOutput, r.Log, r.CreatedAt, r.FinishedAt)
 	return err
+}
+
+// CancelRun marks an active run as cancelled without overwriting a terminal state.
+func (s *Store) CancelRun(id string) (bool, error) {
+	result, err := s.db.Exec(`UPDATE studio_workflow_runs SET status='cancelled', finished_at=?
+		WHERE id=? AND status='running'`, time.Now().Format(time.RFC3339), id)
+	if err != nil {
+		return false, err
+	}
+	changed, err := result.RowsAffected()
+	return changed == 1, err
 }
 
 // GetRun lấy trạng thái chi tiết của một lượt chạy flow.
@@ -267,8 +286,12 @@ func (s *Store) GetRun(id string) (*FlowRun, error) {
 	}
 	r.NodeStates = make(map[string]NodeState)
 	r.Outputs = make(map[string]any)
-	_ = json.Unmarshal([]byte(nodeStatesJSON), &r.NodeStates)
-	_ = json.Unmarshal([]byte(outJSON), &r.Outputs)
+	if err := json.Unmarshal([]byte(nodeStatesJSON), &r.NodeStates); err != nil {
+		return nil, fmt.Errorf("decode workflow node states: %w", err)
+	}
+	if err := json.Unmarshal([]byte(outJSON), &r.Outputs); err != nil {
+		return nil, fmt.Errorf("decode workflow outputs: %w", err)
+	}
 	return &r, nil
 }
 
@@ -299,8 +322,12 @@ func (s *Store) ListRuns(limit int) ([]FlowRun, error) {
 		}
 		r.NodeStates = make(map[string]NodeState)
 		r.Outputs = make(map[string]any)
-		_ = json.Unmarshal([]byte(nodeStatesJSON), &r.NodeStates)
-		_ = json.Unmarshal([]byte(outJSON), &r.Outputs)
+		if err := json.Unmarshal([]byte(nodeStatesJSON), &r.NodeStates); err != nil {
+			return nil, fmt.Errorf("decode workflow %s node states: %w", r.ID, err)
+		}
+		if err := json.Unmarshal([]byte(outJSON), &r.Outputs); err != nil {
+			return nil, fmt.Errorf("decode workflow %s outputs: %w", r.ID, err)
+		}
 		list = append(list, r)
 	}
 	return list, nil

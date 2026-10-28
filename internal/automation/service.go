@@ -78,8 +78,8 @@ type OrdersSource interface {
 // ---------------------------------------------------------------- service
 
 // Service is the hands-off execution layer: growth tick (plan ->
-// production -> publish), the affiliate autopilot scheduler and the
-// auto-publish hook. All dependencies arrive through the interfaces
+// production), the affiliate autopilot scheduler and other background
+// maintenance. All dependencies arrive through the interfaces
 // above; the service imports nothing web-related.
 type Service struct {
 	Growth   *growth.Store
@@ -91,10 +91,6 @@ type Service struct {
 
 	Producer  Producer
 	Autopilot AutopilotRunner
-
-	// JobStore is the studio job backend for the auto-publish hook.
-	// Nil = the hook never fires (videos stay in Studio output).
-	JobStore JobStore
 
 	// Accesstrade automation (Đợt C): hunter + order sync + campaign check.
 	// Nil AT/Products = tick bỏ qua im lặng (chưa cấu hình key).

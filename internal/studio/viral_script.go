@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -17,12 +16,12 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	duration := p.TargetDuration
 	if fileExists(p.SampleVideo) {
 		measured := probeDuration(ctx, p.SampleVideo)
-		if measured <= 0 {
+		if math.IsNaN(measured) || math.IsInf(measured, 0) || measured <= 0 {
 			return nil, fmt.Errorf("không đọc được thời lượng video nguồn")
 		}
 		duration = measured
 	}
-	if duration <= 0 {
+	if math.IsNaN(duration) || math.IsInf(duration, 0) || duration <= 0 {
 		return nil, fmt.Errorf("cần thời lượng video nguồn chính xác")
 	}
 	p.TargetDuration = duration
@@ -81,16 +80,14 @@ func (s *Studio) GenerateViralScript(ctx context.Context, p ViralParams) (*Viral
 	var script ViralScript
 	cleaned := cleanJSON(response)
 	if err := json.Unmarshal([]byte(cleaned), &script); err != nil {
-		log.Printf("studio: parse viral script JSON failed (%v), building fallback scenes from reference", err)
-		script = ViralScript{
-			Title: p.Topic,
-		}
+		return nil, fmt.Errorf("storyboard viral trả JSON không hợp lệ: %w", err)
 	}
 	if strings.TrimSpace(script.Title) == "" {
 		script.Title = p.Topic
 	}
-	script.Scenes = normalizeViralScenes(script.Scenes, duration)
-	_ = validateViralReferenceScenes(script.Scenes, duration)
+	if err := validateViralReferenceScenes(script.Scenes, duration); err != nil {
+		return nil, err
+	}
 	script.Analysis = sanitizeViralSourceAnalysis(script.Analysis, p.ReferenceBeats)
 
 	// The available source evidence is visual-only. Never infer audio, text,

@@ -5,7 +5,28 @@ import (
 	"fmt"
 	"math"
 	"path/filepath"
+	"time"
 )
+
+const (
+	minViralSourceDurationSeconds  = 3.0
+	maxViralSegmentDurationSeconds = 10.0
+	maxViralRenderSegments         = 20
+	maxViralSourceDurationSeconds  = maxViralSegmentDurationSeconds * maxViralRenderSegments
+)
+
+func validateViralSourceDuration(duration float64) error {
+	if math.IsNaN(duration) || math.IsInf(duration, 0) {
+		return fmt.Errorf("thời lượng video nguồn không hợp lệ")
+	}
+	if duration < minViralSourceDurationSeconds {
+		return fmt.Errorf("video nguồn phải dài ít nhất %.0f giây", minViralSourceDurationSeconds)
+	}
+	if duration > maxViralSourceDurationSeconds {
+		return fmt.Errorf("video nguồn dài tối đa %.0f giây do giới hạn %d shot Muse AI", maxViralSourceDurationSeconds, maxViralRenderSegments)
+	}
+	return nil
+}
 
 // EnqueueViral đưa một tác vụ tạo video viral vào hàng đợi render của Studio.
 func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error) {
@@ -27,7 +48,7 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if !IsTikTokVideoURL(p.SourceVideoURL) {
 		return "", fmt.Errorf("cần video nguồn TikTok đã chọn trong Radar")
 	}
-	sourceVideo, err := s.ResolveTikTokRadarVideo(ctx, p.SourceVideoURL)
+	sourceVideo, err := s.ResolveTikTokRadarDanceVideo(ctx, p.SourceVideoURL)
 	if err != nil {
 		return "", fmt.Errorf("video nguồn không thuộc Radar đã lưu: %w", err)
 	}
@@ -43,8 +64,8 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 		return "", fmt.Errorf("video nguồn Radar không có track âm thanh")
 	}
 	duration := probeDuration(ctx, p.SampleVideo)
-	if duration < 3 {
-		return "", fmt.Errorf("video nguồn phải dài ít nhất 3 giây")
+	if err := validateViralSourceDuration(duration); err != nil {
+		return "", err
 	}
 	width, height, err := probeViralDimensions(ctx, p.SampleVideo)
 	if err != nil {
@@ -94,7 +115,18 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if err != nil {
 		return "", err
 	}
-	go s.runViral(id, p, museCreditsAcknowledged)
+	timeout := 20*time.Minute + time.Duration(duration*10)*time.Second
+	if timeout > 6*time.Hour {
+		timeout = 6 * time.Hour
+	}
+	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	if err := s.startTrackedJob(id, runCtx, cancel, func(ctx context.Context) {
+		s.runViral(ctx, id, p, museCreditsAcknowledged)
+	}); err != nil {
+		s.appendLog(id, "LỖI: "+err.Error())
+		s.setStatus(id, StatusFailed, 100)
+		return "", err
+	}
 	return id, nil
 }
 
@@ -114,12 +146,12 @@ func (s *Studio) ListViralJobs(limit int) []Job {
 }
 
 // runViral runs full-character source editing on the selected viral video.
-func (s *Studio) runViral(jobID string, p ViralParams, museCreditsAcknowledged bool) {
+func (s *Studio) runViral(ctx context.Context, jobID string, p ViralParams, museCreditsAcknowledged bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			s.setStatus(jobID, StatusFailed, 100)
 			s.appendLog(jobID, fmt.Sprintf("LỖI panic (%v) — job dừng an toàn.", r))
 		}
 	}()
-	s.runViralFullCharacterEdit(jobID, p, museCreditsAcknowledged)
+	s.runViralFullCharacterEdit(ctx, jobID, p, museCreditsAcknowledged)
 }

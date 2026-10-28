@@ -11,6 +11,9 @@ import (
 )
 
 func Stage(dataDir string, zr *zip.Reader) error {
+	if PendingRestore(dataDir) {
+		return fmt.Errorf("đã có bản khôi phục chờ áp dụng; khởi động lại trước khi stage bản khác")
+	}
 	if err := Validate(zr); err != nil {
 		return err
 	}
@@ -85,13 +88,26 @@ func ApplyStaged(dataDir string) error {
 		return nil
 	}
 	stage := filepath.Join(dataDir, stagingDir)
-	moved := 0
+	flag := filepath.Join(dataDir, RestorePending)
+	if _, err := os.Stat(stage); os.IsNotExist(err) {
+		// A previous startup may have removed staging after applying every
+		// file, then stopped before clearing this flag.
+		if err := os.Remove(flag); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("xóa cờ khôi phục: %w", err)
+		}
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("đọc thư mục staging: %w", err)
+	}
 	// Xoá -wal/-shm cũ trước khi đổi db mới vào: tránh WAL của bản cũ
 	// bị SQLite đọc nhầm cho database vừa khôi phục.
 	for _, db := range snapshotDBs {
 		if _, err := os.Stat(filepath.Join(stage, db)); err == nil {
-			os.Remove(filepath.Join(dataDir, db+"-wal"))
-			os.Remove(filepath.Join(dataDir, db+"-shm"))
+			for _, suffix := range []string{"-wal", "-shm"} {
+				if err := removeIfExists(filepath.Join(dataDir, db+suffix)); err != nil {
+					return fmt.Errorf("xóa trạng thái SQLite cũ %s: %w", db+suffix, err)
+				}
+			}
 		}
 	}
 	err := filepath.Walk(stage, func(path string, fi os.FileInfo, err error) error {
@@ -113,16 +129,26 @@ func ApplyStaged(dataDir string) error {
 		if err := os.Rename(path, dst); err != nil {
 			return fmt.Errorf("áp dụng %s: %w", rel, err)
 		}
-		moved++
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	os.RemoveAll(stage)
-	os.Remove(filepath.Join(dataDir, RestorePending))
-	if moved == 0 {
-		return fmt.Errorf("thư mục chờ khôi phục trống")
+	// Empty staging means a prior startup moved every file but exited before
+	// removing the pending flag. Stage writes the flag only after validation.
+	if err := os.RemoveAll(stage); err != nil {
+		return fmt.Errorf("dọn thư mục staging sau khôi phục: %w", err)
+	}
+	if err := os.Remove(flag); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("xóa cờ khôi phục: %w", err)
 	}
 	return nil
+}
+
+func removeIfExists(path string) error {
+	err := os.Remove(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }

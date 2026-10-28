@@ -208,19 +208,22 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	p.FlowCreditsAcknowledged = false
 	planID := p.PreparedPlanID
 	p.PreparedPlanID = ""
-	if err := s.consumeAffiliatePreparation(planID); err != nil {
-		return "", err
-	}
 	title := p.ProductName
 	if title == "" {
 		title = "Video affiliate"
 	}
 	// The one-use plan ID is also the job ID. AccessTrade Sub2 can therefore
 	// point directly to the exact video job without a separate lookup table.
-	id, err := s.insertJobWithID(planID, KindAffiliate, title, p)
-	if err != nil {
+	if err := s.insertAffiliateJobWithPlan(planID, title, p); err != nil {
 		return "", err
 	}
-	go s.runAffiliate(id, p, museCreditsAcknowledged)
-	return id, nil
+	runCtx, cancel := context.WithCancel(context.Background())
+	if err := s.startTrackedJob(planID, runCtx, cancel, func(ctx context.Context) {
+		s.runAffiliate(ctx, planID, p, museCreditsAcknowledged)
+	}); err != nil {
+		s.appendLog(planID, "LỖI: "+err.Error())
+		s.setStatus(planID, StatusFailed, 100)
+		return "", err
+	}
+	return planID, nil
 }

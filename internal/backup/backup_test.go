@@ -68,6 +68,17 @@ func openZip(t *testing.T, raw []byte) *zip.Reader {
 	return zr
 }
 
+func writeValidManifest(t *testing.T, zw *zip.Writer) {
+	t.Helper()
+	f, err := zw.Create(ManifestName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Write([]byte(`{"app":"aicos","created":"2026-10-28T00:00:00Z"}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Vòng sao lưu → xoá → khôi phục: dữ liệu quay lại nguyên vẹn.
 func TestBackupRoundTrip(t *testing.T) {
 	dir := t.TempDir()
@@ -127,8 +138,7 @@ func TestValidateRejects(t *testing.T) {
 	// ledger.db không phải SQLite.
 	var b2 bytes.Buffer
 	zw2 := zip.NewWriter(&b2)
-	fw2, _ := zw2.Create(ManifestName)
-	fw2.Write([]byte(`{}`))
+	writeValidManifest(t, zw2)
 	fw3, _ := zw2.Create("ledger.db")
 	fw3.Write([]byte("not a database at all"))
 	zw2.Close()
@@ -139,8 +149,7 @@ func TestValidateRejects(t *testing.T) {
 	// Zip-slip.
 	var b3 bytes.Buffer
 	zw3 := zip.NewWriter(&b3)
-	fw4, _ := zw3.Create(ManifestName)
-	fw4.Write([]byte(`{}`))
+	writeValidManifest(t, zw3)
 	fw5, _ := zw3.Create("ledger.db")
 	fw5.Write(append([]byte("SQLite format 3\x00"), []byte("x")...))
 	fw6, _ := zw3.Create("../evil.sh")
@@ -148,6 +157,33 @@ func TestValidateRejects(t *testing.T) {
 	zw3.Close()
 	if err := Validate(openZip(t, b3.Bytes())); err == nil {
 		t.Fatal("chấp nhận entry zip-slip")
+	}
+}
+
+func TestValidateRequiresAicosManifest(t *testing.T) {
+	for _, manifest := range []string{
+		`{}`,
+		`{"app":"another-app","created":"2026-10-28T00:00:00Z"}`,
+		`{"app":"aicos","created":"not-a-time"}`,
+	} {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		mf, err := zw.Create(ManifestName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = mf.Write([]byte(manifest))
+		ledger, err := zw.Create("ledger.db")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = ledger.Write(append([]byte("SQLite format 3\x00"), []byte("x")...))
+		if err := zw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := Validate(openZip(t, buf.Bytes())); err == nil {
+			t.Fatalf("Validate accepted invalid manifest %s", manifest)
+		}
 	}
 }
 
@@ -161,6 +197,89 @@ func TestCreateEmptyDirFails(t *testing.T) {
 func TestApplyStagedNoop(t *testing.T) {
 	if err := ApplyStaged(t.TempDir()); err != nil {
 		t.Fatalf("ApplyStaged không có gì chờ phải no-op: %v", err)
+	}
+}
+
+func TestStagePreservesExistingPendingRestore(t *testing.T) {
+	source := t.TempDir()
+	seedData(t, source)
+	var archive bytes.Buffer
+	if err := Create(source, &archive); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	target := t.TempDir()
+	stage := filepath.Join(target, stagingDir)
+	if err := os.MkdirAll(stage, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("original staged restore")
+	if err := os.WriteFile(filepath.Join(stage, "ledger.db"), want, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, RestorePending), []byte("pending"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Stage(target, openZip(t, archive.Bytes())); err == nil {
+		t.Fatal("Stage replaced an unapplied restore")
+	}
+	got, err := os.ReadFile(filepath.Join(stage, "ledger.db"))
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("existing staged restore changed: got=%q err=%v", got, err)
+	}
+	if !PendingRestore(target) {
+		t.Fatal("existing pending restore flag was cleared")
+	}
+}
+
+func TestApplyStagedRecoversAfterStagingWasConsumed(t *testing.T) {
+	for _, stageMissing := range []bool{false, true} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, RestorePending), []byte("pending"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if !stageMissing {
+			if err := os.Mkdir(filepath.Join(dir, stagingDir), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := ApplyStaged(dir); err != nil {
+			t.Fatalf("ApplyStaged(stageMissing=%v): %v", stageMissing, err)
+		}
+		if PendingRestore(dir) {
+			t.Fatalf("pending flag remains (stageMissing=%v)", stageMissing)
+		}
+	}
+}
+
+func TestApplyStagedPreservesPendingRestoreWhenOldWALCannotBeRemoved(t *testing.T) {
+	dir := t.TempDir()
+	stage := filepath.Join(dir, stagingDir)
+	if err := os.MkdirAll(stage, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stage, "ledger.db"), []byte("restored"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "ledger.db-wal"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ledger.db-wal", "busy"), []byte("wal"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, RestorePending), []byte("pending"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ApplyStaged(dir); err == nil {
+		t.Fatal("ApplyStaged succeeded despite failing to remove old WAL")
+	}
+	if !PendingRestore(dir) {
+		t.Fatal("failed restore cleared pending flag")
+	}
+	if _, err := os.Stat(filepath.Join(stage, "ledger.db")); err != nil {
+		t.Fatal("failed restore consumed staged ledger.db")
 	}
 }
 

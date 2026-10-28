@@ -21,23 +21,12 @@ func (s *Studio) CreateExternalJob(kind, title string, params any, run ExternalJ
 		return "", err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	s.mu.Lock()
-	if s.running == nil {
-		s.running = make(map[string]context.CancelFunc)
-	}
-	s.running[id] = cancel
-	s.mu.Unlock()
-
-	go func() {
+	if err := s.startTrackedJob(id, ctx, cancel, func(ctx context.Context) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				s.appendLog(id, fmt.Sprintf("LỖI: provider job panic (%v)", recovered))
 				s.setStatus(id, StatusFailed, 100)
 			}
-			s.mu.Lock()
-			delete(s.running, id)
-			s.mu.Unlock()
-			cancel()
 		}()
 
 		sem := s.jobSlot()
@@ -51,10 +40,16 @@ func (s *Studio) CreateExternalJob(kind, title string, params any, run ExternalJ
 		}
 		s.setStatus(id, StatusRunning, 1)
 		progress := func(percent int, line string) {
-			if percent < 1 { percent = 1 }
-			if percent > 99 { percent = 99 }
+			if percent < 1 {
+				percent = 1
+			}
+			if percent > 99 {
+				percent = 99
+			}
 			s.setStatus(id, StatusRunning, percent)
-			if strings.TrimSpace(line) != "" { s.appendLog(id, line) }
+			if strings.TrimSpace(line) != "" {
+				s.appendLog(id, line)
+			}
 		}
 		output, caption, runErr := run(ctx, progress)
 		if runErr != nil {
@@ -71,10 +66,18 @@ func (s *Studio) CreateExternalJob(kind, title string, params any, run ExternalJ
 			s.setStatus(id, StatusFailed, 100)
 			return
 		}
-		if output != "" { s.setOutput(id, output) }
-		if caption != "" { s.setCaption(id, caption) }
+		if output != "" {
+			s.setOutput(id, output)
+		}
+		if caption != "" {
+			s.setCaption(id, caption)
+		}
 		s.appendLog(id, "Hoàn tất.")
 		s.setStatus(id, StatusDone, 100)
-	}()
+	}); err != nil {
+		s.appendLog(id, "LỖI: "+err.Error())
+		s.setStatus(id, StatusFailed, 100)
+		return "", err
+	}
 	return id, nil
 }

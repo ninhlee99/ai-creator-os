@@ -53,7 +53,7 @@
             <input type="url" name="tiktok_link" id="viral-tiktok-link" value="{{.Viral.SourceVideoURL}}" required placeholder="https://www.tiktok.com/@user/video/... hoặc chọn từ Radar" style="flex:1;padding:10px;font-size:13px">
             <button type="button" class="btn btn-secondary btn-sm" onclick="pasteFromClipboard('viral-tiktok-link')" style="font-weight:700">📋 Dán</button>
           </div>
-          {{if not .Viral.SourceVideoURL}}<p class="hint" style="margin:8px 0 0">Chọn video từ Radar TikTok hoặc dán link video bất kỳ.</p>{{end}}
+          {{if not .Viral.SourceVideoURL}}<p class="hint" style="margin:8px 0 0">Chọn video đã thu thập và xác nhận là vũ đạo trong Radar TikTok.</p>{{end}}
         </div>
 
         <div>
@@ -132,7 +132,7 @@
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
-            <div class="hint" style="padding:10px;border:1px solid var(--border);border-radius:8px">Khớp thời lượng video nguồn. Không lặp footage để kéo dài.</div>
+            <div class="hint" style="padding:10px;border:1px solid var(--border);border-radius:8px">Khớp thời lượng nguồn, tối đa 200 giây. Không lặp footage để kéo dài.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Độ phân giải đầu ra</label>

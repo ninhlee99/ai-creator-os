@@ -53,7 +53,7 @@ func startWorkersAndServe(ctx context.Context, cancel context.CancelFunc, addr s
 		log.Printf("http shutdown: %v", err)
 	}
 	if studioInst != nil {
-		log.Printf("shutdown: chờ job studio đang chạy...")
+		log.Printf("shutdown: chờ tác vụ Studio và workflow đang chạy...")
 		studioInst.Shutdown(30 * time.Second)
 	}
 	log.Printf("shutdown: complete")
