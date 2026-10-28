@@ -85,33 +85,29 @@ func loginBrowserCommand(ctx context.Context, binary string, args []string) (*ex
 }
 
 func loginBrowserCandidates() ([]string, error) {
-	// Prefer Playwright's Chromium on macOS; installed browser apps can exit
-	// before their CDP endpoint opens.
-	if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) == "" && runtime.GOOS == "darwin" {
-		if cached := playwrightChromiumBinary(); cached != "" {
-			candidates := []string{cached}
-			if system, err := findChromiumBinary(); err == nil && filepath.Clean(system) != filepath.Clean(cached) {
-				candidates = append(candidates, system)
+	// Ưu tiên trình duyệt thật của hệ thống (Microsoft Edge, Google Chrome, Brave)
+	// để các dịch vụ OAuth (Google, OpenAI, Cloudflare) không chặn đăng nhập với lỗi "Chrome for Testing" hoặc "trình duyệt không an toàn".
+	var candidates []string
+	if system, err := findChromiumBinary(); err == nil && system != "" {
+		candidates = append(candidates, system)
+	}
+
+	// Chỉ dùng Playwright Chromium làm dự phòng khi máy chưa cài đặt trình duyệt thật nào
+	if cached := playwrightChromiumBinary(); cached != "" {
+		found := false
+		for _, c := range candidates {
+			if filepath.Clean(c) == filepath.Clean(cached) {
+				found = true
+				break
 			}
-			return candidates, nil
+		}
+		if !found {
+			candidates = append(candidates, cached)
 		}
 	}
 
-	binary, err := findChromiumBinary()
-	if err != nil {
-		if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) != "" {
-			return nil, err
-		}
-		if cached := playwrightChromiumBinary(); cached != "" {
-			return []string{cached}, nil
-		}
-		return nil, err
-	}
-	candidates := []string{binary}
-	if strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY")) == "" {
-		if cached := playwrightChromiumBinary(); cached != "" && filepath.Clean(cached) != filepath.Clean(binary) {
-			candidates = append(candidates, cached)
-		}
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("không tìm thấy trình duyệt Edge, Chrome, Brave hoặc Chromium trên máy tính; có thể đặt AICOS_BROWSER_BINARY")
 	}
 	return candidates, nil
 }
@@ -204,6 +200,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-sync",
+		"--disable-blink-features=AutomationControlled",
 		"--window-size=" + windowSize,
 		"--new-window",
 	}
@@ -246,7 +243,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	defer closeLoginBrowser(wsURL)
 
 	if updateStatus != nil {
-		updateStatus("waiting_for_user", fmt.Sprintf("Trình duyệt %s đã sẵn sàng. Hoàn tất đăng nhập trong khung bên dưới.", target.Name))
+		updateStatus("waiting_for_user", fmt.Sprintf("Trình duyệt %s đã sẵn sàng. Vui lòng hoàn tất đăng nhập trên cửa sổ trình duyệt.", target.Name))
 	}
 	browser := loginBrowserSession{port: port, wsURL: wsURL, binary: bin}
 	if adapter, ok := webLoginAdapterFor(target.Platform); ok {
