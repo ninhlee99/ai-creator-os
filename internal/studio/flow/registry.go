@@ -190,6 +190,7 @@ func registerAllBuiltinNodes() {
 			{ID: "environment_desc", Name: "Mô tả bối cảnh", Type: PortTypeText, Required: false},
 			{ID: "lighting_desc", Name: "Mô tả ánh sáng", Type: PortTypeText, Required: false},
 			{ID: "variables", Name: "Biến tùy chỉnh", Type: PortTypeConfig, Required: false},
+			{ID: "duration_seconds", Name: "Thời lượng (giây)", Type: PortTypeNumber, Required: false},
 		},
 		Outputs: []FlowPort{
 			{ID: "prompt", Name: "Câu lệnh hoàn chỉnh", Type: PortTypeText, Description: "Prompt chuẩn hóa đã chèn các biến"},

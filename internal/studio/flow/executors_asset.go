@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -475,12 +477,35 @@ func executePromptTemplate(ctx *ExecutionContext, node *FlowNode, inputs map[str
 		variables[key] = value
 	}
 	prompt := expandPromptTemplate(template, variables)
+	if missing := unresolvedPromptTemplateVariables(prompt); len(missing) > 0 {
+		return nil, fmt.Errorf("PromptTemplateNode: thiếu biến template: %s", strings.Join(missing, ", "))
+	}
 	ctx.Log(fmt.Sprintf("PromptTemplateNode: Đã tạo câu lệnh prompt (%d ký tự)", len(prompt)))
 
 	return map[string]any{
 		"prompt":           prompt,
 		"workflow_context": map[string]any{"variables": variables},
 	}, nil
+}
+
+var promptTemplateVariablePattern = regexp.MustCompile(`\{\{\s*([a-zA-Z_][a-zA-Z0-9_.-]*)\s*\}\}`)
+
+func unresolvedPromptTemplateVariables(prompt string) []string {
+	matches := promptTemplateVariablePattern.FindAllStringSubmatch(prompt, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(matches))
+	missing := make([]string, 0, len(matches))
+	for _, match := range matches {
+		name := match[1]
+		if !seen[name] {
+			seen[name] = true
+			missing = append(missing, name)
+		}
+	}
+	sort.Strings(missing)
+	return missing
 }
 
 func promptTemplateVariables(value any) map[string]any {

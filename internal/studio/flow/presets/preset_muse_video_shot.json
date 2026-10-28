@@ -44,7 +44,7 @@
         "key": "duration",
         "label": "Thời lượng shot",
         "value_type": "number",
-        "required": false
+        "required": true
       }
     },
     {
@@ -69,7 +69,7 @@
       "x": 420,
       "y": 420,
       "params": {
-        "template": "Create one continuous vertical 9:16 video shot exactly {{duration_seconds}} seconds long. The first {{character_reference_count}} still images are the sole source for character identity, face, hair and body proportions. When previous_shot_reference_count is 1, the next still image after those character references is a frame from the previous generated shot; use it only to match the exact outfit, hair and visual style, never identity, pose or product. Any product-only references follow that continuity frame; reproduce the product from the last product-only reference image exactly, ignoring people, pose, background or text in product references. Do not change the product's category, color, silhouette, material or details. Keep the exact same outfit across all shots and cut points, including garment cut, sleeve length, neckline, color, material and accessories. Use any attached reference video only for observed movement and framing; never copy its person, outfit, location or product, and do not use its duration instead of the requested duration. Observed movement: {{movement_analysis}}. Dance style: {{dance_type}}. Expression: {{expression}}. Wardrobe direction: {{outfit_desc}} {{wardrobe_styling}}. Setting: {{environment_desc}} {{scene_setting}}. Lighting: {{lighting_desc}} {{lens_light}}. Product: {{product_name}}. Category: {{product_category}}. Visible attributes: {{product_description}}. Required use mode: {{product_use_mode}}. Keep this product visible during the real use action: {{action}}; {{product_interaction}}. Product detail: {{product_focus}}. Framing: {{framing}}. Camera movement: {{camera_move}}. Emotional beat: {{emotion_beat}}. Motion direction: {{motion_direction}}. Additional shot direction: {{shot_prompt}}. Follow supplied shot directions. Keep natural body mechanics, stable anatomy and one continuous camera move. No cuts, product substitutions, unrelated clothing or accessories, captions, text, watermark or unsupported claims."
+        "template": "Create exactly {{duration_seconds}} seconds of one continuous vertical 9:16 video shot. Render now; never ask a question, request confirmation, or wait. Treat this as an independent shot: ignore prior chats, products, locations, camera choices and instructions. Use only current attachments and this prompt. Reference priority: the first {{character_reference_count}} still images define the character's identity, face, hair and body proportions. If previous_shot_reference_count is 1, the next still is a frame from the previous shot; use it only for visual continuity and the same outfit, never as the identity or product source. Product-only references after that frame define the exact product; copy visible category, color, silhouette, fit and details. If text conflicts with a product reference, follow the image. Preserve the visible front/closure exactly; do not infer buttons, openings, material or logos that cannot be seen. If uncertain, make the conservative visual match and continue without asking. Use an attached reference video only for visible movement and framing, never its person, outfit, location, product or duration. Wardrobe: {{outfit_desc}} {{wardrobe_styling}}. Setting: {{environment_desc}} {{scene_setting}}. Lighting: {{lighting_desc}} {{lens_light}}. Product: {{product_name}}. Category: {{product_category}}. Visible attributes: {{product_description}}. Required use mode: {{product_use_mode}}. Show the product during this real use action: {{action}}; {{product_interaction}}. Product focus: {{product_focus}}. Framing: {{framing}}. Camera movement: {{camera_move}}. Emotional beat: {{emotion_beat}}. Motion direction: {{motion_direction}}. Additional shot direction: {{shot_prompt}}. Follow current shot directions when consistent with the reference images. Keep natural body mechanics, stable anatomy and one continuous camera move. No cuts, product substitutions, unrelated clothing or accessories, captions, added text, watermark or unsupported claims."
       }
     },
     {
@@ -115,6 +115,13 @@
       "from_port": "value",
       "to_node": "prompt",
       "to_port": "variables"
+    },
+    {
+      "id": "e_duration_prompt",
+      "from_node": "input_duration",
+      "from_port": "value",
+      "to_node": "prompt",
+      "to_port": "duration_seconds"
     },
     {
       "id": "e2",
