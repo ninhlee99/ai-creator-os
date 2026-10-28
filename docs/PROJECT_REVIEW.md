@@ -11,7 +11,7 @@ Cập nhật: 2026-10-28. Rà source, tài liệu và test cục bộ; chưa xá
 - Scaffold 3D/VFX giả đã gỡ. Loại workflow và kiểu cổng không được backend hỗ trợ cũng đã gỡ khỏi UI.
 - Backup dùng SQLite online snapshots, archive/staging có giới hạn và kiểm tra; secret bị loại khỏi ledger snapshot, `webai.db`/token file nhạy cảm không xuất vào ZIP plaintext.
 - Studio giới hạn hàng đợi và concurrent render; output social mặc định 1080p; job dọn output/cache cũ theo policy.
-- WebAI/CDP dùng profile cô lập, port debug động và cleanup browser process; output trình duyệt đi thẳng null device để child process không giữ pipe của `Cmd.Wait`.
+- WebAI/CDP dùng profile cô lập, port debug động, một browser automation slot toàn app và cleanup process tree; Edge macOS chạy trực tiếp với profile tạm, không chia sẻ profile/process với Edge người dùng. Output browser đi thẳng null device để child process không giữ pipe của `Cmd.Wait`.
 - Growth không còn suy diễn hook/retention/giá/“healthy” khi thiếu provenance, kỳ đo, baseline; tuning áp dụng qua override allowlist theo account, bounded 15%, evidence-backed audit và rollback chống ghi đè setting mới.
 
 ## Còn cần xác minh ngoài source

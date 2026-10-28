@@ -100,6 +100,11 @@ func fetchTikTokCrawlerVideos(ctx context.Context, topic string) ([]TikTokTrendV
 func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikTokTrendVideo, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+	releaseBrowserSlot, err := webai.AcquireHeadlessBrowserSlot(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("không còn lượt chạy trình duyệt crawler: %w", err)
+	}
+	defer releaseBrowserSlot()
 
 	profileDir, err := os.MkdirTemp("", "aicos-tt-crawler-*")
 	if err != nil {

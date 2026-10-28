@@ -3,7 +3,6 @@ package studio
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"math"
 	"os"
 	"path/filepath"
@@ -53,16 +52,14 @@ func TestEnqueueViralJob(t *testing.T) {
 	}
 }
 
-func TestEnqueueValidatedViralReturnsIDWhenPersistedJobCannotStart(t *testing.T) {
+func TestEnqueueValidatedViralRejectsShutdownBeforePersistence(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer st.Close()
-	st.mu.Lock()
-	st.shuttingDown = true
-	st.mu.Unlock()
+	st.Shutdown(0)
 
 	source := filepath.Join(st.UploadDir(), "source.mp4")
 	if err := os.WriteFile(source, []byte("source"), 0o600); err != nil {
@@ -72,19 +69,11 @@ func TestEnqueueValidatedViralReturnsIDWhenPersistedJobCannotStart(t *testing.T)
 	if err == nil || !strings.Contains(err.Error(), "shutting down") {
 		t.Fatalf("enqueueValidatedViral error = %v, want shutdown error", err)
 	}
-	if id == "" {
-		t.Fatal("persisted failed job returned empty ID")
+	if id != "" {
+		t.Fatalf("rejected pre-shutdown job returned ID %q", id)
 	}
-	job, ok := st.GetJob(id)
-	if !ok || job.Status != StatusFailed {
-		t.Fatalf("persisted job = (%+v, %v), want failed row", job, ok)
-	}
-	var saved ViralParams
-	if err := json.Unmarshal([]byte(job.Params), &saved); err != nil {
-		t.Fatal(err)
-	}
-	if saved.SampleVideo != source {
-		t.Fatalf("persisted source path = %q, want %q", saved.SampleVideo, source)
+	if jobs := st.ListViralJobs(10); len(jobs) != 0 {
+		t.Fatalf("rejected pre-shutdown job persisted unexpectedly: %+v", jobs)
 	}
 }
 

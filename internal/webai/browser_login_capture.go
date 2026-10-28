@@ -79,34 +79,10 @@ type loginBrowserSession struct {
 }
 
 func loginBrowserCommand(ctx context.Context, binary string, args []string) (*exec.Cmd, error) {
-	if runtime.GOOS == "darwin" {
-		if isExplicitBrowserOverride(binary) || isPlaywrightCachedBrowser(binary) {
-			return exec.CommandContext(ctx, binary, args...), nil
-		}
-		if app := macOSApplicationBundle(binary); app != "" {
-			openArgs := []string{"-n", "-W", "-a", app, "--args"}
-			openArgs = append(openArgs, args...)
-			return exec.CommandContext(ctx, "/usr/bin/open", openArgs...), nil
-		}
-	}
+	// Invoke the browser executable directly. On macOS, LaunchServices can
+	// forward flags to an existing interactive Edge instance and return early,
+	// leaving automation attached to or terminating the user's full browser.
 	return exec.CommandContext(ctx, binary, args...), nil
-}
-
-func isExplicitBrowserOverride(binary string) bool {
-	env := strings.TrimSpace(os.Getenv("AICOS_BROWSER_BINARY"))
-	if env == "" {
-		return false
-	}
-	resolved, err := exec.LookPath(env)
-	if err == nil {
-		return filepath.Clean(resolved) == filepath.Clean(binary)
-	}
-	return filepath.Clean(env) == filepath.Clean(binary)
-}
-
-func isPlaywrightCachedBrowser(binary string) bool {
-	path := filepath.ToSlash(filepath.Clean(binary))
-	return strings.Contains(path, "/Library/Caches/ms-playwright/")
 }
 
 func loginBrowserCandidates() ([]string, error) {
@@ -191,23 +167,6 @@ func launchLoginBrowser(ctx context.Context, binary string, args []string, profi
 	}
 }
 
-func macOSApplicationBundle(binary string) string {
-	path := filepath.Clean(binary)
-	for {
-		if strings.HasSuffix(strings.ToLower(path), ".app") {
-			if info, err := os.Stat(path); err == nil && info.IsDir() {
-				return path
-			}
-			return ""
-		}
-		parent := filepath.Dir(path)
-		if parent == path {
-			return ""
-		}
-		path = parent
-	}
-}
-
 // RunCaptureViaCDPWithBrowserReady also reports the loopback CDP port once the
 // browser is ready, allowing the authenticated dashboard to show and control it.
 func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget, timeout time.Duration, updateStatus func(status, msg string), onBrowserReady func(port int)) (*CapturedWebAuth, error) {
@@ -232,6 +191,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 	defer func() { _ = os.RemoveAll(dir) }()
 
 	clearChromiumSingletonLocks(dir)
+	clearChromiumDevToolsPort(dir)
 	windowSize := "1280,900"
 	args := []string{
 		"--remote-debugging-port=0",
@@ -259,6 +219,7 @@ func RunCaptureViaCDPWithBrowserReady(ctx context.Context, target WebLoginTarget
 			updateStatus("opening", message)
 		}
 		var retry bool
+		clearChromiumDevToolsPort(dir)
 		launch, retry, err = launchLoginBrowser(ctx, candidate, args, dir)
 		if err == nil {
 			bin = candidate

@@ -108,6 +108,11 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	releaseBrowserSlot, err := acquireHeadlessBrowserSlot(ctx)
+	if err != nil {
+		return result, fmt.Errorf("waiting for available headless browser: %w", err)
+	}
+	defer releaseBrowserSlot()
 	bin, err := findChromiumBinary()
 	if err != nil {
 		return result, fmt.Errorf("Web AI operation needs Chrome, Edge, Brave, or Chromium: %w", err)
@@ -116,7 +121,7 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 	if err != nil {
 		return result, errors.New("cannot create temporary Web AI browser profile")
 	}
-	defer releaseProfile()
+	defer releaseAccountBrowserProfile(profile, releaseProfile)
 	args := optimizedHeadlessBrowserArgs(0, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)

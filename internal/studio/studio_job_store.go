@@ -187,6 +187,9 @@ func (s *Studio) PendingJobCount() int {
 // work still active after timeout.
 func (s *Studio) Shutdown(timeout time.Duration) {
 	deadline := time.Now().Add(timeout)
+	s.queueMu.Lock()
+	s.shutdownStarted.Store(true)
+	s.queueMu.Unlock()
 	s.mu.Lock()
 	s.shuttingDown = true
 	s.mu.Unlock()

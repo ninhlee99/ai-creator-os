@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
@@ -191,17 +192,18 @@ type Asset struct {
 // review. Jobs run in background goroutines; state lives in SQLite so the
 // dashboard can poll progress.
 type Studio struct {
-	db           *sql.DB
-	mu           sync.Mutex
-	llm          LLM
-	mg           MediaGen
-	narrator     Narrator
-	outDir       string
-	workRoot     string
-	running      map[string]context.CancelFunc
-	flowRuns     map[string]context.CancelFunc
-	shuttingDown bool
-	onDone       OnDoneFunc
+	db              *sql.DB
+	mu              sync.Mutex
+	llm             LLM
+	mg              MediaGen
+	narrator        Narrator
+	outDir          string
+	workRoot        string
+	running         map[string]context.CancelFunc
+	flowRuns        map[string]context.CancelFunc
+	shuttingDown    bool
+	shutdownStarted atomic.Bool
+	onDone          OnDoneFunc
 	// BudgetUSD returns the API spend ceiling in USD (0/nil = no ceiling).
 	// Wired by the app from the automation settings facade (R2-W4 knob).
 	BudgetUSD func() float64

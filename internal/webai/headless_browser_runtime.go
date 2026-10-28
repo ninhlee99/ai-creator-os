@@ -1,6 +1,7 @@
 package webai
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -17,16 +18,46 @@ import (
 
 var profileLocks sync.Map
 
+const maxConcurrentHeadlessBrowsers = 1
+
+var headlessBrowserSlots = make(chan struct{}, maxConcurrentHeadlessBrowsers)
+
+func acquireHeadlessBrowserSlot(ctx context.Context) (func(), error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	select {
+	case headlessBrowserSlots <- struct{}{}:
+		return func() { <-headlessBrowserSlots }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// AcquireHeadlessBrowserSlot caps browser processes across webai and Studio.
+func AcquireHeadlessBrowserSlot(ctx context.Context) (func(), error) {
+	return acquireHeadlessBrowserSlot(ctx)
+}
+
 func clearChromiumSingletonLocks(dir string) {
-	for _, name := range []string{"SingletonLock", "SingletonSocket", "SingletonCookie", "DevToolsActivePort"} {
+	for _, name := range []string{"SingletonLock", "SingletonSocket", "SingletonCookie"} {
 		_ = os.Remove(filepath.Join(dir, name))
+	}
+}
+
+func clearChromiumDevToolsPort(dir string) {
+	_ = os.Remove(filepath.Join(dir, "DevToolsActivePort"))
+}
+
+func releaseAccountBrowserProfile(profile string, release func()) {
+	if release != nil {
+		release()
 	}
 }
 
 // cleanChromiumVolatileCaches strips heavy transient shader/code caches on
 // profile release while keeping cookies, localStorage, and IndexedDB intact.
 func cleanChromiumVolatileCaches(dir string) {
-	clearChromiumSingletonLocks(dir)
 	for _, rel := range []string{
 		"Crashpad",
 		"BrowserMetrics",
@@ -47,7 +78,10 @@ func cleanChromiumVolatileCaches(dir string) {
 // when no other goroutine is currently using that profile, or falls back to a
 // clean temporary directory when concurrent runs share the same account.
 func acquireAccountBrowserProfile(platform, cookieHeader string, cookies []BrowserCookie) (string, func(), error) {
-	if os.Getenv("AICOS_EPHEMERAL_BROWSER_PROFILE") != "1" {
+	// macOS Edge/Chrome share browser-process state across app launches. A
+	// dedicated ephemeral profile prevents headless automation from attaching
+	// to or locking the operator's interactive Edge profile.
+	if os.Getenv("AICOS_EPHEMERAL_BROWSER_PROFILE") != "1" && runtime.GOOS != "darwin" {
 		fingerprint := strings.TrimSpace(cookieHeader)
 		if fingerprint == "" && len(cookies) > 0 {
 			var parts []string
@@ -112,8 +146,11 @@ func optimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []str
 		"--remote-debugging-address=127.0.0.1",
 		fmt.Sprintf("--remote-debugging-port=%d", port),
 		"--user-data-dir=" + profileDir,
-		"about:blank",
 	}
+	if runtime.GOOS == "darwin" && port == 0 {
+		args[len(args)-2] = "--remote-debugging-port=0"
+	}
+	args = append(args, "about:blank")
 	// /dev/shm is RAM-backed on Linux. Disable it only in constrained
 	// containers where Chromium's shared-memory allocation otherwise fails.
 	if os.Getenv("AICOS_BROWSER_DISABLE_DEV_SHM") == "1" {
@@ -145,6 +182,7 @@ func browserMaxHeapMB() string {
 // outside package webai (such as Studio's TikTok crawler).
 func ConfigureHeadlessBrowserCommand(cmd *exec.Cmd) {
 	configureHeadlessBrowserCommand(cmd)
+	configureBrowserProcessCancel(cmd)
 }
 
 // ConfigureHeadlessBrowserOutput points child output at the OS null device.
@@ -166,6 +204,18 @@ func ConfigureHeadlessBrowserOutput(cmd *exec.Cmd) (func(), error) {
 // outside package webai.
 func TerminateBrowser(cmd *exec.Cmd) {
 	terminateBrowser(cmd)
+}
+
+func configureBrowserProcessCancel(cmd *exec.Cmd) {
+	if cmd == nil {
+		return
+	}
+	cmd.Cancel = func() error {
+		if cmd.Process == nil {
+			return os.ErrProcessDone
+		}
+		return interruptBrowserProcessTree(cmd)
+	}
 }
 
 func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {

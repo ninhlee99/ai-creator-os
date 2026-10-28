@@ -144,6 +144,11 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	}
 	ctx, cancel := context.WithTimeout(ctx, 13*time.Minute)
 	defer cancel()
+	releaseBrowserSlot, err := acquireHeadlessBrowserSlot(ctx)
+	if err != nil {
+		return result, fmt.Errorf("waiting for available headless browser: %w", err)
+	}
+	defer releaseBrowserSlot()
 	bin, err := findChromiumBinary()
 	if err != nil {
 		return result, errors.New("Google Flow direct API failed and no Chrome/Edge binary is installed for headless fallback")
@@ -152,7 +157,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	if err != nil {
 		return result, errors.New("cannot create temporary Flow headless profile")
 	}
-	defer releaseProfile()
+	defer releaseAccountBrowserProfile(profile, releaseProfile)
 	args := optimizedHeadlessBrowserArgs(0, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)

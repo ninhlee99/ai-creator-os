@@ -1,6 +1,7 @@
 package webai
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"path/filepath"
@@ -38,6 +39,24 @@ func TestBrowserHeapDefaultAndBounds(t *testing.T) {
 			t.Errorf("invalid heap %q resolved to %s, want default 512 MB", invalid, got)
 		}
 	}
+}
+
+func TestHeadlessBrowserSlotCapsProcesses(t *testing.T) {
+	release, err := acquireHeadlessBrowserSlot(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	if _, err := acquireHeadlessBrowserSlot(ctx); err == nil {
+		t.Fatal("second headless browser acquired slot while cap was occupied")
+	}
+	release()
+	releaseAgain, err := acquireHeadlessBrowserSlot(context.Background())
+	if err != nil {
+		t.Fatalf("slot stayed occupied after release: %v", err)
+	}
+	releaseAgain()
 }
 
 func TestWebAIStore(t *testing.T) {

@@ -29,10 +29,7 @@ func (s *Studio) jobSlot() chan struct{} {
 func (s *Studio) reserveJobAdmission(insert func() error) error {
 	s.queueMu.Lock()
 	defer s.queueMu.Unlock()
-	s.mu.Lock()
-	shuttingDown := s.shuttingDown
-	s.mu.Unlock()
-	if shuttingDown {
+	if s.shutdownStarted.Load() {
 		return fmt.Errorf("studio is shutting down")
 	}
 	pending := 0
@@ -50,11 +47,8 @@ func (s *Studio) reserveJobAdmission(insert func() error) error {
 
 func (s *Studio) reserveFlowAdmission(insert func() error) error {
 	s.queueMu.Lock()
-	defer s.queueMu.Unlock()
-	s.mu.Lock()
-	shuttingDown := s.shuttingDown
-	s.mu.Unlock()
-	if shuttingDown {
+	if s.shutdownStarted.Load() {
+		s.queueMu.Unlock()
 		return fmt.Errorf("studio is shutting down")
 	}
 	pending := s.queuedFlows
@@ -65,12 +59,19 @@ func (s *Studio) reserveFlowAdmission(insert func() error) error {
 		pending += s.queuedFlows
 	}
 	if pending >= maxPendingStudioJobs {
+		s.queueMu.Unlock()
 		return fmt.Errorf("hàng đợi Studio đã đầy (%d job); chờ job hoàn tất rồi thử lại", maxPendingStudioJobs)
 	}
+	// Reserve capacity before releasing queueMu. Run registration may take
+	// Studio.mu, while other admission paths can be called with Studio.mu held.
+	s.queuedFlows++
+	s.queueMu.Unlock()
 	if err := insert(); err != nil {
+		s.queueMu.Lock()
+		s.queuedFlows--
+		s.queueMu.Unlock()
 		return err
 	}
-	s.queuedFlows++
 	return nil
 }
 

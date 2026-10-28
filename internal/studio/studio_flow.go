@@ -55,7 +55,7 @@ func (s *Studio) StartFlowGraphWithInputs(ctx context.Context, runID string, gra
 	if err := s.reserveFlowAdmission(func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		if s.shuttingDown {
+		if s.shuttingDown || s.shutdownStarted.Load() {
 			return fmt.Errorf("studio is shutting down")
 		}
 		if s.flowRuns == nil {

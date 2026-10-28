@@ -92,6 +92,11 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	}
 	ctx, cancel := context.WithTimeout(ctx, 25*time.Minute)
 	defer cancel()
+	releaseBrowserSlot, err := acquireHeadlessBrowserSlot(ctx)
+	if err != nil {
+		return out, fmt.Errorf("waiting for available headless browser: %w", err)
+	}
+	defer releaseBrowserSlot()
 	bin, err := findChromiumBinary()
 	if err != nil {
 		return out, errors.New("Muse headless rendering requires an installed Chrome, Edge, or Chromium browser")
@@ -100,7 +105,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	if err != nil {
 		return out, errors.New("cannot create temporary Muse headless profile")
 	}
-	defer releaseProfile()
+	defer releaseAccountBrowserProfile(profile, releaseProfile)
 	args := optimizedHeadlessBrowserArgs(0, profile, "1280,1000")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	closeBrowserOutput, err := ConfigureHeadlessBrowserOutput(cmd)
