@@ -25,6 +25,25 @@ func TestCopyMediaWithLimitRejectsUnknownLengthOverflow(t *testing.T) {
 	}
 }
 
+func TestDecodeBase64DataURLEnforcesDecodedSizeLimit(t *testing.T) {
+	exactPath := filepath.Join(t.TempDir(), "exact.bin")
+	if err := decodeBase64DataURLWithLimit("data:application/octet-stream;base64,Zm9v", exactPath, 3); err != nil {
+		t.Fatalf("decodeBase64DataURLWithLimit(exact limit): %v", err)
+	}
+	if got, err := os.ReadFile(exactPath); err != nil || string(got) != "foo" {
+		t.Fatalf("decoded exact-limit content = %q, %v; want foo", got, err)
+	}
+
+	tooLargePath := filepath.Join(t.TempDir(), "too-large.bin")
+	err := decodeBase64DataURLWithLimit("data:application/octet-stream;base64,Zm91cg==", tooLargePath, 3)
+	if !errors.Is(err, errDataURLTooLarge) {
+		t.Fatalf("decodeBase64DataURLWithLimit(over limit) error = %v, want size limit", err)
+	}
+	if _, err := os.Stat(tooLargePath); !os.IsNotExist(err) {
+		t.Fatalf("oversized data URL created output: stat error = %v", err)
+	}
+}
+
 func TestDownloadMediaResourceRejectsDeclaredOversize(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "video/mp4")

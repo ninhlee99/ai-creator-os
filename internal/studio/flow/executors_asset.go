@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,10 @@ import (
 	"strconv"
 	"strings"
 )
+
+const maxDecodedDataURLBytes int64 = 50 << 20
+
+var errDataURLTooLarge = errors.New("data URL exceeds 50 MiB limit")
 
 func resolveAssetPath(p string, workDir string, fallbacks ...string) string {
 	if p != "" && fileExists(p) {
@@ -64,16 +69,69 @@ func resolveAssetPath(p string, workDir string, fallbacks ...string) string {
 }
 
 func decodeBase64DataURL(dataURL, outPath string) error {
+	return decodeBase64DataURLWithLimit(dataURL, outPath, maxDecodedDataURLBytes)
+}
+
+func decodeBase64DataURLWithLimit(dataURL, outPath string, limit int64) error {
 	parts := strings.SplitN(dataURL, ",", 2)
 	if len(parts) != 2 {
 		return errors.New("invalid data url")
 	}
-	raw, err := base64.StdEncoding.DecodeString(parts[1])
+	encoded := parts[1]
+	if limit < 0 || int64(len(encoded)) > int64(base64.StdEncoding.EncodedLen(int(limit))) {
+		return errDataURLTooLarge
+	}
+	decodedSize := int64(base64.StdEncoding.DecodedLen(len(encoded)))
+	if strings.HasSuffix(encoded, "=") {
+		decodedSize--
+		if strings.HasSuffix(encoded, "==") {
+			decodedSize--
+		}
+	}
+	if decodedSize > limit {
+		return errDataURLTooLarge
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(outPath), ".flow-data-url-*.part")
 	if err != nil {
 		return err
 	}
-	_ = os.MkdirAll(filepath.Dir(outPath), 0o755)
-	return os.WriteFile(outPath, raw, 0o644)
+	tmpPath := tmp.Name()
+	keepTemp := false
+	defer func() {
+		_ = tmp.Close()
+		if !keepTemp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if err := tmp.Chmod(0o644); err != nil {
+		return err
+	}
+	written, err := io.Copy(tmp, base64.NewDecoder(base64.StdEncoding, strings.NewReader(encoded)))
+	if err != nil {
+		return err
+	}
+	if written > limit {
+		return errDataURLTooLarge
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, outPath); err != nil {
+		if _, statErr := os.Stat(outPath); statErr != nil {
+			return err
+		}
+		if removeErr := os.Remove(outPath); removeErr != nil {
+			return fmt.Errorf("replace decoded data URL: %w", removeErr)
+		}
+		if err := os.Rename(tmpPath, outPath); err != nil {
+			return err
+		}
+	}
+	keepTemp = true
+	return nil
 }
 
 func executeCharacterInput(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {

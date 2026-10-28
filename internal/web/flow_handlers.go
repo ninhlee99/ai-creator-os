@@ -16,7 +16,39 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
-const maxFlowUploadBytes = 50 << 20
+const (
+	maxFlowUploadBytes      = 50 << 20
+	maxFlowJSONRequestBytes = 80 << 20 // Fits one 50 MiB base64 asset plus graph/input JSON.
+)
+
+func decodeFlowJSONRequest(w http.ResponseWriter, r *http.Request, target any) error {
+	return decodeFlowJSONRequestWithLimit(w, r, target, maxFlowJSONRequestBytes)
+}
+
+func decodeFlowJSONRequestWithLimit(w http.ResponseWriter, r *http.Request, target any, limit int64) error {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return errors.New("multiple JSON values")
+		}
+		return err
+	}
+	return nil
+}
+
+func writeFlowJSONDecodeError(w http.ResponseWriter, err error, message string) {
+	status := http.StatusBadRequest
+	var maxErr *http.MaxBytesError
+	if errors.As(err, &maxErr) {
+		status = http.StatusRequestEntityTooLarge
+	}
+	http.Error(w, message, status)
+}
 
 func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
 	var graphs []flow.FlowSummary
@@ -118,8 +150,8 @@ func (s *Server) handleAPIFlowGraphs(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost {
 		var g flow.FlowGraph
-		if err := json.NewDecoder(r.Body).Decode(&g); err != nil {
-			http.Error(w, `{"ok":false,"error":"Invalid JSON payload"}`, http.StatusBadRequest)
+		if err := decodeFlowJSONRequest(w, r, &g); err != nil {
+			writeFlowJSONDecodeError(w, err, `{"ok":false,"error":"Invalid JSON payload"}`)
 			return
 		}
 		if g.ID == "" {
@@ -207,8 +239,8 @@ func (s *Server) handleAPIFlowExecute(w http.ResponseWriter, r *http.Request) {
 		MuseCreditsAcknowledged       bool            `json:"muse_credits_acknowledged"`
 		GoogleFlowCreditsAcknowledged bool            `json:"google_flow_credits_acknowledged"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"ok":false,"error":"Invalid JSON"}`, http.StatusBadRequest)
+	if err := decodeFlowJSONRequest(w, r, &req); err != nil {
+		writeFlowJSONDecodeError(w, err, `{"ok":false,"error":"Invalid JSON"}`)
 		return
 	}
 
@@ -280,8 +312,8 @@ func (s *Server) handleAPIFlowRunAPI(w http.ResponseWriter, r *http.Request) {
 		MuseCreditsAcknowledged       bool                   `json:"muse_credits_acknowledged"`
 		GoogleFlowCreditsAcknowledged bool                   `json:"google_flow_credits_acknowledged"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"ok":false,"error":"Dữ liệu JSON không hợp lệ"}`, http.StatusBadRequest)
+	if err := decodeFlowJSONRequest(w, r, &req); err != nil {
+		writeFlowJSONDecodeError(w, err, `{"ok":false,"error":"Dữ liệu JSON không hợp lệ"}`)
 		return
 	}
 
@@ -693,7 +725,11 @@ func (s *Server) handleAPIFlowFetchURL(w http.ResponseWriter, r *http.Request) {
 		URL  string `json:"url"`
 		Type string `json:"type"` // "video", "image", or "auto"
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.URL) == "" {
+	if err := decodeFlowJSONRequest(w, r, &req); err != nil {
+		writeFlowJSONDecodeError(w, err, `{"ok":false,"error":"Thiếu thông tin URL hợp lệ"}`)
+		return
+	}
+	if strings.TrimSpace(req.URL) == "" {
 		http.Error(w, `{"ok":false,"error":"Thiếu thông tin URL hợp lệ"}`, http.StatusBadRequest)
 		return
 	}

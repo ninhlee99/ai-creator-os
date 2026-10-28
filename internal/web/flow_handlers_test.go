@@ -42,6 +42,20 @@ func setupTestServerWithFlow(t *testing.T) (*Server, func()) {
 	return srv, cleanup
 }
 
+func TestDecodeFlowJSONRequestRejectsOversizedBody(t *testing.T) {
+	req := httptest.NewRequest("POST", "/api/flow/execute", bytes.NewBufferString(`{"value":"payload-too-large"}`))
+	w := httptest.NewRecorder()
+	var payload map[string]any
+	err := decodeFlowJSONRequestWithLimit(w, req, &payload, 8)
+	if err == nil {
+		t.Fatal("oversized JSON request unexpectedly decoded")
+	}
+	writeFlowJSONDecodeError(w, err, `{"ok":false,"error":"Invalid JSON"}`)
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized JSON status = %d, want %d", w.Code, http.StatusRequestEntityTooLarge)
+	}
+}
+
 func TestTC13_WebAPI_Definitions(t *testing.T) {
 	srv, cleanup := setupTestServerWithFlow(t)
 	defer cleanup()
