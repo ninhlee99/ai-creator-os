@@ -150,6 +150,10 @@ func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p 
 			return
 		}
 		s.appendLog(jobID, fmt.Sprintf("WORKFLOW_OUTPUT_PASS: %s · %.2fs · %dx%d · audio giữ nguyên", filepath.Base(finalVideo), probeDuration(ctx, finalVideo), outWidth, outHeight))
+		if eval, evalErr := s.EvaluateVideoQuality(ctx, finalVideo, jobDir, nil); evalErr == nil && eval != nil {
+			s.appendLog(jobID, fmt.Sprintf("VIDEO_QUALITY_QC: Điểm %d/100 (%s) · %s · %dx%d · %.1fs",
+				eval.OverallScore, eval.Status, eval.Verdict, eval.Width, eval.Height, eval.DurationSec))
+		}
 		s.setStatus(jobID, StatusRunning, 85)
 		if err := s.runViralVisualGate(ctx, jobID, finalVideo, jobDir, p, photos); err != nil {
 			_ = os.Remove(finalVideo)

@@ -14,12 +14,7 @@ import (
 )
 
 func (s *Server) handleStudioAICreate(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "studio_ai_create", s.ctx(
-		"Title", "Tạo nội dung AI",
-		"Path", "/studio/create",
-		"Error", r.URL.Query().Get("err"),
-		"Notice", r.URL.Query().Get("ok"),
-	))
+	seeOther(w, r, "/workflow")
 }
 
 func (s *Server) handleStudioAIGenerate(w http.ResponseWriter, r *http.Request) {

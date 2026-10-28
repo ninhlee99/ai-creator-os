@@ -132,13 +132,24 @@ func describeSampledFrames(label string, frames []sampledVideoFrame) string {
 
 func (s *Studio) analyzeVisualQC(ctx context.Context, prompt string, refs []ImageRef) (VisualQCReport, error) {
 	var report VisualQCReport
-	analyzer, ok := s.mg.(visualImageAnalyzer)
-	if !ok {
-		return report, fmt.Errorf("media engine không hỗ trợ phân tích hình ảnh để QC")
+	var raw string
+	var err error
+	if analyzer, ok := s.mg.(visualImageAnalyzer); ok && s.mg != nil && s.mg.Healthy(ctx) {
+		raw, err = analyzer.AnalyzeImages(ctx, prompt, refs)
 	}
-	raw, err := analyzer.AnalyzeImages(ctx, prompt, refs)
-	if err != nil {
-		return report, fmt.Errorf("phân tích frame QC: %w", err)
+	if raw == "" || err != nil {
+		paths := make([]string, 0, len(refs))
+		for _, ref := range refs {
+			paths = append(paths, ref.Path)
+		}
+		var webErr error
+		raw, webErr = s.AnalyzeImagesWithWebAI(ctx, prompt, paths)
+		if webErr != nil {
+			if err != nil {
+				return report, fmt.Errorf("cả Media Engine (%v) và Web AI (%v) đều không phân tích được ảnh QC", err, webErr)
+			}
+			return report, fmt.Errorf("Web AI không phân tích được ảnh QC: %w", webErr)
+		}
 	}
 	if err := parseDirectorJSON(raw, &report); err != nil {
 		return report, fmt.Errorf("QC trả JSON không hợp lệ: %w", err)

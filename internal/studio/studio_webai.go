@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/ninhlee99/ai-creator-os/internal/webai"
 )
 
 func (s *Studio) SetWebAIResolver(r WebAIResolver) {
@@ -145,6 +147,114 @@ func (s *Studio) RenderMuseChat(ctx context.Context, session *WebAISession, requ
 		progress = func(string) {}
 	}
 	return renderer(ctx, session, request, outputPath, progress)
+}
+
+// AnalyzeImagesWithWebAI sử dụng các tài khoản Web AI đã đăng nhập (Gemini, Claude, ChatGPT, Grok)
+// để phân tích thị giác hình ảnh mà không phụ thuộc vào API key ngoài.
+func (s *Studio) AnalyzeImagesWithWebAI(ctx context.Context, prompt string, imagePaths []string) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("studio is nil")
+	}
+	s.mu.Lock()
+	analyzer := s.webAIImageAnalyzer
+	s.mu.Unlock()
+	if analyzer == nil {
+		return "", fmt.Errorf("Web AI image analyzer chưa được cấu hình")
+	}
+	platforms := []string{
+		webai.PlatformGemini,
+		webai.PlatformClaude,
+		webai.PlatformChatGPT,
+		webai.PlatformGrok,
+	}
+	var errs []string
+	for _, platform := range platforms {
+		session, err := s.GetWebAISession(platform)
+		if err != nil || session == nil || (strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0) {
+			continue
+		}
+		res, err := analyzer(ctx, session, prompt, imagePaths)
+		if err == nil && strings.TrimSpace(res) != "" {
+			return res, nil
+		}
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", platform, err))
+		}
+	}
+	if len(errs) > 0 {
+		return "", fmt.Errorf("tất cả tài khoản Web AI phân tích ảnh thất bại: %s", strings.Join(errs, "; "))
+	}
+	return "", fmt.Errorf("không tìm thấy tài khoản Web AI khả dụng để phân tích ảnh (cần đăng nhập Gemini, Claude, ChatGPT hoặc Grok)")
+}
+
+// GenerateTextWithWebAI sử dụng tài khoản Web AI (ChatGPT, Claude, Gemini, Grok) để sinh văn bản/kịch bản.
+func (s *Studio) GenerateTextWithWebAI(ctx context.Context, systemPrompt, prompt string) (string, error) {
+	fullPrompt := prompt
+	if strings.TrimSpace(systemPrompt) != "" {
+		fullPrompt = systemPrompt + "\n\n" + prompt
+	}
+	platforms := []string{
+		webai.PlatformChatGPT,
+		webai.PlatformClaude,
+		webai.PlatformGemini,
+		webai.PlatformGrok,
+	}
+	var errs []string
+	for _, platform := range platforms {
+		session, err := s.GetWebAISession(platform)
+		if err != nil || session == nil || (strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0) {
+			continue
+		}
+		res, err := webai.UseWebAIInWebUI(ctx, platform, session.CookieHeader, session.CookieJar, webai.WebAIOperationRequest{
+			Prompt:     fullPrompt,
+			OutputType: "text",
+		}, session.CookieUpdater)
+		if err == nil && strings.TrimSpace(res.Text) != "" {
+			return res.Text, nil
+		}
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", platform, err))
+		}
+	}
+	if len(errs) > 0 {
+		return "", fmt.Errorf("tạo văn bản qua Web AI thất bại: %s", strings.Join(errs, "; "))
+	}
+	return "", fmt.Errorf("chưa có tài khoản Web AI nào (ChatGPT, Claude, Gemini, Grok) kết nối để tạo văn bản")
+}
+
+// GenerateImageWithWebAI sử dụng tài khoản Web AI (Gemini, ChatGPT, Grok) để tạo hình ảnh.
+func (s *Studio) GenerateImageWithWebAI(ctx context.Context, prompt string, imagePaths []string, outPath string) error {
+	platforms := []string{
+		webai.PlatformGemini,
+		webai.PlatformChatGPT,
+		webai.PlatformGrok,
+	}
+	var errs []string
+	for _, platform := range platforms {
+		session, err := s.GetWebAISession(platform)
+		if err != nil || session == nil || (strings.TrimSpace(session.CookieHeader) == "" && len(session.CookieJar) == 0) {
+			continue
+		}
+		res, err := webai.UseWebAIInWebUI(ctx, platform, session.CookieHeader, session.CookieJar, webai.WebAIOperationRequest{
+			Prompt:     prompt,
+			Files:      imagePaths,
+			OutputType: "image",
+			OutputPath: outPath,
+		}, session.CookieUpdater)
+		if err == nil && res.MediaPath != "" && fileExists(res.MediaPath) {
+			if res.MediaPath != outPath {
+				_ = copyStudioFile(res.MediaPath, outPath)
+			}
+			return nil
+		}
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", platform, err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("tạo ảnh qua Web AI thất bại: %s", strings.Join(errs, "; "))
+	}
+	return fmt.Errorf("chưa có tài khoản Web AI nào (Gemini, ChatGPT, Grok) kết nối hỗ trợ tạo ảnh")
 }
 
 // maxConcurrentStudioJobs bounds how many jobs render at once. Each job

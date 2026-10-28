@@ -62,7 +62,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /studio/affiliate/plan", s.handleStudioAffiliatePlan)
 	mux.HandleFunc("POST /studio/affiliate", s.handleStudioAffiliateCreate)
 	mux.HandleFunc("GET /studio/jobs", s.handleStudioJobs)
-	mux.HandleFunc("GET /studio/create", s.handleStudioAICreate)
+	mux.HandleFunc("GET /studio/create", redirectTo("/workflow"))
 	mux.HandleFunc("POST /studio/generate", s.handleStudioAIGenerate)
 	mux.HandleFunc("GET /studio/jobs/{id}", s.handleStudioJobDetail)
 	mux.HandleFunc("POST /studio/jobs/{id}/cancel", s.handleStudioJobCancel)

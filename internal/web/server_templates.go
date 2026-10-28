@@ -54,7 +54,6 @@ var pageFiles = map[string]string{
 	"account_edit":         "account_edit.html",
 	"account_detail":       "account_detail.html",
 	"studio":               "studio.html",
-	"studio_ai_create":     "studio_ai_create.html",
 	"studio_jobs":          "studio_jobs.html",
 	"studio_trends":        "studio_trends.html",
 	"studio_flow":          "studio_flow.html",

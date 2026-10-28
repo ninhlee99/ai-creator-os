@@ -1861,6 +1861,44 @@
       entries.forEach(([key, value]) => {
         const row = document.createElement('div');
         row.className = 'wf-run-output';
+
+        if (key === 'quality_evaluation' && value && typeof value === 'object') {
+          const score = value.overall_score || 0;
+          const status = value.status || 'unknown';
+          const statusColor = status === 'pass' ? '#10b981' : (status === 'good' ? '#3b82f6' : '#f59e0b');
+          const statusText = status === 'pass' ? 'ĐẠT CHUẨN' : (status === 'good' ? 'TỐT' : 'CẦN XEM LẠI');
+          
+          row.style.background = 'rgba(255,255,255,0.03)';
+          row.style.border = `1px solid ${statusColor}44`;
+          row.style.borderRadius = '8px';
+          row.style.padding = '12px';
+          row.style.marginTop = '8px';
+
+          row.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <strong style="color:var(--text);font-size:13px">📊 Đánh giá chất lượng video (Video QC)</strong>
+              <span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">
+                ${score}/100 · ${statusText}
+              </span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;font-size:11px;color:var(--muted);margin-bottom:8px">
+              <div>📐 Độ phân giải: <strong style="color:var(--text)">${value.width || 0}x${value.height || 0}</strong></div>
+              <div>⏱ Thời lượng: <strong style="color:var(--text)">${(value.duration_sec || 0).toFixed(1)}s</strong></div>
+              <div>🎞 Tốc độ: <strong style="color:var(--text)">${(value.fps || 0).toFixed(0)} fps</strong></div>
+              <div>🔊 Âm thanh: <strong style="color:var(--text)">${value.has_audio ? (value.audio_codec || 'Có') : 'Không có'}</strong></div>
+              <div>⚡ Chuyển động: <strong style="color:var(--text)">${value.motion_score || 0}/100</strong></div>
+              <div>✨ Độ nét: <strong style="color:var(--text)">${value.visual_sharpness || 0}/100</strong></div>
+            </div>
+            ${value.summary ? `<div style="font-size:11px;line-height:1.4;color:var(--text-secondary);background:rgba(0,0,0,0.15);padding:6px 8px;border-radius:6px;margin-bottom:6px">${value.summary}</div>` : ''}
+            ${value.recommendations && value.recommendations.length ? `
+              <div style="font-size:10.5px;color:#f59e0b;line-height:1.3">
+                ${value.recommendations.map(r => `<div>💡 ${r}</div>`).join('')}
+              </div>` : ''}
+          `;
+          panel.appendChild(row);
+          return;
+        }
+
         const label = document.createElement('strong');
         label.innerText = key;
         row.appendChild(label);

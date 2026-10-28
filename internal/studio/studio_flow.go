@@ -293,18 +293,20 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 
 	analyzeImages := func(ctx context.Context, prompt string, imagePaths []string) (string, error) {
-		analyzer, ok := s.mg.(visualImageAnalyzer)
-		if !ok || s.mg == nil || !s.mg.Healthy(ctx) {
-			return "", fmt.Errorf("media engine chưa sẵn sàng phân tích ảnh")
-		}
-		refs := make([]ImageRef, 0, len(imagePaths))
-		for _, path := range imagePaths {
-			if !fileExists(path) {
-				return "", fmt.Errorf("ảnh phân tích không tồn tại: %s", filepath.Base(path))
+		if analyzer, ok := s.mg.(visualImageAnalyzer); ok && s.mg != nil && s.mg.Healthy(ctx) {
+			refs := make([]ImageRef, 0, len(imagePaths))
+			for _, path := range imagePaths {
+				if !fileExists(path) {
+					return "", fmt.Errorf("ảnh phân tích không tồn tại: %s", filepath.Base(path))
+				}
+				refs = append(refs, ImageRef{Path: path})
 			}
-			refs = append(refs, ImageRef{Path: path})
+			if out, err := analyzer.AnalyzeImages(ctx, prompt, refs); err == nil && strings.TrimSpace(out) != "" {
+				return out, nil
+			}
 		}
-		return analyzer.AnalyzeImages(ctx, prompt, refs)
+		// Dự phòng sang tài khoản Web AI (Gemini, Claude, ChatGPT, Grok) khi MediaGen không sẵn sàng
+		return s.AnalyzeImagesWithWebAI(ctx, prompt, imagePaths)
 	}
 	var museSessionOnce sync.Once
 	var museSession *WebAISession
@@ -374,10 +376,12 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			return nextProjectID, nextAccountID, err
 		},
 		GenerateText: func(ctx context.Context, systemPrompt, prompt string) (string, error) {
-			if s.llm == nil || !s.llm.Healthy(ctx) {
-				return "", fmt.Errorf("LLM chưa sẵn sàng")
+			if s.llm != nil && s.llm.Healthy(ctx) {
+				if txt, err := s.llm.Complete(ctx, systemPrompt, prompt); err == nil && strings.TrimSpace(txt) != "" {
+					return txt, nil
+				}
 			}
-			return s.llm.Complete(ctx, systemPrompt, prompt)
+			return s.GenerateTextWithWebAI(ctx, systemPrompt, prompt)
 		},
 		WebAIOperation: func(ctx context.Context, platform, prompt string, files []string, outputType, outputPath, conversationURL, accountID string) (string, string, string, string, error) {
 			var session *WebAISession
@@ -402,14 +406,16 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			return s.narrator(ctx, text, voice)
 		},
 		GenerateImage: func(ctx context.Context, prompt string, imagePaths []string, outPath string) error {
-			if s.mg == nil || !s.mg.Healthy(ctx) {
-				return fmt.Errorf("image generator chưa sẵn sàng")
+			if s.mg != nil && s.mg.Healthy(ctx) {
+				refs := make([]ImageRef, 0, len(imagePaths))
+				for _, path := range imagePaths {
+					refs = append(refs, ImageRef{Path: path})
+				}
+				if err := s.mg.GenerateImage(ctx, prompt, refs, outPath); err == nil && fileExists(outPath) {
+					return nil
+				}
 			}
-			refs := make([]ImageRef, 0, len(imagePaths))
-			for _, path := range imagePaths {
-				refs = append(refs, ImageRef{Path: path})
-			}
-			return s.mg.GenerateImage(ctx, prompt, refs, outPath)
+			return s.GenerateImageWithWebAI(ctx, prompt, imagePaths, outPath)
 		},
 		AnalyzeImages: analyzeImages,
 		VisionEval: func(ctx context.Context, prompt string, imagePath string) (string, error) {
@@ -433,6 +439,27 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 	completedRun, execErr = flow.ExecuteGraph(execCtx, graph)
 	if completedRun != nil {
+		// Sau khi workflow hoàn thành và tạo video thành công, tự động phân tích và đánh giá chất lượng video
+		if completedRun.Status == "completed" {
+			videoPath := findFlowRunOutputVideo(completedRun)
+			if videoPath != "" && fileExists(videoPath) {
+				evalReport, evalErr := s.EvaluateVideoQuality(execCtx.Context, videoPath, workDir, analyzeImages)
+				if evalErr == nil && evalReport != nil {
+					if completedRun.Outputs == nil {
+						completedRun.Outputs = make(map[string]any)
+					}
+					completedRun.Outputs["quality_evaluation"] = evalReport
+					completedRun.Outputs["video_qc_score"] = evalReport.OverallScore
+					completedRun.Outputs["video_qc_status"] = evalReport.Status
+					completedRun.Outputs["video_qc_verdict"] = evalReport.Verdict
+					evalLog := fmt.Sprintf("\n[VIDEO QUALITY QC] Điểm: %d/100 (%s) · %s · %dx%d (%s) · %.1fs · %s",
+						evalReport.OverallScore, evalReport.Status, evalReport.Verdict,
+						evalReport.Width, evalReport.Height, evalReport.AspectRatio, evalReport.DurationSec, evalReport.Summary)
+					completedRun.Log += evalLog
+				}
+			}
+		}
+
 		if err := fStore.SaveRun(completedRun); err != nil {
 			persistErr := fmt.Errorf("lưu trạng thái kết thúc workflow: %w", err)
 			if execErr != nil {
@@ -443,4 +470,21 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	}
 
 	return completedRun, execErr
+}
+
+func findFlowRunOutputVideo(run *flow.FlowRun) string {
+	if run == nil || run.Outputs == nil {
+		return ""
+	}
+	for _, key := range []string{"video", "video_out", "result_out"} {
+		if val, ok := run.Outputs[key].(string); ok && isViralVideoFile(val) {
+			return val
+		}
+	}
+	for _, val := range run.Outputs {
+		if path, ok := val.(string); ok && isViralVideoFile(path) {
+			return path
+		}
+	}
+	return ""
 }

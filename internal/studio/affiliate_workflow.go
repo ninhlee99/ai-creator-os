@@ -127,6 +127,10 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 	if err := copyStudioFile(workflowVideo, finalPath); err != nil {
 		return "", fmt.Errorf("chép video Affiliate thành phẩm: %w", err)
 	}
+	if eval, evalErr := s.EvaluateVideoQuality(ctx, finalPath, workDir, nil); evalErr == nil && eval != nil {
+		s.appendLog(jobID, fmt.Sprintf("VIDEO_QUALITY_QC: Điểm %d/100 (%s) · %s · %dx%d · %.1fs",
+			eval.OverallScore, eval.Status, eval.Verdict, eval.Width, eval.Height, eval.DurationSec))
+	}
 	return finalPath, nil
 }
 
