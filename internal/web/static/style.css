@@ -1226,7 +1226,7 @@ h2[id] { scroll-margin-top: 64px; }
   font-size: 13.5px; }
 .field .hint { font-size: var(--fs-sm); color: var(--muted); margin-top: 4px; }
 .hint { font-size: var(--fs-sm); color: var(--muted); }
-input[type=text], input[type=password], input[type=number], input[type=url],
+input[type=text], input[type=search], input[type=password], input[type=number], input[type=url],
 input[type=email], textarea, select {
   width: 100%; background: var(--input-bg); border: 1px solid var(--border);
   color: var(--text); border-radius: 8px; padding: 10px 13px; font-size: 14px;

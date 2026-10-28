@@ -7,17 +7,16 @@
   </div>
   <div class="webai-header-actions flex flex-wrap items-center gap-2">
     <a href="/studio" class="btn btn-primary btn-sm">Mở Studio</a>
-    {{if eq .Tab "affiliate"}}<a href="/settings/accesstrade" class="btn btn-secondary btn-sm">Accesstrade</a>{{end}}
   </div>
 </div>
 
-<!-- Affiliate Unified Navigation Tabs -->
+<!-- Affiliate Navigation Tabs -->
 <nav class="tabs" style="margin-bottom: 20px;">
   <a href="/products"{{if eq .Tab "discover"}} class="active"{{end}}>Khám phá</a>
-  <a href="/products?tab=pending"{{if eq .Tab "pending"}} class="active"{{end}}>Chờ duyệt</a>
   <a href="/products?tab=shelf"{{if eq .Tab "shelf"}} class="active"{{end}}>Kệ hàng</a>
+  <a href="/products?tab=pending"{{if eq .Tab "pending"}} class="active"{{end}}>Chờ duyệt</a>
   <a href="/products?tab=rejected"{{if eq .Tab "rejected"}} class="active"{{end}}>Đã loại bỏ</a>
-  <a href="/products?tab=affiliate"{{if eq .Tab "affiliate"}} class="active"{{end}}>Affiliate</a>
+  {{if eq .Tab "affiliate"}}<a href="/products?tab=affiliate" class="active">Affiliate</a>{{end}}
 </nav>
 
 {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
@@ -430,7 +429,7 @@ function atOrderSync() {
   </form>
 </div>
 
-<details class="advanced product-manual">
+<details open class="advanced product-manual" style="margin-bottom:20px">
   <summary>
     <span class="product-manual-icon" aria-hidden="true"></span>
     <span class="product-manual-copy">
@@ -496,28 +495,28 @@ function atOrderSync() {
 </details>
 
 {{else}}
-<section class="card mb-5 rounded-2xl border border-[var(--border)] bg-[var(--bg2)] p-4 shadow-sm md:p-5">
-  <form action="/products" method="get" class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)_auto]">
+<section class="card" style="margin-bottom:20px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);padding:16px 20px">
+  <form action="/products" method="get" style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:0">
     <input type="hidden" name="tab" value="{{.Tab}}">
-    <div class="field m-0">
-      <label for="product-review-query" class="mb-1 block text-sm font-semibold">Tìm trong danh sách</label>
-      <input id="product-review-query" type="search" name="q" value="{{.Keyword}}" placeholder="Tên hoặc từ khóa sản phẩm" autocomplete="off">
+    <div style="flex:1;min-width:240px">
+      <label for="product-review-query" style="display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Tìm trong danh sách</label>
+      <input id="product-review-query" type="search" name="q" value="{{.Keyword}}" placeholder="Tên hoặc từ khóa sản phẩm" autocomplete="off" style="width:100%;height:40px;padding:0 12px;font-size:13.5px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box">
     </div>
-    <div class="field m-0">
-      <label for="product-review-theme" class="mb-1 block text-sm font-semibold">Chủ đề</label>
-      <select id="product-review-theme" name="theme">
+    <div style="width:200px;min-width:160px">
+      <label for="product-review-theme" style="display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Chủ đề</label>
+      <select id="product-review-theme" name="theme" style="width:100%;height:40px;padding:0 12px;font-size:13.5px;border-radius:8px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box">
         <option value="">Tất cả chủ đề</option>
         {{range .Themes}}
         <option value="{{.Slug}}"{{if eq $.Theme .Slug}} selected{{end}}>{{.Label}}</option>
         {{end}}
       </select>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <button type="submit" class="btn btn-primary">Lọc danh sách</button>
-      {{if or .Keyword .Theme}}<a href="/products?tab={{.Tab}}" class="btn btn-secondary">Xóa lọc</a>{{end}}
+    <div style="display:flex;gap:8px;align-items:center">
+      <button type="submit" class="btn btn-primary" style="height:40px;padding:0 18px;font-weight:700;font-size:13px;border-radius:8px;white-space:nowrap">Lọc danh sách</button>
+      {{if or .Keyword .Theme}}<a href="/products?tab={{.Tab}}" class="btn btn-secondary" style="height:40px;padding:0 14px;font-size:13px;border-radius:8px;display:inline-flex;align-items:center;white-space:nowrap">Xóa lọc</a>{{end}}
     </div>
   </form>
-  <p class="hint mb-0 mt-3">{{if eq .Tab "pending"}}Duyệt sản phẩm phù hợp để đưa vào kệ hàng.{{else}}Xem lại sản phẩm đã loại hoặc khôi phục về danh sách chờ duyệt.{{end}}</p>
+  <div style="font-size:12px;color:var(--muted);margin-top:10px">{{if eq .Tab "pending"}}Duyệt sản phẩm phù hợp để đưa vào kệ hàng.{{else}}Xem lại sản phẩm đã loại hoặc khôi phục về danh sách chờ duyệt.{{end}}</div>
 </section>
 {{end}}
 

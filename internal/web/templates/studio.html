@@ -11,7 +11,7 @@
     <p style="margin:4px 0 0;font-size:13px;color:var(--muted)">Render video review &amp; giới thiệu sản phẩm tự động bằng AI theo từng shot list chuẩn chuyển đổi.</p>
   </div>
   <div class="webai-header-actions" style="display:flex;gap:8px">
-    <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:700">🛒 Radar sản phẩm</a>
+    <a href="/products" class="btn btn-secondary btn-sm" style="font-weight:700">🛒 Sản phẩm</a>
     <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-primary btn-sm" style="font-weight:700">🎨 Mở trong Workflow Studio ↗</a>
   </div>
 </div>
@@ -26,21 +26,20 @@
 
   <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
 
-    <!-- BƯỚC 1: CHỌN WORKFLOW (MẶC ĐỊNH HOẶC CUSTOM) -->
-    <div class="card" style="border-radius:14px;padding:18px 20px;border:1.5px solid var(--border);background:var(--bg2)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
-        <h3 style="margin:0;font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px">
-          <span>🧩</span> Workflow Thực Thi
-        </h3>
-        <span class="badge badge-info" style="font-size:11px">Tự chọn Engine</span>
+    <!-- BƯỚC 1: CHỌN WORKFLOW -->
+    <div class="card" style="border-radius:12px;padding:16px 20px;border:1px solid var(--border);background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <label for="affiliate-workflow-id" style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin:0">
+          <span>🧩</span> Workflow thực thi
+        </label>
+        <span style="font-size:12px;color:var(--muted)">Động cơ AI tự động hóa</span>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;align-items:center">
-        <div>
-          <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px">Chọn Workflow chạy video:</label>
-          <select name="workflow_id" id="affiliate-workflow-id" style="width:100%;padding:10px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg)">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <select name="workflow_id" id="affiliate-workflow-id" style="width:100%;height:40px;padding:0 12px;font-weight:600;font-size:13px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)">
             <option value="preset_affiliate_showcase" {{if eq .SelectedWorkflowID "preset_affiliate_showcase"}}selected{{end}}>
-              ⚡ [Mặc định] Affiliate Showcase Workflow (Muse AI &amp; Veo 3.1)
+              ⚡ [Mặc định] Affiliate Showcase (Muse AI &amp; Veo 3.1)
             </option>
             {{range .AvailableWorkflows}}
             {{if ne .ID "preset_affiliate_showcase"}}
@@ -51,11 +50,9 @@
             {{end}}
           </select>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-secondary btn-sm" style="font-size:12px;padding:9px 14px;white-space:nowrap">
-            ✏️ Tùy biến Workflow này
-          </a>
-        </div>
+        <a href="/workflow?preset=preset_affiliate_showcase" class="btn btn-secondary btn-sm" style="height:40px;padding:0 16px;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:8px;white-space:nowrap">
+          <span>🎨</span> Mở trong Canvas
+        </a>
       </div>
     </div>
 

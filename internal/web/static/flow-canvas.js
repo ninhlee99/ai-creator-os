@@ -1871,7 +1871,6 @@
       // "Đối với các workflow hệ thống, hãy ẩn các button như sao chép, copy, save, xoá, thêm node đi nhé. Chỉ có button nhân bản workflow hoặc mới"
       const btnAddNode = document.getElementById('btn-add-node');
       const btnCopyCanvas = document.getElementById('btn-copy-canvas');
-      const btnPasteCanvas = document.getElementById('btn-paste-canvas');
       const btnSaveGraph = document.getElementById('btn-save-graph');
       const btnDeleteGraph = document.getElementById('btn-delete-active-graph');
       const btnDuplicate = document.getElementById('btn-duplicate-active-graph');
@@ -1879,7 +1878,6 @@
 
       if (btnAddNode) btnAddNode.style.display = isPreset ? 'none' : 'inline-flex';
       if (btnCopyCanvas) btnCopyCanvas.style.display = isPreset ? 'none' : 'inline-flex';
-      if (btnPasteCanvas) btnPasteCanvas.style.display = isPreset ? 'none' : 'inline-flex';
       if (btnSaveGraph) btnSaveGraph.style.display = isPreset ? 'none' : 'inline-flex';
       if (btnDeleteGraph) btnDeleteGraph.style.display = isPreset ? 'none' : 'inline-flex';
 
@@ -1896,11 +1894,6 @@
         }
       }
       if (btnNew) btnNew.style.display = 'inline-flex';
-
-      const banner = document.getElementById('wf-preset-notice-banner');
-      if (banner) {
-        banner.style.display = isPreset ? 'inline-flex' : 'none';
-      }
     }
 
     syncGraphMetadataFromHeader() {
@@ -2127,8 +2120,6 @@
 
       const btnCopyCanvas = document.getElementById('btn-copy-canvas');
       if (btnCopyCanvas) btnCopyCanvas.addEventListener('click', () => { void this.copyCanvasContent(); });
-      const btnPasteCanvas = document.getElementById('btn-paste-canvas');
-      if (btnPasteCanvas) btnPasteCanvas.addEventListener('click', () => { void this.pasteCanvasContent(); });
 
       // Save Graph button
       const btnSave = document.getElementById('btn-save-graph');
