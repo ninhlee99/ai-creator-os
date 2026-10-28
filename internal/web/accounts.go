@@ -41,7 +41,21 @@ func (s *Server) handleAccountNew(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleAccountCreate(w http.ResponseWriter, r *http.Request) {
-	_ = r.ParseMultipartForm(32 << 20)
+	r.Body = http.MaxBytesReader(w, r.Body, (51 << 20))
+	parseErr := r.ParseMultipartForm(32 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil && parseErr != http.ErrNotMultipart {
+		seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Form vượt giới hạn 50MB hoặc không hợp lệ."))
+		return
+	}
+	if parseErr == http.ErrNotMultipart {
+		if err := r.ParseForm(); err != nil {
+			seeOther(w, r, "/accounts/new?err="+url.QueryEscape("Không đọc được form."))
+			return
+		}
+	}
 	username := strings.TrimSpace(r.PostFormValue("username"))
 	username = strings.TrimLeft(username, "@")
 	if username == "" {

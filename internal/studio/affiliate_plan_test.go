@@ -38,6 +38,63 @@ func (m *affiliatePlanMedia) AnalyzeImages(context.Context, string, []ImageRef) 
 	return `{"product_match":"match","category":"apparel","item":"cardigan","visible_attributes":["front buttons","long sleeves"],"evidence":["front button row is visible"],"confidence":"high","requested_focus_support":"match","selected_focus":"front button row","focus_evidence":"front button row is visible","operator_use_support":"match"}`, nil
 }
 
+func TestReissueAffiliatePreparationRebuildsShotsForChangedDuration(t *testing.T) {
+	dir := t.TempDir()
+	shotSizes := []string{"CU", "WS", "MS", "ECU", "WS", "MCU", "CU", "MS", "WS", "MCU"}
+	purposes := []string{"hook", "build", "build", "macro", "lifestyle", "build", "build", "lifestyle", "build", "payoff"}
+	shots := make([]ProShot, len(shotSizes))
+	for i := range shots {
+		shots[i] = ProShot{
+			Purpose: purposes[i], ShotSize: shotSizes[i], CameraMove: "slow pan", LensLight: "50mm soft light",
+			Action: "Hành động riêng " + string(rune('A'+i)), EmotionBeat: "thư thái", ProductUseMode: "wear",
+			ProductInteraction: "tương tác với cardigan đang mặc", ProductFocus: "hàng khuy cardigan",
+			ImagePrompt: "model wearing cardigan", VideoPrompt: "one natural movement",
+		}
+	}
+	reply, err := json.Marshal(struct {
+		SceneSetting    string    `json:"scene_setting"`
+		WardrobeStyling string    `json:"wardrobe_styling"`
+		Shots           []ProShot `json:"shots"`
+	}{"quiet cafe", "neutral cardigan styling", shots})
+	if err != nil {
+		t.Fatal(err)
+	}
+	llm := &affiliatePlanLLM{reply: string(reply)}
+	st, err := New(filepath.Join(dir, "studio.db"), llm, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	brief := AffiliateProductProfile{Category: "apparel", UseAction: "wear cardigan", Focus: "front buttons", Evidence: []string{"buttons visible"}}
+	p := AffiliateParams{
+		Seconds: 60, ProductName: "Cardigan M5091", Niche: "fashion", PreparedProductBrief: &brief,
+		PreparedShots: []ProShot{{Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}},
+	}
+	id, err := st.ReissueAffiliatePreparation(context.Background(), p)
+	if err != nil {
+		t.Fatalf("reissue changed duration: %v", err)
+	}
+	prep, err := st.GetAffiliatePreparation(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !affiliateShotPlanMatchesDuration(60, prep.Shots) || len(prep.Shots) != 10 {
+		t.Fatalf("reissued plan does not cover 60 seconds: shots=%d total=%d", len(prep.Shots), sumAffiliateShotSeconds(prep.Shots))
+	}
+	if llm.calls != 1 {
+		t.Fatalf("duration change should rebuild shot plan once, calls=%d", llm.calls)
+	}
+}
+
+func sumAffiliateShotSeconds(shots []ProShot) int {
+	total := 0
+	for _, shot := range shots {
+		total += shot.Seconds
+	}
+	return total
+}
+
 func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 	dir := t.TempDir()
 	media := &affiliatePlanMedia{}

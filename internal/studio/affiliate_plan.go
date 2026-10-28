@@ -253,10 +253,28 @@ func (s *Studio) cleanupAffiliatePlanInputs(params AffiliateParams) {
 }
 
 // ReissueAffiliatePreparation makes a fresh one-use plan token for retrying an
-// already reviewed job. The saved product brief and shot list remain unchanged.
-func (s *Studio) ReissueAffiliatePreparation(p AffiliateParams) (string, error) {
+// already reviewed job. It rebuilds the shot list when requested duration changed.
+func (s *Studio) ReissueAffiliatePreparation(ctx context.Context, p AffiliateParams) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if p.PreparedProductBrief == nil || len(p.PreparedShots) == 0 {
 		return "", fmt.Errorf("job cũ không lưu Product Analyst brief và Director shot list; cần lập plan mới")
+	}
+	if p.Seconds < 30 {
+		p.Seconds = 30
+	} else if p.Seconds > 180 {
+		p.Seconds = 180
+	}
+	if !affiliateShotPlanMatchesDuration(p.Seconds, p.PreparedShots) {
+		if s.llm == nil || !s.llm.Healthy(ctx) {
+			return "", fmt.Errorf("LLM chưa sẵn sàng để lập lại shot plan cho thời lượng %d giây", p.Seconds)
+		}
+		shots, err := WriteAffiliateShotListForChannel(ctx, s.llm, p.ProductName, p.Niche, p.Seconds, *p.PreparedProductBrief, p.ChannelProfile)
+		if err != nil {
+			return "", fmt.Errorf("không lập lại được shot plan cho %d giây: %w", p.Seconds, err)
+		}
+		p.PreparedShots = shots
 	}
 	p.PreparedPlanID = ""
 	prep := AffiliatePreparation{

@@ -169,8 +169,13 @@ func (s *Server) handleAccountModelUpload(w http.ResponseWriter, r *http.Request
 		s.accountRedirect(w, r, id, "", "Studio chưa được khởi tạo nên chưa upload được ảnh mẫu.")
 		return
 	}
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		s.accountRedirect(w, r, id, "", "Không đọc được file upload: "+err.Error())
+	r.Body = http.MaxBytesReader(w, r.Body, (151 << 20))
+	parseErr := r.ParseMultipartForm(50 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
+		s.accountRedirect(w, r, id, "", "Không đọc được file upload: "+parseErr.Error())
 		return
 	}
 
@@ -184,6 +189,10 @@ func (s *Server) handleAccountModelUpload(w http.ResponseWriter, r *http.Request
 	}
 	if len(fileHeaders) == 0 {
 		s.accountRedirect(w, r, id, "", "Chưa chọn file ảnh nào.")
+		return
+	}
+	if len(fileHeaders) > 10 {
+		s.accountRedirect(w, r, id, "", "Tối đa 10 ảnh mỗi lần tải lên.")
 		return
 	}
 

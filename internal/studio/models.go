@@ -50,12 +50,18 @@ func (m *ModelStore) resolvePath(path string) string {
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path)
 	}
+	normalized := filepath.ToSlash(filepath.Clean(path))
+	if strings.HasPrefix(normalized, "models/") {
+		candidate := filepath.Join(filepath.Dir(m.root), filepath.FromSlash(normalized))
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
 	if abs, err := filepath.Abs(path); err == nil {
 		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
 			return abs
 		}
 	}
-	normalized := filepath.ToSlash(filepath.Clean(path))
 	const legacyPrefix = "data/output/studio/models/"
 	if strings.HasPrefix(normalized, legacyPrefix) {
 		relative := strings.TrimPrefix(normalized, legacyPrefix)
@@ -86,9 +92,10 @@ func (m *ModelStore) Add(accountID int64, src string) (ModelPhoto, error) {
 		return mp, err
 	}
 	now := time.Now().Format("2006-01-02T15:04:05")
+	storedPath := filepath.ToSlash(filepath.Join("models", fmt.Sprint(accountID), filepath.Base(dst)))
 	res, err := m.db.Exec(
 		`INSERT INTO model_photos(account_id, path, created_at) VALUES(?,?,?)`,
-		accountID, dst, now)
+		accountID, storedPath, now)
 	if err != nil {
 		_ = os.Remove(dst)
 		return mp, err
@@ -222,12 +229,18 @@ func (s *Studio) resolveModelPhotoPath(path string) string {
 	if filepath.IsAbs(path) {
 		return filepath.Clean(path)
 	}
+	normalized := filepath.ToSlash(filepath.Clean(path))
+	if strings.HasPrefix(normalized, "models/") {
+		candidate := filepath.Join(s.workRoot, filepath.FromSlash(normalized))
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			return candidate
+		}
+	}
 	if abs, err := filepath.Abs(path); err == nil {
 		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
 			return abs
 		}
 	}
-	normalized := filepath.ToSlash(filepath.Clean(path))
 	const legacyOutputPrefix = "data/output/"
 	if strings.HasPrefix(normalized, legacyOutputPrefix) {
 		relative := strings.TrimPrefix(normalized, legacyOutputPrefix)

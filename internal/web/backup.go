@@ -50,7 +50,12 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		seeOther(w, r, "/settings/system?err="+url.QueryEscape(
 			"Khôi phục thất bại: "+reason+" — dữ liệu hiện tại không bị đụng tới."))
 	}
-	if err := r.ParseMultipartForm(64 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, int64(backup.MaxBackupArchiveBytes)+(1<<20))
+	parseErr := r.ParseMultipartForm(64 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
 		failClosed("không đọc được file upload")
 		return
 	}
@@ -60,9 +65,13 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
-	raw, err := io.ReadAll(io.LimitReader(f, 512<<20))
+	raw, err := io.ReadAll(io.LimitReader(f, int64(backup.MaxBackupArchiveBytes)+1))
 	if err != nil {
 		failClosed("không đọc được file sao lưu")
+		return
+	}
+	if uint64(len(raw)) > backup.MaxBackupArchiveBytes {
+		failClosed("file sao lưu vượt giới hạn 512 MiB")
 		return
 	}
 	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))

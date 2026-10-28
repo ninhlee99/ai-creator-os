@@ -2,8 +2,10 @@ package studio
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -13,6 +15,46 @@ func TestAffiliateShotCount(t *testing.T) {
 		if got := affiliateShotCount(tc.seconds); got != tc.want {
 			t.Errorf("affiliateShotCount(%d) = %d, want %d", tc.seconds, got, tc.want)
 		}
+	}
+}
+
+func TestRunAffiliateRejectsStoredShotDurationMismatchBeforeRendering(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	brief := AffiliateProductProfile{Category: "apparel", UseAction: "wear", Focus: "visible buttons"}
+	p := AffiliateParams{
+		Mode: AffiliateModeShots, Seconds: 60, PreparedProductBrief: &brief,
+		PreparedShots: []ProShot{{Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}},
+	}
+	id, err := st.insertJob(KindAffiliate, "mismatched shot plan", p)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st.runAffiliate(context.Background(), id, p, false)
+	job, ok := st.GetJob(id)
+	if !ok || job.Status != StatusFailed || !strings.Contains(job.Log, "shot plan không phủ đúng 60 giây") {
+		t.Fatalf("mismatched stored job was not rejected before rendering: %+v", job)
+	}
+}
+
+func TestAffiliateShotPlanMatchesDurationRequiresExactSupportedCoverage(t *testing.T) {
+	valid := []ProShot{{Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}, {Seconds: 6}}
+	if !affiliateShotPlanMatchesDuration(30, valid) {
+		t.Fatal("five six-second shots should cover 30 seconds")
+	}
+	if affiliateShotPlanMatchesDuration(60, valid) {
+		t.Fatal("30 seconds of shots must not claim 60-second coverage")
+	}
+	unsupported := append([]ProShot(nil), valid...)
+	unsupported[0].Seconds = 9
+	if affiliateShotPlanMatchesDuration(33, unsupported) {
+		t.Fatal("shot longer than Muse limit must not pass plan coverage")
 	}
 }
 
@@ -37,6 +79,22 @@ func TestWriteAffiliateShotListRequiresDistinctEmotionalCoverage(t *testing.T) {
 	duplicateAction := strings.Replace(reply, "Mẫu bước qua quán trong cardigan", "Mẫu chạm tay lên hàng khuy và nhìn xuống", 1)
 	if _, err := WriteAffiliateShotList(context.Background(), &stubLLM{reply: duplicateAction}, "Cardigan", "fashion", 30, profile); err == nil {
 		t.Fatal("duplicate action should be rejected")
+	}
+	var shortPlan struct {
+		SceneSetting    string    `json:"scene_setting"`
+		WardrobeStyling string    `json:"wardrobe_styling"`
+		Shots           []ProShot `json:"shots"`
+	}
+	if err := json.Unmarshal([]byte(reply), &shortPlan); err != nil {
+		t.Fatal(err)
+	}
+	shortPlan.Shots = shortPlan.Shots[:len(shortPlan.Shots)-1]
+	shortReply, err := json.Marshal(shortPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := WriteAffiliateShotList(context.Background(), &stubLLM{reply: string(shortReply)}, "Cardigan", "fashion", 30, profile); err == nil || !strings.Contains(err.Error(), "cần đúng 5") {
+		t.Fatalf("wrong shot count error = %v, want exact five-shot rejection", err)
 	}
 }
 

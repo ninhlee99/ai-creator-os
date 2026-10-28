@@ -28,12 +28,17 @@ func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 		back("err=" + url.QueryEscape("Không đọc được tham số video cũ."))
 		return
 	}
-	if err := r.ParseMultipartForm(60 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+	parseErr := r.ParseMultipartForm(1 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
 		back("err=" + url.QueryEscape("Không đọc được form — thử lại."))
 		return
 	}
 	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("seconds"))); err == nil {
-		p.Seconds = clampInt(v, 10, 120)
+		p.Seconds = clampInt(v, 30, 180)
 	}
 	p = reorderPhotos(p, r.FormValue("order"))
 	p.FixedCaption = strings.TrimSpace(r.FormValue("caption"))
@@ -42,7 +47,7 @@ func (s *Server) handleStudioJobRemix(w http.ResponseWriter, r *http.Request) {
 		back("err=" + url.QueryEscape("Không lấy được sound từ Radar: "+err.Error()))
 		return
 	}
-	planID, err := s.Studio.ReissueAffiliatePreparation(p)
+	planID, err := s.Studio.ReissueAffiliatePreparation(r.Context(), p)
 	if err != nil {
 		back("err=" + url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
 		return

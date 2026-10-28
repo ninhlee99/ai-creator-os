@@ -85,7 +85,7 @@ func (s *Server) handleStudioJobRetry(w http.ResponseWriter, r *http.Request) {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Không lấy được sound từ Radar: "+err.Error()))
 			return
 		}
-		planID, err := s.Studio.ReissueAffiliatePreparation(p)
+		planID, err := s.Studio.ReissueAffiliatePreparation(r.Context(), p)
 		if err != nil {
 			seeOther(w, r, "/studio/jobs?err="+url.QueryEscape("Không thể khôi phục shot plan: "+err.Error()))
 			return

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,6 +71,22 @@ func openZip(t *testing.T, raw []byte) *zip.Reader {
 	return zr
 }
 
+func TestArchiveLimitWriterStopsAtLimit(t *testing.T) {
+	var dst bytes.Buffer
+	w := &archiveLimitWriter{writer: &dst, limit: 3}
+
+	n, err := w.Write([]byte("four"))
+	if n != 3 || !errors.Is(err, errBackupArchiveTooLarge) {
+		t.Fatalf("Write() = (%d, %v), want (3, archive too large)", n, err)
+	}
+	if got := dst.String(); got != "fou" {
+		t.Fatalf("written bytes = %q, want %q", got, "fou")
+	}
+	if n, err := w.Write([]byte("x")); n != 0 || !errors.Is(err, errBackupArchiveTooLarge) {
+		t.Fatalf("Write() after limit = (%d, %v), want (0, archive too large)", n, err)
+	}
+}
+
 func writeValidManifest(t *testing.T, zw *zip.Writer) {
 	t.Helper()
 	f, err := zw.Create(ManifestName)
@@ -116,12 +133,147 @@ func TestBackupRoundTrip(t *testing.T) {
 		t.Fatal("cờ RESTORE_PENDING chưa được xoá")
 	}
 	for rel, want := range orig {
+		if strings.HasSuffix(rel, ".db") {
+			restored, err := sql.Open("sqlite", filepath.Join(dir, rel))
+			if err != nil {
+				t.Fatalf("mở %s sau khôi phục: %v", rel, err)
+			}
+			var got string
+			err = restored.QueryRow(`SELECT v FROM kv WHERE k=?`, rel).Scan(&got)
+			_ = restored.Close()
+			if err != nil || got != rel+"-v1" {
+				t.Fatalf("%s không khớp sau khôi phục: got=%q err=%v", rel, got, err)
+			}
+			continue
+		}
 		got, err := os.ReadFile(filepath.Join(dir, rel))
 		if err != nil {
 			t.Fatalf("thiếu %s sau khôi phục", rel)
 		}
 		if !bytes.Equal(got, want) {
 			t.Fatalf("%s không khớp bản gốc sau khôi phục", rel)
+		}
+	}
+}
+
+func TestBackupRestorePreservesStudioInputsAndPortableModelPhotos(t *testing.T) {
+	source := t.TempDir()
+	seedData(t, source)
+	modelPath := filepath.Join(source, "output", "studio", "models", "7", "character.jpg")
+	uploadPath := filepath.Join(source, "output", "studio", "uploads", "product.jpg")
+	for path, body := range map[string][]byte{
+		modelPath:  []byte("character-reference"),
+		uploadPath: []byte("product-reference"),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, body, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(source, "output"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "output", "rendered.mp4"), []byte("generated-output"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	studioDB, err := sql.Open("sqlite", filepath.Join(source, "studio.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := studioDB.Exec(`CREATE TABLE model_photos(id INTEGER PRIMARY KEY, account_id INTEGER, path TEXT, created_at TEXT)`); err != nil {
+		studioDB.Close()
+		t.Fatal(err)
+	}
+	if _, err := studioDB.Exec(`INSERT INTO model_photos(id,account_id,path,created_at) VALUES(1,7,?,?)`, modelPath, "2026-10-28T00:00:00Z"); err != nil {
+		studioDB.Close()
+		t.Fatal(err)
+	}
+	for _, query := range []string{
+		`CREATE TABLE studio_jobs(id TEXT PRIMARY KEY, params TEXT NOT NULL)`,
+		`CREATE TABLE studio_affiliate_plans(id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at TEXT NOT NULL)`,
+		`CREATE TABLE studio_workflow_graphs(id TEXT PRIMARY KEY, graph_json TEXT NOT NULL)`,
+	} {
+		if _, err := studioDB.Exec(query); err != nil {
+			studioDB.Close()
+			t.Fatal(err)
+		}
+	}
+	if _, err := studioDB.Exec(`INSERT INTO studio_jobs(id,params) VALUES('viral-1',?)`, `{"model_photo":"`+modelPath+`","sample_video":"`+uploadPath+`"}`); err != nil {
+		studioDB.Close()
+		t.Fatal(err)
+	}
+	if _, err := studioDB.Exec(`INSERT INTO studio_affiliate_plans(id,payload,created_at) VALUES('plan-1',?,?)`, `{"params":{"model_photo":"`+modelPath+`","product_photo":"`+uploadPath+`"}}`, "2026-10-28T00:00:00Z"); err != nil {
+		studioDB.Close()
+		t.Fatal(err)
+	}
+	if _, err := studioDB.Exec(`INSERT INTO studio_workflow_graphs(id,graph_json) VALUES('graph-1',?)`, `{"nodes":[{"params":{"model_path":"`+modelPath+`","product_image":"`+uploadPath+`"}}]}`); err != nil {
+		studioDB.Close()
+		t.Fatal(err)
+	}
+	if err := studioDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var archive bytes.Buffer
+	if err := Create(source, &archive); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	zr := openZip(t, archive.Bytes())
+	entries := make(map[string]bool, len(zr.File))
+	for _, entry := range zr.File {
+		entries[entry.Name] = true
+	}
+	if !entries["output/studio/models/7/character.jpg"] || !entries["output/studio/uploads/product.jpg"] {
+		t.Fatalf("backup omitted studio inputs: %v", entries)
+	}
+	if entries["output/rendered.mp4"] {
+		t.Fatal("backup must still omit generated render output")
+	}
+
+	target := t.TempDir()
+	if err := Stage(target, openZip(t, archive.Bytes())); err != nil {
+		t.Fatalf("Stage: %v", err)
+	}
+	if err := ApplyStaged(target); err != nil {
+		t.Fatalf("ApplyStaged: %v", err)
+	}
+	for _, check := range []struct{ rel, want string }{
+		{"output/studio/models/7/character.jpg", "character-reference"},
+		{"output/studio/uploads/product.jpg", "product-reference"},
+	} {
+		got, err := os.ReadFile(filepath.Join(target, check.rel))
+		if err != nil || string(got) != check.want {
+			t.Fatalf("restored %s = %q, err=%v", check.rel, got, err)
+		}
+	}
+	db, err := sql.Open("sqlite", filepath.Join(target, "studio.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var storedPath string
+	if err := db.QueryRow(`SELECT path FROM model_photos WHERE id=1`).Scan(&storedPath); err != nil {
+		t.Fatal(err)
+	}
+	if storedPath != "models/7/character.jpg" {
+		t.Fatalf("restored model path = %q, want portable relative path", storedPath)
+	}
+	wantModel := filepath.Join(target, "output", "studio", "models", "7", "character.jpg")
+	wantUpload := filepath.Join(target, "output", "studio", "uploads", "product.jpg")
+	for _, check := range []struct{ table, column, id string }{
+		{"studio_jobs", "params", "viral-1"},
+		{"studio_affiliate_plans", "payload", "plan-1"},
+		{"studio_workflow_graphs", "graph_json", "graph-1"},
+	} {
+		var raw string
+		query := `SELECT ` + check.column + ` FROM ` + check.table + ` WHERE id=?`
+		if err := db.QueryRow(query, check.id).Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(raw, wantModel) || !strings.Contains(raw, wantUpload) {
+			t.Errorf("%s.%s paths were not relocated: %s", check.table, check.column, raw)
 		}
 	}
 }
@@ -159,6 +311,93 @@ func TestValidateRejects(t *testing.T) {
 	zw3.Close()
 	if err := Validate(openZip(t, b3.Bytes())); err == nil {
 		t.Fatal("chấp nhận entry zip-slip")
+	}
+}
+
+func TestValidateRejectsAbsoluteAndUnknownRestoreTargets(t *testing.T) {
+	for _, name := range []string{
+		"/tmp/escape",
+		"C:/Windows/escape",
+		`C:\Windows\escape`,
+		`\\server\share\escape`,
+		"tokens/../../escape",
+		"tokens/NUL.json",
+		"tokens/COM1",
+		"tokens/invalid.",
+		"settings.json",
+	} {
+		t.Run(strings.ReplaceAll(name, "/", "_"), func(t *testing.T) {
+			var buf bytes.Buffer
+			zw := zip.NewWriter(&buf)
+			writeValidManifest(t, zw)
+			ledger, err := zw.Create("ledger.db")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := ledger.Write(append([]byte("SQLite format 3\x00"), []byte("x")...)); err != nil {
+				t.Fatal(err)
+			}
+			entry, err := zw.Create(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := entry.Write([]byte("untrusted")); err != nil {
+				t.Fatal(err)
+			}
+			if err := zw.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := Validate(openZip(t, buf.Bytes())); err == nil {
+				t.Fatalf("Validate accepted restore target %q", name)
+			}
+		})
+	}
+}
+
+func TestValidateRejectsDuplicateRestoreTargets(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	writeValidManifest(t, zw)
+	for range 2 {
+		entry, err := zw.Create("ledger.db")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write(append([]byte("SQLite format 3\x00"), []byte("x")...)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(openZip(t, buf.Bytes())); err == nil {
+		t.Fatal("Validate accepted duplicate database paths")
+	}
+}
+
+func TestValidateRejectsSQLiteSidecarWithoutDatabase(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	writeValidManifest(t, zw)
+	ledger, err := zw.Create("ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ledger.Write(append([]byte("SQLite format 3\x00"), []byte("x")...)); err != nil {
+		t.Fatal(err)
+	}
+	wal, err := zw.Create("studio.db-wal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wal.Write([]byte("orphan wal")); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(openZip(t, buf.Bytes())); err == nil {
+		t.Fatal("Validate accepted SQLite sidecar without its database")
 	}
 }
 
@@ -367,11 +606,10 @@ func TestCreateIncludesAllFourDBs(t *testing.T) {
 	}
 }
 
-// Đợt R: checkpoint chạy best-effort trên DB thật đang mở (WAL) — không
-// lỗi, và DB vẫn đọc được sau checkpoint.
-func TestCheckpointLiveWALDB(t *testing.T) {
+// Online snapshot must include committed rows that still live in the WAL.
+func TestCreateSnapshotsLiveWALDatabase(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "live.db")
+	path := filepath.Join(dir, "ledger.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Skipf("không mở được sqlite test: %v", err)
@@ -383,10 +621,60 @@ func TestCheckpointLiveWALDB(t *testing.T) {
 	if _, err := db.Exec("INSERT INTO t (v) VALUES ('x')"); err != nil {
 		t.Fatal(err)
 	}
-	checkpointDB(path) // best-effort: không được panic/lỗi lan ra ngoài
+	var walMode string
+	if err := db.QueryRow("PRAGMA journal_mode=WAL").Scan(&walMode); err != nil || strings.ToLower(walMode) != "wal" {
+		t.Fatalf("bật WAL: mode=%q err=%v", walMode, err)
+	}
+	if _, err := db.Exec("PRAGMA wal_autocheckpoint=0"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("INSERT INTO t (v) VALUES ('still-in-wal')"); err != nil {
+		t.Fatal(err)
+	}
+	walInfo, err := os.Stat(path + "-wal")
+	if err != nil || walInfo.Size() == 0 {
+		t.Fatalf("test needs committed WAL pages: info=%v err=%v", walInfo, err)
+	}
+
+	var archive bytes.Buffer
+	if err := Create(dir, &archive); err != nil {
+		t.Fatalf("Create with active WAL: %v", err)
+	}
+	zr := openZip(t, archive.Bytes())
+	var ledger *zip.File
+	for _, f := range zr.File {
+		if f.Name == "ledger.db" {
+			ledger = f
+			break
+		}
+	}
+	if ledger == nil {
+		t.Fatal("snapshot is missing ledger.db")
+	}
+	rc, err := ledger.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshotPath := filepath.Join(t.TempDir(), "snapshot.db")
+	out, err := os.Create(snapshotPath)
+	if err != nil {
+		rc.Close()
+		t.Fatal(err)
+	}
+	_, copyErr := io.Copy(out, rc)
+	closeErr := out.Close()
+	rc.Close()
+	if copyErr != nil || closeErr != nil {
+		t.Fatalf("extract snapshot: copy=%v close=%v", copyErr, closeErr)
+	}
+	snapshot, err := sql.Open("sqlite", snapshotPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer snapshot.Close()
 	var n int
-	if err := db.QueryRow("SELECT COUNT(*) FROM t").Scan(&n); err != nil || n != 1 {
-		t.Fatalf("DB hỏng sau checkpoint: n=%d err=%v", n, err)
+	if err := snapshot.QueryRow("SELECT COUNT(*) FROM t").Scan(&n); err != nil || n != 2 {
+		t.Fatalf("snapshot omitted committed WAL row: count=%d err=%v", n, err)
 	}
 }
 

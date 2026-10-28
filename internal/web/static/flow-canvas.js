@@ -617,7 +617,9 @@
           const img = document.createElement('img');
           img.src = mediaURL;
           img.alt = '';
-          img.loading = 'lazy';
+          // Uploaded input assets must load on first canvas fit after app reload;
+          // lazy loading can leave transformed canvas images unloaded.
+          img.loading = config.canUpload ? 'eager' : 'lazy';
           img.onload = () => { this.renderWires(); };
           img.onerror = () => { img.style.display = 'none'; };
           previewContainer.appendChild(img);

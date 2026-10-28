@@ -92,6 +92,20 @@ func affiliateShotCount(seconds int) int {
 	return n
 }
 
+func affiliateShotPlanMatchesDuration(seconds int, shots []ProShot) bool {
+	if seconds < 30 || seconds > 180 || len(shots) < 4 {
+		return false
+	}
+	total := 0
+	for _, shot := range shots {
+		if shot.Seconds < 4 || shot.Seconds > veoMaxSeconds {
+			return false
+		}
+		total += shot.Seconds
+	}
+	return total == seconds
+}
+
 func normalizeChannelCreativeProfile(profile ChannelCreativeProfile) ChannelCreativeProfile {
 	profile.Model = boundedPromptValue(profile.Model, 200)
 	profile.Positioning = boundedPromptValue(profile.Positioning, 400)
@@ -162,6 +176,9 @@ func writeProShotList(ctx context.Context, llm LLM, productName, niche string, s
 		return nil, fmt.Errorf("director: thiếu khóa bối cảnh hoặc styling chung cho chiến dịch")
 	}
 	if strict {
+		if len(plan.Shots) != n {
+			return nil, fmt.Errorf("director: nhận %d shot, cần đúng %d", len(plan.Shots), n)
+		}
 		minShots := (seconds + veoMaxSeconds - 1) / veoMaxSeconds
 		maxShots := seconds / 4
 		if len(plan.Shots) < minShots || len(plan.Shots) > maxShots {

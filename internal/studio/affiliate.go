@@ -95,6 +95,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.Seconds > 180 {
 		p.Seconds = 180
 	}
+	if !affiliateShotPlanMatchesDuration(p.Seconds, p.PreparedShots) {
+		return "", fmt.Errorf("shot plan không phủ đúng %d giây; lập lại shot plan trước khi tạo video", p.Seconds)
+	}
 	if p.Mode == "" {
 		p.Mode = AffiliateModeShots
 	}

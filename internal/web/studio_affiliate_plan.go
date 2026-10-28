@@ -25,7 +25,12 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 		s.writeJSON(w, map[string]any{"ok": false, "error": "Studio chưa sẵn sàng"})
 		return
 	}
-	if err := r.ParseMultipartForm(60 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, (512<<20)+(1<<20))
+	parseErr := r.ParseMultipartForm(60 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
 		s.writeJSON(w, map[string]any{"ok": false, "error": "Không đọc được form"})
 		return
 	}

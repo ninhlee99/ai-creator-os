@@ -30,6 +30,27 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 		s.appendLog(id, fmt.Sprintf("LỖI: engine affiliate không được hỗ trợ: %q", p.VideoEngine))
 		return
 	}
+	targetSec := p.Seconds
+	if targetSec <= 0 {
+		targetSec = 60
+	}
+	if targetSec < 30 {
+		targetSec = 30
+	}
+	if targetSec > 180 {
+		targetSec = 180
+	}
+	p.Seconds = targetSec
+	if p.PreparedProductBrief == nil || len(p.PreparedShots) == 0 {
+		s.setStatus(id, StatusFailed, 100)
+		s.appendLog(id, "LỖI: job thiếu Product Analyst brief hoặc Director shot list đã lập trước clip")
+		return
+	}
+	if !affiliateShotPlanMatchesDuration(p.Seconds, p.PreparedShots) {
+		s.setStatus(id, StatusFailed, 100)
+		s.appendLog(id, fmt.Sprintf("LỖI: shot plan không phủ đúng %d giây; tạo lại plan trước khi render", p.Seconds))
+		return
+	}
 	if ready, reason := s.MuseVideoReady(ctx); !ready {
 		s.setStatus(id, StatusFailed, 100)
 		s.appendLog(id, "LỖI: Muse AI chưa sẵn sàng: "+reason)
@@ -55,18 +76,6 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 		fail(err)
 		return
 	}
-	targetSec := p.Seconds
-	if targetSec <= 0 {
-		targetSec = 60
-	}
-	if targetSec < 30 {
-		targetSec = 30
-	}
-	if targetSec > 180 {
-		targetSec = 180
-	}
-	p.Seconds = targetSec
-
 	modelPhotos := make([]string, 0, len(p.ModelPhotos)+1)
 	seenPhotos := map[string]bool{}
 	for _, photo := range append([]string{p.ModelPhoto}, p.ModelPhotos...) {
@@ -85,10 +94,6 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 	p.ModelPhotos = modelPhotos
 	if len(affiliateModelReferences(p, 3)) == 0 || len(affiliateProductReferences(p)) == 0 {
 		fail(fmt.Errorf("thiếu bộ tham chiếu gồm nhân vật kênh và ảnh listing sản phẩm"))
-		return
-	}
-	if p.PreparedProductBrief == nil || len(p.PreparedShots) == 0 {
-		fail(fmt.Errorf("job thiếu Product Analyst brief hoặc Director shot list đã lập trước clip"))
 		return
 	}
 	productProfile := *p.PreparedProductBrief

@@ -197,7 +197,12 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 		studioErr("Studio chưa sẵn sàng — thử tải lại trang.")
 		return
 	}
-	if err := r.ParseMultipartForm(60 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, (601 << 20))
+	parseErr := r.ParseMultipartForm(60 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
 		studioErr("Không đọc được form — thử lại.")
 		return
 	}

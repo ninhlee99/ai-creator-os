@@ -50,7 +50,12 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, (512<<20)+(1<<20))
+	parseErr := r.ParseMultipartForm(50 << 20)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+	if parseErr != nil {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không đọc được form video tham chiếu. Hãy chọn video từ TikTok Radar rồi thử lại.")
 		return
 	}
