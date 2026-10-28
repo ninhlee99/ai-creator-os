@@ -275,12 +275,11 @@ func studioOutputQCVerified(j studio.Job) bool {
 	if j.Kind == studio.KindAffiliate {
 		analysis, analysisAt := pipelineMarkerState(j.Log, "PRODUCT_ANALYSIS_START:", "PRODUCT_ANALYSIS_PASS:", "PRODUCT_ANALYSIS_FAIL:")
 		director, directorAt := pipelineMarkerState(j.Log, "DIRECTOR_START:", "DIRECTOR_PASS:", "DIRECTOR_FAIL:")
-		production, productionAt := pipelineMarkerState(j.Log, "PRODUCTION_START:", "PRODUCTION_PASS:", "PRODUCTION_FAIL:")
-		return analysis == "pass" && director == "pass" && production == "pass" && analysisAt < directorAt && directorAt < productionAt && productionAt < qcAt
+		workflow, workflowAt := pipelineMarkerState(j.Log, "WORKFLOW_START:", "WORKFLOW_PASS:", "LỖI:")
+		return analysis == "pass" && director == "pass" && workflow == "pass" && analysisAt < directorAt && directorAt < workflowAt && workflowAt < qcAt
 	} else {
-		replacement, replacementAt := pipelineMarkerState(j.Log, "CHARACTER_REPLACEMENT_START:", "CHARACTER_REPLACEMENT_PASS:", "CHARACTER_REPLACEMENT_FAIL:")
-		validation, validationAt := pipelineMarkerState(j.Log, "OUTPUT_VALIDATION_START:", "OUTPUT_VALIDATION_PASS:", "OUTPUT_VALIDATION_FAIL:")
-		return replacement == "pass" && validation == "pass" && replacementAt < validationAt && validationAt < qcAt
+		validation, validationAt := pipelineMarkerState(j.Log, "WORKFLOW_START:", "WORKFLOW_OUTPUT_PASS:", "LỖI:")
+		return validation == "pass" && validationAt < qcAt
 	}
 }
 

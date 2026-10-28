@@ -401,6 +401,60 @@ func TestTC07_ExecuteProcessNodes(t *testing.T) {
 	}
 }
 
+func TestOptionalAudioSourceAndMergePassThrough(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	audioNode := &FlowNode{ID: "optional-audio", Type: "audio_source", Params: map[string]any{
+		"audio_path": "", "audio_url": "", "audio_title": "",
+	}}
+	audio, err := executeAudioSource(ctx, audioNode, nil)
+	if err != nil {
+		t.Fatalf("empty optional audio source: %v", err)
+	}
+	if got := audio["audio_file"]; got != "" {
+		t.Fatalf("empty audio source path = %v, want empty", got)
+	}
+
+	videoPath := filepath.Join(ctx.WorkDir, "silent.mp4")
+	if err := os.WriteFile(videoPath, []byte("video"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	mergeNode := &FlowNode{ID: "optional-audio-merge", Type: "audio_merge", Params: map[string]any{"audio_codec": "aac"}}
+	merged, err := executeAudioMerge(ctx, mergeNode, map[string]any{"video_in": videoPath, "audio_in": audio["audio_file"]})
+	if err != nil {
+		t.Fatalf("merge without optional audio: %v", err)
+	}
+	if got := merged["video_out"]; got != videoPath {
+		t.Fatalf("audio merge output = %v, want original video %q", got, videoPath)
+	}
+}
+
+func TestExecuteGraphAllowsEmptyOutputOnOptionalInputEdge(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+
+	graph := &FlowGraph{
+		ID: "optional-audio-edge", Name: "optional audio edge",
+		Nodes: []FlowNode{
+			{ID: "video", Type: "video_source", Params: map[string]any{"video_path": filepath.Join(ctx.WorkDir, "sample_916.mp4")}},
+			{ID: "audio", Type: "audio_source", Params: map[string]any{}},
+			{ID: "merge", Type: "audio_merge", Params: map[string]any{"audio_codec": "aac"}},
+		},
+		Edges: []FlowEdge{
+			{ID: "video-edge", FromNode: "video", FromPort: "video_path", ToNode: "merge", ToPort: "video_in"},
+			{ID: "audio-edge", FromNode: "audio", FromPort: "audio_file", ToNode: "merge", ToPort: "audio_in"},
+		},
+	}
+	run, err := ExecuteGraph(ctx, graph)
+	if err != nil {
+		t.Fatalf("ExecuteGraph with empty optional audio: %v (log: %s)", err, run.Log)
+	}
+	if run.Status != "completed" {
+		t.Fatalf("run status = %q, want completed (log: %s)", run.Status, run.Log)
+	}
+}
+
 func TestTC08_ExecuteAINodes(t *testing.T) {
 	ctx, tmpDir := setupTestContext(t)
 	defer os.RemoveAll(tmpDir)
@@ -646,6 +700,27 @@ func TestRunCancelledDuringFinalNodeDoesNotComplete(t *testing.T) {
 	}
 }
 
+func TestRunCancelledBeforeNodeStartsHasFinishedAt(t *testing.T) {
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	graph := &FlowGraph{
+		ID: "cancel-before-node", Name: "cancel before node",
+		Nodes: []FlowNode{{ID: "queued-a", Type: "workflow_input"}, {ID: "queued-b", Type: "workflow_input"}},
+	}
+	run, err := ExecuteGraph(&ExecutionContext{Context: cancelCtx}, graph)
+	if !errors.Is(err, context.Canceled) || run == nil || run.Status != "cancelled" {
+		t.Fatalf("ExecuteGraph = (%+v, %v), want cancelled run and context.Canceled", run, err)
+	}
+	if run.FinishedAt == "" {
+		t.Fatal("cancelled run has empty FinishedAt")
+	}
+	for _, id := range []string{"queued-a", "queued-b"} {
+		if got := run.NodeStates[id].Status; got != "cancelled" {
+			t.Fatalf("node %q status = %q, want cancelled", id, got)
+		}
+	}
+}
+
 func TestRunCancelledDuringNodeStaysCancelledWhenExecutorReturnsContextError(t *testing.T) {
 	cancelCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -659,11 +734,16 @@ func TestRunCancelledDuringNodeStaysCancelledWhenExecutorReturnsContextError(t *
 	})
 	graph := &FlowGraph{
 		ID: "cancel-error-node", Name: "cancel error node",
-		Nodes: []FlowNode{{ID: "cancel", Type: nodeType}},
+		Nodes: []FlowNode{{ID: "cancel", Type: nodeType}, {ID: "queued", Type: nodeType}},
 	}
 	run, err := ExecuteGraph(&ExecutionContext{Context: cancelCtx}, graph)
 	if !errors.Is(err, context.Canceled) || run == nil || run.Status != "cancelled" {
 		t.Fatalf("ExecuteGraph = (%+v, %v), want cancelled run and context.Canceled", run, err)
+	}
+	for _, id := range []string{"cancel", "queued"} {
+		if got := run.NodeStates[id].Status; got != "cancelled" {
+			t.Fatalf("node %q status = %q, want cancelled", id, got)
+		}
 	}
 }
 

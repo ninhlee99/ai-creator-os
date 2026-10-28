@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -33,41 +34,141 @@ func (s *Studio) appendLog(id, line string) {
 	}
 	cur += time.Now().Format("15:04:05") + " " + line
 	// Đợt V: cắt log giữ 200 dòng cuối — job lắm log không làm cột phình
-	// vô hạn (write amplification mỗi lần append đọc-cộng-ghi cả cột).
-	if lines := strings.Split(cur, "\n"); len(lines) > maxJobLogLines {
-		cur = strings.Join(lines[len(lines)-maxJobLogLines:], "\n")
-	}
+	// vô hạn (write amplification mỗi lần append đọc-cộng-ghi cả cột). Giữ
+	// marker pipeline mới nhất để log dài vẫn chứng minh được các bước QC.
+	cur = trimJobLog(cur)
 	s.db.Exec(`UPDATE studio_jobs SET log=? WHERE id=?`, cur, id)
 }
 
-// maxJobLogLines: số dòng log tối đa giữ lại mỗi job (Đợt V).
+// maxJobLogLines: số dòng log gần nhất giữ lại ngoài pipeline evidence.
 const maxJobLogLines = 200
+
+var jobLogEvidenceMarkers = []string{
+	"PRODUCT_ANALYSIS_START:", "PRODUCT_ANALYSIS_PASS:", "PRODUCT_ANALYSIS_FAIL:",
+	"DIRECTOR_START:", "DIRECTOR_PASS:", "DIRECTOR_FAIL:",
+	"WORKFLOW_START:", "WORKFLOW_PASS:", "WORKFLOW_OUTPUT_PASS:", "WORKFLOW_FAIL:",
+	"MOTION_QC_START:", "MOTION_QC_PASS:", "MOTION_QC_FAIL:",
+	"VISUAL_QC_START:", "VISUAL_QC_PASS:", "VISUAL_QC_FAIL:", "LỖI:",
+}
+
+func trimJobLog(log string) string {
+	lines := strings.Split(log, "\n")
+	if len(lines) <= maxJobLogLines {
+		return log
+	}
+	keepFrom := len(lines) - maxJobLogLines
+	lastEvidence := make(map[string]int, len(jobLogEvidenceMarkers))
+	for i, line := range lines {
+		for _, marker := range jobLogEvidenceMarkers {
+			if strings.Contains(line, marker) {
+				lastEvidence[marker] = i
+			}
+		}
+	}
+	preserve := make(map[int]bool, len(lastEvidence))
+	for _, i := range lastEvidence {
+		if i < keepFrom {
+			preserve[i] = true
+		}
+	}
+	trimmed := make([]string, 0, maxJobLogLines+len(preserve))
+	for i := 0; i < keepFrom; i++ {
+		if preserve[i] {
+			trimmed = append(trimmed, lines[i])
+		}
+	}
+	trimmed = append(trimmed, lines[keepFrom:]...)
+	return strings.Join(trimmed, "\n")
+}
 
 // PruneOldJobs xóa job đã xong (done/failed) quá maxAge (Đợt V — máy 24/7
 // không để bảng phình mãi). Trả về số job đã xóa.
 func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 	// finished_at lưu dạng "2006-01-02T15:04:05" nên dùng strftime cùng định dạng.
 	cutoff := time.Now().Add(-maxAge).Format("2006-01-02T15:04:05")
+	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at
+		FROM studio_jobs WHERE status IN ('done','failed') AND finished_at != '' AND finished_at < ?`, cutoff)
+	if err != nil {
+		return 0
+	}
+	type prunedJob struct {
+		job    Job
+		assets []Asset
+	}
+	var candidates []prunedJob
+	for rows.Next() {
+		var candidate prunedJob
+		if err := rows.Scan(&candidate.job.ID, &candidate.job.Kind, &candidate.job.Title,
+			&candidate.job.Status, &candidate.job.Progress, &candidate.job.Log,
+			&candidate.job.Output, &candidate.job.Caption, &candidate.job.Params,
+			&candidate.job.CreatedAt, &candidate.job.FinishedAt); err != nil {
+			rows.Close()
+			return 0
+		}
+		candidates = append(candidates, candidate)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return 0
+	}
+	rows.Close()
+	for i := range candidates {
+		candidates[i].assets = s.ListAssets(candidates[i].job.ID)
+	}
+	if len(candidates) == 0 {
+		return 0
+	}
+
 	tx, err := s.db.Begin()
 	if err != nil {
 		return 0
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`DELETE FROM studio_tiktok_publications WHERE job_id IN (
-		SELECT id FROM studio_jobs WHERE status IN ('done','failed') AND finished_at != '' AND finished_at < ?
-	)`, cutoff); err != nil {
-		return 0
+	var pruned []prunedJob
+	for _, candidate := range candidates {
+		res, err := tx.Exec(`DELETE FROM studio_jobs WHERE id=? AND status IN ('done','failed')
+			AND finished_at != '' AND finished_at < ?`, candidate.job.ID, cutoff)
+		if err != nil {
+			return 0
+		}
+		deleted, err := res.RowsAffected()
+		if err != nil {
+			return 0
+		}
+		if deleted == 0 {
+			continue
+		}
+		if _, err := tx.Exec(`DELETE FROM studio_tiktok_publications WHERE job_id=?`, candidate.job.ID); err != nil {
+			return 0
+		}
+		if _, err := tx.Exec(`DELETE FROM studio_assets WHERE job_id=?`, candidate.job.ID); err != nil {
+			return 0
+		}
+		pruned = append(pruned, candidate)
 	}
-	res, err := tx.Exec(`DELETE FROM studio_jobs
-		WHERE status IN ('done','failed') AND finished_at != '' AND finished_at < ?`, cutoff)
-	if err != nil {
-		return 0
-	}
-	n, _ := res.RowsAffected()
 	if err := tx.Commit(); err != nil {
 		return 0
 	}
-	return int(n)
+	for _, candidate := range pruned {
+		finalPath := s.OutputPath(candidate.job.Output)
+		for _, asset := range candidate.assets {
+			if !sameJobFile(asset.Path, finalPath) {
+				removeFile(asset.Path)
+			}
+		}
+		s.removeJobInputUploads(candidate.job)
+		removeAll(filepath.Join(s.workRoot, candidate.job.ID))
+	}
+	return len(pruned)
+}
+
+func sameJobFile(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	return errA == nil && errB == nil && filepath.Clean(absA) == filepath.Clean(absB)
 }
 
 func (s *Studio) addAsset(jobID string, idx int, kind, prompt string) int64 {

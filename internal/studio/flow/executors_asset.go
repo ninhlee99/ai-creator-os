@@ -411,6 +411,12 @@ func executeAudioSource(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	audioURL := nodeParamString(node.Params, "audio_url", "")
 	previewURL := nodeParamString(node.Params, "preview_url", "")
 	audioTitle := nodeParamString(node.Params, "audio_title", "")
+	if audioPath == "" && audioURL == "" && previewURL == "" {
+		if ctx.Log != nil {
+			ctx.Log("AudioSourceNode: Không có track riêng; giữ âm thanh gốc của video nếu có.")
+		}
+		return map[string]any{"audio_file": "", "audio_title": ""}, nil
+	}
 	if strings.HasPrefix(previewURL, "data:audio/") {
 		headerEnd := strings.Index(previewURL, ",")
 		if headerEnd < 0 {

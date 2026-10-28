@@ -3,12 +3,16 @@ package studio
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
 func (s *Studio) CancelRunning(id string) bool {
@@ -91,7 +95,215 @@ func (s *Studio) deleteJob(id string, stopTimeout time.Duration) error {
 	if _, err := s.db.Exec(`DELETE FROM studio_jobs WHERE id=?`, id); err != nil {
 		return fmt.Errorf("xoá job: %w", err)
 	}
+	s.removeJobInputUploads(j)
 	return nil
+}
+
+func (s *Studio) removeJobInputUploads(job Job) {
+	paths, err := studioJobInputPaths(job)
+	if err != nil || len(paths) == 0 {
+		return
+	}
+	referenced, ok := s.otherJobAndPlanInputPaths(job.ID)
+	if !ok {
+		return
+	}
+
+	roots := []string{s.UploadDir(), filepath.Join(filepath.Dir(s.outDir), "uploads")}
+	resolvedRoots := make([]string, 0, len(roots))
+	for _, root := range roots {
+		absolute, err := filepath.Abs(root)
+		if err != nil {
+			continue
+		}
+		resolved, err := filepath.EvalSymlinks(absolute)
+		if err == nil {
+			resolvedRoots = append(resolvedRoots, resolved)
+		}
+	}
+	if len(resolvedRoots) == 0 {
+		return
+	}
+	seen := make(map[string]bool, len(paths))
+	for _, path := range paths {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		info, err := os.Lstat(absolute)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		resolved, err := filepath.EvalSymlinks(absolute)
+		if err != nil {
+			continue
+		}
+		owned := false
+		for _, root := range resolvedRoots {
+			relative, err := filepath.Rel(root, resolved)
+			if err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			continue
+		}
+		if referenced[filepath.Clean(absolute)] || referenced[filepath.Clean(resolved)] {
+			continue
+		}
+		if seen[resolved] {
+			continue
+		}
+		seen[resolved] = true
+		_ = os.Remove(absolute)
+	}
+}
+
+func studioJobInputPaths(job Job) ([]string, error) {
+	switch job.Kind {
+	case KindAffiliate:
+		var p AffiliateParams
+		if err := json.Unmarshal([]byte(job.Params), &p); err != nil {
+			return nil, err
+		}
+		return affiliateInputPaths(p), nil
+	case KindViral:
+		var p ViralParams
+		if err := json.Unmarshal([]byte(job.Params), &p); err != nil {
+			return nil, err
+		}
+		return []string{p.SampleVideo}, nil
+	default:
+		return nil, nil
+	}
+}
+
+func affiliateInputPaths(p AffiliateParams) []string {
+	paths := append([]string{p.ProductPhoto}, p.ExtraPhotos...)
+	return append(paths, p.Clips...)
+}
+
+func (s *Studio) otherJobAndPlanInputPaths(exceptJobID string) (map[string]bool, bool) {
+	referenced := map[string]bool{}
+	add := func(paths []string) {
+		for _, path := range paths {
+			path = strings.TrimSpace(path)
+			if absolute, err := filepath.Abs(path); err == nil && path != "" {
+				clean := filepath.Clean(absolute)
+				referenced[clean] = true
+				if resolved, err := filepath.EvalSymlinks(clean); err == nil {
+					referenced[filepath.Clean(resolved)] = true
+				}
+			}
+		}
+	}
+
+	rows, err := s.db.Query(`SELECT kind,params FROM studio_jobs WHERE id<>?`, exceptJobID)
+	if err != nil {
+		return nil, false
+	}
+	for rows.Next() {
+		var candidate Job
+		if err := rows.Scan(&candidate.Kind, &candidate.Params); err != nil {
+			rows.Close()
+			return nil, false
+		}
+		paths, err := studioJobInputPaths(candidate)
+		if err != nil {
+			rows.Close()
+			return nil, false
+		}
+		add(paths)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, false
+	}
+	rows.Close()
+
+	planRows, err := s.db.Query(`SELECT payload FROM studio_affiliate_plans`)
+	if err != nil {
+		return nil, false
+	}
+	for planRows.Next() {
+		var payload string
+		var prep AffiliatePreparation
+		if err := planRows.Scan(&payload); err != nil {
+			planRows.Close()
+			return nil, false
+		}
+		if err := json.Unmarshal([]byte(payload), &prep); err != nil {
+			planRows.Close()
+			return nil, false
+		}
+		add(affiliateInputPaths(prep.Params))
+	}
+	if err := planRows.Err(); err != nil {
+		planRows.Close()
+		return nil, false
+	}
+	planRows.Close()
+
+	var graphTable int
+	err = s.db.QueryRow(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='studio_workflow_graphs'`).Scan(&graphTable)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, false
+	}
+	if err == nil {
+		graphRows, err := s.db.Query(`SELECT graph_json FROM studio_workflow_graphs`)
+		if err != nil {
+			return nil, false
+		}
+		for graphRows.Next() {
+			var graphJSON string
+			var graph flow.FlowGraph
+			if err := graphRows.Scan(&graphJSON); err != nil {
+				graphRows.Close()
+				return nil, false
+			}
+			if err := json.Unmarshal([]byte(graphJSON), &graph); err != nil {
+				graphRows.Close()
+				return nil, false
+			}
+			for _, node := range graph.Nodes {
+				add(flowStringValues(node.Params))
+				add(flowStringValues(node.State.Outputs))
+				add([]string{node.State.OutputPreview})
+			}
+		}
+		if err := graphRows.Err(); err != nil {
+			graphRows.Close()
+			return nil, false
+		}
+		graphRows.Close()
+	}
+	return referenced, true
+}
+
+func flowStringValues(value any) []string {
+	var values []string
+	var visit func(any)
+	visit = func(value any) {
+		switch value := value.(type) {
+		case string:
+			values = append(values, value)
+		case []any:
+			for _, item := range value {
+				visit(item)
+			}
+		case map[string]any:
+			for _, item := range value {
+				visit(item)
+			}
+		}
+	}
+	visit(value)
+	return values
 }
 
 // MarkInterruptedJobs fails interrupted Studio jobs at startup. TikTok Radar

@@ -236,3 +236,75 @@ func TestAffiliatePlanIsSavedAndReusedByJob(t *testing.T) {
 		t.Fatalf("database insert failure consumed retryable shot plan: %v", err)
 	}
 }
+
+func TestPruneExpiredAffiliatePlansCleansOnlyUnreferencedUploads(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	expiredPhoto := filepath.Join(st.UploadDir(), "expired-product.jpg")
+	sharedPhoto := filepath.Join(st.UploadDir(), "shared-product.jpg")
+	for _, path := range []string{expiredPhoto, sharedPhoto} {
+		if err := os.WriteFile(path, []byte("photo"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	expiredAt := now.Add(-affiliatePreparationLifetime - time.Hour).Format(time.RFC3339Nano)
+	freshAt := now.Format(time.RFC3339Nano)
+	plans := []AffiliatePreparation{
+		{ID: "expired-plan", CreatedAt: expiredAt, Params: AffiliateParams{ProductPhoto: expiredPhoto}},
+		{ID: "expired-shared-plan", CreatedAt: expiredAt, Params: AffiliateParams{ProductPhoto: sharedPhoto}},
+		{ID: "fresh-shared-plan", CreatedAt: freshAt, Params: AffiliateParams{ProductPhoto: sharedPhoto}},
+	}
+	for _, plan := range plans {
+		payload, err := json.Marshal(plan)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.db.Exec(`INSERT INTO studio_affiliate_plans(id,payload,created_at) VALUES(?,?,?)`,
+			plan.ID, string(payload), plan.CreatedAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := st.pruneExpiredAffiliatePlans(now); err != nil {
+		t.Fatalf("prune expired plans: %v", err)
+	}
+	if _, err := os.Stat(expiredPhoto); !os.IsNotExist(err) {
+		t.Fatalf("unreferenced expired plan input remains: %v", err)
+	}
+	if _, err := os.Stat(sharedPhoto); err != nil {
+		t.Fatalf("input referenced by fresh plan was removed: %v", err)
+	}
+	if _, err := st.GetAffiliatePreparation("fresh-shared-plan"); err != nil {
+		t.Fatalf("fresh plan was removed: %v", err)
+	}
+}
+
+func TestPrepareAffiliatePlanFailureCleansUnreferencedListingUploads(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	productPhoto := filepath.Join(st.UploadDir(), "failed-plan-product.jpg")
+	if err := os.WriteFile(productPhoto, []byte("photo"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = st.PrepareAffiliatePlan(context.Background(), AffiliateParams{
+		ProductPhoto:        productPhoto,
+		ExtraPhotos:         []string{productPhoto},
+		SourceMusicVideoURL: "https://www.tiktok.com/@creator/video/1234567890",
+	})
+	if err == nil {
+		t.Fatal("plan with missing Radar evidence unexpectedly succeeded")
+	}
+	if _, err := os.Stat(productPhoto); !os.IsNotExist(err) {
+		t.Fatalf("unreferenced listing upload remains after failed plan: %v", err)
+	}
+}

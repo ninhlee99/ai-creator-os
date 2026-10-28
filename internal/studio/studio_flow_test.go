@@ -2,6 +2,7 @@ package studio
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -238,6 +239,147 @@ func TestDeleteJobRemovesOutputWrittenBeforeRunnerExit(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(outDir, "late.mp4")); !os.IsNotExist(err) {
 		t.Fatalf("late output remains after job deletion: stat err=%v", err)
 	}
+}
+
+func TestDeleteJobRemovesTransientInputsAndPreservesSharedModelPhotos(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	writeFile := func(path string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("input"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertExists := func(path string, want bool) {
+		t.Helper()
+		_, err := os.Stat(path)
+		if want && err != nil {
+			t.Fatalf("expected file %q to remain: %v", path, err)
+		}
+		if !want && !os.IsNotExist(err) {
+			t.Fatalf("expected file %q to be removed; stat err=%v", path, err)
+		}
+	}
+
+	product := filepath.Join(st.UploadDir(), "product.jpg")
+	extra := filepath.Join(st.UploadDir(), "product-angle.jpg")
+	clip := filepath.Join(st.UploadDir(), "motion.mp4")
+	model := filepath.Join(st.WorkDir(), "models", "1", "character.jpg")
+	for _, path := range []string{product, extra, clip, model} {
+		writeFile(path)
+	}
+	if _, err := st.insertJobWithID("affiliate-inputs", KindAffiliate, "Affiliate", AffiliateParams{
+		ProductPhoto: product, ExtraPhotos: []string{extra}, Clips: []string{clip},
+		ModelPhoto: model, ModelPhotos: []string{model},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	sharedParams := AffiliateParams{
+		ProductPhoto: product, ExtraPhotos: []string{extra}, Clips: []string{clip},
+		ModelPhoto: model, ModelPhotos: []string{model},
+	}
+	if _, err := st.insertJobWithID("affiliate-retry", KindAffiliate, "Affiliate retry", sharedParams); err != nil {
+		t.Fatal(err)
+	}
+	planPayload, err := json.Marshal(AffiliatePreparation{ID: "shared-plan", Params: sharedParams})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.db.Exec(`INSERT INTO studio_affiliate_plans(id,payload,created_at) VALUES(?,?,?)`,
+		"shared-plan", string(planPayload), time.Now().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob("affiliate-inputs"); err != nil {
+		t.Fatalf("delete affiliate job: %v", err)
+	}
+	for _, path := range []string{product, extra, clip} {
+		assertExists(path, true)
+	}
+	if err := st.DeleteJob("affiliate-retry"); err != nil {
+		t.Fatalf("delete affiliate retry: %v", err)
+	}
+	for _, path := range []string{product, extra, clip} {
+		assertExists(path, true)
+	}
+	if _, err := st.db.Exec(`DELETE FROM studio_affiliate_plans WHERE id=?`, "shared-plan"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.insertJobWithID("affiliate-last-ref", KindAffiliate, "Affiliate final reference", sharedParams); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob("affiliate-last-ref"); err != nil {
+		t.Fatalf("delete final affiliate ref: %v", err)
+	}
+	for _, path := range []string{product, extra, clip} {
+		assertExists(path, false)
+	}
+	assertExists(model, true)
+
+	source := filepath.Join(st.UploadDir(), "viral-source.mp4")
+	legacySource := filepath.Join(dir, "uploads", "legacy-viral-source.mp4")
+	outside := filepath.Join(dir, "outside-source.mp4")
+	for _, path := range []string{source, legacySource, outside} {
+		writeFile(path)
+	}
+	if _, err := st.insertJobWithID("viral-input", KindViral, "Viral", ViralParams{SampleVideo: source}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.insertJobWithID("viral-retry", KindViral, "Viral retry", ViralParams{SampleVideo: source}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.insertJobWithID("legacy-viral-input", KindViral, "Legacy viral", ViralParams{SampleVideo: legacySource}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.insertJobWithID("viral-outside-input", KindViral, "Viral outside", ViralParams{SampleVideo: outside}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob("viral-input"); err != nil {
+		t.Fatalf("delete viral job: %v", err)
+	}
+	assertExists(source, true)
+	if err := st.DeleteJob("viral-retry"); err != nil {
+		t.Fatalf("delete viral retry: %v", err)
+	}
+	if err := st.DeleteJob("legacy-viral-input"); err != nil {
+		t.Fatalf("delete legacy viral job: %v", err)
+	}
+	if err := st.DeleteJob("viral-outside-input"); err != nil {
+		t.Fatalf("delete outside viral job: %v", err)
+	}
+	assertExists(source, false)
+	assertExists(legacySource, false)
+	assertExists(outside, true)
+
+	aliasedSource := filepath.Join(st.UploadDir(), "aliased-viral-source.mp4")
+	aliasDir := filepath.Join(dir, "upload-alias")
+	if err := os.Symlink(st.UploadDir(), aliasDir); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(aliasedSource)
+	if _, err := st.insertJobWithID("viral-aliased-owner", KindViral, "Viral owner", ViralParams{SampleVideo: aliasedSource}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.insertJobWithID("viral-aliased-reference", KindViral, "Viral reference", ViralParams{
+		SampleVideo: filepath.Join(aliasDir, filepath.Base(aliasedSource)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob("viral-aliased-owner"); err != nil {
+		t.Fatalf("delete aliased owner: %v", err)
+	}
+	assertExists(aliasedSource, true)
+	if err := st.DeleteJob("viral-aliased-reference"); err != nil {
+		t.Fatalf("delete aliased reference: %v", err)
+	}
+	assertExists(aliasedSource, false)
 }
 
 func TestDetachedFlowPanicMarksRunFailed(t *testing.T) {

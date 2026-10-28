@@ -243,7 +243,7 @@ func TestTC16_WebAPI_Upload(t *testing.T) {
 
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	part, err := writer.CreateFormFile("file", "test_character.jpg")
+	part, err := writer.CreateFormFile("file", "áo nhân vật (test).JPEG")
 	if err != nil {
 		t.Fatalf("CreateFormFile failed: %v", err)
 	}
@@ -272,7 +272,20 @@ func TestTC16_WebAPI_Upload(t *testing.T) {
 	if !res.Ok || res.FilePath == "" || res.URL == "" {
 		t.Errorf("Kết quả upload không hợp lệ: %+v", res)
 	}
+	if !mediaNameRe.MatchString(res.Filename) {
+		t.Fatalf("upload filename %q is rejected by media route", res.Filename)
+	}
+	if filepath.Ext(res.Filename) != ".jpeg" {
+		t.Fatalf("upload extension = %q, want normalized .jpeg", filepath.Ext(res.Filename))
+	}
 	if _, err := os.Stat(res.FilePath); err != nil {
 		t.Errorf("File upload không tồn tại trên đĩa: %s", res.FilePath)
+	}
+	mediaReq := httptest.NewRequest("GET", res.URL, nil)
+	mediaReq.SetPathValue("name", res.Filename)
+	mediaResp := httptest.NewRecorder()
+	srv.handleMedia(mediaResp, mediaReq)
+	if mediaResp.Result().StatusCode != http.StatusOK {
+		t.Fatalf("GET %s status = %d, want 200", res.URL, mediaResp.Result().StatusCode)
 	}
 }

@@ -629,9 +629,18 @@ func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	safeBasename := filepath.Base(header.Filename)
-	safeBasename = strings.ReplaceAll(safeBasename, " ", "_")
-	targetFilename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), safeBasename)
+	baseName := strings.TrimSuffix(filepath.Base(header.Filename), filepath.Ext(header.Filename))
+	safeBasename := strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_' {
+			return r
+		}
+		return '_'
+	}, baseName)
+	safeBasename = strings.Trim(safeBasename, "_")
+	if safeBasename == "" {
+		safeBasename = "upload"
+	}
+	targetFilename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), safeBasename, ext)
 	targetPath := filepath.Join(uploadDir, targetFilename)
 
 	dst, err := os.Create(targetPath)

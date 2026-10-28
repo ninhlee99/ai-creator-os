@@ -34,6 +34,12 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
+	keepListingUploads := false
+	defer func() {
+		if !keepListingUploads {
+			removeUploadedFiles(append([]string{p.ProductPhoto}, p.ExtraPhotos...))
+		}
+	}()
 	if s.Mgr != nil {
 		account, err := s.Mgr.Get(p.AccountID)
 		if err != nil {
@@ -67,6 +73,7 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 		s.writeJSON(w, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
+	keepListingUploads = true
 	shots := make([]affiliatePlanShotResponse, 0, len(prep.Shots))
 	for _, shot := range prep.Shots {
 		shots = append(shots, affiliatePlanShotResponse{
@@ -79,8 +86,14 @@ func (s *Server) handleStudioAffiliatePlan(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.AffiliateParams, error) {
-	var p studio.AffiliateParams
+func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (p studio.AffiliateParams, retErr error) {
+	var listingUploads []string
+	keepListingUploads := false
+	defer func() {
+		if !keepListingUploads {
+			removeUploadedFiles(listingUploads)
+		}
+	}()
 	sourceMusicVideoURL := strings.TrimSpace(r.FormValue("source_music_video_url"))
 	source, err := s.Studio.ResolveTikTokRadarDanceVideo(r.Context(), sourceMusicVideoURL)
 	if err != nil {
@@ -97,12 +110,19 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 	}
 
 	var modelPhotos []string
+	var modelPhotoUploads []string
+	defer func() {
+		for _, path := range modelPhotoUploads {
+			_ = os.Remove(path)
+		}
+	}()
 	for _, key := range []string{"model_photos", "character_photos", "model_photo", "character_photo"} {
 		photos, err := saveUploads(r, key, upDir, 10)
 		if err != nil {
 			return p, fmt.Errorf("ảnh nhân vật lỗi: %w", err)
 		}
 		modelPhotos = append(modelPhotos, photos...)
+		modelPhotoUploads = append(modelPhotoUploads, photos...)
 	}
 	if len(modelPhotos) > 0 {
 		library, err := s.Studio.ModelLibrary()
@@ -183,10 +203,14 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 		}
 	}
 	productPhoto, err := saveUpload(r, "product_photo", upDir)
+	if productPhoto != "" {
+		listingUploads = append(listingUploads, productPhoto)
+	}
 	if err != nil {
 		return p, fmt.Errorf("ảnh sản phẩm lỗi: %w", err)
 	}
 	extraPhotos, err := saveUploads(r, "extra_photos", upDir, 6)
+	listingUploads = append(listingUploads, extraPhotos...)
 	if err != nil {
 		return p, fmt.Errorf("ảnh góc khác lỗi: %w", err)
 	}
@@ -195,6 +219,7 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 			break
 		}
 		dst := filepath.Join(upDir, fmt.Sprintf("%d-plan-product-%d.jpg", time.Now().UnixNano(), i))
+		listingUploads = append(listingUploads, dst)
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		err := studio.DownloadImage(ctx, raw, dst)
 		cancel()
@@ -204,6 +229,8 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 			} else {
 				extraPhotos = append(extraPhotos, dst)
 			}
+		} else {
+			_ = os.Remove(dst)
 		}
 	}
 	if productPhoto == "" {
@@ -230,5 +257,6 @@ func (s *Server) affiliatePlanParamsFromRequest(r *http.Request) (studio.Affilia
 	if p.VideoEngine == "" {
 		p.VideoEngine = studio.AffiliateVideoEngineMuseAI
 	}
+	keepListingUploads = true
 	return p, nil
 }

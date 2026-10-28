@@ -25,6 +25,12 @@ const affiliatePreparationLifetime = 7 * 24 * time.Hour
 // list that the later clip upload must follow.
 func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (AffiliatePreparation, error) {
 	var empty AffiliatePreparation
+	keepUploads := false
+	defer func() {
+		if !keepUploads {
+			s.cleanupAffiliatePlanInputs(p)
+		}
+	}()
 	source, err := s.ResolveTikTokRadarDanceVideo(ctx, p.SourceMusicVideoURL)
 	if err != nil {
 		return empty, fmt.Errorf("chọn video nhảy có sound trong Radar TikTok: %w", err)
@@ -143,13 +149,13 @@ func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (A
 	if err != nil {
 		return empty, fmt.Errorf("không lưu được shot plan: %w", err)
 	}
-	expiresBefore := time.Now().UTC().Add(-affiliatePreparationLifetime).Format(time.RFC3339Nano)
-	if _, err := s.db.Exec(`DELETE FROM studio_affiliate_plans WHERE created_at < ?`, expiresBefore); err != nil {
+	if err := s.pruneExpiredAffiliatePlans(time.Now().UTC()); err != nil {
 		return empty, fmt.Errorf("không dọn được shot plan cũ: %w", err)
 	}
 	if _, err := s.db.Exec(`INSERT INTO studio_affiliate_plans(id,payload,created_at) VALUES(?,?,?)`, prep.ID, string(data), prep.CreatedAt); err != nil {
 		return empty, fmt.Errorf("không lưu được shot plan: %w", err)
 	}
+	keepUploads = true
 	return prep, nil
 }
 
@@ -169,10 +175,81 @@ func (s *Studio) GetAffiliatePreparation(id string) (AffiliatePreparation, error
 	}
 	created, err := time.Parse(time.RFC3339Nano, prep.CreatedAt)
 	if err != nil || time.Since(created) > affiliatePreparationLifetime {
-		_, _ = s.db.Exec(`DELETE FROM studio_affiliate_plans WHERE id = ?`, id)
+		if result, deleteErr := s.db.Exec(`DELETE FROM studio_affiliate_plans WHERE id = ?`, id); deleteErr == nil {
+			if deleted, _ := result.RowsAffected(); deleted == 1 {
+				s.cleanupAffiliatePlanInputs(prep.Params)
+			}
+		}
 		return AffiliatePreparation{}, fmt.Errorf("shot plan đã hết hạn; hãy lập lại plan")
 	}
 	return prep, nil
+}
+
+func (s *Studio) pruneExpiredAffiliatePlans(now time.Time) error {
+	cutoff := now.Add(-affiliatePreparationLifetime).Format(time.RFC3339Nano)
+	rows, err := s.db.Query(`SELECT id,payload FROM studio_affiliate_plans WHERE created_at < ?`, cutoff)
+	if err != nil {
+		return err
+	}
+	type stalePlan struct {
+		id    string
+		prep  AffiliatePreparation
+		valid bool
+	}
+	var stale []stalePlan
+	for rows.Next() {
+		var item stalePlan
+		var payload string
+		if err := rows.Scan(&item.id, &payload); err != nil {
+			rows.Close()
+			return err
+		}
+		item.valid = json.Unmarshal([]byte(payload), &item.prep) == nil
+		stale = append(stale, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	if len(stale) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var expired []AffiliateParams
+	for _, item := range stale {
+		result, err := tx.Exec(`DELETE FROM studio_affiliate_plans WHERE id=? AND created_at < ?`, item.id, cutoff)
+		if err != nil {
+			return err
+		}
+		deleted, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if deleted == 1 && item.valid {
+			expired = append(expired, item.prep.Params)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	for _, params := range expired {
+		s.cleanupAffiliatePlanInputs(params)
+	}
+	return nil
+}
+
+func (s *Studio) cleanupAffiliatePlanInputs(params AffiliateParams) {
+	data, err := json.Marshal(params)
+	if err != nil {
+		return
+	}
+	s.removeJobInputUploads(Job{Kind: KindAffiliate, Params: string(data)})
 }
 
 // ReissueAffiliatePreparation makes a fresh one-use plan token for retrying an

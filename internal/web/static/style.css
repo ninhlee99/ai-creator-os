@@ -4268,6 +4268,10 @@ body.page-workflow .layout {
   border-color: #EF4444;
 }
 
+.wf-node.node-cancelled {
+  border-color: #94A3B8;
+}
+
 /* Node Header / Main Section */
 .wf-node-main {
   display: flex;
@@ -4563,6 +4567,11 @@ body.page-workflow .layout {
 .wf-status-badge.wf-status-failed {
   color: #EF4444;
   background: rgba(239, 68, 68, 0.1);
+}
+
+.wf-status-badge.wf-status-cancelled {
+  color: #64748B;
+  background: rgba(100, 116, 139, 0.1);
 }
 
 /* ComfyUI-Style Rich Node Live Preview Container */

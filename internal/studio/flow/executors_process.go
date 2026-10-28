@@ -769,12 +769,8 @@ func executeAudioMerge(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 		return nil, fmt.Errorf("AudioMergeNode: Thiếu file video đầu vào")
 	}
 	if audioIn == "" {
-		hasAudio, err := probeFlowHasAudio(videoIn)
-		if err != nil {
-			hasAudio = true
-		}
-		if !hasAudio {
-			return nil, fmt.Errorf("không có audio riêng hoặc audio nhúng trong video")
+		if ctx.Log != nil {
+			ctx.Log("AudioMergeNode: Không có track riêng; giữ nguyên video đầu vào.")
 		}
 		return map[string]any{"video_out": videoIn}, nil
 	}

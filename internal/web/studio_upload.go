@@ -36,11 +36,15 @@ func saveUpload(r *http.Request, field, dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := io.Copy(out, io.LimitReader(f, 50<<20)); err != nil {
-		out.Close()
-		return "", err
+	_, copyErr := io.Copy(out, io.LimitReader(f, 50<<20))
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		_ = os.Remove(dst)
+		if copyErr != nil {
+			return "", copyErr
+		}
+		return "", closeErr
 	}
-	out.Close()
 	return dst, nil
 }
 
@@ -50,6 +54,12 @@ func saveUploads(r *http.Request, field, dir string, max int) ([]string, error) 
 		return nil, nil
 	}
 	var out []string
+	completed := false
+	defer func() {
+		if !completed {
+			removeUploadedFiles(out)
+		}
+	}()
 	for i, hdr := range r.MultipartForm.File[field] {
 		if i >= max {
 			break
@@ -76,14 +86,22 @@ func saveUploads(r *http.Request, field, dir string, max int) ([]string, error) 
 			f.Close()
 			return nil, err
 		}
-		_, err = io.Copy(out2, f)
-		out2.Close()
-		f.Close()
-		if err != nil {
-			return nil, err
+		_, copyErr := io.Copy(out2, f)
+		closeOutErr := out2.Close()
+		closeInErr := f.Close()
+		if copyErr != nil || closeOutErr != nil || closeInErr != nil {
+			_ = os.Remove(dst)
+			if copyErr != nil {
+				return nil, copyErr
+			}
+			if closeOutErr != nil {
+				return nil, closeOutErr
+			}
+			return nil, closeInErr
 		}
 		out = append(out, dst)
 	}
+	completed = true
 	return out, nil
 }
 
@@ -101,6 +119,12 @@ func saveMotionClips(r *http.Request, field, dir string, max int) ([]string, err
 	const maxTotalBytes = 600 << 20
 	var total int64
 	paths := make([]string, 0, len(headers))
+	completed := false
+	defer func() {
+		if !completed {
+			removeUploadedFiles(paths)
+		}
+	}()
 	for i, hdr := range headers {
 		if hdr.Size == 0 {
 			continue
@@ -147,5 +171,14 @@ func saveMotionClips(r *http.Request, field, dir string, max int) ([]string, err
 		}
 		paths = append(paths, path)
 	}
+	completed = true
 	return paths, nil
+}
+
+func removeUploadedFiles(paths []string) {
+	for _, path := range paths {
+		if strings.TrimSpace(path) != "" {
+			_ = os.Remove(path)
+		}
+	}
 }

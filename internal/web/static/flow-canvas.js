@@ -17,6 +17,16 @@
     }
   };
 
+  const workflowMediaURL = value => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw) || /^\/(?:media|static|studio\/uploads|uploads)\//i.test(raw)) {
+      return safeMediaURL(raw);
+    }
+    const filename = raw.split(/[\\/]/).pop();
+    return filename ? safeMediaURL(`/media/${encodeURIComponent(filename)}`) : '';
+  };
+
   const flowGraphMayUseProviderCredits = graph => (graph?.nodes || []).some(node => {
     const type = String(node?.type || '').toLowerCase();
     const defaultOutputType = type === 'custom_web_ai' ? 'video' : type === 'custom_universal_ai' ? 'auto' : 'text';
@@ -568,7 +578,7 @@
     createNodePreviewElement(node) {
       const config = this.getNodePreviewConfig(node);
       if (!config) return null;
-      const mediaURL = config.url ? safeMediaURL(config.url) : '';
+      const mediaURL = config.url ? workflowMediaURL(config.url) : '';
       if (config.url && !mediaURL) return null;
 
       // Không render nếu không có url, không cho phép upload và không phải dedicated preview
@@ -935,10 +945,7 @@
         return;
       }
 
-      const rawUrl = String(outputPreviewOrUrl).startsWith('/') || String(outputPreviewOrUrl).startsWith('http')
-        ? String(outputPreviewOrUrl)
-        : `/media/${encodeURIComponent(this.getFilename(outputPreviewOrUrl))}`;
-      const url = safeMediaURL(rawUrl);
+      const url = workflowMediaURL(outputPreviewOrUrl);
       if (!url) return;
 
       const isVid = url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov');
@@ -1738,6 +1745,9 @@
       if (state.status === 'failed') {
         const error = String(state.error || '');
         return `<span class="wf-status-badge wf-status-failed" title="${escapeHTML(error)}">⚠️ Lỗi: ${escapeHTML(error ? error.slice(0, 32) : 'Thất bại')}</span>`;
+      }
+      if (state.status === 'cancelled') {
+        return `<span class="wf-status-badge wf-status-cancelled">⏹ Đã dừng</span>`;
       }
       return '';
     }
@@ -2592,6 +2602,7 @@
                   nodeEl.classList.toggle('node-active-executing', nodeState.status === 'running');
                   nodeEl.classList.toggle('node-completed', nodeState.status === 'completed');
                   nodeEl.classList.toggle('node-failed', nodeState.status === 'failed');
+                  nodeEl.classList.toggle('node-cancelled', nodeState.status === 'cancelled');
                 }
 
                 // ComfyUI Live Preview: Tự động hiển thị kết quả trực tiếp lên node trên Canvas ngay khi chạy xong

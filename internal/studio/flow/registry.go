@@ -141,7 +141,7 @@ func registerAllBuiltinNodes() {
 		Type:        "audio_source",
 		Title:       "Âm thanh / Nhạc nền (Audio)",
 		Category:    CategoryInput,
-		Description: "Nạp file audio thật hoặc URL audio trực tiếp",
+		Description: "Tùy chọn: nạp file audio hoặc URL trực tiếp; để trống sẽ giữ âm thanh video nếu có",
 		Icon:        "music",
 		Inputs:      []FlowPort{},
 		Outputs: []FlowPort{

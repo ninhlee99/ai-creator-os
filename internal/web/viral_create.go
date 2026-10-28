@@ -78,7 +78,7 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	duration, _ := strconv.Atoi(r.PostFormValue("duration"))
 
 	// Character / Model face lookup or direct upload (supports multiple photos)
-	upDir := filepath.Join(s.DataDir, "uploads")
+	upDir := s.Studio.UploadDir()
 	if err := os.MkdirAll(upDir, 0o755); err != nil {
 		writeViralCreateError(w, r, analysisOnly, http.StatusInternalServerError, "Không tạo được thư mục tải lên: "+err.Error())
 		return
@@ -89,13 +89,11 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	var sampleVideoPath string
 	keepSourceVideoForJob := false
 	defer func() {
-		if analysisOnly {
-			for _, path := range previewCleanup {
-				_ = os.Remove(path)
+		for _, path := range previewCleanup {
+			if !analysisOnly && keepSourceVideoForJob && path == sampleVideoPath {
+				continue
 			}
-		}
-		if !analysisOnly && !keepSourceVideoForJob && sampleVideoPath != "" {
-			_ = os.Remove(sampleVideoPath)
+			_ = os.Remove(path)
 		}
 	}()
 	for _, key := range []string{"character_photos", "character_photo", "model_photos", "model_photo"} {
@@ -302,12 +300,14 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jobID, err := s.Studio.EnqueueViral(r.Context(), p)
+	if jobID != "" {
+		keepSourceVideoForJob = true
+	}
 	if err != nil {
 		log.Printf("web: viral create error: %v", err)
 		writeViralCreateError(w, r, false, http.StatusInternalServerError, "Lỗi tạo job: "+err.Error())
 		return
 	}
-	keepSourceVideoForJob = true
 
 	if s.Ledger != nil {
 		_ = s.Ledger.Decide("human", "viral_source_replace", nil, fmt.Sprintf("Tạo video thay nhân vật trên nguồn đã chọn job=%s genre=%s: %s", jobID, genre, topic), nil)

@@ -29,6 +29,8 @@ func validateViralSourceDuration(duration float64) error {
 }
 
 // EnqueueViral đưa một tác vụ tạo video viral vào hàng đợi render của Studio.
+// Nếu job đã persist nhưng không khởi chạy được, trả ID cùng error để caller
+// vẫn giữ các file input mà job cần cho retry.
 func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -111,11 +113,15 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	}
 	museCreditsAcknowledged := p.FlowCreditsAcknowledged
 	p.FlowCreditsAcknowledged = false
+	return s.enqueueValidatedViral(p, museCreditsAcknowledged)
+}
+
+func (s *Studio) enqueueValidatedViral(p ViralParams, museCreditsAcknowledged bool) (string, error) {
 	id, err := s.insertJob(KindViral, p.Topic, p)
 	if err != nil {
 		return "", err
 	}
-	timeout := 20*time.Minute + time.Duration(duration*10)*time.Second
+	timeout := 20*time.Minute + time.Duration(p.TargetDuration*10)*time.Second
 	if timeout > 6*time.Hour {
 		timeout = 6 * time.Hour
 	}
@@ -125,7 +131,7 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	}); err != nil {
 		s.appendLog(id, "LỖI: "+err.Error())
 		s.setStatus(id, StatusFailed, 100)
-		return "", err
+		return id, err
 	}
 	return id, nil
 }

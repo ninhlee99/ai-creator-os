@@ -365,6 +365,8 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 		// Kiểm tra nếu context bị hủy giữa chừng
 		if err := ctx.Context.Err(); err != nil {
 			run.Status = "cancelled"
+			run.FinishedAt = time.Now().Format(time.RFC3339)
+			markUnfinishedNodesCancelled(run, run.FinishedAt, err.Error())
 			appendRunLog("Luồng thực thi đã bị hủy bởi người dùng")
 			run.Log = logBuilder.String()
 			return run, err
@@ -463,11 +465,9 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 
 		outputs, execErr := executor(ctx, node, nodeInputs)
 		if ctxErr := ctx.Context.Err(); ctxErr != nil {
-			nodeState.Status = "failed"
-			nodeState.Error = ctxErr.Error()
-			nodeState.FinishedAt = time.Now().Format(time.RFC3339)
-			run.NodeStates[nodeID] = nodeState
 			run.Status = "cancelled"
+			run.FinishedAt = time.Now().Format(time.RFC3339)
+			markUnfinishedNodesCancelled(run, run.FinishedAt, ctxErr.Error())
 			appendRunLog(fmt.Sprintf("Luồng bị hủy tại node '%s': %s", node.Title, ctxErr.Error()))
 			run.Log = logBuilder.String()
 			return run, ctxErr
@@ -491,6 +491,9 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 				continue
 			}
 			if !exists || isEmptyFlowValue(value) {
+				if edgeTargetsOptionalInput(nodeMap, edge) {
+					continue
+				}
 				execErr = fmt.Errorf("node %q không trả dữ liệu cho cổng đã nối %q", node.Title, edge.FromPort)
 				nodeState.Status = "failed"
 				nodeState.Error = execErr.Error()
@@ -623,6 +626,38 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	appendRunLog(fmt.Sprintf("Toàn bộ đồ thị đã thực thi thành công 100%% (Final Output: %s)", filepath.Base(run.FinalOutput)))
 
 	return run, nil
+}
+
+func edgeTargetsOptionalInput(nodes map[string]*FlowNode, edge FlowEdge) bool {
+	target, ok := nodes[edge.ToNode]
+	if !ok || target == nil {
+		return false
+	}
+	definition, ok := GetNodeDefinition(target.Type)
+	if !ok {
+		return false
+	}
+	for _, input := range definition.Inputs {
+		if input.ID == edge.ToPort {
+			return !input.Required
+		}
+	}
+	return false
+}
+
+func markUnfinishedNodesCancelled(run *FlowRun, finishedAt, reason string) {
+	if run == nil {
+		return
+	}
+	for id, state := range run.NodeStates {
+		if state.Status != "queued" && state.Status != "running" {
+			continue
+		}
+		state.Status = "cancelled"
+		state.Error = reason
+		state.FinishedAt = finishedAt
+		run.NodeStates[id] = state
+	}
 }
 
 func isEmptyFlowValue(value any) bool {

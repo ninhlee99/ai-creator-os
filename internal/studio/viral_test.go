@@ -2,7 +2,9 @@ package studio
 
 import (
 	"context"
+	"encoding/json"
 	"math"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,6 +49,41 @@ func TestEnqueueViralJob(t *testing.T) {
 	}
 	if jobID != "" || len(s.ListViralJobs(10)) != 0 {
 		t.Fatalf("paid video edit must not enqueue a job: id=%q jobs=%d", jobID, len(s.ListViralJobs(10)))
+	}
+}
+
+func TestEnqueueValidatedViralReturnsIDWhenPersistedJobCannotStart(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	st.mu.Lock()
+	st.shuttingDown = true
+	st.mu.Unlock()
+
+	source := filepath.Join(st.UploadDir(), "source.mp4")
+	if err := os.WriteFile(source, []byte("source"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	id, err := st.enqueueValidatedViral(ViralParams{Topic: "retry source", SampleVideo: source}, true)
+	if err == nil || !strings.Contains(err.Error(), "shutting down") {
+		t.Fatalf("enqueueValidatedViral error = %v, want shutdown error", err)
+	}
+	if id == "" {
+		t.Fatal("persisted failed job returned empty ID")
+	}
+	job, ok := st.GetJob(id)
+	if !ok || job.Status != StatusFailed {
+		t.Fatalf("persisted job = (%+v, %v), want failed row", job, ok)
+	}
+	var saved ViralParams
+	if err := json.Unmarshal([]byte(job.Params), &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.SampleVideo != source {
+		t.Fatalf("persisted source path = %q, want %q", saved.SampleVideo, source)
 	}
 }
 

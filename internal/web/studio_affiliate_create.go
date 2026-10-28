@@ -125,7 +125,14 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 	}
 	p.VideoEngine = studio.AffiliateVideoEngineMuseAI
 	p.FlowCreditsAcknowledged = r.PostFormValue("confirm_flow_credits") == "1"
-	clips, err := saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
+	keepClipsForJob := false
+	var clips []string
+	defer func() {
+		if !keepClipsForJob {
+			removeUploadedFiles(clips)
+		}
+	}()
+	clips, err = saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
 	if err != nil {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Clip tham chiếu lỗi: "+err.Error()))
 		return
@@ -156,10 +163,29 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 	}
 	p.FixedCaption = strings.TrimSpace(r.FormValue("fixed_caption"))
 	if _, err := s.Studio.CreateAffiliateJob(p); err != nil {
+		if job, exists := s.Studio.GetJob(prep.ID); exists {
+			var saved studio.AffiliateParams
+			if studioUnmarshalJSON(job.Params, &saved) == nil && sameUploadPaths(saved.Clips, clips) {
+				keepClipsForJob = true
+			}
+		}
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Không tạo được job: "+err.Error()))
 		return
 	}
+	keepClipsForJob = true
 	seeOther(w, r, "/studio/jobs?tab=running&msg=created")
+}
+
+func sameUploadPaths(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // handleStudioAffiliateCreate queues an affiliate video job.
