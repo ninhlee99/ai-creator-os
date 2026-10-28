@@ -29,8 +29,8 @@
         "dance_style": "",
         "keyframe_count": 6,
         "require_audio": true,
-        "strict_analysis": false,
-        "analysis_timeout_seconds": 25
+        "strict_analysis": true,
+        "analysis_timeout_seconds": 90
       }
     },
     {
@@ -41,7 +41,7 @@
       "x": 360,
       "y": 520,
       "params": {
-        "max_segment_seconds": 10,
+        "max_segment_seconds": 3.7,
         "require_audio": true
       }
     },
@@ -81,7 +81,7 @@
         "location_type": "neon_dance_studio",
         "custom_location": "",
         "depth_of_field": "cinematic_bokeh",
-        "prompt": "{{location_type}} background. {{custom_location}} Keep the character clearly visible and preserve dance framing."
+        "prompt": "{{location_type}} background. {{custom_location}} Match the source camera framing and subject position. Preserve off-frame intervals and empty frames when present."
       }
     },
     {
@@ -108,7 +108,7 @@
       "params": {
         "dance_type": "TikTok dance",
         "expression": "confident",
-        "prompt_template": "Create a vertical 9:16 dance shot. Follow only the movement observed in the attached source video: {{movement_analysis}}. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Use supplied character photos as the sole source of identity. One adult subject, realistic anatomy and motion."
+        "prompt_template": "Create a vertical 9:16 dance shot. Follow only the movement observed in the attached source video: {{movement_analysis}}. The final {{motion_keyframe_count}} motion-reference images correspond in order to these moments in the source clip: {{motion_keyframe_timestamps}}. Reproduce each distinct pose and hand position at its corresponding beat, then interpolate transitions smoothly; do not hold or repeat the opening pose across later beats. Style: {{dance_type}}. Expression: {{expression}}. Outfit: {{outfit_desc}}. Setting: {{environment_desc}}. Lighting: {{lighting_desc}}. Use supplied character photos as the sole source of identity. One adult subject, realistic anatomy and motion."
       }
     },
     {
@@ -122,11 +122,16 @@
         "workflow_id": "preset_muse_viral_shot",
         "item_input_map": {
           "segment_video": "video_path",
-          "duration": "duration_seconds"
+          "duration": "duration_seconds",
+          "reference_images": "reference_images",
+          "variables": "variables"
         },
-        "shared_image_input_key": "reference_images",
         "result_output_key": "video",
-        "max_items": 20
+        "max_items": 20,
+        "share_muse_thread": true,
+        "previous_video_frame_input_key": "reference_images",
+        "previous_video_frame_insert_at": 1,
+        "previous_video_frame_variables_key": "variables"
       }
     },
     {
@@ -326,25 +331,32 @@
       "to_port": "outfit_desc"
     },
     {
+      "id": "e12_character_images",
+      "from_node": "retarget",
+      "from_port": "character_images",
+      "to_node": "split",
+      "to_port": "character_images"
+    },
+    {
+      "id": "e12_motion_keyframes",
+      "from_node": "retarget",
+      "from_port": "motion_keyframes",
+      "to_node": "split",
+      "to_port": "motion_keyframes"
+    },
+    {
+      "id": "e12_prompt_context",
+      "from_node": "retarget",
+      "from_port": "prompt_context",
+      "to_node": "split",
+      "to_port": "prompt_context"
+    },
+    {
       "id": "e13",
       "from_node": "split",
       "from_port": "segments",
       "to_node": "render_map",
       "to_port": "items"
-    },
-    {
-      "id": "e14",
-      "from_node": "retarget",
-      "from_port": "prompt_context",
-      "to_node": "render_map",
-      "to_port": "context"
-    },
-    {
-      "id": "e15",
-      "from_node": "retarget",
-      "from_port": "ingredients",
-      "to_node": "render_map",
-      "to_port": "reference_images"
     },
     {
       "id": "e16",

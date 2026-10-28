@@ -112,13 +112,17 @@ type NodeDefinition struct {
 }
 
 // ExecutionContext chứa dữ liệu môi trường và các hàm callback khi chạy node.
+type MuseThreadState struct {
+	Started bool
+}
+
 type ExecutionContext struct {
 	Context           context.Context
 	RunID             string
 	WorkDir           string
 	OutDir            string
 	AccountID         int
-	MuseThreadStarted bool // Đánh dấu thread mới đã được mở ở node đầu tiên chưa
+	MuseThread        *MuseThreadState
 	Log               func(msg string)
 	NodeStatus        func(nodeID string, state NodeState)
 	EngineCall        func(ctx context.Context, platform string, prompt string, images []string, aspect string, outPath string) (string, error)
@@ -136,6 +140,15 @@ type ExecutionContext struct {
 	ResolveProduct    func(ctx context.Context, id int64) (FlowProduct, error)
 	ResolveRadarVideo func(ctx context.Context, sourceURL string, requireDance bool) (FlowRadarVideo, error)
 	WorkflowStack     []string
+}
+
+func (ctx *ExecutionContext) startMuseThread() bool {
+	if ctx.MuseThread == nil {
+		ctx.MuseThread = &MuseThreadState{}
+	}
+	isNewThread := !ctx.MuseThread.Started
+	ctx.MuseThread.Started = true
+	return isNewThread
 }
 
 // FlowProduct contains approved catalog data available to product_input nodes.

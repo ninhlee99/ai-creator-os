@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -541,6 +542,7 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		return nil, fmt.Errorf("keyframe_count phải từ 2 đến 12")
 	}
 	keyframes := make([]string, 0, frameCount)
+	keyframeTimestamps := make([]float64, 0, frameCount)
 	for i := 0; i < frameCount; i++ {
 		timestamp := duration * float64(i+1) / float64(frameCount+1)
 		frame := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_keyframe_%02d.jpg", node.ID, i+1))
@@ -551,23 +553,29 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 			_ = writeDummyImage(frame, 720, 1280, fmt.Sprintf("KEYFRAME_%d", i+1))
 		}
 		keyframes = append(keyframes, frame)
+		keyframeTimestamps = append(keyframeTimestamps, timestamp)
 	}
 	styleHint := nodeParamString(node.Params, "dance_style", "")
-	analysisPrompt := fmt.Sprintf("Phân tích thứ tự chuyển động cơ thể qua các keyframe của video dài %.2f giây. Mô tả pose, hướng, nhịp và chuyển tiếp chỉ từ hình đã thấy; không đoán BPM. Gợi ý phong cách: %s", duration, styleHint)
+	var timeline strings.Builder
+	for i, timestamp := range keyframeTimestamps {
+		if i > 0 {
+			timeline.WriteString(", ")
+		}
+		fmt.Fprintf(&timeline, "frame %d at %.2fs", i+1, timestamp)
+	}
+	analysisPrompt := fmt.Sprintf("Analyze the supplied source-video keyframes in chronological order for a %.2f-second clip. Timestamp sequence: %s. Return one numbered note for each frame, describing visible hand/arm/torso/head pose, gaze, subject position and framing, then describe transitions between adjacent frames. Use only visible evidence; do not guess BPM or invent unseen actions. Style hint: %s", duration, timeline.String(), styleHint)
 	strictAnalysis := nodeParamBool(node.Params, "strict_analysis", false)
 	analysisCtx := ctx.Context
 	if analysisCtx == nil {
 		analysisCtx = context.Background()
 	}
-	if !strictAnalysis {
-		timeoutSeconds := nodeParamInt(node.Params, "analysis_timeout_seconds", 25)
-		if timeoutSeconds < 1 || timeoutSeconds > 120 {
-			timeoutSeconds = 25
-		}
-		var cancel context.CancelFunc
-		analysisCtx, cancel = context.WithTimeout(analysisCtx, time.Duration(timeoutSeconds)*time.Second)
-		defer cancel()
+	timeoutSeconds := nodeParamInt(node.Params, "analysis_timeout_seconds", 25)
+	if timeoutSeconds < 1 || timeoutSeconds > 120 {
+		timeoutSeconds = 25
 	}
+	var cancel context.CancelFunc
+	analysisCtx, cancel = context.WithTimeout(analysisCtx, time.Duration(timeoutSeconds)*time.Second)
+	defer cancel()
 	var movement string
 	var analysisErr error
 	if ctx.AnalyzeImages == nil {
@@ -603,7 +611,12 @@ func executeDanceMotionExtractor(ctx *ExecutionContext, node *FlowNode, inputs m
 		}
 	}
 
-	motionData := map[string]any{"movement_analysis": movement, "duration_seconds": duration, "keyframes_count": len(keyframes)}
+	motionData := map[string]any{
+		"movement_analysis":           movement,
+		"duration_seconds":            duration,
+		"keyframes_count":             len(keyframes),
+		"keyframe_timestamps_seconds": keyframeTimestamps,
+	}
 	ctx.Log(fmt.Sprintf("DanceMotionExtractorNode: Phân tích %d keyframe trong video %.2fs", len(keyframes), duration))
 
 	return map[string]any{
@@ -656,6 +669,7 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 			ingredients = append(ingredients, path)
 		}
 	}
+	characterReferences := append([]string(nil), ingredients...)
 	if extra, ok := inputs["ingredients"]; ok {
 		for _, path := range flowStringList(extra) {
 			if len(ingredients) >= 4 {
@@ -678,16 +692,33 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 		motionKeyframes = append(motionKeyframes, path)
 	}
 	ingredients = append(ingredients, motionKeyframes...)
+	motionKeyframeTimestamps := make([]string, 0, len(motionKeyframes))
+	keyframeTimes, hasTimestamps := motionData["keyframe_timestamps_seconds"].([]float64)
+	if !hasTimestamps || len(keyframeTimes) != len(motionKeyframes) {
+		keyframeTimes = make([]float64, len(motionKeyframes))
+		durationSeconds := nodeParamFloat(motionData, "duration_seconds", 0)
+		for i := range keyframeTimes {
+			keyframeTimes[i] = durationSeconds * float64(i+1) / float64(len(keyframeTimes)+1)
+		}
+	}
+	for _, timestamp := range keyframeTimes {
+		motionKeyframeTimestamps = append(motionKeyframeTimestamps, fmt.Sprintf("%.2fs", timestamp))
+	}
+	motionKeyframeRefs := make([]any, 0, len(motionKeyframes))
+	for i, path := range motionKeyframes {
+		motionKeyframeRefs = append(motionKeyframeRefs, map[string]any{"path": path, "timestamp_seconds": keyframeTimes[i]})
+	}
 
 	variables := map[string]any{
-		"movement_analysis":         movement,
-		"dance_type":                danceType,
-		"expression":                expression,
-		"environment_desc":          envDesc,
-		"lighting_desc":             lightDesc,
-		"outfit_desc":               outfitDesc,
-		"character_reference_count": characterReferenceCount,
-		"motion_keyframe_count":     len(motionKeyframes),
+		"movement_analysis":          movement,
+		"dance_type":                 danceType,
+		"expression":                 expression,
+		"environment_desc":           envDesc,
+		"lighting_desc":              lightDesc,
+		"outfit_desc":                outfitDesc,
+		"character_reference_count":  characterReferenceCount,
+		"motion_keyframe_count":      len(motionKeyframes),
+		"motion_keyframe_timestamps": strings.Join(motionKeyframeTimestamps, ", "),
 	}
 	template := nodeParamString(node.Params, "prompt_template", "")
 	if strings.TrimSpace(template) == "" {
@@ -705,6 +736,8 @@ func executeDanceRetarget(ctx *ExecutionContext, node *FlowNode, inputs map[stri
 		"prompt":              prompt,
 		"prompt_context":      map[string]any{"variables": variables},
 		"ingredients":         ingredients,
+		"character_images":    characterReferences,
+		"motion_keyframes":    motionKeyframeRefs,
 		"character_image":     charImg,
 		"reference_video":     inputString(inputs, "reference_video", ""),
 	}, nil
@@ -867,6 +900,39 @@ func executeVideoUpscale(ctx *ExecutionContext, node *FlowNode, inputs map[strin
 	}, nil
 }
 
+var danceAnalysisSectionStart = regexp.MustCompile(`(?m)^\s*\d+\.\s+`)
+var danceAnalysisTimestamp = regexp.MustCompile(`([0-9]+(?:\.[0-9]+)?)\s*(?:seconds|s)\b`)
+
+func danceAnalysisForSegment(analysis string, start, end float64) string {
+	sections := danceAnalysisSectionStart.FindAllStringIndex(analysis, -1)
+	var selected []string
+	for i, heading := range sections {
+		sectionEnd := len(analysis)
+		if i+1 < len(sections) {
+			sectionEnd = sections[i+1][0]
+		}
+		section := strings.TrimSpace(analysis[heading[1]:sectionEnd])
+		timestampMatch := danceAnalysisTimestamp.FindStringSubmatch(section)
+		if len(timestampMatch) != 2 {
+			continue
+		}
+		timestamp, err := strconv.ParseFloat(timestampMatch[1], 64)
+		if err != nil || timestamp < start-0.001 || timestamp > end+0.001 {
+			continue
+		}
+		if transition := strings.Index(strings.ToLower(section), "transition"); transition >= 0 {
+			section = strings.TrimSpace(section[:transition])
+		}
+		if section != "" {
+			selected = append(selected, section)
+		}
+	}
+	if len(selected) == 0 {
+		return fmt.Sprintf("Source segment %.2f-%.2fs. Follow visible actions in the attached source video only, including exits, empty intervals and re-entry.", start, end)
+	}
+	return fmt.Sprintf("Source segment %.2f-%.2fs. Motion notes for matching frames only:\n%s", start, end, strings.Join(selected, "\n"))
+}
+
 func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	videoIn := inputString(inputs, "video_in", "")
 	if videoIn == "" || !fileExists(videoIn) || !isVideoFile(videoIn) {
@@ -890,6 +956,41 @@ func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 	if ctx.FFmpegRunner == nil {
 		return nil, fmt.Errorf("Video Split cần FFmpeg")
 	}
+	characterImages := flowStringList(inputs["character_images"])
+	for i, path := range characterImages {
+		if resolved := resolveAssetPath(path, ctx.WorkDir); resolved != "" {
+			characterImages[i] = resolved
+		}
+		if !fileExists(characterImages[i]) || !isImageFile(characterImages[i]) {
+			return nil, fmt.Errorf("ảnh nhân vật cho video segment không hợp lệ")
+		}
+	}
+	var motionKeyframes []map[string]any
+	if rawFrames, ok := workflowMapItems(inputs["motion_keyframes"]); ok {
+		for _, rawFrame := range rawFrames {
+			frame, ok := workflowMapObject(rawFrame)
+			if !ok {
+				continue
+			}
+			path := inputString(frame, "path", "")
+			if resolved := resolveAssetPath(path, ctx.WorkDir); resolved != "" {
+				path = resolved
+			}
+			if path == "" || !fileExists(path) || !isImageFile(path) {
+				return nil, fmt.Errorf("keyframe chuyển động cho video segment không hợp lệ")
+			}
+			frame["path"] = path
+			motionKeyframes = append(motionKeyframes, frame)
+		}
+	}
+	var contextVariables map[string]any
+	if promptContext, ok := workflowMapObject(inputs["prompt_context"]); ok {
+		if variables, ok := workflowMapObject(promptContext["variables"]); ok {
+			contextVariables = variables
+		} else {
+			contextVariables = promptContext
+		}
+	}
 	segmentCount := int(math.Ceil(duration / maxSegment))
 	segments := make([]any, 0, segmentCount)
 	base := safeWorkflowPathPart(node.ID)
@@ -904,7 +1005,34 @@ func executeVideoSplit(ctx *ExecutionContext, node *FlowNode, inputs map[string]
 		if !fileExists(path) || !isVideoFile(path) {
 			return nil, fmt.Errorf("FFmpeg không tạo được đoạn video %d", i+1)
 		}
-		segments = append(segments, map[string]any{"video_path": path, "duration_seconds": segmentDuration, "index": i + 1})
+		end := start + segmentDuration
+		segmentImages := append([]string(nil), characterImages...)
+		segmentTimestamps := make([]string, 0)
+		for _, frame := range motionKeyframes {
+			timestamp := nodeParamFloat(frame, "timestamp_seconds", -1)
+			if timestamp < start-0.001 || timestamp > end+0.001 {
+				continue
+			}
+			segmentImages = append(segmentImages, inputString(frame, "path", ""))
+			segmentTimestamps = append(segmentTimestamps, fmt.Sprintf("%.2fs", timestamp-start))
+		}
+		segmentVariables := make(map[string]any, len(contextVariables)+4)
+		for key, value := range contextVariables {
+			segmentVariables[key] = value
+		}
+		segmentVariables["character_reference_count"] = len(characterImages)
+		segmentVariables["motion_keyframe_count"] = len(segmentTimestamps)
+		segmentVariables["motion_keyframe_timestamps"] = strings.Join(segmentTimestamps, ", ")
+		segmentVariables["segment_start_seconds"] = fmt.Sprintf("%.2f", start)
+		segmentVariables["segment_end_seconds"] = fmt.Sprintf("%.2f", end)
+		segmentVariables["movement_analysis"] = danceAnalysisForSegment(inputString(contextVariables, "movement_analysis", ""), start, end)
+		segments = append(segments, map[string]any{
+			"video_path":       path,
+			"duration_seconds": segmentDuration,
+			"index":            i + 1,
+			"reference_images": segmentImages,
+			"variables":        segmentVariables,
+		})
 	}
 	result := map[string]any{"segments": segments, "duration": duration}
 	if hasAudio {
@@ -927,14 +1055,17 @@ func executeVideoTrim(ctx *ExecutionContext, node *FlowNode, inputs map[string]a
 		return nil, fmt.Errorf("Video Trim cần file video hợp lệ")
 	}
 	target := flowInputFloat(inputs, "duration", 0)
-	if reference := inputString(inputs, "reference_video", ""); reference != "" {
-		if !fileExists(reference) || !isVideoFile(reference) {
-			return nil, fmt.Errorf("video tham chiếu thời lượng không hợp lệ")
-		}
-		var err error
-		target, err = probeFlowDuration(reference)
-		if err != nil {
-			return nil, fmt.Errorf("không đọc được thời lượng video tham chiếu: %w", err)
+	if target <= 0 {
+		reference := inputString(inputs, "reference_video", "")
+		if reference != "" {
+			if !fileExists(reference) || !isVideoFile(reference) {
+				return nil, fmt.Errorf("video tham chiếu thời lượng không hợp lệ")
+			}
+			referenceDuration, err := probeFlowDuration(reference)
+			if err != nil {
+				return nil, fmt.Errorf("không đọc được thời lượng video tham chiếu: %w", err)
+			}
+			target = referenceDuration
 		}
 	}
 	if target <= 0 {

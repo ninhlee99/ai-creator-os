@@ -296,6 +296,7 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 	if ctx.Context == nil {
 		ctx.Context = context.Background()
 	}
+	isRootGraph := len(ctx.WorkflowStack) == 0
 	for _, activeID := range ctx.WorkflowStack {
 		if activeID == graph.ID {
 			return nil, fmt.Errorf("phát hiện workflow gọi lặp: %s", graph.ID)
@@ -314,7 +315,9 @@ func ExecuteGraph(ctx *ExecutionContext, graph *FlowGraph) (*FlowRun, error) {
 
 	now := time.Now().Format(time.RFC3339)
 
-	ctx.MuseThreadStarted = false
+	if isRootGraph || ctx.MuseThread == nil {
+		ctx.MuseThread = &MuseThreadState{}
+	}
 
 	run := &FlowRun{
 		ID:         ctx.RunID,

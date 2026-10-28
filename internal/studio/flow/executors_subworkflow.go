@@ -298,6 +298,17 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	if resultPort.ID == "" {
 		return nil, fmt.Errorf("workflow con không có output kết quả %q", resultOutputKey)
 	}
+	previousVideoFrameInputKey := nodeParamString(node.Params, "previous_video_frame_input_key", "")
+	previousVideoFrameVariablesKey := nodeParamString(node.Params, "previous_video_frame_variables_key", "variables")
+	previousVideoFrameInsertAt := nodeParamInt(node.Params, "previous_video_frame_insert_at", -1)
+	if previousVideoFrameInsertAt < -1 {
+		return nil, fmt.Errorf("previous_video_frame_insert_at phải là -1 hoặc vị trí không âm")
+	}
+	if previousVideoFrameInputKey != "" {
+		if resultPort.Type != PortTypeVideo {
+			return nil, fmt.Errorf("frame liên tục chỉ hỗ trợ output video")
+		}
+	}
 	if _, ok := inputs["items"]; !ok {
 		return nil, fmt.Errorf("thiếu danh sách cần xử lý")
 	}
@@ -308,9 +319,17 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 	mergeContextIntoItem := nodeParamBool(node.Params, "merge_context_into_item", false)
 	childInputSet := make(map[string]bool, len(childInputs))
 	childInputTypes := make(map[string]PortType, len(childInputs))
+	childInputRequired := make(map[string]bool, len(childInputs))
 	for _, port := range childInputs {
 		childInputSet[port.ID] = true
 		childInputTypes[port.ID] = port.Type
+		childInputRequired[port.ID] = port.Required
+	}
+	if previousVideoFrameInputKey != "" {
+		portType, found := childInputTypes[previousVideoFrameInputKey]
+		if !found || (portType != PortTypeImageList && portType != PortTypeAny) {
+			return nil, fmt.Errorf("workflow con cần input ảnh dạng image_list %q để nhận frame shot trước", previousVideoFrameInputKey)
+		}
 	}
 	sharedImageInputKey := nodeParamString(node.Params, "shared_image_input_key", "")
 	sharedImages := flowStringList(inputs["reference_images"])
@@ -397,6 +416,9 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 			for targetKey, sourceKey := range itemInputMap {
 				value, exists := itemValues[sourceKey]
 				if !exists || isEmptyWorkflowValue(value, true) {
+					if !childInputRequired[targetKey] {
+						continue
+					}
 					return nil, fmt.Errorf("phần tử %d thiếu trường %q để map vào input %q", i+1, sourceKey, targetKey)
 				}
 				childValues[targetKey] = value
@@ -405,11 +427,56 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		if indexInputKey != "" {
 			childValues[indexInputKey] = i + 1
 		}
+		if previousVideoFrameInputKey != "" && childInputSet[previousVideoFrameVariablesKey] && childInputTypes[previousVideoFrameVariablesKey] == PortTypeConfig {
+			variables, _ := workflowMapObject(childValues[previousVideoFrameVariablesKey])
+			variablesWithContinuity := make(map[string]any, len(variables)+1)
+			for key, value := range variables {
+				variablesWithContinuity[key] = value
+			}
+			if i > 0 {
+				variablesWithContinuity["previous_shot_reference_count"] = 1
+			} else {
+				variablesWithContinuity["previous_shot_reference_count"] = 0
+			}
+			childValues[previousVideoFrameVariablesKey] = variablesWithContinuity
+		}
+		if previousVideoFrameInputKey != "" && i > 0 {
+			previousVideo, ok := results[i-1].(string)
+			if !ok || !fileExists(previousVideo) || !isVideoFile(previousVideo) {
+				return nil, fmt.Errorf("output phần tử %d không phải video hợp lệ để giữ continuity", i)
+			}
+			previousDuration, err := probeFlowDuration(previousVideo)
+			if err != nil {
+				return nil, fmt.Errorf("không đọc được thời lượng video phần tử %d: %w", i, err)
+			}
+			framePath := filepath.Join(ctx.WorkDir, fmt.Sprintf("%s_previous_frame_%03d.jpg", mapID, i+1))
+			if err := ExtractFrameFromVideo(ctx.Context, previousVideo, framePath, previousDuration/2); err != nil {
+				return nil, fmt.Errorf("không trích xuất được frame liên tục từ phần tử %d: %w", i, err)
+			}
+			if !fileExists(framePath) || !isImageFile(framePath) {
+				return nil, fmt.Errorf("frame liên tục của phần tử %d không hợp lệ", i)
+			}
+			references := append([]string(nil), flowStringList(childValues[previousVideoFrameInputKey])...)
+			if len(references) == 0 {
+				return nil, fmt.Errorf("thiếu ảnh tham chiếu hiện có để chèn frame liên tục vào %q", previousVideoFrameInputKey)
+			}
+			insertAt := previousVideoFrameInsertAt
+			if insertAt < 0 || insertAt > len(references) {
+				insertAt = len(references)
+			}
+			references = append(references, "")
+			copy(references[insertAt+1:], references[insertAt:])
+			references[insertAt] = framePath
+			childValues[previousVideoFrameInputKey] = references
+		}
 		if err := ValidateWorkflowRunInputs(childGraph, childValues); err != nil {
 			return nil, fmt.Errorf("input workflow con ở phần tử %d không hợp lệ: %w", i+1, err)
 		}
 
 		childCtx := *ctx
+		if !nodeParamBool(node.Params, "share_muse_thread", false) {
+			childCtx.MuseThread = &MuseThreadState{}
+		}
 		childCtx.WorkflowInputs = childValues
 		childCtx.NodeStatus = nil
 		childCtx.RunID = fmt.Sprintf("%s__%s_item_%03d", ctx.RunID, mapID, i+1)

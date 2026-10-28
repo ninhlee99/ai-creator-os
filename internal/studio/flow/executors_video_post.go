@@ -34,8 +34,7 @@ func executeMuseAINeuralRender(ctx *ExecutionContext, node *FlowNode, inputs map
 	threadTitle := fmt.Sprintf("Flow [%s: %s]", node.ID, node.Title)
 
 	// Kiến trúc: 1 Flow là 1 Thread. Node đầu tiên gọi Muse sẽ tạo thread mới (--new-thread), các node sau dùng chung
-	isNewThread := !ctx.MuseThreadStarted
-	ctx.MuseThreadStarted = true
+	isNewThread := ctx.startMuseThread()
 
 	ctx.Log(fmt.Sprintf("Muse AI: gửi prompt tạo video (thread mới: %v, %d ảnh tham chiếu)", isNewThread, len(refFiles)))
 
