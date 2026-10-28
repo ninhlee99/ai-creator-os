@@ -59,11 +59,10 @@ func (s *Service) BackupTick(ctx context.Context) []string {
 	}
 	name := fmt.Sprintf("aicos-backup-%s.zip", time.Now().Format("20060102-150405"))
 	path := filepath.Join(dir, name)
-	// Pipeline dùng chung với nút "Tải bản sao lưu" bấm tay:
-	// integrity_check 5 DB nguồn TRƯỚC khi zip (DB hỏng → bỏ qua, giữ bản
-	// cũ + alert critical), kiểm tra bản zip SAU khi tạo.
-	raw, err := backup.CreateValidated(s.DataDir)
-	if err != nil {
+	// Stream trực tiếp ra file trên đĩa và kiểm chứng qua ValidateZipFile
+	// để không giữ 512 MiB trong RAM.
+	if err := backup.CreateValidatedToFile(s.DataDir, path); err != nil {
+		_ = os.Remove(path)
 		var cse *backup.CorruptSourceError
 		if errors.As(err, &cse) {
 			msg := fmt.Sprintf("sao lưu: bỏ qua — %v, giữ bản cũ", err)
@@ -71,12 +70,6 @@ func (s *Service) BackupTick(ctx context.Context) []string {
 				"Database hỏng nhưng bản sao lưu cũ vẫn còn. Khôi phục từ bản cũ sớm.")
 			return []string{msg}
 		}
-		msg := fmt.Sprintf("sao lưu tự động thất bại: %v", err)
-		s.alert("backup_fail", "warn", msg, "Kiểm tra dung lượng đĩa và quyền ghi thư mục dữ liệu.")
-		return []string{msg}
-	}
-	if err := os.WriteFile(path, raw, 0o600); err != nil {
-		_ = os.Remove(path) // xóa file dở
 		msg := fmt.Sprintf("sao lưu tự động thất bại: %v", err)
 		s.alert("backup_fail", "warn", msg, "Kiểm tra dung lượng đĩa và quyền ghi thư mục dữ liệu.")
 		return []string{msg}

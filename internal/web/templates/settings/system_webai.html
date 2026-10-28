@@ -106,19 +106,23 @@
 
 {{define "webai-login-modal"}}
 <div id="browser-login-modal" class="webai-modal-backdrop" hidden>
-  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);width:min(90vw,480px);max-width:480px;padding:24px">
-    <div class="modal-head" style="margin-bottom:16px;padding:0 0 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+  <div class="webai-modal-box" style="border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,0.35);width:min(94vw,860px);max-width:860px;padding:22px">
+    <div class="modal-head" style="margin-bottom:14px;padding:0 0 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
       <h3 id="bl-modal-title" style="margin:0;font-size:18px">Đăng nhập Web AI</h3>
       <button type="button" class="modal-close-btn" onclick="cancelBrowserLogin()" aria-label="Đóng">✕</button>
     </div>
     <div class="modal-body" style="padding:0">
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:24px 18px;text-align:center">
-        <div id="bl-status-icon" style="font-size:42px;margin-bottom:12px">⏳</div>
-        <div id="bl-status-text" style="font-weight:700;font-size:16px;margin-bottom:8px">Đang mở trình duyệt...</div>
-        <div id="bl-status-subtext" style="font-size:13px;color:var(--muted);line-height:1.5">Vui lòng đăng nhập trên cửa sổ trình duyệt vừa mở. Hệ thống sẽ tự động phát hiện và lưu phiên.</div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px 16px;text-align:center">
+        <div id="bl-status-icon" style="font-size:32px;margin-bottom:6px">⏳</div>
+        <div id="bl-status-text" style="font-weight:700;font-size:15px;margin-bottom:6px">Đang mở trình duyệt...</div>
+        <div id="bl-status-subtext" style="font-size:12.5px;color:var(--muted);line-height:1.5">Vui lòng đăng nhập trên cửa sổ trình duyệt hoặc thao tác trực tiếp trên màn hình bên dưới. Hệ thống sẽ tự động phát hiện và lưu phiên.</div>
+        <div id="bl-screen-container" tabindex="0" style="display:none;margin-top:12px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:#000;position:relative;outline:none;cursor:crosshair" title="Nhấp chuột và gõ phím trực tiếp tại đây để đăng nhập">
+          <img id="bl-remote-screen" alt="Màn hình đăng nhập trình duyệt" style="width:100%;max-height:460px;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none">
+        </div>
       </div>
     </div>
-    <div class="modal-foot" style="margin-top:18px;display:flex;justify-content:flex-end;gap:8px">
+    <div class="modal-foot" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span class="hint" style="font-size:11.5px">Mẹo: Bạn có thể click chuột, cuộn và gõ phím trực tiếp vào khung màn hình trên.</span>
       <button id="bl-close-after-login" type="button" class="btn btn-secondary" onclick="cancelBrowserLogin()">Hủy</button>
     </div>
   </div>

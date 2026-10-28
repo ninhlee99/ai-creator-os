@@ -17,12 +17,15 @@ import (
 
 // FindYtDlp tìm đường dẫn nhị phân của yt-dlp trên hệ thống (dùng cho trường hợp video mạng xã hội mã hóa phức tạp).
 func FindYtDlp() string {
-	candidates := []string{
-		"/Users/ninh.le/.local/bin/yt-dlp",
+	var candidates []string
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		candidates = append(candidates, filepath.Join(home, ".local", "bin", "yt-dlp"))
+	}
+	candidates = append(candidates,
 		"/usr/local/bin/yt-dlp",
 		"/opt/homebrew/bin/yt-dlp",
 		"yt-dlp",
-	}
+	)
 	for _, c := range candidates {
 		if path, err := exec.LookPath(c); err == nil {
 			return path
@@ -256,7 +259,6 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	}
 
 	// 4. Nếu là link mạng xã hội video (TikTok, Instagram Reels, YouTube Shorts) có cơ chế token mã hóa phức tạp:
-	// "trường hợp build phức tạp và tốn thời gian quá thì hãy sử dụng thư viện/công cụ nhé"
 	isSocial := IsSocialMediaURL(rawURL)
 	if isSocial {
 		ytDlp := FindYtDlp()

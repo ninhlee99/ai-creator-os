@@ -105,14 +105,14 @@ func NewServer(cfg *Config, l *ledger.Ledger, mgr *network.AccountManager, dbPat
 	if err != nil {
 		return nil, fmt.Errorf("open web read db: %w", err)
 	}
-	// Đợt S: 1 connection duy nhất — PRAGMA busy_timeout bên dưới chỉ có
-	// tác dụng khi mọi query đi qua cùng connection (khớp các store khác:
-	// ledger/studio). Trước đây pool nhiều connection → dashboard thỉnh
-	// thoảng SQLITE_BUSY đúng lúc tick đang ghi.
+	// Đợt S: 1 connection duy nhất — PRAGMA journal_mode=WAL và busy_timeout
+	// bên dưới đảm bảo không bị SQLITE_BUSY khi Growth và Ledger cùng ghi.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
-		db.Close()
-		return nil, err
+	for _, pragma := range []string{"PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000"} {
+		if _, err := db.Exec(pragma); err != nil {
+			db.Close()
+			return nil, err
+		}
 	}
 	s := &Server{
 		Ledger:    l,

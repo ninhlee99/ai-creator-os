@@ -2,7 +2,6 @@ package backup
 
 import (
 	"archive/zip"
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -348,28 +347,61 @@ func CheckSourceDBs(dataDir string) error {
 	return nil
 }
 
-// CreateValidated tạo ảnh chụp vào bộ nhớ theo đúng pipeline của BackupTick
-// tự động: integrity_check 5 DB nguồn TRƯỚC khi zip, kiểm tra bản zip SAU
-// khi tạo. Dùng chung cho nút "Tải bản sao lưu" bấm tay và BackupTick —
-// một pipeline duy nhất, không lệch.
-func CreateValidated(dataDir string) ([]byte, error) {
+// CreateValidatedToFile streams the backup archive directly to disk, validates
+// the zip and its embedded SQLite databases via ValidateZipFile, and atomically
+// renames it to destPath without buffering 512 MiB in RAM.
+func CreateValidatedToFile(dataDir, destPath string) error {
 	if err := CheckSourceDBs(dataDir); err != nil {
-		return nil, err
+		return err
 	}
-	var buf bytes.Buffer
-	if err := Create(dataDir, &buf); err != nil {
-		return nil, err
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return err
 	}
-	if uint64(buf.Len()) > MaxBackupArchiveBytes {
-		return nil, fmt.Errorf("file sao lưu vượt giới hạn 512 MiB")
+	tmp, err := os.CreateTemp(filepath.Dir(destPath), ".aicos-backup-*.zip.tmp")
+	if err != nil {
+		return err
 	}
-	raw := buf.Bytes()
-	if err := ValidateZipBytes(raw); err != nil {
-		return nil, err
+	tmpPath := tmp.Name()
+	keepTmp := false
+	defer func() {
+		if !keepTmp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
 	}
-	return raw, nil
+	createErr := Create(dataDir, tmp)
+	closeErr := tmp.Close()
+	if createErr != nil {
+		return createErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	if err := ValidateZipFile(tmpPath); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, destPath); err != nil {
+		return err
+	}
+	keepTmp = true
+	return nil
 }
 
-// ValidateZipFile kiểm tra một file zip sao lưu trên đĩa: cấu trúc hợp lệ
-// (Validate) + ledger.db bên trong vượt integrity_check (Đợt V). Dùng sau
-// khi tạo backup để không lưu bản hỏng vào kho.
+// CreateValidated tạo ảnh chụp đã kiểm chứng, dùng CreateValidatedToFile trên
+// đĩa tạm để không giữ đồng thời cả buffer nén lẫn buffer giải nén trong RAM.
+func CreateValidated(dataDir string) ([]byte, error) {
+	tmp, err := os.CreateTemp("", "aicos-validated-backup-*.zip")
+	if err != nil {
+		return nil, err
+	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	defer os.Remove(tmpPath)
+	if err := CreateValidatedToFile(dataDir, tmpPath); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(tmpPath)
+}

@@ -350,6 +350,66 @@ func (s *Store) SaveRun(r *FlowRun) error {
 	return err
 }
 
+// UpdateRunNodeStates cập nhật riêng cột node_states của lượt chạy đang active để giảm write amplification.
+func (s *Store) UpdateRunNodeStates(id string, states map[string]NodeState) error {
+	if id == "" {
+		return errors.New("run ID không hợp lệ")
+	}
+	nodeStatesJSON, err := json.Marshal(states)
+	if err != nil {
+		return fmt.Errorf("mã hóa trạng thái node workflow: %w", err)
+	}
+	_, err = s.db.Exec(`UPDATE studio_workflow_runs SET node_states = ? WHERE id = ?`, string(nodeStatesJSON), id)
+	return err
+}
+
+// PruneOldRuns xóa các lượt chạy workflow đã kết thúc quá maxAge và trả về danh sách run ID đã xóa.
+func (s *Store) PruneOldRuns(maxAge time.Duration) ([]string, error) {
+	cutoff := time.Now().Add(-maxAge).Format(time.RFC3339)
+	rows, err := s.db.Query(`SELECT id FROM studio_workflow_runs
+		WHERE status IN ('completed', 'failed', 'cancelled') AND finished_at != '' AND finished_at < ?`, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	var pruned []string
+	for _, id := range ids {
+		res, err := tx.Exec(`DELETE FROM studio_workflow_runs
+			WHERE id = ? AND status IN ('completed', 'failed', 'cancelled') AND finished_at != '' AND finished_at < ?`, id, cutoff)
+		if err != nil {
+			return nil, err
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			pruned = append(pruned, id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return pruned, nil
+}
+
 // CancelRun marks an active run as cancelled without overwriting a terminal state.
 func (s *Store) CancelRun(id string) (bool, error) {
 	result, err := s.db.Exec(`UPDATE studio_workflow_runs SET status='cancelled', finished_at=?

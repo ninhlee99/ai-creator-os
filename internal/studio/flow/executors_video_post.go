@@ -1,11 +1,35 @@
 package flow
 
 import (
+	"bytes"
 	"fmt"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+var flowVideoToolboxH264 = sync.OnceValue(func() bool {
+	encoders, err := exec.Command("ffmpeg", "-hide_banner", "-encoders").Output()
+	if err != nil || !bytes.Contains(encoders, []byte("h264_videotoolbox")) {
+		return false
+	}
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error",
+		"-f", "lavfi", "-i", "color=c=black:s=320x240:r=30:d=1",
+		"-frames:v", "2", "-c:v", "h264_videotoolbox", "-f", "null", "-")
+	return cmd.Run() == nil
+})
+
+func flowH264EncodeArgs(fastIntermediate bool) []string {
+	if flowVideoToolboxH264() {
+		return []string{"-c:v", "h264_videotoolbox", "-b:v", "16M", "-maxrate", "22M"}
+	}
+	if fastIntermediate {
+		return []string{"-c:v", "libx264", "-preset", "veryfast", "-crf", "16"}
+	}
+	return []string{"-c:v", "libx264", "-preset", "medium", "-crf", "18"}
+}
 
 func executeMuseAINeuralRender(ctx *ExecutionContext, node *FlowNode, inputs map[string]any) (map[string]any, error) {
 	promptText := inputString(inputs, "prompt", "")
@@ -84,9 +108,10 @@ func executeCinematicColorGrading(ctx *ExecutionContext, node *FlowNode, inputs 
 	}
 
 	eqFilter := fmt.Sprintf("eq=contrast=%.2f:saturation=%.2f:brightness=0.01", contrast, saturation)
-	if err := ctx.FFmpegRunner(ctx.Context, "-y", "-i", videoIn,
-		"-vf", eqFilter,
-		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", gradedOut); err != nil {
+	args := []string{"-y", "-i", videoIn, "-vf", eqFilter}
+	args = append(args, flowH264EncodeArgs(true)...)
+	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "copy", gradedOut)
+	if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
 		return nil, fmt.Errorf("FFmpeg cân chỉnh màu thất bại: %w", err)
 	}
 	if !fileExists(gradedOut) || !isVideoFile(gradedOut) {
@@ -147,7 +172,9 @@ func executeVideoMasterOutput(ctx *ExecutionContext, node *FlowNode, inputs map[
 	} else {
 		args = append(args, "-map", "0:a?")
 	}
-	args = append(args, "-vf", filter, "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", masterOut)
+	args = append(args, "-vf", filter)
+	args = append(args, flowH264EncodeArgs(false)...)
+	args = append(args, "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", masterOut)
 	if err := ctx.FFmpegRunner(ctx.Context, args...); err != nil {
 		return nil, fmt.Errorf("FFmpeg không thể xuất video master: %w", err)
 	}

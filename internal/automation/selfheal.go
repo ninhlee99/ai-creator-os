@@ -59,7 +59,8 @@ func (s *Service) SelfHealTick(ctx context.Context) []string {
 
 // pruneTables dọn các bảng phình theo thời gian (Đợt V — máy 24/7):
 // decisions/usage 90 ngày, alert info 30 ngày (warn/critical 90 ngày),
-// job studio đã xong 60 ngày. Chạy trong SelfHealTick (1 giờ/lần).
+// metric_snapshots/product_snapshots 90 ngày, job/workflow studio đã xong 60 ngày.
+// Chạy trong SelfHealTick (1 giờ/lần).
 func (s *Service) pruneTables() []string {
 	var notes []string
 	if s.Ledger != nil {
@@ -75,9 +76,21 @@ func (s *Service) pruneTables() []string {
 		} else if n > 0 {
 			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d alert cũ", n))
 		}
+		if n, err := s.Growth.PruneOldSnapshots(90); err != nil {
+			notes = append(notes, fmt.Sprintf("dọn bảng: lỗi growth snapshots — %v", err))
+		} else if n > 0 {
+			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d metric snapshots cũ", n))
+		}
+	}
+	if s.Products != nil {
+		if n, err := s.Products.PruneOldSnapshots(90); err != nil {
+			notes = append(notes, fmt.Sprintf("dọn bảng: lỗi product snapshots — %v", err))
+		} else if n > 0 {
+			notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d product snapshots cũ", n))
+		}
 	}
 	if n := s.Maintenance.PruneOldJobs(60 * 24 * time.Hour); n > 0 {
-		notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d job studio cũ (>60 ngày)", n))
+		notes = append(notes, fmt.Sprintf("dọn bảng: xóa %d job/workflow studio cũ (>60 ngày)", n))
 	}
 	return notes
 }

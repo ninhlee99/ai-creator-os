@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -82,14 +83,29 @@ func trimJobLog(log string) string {
 }
 
 // PruneOldJobs xóa job đã xong (done/failed) quá maxAge (Đợt V — máy 24/7
-// không để bảng phình mãi). Trả về số job đã xóa.
+// không để bảng phình mãi), đồng thời dọn studio_workflow_runs và cache radar_videos cũ.
+// Trả về tổng số bản ghi job/workflow đã xóa.
 func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
+	totalPruned := 0
+	if fStore, err := s.GetFlowStore(); err == nil && fStore != nil {
+		if prunedRunIDs, err := fStore.PruneOldRuns(maxAge); err == nil {
+			runsDir := filepath.Join(s.workRoot, "runs")
+			for _, runID := range prunedRunIDs {
+				if runDir, ok := safeJobWorkDir(runsDir, runID); ok {
+					_ = os.RemoveAll(runDir)
+				}
+			}
+			totalPruned += len(prunedRunIDs)
+		}
+	}
+	s.pruneRadarVideoCache(7 * 24 * time.Hour)
+
 	// finished_at lưu dạng "2006-01-02T15:04:05" nên dùng strftime cùng định dạng.
 	cutoff := time.Now().Add(-maxAge).Format("2006-01-02T15:04:05")
 	rows, err := s.db.Query(`SELECT id,kind,title,status,progress,log,output,caption,params,created_at,finished_at
 		FROM studio_jobs WHERE status IN ('done','failed') AND finished_at != '' AND finished_at < ?`, cutoff)
 	if err != nil {
-		return 0
+		return totalPruned
 	}
 	type prunedJob struct {
 		job Job
@@ -102,13 +118,13 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 			&candidate.job.Output, &candidate.job.Caption, &candidate.job.Params,
 			&candidate.job.CreatedAt, &candidate.job.FinishedAt); err != nil {
 			rows.Close()
-			return 0
+			return totalPruned
 		}
 		candidates = append(candidates, candidate)
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
-		return 0
+		return totalPruned
 	}
 	rows.Close()
 	activeFiltered := candidates[:0]
@@ -119,12 +135,16 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 	}
 	candidates = activeFiltered
 	if len(candidates) == 0 {
-		return 0
+		if totalPruned > 0 {
+			_, _ = s.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+			_, _ = s.db.Exec(`PRAGMA optimize`)
+		}
+		return totalPruned
 	}
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return 0
+		return totalPruned
 	}
 	defer tx.Rollback()
 	var pruned []prunedJob
@@ -132,25 +152,25 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 		res, err := tx.Exec(`DELETE FROM studio_jobs WHERE id=? AND status IN ('done','failed')
 			AND finished_at != '' AND finished_at < ?`, candidate.job.ID, cutoff)
 		if err != nil {
-			return 0
+			return totalPruned
 		}
 		deleted, err := res.RowsAffected()
 		if err != nil {
-			return 0
+			return totalPruned
 		}
 		if deleted == 0 {
 			continue
 		}
 		if _, err := tx.Exec(`DELETE FROM studio_tiktok_publications WHERE job_id=?`, candidate.job.ID); err != nil {
-			return 0
+			return totalPruned
 		}
 		if _, err := tx.Exec(`DELETE FROM studio_assets WHERE job_id=?`, candidate.job.ID); err != nil {
-			return 0
+			return totalPruned
 		}
 		pruned = append(pruned, candidate)
 	}
 	if err := tx.Commit(); err != nil {
-		return 0
+		return totalPruned
 	}
 	for _, candidate := range pruned {
 		jobDir, safe := safeJobWorkDir(s.workRoot, candidate.job.ID)
@@ -163,7 +183,36 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 		}
 		s.removeJobInputUploads(candidate.job)
 	}
-	return len(pruned)
+	totalPruned += len(pruned)
+	if totalPruned > 0 {
+		_, _ = s.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+		_, _ = s.db.Exec(`PRAGMA optimize`)
+	}
+	return totalPruned
+}
+
+func (s *Studio) pruneRadarVideoCache(maxAge time.Duration) {
+	if s.workRoot == "" {
+		return
+	}
+	cacheDir := filepath.Join(s.workRoot, "cache", "radar_videos")
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-maxAge)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
+		}
+	}
 }
 
 func sameJobFile(a, b string) bool {

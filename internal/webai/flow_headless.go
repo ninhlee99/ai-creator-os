@@ -149,24 +149,17 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	if err != nil {
 		return result, errors.New("Google Flow direct API failed and no Chrome/Edge binary is installed for headless fallback")
 	}
-	profile, err := os.MkdirTemp("", "aicos-flow-headless-*")
+	profile, releaseProfile, err := acquireAccountBrowserProfile(PlatformGoogleFlow, cookie, cookies)
 	if err != nil {
 		return result, errors.New("cannot create temporary Flow headless profile")
 	}
-	defer os.RemoveAll(profile)
-	clearChromiumSingletonLocks(profile)
+	defer releaseProfile()
 	port, listener, err := pickFreePort()
 	if err != nil {
 		return result, errors.New("cannot allocate Flow headless debugging port")
 	}
 	_ = listener.Close()
-	args := []string{
-		"--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
-		"--no-default-browser-check", "--disable-sync", "--disable-extensions",
-		"--disable-background-networking", "--hide-scrollbars", "--window-size=1440,1100",
-		"--remote-debugging-address=127.0.0.1", fmt.Sprintf("--remote-debugging-port=%d", port),
-		"--user-data-dir=" + profile, "about:blank",
-	}
+	args := optimizedHeadlessBrowserArgs(port, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
 	configureHeadlessBrowserCommand(cmd)
@@ -175,7 +168,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	}
 	defer terminateBrowser(cmd)
 
-	browserURL, err := waitDebuggerURL(ctx, port)
+	browserURL, err := waitDebuggerURL(ctx, port, profile)
 	if err != nil {
 		return result, errors.New("Flow headless browser did not start")
 	}
@@ -211,6 +204,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 			return result, err
 		}
 	}
+	client.enableStealth(ctx)
 	if len(cookies) == 0 {
 		cookies = mergeCookieJarHeader(nil, cookie, PlatformGoogleFlow)
 	}
@@ -363,7 +357,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 		select {
 		case <-ctx.Done():
 			return result, ctx.Err()
-		case <-time.After(time.Second):
+		case <-time.After(1500 * time.Millisecond):
 		}
 	}
 	return result, errors.New("Flow headless UI timed out waiting for a downloadable video")

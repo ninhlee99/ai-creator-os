@@ -2,11 +2,11 @@ package web
 
 import (
 	"archive/zip"
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -15,32 +15,46 @@ import (
 )
 
 // Sao lưu & khôi phục thư mục dữ liệu (R2-W7, R2-07), ở Cài đặt · Hệ
-// thống. Sao lưu = zip 3 database + file job + token, tải về máy.
+// thống. Sao lưu = zip 5 database + file job + token, tải về máy.
 // Khôi phục = upload zip → kiểm chứng → stage → yêu cầu restart app để
 // áp dụng (an toàn vì file chỉ được đổi khi chưa có handle DB nào mở).
 
-// handleBackupCreate tạo ảnh chụp data dir và trả về file zip để tải.
-// Dùng chung pipeline với BackupTick tự động: integrity_check DB nguồn
-// trước, kiểm tra bản zip sau — không bao giờ trả về bản hỏng.
+// handleBackupCreate tạo ảnh chụp data dir ra đĩa tạm và stream về trình duyệt
+// để tránh cấp phát 512 MiB trong RAM.
 func (s *Server) handleBackupCreate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	raw, err := backup.CreateValidated(s.DataDir)
+	tmp, err := os.CreateTemp("", "aicos-web-backup-*.zip")
 	if err != nil {
+		s.fail(w, err, "tạo file tạm sao lưu")
+		return
+	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	defer os.Remove(tmpPath)
+
+	if err := backup.CreateValidatedToFile(s.DataDir, tmpPath); err != nil {
 		s.fail(w, err, "tạo bản sao lưu")
 		return
 	}
+	f, err := os.Open(tmpPath)
+	if err != nil {
+		s.fail(w, err, "mở bản sao lưu")
+		return
+	}
+	defer f.Close()
 	name := fmt.Sprintf("aicos-backup-%s.zip", time.Now().Format("20060102-150405"))
 	_ = s.Ledger.Decide("human", "backup_create", nil,
 		"Đã tạo bản sao lưu "+name+".", map[string]any{"file": name})
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
-	w.Write(raw)
+	_, _ = io.Copy(w, f)
 }
 
-// handleBackupRestore nhận file zip, kiểm chứng rồi stage để restart áp dụng.
+// handleBackupRestore nhận file zip qua file tạm trên đĩa, kiểm chứng rồi stage
+// để restart áp dụng mà không đọc toàn bộ 512 MiB vào RAM.
 func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -51,7 +65,7 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 			"Khôi phục thất bại: "+reason+" — dữ liệu hiện tại không bị đụng tới."))
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, int64(backup.MaxBackupArchiveBytes)+(1<<20))
-	parseErr := r.ParseMultipartForm(64 << 20)
+	parseErr := r.ParseMultipartForm(16 << 20)
 	if r.MultipartForm != nil {
 		defer r.MultipartForm.RemoveAll()
 	}
@@ -65,21 +79,32 @@ func (s *Server) handleBackupRestore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
-	raw, err := io.ReadAll(io.LimitReader(f, int64(backup.MaxBackupArchiveBytes)+1))
+
+	tmp, err := os.CreateTemp("", "aicos-restore-upload-*.zip")
 	if err != nil {
+		failClosed("không tạo được file tạm")
+		return
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	written, copyErr := io.Copy(tmp, io.LimitReader(f, int64(backup.MaxBackupArchiveBytes)+1))
+	closeErr := tmp.Close()
+	if copyErr != nil || closeErr != nil {
 		failClosed("không đọc được file sao lưu")
 		return
 	}
-	if uint64(len(raw)) > backup.MaxBackupArchiveBytes {
+	if uint64(written) > backup.MaxBackupArchiveBytes {
 		failClosed("file sao lưu vượt giới hạn 512 MiB")
 		return
 	}
-	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	zr, err := zip.OpenReader(tmpPath)
 	if err != nil {
 		failClosed("file không phải zip hợp lệ")
 		return
 	}
-	if err := backup.Stage(s.DataDir, zr); err != nil {
+	defer zr.Close()
+	if err := backup.Stage(s.DataDir, &zr.Reader); err != nil {
 		failClosed(err.Error())
 		return
 	}

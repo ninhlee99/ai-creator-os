@@ -12,10 +12,10 @@ func fileExists(path string) bool {
 	return err == nil && !fi.IsDir()
 }
 
-// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 4 DB chính.
+// checkDBIntegrity kiểm tra PRAGMA integrity_check cho 5 DB chính.
 // DB nào hỏng → trả lỗi kèm hướng dẫn khôi phục từ backup (tránh crash-loop).
 func checkDBIntegrity(dataDir string) error {
-	dbs := []string{"ledger.db", "studio.db", "products.db", "accesstrade.db"}
+	dbs := []string{"ledger.db", "studio.db", "products.db", "accesstrade.db", "webai.db"}
 	for _, name := range dbs {
 		p := filepath.Join(dataDir, name)
 		if !fileExists(p) {

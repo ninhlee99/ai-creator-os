@@ -236,7 +236,7 @@
     });
   }, true);
 
-  // Replace htmx's native hx-confirm() prompt with the shared dialog.
+  // Replace htmx's native htmx:confirm() prompt with the shared dialog.
   document.body.addEventListener('htmx:confirm', function (event) {
     var detail = event.detail || {};
     if (!detail.question) return;
@@ -441,30 +441,22 @@
         toggleSidebarCollapse();
       }
     });
-
-    var brandInfo = document.querySelector('.brand-info');
-    if (brandInfo) {
-      brandInfo.addEventListener('click', function () {
-        if (layout && layout.classList.contains('sidebar-collapsed')) {
-          toggleSidebarCollapse();
-        }
-      });
-    }
   })();
 
   // ----------------------------------------------------- emoji spacing
   // Chrome/macOS vẽ khoảng trắng ngay sau emoji bằng font emoji (gần như
   // rộng 0) → "📖Kể chuyện". Bọc emoji vào span.ico có lề phải, bỏ khoảng
-  // trắng thừa. Bỏ qua ô nhập/code để không đổi dữ liệu người dùng.
+  // trắng thừa. Bỏ qua ô nhập/code/canvas để không tốn CPU khi kéo thả node.
   var isMutatingEmoji = false;
   function spaceEmoji(root) {
-    if (isMutatingEmoji || !root) return;
+    if (isMutatingEmoji || !root || !root.nodeType) return;
+    if (root.closest && root.closest('#flow-canvas-wrap, .flow-canvas')) return;
     var re = /(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*\uFE0F?)[ \u00A0]+(?=\S)/u;
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: function (n) {
         var p = n.parentNode;
-        if (!p || /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION|INPUT|VIDEO|AUDIO)$/.test(p.nodeName) ||
-            (p.classList && p.classList.contains('ico'))) return NodeFilter.FILTER_REJECT;
+        if (!p || /^(SCRIPT|STYLE|TEXTAREA|CODE|PRE|OPTION|INPUT|VIDEO|AUDIO|SVG)$/.test(p.nodeName) ||
+            (p.classList && (p.classList.contains('ico') || p.classList.contains('flow-node')))) return NodeFilter.FILTER_REJECT;
         return re.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
       }
     });
@@ -491,16 +483,9 @@
     }
   }
   spaceEmoji(document.body);
-  if (window.MutationObserver) {
-    new MutationObserver(function (muts) {
-      if (isMutatingEmoji) return;
-      muts.forEach(function (mu) {
-        mu.addedNodes.forEach(function (n) {
-          if (n.nodeType === 1 && !isMutatingEmoji) spaceEmoji(n);
-        });
-      });
-    }).observe(document.body, { childList: true, subtree: true });
-  }
+  document.body.addEventListener('htmx:afterSwap', function (ev) {
+    if (ev.detail && ev.detail.target) spaceEmoji(ev.detail.target);
+  });
 
   // -------------------------------------------------------- file-picker
   document.querySelectorAll('.file-pick input[type=file]').forEach(function (inp) {
@@ -543,6 +528,125 @@
     }
   };
 
+  function renderShotCardHTML(id, a) {
+    var name = a.kind === 'clip' ? 'Cảnh ' + (a.idx + 1) : a.kind + ' ' + (a.idx + 1);
+    var pid = 'prompt-' + id + '-' + a.id;
+    (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+    var h = '<div class="shot board-shot-card" data-asset-id="' + esc(a.id) + '" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;justify-content:space-between"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:12px">' + esc(name) +
+      '</b> <span class="badge shot-status-badge badge-' + esc(a.class) + '" style="font-size:9.5px">' + esc(a.label) + '</span>' +
+      '</div><div class="shot-media-slot">';
+
+    var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
+    var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
+    var imgSrc = a.image_url || (hasImg ? a.preview : '');
+    var vidSrc = a.video_url || (hasVid ? a.preview : '');
+
+    h += renderShotMediaInner(imgSrc, vidSrc, a.preview);
+    h += '</div>';
+    h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:160px;overflow:auto;margin:6px 0;background:var(--bg);padding:6px;border-radius:6px;font-size:11px"></div>';
+    h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')" style="font-size:10.5px;padding:3px 8px">Xem prompt</button>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function renderShotMediaInner(imgSrc, vidSrc, preview) {
+    var h = '';
+    if (imgSrc) {
+      h += '<div class="shot-img-wrap" data-src="' + esc(imgSrc) + '" style="margin:4px 0">' +
+           '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🖼️ Keyframe:</div>' +
+           '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
+           '<img src="' + esc(imgSrc) + '" style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
+           '</div></div>';
+    }
+    if (vidSrc) {
+      h += '<div class="shot-vid-wrap" data-src="' + esc(vidSrc) + '" style="margin:4px 0">' +
+           '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🎬 Video AI:</div>' +
+           '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
+           '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:contain;display:block"></video>' +
+           '</div></div>';
+    }
+    if (!imgSrc && !vidSrc && preview) {
+      h += '<div style="margin:6px 0"><a href="' + esc(preview) + '" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">Xem file ' + esc(preview) + '</a></div>';
+    }
+    return h;
+  }
+
+  function refreshOpenBoard(id) {
+    var box = document.querySelector('[data-job="' + id + '"] .board');
+    if (!box || !boards[id]) return;
+    fetch('/studio/jobs/' + id, {headers: {'Accept': 'application/json'}})
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!boards[id]) return;
+        var logEl = document.getElementById('log-' + id);
+        if (logEl && d.job && d.job.log) {
+          if (logEl.textContent !== d.job.log) logEl.textContent = d.job.log;
+          logEl.hidden = false;
+        }
+        var grid = box.querySelector('.board-shots-grid');
+        if (!grid || !d.assets || !d.assets.length) {
+          populateBoard(id, box, d);
+          return;
+        }
+        d.assets.forEach(function (a) {
+          var pid = 'prompt-' + id + '-' + a.id;
+          (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
+          var card = grid.querySelector('[data-asset-id="' + a.id + '"]');
+          if (!card) {
+            grid.insertAdjacentHTML('beforeend', renderShotCardHTML(id, a));
+            return;
+          }
+          var badge = card.querySelector('.shot-status-badge');
+          if (badge) {
+            badge.className = 'badge shot-status-badge badge-' + a.class;
+            badge.textContent = a.label;
+          }
+          var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
+          var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
+          var imgSrc = a.image_url || (hasImg ? a.preview : '');
+          var vidSrc = a.video_url || (hasVid ? a.preview : '');
+          var slot = card.querySelector('.shot-media-slot');
+          if (slot) {
+            var curImg = slot.querySelector('.shot-img-wrap');
+            var curVid = slot.querySelector('.shot-vid-wrap');
+            var sameImg = (!imgSrc && !curImg) || (curImg && curImg.getAttribute('data-src') === imgSrc);
+            var sameVid = (!vidSrc && !curVid) || (curVid && curVid.getAttribute('data-src') === vidSrc);
+            if (!sameImg || !sameVid) {
+              slot.innerHTML = renderShotMediaInner(imgSrc, vidSrc, a.preview);
+            }
+          }
+        });
+      })
+      .catch(function () {});
+  }
+
+  function populateBoard(id, box, d) {
+    var h = '';
+    var logEl = document.getElementById('log-' + id);
+    if (logEl && d.job && d.job.log) { logEl.textContent = d.job.log; logEl.hidden = false; }
+    if (d.trend) {
+      h += '<div class="shot"><div class="shot-head">📈 Sẵn sàng lên xu hướng: <b>' + d.trend.score + '/' + d.trend.total + '</b></div><ul class="clean">';
+      (d.trend.checks || []).forEach(function (c) {
+        h += '<li>' + (c.ok ? '✅ ' : '⚠️ ') + esc(c.label) + (c.ok ? '' : ' — <span class="hint">' + esc(c.tip) + '</span>') + '</li>';
+      });
+      h += '</ul><p class="hint">Checklist yếu tố phân phối đã biết — không phải cam kết viral.</p></div>';
+    }
+    if (d.job && d.job.caption) {
+      h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag ' +
+        '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(' +
+        'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
+        '<div class="hint" id="cap-' + id + '">' + esc(d.job.caption).replace(/\n/g, '<br>') + '</div></div>';
+    }
+    if (d.assets && d.assets.length > 0) {
+      h += '<div class="board-shots-grid" style="margin-top:12px">';
+      d.assets.forEach(function (a) {
+        h += renderShotCardHTML(id, a);
+      });
+      h += '</div>';
+    }
+    box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
+  }
+
   window.toggleBoard = function (id) {
     var box = document.querySelector('[data-job="' + id + '"] .board');
     if (!box) return;
@@ -551,64 +655,8 @@
     fetch('/studio/jobs/' + id, {headers: {'Accept': 'application/json'}})
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        var h = '';
-        var logEl = document.getElementById('log-' + id);
-        if (d.job && d.job.log) { logEl.textContent = d.job.log; logEl.hidden = false; }
-        if (d.trend) {
-          h += '<div class="shot"><div class="shot-head">📈 Sẵn sàng lên xu hướng: <b>' + d.trend.score + '/' + d.trend.total + '</b></div><ul class="clean">';
-          (d.trend.checks || []).forEach(function (c) {
-            h += '<li>' + (c.ok ? '✅ ' : '⚠️ ') + esc(c.label) + (c.ok ? '' : ' — <span class="hint">' + esc(c.tip) + '</span>') + '</li>';
-          });
-          h += '</ul><p class="hint">Checklist yếu tố phân phối đã biết — không phải cam kết viral.</p></div>';
-        }
-        if (d.job && d.job.caption) {
-          h += '<div class="shot"><div class="shot-head">📝 Chú thích + hashtag ' +
-            '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(' +
-            'document.getElementById(\'cap-' + id + '\').textContent)">Sao chép</button></div>' +
-            '<div class="hint" id="cap-' + id + '">' + esc(d.job.caption).replace(/\n/g, '<br>') + '</div></div>';
-        }
-        if (d.assets && d.assets.length > 0) {
-          h += '<div class="board-shots-grid" style="margin-top:12px">';
-          d.assets.forEach(function (a) {
-            var name;
-            if (a.kind === 'clip') name = 'Cảnh ' + (a.idx + 1);
-            else name = a.kind + ' ' + (a.idx + 1);
-            var pid = 'prompt-' + id + '-' + a.id;
-            (window.__shotPrompts = window.__shotPrompts || {})[pid] = a.prompt || '';
-            h += '<div class="shot board-shot-card" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;justify-content:space-between"><div class="shot-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:12px">' + name +
-              '</b> <span class="badge badge-' + a.class + '" style="font-size:9.5px">' + a.label + '</span>' +
-              '</div>';
-
-            var hasImg = a.image_url || (a.preview && /\.(png|jpe?g|webp)$/i.test(a.preview));
-            var hasVid = a.video_url || (a.preview && /\.(mp4|mov|webm)$/i.test(a.preview));
-            var imgSrc = a.image_url || (hasImg ? a.preview : '');
-            var vidSrc = a.video_url || (hasVid ? a.preview : '');
-
-            if (imgSrc) {
-              h += '<div style="margin:4px 0">' +
-                   '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🖼️ Keyframe:</div>' +
-                   '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
-                   '<img src="' + esc(imgSrc) + '" style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer" onclick="window.open(\'' + esc(imgSrc) + '\', \'_blank\')" title="Bấm để xem ảnh gốc 4K">' +
-                   '</div></div>';
-            }
-            if (vidSrc) {
-              h += '<div style="margin:4px 0">' +
-                   '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px">🎬 Video AI:</div>' +
-                   '<div style="width:100%;aspect-ratio:9/16;background:#000;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative">' +
-                   '<video controls preload="metadata" src="' + esc(vidSrc) + '" style="width:100%;height:100%;aspect-ratio:9/16;object-fit:contain;display:block"></video>' +
-                   '</div></div>';
-            }
-            if (!imgSrc && !vidSrc && a.preview) {
-              h += '<div style="margin:6px 0"><a href="' + esc(a.preview) + '" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 8px">Xem file ' + esc(a.preview) + '</a></div>';
-            }
-
-            h += '<div class="hint" id="' + pid + '" style="display:none;white-space:pre-wrap;max-height:160px;overflow:auto;margin:6px 0;background:var(--bg);padding:6px;border-radius:6px;font-size:11px"></div>';
-            h += '<div style="margin-top:6px"><button type="button" class="btn btn-secondary btn-sm" onclick="togglePrompt(\'' + pid + '\')" style="font-size:10.5px;padding:3px 8px">Xem prompt</button>';
-            h += '</div></div>';
-          });
-          h += '</div>';
-        }
-        box.innerHTML = h || '<p class="empty">Chưa có cảnh nào.</p>';
+        if (!boards[id]) return;
+        populateBoard(id, box, d);
       });
   };
 
@@ -648,7 +696,7 @@
               if (cancelForm) cancelForm.remove();
               delete pending[j.id];
             }
-            if (boards[j.id]) { boards[j.id] = false; toggleBoard(j.id); }
+            if (boards[j.id]) { refreshOpenBoard(j.id); }
           });
           if (Object.keys(pending).length === 0) clearInterval(timer);
         })

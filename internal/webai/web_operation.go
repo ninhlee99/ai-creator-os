@@ -113,24 +113,17 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 	if err != nil {
 		return result, fmt.Errorf("Web AI operation needs Chrome, Edge, Brave, or Chromium: %w", err)
 	}
-	profile, err := os.MkdirTemp("", "aicos-webai-operation-*")
+	profile, releaseProfile, err := acquireAccountBrowserProfile(platform, cookie, savedCookies)
 	if err != nil {
 		return result, errors.New("cannot create temporary Web AI browser profile")
 	}
-	defer os.RemoveAll(profile)
-	clearChromiumSingletonLocks(profile)
+	defer releaseProfile()
 	port, listener, err := pickFreePort()
 	if err != nil {
 		return result, errors.New("cannot allocate Web AI browser debugging port")
 	}
 	_ = listener.Close()
-	args := []string{
-		"--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
-		"--no-default-browser-check", "--disable-sync", "--disable-extensions",
-		"--disable-background-networking", "--hide-scrollbars", "--window-size=1440,1100",
-		"--remote-debugging-address=127.0.0.1", fmt.Sprintf("--remote-debugging-port=%d", port),
-		"--user-data-dir=" + profile, "about:blank",
-	}
+	args := optimizedHeadlessBrowserArgs(port, profile, "1440,1100")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
 	configureHeadlessBrowserCommand(cmd)
@@ -138,7 +131,7 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 		return result, errors.New("cannot start Web AI headless browser")
 	}
 	defer terminateBrowser(cmd)
-	browserURL, err := waitDebuggerURL(ctx, port)
+	browserURL, err := waitDebuggerURL(ctx, port, profile)
 	if err != nil {
 		return result, err
 	}
@@ -181,6 +174,7 @@ func UseWebAIInWebUI(ctx context.Context, platform, cookie string, savedCookies 
 			return result, err
 		}
 	}
+	client.enableStealth(ctx)
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(platform, cookies)}, client.sessionID); err != nil {
 		return result, fmt.Errorf("Web AI browser rejected saved session cookies: %w", err)
 	}
@@ -380,7 +374,7 @@ func waitWebAIResult(ctx context.Context, client *browserCDPClient, page imageAn
 		select {
 		case <-ctx.Done():
 			return webAIObservedResult{}, ctx.Err()
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(650 * time.Millisecond):
 		}
 	}
 	return webAIObservedResult{}, errors.New("response wait timed out")

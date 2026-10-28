@@ -164,7 +164,14 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 	s.appendLog(id, "WORKFLOW_PASS: Muse AI, trim shot, concat, sound, grade, upscale và export hoàn tất")
 	s.setStatus(id, StatusRunning, 85)
 	if err := s.runAffiliateVisualGate(ctx, id, final, work, p, productProfile, shots); err != nil {
-		_ = os.Remove(final)
+		// Preserve the rendered clip inside the job work directory for inspection
+		// before removing the public delivery file, so rendered shots are not lost.
+		rejectedPath := filepath.Join(work, "qc_rejected_"+filepath.Base(final))
+		if renameErr := os.Rename(final, rejectedPath); renameErr != nil {
+			_ = os.Remove(final)
+		} else {
+			s.appendLog(id, "Đã lưu bản nháp chưa qua QC tại workdir để kiểm tra lại từng cảnh: "+filepath.Base(rejectedPath))
+		}
 		fail(err)
 		return
 	}
@@ -181,13 +188,3 @@ func (s *Studio) runAffiliate(ctx context.Context, id string, p AffiliateParams,
 	s.appendLog(id, "Xong: "+filepath.Base(final))
 	s.fireOnDone(id)
 }
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-// CancelRunning hủy context của job đang chạy trong process này (nếu có) —
-// ffmpeg/ffprobe được chạy bằng exec.CommandContext nên sẽ bị kill thật,
-// giải phóng cả slot render semaphore. Dùng bởi SweepHungJobs (Đợt S):
-// job treo trước đây chỉ bị đánh dấu failed trên DB trong khi process vẫn
-// ngốn CPU/đĩa và giữ slot tới khi restart app.

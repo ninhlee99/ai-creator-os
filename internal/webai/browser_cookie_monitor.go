@@ -21,12 +21,17 @@ type browserCookieMonitor struct {
 	err    error
 }
 
+// browserCookieMonitorInterval throttles background cookie snapshots so long
+// video renders do not spam CDP Network.getAllCookies and SQLite WAL writes
+// twice per second; final cookies are still captured synchronously on defer.
+const browserCookieMonitorInterval = 5 * time.Second
+
 func startBrowserCookieMonitor(ctx context.Context, client *browserCDPClient, initial []BrowserCookie, read browserCookieSnapshotReader, platform string, onCookieUpdate CookieSnapshotUpdater) (context.Context, *browserCookieMonitor) {
 	monitorCtx, cancel := context.WithCancel(ctx)
 	monitor := &browserCookieMonitor{cancel: cancel, done: make(chan struct{}), latest: normalizeCookieJar(initial)}
 	go func() {
 		defer close(monitor.done)
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := time.NewTicker(browserCookieMonitorInterval)
 		defer ticker.Stop()
 		for {
 			select {

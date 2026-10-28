@@ -98,3 +98,38 @@ func (s *Store) PruneOldAlerts(infoDays, otherDays int) (int64, error) {
 	}
 	return total, nil
 }
+
+// PruneOldSnapshots xóa metric_snapshots và video_metric_snapshots cũ hơn keepDays,
+// luôn giữ bản ghi mới nhất của mỗi account/video để không mất baseline.
+func (s *Store) PruneOldSnapshots(keepDays int) (int64, error) {
+	if keepDays <= 0 {
+		return 0, nil
+	}
+	var total int64
+	cutoffExpr := fmt.Sprintf("-%d days", keepDays)
+	res1, err := s.db.Exec(`DELETE FROM metric_snapshots
+		WHERE taken_at < datetime('now', ?) AND id NOT IN (
+			SELECT MAX(id) FROM metric_snapshots GROUP BY account_id
+		)`, cutoffExpr)
+	if err != nil {
+		return total, fmt.Errorf("prune metric_snapshots: %w", err)
+	}
+	n1, _ := res1.RowsAffected()
+	total += n1
+
+	res2, err := s.db.Exec(`DELETE FROM video_metric_snapshots
+		WHERE taken_at < datetime('now', ?) AND id NOT IN (
+			SELECT MAX(id) FROM video_metric_snapshots GROUP BY account_id, platform_video_id
+		)`, cutoffExpr)
+	if err != nil {
+		return total, fmt.Errorf("prune video_metric_snapshots: %w", err)
+	}
+	n2, _ := res2.RowsAffected()
+	total += n2
+
+	if total > 0 {
+		_, _ = s.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+		_, _ = s.db.Exec(`PRAGMA optimize`)
+	}
+	return total, nil
+}

@@ -345,6 +345,27 @@ func (s *Store) Save(p Product) (int64, error) {
 	return id, nil
 }
 
+// PruneOldSnapshots xóa các bản ghi product_snapshots cũ hơn keepDays nhưng luôn giữ lại bản mới nhất của mỗi sản phẩm.
+func (s *Store) PruneOldSnapshots(keepDays int) (int64, error) {
+	if keepDays <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -keepDays).Format(time.RFC3339Nano)
+	res, err := s.db.Exec(`DELETE FROM product_snapshots
+		WHERE captured_at < ? AND id NOT IN (
+			SELECT MAX(id) FROM product_snapshots GROUP BY product_id
+		)`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("prune product_snapshots: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n > 0 {
+		_, _ = s.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+		_, _ = s.db.Exec(`PRAGMA optimize`)
+	}
+	return n, nil
+}
+
 func scanProduct(row interface {
 	Scan(...any) error
 }) (Product, error) {

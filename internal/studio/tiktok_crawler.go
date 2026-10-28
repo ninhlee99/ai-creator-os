@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -116,29 +118,36 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	args := []string{
 		"--headless=new",
 		fmt.Sprintf("--remote-debugging-port=%d", port),
+		"--remote-debugging-address=127.0.0.1",
 		fmt.Sprintf("--user-data-dir=%s", profileDir),
 		"--disable-gpu",
 		"--disable-dev-shm-usage",
+		"--disable-software-rasterizer",
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-extensions",
 		"--disable-sync",
+		"--disable-background-networking",
+		"--disable-background-timer-throttling",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-renderer-backgrounding",
+		"--disk-cache-size=1048576",
+		"--media-cache-size=1048576",
+		"--js-flags=--max-old-space-size=384",
 		"--blink-settings=imagesEnabled=false",
+		"--mute-audio",
 		"--lang=vi-VN,vi",
-		"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 		"about:blank",
 	}
 
 	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	webai.ConfigureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("không khởi động được trình duyệt crawler: %w", err)
 	}
-	defer func() {
-		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-		}
-	}()
+	defer webai.TerminateBrowser(cmd)
 
 	// Wait for WebSocket debugger URL
 	pageWS, err := waitCrawlerDebuggerURL(ctx, port)
@@ -152,7 +161,11 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	}
 	defer conn.Close()
 
+	var writeMu sync.Mutex
 	sendCDP := func(id int, method string, params any) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		_ = conn.SetWriteDeadline(time.Now().Add(4 * time.Second))
 		return conn.WriteJSON(map[string]any{"id": id, "method": method, "params": params})
 	}
 
@@ -170,12 +183,16 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	if err := sendCDP(4, "Page.enable", map[string]any{}); err != nil {
 		return nil, err
 	}
-	if err := sendCDP(5, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
+	_ = sendCDP(5, "Page.addScriptToEvaluateOnNewDocument", map[string]any{
+		"source": `try{Object.defineProperty(navigator,'webdriver',{get:()=>undefined});}catch(_){}`,
+	})
+	if err := sendCDP(6, "Page.navigate", map[string]any{"url": targetURL}); err != nil {
 		return nil, err
 	}
 
 	resultChan := make(chan []TikTokTrendVideo, 1)
 	readerDone := make(chan struct{})
+	var readerStop atomic.Bool
 	matchedReqIDs := make(map[string]bool)
 	var reqMu sync.Mutex
 	var reqCounter int
@@ -183,7 +200,7 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 	go func() {
 		defer close(readerDone)
 		for {
-			if ctx.Err() != nil {
+			if ctx.Err() != nil || readerStop.Load() {
 				return
 			}
 			var msg struct {
@@ -195,6 +212,9 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 				} `json:"result"`
 			}
 			if err := conn.ReadJSON(&msg); err != nil {
+				return
+			}
+			if readerStop.Load() {
 				return
 			}
 			if msg.ID >= 1000 && len(msg.Result.Body) > 0 {
@@ -232,7 +252,7 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 					reqMu.Lock()
 					matched := matchedReqIDs[p.RequestID]
 					reqMu.Unlock()
-					if matched {
+					if matched && !readerStop.Load() {
 						reqCounter++
 						_ = sendCDP(1000+reqCounter, "Network.getResponseBody", map[string]any{"requestId": p.RequestID})
 					}
@@ -243,6 +263,7 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 
 	select {
 	case videos := <-resultChan:
+		readerStop.Store(true)
 		<-readerDone
 		if len(videos) >= tikTokRadarCandidateLimit {
 			return videos[:tikTokRadarCandidateLimit], nil
@@ -256,10 +277,12 @@ func runTikTokCrawlerBrowser(ctx context.Context, bin, targetURL string) ([]TikT
 		return mergeTikTokRadarCandidates(videos, domVideos), nil
 	case <-time.After(7 * time.Second):
 	case <-ctx.Done():
+		readerStop.Store(true)
 		return nil, ctx.Err()
 	}
 
-	// DOM Evaluation Fallback: extract video elements directly from DOM
+	// DOM Evaluation Fallback: stop reader goroutine cleanly before evaluating DOM
+	readerStop.Store(true)
 	_ = conn.SetReadDeadline(time.Now().Add(-time.Second))
 	<-readerDone
 	_ = conn.SetReadDeadline(time.Time{})
@@ -291,7 +314,7 @@ func waitCrawlerDebuggerURL(ctx context.Context, port int) (string, error) {
 		select {
 		case <-ctx.Done():
 			return "", errors.New("trình duyệt crawler không kịp khởi động")
-		case <-time.After(250 * time.Millisecond):
+		case <-time.After(200 * time.Millisecond):
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -332,6 +333,11 @@ func (s *Studio) analyzeTikTokRadarBatchWithGeminiAPI(ctx context.Context, promp
 	return results, nil
 }
 
+// analyzeTikTokRadarBatchWithWebAI uses a Primary + Fallback chain across
+// connected Web AI providers instead of launching 4 headless browsers at once
+// (which previously spiked 1.5-3 GB RAM per batch). A second provider is
+// consulted only if the primary fails, omits a video, or returns borderline
+// confidence (< 0.78).
 func (s *Studio) analyzeTikTokRadarBatchWithWebAI(ctx context.Context, prompt string, refs []ImageRef, videoCount int) (map[int]radarVideoAnalysisResult, []string, error) {
 	if s == nil {
 		return nil, nil, nil
@@ -368,40 +374,44 @@ func (s *Studio) analyzeTikTokRadarBatchWithWebAI(ctx context.Context, prompt st
 	if len(requests) == 0 {
 		return nil, nil, nil
 	}
-	responses := make([]radarWebAIResponse, len(requests))
-	var wg sync.WaitGroup
-	for i, requestItem := range requests {
-		wg.Add(1)
-		go func(index int, req providerRequest) {
-			defer wg.Done()
-			paths := make([]string, 0, len(refs))
-			for _, ref := range refs {
-				paths = append(paths, ref.Path)
-			}
-			raw, err := analyzer(ctx, req.session, prompt, paths)
-			item := radarWebAIResponse{name: req.name, err: err}
-			if err == nil {
-				err = json.Unmarshal([]byte(cleanJSON(raw)), &item.response)
-				if err == nil && len(radarVideoAnalysisResultMap(item.response, videoCount)) == 0 {
-					err = errors.New("provider returned no usable video results")
-				}
-				item.err = err
-			}
-			responses[index] = item
-		}(i, requestItem)
-	}
-	wg.Wait()
 
-	usable := make([]radarWebAIResponse, 0, len(responses))
-	providerNames := make([]string, 0, len(responses))
-	for _, response := range responses {
-		if response.err != nil {
-			failures = append(failures, response.name+": "+response.err.Error())
+	paths := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		paths = append(paths, ref.Path)
+	}
+
+	usable := make([]radarWebAIResponse, 0, len(requests))
+	providerNames := make([]string, 0, len(requests))
+	consensusAll := os.Getenv("AICOS_RADAR_CONSENSUS_ALL") == "1"
+
+	for _, req := range requests {
+		if err := ctx.Err(); err != nil {
+			failures = append(failures, req.name+": "+err.Error())
+			break
+		}
+		raw, err := analyzer(ctx, req.session, prompt, paths)
+		item := radarWebAIResponse{name: req.name, err: err}
+		if err == nil {
+			err = json.Unmarshal([]byte(cleanJSON(raw)), &item.response)
+			if err == nil && len(radarVideoAnalysisResultMap(item.response, videoCount)) == 0 {
+				err = errors.New("provider returned no usable video results")
+			}
+			item.err = err
+		}
+		if item.err != nil {
+			failures = append(failures, item.name+": "+item.err.Error())
 			continue
 		}
-		usable = append(usable, response)
-		providerNames = append(providerNames, response.name)
+		usable = append(usable, item)
+		providerNames = append(providerNames, item.name)
+		if !consensusAll {
+			merged := mergeRadarWebAIResponses(usable, videoCount)
+			if radarResultsHighConfidence(merged, videoCount) || len(usable) >= 2 {
+				return merged, providerNames, nil
+			}
+		}
 	}
+
 	if len(usable) == 0 {
 		if len(failures) == 0 {
 			return nil, nil, nil
@@ -409,6 +419,19 @@ func (s *Studio) analyzeTikTokRadarBatchWithWebAI(ctx context.Context, prompt st
 		return nil, nil, errors.New(strings.Join(failures, "; "))
 	}
 	return mergeRadarWebAIResponses(usable, videoCount), providerNames, nil
+}
+
+func radarResultsHighConfidence(byIndex map[int]radarVideoAnalysisResult, videoCount int) bool {
+	if len(byIndex) < videoCount {
+		return false
+	}
+	for i := 1; i <= videoCount; i++ {
+		res, ok := byIndex[i]
+		if !ok || normalizeRadarConfidence(res.DanceConfidence) < 0.78 {
+			return false
+		}
+	}
+	return true
 }
 
 func radarVideoAnalysisResultMap(response radarVideoAnalysisResponse, videoCount int) map[int]radarVideoAnalysisResult {
@@ -516,6 +539,23 @@ func buildTikTokRadarContentAnalysis(topic string, video TikTokTrendVideo, resul
 	return analysis
 }
 
+func (s *Studio) cachedTikTokRadarVideoPath(videoID string) string {
+	videoID = strings.TrimSpace(videoID)
+	if s == nil || s.workRoot == "" || videoID == "" {
+		return ""
+	}
+	for _, r := range videoID {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+	cacheDir := filepath.Join(s.workRoot, "cache", "radar_videos")
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return ""
+	}
+	return filepath.Join(cacheDir, videoID+".mp4")
+}
+
 func (s *Studio) downloadTikTokRadarVideoFrames(ctx context.Context, video TikTokTrendVideo) radarVideoFrameSet {
 	set := radarVideoFrameSet{}
 	if !IsTikTokVideoURL(video.VideoURL) || tiktokVideoID(video.VideoURL) != strings.TrimSpace(video.VideoID) {
@@ -530,14 +570,28 @@ func (s *Studio) downloadTikTokRadarVideoFrames(ctx context.Context, video TikTo
 	set.dir = dir
 	downloadCtx, cancel := context.WithTimeout(ctx, tikTokRadarVideoDownloadTimeout)
 	defer cancel()
-	videoPath, mediaType, err := studioflow.DownloadMediaResource(downloadCtx, video.VideoURL, dir, "video")
-	if err != nil {
-		set.err = err
-		return set
-	}
-	if mediaType != "video" || !isViralVideoFile(videoPath) {
-		set.err = fmt.Errorf("nguồn Radar không trả file video")
-		return set
+
+	var videoPath string
+	cachedPath := s.cachedTikTokRadarVideoPath(video.VideoID)
+	if cachedPath != "" && isViralVideoFile(cachedPath) {
+		videoPath = cachedPath
+	} else {
+		downloaded, mediaType, dlErr := studioflow.DownloadMediaResource(downloadCtx, video.VideoURL, dir, "video")
+		if dlErr != nil {
+			set.err = dlErr
+			return set
+		}
+		if mediaType != "video" || !isViralVideoFile(downloaded) {
+			set.err = fmt.Errorf("nguồn Radar không trả file video")
+			return set
+		}
+		videoPath = downloaded
+		if cachedPath != "" {
+			if copyErr := copyStudioFile(downloaded, cachedPath); copyErr == nil {
+				_ = os.Remove(downloaded)
+				videoPath = cachedPath
+			}
+		}
 	}
 	duration := probeDuration(downloadCtx, videoPath)
 	if duration <= 0 {

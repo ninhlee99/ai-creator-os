@@ -1,6 +1,8 @@
 package webai
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,14 +11,125 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
+var profileLocks sync.Map
+
 func clearChromiumSingletonLocks(dir string) {
-	for _, name := range []string{"SingletonLock", "SingletonSocket", "SingletonCookie"} {
+	for _, name := range []string{"SingletonLock", "SingletonSocket", "SingletonCookie", "DevToolsActivePort"} {
 		_ = os.Remove(filepath.Join(dir, name))
 	}
 }
+
+// cleanChromiumVolatileCaches strips heavy transient shader/code caches on
+// profile release while keeping cookies, localStorage, and IndexedDB intact.
+func cleanChromiumVolatileCaches(dir string) {
+	clearChromiumSingletonLocks(dir)
+	for _, rel := range []string{
+		"Crashpad",
+		"BrowserMetrics",
+		"GrShaderCache",
+		"ShaderCache",
+		"GraphiteDawnCache",
+		filepath.Join("Default", "Cache"),
+		filepath.Join("Default", "Code Cache"),
+		filepath.Join("Default", "GPUCache"),
+		filepath.Join("Default", "Service Worker", "CacheStorage"),
+	} {
+		_ = os.RemoveAll(filepath.Join(dir, rel))
+	}
+}
+
+// acquireAccountBrowserProfile returns a persistent per-account profile
+// directory (keeping localStorage, IndexedDB, and anti-bot tokens across runs)
+// when no other goroutine is currently using that profile, or falls back to a
+// clean temporary directory when concurrent runs share the same account.
+func acquireAccountBrowserProfile(platform, cookieHeader string, cookies []BrowserCookie) (string, func(), error) {
+	if os.Getenv("AICOS_EPHEMERAL_BROWSER_PROFILE") != "1" {
+		fingerprint := strings.TrimSpace(cookieHeader)
+		if fingerprint == "" && len(cookies) > 0 {
+			var parts []string
+			for _, c := range cookies {
+				if c.Name != "" && c.Value != "" {
+					parts = append(parts, c.Domain+":"+c.Name+"="+c.Value)
+				}
+			}
+			sort.Strings(parts)
+			fingerprint = strings.Join(parts, ";")
+		}
+		if fingerprint != "" {
+			sum := sha256.Sum256([]byte(platform + "|" + fingerprint))
+			key := platform + "-" + hex.EncodeToString(sum[:8])
+			if _, loaded := profileLocks.LoadOrStore(key, struct{}{}); !loaded {
+				baseDir := filepath.Join(os.TempDir(), "aicos-browser-profiles", key)
+				if err := os.MkdirAll(baseDir, 0o700); err == nil {
+					clearChromiumSingletonLocks(baseDir)
+					return baseDir, func() {
+						cleanChromiumVolatileCaches(baseDir)
+						profileLocks.Delete(key)
+					}, nil
+				}
+				profileLocks.Delete(key)
+			}
+		}
+	}
+	profile, err := os.MkdirTemp("", "aicos-"+platform+"-headless-*")
+	if err != nil {
+		return "", func() {}, err
+	}
+	clearChromiumSingletonLocks(profile)
+	return profile, func() { _ = os.RemoveAll(profile) }, nil
+}
+
+// optimizedHeadlessBrowserArgs builds low-RAM, low-CPU, low-SSD-wear flags for
+// headless Chromium automation.
+func optimizedHeadlessBrowserArgs(port int, profileDir, windowSize string) []string {
+	if windowSize == "" {
+		windowSize = "1440,1100"
+	}
+	return []string{
+		"--headless=new",
+		"--disable-gpu",
+		"--disable-dev-shm-usage",
+		"--disable-software-rasterizer",
+		"--no-first-run",
+		"--no-default-browser-check",
+		"--disable-sync",
+		"--disable-extensions",
+		"--disable-background-networking",
+		"--disable-background-timer-throttling",
+		"--disable-backgrounding-occluded-windows",
+		"--disable-renderer-backgrounding",
+		"--disable-ipc-flooding-protection",
+		"--disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion,AudioServiceOutOfProcess",
+		"--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+		"--disk-cache-size=10485760",
+		"--media-cache-size=10485760",
+		"--js-flags=--max-old-space-size=512",
+		"--hide-scrollbars",
+		"--mute-audio",
+		"--window-size=" + windowSize,
+		"--remote-debugging-address=127.0.0.1",
+		fmt.Sprintf("--remote-debugging-port=%d", port),
+		"--user-data-dir=" + profileDir,
+		"about:blank",
+	}
+}
+
+// ConfigureHeadlessBrowserCommand exports process-group isolation for callers
+// outside package webai (such as Studio's TikTok crawler).
+func ConfigureHeadlessBrowserCommand(cmd *exec.Cmd) {
+	configureHeadlessBrowserCommand(cmd)
+}
+
+// TerminateBrowser exports graceful process-group termination for callers
+// outside package webai.
+func TerminateBrowser(cmd *exec.Cmd) {
+	terminateBrowser(cmd)
+}
+
 func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 	if cmd == nil || cmd.Process == nil {
 		return
@@ -30,7 +143,7 @@ func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 	select {
 	case <-processDone:
 	case <-time.After(3 * time.Second):
-		_ = cmd.Process.Kill()
+		terminateBrowser(cmd)
 		<-processDone
 	}
 }

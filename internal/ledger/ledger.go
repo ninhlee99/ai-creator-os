@@ -73,6 +73,9 @@ func New(path string) (*Ledger, error) {
 	return l, nil
 }
 
+// DB exposes the underlying SQLite connection handle for shared WAL readers.
+func (l *Ledger) DB() *sql.DB { return l.db }
+
 // Close closes the underlying database.
 func (l *Ledger) Close() error { return l.db.Close() }
 
@@ -351,6 +354,8 @@ func stampUserVersion(db *sql.DB, v int) error {
 // PruneOld xóa decisions và api_usage cũ hơn số ngày cho trước (Đợt V —
 // máy 24/7 không prune thì DB phình vô hạn). Trả về tổng số dòng đã xóa.
 func (l *Ledger) PruneOld(decisionsDays, usageDays int) (int64, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	var total int64
 	if decisionsDays > 0 {
 		res, err := l.db.Exec(`DELETE FROM decisions WHERE created_at < datetime('now', ?)`,
@@ -369,6 +374,10 @@ func (l *Ledger) PruneOld(decisionsDays, usageDays int) (int64, error) {
 		}
 		n, _ := res.RowsAffected()
 		total += n
+	}
+	if total > 0 {
+		_, _ = l.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+		_, _ = l.db.Exec(`PRAGMA optimize`)
 	}
 	return total, nil
 }

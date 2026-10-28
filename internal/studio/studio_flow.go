@@ -271,6 +271,13 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 	if err := fStore.SaveRun(initialRun); err != nil {
 		return nil, fmt.Errorf("lưu trạng thái khởi tạo workflow: %w", err)
 	}
+
+	var nodeStateMu sync.Mutex
+	liveNodeStates := make(map[string]flow.NodeState, len(initialRun.NodeStates))
+	for k, v := range initialRun.NodeStates {
+		liveNodeStates[k] = v
+	}
+
 	analyzeImages := func(ctx context.Context, prompt string, imagePaths []string) (string, error) {
 		analyzer, ok := s.mg.(visualImageAnalyzer)
 		if !ok || s.mg == nil || !s.mg.Healthy(ctx) {
@@ -322,11 +329,14 @@ func (s *Studio) ExecuteFlowGraphWithInputs(ctx context.Context, runID string, g
 			// Callback ghi log
 		},
 		NodeStatus: func(nodeID string, state flow.NodeState) {
-			run, err := fStore.GetRun(runID)
-			if err == nil && run != nil {
-				run.NodeStates[nodeID] = state
-				_ = fStore.SaveRun(run)
+			nodeStateMu.Lock()
+			liveNodeStates[nodeID] = state
+			snapshot := make(map[string]flow.NodeState, len(liveNodeStates))
+			for k, v := range liveNodeStates {
+				snapshot[k] = v
 			}
+			nodeStateMu.Unlock()
+			_ = fStore.UpdateRunNodeStates(runID, snapshot)
 		},
 		EngineCall: func(ctx context.Context, platform string, prompt string, images []string, aspect, projectID, accountID, outPath string) (string, string, error) {
 			switch strings.ToLower(strings.TrimSpace(platform)) {

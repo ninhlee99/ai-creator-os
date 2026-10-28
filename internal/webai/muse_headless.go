@@ -97,24 +97,17 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	if err != nil {
 		return out, errors.New("Muse headless rendering requires an installed Chrome, Edge, or Chromium browser")
 	}
-	profile, err := os.MkdirTemp("", "aicos-muse-headless-*")
+	profile, releaseProfile, err := acquireAccountBrowserProfile(PlatformMuseAI, cookie, savedCookies)
 	if err != nil {
 		return out, errors.New("cannot create temporary Muse headless profile")
 	}
-	defer os.RemoveAll(profile)
-	clearChromiumSingletonLocks(profile)
+	defer releaseProfile()
 	port, listener, err := pickFreePort()
 	if err != nil {
 		return out, errors.New("cannot allocate Muse headless debugging port")
 	}
 	_ = listener.Close()
-	args := []string{
-		"--headless=new", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run",
-		"--no-default-browser-check", "--disable-sync", "--disable-extensions",
-		"--disable-background-networking", "--hide-scrollbars", "--window-size=1280,1000",
-		"--remote-debugging-address=127.0.0.1", fmt.Sprintf("--remote-debugging-port=%d", port),
-		"--user-data-dir=" + profile, "about:blank",
-	}
+	args := optimizedHeadlessBrowserArgs(port, profile, "1280,1000")
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
 	configureHeadlessBrowserCommand(cmd)
@@ -123,7 +116,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	}
 	defer terminateBrowser(cmd)
 
-	browserURL, err := waitDebuggerURL(ctx, port)
+	browserURL, err := waitDebuggerURL(ctx, port, profile)
 	if err != nil {
 		return out, err
 	}
@@ -167,6 +160,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 			return out, err
 		}
 	}
+	client.enableStealth(ctx)
 	if _, err := client.call(ctx, "Network.setCookies", map[string]any{"cookies": browserCookieSetParams(PlatformMuseAI, cookies)}, client.sessionID); err != nil {
 		return out, errors.New("Muse headless browser rejected saved session cookies")
 	}
@@ -276,7 +270,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 		if !strings.HasPrefix(mediaURL, "blob:") {
 			continue
 		}
-		data, mime, mediaErr := fetchMuseBlobMedia(ctx, client, mediaURL)
+		data, mime, mediaErr := fetchMuseBlobMedia(ctx, client, mediaURL, mediaKind)
 		if mediaErr == nil && len(data) > 0 {
 			out.MediaData, out.MediaMime = data, mime
 			break
@@ -397,7 +391,7 @@ func sendMusePromptFromBaseline(ctx context.Context, client *browserCDPClient, p
 		select {
 		case <-ctx.Done():
 			return museAssistantReply{}, ctx.Err()
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(750 * time.Millisecond):
 		}
 	}
 	return museAssistantReply{}, errors.New("Muse headless browser timed out waiting for reply")
@@ -439,7 +433,7 @@ func waitMuseMediaAttachment(ctx context.Context, client *browserCDPClient, repl
 		select {
 		case <-ctx.Done():
 			return reply, ctx.Err()
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(750 * time.Millisecond):
 		}
 	}
 	return reply, fmt.Errorf("Muse reply completed but its %s attachment did not appear within 8 minutes", mediaKind)
@@ -657,7 +651,38 @@ func attachMuseFiles(ctx context.Context, client *browserCDPClient, files []stri
 	return nil
 }
 
-func fetchMuseBlobMedia(ctx context.Context, client *browserCDPClient, mediaURL string) ([]byte, string, error) {
+// fetchMuseBlobMedia first attempts a direct browser-to-disk download via
+// Page.setDownloadBehavior (avoiding V8 + JSON + Base64 RAM multiplication),
+// and falls back to streaming decoded chunks into a temporary file on disk.
+func fetchMuseBlobMedia(ctx context.Context, client *browserCDPClient, mediaURL string, mediaKind ...string) ([]byte, string, error) {
+	kind := "video"
+	if len(mediaKind) > 0 && mediaKind[0] == "image" {
+		kind = "image"
+	}
+	if downloadDir, err := os.MkdirTemp("", "aicos-muse-blob-*"); err == nil {
+		defer os.RemoveAll(downloadDir)
+		targetOut := filepath.Join(downloadDir, "muse-output.mp4")
+		if kind == "image" {
+			targetOut = filepath.Join(downloadDir, "muse-output.png")
+		}
+		if downloadedPath, dlErr := downloadWebAIMediaInBrowser(ctx, client, mediaURL, targetOut, kind); dlErr == nil && downloadedPath != "" {
+			if raw, readErr := os.ReadFile(downloadedPath); readErr == nil && len(raw) >= 1024 {
+				mime := "video/mp4"
+				switch strings.ToLower(filepath.Ext(downloadedPath)) {
+				case ".webm":
+					mime = "video/webm"
+				case ".png":
+					mime = "image/png"
+				case ".jpg", ".jpeg":
+					mime = "image/jpeg"
+				case ".webp":
+					mime = "image/webp"
+				}
+				return raw, mime, nil
+			}
+		}
+	}
+
 	encodedURL, _ := json.Marshal(mediaURL)
 	cleanup := func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -685,8 +710,19 @@ func fetchMuseBlobMedia(ctx context.Context, client *browserCDPClient, mediaURL 
 	if result.Error != "" || result.Size < 1024 || result.Size > 250<<20 {
 		return nil, result.MIME, errors.New("Muse blob media could not be read")
 	}
-	data := make([]byte, 0, int(result.Size))
+
+	tmpFile, err := os.CreateTemp("", "aicos-muse-stream-*.bin")
+	if err != nil {
+		return nil, result.MIME, err
+	}
+	tmpName := tmpFile.Name()
+	defer func() {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpName)
+	}()
+
 	const chunkSize = 2 << 20
+	var writtenTotal int64
 	for start := 0; int64(start) < result.Size; start += chunkSize {
 		end := start + chunkSize
 		if int64(end) > result.Size {
@@ -709,13 +745,24 @@ func fetchMuseBlobMedia(ctx context.Context, client *browserCDPClient, mediaURL 
 			return nil, result.MIME, errors.New("Muse blob media chunk could not be read")
 		}
 		decoded, err := base64.StdEncoding.DecodeString(chunk.Base64)
-		if err != nil || len(data)+len(decoded) > int(result.Size) {
+		if err != nil || writtenTotal+int64(len(decoded)) > result.Size {
 			return nil, result.MIME, errors.New("Muse blob media chunk is invalid")
 		}
-		data = append(data, decoded...)
+		n, writeErr := tmpFile.Write(decoded)
+		if writeErr != nil {
+			return nil, result.MIME, writeErr
+		}
+		writtenTotal += int64(n)
 	}
-	if int64(len(data)) != result.Size {
+	if writtenTotal != result.Size {
 		return nil, result.MIME, errors.New("Muse blob media is incomplete")
+	}
+	if err := tmpFile.Close(); err != nil {
+		return nil, result.MIME, err
+	}
+	data, err := os.ReadFile(tmpName)
+	if err != nil {
+		return nil, result.MIME, err
 	}
 	return data, result.MIME, nil
 }
