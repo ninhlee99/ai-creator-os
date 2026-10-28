@@ -12,6 +12,10 @@ import (
 
 func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p ViralParams, museCreditsAcknowledged bool) {
 	s.appendLog(jobID, "SOURCE_VALIDATION_START: kiểm tra video nguồn, ảnh nhân vật, Muse AI và visual QC")
+	if err := ValidateTikTokSourceFile(p.SampleVideo); err != nil {
+		s.failViralJob(jobID, err)
+		return
+	}
 	sourceDuration := probeDuration(ctx, p.SampleVideo)
 	if math.IsNaN(sourceDuration) || math.IsInf(sourceDuration, 0) || sourceDuration <= 0 {
 		s.failViralJob(jobID, fmt.Errorf("không đọc được thời lượng video nguồn"))
@@ -30,8 +34,8 @@ func (s *Studio) runViralFullCharacterEdit(ctx context.Context, jobID string, p 
 		s.failViralJob(jobID, fmt.Errorf("video nguồn %dx%d không phải khung dọc 9:16", width, height))
 		return
 	}
-	if !fileExists(p.SampleVideo) || !fileExists(p.ModelPhoto) {
-		s.failViralJob(jobID, fmt.Errorf("thiếu video nguồn hoặc ảnh nhân vật của kênh"))
+	if !fileExists(p.ModelPhoto) {
+		s.failViralJob(jobID, fmt.Errorf("thiếu ảnh nhân vật của kênh"))
 		return
 	}
 	if ready, reason := s.ViralCharacterEditorStatus(ctx); !ready {

@@ -1,6 +1,7 @@
 package studio
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"math"
@@ -105,6 +106,42 @@ func TestValidateViralSourceDurationMatchesRenderLimits(t *testing.T) {
 				t.Fatalf("validateViralSourceDuration(%v) error = %v, wantErr %v", tc.duration, err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidateTikTokSourceFileEnforcesSizeLimit(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "source.mp4")
+	if err := os.WriteFile(path, []byte("four"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateTikTokSourceFileSize(path, 4); err != nil {
+		t.Fatalf("source exactly at byte limit rejected: %v", err)
+	}
+	if err := validateTikTokSourceFileSize(path, 3); err == nil {
+		t.Fatal("source over byte limit unexpectedly accepted")
+	}
+}
+
+func TestCopyViralFileCopiesContentAndTruncatesDestination(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.mp4")
+	destination := filepath.Join(dir, "destination.mp4")
+	content := bytes.Repeat([]byte("media-frame"), 1<<16)
+	if err := os.WriteFile(source, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(destination, bytes.Repeat([]byte("stale"), 1<<17), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyViralFile(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	copied, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(copied, content) {
+		t.Fatalf("copy mismatch: got %d bytes, want %d", len(copied), len(content))
 	}
 }
 

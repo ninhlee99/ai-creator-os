@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -13,6 +14,27 @@ import (
 	"strconv"
 	"strings"
 )
+
+func ValidateTikTokSourceFile(path string) error {
+	return validateTikTokSourceFileSize(path, MaxTikTokSourceBytes)
+}
+
+func validateTikTokSourceFileSize(path string, maxBytes int64) error {
+	if !isViralVideoFile(path) {
+		return fmt.Errorf("file không phải video hợp lệ")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("không đọc được file video: %w", err)
+	}
+	if !info.Mode().IsRegular() || info.Size() <= 0 {
+		return fmt.Errorf("file video rỗng hoặc không phải file thường")
+	}
+	if info.Size() > maxBytes {
+		return fmt.Errorf("file video vượt giới hạn %.0f MiB", float64(maxBytes)/(1<<20))
+	}
+	return nil
+}
 
 func splitViralSourceForEditing(ctx context.Context, source string, duration float64, workDir string) ([]viralEditSegment, error) {
 	if duration < 3 {
@@ -109,9 +131,19 @@ func (s *Studio) createSolidColorPhoto(outPath string, w, h int, text string) er
 }
 
 func copyViralFile(src, dst string) error {
-	data, err := os.ReadFile(src)
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0o644)
+	defer in.Close()
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
 }

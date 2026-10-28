@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -20,18 +18,16 @@ func downloadTikTokRadarAudio(ctx context.Context, sourceURL, workDir string) (s
 	taskCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	videoPath := filepath.Join(workDir, "radar-source.mp4")
-	cmd := exec.CommandContext(taskCtx, "yt-dlp", "-f", "b", "--no-warnings", "--no-playlist", "--merge-output-format", "mp4", "-o", videoPath, sourceURL)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		message := strings.TrimSpace(string(output))
-		if message == "" {
-			message = err.Error()
-		}
-		return "", fmt.Errorf("không tải được video âm thanh từ Radar: %s", message)
+	if err := DownloadTikTokSourceVideo(taskCtx, sourceURL, videoPath); err != nil {
+		_ = os.Remove(videoPath)
+		return "", fmt.Errorf("không tải được video âm thanh từ Radar: %w", err)
 	}
-	if !isViralVideoFile(videoPath) {
-		return "", fmt.Errorf("Radar không trả video để trích âm thanh")
+	if err := ValidateTikTokSourceFile(videoPath); err != nil {
+		_ = os.Remove(videoPath)
+		return "", fmt.Errorf("video Radar không hợp lệ để trích âm thanh: %w", err)
 	}
 	if !ProbeHasAudio(taskCtx, videoPath) {
+		_ = os.Remove(videoPath)
 		return "", fmt.Errorf("video Radar không có track âm thanh")
 	}
 	audioPath := filepath.Join(workDir, "radar-source-audio.m4a")

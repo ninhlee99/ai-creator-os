@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -207,15 +206,11 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 	tiktokLink = sourceVideo.VideoURL
 	dlDst := filepath.Join(upDir, fmt.Sprintf("%d-tiktok-dl.mp4", time.Now().UnixNano()))
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	cmd := exec.CommandContext(ctx, "yt-dlp", "-f", "b", "--no-warnings", "--no-playlist", "-o", dlDst, tiktokLink)
-	downloadOutput, downloadErr := cmd.CombinedOutput()
+	downloadErr := studio.DownloadTikTokSourceVideo(ctx, tiktokLink, dlDst)
 	cancel()
 	if downloadErr != nil {
 		_ = os.Remove(dlDst)
-		message := strings.Join(strings.Fields(strings.TrimSpace(string(downloadOutput))), " ")
-		if message == "" {
-			message = downloadErr.Error()
-		}
+		message := strings.Join(strings.Fields(strings.TrimSpace(downloadErr.Error())), " ")
 		if len([]rune(message)) > 500 {
 			message = string([]rune(message)[:500]) + "…"
 		}
@@ -223,8 +218,9 @@ func (s *Server) handleViralCreate(w http.ResponseWriter, r *http.Request) {
 		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Không tải được video từ Radar: "+message)
 		return
 	}
-	if !fileExists(dlDst) {
-		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "yt-dlp kết thúc nhưng không tạo file video Radar.")
+	if err := studio.ValidateTikTokSourceFile(dlDst); err != nil {
+		_ = os.Remove(dlDst)
+		writeViralCreateError(w, r, analysisOnly, http.StatusBadRequest, "Video Radar tải về không hợp lệ: "+err.Error())
 		return
 	}
 	sampleVideoPath = dlDst

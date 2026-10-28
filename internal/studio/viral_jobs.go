@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// MaxTikTokSourceBytes bounds downloaded source media before probe and render.
+const MaxTikTokSourceBytes int64 = 600 << 20
+
 const (
 	minViralSourceDurationSeconds  = 3.0
 	maxViralSegmentDurationSeconds = 10.0
@@ -44,8 +47,8 @@ func (s *Studio) EnqueueViral(ctx context.Context, p ViralParams) (string, error
 	if p.AIMode != "" && p.AIMode != ViralModeFullCharacterEdit {
 		return "", fmt.Errorf("chỉ hỗ trợ thay toàn bộ nhân vật trên video nguồn")
 	}
-	if !fileExists(p.SampleVideo) || !isViralVideoFile(p.SampleVideo) {
-		return "", fmt.Errorf("cần file video nguồn hợp lệ")
+	if err := ValidateTikTokSourceFile(p.SampleVideo); err != nil {
+		return "", fmt.Errorf("cần file video nguồn hợp lệ: %w", err)
 	}
 	if !IsTikTokVideoURL(p.SourceVideoURL) {
 		return "", fmt.Errorf("cần video nguồn TikTok đã chọn trong Radar")
