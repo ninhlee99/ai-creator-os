@@ -233,6 +233,87 @@ func TestTC05_PresetsValidation(t *testing.T) {
 	}
 }
 
+func TestViralAndAffiliatePresetsKeepOneMuseConversation(t *testing.T) {
+	for _, graph := range []FlowGraph{PresetViralDance(), PresetAffiliateShowcase()} {
+		var shareThread bool
+		for _, node := range graph.Nodes {
+			if node.Type == "workflow_map" && nodeParamBool(node.Params, "share_muse_thread", false) {
+				shareThread = true
+				break
+			}
+		}
+		if !shareThread {
+			t.Errorf("%s must share one Muse conversation across rendered shots", graph.ID)
+		}
+	}
+	for _, id := range []string{"preset_muse_viral_shot", "preset_muse_video_shot"} {
+		graph := presetByID(id)
+		var prompt string
+		for _, node := range graph.Nodes {
+			if node.Type == "prompt_template" {
+				prompt = nodeParamString(node.Params, "template", "")
+				break
+			}
+		}
+		if strings.Contains(strings.ToLower(prompt), "ignore prior chats") || !strings.Contains(strings.ToLower(prompt), "conversation") {
+			t.Errorf("%s prompt must keep workflow context while scoping each shot", id)
+		}
+	}
+}
+
+func TestWorkflowMapSharesMuseThreadByDefault(t *testing.T) {
+	ctx, tmpDir := setupTestContext(t)
+	defer os.RemoveAll(tmpDir)
+	ctx.WorkflowStack = []string{"root"}
+	ctx.MuseThread = &MuseThreadState{}
+	imagePath := filepath.Join(ctx.WorkDir, "default_char.jpg")
+	child := &FlowGraph{ID: "child", Name: "Muse shot", Nodes: []FlowNode{
+		{ID: "prompt", Type: "workflow_input", Params: map[string]any{"key": "prompt", "value_type": "text", "required": true}},
+		{ID: "images", Type: "workflow_input", Params: map[string]any{"key": "images", "value_type": "image_list", "required": true}},
+		{ID: "muse", Type: "muse_ai_video"},
+		{ID: "output", Type: "workflow_output", Params: map[string]any{"key": "video", "value_type": "video"}},
+	}, Edges: []FlowEdge{
+		{FromNode: "prompt", FromPort: "value", ToNode: "muse", ToPort: "prompt"},
+		{FromNode: "images", FromPort: "value", ToNode: "muse", ToPort: "reference_images"},
+		{FromNode: "muse", FromPort: "video_out", ToNode: "output", ToPort: "value"},
+	}}
+	ctx.ResolveWorkflow = func(id string) (*FlowGraph, error) {
+		if id != child.ID {
+			return nil, fmt.Errorf("unknown child workflow %q", id)
+		}
+		return child, nil
+	}
+	calls := 0
+	ctx.MuseRenderWithSession = func(_ context.Context, newThread bool, threadURL, _, _ string, _ []string, outPath string) (string, error) {
+		calls++
+		if calls == 1 && (!newThread || threadURL != "") {
+			t.Fatalf("first mapped shot should create workflow thread: new=%v url=%q", newThread, threadURL)
+		}
+		if calls == 2 && (newThread || threadURL != "https://muse.example/thread/root") {
+			t.Fatalf("second mapped shot should reuse workflow thread: new=%v url=%q", newThread, threadURL)
+		}
+		if err := writeDummyVideo(ctx, outPath, 2); err != nil {
+			return threadURL, err
+		}
+		return "https://muse.example/thread/root", nil
+	}
+	node := &FlowNode{ID: "map", Type: "workflow_map", Params: map[string]any{
+		"workflow_id": "child", "item_input_map": map[string]any{"prompt": "prompt"},
+		"shared_image_input_key": "images", "result_output_key": "video", "max_items": 2,
+	}}
+	outputs, err := executeWorkflowMap(ctx, node, map[string]any{
+		"items":            []any{map[string]any{"prompt": "shot one"}, map[string]any{"prompt": "shot two"}},
+		"reference_images": []string{imagePath},
+	})
+	if err != nil {
+		t.Fatalf("executeWorkflowMap: %v", err)
+	}
+	results, ok := outputs["results"].([]any)
+	if !ok || calls != 2 || len(results) != 2 {
+		t.Fatalf("mapped shots = %v, calls = %d; want two shots in one conversation", outputs["results"], calls)
+	}
+}
+
 func setupTestContext(t *testing.T) (*ExecutionContext, string) {
 	tmpDir, err := os.MkdirTemp("", "flow-test-*")
 	if err != nil {

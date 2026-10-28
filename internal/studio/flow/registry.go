@@ -1051,7 +1051,7 @@ func registerAllBuiltinNodes() {
 			"item_input_map":                                     map[string]any{},
 			"shared_image_input_key":                             "",
 			"merge_context_into_item":                            false,
-			"share_muse_thread":                                  false,
+			"share_muse_thread":                                  true,
 			"previous_video_frame_input_key":                     "",
 			"previous_video_frame_insert_at":                     -1,
 			"previous_video_frame_insert_after_reference_prefix": false,

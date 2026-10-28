@@ -492,7 +492,7 @@ func executeWorkflowMap(ctx *ExecutionContext, node *FlowNode, inputs map[string
 		}
 
 		childCtx := *ctx
-		if !nodeParamBool(node.Params, "share_muse_thread", false) {
+		if !nodeParamBool(node.Params, "share_muse_thread", true) {
 			childCtx.MuseThread = &MuseThreadState{}
 		}
 		childCtx.WorkflowInputs = childValues

@@ -159,7 +159,7 @@
         "result_output_key": "video",
         "max_items": 30,
         "merge_context_into_item": true,
-        "share_muse_thread": false,
+        "share_muse_thread": true,
         "previous_video_frame_input_key": "reference_images",
         "previous_video_frame_insert_at": 1,
         "previous_video_frame_insert_after_reference_prefix": true,
