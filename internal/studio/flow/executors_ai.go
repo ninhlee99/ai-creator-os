@@ -349,8 +349,15 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 
 	cmd := exec.CommandContext(cmdTimeout, "node", args...)
 	out, err := cmd.CombinedOutput()
+	chatFailure := ""
 	if err != nil {
-		return fmt.Errorf("muse-cli chat lỗi: %w: %s", err, string(out))
+		chatFailure = fmt.Sprintf("muse-cli chat lỗi: %v", err)
+		if detail := strings.TrimSpace(string(out)); detail != "" {
+			if len(detail) > 2000 {
+				detail = detail[:2000]
+			}
+			chatFailure += ": " + detail
+		}
 	}
 
 	// 2. Poll media mới sinh tối đa 90 giây trước khi báo lỗi.
@@ -396,6 +403,13 @@ func callMuseChatMCP(ctx context.Context, isNewThread bool, threadTitle, prompt 
 		}
 	}
 
+	if chatFailure != "" {
+		mediaFailure := strings.TrimSpace(string(lastDlOut))
+		if mediaFailure == "" {
+			return fmt.Errorf("Muse AI chưa tạo được video; %s; chưa tìm thấy media đầu ra", chatFailure)
+		}
+		return fmt.Errorf("Muse AI chưa tạo được video; %s; kiểm tra media thất bại: %s", chatFailure, mediaFailure)
+	}
 	return fmt.Errorf("Muse AI chưa sinh video hoặc phiên chat chưa trả lời file: %s", string(lastDlOut))
 }
 
