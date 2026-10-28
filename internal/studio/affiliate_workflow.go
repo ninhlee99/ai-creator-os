@@ -50,8 +50,8 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 		}
 	}
 	shotInputs := make([]any, 0, len(shots))
-	for _, shot := range shots {
-		shotInputs = append(shotInputs, map[string]any{
+	for i, shot := range shots {
+		item := map[string]any{
 			"duration_seconds": float64(shot.Seconds),
 			"variables": map[string]any{
 				"duration_seconds":    shot.Seconds,
@@ -72,7 +72,11 @@ func (s *Studio) runAffiliateWorkflow(ctx context.Context, jobID, workDir string
 				"product_use_action":  productProfile.UseAction,
 				"product_notes":       strings.Join(productProfile.OperatorNotes, ", "),
 			},
-		})
+		}
+		if i < len(p.Clips) && strings.TrimSpace(p.Clips[i]) != "" {
+			item["segment_video"] = p.Clips[i]
+		}
+		shotInputs = append(shotInputs, item)
 	}
 	inputs := map[string]any{
 		"shots":      shotInputs,

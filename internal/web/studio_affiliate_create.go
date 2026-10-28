@@ -111,28 +111,30 @@ func (s *Server) handleStudioAffiliateCreatePrepared(w http.ResponseWriter, r *h
 			return
 		}
 	}
-	if engine := strings.TrimSpace(r.FormValue("video_engine")); engine != "" && engine != p.VideoEngine {
+	legacyEngine := func(value string) string {
+		switch strings.TrimSpace(value) {
+		case "", studio.AffiliateVideoEngineGoogleFlow, studio.AffiliateVideoEngineManual:
+			return studio.AffiliateVideoEngineMuseAI
+		default:
+			return strings.TrimSpace(value)
+		}
+	}
+	if engine := strings.TrimSpace(r.FormValue("video_engine")); engine != "" && legacyEngine(engine) != legacyEngine(p.VideoEngine) {
 		seeOther(w, r, "/studio?err="+url.QueryEscape("Engine đã đổi sau khi lập shot plan; hãy lập lại plan."))
 		return
 	}
-	if p.VideoEngine == studio.AffiliateVideoEngineMuseAI || p.VideoEngine == studio.AffiliateVideoEngineGoogleFlow {
-		p.FlowCreditsAcknowledged = true
-		if r.MultipartForm != nil && len(r.MultipartForm.File["motion_clips"]) > 0 {
-			seeOther(w, r, "/studio?err="+url.QueryEscape("Bỏ clip tải lên khi dùng Muse AI hoặc chọn chế độ thủ công."))
-			return
-		}
-	} else {
-		clips, err := saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
-		if err != nil {
-			seeOther(w, r, "/studio?err="+url.QueryEscape("Clip chuyển động lỗi: "+err.Error()))
-			return
-		}
-		if len(clips) != len(prep.Shots) {
-			seeOther(w, r, "/studio?err="+url.QueryEscape(fmt.Sprintf("Shot plan cần đúng %d clip theo đúng thứ tự; đã nhận %d.", len(prep.Shots), len(clips))))
-			return
-		}
-		p.Clips = clips
+	p.VideoEngine = studio.AffiliateVideoEngineMuseAI
+	p.FlowCreditsAcknowledged = true
+	clips, err := saveMotionClips(r, "motion_clips", s.Studio.UploadDir(), 30)
+	if err != nil {
+		seeOther(w, r, "/studio?err="+url.QueryEscape("Clip tham chiếu lỗi: "+err.Error()))
+		return
 	}
+	if len(clips) > 0 && len(clips) != len(prep.Shots) {
+		seeOther(w, r, "/studio?err="+url.QueryEscape(fmt.Sprintf("Nếu dùng clip tham chiếu, cần đúng %d clip theo thứ tự shot; đã nhận %d.", len(prep.Shots), len(clips))))
+		return
+	}
+	p.Clips = clips
 	if resolution := strings.TrimSpace(r.FormValue("output_resolution")); resolution != "" {
 		p.OutputResolution = resolution
 	}
@@ -175,7 +177,7 @@ func (s *Server) handleStudioAffiliateCreate(w http.ResponseWriter, r *http.Requ
 	}
 	planID := strings.TrimSpace(r.FormValue("prepared_plan_id"))
 	if planID == "" {
-		studioErr("Lập shot plan trước khi tải clip chuyển động.")
+		studioErr("Lập shot plan trước khi tạo video.")
 		return
 	}
 	s.handleStudioAffiliateCreatePrepared(w, r, planID)

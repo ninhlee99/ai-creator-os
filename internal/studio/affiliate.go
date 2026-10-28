@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-const affiliateMotionClipsError = "chế độ thủ công cần một clip chuyển động thật cho mỗi shot; hoặc chọn Muse AI để tự tạo footage từ ảnh nhân vật và listing"
-
 func affiliateFlowReferencePaths(p AffiliateParams) []string {
 	paths := []string{p.ModelPhoto, p.ProductPhoto}
 	if len(p.ExtraPhotos) > 0 {
@@ -31,8 +29,8 @@ func affiliateFlowReferencePaths(p AffiliateParams) []string {
 	return refs
 }
 
-// AutoAffiliateProductionReady reports whether Studio can produce all footage
-// without operator-supplied clips. Current manual workflow is not autonomous.
+// AutoAffiliateProductionReady reports whether Studio can render planned shots
+// through Workflow API and Muse AI without operator-supplied motion references.
 func (s *Studio) AutoAffiliateProductionReady() (bool, string) {
 	if _, err := s.ResolveTikTokRadarMusic(context.Background()); err != nil {
 		return false, err.Error()
@@ -55,7 +53,7 @@ func (s *Studio) AutoAffiliateProductionReady() (bool, string) {
 func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	preparationID := strings.TrimSpace(p.PreparedPlanID)
 	if preparationID == "" {
-		return "", fmt.Errorf("lập Product Analyst + Director shot plan trước khi tải clip; %s", affiliateMotionClipsError)
+		return "", fmt.Errorf("lập Product Analyst + Director shot plan trước khi tạo video")
 	}
 	prep, err := s.GetAffiliatePreparation(preparationID)
 	if err != nil {
@@ -108,6 +106,9 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
 		p.VideoEngine = AffiliateVideoEngineMuseAI
 	}
+	if p.VideoEngine == AffiliateVideoEngineManual {
+		p.VideoEngine = AffiliateVideoEngineMuseAI
+	}
 	p.OutputResolution, err = NormalizeVideoOutputResolution(p.OutputResolution)
 	if err != nil {
 		return "", err
@@ -118,21 +119,15 @@ func (s *Studio) CreateAffiliateJob(p AffiliateParams) (string, error) {
 	if p.AspectRatio != "9:16" {
 		return "", fmt.Errorf("affiliate hiện chỉ hỗ trợ khung dọc 9:16")
 	}
-	if p.VideoEngine != AffiliateVideoEngineMuseAI && p.VideoEngine != AffiliateVideoEngineManual {
+	if p.VideoEngine != AffiliateVideoEngineMuseAI {
 		return "", fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
 	}
 	if p.VideoEngine == AffiliateVideoEngineMuseAI && !p.FlowCreditsAcknowledged {
 		return "", fmt.Errorf("cần xác nhận Muse AI có thể dùng credits trước khi tạo video")
 	}
-	if p.VideoEngine == AffiliateVideoEngineManual && !p.HasClips() {
-		return "", fmt.Errorf("%s", affiliateMotionClipsError)
-	}
 	expectedClips := len(p.PreparedShots)
-	if p.VideoEngine == AffiliateVideoEngineManual && len(p.Clips) != expectedClips {
-		return "", fmt.Errorf("video %ds cần %d clip theo shot list; đã nhận %d", p.Seconds, expectedClips, len(p.Clips))
-	}
-	if p.VideoEngine == AffiliateVideoEngineMuseAI && p.HasClips() {
-		return "", fmt.Errorf("Muse AI tạo mới từng shot; bỏ clip tải lên hoặc chọn chế độ thủ công")
+	if p.HasClips() && len(p.Clips) != expectedClips {
+		return "", fmt.Errorf("clip tham chiếu cần khớp %d shot; đã nhận %d", expectedClips, len(p.Clips))
 	}
 	if !IsTikTokVideoURL(p.SourceMusicVideoURL) {
 		return "", fmt.Errorf("chọn video nhảy có sound trong Radar TikTok trước khi tạo affiliate")

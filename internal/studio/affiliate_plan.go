@@ -69,7 +69,10 @@ func (s *Studio) PrepareAffiliatePlan(ctx context.Context, p AffiliateParams) (A
 	if p.VideoEngine == AffiliateVideoEngineGoogleFlow {
 		p.VideoEngine = AffiliateVideoEngineMuseAI
 	}
-	if p.VideoEngine != AffiliateVideoEngineMuseAI && p.VideoEngine != AffiliateVideoEngineManual {
+	if p.VideoEngine == AffiliateVideoEngineManual {
+		p.VideoEngine = AffiliateVideoEngineMuseAI
+	}
+	if p.VideoEngine != AffiliateVideoEngineMuseAI {
 		return empty, fmt.Errorf("engine affiliate không được hỗ trợ: %q", p.VideoEngine)
 	}
 	accountPhotos := s.queryAccountModelPhotos(p.AccountID)

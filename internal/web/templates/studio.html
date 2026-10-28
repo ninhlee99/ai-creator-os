@@ -230,23 +230,15 @@
 
         <div class="grid2" style="gap:12px;margin-bottom:16px">
           <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Tạo footage</label>
-            <select name="video_engine" id="cr-video-engine" style="padding:10px;font-weight:700" onchange="onAffiliateEngineChange()">
-              <option value="museai" {{if .FlowReady}}selected{{end}} {{if not .FlowReady}}disabled{{end}}>Muse AI · nhân vật dùng sản phẩm</option>
-              <option value="manual" {{if not .FlowReady}}selected{{end}}>Tải clip chuyển động đã quay</option>
-            </select>
-            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint">{{.FlowStatus}}</div>{{end}}
-          </div>
-          <div class="field">
-            <label style="font-weight:700;font-size:12.5px">Dạng video</label>
-            <select name="mode" style="padding:10px;font-weight:700">
-              <option value="shots" selected>Ghép clip chuyển động theo shot list</option>
-            </select>
+            <label style="font-weight:700;font-size:12.5px">Tạo video bằng</label>
+            <div class="readonly-field" style="padding:10px 12px;font-weight:700">Workflow API · Muse AI · render riêng từng shot</div>
+            <input type="hidden" name="video_engine" id="cr-video-engine" value="museai">
+            {{if .FlowReady}}<div class="hint">{{.FlowStatus}}</div>{{else}}<div class="hint" style="color:var(--danger)">{{.FlowStatus}}</div>{{end}}
           </div>
           <div class="field" id="cr-manual-clips-field">
-            <label style="font-weight:700;font-size:12.5px">Clip chuyển động <span class="req">*</span></label>
+            <label style="font-weight:700;font-size:12.5px">Clip tham chiếu chuyển động <span class="hint">(tùy chọn)</span></label>
             <input type="file" name="motion_clips" id="cr-motion-clips" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" multiple disabled>
-            <div class="hint">Theo thứ tự shot; nhân vật phải trực tiếp mặc hoặc dùng sản phẩm.</div>
+            <div class="hint" id="cr-clip-count-hint">Lập shot list trước. Có thể thêm một clip tham chiếu cho mỗi shot; Muse AI vẫn tạo video mới theo nhân vật và sản phẩm đã chọn.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Thời lượng video</label>
@@ -255,7 +247,7 @@
               <option value="30">⚡ 30 giây</option>
               <option value="45">⏱️ 45 giây</option>
             </select>
-            <div class="hint" id="cr-clip-count-hint">60 giây cần 10 clip, mỗi clip khớp một shot.</div>
+            <div class="hint" id="cr-duration-hint">60 giây · lập shot list, sau đó Muse AI tạo video theo từng shot.</div>
           </div>
           <div class="field">
             <label style="font-weight:700;font-size:12.5px">Độ phân giải đầu ra</label>
@@ -288,24 +280,13 @@ var studioVisibleAccountId = (function() {
 function updateAffiliateClipCount() {
   var seconds = parseInt(document.getElementById('cr-seconds').value, 10) || 60;
   var count = Math.min(30, Math.max(5, Math.ceil(seconds / 6)));
-  var hint = document.getElementById('cr-clip-count-hint');
-  if (hint) hint.textContent = seconds + ' giây cần đúng ' + count + ' clip, theo thứ tự shot.';
+  var hint = document.getElementById('cr-duration-hint');
+  if (hint) hint.textContent = seconds + ' giây · khoảng ' + count + ' shot; Muse AI tạo từng shot qua Workflow API.';
 }
 updateAffiliateClipCount();
 
-function onAffiliateEngineChange() {
-  var flow = document.getElementById('cr-video-engine').value === 'museai';
-  var field = document.getElementById('cr-manual-clips-field');
-  var input = document.getElementById('cr-motion-clips');
-  var consent = document.getElementById('cr-flow-consent-wrap');
-  var hint = document.getElementById('cr-clip-count-hint');
-  if (field) field.style.display = flow ? 'none' : '';
-  if (input) { input.disabled = flow || !document.getElementById('cr-prepared-plan-id').value; input.required = !flow && !!document.getElementById('cr-prepared-plan-id').value; input.value = ''; }
-  if (consent) consent.style.display = flow ? 'flex' : 'none';
-  if (hint) hint.style.display = flow ? 'none' : '';
-  if (!flow && hint) hint.textContent = 'Mỗi shot cần một clip chuyển động theo đúng thứ tự.';
-}
-onAffiliateEngineChange();
+var affiliateMuseReady = {{if .FlowReady}}true{{else}}false{{end}};
+document.getElementById('cr-motion-clips').required = false;
 
 function onStudioModelToggle(cb) {
   var card = cb.closest('.cr-model-card');
@@ -509,15 +490,13 @@ async function prepareAffiliatePlan() {
     planID.value = data.plan_id;
     affiliatePlanShotCount = (data.shots || []).length;
     renderAffiliatePlan(data);
-    var flow = document.getElementById('cr-video-engine').value === 'museai';
-    status.textContent = flow ? ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · Flow sẽ quay từng cảnh từ ảnh tham chiếu.') : ('Plan đã khóa · ' + affiliatePlanShotCount + ' shot · tải clip theo thứ tự bên dưới.');
-    document.getElementById('cr-clip-count-hint').textContent = flow ? (affiliatePlanShotCount + ' clip Flow · mỗi shot tạo riêng, sau đó cắt theo nhịp đã duyệt.') : (data.seconds + ' giây cần đúng ' + affiliatePlanShotCount + ' clip theo plan đã duyệt.');
-    clipInput.disabled = flow;
-    clipInput.required = !flow;
-    document.getElementById('cr-manual-clips-field').style.display = flow ? 'none' : '';
-    document.getElementById('cr-flow-consent-wrap').style.display = flow ? 'flex' : 'none';
-    submit.disabled = false;
-    submit.style.opacity = '1';
+    status.textContent = 'Plan đã khóa · ' + affiliatePlanShotCount + ' shot · Workflow API gửi từng shot sang Muse AI.';
+    document.getElementById('cr-clip-count-hint').textContent = 'Tùy chọn: thêm đúng ' + affiliatePlanShotCount + ' clip tham chiếu theo thứ tự shot. Muse AI vẫn tạo video mới.';
+    clipInput.disabled = false;
+    clipInput.required = false;
+    submit.disabled = !affiliateMuseReady;
+    submit.style.opacity = affiliateMuseReady ? '1' : '.55';
+    if (!affiliateMuseReady) status.textContent += ' Muse AI chưa sẵn sàng: {{.FlowStatus}}';
   } catch (err) {
     status.textContent = err.message || 'Không lập được shot plan';
   } finally {
@@ -528,15 +507,19 @@ async function prepareAffiliatePlan() {
 affiliateForm.addEventListener('submit', function(event) {
   var planID = document.getElementById('cr-prepared-plan-id').value;
   var clips = document.getElementById('cr-motion-clips').files;
-  var flow = document.getElementById('cr-video-engine').value === 'museai';
   if (!planID) {
     event.preventDefault();
     document.getElementById('cr-plan-status').textContent = 'Hãy lập shot plan trước.';
     return;
   }
-  if (!flow && clips.length !== affiliatePlanShotCount) {
+  if (!affiliateMuseReady) {
     event.preventDefault();
-    document.getElementById('cr-plan-status').textContent = 'Cần đúng ' + affiliatePlanShotCount + ' clip theo shot list.';
+    document.getElementById('cr-plan-status').textContent = 'Muse AI chưa sẵn sàng: {{.FlowStatus}}';
+    return;
+  }
+  if (clips.length > 0 && clips.length !== affiliatePlanShotCount) {
+    event.preventDefault();
+    document.getElementById('cr-plan-status').textContent = 'Nếu dùng clip tham chiếu, cần đúng ' + affiliatePlanShotCount + ' clip theo shot list.';
     return;
   }
   Array.prototype.forEach.call(affiliateForm.elements, function(field) {
