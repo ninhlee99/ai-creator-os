@@ -116,6 +116,56 @@ func TestAffiliateQCRequiresThreeSharpProfessionalSamplesPerShot(t *testing.T) {
 	}
 }
 
+func TestAffiliateQCRejectsUncertainIdentityEmotionOrContinuity(t *testing.T) {
+	shots := []ProShot{
+		{Index: 1, Purpose: "hook", ShotSize: "CU"},
+		{Index: 2, Purpose: "build", ShotSize: "WS"},
+		{Index: 3, Purpose: "macro", ShotSize: "ECU"},
+		{Index: 4, Purpose: "build", ShotSize: "MS"},
+		{Index: 5, Purpose: "payoff", ShotSize: "MCU"},
+	}
+	tests := []struct {
+		name  string
+		frame int
+		set   func(*VisualQCFrameEvidence)
+	}{
+		{name: "non-macro identity", frame: 3, set: func(frame *VisualQCFrameEvidence) { frame.CharacterIdentity = "uncertain" }},
+		{name: "non-macro emotion", frame: 4, set: func(frame *VisualQCFrameEvidence) { frame.EmotionMatch = "partial" }},
+		{name: "non-macro continuity", frame: 0, set: func(frame *VisualQCFrameEvidence) { frame.Continuity = "uncertain" }},
+		{name: "macro identity", frame: 6, set: func(frame *VisualQCFrameEvidence) { frame.CharacterIdentity = "uncertain" }},
+		{name: "macro emotion", frame: 6, set: func(frame *VisualQCFrameEvidence) { frame.EmotionMatch = "uncertain" }},
+		{name: "macro continuity", frame: 6, set: func(frame *VisualQCFrameEvidence) { frame.Continuity = "uncertain" }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			report := passedAffiliateQCReport()
+			tt.set(&report.FrameEvidence[tt.frame])
+			if affiliateQCFieldsPass(report, 15, shots) {
+				t.Fatal("affiliate QC passed without required frame evidence")
+			}
+		})
+	}
+}
+
+func TestAffiliateQCAllowsUnobservableMacroEvidence(t *testing.T) {
+	shots := []ProShot{
+		{Index: 1, Purpose: "hook", ShotSize: "CU"},
+		{Index: 2, Purpose: "build", ShotSize: "WS"},
+		{Index: 3, Purpose: "macro", ShotSize: "ECU"},
+		{Index: 4, Purpose: "build", ShotSize: "MS"},
+		{Index: 5, Purpose: "payoff", ShotSize: "MCU"},
+	}
+	report := passedAffiliateQCReport()
+	for i := 6; i < 9; i++ {
+		report.FrameEvidence[i].CharacterIdentity = "not_visible"
+		report.FrameEvidence[i].EmotionMatch = "not_applicable"
+		report.FrameEvidence[i].Continuity = "not_applicable"
+	}
+	if !affiliateQCFieldsPass(report, 15, shots) {
+		t.Fatal("affiliate QC rejected valid macro frames without observable face or surroundings")
+	}
+}
+
 func TestAffiliateShotSampleTimelineUsesEarlyMiddleLateFrames(t *testing.T) {
 	times, groups := affiliateShotSampleTimeline([]ProShot{{Seconds: 6}, {Seconds: 4}})
 	wantTimes := []float64{1.2, 3, 4.8, 6.8, 8, 9.2}

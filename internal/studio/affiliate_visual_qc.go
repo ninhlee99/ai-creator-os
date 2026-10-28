@@ -33,7 +33,7 @@ func (s *Studio) evaluateAffiliateVideo(ctx context.Context, videoPath, workDir 
 	prompt := fmt.Sprintf(
 		"Evaluate finished affiliate video against ordered listing and channel identity references. Images 1-%d are listing angles of the same exact product. Images %d-%d are the same channel character from different angles. Images %d onward are ordered output frames. Product: %q. Category: %q. Required use: %q. Focus: %q. Campaign wardrobe: %q. Campaign setting: %q. Shot emotional beats and framing: %s.\n"+
 			"Inspect each output frame independently. Check exact item/category and visible details, required product_use_mode for that shot, correct physical use, product visibility, subject focus/sharpness, clean commercial composition, channel identity, the planned emotional beat, coherent outfit/location/light, and visible movement across the samples. Do not assume an item is worn/used because it is nearby. Apparel is worn, footwear on feet, bags carried/worn, jewelry worn, cosmetics applied, home/tech items operated. Do not infer unsupported product claims.\n"+
-			"Three ordered frames represent each shot (early, middle, late); frame numbers are 1-%d and shot numbers are 1-%d. %s. Return JSON only: decision (pass|fail|uncertain), summary, product_match (match|mismatch|uncertain), product_usage (correct|not_shown|incorrect|uncertain), product_visibility (clear|weak|absent), character_identity (match|mismatch|uncertain), motion (visible|still|uncertain), shot_variety (varied|repetitive|uncertain), sharpness (sharp|soft|blurred|uncertain), composition (professional|cluttered|weak|uncertain), emotional_arc (coherent|flat|uncertain), continuity (consistent|inconsistent|uncertain), issues (blocking issue array), frame_evidence (one item per output frame: frame integer, shot integer, product_visibility clear|weak|absent, product_use correct|not_shown|incorrect|uncertain, character_identity match|mismatch|not_visible|uncertain, focus sharp|soft|blurred|uncertain, composition professional|cluttered|weak|uncertain, emotion_match match|partial|mismatch|not_applicable|uncertain, continuity match|mismatch|not_applicable|uncertain, evidence short visible description). For a planned macro/ECU frame without a face, identity and emotion may be not_visible/not_applicable; otherwise assess them. Pass only if all three frames in every shot show the exact product clearly and show it being worn or used in the specified product_use_mode, no sampled product use is incorrect, every frame is sharp and professionally composed, each non-macro shot has identity and emotion evidence, continuity holds, all overall fields pass, and evidence covers every frame. Samples do not prove every video frame. No numeric score.",
+			"Three ordered frames represent each shot (early, middle, late); frame numbers are 1-%d and shot numbers are 1-%d. %s. Return JSON only: decision (pass|fail|uncertain), summary, product_match (match|mismatch|uncertain), product_usage (correct|not_shown|incorrect|uncertain), product_visibility (clear|weak|absent), character_identity (match|mismatch|uncertain), motion (visible|still|uncertain), shot_variety (varied|repetitive|uncertain), sharpness (sharp|soft|blurred|uncertain), composition (professional|cluttered|weak|uncertain), emotional_arc (coherent|flat|uncertain), continuity (consistent|inconsistent|uncertain), issues (blocking issue array), frame_evidence (one item per output frame: frame integer, shot integer, product_visibility clear|weak|absent, product_use correct|not_shown|incorrect|uncertain, character_identity match|mismatch|not_visible|not_applicable|uncertain, focus sharp|soft|blurred|uncertain, composition professional|cluttered|weak|uncertain, emotion_match match|partial|mismatch|not_visible|not_applicable|uncertain, continuity match|mismatch|not_applicable|uncertain, evidence short visible description). For planned macro/ECU samples without visible face, identity and emotion may be not_visible/not_applicable; continuity may be not_applicable when surroundings cannot be compared. Otherwise require match. Pass only if all three frames in every shot show the exact product clearly and show it being worn or used in the specified product_use_mode, no sampled product use is incorrect, every frame is sharp and professionally composed, every non-macro frame confirms matching character identity, planned emotion, and continuity, macro frames use not_visible/not_applicable for identity and emotion and not_applicable for continuity only when that evidence cannot be observed, all overall fields pass, and evidence covers every frame. Any uncertain, partial, mismatch, or missing required value fails. Samples do not prove every video frame. No numeric score.",
 		len(productRefs), identityStart, identityEnd, outputStart, p.ProductName, profile.Category,
 		profile.UseAction, profile.Focus, shots[0].WardrobeStyling, shots[0].SceneSetting,
 		describeAffiliateShots(shots), len(frames), len(shots), describeSampledFrames("Output", frames))
@@ -117,14 +117,13 @@ func affiliateQCFieldsPass(r VisualQCReport, expectedFrames int, shots []ProShot
 		return false
 	}
 	clearAndUsed := make([]int, expectedShots)
-	shotHasIdentity := make([]bool, expectedShots)
-	shotHasEmotion := make([]bool, expectedShots)
 	shotIsMacro := make([]bool, expectedShots)
 	for i, shot := range shots {
-		shotIsMacro[i] = shot.Purpose == "macro" || strings.EqualFold(shot.ShotSize, "ECU")
+		shotIsMacro[i] = strings.EqualFold(shot.Purpose, "macro") || strings.EqualFold(shot.ShotSize, "ECU")
 	}
 	for i, frame := range r.FrameEvidence {
 		expectedShot := i/3 + 1
+		isMacro := shotIsMacro[expectedShot-1]
 		if frame.Frame != i+1 || frame.Shot != expectedShot || strings.TrimSpace(frame.Evidence) == "" {
 			return false
 		}
@@ -136,23 +135,31 @@ func affiliateQCFieldsPass(r VisualQCReport, expectedFrames int, shots []ProShot
 			!strings.EqualFold(frame.Composition, "professional") {
 			return false
 		}
-		if strings.EqualFold(frame.CharacterIdentity, "mismatch") || strings.EqualFold(frame.EmotionMatch, "mismatch") || strings.EqualFold(frame.Continuity, "mismatch") {
+		if isMacro {
+			if !oneOfVisualQCValues(frame.CharacterIdentity, "match", "not_visible", "not_applicable") ||
+				!oneOfVisualQCValues(frame.EmotionMatch, "match", "not_visible", "not_applicable") ||
+				!oneOfVisualQCValues(frame.Continuity, "match", "not_applicable") {
+				return false
+			}
+		} else if !strings.EqualFold(frame.CharacterIdentity, "match") ||
+			!strings.EqualFold(frame.EmotionMatch, "match") ||
+			!strings.EqualFold(frame.Continuity, "match") {
 			return false
-		}
-		if strings.EqualFold(frame.CharacterIdentity, "match") {
-			shotHasIdentity[expectedShot-1] = true
-		}
-		if strings.EqualFold(frame.EmotionMatch, "match") {
-			shotHasEmotion[expectedShot-1] = true
 		}
 	}
 	for i := range shots {
 		if clearAndUsed[i] < 3 {
 			return false
 		}
-		if !shotIsMacro[i] && (!shotHasIdentity[i] || !shotHasEmotion[i]) {
-			return false
-		}
 	}
 	return true
+}
+
+func oneOfVisualQCValues(value string, allowed ...string) bool {
+	for _, candidate := range allowed {
+		if strings.EqualFold(value, candidate) {
+			return true
+		}
+	}
+	return false
 }
