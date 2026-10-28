@@ -40,16 +40,42 @@ func (s *Studio) SweepHungJobs(maxAge time.Duration) int {
 		}
 	}
 	rows.Close()
+	swept := 0
 	for _, id := range ids {
 		killed := s.CancelRunning(id)
-		if killed {
-			s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đã kill process, đánh dấu thất bại", maxAge))
-		} else {
-			s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đánh dấu thất bại", maxAge))
+		updated, err := s.failHungJob(id, cutoff)
+		if err != nil {
+			continue
 		}
-		s.setStatus(id, StatusFailed, 100)
+		if updated {
+			if killed {
+				s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đã kill process, đánh dấu thất bại", maxAge))
+			} else {
+				s.appendLog(id, fmt.Sprintf("Tự chữa: treo quá %s — đánh dấu thất bại", maxAge))
+			}
+			swept++
+			continue
+		}
+		// The canceled worker may have recorded its own failure before this
+		// conditional update. Count that terminal transition, but never replace
+		// a job that completed successfully after the initial query.
+		if job, ok := s.GetJob(id); ok && job.Status == StatusFailed {
+			swept++
+		}
 	}
-	return len(ids)
+	return swept
+}
+
+func (s *Studio) failHungJob(id, cutoff string) (bool, error) {
+	finishedAt := time.Now().Format("2006-01-02T15:04:05")
+	result, err := s.db.Exec(`UPDATE studio_jobs SET status=?,progress=100,finished_at=?
+		WHERE id=? AND status=? AND created_at < ? AND kind<>?`,
+		StatusFailed, finishedAt, id, StatusRunning, cutoff, KindTikTokRadarRefresh)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	return rows == 1, err
 }
 
 // PruneFailedWork xóa thư mục work + file asset của các job đã failed.
@@ -94,6 +120,10 @@ func safeJobWorkDir(workRoot, jobID string) (string, bool) {
 		return "", false
 	}
 	root, err := filepath.Abs(workRoot)
+	if err != nil {
+		return "", false
+	}
+	root, err = filepath.EvalSymlinks(root)
 	if err != nil {
 		return "", false
 	}

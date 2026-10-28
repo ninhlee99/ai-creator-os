@@ -48,6 +48,31 @@ func TestSweepHungJobs(t *testing.T) {
 	}
 }
 
+func TestFailHungJobDoesNotOverwriteCompletedSnapshot(t *testing.T) {
+	dir := t.TempDir()
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	old := time.Now().Add(-13 * time.Hour).Format("2006-01-02T15:04:05")
+	insertRawJob(t, st, "finished-during-sweep", KindViral, StatusRunning, old, "", "")
+	st.setStatus("finished-during-sweep", StatusDone, 100)
+
+	updated, err := st.failHungJob("finished-during-sweep", time.Now().Add(-12*time.Hour).Format("2006-01-02T15:04:05"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated {
+		t.Fatal("completed job was changed by stale hung-job snapshot")
+	}
+	job, ok := st.GetJob("finished-during-sweep")
+	if !ok || job.Status != StatusDone {
+		t.Fatalf("job status = %q, want %q", job.Status, StatusDone)
+	}
+}
+
 func TestPruneFailedWork(t *testing.T) {
 	dir := t.TempDir()
 	outDir := filepath.Join(dir, "out")

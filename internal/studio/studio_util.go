@@ -58,6 +58,10 @@ func (s *Studio) deleteJob(id string, stopTimeout time.Duration) error {
 	if !ok {
 		return fmt.Errorf("không tìm thấy job %s", id)
 	}
+	jobDir, safe := safeJobWorkDir(s.workRoot, id)
+	if !safe {
+		return fmt.Errorf("job %s có đường dẫn làm việc không an toàn", id)
+	}
 	if j.Kind == KindTikTokRadarRefresh && (j.Status == StatusQueued || j.Status == StatusRunning) {
 		return fmt.Errorf("không thể xóa job Radar đang chạy; theo dõi trong tab Radar TikTok")
 	}
@@ -79,13 +83,22 @@ func (s *Studio) deleteJob(id string, stopTimeout time.Duration) error {
 	if !ok {
 		return fmt.Errorf("không tìm thấy job %s sau khi dừng", id)
 	}
+	outputPath := ""
+	if j.Output != "" && s.outDir != "" {
+		candidate := s.OutputPath(j.Output)
+		if pathWithinDir(s.outDir, candidate) {
+			outputPath = candidate
+		}
+	}
 	for _, a := range s.ListAssets(id) {
-		os.Remove(a.Path)
+		if pathWithinDir(jobDir, a.Path) || outputPath != "" && sameJobFile(a.Path, outputPath) {
+			_ = os.Remove(a.Path)
+		}
 	}
-	if j.Output != "" {
-		os.Remove(s.OutputPath(j.Output))
+	if outputPath != "" {
+		_ = os.Remove(outputPath)
 	}
-	os.RemoveAll(filepath.Join(s.workRoot, id))
+	_ = os.RemoveAll(jobDir)
 	if _, err := s.db.Exec(`DELETE FROM studio_tiktok_publications WHERE job_id=?`, id); err != nil {
 		return fmt.Errorf("xoá liên kết TikTok: %w", err)
 	}

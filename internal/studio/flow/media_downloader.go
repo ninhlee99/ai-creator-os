@@ -179,6 +179,10 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 
 const maxHTMLMediaRedirects = 5
 
+const maxDownloadedMediaBytes int64 = 600 << 20
+
+var errMediaDownloadTooLarge = errors.New("tệp media vượt giới hạn tải 600 MiB")
+
 func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType string, depth int, visited map[string]bool) (string, string, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -257,19 +261,30 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	if isSocial {
 		ytDlp := FindYtDlp()
 		if ytDlp != "" {
-			outTemplate := filepath.Join(destDir, fmt.Sprintf("social_%d_%%(id)s.%%(ext)s", time.Now().UnixNano()))
+			prefix := fmt.Sprintf("social_%d_", time.Now().UnixNano())
+			outTemplate := filepath.Join(destDir, prefix+"%(id)s.%(ext)s")
 			cmd := exec.CommandContext(ctx, ytDlp,
 				"--no-playlist",
+				"--max-filesize", "600M",
 				"-f", "b[ext=mp4]/b/bestvideo+bestaudio/best",
 				"--merge-output-format", "mp4",
 				"-o", outTemplate,
 				rawURL,
 			)
 			out, err := cmd.CombinedOutput()
+			matches, _ := filepath.Glob(filepath.Join(destDir, prefix+"*"))
 			if err == nil {
-				matches, _ := filepath.Glob(filepath.Join(destDir, "social_*"))
 				if len(matches) > 0 {
 					downloadedVideo := matches[len(matches)-1]
+					info, statErr := os.Stat(downloadedVideo)
+					if statErr != nil || !info.Mode().IsRegular() {
+						removeMediaFiles(matches)
+						return "", "", fmt.Errorf("yt-dlp không tạo được file video hợp lệ")
+					}
+					if info.Size() > maxDownloadedMediaBytes {
+						removeMediaFiles(matches)
+						return "", "", errMediaDownloadTooLarge
+					}
 					if targetType == "image" {
 						framePath := filepath.Join(destDir, fmt.Sprintf("frame_%d.jpg", time.Now().UnixNano()))
 						if err := ExtractFrameFromVideo(ctx, downloadedVideo, framePath, 2.0); err == nil {
@@ -279,6 +294,7 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 					return downloadedVideo, "video", nil
 				}
 			} else {
+				removeMediaFiles(matches)
 				fmt.Printf("[Downloader] yt-dlp fallback warning: %v: %s\n", err, string(out))
 			}
 		}
@@ -311,6 +327,9 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 
 	if resp.StatusCode != http.StatusOK {
 		return "", "", fmt.Errorf("máy chủ từ chối yêu cầu (mã HTTP %d)", resp.StatusCode)
+	}
+	if resp.ContentLength > maxDownloadedMediaBytes {
+		return "", "", errMediaDownloadTooLarge
 	}
 
 	contentType := strings.ToLower(resp.Header.Get("Content-Type"))
@@ -352,11 +371,14 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	if err != nil {
 		return "", "", err
 	}
-	bytesCopied, copyErr := io.Copy(dstFile, resp.Body)
+	bytesCopied, copyErr := copyMediaWithLimit(dstFile, resp.Body, maxDownloadedMediaBytes)
 	closeErr := dstFile.Close()
 	if copyErr != nil || closeErr != nil || bytesCopied == 0 {
 		_ = os.Remove(destPath)
 		if copyErr != nil {
+			if errors.Is(copyErr, errMediaDownloadTooLarge) {
+				return "", "", errMediaDownloadTooLarge
+			}
 			return "", "", fmt.Errorf("lỗi ghi tệp tải về: %w", copyErr)
 		}
 		if closeErr != nil {
@@ -374,6 +396,23 @@ func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	}
 
 	return destPath, mType, nil
+}
+
+func copyMediaWithLimit(dst io.Writer, src io.Reader, limit int64) (int64, error) {
+	written, err := io.Copy(dst, io.LimitReader(src, limit+1))
+	if err != nil {
+		return written, err
+	}
+	if written > limit {
+		return written, errMediaDownloadTooLarge
+	}
+	return written, nil
+}
+
+func removeMediaFiles(paths []string) {
+	for _, path := range paths {
+		_ = os.Remove(path)
+	}
 }
 
 func audioExtension(dataURL string) string {

@@ -1,15 +1,51 @@
 package flow
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
 )
+
+func TestCopyMediaWithLimitRejectsUnknownLengthOverflow(t *testing.T) {
+	var dst bytes.Buffer
+	written, err := copyMediaWithLimit(&dst, strings.NewReader("four"), 3)
+	if !errors.Is(err, errMediaDownloadTooLarge) || written != 4 {
+		t.Fatalf("copyMediaWithLimit() = (%d, %v), want (4, media too large)", written, err)
+	}
+	if dst.String() != "four" {
+		t.Fatalf("copied bytes = %q, want one byte over the limit", dst.String())
+	}
+}
+
+func TestDownloadMediaResourceRejectsDeclaredOversize(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "video/mp4")
+		w.Header().Set("Content-Length", strconv.FormatInt(maxDownloadedMediaBytes+1, 10))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	destDir := t.TempDir()
+	_, _, err := DownloadMediaResource(context.Background(), server.URL+"/large.mp4", destDir, "video")
+	if !errors.Is(err, errMediaDownloadTooLarge) {
+		t.Fatalf("DownloadMediaResource() error = %v, want media size limit", err)
+	}
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("oversized download left files in destination: %v", entries)
+	}
+}
 
 func TestDownloadMediaResourceStopsHTMLCycles(t *testing.T) {
 	var requests atomic.Int32

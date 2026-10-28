@@ -241,6 +241,59 @@ func TestDeleteJobRemovesOutputWrittenBeforeRunnerExit(t *testing.T) {
 	}
 }
 
+func TestDeleteJobRejectsUnsafeIDAndExternalPaths(t *testing.T) {
+	dir := t.TempDir()
+	outDir := filepath.Join(dir, "out")
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, outDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	outsideOutput := filepath.Join(dir, "outside-output.mp4")
+	outsideAsset := filepath.Join(dir, "outside-asset.jpg")
+	for _, path := range []string{outsideOutput, outsideAsset} {
+		if err := os.WriteFile(path, []byte("keep"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.db.Exec(`INSERT INTO studio_jobs(id,kind,title,status,progress,output,params,created_at,finished_at)
+		VALUES(?,?,?,?,?,?,?,?,?)`, "safe-job", KindViral, "safe", StatusFailed, 100, outsideOutput, `{}`, "2026-01-01T00:00:00", "2026-01-01T00:00:00"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.db.Exec(`INSERT INTO studio_assets(job_id,idx,kind,path,status) VALUES(?,0,'image',?,?)`,
+		"safe-job", outsideAsset, StatusDone); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob("safe-job"); err != nil {
+		t.Fatalf("DeleteJob(valid ID): %v", err)
+	}
+	for _, path := range []string{outsideOutput, outsideAsset} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("DeleteJob removed external file %q: %v", filepath.Base(path), err)
+		}
+	}
+
+	if err := os.MkdirAll(filepath.Join(dir, "victim"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	victim := filepath.Join(dir, "victim", "keep.bin")
+	if err := os.WriteFile(victim, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	unsafeID := "../../victim"
+	if _, err := st.db.Exec(`INSERT INTO studio_jobs(id,kind,title,status,progress,params,created_at,finished_at)
+		VALUES(?,?,?,?,?,?,?,?)`, unsafeID, KindViral, "unsafe", StatusFailed, 100, `{}`, "2026-01-01T00:00:00", "2026-01-01T00:00:00"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteJob(unsafeID); err == nil {
+		t.Fatal("DeleteJob accepted unsafe job ID")
+	}
+	if _, err := os.Stat(victim); err != nil {
+		t.Fatalf("unsafe job ID removed path outside work root: %v", err)
+	}
+}
+
 func TestDeleteJobRemovesTransientInputsAndPreservesSharedModelPhotos(t *testing.T) {
 	dir := t.TempDir()
 	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, filepath.Join(dir, "out"))
