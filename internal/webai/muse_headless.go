@@ -117,6 +117,7 @@ func museChatHeadlessWithFilesAndThreadCookieSnapshotAndAccountName(ctx context.
 	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	configureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return out, errors.New("cannot start Muse headless browser")
 	}

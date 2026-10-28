@@ -169,6 +169,7 @@ func googleFlowVideoHeadless(ctx context.Context, cookie string, request flowHea
 	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	cmd.Stdout, cmd.Stderr = io.Discard, io.Discard
+	configureHeadlessBrowserCommand(cmd)
 	if err := cmd.Start(); err != nil {
 		return result, errors.New("cannot start Flow headless browser")
 	}

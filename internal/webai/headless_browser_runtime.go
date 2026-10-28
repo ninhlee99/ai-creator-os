@@ -17,24 +17,6 @@ func clearChromiumSingletonLocks(dir string) {
 		_ = os.Remove(filepath.Join(dir, name))
 	}
 }
-func terminateBrowser(cmd *exec.Cmd) {
-	if cmd == nil || cmd.Process == nil {
-		return
-	}
-	done := make(chan struct{})
-	go func() {
-		_, _ = cmd.Process.Wait()
-		close(done)
-	}()
-	_ = cmd.Process.Signal(os.Interrupt)
-	select {
-	case <-done:
-	case <-time.After(3 * time.Second):
-		_ = cmd.Process.Kill()
-		<-done
-	}
-}
-
 func terminateBrowserAfterWait(cmd *exec.Cmd, processDone <-chan error) {
 	if cmd == nil || cmd.Process == nil {
 		return
