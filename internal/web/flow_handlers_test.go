@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -287,5 +288,45 @@ func TestTC16_WebAPI_Upload(t *testing.T) {
 	srv.handleMedia(mediaResp, mediaReq)
 	if mediaResp.Result().StatusCode != http.StatusOK {
 		t.Fatalf("GET %s status = %d, want 200", res.URL, mediaResp.Result().StatusCode)
+	}
+}
+
+type zeroFlowUploadReader struct{}
+
+func (zeroFlowUploadReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
+}
+
+func TestFlowUploadRejectsFilesOverLimit(t *testing.T) {
+	srv, cleanup := setupTestServerWithFlow(t)
+	defer cleanup()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "large.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.CopyN(part, zeroFlowUploadReader{}, maxFlowUploadBytes+1); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/flow/upload", &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	w := httptest.NewRecorder()
+	srv.handleAPIFlowUpload(w, req)
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized upload status = %d, want %d", w.Code, http.StatusRequestEntityTooLarge)
+	}
+	entries, err := os.ReadDir(srv.Studio.UploadDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("oversized upload left %d files in upload dir", len(entries))
 	}
 }

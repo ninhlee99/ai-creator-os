@@ -56,18 +56,22 @@ func TestPruneFailedWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().Format("2006-01-02T15:04:05")
-	insertRawJob(t, st, "fail1", KindViral, StatusFailed, now, now, "")
+	insertRawJob(t, st, "fail1", KindViral, StatusFailed, now, now, filepath.Join("studio", "fail1", "final.mp4"))
 	// work dir + asset file của job lỗi
 	workFile := filepath.Join(outDir, "studio", "fail1", "tmp.bin")
+	failedFinal := filepath.Join(outDir, "studio", "fail1", "final.mp4")
+	externalAsset := filepath.Join(dir, "keep-me.bin")
 	if err := os.MkdirAll(filepath.Dir(workFile), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(workFile, []byte("0123456789"), 0o644); err != nil {
-		t.Fatal(err)
+	for _, path := range []string{workFile, failedFinal, externalAsset} {
+		if err := os.WriteFile(path, []byte("0123456789"), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, err := st.db.Exec(
-		`INSERT INTO studio_assets(job_id,idx,kind,path,status) VALUES(?,0,'image',?,?)`,
-		"fail1", workFile, StatusDone); err != nil {
+		`INSERT INTO studio_assets(job_id,idx,kind,path,status) VALUES(?,0,'image',?,?),(?,1,'video',?,?),(?,2,'image',?,?)`,
+		"fail1", workFile, StatusDone, "fail1", failedFinal, StatusDone, "fail1", externalAsset, StatusDone); err != nil {
 		t.Fatal(err)
 	}
 	// job done không bị đụng
@@ -90,11 +94,87 @@ func TestPruneFailedWork(t *testing.T) {
 	if _, err := os.Stat(workFile); !os.IsNotExist(err) {
 		t.Fatal("work file của job lỗi phải bị xóa")
 	}
+	if _, err := os.Stat(failedFinal); err != nil {
+		t.Fatalf("final output của job lỗi phải được giữ: %v", err)
+	}
+	if _, err := os.Stat(externalAsset); err != nil {
+		t.Fatalf("asset ngoài thư mục job không được xóa: %v", err)
+	}
 	if _, err := os.Stat(doneWork); err != nil {
 		t.Fatal("work file của job done không được đụng")
 	}
 	if j, _ := st.GetJob("fail1"); j.Status != StatusFailed {
 		t.Fatal("DB row của job lỗi phải giữ lại")
+	}
+}
+
+func TestPruneFailedWorkRejectsUnsafeJobIDs(t *testing.T) {
+	dir := t.TempDir()
+	outDir := filepath.Join(dir, "out")
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, outDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	now := time.Now().Format("2006-01-02T15:04:05")
+	insertRawJob(t, st, "../../victim", KindViral, StatusFailed, now, now, "")
+	victim := filepath.Join(dir, "victim", "keep.bin")
+	if err := os.MkdirAll(filepath.Dir(victim), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(victim, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := st.PruneFailedWork(); n != 0 {
+		t.Fatalf("pruned %d unsafe jobs, want 0", n)
+	}
+	if _, err := os.Stat(victim); err != nil {
+		t.Fatalf("unsafe job ID removed path outside work root: %v", err)
+	}
+}
+
+func TestPrunersSkipActiveFailedJobs(t *testing.T) {
+	dir := t.TempDir()
+	outDir := filepath.Join(dir, "out")
+	st, err := New(filepath.Join(dir, "studio.db"), nil, nil, nil, outDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	old := time.Now().Add(-90 * 24 * time.Hour).Format("2006-01-02T15:04:05")
+	insertRawJob(t, st, "active-failed", KindViral, StatusFailed, old, old, "")
+	workFile := filepath.Join(st.WorkDir(), "active-failed", "still-running.bin")
+	if err := os.MkdirAll(filepath.Dir(workFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(workFile, []byte("active"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st.mu.Lock()
+	st.running["active-failed"] = func() {}
+	st.mu.Unlock()
+
+	if n, _ := st.PruneFailedWork(); n != 0 {
+		t.Fatalf("PruneFailedWork pruned %d active jobs, want 0", n)
+	}
+	if n := st.PruneOldJobs(60 * 24 * time.Hour); n != 0 {
+		t.Fatalf("PruneOldJobs pruned %d active jobs, want 0", n)
+	}
+	if _, err := os.Stat(workFile); err != nil {
+		t.Fatalf("active job work file was removed: %v", err)
+	}
+	if _, ok := st.GetJob("active-failed"); !ok {
+		t.Fatal("active job row was removed")
+	}
+
+	st.mu.Lock()
+	delete(st.running, "active-failed")
+	st.mu.Unlock()
+	if n := st.PruneOldJobs(60 * 24 * time.Hour); n != 1 {
+		t.Fatalf("PruneOldJobs pruned %d jobs after exit, want 1", n)
+	}
+	if _, err := os.Stat(workFile); !os.IsNotExist(err) {
+		t.Fatalf("stale work file remains after prune: %v", err)
 	}
 }
 
@@ -134,6 +214,14 @@ func TestPruneOldJobsRemovesJobArtifactsAndKeepsFinalOutput(t *testing.T) {
 		"old-affiliate", finalOutput, StatusDone); err != nil {
 		t.Fatal(err)
 	}
+	externalAsset := filepath.Join(dir, "shared-asset.bin")
+	if err := os.WriteFile(externalAsset, []byte("keep-outside-job"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.db.Exec(`INSERT INTO studio_assets(job_id,idx,kind,path,status) VALUES(?,2,'image',?,?)`,
+		"old-affiliate", externalAsset, StatusDone); err != nil {
+		t.Fatal(err)
+	}
 
 	if got := st.PruneOldJobs(60 * 24 * time.Hour); got != 1 {
 		t.Fatalf("pruned %d jobs, want 1", got)
@@ -156,6 +244,9 @@ func TestPruneOldJobsRemovesJobArtifactsAndKeepsFinalOutput(t *testing.T) {
 	}
 	if _, err := os.Stat(finalOutput); err != nil {
 		t.Fatalf("final output was removed: %v", err)
+	}
+	if _, err := os.Stat(externalAsset); err != nil {
+		t.Fatalf("asset outside job directory was removed: %v", err)
 	}
 }
 

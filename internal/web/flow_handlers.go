@@ -16,6 +16,8 @@ import (
 	"github.com/ninhlee99/ai-creator-os/internal/studio/flow"
 )
 
+const maxFlowUploadBytes = 50 << 20
+
 func (s *Server) handleStudioFlowView(w http.ResponseWriter, r *http.Request) {
 	var graphs []flow.FlowSummary
 	var activeGraph *flow.FlowGraph
@@ -597,9 +599,15 @@ func (s *Server) handleAPIFlowRuns(w http.ResponseWriter, r *http.Request) {
 
 // handleAPIFlowUpload lưu ảnh, video và audio cho các node trong workflow.
 func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(50 << 20); err != nil { // max 50MB
+	// ParseMultipartForm's maxMemory is only an in-memory threshold; cap the
+	// request body too so oversized uploads cannot spill unlimited data to disk.
+	r.Body = http.MaxBytesReader(w, r.Body, maxFlowUploadBytes+(1<<20))
+	if err := r.ParseMultipartForm(maxFlowUploadBytes); err != nil {
 		http.Error(w, `{"ok":false,"error":"Dung lượng file vượt quá giới hạn hoặc định dạng không hợp lệ"}`, http.StatusBadRequest)
 		return
+	}
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
 	}
 
 	file, header, err := r.FormFile("file")
@@ -608,6 +616,10 @@ func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
+	if header.Size > maxFlowUploadBytes {
+		http.Error(w, `{"ok":false,"error":"File vượt quá giới hạn 50MB"}`, http.StatusRequestEntityTooLarge)
+		return
+	}
 
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	supportedExt := map[string]bool{
@@ -648,10 +660,15 @@ func (s *Server) handleAPIFlowUpload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, err.Error()), http.StatusInternalServerError)
+	_, copyErr := io.Copy(dst, file)
+	closeErr := dst.Close()
+	if copyErr != nil || closeErr != nil {
+		_ = os.Remove(targetPath)
+		if copyErr != nil {
+			http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, copyErr.Error()), http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, fmt.Sprintf(`{"ok":false,"error":%q}`, closeErr.Error()), http.StatusInternalServerError)
 		return
 	}
 

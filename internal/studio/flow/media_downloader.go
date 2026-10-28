@@ -174,9 +174,18 @@ func ExtractFrameFromVideo(ctx context.Context, videoPath, outPath string, times
 // DownloadMediaResource tải tài nguyên video hoặc ảnh từ URL (TikTok, Reels, Instagram, YouTube Shorts, Web).
 // Tự động ưu tiên tải thuần Go HTTP Client; chỉ dùng công cụ chuyên dụng đối với link mạng xã hội có mã hóa chống cào bot phức tạp.
 func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType string) (string, string, error) {
+	return downloadMediaResource(ctx, rawURL, destDir, targetType, 0, make(map[string]bool))
+}
+
+const maxHTMLMediaRedirects = 5
+
+func downloadMediaResource(ctx context.Context, rawURL, destDir, targetType string, depth int, visited map[string]bool) (string, string, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
 		return "", "", errors.New("địa chỉ URL rỗng")
+	}
+	if depth > maxHTMLMediaRedirects {
+		return "", "", fmt.Errorf("trang media chuyển hướng quá %d lần", maxHTMLMediaRedirects)
 	}
 
 	_ = os.MkdirAll(destDir, 0o755)
@@ -276,6 +285,16 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	}
 
 	// 5. Ưu tiên số 1: Tự tải và bóc tách trực tiếp bằng Go Standard Library (net/http)
+	if parsed, err := url.Parse(rawURL); err == nil && parsed.Scheme != "" && parsed.Host != "" {
+		parsed.Scheme = strings.ToLower(parsed.Scheme)
+		parsed.Host = strings.ToLower(parsed.Host)
+		parsed.Fragment = ""
+		key := parsed.String()
+		if visited[key] {
+			return "", "", fmt.Errorf("phát hiện vòng lặp trang media tại %q", key)
+		}
+		visited[key] = true
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("tạo yêu cầu tải URL thất bại: %w", err)
@@ -304,7 +323,7 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 			extractedMediaURL := extractMediaURLFromHTML(string(bodyBytes), rawURL, targetType)
 			if extractedMediaURL != "" && extractedMediaURL != rawURL {
 				// Đệ quy tải file media thực tế vừa bóc tách được
-				return DownloadMediaResource(ctx, extractedMediaURL, destDir, targetType)
+				return downloadMediaResource(ctx, extractedMediaURL, destDir, targetType, depth+1, visited)
 			}
 		}
 		return "", "", fmt.Errorf("không tìm thấy liên kết video hoặc hình ảnh trong trang web '%s'", rawURL)
@@ -333,10 +352,17 @@ func DownloadMediaResource(ctx context.Context, rawURL, destDir, targetType stri
 	if err != nil {
 		return "", "", err
 	}
-	defer dstFile.Close()
-
-	if _, err := io.Copy(dstFile, resp.Body); err != nil {
-		return "", "", fmt.Errorf("lỗi ghi tệp tải về: %w", err)
+	bytesCopied, copyErr := io.Copy(dstFile, resp.Body)
+	closeErr := dstFile.Close()
+	if copyErr != nil || closeErr != nil || bytesCopied == 0 {
+		_ = os.Remove(destPath)
+		if copyErr != nil {
+			return "", "", fmt.Errorf("lỗi ghi tệp tải về: %w", copyErr)
+		}
+		if closeErr != nil {
+			return "", "", fmt.Errorf("lỗi đóng tệp tải về: %w", closeErr)
+		}
+		return "", "", errors.New("máy chủ trả về tệp media rỗng")
 	}
 
 	// Nếu tải về là video nhưng node đang cần ảnh (Character / Product)

@@ -92,8 +92,7 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 		return 0
 	}
 	type prunedJob struct {
-		job    Job
-		assets []Asset
+		job Job
 	}
 	var candidates []prunedJob
 	for rows.Next() {
@@ -112,9 +111,13 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 		return 0
 	}
 	rows.Close()
-	for i := range candidates {
-		candidates[i].assets = s.ListAssets(candidates[i].job.ID)
+	activeFiltered := candidates[:0]
+	for _, candidate := range candidates {
+		if !s.jobActive(candidate.job.ID) {
+			activeFiltered = append(activeFiltered, candidate)
+		}
 	}
+	candidates = activeFiltered
 	if len(candidates) == 0 {
 		return 0
 	}
@@ -150,14 +153,15 @@ func (s *Studio) PruneOldJobs(maxAge time.Duration) int {
 		return 0
 	}
 	for _, candidate := range pruned {
-		finalPath := s.OutputPath(candidate.job.Output)
-		for _, asset := range candidate.assets {
-			if !sameJobFile(asset.Path, finalPath) {
-				removeFile(asset.Path)
+		jobDir, safe := safeJobWorkDir(s.workRoot, candidate.job.ID)
+		if safe {
+			finalPath := s.OutputPath(candidate.job.Output)
+			if !pathWithinDir(jobDir, finalPath) {
+				finalPath = ""
 			}
+			removeJobWorkDir(jobDir, finalPath)
 		}
 		s.removeJobInputUploads(candidate.job)
-		removeAll(filepath.Join(s.workRoot, candidate.job.ID))
 	}
 	return len(pruned)
 }
@@ -166,9 +170,27 @@ func sameJobFile(a, b string) bool {
 	if a == "" || b == "" {
 		return false
 	}
-	absA, errA := filepath.Abs(a)
-	absB, errB := filepath.Abs(b)
-	return errA == nil && errB == nil && filepath.Clean(absA) == filepath.Clean(absB)
+	canonical := func(path string) (string, bool) {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			return "", false
+		}
+		clean := filepath.Clean(absolute)
+		if resolved, err := filepath.EvalSymlinks(clean); err == nil {
+			clean = filepath.Clean(resolved)
+		}
+		return clean, true
+	}
+	canonicalA, okA := canonical(a)
+	canonicalB, okB := canonical(b)
+	return okA && okB && canonicalA == canonicalB
+}
+
+func (s *Studio) jobActive(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, active := s.running[id]
+	return active
 }
 
 func (s *Studio) addAsset(jobID string, idx int, kind, prompt string) int64 {
