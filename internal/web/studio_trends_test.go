@@ -1,6 +1,7 @@
 package web
 
 import (
+	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,20 @@ func TestStudioTrendsPageAndTopicActions(t *testing.T) {
 		t.Errorf("body missing 'Thêm chủ đề' button")
 	}
 
+	// Background refresh must update results only; replacing the topic controls
+	// while the confirmation dialog is open can detach the delete form.
+	pollReq := httptest.NewRequest("GET", "/studio/trends?topic=Th%E1%BB%9Di+trang", nil)
+	pollReq.Header.Set("HX-Request", "true")
+	pollReq.Header.Set("HX-Target", "studio-trends-results")
+	pollRec := httptest.NewRecorder()
+	serveLocalTestRoute(s, pollRec, pollReq)
+	if pollRec.Code != 200 {
+		t.Fatalf("HTMX results refresh code = %d, want 200", pollRec.Code)
+	}
+	if !strings.Contains(pollRec.Body.String(), `id="studio-trends-results"`) || strings.Contains(pollRec.Body.String(), `id="topic-chips-container"`) {
+		t.Errorf("background refresh should return results only, got %q", pollRec.Body.String()[:min(len(pollRec.Body.String()), 300)])
+	}
+
 	// 2. POST /studio/trends/topics should add a new topic and redirect
 	addRec := postForm(t, s, "/studio/trends/topics", url.Values{
 		"new_topic": {"Review công nghệ"},
@@ -52,6 +67,15 @@ func TestStudioTrendsPageAndTopicActions(t *testing.T) {
 	})
 	if delRec.Code != 303 {
 		t.Fatalf("POST /studio/trends/topics/delete code = %d, want 303", delRec.Code)
+	}
+	topicsAfterDelete, err := st.ListTikTokRadarTopics(httptest.NewRequest("GET", "/", nil).Context())
+	if err != nil {
+		t.Fatalf("ListTikTokRadarTopics after handler delete: %v", err)
+	}
+	for _, topic := range topicsAfterDelete {
+		if topic == "Review công nghệ" {
+			t.Fatalf("delete handler left custom topic %q in list", topic)
+		}
 	}
 
 	// 4. POST /studio/trends/refresh should refresh current topic and redirect

@@ -10,56 +10,34 @@
   overflow: hidden;
   box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.08);
 }
-.topic-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  font-size: 13.5px;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  background: var(--bg2);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  text-decoration: none;
-  user-select: none;
-}
-.topic-chip:hover {
-  border-color: #6366f1;
-  background: rgba(99, 102, 241, 0.06);
-  transform: translateY(-1px);
-}
-.topic-chip.active {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
-  color: #ffffff !important;
-  border-color: transparent !important;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
-}
-.topic-chip.active a {
-  color: #ffffff !important;
-}
-.btn-add-topic {
-  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
-  color: #fff;
-  border: none;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13.5px;
-  transition: all 0.2s;
-}
-.btn-add-topic:hover {
-  opacity: 0.95;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(244, 63, 94, 0.35);
-  color: #fff;
+.topics-panel { border-radius: 18px; padding: 20px; }
+.topics-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.topics-title { margin:0; color:var(--text); font-size:16px; font-weight:750; letter-spacing:-.01em; }
+.topics-description { max-width:900px; margin:5px 0 0; color:var(--muted); font-size:12.5px; line-height:1.55; }
+.topics-count { display:inline-flex; align-items:center; gap:6px; flex:none; padding:5px 9px; border:1px solid var(--border); border-radius:999px; color:var(--muted); font-size:11px; font-weight:650; }
+.topic-list { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.topic-chip { display:inline-flex; align-items:center; gap:8px; min-width:0; max-width:100%; padding:5px 7px 5px 12px; border:1px solid var(--border); border-radius:999px; background:var(--bg2); color:var(--text); transition:border-color .16s,background .16s,box-shadow .16s; }
+.topic-chip:hover { border-color:rgba(99,102,241,.65); background:rgba(99,102,241,.06); }
+.topic-chip.active { border-color:rgba(99,102,241,.78); background:rgba(99,102,241,.12); box-shadow:0 0 0 2px rgba(99,102,241,.08); }
+.topic-select { display:flex; align-items:center; gap:7px; min-width:0; color:inherit; text-decoration:none; font-size:13px; font-weight:650; }
+.topic-select-label { overflow-wrap:anywhere; }
+.topic-default { padding:2px 6px; border-radius:999px; background:rgba(99,102,241,.1); color:#818cf8; font-size:9px; font-weight:750; letter-spacing:.04em; text-transform:uppercase; }
+.topic-delete-form { display:flex; margin:0; }
+.topic-delete { display:grid; width:26px; height:26px; place-items:center; border:0; border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; }
+.topic-delete:hover,.topic-delete:focus-visible { outline:none; background:rgba(239,68,68,.13); color:#ef4444; }
+.topic-add-panel { margin-top:14px; padding:15px; border:1px solid var(--border); border-radius:14px; background:var(--bg3); }
+.topic-add-form { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.topic-add-input { flex:1; min-width:240px; padding:9px 12px; border:1px solid var(--border); border-radius:9px; background:var(--bg2); color:var(--text); font-size:13px; }
+.topic-suggestions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:11px; color:var(--muted); font-size:11.5px; }
+.topic-suggestion { padding:4px 9px; border:1px solid var(--border); border-radius:999px; background:var(--bg2); color:var(--text); cursor:pointer; font-size:11px; }
+.topic-suggestion:hover { border-color:#6366f1; color:#818cf8; }
+.btn-add-topic { flex:none; background:rgba(236,72,153,.12); color:#f472b6; border:1px solid rgba(236,72,153,.32); font-weight:700; padding:8px 13px; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; font-size:12.5px; transition:all .16s; }
+.btn-add-topic:hover { background:rgba(236,72,153,.2); border-color:rgba(236,72,153,.6); }
+@media (max-width:640px) {
+  .topics-panel { padding:15px; }
+  .topics-header { align-items:flex-start; }
+  .topics-count { display:none; }
+  .topic-add-input { min-width:100%; }
 }
 /* Lưới 4×2 trên desktop; giảm số cột ở màn hình nhỏ để card còn dễ đọc. */
 .radar-grid {
@@ -622,13 +600,6 @@
 </main>
 
 <script>
-function selectTopicChip(linkEl) {
-  var chips = document.querySelectorAll('.topic-chip');
-  chips.forEach(function(c) { c.classList.remove('active'); });
-  var parentChip = linkEl.closest('.topic-chip');
-  if (parentChip) parentChip.classList.add('active');
-}
-
 function openRadarPlayerFromCard(el) {
   var card = el.closest('.video-card-radar');
   if (!card) return;
@@ -706,68 +677,65 @@ document.addEventListener('keydown', function(e) {
 {{end}}
 
 {{define "studio-trends-content"}}
-<div id="studio-trends-content" class="space-y-4" hx-get="/studio/trends?topic={{urlquery .Topic}}" hx-trigger="{{if .CoveragePending}}load delay:2s, every 4s{{else}}every 15m{{end}}" hx-target="this" hx-swap="outerHTML">
+<div id="studio-trends-content" class="space-y-4">
   <!-- Section Chủ đề theo dõi & Thêm chủ đề -->
-  <section class="card" style="border-radius: 16px; padding: 18px;">
-    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;">
+  <section class="card topics-panel">
+    <div class="topics-header">
       <div>
-        <div style="font-size: 13.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text);">
+        <h2 class="topics-title">
           Chủ đề theo dõi
-        </div>
-        <div class="hint" style="font-size: 12px; margin-top: 1px;">
-          Tab Xu hướng Việt Nam chỉ nhận clip có bằng chứng vũ đạo; chủ đề khác lọc theo nội dung. Radar quét, phân tích và xếp TOP 8 chạy nền; ưu tiên tăng view, engagement rồi tổng view. Trang tự cập nhật mỗi 15 phút.
-        </div>
+        </h2>
+        <p class="topics-description">Xu hướng Việt Nam chỉ nhận video có bằng chứng vũ đạo. Chủ đề khác lọc theo nội dung. Radar phân tích và xếp Top 8 theo tốc độ tăng view, tương tác rồi tổng view.</p>
       </div>
-      <button type="button" class="btn-add-topic" onclick="var f = document.getElementById('add-topic-form'); f.style.display = (f.style.display === 'none' || f.style.display === '') ? 'block' : 'none'; if(f.style.display === 'block') document.getElementById('new-topic-input').focus();">
-        ➕ Thêm chủ đề
-      </button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="topics-count">{{len .Topics}} chủ đề</span>
+        <button type="button" class="btn-add-topic" aria-expanded="false" aria-controls="add-topic-form" onclick="var f=document.getElementById('add-topic-form');var open=f.hidden;f.hidden=!open;this.setAttribute('aria-expanded',String(open));if(open)document.getElementById('new-topic-input').focus();">
+          <span aria-hidden="true">＋</span> Thêm chủ đề
+        </button>
+      </div>
     </div>
 
     <!-- Khung mở rộng Thêm chủ đề -->
-    <div id="add-topic-form" style="display: none; background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px;">
-      <form action="/studio/trends/topics" method="post" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-        <input id="new-topic-input" type="text" name="new_topic" placeholder="Nhập chủ đề muốn quét (Ví dụ: Công nghệ, Gia dụng tiện ích, Nhảy tiktok, Du lịch...)" required
-               style="flex: 1; min-width: 260px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-size: 13.5px;">
-        <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 16px; font-weight: 600; border-radius: 8px;">
-          ➕ Thêm & Quét ngay
-        </button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('add-topic-form').style.display='none';" style="padding: 8px 12px; border-radius: 8px;">
-          Đóng
-        </button>
+    <div id="add-topic-form" class="topic-add-panel" hidden>
+      <form action="/studio/trends/topics" method="post" class="topic-add-form">
+        <input id="new-topic-input" class="topic-add-input" type="text" name="new_topic" placeholder="Ví dụ: thời trang công sở, đồ gia dụng, review quán ăn" maxlength="100" required>
+        <button type="submit" class="btn btn-primary btn-sm" style="padding:9px 14px;border-radius:9px;font-weight:650;">Thêm và quét</button>
+        <button type="button" class="btn btn-secondary btn-sm" style="padding:9px 12px;border-radius:9px;" onclick="var f=document.getElementById('add-topic-form');f.hidden=true;document.querySelector('.btn-add-topic').setAttribute('aria-expanded','false');">Đóng</button>
       </form>
-      <div style="margin-top: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);">
-        <span style="font-weight: 600;">Gợi ý hot:</span>
-        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Nhảy dance challenge'; document.getElementById('new-topic-input').form.submit();">💃 Nhảy dance</button>
-        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Thời trang outfit'; document.getElementById('new-topic-input').form.submit();">👗 Thời trang</button>
-        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Đồ công nghệ'; document.getElementById('new-topic-input').form.submit();">📱 Công nghệ</button>
-        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Món ngon review'; document.getElementById('new-topic-input').form.submit();">🍜 Ăn uống</button>
-        <button type="button" class="badge badge-dim" style="cursor: pointer; padding: 3px 8px;" onclick="document.getElementById('new-topic-input').value='Đồ gia dụng thông minh'; document.getElementById('new-topic-input').form.submit();">🏠 Gia dụng</button>
+      <div class="topic-suggestions">
+        <strong>Gợi ý</strong>
+        <button type="button" class="topic-suggestion" onclick="document.getElementById('new-topic-input').value='Nhảy dance challenge';document.getElementById('new-topic-input').focus();">💃 Nhảy dance</button>
+        <button type="button" class="topic-suggestion" onclick="document.getElementById('new-topic-input').value='Thời trang outfit';document.getElementById('new-topic-input').focus();">👗 Thời trang</button>
+        <button type="button" class="topic-suggestion" onclick="document.getElementById('new-topic-input').value='Đồ công nghệ';document.getElementById('new-topic-input').focus();">📱 Công nghệ</button>
+        <button type="button" class="topic-suggestion" onclick="document.getElementById('new-topic-input').value='Món ngon review';document.getElementById('new-topic-input').focus();">🍜 Ăn uống</button>
+        <button type="button" class="topic-suggestion" onclick="document.getElementById('new-topic-input').value='Đồ gia dụng thông minh';document.getElementById('new-topic-input').focus();">🏠 Gia dụng</button>
       </div>
     </div>
 
     <!-- Hàng các chủ đề dạng pill chips -->
-    <div id="topic-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+    <nav id="topic-chips-container" class="topic-list" aria-label="Chọn chủ đề Radar">
       {{$curr := .Topic}}
       {{range .Topics}}
       <div class="topic-chip {{if eq . $curr}}active{{end}}">
-        <a href="/studio/trends?topic={{urlquery .}}"
+        <a class="topic-select" href="/studio/trends?topic={{urlquery .}}"
            hx-get="/studio/trends?topic={{urlquery .}}"
            hx-target="#studio-trends-content"
            hx-swap="outerHTML"
            hx-push-url="true"
-           onclick="selectTopicChip(this)"
-           style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 4px;">
-          {{if isProtectedRadarTopic .}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}{{.}}
+           {{if eq . $curr}}aria-current="page"{{end}}>
+          <span aria-hidden="true">{{if isProtectedRadarTopic .}}🔥 {{else if eq . "Nhảy trend"}}💃 {{else if eq . "Thời trang"}}👗 {{else if eq . "Làm đẹp"}}💄 {{else if eq . "Review ẩm thực"}}🍜 {{else}}🏷️ {{end}}</span>
+          <span class="topic-select-label">{{.}}</span>
+          {{if isProtectedRadarTopic .}}<span class="topic-default">Mặc định</span>{{end}}
         </a>
         {{if not (isProtectedRadarTopic .)}}
-        <form method="post" action="/studio/trends/topics/delete" data-confirm="Xóa chủ đề này khỏi danh sách theo dõi?" data-confirm-danger style="display: inline; margin: 0; padding: 0;">
+        <form method="post" action="/studio/trends/topics/delete" class="topic-delete-form" data-confirm="Xóa chủ đề này khỏi danh sách theo dõi?" data-confirm-danger>
           <input type="hidden" name="topic" value="{{.}}">
-          <button type="submit" style="background: none; border: none; padding: 0 2px; margin-left: 2px; cursor: pointer; color: inherit; opacity: 0.6; font-size: 11px;" title="Xóa chủ đề này">✕</button>
+          <button type="submit" class="topic-delete" title="Xóa chủ đề {{.}}" aria-label="Xóa chủ đề {{.}}">×</button>
         </form>
         {{end}}
       </div>
       {{end}}
-    </div>
+    </nav>
   </section>
 
   {{template "studio-trends-results" .}}
@@ -775,7 +743,10 @@ document.addEventListener('keydown', function(e) {
 {{end}}
 
 {{define "studio-trends-results"}}
-<section id="studio-trends-results" style="display: flex; flex-direction: column; gap: 14px;" aria-live="polite">
+<section id="studio-trends-results" style="display: flex; flex-direction: column; gap: 14px;" aria-live="polite"
+         hx-get="/studio/trends?topic={{urlquery .Topic}}"
+         hx-trigger="{{if .CoveragePending}}load delay:2s, every 4s{{else}}every 15m{{end}}"
+         hx-target="this" hx-swap="outerHTML">
   {{if .TrendErr}}
   <div style="background: var(--err-bg); border: 1px solid var(--err); border-radius: 12px; padding: 12px 16px; color: var(--err-text); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
     <div><strong>Không lấy được dữ liệu:</strong> {{.TrendErr}}</div>

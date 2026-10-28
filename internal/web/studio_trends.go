@@ -85,6 +85,7 @@ func (s *Server) handleStudioTrends(w http.ResponseWriter, r *http.Request) {
 		"RankNote", tikTokRadarRankNote(videos),
 	)
 	if r.Header.Get("HX-Request") == "true" {
+		data["HXTarget"] = r.Header.Get("HX-Target")
 		s.renderStudioTrendResults(w, data)
 		return
 	}
@@ -212,7 +213,14 @@ func (s *Server) handleStudioTrendsDeleteTopic(w http.ResponseWriter, r *http.Re
 func (s *Server) renderStudioTrendResults(w http.ResponseWriter, data map[string]any) {
 	t := s.templates["studio_trends"]
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Ưu tiên render studio-trends-content để cập nhật đồng bộ cả thanh chủ đề active và danh sách video
+	if rTarget := data["HXTarget"]; rTarget == "studio-trends-results" {
+		if err := t.ExecuteTemplate(w, "studio-trends-results", data); err != nil {
+			log.Printf("web: render TikTok Radar results: %v", err)
+			http.Error(w, "Không hiển thị được kết quả Radar TikTok", http.StatusInternalServerError)
+		}
+		return
+	}
+	// Topic selection refreshes both active chip and video results. Background polling targets results only.
 	if err := t.ExecuteTemplate(w, "studio-trends-content", data); err != nil {
 		if fbErr := t.ExecuteTemplate(w, "studio-trends-results", data); fbErr != nil {
 			log.Printf("web: render TikTok Radar content: %v", err)
